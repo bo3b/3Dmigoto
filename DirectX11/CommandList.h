@@ -35,6 +35,12 @@ public:
 	bool post;
 	bool aborted;
 
+	// If set this resource is in some way related to the command list
+	// invocation - a constant buffer we are analysing, a render target
+	// being cleared, etc.
+	ID3D11Resource *resource;
+	ID3D11View *view;
+
 	// TODO: Cursor info and resources would be better off being cached
 	// somewhere that is updated at most once per frame rather than once
 	// per command list execution, and we would ideally skip the resource
@@ -101,6 +107,17 @@ public:
 
 	RunExplicitCommandList() :
 		command_list_section(NULL)
+	{}
+
+	void run(CommandListState*) override;
+};
+
+class RunLinkedCommandList : public CommandListCommand {
+public:
+	CommandList *link;
+
+	RunLinkedCommandList(CommandList *link) :
+		link(link)
 	{}
 
 	void run(CommandListState*) override;
@@ -423,6 +440,7 @@ enum class ResourceCopyTargetType {
 	INI_PARAMS,
 	CURSOR_MASK,
 	CURSOR_COLOR,
+	THIS_RESOURCE, // For constant buffer analysis & render/depth target clearing
 	SWAP_CHAIN,
 	FAKE_SWAP_CHAIN, // need this for upscaling used with "f_bb" flag in  the .ini file
 };
@@ -638,10 +656,63 @@ public:
 	void run(CommandListState*) override;
 };
 
+class ClearViewCommand : public CommandListCommand {
+public:
+	wstring ini_line;
+
+	ResourceCopyTarget target;
+
+	FLOAT dsv_depth;
+	UINT8 dsv_stencil;
+
+	// If neither "depth" or "stencil" are specified, both will be used:
+	bool clear_depth;
+	bool clear_stencil;
+
+	// fval is used for RTV colours and UAVs when clearing them with
+	// floating point values. uval is used for UAVs if nothing looked like
+	// a float.
+	FLOAT fval[4];
+	UINT uval[4];
+	bool clear_uav_uint;
+
+	ClearViewCommand();
+
+	ID3D11View* create_best_view(ID3D11Resource *resource,
+		CommandListState *state, UINT stride,
+		UINT offset, DXGI_FORMAT format, UINT buf_src_size);
+	void clear_unknown_view(ID3D11View*, CommandListState *state);
+
+	void run(CommandListState*) override;
+};
+
+class ResetPerFrameLimitsCommand : public CommandListCommand {
+public:
+	wstring ini_line;
+
+	CustomShader *shader;
+	CustomResource *resource;
+
+	ResetPerFrameLimitsCommand() :
+		shader(NULL),
+		resource(NULL)
+	{}
+
+	void run(CommandListState*) override;
+};
+
 
 void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list, DrawCallInfo *call_info,
+		bool post);
+void RunResourceCommandList(HackerDevice *mHackerDevice,
+		HackerContext *mHackerContext,
+		CommandList *command_list, ID3D11Resource *resource,
+		bool post);
+void RunViewCommandList(HackerDevice *mHackerDevice,
+		HackerContext *mHackerContext,
+		CommandList *command_list, ID3D11View *view,
 		bool post);
 
 bool ParseCommandListGeneralCommands(const wchar_t *section,
@@ -652,3 +723,4 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 		const wchar_t *key, wstring *val, CommandList *command_list);
 bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 		const wchar_t *key, wstring *val, CommandList *command_list);
+void LinkCommandLists(CommandList *dst, CommandList *link);

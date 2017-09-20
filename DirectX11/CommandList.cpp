@@ -3,6 +3,7 @@
 #include <DDSTextureLoader.h>
 #include <WICTextureLoader.h>
 #include <algorithm>
+#include <sstream>
 #include "HackerDevice.h"
 #include "HackerContext.h"
 #include "Override.h"
@@ -46,10 +47,13 @@ static void CommandListFlushState(CommandListState *state)
 	}
 }
 
-void RunCommandList(HackerDevice *mHackerDevice,
+static void RunCommandListComplete(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list,
-		DrawCallInfo *call_info, bool post)
+		DrawCallInfo *call_info,
+		ID3D11Resource *resource,
+		ID3D11View *view,
+		bool post)
 {
 	CommandListState state;
 	state.mHackerDevice = mHackerDevice;
@@ -58,10 +62,50 @@ void RunCommandList(HackerDevice *mHackerDevice,
 	state.mOrigContext = mHackerContext->GetOrigContext();
 
 	state.call_info = call_info;
+	state.resource = resource;
+	state.view = view;
 	state.post = post;
 
 	_RunCommandList(command_list, &state);
 	CommandListFlushState(&state);
+}
+
+void RunCommandList(HackerDevice *mHackerDevice,
+		HackerContext *mHackerContext,
+		CommandList *command_list,
+		DrawCallInfo *call_info,
+		bool post)
+{
+	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
+			call_info, NULL, NULL, post);
+}
+
+void RunResourceCommandList(HackerDevice *mHackerDevice,
+		HackerContext *mHackerContext,
+		CommandList *command_list,
+		ID3D11Resource *resource,
+		bool post)
+{
+	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
+			NULL, resource, NULL, post);
+}
+
+void RunViewCommandList(HackerDevice *mHackerDevice,
+		HackerContext *mHackerContext,
+		CommandList *command_list,
+		ID3D11View *view,
+		bool post)
+{
+	ID3D11Resource *res = NULL;
+
+	if (view)
+		view->GetResource(&res);
+
+	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
+			NULL, res, view, post);
+
+	if (res)
+		res->Release();
 }
 
 static bool AddCommandToList(CommandListCommand *command,
@@ -118,6 +162,143 @@ static bool ParseCheckTextureOverride(const wchar_t *section,
 	delete operation;
 	return false;
 }
+
+static bool ParseResetPerFrameLimits(const wchar_t *section,
+		const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
+{
+	CustomResources::iterator res;
+	CustomShaders::iterator shader;
+
+	ResetPerFrameLimitsCommand *operation = new ResetPerFrameLimitsCommand();
+
+	if (!wcsncmp(val->c_str(), L"resource", 8)) {
+		wstring resource_id(val->c_str());
+
+		res = customResources.find(resource_id);
+		if (res == customResources.end())
+			goto bail;
+
+		operation->resource = &res->second;
+	}
+
+	if (!wcsncmp(val->c_str(), L"customshader", 12)) {
+		wstring shader_id(val->c_str());
+
+		shader = customShaders.find(shader_id);
+		if (shader == customShaders.end())
+			goto bail;
+
+		operation->shader = &shader->second;
+	}
+
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+
+bail:
+	delete operation;
+	return false;
+}
+
+static bool ParseClearView(const wchar_t *section,
+		const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
+{
+	CustomResources::iterator res;
+	CustomShaders::iterator shader;
+	wistringstream token_stream(*val);
+	wstring token;
+	int ret, len1;
+	int idx = 0;
+	unsigned uval;
+	float fval;
+
+	ClearViewCommand *operation = new ClearViewCommand();
+
+	while (getline(token_stream, token, L' ')) {
+		if (operation->target.type == ResourceCopyTargetType::INVALID) {
+			ret = operation->target.ParseTarget(token.c_str(), true);
+			if (ret)
+				continue;
+		}
+
+		if (idx < 4) {
+			// Try parsing value as a hex string. If this matches
+			// we know the user didn't intend to use floats. This
+			// is necessary to allow integer values that require
+			// more than 24 significant bits to be used, which
+			// would be lost if we only parsed the string as a
+			// float, e.g. 0xffffffff cannot be stored as a float
+			ret = swscanf_s(token.c_str(), L"0x%x%n", &uval, &len1);
+			if (ret != 0 && ret != EOF && len1 == token.length()) {
+				operation->uval[idx] = uval;
+				operation->fval[idx] = *(float*)&uval;
+				operation->clear_uav_uint = true;
+				idx++;
+				continue;
+			}
+
+			// On the other hand, if parsing the value as a float
+			// matches the user might have intended it to be a
+			// float or an integer. We will assume they want floats
+			// by default, but store it in both arrays in case we
+			// later determine that we need to use an integer clear.
+			ret = swscanf_s(token.c_str(), L"%f%n", &fval, &len1);
+			if (ret != 0 && ret != EOF && len1 == token.length()) {
+				operation->fval[idx] = fval;
+				operation->uval[idx] = (UINT)fval;
+				idx++;
+				continue;
+			}
+		}
+		if (!wcscmp(token.c_str(), L"int")) {
+			operation->clear_uav_uint = true;
+			continue;
+		}
+		if (!wcscmp(token.c_str(), L"depth")) {
+			operation->clear_depth = true;
+			continue;
+		}
+		if (!wcscmp(token.c_str(), L"stencil")) {
+			operation->clear_stencil = true;
+			continue;
+		}
+
+		goto bail;
+	}
+
+	if (operation->target.type == ResourceCopyTargetType::INVALID)
+		goto bail;
+
+	// Use the first value specified as the depth value when clearing a
+	// DSV, and the second as the stencil value, unless we are only
+	// clearing the stencil side, in which case use the first:
+	operation->dsv_depth = operation->fval[0];
+	operation->dsv_stencil = operation->uval[1];
+	if (operation->clear_stencil && !operation->clear_depth)
+		operation->dsv_stencil = operation->uval[0];
+
+	// Propagate the final specified value to the remaining channels. This
+	// allows a single value to be specified to clear all channels in RTVs
+	// and UAVs. Note that this is done after noting the DSV values because
+	// we never want to propagate the depth value to the stencil value:
+	for (idx++; idx < 4; idx++) {
+		operation->uval[idx] = operation->uval[idx - 1];
+		operation->fval[idx] = operation->fval[idx - 1];
+	}
+
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+
+bail:
+	delete operation;
+	return false;
+}
+
 
 static bool ParseRunShader(const wchar_t *section,
 		const wchar_t *key, wstring *val,
@@ -314,12 +495,22 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	if (!wcscmp(key, L"handling")) {
-		 if (!wcscmp(val->c_str(), L"skip"))
+		// skip only makes sense in pre command lists, since it needs
+		// to run before the original draw call:
+		if (!wcscmp(val->c_str(), L"skip"))
 			return AddCommandToList(new SkipCommand(section), explicit_command_list, pre_command_list, NULL, NULL);
 
-		 if (!wcscmp(val->c_str(), L"abort"))
+		// abort defaults to both command lists, to abort command list
+		// execution both before and after the draw call:
+		if (!wcscmp(val->c_str(), L"abort"))
 			return AddCommandToList(new AbortCommand(section), explicit_command_list, NULL, pre_command_list, post_command_list);
 	}
+
+	if (!wcscmp(key, L"reset_per_frame_limits"))
+		return ParseResetPerFrameLimits(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+
+	if (!wcscmp(key, L"clear"))
+		return ParseClearView(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
@@ -337,6 +528,85 @@ void CheckTextureOverrideCommand::run(CommandListState *state)
 		_RunCommandList(&override->post_command_list, state);
 	else
 		_RunCommandList(&override->command_list, state);
+}
+
+ClearViewCommand::ClearViewCommand() :
+	dsv_depth(0.0),
+	dsv_stencil(0),
+	clear_depth(false),
+	clear_stencil(false),
+	clear_uav_uint(false)
+{
+	memset(fval, 0, sizeof(fval));
+	memset(uval, 0, sizeof(uval));
+}
+
+static bool UAVSupportsFloatClear(ID3D11UnorderedAccessView *uav)
+{
+	D3D11_UNORDERED_ACCESS_VIEW_DESC desc;
+
+	// UAVs can be cleared as a float if their format is a float, snorm or
+	// unorm, otherwise the clear will fail silently. I didn't include
+	// partially typed or block compressed formats in the below list
+	// because I doubt they would work (but haven't checked).
+
+	uav->GetDesc(&desc);
+
+	switch (desc.Format) {
+		case DXGI_FORMAT_UNKNOWN:
+			// Common case
+			return false;
+		case DXGI_FORMAT_R32G32B32A32_FLOAT:
+		case DXGI_FORMAT_R32G32B32_FLOAT:
+		case DXGI_FORMAT_R16G16B16A16_FLOAT:
+		case DXGI_FORMAT_R16G16B16A16_UNORM:
+		case DXGI_FORMAT_R16G16B16A16_SNORM:
+		case DXGI_FORMAT_R32G32_FLOAT:
+		case DXGI_FORMAT_R10G10B10A2_UNORM:
+		case DXGI_FORMAT_R11G11B10_FLOAT:
+		case DXGI_FORMAT_R8G8B8A8_UNORM:
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+		case DXGI_FORMAT_R8G8B8A8_SNORM:
+		case DXGI_FORMAT_R16G16_FLOAT:
+		case DXGI_FORMAT_R16G16_UNORM:
+		case DXGI_FORMAT_R16G16_SNORM:
+		case DXGI_FORMAT_D32_FLOAT:
+		case DXGI_FORMAT_R32_FLOAT:
+		case DXGI_FORMAT_R8G8_UNORM:
+		case DXGI_FORMAT_R8G8_SNORM:
+		case DXGI_FORMAT_R16_FLOAT:
+		case DXGI_FORMAT_D16_UNORM:
+		case DXGI_FORMAT_R16_UNORM:
+		case DXGI_FORMAT_R16_SNORM:
+		case DXGI_FORMAT_R8_UNORM:
+		case DXGI_FORMAT_R8_SNORM:
+		case DXGI_FORMAT_A8_UNORM:
+		case DXGI_FORMAT_R1_UNORM:
+		case DXGI_FORMAT_R8G8_B8G8_UNORM:
+		case DXGI_FORMAT_G8R8_G8B8_UNORM:
+		case DXGI_FORMAT_B5G6R5_UNORM:
+		case DXGI_FORMAT_B5G5R5A1_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_UNORM:
+		case DXGI_FORMAT_B8G8R8X8_UNORM:
+		case DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+		case DXGI_FORMAT_B4G4R4A4_UNORM:
+			return true;
+		default:
+			return false;
+	}
+}
+
+void ResetPerFrameLimitsCommand::run(CommandListState *state)
+{
+	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
+
+	if (shader)
+		shader->executions_this_frame = 0;
+
+	if (resource)
+		resource->copies_this_frame = 0;
 }
 
 void PresetCommand::run(CommandListState *state)
@@ -1034,6 +1304,16 @@ void RunExplicitCommandList::run(CommandListState *state)
 		_RunCommandList(&command_list_section->command_list, state);
 }
 
+void LinkCommandLists(CommandList *dst, CommandList *link)
+{
+	RunLinkedCommandList *operation = new RunLinkedCommandList(link);
+	dst->push_back(std::shared_ptr<CommandListCommand>(operation));
+}
+
+void RunLinkedCommandList::run(CommandListState *state)
+{
+	_RunCommandList(link, state);
+}
 
 static void ProcessParamRTSize(CommandListState *state)
 {
@@ -1108,6 +1388,8 @@ CommandListState::CommandListState() :
 	rt_width(-1),
 	rt_height(-1),
 	call_info(NULL),
+	resource(NULL),
+	view(NULL),
 	post(false),
 	update_params(false),
 	cursor_mask_tex(NULL),
@@ -1552,99 +1834,6 @@ success:
 bail:
 	delete param;
 	return false;
-}
-
-
-// Is there already a utility function that does this?
-static UINT dxgi_format_size(DXGI_FORMAT format)
-{
-	switch (format) {
-		case DXGI_FORMAT_R32G32B32A32_TYPELESS:
-		case DXGI_FORMAT_R32G32B32A32_FLOAT:
-		case DXGI_FORMAT_R32G32B32A32_UINT:
-		case DXGI_FORMAT_R32G32B32A32_SINT:
-			return 16;
-		case DXGI_FORMAT_R32G32B32_TYPELESS:
-		case DXGI_FORMAT_R32G32B32_FLOAT:
-		case DXGI_FORMAT_R32G32B32_UINT:
-		case DXGI_FORMAT_R32G32B32_SINT:
-			return 12;
-		case DXGI_FORMAT_R16G16B16A16_TYPELESS:
-		case DXGI_FORMAT_R16G16B16A16_FLOAT:
-		case DXGI_FORMAT_R16G16B16A16_UNORM:
-		case DXGI_FORMAT_R16G16B16A16_UINT:
-		case DXGI_FORMAT_R16G16B16A16_SNORM:
-		case DXGI_FORMAT_R16G16B16A16_SINT:
-		case DXGI_FORMAT_R32G32_TYPELESS:
-		case DXGI_FORMAT_R32G32_FLOAT:
-		case DXGI_FORMAT_R32G32_UINT:
-		case DXGI_FORMAT_R32G32_SINT:
-		case DXGI_FORMAT_R32G8X24_TYPELESS:
-		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
-		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
-		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
-			return 8;
-		case DXGI_FORMAT_R10G10B10A2_TYPELESS:
-		case DXGI_FORMAT_R10G10B10A2_UNORM:
-		case DXGI_FORMAT_R10G10B10A2_UINT:
-		case DXGI_FORMAT_R11G11B10_FLOAT:
-		case DXGI_FORMAT_R8G8B8A8_TYPELESS:
-		case DXGI_FORMAT_R8G8B8A8_UNORM:
-		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-		case DXGI_FORMAT_R8G8B8A8_UINT:
-		case DXGI_FORMAT_R8G8B8A8_SNORM:
-		case DXGI_FORMAT_R8G8B8A8_SINT:
-		case DXGI_FORMAT_R16G16_TYPELESS:
-		case DXGI_FORMAT_R16G16_FLOAT:
-		case DXGI_FORMAT_R16G16_UNORM:
-		case DXGI_FORMAT_R16G16_UINT:
-		case DXGI_FORMAT_R16G16_SNORM:
-		case DXGI_FORMAT_R16G16_SINT:
-		case DXGI_FORMAT_R32_TYPELESS:
-		case DXGI_FORMAT_D32_FLOAT:
-		case DXGI_FORMAT_R32_FLOAT:
-		case DXGI_FORMAT_R32_UINT:
-		case DXGI_FORMAT_R32_SINT:
-		case DXGI_FORMAT_R24G8_TYPELESS:
-		case DXGI_FORMAT_D24_UNORM_S8_UINT:
-		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
-		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
-		case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
-		case DXGI_FORMAT_R8G8_B8G8_UNORM:
-		case DXGI_FORMAT_G8R8_G8B8_UNORM:
-		case DXGI_FORMAT_B8G8R8A8_UNORM:
-		case DXGI_FORMAT_B8G8R8X8_UNORM:
-		case DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM:
-		case DXGI_FORMAT_B8G8R8A8_TYPELESS:
-		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
-		case DXGI_FORMAT_B8G8R8X8_TYPELESS:
-		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
-			return 4;
-		case DXGI_FORMAT_R8G8_TYPELESS:
-		case DXGI_FORMAT_R8G8_UNORM:
-		case DXGI_FORMAT_R8G8_UINT:
-		case DXGI_FORMAT_R8G8_SNORM:
-		case DXGI_FORMAT_R8G8_SINT:
-		case DXGI_FORMAT_R16_TYPELESS:
-		case DXGI_FORMAT_R16_FLOAT:
-		case DXGI_FORMAT_D16_UNORM:
-		case DXGI_FORMAT_R16_UNORM:
-		case DXGI_FORMAT_R16_UINT:
-		case DXGI_FORMAT_R16_SNORM:
-		case DXGI_FORMAT_R16_SINT:
-		case DXGI_FORMAT_B5G6R5_UNORM:
-		case DXGI_FORMAT_B5G5R5A1_UNORM:
-			return 2;
-		case DXGI_FORMAT_R8_TYPELESS:
-		case DXGI_FORMAT_R8_UNORM:
-		case DXGI_FORMAT_R8_UINT:
-		case DXGI_FORMAT_R8_SNORM:
-		case DXGI_FORMAT_R8_SINT:
-		case DXGI_FORMAT_A8_UNORM:
-			return 1;
-		default:
-			return 0;
-	}
 }
 
 ResourcePool::~ResourcePool()
@@ -2260,6 +2449,11 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source)
 		return true;
 	}
 
+	if (is_source && !wcscmp(target, L"this")) {
+		type = ResourceCopyTargetType::THIS_RESOURCE;
+		return true;
+	}
+
 	// XXX: Any reason to allow access to sequential swap chains? Given
 	// they either won't exist or are read only I can't think of one.
 	if (is_source && !wcscmp(target, L"bb")) { // Back Buffer
@@ -2638,6 +2832,14 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 			state->cursor_color_tex->AddRef();
 		return state->cursor_color_tex;
 
+	case ResourceCopyTargetType::THIS_RESOURCE:
+		if (state->view)
+			state->view->AddRef();
+		*view = state->view;
+		if (state->resource)
+			state->resource->AddRef();
+		return state->resource;
+
 	case ResourceCopyTargetType::SWAP_CHAIN:
 		mHackerDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
 		return res;
@@ -2909,9 +3111,12 @@ TextureOverride* ResourceCopyTarget::FindTextureOverride(CommandListState *state
 	if (!resource)
 		return NULL;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	if (G->mTextureOverrideMap.empty())
+		goto out_release_resource;
+
+	EnterCriticalSection(&G->mCriticalSection);
 		hash = GetResourceHash(resource);
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 	if (!hash)
 		goto out_release_resource;
 
@@ -4159,6 +4364,192 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 	}
 }
 
+static UINT get_resource_bind_flags(ID3D11Resource *resource)
+{
+	D3D11_RESOURCE_DIMENSION dimension;
+	ID3D11Buffer *buf = NULL;
+	ID3D11Texture1D *tex1d = NULL;
+	ID3D11Texture2D *tex2d = NULL;
+	ID3D11Texture3D *tex3d = NULL;
+	D3D11_BUFFER_DESC buf_desc;
+	D3D11_TEXTURE1D_DESC tex1d_desc;
+	D3D11_TEXTURE2D_DESC tex2d_desc;
+	D3D11_TEXTURE3D_DESC tex3d_desc;
+
+	resource->GetType(&dimension);
+	switch (dimension) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			buf = (ID3D11Buffer*)resource;
+			buf->GetDesc(&buf_desc);
+			return buf_desc.BindFlags;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			tex1d = (ID3D11Texture1D*)resource;
+			tex1d->GetDesc(&tex1d_desc);
+			return tex1d_desc.BindFlags;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			tex2d = (ID3D11Texture2D*)resource;
+			tex2d->GetDesc(&tex2d_desc);
+			return tex2d_desc.BindFlags;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			tex3d = (ID3D11Texture3D*)resource;
+			tex3d->GetDesc(&tex3d_desc);
+			return tex3d_desc.BindFlags;
+	}
+	return 0;
+}
+
+ID3D11View* ClearViewCommand::create_best_view(
+		ID3D11Resource *resource,
+		CommandListState *state,
+		UINT stride,
+		UINT offset,
+		DXGI_FORMAT format,
+		UINT buf_src_size)
+{
+	UINT bind_flags;
+
+	// We didn't get a view, so we will have to create one, but
+	// which type? We will guess based on what the user specified
+	// and what bind flags the resource has.
+
+	FillInMissingInfo(target.type, resource, NULL, &stride, &offset,
+			&buf_src_size, &format);
+
+	// If the user specified "depth" and/or "stencil" they gave us
+	// the answer:
+	if (clear_depth || clear_stencil) {
+		return _CreateCompatibleView<ID3D11DepthStencilView,
+		       D3D11_DEPTH_STENCIL_VIEW_DESC,
+		       &ID3D11Device::CreateDepthStencilView>
+			       (resource, state, stride, offset, format, buf_src_size);
+	}
+
+	// If the user specified "int" or used a hex string then it
+	// must be a UAV and we must be doing an int clear on it:
+	if (clear_uav_uint) {
+		return _CreateCompatibleView<ID3D11UnorderedAccessView,
+		       D3D11_UNORDERED_ACCESS_VIEW_DESC,
+		       &ID3D11Device::CreateUnorderedAccessView>
+			       (resource, state, stride, offset, format, buf_src_size);
+	}
+
+	// Otherwise just make whatever view is compatible with the bind flags.
+	// Since views may have multiple bind flags let's prioritise the more
+	// esoteric DSV and UAV before RTV on the theory that if they are
+	// available then we are more likely to want to use their clear
+	// methods.
+	bind_flags = get_resource_bind_flags(resource);
+	if (bind_flags & D3D11_BIND_DEPTH_STENCIL) {
+		return _CreateCompatibleView<ID3D11DepthStencilView,
+		       D3D11_DEPTH_STENCIL_VIEW_DESC,
+		       &ID3D11Device::CreateDepthStencilView>
+			       (resource, state, stride, offset, format, buf_src_size);
+	}
+	if (bind_flags & D3D11_BIND_UNORDERED_ACCESS) {
+		return _CreateCompatibleView<ID3D11UnorderedAccessView,
+		       D3D11_UNORDERED_ACCESS_VIEW_DESC,
+		       &ID3D11Device::CreateUnorderedAccessView>
+			       (resource, state, stride, offset, format, buf_src_size);
+	}
+	if (bind_flags & D3D11_BIND_RENDER_TARGET) {
+		return _CreateCompatibleView<ID3D11RenderTargetView,
+		       D3D11_RENDER_TARGET_VIEW_DESC,
+		       &ID3D11Device::CreateRenderTargetView>
+			       (resource, state, stride, offset, format, buf_src_size);
+	}
+	// TODO: In DX 11.1 there is a generic clear routine, so SRVs might work?
+	return NULL;
+}
+
+void ClearViewCommand::clear_unknown_view(ID3D11View *view, CommandListState *state)
+{
+	ID3D11RenderTargetView *rtv = NULL;
+	ID3D11DepthStencilView *dsv = NULL;
+	ID3D11UnorderedAccessView *uav = NULL;
+
+	// We have a view, but we don't know what kind of view it is. We could
+	// infer that from the target type, but in the future CustomResource
+	// targets will return a cached view as well (they already have a view
+	// today, but if you follow the logic closely you will realise we don't
+	// have any code paths that will decide to use it), so to try to future
+	// proof this let's use QueryInterface() to see which interfaces the
+	// view supports to tell us what kind it is:
+	view->QueryInterface(__uuidof(ID3D11RenderTargetView), (void**)&rtv);
+	view->QueryInterface(__uuidof(ID3D11DepthStencilView), (void**)&dsv);
+	view->QueryInterface(__uuidof(ID3D11UnorderedAccessView), (void**)&uav);
+
+	if (rtv) {
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   clearing RTV\n");
+		state->mOrigContext->ClearRenderTargetView(rtv, fval);
+	}
+	if (dsv) {
+		D3D11_CLEAR_FLAG flags = (D3D11_CLEAR_FLAG)0;
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   clearing DSV\n");
+
+		if (!clear_depth && !clear_stencil)
+			flags = (D3D11_CLEAR_FLAG)(D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL);
+		else if (clear_depth)
+			flags = D3D11_CLEAR_DEPTH;
+		else if (clear_stencil)
+			flags = D3D11_CLEAR_STENCIL;
+
+		state->mOrigContext->ClearDepthStencilView(dsv, flags, dsv_depth, dsv_stencil);
+	}
+	if (uav) {
+		// We can clear UAVs with either floats or uints, but which
+		// should we use? The API call doesn't let us know if it
+		// failed, and floats will only work with specific view
+		// formats, so we try to predict if the float clear will pass
+		// unless the user specificially told us to use the int clear.
+		if (clear_uav_uint || !UAVSupportsFloatClear(uav)) {
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   clearing UAV (uint)\n");
+			state->mOrigContext->ClearUnorderedAccessViewUint(uav, uval);
+		} else {
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   clearing UAV (float)\n");
+			state->mOrigContext->ClearUnorderedAccessViewFloat(uav, fval);
+		}
+	}
+
+	if (rtv)
+		rtv->Release();
+	if (dsv)
+		dsv->Release();
+	if (uav)
+		uav->Release();
+}
+
+void ClearViewCommand::run(CommandListState *state)
+{
+	ID3D11Resource *resource = NULL;
+	ID3D11View *view = NULL;
+	UINT stride = 0;
+	UINT offset = 0;
+	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+	UINT buf_src_size = 0;
+
+	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
+
+	resource = target.GetResource(state, &view, &stride, &offset, &format, &buf_src_size);
+	if (!resource) {
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   No resource to clear\n");
+		return;
+	}
+
+	if (!view)
+		view = create_best_view(resource, state, stride, offset, format, buf_src_size);
+
+	if (view)
+		clear_unknown_view(view, state);
+	else
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   No view and unable to create view to clear resource\n");
+
+	if (resource)
+		resource->Release();
+	if (view)
+		view->Release();
+}
+
+
 static bool ViewMatchesResource(ID3D11View *view, ID3D11Resource *resource)
 {
 	ID3D11Resource *tmp_resource = NULL;
@@ -4212,7 +4603,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 
 	src_resource = src.GetResource(state, &src_view, &stride, &offset, &format, &buf_src_size);
 	if (!src_resource) {
-		LogDebug("Resource copy: Source was NULL\n");
+		mHackerContext->FrameAnalysisLog("3DMigoto   Copy source was NULL\n");
 		if (!(options & ResourceCopyOptions::UNLESS_NULL)) {
 			// Still set destination to NULL - if we are copying a
 			// resource we generally expect it to be there, and

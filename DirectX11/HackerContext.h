@@ -53,6 +53,19 @@ struct DispatchContext
 class HackerDevice;
 class HackerDevice1;
 
+// These are per-context so we shouldn't need locks
+struct MappedResourceInfo {
+	D3D11_MAPPED_SUBRESOURCE map;
+	bool mapped_writable;
+	void *orig_pData;
+	size_t size;
+
+	MappedResourceInfo() :
+		orig_pData(NULL),
+		size(0),
+		mapped_writable(false)
+	{}
+};
 
 // Hierarchy:
 //  HackerContext <- ID3D11DeviceContext <- ID3D11DeviceChild <- IUnknown
@@ -86,22 +99,33 @@ private:
 	FrameAnalysisOptions analyse_options;
 	FILE *frame_analysis_log;
 
-	// Used for deny_cpu_read texture override
-	typedef std::unordered_map<ID3D11Resource *, void *> DeniedMap;
-	DeniedMap mDeniedMaps;
+	// Used for deny_cpu_read, track_texture_updates and constant buffer matching
+	typedef std::unordered_map<ID3D11Resource*, MappedResourceInfo> MappedResources;
+	MappedResources mMappedResources;
 
 	// These private methods are utility routines for HackerContext.
 	void BeforeDraw(DrawContext &data);
 	void AfterDraw(DrawContext &data);
 	bool BeforeDispatch(DispatchContext *context);
 	void AfterDispatch(DispatchContext *context);
+	template <class ID3D11Shader,
+		void (__stdcall ID3D11DeviceContext::*GetShaderVS2013BUGWORKAROUND)(ID3D11Shader**, ID3D11ClassInstance**, UINT*),
+		void (__stdcall ID3D11DeviceContext::*SetShaderVS2013BUGWORKAROUND)(ID3D11Shader*, ID3D11ClassInstance*const*, UINT),
+		HRESULT (__stdcall ID3D11Device::*CreateShader)(const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11Shader**)
+	>
+	void DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 hash, wchar_t *shader_type);
+	void DeferredShaderReplacementBeforeDraw();
+	void DeferredShaderReplacementBeforeDispatch();
 	bool ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 		UINT DstY, ID3D11Resource *pSrcResource, const D3D11_BOX *pSrcBox,
 		UINT *replaceDstX, D3D11_BOX *replaceBox);
-	HRESULT MapDenyCPURead(ID3D11Resource *pResource, UINT Subresource,
+	bool MapDenyCPURead(ID3D11Resource *pResource, UINT Subresource,
 			D3D11_MAP MapType, UINT MapFlags,
 			D3D11_MAPPED_SUBRESOURCE *pMappedResource);
-	void FreeDeniedMapping(ID3D11Resource *pResource, UINT Subresource);
+	void TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
+		UINT Subresource, D3D11_MAP MapType, UINT MapFlags,
+		D3D11_MAPPED_SUBRESOURCE *pMappedResource);
+	void TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresource);
 	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
 		DrawContext *data,float *separationValue, float *convergenceValue);
 	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
@@ -154,7 +178,10 @@ private:
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
 	void FrameAnalysisProcessTriggers(bool compute);
 	void FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info);
+	void _FrameAnalysisAfterUpdate(ID3D11Resource *pResource,
+			FrameAnalysisOptions type_mask, wchar_t *type);
 	void FrameAnalysisAfterUnmap(ID3D11Resource *pResource);
+	void FrameAnalysisAfterUpdate(ID3D11Resource *pResource);
 
 	// Templates to reduce duplicated code:
 	template <class ID3D11Shader,

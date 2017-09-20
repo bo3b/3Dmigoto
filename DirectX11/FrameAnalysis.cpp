@@ -11,7 +11,7 @@ void HackerContext::FrameAnalysisLog(char *fmt, ...)
 	va_list ap;
 	wchar_t filename[MAX_PATH];
 
-	LogDebug("HackerContext(%s@%p)::", type_name(this), this);
+	LogDebugNoNL("HackerContext(%s@%p)::", type_name(this), this);
 	va_start(ap, fmt);
 	vLogDebug(fmt, ap);
 	va_end(ap);
@@ -93,7 +93,7 @@ void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 		return;
 	}
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	try {
 		hash = G->mResources.at(resource).hash;
@@ -118,7 +118,7 @@ void HackerContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 	} catch (std::out_of_range) {
 	}
 
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 
 	fprintf(frame_analysis_log, "\n");
 }
@@ -710,7 +710,7 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 			DumpVBTxt(filename, &map, desc.ByteWidth, idx, stride, offset, first, count);
 		else if (options & FrameAnalysisOptions::DUMP_IB_TXT)
 			DumpIBTxt(filename, &map, desc.ByteWidth, ib_fmt, offset, first, count);
-		else if (options & FrameAnalysisOptions::DUMP_ON_UNMAP) {
+		else if (options & FrameAnalysisOptions::DUMP_ON_XXXXXX) {
 			// We don't know what kind of buffer this is, so just
 			// use the generic dump routine:
 			DumpBufferTxt(filename, &map, desc.ByteWidth, '?', idx, stride, offset);
@@ -1365,7 +1365,7 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info
 
 	// Grab the critical section now as we may need it several times during
 	// dumping for mResources
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_CB_MASK)
 		DumpCBs(compute);
@@ -1392,7 +1392,7 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info
 	if (analyse_options & FrameAnalysisOptions::DUMP_DEPTH_MASK && !compute)
 		DumpDepthStencilTargets();
 
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 
 	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_MASK) &&
 	    (analyse_options & FrameAnalysisOptions::STEREO)) {
@@ -1402,7 +1402,8 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info
 	G->analyse_frame++;
 }
 
-void HackerContext::FrameAnalysisAfterUnmap(ID3D11Resource *resource)
+void HackerContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
+		FrameAnalysisOptions type_mask, wchar_t *type)
 {
 	wchar_t filename[MAX_PATH];
 	uint32_t hash = 0, orig_hash = 0;
@@ -1410,14 +1411,14 @@ void HackerContext::FrameAnalysisAfterUnmap(ID3D11Resource *resource)
 
 	analyse_options = G->cur_analyse_options;
 
-	if (!(analyse_options & FrameAnalysisOptions::DUMP_ON_UNMAP))
+	if (!(analyse_options & type_mask))
 		return;
 
-	// Don't bother trying to dump as stereo - map/unmap is inherently mono
+	// Don't bother trying to dump as stereo - Map/Unmap/Update are inherently mono
 	analyse_options &= (FrameAnalysisOptions)~FrameAnalysisOptions::STEREO_MASK;
 	analyse_options |= FrameAnalysisOptions::MONO;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	try {
 		hash = G->mResources.at(resource).hash;
@@ -1425,14 +1426,23 @@ void HackerContext::FrameAnalysisAfterUnmap(ID3D11Resource *resource)
 	} catch (std::out_of_range) {
 	}
 
-	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, L"unmap", hash, orig_hash, resource);
+	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, type, hash, orig_hash, resource);
 	if (SUCCEEDED(hr)) {
-		DumpResource(resource, filename, FrameAnalysisOptions::DUMP_ON_UNMAP, -1,
-						DXGI_FORMAT_UNKNOWN, 0, 0);
+		DumpResource(resource, filename, type_mask, -1, DXGI_FORMAT_UNKNOWN, 0, 0);
 	}
 
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 
 	// XXX: Might be better to use a second counter for these
 	G->analyse_frame++;
+}
+
+void HackerContext::FrameAnalysisAfterUnmap(ID3D11Resource *resource)
+{
+	_FrameAnalysisAfterUpdate(resource, FrameAnalysisOptions::DUMP_ON_UNMAP, L"unmap");
+}
+
+void HackerContext::FrameAnalysisAfterUpdate(ID3D11Resource *resource)
+{
+	_FrameAnalysisAfterUpdate(resource, FrameAnalysisOptions::DUMP_ON_UPDATE, L"update");
 }

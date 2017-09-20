@@ -236,7 +236,7 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 			if (memcmp(old_section_header->signature, new_section_header->signature, 4))
 				continue;
 
-			LogDebug(" Checking section %.4s...", old_section_header->signature);
+			LogDebugNoNL(" Checking section %.4s...", old_section_header->signature);
 
 			size = min(old_section_header->size, new_section_header->size);
 			old_section = (unsigned char*)old_section_header + sizeof(struct section_header);

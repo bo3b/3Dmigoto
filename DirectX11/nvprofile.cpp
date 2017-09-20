@@ -472,7 +472,7 @@ static void identify_internal_settings(NvDRSSessionHandle session,
 	info.version = NVDRS_PROFILE_VER;
 	status = NvAPI_DRS_GetProfileInfo(session, profile, &info);
 	if (status != NVAPI_OK) {
-		LogInfo("Error getting profile info: ");
+		LogInfoNoNL("Error getting profile info: ");
 		log_nv_error(status);
 		return;
 	}
@@ -576,15 +576,15 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 	}
 
 	for (i = 0; i < info->numOfApps; i++) {
-		LogInfo("    Executable \"%S\"", (wchar_t*)apps[i].appName);
+		LogInfoNoNL("    Executable \"%S\"", (wchar_t*)apps[i].appName);
 		if (apps[i].userFriendlyName[0])
-			LogInfo(" Name=\"%S\"", (wchar_t*)apps[i].userFriendlyName);
+			LogInfoNoNL(" Name=\"%S\"", (wchar_t*)apps[i].userFriendlyName);
 		if (apps[i].launcher[0])
-			LogInfo(" Launcher=\"%S\"", (wchar_t*)apps[i].launcher);
+			LogInfoNoNL(" Launcher=\"%S\"", (wchar_t*)apps[i].launcher);
 		if (apps[i].fileInFolder[0])
-			LogInfo(" FindFile=\"%S\"", (wchar_t*)apps[i].fileInFolder);
+			LogInfoNoNL(" FindFile=\"%S\"", (wchar_t*)apps[i].fileInFolder);
 		if (!apps[i].isPredefined)
-			LogInfo(" UserSpecified=true");
+			LogInfoNoNL(" UserSpecified=true");
 		LogInfo("\n");
 		// XXX There's one last piece of info here we might need to
 		// output, but I don't see anything that looks like it in the
@@ -618,34 +618,34 @@ void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVD
 			dval = settings[i].u32CurrentValue;
 			if (internal)
 				dval = decode_internal_dword(settings[i].settingId, dval);
-			LogInfo("    Setting ID_0x%08x = 0x%08x", settings[i].settingId, dval);
+			LogInfoNoNL("    Setting ID_0x%08x = 0x%08x", settings[i].settingId, dval);
 			break;
 		case NVDRS_BINARY_TYPE:
 			// Do these even exist?
-			LogInfo(" XXX Setting Binary XXX (length=%d) :", settings[i].binaryCurrentValue.valueLength);
+			LogInfoNoNL(" XXX Setting Binary XXX (length=%d) :", settings[i].binaryCurrentValue.valueLength);
 			for (len = 0; len < settings[i].binaryCurrentValue.valueLength; len++)
-				LogInfo(" %02x", settings[i].binaryCurrentValue.valueData[len]);
+				LogInfoNoNL(" %02x", settings[i].binaryCurrentValue.valueData[len]);
 			break;
 		case NVDRS_WSTRING_TYPE:
 			if (internal)
 				decode_internal_string(settings[i].settingId, settings[i].wszCurrentValue);
-			LogInfo("    SettingString ID_0x%08x = \"%S\"", settings[i].settingId, (wchar_t*)settings[i].wszCurrentValue);
+			LogInfoNoNL("    SettingString ID_0x%08x = \"%S\"", settings[i].settingId, (wchar_t*)settings[i].wszCurrentValue);
 			break;
 		}
 		if (!settings[i].isCurrentPredefined)
-			LogInfo(" UserSpecified=true");
+			LogInfoNoNL(" UserSpecified=true");
 		if (settings[i].settingName[0]) {
-			LogInfo(" // %S", (wchar_t*)settings[i].settingName);
+			LogInfoNoNL(" // %S", (wchar_t*)settings[i].settingName);
 		} else {
 			name = lookup_setting_name(settings[i].settingId);
 			if (name) {
-				LogInfo(" // %S", name);
+				LogInfoNoNL(" // %S", name);
 				// Floating point settings are only in our known table.
 				// If we change it to allow floats not in our
 				// table, make sure that we have added the //
 				// comment character already.
 				if (is_known_float_setting(settings[i].settingId))
-					LogInfo(" = %.9g", *(float*)&dval);
+					LogInfoNoNL(" = %.9g", *(float*)&dval);
 			}
 		}
 		LogInfo("\n");
@@ -704,7 +704,7 @@ static NvDRSProfileHandle get_cur_nv_profile(NvDRSSessionHandle session)
 	app.version = NVDRS_APPLICATION_VER;
 	status = NvAPI_DRS_FindApplicationByName(session, (NvU16*)path, &profile, &app);
 	if (status != NVAPI_OK) {
-		LogInfo("Cannot locate application profile: ");
+		LogInfoNoNL("Cannot locate application profile: ");
 		// Not necessarily an error, since the application may not have
 		// a profile. Still log the reason:
 		log_nv_error(status);
@@ -936,22 +936,22 @@ int parse_ini_profile_line(wstring *lhs, wstring *rhs)
 	}
 
 	if (parse_ini_profile_lhs(lhs, &setting)) {
-		LogInfo("  WARNING: Unrecognised line (bad setting): %S = %S", lhs->c_str(), rhs->c_str());
+		LogInfoNoNL("  WARNING: Unrecognised line (bad setting): %S = %S", lhs->c_str(), rhs->c_str());
 		LogInfo("\n"); // In case of utf16 parse error
 		BeepFailure2();
 		return -1;
 	}
 
 	if (parse_ini_profile_rhs(rhs, &setting)) {
-		LogInfo("  WARNING: Unrecognised line (bad value): %S = %S", lhs->c_str(), rhs->c_str());
+		LogInfoNoNL("  WARNING: Unrecognised line (bad value): %S = %S", lhs->c_str(), rhs->c_str());
 		LogInfo("\n"); // In case of utf16 parse error
 		BeepFailure2();
 		return -1;
 	}
 
-	LogInfo("  %S (0x%08x) = %S", lhs->c_str(), setting.settingId, rhs->c_str());
+	LogInfoNoNL("  %S (0x%08x) = %S", lhs->c_str(), setting.settingId, rhs->c_str());
 	if (setting.settingType == NVDRS_DWORD_TYPE)
-		LogInfo(" (0x%08x)", setting.u32CurrentValue);
+		LogInfoNoNL(" (0x%08x)", setting.u32CurrentValue);
 	LogInfo("\n");
 
 	// Since the same setting may have several names, duplicates could be
@@ -977,7 +977,7 @@ void log_nv_driver_version()
 	if (status == NVAPI_OK) {
 		LogInfo("NVIDIA driver version %u.%u (branch %s)\n", version / 100, version % 100, branch);
 	} else {
-		LogInfo("Error getting NVIDIA driver version: ");
+		LogInfoNoNL("Error getting NVIDIA driver version: ");
 		log_nv_error(status);
 	}
 }
@@ -1200,7 +1200,7 @@ static bool compare_setting(NvDRSSessionHandle session,
 	status = NvAPI_DRS_GetSetting(session, profile, migoto_setting->settingId, &driver_setting);
 	if (status != NVAPI_OK) {
 		if (log)
-			LogInfo("Need to update setting 0x%08x because ", migoto_setting->settingId);
+			LogInfoNoNL("Need to update setting 0x%08x because ", migoto_setting->settingId);
 		log_nv_error(status);
 		return true;
 	}
@@ -1327,7 +1327,7 @@ static int add_exe_to_profile(NvDRSSessionHandle session, NvDRSProfileHandle pro
 	LogInfo("Adding \"%S\" to profile\n", (wchar_t*)app.appName);
 	status = NvAPI_DRS_CreateApplication(session, profile, &app);
 	if (status != NVAPI_OK) {
-		LogInfo("Error adding app to profile: ");
+		LogInfoNoNL("Error adding app to profile: ");
 		log_nv_error(status);
 		return -1;
 	}
@@ -1356,7 +1356,7 @@ static NvDRSProfileHandle create_profile(NvDRSSessionHandle session)
 	LogInfo("Creating profile \"%S\"\n", (wchar_t*)info.profileName);
 	status = NvAPI_DRS_CreateProfile(session, &info, &profile);
 	if (status != NVAPI_OK) {
-		LogInfo("Error creating profile: ");
+		LogInfoNoNL("Error creating profile: ");
 		log_nv_error(status);
 		return 0;
 	}
@@ -1381,7 +1381,7 @@ static int update_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile
 		if (compare_setting(session, profile, migoto_setting, false, internal_settings, false)) {
 			status = NvAPI_DRS_SetSetting(session, profile, migoto_setting);
 			if (status != NVAPI_OK) {
-				LogInfo("Error updating driver profile: ");
+				LogInfoNoNL("Error updating driver profile: ");
 				log_nv_error(status);
 				return -1;
 			}
@@ -1403,7 +1403,7 @@ static int update_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile
 
 	status = NvAPI_DRS_SaveSettings(session);
 	if (status != NVAPI_OK) {
-		LogInfo("Error saving driver profile: ");
+		LogInfoNoNL("Error saving driver profile: ");
 		log_nv_error(status);
 		return -1;
 	}
@@ -1438,7 +1438,7 @@ void CALLBACK Install3DMigotoDriverProfileW(HWND hwnd, HINSTANCE hinst, LPWSTR l
 	NvAPIOverride();
 	status = NvAPI_Initialize();
 	if (status != NVAPI_OK) {
-		LogInfo("  NvAPI_Initialize failed: ");
+		LogInfoNoNL("  NvAPI_Initialize failed: ");
 		log_nv_error(status);
 		return;
 	}
@@ -1479,7 +1479,7 @@ bail:
 	NvAPI_DRS_DestroySession(session);
 err_no_session:
 	if (status != NVAPI_OK) {
-		LogInfo("Profile manager error: ");
+		LogInfoNoNL("Profile manager error: ");
 		log_nv_error(status);
 	}
 }
@@ -1558,7 +1558,7 @@ bail:
 	NvAPI_DRS_DestroySession(session);
 err_no_session:
 	if (status != NVAPI_OK) {
-		LogInfo("Profile manager error: ");
+		LogInfoNoNL("Profile manager error: ");
 		log_nv_error(status);
 	}
 }

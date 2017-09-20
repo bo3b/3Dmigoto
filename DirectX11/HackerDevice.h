@@ -29,8 +29,6 @@ private:
 	HackerDXGIDevice1 *mHackerDXGIDevice1;
 
 	// Utility routines
-	void RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,
-		ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp, wstring text);
 	char *ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
 		SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, 
 		void **zeroShader, wstring &headerLine, const char *overrideShaderModel);

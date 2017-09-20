@@ -59,7 +59,7 @@ HRESULT STDMETHODCALLTYPE HookedCreateSwapChain(
 	if (SUCCEEDED(hr))
 		mOrigSwapChain = *ppSwapChain;
 
-	LogInfo("HookedSwapChain::HookedCreateSwapChain mOrigSwapChain: %p, pDevice: %p, result: %d \n", mOrigSwapChain, pDevice, hr);
+	LogInfo("HookedSwapChain::HookedCreateSwapChain mOrigSwapChain: %p, pDevice: %p, result: %d\n", mOrigSwapChain, pDevice, hr);
 
 	return hr;
 }
@@ -108,17 +108,17 @@ static HRESULT WrapFactory1(void **ppFactory1)
 	HRESULT hr = fnOrigCreateFactory1(__uuidof(IDXGIFactory1), (void **)&origFactory1);
 	if (FAILED(hr))
 	{
-		LogInfo("  failed with HRESULT=%x \n", hr);
+		LogInfo("  failed with HRESULT=%x\n", hr);
 		return hr;
 	}
-	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x \n", origFactory1, hr);
+	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x\n", origFactory1, hr);
 
 	HackerDXGIFactory1 *factory1Wrap;
 	factory1Wrap = new HackerDXGIFactory1(origFactory1);
 
 	if (ppFactory1)
 		*ppFactory1 = factory1Wrap;
-	LogInfo("  new HackerDXGIFactory1(%s@%p) wrapped %p \n", type_name(factory1Wrap), factory1Wrap, origFactory1);
+	LogInfo("  new HackerDXGIFactory1(%s@%p) wrapped %p\n", type_name(factory1Wrap), factory1Wrap, origFactory1);
 
 	// ToDo: Skipped null checks as they would throw exceptions- but
 	// we should handle exceptions.
@@ -137,10 +137,10 @@ static HRESULT WrapFactory2(void **ppFactory2)
 	HRESULT hr = fnOrigCreateFactory1(__uuidof(IDXGIFactory2), (void **)&origFactory2);
 	if (FAILED(hr))
 	{
-		LogInfo("  failed with HRESULT=%x \n", hr);
+		LogInfo("  failed with HRESULT=%x\n", hr);
 		return hr;
 	}
-	LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x \n", origFactory2, hr);
+	LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x\n", origFactory2, hr);
 
 	HackerDXGIFactory2 *factory2Wrap;
 	factory2Wrap = new HackerDXGIFactory2(origFactory2);
@@ -148,7 +148,7 @@ static HRESULT WrapFactory2(void **ppFactory2)
 	if (ppFactory2)
 		*ppFactory2 = factory2Wrap;
 
-	LogInfo("  new HackerDXGIFactory2(%s@%p) wrapped %p \n", type_name(factory2Wrap), factory2Wrap, origFactory2);
+	LogInfo("  new HackerDXGIFactory2(%s@%p) wrapped %p\n", type_name(factory2Wrap), factory2Wrap, origFactory2);
 
 	// ToDo: Skipped null checks as they would throw exceptions- but
 	// we should handle exceptions.
@@ -173,13 +173,13 @@ static HRESULT WrapFactory2(void **ppFactory2)
 static HRESULT WINAPI Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
 	InitD311();
-	LogInfo("Hooked_CreateDXGIFactory called with riid: %s \n", NameFromIID(riid).c_str());
+	LogInfo("Hooked_CreateDXGIFactory called with riid: %s\n", NameFromIID(riid).c_str());
 	LogInfo("  calling original CreateDXGIFactory API\n");
 
 	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
 	if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
 	{
-		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
 		*ppFactory = NULL;
 		return E_NOINTERFACE;
 	}
@@ -216,13 +216,13 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 {
 	InitD311();
-	LogInfo("Hooked_CreateDXGIFactory1 called with riid: %s \n", NameFromIID(riid).c_str());
+	LogInfo("Hooked_CreateDXGIFactory1 called with riid: %s\n", NameFromIID(riid).c_str());
 	LogInfo("  calling original CreateDXGIFactory1 API\n");
 
 	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
 	if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
 	{
-		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2. \n");
+		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
 		*ppFactory1 = NULL;
 		return E_NOINTERFACE;
 	}
@@ -254,7 +254,7 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	//	factoryWrap = new HackerDXGIFactory(static_cast<IDXGIFactory*>(origFactory1));
 	//	if (ppFactory1)
 	//		*ppFactory1 = factoryWrap;
-	//	LogInfo("  new HackerDXGIFactory(%s@%p) wrapped %p \n", type_name(factoryWrap), factoryWrap, origFactory1);
+	//	LogInfo("  new HackerDXGIFactory(%s@%p) wrapped %p\n", type_name(factoryWrap), factoryWrap, origFactory1);
 	//}
 	//else
 	//   Seems like we really need to return the highest level object supported at runtime,
@@ -289,41 +289,41 @@ bool InstallDXGIHooks(void)
 	// Not certain this is necessary, but it won't hurt, and ensures it's loaded.
 	LoadLibrary(L"dxgi.dll");
 
-	DoubleLog("Attempting to hook dxgi CreateFactory using Deviare in-proc. \n");
+	DoubleLog("Attempting to hook dxgi CreateFactory using Deviare in-proc.\n");
 	cHookMgr.SetEnableDebugOutput(bLog);
 
 	hDXGI = NktHookLibHelpers::GetModuleBaseAddress(L"dxgi.dll");
 	if (hDXGI == NULL)
 	{
-		DoubleLog("  Failed to get dxgi module for CreateFactory hook. \n");
+		DoubleLog("  Failed to get dxgi module for CreateFactory hook.\n");
 		return false;
 	}
 
 	fnCreateDXGIFactory = NktHookLibHelpers::GetProcedureAddress(hDXGI, "CreateDXGIFactory");
 	if (fnCreateDXGIFactory == NULL)
 	{
-		DoubleLog("  Failed to GetProcedureAddress of CreateDXGIFactory for dxgi hook. \n");
+		DoubleLog("  Failed to GetProcedureAddress of CreateDXGIFactory for dxgi hook.\n");
 		return false;
 	}
 	dwOsErr = cHookMgr.Hook(&nFactory_ID, (LPVOID*)&(fnOrigCreateFactory),
 		fnCreateDXGIFactory, Hooked_CreateDXGIFactory);
-	DoubleLog("  Install Hook for DXGI::CreateDXGIFactory using Deviare in-proc: %x \n", dwOsErr);
+	DoubleLog("  Install Hook for DXGI::CreateDXGIFactory using Deviare in-proc: %x\n", dwOsErr);
 	if (dwOsErr != 0)
 		return false;
 
 	fnCreateDXGIFactory1 = NktHookLibHelpers::GetProcedureAddress(hDXGI, "CreateDXGIFactory1");
 	if (fnCreateDXGIFactory1 == NULL)
 	{
-		DoubleLog("  Failed to GetProcedureAddress of CreateDXGIFactory1 for dxgi hook. \n");
+		DoubleLog("  Failed to GetProcedureAddress of CreateDXGIFactory1 for dxgi hook.\n");
 		return false;
 	}
 	dwOsErr = cHookMgr.Hook(&nFactory1_ID, (LPVOID*)&(fnOrigCreateFactory1),
 		fnCreateDXGIFactory1, Hooked_CreateDXGIFactory1);
-	DoubleLog("  Install Hook for DXGI::CreateDXGIFactory1 using Deviare in-proc: %x \n", dwOsErr);
+	DoubleLog("  Install Hook for DXGI::CreateDXGIFactory1 using Deviare in-proc: %x\n", dwOsErr);
 	if (dwOsErr != 0)
 		return false;
 
-	DoubleLog("  Successfully hooked CreateDXGIFactory using Deviare in-proc. \n");
+	DoubleLog("  Successfully hooked CreateDXGIFactory using Deviare in-proc.\n");
 	return true;
 }
 
@@ -396,7 +396,7 @@ bool InstallDXGIHooks(void)
 //	result = CreateDXGIFactory(IID_IDXGIFactory, (void**)(&factory));
 //	if (FAILED(result))
 //	{
-//		LogInfo("*** InstallDXGIHooks CreateDXGIFactory failed: %d \n", result);
+//		LogInfo("*** InstallDXGIHooks CreateDXGIFactory failed: %d\n", result);
 //		return false;
 //	}
 //
@@ -415,11 +415,11 @@ bool InstallDXGIHooks(void)
 //	dwOsErr = cHookMgr.Hook(&nCSCHookId, &CreateSwapChain, &OrigCreateSwapChain, HookedCreateSwapChain);
 //	if (FAILED(dwOsErr))
 //	{
-//		LogInfo("*** InstallDXGIHooks Hook failed: %d \n", dwOsErr);
+//		LogInfo("*** InstallDXGIHooks Hook failed: %d\n", dwOsErr);
 //		return false;
 //	}
 //
-//	LogInfo("InstallDXGIHooks CreateSwapChain result: %d, at: %p \n", dwOsErr, OrigCreateSwapChain);
+//	LogInfo("InstallDXGIHooks CreateSwapChain result: %d, at: %p\n", dwOsErr, OrigCreateSwapChain);
 //
 //
 //	// Create a SwapChain, just so we can get access to its vtable, and thus hook
@@ -457,11 +457,11 @@ bool InstallDXGIHooks(void)
 //		dwOsErr = cHookMgr.Hook(&nCSCHookId, (LPVOID*)&pOrigPresent, &dxgiSwapChain, HookedPresent);
 //		if (dwOsErr)
 //		{
-//			LogInfo("*** HookedSwapChain::HookedSwapChain Hook failed: %d \n", dwOsErr);
+//			LogInfo("*** HookedSwapChain::HookedSwapChain Hook failed: %d\n", dwOsErr);
 //			return;
 //		}
 //	}
-//	LogInfo("HookedSwapChain::HookedSwapChain hooked Present result: %d, at: %p \n", dwOsErr, pOrigPresent);
+//	LogInfo("HookedSwapChain::HookedSwapChain hooked Present result: %d, at: %p\n", dwOsErr, pOrigPresent);
 //}
 //
 //
@@ -485,14 +485,14 @@ bool InstallDXGIHooks(void)
 //
 //	if (pOrigPresent != NULL)
 //	{
-//		LogInfo("*** HookSwapChain called again. SwapChain: %p, Device: %p, Context: %p \n", pSwapChain, pDevice, pContext);
+//		LogInfo("*** HookSwapChain called again. SwapChain: %p, Device: %p, Context: %p\n", pSwapChain, pDevice, pContext);
 //		return;
 //	}
 //
 //	// Seems like we need to do this in order to init any use of COM here.
 //	hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 //	if (hr != NOERROR)
-//		LogInfo("HookSwapChain CoInitialize return error: %d \n", hr);
+//		LogInfo("HookSwapChain CoInitialize return error: %d\n", hr);
 //
 //	// The tricky part- fetching the actual address of the original
 //	// DXGI::Present call.
@@ -503,7 +503,7 @@ bool InstallDXGIHooks(void)
 //	dwOsErr = cHookMgr.Hook(&nHookId, (LPVOID*)&pOrigPresent, dxgiSwapChain, HookedPresent, 0);
 //	if (dwOsErr)
 //	{
-//		LogInfo("*** HookSwapChain Hook failed: %d \n", dwOsErr);
+//		LogInfo("*** HookSwapChain Hook failed: %d\n", dwOsErr);
 //		return;
 //	}
 //
@@ -512,7 +512,7 @@ bool InstallDXGIHooks(void)
 //	// info over the game. Using the original Device and Context.
 //	//	overlay = new Overlay(pDevice, pContext);
 //
-//	LogInfo("HookSwapChain hooked Present result: %d, at: %p \n", dwOsErr, pOrigPresent);
+//	LogInfo("HookSwapChain hooked Present result: %d, at: %p\n", dwOsErr, pOrigPresent);
 //}
 
 // -----------------------------------------------------------------------------
@@ -542,7 +542,7 @@ bool InstallDXGIHooks(void)
 //
 //	hr = pOrigPresent(This, SyncInterval, Flags);
 //
-//	LogDebug("HookedPresent result: %d \n", hr);
+//	LogDebug("HookedPresent result: %d\n", hr);
 //
 //	return hr;
 //}

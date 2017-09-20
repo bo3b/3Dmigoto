@@ -4,12 +4,14 @@
 #include <string>
 #include <strsafe.h>
 #include <fstream>
+#include <sstream>
 
 #include "log.h"
 #include "Globals.h"
 #include "Override.h"
 #include "Hunting.h"
 #include "nvprofile.h"
+#include "ShaderRegex.h"
 
 // List all the section prefixes which may contain a command list here and
 // whether they are a prefix or an exact match. Listing a section here will not
@@ -29,10 +31,15 @@ struct Section {
 };
 static Section CommandListSections[] = {
 	{L"ShaderOverride", true},
+	{L"ShaderRegex", true},
 	{L"TextureOverride", true},
 	{L"CustomShader", true},
 	{L"CommandList", true},
 	{L"Present", false},
+	{L"ClearRenderTargetView", false},
+	{L"ClearDepthStencilView", false},
+	{L"ClearUnorderedAccessViewUint", false},
+	{L"ClearUnorderedAccessViewFloat", false},
 };
 
 // List all remaining sections so we can verify that every section listed in
@@ -57,8 +64,9 @@ static Section RegularSections[] = {
 
 // List of sections that will not trigger a warning if they contain a line
 // without an equals sign
-static wchar_t *AllowLinesWithoutEquals[] = {
-	L"Profile",
+static Section AllowLinesWithoutEquals[] = {
+	{L"Profile", false},
+	{L"ShaderRegex", true},
 };
 
 static bool SectionInList(const wchar_t *section, Section section_list[], int list_size)
@@ -92,14 +100,7 @@ static bool IsRegularSection(const wchar_t *section)
 
 static bool DoesSectionAllowLinesWithoutEquals(const wchar_t *section)
 {
-	int i;
-
-	for (i = 0; i < ARRAYSIZE(AllowLinesWithoutEquals); i++) {
-		if (!_wcsicmp(section, AllowLinesWithoutEquals[i]))
-			return true;
-	}
-
-	return false;
+	return SectionInList(section, AllowLinesWithoutEquals, ARRAYSIZE(AllowLinesWithoutEquals));
 }
 
 // Case insensitive version of less comparitor. This is used to create case
@@ -136,10 +137,27 @@ struct WStringInsensitiveEquality {
 	}
 };
 
+struct IniLine {
+	// Same syntax as std::pair, whitespace stripped around each:
+	wstring first;
+	wstring second;
+
+	// For when we don't want whitespace around the equals sign stripped,
+	// or when there is no equals sign (whitespace at the start and end of
+	// the whole line is still stripped):
+	wstring raw_line;
+
+	IniLine(wstring &key, wstring &val, wstring &line) :
+		first(key),
+		second(val),
+		raw_line(line)
+	{}
+};
+
 // Whereas settings within a section are in the same order they were in the ini
 // file. This will become more important as shader overrides gains more
 // functionality and dependencies between different features form:
-typedef std::vector<std::pair<wstring, wstring>> IniSectionVector;
+typedef std::vector<IniLine> IniSectionVector;
 
 // Unsorted maps for fast case insensitive key lookups by name
 typedef std::unordered_map<wstring, wstring, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionMap;
@@ -169,6 +187,31 @@ static IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &
 	}
 
 	return sections.end();
+}
+
+// These are used to limit the number of audible warnings we will issue
+// whenever we load or reload the d3dx.ini. This prevents things like missing
+// custom shaders, compile failures or duplicate sections from causing an
+// endless cascade of warning tones as every line that refers to them will then
+// fail to parse. This is of particular importance in UE4, which uses a
+// watchdog timer to kill the game after 30 seconds if it believes it has hung.
+static int IniWarningToneCounter = 3;
+
+static void ArmIniWarningTones()
+{
+	IniWarningToneCounter = 3;
+}
+
+static void IniWarning(char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vLogInfo(fmt, ap);
+	va_end(ap);
+
+	if (IniWarningToneCounter-- > 0)
+		BeepFailure2();
 }
 
 static void ParseIniSectionLine(wstring *wline, wstring *section,
@@ -206,9 +249,8 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 	// behaviour.
 	inserted = ini_sections.emplace(*section, IniSection{}).second;
 	if (!inserted) {
-		LogInfo("WARNING: Duplicate section found in d3dx.ini: [%S]\n",
+		IniWarning("WARNING: Duplicate section found in d3dx.ini: [%S]\n",
 				section->c_str());
-		BeepFailure2();
 		section->clear();
 		*section_vector = NULL;
 		return;
@@ -227,8 +269,7 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 	if (IsCommandListSection(section->c_str()))
 		*warn_duplicates = false;
 	else if (!IsRegularSection(section->c_str())) {
-		LogInfo("WARNING: Unknown section in d3dx.ini: [%S]\n", section->c_str());
-		BeepFailure2();
+		IniWarning("WARNING: Unknown section in d3dx.ini: [%S]\n", section->c_str());
 	}
 
 	if (DoesSectionAllowLinesWithoutEquals(section->c_str()))
@@ -244,9 +285,8 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 	bool inserted;
 
 	if (section->empty() || section_vector == NULL) {
-		LogInfo("WARNING: d3dx.ini entry outside of section: %S\n",
+		IniWarning("WARNING: d3dx.ini entry outside of section: %S\n",
 				wline->c_str());
-		BeepFailure2();
 		return;
 	}
 
@@ -269,9 +309,8 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 		// keys within a single section:
 		inserted = ini_sections.at(*section).kv_map.emplace(key, val).second;
 		if (warn_duplicates && !inserted) {
-			LogInfo("WARNING: Duplicate key found in d3dx.ini: [%S] %S\n",
+			IniWarning("WARNING: Duplicate key found in d3dx.ini: [%S] %S\n",
 					section->c_str(), key.c_str());
-			BeepFailure2();
 		}
 	} else {
 		// No = on line, don't store in key lookup maps to
@@ -279,14 +318,13 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 		// we will store it in the section vector structure for the
 		// profile parser to process.
 		if (warn_lines_without_equals) {
-			LogInfo("WARNING: Malformed line in d3dx.ini: [%S] \"%S\"\n",
+			IniWarning("WARNING: Malformed line in d3dx.ini: [%S] \"%S\"\n",
 					section->c_str(), wline->c_str());
-			BeepFailure2();
 			return;
 		}
 	}
 
-	section_vector->emplace_back(key, val);
+	section_vector->emplace_back(key, val, *wline);
 }
 
 
@@ -387,9 +425,8 @@ int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 			// that wcscpy_s will have returned an empty string,
 			// while the original GetPrivateProfileString would
 			// have only truncated the string.
-			LogInfo("  WARNING: [%S]%S=%S too long\n",
+			IniWarning("  WARNING: [%S]%S=%S too long\n",
 					section, key, val.c_str());
-			BeepFailure2();
 			rc = size - 1;
 		} else {
 			// I'd also rather not have to calculate the string
@@ -415,6 +452,37 @@ int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 	return rc;
 }
 
+// Variant of the above that fills out a std::string, and doesn't bother about
+// all that size nonsense. There is no std::wstring variant of this because I
+// want to refactor out all our uses of wide characters that came from the ini
+// file courtesy of the old ini parsing API, and adding a new function that
+// returns wide characters would be counter-productive to that goal.
+static bool GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def, std::string *ret)
+{
+	std::wstring wret;
+	bool found = false;
+
+	if (!ret) {
+		LogInfo("BUG: Misuse of GetIniString()\n");
+		DoubleBeepExit();
+	}
+
+	try {
+		wret = ini_sections.at(section).kv_map.at(key);
+		found = true;
+	} catch (std::out_of_range) {
+		if (def)
+			wret = def;
+		else
+			wret = L"";
+	}
+
+	// TODO: Get rid of all the wide character strings that the old ini
+	// parsing API forced on us so we don't need this re-conversion:
+	*ret = std::string(wret.begin(), wret.end());
+	return found;
+}
+
 // Helper functions to parse common types and log their values. TODO: Convert
 // more of this file to use these where appropriate
 static int GetIniStringAndLog(const wchar_t *section, const wchar_t *key,
@@ -427,6 +495,17 @@ static int GetIniStringAndLog(const wchar_t *section, const wchar_t *key,
 
 	return rc;
 }
+static bool GetIniStringAndLog(const wchar_t *section, const wchar_t *key,
+		const wchar_t *def, std::string *ret)
+{
+	bool rc = GetIniString(section, key, def, ret);
+
+	if (rc)
+		LogInfo("  %S=%s\n", key, ret->c_str());
+
+	return rc;
+}
+
 
 static float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, bool *found)
 {
@@ -440,8 +519,7 @@ static float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, 
 	if (GetIniString(section, key, 0, val, 32)) {
 		swscanf_s(val, L"%f%n", &ret, &len);
 		if (len != wcslen(val)) {
-			LogInfo("  WARNING: Floating point parse error: %S=%S\n", key, val);
-			BeepFailure2();
+			IniWarning("  WARNING: Floating point parse error: %S=%S\n", key, val);
 		} else {
 			if (found)
 				*found = true;
@@ -465,8 +543,7 @@ int GetIniInt(const wchar_t *section, const wchar_t *key, int def, bool *found)
 	if (GetIniString(section, key, 0, val, 32)) {
 		swscanf_s(val, L"%d%n", &ret, &len);
 		if (len != wcslen(val)) {
-			LogInfo("  WARNING: Integer parse error: %S=%S\n", key, val);
-			BeepFailure2();
+			IniWarning("  WARNING: Integer parse error: %S=%S\n", key, val);
 		} else {
 			if (found)
 				*found = true;
@@ -500,8 +577,7 @@ static bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, boo
 			return false;
 		}
 
-		LogInfo("  WARNING: Boolean parse error: %S=%S\n", key, val);
-		BeepFailure2();
+		IniWarning("  WARNING: Boolean parse error: %S=%S\n", key, val);
 	}
 
 	return ret;
@@ -545,8 +621,7 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, bool 
 				*found = true;
 			LogInfo("  %S=%S\n", key, val);
 		} catch (EnumParseError) {
-			LogInfo("  WARNING: Unrecognised %S=%S\n", key, val);
-			BeepFailure2();
+			IniWarning("  WARNING: Unrecognised %S=%S\n", key, val);
 		}
 	}
 
@@ -560,7 +635,7 @@ static void GetIniSection(IniSectionVector **key_vals, const wchar_t *section)
 	try {
 		*key_vals = &ini_sections.at(section).kv_vec;
 	} catch (std::out_of_range) {
-		LogInfo("WARNING: GetIniSection() called on a section not in the ini_sections map: %S\n", section);
+		LogDebug("WARNING: GetIniSection() called on a section not in the ini_sections map: %S\n", section);
 		*key_vals = &empty_section_vector;
 	}
 }
@@ -583,8 +658,7 @@ static void RegisterPresetKeyBindings()
 		LogInfo("[%S]\n", id);
 
 		if (!GetIniString(id, L"Key", 0, key, MAX_PATH)) {
-			LogInfo("  WARNING: [%S] missing Key=\n", id);
-			BeepFailure2();
+			IniWarning("  WARNING: [%S] missing Key=\n", id);
 			continue;
 		}
 
@@ -597,8 +671,7 @@ static void RegisterPresetKeyBindings()
 			type = lookup_enum_val<wchar_t *, KeyOverrideType>
 				(KeyOverrideTypeNames, buf, KeyOverrideType::INVALID);
 			if (type == KeyOverrideType::INVALID) {
-				LogInfoW(L"  WARNING: UNKNOWN KEY BINDING TYPE %s\n", buf);
-				BeepFailure2();
+				IniWarning("  WARNING: UNKNOWN KEY BINDING TYPE %S\n", buf);
 			}
 			else {
 				LogInfoW(L"  type=%s\n", buf);
@@ -686,8 +759,7 @@ static void ParseResourceSections()
 			custom_resource->override_type = lookup_enum_val<const wchar_t *, CustomResourceType>
 				(CustomResourceTypeNames, setting, CustomResourceType::INVALID);
 			if (custom_resource->override_type == CustomResourceType::INVALID) {
-				LogInfo("  WARNING: Unknown type \"%S\"\n", setting);
-				BeepFailure2();
+				IniWarning("  WARNING: Unknown type \"%S\"\n", setting);
 			} else {
 				LogInfo("  type=%S\n", setting);
 			}
@@ -697,8 +769,7 @@ static void ParseResourceSections()
 			custom_resource->override_mode = lookup_enum_val<const wchar_t *, CustomResourceMode>
 				(CustomResourceModeNames, setting, CustomResourceMode::DEFAULT);
 			if (custom_resource->override_mode == CustomResourceMode::DEFAULT) {
-				LogInfo("  WARNING: Unknown mode \"%S\"\n", setting);
-				BeepFailure2();
+				IniWarning("  WARNING: Unknown mode \"%S\"\n", setting);
 			} else {
 				LogInfo("  mode=%S\n", setting);
 			}
@@ -707,8 +778,7 @@ static void ParseResourceSections()
 		if (GetIniString(i->first.c_str(), L"format", 0, setting, MAX_PATH)) {
 			custom_resource->override_format = ParseFormatString(setting);
 			if (custom_resource->override_format == (DXGI_FORMAT)-1) {
-				LogInfo("  WARNING: Unknown format \"%S\"\n", setting);
-				BeepFailure2();
+				IniWarning("  WARNING: Unknown format \"%S\"\n", setting);
 			} else {
 				LogInfo("  format=%s\n", TexFormatStr(custom_resource->override_format));
 			}
@@ -782,8 +852,7 @@ static void ParseCommandList(const wchar_t *id,
 				// whitelisted entries*, so check for
 				// duplicates here:
 				if (whitelisted_keys.count(key->c_str())) {
-					LogInfoW(L"WARNING: Duplicate non-command list key found in d3dx.ini: [%s] %s\n", id, key->c_str());
-					BeepFailure2();
+					IniWarning("WARNING: Duplicate non-command list key found in d3dx.ini: [%S] %S\n", id, key->c_str());
 				}
 				whitelisted_keys.insert(key->c_str());
 
@@ -814,8 +883,7 @@ static void ParseCommandList(const wchar_t *id,
 		if (ParseCommandListResourceCopyDirective(id, key_ptr, val, command_list))
 			goto log_continue;
 
-		LogInfoW(L"  WARNING: Unrecognised entry: %ls=%ls\n", key->c_str(), val->c_str());
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised entry: %S=%S\n", key->c_str(), val->c_str());
 		continue;
 log_continue:
 		LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
@@ -867,7 +935,8 @@ static void ParseShaderOverrideSections()
 
 	// Lock entire routine. This can be re-inited live.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	//  We actually already lock the entire config reload, so this is redundant -DSS
+	EnterCriticalSection(&G->mCriticalSection);
 
 	G->mShaderOverrideMap.clear();
 
@@ -879,8 +948,7 @@ static void ParseShaderOverrideSections()
 		LogInfo("[%S]\n", id);
 
 		if (!GetIniString(id, L"Hash", 0, setting, MAX_PATH)) {
-			LogInfo("  WARNING: [%S] missing Hash=\n", id);
-			BeepFailure2();
+			IniWarning("  WARNING: [%S] missing Hash=\n", id);
 			continue;
 		}
 		swscanf_s(setting, L"%16llx", &hash);
@@ -907,8 +975,7 @@ static void ParseShaderOverrideSections()
 				   && override->allow_duplicate_hashes;
 
 		if (duplicate && !allow_duplicates) {
-			LogInfo("  WARNING: Duplicate ShaderOverride hash: %016llx\n", hash);
-			BeepFailure2();
+			IniWarning("  WARNING: Duplicate ShaderOverride hash: %016llx\n", hash);
 		}
 
 		override->allow_duplicate_hashes = allow_duplicates;
@@ -920,9 +987,8 @@ static void ParseShaderOverrideSections()
 			override->depth_filter = lookup_enum_val<wchar_t *, DepthBufferFilter>
 				(DepthBufferFilterNames, setting, DepthBufferFilter::INVALID);
 			if (override->depth_filter == DepthBufferFilter::INVALID) {
-				LogInfoW(L"  WARNING: Unknown depth_filter \"%s\"\n", setting);
+				IniWarning("  WARNING: Unknown depth_filter \"%S\"\n", setting);
 				override->depth_filter = DepthBufferFilter::NONE;
-				BeepFailure2();
 			}
 			else {
 				LogInfoW(L"  depth_filter=%s\n", setting);
@@ -966,10 +1032,254 @@ static void ParseShaderOverrideSections()
 
 		ParseCommandList(id, &override->command_list, &override->post_command_list, ShaderOverrideIniKeys);
 	}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
+// Oh C++, do you really not have a .split() in your standard library?
+static std::vector<std::wstring> split_string(const std::wstring *str, wchar_t sep)
+{
+	std::wistringstream tokens(*str);
+	std::wstring token;
+	std::vector<std::wstring> list;
 
+	while (std::getline(tokens, token, sep))
+		list.push_back(token);
+
+	return list;
+}
+static std::vector<std::string> split_string(const std::string *str, char sep)
+{
+	std::istringstream tokens(*str);
+	std::string token;
+	std::vector<std::string> list;
+
+	while (std::getline(tokens, token, sep))
+		list.push_back(token);
+
+	return list;
+}
+
+template <typename T>
+static std::set<T> vec_to_set(std::vector<T> &v)
+{
+	return std::set<T>(v.begin(), v.end());
+}
+
+// List of keys in [ShaderRegex] sections that are processed in this
+// function. Used by ParseCommandList to find any unrecognised lines.
+wchar_t *ShaderRegexIniKeys[] = {
+	L"shader_model",
+	L"temps",
+	// L"type" =asm/hlsl? I'd rather not encourage autofixes on HLSL
+	//         shaders, because there is too much potential for trouble
+	NULL
+};
+static bool parse_shader_regex_section_main(const std::wstring *section_id, ShaderRegexGroup *regex_group)
+{
+	std::string setting;
+	std::vector<std::string> items;
+
+	if (!GetIniStringAndLog(section_id->c_str(), L"shader_model", NULL, &setting)) {
+		IniWarning("  WARNING: [%S] missing shader_model\n", section_id->c_str());
+		return false;
+	}
+	regex_group->shader_models = vec_to_set(split_string(&setting, ' '));
+
+	if (GetIniStringAndLog(section_id->c_str(), L"temps", NULL, &setting))
+		regex_group->temp_regs = vec_to_set(split_string(&setting, ' '));
+
+	regex_group->ini_section = *section_id;
+
+	ParseCommandList(section_id->c_str(), &regex_group->command_list, &regex_group->post_command_list, ShaderRegexIniKeys);
+	return true;
+}
+
+static bool parse_shader_regex_section_pattern(const std::wstring *section_id, const std::wstring *pattern_id, ShaderRegexGroup *regex_group)
+{
+	IniSectionVector *section = NULL;
+	IniSectionVector::iterator entry;
+	ShaderRegexPattern *regex_pattern;
+	std::wstring *wline;
+	std::string aline, pattern;
+
+	GetIniSection(&section, section_id->c_str());
+	for (entry = section->begin(); entry < section->end(); entry++) {
+		// FIXME: ini parser shouldn't be converting to wide characters
+		// in the first place, but we have to change types all over the
+		// place to fix that, which is a large and risky refactoring
+		// job for another day
+		wline = &entry->raw_line;
+		aline = std::string(wline->begin(), wline->end());
+		LogInfo("  %s\n", aline.c_str());
+		pattern.append(aline);
+	}
+
+	// We also want to show the final pattern used for the regex with all
+	// the newlines, blank lines, initial whitespace and ini file comments
+	// stripped, so that if there is a problem the user can see exactly
+	// what we used. This will look ugly, but will make errors like missing
+	// \n or \s+ easier to spot.
+	LogInfo("--------- final pcre2 regex pattern used after ini parsing ---------\n");
+	LogInfo("%s\n", pattern.c_str());
+	LogInfo("--------------------------------------------------------------------\n");
+
+	regex_pattern = &regex_group->patterns[*pattern_id];
+	if (!regex_pattern->compile(&pattern))
+		return false;
+
+	if (regex_pattern->named_group_overlaps(regex_group->temp_regs)) {
+		IniWarning("  WARNING: Named capture group overlaps with temp regs!\n");
+		return false;
+	}
+
+	// TODO: Also check for overlapping named capture groups between
+	// patterns in a single regex group.
+
+	// TODO: Log the final computed value of PCRE2_INFO_ALLOPTIONS
+
+	return true;
+}
+
+static bool parse_shader_regex_section_declarations(const std::wstring *section_id, const std::wstring *pattern_id, ShaderRegexGroup *regex_group)
+{
+	IniSectionVector *section = NULL;
+	IniSectionVector::iterator entry;
+	std::wstring *wline;
+	std::string aline;
+
+	GetIniSection(&section, section_id->c_str());
+	for (entry = section->begin(); entry < section->end(); entry++) {
+		// FIXME: ini parser shouldn't be converting to wide characters
+		// in the first place, but we have to change types all over the
+		// place to fix that, which is a large and risky refactoring
+		// job for another day
+		wline = &entry->raw_line;
+		aline = std::string(wline->begin(), wline->end());
+		LogInfo("  %s\n", aline.c_str());
+		regex_group->declarations.push_back(aline);
+	}
+
+	return true;
+}
+
+static bool parse_shader_regex_section_replace(const std::wstring *section_id, const std::wstring *pattern_id, ShaderRegexGroup *regex_group)
+{
+	IniSectionVector *section = NULL;
+	IniSectionVector::iterator entry;
+	ShaderRegexPattern *regex_pattern;
+	std::wstring *wline;
+	std::string aline;
+
+	try {
+		regex_pattern = &regex_group->patterns.at(*pattern_id);
+	} catch (std::out_of_range) {
+		IniWarning("  WARNING: Missing corresponding pattern section for %S\n", section_id->c_str());
+		return false;
+	}
+
+	GetIniSection(&section, section_id->c_str());
+	for (entry = section->begin(); entry < section->end(); entry++) {
+		// FIXME: ini parser shouldn't be converting to wide characters
+		// in the first place, but we have to change types all over the
+		// place to fix that, which is a large and risky refactoring
+		// job for another day
+		wline = &entry->raw_line;
+		aline = std::string(wline->begin(), wline->end());
+		LogInfo("  %s\n", aline.c_str());
+		regex_pattern->replace.append(aline);
+	}
+
+	// Similar to above we want to see the final substitution string after
+	// ini parsing, especially to help spot missing newlines. TODO: Add an
+	// option to automatically add newlines after every ini line.
+	LogInfo("--------- final pcre2 replace string used after ini parsing ---------\n");
+	LogInfo("%s\n", regex_pattern->replace.c_str());
+	LogInfo("---------------------------------------------------------------------\n");
+
+	regex_pattern->do_replace = true;
+	return true;
+}
+
+static ShaderRegexGroup* get_regex_group(std::wstring *regex_id, bool allow_creation)
+{
+	if (allow_creation)
+		return &shader_regex_groups[*regex_id];
+
+	try {
+		return &shader_regex_groups.at(*regex_id);
+	} catch (std::out_of_range) {
+		IniWarning("  WARNING: Missing [%S] section\n", regex_id->c_str());
+		return NULL;
+	}
+}
+
+static void delete_regex_group(std::wstring *regex_id)
+{
+	ShaderRegexGroups::iterator i;
+
+	i = shader_regex_groups.find(*regex_id);
+	shader_regex_groups.erase(i);
+}
+
+static void ParseShaderRegexSections()
+{
+	IniSections::iterator lower, upper, i;
+	const std::wstring *section_id;
+	std::vector<std::wstring> subsection_names;
+	ShaderRegexGroup *regex_group;
+
+	shader_regex_groups.clear();
+
+	lower = ini_sections.lower_bound(wstring(L"ShaderRegex"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"ShaderRegex"));
+	for (i = lower; i != upper; i++) {
+		section_id = &i->first;
+		LogInfo("[%S]\n", section_id->c_str());
+
+		subsection_names = split_string(section_id, L'.');
+
+		regex_group = get_regex_group(&subsection_names[0], subsection_names.size() == 1);
+		if (!regex_group)
+			continue;
+
+		switch (subsection_names.size()) {
+			case 1:
+				if (parse_shader_regex_section_main(section_id, regex_group))
+					continue;
+				break;
+			case 2:
+				if (!_wcsicmp(subsection_names[1].c_str(), L"Pattern")) {
+					// TODO: Allow multiple patterns per regex group, but not before
+					// our custom substitution logic is implemented to allow named capture
+					// groups matched in one pattern to be substituted into another, and
+					// ensure that identically named groups match in all patterns.
+					//
+					// Until then, the user will just have to write longer regex patterns
+					// and substitutions to match everything they need in one go.
+					if (parse_shader_regex_section_pattern(section_id, &subsection_names[1], regex_group))
+						continue;
+				} else if (!_wcsicmp(subsection_names[1].c_str(), L"InsertDeclarations")) {
+					if (parse_shader_regex_section_declarations(section_id, &subsection_names[1], regex_group))
+						continue;
+				}
+				break;
+			case 3:
+				if (!_wcsnicmp(subsection_names[1].c_str(), L"Pattern", 7)
+				 && !_wcsicmp(subsection_names[2].c_str(), L"Replace")) {
+					if (parse_shader_regex_section_replace(section_id, &subsection_names[1], regex_group))
+						continue;
+				}
+				break;
+		}
+
+
+		// We delete the whole regex data structure if any of the subsections
+		// are not present, or fail to parse or compile so that we don't end up
+		// applying an incomplete regex to any shaders.
+		IniWarning("  WARNING: disabling entire shader regex group [%S]\n", subsection_names[0].c_str());
+		delete_regex_group(&subsection_names[0]);
+	}
+}
 
 // List of keys in [TextureOverride] sections that are processed in this
 // function. Used by ParseCommandList to find any unrecognised lines.
@@ -996,7 +1306,8 @@ static void ParseTextureOverrideSections()
 
 	// Lock entire routine, this can be re-inited.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	//  We actually already lock the entire config reload, so this is redundant -DSS
+	EnterCriticalSection(&G->mCriticalSection);
 
 	G->mTextureOverrideMap.clear();
 
@@ -1010,8 +1321,7 @@ static void ParseTextureOverrideSections()
 		LogInfo("[%S]\n", id);
 
 		if (!GetIniString(id, L"Hash", 0, setting, MAX_PATH)) {
-			LogInfo("  WARNING: [%S] missing Hash=\n", id);
-			BeepFailure2();
+			IniWarning("  WARNING: [%S] missing Hash=\n", id);
 			continue;
 		}
 
@@ -1019,8 +1329,7 @@ static void ParseTextureOverrideSections()
 		LogInfo("  Hash=%08lx\n", hash);
 
 		if (G->mTextureOverrideMap.count(hash)) {
-			LogInfo("  WARNING: Duplicate TextureOverride hash: %08lx\n", hash);
-			BeepFailure2();
+			IniWarning("  WARNING: Duplicate TextureOverride hash: %08lx\n", hash);
 		}
 		override = &G->mTextureOverrideMap[hash];
 
@@ -1062,7 +1371,7 @@ static void ParseTextureOverrideSections()
 
 		ParseCommandList(id, &override->command_list, &override->post_command_list, TextureOverrideIniKeys);
 	}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ff476088(v=vs.85).aspx
@@ -1109,8 +1418,7 @@ static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D11_BLEND_OP *op, D3D11_B
 			src_buf, (unsigned)ARRAYSIZE(src_buf),
 			dst_buf, (unsigned)ARRAYSIZE(dst_buf));
 	if (i != 3) {
-		LogInfo("  WARNING: Unrecognised %S=%S\n", key, val);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised %S=%S\n", key, val);
 		return;
 	}
 	LogInfo("  %S=%S\n", key, val);
@@ -1118,22 +1426,19 @@ static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D11_BLEND_OP *op, D3D11_B
 	try {
 		*op = (D3D11_BLEND_OP)ParseEnum(op_buf, L"D3D11_BLEND_OP_", BlendOPs, ARRAYSIZE(BlendOPs), 1);
 	} catch (EnumParseError) {
-		LogInfo("  WARNING: Unrecognised blend operation %S\n", op_buf);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised blend operation %S\n", op_buf);
 	}
 
 	try {
 		*src = (D3D11_BLEND)ParseEnum(src_buf, L"D3D11_BLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
 	} catch (EnumParseError) {
-		LogInfo("  WARNING: Unrecognised blend source factor %S\n", src_buf);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised blend source factor %S\n", src_buf);
 	}
 
 	try {
 		*dst = (D3D11_BLEND)ParseEnum(dst_buf, L"D3D11_BLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
 	} catch (EnumParseError) {
-		LogInfo("  WARNING: Unrecognised blend destination factor %S\n", dst_buf);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised blend destination factor %S\n", dst_buf);
 	}
 }
 
@@ -1316,8 +1621,7 @@ static void ParseStencilOp(wchar_t *key, wchar_t *val, D3D11_DEPTH_STENCILOP_DES
 			depth_fail_buf, (unsigned)ARRAYSIZE(depth_fail_buf),
 			stencil_fail_buf, (unsigned)ARRAYSIZE(stencil_fail_buf));
 	if (i != 4) {
-		LogInfo("  WARNING: Unrecognised %S=%S\n", key, val);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised %S=%S\n", key, val);
 		return;
 	}
 	LogInfo("  %S=%S\n", key, val);
@@ -1325,29 +1629,25 @@ static void ParseStencilOp(wchar_t *key, wchar_t *val, D3D11_DEPTH_STENCILOP_DES
 	try {
 		desc->StencilFunc = (D3D11_COMPARISON_FUNC)ParseEnum(func_buf, L"D3D11_COMPARISON_", ComparisonFuncs, ARRAYSIZE(ComparisonFuncs), 1);
 	} catch (EnumParseError) {
-		LogInfo("  WARNING: Unrecognised stencil function %S\n", func_buf);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised stencil function %S\n", func_buf);
 	}
 
 	try {
 		desc->StencilPassOp = (D3D11_STENCIL_OP)ParseEnum(both_pass_buf, L"D3D11_STENCIL_OP_", StencilOps, ARRAYSIZE(StencilOps), 1);
 	} catch (EnumParseError) {
-		LogInfo("  WARNING: Unrecognised stencil + depth pass operation %S\n", both_pass_buf);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised stencil + depth pass operation %S\n", both_pass_buf);
 	}
 
 	try {
 		desc->StencilDepthFailOp = (D3D11_STENCIL_OP)ParseEnum(depth_fail_buf, L"D3D11_STENCIL_OP_", StencilOps, ARRAYSIZE(StencilOps), 1);
 	} catch (EnumParseError) {
-		LogInfo("  WARNING: Unrecognised stencil pass / depth fail operation %S\n", depth_fail_buf);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised stencil pass / depth fail operation %S\n", depth_fail_buf);
 	}
 
 	try {
 		desc->StencilFailOp = (D3D11_STENCIL_OP)ParseEnum(stencil_fail_buf, L"D3D11_STENCIL_OP_", StencilOps, ARRAYSIZE(StencilOps), 1);
 	} catch (EnumParseError) {
-		LogInfo("  WARNING: Unrecognised stencil fail operation %S\n", stencil_fail_buf);
-		BeepFailure2();
+		IniWarning("  WARNING: Unrecognised stencil fail operation %S\n", stencil_fail_buf);
 	}
 }
 
@@ -1612,8 +1912,7 @@ static void ParseTopology(CustomShader *shader, const wchar_t *section)
 
 	}
 
-	LogInfo("  WARNING: Unrecognised primitive topology=%S\n", val);
-	BeepFailure2();
+	IniWarning("  WARNING: Unrecognised primitive topology=%S\n", val);
 }
 
 static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
@@ -1670,8 +1969,7 @@ static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
 			return;
 		}
 
-		LogInfo("  WARNING: Unknown sampler \"%S\"\n", setting);
-		BeepFailure2();
+		IniWarning("  WARNING: Unknown sampler \"%S\"\n", setting);
 	}
 }
 
@@ -1915,6 +2213,7 @@ void LoadConfigFile()
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
 
+	ArmIniWarningTones();
 	ParseIni(iniFile);
 
 	G->gLogInput = GetIniBool(L"Logging", L"input", false, NULL);
@@ -1992,8 +2291,7 @@ void LoadConfigFile()
 		G->mResolutionInfo.from = lookup_enum_val<wchar_t *, GetResolutionFrom>
 			(GetResolutionFromNames, setting, GetResolutionFrom::INVALID);
 		if (G->mResolutionInfo.from == GetResolutionFrom::INVALID) {
-			LogInfoW(L"  WARNING: Unknown get_resolution_from %s\n", setting);
-			BeepFailure2();
+			IniWarning("  WARNING: Unknown get_resolution_from %S\n", setting);
 		} else
 			LogInfoW(L"  get_resolution_from=%s\n", setting);
 	} else
@@ -2018,9 +2316,8 @@ void LoadConfigFile()
 		G->shader_hash_type = lookup_enum_val<wchar_t *, ShaderHashType>
 			(ShaderHashNames, setting, ShaderHashType::INVALID);
 		if (G->shader_hash_type == ShaderHashType::INVALID) {
-			LogInfoW(L"  WARNING: Unknown shader_hash \"%s\"\n", setting);
+			IniWarning("  WARNING: Unknown shader_hash \"%S\"\n", setting);
 			G->shader_hash_type = ShaderHashType::FNV;
-			BeepFailure2();
 		} else {
 			LogInfoW(L"  shader_hash=%s\n", setting);
 		}
@@ -2058,7 +2355,6 @@ void LoadConfigFile()
 	}
 
 	G->CACHE_SHADERS = GetIniBool(L"Rendering", L"cache_shaders", false, NULL);
-	G->ENABLE_CRITICAL_SECTION = GetIniBool(L"Rendering", L"use_criticalsection", false, NULL);
 	G->SCISSOR_DISABLE = GetIniBool(L"Rendering", L"rasterizer_disable_scissor", false, NULL);
 	G->track_texture_updates = GetIniBool(L"Rendering", L"track_texture_updates", false, NULL);
 	G->assemble_signature_comments = GetIniBool(L"Rendering", L"assemble_signature_comments", false, NULL);
@@ -2072,13 +2368,11 @@ void LoadConfigFile()
 	G->StereoParamsReg = GetIniInt(L"Rendering", L"stereo_params", 125, NULL);
 	G->IniParamsReg = GetIniInt(L"Rendering", L"ini_params", 120, NULL);
 	if (G->StereoParamsReg >= D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
-		LogInfo("WARNING: stereo_params=%i out of range\n", G->StereoParamsReg);
-		BeepFailure2();
+		IniWarning("WARNING: stereo_params=%i out of range\n", G->StereoParamsReg);
 		G->StereoParamsReg = -1;
 	}
 	if (G->IniParamsReg >= D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
-		LogInfo("WARNING: ini_params=%i out of range\n", G->IniParamsReg);
-		BeepFailure2();
+		IniWarning("WARNING: ini_params=%i out of range\n", G->IniParamsReg);
 		G->IniParamsReg = -1;
 	}
 
@@ -2217,12 +2511,33 @@ void LoadConfigFile()
 	ParseExplicitCommandListSections();
 
 	ParseShaderOverrideSections();
+	ParseShaderRegexSections();
 	ParseTextureOverrideSections();
 
 	LogInfo("[Present]\n");
 	G->present_command_list.clear();
 	G->post_present_command_list.clear();
 	ParseCommandList(L"Present", &G->present_command_list, &G->post_present_command_list, NULL);
+
+	LogInfo("[ClearRenderTargetView]\n");
+	G->clear_rtv_command_list.clear();
+	G->post_clear_rtv_command_list.clear();
+	ParseCommandList(L"ClearRenderTargetView", &G->clear_rtv_command_list, &G->post_clear_rtv_command_list, NULL);
+
+	LogInfo("[ClearDepthStencilView]\n");
+	G->clear_dsv_command_list.clear();
+	G->post_clear_dsv_command_list.clear();
+	ParseCommandList(L"ClearDepthStencilView", &G->clear_dsv_command_list, &G->post_clear_dsv_command_list, NULL);
+
+	LogInfo("[ClearUnorderedAccessViewUint]\n");
+	G->clear_uav_uint_command_list.clear();
+	G->post_clear_uav_uint_command_list.clear();
+	ParseCommandList(L"ClearUnorderedAccessViewUint", &G->clear_uav_uint_command_list, &G->post_clear_uav_uint_command_list, NULL);
+
+	LogInfo("[ClearUnorderedAccessViewFloat]\n");
+	G->clear_uav_float_command_list.clear();
+	G->post_clear_uav_float_command_list.clear();
+	ParseCommandList(L"ClearUnorderedAccessViewFloat", &G->clear_uav_float_command_list, &G->post_clear_uav_float_command_list, NULL);
 
 	// Read in any constants defined in the ini, for use as shader parameters
 	// Any result of the default FLT_MAX means the parameter is not in use.
@@ -2327,6 +2642,21 @@ void LoadProfileManagerConfig(const wchar_t *exe_path)
 	LogInfo("\n");
 }
 
+static void MarkAllShadersDeferredUnprocessed()
+{
+	ShaderReloadMap::iterator i;
+
+	for (i = G->mReloadedShaders.begin(); i != G->mReloadedShaders.end(); i++) {
+		// Whenever we reload the config we clear the processed flag on
+		// all auto patched shaders to ensure that they will be
+		// re-patched using the current patterns in the d3dx.ini. This
+		// is separate from the deferred_replacement_candidate flag,
+		// which will be set in the shader reload routine for any
+		// shaders that have been removed from disk, and removed from
+		// any that are loaded from disk:
+		i->second.deferred_replacement_processed = false;
+	}
+}
 
 void ReloadConfig(HackerDevice *device)
 {
@@ -2338,7 +2668,10 @@ void ReloadConfig(HackerDevice *device)
 
 	G->gReloadConfigPending = false;
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	// Lock the entire config reload as it touches many global structures
+	// that could potentially be accessed from other threads (e.g. deferred
+	// contexts) while we do this
+	EnterCriticalSection(&G->mCriticalSection);
 
 	// Clear the key bindings. There may be other things that need to be
 	// cleared as well, but for the sake of clarity I'd rather clear as
@@ -2350,7 +2683,9 @@ void ReloadConfig(HackerDevice *device)
 
 	LoadConfigFile();
 
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	MarkAllShadersDeferredUnprocessed();
+
+	LeaveCriticalSection(&G->mCriticalSection);
 
 	// Update the iniParams resource from the config file:
 	// FIXME: THIS CRASHES IF 3D IS DISABLED (ROOT CAUSE LIKELY ELSEWHERE)

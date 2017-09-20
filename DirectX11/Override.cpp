@@ -179,7 +179,7 @@ struct KeyOverrideCycleParam
 	void log(wchar_t *name)
 	{
 		if (*cur)
-			LogInfoW(L" %s=%s", name, cur);
+			LogInfoWNoNL(L" %s=%s", name, cur);
 	}
 
 	float as_float(float default)
@@ -300,7 +300,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 		if (!not_done)
 			break;
 
-		LogInfo("  Cycle %i:", i);
+		LogInfoNoNL("  Cycle %i:", i);
 		for (j = 0; j < INI_PARAMS_SIZE; j++) {
 			StringCchPrintf(buf, 8, L"x%.0i", j);
 			x[j].log(buf);
@@ -385,9 +385,9 @@ static void UpdateIniParams(HackerDevice* wrapper,
 	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
 	realContext->Unmap(wrapper->mIniTexture, 0);
 
-	LogDebug(" IniParams remapped to ");
+	LogDebugNoNL(" IniParams remapped to ");
 	for (i = 0; i < INI_PARAMS_SIZE; i++)
-		LogDebug("%#.2g, %#.2g, %#.2g, %#.2g, ", params[i].x, params[i].y, params[i].z, params[i].w);
+		LogDebugNoNL("%#.2g, %#.2g, %#.2g, %#.2g, ", params[i].x, params[i].y, params[i].z, params[i].w);
 	LogDebug("\n");
 }
 
@@ -492,7 +492,7 @@ static void _ScheduleTransition(struct OverrideTransitionParam *transition,
 		char *name, float current, float val, ULONGLONG now, int time,
 		TransitionType transition_type)
 {
-	LogInfo(" %s: %#.2g -> %#.2g", name, current, val);
+	LogInfoNoNL(" %s: %#.2g -> %#.2g", name, current, val);
 	transition->start = current;
 	transition->target = val;
 	transition->activation_time = now;
@@ -511,10 +511,10 @@ void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
 	char buf[8];
 	int i;
 
-	LogInfo(" Override");
+	LogInfoNoNL(" Override");
 	if (time) {
-		LogInfo(" transition: %ims", time);
-		LogInfoW(L" transition_type: %s",
+		LogInfoNoNL(" transition: %ims", time);
+		LogInfoWNoNL(L" transition_type: %s",
 			lookup_enum_name<wchar_t *, TransitionType>(TransitionTypeNames, transition_type));
 	}
 

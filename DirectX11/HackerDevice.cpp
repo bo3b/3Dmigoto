@@ -25,6 +25,7 @@
 #include "SpriteFont.h"
 #include "D3D_Shaders\stdafx.h"
 #include "ResourceHash.h"
+#include "ShaderRegex.h"
 
 
 // ToDo: I'd really rather not have these standalone utilities here, this file should
@@ -214,7 +215,7 @@ HRESULT HackerDevice::SetGlobalNVSurfaceCreationMode()
 
 void HackerDevice::Create3DMigotoResources()
 {
-	LogInfo("HackerDevice::Create3DMigotoResources(%s@%p) called. \n", type_name(this), this);
+	LogInfo("HackerDevice::Create3DMigotoResources(%s@%p) called.\n", type_name(this), this);
 
 	// XXX: Ignoring the return values for now because so do our callers.
 	// If we want to change this, keep in mind that failures in
@@ -500,8 +501,8 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 
 // Currently, critical lock must be taken BEFORE this is called.
 
-void HackerDevice::RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,
-	ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp, wstring text)
+static void RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring shaderType, string shaderModel,
+	ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp, wstring text, bool deferred_replacement_candidate)
 {
 	LogInfo("    shader registered for possible reloading: %016llx_%ls as %s - %ls\n", hash, shaderType.c_str(), shaderModel.c_str(), text.c_str());
 
@@ -513,6 +514,8 @@ void HackerDevice::RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, w
 	G->mReloadedShaders[ppShader].timeStamp = timeStamp;
 	G->mReloadedShaders[ppShader].replacement = NULL;
 	G->mReloadedShaders[ppShader].infoText = text;
+	G->mReloadedShaders[ppShader].deferred_replacement_candidate = deferred_replacement_candidate;
+	G->mReloadedShaders[ppShader].deferred_replacement_processed = false;
 }
 
 
@@ -1266,7 +1269,7 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11De
 
 	LogInfoW(L"    keeping original shader for filtering: %016llx-%ls\n", hash, shaderType);
 
-	if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 		if (!wcsncmp(shaderType, L"vs", 2)) {
 			ID3D11VertexShader *originalShader;
 			hr = mOrigDevice->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
@@ -1298,7 +1301,7 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11De
 			if (SUCCEEDED(hr))
 				G->mOriginalDomainShaders[(ID3D11DomainShader*)pShader] = originalShader;
 		}
-	if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 
@@ -1646,11 +1649,11 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 		LogDebugResourceDesc(pDesc);
 	if (pInitialData && pInitialData->pSysMem)
 	{
-		LogDebug("  pInitialData = %p->%p, SysMemPitch: %u, SysMemSlicePitch: %u ",
+		LogDebugNoNL("  pInitialData = %p->%p, SysMemPitch: %u, SysMemSlicePitch: %u ",
 				pInitialData, pInitialData->pSysMem, pInitialData->SysMemPitch, pInitialData->SysMemSlicePitch);
 		const uint8_t* hex = static_cast<const uint8_t*>(pInitialData->pSysMem);
 		for (size_t i = 0; i < 16; i++)
-			LogDebug(" %02hX", hex[i]);
+			LogDebugNoNL(" %02hX", hex[i]);
 		LogDebug("\n");
 	}
 
@@ -1786,7 +1789,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// Register texture. Every one seen.
 	if (hr == S_OK && ppTexture2D)
 	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 			G->mResources[*ppTexture2D].hash = hash;
 			G->mResources[*ppTexture2D].orig_hash = hash;
 			G->mResources[*ppTexture2D].data_hash = data_hash;
@@ -1796,7 +1799,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 				G->mResourceInfo[hash] = *pDesc;
 				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
 			}
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	return hr;
@@ -1842,7 +1845,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	// Register texture.
 	if (hr == S_OK && ppTexture3D)
 	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 			G->mResources[*ppTexture3D].hash = hash;
 			G->mResources[*ppTexture3D].orig_hash = hash;
 			G->mResources[*ppTexture3D].data_hash = data_hash;
@@ -1852,7 +1855,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 				G->mResourceInfo[hash] = *pDesc;
 				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
 			}
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	LogInfo("  returns result = %x\n", hr);
@@ -1875,7 +1878,7 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 	// Check for depth buffer view.
 	if (hr == S_OK && G->ZBufferHashToInject && ppSRView)
 	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 			unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator i = G->mResources.find(pResource);
 			if (i != G->mResources.end() && i->second.hash == G->ZBufferHashToInject)
 			{
@@ -1883,7 +1886,7 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 
 				mZBufferResourceView = *ppSRView;
 			}
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	LogDebug("  returns result = %x\n", hr);
@@ -2050,9 +2053,9 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 					hr = D3DCreateBlob(replaceShaderSize, &blob);
 					if (SUCCEEDED(hr)) {
 						memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
-						if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
-						RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, headerLine);
-						if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+						EnterCriticalSection(&G->mCriticalSection);
+						RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, headerLine, false);
+						LeaveCriticalSection(&G->mCriticalSection);
 					}
 				}
 				KeepOriginalShader(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
@@ -2071,15 +2074,17 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		hr = (mOrigDevice->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
 
 		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
-		// have a copy for every shader seen.
-		if (G->hunting && SUCCEEDED(hr))
+		// have a copy for every shader seen. If we are performing any sort of deferred shader replacement, such as pipline
+		// state analysis we always need to keep a copy of the original bytecode for later analysis. For now the shader
+		// regex engine counts as deferred, though that may change with optimisations in the future.
+		if (SUCCEEDED(hr) && (G->hunting || !shader_regex_groups.empty()))
 		{
-			if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+			EnterCriticalSection(&G->mCriticalSection);
 				ID3DBlob* blob;
 				hr = D3DCreateBlob(BytecodeLength, &blob);
 				if (SUCCEEDED(hr)) {
 					memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
-					RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, ftWrite, headerLine);
+					RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, ftWrite, headerLine, true);
 
 					// Also add the original shader to the original shaders
 					// map so that if it is later replaced marking_mode =
@@ -2087,12 +2092,12 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 					if (originalShaders->count(*ppShader) == 0)
 						(*originalShaders)[*ppShader] = *ppShader;
 				}
-			if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+			LeaveCriticalSection(&G->mCriticalSection);
 		}
 	}
 	if (hr == S_OK && ppShader && pShaderBytecode)
 	{
-		if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 			(*shaders)[*ppShader] = hash;
 			LogDebugW(L"    %ls: handle = %p, hash = %016I64x\n", shaderType, *ppShader, hash);
 
@@ -2106,7 +2111,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 			{
 				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
 			}
-		if (G->ENABLE_CRITICAL_SECTION) LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	LogInfo("  returns result = %x, handle = %p\n", hr, *ppShader);

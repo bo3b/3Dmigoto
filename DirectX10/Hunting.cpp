@@ -176,7 +176,7 @@ static AsmTextBlob* GetDisassembly(D3D10Base::ID3DBlob* pCode)
 		&disassembly);
 	if (FAILED(ret))
 	{
-		LogInfo("    disassembly of original shader failed: \n");
+		LogInfo("    disassembly of original shader failed:\n");
 		return NULL;
 	}
 

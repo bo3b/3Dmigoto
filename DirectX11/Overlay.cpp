@@ -35,8 +35,8 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapC
 {
 	HRESULT hr;
 
-	LogInfo("Overlay::Overlay created for %p: %s \n", pSwapChain, type_name(pSwapChain));
-	LogInfo("  on HackerDevice: %p, HackerContext: %p \n", pDevice, pContext);
+	LogInfo("Overlay::Overlay created for %p: %s\n", pSwapChain, type_name(pSwapChain));
+	LogInfo("  on HackerDevice: %p, HackerContext: %p\n", pDevice, pContext);
 
 	// Not positive we need all of these references, but let's keep them handy.
 	// We need the context at a minimum.
