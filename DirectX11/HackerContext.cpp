@@ -466,6 +466,287 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 	}
 }
 
+static std::unordered_set<unsigned> ue4_patch_cb_offset;
+
+#define NEW_UE4
+#define SENUA
+
+static void init_ue4_patch_cb_offset(unsigned offset, unsigned count)
+{
+	unsigned i;
+
+	for (i = 0; i < count; i++) {
+		ue4_patch_cb_offset.insert(offset + i);
+	}
+}
+
+static void init_ue4_patch_cb_offsets()
+{
+	static bool init = false;
+	unsigned off = 0;
+
+	if (init)
+		return;
+	init = true;
+
+	init_ue4_patch_cb_offset(0 + off, 4); // FMatrix TranslatedWorldToClip;
+	init_ue4_patch_cb_offset(4 + off, 4); // FMatrix WorldToClip;
+	// init_ue4_patch_cb_offset(8 + off, 4); // FMatrix TranslatedWorldToView;
+	// init_ue4_patch_cb_offset(12 + off, 4); // FMatrix ViewToTranslatedWorld;
+	// init_ue4_patch_cb_offset(16 + off, 4); // FMatrix TranslatedWorldToCameraView;
+	// init_ue4_patch_cb_offset(20 + off, 4); // FMatrix CameraViewToTranslatedWorld;
+	init_ue4_patch_cb_offset(24 + off, 4); // FMatrix ViewToClip;
+	init_ue4_patch_cb_offset(28 + off, 4); // FMatrix ClipToView;
+	init_ue4_patch_cb_offset(32 + off, 4); // FMatrix ClipToTranslatedWorld;
+	init_ue4_patch_cb_offset(36 + off, 4); // FMatrix SVPositionToTranslatedWorld;
+	init_ue4_patch_cb_offset(40 + off, 4); // FMatrix ScreenToWorld;
+	init_ue4_patch_cb_offset(44 + off, 4); // FMatrix ScreenToTranslatedWorld;
+
+#ifdef NEW_UE4
+	off += 2; // HMDViewNoRollUp & HMDViewNoRollRight
+#endif
+
+#ifdef SENUA
+	off += 1;
+#endif
+
+	init_ue4_patch_cb_offset(53 + off, 1); // FVector WorldCameraOrigin;
+	init_ue4_patch_cb_offset(54 + off, 1); // FVector TranslatedWorldCameraOrigin;
+	init_ue4_patch_cb_offset(55 + off, 1); // FVector WorldViewOrigin;
+	// init_ue4_patch_cb_offset(56 + off, 1); // FVector PreViewTranslation;
+
+	init_ue4_patch_cb_offset(57 + off, 4); // FMatrix PrevProjection;
+	init_ue4_patch_cb_offset(61 + off, 4); // FMatrix PrevViewProj;
+	init_ue4_patch_cb_offset(65 + off, 4); // FMatrix PrevViewRotationProj;
+	init_ue4_patch_cb_offset(69 + off, 4); // FMatrix PrevViewToClip;
+	init_ue4_patch_cb_offset(73 + off, 4); // FMatrix PrevClipToView;
+	init_ue4_patch_cb_offset(77 + off, 4); // FMatrix PrevTranslatedWorldToClip;
+	// init_ue4_patch_cb_offset(81 + off, 4); // FMatrix PrevTranslatedWorldToView;
+	// init_ue4_patch_cb_offset(85 + off, 4); // FMatrix PrevViewToTranslatedWorld;
+	// init_ue4_patch_cb_offset(89 + off, 4); // FMatrix PrevTranslatedWorldToCameraView;
+	// init_ue4_patch_cb_offset(93 + off, 4); // FMatrix PrevCameraViewToTranslatedWorld;
+
+	init_ue4_patch_cb_offset(97 + off, 1); // FVector PrevWorldCameraOrigin;
+	init_ue4_patch_cb_offset(98 + off, 1); // FVector PrevWorldViewOrigin;
+	// init_ue4_patch_cb_offset(99 + off, 1); // FVector PrevPreViewTranslation;
+
+	init_ue4_patch_cb_offset(100 + off, 4); // FMatrix PrevInvViewProj;
+	init_ue4_patch_cb_offset(104 + off, 4); // FMatrix PrevScreenToTranslatedWorld;
+#ifdef SENUA
+	// Senua's Sacrifice specific. Looks like a duplicate of PrevViewProj
+	// (or TranslatedWorldToClip). I bet I know what happened - UE4's
+	// inconsistent matrix naming scheme confused the devs and they didn't
+	// realise that "PrevTranslatedWorldToClip" was already present under
+	// the name "PrevViewProj", so they added a second copy of it:
+	init_ue4_patch_cb_offset(108 + off, 4);
+	off += 4;
+#endif
+	init_ue4_patch_cb_offset(108 + off, 4); // FMatrix ClipToPrevClip;
+}
+
+static bool patch_cb(std::string *asm_text, unsigned cb_reg, size_t *dcl_end, unsigned *tmp_regs, unsigned shader_model_major)
+{
+	std::unordered_map<unsigned, unsigned> cb_idx_to_tmp_reg;
+	std::unordered_map<unsigned, unsigned>::iterator i;
+	std::string cb_search, cb_index_str, tmp_reg_str, insert_str;
+	size_t cb_pos, cb_idx_start, cb_idx_end;
+	bool patched = false;
+	unsigned cb_idx, tmp_reg;
+	unsigned ld_idx, ld_off;
+
+	cb_search = std::string("cb") + std::to_string(cb_reg) + std::string("[");
+	LogInfo("Redirecting cb%d to t%d\n", cb_reg, cb_reg + 100);
+
+	for (
+		cb_pos = asm_text->find(cb_search, *dcl_end);
+		cb_pos != std::string::npos;
+		cb_pos = asm_text->find(cb_search, cb_pos + 1)
+	) {
+		cb_idx_start = cb_pos + cb_search.length();
+		cb_idx_end = asm_text->find("]", cb_idx_start);
+		cb_index_str = asm_text->substr(cb_idx_start, cb_idx_end - cb_idx_start);
+		if (cb_index_str[0] < '0' || cb_index_str[0] > '9') {
+			LogInfo("Cannot patch cb%d[%s]\n", cb_reg, cb_index_str.c_str()); // yet ;-)
+			continue;
+		}
+		cb_idx = stoul(asm_text->substr(cb_idx_start, 4));
+
+		if (!ue4_patch_cb_offset.count(cb_idx)) {
+			LogInfo("Skipping cb%d[%s]\n", cb_reg, cb_index_str.c_str());
+			continue;
+		}
+
+		try {
+			tmp_reg = cb_idx_to_tmp_reg.at(cb_idx);
+		} catch (std::out_of_range) {
+			tmp_reg = (*tmp_regs)++;
+			cb_idx_to_tmp_reg[cb_idx] = tmp_reg;
+		}
+
+		tmp_reg_str = std::string("r") + std::to_string(tmp_reg);
+		LogInfo("Replacing cb%d[%s] with %s\n", cb_reg, cb_index_str.c_str(), tmp_reg_str.c_str());
+		asm_text->replace(cb_pos, cb_idx_end - cb_pos + 1, tmp_reg_str);
+
+		patched = true;
+	}
+
+	if (!patched)
+		return false;
+
+	insert_str = std::string("\ndcl_resource_structured t")
+		+ std::to_string(cb_reg + 100)
+		+ std::string(", 2048"); // Max allowed stride
+	LogInfo("Inserting %s\n", insert_str.substr(1).c_str());
+	asm_text->insert(*dcl_end, insert_str);
+	*dcl_end += insert_str.length();
+
+	for (i = cb_idx_to_tmp_reg.begin(); i != cb_idx_to_tmp_reg.end(); i++) {
+		cb_idx = i->first * 16;
+		tmp_reg = i->second;
+		ld_idx = cb_idx / 2048;
+		ld_off = cb_idx % 2048;
+
+		if (shader_model_major == 5) {
+			insert_str = std::string("\nld_structured_indexable(structured_buffer, stride=2048)(mixed,mixed,mixed,mixed) r");
+		} else {
+			insert_str = std::string("\nld_structured r");
+			"ld_structured {reg}.xyzw, l({idx}), l({offset}), t{sb}.xyzw";
+		}
+		insert_str = insert_str
+			+ std::to_string(tmp_reg)
+			+ std::string(".xyzw, l(")
+			+ std::to_string(ld_idx)
+			+ std::string("), l(")
+			+ std::to_string(ld_off)
+			+ std::string("), t")
+			+ std::to_string(cb_reg + 100)
+			+ std::string(".xyzw");
+
+		LogInfo("Inserting %s\n", insert_str.substr(1).c_str());
+		asm_text->insert(*dcl_end, insert_str);
+	}
+
+	return true;
+}
+
+static bool patch_asm_redirect_cb(std::string *asm_text,
+		bool patch_cbuffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT],
+		int disable_driver_stereo_vs_reg, int disable_driver_stereo_ds_reg)
+{
+	bool patched = false;
+	size_t dcl_start, dcl_end, dcl_temps, dcl_temps_end;
+	size_t dcl_cb, shader_model_pos;
+	std::string shader_model;
+	unsigned shader_model_major, tmp_regs = 0, cb_reg;
+	std::string insert_str;
+	int disable_driver_stereo_reg = -1;
+
+	init_ue4_patch_cb_offsets();
+
+	LogInfo("Analysing shader constant buffer usage...\n");
+	for (
+		shader_model_pos = asm_text->find("\n");
+		shader_model_pos != std::string::npos && (*asm_text)[shader_model_pos + 1] == '/';
+		shader_model_pos = asm_text->find("\n", shader_model_pos + 1)
+	) {}
+	shader_model = asm_text->substr(shader_model_pos + 1, asm_text->find("\n", shader_model_pos + 1) - shader_model_pos - 1);
+	shader_model_major = stoul(asm_text->substr(shader_model_pos + 4, 1));
+	LogInfo("Found %s\n", shader_model.c_str());
+	if (shader_model_major < 4 || shader_model_major > 5) {
+		LogInfo("Unsupported shader model\n");
+		return false;
+	}
+
+	if (shader_model[0] == 'v')
+		disable_driver_stereo_reg = disable_driver_stereo_vs_reg;
+	else if (shader_model[0] == 'd')
+		disable_driver_stereo_reg = disable_driver_stereo_ds_reg;
+
+	dcl_start = asm_text->find("\ndcl_", shader_model_pos);
+	dcl_end = asm_text->rfind("\ndcl_");
+	dcl_end = asm_text->find("\n", dcl_end + 1);
+	dcl_temps = asm_text->find("\ndcl_temps ", dcl_start);
+
+	if (dcl_temps != std::string::npos) {
+		tmp_regs = stoul(asm_text->substr(dcl_temps + 10, 4));
+		LogInfo("Found dcl_temps %d\n", tmp_regs);
+	}
+
+	for (
+		dcl_cb = asm_text->find("dcl_constantbuffer ", dcl_start);
+		dcl_cb != std::string::npos;
+		dcl_cb = asm_text->find("dcl_constantbuffer ", dcl_cb + 1)
+	) {
+		cb_reg = stoul(asm_text->substr(dcl_cb + 21, 2));
+		LogInfo("Found dcl_constantbuffer cb%d\n", cb_reg);
+
+		if (cb_reg == disable_driver_stereo_reg) {
+			LogInfo("!!! WARNING: cb%d conflicts with driver stereo reg - SHADER BROKEN !!!\n", cb_reg);
+			// TODO: BeepFailure();
+			disable_driver_stereo_reg = -1;
+		}
+
+		// There are two constant buffers reserved for system use. They
+		// can't be used in HLSL, but could potentially be used in
+		// assembly, so we need to check that we are in the expected
+		// range before using it to index into patch_cbuffers:
+		if (cb_reg >= D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT) {
+			LogInfo("cb%d out of range\n", cb_reg);
+			continue;
+		}
+
+		if (!patch_cbuffers[cb_reg])
+			continue;
+
+		patch_cbuffers[cb_reg] = patch_cb(asm_text, cb_reg, &dcl_end, &tmp_regs, shader_model_major);
+
+		patched = patched || patch_cbuffers[cb_reg];
+	}
+
+	// XXX: Here or after disabling the driver stereo cb?
+	if (!patched)
+		return false;
+
+	if (disable_driver_stereo_reg != -1) {
+		insert_str = std::string("\ndcl_constantbuffer cb")
+			+ std::to_string(disable_driver_stereo_reg)
+			+ std::string("[4], immediateIndexed");
+		LogInfo("Disabling driver stereo correction: %s\n", insert_str.substr(1).c_str());
+		insert_str = std::string("\n\n// Disables driver stereo correction:") + insert_str;
+		asm_text->insert(dcl_end, insert_str);
+		dcl_end += insert_str.size();
+	}
+
+	insert_str = std::string("\n\n// Constant buffers redirected by DarkStarSword's UE4 autofix:");
+	asm_text->insert(dcl_end, insert_str);
+
+	if (dcl_temps != std::string::npos) {
+		dcl_temps += 11;
+		dcl_temps_end = asm_text->find("\n", dcl_temps);
+		LogInfo("Updating dcl_temps %d\n", tmp_regs);
+		asm_text->replace(dcl_temps, dcl_temps_end - dcl_temps, std::to_string(tmp_regs));
+		// TODO: Fixup dcl_end
+	} else {
+		insert_str = std::string("\ndcl_temps ") + std::to_string(tmp_regs);
+		LogInfo("Inserting dcl_temps %d\n", tmp_regs);
+		asm_text->insert(dcl_end, insert_str);
+		dcl_end += insert_str.size();
+	}
+	// NOTE: dcl_end is no longer valid
+
+	return true;
+}
+
+
+// FIXME: Move to engine specific DLL
+static std::unordered_set<ID3D11Resource*> tagged_cbuffers;
+
+// This function will replace shaders when the decision to do so has to be
+// delayed for as long as possible, to just before the draw/dispatch call when
+// any other pipeline state we might need to check is known. e.g. this can be
+// used to replace shaders based on what constant buffers they are used with,
+// which will be used by an upcoming UE4 autofix tool.
+//
 // This function will run the ShaderRegex engine to automatically patch shaders
 // on the fly and/or insert command lists on the fly. This may seem like a
 // slightly unusual place to run this, but the reason is because of another
@@ -480,18 +761,25 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 // mReloadedShaders map - user replaced shaders should always take priority
 // over automatically replaced shaders.
 template <class ID3D11Shader,
+	void (__stdcall ID3D11DeviceContext::*GetConstantBuffers)(UINT, UINT, ID3D11Buffer**),
 	void (__stdcall ID3D11DeviceContext::*GetShaderVS2013BUGWORKAROUND)(ID3D11Shader**, ID3D11ClassInstance**, UINT*),
 	void (__stdcall ID3D11DeviceContext::*SetShaderVS2013BUGWORKAROUND)(ID3D11Shader*, ID3D11ClassInstance*const*, UINT),
 	HRESULT (__stdcall ID3D11Device::*CreateShader)(const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11Shader**)
 >
 void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 hash, wchar_t *shader_type)
 {
+	ID3D11Buffer *cbuffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
+	bool patch_cbuffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
 	ID3D11Shader *orig_shader = NULL, *patched_shader = NULL;
+	ShaderOverride *shader_override = NULL;
 	ID3D11ClassInstance *class_instances[256];
 	OriginalShaderInfo *orig_info = NULL;
 	UINT num_instances = 0;
 	string asm_text;
-	bool patch_regex = false;
+	wchar_t section_name[64];
+	wstring dest, src, src_null;
+	bool ok = true;
+	bool patch_regex = false, patch_cbs = false;
 	HRESULT hr;
 	unsigned i;
 	wstring tagline(L"//");
@@ -507,9 +795,22 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 
 	LogInfo("Performing deferred shader analysis on %S %016I64x...\n", shader_type, hash);
 
-	// Remember that we have analysed this one so we don't check it again
-	// (until config reload) regardless of whether we patch it or not:
+	// Remember that we have analysed this one so we don't check it
+	// again (until reload) regardless of whether we patch it or not:
 	orig_info->deferred_replacement_processed = true;
+
+	// TODO: Compare performance vs doing this in XXSetConstantBuffers
+	(mOrigContext->*GetConstantBuffers)(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, cbuffers);
+
+	memset(patch_cbuffers, 0, sizeof(patch_cbuffers));
+	for (i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; i++) {
+		if (tagged_cbuffers.count(cbuffers[i])) {
+			patch_cbuffers[i] = true;
+			patch_cbs = true;
+			LogInfo("Tagged constant buffer used with %S %016I64x, remapping cb%d -> t%d\n",
+					shader_type, hash, i, i + 100);
+		}
+	}
 
 	asm_text = BinaryToAsmText(orig_info->byteCode->GetBufferPointer(),
 			orig_info->byteCode->GetBufferSize());
@@ -518,12 +819,17 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 
 	try {
 		patch_regex = apply_shader_regex_groups(&asm_text, &orig_info->shaderModel, hash, &tagline);
+		// FIXME: Get stereo CBs from driver profile
+		if (patch_cbs)
+			patch_cbs = patch_asm_redirect_cb(&asm_text, patch_cbuffers, 12, 12);
+		if (patch_cbs)
+			tagline.append(L"Automatically patched by DarkStarSword's UE4 3D Vision tool");
 	} catch (...) {
 		LogInfo("    *** Exception while patching shader\n");
 		return;
 	}
 
-	if (!patch_regex) {
+	if (!patch_regex && !patch_cbs) {
 		LogInfo("Patch did not apply\n");
 		return;
 	}
@@ -569,17 +875,45 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 		if (class_instances[i])
 			class_instances[i]->Release();
 	}
+
+	if (patch_cbs) {
+		shader_override = &G->mShaderOverrideMap[hash];
+		wsprintf(section_name, L"AutoGeneratedShaderOverride%016I64x", hash);
+		LogInfo("[%S]\n", section_name);
+
+		// Generate the resource copy directives to assign the stereoised buffer:
+		// FIXME: Has to be all lower case - should handle that in the command list parser
+		src = wstring(L"resourcefviewuniformshaderparameters_stereo_srv_uav");
+		src_null = wstring(L"null");
+		for (i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; i++) {
+			if (!patch_cbuffers[i])
+				continue;
+
+			dest = wstring(shader_type) + wstring(L"-t") + std::to_wstring(i + 100);
+
+			LogInfo("  %S = %S\n", dest.c_str(), src.c_str());
+			LogInfo("  post %S = %S\n", dest.c_str(), src_null.c_str());
+			ok = ParseCommandListResourceCopyDirective(section_name, dest.c_str(), &src, &shader_override->command_list) && ok;
+			ok = ParseCommandListResourceCopyDirective(section_name, dest.c_str(), &src_null, &shader_override->post_command_list) && ok;
+			if (!ok) {
+				LogInfo("WARNING: Command List failed to parse auto generated "
+						"resource copy directives - missing resource definitions?\n");
+			}
+		}
+	}
 }
 
 void HackerContext::DeferredShaderReplacementBeforeDraw()
 {
-	if (shader_regex_groups.empty())
+
+	if (shader_regex_groups.empty() && tagged_cbuffers.empty())
 		return;
 
 	EnterCriticalSection(&G->mCriticalSection);
 
 		if (mCurrentVertexShaderHandle) {
 			DeferredShaderReplacement<ID3D11VertexShader,
+				&ID3D11DeviceContext::VSGetConstantBuffers,
 				&ID3D11DeviceContext::VSGetShader,
 				&ID3D11DeviceContext::VSSetShader,
 				&ID3D11Device::CreateVertexShader>
@@ -587,6 +921,7 @@ void HackerContext::DeferredShaderReplacementBeforeDraw()
 		}
 		if (mCurrentHullShaderHandle) {
 			DeferredShaderReplacement<ID3D11HullShader,
+				&ID3D11DeviceContext::HSGetConstantBuffers,
 				&ID3D11DeviceContext::HSGetShader,
 				&ID3D11DeviceContext::HSSetShader,
 				&ID3D11Device::CreateHullShader>
@@ -594,6 +929,7 @@ void HackerContext::DeferredShaderReplacementBeforeDraw()
 		}
 		if (mCurrentDomainShaderHandle) {
 			DeferredShaderReplacement<ID3D11DomainShader,
+				&ID3D11DeviceContext::DSGetConstantBuffers,
 				&ID3D11DeviceContext::DSGetShader,
 				&ID3D11DeviceContext::DSSetShader,
 				&ID3D11Device::CreateDomainShader>
@@ -601,6 +937,7 @@ void HackerContext::DeferredShaderReplacementBeforeDraw()
 		}
 		if (mCurrentGeometryShaderHandle) {
 			DeferredShaderReplacement<ID3D11GeometryShader,
+				&ID3D11DeviceContext::GSGetConstantBuffers,
 				&ID3D11DeviceContext::GSGetShader,
 				&ID3D11DeviceContext::GSSetShader,
 				&ID3D11Device::CreateGeometryShader>
@@ -608,6 +945,7 @@ void HackerContext::DeferredShaderReplacementBeforeDraw()
 		}
 		if (mCurrentPixelShaderHandle) {
 			DeferredShaderReplacement<ID3D11PixelShader,
+				&ID3D11DeviceContext::PSGetConstantBuffers,
 				&ID3D11DeviceContext::PSGetShader,
 				&ID3D11DeviceContext::PSSetShader,
 				&ID3D11Device::CreatePixelShader>
@@ -619,7 +957,7 @@ void HackerContext::DeferredShaderReplacementBeforeDraw()
 
 void HackerContext::DeferredShaderReplacementBeforeDispatch()
 {
-	if (shader_regex_groups.empty())
+	if (shader_regex_groups.empty() && tagged_cbuffers.empty())
 		return;
 
 	if (!mCurrentComputeShaderHandle)
@@ -628,6 +966,7 @@ void HackerContext::DeferredShaderReplacementBeforeDispatch()
 	EnterCriticalSection(&G->mCriticalSection);
 
 		DeferredShaderReplacement<ID3D11ComputeShader,
+			&ID3D11DeviceContext::CSGetConstantBuffers,
 			&ID3D11DeviceContext::CSGetShader,
 			&ID3D11DeviceContext::CSSetShader,
 			&ID3D11Device::CreateComputeShader>
@@ -1027,10 +1366,37 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 	MappedResourceInfo *map_info = NULL;
 	void *replace = NULL;
 	bool divertable = false, divert = false, track = false;
-	bool write = false, read = false, deny = false;
+	bool write = false, read = false, deny = false, analyse_cb = false;
+	size_t size = 0;
 
 	if (FAILED(map_hr) || !pResource || !pMappedResource || !pMappedResource->pData)
 		return;
+
+	pResource->GetType(&dim);
+	switch (dim) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			buf = (ID3D11Buffer*)pResource;
+			buf->GetDesc(&buf_desc);
+			size = buf_desc.ByteWidth;
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			tex1d = (ID3D11Texture1D*)pResource;
+			tex1d->GetDesc(&tex1d_desc);
+			size = dxgi_format_size(tex1d_desc.Format) * tex1d_desc.Width;
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			tex2d = (ID3D11Texture2D*)pResource;
+			tex2d->GetDesc(&tex2d_desc);
+			size = pMappedResource->RowPitch * tex2d_desc.Height;
+			break;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			tex3d = (ID3D11Texture3D*)pResource;
+			tex3d->GetDesc(&tex3d_desc);
+			size = pMappedResource->DepthPitch * tex3d_desc.Depth;
+			break;
+		default:
+			return;
+	}
 
 	switch (MapType) {
 		case D3D11_MAP_READ_WRITE:
@@ -1054,6 +1420,10 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 			// performance or if there might be any unintended
 			// consequences like uninitialised data:
 			divert = track = MapTrackResourceHashUpdate(pResource, Subresource);
+
+			if (dim == D3D11_RESOURCE_DIMENSION_BUFFER && buf_desc.BindFlags & D3D11_BIND_CONSTANT_BUFFER && size == 4096)
+				analyse_cb = divert = track = true;
+
 			break;
 
 		case D3D11_MAP_READ:
@@ -1067,47 +1437,23 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 
 	map_info = &mMappedResources[pResource];
 	map_info->mapped_writable = write;
+	map_info->size = size;
+	map_info->analyse_cb = analyse_cb;
 	memcpy(&map_info->map, pMappedResource, sizeof(D3D11_MAPPED_SUBRESOURCE));
 
 	if (!divertable || !divert)
 		return;
 
-	pResource->GetType(&dim);
-	switch (dim) {
-		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			buf = (ID3D11Buffer*)pResource;
-			buf->GetDesc(&buf_desc);
-			map_info->size = buf_desc.ByteWidth;
-			break;
-		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
-			tex1d = (ID3D11Texture1D*)pResource;
-			tex1d->GetDesc(&tex1d_desc);
-			map_info->size = dxgi_format_size(tex1d_desc.Format) * tex1d_desc.Width;
-			break;
-		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-			tex2d = (ID3D11Texture2D*)pResource;
-			tex2d->GetDesc(&tex2d_desc);
-			map_info->size = pMappedResource->RowPitch * tex2d_desc.Height;
-			break;
-		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-			tex3d = (ID3D11Texture3D*)pResource;
-			tex3d->GetDesc(&tex3d_desc);
-			map_info->size = pMappedResource->DepthPitch * tex3d_desc.Depth;
-			break;
-		default:
-			return;
-	}
-
-	replace = malloc(map_info->size);
+	replace = malloc(size);
 	if (!replace) {
 		LogInfo("TrackAndDivertMap out of memory\n");
 		return;
 	}
 
 	if (read && !deny)
-		memcpy(replace, pMappedResource->pData, map_info->size);
+		memcpy(replace, pMappedResource->pData, size);
 	else
-		memset(replace, 0, map_info->size);
+		memset(replace, 0, size);
 
 	map_info->orig_pData = pMappedResource->pData;
 	map_info->map.pData = replace;
@@ -1129,6 +1475,23 @@ void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresou
 
 	if (G->track_texture_updates && Subresource == 0 && map_info->mapped_writable)
 		UpdateResourceHashFromCPU(pResource, map_info->map.pData, map_info->map.RowPitch, map_info->map.DepthPitch);
+
+	if (map_info->analyse_cb) {
+		DirectX::XMFLOAT4 *buf = (DirectX::XMFLOAT4*)map_info->map.pData;
+		if (buf[122].x == 1920.0f && buf[122].y == 1080.0f && buf[58].z == -buf[59].z) {
+			// FIXME: We should still allow this to be released.
+			// Either use the private data, or release it if we
+			// notice it's refcount has dropped to one:
+			pResource->AddRef();
+
+			tagged_cbuffers.insert(pResource);
+			// Run both pre and post command lists now.
+			// The reason for having a post command list is so that people can
+			// write 'ps-t100 = ResourceFoo; post ps-t100 = null' and have it work.
+			RunResourceCommandList(mHackerDevice, this, &G->xxx_command_list, pResource, false);
+			RunResourceCommandList(mHackerDevice, this, &G->post_xxx_command_list, pResource, true);
+		}
+	}
 
 	if (map_info->orig_pData) {
 		// TODO: Measure performance vs. not diverting:

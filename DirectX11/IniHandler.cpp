@@ -43,6 +43,7 @@ static Section CommandListSections[] = {
 	{L"ClearDepthStencilView", false},
 	{L"ClearUnorderedAccessViewUint", false},
 	{L"ClearUnorderedAccessViewFloat", false},
+	{L"XXX", false},
 };
 
 // List all remaining sections so we can verify that every section listed in
@@ -3588,6 +3589,11 @@ void LoadConfigFile()
 	G->clear_uav_float_command_list.clear();
 	G->post_clear_uav_float_command_list.clear();
 	ParseCommandList(L"ClearUnorderedAccessViewFloat", &G->clear_uav_float_command_list, &G->post_clear_uav_float_command_list, NULL);
+
+	LogInfo("[XXX]\n");
+	G->xxx_command_list.clear();
+	G->post_xxx_command_list.clear();
+	ParseCommandList(L"XXX", &G->xxx_command_list, &G->post_xxx_command_list, NULL);
 
 	// Read in any constants defined in the ini, for use as shader parameters
 	// Any result of the default FLT_MAX means the parameter is not in use.
