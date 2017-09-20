@@ -325,7 +325,7 @@ struct Globals
 	bool show_original_enabled;
 	time_t huntTime;
 
-	bool deferred_enabled;
+	bool deferred_contexts_enabled;
 
 	unsigned analyse_frame;
 	unsigned analyse_frame_no;
@@ -478,7 +478,7 @@ struct Globals
 		show_original_enabled(false),
 		huntTime(0),
 
-		deferred_enabled(true),
+		deferred_contexts_enabled(true),
 
 		analyse_frame(0),
 		analyse_frame_no(0),

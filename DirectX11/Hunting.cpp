@@ -1098,7 +1098,7 @@ static void DisableDeferred(HackerDevice *device, void *private_data)
 		return;
 
 	LogInfo("Disabling execution of deferred command lists\n");
-	G->deferred_enabled = false;
+	G->deferred_contexts_enabled = false;
 }
 
 static void EnableDeferred(HackerDevice *device, void *private_data)
@@ -1107,7 +1107,7 @@ static void EnableDeferred(HackerDevice *device, void *private_data)
 		return;
 
 	LogInfo("Enabling execution of deferred command lists\n");
-	G->deferred_enabled = true;
+	G->deferred_contexts_enabled = true;
 }
 
 

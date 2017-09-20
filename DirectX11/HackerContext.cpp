@@ -1750,7 +1750,7 @@ STDMETHODIMP_(void) HackerContext::ExecuteCommandList(THIS_
 	FrameAnalysisLog("ExecuteCommandList(pCommandList:0x%p, RestoreContextState:%s)\n",
 			pCommandList, RestoreContextState ? "true" : "false");
 
-	if (G->deferred_enabled)
+	if (G->deferred_contexts_enabled)
 		mOrigContext->ExecuteCommandList(pCommandList, RestoreContextState);
 }
 
