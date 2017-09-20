@@ -435,8 +435,8 @@ void HackerContext::ProcessScissorRects(DrawContext &data)
 // mReloadedShaders map - user replaced shaders should always take priority
 // over automatically replaced shaders.
 template <class ID3D11Shader,
-	void (__stdcall ID3D11DeviceContext::*GetShader)(ID3D11Shader**, ID3D11ClassInstance**, UINT*),
-	void (__stdcall ID3D11DeviceContext::*SetShader)(ID3D11Shader*, ID3D11ClassInstance*const*, UINT),
+	void (__stdcall ID3D11DeviceContext::*GetShaderVS2013BUGWORKAROUND)(ID3D11Shader**, ID3D11ClassInstance**, UINT*),
+	void (__stdcall ID3D11DeviceContext::*SetShaderVS2013BUGWORKAROUND)(ID3D11Shader*, ID3D11ClassInstance*const*, UINT),
 	HRESULT (__stdcall ID3D11Device::*CreateShader)(const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11Shader**)
 >
 void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 hash, wchar_t *shader_type)
@@ -508,8 +508,13 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	orig_info->replacement = patched_shader;
 
 	// And bind the replaced shader in time for this draw call:
-	(mOrigContext->*GetShader)(&orig_shader, class_instances, &num_instances);
-	(mOrigContext->*SetShader)(patched_shader, class_instances, num_instances);
+	// VSBUGWORKAROUND: VS2013 toolchain has a bug that mistakes a member
+	// pointer called "SetShader" for the SetShader we have in
+	// HackerContext, even though the member pointer we were passed very
+	// clearly points to a member function of ID3D11DeviceContext. VS2015
+	// toolchain does not suffer from this bug.
+	(mOrigContext->*GetShaderVS2013BUGWORKAROUND)(&orig_shader, class_instances, &num_instances);
+	(mOrigContext->*SetShaderVS2013BUGWORKAROUND)(patched_shader, class_instances, num_instances);
 	if (orig_shader)
 		orig_shader->Release();
 	for (i = 0; i < num_instances; i++) {
