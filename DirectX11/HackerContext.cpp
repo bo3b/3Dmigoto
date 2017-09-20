@@ -927,13 +927,10 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 		D3D11_MAPPED_SUBRESOURCE *pMappedResource)
 {
 	D3D11_RESOURCE_DIMENSION dim;
-	union {
-		ID3D11Resource *resource_union = NULL;
-		ID3D11Buffer *buf;
-		ID3D11Texture1D *tex1d;
-		ID3D11Texture2D *tex2d;
-		ID3D11Texture3D *tex3d;
-	};
+	ID3D11Buffer *buf = NULL;
+	ID3D11Texture1D *tex1d = NULL;
+	ID3D11Texture2D *tex2d = NULL;
+	ID3D11Texture3D *tex3d = NULL;
 	D3D11_BUFFER_DESC buf_desc;
 	D3D11_TEXTURE1D_DESC tex1d_desc;
 	D3D11_TEXTURE2D_DESC tex2d_desc;
@@ -987,21 +984,24 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 		return;
 
 	pResource->GetType(&dim);
-	resource_union = pResource;
 	switch (dim) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			buf = (ID3D11Buffer*)pResource;
 			buf->GetDesc(&buf_desc);
 			map_info->size = buf_desc.ByteWidth;
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			tex1d = (ID3D11Texture1D*)pResource;
 			tex1d->GetDesc(&tex1d_desc);
 			map_info->size = dxgi_format_size(tex1d_desc.Format) * tex1d_desc.Width;
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			tex2d = (ID3D11Texture2D*)pResource;
 			tex2d->GetDesc(&tex2d_desc);
 			map_info->size = pMappedResource->RowPitch * tex2d_desc.Height;
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			tex3d = (ID3D11Texture3D*)pResource;
 			tex3d->GetDesc(&tex3d_desc);
 			map_info->size = pMappedResource->DepthPitch * tex3d_desc.Depth;
 			break;

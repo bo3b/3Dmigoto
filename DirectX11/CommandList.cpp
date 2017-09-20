@@ -4357,31 +4357,31 @@ static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resou
 static UINT get_resource_bind_flags(ID3D11Resource *resource)
 {
 	D3D11_RESOURCE_DIMENSION dimension;
-	union {
-		ID3D11Resource *resource_union = NULL;
-		ID3D11Buffer *buf;
-		ID3D11Texture1D *tex1d;
-		ID3D11Texture2D *tex2d;
-		ID3D11Texture3D *tex3d;
-	};
+	ID3D11Buffer *buf = NULL;
+	ID3D11Texture1D *tex1d = NULL;
+	ID3D11Texture2D *tex2d = NULL;
+	ID3D11Texture3D *tex3d = NULL;
 	D3D11_BUFFER_DESC buf_desc;
 	D3D11_TEXTURE1D_DESC tex1d_desc;
 	D3D11_TEXTURE2D_DESC tex2d_desc;
 	D3D11_TEXTURE3D_DESC tex3d_desc;
 
 	resource->GetType(&dimension);
-	resource_union = resource;
 	switch (dimension) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			buf = (ID3D11Buffer*)resource;
 			buf->GetDesc(&buf_desc);
 			return buf_desc.BindFlags;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			tex1d = (ID3D11Texture1D*)resource;
 			tex1d->GetDesc(&tex1d_desc);
 			return tex1d_desc.BindFlags;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			tex2d = (ID3D11Texture2D*)resource;
 			tex2d->GetDesc(&tex2d_desc);
 			return tex2d_desc.BindFlags;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			tex3d = (ID3D11Texture3D*)resource;
 			tex3d->GetDesc(&tex3d_desc);
 			return tex3d_desc.BindFlags;
 	}
