@@ -438,6 +438,37 @@ int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 	return rc;
 }
 
+// Variant of the above that fills out a std::string, and doesn't bother about
+// all that size nonsense. There is no std::wstring variant of this because I
+// want to refactor out all our uses of wide characters that came from the ini
+// file courtesy of the old ini parsing API, and adding a new function that
+// returns wide characters would be counter-productive to that goal.
+static bool GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def, std::string *ret)
+{
+	std::wstring wret;
+	bool found = false;
+
+	if (!ret) {
+		LogInfo("BUG: Misuse of GetIniString()\n");
+		DoubleBeepExit();
+	}
+
+	try {
+		wret = ini_sections.at(section).kv_map.at(key);
+		found = true;
+	} catch (std::out_of_range) {
+		if (def)
+			wret = def;
+		else
+			wret = L"";
+	}
+
+	// TODO: Get rid of all the wide character strings that the old ini
+	// parsing API forced on us so we don't need this re-conversion:
+	*ret = std::string(wret.begin(), wret.end());
+	return found;
+}
+
 // Helper functions to parse common types and log their values. TODO: Convert
 // more of this file to use these where appropriate
 static int GetIniStringAndLog(const wchar_t *section, const wchar_t *key,
@@ -450,6 +481,17 @@ static int GetIniStringAndLog(const wchar_t *section, const wchar_t *key,
 
 	return rc;
 }
+static bool GetIniStringAndLog(const wchar_t *section, const wchar_t *key,
+		const wchar_t *def, std::string *ret)
+{
+	bool rc = GetIniString(section, key, def, ret);
+
+	if (rc)
+		LogInfo("  %S=%s\n", key, ret->c_str());
+
+	return rc;
+}
+
 
 static float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, bool *found)
 {
