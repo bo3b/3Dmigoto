@@ -69,11 +69,13 @@ struct MappedResourceInfo {
 	bool mapped_writable;
 	void *orig_pData;
 	size_t size;
+	bool analyse_cb;
 
 	MappedResourceInfo() :
 		orig_pData(NULL),
 		size(0),
-		mapped_writable(false)
+		mapped_writable(false),
+		analyse_cb(false)
 	{}
 };
 
@@ -133,6 +135,7 @@ private:
 	bool BeforeDispatch(DispatchContext *context);
 	void AfterDispatch(DispatchContext *context);
 	template <class ID3D11Shader,
+		void (__stdcall ID3D11DeviceContext::*GetConstantBuffers)(UINT, UINT, ID3D11Buffer**),
 		void (__stdcall ID3D11DeviceContext::*GetShaderVS2013BUGWORKAROUND)(ID3D11Shader**, ID3D11ClassInstance**, UINT*),
 		void (__stdcall ID3D11DeviceContext::*SetShaderVS2013BUGWORKAROUND)(ID3D11Shader*, ID3D11ClassInstance*const*, UINT),
 		HRESULT (__stdcall ID3D11Device::*CreateShader)(const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11Shader**)

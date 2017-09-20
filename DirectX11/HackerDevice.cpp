@@ -2570,7 +2570,8 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		// have a copy for every shader seen. If we are performing any sort of deferred shader replacement, such as pipline
 		// state analysis we always need to keep a copy of the original bytecode for later analysis. For now the shader
 		// regex engine counts as deferred, though that may change with optimisations in the future.
-		if (SUCCEEDED(hr) && (G->hunting || !shader_regex_groups.empty()))
+		// FIXME if (SUCCEEDED(hr) && (G->hunting || !shader_regex_groups.empty())) // FIXME: || !tagged_cbuffers.empty()))
+		if (SUCCEEDED(hr))
 		{
 			EnterCriticalSection(&G->mCriticalSection);
 				ID3DBlob* blob;
