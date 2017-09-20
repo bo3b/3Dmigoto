@@ -1304,6 +1304,16 @@ void RunExplicitCommandList::run(CommandListState *state)
 		_RunCommandList(&command_list_section->command_list, state);
 }
 
+void LinkCommandLists(CommandList *dst, CommandList *link)
+{
+	RunLinkedCommandList *operation = new RunLinkedCommandList(link);
+	dst->push_back(std::shared_ptr<CommandListCommand>(operation));
+}
+
+void RunLinkedCommandList::run(CommandListState *state)
+{
+	_RunCommandList(link, state);
+}
 
 static void ProcessParamRTSize(CommandListState *state)
 {

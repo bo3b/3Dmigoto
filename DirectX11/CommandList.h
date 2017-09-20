@@ -112,6 +112,17 @@ public:
 	void run(CommandListState*) override;
 };
 
+class RunLinkedCommandList : public CommandListCommand {
+public:
+	CommandList *link;
+
+	RunLinkedCommandList(CommandList *link) :
+		link(link)
+	{}
+
+	void run(CommandListState*) override;
+};
+
 class CustomShader
 {
 public:
@@ -712,3 +723,4 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 		const wchar_t *key, wstring *val, CommandList *command_list);
 bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 		const wchar_t *key, wstring *val, CommandList *command_list);
+void LinkCommandLists(CommandList *dst, CommandList *link);
