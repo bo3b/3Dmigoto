@@ -485,7 +485,7 @@ static bool GetIniString(const wchar_t *section, const wchar_t *key, const wchar
 
 // Helper functions to parse common types and log their values. TODO: Convert
 // more of this file to use these where appropriate
-static int GetIniStringAndLog(const wchar_t *section, const wchar_t *key,
+int GetIniStringAndLog(const wchar_t *section, const wchar_t *key,
 		const wchar_t *def, wchar_t *ret, unsigned size)
 {
 	int rc = GetIniString(section, key, def, ret, size);
@@ -507,7 +507,7 @@ static bool GetIniStringAndLog(const wchar_t *section, const wchar_t *key,
 }
 
 
-static float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, bool *found)
+float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, bool *found)
 {
 	wchar_t val[32];
 	float ret = def;
@@ -554,7 +554,7 @@ int GetIniInt(const wchar_t *section, const wchar_t *key, int def, bool *found)
 	return ret;
 }
 
-static bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, bool *found)
+bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, bool *found)
 {
 	wchar_t val[32];
 	bool ret = def;
@@ -578,6 +578,52 @@ static bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, boo
 		}
 
 		IniWarning("  WARNING: Boolean parse error: %S=%S\n", key, val);
+	}
+
+	return ret;
+}
+
+static UINT64 GetIniHash(const wchar_t *section, const wchar_t *key, UINT64 def, bool *found)
+{
+	std::string val;
+	UINT64 ret = def;
+	int len;
+
+	if (found)
+		*found = false;
+
+	if (GetIniString(section, key, NULL, &val)) {
+		sscanf_s(val.c_str(), "%16llx%n", &ret, &len);
+		if (len != val.length()) {
+			IniWarning("  WARNING: Hash parse error: %S=%s\n", key, val.c_str());
+		} else {
+			if (found)
+				*found = true;
+			LogInfo("  %S=%016llx\n", key, ret);
+		}
+	}
+
+	return ret;
+}
+
+static int GetIniHexString(const wchar_t *section, const wchar_t *key, int def, bool *found)
+{
+	std::string val;
+	int ret = def;
+	int len;
+
+	if (found)
+		*found = false;
+
+	if (GetIniString(section, key, NULL, &val)) {
+		sscanf_s(val.c_str(), "%x%n", &ret, &len);
+		if (len != val.length()) {
+			IniWarning("  WARNING: Hex string parse error: %S=%s\n", key, val.c_str());
+		} else {
+			if (found)
+				*found = true;
+			LogInfo("  %S=%x\n", key, ret);
+		}
 	}
 
 	return ret;
@@ -664,7 +710,7 @@ static void RegisterPresetKeyBindings()
 
 		type = KeyOverrideType::ACTIVATE;
 
-		if (GetIniString(id, L"type", 0, buf, MAX_PATH)) {
+		if (GetIniStringAndLog(id, L"type", 0, buf, MAX_PATH)) {
 			// XXX: hold & toggle types will restore the previous
 			// settings on release - there's possibly also another
 			// use case for setting a specific profile instead.
@@ -672,9 +718,6 @@ static void RegisterPresetKeyBindings()
 				(KeyOverrideTypeNames, buf, KeyOverrideType::INVALID);
 			if (type == KeyOverrideType::INVALID) {
 				IniWarning("  WARNING: UNKNOWN KEY BINDING TYPE %S\n", buf);
-			}
-			else {
-				LogInfoW(L"  type=%s\n", buf);
 			}
 		}
 
@@ -747,31 +790,26 @@ static void ParseResourceSections()
 		custom_resource->max_copies_per_frame =
 			GetIniInt(i->first.c_str(), L"max_copies_per_frame", 0, NULL);
 
-		if (GetIniString(i->first.c_str(), L"filename", 0, setting, MAX_PATH)) {
-			LogInfoW(L"  filename=%s\n", setting);
+		if (GetIniStringAndLog(i->first.c_str(), L"filename", 0, setting, MAX_PATH)) {
 			GetModuleFileName(0, path, MAX_PATH);
 			wcsrchr(path, L'\\')[1] = 0;
 			wcscat(path, setting);
 			custom_resource->filename = path;
 		}
 
-		if (GetIniString(i->first.c_str(), L"type", 0, setting, MAX_PATH)) {
+		if (GetIniStringAndLog(i->first.c_str(), L"type", 0, setting, MAX_PATH)) {
 			custom_resource->override_type = lookup_enum_val<const wchar_t *, CustomResourceType>
 				(CustomResourceTypeNames, setting, CustomResourceType::INVALID);
 			if (custom_resource->override_type == CustomResourceType::INVALID) {
 				IniWarning("  WARNING: Unknown type \"%S\"\n", setting);
-			} else {
-				LogInfo("  type=%S\n", setting);
 			}
 		}
 
-		if (GetIniString(i->first.c_str(), L"mode", 0, setting, MAX_PATH)) {
+		if (GetIniStringAndLog(i->first.c_str(), L"mode", 0, setting, MAX_PATH)) {
 			custom_resource->override_mode = lookup_enum_val<const wchar_t *, CustomResourceMode>
 				(CustomResourceModeNames, setting, CustomResourceMode::DEFAULT);
 			if (custom_resource->override_mode == CustomResourceMode::DEFAULT) {
 				IniWarning("  WARNING: Unknown mode \"%S\"\n", setting);
-			} else {
-				LogInfo("  mode=%S\n", setting);
 			}
 		}
 
@@ -931,7 +969,7 @@ static void ParseShaderOverrideSections()
 	const wchar_t *id;
 	ShaderOverride *override;
 	UINT64 hash;
-	bool duplicate, allow_duplicates;
+	bool duplicate, allow_duplicates, found;
 
 	// Lock entire routine. This can be re-inited live.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
@@ -947,12 +985,11 @@ static void ParseShaderOverrideSections()
 
 		LogInfo("[%S]\n", id);
 
-		if (!GetIniString(id, L"Hash", 0, setting, MAX_PATH)) {
+		hash = GetIniHash(id, L"Hash", 0, &found);
+		if (!found) {
 			IniWarning("  WARNING: [%S] missing Hash=\n", id);
 			continue;
 		}
-		swscanf_s(setting, L"%16llx", &hash);
-		LogInfo("  Hash=%016llx\n", hash);
 
 		duplicate = !!G->mShaderOverrideMap.count(hash);
 		override = &G->mShaderOverrideMap[hash];
@@ -983,27 +1020,21 @@ static void ParseShaderOverrideSections()
 		override->separation = GetIniFloat(id, L"Separation", override->separation, NULL);
 		override->convergence = GetIniFloat(id, L"Convergence", override->convergence, NULL);
 
-		if (GetIniString(id, L"depth_filter", 0, setting, MAX_PATH)) {
+		if (GetIniStringAndLog(id, L"depth_filter", 0, setting, MAX_PATH)) {
 			override->depth_filter = lookup_enum_val<wchar_t *, DepthBufferFilter>
 				(DepthBufferFilterNames, setting, DepthBufferFilter::INVALID);
 			if (override->depth_filter == DepthBufferFilter::INVALID) {
 				IniWarning("  WARNING: Unknown depth_filter \"%S\"\n", setting);
 				override->depth_filter = DepthBufferFilter::NONE;
 			}
-			else {
-				LogInfoW(L"  depth_filter=%s\n", setting);
-			}
 		}
 
 		// Simple partner shader filtering. Deprecated - more advanced
 		// filtering can be achieved by setting an ini param in the
 		// partner's [ShaderOverride] section.
-		if (GetIniString(id, L"partner", 0, setting, MAX_PATH)) {
-			swscanf_s(setting, L"%16llx", &override->partner_hash);
-			LogInfo("  partner=%016llx\n", override->partner_hash);
-		}
+		override->partner_hash = GetIniHash(id, L"partner", 0, NULL);
 
-		if (GetIniString(id, L"Iteration", 0, setting, MAX_PATH))
+		if (GetIniStringAndLog(id, L"Iteration", 0, setting, MAX_PATH))
 		{
 			// XXX: This differs from the TextureOverride
 			// iterations, in that there can only be one iteration
@@ -1012,20 +1043,17 @@ static void ParseShaderOverrideSections()
 			override->iterations.clear();
 			override->iterations.push_back(0);
 			swscanf_s(setting, L"%d", &iteration);
-			LogInfo("  Iteration=%d\n", iteration);
 			override->iterations.push_back(iteration);
 		}
 
-		if (GetIniString(id, L"analyse_options", 0, setting, MAX_PATH)) {
-			LogInfoW(L"  analyse_options=%s\n", setting);
+		if (GetIniStringAndLog(id, L"analyse_options", 0, setting, MAX_PATH)) {
 			override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
 				(FrameAnalysisOptionNames, setting, NULL);
 		}
 
-		if (GetIniString(id, L"model", 0, setting, MAX_PATH)) {
+		if (GetIniStringAndLog(id, L"model", 0, setting, MAX_PATH)) {
 			wcstombs(override->model, setting, ARRAYSIZE(override->model));
 			override->model[ARRAYSIZE(override->model) - 1] = '\0';
-			LogInfo("  model=%s\n", override->model);
 		}
 
 		override->disable_scissor = GetIniInt(id, L"disable_scissor", override->disable_scissor, NULL);
@@ -1303,6 +1331,7 @@ static void ParseTextureOverrideSections()
 	const wchar_t *id;
 	TextureOverride *override;
 	uint32_t hash;
+	bool found;
 
 	// Lock entire routine, this can be re-inited.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
@@ -1320,13 +1349,11 @@ static void ParseTextureOverrideSections()
 
 		LogInfo("[%S]\n", id);
 
-		if (!GetIniString(id, L"Hash", 0, setting, MAX_PATH)) {
+		hash = (uint32_t)GetIniHash(id, L"Hash", 0, &found);
+		if (!found) {
 			IniWarning("  WARNING: [%S] missing Hash=\n", id);
 			continue;
 		}
-
-		swscanf_s(setting, L"%8lx", &hash);
-		LogInfo("  Hash=%08lx\n", hash);
 
 		if (G->mTextureOverrideMap.count(hash)) {
 			IniWarning("  WARNING: Duplicate TextureOverride hash: %08lx\n", hash);
@@ -1358,8 +1385,7 @@ static void ParseTextureOverrideSections()
 			}
 		}
 
-		if (GetIniString(id, L"analyse_options", 0, setting, MAX_PATH)) {
-			LogInfoW(L"  analyse_options=%s\n", setting);
+		if (GetIniStringAndLog(id, L"analyse_options", 0, setting, MAX_PATH)) {
 			override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
 				(FrameAnalysisOptionNames, setting, NULL);
 		}
@@ -1421,7 +1447,6 @@ static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D11_BLEND_OP *op, D3D11_B
 		IniWarning("  WARNING: Unrecognised %S=%S\n", key, val);
 		return;
 	}
-	LogInfo("  %S=%S\n", key, val);
 
 	try {
 		*op = (D3D11_BLEND_OP)ParseEnum(op_buf, L"D3D11_BLEND_OP_", BlendOPs, ARRAYSIZE(BlendOPs), 1);
@@ -1450,17 +1475,16 @@ static bool ParseBlendRenderTarget(
 	wchar_t setting[MAX_PATH];
 	bool override = false;
 	wchar_t key[32];
-	int ival;
+	bool found;
 
 	wcscpy(key, L"blend");
 	if (index >= 0)
 		swprintf_s(key, ARRAYSIZE(key), L"blend[%i]", index);
-	if (GetIniString(section, key, 0, setting, MAX_PATH)) {
+	if (GetIniStringAndLog(section, key, 0, setting, MAX_PATH)) {
 		override = true;
 
 		// Special value to disable blending:
 		if (!_wcsicmp(setting, L"disable")) {
-			LogInfo("  %S=disable\n", key);
 			desc->BlendEnable = false;
 			mask->BlendEnable = 0;
 			return true;
@@ -1478,7 +1502,7 @@ static bool ParseBlendRenderTarget(
 	wcscpy(key, L"alpha");
 	if (index >= 0)
 		swprintf_s(key, ARRAYSIZE(key), L"alpha[%i]", index);
-	if (GetIniString(section, key, 0, setting, MAX_PATH)) {
+	if (GetIniStringAndLog(section, key, 0, setting, MAX_PATH)) {
 		override = true;
 		ParseBlendOp(key, setting,
 				&desc->BlendOpAlpha,
@@ -1492,12 +1516,10 @@ static bool ParseBlendRenderTarget(
 	wcscpy(key, L"mask");
 	if (index >= 0)
 		swprintf_s(key, ARRAYSIZE(key), L"mask[%i]", index);
-	if (GetIniString(section, key, 0, setting, MAX_PATH)) {
+	desc->RenderTargetWriteMask = GetIniHexString(section, key, D3D11_COLOR_WRITE_ENABLE_ALL, &found);
+	if (found) {
 		override = true;
-		swscanf_s(setting, L"%x", &ival); // No suitable format string w/o overflow?
-		desc->RenderTargetWriteMask = ival; // Use an intermediate to be safe
 		mask->RenderTargetWriteMask = 0;
-		LogInfo("  %S=0x%x\n", key, desc->RenderTargetWriteMask);
 	}
 
 	if (override) {
@@ -1512,7 +1534,6 @@ static void ParseBlendState(CustomShader *shader, const wchar_t *section)
 {
 	D3D11_BLEND_DESC *desc = &shader->blend_desc;
 	D3D11_BLEND_DESC *mask = &shader->blend_mask;
-	wchar_t setting[MAX_PATH];
 	wchar_t key[32];
 	int i;
 	bool found;
@@ -1566,10 +1587,9 @@ static void ParseBlendState(CustomShader *shader, const wchar_t *section)
 		}
 	}
 
-	if (GetIniString(section, L"sample_mask", 0, setting, MAX_PATH)) {
+	shader->blend_sample_mask = GetIniHexString(section, L"sample_mask", 0xffffffff, &found);
+	if (found) {
 		shader->blend_override = 1;
-		swscanf_s(setting, L"%x", &shader->blend_sample_mask);
-		LogInfo("  sample_mask=0x%x\n", shader->blend_sample_mask);
 		shader->blend_sample_mask_merge_mask = 0;
 	}
 
@@ -1624,7 +1644,6 @@ static void ParseStencilOp(wchar_t *key, wchar_t *val, D3D11_DEPTH_STENCILOP_DES
 		IniWarning("  WARNING: Unrecognised %S=%S\n", key, val);
 		return;
 	}
-	LogInfo("  %S=%S\n", key, val);
 
 	try {
 		desc->StencilFunc = (D3D11_COMPARISON_FUNC)ParseEnum(func_buf, L"D3D11_COMPARISON_", ComparisonFuncs, ARRAYSIZE(ComparisonFuncs), 1);
@@ -1657,7 +1676,6 @@ static void ParseDepthStencilState(CustomShader *shader, const wchar_t *section)
 	D3D11_DEPTH_STENCIL_DESC *mask = &shader->depth_stencil_mask;
 	wchar_t setting[MAX_PATH];
 	wchar_t key[32];
-	int ival;
 	bool found;
 
 	memset(desc, 0, sizeof(D3D11_DEPTH_STENCIL_DESC));
@@ -1699,29 +1717,25 @@ static void ParseDepthStencilState(CustomShader *shader, const wchar_t *section)
 		mask->StencilEnable = 0;
 	}
 
-	if (GetIniString(section, L"stencil_read_mask", 0, setting, MAX_PATH)) {
+	desc->StencilReadMask = GetIniHexString(section, L"stencil_read_mask", D3D11_DEFAULT_STENCIL_READ_MASK, &found);
+	if (found) {
 		shader->depth_stencil_override = 1;
-		swscanf_s(setting, L"%x", &ival); // No suitable format string w/o overflow?
-		desc->StencilReadMask = ival; // Use an intermediate to be safe
 		mask->StencilReadMask = 0;
-		LogInfo("  stencil_read_mask=0x%x\n", desc->StencilReadMask);
 	}
 
-	if (GetIniString(section, L"stencil_write_mask", 0, setting, MAX_PATH)) {
+	desc->StencilWriteMask = GetIniHexString(section, L"stencil_write_mask", D3D11_DEFAULT_STENCIL_WRITE_MASK, &found);
+	if (found) {
 		shader->depth_stencil_override = 1;
-		swscanf_s(setting, L"%x", &ival); // No suitable format string w/o overflow?
-		desc->StencilWriteMask = ival; // Use an intermediate to be safe
 		mask->StencilWriteMask = 0;
-		LogInfo("  stencil_write_mask=0x%x\n", desc->StencilWriteMask);
 	}
 
-	if (GetIniString(section, L"stencil_front", 0, setting, MAX_PATH)) {
+	if (GetIniStringAndLog(section, L"stencil_front", 0, setting, MAX_PATH)) {
 		shader->depth_stencil_override = 1;
 		ParseStencilOp(key, setting, &desc->FrontFace);
 		memset(&mask->FrontFace, 0, sizeof(D3D11_DEPTH_STENCILOP_DESC));
 	}
 
-	if (GetIniString(section, L"stencil_back", 0, setting, MAX_PATH)) {
+	if (GetIniStringAndLog(section, L"stencil_back", 0, setting, MAX_PATH)) {
 		shader->depth_stencil_override = 1;
 		ParseStencilOp(key, setting, &desc->BackFace);
 		memset(&mask->BackFace, 0, sizeof(D3D11_DEPTH_STENCILOP_DESC));
@@ -1894,7 +1908,7 @@ static void ParseTopology(CustomShader *shader, const wchar_t *section)
 
 	shader->topology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
 
-	if (!GetIniString(section, L"topology", 0, val, MAX_PATH))
+	if (!GetIniStringAndLog(section, L"topology", 0, val, MAX_PATH))
 		return;
 
 	prefix_len = wcslen(prefix);
@@ -1906,7 +1920,6 @@ static void ParseTopology(CustomShader *shader, const wchar_t *section)
 	for (i = 1; i < ARRAYSIZE(PrimitiveTopologies); i++) {
 		if (!_wcsicmp(ptr, PrimitiveTopologies[i].name)) {
 			shader->topology = (D3D11_PRIMITIVE_TOPOLOGY)PrimitiveTopologies[i].val;
-			LogInfo("  topology=%S\n", val);
 			return;
 		}
 
@@ -1939,7 +1952,7 @@ static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
 	desc->MinLOD = 0;
 	desc->MaxLOD = 1;
 
-	if (GetIniString(section, L"sampler", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(section, L"sampler", 0, setting, MAX_PATH))
 	{
 		if (!_wcsicmp(setting, L"null"))
 			return;
@@ -1948,7 +1961,6 @@ static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
 		{
 			desc->Filter = D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
 			shader->sampler_override = 1;
-			LogInfo("  sampler=point_filter\n");
 			return;
 		}
 
@@ -1956,7 +1968,6 @@ static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
 		{
 			desc->Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
 			shader->sampler_override = 1;
-			LogInfo("  sampler=linear_filter\n");
 			return;
 		}
 
@@ -1965,7 +1976,6 @@ static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
 			desc->Filter = D3D11_FILTER_COMPARISON_ANISOTROPIC;
 			desc->MaxAnisotropy = 16; // TODO: is 16 necessary or maybe it should be provided by the config ini?
 			shader->sampler_override = 1;
-			LogInfo("  sampler=anisotropic_filter\n");
 			return;
 		}
 
@@ -2251,12 +2261,9 @@ void LoadConfigFile()
 
 	// [System]
 	LogInfo("[System]\n");
-	GetIniString(L"System", L"proxy_d3d11", 0, G->CHAIN_DLL_PATH, MAX_PATH);
-	if (G->CHAIN_DLL_PATH[0])
-		LogInfoW(L"  proxy_d3d11=%s\n", G->CHAIN_DLL_PATH);
-	if (GetIniString(L"System", L"hook", 0, setting, MAX_PATH))
+	GetIniStringAndLog(L"System", L"proxy_d3d11", 0, G->CHAIN_DLL_PATH, MAX_PATH);
+	if (GetIniStringAndLog(L"System", L"hook", 0, setting, MAX_PATH))
 	{
-		LogInfoW(L"  hook=%s\n", setting);
 		G->enable_hooks = parse_enum_option_string<wchar_t *, EnableHooks>
 			(EnableHooksNames, setting, NULL);
 	}
@@ -2273,13 +2280,12 @@ void LoadConfigFile()
 	G->SCREEN_UPSCALING = GetIniInt(L"Device", L"upscaling", 0, NULL);
 	G->UPSCALE_MODE = GetIniInt(L"Device", L"upscale_mode", 0, NULL);
 
-	if (GetIniString(L"Device", L"filter_refresh_rate", 0, setting, MAX_PATH))
+	if (GetIniStringAndLog(L"Device", L"filter_refresh_rate", 0, setting, MAX_PATH))
 	{
 		swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
 			G->FILTER_REFRESH + 0, G->FILTER_REFRESH + 1, G->FILTER_REFRESH + 2, G->FILTER_REFRESH + 3, 
 			G->FILTER_REFRESH + 4, G->FILTER_REFRESH + 5, G->FILTER_REFRESH + 6, G->FILTER_REFRESH + 7, 
 			G->FILTER_REFRESH + 8, G->FILTER_REFRESH + 9);
-		LogInfoW(L"  filter_refresh_rate=%s\n", setting);
 	}
 
 	G->SCREEN_FULLSCREEN = GetIniInt(L"Device", L"full_screen", -1, NULL);
@@ -2287,13 +2293,12 @@ void LoadConfigFile()
 	G->gForceStereo = GetIniInt(L"Device", L"force_stereo", 0, NULL);
 	G->SCREEN_ALLOW_COMMANDS = GetIniBool(L"Device", L"allow_windowcommands", false, NULL);
 
-	if (GetIniString(L"Device", L"get_resolution_from", 0, setting, MAX_PATH)) {
+	if (GetIniStringAndLog(L"Device", L"get_resolution_from", 0, setting, MAX_PATH)) {
 		G->mResolutionInfo.from = lookup_enum_val<wchar_t *, GetResolutionFrom>
 			(GetResolutionFromNames, setting, GetResolutionFrom::INVALID);
 		if (G->mResolutionInfo.from == GetResolutionFrom::INVALID) {
 			IniWarning("  WARNING: Unknown get_resolution_from %S\n", setting);
-		} else
-			LogInfoW(L"  get_resolution_from=%s\n", setting);
+		}
 	} else
 		G->mResolutionInfo.from = GetResolutionFrom::INVALID;
 
@@ -2312,19 +2317,16 @@ void LoadConfigFile()
 	LogInfo("[Rendering]\n");
 
 	G->shader_hash_type = ShaderHashType::FNV;
-	if (GetIniString(L"Rendering", L"shader_hash", 0, setting, MAX_PATH)) {
+	if (GetIniStringAndLog(L"Rendering", L"shader_hash", 0, setting, MAX_PATH)) {
 		G->shader_hash_type = lookup_enum_val<wchar_t *, ShaderHashType>
 			(ShaderHashNames, setting, ShaderHashType::INVALID);
 		if (G->shader_hash_type == ShaderHashType::INVALID) {
 			IniWarning("  WARNING: Unknown shader_hash \"%S\"\n", setting);
 			G->shader_hash_type = ShaderHashType::FNV;
-		} else {
-			LogInfoW(L"  shader_hash=%s\n", setting);
 		}
 	}
 
-	GetIniString(L"Rendering", L"override_directory", 0, G->SHADER_PATH, MAX_PATH);
-	if (G->SHADER_PATH[0])
+	if (GetIniStringAndLog(L"Rendering", L"override_directory", 0, G->SHADER_PATH, MAX_PATH))
 	{
 		while (G->SHADER_PATH[wcslen(G->SHADER_PATH) - 1] == L' ')
 			G->SHADER_PATH[wcslen(G->SHADER_PATH) - 1] = 0;
@@ -2338,8 +2340,7 @@ void LoadConfigFile()
 		// Create directory?
 		CreateDirectory(G->SHADER_PATH, 0);
 	}
-	GetIniString(L"Rendering", L"cache_directory", 0, G->SHADER_CACHE_PATH, MAX_PATH);
-	if (G->SHADER_CACHE_PATH[0])
+	if (GetIniStringAndLog(L"Rendering", L"cache_directory", 0, G->SHADER_CACHE_PATH, MAX_PATH))
 	{
 		while (G->SHADER_CACHE_PATH[wcslen(G->SHADER_CACHE_PATH) - 1] == L' ')
 			G->SHADER_CACHE_PATH[wcslen(G->SHADER_CACHE_PATH) - 1] = 0;
@@ -2375,11 +2376,6 @@ void LoadConfigFile()
 		IniWarning("WARNING: ini_params=%i out of range\n", G->IniParamsReg);
 		G->IniParamsReg = -1;
 	}
-
-	if (G->SHADER_PATH[0])
-		LogInfoW(L"  override_directory=%s\n", G->SHADER_PATH);
-	if (G->SHADER_CACHE_PATH[0])
-		LogInfoW(L"  cache_directory=%s\n", G->SHADER_CACHE_PATH);
 
 
 	// Automatic section
@@ -2477,13 +2473,12 @@ void LoadConfigFile()
 	G->hunting = GetIniInt(L"Hunting", L"hunting", 0, NULL);
 
 	G->marking_mode = MARKING_MODE_SKIP;
-	if (GetIniString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH)) {
+	if (GetIniStringAndLog(L"Hunting", L"marking_mode", 0, setting, MAX_PATH)) {
 		if (!_wcsicmp(setting, L"skip")) G->marking_mode = MARKING_MODE_SKIP;
 		if (!_wcsicmp(setting, L"mono")) G->marking_mode = MARKING_MODE_MONO;
 		if (!_wcsicmp(setting, L"original")) G->marking_mode = MARKING_MODE_ORIGINAL;
 		if (!_wcsicmp(setting, L"zero")) G->marking_mode = MARKING_MODE_ZERO;
 		if (!_wcsicmp(setting, L"pink")) G->marking_mode = MARKING_MODE_PINK;
-		LogInfoW(L"  marking_mode=%d\n", G->marking_mode);
 	}
 
 	G->mark_snapshot = GetIniInt(L"Hunting", L"mark_snapshot", 0, NULL);
@@ -2548,42 +2543,17 @@ void LoadConfigFile()
 	for (i = 0; i < INI_PARAMS_SIZE; i++) {
 		wchar_t buf[8];
 
-		G->iniParams[i].x = 0;
-		G->iniParams[i].y = 0;
-		G->iniParams[i].z = 0;
-		G->iniParams[i].w = 0;
 		StringCchPrintf(buf, 8, L"x%.0i", i);
-		if (GetIniString(L"Constants", buf, L"FLT_MAX", setting, MAX_PATH))
-		{
-			if (wcscmp(setting, L"FLT_MAX") != 0) {
-				G->iniParams[i].x = stof(setting);
-				LogInfoW(L"  %ls=%#.2g\n", buf, G->iniParams[i].x);
-			}
-		}
+		G->iniParams[i].x = GetIniFloat(L"Constants", buf, 0, NULL);
+
 		StringCchPrintf(buf, 8, L"y%.0i", i);
-		if (GetIniString(L"Constants", buf, L"FLT_MAX", setting, MAX_PATH))
-		{
-			if (wcscmp(setting, L"FLT_MAX") != 0) {
-				G->iniParams[i].y = stof(setting);
-				LogInfoW(L"  %ls=%#.2g\n", buf, G->iniParams[i].y);
-			}
-		}
+		G->iniParams[i].y = GetIniFloat(L"Constants", buf, 0, NULL);
+
 		StringCchPrintf(buf, 8, L"z%.0i", i);
-		if (GetIniString(L"Constants", buf, L"FLT_MAX", setting, MAX_PATH))
-		{
-			if (wcscmp(setting, L"FLT_MAX") != 0) {
-				G->iniParams[i].z = stof(setting);
-				LogInfoW(L"  %ls=%#.2g\n", buf, G->iniParams[i].z);
-			}
-		}
+		G->iniParams[i].z = GetIniFloat(L"Constants", buf, 0, NULL);
+
 		StringCchPrintf(buf, 8, L"w%.0i", i);
-		if (GetIniString(L"Constants", buf, L"FLT_MAX", setting, MAX_PATH))
-		{
-			if (wcscmp(setting, L"FLT_MAX") != 0) {
-				G->iniParams[i].w = stof(setting);
-				LogInfoW(L"  %ls=%#.2g\n", buf, G->iniParams[i].w);
-			}
-		}
+		G->iniParams[i].w = GetIniFloat(L"Constants", buf, 0, NULL);
 	}
 
 	LogInfo("[Profile]\n");

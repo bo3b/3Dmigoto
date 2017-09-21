@@ -1526,8 +1526,7 @@ void RegisterHuntingKeyBindings()
 	// Let's also allow an easy toggle of hunting itself, for speed and playability.
 	RegisterIniKeyBinding(L"Hunting", L"toggle_hunting", ToggleHunting, NULL, noRepeat, NULL);
 
-	if (GetIniString(L"Hunting", L"repeat_rate", 0, buf, 16))
-		repeat = _wtoi(buf);
+	repeat = GetIniInt(L"Hunting", L"repeat_rate", repeat, NULL);
 
 	RegisterIniKeyBinding(L"Hunting", L"next_pixelshader", NextPixelShader, NULL, repeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"previous_pixelshader", PrevPixelShader, NULL, repeat, NULL);
@@ -1570,8 +1569,7 @@ void RegisterHuntingKeyBindings()
 	G->show_original_enabled = RegisterIniKeyBinding(L"Hunting", L"show_original", DisableFix, EnableFix, noRepeat, NULL);
 
 	RegisterIniKeyBinding(L"Hunting", L"analyse_frame", AnalyseFrame, AnalyseFrameStop, noRepeat, NULL);
-	if (GetIniString(L"Hunting", L"analyse_options", 0, buf, MAX_PATH)) {
-		LogInfoW(L"  analyse_options=%s\n", buf);
+	if (GetIniStringAndLog(L"Hunting", L"analyse_options", 0, buf, MAX_PATH)) {
 		G->def_analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
 			(FrameAnalysisOptionNames, buf, NULL);
 	} else
@@ -1580,13 +1578,8 @@ void RegisterHuntingKeyBindings()
 	// Quick hacks to see if DX11 features that we only have limited support for are responsible for anything important:
 	RegisterIniKeyBinding(L"Hunting", L"kill_deferred", DisableDeferred, EnableDeferred, noRepeat, NULL);
 
-	G->ENABLE_TUNE = GetIniInt(L"Hunting", L"tune_enable", 0, NULL) == 1;
-	if (G->ENABLE_TUNE)
-		LogInfo("  tune_enable=1\n");
-	if (GetIniString(L"Hunting", L"tune_step", 0, buf, MAX_PATH)) {
-		swscanf_s(buf, L"%f", &G->gTuneStep);
-		LogInfo("  tune_step=%f\n", G->gTuneStep);
-	}
+	G->ENABLE_TUNE = GetIniBool(L"Hunting", L"tune_enable", false, NULL);
+	G->gTuneStep = GetIniFloat(L"Hunting", L"tune_step", 1.0f, NULL);
 
 	for (i = 0; i < 4; i++) {
 		_snwprintf(buf, 16, L"tune%Ii_up", i + 1);
@@ -1595,9 +1588,4 @@ void RegisterHuntingKeyBindings()
 		_snwprintf(buf, 16, L"tune%Ii_down", i + 1);
 		RegisterIniKeyBinding(L"Hunting", buf, TuneDown, NULL, repeat, (void*)i);
 	}
-
-	LogInfoW(L"  repeat_rate=%d\n", repeat);
 }
-
-
-
