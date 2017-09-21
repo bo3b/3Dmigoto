@@ -33,8 +33,16 @@ private:
 		SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, 
 		void **zeroShader, wstring &headerLine, const char *overrideShaderModel);
 	bool NeedOriginalShader(UINT64 hash);
-	void KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11DeviceChild *pShader,
-		const void *pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage *pClassLinkage);
+	template <class ID3D11Shader,
+		 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
+				 __in const void *pShaderBytecode,
+				 __in SIZE_T BytecodeLength,
+				 __in_opt ID3D11ClassLinkage *pClassLinkage,
+				 __out_opt ID3D11Shader **ppShader)
+			 >
+	void KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11Shader *pShader,
+		const void *pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage *pClassLinkage,
+		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders);
 	HRESULT CreateStereoParamResources();
 	HRESULT CreateIniParamResources();
 	void CreatePinkHuntingResources();

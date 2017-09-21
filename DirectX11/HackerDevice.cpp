@@ -1259,9 +1259,21 @@ bool HackerDevice::NeedOriginalShader(UINT64 hash)
 // Keep the original shader around if it may be needed by a filter in a
 // [ShaderOverride] section, or if hunting is enabled and either the
 // marking_mode=original, or reload_config support is enabled
-void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11DeviceChild *pShader,
-	const void *pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage *pClassLinkage)
+template <class ID3D11Shader,
+	 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
+			 __in const void *pShaderBytecode,
+			 __in SIZE_T BytecodeLength,
+			 __in_opt ID3D11ClassLinkage *pClassLinkage,
+			 __out_opt ID3D11Shader **ppShader)
+	 >
+void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType,
+		ID3D11Shader *pShader,
+		const void *pShaderBytecode,
+		SIZE_T BytecodeLength,
+		ID3D11ClassLinkage *pClassLinkage,
+		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders)
 {
+	ID3D11Shader *originalShader;
 	HRESULT hr;
 
 	if (!NeedOriginalShader(hash))
@@ -1270,37 +1282,11 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11De
 	LogInfoW(L"    keeping original shader for filtering: %016llx-%ls\n", hash, shaderType);
 
 	EnterCriticalSection(&G->mCriticalSection);
-		if (!wcsncmp(shaderType, L"vs", 2)) {
-			ID3D11VertexShader *originalShader;
-			hr = mOrigDevice->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			if (SUCCEEDED(hr))
-				G->mOriginalVertexShaders[(ID3D11VertexShader*)pShader] = originalShader;
-		} else if (!wcsncmp(shaderType, L"ps", 2)) {
-			ID3D11PixelShader *originalShader;
-			hr = mOrigDevice->CreatePixelShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			if (SUCCEEDED(hr))
-				G->mOriginalPixelShaders[(ID3D11PixelShader*)pShader] = originalShader;
-		} else if (!wcsncmp(shaderType, L"cs", 2)) {
-			ID3D11ComputeShader *originalShader;
-			hr = mOrigDevice->CreateComputeShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			if (SUCCEEDED(hr))
-				G->mOriginalComputeShaders[(ID3D11ComputeShader*)pShader] = originalShader;
-		} else if (!wcsncmp(shaderType, L"gs", 2)) {
-			ID3D11GeometryShader *originalShader;
-			hr = mOrigDevice->CreateGeometryShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			if (SUCCEEDED(hr))
-				G->mOriginalGeometryShaders[(ID3D11GeometryShader*)pShader] = originalShader;
-		} else if (!wcsncmp(shaderType, L"hs", 2)) {
-			ID3D11HullShader *originalShader;
-			hr = mOrigDevice->CreateHullShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			if (SUCCEEDED(hr))
-				G->mOriginalHullShaders[(ID3D11HullShader*)pShader] = originalShader;
-		} else if (!wcsncmp(shaderType, L"ds", 2)) {
-			ID3D11DomainShader *originalShader;
-			hr = mOrigDevice->CreateDomainShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			if (SUCCEEDED(hr))
-				G->mOriginalDomainShaders[(ID3D11DomainShader*)pShader] = originalShader;
-		}
+
+		hr = (mOrigDevice->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+		if (SUCCEEDED(hr))
+			(*originalShaders)[pShader] = originalShader;
+
 	LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -2058,7 +2044,8 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 						LeaveCriticalSection(&G->mCriticalSection);
 					}
 				}
-				KeepOriginalShader(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
+				KeepOriginalShader<ID3D11Shader, OrigCreateShader>
+					(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage, originalShaders);
 			}
 			else
 			{
