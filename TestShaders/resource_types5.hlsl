@@ -14,10 +14,18 @@ SamplerComparisonState samp_c : register(s1);
 
 RWTexture2D<float> rwfloat4_tex : register(u1);
 
+struct foo {
+	float foo;
+	uint bar;
+	snorm float baz;
+	int buz;
+};
+StructuredBuffer<struct foo> struct_buf : register(t111);
+
 void main(out float4 output : SV_Target0)
 {
 	output = 0;
-	uint uwidth, uheight, umips, udim;
+	uint uwidth, uheight, umips, udim, numStructs, stride;
 	float fwidth, fheight, fmips;
 
 	// Use all textures to ensure the compiler doesn't optimise them out,
@@ -25,7 +33,8 @@ void main(out float4 output : SV_Target0)
 
 	// bufinfo_indexable(...)(...):
 	buf_resource.GetDimensions(udim);
-	output += udim;
+	struct_buf.GetDimensions(numStructs, stride);
+	output += udim + numStructs + stride;
 
 	// gather4_indexable
 	output += float_tex.Gather(samp, float2(0.5, 0.3));
