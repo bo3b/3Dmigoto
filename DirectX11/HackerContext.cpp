@@ -2168,7 +2168,15 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL) {
 			LogDebug("  shader replaced by: %p\n", it->second.replacement);
 
-			// Todo: It might make sense to Release() the original shader, to recover memory on GPU
+			// It might make sense to Release() the original shader, to recover memory on GPU
+			//   -Bo3b
+			// No - we're already not incrementing the refcount since we don't bind it, and if we
+			// released the original it would mean the game has an invalid pointer and can crash.
+			// I wouldn't worry too much about GPU memory usage beyond leaks - the driver has a
+			// full virtual memory system and can swap rarely used resources out to system memory.
+			// If we did want to do better here we could return a wrapper object when the game
+			// creates the original shader, and manage original/replaced/reverted/etc from there.
+			//   -DSS
 			repl_shader = (ID3D11Shader*)it->second.replacement;
 		}
 

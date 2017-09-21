@@ -1287,6 +1287,11 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType,
 		if (SUCCEEDED(hr))
 			(*originalShaders)[pShader] = originalShader;
 
+		// Unlike the *other* code path in CreateShader that can also
+		// fill out this structure, we do *not* bump the refcount on
+		// the originalShader here since we are *only* storing it, not
+		// also returning it to the game.
+
 	LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -2017,6 +2022,17 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 				overrideShaderModel = override->second.model;
 		}
 	}
+
+	// This code block handles shaders replaced from ShaderFixes at load
+	// time with or without hunting (FIXME: This should be in a separate
+	// function to make the function clearer and this comment unecessary).
+	//
+	// When hunting is disabled we don't save off the original shader
+	// unless we determine that we need it for depth or partner filtering.
+	// These shaders are not candidates for the auto patch engine.
+	//
+	// When hunting is enabled we always save off the original shader
+	// because the answer to "do we need the original?" is "...maybe?"
 	if (hr != S_OK && ppShader && pShaderBytecode)
 	{
 		char *replaceShader = ReplaceShader(hash, shaderType, pShaderBytecode, BytecodeLength, replaceShaderSize,
@@ -2054,6 +2070,20 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 			delete replaceShader; replaceShader = 0;
 		}
 	}
+
+	// This code block handles shaders that were *NOT* replaced from
+	// ShaderFixes (FIXME: Put it in a separate function with a descriptive
+	// name):
+	//
+	// When hunting is disabled we don't save off the original shader
+	// unless we determine that we need it for for deferred analysis in the
+	// auto patch engine. These are not candidates for depth or partner
+	// filtering since that would require a ShaderOverride and a manually
+	// patched shader (ok, technically we could with an auto patched
+	// shader, but those are deprecated features - don't encourage them!)
+	//
+	// When hunting is enabled we always save off the original shader
+	// because the answer to "do we need the original?" is "...maybe?"
 	if (hr != S_OK)
 	{
 		if (ppShader)
@@ -2076,12 +2106,20 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 					// Also add the original shader to the original shaders
 					// map so that if it is later replaced marking_mode =
 					// original and depth buffer filtering will work:
-					if (originalShaders->count(*ppShader) == 0)
+					if (originalShaders->count(*ppShader) == 0) {
+						// Since we are both returning *and* storing this we need to
+						// bump the refcount to 2, otherwise it could get freed and we
+						// may get a crash later in RevertMissingShaders, especially
+						// easy to expose with the auto shader patching engine
+						// and reverting shaders:
+						(*ppShader)->AddRef();
 						(*originalShaders)[*ppShader] = *ppShader;
+					}
 				}
 			LeaveCriticalSection(&G->mCriticalSection);
 		}
 	}
+
 	if (hr == S_OK && ppShader && pShaderBytecode)
 	{
 		EnterCriticalSection(&G->mCriticalSection);
