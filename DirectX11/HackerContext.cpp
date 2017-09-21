@@ -1561,7 +1561,7 @@ void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresou
 
 	if (map_info->analyse_cb) {
 		DirectX::XMFLOAT4 *buf = (DirectX::XMFLOAT4*)map_info->map.pData;
-		if (buf[122].x == 1920.0f && buf[122].y == 1080.0f && buf[58].z == -buf[59].z) {
+		if (buf[122].x == (float)G->mResolutionInfo.width && buf[122].y == (float)G->mResolutionInfo.height && buf[58].z == -buf[59].z) {
 			// FIXME: We should still allow this to be released.
 			// Either use the private data, or release it if we
 			// notice it's refcount has dropped to one:
