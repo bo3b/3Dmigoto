@@ -2052,14 +2052,19 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 				{
 					// Hunting mode:  keep byteCode around for possible replacement or marking
 					ID3DBlob* blob;
-					hr = D3DCreateBlob(replaceShaderSize, &blob);
+					hr = D3DCreateBlob(BytecodeLength, &blob);
 					if (SUCCEEDED(hr)) {
-						memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
+						// We save the *original* shader bytecode, not the replaced shader,
+						// because we will use this in CopyToFixes and ShaderRegex in the
+						// event that the shader is deleted.
+						memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
 						EnterCriticalSection(&G->mCriticalSection);
 						RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, headerLine, false);
 						LeaveCriticalSection(&G->mCriticalSection);
 					}
 				}
+				// FIXME: We have some very similar data structures that we should merge together:
+				// mReloadedShaders and all the mOriginalXXXShader maps.
 				KeepOriginalShader<ID3D11Shader, OrigCreateShader>
 					(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage, originalShaders);
 			}
