@@ -316,6 +316,7 @@ static void log_nv_error(NvAPI_Status status)
 }
 
 static HMODULE nvDLL;
+static bool nvapi_failed = false;
 typedef NvAPI_Status *(__cdecl *nvapi_QueryInterfaceType)(unsigned int offset);
 static nvapi_QueryInterfaceType nvapi_QueryInterfacePtr;
 typedef NvAPI_Status(__cdecl *tNvAPI_DRS_SaveSettingsToFileEx)(NvDRSSessionHandle hSession, NvAPI_UnicodeString fileName);
@@ -323,6 +324,9 @@ static tNvAPI_DRS_SaveSettingsToFileEx _NvAPI_DRS_SaveSettingsToFileEx;
 
 static NvAPI_Status NvAPI_DRS_SaveSettingsToFileEx(NvDRSSessionHandle hSession, NvAPI_UnicodeString fileName)
 {
+	if (nvapi_failed)
+		return NVAPI_ERROR;
+
 	if (!nvDLL) {
 		nvDLL = GetModuleHandle(L"nvapi64.dll");
 		if (!nvDLL) {
@@ -330,6 +334,7 @@ static NvAPI_Status NvAPI_DRS_SaveSettingsToFileEx(NvDRSSessionHandle hSession, 
 		}
 		if (!nvDLL) {
 			LogInfo("Can't get nvapi handle\n");
+			nvapi_failed = true;
 			return NVAPI_ERROR;
 		}
 	}
@@ -338,6 +343,7 @@ static NvAPI_Status NvAPI_DRS_SaveSettingsToFileEx(NvDRSSessionHandle hSession, 
 		LogDebug("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
 		if (!nvapi_QueryInterfacePtr) {
 			LogInfo("Unable to call NvAPI_QueryInterface\n");
+			nvapi_failed = true;
 			return NVAPI_ERROR;
 		}
 	}
@@ -346,6 +352,7 @@ static NvAPI_Status NvAPI_DRS_SaveSettingsToFileEx(NvDRSSessionHandle hSession, 
 		LogDebug("NvAPI_DRS_SaveSettingsToFileEx @ 0x%p\n", _NvAPI_DRS_SaveSettingsToFileEx);
 		if (!_NvAPI_DRS_SaveSettingsToFileEx) {
 			LogInfo("Unable to call NvAPI_DRS_SaveSettingsToFileEx\n");
+			nvapi_failed = true;
 			return NVAPI_ERROR;
 		}
 	}
