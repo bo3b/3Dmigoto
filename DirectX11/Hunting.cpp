@@ -801,10 +801,10 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 				G->mReloadedShaders[oldShader].replacement->Release();
 			G->mReloadedShaders[oldShader].replacement = replacement;
 
-			// New binary shader code, to replace the prior loaded shader byte code. 
-			// FIXME: This looks suspiciously like it might be the cause of our replaced shader issues
-			shaderCode->Release();
-			G->mReloadedShaders[oldShader].byteCode = pShaderBytecode;
+			// We do *not* replace the byteCode in the ReloadedShaders map,
+			// since that is used in future CopyToFixes and ShaderRegex which
+			// needs the original bytecode - this was the cause of our duplicate
+			// StereoParams bug.
 
 			// Any shaders that we load from disk are no longer
 			// candidates for auto patching:
