@@ -247,6 +247,10 @@ static void AppendShaderText(wchar_t *fullLine, wchar_t *type, int pos, size_t s
 static void CreateShaderCountString(wchar_t *counts)
 {
 	wcscpy_s(counts, maxstring, L"");
+	// The order here more or less follows how important these are for
+	// shaderhacking. VS and PS are the absolute most important, CS is
+	// pretty important, GS and DS show up from time to time and HS is not
+	// important at all since we have never needed to fix one.
 	AppendShaderText(counts, L"VS", G->mSelectedVertexShaderPos, G->mVisitedVertexShaders.size());
 	AppendShaderText(counts, L"PS", G->mSelectedPixelShaderPos, G->mVisitedPixelShaders.size());
 	AppendShaderText(counts, L"CS", G->mSelectedComputeShaderPos, G->mVisitedComputeShaders.size());
@@ -269,7 +273,7 @@ static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 			if ((loaded.second.hash == selectedShader) && !loaded.second.infoText.empty())
 			{
 				// Skip past first two characters, which will always be //
-				wcscpy_s(info, maxstring, loaded.second.infoText.c_str() + 2);
+				wcscat_s(info, maxstring, loaded.second.infoText.c_str() + 2);
 				return true;
 			}
 		}
@@ -278,27 +282,44 @@ static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 }
 
 
-// This is for a line of text as info about the currently selected shader.  The line is 
-// pulled out of the header of the HLSL text file, and can be anything.
-// Since there can be multiple shaders selected, VS and PS and HS for example,
-// we'll exit once any string is found, rather than show multiple lines.
+// This is for a line of text as info about the currently selected shader.
+// The line is pulled out of the header of the HLSL text file, and can be
+// anything. Since there can be multiple shaders selected, VS and PS and HS for
+// example, we'll show one line for each, but only those that are present
+// in ShaderFixes and have something other than a blank line at the top.
 
-static void CreateShaderInfoString(wchar_t *info)
+void Overlay::DrawShaderInfoLine(wchar_t *type, UINT64 selectedShader, int *y)
 {
-	if (FindInfoText(info, G->mSelectedVertexShader))
-		return;
-	if (FindInfoText(info, G->mSelectedPixelShader))
-		return;
-	if (FindInfoText(info, G->mSelectedComputeShader))
-		return;
-	if (FindInfoText(info, G->mSelectedGeometryShader))
-		return;
-	if (FindInfoText(info, G->mSelectedDomainShader))
-		return;
-	if (FindInfoText(info, G->mSelectedHullShader))
+	wchar_t osdString[maxstring];
+	Vector2 strSize;
+	Vector2 textPosition;
+
+	wcscpy_s(osdString, maxstring, type);
+
+	if (!FindInfoText(osdString, selectedShader))
 		return;
 
-	wcscpy_s(info, maxstring, L"");
+	strSize = mFont->MeasureString(osdString);
+	textPosition = Vector2(max(float(mResolution.x - strSize.x) / 2, 0), 10 + ((*y)++ * strSize.y));
+	mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+}
+
+void Overlay::DrawShaderInfoLines()
+{
+	int y = 1;
+
+	// Order is the same as the pipeline... Not quite the same as the count
+	// summary line, which is sorted by "the order in which we added them"
+	// (which to be fair, is pretty much their order of importance for our
+	// purposes). Since these only show up while hunting, it is better to
+	// have them reflect the actual order that they are run in. The summary
+	// line can stay in order of importance since it is always shown.
+	DrawShaderInfoLine(L"VS:", G->mSelectedVertexShader, &y);
+	DrawShaderInfoLine(L"HS:", G->mSelectedHullShader, &y);
+	DrawShaderInfoLine(L"DS:", G->mSelectedDomainShader, &y);
+	DrawShaderInfoLine(L"GS:", G->mSelectedGeometryShader, &y);
+	DrawShaderInfoLine(L"PS:", G->mSelectedPixelShader, &y);
+	DrawShaderInfoLine(L"CS:", G->mSelectedComputeShader, &y);
 }
 
 
@@ -362,10 +383,7 @@ void Overlay::DrawOverlay(void)
 			textPosition = Vector2(float(mResolution.x - strSize.x) / 2, 10);
 			mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 
-			CreateShaderInfoString(osdString);
-			strSize = mFont->MeasureString(osdString);
-			textPosition = Vector2(float(mResolution.x - strSize.x) / 2, 10 + strSize.y);
-			mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+			DrawShaderInfoLines();
 
 			// Bottom of screen
 			CreateStereoInfoString(mHackerDevice->mStereoHandle, osdString);

@@ -79,7 +79,8 @@ private:
 	void SaveState();
 	void RestoreState();
 	HRESULT InitDrawState();
-
+	void DrawShaderInfoLine(wchar_t *type, UINT64 selectedShader, int *y);
+	void DrawShaderInfoLines();
 
 public:
 	Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapChain *pSwapChain);
