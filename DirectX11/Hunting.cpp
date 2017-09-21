@@ -1588,4 +1588,6 @@ void RegisterHuntingKeyBindings()
 		_snwprintf(buf, 16, L"tune%Ii_down", i + 1);
 		RegisterIniKeyBinding(L"Hunting", buf, TuneDown, NULL, repeat, (void*)i);
 	}
+
+	G->verbose_overlay = GetIniBool(L"Hunting", L"verbose_overlay", false, NULL);
 }

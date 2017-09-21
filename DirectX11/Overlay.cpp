@@ -266,16 +266,13 @@ static void CreateShaderCountString(wchar_t *counts)
 
 static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 {
-	if (selectedShader != -1)
+	for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> loaded in G->mReloadedShaders)
 	{
-		for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> loaded in G->mReloadedShaders)
+		if ((loaded.second.hash == selectedShader) && !loaded.second.infoText.empty())
 		{
-			if ((loaded.second.hash == selectedShader) && !loaded.second.infoText.empty())
-			{
-				// Skip past first two characters, which will always be //
-				wcscat_s(info, maxstring, loaded.second.infoText.c_str() + 2);
-				return true;
-			}
+			// Skip past first two characters, which will always be //
+			wcscat_s(info, maxstring, loaded.second.infoText.c_str() + 2);
+			return true;
 		}
 	}
 	return false;
@@ -288,19 +285,30 @@ static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 // example, we'll show one line for each, but only those that are present
 // in ShaderFixes and have something other than a blank line at the top.
 
-void Overlay::DrawShaderInfoLine(wchar_t *type, UINT64 selectedShader, int *y)
+void Overlay::DrawShaderInfoLine(char type, UINT64 selectedShader, int *y)
 {
 	wchar_t osdString[maxstring];
 	Vector2 strSize;
 	Vector2 textPosition;
+	float x = 0;
 
-	wcscpy_s(osdString, maxstring, type);
+	if (selectedShader == -1)
+		return;
 
-	if (!FindInfoText(osdString, selectedShader))
+	if (G->verbose_overlay)
+		swprintf_s(osdString, maxstring, L"%cS %016llx:", type, selectedShader);
+	else
+		swprintf_s(osdString, maxstring, L"%cS:", type);
+
+	if (!FindInfoText(osdString, selectedShader) && !G->verbose_overlay)
 		return;
 
 	strSize = mFont->MeasureString(osdString);
-	textPosition = Vector2(max(float(mResolution.x - strSize.x) / 2, 0), 10 + ((*y)++ * strSize.y));
+
+	if (!G->verbose_overlay)
+		x = max(float(mResolution.x - strSize.x) / 2, 0);
+
+	textPosition = Vector2(x, 10 + ((*y)++ * strSize.y));
 	mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 }
 
@@ -314,12 +322,12 @@ void Overlay::DrawShaderInfoLines()
 	// purposes). Since these only show up while hunting, it is better to
 	// have them reflect the actual order that they are run in. The summary
 	// line can stay in order of importance since it is always shown.
-	DrawShaderInfoLine(L"VS:", G->mSelectedVertexShader, &y);
-	DrawShaderInfoLine(L"HS:", G->mSelectedHullShader, &y);
-	DrawShaderInfoLine(L"DS:", G->mSelectedDomainShader, &y);
-	DrawShaderInfoLine(L"GS:", G->mSelectedGeometryShader, &y);
-	DrawShaderInfoLine(L"PS:", G->mSelectedPixelShader, &y);
-	DrawShaderInfoLine(L"CS:", G->mSelectedComputeShader, &y);
+	DrawShaderInfoLine('V', G->mSelectedVertexShader, &y);
+	DrawShaderInfoLine('H', G->mSelectedHullShader, &y);
+	DrawShaderInfoLine('D', G->mSelectedDomainShader, &y);
+	DrawShaderInfoLine('G', G->mSelectedGeometryShader, &y);
+	DrawShaderInfoLine('P', G->mSelectedPixelShader, &y);
+	DrawShaderInfoLine('C', G->mSelectedComputeShader, &y);
 }
 
 

@@ -79,7 +79,7 @@ private:
 	void SaveState();
 	void RestoreState();
 	HRESULT InitDrawState();
-	void DrawShaderInfoLine(wchar_t *type, UINT64 selectedShader, int *y);
+	void DrawShaderInfoLine(char type, UINT64 selectedShader, int *y);
 	void DrawShaderInfoLines();
 
 public:
