@@ -974,6 +974,7 @@ static void RevertMissingShaders()
 		replacement->AddRef();
 		i->second.replacement = replacement;
 		i->second.timeStamp = { 0 };
+		i->second.infoText.clear();
 
 		// Any shaders that we revert become candidates for auto
 		// patching. Elsewhere, when reloading the config we also clear
