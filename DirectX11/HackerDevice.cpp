@@ -13,6 +13,7 @@
 #include "HackerDXGI.h"
 
 #include <D3Dcompiler.h>
+#include <codecvt>
 
 #include "nvapi.h"
 #include "log.h"
@@ -672,7 +673,8 @@ void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 			// Any HLSL compiled shaders are reloading candidates, if moved to ShaderFixes
 			pShaderModel = shaderModel;
 			pTimeStamp = ftWrite;
-			pHeaderLine = std::wstring(srcData, strchr(srcData, '\n'));
+			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> utf8_to_utf16;
+			pHeaderLine = utf8_to_utf16.from_bytes(srcData, strchr(srcData, '\n'));
 
 			// Way too many obscure interractions in this function, using another
 			// temporary variable to not modify anything already here and reduce
@@ -799,7 +801,8 @@ void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *
 			// Any ASM shaders are reloading candidates, if moved to ShaderFixes
 			pShaderModel = shaderModel;
 			pTimeStamp = ftWrite;
-			pHeaderLine = std::wstring(asmTextBytes.data(), strchr(asmTextBytes.data(), '\n'));
+			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> utf8_to_utf16;
+			pHeaderLine = utf8_to_utf16.from_bytes(asmTextBytes.data(), strchr(asmTextBytes.data(), '\n'));
 
 			vector<byte> byteCode(pBytecodeLength);
 			memcpy(byteCode.data(), pShaderBytecode, pBytecodeLength);

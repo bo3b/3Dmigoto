@@ -63,6 +63,7 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapC
 	// these will be used by DirectXTK to generate VertexShaders and PixelShaders
 	// to draw the text, and we don't want to intercept those.
 	mFont.reset(new DirectX::SpriteFont(pDevice->GetOrigDevice(), fontBlob, fontSize));
+	mFont->SetDefaultCharacter(L'?');
 	mSpriteBatch.reset(new DirectX::SpriteBatch(pContext->GetOrigContext()));
 }
 

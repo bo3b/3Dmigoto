@@ -2,6 +2,7 @@
 
 #include <string>
 #include <D3Dcompiler.h>
+#include <codecvt>
 
 #include "ScreenGrab.h"
 #include "wincodec.h"
@@ -636,7 +637,8 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 
 	// For success, let's add the first line of text from the file to the OriginalShaderInfo,
 	// so the ShaderHacker can edit the line and reload and have it live.
-	headerLine = std::wstring(srcData.data(), strchr(srcData.data(), '\n'));
+	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> utf8_to_utf16;
+	headerLine = utf8_to_utf16.from_bytes(srcData.data(), strchr(srcData.data(), '\n'));
 
 	// pCode on return == NULL for error cases, valid if made it this far.
 	*pCode = pByteCode;
