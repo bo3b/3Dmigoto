@@ -1015,16 +1015,18 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 		if (hFind != INVALID_HANDLE_VALUE)
 		{
 			do {
-				success = ReloadShader(G->SHADER_PATH, findFileData.cFileName, device);
-			} while (FindNextFile(hFind, &findFileData) && success);
+				success = ReloadShader(G->SHADER_PATH, findFileData.cFileName, device) && success;
+			} while (FindNextFile(hFind, &findFileData));
 			FindClose(hFind);
 		}
 
+		// Any shaders in the map not visited, we want to revert back
+		// to original. We do this even if a shader failed, because we
+		// should still revert other shaders.
+		RevertMissingShaders();
+
 		if (success)
 		{
-			// Any shaders in the map not visited, we want to revert back to original.
-			RevertMissingShaders();
-
 			BeepSuccess();		// High beep for success, to notify it's running fresh fixes.
 			LogInfo("> successfully reloaded shaders from ShaderFixes\n");
 		}
