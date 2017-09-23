@@ -6,6 +6,7 @@ FILE* failFile = NULL;
 static unordered_map<string, vector<DWORD>> codeBin;
 
 static DWORD strToDWORD(string s) {
+	// d3dcompiler_46 symbolic NANs (missing +QNAN and +IND?):
 	if (s == "-1.#IND0000")
 		return 0xFFC00000;
 	if (s == "1.#INF0000")
@@ -14,6 +15,23 @@ static DWORD strToDWORD(string s) {
 		return 0xFF800000;
 	if (s == "-1.#QNAN000")
 		return 0xFFC10000;
+
+	// FIXME: Write test case to verify and add variants for
+	// d3dcompiler_47, which use less zeroes:
+	// 1.#INF00
+	// -1.#INF00
+	// -1.#IND00
+	// 1.#QNAN0
+	// -1.#QNAN0
+	// There are some weird cases that might be bugs in the disassembler,
+	// like +IND becomes -IND and -IND becomes +QNAN. We should really
+	// allow these with no zeroes at all, but I'd like to verify a few
+	// more combinations first and see if those are used for the flags in
+	// the mantissa or similar that we might be missing. For now this isn't
+	// urgent because the precision fixup code will replace any mismatching
+	// NANs with hex strings which will reassemble just fine.
+	//  -DSS
+
 	if (s.substr(0, 2) == "0x") {
 		DWORD decimalValue;
 		sscanf_s(s.c_str(), "0x%x", &decimalValue);
@@ -43,6 +61,22 @@ static string convertF(DWORD original) {
 	sprintf_s(scientific, 80, "%.9E", fOriginal);
 
 	scientific_exp = strstr(scientific, "E");
+
+	if (!scientific_exp) {
+		// For safety, if we ever get called on NAN we will return the
+		// hex string. We could return a symbolic value for +/-INF, IND
+		// and QNAN, but we're not supposed to get called for these
+		// values. We did manage to get a crash here on the vs2015
+		// branch since the assembler didn't parse 1.#INF00 from
+		// d3dcompiler_47 correctly - it expected d3dcompiler_46's
+		// 1.#INF0000. We could concievably hit this case for any
+		// variants that strToDWORD() misses, along with a few rare
+		// cases that Microsoft's disassembler translates incorrectly
+		// (such as -IND, which it prints out as +QNAN).
+		sprintf_s(buf, 80, "0x%08x", original);
+		return string(buf);
+	}
+
 	exp = atoi(scientific_exp + 1);
 
 	switch (exp) {
