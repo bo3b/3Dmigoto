@@ -121,6 +121,7 @@ extern "C"
 }
 
 static HMODULE nvDLL = 0;
+static bool nvapi_load_failed = false;
 
 static bool	ForceNoNvAPI = 0;
 static bool NoStereoDisable = 0;
@@ -249,10 +250,13 @@ static void LoadConfigFile()
 	LogInfo("  surface_createmode=%d\n", gSurfaceCreateMode);
 }
 
-static void loadDll()
+static bool loadDll()
 {
 	if (nvDLL)
-		return;
+		return true;
+
+	if (nvapi_load_failed)
+		return false;
 
 	LoadConfigFile();
 
@@ -292,7 +296,8 @@ static void loadDll()
 			if (nvDLL == NULL)
 			{
 				LogInfoW(L"*** LoadLibrary of %ls failed. ***\n", libPath);
-				DoubleBeepExit();
+				nvapi_load_failed = true;
+				return false;
 			}
 		}
 	}
@@ -302,11 +307,15 @@ static void loadDll()
 	DllRegisterServerPtr = (DllRegisterServerType)GetProcAddress(nvDLL, "DllRegisterServer");
 	DllUnregisterServerPtr = (DllUnregisterServerType)GetProcAddress(nvDLL, "DllUnregisterServer");
 	nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
+
+	return true;
 }
 
 STDAPI DllCanUnloadNow(void)
 {
-	loadDll();
+	if (!loadDll())
+		return S_OK;
+
 	return (*DllCanUnloadNowPtr)();
 }
 STDAPI DllGetClassObject(
@@ -315,17 +324,23 @@ STDAPI DllGetClassObject(
 	__out  LPVOID *ppv
 	)
 {
-	loadDll();
+	if (!loadDll())
+		return CLASS_E_CLASSNOTAVAILABLE;
+
 	return (*DllGetClassObjectPtr)(rclsid, riid, ppv);
 }
 STDAPI DllRegisterServer(void)
 {
-	loadDll();
+	if (!loadDll())
+		return S_OK;
+
 	return (*DllRegisterServerPtr)();
 }
 STDAPI DllUnregisterServer(void)
 {
-	loadDll();
+	if (!loadDll())
+		return S_OK;
+
 	return (*DllUnregisterServerPtr)();
 }
 
@@ -797,7 +812,9 @@ static NvAPI_Status __cdecl EnableOverride(void)
 
 extern "C" NvAPI_Status * __cdecl nvapi_QueryInterface(unsigned int offset)
 {
-	loadDll();
+	if (!loadDll())
+		return NULL;
+
 	NvAPI_Status *ptr = (*nvapi_QueryInterfacePtr)(offset);
 	switch (offset)
 	{

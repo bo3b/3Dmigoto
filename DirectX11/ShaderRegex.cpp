@@ -380,7 +380,7 @@ void ShaderRegexGroup::link_command_lists(UINT64 shader_hash)
 	}
 }
 
-bool apply_shader_regex_groups(std::string *asm_text, std::string *shader_model, UINT64 hash)
+bool apply_shader_regex_groups(std::string *asm_text, std::string *shader_model, UINT64 hash, std::wstring *tagline)
 {
 	ShaderRegexGroups::iterator i;
 	ShaderRegexGroup *group;
@@ -409,6 +409,9 @@ bool apply_shader_regex_groups(std::string *asm_text, std::string *shader_model,
 
 		LogInfo("ShaderRegex: %s %016I64x matches [%S]\n", shader_model->c_str(), hash, group->ini_section.c_str());
 		patched = patched || patch;
+
+		if (patch && tagline)
+			tagline->append(std::wstring(L"[") + group->ini_section + std::wstring(L"]"));
 
 		group->link_command_lists(hash);
 	}

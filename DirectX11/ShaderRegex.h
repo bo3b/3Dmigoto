@@ -9,7 +9,7 @@
 
 #include <pcre2.h>
 
-bool apply_shader_regex_groups(std::string *asm_text, std::string *shader_model, UINT64 hash);
+bool apply_shader_regex_groups(std::string *asm_text, std::string *shader_model, UINT64 hash, std::wstring *tagline);
 
 typedef std::set<std::string> ShaderRegexTemps;
 typedef std::set<std::string> ShaderRegexModels;

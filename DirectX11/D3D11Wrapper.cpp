@@ -1007,19 +1007,53 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	return ret;
 }
 
-extern "C" NvAPI_Status __cdecl nvapi_QueryInterface(unsigned int offset);
+// We used to call nvapi_QueryInterface directly, however that puts nvapi.dll /
+// nvapi64.dll in our dependencies list and the Windows dynamic linker will
+// refuse to load us if that doesn't exist, which is a problem on AMD or Intel
+// hardware and a problem for some of our users who are interested in 3DMigoto
+// for reasons beyond 3D Vision modding. The way nvapi is supposed to work is
+// that we call functions in the nvapi *static* library and it will try to load
+// the dynamic library, and gracefully fail if it could not, but directly
+// calling nvapi_QueryInterface thwarts that because that call does not come
+// from the static library - it is how the static library calls into the
+// dynamic library.
+//
+// Instead we now load nvapi.dll at runtime in the same way that the static
+// library does, failing gracefully if we could not.
+
+static HMODULE nvDLL;
+static bool nvapi_failed = false;
+typedef NvAPI_Status *(__cdecl *nvapi_QueryInterfaceType)(unsigned int offset);
+static nvapi_QueryInterfaceType nvapi_QueryInterfacePtr;
 
 void NvAPIOverride()
 {
-	// One shot, override custom settings.
-	NvAPI_Status ret = nvapi_QueryInterface(0xb03bb03b);
-	if (ret != 0xeecc34ab)
-		LogInfo("  overriding NVAPI wrapper failed.\n");
+	if (nvapi_failed)
+		return;
 
-	//const StereoHandle id1 = (StereoHandle)0x77aa8ebc;
-	//float id2 = 1.23f;
-	//if (NvAPI_Stereo_GetConvergence(id1, &id2) != 0xeecc34ab)
-	//{
-	//	LogDebug("  overriding NVAPI wrapper failed.\n");
-	//}
+	if (!nvDLL) {
+		nvDLL = GetModuleHandle(L"nvapi64.dll");
+		if (!nvDLL) {
+			nvDLL = GetModuleHandle(L"nvapi.dll");
+		}
+		if (!nvDLL) {
+			LogInfo("Can't get nvapi handle\n");
+			nvapi_failed = true;
+			return;
+		}
+	}
+	if (!nvapi_QueryInterfacePtr) {
+		nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
+		LogDebug("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
+		if (!nvapi_QueryInterfacePtr) {
+			LogInfo("Unable to call NvAPI_QueryInterface\n");
+			nvapi_failed = true;
+			return;
+		}
+	}
+
+	// One shot, override custom settings.
+	intptr_t ret = (intptr_t)nvapi_QueryInterfacePtr(0xb03bb03b);
+	if ((ret & 0xffffffff) != 0xeecc34ab)
+		LogInfo("  overriding NVAPI wrapper failed.\n");
 }

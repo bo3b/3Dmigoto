@@ -13,6 +13,7 @@
 #include "HackerDXGI.h"
 
 #include <D3Dcompiler.h>
+#include <codecvt>
 
 #include "nvapi.h"
 #include "log.h"
@@ -672,7 +673,8 @@ void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 			// Any HLSL compiled shaders are reloading candidates, if moved to ShaderFixes
 			pShaderModel = shaderModel;
 			pTimeStamp = ftWrite;
-			pHeaderLine = std::wstring(srcData, strchr(srcData, '\n'));
+			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> utf8_to_utf16;
+			pHeaderLine = utf8_to_utf16.from_bytes(srcData, strchr(srcData, '\n'));
 
 			// Way too many obscure interractions in this function, using another
 			// temporary variable to not modify anything already here and reduce
@@ -799,7 +801,8 @@ void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *
 			// Any ASM shaders are reloading candidates, if moved to ShaderFixes
 			pShaderModel = shaderModel;
 			pTimeStamp = ftWrite;
-			pHeaderLine = std::wstring(asmTextBytes.data(), strchr(asmTextBytes.data(), '\n'));
+			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> utf8_to_utf16;
+			pHeaderLine = utf8_to_utf16.from_bytes(asmTextBytes.data(), strchr(asmTextBytes.data(), '\n'));
 
 			vector<byte> byteCode(pBytecodeLength);
 			memcpy(byteCode.data(), pShaderBytecode, pBytecodeLength);
@@ -1259,9 +1262,21 @@ bool HackerDevice::NeedOriginalShader(UINT64 hash)
 // Keep the original shader around if it may be needed by a filter in a
 // [ShaderOverride] section, or if hunting is enabled and either the
 // marking_mode=original, or reload_config support is enabled
-void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11DeviceChild *pShader,
-	const void *pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage *pClassLinkage)
+template <class ID3D11Shader,
+	 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
+			 __in const void *pShaderBytecode,
+			 __in SIZE_T BytecodeLength,
+			 __in_opt ID3D11ClassLinkage *pClassLinkage,
+			 __out_opt ID3D11Shader **ppShader)
+	 >
+void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType,
+		ID3D11Shader *pShader,
+		const void *pShaderBytecode,
+		SIZE_T BytecodeLength,
+		ID3D11ClassLinkage *pClassLinkage,
+		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders)
 {
+	ID3D11Shader *originalShader;
 	HRESULT hr;
 
 	if (!NeedOriginalShader(hash))
@@ -1270,37 +1285,16 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11De
 	LogInfoW(L"    keeping original shader for filtering: %016llx-%ls\n", hash, shaderType);
 
 	EnterCriticalSection(&G->mCriticalSection);
-		if (!wcsncmp(shaderType, L"vs", 2)) {
-			ID3D11VertexShader *originalShader;
-			hr = mOrigDevice->CreateVertexShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			if (SUCCEEDED(hr))
-				G->mOriginalVertexShaders[(ID3D11VertexShader*)pShader] = originalShader;
-		} else if (!wcsncmp(shaderType, L"ps", 2)) {
-			ID3D11PixelShader *originalShader;
-			hr = mOrigDevice->CreatePixelShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			if (SUCCEEDED(hr))
-				G->mOriginalPixelShaders[(ID3D11PixelShader*)pShader] = originalShader;
-		} else if (!wcsncmp(shaderType, L"cs", 2)) {
-			ID3D11ComputeShader *originalShader;
-			hr = mOrigDevice->CreateComputeShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			if (SUCCEEDED(hr))
-				G->mOriginalComputeShaders[(ID3D11ComputeShader*)pShader] = originalShader;
-		} else if (!wcsncmp(shaderType, L"gs", 2)) {
-			ID3D11GeometryShader *originalShader;
-			hr = mOrigDevice->CreateGeometryShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			if (SUCCEEDED(hr))
-				G->mOriginalGeometryShaders[(ID3D11GeometryShader*)pShader] = originalShader;
-		} else if (!wcsncmp(shaderType, L"hs", 2)) {
-			ID3D11HullShader *originalShader;
-			hr = mOrigDevice->CreateHullShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			if (SUCCEEDED(hr))
-				G->mOriginalHullShaders[(ID3D11HullShader*)pShader] = originalShader;
-		} else if (!wcsncmp(shaderType, L"ds", 2)) {
-			ID3D11DomainShader *originalShader;
-			hr = mOrigDevice->CreateDomainShader(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
-			if (SUCCEEDED(hr))
-				G->mOriginalDomainShaders[(ID3D11DomainShader*)pShader] = originalShader;
-		}
+
+		hr = (mOrigDevice->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+		if (SUCCEEDED(hr))
+			(*originalShaders)[pShader] = originalShader;
+
+		// Unlike the *other* code path in CreateShader that can also
+		// fill out this structure, we do *not* bump the refcount on
+		// the originalShader here since we are *only* storing it, not
+		// also returning it to the game.
+
 	LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -2031,6 +2025,17 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 				overrideShaderModel = override->second.model;
 		}
 	}
+
+	// This code block handles shaders replaced from ShaderFixes at load
+	// time with or without hunting (FIXME: This should be in a separate
+	// function to make the function clearer and this comment unecessary).
+	//
+	// When hunting is disabled we don't save off the original shader
+	// unless we determine that we need it for depth or partner filtering.
+	// These shaders are not candidates for the auto patch engine.
+	//
+	// When hunting is enabled we always save off the original shader
+	// because the answer to "do we need the original?" is "...maybe?"
 	if (hr != S_OK && ppShader && pShaderBytecode)
 	{
 		char *replaceShader = ReplaceShader(hash, shaderType, pShaderBytecode, BytecodeLength, replaceShaderSize,
@@ -2050,15 +2055,21 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 				{
 					// Hunting mode:  keep byteCode around for possible replacement or marking
 					ID3DBlob* blob;
-					hr = D3DCreateBlob(replaceShaderSize, &blob);
+					hr = D3DCreateBlob(BytecodeLength, &blob);
 					if (SUCCEEDED(hr)) {
-						memcpy(blob->GetBufferPointer(), replaceShader, replaceShaderSize);
+						// We save the *original* shader bytecode, not the replaced shader,
+						// because we will use this in CopyToFixes and ShaderRegex in the
+						// event that the shader is deleted.
+						memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
 						EnterCriticalSection(&G->mCriticalSection);
 						RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, headerLine, false);
 						LeaveCriticalSection(&G->mCriticalSection);
 					}
 				}
-				KeepOriginalShader(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
+				// FIXME: We have some very similar data structures that we should merge together:
+				// mReloadedShaders and all the mOriginalXXXShader maps.
+				KeepOriginalShader<ID3D11Shader, OrigCreateShader>
+					(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage, originalShaders);
 			}
 			else
 			{
@@ -2067,6 +2078,20 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 			delete replaceShader; replaceShader = 0;
 		}
 	}
+
+	// This code block handles shaders that were *NOT* replaced from
+	// ShaderFixes (FIXME: Put it in a separate function with a descriptive
+	// name):
+	//
+	// When hunting is disabled we don't save off the original shader
+	// unless we determine that we need it for for deferred analysis in the
+	// auto patch engine. These are not candidates for depth or partner
+	// filtering since that would require a ShaderOverride and a manually
+	// patched shader (ok, technically we could with an auto patched
+	// shader, but those are deprecated features - don't encourage them!)
+	//
+	// When hunting is enabled we always save off the original shader
+	// because the answer to "do we need the original?" is "...maybe?"
 	if (hr != S_OK)
 	{
 		if (ppShader)
@@ -2089,12 +2114,20 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 					// Also add the original shader to the original shaders
 					// map so that if it is later replaced marking_mode =
 					// original and depth buffer filtering will work:
-					if (originalShaders->count(*ppShader) == 0)
+					if (originalShaders->count(*ppShader) == 0) {
+						// Since we are both returning *and* storing this we need to
+						// bump the refcount to 2, otherwise it could get freed and we
+						// may get a crash later in RevertMissingShaders, especially
+						// easy to expose with the auto shader patching engine
+						// and reverting shaders:
+						(*ppShader)->AddRef();
 						(*originalShaders)[*ppShader] = *ppShader;
+					}
 				}
 			LeaveCriticalSection(&G->mCriticalSection);
 		}
 	}
+
 	if (hr == S_OK && ppShader && pShaderBytecode)
 	{
 		EnterCriticalSection(&G->mCriticalSection);

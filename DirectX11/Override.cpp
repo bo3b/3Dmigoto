@@ -48,73 +48,45 @@ void Override::ParseIniSection(LPCWSTR section)
 	wchar_t buf[MAX_PATH], param_name[8];
 	int i;
 
-	if (GetIniString(section, L"separation", 0, buf, MAX_PATH)) {
-		swscanf_s(buf, L"%f", &mOverrideSeparation);
-		LogInfo("  separation=%#.2f\n", mOverrideSeparation);
-	}
-
-	if (GetIniString(section, L"convergence", 0, buf, MAX_PATH)) {
-		swscanf_s(buf, L"%f", &mOverrideConvergence);
-		LogInfo("  convergence=%#.2f\n", mOverrideConvergence);
-	}
+	mOverrideSeparation = GetIniFloat(section, L"separation", FLT_MAX, NULL);
+	mOverrideConvergence = GetIniFloat(section, L"convergence", FLT_MAX, NULL);
 
 	for (i = 0; i < INI_PARAMS_SIZE; i++) {
 		StringCchPrintf(param_name, 8, L"x%.0i", i);
-		if (GetIniString(section, param_name, 0, buf, MAX_PATH)) {
-			swscanf_s(buf, L"%f", &mOverrideParams[i].x);
-			LogInfoW(L"  %ls=%#.2g\n", param_name, mOverrideParams[i].x);
-		}
+		mOverrideParams[i].x = GetIniFloat(section, param_name, 0, NULL);
 
 		StringCchPrintf(param_name, 8, L"y%.0i", i);
-		if (GetIniString(section, param_name, 0, buf, MAX_PATH)) {
-			swscanf_s(buf, L"%f", &mOverrideParams[i].y);
-			LogInfoW(L"  %ls=%#.2g\n", param_name, mOverrideParams[i].y);
-		}
+		mOverrideParams[i].y = GetIniFloat(section, param_name, 0, NULL);
 
 		StringCchPrintf(param_name, 8, L"z%.0i", i);
-		if (GetIniString(section, param_name, 0, buf, MAX_PATH)) {
-			swscanf_s(buf, L"%f", &mOverrideParams[i].z);
-			LogInfoW(L"  %ls=%#.2g\n", param_name, mOverrideParams[i].z);
-		}
+		mOverrideParams[i].z = GetIniFloat(section, param_name, 0, NULL);
 
 		StringCchPrintf(param_name, 8, L"w%.0i", i);
-		if (GetIniString(section, param_name, 0, buf, MAX_PATH)) {
-			swscanf_s(buf, L"%f", &mOverrideParams[i].w);
-			LogInfoW(L"  %ls=%#.2g\n", param_name, mOverrideParams[i].w);
-		}
+		mOverrideParams[i].w = GetIniFloat(section, param_name, 0, NULL);
 	}
 
 	transition = GetIniInt(section, L"transition", 0, NULL);
-	if (transition)
-		LogInfo("  transition=%ims\n", transition);
-
 	release_transition = GetIniInt(section, L"release_transition", 0, NULL);
-	if (release_transition)
-		LogInfo("  release_transition=%ims\n", release_transition);
 
-	if (GetIniString(section, L"transition_type", 0, buf, MAX_PATH)) {
+	if (GetIniStringAndLog(section, L"transition_type", 0, buf, MAX_PATH)) {
 		transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
 		if (transition_type == TransitionType::INVALID) {
 			LogInfoW(L"WARNING: Invalid transition_type=\"%s\"\n", buf);
 			transition_type = TransitionType::LINEAR;
 			BeepFailure2();
-		} else {
-			LogInfoW(L"  transition_type=%s\n", buf);
 		}
 	}
 
-	if (GetIniString(section, L"release_transition_type", 0, buf, MAX_PATH)) {
+	if (GetIniStringAndLog(section, L"release_transition_type", 0, buf, MAX_PATH)) {
 		release_transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
 		if (release_transition_type == TransitionType::INVALID) {
 			LogInfoW(L"WARNING: Invalid release_transition_type=\"%s\"\n", buf);
 			release_transition_type = TransitionType::LINEAR;
 			BeepFailure2();
-		} else {
-			LogInfoW(L"  release_transition_type=%s\n", buf);
 		}
 	}
 
-	if (GetIniString(section, L"condition", 0, buf, MAX_PATH)) {
+	if (GetIniStringAndLog(section, L"condition", 0, buf, MAX_PATH)) {
 		// For now these conditions are just an IniParam being
 		// non-zero. In the future we could implement more complicated
 		// conditionals, perhaps even all the way up to a full logic
@@ -127,7 +99,6 @@ void Override::ParseIniSection(LPCWSTR section)
 			BeepFailure2();
 		} else {
 			is_conditional = true;
-			LogInfoW(L"  condition=%s\n", buf);
 		}
 	}
 }
