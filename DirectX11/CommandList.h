@@ -451,12 +451,14 @@ public:
 	wchar_t shader_type;
 	unsigned slot;
 	CustomResource *custom_resource;
+	bool forbid_view_cache;
 
 	ResourceCopyTarget() :
 		type(ResourceCopyTargetType::INVALID),
 		shader_type(L'\0'),
 		slot(0),
-		custom_resource(NULL)
+		custom_resource(NULL),
+		forbid_view_cache(false)
 	{}
 
 	bool ParseTarget(const wchar_t *target, bool is_source);

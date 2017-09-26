@@ -2458,11 +2458,23 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source)
 	// they either won't exist or are read only I can't think of one.
 	if (is_source && !wcscmp(target, L"bb")) { // Back Buffer
 		type = ResourceCopyTargetType::SWAP_CHAIN;
+		// Holding a reference on the back buffer will prevent
+		// ResizeBuffers() from working, so forbid caching any views of
+		// the back buffer. Leaving it bound could also be a problem,
+		// but since this is usually only used from custom shader
+		// sections they will take care of unbinding it automatically:
+		forbid_view_cache = true;
 		return true;
 	}
 
 	if (is_source && !wcscmp(target, L"f_bb")) {
 		type = ResourceCopyTargetType::FAKE_SWAP_CHAIN;
+		// Holding a reference on the back buffer will prevent
+		// ResizeBuffers() from working, so forbid caching any views of
+		// the back buffer. Leaving it bound could also be a problem,
+		// but since this is usually only used from custom shader
+		// sections they will take care of unbinding it automatically:
+		forbid_view_cache = true;
 		return true;
 	}
 
@@ -4731,7 +4743,8 @@ void ResourceCopyOperation::run(CommandListState *state)
 
 out_release:
 
-	if (options & ResourceCopyOptions::NO_VIEW_CACHE && *pp_cached_view)
+	if ((options & ResourceCopyOptions::NO_VIEW_CACHE || src.forbid_view_cache)
+			&& *pp_cached_view)
 	{
 		(*pp_cached_view)->Release();
 		*pp_cached_view = NULL;
