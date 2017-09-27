@@ -810,17 +810,14 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 		return;
 	orig_info = &orig_info_i->second;
 
-	if (!orig_info->deferred_replacement_candidate)
-		return;
-
-	if (orig_info->deferred_replacement_processed_frame_no > G->deferred_processing_update_frame_no)
+	if (!orig_info->deferred_replacement_candidate || orig_info->deferred_replacement_processed)
 		return;
 
 	LogInfo("Performing deferred shader analysis on %S %016I64x...\n", shader_type, hash);
 
-	// Mark this one as valid up until at least the end of this frame so we
-	// don't check it again until config reload or we have newer intel:
-	orig_info->deferred_replacement_processed_frame_no = G->frame_no + 1;
+	// Remember that we have analysed this one so we don't check it
+	// again (until reload) regardless of whether we patch it or not:
+	orig_info->deferred_replacement_processed = true;
 
 	// TODO: Compare performance vs doing this in XXSetConstantBuffers
 	(mOrigContext->*GetConstantBuffers)(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, cbuffers);
@@ -1569,34 +1566,17 @@ void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresou
 				buf[122].x == buf[123].x && // Resolution X matches View X
 				buf[122].y == buf[123].y && // Resolution Y matches View Y
 				buf[58].z == -buf[59].z) {
+			// FIXME: We should still allow this to be released.
+			// Either use the private data, or release it if we
+			// notice it's refcount has dropped to one:
+			pResource->AddRef();
 
-			if (tagged_cbuffers.count(pResource) == 0) {
-				LogInfo("UE4 cb analysis identified cbuffer %p on frame %u. Details: %fx%f, %fx%f, %f %f, res: %dx%d\n",
-						pResource, G->frame_no, buf[122].x, buf[122].y, buf[123].x, buf[123].y, buf[58].z, buf[59].z,
-						G->mResolutionInfo.width, G->mResolutionInfo.height);
-
-				// FIXME: We should still allow this to be released.
-				// Either use the private data, or release it if we
-				// notice it's refcount has dropped to one:
-				pResource->AddRef();
-
-				tagged_cbuffers.insert(pResource);
-				G->deferred_processing_update_frame_no = G->frame_no;
-			}
+			tagged_cbuffers.insert(pResource);
 			// Run both pre and post command lists now.
 			// The reason for having a post command list is so that people can
 			// write 'ps-t100 = ResourceFoo; post ps-t100 = null' and have it work.
 			RunResourceCommandList(mHackerDevice, this, &G->xxx_command_list, pResource, false);
 			RunResourceCommandList(mHackerDevice, this, &G->post_xxx_command_list, pResource, true);
-		} else if (tagged_cbuffers.count(pResource) > 0) {
-			LogInfo("UE4 cb analysis no longer matched previous cbuffer %p on frame %u. details: %fx%f, %fx%f, %f %f, res: %dx%d\n",
-					pResource, G->frame_no, buf[122].x, buf[122].y, buf[123].x, buf[123].y, buf[58].z, buf[59].z,
-						G->mResolutionInfo.width, G->mResolutionInfo.height);
-
-			tagged_cbuffers.erase(pResource);
-			pResource->Release();
-
-			G->deferred_processing_update_frame_no = G->frame_no;
 		}
 	}
 

@@ -4659,7 +4659,7 @@ static void MarkAllShadersDeferredUnprocessed()
 		// which will be set in the shader reload routine for any
 		// shaders that have been removed from disk, and removed from
 		// any that are loaded from disk:
-		i->second.deferred_replacement_processed_frame_no = 0;
+		i->second.deferred_replacement_processed = false;
 	}
 }
 
