@@ -827,8 +827,8 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 		if (tagged_cbuffers.count(cbuffers[i])) {
 			patch_cbuffers[i] = true;
 			patch_cbs = true;
-			LogInfo("Tagged constant buffer used with %S %016I64x, remapping cb%d -> t%d\n",
-					shader_type, hash, i, i + 100);
+			LogInfo("Tagged constant buffer %p used with %S %016I64x, remapping cb%d -> t%d\n",
+					cbuffers[i], shader_type, hash, i, i + 100);
 		}
 	}
 
@@ -1566,17 +1566,38 @@ void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresou
 				buf[122].x == buf[123].x && // Resolution X matches View X
 				buf[122].y == buf[123].y && // Resolution Y matches View Y
 				buf[58].z == -buf[59].z) {
-			// FIXME: We should still allow this to be released.
-			// Either use the private data, or release it if we
-			// notice it's refcount has dropped to one:
-			pResource->AddRef();
 
-			tagged_cbuffers.insert(pResource);
+			if (tagged_cbuffers.count(pResource) == 0) {
+				LogInfo("UE4 cb analysis identified cbuffer %p on frame %u. Details: %fx%f, %fx%f, %f %f, res: %dx%d\n",
+						pResource, G->frame_no, buf[122].x, buf[122].y, buf[123].x, buf[123].y, buf[58].z, buf[59].z,
+						G->mResolutionInfo.width, G->mResolutionInfo.height);
+
+				// FIXME: We should still allow this to be released.
+				// Either use the private data, or release it if we
+				// notice it's refcount has dropped to one:
+				pResource->AddRef();
+				tagged_cbuffers.insert(pResource);
+			} else {
+				LogInfo("UE4 cb analysis confirmed previous cbuffer %p still matches on frame %u. Details: %fx%f, %fx%f, %f %f, res: %dx%d\n",
+						pResource, G->frame_no, buf[122].x, buf[122].y, buf[123].x, buf[123].y, buf[58].z, buf[59].z,
+						G->mResolutionInfo.width, G->mResolutionInfo.height);
+			}
 			// Run both pre and post command lists now.
 			// The reason for having a post command list is so that people can
 			// write 'ps-t100 = ResourceFoo; post ps-t100 = null' and have it work.
 			RunResourceCommandList(mHackerDevice, this, &G->xxx_command_list, pResource, false);
 			RunResourceCommandList(mHackerDevice, this, &G->post_xxx_command_list, pResource, true);
+		} else if (tagged_cbuffers.count(pResource) > 0) {
+			LogInfo("UE4 cb analysis no longer matched previous cbuffer %p on frame %u. details: %fx%f, %fx%f, %f %f, res: %dx%d\n",
+					pResource, G->frame_no, buf[122].x, buf[122].y, buf[123].x, buf[123].y, buf[58].z, buf[59].z,
+						G->mResolutionInfo.width, G->mResolutionInfo.height);
+
+			tagged_cbuffers.erase(pResource);
+			pResource->Release();
+		} else {
+			LogInfo("UE4 cb analysis rejected cbuffer %p on frame %u. details: %fx%f, %fx%f, %f %f, res: %dx%d\n",
+					pResource, G->frame_no, buf[122].x, buf[122].y, buf[123].x, buf[123].y, buf[58].z, buf[59].z,
+						G->mResolutionInfo.width, G->mResolutionInfo.height);
 		}
 	}
 
