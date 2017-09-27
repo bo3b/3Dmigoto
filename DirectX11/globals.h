@@ -84,7 +84,7 @@ struct OriginalShaderInfo
 	ID3D11DeviceChild* replacement;
 	bool found;
 	bool deferred_replacement_candidate;
-	unsigned deferred_replacement_processed_frame_no;
+	bool deferred_replacement_processed;
 	std::wstring infoText;
 };
 
@@ -392,7 +392,6 @@ struct Globals
 	CommandList xxx_command_list;
 	CommandList post_xxx_command_list;
 	unsigned frame_no;
-	unsigned deferred_processing_update_frame_no;
 	HWND hWnd; // To translate mouse coordinates to the window
 	bool hide_cursor;
 	bool cursor_upscaling_bypass;
@@ -521,7 +520,6 @@ struct Globals
 		IniParamsReg(120),
 
 		frame_no(0),
-		deferred_processing_update_frame_no(0),
 		hWnd(NULL),
 		hide_cursor(false),
 		cursor_upscaling_bypass(true),

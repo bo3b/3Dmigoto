@@ -500,7 +500,7 @@ static void RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring 
 	G->mReloadedShaders[ppShader].replacement = NULL;
 	G->mReloadedShaders[ppShader].infoText = text;
 	G->mReloadedShaders[ppShader].deferred_replacement_candidate = deferred_replacement_candidate;
-	G->mReloadedShaders[ppShader].deferred_replacement_processed_frame_no = 0;
+	G->mReloadedShaders[ppShader].deferred_replacement_processed = false;
 }
 
 
