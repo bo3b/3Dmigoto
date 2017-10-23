@@ -1367,7 +1367,7 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 	void *replace = NULL;
 	bool divertable = false, divert = false, track = false;
 	bool write = false, read = false, deny = false, analyse_cb = false;
-	size_t size = 0;
+	UINT size = 0;
 
 	if (FAILED(map_hr) || !pResource || !pMappedResource || !pMappedResource->pData)
 		return;
@@ -1421,8 +1421,11 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 			// consequences like uninitialised data:
 			divert = track = MapTrackResourceHashUpdate(pResource, Subresource);
 
-			if (dim == D3D11_RESOURCE_DIMENSION_BUFFER && buf_desc.BindFlags & D3D11_BIND_CONSTANT_BUFFER && size == 4096)
-				analyse_cb = divert = track = true;
+			if (dim == D3D11_RESOURCE_DIMENSION_BUFFER && buf_desc.BindFlags & D3D11_BIND_CONSTANT_BUFFER)
+			{
+				if (extension_dll_needs_cb(size))
+					analyse_cb = divert = track = true;
+			}
 
 			break;
 
