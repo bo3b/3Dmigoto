@@ -27,6 +27,7 @@
     <ClCompile Include="..\iid.cpp" />
     <ClCompile Include="..\util.cpp" />
     <ClCompile Include="profiling.cpp" />
+    <ClCompile Include="api.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -59,6 +60,7 @@
     <ClInclude Include="FrameAnalysis.h" />
     <ClInclude Include="HackerDXGI.h" />
     <ClInclude Include="profiling.h" />
+    <ClInclude Include="api.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />
