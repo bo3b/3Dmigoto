@@ -373,11 +373,11 @@ static void ParseIni(const wchar_t *ini)
 		// Strip preceding and trailing whitespace:
 		first = wline.find_first_not_of(L" \t");
 		last = wline.find_last_not_of(L" \t");
-		if (first != wline.npos)
-			wline = wline.substr(first, last - first + 1);
 
-		if (wline.empty())
+		if (first == wline.npos)
 			continue;
+
+		wline = wline.substr(first, last - first + 1);
 
 		// Comments are lines that start with a semicolon as the first
 		// non-whitespace character that we want to skip over (note
