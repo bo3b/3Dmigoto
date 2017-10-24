@@ -286,23 +286,30 @@ static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 // example, we'll show one line for each, but only those that are present
 // in ShaderFixes and have something other than a blank line at the top.
 
-void Overlay::DrawShaderInfoLine(char type, UINT64 selectedShader, int *y)
+void Overlay::DrawShaderInfoLine(char *type, UINT64 selectedShader, int *y, bool shader)
 {
 	wchar_t osdString[maxstring];
 	Vector2 strSize;
 	Vector2 textPosition;
 	float x = 0;
 
-	if (selectedShader == -1)
-		return;
+	if (shader) {
+		if (selectedShader == -1)
+			return;
 
-	if (G->verbose_overlay)
-		swprintf_s(osdString, maxstring, L"%cS %016llx:", type, selectedShader);
-	else
-		swprintf_s(osdString, maxstring, L"%cS:", type);
+		if (G->verbose_overlay)
+			swprintf_s(osdString, maxstring, L"%S %016llx:", type, selectedShader);
+		else
+			swprintf_s(osdString, maxstring, L"%S:", type);
 
-	if (!FindInfoText(osdString, selectedShader) && !G->verbose_overlay)
-		return;
+		if (!FindInfoText(osdString, selectedShader) && !G->verbose_overlay)
+			return;
+	} else {
+		if (selectedShader == 0xffffffff || !G->verbose_overlay)
+			return;
+
+		swprintf_s(osdString, maxstring, L"%S %08llx", type, selectedShader);
+	}
 
 	strSize = mFont->MeasureString(osdString);
 
@@ -323,12 +330,13 @@ void Overlay::DrawShaderInfoLines()
 	// purposes). Since these only show up while hunting, it is better to
 	// have them reflect the actual order that they are run in. The summary
 	// line can stay in order of importance since it is always shown.
-	DrawShaderInfoLine('V', G->mSelectedVertexShader, &y);
-	DrawShaderInfoLine('H', G->mSelectedHullShader, &y);
-	DrawShaderInfoLine('D', G->mSelectedDomainShader, &y);
-	DrawShaderInfoLine('G', G->mSelectedGeometryShader, &y);
-	DrawShaderInfoLine('P', G->mSelectedPixelShader, &y);
-	DrawShaderInfoLine('C', G->mSelectedComputeShader, &y);
+	DrawShaderInfoLine("IB", G->mSelectedIndexBuffer, &y, false);
+	DrawShaderInfoLine("VS", G->mSelectedVertexShader, &y, true);
+	DrawShaderInfoLine("HS", G->mSelectedHullShader, &y, true);
+	DrawShaderInfoLine("DS", G->mSelectedDomainShader, &y, true);
+	DrawShaderInfoLine("GS", G->mSelectedGeometryShader, &y, true);
+	DrawShaderInfoLine("PS", G->mSelectedPixelShader, &y, true);
+	DrawShaderInfoLine("CS", G->mSelectedComputeShader, &y, true);
 }
 
 

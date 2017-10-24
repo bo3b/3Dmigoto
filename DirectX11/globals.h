@@ -463,7 +463,7 @@ struct Globals
 		mSelectedPixelShaderPos(-1),
 		mSelectedVertexShader(-1),
 		mSelectedVertexShaderPos(-1),
-		mSelectedIndexBuffer(1),
+		mSelectedIndexBuffer(-1),
 		mSelectedIndexBufferPos(-1),
 		mSelectedComputeShader(-1),
 		mSelectedComputeShaderPos(-1),
