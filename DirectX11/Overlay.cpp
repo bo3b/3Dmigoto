@@ -337,6 +337,9 @@ void Overlay::DrawShaderInfoLines()
 	DrawShaderInfoLine("GS", G->mSelectedGeometryShader, &y, true);
 	DrawShaderInfoLine("PS", G->mSelectedPixelShader, &y, true);
 	DrawShaderInfoLine("CS", G->mSelectedComputeShader, &y, true);
+	// FIXME? This one is stored as a handle, not a hash:
+	if (G->mSelectedRenderTarget != (ID3D11Resource *)-1)
+		DrawShaderInfoLine("RT", GetOrigResourceHash(G->mSelectedRenderTarget), &y, false);
 }
 
 
