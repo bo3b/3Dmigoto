@@ -1472,14 +1472,6 @@ void TimeoutHuntingBuffers()
 	G->mVisitedHullShaders.clear();
 	G->mVisitedRenderTargets.clear();
 
-	// FIXME: Not sure this is the right place to clear these - I think
-	// they should be cleared every frame as they appear to be aimed at
-	// providing a single frame usage snapshot on mark:
-	G->mSelectedPixelShader_IndexBuffer.clear();
-	G->mSelectedVertexShader_IndexBuffer.clear();
-	G->mSelectedIndexBuffer_PixelShader.clear();
-	G->mSelectedIndexBuffer_VertexShader.clear();
-
 	// ToDo: iterations now work again, but this is still the wrong spot for this.
 	// I'm not sure what this does actually.  If we are clearing the iteration count,
 	// that would break anything coming from the d3dx.ini. If it's for hunting
@@ -1522,6 +1514,11 @@ static void DoneHunting(HackerDevice *device, void *private_data)
 	G->mSelectedRenderTarget = ((ID3D11Resource *)-1);
 	G->mSelectedIndexBuffer = -1;
 	G->mSelectedIndexBufferPos = -1;
+
+	G->mSelectedPixelShader_IndexBuffer.clear();
+	G->mSelectedVertexShader_IndexBuffer.clear();
+	G->mSelectedIndexBuffer_PixelShader.clear();
+	G->mSelectedIndexBuffer_VertexShader.clear();
 
 	LeaveCriticalSection(&G->mCriticalSection);
 }
