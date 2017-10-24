@@ -1169,6 +1169,11 @@ out:
 static void NextIndexBuffer(HackerDevice *device, void *private_data)
 {
 	HuntNext<uint32_t>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
+
+	EnterCriticalSection(&G->mCriticalSection);
+	G->mSelectedIndexBuffer_PixelShader.clear();
+	G->mSelectedIndexBuffer_VertexShader.clear();
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 static void NextPixelShader(HackerDevice *device, void *private_data)
 {
@@ -1242,6 +1247,11 @@ out:
 static void PrevIndexBuffer(HackerDevice *device, void *private_data)
 {
 	HuntPrev<uint32_t>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
+
+	EnterCriticalSection(&G->mCriticalSection);
+	G->mSelectedIndexBuffer_PixelShader.clear();
+	G->mSelectedIndexBuffer_VertexShader.clear();
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 static void PrevPixelShader(HackerDevice *device, void *private_data)
 {
