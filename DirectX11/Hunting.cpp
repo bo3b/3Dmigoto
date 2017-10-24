@@ -1178,10 +1178,18 @@ static void NextIndexBuffer(HackerDevice *device, void *private_data)
 static void NextPixelShader(HackerDevice *device, void *private_data)
 {
 	HuntNext<UINT64>("pixel shader", &G->mVisitedPixelShaders, &G->mSelectedPixelShader, &G->mSelectedPixelShaderPos);
+
+	EnterCriticalSection(&G->mCriticalSection);
+	G->mSelectedPixelShader_IndexBuffer.clear();
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 static void NextVertexShader(HackerDevice *device, void *private_data)
 {
 	HuntNext<UINT64>("vertex shader", &G->mVisitedVertexShaders, &G->mSelectedVertexShader, &G->mSelectedVertexShaderPos);
+
+	EnterCriticalSection(&G->mCriticalSection);
+	G->mSelectedVertexShader_IndexBuffer.clear();
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 static void NextComputeShader(HackerDevice *device, void *private_data)
 {
@@ -1256,10 +1264,18 @@ static void PrevIndexBuffer(HackerDevice *device, void *private_data)
 static void PrevPixelShader(HackerDevice *device, void *private_data)
 {
 	HuntPrev<UINT64>("pixel shader", &G->mVisitedPixelShaders, &G->mSelectedPixelShader, &G->mSelectedPixelShaderPos);
+
+	EnterCriticalSection(&G->mCriticalSection);
+	G->mSelectedPixelShader_IndexBuffer.clear();
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 static void PrevVertexShader(HackerDevice *device, void *private_data)
 {
 	HuntPrev<UINT64>("vertex shader", &G->mVisitedVertexShaders, &G->mSelectedVertexShader, &G->mSelectedVertexShaderPos);
+
+	EnterCriticalSection(&G->mCriticalSection);
+	G->mSelectedVertexShader_IndexBuffer.clear();
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 static void PrevComputeShader(HackerDevice *device, void *private_data)
 {
