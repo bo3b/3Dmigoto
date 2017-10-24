@@ -24,7 +24,6 @@
 // -----------------------------------------------------------------------------------------------
 
 GUID GUID_RasterizerStateDisableScissor = { 0x845434e2, 0x5474, 0x403b, { 0x81, 0x49, 0x5d, 0xa3, 0x68, 0x1c, 0xd8, 0x49 } };
-GUID GUID_BufferResourceHash =            { 0x845434e2, 0x5474, 0x403b, { 0x81, 0x49, 0x5d, 0xa3, 0x68, 0x1c, 0xd8, 0x4a } };
 
 HackerContext::HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 	: ID3D11DeviceContext()
@@ -2995,9 +2994,8 @@ STDMETHODIMP_(void) HackerContext::IASetIndexBuffer(THIS_
 
 	// Save the current index buffer hash for indexbufferfilter in ShaderOverride.
 	if (pIndexBuffer) {
-		UINT size = sizeof(uint32_t);
-		HRESULT hr = pIndexBuffer->GetPrivateData(GUID_BufferResourceHash, &size, &mCurrentIndexBuffer);
-		if (SUCCEEDED(hr)) {
+		mCurrentIndexBuffer = GetResourceHash(pIndexBuffer);
+		if (mCurrentIndexBuffer) {
 			LogDebug("  index buffer found: handle = %p, hash = %08lx\n", pIndexBuffer, mCurrentIndexBuffer);
 
 			// When hunting, save this as a visited index buffer to cycle through.

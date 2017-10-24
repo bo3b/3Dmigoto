@@ -8,7 +8,6 @@
 #include "DrawCallInfo.h"
 
 extern GUID GUID_RasterizerStateDisableScissor;
-extern GUID GUID_BufferResourceHash;
 
 struct DrawContext
 {

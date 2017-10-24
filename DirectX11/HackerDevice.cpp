@@ -1582,17 +1582,29 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	{
 		// Create hash from the raw buffer data if available, but also include
 		// the pDesc data as a unique fingerprint for a buffer.
-		uint32_t hash = 0;
+		uint32_t data_hash = 0, hash = 0;
 		if (pInitialData && pInitialData->pSysMem && pDesc)
-			hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->ByteWidth);
+			hash = data_hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->ByteWidth);
 		if (pDesc)
 			hash = crc32c_hw(hash, pDesc, sizeof(D3D11_BUFFER_DESC));
 
-		hr = (*ppBuffer)->SetPrivateData(GUID_BufferResourceHash, sizeof(uint32_t), &hash);
-		if (FAILED(hr))
-			LogInfo("    SetPrivateData failed result = %x for %p\n", hr, *ppBuffer);
-		else
-			LogDebug("    Buffer registered: handle = %p, hash = %08lx\n", *ppBuffer, hash);
+		EnterCriticalSection(&G->mCriticalSection);
+			G->mResources[*ppBuffer].hash = hash;
+			G->mResources[*ppBuffer].orig_hash = hash;
+
+			// If we ever need hash tracking for buffers we will
+			// need this, but I'd rather avoid it if we can get
+			// away without it given how often buffers get updated:
+			// G->mResources[*ppBuffer].data_hash = data_hash;
+			// if (pDesc)
+			// 	memcpy(&G->mResources[*ppBuffer].descBuf, pDesc, sizeof(D3D11_BUFFER_DESC));
+
+			// TODO: For stat collection and hash contamination tracking:
+			// if (G->hunting && pDesc) {
+			// 	G->mResourceInfo[hash] = *pDesc;
+			// 	G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+			// }
+		LeaveCriticalSection(&G->mCriticalSection);
 	}
 	return hr;
 }
