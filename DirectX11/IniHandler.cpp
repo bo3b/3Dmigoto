@@ -373,11 +373,11 @@ static void ParseIni(const wchar_t *ini)
 		// Strip preceding and trailing whitespace:
 		first = wline.find_first_not_of(L" \t");
 		last = wline.find_last_not_of(L" \t");
-		if (first != wline.npos)
-			wline = wline.substr(first, last - first + 1);
 
-		if (wline.empty())
+		if (first == wline.npos)
 			continue;
+
+		wline = wline.substr(first, last - first + 1);
 
 		// Comments are lines that start with a semicolon as the first
 		// non-whitespace character that we want to skip over (note
@@ -418,14 +418,16 @@ int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 
 	try {
 		wstring &val = ini_sections.at(section).kv_map.at(key);
-		if (wcscpy_s(ret, size, val.c_str())) {
+		// Note that we now use wcsncpy_s here with _TRUNCATE rather
+		// than wcscpy_s, because it turns out the later may just kill
+		// us immediately on overflow depending on the invalid
+		// parameter handler (refer to issue #84), and this way we more
+		// closely match the behaviour of GetPrivateProfileString.
+		if (wcsncpy_s(ret, size, val.c_str(), _TRUNCATE)) {
 			// Funky return code of GetPrivateProfileString Not
 			// sure if we depend on this - if we don't I'd like a
-			// nicer return code or to raise an exception. Note
-			// that wcscpy_s will have returned an empty string,
-			// while the original GetPrivateProfileString would
-			// have only truncated the string.
-			IniWarning("  WARNING: [%S]%S=%S too long\n",
+			// nicer return code or to raise an exception.
+			IniWarning("  WARNING: [%S] \"%S=%S\" too long\n",
 					section, key, val.c_str());
 			rc = size - 1;
 		} else {

@@ -8,7 +8,6 @@
 #include "DrawCallInfo.h"
 
 extern GUID GUID_RasterizerStateDisableScissor;
-extern GUID GUID_BufferResourceHash;
 
 struct DrawContext
 {
@@ -81,7 +80,7 @@ private:
 	HackerDevice *mHackerDevice;
 
 	// These are per-context, moved from globals.h:
-	uint32_t mCurrentIndexBuffer;
+	uint32_t mCurrentIndexBuffer; // Only valid while hunting=1
 	UINT64 mCurrentVertexShader;
 	ID3D11VertexShader *mCurrentVertexShaderHandle;
 	UINT64 mCurrentPixelShader;
