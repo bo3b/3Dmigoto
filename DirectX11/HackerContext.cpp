@@ -2990,34 +2990,24 @@ STDMETHODIMP_(void) HackerContext::IASetIndexBuffer(THIS_
 	/* [annotation] */
 	__in  UINT Offset)
 {
+	FrameAnalysisLogNoNL("IASetIndexBuffer(pIndexBuffer:0x%p, Format:%u, Offset:%u)",
+			pIndexBuffer, Format, Offset);
+	FrameAnalysisLogResourceHash(pIndexBuffer);
+
 	mOrigContext->IASetIndexBuffer(pIndexBuffer, Format, Offset);
 
-	// Save the current index buffer hash for indexbufferfilter in ShaderOverride.
-	if (pIndexBuffer) {
+	// This is only used for index buffer hunting nowadays since the
+	// command list checks the hash on demand only when it is needed
+	mCurrentIndexBuffer = 0;
+	if (pIndexBuffer && G->hunting == HUNTING_MODE_ENABLED) {
 		mCurrentIndexBuffer = GetResourceHash(pIndexBuffer);
 		if (mCurrentIndexBuffer) {
-			LogDebug("  index buffer found: handle = %p, hash = %08lx\n", pIndexBuffer, mCurrentIndexBuffer);
-
 			// When hunting, save this as a visited index buffer to cycle through.
-			if (G->hunting == HUNTING_MODE_ENABLED) {
-				EnterCriticalSection(&G->mCriticalSection);
-				G->mVisitedIndexBuffers.insert(mCurrentIndexBuffer);
-				LeaveCriticalSection(&G->mCriticalSection);
-			}
-
-			// second try to hide index buffer.
-			// if (mCurrentIndexBuffer == mSelectedIndexBuffer)
-			//	pIndexBuffer = 0;
-		} else {
-			mCurrentIndexBuffer = 0;
-			LogDebug("  index buffer %p not found\n", pIndexBuffer);
+			EnterCriticalSection(&G->mCriticalSection);
+			G->mVisitedIndexBuffers.insert(mCurrentIndexBuffer);
+			LeaveCriticalSection(&G->mCriticalSection);
 		}
-	} else {
-		mCurrentIndexBuffer = 0;
 	}
-
-	FrameAnalysisLog("IASetIndexBuffer(pIndexBuffer:0x%p, Format:%u, Offset:%u) hash=%08lx\n",
-			pIndexBuffer, Format, Offset, mCurrentIndexBuffer);
 }
 
 STDMETHODIMP_(void) HackerContext::DrawIndexedInstanced(THIS_
