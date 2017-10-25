@@ -760,12 +760,25 @@ HRESULT WINAPI D3D11CreateDevice(
 	// When platform update is desired, we want to create the HackerDevice1 and
 	// HackerContext1 objects instead.  We'll store these and return them as
 	// non1 objects so other code can just use the objects.
+	// ToDo: Not at all sure this is right for platform_update.  In a DX9
+	// case, I tried this upconvert to a higher level object, and it returned
+	// an error.  In this case, we have actually created an ID3D11Device above,
+	// never an ID3D11Device1, but wrap that as if it was.  This seems wrong.
 	ID3D11Device1 *origDevice1 = nullptr;
 	ID3D11DeviceContext1 *origContext1 = nullptr;
 	if (G->enable_platform_update)
 	{
-		origDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
-		origContext->QueryInterface(IID_PPV_ARGS(&origContext1));
+		HRESULT res;
+		if (origDevice != nullptr)
+		{
+			res = origDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
+			LogInfo("  QueryInterface(ID3D11Device1) returned result = %x, device1 handle = %p\n", res, origDevice1);
+		}
+		if (origContext != nullptr)
+		{
+			res = origContext->QueryInterface(IID_PPV_ARGS(&origContext1));
+			LogInfo("  QueryInterface(ID3D11DeviceContext1) returned result = %x, context1 handle = %p\n", res, origContext1);
+		}
 	}
 
 	// Create a wrapped version of the original device to return to the game.
@@ -912,13 +925,22 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 #endif
 
 	// When platform update is desired, we want to create the HackerDevice1 and
-	// HackerContext1 objects instead.
+	// HackerContext1 objects instead. See comments above for CreateDevice.
 	ID3D11Device1 *origDevice1 = nullptr;
 	ID3D11DeviceContext1 *origContext1 = nullptr;
 	if (G->enable_platform_update)
 	{
-		origDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
-		origContext->QueryInterface(IID_PPV_ARGS(&origContext1));
+		HRESULT res;
+		if (origDevice != nullptr)
+		{
+			res = origDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
+			LogInfo("  QueryInterface(ID3D11Device1) returned result = %x, device1 handle = %p\n", res, origDevice1);
+		}
+		if (origContext != nullptr)
+		{
+			res = origContext->QueryInterface(IID_PPV_ARGS(&origContext1));
+			LogInfo("  QueryInterface(ID3D11DeviceContext1) returned result = %x, context1 handle = %p\n", res, origContext1);
+		}
 	}
 
 	HackerDevice *deviceWrap = nullptr;
