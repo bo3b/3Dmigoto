@@ -233,13 +233,29 @@ STDMETHODIMP_(ULONG) HackerUnknown::Release(THIS)
 	return ulRef;
 }
 
+// In the game Elex, we see them call do the unusual SwapChain->QueryInterface(SwapChain).  
+// We need to return This when that happens, because otherwise they disconnect us and
+// we never get calls to Present.  Rather than do just this one-off, let's always 
+// return This for any time this might happen, as we've seen it happen in HackerContext
+// too, for Mafia 3.  So any future instances cannot leak.
+
 STDMETHODIMP HackerUnknown::QueryInterface(THIS_
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-	LogDebug("HackerUnknown::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
+	LogInfo("HackerUnknown::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
+
 	HRESULT hr = mOrigUnknown->QueryInterface(riid, ppvObject);
-	LogDebug("  returns result = %x for %p\n", hr, ppvObject);
+	if (FAILED(hr))
+	{
+		LogInfo("  failed result = %x for %p\n", hr, ppvObject);
+		return hr;
+	}
+
+	if (typeid(this) == typeid(*ppvObject))
+		*ppvObject = this;
+
+	LogInfo("  returns result = %x for %p\n", hr, ppvObject);
 	return hr;
 }
 
@@ -2136,6 +2152,7 @@ STDMETHODIMP HackerDXGISwapChain::GetLastPresentCount(THIS_
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
+
 
 // -----------------------------------------------------------------------------
 
