@@ -274,6 +274,12 @@ STDMETHODIMP HackerUnknown::QueryInterface(THIS_
 		// For an actual case of this->QueryInterface(this), just return our Hacker object.
 		if (unk_this == unk_ppvObject)
 			*ppvObject = this;
+	
+		unk_this->Release();
+		unk_ppvObject->Release();
+
+		LogInfo("  return HackerUnknown(%s@%p) wrapper of %p\n", type_name(this), this, mOrigUnknown);
+		return hr;
 	}
 
 	LogInfo("  returns result = %x for %p\n", hr, ppvObject);
