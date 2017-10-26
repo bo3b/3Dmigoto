@@ -238,6 +238,16 @@ STDMETHODIMP_(ULONG) HackerUnknown::Release(THIS)
 // we never get calls to Present.  Rather than do just this one-off, let's always 
 // return This for any time this might happen, as we've seen it happen in HackerContext
 // too, for Mafia 3.  So any future instances cannot leak.
+//
+// From: https://msdn.microsoft.com/en-us/library/windows/desktop/ms682521(v=vs.85).aspx
+// And: https://blogs.msdn.microsoft.com/oldnewthing/20040326-00/?p=40033
+//
+//  For any one object, a specific query for the IUnknown interface on any of the object's 
+//	interfaces must always return the same pointer value. This enables a client to determine 
+//	whether two pointers point to the same component by calling QueryInterface with 
+//	IID_IUnknown and comparing the results. 
+//	It is specifically not the case that queries for interfaces other than IUnknown (even 
+//	the same interface through the same pointer) must return the same pointer value.
 
 STDMETHODIMP HackerUnknown::QueryInterface(THIS_
 	/* [in] */ REFIID riid,
@@ -246,20 +256,25 @@ STDMETHODIMP HackerUnknown::QueryInterface(THIS_
 	LogInfo("HackerUnknown::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
 
 	HRESULT hr = mOrigUnknown->QueryInterface(riid, ppvObject);
-	if (FAILED(hr))
+	if (FAILED(hr) || !*ppvObject)
 	{
 		LogInfo("  failed result = %x for %p\n", hr, ppvObject);
 		return hr;
 	}
 
-	string thisName = type_name(this);
-	if (thisName.find("class Hacker", 0) == 0)
-		thisName.erase(0, 12); // leading "class Hacker"
-	string riidName = NameFromIID(riid);
-	riidName.erase(0, 1); // leading "I"
 
-	if (thisName == riidName)
-		*ppvObject = this;
+	IUnknown* unk_this;
+	HRESULT hr_this = mOrigUnknown->QueryInterface(__uuidof(IUnknown), (void**)&unk_this);
+
+	IUnknown* unk_ppvObject;
+	HRESULT hr_ppvObject = static_cast<IUnknown*>(*ppvObject)->QueryInterface(__uuidof(IUnknown), (void**)&unk_ppvObject);
+
+	if (SUCCEEDED(hr_this) && SUCCEEDED(hr_ppvObject))
+	{
+		// For an actual case of this->QueryInterface(this), just return our Hacker object.
+		if (unk_this == unk_ppvObject)
+			*ppvObject = this;
+	}
 
 	LogInfo("  returns result = %x for %p\n", hr, ppvObject);
 	return hr;
