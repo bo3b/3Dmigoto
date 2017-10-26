@@ -252,7 +252,13 @@ STDMETHODIMP HackerUnknown::QueryInterface(THIS_
 		return hr;
 	}
 
-	if (typeid(this) == typeid(*ppvObject))
+	string thisName = type_name(this);
+	if (thisName.find("class Hacker", 0) == 0)
+		thisName.erase(0, 12); // leading "class Hacker"
+	string riidName = NameFromIID(riid);
+	riidName.erase(0, 1); // leading "I"
+
+	if (thisName == riidName)
 		*ppvObject = this;
 
 	LogInfo("  returns result = %x for %p\n", hr, ppvObject);
