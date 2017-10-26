@@ -1590,11 +1590,18 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 
 		EnterCriticalSection(&G->mCriticalSection);
 			G->mResources[*ppBuffer].hash = hash;
-			G->mResources[*ppBuffer].orig_hash = hash;
 
 			// If we ever need hash tracking for buffers we will
 			// need this, but I'd rather avoid it if we can get
-			// away without it given how often buffers get updated:
+			// away without it given how often buffers get updated.
+			// Note that masterotaku reported massive fps hit with
+			// hunting enabled (both 1 and 2) if we set orig_hash
+			// here, even without data_hash, etc. because that
+			// causes the resource contamination detection to do a
+			// lot more work. We might need that eventually, but we
+			// should not enable this without some way to turn off
+			// the contamination detection:
+			// G->mResources[*ppBuffer].orig_hash = hash;
 			// G->mResources[*ppBuffer].data_hash = data_hash;
 			// if (pDesc)
 			// 	memcpy(&G->mResources[*ppBuffer].descBuf, pDesc, sizeof(D3D11_BUFFER_DESC));
