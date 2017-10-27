@@ -197,7 +197,6 @@ struct ShaderOverride {
 	UINT64 partner_hash;
 	FrameAnalysisOptions analyse_options;
 	char model[20]; // More than long enough for even ps_4_0_level_9_0
-	int disable_scissor;
 	bool allow_duplicate_hashes;
 
 	CommandList command_list;
@@ -209,8 +208,7 @@ struct ShaderOverride {
 		depth_filter(DepthBufferFilter::NONE),
 		partner_hash(0),
 		analyse_options(FrameAnalysisOptions::INVALID),
-		allow_duplicate_hashes(true),
-		disable_scissor(-1)
+		allow_duplicate_hashes(true)
 	{
 		model[0] = '\0';
 	}

@@ -961,7 +961,6 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"iteration",
 	L"analyse_options",
 	L"model",
-	L"disable_scissor",
 	NULL
 };
 static void ParseShaderOverrideSections()
@@ -1057,8 +1056,6 @@ static void ParseShaderOverrideSections()
 			wcstombs(override->model, setting, ARRAYSIZE(override->model));
 			override->model[ARRAYSIZE(override->model) - 1] = '\0';
 		}
-
-		override->disable_scissor = GetIniInt(id, L"disable_scissor", override->disable_scissor, NULL);
 
 		ParseCommandList(id, &override->command_list, &override->post_command_list, ShaderOverrideIniKeys);
 	}

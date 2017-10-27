@@ -23,8 +23,6 @@
 
 // -----------------------------------------------------------------------------------------------
 
-GUID GUID_RasterizerStateDisableScissor = { 0x845434e2, 0x5474, 0x403b, { 0x81, 0x49, 0x5d, 0xa3, 0x68, 0x1c, 0xd8, 0x49 } };
-
 HackerContext::HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 	: ID3D11DeviceContext()
 {
@@ -327,97 +325,7 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 					data->oldVertexShader = SwitchVSShader(i->second);
 			}
 		}
-
-		// This was technically already possible, since the custom
-		// shader sections can be used to selectively override state,
-		// and now with rasterizer_state_merge it is even easier:
-		//
-		// [ShaderOverrideFoo]
-		// hash = foo
-		// run = CustomShaderDisableScissorClipping
-		//
-		// [ShaderOverrideBar]
-		// hash = bar
-		// run = CustomShaderEnableScissorClipping
-		//
-		// [CustomShaderDisableScissorClipping]
-		// scissor_enable = false
-		// rasterizer_state_merge = true
-		// draw = from_caller
-		// handling = skip
-		//
-		// [CustomShaderEnableScissorClipping]
-		// scissor_enable = true
-		// rasterizer_state_merge = true
-		// draw = from_caller
-		// handling = skip
-		if (!use_orig && shaderOverride->disable_scissor != -1) {
-			LogDebug("  use disable_scissor %i\n", shaderOverride->disable_scissor);
-			data->disable_scissor = shaderOverride->disable_scissor;
-		}
 	}
-}
-
-void HackerContext::ProcessScissorRects(DrawContext &data)
-{
-	// Force disabling scissor based on the following rules.
-	//
-	// [Rendering].rasterizer_disable_scissor : G (Global)
-	// [ShaderOverride*].disable_scissor      : S (Shader)
-	//
-	//      S    N/A   0     1
-	//   G    +--------------------
-	//  true  |  Yes   No    Yes
-	//  false |  No    No    Yes
-
-	if (data.disable_scissor == 0 || (!G->SCISSOR_DISABLE && data.disable_scissor == -1))
-		return;
-
-	ID3D11RasterizerState *oldState = NULL;
-	ID3D11RasterizerState *newState = NULL;
-	D3D11_RASTERIZER_DESC desc;
-	IUnknown *unknown = NULL;
-	UINT size;
-
-	mOrigContext->RSGetState(&oldState);
-	if (oldState == NULL)
-		return;
-
-	oldState->GetDesc(&desc);
-	if (desc.ScissorEnable) {
-		// Check if an existing RS without scissor is already there.
-		size = sizeof(unknown);
-		if (SUCCEEDED(oldState->GetPrivateData(GUID_RasterizerStateDisableScissor, &size, &unknown))) {
-			if (FAILED(unknown->QueryInterface(IID_PPV_ARGS(&newState)))) {
-				LogInfo("  ProcessScissorRects: IUnknown->QueryInterface failed.\n");
-			}
-			unknown->Release();
-			unknown = NULL;
-		} else {
-			// If not existing, create one and attach it to the original RS
-			// which will be released automatically together.
-			desc.ScissorEnable = FALSE;
-			if (SUCCEEDED(mOrigDevice->CreateRasterizerState(&desc, &newState))) {
-				LogDebug("  rasterizer without scissor created\n");
-				oldState->SetPrivateDataInterface(GUID_RasterizerStateDisableScissor, dynamic_cast<IUnknown*>(newState));
-			} else {
-				LogInfo("  ProcessScissorRects: CreateRasterizerState failed.\n");
-			}
-		}
-
-		// Now use the new RS with scissor disabled and put the old one in DrawContext.
-		if (newState) {
-			mOrigContext->RSSetState(newState);
-			newState->Release();
-			newState = NULL;
-
-			data.oldRasterizerState = oldState;
-			data.oldRasterizerState->AddRef();
-
-			LogDebug("  scissor disabled\n");
-		}
-	}
-	oldState->Release();
 }
 
 // This function will run the ShaderRegex engine to automatically patch shaders
@@ -777,8 +685,6 @@ void HackerContext::BeforeDraw(DrawContext &data)
 		}
 	}
 
-	ProcessScissorRects(data);
-
 	return;
 }
 
@@ -826,10 +732,6 @@ void HackerContext::AfterDraw(DrawContext &data)
 		data.oldPixelShader->Release();
 		if (ret)
 			ret->Release();
-	}
-	if (data.oldRasterizerState) {
-		mOrigContext->RSSetState(data.oldRasterizerState);
-		data.oldRasterizerState->Release();
 	}
 }
 
