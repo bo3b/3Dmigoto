@@ -823,6 +823,8 @@ HRESULT WINAPI D3D11CreateDevice(
 	// With all the interacting objects set up, we can now safely finish the HackerDevice init.
 	if (deviceWrap != nullptr)
 		deviceWrap->Create3DMigotoResources();
+	if (contextWrap != nullptr)
+		contextWrap->Bind3DMigotoResources();
 
 	LogInfo("->D3D11CreateDevice result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n\n",
 		ret, origDevice, deviceWrap, origContext, contextWrap);
@@ -1021,6 +1023,8 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	// With all the interacting objects set up, we can now safely finish the HackerDevice init.
 	if (deviceWrap != nullptr)
 		deviceWrap->Create3DMigotoResources();
+	if (contextWrap != nullptr)
+		contextWrap->Bind3DMigotoResources();
 
 	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, device handle = %p, device wrapper = %p, context handle = %p, "
 		"context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p\n\n",

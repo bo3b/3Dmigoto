@@ -582,26 +582,6 @@ void HackerContext::BeforeDraw(DrawContext &data)
 
 	DeferredShaderReplacementBeforeDraw();
 
-	// When hunting is off, send stereo texture to all shaders, as any might need it.
-	// Maybe a bit of a waste of GPU resource, but optimizes CPU use.
-	// We used to do this in the SetShader calls, but Akiba's Trip clears
-	// all shader resources after that call, so doing it here guarantees it
-	// will be bound for the draw call.
-	//
-	// It is important that we check the current shader *handle*, not
-	// *hash*, as the hash may not be updated if there are no
-	// ShaderOverride sections and hunting is disabled. We always assume
-	// vertex and pixel shaders are bound as the most common case (and it
-	// is harmless if we are wrong on that)
-	BindStereoResources<&ID3D11DeviceContext::VSSetShaderResources>();
-	if (mCurrentHullShaderHandle)
-		BindStereoResources<&ID3D11DeviceContext::HSSetShaderResources>();
-	if (mCurrentDomainShaderHandle)
-		BindStereoResources<&ID3D11DeviceContext::DSSetShaderResources>();
-	if (mCurrentGeometryShaderHandle)
-		BindStereoResources<&ID3D11DeviceContext::GSSetShaderResources>();
-	BindStereoResources<&ID3D11DeviceContext::PSSetShaderResources>();
-
 	// Override settings?
 	if (!G->mShaderOverrideMap.empty()) {
 		ShaderOverrideMap::iterator i;
@@ -801,6 +781,9 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
 
 		hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
 		hackerContextWrap1->SetHackerDevice1(hackerDeviceWrap1);
+
+		hackerDeviceWrap1->Create3DMigotoResources();
+		hackerContextWrap1->Bind3DMigotoResources();
 
 		*ppvObject = hackerContextWrap1;
 		LogDebug("  created HackerContext1(%s@%p) wrapper of %p\n", type_name(hackerContextWrap1), hackerContextWrap1, origContext1);
@@ -1298,7 +1281,7 @@ STDMETHODIMP_(void) HackerContext::GSSetShaderResources(THIS_
 			StartSlot, NumViews, ppShaderResourceViews);
 	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
 
-	 mOrigContext->GSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
+	SetShaderResources<&ID3D11DeviceContext::GSSetShaderResources>(StartSlot, NumViews, ppShaderResourceViews);
 }
 
 STDMETHODIMP_(void) HackerContext::GSSetSamplers(THIS_
@@ -1372,8 +1355,6 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 		return true;
 
 	DeferredShaderReplacementBeforeDispatch();
-
-	BindStereoResources<&ID3D11DeviceContext::CSSetShaderResources>();
 
 	// Override settings?
 	if (!G->mShaderOverrideMap.empty()) {
@@ -1789,7 +1770,7 @@ STDMETHODIMP_(void) HackerContext::HSSetShaderResources(THIS_
 			StartSlot, NumViews, ppShaderResourceViews);
 	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
 
-	 mOrigContext->HSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
+	SetShaderResources<&ID3D11DeviceContext::HSSetShaderResources>(StartSlot, NumViews, ppShaderResourceViews);
 }
 
 STDMETHODIMP_(void) HackerContext::HSSetShader(THIS_
@@ -1855,7 +1836,7 @@ STDMETHODIMP_(void) HackerContext::DSSetShaderResources(THIS_
 			StartSlot, NumViews, ppShaderResourceViews);
 	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
 
-	 mOrigContext->DSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
+	SetShaderResources<&ID3D11DeviceContext::DSSetShaderResources>(StartSlot, NumViews, ppShaderResourceViews);
 }
 
 STDMETHODIMP_(void) HackerContext::DSSetShader(THIS_
@@ -1921,7 +1902,7 @@ STDMETHODIMP_(void) HackerContext::CSSetShaderResources(THIS_
 			StartSlot, NumViews, ppShaderResourceViews);
 	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
 
-	 mOrigContext->CSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
+	SetShaderResources<&ID3D11DeviceContext::CSSetShaderResources>(StartSlot, NumViews, ppShaderResourceViews);
 }
 
 STDMETHODIMP_(void) HackerContext::CSSetUnorderedAccessViews(THIS_
@@ -2722,6 +2703,69 @@ void HackerContext::BindStereoResources()
 	}
 }
 
+void HackerContext::Bind3DMigotoResources()
+{
+	// Third generation of binding the stereo resources. We used to do this
+	// in the SetShader calls, but that was problematic in certain games
+	// like Akiba's Trip that would unbind all resources between then and
+	// the following draw call. We then did this in the draw/dispatch
+	// calls, which was very succesful, but cost a few percent CPU time
+	// which can add up to a significant drop in framerate in CPU bound
+	// games.
+	//
+	// Our new strategy is to bind them when the context is created, then
+	// make sure that they stay bound in the SetShaderResource() calls. We
+	// do this after the SetHackerDevice call because we need mHackerDevice
+	BindStereoResources<&ID3D11DeviceContext::VSSetShaderResources>();
+	BindStereoResources<&ID3D11DeviceContext::HSSetShaderResources>();
+	BindStereoResources<&ID3D11DeviceContext::DSSetShaderResources>();
+	BindStereoResources<&ID3D11DeviceContext::GSSetShaderResources>();
+	BindStereoResources<&ID3D11DeviceContext::PSSetShaderResources>();
+	BindStereoResources<&ID3D11DeviceContext::CSSetShaderResources>();
+}
+
+// This function makes sure that the StereoParams and IniParams resources
+// remain pinned whenver the game assigns shader resources:
+template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
+		UINT StartSlot,
+		UINT NumViews,
+		ID3D11ShaderResourceView *const *ppShaderResourceViews)>
+void HackerContext::SetShaderResources(UINT StartSlot, UINT NumViews,
+		ID3D11ShaderResourceView *const *ppShaderResourceViews)
+{
+	ID3D11ShaderResourceView **override_srvs = NULL;
+
+	if (!mHackerDevice)
+		return;
+
+	if (mHackerDevice->mStereoResourceView && G->StereoParamsReg >= 0) {
+		if (NumViews > G->StereoParamsReg - StartSlot) {
+			LogDebug("  Game attempted to unbind StereoParams, pinning in slot %i\n", G->StereoParamsReg);
+			override_srvs = new ID3D11ShaderResourceView*[NumViews];
+			memcpy(override_srvs, ppShaderResourceViews, sizeof(ID3D11ShaderResourceView*) * NumViews);
+			override_srvs[G->StereoParamsReg - StartSlot] = mHackerDevice->mStereoResourceView;
+		}
+	}
+
+	if (mHackerDevice->mIniResourceView && G->IniParamsReg >= 0) {
+		if (NumViews > G->IniParamsReg - StartSlot) {
+			LogDebug("  Game attempted to unbind IniParams, pinning in slot %i\n", G->IniParamsReg);
+			if (!override_srvs) {
+				override_srvs = new ID3D11ShaderResourceView*[NumViews];
+				memcpy(override_srvs, ppShaderResourceViews, sizeof(ID3D11ShaderResourceView*) * NumViews);
+			}
+			override_srvs[G->IniParamsReg - StartSlot] = mHackerDevice->mIniResourceView;
+		}
+	}
+
+	if (override_srvs) {
+		(mOrigContext->*OrigSetShaderResources)(StartSlot, NumViews, override_srvs);
+		delete [] override_srvs;
+	} else {
+		(mOrigContext->*OrigSetShaderResources)(StartSlot, NumViews, ppShaderResourceViews);
+	}
+}
+
 // The rest of these methods are all the primary code for the tool, Direct3D calls that we override
 // in order to replace or modify shaders.
 
@@ -2758,7 +2802,7 @@ STDMETHODIMP_(void) HackerContext::PSSetShaderResources(THIS_
 			StartSlot, NumViews, ppShaderResourceViews);
 	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
 
-	mOrigContext->PSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
+	SetShaderResources<&ID3D11DeviceContext::PSSetShaderResources>(StartSlot, NumViews, ppShaderResourceViews);
 }
 
 STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
@@ -2913,7 +2957,7 @@ STDMETHODIMP_(void) HackerContext::VSSetShaderResources(THIS_
 			StartSlot, NumViews, ppShaderResourceViews);
 	FrameAnalysisLogViewArray(StartSlot, NumViews, (ID3D11View *const *)ppShaderResourceViews);
 
-	mOrigContext->VSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
+	SetShaderResources<&ID3D11DeviceContext::VSSetShaderResources>(StartSlot, NumViews, ppShaderResourceViews);
 }
 
 STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_

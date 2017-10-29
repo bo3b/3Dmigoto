@@ -200,6 +200,11 @@ private:
 			UINT NumViews,
 			ID3D11ShaderResourceView *const *ppShaderResourceViews)>
 	void BindStereoResources();
+	template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
+			UINT StartSlot,
+			UINT NumViews,
+			ID3D11ShaderResourceView *const *ppShaderResourceViews)>
+	void SetShaderResources(UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
 protected:
 	// Protected to allow HackerContext1 access, but not external
@@ -216,6 +221,7 @@ public:
 	HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
 	void SetHackerDevice(HackerDevice *pDevice);
+	void Bind3DMigotoResources();
 	ID3D11DeviceContext* GetOrigContext();
 	ID3D11DeviceContext* GetPassThroughOrigContext();
 	void HookContext();

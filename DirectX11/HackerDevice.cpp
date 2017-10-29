@@ -2383,6 +2383,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 		ID3D11DeviceContext *origContext = static_cast<ID3D11DeviceContext*>(*ppDeferredContext);
 		HackerContext *hackerContext = new HackerContext(mRealOrigDevice, origContext);
 		hackerContext->SetHackerDevice(this);
+		hackerContext->Bind3DMigotoResources();
 
 		if (G->enable_hooks & EnableHooks::DEFERRED_CONTEXTS)
 			hackerContext->HookContext();
@@ -2451,6 +2452,7 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 
 		mHackerContext = new HackerContext(mRealOrigDevice, *ppImmediateContext);
 		mHackerContext->SetHackerDevice(this);
+		mHackerContext->Bind3DMigotoResources();
 		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
 			mHackerContext->HookContext();
 		LogInfo("  HackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);
