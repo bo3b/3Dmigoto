@@ -879,6 +879,34 @@ static void ParseResourceSections()
 	}
 }
 
+static bool ParseCommandListLine(const wchar_t *ini_section,
+		const wchar_t *lhs, wstring *rhs,
+		CommandList *command_list,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
+{
+	if (ParseCommandListGeneralCommands(ini_section, lhs, rhs, explicit_command_list, pre_command_list, post_command_list))
+		return true;
+
+	if (ParseCommandListIniParamOverride(ini_section, lhs, rhs, command_list))
+		return true;
+
+	if (ParseCommandListResourceCopyDirective(ini_section, lhs, rhs, command_list))
+		return true;
+
+	return false;
+}
+
+static bool ParseCommandListLine(const wchar_t *ini_section,
+		const wchar_t *lhs, const wchar_t *rhs,
+		CommandList *command_list)
+{
+	wstring srhs = wstring(rhs);
+
+	return ParseCommandListLine(ini_section, lhs, &srhs, command_list, command_list, NULL, NULL);
+}
+
 // This tries to parse each line in a section in order as part of a command
 // list. A list of keys that may be parsed elsewhere can be passed in so that
 // it can warn about unrecognised keys and detect duplicate keys that aren't
@@ -947,19 +975,12 @@ static void ParseCommandList(const wchar_t *id,
 			}
 		}
 
-		if (ParseCommandListGeneralCommands(id, key_ptr, val, explicit_command_list, pre_command_list, post_command_list))
-			goto log_continue;
-
-		if (ParseCommandListIniParamOverride(id, key_ptr, val, command_list))
-			goto log_continue;
-
-		if (ParseCommandListResourceCopyDirective(id, key_ptr, val, command_list))
-			goto log_continue;
+		if (ParseCommandListLine(id, key_ptr, val, command_list, explicit_command_list, pre_command_list, post_command_list)) {
+			LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
+			continue;
+		}
 
 		IniWarning("  WARNING: Unrecognised entry: %S=%S\n", key->c_str(), val->c_str());
-		continue;
-log_continue:
-		LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
 	}
 }
 
@@ -994,6 +1015,7 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"iteration",
 	L"analyse_options",
 	L"model",
+	L"disable_scissor",
 	NULL
 };
 static void ParseShaderOverrideSections()
@@ -1004,6 +1026,7 @@ static void ParseShaderOverrideSections()
 	ShaderOverride *override;
 	UINT64 hash;
 	bool duplicate, allow_duplicates, found;
+	bool disable_scissor;
 
 	// Lock entire routine. This can be re-inited live.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
@@ -1091,6 +1114,16 @@ static void ParseShaderOverrideSections()
 		}
 
 		ParseCommandList(id, &override->command_list, &override->post_command_list, ShaderOverrideIniKeys);
+
+		// For backwards compatibility with Nier Automata fix,
+		// translate disable_scissor into an equivalent command list:
+		disable_scissor = GetIniBool(id, L"disable_scissor", false, &found);
+		if (found) {
+			if (disable_scissor)
+				ParseCommandListLine(id, L"run", L"builtincustomshaderdisablescissorclipping", &override->command_list);
+			else
+				ParseCommandListLine(id, L"run", L"builtincustomshaderenablescissorclipping", &override->command_list);
+		}
 	}
 	LeaveCriticalSection(&G->mCriticalSection);
 }
