@@ -35,6 +35,8 @@ static Section CommandListSections[] = {
 	{L"TextureOverride", true},
 	{L"CustomShader", true},
 	{L"CommandList", true},
+	{L"BuiltInCustomShader", true},
+	{L"BuiltInCommandList", true},
 	{L"Present", false},
 	{L"ClearRenderTargetView", false},
 	{L"ClearDepthStencilView", false},
@@ -327,43 +329,17 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 	section_vector->emplace_back(key, val, *wline);
 }
 
-
-// Parse the ini file into data structures. We used to use the
-// GetPrivateProfile family of Windows API calls to parse the ini file, but
-// they have the disadvantage that they open and parse the whole ini file every
-// time they are called, which can lead to lengthy ini files taking a long time
-// to parse (e.g. Dreamfall Chapters takes around 1 minute 45). By reading the
-// ini file once we can drastically reduce that time.
-//
-// I considered using a third party library to provide this, but eventually
-// decided against it - ini files are relatively simple and easy to parse
-// ourselves, and we don't strictly adhere to the ini spec since we allow for
-// repeated keys and lines without equals signs, and the order of lines is
-// important in some sections. We could rely on the Windows APIs to provide
-// these guarantees because Microsoft is highly unlikely to change their
-// behaviour, but the same cannot be said of a third party library. Therefore,
-// let's just do it ourselves to be sure it meets our requirements.
-//
-// NOTE: If adding any debugging / logging into this routine and expect to see
-// it, make sure you delay calling it until after the log file has been opened!
-static void ParseIni(const wchar_t *ini)
+static void ParseIniStream(istream *stream)
 {
 	string aline;
-	wstring wline, section, key, val;
+	wstring wline, section;
 	size_t first, last;
 	IniSectionVector *section_vector = NULL;
 	bool warn_duplicates = true;
 	bool warn_lines_without_equals = true;
 
-	ini_sections.clear();
 
-	ifstream f(ini, ios::in, _SH_DENYNO);
-	if (!f) {
-		LogInfo("  Error opening d3dx.ini\n");
-		return;
-	}
-
-	while (std::getline(f, aline)) {
+	while (std::getline(*stream, aline)) {
 		// Convert to wstring for compatibility with GetPrivateProfile*
 		// APIs. If we assume the d3dx.ini is always ASCII we could
 		// drop this, but that would require us to change a great many
@@ -403,6 +379,63 @@ static void ParseIni(const wchar_t *ini)
 		ParseIniKeyValLine(&wline, &section, warn_duplicates,
 				   warn_lines_without_equals, section_vector);
 	}
+}
+
+static void ParseIniExcerpt(const char *excerpt)
+{
+	std::istringstream stream(excerpt);
+
+	ParseIniStream(&stream);
+}
+
+// Parse the ini file into data structures. We used to use the
+// GetPrivateProfile family of Windows API calls to parse the ini file, but
+// they have the disadvantage that they open and parse the whole ini file every
+// time they are called, which can lead to lengthy ini files taking a long time
+// to parse (e.g. Dreamfall Chapters takes around 1 minute 45). By reading the
+// ini file once we can drastically reduce that time.
+//
+// I considered using a third party library to provide this, but eventually
+// decided against it - ini files are relatively simple and easy to parse
+// ourselves, and we don't strictly adhere to the ini spec since we allow for
+// repeated keys and lines without equals signs, and the order of lines is
+// important in some sections. We could rely on the Windows APIs to provide
+// these guarantees because Microsoft is highly unlikely to change their
+// behaviour, but the same cannot be said of a third party library. Therefore,
+// let's just do it ourselves to be sure it meets our requirements.
+//
+// NOTE: If adding any debugging / logging into this routine and expect to see
+// it, make sure you delay calling it until after the log file has been opened!
+static void ParseIniFile(const wchar_t *ini)
+{
+	ini_sections.clear();
+
+	ifstream f(ini, ios::in, _SH_DENYNO);
+	if (!f) {
+		LogInfo("  Error opening d3dx.ini\n");
+		return;
+	}
+
+	ParseIniStream(&f);
+}
+
+static void InsertBuiltInIniSections()
+{
+	static const char text[] =
+		"[BuiltInCustomShaderDisableScissorClipping]\n"
+		"scissor_enable = false\n"
+		"rasterizer_state_merge = true\n"
+		"draw = from_caller\n"
+		"handling = skip\n"
+
+		"[BuiltInCustomShaderEnableScissorClipping]\n"
+		"scissor_enable = true\n"
+		"rasterizer_state_merge = true\n"
+		"draw = from_caller\n"
+		"handling = skip\n"
+	;
+
+	ParseIniExcerpt(text);
 }
 
 // This emulates the behaviour of the old GetPrivateProfileString API to
@@ -2017,15 +2050,11 @@ wchar_t *CustomShaderIniKeys[] = {
 				// For now due to the lack of sampler as a custom resource only filtering is added no further parameter are implemented
 	NULL
 };
-static void EnumerateCustomShaderSections()
+static void _EnumerateCustomShaderSections(IniSections::iterator lower, IniSections::iterator upper)
 {
-	IniSections::iterator lower, upper, i;
+	IniSections::iterator i;
 	wstring shader_id;
 
-	customShaders.clear();
-
-	lower = ini_sections.lower_bound(wstring(L"CustomShader"));
-	upper = prefix_upper_bound(ini_sections, wstring(L"CustomShader"));
 	for (i = lower; i != upper; i++) {
 		// Convert section name to lower case so our keys will be
 		// consistent in the unordered_map:
@@ -2035,6 +2064,20 @@ static void EnumerateCustomShaderSections()
 		// Construct a custom shader in the global list:
 		customShaders[shader_id];
 	}
+}
+static void EnumerateCustomShaderSections()
+{
+	IniSections::iterator lower, upper;
+
+	customShaders.clear();
+
+	lower = ini_sections.lower_bound(wstring(L"BuiltInCustomShader"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"BuiltInCustomShader"));
+	_EnumerateCustomShaderSections(lower, upper);
+
+	lower = ini_sections.lower_bound(wstring(L"CustomShader"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"CustomShader"));
+	_EnumerateCustomShaderSections(lower, upper);
 }
 static void ParseCustomShaderSections()
 {
@@ -2092,15 +2135,11 @@ static void ParseCustomShaderSections()
 // "Explicit" means that this parses command lists sections that are
 // *explicitly* called [CommandList*], as opposed to other sections that are
 // implicitly command lists (such as ShaderOverride, Present, etc).
-static void EnumerateExplicitCommandListSections()
+static void _EnumerateExplicitCommandListSections(IniSections::iterator lower, IniSections::iterator upper)
 {
-	IniSections::iterator lower, upper, i;
+	IniSections::iterator i;
 	wstring section_id;
 
-	explicitCommandListSections.clear();
-
-	lower = ini_sections.lower_bound(wstring(L"CommandList"));
-	upper = prefix_upper_bound(ini_sections, wstring(L"CommandList"));
 	for (i = lower; i != upper; i++) {
 		// Convert section name to lower case so our keys will be
 		// consistent in the unordered_map:
@@ -2110,6 +2149,20 @@ static void EnumerateExplicitCommandListSections()
 		// Construct an explicit command list section in the global list:
 		explicitCommandListSections[section_id];
 	}
+}
+static void EnumerateExplicitCommandListSections()
+{
+	IniSections::iterator lower, upper;
+
+	explicitCommandListSections.clear();
+
+	lower = ini_sections.lower_bound(wstring(L"BuiltInCommandList"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"BuiltInCommandList"));
+	_EnumerateExplicitCommandListSections(lower, upper);
+
+	lower = ini_sections.lower_bound(wstring(L"CommandList"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"CommandList"));
+	_EnumerateExplicitCommandListSections(lower, upper);
 }
 
 static void ParseExplicitCommandListSections()
@@ -2223,7 +2276,8 @@ void LoadConfigFile()
 	LogInfo("  calls=1\n");
 
 	ArmIniWarningTones();
-	ParseIni(iniFile);
+	ParseIniFile(iniFile);
+	InsertBuiltInIniSections();
 
 	G->gLogInput = GetIniBool(L"Logging", L"input", false, NULL);
 	gLogDebug = GetIniBool(L"Logging", L"debug", false, NULL);
@@ -2593,7 +2647,7 @@ void LoadProfileManagerConfig(const wchar_t *exe_path)
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
 
-	ParseIni(iniFile);
+	ParseIniFile(iniFile);
 
 	gLogDebug = GetIniBool(L"Logging", L"debug", false, NULL);
 

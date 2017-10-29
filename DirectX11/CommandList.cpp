@@ -184,7 +184,7 @@ static bool ParseResetPerFrameLimits(const wchar_t *section,
 		operation->resource = &res->second;
 	}
 
-	if (!wcsncmp(val->c_str(), L"customshader", 12)) {
+	if (!wcsncmp(val->c_str(), L"customshader", 12) || !wcsncmp(val->c_str(), L"builtincustomshader", 19)) {
 		wstring shader_id(val->c_str());
 
 		shader = customShaders.find(shader_id);
@@ -484,10 +484,10 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 		return ParseCheckTextureOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	if (!wcscmp(key, L"run")) {
-		if (!wcsncmp(val->c_str(), L"customshader", 12))
+		if (!wcsncmp(val->c_str(), L"customshader", 12) || !wcsncmp(val->c_str(), L"builtincustomshader", 19))
 			return ParseRunShader(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
-		if (!wcsncmp(val->c_str(), L"commandlist", 11))
+		if (!wcsncmp(val->c_str(), L"commandlist", 11) || !wcsncmp(val->c_str(), L"builtincommandlist", 18))
 			return ParseRunExplicitCommandList(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 	}
 
