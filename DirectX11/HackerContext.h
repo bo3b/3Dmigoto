@@ -11,7 +11,6 @@ extern GUID GUID_RasterizerStateDisableScissor;
 
 struct DrawContext
 {
-	bool override;
 	float oldSeparation;
 	ID3D11PixelShader *oldPixelShader;
 	ID3D11VertexShader *oldVertexShader;
@@ -22,7 +21,6 @@ struct DrawContext
 			UINT FirstVertex, UINT FirstIndex, UINT FirstInstance,
 			ID3D11Buffer *indirect_buffer, UINT args_offset,
 			bool DrawInstancedIndirect) :
-		override(false),
 		oldSeparation(FLT_MAX),
 		oldVertexShader(NULL),
 		oldPixelShader(NULL),

@@ -481,8 +481,6 @@ void HackerContext::DeferredShaderReplacementBeforeDispatch()
 
 void HackerContext::BeforeDraw(DrawContext &data)
 {
-	float separationValue = FLT_MAX;
-
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
 	if (G->hunting == HUNTING_MODE_ENABLED)
 	{
@@ -547,10 +545,16 @@ void HackerContext::BeforeDraw(DrawContext &data)
 					G->mSelectedVertexShader_IndexBuffer.insert(mCurrentIndexBuffer);
 				if (mCurrentPixelShader == G->mSelectedPixelShader)
 					G->mSelectedPixelShader_IndexBuffer.insert(mCurrentIndexBuffer);
-				if (G->marking_mode == MARKING_MODE_MONO)
+				if (G->marking_mode == MARKING_MODE_MONO && mHackerDevice->mStereoHandle)
 				{
-					data.override = true;
-					separationValue = 0;
+					LogDebug("  setting separation=0 for hunting\n");
+
+					if (NVAPI_OK != NvAPI_Stereo_GetSeparation(mHackerDevice->mStereoHandle, &data.oldSeparation))
+						LogDebug("    Stereo_GetSeparation failed.\n");
+
+					NvAPIOverride();
+					if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, 0))
+						LogDebug("    Stereo_SetSeparation failed.\n");
 				}
 				else if (G->marking_mode == MARKING_MODE_SKIP)
 				{
@@ -638,27 +642,6 @@ void HackerContext::BeforeDraw(DrawContext &data)
 			ProcessShaderOverride(&i->second, true, &data);
 		}
 	}
-
-	if (data.override) {
-		HackerDevice *device = mHackerDevice;
-		if (device->mStereoHandle) {
-			if (separationValue != FLT_MAX) {
-				LogDebug("  setting custom separation value\n");
-
-				if (NVAPI_OK != NvAPI_Stereo_GetSeparation(device->mStereoHandle, &data.oldSeparation))
-				{
-					LogDebug("    Stereo_GetSeparation failed.\n");
-				}
-				NvAPIOverride();
-				if (NVAPI_OK != NvAPI_Stereo_SetSeparation(device->mStereoHandle, separationValue * data.oldSeparation))
-				{
-					LogDebug("    Stereo_SetSeparation failed.\n");
-				}
-			}
-		}
-	}
-
-	return;
 }
 
 void HackerContext::AfterDraw(DrawContext &data)
@@ -674,15 +657,10 @@ void HackerContext::AfterDraw(DrawContext &data)
 	if (G->analyse_frame)
 		FrameAnalysisAfterDraw(false, &data.call_info);
 
-	if (data.override) {
-		if (mHackerDevice->mStereoHandle) {
-			if (data.oldSeparation != FLT_MAX) {
-				NvAPIOverride();
-				if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, data.oldSeparation)) {
-					LogDebug("    Stereo_SetSeparation failed.\n");
-				}
-			}
-		}
+	if (mHackerDevice->mStereoHandle && data.oldSeparation != FLT_MAX) {
+		NvAPIOverride();
+		if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, data.oldSeparation))
+			LogDebug("    Stereo_SetSeparation failed.\n");
 	}
 
 	if (data.oldVertexShader) {
