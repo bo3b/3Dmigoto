@@ -1008,8 +1008,6 @@ static void ParseDriverProfile()
 wchar_t *ShaderOverrideIniKeys[] = {
 	L"hash",
 	L"allow_duplicate_hash",
-	L"separation",
-	L"convergence",
 	L"depth_filter",
 	L"partner",
 	L"iteration",
@@ -1073,9 +1071,6 @@ static void ParseShaderOverrideSections()
 		}
 
 		override->allow_duplicate_hashes = allow_duplicates;
-
-		override->separation = GetIniFloat(id, L"Separation", override->separation, NULL);
-		override->convergence = GetIniFloat(id, L"Convergence", override->convergence, NULL);
 
 		if (GetIniStringAndLog(id, L"depth_filter", 0, setting, MAX_PATH)) {
 			override->depth_filter = lookup_enum_val<wchar_t *, DepthBufferFilter>

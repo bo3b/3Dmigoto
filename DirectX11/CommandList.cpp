@@ -7,6 +7,7 @@
 #include "HackerDevice.h"
 #include "HackerContext.h"
 #include "Override.h"
+#include "D3D11Wrapper.h"
 
 #include <D3DCompiler.h>
 
@@ -479,6 +480,34 @@ bail:
 	return false;
 }
 
+static bool ParsePerDrawStereoOverride(const wchar_t *section,
+		const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list,
+		bool is_separation)
+{
+	int ret, len1;
+
+	PerDrawStereoOverrideCommand *operation = NULL;
+	float fval;
+
+	ret = swscanf_s(val->c_str(), L"%f%n", &fval, &len1);
+	if (ret == 0 || ret == EOF || len1 != val->length())
+		return false;
+
+	if (is_separation)
+		operation = new PerDrawSeparationOverrideCommand(section, fval, !explicit_command_list);
+	else
+		operation = new PerDrawConvergenceOverrideCommand(section, fval, !explicit_command_list);
+
+	// Add to both command lists by default - the pre command list will set
+	// the value, and the post command list will restore the original. If
+	// an explicit command list is specified then the value will only be
+	// set, not restored (regardless of whether that is pre or post)
+	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
+}
+
 bool ParseCommandListGeneralCommands(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
@@ -515,6 +544,12 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 
 	if (!wcscmp(key, L"clear"))
 		return ParseClearView(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+
+	if (!wcscmp(key, L"separation"))
+		return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, true);
+
+	if (!wcscmp(key, L"convergence"))
+		return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, false);
 
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
@@ -715,6 +750,80 @@ void AbortCommand::run(CommandListState *state)
 	state->mHackerContext->FrameAnalysisLog("3DMigoto [%S] handling = abort\n", ini_section.c_str());
 
 	state->aborted = true;
+}
+
+void PerDrawSeparationOverrideCommand::run(CommandListState *state)
+{
+	StereoHandle mStereoHandle = state->mHackerDevice->mStereoHandle;
+
+	state->mHackerContext->FrameAnalysisLog("3DMigoto [%S] separation = %f\n", ini_section.c_str(), val);
+
+	if (!mStereoHandle) {
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   No Stereo Handle\n");
+		return;
+	}
+
+	if (restore_on_post) {
+		if (state->post) {
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   Restoring separation\n");
+			NvAPIOverride();
+			if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mStereoHandle, saved))
+				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetSeparation failed\n");
+		} else {
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting per-draw call separation\n");
+			if (NVAPI_OK != NvAPI_Stereo_GetSeparation(mStereoHandle, &saved))
+				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_GetSeparation failed\n");
+
+			NvAPIOverride();
+			if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mStereoHandle, val * saved))
+				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetSeparation failed\n");
+		}
+	} else {
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting separation\n");
+		NvAPIOverride();
+		if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mStereoHandle, val))
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetSeparation failed\n");
+	}
+}
+
+void PerDrawConvergenceOverrideCommand::run(CommandListState *state)
+{
+	StereoHandle mStereoHandle = state->mHackerDevice->mStereoHandle;
+
+	state->mHackerContext->FrameAnalysisLog("3DMigoto [%S] convergence = %f\n", ini_section.c_str(), val);
+
+	if (!mStereoHandle) {
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   No Stereo Handle\n");
+		return;
+	}
+
+	if (restore_on_post) {
+		if (state->post) {
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   Restoring convergence\n");
+			NvAPIOverride();
+			if (NVAPI_OK != NvAPI_Stereo_SetConvergence(mStereoHandle, saved))
+				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetConvergence failed\n");
+		} else {
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting per-draw call convergence\n");
+			if (NVAPI_OK != NvAPI_Stereo_GetConvergence(mStereoHandle, &saved))
+				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_GetConvergence failed\n");
+
+			// The original ShaderOverride code multiplied the new
+			// convergence by the old one, so I'm doing that as
+			// well, but I'm not really convinced it makes sense.
+			// Still, the convergence override is generally only
+			// useful to use convergence=0 to move something to
+			// infinity, and in that case it won't matter.
+			NvAPIOverride();
+			if (NVAPI_OK != NvAPI_Stereo_SetConvergence(mStereoHandle, val * saved))
+				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetConvergence failed\n");
+		}
+	} else {
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting convergence\n");
+		NvAPIOverride();
+		if (NVAPI_OK != NvAPI_Stereo_SetConvergence(mStereoHandle, val))
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetConvergence failed\n");
+	}
 }
 
 CustomShader::CustomShader() :

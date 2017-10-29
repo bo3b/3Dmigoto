@@ -242,8 +242,7 @@ ID3D11PixelShader* HackerContext::SwitchPSShader(ID3D11PixelShader *shader)
 }
 
 #define ENABLE_LEGACY_FILTERS 1
-void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
-	DrawContext *data, float *separationValue, float *convergenceValue)
+void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader, DrawContext *data)
 {
 	bool use_orig = false;
 
@@ -254,16 +253,6 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 	// will be optimised out by the compiler, but is here to remind anyone
 	// looking at this that we don't want to extend this code further.
 	if (ENABLE_LEGACY_FILTERS) {
-		// Per draw call separation and convergence overrides are
-		// deprecated since they are rarely used and can be achieved by
-		// editing the vertex shader
-		*separationValue = shaderOverride->separation;
-		if (*separationValue != FLT_MAX)
-			data->override = true;
-		*convergenceValue = shaderOverride->convergence;
-		if (*convergenceValue != FLT_MAX)
-			data->override = true;
-
 		// Check iteration.
 		// TODO: extend the command list to support things like 'x = x + 1'
 		if (!shaderOverride->iterations.empty()) {
@@ -514,7 +503,7 @@ void HackerContext::DeferredShaderReplacementBeforeDispatch()
 
 void HackerContext::BeforeDraw(DrawContext &data)
 {
-	float separationValue = FLT_MAX, convergenceValue = FLT_MAX;
+	float separationValue = FLT_MAX;
 
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
 	if (G->hunting == HUNTING_MODE_ENABLED)
@@ -638,14 +627,14 @@ void HackerContext::BeforeDraw(DrawContext &data)
 		i = G->mShaderOverrideMap.find(mCurrentVertexShader);
 		if (i != G->mShaderOverrideMap.end()) {
 			data.post_commands[0] = &i->second.post_command_list;
-			ProcessShaderOverride(&i->second, false, &data, &separationValue, &convergenceValue);
+			ProcessShaderOverride(&i->second, false, &data);
 		}
 
 		if (mCurrentHullShader) {
 			i = G->mShaderOverrideMap.find(mCurrentHullShader);
 			if (i != G->mShaderOverrideMap.end()) {
 				data.post_commands[1] = &i->second.post_command_list;
-				ProcessShaderOverride(&i->second, false, &data, &separationValue, &convergenceValue);
+				ProcessShaderOverride(&i->second, false, &data);
 			}
 		}
 
@@ -653,7 +642,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 			i = G->mShaderOverrideMap.find(mCurrentDomainShader);
 			if (i != G->mShaderOverrideMap.end()) {
 				data.post_commands[2] = &i->second.post_command_list;
-				ProcessShaderOverride(&i->second, false, &data, &separationValue, &convergenceValue);
+				ProcessShaderOverride(&i->second, false, &data);
 			}
 		}
 
@@ -661,14 +650,14 @@ void HackerContext::BeforeDraw(DrawContext &data)
 			i = G->mShaderOverrideMap.find(mCurrentGeometryShader);
 			if (i != G->mShaderOverrideMap.end()) {
 				data.post_commands[3] = &i->second.post_command_list;
-				ProcessShaderOverride(&i->second, false, &data, &separationValue, &convergenceValue);
+				ProcessShaderOverride(&i->second, false, &data);
 			}
 		}
 
 		i = G->mShaderOverrideMap.find(mCurrentPixelShader);
 		if (i != G->mShaderOverrideMap.end()) {
 			data.post_commands[4] = &i->second.post_command_list;
-			ProcessShaderOverride(&i->second, true, &data, &separationValue, &convergenceValue);
+			ProcessShaderOverride(&i->second, true, &data);
 		}
 	}
 
@@ -686,18 +675,6 @@ void HackerContext::BeforeDraw(DrawContext &data)
 				if (NVAPI_OK != NvAPI_Stereo_SetSeparation(device->mStereoHandle, separationValue * data.oldSeparation))
 				{
 					LogDebug("    Stereo_SetSeparation failed.\n");
-				}
-			}
-
-			if (convergenceValue != FLT_MAX) {
-				LogDebug("  setting custom convergence value\n");
-
-				if (NVAPI_OK != NvAPI_Stereo_GetConvergence(device->mStereoHandle, &data.oldConvergence)) {
-					LogDebug("    Stereo_GetConvergence failed.\n");
-				}
-				NvAPIOverride();
-				if (NVAPI_OK != NvAPI_Stereo_SetConvergence(device->mStereoHandle, convergenceValue * data.oldConvergence)) {
-					LogDebug("    Stereo_SetConvergence failed.\n");
 				}
 			}
 		}
@@ -725,13 +702,6 @@ void HackerContext::AfterDraw(DrawContext &data)
 				NvAPIOverride();
 				if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, data.oldSeparation)) {
 					LogDebug("    Stereo_SetSeparation failed.\n");
-				}
-			}
-
-			if (data.oldConvergence != FLT_MAX) {
-				NvAPIOverride();
-				if (NVAPI_OK != NvAPI_Stereo_SetConvergence(mHackerDevice->mStereoHandle, data.oldConvergence)) {
-					LogDebug("    Stereo_SetConvergence failed.\n");
 				}
 			}
 		}

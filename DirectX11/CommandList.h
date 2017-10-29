@@ -703,6 +703,40 @@ public:
 	void run(CommandListState*) override;
 };
 
+class PerDrawStereoOverrideCommand : public CommandListCommand {
+public:
+	wstring ini_section;
+
+	float val;
+	float saved;
+	bool restore_on_post;
+
+	PerDrawStereoOverrideCommand(wstring section, float val, bool restore_on_post) :
+		ini_section(section),
+		val(val),
+		saved(FLT_MAX),
+		restore_on_post(restore_on_post)
+	{}
+};
+class PerDrawSeparationOverrideCommand : public PerDrawStereoOverrideCommand
+{
+public:
+	PerDrawSeparationOverrideCommand(wstring section, float val, bool restore_on_post) :
+		PerDrawStereoOverrideCommand(section, val, restore_on_post)
+	{}
+
+	void run(CommandListState*) override;
+};
+class PerDrawConvergenceOverrideCommand : public PerDrawStereoOverrideCommand
+{
+public:
+	PerDrawConvergenceOverrideCommand(wstring section, float val, bool restore_on_post) :
+		PerDrawStereoOverrideCommand(section, val, restore_on_post)
+	{}
+
+	void run(CommandListState*) override;
+};
+
 
 void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,

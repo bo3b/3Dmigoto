@@ -13,7 +13,6 @@ struct DrawContext
 {
 	bool override;
 	float oldSeparation;
-	float oldConvergence;
 	ID3D11PixelShader *oldPixelShader;
 	ID3D11VertexShader *oldVertexShader;
 	CommandList *post_commands[5];
@@ -25,7 +24,6 @@ struct DrawContext
 			bool DrawInstancedIndirect) :
 		override(false),
 		oldSeparation(FLT_MAX),
-		oldConvergence(FLT_MAX),
 		oldVertexShader(NULL),
 		oldPixelShader(NULL),
 		call_info(VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance,
@@ -124,8 +122,7 @@ private:
 		UINT Subresource, D3D11_MAP MapType, UINT MapFlags,
 		D3D11_MAPPED_SUBRESOURCE *pMappedResource);
 	void TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresource);
-	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
-		DrawContext *data,float *separationValue, float *convergenceValue);
+	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader, DrawContext *data);
 	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
 	ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
 	void RecordDepthStencil(ID3D11DepthStencilView *target);
