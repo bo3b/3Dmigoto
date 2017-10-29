@@ -89,6 +89,7 @@ public:
 
 	HackerContext* GetHackerContext();
 	ID3D11Device* GetOrigDevice();
+	ID3D11Device* GetPassThroughOrigDevice();
 	ID3D11DeviceContext* GetOrigContext();
 	IDXGISwapChain* GetOrigSwapChain();
 	HackerDXGISwapChain* GetHackerSwapChain();

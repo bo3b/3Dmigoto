@@ -58,8 +58,8 @@ static void RunCommandListComplete(HackerDevice *mHackerDevice,
 	CommandListState state;
 	state.mHackerDevice = mHackerDevice;
 	state.mHackerContext = mHackerContext;
-	state.mOrigDevice = mHackerDevice->GetOrigDevice();
-	state.mOrigContext = mHackerContext->GetOrigContext();
+	state.mOrigDevice = mHackerDevice->GetPassThroughOrigDevice();
+	state.mOrigContext = mHackerContext->GetPassThroughOrigContext();
 
 	state.call_info = call_info;
 	state.resource = resource;

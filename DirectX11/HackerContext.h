@@ -219,6 +219,7 @@ public:
 
 	void SetHackerDevice(HackerDevice *pDevice);
 	ID3D11DeviceContext* GetOrigContext();
+	ID3D11DeviceContext* GetPassThroughOrigContext();
 	void HookContext();
 
 	// public to allow CommandList access

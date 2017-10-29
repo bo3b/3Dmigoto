@@ -249,10 +249,23 @@ void HackerDevice::SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain)
 	mHackerSwapChain = pHackerSwapChain;
 }
 
-
+// Returns the "real" DirectX object. Note that if hooking is enabled calls
+// through this object will go back into 3DMigoto, which would then subject
+// them to extra logging and any processing 3DMigoto applies, which may be
+// undesirable in some cases. This used to cause a crash if a command list
+// issued a draw call, since that would then trigger the command list and
+// recurse until the stack ran out:
 ID3D11Device* HackerDevice::GetOrigDevice()
 {
 	return mRealOrigDevice;
+}
+
+// Use this one when you specifically don't want calls through this object to
+// ever go back into 3DMigoto. If hooking is disabled this is identical to the
+// above, but when hooking this will be the trampoline object instead:
+ID3D11Device* HackerDevice::GetPassThroughOrigDevice()
+{
+	return mOrigDevice;
 }
 
 ID3D11DeviceContext* HackerDevice::GetOrigContext()
