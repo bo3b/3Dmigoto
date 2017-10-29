@@ -190,7 +190,6 @@ static EnumName_t<wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
 };
 
 struct ShaderOverride {
-	std::vector<int> iterations; // Only for separation changes, not shaders.
 	DepthBufferFilter depth_filter;
 	UINT64 partner_hash;
 	FrameAnalysisOptions analyse_options;

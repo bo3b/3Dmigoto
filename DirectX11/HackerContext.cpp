@@ -253,28 +253,6 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 	// will be optimised out by the compiler, but is here to remind anyone
 	// looking at this that we don't want to extend this code further.
 	if (ENABLE_LEGACY_FILTERS) {
-		// Check iteration.
-		// TODO: extend the command list to support things like 'x = x + 1'
-		if (!shaderOverride->iterations.empty()) {
-			std::vector<int>::iterator k = shaderOverride->iterations.begin();
-			int currentiterations = *k = *k + 1;
-			LogDebug("  current iterations = %d\n", currentiterations);
-
-			data->override = false;
-			while (++k != shaderOverride->iterations.end())
-			{
-				if (currentiterations == *k)
-				{
-					data->override = true;
-					break;
-				}
-			}
-			if (!data->override)
-			{
-				LogDebug("  override skipped\n");
-			}
-		}
-
 		// Deprecated: The texture filtering support in the command
 		// list can match oD for the depth buffer, which will return
 		// negative zero -0.0 if no depth buffer is assigned.

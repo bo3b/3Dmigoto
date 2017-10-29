@@ -1010,7 +1010,6 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"allow_duplicate_hash",
 	L"depth_filter",
 	L"partner",
-	L"iteration",
 	L"analyse_options",
 	L"model",
 	L"disable_scissor",
@@ -1085,18 +1084,6 @@ static void ParseShaderOverrideSections()
 		// filtering can be achieved by setting an ini param in the
 		// partner's [ShaderOverride] section.
 		override->partner_hash = GetIniHash(id, L"partner", 0, NULL);
-
-		if (GetIniStringAndLog(id, L"Iteration", 0, setting, MAX_PATH))
-		{
-			// XXX: This differs from the TextureOverride
-			// iterations, in that there can only be one iteration
-			// here - not sure why.
-			int iteration;
-			override->iterations.clear();
-			override->iterations.push_back(0);
-			swscanf_s(setting, L"%d", &iteration);
-			override->iterations.push_back(iteration);
-		}
 
 		if (GetIniStringAndLog(id, L"analyse_options", 0, setting, MAX_PATH)) {
 			override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
