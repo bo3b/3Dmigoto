@@ -2874,7 +2874,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexed(THIS_
 	/* [annotation] */
 	__in  INT BaseVertexLocation)
 {
-	DrawContext c = DrawContext(0, IndexCount, 0, BaseVertexLocation, StartIndexLocation, 0);
+	DrawContext c = DrawContext(0, IndexCount, 0, BaseVertexLocation, StartIndexLocation, 0, NULL, 0, false);
 	BeforeDraw(c);
 
 	FrameAnalysisLog("DrawIndexed(IndexCount:%u, StartIndexLocation:%u, BaseVertexLocation:%u)\n",
@@ -2891,7 +2891,7 @@ STDMETHODIMP_(void) HackerContext::Draw(THIS_
 	/* [annotation] */
 	__in  UINT StartVertexLocation)
 {
-	DrawContext c = DrawContext(VertexCount, 0, 0, StartVertexLocation, 0, 0);
+	DrawContext c = DrawContext(VertexCount, 0, 0, StartVertexLocation, 0, 0, NULL, 0, false);
 	BeforeDraw(c);
 
 	FrameAnalysisLog("Draw(VertexCount:%u, StartVertexLocation:%u)\n",
@@ -2942,7 +2942,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstanced(THIS_
 	/* [annotation] */
 	__in  UINT StartInstanceLocation)
 {
-	DrawContext c = DrawContext(0, IndexCountPerInstance, InstanceCount, BaseVertexLocation, StartIndexLocation, StartInstanceLocation);
+	DrawContext c = DrawContext(0, IndexCountPerInstance, InstanceCount, BaseVertexLocation, StartIndexLocation, StartInstanceLocation, NULL, 0, false);
 	BeforeDraw(c);
 
 	FrameAnalysisLog("DrawIndexedInstanced(IndexCountPerInstance:%u, InstanceCount:%u, StartIndexLocation:%u, BaseVertexLocation:%i, StartInstanceLocation:%u)\n",
@@ -2964,7 +2964,7 @@ STDMETHODIMP_(void) HackerContext::DrawInstanced(THIS_
 	/* [annotation] */
 	__in  UINT StartInstanceLocation)
 {
-	DrawContext c = DrawContext(VertexCountPerInstance, 0, InstanceCount, StartVertexLocation, 0, StartInstanceLocation);
+	DrawContext c = DrawContext(VertexCountPerInstance, 0, InstanceCount, StartVertexLocation, 0, StartInstanceLocation, NULL, 0, false);
 	BeforeDraw(c);
 
 	FrameAnalysisLog("DrawInstanced(VertexCountPerInstance:%u, InstanceCount:%u, StartVertexLocation:%u, StartInstanceLocation:%u)\n",
@@ -3087,7 +3087,7 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 
 STDMETHODIMP_(void) HackerContext::DrawAuto(THIS)
 {
-	DrawContext c = DrawContext(0, 0, 0, 0, 0, 0);
+	DrawContext c = DrawContext(0, 0, 0, 0, 0, 0, NULL, 0, false);
 	BeforeDraw(c);
 
 	FrameAnalysisLog("DrawAuto()\n");
@@ -3103,7 +3103,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	DrawContext c = DrawContext(0, 0, 0, 0, 0, 0);
+	DrawContext c = DrawContext(0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs, false);
 	BeforeDraw(c);
 
 	FrameAnalysisLog("DrawIndexedInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
@@ -3120,7 +3120,7 @@ STDMETHODIMP_(void) HackerContext::DrawInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	DrawContext c = DrawContext(0, 0, 0, 0, 0, 0);
+	DrawContext c = DrawContext(0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs, true);
 	BeforeDraw(c);
 
 	FrameAnalysisLog("DrawInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",

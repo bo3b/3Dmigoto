@@ -20,13 +20,16 @@ struct DrawContext
 	DrawCallInfo call_info;
 
 	DrawContext(UINT VertexCount, UINT IndexCount, UINT InstanceCount,
-			UINT FirstVertex, UINT FirstIndex, UINT FirstInstance) :
+			UINT FirstVertex, UINT FirstIndex, UINT FirstInstance,
+			ID3D11Buffer *indirect_buffer, UINT args_offset,
+			bool DrawInstancedIndirect) :
 		override(false),
 		oldSeparation(FLT_MAX),
 		oldConvergence(FLT_MAX),
 		oldVertexShader(NULL),
 		oldPixelShader(NULL),
-		call_info(VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance)
+		call_info(VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance,
+				indirect_buffer, args_offset, DrawInstancedIndirect)
 	{
 		memset(post_commands, 0, sizeof(post_commands));
 	}

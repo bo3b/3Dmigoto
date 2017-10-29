@@ -76,8 +76,12 @@ void RunCommandList(HackerDevice *mHackerDevice,
 		DrawCallInfo *call_info,
 		bool post)
 {
+	ID3D11Resource *resource = NULL;
+	if (call_info)
+		resource = call_info->indirect_buffer;
+
 	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
-			call_info, NULL, NULL, post);
+			call_info, resource, NULL, post);
 }
 
 void RunResourceCommandList(HackerDevice *mHackerDevice,
@@ -679,9 +683,19 @@ void DrawCommand::run(CommandListState *state)
 			} else if (info->VertexCount) {
 				mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> Draw(%u, %u)\n", ini_section.c_str(), info->VertexCount, info->FirstVertex);
 				mOrigContext->Draw(info->VertexCount, info->FirstVertex);
+			} else if (info->indirect_buffer) {
+				if (info->DrawInstancedIndirect) {
+					mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> DrawInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
+					mOrigContext->DrawInstancedIndirect(info->indirect_buffer, info->args_offset);
+				} else {
+					mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> DrawIndexedInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
+					mOrigContext->DrawIndexedInstancedIndirect(info->indirect_buffer, info->args_offset);
+				}
+			} else {
+				mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> DrawAuto()\n", ini_section.c_str());
+				mHackerContext->DrawAuto();
 			}
-			// TODO: Save enough state to know if it's DrawAuto or
-			// an Indirect draw call (and the buffer)
+			// TODO: dispatch = from_caller
 			break;
 	}
 }
