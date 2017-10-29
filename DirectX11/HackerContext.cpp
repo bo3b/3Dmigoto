@@ -516,9 +516,6 @@ void HackerContext::BeforeDraw(DrawContext &data)
 {
 	float separationValue = FLT_MAX, convergenceValue = FLT_MAX;
 
-	// Skip?
-	data.call_info.skip = false;
-
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
 	if (G->hunting == HUNTING_MODE_ENABLED)
 	{
@@ -591,6 +588,13 @@ void HackerContext::BeforeDraw(DrawContext &data)
 				else if (G->marking_mode == MARKING_MODE_SKIP)
 				{
 					data.call_info.skip = true;
+
+					// If we have transferred the draw call to a custom shader via "handling =
+					// skip" and "draw = from_caller" we still want a way to skip it for hunting.
+					// We can't reuse call_info.skip for that, as that is also set by
+					// "handling=skip", which may happen before the "draw=from_caller", so we
+					// use a second skip flag specifically for hunting:
+					data.call_info.hunting_skip = true;
 				}
 				else if (G->marking_mode == MARKING_MODE_PINK)
 				{

@@ -661,6 +661,10 @@ void DrawCommand::run(CommandListState *state)
 				mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> NO ACTIVE DRAW CALL\n", ini_section.c_str());
 				break;
 			}
+			if (info->hunting_skip) {
+				mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> SKIPPED DUE TO HUNTING\n", ini_section.c_str());
+				break;
+			}
 			if (info->InstanceCount) {
 				if (info->IndexCount) {
 					mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
