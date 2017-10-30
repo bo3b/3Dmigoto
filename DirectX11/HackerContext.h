@@ -7,8 +7,6 @@
 #include "ResourceHash.h"
 #include "DrawCallInfo.h"
 
-extern GUID GUID_RasterizerStateDisableScissor;
-
 struct DrawContext
 {
 	float oldSeparation;
