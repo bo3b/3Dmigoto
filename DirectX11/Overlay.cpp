@@ -64,7 +64,7 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapC
 	// to draw the text, and we don't want to intercept those.
 	mFont.reset(new DirectX::SpriteFont(pDevice->GetOrigDevice(), fontBlob, fontSize));
 	mFont->SetDefaultCharacter(L'?');
-	mSpriteBatch.reset(new DirectX::SpriteBatch(pContext->GetOrigContext()));
+	mSpriteBatch.reset(new DirectX::SpriteBatch(pContext->GetPassThroughOrigContext()));
 }
 
 Overlay::~Overlay()
@@ -102,7 +102,7 @@ void Overlay::SaveState()
 {
 	memset(&state, 0, sizeof(state));
 
-	ID3D11DeviceContext *context = mHackerContext->GetOrigContext();
+	ID3D11DeviceContext *context = mHackerContext->GetPassThroughOrigContext();
 
 	context->OMGetRenderTargets(1, &state.pRenderTargetView, &state.pDepthStencilView);
 	state.RSNumViewPorts = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
@@ -125,7 +125,7 @@ void Overlay::SaveState()
 void Overlay::RestoreState()
 {
 	unsigned i;
-	ID3D11DeviceContext *context = mHackerContext->GetOrigContext();
+	ID3D11DeviceContext *context = mHackerContext->GetPassThroughOrigContext();
 
 	context->OMSetRenderTargets(1, &state.pRenderTargetView, state.pDepthStencilView);
 	if (state.pRenderTargetView)
@@ -210,11 +210,11 @@ HRESULT Overlay::InitDrawState()
 		return hr;
 
 	// set the first render target as the back buffer, with no stencil
-	mHackerContext->GetOrigContext()->OMSetRenderTargets(1, &backbuffer, NULL);
+	mHackerContext->GetPassThroughOrigContext()->OMSetRenderTargets(1, &backbuffer, NULL);
 
 	// Make sure there is at least one open viewport for DirectXTK to use.
 	D3D11_VIEWPORT openView = CD3D11_VIEWPORT(0.0, 0.0, float(mResolution.x), float(mResolution.y));
-	mHackerContext->GetOrigContext()->RSSetViewports(1, &openView);
+	mHackerContext->GetPassThroughOrigContext()->RSSetViewports(1, &openView);
 
 	return S_OK;
 }

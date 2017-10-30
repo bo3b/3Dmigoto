@@ -329,7 +329,7 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	if (SUCCEEDED(hr))
 	{
 		swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls.jpg", G->SHADER_PATH, hash, shaderType.c_str());
-		hr = DirectX::SaveWICTextureToFile(pDevice->GetOrigContext(), backBuffer, GUID_ContainerFormatJpeg, fullName);
+		hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext(), backBuffer, GUID_ContainerFormatJpeg, fullName);
 		backBuffer->Release();
 	}
 
@@ -383,14 +383,14 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	// NVAPI documentation hasn't been updated to indicate which is the
 	// correct function to use for the reverse stereo blit in DX11...
 	// Fortunately there was really only one possibility, which is:
-	pDevice->GetOrigContext()->CopySubresourceRegion(stereoBackBuffer, 0, 0, 0, 0, backBuffer, 0, &srcBox);
+	pDevice->GetPassThroughOrigContext()->CopySubresourceRegion(stereoBackBuffer, 0, 0, 0, 0, backBuffer, 0, &srcBox);
 
 	hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	if (FAILED(hr))
 		LogInfo("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
 	wsprintf(fullName, L"%ls\\%016I64x-%ls.jps", G->SHADER_PATH, hash, shaderType.c_str());
-	hr = DirectX::SaveWICTextureToFile(pDevice->GetOrigContext(), stereoBackBuffer, GUID_ContainerFormatJpeg, fullName);
+	hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext(), stereoBackBuffer, GUID_ContainerFormatJpeg, fullName);
 
 	LogInfoW(L"  StereoScreenShot on Mark: %s, result: %d\n", fullName, hr);
 

@@ -273,6 +273,14 @@ ID3D11DeviceContext* HackerDevice::GetOrigContext()
 	return mOrigContext;
 }
 
+ID3D11DeviceContext* HackerDevice::GetPassThroughOrigContext()
+{
+	if (mHackerContext)
+		return mHackerContext->GetPassThroughOrigContext();
+
+	return mOrigContext;
+}
+
 IDXGISwapChain* HackerDevice::GetOrigSwapChain()
 {
 	return mHackerSwapChain->GetOrigSwapChain();
