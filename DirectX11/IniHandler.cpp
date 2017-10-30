@@ -2734,4 +2734,9 @@ void ReloadConfig(HackerDevice *device)
 	}
 	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
 	realContext->Unmap(device->mIniTexture, 0);
+
+	// Allow the FrameAnalysisContext to be switched in and out on the fly
+	// for the immediate context if hunting is enabled at runtime via
+	// config reload (deferred contexts will need a game restart):
+	device->GetHackerContext()->UpdateContextPointer();
 }

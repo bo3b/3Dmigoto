@@ -2,229 +2,46 @@
 
 #include <d3d11_1.h>
 
-#include "HackerDevice.h"
-#include "Globals.h"
-#include "ResourceHash.h"
-#include "DrawCallInfo.h"
-#include "FrameAnalysis.h"
+// We make the frame analysis context directly implement ID3D11DeviceContext1 -
+// no funky implementation inheritance or alternate versions here, just a
+// straight forward object implementing an interface. Accessing it as
+// ID3D11DeviceContext will work just as well thanks to interface inheritance.
 
-struct DrawContext
-{
-	float oldSeparation;
-	ID3D11PixelShader *oldPixelShader;
-	ID3D11VertexShader *oldVertexShader;
-	CommandList *post_commands[5];
-	DrawCallInfo call_info;
-
-	DrawContext(UINT VertexCount, UINT IndexCount, UINT InstanceCount,
-			UINT FirstVertex, UINT FirstIndex, UINT FirstInstance,
-			ID3D11Buffer *indirect_buffer, UINT args_offset,
-			bool DrawInstancedIndirect) :
-		oldSeparation(FLT_MAX),
-		oldVertexShader(NULL),
-		oldPixelShader(NULL),
-		call_info(VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance,
-				indirect_buffer, args_offset, DrawInstancedIndirect)
-	{
-		memset(post_commands, 0, sizeof(post_commands));
-	}
-};
-
-struct DispatchContext
-{
-	CommandList *post_commands;
-
-	DispatchContext() :
-		post_commands(NULL)
-	{}
-};
-
-
-// Forward declaration to allow circular reference between HackerContext and HackerDevice. 
-// We need this to allow each to reference the other as needed.
-
-class HackerDevice;
-class HackerDevice1;
-
-// These are per-context so we shouldn't need locks
-struct MappedResourceInfo {
-	D3D11_MAPPED_SUBRESOURCE map;
-	bool mapped_writable;
-	void *orig_pData;
-	size_t size;
-
-	MappedResourceInfo() :
-		orig_pData(NULL),
-		size(0),
-		mapped_writable(false)
-	{}
-};
-
-// Hierarchy:
-//  HackerContext <- ID3D11DeviceContext <- ID3D11DeviceChild <- IUnknown
-
-// devicechild: MIDL_INTERFACE("1841e5c8-16b0-489b-bcc8-44cfb0d5deae")
-// MIDL_INTERFACE("c0bfa96c-e089-44fb-8eaf-26f8796190da")
-class HackerContext : public ID3D11DeviceContext 
+class FrameAnalysisContext : public ID3D11DeviceContext1
 {
 private:
-	ID3D11Device *mOrigDevice;
-	ID3D11DeviceContext *mOrigContext;
-	ID3D11DeviceContext *mPassThroughContext;
-	ID3D11DeviceContext *mRealOrigContext;
-	HackerDevice *mHackerDevice;
+	ID3D11DeviceContext1 *mOrigContext;
 
-	// These are per-context, moved from globals.h:
-	uint32_t mCurrentIndexBuffer; // Only valid while hunting=1
-	UINT64 mCurrentVertexShader;
-	ID3D11VertexShader *mCurrentVertexShaderHandle;
-	UINT64 mCurrentPixelShader;
-	ID3D11PixelShader *mCurrentPixelShaderHandle;
-	UINT64 mCurrentComputeShader;
-	ID3D11ComputeShader *mCurrentComputeShaderHandle;
-	UINT64 mCurrentGeometryShader;
-	ID3D11GeometryShader *mCurrentGeometryShaderHandle;
-	UINT64 mCurrentDomainShader;
-	ID3D11DomainShader *mCurrentDomainShaderHandle;
-	UINT64 mCurrentHullShader;
-	ID3D11HullShader *mCurrentHullShaderHandle;
-	std::vector<ID3D11Resource *> mCurrentRenderTargets;
-	ID3D11Resource *mCurrentDepthTarget;
-	FrameAnalysisOptions analyse_options;
-
-	// Used for deny_cpu_read, track_texture_updates and constant buffer matching
-	typedef std::unordered_map<ID3D11Resource*, MappedResourceInfo> MappedResources;
-	MappedResources mMappedResources;
-
-	// These private methods are utility routines for HackerContext.
-	void BeforeDraw(DrawContext &data);
-	void AfterDraw(DrawContext &data);
-	bool BeforeDispatch(DispatchContext *context);
-	void AfterDispatch(DispatchContext *context);
-	template <class ID3D11Shader,
-		void (__stdcall ID3D11DeviceContext::*GetShaderVS2013BUGWORKAROUND)(ID3D11Shader**, ID3D11ClassInstance**, UINT*),
-		void (__stdcall ID3D11DeviceContext::*SetShaderVS2013BUGWORKAROUND)(ID3D11Shader*, ID3D11ClassInstance*const*, UINT),
-		HRESULT (__stdcall ID3D11Device::*CreateShader)(const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11Shader**)
-	>
-	void DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 hash, wchar_t *shader_type);
-	void DeferredShaderReplacementBeforeDraw();
-	void DeferredShaderReplacementBeforeDispatch();
-	bool ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
-		UINT DstY, ID3D11Resource *pSrcResource, const D3D11_BOX *pSrcBox,
-		UINT *replaceDstX, D3D11_BOX *replaceBox);
-	bool MapDenyCPURead(ID3D11Resource *pResource, UINT Subresource,
-			D3D11_MAP MapType, UINT MapFlags,
-			D3D11_MAPPED_SUBRESOURCE *pMappedResource);
-	void TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
-		UINT Subresource, D3D11_MAP MapType, UINT MapFlags,
-		D3D11_MAPPED_SUBRESOURCE *pMappedResource);
-	void TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresource);
-	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader, DrawContext *data);
-	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
-	ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
-	void RecordDepthStencil(ID3D11DepthStencilView *target);
-	void RecordShaderResourceUsage();
-	void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);
-	ID3D11Resource* RecordResourceViewStats(ID3D11ShaderResourceView *view);
-
-	// Functions for the frame analysis. Would be good to split this out,
-	// but it's pretty tightly coupled to the context at the moment:
-	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
-			bool stereo, FrameAnalysisOptions type_mask);
-	HRESULT CreateStagingResource(ID3D11Texture2D **resource,
-		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa);
-	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename,
-			FrameAnalysisOptions type_mask);
-	void DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
-			UINT size, char type, int idx, UINT stride, UINT offset);
-	void DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
-			UINT size, int idx, UINT stride, UINT offset,
-			UINT first, UINT count);
-	void DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
-			UINT size, DXGI_FORMAT ib_fmt, UINT offset,
-			UINT first, UINT count);
-	void DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
-			FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
-			UINT stride, UINT offset, UINT first, UINT count);
-	void DumpResource(ID3D11Resource *resource, wchar_t *filename,
-			FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
-			UINT stride, UINT offset);
-	void _DumpCBs(char shader_type, bool compute,
-		ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT]);
-	void _DumpTextures(char shader_type, bool compute,
-		ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]);
-	void DumpCBs(bool compute);
-	void DumpVBs(DrawCallInfo *call_info);
-	void DumpIB(DrawCallInfo *call_info);
-	void DumpTextures(bool compute);
-	void DumpRenderTargets();
-	void DumpDepthStencilTargets();
-	void DumpUAVs(bool compute);
-	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
-			wchar_t *reg, char shader_type, int idx, uint32_t hash, uint32_t orig_hash,
-			ID3D11Resource *handle);
-	HRESULT FrameAnalysisFilenameResource(wchar_t *filename, size_t size, wchar_t *type,
-			uint32_t hash, uint32_t orig_hash, ID3D11Resource *handle);
-	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
-	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
-	void FrameAnalysisProcessTriggers(bool compute);
-	void FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info);
-	void _FrameAnalysisAfterUpdate(ID3D11Resource *pResource,
-			FrameAnalysisOptions type_mask, wchar_t *type);
-	void FrameAnalysisAfterUnmap(ID3D11Resource *pResource);
-	void FrameAnalysisAfterUpdate(ID3D11Resource *pResource);
-
-	// Templates to reduce duplicated code:
-	template <class ID3D11Shader,
-		 void (__stdcall ID3D11DeviceContext::*OrigSetShader)(THIS_
-				 ID3D11Shader *pShader,
-				 ID3D11ClassInstance *const *ppClassInstances,
-				 UINT NumClassInstances)
-		 >
-	STDMETHODIMP_(void) SetShader(THIS_
-		/* [annotation] */
-		__in_opt ID3D11Shader *pShader,
-		/* [annotation] */
-		__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
-		UINT NumClassInstances,
-		std::unordered_map<ID3D11Shader *, UINT64> *shaders,
-		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders,
-		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders,
-		std::set<UINT64> *visitedShaders,
-		UINT64 selectedShader,
-		UINT64 *currentShaderHash,
-		ID3D11Shader **currentShaderHandle);
-	template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
-			UINT StartSlot,
-			UINT NumViews,
-			ID3D11ShaderResourceView *const *ppShaderResourceViews)>
-	void BindStereoResources();
-	template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
-			UINT StartSlot,
-			UINT NumViews,
-			ID3D11ShaderResourceView *const *ppShaderResourceViews)>
-	void SetShaderResources(UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView *const *ppShaderResourceViews);
+	template <class ID3D11Shader>
+	void FrameAnalysisLogShaderHash(ID3D11Shader *shader,
+			std::unordered_map<ID3D11Shader*, UINT64> *registered);
+	void FrameAnalysisLogResourceHash(ID3D11Resource *resource);
+	void FrameAnalysisLogResource(int slot, char *slot_name, ID3D11Resource *resource);
+	void FrameAnalysisLogResourceArray(UINT start, UINT len, ID3D11Resource *const *ppResources);
+	void FrameAnalysisLogView(int slot, char *slot_name, ID3D11View *view);
+	void FrameAnalysisLogViewArray(UINT start, UINT len, ID3D11View *const *ppViews);
+	void FrameAnalysisLogMiscArray(UINT start, UINT len, void *const *array);
+	void FrameAnalysisLogAsyncQuery(ID3D11Asynchronous *async);
+	void FrameAnalysisLogData(void *buf, UINT size);
+	FILE *frame_analysis_log;
 
 public:
-	HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
-	void SetHackerDevice(HackerDevice *pDevice);
-	void UpdateContextPointer();
-	void Bind3DMigotoResources();
-	ID3D11DeviceContext* GetOrigContext();
-	ID3D11DeviceContext* GetPassThroughOrigContext();
-	void HookContext();
+	FrameAnalysisContext(ID3D11DeviceContext1 *pContext);
+	~FrameAnalysisContext();
+
+	void SetContext(ID3D11DeviceContext1 *pContext);
 
 	// public to allow CommandList access
-	class FrameAnalysisContext FAContext;
 	void FrameAnalysisLog(char *fmt, ...);
-
-	//static D3D11Wrapper::ID3D11DeviceContext* GetDirect3DDeviceContext(ID3D11DeviceContext *pContext);
-	//__forceinline ID3D11DeviceContext *GetD3D11DeviceContext() { return (ID3D11DeviceContext*) m_pUnk; }
+	void vFrameAnalysisLog(char *fmt, va_list ap);
+	// An alias for the above function that we use to denote that omitting
+	// the newline was done intentionally. For now this is just for our
+	// reference, but later we might actually make the default function
+	// insert a newline:
+#define FrameAnalysisLogNoNL FrameAnalysisLog
 
 	/*** IUnknown methods ***/
-	//STDMETHOD_(ULONG, AddRef)(THIS);
-	//STDMETHOD_(ULONG, Release)(THIS);
 
 	HRESULT STDMETHODCALLTYPE QueryInterface(
 		/* [in] */ REFIID riid,
@@ -1065,23 +882,7 @@ public:
 		/* [annotation] */
 		__out_opt  ID3D11CommandList **ppCommandList);
 
-};
-
-// -----------------------------------------------------------------------------
-
-class HackerContext1: public HackerContext
-{
-private:
-	ID3D11Device1 *mOrigDevice1;
-	ID3D11DeviceContext1 *mOrigContext1;
-	ID3D11DeviceContext1 *mPassThroughContext1;
-	HackerDevice1 *mHackerDevice1;
-
-public:
-	HackerContext1(ID3D11Device1 *pDevice, ID3D11DeviceContext1 *pContext1);
-
-	void SetHackerDevice1(HackerDevice1 *pDevice);
-
+	// ******************* ID3D11DeviceContext1 interface
 
 	void STDMETHODCALLTYPE CopySubresourceRegion1(
 		/* [annotation] */
