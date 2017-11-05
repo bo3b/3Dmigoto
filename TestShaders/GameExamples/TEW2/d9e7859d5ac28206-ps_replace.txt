@@ -1,5 +1,9 @@
 // ---- Created with 3Dmigoto v1.2.65 on Sat Oct 14 16:50:26 2017
 
+// This pass for hand fixing, is looking for every specific conversion, 
+// like ftou in asm, and making the new variable a uint in hlsl.  This
+// removes numerous conversions for things like loop counters.
+
 cbuffer fblock : register(b0)
 {
   float4 renderpositiontoviewtexture : packoffset(c0);
@@ -117,30 +121,32 @@ void main(
   r1.x = r1.y * clusteredshadingparm.x + r1.x;
   r0.z = clusteredshadingparm.x * r0.z;
   r0.z = r0.z * clusteredshadingparm.y + r1.x;
-  r0.z = (uint)r0.z;
   
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.xy, r0.z, l(0), t7.xyxx
-r1.x = clusternumlights[r0.z].offset;
-r1.y = clusternumlights[r0.z].numItems;
-
-r0.z = asint(r1.y) & 255;
-
-if (8 == 0) r1.y = 0; else if (8+8 < 32) {   r1.y = (uint)r1.y << (32-(8 + 8)); r1.y = (uint)r1.y >> (32-8);  } else r1.y = (uint)r1.y >> 8;
+  uint r0_z = r0.z; // r0.z = (uint)r0.z;
   
-  r1.z = (int)r0.z + (int)r1.y;
+  // Known bad code for instruction (needs manual fix):
+  // ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.xy, r0.z, l(0), t7.xyxx
+  uint r1_x = clusternumlights[r0_z].offset; // r1.x = clusternumlights[r0_z].offset;
+  uint r1_y = clusternumlights[r0_z].numItems; // r1.y = clusternumlights[r0_z].numItems;
+
+  r0_z = r1_y & 255; // r0.z = (int)r1.y & 255;
+  if (8 == 0) r1_y = 0; else if (8+8 < 32) { r1_y = r1_y << (32-(8 + 8)); r1_y = r1_y >> (32-8); } else r1_y = r1_y >> 8; // if (8 == 0) r1.y = 0; else if (8+8 < 32) {   r1.y = (uint)r1.y << (32-(8 + 8)); r1.y = (uint)r1.y >> (32-8);  } else r1.y = (uint)r1.y >> 8;
+  r1.z = (int)r0_z + (int)r1_y; // r1.z = (int)r0.z + (int)r1.y;
+  
   r1.z = cmp((int)r1.z == 0);
   o0.xyzw = float4(0,0,0,0);
   if (r1.z != 0) return;
   r2.xyzw = packedgbuffer0main_samp.SampleLevel(packedgbuffer0main_samp_state_s, r0.xy, 0).xyzw;
   r3.xyz = packedgbuffer1main_samp.SampleLevel(packedgbuffer1main_samp_state_s, r0.xy, 0).yzw;
   r4.xyzw = float4(65535,65535,65535,65535) * r2.zwxy;
-  r4.xyzw = (uint4)r4.xyzw;
-  if (8 == 0) r4.x = 0; else if (8+8 < 32) {   r4.x = (uint)r4.x << (32-(8 + 8)); r4.x = (uint)r4.x >> (32-8);  } else r4.x = (uint)r4.x >> 8;
-  if (8 == 0) r4.y = 0; else if (8+8 < 32) {   r4.y = (uint)r4.y << (32-(8 + 8)); r4.y = (uint)r4.y >> (32-8);  } else r4.y = (uint)r4.y >> 8;
-  if (8 == 0) r4.z = 0; else if (8+8 < 32) {   r4.z = (uint)r4.z << (32-(8 + 8)); r4.z = (uint)r4.z >> (32-8);  } else r4.z = (uint)r4.z >> 8;
-  if (8 == 0) r4.w = 0; else if (8+8 < 32) {   r4.w = (uint)r4.w << (32-(8 + 8)); r4.w = (uint)r4.w >> (32-8);  } else r4.w = (uint)r4.w >> 8;
-  r4.xyzw = (uint4)r4.xyzw;
+  
+  uint4 r4_u = r4.xyzw; // r4.xyzw = (uint4)r4.xyzw;
+  if (8 == 0) r4_u.x = 0; else if (8+8 < 32) { r4_u.x = r4_u.x << (32-(8 + 8)); r4_u.x = r4_u.x >> (32-8);  } else r4_u.x = r4_u.x >> 8; // if (8 == 0) r4.x = 0; else if (8+8 < 32) {   r4.x = (uint)r4.x << (32-(8 + 8)); r4.x = (uint)r4.x >> (32-8);  } else r4.x = (uint)r4.x >> 8;
+  if (8 == 0) r4_u.y = 0; else if (8+8 < 32) { r4_u.y = r4_u.y << (32-(8 + 8)); r4_u.y = r4_u.y >> (32-8);  } else r4_u.y = r4_u.y >> 8; // if (8 == 0) r4.y = 0; else if (8+8 < 32) {   r4.y = (uint)r4.y << (32-(8 + 8)); r4.y = (uint)r4.y >> (32-8);  } else r4.y = (uint)r4.y >> 8;
+  if (8 == 0) r4_u.z = 0; else if (8+8 < 32) { r4_u.z = r4_u.z << (32-(8 + 8)); r4_u.z = r4_u.z >> (32-8);  } else r4_u.z = r4_u.z >> 8; // if (8 == 0) r4.z = 0; else if (8+8 < 32) {   r4.z = (uint)r4.z << (32-(8 + 8)); r4.z = (uint)r4.z >> (32-8);  } else r4.z = (uint)r4.z >> 8;
+  if (8 == 0) r4_u.w = 0; else if (8+8 < 32) { r4_u.w = r4_u.w << (32-(8 + 8)); r4_u.w = r4_u.w >> (32-8);  } else r4_u.w = r4_u.w >> 8; // if (8 == 0) r4.w = 0; else if (8+8 < 32) {   r4.w = (uint)r4.w << (32-(8 + 8)); r4.w = (uint)r4.w >> (32-8);  } else r4.w = (uint)r4.w >> 8;
+  r4.xyzw = r4_u.xyzw; // r4.xyzw = (uint4)r4.xyzw;
+  
   r4.xyzw = r4.xyzw * float4(0.00784313772,0.00784313772,0.00784313772,0.00784313772) + float4(-1,-1,-1,-1);
   r5.xyz = float3(1,1,1) + -abs(r4.xyx);
   r6.z = r5.x + -abs(r4.y);
@@ -155,11 +161,15 @@ if (8 == 0) r1.y = 0; else if (8+8 < 32) {   r1.y = (uint)r1.y << (32-(8 + 8)); 
   r5.xyz = r5.xyz * float3(0.5,0.5,0.5) + float3(0.5,0.5,0.5);
   r1.zw = float2(65535,65535) * r3.yz;
   r2.w = r3.x * 65535 + 0.100000001;
-  r2.w = (uint)r2.w;
-  r2.w = (int)r2.w & 255;
-  r2.w = (uint)r2.w;
+  
+  uint r2_w = r2.w; // r2.w = (uint)r2.w;
+  r2_w = r2_w & 255; // r2.w = (int)r2.w & 255;
+  r2.w = r2_w; // r2.w = (uint)r2.w;
+  
   r2.w = r2.w * 1 + 0.100000001;
-  r2.w = (uint)r2.w;
+  
+  r2_w = r2.w; // r2.w = (uint)r2.w;
+  
   r3.xyz = float3(1,1,1) + -abs(r4.zwz);
   r6.z = r3.x + -abs(r4.w);
   r3.x = cmp(r6.z >= 0);
@@ -169,13 +179,17 @@ if (8 == 0) r1.y = 0; else if (8+8 < 32) {   r1.y = (uint)r1.y << (32-(8 + 8)); 
   r3.x = rsqrt(r3.x);
   r3.xyz = r6.xyz * r3.xxx;
   r3.xyz = r3.xyz * float3(0.5,0.5,0.5) + float3(0.5,0.5,0.5);
-  r1.zw = (uint2)r1.zw;
-  r1.zw = (int2)r1.zw & int2(255,255);
-  r1.zw = (uint2)r1.zw;
+  
+  uint2 r1_zw = r1.zw; // r1.zw = (uint2)r1.zw;
+  r1_zw = r1_zw & int2(255,255); // r1.zw = (int2)r1.zw & int2(255,255);
+  r1.zw = r1_zw; // r1.zw = (uint2)r1.zw;
+  
   r4.xy = float2(0.00392156886,0.00392156886) * r1.zw;
-  r1.z = (int)r2.w & 1;
-  r1.z = cmp((int)r1.z == 1);
-  r2.w = r1.z ? 0 : r4.x;
+  
+  uint r1_z = r2_w & 1; // r1.z = (int)r2.w & 1;
+  r1_z = cmp(r1_z == 1); // r1.z = cmp((int)r1.z == 1);
+  r2.w = r1_z ? 0 : r4.x; // r2.w = r1.z ? 0 : r4.x;
+  
   r3.xyz = r3.xyz * float3(2,2,2) + float3(-1,-1,-1);
   r3.w = dot(r3.xyz, r3.xyz);
   r3.w = rsqrt(r3.w);
@@ -187,9 +201,11 @@ if (8 == 0) r1.y = 0; else if (8+8 < 32) {   r1.y = (uint)r1.y << (32-(8 + 8)); 
   r5.xyz = r5.xyz / r5.www;
   r5.xyz = lightprepassinverseparams.xyz + r5.xyz;
   r2.xyz = float3(65535,65535,65535) * r2.xyz;
-  r2.xyz = (uint3)r2.xyz;
-  r2.xyz = (int3)r2.xyz & int3(255,255,255);
-  r2.xyz = (uint3)r2.xyz;
+  
+  uint3 r2_xyz = r2.xyz; // r2.xyz = (uint3)r2.xyz;
+  r2_xyz.xyz = r2_xyz.xyz & int3(255,255,255); // r2.xyz = (int3)r2.xyz & int3(255,255,255);
+  r2.xyz = r2_xyz.xyz; // r2.xyz = (uint3)r2.xyz;
+  
   r2.xyz = float3(0.00392156886,0.00392156886,0.00392156886) * r2.xyz;
   r0.w = roughnesstex_samp.SampleLevel(roughnesstex_samp_state_s, r0.xy, 0).x;
   r2.xyz = log2(r2.xyz);
@@ -202,11 +218,13 @@ if (8 == 0) r1.y = 0; else if (8+8 < 32) {   r1.y = (uint)r1.y << (32-(8 + 8)); 
   r8.xyz = r3.xyz * pointshadowbias.zzz + r5.xyz;
   r0.x = viewstencil_samp.SampleLevel(viewstencil_samp_state_s, r0.xy, 0).x;
   r0.x = 255 * r0.x;
-  r0.x = (uint)r0.x;
-  r0.y = (uint)r1.x << 5;
-  r0.z = (int)r0.z + (int)r0.y;
-  r0.x = (int)r0.x & 2;
-  r0.x = cmp((int)r0.x != 2);
+  
+  uint r0_x = r0.x; // r0.x = (uint)r0.x;
+  uint r0_y = r1_x << 5; // r0.y = (uint)r1.x << 5;
+  r0_z = r0_z + r0_y; // r0.z = (int)r0.z + (int)r0.y;
+  r0_x = r0_x & 2; // r0.x = (int)r0.x & 2;
+  r0_x = cmp(r0_x != 2); // r0.x = cmp((int)r0.x != 2);
+   
   r5.xyz = float3(-0.0399999991,-0.0399999991,-0.0399999991) + r2.xyz;
   r5.xyz = r2.www * r5.xyz + float3(0.0399999991,0.0399999991,0.0399999991);
   r1.x = dot(r3.xyz, r7.xyz);
@@ -224,62 +242,65 @@ if (8 == 0) r1.y = 0; else if (8+8 < 32) {   r1.y = (uint)r1.y << (32-(8 + 8)); 
   r13.w = 3;
   r14.xyz = float3(0,0,0);
   r15.xyz = float3(0,0,0);
-  r2.w = r0.y;
+  
+  r2_w = r0_y; // r2.w = r0.y;
+  
   while (true) {
-    r6.w = cmp((uint)r2.w >= (uint)r0.z);
-    if (r6.w != 0) break;
+    uint r6_w = cmp(r2_w >= r0_z); // r6.w = cmp((uint)r2.w >= (uint)r0.z);
+    if (r6_w != 0) break; // if (r6.w != 0) break;
     
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r6.w, r2.w, l(0), t8.xxxx
-r6.w = clusterlightsid[r2.w].id;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r6.w, r2.w, l(0), t8.xxxx
+    r6_w = clusterlightsid[r2_w].id; // r6.w = clusterlightsid[r2.w].id;
   
-    r7.w = (int)r2.w + 1;
+    uint r7_w = r2_w + 1; // r7.w = (int)r2.w + 1;
   
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r16.xyzw, r6.w, l(100), t9.xyzw
-r16.x = lightparmsspot[r6.w].lightParm.y;
-r16.y = lightparmsspot[r6.w].lightParm.z;
-r16.z = lightparmsspot[r6.w].lightParm.w;
-r16.w = lightparmsspot[r6.w].lightAxisX.x;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r16.xyzw, r6.w, l(100), t9.xyzw
+    r16.x = lightparmsspot[r6_w].lightParm.y;
+    r16.y = lightparmsspot[r6_w].lightParm.z;
+    r16.z = lightparmsspot[r6_w].lightParm.w;
+    r16.w = lightparmsspot[r6_w].lightAxisX.x;
   
-    r9.w = (uint)r16.y;
-    r14.w = (int)r9.w & 1;
-    r14.w = cmp((int)r14.w == 1);
-    r14.w = r0.x ? r14.w : 0;
-    if (r14.w != 0) {
-      r2.w = r7.w;
+    uint r9_w = r16.y; // r9.w = (uint)r16.y;
+    uint r14_w = r9_w & 1; // r14.w = (int)r9.w & 1;
+    r14_w = cmp(r14_w == 1); // r14.w = cmp((int)r14.w == 1);
+    r14_w = r0_x ? r14_w : 0; // r14.w = r0.x ? r14.w : 0;
+    if (r14_w != 0) { // if (r14.w != 0) {
+      r2_w = r7_w; // r2.w = r7.w;
       continue;
     }
     
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r17.xyz, r6.w, l(64), t9.xyzx
-r17.x = lightparmsspot[r6.w].lightClipBoundingVolumeExtent.x;
-r17.y = lightparmsspot[r6.w].lightClipBoundingVolumeExtent.y;
-r17.z = lightparmsspot[r6.w].lightClipBoundingVolumeExtent.z;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r17.xyz, r6.w, l(64), t9.xyzx
+    r17.x = lightparmsspot[r6_w].lightClipBoundingVolumeExtent.x;
+    r17.y = lightparmsspot[r6_w].lightClipBoundingVolumeExtent.y;
+    r17.z = lightparmsspot[r6_w].lightClipBoundingVolumeExtent.z;
 
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r18.xyzw, r6.w, l(116), t9.wxyz
-r18.x = lightparmsspot[r6.w].lightAxisY.x;
-r18.y = lightparmsspot[r6.w].lightAxisX.y;
-r18.z = lightparmsspot[r6.w].lightAxisX.z;
-r18.w = lightparmsspot[r6.w].lightAxisX.w;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r18.xyzw, r6.w, l(116), t9.wxyz
+    r18.x = lightparmsspot[r6_w].lightAxisY.x;
+    r18.y = lightparmsspot[r6_w].lightAxisX.y;
+    r18.z = lightparmsspot[r6_w].lightAxisX.z;
+    r18.w = lightparmsspot[r6_w].lightAxisX.w;
 
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r19.xyzw, r6.w, l(132), t9.wxyz
-r19.x = lightparmsspot[r6.w].lightAxisZ.x;
-r19.y = lightparmsspot[r6.w].lightAxisY.y;
-r19.z = lightparmsspot[r6.w].lightAxisY.z;
-r19.w = lightparmsspot[r6.w].lightAxisY.w;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r19.xyzw, r6.w, l(132), t9.wxyz
+    r19.x = lightparmsspot[r6_w].lightAxisZ.x;
+    r19.y = lightparmsspot[r6_w].lightAxisY.y;
+    r19.z = lightparmsspot[r6_w].lightAxisY.z;
+    r19.w = lightparmsspot[r6_w].lightAxisY.w;
 
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r20.xyzw, r6.w, l(148), t9.wxyz
-r20.x = lightparmsspot[r6.w].localToLightS.x;
-r20.y = lightparmsspot[r6.w].lightAxisZ.y;
-r20.z = lightparmsspot[r6.w].lightAxisZ.z;
-r20.w = lightparmsspot[r6.w].lightAxisZ.w;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r20.xyzw, r6.w, l(148), t9.wxyz
+    r20.x = lightparmsspot[r6_w].localToLightS.x;
+    r20.y = lightparmsspot[r6_w].lightAxisZ.y;
+    r20.z = lightparmsspot[r6_w].lightAxisZ.z;
+    r20.w = lightparmsspot[r6_w].lightAxisZ.w;
 
-    r14.w = (int)r9.w & 64;
-    r14.w = cmp((int)r14.w == 64);
+    r14_w = r9_w & 64; // r14.w = (int)r9.w & 64;
+    r14.w = cmp(r14_w == 64); // r14.w = cmp((int)r14.w == 64);
+    
     r21.x = r16.w;
     r21.yzw = r18.yzw;
     r21.x = dot(r8.xyzw, r21.xyzw);
@@ -292,32 +313,35 @@ r20.w = lightparmsspot[r6.w].lightAxisZ.w;
     r15.w = max(r15.w, r17.z);
     r15.w = cmp(r15.w >= 1);
     r16.y = r14.w ? r15.w : 0;
-    r2.w = r7.w;
+    
+    r2_w = r7_w; // r2.w = r7.w;
+    
     if (r16.y != 0) continue;
     r15.w = r15.w ? 0 : 1;
     
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r17.xyzw, r6.w, l(0), t9.xyzw
-r17.x = lightparmsspot[r6.w].lightPositions.x;
-r17.y = lightparmsspot[r6.w].lightPositions.y;
-r17.z = lightparmsspot[r6.w].lightPositions.z;
-r17.w = lightparmsspot[r6.w].lightPositions.w;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r17.xyzw, r6.w, l(0), t9.xyzw
+    r17.x = lightparmsspot[r6_w].lightPositions.x;
+    r17.y = lightparmsspot[r6_w].lightPositions.y;
+    r17.z = lightparmsspot[r6_w].lightPositions.z;
+    r17.w = lightparmsspot[r6_w].lightPositions.w;
 
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r18.xyzw, r6.w, l(32), t9.xyzw
-r18.x = lightparmsspot[r6.w].lightExtentses.x;
-r18.y = lightparmsspot[r6.w].lightExtentses.y;
-r18.z = lightparmsspot[r6.w].lightExtentses.z;
-r18.w = lightparmsspot[r6.w].lightExtentses.w;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r18.xyzw, r6.w, l(32), t9.xyzw
+    r18.x = lightparmsspot[r6_w].lightExtentses.x;
+    r18.y = lightparmsspot[r6_w].lightExtentses.y;
+    r18.z = lightparmsspot[r6_w].lightExtentses.z;
+    r18.w = lightparmsspot[r6_w].lightExtentses.w;
   
     r14.w = r14.w ? r15.w : 1;
-    r15.w = (int)r9.w & 128;
-    r15.w = cmp((int)r15.w == 128);
-    if (r15.w != 0) {
+    
+    uint r15_w = r9_w & 128; // r15.w = (int)r9.w & 128;
+    r15_w = cmp(r15_w == 128); // r15.w = cmp((int)r15.w == 128);
+    if (r15_w != 0) { // if (r15.w != 0) {
         
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r15.w, r6.w, l(92), t9.xxxx
-r15.w = lightparmsspot[r6.w].lightClipBoundingVolumeOrigin.w;
+      // Known bad code for instruction (needs manual fix):
+      // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r15.w, r6.w, l(92), t9.xxxx
+      r15.w = lightparmsspot[r6_w].lightClipBoundingVolumeOrigin.w;
     
       r19.xyz = -r17.xyz + r8.xyz;
       r21.xyz = float3(0.0199999996,0.0199999996,0.0199999996) * r19.xyz;
@@ -348,16 +372,16 @@ r15.w = lightparmsspot[r6.w].lightClipBoundingVolumeOrigin.w;
     r14.w = -1e-015 + r15.w;
     r14.w = cmp(r14.w < 0);
     if (r14.w != 0) {
-      r2.w = r7.w;
+      r2_w = r7_w; // r2.w = r7.w;
       continue;
     }
     
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r19.xyzw, r6.w, l(16), t9.xyzw
-r19.x = lightparmsspot[r6.w].lightColors.x;
-r19.y = lightparmsspot[r6.w].lightColors.y;
-r19.z = lightparmsspot[r6.w].lightColors.z;
-r19.w = lightparmsspot[r6.w].lightColors.w;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r19.xyzw, r6.w, l(16), t9.xyzw
+    r19.x = lightparmsspot[r6_w].lightColors.x;
+    r19.y = lightparmsspot[r6_w].lightColors.y;
+    r19.z = lightparmsspot[r6_w].lightColors.z;
+    r19.w = lightparmsspot[r6_w].lightColors.w;
   
     r17.xyz = r17.xyz + -r8.xyz;
     r14.w = dot(r17.xyz, r17.xyz);
@@ -407,36 +431,37 @@ r19.w = lightparmsspot[r6.w].lightColors.w;
     } else {
       r16.y = 0;
     }
-    r17.x = (int)r9.w & 8;
-    r17.x = cmp((int)r17.x == 8);
-    if (r17.x != 0) {
+    
+    uint r17_x = r9_w & 8; // r17.x = (int)r9.w & 8;
+    r17_x = cmp(r17_x == 8); // r17.x = cmp((int)r17.x == 8);
+    if (r17_x != 0) { // if (r17.x != 0) {
         
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r23.xyzw, r6.w, l(164), t9.wxyz
-r23.x = lightparmsspot[r6.w].localToLightT.x;
-r23.y = lightparmsspot[r6.w].localToLightS.y;
-r23.z = lightparmsspot[r6.w].localToLightS.z;
-r23.w = lightparmsspot[r6.w].localToLightS.w;
+      // Known bad code for instruction (needs manual fix):
+      // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r23.xyzw, r6.w, l(164), t9.wxyz
+      r23.x = lightparmsspot[r6_w].localToLightT.x;
+      r23.y = lightparmsspot[r6_w].localToLightS.y;
+      r23.z = lightparmsspot[r6_w].localToLightS.z;
+      r23.w = lightparmsspot[r6_w].localToLightS.w;
 
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r24.xyzw, r6.w, l(180), t9.wxyz
-r24.x = lightparmsspot[r6.w].localToLightR.x;
-r24.y = lightparmsspot[r6.w].localToLightT.y;
-r24.z = lightparmsspot[r6.w].localToLightT.z;
-r24.w = lightparmsspot[r6.w].localToLightT.w;
+      // Known bad code for instruction (needs manual fix):
+      // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r24.xyzw, r6.w, l(180), t9.wxyz
+      r24.x = lightparmsspot[r6_w].localToLightR.x;
+      r24.y = lightparmsspot[r6_w].localToLightT.y;
+      r24.z = lightparmsspot[r6_w].localToLightT.z;
+      r24.w = lightparmsspot[r6_w].localToLightT.w;
 
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r25.xyzw, r6.w, l(196), t9.xyzw
-r25.x = lightparmsspot[r6.w].localToLightR.y;
-r25.y = lightparmsspot[r6.w].localToLightR.z;
-r25.z = lightparmsspot[r6.w].localToLightR.w;
-r25.w = lightparmsspot[r6.w].localToLightQ.x;
+      // Known bad code for instruction (needs manual fix):
+      // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r25.xyzw, r6.w, l(196), t9.xyzw
+      r25.x = lightparmsspot[r6_w].localToLightR.y;
+      r25.y = lightparmsspot[r6_w].localToLightR.z;
+      r25.z = lightparmsspot[r6_w].localToLightR.w;
+      r25.w = lightparmsspot[r6_w].localToLightQ.x;
 
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r26.xyz, r6.w, l(212), t9.xyzx
-r26.x = lightparmsspot[r6.w].localToLightQ.y;
-r26.y = lightparmsspot[r6.w].localToLightQ.z;
-r26.z = lightparmsspot[r6.w].localToLightQ.w;
+      // Known bad code for instruction (needs manual fix):
+      // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r26.xyz, r6.w, l(212), t9.xyzx
+      r26.x = lightparmsspot[r6_w].localToLightQ.y;
+      r26.y = lightparmsspot[r6_w].localToLightQ.z;
+      r26.z = lightparmsspot[r6_w].localToLightQ.w;
     
       r20.yzw = r23.yzw;
       r10.x = dot(r8.xyzw, r20.xyzw);
@@ -531,7 +556,7 @@ r26.z = lightparmsspot[r6.w].localToLightQ.w;
     r10.y = cmp(r10.y < 0);
     r6.w = r6.w ? r10.y : 0;
     if (r6.w != 0) {
-      r2.w = r7.w;
+      r2_w = r7_w; // r2.w = r7.w;
       continue;
     }
     r6.w = r14.w * r3.w;
@@ -557,8 +582,10 @@ r26.z = lightparmsspot[r6.w].localToLightQ.w;
     r11.xyz = r21.xyz * r6.www;
     r11.xyz = r1.zzz ? r11.xyz : r22.xyz;
     r10.xyz = r19.xyz * r10.xxx;
-    r12.xy = (int2)r9.ww & int2(32,16);
-    r12.xy = cmp((int2)r12.xy != int2(32,16));
+    
+    uint2 r12_xy = r9_w & uint2(32,16); // r12.xy = (int2)r9.ww & int2(32,16);
+    r12.xy = cmp(r12_xy != uint2(32,16)); // r12.xy = cmp((int2)r12.xy != int2(32,16));
+    
     r13.xyz = r10.xyz * r2.xyz;
     r13.xyz = r12.xxx ? r13.xyz : 0;
     r10.xyz = r10.xyz * r11.xyz;
@@ -569,76 +596,83 @@ r26.z = lightparmsspot[r6.w].localToLightQ.w;
     r11.xyz = r11.xyz * r6.www + r13.xyz;
     r14.xyz = r14.xyz + r11.xyz;
     r15.xyz = r15.xyz + r10.xyz;
-    r2.w = r7.w;
+    
+    r2_w = r7_w; // r2.w = r7.w;
   }
-  r0.y = (int)r1.y + (int)r0.z;
+  
+  r0_y = r1_y + r0_z; // r0.y = (int)r1.y + (int)r0.z;
+  
   r8.w = 1;
   r10.w = 0;
   r11.xyz = r14.xyz;
   r12.xyz = r15.xyz;
-  r1.y = r0.z;
+  
+  r1_y = r0_z; // r1.y = r0.z;
+  
   while (true) {
-    r2.w = cmp((uint)r1.y >= (uint)r0.y);
-    if (r2.w != 0) break;
+    r2_w = cmp(r1_y >= r0_y); // r2.w = cmp((uint)r1.y >= (uint)r0.y);
+    if (r2_w != 0) break; // if (r2.w != 0) break;
     
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r2.w, r1.y, l(0), t8.xxxx
-r2.w = clusterlightsid[r1.y].id;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r2.w, r1.y, l(0), t8.xxxx
+    r2_w = clusterlightsid[r1_y].id; // r2.w = clusterlightsid[r1.y].id;
   
-    r6.w = (int)r1.y + 1;
+    uint r6_w = r1_y + 1; // r6.w = (int)r1.y + 1;
     
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r13.xyzw, r2.w, l(92), t9.xyzw
-r13.x = lightparmsspot[r2.w].lightClipBoundingVolumeOrigin.w;
-r13.y = lightparmsspot[r2.w].lightParm.x;
-r13.z = lightparmsspot[r2.w].lightParm.y;
-r13.w = lightparmsspot[r2.w].lightParm.z;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r13.xyzw, r2.w, l(92), t9.xyzw
+    r13.x = lightparmsspot[r2_w].lightClipBoundingVolumeOrigin.w;
+    r13.y = lightparmsspot[r2_w].lightParm.x;
+    r13.z = lightparmsspot[r2_w].lightParm.y;
+    r13.w = lightparmsspot[r2_w].lightParm.z;
   
-    r7.w = (uint)r13.w;
-    r9.w = (int)r7.w & 1;
-    r9.w = cmp((int)r9.w == 1);
-    r9.w = r0.x ? r9.w : 0;
-    if (r9.w != 0) {
-      r1.y = r6.w;
+    uint r7_w = r13.w; // r7.w = (uint)r13.w;
+    uint r9_w = r7_w & 1; // r9.w = (int)r7.w & 1;
+    
+    r9_w = cmp(r9_w == 1); // r9.w = cmp((int)r9.w == 1);
+    r9_w = r0_x ? r9_w : 0; // r9.w = r0.x ? r9.w : 0;
+    if (r9_w != 0) { // if (r9.w != 0) {
+      r1_y = r6_w; // r1.y = r6.w;
       continue;
     }
     
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r16.xyz, r2.w, l(64), t9.xyzx
-r16.x = lightparmsspot[r2.w].lightClipBoundingVolumeExtent.x;
-r16.y = lightparmsspot[r2.w].lightClipBoundingVolumeExtent.y;
-r16.z = lightparmsspot[r2.w].lightClipBoundingVolumeExtent.z;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r16.xyz, r2.w, l(64), t9.xyzx
+    r16.x = lightparmsspot[r2_w].lightClipBoundingVolumeExtent.x;
+    r16.y = lightparmsspot[r2_w].lightClipBoundingVolumeExtent.y;
+    r16.z = lightparmsspot[r2_w].lightClipBoundingVolumeExtent.z;
 
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r17.xyzw, r2.w, l(108), t9.xyzw
-r17.x = lightparmsspot[r2.w].lightParm.w;
-r17.y = lightparmsspot[r2.w].lightAxisX.x;
-r17.z = lightparmsspot[r2.w].lightAxisX.y;
-r17.w = lightparmsspot[r2.w].lightAxisX.z;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r17.xyzw, r2.w, l(108), t9.xyzw
+    r17.x = lightparmsspot[r2_w].lightParm.w;
+    r17.y = lightparmsspot[r2_w].lightAxisX.x;
+    r17.z = lightparmsspot[r2_w].lightAxisX.y;
+    r17.w = lightparmsspot[r2_w].lightAxisX.z;
 
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r18.xyzw, r2.w, l(124), t9.yzwx
-r18.x = lightparmsspot[r2.w].lightAxisY.x;
-r18.y = lightparmsspot[r2.w].lightAxisY.y;
-r18.z = lightparmsspot[r2.w].lightAxisY.z;
-r18.w = lightparmsspot[r2.w].lightAxisX.w;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r18.xyzw, r2.w, l(124), t9.yzwx
+    r18.x = lightparmsspot[r2_w].lightAxisY.x;
+    r18.y = lightparmsspot[r2_w].lightAxisY.y;
+    r18.z = lightparmsspot[r2_w].lightAxisY.z;
+    r18.w = lightparmsspot[r2_w].lightAxisX.w;
 
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r19.xyzw, r2.w, l(140), t9.yzwx
-r19.x = lightparmsspot[r2.w].lightAxisZ.x;
-r19.y = lightparmsspot[r2.w].lightAxisZ.y;
-r19.z = lightparmsspot[r2.w].lightAxisZ.z;
-r19.w = lightparmsspot[r2.w].lightAxisY.w;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r19.xyzw, r2.w, l(140), t9.yzwx
+    r19.x = lightparmsspot[r2_w].lightAxisZ.x;
+    r19.y = lightparmsspot[r2_w].lightAxisZ.y;
+    r19.z = lightparmsspot[r2_w].lightAxisZ.z;
+    r19.w = lightparmsspot[r2_w].lightAxisY.w;
 
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r20.xyzw, r2.w, l(156), t9.yzwx
-r20.x = lightparmsspot[r2.w].localToLightS.x;
-r20.y = lightparmsspot[r2.w].localToLightS.y;
-r20.z = lightparmsspot[r2.w].localToLightS.z;
-r20.w = lightparmsspot[r2.w].lightAxisZ.w;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r20.xyzw, r2.w, l(156), t9.yzwx
+    r20.x = lightparmsspot[r2_w].localToLightS.x;
+    r20.y = lightparmsspot[r2_w].localToLightS.y;
+    r20.z = lightparmsspot[r2_w].localToLightS.z;
+    r20.w = lightparmsspot[r2_w].lightAxisZ.w;
   
-    r9.w = (int)r7.w & 64;
-    r9.w = cmp((int)r9.w == 64);
+    r9_w = r7_w & 64; // r9.w = (int)r7.w & 64;
+    r9.w = cmp(r9_w == 64); // r9.w = cmp((int)r9.w == 64);
+    
     r21.xyz = r17.yzw;
     r21.w = r18.w;
     r21.x = dot(r8.xyzw, r21.xyzw);
@@ -651,23 +685,25 @@ r20.w = lightparmsspot[r2.w].lightAxisZ.w;
     r11.w = max(r11.w, r16.z);
     r11.w = cmp(r11.w >= 1);
     r12.w = r9.w ? r11.w : 0;
-    r1.y = r6.w;
+    
+    r1_y = r6_w; // r1.y = r6.w;
+    
     if (r12.w != 0) continue;
     r11.w = r11.w ? 0 : 1;
     
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r16.xyzw, r2.w, l(0), t9.xyzw
-r16.x = lightparmsspot[r2.w].lightPositions.x;
-r16.y = lightparmsspot[r2.w].lightPositions.y;
-r16.z = lightparmsspot[r2.w].lightPositions.z;
-r16.w = lightparmsspot[r2.w].lightPositions.w;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r16.xyzw, r2.w, l(0), t9.xyzw
+    r16.x = lightparmsspot[r2_w].lightPositions.x;
+    r16.y = lightparmsspot[r2_w].lightPositions.y;
+    r16.z = lightparmsspot[r2_w].lightPositions.z;
+    r16.w = lightparmsspot[r2_w].lightPositions.w;
 
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r18.xyzw, r2.w, l(48), t9.xyzw
-r18.x = lightparmsspot[r2.w].lightSpotDir.x;
-r18.y = lightparmsspot[r2.w].lightSpotDir.y;
-r18.z = lightparmsspot[r2.w].lightSpotDir.z;
-r18.w = lightparmsspot[r2.w].lightSpotDir.w;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r18.xyzw, r2.w, l(48), t9.xyzw
+    r18.x = lightparmsspot[r2_w].lightSpotDir.x;
+    r18.y = lightparmsspot[r2_w].lightSpotDir.y;
+    r18.z = lightparmsspot[r2_w].lightSpotDir.z;
+    r18.w = lightparmsspot[r2_w].lightSpotDir.w;
   
     r17.yzw = r16.xyz + -r8.xyz;
     r12.w = dot(r17.yzw, r17.yzw);
@@ -681,43 +717,53 @@ r18.w = lightparmsspot[r2.w].lightSpotDir.w;
     r12.w = r11.w * r9.w;
     r9.w = r9.w * r11.w + -1e-015;
     r9.w = cmp(r9.w < 0);
-    r1.y = r6.w;
+    
+    r1_y = r6_w; // r1.y = r6.w;
+    
     if (r9.w != 0) continue;
     
-// Known bad code for instruction (needs manual fix):
-// ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r9.w, r2.w, l(80), t9.xxxx
-r9.w = lightparmsspot[r2.w].lightClipBoundingVolumeOrigin.x;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r9.w, r2.w, l(80), t9.xxxx
+    r9.w = lightparmsspot[r2_w].lightClipBoundingVolumeOrigin.x;
   
     r19.xyz = -r16.xyz + r8.xyz;
     r11.w = dot(r18.xyz, r19.xyz);
     r9.w = r11.w + -r9.w;
     r9.w = cmp(r9.w < 0);
-    r1.y = r6.w;
+    
+    r1_y = r6_w; // r1.y = r6.w;
+    
     if (r9.w != 0) continue;
     r9.w = r11.w + -r13.y;
     r9.w = cmp(0 < r9.w);
-    r1.y = r6.w;
+    
+    r1_y = r6_w; // r1.y = r6.w;
+    
     if (r9.w != 0) continue;
     
 // Known bad code for instruction (needs manual fix):
 // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r18.xyzw, r2.w, l(32), t9.xyzw
-r18.x = lightparmsspot[r2.w].lightExtentses.x;
-r18.y = lightparmsspot[r2.w].lightExtentses.y;
-r18.z = lightparmsspot[r2.w].lightExtentses.z;
-r18.w = lightparmsspot[r2.w].lightExtentses.w;
+r18.x = lightparmsspot[r2_w].lightExtentses.x;
+r18.y = lightparmsspot[r2_w].lightExtentses.y;
+r18.z = lightparmsspot[r2_w].lightExtentses.z;
+r18.w = lightparmsspot[r2_w].lightExtentses.w;
   
-    r9.w = (int)r7.w & 128;
-    r9.w = cmp((int)r9.w == 128);
-    if (r9.w != 0) {
-      r9.w = (int)r7.w & 256;
-      r9.w = cmp((int)r9.w == 256);
+    r9_w = r7_w & 128; // r9.w = (int)r7.w & 128;
+    r9_w = cmp(r9_w == 128); // r9.w = cmp((int)r9.w == 128);
+    
+    if (r9_w != 0) { // if (r9.w != 0) {
+      uint r9_w2 = r7_w & 256; // r9.w = (int)r7.w & 256;
+      r9_w2 = cmp(r9_w2 == 256); // r9.w = cmp((int)r9.w == 256);
+      
       r21.xyz = float3(0.0199999996,0.0199999996,0.0199999996) * r19.xyz;
       r13.w = dot(abs(r21.xyz), abs(r21.xyz));
       r13.y = 9.99999972e-010 + r13.y;
       r11.w = saturate(r11.w / r13.y);
       r11.w = r11.w * r11.w;
       r11.w = r11.w * r11.w;
-      r9.w = r9.w ? r11.w : 0;
+      
+      r9.w = r9_w2 ? r11.w : 0; // r9.w = r9.w ? r11.w : 0;
+      
       r9.w = -r9.w * r9.w + 1;
       r9.w = r9.w * r9.w;
       r11.w = r13.w + r16.w;
@@ -738,16 +784,18 @@ r18.w = lightparmsspot[r2.w].lightExtentses.w;
     r11.w = -1e-015 + r9.w;
     r11.w = cmp(r11.w < 0);
     if (r11.w != 0) {
-      r1.y = r6.w;
+      
+      r1_y = r6_w; // r1.y = r6.w;
+      
       continue;
     }
     
 // Known bad code for instruction (needs manual fix):
 // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r19.xyzw, r2.w, l(16), t9.xyzw
-r19.x = lightparmsspot[r2.w].lightColors.x;
-r19.y = lightparmsspot[r2.w].lightColors.y;
-r19.z = lightparmsspot[r2.w].lightColors.z;
-r19.w = lightparmsspot[r2.w].lightColors.w;
+r19.x = lightparmsspot[r2_w].lightColors.x;
+r19.y = lightparmsspot[r2_w].lightColors.y;
+r19.z = lightparmsspot[r2_w].lightColors.z;
+r19.w = lightparmsspot[r2_w].lightColors.w;
   
     r11.w = max(r18.w, r0.w);
     r18.xyz = r6.xyz * r5.www + r17.yzw;
@@ -794,34 +842,36 @@ r19.w = lightparmsspot[r2.w].lightColors.w;
     } else {
       r12.w = 0;
     }
-    r16.w = (int)r7.w & 8;
+    
+    r16.w = r7_w & 8; // r16.w = (int)r7.w & 8;
+    
     r16.w = cmp((int)r16.w == 8);
     if (r16.w != 0) {
         
 // Known bad code for instruction (needs manual fix):
 // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r17.xyzw, r2.w, l(172), t9.yzwx
-r17.x = lightparmsspot[r2.w].localToLightT.x;
-r17.y = lightparmsspot[r2.w].localToLightT.y;
-r17.z = lightparmsspot[r2.w].localToLightT.z;
-r17.w = lightparmsspot[r2.w].localToLightS.w;
+r17.x = lightparmsspot[r2_w].localToLightT.x;
+r17.y = lightparmsspot[r2_w].localToLightT.y;
+r17.z = lightparmsspot[r2_w].localToLightT.z;
+r17.w = lightparmsspot[r2_w].localToLightS.w;
 
 // Known bad code for instruction (needs manual fix):
 // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r22.xyzw, r2.w, l(188), t9.yzwx
-r22.x = lightparmsspot[r2.w].localToLightR.x;
-r22.y = lightparmsspot[r2.w].localToLightR.y;
-r22.z = lightparmsspot[r2.w].localToLightR.z;
-r22.w = lightparmsspot[r2.w].localToLightT.w;
+r22.x = lightparmsspot[r2_w].localToLightR.x;
+r22.y = lightparmsspot[r2_w].localToLightR.y;
+r22.z = lightparmsspot[r2_w].localToLightR.z;
+r22.w = lightparmsspot[r2_w].localToLightT.w;
 
 // Known bad code for instruction (needs manual fix):
 // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r23.xyzw, r2.w, l(204), t9.xyzw
-r23.x = lightparmsspot[r2.w].localToLightR.w;
-r23.y = lightparmsspot[r2.w].localToLightQ.x;
-r23.z = lightparmsspot[r2.w].localToLightQ.y;
-r23.w = lightparmsspot[r2.w].localToLightQ.z;
+r23.x = lightparmsspot[r2_w].localToLightR.w;
+r23.y = lightparmsspot[r2_w].localToLightQ.x;
+r23.z = lightparmsspot[r2_w].localToLightQ.y;
+r23.w = lightparmsspot[r2_w].localToLightQ.z;
 
 // Known bad code for instruction (needs manual fix):
 // ld_structured_indexable(structured_buffer, stride=224)(mixed,mixed,mixed,mixed) r24.w, r2.w, l(220), t9.xxxx
-r24.w = lightparmsspot[r2.w].localToLightQ.w;
+r24.w = lightparmsspot[r2_w].localToLightQ.w;
     
       r10.xyz = r16.xyz;
       r16.xyzw = -r10.xyzw + r8.xyzw;
@@ -907,7 +957,9 @@ r24.w = lightparmsspot[r2.w].localToLightQ.w;
     r10.y = cmp(r10.y < 0);
     r2.w = r2.w ? r10.y : 0;
     if (r2.w != 0) {
-      r1.y = r6.w;
+      
+      r1_y = r6_w; // r1.y = r6.w;
+      
       continue;
     }
     r2.w = r11.w * r3.w;
@@ -933,8 +985,10 @@ r24.w = lightparmsspot[r2.w].localToLightQ.w;
     r13.yzw = r18.xyz * r2.www;
     r13.yzw = r1.zzz ? r13.yzw : r21.xyz;
     r10.xyz = r19.xyz * r10.xxx;
-    r16.xy = (int2)r7.ww & int2(32,16);
-    r16.xy = cmp((int2)r16.xy != int2(32,16));
+    
+    uint2 r16_xy = r7_w & uint2(32,16); // r16.xy = (int2)r7.ww & int2(32,16);
+    r16.xy = cmp(r16_xy != uint2(32,16)); // r16.xy = cmp((int2)r16.xy != int2(32,16));
+    
     r17.xyz = r10.xyz * r2.xyz;
     r16.xzw = r16.xxx ? r17.xyz : 0;
     r10.xyz = r10.xyz * r13.yzw;
@@ -945,7 +999,8 @@ r24.w = lightparmsspot[r2.w].localToLightQ.w;
     r13.xyz = r13.xyz * r2.www + r16.xzw;
     r11.xyz = r13.xyz + r11.xyz;
     r12.xyz = r12.xyz + r10.xyz;
-    r1.y = r6.w;
+    
+    r1_y = r6_w; // r1.y = r6.w;
   }
   r0.xyz = r12.xyz + r11.xyz;
   r0.w = dot(r11.xyz, float3(0.212599993,0.715200007,0.0722000003));
