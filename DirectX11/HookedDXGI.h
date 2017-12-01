@@ -28,7 +28,8 @@
 
 bool InstallDXGIHooks(void);
 
-void HookSwapChain(IDXGISwapChain* pSwapChain, ID3D11Device* pDevice, ID3D11DeviceContext* pContext);
+
+extern "C" LPVOID lpvtbl_CreateSwapChain(IDXGIFactory* pFactory);
 
 
 

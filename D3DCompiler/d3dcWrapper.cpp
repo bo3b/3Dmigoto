@@ -828,6 +828,14 @@ BOOL WINAPI DllMain(
 {
 	bool result = true;
 
+	//bool waitfordebugger = false;
+	//waitfordebugger = true;
+	//do
+	//{
+	//	Sleep(250);
+	//} while (!IsDebuggerPresent());
+	//__debugbreak();
+
 	switch (fdwReason)
 	{
 	case DLL_PROCESS_ATTACH:

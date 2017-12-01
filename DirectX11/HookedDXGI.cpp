@@ -10,6 +10,7 @@
 #include "log.h"
 #include "util.h"
 
+#include "HookedDXGI.h"
 #include "HackerDXGI.h"
 
 
@@ -25,44 +26,15 @@
 
 
 
-
 // -----------------------------------------------------------------------------
-// The signature copied from dxgi.h, in C section.
-// This unusual format also provides storage for the original pointer to the 
-// routine.
 
-HRESULT(STDMETHODCALLTYPE *OrigCreateSwapChain)(
-	IDXGIFactory * This,
-	/* [annotation][in] */
-	_In_  IUnknown *pDevice,
-	/* [annotation][in] */
-	_In_  DXGI_SWAP_CHAIN_DESC *pDesc,
-	/* [annotation][out] */
-	_Out_  IDXGISwapChain **ppSwapChain);
+// Log both to console using Nektra logging, and using our LogInfo, 
+// in case we are loading so early that our regular log is not ready.
 
+#define DoubleLog(fmt, ...) \
+	if (LogFile) fprintf(LogFile, fmt, __VA_ARGS__); \
+	if (bLog) NktHookLibHelpers::DebugPrint(fmt, __VA_ARGS__)
 
-// Our override method for any callers to CreateSwapChain.
-
-HRESULT STDMETHODCALLTYPE HookedCreateSwapChain(
-	IDXGIFactory * This,
-	/* [annotation][in] */
-	_In_  IUnknown *pDevice,
-	/* [annotation][in] */
-	_In_  DXGI_SWAP_CHAIN_DESC *pDesc,
-	/* [annotation][out] */
-	_Out_  IDXGISwapChain **ppSwapChain)
-{
-	HRESULT hr;
-	IDXGISwapChain *mOrigSwapChain;
-
-	hr = OrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
-	if (SUCCEEDED(hr))
-		mOrigSwapChain = *ppSwapChain;
-
-	LogInfo("HookedSwapChain::HookedCreateSwapChain mOrigSwapChain: %p, pDevice: %p, result: %d\n", mOrigSwapChain, pDevice, hr);
-
-	return hr;
-}
 
 
 // -----------------------------------------------------------------------------
@@ -80,12 +52,36 @@ static SIZE_T nHookId = 0;
 //Overlay *overlay;
 
 
-// Log both to console using Nektra logging, and using our LogInfo, 
-// in case we are loading so early that our regular log is not ready.
+// -----------------------------------------------------------------------------
+// The signature copied from dxgi.h, in C section.
+// This unusual format also provides storage for the original pointer to the 
+// routine.
 
-#define DoubleLog(fmt, ...) \
-	if (LogFile) fprintf(LogFile, fmt, __VA_ARGS__); \
-	if (bLog) NktHookLibHelpers::DebugPrint(fmt, __VA_ARGS__)
+HRESULT(__stdcall *pOrigCreateSwapChain)(IDXGIFactory* This,
+	/* [in] */  IUnknown             *pDevice,
+	/* [in] */  DXGI_SWAP_CHAIN_DESC *pDesc,
+	/* [out] */ IDXGISwapChain       **ppSwapChain
+	) = nullptr;
+
+
+// Our override method for any callers to CreateSwapChain.
+
+HRESULT __stdcall Hooked_CreateSwapChain(IDXGIFactory* This,
+	/* [in] */  IUnknown             *pDevice,
+	/* [in] */  DXGI_SWAP_CHAIN_DESC *pDesc,
+	/* [out] */ IDXGISwapChain       **ppSwapChain)
+{
+	HRESULT hr;
+	IDXGISwapChain *mOrigSwapChain;
+
+	hr = pOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
+	if (SUCCEEDED(hr))
+		mOrigSwapChain = *ppSwapChain;
+
+	LogInfo("HookedSwapChain::HookedCreateSwapChain mOrigSwapChain: %p, pDevice: %p, result: %d\n", mOrigSwapChain, pDevice, hr);
+
+	return hr;
+}
 
 
 // -----------------------------------------------------------------------------
@@ -128,30 +124,37 @@ static HRESULT WrapFactory1(void **ppFactory1)
 
 // -----------------------------------------------------------------------------
 
+// No wrap here, just hooking.  platform_update=1 is only hook for DXGI
+
 static HRESULT WrapFactory2(void **ppFactory2)
 {
 	// To create an original Factory2, this is not hooked out of the DXGI.dll, as
 	// it's not defined there.  But, we can call into fnOrigCreateFactory1 for it.
 
-	IDXGIFactory2 *origFactory2;
-	HRESULT hr = fnOrigCreateFactory1(__uuidof(IDXGIFactory2), (void **)&origFactory2);
+	//IDXGIFactory2 *origFactory2;
+	HRESULT hr = fnOrigCreateFactory1(__uuidof(IDXGIFactory2), (void **)ppFactory2);
 	if (FAILED(hr))
 	{
 		LogInfo("  failed with HRESULT=%x\n", hr);
 		return hr;
 	}
-	LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x\n", origFactory2, hr);
+	LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x\n", ppFactory2, hr);
 
-	HackerDXGIFactory2 *factory2Wrap;
-	factory2Wrap = new HackerDXGIFactory2(origFactory2);
+	//HackerDXGIFactory2 *factory2Wrap;
+	//factory2Wrap = new HackerDXGIFactory2(origFactory2);
 
-	if (ppFactory2)
-		*ppFactory2 = factory2Wrap;
+	//if (ppFactory2)
+	//	*ppFactory2 = factory2Wrap;
 
-	LogInfo("  new HackerDXGIFactory2(%s@%p) wrapped %p\n", type_name(factory2Wrap), factory2Wrap, origFactory2);
+	//LogInfo("  new HackerDXGIFactory2(%s@%p) wrapped %p\n", type_name(factory2Wrap), factory2Wrap, origFactory2);
 
 	// ToDo: Skipped null checks as they would throw exceptions- but
 	// we should handle exceptions.
+
+	// With the factory created, hook CreateSwapChain now.
+	SIZE_T hook_id;
+	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&pOrigCreateSwapChain,
+		lpvtbl_CreateSwapChain((IDXGIFactory*)*ppFactory2), Hooked_CreateSwapChain, 0);
 
 	return hr;
 }
@@ -285,6 +288,15 @@ bool InstallDXGIHooks(void)
 	LPVOID fnCreateDXGIFactory;
 	LPVOID fnCreateDXGIFactory1;
 	DWORD dwOsErr;
+
+	bool waitfordebugger = false;
+	waitfordebugger = true;
+	do
+	{
+		Sleep(250);
+	} while (!IsDebuggerPresent());
+	__debugbreak();
+
 
 	// Not certain this is necessary, but it won't hurt, and ensures it's loaded.
 	LoadLibrary(L"dxgi.dll");
