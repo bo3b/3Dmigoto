@@ -1,3 +1,4 @@
+// Lights Reflections From very first room, the Apartment.  1 of 2 CS.
 // ---- Created with 3Dmigoto v1.2.67 on Sun Dec 03 15:55:46 2017
 
 cbuffer PER_BATCH : register(b0)
@@ -81,8 +82,32 @@ TextureCubeArray<float4> SpecCubeArray : register(t17);
 TextureCubeArray<float4> DiffuseCubeArray : register(t18);
 Texture2DArray<float4> SpotTexArray : register(t19);
 Buffer<uint> TileLightMask : register(t22);
-StructuredBuffer<TiledClipVolumeInfo> TiledClipVolumeInfo : register(t23);
 Texture2DArray<float4> ColorSpotTexArray : register(t30);
+
+// Resource bind info for TiledClipVolumeInfo
+// {
+//
+//   struct STiledClipVolumeInfo
+//   {
+//       
+//       uint data;                     // Offset:    0
+//
+//   } $Element;                        // Offset:    0 Size:     4
+//
+// }
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t23, 4 
+StructuredBuffer<uint> TiledClipVolumeInfo : register(t23);
+
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u1
+RWTexture2D<float4> g_outputTexture1 : register(u1); 
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u2
+RWTexture2D<float4> g_outputTexture2 : register(u2); 
 
 
 // 3Dmigoto declarations
@@ -90,31 +115,39 @@ Texture2DArray<float4> ColorSpotTexArray : register(t30);
 Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> StereoParams : register(t125);
 
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_tgsm_raw g0, 4
+groupshared uint g0;
 
-void main)
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_tgsm_structured g1, 4, 256
+groupshared uint g1[256];        
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_tgsm_raw g2, 4
+groupshared uint g2;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_tgsm_structured g3, 4, 8
+groupshared uint g3[8];        
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_tgsm_structured g4, 4, 8
+groupshared uint g4[8];        
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 8, 8, 1
+[numthreads(8, 8, 1)]  
+
+void main(
+uint3 vThreadGroupID : SV_GroupID,				  // missing
+uint3 vThreadIDInGroup : SV_GroupThreadID		// missing
+)
 {
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t23, 4 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u1
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u2
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24;
   uint4 bitmask, uiDest;
   float4 fDest;
 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_tgsm_raw g0, 4
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_tgsm_structured g1, 4, 256
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_tgsm_raw g2, 4
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_tgsm_structured g3, 4, 8
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_tgsm_structured g4, 4, 8
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_thread_group 8, 8, 1
   r0.x = mad((int)vThreadIDInGroup.y, 8, (int)vThreadIDInGroup.x);
   r1.xy = mad((int2)vThreadGroupID.xy, int2(8,8), (int2)vThreadIDInGroup.xy);
   r0.yz = (uint2)r1.xy;
@@ -126,8 +159,9 @@ void main)
   r2.x = r2.y ? r2.x : 0;
   r0.w = r2.x ? r0.w : 0;
   if (r0.x == 0) {
-  // No code for instruction (needs manual fix):
-    store_raw g2.x, l(0), l(0)
+    // No code for instruction (needs manual fix):
+    // store_raw g2.x, l(0), l(0)
+    g0.x = 0; 
   }
   r2.x = cmp((uint)r0.x < 8);
   if (r2.x != 0) {
@@ -138,17 +172,22 @@ void main)
     r2.y = (uint)r2.y;
     r2.y = (uint)r2.y << 3;
     if (r0.x == 0) {
-    // No code for instruction (needs manual fix):
-        store_raw g0.x, l(0), l(0)
+      // No code for instruction (needs manual fix):
+      // store_raw g2.x, l(0), l(0)
+      g2.x = 0; 
     }
     r2.y = (int)r0.x + (int)r2.y;
     r2.y = TileLightMask.Load(r2.y).x;
-    [r0.x].0 = g3.x;
+    // store_structured g3.x, r0.x, l(0), r2.y
+    g3[r0.x].x = r2.y;
+    
     r2.y = countbits((uint)r2.y);
-    [r0.x].0 = g4.x;
+    
+    // store_structured g4.x, r0.x, l(0), r2.y
+    g4[r0.x].x = r2.y;
     // Needs manual fix for instruction:
-    atomic_iadd g0, l(0), r2.y
-    InterlockedAdd(dest, value, orig_value);
+    // atomic_iadd g0, l(0), r2.y
+    InterlockedAdd(g0, 0, r2.y);
   }
   GroupMemoryBarrierWithGroupSync();
   if (r2.x != 0) {
@@ -156,15 +195,17 @@ void main)
     while (true) {
       r2.z = cmp((uint)r2.y >= (uint)r0.x);
       if (r2.z != 0) break;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured r2.z, r2.y, l(0), g4.xxxx
-    r2.z = SampStateTrilinearClamp[]..swiz;
+      // Known bad code for instruction (needs manual fix):
+      // ld_structured r2.z, r2.y, l(0), g4.xxxx
+      r2.z = g4[r2.y + 0].x;
+        
       r2.x = (int)r2.z + (int)r2.x;
       r2.y = (int)r2.y + 1;
     }
-  // Known bad code for instruction (needs manual fix):
-    ld_structured r2.y, r0.x, l(0), g3.xxxx
-  r2.y = SampStateTrilinearClamp[]..swiz;
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured r2.y, r0.x, l(0), g3.xxxx
+    r2.y = g3[r0.x + 0].x;
+    
     r2.z = firstbitlow((uint)r2.y);
     r2.w = (uint)vThreadIDInGroup.x << 5;
     r2.w = mad((int)vThreadIDInGroup.y, 256, (int)r2.w);
@@ -176,27 +217,34 @@ void main)
       r3.z = (int)r3.x + 1;
       r3.w = (int)r2.x + (int)r3.x;
       r4.x = (int)r2.w + (int)r3.y;
-      [r3.w].0 = g1.x;
+      // store_structured g1.x, r3.w, l(0), r4.x
+      g1[r3.w].x = r4.x;
+      
       r3.w = cmp((int)r3.y < 31);
       r4.x = (int)r3.y + 1;
-      bitmask.w = ((~(-1 << r4.x)) << 0) & 0xffffffff;  r3.w = (((uint)0 << 0) & bitmask.w) | ((uint)r3.w & ~bitmask.w);
+      // bitmask.w = ((~(-1 << r4.x)) << 0) & 0xffffffff;  r3.w = (((uint)0 << 0) & bitmask.w) | ((uint)r3.w & ~bitmask.w);
+      bitmask.w = ((~(-1 << (uint)r4.x)) << 0) & 0xffffffff;  r3.w = (((uint)0 << 0) & bitmask.w) | ((uint)r3.w & ~bitmask.w);
+      
       r3.w = (int)r2.y & (int)r3.w;
       r3.y = firstbitlow((uint)r3.w);
       r3.xy = r3.zy;
     }
     if (r0.x == 0) {
-    // No code for instruction (needs manual fix):
-        ld_raw r0.x, l(0), g0.xxxx
-      [r0.x].0 = g1.x;
+      // No code for instruction (needs manual fix):
+      // ld_raw r0.x, l(0), g0.xxxx
+      r0.x = g0.x;
     }
   }
   if (r0.w != 0) {
-  // No code for instruction (needs manual fix):
-    store_raw g2.x, l(0), l(1)
+    // No code for instruction (needs manual fix):
+    // store_raw g2.x, l(0), l(1)
+    g2.x = 1;
   }
   GroupMemoryBarrierWithGroupSync();
-// No code for instruction (needs manual fix):
-ld_raw r0.x, l(0), g2.xxxx
+  // No code for instruction (needs manual fix):
+  // ld_raw r0.x, l(0), g2.xxxx
+  r0.x = g2.x;
+  
   if (r0.x == 0) {
     return;
   }
@@ -227,26 +275,33 @@ ld_raw r0.x, l(0), g2.xxxx
   r0.x = r2.z + -r0.x;
   r8.xy = (int2)r1.xy;
   r2.xy = r8.xy * r2.zz;
-  r8.x = dot(TiledLightsShadeInfo[222].color._m00_m01_m02, r2.xyz);
-  r8.y = dot(TiledLightsShadeInfo[222].projectorMatrix._m10_m11_m12, r2.xyz);
-  r8.z = dot(TiledLightsShadeInfo[222].projectorMatrix._m20_m21_m22, r2.xyz);
+  
+  r8.x = dot(CV_ScreenToWorldBasis._m00_m01_m02, r2.xyz);
+  r8.y = dot(CV_ScreenToWorldBasis._m10_m11_m12, r2.xyz);
+  r8.z = dot(CV_ScreenToWorldBasis._m20_m21_m22, r2.xyz);
+  
   r0.w = dot(-r8.xyz, -r8.xyz);
   r0.w = rsqrt(r0.w);
   r2.xyz = -r8.xyz * r0.www;
-// No code for instruction (needs manual fix):
-ld_raw r2.w, l(0), g0.xxxx
+  // No code for instruction (needs manual fix):
+  // ld_raw r2.w, l(0), g0.xxxx
+  r2.w = g0.x;
+  
   r5.w = cmp(0 < (uint)r2.w);
-// Known bad code for instruction (needs manual fix):
-ld_structured r6.w, l(0), l(0), g1.xxxx
-r6.w = SampStateTrilinearClamp[]..swiz;
+  // Known bad code for instruction (needs manual fix):
+  // ld_structured r6.w, l(0), l(0), g1.xxxx
+  r6.w = g1[0].x;
+
   r5.w = r5.w ? r6.w : 0;
   r9.xy = ClipVolumeIndexRT.Load(r1.xyw).xy;
   r6.w = 255 * r9.x;
   r6.w = (uint)r6.w;
   r7.w = (int)r6.w & 63;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r7.w, r7.w, l(0), t23.xxxx
-r7.w = SampStateTrilinearClamp[]..swiz;
+  
+  // Known bad code for instruction (needs manual fix):
+  // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r7.w, r7.w, l(0), t23.xxxx
+  r7.w = TiledClipVolumeInfo[r7.w].x;
+
   if (r4.w == 0) {
     r8.w = dot(r8.xyz, r3.xyz);
     r8.w = r8.w + r8.w;
@@ -899,11 +954,15 @@ r0.z = SampStateTrilinearClamp[]..swiz;
     r2.xyz = float3(0,0,0);
   }
   r2.w = 0;
-// No code for instruction (needs manual fix):
-store_uav_typed u2.xyzw, r1.xyyy, r2.xyzw
+  // No code for instruction (needs manual fix):
+  // store_uav_typed u2.xyzw, r1.xyyy, r2.xyzw
+  g_outputTexture2[r1.xy].xyzw = r2.xyzw;
+  
   r18.w = 0;
-// No code for instruction (needs manual fix):
-store_uav_typed u1.xyzw, r1.xyyy, r18.xyzw
+  // No code for instruction (needs manual fix):
+  // store_uav_typed u1.xyzw, r1.xyyy, r18.xyzw
+  g_outputTexture1[r1.xy].xyzw = r18.xyzw;
+  
   return;
 }
 
