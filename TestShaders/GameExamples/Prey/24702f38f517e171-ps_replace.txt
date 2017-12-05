@@ -180,8 +180,15 @@ void main(
     r0.yz = min(CV_HPosScale.xy, r0.yz);
     r1.xyz = _tex4.SampleLevel(_tex4_s, r0.yz, 0).xyz;
     r0.yzw = min(r1.xyz, r0.www);
-    r1.xyz = (int3)r0.yzw & int3(0,0,0);
-    r1.xyz = cmp((int3)r1.xyz != int3(0,0,0));
+    
+    // Not sure why, but these constants came out wrong.
+    // In ASM, they are 0x7f800000, which is Inf not 0.
+    //   and r1.xyz, r0.yzwy, l(0x7f800000, 0x7f800000, 0x7f800000, 0)
+    //   ine r1.xyz, r1.xyzx, l(0x7f800000, 0x7f800000, 0x7f800000, 0)
+
+    r1.xyz = asint(r0.yzw) & int3(0x7f800000, 0x7f800000, 0x7f800000); // r1.xyz = (int3)r0.yzw & int3(0,0,0);
+    r1.xyz = cmp((int3)r1.xyz != int3(0x7f800000, 0x7f800000, 0x7f800000)); // r1.xyz = cmp((int3)r1.xyz != int3(0,0,0));
+    
     o0.xyz = r1.xyz ? r0.yzw : 0;
     o0.w = r0.x * r3.x;
   } else {
