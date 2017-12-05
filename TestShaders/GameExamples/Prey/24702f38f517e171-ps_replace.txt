@@ -96,10 +96,11 @@ void main(
   r4.xyz = r0.yzw * r2.www;
   r3.x = dot(r3.xyz, r4.xyz);
   r3.x = saturate(0.5 + r3.x);
-  r3.y = cmp(r3.x < 0.009999);
+  
+  int r3_y = cmp(r3.x < 0.009999); // r3.y = cmp(r3.x < 0.009999);
   r3.z = cmp(r1.z == 1.000000);
-  r3.y = (int)r3.z | (int)r3.y;
-  if (r3.y != 0) {
+  r3_y = (int)r3.z | r3_y; // r3.y = (int)r3.z | (int)r3.y;
+  if (r3_y != 0) { // if (r3.y != 0) {
     o0.xyzw = float4(0,0,0,0);
     return;
   }
@@ -127,7 +128,8 @@ void main(
   r6.xy = CV_HPosScale.xy * r0.yz;
   r6.xyzw = r6.xyzw + -r1.xyzw;
   r0.x = r0.x * 28 + 4;
-  r0.y = (int)r0.x;
+
+  int r0_y = r0.x; // r0.y = (int)r0.x;
   r0.x = trunc(r0.x);
   r0.z = 1 / r0.x;
   r0.x = 1.600000 * r0.x;
@@ -136,9 +138,10 @@ void main(
   r2.y = 0;
   r2.w = r0.z;
   r2.z = 0;
-  r0.w = 0;
+  
+  int r0_w = 0; // r0.w = 0;
   while (true) {
-    r3.y = cmp((int)r0.w >= (int)r0.y);
+    r3.y = cmp(r0_w >= r0_y); // r3.y = cmp((int)r0.w >= (int)r0.y);
     if (r3.y != 0) break;
     r7.xyzw = r6.xyzw * r2.wwww + r1.xyzw;
     r3.yz = r7.xy / r7.ww;
@@ -150,7 +153,7 @@ void main(
       break;
     }
     r2.x = r2.w + r0.z;
-    r0.w = (int)r0.w + 1;
+    r0_w = r0_w + 1; // r0.w = (int)r0.w + 1;
     r2.zw = r2.yx;
   }
   r0.x = cmp(0 < r2.z);
