@@ -603,6 +603,10 @@ static std::string NameFromIID(IID id)
 		return "IDXGISwapChain";
 	if (__uuidof(IDXGISwapChain1) == id)
 		return "IDXGISwapChain1";
+	//if (__uuidof(IDXGISwapChain2) == id)		// dxgi1_3 A8BE2AC4-199F-4946-B331-79599FB98DE7
+	//	return "IDXGISwapChain2";
+	//if (__uuidof(IDXGISwapChain3) == id)		// dxgi1_4 94D99BDB-F1F8-4AB0-B236-7DA0170EDAB1
+	//	return "IDXGISwapChain3";
 
 	if (__uuidof(IDXGIAdapter) == id)
 		return "IDXGIAdapter";
