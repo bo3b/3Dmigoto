@@ -97,9 +97,7 @@ public:
 	void HackerDevice::HookDevice();
 
 
-	//static ID3D11Device* GetDirect3DDevice(ID3D11Device *pDevice);
-	//static __forceinline ID3D11Device *GetD3D11Device() { return (ID3D11Device*) m_pUnk; }
-	// GetD3D11Device is just using super
+	/*** IUnknown methods ***/
 
 	HRESULT STDMETHODCALLTYPE QueryInterface(
 		/* [in] */ REFIID riid,
@@ -109,11 +107,9 @@ public:
 
 	ULONG STDMETHODCALLTYPE Release(void);
 
-	/*** IDirect3DUnknown methods ***/
-	//STDMETHOD_(ULONG, AddRef)(THIS);
-	//STDMETHOD_(ULONG, Release)(THIS);
 
 	/*** ID3D11Device methods ***/
+
 	STDMETHOD(CreateBuffer)(THIS_
 		/* [annotation] */
 		__in  const D3D11_BUFFER_DESC *pDesc,
