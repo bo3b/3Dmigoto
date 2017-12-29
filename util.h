@@ -546,6 +546,9 @@ static std::string NameFromIID(IID id)
 	if (__uuidof(IUnknown) == id)
 		return "IUnknown";
 
+	if (__uuidof(ID3D10Multithread) == id)
+		return "ID3D10Multithread";
+
 	if (__uuidof(ID3D11DeviceChild) == id)
 		return "ID3D11DeviceChild";
 	if (__uuidof(ID3DDeviceContextState) == id)
