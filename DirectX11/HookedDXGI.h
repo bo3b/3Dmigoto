@@ -21,26 +21,20 @@
 // so we'll come back to it later.
 
 
+static HRESULT (__stdcall *pOrigCreateDXGIFactory)(
+	REFIID riid,
+	_Out_ void   **ppFactory
+	) = nullptr;
 
-// Cannot be declared static, even though that is what I want, because of some
-// twisted C++ concept of keeping that local to only this translation unit, .h file.
-// All non-member functions are implicitly static, and I hate implict stuff.  
+static HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory);
 
-bool InstallDXGIHooks(void);
+
+static HRESULT(__stdcall *pOrigCreateDXGIFactory1)(
+	REFIID riid,
+	_Out_ void   **ppFactory
+	) = nullptr;
+
+static HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1);
 
 
 extern "C" LPVOID lpvtbl_CreateSwapChain(IDXGIFactory* pFactory);
-
-
-
-//class HookedSwapChain
-//{
-//private:
-//	IDXGISwapChain* mOrigSwapChain;
-//
-//public:
-//	HookedSwapChain(IDXGISwapChain* pOrigSwapChain);
-//	~HookedSwapChain();
-//
-//};
-
