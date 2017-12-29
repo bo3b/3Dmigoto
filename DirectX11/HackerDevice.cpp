@@ -2474,6 +2474,7 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 // the vtable needs to remain exactly as defined by COM.
 
 HackerDevice1::HackerDevice1(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext)
+	: HackerDevice(pDevice1, pContext)
 {
 	mOrigDevice1 = pDevice1;
 	mOrigContext1 = pContext;
@@ -2487,7 +2488,7 @@ void HackerDevice1::SetHackerContext1(HackerContext1 *pHackerContext)
 
 	// Make sure the superclass has the reference too, because games can call GetImmediateContext,
 	// instead of GetImmediateContext1.
-	mHackerDevice->SetHackerContext(pHackerContext);
+	SetHackerContext(pHackerContext);
 }
 
 
