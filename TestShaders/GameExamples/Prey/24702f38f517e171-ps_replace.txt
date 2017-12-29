@@ -1,0 +1,427 @@
+// Normal Reflections
+
+cbuffer PER_BATCH : register(b0)
+{
+  row_major float4x4 g_mViewProjPrev : packoffset(c0);
+  float4 PS_NearFarClipDist : packoffset(c4);
+}
+
+cbuffer CBPerViewGlobal : register(b13)
+{
+  row_major float4x4 CV_ViewProjZeroMatr : packoffset(c0);
+  float4 CV_AnimGenParams : packoffset(c4);
+  row_major float4x4 CV_ViewProjMatr : packoffset(c5);
+  row_major float4x4 CV_ViewProjNearestMatr : packoffset(c9);
+  row_major float4x4 CV_InvViewProj : packoffset(c13);
+  row_major float4x4 CV_PrevViewProjMatr : packoffset(c17);
+  row_major float4x4 CV_PrevViewProjNearestMatr : packoffset(c21);
+  row_major float3x4 CV_ScreenToWorldBasis : packoffset(c25);
+  float4 CV_TessInfo : packoffset(c28);
+  float4 CV_CameraFrontVector : packoffset(c29);
+  float4 CV_CameraUpVector : packoffset(c30);
+  float4 CV_ScreenSize : packoffset(c31);
+  float4 CV_HPosScale : packoffset(c32);
+  float4 CV_ProjRatio : packoffset(c33);
+  float4 CV_NearestScaled : packoffset(c34);
+  float4 CV_NearFarClipDist : packoffset(c35);
+  float4 CV_SunLightDir : packoffset(c36);
+  float4 CV_SunColor : packoffset(c37);
+  float4 CV_SkyColor : packoffset(c38);
+  float4 CV_FogColor : packoffset(c39);
+  float4 CV_TerrainInfo : packoffset(c40);
+  float4 CV_DecalZFightingRemedy : packoffset(c41);
+  row_major float4x4 CV_FrustumPlaneEquation : packoffset(c42);
+  float4 CV_WindGridOffset : packoffset(c46);
+  row_major float4x4 CV_ViewMatr : packoffset(c47);
+  row_major float4x4 CV_InvViewMatr : packoffset(c51);
+  float CV_LookingGlass_SunSelector : packoffset(c55);
+  float CV_LookingGlass_DepthScalar : packoffset(c55.y);
+  float CV_PADDING0 : packoffset(c55.z);
+  float CV_PADDING1 : packoffset(c55.w);
+}
+
+SamplerState _tex0_s : register(s0);
+SamplerState _tex1_s : register(s1);
+SamplerState _tex2_s : register(s2);
+SamplerState _tex3_s : register(s3);
+SamplerState _tex4_s : register(s4);
+SamplerState _tex5_s : register(s5);
+Texture2D<float4> _tex0 : register(t0);
+Texture2D<float4> _tex1 : register(t1);
+Texture2D<float4> _tex2 : register(t2);
+Texture2D<float4> _tex3 : register(t3);
+Texture2D<float4> _tex4 : register(t4);
+Texture2D<float4> _tex5 : register(t5);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = CV_ScreenSize.zw + v1.xy;
+  r1.xyz = _tex1.Sample(_tex1_s, r0.xy).xyz;
+  r0.x = _tex2.Sample(_tex2_s, r0.xy).x;
+  r0.yzw = r1.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r1.x = dot(r0.yzw, r0.yzw);
+  r1.x = rsqrt(r1.x);
+  r0.yzw = r1.xxx * r0.yzw;
+  r1.z = _tex0.Sample(_tex0_s, v1.xy).x;
+  r2.xy = trunc(v0.xy);
+  r1.xy = r2.xy * r1.zz;
+  r2.x = dot(CV_ScreenToWorldBasis._m00_m01_m02, r1.xyz);
+  r2.y = dot(CV_ScreenToWorldBasis._m10_m11_m12, r1.xyz);
+  r2.z = dot(CV_ScreenToWorldBasis._m20_m21_m22, r1.xyz);
+  r2.w = dot(r2.xyz, r2.xyz);
+  r2.w = rsqrt(r2.w);
+  r3.xyz = r2.xyz * r2.www;
+  r2.w = 1.5 * r1.z;
+  r2.w = CV_NearFarClipDist.y * r2.w;
+  r3.w = dot(r3.xyz, r0.yzw);
+  r3.w = r3.w + r3.w;
+  r0.yzw = r0.yzw * -r3.www + r3.xyz;
+  r3.w = dot(r0.yzw, r0.yzw);
+  r3.w = rsqrt(r3.w);
+  r0.yzw = r3.www * r0.yzw;
+  r4.xyz = r0.yzw * r2.www;
+  r3.x = dot(r3.xyz, r4.xyz);
+  r3.x = saturate(0.5 + r3.x);
+  
+  int r3_y = cmp(r3.x < 0.009999); // r3.y = cmp(r3.x < 0.009999);
+  r3.z = cmp(r1.z == 1.000000);
+  r3_y = (int)r3.z | r3_y; // r3.y = (int)r3.z | (int)r3.y;
+  if (r3_y != 0) { // if (r3.y != 0) {
+    o0.xyzw = float4(0,0,0,0);
+    return;
+  }
+  r5.x = CV_ScreenToWorldBasis._m03 + r2.x;
+  r5.y = CV_ScreenToWorldBasis._m13 + r2.y;
+  r5.z = CV_ScreenToWorldBasis._m23 + r2.z;
+  r5.w = 1;
+  r2.x = dot(CV_ViewProjMatr._m00_m01_m02_m03, r5.xyzw);
+  r2.y = dot(CV_ViewProjMatr._m10_m11_m12_m13, r5.xyzw);
+  r1.w = dot(CV_ViewProjMatr._m30_m31_m32_m33, r5.xyzw);
+  r2.z = 0.5 * r1.w;
+  r2.xy = r2.xy * float2(0.5,-0.5) + r2.zz;
+  r1.xy = CV_HPosScale.xy * r2.xy;
+  r6.xyz = r0.yzw * r2.www + r5.xyz;
+  r6.w = 1;
+  r2.x = dot(CV_ViewProjMatr._m00_m01_m02_m03, r6.xyzw);
+  r2.y = dot(CV_ViewProjMatr._m10_m11_m12_m13, r6.xyzw);
+  r0.y = dot(CV_ViewProjMatr._m20_m21_m22_m23, r6.xyzw);
+  r6.w = dot(CV_ViewProjMatr._m30_m31_m32_m33, r6.xyzw);
+  r0.y = r0.y / r6.w;
+  r0.y = -CV_ProjRatio.x + r0.y;
+  r6.z = CV_ProjRatio.y / r0.y;
+  r0.y = 0.5 * r6.w;
+  r0.yz = r2.xy * float2(0.5,-0.5) + r0.yy;
+  r6.xy = CV_HPosScale.xy * r0.yz;
+  r6.xyzw = r6.xyzw + -r1.xyzw;
+  r0.x = r0.x * 28 + 4;
+
+  int r0_y = r0.x; // r0.y = (int)r0.x;
+  r0.x = trunc(r0.x);
+  r0.z = 1 / r0.x;
+  r0.x = 1.600000 * r0.x;
+  r0.x = r2.w / r0.x;
+  r0.x = r0.x / CV_NearFarClipDist.y;
+  r2.y = 0;
+  r2.w = r0.z;
+  r2.z = 0;
+  
+  int r0_w = 0; // r0.w = 0;
+  while (true) {
+    r3.y = cmp(r0_w >= r0_y); // r3.y = cmp((int)r0.w >= (int)r0.y);
+    if (r3.y != 0) break;
+    r7.xyzw = r6.xyzw * r2.wwww + r1.xyzw;
+    r3.yz = r7.xy / r7.ww;
+    r3.y = _tex3.SampleLevel(_tex3_s, r3.yz, 0).x;
+    r3.y = r3.y + -r7.z;
+    r3.y = cmp(abs(r3.y) < r0.x);
+    if (r3.y != 0) {
+      r2.z = r2.w;
+      break;
+    }
+    r2.x = r2.w + r0.z;
+    r0_w = r0_w + 1; // r0.w = (int)r0.w + 1;
+    r2.zw = r2.yx;
+  }
+  r0.x = cmp(0 < r2.z);
+  if (r0.x != 0) {
+    r0.x = 0.070000 * CV_HPosScale.x;
+    r0.yzw = r4.xyz * r2.zzz + r5.xyz;
+    r1.xyz = g_mViewProjPrev._m10_m11_m13 * r0.zzz;
+    r1.xyz = r0.yyy * g_mViewProjPrev._m00_m01_m03 + r1.xyz;
+    r0.yzw = r0.www * g_mViewProjPrev._m20_m21_m23 + r1.xyz;
+    r0.yzw = g_mViewProjPrev._m30_m31_m33 + r0.yzw;
+    r0.yz = saturate(r0.yz / r0.ww);
+    r0.w = min(r0.y, r0.z);
+    r1.x = max(r0.y, r0.z);
+    r1.x = 1 + -r1.x;
+    r0.w = min(r1.x, r0.w);
+    r1.x = cmp(r0.x < r0.w);
+    r0.x = r0.w / r0.x;
+    r0.x = sqrt(r0.x);
+    r0.x = r1.x ? 1 : r0.x;
+    r0.yz = CV_HPosScale.zw * r0.yz;
+    r0.w = _tex5.SampleLevel(_tex5_s, v1.xy, 0).x;
+    r0.w = 100 * r0.w;
+    r0.yz = max(float2(0,0), r0.yz);
+    r0.yz = min(CV_HPosScale.xy, r0.yz);
+    r1.xyz = _tex4.SampleLevel(_tex4_s, r0.yz, 0).xyz;
+    r0.yzw = min(r1.xyz, r0.www);
+    
+    // Not sure why, but these constants came out wrong.
+    // In ASM, they are 0x7f800000, which is Inf not 0.
+    //   and r1.xyz, r0.yzwy, l(0x7f800000, 0x7f800000, 0x7f800000, 0)
+    //   ine r1.xyz, r1.xyzx, l(0x7f800000, 0x7f800000, 0x7f800000, 0)
+
+    r1.xyz = asint(r0.yzw) & int3(0x7f800000, 0x7f800000, 0x7f800000); // r1.xyz = (int3)r0.yzw & int3(0,0,0);
+    r1.xyz = cmp((int3)r1.xyz != int3(0x7f800000, 0x7f800000, 0x7f800000)); // r1.xyz = cmp((int3)r1.xyz != int3(0,0,0));
+    
+    o0.xyz = r1.xyz ? r0.yzw : 0;
+    o0.w = r0.x * r3.x;
+  } else {
+    o0.xyzw = float4(0,0,0,0);
+  }
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20546
+//
+//   using 3Dmigoto v1.2.67 on Mon Dec 04 21:55:59 2017
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer PER_BATCH
+// {
+//
+//   row_major float4x4 g_mViewProjPrev;// Offset:    0 Size:    64
+//   float4 PS_NearFarClipDist;         // Offset:   64 Size:    16 [unused]
+//
+// }
+//
+// cbuffer CBPerViewGlobal
+// {
+//
+//   row_major float4x4 CV_ViewProjZeroMatr;// Offset:    0 Size:    64 [unused]
+//   float4 CV_AnimGenParams;           // Offset:   64 Size:    16 [unused]
+//   row_major float4x4 CV_ViewProjMatr;// Offset:   80 Size:    64
+//   row_major float4x4 CV_ViewProjNearestMatr;// Offset:  144 Size:    64 [unused]
+//   row_major float4x4 CV_InvViewProj; // Offset:  208 Size:    64 [unused]
+//   row_major float4x4 CV_PrevViewProjMatr;// Offset:  272 Size:    64 [unused]
+//   row_major float4x4 CV_PrevViewProjNearestMatr;// Offset:  336 Size:    64 [unused]
+//   row_major float3x4 CV_ScreenToWorldBasis;// Offset:  400 Size:    48
+//   float4 CV_TessInfo;                // Offset:  448 Size:    16 [unused]
+//   float4 CV_CameraFrontVector;       // Offset:  464 Size:    16 [unused]
+//   float4 CV_CameraUpVector;          // Offset:  480 Size:    16 [unused]
+//   float4 CV_ScreenSize;              // Offset:  496 Size:    16
+//   float4 CV_HPosScale;               // Offset:  512 Size:    16
+//   float4 CV_ProjRatio;               // Offset:  528 Size:    16
+//   float4 CV_NearestScaled;           // Offset:  544 Size:    16 [unused]
+//   float4 CV_NearFarClipDist;         // Offset:  560 Size:    16
+//   float4 CV_SunLightDir;             // Offset:  576 Size:    16 [unused]
+//   float4 CV_SunColor;                // Offset:  592 Size:    16 [unused]
+//   float4 CV_SkyColor;                // Offset:  608 Size:    16 [unused]
+//   float4 CV_FogColor;                // Offset:  624 Size:    16 [unused]
+//   float4 CV_TerrainInfo;             // Offset:  640 Size:    16 [unused]
+//   float4 CV_DecalZFightingRemedy;    // Offset:  656 Size:    16 [unused]
+//   row_major float4x4 CV_FrustumPlaneEquation;// Offset:  672 Size:    64 [unused]
+//   float4 CV_WindGridOffset;          // Offset:  736 Size:    16 [unused]
+//   row_major float4x4 CV_ViewMatr;    // Offset:  752 Size:    64 [unused]
+//   row_major float4x4 CV_InvViewMatr; // Offset:  816 Size:    64 [unused]
+//   float CV_LookingGlass_SunSelector; // Offset:  880 Size:     4 [unused]
+//   float CV_LookingGlass_DepthScalar; // Offset:  884 Size:     4 [unused]
+//   float CV_PADDING0;                 // Offset:  888 Size:     4 [unused]
+//   float CV_PADDING1;                 // Offset:  892 Size:     4 [unused]
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// _tex0                             sampler      NA          NA    0        1
+// _tex1                             sampler      NA          NA    1        1
+// _tex2                             sampler      NA          NA    2        1
+// _tex3                             sampler      NA          NA    3        1
+// _tex4                             sampler      NA          NA    4        1
+// _tex5                             sampler      NA          NA    5        1
+// _tex0                             texture  float4          2d    0        1
+// _tex1                             texture  float4          2d    1        1
+// _tex2                             texture  float4          2d    2        1
+// _tex3                             texture  float4          2d    3        1
+// _tex4                             texture  float4          2d    4        1
+// _tex5                             texture  float4          2d    5        1
+// PER_BATCH                         cbuffer      NA          NA    0        1
+// CBPerViewGlobal                   cbuffer      NA          NA   13        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Position              0   xyzw        0      POS   float   xy  
+// TEXCOORD                 0   xyzw        1     NONE   float   xy  
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_Target                0   xyzw        0   TARGET   float   xyzw
+//
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[4], immediateIndexed
+dcl_constantbuffer cb13[36], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_default
+dcl_sampler s2, mode_default
+dcl_sampler s3, mode_default
+dcl_sampler s4, mode_default
+dcl_sampler s5, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2d (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_input_ps_siv linear noperspective v0.xy, position
+dcl_input_ps linear v1.xy
+dcl_output o0.xyzw
+dcl_temps 8
+add r0.xy, v1.xyxx, cb13[31].zwzz
+sample_indexable(texture2d)(float,float,float,float) r1.xyz, r0.xyxx, t1.xyzw, s1
+sample_indexable(texture2d)(float,float,float,float) r0.x, r0.xyxx, t2.xyzw, s2
+mad r0.yzw, r1.xxyz, l(0.000000, 2.000000, 2.000000, 2.000000), l(0.000000, -1.000000, -1.000000, -1.000000)
+dp3 r1.x, r0.yzwy, r0.yzwy
+rsq r1.x, r1.x
+mul r0.yzw, r0.yyzw, r1.xxxx
+sample_indexable(texture2d)(float,float,float,float) r1.z, v1.xyxx, t0.yzxw, s0
+round_z r2.xy, v0.xyxx
+mul r1.xy, r1.zzzz, r2.xyxx
+dp3 r2.x, cb13[25].xyzx, r1.xyzx
+dp3 r2.y, cb13[26].xyzx, r1.xyzx
+dp3 r2.z, cb13[27].xyzx, r1.xyzx
+dp3 r2.w, r2.xyzx, r2.xyzx
+rsq r2.w, r2.w
+mul r3.xyz, r2.wwww, r2.xyzx
+mul r2.w, r1.z, l(1.500000)
+mul r2.w, r2.w, cb13[35].y
+dp3 r3.w, r3.xyzx, r0.yzwy
+add r3.w, r3.w, r3.w
+mad r0.yzw, r0.yyzw, -r3.wwww, r3.xxyz
+dp3 r3.w, r0.yzwy, r0.yzwy
+rsq r3.w, r3.w
+mul r0.yzw, r0.yyzw, r3.wwww
+mul r4.xyz, r2.wwww, r0.yzwy
+dp3 r3.x, r3.xyzx, r4.xyzx
+add_sat r3.x, r3.x, l(0.500000)
+lt r3.y, r3.x, l(0.010000)
+eq r3.z, r1.z, l(1.000000)
+or r3.y, r3.z, r3.y
+if_nz r3.y
+  mov o0.xyzw, l(0,0,0,0)
+  ret 
+endif 
+add r5.x, r2.x, cb13[25].w
+add r5.y, r2.y, cb13[26].w
+add r5.z, r2.z, cb13[27].w
+mov r5.w, l(1.000000)
+dp4 r2.x, cb13[5].xyzw, r5.xyzw
+dp4 r2.y, cb13[6].xyzw, r5.xyzw
+dp4 r1.w, cb13[8].xyzw, r5.xyzw
+mul r2.z, r1.w, l(0.500000)
+mad r2.xy, r2.xyxx, l(0.500000, -0.500000, 0.000000, 0.000000), r2.zzzz
+mul r1.xy, r2.xyxx, cb13[32].xyxx
+mad r6.xyz, r0.yzwy, r2.wwww, r5.xyzx
+mov r6.w, l(1.000000)
+dp4 r2.x, cb13[5].xyzw, r6.xyzw
+dp4 r2.y, cb13[6].xyzw, r6.xyzw
+dp4 r0.y, cb13[7].xyzw, r6.xyzw
+dp4 r6.w, cb13[8].xyzw, r6.xyzw
+div r0.y, r0.y, r6.w
+add r0.y, r0.y, -cb13[33].x
+div r6.z, cb13[33].y, r0.y
+mul r0.y, r6.w, l(0.500000)
+mad r0.yz, r2.xxyx, l(0.000000, 0.500000, -0.500000, 0.000000), r0.yyyy
+mul r6.xy, r0.yzyy, cb13[32].xyxx
+add r6.xyzw, -r1.xyzw, r6.xyzw
+mad r0.x, r0.x, l(28.000000), l(4.000000)
+ftoi r0.y, r0.x
+round_z r0.x, r0.x
+div r0.z, l(1.000000, 1.000000, 1.000000, 1.000000), r0.x
+mul r0.x, r0.x, l(1.600000)
+div r0.x, r2.w, r0.x
+div r0.x, r0.x, cb13[35].y
+mov r2.y, l(0)
+mov r2.w, r0.z
+mov r2.z, l(0)
+mov r0.w, l(0)
+loop 
+  ige r3.y, r0.w, r0.y
+  breakc_nz r3.y
+  mad r7.xyzw, r6.xyzw, r2.wwww, r1.xyzw
+  div r3.yz, r7.xxyx, r7.wwww
+  sample_l_indexable(texture2d)(float,float,float,float) r3.y, r3.yzyy, t3.yxzw, s3, l(0.000000)
+  add r3.y, -r7.z, r3.y
+  lt r3.y, |r3.y|, r0.x
+  if_nz r3.y
+    mov r2.z, r2.w
+    break 
+  endif 
+  add r2.x, r0.z, r2.w
+  iadd r0.w, r0.w, l(1)
+  mov r2.zw, r2.yyyx
+endloop 
+lt r0.x, l(0.000000), r2.z
+if_nz r0.x
+  mul r0.x, cb13[32].x, l(0.070000)
+  mad r0.yzw, r4.xxyz, r2.zzzz, r5.xxyz
+  mul r1.xyz, r0.zzzz, cb0[1].xywx
+  mad r1.xyz, r0.yyyy, cb0[0].xywx, r1.xyzx
+  mad r0.yzw, r0.wwww, cb0[2].xxyw, r1.xxyz
+  add r0.yzw, r0.yyzw, cb0[3].xxyw
+  div_sat r0.yz, r0.yyzy, r0.wwww
+  min r0.w, r0.z, r0.y
+  max r1.x, r0.z, r0.y
+  add r1.x, -r1.x, l(1.000000)
+  min r0.w, r0.w, r1.x
+  lt r1.x, r0.x, r0.w
+  div r0.x, r0.w, r0.x
+  sqrt r0.x, r0.x
+  movc r0.x, r1.x, l(1.000000), r0.x
+  mul r0.yz, r0.yyzy, cb13[32].zzwz
+  sample_l_indexable(texture2d)(float,float,float,float) r0.w, v1.xyxx, t5.yzwx, s5, l(0.000000)
+  mul r0.w, r0.w, l(100.000000)
+  max r0.yz, r0.yyzy, l(0.000000, 0.000000, 0.000000, 0.000000)
+  min r0.yz, r0.yyzy, cb13[32].xxyx
+  sample_l_indexable(texture2d)(float,float,float,float) r1.xyz, r0.yzyy, t4.xyzw, s4, l(0.000000)
+  min r0.yzw, r0.wwww, r1.xxyz
+  and r1.xyz, r0.yzwy, l(0x7f800000, 0x7f800000, 0x7f800000, 0)
+  ine r1.xyz, r1.xyzx, l(0x7f800000, 0x7f800000, 0x7f800000, 0)
+  and o0.xyz, r0.yzwy, r1.xyzx
+  mul o0.w, r3.x, r0.x
+else 
+  mov o0.xyzw, l(0,0,0,0)
+endif 
+ret 
+// Approximately 116 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

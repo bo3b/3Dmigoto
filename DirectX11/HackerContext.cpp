@@ -2333,6 +2333,10 @@ STDMETHODIMP_(void) HackerContext::CSGetConstantBuffers(THIS_
 STDMETHODIMP_(void) HackerContext::ClearState(THIS)
 {
 	 mOrigContext->ClearState();
+
+	 // ClearState() will unbind StereoParams and IniParams, so we need to
+	 // rebind them now:
+	 Bind3DMigotoResources();
 }
 
 STDMETHODIMP_(void) HackerContext::Flush(THIS)
@@ -2355,7 +2359,15 @@ STDMETHODIMP HackerContext::FinishCommandList(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11CommandList **ppCommandList)
 {
-	return mOrigContext->FinishCommandList(RestoreDeferredContextState, ppCommandList);
+	BOOL ret = mOrigContext->FinishCommandList(RestoreDeferredContextState, ppCommandList);
+
+	if (!RestoreDeferredContextState) {
+		// This is equivalent to calling ClearState() afterwards, so we
+		// need to rebind the 3DMigoto resources now
+		Bind3DMigotoResources();
+	}
+
+	return ret;
 }
 
 
@@ -3040,6 +3052,11 @@ void STDMETHODCALLTYPE HackerContext1::SwapDeviceContextState(
 	_Out_opt_  ID3DDeviceContextState **ppPreviousState)
 {
 	mOrigContext1->SwapDeviceContextState(pState, ppPreviousState);
+
+	// If a game or overlay creates separate context state objects we won't
+	// have had a chance to bind the 3DMigoto resources when it was
+	// first created, so do so now:
+	Bind3DMigotoResources();
 }
 
 
