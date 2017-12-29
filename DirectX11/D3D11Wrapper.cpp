@@ -10,7 +10,6 @@
 
 #include "util.h"
 #include "log.h"
-#include "DecompileHLSL.h"
 #include "Override.h"
 #include "Globals.h"
 #include "HackerDevice.h"
@@ -122,13 +121,6 @@ void DestroyDLL()
 		fclose(LogFile);
 	}
 }
-
-// D3DCompiler bridge
-struct D3D11BridgeData
-{
-	UINT64 BinaryHash;
-	char *HLSLFileName;
-};
 
 int WINAPI D3DKMTCloseAdapter()
 {
@@ -526,23 +518,6 @@ HRESULT WINAPI D3D11CoreCreateLayeredDevice(const void *unknown0, DWORD unknown1
 SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1)
 {
 	InitD311();
-	// Call from D3DCompiler (magic number from there) ?
-	if ((intptr_t)unknown0 == 0x77aa128b)
-	{
-		LogInfo("Shader code info from D3DCompiler_xx.dll wrapper received:\n");
-
-		// FIXME: Is this an unsigned 32bit integer or a pointer?
-		// It can't be both because they are not the same size on x64.
-		// We might be corrupting a pointer by using the wrong function signature
-		D3D11BridgeData *data = (D3D11BridgeData *)unknown1;
-		LogInfo("  Bytecode hash = %016llx\n", data->BinaryHash);
-		LogInfo("  Filename = %s\n", data->HLSLFileName);
-
-		EnterCriticalSection(&G->mCriticalSection);
-			G->mCompiledShaderMap[data->BinaryHash] = data->HLSLFileName;
-		LeaveCriticalSection(&G->mCriticalSection);
-		return 0xaa77125b;
-	}
 	LogInfo("D3D11CoreGetLayeredDeviceSize called.\n");
 
 	return (*_D3D11CoreGetLayeredDeviceSize)(unknown0, unknown1);
@@ -1033,6 +1008,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	return ret;
 }
 
+// -----------------------------------------------------------------------------------------------
 // We used to call nvapi_QueryInterface directly, however that puts nvapi.dll /
 // nvapi64.dll in our dependencies list and the Windows dynamic linker will
 // refuse to load us if that doesn't exist, which is a problem on AMD or Intel
@@ -1082,4 +1058,128 @@ void NvAPIOverride()
 	intptr_t ret = (intptr_t)nvapi_QueryInterfacePtr(0xb03bb03b);
 	if ((ret & 0xffffffff) != 0xeecc34ab)
 		LogInfo("  overriding NVAPI wrapper failed.\n");
+}
+
+
+// -----------------------------------------------------------------------------------------------
+// This is our hook for LoadLibraryExW, handling the loading of our original_* libraries.
+//
+// The hooks are actually installed during load time in DLLMainHook, but called here 
+// whenever the game or system calls LoadLibraryExW.  These are here because at this
+// point in the runtime, it is OK to do normal calls like LoadLibrary, and logging
+// is available.  This is normal runtime.
+
+
+static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags, 
+	LPCWSTR our_name, LPCWSTR library)
+{
+	WCHAR fullPath[MAX_PATH];
+	UINT ret;
+
+	// We can use System32 for all cases, because it will be properly rerouted
+	// to SysWow64 by LoadLibraryEx itself.
+
+	ret = GetSystemDirectoryW(fullPath, ARRAYSIZE(fullPath));
+	if (ret == 0 || ret >= ARRAYSIZE(fullPath))
+		return NULL;
+	wcscat_s(fullPath, MAX_PATH, L"\\");
+	wcscat_s(fullPath, MAX_PATH, library);
+
+	// Bypass the known expected call from our wrapped d3d11 & nvapi, where it needs
+	// to call to the system to get APIs. This is a bit of a hack, but if the string
+	// comes in as original_d3d11/nvapi/nvapi64, that's from us, and needs to switch 
+	// to the real one. The test string should have no path attached.
+
+	if (_wcsicmp(lpLibFileName, our_name) == 0)
+	{
+		LogInfoW(L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n",
+			lpLibFileName, fullPath);
+
+		return pOrigLoadLibraryExW(fullPath, hFile, dwFlags);
+	}
+
+	// For this case, we want to see if it's the game loading d3d11 or nvapi directly
+	// from the system directory, and redirect it to the game folder if so, by stripping
+	// the system path. This is to be case insensitive as we don't know if NVidia will 
+	// change that and otherwise break it it with a driver upgrade. 
+
+	if (_wcsicmp(lpLibFileName, fullPath) == 0)
+	{
+		LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
+
+		return pOrigLoadLibraryExW(library, hFile, dwFlags);
+	}
+
+	return NULL;
+}
+
+// Function called for every LoadLibraryExW call once we have hooked it.
+// We want to look for overrides to System32 that we can circumvent.  This only happens
+// in the current process, not system wide.
+// 
+// We need to do two things here.  First, we need to bypass all calls that go
+// directly to the System32 folder, because that will circumvent our wrapping 
+// of the d3d11 and nvapi APIs. The nvapi itself does this specifically as fake
+// security to avoid proxy DLLs like us. 
+// Second, because we are now forcing all LoadLibraryExW calls back to the game
+// folder, we need somehow to allow us access to the original dlls so that we can
+// get the original proc addresses to call.  We do this with the original_* names
+// passed in to this routine.
+//
+// There three use cases:
+// x32 game on x32 OS
+//	 LoadLibraryExW("C:\Windows\system32\d3d11.dll", NULL, 0)
+//	 LoadLibraryExW("C:\Windows\system32\nvapi.dll", NULL, 0)
+// x64 game on x64 OS
+//	 LoadLibraryExW("C:\Windows\system32\d3d11.dll", NULL, 0)
+//	 LoadLibraryExW("C:\Windows\system32\nvapi64.dll", NULL, 0)
+// x32 game on x64 OS
+//	 LoadLibraryExW("C:\Windows\SysWOW64\d3d11.dll", NULL, 0)
+//	 LoadLibraryExW("C:\Windows\SysWOW64\nvapi.dll", NULL, 0)
+//
+// To be general and simplify the init, we are going to specifically do the bypass 
+// for all variants, even though we only know of this happening on x64 games.  
+//
+// An important thing to remember here is that System32 is automatically rerouted
+// to SysWow64 by the OS as necessary, so we can use System32 in all cases.
+//
+// It's not clear if we should also hook LoadLibraryW, but we don't have examples
+// where we need that yet.
+
+static HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
+{
+	HMODULE module;
+	static bool hook_enabled = true;
+
+	LogDebugW(L"   Hooked_LoadLibraryExW load: %s.\n", lpLibFileName);
+
+	if (_wcsicmp(lpLibFileName, L"SUPPRESS_3DMIGOTO_REDIRECT") == 0) {
+		// Something (like Origin's IGO32.dll hook in ntdll.dll
+		// LdrLoadDll) is interfering with our hook and the caller is
+		// about to attempt the load again using the full path. Disable
+		// our redirect for the next call to make sure we don't give
+		// them a reference to themselves. Subsequent calls will be
+		// armed again in case we still need the redirect.
+		hook_enabled = false;
+		return NULL;
+	}
+
+	if (hook_enabled) {
+		module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_d3d11.dll", L"d3d11.dll");
+		if (module)
+			return module;
+
+		module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi64.dll", L"nvapi64.dll");
+		if (module)
+			return module;
+
+		module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi.dll", L"nvapi.dll");
+		if (module)
+			return module;
+	}
+	else
+		hook_enabled = true;
+
+	// Normal unchanged case.
+	return pOrigLoadLibraryExW(lpLibFileName, hFile, dwFlags);
 }
