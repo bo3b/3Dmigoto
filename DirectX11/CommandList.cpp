@@ -8,6 +8,7 @@
 #include "HackerContext.h"
 #include "Override.h"
 #include "D3D11Wrapper.h"
+#include "IniHandler.h"
 
 #include <D3DCompiler.h>
 

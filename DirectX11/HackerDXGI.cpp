@@ -746,6 +746,62 @@ STDMETHODIMP HackerDXGIFactory::GetWindowAssociation(THIS_
 	return hr;
 }
 
+
+static BOOL(WINAPI *trampoline_SetWindowPos)(_In_ HWND hWnd, _In_opt_ HWND hWndInsertAfter,
+	_In_ int X, _In_ int Y, _In_ int cx, _In_ int cy, _In_ UINT uFlags)
+= SetWindowPos;
+
+static BOOL WINAPI Hooked_SetWindowPos(
+	_In_ HWND hWnd,
+	_In_opt_ HWND hWndInsertAfter,
+	_In_ int X,
+	_In_ int Y,
+	_In_ int cx,
+	_In_ int cy,
+	_In_ UINT uFlags)
+{
+	if (G->SCREEN_UPSCALING != 0) {
+		// Force desired upscaled resolution (only when desired resolution is provided!)
+		if (cx != 0 && cy != 0) {
+			cx = G->SCREEN_WIDTH;
+			cy = G->SCREEN_HEIGHT;
+			X = 0;
+			Y = 0;
+		}
+	}
+	else if (G->SCREEN_FULLSCREEN == 2) {
+		// Do nothing - passing this call through could change the game
+		// to a borderless window. Needed for The Witness.
+		return true;
+	}
+
+	return trampoline_SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
+}
+
+void InstallSetWindowPosHook()
+{
+	HINSTANCE hUser32;
+	static bool hook_installed = false;
+	int fail = 0;
+
+	// Only attempt to hook it once:
+	if (hook_installed)
+		return;
+	hook_installed = true;
+
+	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
+	fail |= InstallHook(hUser32, "SetWindowPos", (void**)&trampoline_SetWindowPos, Hooked_SetWindowPos, true);
+
+	if (fail) {
+		LogInfo("Failed to hook SetWindowPos for full_screen=2\n");
+		BeepFailure2();
+		return;
+	}
+
+	LogInfo("Successfully hooked SetWindowPos for full_screen=2\n");
+	return;
+}
+
 // This tweaks the parameters passed to the real CreateSwapChain, to change behavior.
 // These global parameters come originally from the d3dx.ini, so the user can
 // change them.
