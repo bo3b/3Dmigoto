@@ -32,6 +32,6 @@ REM xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\Just Cause 3\" /F /Y /S
 REM xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\Dishonored2\" /F /Y /S
 REM xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\HeadLander\" /F /Y /S
 REM xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\NieRAutomata\" /F /Y /S
-xcopy /C "%1*.*" "G:\SteamLibrary\steamapps\common\Prey Demo\Binaries\Danielle\x64\Release\" /F /Y /S
-xcopy /C "%1*.*" "G:\SteamLibrary\SteamApps\common\Batman The Telltale Series\" /F /Y /S
+xcopy /C "%1*.*" "G:\Games\Batman - The Telltale Series\" /F /Y /S
+xcopy /C "%1*.*" "G:\SteamLibrary\steamapps\common\Dishonored2\" /F /Y /S
 
