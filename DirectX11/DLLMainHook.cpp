@@ -88,8 +88,6 @@ static HRESULT InstallHook(LPCWSTR moduleName, char *func, void **trampoline, vo
 
 static HRESULT HookLoadLibraryExW()
 {
-	HINSTANCE hKernel32;
-
 	HRESULT hr = InstallHook(L"Kernel32.dll", "LoadLibraryExW", (LPVOID*)&pOrigLoadLibraryExW, Hooked_LoadLibraryExW);
 	if (FAILED(hr))
 		return E_FAIL;
@@ -113,10 +111,6 @@ static HRESULT HookLoadLibraryExW()
 static HRESULT HookDXGIFactories()
 {
 	HRESULT hr;
-	HINSTANCE hDXGI;
-	LPVOID fnCreateDXGIFactory;
-	LPVOID fnCreateDXGIFactory1;
-	DWORD dwOsErr;
 
 	hr = InstallHook(L"dxgi.dll", "CreateDXGIFactory", (LPVOID*)&pOrigCreateDXGIFactory, Hooked_CreateDXGIFactory);
 	if (FAILED(hr))

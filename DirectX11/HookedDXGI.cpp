@@ -95,7 +95,7 @@ static HRESULT WrapFactory1(void **ppFactory1)
 
 	if (ppFactory1)
 		*ppFactory1 = factory1Wrap;
-	LogInfo("  new HackerDXGIFactory1(%s@%p) wrapped %p\n", type_name(factory1Wrap), factory1Wrap, origFactory1);
+	LogInfo("->new HackerDXGIFactory1(%s@%p) wrapped %p\n", type_name(factory1Wrap), factory1Wrap, origFactory1);
 
 	return hr;
 }
@@ -116,7 +116,7 @@ static HRESULT WrapFactory2(void **ppFactory2)
 		LogInfo("  failed with HRESULT=%x\n", hr);
 		return hr;
 	}
-	LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x\n", ppFactory2, hr);
+	LogInfo("->CreateDXGIFactory2 returned factory = %p, result = %x\n", ppFactory2, hr);
 
 	//HackerDXGIFactory2 *factory2Wrap;
 	//factory2Wrap = new HackerDXGIFactory2(origFactory2);
