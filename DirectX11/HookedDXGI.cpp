@@ -9,6 +9,7 @@
 #include "DLLMainHook.h"
 #include "log.h"
 #include "util.h"
+#include "D3D11Wrapper.h"
 
 #include "HookedDXGI.h"
 #include "HackerDXGI.h"
@@ -22,19 +23,9 @@
 //
 // Rather than do that with DXGI, this approach will be to singly hook the calls we
 // are interested in, using the Deviare in-proc hooking.  We'll still create
-// objects for encapsulation, by returning HackerDXGIFactory and HackerDXGIFactory2.
-
-
-
-// -----------------------------------------------------------------------------
-
-// Log both to console using Nektra logging, and using our LogInfo, 
-// in case we are loading so early that our regular log is not ready.
-
-#define DoubleLog(fmt, ...) \
-	if (LogFile) fprintf(LogFile, fmt, __VA_ARGS__); \
-	if (bLog) NktHookLibHelpers::DebugPrint(fmt, __VA_ARGS__)
-
+// objects for encapsulation where necessary, by returning HackerDXGIFactory1
+// and HackerDXGIFactory2 when platform_update is set.  We won't ever return
+// HackerDXGIFactory because the minimum on Win7 is IDXGIFactory1.
 
 
 // -----------------------------------------------------------------------------
@@ -45,7 +36,7 @@
 HRESULT(STDMETHODCALLTYPE *pOrigPresent)(
 	IDXGISwapChain * This,
 	/* [in] */ UINT SyncInterval,
-	/* [in] */ UINT Flags);
+	/* [in] */ UINT Flags) = nullptr;
 
 static SIZE_T nHookId = 0;
 
@@ -86,22 +77,12 @@ HRESULT __stdcall Hooked_CreateSwapChain(IDXGIFactory* This,
 
 // -----------------------------------------------------------------------------
 
-// The original API references, directly from the DXGI.dll
-
-typedef HRESULT(WINAPI *lpfnCreateDXGIFactory)(REFIID riid, void **ppFactory);
-SIZE_T nFactory_ID;
-lpfnCreateDXGIFactory fnOrigCreateFactory;
-
-typedef HRESULT(WINAPI *lpfnCreateDXGIFactory1)(REFIID riid, void **ppFactory1);
-SIZE_T nFactory1_ID; 
-lpfnCreateDXGIFactory1 fnOrigCreateFactory1;
-
-// -----------------------------------------------------------------------------
-
 static HRESULT WrapFactory1(void **ppFactory1)
 {
+	LogInfo("Calling original CreateDXGIFactory1 API\n");
+
 	IDXGIFactory1 *origFactory1;
-	HRESULT hr = fnOrigCreateFactory1(__uuidof(IDXGIFactory1), (void **)&origFactory1);
+	HRESULT hr = pOrigCreateDXGIFactory1(__uuidof(IDXGIFactory1), (void **)&origFactory1);
 	if (FAILED(hr))
 	{
 		LogInfo("  failed with HRESULT=%x\n", hr);
@@ -116,9 +97,6 @@ static HRESULT WrapFactory1(void **ppFactory1)
 		*ppFactory1 = factory1Wrap;
 	LogInfo("  new HackerDXGIFactory1(%s@%p) wrapped %p\n", type_name(factory1Wrap), factory1Wrap, origFactory1);
 
-	// ToDo: Skipped null checks as they would throw exceptions- but
-	// we should handle exceptions.
-
 	return hr;
 }
 
@@ -132,7 +110,7 @@ static HRESULT WrapFactory2(void **ppFactory2)
 	// it's not defined there.  But, we can call into fnOrigCreateFactory1 for it.
 
 	//IDXGIFactory2 *origFactory2;
-	HRESULT hr = fnOrigCreateFactory1(__uuidof(IDXGIFactory2), (void **)ppFactory2);
+	HRESULT hr = pOrigCreateDXGIFactory1(__uuidof(IDXGIFactory2), (void **)ppFactory2);
 	if (FAILED(hr))
 	{
 		LogInfo("  failed with HRESULT=%x\n", hr);
@@ -173,11 +151,18 @@ static HRESULT WrapFactory2(void **ppFactory2)
 // expected object for Win7, and allows us to better handle QueryInterface
 // and GetParent calls.
 
-static HRESULT WINAPI Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
+HRESULT (__stdcall *pOrigCreateDXGIFactory)(
+	REFIID riid,
+	_Out_ void   **ppFactory
+	) = nullptr;
+
+HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
-	InitD311();
 	LogInfo("Hooked_CreateDXGIFactory called with riid: %s\n", NameFromIID(riid).c_str());
-	LogInfo("  calling original CreateDXGIFactory API\n");
+
+	// If this happens to be first call from the game, let's make sure to load
+	// up our d3d11.dll and the .ini file.
+	InitD311();
 
 	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
 	if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
@@ -216,11 +201,18 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 // to maintain the chain of objects so that GetParent from the Device will return
 // the correct Adapter, which can then return the correct Factory.
 
-static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
+HRESULT (__stdcall *pOrigCreateDXGIFactory1)(
+	REFIID riid,
+	_Out_ void   **ppFactory
+	) = nullptr;
+
+HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 {
-	InitD311();
 	LogInfo("Hooked_CreateDXGIFactory1 called with riid: %s\n", NameFromIID(riid).c_str());
-	LogInfo("  calling original CreateDXGIFactory1 API\n");
+
+	// If this happens to be first call from the game, let's make sure to load
+	// up our d3d11.dll and the .ini file.
+	InitD311();
 
 	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
 	if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
@@ -278,66 +270,6 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 
 
 // -----------------------------------------------------------------------------
-
-// Load the dxgi.dll and hook the two calls for CreateFactory.
-// Any Factory2 use has to be fetched from one of these two.
-
-bool InstallDXGIHooks(void)
-{
-	HINSTANCE hDXGI;
-	LPVOID fnCreateDXGIFactory;
-	LPVOID fnCreateDXGIFactory1;
-	DWORD dwOsErr;
-
-	bool waitfordebugger = false;
-	waitfordebugger = true;
-	do
-	{
-		Sleep(250);
-	} while (!IsDebuggerPresent());
-	__debugbreak();
-
-
-	// Not certain this is necessary, but it won't hurt, and ensures it's loaded.
-	LoadLibrary(L"dxgi.dll");
-
-	DoubleLog("Attempting to hook dxgi CreateFactory using Deviare in-proc.\n");
-	cHookMgr.SetEnableDebugOutput(bLog);
-
-	hDXGI = NktHookLibHelpers::GetModuleBaseAddress(L"dxgi.dll");
-	if (hDXGI == NULL)
-	{
-		DoubleLog("  Failed to get dxgi module for CreateFactory hook.\n");
-		return false;
-	}
-
-	fnCreateDXGIFactory = NktHookLibHelpers::GetProcedureAddress(hDXGI, "CreateDXGIFactory");
-	if (fnCreateDXGIFactory == NULL)
-	{
-		DoubleLog("  Failed to GetProcedureAddress of CreateDXGIFactory for dxgi hook.\n");
-		return false;
-	}
-	dwOsErr = cHookMgr.Hook(&nFactory_ID, (LPVOID*)&(fnOrigCreateFactory),
-		fnCreateDXGIFactory, Hooked_CreateDXGIFactory);
-	DoubleLog("  Install Hook for DXGI::CreateDXGIFactory using Deviare in-proc: %x\n", dwOsErr);
-	if (dwOsErr != 0)
-		return false;
-
-	fnCreateDXGIFactory1 = NktHookLibHelpers::GetProcedureAddress(hDXGI, "CreateDXGIFactory1");
-	if (fnCreateDXGIFactory1 == NULL)
-	{
-		DoubleLog("  Failed to GetProcedureAddress of CreateDXGIFactory1 for dxgi hook.\n");
-		return false;
-	}
-	dwOsErr = cHookMgr.Hook(&nFactory1_ID, (LPVOID*)&(fnOrigCreateFactory1),
-		fnCreateDXGIFactory1, Hooked_CreateDXGIFactory1);
-	DoubleLog("  Install Hook for DXGI::CreateDXGIFactory1 using Deviare in-proc: %x\n", dwOsErr);
-	if (dwOsErr != 0)
-		return false;
-
-	DoubleLog("  Successfully hooked CreateDXGIFactory using Deviare in-proc.\n");
-	return true;
-}
 
 
 

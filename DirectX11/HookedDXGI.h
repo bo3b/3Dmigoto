@@ -21,20 +21,20 @@
 // so we'll come back to it later.
 
 
-static HRESULT (__stdcall *pOrigCreateDXGIFactory)(
+extern "C" HRESULT (__stdcall *pOrigCreateDXGIFactory)(
 	REFIID riid,
 	_Out_ void   **ppFactory
-	) = nullptr;
+	);
 
-static HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory);
+extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory);
 
 
-static HRESULT(__stdcall *pOrigCreateDXGIFactory1)(
+extern "C" HRESULT(__stdcall *pOrigCreateDXGIFactory1)(
 	REFIID riid,
 	_Out_ void   **ppFactory
-	) = nullptr;
+	);
 
-static HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1);
+extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1);
 
 
 extern "C" LPVOID lpvtbl_CreateSwapChain(IDXGIFactory* pFactory);

@@ -1146,7 +1146,17 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 // It's not clear if we should also hook LoadLibraryW, but we don't have examples
 // where we need that yet.
 
-static HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
+
+// The storage for the original routine so we can call through.
+// Set to nullptr in case we need to check for it already being hooked.
+
+HMODULE(__stdcall *pOrigLoadLibraryExW)(
+	_In_       LPCTSTR lpFileName,
+	_Reserved_ HANDLE  hFile,
+	_In_       DWORD   dwFlags
+	) = nullptr;
+
+HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
 {
 	HMODULE module;
 	static bool hook_enabled = true;
