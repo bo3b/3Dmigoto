@@ -356,32 +356,11 @@ static tD3DKMTOpenResource _D3DKMTOpenResource;
 typedef int (WINAPI *tD3DKMTQueryResourceInfo)(int a);
 static tD3DKMTQueryResourceInfo _D3DKMTQueryResourceInfo;
 
-typedef HRESULT(WINAPI *tD3D11CreateDevice)(
-	IDXGIAdapter *pAdapter,
-	D3D_DRIVER_TYPE DriverType,
-	HMODULE Software,
-	UINT Flags,
-	const D3D_FEATURE_LEVEL *pFeatureLevels,
-	UINT FeatureLevels,
-	UINT SDKVersion,
-	ID3D11Device **ppDevice,
-	D3D_FEATURE_LEVEL *pFeatureLevel,
-	ID3D11DeviceContext **ppImmediateContext);
-static tD3D11CreateDevice _D3D11CreateDevice;
-typedef HRESULT(WINAPI *tD3D11CreateDeviceAndSwapChain)(
-	IDXGIAdapter *pAdapter,
-	D3D_DRIVER_TYPE DriverType,
-	HMODULE Software,
-	UINT Flags,
-	const D3D_FEATURE_LEVEL *pFeatureLevels,
-	UINT FeatureLevels,
-	UINT SDKVersion,
-	DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
-	IDXGISwapChain **ppSwapChain,
-	ID3D11Device **ppDevice,
-	D3D_FEATURE_LEVEL *pFeatureLevel,
-	ID3D11DeviceContext **ppImmediateContext);
-static tD3D11CreateDeviceAndSwapChain _D3D11CreateDeviceAndSwapChain;
+tD3D11CreateDevice _D3D11CreateDevice;
+
+tD3D11CreateDeviceAndSwapChain _D3D11CreateDeviceAndSwapChain;
+
+
 
 
 void InitD311()
@@ -1095,7 +1074,7 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 		LogInfoW(L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n",
 			lpLibFileName, fullPath);
 
-		return pOrigLoadLibraryExW(fullPath, hFile, dwFlags);
+		return fnOrigLoadLibraryExW(fullPath, hFile, dwFlags);
 	}
 
 	// For this case, we want to see if it's the game loading d3d11 or nvapi directly
@@ -1107,7 +1086,7 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 	{
 		LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
 
-		return pOrigLoadLibraryExW(library, hFile, dwFlags);
+		return fnOrigLoadLibraryExW(library, hFile, dwFlags);
 	}
 
 	return NULL;
@@ -1150,7 +1129,7 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 // The storage for the original routine so we can call through.
 // Set to nullptr in case we need to check for it already being hooked.
 
-HMODULE(__stdcall *pOrigLoadLibraryExW)(
+HMODULE(__stdcall *fnOrigLoadLibraryExW)(
 	_In_       LPCTSTR lpFileName,
 	_Reserved_ HANDLE  hFile,
 	_In_       DWORD   dwFlags
@@ -1191,5 +1170,5 @@ HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ H
 		hook_enabled = true;
 
 	// Normal unchanged case.
-	return pOrigLoadLibraryExW(lpLibFileName, hFile, dwFlags);
+	return fnOrigLoadLibraryExW(lpLibFileName, hFile, dwFlags);
 }

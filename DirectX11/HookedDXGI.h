@@ -21,7 +21,7 @@
 // so we'll come back to it later.
 
 
-extern "C" HRESULT (__stdcall *pOrigCreateDXGIFactory)(
+extern "C" HRESULT (__stdcall *fnOrigCreateDXGIFactory)(
 	REFIID riid,
 	_Out_ void   **ppFactory
 	);
@@ -29,7 +29,7 @@ extern "C" HRESULT (__stdcall *pOrigCreateDXGIFactory)(
 extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory);
 
 
-extern "C" HRESULT(__stdcall *pOrigCreateDXGIFactory1)(
+extern "C" HRESULT(__stdcall *fnOrigCreateDXGIFactory1)(
 	REFIID riid,
 	_Out_ void   **ppFactory
 	);
@@ -38,3 +38,5 @@ extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFac
 
 
 extern "C" LPVOID lpvtbl_CreateSwapChain(IDXGIFactory* pFactory);
+
+extern "C" LPVOID lpvtbl_Present(IDXGISwapChain* pSwapChain);
