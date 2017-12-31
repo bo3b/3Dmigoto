@@ -46,6 +46,14 @@ LPVOID lpvtbl_CreateSwapChain(IDXGIFactory* pFactory)
 	return pFactory->lpVtbl->CreateSwapChain;
 }
 
+LPVOID lpvtbl_Present(IDXGISwapChain* pSwapChain)
+{
+	if (!pSwapChain)
+		return NULL;
+
+	return pSwapChain->lpVtbl->Present;
+}
+
 
 
 #undef CINTERFACE

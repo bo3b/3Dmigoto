@@ -6,6 +6,8 @@
 // IDXGIFactory4					1.4
 // IDXGIFactory5					1.5
 
+#include <d3d11.h>
+
 #include "DLLMainHook.h"
 #include "log.h"
 #include "util.h"
@@ -26,21 +28,6 @@
 // objects for encapsulation where necessary, by returning HackerDXGIFactory1
 // and HackerDXGIFactory2 when platform_update is set.  We won't ever return
 // HackerDXGIFactory because the minimum on Win7 is IDXGIFactory1.
-
-
-// -----------------------------------------------------------------------------
-
-// This serves a dual purpose of defining the interface routine as required by
-// DXGI, and also is the storage for the original call, returned by cHookMgr.Hook.
-
-HRESULT(STDMETHODCALLTYPE *pOrigPresent)(
-	IDXGISwapChain * This,
-	/* [in] */ UINT SyncInterval,
-	/* [in] */ UINT Flags) = nullptr;
-
-static SIZE_T nHookId = 0;
-
-//Overlay *overlay;
 
 
 // -----------------------------------------------------------------------------
@@ -81,21 +68,21 @@ static HRESULT WrapFactory1(void **ppFactory1)
 {
 	LogInfo("Calling original CreateDXGIFactory1 API\n");
 
-	IDXGIFactory1 *origFactory1;
-	HRESULT hr = pOrigCreateDXGIFactory1(__uuidof(IDXGIFactory1), (void **)&origFactory1);
+//	IDXGIFactory1 *origFactory1;
+	HRESULT hr = fnOrigCreateDXGIFactory1(__uuidof(IDXGIFactory1), (void **)ppFactory1);
 	if (FAILED(hr))
 	{
 		LogInfo("  failed with HRESULT=%x\n", hr);
 		return hr;
 	}
-	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x\n", origFactory1, hr);
+	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x\n", *ppFactory1, hr);
 
-	HackerDXGIFactory1 *factory1Wrap;
-	factory1Wrap = new HackerDXGIFactory1(origFactory1);
+	//HackerDXGIFactory1 *factory1Wrap;
+	//factory1Wrap = new HackerDXGIFactory1(origFactory1);
 
-	if (ppFactory1)
-		*ppFactory1 = factory1Wrap;
-	LogInfo("->new HackerDXGIFactory1(%s@%p) wrapped %p\n", type_name(factory1Wrap), factory1Wrap, origFactory1);
+	//if (ppFactory1)
+	//	*ppFactory1 = factory1Wrap;
+	//LogInfo("->new HackerDXGIFactory1(%s@%p) wrapped %p\n", type_name(factory1Wrap), factory1Wrap, origFactory1);
 
 	return hr;
 }
@@ -110,7 +97,7 @@ static HRESULT WrapFactory2(void **ppFactory2)
 	// it's not defined there.  But, we can call into fnOrigCreateFactory1 for it.
 
 	//IDXGIFactory2 *origFactory2;
-	HRESULT hr = pOrigCreateDXGIFactory1(__uuidof(IDXGIFactory2), (void **)ppFactory2);
+	HRESULT hr = fnOrigCreateDXGIFactory1(__uuidof(IDXGIFactory2), (void **)ppFactory2);
 	if (FAILED(hr))
 	{
 		LogInfo("  failed with HRESULT=%x\n", hr);
@@ -130,12 +117,118 @@ static HRESULT WrapFactory2(void **ppFactory2)
 	// we should handle exceptions.
 
 	// With the factory created, hook CreateSwapChain now.
-	SIZE_T hook_id;
-	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&pOrigCreateSwapChain,
-		lpvtbl_CreateSwapChain((IDXGIFactory*)*ppFactory2), Hooked_CreateSwapChain, 0);
+	//SIZE_T hook_id;
+	//DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&pOrigCreateSwapChain,
+	//	lpvtbl_CreateSwapChain((IDXGIFactory*)*ppFactory2), Hooked_CreateSwapChain, 0);
 
 	return hr;
 }
+
+// -----------------------------------------------------------------------------
+
+// This serves a dual purpose of defining the interface routine as required by
+// DXGI, and also is the storage for the original call, returned by cHookMgr.Hook.
+
+HRESULT(__stdcall *fnOrigPresent)(
+	IDXGISwapChain * This,
+	/* [in] */ UINT SyncInterval,
+	/* [in] */ UINT Flags) = nullptr;
+
+
+static int frames = 0;
+
+HRESULT __stdcall Hooked_Present(
+	IDXGISwapChain * This,
+	/* [in] */ UINT SyncInterval,
+	/* [in] */ UINT Flags)
+{
+	frames++;
+	if (frames % 30)
+		LogInfo("Hooked_Present\n");
+
+	return fnOrigPresent(This, SyncInterval, Flags);
+}
+
+
+// -----------------------------------------------------------------------------
+// Hook the current game's Present call.
+// 
+// This takes a bunch of junk setup to get there, but we want to create a
+// SwapChain, so that we can access its Present call.  To do that, we also
+// need a Device, so we'll use CreateDeviceAndSwapChain, because at this 
+// moment we have no idea what the Device would be, or whether there 
+// actually is one.  We'll just make one and dispose if it when done.
+// In order to CreateDeviceAndSwapChain, we also need a Window to pass
+// to the SwapChain description. We'll make that and dispose of it when done too.
+
+void HookPresent()
+{
+	LogInfo("*** Creating hook for Present. \n");
+
+	// Create a window, that will be invisible to start, and disposed here.
+	HWND hWnd = CreateWindow(
+		L"STATIC",    // name of the window class
+		NULL,   // title of the window
+		WS_OVERLAPPED,    // window style
+		300,    // x-position of the window
+		300,    // y-position of the window
+		500,    // width of the window
+		400,    // height of the window
+		NULL,    // we have no parent window, NULL
+		NULL,    // we aren't using menus, NULL
+		NULL,    // application handle
+		NULL);    // used with multiple windows, NULL
+	if (hWnd == NULL)
+	{
+		DWORD last = GetLastError();
+		LogInfo("*** Fail to HookPresent, CreateWindowEx err: %d", last);
+		return;
+	}
+
+	DXGI_SWAP_CHAIN_DESC scd = { 0 };
+	scd.BufferCount = 1;                                    // one back buffer
+	scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;     // use 32-bit color
+	scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;      // how swap chain is to be used
+	scd.OutputWindow = hWnd;                                // the window to be used
+	scd.SampleDesc.Count = 4;                               // how many multisamples
+	scd.Windowed = TRUE;                                    // windowed/full-screen mode
+
+	IDXGISwapChain *swapChain;     
+	ID3D11Device *device;          
+
+	HRESULT hr = (*_D3D11CreateDeviceAndSwapChain)(NULL,
+		D3D_DRIVER_TYPE_HARDWARE,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		D3D11_SDK_VERSION,
+		&scd,
+		&swapChain,
+		&device,
+		NULL,
+		nullptr);
+	if (FAILED(hr))
+	{
+		LogInfo("*** Fail to HookPresent, _D3D11CreateDeviceAndSwapChain err: %x", hr);
+		return;
+	}
+	
+	// Now with all that jazz out of the way, we have the swapChain, and can use it
+	// to find the address of the Present call. Let's hook that call, because we need
+	// it to drive our Overlay, Hunting, and override functions.
+	SIZE_T hook_id;
+	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigPresent,
+		lpvtbl_Present(swapChain), Hooked_Present, 0);
+
+	// With the routine hooked now, so time to cleanup.
+	swapChain->Release();
+	device->Release();
+	DestroyWindow(hWnd);
+
+	LogInfo("  Successfully installed IDXGISwapChain->Present hook.\n");
+}
+
 
 // -----------------------------------------------------------------------------
 
@@ -151,32 +244,41 @@ static HRESULT WrapFactory2(void **ppFactory2)
 // expected object for Win7, and allows us to better handle QueryInterface
 // and GetParent calls.
 
-HRESULT (__stdcall *pOrigCreateDXGIFactory)(
+HRESULT (__stdcall *fnOrigCreateDXGIFactory)(
 	REFIID riid,
 	_Out_ void   **ppFactory
 	) = nullptr;
 
 HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
-	LogInfo("Hooked_CreateDXGIFactory called with riid: %s\n", NameFromIID(riid).c_str());
+	LogInfo("*** Hooked_CreateDXGIFactory called with riid: %s\n", NameFromIID(riid).c_str());
 
 	// If this happens to be first call from the game, let's make sure to load
 	// up our d3d11.dll and the .ini file.
 	InitD311();
 
 	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
-	if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
-	{
-		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
-		*ppFactory = NULL;
-		return E_NOINTERFACE;
-	}
+	//if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
+	//{
+	//	LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
+	//	*ppFactory = NULL;
+	//	return E_NOINTERFACE;
+	//}
 
-	HRESULT hr;
-	if (G->enable_platform_update)
-		hr = WrapFactory2(ppFactory);
-	else
-		hr = WrapFactory1(ppFactory);
+	//HRESULT hr;
+	//if (G->enable_platform_update)
+	//	hr = WrapFactory2(ppFactory);
+	//else
+	//	hr = WrapFactory1(ppFactory);
+
+
+	// For hooking only, no wrapping, we want to just create a swap chain, then hook
+	// the Present call.  We need to return their factory regardless.
+	HRESULT hr = fnOrigCreateDXGIFactory(riid, ppFactory);
+	if (SUCCEEDED(hr))
+	{
+		HookPresent();
+	}
 
 	return hr;
 }
@@ -201,14 +303,14 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 // to maintain the chain of objects so that GetParent from the Device will return
 // the correct Adapter, which can then return the correct Factory.
 
-HRESULT (__stdcall *pOrigCreateDXGIFactory1)(
+HRESULT (__stdcall *fnOrigCreateDXGIFactory1)(
 	REFIID riid,
 	_Out_ void   **ppFactory
 	) = nullptr;
 
 HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 {
-	LogInfo("Hooked_CreateDXGIFactory1 called with riid: %s\n", NameFromIID(riid).c_str());
+	LogInfo("*** Hooked_CreateDXGIFactory1 called with riid: %s\n", NameFromIID(riid).c_str());
 
 	// If this happens to be first call from the game, let's make sure to load
 	// up our d3d11.dll and the .ini file.
