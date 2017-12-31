@@ -1209,25 +1209,25 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 
 	if (riid == __uuidof(IDXGIDevice) || riid == __uuidof(IDXGIDevice1))
 	{
-		if (mHackerDXGIDevice1 != nullptr)
-		{
-			*ppvObject = mHackerDXGIDevice1;
-			LogDebug("  return HackerDXGIDevice1(%s@%p) wrapper of %p\n",
-				type_name(mHackerDXGIDevice1), mHackerDXGIDevice1, mHackerDXGIDevice1->GetOrigDXGIDevice());
-		}
-		else
-			// This is a specific hack for MGSV on Windows 10 *with* the
-			// anniversary update installed. If we wrap the DXGIDevice the
-			// game will reject it and the game will quit.
-			if (!(G->enable_hooks & EnableHooks::SKIP_DXGI_DEVICE)) {
-				IDXGIDevice *origDXGIDevice = static_cast<IDXGIDevice*>(*ppvObject);
-				IDXGIDevice1 *origDXGIDevice1;
-				origDXGIDevice->QueryInterface(IID_PPV_ARGS(&origDXGIDevice1));
+		//if (mHackerDXGIDevice1 != nullptr)
+		//{
+		//	*ppvObject = mHackerDXGIDevice1;
+		//	LogDebug("  return HackerDXGIDevice1(%s@%p) wrapper of %p\n",
+		//		type_name(mHackerDXGIDevice1), mHackerDXGIDevice1, mHackerDXGIDevice1->GetOrigDXGIDevice());
+		//}
+		//else
+		//	// This is a specific hack for MGSV on Windows 10 *with* the
+		//	// anniversary update installed. If we wrap the DXGIDevice the
+		//	// game will reject it and the game will quit.
+		//	if (!(G->enable_hooks & EnableHooks::SKIP_DXGI_DEVICE)) {
+		//		IDXGIDevice *origDXGIDevice = static_cast<IDXGIDevice*>(*ppvObject);
+		//		IDXGIDevice1 *origDXGIDevice1;
+		//		origDXGIDevice->QueryInterface(IID_PPV_ARGS(&origDXGIDevice1));
 
-				mHackerDXGIDevice1 = new HackerDXGIDevice1(origDXGIDevice1, this);
-				*ppvObject = mHackerDXGIDevice1;
-				LogDebug("  created HackerDXGIDevice(%s@%p) wrapper of %p\n", type_name(mHackerDXGIDevice1), mHackerDXGIDevice1, origDXGIDevice1);
-			}
+		//		mHackerDXGIDevice1 = new HackerDXGIDevice1(origDXGIDevice1, this);
+		//		*ppvObject = mHackerDXGIDevice1;
+		//		LogDebug("  created HackerDXGIDevice(%s@%p) wrapper of %p\n", type_name(mHackerDXGIDevice1), mHackerDXGIDevice1, origDXGIDevice1);
+		//	}
 	}
 	//else if (riid == __uuidof(IDXGIDevice1))
 	//{
