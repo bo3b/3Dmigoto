@@ -16,6 +16,8 @@
 // CommandList.h -> HackerContext.h -> Globals.h
 class CommandListCommand;
 typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
+class Overlay;
+
 
 enum HuntingMode {
 	HUNTING_MODE_DISABLED = 0,
@@ -288,6 +290,11 @@ struct Globals
 	wchar_t SHADER_CACHE_PATH[MAX_PATH];
 	wchar_t CHAIN_DLL_PATH[MAX_PATH];
 
+	HackerDevice* gHackerDevice;
+	HackerContext* gHackerContext;
+	IDXGISwapChain* gSwapChain;
+	Overlay* gOverlay;
+
 	EnableHooks enable_hooks;
 	
 	bool enable_check_interface;
@@ -450,6 +457,11 @@ struct Globals
 	std::map<UINT64, ShaderInfoData> mPixelShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 
 	Globals() :
+		gHackerDevice(0),
+		gHackerContext(0),
+		gSwapChain(0),
+		gOverlay(0),
+
 		mSelectedRenderTargetSnapshot(0),
 		mSelectedRenderTargetPos(-1),
 		mSelectedRenderTarget((ID3D11Resource *)-1),

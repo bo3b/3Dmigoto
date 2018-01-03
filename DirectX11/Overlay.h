@@ -22,9 +22,9 @@ class HackerDXGISwapChain;
 class Overlay
 {
 private:
-	HackerDXGISwapChain *mHackerSwapChain;
-	HackerDevice *mHackerDevice;
-	HackerContext *mHackerContext;
+	IDXGISwapChain* mOrigSwapChain;
+	HackerDevice* mHackerDevice;
+	HackerContext* mHackerContext;
 
 	DirectX::XMUINT2 mResolution;
 	std::unique_ptr<DirectX::SpriteFont> mFont;
@@ -83,7 +83,7 @@ private:
 	void DrawShaderInfoLines();
 
 public:
-	Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapChain *pSwapChain);
+	Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain);
 	~Overlay();
 
 	void DrawOverlay(void);

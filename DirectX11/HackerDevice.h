@@ -24,7 +24,7 @@ private:
 	ID3D11Device *mRealOrigDevice;
 	ID3D11DeviceContext *mOrigContext;
 
-	HackerDXGISwapChain *mHackerSwapChain;
+	//HackerDXGISwapChain *mHackerSwapChain;
 	HackerContext *mHackerContext;
 	HackerDXGIDevice1 *mHackerDXGIDevice1;
 
@@ -85,15 +85,15 @@ public:
 
 	void Create3DMigotoResources();
 	void SetHackerContext(HackerContext *pHackerContext);
-	void SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain);
+	//void SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain);
 
 	HackerContext* GetHackerContext();
 	ID3D11Device* GetOrigDevice();
 	ID3D11Device* GetPassThroughOrigDevice();
 	ID3D11DeviceContext* GetOrigContext();
 	ID3D11DeviceContext* GetPassThroughOrigContext();
-	IDXGISwapChain* GetOrigSwapChain();
-	HackerDXGISwapChain* GetHackerSwapChain();
+	//IDXGISwapChain* GetOrigSwapChain();
+	//HackerDXGISwapChain* GetHackerSwapChain();
 	void HackerDevice::HookDevice();
 
 

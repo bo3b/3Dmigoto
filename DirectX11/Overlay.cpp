@@ -31,7 +31,7 @@
 const int maxstring = 200;
 
 
-Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapChain *pSwapChain)
+Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain)
 {
 	HRESULT hr;
 
@@ -42,7 +42,7 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapC
 	// We need the context at a minimum.
 	mHackerDevice = pDevice;
 	mHackerContext = pContext;
-	mHackerSwapChain = pSwapChain;
+	mOrigSwapChain = pSwapChain;
 
 	DXGI_SWAP_CHAIN_DESC description;
 	hr = pSwapChain->GetDesc(&description);
@@ -198,7 +198,7 @@ HRESULT Overlay::InitDrawState()
 	HRESULT hr;
 
 	ID3D11Texture2D *pBackBuffer;
-	hr = mHackerSwapChain->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+	hr = mOrigSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
 	if (FAILED(hr))
 		return hr;
 

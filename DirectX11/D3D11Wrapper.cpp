@@ -744,6 +744,8 @@ HRESULT WINAPI D3D11CreateDevice(
 		else
 			deviceWrap = new HackerDevice(origDevice, origContext);
 
+		G->gHackerDevice = deviceWrap;
+
 		if (G->enable_hooks & EnableHooks::DEVICE)
 			deviceWrap->HookDevice();
 		else
@@ -759,6 +761,8 @@ HRESULT WINAPI D3D11CreateDevice(
 			contextWrap = new HackerContext1(origDevice1, origContext1);
 		else
 			contextWrap = new HackerContext(origDevice, origContext);
+
+		G->gHackerContext = contextWrap;
 
 		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
 			contextWrap->HookContext();
@@ -907,6 +911,8 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		else
 			deviceWrap = new HackerDevice(origDevice, origContext);
 
+		G->gHackerDevice = deviceWrap;
+
 		if (G->enable_hooks & EnableHooks::DEVICE)
 			deviceWrap->HookDevice();
 		else
@@ -922,6 +928,8 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		else
 			contextWrap = new HackerContext(origDevice, origContext);
 
+		G->gHackerContext = contextWrap;
+
 		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
 			contextWrap->HookContext();
 		else
@@ -931,46 +939,46 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 
 	HackerDXGISwapChain *swapchainWrap = nullptr;
 
-	if (ppSwapChain != nullptr) {
-		if (G->SCREEN_UPSCALING == 0)
-		{
-			swapchainWrap = new HackerDXGISwapChain(origSwapChain, deviceWrap, contextWrap);
-			LogInfo("  HackerDXGISwapChain %p created to wrap %p\n", swapchainWrap, origSwapChain);
-		}
-		else
-		{
-			if (G->UPSCALE_MODE == 1)
-			{
-				//TODO: find a way to allow this!
-				BeepFailure();
-				LogInfo("The game uses D3D11CreateDeviceAndSwapChain to create the swap chain! For this function only upscale_mode = 0 is supported!\n");
-				LogInfo("Trying to switch to this mode!\n");
-				G->UPSCALE_MODE = 0;
-			}
+	//if (ppSwapChain != nullptr) {
+	//	if (G->SCREEN_UPSCALING == 0)
+	//	{
+	//		swapchainWrap = new HackerDXGISwapChain(origSwapChain, deviceWrap, contextWrap);
+	//		LogInfo("  HackerDXGISwapChain %p created to wrap %p\n", swapchainWrap, origSwapChain);
+	//	}
+	//	else
+	//	{
+	//		if (G->UPSCALE_MODE == 1)
+	//		{
+	//			//TODO: find a way to allow this!
+	//			BeepFailure();
+	//			LogInfo("The game uses D3D11CreateDeviceAndSwapChain to create the swap chain! For this function only upscale_mode = 0 is supported!\n");
+	//			LogInfo("Trying to switch to this mode!\n");
+	//			G->UPSCALE_MODE = 0;
+	//		}
 
-			try
-			{
-				swapchainWrap = new HackerUpscalingDXGISwapChain(origSwapChain, deviceWrap, contextWrap, &originalSwapChainDesc, G->SCREEN_WIDTH, G->SCREEN_HEIGHT,nullptr);
-				LogInfo("  HackerUpscalingDXGISwapChain %p created to wrap %p.\n", swapchainWrap, origSwapChain);
-			}
-			catch (const Exception3DMigoto& e)
-			{
-				LogInfo("HackerDXGIFactory::CreateSwapChain(): Creation of Upscaling Swapchain failed. Error: %s\n", e.what().c_str());
-				// Something went wrong inform the user with double beep and end!;
-				DoubleBeepExit();
-			}
-		}
+	//		try
+	//		{
+	//			swapchainWrap = new HackerUpscalingDXGISwapChain(origSwapChain, deviceWrap, contextWrap, &originalSwapChainDesc, G->SCREEN_WIDTH, G->SCREEN_HEIGHT,nullptr);
+	//			LogInfo("  HackerUpscalingDXGISwapChain %p created to wrap %p.\n", swapchainWrap, origSwapChain);
+	//		}
+	//		catch (const Exception3DMigoto& e)
+	//		{
+	//			LogInfo("HackerDXGIFactory::CreateSwapChain(): Creation of Upscaling Swapchain failed. Error: %s\n", e.what().c_str());
+	//			// Something went wrong inform the user with double beep and end!;
+	//			DoubleBeepExit();
+	//		}
+	//	}
 
-		if (swapchainWrap != nullptr)
-			*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
-	}
+	//	if (swapchainWrap != nullptr)
+	//		*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
+	//}
 
 	// Let each of the new Hacker objects know about the other, needed for unusual
 	// calls in the Hacker objects where we want to return the Hacker versions.
 	if (deviceWrap != nullptr)
 		deviceWrap->SetHackerContext(contextWrap);
-	if (deviceWrap != nullptr) // Is it not already done in the hackerDXGISwapChain class?
-		deviceWrap->SetHackerSwapChain(swapchainWrap);
+	//if (deviceWrap != nullptr) // Is it not already done in the hackerDXGISwapChain class?
+	//	deviceWrap->SetHackerSwapChain(swapchainWrap);
 	if (contextWrap != nullptr)
 		contextWrap->SetHackerDevice(deviceWrap);
 

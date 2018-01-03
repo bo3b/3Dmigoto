@@ -47,7 +47,6 @@
     <ClCompile Include="FrameAnalysis.cpp" />
     <ClCompile Include="HackerContext.cpp" />
     <ClCompile Include="HackerDevice.cpp" />
-    <ClCompile Include="HackerDXGI.cpp" />
     <ClCompile Include="HookAddresses.c" />
     <ClCompile Include="HookedContext.cpp" />
     <ClCompile Include="HookedDevice.cpp" />
@@ -78,7 +77,6 @@
     <ClInclude Include="Globals.h" />
     <ClInclude Include="HackerContext.h" />
     <ClInclude Include="HackerDevice.h" />
-    <ClInclude Include="HackerDXGI.h" />
     <ClInclude Include="HookedContext.h" />
     <ClInclude Include="HookedDevice.h" />
     <ClInclude Include="HookedDXGI.h" />

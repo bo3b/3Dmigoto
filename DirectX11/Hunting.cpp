@@ -325,7 +325,7 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	if (FAILED(hr))
 		LogInfo("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
-	hr = pDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
+	hr = G->gSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
 	if (SUCCEEDED(hr))
 	{
 		swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls.jpg", G->SHADER_PATH, hash, shaderType.c_str());
@@ -350,7 +350,7 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	HRESULT hr;
 	NvAPI_Status nvret;
 
-	hr = pDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
+	hr = G->gSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
 	if (FAILED(hr))
 		return;
 

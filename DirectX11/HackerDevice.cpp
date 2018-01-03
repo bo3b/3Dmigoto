@@ -35,7 +35,8 @@ HackerDevice::HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext)
 	mStereoHandle(0), mStereoResourceView(0), mStereoTexture(0),
 	mIniResourceView(0), mIniTexture(0),
 	mZBufferResourceView(0), 
-	mHackerContext(0), mHackerSwapChain(0), mHackerDXGIDevice1(0)
+	mHackerContext(0), //mHackerSwapChain(0), 
+	mHackerDXGIDevice1(0)
 {
 	mOrigDevice = pDevice;
 	mRealOrigDevice = pDevice;
@@ -239,10 +240,10 @@ HackerContext* HackerDevice::GetHackerContext()
 	return mHackerContext;
 }
 
-void HackerDevice::SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain)
-{
-	mHackerSwapChain = pHackerSwapChain;
-}
+//void HackerDevice::SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain)
+//{
+//	mHackerSwapChain = pHackerSwapChain;
+//}
 
 // Returns the "real" DirectX object. Note that if hooking is enabled calls
 // through this object will go back into 3DMigoto, which would then subject
@@ -276,15 +277,15 @@ ID3D11DeviceContext* HackerDevice::GetPassThroughOrigContext()
 	return mOrigContext;
 }
 
-IDXGISwapChain* HackerDevice::GetOrigSwapChain()
-{
-	return mHackerSwapChain->GetOrigSwapChain();
-}
-
-HackerDXGISwapChain* HackerDevice::GetHackerSwapChain()
-{
-	return mHackerSwapChain;
-}
+//IDXGISwapChain* HackerDevice::GetOrigSwapChain()
+//{
+//	return mHackerSwapChain->GetOrigSwapChain();
+//}
+//
+//HackerDXGISwapChain* HackerDevice::GetHackerSwapChain()
+//{
+//	return mHackerSwapChain;
+//}
 
 void HackerDevice::HookDevice()
 {
