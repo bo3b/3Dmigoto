@@ -780,6 +780,7 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
 		{
 			*ppvObject = this;
 			LogDebug("  return HackerContext1(%s@%p) wrapper of %p\n", type_name(this), this, ppvObject);
+			return hr;
 		}
 
 		// For Batman: TellTale games, they call this to fetch the DeviceContext1.
