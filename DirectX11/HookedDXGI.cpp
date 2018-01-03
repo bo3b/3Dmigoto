@@ -35,38 +35,6 @@
 
 
 // -----------------------------------------------------------------------------
-// The signature copied from dxgi.h, in C section.
-// This unusual format also provides storage for the original pointer to the 
-// routine.
-
-HRESULT(__stdcall *pOrigCreateSwapChain)(IDXGIFactory* This,
-	/* [in] */  IUnknown             *pDevice,
-	/* [in] */  DXGI_SWAP_CHAIN_DESC *pDesc,
-	/* [out] */ IDXGISwapChain       **ppSwapChain
-	) = nullptr;
-
-
-// Our override method for any callers to CreateSwapChain.
-
-HRESULT __stdcall Hooked_CreateSwapChain(IDXGIFactory* This,
-	/* [in] */  IUnknown             *pDevice,
-	/* [in] */  DXGI_SWAP_CHAIN_DESC *pDesc,
-	/* [out] */ IDXGISwapChain       **ppSwapChain)
-{
-	HRESULT hr;
-	IDXGISwapChain *mOrigSwapChain;
-
-	hr = pOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
-	if (SUCCEEDED(hr))
-		mOrigSwapChain = *ppSwapChain;
-
-	LogInfo("HookedSwapChain::HookedCreateSwapChain mOrigSwapChain: %p, pDevice: %p, result: %d\n", mOrigSwapChain, pDevice, hr);
-
-	return hr;
-}
-
-
-// -----------------------------------------------------------------------------
 
 static HRESULT WrapFactory1(void **ppFactory1)
 {
@@ -310,59 +278,10 @@ HRESULT __stdcall Hooked_Present(
 // In order to CreateDeviceAndSwapChain, we also need a Window to pass
 // to the SwapChain description. We'll make that and dispose of it when done too.
 
-void HookPresent()
+void HookPresent(IDXGISwapChain* swapChain)
 {
-	LogInfo("*** Creating hook for Present. \n");
+	LogInfo("*** CreateSwapChain creating hook for Present. \n");
 
-	// Create a window, that will be invisible to start, and disposed here.
-	HWND hWnd = CreateWindow(
-		L"STATIC",    // name of the window class
-		NULL,   // title of the window
-		WS_OVERLAPPED,    // window style
-		300,    // x-position of the window
-		300,    // y-position of the window
-		500,    // width of the window
-		400,    // height of the window
-		NULL,    // we have no parent window, NULL
-		NULL,    // we aren't using menus, NULL
-		NULL,    // application handle
-		NULL);    // used with multiple windows, NULL
-	if (hWnd == NULL)
-	{
-		DWORD last = GetLastError();
-		LogInfo("*** Fail to HookPresent, CreateWindowEx err: %d", last);
-		return;
-	}
-
-	DXGI_SWAP_CHAIN_DESC scd = { 0 };
-	scd.BufferCount = 1;                                    // one back buffer
-	scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;     // use 32-bit color
-	scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;      // how swap chain is to be used
-	scd.OutputWindow = hWnd;                                // the window to be used
-	scd.SampleDesc.Count = 4;                               // how many multisamples
-	scd.Windowed = TRUE;                                    // windowed/full-screen mode
-
-	IDXGISwapChain *swapChain;     
-	ID3D11Device *device;          
-
-	HRESULT hr = (*_D3D11CreateDeviceAndSwapChain)(NULL,
-		D3D_DRIVER_TYPE_HARDWARE,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		D3D11_SDK_VERSION,
-		&scd,
-		&swapChain,
-		&device,
-		NULL,
-		nullptr);
-	if (FAILED(hr))
-	{
-		LogInfo("*** Fail to HookPresent, _D3D11CreateDeviceAndSwapChain err: %x", hr);
-		return;
-	}
-	
 	// Now with all that jazz out of the way, we have the swapChain, and can use it
 	// to find the address of the Present call. Let's hook that call, because we need
 	// it to drive our Overlay, Hunting, and override functions.
@@ -370,17 +289,68 @@ void HookPresent()
 	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigPresent,
 		lpvtbl_Present(swapChain), Hooked_Present, 0);
 
-	// With the routine hooked now, so time to cleanup.
-	swapChain->Release();
-	device->Release();
-	DestroyWindow(hWnd);
-
-	LogInfo("  Successfully installed IDXGISwapChain->Present hook.\n");
+	if (dwOsErr == ERROR_SUCCESS)
+		LogInfo("  Successfully installed IDXGISwapChain->Present hook.\n");
+	else
+		LogInfo("  *** Failed install IDXGISwapChain->Present hook.\n");
 }
 
 
 // -----------------------------------------------------------------------------
+// Actual hook for any IDXGICreateSwapChain calls the game makes.
 
+HRESULT(__stdcall *fnOrigCreateSwapChain)(
+	IDXGIFactory * This,
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][in] */
+	_In_  DXGI_SWAP_CHAIN_DESC *pDesc,
+	/* [annotation][out] */
+	_Out_  IDXGISwapChain **ppSwapChain) = nullptr;
+
+
+HRESULT __stdcall Hooked_CreateSwapChain(
+	IDXGIFactory * This,
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][in] */
+	_In_  DXGI_SWAP_CHAIN_DESC *pDesc,
+	/* [annotation][out] */
+	_Out_  IDXGISwapChain **ppSwapChain)
+{
+	LogDebug("Hooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
+	LogInfo("  Device = %s@%p\n", type_name(pDevice), pDevice);
+	LogInfo("  SwapChain = %p\n", ppSwapChain);
+	LogInfo("  Description = %p\n", pDesc);
+
+	ForceDisplayParams(pDesc);
+
+	HRESULT hr = fnOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
+	if (SUCCEEDED(hr) && !fnOrigPresent)
+		HookPresent(*ppSwapChain);
+
+	LogInfo("->return value = %#x\n\n", hr);
+	return hr;
+}
+
+void HookCreateSwapChain(void* factory)
+{
+	LogInfo("*** IDXGIFactory creating hook for CreateSwapChain. \n");
+
+	IDXGIFactory* dxgiFactory = static_cast<IDXGIFactory*>(factory);
+
+	SIZE_T hook_id;
+	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigCreateSwapChain,
+		lpvtbl_CreateSwapChain(dxgiFactory), Hooked_CreateSwapChain, 0);
+
+	if (dwOsErr == ERROR_SUCCESS)
+		LogInfo("  Successfully installed IDXGIFactory->CreateSwapChain hook.\n");
+	else
+		LogInfo("  *** Failed install IDXGIFactory->CreateSwapChain hook.\n");
+}
+
+
+// -----------------------------------------------------------------------------
 // Actual function called by the game for every CreateDXGIFactory they make.
 // This is only called for the in-process game, not system wide.
 //
@@ -424,10 +394,8 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 	// For hooking only, no wrapping, we want to just create a swap chain, then hook
 	// the Present call.  We need to return their factory regardless.
 	HRESULT hr = fnOrigCreateDXGIFactory(riid, ppFactory);
-	if (SUCCEEDED(hr))
-	{
-		HookPresent();
-	}
+	if (SUCCEEDED(hr) && !fnOrigCreateSwapChain)
+		HookCreateSwapChain(*ppFactory);
 
 	return hr;
 }
