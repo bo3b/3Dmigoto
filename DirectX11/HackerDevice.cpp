@@ -10,7 +10,6 @@
 
 #include "HackerDevice.h"
 #include "HookedDevice.h"
-#include "HackerDXGI.h"
 
 #include <D3Dcompiler.h>
 #include <codecvt>
@@ -34,9 +33,7 @@
 HackerDevice::HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext) : 
 	mStereoHandle(0), mStereoResourceView(0), mStereoTexture(0),
 	mIniResourceView(0), mIniTexture(0),
-	mZBufferResourceView(0), 
-	mHackerContext(0), //mHackerSwapChain(0), 
-	mHackerDXGIDevice1(0)
+	mZBufferResourceView(0)
 {
 	mOrigDevice = pDevice;
 	mRealOrigDevice = pDevice;
@@ -240,11 +237,6 @@ HackerContext* HackerDevice::GetHackerContext()
 	return mHackerContext;
 }
 
-//void HackerDevice::SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain)
-//{
-//	mHackerSwapChain = pHackerSwapChain;
-//}
-
 // Returns the "real" DirectX object. Note that if hooking is enabled calls
 // through this object will go back into 3DMigoto, which would then subject
 // them to extra logging and any processing 3DMigoto applies, which may be
@@ -276,16 +268,6 @@ ID3D11DeviceContext* HackerDevice::GetPassThroughOrigContext()
 
 	return mOrigContext;
 }
-
-//IDXGISwapChain* HackerDevice::GetOrigSwapChain()
-//{
-//	return mHackerSwapChain->GetOrigSwapChain();
-//}
-//
-//HackerDXGISwapChain* HackerDevice::GetHackerSwapChain()
-//{
-//	return mHackerSwapChain;
-//}
 
 void HackerDevice::HookDevice()
 {
@@ -1179,15 +1161,18 @@ STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 //
 // This technique is used in Mordor for sure, and very likely others.
 //
-// New addition, we need to also look for QueryInterface casts to different types.
-// In Dragon Age, it seems clear that they are upcasting their ID3D11Device to an
-// ID3D11Device1, and if we don't wrap that, we have an object leak where they can bypass us.
-//
 // Next up, it seems that we also need to handle a QueryInterface(IDXGIDevice1), as
 // WatchDogs uses that call.  Another oddity: this device is called to return the
 // same device. ID3D11Device->QueryInterface(ID3D11Device).  No idea why, but we
 // need to return our wrapped version.
 // 
+// 1-4-18: No longer using this technique, we have a direct hook on CreateSwapChain,
+// which will catch all variants. But leaving documentation for awhile.
+
+// New addition, we need to also look for QueryInterface casts to different types.
+// In Dragon Age, it seems clear that they are upcasting their ID3D11Device to an
+// ID3D11Device1, and if we don't wrap that, we have an object leak where they can bypass us.
+//
 // Initial call needs to be LogDebug, because this is otherwise far to chatty in the
 // log.  That can be kind of misleading, so careful with missing log info. To
 // keep it consistent, all normal cases will be LogDebug, error states are LogInfo.
@@ -1208,44 +1193,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	// No need for further checks of null ppvObject, as it could not have successfully
 	// called the original in that case.
 
-	if (riid == __uuidof(IDXGIDevice) || riid == __uuidof(IDXGIDevice1))
-	{
-		//if (mHackerDXGIDevice1 != nullptr)
-		//{
-		//	*ppvObject = mHackerDXGIDevice1;
-		//	LogDebug("  return HackerDXGIDevice1(%s@%p) wrapper of %p\n",
-		//		type_name(mHackerDXGIDevice1), mHackerDXGIDevice1, mHackerDXGIDevice1->GetOrigDXGIDevice());
-		//}
-		//else
-		//	// This is a specific hack for MGSV on Windows 10 *with* the
-		//	// anniversary update installed. If we wrap the DXGIDevice the
-		//	// game will reject it and the game will quit.
-		//	if (!(G->enable_hooks & EnableHooks::SKIP_DXGI_DEVICE)) {
-		//		IDXGIDevice *origDXGIDevice = static_cast<IDXGIDevice*>(*ppvObject);
-		//		IDXGIDevice1 *origDXGIDevice1;
-		//		origDXGIDevice->QueryInterface(IID_PPV_ARGS(&origDXGIDevice1));
-
-		//		mHackerDXGIDevice1 = new HackerDXGIDevice1(origDXGIDevice1, this);
-		//		*ppvObject = mHackerDXGIDevice1;
-		//		LogDebug("  created HackerDXGIDevice(%s@%p) wrapper of %p\n", type_name(mHackerDXGIDevice1), mHackerDXGIDevice1, origDXGIDevice1);
-		//	}
-	}
-	//else if (riid == __uuidof(IDXGIDevice1))
-	//{
-	//	IDXGIDevice1 *origDXGIDevice1 = static_cast<IDXGIDevice1*>(*ppvObject);
-	//	HackerDXGIDevice1 *dxgiDeviceWrap1 = new HackerDXGIDevice1(origDXGIDevice1, this);
-	//	*ppvObject = dxgiDeviceWrap1;
-	//	LogDebug("  created HackerDXGIDevice1(%s@%p) wrapper of %p\n", type_name(dxgiDeviceWrap1), dxgiDeviceWrap1, origDXGIDevice1);
-	//}
-	else if (riid == __uuidof(IDXGIDevice2))
-	{
-		// an IDXGIDevice2 can only be created on platform update or above, so let's 
-		// continue the philosophy of returning errors for anything optional.
-		LogDebug("  returns E_NOINTERFACE as error for IDXGIDevice2.\n");
-		*ppvObject = NULL;
-		return E_NOINTERFACE;
-	}
-	else if (riid == __uuidof(ID3D11Device))
+	if (riid == __uuidof(ID3D11Device))
 	{
 		if (!(G->enable_hooks & EnableHooks::DEVICE)) {
 			// If we are hooking we don't return the wrapped device
@@ -1284,22 +1232,6 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 			*ppvObject = this;
 		}
 		LogDebug("  return HackerDevice1(%s@%p) wrapper of %p\n", type_name(this), this, mRealOrigDevice);
-
-		//ID3D11Device1 *origDevice1 = static_cast<ID3D11Device1*>(*ppvObject);
-		//ID3D11DeviceContext1 *origContext1;
-		//origDevice1->GetImmediateContext1(&origContext1);
-
-		//HackerDevice1 *hackerDeviceWrap1 = new HackerDevice1(origDevice1, origContext1);
-		//LogDebug("  created HackerDevice1(%s@%p) wrapper of %p\n", type_name(hackerDeviceWrap1), hackerDeviceWrap1, origDevice1);
-		//HackerContext1 *hackerContextWrap1 = new HackerContext1(origDevice1, origContext1);
-		//LogDebug("  created HackerContext1(%s@%p) wrapper of %p\n", type_name(hackerContextWrap1), hackerContextWrap1, origContext1);
-
-		//hackerDeviceWrap1->SetHackerContext1(hackerContextWrap1);
-		//hackerContextWrap1->SetHackerDevice1(hackerDeviceWrap1);
-
-		//// ToDo: Handle memory allocation exceptions
-
-		//*ppvObject = hackerDeviceWrap1;
 	}
 
 	LogDebug("  returns result = %x for %p\n", hr, *ppvObject);

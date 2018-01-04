@@ -6,7 +6,6 @@
 
 #include "nvstereo.h"
 #include "HackerContext.h"
-#include "HackerDXGI.h"
 
 
 // Forward declaration to allow circular reference between HackerContext and HackerDevice. 
@@ -14,8 +13,6 @@
 
 class HackerContext;
 class HackerContext1;
-class HackerDXGISwapChain;
-class HackerDXGIDevice1;
 
 class HackerDevice : public ID3D11Device
 {
@@ -24,9 +21,7 @@ private:
 	ID3D11Device *mRealOrigDevice;
 	ID3D11DeviceContext *mOrigContext;
 
-	//HackerDXGISwapChain *mHackerSwapChain;
 	HackerContext *mHackerContext;
-	HackerDXGIDevice1 *mHackerDXGIDevice1;
 
 	// Utility routines
 	char *ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
@@ -72,7 +67,6 @@ private:
 		);
 
 public:
-	//static ThreadSafePointerSet	 m_List; ToDo: These should all be private.
 	StereoHandle mStereoHandle;
 	nv::stereo::ParamTextureManagerD3D11 mParamTextureManager;
 	ID3D11Texture2D *mStereoTexture;
@@ -85,15 +79,12 @@ public:
 
 	void Create3DMigotoResources();
 	void SetHackerContext(HackerContext *pHackerContext);
-	//void SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain);
 
 	HackerContext* GetHackerContext();
 	ID3D11Device* GetOrigDevice();
 	ID3D11Device* GetPassThroughOrigDevice();
 	ID3D11DeviceContext* GetOrigContext();
 	ID3D11DeviceContext* GetPassThroughOrigContext();
-	//IDXGISwapChain* GetOrigSwapChain();
-	//HackerDXGISwapChain* GetHackerSwapChain();
 	void HackerDevice::HookDevice();
 
 

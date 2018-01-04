@@ -8,7 +8,6 @@
 
 #include "HackerDevice.h"
 #include "HackerContext.h"
-#include "HackerDXGI.h"
 #include "nvapi.h"
 
 
@@ -17,7 +16,6 @@
 
 class HackerDevice;
 class HackerContext;
-class HackerDXGISwapChain;
 
 class Overlay
 {
