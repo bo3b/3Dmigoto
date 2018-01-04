@@ -41,5 +41,3 @@ extern "C" LPVOID lpvtbl_CreateSwapChain(IDXGIFactory* pFactory);
 
 extern "C" LPVOID lpvtbl_Present(IDXGISwapChain* pSwapChain);
 
-
-void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc);

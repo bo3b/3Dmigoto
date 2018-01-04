@@ -861,8 +861,6 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		}
 	}
 
-	ForceDisplayParams(pSwapChainDesc);
-
 	ret = (*_D3D11CreateDeviceAndSwapChain)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
 		FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain, ppDevice, pFeatureLevel, ppImmediateContext);
 
