@@ -19,6 +19,7 @@
 #include "input.h"
 #include "Override.h"
 #include "IniHandler.h"
+#include "Overlay.h"
 
 
 // This class is for a different approach than the wrapping of the system objects
@@ -28,7 +29,7 @@
 // may only care about a 5 calls, but we have to wrap all 150 calls. 
 //
 // Rather than do that with DXGI, this approach will be to singly hook the calls we
-// are interested in, using the Deviare in-proc hooking.  We'll still create
+// are interested in, using the Nektra In-Proc hooking.  We'll still create
 // objects for encapsulation where necessary, by returning HackerDXGIFactory1
 // and HackerDXGIFactory2 when platform_update is set.  We won't ever return
 // HackerDXGIFactory because the minimum on Win7 is IDXGIFactory1.
@@ -36,64 +37,121 @@
 
 // -----------------------------------------------------------------------------
 
-static HRESULT WrapFactory1(void **ppFactory1)
+static BOOL(WINAPI *trampoline_SetWindowPos)(_In_ HWND hWnd, _In_opt_ HWND hWndInsertAfter,
+	_In_ int X, _In_ int Y, _In_ int cx, _In_ int cy, _In_ UINT uFlags)
+	= SetWindowPos;
+
+static BOOL WINAPI Hooked_SetWindowPos(
+	_In_ HWND hWnd,
+	_In_opt_ HWND hWndInsertAfter,
+	_In_ int X,
+	_In_ int Y,
+	_In_ int cx,
+	_In_ int cy,
+	_In_ UINT uFlags)
 {
-	LogInfo("Calling original CreateDXGIFactory1 API\n");
-
-//	IDXGIFactory1 *origFactory1;
-	HRESULT hr = fnOrigCreateDXGIFactory1(__uuidof(IDXGIFactory1), (void **)ppFactory1);
-	if (FAILED(hr))
-	{
-		LogInfo("  failed with HRESULT=%x\n", hr);
-		return hr;
+	if (G->SCREEN_UPSCALING != 0) {
+		// Force desired upscaled resolution (only when desired resolution is provided!)
+		if (cx != 0 && cy != 0) {
+			cx = G->SCREEN_WIDTH;
+			cy = G->SCREEN_HEIGHT;
+			X = 0;
+			Y = 0;
+		}
 	}
-	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x\n", *ppFactory1, hr);
+	else if (G->SCREEN_FULLSCREEN == 2) {
+		// Do nothing - passing this call through could change the game
+		// to a borderless window. Needed for The Witness.
+		return true;
+	}
 
-	//HackerDXGIFactory1 *factory1Wrap;
-	//factory1Wrap = new HackerDXGIFactory1(origFactory1);
-
-	//if (ppFactory1)
-	//	*ppFactory1 = factory1Wrap;
-	//LogInfo("->new HackerDXGIFactory1(%s@%p) wrapped %p\n", type_name(factory1Wrap), factory1Wrap, origFactory1);
-
-	return hr;
+	return trampoline_SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
 }
 
-// -----------------------------------------------------------------------------
-
-// No wrap here, just hooking.  platform_update=1 is only hook for DXGI
-
-static HRESULT WrapFactory2(void **ppFactory2)
+void InstallSetWindowPosHook()
 {
-	// To create an original Factory2, this is not hooked out of the DXGI.dll, as
-	// it's not defined there.  But, we can call into fnOrigCreateFactory1 for it.
+	HINSTANCE hUser32;
+	static bool hook_installed = false;
+	int fail = 0;
 
-	//IDXGIFactory2 *origFactory2;
-	HRESULT hr = fnOrigCreateDXGIFactory1(__uuidof(IDXGIFactory2), (void **)ppFactory2);
-	if (FAILED(hr))
-	{
-		LogInfo("  failed with HRESULT=%x\n", hr);
-		return hr;
+	// Only attempt to hook it once:
+	if (hook_installed)
+		return;
+	hook_installed = true;
+
+	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
+	fail |= InstallHook(hUser32, "SetWindowPos", (void**)&trampoline_SetWindowPos, Hooked_SetWindowPos, true);
+
+	if (fail) {
+		LogInfo("Failed to hook SetWindowPos for full_screen=2\n");
+		BeepFailure2();
+		return;
 	}
-	LogInfo("->CreateDXGIFactory2 returned factory = %p, result = %x\n", ppFactory2, hr);
 
-	//HackerDXGIFactory2 *factory2Wrap;
-	//factory2Wrap = new HackerDXGIFactory2(origFactory2);
+	LogInfo("Successfully hooked SetWindowPos for full_screen=2\n");
+	return;
+}
 
-	//if (ppFactory2)
-	//	*ppFactory2 = factory2Wrap;
+// This tweaks the parameters passed to the real CreateSwapChain, to change behavior.
+// These global parameters come originally from the d3dx.ini, so the user can
+// change them.
+// This is also used by D3D11::CreateSwapChainAndDevice.
+//
+// It might make sense to move this to Utils, where nvapi can access it too.
 
-	//LogInfo("  new HackerDXGIFactory2(%s@%p) wrapped %p\n", type_name(factory2Wrap), factory2Wrap, origFactory2);
+void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
+{
+	if (pDesc == NULL)
+		return;
 
-	// ToDo: Skipped null checks as they would throw exceptions- but
-	// we should handle exceptions.
+	LogInfo("     Windowed = %d\n", pDesc->Windowed);
+	LogInfo("     Width = %d\n", pDesc->BufferDesc.Width);
+	LogInfo("     Height = %d\n", pDesc->BufferDesc.Height);
+	LogInfo("     Refresh rate = %f\n",
+		(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
 
-	// With the factory created, hook CreateSwapChain now.
-	//SIZE_T hook_id;
-	//DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&pOrigCreateSwapChain,
-	//	lpvtbl_CreateSwapChain((IDXGIFactory*)*ppFactory2), Hooked_CreateSwapChain, 0);
+	if (G->SCREEN_UPSCALING == 0 && G->SCREEN_FULLSCREEN > 0)
+	{
+		pDesc->Windowed = false;
+		LogInfo("->Forcing Windowed to = %d\n", pDesc->Windowed);
+	}
 
-	return hr;
+	if (G->SCREEN_FULLSCREEN == 2 || G->SCREEN_UPSCALING > 0)
+	{
+		// We install this hook on demand to avoid any possible
+		// issues with hooking the call when we don't need it:
+		// Unconfirmed, but possibly related to:
+		// https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
+		//
+		// This hook is very important in case of upscaling
+		InstallSetWindowPosHook();
+	}
+
+	if (G->SCREEN_REFRESH >= 0 && !pDesc->Windowed)
+	{
+		pDesc->BufferDesc.RefreshRate.Numerator = G->SCREEN_REFRESH;
+		pDesc->BufferDesc.RefreshRate.Denominator = 1;
+		LogInfo("->Forcing refresh rate to = %f\n",
+			(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
+	}
+	if (G->SCREEN_WIDTH >= 0)
+	{
+		pDesc->BufferDesc.Width = G->SCREEN_WIDTH;
+		LogInfo("->Forcing Width to = %d\n", pDesc->BufferDesc.Width);
+	}
+	if (G->SCREEN_HEIGHT >= 0)
+	{
+		pDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
+		LogInfo("->Forcing Height to = %d\n", pDesc->BufferDesc.Height);
+	}
+
+	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
+	// swapchain to be 2x its normal width.  
+	if (G->gForceStereo == 2)
+	{
+		pDesc->BufferDesc.Width *= 2;
+		LogInfo("->Direct Mode: Forcing Width to = %d\n", pDesc->BufferDesc.Width);
+	}
 }
 
 // -----------------------------------------------------------------------------
@@ -333,6 +391,10 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	return hr;
 }
 
+// -----------------------------------------------------------------------------
+// This hook should work in all variants, including the CreateSwapChain1
+// and CreateSwapChainForHwnd
+
 void HookCreateSwapChain(void* factory)
 {
 	LogInfo("*** IDXGIFactory creating hook for CreateSwapChain. \n");
@@ -376,21 +438,6 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 	// up our d3d11.dll and the .ini file.
 	InitD311();
 
-	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
-	//if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
-	//{
-	//	LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
-	//	*ppFactory = NULL;
-	//	return E_NOINTERFACE;
-	//}
-
-	//HRESULT hr;
-	//if (G->enable_platform_update)
-	//	hr = WrapFactory2(ppFactory);
-	//else
-	//	hr = WrapFactory1(ppFactory);
-
-
 	// For hooking only, no wrapping, we want to just create a swap chain, then hook
 	// the Present call.  We need to return their factory regardless.
 	HRESULT hr = fnOrigCreateDXGIFactory(riid, ppFactory);
@@ -398,7 +445,6 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 		HookCreateSwapChain(*ppFactory);
 
 	LogInfo("  CreateDXGIFactory returned factory = %p, result = %x\n", *ppFactory, hr);
-
 	return hr;
 }
 
@@ -454,38 +500,6 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	// Minimal Factory supported for base Win7 is IDXGIFactory1, so let's always
 	// return at least that.
 
-	//HRESULT hr;
-	//if (G->enable_platform_update)
-	//	hr = WrapFactory2(ppFactory1);
-	//else
-	//	hr = WrapFactory1(ppFactory1);
-
-	// This sequence makes Witcher3 crash.  They also send in uuid=IDXGIFactory to this
-	// Factory1 object.  Not supposed to be legal, but apparently the factory will still 
-	// make a Factory1 object.  
-	// If we were requested to create a DXGIFactory, go ahead and make our wrapper.
-	//if (riid == __uuidof(IDXGIFactory))
-	//{
-	//	HackerDXGIFactory *factoryWrap;
-	//	factoryWrap = new HackerDXGIFactory(static_cast<IDXGIFactory*>(origFactory1));
-	//	if (ppFactory1)
-	//		*ppFactory1 = factoryWrap;
-	//	LogInfo("  new HackerDXGIFactory(%s@%p) wrapped %p\n", type_name(factoryWrap), factoryWrap, origFactory1);
-	//}
-	//else
-	//   Seems like we really need to return the highest level object supported at runtime,
-	//   in order to more closely match how DXGI works.  It looks to me like the DXGI will
-	//   always create a higher level object, and return it as a downcast, and then return
-	//   the high level object when QueryInterface upcast is used.  Sucky hacky mechanism,
-	//   but I'm pretty sure that's how it works.
-
-
-	// ToDo: Skipped null checks as they would throw exceptions- but
-	// we should handle exceptions.
-
-	// We are returning a "IDXGIFactory1" here, but it will actually be wrapped as a
-	// Hacker object, and be either HackerDXGIFactory1 or HackerDXGIFactory2;
-
 	// For hooking only, no wrapping, we want to just create a swap chain, then hook
 	// the Present call.  We need to return their factory regardless.
 	HRESULT hr = fnOrigCreateDXGIFactory1(riid, ppFactory1);
@@ -496,125 +510,6 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	return hr;
 }
 
-
-// -----------------------------------------------------------------------------
-
-static BOOL(WINAPI *trampoline_SetWindowPos)(_In_ HWND hWnd, _In_opt_ HWND hWndInsertAfter,
-	_In_ int X, _In_ int Y, _In_ int cx, _In_ int cy, _In_ UINT uFlags)
-	= SetWindowPos;
-
-static BOOL WINAPI Hooked_SetWindowPos(
-	_In_ HWND hWnd,
-	_In_opt_ HWND hWndInsertAfter,
-	_In_ int X,
-	_In_ int Y,
-	_In_ int cx,
-	_In_ int cy,
-	_In_ UINT uFlags)
-{
-	if (G->SCREEN_UPSCALING != 0) {
-		// Force desired upscaled resolution (only when desired resolution is provided!)
-		if (cx != 0 && cy != 0) {
-			cx = G->SCREEN_WIDTH;
-			cy = G->SCREEN_HEIGHT;
-			X = 0;
-			Y = 0;
-		}
-	}
-	else if (G->SCREEN_FULLSCREEN == 2) {
-		// Do nothing - passing this call through could change the game
-		// to a borderless window. Needed for The Witness.
-		return true;
-	}
-
-	return trampoline_SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
-}
-
-void InstallSetWindowPosHook()
-{
-	HINSTANCE hUser32;
-	static bool hook_installed = false;
-	int fail = 0;
-
-	// Only attempt to hook it once:
-	if (hook_installed)
-		return;
-	hook_installed = true;
-
-	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
-	fail |= InstallHook(hUser32, "SetWindowPos", (void**)&trampoline_SetWindowPos, Hooked_SetWindowPos, true);
-
-	if (fail) {
-		LogInfo("Failed to hook SetWindowPos for full_screen=2\n");
-		BeepFailure2();
-		return;
-	}
-
-	LogInfo("Successfully hooked SetWindowPos for full_screen=2\n");
-	return;
-}
-
-// This tweaks the parameters passed to the real CreateSwapChain, to change behavior.
-// These global parameters come originally from the d3dx.ini, so the user can
-// change them.
-// This is also used by D3D11::CreateSwapChainAndDevice.
-//
-// It might make sense to move this to Utils, where nvapi can access it too.
-
-void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
-{
-	if (pDesc == NULL)
-		return;
-
-	LogInfo("     Windowed = %d\n", pDesc->Windowed);
-	LogInfo("     Width = %d\n", pDesc->BufferDesc.Width);
-	LogInfo("     Height = %d\n", pDesc->BufferDesc.Height);
-	LogInfo("     Refresh rate = %f\n",
-		(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
-
-	if (G->SCREEN_UPSCALING == 0 && G->SCREEN_FULLSCREEN > 0)
-	{
-		pDesc->Windowed = false;
-		LogInfo("->Forcing Windowed to = %d\n", pDesc->Windowed);
-	}
-
-	if (G->SCREEN_FULLSCREEN == 2 || G->SCREEN_UPSCALING > 0)
-	{
-		// We install this hook on demand to avoid any possible
-		// issues with hooking the call when we don't need it:
-		// Unconfirmed, but possibly related to:
-		// https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
-		//
-		// This hook is very important in case of upscaling
-		InstallSetWindowPosHook();
-	}
-
-	if (G->SCREEN_REFRESH >= 0 && !pDesc->Windowed)
-	{
-		pDesc->BufferDesc.RefreshRate.Numerator = G->SCREEN_REFRESH;
-		pDesc->BufferDesc.RefreshRate.Denominator = 1;
-		LogInfo("->Forcing refresh rate to = %f\n",
-			(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
-	}
-	if (G->SCREEN_WIDTH >= 0)
-	{
-		pDesc->BufferDesc.Width = G->SCREEN_WIDTH;
-		LogInfo("->Forcing Width to = %d\n", pDesc->BufferDesc.Width);
-	}
-	if (G->SCREEN_HEIGHT >= 0)
-	{
-		pDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
-		LogInfo("->Forcing Height to = %d\n", pDesc->BufferDesc.Height);
-	}
-
-	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
-	// swapchain to be 2x its normal width.  
-	if (G->gForceStereo == 2)
-	{
-		pDesc->BufferDesc.Width *= 2;
-		LogInfo("->Direct Mode: Forcing Width to = %d\n", pDesc->BufferDesc.Width);
-	}
-}
 
 // -----------------------------------------------------------------------------
 
