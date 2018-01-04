@@ -319,7 +319,7 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	_Out_  IDXGISwapChain **ppSwapChain)
 {
 	LogDebug("Hooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
-	LogInfo("  Device = %s@%p\n", type_name(pDevice), pDevice);
+	LogInfo("  Device = %p\n", pDevice);
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
 	LogInfo("  Description = %p\n", pDesc);
 
@@ -397,6 +397,8 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 	if (SUCCEEDED(hr) && !fnOrigCreateSwapChain)
 		HookCreateSwapChain(*ppFactory);
 
+	LogInfo("  CreateDXGIFactory returned factory = %p, result = %x\n", *ppFactory, hr);
+
 	return hr;
 }
 
@@ -452,11 +454,11 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	// Minimal Factory supported for base Win7 is IDXGIFactory1, so let's always
 	// return at least that.
 
-	HRESULT hr;
-	if (G->enable_platform_update)
-		hr = WrapFactory2(ppFactory1);
-	else
-		hr = WrapFactory1(ppFactory1);
+	//HRESULT hr;
+	//if (G->enable_platform_update)
+	//	hr = WrapFactory2(ppFactory1);
+	//else
+	//	hr = WrapFactory1(ppFactory1);
 
 	// This sequence makes Witcher3 crash.  They also send in uuid=IDXGIFactory to this
 	// Factory1 object.  Not supposed to be legal, but apparently the factory will still 
@@ -484,6 +486,13 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	// We are returning a "IDXGIFactory1" here, but it will actually be wrapped as a
 	// Hacker object, and be either HackerDXGIFactory1 or HackerDXGIFactory2;
 
+	// For hooking only, no wrapping, we want to just create a swap chain, then hook
+	// the Present call.  We need to return their factory regardless.
+	HRESULT hr = fnOrigCreateDXGIFactory1(riid, ppFactory1);
+	if (SUCCEEDED(hr) && !fnOrigCreateSwapChain)
+		HookCreateSwapChain(*ppFactory1);
+
+	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x\n", *ppFactory1, hr);
 	return hr;
 }
 
