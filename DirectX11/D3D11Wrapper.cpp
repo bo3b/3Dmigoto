@@ -661,6 +661,11 @@ bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
 // created here, it's easy enough to provide them upon instantiation.
 //
 // Now intended to be fully null safe- as games seem to have a lot of variance.
+//
+// 1-8-18: Switching tacks to always return ID3D11Device1 objects, which are the 
+// platform_update required type.  Since it's a superset, we can in general just
+// the reference as a normal ID3D11Device.
+// In the no platform_update case, the mOrigDevice1 will actually be an ID3D11Device.
 
 HRESULT WINAPI D3D11CreateDevice(
 	_In_opt_        IDXGIAdapter        *pAdapter,
@@ -701,48 +706,41 @@ HRESULT WINAPI D3D11CreateDevice(
 	}
 
 	// Optional parameters means these might be null.
-	ID3D11Device *origDevice = ppDevice ? *ppDevice : nullptr;
-	ID3D11DeviceContext *origContext = ppImmediateContext ? *ppImmediateContext : nullptr;
+	ID3D11Device *retDevice = ppDevice ? *ppDevice : nullptr;
+	ID3D11DeviceContext *retContext = ppImmediateContext ? *ppImmediateContext : nullptr;
 
 	LogInfo("  D3D11CreateDevice returned device handle = %p, context handle = %p\n",
-		origDevice, origContext);
+		retDevice, retContext);
 
 #if _DEBUG_LAYER
 	ShowDebugInfo(origDevice);
 #endif
 
-	// When platform update is desired, we want to create the HackerDevice1 and
-	// HackerContext1 objects instead.  We'll store these and return them as
-	// non1 objects so other code can just use the objects.
-	// ToDo: Not at all sure this is right for platform_update.  In a DX9
-	// case, I tried this upconvert to a higher level object, and it returned
-	// an error.  In this case, we have actually created an ID3D11Device above,
-	// never an ID3D11Device1, but wrap that as if it was.  This seems wrong.
+	// We now want to always upconvert to ID3D11Device1 and ID3D11DeviceContext1,
+	// and will only use the downlevel objects if we get an error on QueryInterface.
 	ID3D11Device1 *origDevice1 = nullptr;
 	ID3D11DeviceContext1 *origContext1 = nullptr;
-	if (G->enable_platform_update)
+	HRESULT res;
+	if (retDevice != nullptr)
 	{
-		HRESULT res;
-		if (origDevice != nullptr)
-		{
-			res = origDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
-			LogInfo("  QueryInterface(ID3D11Device1) returned result = %x, device1 handle = %p\n", res, origDevice1);
-		}
-		if (origContext != nullptr)
-		{
-			res = origContext->QueryInterface(IID_PPV_ARGS(&origContext1));
-			LogInfo("  QueryInterface(ID3D11DeviceContext1) returned result = %x, context1 handle = %p\n", res, origContext1);
-		}
+		res = retDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
+		LogInfo("  QueryInterface(ID3D11Device1) returned result = %x, device1 handle = %p\n", res, origDevice1);
+		if (FAILED(res))
+			origDevice1 = static_cast<ID3D11Device1*>(retDevice);
+	}
+	if (retContext != nullptr)
+	{
+		res = retContext->QueryInterface(IID_PPV_ARGS(&origContext1));
+		LogInfo("  QueryInterface(ID3D11DeviceContext1) returned result = %x, context1 handle = %p\n", res, origContext1);
+		if (FAILED(res))
+			origContext1 = static_cast<ID3D11DeviceContext1*>(retContext);
 	}
 
 	// Create a wrapped version of the original device to return to the game.
 	HackerDevice *deviceWrap = nullptr;
-	if (origDevice != nullptr)
+	if (origDevice1 != nullptr)
 	{
-		if (G->enable_platform_update)
-			deviceWrap = new HackerDevice1(origDevice1, origContext1);
-		else
-			deviceWrap = new HackerDevice(origDevice, origContext);
+		deviceWrap = new HackerDevice(origDevice1, origContext1);
 
 		G->gHackerDevice = deviceWrap;
 
@@ -750,17 +748,14 @@ HRESULT WINAPI D3D11CreateDevice(
 			deviceWrap->HookDevice();
 		else
 			*ppDevice = deviceWrap;
-		LogInfo("  HackerDevice %p created to wrap %p\n", deviceWrap, origDevice);
+		LogInfo("  HackerDevice %p created to wrap %p\n", deviceWrap, origDevice1);
 	}
 
 	// Create a wrapped version of the original context to return to the game.
 	HackerContext *contextWrap = nullptr;
-	if (origContext != nullptr)
+	if (origContext1 != nullptr)
 	{
-		if (G->enable_platform_update)
-			contextWrap = new HackerContext1(origDevice1, origContext1);
-		else
-			contextWrap = new HackerContext(origDevice, origContext);
+		contextWrap = new HackerContext(origDevice1, origContext1);
 
 		G->gHackerContext = contextWrap;
 
@@ -768,7 +763,7 @@ HRESULT WINAPI D3D11CreateDevice(
 			contextWrap->HookContext();
 		else
 			*ppImmediateContext = contextWrap;
-		LogInfo("  HackerContext %p created to wrap %p\n", contextWrap, origContext);
+		LogInfo("  HackerContext %p created to wrap %p\n", contextWrap, origContext1);
 	}
 
 	// Let each of the new Hacker objects know about the other, needed for unusual
@@ -785,7 +780,7 @@ HRESULT WINAPI D3D11CreateDevice(
 		contextWrap->Bind3DMigotoResources();
 
 	LogInfo("->D3D11CreateDevice result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n\n",
-		ret, origDevice, deviceWrap, origContext, contextWrap);
+		ret, origDevice1, deviceWrap, origContext1, contextWrap);
 
 	return ret;
 }
@@ -871,43 +866,42 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	}
 
 	// Optional parameters means these might be null.
-	ID3D11Device *origDevice = ppDevice ? *ppDevice : nullptr;
-	ID3D11DeviceContext *origContext = ppImmediateContext ? *ppImmediateContext : nullptr;
-	IDXGISwapChain *origSwapChain = ppSwapChain ? *ppSwapChain : nullptr;
+	ID3D11Device *retDevice = ppDevice ? *ppDevice : nullptr;
+	ID3D11DeviceContext *retContext = ppImmediateContext ? *ppImmediateContext : nullptr;
+	IDXGISwapChain *retSwapChain = ppSwapChain ? *ppSwapChain : nullptr;
 
 	LogInfo("  D3D11CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p\n",
-		origDevice, origContext, origSwapChain);
+		retDevice, retContext, retSwapChain);
 
 #if _DEBUG_LAYER
 	ShowDebugInfo(origDevice);
 #endif
 
-	// When platform update is desired, we want to create the HackerDevice1 and
-	// HackerContext1 objects instead. See comments above for CreateDevice.
+	// We now want to always upconvert to ID3D11Device1 and ID3D11DeviceContext1,
+	// and will only use the downlevel objects if we get an error on QueryInterface.
 	ID3D11Device1 *origDevice1 = nullptr;
 	ID3D11DeviceContext1 *origContext1 = nullptr;
-	if (G->enable_platform_update)
+	HRESULT res;
+	if (retDevice != nullptr)
 	{
-		HRESULT res;
-		if (origDevice != nullptr)
-		{
-			res = origDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
-			LogInfo("  QueryInterface(ID3D11Device1) returned result = %x, device1 handle = %p\n", res, origDevice1);
-		}
-		if (origContext != nullptr)
-		{
-			res = origContext->QueryInterface(IID_PPV_ARGS(&origContext1));
-			LogInfo("  QueryInterface(ID3D11DeviceContext1) returned result = %x, context1 handle = %p\n", res, origContext1);
-		}
+		res = retDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
+		LogInfo("  QueryInterface(ID3D11Device1) returned result = %x, device1 handle = %p\n", res, origDevice1);
+		if (FAILED(res))
+			origDevice1 = static_cast<ID3D11Device1*>(retDevice);
+	}
+	if (retContext != nullptr)
+	{
+		res = retContext->QueryInterface(IID_PPV_ARGS(&origContext1));
+		LogInfo("  QueryInterface(ID3D11DeviceContext1) returned result = %x, context1 handle = %p\n", res, origContext1);
+		if (FAILED(res))
+			origContext1 = static_cast<ID3D11DeviceContext1*>(retContext);
 	}
 
+	// Create a wrapped version of the original device1 to return to the game.
 	HackerDevice *deviceWrap = nullptr;
-	if (ppDevice != nullptr)
+	if (origDevice1 != nullptr)
 	{
-		if (G->enable_platform_update)
-			deviceWrap = new HackerDevice1(origDevice1, origContext1);
-		else
-			deviceWrap = new HackerDevice(origDevice, origContext);
+		deviceWrap = new HackerDevice(origDevice1, origContext1);
 
 		G->gHackerDevice = deviceWrap;
 
@@ -915,16 +909,14 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 			deviceWrap->HookDevice();
 		else
 			*ppDevice = deviceWrap;
-		LogInfo("  HackerDevice %p created to wrap %p\n", deviceWrap, origDevice);
+		LogInfo("  HackerDevice %p created to wrap %p\n", deviceWrap, origDevice1);
 	}
 
+	// Create a wrapped version of the original context1 to return to the game.
 	HackerContext *contextWrap = nullptr;
-	if (ppImmediateContext != nullptr)
+	if (origContext1 != nullptr)
 	{
-		if (G->enable_platform_update)
-			contextWrap = new HackerContext1(origDevice1, origContext1);
-		else
-			contextWrap = new HackerContext(origDevice, origContext);
+		contextWrap = new HackerContext(origDevice1, origContext1);
 
 		G->gHackerContext = contextWrap;
 
@@ -932,12 +924,12 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 			contextWrap->HookContext();
 		else
 			*ppImmediateContext = contextWrap;
-		LogInfo("  HackerContext %p created to wrap %p\n", contextWrap, origContext);
+		LogInfo("  HackerContext %p created to wrap %p\n", contextWrap, origContext1);
 	}
 
 	if (ppSwapChain != nullptr)
 	{
-		G->gSwapChain = origSwapChain;
+		G->gSwapChain = retSwapChain;
 	}
 
 	// Let each of the new Hacker objects know about the other, needed for unusual
@@ -955,7 +947,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 
 	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, device handle = %p, device wrapper = %p, context handle = %p, "
 		"context wrapper = %p, swapchain handle = %p\n\n",
-		ret, origDevice, deviceWrap, origContext, contextWrap, origSwapChain);
+		ret, origDevice1, deviceWrap, origContext1, contextWrap, retSwapChain);
 
 	return ret;
 }
