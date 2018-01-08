@@ -404,14 +404,14 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 			wcscpy_s(ext, MAX_PATH + filename - ext, L".jps");
 		else
 			wcscpy_s(ext, MAX_PATH + filename - ext, L".jpg");
-		hr = DirectX::SaveWICTextureToFile(mPassThroughContext, resource, GUID_ContainerFormatJpeg, filename);
+		hr = DirectX::SaveWICTextureToFile(mPassThroughContext1, resource, GUID_ContainerFormatJpeg, filename);
 	}
 
 
 	if ((options & FrameAnalysisOptions::DUMP_XXX_DDS) ||
 	   ((options & FrameAnalysisOptions::DUMP_XXX) && FAILED(hr))) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".dds");
-		hr = DirectX::SaveDDSTextureToFile(mPassThroughContext, resource, filename);
+		hr = DirectX::SaveDDSTextureToFile(mPassThroughContext1, resource, filename);
 	}
 
 	if (FAILED(hr))
@@ -462,7 +462,7 @@ HRESULT HackerContext::CreateStagingResource(ID3D11Texture2D **resource,
 	NvAPI_Stereo_GetSurfaceCreationMode(mHackerDevice->mStereoHandle, &orig_mode);
 	NvAPI_Stereo_SetSurfaceCreationMode(mHackerDevice->mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
 
-	hr = mOrigDevice->CreateTexture2D(&desc, NULL, resource);
+	hr = mOrigDevice1->CreateTexture2D(&desc, NULL, resource);
 
 	NvAPI_Stereo_SetSurfaceCreationMode(mHackerDevice->mStereoHandle, orig_mode);
 	return hr;
@@ -515,7 +515,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 			DXGI_FORMAT fmt = EnsureNotTypeless(srcDesc.Format);
 			UINT support = 0;
 
-			hr = mOrigDevice->CheckFormatSupport( fmt, &support );
+			hr = mOrigDevice1->CheckFormatSupport( fmt, &support );
 			if (FAILED(hr) || !(support & D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE)) {
 				FALogInfo("DumpStereoResource cannot resolve MSAA format %d\n", fmt);
 				goto out2;
@@ -524,13 +524,13 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 			for (item = 0; item < srcDesc.ArraySize; item++) {
 				for (level = 0; level < srcDesc.MipLevels; level++) {
 					index = D3D11CalcSubresource(level, item, max(srcDesc.MipLevels, 1));
-					mPassThroughContext->ResolveSubresource(tmpResource2, index, src, index, fmt);
+					mPassThroughContext1->ResolveSubresource(tmpResource2, index, src, index, fmt);
 				}
 			}
 			src = tmpResource2;
 		}
 
-		mPassThroughContext->CopyResource(tmpResource, src);
+		mPassThroughContext1->CopyResource(tmpResource, src);
 		src = tmpResource;
 	}
 
@@ -548,7 +548,7 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 			index = D3D11CalcSubresource(level, item, max(srcDesc.MipLevels, 1));
 			srcBox.right = width >> level;
 			srcBox.bottom = height >> level;
-			mPassThroughContext->CopySubresourceRegion(stereoResource, index, 0, 0, 0,
+			mPassThroughContext1->CopySubresourceRegion(stereoResource, index, 0, 0, 0,
 					src, index, &srcBox);
 		}
 	}
@@ -739,14 +739,14 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	desc.MiscFlags = 0;
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
-	hr = mOrigDevice->CreateBuffer(&desc, NULL, &staging);
+	hr = mOrigDevice1->CreateBuffer(&desc, NULL, &staging);
 	if (FAILED(hr)) {
 		FALogInfo("DumpBuffer failed to create staging buffer: 0x%x\n", hr);
 		return;
 	}
 
-	mPassThroughContext->CopyResource(staging, buffer);
-	hr = mPassThroughContext->Map(staging, 0, D3D11_MAP_READ, 0, &map);
+	mPassThroughContext1->CopyResource(staging, buffer);
+	hr = mPassThroughContext1->Map(staging, 0, D3D11_MAP_READ, 0, &map);
 	if (FAILED(hr)) {
 		FALogInfo("DumpBuffer failed to map staging resource: 0x%x\n", hr);
 		return;
@@ -782,7 +782,7 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	// offset, size, first entry and num entries into account.
 
 out_unmap:
-	mPassThroughContext->Unmap(staging, 0);
+	mPassThroughContext1->Unmap(staging, 0);
 	staging->Release();
 }
 
@@ -1026,28 +1026,28 @@ void HackerContext::DumpCBs(bool compute)
 
 	if (compute) {
 		if (mCurrentComputeShader) {
-			mPassThroughContext->CSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			mPassThroughContext1->CSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('c', compute, buffers);
 		}
 	} else {
 		if (mCurrentVertexShader) {
-			mPassThroughContext->VSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			mPassThroughContext1->VSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('v', compute, buffers);
 		}
 		if (mCurrentHullShader) {
-			mPassThroughContext->HSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			mPassThroughContext1->HSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('h', compute, buffers);
 		}
 		if (mCurrentDomainShader) {
-			mPassThroughContext->DSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			mPassThroughContext1->DSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('d', compute, buffers);
 		}
 		if (mCurrentGeometryShader) {
-			mPassThroughContext->GSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			mPassThroughContext1->GSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('g', compute, buffers);
 		}
 		if (mCurrentPixelShader) {
-			mPassThroughContext->PSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			mPassThroughContext1->PSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('p', compute, buffers);
 		}
 	}
@@ -1074,7 +1074,7 @@ void HackerContext::DumpVBs(DrawCallInfo *call_info)
 	// (there may be other good reasons to consider wrapping the input
 	// layout if we ever do anything advanced with the vertex buffers).
 
-	mPassThroughContext->IAGetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, buffers, strides, offsets);
+	mPassThroughContext1->IAGetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, buffers, strides, offsets);
 
 	for (i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
 		if (!buffers[i])
@@ -1105,7 +1105,7 @@ void HackerContext::DumpIB(DrawCallInfo *call_info)
 		count = call_info->IndexCount;
 	}
 
-	mPassThroughContext->IAGetIndexBuffer(&buffer, &format, &offset);
+	mPassThroughContext1->IAGetIndexBuffer(&buffer, &format, &offset);
 	if (!buffer)
 		return;
 
@@ -1125,28 +1125,28 @@ void HackerContext::DumpTextures(bool compute)
 
 	if (compute) {
 		if (mCurrentComputeShader) {
-			mPassThroughContext->CSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			mPassThroughContext1->CSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('c', compute, views);
 		}
 	} else {
 		if (mCurrentVertexShader) {
-			mPassThroughContext->VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			mPassThroughContext1->VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('v', compute, views);
 		}
 		if (mCurrentHullShader) {
-			mPassThroughContext->HSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			mPassThroughContext1->HSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('h', compute, views);
 		}
 		if (mCurrentDomainShader) {
-			mPassThroughContext->DSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			mPassThroughContext1->DSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('d', compute, views);
 		}
 		if (mCurrentGeometryShader) {
-			mPassThroughContext->GSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			mPassThroughContext1->GSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('g', compute, views);
 		}
 		if (mCurrentPixelShader) {
-			mPassThroughContext->PSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			mPassThroughContext1->PSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('p', compute, views);
 		}
 	}
@@ -1222,9 +1222,9 @@ void HackerContext::DumpUAVs(bool compute)
 	uint32_t hash, orig_hash;
 
 	if (compute)
-		mPassThroughContext->CSGetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
+		mPassThroughContext1->CSGetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
 	else
-		mPassThroughContext->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, 0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
+		mPassThroughContext1->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, 0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
 
 	for (i = 0; i < D3D11_PS_CS_UAV_REGISTER_COUNT; ++i) {
 		if (!uavs[i])
@@ -1282,7 +1282,7 @@ void HackerContext::FrameAnalysisClearRT(ID3D11RenderTargetView *target)
 		return;
 	G->frame_analysis_seen_rts.insert(resource);
 
-	mPassThroughContext->ClearRenderTargetView(target, colour);
+	mPassThroughContext1->ClearRenderTargetView(target, colour);
 }
 
 void HackerContext::FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav)
@@ -1309,7 +1309,7 @@ void HackerContext::FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav)
 		return;
 	G->frame_analysis_seen_rts.insert(resource);
 
-	mPassThroughContext->ClearUnorderedAccessViewUint(uav, values);
+	mPassThroughContext1->ClearUnorderedAccessViewUint(uav, values);
 }
 
 void HackerContext::FrameAnalysisProcessTriggers(bool compute)
@@ -1404,7 +1404,7 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info
 	// clear if it would have to be enabled while submitting the copy
 	// commands in the deferred context, or while playing the command queue
 	// in the immediate context, or both.
-	if (mPassThroughContext->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)
+	if (mPassThroughContext1->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)
 		return;
 
 	analyse_options = G->cur_analyse_options;
