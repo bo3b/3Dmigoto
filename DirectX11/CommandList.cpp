@@ -778,6 +778,7 @@ bool PerDrawStereoOverrideCommand::update_val(CommandListState *state)
 	D3D11_MAPPED_SUBRESOURCE mapping;
 	HRESULT hr;
 	float tmp;
+	float ret = false;
 
 	if (!staging_type)
 		return true;
@@ -797,30 +798,23 @@ bool PerDrawStereoOverrideCommand::update_val(CommandListState *state)
 		// Otherwise we can refer to the resource description)
 		tmp = ((float*)mapping.pData)[0];
 		staging_op.unmap(state);
-		staging_op.staging = false;
-
-		// If we wanted we could continue and begin the next transfer
-		// right away. That might be advantageous for making this
-		// happen as frequently as possible, but later we might want to
-		// allow for some conditional logic, e.g. to run the auto
-		// convergence shader on the GPU only when we are ready to
-		// begin another transfer. For now it doesn't matter and I'm
-		// not positive which we will want, so let's start with the
-		// worse performing option just to see how it goes - that way
-		// we can only improve things later ;-)
 
 		if (isnan(tmp)) {
 			state->mHackerContext->FrameAnalysisLog("3DMigoto   Disregarding NAN\n");
-			return false;
+		} else {
+			val = tmp;
+			ret = true;
 		}
 
-		val = tmp;
-		return true;
+		// To make auto-convergence as responsive as possible, we start
+		// the next transfer as soon as we have retrieved the value
+		// from the previous transfer. This should minimise the number
+		// of frames displayed with wrong convergence on scene changes.
 	}
 
 	staging_op.staging = true;
 	staging_op.run(state);
-	return false;
+	return ret;
 }
 
 void PerDrawStereoOverrideCommand::run(CommandListState *state)
