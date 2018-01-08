@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <d3d11.h>
+#include <d3d11_1.h>
 
 #include "SpriteFont.h"
 #include "SpriteBatch.h"
