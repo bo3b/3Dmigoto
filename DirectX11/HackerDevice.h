@@ -7,19 +7,41 @@
 #include "nvstereo.h"
 #include "HackerContext.h"
 
-
 // Forward declaration to allow circular reference between HackerContext and HackerDevice. 
 // We need this to allow each to reference the other as needed.
 
 class HackerContext;
-class HackerContext1;
 
-class HackerDevice : public ID3D11Device
+
+// 1-6-18:  Current approach will be to only create one level of wrapping,
+// specifically HackerDevice and HackerContext, based on the ID3D11Device1,
+// and ID3D11DeviceContext1.  ID3D11Device1/ID3D11DeviceContext1 is supported
+// on Win7+platform_update, and thus is a superset of what we need.  By
+// using the highest level object supported, we can kill off a lot of conditional
+// code that just complicates things. 
+//
+// The ID3D11Device1 will be supported on all OS except Win7 minus the 
+// platform_update.  In that scenario, we will save a reference to the 
+// ID3D11Device object instead, but store it and wrap it in HackerDevice.
+// 
+// Specifically decided to not name everything *1, because frankly that is 
+// was an awful choice on Microsoft's part to begin with.  Meaningless number
+// completely unrelated to version/revision or functionality.  Bad.
+// We will use the *1 notation for object names that are specific types,
+// like the mOrigDevice1 to avoid misleading types.
+//
+// Any HackerDevice will be the superset object ID3D11Device1 in all cases
+// except for Win7 missing the evil platform_update.
+
+// Hierarchy:
+//  HackerDevice <- ID3D11Device1 <- ID3D11Device <- IUnknown
+
+class HackerDevice : public ID3D11Device1
 {
 private:
-	ID3D11Device *mOrigDevice;
-	ID3D11Device *mRealOrigDevice;
-	ID3D11DeviceContext *mOrigContext;
+	ID3D11Device1 *mOrigDevice1;
+	ID3D11Device1 *mRealOrigDevice1;
+	ID3D11DeviceContext1 *mOrigContext1;
 
 	HackerContext *mHackerContext;
 
@@ -75,17 +97,17 @@ public:
 	ID3D11Texture1D *mIniTexture;
 	ID3D11ShaderResourceView *mIniResourceView;
 
-	HackerDevice(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
+	HackerDevice(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
 
 	void Create3DMigotoResources();
 	void SetHackerContext(HackerContext *pHackerContext);
 
 	HackerContext* GetHackerContext();
-	ID3D11Device* GetOrigDevice();
-	ID3D11Device* GetPassThroughOrigDevice();
-	ID3D11DeviceContext* GetOrigContext();
-	ID3D11DeviceContext* GetPassThroughOrigContext();
-	void HackerDevice::HookDevice();
+	ID3D11Device1* GetOrigDevice1();
+	ID3D11Device1* GetPassThroughOrigDevice1();
+	ID3D11DeviceContext1* GetOrigContext1();
+	ID3D11DeviceContext1* GetPassThroughOrigContext1();
+	void HookDevice();
 
 
 	/*** IUnknown methods ***/
@@ -101,342 +123,327 @@ public:
 
 	/*** ID3D11Device methods ***/
 
-	STDMETHOD(CreateBuffer)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateBuffer(
 		/* [annotation] */
-		__in  const D3D11_BUFFER_DESC *pDesc,
+		_In_  const D3D11_BUFFER_DESC *pDesc,
 		/* [annotation] */
-		__in_opt  const D3D11_SUBRESOURCE_DATA *pInitialData,
+		_In_opt_  const D3D11_SUBRESOURCE_DATA *pInitialData,
 		/* [annotation] */
-		__out_opt  ID3D11Buffer **ppBuffer);
+		_Out_opt_  ID3D11Buffer **ppBuffer);
 
-	STDMETHOD(CreateTexture1D)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateTexture1D(
 		/* [annotation] */
-		__in  const D3D11_TEXTURE1D_DESC *pDesc,
+		_In_  const D3D11_TEXTURE1D_DESC *pDesc,
 		/* [annotation] */
-		__in_xcount_opt(pDesc->MipLevels * pDesc->ArraySize)  const D3D11_SUBRESOURCE_DATA *pInitialData,
+		_In_reads_opt_(_Inexpressible_(pDesc->MipLevels * pDesc->ArraySize))  const D3D11_SUBRESOURCE_DATA *pInitialData,
 		/* [annotation] */
-		__out_opt  ID3D11Texture1D **ppTexture1D);
+		_Out_opt_  ID3D11Texture1D **ppTexture1D);
 
-	STDMETHOD(CreateTexture2D)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateTexture2D(
 		/* [annotation] */
-		__in  const D3D11_TEXTURE2D_DESC *pDesc,
+		_In_  const D3D11_TEXTURE2D_DESC *pDesc,
 		/* [annotation] */
-		__in_xcount_opt(pDesc->MipLevels * pDesc->ArraySize)  const D3D11_SUBRESOURCE_DATA *pInitialData,
+		_In_reads_opt_(_Inexpressible_(pDesc->MipLevels * pDesc->ArraySize))  const D3D11_SUBRESOURCE_DATA *pInitialData,
 		/* [annotation] */
-		__out_opt  ID3D11Texture2D **ppTexture2D);
+		_Out_opt_  ID3D11Texture2D **ppTexture2D);
 
-	STDMETHOD(CreateTexture3D)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateTexture3D(
 		/* [annotation] */
-		__in  const D3D11_TEXTURE3D_DESC *pDesc,
+		_In_  const D3D11_TEXTURE3D_DESC *pDesc,
 		/* [annotation] */
-		__in_xcount_opt(pDesc->MipLevels)  const D3D11_SUBRESOURCE_DATA *pInitialData,
+		_In_reads_opt_(_Inexpressible_(pDesc->MipLevels))  const D3D11_SUBRESOURCE_DATA *pInitialData,
 		/* [annotation] */
-		__out_opt  ID3D11Texture3D **ppTexture3D);
+		_Out_opt_  ID3D11Texture3D **ppTexture3D);
 
-	STDMETHOD(CreateShaderResourceView)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateShaderResourceView(
 		/* [annotation] */
-		__in  ID3D11Resource *pResource,
+		_In_  ID3D11Resource *pResource,
 		/* [annotation] */
-		__in_opt  const D3D11_SHADER_RESOURCE_VIEW_DESC *pDesc,
+		_In_opt_  const D3D11_SHADER_RESOURCE_VIEW_DESC *pDesc,
 		/* [annotation] */
-		__out_opt  ID3D11ShaderResourceView **ppSRView);
+		_Out_opt_  ID3D11ShaderResourceView **ppSRView);
 
-	STDMETHOD(CreateUnorderedAccessView)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateUnorderedAccessView(
 		/* [annotation] */
-		__in  ID3D11Resource *pResource,
+		_In_  ID3D11Resource *pResource,
 		/* [annotation] */
-		__in_opt  const D3D11_UNORDERED_ACCESS_VIEW_DESC *pDesc,
+		_In_opt_  const D3D11_UNORDERED_ACCESS_VIEW_DESC *pDesc,
 		/* [annotation] */
-		__out_opt  ID3D11UnorderedAccessView **ppUAView);
+		_Out_opt_  ID3D11UnorderedAccessView **ppUAView);
 
-	STDMETHOD(CreateRenderTargetView)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateRenderTargetView(
 		/* [annotation] */
-		__in  ID3D11Resource *pResource,
+		_In_  ID3D11Resource *pResource,
 		/* [annotation] */
-		__in_opt  const D3D11_RENDER_TARGET_VIEW_DESC *pDesc,
+		_In_opt_  const D3D11_RENDER_TARGET_VIEW_DESC *pDesc,
 		/* [annotation] */
-		__out_opt  ID3D11RenderTargetView **ppRTView);
+		_Out_opt_  ID3D11RenderTargetView **ppRTView);
 
-	STDMETHOD(CreateDepthStencilView)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateDepthStencilView(
 		/* [annotation] */
-		__in  ID3D11Resource *pResource,
+		_In_  ID3D11Resource *pResource,
 		/* [annotation] */
-		__in_opt  const D3D11_DEPTH_STENCIL_VIEW_DESC *pDesc,
+		_In_opt_  const D3D11_DEPTH_STENCIL_VIEW_DESC *pDesc,
 		/* [annotation] */
-		__out_opt  ID3D11DepthStencilView **ppDepthStencilView);
+		_Out_opt_  ID3D11DepthStencilView **ppDepthStencilView);
 
-	STDMETHOD(CreateInputLayout)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateInputLayout(
 		/* [annotation] */
-		__in_ecount(NumElements)  const D3D11_INPUT_ELEMENT_DESC *pInputElementDescs,
+		_In_reads_(NumElements)  const D3D11_INPUT_ELEMENT_DESC *pInputElementDescs,
 		/* [annotation] */
-		__in_range(0, D3D11_IA_VERTEX_INPUT_STRUCTURE_ELEMENT_COUNT)  UINT NumElements,
+		_In_range_(0, D3D11_IA_VERTEX_INPUT_STRUCTURE_ELEMENT_COUNT)  UINT NumElements,
 		/* [annotation] */
-		__in  const void *pShaderBytecodeWithInputSignature,
+		_In_  const void *pShaderBytecodeWithInputSignature,
 		/* [annotation] */
-		__in  SIZE_T BytecodeLength,
+		_In_  SIZE_T BytecodeLength,
 		/* [annotation] */
-		__out_opt  ID3D11InputLayout **ppInputLayout);
+		_Out_opt_  ID3D11InputLayout **ppInputLayout);
 
-	STDMETHOD(CreateVertexShader)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateVertexShader(
 		/* [annotation] */
-		__in  const void *pShaderBytecode,
+		_In_  const void *pShaderBytecode,
 		/* [annotation] */
-		__in  SIZE_T BytecodeLength,
+		_In_  SIZE_T BytecodeLength,
 		/* [annotation] */
-		__in_opt  ID3D11ClassLinkage *pClassLinkage,
+		_In_opt_  ID3D11ClassLinkage *pClassLinkage,
 		/* [annotation] */
-		__out_opt  ID3D11VertexShader **ppVertexShader);
+		_Out_opt_  ID3D11VertexShader **ppVertexShader);
 
-	STDMETHOD(CreateGeometryShader)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateGeometryShader(
 		/* [annotation] */
-		__in  const void *pShaderBytecode,
+		_In_  const void *pShaderBytecode,
 		/* [annotation] */
-		__in  SIZE_T BytecodeLength,
+		_In_  SIZE_T BytecodeLength,
 		/* [annotation] */
-		__in_opt  ID3D11ClassLinkage *pClassLinkage,
+		_In_opt_  ID3D11ClassLinkage *pClassLinkage,
 		/* [annotation] */
-		__out_opt  ID3D11GeometryShader **ppGeometryShader);
+		_Out_opt_  ID3D11GeometryShader **ppGeometryShader);
 
-	STDMETHOD(CreateGeometryShaderWithStreamOutput)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateGeometryShaderWithStreamOutput(
 		/* [annotation] */
-		__in  const void *pShaderBytecode,
+		_In_  const void *pShaderBytecode,
 		/* [annotation] */
-		__in  SIZE_T BytecodeLength,
+		_In_  SIZE_T BytecodeLength,
 		/* [annotation] */
-		__in_ecount_opt(NumEntries)  const D3D11_SO_DECLARATION_ENTRY *pSODeclaration,
+		_In_reads_opt_(NumEntries)  const D3D11_SO_DECLARATION_ENTRY *pSODeclaration,
 		/* [annotation] */
-		__in_range(0, D3D11_SO_STREAM_COUNT * D3D11_SO_OUTPUT_COMPONENT_COUNT)  UINT NumEntries,
+		_In_range_(0, D3D11_SO_STREAM_COUNT * D3D11_SO_OUTPUT_COMPONENT_COUNT)  UINT NumEntries,
 		/* [annotation] */
-		__in_ecount_opt(NumStrides)  const UINT *pBufferStrides,
+		_In_reads_opt_(NumStrides)  const UINT *pBufferStrides,
 		/* [annotation] */
-		__in_range(0, D3D11_SO_BUFFER_SLOT_COUNT)  UINT NumStrides,
+		_In_range_(0, D3D11_SO_BUFFER_SLOT_COUNT)  UINT NumStrides,
 		/* [annotation] */
-		__in  UINT RasterizedStream,
+		_In_  UINT RasterizedStream,
 		/* [annotation] */
-		__in_opt  ID3D11ClassLinkage *pClassLinkage,
+		_In_opt_  ID3D11ClassLinkage *pClassLinkage,
 		/* [annotation] */
-		__out_opt  ID3D11GeometryShader **ppGeometryShader);
+		_Out_opt_  ID3D11GeometryShader **ppGeometryShader);
 
-	STDMETHOD(CreatePixelShader)(THIS_
+	HRESULT STDMETHODCALLTYPE CreatePixelShader(
 		/* [annotation] */
-		__in  const void *pShaderBytecode,
+		_In_  const void *pShaderBytecode,
 		/* [annotation] */
-		__in  SIZE_T BytecodeLength,
+		_In_  SIZE_T BytecodeLength,
 		/* [annotation] */
-		__in_opt  ID3D11ClassLinkage *pClassLinkage,
+		_In_opt_  ID3D11ClassLinkage *pClassLinkage,
 		/* [annotation] */
-		__out_opt  ID3D11PixelShader **ppPixelShader);
+		_Out_opt_  ID3D11PixelShader **ppPixelShader);
 
-	STDMETHOD(CreateHullShader)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateHullShader(
 		/* [annotation] */
-		__in  const void *pShaderBytecode,
+		_In_  const void *pShaderBytecode,
 		/* [annotation] */
-		__in  SIZE_T BytecodeLength,
+		_In_  SIZE_T BytecodeLength,
 		/* [annotation] */
-		__in_opt  ID3D11ClassLinkage *pClassLinkage,
+		_In_opt_  ID3D11ClassLinkage *pClassLinkage,
 		/* [annotation] */
-		__out_opt  ID3D11HullShader **ppHullShader);
+		_Out_opt_  ID3D11HullShader **ppHullShader);
 
-	STDMETHOD(CreateDomainShader)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateDomainShader(
 		/* [annotation] */
-		__in  const void *pShaderBytecode,
+		_In_  const void *pShaderBytecode,
 		/* [annotation] */
-		__in  SIZE_T BytecodeLength,
+		_In_  SIZE_T BytecodeLength,
 		/* [annotation] */
-		__in_opt  ID3D11ClassLinkage *pClassLinkage,
+		_In_opt_  ID3D11ClassLinkage *pClassLinkage,
 		/* [annotation] */
-		__out_opt  ID3D11DomainShader **ppDomainShader);
+		_Out_opt_  ID3D11DomainShader **ppDomainShader);
 
-	STDMETHOD(CreateComputeShader)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateComputeShader(
 		/* [annotation] */
-		__in  const void *pShaderBytecode,
+		_In_  const void *pShaderBytecode,
 		/* [annotation] */
-		__in  SIZE_T BytecodeLength,
+		_In_  SIZE_T BytecodeLength,
 		/* [annotation] */
-		__in_opt  ID3D11ClassLinkage *pClassLinkage,
+		_In_opt_  ID3D11ClassLinkage *pClassLinkage,
 		/* [annotation] */
-		__out_opt  ID3D11ComputeShader **ppComputeShader);
+		_Out_opt_  ID3D11ComputeShader **ppComputeShader);
 
-	STDMETHOD(CreateClassLinkage)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateClassLinkage(
 		/* [annotation] */
-		__out  ID3D11ClassLinkage **ppLinkage);
+		_Out_  ID3D11ClassLinkage **ppLinkage);
 
-	STDMETHOD(CreateBlendState)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateBlendState(
 		/* [annotation] */
-		__in  const D3D11_BLEND_DESC *pBlendStateDesc,
+		_In_  const D3D11_BLEND_DESC *pBlendStateDesc,
 		/* [annotation] */
-		__out_opt  ID3D11BlendState **ppBlendState);
+		_Out_opt_  ID3D11BlendState **ppBlendState);
 
-	STDMETHOD(CreateDepthStencilState)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateDepthStencilState(
 		/* [annotation] */
-		__in  const D3D11_DEPTH_STENCIL_DESC *pDepthStencilDesc,
+		_In_  const D3D11_DEPTH_STENCIL_DESC *pDepthStencilDesc,
 		/* [annotation] */
-		__out_opt  ID3D11DepthStencilState **ppDepthStencilState);
+		_Out_opt_  ID3D11DepthStencilState **ppDepthStencilState);
 
-	STDMETHOD(CreateRasterizerState)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateRasterizerState(
 		/* [annotation] */
-		__in  const D3D11_RASTERIZER_DESC *pRasterizerDesc,
+		_In_  const D3D11_RASTERIZER_DESC *pRasterizerDesc,
 		/* [annotation] */
-		__out_opt  ID3D11RasterizerState **ppRasterizerState);
+		_Out_opt_  ID3D11RasterizerState **ppRasterizerState);
 
-	STDMETHOD(CreateSamplerState)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateSamplerState(
 		/* [annotation] */
-		__in  const D3D11_SAMPLER_DESC *pSamplerDesc,
+		_In_  const D3D11_SAMPLER_DESC *pSamplerDesc,
 		/* [annotation] */
-		__out_opt  ID3D11SamplerState **ppSamplerState);
+		_Out_opt_  ID3D11SamplerState **ppSamplerState);
 
-	STDMETHOD(CreateQuery)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateQuery(
 		/* [annotation] */
-		__in  const D3D11_QUERY_DESC *pQueryDesc,
+		_In_  const D3D11_QUERY_DESC *pQueryDesc,
 		/* [annotation] */
-		__out_opt  ID3D11Query **ppQuery);
+		_Out_opt_  ID3D11Query **ppQuery);
 
-	STDMETHOD(CreatePredicate)(THIS_
+	HRESULT STDMETHODCALLTYPE CreatePredicate(
 		/* [annotation] */
-		__in  const D3D11_QUERY_DESC *pPredicateDesc,
+		_In_  const D3D11_QUERY_DESC *pPredicateDesc,
 		/* [annotation] */
-		__out_opt  ID3D11Predicate **ppPredicate);
+		_Out_opt_  ID3D11Predicate **ppPredicate);
 
-	STDMETHOD(CreateCounter)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateCounter(
 		/* [annotation] */
-		__in  const D3D11_COUNTER_DESC *pCounterDesc,
+		_In_  const D3D11_COUNTER_DESC *pCounterDesc,
 		/* [annotation] */
-		__out_opt  ID3D11Counter **ppCounter);
+		_Out_opt_  ID3D11Counter **ppCounter);
 
-	STDMETHOD(CreateDeferredContext)(THIS_
+	HRESULT STDMETHODCALLTYPE CreateDeferredContext(
 		UINT ContextFlags,
 		/* [annotation] */
-		__out_opt ID3D11DeviceContext **ppDeferredContext);
+		_Out_opt_  ID3D11DeviceContext **ppDeferredContext);
 
-	STDMETHOD(OpenSharedResource)(THIS_
+	HRESULT STDMETHODCALLTYPE OpenSharedResource(
 		/* [annotation] */
-		__in  HANDLE hResource,
+		_In_  HANDLE hResource,
 		/* [annotation] */
-		__in  REFIID ReturnedInterface,
+		_In_  REFIID ReturnedInterface,
 		/* [annotation] */
-		__out_opt  void **ppResource);
+		_Out_opt_  void **ppResource);
 
-	STDMETHOD(CheckFormatSupport)(THIS_
+	HRESULT STDMETHODCALLTYPE CheckFormatSupport(
 		/* [annotation] */
-		__in  DXGI_FORMAT Format,
+		_In_  DXGI_FORMAT Format,
 		/* [annotation] */
-		__out  UINT *pFormatSupport);
+		_Out_  UINT *pFormatSupport);
 
-	STDMETHOD(CheckMultisampleQualityLevels)(THIS_
+	HRESULT STDMETHODCALLTYPE CheckMultisampleQualityLevels(
 		/* [annotation] */
-		__in  DXGI_FORMAT Format,
+		_In_  DXGI_FORMAT Format,
 		/* [annotation] */
-		__in  UINT SampleCount,
+		_In_  UINT SampleCount,
 		/* [annotation] */
-		__out  UINT *pNumQualityLevels);
+		_Out_  UINT *pNumQualityLevels);
 
-	STDMETHOD_(void, CheckCounterInfo)(THIS_
+	void STDMETHODCALLTYPE CheckCounterInfo(
 		/* [annotation] */
-		__out  D3D11_COUNTER_INFO *pCounterInfo);
+		_Out_  D3D11_COUNTER_INFO *pCounterInfo);
 
-	STDMETHOD(CheckCounter)(THIS_
+	HRESULT STDMETHODCALLTYPE CheckCounter(
 		/* [annotation] */
-		__in  const D3D11_COUNTER_DESC *pDesc,
+		_In_  const D3D11_COUNTER_DESC *pDesc,
 		/* [annotation] */
-		__out  D3D11_COUNTER_TYPE *pType,
+		_Out_  D3D11_COUNTER_TYPE *pType,
 		/* [annotation] */
-		__out  UINT *pActiveCounters,
+		_Out_  UINT *pActiveCounters,
 		/* [annotation] */
-		__out_ecount_opt(*pNameLength)  LPSTR szName,
+		_Out_writes_opt_(*pNameLength)  LPSTR szName,
 		/* [annotation] */
-		__inout_opt  UINT *pNameLength,
+		_Inout_opt_  UINT *pNameLength,
 		/* [annotation] */
-		__out_ecount_opt(*pUnitsLength)  LPSTR szUnits,
+		_Out_writes_opt_(*pUnitsLength)  LPSTR szUnits,
 		/* [annotation] */
-		__inout_opt  UINT *pUnitsLength,
+		_Inout_opt_  UINT *pUnitsLength,
 		/* [annotation] */
-		__out_ecount_opt(*pDescriptionLength)  LPSTR szDescription,
+		_Out_writes_opt_(*pDescriptionLength)  LPSTR szDescription,
 		/* [annotation] */
-		__inout_opt  UINT *pDescriptionLength);
+		_Inout_opt_  UINT *pDescriptionLength);
 
-	STDMETHOD(CheckFeatureSupport)(THIS_
+	HRESULT STDMETHODCALLTYPE CheckFeatureSupport(
 		D3D11_FEATURE Feature,
 		/* [annotation] */
-		__out_bcount(FeatureSupportDataSize)  void *pFeatureSupportData,
+		_Out_writes_bytes_(FeatureSupportDataSize)  void *pFeatureSupportData,
 		UINT FeatureSupportDataSize);
 
-	STDMETHOD(GetPrivateData)(THIS_
+	HRESULT STDMETHODCALLTYPE GetPrivateData(
 		/* [annotation] */
-		__in  REFGUID guid,
+		_In_  REFGUID guid,
 		/* [annotation] */
-		__inout  UINT *pDataSize,
+		_Inout_  UINT *pDataSize,
 		/* [annotation] */
-		__out_bcount_opt(*pDataSize)  void *pData);
+		_Out_writes_bytes_opt_(*pDataSize)  void *pData);
 
-	STDMETHOD(SetPrivateData)(THIS_
+	HRESULT STDMETHODCALLTYPE SetPrivateData(
 		/* [annotation] */
-		__in  REFGUID guid,
+		_In_  REFGUID guid,
 		/* [annotation] */
-		__in  UINT DataSize,
+		_In_  UINT DataSize,
 		/* [annotation] */
-		__in_bcount_opt(DataSize)  const void *pData);
+		_In_reads_bytes_opt_(DataSize)  const void *pData);
 
-	STDMETHOD(SetPrivateDataInterface)(THIS_
+	HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
 		/* [annotation] */
-		__in  REFGUID guid,
+		_In_  REFGUID guid,
 		/* [annotation] */
-		__in_opt  const IUnknown *pData);
+		_In_opt_  const IUnknown *pData);
 
-	STDMETHOD_(D3D_FEATURE_LEVEL, GetFeatureLevel)(THIS);
+	D3D_FEATURE_LEVEL STDMETHODCALLTYPE GetFeatureLevel(void);
 
-	STDMETHOD_(UINT, GetCreationFlags)(THIS);
+	UINT STDMETHODCALLTYPE GetCreationFlags(void);
 
-	STDMETHOD(GetDeviceRemovedReason)(THIS);
+	HRESULT STDMETHODCALLTYPE GetDeviceRemovedReason(void);
 
-	STDMETHOD_(void, GetImmediateContext)(THIS_
+	void STDMETHODCALLTYPE GetImmediateContext(
 		/* [annotation] */
-		__out ID3D11DeviceContext **ppImmediateContext);
+		_Out_  ID3D11DeviceContext **ppImmediateContext);
 
-	STDMETHOD(SetExceptionMode)(THIS_
+	HRESULT STDMETHODCALLTYPE SetExceptionMode(
 		UINT RaiseFlags);
 
-	STDMETHOD_(UINT, GetExceptionMode)(THIS);
-
-};
+	UINT STDMETHODCALLTYPE GetExceptionMode(void);
 
 
-// -----------------------------------------------------------------------------
+	/*** ID3D11Device1 methods ***/
 
-class HackerDevice1 : public HackerDevice
-{
-private:
-	ID3D11Device1 *mOrigDevice1;
-	ID3D11DeviceContext1 *mOrigContext1;
-	HackerContext1 *mHackerContext1;
-
-public:
-	HackerDevice1(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext);
-
-	void SetHackerContext1(HackerContext1 *pHackerContext);
-
-
-	STDMETHOD_(void, GetImmediateContext1)(
+	void STDMETHODCALLTYPE GetImmediateContext1(
 		/* [annotation] */
 		_Out_  ID3D11DeviceContext1 **ppImmediateContext);
 
-	STDMETHOD(CreateDeferredContext1)(
+	HRESULT STDMETHODCALLTYPE CreateDeferredContext1(
 		UINT ContextFlags,
 		/* [annotation] */
 		_Out_opt_  ID3D11DeviceContext1 **ppDeferredContext);
 
-	STDMETHOD(CreateBlendState1)(
+	HRESULT STDMETHODCALLTYPE CreateBlendState1(
 		/* [annotation] */
 		_In_  const D3D11_BLEND_DESC1 *pBlendStateDesc,
 		/* [annotation] */
 		_Out_opt_  ID3D11BlendState1 **ppBlendState);
 
-	STDMETHOD(CreateRasterizerState1)(
+	HRESULT STDMETHODCALLTYPE CreateRasterizerState1(
 		/* [annotation] */
 		_In_  const D3D11_RASTERIZER_DESC1 *pRasterizerDesc,
 		/* [annotation] */
 		_Out_opt_  ID3D11RasterizerState1 **ppRasterizerState);
 
-	STDMETHOD(CreateDeviceContextState)(
+	HRESULT STDMETHODCALLTYPE CreateDeviceContextState(
 		UINT Flags,
 		/* [annotation] */
 		_In_reads_(FeatureLevels)  const D3D_FEATURE_LEVEL *pFeatureLevels,
@@ -448,7 +455,7 @@ public:
 		/* [annotation] */
 		_Out_opt_  ID3DDeviceContextState **ppContextState);
 
-	STDMETHOD(OpenSharedResource1)(
+	HRESULT STDMETHODCALLTYPE OpenSharedResource1(
 		/* [annotation] */
 		_In_  HANDLE hResource,
 		/* [annotation] */
@@ -456,7 +463,7 @@ public:
 		/* [annotation] */
 		_Out_  void **ppResource);
 
-	STDMETHOD(OpenSharedResourceByName)(
+	HRESULT STDMETHODCALLTYPE OpenSharedResourceByName(
 		/* [annotation] */
 		_In_  LPCWSTR lpName,
 		/* [annotation] */
@@ -464,5 +471,6 @@ public:
 		/* [annotation] */
 		_In_  REFIID returnedInterface,
 		/* [annotation] */
-		_Out_  void **ppResource);
+		_Out_  void **ppResource); 
 };
+
