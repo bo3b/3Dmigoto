@@ -777,6 +777,7 @@ bool PerDrawStereoOverrideCommand::update_val(CommandListState *state)
 {
 	D3D11_MAPPED_SUBRESOURCE mapping;
 	HRESULT hr;
+	float tmp;
 
 	if (!staging_type)
 		return true;
@@ -794,9 +795,9 @@ bool PerDrawStereoOverrideCommand::update_val(CommandListState *state)
 		// FIXME: Check if resource is at least 4 bytes (maybe we can
 		// use RowPitch, but MSDN contradicts itself so I'm not sure.
 		// Otherwise we can refer to the resource description)
-		val = ((float*)mapping.pData)[0];
-
+		tmp = ((float*)mapping.pData)[0];
 		staging_op.unmap(state);
+		staging_op.staging = false;
 
 		// If we wanted we could continue and begin the next transfer
 		// right away. That might be advantageous for making this
@@ -808,7 +809,12 @@ bool PerDrawStereoOverrideCommand::update_val(CommandListState *state)
 		// worse performing option just to see how it goes - that way
 		// we can only improve things later ;-)
 
-		staging_op.staging = false;
+		if (isnan(tmp)) {
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   Disregarding NAN\n");
+			return false;
+		}
+
+		val = tmp;
 		return true;
 	}
 
