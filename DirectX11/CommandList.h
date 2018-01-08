@@ -726,7 +726,12 @@ public:
 
 	PerDrawStereoOverrideCommand(bool restore_on_post);
 
+	void run(CommandListState*) override;
 	bool update_val(CommandListState *state);
+
+	virtual const char* stereo_param_name() = 0;
+	virtual float get_stereo_value(CommandListState*) = 0;
+	virtual void set_stereo_value(CommandListState*, float val) = 0;
 };
 class PerDrawSeparationOverrideCommand : public PerDrawStereoOverrideCommand
 {
@@ -735,7 +740,9 @@ public:
 		PerDrawStereoOverrideCommand(restore_on_post)
 	{}
 
-	void run(CommandListState*) override;
+	const char* stereo_param_name() override { return "separation"; }
+	float get_stereo_value(CommandListState*) override;
+	void set_stereo_value(CommandListState*, float val) override;
 };
 class PerDrawConvergenceOverrideCommand : public PerDrawStereoOverrideCommand
 {
@@ -744,7 +751,9 @@ public:
 		PerDrawStereoOverrideCommand(restore_on_post)
 	{}
 
-	void run(CommandListState*) override;
+	const char* stereo_param_name() override { return "convergence"; }
+	float get_stereo_value(CommandListState*) override;
+	void set_stereo_value(CommandListState*, float val) override;
 };
 
 

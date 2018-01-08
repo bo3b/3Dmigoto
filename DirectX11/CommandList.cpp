@@ -817,13 +817,11 @@ bool PerDrawStereoOverrideCommand::update_val(CommandListState *state)
 	return false;
 }
 
-void PerDrawSeparationOverrideCommand::run(CommandListState *state)
+void PerDrawStereoOverrideCommand::run(CommandListState *state)
 {
-	StereoHandle mStereoHandle = state->mHackerDevice->mStereoHandle;
-
 	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
 
-	if (!mStereoHandle) {
+	if (!state->mHackerDevice->mStereoHandle) {
 		state->mHackerContext->FrameAnalysisLog("3DMigoto   No Stereo Handle\n");
 		return;
 	}
@@ -834,83 +832,68 @@ void PerDrawSeparationOverrideCommand::run(CommandListState *state)
 				return;
 			did_set_value_on_pre = false;
 
-			state->mHackerContext->FrameAnalysisLog("3DMigoto   Restoring separation = %f\n", saved);
-			NvAPIOverride();
-			if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mStereoHandle, saved))
-				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetSeparation failed\n");
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   Restoring %s = %f\n", stereo_param_name(), saved);
+			set_stereo_value(state, saved);
 		} else {
 			if (!(did_set_value_on_pre = update_val(state)))
 				return;
 
-			if (NVAPI_OK != NvAPI_Stereo_GetSeparation(mStereoHandle, &saved))
-				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_GetSeparation failed\n");
+			saved = get_stereo_value(state);
 
-			state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting per-draw call separation = %f * %f = %f\n", val, saved, val * saved);
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting per-draw call %s = %f * %f = %f\n",
+					stereo_param_name(), val, saved, val * saved);
 
-			NvAPIOverride();
-			if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mStereoHandle, val * saved))
-				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetSeparation failed\n");
+			// The original ShaderOverride code multiplied the new
+			// separation and convergence by the old ones, so I'm
+			// doing that as well, but while that makes sense for
+			// separation, I'm not really convinced it makes sense
+			// for convergence. Still, the convergence override is
+			// generally only useful to use convergence=0 to move
+			// something to infinity, and in that case it won't
+			// matter.
+			set_stereo_value(state, val * saved);
 		}
 	} else {
 		if (!update_val(state))
 			return;
 
-		state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting separation = %f\n", val);
-		NvAPIOverride();
-		if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mStereoHandle, val))
-			state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetSeparation failed\n");
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting %s = %f\n", stereo_param_name(), val);
+		set_stereo_value(state, val);
 	}
 }
 
-void PerDrawConvergenceOverrideCommand::run(CommandListState *state)
+float PerDrawSeparationOverrideCommand::get_stereo_value(CommandListState *state)
 {
-	StereoHandle mStereoHandle = state->mHackerDevice->mStereoHandle;
+	float ret = 0.0f;
 
-	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
+	if (NVAPI_OK != NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, &ret))
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_GetSeparation failed\n");
 
-	if (!mStereoHandle) {
-		state->mHackerContext->FrameAnalysisLog("3DMigoto   No Stereo Handle\n");
-		return;
-	}
+	return ret;
+}
 
-	if (restore_on_post) {
-		if (state->post) {
-			if (!did_set_value_on_pre)
-				return;
-			did_set_value_on_pre = false;
+void PerDrawSeparationOverrideCommand::set_stereo_value(CommandListState *state, float val)
+{
+	NvAPIOverride();
+	if (NVAPI_OK != NvAPI_Stereo_SetSeparation(state->mHackerDevice->mStereoHandle, val))
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetSeparation failed\n");
+}
 
-			state->mHackerContext->FrameAnalysisLog("3DMigoto   Restoring convergence = %f\n", saved);
-			NvAPIOverride();
-			if (NVAPI_OK != NvAPI_Stereo_SetConvergence(mStereoHandle, saved))
-				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetConvergence failed\n");
-		} else {
-			if (!(did_set_value_on_pre = update_val(state)))
-				return;
+float PerDrawConvergenceOverrideCommand::get_stereo_value(CommandListState *state)
+{
+	float ret = 0.0f;
 
-			if (NVAPI_OK != NvAPI_Stereo_GetConvergence(mStereoHandle, &saved))
-				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_GetConvergence failed\n");
+	if (NVAPI_OK != NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, &ret))
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_GetConvergence failed\n");
 
-			state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting per-draw call convergence = %f * %f = %f\n", val, saved, val * saved);
+	return ret;
+}
 
-			// The original ShaderOverride code multiplied the new
-			// convergence by the old one, so I'm doing that as
-			// well, but I'm not really convinced it makes sense.
-			// Still, the convergence override is generally only
-			// useful to use convergence=0 to move something to
-			// infinity, and in that case it won't matter.
-			NvAPIOverride();
-			if (NVAPI_OK != NvAPI_Stereo_SetConvergence(mStereoHandle, val * saved))
-				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetConvergence failed\n");
-		}
-	} else {
-		if (!update_val(state))
-			return;
-
-		state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting convergence = %f\n", val);
-		NvAPIOverride();
-		if (NVAPI_OK != NvAPI_Stereo_SetConvergence(mStereoHandle, val))
-			state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetConvergence failed\n");
-	}
+void PerDrawConvergenceOverrideCommand::set_stereo_value(CommandListState *state, float val)
+{
+	NvAPIOverride();
+	if (NVAPI_OK != NvAPI_Stereo_SetConvergence(state->mHackerDevice->mStereoHandle, val))
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetConvergence failed\n");
 }
 
 CustomShader::CustomShader() :
