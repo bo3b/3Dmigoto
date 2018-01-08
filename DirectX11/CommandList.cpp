@@ -487,25 +487,38 @@ static bool ParsePerDrawStereoOverride(const wchar_t *section,
 		CommandList *post_command_list,
 		bool is_separation)
 {
+	PerDrawStereoOverrideCommand *operation = NULL;
 	int ret, len1;
 
-	PerDrawStereoOverrideCommand *operation = NULL;
-	float fval;
-
-	ret = swscanf_s(val->c_str(), L"%f%n", &fval, &len1);
-	if (ret == 0 || ret == EOF || len1 != val->length())
-		return false;
-
 	if (is_separation)
-		operation = new PerDrawSeparationOverrideCommand(section, fval, !explicit_command_list);
+		operation = new PerDrawSeparationOverrideCommand(!explicit_command_list);
 	else
-		operation = new PerDrawConvergenceOverrideCommand(section, fval, !explicit_command_list);
+		operation = new PerDrawConvergenceOverrideCommand(!explicit_command_list);
 
+	// Try parsing value as a float
+	ret = swscanf_s(val->c_str(), L"%f%n", &operation->val, &len1);
+	if (ret != 0 && ret != EOF && len1 == val->length())
+		goto success;
+
+	// Try parsing value as a resource target for staging auto-convergence
+	if (operation->staging_op.src.ParseTarget(val->c_str(), true)) {
+		operation->staging_type = true;
+		goto success;
+	}
+
+	goto bail;
+
+success:
 	// Add to both command lists by default - the pre command list will set
 	// the value, and the post command list will restore the original. If
 	// an explicit command list is specified then the value will only be
 	// set, not restored (regardless of whether that is pre or post)
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
+
+bail:
+	delete operation;
+	return false;
 }
 
 bool ParseCommandListGeneralCommands(const wchar_t *section,
@@ -752,11 +765,63 @@ void AbortCommand::run(CommandListState *state)
 	state->aborted = true;
 }
 
+PerDrawStereoOverrideCommand::PerDrawStereoOverrideCommand(bool restore_on_post) :
+		staging_type(false),
+		val(FLT_MAX),
+		saved(FLT_MAX),
+		restore_on_post(restore_on_post),
+		did_set_value_on_pre(false)
+{}
+
+bool PerDrawStereoOverrideCommand::update_val(CommandListState *state)
+{
+	D3D11_MAPPED_SUBRESOURCE mapping;
+	HRESULT hr;
+
+	if (!staging_type)
+		return true;
+
+	if (staging_op.staging) {
+		hr = staging_op.map(state, &mapping);
+		if (FAILED(hr)) {
+			if (hr == DXGI_ERROR_WAS_STILL_DRAWING)
+				state->mHackerContext->FrameAnalysisLog("3DMigoto   Transfer in progress...\n");
+			else
+				state->mHackerContext->FrameAnalysisLog("3DMigoto   Unknown error: 0x%x\n", hr);
+			return false;
+		}
+
+		// FIXME: Check if resource is at least 4 bytes (maybe we can
+		// use RowPitch, but MSDN contradicts itself so I'm not sure.
+		// Otherwise we can refer to the resource description)
+		val = ((float*)mapping.pData)[0];
+
+		staging_op.unmap(state);
+
+		// If we wanted we could continue and begin the next transfer
+		// right away. That might be advantageous for making this
+		// happen as frequently as possible, but later we might want to
+		// allow for some conditional logic, e.g. to run the auto
+		// convergence shader on the GPU only when we are ready to
+		// begin another transfer. For now it doesn't matter and I'm
+		// not positive which we will want, so let's start with the
+		// worse performing option just to see how it goes - that way
+		// we can only improve things later ;-)
+
+		staging_op.staging = false;
+		return true;
+	}
+
+	staging_op.staging = true;
+	staging_op.run(state);
+	return false;
+}
+
 void PerDrawSeparationOverrideCommand::run(CommandListState *state)
 {
 	StereoHandle mStereoHandle = state->mHackerDevice->mStereoHandle;
 
-	state->mHackerContext->FrameAnalysisLog("3DMigoto [%S] separation = %f\n", ini_section.c_str(), val);
+	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
 
 	if (!mStereoHandle) {
 		state->mHackerContext->FrameAnalysisLog("3DMigoto   No Stereo Handle\n");
@@ -765,21 +830,32 @@ void PerDrawSeparationOverrideCommand::run(CommandListState *state)
 
 	if (restore_on_post) {
 		if (state->post) {
-			state->mHackerContext->FrameAnalysisLog("3DMigoto   Restoring separation\n");
+			if (!did_set_value_on_pre)
+				return;
+			did_set_value_on_pre = false;
+
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   Restoring separation = %f\n", saved);
 			NvAPIOverride();
 			if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mStereoHandle, saved))
 				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetSeparation failed\n");
 		} else {
-			state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting per-draw call separation\n");
+			if (!(did_set_value_on_pre = update_val(state)))
+				return;
+
 			if (NVAPI_OK != NvAPI_Stereo_GetSeparation(mStereoHandle, &saved))
 				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_GetSeparation failed\n");
+
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting per-draw call separation = %f * %f = %f\n", val, saved, val * saved);
 
 			NvAPIOverride();
 			if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mStereoHandle, val * saved))
 				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetSeparation failed\n");
 		}
 	} else {
-		state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting separation\n");
+		if (!update_val(state))
+			return;
+
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting separation = %f\n", val);
 		NvAPIOverride();
 		if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mStereoHandle, val))
 			state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetSeparation failed\n");
@@ -790,7 +866,7 @@ void PerDrawConvergenceOverrideCommand::run(CommandListState *state)
 {
 	StereoHandle mStereoHandle = state->mHackerDevice->mStereoHandle;
 
-	state->mHackerContext->FrameAnalysisLog("3DMigoto [%S] convergence = %f\n", ini_section.c_str(), val);
+	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
 
 	if (!mStereoHandle) {
 		state->mHackerContext->FrameAnalysisLog("3DMigoto   No Stereo Handle\n");
@@ -799,14 +875,22 @@ void PerDrawConvergenceOverrideCommand::run(CommandListState *state)
 
 	if (restore_on_post) {
 		if (state->post) {
-			state->mHackerContext->FrameAnalysisLog("3DMigoto   Restoring convergence\n");
+			if (!did_set_value_on_pre)
+				return;
+			did_set_value_on_pre = false;
+
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   Restoring convergence = %f\n", saved);
 			NvAPIOverride();
 			if (NVAPI_OK != NvAPI_Stereo_SetConvergence(mStereoHandle, saved))
 				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetConvergence failed\n");
 		} else {
-			state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting per-draw call convergence\n");
+			if (!(did_set_value_on_pre = update_val(state)))
+				return;
+
 			if (NVAPI_OK != NvAPI_Stereo_GetConvergence(mStereoHandle, &saved))
 				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_GetConvergence failed\n");
+
+			state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting per-draw call convergence = %f * %f = %f\n", val, saved, val * saved);
 
 			// The original ShaderOverride code multiplied the new
 			// convergence by the old one, so I'm doing that as
@@ -819,7 +903,10 @@ void PerDrawConvergenceOverrideCommand::run(CommandListState *state)
 				state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetConvergence failed\n");
 		}
 	} else {
-		state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting convergence\n");
+		if (!update_val(state))
+			return;
+
+		state->mHackerContext->FrameAnalysisLog("3DMigoto   Setting convergence = %f\n", val);
 		NvAPIOverride();
 		if (NVAPI_OK != NvAPI_Stereo_SetConvergence(mStereoHandle, val))
 			state->mHackerContext->FrameAnalysisLog("3DMigoto   Stereo_SetConvergence failed\n");
@@ -3194,10 +3281,15 @@ void ResourceCopyTarget::SetResource(
 	case ResourceCopyTargetType::INI_PARAMS:
 	case ResourceCopyTargetType::SWAP_CHAIN:
 	case ResourceCopyTargetType::FAKE_SWAP_CHAIN:
+	case ResourceCopyTargetType::CPU:
 		// Only way we could "set" a resource to the (fake) back buffer is by
 		// copying to it. Might implement overwrites later, but no
 		// pressing need. To write something to the back buffer, assign
 		// it as a render target instead.
+		//
+		// We can't set values on the CPU directly from here, since the
+		// values won't have finished transferring yet. These will be
+		// set from elsewhere.
 		break;
 	}
 }
@@ -3226,6 +3318,7 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 		case ResourceCopyTargetType::STEREO_PARAMS:
 		case ResourceCopyTargetType::INI_PARAMS:
 		case ResourceCopyTargetType::SWAP_CHAIN:
+		case ResourceCopyTargetType::CPU:
 			// N/A since swap chain can't be set as a destination
 			return (D3D11_BIND_FLAG)0;
 	}
@@ -3327,9 +3420,15 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 	UINT dst_size;
 
 	src_resource->GetDesc(&new_desc);
-	new_desc.Usage = D3D11_USAGE_DEFAULT;
 	new_desc.BindFlags = bind_flags;
-	new_desc.CPUAccessFlags = 0;
+
+	if (dst->type == ResourceCopyTargetType::CPU) {
+		new_desc.Usage = D3D11_USAGE_STAGING;
+		new_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+	} else {
+		new_desc.Usage = D3D11_USAGE_DEFAULT;
+		new_desc.CPUAccessFlags = 0;
+	}
 
 	// TODO: Add a keyword to allow raw views:
 	// D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS
@@ -3611,9 +3710,15 @@ static ResourceType* RecreateCompatibleTexture(
 	DescType new_desc;
 
 	src_resource->GetDesc(&new_desc);
-	new_desc.Usage = D3D11_USAGE_DEFAULT;
 	new_desc.BindFlags = bind_flags;
-	new_desc.CPUAccessFlags = 0;
+
+	if (dst->type == ResourceCopyTargetType::CPU) {
+		new_desc.Usage = D3D11_USAGE_STAGING;
+		new_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+	} else {
+		new_desc.Usage = D3D11_USAGE_DEFAULT;
+		new_desc.CPUAccessFlags = 0;
+	}
 
 	// New strategy - we make the new resources typeless whenever possible
 	// and will fill the type back in in the view instead. This gives us
@@ -4237,6 +4342,28 @@ ResourceCopyOperation::~ResourceCopyOperation()
 
 	if (cached_view)
 		cached_view->Release();
+}
+
+ResourceStagingOperation::ResourceStagingOperation()
+{
+	dst.type = ResourceCopyTargetType::CPU;
+	options = ResourceCopyOptions::COPY;
+	staging = false;
+	ini_line = L"  Beginning transfer to CPU...";
+}
+
+HRESULT ResourceStagingOperation::map(CommandListState *state, D3D11_MAPPED_SUBRESOURCE *mapping)
+{
+	if (!cached_resource)
+		return E_FAIL;
+
+	return state->mOrigContext->Map(cached_resource, 0, D3D11_MAP_READ, D3D11_MAP_FLAG_DO_NOT_WAIT, mapping);
+}
+
+void ResourceStagingOperation::unmap(CommandListState *state)
+{
+	if (cached_resource)
+		state->mOrigContext->Unmap(cached_resource, 0);
 }
 
 static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resource, CommandListState *state)
