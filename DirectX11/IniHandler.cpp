@@ -796,6 +796,288 @@ static void ParsePresetOverrideSections()
 	}
 }
 
+static char* type_to_format(float type)
+{
+	return "%f%n";
+}
+
+static char* type_to_format(unsigned int type)
+{
+	return "%u%n";
+}
+
+static char* type_to_format(signed int type)
+{
+	return "%i%n";
+}
+
+static char* type_to_format(unsigned short type)
+{
+	return "%hu%n";
+}
+
+static char* type_to_format(signed short type)
+{
+	return "%hi%n";
+}
+
+static char* type_to_format(unsigned char type)
+{
+	return "%hhu%n";
+}
+
+static char* type_to_format(signed char type)
+{
+	return "%hhi%n";
+}
+
+template <typename T>
+static std::vector<T> string_to_typed_array(std::istringstream *tokens)
+{
+	std::string token;
+	std::vector<T> list;
+	T val = 0;
+	int ret, len;
+	unsigned uval;
+
+	while (std::getline(*tokens, token, ' ')) {
+		ret = sscanf_s(token.c_str(), "0x%x%n", &uval, &len);
+		if (ret != 0 && ret != EOF && len == token.length()) {
+			// Reinterpret the 32bit unsigned integer as whatever
+			// type we are supposed to be returning.
+			// Classic endian bug: This conversion only works in
+			// little-endian when converting to a smaller type
+			list.push_back(*(T*)&uval);
+			continue;
+		}
+
+		ret = sscanf_s(token.c_str(), type_to_format(val), &val, &len);
+		if (ret != 0 && ret != EOF && len == token.length()) {
+			list.push_back(val);
+			continue;
+		}
+
+		IniWarning("  WARNING: Parse error: %s\n", token.c_str());
+	}
+
+	return list;
+}
+
+template <typename T>
+static void ConstructInitialData(CustomResource *custom_resource, std::istringstream *tokens)
+{
+	std::vector<T> vals;
+
+	vals = string_to_typed_array<T>(tokens);
+
+	// We use malloc() here because the custom resource may realloc() the
+	// buffer to the correct size when substantiating:
+	custom_resource->initial_data_size = sizeof(T) * vals.size();
+	custom_resource->initial_data = malloc(custom_resource->initial_data_size);
+	if (!custom_resource->initial_data) {
+		IniWarning("  ERROR allocating initial data\n");
+		return;
+	}
+
+	memcpy(custom_resource->initial_data, vals.data(), custom_resource->initial_data_size);
+}
+
+
+static void ConstructInitialDataNorm(CustomResource *custom_resource, std::istringstream *tokens, int bytes, bool snorm)
+{
+	std::vector<float> vals;
+	union {
+		void *union_buf;
+		unsigned short *unorm16_buf;
+		signed short *snorm16_buf;
+		unsigned char *unorm8_buf;
+		signed char *snorm8_buf;
+	};
+	int i;
+	float val;
+
+	vals = string_to_typed_array<float>(tokens);
+
+	// We use malloc() here because the custom resource may realloc() the
+	// buffer to the correct size when substantiating:
+	custom_resource->initial_data_size = bytes * vals.size();
+	custom_resource->initial_data = malloc(custom_resource->initial_data_size);
+	if (!custom_resource->initial_data) {
+		IniWarning("  ERROR allocating initial data\n");
+		return;
+	}
+
+	union_buf = custom_resource->initial_data;
+
+	for (i = 0; i < vals.size(); i++) {
+		val = vals[i];
+
+		if (isnan(val)) {
+			IniWarning("  WARNING: Special value unsupported as normalized integer: %f\n", val);
+			val = 0;
+		} else if (snorm) {
+			if (val < -1.0 || val > 1.0)
+				IniWarning("  WARNING: Value out of [-1, +1] range: %f\n", val);
+			val = max(min(val, 1.0f), -1.0f);
+		} else {
+			if (val < 0.0 || val > 1.0)
+				IniWarning("  WARNING: Value out of [0, +1] range: %f\n", val);
+			val = max(min(val, 1.0f), 0.0f);
+		}
+
+		if (bytes == 2) {
+			if (snorm)
+				snorm16_buf[i] = (signed short)(val * 0x7fff);
+			else
+				unorm16_buf[i] = (unsigned short)(val * 0xffff);
+		} else {
+			if (snorm)
+				snorm8_buf[i] = (signed char)(val * 0x7f);
+			else
+				unorm8_buf[i] = (unsigned char)(val * 0xff);
+		}
+	}
+}
+
+static void ParseResourceInitialData(CustomResource *custom_resource, const wchar_t *section)
+{
+	std::string setting, token;
+	int format_size = 0;
+	int format_type = 0;
+	DXGI_FORMAT format;
+
+	if (!GetIniStringAndLog(section, L"data", NULL, &setting))
+		return;
+
+	std::istringstream tokens(setting);
+
+	switch (custom_resource->override_type) {
+		case CustomResourceType::BUFFER:
+		case CustomResourceType::STRUCTURED_BUFFER:
+		case CustomResourceType::RAW_BUFFER:
+			break;
+		default:
+			IniWarning("  WARNING: initial data currently only supported on buffers\n");
+			// TODO: Support Textures as well (remember to fill out row/depth pitch)
+			return;
+	}
+
+	if (!custom_resource->filename.empty()) {
+		IniWarning("  WARNING: initial data and filename cannot be used together\n");
+		return;
+	}
+
+	// The format can be specified inline as the first entry in the data
+	// line, or separately as its own setting. Specifying it inline is
+	// mostly intended for structured buffers, where the resource doesn't
+	// have one format, but we might still want to specify initial data,
+	// and we will need a format for that. Later we might expand this to
+	// allow formats to be specified elsewhere in the data line to switch
+	// parsing formats on the fly for more complex structured buffers.
+	// e.g. data = R32_FLOAT 1 2 3 4
+	std::getline(tokens, token, ' ');
+	format = ParseFormatString(token.c_str(), false);
+	if (format == (DXGI_FORMAT)-1) {
+		format = custom_resource->override_format;
+		tokens.seekg(0);
+	}
+
+	switch (format) {
+	case DXGI_FORMAT_R32G32B32A32_FLOAT:
+	case DXGI_FORMAT_R32G32B32_FLOAT:
+	case DXGI_FORMAT_R32G32_FLOAT:
+	case DXGI_FORMAT_D32_FLOAT:
+	case DXGI_FORMAT_R32_FLOAT:
+		ConstructInitialData<float>(custom_resource, &tokens);
+		break;
+
+	case DXGI_FORMAT_R32G32B32A32_UINT:
+	case DXGI_FORMAT_R32G32B32_UINT:
+	case DXGI_FORMAT_R32G32_UINT:
+	case DXGI_FORMAT_R32_UINT:
+		ConstructInitialData<unsigned int>(custom_resource, &tokens);
+		break;
+
+	case DXGI_FORMAT_R32G32B32A32_SINT:
+	case DXGI_FORMAT_R32G32B32_SINT:
+	case DXGI_FORMAT_R32G32_SINT:
+	case DXGI_FORMAT_R32_SINT:
+		ConstructInitialData<signed int>(custom_resource, &tokens);
+		break;
+
+	// TODO: 16-bit floats:
+	// case DXGI_FORMAT_R16G16B16A16_FLOAT:
+	// case DXGI_FORMAT_R16G16_FLOAT:
+	// case DXGI_FORMAT_R16_FLOAT:
+	// 	break;
+
+	case DXGI_FORMAT_R16G16B16A16_UNORM:
+	case DXGI_FORMAT_R16G16_UNORM:
+	case DXGI_FORMAT_D16_UNORM:
+	case DXGI_FORMAT_R16_UNORM:
+		ConstructInitialDataNorm(custom_resource, &tokens, 2, false);
+		break;
+
+	case DXGI_FORMAT_R16G16B16A16_SNORM:
+	case DXGI_FORMAT_R16G16_SNORM:
+	case DXGI_FORMAT_R16_SNORM:
+		ConstructInitialDataNorm(custom_resource, &tokens, 2, true);
+		break;
+
+	case DXGI_FORMAT_R16G16B16A16_UINT:
+	case DXGI_FORMAT_R16G16_UINT:
+	case DXGI_FORMAT_R16_UINT:
+		ConstructInitialData<unsigned short>(custom_resource, &tokens);
+		break;
+
+	case DXGI_FORMAT_R16G16B16A16_SINT:
+	case DXGI_FORMAT_R16G16_SINT:
+	case DXGI_FORMAT_R16_SINT:
+		ConstructInitialData<signed short>(custom_resource, &tokens);
+		break;
+
+	case DXGI_FORMAT_R8G8B8A8_UNORM:
+	case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+	case DXGI_FORMAT_R8G8_UNORM:
+	case DXGI_FORMAT_R8_UNORM:
+	case DXGI_FORMAT_A8_UNORM:
+	case DXGI_FORMAT_R8G8_B8G8_UNORM:
+	case DXGI_FORMAT_G8R8_G8B8_UNORM:
+	case DXGI_FORMAT_B8G8R8A8_UNORM:
+	case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+	// TODO: Not positive if I want to auto-expand the unused field to 0,
+	// or parse it like the A8 versions. Putting off the decision:
+	//	case DXGI_FORMAT_B8G8R8X8_UNORM:
+	//	case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+		ConstructInitialDataNorm(custom_resource, &tokens, 1, false);
+		break;
+
+	case DXGI_FORMAT_R8G8B8A8_SNORM:
+	case DXGI_FORMAT_R8G8_SNORM:
+	case DXGI_FORMAT_R8_SNORM:
+		ConstructInitialDataNorm(custom_resource, &tokens, 1, true);
+		break;
+
+	case DXGI_FORMAT_R8G8B8A8_UINT:
+	case DXGI_FORMAT_R8G8_UINT:
+	case DXGI_FORMAT_R8_UINT:
+		ConstructInitialData<unsigned char>(custom_resource, &tokens);
+		break;
+
+	case DXGI_FORMAT_R8G8B8A8_SINT:
+	case DXGI_FORMAT_R8G8_SINT:
+	case DXGI_FORMAT_R8_SINT:
+		ConstructInitialData<signed char>(custom_resource, &tokens);
+		break;
+
+	// TODO: case DXGI_FORMAT_R1_UNORM:
+
+	default:
+		IniWarning("  WARNING: unsupported format for specifying initial data\n");
+		return;
+	}
+}
+
 static void ParseResourceSections()
 {
 	IniSections::iterator lower, upper, i;
@@ -849,7 +1131,7 @@ static void ParseResourceSections()
 		}
 
 		if (GetIniString(i->first.c_str(), L"format", 0, setting, MAX_PATH)) {
-			custom_resource->override_format = ParseFormatString(setting);
+			custom_resource->override_format = ParseFormatString(setting, true);
 			if (custom_resource->override_format == (DXGI_FORMAT)-1) {
 				IniWarning("  WARNING: Unknown format \"%S\"\n", setting);
 			} else {
@@ -874,6 +1156,8 @@ static void ParseResourceSections()
 			custom_resource->override_bind_flags = parse_enum_option_string<wchar_t *, CustomResourceBindFlags>
 				(CustomResourceBindFlagNames, setting, NULL);
 		}
+
+		ParseResourceInitialData(custom_resource, i->first.c_str());
 
 		// TODO: Overrides for misc flags, etc
 	}

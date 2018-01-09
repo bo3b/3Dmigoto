@@ -2168,7 +2168,9 @@ CustomResource::CustomResource() :
 	override_byte_width(-1),
 	override_stride(-1),
 	width_multiply(1.0f),
-	height_multiply(1.0f)
+	height_multiply(1.0f),
+	initial_data(NULL),
+	initial_data_size(0)
 {}
 
 CustomResource::~CustomResource()
@@ -2177,6 +2179,7 @@ CustomResource::~CustomResource()
 		resource->Release();
 	if (view)
 		view->Release();
+	free(initial_data);
 }
 
 bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE *orig_mode)
@@ -2344,23 +2347,44 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice, void **buf, D
 	D3D11_BUFFER_DESC desc;
 	HRESULT hr;
 
+	if (!buf) {
+		// If no file is passed in, we use the optional initial data to
+		// initialise the buffer. We do this even if no initial data
+		// has been specified, so that the buffer will be initialised
+		// with zeroes for safety.
+		buf = &initial_data;
+		size = (DWORD)initial_data_size;
+	}
+
 	memset(&desc, 0, sizeof(desc));
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = bind_flags;
+
+	// Allow the buffer size to be set from the file / initial data size,
+	// but it can be overridden if specified explicitly. If it's a
+	// structured buffer, we assume just a single structure by default, but
+	// again this can be overridden. The reason for doing this here, and
+	// not in OverrideBufferDesc, is that this only applies if we are
+	// substantiating the resource from scratch, not when copying a resource.
+	if (size) {
+		desc.ByteWidth = size;
+		if (override_type == CustomResourceType::STRUCTURED_BUFFER)
+			desc.StructureByteStride = size;
+	}
+
 	OverrideBufferDesc(&desc);
 
-	if (buf) {
-		// Fill in size from the file, allowing for an override to make
-		// it larger or smaller, which may involve reallocating the
-		// buffer from the caller.
-		if (desc.ByteWidth <= 0) {
-			desc.ByteWidth = size;
-		} else if (desc.ByteWidth > size) {
+	if (desc.ByteWidth > 0) {
+		// Fill in size from the file/initial data, allowing for an
+		// override to make it larger or smaller, which may involve
+		// reallocating the buffer from the caller.
+		if (desc.ByteWidth > size) {
 			void *new_buf = realloc(*buf, desc.ByteWidth);
 			if (!new_buf) {
 				LogInfo("Out of memory enlarging buffer: [%S]\n", name.c_str());
 				return;
 			}
+			memset((char*)new_buf + size, 0, desc.ByteWidth - size);
 			*buf = new_buf;
 		}
 

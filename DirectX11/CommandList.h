@@ -397,6 +397,9 @@ public:
 	float width_multiply;
 	float height_multiply;
 
+	void *initial_data;
+	size_t initial_data_size;
+
 	CustomResource();
 	~CustomResource();
 
