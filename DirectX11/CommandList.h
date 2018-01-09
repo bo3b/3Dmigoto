@@ -599,6 +599,17 @@ enum class ParamOverrideType {
 	CURSOR_HOTSPOT_X,
 	CURSOR_HOTSPOT_Y,
 	TIME,
+	RAW_SEPARATION, // These get the values as they are right now -
+	EYE_SEPARATION, // StereoParams is only updated at the start of each
+	CONVERGENCE,    // frame. Intended for use if the convergence may have
+			// been changed during the frame (e.g. if staged from
+			// the GPU and it is unknown whether the operation has
+			// completed). Comparing these immediately before and
+			// after present can be useful to determine if the user
+			// is currently adjusting them, which is used for the
+			// auto-convergence in Life is Strange: Before the
+			// Storm to convert user convergence adjustments into
+			// equivalent popout adjustments.
 	// TODO:
 	// DEPTH_ACTIVE
 	// etc.
@@ -623,6 +634,9 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"cursor_hotspot_x", ParamOverrideType::CURSOR_HOTSPOT_X},
 	{L"cursor_hotspot_y", ParamOverrideType::CURSOR_HOTSPOT_Y},
 	{L"time", ParamOverrideType::TIME},
+	{L"raw_separation", ParamOverrideType::RAW_SEPARATION},
+	{L"eye_separation", ParamOverrideType::EYE_SEPARATION},
+	{L"convergence", ParamOverrideType::CONVERGENCE},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
 class ParamOverride : public CommandListCommand {

@@ -1984,6 +1984,31 @@ void ParamOverride::run(CommandListState *state)
 		case ParamOverrideType::TIME:
 			*dest = (float)(GetTickCount() - G->ticks_at_launch) / 1000.0f;
 			break;
+		case ParamOverrideType::RAW_SEPARATION:
+			// We could use cached values of these (nvapi is known
+			// to become a bottleneck with too many calls / frame),
+			// but they need to be up to date, taking into account
+			// any changes made via the command list already this
+			// frame (this is used for snapshots and getting the
+			// current convergence regardless of whether an
+			// asynchronous transfer from the GPU has or has not
+			// completed) - StereoParams is currently unsuitable
+			// for this as it is only updated once / frame... We
+			// could change it so that StereoParams is always up to
+			// date - it would differ from the historical
+			// behaviour, but I doubt it would break anything.
+			// Otherwise we could have a separate cache. Whatever -
+			// this is rarely used, so let's just go with this for
+			// now and worry about optimisations only if it proves
+			// to be a bottleneck in practice:
+			NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, dest);
+			break;
+		case ParamOverrideType::CONVERGENCE:
+			NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, dest);
+			break;
+		case ParamOverrideType::EYE_SEPARATION:
+			NvAPI_Stereo_GetEyeSeparation(state->mHackerDevice->mStereoHandle, dest);
+			break;
 		default:
 			return;
 	}
