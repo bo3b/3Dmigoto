@@ -1,19 +1,13 @@
 // This file is compiled as a C file only, not C++
 // The reason to do this is because we can directly access the lpVtbl
-// pointers for DX9 functions, by using their normal C interface.
+// pointers for DX11 functions, by using their normal C interface.
 // 
 // For hooking purposes, we only actually need the exact address of any
 // given function.
 //
-//----------------------------------------------------------------------
-// Warning!  The C interface for DX9Ex is broken.  It is missing a
-// routine found in the subobject, and thus compiles wrong.  Use the
-// DX9 interface only. (Missing RegisterSoftwareDevice in IDirect3D9Ex)
-//----------------------------------------------------------------------
-//
-// This is a bit weird.  By setting the CINTERFACE before including d3d9.h, we get access
+// This is a bit weird.  By setting the CINTERFACE before including dxgi1_2.h, we get access
 // to the C style interface, which includes direct access to the vTable for the objects.
-// That makes it possible to just reference the lpVtbl->CreateDevice, instead of having
+// That makes it possible to just reference the lpVtbl->CreateSwapChain, instead of having
 // magic constants, and multiple casts to fetch the address of the CreateDevice routine.
 //
 // There is no other legal way to fetch these addresses, as described in the Detours
@@ -31,12 +25,16 @@
 #define D3D_DEBUG_INFO
 #endif
 
-#include <dxgi.h>
+#include <dxgi1_2.h>
 
 
-// Input object must be IDirect3D9.  If it is the subclass of IDirect3D9Ex, 
-// then it will fetch the wrong address, because the header file is wrong.
-// It is OK to pass in an IDirect3D9Ex, but any references here must be the subclass.
+LPVOID lpvtbl_QueryInterface(IDXGIFactory* pFactory)
+{
+	if (!pFactory)
+		return NULL;
+
+	return pFactory->lpVtbl->QueryInterface;
+}
 
 LPVOID lpvtbl_CreateSwapChain(IDXGIFactory* pFactory)
 {
@@ -46,12 +44,28 @@ LPVOID lpvtbl_CreateSwapChain(IDXGIFactory* pFactory)
 	return pFactory->lpVtbl->CreateSwapChain;
 }
 
+LPVOID lpvtbl_CreateSwapChainForHwnd(IDXGIFactory2* pFactory2)
+{
+	if (!pFactory2)
+		return NULL;
+
+	return pFactory2->lpVtbl->CreateSwapChainForHwnd;
+}
+
 LPVOID lpvtbl_Present(IDXGISwapChain* pSwapChain)
 {
 	if (!pSwapChain)
 		return NULL;
 
 	return pSwapChain->lpVtbl->Present;
+}
+
+LPVOID lpvtbl_Present1(IDXGISwapChain1* pSwapChain1)
+{
+	if (!pSwapChain1)
+		return NULL;
+
+	return pSwapChain1->lpVtbl->Present1;
 }
 
 
