@@ -459,7 +459,7 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	/* [annotation][out] */
 	_Out_  IDXGISwapChain1 **ppSwapChain)
 {
-	LogDebug("Hooked IDXGIFactory2::CreateSwapChainForHwnd(%p) called\n", This);
+	LogInfo("Hooked IDXGIFactory2::CreateSwapChainForHwnd(%p) called\n", This);
 	LogInfo("  Device = %p\n", pDevice);
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
 	LogInfo("  Description = %p\n", pDesc);
@@ -475,7 +475,7 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 			HookPresent1(*ppSwapChain);
 	}
 
-	LogInfo("->return value = %#x\n\n", hr);
+	LogInfo("->return result %#x, ppSwapChain = %p\n\n", hr, *ppSwapChain);
 	return hr;
 }
 
@@ -521,7 +521,7 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	/* [annotation][out] */
 	_Out_  IDXGISwapChain **ppSwapChain)
 {
-	LogDebug("Hooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
+	LogInfo("Hooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
 	LogInfo("  Device = %p\n", pDevice);
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
 	LogInfo("  Description = %p\n", pDesc);
@@ -532,7 +532,7 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	if (SUCCEEDED(hr) && !fnOrigPresent)
 		HookPresent(*ppSwapChain);
 
-	LogInfo("->return value = %#x\n\n", hr);
+	LogInfo("->return result %#x, ppSwapChain = %p\n\n", hr, *ppSwapChain);
 	return hr;
 }
 
@@ -565,7 +565,7 @@ HRESULT(__stdcall *fnOrigQueryInterface)(
 	/* [in] */ REFIID riid,
 	/* [annotation][iid_is][out] */
 	_COM_Outptr_  void **ppvObject)= nullptr;
-
+ 
 
 HRESULT __stdcall Hooked_QueryInterface(
 	IDXGIObject * This,
