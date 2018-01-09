@@ -778,7 +778,7 @@ bool PerDrawStereoOverrideCommand::update_val(CommandListState *state)
 	D3D11_MAPPED_SUBRESOURCE mapping;
 	HRESULT hr;
 	float tmp;
-	float ret = false;
+	bool ret = false;
 
 	if (!staging_type)
 		return true;
