@@ -598,6 +598,7 @@ enum class ParamOverrideType {
 	CURSOR_Y,
 	CURSOR_HOTSPOT_X,
 	CURSOR_HOTSPOT_Y,
+	TIME,
 	// TODO:
 	// DEPTH_ACTIVE
 	// etc.
@@ -621,6 +622,7 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"cursor_y", ParamOverrideType::CURSOR_Y},
 	{L"cursor_hotspot_x", ParamOverrideType::CURSOR_HOTSPOT_X},
 	{L"cursor_hotspot_y", ParamOverrideType::CURSOR_HOTSPOT_Y},
+	{L"time", ParamOverrideType::TIME},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
 class ParamOverride : public CommandListCommand {

@@ -1981,6 +1981,9 @@ void ParamOverride::run(CommandListState *state)
 			UpdateCursorInfoEx(state);
 			*dest = (float)state->cursor_info_ex.yHotspot;
 			break;
+		case ParamOverrideType::TIME:
+			*dest = (float)(GetTickCount() - G->ticks_at_launch) / 1000.0f;
+			break;
 		default:
 			return;
 	}

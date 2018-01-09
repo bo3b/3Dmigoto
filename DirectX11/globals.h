@@ -282,6 +282,7 @@ struct Globals
 	bool gReloadConfigPending;
 	bool gLogInput;
 	bool dump_all_profiles;
+	DWORD ticks_at_launch;
 
 	wchar_t SHADER_PATH[MAX_PATH];
 	wchar_t SHADER_CACHE_PATH[MAX_PATH];
@@ -553,6 +554,8 @@ struct Globals
 			iniParams[i].z = FLT_MAX;
 			iniParams[i].w = FLT_MAX;
 		}
+
+		ticks_at_launch = GetTickCount();
 	}
 };
 
