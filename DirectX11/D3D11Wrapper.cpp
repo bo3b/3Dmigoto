@@ -713,7 +713,7 @@ HRESULT WINAPI D3D11CreateDevice(
 		retDevice, retContext);
 
 #if _DEBUG_LAYER
-	ShowDebugInfo(origDevice);
+	ShowDebugInfo(retDevice);
 #endif
 
 	// We now want to always upconvert to ID3D11Device1 and ID3D11DeviceContext1,
@@ -874,7 +874,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		retDevice, retContext, retSwapChain);
 
 #if _DEBUG_LAYER
-	ShowDebugInfo(origDevice);
+	ShowDebugInfo(retDevice);
 #endif
 
 	// We now want to always upconvert to ID3D11Device1 and ID3D11DeviceContext1,

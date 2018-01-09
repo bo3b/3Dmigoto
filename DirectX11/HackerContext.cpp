@@ -87,7 +87,7 @@ void HackerContext::HookContext()
 	// interface which we use in place of mOrigContext1 to call the real
 	// original context, thereby side stepping the problem that calling the
 	// old mOrigContext1 would be hooked and call back into us endlessly:
-	mPassThroughContext1 = hook_context(mPassThroughContext1, this, G->enable_hooks);
+//	mPassThroughContext1 = hook_context(mPassThroughContext1, this, G->enable_hooks);
 
 	UpdateContextPointer();
 }

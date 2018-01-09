@@ -277,7 +277,7 @@ void HackerDevice::HookDevice()
 	// interface which we use in place of mOrigDevice1 to call the real
 	// original device, thereby side stepping the problem that calling the
 	// old mOrigDevice1 would be hooked and call back into us endlessly:
-	mOrigDevice1 = hook_device(mOrigDevice1, this);
+//	mOrigDevice1 = hook_device(mOrigDevice1, this);
 }
 
 
