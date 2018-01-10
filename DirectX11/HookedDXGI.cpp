@@ -12,7 +12,7 @@
 // IDXGISwapChain3	Win10			1.4
 // IDXGISwapChain4					1.5
 
-#include <d3d11.h>
+#include <d3d11_1.h>
 
 #include "HookedDXGI.h"
 
@@ -808,7 +808,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 //#include <dxgi.h>
 //#undef CINTERFACE
 //
-//#include <d3d11.h>
+//#include <d3d11_1.h>
 //
 //#include "log.h"
 //#include "DLLMainHook.h"

@@ -44,7 +44,7 @@
  *
  **/
 
-#include <D3D11.h>
+#include <d3d11_1.h>
 #include "nvapi.h"
 #include "log.h"
 

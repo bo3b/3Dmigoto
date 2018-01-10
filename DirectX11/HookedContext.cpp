@@ -34,7 +34,7 @@
 #define CINTERFACE
 #define D3D11_NO_HELPERS
 #define COBJMACROS
-#include <D3D11.h>
+#include <d3d11_1.h>
 #undef COBJMACROS
 #undef D3D11_NO_HELPERS
 #undef CINTERFACE
