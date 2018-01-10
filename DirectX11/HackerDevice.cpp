@@ -1231,7 +1231,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 			// If we are hooking we don't return the wrapped device
 			*ppvObject = this;
 		}
-		LogDebug("  return HackerDevice1(%s@%p) wrapper of %p\n", type_name(this), this, mRealOrigDevice1);
+		LogDebug("  return HackerDevice(%s@%p) wrapper of %p\n", type_name(this), this, mRealOrigDevice1);
 	}
 
 	LogDebug("  returns result = %x for %p\n", hr, *ppvObject);
@@ -2420,7 +2420,7 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext1(
 	/* [annotation] */
 	_Out_  ID3D11DeviceContext1 **ppImmediateContext)
 {
-	LogInfo("HackerDevice1::GetImmediateContext1(%s@%p) called with:%p\n",
+	LogInfo("HackerDevice::GetImmediateContext1(%s@%p) called with:%p\n",
 		type_name(this), this, ppImmediateContext);
 
 	if (ppImmediateContext == nullptr)
@@ -2437,7 +2437,7 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext1(
 	// we need to wrap the immediate context now:
 	if (mHackerContext == nullptr)
 	{
-		LogInfo("*** HackerContext1 missing at HackerDevice1::GetImmediateContext1\n");
+		LogInfo("*** HackerContext1 missing at HackerDevice::GetImmediateContext1\n");
 
 		mHackerContext = new HackerContext(mOrigDevice1, *ppImmediateContext);
 		mHackerContext->SetHackerDevice(this);
@@ -2445,7 +2445,7 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext1(
 	}
 	else if (mHackerContext->GetOrigContext1() != *ppImmediateContext)
 	{
-		LogInfo("WARNING: mHackerContext %p found to be wrapping %p instead of %p at HackerDevice1::GetImmediateContext1!\n",
+		LogInfo("WARNING: mHackerContext %p found to be wrapping %p instead of %p at HackerDevice::GetImmediateContext1!\n",
 			mHackerContext, mHackerContext->GetOrigContext1(), *ppImmediateContext);
 	}
 
@@ -2462,7 +2462,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext1(
 	/* [annotation] */
 	_Out_opt_  ID3D11DeviceContext1 **ppDeferredContext)
 {
-	LogInfo("HackerDevice1::CreateDeferredContext1(%s@%p) called with flags = %x\n", type_name(this), this, ContextFlags);
+	LogInfo("HackerDevice::CreateDeferredContext1(%s@%p) called with flags = %x\n", type_name(this), this, ContextFlags);
 	HRESULT hr = mOrigDevice1->CreateDeferredContext1(ContextFlags, ppDeferredContext);
 	LogDebug("  returns result = %x\n", hr);
 	return hr;
