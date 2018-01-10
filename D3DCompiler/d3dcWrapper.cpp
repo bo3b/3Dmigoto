@@ -1,4 +1,4 @@
-#include <d3d11.h>
+#include <d3d11_1.h>
 #include <D3D11ShaderTracing.h>
 #include <Shlobj.h>
 #include <algorithm>
