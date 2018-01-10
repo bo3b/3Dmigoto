@@ -5,6 +5,12 @@
 // IDXGIFactory3	Win8.1			1.3
 // IDXGIFactory4					1.4
 // IDXGIFactory5					1.5
+//
+// IDXGISwapChain	Win7			1.0				11.0
+// IDXGISwapChain1	Platform update	1.2				11.1
+// IDXGISwapChain2	Win8.1			1.3
+// IDXGISwapChain3	Win10			1.4
+// IDXGISwapChain4					1.5
 
 #include <d3d11_1.h>
 
@@ -276,6 +282,7 @@ static void RunFrameActions(HackerDevice *mHackerDevice, HackerContext *mHackerC
 	}
 }
 
+// -----------------------------------------------------------------------------
 // This serves a dual purpose of defining the interface routine as required by
 // DXGI, and also is the storage for the original call, returned by cHookMgr.Hook.
 
@@ -325,24 +332,69 @@ HRESULT __stdcall Hooked_Present(
 }
 
 
+// Present1 for IDXGIFactory2 created CreateSwapChainforHwnd, swap chains.
+
+HRESULT(__stdcall *fnOrigPresent1)(
+	IDXGISwapChain1 * This,
+	/* [in] */ UINT SyncInterval,
+	/* [in] */ UINT PresentFlags,
+	/* [annotation][in] */
+	_In_  const DXGI_PRESENT_PARAMETERS *pPresentParameters) = nullptr;
+
+
+HRESULT __stdcall Hooked_Present1(
+	IDXGISwapChain1 * This,
+	/* [in] */ UINT SyncInterval,
+	/* [in] */ UINT PresentFlags,
+	/* [annotation][in] */
+	_In_  const DXGI_PRESENT_PARAMETERS *pPresentParameters)
+{
+	LogDebug("Hooked DXGISwapChain1::Present1(%p) called\n", This);
+	LogDebug("  SyncInterval = %d\n", SyncInterval);
+	LogDebug("  Flags = %d\n", PresentFlags);
+
+	// For late binding, if mOverlay is null then we need to create it.
+	// Since we are hooking DXGISwapChain, there is no object to attach to.
+	if (G->gOverlay == nullptr)
+		G->gOverlay = new Overlay(G->gHackerDevice, G->gHackerContext, This);
+	if (G->gSwapChain == nullptr)
+		G->gSwapChain = This;
+
+	if (!(PresentFlags & DXGI_PRESENT_TEST)) {
+		// Every presented frame, we want to take some CPU time to run our actions,
+		// which enables hunting, and snapshots, and aiming overrides and other inputs
+		RunFrameActions(G->gHackerDevice, G->gHackerContext, G->gOverlay);
+	}
+
+	HRESULT hr = fnOrigPresent(This, SyncInterval, PresentFlags);
+
+	if (!(PresentFlags & DXGI_PRESENT_TEST)) {
+		// Update the stereo params texture just after the present so that we
+		// get the new values for the current frame:
+		UpdateStereoParams(G->gHackerDevice, G->gHackerContext);
+
+		// Run the post present command list now, which can be used to restore
+		// state changed in the pre-present command list, or to perform some
+		// action at the start of a frame:
+		RunCommandList(G->gHackerDevice, G->gHackerContext, &G->post_present_command_list, NULL, true);
+	}
+
+	LogDebug("  returns %x\n", hr);
+	return hr;
+}
+
+
 // -----------------------------------------------------------------------------
 // Hook the current game's Present call.
 // 
-// This takes a bunch of junk setup to get there, but we want to create a
-// SwapChain, so that we can access its Present call.  To do that, we also
-// need a Device, so we'll use CreateDeviceAndSwapChain, because at this 
-// moment we have no idea what the Device would be, or whether there 
-// actually is one.  We'll just make one and dispose if it when done.
-// In order to CreateDeviceAndSwapChain, we also need a Window to pass
-// to the SwapChain description. We'll make that and dispose of it when done too.
+// This takes multiple steps to get there, but when CreateSwapChain
+// is called, we want to use that swapchain to find the Present call
+// so we can hook it. That Present call drives all our UI.
 
 void HookPresent(IDXGISwapChain* swapChain)
 {
 	LogInfo("*** CreateSwapChain creating hook for Present. \n");
 
-	// Now with all that jazz out of the way, we have the swapChain, and can use it
-	// to find the address of the Present call. Let's hook that call, because we need
-	// it to drive our Overlay, Hunting, and override functions.
 	SIZE_T hook_id;
 	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigPresent,
 		lpvtbl_Present(swapChain), Hooked_Present, 0);
@@ -353,6 +405,99 @@ void HookPresent(IDXGISwapChain* swapChain)
 		LogInfo("  *** Failed install IDXGISwapChain->Present hook.\n");
 }
 
+// Present1 call is slightly different, and needs to be hooked for
+// the platform_update variant of CreateSwapChainForHwnd.
+
+void HookPresent1(IDXGISwapChain1* swapChain1)
+{
+	LogInfo("*** CreateSwapChain creating hook for Present1. \n");
+
+	SIZE_T hook_id;
+	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigPresent1,
+		lpvtbl_Present1(swapChain1), Hooked_Present1, 0);
+
+	if (dwOsErr == ERROR_SUCCESS)
+		LogInfo("  Successfully installed IDXGISwapChain->Present hook.\n");
+	else
+		LogInfo("  *** Failed install IDXGISwapChain->Present hook.\n");
+}
+
+
+// -----------------------------------------------------------------------------
+// Actual hook for any IDXGICreateSwapChainForHwnd calls the game makes.
+// This can only be called with Win7+platform_update or greater, using
+// the IDXGIFactory2.
+
+HRESULT(__stdcall *fnOrigCreateSwapChainForHwnd)(
+	IDXGIFactory2 * This,
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][in] */
+	_In_  HWND hWnd,
+	/* [annotation][in] */
+	_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
+	/* [annotation][in] */
+	_In_opt_  const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
+	/* [annotation][in] */
+	_In_opt_  IDXGIOutput *pRestrictToOutput,
+	/* [annotation][out] */
+	_Out_  IDXGISwapChain1 **ppSwapChain) = nullptr;
+
+
+HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
+	IDXGIFactory2 * This,
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][in] */
+	_In_  HWND hWnd,
+	/* [annotation][in] */
+	_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
+	/* [annotation][in] */
+	_In_opt_  const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
+	/* [annotation][in] */
+	_In_opt_  IDXGIOutput *pRestrictToOutput,
+	/* [annotation][out] */
+	_Out_  IDXGISwapChain1 **ppSwapChain)
+{
+	LogInfo("Hooked IDXGIFactory2::CreateSwapChainForHwnd(%p) called\n", This);
+	LogInfo("  Device = %p\n", pDevice);
+	LogInfo("  SwapChain = %p\n", ppSwapChain);
+	LogInfo("  Description = %p\n", pDesc);
+
+//	ForceDisplayParams(pDesc);
+
+	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
+	if (SUCCEEDED(hr))
+	{
+		if (!fnOrigPresent)
+			HookPresent(*ppSwapChain);
+		if (!fnOrigPresent1)
+			HookPresent1(*ppSwapChain);
+	}
+
+	LogInfo("->return result %#x, ppSwapChain = %p\n\n", hr, *ppSwapChain);
+	return hr;
+}
+
+// -----------------------------------------------------------------------------
+// This hook should work in all variants, including the CreateSwapChain1
+// and CreateSwapChainForHwnd
+
+void HookCreateSwapChainForHwnd(void* factory2)
+{
+	LogInfo("*** IDXGIFactory2 creating hook for CreateSwapChainForHwnd. \n");
+
+	IDXGIFactory2* dxgiFactory = static_cast<IDXGIFactory2*>(factory2);
+
+	SIZE_T hook_id;
+	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigCreateSwapChainForHwnd,
+		lpvtbl_CreateSwapChainForHwnd(dxgiFactory), Hooked_CreateSwapChainForHwnd, 0);
+
+	if (dwOsErr == ERROR_SUCCESS)
+		LogInfo("  Successfully installed IDXGIFactory2->CreateSwapChainForHwnd hook.\n");
+	else
+		LogInfo("  *** Failed install IDXGIFactory2->CreateSwapChainForHwnd hook.\n");
+}
 
 // -----------------------------------------------------------------------------
 // Actual hook for any IDXGICreateSwapChain calls the game makes.
@@ -376,7 +521,7 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	/* [annotation][out] */
 	_Out_  IDXGISwapChain **ppSwapChain)
 {
-	LogDebug("Hooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
+	LogInfo("Hooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
 	LogInfo("  Device = %p\n", pDevice);
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
 	LogInfo("  Description = %p\n", pDesc);
@@ -387,7 +532,7 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	if (SUCCEEDED(hr) && !fnOrigPresent)
 		HookPresent(*ppSwapChain);
 
-	LogInfo("->return value = %#x\n\n", hr);
+	LogInfo("->return result %#x, ppSwapChain = %p\n\n", hr, *ppSwapChain);
 	return hr;
 }
 
@@ -409,6 +554,68 @@ void HookCreateSwapChain(void* factory)
 		LogInfo("  Successfully installed IDXGIFactory->CreateSwapChain hook.\n");
 	else
 		LogInfo("  *** Failed install IDXGIFactory->CreateSwapChain hook.\n");
+}
+
+
+// -----------------------------------------------------------------------------
+// Actual hook for any Factory->QueryInterface calls the game makes.
+
+HRESULT(__stdcall *fnOrigQueryInterface)(
+	IDXGIObject * This,
+	/* [in] */ REFIID riid,
+	/* [annotation][iid_is][out] */
+	_COM_Outptr_  void **ppvObject)= nullptr;
+ 
+
+HRESULT __stdcall Hooked_QueryInterface(
+	IDXGIObject * This,
+	/* [in] */ REFIID riid,
+	/* [annotation][iid_is][out] */
+	_COM_Outptr_  void **ppvObject)
+{
+	LogInfo("DXGIFactory::QueryInterface(%p) called with IID: %s\n", This, NameFromIID(riid).c_str());
+
+	HRESULT	hr = fnOrigQueryInterface(This, riid, ppvObject);
+
+	if (SUCCEEDED(hr) && ppvObject)
+	{
+		if (riid == __uuidof(IDXGIFactory2))
+		{
+			// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
+			// Unless we are overriding default behavior from ini file.
+			if (!G->enable_platform_update)
+			{
+				LogInfo("***  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
+				*ppvObject = NULL;
+				return E_NOINTERFACE;
+			}
+
+			if (!fnOrigCreateSwapChainForHwnd)
+				HookCreateSwapChainForHwnd(*ppvObject);
+		}
+	}
+
+	LogInfo("  returns result = %x for %p\n", hr, ppvObject);
+	return hr;
+}
+
+// -----------------------------------------------------------------------------
+// QueryInterface can be used to upcast to an IDXGIFactory2, so we need to hook it.
+
+void HookQueryInterface(void* factory)
+{
+	LogInfo("*** IDXGIFactory creating hook for QueryInterface. \n");
+
+	IDXGIFactory* dxgiFactory = static_cast<IDXGIFactory*>(factory);
+
+	SIZE_T hook_id;
+	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigQueryInterface,
+		lpvtbl_CreateSwapChain(dxgiFactory), Hooked_QueryInterface, 0);
+
+	if (dwOsErr == ERROR_SUCCESS)
+		LogInfo("  Successfully installed IDXGIFactory->QueryInterface hook.\n");
+	else
+		LogInfo("  *** Failed install IDXGIFactory->QueryInterface hook.\n");
 }
 
 
@@ -438,11 +645,42 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 	// up our d3d11.dll and the .ini file.
 	InitD311();
 
-	// For hooking only, no wrapping, we want to just create a swap chain, then hook
-	// the Present call.  We need to return their factory regardless.
+	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
+	if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
+	{
+		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
+		*ppFactory = NULL;
+		return E_NOINTERFACE;
+	}
+	
 	HRESULT hr = fnOrigCreateDXGIFactory(riid, ppFactory);
-	if (SUCCEEDED(hr) && !fnOrigCreateSwapChain)
+	if (FAILED(hr))
+	{
+		LogInfo("->failed with HRESULT=%x\n", hr);
+		return hr;
+	}
+
+	if (!fnOrigQueryInterface)
+		HookQueryInterface(*ppFactory);
+
+	if (!fnOrigCreateSwapChain)
 		HookCreateSwapChain(*ppFactory);
+
+	// With the addition of the platform_update, we need to allow for specifically
+	// creating a DXGIFactory2 instead of DXGIFactory1.  We want to always upcast
+	// the highest supported object for each scenario, to properly suppport
+	// QueryInterface and GetParent upcasts.
+
+	IDXGIFactory2* dxgiFactory = static_cast<IDXGIFactory2*>(*ppFactory);
+	HRESULT res = dxgiFactory->QueryInterface(IID_PPV_ARGS(&dxgiFactory));
+	if (SUCCEEDED(res))
+	{
+		*ppFactory = (void*)dxgiFactory;
+		LogInfo("  Upcast QueryInterface(IDXGIFactory2) returned result = %x, factory = %p\n", res, dxgiFactory);
+
+		if (!fnOrigCreateSwapChainForHwnd)
+			HookCreateSwapChainForHwnd(*ppFactory);
+	}
 
 	LogInfo("  CreateDXGIFactory returned factory = %p, result = %x\n", *ppFactory, hr);
 	return hr;
@@ -491,20 +729,34 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 
 	// Call original factory, regardless of what they requested, to keep the
 	// same expected sequence from their perspective.  (Which includes refcounts)
+	HRESULT hr = fnOrigCreateDXGIFactory1(riid, ppFactory1);
+	if (FAILED(hr))
+	{
+		LogInfo("->failed with HRESULT=%x\n", hr);
+		return hr;
+	}
+
+	if (!fnOrigQueryInterface)
+		HookQueryInterface(*ppFactory1);
+
+	if (!fnOrigCreateSwapChain)
+		HookCreateSwapChain(*ppFactory1);
 
 	// With the addition of the platform_update, we need to allow for specifically
 	// creating a DXGIFactory2 instead of DXGIFactory1.  We want to always upcast
 	// the highest supported object for each scenario, to properly suppport
 	// QueryInterface and GetParent upcasts.
 
-	// Minimal Factory supported for base Win7 is IDXGIFactory1, so let's always
-	// return at least that.
+	IDXGIFactory2* dxgiFactory = static_cast<IDXGIFactory2*>(*ppFactory1);
+	HRESULT res = dxgiFactory->QueryInterface(IID_PPV_ARGS(&dxgiFactory));
+	if (SUCCEEDED(res))
+	{
+		*ppFactory1 = (void*)dxgiFactory;
+		LogInfo("  Upcast QueryInterface(IDXGIFactory2) returned result = %x, factory = %p\n", res, dxgiFactory);
 
-	// For hooking only, no wrapping, we want to just create a swap chain, then hook
-	// the Present call.  We need to return their factory regardless.
-	HRESULT hr = fnOrigCreateDXGIFactory1(riid, ppFactory1);
-	if (SUCCEEDED(hr) && !fnOrigCreateSwapChain)
-		HookCreateSwapChain(*ppFactory1);
+		if (!fnOrigCreateSwapChainForHwnd)
+			HookCreateSwapChainForHwnd(*ppFactory1);
+	}
 
 	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x\n", *ppFactory1, hr);
 	return hr;

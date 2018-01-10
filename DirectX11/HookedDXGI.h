@@ -1,7 +1,7 @@
 #pragma once
 
 #include <d3d11_1.h>
-#include <dxgi.h>
+#include <dxgi1_2.h>
 
 // -----------------------------------------------------------------------------
 // This class is 'Hooked', instead of 'Hacker', because it's a hook version, instead
@@ -37,7 +37,13 @@ extern "C" HRESULT(__stdcall *fnOrigCreateDXGIFactory1)(
 extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1);
 
 
+extern "C" LPVOID lpvtbl_QueryInterface(IDXGIFactory* pFactory);
+
 extern "C" LPVOID lpvtbl_CreateSwapChain(IDXGIFactory* pFactory);
 
 extern "C" LPVOID lpvtbl_Present(IDXGISwapChain* pSwapChain);
+
+extern "C" LPVOID lpvtbl_CreateSwapChainForHwnd(IDXGIFactory2* pFactory2);
+
+extern "C" LPVOID lpvtbl_Present1(IDXGISwapChain1* pSwapChain1);
 
