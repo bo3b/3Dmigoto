@@ -463,10 +463,13 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	LogInfo("  Device = %p\n", pDevice);
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
 	LogInfo("  Description = %p\n", pDesc);
+	LogInfo("  FullScreenDescription = %p\n", pFullscreenDesc);
 
 //	ForceDisplayParams(pDesc);
+	DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullScreen = { 0 };
+	fullScreen.Windowed = false;
 
-	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
+	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, &fullScreen, pRestrictToOutput, ppSwapChain);
 	if (SUCCEEDED(hr))
 	{
 		if (!fnOrigPresent)
