@@ -81,6 +81,10 @@ struct OriginalShaderInfo
 	std::wstring infoText;
 };
 
+// Call this after any CreateXXXShader call to ensure that all references to
+// the handle have been removed in the event that it has been reused:
+void CleanupShaderMaps(ID3D11DeviceChild *handle);
+
 // Key is the overridden shader that was given back to the game at CreateVertexShader (vs or ps)
 typedef std::unordered_map<ID3D11DeviceChild *, OriginalShaderInfo> ShaderReloadMap;
 

@@ -181,6 +181,7 @@ void HackerDevice::CreatePinkHuntingResources()
 		if (SUCCEEDED(hr))
 		{
 			hr = mOrigDevice->CreatePixelShader((DWORD*)blob->GetBufferPointer(), blob->GetBufferSize(), NULL, &G->mPinkingShader);
+			CleanupShaderMaps(G->mPinkingShader);
 			if (FAILED(hr))
 				LogInfo("  Failed to create pinking pixel shader: %d\n", hr);
 			blob->Release();
@@ -1229,15 +1230,17 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					pCompiledOutput->Release(); pCompiledOutput = 0;
 					if (!wcscmp(shaderType, L"vs"))
 					{
-						ID3D11VertexShader *zeroVertexShader;
+						ID3D11VertexShader *zeroVertexShader = NULL;
 						HRESULT hr = mOrigDevice->CreateVertexShader(code, codeSize, 0, &zeroVertexShader);
+						CleanupShaderMaps(zeroVertexShader);
 						if (hr == S_OK)
 							*zeroShader = zeroVertexShader;
 					}
 					else if (!wcscmp(shaderType, L"ps"))
 					{
-						ID3D11PixelShader *zeroPixelShader;
+						ID3D11PixelShader *zeroPixelShader = NULL;
 						HRESULT hr = mOrigDevice->CreatePixelShader(code, codeSize, 0, &zeroPixelShader);
+						CleanupShaderMaps(zeroPixelShader);
 						if (hr == S_OK)
 							*zeroShader = zeroPixelShader;
 					}
@@ -1286,6 +1289,72 @@ bool HackerDevice::NeedOriginalShader(UINT64 hash)
 	return false;
 }
 
+// This function ensures that a shader handle is expunged from all our shader
+// maps. Ideally we would call this when the shader is released, but since we
+// don't wrap or hook that call we can't do that. Instead, we call it just
+// after any CreateXXXShader call - at that time we know the handle was
+// previously invalid and is now valid, but we haven't used it yet.
+//
+// This is a big hammer, and we could probably cut this down, but I want to
+// make very certain that we don't have any other unusual sequences that could
+// lead to us using stale entries (e.g. suppose an application called
+// XXGetShader() and retrieved a shader 3DMigoto had set, then later called
+// XXSetShader() - we would look up that handle, and if that handle had been
+// reused we might end up trying to replace it). This fixes an issue where we
+// could sometimes mistakingly revert one shader to an unrelated shader on F10:
+//
+//   https://github.com/bo3b/3Dmigoto/issues/86
+//
+void CleanupShaderMaps(ID3D11DeviceChild *handle)
+{
+	if (!handle)
+		return;
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	{
+		ShaderMap::iterator i = G->mShaders.find(handle);
+		if (i != G->mShaders.end()) {
+			LogInfo("Shader handle %p reused, previous hash was: %016llx\n", handle, i->second);
+			G->mShaders.erase(i);
+		}
+	}
+
+	{
+		ShaderReloadMap::iterator i = G->mReloadedShaders.find(handle);
+		if (i != G->mReloadedShaders.end()) {
+			LogInfo("Shader handle %p reused, found in mReloadedShaders\n", handle);
+			if (i->second.replacement)
+				i->second.replacement->Release();
+			if (i->second.byteCode)
+				i->second.byteCode->Release();
+			if (i->second.linkage)
+				i->second.linkage->Release();
+			G->mReloadedShaders.erase(i);
+		}
+	}
+
+	{
+		ShaderReplacementMap::iterator i = G->mOriginalShaders.find(handle);
+		if (i != G->mOriginalShaders.end()) {
+			LogInfo("Shader handle %p reused, releasing previous original shader\n", handle);
+			i->second->Release();
+			G->mOriginalShaders.erase(i);
+		}
+	}
+
+	{
+		ShaderReplacementMap::iterator i = G->mZeroShaders.find(handle);
+		if (i != G->mZeroShaders.end()) {
+			LogInfo("Shader handle %p reused, releasing previous zero shader\n", handle);
+			i->second->Release();
+			G->mZeroShaders.erase(i);
+		}
+	}
+
+	LeaveCriticalSection(&G->mCriticalSection);
+}
+
 // Keep the original shader around if it may be needed by a filter in a
 // [ShaderOverride] section, or if hunting is enabled and either the
 // marking_mode=original, or reload_config support is enabled
@@ -1302,7 +1371,7 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType,
 		SIZE_T BytecodeLength,
 		ID3D11ClassLinkage *pClassLinkage)
 {
-	ID3D11Shader *originalShader;
+	ID3D11Shader *originalShader = NULL;
 	HRESULT hr;
 
 	if (!NeedOriginalShader(hash))
@@ -1313,6 +1382,7 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType,
 	EnterCriticalSection(&G->mCriticalSection);
 
 		hr = (mOrigDevice->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+		CleanupShaderMaps(originalShader);
 		if (SUCCEEDED(hr))
 			G->mOriginalShaders[pShader] = originalShader;
 
@@ -2088,6 +2158,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 
 			*ppShader = NULL; // Appease the static analysis gods
 			hr = (mOrigDevice->*OrigCreateShader)(replaceShader, replaceShaderSize, pClassLinkage, ppShader);
+			CleanupShaderMaps(*ppShader);
 			if (SUCCEEDED(hr))
 			{
 				LogInfo("    shader successfully replaced.\n");
@@ -2138,6 +2209,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		if (ppShader)
 			*ppShader = NULL; // Appease the static analysis gods
 		hr = (mOrigDevice->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
+		CleanupShaderMaps(*ppShader);
 
 		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
 		// have a copy for every shader seen. If we are performing any sort of deferred shader replacement, such as pipline

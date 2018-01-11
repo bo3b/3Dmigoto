@@ -762,36 +762,43 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			G->mReloadedShaders[oldShader].timeStamp = timeStamp;
 			G->mReloadedShaders[oldShader].infoText = headerLine;
 
+			replacement = NULL;
 			// This needs to call the real CreateVertexShader, not our wrapped version
 			if (shaderType.compare(L"vs") == 0)
 			{
 				hr = device->GetOrigDevice()->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(ID3D11VertexShader**)&replacement);
+				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"ps") == 0)
 			{
 				hr = device->GetOrigDevice()->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(ID3D11PixelShader**)&replacement);
+				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"cs") == 0)
 			{
 				hr = device->GetOrigDevice()->CreateComputeShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11ComputeShader**)&replacement);
+				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"gs") == 0)
 			{
 				hr = device->GetOrigDevice()->CreateGeometryShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11GeometryShader**)&replacement);
+				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"hs") == 0)
 			{
 				hr = device->GetOrigDevice()->CreateHullShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11HullShader**)&replacement);
+				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"ds") == 0)
 			{
 				hr = device->GetOrigDevice()->CreateDomainShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11DomainShader**)&replacement);
+				CleanupShaderMaps(replacement);
 			}
 			if (FAILED(hr))
 				goto err;

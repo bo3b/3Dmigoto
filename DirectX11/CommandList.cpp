@@ -1080,31 +1080,37 @@ void CustomShader::substantiate(ID3D11Device *mOrigDevice)
 
 	if (vs_bytecode) {
 		mOrigDevice->CreateVertexShader(vs_bytecode->GetBufferPointer(), vs_bytecode->GetBufferSize(), NULL, &vs);
+		CleanupShaderMaps(vs);
 		vs_bytecode->Release();
 		vs_bytecode = NULL;
 	}
 	if (hs_bytecode) {
 		mOrigDevice->CreateHullShader(hs_bytecode->GetBufferPointer(), hs_bytecode->GetBufferSize(), NULL, &hs);
+		CleanupShaderMaps(hs);
 		hs_bytecode->Release();
 		hs_bytecode = NULL;
 	}
 	if (ds_bytecode) {
 		mOrigDevice->CreateDomainShader(ds_bytecode->GetBufferPointer(), ds_bytecode->GetBufferSize(), NULL, &ds);
+		CleanupShaderMaps(ds);
 		ds_bytecode->Release();
 		ds_bytecode = NULL;
 	}
 	if (gs_bytecode) {
 		mOrigDevice->CreateGeometryShader(gs_bytecode->GetBufferPointer(), gs_bytecode->GetBufferSize(), NULL, &gs);
+		CleanupShaderMaps(gs);
 		gs_bytecode->Release();
 		gs_bytecode = NULL;
 	}
 	if (ps_bytecode) {
 		mOrigDevice->CreatePixelShader(ps_bytecode->GetBufferPointer(), ps_bytecode->GetBufferSize(), NULL, &ps);
+		CleanupShaderMaps(ps);
 		ps_bytecode->Release();
 		ps_bytecode = NULL;
 	}
 	if (cs_bytecode) {
 		mOrigDevice->CreateComputeShader(cs_bytecode->GetBufferPointer(), cs_bytecode->GetBufferSize(), NULL, &cs);
+		CleanupShaderMaps(cs);
 		cs_bytecode->Release();
 		cs_bytecode = NULL;
 	}
