@@ -528,6 +528,12 @@ static void RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring 
 {
 	LogInfo("    shader registered for possible reloading: %016llx_%ls as %s - %ls\n", hash, shaderType.c_str(), shaderModel.c_str(), text.c_str());
 
+	// Pretty sure we had a bug before since we would save a pointer to the
+	// class linkage object without bumping its refcount, but I don't know
+	// of any game that uses this to test it.
+	if (pClassLinkage)
+		pClassLinkage->AddRef();
+
 	G->mReloadedShaders[ppShader].hash = hash;
 	G->mReloadedShaders[ppShader].shaderType = shaderType;
 	G->mReloadedShaders[ppShader].shaderModel = shaderModel;
