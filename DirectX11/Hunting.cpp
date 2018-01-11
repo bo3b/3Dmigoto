@@ -923,45 +923,10 @@ static void RevertMissingShaders()
 		if (i->second.found)
 			continue;
 
-		if (i->second.shaderType.compare(L"vs") == 0) {
-			VertexShaderReplacementMap::iterator j = G->mOriginalVertexShaders.find((ID3D11VertexShader*)i->first);
-			if (j == G->mOriginalVertexShaders.end())
-				continue;
-			replacement = j->second;
-		}
-		else if (i->second.shaderType.compare(L"ps") == 0) {
-			PixelShaderReplacementMap::iterator j = G->mOriginalPixelShaders.find((ID3D11PixelShader*)i->first);
-			if (j == G->mOriginalPixelShaders.end())
-				continue;
-			replacement = j->second;
-		}
-		else if (i->second.shaderType.compare(L"cs") == 0) {
-			ComputeShaderReplacementMap::iterator j = G->mOriginalComputeShaders.find((ID3D11ComputeShader*)i->first);
-			if (j == G->mOriginalComputeShaders.end())
-				continue;
-			replacement = j->second;
-		}
-		else if (i->second.shaderType.compare(L"gs") == 0) {
-			GeometryShaderReplacementMap::iterator j = G->mOriginalGeometryShaders.find((ID3D11GeometryShader*)i->first);
-			if (j == G->mOriginalGeometryShaders.end())
-				continue;
-			replacement = j->second;
-		}
-		else if (i->second.shaderType.compare(L"hs") == 0) {
-			HullShaderReplacementMap::iterator j = G->mOriginalHullShaders.find((ID3D11HullShader*)i->first);
-			if (j == G->mOriginalHullShaders.end())
-				continue;
-			replacement = j->second;
-		}
-		else if (i->second.shaderType.compare(L"ds") == 0) {
-			DomainShaderReplacementMap::iterator j = G->mOriginalDomainShaders.find((ID3D11DomainShader*)i->first);
-			if (j == G->mOriginalDomainShaders.end())
-				continue;
-			replacement = j->second;
-		}
-		else {
+		ShaderReplacementMap::iterator j = G->mOriginalShaders.find(i->first);
+		if (j == G->mOriginalShaders.end())
 			continue;
-		}
+		replacement = j->second;
 
 		if ((i->second.replacement == NULL && i->first == replacement)
 			|| replacement == i->second.replacement) {

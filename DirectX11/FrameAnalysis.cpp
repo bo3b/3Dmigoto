@@ -109,8 +109,7 @@ static void FrameAnalysisLogSlot(FILE *frame_analysis_log, int slot, char *slot_
 }
 
 template <class ID3D11Shader>
-void FrameAnalysisContext::FrameAnalysisLogShaderHash(ID3D11Shader *shader,
-		std::unordered_map<ID3D11Shader*, UINT64> *registered)
+void FrameAnalysisContext::FrameAnalysisLogShaderHash(ID3D11Shader *shader)
 {
 	UINT64 hash;
 
@@ -128,7 +127,7 @@ void FrameAnalysisContext::FrameAnalysisLogShaderHash(ID3D11Shader *shader,
 	EnterCriticalSection(&G->mCriticalSection);
 
 	try {
-		hash = registered->at(shader);
+		hash = G->mShaders.at(shader);
 		if (hash)
 			fprintf(frame_analysis_log, " hash=%016llx", hash);
 	} catch (std::out_of_range) {
@@ -1683,7 +1682,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::GSSetShader(THIS_
 
 	FrameAnalysisLogNoNL("GSSetShader(pShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
 			pShader, ppClassInstances, NumClassInstances);
-	FrameAnalysisLogShaderHash<ID3D11GeometryShader>(pShader, &G->mGeometryShaders);
+	FrameAnalysisLogShaderHash<ID3D11GeometryShader>(pShader);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::IASetPrimitiveTopology(THIS_
@@ -2125,7 +2124,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::HSSetShader(THIS_
 
 	FrameAnalysisLogNoNL("HSSetShader(pHullShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
 			pHullShader, ppClassInstances, NumClassInstances);
-	FrameAnalysisLogShaderHash<ID3D11HullShader>(pHullShader, &G->mHullShaders);
+	FrameAnalysisLogShaderHash<ID3D11HullShader>(pHullShader);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::HSSetSamplers(THIS_
@@ -2184,7 +2183,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DSSetShader(THIS_
 
 	FrameAnalysisLogNoNL("DSSetShader(pDomainShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
 			pDomainShader, ppClassInstances, NumClassInstances);
-	FrameAnalysisLogShaderHash<ID3D11DomainShader>(pDomainShader, &G->mDomainShaders);
+	FrameAnalysisLogShaderHash<ID3D11DomainShader>(pDomainShader);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DSSetSamplers(THIS_
@@ -2260,7 +2259,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::CSSetShader(THIS_
 
 	FrameAnalysisLogNoNL("CSSetShader(pComputeShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
 			pComputeShader, ppClassInstances, NumClassInstances);
-	FrameAnalysisLogShaderHash<ID3D11ComputeShader>(pComputeShader, &G->mComputeShaders);
+	FrameAnalysisLogShaderHash<ID3D11ComputeShader>(pComputeShader);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::CSSetSamplers(THIS_
@@ -2336,7 +2335,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::PSGetShader(THIS_
 	FrameAnalysisLogNoNL("PSGetShader(ppPixelShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
 			ppPixelShader, ppClassInstances, pNumClassInstances);
 	if (ppPixelShader)
-		FrameAnalysisLogShaderHash<ID3D11PixelShader>(*ppPixelShader, &G->mPixelShaders);
+		FrameAnalysisLogShaderHash<ID3D11PixelShader>(*ppPixelShader);
 	else
 		FrameAnalysisLog("\n");
 }
@@ -2369,7 +2368,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::VSGetShader(THIS_
 	FrameAnalysisLogNoNL("VSGetShader(ppVertexShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
 			ppVertexShader, ppClassInstances, pNumClassInstances);
 	if (ppVertexShader)
-		FrameAnalysisLogShaderHash<ID3D11VertexShader>(*ppVertexShader, &G->mVertexShaders);
+		FrameAnalysisLogShaderHash<ID3D11VertexShader>(*ppVertexShader);
 	else
 		FrameAnalysisLog("\n");
 }
@@ -2460,7 +2459,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::GSGetShader(THIS_
 	FrameAnalysisLogNoNL("GSGetShader(ppGeometryShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
 			ppGeometryShader, ppClassInstances, pNumClassInstances);
 	if (ppGeometryShader)
-		FrameAnalysisLogShaderHash<ID3D11GeometryShader>(*ppGeometryShader, &G->mGeometryShaders);
+		FrameAnalysisLogShaderHash<ID3D11GeometryShader>(*ppGeometryShader);
 	else
 		FrameAnalysisLog("\n");
 }
@@ -2692,7 +2691,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::HSGetShader(THIS_
 	FrameAnalysisLogNoNL("HSGetShader(ppHullShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
 			ppHullShader, ppClassInstances, pNumClassInstances);
 	if (ppHullShader)
-		FrameAnalysisLogShaderHash<ID3D11HullShader>(*ppHullShader, &G->mHullShaders);
+		FrameAnalysisLogShaderHash<ID3D11HullShader>(*ppHullShader);
 	else
 		FrameAnalysisLog("\n");
 }
@@ -2755,7 +2754,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DSGetShader(THIS_
 	FrameAnalysisLogNoNL("DSGetShader(ppDomainShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
 			ppDomainShader, ppClassInstances, pNumClassInstances);
 	if (ppDomainShader)
-		FrameAnalysisLogShaderHash<ID3D11DomainShader>(*ppDomainShader, &G->mDomainShaders);
+		FrameAnalysisLogShaderHash<ID3D11DomainShader>(*ppDomainShader);
 	else
 		FrameAnalysisLog("\n");
 }
@@ -2833,7 +2832,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::CSGetShader(THIS_
 	FrameAnalysisLogNoNL("CSGetShader(ppComputeShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
 			ppComputeShader, ppClassInstances, pNumClassInstances);
 	if (ppComputeShader)
-		FrameAnalysisLogShaderHash<ID3D11ComputeShader>(*ppComputeShader, &G->mComputeShaders);
+		FrameAnalysisLogShaderHash<ID3D11ComputeShader>(*ppComputeShader);
 	else
 		FrameAnalysisLog("\n");
 }
@@ -2920,7 +2919,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::VSSetShader(THIS_
 
 	FrameAnalysisLogNoNL("VSSetShader(pVertexShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
 			pVertexShader, ppClassInstances, NumClassInstances);
-	FrameAnalysisLogShaderHash<ID3D11VertexShader>(pVertexShader, &G->mVertexShaders);
+	FrameAnalysisLogShaderHash<ID3D11VertexShader>(pVertexShader);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::PSSetShaderResources(THIS_
@@ -2949,7 +2948,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::PSSetShader(THIS_
 
 	FrameAnalysisLogNoNL("PSSetShader(pPixelShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
 			pPixelShader, ppClassInstances, NumClassInstances);
-	FrameAnalysisLogShaderHash<ID3D11PixelShader>(pPixelShader, &G->mPixelShaders);
+	FrameAnalysisLogShaderHash<ID3D11PixelShader>(pPixelShader);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexed(THIS_

@@ -13,8 +13,7 @@ private:
 	ID3D11DeviceContext1 *mOrigContext;
 
 	template <class ID3D11Shader>
-	void FrameAnalysisLogShaderHash(ID3D11Shader *shader,
-			std::unordered_map<ID3D11Shader*, UINT64> *registered);
+	void FrameAnalysisLogShaderHash(ID3D11Shader *shader);
 	void FrameAnalysisLogResourceHash(ID3D11Resource *resource);
 	void FrameAnalysisLogResource(int slot, char *slot_name, ID3D11Resource *resource);
 	void FrameAnalysisLogResourceArray(UINT start, UINT len, ID3D11Resource *const *ppResources);
