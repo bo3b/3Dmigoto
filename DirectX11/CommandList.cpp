@@ -3444,7 +3444,7 @@ static bool IsCoersionToStructuredBufferRequired(ID3D11View *view, UINT stride,
 
 static ID3D11Buffer *RecreateCompatibleBuffer(
 		wstring *ini_line,
-		ResourceCopyTarget *dst,
+		ResourceCopyTarget *dst, // May be NULL
 		ID3D11Buffer *src_resource,
 		ID3D11Buffer *dst_resource,
 		ResourcePool *resource_pool,
@@ -3463,7 +3463,7 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 	src_resource->GetDesc(&new_desc);
 	new_desc.BindFlags = bind_flags;
 
-	if (dst->type == ResourceCopyTargetType::CPU) {
+	if (dst && dst->type == ResourceCopyTargetType::CPU) {
 		new_desc.Usage = D3D11_USAGE_STAGING;
 		new_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 	} else {
@@ -3739,7 +3739,7 @@ template <typename ResourceType,
 	>
 static ResourceType* RecreateCompatibleTexture(
 		wstring *ini_line,
-		ResourceCopyTarget *dst,
+		ResourceCopyTarget *dst, // May be NULL
 		ResourceType *src_resource,
 		ResourceType *dst_resource,
 		ResourcePool *resource_pool,
@@ -3753,7 +3753,7 @@ static ResourceType* RecreateCompatibleTexture(
 	src_resource->GetDesc(&new_desc);
 	new_desc.BindFlags = bind_flags;
 
-	if (dst->type == ResourceCopyTargetType::CPU) {
+	if (dst && dst->type == ResourceCopyTargetType::CPU) {
 		new_desc.Usage = D3D11_USAGE_STAGING;
 		new_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 	} else {
@@ -3793,7 +3793,7 @@ static ResourceType* RecreateCompatibleTexture(
 
 static void RecreateCompatibleResource(
 		wstring *ini_line,
-		ResourceCopyTarget *dst,
+		ResourceCopyTarget *dst, // May be NULL
 		ID3D11Resource *src_resource,
 		ID3D11Resource **dst_resource,
 		ResourcePool *resource_pool,
@@ -3849,7 +3849,7 @@ static void RecreateCompatibleResource(
 			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
 		}
-	} else if (dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE) {
+	} else if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE) {
 		restore_create_mode = dst->custom_resource->OverrideSurfaceCreationMode(mStereoHandle, &orig_mode);
 	}
 
