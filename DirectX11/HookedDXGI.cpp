@@ -790,8 +790,8 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 		return hr;
 	}
 
-	if (!fnOrigQueryInterface)
-		HookQueryInterface(*ppFactory);
+	//if (!fnOrigQueryInterface)
+	//	HookQueryInterface(*ppFactory);
 
 	if (!fnOrigCreateSwapChain)
 		HookCreateSwapChain(*ppFactory);
@@ -870,8 +870,8 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 		return hr;
 	}
 
-	if (!fnOrigQueryInterface)
-		HookQueryInterface(*ppFactory1);
+	//if (!fnOrigQueryInterface)
+	//	HookQueryInterface(*ppFactory1);
 
 	if (!fnOrigCreateSwapChain)
 		HookCreateSwapChain(*ppFactory1);
