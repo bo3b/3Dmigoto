@@ -2299,7 +2299,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 	HRESULT hr = mOrigDevice1->CreateDeferredContext(ContextFlags, ppDeferredContext);
 	if (FAILED(hr))
 	{
-		LogDebug("  failed result = %x for %p\n", hr, ppDeferredContext);
+		LogInfo("  failed result = %x for %p\n", hr, ppDeferredContext);
 		return hr;
 	}
 
@@ -2321,8 +2321,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 		LogInfo("  created HackerContext(%s@%p) wrapper of %p\n", type_name(hackerContext), hackerContext, origContext1);
 	}
 
-	LogDebug("  returns result = %x for %p\n", hr, *ppDeferredContext);
-
+	LogInfo("  returns result = %x for %p\n", hr, *ppDeferredContext);
 	return hr;
 }
 
@@ -2454,17 +2453,39 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext1(
 }
 
 
-// Pretty sure we don't need to wrap DeferredContexts at all, but we'll 
-// still log to see when it's used.
+// Now used for platform_update games.  Dishonored2 uses this.
+// Updated to follow the lead of CreateDeferredContext.
 
 STDMETHODIMP HackerDevice::CreateDeferredContext1(
 	UINT ContextFlags,
 	/* [annotation] */
 	_Out_opt_  ID3D11DeviceContext1 **ppDeferredContext)
 {
-	LogInfo("HackerDevice::CreateDeferredContext1(%s@%p) called with flags = %x\n", type_name(this), this, ContextFlags);
+	LogInfo("HackerDevice::CreateDeferredContext1(%s@%p) called with flags = %#x, ptr:%p\n",
+		type_name(this), this, ContextFlags, ppDeferredContext);
+
 	HRESULT hr = mOrigDevice1->CreateDeferredContext1(ContextFlags, ppDeferredContext);
-	LogDebug("  returns result = %x\n", hr);
+	if (FAILED(hr))
+	{
+		LogInfo("  failed result = %x for %p\n", hr, ppDeferredContext);
+		return hr;
+	}
+
+	if (ppDeferredContext)
+	{
+		HackerContext *hackerContext = new HackerContext(mRealOrigDevice1, *ppDeferredContext);
+		hackerContext->SetHackerDevice(this);
+		hackerContext->Bind3DMigotoResources();
+
+		if (G->enable_hooks & EnableHooks::DEFERRED_CONTEXTS)
+			hackerContext->HookContext();
+		else
+			*ppDeferredContext = hackerContext;
+
+		LogInfo("  created HackerContext(%s@%p) wrapper of %p\n", type_name(hackerContext), hackerContext, *ppDeferredContext);
+	}
+
+	LogInfo("  returns result = %x for %p\n", hr, *ppDeferredContext);
 	return hr;
 }
 
