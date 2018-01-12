@@ -21,18 +21,22 @@
 // so we'll come back to it later.
 
 
+// Called from DLLMainHook
+
 extern "C" HRESULT (__stdcall *fnOrigCreateDXGIFactory)(
 	REFIID riid,
 	_Out_ void   **ppFactory
 	);
 
-extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory);
-
-
 extern "C" HRESULT(__stdcall *fnOrigCreateDXGIFactory1)(
 	REFIID riid,
 	_Out_ void   **ppFactory
 	);
+
+
+// Called from HookedDXGI
+
+extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory);
 
 extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1);
 
@@ -41,9 +45,13 @@ extern "C" LPVOID lpvtbl_QueryInterface(IDXGIFactory* pFactory);
 
 extern "C" LPVOID lpvtbl_CreateSwapChain(IDXGIFactory* pFactory);
 
-extern "C" LPVOID lpvtbl_Present(IDXGISwapChain* pSwapChain);
-
 extern "C" LPVOID lpvtbl_CreateSwapChainForHwnd(IDXGIFactory2* pFactory2);
+
+extern "C" LPVOID lpvtbl_CreateSwapChainForCoreWindow(IDXGIFactory2* pFactory2);
+
+extern "C" LPVOID lpvtbl_CreateSwapChainForComposition(IDXGIFactory2* pFactory2);
+
+extern "C" LPVOID lpvtbl_Present(IDXGISwapChain* pSwapChain);
 
 extern "C" LPVOID lpvtbl_Present1(IDXGISwapChain1* pSwapChain1);
 

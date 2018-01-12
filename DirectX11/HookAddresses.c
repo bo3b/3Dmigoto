@@ -52,6 +52,22 @@ LPVOID lpvtbl_CreateSwapChainForHwnd(IDXGIFactory2* pFactory2)
 	return pFactory2->lpVtbl->CreateSwapChainForHwnd;
 }
 
+LPVOID lpvtbl_CreateSwapChainForComposition(IDXGIFactory2* pFactory2)
+{
+	if (!pFactory2)
+		return NULL;
+
+	return pFactory2->lpVtbl->CreateSwapChainForComposition;
+}
+
+LPVOID lpvtbl_CreateSwapChainForCoreWindow(IDXGIFactory2* pFactory2)
+{
+	if (!pFactory2)
+		return NULL;
+
+	return pFactory2->lpVtbl->CreateSwapChainForCoreWindow;
+}
+
 LPVOID lpvtbl_Present(IDXGISwapChain* pSwapChain)
 {
 	if (!pSwapChain)
