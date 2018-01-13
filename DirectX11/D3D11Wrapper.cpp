@@ -856,6 +856,8 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		}
 	}
 
+	// This will implicitly call IDXGIFactory->CreateSwapChain, which we have hooked
+	// in HookedDXGI. That hook will always create the Overlay, and ForceDisplayParams if required.
 	ret = (*_D3D11CreateDeviceAndSwapChain)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
 		FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain, ppDevice, pFeatureLevel, ppImmediateContext);
 

@@ -618,6 +618,16 @@ void HookCreateSwapChainForHwnd(void* factory2)
 
 // -----------------------------------------------------------------------------
 // Actual hook for any IDXGICreateSwapChain calls the game makes.
+//
+// There are two primary paths that can arrive here.
+// 1. d3d11->CreateDeviceAndSwapChain
+//	This path arrives here with a normal ID3D11Device1 device, not a HackerDevice.
+//	This is called implictly from the middle of CreateDeviceAndSwapChain.
+// 2. IDXGIFactory->CreateSwapChain after CreateDevice
+//	This path requires a pDevice passed in, which is a HackerDevice.  This is the
+//	secret path, where they take the Device and QueryInterface to get IDXGIDevice
+//	up to getting Factory, where they call CreateSwapChain. In this path, we can
+//	expect the global gHackerDevice to have already been setup by CreateDevice.
 
 HRESULT(__stdcall *fnOrigCreateSwapChain)(
 	IDXGIFactory * This,
@@ -650,17 +660,25 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	{
 		if (!fnOrigPresent)
 			HookPresent(*ppSwapChain);
-		if (!fnOrigPresent1)
-			HookPresent1(static_cast<IDXGISwapChain1*>(*ppSwapChain));
+		// It does not appear to be legal to upcast a swapchain to
+		// IDXGISwapChain1, so we'll skip HookPresent1 here.
+
+		// When creating a new swapchain, we can assume this is the game creating 
+		// the most important object, and setup to use the input variables.  This
+		// will setup the globals we want to use for the game.
+		G->gSwapChain = *ppSwapChain;
+
+		ID3D11Device* origDevice;
+		if (G->gHackerDevice != pDevice)
+			pDevice->QueryInterface(IID_PPV_ARGS(&origDevice));		// Path 1
+		else
+			origDevice = G->gHackerDevice->GetOrigDevice1();		// Path 2
+
+		ID3D11DeviceContext* origContext;
+		origDevice->GetImmediateContext(&origContext);
+
+		G->gOverlay = new Overlay(origDevice, origContext, G->gSwapChain);
 	}
-
-	// When creating a new swapchain, we can assume this is the game creating 
-	// the most important object, and setup to use the input variables.  This
-	// will setup the globals we want to use for the game.
-	G->gSwapChain = *ppSwapChain;
-	//G->gHackerDevice = pDevice;
-
-	G->gOverlay = new Overlay(G->gHackerDevice, G->gHackerContext, G->gSwapChain);
 
 	LogInfo("->return result %#x, ppSwapChain = %p\n\n", hr, *ppSwapChain);
 	return hr;
