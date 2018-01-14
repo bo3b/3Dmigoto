@@ -466,134 +466,6 @@ void HookPresent1(IDXGISwapChain1* swapChain1)
 
 
 // -----------------------------------------------------------------------------
-HRESULT(__stdcall *fnOrigCreateSwapChainForComposition)(
-	IDXGIFactory2 * This,
-	/* [annotation][in] */
-	_In_  IUnknown *pDevice,
-	/* [annotation][in] */
-	_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
-	/* [annotation][in] */
-	_In_opt_  IDXGIOutput *pRestrictToOutput,
-	/* [annotation][out] */
-	_Outptr_  IDXGISwapChain1 **ppSwapChain) = nullptr;
-
-HRESULT __stdcall Hooked_CreateSwapChainForComposition(
-	IDXGIFactory2 * This,
-	/* [annotation][in] */
-	_In_  IUnknown *pDevice,
-	/* [annotation][in] */
-	_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
-	/* [annotation][in] */
-	_In_opt_  IDXGIOutput *pRestrictToOutput,
-	/* [annotation][out] */
-	_Outptr_  IDXGISwapChain1 **ppSwapChain)
-{
-	LogInfo("Hooked IDXGIFactory2::CreateSwapChainForComposition(%p) called\n", This);
-	LogInfo("  Device = %p\n", pDevice);
-	LogInfo("  SwapChain = %p\n", ppSwapChain);
-	LogInfo("  Description1 = %p\n", pDesc);
-
-	//	ForceDisplayParams(pDesc);
-
-	HRESULT hr = fnOrigCreateSwapChainForComposition(This, pDevice, pDesc, pRestrictToOutput, ppSwapChain);
-	if (SUCCEEDED(hr))
-	{
-		if (!fnOrigPresent)
-			HookPresent(*ppSwapChain);
-		if (!fnOrigPresent1)
-			HookPresent1(*ppSwapChain);
-	}
-
-	LogInfo("->return result %#x, ppSwapChain = %p\n\n", hr, *ppSwapChain);
-	return hr;
-}
-
-
-void HookCreateSwapChainForComposition(void* factory2)
-{
-	LogInfo("*** IDXGIFactory creating hook for CreateSwapChainForComposition. \n");
-
-	IDXGIFactory2* dxgiFactory = static_cast<IDXGIFactory2*>(factory2);
-
-	SIZE_T hook_id;
-	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigCreateSwapChainForComposition,
-		lpvtbl_CreateSwapChainForComposition(dxgiFactory), Hooked_CreateSwapChainForComposition, 0);
-
-	if (dwOsErr == ERROR_SUCCESS)
-		LogInfo("  Successfully installed IDXGIFactory2->CreateSwapChainForComposition hook.\n");
-	else
-		LogInfo("  *** Failed install IDXGIFactory2->CreateSwapChainForComposition hook.\n");
-}
-
-// -----------------------------------------------------------------------------
-HRESULT(__stdcall *fnOrigCreateSwapChainForCoreWindow)(
-	IDXGIFactory2 * This,
-	/* [annotation][in] */
-	_In_  IUnknown *pDevice,
-	/* [annotation][in] */
-	_In_  IUnknown *pWindow,
-	/* [annotation][in] */
-	_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
-	/* [annotation][in] */
-	_In_opt_  IDXGIOutput *pRestrictToOutput,
-	/* [annotation][out] */
-	_Out_  IDXGISwapChain1 **ppSwapChain) = nullptr;
-
-HRESULT __stdcall Hooked_CreateSwapChainForCoreWindow(
-	IDXGIFactory2 * This,
-	/* [annotation][in] */
-	_In_  IUnknown *pDevice,
-	/* [annotation][in] */
-	_In_  IUnknown *pWindow,
-	/* [annotation][in] */
-	_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
-	/* [annotation][in] */
-	_In_opt_  IDXGIOutput *pRestrictToOutput,
-	/* [annotation][out] */
-	_Out_  IDXGISwapChain1 **ppSwapChain)
-{
-	LogInfo("Hooked IDXGIFactory2::CreateSwapChainForCoreWindow(%p) called\n", This);
-	LogInfo("  Device = %p\n", pDevice);
-	LogInfo("  SwapChain = %p\n", ppSwapChain);
-	LogInfo("  Description1 = %p\n", pDesc);
-
-	//	ForceDisplayParams(pDesc);
-	DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullScreen = { 0 };
-	fullScreen.Windowed = false;
-
-	HRESULT hr = fnOrigCreateSwapChainForCoreWindow(This, pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
-	if (SUCCEEDED(hr))
-	{
-		if (!fnOrigPresent)
-			HookPresent(*ppSwapChain);
-		if (!fnOrigPresent1)
-			HookPresent1(*ppSwapChain);
-	}
-
-	LogInfo("->return result %#x, ppSwapChain = %p\n\n", hr, *ppSwapChain);
-	return hr;
-}
-
-
-void HookCreateSwapChainForCoreWindow(void* factory2)
-{
-	LogInfo("*** IDXGIFactory creating hook for CreateSwapChainForCoreWindow. \n");
-
-	IDXGIFactory2* dxgiFactory = static_cast<IDXGIFactory2*>(factory2);
-
-	SIZE_T hook_id;
-	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigCreateSwapChainForCoreWindow,
-		lpvtbl_CreateSwapChainForCoreWindow(dxgiFactory), Hooked_CreateSwapChainForCoreWindow, 0);
-
-	if (dwOsErr == ERROR_SUCCESS)
-		LogInfo("  Successfully installed IDXGIFactory2->CreateSwapChainForCoreWindow hook.\n");
-	else
-		LogInfo("  *** Failed install IDXGIFactory2->CreateSwapChainForCoreWindow hook.\n");
-}
-
-
-
-// -----------------------------------------------------------------------------
 // Actual hook for any IDXGICreateSwapChainForHwnd calls the game makes.
 // This can only be called with Win7+platform_update or greater, using
 // the IDXGIFactory2.
@@ -891,10 +763,6 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 
 		if (!fnOrigCreateSwapChainForHwnd)
 			HookCreateSwapChainForHwnd(*ppFactory);
-		if (!fnOrigCreateSwapChainForComposition)
-			HookCreateSwapChainForComposition(*ppFactory);
-		if (!fnOrigCreateSwapChainForCoreWindow)
-			HookCreateSwapChainForCoreWindow(*ppFactory);
 	}
 
 	LogInfo("  CreateDXGIFactory returned factory = %p, result = %x\n", *ppFactory, hr);
@@ -971,10 +839,6 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 
 		if (!fnOrigCreateSwapChainForHwnd)
 			HookCreateSwapChainForHwnd(*ppFactory1);
-		if (!fnOrigCreateSwapChainForComposition)
-			HookCreateSwapChainForComposition(*ppFactory1);
-		if (!fnOrigCreateSwapChainForCoreWindow)
-			HookCreateSwapChainForCoreWindow(*ppFactory1);
 	}
 
 	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x\n", *ppFactory1, hr);
