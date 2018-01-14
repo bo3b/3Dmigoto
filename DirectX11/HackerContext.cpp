@@ -1909,7 +1909,7 @@ STDMETHODIMP_(void) HackerContext::CSSetUnorderedAccessViews(THIS_
 {
 	FrameAnalysisLog("CSSetUnorderedAccessViews(StartSlot:%u, NumUAVs:%u, ppUnorderedAccessViews:0x%p, pUAVInitialCounts:0x%p)\n",
 			StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
-	FrameAnalysisLogViewArray(0, NumUAVs, (ID3D11View *const *)ppUnorderedAccessViews);
+	FrameAnalysisLogViewArray(StartSlot, NumUAVs, (ID3D11View *const *)ppUnorderedAccessViews);
 
 	if (ppUnorderedAccessViews) {
 		// TODO: Record stats on unordered access view usage
@@ -2572,7 +2572,7 @@ STDMETHODIMP_(void) HackerContext::CSGetUnorderedAccessViews(THIS_
 
 	FrameAnalysisLog("CSGetUnorderedAccessViews(StartSlot:%u, NumUAVs:%u, ppUnorderedAccessViews:0x%p)\n",
 			StartSlot, NumUAVs, ppUnorderedAccessViews);
-	FrameAnalysisLogViewArray(0, NumUAVs, (ID3D11View *const *)ppUnorderedAccessViews);
+	FrameAnalysisLogViewArray(StartSlot, NumUAVs, (ID3D11View *const *)ppUnorderedAccessViews);
 }
 
 STDMETHODIMP_(void) HackerContext::CSGetShader(THIS_
