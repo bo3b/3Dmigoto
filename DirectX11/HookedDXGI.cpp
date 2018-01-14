@@ -160,6 +160,62 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 	}
 }
 
+// Different variant for the CreateSwapChainForHwnd.
+//
+// We absolutely need the force full screen in order to enable 3D.  
+// Batman Telltale needs this.
+// The rest of the variants are less clear.
+
+void ForceDisplayParams1(DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc1)
+{
+	if (pDesc1 == NULL)
+		return;
+
+	LogInfo("     Windowed = %d\n", pDesc1->Windowed);
+
+	if (G->SCREEN_FULLSCREEN > 0)
+	{
+		pDesc1->Windowed = false;
+		LogInfo("->Forcing Windowed to = %d\n", pDesc1->Windowed);
+	}
+
+	if (G->SCREEN_FULLSCREEN == 2)
+	{
+		// We install this hook on demand to avoid any possible
+		// issues with hooking the call when we don't need it:
+		// Unconfirmed, but possibly related to:
+		// https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
+
+		InstallSetWindowPosHook();
+	}
+
+	// These input parameters are not clear how to implement for CreateSwapChainForHwnd,
+	// and are stubbed out with error reporting. Can be implemented when cases arise.
+	if (G->SCREEN_REFRESH >= 0 && !pDesc1->Windowed)
+	{
+		LogInfo("*** Unimplemented feature for refresh_rate in CreateSwapChainForHwnd\n");
+		BeepFailure();
+	}
+	if (G->SCREEN_WIDTH >= 0)
+	{
+		LogInfo("*** Unimplemented feature to force screen width in CreateSwapChainForHwnd\n");
+		BeepFailure();
+	}
+	if (G->SCREEN_HEIGHT >= 0)
+	{
+		LogInfo("*** Unimplemented feature to force screen height in CreateSwapChainForHwnd\n");
+		BeepFailure();
+	}
+
+	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
+	// swapchain to be 2x its normal width.  
+	if (G->gForceStereo == 2)
+	{
+		LogInfo("*** Unimplemented feature for Direct Mode in CreateSwapChainForHwnd\n");
+		BeepFailure();
+	}
+}
+
 // -----------------------------------------------------------------------------
 
 // Called at each DXGI::Present() to give us reliable time to execute user
@@ -541,6 +597,12 @@ void HookCreateSwapChainForCoreWindow(void* factory2)
 // Actual hook for any IDXGICreateSwapChainForHwnd calls the game makes.
 // This can only be called with Win7+platform_update or greater, using
 // the IDXGIFactory2.
+// 
+// This type of SwapChain cannot be made through the CreateDeviceAndSwapChain,
+// so there is only one logical path to create this, which is 
+// IDXGIFactory2->CreateSwapChainForHwnd.  That means that the Device has
+// already been created with CreateDevice, and dereferenced through the 
+// chain of QueryInterface calls to get the IDXGIFactory2.
 
 HRESULT(__stdcall *fnOrigCreateSwapChainForHwnd)(
 	IDXGIFactory2 * This,
@@ -579,11 +641,12 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	LogInfo("  Description1 = %p\n", pDesc);
 	LogInfo("  FullScreenDescription = %p\n", pFullscreenDesc);
 
-//	ForceDisplayParams(pDesc);
-	DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullScreen = { 0 };
-	fullScreen.Windowed = false;
+	DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullScreenDesc = { 0 };
+	if (!pFullscreenDesc)
+		pFullscreenDesc = &fullScreenDesc;
+	ForceDisplayParams1(&fullScreenDesc);
 
-	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, &fullScreen, pRestrictToOutput, ppSwapChain);
+	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
 	if (SUCCEEDED(hr))
 	{
 		if (!fnOrigPresent)
@@ -712,8 +775,8 @@ HRESULT(__stdcall *fnOrigQueryInterface)(
 	IDXGIObject * This,
 	/* [in] */ REFIID riid,
 	/* [annotation][iid_is][out] */
-	_COM_Outptr_  void **ppvObject)= nullptr;
- 
+	_COM_Outptr_  void **ppvObject) = nullptr;
+
 
 HRESULT __stdcall Hooked_QueryInterface(
 	IDXGIObject * This,
@@ -800,7 +863,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 		*ppFactory = NULL;
 		return E_NOINTERFACE;
 	}
-	
+
 	HRESULT hr = fnOrigCreateDXGIFactory(riid, ppFactory);
 	if (FAILED(hr))
 	{
