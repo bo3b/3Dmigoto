@@ -525,6 +525,19 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 			HookPresent(*ppSwapChain);
 		if (!fnOrigPresent1)
 			HookPresent1(*ppSwapChain);
+
+		// When creating a new swapchain, we can assume this is the game creating 
+		// the most important object, and setup to use the input variables.  This
+		// will setup the globals we want to use for the game.
+		G->gSwapChain = *ppSwapChain;
+
+		ID3D11Device* origDevice;
+		origDevice = G->gHackerDevice->GetOrigDevice1();
+
+		ID3D11DeviceContext* origContext;
+		origDevice->GetImmediateContext(&origContext);
+
+		G->gOverlay = new Overlay(origDevice, origContext, G->gSwapChain);
 	}
 
 	LogInfo("->return result %#x, ppSwapChain = %p\n\n", hr, *ppSwapChain);
