@@ -6,7 +6,8 @@
 #include "Globals.h"
 #include "ResourceHash.h"
 #include "DrawCallInfo.h"
-#include "FrameAnalysis.h"
+
+HackerContext* HackerContextFactory(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
 
 struct DrawContext
 {
@@ -224,15 +225,13 @@ public:
 	HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
 
 	void SetHackerDevice(HackerDevice *pDevice);
-	void UpdateContextPointer();
 	void Bind3DMigotoResources();
 	ID3D11DeviceContext1* GetOrigContext1();
 	ID3D11DeviceContext1* GetPassThroughOrigContext1();
 	void HookContext();
 
 	// public to allow CommandList access
-	class FrameAnalysisContext FAContext;
-	void FrameAnalysisLog(char *fmt, ...);
+	virtual void FrameAnalysisLog(char *fmt, ...) {};
 
 
 	/*** IUnknown methods ***/

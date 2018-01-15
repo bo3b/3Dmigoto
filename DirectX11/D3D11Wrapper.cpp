@@ -755,7 +755,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	HackerContext *contextWrap = nullptr;
 	if (origContext1 != nullptr)
 	{
-		contextWrap = new HackerContext(origDevice1, origContext1);
+		contextWrap = HackerContextFactory(origDevice1, origContext1);
 
 		G->gHackerContext = contextWrap;
 
@@ -918,7 +918,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	HackerContext *contextWrap = nullptr;
 	if (origContext1 != nullptr)
 	{
-		contextWrap = new HackerContext(origDevice1, origContext1);
+		contextWrap = HackerContextFactory(origDevice1, origContext1);
 
 		G->gHackerContext = contextWrap;
 

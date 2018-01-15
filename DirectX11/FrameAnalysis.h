@@ -1,13 +1,14 @@
 #pragma once
 
 #include <d3d11_1.h>
+#include "HackerContext.h"
 
 // We make the frame analysis context directly implement ID3D11DeviceContext1 -
 // no funky implementation inheritance or alternate versions here, just a
 // straight forward object implementing an interface. Accessing it as
 // ID3D11DeviceContext will work just as well thanks to interface inheritance.
 
-class FrameAnalysisContext : public ID3D11DeviceContext1
+class FrameAnalysisContext : public HackerContext
 {
 private:
 	ID3D11DeviceContext1 *mOrigContext;
@@ -26,13 +27,11 @@ private:
 
 public:
 
-	FrameAnalysisContext(ID3D11DeviceContext1 *pContext);
+	FrameAnalysisContext(ID3D11Device1 *pDevice, ID3D11DeviceContext1 *pContext);
 	~FrameAnalysisContext();
 
-	void SetContext(ID3D11DeviceContext1 *pContext);
-
 	// public to allow CommandList access
-	void FrameAnalysisLog(char *fmt, ...);
+	void FrameAnalysisLog(char *fmt, ...) override;
 	void vFrameAnalysisLog(char *fmt, va_list ap);
 	// An alias for the above function that we use to denote that omitting
 	// the newline was done intentionally. For now this is just for our

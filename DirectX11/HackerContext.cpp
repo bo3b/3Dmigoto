@@ -20,18 +20,28 @@
 #include "ResourceHash.h"
 #include "Override.h"
 #include "ShaderRegex.h"
+#include "FrameAnalysis.h"
 
 // -----------------------------------------------------------------------------------------------
 
+HackerContext* HackerContextFactory(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1)
+{
+	if (G->hunting || gLogDebug) {
+		LogInfo("  Creating FrameAnalysisContext\n");
+		return new FrameAnalysisContext(pDevice1, pContext1);
+	}
+
+	LogInfo("  Creating HackerContext - frame analysis log will not be available\n");
+	return new HackerContext(pDevice1, pContext1);
+}
+
 HackerContext::HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1)
-	: FAContext((ID3D11DeviceContext1*)pContext1)
 {
 	mOrigDevice1 = pDevice1;
+	mOrigContext1 = pContext1;
 	mPassThroughContext1 = pContext1;
 	mRealOrigContext1 = pContext1;
 	mHackerDevice = NULL;
-
-	UpdateContextPointer();
 
 	mCurrentIndexBuffer = 0;
 	mCurrentVertexShader = 0;
@@ -88,36 +98,6 @@ void HackerContext::HookContext()
 	// original context, thereby side stepping the problem that calling the
 	// old mOrigContext1 would be hooked and call back into us endlessly:
 //	mPassThroughContext1 = hook_context(mPassThroughContext1, this, G->enable_hooks);
-
-	UpdateContextPointer();
-}
-
-void HackerContext::UpdateContextPointer()
-{
-	// This call updates the mOrigContext1 pointer used to call the original
-	// DirectX call, possibly with logging via Frame Analysis / debug log.
-	// This is a bit of extra complexity necessary because of the
-	// permutations of wrapping vs hooking and whether or not we are using
-	// the frame analysis context for logging (which is optional for
-	// performance reasons, as it consumes 0.5% CPU and about 1fps in Grim
-	// Dawn).
-	//
-	// We keep mRealOrigContext set to the original DirectX object (which
-	// may optionally be hooked calling back into HackerContext), and
-	// mPassThroughContext1 set to whatever will call into DirectX bypassing
-	// HackerContext (either the original DirectX object, or the trampoline
-	// object when hooking). mOrigContext1 is used to call into DirectX but
-	// with optional logging via Frame Analysis and/or the debug log, and
-	// must be updated whenever mPassThroughContext1 is updated (i.e. after
-	// installing hooks). In the future we might also consider calling this
-	// if the hunting or debug options are changed via config reload.
-
-	FAContext.SetContext((ID3D11DeviceContext1*)mPassThroughContext1);
-
-	if (G->hunting || gLogDebug)
-		mOrigContext1 = &FAContext;
-	else
-		mOrigContext1 = mPassThroughContext1;
 }
 
 // -----------------------------------------------------------------------------
