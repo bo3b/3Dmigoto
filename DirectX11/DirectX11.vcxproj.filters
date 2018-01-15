@@ -53,7 +53,6 @@
     <ClInclude Include="..\shader.h" />
     <ClInclude Include="nvprofile.h" />
     <ClInclude Include="ShaderRegex.h" />
-    <ClInclude Include="FrameAnalysis.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

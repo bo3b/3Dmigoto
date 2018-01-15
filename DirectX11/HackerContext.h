@@ -6,7 +6,6 @@
 #include "Globals.h"
 #include "ResourceHash.h"
 #include "DrawCallInfo.h"
-#include "FrameAnalysis.h"
 
 struct DrawContext
 {
@@ -70,7 +69,6 @@ class HackerContext : public ID3D11DeviceContext
 private:
 	ID3D11Device *mOrigDevice;
 	ID3D11DeviceContext *mOrigContext;
-	ID3D11DeviceContext *mPassThroughContext;
 	ID3D11DeviceContext *mRealOrigContext;
 	HackerDevice *mHackerDevice;
 
@@ -91,6 +89,7 @@ private:
 	std::vector<ID3D11Resource *> mCurrentRenderTargets;
 	ID3D11Resource *mCurrentDepthTarget;
 	FrameAnalysisOptions analyse_options;
+	FILE *frame_analysis_log;
 
 	// Used for deny_cpu_read, track_texture_updates and constant buffer matching
 	typedef std::unordered_map<ID3D11Resource*, MappedResourceInfo> MappedResources;
@@ -202,19 +201,34 @@ private:
 			ID3D11ShaderResourceView *const *ppShaderResourceViews)>
 	void SetShaderResources(UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
+protected:
+	// Protected to allow HackerContext1 access, but not external
+	void FrameAnalysisLogResourceHash(ID3D11Resource *resource);
+	void FrameAnalysisLogResource(int slot, char *slot_name, ID3D11Resource *resource);
+	void FrameAnalysisLogResourceArray(UINT start, UINT len, ID3D11Resource *const *ppResources);
+	void FrameAnalysisLogView(int slot, char *slot_name, ID3D11View *view);
+	void FrameAnalysisLogViewArray(UINT start, UINT len, ID3D11View *const *ppViews);
+	void FrameAnalysisLogMiscArray(UINT start, UINT len, void *const *array);
+	void FrameAnalysisLogAsyncQuery(ID3D11Asynchronous *async);
+	void FrameAnalysisLogData(void *buf, UINT size);
+
 public:
 	HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
 	void SetHackerDevice(HackerDevice *pDevice);
-	void UpdateContextPointer();
 	void Bind3DMigotoResources();
 	ID3D11DeviceContext* GetOrigContext();
 	ID3D11DeviceContext* GetPassThroughOrigContext();
 	void HookContext();
 
 	// public to allow CommandList access
-	class FrameAnalysisContext FAContext;
 	void FrameAnalysisLog(char *fmt, ...);
+	// An alias for the above function that we use to denote that omitting
+	// the newline was done intentionally. For now this is just for our
+	// reference, but later we might actually make the default function
+	// insert a newline:
+#define FrameAnalysisLogNoNL FrameAnalysisLog
+
 
 	//static D3D11Wrapper::ID3D11DeviceContext* GetDirect3DDeviceContext(ID3D11DeviceContext *pContext);
 	//__forceinline ID3D11DeviceContext *GetD3D11DeviceContext() { return (ID3D11DeviceContext*) m_pUnk; }
@@ -1071,7 +1085,6 @@ class HackerContext1: public HackerContext
 private:
 	ID3D11Device1 *mOrigDevice1;
 	ID3D11DeviceContext1 *mOrigContext1;
-	ID3D11DeviceContext1 *mPassThroughContext1;
 	HackerDevice1 *mHackerDevice1;
 
 public:

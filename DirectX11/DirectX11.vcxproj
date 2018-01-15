@@ -73,7 +73,6 @@
     <ClInclude Include="..\version.h" />
     <ClInclude Include="D3D11Wrapper.h" />
     <ClInclude Include="DLLMainHook.h" />
-    <ClInclude Include="FrameAnalysis.h" />
     <ClInclude Include="Globals.h" />
     <ClInclude Include="HackerContext.h" />
     <ClInclude Include="HackerDevice.h" />
