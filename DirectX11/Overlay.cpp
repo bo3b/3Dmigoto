@@ -273,8 +273,21 @@ static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 	{
 		if ((loaded.second.hash == selectedShader) && !loaded.second.infoText.empty())
 		{
+			// We now use wcsncat_s instead of wcscat_s here,
+			// because the later will terminate us if the resulting
+			// string would overflow the destination buffer (or
+			// fail with EINVAL if we change the parameter
+			// validation so it doesn't terminate us). wcsncat_s
+			// has a _TRUNCATE option that tells it to fill up as
+			// much of the buffer as possible without overflowing
+			// and will still NULL terminate the resulting string,
+			// which will work fine for this case since that will
+			// be more than we can fit on the screen anyway.
+			// wcsncat would also work, but its count field is
+			// silly (maxstring-strlen(info)-1) and VS complains.
+			//
 			// Skip past first two characters, which will always be //
-			wcscat_s(info, maxstring, loaded.second.infoText.c_str() + 2);
+			wcsncat_s(info, maxstring, loaded.second.infoText.c_str() + 2, _TRUNCATE);
 			return true;
 		}
 	}

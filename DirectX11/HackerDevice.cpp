@@ -174,6 +174,7 @@ void HackerDevice::CreatePinkHuntingResources()
 		if (SUCCEEDED(hr))
 		{
 			hr = mOrigDevice1->CreatePixelShader((DWORD*)blob->GetBufferPointer(), blob->GetBufferSize(), NULL, &G->mPinkingShader);
+			CleanupShaderMaps(G->mPinkingShader);
 			if (FAILED(hr))
 				LogInfo("  Failed to create pinking pixel shader: %d\n", hr);
 			blob->Release();
@@ -302,6 +303,12 @@ static void RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring 
 	ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp, wstring text, bool deferred_replacement_candidate)
 {
 	LogInfo("    shader registered for possible reloading: %016llx_%ls as %s - %ls\n", hash, shaderType.c_str(), shaderModel.c_str(), text.c_str());
+
+	// Pretty sure we had a bug before since we would save a pointer to the
+	// class linkage object without bumping its refcount, but I don't know
+	// of any game that uses this to test it.
+	if (pClassLinkage)
+		pClassLinkage->AddRef();
 
 	G->mReloadedShaders[ppShader].hash = hash;
 	G->mReloadedShaders[ppShader].shaderType = shaderType;
@@ -998,15 +1005,17 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					pCompiledOutput->Release(); pCompiledOutput = 0;
 					if (!wcscmp(shaderType, L"vs"))
 					{
-						ID3D11VertexShader *zeroVertexShader;
+						ID3D11VertexShader *zeroVertexShader = NULL;
 						HRESULT hr = mOrigDevice1->CreateVertexShader(code, codeSize, 0, &zeroVertexShader);
+						CleanupShaderMaps(zeroVertexShader);
 						if (hr == S_OK)
 							*zeroShader = zeroVertexShader;
 					}
 					else if (!wcscmp(shaderType, L"ps"))
 					{
-						ID3D11PixelShader *zeroPixelShader;
+						ID3D11PixelShader *zeroPixelShader = NULL;
 						HRESULT hr = mOrigDevice1->CreatePixelShader(code, codeSize, 0, &zeroPixelShader);
+						CleanupShaderMaps(zeroPixelShader);
 						if (hr == S_OK)
 							*zeroShader = zeroPixelShader;
 					}
@@ -1055,6 +1064,72 @@ bool HackerDevice::NeedOriginalShader(UINT64 hash)
 	return false;
 }
 
+// This function ensures that a shader handle is expunged from all our shader
+// maps. Ideally we would call this when the shader is released, but since we
+// don't wrap or hook that call we can't do that. Instead, we call it just
+// after any CreateXXXShader call - at that time we know the handle was
+// previously invalid and is now valid, but we haven't used it yet.
+//
+// This is a big hammer, and we could probably cut this down, but I want to
+// make very certain that we don't have any other unusual sequences that could
+// lead to us using stale entries (e.g. suppose an application called
+// XXGetShader() and retrieved a shader 3DMigoto had set, then later called
+// XXSetShader() - we would look up that handle, and if that handle had been
+// reused we might end up trying to replace it). This fixes an issue where we
+// could sometimes mistakingly revert one shader to an unrelated shader on F10:
+//
+//   https://github.com/bo3b/3Dmigoto/issues/86
+//
+void CleanupShaderMaps(ID3D11DeviceChild *handle)
+{
+	if (!handle)
+		return;
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	{
+		ShaderMap::iterator i = G->mShaders.find(handle);
+		if (i != G->mShaders.end()) {
+			LogInfo("Shader handle %p reused, previous hash was: %016llx\n", handle, i->second);
+			G->mShaders.erase(i);
+		}
+	}
+
+	{
+		ShaderReloadMap::iterator i = G->mReloadedShaders.find(handle);
+		if (i != G->mReloadedShaders.end()) {
+			LogInfo("Shader handle %p reused, found in mReloadedShaders\n", handle);
+			if (i->second.replacement)
+				i->second.replacement->Release();
+			if (i->second.byteCode)
+				i->second.byteCode->Release();
+			if (i->second.linkage)
+				i->second.linkage->Release();
+			G->mReloadedShaders.erase(i);
+		}
+	}
+
+	{
+		ShaderReplacementMap::iterator i = G->mOriginalShaders.find(handle);
+		if (i != G->mOriginalShaders.end()) {
+			LogInfo("Shader handle %p reused, releasing previous original shader\n", handle);
+			i->second->Release();
+			G->mOriginalShaders.erase(i);
+		}
+	}
+
+	{
+		ShaderReplacementMap::iterator i = G->mZeroShaders.find(handle);
+		if (i != G->mZeroShaders.end()) {
+			LogInfo("Shader handle %p reused, releasing previous zero shader\n", handle);
+			i->second->Release();
+			G->mZeroShaders.erase(i);
+		}
+	}
+
+	LeaveCriticalSection(&G->mCriticalSection);
+}
+
 // Keep the original shader around if it may be needed by a filter in a
 // [ShaderOverride] section, or if hunting is enabled and either the
 // marking_mode=original, or reload_config support is enabled
@@ -1069,10 +1144,9 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType,
 		ID3D11Shader *pShader,
 		const void *pShaderBytecode,
 		SIZE_T BytecodeLength,
-		ID3D11ClassLinkage *pClassLinkage,
-		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders)
+		ID3D11ClassLinkage *pClassLinkage)
 {
-	ID3D11Shader *originalShader;
+	ID3D11Shader *originalShader = NULL;
 	HRESULT hr;
 
 	if (!NeedOriginalShader(hash))
@@ -1083,8 +1157,9 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType,
 	EnterCriticalSection(&G->mCriticalSection);
 
 		hr = (mOrigDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+		CleanupShaderMaps(originalShader);
 		if (SUCCEEDED(hr))
-			(*originalShaders)[pShader] = originalShader;
+			G->mOriginalShaders[pShader] = originalShader;
 
 		// Unlike the *other* code path in CreateShader that can also
 		// fill out this structure, we do *not* bump the refcount on
@@ -1954,11 +2029,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	__in_opt  ID3D11ClassLinkage *pClassLinkage,
 	/* [annotation] */
 	__out_opt  ID3D11Shader **ppShader,
-	wchar_t *shaderType,
-	std::unordered_map<ID3D11Shader *, UINT64> *shaders,
-	std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders,
-	std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders
-	)
+	wchar_t *shaderType)
 {
 	HRESULT hr = E_FAIL;
 	UINT64 hash;
@@ -2004,6 +2075,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 
 			*ppShader = NULL; // Appease the static analysis gods
 			hr = (mOrigDevice1->*OrigCreateShader)(replaceShader, replaceShaderSize, pClassLinkage, ppShader);
+			CleanupShaderMaps(*ppShader);
 			if (SUCCEEDED(hr))
 			{
 				LogInfo("    shader successfully replaced.\n");
@@ -2024,9 +2096,9 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 					}
 				}
 				// FIXME: We have some very similar data structures that we should merge together:
-				// mReloadedShaders and all the mOriginalXXXShader maps.
+				// mReloadedShaders and mOriginalShader.
 				KeepOriginalShader<ID3D11Shader, OrigCreateShader>
-					(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage, originalShaders);
+					(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
 			}
 			else
 			{
@@ -2054,6 +2126,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		if (ppShader)
 			*ppShader = NULL; // Appease the static analysis gods
 		hr = (mOrigDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
+		CleanupShaderMaps(*ppShader);
 
 		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
 		// have a copy for every shader seen. If we are performing any sort of deferred shader replacement, such as pipline
@@ -2071,14 +2144,14 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 					// Also add the original shader to the original shaders
 					// map so that if it is later replaced marking_mode =
 					// original and depth buffer filtering will work:
-					if (originalShaders->count(*ppShader) == 0) {
+					if (G->mOriginalShaders.count(*ppShader) == 0) {
 						// Since we are both returning *and* storing this we need to
 						// bump the refcount to 2, otherwise it could get freed and we
 						// may get a crash later in RevertMissingShaders, especially
 						// easy to expose with the auto shader patching engine
 						// and reverting shaders:
 						(*ppShader)->AddRef();
-						(*originalShaders)[*ppShader] = *ppShader;
+						G->mOriginalShaders[*ppShader] = *ppShader;
 					}
 				}
 			LeaveCriticalSection(&G->mCriticalSection);
@@ -2088,12 +2161,12 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	if (hr == S_OK && ppShader && pShaderBytecode)
 	{
 		EnterCriticalSection(&G->mCriticalSection);
-			(*shaders)[*ppShader] = hash;
+			G->mShaders[*ppShader] = hash;
 			LogDebugW(L"    %ls: handle = %p, hash = %016I64x\n", shaderType, *ppShader, hash);
 
-			if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader && zeroShaders)
+			if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
 			{
-				(*zeroShaders)[*ppShader] = zeroShader;
+				G->mZeroShaders[*ppShader] = zeroShader;
 			}
 
 			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
@@ -2122,8 +2195,7 @@ STDMETHODIMP HackerDevice::CreateVertexShader(THIS_
 	LogInfo("HackerDevice::CreateVertexShader called with BytecodeLength = %Iu, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
 
 	return CreateShader<ID3D11VertexShader, &ID3D11Device::CreateVertexShader>
-			(pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader,
-			 L"vs", &G->mVertexShaders, &G->mOriginalVertexShaders, &G->mZeroVertexShaders);
+			(pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader, L"vs");
 }
 
 STDMETHODIMP HackerDevice::CreateGeometryShader(THIS_
@@ -2139,11 +2211,7 @@ STDMETHODIMP HackerDevice::CreateGeometryShader(THIS_
 	LogInfo("HackerDevice::CreateGeometryShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	return CreateShader<ID3D11GeometryShader, &ID3D11Device::CreateGeometryShader>
-			(pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader,
-			 L"gs",
-			 &G->mGeometryShaders,
-			 &G->mOriginalGeometryShaders,
-			 NULL /* TODO: &G->mZeroGeometryShaders */);
+			(pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader, L"gs");
 }
 
 STDMETHODIMP HackerDevice::CreateGeometryShaderWithStreamOutput(THIS_
@@ -2191,8 +2259,7 @@ STDMETHODIMP HackerDevice::CreatePixelShader(THIS_
 	LogInfo("HackerDevice::CreatePixelShader called with BytecodeLength = %Iu, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
 
 	return CreateShader<ID3D11PixelShader, &ID3D11Device::CreatePixelShader>
-			(pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader,
-			 L"ps", &G->mPixelShaders, &G->mOriginalPixelShaders, &G->mZeroPixelShaders);
+			(pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader, L"ps");
 }
 
 STDMETHODIMP HackerDevice::CreateHullShader(THIS_
@@ -2208,11 +2275,7 @@ STDMETHODIMP HackerDevice::CreateHullShader(THIS_
 	LogInfo("HackerDevice::CreateHullShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	return CreateShader<ID3D11HullShader, &ID3D11Device::CreateHullShader>
-			(pShaderBytecode, BytecodeLength, pClassLinkage, ppHullShader,
-			 L"hs",
-			 &G->mHullShaders,
-			 &G->mOriginalHullShaders,
-			 NULL /* TODO: &G->mZeroHullShaders */);
+			(pShaderBytecode, BytecodeLength, pClassLinkage, ppHullShader, L"hs");
 }
 
 STDMETHODIMP HackerDevice::CreateDomainShader(THIS_
@@ -2228,11 +2291,7 @@ STDMETHODIMP HackerDevice::CreateDomainShader(THIS_
 	LogInfo("HackerDevice::CreateDomainShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	return CreateShader<ID3D11DomainShader, &ID3D11Device::CreateDomainShader>
-			(pShaderBytecode, BytecodeLength, pClassLinkage, ppDomainShader,
-			 L"ds",
-			 &G->mDomainShaders,
-			 &G->mOriginalDomainShaders,
-			 NULL /* TODO: &G->mZeroDomainShaders */);
+			(pShaderBytecode, BytecodeLength, pClassLinkage, ppDomainShader, L"ds");
 }
 
 STDMETHODIMP HackerDevice::CreateComputeShader(THIS_
@@ -2248,11 +2307,7 @@ STDMETHODIMP HackerDevice::CreateComputeShader(THIS_
 	LogInfo("HackerDevice::CreateComputeShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	return CreateShader<ID3D11ComputeShader, &ID3D11Device::CreateComputeShader>
-			(pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader,
-			 L"cs",
-			 &G->mComputeShaders,
-			 &G->mOriginalComputeShaders,
-			 NULL /* TODO (if this even makes sense?): &G->mZeroComputeShaders */);
+			(pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader, L"cs");
 }
 
 STDMETHODIMP HackerDevice::CreateRasterizerState(THIS_

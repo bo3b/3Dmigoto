@@ -762,36 +762,43 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			G->mReloadedShaders[oldShader].timeStamp = timeStamp;
 			G->mReloadedShaders[oldShader].infoText = headerLine;
 
+			replacement = NULL;
 			// This needs to call the real CreateVertexShader, not our wrapped version
 			if (shaderType.compare(L"vs") == 0)
 			{
 				hr = device->GetOrigDevice1()->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(ID3D11VertexShader**)&replacement);
+				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"ps") == 0)
 			{
 				hr = device->GetOrigDevice1()->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(ID3D11PixelShader**)&replacement);
+				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"cs") == 0)
 			{
 				hr = device->GetOrigDevice1()->CreateComputeShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11ComputeShader**)&replacement);
+				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"gs") == 0)
 			{
 				hr = device->GetOrigDevice1()->CreateGeometryShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11GeometryShader**)&replacement);
+				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"hs") == 0)
 			{
 				hr = device->GetOrigDevice1()->CreateHullShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11HullShader**)&replacement);
+				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"ds") == 0)
 			{
 				hr = device->GetOrigDevice1()->CreateDomainShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11DomainShader**)&replacement);
+				CleanupShaderMaps(replacement);
 			}
 			if (FAILED(hr))
 				goto err;
@@ -923,45 +930,10 @@ static void RevertMissingShaders()
 		if (i->second.found)
 			continue;
 
-		if (i->second.shaderType.compare(L"vs") == 0) {
-			VertexShaderReplacementMap::iterator j = G->mOriginalVertexShaders.find((ID3D11VertexShader*)i->first);
-			if (j == G->mOriginalVertexShaders.end())
-				continue;
-			replacement = j->second;
-		}
-		else if (i->second.shaderType.compare(L"ps") == 0) {
-			PixelShaderReplacementMap::iterator j = G->mOriginalPixelShaders.find((ID3D11PixelShader*)i->first);
-			if (j == G->mOriginalPixelShaders.end())
-				continue;
-			replacement = j->second;
-		}
-		else if (i->second.shaderType.compare(L"cs") == 0) {
-			ComputeShaderReplacementMap::iterator j = G->mOriginalComputeShaders.find((ID3D11ComputeShader*)i->first);
-			if (j == G->mOriginalComputeShaders.end())
-				continue;
-			replacement = j->second;
-		}
-		else if (i->second.shaderType.compare(L"gs") == 0) {
-			GeometryShaderReplacementMap::iterator j = G->mOriginalGeometryShaders.find((ID3D11GeometryShader*)i->first);
-			if (j == G->mOriginalGeometryShaders.end())
-				continue;
-			replacement = j->second;
-		}
-		else if (i->second.shaderType.compare(L"hs") == 0) {
-			HullShaderReplacementMap::iterator j = G->mOriginalHullShaders.find((ID3D11HullShader*)i->first);
-			if (j == G->mOriginalHullShaders.end())
-				continue;
-			replacement = j->second;
-		}
-		else if (i->second.shaderType.compare(L"ds") == 0) {
-			DomainShaderReplacementMap::iterator j = G->mOriginalDomainShaders.find((ID3D11DomainShader*)i->first);
-			if (j == G->mOriginalDomainShaders.end())
-				continue;
-			replacement = j->second;
-		}
-		else {
+		ShaderReplacementMap::iterator j = G->mOriginalShaders.find(i->first);
+		if (j == G->mOriginalShaders.end())
 			continue;
-		}
+		replacement = j->second;
 
 		if ((i->second.replacement == NULL && i->first == replacement)
 			|| replacement == i->second.replacement) {

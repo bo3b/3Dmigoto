@@ -84,28 +84,18 @@ struct OriginalShaderInfo
 	std::wstring infoText;
 };
 
+// Call this after any CreateXXXShader call to ensure that all references to
+// the handle have been removed in the event that it has been reused:
+void CleanupShaderMaps(ID3D11DeviceChild *handle);
+
 // Key is the overridden shader that was given back to the game at CreateVertexShader (vs or ps)
 typedef std::unordered_map<ID3D11DeviceChild *, OriginalShaderInfo> ShaderReloadMap;
 
-// Key is vertexshader, value is hash key.
-typedef std::unordered_map<ID3D11VertexShader *, UINT64> VertexShaderMap;
-typedef std::unordered_map<ID3D11VertexShader *, ID3D11VertexShader *> VertexShaderReplacementMap;
+// TODO: We can probably merge this into ShaderReloadMap
+typedef std::unordered_map<ID3D11DeviceChild *, ID3D11DeviceChild *> ShaderReplacementMap;
 
-// Key is pixelshader, value is hash key.
-typedef std::unordered_map<ID3D11PixelShader *, UINT64> PixelShaderMap;
-typedef std::unordered_map<ID3D11PixelShader *, ID3D11PixelShader *> PixelShaderReplacementMap;
-
-typedef std::unordered_map<ID3D11ComputeShader *, UINT64> ComputeShaderMap;
-typedef std::unordered_map<ID3D11ComputeShader *, ID3D11ComputeShader *> ComputeShaderReplacementMap;
-
-typedef std::unordered_map<ID3D11HullShader *, UINT64> HullShaderMap;
-typedef std::unordered_map<ID3D11HullShader *, ID3D11HullShader *> HullShaderReplacementMap;
-
-typedef std::unordered_map<ID3D11DomainShader *, UINT64> DomainShaderMap;
-typedef std::unordered_map<ID3D11DomainShader *, ID3D11DomainShader *> DomainShaderReplacementMap;
-
-typedef std::unordered_map<ID3D11GeometryShader *, UINT64> GeometryShaderMap;
-typedef std::unordered_map<ID3D11GeometryShader *, ID3D11GeometryShader *> GeometryShaderReplacementMap;
+// Key is shader, value is hash key.
+typedef std::unordered_map<ID3D11DeviceChild *, UINT64> ShaderMap;
 
 enum class FrameAnalysisOptions {
 	INVALID         = 0,
@@ -285,6 +275,7 @@ struct Globals
 	bool gReloadConfigPending;
 	bool gLogInput;
 	bool dump_all_profiles;
+	DWORD ticks_at_launch;
 
 	wchar_t SHADER_PATH[MAX_PATH];
 	wchar_t SHADER_CACHE_PATH[MAX_PATH];
@@ -389,45 +380,34 @@ struct Globals
 
 	CompiledShaderMap mCompiledShaderMap;
 
-	VertexShaderMap mVertexShaders;							// All shaders ever registered with CreateVertexShader
-	VertexShaderReplacementMap mOriginalVertexShaders;		// When MarkingMode=Original, switch to original
-	VertexShaderReplacementMap mZeroVertexShaders;			// When MarkingMode=zero.
 	std::set<UINT64> mVisitedVertexShaders;					// Only shaders seen since last hunting timeout; std::set for consistent order while hunting
 	UINT64 mSelectedVertexShader;				 			// Hash.  -1 now for unselected state. The shader selected using Input object.
 	int mSelectedVertexShaderPos;							// -1 for unselected state.
 	std::set<uint32_t> mSelectedVertexShader_IndexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
 
-	PixelShaderMap mPixelShaders;							// All shaders ever registered with CreatePixelShader
-	PixelShaderReplacementMap mOriginalPixelShaders;
-	PixelShaderReplacementMap mZeroPixelShaders;
 	std::set<UINT64> mVisitedPixelShaders;					// std::set is sorted for consistent order while hunting
 	UINT64 mSelectedPixelShader;							// Hash.  -1 now for unselected state.
 	int mSelectedPixelShaderPos;							// -1 for unselected state.
 	std::set<uint32_t> mSelectedPixelShader_IndexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
 	ID3D11PixelShader* mPinkingShader;						// Special pixels shader to mark a selection with hot pink.
 
+	ShaderMap mShaders;										// All shaders ever registered with CreateXXXShader
 	ShaderReloadMap mReloadedShaders;						// Shaders that were reloaded live from ShaderFixes
+	ShaderReplacementMap mOriginalShaders;					// When MarkingMode=Original, switch to original. Also used for show_original and shader reversion
+	ShaderReplacementMap mZeroShaders;						// When MarkingMode=zero.
 
-	ComputeShaderMap mComputeShaders;
-	ComputeShaderReplacementMap mOriginalComputeShaders;
 	std::set<UINT64> mVisitedComputeShaders;
 	UINT64 mSelectedComputeShader;
 	int mSelectedComputeShaderPos;
 
-	GeometryShaderMap mGeometryShaders;
-	GeometryShaderReplacementMap mOriginalGeometryShaders;
 	std::set<UINT64> mVisitedGeometryShaders;
 	UINT64 mSelectedGeometryShader;
 	int mSelectedGeometryShaderPos;
 
-	DomainShaderMap mDomainShaders;
-	DomainShaderReplacementMap mOriginalDomainShaders;
 	std::set<UINT64> mVisitedDomainShaders;
 	UINT64 mSelectedDomainShader;
 	int mSelectedDomainShaderPos;
 
-	HullShaderMap mHullShaders;
-	HullShaderReplacementMap mOriginalHullShaders;
 	std::set<UINT64> mVisitedHullShaders;
 	UINT64 mSelectedHullShader;
 	int mSelectedHullShaderPos;
@@ -566,6 +546,8 @@ struct Globals
 			iniParams[i].z = FLT_MAX;
 			iniParams[i].w = FLT_MAX;
 		}
+
+		ticks_at_launch = GetTickCount();
 	}
 };
 

@@ -327,14 +327,14 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 		// Deprecated since the logic can be moved into the shaders with far more flexibility
 		if (use_orig) {
 			if (isPixelShader) {
-				PixelShaderReplacementMap::iterator i = G->mOriginalPixelShaders.find(mCurrentPixelShaderHandle);
-				if (i != G->mOriginalPixelShaders.end())
-					data->oldPixelShader = SwitchPSShader(i->second);
+				ShaderReplacementMap::iterator i = G->mOriginalShaders.find(mCurrentPixelShaderHandle);
+				if (i != G->mOriginalShaders.end())
+					data->oldPixelShader = SwitchPSShader((ID3D11PixelShader*)i->second);
 			}
 			else {
-				VertexShaderReplacementMap::iterator i = G->mOriginalVertexShaders.find(mCurrentVertexShaderHandle);
-				if (i != G->mOriginalVertexShaders.end())
-					data->oldVertexShader = SwitchVSShader(i->second);
+				ShaderReplacementMap::iterator i = G->mOriginalShaders.find(mCurrentVertexShaderHandle);
+				if (i != G->mOriginalShaders.end())
+					data->oldVertexShader = SwitchVSShader((ID3D11VertexShader*)i->second);
 			}
 		}
 	}
@@ -415,6 +415,7 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 
 	hr = (mOrigDevice1->*CreateShader)(patched_bytecode.data(), patched_bytecode.size(),
 			orig_info->linkage, &patched_shader);
+	CleanupShaderMaps(patched_shader);
 	if (FAILED(hr)) {
 		LogInfo("    *** Creating replacement shader failed\n");
 		return;
@@ -1113,9 +1114,6 @@ STDMETHODIMP_(void) HackerContext::GSSetShader(THIS_
 {
 	SetShader<ID3D11GeometryShader, &ID3D11DeviceContext::GSSetShader>
 		(pShader, ppClassInstances, NumClassInstances,
-		 &G->mGeometryShaders,
-		 &G->mOriginalGeometryShaders,
-		 NULL /* TODO: &G->mZeroGeometryShaders */,
 		 &G->mVisitedGeometryShaders,
 		 G->mSelectedGeometryShader,
 		 &mCurrentGeometryShader,
@@ -1613,9 +1611,6 @@ STDMETHODIMP_(void) HackerContext::HSSetShader(THIS_
 {
 	SetShader<ID3D11HullShader, &ID3D11DeviceContext::HSSetShader>
 		(pHullShader, ppClassInstances, NumClassInstances,
-		 &G->mHullShaders,
-		 &G->mOriginalHullShaders,
-		 NULL /* TODO: &G->mZeroHullShaders */,
 		 &G->mVisitedHullShaders,
 		 G->mSelectedHullShader,
 		 &mCurrentHullShader,
@@ -1664,9 +1659,6 @@ STDMETHODIMP_(void) HackerContext::DSSetShader(THIS_
 {
 	SetShader<ID3D11DomainShader, &ID3D11DeviceContext::DSSetShader>
 		(pDomainShader, ppClassInstances, NumClassInstances,
-		 &G->mDomainShaders,
-		 &G->mOriginalDomainShaders,
-		 NULL /* &G->mZeroDomainShaders */,
 		 &G->mVisitedDomainShaders,
 		 G->mSelectedDomainShader,
 		 &mCurrentDomainShader,
@@ -1743,9 +1735,6 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 	/* [annotation] */
 	__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 	UINT NumClassInstances,
-	std::unordered_map<ID3D11Shader *, UINT64> *registered,
-	std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders,
-	std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders,
 	std::set<UINT64> *visitedShaders,
 	UINT64 selectedShader,
 	UINT64 *currentShaderHash,
@@ -1767,8 +1756,8 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 		//
 		// grumble grumble this optimisation caught me out grumble grumble -DSS
 		if (!G->mShaderOverrideMap.empty() || (G->hunting == HUNTING_MODE_ENABLED)) {
-			std::unordered_map<ID3D11Shader *, UINT64>::iterator i = registered->find(pShader);
-			if (i != registered->end()) {
+			ShaderMap::iterator i = G->mShaders.find(pShader);
+			if (i != G->mShaders.end()) {
 				*currentShaderHash = i->second;
 				LogDebug("  shader found: handle = %p, hash = %016I64x\n", *currentShaderHandle, *currentShaderHash);
 
@@ -1808,15 +1797,15 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 		if (G->hunting == HUNTING_MODE_ENABLED) {
 			// Replacement map.
 			if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
-				std::unordered_map<ID3D11Shader *, ID3D11Shader *>::iterator j = originalShaders->find(pShader);
-				if ((selectedShader == *currentShaderHash || !G->fix_enabled) && j != originalShaders->end()) {
-					repl_shader = j->second;
+				ShaderReplacementMap::iterator j = G->mOriginalShaders.find(pShader);
+				if ((selectedShader == *currentShaderHash || !G->fix_enabled) && j != G->mOriginalShaders.end()) {
+					repl_shader = (ID3D11Shader*)j->second;
 				}
 			}
 			if (G->marking_mode == MARKING_MODE_ZERO) {
-				std::unordered_map<ID3D11Shader *, ID3D11Shader *>::iterator j = zeroShaders->find(pShader);
-				if (selectedShader == *currentShaderHash && j != zeroShaders->end()) {
-					repl_shader = j->second;
+				ShaderReplacementMap::iterator j = G->mZeroShaders.find(pShader);
+				if (selectedShader == *currentShaderHash && j != G->mZeroShaders.end()) {
+					repl_shader = (ID3D11Shader*)j->second;
 				}
 			}
 		}
@@ -1838,9 +1827,6 @@ STDMETHODIMP_(void) HackerContext::CSSetShader(THIS_
 {
 	SetShader<ID3D11ComputeShader, &ID3D11DeviceContext::CSSetShader>
 		(pComputeShader, ppClassInstances, NumClassInstances,
-		 &G->mComputeShaders,
-		 &G->mOriginalComputeShaders,
-		 NULL /* TODO (if it makes sense): &G->mZeroComputeShaders */,
 		 &G->mVisitedComputeShaders,
 		 G->mSelectedComputeShader,
 		 &mCurrentComputeShader,
@@ -2422,9 +2408,6 @@ STDMETHODIMP_(void) HackerContext::VSSetShader(THIS_
 {
 	SetShader<ID3D11VertexShader, &ID3D11DeviceContext::VSSetShader>
 		(pVertexShader, ppClassInstances, NumClassInstances,
-		 &G->mVertexShaders,
-		 &G->mOriginalVertexShaders,
-		 &G->mZeroVertexShaders,
 		 &G->mVisitedVertexShaders,
 		 G->mSelectedVertexShader,
 		 &mCurrentVertexShader,
@@ -2451,9 +2434,6 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 {
 	SetShader<ID3D11PixelShader, &ID3D11DeviceContext::PSSetShader>
 		(pPixelShader, ppClassInstances, NumClassInstances,
-		 &G->mPixelShaders,
-		 &G->mOriginalPixelShaders,
-		 &G->mZeroPixelShaders,
 		 &G->mVisitedPixelShaders,
 		 G->mSelectedPixelShader,
 		 &mCurrentPixelShader,

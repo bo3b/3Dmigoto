@@ -205,9 +205,6 @@ private:
 		/* [annotation] */
 		__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances,
-		std::unordered_map<ID3D11Shader *, UINT64> *shaders,
-		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders,
-		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders,
 		std::set<UINT64> *visitedShaders,
 		UINT64 selectedShader,
 		UINT64 *currentShaderHash,

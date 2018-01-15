@@ -397,6 +397,9 @@ public:
 	float width_multiply;
 	float height_multiply;
 
+	void *initial_data;
+	size_t initial_data_size;
+
 	CustomResource();
 	~CustomResource();
 
@@ -443,6 +446,7 @@ enum class ResourceCopyTargetType {
 	THIS_RESOURCE, // For constant buffer analysis & render/depth target clearing
 	SWAP_CHAIN,
 	FAKE_SWAP_CHAIN, // need this for upscaling used with "f_bb" flag in  the .ini file
+	CPU, // For staging resources to the CPU, e.g. for auto-convergence
 };
 
 class ResourceCopyTarget {
@@ -560,6 +564,15 @@ public:
 	void run(CommandListState*) override;
 };
 
+class ResourceStagingOperation : public ResourceCopyOperation {
+public:
+	bool staging;
+
+	ResourceStagingOperation();
+
+	HRESULT map(CommandListState *state, D3D11_MAPPED_SUBRESOURCE *map);
+	void unmap(CommandListState *state);
+};
 
 enum class ParamOverrideType {
 	INVALID,
@@ -588,6 +601,18 @@ enum class ParamOverrideType {
 	CURSOR_Y,
 	CURSOR_HOTSPOT_X,
 	CURSOR_HOTSPOT_Y,
+	TIME,
+	RAW_SEPARATION, // These get the values as they are right now -
+	EYE_SEPARATION, // StereoParams is only updated at the start of each
+	CONVERGENCE,    // frame. Intended for use if the convergence may have
+			// been changed during the frame (e.g. if staged from
+			// the GPU and it is unknown whether the operation has
+			// completed). Comparing these immediately before and
+			// after present can be useful to determine if the user
+			// is currently adjusting them, which is used for the
+			// auto-convergence in Life is Strange: Before the
+			// Storm to convert user convergence adjustments into
+			// equivalent popout adjustments.
 	// TODO:
 	// DEPTH_ACTIVE
 	// etc.
@@ -611,6 +636,10 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"cursor_y", ParamOverrideType::CURSOR_Y},
 	{L"cursor_hotspot_x", ParamOverrideType::CURSOR_HOTSPOT_X},
 	{L"cursor_hotspot_y", ParamOverrideType::CURSOR_HOTSPOT_Y},
+	{L"time", ParamOverrideType::TIME},
+	{L"raw_separation", ParamOverrideType::RAW_SEPARATION},
+	{L"eye_separation", ParamOverrideType::EYE_SEPARATION},
+	{L"convergence", ParamOverrideType::CONVERGENCE},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
 class ParamOverride : public CommandListCommand {
@@ -705,36 +734,45 @@ public:
 
 class PerDrawStereoOverrideCommand : public CommandListCommand {
 public:
-	wstring ini_section;
+	wstring ini_line;
 
 	float val;
 	float saved;
 	bool restore_on_post;
+	bool did_set_value_on_pre;
+	bool staging_type;
+	ResourceStagingOperation staging_op;
 
-	PerDrawStereoOverrideCommand(wstring section, float val, bool restore_on_post) :
-		ini_section(section),
-		val(val),
-		saved(FLT_MAX),
-		restore_on_post(restore_on_post)
-	{}
+	PerDrawStereoOverrideCommand(bool restore_on_post);
+
+	void run(CommandListState*) override;
+	bool update_val(CommandListState *state);
+
+	virtual const char* stereo_param_name() = 0;
+	virtual float get_stereo_value(CommandListState*) = 0;
+	virtual void set_stereo_value(CommandListState*, float val) = 0;
 };
 class PerDrawSeparationOverrideCommand : public PerDrawStereoOverrideCommand
 {
 public:
-	PerDrawSeparationOverrideCommand(wstring section, float val, bool restore_on_post) :
-		PerDrawStereoOverrideCommand(section, val, restore_on_post)
+	PerDrawSeparationOverrideCommand(bool restore_on_post) :
+		PerDrawStereoOverrideCommand(restore_on_post)
 	{}
 
-	void run(CommandListState*) override;
+	const char* stereo_param_name() override { return "separation"; }
+	float get_stereo_value(CommandListState*) override;
+	void set_stereo_value(CommandListState*, float val) override;
 };
 class PerDrawConvergenceOverrideCommand : public PerDrawStereoOverrideCommand
 {
 public:
-	PerDrawConvergenceOverrideCommand(wstring section, float val, bool restore_on_post) :
-		PerDrawStereoOverrideCommand(section, val, restore_on_post)
+	PerDrawConvergenceOverrideCommand(bool restore_on_post) :
+		PerDrawStereoOverrideCommand(restore_on_post)
 	{}
 
-	void run(CommandListState*) override;
+	const char* stereo_param_name() override { return "convergence"; }
+	float get_stereo_value(CommandListState*) override;
+	void set_stereo_value(CommandListState*, float val) override;
 };
 
 

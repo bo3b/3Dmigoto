@@ -58,8 +58,7 @@ private:
 				 __out_opt ID3D11Shader **ppShader)
 			 >
 	void KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11Shader *pShader,
-		const void *pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage *pClassLinkage,
-		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders);
+		const void *pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage *pClassLinkage);
 	HRESULT CreateStereoParamResources();
 	HRESULT CreateIniParamResources();
 	void CreatePinkHuntingResources();
@@ -82,11 +81,7 @@ private:
 		__in_opt  ID3D11ClassLinkage *pClassLinkage,
 		/* [annotation] */
 		__out_opt  ID3D11Shader **ppShader,
-		wchar_t *shaderType,
-		std::unordered_map<ID3D11Shader *, UINT64> *shaders,
-		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders,
-		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders
-		);
+		wchar_t *shaderType);
 
 public:
 	StereoHandle mStereoHandle;
