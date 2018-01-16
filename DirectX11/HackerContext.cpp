@@ -26,6 +26,31 @@
 
 HackerContext* HackerContextFactory(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1)
 {
+	// We can either create a straight HackerContext, or a souped up
+	// FrameAnalysisContext that provides more functionality, at the cost
+	// of a slight performance penalty that may marginally (1fps) reduces
+	// the framerate in CPU bound games. We can't change this decision
+	// later, so we need to decide here and now which it will be, and a
+	// game restart will be required to change this.
+	//
+	// FrameAnalysisContext provides two similar, but separate features -
+	// it provides the frame analysis log activated with the F8 key, and
+	// can log all calls on the context to the debug log. Therefore, if
+	// debug logging is enabled we clearly need the FrameAnalysisContext.
+	//
+	// Without the debug log we use hunting to decide whether to use the
+	// FrameAnalysisContext or not - generally speaking we aim to allow
+	// most of the d3dx.ini options to be changed live (where possible) if
+	// hunting is enabled (=1 or 2), and that includes enabling and
+	// disabling frame analysis on the fly, so if we keyed this off
+	// analyse_frame instead of hunting we would be preventing that for no
+	// good reason.
+	//
+	// It's also worth remembering that the frame_analysis key binding only
+	// works when hunting=1 (partially as a safety measure, partially
+	// because frame analysis resource dumping still has some dependencies
+	// on stat collection), so G->hunting is already a pre-requisite for
+	// frame analysis:
 	if (G->hunting || gLogDebug) {
 		LogInfo("  Creating FrameAnalysisContext\n");
 		return new FrameAnalysisContext(pDevice1, pContext1);
