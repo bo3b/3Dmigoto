@@ -39,7 +39,6 @@ HackerContext::HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pCon
 {
 	mOrigDevice1 = pDevice1;
 	mOrigContext1 = pContext1;
-	mPassThroughContext1 = pContext1;
 	mRealOrigContext1 = pContext1;
 	mHackerDevice = NULL;
 
@@ -86,7 +85,7 @@ ID3D11DeviceContext1* HackerContext::GetOrigContext1(void)
 // above, but when hooking this will be the trampoline object instead:
 ID3D11DeviceContext1* HackerContext::GetPassThroughOrigContext1(void)
 {
-	return mPassThroughContext1;
+	return mOrigContext1;
 }
 
 void HackerContext::HookContext()
@@ -97,7 +96,7 @@ void HackerContext::HookContext()
 	// interface which we use in place of mOrigContext1 to call the real
 	// original context, thereby side stepping the problem that calling the
 	// old mOrigContext1 would be hooked and call back into us endlessly:
-//	mPassThroughContext1 = hook_context(mPassThroughContext1, this, G->enable_hooks);
+//	mOrigContext1 = hook_context(mOrigContext1, this, G->enable_hooks);
 }
 
 // -----------------------------------------------------------------------------
@@ -141,8 +140,8 @@ void HackerContext::RecordShaderResourceUsage()
 	ID3D11Resource *resource;
 	int i;
 
-	mPassThroughContext1->PSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, ps_views);
-	mPassThroughContext1->VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, vs_views);
+	mOrigContext1->PSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, ps_views);
+	mOrigContext1->VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, vs_views);
 
 	for (i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
 		resource = RecordResourceViewStats(ps_views[i]);
@@ -226,8 +225,8 @@ ID3D11VertexShader* HackerContext::SwitchVSShader(ID3D11VertexShader *shader)
 	UINT NumClassInstances = 0, i;
 
 	// We can possibly save the need to get the current shader by saving the ClassInstances
-	mPassThroughContext1->VSGetShader(&pVertexShader, &pClassInstances, &NumClassInstances);
-	mPassThroughContext1->VSSetShader(shader, &pClassInstances, NumClassInstances);
+	mOrigContext1->VSGetShader(&pVertexShader, &pClassInstances, &NumClassInstances);
+	mOrigContext1->VSSetShader(shader, &pClassInstances, NumClassInstances);
 
 	for (i = 0; i < NumClassInstances; i++)
 		pClassInstances[i].Release();
@@ -243,8 +242,8 @@ ID3D11PixelShader* HackerContext::SwitchPSShader(ID3D11PixelShader *shader)
 	UINT NumClassInstances = 0, i;
 
 	// We can possibly save the need to get the current shader by saving the ClassInstances
-	mPassThroughContext1->PSGetShader(&pPixelShader, &pClassInstances, &NumClassInstances);
-	mPassThroughContext1->PSSetShader(shader, &pClassInstances, NumClassInstances);
+	mOrigContext1->PSGetShader(&pPixelShader, &pClassInstances, &NumClassInstances);
+	mOrigContext1->PSSetShader(shader, &pClassInstances, NumClassInstances);
 
 	for (i = 0; i < NumClassInstances; i++)
 		pClassInstances[i].Release();
@@ -270,7 +269,7 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 		if (shaderOverride->depth_filter != DepthBufferFilter::NONE) {
 			ID3D11DepthStencilView *pDepthStencilView = NULL;
 
-			mPassThroughContext1->OMGetRenderTargets(0, NULL, &pDepthStencilView);
+			mOrigContext1->OMGetRenderTargets(0, NULL, &pDepthStencilView);
 
 			// Remember - we are NOT switching to the original shader when the condition is true
 			if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_ACTIVE && !pDepthStencilView) {
@@ -415,8 +414,8 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	// HackerContext, even though the member pointer we were passed very
 	// clearly points to a member function of ID3D11DeviceContext. VS2015
 	// toolchain does not suffer from this bug.
-	(mPassThroughContext1->*GetShaderVS2013BUGWORKAROUND)(&orig_shader, class_instances, &num_instances);
-	(mPassThroughContext1->*SetShaderVS2013BUGWORKAROUND)(patched_shader, class_instances, num_instances);
+	(mOrigContext1->*GetShaderVS2013BUGWORKAROUND)(&orig_shader, class_instances, &num_instances);
+	(mOrigContext1->*SetShaderVS2013BUGWORKAROUND)(patched_shader, class_instances, num_instances);
 	if (orig_shader)
 		orig_shader->Release();
 	for (i = 0; i < num_instances; i++) {
@@ -2302,14 +2301,14 @@ void HackerContext::BindStereoResources()
 	if (mHackerDevice->mStereoResourceView && G->StereoParamsReg >= 0) {
 		LogDebug("  adding NVidia stereo parameter texture to shader resources in slot %i.\n", G->StereoParamsReg);
 
-		(mPassThroughContext1->*OrigSetShaderResources)(G->StereoParamsReg, 1, &mHackerDevice->mStereoResourceView);
+		(mOrigContext1->*OrigSetShaderResources)(G->StereoParamsReg, 1, &mHackerDevice->mStereoResourceView);
 	}
 
 	// Set constants from ini file if they exist
 	if (mHackerDevice->mIniResourceView && G->IniParamsReg >= 0) {
 		LogDebug("  adding ini constants as texture to shader resources in slot %i.\n", G->IniParamsReg);
 
-		(mPassThroughContext1->*OrigSetShaderResources)(G->IniParamsReg, 1, &mHackerDevice->mIniResourceView);
+		(mOrigContext1->*OrigSetShaderResources)(G->IniParamsReg, 1, &mHackerDevice->mIniResourceView);
 	}
 }
 
@@ -2425,7 +2424,7 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
 		{
 			LogDebug("  adding Z buffer to shader resources in slot 126.\n");
 
-			mPassThroughContext1->PSSetShaderResources(126, 1, &mHackerDevice->mZBufferResourceView);
+			mOrigContext1->PSSetShaderResources(126, 1, &mHackerDevice->mZBufferResourceView);
 		}
 	}
 }
