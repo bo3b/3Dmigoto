@@ -337,21 +337,21 @@ STDMETHODIMP HackerSwapChain::QueryInterface(THIS_
 	}
 
 	IUnknown* unk_this;
-	HRESULT hr_this = mOrigUnknown1->QueryInterface(__uuidof(IUnknown), (void**)&unk_this);
+	HRESULT hr_this = mOrigSwapChain1->QueryInterface(__uuidof(IUnknown), (void**)&unk_this);
 
 	IUnknown* unk_ppvObject;
 	HRESULT hr_ppvObject = static_cast<IUnknown*>(*ppvObject)->QueryInterface(__uuidof(IUnknown), (void**)&unk_ppvObject);
 
 	if (SUCCEEDED(hr_this) && SUCCEEDED(hr_ppvObject))
 	{
-		// For an actual case of this->QueryInterface(this), just return our Hacker object.
+		// For an actual case of this->QueryInterface(this), just return our HackerSwapChain object.
 		if (unk_this == unk_ppvObject)
 			*ppvObject = this;
 
 		unk_this->Release();
 		unk_ppvObject->Release();
 
-		LogInfo("  return HackerUnknown(%s@%p) wrapper of %p\n", type_name(this), this, mOrigUnknown1);
+		LogInfo("  return HackerUnknown(%s@%p) wrapper of %p\n", type_name(this), this, mOrigSwapChain1);
 		return hr;
 	}
 
@@ -361,14 +361,14 @@ STDMETHODIMP HackerSwapChain::QueryInterface(THIS_
 
 STDMETHODIMP_(ULONG) HackerSwapChain::AddRef(THIS)
 {
-	ULONG ulRef = mOrigUnknown1->AddRef();
+	ULONG ulRef = mOrigSwapChain1->AddRef();
 	LogInfo("HackerUnknown::AddRef(%s@%p), counter=%d, this=%p\n", type_name(this), this, ulRef, this);
 	return ulRef;
 }
 
 STDMETHODIMP_(ULONG) HackerSwapChain::Release(THIS)
 {
-	ULONG ulRef = mOrigUnknown1->Release();
+	ULONG ulRef = mOrigSwapChain1->Release();
 	LogInfo("HackerUnknown::Release(%s@%p), counter=%d, this=%p\n", type_name(this), this, ulRef, this);
 
 	if (ulRef <= 0)
@@ -394,7 +394,7 @@ STDMETHODIMP HackerSwapChain::SetPrivateData(THIS_
 	LogInfo("HackerSwapChain::SetPrivateData(%s@%p) called with GUID: %s\n", type_name(this), this, NameFromIID(Name).c_str());
 	LogInfo("  DataSize = %d\n", DataSize);
 
-	HRESULT hr = mOrigObject->SetPrivateData(Name, DataSize, pData);
+	HRESULT hr = mOrigSwapChain1->SetPrivateData(Name, DataSize, pData);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
@@ -407,7 +407,7 @@ STDMETHODIMP HackerSwapChain::SetPrivateDataInterface(THIS_
 {
 	LogInfo("HackerSwapChain::SetPrivateDataInterface(%s@%p) called with GUID: %s\n", type_name(this), this, NameFromIID(Name).c_str());
 
-	HRESULT hr = mOrigObject->SetPrivateDataInterface(Name, pUnknown);
+	HRESULT hr = mOrigSwapChain1->SetPrivateDataInterface(Name, pUnknown);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
@@ -422,7 +422,7 @@ STDMETHODIMP HackerSwapChain::GetPrivateData(THIS_
 {
 	LogInfo("HackerSwapChain::GetPrivateData(%s@%p) called with GUID: %s\n", type_name(this), this, NameFromIID(Name).c_str());
 
-	HRESULT hr = mOrigObject->GetPrivateData(Name, pDataSize, pData);
+	HRESULT hr = mOrigSwapChain1->GetPrivateData(Name, pDataSize, pData);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
@@ -436,8 +436,10 @@ STDMETHODIMP HackerSwapChain::GetPrivateData(THIS_
 // this should be more robust.
 //
 // If the parent request is for the IDXGIAdapter or IDXGIFactory, that must mean 
-// we are taking the secret path for getting the swap chain.  Return a wrapped version 
-// whenever this happens, so we can get access later.
+// we are taking the secret path for getting the swap chain. 
+//
+// We no longer return wrapped objects here, because our CreateSwapChain hooks 
+// will correctly catch creation.
 
 STDMETHODIMP HackerSwapChain::GetParent(THIS_
 	/* [annotation][in] */
@@ -447,63 +449,11 @@ STDMETHODIMP HackerSwapChain::GetParent(THIS_
 {
 	LogInfo("HackerSwapChain::GetParent(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
 
-	HRESULT hr = mOrigObject->GetParent(riid, ppParent);
+	HRESULT hr = mOrigSwapChain1->GetParent(riid, ppParent);
 	if (FAILED(hr))
 	{
 		LogInfo("  failed result = %x for %p\n", hr, ppParent);
 		return hr;
-	}
-
-	// No need to check for null states from here, it would have thrown an error.
-
-	if (riid == __uuidof(IDXGIAdapter) || riid == __uuidof(IDXGIAdapter1))
-	{
-		// Always return the IDXGIAdapter1 for these parents, as the superset on Win7.
-		HackerDXGIAdapter1 *adapterWrap1 = new HackerDXGIAdapter1(static_cast<IDXGIAdapter1*>(*ppParent));
-		LogInfo("  created HackerDXGIAdapter1 wrapper = %p of %p\n", adapterWrap1, *ppParent);
-		*ppParent = adapterWrap1;
-	}
-	else if (riid == __uuidof(IDXGIAdapter2))
-	{
-		if (!G->enable_platform_update)
-		{
-			LogInfo("***  returns E_NOINTERFACE as error for IDXGIAdapter2.\n");
-			*ppParent = NULL;
-			return E_NOINTERFACE;
-		}
-		HackerDXGIAdapter2 *adapterWrap2 = new HackerDXGIAdapter2(static_cast<IDXGIAdapter2*>(*ppParent));
-		LogInfo("  created HackerDXGIAdapter2 wrapper = %p of %p\n", adapterWrap2, *ppParent);
-		*ppParent = adapterWrap2;
-	}
-	else if (riid == __uuidof(IDXGIFactory))
-	{
-		// This is a specific hack for MGSV on Windows 10. If we wrap the DXGIFactory the game will reject it and
-		// the game will quit. We still get the swap chain however, as the game creates it from a DXGIFactory1,
-		// which it does allow us to wrap. If this turns out to be insufficient, we should be able to get it working
-		// by using the same style of hooking we use for the context & device.
-		if (!(G->enable_hooks & EnableHooks::SKIP_DXGI_FACTORY)) {
-			HackerDXGIFactory *factoryWrap = new HackerDXGIFactory(static_cast<IDXGIFactory*>(*ppParent));
-			LogInfo("  created HackerDXGIFactory wrapper = %p of %p\n", factoryWrap, *ppParent);
-			*ppParent = factoryWrap;
-		}
-	}
-	else if (riid == __uuidof(IDXGIFactory1))
-	{
-		HackerDXGIFactory1 *factoryWrap1 = new HackerDXGIFactory1(static_cast<IDXGIFactory1*>(*ppParent));
-		LogInfo("  created HackerDXGIFactory1 wrapper = %p of %p\n", factoryWrap1, *ppParent);
-		*ppParent = factoryWrap1;
-	}
-	else if (riid == __uuidof(IDXGIFactory2))
-	{
-		if (!G->enable_platform_update)
-		{
-			LogInfo("***  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
-			*ppParent = NULL;
-			return E_NOINTERFACE;
-		}
-		HackerDXGIFactory2 *factoryWrap2 = new HackerDXGIFactory2(static_cast<IDXGIFactory2*>(*ppParent));
-		LogInfo("  created HackerDXGIFactory2 wrapper = %p of %p\n", factoryWrap2, *ppParent);
-		*ppParent = factoryWrap2;
 	}
 
 	LogInfo("  returns result = %#x\n", hr);
@@ -710,28 +660,8 @@ STDMETHODIMP HackerSwapChain::GetContainingOutput(THIS_
             /* [annotation][out] */ 
             _Out_  IDXGIOutput **ppOutput)
 {
-	LogDebug("HackerSwapChain::GetContainingOutput(%s@%p) called\n", type_name(this), this);
-	
-	//IDXGIOutput *origOutput;
-	//HRESULT hr = mOrigSwapChain1->GetContainingOutput(&origOutput);
-	//if (hr == S_OK)
-	//{
-	//	*ppOutput = IDXGIOutput::GetDirectOutput(origOutput);
-	//}
-
-	// For Dishonored2, this output was not being wrapped, just logged.  Adding this
-	// wrap to close a possible object leak.
+	LogInfo("HackerSwapChain::GetContainingOutput(%s@%p) called\n", type_name(this), this);
 	HRESULT hr = mOrigSwapChain1->GetContainingOutput(ppOutput);
-	if (SUCCEEDED(hr) && ppOutput)
-	{
-		HackerDXGIOutput *outputWrap = new HackerDXGIOutput(*ppOutput);
-
-		LogInfo("  created HackerDXGIOutput wrapper = %p of %p\n", outputWrap, *ppOutput);
-
-		// Return the wrapped version which the game will use for follow on calls.
-		*ppOutput = reinterpret_cast<IDXGIOutput*>(outputWrap);
-	}
-
 	LogInfo("  returns result = %#x\n", hr);
 	return hr;
 }
@@ -829,7 +759,7 @@ STDMETHODIMP HackerSwapChain::GetCoreWindow(THIS_
 //
 // ToDo: never seen this in action.  Setting to always log.  Once we see
 // it in action and works OK, remove the gLogDebug sets, because debug log
-// is too chatty for this.
+// is too chatty for Present calls.
 
 STDMETHODIMP HackerSwapChain::Present1(THIS_
             /* [in] */ UINT SyncInterval,
