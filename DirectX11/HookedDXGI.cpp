@@ -15,16 +15,13 @@
 #include <d3d11_1.h>
 
 #include "HookedDXGI.h"
+#include "HackerDXGI.h"
 
 #include "DLLMainHook.h"
 #include "log.h"
 #include "util.h"
 #include "D3D11Wrapper.h"
 
-#include "Hunting.h"
-#include "input.h"
-#include "Override.h"
-#include "IniHandler.h"
 #include "Overlay.h"
 
 
@@ -41,69 +38,16 @@
 // HackerDXGIFactory because the minimum on Win7 is IDXGIFactory1.
 
 
+
 // -----------------------------------------------------------------------------
-
-static BOOL(WINAPI *trampoline_SetWindowPos)(_In_ HWND hWnd, _In_opt_ HWND hWndInsertAfter,
-	_In_ int X, _In_ int Y, _In_ int cx, _In_ int cy, _In_ UINT uFlags)
-	= SetWindowPos;
-
-static BOOL WINAPI Hooked_SetWindowPos(
-	_In_ HWND hWnd,
-	_In_opt_ HWND hWndInsertAfter,
-	_In_ int X,
-	_In_ int Y,
-	_In_ int cx,
-	_In_ int cy,
-	_In_ UINT uFlags)
-{
-	if (G->SCREEN_UPSCALING != 0) {
-		// Force desired upscaled resolution (only when desired resolution is provided!)
-		if (cx != 0 && cy != 0) {
-			cx = G->SCREEN_WIDTH;
-			cy = G->SCREEN_HEIGHT;
-			X = 0;
-			Y = 0;
-		}
-	}
-	else if (G->SCREEN_FULLSCREEN == 2) {
-		// Do nothing - passing this call through could change the game
-		// to a borderless window. Needed for The Witness.
-		return true;
-	}
-
-	return trampoline_SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
-}
-
-void InstallSetWindowPosHook()
-{
-	HINSTANCE hUser32;
-	static bool hook_installed = false;
-	int fail = 0;
-
-	// Only attempt to hook it once:
-	if (hook_installed)
-		return;
-	hook_installed = true;
-
-	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
-	fail |= InstallHook(hUser32, "SetWindowPos", (void**)&trampoline_SetWindowPos, Hooked_SetWindowPos, true);
-
-	if (fail) {
-		LogInfo("Failed to hook SetWindowPos for full_screen=2\n");
-		BeepFailure2();
-		return;
-	}
-
-	LogInfo("Successfully hooked SetWindowPos for full_screen=2\n");
-	return;
-}
-
 // This tweaks the parameters passed to the real CreateSwapChain, to change behavior.
 // These global parameters come originally from the d3dx.ini, so the user can
 // change them.
+//
 // This is also used by D3D11::CreateSwapChainAndDevice.
 //
 // It might make sense to move this to Utils, where nvapi can access it too.
+// There is now also ForceDisplayParams1 which has some overlap.
 
 void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 {
@@ -129,7 +73,7 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 		// Unconfirmed, but possibly related to:
 		// https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
 		//
-		// This hook is very important in case of upscaling
+		// This hook is also very important in case of Upscaling
 		InstallSetWindowPosHook();
 	}
 
@@ -216,254 +160,6 @@ void ForceDisplayParams1(DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc1)
 	}
 }
 
-// -----------------------------------------------------------------------------
-
-// Called at each DXGI::Present() to give us reliable time to execute user
-// input and hunting commands.
-
-static void UpdateStereoParams(HackerDevice *mHackerDevice, HackerContext *mHackerContext)
-{
-	if (G->ENABLE_TUNE)
-	{
-		//device->mParamTextureManager.mSeparationModifier = gTuneValue;
-		mHackerDevice->mParamTextureManager.mTuneVariable1 = G->gTuneValue[0];
-		mHackerDevice->mParamTextureManager.mTuneVariable2 = G->gTuneValue[1];
-		mHackerDevice->mParamTextureManager.mTuneVariable3 = G->gTuneValue[2];
-		mHackerDevice->mParamTextureManager.mTuneVariable4 = G->gTuneValue[3];
-		int counter = 0;
-		if (counter-- < 0)
-		{
-			counter = 30;
-			mHackerDevice->mParamTextureManager.mForceUpdate = true;
-		}
-	}
-
-	// Update stereo parameter texture. It's possible to arrive here with no texture available though,
-	// so we need to check first.
-	if (mHackerDevice->mStereoTexture)
-	{
-		LogDebug("  updating stereo parameter texture.\n");
-		mHackerDevice->mParamTextureManager.UpdateStereoTexture(mHackerDevice, mHackerContext, mHackerDevice->mStereoTexture, false);
-	}
-	else
-	{
-		LogDebug("  stereo parameter texture missing.\n");
-	}
-}
-
-
-static void RunFrameActions(HackerDevice *mHackerDevice, HackerContext *mHackerContext, Overlay *mOverlay)
-{
-	LogDebug("Running frame actions.  Device: %p\n", mHackerDevice);
-
-	// Regardless of log settings, since this runs every frame, let's flush the log
-	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy
-	if (LogFile) fflush(LogFile);
-
-	// Run the command list here, before drawing the overlay so that a
-	// custom shader on the present call won't remove the overlay. Also,
-	// run this before most frame actions so that this can be considered as
-	// a pre-present command list. We have a separate post-present command
-	// list after the present call in case we need to restore state or
-	// affect something at the start of the frame.
-	RunCommandList(mHackerDevice, mHackerContext, &G->present_command_list, NULL, false);
-
-	// Draw the on-screen overlay text with hunting info, before final Present.
-	// But only when hunting is enabled, this will also make it obvious when
-	// hunting is on.
-	if ((G->hunting == HUNTING_MODE_ENABLED) && mOverlay)
-		mOverlay->DrawOverlay();
-
-	if (G->analyse_frame) {
-		// We don't allow hold to be changed mid-frame due to potential
-		// for filename conflicts, so use def_analyse_options:
-		if (G->def_analyse_options & FrameAnalysisOptions::HOLD) {
-			// If using analyse_options=hold we don't stop the
-			// analysis at the frame boundary (it will be stopped
-			// at the key up event instead), but we do increment
-			// the frame count and reset the draw count:
-			G->analyse_frame_no++;
-			G->analyse_frame = 1;
-		}
-		else {
-			G->analyse_frame = 0;
-			if (G->DumpUsage)
-				DumpUsage(G->ANALYSIS_PATH);
-		}
-	}
-
-	// NOTE: Now that key overrides can check an ini param, the ordering of
-	// this and the present_command_list is significant. We might set an
-	// ini param during a frame for scene detection, which is checked on
-	// override activation, then cleared from the command list run on
-	// present. If we ever needed to run the command list before this
-	// point, we should consider making an explicit "pre" command list for
-	// that purpose rather than breaking the existing behaviour.
-	bool newEvent = DispatchInputEvents(mHackerDevice);
-
-	CurrentTransition.UpdatePresets(mHackerDevice);
-	CurrentTransition.UpdateTransitions(mHackerDevice);
-
-	G->frame_no++;
-
-	// The config file is not safe to reload from within the input handler
-	// since it needs to change the key bindings, so it sets this flag
-	// instead and we handle it now.
-	if (G->gReloadConfigPending)
-		ReloadConfig(mHackerDevice);
-
-	// When not hunting most keybindings won't have been registered, but
-	// still skip the below logic that only applies while hunting.
-	if (G->hunting != HUNTING_MODE_ENABLED)
-		return;
-
-	// Update the huntTime whenever we get fresh user input.
-	if (newEvent)
-		G->huntTime = time(NULL);
-
-	// Clear buffers after some user idle time.  This allows the buffers to be
-	// stable during a hunt, and cleared after one minute of idle time.  The idea
-	// is to make the arrays of shaders stable so that hunting up and down the arrays
-	// is consistent, while the user is engaged.  After 1 minute, they are likely onto
-	// some other spot, and we should start with a fresh set, to keep the arrays and
-	// active shader list small for easier hunting.  Until the first keypress, the arrays
-	// are cleared at each thread wake, just like before. 
-	// The arrays will be continually filled by the SetShader sections, but should 
-	// rapidly converge upon all active shaders.
-
-	if (difftime(time(NULL), G->huntTime) > 60) {
-		EnterCriticalSection(&G->mCriticalSection);
-		TimeoutHuntingBuffers();
-		LeaveCriticalSection(&G->mCriticalSection);
-	}
-}
-
-// -----------------------------------------------------------------------------
-// This serves a dual purpose of defining the interface routine as required by
-// DXGI, and also is the storage for the original call, returned by cHookMgr.Hook.
-
-HRESULT(__stdcall *fnOrigPresent)(
-	IDXGISwapChain * This,
-	/* [in] */ UINT SyncInterval,
-	/* [in] */ UINT Flags) = nullptr;
-
-
-HRESULT __stdcall Hooked_Present(
-	IDXGISwapChain * This,
-	/* [in] */ UINT SyncInterval,
-	/* [in] */ UINT Flags)
-{
-	LogDebug("Hooked DXGISwapChain::Present(%p) called\n", This);
-	LogDebug("  SyncInterval = %d\n", SyncInterval);
-	LogDebug("  Flags = %d\n", Flags);
-
-	if (!(Flags & DXGI_PRESENT_TEST)) {
-		// Every presented frame, we want to take some CPU time to run our actions,
-		// which enables hunting, and snapshots, and aiming overrides and other inputs
-		RunFrameActions(G->gHackerDevice, G->gHackerContext, G->gOverlay);
-	}
-
-	HRESULT hr = fnOrigPresent(This, SyncInterval, Flags);
-
-	if (!(Flags & DXGI_PRESENT_TEST)) {
-		// Update the stereo params texture just after the present so that we
-		// get the new values for the current frame:
-		UpdateStereoParams(G->gHackerDevice, G->gHackerContext);
-
-		// Run the post present command list now, which can be used to restore
-		// state changed in the pre-present command list, or to perform some
-		// action at the start of a frame:
-		RunCommandList(G->gHackerDevice, G->gHackerContext, &G->post_present_command_list, NULL, true);
-	}
-
-	LogDebug("  returns %x\n", hr);
-	return hr;
-}
-
-
-// Present1 for IDXGIFactory2 created CreateSwapChainforHwnd, swap chains.
-
-HRESULT(__stdcall *fnOrigPresent1)(
-	IDXGISwapChain1 * This,
-	/* [in] */ UINT SyncInterval,
-	/* [in] */ UINT PresentFlags,
-	/* [annotation][in] */
-	_In_  const DXGI_PRESENT_PARAMETERS *pPresentParameters) = nullptr;
-
-
-HRESULT __stdcall Hooked_Present1(
-	IDXGISwapChain1 * This,
-	/* [in] */ UINT SyncInterval,
-	/* [in] */ UINT PresentFlags,
-	/* [annotation][in] */
-	_In_  const DXGI_PRESENT_PARAMETERS *pPresentParameters)
-{
-	LogDebug("Hooked DXGISwapChain1::Present1(%p) called\n", This);
-	LogDebug("  SyncInterval = %d\n", SyncInterval);
-	LogDebug("  Flags = %d\n", PresentFlags);
-
-	if (!(PresentFlags & DXGI_PRESENT_TEST)) {
-		// Every presented frame, we want to take some CPU time to run our actions,
-		// which enables hunting, and snapshots, and aiming overrides and other inputs
-		RunFrameActions(G->gHackerDevice, G->gHackerContext, G->gOverlay);
-	}
-
-	HRESULT hr = fnOrigPresent(This, SyncInterval, PresentFlags);
-
-	if (!(PresentFlags & DXGI_PRESENT_TEST)) {
-		// Update the stereo params texture just after the present so that we
-		// get the new values for the current frame:
-		UpdateStereoParams(G->gHackerDevice, G->gHackerContext);
-
-		// Run the post present command list now, which can be used to restore
-		// state changed in the pre-present command list, or to perform some
-		// action at the start of a frame:
-		RunCommandList(G->gHackerDevice, G->gHackerContext, &G->post_present_command_list, NULL, true);
-	}
-
-	LogDebug("  returns %x\n", hr);
-	return hr;
-}
-
-
-// -----------------------------------------------------------------------------
-// Hook the current game's Present call.
-// 
-// This takes multiple steps to get there, but when CreateSwapChain
-// is called, we want to use that swapchain to find the Present call
-// so we can hook it. That Present call drives all our UI.
-
-void HookPresent(IDXGISwapChain* swapChain)
-{
-	LogInfo("*** CreateSwapChain creating hook for Present. \n");
-
-	SIZE_T hook_id;
-	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigPresent,
-		lpvtbl_Present(swapChain), Hooked_Present, 0);
-
-	if (dwOsErr == ERROR_SUCCESS)
-		LogInfo("  Successfully installed IDXGISwapChain->Present hook.\n");
-	else
-		LogInfo("  *** Failed install IDXGISwapChain->Present hook.\n");
-}
-
-// Present1 call is slightly different, and needs to be hooked for
-// the platform_update variant of CreateSwapChainForHwnd.
-
-void HookPresent1(IDXGISwapChain1* swapChain1)
-{
-	LogInfo("*** CreateSwapChain creating hook for Present1. \n");
-
-	SIZE_T hook_id;
-	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigPresent1,
-		lpvtbl_Present1(swapChain1), Hooked_Present1, 0);
-
-	if (dwOsErr == ERROR_SUCCESS)
-		LogInfo("  Successfully installed IDXGISwapChain->Present hook.\n");
-	else
-		LogInfo("  *** Failed install IDXGISwapChain->Present hook.\n");
-}
-
 
 // -----------------------------------------------------------------------------
 // Actual hook for any IDXGICreateSwapChainForHwnd calls the game makes.
@@ -521,11 +217,6 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
 	if (SUCCEEDED(hr))
 	{
-		if (!fnOrigPresent)
-			HookPresent(*ppSwapChain);
-		if (!fnOrigPresent1)
-			HookPresent1(*ppSwapChain);
-
 		// When creating a new swapchain, we can assume this is the game creating 
 		// the most important object, and setup to use the input variables.  This
 		// will setup the globals we want to use for the game.
@@ -606,11 +297,6 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	HRESULT hr = fnOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
 	if (SUCCEEDED(hr))
 	{
-		if (!fnOrigPresent)
-			HookPresent(*ppSwapChain);
-		// It does not appear to be legal to upcast a swapchain to
-		// IDXGISwapChain1, so we'll skip HookPresent1 here.
-
 		// When creating a new swapchain, we can assume this is the game creating 
 		// the most important object, and setup to use the input variables.  This
 		// will setup the globals we want to use for the game.
@@ -655,6 +341,10 @@ void HookCreateSwapChain(void* factory)
 
 // -----------------------------------------------------------------------------
 // Actual hook for any Factory->QueryInterface calls the game makes.
+// ToDo: Presently commented out in activation, because it crashes Dishonored2
+// if this is enabled.  Probably we no longer need this at all, because
+// we are hooking the actual Create* calls, and don't need to worry about the
+// QueryInterface sequence. Even if they upcast from Factory to Factory2.
 
 HRESULT(__stdcall *fnOrigQueryInterface)(
 	IDXGIObject * This,

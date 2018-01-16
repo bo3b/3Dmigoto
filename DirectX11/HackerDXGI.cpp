@@ -68,6 +68,62 @@
 
 
 // -----------------------------------------------------------------------------
+// SetWindowPos hook, activated by full_screen=2 in d3dx.ini
+
+static BOOL(WINAPI *fnOrigSetWindowPos)(_In_ HWND hWnd, _In_opt_ HWND hWndInsertAfter,
+	_In_ int X, _In_ int Y, _In_ int cx, _In_ int cy, _In_ UINT uFlags) = nullptr;
+
+static BOOL WINAPI Hooked_SetWindowPos(
+	_In_ HWND hWnd,
+	_In_opt_ HWND hWndInsertAfter,
+	_In_ int X,
+	_In_ int Y,
+	_In_ int cx,
+	_In_ int cy,
+	_In_ UINT uFlags)
+{
+	if (G->SCREEN_UPSCALING != 0) {
+		// Force desired upscaled resolution (only when desired resolution is provided!)
+		if (cx != 0 && cy != 0) {
+			cx = G->SCREEN_WIDTH;
+			cy = G->SCREEN_HEIGHT;
+			X = 0;
+			Y = 0;
+		}
+	}
+	else if (G->SCREEN_FULLSCREEN == 2) {
+		// Do nothing - passing this call through could change the game
+		// to a borderless window. Needed for The Witness.
+		return true;
+	}
+
+	return fnOrigSetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
+}
+
+
+void InstallSetWindowPosHook()
+{
+	HINSTANCE hUser32;
+	int fail = 0;
+
+	// Only attempt to hook it once:
+	if (fnOrigSetWindowPos != nullptr)
+		return;
+
+	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
+	fail |= InstallHook(hUser32, "SetWindowPos", (void**)&fnOrigSetWindowPos, Hooked_SetWindowPos, true);
+
+	if (fail) {
+		LogInfo("Failed to hook SetWindowPos for full_screen=2\n");
+		BeepFailure2();
+		return;
+	}
+
+	LogInfo("Successfully hooked SetWindowPos for full_screen=2\n");
+	return;
+}
+
+// -----------------------------------------------------------------------------
 
 // In the Elite Dangerous case, they Release the HackerContext objects before creating the 
 // swap chain.  That causes problems, because we are not expecting anyone to get here without
@@ -106,7 +162,7 @@ IDXGISwapChain1* HackerSwapChain::GetOrigSwapChain1()
 
 // -----------------------------------------------------------------------------
 
-static void UpdateStereoParams(HackerDevice *mHackerDevice, HackerContext *mHackerContext)
+void HackerSwapChain::UpdateStereoParams()
 {
 	if (G->ENABLE_TUNE)
 	{
@@ -139,7 +195,7 @@ static void UpdateStereoParams(HackerDevice *mHackerDevice, HackerContext *mHack
 // Called at each DXGI::Present() to give us reliable time to execute user
 // input and hunting commands.
 
-static void RunFrameActions(HackerDevice *mHackerDevice, HackerContext *mHackerContext, Overlay *mOverlay)
+void HackerSwapChain::RunFrameActions()
 {
 	LogDebug("Running frame actions.  Device: %p\n", mHackerDevice);
 
@@ -478,7 +534,7 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
             /* [in] */ UINT SyncInterval,
             /* [in] */ UINT Flags)
 {
-	LogDebug("HackerSwapChain::Present(%s@%p) called\n", type_name(this), this);
+	LogDebug("HackerSwapChain::Present(%s@%p) called with\n", type_name(this), this);
 	LogDebug("  SyncInterval = %d\n", SyncInterval);
 	LogDebug("  Flags = %d\n", Flags);
 
@@ -491,14 +547,14 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
 	HRESULT hr = mOrigSwapChain1->Present(SyncInterval, Flags);
 
 	if (!(Flags & DXGI_PRESENT_TEST)) {
-		// Update the stereo params texture just after the present so that we
-		// get the new values for the current frame:
-		UpdateStereoParams(mHackerDevice, mHackerContext);
+		// Update the stereo params texture just after the present so that 
+		// shaders get the new values for the current frame:
+		UpdateStereoParams();
 
 		// Run the post present command list now, which can be used to restore
 		// state changed in the pre-present command list, or to perform some
 		// action at the start of a frame:
-		RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
+		RunCommandList(G->gHackerDevice, G->gHackerContext, &G->post_present_command_list, NULL, true);
 	}
 
 	LogDebug("  returns %x\n", hr);
@@ -770,6 +826,10 @@ STDMETHODIMP HackerSwapChain::GetCoreWindow(THIS_
 
 // IDXGISwapChain1 requires the platform update, but will be the default
 // swap chain we build whenever possible.
+//
+// ToDo: never seen this in action.  Setting to always log.  Once we see
+// it in action and works OK, remove the gLogDebug sets, because debug log
+// is too chatty for this.
 
 STDMETHODIMP HackerSwapChain::Present1(THIS_
             /* [in] */ UINT SyncInterval,
@@ -777,32 +837,34 @@ STDMETHODIMP HackerSwapChain::Present1(THIS_
             /* [annotation][in] */ 
             _In_  const DXGI_PRESENT_PARAMETERS *pPresentParameters)
 {
-	LogInfo("HackerSwapChain::Present1(%s@%p) called\n", type_name(this), this);
-	LogInfo("  SyncInterval = %d\n", SyncInterval);
-	LogInfo("  PresentFlags = %d\n", PresentFlags);
+	gLogDebug = true;
 
-	// TODO like regular Present call:
-	// if (!(PresentFlags & DXGI_PRESENT_TEST)) {
-	// 	// Every presented frame, we want to take some CPU time to run our actions,
-	// 	// which enables hunting, and snapshots, and aiming overrides and other inputs
-	// 	RunFrameActions();
-	// }
+	LogDebug("HackerSwapChain::Present1(%s@%p) called\n", type_name(this), this);
+	LogDebug("  SyncInterval = %d\n", SyncInterval);
+	LogDebug("  Flags = %d\n", PresentFlags);
+
+	if (!(PresentFlags & DXGI_PRESENT_TEST)) {
+		// Every presented frame, we want to take some CPU time to run our actions,
+		// which enables hunting, and snapshots, and aiming overrides and other inputs
+		RunFrameActions();
+	}
 
 	HRESULT hr = mOrigSwapChain1->Present1(SyncInterval, PresentFlags, pPresentParameters);
 
-	// TODO like regular Present call:
-	// if (!(PresentFlags & DXGI_PRESENT_TEST)) {
-	// 	// Update the stereo params texture just after the present so that we
-	// 	// get the new values for the current frame:
-	// 	UpdateStereoParams(mHackerDevice, mHackerContext);
+	if (!(PresentFlags & DXGI_PRESENT_TEST)) {
+		// Update the stereo params texture just after the present so that we
+		// get the new values for the current frame:
+		UpdateStereoParams();
 
-	// 	// Run the post present command list now, which can be used to restore
-	// 	// state changed in the pre-present command list, or to perform some
-	// 	// action at the start of a frame:
-	// 	RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
-	// }
+		// Run the post present command list now, which can be used to restore
+		// state changed in the pre-present command list, or to perform some
+		// action at the start of a frame:
+		RunCommandList(G->gHackerDevice, G->gHackerContext, &G->post_present_command_list, NULL, true);
+	}
 
-	LogInfo("  returns result = %x\n", hr);
+	LogDebug("  returns %x\n", hr);
+
+	gLogDebug = false;
 	return hr;
 }
         
@@ -1494,3 +1556,11 @@ STDMETHODIMP HackerUpscalingSwapChain::ResizeTarget(THIS_
 //}
 //
 //
+
+/*
+ToDo: 
+use dynamic_cast  instead of static_cast?
+revive the missing skip_dxgi to avoid beeps at launch
+filter junk at bottom here to avoid lost functionality
+Factory2 hook out of dxgi.dll at DLLMainHook? Only needed in Win10 case.
+*/

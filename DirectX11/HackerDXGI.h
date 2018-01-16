@@ -16,6 +16,7 @@ class Overlay;
 
 
 void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc);
+void InstallSetWindowPosHook();
 
 // -----------------------------------------------------------------------------
 // Hierarchy:
@@ -33,6 +34,7 @@ public:
 	HackerSwapChain(IDXGISwapChain1 *pOutput, HackerDevice *pDevice, HackerContext *pContext);
 	
 	IDXGISwapChain1* GetOrigSwapChain1();
+	void UpdateStereoParams();
 	void RunFrameActions();
 
 
