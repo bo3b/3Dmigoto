@@ -1845,10 +1845,10 @@ STDMETHODIMP_(void) FrameAnalysisContext::Dispatch(THIS_
 		/* [annotation] */
 		__in  UINT ThreadGroupCountZ)
 {
-	HackerContext::Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
-
 	FrameAnalysisLog("Dispatch(ThreadGroupCountX:%u, ThreadGroupCountY:%u, ThreadGroupCountZ:%u)\n",
 			ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+
+	HackerContext::Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DispatchIndirect(THIS_
@@ -1857,10 +1857,10 @@ STDMETHODIMP_(void) FrameAnalysisContext::DispatchIndirect(THIS_
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs)
 {
-	HackerContext::DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
-
 	FrameAnalysisLog("DispatchIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
 			pBufferForArgs, AlignedByteOffsetForArgs);
+
+	HackerContext::DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::RSSetState(THIS_
@@ -2107,11 +2107,11 @@ STDMETHODIMP_(void) FrameAnalysisContext::HSSetShader(THIS_
 		__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances)
 {
-	HackerContext::HSSetShader(pHullShader, ppClassInstances, NumClassInstances);
-
 	FrameAnalysisLogNoNL("HSSetShader(pHullShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
 			pHullShader, ppClassInstances, NumClassInstances);
 	FrameAnalysisLogShaderHash<ID3D11HullShader>(pHullShader);
+
+	HackerContext::HSSetShader(pHullShader, ppClassInstances, NumClassInstances);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::HSSetSamplers(THIS_
@@ -2166,11 +2166,11 @@ STDMETHODIMP_(void) FrameAnalysisContext::DSSetShader(THIS_
 		__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances)
 {
-	HackerContext::DSSetShader(pDomainShader, ppClassInstances, NumClassInstances);
-
 	FrameAnalysisLogNoNL("DSSetShader(pDomainShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
 			pDomainShader, ppClassInstances, NumClassInstances);
 	FrameAnalysisLogShaderHash<ID3D11DomainShader>(pDomainShader);
+
+	HackerContext::DSSetShader(pDomainShader, ppClassInstances, NumClassInstances);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DSSetSamplers(THIS_
@@ -2242,11 +2242,11 @@ STDMETHODIMP_(void) FrameAnalysisContext::CSSetShader(THIS_
 		__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances)
 {
-	HackerContext::CSSetShader(pComputeShader, ppClassInstances, NumClassInstances);
-
 	FrameAnalysisLogNoNL("CSSetShader(pComputeShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
 			pComputeShader, ppClassInstances, NumClassInstances);
 	FrameAnalysisLogShaderHash<ID3D11ComputeShader>(pComputeShader);
+
+	HackerContext::CSSetShader(pComputeShader, ppClassInstances, NumClassInstances);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::CSSetSamplers(THIS_
@@ -2902,11 +2902,11 @@ STDMETHODIMP_(void) FrameAnalysisContext::VSSetShader(THIS_
 		__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances)
 {
-	HackerContext::VSSetShader(pVertexShader, ppClassInstances, NumClassInstances);
-
 	FrameAnalysisLogNoNL("VSSetShader(pVertexShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
 			pVertexShader, ppClassInstances, NumClassInstances);
 	FrameAnalysisLogShaderHash<ID3D11VertexShader>(pVertexShader);
+
+	HackerContext::VSSetShader(pVertexShader, ppClassInstances, NumClassInstances);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::PSSetShaderResources(THIS_
@@ -2931,11 +2931,11 @@ STDMETHODIMP_(void) FrameAnalysisContext::PSSetShader(THIS_
 		__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances)
 {
-	HackerContext::PSSetShader(pPixelShader, ppClassInstances, NumClassInstances);
-
 	FrameAnalysisLogNoNL("PSSetShader(pPixelShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
 			pPixelShader, ppClassInstances, NumClassInstances);
 	FrameAnalysisLogShaderHash<ID3D11PixelShader>(pPixelShader);
+
+	HackerContext::PSSetShader(pPixelShader, ppClassInstances, NumClassInstances);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexed(THIS_
