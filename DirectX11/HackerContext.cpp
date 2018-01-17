@@ -125,6 +125,19 @@ ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11View *view, std::se
 	return resource;
 }
 
+static ResourceSnapshot SnapshotResource(ID3D11Resource *handle)
+{
+	uint32_t hash = 0, orig_hash = 0;
+
+	ResourceHandleInfo *info = GetResourceHandleInfo(handle);
+	if (info) {
+		hash = info->hash;
+		orig_hash = info->orig_hash;
+	}
+
+	return ResourceSnapshot(handle, hash, orig_hash);
+}
+
 template <void (__stdcall ID3D11DeviceContext::*GetShaderResources)(THIS_
 		UINT StartSlot,
 		UINT NumViews,
@@ -140,7 +153,7 @@ void HackerContext::RecordShaderResourceUsage(ShaderInfoData *shader_info)
 		if (views[i]) {
 			resource = RecordResourceViewStats(views[i], &G->mShaderResourceInfo);
 			if (resource)
-				shader_info->ResourceRegisters[i].insert(resource);
+				shader_info->ResourceRegisters[i].insert(SnapshotResource(resource));
 			views[i]->Release();
 		}
 	}
@@ -203,13 +216,13 @@ void HackerContext::RecordGraphicsShaderStats()
 
 		for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
 			if (selectedRenderTargetPos >= info->RenderTargets.size())
-				info->RenderTargets.push_back(std::set<ID3D11Resource *>());
+				info->RenderTargets.push_back(std::set<ResourceSnapshot>());
 
-			info->RenderTargets[selectedRenderTargetPos].insert(mCurrentRenderTargets[selectedRenderTargetPos]);
+			info->RenderTargets[selectedRenderTargetPos].insert(SnapshotResource(mCurrentRenderTargets[selectedRenderTargetPos]));
 		}
 
 		if (mCurrentDepthTarget)
-			info->DepthTargets.insert(mCurrentDepthTarget);
+			info->DepthTargets.insert(SnapshotResource(mCurrentDepthTarget));
 
 		if (mCurrentPSNumUAVs) {
 			// This API is poorly designed, because we have to know
@@ -219,7 +232,7 @@ void HackerContext::RecordGraphicsShaderStats()
 				if (uavs[i]) {
 					resource = RecordResourceViewStats(uavs[i], &G->mUnorderedAccessInfo);
 					if (resource)
-						info->UAVs[i + mCurrentPSUAVStartSlot].insert(resource);
+						info->UAVs[i + mCurrentPSUAVStartSlot].insert(SnapshotResource(resource));
 
 					uavs[i]->Release();
 				}
@@ -244,7 +257,7 @@ void HackerContext::RecordComputeShaderStats()
 		if (uavs[i]) {
 			resource = RecordResourceViewStats(uavs[i], &G->mUnorderedAccessInfo);
 			if (resource)
-				info->UAVs[i].insert(resource);
+				info->UAVs[i].insert(SnapshotResource(resource));
 
 			uavs[i]->Release();
 		}

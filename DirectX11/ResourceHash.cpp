@@ -627,7 +627,7 @@ uint32_t CalcTexture2DDataHash(
 // simultaneous reads & modifications (hmm, tempted to implement a lock free
 // map given that it's add only, or use RCU). Is there anything on Windows like
 // lockdep to statically prove this is called with the lock held?
-static ResourceHandleInfo* GetResourceHandleInfo(ID3D11Resource *resource)
+ResourceHandleInfo* GetResourceHandleInfo(ID3D11Resource *resource)
 {
 	std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
 

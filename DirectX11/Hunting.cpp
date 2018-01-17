@@ -205,14 +205,10 @@ static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *ta
 	}
 }
 
-static void DumpUsageRegister(HANDLE f, char *tag, int id, ID3D11Resource *handle)
+static void DumpUsageRegister(HANDLE f, char *tag, int id, const ResourceSnapshot &info)
 {
 	char buf[256];
 	DWORD written;
-	uint32_t hash, orig_hash;
-
-	hash = G->mResources[handle].hash;
-	orig_hash = G->mResources[handle].orig_hash;
 
 	sprintf(buf, "  <%s", tag);
 	WriteFile(f, buf, castStrLen(buf), &written, 0);
@@ -222,23 +218,23 @@ static void DumpUsageRegister(HANDLE f, char *tag, int id, ID3D11Resource *handl
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
 	}
 
-	sprintf(buf, " handle=%p", handle);
+	sprintf(buf, " handle=%p", info.handle);
 	WriteFile(f, buf, castStrLen(buf), &written, 0);
 
-	if (orig_hash != hash) {
-		sprintf(buf, " orig_hash=%08lx", orig_hash);
+	if (info.orig_hash != info.hash) {
+		sprintf(buf, " orig_hash=%08lx", info.orig_hash);
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
 	}
 
 	try {
-		if (G->mResourceInfo.at(orig_hash).hash_contaminated) {
+		if (G->mResourceInfo.at(info.orig_hash).hash_contaminated) {
 			sprintf(buf, " hash_contaminated=true");
 			WriteFile(f, buf, castStrLen(buf), &written, 0);
 		}
 	} catch (std::out_of_range) {
 	}
 
-	sprintf(buf, ">%08lx</%s>\n", hash, tag);
+	sprintf(buf, ">%08lx</%s>\n", info.hash, tag);
 	WriteFile(f, buf, castStrLen(buf), &written, 0);
 }
 
@@ -246,10 +242,10 @@ static void DumpShaderUsageInfo(HANDLE f, std::map<UINT64, ShaderInfoData> *info
 {
 	std::map<UINT64, ShaderInfoData>::iterator i;
 	std::set<UINT64>::iterator j;
-	std::map<int, std::set<ID3D11Resource *>>::const_iterator k;
-	std::set<ID3D11Resource *>::const_iterator o;
-	std::vector<std::set<ID3D11Resource *>>::iterator m;
-	std::set<ID3D11Resource *>::iterator n;
+	std::map<int, std::set<ResourceSnapshot>>::const_iterator k;
+	std::set<ResourceSnapshot>::const_iterator o;
+	std::vector<std::set<ResourceSnapshot>>::iterator m;
+	std::set<ResourceSnapshot>::iterator n;
 	char buf[256];
 	DWORD written;
 	int pos;
