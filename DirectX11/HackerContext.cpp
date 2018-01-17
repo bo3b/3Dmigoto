@@ -134,13 +134,19 @@ void HackerContext::RecordShaderResourceUsage()
 	mOrigContext->VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, vs_views);
 
 	for (i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
-		resource = RecordResourceViewStats(ps_views[i]);
-		if (resource)
-			G->mPixelShaderInfo[mCurrentPixelShader].ResourceRegisters[i].insert(resource);
+		if (ps_views[i]) {
+			resource = RecordResourceViewStats(ps_views[i]);
+			if (resource)
+				G->mPixelShaderInfo[mCurrentPixelShader].ResourceRegisters[i].insert(resource);
+			ps_views[i]->Release();
+		}
 
-		resource = RecordResourceViewStats(vs_views[i]);
-		if (resource)
-			G->mVertexShaderInfo[mCurrentVertexShader].ResourceRegisters[i].insert(resource);
+		if (vs_views[i]) {
+			resource = RecordResourceViewStats(vs_views[i]);
+			if (resource)
+				G->mVertexShaderInfo[mCurrentVertexShader].ResourceRegisters[i].insert(resource);
+			vs_views[i]->Release();
+		}
 	}
 }
 
