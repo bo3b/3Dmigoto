@@ -1679,6 +1679,56 @@ static bool check_texture_override_iteration(TextureOverride *textureOverride)
 	return false;
 }
 
+// Only Texture2D surfaces can be square. Use template specialisation to skip
+// the check on other resource types:
+template <typename DescType>
+static bool is_square_surface(DescType *desc) {
+	return false;
+}
+static bool is_square_surface(D3D11_TEXTURE2D_DESC *desc)
+{
+	return (desc && G->gSurfaceSquareCreateMode >= 0
+			&& desc->Width == desc->Height
+			&& (desc->Usage & D3D11_USAGE_IMMUTABLE) == 0);
+}
+
+// Template specialisations to override resource descriptions.
+// TODO: Refactor this to use common code with CustomResource.
+// TODO: Add overrides for BindFlags since they can affect the stereo mode.
+// Maybe MiscFlags as well in case we need to do something like forcing a
+// buffer to be unstructured to allow it to be steroised when
+// StereoFlagsDX10=0x000C000.
+
+template <typename DescType>
+static void override_resource_desc_common_2d_3d(DescType *desc, TextureOverride *textureOverride)
+{
+	if (textureOverride->format != -1) {
+		LogInfo("  setting custom format to %d\n", textureOverride->format);
+		desc->Format = (DXGI_FORMAT) textureOverride->format;
+	}
+
+	if (textureOverride->width != -1) {
+		LogInfo("  setting custom width to %d\n", textureOverride->width);
+		desc->Width = textureOverride->width;
+	}
+
+	if (textureOverride->height != -1) {
+		LogInfo("  setting custom height to %d\n", textureOverride->height);
+		desc->Height = textureOverride->height;
+	}
+}
+
+static void override_resource_desc(D3D11_BUFFER_DESC *desc, TextureOverride *textureOverride) {}
+static void override_resource_desc(D3D11_TEXTURE1D_DESC *desc, TextureOverride *textureOverride) {}
+static void override_resource_desc(D3D11_TEXTURE2D_DESC *desc, TextureOverride *textureOverride)
+{
+	override_resource_desc_common_2d_3d(desc, textureOverride);
+}
+static void override_resource_desc(D3D11_TEXTURE3D_DESC *desc, TextureOverride *textureOverride)
+{
+	override_resource_desc_common_2d_3d(desc, textureOverride);
+}
+
 template <typename DescType>
 static const DescType* process_texture_override(uint32_t hash,
 		StereoHandle mStereoHandle,
@@ -1695,7 +1745,7 @@ static const DescType* process_texture_override(uint32_t hash,
 	// StereoMode in TextureOverrides, but realistically we always want the
 	// TextureOverrides to be able to override this since they are more
 	// specific, so now we do this first.
-	if (origDesc && G->gSurfaceSquareCreateMode >= 0 && origDesc->Width == origDesc->Height && (origDesc->Usage & D3D11_USAGE_IMMUTABLE) == 0)
+	if (is_square_surface(origDesc))
 		newMode = (NVAPI_STEREO_SURFACECREATEMODE) G->gSurfaceSquareCreateMode;
 
 	TextureOverrideMap::iterator i = G->mTextureOverrideMap.find(hash);
@@ -1721,20 +1771,7 @@ static const DescType* process_texture_override(uint32_t hash,
 
 	*newDesc = *origDesc;
 
-	if (textureOverride->format != -1) {
-		LogInfo("  setting custom format to %d\n", textureOverride->format);
-		newDesc->Format = (DXGI_FORMAT) textureOverride->format;
-	}
-
-	if (textureOverride->width != -1) {
-		LogInfo("  setting custom width to %d\n", textureOverride->width);
-		newDesc->Width = textureOverride->width;
-	}
-
-	if (textureOverride->height != -1) {
-		LogInfo("  setting custom height to %d\n", textureOverride->height);
-		newDesc->Height = textureOverride->height;
-	}
+	override_resource_desc(newDesc, textureOverride);
 
 	return newDesc;
 }
@@ -1756,21 +1793,29 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Buffer **ppBuffer)
 {
+	D3D11_BUFFER_DESC newDesc;
+	const D3D11_BUFFER_DESC *pNewDesc = NULL;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
+
 	LogDebug("HackerDevice::CreateBuffer called\n");
 	if (pDesc)
 		LogDebugResourceDesc(pDesc);
 
-	HRESULT hr = mOrigDevice->CreateBuffer(pDesc, pInitialData, ppBuffer);
+	// Create hash from the raw buffer data if available, but also include
+	// the pDesc data as a unique fingerprint for a buffer.
+	uint32_t data_hash = 0, hash = 0;
+	if (pInitialData && pInitialData->pSysMem && pDesc)
+		hash = data_hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->ByteWidth);
+	if (pDesc)
+		hash = crc32c_hw(hash, pDesc, sizeof(D3D11_BUFFER_DESC));
+
+	// Override custom settings?
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
+
+	HRESULT hr = mOrigDevice->CreateBuffer(pNewDesc, pInitialData, ppBuffer);
+	restore_old_surface_create_mode(oldMode, mStereoHandle);
 	if (hr == S_OK && ppBuffer && *ppBuffer)
 	{
-		// Create hash from the raw buffer data if available, but also include
-		// the pDesc data as a unique fingerprint for a buffer.
-		uint32_t data_hash = 0, hash = 0;
-		if (pInitialData && pInitialData->pSysMem && pDesc)
-			hash = data_hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->ByteWidth);
-		if (pDesc)
-			hash = crc32c_hw(hash, pDesc, sizeof(D3D11_BUFFER_DESC));
-
 		EnterCriticalSection(&G->mCriticalSection);
 			G->mResources[*ppBuffer].hash = hash;
 
@@ -1938,6 +1983,10 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Texture3D **ppTexture3D)
 {
+	D3D11_TEXTURE3D_DESC newDesc;
+	const D3D11_TEXTURE3D_DESC *pNewDesc = NULL;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
+
 	LogInfo("HackerDevice::CreateTexture3D called with parameters\n");
 	if (pDesc)
 		LogDebugResourceDesc(pDesc);
@@ -1965,7 +2014,12 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 		hash = CalcTexture3DDescHash(hash, pDesc);
 	LogInfo("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
-	HRESULT hr = mOrigDevice->CreateTexture3D(pDesc, pInitialData, ppTexture3D);
+	// Override custom settings?
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
+
+	HRESULT hr = mOrigDevice->CreateTexture3D(pNewDesc, pInitialData, ppTexture3D);
+
+	restore_old_surface_create_mode(oldMode, mStereoHandle);
 
 	// Register texture.
 	if (hr == S_OK && ppTexture3D)
