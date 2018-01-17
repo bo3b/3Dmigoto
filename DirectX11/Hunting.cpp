@@ -242,6 +242,50 @@ static void DumpUsageRegister(HANDLE f, char *tag, int id, ID3D11Resource *handl
 	WriteFile(f, buf, castStrLen(buf), &written, 0);
 }
 
+static void DumpShaderUsageInfo(HANDLE f, std::map<UINT64, ShaderInfoData> *info_map, char *tag, bool pixel_shader)
+{
+	std::map<UINT64, ShaderInfoData>::iterator i;
+	std::set<UINT64>::iterator j;
+	std::map<int, std::set<ID3D11Resource *>>::const_iterator k;
+	std::set<ID3D11Resource *>::const_iterator o;
+	std::vector<std::set<ID3D11Resource *>>::iterator m;
+	std::set<ID3D11Resource *>::iterator n;
+	char buf[256];
+	DWORD written;
+	int pos;
+
+	for (i = info_map->begin(); i != info_map->end(); ++i) {
+		sprintf(buf, "<%s hash=\"%016llx\">\n  <PeerShaders>", tag, i->first);
+		WriteFile(f, buf, castStrLen(buf), &written, 0);
+
+		for (j = i->second.PeerShaders.begin(); j != i->second.PeerShaders.end(); ++j) {
+			sprintf(buf, "%016llx ", *j);
+			WriteFile(f, buf, castStrLen(buf), &written, 0);
+		}
+		const char *REG_HEADER = "</PeerShaders>\n";
+		WriteFile(f, REG_HEADER, castStrLen(REG_HEADER), &written, 0);
+
+		for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
+			for (o = k->second.begin(); o != k->second.end(); o++)
+				DumpUsageRegister(f, "Register", k->first, *o);
+		}
+
+		if (pixel_shader) {
+			for (m = i->second.RenderTargets.begin(), pos = 0; m != i->second.RenderTargets.end(); m++, pos++) {
+				for (o = (*m).begin(); o != (*m).end(); o++)
+					DumpUsageRegister(f, "RenderTarget", pos, *o);
+			}
+
+			for (n = i->second.DepthTargets.begin(); n != i->second.DepthTargets.end(); n++) {
+				DumpUsageRegister(f, "DepthTarget", -1, *n);
+			}
+		}
+
+		sprintf(buf, "</%s>\n", tag);
+		WriteFile(f, buf, castStrLen(buf), &written, 0);
+	}
+}
+
 // Expects the caller to have entered the critical section.
 void DumpUsage(wchar_t *dir)
 {
@@ -256,80 +300,23 @@ void DumpUsage(wchar_t *dir)
 	}
 	wcscat(path, L"ShaderUsage.txt");
 	HANDLE f = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-
-	if (f != INVALID_HANDLE_VALUE)
-	{
-		char buf[256];
-		DWORD written;
-		std::map<UINT64, ShaderInfoData>::iterator i;
-		for (i = G->mVertexShaderInfo.begin(); i != G->mVertexShaderInfo.end(); ++i)
-		{
-			sprintf(buf, "<VertexShader hash=\"%016llx\">\n  <CalledPixelShaders>", i->first);
-			WriteFile(f, buf, castStrLen(buf), &written, 0);
-			std::set<UINT64>::iterator j;
-			for (j = i->second.PartnerShader.begin(); j != i->second.PartnerShader.end(); ++j)
-			{
-				sprintf(buf, "%016llx ", *j);
-				WriteFile(f, buf, castStrLen(buf), &written, 0);
-			}
-			const char *REG_HEADER = "</CalledPixelShaders>\n";
-			WriteFile(f, REG_HEADER, castStrLen(REG_HEADER), &written, 0);
-			std::map<int, std::set<ID3D11Resource *>>::const_iterator k;
-			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
-				std::set<ID3D11Resource *>::const_iterator o;
-				for (o = k->second.begin(); o != k->second.end(); o++) {
-					DumpUsageRegister(f, "Register", k->first, *o);
-				}
-			}
-			const char *FOOTER = "</VertexShader>\n";
-			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
-		}
-		for (i = G->mPixelShaderInfo.begin(); i != G->mPixelShaderInfo.end(); ++i)
-		{
-			sprintf(buf, "<PixelShader hash=\"%016llx\">\n"
-				"  <ParentVertexShaders>", i->first);
-			WriteFile(f, buf, castStrLen(buf), &written, 0);
-			std::set<UINT64>::iterator j;
-			for (j = i->second.PartnerShader.begin(); j != i->second.PartnerShader.end(); ++j)
-			{
-				sprintf(buf, "%016llx ", *j);
-				WriteFile(f, buf, castStrLen(buf), &written, 0);
-			}
-			const char *REG_HEADER = "</ParentVertexShaders>\n";
-			WriteFile(f, REG_HEADER, castStrLen(REG_HEADER), &written, 0);
-			std::map<int, std::set<ID3D11Resource *>>::const_iterator k;
-			for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
-				std::set<ID3D11Resource *>::const_iterator o;
-				for (o = k->second.begin(); o != k->second.end(); o++) {
-					DumpUsageRegister(f, "Register", k->first, *o);
-				}
-			}
-			std::vector<std::set<ID3D11Resource *>>::iterator m;
-			int pos = 0;
-			for (m = i->second.RenderTargets.begin(); m != i->second.RenderTargets.end(); m++, pos++) {
-				std::set<ID3D11Resource *>::const_iterator o;
-				for (o = (*m).begin(); o != (*m).end(); o++) {
-					DumpUsageRegister(f, "RenderTarget", pos, *o);
-				}
-			}
-			std::set<ID3D11Resource *>::iterator n;
-			for (n = i->second.DepthTargets.begin(); n != i->second.DepthTargets.end(); n++) {
-				DumpUsageRegister(f, "DepthTarget", -1, *n);
-			}
-			const char *FOOTER = "</PixelShader>\n";
-			WriteFile(f, FOOTER, castStrLen(FOOTER), &written, 0);
-		}
-		DumpUsageResourceInfo(f, &G->mRenderTargetInfo, "RenderTarget");
-		DumpUsageResourceInfo(f, &G->mDepthTargetInfo, "DepthTarget");
-		DumpUsageResourceInfo(f, &G->mShaderResourceInfo, "Register");
-		DumpUsageResourceInfo(f, &G->mCopiedResourceInfo, "CopySource");
-		CloseHandle(f);
-	}
-	else
-	{
+	if (f == INVALID_HANDLE_VALUE) {
 		LogInfo("Error dumping ShaderUsage.txt\n");
-
+		return;
 	}
+
+	DumpShaderUsageInfo(f, &G->mVertexShaderInfo, "VertexShader", false);
+	DumpShaderUsageInfo(f, &G->mHullShaderInfo, "HullShader", false);
+	DumpShaderUsageInfo(f, &G->mDomainShaderInfo, "DomainShader", false);
+	DumpShaderUsageInfo(f, &G->mGeometryShaderInfo, "GeometryShader", false);
+	DumpShaderUsageInfo(f, &G->mPixelShaderInfo, "PixelShader", true);
+	DumpShaderUsageInfo(f, &G->mComputeShaderInfo, "ComputeShader", false);
+
+	DumpUsageResourceInfo(f, &G->mRenderTargetInfo, "RenderTarget");
+	DumpUsageResourceInfo(f, &G->mDepthTargetInfo, "DepthTarget");
+	DumpUsageResourceInfo(f, &G->mShaderResourceInfo, "Register");
+	DumpUsageResourceInfo(f, &G->mCopiedResourceInfo, "CopySource");
+	CloseHandle(f);
 }
 
 
@@ -1347,8 +1334,8 @@ static void MarkPixelShader(HackerDevice *device, void *private_data)
 
 	for (std::set<uint32_t>::iterator i = G->mSelectedPixelShader_IndexBuffer.begin(); i != G->mSelectedPixelShader_IndexBuffer.end(); ++i)
 		LogInfo("     visited index buffer hash = %08x\n", *i);
-	for (std::set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.end(); ++i)
-		LogInfo("     visited vertex shader hash = %016I64x\n", *i);
+	for (std::set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PeerShaders.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PeerShaders.end(); ++i)
+		LogInfo("     visited peer shader hash = %016I64x\n", *i);
 
 	MarkShaderEnd(device, "pixel shader", G->mSelectedPixelShader);
 }
@@ -1360,8 +1347,8 @@ static void MarkVertexShader(HackerDevice *device, void *private_data)
 
 	for (std::set<uint32_t>::iterator i = G->mSelectedVertexShader_IndexBuffer.begin(); i != G->mSelectedVertexShader_IndexBuffer.end(); ++i)
 		LogInfo("     visited index buffer hash = %08lx\n", *i);
-	for (std::set<UINT64>::iterator i = G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.begin(); i != G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.end(); ++i)
-		LogInfo("     visited pixel shader hash = %016I64x\n", *i);
+	for (std::set<UINT64>::iterator i = G->mVertexShaderInfo[G->mSelectedVertexShader].PeerShaders.begin(); i != G->mVertexShaderInfo[G->mSelectedVertexShader].PeerShaders.end(); ++i)
+		LogInfo("     visited peer shader hash = %016I64x\n", *i);
 
 	MarkShaderEnd(device, "vertex shader", G->mSelectedVertexShader);
 }
@@ -1377,6 +1364,10 @@ static void MarkGeometryShader(HackerDevice *device, void *private_data)
 {
 	if (!MarkShaderBegin("geometry shader", G->mSelectedGeometryShader))
 		return;
+
+	for (std::set<UINT64>::iterator i = G->mGeometryShaderInfo[G->mSelectedGeometryShader].PeerShaders.begin(); i != G->mGeometryShaderInfo[G->mSelectedGeometryShader].PeerShaders.end(); ++i)
+		LogInfo("     visited peer shader hash = %016I64x\n", *i);
+
 	MarkShaderEnd(device, "geometry shader", G->mSelectedGeometryShader);
 }
 
@@ -1384,6 +1375,10 @@ static void MarkDomainShader(HackerDevice *device, void *private_data)
 {
 	if (!MarkShaderBegin("domain shader", G->mSelectedDomainShader))
 		return;
+
+	for (std::set<UINT64>::iterator i = G->mDomainShaderInfo[G->mSelectedDomainShader].PeerShaders.begin(); i != G->mDomainShaderInfo[G->mSelectedDomainShader].PeerShaders.end(); ++i)
+		LogInfo("     visited peer shader hash = %016I64x\n", *i);
+
 	MarkShaderEnd(device, "domain shader", G->mSelectedDomainShader);
 }
 
@@ -1391,6 +1386,10 @@ static void MarkHullShader(HackerDevice *device, void *private_data)
 {
 	if (!MarkShaderBegin("hull shader", G->mSelectedHullShader))
 		return;
+
+	for (std::set<UINT64>::iterator i = G->mHullShaderInfo[G->mSelectedHullShader].PeerShaders.begin(); i != G->mHullShaderInfo[G->mSelectedHullShader].PeerShaders.end(); ++i)
+		LogInfo("     visited peer shader hash = %016I64x\n", *i);
+
 	MarkShaderEnd(device, "hull shader", G->mSelectedHullShader);
 }
 

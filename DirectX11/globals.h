@@ -231,7 +231,7 @@ struct ShaderInfoData
 {
 	// All are std::map or std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::map<int, std::set<ID3D11Resource *>> ResourceRegisters;
-	std::set<UINT64> PartnerShader;
+	std::set<UINT64> PeerShaders;
 	std::vector<std::set<ID3D11Resource *>> RenderTargets;
 	std::set<ID3D11Resource *> DepthTargets;
 };
@@ -426,7 +426,11 @@ struct Globals
 	std::set<ID3D11Resource *> mSelectedRenderTargetSnapshotList;			// std::set so that render targets will be sorted in log when marked
 	// Relations
 	std::map<UINT64, ShaderInfoData> mVertexShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<UINT64, ShaderInfoData> mHullShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<UINT64, ShaderInfoData> mDomainShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<UINT64, ShaderInfoData> mGeometryShaderInfo;		// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::map<UINT64, ShaderInfoData> mPixelShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<UINT64, ShaderInfoData> mComputeShaderInfo;		// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 
 	Globals() :
 		mSelectedRenderTargetSnapshot(0),

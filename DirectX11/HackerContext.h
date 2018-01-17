@@ -122,7 +122,14 @@ private:
 	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
 	ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
 	void RecordDepthStencil(ID3D11DepthStencilView *target);
-	void RecordShaderResourceUsage();
+	template <void (__stdcall ID3D11DeviceContext::*GetShaderResources)(THIS_
+		UINT StartSlot,
+		UINT NumViews,
+		ID3D11ShaderResourceView **ppShaderResourceViews)>
+	void RecordShaderResourceUsage(ShaderInfoData *shader_info);
+	void RecordGraphicsShaderStats();
+	void RecordComputeShaderStats();
+	void RecordPeerShaders(std::set<UINT64> *PeerShaders, UINT64 this_shader_hash);
 	void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);
 	ID3D11Resource* RecordResourceViewStats(ID3D11ShaderResourceView *view);
 

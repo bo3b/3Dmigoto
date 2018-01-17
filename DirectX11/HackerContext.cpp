@@ -123,31 +123,96 @@ ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView 
 	return resource;
 }
 
-void HackerContext::RecordShaderResourceUsage()
+template <void (__stdcall ID3D11DeviceContext::*GetShaderResources)(THIS_
+		UINT StartSlot,
+		UINT NumViews,
+		ID3D11ShaderResourceView **ppShaderResourceViews)>
+void HackerContext::RecordShaderResourceUsage(ShaderInfoData *shader_info)
 {
-	ID3D11ShaderResourceView *ps_views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
-	ID3D11ShaderResourceView *vs_views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+	ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
 	ID3D11Resource *resource;
 	int i;
 
-	mOrigContext->PSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, ps_views);
-	mOrigContext->VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, vs_views);
-
+	(mOrigContext->*GetShaderResources)(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 	for (i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
-		if (ps_views[i]) {
-			resource = RecordResourceViewStats(ps_views[i]);
+		if (views[i]) {
+			resource = RecordResourceViewStats(views[i]);
 			if (resource)
-				G->mPixelShaderInfo[mCurrentPixelShader].ResourceRegisters[i].insert(resource);
-			ps_views[i]->Release();
-		}
-
-		if (vs_views[i]) {
-			resource = RecordResourceViewStats(vs_views[i]);
-			if (resource)
-				G->mVertexShaderInfo[mCurrentVertexShader].ResourceRegisters[i].insert(resource);
-			vs_views[i]->Release();
+				shader_info->ResourceRegisters[i].insert(resource);
+			views[i]->Release();
 		}
 	}
+}
+
+void HackerContext::RecordPeerShaders(std::set<UINT64> *PeerShaders, UINT64 this_shader_hash)
+{
+	if (mCurrentVertexShader && mCurrentVertexShader != this_shader_hash)
+		PeerShaders->insert(mCurrentVertexShader);
+
+	if (mCurrentHullShader && mCurrentHullShader != this_shader_hash)
+		PeerShaders->insert(mCurrentHullShader);
+
+	if (mCurrentDomainShader && mCurrentDomainShader != this_shader_hash)
+		PeerShaders->insert(mCurrentDomainShader);
+
+	if (mCurrentGeometryShader && mCurrentGeometryShader != this_shader_hash)
+		PeerShaders->insert(mCurrentGeometryShader);
+
+	if (mCurrentPixelShader && mCurrentPixelShader != this_shader_hash)
+		PeerShaders->insert(mCurrentPixelShader);
+}
+
+void HackerContext::RecordGraphicsShaderStats()
+{
+	UINT selectedRenderTargetPos;
+	ShaderInfoData *info;
+
+	if (mCurrentVertexShader) {
+		info = &G->mVertexShaderInfo[mCurrentVertexShader];
+		RecordShaderResourceUsage<&ID3D11DeviceContext::VSGetShaderResources>(info);
+		RecordPeerShaders(&info->PeerShaders, mCurrentVertexShader);
+	}
+
+	if (mCurrentHullShader) {
+		info = &G->mHullShaderInfo[mCurrentHullShader];
+		RecordShaderResourceUsage<&ID3D11DeviceContext::HSGetShaderResources>(info);
+		RecordPeerShaders(&info->PeerShaders, mCurrentHullShader);
+	}
+
+	if (mCurrentDomainShader) {
+		info = &G->mDomainShaderInfo[mCurrentDomainShader];
+		RecordShaderResourceUsage<&ID3D11DeviceContext::DSGetShaderResources>(info);
+		RecordPeerShaders(&info->PeerShaders, mCurrentDomainShader);
+	}
+
+	if (mCurrentGeometryShader) {
+		info = &G->mGeometryShaderInfo[mCurrentGeometryShader];
+		RecordShaderResourceUsage<&ID3D11DeviceContext::GSGetShaderResources>(info);
+		RecordPeerShaders(&info->PeerShaders, mCurrentGeometryShader);
+	}
+
+	if (mCurrentPixelShader) {
+		info = &G->mPixelShaderInfo[mCurrentPixelShader];
+		RecordShaderResourceUsage<&ID3D11DeviceContext::PSGetShaderResources>(info);
+		RecordPeerShaders(&info->PeerShaders, mCurrentPixelShader);
+
+		for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
+			if (selectedRenderTargetPos >= info->RenderTargets.size())
+				info->RenderTargets.push_back(std::set<ID3D11Resource *>());
+
+			info->RenderTargets[selectedRenderTargetPos].insert(mCurrentRenderTargets[selectedRenderTargetPos]);
+		}
+
+		if (mCurrentDepthTarget)
+			info->DepthTargets.insert(mCurrentDepthTarget);
+	}
+}
+
+void HackerContext::RecordComputeShaderStats()
+{
+	RecordShaderResourceUsage<&ID3D11DeviceContext::CSGetShaderResources>(&G->mComputeShaderInfo[mCurrentComputeShader]);
+
+	// TODO: Collect stats on assigned UAVs
 }
 
 void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num)
@@ -497,29 +562,8 @@ void HackerContext::BeforeDraw(DrawContext &data)
 			// In some cases stat collection can have a significant
 			// performance impact or may result in a runaway
 			// memory leak, so only do it if dump_usage is enabled:
-			if (G->DumpUsage) {
-				if (mCurrentVertexShader && mCurrentPixelShader)
-				{
-					G->mVertexShaderInfo[mCurrentVertexShader].PartnerShader.insert(mCurrentPixelShader);
-					G->mPixelShaderInfo[mCurrentPixelShader].PartnerShader.insert(mCurrentVertexShader);
-				}
-				if (mCurrentPixelShader) {
-					for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
-						std::vector<std::set<ID3D11Resource *>> &targets = G->mPixelShaderInfo[mCurrentPixelShader].RenderTargets;
-
-						if (selectedRenderTargetPos >= targets.size())
-							targets.push_back(std::set<ID3D11Resource *>());
-
-						targets[selectedRenderTargetPos].insert(mCurrentRenderTargets[selectedRenderTargetPos]);
-					}
-					if (mCurrentDepthTarget)
-						G->mPixelShaderInfo[mCurrentPixelShader].DepthTargets.insert(mCurrentDepthTarget);
-				}
-
-				// Maybe make this optional if it turns out to have a
-				// significant performance impact:
-				RecordShaderResourceUsage();
-			}
+			if (G->DumpUsage)
+				RecordGraphicsShaderStats();
 
 			// Selection
 			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos)
@@ -1347,7 +1391,7 @@ STDMETHODIMP_(void) HackerContext::SOSetTargets(THIS_
 bool HackerContext::BeforeDispatch(DispatchContext *context)
 {
 	if (G->hunting == HUNTING_MODE_ENABLED) {
-		// TODO: Collect stats on assigned UAVs
+		RecordComputeShaderStats();
 
 		if (mCurrentComputeShader == G->mSelectedComputeShader) {
 			if (G->marking_mode == MARKING_MODE_SKIP)
