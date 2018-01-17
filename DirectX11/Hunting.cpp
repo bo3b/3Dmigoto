@@ -256,7 +256,7 @@ static void DumpShaderUsageInfo(HANDLE f, std::map<UINT64, ShaderInfoData> *info
 
 		// Does not apply to compute shaders:
 		if (!i->second.PeerShaders.empty()) {
-			const char *PEER_HEADER = "<PeerShaders>\n";
+			const char *PEER_HEADER = "  <PeerShaders>";
 			WriteFile(f, PEER_HEADER, castStrLen(PEER_HEADER), &written, 0);
 
 			for (j = i->second.PeerShaders.begin(); j != i->second.PeerShaders.end(); ++j) {
