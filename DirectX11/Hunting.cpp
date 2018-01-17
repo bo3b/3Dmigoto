@@ -242,7 +242,7 @@ static void DumpUsageRegister(HANDLE f, char *tag, int id, ID3D11Resource *handl
 	WriteFile(f, buf, castStrLen(buf), &written, 0);
 }
 
-static void DumpShaderUsageInfo(HANDLE f, std::map<UINT64, ShaderInfoData> *info_map, char *tag, bool pixel_shader, bool has_uavs)
+static void DumpShaderUsageInfo(HANDLE f, std::map<UINT64, ShaderInfoData> *info_map, char *tag)
 {
 	std::map<UINT64, ShaderInfoData>::iterator i;
 	std::set<UINT64>::iterator j;
@@ -255,37 +255,42 @@ static void DumpShaderUsageInfo(HANDLE f, std::map<UINT64, ShaderInfoData> *info
 	int pos;
 
 	for (i = info_map->begin(); i != info_map->end(); ++i) {
-		sprintf(buf, "<%s hash=\"%016llx\">\n  <PeerShaders>", tag, i->first);
+		sprintf(buf, "<%s hash=\"%016llx\">\n", tag, i->first);
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
 
-		for (j = i->second.PeerShaders.begin(); j != i->second.PeerShaders.end(); ++j) {
-			sprintf(buf, "%016llx ", *j);
-			WriteFile(f, buf, castStrLen(buf), &written, 0);
+		// Does not apply to compute shaders:
+		if (!i->second.PeerShaders.empty()) {
+			const char *PEER_HEADER = "<PeerShaders>\n";
+			WriteFile(f, PEER_HEADER, castStrLen(PEER_HEADER), &written, 0);
+
+			for (j = i->second.PeerShaders.begin(); j != i->second.PeerShaders.end(); ++j) {
+				sprintf(buf, "%016llx ", *j);
+				WriteFile(f, buf, castStrLen(buf), &written, 0);
+			}
+			const char *REG_HEADER = "</PeerShaders>\n";
+			WriteFile(f, REG_HEADER, castStrLen(REG_HEADER), &written, 0);
 		}
-		const char *REG_HEADER = "</PeerShaders>\n";
-		WriteFile(f, REG_HEADER, castStrLen(REG_HEADER), &written, 0);
 
 		for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k) {
 			for (o = k->second.begin(); o != k->second.end(); o++)
 				DumpUsageRegister(f, "Register", k->first, *o);
 		}
 
-		if (pixel_shader) {
-			for (m = i->second.RenderTargets.begin(), pos = 0; m != i->second.RenderTargets.end(); m++, pos++) {
-				for (o = (*m).begin(); o != (*m).end(); o++)
-					DumpUsageRegister(f, "RenderTarget", pos, *o);
-			}
-
-			for (n = i->second.DepthTargets.begin(); n != i->second.DepthTargets.end(); n++) {
-				DumpUsageRegister(f, "DepthTarget", -1, *n);
-			}
+		// Only applies to pixel shaders:
+		for (m = i->second.RenderTargets.begin(), pos = 0; m != i->second.RenderTargets.end(); m++, pos++) {
+			for (o = (*m).begin(); o != (*m).end(); o++)
+				DumpUsageRegister(f, "RenderTarget", pos, *o);
 		}
 
-		if (has_uavs) {
-			for (k = i->second.UAVs.begin(); k != i->second.UAVs.end(); ++k) {
-				for (o = k->second.begin(); o != k->second.end(); o++)
-					DumpUsageRegister(f, "UAV", k->first, *o);
-			}
+		// Only applies to pixel shaders:
+		for (n = i->second.DepthTargets.begin(); n != i->second.DepthTargets.end(); n++) {
+			DumpUsageRegister(f, "DepthTarget", -1, *n);
+		}
+
+		// Applies to pixel and compute shaders:
+		for (k = i->second.UAVs.begin(); k != i->second.UAVs.end(); ++k) {
+			for (o = k->second.begin(); o != k->second.end(); o++)
+				DumpUsageRegister(f, "UAV", k->first, *o);
 		}
 
 		sprintf(buf, "</%s>\n", tag);
@@ -312,12 +317,12 @@ void DumpUsage(wchar_t *dir)
 		return;
 	}
 
-	DumpShaderUsageInfo(f, &G->mVertexShaderInfo, "VertexShader", false, false);
-	DumpShaderUsageInfo(f, &G->mHullShaderInfo, "HullShader", false, false);
-	DumpShaderUsageInfo(f, &G->mDomainShaderInfo, "DomainShader", false, false);
-	DumpShaderUsageInfo(f, &G->mGeometryShaderInfo, "GeometryShader", false, false);
-	DumpShaderUsageInfo(f, &G->mPixelShaderInfo, "PixelShader", true, true);
-	DumpShaderUsageInfo(f, &G->mComputeShaderInfo, "ComputeShader", false, true);
+	DumpShaderUsageInfo(f, &G->mVertexShaderInfo, "VertexShader");
+	DumpShaderUsageInfo(f, &G->mHullShaderInfo, "HullShader");
+	DumpShaderUsageInfo(f, &G->mDomainShaderInfo, "DomainShader");
+	DumpShaderUsageInfo(f, &G->mGeometryShaderInfo, "GeometryShader");
+	DumpShaderUsageInfo(f, &G->mPixelShaderInfo, "PixelShader");
+	DumpShaderUsageInfo(f, &G->mComputeShaderInfo, "ComputeShader");
 
 	DumpUsageResourceInfo(f, &G->mRenderTargetInfo, "RenderTarget");
 	DumpUsageResourceInfo(f, &G->mDepthTargetInfo, "DepthTarget");
