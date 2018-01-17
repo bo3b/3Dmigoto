@@ -5,8 +5,9 @@
 #include <d3d11_1.h>
 #include <DirectXMath.h>
 #include <util.h>
-#include "DrawCallInfo.h"
 #include <nvapi.h>
+
+#include "DrawCallInfo.h"
 
 // Used to prevent typos leading to infinite recursion (or at least overflowing
 // the real stack) due to a section running itself or a circular reference. 64

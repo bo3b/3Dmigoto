@@ -20,7 +20,7 @@
 #include "shader.h"
 #include "DecompileHLSL.h"
 #include "HackerContext.h"
-#include "Globals.h"
+//#include "Globals.h"
 #include "D3D11Wrapper.h"
 #include "SpriteFont.h"
 #include "D3D_Shaders\stdafx.h"

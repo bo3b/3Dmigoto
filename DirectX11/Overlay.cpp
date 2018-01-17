@@ -4,12 +4,16 @@
 #include "Overlay.h"
 
 #include <DirectXColors.h>
-#include <StrSafe.h>
+//#include <StrSafe.h>
 
-#include "D3D11Wrapper.h"
 #include "SimpleMath.h"
 #include "SpriteBatch.h"
-#include "nvapi.h"
+
+#include "log.h"
+#include "version.h"
+#include "D3D11Wrapper.h"
+//#include "nvapi.h"
+#include "Globals.h"
 
 
 // Side note: Not really stoked with C++ string handling.  There are like 4 or

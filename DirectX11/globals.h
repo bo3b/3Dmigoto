@@ -7,17 +7,27 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
+#include <memory>
 
+#include "DLLMainHook.h"
+#include "DirectXMath.h"
 #include "util.h"
-#include "CommandList.h"
+
+#include "HackerDevice.h"
+#include "HackerContext.h"
+#include "HackerDXGI.h"
+
 #include "ResourceHash.h"
+#include "CommandList.h"
+
 
 // Resolve circular include dependency between Globals.h ->
 // CommandList.h -> HackerContext.h -> Globals.h
 class CommandListCommand;
 typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
-class Overlay;
 
+class Overlay;
+class HackerSwapChain;
 
 enum HuntingMode {
 	HUNTING_MODE_DISABLED = 0,
@@ -283,7 +293,7 @@ struct Globals
 
 	HackerDevice* gHackerDevice;
 	HackerContext* gHackerContext;
-	IDXGISwapChain* gSwapChain;
+	HackerSwapChain* gHackerSwapChain;
 	Overlay* gOverlay;
 
 	EnableHooks enable_hooks;
@@ -439,7 +449,7 @@ struct Globals
 	Globals() :
 		gHackerDevice(0),
 		gHackerContext(0),
-		gSwapChain(0),
+		gHackerSwapChain(0),
 		gOverlay(0),
 
 		mSelectedRenderTargetSnapshot(0),

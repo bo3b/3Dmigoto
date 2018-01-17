@@ -11,14 +11,16 @@
 //  HackerContext <- ID3D11DeviceContext1 <- ID3D11DeviceContext <- ID3D11DeviceChild <- IUnknown
 
 #include "HackerContext.h"
-#include "HookedContext.h"
+
+//#include "HookedContext.h"
 
 #include "log.h"
+#include "Globals.h"
+
 #include "HackerDevice.h"
 #include "D3D11Wrapper.h"
-#include "Globals.h"
-#include "ResourceHash.h"
-#include "Override.h"
+//#include "ResourceHash.h"
+//#include "Override.h"
 #include "ShaderRegex.h"
 #include "FrameAnalysis.h"
 

@@ -2,12 +2,28 @@
 
 #include <d3d11_1.h>
 
-#include "HackerDevice.h"
-#include "Globals.h"
-#include "ResourceHash.h"
 #include "DrawCallInfo.h"
 
+#include "CommandList.h"
+
+#include "HackerDevice.h"
+//#include "ResourceHash.h"
+#include "Globals.h"
+
+
+// Self forward reference for the factory interface.
+class HackerContext;
+
 HackerContext* HackerContextFactory(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
+
+// Forward declaration to allow circular reference between HackerContext and HackerDevice. 
+// We need this to allow each to reference the other as needed.
+
+class HackerDevice;
+
+enum class FrameAnalysisOptions;
+struct ShaderOverride;
+
 
 struct DrawContext
 {
@@ -41,10 +57,6 @@ struct DispatchContext
 };
 
 
-// Forward declaration to allow circular reference between HackerContext and HackerDevice. 
-// We need this to allow each to reference the other as needed.
-
-class HackerDevice;
 
 // These are per-context so we shouldn't need locks
 struct MappedResourceInfo {

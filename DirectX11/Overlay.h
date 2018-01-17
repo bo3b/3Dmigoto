@@ -2,20 +2,11 @@
 
 #include <memory>
 #include <d3d11_1.h>
+#include <dxgi1_2.h>
 
 #include "SpriteFont.h"
 #include "SpriteBatch.h"
 
-#include "HackerDevice.h"
-#include "HackerContext.h"
-#include "nvapi.h"
-
-
-// Forward references required because of circular references from the
-// other 'Hacker' objects.
-
-class HackerDevice;
-class HackerContext;
 
 class Overlay
 {
