@@ -101,7 +101,6 @@ class HackerContext : public ID3D11DeviceContext1
 private:
 	ID3D11Device1 *mOrigDevice1;
 	ID3D11DeviceContext1 *mOrigContext1;
-	ID3D11DeviceContext1 *mPassThroughContext1;
 	ID3D11DeviceContext1 *mRealOrigContext1;
 	HackerDevice *mHackerDevice;
 
