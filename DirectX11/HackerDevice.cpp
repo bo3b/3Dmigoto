@@ -1828,11 +1828,11 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 			// if (pDesc)
 			//	memcpy(&handle_info->descBuf, pDesc, sizeof(D3D11_BUFFER_DESC));
 
-			// TODO: For stat collection and hash contamination tracking:
-			// if (G->hunting && pDesc) {
-			// 	G->mResourceInfo[hash] = *pDesc;
-			// 	G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
-			// }
+			// For stat collection and hash contamination tracking:
+			if (G->hunting && pDesc) {
+				G->mResourceInfo[hash] = *pDesc;
+				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+			}
 		LeaveCriticalSection(&G->mCriticalSection);
 	}
 	return hr;
@@ -1880,11 +1880,11 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 			// if (pDesc)
 			// 	memcpy(&handle_info->desc1D, pDesc, sizeof(D3D11_TEXTURE1D_DESC));
 
-			// TODO: For stat collection and hash contamination tracking:
-			// if (G->hunting && pDesc) {
-			// 	G->mResourceInfo[hash] = *pDesc;
-			// 	G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
-			// }
+			// For stat collection and hash contamination tracking:
+			if (G->hunting && pDesc) {
+				G->mResourceInfo[hash] = *pDesc;
+				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+			}
 		LeaveCriticalSection(&G->mCriticalSection);
 	}
 	return hr;

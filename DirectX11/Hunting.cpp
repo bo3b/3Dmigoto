@@ -15,6 +15,25 @@
 #include "IniHandler.h"
 #include "D3D_Shaders\stdafx.h"
 
+static int StrRenderTargetBuf(char *buf, size_t size, D3D11_BUFFER_DESC *desc)
+{
+	return _snprintf_s(buf, size, size, "type=Buffer ByteWidth=%u "
+		"Usage=%u BindFlags=0x%x CPUAccessFlags=0x%x MiscFlags=0x%x "
+		"StructureByteStride=%u",
+		desc->ByteWidth, desc->Usage, desc->BindFlags,
+		desc->CPUAccessFlags, desc->MiscFlags,
+		desc->StructureByteStride);
+}
+
+static int StrRenderTarget1D(char *buf, size_t size, D3D11_TEXTURE1D_DESC *desc)
+{
+	return _snprintf_s(buf, size, size, "type=Texture1D Width=%u MipLevels=%u "
+		"ArraySize=%u RawFormat=%u Format=\"%s\" Usage=%u BindFlags=0x%x "
+		"CPUAccessFlags=0x%x MiscFlags=0x%x",
+		desc->Width, desc->MipLevels, desc->ArraySize, desc->Format,
+		TexFormatStr(desc->Format), desc->Usage, desc->BindFlags,
+		desc->CPUAccessFlags, desc->MiscFlags);
+}
 
 static int StrRenderTarget2D(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc)
 {
@@ -44,6 +63,10 @@ static int StrRenderTarget3D(char *buf, size_t size, D3D11_TEXTURE3D_DESC *desc)
 static int StrRenderTarget(char *buf, size_t size, struct ResourceHashInfo &info)
 {
 	switch (info.type) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			return StrRenderTargetBuf(buf, size, &info.buf_desc);
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			return StrRenderTarget1D(buf, size, &info.tex1d_desc);
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			return StrRenderTarget2D(buf, size, &info.tex2d_desc);
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:

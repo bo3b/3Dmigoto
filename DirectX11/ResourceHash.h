@@ -94,6 +94,8 @@ struct ResourceHashInfo
 {
 	D3D11_RESOURCE_DIMENSION type;
 	union {
+		D3D11_BUFFER_DESC buf_desc;
+		D3D11_TEXTURE1D_DESC tex1d_desc;
 		D3D11_TEXTURE2D_DESC tex2d_desc;
 		D3D11_TEXTURE3D_DESC tex3d_desc;
 	};
@@ -110,6 +112,20 @@ struct ResourceHashInfo
 		initial_data_used_in_hash(false),
 		hash_contaminated(false)
 	{}
+
+	struct ResourceHashInfo & operator= (D3D11_BUFFER_DESC desc)
+	{
+		type = D3D11_RESOURCE_DIMENSION_BUFFER;
+		buf_desc = desc;
+		return *this;
+	}
+
+	struct ResourceHashInfo & operator= (D3D11_TEXTURE1D_DESC desc)
+	{
+		type = D3D11_RESOURCE_DIMENSION_TEXTURE1D;
+		tex1d_desc = desc;
+		return *this;
+	}
 
 	struct ResourceHashInfo & operator= (D3D11_TEXTURE2D_DESC desc)
 	{
