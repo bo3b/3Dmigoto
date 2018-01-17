@@ -436,6 +436,23 @@ static UINT CompressedFormatBlockSize(DXGI_FORMAT Format)
 	return 0;
 }
 
+static size_t Texture1DLength(
+	const D3D11_TEXTURE1D_DESC *pDesc,
+	const D3D11_SUBRESOURCE_DATA *pInitialData,
+	UINT level)
+{
+	// At the moment we are only using the first mip-map level, but this
+	// should work if we wanted to use another:
+	UINT mip_width = max(pDesc->Width >> level, 1);
+
+	// For Texture1Ds we can't use the row pitch, so we have to calculate
+	// the size ourselves based on the format size and mip-map width. This
+	// will return 0 if the texture is using some esoteric format. I don't
+	// think block compressed formats work on 1D textures because those
+	// operate on 4x4 blocks of pixels.
+	return dxgi_format_size(pDesc->Format) * mip_width;
+}
+
 static size_t Texture2DLength(
 	const D3D11_TEXTURE2D_DESC *pDesc,
 	const D3D11_SUBRESOURCE_DATA *pInitialData,
@@ -644,6 +661,22 @@ uint32_t GetResourceHash(ID3D11Resource *resource)
 	// Return a 0 so it is obvious that this resource has not been hashed.
 
 	return 0;
+}
+
+uint32_t CalcTexture1DDataHash(
+	const D3D11_TEXTURE1D_DESC *pDesc,
+	const D3D11_SUBRESOURCE_DATA *pInitialData)
+{
+	size_t length;
+
+	if (!pDesc || !pInitialData || !pInitialData->pSysMem)
+		return 0;
+
+	// As above, we could potentially consider multiple mip-map levels blah
+	// blah blah...
+
+	length = Texture1DLength(pDesc, &pInitialData[0], 0);
+	return crc32c_hw(0, pInitialData[0].pSysMem, length);
 }
 
 uint32_t CalcTexture3DDataHash(

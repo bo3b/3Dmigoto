@@ -1852,7 +1852,46 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Texture1D **ppTexture1D)
 {
-	return mOrigDevice->CreateTexture1D(pDesc, pInitialData, ppTexture1D);
+	D3D11_TEXTURE1D_DESC newDesc;
+	const D3D11_TEXTURE1D_DESC *pNewDesc = NULL;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
+	uint32_t data_hash, hash;
+
+	LogDebug("HackerDevice::CreateTexture1D called\n");
+	if (pDesc)
+		LogDebugResourceDesc(pDesc);
+
+	hash = data_hash = CalcTexture1DDataHash(pDesc, pInitialData);
+	if (pDesc)
+		hash = crc32c_hw(hash, pDesc, sizeof(D3D11_TEXTURE1D_DESC));
+	LogDebug("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
+
+	// Override custom settings?
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
+
+	HRESULT hr = mOrigDevice->CreateTexture1D(pNewDesc, pInitialData, ppTexture1D);
+
+	restore_old_surface_create_mode(oldMode, mStereoHandle);
+
+	if (hr == S_OK && ppTexture1D && *ppTexture1D)
+	{
+		EnterCriticalSection(&G->mCriticalSection);
+			G->mResources[*ppTexture1D].hash = hash;
+
+			// TODO: For hash tracking if we ever need it:
+			// G->mResources[*ppTexture1D].orig_hash = hash;
+			// G->mResources[*ppTexture1D].data_hash = data_hash;
+			// if (pDesc)
+			// 	memcpy(&G->mResources[*ppTexture1D].desc1D, pDesc, sizeof(D3D11_TEXTURE1D_DESC));
+
+			// TODO: For stat collection and hash contamination tracking:
+			// if (G->hunting && pDesc) {
+			// 	G->mResourceInfo[hash] = *pDesc;
+			// 	G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+			// }
+		LeaveCriticalSection(&G->mCriticalSection);
+	}
+	return hr;
 }
 
 static bool heuristic_could_be_possible_resolution(unsigned width, unsigned height)
