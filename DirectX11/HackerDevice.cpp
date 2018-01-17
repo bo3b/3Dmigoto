@@ -1661,72 +1661,82 @@ STDMETHODIMP_(UINT) HackerDevice::GetExceptionMode(THIS)
 
 // -----------------------------------------------------------------------------------------------
 
-template <typename DescType>
-static NVAPI_STEREO_SURFACECREATEMODE process_texture_override(uint32_t hash, StereoHandle mStereoHandle, DescType *desc)
+static bool check_texture_override_iteration(TextureOverride *textureOverride)
 {
-	NVAPI_STEREO_SURFACECREATEMODE oldMode = (NVAPI_STEREO_SURFACECREATEMODE) - 1;
-	NVAPI_STEREO_SURFACECREATEMODE newMode = (NVAPI_STEREO_SURFACECREATEMODE) - 1;
+	if (textureOverride->iterations.empty())
+		return true;
+
+	std::vector<int>::iterator k = textureOverride->iterations.begin();
+	int currentIteration = textureOverride->iterations[0] = textureOverride->iterations[0] + 1;
+	LogInfo("  current iteration = %d\n", currentIteration);
+
+	while (++k != textureOverride->iterations.end()) {
+		if (currentIteration == *k)
+			return true;
+	}
+
+	LogInfo("  override skipped\n");
+	return false;
+}
+
+template <typename DescType>
+static const DescType* process_texture_override(uint32_t hash,
+		StereoHandle mStereoHandle,
+		const DescType *origDesc,
+		DescType *newDesc,
+		NVAPI_STEREO_SURFACECREATEMODE *oldMode)
+{
+	NVAPI_STEREO_SURFACECREATEMODE newMode = (NVAPI_STEREO_SURFACECREATEMODE) -1;
 	TextureOverride *textureOverride = NULL;
-	bool override = false;
+
+	*oldMode = (NVAPI_STEREO_SURFACECREATEMODE) -1;
+
+	// Check for square surfaces. We used to do this after processing the
+	// StereoMode in TextureOverrides, but realistically we always want the
+	// TextureOverrides to be able to override this since they are more
+	// specific, so now we do this first.
+	if (origDesc && G->gSurfaceSquareCreateMode >= 0 && origDesc->Width == origDesc->Height && (origDesc->Usage & D3D11_USAGE_IMMUTABLE) == 0)
+		newMode = (NVAPI_STEREO_SURFACECREATEMODE) G->gSurfaceSquareCreateMode;
 
 	TextureOverrideMap::iterator i = G->mTextureOverrideMap.find(hash);
 	if (i != G->mTextureOverrideMap.end()) {
-		textureOverride = &i->second;
-
-		override = true;
-		if (textureOverride->stereoMode != -1)
-			newMode = (NVAPI_STEREO_SURFACECREATEMODE) textureOverride->stereoMode;
-		// Check iteration.
-		if (!textureOverride->iterations.empty()) {
-			std::vector<int>::iterator k = textureOverride->iterations.begin();
-			int currentIteration = textureOverride->iterations[0] = textureOverride->iterations[0] + 1;
-			LogInfo("  current iteration = %d\n", currentIteration);
-
-			override = false;
-			while (++k != textureOverride->iterations.end()) {
-				if (currentIteration == *k) {
-					override = true;
-					break;
-				}
-			}
-			if (!override)
-				LogInfo("  override skipped\n");
+		if (check_texture_override_iteration(&i->second)) {
+			textureOverride = &i->second;
+			if (textureOverride->stereoMode != -1)
+				newMode = (NVAPI_STEREO_SURFACECREATEMODE) textureOverride->stereoMode;
 		}
 	}
 
-	if (desc && G->gSurfaceSquareCreateMode >= 0 && desc->Width == desc->Height && (desc->Usage & D3D11_USAGE_IMMUTABLE) == 0) {
-		override = true;
-		newMode = (NVAPI_STEREO_SURFACECREATEMODE) G->gSurfaceSquareCreateMode;
-	}
-	if (override) {
-		if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1) {
-			NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &oldMode);
-			NvAPIOverride();
-			LogInfo("  setting custom surface creation mode.\n");
+	if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1) {
+		NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
+		NvAPIOverride();
+		LogInfo("  setting custom surface creation mode.\n");
 
-			if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
-				LogInfo("    call failed.\n");
-		}
-		if (textureOverride && textureOverride->format != -1) {
-			LogInfo("  setting custom format to %d\n", textureOverride->format);
-
-			desc->Format = (DXGI_FORMAT) textureOverride->format;
-		}
-
-		if (textureOverride && textureOverride->width != -1) {
-			LogInfo("  setting custom width to %d\n", textureOverride->width);
-
-			desc->Width = textureOverride->width;
-		}
-
-		if (textureOverride && textureOverride->height != -1) {
-			LogInfo("  setting custom height to %d\n", textureOverride->height);
-
-			desc->Height = textureOverride->height;
-		}
+		if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
+			LogInfo("    call failed.\n");
 	}
 
-	return oldMode;
+	if (!textureOverride || !origDesc)
+		return origDesc;
+
+	*newDesc = *origDesc;
+
+	if (textureOverride->format != -1) {
+		LogInfo("  setting custom format to %d\n", textureOverride->format);
+		newDesc->Format = (DXGI_FORMAT) textureOverride->format;
+	}
+
+	if (textureOverride->width != -1) {
+		LogInfo("  setting custom width to %d\n", textureOverride->width);
+		newDesc->Width = textureOverride->width;
+	}
+
+	if (textureOverride->height != -1) {
+		LogInfo("  setting custom height to %d\n", textureOverride->height);
+		newDesc->Height = textureOverride->height;
+	}
+
+	return newDesc;
 }
 
 static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMode, StereoHandle mStereoHandle)
@@ -1827,6 +1837,10 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Texture2D **ppTexture2D)
 {
+	D3D11_TEXTURE2D_DESC newDesc;
+	const D3D11_TEXTURE2D_DESC *pNewDesc = NULL;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
+
 	LogDebug("HackerDevice::CreateTexture2D called with parameters\n");
 	if (pDesc)
 		LogDebugResourceDesc(pDesc);
@@ -1890,12 +1904,10 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	LogDebug("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
 	// Override custom settings?
-	D3D11_TEXTURE2D_DESC newDesc = *pDesc;
-
-	NVAPI_STEREO_SURFACECREATEMODE oldMode = process_texture_override(hash, mStereoHandle, &newDesc);
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
 
 	// Actual creation:
-	HRESULT hr = mOrigDevice->CreateTexture2D(&newDesc, pInitialData, ppTexture2D);
+	HRESULT hr = mOrigDevice->CreateTexture2D(pNewDesc, pInitialData, ppTexture2D);
 	restore_old_surface_create_mode(oldMode, mStereoHandle);
 	if (ppTexture2D) LogDebug("  returns result = %x, handle = %p\n", hr, *ppTexture2D);
 
