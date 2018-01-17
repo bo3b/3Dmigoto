@@ -215,23 +215,33 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	ForceDisplayParams1(&fullScreenDesc);
 
 	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
-	if (SUCCEEDED(hr))
+	if (FAILED(hr))
 	{
-		// When creating a new swapchain, we can assume this is the game creating 
-		// the most important object, and setup to use the input variables.  This
-		// will setup the globals we want to use for the game.
-		G->gSwapChain = *ppSwapChain;
-
-		ID3D11Device* origDevice;
-		origDevice = G->gHackerDevice->GetOrigDevice1();
-
-		ID3D11DeviceContext* origContext;
-		origDevice->GetImmediateContext(&origContext);
-
-		G->gOverlay = new Overlay(origDevice, origContext, G->gSwapChain);
+		LogInfo("->Failed result %#x\n\n", hr);
+		return hr;
 	}
 
-	LogInfo("->return result %#x, ppSwapChain = %p\n\n", hr, *ppSwapChain);
+	IDXGISwapChain1* origSwapChain;
+	origSwapChain = *ppSwapChain;
+
+	ID3D11Device1* origDevice;
+	origDevice = G->gHackerDevice->GetOrigDevice1();
+
+	ID3D11DeviceContext* origContext;
+	origDevice->GetImmediateContext(&origContext);
+
+	HackerSwapChain* hackerSwapChain;
+	hackerSwapChain = new HackerSwapChain(origSwapChain, G->gHackerDevice, G->gHackerContext);
+
+	G->gOverlay = new Overlay(origDevice, origContext, origSwapChain);
+
+	// When creating a new swapchain, we can assume this is the game creating 
+	// the most important object, and save as a global.
+	// And return the wrapped swapchain to the game so it will call our Present.
+	G->gHackerSwapChain = hackerSwapChain;
+	*ppSwapChain = hackerSwapChain;
+
+	LogInfo("->return result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hr, hackerSwapChain, origSwapChain);
 	return hr;
 }
 
@@ -295,26 +305,39 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	ForceDisplayParams(pDesc);
 
 	HRESULT hr = fnOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
-	if (SUCCEEDED(hr))
+	if (FAILED(hr))
 	{
-		// When creating a new swapchain, we can assume this is the game creating 
-		// the most important object, and setup to use the input variables.  This
-		// will setup the globals we want to use for the game.
-		G->gSwapChain = *ppSwapChain;
-
-		ID3D11Device* origDevice;
-		if (G->gHackerDevice != pDevice)
-			pDevice->QueryInterface(IID_PPV_ARGS(&origDevice));		// Path 1
-		else
-			origDevice = G->gHackerDevice->GetOrigDevice1();		// Path 2
-
-		ID3D11DeviceContext* origContext;
-		origDevice->GetImmediateContext(&origContext);
-
-		G->gOverlay = new Overlay(origDevice, origContext, G->gSwapChain);
+		LogInfo("->Failed result %#x\n\n", hr);
+		return hr;
 	}
 
-	LogInfo("->return result %#x, ppSwapChain = %p\n\n", hr, *ppSwapChain);
+	// Always upcast to IDXGISwapChain1 whenever possible.
+	IDXGISwapChain1* origSwapChain;
+	(*ppSwapChain)->QueryInterface(IID_PPV_ARGS(&origSwapChain));
+	if (origSwapChain == nullptr)
+		origSwapChain = reinterpret_cast<IDXGISwapChain1*>(*ppSwapChain);
+
+	ID3D11Device1* origDevice;
+	if (G->gHackerDevice != pDevice)
+		pDevice->QueryInterface(IID_PPV_ARGS(&origDevice));		// Path 1
+	else
+		origDevice = G->gHackerDevice->GetOrigDevice1();		// Path 2
+
+	ID3D11DeviceContext* origContext;
+	origDevice->GetImmediateContext(&origContext);
+
+	HackerSwapChain* hackerSwapChain;
+	hackerSwapChain = new HackerSwapChain(origSwapChain, G->gHackerDevice, G->gHackerContext);
+
+	G->gOverlay = new Overlay(origDevice, origContext, origSwapChain);
+
+	// When creating a new swapchain, we can assume this is the game creating 
+	// the most important object, and save as a global.
+	// And return the wrapped swapchain to the game so it will call our Present.
+	G->gHackerSwapChain = hackerSwapChain;
+	*ppSwapChain = hackerSwapChain;
+
+	LogInfo("->return result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hr, hackerSwapChain, origSwapChain);
 	return hr;
 }
 

@@ -929,11 +929,6 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 		LogInfo("  HackerContext %p created to wrap %p\n", contextWrap, origContext1);
 	}
 
-	if (ppSwapChain != nullptr)
-	{
-		G->gSwapChain = retSwapChain;
-	}
-
 	// Let each of the new Hacker objects know about the other, needed for unusual
 	// calls in the Hacker objects where we want to return the Hacker versions.
 	if (deviceWrap != nullptr)
