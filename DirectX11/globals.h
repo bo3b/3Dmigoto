@@ -233,6 +233,7 @@ struct ShaderInfoData
 	std::map<int, std::set<ID3D11Resource *>> ResourceRegisters;
 	std::set<UINT64> PeerShaders;
 	std::vector<std::set<ID3D11Resource *>> RenderTargets;
+	std::map<int, std::set<ID3D11Resource *>> UAVs;
 	std::set<ID3D11Resource *> DepthTargets;
 };
 
@@ -414,6 +415,7 @@ struct Globals
 	// These five items work with the *original* resource hash:
 	std::unordered_map<uint32_t, struct ResourceHashInfo> mResourceInfo;
 	std::set<uint32_t> mRenderTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::set<uint32_t> mUnorderedAccessInfo;				// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mDepthTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mShaderResourceInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mCopiedResourceInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)

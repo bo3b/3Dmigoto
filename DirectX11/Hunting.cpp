@@ -242,7 +242,7 @@ static void DumpUsageRegister(HANDLE f, char *tag, int id, ID3D11Resource *handl
 	WriteFile(f, buf, castStrLen(buf), &written, 0);
 }
 
-static void DumpShaderUsageInfo(HANDLE f, std::map<UINT64, ShaderInfoData> *info_map, char *tag, bool pixel_shader)
+static void DumpShaderUsageInfo(HANDLE f, std::map<UINT64, ShaderInfoData> *info_map, char *tag, bool pixel_shader, bool has_uavs)
 {
 	std::map<UINT64, ShaderInfoData>::iterator i;
 	std::set<UINT64>::iterator j;
@@ -281,6 +281,13 @@ static void DumpShaderUsageInfo(HANDLE f, std::map<UINT64, ShaderInfoData> *info
 			}
 		}
 
+		if (has_uavs) {
+			for (k = i->second.UAVs.begin(); k != i->second.UAVs.end(); ++k) {
+				for (o = k->second.begin(); o != k->second.end(); o++)
+					DumpUsageRegister(f, "UAV", k->first, *o);
+			}
+		}
+
 		sprintf(buf, "</%s>\n", tag);
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
 	}
@@ -305,15 +312,16 @@ void DumpUsage(wchar_t *dir)
 		return;
 	}
 
-	DumpShaderUsageInfo(f, &G->mVertexShaderInfo, "VertexShader", false);
-	DumpShaderUsageInfo(f, &G->mHullShaderInfo, "HullShader", false);
-	DumpShaderUsageInfo(f, &G->mDomainShaderInfo, "DomainShader", false);
-	DumpShaderUsageInfo(f, &G->mGeometryShaderInfo, "GeometryShader", false);
-	DumpShaderUsageInfo(f, &G->mPixelShaderInfo, "PixelShader", true);
-	DumpShaderUsageInfo(f, &G->mComputeShaderInfo, "ComputeShader", false);
+	DumpShaderUsageInfo(f, &G->mVertexShaderInfo, "VertexShader", false, false);
+	DumpShaderUsageInfo(f, &G->mHullShaderInfo, "HullShader", false, false);
+	DumpShaderUsageInfo(f, &G->mDomainShaderInfo, "DomainShader", false, false);
+	DumpShaderUsageInfo(f, &G->mGeometryShaderInfo, "GeometryShader", false, false);
+	DumpShaderUsageInfo(f, &G->mPixelShaderInfo, "PixelShader", true, true);
+	DumpShaderUsageInfo(f, &G->mComputeShaderInfo, "ComputeShader", false, true);
 
 	DumpUsageResourceInfo(f, &G->mRenderTargetInfo, "RenderTarget");
 	DumpUsageResourceInfo(f, &G->mDepthTargetInfo, "DepthTarget");
+	DumpUsageResourceInfo(f, &G->mUnorderedAccessInfo, "UAV");
 	DumpUsageResourceInfo(f, &G->mShaderResourceInfo, "Register");
 	DumpUsageResourceInfo(f, &G->mCopiedResourceInfo, "CopySource");
 	CloseHandle(f);

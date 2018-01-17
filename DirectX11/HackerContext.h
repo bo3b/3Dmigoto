@@ -88,6 +88,8 @@ private:
 	ID3D11HullShader *mCurrentHullShaderHandle;
 	std::vector<ID3D11Resource *> mCurrentRenderTargets;
 	ID3D11Resource *mCurrentDepthTarget;
+	UINT mCurrentPSUAVStartSlot;
+	UINT mCurrentPSNumUAVs;
 	FrameAnalysisOptions analyse_options;
 	FILE *frame_analysis_log;
 
@@ -131,7 +133,7 @@ private:
 	void RecordComputeShaderStats();
 	void RecordPeerShaders(std::set<UINT64> *PeerShaders, UINT64 this_shader_hash);
 	void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);
-	ID3D11Resource* RecordResourceViewStats(ID3D11ShaderResourceView *view);
+	ID3D11Resource* RecordResourceViewStats(ID3D11View *view, std::set<uint32_t> *resource_info);
 
 	// Functions for the frame analysis. Would be good to split this out,
 	// but it's pretty tightly coupled to the context at the moment:
