@@ -1817,22 +1817,16 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	if (hr == S_OK && ppBuffer && *ppBuffer)
 	{
 		EnterCriticalSection(&G->mCriticalSection);
-			G->mResources[*ppBuffer].hash = hash;
+			ResourceHandleInfo *handle_info = &G->mResources[*ppBuffer];
+			handle_info->type = D3D11_RESOURCE_DIMENSION_BUFFER;
+			handle_info->hash = hash;
+			handle_info->orig_hash = hash;
+			handle_info->data_hash = data_hash;
 
-			// If we ever need hash tracking for buffers we will
-			// need this, but I'd rather avoid it if we can get
-			// away without it given how often buffers get updated.
-			// Note that masterotaku reported massive fps hit with
-			// hunting enabled (both 1 and 2) if we set orig_hash
-			// here, even without data_hash, etc. because that
-			// causes the resource contamination detection to do a
-			// lot more work. We might need that eventually, but we
-			// should not enable this without some way to turn off
-			// the contamination detection:
-			// G->mResources[*ppBuffer].orig_hash = hash;
-			// G->mResources[*ppBuffer].data_hash = data_hash;
+			// XXX: This is only used for hash tracking, which we
+			// don't enable for buffers for performance reasons:
 			// if (pDesc)
-			// 	memcpy(&G->mResources[*ppBuffer].descBuf, pDesc, sizeof(D3D11_BUFFER_DESC));
+			//	memcpy(&handle_info->descBuf, pDesc, sizeof(D3D11_BUFFER_DESC));
 
 			// TODO: For stat collection and hash contamination tracking:
 			// if (G->hunting && pDesc) {
@@ -1876,13 +1870,15 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 	if (hr == S_OK && ppTexture1D && *ppTexture1D)
 	{
 		EnterCriticalSection(&G->mCriticalSection);
-			G->mResources[*ppTexture1D].hash = hash;
+			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture1D];
+			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE1D;
+			handle_info->hash = hash;
+			handle_info->orig_hash = hash;
+			handle_info->data_hash = data_hash;
 
-			// TODO: For hash tracking if we ever need it:
-			// G->mResources[*ppTexture1D].orig_hash = hash;
-			// G->mResources[*ppTexture1D].data_hash = data_hash;
+			// TODO: For hash tracking if we ever need it for Texture1Ds:
 			// if (pDesc)
-			// 	memcpy(&G->mResources[*ppTexture1D].desc1D, pDesc, sizeof(D3D11_TEXTURE1D_DESC));
+			// 	memcpy(&handle_info->desc1D, pDesc, sizeof(D3D11_TEXTURE1D_DESC));
 
 			// TODO: For stat collection and hash contamination tracking:
 			// if (G->hunting && pDesc) {
@@ -1999,11 +1995,13 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	if (hr == S_OK && ppTexture2D)
 	{
 		EnterCriticalSection(&G->mCriticalSection);
-			G->mResources[*ppTexture2D].hash = hash;
-			G->mResources[*ppTexture2D].orig_hash = hash;
-			G->mResources[*ppTexture2D].data_hash = data_hash;
+			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture2D];
+			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
+			handle_info->hash = hash;
+			handle_info->orig_hash = hash;
+			handle_info->data_hash = data_hash;
 			if (pDesc)
-				memcpy(&G->mResources[*ppTexture2D].desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
+				memcpy(&handle_info->desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
 			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
 				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
@@ -2064,11 +2062,13 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	if (hr == S_OK && ppTexture3D)
 	{
 		EnterCriticalSection(&G->mCriticalSection);
-			G->mResources[*ppTexture3D].hash = hash;
-			G->mResources[*ppTexture3D].orig_hash = hash;
-			G->mResources[*ppTexture3D].data_hash = data_hash;
+			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture3D];
+			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE3D;
+			handle_info->hash = hash;
+			handle_info->orig_hash = hash;
+			handle_info->data_hash = data_hash;
 			if (pDesc)
-				memcpy(&G->mResources[*ppTexture3D].desc3D, pDesc, sizeof(D3D11_TEXTURE3D_DESC));
+				memcpy(&handle_info->desc3D, pDesc, sizeof(D3D11_TEXTURE3D_DESC));
 			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
 				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;

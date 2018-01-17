@@ -627,36 +627,43 @@ uint32_t CalcTexture2DDataHash(
 // simultaneous reads & modifications (hmm, tempted to implement a lock free
 // map given that it's add only, or use RCU). Is there anything on Windows like
 // lockdep to statically prove this is called with the lock held?
-uint32_t GetOrigResourceHash(ID3D11Resource *resource)
+static ResourceHandleInfo* GetResourceHandleInfo(ID3D11Resource *resource)
 {
 	std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
 
 	j = G->mResources.find(resource);
 	if (j != G->mResources.end())
-		return j->second.orig_hash;
+		return &j->second;
+
+	return NULL;
+}
+
+// Must be called with the critical section held to protect mResources against
+// simultaneous reads & modifications
+uint32_t GetOrigResourceHash(ID3D11Resource *resource)
+{
+	ResourceHandleInfo *handle_info = GetResourceHandleInfo(resource);
+	if (handle_info)
+		return handle_info->orig_hash;
 
 	return 0;
 }
 
 // Must be called with the critical section held to protect mResources against
-// simultaneous reads & modifications (hmm, tempted to implement a lock free
-// map given that it's add only, or use RCU). Is there anything on Windows like
-// lockdep to statically prove this is called with the lock held?
+// simultaneous reads & modifications
 uint32_t GetResourceHash(ID3D11Resource *resource)
 {
-	std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
-
-	j = G->mResources.find(resource);
-	if (j != G->mResources.end())
-		return j->second.hash;
+	ResourceHandleInfo *handle_info = GetResourceHandleInfo(resource);
+	if (handle_info)
+		return handle_info->hash;
 
 	// We can get here for a few legitimate reasons where a resource has
-	// not been hashed. 1D and buffer resources are currently not hashed,
-	// resources created by 3DMigoto bypass the CreateTexture wrapper and
-	// are not hashed, and the swap chain's back buffer will not have been
-	// hashed. We used to hash these on demand here, but it's not clear
-	// that we ever needed their hashes - if we ever do we could consider
-	// hashing them at the time of creation instead.
+	// not been hashed. Resources created by 3DMigoto bypass the
+	// CreateTexture wrapper and are not hashed, and the swap chain's back
+	// buffer will not have been hashed. We used to hash these on demand
+	// here, but it's not clear that we ever needed their hashes - if we
+	// ever do we could consider hashing them at the time of creation
+	// instead.
 	//
 	// Return a 0 so it is obvious that this resource has not been hashed.
 
@@ -740,6 +747,18 @@ uint32_t CalcTexture3DDataHash(
 	return hash;
 }
 
+static bool supports_hash_tracking(ResourceHandleInfo *handle_info)
+{
+	// We only support hash tracking and contamination detection for 2D and
+	// 3D textures currently. We could probably add 1D textures relatively
+	// safely, but buffers would kill performance because of how often they
+	// are updated, so we're skipping them for now. If we do want to add
+	// support for them later, we should add a means to turn off the
+	// contamination detection on a per-resource type basis:
+	return (handle_info->type == D3D11_RESOURCE_DIMENSION_TEXTURE2D ||
+	        handle_info->type == D3D11_RESOURCE_DIMENSION_TEXTURE3D);
+}
+
 static bool GetResourceInfoFields(struct ResourceHashInfo *info, UINT subresource,
 		UINT *width, UINT *height, UINT *depth,
 		UINT *idx, UINT *mip, UINT *array_size)
@@ -772,6 +791,7 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 		ID3D11Resource *src, UINT srcSubresource, char type,
 		UINT DstX, UINT DstY, UINT DstZ, const D3D11_BOX *SrcBox)
 {
+	ResourceHandleInfo *dst_handle_info;
 	struct ResourceHashInfo *dstInfo, *srcInfo = NULL;
 	uint32_t srcHash = 0, dstHash = 0;
 	UINT srcWidth = 1, srcHeight = 1, srcDepth = 1, srcMip = 0, srcIdx = 0, srcArraySize = 1;
@@ -783,7 +803,14 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 
 	EnterCriticalSection(&G->mCriticalSection);
 
-	dstHash = GetOrigResourceHash(dest);
+	dst_handle_info = GetResourceHandleInfo(dest);
+	if (!dst_handle_info)
+		goto out_unlock;
+
+	if (!supports_hash_tracking(dst_handle_info))
+		goto out_unlock;
+
+	dstHash = dst_handle_info->orig_hash;
 	if (!dstHash)
 		goto out_unlock;
 
@@ -893,11 +920,12 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 
 	EnterCriticalSection(&G->mCriticalSection);
 
-	try {
-		info = &G->mResources.at(resource);
-	} catch (std::out_of_range) {
+	info = GetResourceHandleInfo(resource);
+	if (!info)
 		goto out_unlock;
-	}
+
+	if (!supports_hash_tracking(info))
+		goto out_unlock;
 
 	// Ever noticed that D3D11_SUBRESOURCE_DATA is binary identical to
 	// D3D11_MAPPED_SUBRESOURCE but they changed all the names around?
@@ -958,17 +986,16 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 
 	EnterCriticalSection(&G->mCriticalSection);
 
-	try {
-		src_info = &G->mResources.at(src);
-	} catch (std::out_of_range) {
+	dst_info = GetResourceHandleInfo(dst);
+	if (!dst_info)
 		goto out_unlock;
-	}
 
-	try {
-		dst_info = &G->mResources.at(dst);
-	} catch (std::out_of_range) {
+	if (!supports_hash_tracking(dst_info))
 		goto out_unlock;
-	}
+
+	src_info = GetResourceHandleInfo(src);
+	if (!src_info)
+		goto out_unlock;
 
 	// If there was no initial data in either source or destination, or
 	// they both contain the same data, we don't need to recalculate the

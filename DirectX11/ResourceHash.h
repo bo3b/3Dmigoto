@@ -9,6 +9,7 @@
 // Tracks info about specific resource instances:
 struct ResourceHandleInfo
 {
+	D3D11_RESOURCE_DIMENSION type;
 	uint32_t hash;
 	uint32_t orig_hash;	// Original hash at the time of creation
 	uint32_t data_hash;	// Just the data hash for track_texture_updates
@@ -27,6 +28,7 @@ struct ResourceHandleInfo
 	};
 
 	ResourceHandleInfo() :
+		type(D3D11_RESOURCE_DIMENSION_UNKNOWN),
 		hash(0),
 		orig_hash(0),
 		data_hash(0)
