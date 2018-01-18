@@ -201,6 +201,7 @@ struct ShaderOverride {
 typedef std::unordered_map<UINT64, struct ShaderOverride> ShaderOverrideMap;
 
 struct TextureOverride {
+	std::wstring ini_section;
 	int stereoMode;
 	int format;
 	int width;
@@ -430,6 +431,7 @@ struct Globals
 
 	ShaderOverrideMap mShaderOverrideMap;
 	TextureOverrideMap mTextureOverrideMap;
+	FuzzyTextureOverrides mFuzzyTextureOverrides;
 
 	// Statistics
 	std::unordered_map<ID3D11Resource *, ResourceHandleInfo> mResources;

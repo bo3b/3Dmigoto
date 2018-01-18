@@ -1055,3 +1055,379 @@ bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource)
 	// need for that to work so for now let's not over-complicate things.
 	return G->track_texture_updates && Subresource == 0;
 }
+
+// -----------------------------------------------------------------------------------------------
+//                       Fuzzy Texture Override Matching Support
+// -----------------------------------------------------------------------------------------------
+
+FuzzyMatch::FuzzyMatch()
+{
+	op = FuzzyMatchOp::ALWAYS;
+	rhs_type = FuzzyMatchOperandType::VALUE;
+	val = 0;
+	mask = 0xffffffff;
+	numerator = 1;
+	denominator = 1;
+}
+
+static UINT get_resource_width(const D3D11_BUFFER_DESC *desc)    { return 0; }
+static UINT get_resource_width(const D3D11_TEXTURE1D_DESC *desc) { return desc->Width; }
+static UINT get_resource_width(const D3D11_TEXTURE2D_DESC *desc) { return desc->Width; }
+static UINT get_resource_width(const D3D11_TEXTURE3D_DESC *desc) { return desc->Width; }
+
+static UINT get_resource_height(const D3D11_BUFFER_DESC *desc)    { return 0; }
+static UINT get_resource_height(const D3D11_TEXTURE1D_DESC *desc) { return 0; }
+static UINT get_resource_height(const D3D11_TEXTURE2D_DESC *desc) { return desc->Height; }
+static UINT get_resource_height(const D3D11_TEXTURE3D_DESC *desc) { return desc->Height; }
+
+static UINT get_resource_depth(const D3D11_BUFFER_DESC *desc)    { return 0; }
+static UINT get_resource_depth(const D3D11_TEXTURE1D_DESC *desc) { return 0; }
+static UINT get_resource_depth(const D3D11_TEXTURE2D_DESC *desc) { return 0; }
+static UINT get_resource_depth(const D3D11_TEXTURE3D_DESC *desc) { return desc->Depth; }
+
+static UINT get_resource_array(const D3D11_BUFFER_DESC *desc)    { return 0; }
+static UINT get_resource_array(const D3D11_TEXTURE1D_DESC *desc) { return desc->ArraySize; }
+static UINT get_resource_array(const D3D11_TEXTURE2D_DESC *desc) { return desc->ArraySize; }
+static UINT get_resource_array(const D3D11_TEXTURE3D_DESC *desc) { return 0; }
+
+template <typename DescType>
+bool FuzzyMatch::matches(UINT lhs, const DescType *desc) const
+{
+	UINT effective = val;
+
+	// Common case:
+	if (op == FuzzyMatchOp::ALWAYS)
+		return true;
+
+	switch (rhs_type) {
+		case FuzzyMatchOperandType::VALUE:
+			effective = val;
+			break;
+		case FuzzyMatchOperandType::WIDTH:
+			effective = get_resource_width(desc);
+			break;
+		case FuzzyMatchOperandType::HEIGHT:
+			effective = get_resource_height(desc);
+			break;
+		case FuzzyMatchOperandType::DEPTH:
+			effective = get_resource_depth(desc);
+			break;
+		case FuzzyMatchOperandType::ARRAY:
+			effective = get_resource_array(desc);
+			break;
+		case FuzzyMatchOperandType::RES_WIDTH:
+			effective = G->mResolutionInfo.width;
+			break;
+		case FuzzyMatchOperandType::RES_HEIGHT:
+			effective = G->mResolutionInfo.height;
+			break;
+	};
+
+	// For now just supporting a single integer numerator and denominator,
+	// which should be sufficient to match most aspect ratios, downsampled
+	// textures and so on. TODO: Add a full expression evaluator.
+	if (!denominator)
+		return false;
+	effective = effective * numerator / denominator;
+
+	switch (op) {
+		case FuzzyMatchOp::EQUAL:
+			// Only case that the mask applies to, for flags fields
+			return ((lhs & mask) == effective);
+		case FuzzyMatchOp::LESS:
+			return (lhs < effective);
+		case FuzzyMatchOp::LESS_EQUAL:
+			return (lhs <= effective);
+		case FuzzyMatchOp::GREATER:
+			return (lhs > effective);
+		case FuzzyMatchOp::GREATER_EQUAL:
+			return (lhs >= effective);
+		case FuzzyMatchOp::NOT_EQUAL:
+			return (lhs != effective);
+	};
+
+	return false;
+}
+
+FuzzyMatchResourceDesc::FuzzyMatchResourceDesc(std::wstring section) :
+	priority(0),
+	matches_buffer(true),
+	matches_tex1d(true),
+	matches_tex2d(true),
+	matches_tex3d(true)
+{
+	// TODO: Statically contain this once we sort out our header files:
+	texture_override = new TextureOverride();
+	texture_override->ini_section = section;
+}
+
+FuzzyMatchResourceDesc::~FuzzyMatchResourceDesc()
+{
+	delete texture_override;
+}
+
+template <typename DescType>
+bool FuzzyMatchResourceDesc::check_common_resource_fields(const DescType *desc) const
+{
+	if (!Usage.matches(desc->Usage, desc))
+		return false;
+	if (!BindFlags.matches(desc->BindFlags, desc))
+		return false;
+	if (!CPUAccessFlags.matches(desc->CPUAccessFlags, desc))
+		return false;
+	if (!MiscFlags.matches(desc->MiscFlags, desc))
+		return false;
+	return true;
+}
+
+template <typename DescType>
+bool FuzzyMatchResourceDesc::check_common_texture_fields(const DescType *desc) const
+{
+	if (!MipLevels.matches(desc->MipLevels, desc))
+		return false;
+	if (!Format.matches(desc->Format, desc))
+		return false;
+	if (!Width.matches(desc->Width, desc))
+		return false;
+	return true;
+}
+
+bool FuzzyMatchResourceDesc::matches(const D3D11_BUFFER_DESC *desc) const
+{
+	if (!matches_buffer)
+		return false;
+
+	if (!check_common_resource_fields(desc))
+		return false;
+
+	if (!ByteWidth.matches(desc->ByteWidth, desc))
+		return false;
+	if (!StructureByteStride.matches(desc->StructureByteStride, desc))
+		return false;
+	return true;
+}
+
+bool FuzzyMatchResourceDesc::matches(const D3D11_TEXTURE1D_DESC *desc) const
+{
+	if (!matches_tex1d)
+		return false;
+
+	if (!check_common_resource_fields(desc))
+		return false;
+	if (!check_common_texture_fields(desc))
+		return false;
+
+	if (!ArraySize.matches(desc->ArraySize, desc))
+		return false;
+	return true;
+}
+
+bool FuzzyMatchResourceDesc::matches(const D3D11_TEXTURE2D_DESC *desc) const
+{
+	if (!matches_tex2d)
+		return false;
+
+	if (!check_common_resource_fields(desc))
+		return false;
+	if (!check_common_texture_fields(desc))
+		return false;
+
+	if (!Height.matches(desc->Height, desc))
+		return false;
+	if (!ArraySize.matches(desc->ArraySize, desc))
+		return false;
+	if (!SampleDesc_Count.matches(desc->SampleDesc.Count, desc))
+		return false;
+	if (!SampleDesc_Quality.matches(desc->SampleDesc.Quality, desc))
+		return false;
+	return true;
+}
+
+bool FuzzyMatchResourceDesc::matches(const D3D11_TEXTURE3D_DESC *desc) const
+{
+	if (!matches_tex3d)
+		return false;
+
+	if (!check_common_resource_fields(desc))
+		return false;
+	if (!check_common_texture_fields(desc))
+		return false;
+
+	if (!Height.matches(desc->Height, desc))
+		return false;
+	if (!Depth.matches(desc->Depth, desc))
+		return false;
+	return true;
+}
+
+void FuzzyMatchResourceDesc::set_resource_type(D3D11_RESOURCE_DIMENSION type)
+{
+	switch(type) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			matches_tex1d = matches_tex2d = matches_tex3d = false;
+			return;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			matches_buffer = matches_tex2d = matches_tex3d = false;
+			return;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			matches_buffer = matches_tex1d = matches_tex3d = false;
+			return;
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			matches_buffer = matches_tex1d = matches_tex2d = false;
+			return;
+	}
+}
+
+bool FuzzyMatchResourceDesc::update_types_matched()
+{
+	// This will remove the flags for types of resources we cannot match
+	// based on what fields we are matching and what resource types they
+	// apply to. We do not set a flag if it was already cleared, since the
+	// user may have already specified a specific resource type. If we are
+	// left with no possible resource types we can match we will return
+	// false so that the caller knows this is invalid.
+
+	if (FuzzyMatchOp::ALWAYS != ByteWidth.op
+	 || FuzzyMatchOp::ALWAYS != StructureByteStride.op)
+		matches_tex1d = matches_tex2d = matches_tex3d = false;
+
+	if (FuzzyMatchOp::ALWAYS != MipLevels.op
+	 || FuzzyMatchOp::ALWAYS != Format.op
+	 || FuzzyMatchOp::ALWAYS != Width.op)
+		matches_buffer = false;
+
+	if (FuzzyMatchOp::ALWAYS != Height.op)
+		matches_buffer = matches_tex1d = false;
+
+	if (FuzzyMatchOp::ALWAYS != Depth.op)
+		matches_buffer = matches_tex1d = matches_tex2d = false;
+
+	if (FuzzyMatchOp::ALWAYS != ArraySize.op)
+		matches_buffer = matches_tex3d = false;
+
+	if (FuzzyMatchOp::ALWAYS != SampleDesc_Count.op
+	 || FuzzyMatchOp::ALWAYS != SampleDesc_Quality.op)
+		matches_buffer = matches_tex1d = matches_tex3d = false;
+
+	return matches_buffer || matches_tex1d || matches_tex2d || matches_tex3d;
+}
+
+
+static TextureOverride* find_texture_override_for_hash(uint32_t hash)
+{
+	TextureOverrideMap::iterator i;
+
+	i = G->mTextureOverrideMap.find(hash);
+	if (i == G->mTextureOverrideMap.end())
+		return NULL;
+
+	return &i->second;
+}
+
+static TextureOverride* find_texture_override_for_resource_by_hash(ID3D11Resource *resource)
+{
+	uint32_t hash = 0;
+
+	if (!resource)
+		return NULL;
+
+	if (G->mTextureOverrideMap.empty())
+		return NULL;
+
+	EnterCriticalSection(&G->mCriticalSection);
+		hash = GetResourceHash(resource);
+	LeaveCriticalSection(&G->mCriticalSection);
+	if (!hash)
+		return NULL;
+
+	return find_texture_override_for_hash(hash);
+}
+
+template <typename DescType>
+static void find_texture_overrides_for_desc(const DescType *desc, TextureOverrideMatches *matches)
+{
+	FuzzyTextureOverrides::iterator i;
+
+	for (i = G->mFuzzyTextureOverrides.begin(); i != G->mFuzzyTextureOverrides.end(); i++) {
+		if ((*i)->matches(desc))
+			matches->push_back((*i)->texture_override);
+	}
+}
+
+template <typename DescType>
+void find_texture_overrides(uint32_t hash, const DescType *desc, TextureOverrideMatches *matches)
+{
+	TextureOverride *tex_override;
+
+	tex_override = find_texture_override_for_hash(hash);
+	if (tex_override) {
+		// If we got a result it was matched by hash - that's an exact
+		// match and we don't process any fuzzy matches
+		matches->push_back(tex_override);
+		return;
+	}
+
+	find_texture_overrides_for_desc(desc, matches);
+}
+// Explicit template expansion is necessary to generate these functions for
+// the compiler to generate them so they can be used from other source files:
+template void find_texture_overrides<D3D11_BUFFER_DESC>(uint32_t hash, const D3D11_BUFFER_DESC *desc, TextureOverrideMatches *matches);
+template void find_texture_overrides<D3D11_TEXTURE1D_DESC>(uint32_t hash, const D3D11_TEXTURE1D_DESC *desc, TextureOverrideMatches *matches);
+template void find_texture_overrides<D3D11_TEXTURE2D_DESC>(uint32_t hash, const D3D11_TEXTURE2D_DESC *desc, TextureOverrideMatches *matches);
+template void find_texture_overrides<D3D11_TEXTURE3D_DESC>(uint32_t hash, const D3D11_TEXTURE3D_DESC *desc, TextureOverrideMatches *matches);
+
+void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverrideMatches *matches)
+{
+	D3D11_RESOURCE_DIMENSION dimension;
+	ID3D11Buffer *buf = NULL;
+	ID3D11Texture1D *tex1d = NULL;
+	ID3D11Texture2D *tex2d = NULL;
+	ID3D11Texture3D *tex3d = NULL;
+	D3D11_BUFFER_DESC buf_desc;
+	D3D11_TEXTURE1D_DESC tex1d_desc;
+	D3D11_TEXTURE2D_DESC tex2d_desc;
+	D3D11_TEXTURE3D_DESC tex3d_desc;
+	TextureOverride *tex_override;
+
+	tex_override = find_texture_override_for_resource_by_hash(resource);
+	if (tex_override) {
+		// If we got a result it was matched by hash - that's an exact
+		// match and we don't process any fuzzy matches
+		matches->push_back(tex_override);
+		return;
+	}
+
+	resource->GetType(&dimension);
+	switch (dimension) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			buf = (ID3D11Buffer*)resource;
+			buf->GetDesc(&buf_desc);
+			return find_texture_overrides_for_desc(&buf_desc, matches);
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			tex1d = (ID3D11Texture1D*)resource;
+			tex1d->GetDesc(&tex1d_desc);
+			return find_texture_overrides_for_desc(&tex1d_desc, matches);
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			tex2d = (ID3D11Texture2D*)resource;
+			tex2d->GetDesc(&tex2d_desc);
+			return find_texture_overrides_for_desc(&tex2d_desc, matches);
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			tex3d = (ID3D11Texture3D*)resource;
+			tex3d->GetDesc(&tex3d_desc);
+			return find_texture_overrides_for_desc(&tex3d_desc, matches);
+	}
+}
+
+
+bool FuzzyMatchResourceDescLess::operator() (const std::shared_ptr<FuzzyMatchResourceDesc> &lhs, const std::shared_ptr<FuzzyMatchResourceDesc> &rhs) const
+{
+	// For texture create time overrides we want the highest priority
+	// texture override to take precedence, which will happen if it is
+	// processed last. Same goes for texture filtering. If the priorities
+	// are equal, we use the ini section name for sorting to make sure that
+	// we get consistent results.
+
+	if (lhs->priority != rhs->priority)
+		return lhs->priority < rhs->priority;
+	return lhs->texture_override->ini_section < rhs->texture_override->ini_section;
+}

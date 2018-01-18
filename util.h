@@ -201,10 +201,10 @@ static T1 lookup_enum_name(struct EnumName_t<T1, T2> *enum_names, T2 val)
 // argument, provide a pointer to a pointer in the 'unrecognised' field and the
 // unrecognised option will be returned. Multiple unrecognised options are
 // still considered errors.
-template <class T1, class T2>
-static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T1 option_string, T1 *unrecognised)
+template <class T1, class T2, class T3>
+static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T3 option_string, T1 *unrecognised)
 {
-	T1 ptr = option_string, cur;
+	T3 ptr = option_string, cur;
 	T2 ret = T2::INVALID;
 	T2 tmp = T2::INVALID;
 
@@ -240,6 +240,18 @@ static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T1 opt
 		ret |= tmp;
 	}
 	return ret;
+}
+
+// Two template argument version is the typical case for now. We probably want
+// to start adding the 'const' modifier in a bunch of places as we work towards
+// migrating to C++ strings, since .c_str() always returns a const string.
+// Since the parse_enum_option_string currently modified one of its inputs, it
+// cannot use const, so the three argument template version above is to allow
+// both const and non-const types passed in.
+template <class T1, class T2>
+static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T1 option_string, T1 *unrecognised)
+{
+	return parse_enum_option_string<T1, T2, T1>(enum_names, option_string, unrecognised);
 }
 
 // http://msdn.microsoft.com/en-us/library/windows/desktop/bb173059(v=vs.85).aspx

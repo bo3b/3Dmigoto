@@ -1737,7 +1737,10 @@ static const DescType* process_texture_override(uint32_t hash,
 		NVAPI_STEREO_SURFACECREATEMODE *oldMode)
 {
 	NVAPI_STEREO_SURFACECREATEMODE newMode = (NVAPI_STEREO_SURFACECREATEMODE) -1;
+	TextureOverrideMatches matches;
 	TextureOverride *textureOverride = NULL;
+	const DescType* ret = origDesc;
+	int i;
 
 	*oldMode = (NVAPI_STEREO_SURFACECREATEMODE) -1;
 
@@ -1748,16 +1751,36 @@ static const DescType* process_texture_override(uint32_t hash,
 	if (is_square_surface(origDesc))
 		newMode = (NVAPI_STEREO_SURFACECREATEMODE) G->gSurfaceSquareCreateMode;
 
-	TextureOverrideMap::iterator i = G->mTextureOverrideMap.find(hash);
-	if (i != G->mTextureOverrideMap.end()) {
-		if (check_texture_override_iteration(&i->second)) {
-			textureOverride = &i->second;
+	find_texture_overrides(hash, origDesc, &matches);
+
+	if (origDesc && !matches.empty()) {
+		// There is at least one matching texture override, which means
+		// we may possibly be altering the resource description. Make a
+		// copy of it and adjust the return pointer to the copy:
+		*newDesc = *origDesc;
+		ret = newDesc;
+
+		// We go through each matching texture override applying any
+		// resource description and stereo mode overrides. The texture
+		// overrides with higher priorities come later in the list, so
+		// if there are any conflicts they will override the earlier
+		// lower priority ones.
+		for (i = 0; i < matches.size(); i++) {
+			textureOverride = matches[i];
+
+			LogInfo("  %S matched resource with hash=%08x\n", textureOverride->ini_section.c_str(), hash);
+
+			if (!check_texture_override_iteration(textureOverride))
+				continue;
+
 			if (textureOverride->stereoMode != -1)
 				newMode = (NVAPI_STEREO_SURFACECREATEMODE) textureOverride->stereoMode;
+
+			override_resource_desc(newDesc, textureOverride);
 		}
 	}
 
-	if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1) {
+	if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) -1) {
 		NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
 		NvAPIOverride();
 		LogInfo("  setting custom surface creation mode.\n");
@@ -1766,14 +1789,7 @@ static const DescType* process_texture_override(uint32_t hash,
 			LogInfo("    call failed.\n");
 	}
 
-	if (!textureOverride || !origDesc)
-		return origDesc;
-
-	*newDesc = *origDesc;
-
-	override_resource_desc(newDesc, textureOverride);
-
-	return newDesc;
+	return ret;
 }
 
 static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMode, StereoHandle mStereoHandle)

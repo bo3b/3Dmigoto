@@ -584,17 +584,19 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 
 void CheckTextureOverrideCommand::run(CommandListState *state)
 {
+	TextureOverrideMatches matches;
+	int i;
+
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-	TextureOverride *override = target.FindTextureOverride(state, NULL);
+	target.FindTextureOverrides(state, NULL, &matches);
 
-	if (!override)
-		return;
-
-	if (state->post)
-		_RunCommandList(&override->post_command_list, state);
-	else
-		_RunCommandList(&override->command_list, state);
+	for (i = 0; i < matches.size(); i++) {
+		if (state->post)
+			_RunCommandList(&matches[i]->post_command_list, state);
+		else
+			_RunCommandList(&matches[i]->command_list, state);
+	}
 }
 
 ClearViewCommand::ClearViewCommand() :
@@ -1571,9 +1573,10 @@ out_release_view:
 
 float ParamOverride::process_texture_filter(CommandListState *state)
 {
+	TextureOverrideMatches matches;
 	bool resource_found;
 
-	TextureOverride *texture_override = texture_filter_target.FindTextureOverride(state, &resource_found);
+	texture_filter_target.FindTextureOverrides(state, &resource_found, &matches);
 
 	// If there is no resource bound we want to return a special value that
 	// is distinct from simply not finding a texture override section. For
@@ -1591,10 +1594,12 @@ float ParamOverride::process_texture_filter(CommandListState *state)
 		return -0.0;
 
 	// A resource was bound, but no matching texture override was found:
-	if (!texture_override)
+	if (matches.empty())
 		return 0;
 
-	return texture_override->filter_index;
+	// If there are multiple matches, we want the filter_index with the
+	// highest priority, which will be the last in the list:
+	return matches.back()->filter_index;
 }
 
 
@@ -3383,10 +3388,9 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 	throw(std::range_error("Bad 3DMigoto ResourceCopyTarget"));
 }
 
-TextureOverride* ResourceCopyTarget::FindTextureOverride(CommandListState *state, bool *resource_found)
+void ResourceCopyTarget::FindTextureOverrides(CommandListState *state, bool *resource_found, TextureOverrideMatches *matches)
 {
 	TextureOverrideMap::iterator i;
-	TextureOverride *ret = NULL;
 	ID3D11Resource *resource = NULL;
 	ID3D11View *view = NULL;
 	uint32_t hash = 0;
@@ -3397,31 +3401,15 @@ TextureOverride* ResourceCopyTarget::FindTextureOverride(CommandListState *state
 		*resource_found = !!resource;
 
 	if (!resource)
-		return NULL;
+		return;
 
-	if (G->mTextureOverrideMap.empty())
-		goto out_release_resource;
+	find_texture_overrides_for_resource(resource, matches);
 
-	EnterCriticalSection(&G->mCriticalSection);
-		hash = GetResourceHash(resource);
-	LeaveCriticalSection(&G->mCriticalSection);
-	if (!hash)
-		goto out_release_resource;
+	//COMMAND_LIST_LOG(state, "  found texture hash = %08llx\n", hash);
 
-	COMMAND_LIST_LOG(state, "  found texture hash = %08llx\n", hash);
-
-	i = G->mTextureOverrideMap.find(hash);
-	if (i == G->mTextureOverrideMap.end())
-		goto out_release_resource;
-
-	ret = &i->second;
-
-out_release_resource:
-	if (resource)
-		resource->Release();
+	resource->Release();
 	if (view)
 		view->Release();
-	return ret;
 }
 
 static bool IsCoersionToStructuredBufferRequired(ID3D11View *view, UINT stride,

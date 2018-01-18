@@ -6,6 +6,7 @@
 #include <DirectXMath.h>
 #include <util.h>
 #include "DrawCallInfo.h"
+#include "ResourceHash.h"
 #include <nvapi.h>
 
 // Used to prevent typos leading to infinite recursion (or at least overflowing
@@ -317,7 +318,7 @@ enum class CustomResourceBindFlags {
 	VIDEO_ENCODER   = 0x00000400,
 };
 SENSIBLE_ENUM(CustomResourceBindFlags);
-static EnumName_t<wchar_t *, CustomResourceBindFlags> CustomResourceBindFlagNames[] = {
+static EnumName_t<const wchar_t *, CustomResourceBindFlags> CustomResourceBindFlagNames[] = {
 	{L"vertex_buffer", CustomResourceBindFlags::VERTEX_BUFFER},
 	{L"index_buffer", CustomResourceBindFlags::INDEX_BUFFER},
 	{L"constant_buffer", CustomResourceBindFlags::CONSTANT_BUFFER},
@@ -479,9 +480,10 @@ public:
 			UINT offset,
 			DXGI_FORMAT format,
 			UINT buf_size);
-	TextureOverride* FindTextureOverride(
+	void FindTextureOverrides(
 			CommandListState *state,
-			bool *resource_found);
+			bool *resource_found,
+			TextureOverrideMatches *matches);
 	D3D11_BIND_FLAG BindFlags();
 };
 
