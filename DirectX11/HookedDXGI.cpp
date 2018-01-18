@@ -253,7 +253,7 @@ void HookCreateSwapChainForHwnd(void* factory2)
 {
 	LogInfo("*** IDXGIFactory2 creating hook for CreateSwapChainForHwnd. \n");
 
-	IDXGIFactory2* dxgiFactory = static_cast<IDXGIFactory2*>(factory2);
+	IDXGIFactory2* dxgiFactory = reinterpret_cast<IDXGIFactory2*>(factory2);
 
 	SIZE_T hook_id;
 	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigCreateSwapChainForHwnd,
@@ -349,7 +349,7 @@ void HookCreateSwapChain(void* factory)
 {
 	LogInfo("*** IDXGIFactory creating hook for CreateSwapChain. \n");
 
-	IDXGIFactory* dxgiFactory = static_cast<IDXGIFactory*>(factory);
+	IDXGIFactory* dxgiFactory = reinterpret_cast<IDXGIFactory*>(factory);
 
 	SIZE_T hook_id;
 	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigCreateSwapChain,
@@ -415,7 +415,7 @@ void HookQueryInterface(void* factory)
 {
 	LogInfo("*** IDXGIFactory creating hook for QueryInterface. \n");
 
-	IDXGIFactory* dxgiFactory = static_cast<IDXGIFactory*>(factory);
+	IDXGIFactory* dxgiFactory = reinterpret_cast<IDXGIFactory*>(factory);
 
 	SIZE_T hook_id;
 	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigQueryInterface,
@@ -480,7 +480,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 	// the highest supported object for each scenario, to properly suppport
 	// QueryInterface and GetParent upcasts.
 
-	IDXGIFactory2* dxgiFactory = static_cast<IDXGIFactory2*>(*ppFactory);
+	IDXGIFactory2* dxgiFactory = reinterpret_cast<IDXGIFactory2*>(*ppFactory);
 	HRESULT res = dxgiFactory->QueryInterface(IID_PPV_ARGS(&dxgiFactory));
 	if (SUCCEEDED(res))
 	{
@@ -556,7 +556,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	// the highest supported object for each scenario, to properly suppport
 	// QueryInterface and GetParent upcasts.
 
-	IDXGIFactory2* dxgiFactory = static_cast<IDXGIFactory2*>(*ppFactory1);
+	IDXGIFactory2* dxgiFactory = reinterpret_cast<IDXGIFactory2*>(*ppFactory1);
 	HRESULT res = dxgiFactory->QueryInterface(IID_PPV_ARGS(&dxgiFactory));
 	if (SUCCEEDED(res))
 	{
