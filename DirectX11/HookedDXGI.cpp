@@ -790,3 +790,202 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 //	return hr;
 //}
 
+
+
+// Functionality removed during refactoring.
+
+//
+//STDMETHODIMP HackerDXGIFactory::MakeWindowAssociation(THIS_
+//	HWND WindowHandle,
+//	UINT Flags)
+//{
+//	if (LogFile)
+//	{
+//		LogInfo("HackerDXGIFactory::MakeWindowAssociation(%s@%p) called with WindowHandle = %p, Flags = %x\n", type_name(this), this, WindowHandle, Flags);
+//		if (Flags) LogInfoNoNL("  Flags =");
+//		if (Flags & DXGI_MWA_NO_WINDOW_CHANGES) LogInfoNoNL(" DXGI_MWA_NO_WINDOW_CHANGES(no monitoring)");
+//		if (Flags & DXGI_MWA_NO_ALT_ENTER) LogInfoNoNL(" DXGI_MWA_NO_ALT_ENTER");
+//		if (Flags & DXGI_MWA_NO_PRINT_SCREEN) LogInfoNoNL(" DXGI_MWA_NO_PRINT_SCREEN");
+//		if (Flags) LogInfo("\n");
+//	}
+//
+//	if (G->SCREEN_ALLOW_COMMANDS && Flags)
+//	{
+//		LogInfo("  overriding Flags to allow all window commands\n");
+//
+//		Flags = 0;
+//	}
+//	HRESULT hr = mOrigFactory->MakeWindowAssociation(WindowHandle, Flags);
+//	LogInfo("  returns result = %x\n", hr);
+//
+//	return hr;
+//}
+//
+//
+//
+//// For any given SwapChain created by the factory here, we want to wrap the 
+//// SwapChain so that we can get called when Present() is called.
+////
+//// When this is called by a game that creates their swap chain directly from the 
+//// Factory object, it's possible that mHackerDevice and mHackerContext are null,
+//// because they don't exist when the factory is instantiated.
+//// Because of this, we want to check for null, and if so, set those up here, 
+//// because we have the input pDevice that we can use to wrap.
+////
+//// We always expect the pDevice passed in here to be a HackerDevice. If we
+//// get one that is not, we have an object leak/bug. It shouldn't be possible to
+//// create a ID3D11Device without us wrapping it. 
+//// But.. it looks like it's legitimate to pass an IDXGIDevice as the pDevice
+//// here.  So, we need to handle either case.  If the input pDevice is not a
+//// wrapped device, then the typeid(*pDevice) will throw an RTTI exception.
+////
+//// When creating the new swap chain, we need to pass the original device, not
+//// the wrapped version. For some reason, passing the wrapped version actually
+//// succeeds if the "evil" update is installed, which I would not expect.  Without
+//// the platform update, it would crash here.
+////
+//// It's not clear if we should try to handle null inputs for pDevice, even knowing
+//// that there is a lot of terrible code out there calling this.
+//// Also if we get a non-wrapped pDevice here, the typid(*pdevice) will crash with
+//// an RTTI exception, which we could catch.  Not sure how heroic we want to be here.
+//// After some thought, current operating philosophy for this routine will be to
+//// not wrap these with an exception handler, as we want to know when games do
+//// something crazy, and a crash will let us know.  If we were to just catch and
+//// release some crazy stuff, it's not likely to work anyway, and a hard/fragile
+//// failure is superior in that case.
+//
+//STDMETHODIMP HackerDXGIFactory::CreateSwapChain(THIS_
+//	/* [annotation][in] */
+//	_In_  IUnknown *pDevice,
+//	/* [annotation][in] */
+//	_In_  DXGI_SWAP_CHAIN_DESC *pDesc,
+//	/* [annotation][out] */
+//	_Out_  IDXGISwapChain **ppSwapChain)
+//{
+//	LogInfo("\n *** HackerDXGIFactory::CreateSwapChain(%s@%p) called with parameters\n", type_name(this), this);
+//	LogInfo("  Device = %s@%p\n", type_name(pDevice), pDevice);
+//	LogInfo("  SwapChain = %p\n", ppSwapChain);
+//	LogInfo("  Description = %p\n", pDesc);
+//
+//	// CreateSwapChain could be called with a IDXGIDevice or ID3D11Device
+//	HackerDevice *hackerDevice = NULL;
+//	IUnknown *origDevice = NULL;
+//
+//	hackerDevice = (HackerDevice*)lookup_hooked_device((ID3D11Device*)pDevice);
+//	if (hackerDevice)
+//	{
+//		origDevice = pDevice;
+//	}
+//	else if (typeid(*pDevice) == typeid(HackerDevice))
+//	{
+//		hackerDevice = static_cast<HackerDevice*>(pDevice);
+//		origDevice = hackerDevice->GetOrigDevice();
+//	}
+//	else if (typeid(*pDevice) == typeid(HackerDevice1))
+//	{
+//		// Needed for Batman:Telltale games
+//		hackerDevice = static_cast<HackerDevice1*>(pDevice);
+//		origDevice = hackerDevice->GetOrigDevice();
+//	}
+//	else if (typeid(*pDevice) == typeid(HackerDXGIDevice))
+//	{
+//		hackerDevice = static_cast<HackerDXGIDevice*>(pDevice)->GetHackerDevice();
+//		origDevice = static_cast<HackerDXGIDevice*>(pDevice)->GetOrigDXGIDevice();
+//	}
+//	else if (typeid(*pDevice) == typeid(HackerDXGIDevice1))
+//	{
+//		hackerDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetHackerDevice();
+//		origDevice = static_cast<HackerDXGIDevice1*>(pDevice)->GetOrigDXGIDevice1();
+//	}
+//	else if (typeid(*pDevice) == typeid(HackerDXGIDevice2))
+//	{
+//		hackerDevice = static_cast<HackerDXGIDevice2*>(pDevice)->GetHackerDevice();
+//		origDevice = static_cast<HackerDXGIDevice2*>(pDevice)->GetOrigDXGIDevice2();
+//	}
+//	else {
+//		LogInfo("FIXME: CreateSwapChain called with device of unknown type!\n");
+//		return E_FAIL;
+//	}
+//
+//	HRESULT hr;
+//
+//	HackerSwapChain *swapchainWrap = nullptr;
+//	bool setFullscreenRequired = false;
+//	DXGI_SWAP_CHAIN_DESC originalSwapChainDesc;
+//
+//	if (pDesc != nullptr) {
+//		// Save off the window handle so we can translate mouse cursor
+//		// coordinates to the window:
+//		G->hWnd = pDesc->OutputWindow;
+//
+//		if (G->SCREEN_UPSCALING > 0)
+//		{
+//			// For the case the upscaling is on the information if the fullscreen have to be set after swap chain is created
+//			setFullscreenRequired = !pDesc->Windowed;
+//			pDesc->Windowed = true;
+//			// Copy input swap chain desc for case the upscaling is on
+//			memcpy(&originalSwapChainDesc, pDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
+//		}
+//
+//		// Require in case the software mouse and upscaling are on at the same time
+//		// TODO: Use a helper class to track *all* different resolutions
+//		G->GAME_INTERNAL_WIDTH = pDesc->BufferDesc.Width;
+//		G->GAME_INTERNAL_HEIGHT = pDesc->BufferDesc.Height;
+//
+//		if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+//			// TODO: Use a helper class to track *all* different resolutions
+//			G->mResolutionInfo.width = pDesc->BufferDesc.Width;
+//			G->mResolutionInfo.height = pDesc->BufferDesc.Height;
+//			LogInfo("Got resolution from swap chain: %ix%i\n",
+//				G->mResolutionInfo.width, G->mResolutionInfo.height);
+//		}
+//	}
+//
+//	ForceDisplayParams(pDesc);
+//
+//	hr = mOrigFactory->CreateSwapChain(origDevice, pDesc, ppSwapChain);
+//
+//	if (SUCCEEDED(hr)) // First swap chain was successfully created and upscaling is on
+//	{
+//		if (G->SCREEN_UPSCALING > 0)
+//		{
+//			try
+//			{
+//				// Do not need to check pDesc == null because if this the case previos call of the CreateSwapChain would fail
+//				swapchainWrap = new HackerUpscalingSwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext(), &originalSwapChainDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, mOrigFactory);
+//				LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, ppSwapChain);
+//			}
+//			catch (const Exception3DMigoto& e)
+//			{
+//				LogInfo("HackerDXGIFactory::CreateSwapChain(): Creation of Upscaling Swapchain failed. Error: %s\n", e.what().c_str());
+//				// Something went wrong inform the user with double beep and end!;
+//				DoubleBeepExit();
+//			}
+//		}
+//		else
+//		{
+//			swapchainWrap = new HackerSwapChain(*ppSwapChain, hackerDevice, hackerDevice->GetHackerContext());
+//			LogInfo("->HackerSwapChain %p created to wrap %p\n", swapchainWrap, *ppSwapChain);
+//		}
+//	}
+//	else
+//	{
+//		LogInfo("  failed result = %#x for device:%p, swapchain:%p\n", hr, pDevice, ppSwapChain);
+//		return hr;
+//	}
+//
+//	if (G->SCREEN_UPSCALING == 2 || setFullscreenRequired)
+//	{
+//		// Some games seems to react very strange (like render nothing) if set full screen state is called here)
+//		// Other games like The Witcher 3 need the call to ensure entering the full screen on start (seems to be game internal stuff)
+//		// If something would go wrong we would not get here
+//		(*ppSwapChain)->SetFullscreenState(TRUE, nullptr);
+//	}
+//
+//	// And again if something would go wrong we would not get here
+//	*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
+//
+//	LogInfo("->return value = %#x\n\n", hr);
+//	return hr;
+//}
+//
