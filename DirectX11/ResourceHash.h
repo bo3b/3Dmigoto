@@ -323,9 +323,9 @@ struct TextureOverride;
 class FuzzyMatchResourceDesc {
 private:
 	template <typename DescType>
-	bool FuzzyMatchResourceDesc::check_common_resource_fields(const DescType *desc) const;
+	bool check_common_resource_fields(const DescType *desc) const;
 	template <typename DescType>
-	bool FuzzyMatchResourceDesc::check_common_texture_fields(const DescType *desc) const;
+	bool check_common_texture_fields(const DescType *desc) const;
 public:
 	struct TextureOverride *texture_override;
 
