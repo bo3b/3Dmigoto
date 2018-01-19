@@ -44,9 +44,6 @@
 // These global parameters come originally from the d3dx.ini, so the user can
 // change them.
 //
-// This is also used by D3D11::CreateSwapChainAndDevice.
-//
-// It might make sense to move this to Utils, where nvapi can access it too.
 // There is now also ForceDisplayParams1 which has some overlap.
 
 void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
@@ -233,7 +230,6 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	HackerSwapChain* hackerSwapChain;
 	hackerSwapChain = new HackerSwapChain(origSwapChain, G->gHackerDevice, G->gHackerContext);
 
-	G->gOverlay = new Overlay(origDevice, origContext, origSwapChain);
 
 	// When creating a new swapchain, we can assume this is the game creating 
 	// the most important object, and save as a global.
@@ -277,6 +273,12 @@ void HookCreateSwapChainForHwnd(void* factory2)
 //	secret path, where they take the Device and QueryInterface to get IDXGIDevice
 //	up to getting Factory, where they call CreateSwapChain. In this path, we can
 //	expect the global gHackerDevice to have already been setup by CreateDevice.
+//
+//
+// In prior code, we were looking for possible IDXGIDevice's as the pDevice input.
+// That should not be a problem now, because we are specifically trying to cast
+// that input into an ID3D11Device1 using QueryInterface.  Leaving the original
+// code commented out at the bottom of the file, for reference.
 
 HRESULT(__stdcall *fnOrigCreateSwapChain)(
 	IDXGIFactory * This,
@@ -302,6 +304,34 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
 	LogInfo("  Description = %p\n", pDesc);
 
+	//if (pDesc != nullptr) 
+	//{
+	//	// Save window handle so we can translate mouse coordinates to the window:
+	//	G->hWnd = pDesc->OutputWindow;
+	//
+	//	if (G->SCREEN_UPSCALING > 0)
+	//	{
+	//		// For the upscaling case, fullscreen has to be set after swap chain is created
+	//		setFullscreenRequired = !pDesc->Windowed;
+	//		pDesc->Windowed = true;
+	//		// Copy input swap chain desc for case the upscaling is on
+	//		memcpy(&originalSwapChainDesc, pDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
+	//	}
+	//
+	//	// Require in case the software mouse and upscaling are on at the same time
+	//	// TODO: Use a helper class to track *all* different resolutions
+	//	G->GAME_INTERNAL_WIDTH = pDesc->BufferDesc.Width;
+	//	G->GAME_INTERNAL_HEIGHT = pDesc->BufferDesc.Height;
+	//
+	//	if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+	//		// TODO: Use a helper class to track *all* different resolutions
+	//		G->mResolutionInfo.width = pDesc->BufferDesc.Width;
+	//		G->mResolutionInfo.height = pDesc->BufferDesc.Height;
+	//		LogInfo("Got resolution from swap chain: %ix%i\n",
+	//			G->mResolutionInfo.width, G->mResolutionInfo.height);
+	//	}
+	//}
+
 	ForceDisplayParams(pDesc);
 
 	HRESULT hr = fnOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
@@ -312,32 +342,53 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	}
 
 	// Always upcast to IDXGISwapChain1 whenever possible.
+	// If the upcast fails, that means we have a normal IDXGISwapChain,
+	// but we'll still store it as an IDXGISwapChain1.  It's a little
+	// weird to reinterpret this way, but should cause no problems in
+	// the Win7 no platform_udpate case.
 	IDXGISwapChain1* origSwapChain;
 	(*ppSwapChain)->QueryInterface(IID_PPV_ARGS(&origSwapChain));
 	if (origSwapChain == nullptr)
 		origSwapChain = reinterpret_cast<IDXGISwapChain1*>(*ppSwapChain);
 
 	ID3D11Device1* origDevice;
-	if (G->gHackerDevice != pDevice)
-		pDevice->QueryInterface(IID_PPV_ARGS(&origDevice));		// Path 1
-	else
-		origDevice = G->gHackerDevice->GetOrigDevice1();		// Path 2
+	origDevice = G->gHackerDevice->GetOrigDevice1();		// Path 2
 
 	ID3D11DeviceContext* origContext;
 	origDevice->GetImmediateContext(&origContext);
 
-	HackerSwapChain* hackerSwapChain;
-	hackerSwapChain = new HackerSwapChain(origSwapChain, G->gHackerDevice, G->gHackerContext);
 
-	G->gOverlay = new Overlay(origDevice, origContext, origSwapChain);
+	// Original swapchain has been successfully created. Now we want to 
+	// wrap the returned swapchain as either HackerSwapChain or HackerUpscalingSwapChain.  
+	HackerSwapChain* swapchainWrap;
+	
+	if (G->SCREEN_UPSCALING == 0)		// Normal case
+	{
+		swapchainWrap = new HackerSwapChain(origSwapChain, G->gHackerDevice, G->gHackerContext);
+		LogInfo("->HackerSwapChain %p created to wrap %p\n", swapchainWrap, *ppSwapChain);
+	}
+	//else								// Upscaling case
+	//{
+	//	swapchainWrap = new HackerUpscalingSwapChain(origSwapChain, origDevice, origContext,
+	//		&originalSwapChainDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, mOrigFactory);
+	//	LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, *ppSwapChain);
+	//}
+
+	//if (G->SCREEN_UPSCALING == 2 || setFullscreenRequired)
+	//{
+	//	// Some games seems to react very strange (like render nothing) if set full screen state is called here)
+	//	// Other games like The Witcher 3 need the call to ensure entering the full screen on start (seems to be game internal stuff)
+	//	// If something would go wrong we would not get here
+	//	(*ppSwapChain)->SetFullscreenState(TRUE, nullptr);
+	//}
 
 	// When creating a new swapchain, we can assume this is the game creating 
 	// the most important object, and save as a global.
 	// And return the wrapped swapchain to the game so it will call our Present.
-	G->gHackerSwapChain = hackerSwapChain;
-	*ppSwapChain = hackerSwapChain;
+	G->gHackerSwapChain = swapchainWrap;
+	*ppSwapChain = swapchainWrap;
 
-	LogInfo("->return result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hr, hackerSwapChain, origSwapChain);
+	LogInfo("->return result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hr, swapchainWrap, origSwapChain);
 	return hr;
 }
 

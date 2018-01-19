@@ -26,7 +26,6 @@
 class CommandListCommand;
 typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
 
-class Overlay;
 class HackerSwapChain;
 
 enum HuntingMode {
@@ -294,7 +293,6 @@ struct Globals
 	HackerDevice* gHackerDevice;
 	HackerContext* gHackerContext;
 	HackerSwapChain* gHackerSwapChain;
-	Overlay* gOverlay;
 
 	EnableHooks enable_hooks;
 	
@@ -450,7 +448,6 @@ struct Globals
 		gHackerDevice(0),
 		gHackerContext(0),
 		gHackerSwapChain(0),
-		gOverlay(0),
 
 		mSelectedRenderTargetSnapshot(0),
 		mSelectedRenderTargetPos(-1),

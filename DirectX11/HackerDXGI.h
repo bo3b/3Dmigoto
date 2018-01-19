@@ -15,7 +15,6 @@ class HackerContext;
 class Overlay;
 
 
-void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc);
 void InstallSetWindowPosHook();
 
 // -----------------------------------------------------------------------------
@@ -31,7 +30,7 @@ protected:
 	Overlay *mOverlay;
 
 public:
-	HackerSwapChain(IDXGISwapChain1 *pOutput, HackerDevice *pDevice, HackerContext *pContext);
+	HackerSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pDevice, HackerContext *pContext);
 	
 	IDXGISwapChain1* GetOrigSwapChain1();
 	void UpdateStereoParams();
@@ -202,7 +201,7 @@ private:
 	UINT mHeight;
 
 public:
-	HackerUpscalingSwapChain(IDXGISwapChain1 *pOutput, HackerDevice *pDevice, HackerContext *pContext, 
+	HackerUpscalingSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pDevice, HackerContext *pContext,
 		const DXGI_SWAP_CHAIN_DESC* FakeSwapChainDesc, UINT NewWidth, UINT NewHeight, IDXGIFactory* Factory);
 	~HackerUpscalingSwapChain();
 
