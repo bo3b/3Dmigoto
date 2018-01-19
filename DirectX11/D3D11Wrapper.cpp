@@ -795,6 +795,25 @@ HRESULT WINAPI D3D11CreateDevice(
 // null safe, and never access anything without checking first.
 // 
 // See notes in CreateDevice.
+//
+// 1-18-18: All new strategy here for creating swapchains, based on the success of
+//	doing single-layer wrapping, and the direct hook for IDXGIFactory->CreateSwapChain.
+//	A fundamental problem for our wrapping is this call- D3D11CreateDeviceAndSwapChain.
+//	Because it creates a swapchain implicitly, that means there has always been two
+//	paths to CreateSwapChain, one with a HackerDevice, wrapped as part of them taking
+//	the secret path through QueryInterface, and one an ID3D11Device from here, where
+//	it's in the guts of this call.  That has caused all sorts of knock-on effects,
+//	because they are too different from our perspective.
+//
+// New approach: break this call into two, and not call the original.  They are
+// fundamentally two pieces, so we'll just create a Device, then create a SwapChain.
+// This avoids the complexity of using globals, or after the fact fixing object 
+// references.  And simplifies the CreateSwapChain, and removes duplicate code. This
+// one call has been creating enormous problems, so let's just fix it instead of all
+// the problems.  Current Windows MSDN recommendation is to not use this call.
+//
+// Using this reference for the secret path: 
+//	https://stackoverflow.com/questions/27270504/directx-creating-the-swapchain
 
 HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	_In_opt_			IDXGIAdapter         *pAdapter,
@@ -810,8 +829,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	_Out_opt_			D3D_FEATURE_LEVEL    *pFeatureLevel,
 	_Out_opt_			ID3D11DeviceContext  **ppImmediateContext)
 {
-	HRESULT ret;
-	DXGI_SWAP_CHAIN_DESC originalSwapChainDesc;
+	HRESULT hr;
 
 	InitD311();
 
@@ -833,121 +851,55 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	Flags = EnableDebugFlags(Flags);
 #endif
 
-	if (pSwapChainDesc != nullptr) {
-		// Save off the window handle so we can translate mouse cursor
-		// coordinates to the window:
-		G->hWnd = pSwapChainDesc->OutputWindow;
-
-		if (G->SCREEN_UPSCALING > 0)
-		{		
-			// Copy input swap chain desc for case the upscaling is on
-			memcpy(&originalSwapChainDesc, pSwapChainDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
-		}
-
-		// Require in case the software mouse and upscaling are on at the same time
-		G->GAME_INTERNAL_WIDTH = pSwapChainDesc->BufferDesc.Width;
-		G->GAME_INTERNAL_HEIGHT = pSwapChainDesc->BufferDesc.Height;
-
-		if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
-			// TODO: Use a helper class to track *all* different resolutions
-			G->mResolutionInfo.width = pSwapChainDesc->BufferDesc.Width;
-			G->mResolutionInfo.height = pSwapChainDesc->BufferDesc.Height;
-			LogInfo("Got resolution from swap chain: %ix%i\n",
-				G->mResolutionInfo.width, G->mResolutionInfo.height);
-		}
-	}
-
-	// This will implicitly call IDXGIFactory->CreateSwapChain, which we have hooked
-	// in HookedDXGI. That hook will always create the Overlay, and ForceDisplayParams if required.
-	ret = (*_D3D11CreateDeviceAndSwapChain)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
-		FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain, ppDevice, pFeatureLevel, ppImmediateContext);
-
-	if (FAILED(ret))
-	{
-		LogInfo("  failed with HRESULT=%x\n", ret);
-		return ret;
-	}
+	// Create the Device that the caller specified, but using our wrapped CreateDevice
+	// on purpose, so that we get a HackerDevice back in ppDevice.
+	hr = D3D11CreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, 
+		ppDevice, pFeatureLevel, ppImmediateContext);
+	if (FAILED(hr))
+		goto failOut;
 
 	// Optional parameters means these might be null.
-	ID3D11Device *retDevice = ppDevice ? *ppDevice : nullptr;
-	ID3D11DeviceContext *retContext = ppImmediateContext ? *ppImmediateContext : nullptr;
-	IDXGISwapChain *retSwapChain = ppSwapChain ? *ppSwapChain : nullptr;
-
-	LogInfo("  D3D11CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p\n",
-		retDevice, retContext, retSwapChain);
-
-#if _DEBUG_LAYER
-	ShowDebugInfo(retDevice);
-#endif
-
-	// We now want to always upconvert to ID3D11Device1 and ID3D11DeviceContext1,
-	// and will only use the downlevel objects if we get an error on QueryInterface.
-	ID3D11Device1 *origDevice1 = nullptr;
-	ID3D11DeviceContext1 *origContext1 = nullptr;
-	HRESULT res;
-	if (retDevice != nullptr)
+	if (ppDevice && ppSwapChain)
 	{
-		res = retDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
-		LogInfo("  QueryInterface(ID3D11Device1) returned result = %x, device1 handle = %p\n", res, origDevice1);
-		if (FAILED(res))
-			origDevice1 = static_cast<ID3D11Device1*>(retDevice);
-	}
-	if (retContext != nullptr)
-	{
-		res = retContext->QueryInterface(IID_PPV_ARGS(&origContext1));
-		LogInfo("  QueryInterface(ID3D11DeviceContext1) returned result = %x, context1 handle = %p\n", res, origContext1);
-		if (FAILED(res))
-			origContext1 = static_cast<ID3D11DeviceContext1*>(retContext);
-	}
+		HackerDevice* retDevice = static_cast<HackerDevice*>(*ppDevice);
+		
+		// Now that we successfully created a HackerDevice and HackerContext, we can create 
+		// a SwapChain to match.  We'll use the secret path to get the proper factory for 
+		// this Device.  
+		IDXGIDevice* dxgiDevice;
+		hr = retDevice->QueryInterface(__uuidof(IDXGIDevice), (void **)& dxgiDevice);
+		if (FAILED(hr))
+			goto failOut;
+		IDXGIAdapter* dxgiAdapter;
+		hr = dxgiDevice->GetParent(__uuidof(IDXGIAdapter), (void **)& dxgiAdapter);
+		if (FAILED(hr))
+			goto failOut;
+		IDXGIFactory* dxgiFactory;
+		hr = dxgiAdapter->GetParent(__uuidof(IDXGIFactory), (void **)& dxgiFactory);
+		if (FAILED(hr))
+			goto failOut;
 
-	// Create a wrapped version of the original device1 to return to the game.
-	HackerDevice *deviceWrap = nullptr;
-	if (origDevice1 != nullptr)
-	{
-		deviceWrap = new HackerDevice(origDevice1, origContext1);
+		// This will implicitly call IDXGIFactory->CreateSwapChain, which we have hooked
+		// in HookedDXGI. That hook will always create and return the HackerSwapChain, 
+		// create the Overlay, and ForceDisplayParams if required.
+		hr = dxgiFactory->CreateSwapChain(*ppDevice, pSwapChainDesc, ppSwapChain);
+		if (FAILED(hr))
+			goto failOut;
 
-		G->gHackerDevice = deviceWrap;
-
-		if (G->enable_hooks & EnableHooks::DEVICE)
-			deviceWrap->HookDevice();
-		else
-			*ppDevice = deviceWrap;
-		LogInfo("  HackerDevice %p created to wrap %p\n", deviceWrap, origDevice1);
+		dxgiFactory->Release();
+		dxgiAdapter->Release();
+		dxgiDevice->Release();
 	}
 
-	// Create a wrapped version of the original context1 to return to the game.
-	HackerContext *contextWrap = nullptr;
-	if (origContext1 != nullptr)
-	{
-		contextWrap = HackerContextFactory(origDevice1, origContext1);
+	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, swapchain wrapper = %p\n\n",
+		hr, ppSwapChain? *ppSwapChain : 0);
 
-		G->gHackerContext = contextWrap;
+	return hr;
 
-		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
-			contextWrap->HookContext();
-		else
-			*ppImmediateContext = contextWrap;
-		LogInfo("  HackerContext %p created to wrap %p\n", contextWrap, origContext1);
-	}
-
-	// Let each of the new Hacker objects know about the other, needed for unusual
-	// calls in the Hacker objects where we want to return the Hacker versions.
-	if (deviceWrap != nullptr)
-		deviceWrap->SetHackerContext(contextWrap);
-	if (contextWrap != nullptr)
-		contextWrap->SetHackerDevice(deviceWrap);
-
-	// With all the interacting objects set up, we can now safely finish the HackerDevice init.
-	if (deviceWrap != nullptr)
-		deviceWrap->Create3DMigotoResources();
-	if (contextWrap != nullptr)
-		contextWrap->Bind3DMigotoResources();
-
-	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, device handle = %p, device wrapper = %p, context handle = %p, "
-		"context wrapper = %p, swapchain handle = %p\n\n",
-		ret, origDevice1, deviceWrap, origContext1, contextWrap, retSwapChain);
-
-	return ret;
+failOut:
+	// Fatal error.  If we can't do these calls, we can't play the game.
+	LogInfo("  failed with HRESULT=%x\n", hr);
+	return hr;
 }
 
 // -----------------------------------------------------------------------------------------------

@@ -19,7 +19,7 @@ extern "C" HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _
 
 
 // These are moved up to the header file so we can call them from elsewhere.
-// We can't include d3d11.lib as a linker connection, because we are reimplenting
+// We can't include d3d11.lib as a linker connection, because we are reimplementing
 // all those routines, and thus get duplicate symbols.
 
 typedef HRESULT(WINAPI *tD3D11CreateDevice)(
