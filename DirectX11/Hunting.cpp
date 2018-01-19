@@ -17,47 +17,45 @@
 
 static int StrRenderTargetBuf(char *buf, size_t size, D3D11_BUFFER_DESC *desc)
 {
-	return _snprintf_s(buf, size, size, "type=Buffer ByteWidth=%u "
-		"Usage=%u BindFlags=0x%x CPUAccessFlags=0x%x MiscFlags=0x%x "
-		"StructureByteStride=%u",
-		desc->ByteWidth, desc->Usage, desc->BindFlags,
-		desc->CPUAccessFlags, desc->MiscFlags,
+	return _snprintf_s(buf, size, size, "type=Buffer byte_width=%u "
+		"usage=\"%S\" bind_flags=0x%x cpu_access_flags=0x%x misc_flags=0x%x "
+		"stride=%u",
+		desc->ByteWidth, TexResourceUsage(desc->Usage),
+		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags,
 		desc->StructureByteStride);
 }
 
 static int StrRenderTarget1D(char *buf, size_t size, D3D11_TEXTURE1D_DESC *desc)
 {
-	return _snprintf_s(buf, size, size, "type=Texture1D Width=%u MipLevels=%u "
-		"ArraySize=%u RawFormat=%u Format=\"%s\" Usage=%u BindFlags=0x%x "
-		"CPUAccessFlags=0x%x MiscFlags=0x%x",
-		desc->Width, desc->MipLevels, desc->ArraySize, desc->Format,
-		TexFormatStr(desc->Format), desc->Usage, desc->BindFlags,
-		desc->CPUAccessFlags, desc->MiscFlags);
+	return _snprintf_s(buf, size, size, "type=Texture1D width=%u mips=%u "
+		"array=%u format=\"%s\" usage=\"%S\" bind_flags=0x%x "
+		"cpu_access_flags=0x%x misc_flags=0x%x",
+		desc->Width, desc->MipLevels, desc->ArraySize,
+		TexFormatStr(desc->Format), TexResourceUsage(desc->Usage),
+		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags);
 }
 
 static int StrRenderTarget2D(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc)
 {
-	return _snprintf_s(buf, size, size, "type=Texture2D Width=%u Height=%u MipLevels=%u "
-		"ArraySize=%u RawFormat=%u Format=\"%s\" SampleDesc.Count=%u "
-		"SampleDesc.Quality=%u Usage=%u BindFlags=0x%x "
-		"CPUAccessFlags=0x%x MiscFlags=0x%x",
-		desc->Width, desc->Height, desc->MipLevels,
-		desc->ArraySize, desc->Format,
+	return _snprintf_s(buf, size, size, "type=Texture2D width=%u height=%u mips=%u "
+		"array=%u format=\"%s\" msaa=%u "
+		"msaa_quality=%u usage=\"%S\" bind_flags=0x%x "
+		"cpu_access_flags=0x%x misc_flags=0x%x",
+		desc->Width, desc->Height, desc->MipLevels, desc->ArraySize,
 		TexFormatStr(desc->Format), desc->SampleDesc.Count,
-		desc->SampleDesc.Quality, desc->Usage, desc->BindFlags,
-		desc->CPUAccessFlags, desc->MiscFlags);
+		desc->SampleDesc.Quality, TexResourceUsage(desc->Usage),
+		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags);
 }
 
 static int StrRenderTarget3D(char *buf, size_t size, D3D11_TEXTURE3D_DESC *desc)
 {
 
-	return _snprintf_s(buf, size, size, "type=Texture3D Width=%u Height=%u Depth=%u "
-		"MipLevels=%u RawFormat=%u Format=\"%s\" Usage=%u BindFlags=0x%x "
-		"CPUAccessFlags=0x%x MiscFlags=0x%x",
-		desc->Width, desc->Height, desc->Depth,
-		desc->MipLevels, desc->Format,
-		TexFormatStr(desc->Format), desc->Usage, desc->BindFlags,
-		desc->CPUAccessFlags, desc->MiscFlags);
+	return _snprintf_s(buf, size, size, "type=Texture3D width=%u height=%u depth=%u "
+		"mips=%u format=\"%s\" usage=\"%S\" bind_flags=0x%x "
+		"cpu_access_flags=0x%x misc_flags=0x%x",
+		desc->Width, desc->Height, desc->Depth, desc->MipLevels,
+		TexFormatStr(desc->Format), TexResourceUsage(desc->Usage),
+		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags);
 }
 
 static int StrRenderTarget(char *buf, size_t size, struct ResourceHashInfo &info)

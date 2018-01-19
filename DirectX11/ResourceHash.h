@@ -211,6 +211,12 @@ static wchar_t *ResourceUsage[] = {
 	L"DYNAMIC",
 	L"STAGING"
 };
+static wchar_t *TexResourceUsage(UINT usage)
+{
+	if (usage < sizeof(ResourceUsage) / sizeof(ResourceUsage[0]))
+		return ResourceUsage[usage];
+	return L"UNKNOWN";
+}
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ff476106(v=vs.85).aspx
 enum class ResourceCPUAccessFlags {
