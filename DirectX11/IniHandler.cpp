@@ -903,7 +903,7 @@ static void ConstructInitialDataNorm(CustomResource *custom_resource, std::istri
 		unsigned char *unorm8_buf;
 		signed char *snorm8_buf;
 	};
-	int i;
+	unsigned i;
 	float val;
 
 	vals = string_to_typed_array<float>(tokens);
@@ -1755,7 +1755,7 @@ static bool parse_masked_flags_field(const wstring setting, unsigned *val, unsig
 	std::vector<std::wstring> tokens;
 	std::wstring token;
 	int ret, len1, len2;
-	int i;
+	unsigned i;
 	bool use_mask = false;
 	bool set;
 	unsigned tmp;

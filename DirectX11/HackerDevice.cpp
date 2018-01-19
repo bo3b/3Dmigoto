@@ -1740,7 +1740,7 @@ static const DescType* process_texture_override(uint32_t hash,
 	TextureOverrideMatches matches;
 	TextureOverride *textureOverride = NULL;
 	const DescType* ret = origDesc;
-	int i;
+	unsigned i;
 
 	*oldMode = (NVAPI_STEREO_SURFACECREATEMODE) -1;
 

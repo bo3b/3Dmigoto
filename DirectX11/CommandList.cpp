@@ -585,7 +585,7 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 void CheckTextureOverrideCommand::run(CommandListState *state)
 {
 	TextureOverrideMatches matches;
-	int i;
+	unsigned i;
 
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
