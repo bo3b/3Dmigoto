@@ -3124,11 +3124,11 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return state->resource;
 
 	case ResourceCopyTargetType::SWAP_CHAIN:
-		G->gHackerSwapChain->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+		mHackerDevice->GetHackerSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
 		return res;
 
 	case ResourceCopyTargetType::FAKE_SWAP_CHAIN:
-		G->gHackerSwapChain->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+		mHackerDevice->GetHackerSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
 		return res;
 	}
 

@@ -20,7 +20,8 @@
 #include "shader.h"
 #include "DecompileHLSL.h"
 #include "HackerContext.h"
-//#include "Globals.h"
+#include "HackerDXGI.h"
+
 #include "D3D11Wrapper.h"
 #include "SpriteFont.h"
 #include "D3D_Shaders\stdafx.h"
@@ -237,6 +238,17 @@ HackerContext* HackerDevice::GetHackerContext()
 	LogInfo("HackerDevice::GetHackerContext returns %p\n", mHackerContext);
 	return mHackerContext;
 }
+
+void HackerDevice::SetHackerSwapChain(HackerSwapChain *pHackerSwapChain)
+{
+	mHackerSwapChain = pHackerSwapChain;
+}
+
+HackerSwapChain* HackerDevice::GetHackerSwapChain()
+{
+	return mHackerSwapChain;
+}
+
 
 // Returns the "real" DirectX object. Note that if hooking is enabled calls
 // through this object will go back into 3DMigoto, which would then subject

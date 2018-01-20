@@ -6,11 +6,13 @@
 
 #include "nvstereo.h"
 #include "HackerContext.h"
+#include "HackerDXGI.h"
 
 // Forward declaration to allow circular reference between HackerContext and HackerDevice. 
 // We need this to allow each to reference the other as needed.
 
 class HackerContext;
+class HackerSwapChain;
 
 
 // 1-6-18:  Current approach will be to only create one level of wrapping,
@@ -44,6 +46,7 @@ private:
 	ID3D11DeviceContext1 *mOrigContext1;
 
 	HackerContext *mHackerContext;
+	HackerSwapChain *mHackerSwapChain;
 
 	// Utility routines
 	char *ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
@@ -96,8 +99,10 @@ public:
 
 	void Create3DMigotoResources();
 	void SetHackerContext(HackerContext *pHackerContext);
+	void SetHackerSwapChain(HackerSwapChain *pHackerSwapChain);
 
 	HackerContext* GetHackerContext();
+	HackerSwapChain* GetHackerSwapChain();
 	ID3D11Device1* GetOrigDevice1();
 	ID3D11Device1* GetPassThroughOrigDevice1();
 	ID3D11DeviceContext1* GetOrigContext1();

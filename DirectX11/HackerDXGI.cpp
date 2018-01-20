@@ -142,6 +142,8 @@ HackerSwapChain::HackerSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pDev
 	mHackerDevice = pDevice;
 	mHackerContext = pContext;
 
+	mHackerDevice->SetHackerSwapChain(this);
+
 	try {
 		// Create Overlay class that will be responsible for drawing any text
 		// info over the game. Using the Hacker Device and Context we gave the game.
