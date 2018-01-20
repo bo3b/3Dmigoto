@@ -638,7 +638,8 @@ static vector<string> strToWords(string s) {
 	}
 	for (size_t i = 0; i < words.size(); i++) {
 		string s2 = words[i];
-		if (s2[s2.size() - 1] == ',')
+		// Fixed access before start of array -DarkStarSword
+		if (!s2.empty() && s2[s2.size() - 1] == ',')
 			s2.erase(--s2.end());
 		words[i] = s2;
 	}
