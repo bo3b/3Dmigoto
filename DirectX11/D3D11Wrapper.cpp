@@ -743,8 +743,6 @@ HRESULT WINAPI D3D11CreateDevice(
 	{
 		deviceWrap = new HackerDevice(origDevice1, origContext1);
 
-		G->gHackerDevice = deviceWrap;
-
 		if (G->enable_hooks & EnableHooks::DEVICE)
 			deviceWrap->HookDevice();
 		else
@@ -757,8 +755,6 @@ HRESULT WINAPI D3D11CreateDevice(
 	if (origContext1 != nullptr)
 	{
 		contextWrap = HackerContextFactory(origDevice1, origContext1);
-
-		G->gHackerContext = contextWrap;
 
 		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
 			contextWrap->HookContext();

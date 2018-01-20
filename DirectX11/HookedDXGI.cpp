@@ -22,8 +22,6 @@
 #include "util.h"
 #include "D3D11Wrapper.h"
 
-#include "Overlay.h"
-
 
 // This class is for a different approach than the wrapping of the system objects
 // like we do with ID3D11Device for example.  When we wrap a COM object like that,
@@ -218,23 +216,17 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 		return hr;
 	}
 
-	IDXGISwapChain1* origSwapChain;
-	origSwapChain = *ppSwapChain;
-
-	ID3D11Device1* origDevice;
-	origDevice = G->gHackerDevice->GetOrigDevice1();
-
-	ID3D11DeviceContext* origContext;
-	origDevice->GetImmediateContext(&origContext);
+	IDXGISwapChain1* origSwapChain = *ppSwapChain;
+	HackerDevice* hackerDevice = reinterpret_cast<HackerDevice*>(pDevice);
+	HackerContext* hackerContext = hackerDevice->GetHackerContext();
 
 	HackerSwapChain* hackerSwapChain;
-	hackerSwapChain = new HackerSwapChain(origSwapChain, G->gHackerDevice, G->gHackerContext);
+	hackerSwapChain = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
 
 
 	// When creating a new swapchain, we can assume this is the game creating 
-	// the most important object, and save as a global.
-	// And return the wrapped swapchain to the game so it will call our Present.
-	G->gHackerSwapChain = hackerSwapChain;
+	// the most important object, and return the wrapped swapchain to the game 
+	// so it will call our Present.
 	*ppSwapChain = hackerSwapChain;
 
 	LogInfo("->return result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hr, hackerSwapChain, origSwapChain);
@@ -265,14 +257,15 @@ void HookCreateSwapChainForHwnd(void* factory2)
 // Actual hook for any IDXGICreateSwapChain calls the game makes.
 //
 // There are two primary paths that can arrive here.
-// 1. d3d11->CreateDeviceAndSwapChain
+// ---1. d3d11->CreateDeviceAndSwapChain
 //	This path arrives here with a normal ID3D11Device1 device, not a HackerDevice.
-//	This is called implictly from the middle of CreateDeviceAndSwapChain.
+//	This is called implictly from the middle of CreateDeviceAndSwapChain.---
+//	No longer necessary, with CreateDeviceAndSwapChain broken into two direct calls.
 // 2. IDXGIFactory->CreateSwapChain after CreateDevice
 //	This path requires a pDevice passed in, which is a HackerDevice.  This is the
 //	secret path, where they take the Device and QueryInterface to get IDXGIDevice
 //	up to getting Factory, where they call CreateSwapChain. In this path, we can
-//	expect the global gHackerDevice to have already been setup by CreateDevice.
+//	expect the input pDevice to have already been setup as a HackerDevice.
 //
 //
 // In prior code, we were looking for possible IDXGIDevice's as the pDevice input.
@@ -299,7 +292,7 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	/* [annotation][out] */
 	_Out_  IDXGISwapChain **ppSwapChain)
 {
-	LogInfo("Hooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
+	LogInfo("\nHooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
 	LogInfo("  Device = %p\n", pDevice);
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
 	LogInfo("  Description = %p\n", pDesc);
@@ -351,11 +344,8 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	if (origSwapChain == nullptr)
 		origSwapChain = reinterpret_cast<IDXGISwapChain1*>(*ppSwapChain);
 
-	ID3D11Device1* origDevice;
-	origDevice = G->gHackerDevice->GetOrigDevice1();		// Path 2
-
-	ID3D11DeviceContext* origContext;
-	origDevice->GetImmediateContext(&origContext);
+	HackerDevice* hackerDevice = reinterpret_cast<HackerDevice*>(pDevice);
+	HackerContext* hackerContext = hackerDevice->GetHackerContext();
 
 
 	// Original swapchain has been successfully created. Now we want to 
@@ -364,7 +354,7 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	
 	if (G->SCREEN_UPSCALING == 0)		// Normal case
 	{
-		swapchainWrap = new HackerSwapChain(origSwapChain, G->gHackerDevice, G->gHackerContext);
+		swapchainWrap = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
 		LogInfo("->HackerSwapChain %p created to wrap %p\n", swapchainWrap, *ppSwapChain);
 	}
 	//else								// Upscaling case
@@ -383,9 +373,8 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	//}
 
 	// When creating a new swapchain, we can assume this is the game creating 
-	// the most important object, and save as a global.
-	// And return the wrapped swapchain to the game so it will call our Present.
-	G->gHackerSwapChain = swapchainWrap;
+	// the most important object. Return the wrapped swapchain to the game so it 
+	// will call our Present.
 	*ppSwapChain = swapchainWrap;
 
 	LogInfo("->return result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hr, swapchainWrap, origSwapChain);

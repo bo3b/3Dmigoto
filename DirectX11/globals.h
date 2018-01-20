@@ -13,10 +13,6 @@
 #include "DirectXMath.h"
 #include "util.h"
 
-#include "HackerDevice.h"
-#include "HackerContext.h"
-#include "HackerDXGI.h"
-
 #include "ResourceHash.h"
 #include "CommandList.h"
 
@@ -26,7 +22,6 @@
 class CommandListCommand;
 typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
 
-class HackerSwapChain;
 
 enum HuntingMode {
 	HUNTING_MODE_DISABLED = 0,
@@ -290,10 +285,6 @@ struct Globals
 	wchar_t SHADER_CACHE_PATH[MAX_PATH];
 	wchar_t CHAIN_DLL_PATH[MAX_PATH];
 
-	HackerDevice* gHackerDevice;
-	HackerContext* gHackerContext;
-	HackerSwapChain* gHackerSwapChain;
-
 	EnableHooks enable_hooks;
 	
 	bool enable_check_interface;
@@ -445,9 +436,6 @@ struct Globals
 	std::map<UINT64, ShaderInfoData> mPixelShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 
 	Globals() :
-		gHackerDevice(0),
-		gHackerContext(0),
-		gHackerSwapChain(0),
 
 		mSelectedRenderTargetSnapshot(0),
 		mSelectedRenderTargetPos(-1),

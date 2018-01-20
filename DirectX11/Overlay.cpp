@@ -15,6 +15,10 @@
 //#include "nvapi.h"
 #include "Globals.h"
 
+#include "HackerDevice.h"
+#include "HackerContext.h"
+
+
 
 // Side note: Not really stoked with C++ string handling.  There are like 4 or
 // 5 different ways to do things, all partly compatible, none a clear winner in
@@ -35,7 +39,7 @@
 const int maxstring = 200;
 
 
-Overlay::Overlay(ID3D11Device *pDevice, ID3D11DeviceContext *pContext, IDXGISwapChain *pSwapChain)
+Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain)
 {
 	HRESULT hr;
 
@@ -45,10 +49,13 @@ Overlay::Overlay(ID3D11Device *pDevice, ID3D11DeviceContext *pContext, IDXGISwap
 	// Drawing environment for this swap chain. This is the game environment.
 	// These should specifically avoid Hacker* objects, to avoid object 
 	// callbacks or other problems. We just want to draw here, nothing tricky.
-	mOrigDevice = pDevice;
-	mOrigContext = pContext;
+	// The only exception being that we need the HackerDevice in order to 
+	// draw the current stereoparams.
+	mHackerDevice = pDevice;
 	mOrigSwapChain = pSwapChain;
-
+	mOrigDevice = mHackerDevice->GetOrigDevice1();
+	mOrigContext = pContext->GetOrigContext1();
+		
 	DXGI_SWAP_CHAIN_DESC description;
 	hr = pSwapChain->GetDesc(&description);
 	if (FAILED(hr))
@@ -425,7 +432,7 @@ void Overlay::DrawOverlay(void)
 			DrawShaderInfoLines();
 
 			// Bottom of screen
-			CreateStereoInfoString(G->gHackerDevice->mStereoHandle, osdString);
+			CreateStereoInfoString(mHackerDevice->mStereoHandle, osdString);
 			strSize = mFont->MeasureString(osdString);
 			textPosition = Vector2(float(mResolution.x - strSize.x) / 2, float(mResolution.y - strSize.y - 10));
 			mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);

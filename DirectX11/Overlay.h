@@ -7,6 +7,9 @@
 #include "SpriteFont.h"
 #include "SpriteBatch.h"
 
+#include "HackerDevice.h"
+#include "HackerContext.h"
+
 
 class Overlay
 {
@@ -14,6 +17,7 @@ private:
 	IDXGISwapChain* mOrigSwapChain;
 	ID3D11Device* mOrigDevice;
 	ID3D11DeviceContext* mOrigContext;
+	HackerDevice* mHackerDevice;
 
 	DirectX::XMUINT2 mResolution;
 	std::unique_ptr<DirectX::SpriteFont> mFont;
@@ -72,7 +76,7 @@ private:
 	void DrawShaderInfoLines();
 
 public:
-	Overlay(ID3D11Device *pDevice, ID3D11DeviceContext *pContext, IDXGISwapChain *pSwapChain);
+	Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain);
 	~Overlay();
 
 	void DrawOverlay(void);

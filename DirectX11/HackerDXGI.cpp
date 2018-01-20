@@ -504,7 +504,7 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
 		// Run the post present command list now, which can be used to restore
 		// state changed in the pre-present command list, or to perform some
 		// action at the start of a frame:
-		RunCommandList(G->gHackerDevice, G->gHackerContext, &G->post_present_command_list, NULL, true);
+		RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
 	}
 
 	LogDebug("  returns %x\n", hr);
@@ -614,7 +614,7 @@ STDMETHODIMP HackerSwapChain::ResizeBuffers(THIS_
 	{
 		G->mResolutionInfo.width = Width;
 		G->mResolutionInfo.height = Height;
-		LogInfo("Got resolution from swap chain: %ix%i\n",
+		LogInfo("  Got resolution from swap chain: %ix%i\n",
 			G->mResolutionInfo.width, G->mResolutionInfo.height);
 	}
 
@@ -643,6 +643,7 @@ STDMETHODIMP HackerSwapChain::ResizeTarget(THIS_
             _In_  const DXGI_MODE_DESC *pNewTargetParameters)
 {
 	LogInfo("HackerSwapChain::ResizeTarget(%s@%p) called\n", type_name(this), this);
+	LogInfo("  Width: %d, Height: %d\n", pNewTargetParameters->Width, pNewTargetParameters->Height);
 
 	// In Direct Mode, we need to ensure that we are keeping our 2x width target.
 	if ((G->gForceStereo == 2) && (pNewTargetParameters->Width == G->mResolutionInfo.width))
@@ -789,7 +790,7 @@ STDMETHODIMP HackerSwapChain::Present1(THIS_
 		// Run the post present command list now, which can be used to restore
 		// state changed in the pre-present command list, or to perform some
 		// action at the start of a frame:
-		RunCommandList(G->gHackerDevice, G->gHackerContext, &G->post_present_command_list, NULL, true);
+		RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
 	}
 
 	LogDebug("  returns %x\n", hr);
@@ -1285,4 +1286,5 @@ revive the missing skip_dxgi to avoid beeps at launch
 filter junk at bottom here to avoid lost functionality
 Factory2 hook out of dxgi.dll at DLLMainHook? Only needed in Win10 case.
 Restore hooking of device/context.
+Remove QueryInterface hook in HookedDXGI.
 */
