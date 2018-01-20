@@ -403,72 +403,6 @@ void HookCreateSwapChain(void* factory)
 
 
 // -----------------------------------------------------------------------------
-// Actual hook for any Factory->QueryInterface calls the game makes.
-// ToDo: Presently commented out in activation, because it crashes Dishonored2
-// if this is enabled.  Probably we no longer need this at all, because
-// we are hooking the actual Create* calls, and don't need to worry about the
-// QueryInterface sequence. Even if they upcast from Factory to Factory2.
-
-HRESULT(__stdcall *fnOrigQueryInterface)(
-	IDXGIObject * This,
-	/* [in] */ REFIID riid,
-	/* [annotation][iid_is][out] */
-	_COM_Outptr_  void **ppvObject) = nullptr;
-
-
-HRESULT __stdcall Hooked_QueryInterface(
-	IDXGIObject * This,
-	/* [in] */ REFIID riid,
-	/* [annotation][iid_is][out] */
-	_COM_Outptr_  void **ppvObject)
-{
-	LogInfo("DXGIFactory::QueryInterface(%p) called with IID: %s\n", This, NameFromIID(riid).c_str());
-
-	HRESULT	hr = fnOrigQueryInterface(This, riid, ppvObject);
-
-	if (SUCCEEDED(hr) && ppvObject)
-	{
-		if (riid == __uuidof(IDXGIFactory2))
-		{
-			// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
-			// Unless we are overriding default behavior from ini file.
-			if (!G->enable_platform_update)
-			{
-				LogInfo("***  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
-				*ppvObject = NULL;
-				return E_NOINTERFACE;
-			}
-
-			if (!fnOrigCreateSwapChainForHwnd)
-				HookCreateSwapChainForHwnd(*ppvObject);
-		}
-	}
-
-	LogInfo("  returns result = %x for %p\n", hr, ppvObject);
-	return hr;
-}
-
-// -----------------------------------------------------------------------------
-// QueryInterface can be used to upcast to an IDXGIFactory2, so we need to hook it.
-
-void HookQueryInterface(void* factory)
-{
-	LogInfo("*** IDXGIFactory creating hook for QueryInterface. \n");
-
-	IDXGIFactory* dxgiFactory = reinterpret_cast<IDXGIFactory*>(factory);
-
-	SIZE_T hook_id;
-	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigQueryInterface,
-		lpvtbl_CreateSwapChain(dxgiFactory), Hooked_QueryInterface, 0);
-
-	if (dwOsErr == ERROR_SUCCESS)
-		LogInfo("  Successfully installed IDXGIFactory->QueryInterface hook.\n");
-	else
-		LogInfo("  *** Failed install IDXGIFactory->QueryInterface hook.\n");
-}
-
-
-// -----------------------------------------------------------------------------
 // Actual function called by the game for every CreateDXGIFactory they make.
 // This is only called for the in-process game, not system wide.
 //
@@ -508,9 +442,6 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 		LogInfo("->failed with HRESULT=%x\n", hr);
 		return hr;
 	}
-
-	//if (!fnOrigQueryInterface)
-	//	HookQueryInterface(*ppFactory);
 
 	if (!fnOrigCreateSwapChain)
 		HookCreateSwapChain(*ppFactory);
@@ -584,9 +515,6 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 		LogInfo("->failed with HRESULT=%x\n", hr);
 		return hr;
 	}
-
-	//if (!fnOrigQueryInterface)
-	//	HookQueryInterface(*ppFactory1);
 
 	if (!fnOrigCreateSwapChain)
 		HookCreateSwapChain(*ppFactory1);
