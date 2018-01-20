@@ -689,8 +689,8 @@ static std::string NameFromIID(IID id)
 
 static const char* type_name(IUnknown *object)
 {
-	ID3D11Device *device;
-	ID3D11DeviceContext *context;
+	ID3D11Device1 *device;
+	ID3D11DeviceContext1 *context;
 
 	// Seems that not even try / catch is safe in all cases of this
 	// (grumble grumble poorly designed grumble...). The only cases where
@@ -698,10 +698,10 @@ static const char* type_name(IUnknown *object)
 	// hooking the device and/or context, so check if it is one of those
 	// cases:
 
-	device = lookup_hooked_device((ID3D11Device*)object);
+	device = lookup_hooked_device((ID3D11Device1*)object);
 	if (device)
 		return "Hooked_ID3D11Device";
-	context = lookup_hooked_context((ID3D11DeviceContext*)object);
+	context = lookup_hooked_context((ID3D11DeviceContext1*)object);
 	if (context)
 		return "Hooked_ID3D11DeviceContext";
 
