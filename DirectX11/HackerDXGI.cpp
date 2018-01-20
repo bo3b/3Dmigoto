@@ -860,14 +860,15 @@ STDMETHODIMP HackerSwapChain::GetRotation(THIS_
 // HackerUpscalingSwapChain, to provide post-process upscaling to arbitrary
 // resolutions.  Particularly good for 4K passive 3D.
 
-HackerUpscalingSwapChain::HackerUpscalingSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pDevice, HackerContext *pContext, 
-	const DXGI_SWAP_CHAIN_DESC* FakeSwapChainDesc, UINT NewWidth, UINT NewHeight, IDXGIFactory* Factory)
-	: HackerSwapChain(pSwapChain, pDevice, pContext), mFakeBackBuffer(nullptr), mFakeSwapChain1(nullptr), mWidth(0), mHeight(0)
+HackerUpscalingSwapChain::HackerUpscalingSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pHackerDevice, HackerContext *pHackerContext, 
+	DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc, UINT newWidth, UINT newHeight, IDXGIFactory* pFactory)
+	: HackerSwapChain(pSwapChain, pHackerDevice, pHackerContext), 
+	mFakeBackBuffer(nullptr), mFakeSwapChain1(nullptr), mWidth(0), mHeight(0)
 {
-	CreateRenderTarget(FakeSwapChainDesc, Factory);
+	CreateRenderTarget(pFakeSwapChainDesc, pFactory);
 
-	mWidth = NewWidth;
-	mHeight = NewHeight;
+	mWidth = newWidth;
+	mHeight = newHeight;
 }
 
 
@@ -879,10 +880,7 @@ HackerUpscalingSwapChain::~HackerUpscalingSwapChain()
 		mFakeBackBuffer->Release();
 }
 
-
-// CreateRenderTarget 
-
-void HackerUpscalingSwapChain::CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC* FakeSwapChainDesc, IDXGIFactory* Factory)
+void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc, IDXGIFactory* pFactory)
 {
 	HRESULT hr;
 
@@ -900,10 +898,10 @@ void HackerUpscalingSwapChain::CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC* Fa
 		fake_buffer_desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
 		fake_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
 		fake_buffer_desc.SampleDesc.Count = 1;
-		fake_buffer_desc.Format = FakeSwapChainDesc->BufferDesc.Format;
+		fake_buffer_desc.Format = pFakeSwapChainDesc->BufferDesc.Format;
 		fake_buffer_desc.MiscFlags = 0;
-		fake_buffer_desc.Width = FakeSwapChainDesc->BufferDesc.Width;
-		fake_buffer_desc.Height = FakeSwapChainDesc->BufferDesc.Height;
+		fake_buffer_desc.Width = pFakeSwapChainDesc->BufferDesc.Width;
+		fake_buffer_desc.Height = pFakeSwapChainDesc->BufferDesc.Height;
 		fake_buffer_desc.CPUAccessFlags = 0;
 
 		hr = mHackerDevice->CreateTexture2D(&fake_buffer_desc, nullptr, &mFakeBackBuffer);
@@ -911,24 +909,28 @@ void HackerUpscalingSwapChain::CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC* Fa
 	break;
 	case 1:
 	{
-		if (Factory == nullptr)
+		if (pFactory == nullptr)
 		{
-			LogInfo("HackerUpscalingSwapChain::createRenderTarget failed provided factory pointer is invalid\n!");
+			LogInfo("HackerUpscalingSwapChain::createRenderTarget failed provided factory pointer is invalid.\n");
 			BeepFailure2();
 		}
-		const UINT flagBackup = FakeSwapChainDesc->Flags;
-		const_cast<DXGI_SWAP_CHAIN_DESC*>(FakeSwapChainDesc)->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // fake swap chain should have no influence on window
+		const UINT flagBackup = pFakeSwapChainDesc->Flags;
+
+		// fake swap chain should have no influence on window
+		pFakeSwapChainDesc->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 		IDXGISwapChain* swapChain;
-		hr = Factory->CreateSwapChain(mHackerDevice->GetOrigDevice1(), const_cast<DXGI_SWAP_CHAIN_DESC*>(FakeSwapChainDesc), &swapChain);
+		hr = pFactory->CreateSwapChain(mHackerDevice->GetOrigDevice1(), pFakeSwapChainDesc, &swapChain);
 
 		HRESULT res = swapChain->QueryInterface(IID_PPV_ARGS(&mFakeSwapChain1));
 		if (FAILED(res))
 			mFakeSwapChain1 = static_cast<IDXGISwapChain1*>(swapChain);
-		const_cast<DXGI_SWAP_CHAIN_DESC*>(FakeSwapChainDesc)->Flags = flagBackup; // restore old state in case fall back is required
+
+		// restore old state in case fall back is required ToDo: Unlikely needed now.
+		pFakeSwapChainDesc->Flags = flagBackup;
 	}
 	break;
 	default:
-		LogInfo("HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed ==> provided upscaling mode is not valid!\n");
+		LogInfo("*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed ==> provided upscaling mode is not valid.\n");
 		BeepFailure2();
 	}
 
@@ -936,7 +938,7 @@ void HackerUpscalingSwapChain::CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC* Fa
 
 	if (FAILED(hr))
 	{
-		LogInfo("HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed!\n");
+		LogInfo("*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed\n");
 		BeepFailure2();
 	}
 }
@@ -1274,5 +1276,6 @@ revive the missing skip_dxgi to avoid beeps at launch
 filter junk at bottom here to avoid lost functionality
 Factory2 hook out of dxgi.dll at DLLMainHook? Only needed in Win10 case.
 Restore hooking of device/context.
-Remove QueryInterface hook in HookedDXGI.
+Hard fail in CreateDeviceAndSwapChain for null inputs.
+Move factory fetch out to Utils.
 */

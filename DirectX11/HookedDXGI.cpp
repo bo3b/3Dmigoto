@@ -297,33 +297,40 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
 	LogInfo("  Description = %p\n", pDesc);
 
-	//if (pDesc != nullptr) 
-	//{
-	//	// Save window handle so we can translate mouse coordinates to the window:
-	//	G->hWnd = pDesc->OutputWindow;
-	//
-	//	if (G->SCREEN_UPSCALING > 0)
-	//	{
-	//		// For the upscaling case, fullscreen has to be set after swap chain is created
-	//		setFullscreenRequired = !pDesc->Windowed;
-	//		pDesc->Windowed = true;
-	//		// Copy input swap chain desc for case the upscaling is on
-	//		memcpy(&originalSwapChainDesc, pDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
-	//	}
-	//
-	//	// Require in case the software mouse and upscaling are on at the same time
-	//	// TODO: Use a helper class to track *all* different resolutions
-	//	G->GAME_INTERNAL_WIDTH = pDesc->BufferDesc.Width;
-	//	G->GAME_INTERNAL_HEIGHT = pDesc->BufferDesc.Height;
-	//
-	//	if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
-	//		// TODO: Use a helper class to track *all* different resolutions
-	//		G->mResolutionInfo.width = pDesc->BufferDesc.Width;
-	//		G->mResolutionInfo.height = pDesc->BufferDesc.Height;
-	//		LogInfo("Got resolution from swap chain: %ix%i\n",
-	//			G->mResolutionInfo.width, G->mResolutionInfo.height);
-	//	}
-	//}
+	// pDevice input is always going to be a HackerDevice, because the startup
+	// path now builds HackerDevice before creating a swapchain.
+	HackerDevice* hackerDevice = reinterpret_cast<HackerDevice*>(pDevice);
+	HackerContext* hackerContext = hackerDevice->GetHackerContext();
+
+
+	DXGI_SWAP_CHAIN_DESC origSwapChainDesc;
+	if (pDesc != nullptr) 
+	{
+		// Save window handle so we can translate mouse coordinates to the window:
+		G->hWnd = pDesc->OutputWindow;
+	
+		if (G->SCREEN_UPSCALING > 0)
+		{
+			// Copy input swap chain desc in case it's modified
+			memcpy(&origSwapChainDesc, pDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
+
+			// For the upscaling case, fullscreen has to be set after swap chain is created
+			pDesc->Windowed = true;
+		}
+	
+		// Required in case the software mouse and upscaling are on at the same time
+		// TODO: Use a helper class to track *all* different resolutions
+		G->GAME_INTERNAL_WIDTH = pDesc->BufferDesc.Width;
+		G->GAME_INTERNAL_HEIGHT = pDesc->BufferDesc.Height;
+	
+		if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
+			// TODO: Use a helper class to track *all* different resolutions
+			G->mResolutionInfo.width = pDesc->BufferDesc.Width;
+			G->mResolutionInfo.height = pDesc->BufferDesc.Height;
+			LogInfo("Got resolution from swap chain: %ix%i\n",
+				G->mResolutionInfo.width, G->mResolutionInfo.height);
+		}
+	}
 
 	ForceDisplayParams(pDesc);
 
@@ -344,9 +351,6 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	if (origSwapChain == nullptr)
 		origSwapChain = reinterpret_cast<IDXGISwapChain1*>(*ppSwapChain);
 
-	HackerDevice* hackerDevice = reinterpret_cast<HackerDevice*>(pDevice);
-	HackerContext* hackerContext = hackerDevice->GetHackerContext();
-
 
 	// Original swapchain has been successfully created. Now we want to 
 	// wrap the returned swapchain as either HackerSwapChain or HackerUpscalingSwapChain.  
@@ -357,20 +361,20 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 		swapchainWrap = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
 		LogInfo("->HackerSwapChain %p created to wrap %p\n", swapchainWrap, *ppSwapChain);
 	}
-	//else								// Upscaling case
-	//{
-	//	swapchainWrap = new HackerUpscalingSwapChain(origSwapChain, origDevice, origContext,
-	//		&originalSwapChainDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, mOrigFactory);
-	//	LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, *ppSwapChain);
-	//}
+	else								// Upscaling case
+	{
+		swapchainWrap = new HackerUpscalingSwapChain(origSwapChain, hackerDevice, hackerContext,
+			&origSwapChainDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, This);
+		LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, *ppSwapChain);
+	}
 
-	//if (G->SCREEN_UPSCALING == 2 || setFullscreenRequired)
-	//{
-	//	// Some games seems to react very strange (like render nothing) if set full screen state is called here)
-	//	// Other games like The Witcher 3 need the call to ensure entering the full screen on start (seems to be game internal stuff)
-	//	// If something would go wrong we would not get here
-	//	(*ppSwapChain)->SetFullscreenState(TRUE, nullptr);
-	//}
+	if (G->SCREEN_UPSCALING == 2 || !origSwapChainDesc.Windowed)
+	{
+		// Some games react very strange (like render nothing) if set full screen state is called here)
+		// Other games like The Witcher 3 need the call to ensure entering the full screen on start
+		// (seems to be game internal stuff)  ToDo: retest if this is still necessary, lots of changes.
+		(*ppSwapChain)->SetFullscreenState(TRUE, nullptr);
+	}
 
 	// When creating a new swapchain, we can assume this is the game creating 
 	// the most important object. Return the wrapped swapchain to the game so it 
