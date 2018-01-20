@@ -208,6 +208,7 @@ struct ShaderOverride {
 typedef std::unordered_map<UINT64, struct ShaderOverride> ShaderOverrideMap;
 
 struct TextureOverride {
+	std::wstring ini_section;
 	int stereoMode;
 	int format;
 	int width;
@@ -234,13 +235,37 @@ struct TextureOverride {
 };
 typedef std::unordered_map<uint32_t, struct TextureOverride> TextureOverrideMap;
 
+// We use this when collecting resource info for ShaderUsage.txt to take a
+// snapshot of the resource handle, hash and original hash. We used to just
+// save the resource handle, but that was problematic since handles can get
+// reused, and so we could record the wrong hash in the ShaderUsage.txt
+struct ResourceSnapshot
+{
+	ID3D11Resource *handle;
+	uint32_t hash;
+	uint32_t orig_hash;
+
+	ResourceSnapshot(ID3D11Resource *handle, uint32_t hash, uint32_t orig_hash):
+		handle(handle), hash(hash), orig_hash(orig_hash)
+	{}
+};
+static inline bool operator<(const ResourceSnapshot &lhs, const ResourceSnapshot &rhs)
+{
+	if (lhs.orig_hash != rhs.orig_hash)
+		return (lhs.orig_hash < rhs.orig_hash);
+	if (lhs.hash != rhs.hash)
+		return (lhs.hash < rhs.hash);
+	return (lhs.handle < rhs.handle);
+}
+
 struct ShaderInfoData
 {
 	// All are std::map or std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
-	std::map<int, std::set<ID3D11Resource *>> ResourceRegisters;
-	std::set<UINT64> PartnerShader;
-	std::vector<std::set<ID3D11Resource *>> RenderTargets;
-	std::set<ID3D11Resource *> DepthTargets;
+	std::map<int, std::set<ResourceSnapshot>> ResourceRegisters;
+	std::set<UINT64> PeerShaders;
+	std::vector<std::set<ResourceSnapshot>> RenderTargets;
+	std::map<int, std::set<ResourceSnapshot>> UAVs;
+	std::set<ResourceSnapshot> DepthTargets;
 };
 
 enum class GetResolutionFrom {
@@ -413,6 +438,7 @@ struct Globals
 
 	ShaderOverrideMap mShaderOverrideMap;
 	TextureOverrideMap mTextureOverrideMap;
+	FuzzyTextureOverrides mFuzzyTextureOverrides;
 
 	// Statistics
 	std::unordered_map<ID3D11Resource *, ResourceHandleInfo> mResources;
@@ -421,6 +447,7 @@ struct Globals
 	// These five items work with the *original* resource hash:
 	std::unordered_map<uint32_t, struct ResourceHashInfo> mResourceInfo;
 	std::set<uint32_t> mRenderTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::set<uint32_t> mUnorderedAccessInfo;				// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mDepthTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mShaderResourceInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mCopiedResourceInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
@@ -433,7 +460,11 @@ struct Globals
 	std::set<ID3D11Resource *> mSelectedRenderTargetSnapshotList;			// std::set so that render targets will be sorted in log when marked
 	// Relations
 	std::map<UINT64, ShaderInfoData> mVertexShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<UINT64, ShaderInfoData> mHullShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<UINT64, ShaderInfoData> mDomainShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<UINT64, ShaderInfoData> mGeometryShaderInfo;		// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::map<UINT64, ShaderInfoData> mPixelShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<UINT64, ShaderInfoData> mComputeShaderInfo;		// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 
 	Globals() :
 

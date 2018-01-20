@@ -120,6 +120,8 @@ private:
 	ID3D11HullShader *mCurrentHullShaderHandle;
 	std::vector<ID3D11Resource *> mCurrentRenderTargets;
 	ID3D11Resource *mCurrentDepthTarget;
+	UINT mCurrentPSUAVStartSlot;
+	UINT mCurrentPSNumUAVs;
 	FrameAnalysisOptions analyse_options;
 
 	// Used for deny_cpu_read, track_texture_updates and constant buffer matching
@@ -153,9 +155,16 @@ private:
 	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
 	ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
 	void RecordDepthStencil(ID3D11DepthStencilView *target);
-	void RecordShaderResourceUsage();
+	template <void (__stdcall ID3D11DeviceContext::*GetShaderResources)(THIS_
+		UINT StartSlot,
+		UINT NumViews,
+		ID3D11ShaderResourceView **ppShaderResourceViews)>
+	void RecordShaderResourceUsage(ShaderInfoData *shader_info);
+	void RecordGraphicsShaderStats();
+	void RecordComputeShaderStats();
+	void RecordPeerShaders(std::set<UINT64> *PeerShaders, UINT64 this_shader_hash);
 	void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);
-	ID3D11Resource* RecordResourceViewStats(ID3D11ShaderResourceView *view);
+	ID3D11Resource* RecordResourceViewStats(ID3D11View *view, std::set<uint32_t> *resource_info);
 
 	// Functions for the frame analysis. Would be good to split this out,
 	// but it's pretty tightly coupled to the context at the moment:

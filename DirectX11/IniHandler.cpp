@@ -5,6 +5,7 @@
 #include <strsafe.h>
 #include <fstream>
 #include <sstream>
+#include <memory>
 
 #include "log.h"
 #include "Globals.h"
@@ -436,6 +437,15 @@ static void InsertBuiltInIniSections()
 	;
 
 	ParseIniExcerpt(text);
+}
+
+static bool IniHasKey(const wchar_t *section, const wchar_t *key)
+{
+	try {
+		return !!ini_sections.at(section).kv_map.count(key);
+	} catch (std::out_of_range) {
+		return false;
+	}
 }
 
 // This emulates the behaviour of the old GetPrivateProfileString API to
@@ -893,7 +903,7 @@ static void ConstructInitialDataNorm(CustomResource *custom_resource, std::istri
 		unsigned char *unorm8_buf;
 		signed char *snorm8_buf;
 	};
-	int i;
+	unsigned i;
 	float val;
 
 	vals = string_to_typed_array<float>(tokens);
@@ -1153,7 +1163,7 @@ static void ParseResourceSections()
 		custom_resource->height_multiply = GetIniFloat(i->first.c_str(), L"height_multiply", 1.0f, NULL);
 
 		if (GetIniStringAndLog(i->first.c_str(), L"bind_flags", 0, setting, MAX_PATH)) {
-			custom_resource->override_bind_flags = parse_enum_option_string<wchar_t *, CustomResourceBindFlags>
+			custom_resource->override_bind_flags = parse_enum_option_string<const wchar_t *, CustomResourceBindFlags, wchar_t*>
 				(CustomResourceBindFlagNames, setting, NULL);
 		}
 
@@ -1640,6 +1650,29 @@ static void ParseShaderRegexSections()
 	}
 }
 
+// For fuzzy matching instead of using hash. Using terms consistent
+// with [Resource] section. TODO: Consider providing MS naming aliases.
+// If any of these appear in a section that also contains a hash= the parser
+// will issue an error, since hash is always a specific match they cannot be
+// mixed. Macro so this can be included in multiple string lists.
+#define TEXTURE_OVERRIDE_FUZZY_MATCHES \
+	L"match_type", \
+	L"match_priority", \
+	L"match_usage", \
+	L"match_bind_flags", \
+	L"match_cpu_access_flags", \
+	L"match_misc_flags", \
+	L"match_byte_width", \
+	L"match_stride", \
+	L"match_mips", \
+	L"match_format", \
+	L"match_width", \
+	L"match_height", \
+	L"match_depth", \
+	L"match_array", \
+	L"match_msaa", \
+	L"match_msaa_quality"
+
 // List of keys in [TextureOverride] sections that are processed in this
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *TextureOverrideIniKeys[] = {
@@ -1653,12 +1686,337 @@ wchar_t *TextureOverrideIniKeys[] = {
 	L"filter_index",
 	L"expand_region_copy",
 	L"deny_cpu_read",
+	TEXTURE_OVERRIDE_FUZZY_MATCHES,
 	NULL
 };
+// List of keys for fuzzy matching that cannot be used together with hash:
+wchar_t *TextureOverrideFuzzyMatchesIniKeys[] = {
+	TEXTURE_OVERRIDE_FUZZY_MATCHES,
+	NULL
+};
+static void parse_texture_override_common(const wchar_t *id, TextureOverride *override)
+{
+	wchar_t setting[MAX_PATH];
+
+	override->stereoMode = GetIniInt(id, L"StereoMode", -1, NULL);
+	override->format = GetIniInt(id, L"Format", -1, NULL);
+	override->width = GetIniInt(id, L"Width", -1, NULL);
+	override->height = GetIniInt(id, L"Height", -1, NULL);
+
+	if (GetIniString(id, L"Iteration", 0, setting, MAX_PATH))
+	{
+		// TODO: This supports more iterations than the
+		// ShaderOverride iteration parameter, and it's not
+		// clear why there is a difference. This seems like the
+		// better way, but should change it to use my list
+		// parsing code rather than hard coding a maximum of 10
+		// supported iterations.
+		override->iterations.clear();
+		override->iterations.push_back(0);
+		int id[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+		swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", id + 0, id + 1, id + 2, id + 3, id + 4, id + 5, id + 6, id + 7, id + 8, id + 9);
+		for (int j = 0; j < 10; ++j)
+		{
+			if (id[j] <= 0) break;
+			override->iterations.push_back(id[j]);
+			LogInfo("  Iteration=%d\n", id[j]);
+		}
+	}
+
+	if (GetIniStringAndLog(id, L"analyse_options", 0, setting, MAX_PATH)) {
+		override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
+			(FrameAnalysisOptionNames, setting, NULL);
+	}
+
+	override->filter_index = GetIniFloat(id, L"filter_index", 1.0f, NULL);
+
+	override->expand_region_copy = GetIniBool(id, L"expand_region_copy", false, NULL);
+	override->deny_cpu_read = GetIniBool(id, L"deny_cpu_read", false, NULL);
+
+	ParseCommandList(id, &override->command_list, &override->post_command_list, TextureOverrideIniKeys);
+}
+
+static bool texture_override_section_has_fuzzy_match_keys(const wchar_t *section)
+{
+	int i;
+
+	for (i = 0; TextureOverrideFuzzyMatchesIniKeys[i]; i++) {
+		if (IniHasKey(section, TextureOverrideFuzzyMatchesIniKeys[i]))
+			return true;
+	}
+
+	return false;
+}
+
+template <class T>
+static bool parse_masked_flags_field(const wstring setting, unsigned *val, unsigned *mask,
+		struct EnumName_t<const wchar_t *, T> *enum_names)
+{
+	std::vector<std::wstring> tokens;
+	std::wstring token;
+	int ret, len1, len2;
+	unsigned i;
+	bool use_mask = false;
+	bool set;
+	unsigned tmp;
+
+	// Allow empty strings and 0 to indicate it matches 0 / 0xffffffff:
+	if (!setting.size() || !setting.compare(L"0")) {
+		*val = 0;
+		*mask = 0xffffffff;
+		LogInfo("    Using: 0x%08x / 0x%08x\n", *val, *mask);
+		return true;
+	}
+
+	// Try parsing the field as a hex string with an optional mask:
+	ret = swscanf_s(setting.c_str(), L"0x%x%n / 0x%x%n", val, &len1, mask, &len2);
+	if (ret != 0 && ret != EOF && (len1 == setting.length() || len2 == setting.length())) {
+		if (ret == 2)
+			*mask = 0xffffffff;
+		LogInfo("    Using: 0x%08x / 0x%08x\n", *val, *mask);
+		return true;
+	}
+
+	tokens = split_string(&setting, L' ');
+	*val = 0;
+	*mask = 0;
+
+	for (i = 0; i < tokens.size(); i++) {
+		if (tokens[i][0] == L'+') {
+			token = tokens[i].substr(1);
+			use_mask = true;
+			set = true;
+		} else if (tokens[i][0] == L'-') {
+			token = tokens[i].substr(1);
+			use_mask = true;
+			set = false;
+		} else {
+			token = tokens[i];
+			set = true;
+		}
+
+		tmp = (unsigned)lookup_enum_val<const wchar_t*, T>
+			(enum_names, token.c_str(), (T)0);
+
+		if (!tmp) {
+			IniWarning("  WARNING: Invalid flag %S\n", token.c_str());
+			return false;
+		}
+
+		if ((*mask & tmp) == tmp) {
+			IniWarning("  WARNING: Duplicate flag %S\n", token.c_str());
+			return false;
+		}
+
+		*mask |= tmp;
+		if (set)
+			*val |= tmp;
+	}
+
+	if (!use_mask)
+		*mask = 0xffffffff;
+	LogInfo("    Using: 0x%08x / 0x%08x\n", *val, *mask);
+
+	return true;
+}
+
+static void parse_fuzzy_numeric_match_expression_error(const wchar_t *text)
+{
+	IniWarning("  WARNING: Unable to parse expression - must be in the simple form:\n"
+	           "    [ operator ] value | field_name [ * multiplier ] [ / divider ]\n"
+	           "    Parse error on text: \"%S\"\n", text);
+}
+
+static void parse_fuzzy_numeric_match_expression(const wchar_t *setting, FuzzyMatch *matcher)
+{
+	const wchar_t *ptr = setting;
+	int ret, len;
+
+	// For now we're just supporting fairly simple expressions in the form:
+	//
+	//   [ operator ] ( value | ( field_name [ * multiplier ] [ / divider ] ) )
+	//
+	//     operator   =   "=" | "!" | "<" | ">" | "<=" | ">="
+	//     field_name =   "width" | "height" | "depth" | "array" | "res_width" | "res_height"
+	//     value, multiplier and divider are integers.
+	//
+	// That should be enough to match most things we need, including aspect
+	// ratios, downsampled resources, etc. We can add a full expression
+	// parser later if we really want.
+
+	// operator. Make sure to check <= before < because of overlapping prefix:
+	if (!wcsncmp(ptr, L"<=", 2)) {
+		matcher->op = FuzzyMatchOp::LESS_EQUAL;
+		ptr += 2;
+	} else if (!wcsncmp(ptr, L">=", 2)) {
+		matcher->op = FuzzyMatchOp::GREATER_EQUAL;
+		ptr += 2;
+	} else if (!wcsncmp(ptr, L"=", 1)) {
+		matcher->op = FuzzyMatchOp::EQUAL;
+		ptr++;
+	} else if (!wcsncmp(ptr, L"!", 1)) {
+		matcher->op = FuzzyMatchOp::NOT_EQUAL;
+		ptr++;
+	} else if (!wcsncmp(ptr, L"<", 1)) {
+		matcher->op = FuzzyMatchOp::LESS;
+		ptr++;
+	} else if (!wcsncmp(ptr, L">", 1)) {
+		matcher->op = FuzzyMatchOp::GREATER;
+		ptr++;
+	} else {
+		matcher->op = FuzzyMatchOp::EQUAL;
+	}
+
+	// whitespace
+	for (; *ptr == L' '; ptr++);
+
+	// Try parsing remaining string as integer. Has to reach end of string.
+	ret = swscanf_s(ptr, L"%u%n", &matcher->val, &len);
+	if (ret != 0 && ret != EOF && len == wcslen(ptr))
+		return;
+
+	// field_name
+	if (!wcsncmp(ptr, L"width", 5)) {
+		matcher->rhs_type = FuzzyMatchOperandType::WIDTH;
+		ptr += 5;
+	} else if (!wcsncmp(ptr, L"height", 6)) {
+		matcher->rhs_type = FuzzyMatchOperandType::HEIGHT;
+		ptr += 6;
+	} else if (!wcsncmp(ptr, L"depth", 5)) {
+		matcher->rhs_type = FuzzyMatchOperandType::DEPTH;
+		ptr += 5;
+	} else if (!wcsncmp(ptr, L"array", 5)) {
+		matcher->rhs_type = FuzzyMatchOperandType::ARRAY;
+		ptr += 5;
+	} else if (!wcsncmp(ptr, L"res_width", 9)) {
+		matcher->rhs_type = FuzzyMatchOperandType::RES_WIDTH;
+		ptr += 9;
+	} else if (!wcsncmp(ptr, L"res_height", 10)) {
+		matcher->rhs_type = FuzzyMatchOperandType::RES_HEIGHT;
+		ptr += 10;
+	}
+	// Check for bad field name
+	if (*ptr && *ptr != L' ')
+		return parse_fuzzy_numeric_match_expression_error(ptr);
+
+	// whitespace
+	for (; *ptr == L' '; ptr++);
+
+	// numerator
+	if (*ptr == L'*') {
+		ret = swscanf_s(++ptr, L"%u%n", &matcher->numerator, &len);
+		if (ret == 0 || ret == EOF)
+			return parse_fuzzy_numeric_match_expression_error(ptr);
+		ptr += len;
+	}
+
+	// whitespace
+	for (; *ptr == L' '; ptr++);
+
+	// denominator
+	if (*ptr == L'/') {
+		ret = swscanf_s(++ptr, L"%u%n", &matcher->denominator, &len);
+		if (ret == 0 || ret == EOF)
+			return parse_fuzzy_numeric_match_expression_error(ptr);
+		if (matcher->denominator == 0) {
+			matcher->denominator = 1;
+			IniWarning("  WARNING: Denominator is zero: %S\n", ptr);
+			return;
+		}
+		ptr += len;
+	}
+
+	if (*ptr)
+		return parse_fuzzy_numeric_match_expression_error(ptr);
+}
+
+static void parse_texture_override_fuzzy_match(const wchar_t *section)
+{
+	FuzzyMatchResourceDesc *fuzzy;
+	wchar_t setting[MAX_PATH];
+	bool found;
+	int ival;
+
+	fuzzy = new FuzzyMatchResourceDesc(section);
+
+	fuzzy->priority = GetIniInt(section, L"match_priority", 0, NULL);
+
+	ival = GetIniEnum(section, L"match_type",
+			D3D11_RESOURCE_DIMENSION_UNKNOWN, &found,
+			L"D3D11_RESOURCE_DIMENSION_", ResourceDimensions,
+			ARRAYSIZE(ResourceDimensions), 1);
+	fuzzy->set_resource_type((D3D11_RESOURCE_DIMENSION)ival);
+
+	ival = GetIniEnum(section, L"match_usage", 0, &found, L"D3D11_USAGE_",
+			ResourceUsage, ARRAYSIZE(ResourceUsage), 0);
+	if (found) {
+		fuzzy->Usage.op = FuzzyMatchOp::EQUAL;
+		fuzzy->Usage.val = ival;
+	}
+
+	// Flags
+	if (GetIniStringAndLog(section, L"match_bind_flags", 0, setting, MAX_PATH)) {
+		if (parse_masked_flags_field(setting, &fuzzy->BindFlags.val, &fuzzy->BindFlags.mask, CustomResourceBindFlagNames)) {
+			fuzzy->BindFlags.op = FuzzyMatchOp::EQUAL;
+		}
+	}
+	if (GetIniStringAndLog(section, L"match_cpu_access_flags", 0, setting, MAX_PATH)) {
+		if (parse_masked_flags_field(setting, &fuzzy->CPUAccessFlags.val, &fuzzy->CPUAccessFlags.mask, ResourceCPUAccessFlagNames)) {
+			fuzzy->CPUAccessFlags.op = FuzzyMatchOp::EQUAL;
+		}
+	}
+	if (GetIniStringAndLog(section, L"match_misc_flags", 0, setting, MAX_PATH)) {
+		if (parse_masked_flags_field(setting, &fuzzy->MiscFlags.val, &fuzzy->MiscFlags.mask, ResourceMiscFlagNames)) {
+			fuzzy->MiscFlags.op = FuzzyMatchOp::EQUAL;
+		}
+	}
+
+	// Format string
+	if (GetIniStringAndLog(section, L"match_format", 0, setting, MAX_PATH)) {
+		fuzzy->Format.val = ParseFormatString(setting, true);
+		if (fuzzy->Format.val == (DXGI_FORMAT)-1)
+			IniWarning("  WARNING: Unknown format \"%S\"\n", setting);
+		else
+			fuzzy->Format.op = FuzzyMatchOp::EQUAL;
+	}
+
+	// Simple numeric expressions:
+	if (GetIniStringAndLog(section, L"match_byte_width", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->ByteWidth);
+	if (GetIniStringAndLog(section, L"match_stride", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->StructureByteStride);
+	if (GetIniStringAndLog(section, L"match_mips", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->MipLevels);
+	if (GetIniStringAndLog(section, L"match_width", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->Width);
+	if (GetIniStringAndLog(section, L"match_height", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->Height);
+	if (GetIniStringAndLog(section, L"match_depth", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->Depth);
+	if (GetIniStringAndLog(section, L"match_array", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->ArraySize);
+	if (GetIniStringAndLog(section, L"match_msaa", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->SampleDesc_Count);
+	if (GetIniStringAndLog(section, L"match_msaa_quality", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->SampleDesc_Quality);
+
+	if (!fuzzy->update_types_matched()) {
+		IniWarning("  WARNING: [%S] can never match any resources\n", section);
+		delete fuzzy;
+		return;
+	}
+
+	parse_texture_override_common(section, fuzzy->texture_override);
+
+	if (!G->mFuzzyTextureOverrides.insert(std::shared_ptr<FuzzyMatchResourceDesc>(fuzzy)).second) {
+		IniWarning("BUG: Unexpected error inserting fuzzy texture override\n");
+		DoubleBeepExit();
+	}
+}
+
 static void ParseTextureOverrideSections()
 {
 	IniSections::iterator lower, upper, i;
-	wchar_t setting[MAX_PATH];
 	const wchar_t *id;
 	TextureOverride *override;
 	uint32_t hash;
@@ -1670,63 +2028,37 @@ static void ParseTextureOverrideSections()
 	EnterCriticalSection(&G->mCriticalSection);
 
 	G->mTextureOverrideMap.clear();
+	G->mFuzzyTextureOverrides.clear();
 
 	lower = ini_sections.lower_bound(wstring(L"TextureOverride"));
 	upper = prefix_upper_bound(ini_sections, wstring(L"TextureOverride"));
 
-	for (i = lower; i != upper; i++) 
-	{
+	for (i = lower; i != upper; i++) {
 		id = i->first.c_str();
 
 		LogInfo("[%S]\n", id);
 
 		hash = (uint32_t)GetIniHash(id, L"Hash", 0, &found);
 		if (!found) {
-			IniWarning("  WARNING: [%S] missing Hash=\n", id);
+			if (texture_override_section_has_fuzzy_match_keys(id)) {
+				parse_texture_override_fuzzy_match(id);
+				continue;
+			}
+
+			IniWarning("  WARNING: [%S] missing Hash= or valid match options\n", id);
 			continue;
 		}
 
-		if (G->mTextureOverrideMap.count(hash)) {
+		if (G->mTextureOverrideMap.count(hash))
 			IniWarning("  WARNING: Duplicate TextureOverride hash: %08lx\n", hash);
-		}
+
+		if (texture_override_section_has_fuzzy_match_keys(id))
+			IniWarning("  WARNING: [%S] Cannot use hash= and match options together!\n", id);
+
 		override = &G->mTextureOverrideMap[hash];
+		override->ini_section = id;
 
-		override->stereoMode = GetIniInt(id, L"StereoMode", -1, NULL);
-		override->format = GetIniInt(id, L"Format", -1, NULL);
-		override->width = GetIniInt(id, L"Width", -1, NULL);
-		override->height = GetIniInt(id, L"Height", -1, NULL);
-
-		if (GetIniString(id, L"Iteration", 0, setting, MAX_PATH))
-		{
-			// TODO: This supports more iterations than the
-			// ShaderOverride iteration parameter, and it's not
-			// clear why there is a difference. This seems like the
-			// better way, but should change it to use my list
-			// parsing code rather than hard coding a maximum of 10
-			// supported iterations.
-			override->iterations.clear();
-			override->iterations.push_back(0);
-			int id[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-			swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", id + 0, id + 1, id + 2, id + 3, id + 4, id + 5, id + 6, id + 7, id + 8, id + 9);
-			for (int j = 0; j < 10; ++j)
-			{
-				if (id[j] <= 0) break;
-				override->iterations.push_back(id[j]);
-				LogInfo("  Iteration=%d\n", id[j]);
-			}
-		}
-
-		if (GetIniStringAndLog(id, L"analyse_options", 0, setting, MAX_PATH)) {
-			override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
-				(FrameAnalysisOptionNames, setting, NULL);
-		}
-
-		override->filter_index = GetIniFloat(id, L"filter_index", 1.0f, NULL);
-
-		override->expand_region_copy = GetIniBool(id, L"expand_region_copy", false, NULL);
-		override->deny_cpu_read = GetIniBool(id, L"deny_cpu_read", false, NULL);
-
-		ParseCommandList(id, &override->command_list, &override->post_command_list, TextureOverrideIniKeys);
+		parse_texture_override_common(id, override);
 	}
 	LeaveCriticalSection(&G->mCriticalSection);
 }

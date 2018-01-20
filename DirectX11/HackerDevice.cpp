@@ -1590,6 +1590,149 @@ STDMETHODIMP_(UINT) HackerDevice::GetExceptionMode(THIS)
 }
 
 
+
+// -----------------------------------------------------------------------------------------------
+
+static bool check_texture_override_iteration(TextureOverride *textureOverride)
+{
+	if (textureOverride->iterations.empty())
+		return true;
+
+	std::vector<int>::iterator k = textureOverride->iterations.begin();
+	int currentIteration = textureOverride->iterations[0] = textureOverride->iterations[0] + 1;
+	LogInfo("  current iteration = %d\n", currentIteration);
+
+	while (++k != textureOverride->iterations.end()) {
+		if (currentIteration == *k)
+			return true;
+	}
+
+	LogInfo("  override skipped\n");
+	return false;
+}
+
+// Only Texture2D surfaces can be square. Use template specialisation to skip
+// the check on other resource types:
+template <typename DescType>
+static bool is_square_surface(DescType *desc) {
+	return false;
+}
+static bool is_square_surface(D3D11_TEXTURE2D_DESC *desc)
+{
+	return (desc && G->gSurfaceSquareCreateMode >= 0
+			&& desc->Width == desc->Height
+			&& (desc->Usage & D3D11_USAGE_IMMUTABLE) == 0);
+}
+
+// Template specialisations to override resource descriptions.
+// TODO: Refactor this to use common code with CustomResource.
+// TODO: Add overrides for BindFlags since they can affect the stereo mode.
+// Maybe MiscFlags as well in case we need to do something like forcing a
+// buffer to be unstructured to allow it to be steroised when
+// StereoFlagsDX10=0x000C000.
+
+template <typename DescType>
+static void override_resource_desc_common_2d_3d(DescType *desc, TextureOverride *textureOverride)
+{
+	if (textureOverride->format != -1) {
+		LogInfo("  setting custom format to %d\n", textureOverride->format);
+		desc->Format = (DXGI_FORMAT) textureOverride->format;
+	}
+
+	if (textureOverride->width != -1) {
+		LogInfo("  setting custom width to %d\n", textureOverride->width);
+		desc->Width = textureOverride->width;
+	}
+
+	if (textureOverride->height != -1) {
+		LogInfo("  setting custom height to %d\n", textureOverride->height);
+		desc->Height = textureOverride->height;
+	}
+}
+
+static void override_resource_desc(D3D11_BUFFER_DESC *desc, TextureOverride *textureOverride) {}
+static void override_resource_desc(D3D11_TEXTURE1D_DESC *desc, TextureOverride *textureOverride) {}
+static void override_resource_desc(D3D11_TEXTURE2D_DESC *desc, TextureOverride *textureOverride)
+{
+	override_resource_desc_common_2d_3d(desc, textureOverride);
+}
+static void override_resource_desc(D3D11_TEXTURE3D_DESC *desc, TextureOverride *textureOverride)
+{
+	override_resource_desc_common_2d_3d(desc, textureOverride);
+}
+
+template <typename DescType>
+static const DescType* process_texture_override(uint32_t hash,
+		StereoHandle mStereoHandle,
+		const DescType *origDesc,
+		DescType *newDesc,
+		NVAPI_STEREO_SURFACECREATEMODE *oldMode)
+{
+	NVAPI_STEREO_SURFACECREATEMODE newMode = (NVAPI_STEREO_SURFACECREATEMODE) -1;
+	TextureOverrideMatches matches;
+	TextureOverride *textureOverride = NULL;
+	const DescType* ret = origDesc;
+	unsigned i;
+
+	*oldMode = (NVAPI_STEREO_SURFACECREATEMODE) -1;
+
+	// Check for square surfaces. We used to do this after processing the
+	// StereoMode in TextureOverrides, but realistically we always want the
+	// TextureOverrides to be able to override this since they are more
+	// specific, so now we do this first.
+	if (is_square_surface(origDesc))
+		newMode = (NVAPI_STEREO_SURFACECREATEMODE) G->gSurfaceSquareCreateMode;
+
+	find_texture_overrides(hash, origDesc, &matches);
+
+	if (origDesc && !matches.empty()) {
+		// There is at least one matching texture override, which means
+		// we may possibly be altering the resource description. Make a
+		// copy of it and adjust the return pointer to the copy:
+		*newDesc = *origDesc;
+		ret = newDesc;
+
+		// We go through each matching texture override applying any
+		// resource description and stereo mode overrides. The texture
+		// overrides with higher priorities come later in the list, so
+		// if there are any conflicts they will override the earlier
+		// lower priority ones.
+		for (i = 0; i < matches.size(); i++) {
+			textureOverride = matches[i];
+
+			LogInfo("  %S matched resource with hash=%08x\n", textureOverride->ini_section.c_str(), hash);
+
+			if (!check_texture_override_iteration(textureOverride))
+				continue;
+
+			if (textureOverride->stereoMode != -1)
+				newMode = (NVAPI_STEREO_SURFACECREATEMODE) textureOverride->stereoMode;
+
+			override_resource_desc(newDesc, textureOverride);
+		}
+	}
+
+	if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) -1) {
+		NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
+		NvAPIOverride();
+		LogInfo("  setting custom surface creation mode.\n");
+
+		if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
+			LogInfo("    call failed.\n");
+	}
+
+	return ret;
+}
+
+static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMode, StereoHandle mStereoHandle)
+{
+	if (oldMode == (NVAPI_STEREO_SURFACECREATEMODE) - 1)
+		return;
+
+	if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
+		LogInfo("    restore call failed.\n");
+}
+
 STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	/* [annotation] */
 	__in  const D3D11_BUFFER_DESC *pDesc,
@@ -1598,44 +1741,46 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Buffer **ppBuffer)
 {
+	D3D11_BUFFER_DESC newDesc;
+	const D3D11_BUFFER_DESC *pNewDesc = NULL;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
+
 	LogDebug("HackerDevice::CreateBuffer called\n");
 	if (pDesc)
 		LogDebugResourceDesc(pDesc);
 
-	HRESULT hr = mOrigDevice1->CreateBuffer(pDesc, pInitialData, ppBuffer);
+	// Create hash from the raw buffer data if available, but also include
+	// the pDesc data as a unique fingerprint for a buffer.
+	uint32_t data_hash = 0, hash = 0;
+	if (pInitialData && pInitialData->pSysMem && pDesc)
+		hash = data_hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->ByteWidth);
+	if (pDesc)
+		hash = crc32c_hw(hash, pDesc, sizeof(D3D11_BUFFER_DESC));
+
+	// Override custom settings?
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
+
+	HRESULT hr = mOrigDevice1->CreateBuffer(pNewDesc, pInitialData, ppBuffer);
+	restore_old_surface_create_mode(oldMode, mStereoHandle);
 	if (hr == S_OK && ppBuffer && *ppBuffer)
 	{
-		// Create hash from the raw buffer data if available, but also include
-		// the pDesc data as a unique fingerprint for a buffer.
-		uint32_t data_hash = 0, hash = 0;
-		if (pInitialData && pInitialData->pSysMem && pDesc)
-			hash = data_hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->ByteWidth);
-		if (pDesc)
-			hash = crc32c_hw(hash, pDesc, sizeof(D3D11_BUFFER_DESC));
-
 		EnterCriticalSection(&G->mCriticalSection);
-		G->mResources[*ppBuffer].hash = hash;
+			ResourceHandleInfo *handle_info = &G->mResources[*ppBuffer];
+			handle_info->type = D3D11_RESOURCE_DIMENSION_BUFFER;
+			handle_info->hash = hash;
+			handle_info->orig_hash = hash;
+			handle_info->data_hash = data_hash;
 
-		// If we ever need hash tracking for buffers we will
-		// need this, but I'd rather avoid it if we can get
-		// away without it given how often buffers get updated.
-		// Note that masterotaku reported massive fps hit with
-		// hunting enabled (both 1 and 2) if we set orig_hash
-		// here, even without data_hash, etc. because that
-		// causes the resource contamination detection to do a
-		// lot more work. We might need that eventually, but we
-		// should not enable this without some way to turn off
-		// the contamination detection:
-		// G->mResources[*ppBuffer].orig_hash = hash;
-		// G->mResources[*ppBuffer].data_hash = data_hash;
-		// if (pDesc)
-		// 	memcpy(&G->mResources[*ppBuffer].descBuf, pDesc, sizeof(D3D11_BUFFER_DESC));
+			// XXX: This is only used for hash tracking, which we
+			// don't enable for buffers for performance reasons:
+			// if (pDesc)
+			//	memcpy(&handle_info->descBuf, pDesc, sizeof(D3D11_BUFFER_DESC));
 
-		// TODO: For stat collection and hash contamination tracking:
-		// if (G->hunting && pDesc) {
-		// 	G->mResourceInfo[hash] = *pDesc;
-		// 	G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
-		// }
+			// For stat collection and hash contamination tracking:
+			if (G->hunting && pDesc) {
+				G->mResourceInfo[hash] = *pDesc;
+				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+			}
 		LeaveCriticalSection(&G->mCriticalSection);
 	}
 	return hr;
@@ -1649,7 +1794,48 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Texture1D **ppTexture1D)
 {
-	return mOrigDevice1->CreateTexture1D(pDesc, pInitialData, ppTexture1D);
+	D3D11_TEXTURE1D_DESC newDesc;
+	const D3D11_TEXTURE1D_DESC *pNewDesc = NULL;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
+	uint32_t data_hash, hash;
+
+	LogDebug("HackerDevice::CreateTexture1D called\n");
+	if (pDesc)
+		LogDebugResourceDesc(pDesc);
+
+	hash = data_hash = CalcTexture1DDataHash(pDesc, pInitialData);
+	if (pDesc)
+		hash = crc32c_hw(hash, pDesc, sizeof(D3D11_TEXTURE1D_DESC));
+	LogDebug("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
+
+	// Override custom settings?
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
+
+	HRESULT hr = mOrigDevice1->CreateTexture1D(pNewDesc, pInitialData, ppTexture1D);
+
+	restore_old_surface_create_mode(oldMode, mStereoHandle);
+
+	if (hr == S_OK && ppTexture1D && *ppTexture1D)
+	{
+		EnterCriticalSection(&G->mCriticalSection);
+			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture1D];
+			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE1D;
+			handle_info->hash = hash;
+			handle_info->orig_hash = hash;
+			handle_info->data_hash = data_hash;
+
+			// TODO: For hash tracking if we ever need it for Texture1Ds:
+			// if (pDesc)
+			// 	memcpy(&handle_info->desc1D, pDesc, sizeof(D3D11_TEXTURE1D_DESC));
+
+			// For stat collection and hash contamination tracking:
+			if (G->hunting && pDesc) {
+				G->mResourceInfo[hash] = *pDesc;
+				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+			}
+		LeaveCriticalSection(&G->mCriticalSection);
+	}
+	return hr;
 }
 
 static bool heuristic_could_be_possible_resolution(unsigned width, unsigned height)
@@ -1679,8 +1865,9 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Texture2D **ppTexture2D)
 {
-	TextureOverride *textureOverride = NULL;
-	bool override = false;
+	D3D11_TEXTURE2D_DESC newDesc;
+	const D3D11_TEXTURE2D_DESC *pNewDesc = NULL;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
 
 	LogDebug("HackerDevice::CreateTexture2D called with parameters\n");
 	if (pDesc)
@@ -1745,98 +1932,28 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	LogDebug("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
 	// Override custom settings?
-	NVAPI_STEREO_SURFACECREATEMODE oldMode = (NVAPI_STEREO_SURFACECREATEMODE)-1, newMode = (NVAPI_STEREO_SURFACECREATEMODE)-1;
-	D3D11_TEXTURE2D_DESC newDesc = *pDesc;
-
-	TextureOverrideMap::iterator i = G->mTextureOverrideMap.find(hash);
-	if (i != G->mTextureOverrideMap.end())
-	{
-		textureOverride = &i->second;
-
-		override = true;
-		if (textureOverride->stereoMode != -1)
-			newMode = (NVAPI_STEREO_SURFACECREATEMODE)textureOverride->stereoMode;
-		// Check iteration.
-		if (!textureOverride->iterations.empty())
-		{
-			std::vector<int>::iterator k = textureOverride->iterations.begin();
-			int currentIteration = textureOverride->iterations[0] = textureOverride->iterations[0] + 1;
-			LogInfo("  current iteration = %d\n", currentIteration);
-
-			override = false;
-			while (++k != textureOverride->iterations.end())
-			{
-				if (currentIteration == *k)
-				{
-					override = true;
-					break;
-				}
-			}
-			if (!override)
-				LogInfo("  override skipped\n");
-		}
-	}
-
-	if (pDesc && G->gSurfaceSquareCreateMode >= 0 && pDesc->Width == pDesc->Height && (pDesc->Usage & D3D11_USAGE_IMMUTABLE) == 0)
-	{
-		override = true;
-		newMode = (NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceSquareCreateMode;
-	}
-	if (override)
-	{
-		if (newMode != (NVAPI_STEREO_SURFACECREATEMODE)-1)
-		{
-			NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &oldMode);
-			NvAPIOverride();
-			LogInfo("  setting custom surface creation mode.\n");
-
-			if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
-				LogInfo("    call failed.\n");
-		}
-		if (textureOverride && textureOverride->format != -1)
-		{
-			LogInfo("  setting custom format to %d\n", textureOverride->format);
-
-			newDesc.Format = (DXGI_FORMAT)textureOverride->format;
-		}
-
-		if (textureOverride && textureOverride->width != -1)
-		{
-			LogInfo("  setting custom width to %d\n", textureOverride->width);
-
-			newDesc.Width = textureOverride->width;
-		}
-
-		if (textureOverride && textureOverride->height != -1)
-		{
-			LogInfo("  setting custom height to %d\n", textureOverride->height);
-
-			newDesc.Height = textureOverride->height;
-		}
-	}
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
 
 	// Actual creation:
-	HRESULT hr = mOrigDevice1->CreateTexture2D(&newDesc, pInitialData, ppTexture2D);
-	if (oldMode != (NVAPI_STEREO_SURFACECREATEMODE)-1)
-	{
-		if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
-			LogInfo("    restore call failed.\n");
-	}
+	HRESULT hr = mOrigDevice1->CreateTexture2D(pNewDesc, pInitialData, ppTexture2D);
+	restore_old_surface_create_mode(oldMode, mStereoHandle);
 	if (ppTexture2D) LogDebug("  returns result = %x, handle = %p\n", hr, *ppTexture2D);
 
 	// Register texture. Every one seen.
 	if (hr == S_OK && ppTexture2D)
 	{
 		EnterCriticalSection(&G->mCriticalSection);
-		G->mResources[*ppTexture2D].hash = hash;
-		G->mResources[*ppTexture2D].orig_hash = hash;
-		G->mResources[*ppTexture2D].data_hash = data_hash;
-		if (pDesc)
-			memcpy(&G->mResources[*ppTexture2D].desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
-		if (G->hunting && pDesc) {
-			G->mResourceInfo[hash] = *pDesc;
-			G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
-		}
+			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture2D];
+			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
+			handle_info->hash = hash;
+			handle_info->orig_hash = hash;
+			handle_info->data_hash = data_hash;
+			if (pDesc)
+				memcpy(&handle_info->desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
+			if (G->hunting && pDesc) {
+				G->mResourceInfo[hash] = *pDesc;
+				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+			}
 		LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -1851,6 +1968,10 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Texture3D **ppTexture3D)
 {
+	D3D11_TEXTURE3D_DESC newDesc;
+	const D3D11_TEXTURE3D_DESC *pNewDesc = NULL;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
+
 	LogInfo("HackerDevice::CreateTexture3D called with parameters\n");
 	if (pDesc)
 		LogDebugResourceDesc(pDesc);
@@ -1878,21 +1999,28 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 		hash = CalcTexture3DDescHash(hash, pDesc);
 	LogInfo("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
-	HRESULT hr = mOrigDevice1->CreateTexture3D(pDesc, pInitialData, ppTexture3D);
+	// Override custom settings?
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
+
+	HRESULT hr = mOrigDevice1->CreateTexture3D(pNewDesc, pInitialData, ppTexture3D);
+
+	restore_old_surface_create_mode(oldMode, mStereoHandle);
 
 	// Register texture.
 	if (hr == S_OK && ppTexture3D)
 	{
 		EnterCriticalSection(&G->mCriticalSection);
-		G->mResources[*ppTexture3D].hash = hash;
-		G->mResources[*ppTexture3D].orig_hash = hash;
-		G->mResources[*ppTexture3D].data_hash = data_hash;
-		if (pDesc)
-			memcpy(&G->mResources[*ppTexture3D].desc3D, pDesc, sizeof(D3D11_TEXTURE3D_DESC));
-		if (G->hunting && pDesc) {
-			G->mResourceInfo[hash] = *pDesc;
-			G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
-		}
+			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture3D];
+			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE3D;
+			handle_info->hash = hash;
+			handle_info->orig_hash = hash;
+			handle_info->data_hash = data_hash;
+			if (pDesc)
+				memcpy(&handle_info->desc3D, pDesc, sizeof(D3D11_TEXTURE3D_DESC));
+			if (G->hunting && pDesc) {
+				G->mResourceInfo[hash] = *pDesc;
+				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+			}
 		LeaveCriticalSection(&G->mCriticalSection);
 	}
 

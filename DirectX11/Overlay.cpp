@@ -221,6 +221,14 @@ HRESULT Overlay::InitDrawState()
 	// set the first render target as the back buffer, with no stencil
 	mOrigContext->OMSetRenderTargets(1, &backbuffer, NULL);
 
+	// Holding onto a view of the back buffer can cause a crash on
+	// ResizeBuffers, so it is very important we release it here - it will
+	// still have a reference so long as it is bound to the pipeline -
+	// i.e. until RestoreState() unbinds it. Holding onto this view caused
+	// a crash in Mass Effect Andromeda when toggling full screen if the
+	// hunting overlay had ever been displayed since launch.
+	backbuffer->Release();
+
 	// Make sure there is at least one open viewport for DirectXTK to use.
 	D3D11_VIEWPORT openView = CD3D11_VIEWPORT(0.0, 0.0, float(mResolution.x), float(mResolution.y));
 	mOrigContext->RSSetViewports(1, &openView);

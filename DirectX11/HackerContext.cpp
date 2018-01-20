@@ -83,6 +83,8 @@ HackerContext::HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pCon
 	mCurrentHullShader = 0;
 	mCurrentHullShaderHandle = NULL;
 	mCurrentDepthTarget = NULL;
+	mCurrentPSUAVStartSlot = 0;
+	mCurrentPSNumUAVs = 0;
 
 	analyse_options = FrameAnalysisOptions::INVALID;
 }
@@ -132,7 +134,7 @@ void HackerContext::HookContext()
 // Records the hash of this shader resource view for later lookup. Returns the
 // handle to the resource, but be aware that it no longer has a reference and
 // should only be used for map lookups.
-ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView *view)
+ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11View *view, std::set<uint32_t> *resource_info)
 {
 	ID3D11Resource *resource = NULL;
 	uint32_t orig_hash = 0;
@@ -153,31 +155,149 @@ ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11ShaderResourceView 
 		resource->Release();
 
 		if (orig_hash)
-			G->mShaderResourceInfo.insert(orig_hash);
+			resource_info->insert(orig_hash);
 
 	LeaveCriticalSection(&G->mCriticalSection);
 
 	return resource;
 }
 
-void HackerContext::RecordShaderResourceUsage()
+static ResourceSnapshot SnapshotResource(ID3D11Resource *handle)
 {
-	ID3D11ShaderResourceView *ps_views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
-	ID3D11ShaderResourceView *vs_views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+	uint32_t hash = 0, orig_hash = 0;
+
+	ResourceHandleInfo *info = GetResourceHandleInfo(handle);
+	if (info) {
+		hash = info->hash;
+		orig_hash = info->orig_hash;
+	}
+
+	return ResourceSnapshot(handle, hash, orig_hash);
+}
+
+template <void (__stdcall ID3D11DeviceContext::*GetShaderResources)(THIS_
+		UINT StartSlot,
+		UINT NumViews,
+		ID3D11ShaderResourceView **ppShaderResourceViews)>
+void HackerContext::RecordShaderResourceUsage(ShaderInfoData *shader_info)
+{
+	ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
 	ID3D11Resource *resource;
 	int i;
 
-	mOrigContext1->PSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, ps_views);
-	mOrigContext1->VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, vs_views);
-
+	(mOrigContext1->*GetShaderResources)(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 	for (i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
-		resource = RecordResourceViewStats(ps_views[i]);
-		if (resource)
-			G->mPixelShaderInfo[mCurrentPixelShader].ResourceRegisters[i].insert(resource);
+		if (views[i]) {
+			resource = RecordResourceViewStats(views[i], &G->mShaderResourceInfo);
+			if (resource)
+				shader_info->ResourceRegisters[i].insert(SnapshotResource(resource));
+			views[i]->Release();
+		}
+	}
+}
 
-		resource = RecordResourceViewStats(vs_views[i]);
-		if (resource)
-			G->mVertexShaderInfo[mCurrentVertexShader].ResourceRegisters[i].insert(resource);
+void HackerContext::RecordPeerShaders(std::set<UINT64> *PeerShaders, UINT64 this_shader_hash)
+{
+	if (mCurrentVertexShader && mCurrentVertexShader != this_shader_hash)
+		PeerShaders->insert(mCurrentVertexShader);
+
+	if (mCurrentHullShader && mCurrentHullShader != this_shader_hash)
+		PeerShaders->insert(mCurrentHullShader);
+
+	if (mCurrentDomainShader && mCurrentDomainShader != this_shader_hash)
+		PeerShaders->insert(mCurrentDomainShader);
+
+	if (mCurrentGeometryShader && mCurrentGeometryShader != this_shader_hash)
+		PeerShaders->insert(mCurrentGeometryShader);
+
+	if (mCurrentPixelShader && mCurrentPixelShader != this_shader_hash)
+		PeerShaders->insert(mCurrentPixelShader);
+}
+
+void HackerContext::RecordGraphicsShaderStats()
+{
+	ID3D11UnorderedAccessView *uavs[D3D11_1_UAV_SLOT_COUNT]; // DX11: 8, DX11.1: 64
+	UINT selectedRenderTargetPos;
+	ShaderInfoData *info;
+	ID3D11Resource *resource;
+	UINT i;
+
+	if (mCurrentVertexShader) {
+		info = &G->mVertexShaderInfo[mCurrentVertexShader];
+		RecordShaderResourceUsage<&ID3D11DeviceContext::VSGetShaderResources>(info);
+		RecordPeerShaders(&info->PeerShaders, mCurrentVertexShader);
+	}
+
+	if (mCurrentHullShader) {
+		info = &G->mHullShaderInfo[mCurrentHullShader];
+		RecordShaderResourceUsage<&ID3D11DeviceContext::HSGetShaderResources>(info);
+		RecordPeerShaders(&info->PeerShaders, mCurrentHullShader);
+	}
+
+	if (mCurrentDomainShader) {
+		info = &G->mDomainShaderInfo[mCurrentDomainShader];
+		RecordShaderResourceUsage<&ID3D11DeviceContext::DSGetShaderResources>(info);
+		RecordPeerShaders(&info->PeerShaders, mCurrentDomainShader);
+	}
+
+	if (mCurrentGeometryShader) {
+		info = &G->mGeometryShaderInfo[mCurrentGeometryShader];
+		RecordShaderResourceUsage<&ID3D11DeviceContext::GSGetShaderResources>(info);
+		RecordPeerShaders(&info->PeerShaders, mCurrentGeometryShader);
+	}
+
+	if (mCurrentPixelShader) {
+		info = &G->mPixelShaderInfo[mCurrentPixelShader];
+		RecordShaderResourceUsage<&ID3D11DeviceContext::PSGetShaderResources>(info);
+		RecordPeerShaders(&info->PeerShaders, mCurrentPixelShader);
+
+		for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
+			if (selectedRenderTargetPos >= info->RenderTargets.size())
+				info->RenderTargets.push_back(std::set<ResourceSnapshot>());
+
+			info->RenderTargets[selectedRenderTargetPos].insert(SnapshotResource(mCurrentRenderTargets[selectedRenderTargetPos]));
+		}
+
+		if (mCurrentDepthTarget)
+			info->DepthTargets.insert(SnapshotResource(mCurrentDepthTarget));
+
+		if (mCurrentPSNumUAVs) {
+			// This API is poorly designed, because we have to know
+			// the current UAV start slot
+			OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, mCurrentPSUAVStartSlot, mCurrentPSNumUAVs, uavs);
+			for (i = 0; i < mCurrentPSNumUAVs; i++) {
+				if (uavs[i]) {
+					resource = RecordResourceViewStats(uavs[i], &G->mUnorderedAccessInfo);
+					if (resource)
+						info->UAVs[i + mCurrentPSUAVStartSlot].insert(SnapshotResource(resource));
+
+					uavs[i]->Release();
+				}
+			}
+		}
+	}
+}
+
+void HackerContext::RecordComputeShaderStats()
+{
+	ID3D11UnorderedAccessView *uavs[D3D11_1_UAV_SLOT_COUNT]; // DX11: 8, DX11.1: 64
+	ShaderInfoData *info = &G->mComputeShaderInfo[mCurrentComputeShader];
+	D3D_FEATURE_LEVEL level = mOrigDevice1->GetFeatureLevel();
+	UINT num_uavs = (level >= D3D_FEATURE_LEVEL_11_1 ? D3D11_1_UAV_SLOT_COUNT : D3D11_PS_CS_UAV_REGISTER_COUNT);
+	ID3D11Resource *resource;
+	UINT i;
+
+	RecordShaderResourceUsage<&ID3D11DeviceContext::CSGetShaderResources>(info);
+
+	CSGetUnorderedAccessViews(0, num_uavs, uavs);
+	for (i = 0; i < num_uavs; i++) {
+		if (uavs[i]) {
+			resource = RecordResourceViewStats(uavs[i], &G->mUnorderedAccessInfo);
+			if (resource)
+				info->UAVs[i].insert(SnapshotResource(resource));
+
+			uavs[i]->Release();
+		}
 	}
 }
 
@@ -528,29 +648,8 @@ void HackerContext::BeforeDraw(DrawContext &data)
 			// In some cases stat collection can have a significant
 			// performance impact or may result in a runaway
 			// memory leak, so only do it if dump_usage is enabled:
-			if (G->DumpUsage) {
-				if (mCurrentVertexShader && mCurrentPixelShader)
-				{
-					G->mVertexShaderInfo[mCurrentVertexShader].PartnerShader.insert(mCurrentPixelShader);
-					G->mPixelShaderInfo[mCurrentPixelShader].PartnerShader.insert(mCurrentVertexShader);
-				}
-				if (mCurrentPixelShader) {
-					for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
-						std::vector<std::set<ID3D11Resource *>> &targets = G->mPixelShaderInfo[mCurrentPixelShader].RenderTargets;
-
-						if (selectedRenderTargetPos >= targets.size())
-							targets.push_back(std::set<ID3D11Resource *>());
-
-						targets[selectedRenderTargetPos].insert(mCurrentRenderTargets[selectedRenderTargetPos]);
-					}
-					if (mCurrentDepthTarget)
-						G->mPixelShaderInfo[mCurrentPixelShader].DepthTargets.insert(mCurrentDepthTarget);
-				}
-
-				// Maybe make this optional if it turns out to have a
-				// significant performance impact:
-				RecordShaderResourceUsage();
-			}
+			if (G->DumpUsage)
+				RecordGraphicsShaderStats();
 
 			// Selection
 			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos)
@@ -1247,7 +1346,7 @@ STDMETHODIMP_(void) HackerContext::SOSetTargets(THIS_
 bool HackerContext::BeforeDispatch(DispatchContext *context)
 {
 	if (G->hunting == HUNTING_MODE_ENABLED) {
-		// TODO: Collect stats on assigned UAVs
+		RecordComputeShaderStats();
 
 		if (mCurrentComputeShader == G->mSelectedComputeShader) {
 			if (G->marking_mode == MARKING_MODE_SKIP)
@@ -2572,6 +2671,7 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 		EnterCriticalSection(&G->mCriticalSection);
 			mCurrentRenderTargets.clear();
 			mCurrentDepthTarget = NULL;
+			mCurrentPSNumUAVs = 0;
 		LeaveCriticalSection(&G->mCriticalSection);
 
 		if (ppRenderTargetViews) {
@@ -2611,6 +2711,8 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 		EnterCriticalSection(&G->mCriticalSection);
 			mCurrentRenderTargets.clear();
 			mCurrentDepthTarget = NULL;
+			mCurrentPSUAVStartSlot = UAVStartSlot;
+			mCurrentPSNumUAVs = NumUAVs;
 		LeaveCriticalSection(&G->mCriticalSection);
 
 		if (NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) {
