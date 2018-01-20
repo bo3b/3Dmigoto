@@ -41,8 +41,6 @@ const int maxstring = 200;
 
 Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain)
 {
-	HRESULT hr;
-
 	LogInfo("Overlay::Overlay created for %p\n", pSwapChain);
 	LogInfo("  on HackerDevice: %p, HackerContext: %p\n", pDevice, pContext);
 
@@ -56,12 +54,6 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	mOrigDevice = mHackerDevice->GetOrigDevice1();
 	mOrigContext = pContext->GetOrigContext1();
 		
-	DXGI_SWAP_CHAIN_DESC description;
-	hr = pSwapChain->GetDesc(&description);
-	if (FAILED(hr))
-		return;
-	mResolution = DirectX::XMUINT2(description.BufferDesc.Width, description.BufferDesc.Height);
-
 	// The courierbold.spritefont is now included as binary resource data attached
 	// to the d3d11.dll.  We can fetch that resource and pass it to new SpriteFont
 	// to avoid having to drag around the font file.
@@ -211,10 +203,18 @@ HRESULT Overlay::InitDrawState()
 	if (FAILED(hr))
 		return hr;
 
+	// By doing this every frame, we are always up to date with correct size,
+	// and we need the address of the BackBuffer anyway, so this is low cost.
+	D3D11_TEXTURE2D_DESC description;
+	pBackBuffer->GetDesc(&description);
+	mResolution = DirectX::XMUINT2(description.Width, description.Height);
+
 	// use the back buffer address to create the render target
 	ID3D11RenderTargetView *backbuffer;
 	hr = mOrigDevice->CreateRenderTargetView(pBackBuffer, NULL, &backbuffer);
+
 	pBackBuffer->Release();
+
 	if (FAILED(hr))
 		return hr;
 
@@ -396,12 +396,6 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
 		swprintf_s(info, maxstring, L"Sep:%.0f  Conv:%.1f", separation, convergence);
 	else
 		swprintf_s(info, maxstring, L"Stereo disabled");
-}
-
-void Overlay::Resize(UINT Width, UINT Height)
-{
-	mResolution.x = Width;
-	mResolution.y = Height;
 }
 
 void Overlay::DrawOverlay(void)

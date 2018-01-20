@@ -629,11 +629,6 @@ STDMETHODIMP HackerSwapChain::ResizeBuffers(THIS_
 
 	HRESULT hr = mOrigSwapChain1->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
 
-	if (SUCCEEDED(hr)) 
-	{
-		mOverlay->Resize(Width, Height);
-	}
-
 	LogInfo("  returns result = %x\n", hr); 
 	return hr;
 }
@@ -867,14 +862,10 @@ HackerUpscalingSwapChain::HackerUpscalingSwapChain(IDXGISwapChain1 *pSwapChain, 
 	const DXGI_SWAP_CHAIN_DESC* FakeSwapChainDesc, UINT NewWidth, UINT NewHeight, IDXGIFactory* Factory)
 	: HackerSwapChain(pSwapChain, pDevice, pContext), mFakeBackBuffer(nullptr), mFakeSwapChain1(nullptr), mWidth(0), mHeight(0)
 {
-
 	CreateRenderTarget(FakeSwapChainDesc, Factory);
 
 	mWidth = NewWidth;
 	mHeight = NewHeight;
-
-	if (mOverlay)
-		mOverlay->Resize(NewWidth, NewWidth);
 }
 
 
@@ -1116,11 +1107,6 @@ STDMETHODIMP HackerUpscalingSwapChain::ResizeBuffers(THIS_
 	else
 	{
 		assert(false); // should never be triggered (class hierarchy)
-	}
-
-	if (SUCCEEDED(hr))
-	{
-		mOverlay->Resize(Width, Height);
 	}
 
 	LogInfo("  returns result = %x\n", hr);
