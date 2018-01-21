@@ -848,54 +848,70 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 #endif
 
 	// Create the Device that the caller specified, but using our wrapped CreateDevice
-	// on purpose, so that we get a HackerDevice back in ppDevice.
+	// on purpose, so that we get a HackerDevice back in ppDevice.  
 	hr = D3D11CreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, 
 		ppDevice, pFeatureLevel, ppImmediateContext);
+
+	// Can fail with null arguments, so follow the behavior of the original call.	
 	if (FAILED(hr))
-		goto failOut;
-
-	// Optional parameters means these might be null.
-	if (ppDevice && ppSwapChain)
 	{
-		HackerDevice* retDevice = static_cast<HackerDevice*>(*ppDevice);
-		
-		// Now that we successfully created a HackerDevice and HackerContext, we can create 
-		// a SwapChain to match.  We'll use the secret path to get the proper factory for 
-		// this Device.  
-		IDXGIDevice* dxgiDevice;
-		hr = retDevice->QueryInterface(__uuidof(IDXGIDevice), (void **)& dxgiDevice);
-		if (FAILED(hr))
-			goto failOut;
-		IDXGIAdapter* dxgiAdapter;
-		hr = dxgiDevice->GetParent(__uuidof(IDXGIAdapter), (void **)& dxgiAdapter);
-		if (FAILED(hr))
-			goto failOut;
-		IDXGIFactory* dxgiFactory;
-		hr = dxgiAdapter->GetParent(__uuidof(IDXGIFactory), (void **)& dxgiFactory);
-		if (FAILED(hr))
-			goto failOut;
-
-		// This will implicitly call IDXGIFactory->CreateSwapChain, which we have hooked
-		// in HookedDXGI. That hook will always create and return the HackerSwapChain, 
-		// create the Overlay, and ForceDisplayParams if required.
-		hr = dxgiFactory->CreateSwapChain(*ppDevice, pSwapChainDesc, ppSwapChain);
-		if (FAILED(hr))
-			goto failOut;
-
-		dxgiFactory->Release();
-		dxgiAdapter->Release();
-		dxgiDevice->Release();
+		LogInfo("->failed with HRESULT=%x\n", hr);
+		return hr;
 	}
 
-	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, swapchain wrapper = %p\n\n",
-		hr, ppSwapChain? *ppSwapChain : 0);
+	// Optional parameters means these might be null.  If ppSwapChain is null, we 
+	// can't call through to CreateSwapChain and thus get our hook which wraps the
+	// returned swapchain.  But, this is legal, so just exit with what we've got so far.
+	if (!ppSwapChain)
+	{
+		LogInfo("->Return with HRESULT=%x, No swapchain created.\n", hr);
+		return hr;
+	}
 
+	// If we do have a ppSwapChain, but we do not have a ppDevice, we can't handle
+	// this scenario.  It doesn't make sense to do this, but that doesn't mean it
+	// won't happen.  We need the ppDevice in order to find the original factory.
+	// They do too, but maybe there is something tricky we don't know about.  
+	// If this scenario happens, let's do a hard failure with logging, to let us know.
+	if (!ppDevice)
+		goto fatalExit;
+
+
+	// Now that we successfully created a HackerDevice and maybe a HackerContext, we can
+	// create a SwapChain to match.  We'll use the secret path to get the proper factory
+	// for this Device.  
+	IDXGIDevice* dxgiDevice;
+	hr = (*ppDevice)->QueryInterface(__uuidof(IDXGIDevice), (void **)& dxgiDevice);
+	if (FAILED(hr))
+		goto fatalExit;
+	IDXGIAdapter* dxgiAdapter;
+	hr = dxgiDevice->GetParent(__uuidof(IDXGIAdapter), (void **)& dxgiAdapter);
+	if (FAILED(hr))
+		goto fatalExit;
+	IDXGIFactory* dxgiFactory;
+	hr = dxgiAdapter->GetParent(__uuidof(IDXGIFactory), (void **)& dxgiFactory);
+	if (FAILED(hr))
+		goto fatalExit;
+
+	// This will implicitly call IDXGIFactory->CreateSwapChain, which we have hooked
+	// in HookedDXGI. That hook will always create and return the HackerSwapChain, 
+	// create the Overlay, and ForceDisplayParams if required.
+	hr = dxgiFactory->CreateSwapChain(*ppDevice, pSwapChainDesc, ppSwapChain);
+
+	dxgiFactory->Release();
+	dxgiAdapter->Release();
+	dxgiDevice->Release();
+
+	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, swapchain wrapper = %p\n\n", hr, *ppSwapChain);
 	return hr;
 
-failOut:
-	// Fatal error.  If we can't do these calls, we can't play the game.
-	LogInfo("  failed with HRESULT=%x\n", hr);
-	return hr;
+
+fatalExit:
+	// Fatal error.  If we can't do these calls, we can't play the game.  
+	// Hard failure is superior to trying to workaround a problem.  We do not
+	// expect to ever see this happen.
+	LogInfo("*** Fatal error in CreateDeviceAndSwapChain with HRESULT=%x\n", hr);
+	DoubleBeepExit();
 }
 
 // -----------------------------------------------------------------------------------------------
