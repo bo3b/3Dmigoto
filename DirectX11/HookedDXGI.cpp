@@ -373,14 +373,14 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 		swapchainWrap = new HackerUpscalingSwapChain(origSwapChain, hackerDevice, hackerContext,
 			&origSwapChainDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, This);
 		LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, *ppSwapChain);
-	}
 
-	if (G->SCREEN_UPSCALING == 2 || !origSwapChainDesc.Windowed)
-	{
-		// Some games react very strange (like render nothing) if set full screen state is called here)
-		// Other games like The Witcher 3 need the call to ensure entering the full screen on start
-		// (seems to be game internal stuff)  ToDo: retest if this is still necessary, lots of changes.
-		(*ppSwapChain)->SetFullscreenState(TRUE, nullptr);
+		if (G->SCREEN_UPSCALING == 2 || !origSwapChainDesc.Windowed)
+		{
+			// Some games react very strange (like render nothing) if set full screen state is called here)
+			// Other games like The Witcher 3 need the call to ensure entering the full screen on start
+			// (seems to be game internal stuff)  ToDo: retest if this is still necessary, lots of changes.
+			(*ppSwapChain)->SetFullscreenState(TRUE, nullptr);
+		}
 	}
 
 	// When creating a new swapchain, we can assume this is the game creating 
