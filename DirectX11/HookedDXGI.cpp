@@ -297,9 +297,16 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
 	LogInfo("  Description = %p\n", pDesc);
 
-	// pDevice input is always going to be a HackerDevice, because the startup
-	// path now builds HackerDevice before creating a swapchain.
-	HackerDevice* hackerDevice = reinterpret_cast<HackerDevice*>(pDevice);
+	// If hooking is enabled, pDevice will be the original DirectX object
+	// with hooks to call into our code. Try looking up the corresponding
+	// HackerDevice and use it if found:
+	HackerDevice *hackerDevice = (HackerDevice*)lookup_hooked_device((ID3D11Device1*)pDevice);
+	if (!hackerDevice) {
+		// Without hooking pDevice input is always going to be a
+		// HackerDevice, because the startup path now builds
+		// HackerDevice before creating a swapchain.
+		hackerDevice = reinterpret_cast<HackerDevice*>(pDevice);
+	}
 	HackerContext* hackerContext = hackerDevice->GetHackerContext();
 
 
