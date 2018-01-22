@@ -40,6 +40,7 @@
 #define NKTHOOKLIB_SkipNullProcsToHook                0x0008
 #define NKTHOOKLIB_UseAbsoluteIndirectJumps           0x0010
 #define NKTHOOKLIB_DisallowReentrancy                 0x0020
+#define NKTHOOKLIB_DontEnableHooks                    0x0040
 
 #define NKTHOOKLIB_ProcessPlatformX86                      1
 #define NKTHOOKLIB_ProcessPlatformX64                      2
@@ -58,7 +59,7 @@ public:
     LPVOID lpNewProcAddr;
     //----
     LPVOID lpCallOriginal;
-  } HOOK_INFO;
+  } HOOK_INFO, *LPHOOK_INFO;
 
   CNktHookLib();
   ~CNktHookLib();
@@ -66,27 +67,33 @@ public:
   DWORD Hook(__out SIZE_T *lpnHookId, __out LPVOID *lplpCallOriginal, __in LPVOID lpProcToHook,
              __in LPVOID lpNewProcAddr, __in DWORD dwFlags=0);
   DWORD Hook(__inout HOOK_INFO aHookInfo[], __in SIZE_T nCount, __in DWORD dwFlags=0);
+  DWORD Hook(__inout LPHOOK_INFO aHookInfo[], __in SIZE_T nCount, __in DWORD dwFlags = 0);
 
   DWORD RemoteHook(__out SIZE_T *lpnHookId, __out LPVOID *lplpCallOriginal, __in DWORD dwPid,
                    __in LPVOID lpProcToHook, __in LPVOID lpNewProcAddr, __in DWORD dwFlags);
   DWORD RemoteHook(__inout HOOK_INFO aHookInfo[], __in SIZE_T nCount, __in DWORD dwPid, __in DWORD dwFlags);
+  DWORD RemoteHook(__inout LPHOOK_INFO aHookInfo[], __in SIZE_T nCount, __in DWORD dwPid, __in DWORD dwFlags);
 
   DWORD RemoteHook(__out SIZE_T *lpnHookId, __out LPVOID *lplpCallOriginal, __in HANDLE hProcess,
                    __in LPVOID lpProcToHook, __in LPVOID lpNewProcAddr, __in DWORD dwFlags);
   DWORD RemoteHook(__inout HOOK_INFO aHookInfo[], __in SIZE_T nCount, __in HANDLE hProcess, __in DWORD dwFlags);
+  DWORD RemoteHook(__inout LPHOOK_INFO aHookInfo[], __in SIZE_T nCount, __in HANDLE hProcess, __in DWORD dwFlags);
 
   DWORD Unhook(__in SIZE_T nHookId);
   DWORD Unhook(__in HOOK_INFO aHookInfo[], __in SIZE_T nCount);
+  DWORD Unhook(__in LPHOOK_INFO aHookInfo[], __in SIZE_T nCount);
   VOID UnhookProcess(__in DWORD dwPid);
   VOID UnhookAll();
 
   //NOTE: The following 2 (two) methods will remove the hooks from the internal list of hooks but the original
   //      hook(s) will remain active.
   DWORD RemoveHook(__in SIZE_T nHookId, BOOL bDisable);
-  DWORD RemoveHook(__in HOOK_INFO aHookInfo[], __in SIZE_T nCount, BOOL bDisable);
+  DWORD RemoveHook(__in HOOK_INFO aHookInfo[], __in SIZE_T nCount, __in BOOL bDisable);
+  DWORD RemoveHook(__in LPHOOK_INFO aHookInfo[], __in SIZE_T nCount, __in BOOL bDisable);
 
   DWORD EnableHook(__in SIZE_T nHookId, __in BOOL bEnable);
   DWORD EnableHook(__in HOOK_INFO aHookInfo[], __in SIZE_T nCount, __in BOOL bEnable);
+  DWORD EnableHook(__in LPHOOK_INFO aHookInfo[], __in SIZE_T nCount, __in BOOL bEnable);
 
   DWORD SetSuspendThreadsWhileHooking(__in BOOL bEnable);
   BOOL GetSuspendThreadsWhileHooking();
@@ -102,6 +109,12 @@ public:
 #if _MSC_VER >= 1200
   void __cdecl operator delete(__inout void* p, __inout void* lpPlace);
 #endif //_MSC_VER >= 1200
+
+private:
+  DWORD HookCommon(__in LPVOID lpInfo, __in SIZE_T nCount, __in DWORD dwPid, __in DWORD dwFlags);
+  DWORD UnhookCommon(__in LPVOID lpInfo, __in SIZE_T nCount, __in DWORD dwFlags);
+  DWORD RemoveHookCommon(__in LPVOID lpInfo, __in SIZE_T nCount, __in BOOL bDisable, __in DWORD dwFlags);
+  DWORD EnableHookCommon(__in LPVOID lpInfo, __in SIZE_T nCount, __in BOOL bEnable, __in DWORD dwFlags);
 
 private:
   LPVOID lpInternals;
@@ -208,6 +221,11 @@ BOOL SetWin32LastError(__in DWORD dwErrorCode, __in_opt HANDLE hThread=NULL);
 
 //--------------------------------
 
+BOOL GetOsVersion(__out_opt LPDWORD lpdwVerMajor=NULL, __out_opt LPDWORD lpdwVerMinor=NULL,
+                  __out_opt LPDWORD lpdwBuildNumber=NULL);
+
+//--------------------------------
+
 //NOTE: CreateProcessWithDllW and related functions returns the Win32 error code directly. NOERROR => Success.
 //
 //      If "szDllNameW" string ends with 'x86.dll', 'x64.dll', '32.dll', '64.dll', the dll name will be adjusted
@@ -217,24 +235,34 @@ DWORD CreateProcessWithDllW(__in_z_opt LPCWSTR lpApplicationName, __inout_z_opt 
                             __in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes, __in BOOL bInheritHandles,
                             __in DWORD dwCreationFlags, __in_z_opt LPCWSTR lpEnvironment,
                             __in_z_opt LPCWSTR lpCurrentDirectory, __in LPSTARTUPINFOW lpStartupInfo,
-                            __out LPPROCESS_INFORMATION lpProcessInformation, __in_z LPCWSTR szDllNameW);
+                            __out LPPROCESS_INFORMATION lpProcessInformation, __in_z LPCWSTR szDllNameW,
+                            __in_opt HANDLE hSignalCompleted=NULL, __in_z_opt LPCSTR szInitFunctionA=NULL,
+                            __in_opt LPVOID lpInitFuncParams=NULL, __in_opt ULONG nInitFuncParamsSize=0);
 
 DWORD CreateProcessWithLogonAndDllW(__in_z LPCWSTR lpUsername, __in_z_opt LPCWSTR lpDomain, __in_z LPCWSTR lpPassword,
                                     __in DWORD dwLogonFlags, __in_opt LPCWSTR lpApplicationName,
                                     __inout_opt LPWSTR lpCommandLine, __in DWORD dwCreationFlags,
                                     __in_z_opt LPCWSTR lpEnvironment, __in_z_opt LPCWSTR lpCurrentDirectory,
-                                    __in LPSTARTUPINFOW lpStartupInfo,
-                                    __out LPPROCESS_INFORMATION lpProcessInformation, __in_z LPCWSTR szDllNameW);
+                                    __in LPSTARTUPINFOW lpStartupInfo, __out LPPROCESS_INFORMATION lpProcessInformation,
+                                    __in_z LPCWSTR szDllNameW, __in_opt HANDLE hSignalCompleted=NULL,
+                                    __in_z_opt LPCSTR szInitFunctionA=NULL, __in_opt LPVOID lpInitFuncParams=NULL,
+                                    __in_opt ULONG nInitFuncParamsSize=0);
 
 DWORD CreateProcessWithTokenAndDllW(__in HANDLE hToken, __in DWORD dwLogonFlags, __in_z_opt LPCWSTR lpApplicationName,
                                     __inout_opt LPWSTR lpCommandLine, __in DWORD dwCreationFlags,
                                     __in_z_opt LPCWSTR lpEnvironment, __in_z_opt LPCWSTR lpCurrentDirectory,
                                     __in LPSTARTUPINFOW lpStartupInfo, __out LPPROCESS_INFORMATION lpProcessInformation,
-                                    __in_z LPCWSTR szDllNameW);
+                                    __in_z LPCWSTR szDllNameW, __in_opt HANDLE hSignalCompleted=NULL,
+                                    __in_z_opt LPCSTR szInitFunctionA=NULL, __in_opt LPVOID lpInitFuncParams=NULL,
+                                    __in_opt ULONG nInitFuncParamsSize=0);
 
-DWORD InjectDllByPidW(__in DWORD dwPid, __in_z LPCWSTR szDllNameW);
+DWORD InjectDllByPidW(__in DWORD dwPid, __in_z LPCWSTR szDllNameW, __in_z_opt LPCSTR szInitFunctionA=NULL,
+                      __in_opt DWORD dwProcessInitWaitTimeoutMs=5000, __out_opt LPHANDLE lphInjectorThread=NULL,
+                      __in_opt LPVOID lpInitFuncParams=NULL, __in_opt ULONG nInitFuncParamsSize=0);
 
-DWORD InjectDllByHandleW(__in HANDLE hProcess, __in_z LPCWSTR szDllNameW);
+DWORD InjectDllByHandleW(__in HANDLE hProcess, __in_z LPCWSTR szDllNameW, __in_z_opt LPCSTR szInitFunctionA=NULL,
+                         __in_opt DWORD dwProcessInitWaitTimeoutMs=5000, __out_opt LPHANDLE lphInjectorThread=NULL,
+                         __in_opt LPVOID lpInitFuncParams=NULL, __in_opt ULONG nInitFuncParamsSize=0);
 
 } //NktHookLibHelpers
 
