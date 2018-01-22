@@ -955,9 +955,10 @@ STDMETHODIMP HackerUpscalingSwapChain::GetBuffer(THIS_
 	HRESULT hr = S_OK;
 
 	// if upscaling is on give the game fake back buffer
-	if (mFakeBackBuffer)
+	if (mFakeBackBuffer) {
+		mFakeBackBuffer->AddRef();
 		*ppSurface = mFakeBackBuffer;
-	else if (mFakeSwapChain1)
+	} else if (mFakeSwapChain1)
 		hr = mFakeSwapChain1->GetBuffer(Buffer, riid, ppSurface);
 	else
 		assert(hr); // should never be triggered (class hierarchy)
