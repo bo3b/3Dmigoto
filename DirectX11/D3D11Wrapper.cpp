@@ -902,6 +902,22 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	dxgiAdapter->Release();
 	dxgiDevice->Release();
 
+	// If the CreateSwapChain fails, we are in the middle of creating Device and
+	// Context.  Let's release those, and mark them null to match the original semantics.
+	if (FAILED(hr))
+	{
+		(*ppDevice)->Release();
+		*ppDevice = nullptr;
+		if (ppImmediateContext)
+		{
+			(*ppImmediateContext)->Release();
+			*ppImmediateContext = nullptr;
+		}
+
+		LogInfo("->D3D11CreateDeviceAndSwapChain failed with HRESULT=%x\n", hr);
+		return hr;
+	}
+
 	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, swapchain wrapper = %p\n\n", hr, *ppSwapChain);
 	return hr;
 
