@@ -2282,7 +2282,7 @@ STDMETHODIMP HackerUpscalingDXGISwapChain::GetBuffer(THIS_
 	HRESULT hr = S_OK;
 
 	// if upscaling is on give the game fake back buffer
-	if (mFakeBackBuffer) {
+	if (mFakeBackBuffer && ppSurface) {
 		mFakeBackBuffer->AddRef();
 		*ppSurface = mFakeBackBuffer;
 	} else if (mFakeSwapChain)
