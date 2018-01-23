@@ -2282,13 +2282,17 @@ STDMETHODIMP HackerUpscalingDXGISwapChain::GetBuffer(THIS_
 	HRESULT hr = S_OK;
 
 	// if upscaling is on give the game fake back buffer
-	if (mFakeBackBuffer && ppSurface) {
-		mFakeBackBuffer->AddRef();
-		*ppSurface = mFakeBackBuffer;
-	} else if (mFakeSwapChain)
+	if (mFakeBackBuffer) {
+		// Use QueryInterface on mFakeBackBuffer, which validates that
+		// the requested interface is supported, that ppSurface is not
+		// NULL, and bumps the refcount if successful:
+		hr = mFakeBackBuffer->QueryInterface(riid, ppSurface);
+	} else if (mFakeSwapChain) {
 		hr = mFakeSwapChain->GetBuffer(Buffer, riid, ppSurface);
-	else
-		assert(hr); // should never be triggered (class hierarchy)
+	} else {
+		LogInfo("BUG: HackerUpscalingDXGISwapChain::GetBuffer(): Missing upscaling object\n");
+		DoubleBeepExit();
+	}
 
 	LogDebug("  returns %x\n", hr);
 	return hr;
@@ -2438,7 +2442,8 @@ STDMETHODIMP HackerUpscalingDXGISwapChain::ResizeBuffers(THIS_
 	}
 	else
 	{
-		assert(false); // should never be triggered (class hierarchy)
+		LogInfo("BUG: HackerUpscalingDXGISwapChain::ResizeBuffers(): Missing upscaling object\n");
+		DoubleBeepExit();
 	}
 
 	if (SUCCEEDED(hr))
