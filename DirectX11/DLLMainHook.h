@@ -24,6 +24,11 @@ enum class EnableHooks {
 	EXCEPT_SET_SAMPLERS = 0x00020000, // Crashes in MGSV:GZ on Win10, possibly also source of crashes in Witcher 3 on Win7
 	EXCEPT_SET_RASTERIZER_STATE = 0x00040000, // Crashes in MGSV:GZ on Win 7 WITHOUT evil update
 
+	// These options are no longer necessary, but kept here to avoid beep 
+	// notifications when using new DLLs with old d3dx.ini files.
+	DEPRECATED_FACTORY = 0x00080000, // skip_dxgi_factory, no longer necessary with HookedDXGI.
+	DEPRECATED_DEVICE = 0x00100000, // skip_dxgi_device, no longer necessary with single-layer Device.
+
 	// All recommended hooks and workarounds.
 	RECOMMENDED = 0x00070007,
 };
@@ -37,6 +42,8 @@ static EnumName_t<wchar_t *, EnableHooks> EnableHooksNames[] = {
 	{ L"except_set_shader_resources", EnableHooks::EXCEPT_SET_SHADER_RESOURCES },
 	{ L"except_set_samplers", EnableHooks::EXCEPT_SET_SAMPLERS },
 	{ L"except_set_rasterizer_state", EnableHooks::EXCEPT_SET_RASTERIZER_STATE },
+	{ L"skip_dxgi_factory", EnableHooks::DEPRECATED_FACTORY },
+	{ L"skip_dxgi_device", EnableHooks::DEPRECATED_DEVICE },
 	{ L"recommended", EnableHooks::RECOMMENDED },
 	{ NULL, EnableHooks::INVALID } // End of list marker
 };
