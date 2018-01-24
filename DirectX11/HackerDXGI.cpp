@@ -342,7 +342,7 @@ STDMETHODIMP HackerSwapChain::QueryInterface(THIS_
 	HRESULT hr_this = mOrigSwapChain1->QueryInterface(__uuidof(IUnknown), (void**)&unk_this);
 
 	IUnknown* unk_ppvObject;
-	HRESULT hr_ppvObject = static_cast<IUnknown*>(*ppvObject)->QueryInterface(__uuidof(IUnknown), (void**)&unk_ppvObject);
+	HRESULT hr_ppvObject = reinterpret_cast<IUnknown*>(*ppvObject)->QueryInterface(__uuidof(IUnknown), (void**)&unk_ppvObject);
 
 	if (SUCCEEDED(hr_this) && SUCCEEDED(hr_ppvObject))
 	{
@@ -923,7 +923,7 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 
 		HRESULT res = swapChain->QueryInterface(IID_PPV_ARGS(&mFakeSwapChain1));
 		if (FAILED(res))
-			mFakeSwapChain1 = static_cast<IDXGISwapChain1*>(swapChain);
+			mFakeSwapChain1 = reinterpret_cast<IDXGISwapChain1*>(swapChain);
 
 		// restore old state in case fall back is required ToDo: Unlikely needed now.
 		pFakeSwapChainDesc->Flags = flagBackup;
@@ -1188,95 +1188,3 @@ STDMETHODIMP HackerUpscalingSwapChain::ResizeTarget(THIS_
 	return hr;
 }
 
-
-
-// Leftover functionality. From before refactoring.
-
-
-//
-//
-//
-
-//
-//static bool FilterRate(int rate)
-//{
-//	if (!G->FILTER_REFRESH[0]) return false;
-//	int i = 0;
-//	while (G->FILTER_REFRESH[i] && G->FILTER_REFRESH[i] != rate)
-//		++i;
-//	return G->FILTER_REFRESH[i] == 0;
-//}
-//
-//STDMETHODIMP HackerDXGIOutput::GetDisplayModeList(THIS_
-//	/* [in] */ DXGI_FORMAT EnumFormat,
-//	/* [in] */ UINT Flags,
-//	/* [annotation][out][in] */
-//	__inout  UINT *pNumModes,
-//	/* [annotation][out] */
-//	__out_ecount_part_opt(*pNumModes, *pNumModes)  DXGI_MODE_DESC *pDesc)
-//{
-//	LogInfo("HackerDXGIOutput::GetDisplayModeList(%s@%p) called\n", type_name(this), this);
-//
-//	HRESULT ret = mOrigOutput->GetDisplayModeList(EnumFormat, Flags, pNumModes, pDesc);
-//	if (ret == S_OK && pDesc)
-//	{
-//		for (UINT j = 0; j < *pNumModes; ++j)
-//		{
-//			int rate = pDesc[j].RefreshRate.Numerator / pDesc[j].RefreshRate.Denominator;
-//			if (FilterRate(rate))
-//			{
-//				LogInfo("  Skipping mode: width=%d, height=%d, refresh rate=%f\n", pDesc[j].Width, pDesc[j].Height,
-//					(float)pDesc[j].RefreshRate.Numerator / (float)pDesc[j].RefreshRate.Denominator);
-//				// ToDo: Does this work?  I have no idea why setting width and height to 8 would matter.
-//				pDesc[j].Width = 8; pDesc[j].Height = 8;
-//			}
-//			else
-//			{
-//				LogInfo("  Mode detected: width=%d, height=%d, refresh rate=%f\n", pDesc[j].Width, pDesc[j].Height,
-//					(float)pDesc[j].RefreshRate.Numerator / (float)pDesc[j].RefreshRate.Denominator);
-//			}
-//		}
-//	}
-//
-//	return ret;
-//}
-//
-//STDMETHODIMP HackerDXGIOutput::FindClosestMatchingMode(THIS_
-//	/* [annotation][in] */
-//	__in  const DXGI_MODE_DESC *pModeToMatch,
-//	/* [annotation][out] */
-//	__out  DXGI_MODE_DESC *pClosestMatch,
-//	/* [annotation][in] */
-//	__in_opt  IUnknown *pConcernedDevice)
-//{
-//	if (pModeToMatch) LogInfo("HackerDXGIOutput::FindClosestMatchingMode(%s@%p) called: width=%d, height=%d, refresh rate=%f\n", type_name(this), this,
-//		pModeToMatch->Width, pModeToMatch->Height, (float)pModeToMatch->RefreshRate.Numerator / (float)pModeToMatch->RefreshRate.Denominator);
-//
-//	HRESULT hr = mOrigOutput->FindClosestMatchingMode(pModeToMatch, pClosestMatch, pConcernedDevice);
-//
-//	if (pClosestMatch && G->SCREEN_REFRESH >= 0)
-//	{
-//		pClosestMatch->RefreshRate.Numerator = G->SCREEN_REFRESH;
-//		pClosestMatch->RefreshRate.Denominator = 1;
-//	}
-//	if (pClosestMatch && G->SCREEN_WIDTH >= 0) pClosestMatch->Width = G->SCREEN_WIDTH;
-//	if (pClosestMatch && G->SCREEN_HEIGHT >= 0) pClosestMatch->Height = G->SCREEN_HEIGHT;
-//	if (pClosestMatch) LogInfo("  returning width=%d, height=%d, refresh rate=%f\n",
-//		pClosestMatch->Width, pClosestMatch->Height, (float)pClosestMatch->RefreshRate.Numerator / (float)pClosestMatch->RefreshRate.Denominator);
-//
-//	LogInfo("  returns hr=%x\n", hr);
-//	return hr;
-//}
-//
-//
-
-/*
-ToDo: 
-use reintepret_cast  instead of static_cast?
-revive the missing skip_dxgi to avoid beeps at launch
-filter junk at bottom here to avoid lost functionality
-Factory2 hook out of dxgi.dll at DLLMainHook? Only needed in Win10 case.
-Restore hooking of device/context.
-Hard fail in CreateDeviceAndSwapChain for null inputs.
-Move factory fetch out to Utils.
-*/
