@@ -660,7 +660,7 @@ STDMETHODIMP HackerSwapChain::ResizeTarget(THIS_
 	// override working in UE4 (SetFullscreenState then ResizeTarget), and
 	// we can revisit this later with a game that does the opposite to work
 	// out the best way to handle it.
-	mOrigSwapChain->GetFullscreenState(&fullscreen, &target);
+	mOrigSwapChain1->GetFullscreenState(&fullscreen, &target);
 	if (target)
 		target->Release();
 
