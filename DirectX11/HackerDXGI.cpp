@@ -746,6 +746,54 @@ STDMETHODIMP HackerDXGIFactory::GetWindowAssociation(THIS_
 	return hr;
 }
 
+static void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc, BOOL Windowed)
+{
+	// Historically we have only forced the refresh rate when full-screen.
+	// Not positive if it would hurt to do otherwise, but for now assuming
+	// we might have had a good reason and keeping that behaviour. See also
+	// the note in ResizeTarget().
+	if (G->SCREEN_REFRESH >= 0 && !Windowed)
+	{
+		// FIXME: This may disable flipping (and use blitting instead)
+		// if the forced numerator and denominator does not exactly
+		// match a mode enumerated on the output. e.g. We would force
+		// 60Hz as 60/1, but the display might actually use 60000/1001
+		// for 60Hz and we would lose flipping and degrade performance.
+		BufferDesc->RefreshRate.Numerator = G->SCREEN_REFRESH;
+		BufferDesc->RefreshRate.Denominator = 1;
+		LogInfo("->Forcing refresh rate to = %f\n",
+			(float)BufferDesc->RefreshRate.Numerator / (float)BufferDesc->RefreshRate.Denominator);
+	}
+	if (G->SCREEN_WIDTH >= 0)
+	{
+		BufferDesc->Width = G->SCREEN_WIDTH;
+		LogInfo("->Forcing Width to = %d\n", BufferDesc->Width);
+	}
+	if (G->SCREEN_HEIGHT >= 0)
+	{
+		BufferDesc->Height = G->SCREEN_HEIGHT;
+		LogInfo("->Forcing Height to = %d\n", BufferDesc->Height);
+	}
+
+	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
+	// swapchain to be 2x its normal width.
+	//
+	// I don't particularly like that we've lumped this in with direct mode
+	// - direct mode does *not* require a 2x width back buffer - it has two
+	// completely separate back buffers, switched via nvapi. This is a hack
+	// for one specific tool that has yet to see the light of day, and
+	// ideally this would have been done in that tool, not here. For
+	// quickly getting up and running, I don't see why the ordinary
+	// resolution overrides would not have been sufficient, or adding a
+	// multiplier to those if necessary.
+	//   - DarkStarSword
+	if (G->gForceStereo == 2)
+	{
+		BufferDesc->Width *= 2;
+		LogInfo("->Direct Mode: Forcing Width to = %d\n", BufferDesc->Width);
+	}
+}
+
 // This tweaks the parameters passed to the real CreateSwapChain, to change behavior.
 // These global parameters come originally from the d3dx.ini, so the user can
 // change them.
@@ -781,31 +829,7 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 		InstallSetWindowPosHook();
 	}
 
-	if (G->SCREEN_REFRESH >= 0 && !pDesc->Windowed)
-	{
-		pDesc->BufferDesc.RefreshRate.Numerator = G->SCREEN_REFRESH;
-		pDesc->BufferDesc.RefreshRate.Denominator = 1;
-		LogInfo("->Forcing refresh rate to = %f\n",
-			(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
-	}
-	if (G->SCREEN_WIDTH >= 0)
-	{
-		pDesc->BufferDesc.Width = G->SCREEN_WIDTH;
-		LogInfo("->Forcing Width to = %d\n", pDesc->BufferDesc.Width);
-	}
-	if (G->SCREEN_HEIGHT >= 0)
-	{
-		pDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
-		LogInfo("->Forcing Height to = %d\n", pDesc->BufferDesc.Height);
-	}
-
-	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
-	// swapchain to be 2x its normal width.  
-	if (G->gForceStereo == 2)
-	{
-		pDesc->BufferDesc.Width *= 2;
-		LogInfo("->Direct Mode: Forcing Width to = %d\n", pDesc->BufferDesc.Width);
-	}
+	ForceDisplayMode(&pDesc->BufferDesc, pDesc->Windowed);
 }
 
 
@@ -2137,16 +2161,31 @@ STDMETHODIMP HackerDXGISwapChain::ResizeTarget(THIS_
             /* [annotation][in] */ 
             _In_  const DXGI_MODE_DESC *pNewTargetParameters)
 {
+	BOOL fullscreen;
+	IDXGIOutput *target = NULL;
+	DXGI_MODE_DESC new_desc;
+
 	LogInfo("HackerDXGISwapChain::ResizeTarget(%s@%p) called\n", type_name(this), this);
 
-	// In Direct Mode, we need to ensure that we are keeping our 2x width target.
-	if ((G->gForceStereo == 2) && (pNewTargetParameters->Width == G->mResolutionInfo.width))
-	{
-		const_cast<DXGI_MODE_DESC*>(pNewTargetParameters)->Width *= 2;
-		LogInfo("-> forced 2x width for Direct Mode: %d\n", pNewTargetParameters->Width);
-	}
-	
-	HRESULT hr = mOrigSwapChain->ResizeTarget(pNewTargetParameters);
+	// We will only force the refresh rate if we are currently in
+	// full-screen. I don't have a particularly good reason for doing this
+	// other than that's how ForceDisplayParams() has always worked and
+	// maybe there was a reason for doing so? Then again maybe not? One
+	// problem with this approach is that ResizeTarget and
+	// SetFullscreenState can be called in any order, so if ResizeTarget is
+	// called first while the game is still windowed we won't force the
+	// refresh rate at all. For now this is enough to get the refresh rate
+	// override working in UE4 (SetFullscreenState then ResizeTarget), and
+	// we can revisit this later with a game that does the opposite to work
+	// out the best way to handle it.
+	mOrigSwapChain->GetFullscreenState(&fullscreen, &target);
+	if (target)
+		target->Release();
+
+	memcpy(&new_desc, pNewTargetParameters, sizeof(DXGI_MODE_DESC));
+	ForceDisplayMode(&new_desc, !fullscreen);
+
+	HRESULT hr = mOrigSwapChain->ResizeTarget(&new_desc);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
