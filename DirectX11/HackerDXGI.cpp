@@ -2281,7 +2281,7 @@ void HackerUpscalingDXGISwapChain::CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC
 			fake_buffer_desc.Height = FakeSwapChainDesc->BufferDesc.Height;
 			fake_buffer_desc.CPUAccessFlags = 0;
 
-			hr = mHackerDevice->GetOrigDevice()->CreateTexture2D(&fake_buffer_desc, nullptr, &mFakeBackBuffer);
+			hr = mHackerDevice->GetPassThroughOrigDevice()->CreateTexture2D(&fake_buffer_desc, nullptr, &mFakeBackBuffer);
 		}
 		break;
 	case 1:
@@ -2469,7 +2469,7 @@ STDMETHODIMP HackerUpscalingDXGISwapChain::ResizeBuffers(THIS_
 			fd.Height = Height;
 			fd.Format = NewFormat;
 			// just recreate texture with new width and height
-			hr = mHackerDevice->GetOrigDevice()->CreateTexture2D(&fd, nullptr, &mFakeBackBuffer);
+			hr = mHackerDevice->GetPassThroughOrigDevice()->CreateTexture2D(&fd, nullptr, &mFakeBackBuffer);
 		}
 		else  // nothing to resize
 			hr = S_OK;
