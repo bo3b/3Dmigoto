@@ -540,21 +540,25 @@
     <OutDir>Bin\Desktop_2013\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>Bin\Desktop_2013\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>DirectXTK</TargetName>
+    <IncludePath>$(VC_IncludePath);$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>Bin\Desktop_2013\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>Bin\Desktop_2013\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>DirectXTK</TargetName>
+    <IncludePath>$(VC_IncludePath);$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>Bin\Desktop_2013\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>Bin\Desktop_2013\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>DirectXTK</TargetName>
+    <IncludePath>$(VC_IncludePath);$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>Bin\Desktop_2013\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>Bin\Desktop_2013\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>DirectXTK</TargetName>
+    <IncludePath>$(VC_IncludePath);$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
