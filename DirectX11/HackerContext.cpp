@@ -2346,7 +2346,10 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 		// lookup/find takes measurable amounts of CPU time.
 		//
 		// grumble grumble this optimisation caught me out *TWICE* grumble grumble -DSS
-		if (!G->mShaderOverrideMap.empty() || !shader_regex_groups.empty() || (G->hunting == HUNTING_MODE_ENABLED)) {
+		if (!G->mShaderOverrideMap.empty()
+				|| !shader_regex_groups.empty()
+				|| !tagged_cbuffers.empty() // FIXME: Depending on the order of Map/Unmap/SetShader/Draw this might be too late. Always force on when extension DLL is in use.
+				|| (G->hunting == HUNTING_MODE_ENABLED)) {
 			ShaderMap::iterator i = lookup_shader_hash(pShader);
 			if (i != G->mShaders.end()) {
 				*currentShaderHash = i->second;
