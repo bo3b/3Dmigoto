@@ -2,12 +2,13 @@
 
 #include <memory>
 #include <unordered_map>
-#include <d3d11.h>
+#include <d3d11_1.h>
 #include <DirectXMath.h>
 #include <util.h>
+#include <nvapi.h>
+
 #include "DrawCallInfo.h"
 #include "ResourceHash.h"
-#include <nvapi.h>
 
 // Used to prevent typos leading to infinite recursion (or at least overflowing
 // the real stack) due to a section running itself or a circular reference. 64
@@ -25,8 +26,8 @@ class CommandListState {
 public:
 	HackerDevice *mHackerDevice;
 	HackerContext *mHackerContext;
-	ID3D11Device *mOrigDevice;
-	ID3D11DeviceContext *mOrigContext;
+	ID3D11Device1 *mOrigDevice1;
+	ID3D11DeviceContext1 *mOrigContext1;
 
 	// Used to avoid querying the render target dimensions twice in the
 	// common case we are going to store both width & height in separate

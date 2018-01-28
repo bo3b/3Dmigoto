@@ -2,10 +2,28 @@
 
 #include <d3d11_1.h>
 
-#include "HackerDevice.h"
-#include "Globals.h"
-#include "ResourceHash.h"
 #include "DrawCallInfo.h"
+
+#include "CommandList.h"
+
+#include "HackerDevice.h"
+//#include "ResourceHash.h"
+#include "Globals.h"
+
+
+// Self forward reference for the factory interface.
+class HackerContext;
+
+HackerContext* HackerContextFactory(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
+
+// Forward declaration to allow circular reference between HackerContext and HackerDevice. 
+// We need this to allow each to reference the other as needed.
+
+class HackerDevice;
+
+enum class FrameAnalysisOptions;
+struct ShaderOverride;
+
 
 struct DrawContext
 {
@@ -39,11 +57,6 @@ struct DispatchContext
 };
 
 
-// Forward declaration to allow circular reference between HackerContext and HackerDevice. 
-// We need this to allow each to reference the other as needed.
-
-class HackerDevice;
-class HackerDevice1;
 
 // These are per-context so we shouldn't need locks
 struct MappedResourceInfo {
@@ -59,17 +72,36 @@ struct MappedResourceInfo {
 	{}
 };
 
-// Hierarchy:
-//  HackerContext <- ID3D11DeviceContext <- ID3D11DeviceChild <- IUnknown
 
-// devicechild: MIDL_INTERFACE("1841e5c8-16b0-489b-bcc8-44cfb0d5deae")
-// MIDL_INTERFACE("c0bfa96c-e089-44fb-8eaf-26f8796190da")
-class HackerContext : public ID3D11DeviceContext 
+// 1-6-18:  Current approach will be to only create one level of wrapping,
+// specifically HackerDevice and HackerContext, based on the ID3D11Device1,
+// and ID3D11DeviceContext1.  ID3D11Device1/ID3D11DeviceContext1 is supported
+// on Win7+platform_update, and thus is a superset of what we need.  By
+// using the highest level object supported, we can kill off a lot of conditional
+// code that just complicates things. 
+//
+// The ID3D11DeviceContext1 will be supported on all OS except Win7 minus the 
+// platform_update.  In that scenario, we will save a reference to the 
+// ID3D11DeviceContext object instead, but store it and wrap it in HackerContext.
+// 
+// Specifically decided to not name everything *1, because frankly that is 
+// was an awful choice on Microsoft's part to begin with.  Meaningless number
+// completely unrelated to version/revision or functionality.  Bad.
+// We will use the *1 notation for object names that are specific types,
+// like the mOrigContext1 to avoid misleading types.
+//
+// Any HackerDevice will be the superset object ID3D11DeviceContext1 in all cases
+// except for Win7 missing the evil platform_update.
+
+// Hierarchy:
+//  HackerContext <- ID3D11DeviceContext1 <- ID3D11DeviceContext <- ID3D11DeviceChild <- IUnknown
+
+class HackerContext : public ID3D11DeviceContext1
 {
 private:
-	ID3D11Device *mOrigDevice;
-	ID3D11DeviceContext *mOrigContext;
-	ID3D11DeviceContext *mRealOrigContext;
+	ID3D11Device1 *mOrigDevice1;
+	ID3D11DeviceContext1 *mOrigContext1;
+	ID3D11DeviceContext1 *mRealOrigContext1;
 	HackerDevice *mHackerDevice;
 
 	// These are per-context, moved from globals.h:
@@ -91,7 +123,6 @@ private:
 	UINT mCurrentPSUAVStartSlot;
 	UINT mCurrentPSNumUAVs;
 	FrameAnalysisOptions analyse_options;
-	FILE *frame_analysis_log;
 
 	// Used for deny_cpu_read, track_texture_updates and constant buffer matching
 	typedef std::unordered_map<ID3D11Resource*, MappedResourceInfo> MappedResources;
@@ -210,41 +241,20 @@ private:
 			ID3D11ShaderResourceView *const *ppShaderResourceViews)>
 	void SetShaderResources(UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
-protected:
-	// Protected to allow HackerContext1 access, but not external
-	void FrameAnalysisLogResourceHash(ID3D11Resource *resource);
-	void FrameAnalysisLogResource(int slot, char *slot_name, ID3D11Resource *resource);
-	void FrameAnalysisLogResourceArray(UINT start, UINT len, ID3D11Resource *const *ppResources);
-	void FrameAnalysisLogView(int slot, char *slot_name, ID3D11View *view);
-	void FrameAnalysisLogViewArray(UINT start, UINT len, ID3D11View *const *ppViews);
-	void FrameAnalysisLogMiscArray(UINT start, UINT len, void *const *array);
-	void FrameAnalysisLogAsyncQuery(ID3D11Asynchronous *async);
-	void FrameAnalysisLogData(void *buf, UINT size);
-
 public:
-	HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
+	HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
 
 	void SetHackerDevice(HackerDevice *pDevice);
 	void Bind3DMigotoResources();
-	ID3D11DeviceContext* GetOrigContext();
-	ID3D11DeviceContext* GetPassThroughOrigContext();
+	ID3D11DeviceContext1* GetOrigContext1();
+	ID3D11DeviceContext1* GetPassThroughOrigContext1();
 	void HookContext();
 
 	// public to allow CommandList access
-	void FrameAnalysisLog(char *fmt, ...);
-	// An alias for the above function that we use to denote that omitting
-	// the newline was done intentionally. For now this is just for our
-	// reference, but later we might actually make the default function
-	// insert a newline:
-#define FrameAnalysisLogNoNL FrameAnalysisLog
+	virtual void FrameAnalysisLog(char *fmt, ...) {};
 
-
-	//static D3D11Wrapper::ID3D11DeviceContext* GetDirect3DDeviceContext(ID3D11DeviceContext *pContext);
-	//__forceinline ID3D11DeviceContext *GetD3D11DeviceContext() { return (ID3D11DeviceContext*) m_pUnk; }
 
 	/*** IUnknown methods ***/
-	//STDMETHOD_(ULONG, AddRef)(THIS);
-	//STDMETHOD_(ULONG, Release)(THIS);
 
 	HRESULT STDMETHODCALLTYPE QueryInterface(
 		/* [in] */ REFIID riid,
@@ -254,853 +264,841 @@ public:
 
 	ULONG STDMETHODCALLTYPE Release(void);
 
-	// ******************* ID3D11DeviceChild interface
 
-	STDMETHOD_(void, GetDevice)(THIS_
-		/* [annotation] */
-		__out  ID3D11Device **ppDevice);
+	/** ID3D11DeviceChild **/
 
-	STDMETHOD(GetPrivateData)(THIS_
+	void STDMETHODCALLTYPE GetDevice(
 		/* [annotation] */
-		__in  REFGUID guid,
-		/* [annotation] */
-		__inout  UINT *pDataSize,
-		/* [annotation] */
-		__out_bcount_opt(*pDataSize)  void *pData);
+		_Out_  ID3D11Device **ppDevice);
 
-	STDMETHOD(SetPrivateData)(THIS_
+	HRESULT STDMETHODCALLTYPE GetPrivateData(
 		/* [annotation] */
-		__in  REFGUID guid,
+		_In_  REFGUID guid,
 		/* [annotation] */
-		__in  UINT DataSize,
+		_Inout_  UINT *pDataSize,
 		/* [annotation] */
-		__in_bcount_opt(DataSize)  const void *pData);
+		_Out_writes_bytes_opt_(*pDataSize)  void *pData);
 
-	STDMETHOD(SetPrivateDataInterface)(THIS_
+	HRESULT STDMETHODCALLTYPE SetPrivateData(
 		/* [annotation] */
-		__in  REFGUID guid,
+		_In_  REFGUID guid,
 		/* [annotation] */
-		__in_opt  const IUnknown *pData);
+		_In_  UINT DataSize,
+		/* [annotation] */
+		_In_reads_bytes_opt_(DataSize)  const void *pData);
 
-	// ******************* ID3D11DeviceContext interface
+	HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
+		/* [annotation] */
+		_In_  REFGUID guid,
+		/* [annotation] */
+		_In_opt_  const IUnknown *pData);
 
-	STDMETHOD_(void, VSSetConstantBuffers)(THIS_
-		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
-		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
-		/* [annotation] */
-		__in_ecount(NumBuffers) ID3D11Buffer *const *ppConstantBuffers);
 
-	STDMETHOD_(void, PSSetShaderResources)(THIS_
-		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
-		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
-		/* [annotation] */
-		__in_ecount(NumViews) ID3D11ShaderResourceView *const *ppShaderResourceViews);
+	/** ID3D11DeviceContext **/
 
-	STDMETHOD_(void, PSSetShader)(THIS_
+	void STDMETHODCALLTYPE VSSetConstantBuffers(
 		/* [annotation] */
-		__in_opt ID3D11PixelShader *pPixelShader,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		/* [annotation] */
+		_In_reads_opt_(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers);
+
+	void STDMETHODCALLTYPE PSSetShaderResources(
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
+		/* [annotation] */
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
+		/* [annotation] */
+		_In_reads_opt_(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews);
+
+	void STDMETHODCALLTYPE PSSetShader(
+		/* [annotation] */
+		_In_opt_  ID3D11PixelShader *pPixelShader,
+		/* [annotation] */
+		_In_reads_opt_(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances);
 
-	STDMETHOD_(void, PSSetSamplers)(THIS_
+	void STDMETHODCALLTYPE PSSetSamplers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__in_ecount(NumSamplers) ID3D11SamplerState *const *ppSamplers);
+		_In_reads_opt_(NumSamplers)  ID3D11SamplerState *const *ppSamplers);
 
-	STDMETHOD_(void, VSSetShader)(THIS_
+	void STDMETHODCALLTYPE VSSetShader(
 		/* [annotation] */
-		__in_opt ID3D11VertexShader *pVertexShader,
+		_In_opt_  ID3D11VertexShader *pVertexShader,
 		/* [annotation] */
-		__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
+		_In_reads_opt_(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances);
 
-	STDMETHOD_(void, DrawIndexed)(THIS_
+	void STDMETHODCALLTYPE DrawIndexed(
 		/* [annotation] */
-		__in  UINT IndexCount,
+		_In_  UINT IndexCount,
 		/* [annotation] */
-		__in  UINT StartIndexLocation,
+		_In_  UINT StartIndexLocation,
 		/* [annotation] */
-		__in  INT BaseVertexLocation);
+		_In_  INT BaseVertexLocation);
 
-	STDMETHOD_(void, Draw)(THIS_
+	void STDMETHODCALLTYPE Draw(
 		/* [annotation] */
-		__in  UINT VertexCount,
+		_In_  UINT VertexCount,
 		/* [annotation] */
-		__in  UINT StartVertexLocation);
+		_In_  UINT StartVertexLocation);
 
-	STDMETHOD(Map)(THIS_
+	HRESULT STDMETHODCALLTYPE Map(
 		/* [annotation] */
-		__in  ID3D11Resource *pResource,
+		_In_  ID3D11Resource *pResource,
 		/* [annotation] */
-		__in  UINT Subresource,
+		_In_  UINT Subresource,
 		/* [annotation] */
-		__in  D3D11_MAP MapType,
+		_In_  D3D11_MAP MapType,
 		/* [annotation] */
-		__in  UINT MapFlags,
+		_In_  UINT MapFlags,
 		/* [annotation] */
-		__out D3D11_MAPPED_SUBRESOURCE *pMappedResource);
+		_Out_  D3D11_MAPPED_SUBRESOURCE *pMappedResource);
 
-	STDMETHOD_(void, Unmap)(THIS_
+	void STDMETHODCALLTYPE Unmap(
 		/* [annotation] */
-		__in ID3D11Resource *pResource,
+		_In_  ID3D11Resource *pResource,
 		/* [annotation] */
-		__in  UINT Subresource);
+		_In_  UINT Subresource);
 
-	STDMETHOD_(void, PSSetConstantBuffers)(THIS_
+	void STDMETHODCALLTYPE PSSetConstantBuffers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__in_ecount(NumBuffers) ID3D11Buffer *const *ppConstantBuffers);
+		_In_reads_opt_(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers);
 
-	STDMETHOD_(void, IASetInputLayout)(THIS_
+	void STDMETHODCALLTYPE IASetInputLayout(
 		/* [annotation] */
-		__in_opt ID3D11InputLayout *pInputLayout);
+		_In_opt_  ID3D11InputLayout *pInputLayout);
 
-	STDMETHOD_(void, IASetVertexBuffers)(THIS_
+	void STDMETHODCALLTYPE IASetVertexBuffers(
 		/* [annotation] */
-		__in_range(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		_In_range_(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__in_ecount(NumBuffers)  ID3D11Buffer *const *ppVertexBuffers,
+		_In_reads_opt_(NumBuffers)  ID3D11Buffer *const *ppVertexBuffers,
 		/* [annotation] */
-		__in_ecount(NumBuffers)  const UINT *pStrides,
+		_In_reads_opt_(NumBuffers)  const UINT *pStrides,
 		/* [annotation] */
-		__in_ecount(NumBuffers)  const UINT *pOffsets);
+		_In_reads_opt_(NumBuffers)  const UINT *pOffsets);
 
-	STDMETHOD_(void, IASetIndexBuffer)(THIS_
+	void STDMETHODCALLTYPE IASetIndexBuffer(
 		/* [annotation] */
-		__in_opt ID3D11Buffer *pIndexBuffer,
+		_In_opt_  ID3D11Buffer *pIndexBuffer,
 		/* [annotation] */
-		__in DXGI_FORMAT Format,
+		_In_  DXGI_FORMAT Format,
 		/* [annotation] */
-		__in  UINT Offset);
+		_In_  UINT Offset);
 
-	STDMETHOD_(void, DrawIndexedInstanced)(THIS_
+	void STDMETHODCALLTYPE DrawIndexedInstanced(
 		/* [annotation] */
-		__in  UINT IndexCountPerInstance,
+		_In_  UINT IndexCountPerInstance,
 		/* [annotation] */
-		__in  UINT InstanceCount,
+		_In_  UINT InstanceCount,
 		/* [annotation] */
-		__in  UINT StartIndexLocation,
+		_In_  UINT StartIndexLocation,
 		/* [annotation] */
-		__in  INT BaseVertexLocation,
+		_In_  INT BaseVertexLocation,
 		/* [annotation] */
-		__in  UINT StartInstanceLocation);
+		_In_  UINT StartInstanceLocation);
 
-	STDMETHOD_(void, DrawInstanced)(THIS_
+	void STDMETHODCALLTYPE DrawInstanced(
 		/* [annotation] */
-		__in  UINT VertexCountPerInstance,
+		_In_  UINT VertexCountPerInstance,
 		/* [annotation] */
-		__in  UINT InstanceCount,
+		_In_  UINT InstanceCount,
 		/* [annotation] */
-		__in  UINT StartVertexLocation,
+		_In_  UINT StartVertexLocation,
 		/* [annotation] */
-		__in  UINT StartInstanceLocation);
+		_In_  UINT StartInstanceLocation);
 
-	STDMETHOD_(void, GSSetConstantBuffers)(THIS_
+	void STDMETHODCALLTYPE GSSetConstantBuffers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__in_ecount(NumBuffers) ID3D11Buffer *const *ppConstantBuffers);
+		_In_reads_opt_(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers);
 
-	STDMETHOD_(void, GSSetShader)(THIS_
+	void STDMETHODCALLTYPE GSSetShader(
 		/* [annotation] */
-		__in_opt ID3D11GeometryShader *pShader,
+		_In_opt_  ID3D11GeometryShader *pShader,
 		/* [annotation] */
-		__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
+		_In_reads_opt_(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances);
 
-	STDMETHOD_(void, IASetPrimitiveTopology)(THIS_
+	void STDMETHODCALLTYPE IASetPrimitiveTopology(
 		/* [annotation] */
-		__in D3D11_PRIMITIVE_TOPOLOGY Topology);
+		_In_  D3D11_PRIMITIVE_TOPOLOGY Topology);
 
-	STDMETHOD_(void, VSSetShaderResources)(THIS_
+	void STDMETHODCALLTYPE VSSetShaderResources(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__in_ecount(NumViews) ID3D11ShaderResourceView *const *ppShaderResourceViews);
+		_In_reads_opt_(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
-	STDMETHOD_(void, VSSetSamplers)(THIS_
+	void STDMETHODCALLTYPE VSSetSamplers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__in_ecount(NumSamplers) ID3D11SamplerState *const *ppSamplers);
+		_In_reads_opt_(NumSamplers)  ID3D11SamplerState *const *ppSamplers);
 
-	STDMETHOD_(void, Begin)(THIS_
+	void STDMETHODCALLTYPE Begin(
 		/* [annotation] */
-		__in  ID3D11Asynchronous *pAsync);
+		_In_  ID3D11Asynchronous *pAsync);
 
-	STDMETHOD_(void, End)(THIS_
+	void STDMETHODCALLTYPE End(
 		/* [annotation] */
-		__in  ID3D11Asynchronous *pAsync);
+		_In_  ID3D11Asynchronous *pAsync);
 
-	STDMETHOD(GetData)(THIS_
+	HRESULT STDMETHODCALLTYPE GetData(
 		/* [annotation] */
-		__in  ID3D11Asynchronous *pAsync,
+		_In_  ID3D11Asynchronous *pAsync,
 		/* [annotation] */
-		__out_bcount_opt(DataSize)  void *pData,
+		_Out_writes_bytes_opt_(DataSize)  void *pData,
 		/* [annotation] */
-		__in  UINT DataSize,
+		_In_  UINT DataSize,
 		/* [annotation] */
-		__in  UINT GetDataFlags);
+		_In_  UINT GetDataFlags);
 
-	STDMETHOD_(void, SetPredication)(THIS_
+	void STDMETHODCALLTYPE SetPredication(
 		/* [annotation] */
-		__in_opt ID3D11Predicate *pPredicate,
+		_In_opt_  ID3D11Predicate *pPredicate,
 		/* [annotation] */
-		__in  BOOL PredicateValue);
+		_In_  BOOL PredicateValue);
 
-	STDMETHOD_(void, GSSetShaderResources)(THIS_
+	void STDMETHODCALLTYPE GSSetShaderResources(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__in_ecount(NumViews) ID3D11ShaderResourceView *const *ppShaderResourceViews);
+		_In_reads_opt_(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
-	STDMETHOD_(void, GSSetSamplers)(THIS_
+	void STDMETHODCALLTYPE GSSetSamplers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__in_ecount(NumSamplers) ID3D11SamplerState *const *ppSamplers);
+		_In_reads_opt_(NumSamplers)  ID3D11SamplerState *const *ppSamplers);
 
-	STDMETHOD_(void, OMSetRenderTargets)(THIS_
+	void STDMETHODCALLTYPE OMSetRenderTargets(
 		/* [annotation] */
-		__in_range(0, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT)  UINT NumViews,
+		_In_range_(0, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT)  UINT NumViews,
 		/* [annotation] */
-		__in_ecount_opt(NumViews) ID3D11RenderTargetView *const *ppRenderTargetViews,
+		_In_reads_opt_(NumViews)  ID3D11RenderTargetView *const *ppRenderTargetViews,
 		/* [annotation] */
-		__in_opt ID3D11DepthStencilView *pDepthStencilView);
+		_In_opt_  ID3D11DepthStencilView *pDepthStencilView);
 
-	STDMETHOD_(void, OMSetRenderTargetsAndUnorderedAccessViews)(THIS_
+	void STDMETHODCALLTYPE OMSetRenderTargetsAndUnorderedAccessViews(
 		/* [annotation] */
-		__in  UINT NumRTVs,
+		_In_  UINT NumRTVs,
 		/* [annotation] */
-		__in_ecount_opt(NumRTVs) ID3D11RenderTargetView *const *ppRenderTargetViews,
+		_In_reads_opt_(NumRTVs)  ID3D11RenderTargetView *const *ppRenderTargetViews,
 		/* [annotation] */
-		__in_opt ID3D11DepthStencilView *pDepthStencilView,
+		_In_opt_  ID3D11DepthStencilView *pDepthStencilView,
 		/* [annotation] */
-		__in_range(0, D3D11_PS_CS_UAV_REGISTER_COUNT - 1)  UINT UAVStartSlot,
+		_In_range_(0, D3D11_1_UAV_SLOT_COUNT - 1)  UINT UAVStartSlot,
 		/* [annotation] */
-		__in  UINT NumUAVs,
+		_In_  UINT NumUAVs,
 		/* [annotation] */
-		__in_ecount_opt(NumUAVs) ID3D11UnorderedAccessView *const *ppUnorderedAccessViews,
+		_In_reads_opt_(NumUAVs)  ID3D11UnorderedAccessView *const *ppUnorderedAccessViews,
 		/* [annotation] */
-		__in_ecount_opt(NumUAVs)  const UINT *pUAVInitialCounts);
+		_In_reads_opt_(NumUAVs)  const UINT *pUAVInitialCounts);
 
-	STDMETHOD_(void, OMSetBlendState)(THIS_
+	void STDMETHODCALLTYPE OMSetBlendState(
 		/* [annotation] */
-		__in_opt  ID3D11BlendState *pBlendState,
+		_In_opt_  ID3D11BlendState *pBlendState,
 		/* [annotation] */
-		__in_opt  const FLOAT BlendFactor[4],
+		_In_opt_  const FLOAT BlendFactor[4],
 		/* [annotation] */
-		__in  UINT SampleMask);
+		_In_  UINT SampleMask);
 
-	STDMETHOD_(void, OMSetDepthStencilState)(THIS_
+	void STDMETHODCALLTYPE OMSetDepthStencilState(
 		/* [annotation] */
-		__in_opt  ID3D11DepthStencilState *pDepthStencilState,
+		_In_opt_  ID3D11DepthStencilState *pDepthStencilState,
 		/* [annotation] */
-		__in  UINT StencilRef);
+		_In_  UINT StencilRef);
 
-	STDMETHOD_(void, SOSetTargets)(THIS_
+	void STDMETHODCALLTYPE SOSetTargets(
 		/* [annotation] */
-		__in_range(0, D3D11_SO_BUFFER_SLOT_COUNT)  UINT NumBuffers,
+		_In_range_(0, D3D11_SO_BUFFER_SLOT_COUNT)  UINT NumBuffers,
 		/* [annotation] */
-		__in_ecount_opt(NumBuffers)  ID3D11Buffer *const *ppSOTargets,
+		_In_reads_opt_(NumBuffers)  ID3D11Buffer *const *ppSOTargets,
 		/* [annotation] */
-		__in_ecount_opt(NumBuffers)  const UINT *pOffsets);
+		_In_reads_opt_(NumBuffers)  const UINT *pOffsets);
 
-	STDMETHOD_(void, DrawAuto)(THIS);
+	void STDMETHODCALLTYPE DrawAuto(void);
 
-	STDMETHOD_(void, DrawIndexedInstancedIndirect)(THIS_
+	void STDMETHODCALLTYPE DrawIndexedInstancedIndirect(
 		/* [annotation] */
-		__in  ID3D11Buffer *pBufferForArgs,
+		_In_  ID3D11Buffer *pBufferForArgs,
 		/* [annotation] */
-		__in  UINT AlignedByteOffsetForArgs);
+		_In_  UINT AlignedByteOffsetForArgs);
 
-	STDMETHOD_(void, DrawInstancedIndirect)(THIS_
+	void STDMETHODCALLTYPE DrawInstancedIndirect(
 		/* [annotation] */
-		__in  ID3D11Buffer *pBufferForArgs,
+		_In_  ID3D11Buffer *pBufferForArgs,
 		/* [annotation] */
-		__in  UINT AlignedByteOffsetForArgs);
+		_In_  UINT AlignedByteOffsetForArgs);
 
-	STDMETHOD_(void, Dispatch)(THIS_
+	void STDMETHODCALLTYPE Dispatch(
 		/* [annotation] */
-		__in  UINT ThreadGroupCountX,
+		_In_  UINT ThreadGroupCountX,
 		/* [annotation] */
-		__in  UINT ThreadGroupCountY,
+		_In_  UINT ThreadGroupCountY,
 		/* [annotation] */
-		__in  UINT ThreadGroupCountZ);
+		_In_  UINT ThreadGroupCountZ);
 
-	STDMETHOD_(void, DispatchIndirect)(THIS_
+	void STDMETHODCALLTYPE DispatchIndirect(
 		/* [annotation] */
-		__in  ID3D11Buffer *pBufferForArgs,
+		_In_  ID3D11Buffer *pBufferForArgs,
 		/* [annotation] */
-		__in  UINT AlignedByteOffsetForArgs);
+		_In_  UINT AlignedByteOffsetForArgs);
 
-	STDMETHOD_(void, RSSetState)(THIS_
+	void STDMETHODCALLTYPE RSSetState(
 		/* [annotation] */
-		__in_opt  ID3D11RasterizerState *pRasterizerState);
+		_In_opt_  ID3D11RasterizerState *pRasterizerState);
 
-	STDMETHOD_(void, RSSetViewports)(THIS_
+	void STDMETHODCALLTYPE RSSetViewports(
 		/* [annotation] */
-		__in_range(0, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE)  UINT NumViewports,
+		_In_range_(0, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE)  UINT NumViewports,
 		/* [annotation] */
-		__in_ecount_opt(NumViewports)  const D3D11_VIEWPORT *pViewports);
+		_In_reads_opt_(NumViewports)  const D3D11_VIEWPORT *pViewports);
 
-	STDMETHOD_(void, RSSetScissorRects)(THIS_
+	void STDMETHODCALLTYPE RSSetScissorRects(
 		/* [annotation] */
-		__in_range(0, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE)  UINT NumRects,
+		_In_range_(0, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE)  UINT NumRects,
 		/* [annotation] */
-		__in_ecount_opt(NumRects)  const D3D11_RECT *pRects);
+		_In_reads_opt_(NumRects)  const D3D11_RECT *pRects);
 
-	STDMETHOD_(void, CopySubresourceRegion)(THIS_
+	void STDMETHODCALLTYPE CopySubresourceRegion(
 		/* [annotation] */
-		__in  ID3D11Resource *pDstResource,
+		_In_  ID3D11Resource *pDstResource,
 		/* [annotation] */
-		__in  UINT DstSubresource,
+		_In_  UINT DstSubresource,
 		/* [annotation] */
-		__in  UINT DstX,
+		_In_  UINT DstX,
 		/* [annotation] */
-		__in  UINT DstY,
+		_In_  UINT DstY,
 		/* [annotation] */
-		__in  UINT DstZ,
+		_In_  UINT DstZ,
 		/* [annotation] */
-		__in  ID3D11Resource *pSrcResource,
+		_In_  ID3D11Resource *pSrcResource,
 		/* [annotation] */
-		__in  UINT SrcSubresource,
+		_In_  UINT SrcSubresource,
 		/* [annotation] */
-		__in_opt  const D3D11_BOX *pSrcBox);
+		_In_opt_  const D3D11_BOX *pSrcBox);
 
-	STDMETHOD_(void, CopyResource)(THIS_
+	void STDMETHODCALLTYPE CopyResource(
 		/* [annotation] */
-		__in  ID3D11Resource *pDstResource,
+		_In_  ID3D11Resource *pDstResource,
 		/* [annotation] */
-		__in  ID3D11Resource *pSrcResource);
+		_In_  ID3D11Resource *pSrcResource);
 
-	STDMETHOD_(void, UpdateSubresource)(THIS_
+	void STDMETHODCALLTYPE UpdateSubresource(
 		/* [annotation] */
-		__in  ID3D11Resource *pDstResource,
+		_In_  ID3D11Resource *pDstResource,
 		/* [annotation] */
-		__in  UINT DstSubresource,
+		_In_  UINT DstSubresource,
 		/* [annotation] */
-		__in_opt  const D3D11_BOX *pDstBox,
+		_In_opt_  const D3D11_BOX *pDstBox,
 		/* [annotation] */
-		__in  const void *pSrcData,
+		_In_  const void *pSrcData,
 		/* [annotation] */
-		__in  UINT SrcRowPitch,
+		_In_  UINT SrcRowPitch,
 		/* [annotation] */
-		__in  UINT SrcDepthPitch);
+		_In_  UINT SrcDepthPitch);
 
-	STDMETHOD_(void, CopyStructureCount)(THIS_
+	void STDMETHODCALLTYPE CopyStructureCount(
 		/* [annotation] */
-		__in  ID3D11Buffer *pDstBuffer,
+		_In_  ID3D11Buffer *pDstBuffer,
 		/* [annotation] */
-		__in  UINT DstAlignedByteOffset,
+		_In_  UINT DstAlignedByteOffset,
 		/* [annotation] */
-		__in  ID3D11UnorderedAccessView *pSrcView);
+		_In_  ID3D11UnorderedAccessView *pSrcView);
 
-	STDMETHOD_(void, ClearRenderTargetView)(THIS_
+	void STDMETHODCALLTYPE ClearRenderTargetView(
 		/* [annotation] */
-		__in  ID3D11RenderTargetView *pRenderTargetView,
+		_In_  ID3D11RenderTargetView *pRenderTargetView,
 		/* [annotation] */
-		__in  const FLOAT ColorRGBA[4]);
+		_In_  const FLOAT ColorRGBA[4]);
 
-	STDMETHOD_(void, ClearUnorderedAccessViewUint)(THIS_
+	void STDMETHODCALLTYPE ClearUnorderedAccessViewUint(
 		/* [annotation] */
-		__in  ID3D11UnorderedAccessView *pUnorderedAccessView,
+		_In_  ID3D11UnorderedAccessView *pUnorderedAccessView,
 		/* [annotation] */
-		__in  const UINT Values[4]);
+		_In_  const UINT Values[4]);
 
-	STDMETHOD_(void, ClearUnorderedAccessViewFloat)(THIS_
+	void STDMETHODCALLTYPE ClearUnorderedAccessViewFloat(
 		/* [annotation] */
-		__in  ID3D11UnorderedAccessView *pUnorderedAccessView,
+		_In_  ID3D11UnorderedAccessView *pUnorderedAccessView,
 		/* [annotation] */
-		__in  const FLOAT Values[4]);
+		_In_  const FLOAT Values[4]);
 
-	STDMETHOD_(void, ClearDepthStencilView)(THIS_
+	void STDMETHODCALLTYPE ClearDepthStencilView(
 		/* [annotation] */
-		__in  ID3D11DepthStencilView *pDepthStencilView,
+		_In_  ID3D11DepthStencilView *pDepthStencilView,
 		/* [annotation] */
-		__in  UINT ClearFlags,
+		_In_  UINT ClearFlags,
 		/* [annotation] */
-		__in  FLOAT Depth,
+		_In_  FLOAT Depth,
 		/* [annotation] */
-		__in  UINT8 Stencil);
+		_In_  UINT8 Stencil);
 
-	STDMETHOD_(void, GenerateMips)(THIS_
+	void STDMETHODCALLTYPE GenerateMips(
 		/* [annotation] */
-		__in  ID3D11ShaderResourceView *pShaderResourceView);
+		_In_  ID3D11ShaderResourceView *pShaderResourceView);
 
-	STDMETHOD_(void, SetResourceMinLOD)(THIS_
+	void STDMETHODCALLTYPE SetResourceMinLOD(
 		/* [annotation] */
-		__in  ID3D11Resource *pResource,
+		_In_  ID3D11Resource *pResource,
 		FLOAT MinLOD);
 
-	STDMETHOD_(FLOAT, GetResourceMinLOD)(THIS_
+	FLOAT STDMETHODCALLTYPE GetResourceMinLOD(
 		/* [annotation] */
-		__in  ID3D11Resource *pResource);
+		_In_  ID3D11Resource *pResource);
 
-	STDMETHOD_(void, ResolveSubresource)(THIS_
+	void STDMETHODCALLTYPE ResolveSubresource(
 		/* [annotation] */
-		__in  ID3D11Resource *pDstResource,
+		_In_  ID3D11Resource *pDstResource,
 		/* [annotation] */
-		__in  UINT DstSubresource,
+		_In_  UINT DstSubresource,
 		/* [annotation] */
-		__in  ID3D11Resource *pSrcResource,
+		_In_  ID3D11Resource *pSrcResource,
 		/* [annotation] */
-		__in  UINT SrcSubresource,
+		_In_  UINT SrcSubresource,
 		/* [annotation] */
-		__in  DXGI_FORMAT Format);
+		_In_  DXGI_FORMAT Format);
 
-	STDMETHOD_(void, ExecuteCommandList)(THIS_
+	void STDMETHODCALLTYPE ExecuteCommandList(
 		/* [annotation] */
-		__in  ID3D11CommandList *pCommandList,
+		_In_  ID3D11CommandList *pCommandList,
 		BOOL RestoreContextState);
 
-	STDMETHOD_(void, HSSetShaderResources)(THIS_
+	void STDMETHODCALLTYPE HSSetShaderResources(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews);
+		_In_reads_opt_(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
-	STDMETHOD_(void, HSSetShader)(THIS_
+	void STDMETHODCALLTYPE HSSetShader(
 		/* [annotation] */
-		__in_opt  ID3D11HullShader *pHullShader,
+		_In_opt_  ID3D11HullShader *pHullShader,
 		/* [annotation] */
-		__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
+		_In_reads_opt_(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances);
 
-	STDMETHOD_(void, HSSetSamplers)(THIS_
+	void STDMETHODCALLTYPE HSSetSamplers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers);
+		_In_reads_opt_(NumSamplers)  ID3D11SamplerState *const *ppSamplers);
 
-	STDMETHOD_(void, HSSetConstantBuffers)(THIS_
+	void STDMETHODCALLTYPE HSSetConstantBuffers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers);
+		_In_reads_opt_(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers);
 
-	STDMETHOD_(void, DSSetShaderResources)(THIS_
+	void STDMETHODCALLTYPE DSSetShaderResources(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews);
+		_In_reads_opt_(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
-	STDMETHOD_(void, DSSetShader)(THIS_
+	void STDMETHODCALLTYPE DSSetShader(
 		/* [annotation] */
-		__in_opt  ID3D11DomainShader *pDomainShader,
+		_In_opt_  ID3D11DomainShader *pDomainShader,
 		/* [annotation] */
-		__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
+		_In_reads_opt_(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances);
 
-	STDMETHOD_(void, DSSetSamplers)(THIS_
+	void STDMETHODCALLTYPE DSSetSamplers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers);
+		_In_reads_opt_(NumSamplers)  ID3D11SamplerState *const *ppSamplers);
 
-	STDMETHOD_(void, DSSetConstantBuffers)(THIS_
+	void STDMETHODCALLTYPE DSSetConstantBuffers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers);
+		_In_reads_opt_(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers);
 
-	STDMETHOD_(void, CSSetShaderResources)(THIS_
+	void STDMETHODCALLTYPE CSSetShaderResources(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews);
+		_In_reads_opt_(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
-	STDMETHOD_(void, CSSetUnorderedAccessViews)(THIS_
+	void STDMETHODCALLTYPE CSSetUnorderedAccessViews(
 		/* [annotation] */
-		__in_range(0, D3D11_PS_CS_UAV_REGISTER_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_1_UAV_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_PS_CS_UAV_REGISTER_COUNT - StartSlot)  UINT NumUAVs,
+		_In_range_(0, D3D11_1_UAV_SLOT_COUNT - StartSlot)  UINT NumUAVs,
 		/* [annotation] */
-		__in_ecount(NumUAVs)  ID3D11UnorderedAccessView *const *ppUnorderedAccessViews,
+		_In_reads_opt_(NumUAVs)  ID3D11UnorderedAccessView *const *ppUnorderedAccessViews,
 		/* [annotation] */
-		__in_ecount(NumUAVs)  const UINT *pUAVInitialCounts);
+		_In_reads_opt_(NumUAVs)  const UINT *pUAVInitialCounts);
 
-	STDMETHOD_(void, CSSetShader)(THIS_
+	void STDMETHODCALLTYPE CSSetShader(
 		/* [annotation] */
-		__in_opt  ID3D11ComputeShader *pComputeShader,
+		_In_opt_  ID3D11ComputeShader *pComputeShader,
 		/* [annotation] */
-		__in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
+		_In_reads_opt_(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances);
 
-	STDMETHOD_(void, CSSetSamplers)(THIS_
+	void STDMETHODCALLTYPE CSSetSamplers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers);
+		_In_reads_opt_(NumSamplers)  ID3D11SamplerState *const *ppSamplers);
 
-	STDMETHOD_(void, CSSetConstantBuffers)(THIS_
+	void STDMETHODCALLTYPE CSSetConstantBuffers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers);
+		_In_reads_opt_(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers);
 
-	STDMETHOD_(void, VSGetConstantBuffers)(THIS_
+	void STDMETHODCALLTYPE VSGetConstantBuffers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
+		_Out_writes_opt_(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
 
-	STDMETHOD_(void, PSGetShaderResources)(THIS_
+	void STDMETHODCALLTYPE PSGetShaderResources(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
+		_Out_writes_opt_(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
 
-	STDMETHOD_(void, PSGetShader)(THIS_
+	void STDMETHODCALLTYPE PSGetShader(
 		/* [annotation] */
-		__out  ID3D11PixelShader **ppPixelShader,
+		_Out_  ID3D11PixelShader **ppPixelShader,
 		/* [annotation] */
-		__out_ecount_opt(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
+		_Out_writes_opt_(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
 		/* [annotation] */
-		__inout_opt  UINT *pNumClassInstances);
+		_Inout_opt_  UINT *pNumClassInstances);
 
-	STDMETHOD_(void, PSGetSamplers)(THIS_
+	void STDMETHODCALLTYPE PSGetSamplers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers);
+		_Out_writes_opt_(NumSamplers)  ID3D11SamplerState **ppSamplers);
 
-	STDMETHOD_(void, VSGetShader)(THIS_
+	void STDMETHODCALLTYPE VSGetShader(
 		/* [annotation] */
-		__out  ID3D11VertexShader **ppVertexShader,
+		_Out_  ID3D11VertexShader **ppVertexShader,
 		/* [annotation] */
-		__out_ecount_opt(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
+		_Out_writes_opt_(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
 		/* [annotation] */
-		__inout_opt  UINT *pNumClassInstances);
+		_Inout_opt_  UINT *pNumClassInstances);
 
-	STDMETHOD_(void, PSGetConstantBuffers)(THIS_
+	void STDMETHODCALLTYPE PSGetConstantBuffers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
+		_Out_writes_opt_(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
 
-	STDMETHOD_(void, IAGetInputLayout)(THIS_
+	void STDMETHODCALLTYPE IAGetInputLayout(
 		/* [annotation] */
-		__out  ID3D11InputLayout **ppInputLayout);
+		_Out_  ID3D11InputLayout **ppInputLayout);
 
-	STDMETHOD_(void, IAGetVertexBuffers)(THIS_
+	void STDMETHODCALLTYPE IAGetVertexBuffers(
 		/* [annotation] */
-		__in_range(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		_In_range_(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount_opt(NumBuffers)  ID3D11Buffer **ppVertexBuffers,
+		_Out_writes_opt_(NumBuffers)  ID3D11Buffer **ppVertexBuffers,
 		/* [annotation] */
-		__out_ecount_opt(NumBuffers)  UINT *pStrides,
+		_Out_writes_opt_(NumBuffers)  UINT *pStrides,
 		/* [annotation] */
-		__out_ecount_opt(NumBuffers)  UINT *pOffsets);
+		_Out_writes_opt_(NumBuffers)  UINT *pOffsets);
 
-	STDMETHOD_(void, IAGetIndexBuffer)(THIS_
+	void STDMETHODCALLTYPE IAGetIndexBuffer(
 		/* [annotation] */
-		__out_opt  ID3D11Buffer **pIndexBuffer,
+		_Out_opt_  ID3D11Buffer **pIndexBuffer,
 		/* [annotation] */
-		__out_opt  DXGI_FORMAT *Format,
+		_Out_opt_  DXGI_FORMAT *Format,
 		/* [annotation] */
-		__out_opt  UINT *Offset);
+		_Out_opt_  UINT *Offset);
 
-	STDMETHOD_(void, GSGetConstantBuffers)(THIS_
+	void STDMETHODCALLTYPE GSGetConstantBuffers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
+		_Out_writes_opt_(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
 
-	STDMETHOD_(void, GSGetShader)(THIS_
+	void STDMETHODCALLTYPE GSGetShader(
 		/* [annotation] */
-		__out  ID3D11GeometryShader **ppGeometryShader,
+		_Out_  ID3D11GeometryShader **ppGeometryShader,
 		/* [annotation] */
-		__out_ecount_opt(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
+		_Out_writes_opt_(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
 		/* [annotation] */
-		__inout_opt  UINT *pNumClassInstances);
+		_Inout_opt_  UINT *pNumClassInstances);
 
-	STDMETHOD_(void, IAGetPrimitiveTopology)(THIS_
+	void STDMETHODCALLTYPE IAGetPrimitiveTopology(
 		/* [annotation] */
-		__out  D3D11_PRIMITIVE_TOPOLOGY *pTopology);
+		_Out_  D3D11_PRIMITIVE_TOPOLOGY *pTopology);
 
-	STDMETHOD_(void, VSGetShaderResources)(THIS_
+	void STDMETHODCALLTYPE VSGetShaderResources(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
+		_Out_writes_opt_(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
 
-	STDMETHOD_(void, VSGetSamplers)(THIS_
+	void STDMETHODCALLTYPE VSGetSamplers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers);
+		_Out_writes_opt_(NumSamplers)  ID3D11SamplerState **ppSamplers);
 
-	STDMETHOD_(void, GetPredication)(THIS_
+	void STDMETHODCALLTYPE GetPredication(
 		/* [annotation] */
-		__out_opt  ID3D11Predicate **ppPredicate,
+		_Out_opt_  ID3D11Predicate **ppPredicate,
 		/* [annotation] */
-		__out_opt  BOOL *pPredicateValue);
+		_Out_opt_  BOOL *pPredicateValue);
 
-	STDMETHOD_(void, GSGetShaderResources)(THIS_
+	void STDMETHODCALLTYPE GSGetShaderResources(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
+		_Out_writes_opt_(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
 
-	STDMETHOD_(void, GSGetSamplers)(THIS_
+	void STDMETHODCALLTYPE GSGetSamplers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers);
+		_Out_writes_opt_(NumSamplers)  ID3D11SamplerState **ppSamplers);
 
-	STDMETHOD_(void, OMGetRenderTargets)(THIS_
+	void STDMETHODCALLTYPE OMGetRenderTargets(
 		/* [annotation] */
-		__in_range(0, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT)  UINT NumViews,
+		_In_range_(0, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT)  UINT NumViews,
 		/* [annotation] */
-		__out_ecount_opt(NumViews)  ID3D11RenderTargetView **ppRenderTargetViews,
+		_Out_writes_opt_(NumViews)  ID3D11RenderTargetView **ppRenderTargetViews,
 		/* [annotation] */
-		__out_opt  ID3D11DepthStencilView **ppDepthStencilView);
+		_Out_opt_  ID3D11DepthStencilView **ppDepthStencilView);
 
-	STDMETHOD_(void, OMGetRenderTargetsAndUnorderedAccessViews)(THIS_
+	void STDMETHODCALLTYPE OMGetRenderTargetsAndUnorderedAccessViews(
 		/* [annotation] */
-		__in_range(0, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT)  UINT NumRTVs,
+		_In_range_(0, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT)  UINT NumRTVs,
 		/* [annotation] */
-		__out_ecount_opt(NumRTVs)  ID3D11RenderTargetView **ppRenderTargetViews,
+		_Out_writes_opt_(NumRTVs)  ID3D11RenderTargetView **ppRenderTargetViews,
 		/* [annotation] */
-		__out_opt  ID3D11DepthStencilView **ppDepthStencilView,
+		_Out_opt_  ID3D11DepthStencilView **ppDepthStencilView,
 		/* [annotation] */
-		__in_range(0, D3D11_PS_CS_UAV_REGISTER_COUNT - 1)  UINT UAVStartSlot,
+		_In_range_(0, D3D11_PS_CS_UAV_REGISTER_COUNT - 1)  UINT UAVStartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_PS_CS_UAV_REGISTER_COUNT - UAVStartSlot)  UINT NumUAVs,
+		_In_range_(0, D3D11_PS_CS_UAV_REGISTER_COUNT - UAVStartSlot)  UINT NumUAVs,
 		/* [annotation] */
-		__out_ecount_opt(NumUAVs)  ID3D11UnorderedAccessView **ppUnorderedAccessViews);
+		_Out_writes_opt_(NumUAVs)  ID3D11UnorderedAccessView **ppUnorderedAccessViews);
 
-	STDMETHOD_(void, OMGetBlendState)(THIS_
+	void STDMETHODCALLTYPE OMGetBlendState(
 		/* [annotation] */
-		__out_opt  ID3D11BlendState **ppBlendState,
+		_Out_opt_  ID3D11BlendState **ppBlendState,
 		/* [annotation] */
-		__out_opt  FLOAT BlendFactor[4],
+		_Out_opt_  FLOAT BlendFactor[4],
 		/* [annotation] */
-		__out_opt  UINT *pSampleMask);
+		_Out_opt_  UINT *pSampleMask);
 
-	STDMETHOD_(void, OMGetDepthStencilState)(THIS_
+	void STDMETHODCALLTYPE OMGetDepthStencilState(
 		/* [annotation] */
-		__out_opt  ID3D11DepthStencilState **ppDepthStencilState,
+		_Out_opt_  ID3D11DepthStencilState **ppDepthStencilState,
 		/* [annotation] */
-		__out_opt  UINT *pStencilRef);
+		_Out_opt_  UINT *pStencilRef);
 
-	STDMETHOD_(void, SOGetTargets)(THIS_
+	void STDMETHODCALLTYPE SOGetTargets(
 		/* [annotation] */
-		__in_range(0, D3D11_SO_BUFFER_SLOT_COUNT)  UINT NumBuffers,
+		_In_range_(0, D3D11_SO_BUFFER_SLOT_COUNT)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount(NumBuffers)  ID3D11Buffer **ppSOTargets);
+		_Out_writes_opt_(NumBuffers)  ID3D11Buffer **ppSOTargets);
 
-	STDMETHOD_(void, RSGetState)(THIS_
+	void STDMETHODCALLTYPE RSGetState(
 		/* [annotation] */
-		__out  ID3D11RasterizerState **ppRasterizerState);
+		_Out_  ID3D11RasterizerState **ppRasterizerState);
 
-	STDMETHOD_(void, RSGetViewports)(THIS_
+	void STDMETHODCALLTYPE RSGetViewports(
 		/* [annotation] */
-		__inout /*_range(0, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE )*/   UINT *pNumViewports,
+		_Inout_ /*_range(0, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE )*/   UINT *pNumViewports,
 		/* [annotation] */
-		__out_ecount_opt(*pNumViewports)  D3D11_VIEWPORT *pViewports);
+		_Out_writes_opt_(*pNumViewports)  D3D11_VIEWPORT *pViewports);
 
-	STDMETHOD_(void, RSGetScissorRects)(THIS_
+	void STDMETHODCALLTYPE RSGetScissorRects(
 		/* [annotation] */
-		__inout /*_range(0, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE )*/   UINT *pNumRects,
+		_Inout_ /*_range(0, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE )*/   UINT *pNumRects,
 		/* [annotation] */
-		__out_ecount_opt(*pNumRects)  D3D11_RECT *pRects);
+		_Out_writes_opt_(*pNumRects)  D3D11_RECT *pRects);
 
-	STDMETHOD_(void, HSGetShaderResources)(THIS_
+	void STDMETHODCALLTYPE HSGetShaderResources(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
+		_Out_writes_opt_(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
 
-	STDMETHOD_(void, HSGetShader)(THIS_
+	void STDMETHODCALLTYPE HSGetShader(
 		/* [annotation] */
-		__out  ID3D11HullShader **ppHullShader,
+		_Out_  ID3D11HullShader **ppHullShader,
 		/* [annotation] */
-		__out_ecount_opt(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
+		_Out_writes_opt_(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
 		/* [annotation] */
-		__inout_opt  UINT *pNumClassInstances);
+		_Inout_opt_  UINT *pNumClassInstances);
 
-	STDMETHOD_(void, HSGetSamplers)(THIS_
+	void STDMETHODCALLTYPE HSGetSamplers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers);
+		_Out_writes_opt_(NumSamplers)  ID3D11SamplerState **ppSamplers);
 
-	STDMETHOD_(void, HSGetConstantBuffers)(THIS_
+	void STDMETHODCALLTYPE HSGetConstantBuffers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
+		_Out_writes_opt_(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
 
-	STDMETHOD_(void, DSGetShaderResources)(THIS_
+	void STDMETHODCALLTYPE DSGetShaderResources(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
+		_Out_writes_opt_(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
 
-	STDMETHOD_(void, DSGetShader)(THIS_
+	void STDMETHODCALLTYPE DSGetShader(
 		/* [annotation] */
-		__out  ID3D11DomainShader **ppDomainShader,
+		_Out_  ID3D11DomainShader **ppDomainShader,
 		/* [annotation] */
-		__out_ecount_opt(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
+		_Out_writes_opt_(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
 		/* [annotation] */
-		__inout_opt  UINT *pNumClassInstances);
+		_Inout_opt_  UINT *pNumClassInstances);
 
-	STDMETHOD_(void, DSGetSamplers)(THIS_
+	void STDMETHODCALLTYPE DSGetSamplers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers);
+		_Out_writes_opt_(NumSamplers)  ID3D11SamplerState **ppSamplers);
 
-	STDMETHOD_(void, DSGetConstantBuffers)(THIS_
+	void STDMETHODCALLTYPE DSGetConstantBuffers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
+		_Out_writes_opt_(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
 
-	STDMETHOD_(void, CSGetShaderResources)(THIS_
+	void STDMETHODCALLTYPE CSGetShaderResources(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
+		_In_range_(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - StartSlot)  UINT NumViews,
 		/* [annotation] */
-		__out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
+		_Out_writes_opt_(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews);
 
-	STDMETHOD_(void, CSGetUnorderedAccessViews)(THIS_
+	void STDMETHODCALLTYPE CSGetUnorderedAccessViews(
 		/* [annotation] */
-		__in_range(0, D3D11_PS_CS_UAV_REGISTER_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_PS_CS_UAV_REGISTER_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_PS_CS_UAV_REGISTER_COUNT - StartSlot)  UINT NumUAVs,
+		_In_range_(0, D3D11_PS_CS_UAV_REGISTER_COUNT - StartSlot)  UINT NumUAVs,
 		/* [annotation] */
-		__out_ecount(NumUAVs)  ID3D11UnorderedAccessView **ppUnorderedAccessViews);
+		_Out_writes_opt_(NumUAVs)  ID3D11UnorderedAccessView **ppUnorderedAccessViews);
 
-	STDMETHOD_(void, CSGetShader)(THIS_
+	void STDMETHODCALLTYPE CSGetShader(
 		/* [annotation] */
-		__out  ID3D11ComputeShader **ppComputeShader,
+		_Out_  ID3D11ComputeShader **ppComputeShader,
 		/* [annotation] */
-		__out_ecount_opt(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
+		_Out_writes_opt_(*pNumClassInstances)  ID3D11ClassInstance **ppClassInstances,
 		/* [annotation] */
-		__inout_opt  UINT *pNumClassInstances);
+		_Inout_opt_  UINT *pNumClassInstances);
 
-	STDMETHOD_(void, CSGetSamplers)(THIS_
+	void STDMETHODCALLTYPE CSGetSamplers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
+		_In_range_(0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT - StartSlot)  UINT NumSamplers,
 		/* [annotation] */
-		__out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers);
+		_Out_writes_opt_(NumSamplers)  ID3D11SamplerState **ppSamplers);
 
-	STDMETHOD_(void, CSGetConstantBuffers)(THIS_
+	void STDMETHODCALLTYPE CSGetConstantBuffers(
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - 1)  UINT StartSlot,
 		/* [annotation] */
-		__in_range(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
+		_In_range_(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT - StartSlot)  UINT NumBuffers,
 		/* [annotation] */
-		__out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
+		_Out_writes_opt_(NumBuffers)  ID3D11Buffer **ppConstantBuffers);
 
-	STDMETHOD_(void, ClearState)(THIS);
+	void STDMETHODCALLTYPE ClearState(void);
 
-	STDMETHOD_(void, Flush)(THIS);
+	void STDMETHODCALLTYPE Flush(void);
 
-	STDMETHOD_(D3D11_DEVICE_CONTEXT_TYPE, GetType)(THIS);
+	D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType(void);
 
-	STDMETHOD_(UINT, GetContextFlags)(THIS);
+	UINT STDMETHODCALLTYPE GetContextFlags(void);
 
-	STDMETHOD(FinishCommandList)(THIS_
+	HRESULT STDMETHODCALLTYPE FinishCommandList(
 		BOOL RestoreDeferredContextState,
 		/* [annotation] */
-		__out_opt  ID3D11CommandList **ppCommandList);
+		_Out_opt_  ID3D11CommandList **ppCommandList);
 
-};
 
-// -----------------------------------------------------------------------------
-
-class HackerContext1: public HackerContext
-{
-private:
-	ID3D11Device1 *mOrigDevice1;
-	ID3D11DeviceContext1 *mOrigContext1;
-	HackerDevice1 *mHackerDevice1;
-
-public:
-	HackerContext1(ID3D11Device1 *pDevice, ID3D11DeviceContext1 *pContext1);
-
-	void SetHackerDevice1(HackerDevice1 *pDevice);
-
+	/** ID3D11DeviceContext1 **/
 
 	void STDMETHODCALLTYPE CopySubresourceRegion1(
 		/* [annotation] */

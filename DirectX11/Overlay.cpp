@@ -4,12 +4,20 @@
 #include "Overlay.h"
 
 #include <DirectXColors.h>
-#include <StrSafe.h>
+//#include <StrSafe.h>
 
-#include "D3D11Wrapper.h"
 #include "SimpleMath.h"
 #include "SpriteBatch.h"
-#include "nvapi.h"
+
+#include "log.h"
+#include "version.h"
+#include "D3D11Wrapper.h"
+//#include "nvapi.h"
+#include "Globals.h"
+
+#include "HackerDevice.h"
+#include "HackerContext.h"
+
 
 
 // Side note: Not really stoked with C++ string handling.  There are like 4 or
@@ -31,25 +39,21 @@
 const int maxstring = 200;
 
 
-Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapChain *pSwapChain)
+Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain)
 {
-	HRESULT hr;
-
-	LogInfo("Overlay::Overlay created for %p: %s\n", pSwapChain, type_name(pSwapChain));
+	LogInfo("Overlay::Overlay created for %p\n", pSwapChain);
 	LogInfo("  on HackerDevice: %p, HackerContext: %p\n", pDevice, pContext);
 
-	// Not positive we need all of these references, but let's keep them handy.
-	// We need the context at a minimum.
+	// Drawing environment for this swap chain. This is the game environment.
+	// These should specifically avoid Hacker* objects, to avoid object 
+	// callbacks or other problems. We just want to draw here, nothing tricky.
+	// The only exception being that we need the HackerDevice in order to 
+	// draw the current stereoparams.
 	mHackerDevice = pDevice;
-	mHackerContext = pContext;
-	mHackerSwapChain = pSwapChain;
-
-	DXGI_SWAP_CHAIN_DESC description;
-	hr = pSwapChain->GetDesc(&description);
-	if (FAILED(hr))
-		return;
-	mResolution = DirectX::XMUINT2(description.BufferDesc.Width, description.BufferDesc.Height);
-
+	mOrigSwapChain = pSwapChain;
+	mOrigDevice = mHackerDevice->GetOrigDevice1();
+	mOrigContext = pContext->GetOrigContext1();
+		
 	// The courierbold.spritefont is now included as binary resource data attached
 	// to the d3d11.dll.  We can fetch that resource and pass it to new SpriteFont
 	// to avoid having to drag around the font file.
@@ -62,9 +66,9 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapC
 	// We want to use the original device and original context here, because
 	// these will be used by DirectXTK to generate VertexShaders and PixelShaders
 	// to draw the text, and we don't want to intercept those.
-	mFont.reset(new DirectX::SpriteFont(pDevice->GetOrigDevice(), fontBlob, fontSize));
+	mFont.reset(new DirectX::SpriteFont(mOrigDevice, fontBlob, fontSize));
 	mFont->SetDefaultCharacter(L'?');
-	mSpriteBatch.reset(new DirectX::SpriteBatch(pContext->GetPassThroughOrigContext()));
+	mSpriteBatch.reset(new DirectX::SpriteBatch(mOrigContext));
 }
 
 Overlay::~Overlay()
@@ -101,87 +105,84 @@ using namespace DirectX::SimpleMath;
 void Overlay::SaveState()
 {
 	memset(&state, 0, sizeof(state));
-
-	ID3D11DeviceContext *context = mHackerContext->GetPassThroughOrigContext();
-
-	context->OMGetRenderTargets(1, &state.pRenderTargetView, &state.pDepthStencilView);
+	
+	mOrigContext->OMGetRenderTargets(1, &state.pRenderTargetView, &state.pDepthStencilView);
 	state.RSNumViewPorts = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
-	context->RSGetViewports(&state.RSNumViewPorts, state.pViewPorts);
+	mOrigContext->RSGetViewports(&state.RSNumViewPorts, state.pViewPorts);
 
-	context->OMGetBlendState(&state.pBlendState, state.BlendFactor, &state.SampleMask);
-	context->OMGetDepthStencilState(&state.pDepthStencilState, &state.StencilRef);
-	context->RSGetState(&state.pRasterizerState);
-	context->PSGetSamplers(0, 1, state.samplers);
-	context->IAGetPrimitiveTopology(&state.topology);
-	context->IAGetInputLayout(&state.pInputLayout);
-	context->VSGetShader(&state.pVertexShader, state.pVSClassInstances, &state.VSNumClassInstances);
-	context->PSGetShader(&state.pPixelShader, state.pPSClassInstances, &state.PSNumClassInstances);
-	context->IAGetVertexBuffers(0, 1, state.pVertexBuffers, state.Strides, state.Offsets);
-	context->IAGetIndexBuffer(&state.IndexBuffer, &state.Format, &state.Offset);
-	context->VSGetConstantBuffers(0, 1, state.pConstantBuffers);
-	context->PSGetShaderResources(0, 1, state.pShaderResourceViews);
+	mOrigContext->OMGetBlendState(&state.pBlendState, state.BlendFactor, &state.SampleMask);
+	mOrigContext->OMGetDepthStencilState(&state.pDepthStencilState, &state.StencilRef);
+	mOrigContext->RSGetState(&state.pRasterizerState);
+	mOrigContext->PSGetSamplers(0, 1, state.samplers);
+	mOrigContext->IAGetPrimitiveTopology(&state.topology);
+	mOrigContext->IAGetInputLayout(&state.pInputLayout);
+	mOrigContext->VSGetShader(&state.pVertexShader, state.pVSClassInstances, &state.VSNumClassInstances);
+	mOrigContext->PSGetShader(&state.pPixelShader, state.pPSClassInstances, &state.PSNumClassInstances);
+	mOrigContext->IAGetVertexBuffers(0, 1, state.pVertexBuffers, state.Strides, state.Offsets);
+	mOrigContext->IAGetIndexBuffer(&state.IndexBuffer, &state.Format, &state.Offset);
+	mOrigContext->VSGetConstantBuffers(0, 1, state.pConstantBuffers);
+	mOrigContext->PSGetShaderResources(0, 1, state.pShaderResourceViews);
 }
 
 void Overlay::RestoreState()
 {
 	unsigned i;
-	ID3D11DeviceContext *context = mHackerContext->GetPassThroughOrigContext();
 
-	context->OMSetRenderTargets(1, &state.pRenderTargetView, state.pDepthStencilView);
+	mOrigContext->OMSetRenderTargets(1, &state.pRenderTargetView, state.pDepthStencilView);
 	if (state.pRenderTargetView)
 		state.pRenderTargetView->Release();
 	if (state.pDepthStencilView)
 		state.pDepthStencilView->Release();
 
-	context->RSSetViewports(state.RSNumViewPorts, state.pViewPorts);
+	mOrigContext->RSSetViewports(state.RSNumViewPorts, state.pViewPorts);
 	
-	context->OMSetBlendState(state.pBlendState, state.BlendFactor, state.SampleMask);
+	mOrigContext->OMSetBlendState(state.pBlendState, state.BlendFactor, state.SampleMask);
 	if (state.pBlendState)
 		state.pBlendState->Release();
 
-	context->OMSetDepthStencilState(state.pDepthStencilState, state.StencilRef);
+	mOrigContext->OMSetDepthStencilState(state.pDepthStencilState, state.StencilRef);
 	if (state.pDepthStencilState)
 		state.pDepthStencilState->Release();
 
-	context->RSSetState(state.pRasterizerState);
+	mOrigContext->RSSetState(state.pRasterizerState);
 	if (state.pRasterizerState)
 		state.pRasterizerState->Release();
 
-	context->PSSetSamplers(0, 1, state.samplers);
+	mOrigContext->PSSetSamplers(0, 1, state.samplers);
 	if (state.samplers[0])
 		state.samplers[0]->Release();
 
-	context->IASetPrimitiveTopology(state.topology);
+	mOrigContext->IASetPrimitiveTopology(state.topology);
 
-	context->IASetInputLayout(state.pInputLayout);
+	mOrigContext->IASetInputLayout(state.pInputLayout);
 	if (state.pInputLayout)
 		state.pInputLayout->Release();
 
-	context->VSSetShader(state.pVertexShader, state.pVSClassInstances, state.VSNumClassInstances);
+	mOrigContext->VSSetShader(state.pVertexShader, state.pVSClassInstances, state.VSNumClassInstances);
 	if (state.pVertexShader)
 		state.pVertexShader->Release();
 	for (i = 0; i < state.VSNumClassInstances; i++)
 		state.pVSClassInstances[i]->Release();
 
-	context->PSSetShader(state.pPixelShader, state.pPSClassInstances, state.PSNumClassInstances);
+	mOrigContext->PSSetShader(state.pPixelShader, state.pPSClassInstances, state.PSNumClassInstances);
 	if (state.pPixelShader)
 		state.pPixelShader->Release();
 	for (i = 0; i < state.PSNumClassInstances; i++)
 		state.pPSClassInstances[i]->Release();
 
-	context->IASetVertexBuffers(0, 1, state.pVertexBuffers, state.Strides, state.Offsets);
+	mOrigContext->IASetVertexBuffers(0, 1, state.pVertexBuffers, state.Strides, state.Offsets);
 	if (state.pVertexBuffers[0])
 		state.pVertexBuffers[0]->Release();
 
-	context->IASetIndexBuffer(state.IndexBuffer, state.Format, state.Offset);
+	mOrigContext->IASetIndexBuffer(state.IndexBuffer, state.Format, state.Offset);
 	if (state.IndexBuffer)
 		state.IndexBuffer->Release();
 
-	context->VSSetConstantBuffers(0, 1, state.pConstantBuffers);
+	mOrigContext->VSSetConstantBuffers(0, 1, state.pConstantBuffers);
 	if (state.pConstantBuffers[0])
 		state.pConstantBuffers[0]->Release();
 
-	context->PSSetShaderResources(0, 1, state.pShaderResourceViews);
+	mOrigContext->PSSetShaderResources(0, 1, state.pShaderResourceViews);
 	if (state.pShaderResourceViews[0])
 		state.pShaderResourceViews[0]->Release();
 }
@@ -198,19 +199,27 @@ HRESULT Overlay::InitDrawState()
 	HRESULT hr;
 
 	ID3D11Texture2D *pBackBuffer;
-	hr = mHackerSwapChain->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+	hr = mOrigSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
 	if (FAILED(hr))
 		return hr;
 
+	// By doing this every frame, we are always up to date with correct size,
+	// and we need the address of the BackBuffer anyway, so this is low cost.
+	D3D11_TEXTURE2D_DESC description;
+	pBackBuffer->GetDesc(&description);
+	mResolution = DirectX::XMUINT2(description.Width, description.Height);
+
 	// use the back buffer address to create the render target
 	ID3D11RenderTargetView *backbuffer;
-	hr = mHackerDevice->GetOrigDevice()->CreateRenderTargetView(pBackBuffer, NULL, &backbuffer);
+	hr = mOrigDevice->CreateRenderTargetView(pBackBuffer, NULL, &backbuffer);
+
 	pBackBuffer->Release();
+
 	if (FAILED(hr))
 		return hr;
 
 	// set the first render target as the back buffer, with no stencil
-	mHackerContext->GetPassThroughOrigContext()->OMSetRenderTargets(1, &backbuffer, NULL);
+	mOrigContext->OMSetRenderTargets(1, &backbuffer, NULL);
 
 	// Holding onto a view of the back buffer can cause a crash on
 	// ResizeBuffers, so it is very important we release it here - it will
@@ -222,7 +231,7 @@ HRESULT Overlay::InitDrawState()
 
 	// Make sure there is at least one open viewport for DirectXTK to use.
 	D3D11_VIEWPORT openView = CD3D11_VIEWPORT(0.0, 0.0, float(mResolution.x), float(mResolution.y));
-	mHackerContext->GetPassThroughOrigContext()->RSSetViewports(1, &openView);
+	mOrigContext->RSSetViewports(1, &openView);
 
 	return S_OK;
 }
@@ -395,12 +404,6 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
 		swprintf_s(info, maxstring, L"Sep:%.0f  Conv:%.1f", separation, convergence);
 	else
 		swprintf_s(info, maxstring, L"Stereo disabled");
-}
-
-void Overlay::Resize(UINT Width, UINT Height)
-{
-	mResolution.x = Width;
-	mResolution.y = Height;
 }
 
 void Overlay::DrawOverlay(void)

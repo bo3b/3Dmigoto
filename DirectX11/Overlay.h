@@ -1,30 +1,38 @@
 #pragma once
 
 #include <memory>
-#include <d3d11.h>
+#include <d3d11_1.h>
+#include <dxgi1_2.h>
+
+
+// Since we are using SDK 8.0, we need to use the adapter code.
+// This allows us to use the latest version of DirectXTK with our
+// old SDK. https://github.com/Microsoft/DirectXMath/wiki
+
+#include <DirectXMath.h>
+namespace DirectX
+{
+#if (DIRECTX_MATH_VERSION < 305) && !defined(XM_CALLCONV)
+#define XM_CALLCONV __fastcall
+	typedef const XMVECTOR& HXMVECTOR;
+	typedef const XMMATRIX& FXMMATRIX;
+#endif
+}
 
 #include "SpriteFont.h"
 #include "SpriteBatch.h"
 
 #include "HackerDevice.h"
 #include "HackerContext.h"
-#include "HackerDXGI.h"
-#include "nvapi.h"
 
-
-// Forward references required because of circular references from the
-// other 'Hacker' objects.
-
-class HackerDevice;
-class HackerContext;
-class HackerDXGISwapChain;
 
 class Overlay
 {
 private:
-	HackerDXGISwapChain *mHackerSwapChain;
-	HackerDevice *mHackerDevice;
-	HackerContext *mHackerContext;
+	IDXGISwapChain* mOrigSwapChain;
+	ID3D11Device* mOrigDevice;
+	ID3D11DeviceContext* mOrigContext;
+	HackerDevice* mHackerDevice;
 
 	DirectX::XMUINT2 mResolution;
 	std::unique_ptr<DirectX::SpriteFont> mFont;
@@ -83,10 +91,9 @@ private:
 	void DrawShaderInfoLines();
 
 public:
-	Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapChain *pSwapChain);
+	Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain);
 	~Overlay();
 
 	void DrawOverlay(void);
-	void Resize(UINT Width, UINT Height);
 };
 

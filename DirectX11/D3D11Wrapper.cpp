@@ -1,23 +1,23 @@
 #include "D3D11Wrapper.h"
 
-#include <Shlobj.h>
-#include <Winuser.h>
-#include <map>
-#include <vector>
-#include <set>
-#include <iterator>
-#include <string>
-
-#include "util.h"
 #include "log.h"
-#include "DecompileHLSL.h"
-#include "Override.h"
 #include "Globals.h"
-#include "HackerDevice.h"
-#include "HackerContext.h"
 #include "IniHandler.h"
 
 #include "nvprofile.h"
+
+//#include <Shlobj.h>
+//#include <Winuser.h>
+//#include <map>
+//#include <vector>
+//#include <set>
+//#include <iterator>
+//#include <string>
+//
+//#include "util.h"
+//#include "Override.h"
+//#include "HackerDevice.h"
+//#include "HackerContext.h"
 
 // The Log file and the Globals are both used globally, and these are the actual
 // definitions of the variables.  All other uses will be via the extern in the 
@@ -122,13 +122,6 @@ void DestroyDLL()
 		fclose(LogFile);
 	}
 }
-
-// D3DCompiler bridge
-struct D3D11BridgeData
-{
-	UINT64 BinaryHash;
-	char *HLSLFileName;
-};
 
 int WINAPI D3DKMTCloseAdapter()
 {
@@ -364,32 +357,11 @@ static tD3DKMTOpenResource _D3DKMTOpenResource;
 typedef int (WINAPI *tD3DKMTQueryResourceInfo)(int a);
 static tD3DKMTQueryResourceInfo _D3DKMTQueryResourceInfo;
 
-typedef HRESULT(WINAPI *tD3D11CreateDevice)(
-	IDXGIAdapter *pAdapter,
-	D3D_DRIVER_TYPE DriverType,
-	HMODULE Software,
-	UINT Flags,
-	const D3D_FEATURE_LEVEL *pFeatureLevels,
-	UINT FeatureLevels,
-	UINT SDKVersion,
-	ID3D11Device **ppDevice,
-	D3D_FEATURE_LEVEL *pFeatureLevel,
-	ID3D11DeviceContext **ppImmediateContext);
-static tD3D11CreateDevice _D3D11CreateDevice;
-typedef HRESULT(WINAPI *tD3D11CreateDeviceAndSwapChain)(
-	IDXGIAdapter *pAdapter,
-	D3D_DRIVER_TYPE DriverType,
-	HMODULE Software,
-	UINT Flags,
-	const D3D_FEATURE_LEVEL *pFeatureLevels,
-	UINT FeatureLevels,
-	UINT SDKVersion,
-	DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
-	IDXGISwapChain **ppSwapChain,
-	ID3D11Device **ppDevice,
-	D3D_FEATURE_LEVEL *pFeatureLevel,
-	ID3D11DeviceContext **ppImmediateContext);
-static tD3D11CreateDeviceAndSwapChain _D3D11CreateDeviceAndSwapChain;
+tD3D11CreateDevice _D3D11CreateDevice;
+
+tD3D11CreateDeviceAndSwapChain _D3D11CreateDeviceAndSwapChain;
+
+
 
 
 void InitD311()
@@ -526,23 +498,6 @@ HRESULT WINAPI D3D11CoreCreateLayeredDevice(const void *unknown0, DWORD unknown1
 SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1)
 {
 	InitD311();
-	// Call from D3DCompiler (magic number from there) ?
-	if ((intptr_t)unknown0 == 0x77aa128b)
-	{
-		LogInfo("Shader code info from D3DCompiler_xx.dll wrapper received:\n");
-
-		// FIXME: Is this an unsigned 32bit integer or a pointer?
-		// It can't be both because they are not the same size on x64.
-		// We might be corrupting a pointer by using the wrong function signature
-		D3D11BridgeData *data = (D3D11BridgeData *)unknown1;
-		LogInfo("  Bytecode hash = %016llx\n", data->BinaryHash);
-		LogInfo("  Filename = %s\n", data->HLSLFileName);
-
-		EnterCriticalSection(&G->mCriticalSection);
-			G->mCompiledShaderMap[data->BinaryHash] = data->HLSLFileName;
-		LeaveCriticalSection(&G->mCriticalSection);
-		return 0xaa77125b;
-	}
 	LogInfo("D3D11CoreGetLayeredDeviceSize called.\n");
 
 	return (*_D3D11CoreGetLayeredDeviceSize)(unknown0, unknown1);
@@ -707,6 +662,11 @@ bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
 // created here, it's easy enough to provide them upon instantiation.
 //
 // Now intended to be fully null safe- as games seem to have a lot of variance.
+//
+// 1-8-18: Switching tacks to always return ID3D11Device1 objects, which are the 
+// platform_update required type.  Since it's a superset, we can in general just
+// the reference as a normal ID3D11Device.
+// In the no platform_update case, the mOrigDevice1 will actually be an ID3D11Device.
 
 HRESULT WINAPI D3D11CreateDevice(
 	_In_opt_        IDXGIAdapter        *pAdapter,
@@ -747,70 +707,60 @@ HRESULT WINAPI D3D11CreateDevice(
 	}
 
 	// Optional parameters means these might be null.
-	ID3D11Device *origDevice = ppDevice ? *ppDevice : nullptr;
-	ID3D11DeviceContext *origContext = ppImmediateContext ? *ppImmediateContext : nullptr;
+	ID3D11Device *retDevice = ppDevice ? *ppDevice : nullptr;
+	ID3D11DeviceContext *retContext = ppImmediateContext ? *ppImmediateContext : nullptr;
 
 	LogInfo("  D3D11CreateDevice returned device handle = %p, context handle = %p\n",
-		origDevice, origContext);
+		retDevice, retContext);
 
 #if _DEBUG_LAYER
-	ShowDebugInfo(origDevice);
+	ShowDebugInfo(retDevice);
 #endif
 
-	// When platform update is desired, we want to create the HackerDevice1 and
-	// HackerContext1 objects instead.  We'll store these and return them as
-	// non1 objects so other code can just use the objects.
-	// ToDo: Not at all sure this is right for platform_update.  In a DX9
-	// case, I tried this upconvert to a higher level object, and it returned
-	// an error.  In this case, we have actually created an ID3D11Device above,
-	// never an ID3D11Device1, but wrap that as if it was.  This seems wrong.
+	// We now want to always upconvert to ID3D11Device1 and ID3D11DeviceContext1,
+	// and will only use the downlevel objects if we get an error on QueryInterface.
 	ID3D11Device1 *origDevice1 = nullptr;
 	ID3D11DeviceContext1 *origContext1 = nullptr;
-	if (G->enable_platform_update)
+	HRESULT res;
+	if (retDevice != nullptr)
 	{
-		HRESULT res;
-		if (origDevice != nullptr)
-		{
-			res = origDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
-			LogInfo("  QueryInterface(ID3D11Device1) returned result = %x, device1 handle = %p\n", res, origDevice1);
-		}
-		if (origContext != nullptr)
-		{
-			res = origContext->QueryInterface(IID_PPV_ARGS(&origContext1));
-			LogInfo("  QueryInterface(ID3D11DeviceContext1) returned result = %x, context1 handle = %p\n", res, origContext1);
-		}
+		res = retDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
+		LogInfo("  QueryInterface(ID3D11Device1) returned result = %x, device1 handle = %p\n", res, origDevice1);
+		if (FAILED(res))
+			origDevice1 = static_cast<ID3D11Device1*>(retDevice);
+	}
+	if (retContext != nullptr)
+	{
+		res = retContext->QueryInterface(IID_PPV_ARGS(&origContext1));
+		LogInfo("  QueryInterface(ID3D11DeviceContext1) returned result = %x, context1 handle = %p\n", res, origContext1);
+		if (FAILED(res))
+			origContext1 = static_cast<ID3D11DeviceContext1*>(retContext);
 	}
 
 	// Create a wrapped version of the original device to return to the game.
 	HackerDevice *deviceWrap = nullptr;
-	if (origDevice != nullptr)
+	if (origDevice1 != nullptr)
 	{
-		if (G->enable_platform_update)
-			deviceWrap = new HackerDevice1(origDevice1, origContext1);
-		else
-			deviceWrap = new HackerDevice(origDevice, origContext);
+		deviceWrap = new HackerDevice(origDevice1, origContext1);
 
 		if (G->enable_hooks & EnableHooks::DEVICE)
 			deviceWrap->HookDevice();
 		else
 			*ppDevice = deviceWrap;
-		LogInfo("  HackerDevice %p created to wrap %p\n", deviceWrap, origDevice);
+		LogInfo("  HackerDevice %p created to wrap %p\n", deviceWrap, origDevice1);
 	}
 
 	// Create a wrapped version of the original context to return to the game.
 	HackerContext *contextWrap = nullptr;
-	if (origContext != nullptr)
+	if (origContext1 != nullptr)
 	{
-		if (G->enable_platform_update)
-			contextWrap = new HackerContext1(origDevice1, origContext1);
-		else
-			contextWrap = new HackerContext(origDevice, origContext);
+		contextWrap = HackerContextFactory(origDevice1, origContext1);
 
 		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
 			contextWrap->HookContext();
 		else
 			*ppImmediateContext = contextWrap;
-		LogInfo("  HackerContext %p created to wrap %p\n", contextWrap, origContext);
+		LogInfo("  HackerContext %p created to wrap %p\n", contextWrap, origContext1);
 	}
 
 	// Let each of the new Hacker objects know about the other, needed for unusual
@@ -827,7 +777,7 @@ HRESULT WINAPI D3D11CreateDevice(
 		contextWrap->Bind3DMigotoResources();
 
 	LogInfo("->D3D11CreateDevice result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n\n",
-		ret, origDevice, deviceWrap, origContext, contextWrap);
+		ret, origDevice1, deviceWrap, origContext1, contextWrap);
 
 	return ret;
 }
@@ -841,6 +791,25 @@ HRESULT WINAPI D3D11CreateDevice(
 // null safe, and never access anything without checking first.
 // 
 // See notes in CreateDevice.
+//
+// 1-18-18: All new strategy here for creating swapchains, based on the success of
+//	doing single-layer wrapping, and the direct hook for IDXGIFactory->CreateSwapChain.
+//	A fundamental problem for our wrapping is this call- D3D11CreateDeviceAndSwapChain.
+//	Because it creates a swapchain implicitly, that means there has always been two
+//	paths to CreateSwapChain, one with a HackerDevice, wrapped as part of them taking
+//	the secret path through QueryInterface, and one an ID3D11Device from here, where
+//	it's in the guts of this call.  That has caused all sorts of knock-on effects,
+//	because they are too different from our perspective.
+//
+// New approach: break this call into two, and not call the original.  They are
+// fundamentally two pieces, so we'll just create a Device, then create a SwapChain.
+// This avoids the complexity of using globals, or after the fact fixing object 
+// references.  And simplifies the CreateSwapChain, and removes duplicate code. This
+// one call has been creating enormous problems, so let's just fix it instead of all
+// the problems.  Current Windows MSDN recommendation is to not use this call.
+//
+// Using this reference for the secret path: 
+//	https://stackoverflow.com/questions/27270504/directx-creating-the-swapchain
 
 HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	_In_opt_			IDXGIAdapter         *pAdapter,
@@ -856,8 +825,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	_Out_opt_			D3D_FEATURE_LEVEL    *pFeatureLevel,
 	_Out_opt_			ID3D11DeviceContext  **ppImmediateContext)
 {
-	HRESULT ret;
-	DXGI_SWAP_CHAIN_DESC originalSwapChainDesc;
+	HRESULT hr;
 
 	InitD311();
 
@@ -879,160 +847,90 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	Flags = EnableDebugFlags(Flags);
 #endif
 
-	if (pSwapChainDesc != nullptr) {
-		// Save off the window handle so we can translate mouse cursor
-		// coordinates to the window:
-		G->hWnd = pSwapChainDesc->OutputWindow;
+	// Create the Device that the caller specified, but using our wrapped CreateDevice
+	// on purpose, so that we get a HackerDevice back in ppDevice.  
+	hr = D3D11CreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, 
+		ppDevice, pFeatureLevel, ppImmediateContext);
 
-		if (G->SCREEN_UPSCALING > 0)
-		{		
-			// Copy input swap chain desc for case the upscaling is on
-			memcpy(&originalSwapChainDesc, pSwapChainDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
-		}
-
-		// Require in case the software mouse and upscaling are on at the same time
-		G->GAME_INTERNAL_WIDTH = pSwapChainDesc->BufferDesc.Width;
-		G->GAME_INTERNAL_HEIGHT = pSwapChainDesc->BufferDesc.Height;
-
-		if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN) {
-			// TODO: Use a helper class to track *all* different resolutions
-			G->mResolutionInfo.width = pSwapChainDesc->BufferDesc.Width;
-			G->mResolutionInfo.height = pSwapChainDesc->BufferDesc.Height;
-			LogInfo("Got resolution from swap chain: %ix%i\n",
-				G->mResolutionInfo.width, G->mResolutionInfo.height);
-		}
-	}
-
-	ForceDisplayParams(pSwapChainDesc);
-
-	ret = (*_D3D11CreateDeviceAndSwapChain)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
-		FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain, ppDevice, pFeatureLevel, ppImmediateContext);
-
-	if (FAILED(ret))
+	// Can fail with null arguments, so follow the behavior of the original call.	
+	if (FAILED(hr))
 	{
-		LogInfo("  failed with HRESULT=%x\n", ret);
-		return ret;
+		LogInfo("->failed with HRESULT=%x\n", hr);
+		return hr;
 	}
 
-	// Optional parameters means these might be null.
-	ID3D11Device *origDevice = ppDevice ? *ppDevice : nullptr;
-	ID3D11DeviceContext *origContext = ppImmediateContext ? *ppImmediateContext : nullptr;
-	IDXGISwapChain *origSwapChain = ppSwapChain ? *ppSwapChain : nullptr;
-
-	LogInfo("  D3D11CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swapchain handle = %p\n",
-		origDevice, origContext, origSwapChain);
-
-#if _DEBUG_LAYER
-	ShowDebugInfo(origDevice);
-#endif
-
-	// When platform update is desired, we want to create the HackerDevice1 and
-	// HackerContext1 objects instead. See comments above for CreateDevice.
-	ID3D11Device1 *origDevice1 = nullptr;
-	ID3D11DeviceContext1 *origContext1 = nullptr;
-	if (G->enable_platform_update)
+	// Optional parameters means these might be null.  If ppSwapChain is null, we 
+	// can't call through to CreateSwapChain and thus get our hook which wraps the
+	// returned swapchain.  But, this is legal, so just exit with what we've got so far.
+	if (!ppSwapChain)
 	{
-		HRESULT res;
-		if (origDevice != nullptr)
-		{
-			res = origDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
-			LogInfo("  QueryInterface(ID3D11Device1) returned result = %x, device1 handle = %p\n", res, origDevice1);
-		}
-		if (origContext != nullptr)
-		{
-			res = origContext->QueryInterface(IID_PPV_ARGS(&origContext1));
-			LogInfo("  QueryInterface(ID3D11DeviceContext1) returned result = %x, context1 handle = %p\n", res, origContext1);
-		}
+		LogInfo("->Return with HRESULT=%x, No swapchain created.\n", hr);
+		return hr;
 	}
 
-	HackerDevice *deviceWrap = nullptr;
-	if (ppDevice != nullptr)
+	// If we do have a ppSwapChain, but we do not have a ppDevice, we can't handle
+	// this scenario.  It doesn't make sense to do this, but that doesn't mean it
+	// won't happen.  We need the ppDevice in order to find the original factory.
+	// They do too, but maybe there is something tricky we don't know about.  
+	// If this scenario happens, let's do a hard failure with logging, to let us know.
+	if (!ppDevice)
+		goto fatalExit;
+
+
+	// Now that we successfully created a HackerDevice and maybe a HackerContext, we can
+	// create a SwapChain to match.  We'll use the secret path to get the proper factory
+	// for this Device.  
+	IDXGIDevice* dxgiDevice;
+	hr = (*ppDevice)->QueryInterface(__uuidof(IDXGIDevice), (void **)& dxgiDevice);
+	if (FAILED(hr))
+		goto fatalExit;
+	IDXGIAdapter* dxgiAdapter;
+	hr = dxgiDevice->GetParent(__uuidof(IDXGIAdapter), (void **)& dxgiAdapter);
+	if (FAILED(hr))
+		goto fatalExit;
+	IDXGIFactory* dxgiFactory;
+	hr = dxgiAdapter->GetParent(__uuidof(IDXGIFactory), (void **)& dxgiFactory);
+	if (FAILED(hr))
+		goto fatalExit;
+
+	// This will implicitly call IDXGIFactory->CreateSwapChain, which we have hooked
+	// in HookedDXGI. That hook will always create and return the HackerSwapChain, 
+	// create the Overlay, and ForceDisplayParams if required.
+	hr = dxgiFactory->CreateSwapChain(*ppDevice, pSwapChainDesc, ppSwapChain);
+
+	dxgiFactory->Release();
+	dxgiAdapter->Release();
+	dxgiDevice->Release();
+
+	// If the CreateSwapChain fails, we are in the middle of creating Device and
+	// Context.  Let's release those, and mark them null to match the original semantics.
+	if (FAILED(hr))
 	{
-		if (G->enable_platform_update)
-			deviceWrap = new HackerDevice1(origDevice1, origContext1);
-		else
-			deviceWrap = new HackerDevice(origDevice, origContext);
-
-		if (G->enable_hooks & EnableHooks::DEVICE)
-			deviceWrap->HookDevice();
-		else
-			*ppDevice = deviceWrap;
-		LogInfo("  HackerDevice %p created to wrap %p\n", deviceWrap, origDevice);
-	}
-
-	HackerContext *contextWrap = nullptr;
-	if (ppImmediateContext != nullptr)
-	{
-		if (G->enable_platform_update)
-			contextWrap = new HackerContext1(origDevice1, origContext1);
-		else
-			contextWrap = new HackerContext(origDevice, origContext);
-
-		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
-			contextWrap->HookContext();
-		else
-			*ppImmediateContext = contextWrap;
-		LogInfo("  HackerContext %p created to wrap %p\n", contextWrap, origContext);
-	}
-
-	HackerDXGISwapChain *swapchainWrap = nullptr;
-
-	if (ppSwapChain != nullptr) {
-		if (G->SCREEN_UPSCALING == 0)
+		(*ppDevice)->Release();
+		*ppDevice = nullptr;
+		if (ppImmediateContext)
 		{
-			swapchainWrap = new HackerDXGISwapChain(origSwapChain, deviceWrap, contextWrap);
-			LogInfo("  HackerDXGISwapChain %p created to wrap %p\n", swapchainWrap, origSwapChain);
-		}
-		else
-		{
-			if (G->UPSCALE_MODE == 1)
-			{
-				//TODO: find a way to allow this!
-				BeepFailure();
-				LogInfo("The game uses D3D11CreateDeviceAndSwapChain to create the swap chain! For this function only upscale_mode = 0 is supported!\n");
-				LogInfo("Trying to switch to this mode!\n");
-				G->UPSCALE_MODE = 0;
-			}
-
-			try
-			{
-				swapchainWrap = new HackerUpscalingDXGISwapChain(origSwapChain, deviceWrap, contextWrap, &originalSwapChainDesc, G->SCREEN_WIDTH, G->SCREEN_HEIGHT,nullptr);
-				LogInfo("  HackerUpscalingDXGISwapChain %p created to wrap %p.\n", swapchainWrap, origSwapChain);
-			}
-			catch (const Exception3DMigoto& e)
-			{
-				LogInfo("HackerDXGIFactory::CreateSwapChain(): Creation of Upscaling Swapchain failed. Error: %s\n", e.what().c_str());
-				// Something went wrong inform the user with double beep and end!;
-				DoubleBeepExit();
-			}
+			(*ppImmediateContext)->Release();
+			*ppImmediateContext = nullptr;
 		}
 
-		if (swapchainWrap != nullptr)
-			*ppSwapChain = reinterpret_cast<IDXGISwapChain*>(swapchainWrap);
+		LogInfo("->D3D11CreateDeviceAndSwapChain failed with HRESULT=%x\n", hr);
+		return hr;
 	}
 
-	// Let each of the new Hacker objects know about the other, needed for unusual
-	// calls in the Hacker objects where we want to return the Hacker versions.
-	if (deviceWrap != nullptr)
-		deviceWrap->SetHackerContext(contextWrap);
-	if (deviceWrap != nullptr) // Is it not already done in the hackerDXGISwapChain class?
-		deviceWrap->SetHackerSwapChain(swapchainWrap);
-	if (contextWrap != nullptr)
-		contextWrap->SetHackerDevice(deviceWrap);
+	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, swapchain wrapper = %p\n\n", hr, *ppSwapChain);
+	return hr;
 
-	// With all the interacting objects set up, we can now safely finish the HackerDevice init.
-	if (deviceWrap != nullptr)
-		deviceWrap->Create3DMigotoResources();
-	if (contextWrap != nullptr)
-		contextWrap->Bind3DMigotoResources();
 
-	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, device handle = %p, device wrapper = %p, context handle = %p, "
-		"context wrapper = %p, swapchain handle = %p, swapchain wrapper = %p\n\n",
-		ret, origDevice, deviceWrap, origContext, contextWrap, origSwapChain, swapchainWrap);
-
-	return ret;
+fatalExit:
+	// Fatal error.  If we can't do these calls, we can't play the game.  
+	// Hard failure is superior to trying to workaround a problem.  We do not
+	// expect to ever see this happen.
+	LogInfo("*** Fatal error in CreateDeviceAndSwapChain with HRESULT=%x\n", hr);
+	DoubleBeepExit();
 }
 
+// -----------------------------------------------------------------------------------------------
 // We used to call nvapi_QueryInterface directly, however that puts nvapi.dll /
 // nvapi64.dll in our dependencies list and the Windows dynamic linker will
 // refuse to load us if that doesn't exist, which is a problem on AMD or Intel
@@ -1082,4 +980,138 @@ void NvAPIOverride()
 	intptr_t ret = (intptr_t)nvapi_QueryInterfacePtr(0xb03bb03b);
 	if ((ret & 0xffffffff) != 0xeecc34ab)
 		LogInfo("  overriding NVAPI wrapper failed.\n");
+}
+
+
+// -----------------------------------------------------------------------------------------------
+// This is our hook for LoadLibraryExW, handling the loading of our original_* libraries.
+//
+// The hooks are actually installed during load time in DLLMainHook, but called here 
+// whenever the game or system calls LoadLibraryExW.  These are here because at this
+// point in the runtime, it is OK to do normal calls like LoadLibrary, and logging
+// is available.  This is normal runtime.
+
+
+static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags, 
+	LPCWSTR our_name, LPCWSTR library)
+{
+	WCHAR fullPath[MAX_PATH];
+	UINT ret;
+
+	// We can use System32 for all cases, because it will be properly rerouted
+	// to SysWow64 by LoadLibraryEx itself.
+
+	ret = GetSystemDirectoryW(fullPath, ARRAYSIZE(fullPath));
+	if (ret == 0 || ret >= ARRAYSIZE(fullPath))
+		return NULL;
+	wcscat_s(fullPath, MAX_PATH, L"\\");
+	wcscat_s(fullPath, MAX_PATH, library);
+
+	// Bypass the known expected call from our wrapped d3d11 & nvapi, where it needs
+	// to call to the system to get APIs. This is a bit of a hack, but if the string
+	// comes in as original_d3d11/nvapi/nvapi64, that's from us, and needs to switch 
+	// to the real one. The test string should have no path attached.
+
+	if (_wcsicmp(lpLibFileName, our_name) == 0)
+	{
+		LogInfoW(L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n",
+			lpLibFileName, fullPath);
+
+		return fnOrigLoadLibraryExW(fullPath, hFile, dwFlags);
+	}
+
+	// For this case, we want to see if it's the game loading d3d11 or nvapi directly
+	// from the system directory, and redirect it to the game folder if so, by stripping
+	// the system path. This is to be case insensitive as we don't know if NVidia will 
+	// change that and otherwise break it it with a driver upgrade. 
+
+	if (_wcsicmp(lpLibFileName, fullPath) == 0)
+	{
+		LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
+
+		return fnOrigLoadLibraryExW(library, hFile, dwFlags);
+	}
+
+	return NULL;
+}
+
+// Function called for every LoadLibraryExW call once we have hooked it.
+// We want to look for overrides to System32 that we can circumvent.  This only happens
+// in the current process, not system wide.
+// 
+// We need to do two things here.  First, we need to bypass all calls that go
+// directly to the System32 folder, because that will circumvent our wrapping 
+// of the d3d11 and nvapi APIs. The nvapi itself does this specifically as fake
+// security to avoid proxy DLLs like us. 
+// Second, because we are now forcing all LoadLibraryExW calls back to the game
+// folder, we need somehow to allow us access to the original dlls so that we can
+// get the original proc addresses to call.  We do this with the original_* names
+// passed in to this routine.
+//
+// There three use cases:
+// x32 game on x32 OS
+//	 LoadLibraryExW("C:\Windows\system32\d3d11.dll", NULL, 0)
+//	 LoadLibraryExW("C:\Windows\system32\nvapi.dll", NULL, 0)
+// x64 game on x64 OS
+//	 LoadLibraryExW("C:\Windows\system32\d3d11.dll", NULL, 0)
+//	 LoadLibraryExW("C:\Windows\system32\nvapi64.dll", NULL, 0)
+// x32 game on x64 OS
+//	 LoadLibraryExW("C:\Windows\SysWOW64\d3d11.dll", NULL, 0)
+//	 LoadLibraryExW("C:\Windows\SysWOW64\nvapi.dll", NULL, 0)
+//
+// To be general and simplify the init, we are going to specifically do the bypass 
+// for all variants, even though we only know of this happening on x64 games.  
+//
+// An important thing to remember here is that System32 is automatically rerouted
+// to SysWow64 by the OS as necessary, so we can use System32 in all cases.
+//
+// It's not clear if we should also hook LoadLibraryW, but we don't have examples
+// where we need that yet.
+
+
+// The storage for the original routine so we can call through.
+// Set to nullptr in case we need to check for it already being hooked.
+
+HMODULE(__stdcall *fnOrigLoadLibraryExW)(
+	_In_       LPCTSTR lpFileName,
+	_Reserved_ HANDLE  hFile,
+	_In_       DWORD   dwFlags
+	) = nullptr;
+
+HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
+{
+	HMODULE module;
+	static bool hook_enabled = true;
+
+	LogDebugW(L"   Hooked_LoadLibraryExW load: %s.\n", lpLibFileName);
+
+	if (_wcsicmp(lpLibFileName, L"SUPPRESS_3DMIGOTO_REDIRECT") == 0) {
+		// Something (like Origin's IGO32.dll hook in ntdll.dll
+		// LdrLoadDll) is interfering with our hook and the caller is
+		// about to attempt the load again using the full path. Disable
+		// our redirect for the next call to make sure we don't give
+		// them a reference to themselves. Subsequent calls will be
+		// armed again in case we still need the redirect.
+		hook_enabled = false;
+		return NULL;
+	}
+
+	if (hook_enabled) {
+		module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_d3d11.dll", L"d3d11.dll");
+		if (module)
+			return module;
+
+		module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi64.dll", L"nvapi64.dll");
+		if (module)
+			return module;
+
+		module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi.dll", L"nvapi.dll");
+		if (module)
+			return module;
+	}
+	else
+		hook_enabled = true;
+
+	// Normal unchanged case.
+	return fnOrigLoadLibraryExW(lpLibFileName, hFile, dwFlags);
 }

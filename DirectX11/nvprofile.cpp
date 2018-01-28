@@ -1,7 +1,7 @@
 #include "nvprofile.h"
 
 #include "../util.h"
-#include "Globals.h"
+//#include "Globals.h"
 #include "IniHandler.h"
 #include "D3D11Wrapper.h"
 

@@ -5,12 +5,22 @@
 // IDXGIFactory3	Win8.1			1.3
 // IDXGIFactory4					1.4
 // IDXGIFactory5					1.5
+//
+// IDXGISwapChain	Win7			1.0				11.0
+// IDXGISwapChain1	Platform update	1.2				11.1
+// IDXGISwapChain2	Win8.1			1.3
+// IDXGISwapChain3	Win10			1.4
+// IDXGISwapChain4					1.5
+
+#include <d3d11_1.h>
+
+#include "HookedDXGI.h"
+#include "HackerDXGI.h"
 
 #include "DLLMainHook.h"
 #include "log.h"
 #include "util.h"
-
-#include "HackerDXGI.h"
+#include "D3D11Wrapper.h"
 
 
 // This class is for a different approach than the wrapping of the system objects
@@ -20,30 +30,296 @@
 // may only care about a 5 calls, but we have to wrap all 150 calls. 
 //
 // Rather than do that with DXGI, this approach will be to singly hook the calls we
-// are interested in, using the Deviare in-proc hooking.  We'll still create
-// objects for encapsulation, by returning HackerDXGIFactory and HackerDXGIFactory2.
+// are interested in, using the Nektra In-Proc hooking.  We'll still create
+// objects for encapsulation where necessary, by returning HackerDXGIFactory1
+// and HackerDXGIFactory2 when platform_update is set.  We won't ever return
+// HackerDXGIFactory because the minimum on Win7 is IDXGIFactory1.
+//
+// For our hooks:
+// It is worth noting, since it took me 3 days to figure it out, than even though
+// they are defined C style, that we must use STDMETHODCALLTYPE (or__stdcall) 
+// because otherwise the stack is broken by the different calling conventions.
+//
+// In normal method calls, the 'this' parameter is implicitly added.  Since we are
+// using the C style dxgi interface though, we are declaring these routines differently.
+//
+// Since we want to allow reentrancy for the calls, we need to use the returned
+// fnOrig* to call the original, instead of the alternate approach offered by
+// Deviare.
 
 
+void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc, BOOL Windowed)
+{
+	// Historically we have only forced the refresh rate when full-screen.
+	// Not positive if it would hurt to do otherwise, but for now assuming
+	// we might have had a good reason and keeping that behaviour. See also
+	// the note in ResizeTarget().
+	if (G->SCREEN_REFRESH >= 0 && !Windowed)
+	{
+		// FIXME: This may disable flipping (and use blitting instead)
+		// if the forced numerator and denominator does not exactly
+		// match a mode enumerated on the output. e.g. We would force
+		// 60Hz as 60/1, but the display might actually use 60000/1001
+		// for 60Hz and we would lose flipping and degrade performance.
+		BufferDesc->RefreshRate.Numerator = G->SCREEN_REFRESH;
+		BufferDesc->RefreshRate.Denominator = 1;
+		LogInfo("->Forcing refresh rate to = %f\n",
+			(float)BufferDesc->RefreshRate.Numerator / (float)BufferDesc->RefreshRate.Denominator);
+	}
+	if (G->SCREEN_WIDTH >= 0)
+	{
+		BufferDesc->Width = G->SCREEN_WIDTH;
+		LogInfo("->Forcing Width to = %d\n", BufferDesc->Width);
+	}
+	if (G->SCREEN_HEIGHT >= 0)
+	{
+		BufferDesc->Height = G->SCREEN_HEIGHT;
+		LogInfo("->Forcing Height to = %d\n", BufferDesc->Height);
+	}
+
+	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
+	// swapchain to be 2x its normal width.
+	//
+	// I don't particularly like that we've lumped this in with direct mode
+	// - direct mode does *not* require a 2x width back buffer - it has two
+	// completely separate back buffers, switched via nvapi. This is a hack
+	// for one specific tool that has yet to see the light of day, and
+	// ideally this would have been done in that tool, not here. For
+	// quickly getting up and running, I don't see why the ordinary
+	// resolution overrides would not have been sufficient, or adding a
+	// multiplier to those if necessary.
+	//   - DarkStarSword
+	if (G->gForceStereo == 2)
+	{
+		BufferDesc->Width *= 2;
+		LogInfo("->Direct Mode: Forcing Width to = %d\n", BufferDesc->Width);
+	}
+}
 
 
 // -----------------------------------------------------------------------------
-// The signature copied from dxgi.h, in C section.
-// This unusual format also provides storage for the original pointer to the 
-// routine.
+// This tweaks the parameters passed to the real CreateSwapChain, to change behavior.
+// These global parameters come originally from the d3dx.ini, so the user can
+// change them.
+//
+// There is now also ForceDisplayParams1 which has some overlap.
 
-HRESULT(STDMETHODCALLTYPE *OrigCreateSwapChain)(
+void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
+{
+	if (pDesc == NULL)
+		return;
+
+	LogInfo("     Windowed = %d\n", pDesc->Windowed);
+	LogInfo("     Width = %d\n", pDesc->BufferDesc.Width);
+	LogInfo("     Height = %d\n", pDesc->BufferDesc.Height);
+	LogInfo("     Refresh rate = %f\n",
+		(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
+
+	if (G->SCREEN_UPSCALING == 0 && G->SCREEN_FULLSCREEN > 0)
+	{
+		pDesc->Windowed = false;
+		LogInfo("->Forcing Windowed to = %d\n", pDesc->Windowed);
+	}
+
+	if (G->SCREEN_FULLSCREEN == 2 || G->SCREEN_UPSCALING > 0)
+	{
+		// We install this hook on demand to avoid any possible
+		// issues with hooking the call when we don't need it:
+		// Unconfirmed, but possibly related to:
+		// https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
+		//
+		// This hook is also very important in case of Upscaling
+		InstallSetWindowPosHook();
+	}
+
+	ForceDisplayMode(&pDesc->BufferDesc, pDesc->Windowed);
+}
+
+// Different variant for the CreateSwapChainForHwnd.
+//
+// We absolutely need the force full screen in order to enable 3D.  
+// Batman Telltale needs this.
+// The rest of the variants are less clear.
+
+void ForceDisplayParams1(DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc1)
+{
+	if (pDesc1 == NULL)
+		return;
+
+	LogInfo("     Windowed = %d\n", pDesc1->Windowed);
+
+	if (G->SCREEN_FULLSCREEN > 0)
+	{
+		pDesc1->Windowed = false;
+		LogInfo("->Forcing Windowed to = %d\n", pDesc1->Windowed);
+	}
+
+	if (G->SCREEN_FULLSCREEN == 2)
+	{
+		// We install this hook on demand to avoid any possible
+		// issues with hooking the call when we don't need it:
+		// Unconfirmed, but possibly related to:
+		// https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
+
+		InstallSetWindowPosHook();
+	}
+
+	// These input parameters are not clear how to implement for CreateSwapChainForHwnd,
+	// and are stubbed out with error reporting. Can be implemented when cases arise.
+	if (G->SCREEN_REFRESH >= 0 && !pDesc1->Windowed)
+	{
+		LogInfo("*** Unimplemented feature for refresh_rate in CreateSwapChainForHwnd\n");
+		BeepFailure();
+	}
+	if (G->SCREEN_WIDTH >= 0)
+	{
+		LogInfo("*** Unimplemented feature to force screen width in CreateSwapChainForHwnd\n");
+		BeepFailure();
+	}
+	if (G->SCREEN_HEIGHT >= 0)
+	{
+		LogInfo("*** Unimplemented feature to force screen height in CreateSwapChainForHwnd\n");
+		BeepFailure();
+	}
+
+	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
+	// swapchain to be 2x its normal width.  
+	if (G->gForceStereo == 2)
+	{
+		LogInfo("*** Unimplemented feature for Direct Mode in CreateSwapChainForHwnd\n");
+		BeepFailure();
+	}
+}
+
+
+// -----------------------------------------------------------------------------
+// Actual hook for any IDXGICreateSwapChainForHwnd calls the game makes.
+// This can only be called with Win7+platform_update or greater, using
+// the IDXGIFactory2.
+// 
+// This type of SwapChain cannot be made through the CreateDeviceAndSwapChain,
+// so there is only one logical path to create this, which is 
+// IDXGIFactory2->CreateSwapChainForHwnd.  That means that the Device has
+// already been created with CreateDevice, and dereferenced through the 
+// chain of QueryInterface calls to get the IDXGIFactory2.
+
+HRESULT(__stdcall *fnOrigCreateSwapChainForHwnd)(
+	IDXGIFactory2 * This,
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][in] */
+	_In_  HWND hWnd,
+	/* [annotation][in] */
+	_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
+	/* [annotation][in] */
+	_In_opt_  const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
+	/* [annotation][in] */
+	_In_opt_  IDXGIOutput *pRestrictToOutput,
+	/* [annotation][out] */
+	_Out_  IDXGISwapChain1 **ppSwapChain) = nullptr;
+
+
+HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
+	IDXGIFactory2 * This,
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][in] */
+	_In_  HWND hWnd,
+	/* [annotation][in] */
+	_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
+	/* [annotation][in] */
+	_In_opt_  const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
+	/* [annotation][in] */
+	_In_opt_  IDXGIOutput *pRestrictToOutput,
+	/* [annotation][out] */
+	_Out_  IDXGISwapChain1 **ppSwapChain)
+{
+	LogInfo("Hooked IDXGIFactory2::CreateSwapChainForHwnd(%p) called\n", This);
+	LogInfo("  Device = %p\n", pDevice);
+	LogInfo("  SwapChain = %p\n", ppSwapChain);
+	LogInfo("  Description1 = %p\n", pDesc);
+	LogInfo("  FullScreenDescription = %p\n", pFullscreenDesc);
+
+	DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullScreenDesc = { 0 };
+	if (!pFullscreenDesc)
+		pFullscreenDesc = &fullScreenDesc;
+	ForceDisplayParams1(&fullScreenDesc);
+
+	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
+	if (FAILED(hr))
+	{
+		LogInfo("->Failed result %#x\n\n", hr);
+		return hr;
+	}
+
+	IDXGISwapChain1* origSwapChain = *ppSwapChain;
+	HackerDevice* hackerDevice = reinterpret_cast<HackerDevice*>(pDevice);
+	HackerContext* hackerContext = hackerDevice->GetHackerContext();
+
+	HackerSwapChain* hackerSwapChain;
+	hackerSwapChain = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
+
+
+	// When creating a new swapchain, we can assume this is the game creating 
+	// the most important object, and return the wrapped swapchain to the game 
+	// so it will call our Present.
+	*ppSwapChain = hackerSwapChain;
+
+	LogInfo("->return result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hr, hackerSwapChain, origSwapChain);
+	return hr;
+}
+
+// -----------------------------------------------------------------------------
+// This hook should work in all variants, including the CreateSwapChain1
+// and CreateSwapChainForHwnd
+
+void HookCreateSwapChainForHwnd(void* factory2)
+{
+	LogInfo("*** IDXGIFactory2 creating hook for CreateSwapChainForHwnd. \n");
+
+	IDXGIFactory2* dxgiFactory = reinterpret_cast<IDXGIFactory2*>(factory2);
+
+	SIZE_T hook_id;
+	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigCreateSwapChainForHwnd,
+		lpvtbl_CreateSwapChainForHwnd(dxgiFactory), Hooked_CreateSwapChainForHwnd, 0);
+
+	if (dwOsErr == ERROR_SUCCESS)
+		LogInfo("  Successfully installed IDXGIFactory2->CreateSwapChainForHwnd hook.\n");
+	else
+		LogInfo("  *** Failed install IDXGIFactory2->CreateSwapChainForHwnd hook.\n");
+}
+
+// -----------------------------------------------------------------------------
+// Actual hook for any IDXGICreateSwapChain calls the game makes.
+//
+// There are two primary paths that can arrive here.
+// ---1. d3d11->CreateDeviceAndSwapChain
+//	This path arrives here with a normal ID3D11Device1 device, not a HackerDevice.
+//	This is called implictly from the middle of CreateDeviceAndSwapChain.---
+//	No longer necessary, with CreateDeviceAndSwapChain broken into two direct calls.
+// 2. IDXGIFactory->CreateSwapChain after CreateDevice
+//	This path requires a pDevice passed in, which is a HackerDevice.  This is the
+//	secret path, where they take the Device and QueryInterface to get IDXGIDevice
+//	up to getting Factory, where they call CreateSwapChain. In this path, we can
+//	expect the input pDevice to have already been setup as a HackerDevice.
+//
+//
+// In prior code, we were looking for possible IDXGIDevice's as the pDevice input.
+// That should not be a problem now, because we are specifically trying to cast
+// that input into an ID3D11Device1 using QueryInterface.  Leaving the original
+// code commented out at the bottom of the file, for reference.
+
+HRESULT(__stdcall *fnOrigCreateSwapChain)(
 	IDXGIFactory * This,
 	/* [annotation][in] */
 	_In_  IUnknown *pDevice,
 	/* [annotation][in] */
 	_In_  DXGI_SWAP_CHAIN_DESC *pDesc,
 	/* [annotation][out] */
-	_Out_  IDXGISwapChain **ppSwapChain);
+	_Out_  IDXGISwapChain **ppSwapChain) = nullptr;
 
 
-// Our override method for any callers to CreateSwapChain.
-
-HRESULT STDMETHODCALLTYPE HookedCreateSwapChain(
+HRESULT __stdcall Hooked_CreateSwapChain(
 	IDXGIFactory * This,
 	/* [annotation][in] */
 	_In_  IUnknown *pDevice,
@@ -52,129 +328,148 @@ HRESULT STDMETHODCALLTYPE HookedCreateSwapChain(
 	/* [annotation][out] */
 	_Out_  IDXGISwapChain **ppSwapChain)
 {
-	HRESULT hr;
-	IDXGISwapChain *mOrigSwapChain;
+	LogInfo("\nHooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
+	LogInfo("  Device = %p\n", pDevice);
+	LogInfo("  SwapChain = %p\n", ppSwapChain);
+	LogInfo("  Description = %p\n", pDesc);
 
-	hr = OrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
-	if (SUCCEEDED(hr))
-		mOrigSwapChain = *ppSwapChain;
-
-	LogInfo("HookedSwapChain::HookedCreateSwapChain mOrigSwapChain: %p, pDevice: %p, result: %d\n", mOrigSwapChain, pDevice, hr);
-
-	return hr;
-}
-
-
-// -----------------------------------------------------------------------------
-
-// This serves a dual purpose of defining the interface routine as required by
-// DXGI, and also is the storage for the original call, returned by cHookMgr.Hook.
-
-HRESULT(STDMETHODCALLTYPE *pOrigPresent)(
-	IDXGISwapChain * This,
-	/* [in] */ UINT SyncInterval,
-	/* [in] */ UINT Flags);
-
-static SIZE_T nHookId = 0;
-
-//Overlay *overlay;
+	// If hooking is enabled, pDevice will be the original DirectX object
+	// with hooks to call into our code. Try looking up the corresponding
+	// HackerDevice and use it if found:
+	HackerDevice *hackerDevice = (HackerDevice*)lookup_hooked_device((ID3D11Device1*)pDevice);
+	if (!hackerDevice)
+	{
+		// Without hooking pDevice input is always going to be a
+		// HackerDevice, because the startup path now builds
+		// HackerDevice before creating a swapchain.
+		hackerDevice = reinterpret_cast<HackerDevice*>(pDevice);
+	}
+	HackerContext* hackerContext = hackerDevice->GetHackerContext();
 
 
-// Log both to console using Nektra logging, and using our LogInfo, 
-// in case we are loading so early that our regular log is not ready.
+	DXGI_SWAP_CHAIN_DESC origSwapChainDesc;
+	if (pDesc != nullptr)
+	{
+		// Save window handle so we can translate mouse coordinates to the window:
+		G->hWnd = pDesc->OutputWindow;
 
-#define DoubleLog(fmt, ...) \
-	if (LogFile) fprintf(LogFile, fmt, __VA_ARGS__); \
-	if (bLog) NktHookLibHelpers::DebugPrint(fmt, __VA_ARGS__)
+		if (G->SCREEN_UPSCALING > 0)
+		{
+			// Copy input swap chain desc in case it's modified
+			memcpy(&origSwapChainDesc, pDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
 
+			// For the upscaling case, fullscreen has to be set after swap chain is created
+			pDesc->Windowed = true;
+		}
 
-// -----------------------------------------------------------------------------
+		// Required in case the software mouse and upscaling are on at the same time
+		// TODO: Use a helper class to track *all* different resolutions
+		G->GAME_INTERNAL_WIDTH = pDesc->BufferDesc.Width;
+		G->GAME_INTERNAL_HEIGHT = pDesc->BufferDesc.Height;
 
-// The original API references, directly from the DXGI.dll
+		if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN)
+		{
+			// TODO: Use a helper class to track *all* different resolutions
+			G->mResolutionInfo.width = pDesc->BufferDesc.Width;
+			G->mResolutionInfo.height = pDesc->BufferDesc.Height;
+			LogInfo("Got resolution from swap chain: %ix%i\n",
+				G->mResolutionInfo.width, G->mResolutionInfo.height);
+		}
+	}
 
-typedef HRESULT(WINAPI *lpfnCreateDXGIFactory)(REFIID riid, void **ppFactory);
-SIZE_T nFactory_ID;
-lpfnCreateDXGIFactory fnOrigCreateFactory;
+	ForceDisplayParams(pDesc);
 
-typedef HRESULT(WINAPI *lpfnCreateDXGIFactory1)(REFIID riid, void **ppFactory1);
-SIZE_T nFactory1_ID; 
-lpfnCreateDXGIFactory1 fnOrigCreateFactory1;
-
-// -----------------------------------------------------------------------------
-
-static HRESULT WrapFactory1(void **ppFactory1)
-{
-	IDXGIFactory1 *origFactory1;
-	HRESULT hr = fnOrigCreateFactory1(__uuidof(IDXGIFactory1), (void **)&origFactory1);
+	HRESULT hr = fnOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
 	if (FAILED(hr))
 	{
-		LogInfo("  failed with HRESULT=%x\n", hr);
+		LogInfo("->Failed result %#x\n\n", hr);
 		return hr;
 	}
-	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x\n", origFactory1, hr);
 
-	HackerDXGIFactory1 *factory1Wrap;
-	factory1Wrap = new HackerDXGIFactory1(origFactory1);
+	// Always upcast to IDXGISwapChain1 whenever possible.
+	// If the upcast fails, that means we have a normal IDXGISwapChain,
+	// but we'll still store it as an IDXGISwapChain1.  It's a little
+	// weird to reinterpret this way, but should cause no problems in
+	// the Win7 no platform_udpate case.
+	IDXGISwapChain1* origSwapChain;
+	(*ppSwapChain)->QueryInterface(IID_PPV_ARGS(&origSwapChain));
+	if (origSwapChain == nullptr)
+		origSwapChain = reinterpret_cast<IDXGISwapChain1*>(*ppSwapChain);
 
-	if (ppFactory1)
-		*ppFactory1 = factory1Wrap;
-	LogInfo("  new HackerDXGIFactory1(%s@%p) wrapped %p\n", type_name(factory1Wrap), factory1Wrap, origFactory1);
 
-	// ToDo: Skipped null checks as they would throw exceptions- but
-	// we should handle exceptions.
+	// Original swapchain has been successfully created. Now we want to 
+	// wrap the returned swapchain as either HackerSwapChain or HackerUpscalingSwapChain.  
+	HackerSwapChain* swapchainWrap;
 
-	return hr;
-}
-
-// -----------------------------------------------------------------------------
-
-static HRESULT WrapFactory2(void **ppFactory2)
-{
-	// To create an original Factory2, this is not hooked out of the DXGI.dll, as
-	// it's not defined there.  But, we can call into fnOrigCreateFactory1 for it.
-
-	IDXGIFactory2 *origFactory2;
-	HRESULT hr = fnOrigCreateFactory1(__uuidof(IDXGIFactory2), (void **)&origFactory2);
-	if (FAILED(hr))
+	if (G->SCREEN_UPSCALING == 0)		// Normal case
 	{
-		LogInfo("  failed with HRESULT=%x\n", hr);
-		return hr;
+		swapchainWrap = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
+		LogInfo("->HackerSwapChain %p created to wrap %p\n", swapchainWrap, *ppSwapChain);
 	}
-	LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x\n", origFactory2, hr);
+	else								// Upscaling case
+	{
+		swapchainWrap = new HackerUpscalingSwapChain(origSwapChain, hackerDevice, hackerContext,
+			&origSwapChainDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, This);
+		LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, *ppSwapChain);
 
-	HackerDXGIFactory2 *factory2Wrap;
-	factory2Wrap = new HackerDXGIFactory2(origFactory2);
+		if (G->SCREEN_UPSCALING == 2 || !origSwapChainDesc.Windowed)
+		{
+			// Some games react very strange (like render nothing) if set full screen state is called here)
+			// Other games like The Witcher 3 need the call to ensure entering the full screen on start
+			// (seems to be game internal stuff)  ToDo: retest if this is still necessary, lots of changes.
+			(*ppSwapChain)->SetFullscreenState(TRUE, nullptr);
+		}
+	}
 
-	if (ppFactory2)
-		*ppFactory2 = factory2Wrap;
+	// When creating a new swapchain, we can assume this is the game creating 
+	// the most important object. Return the wrapped swapchain to the game so it 
+	// will call our Present.
+	*ppSwapChain = swapchainWrap;
 
-	LogInfo("  new HackerDXGIFactory2(%s@%p) wrapped %p\n", type_name(factory2Wrap), factory2Wrap, origFactory2);
-
-	// ToDo: Skipped null checks as they would throw exceptions- but
-	// we should handle exceptions.
-
+	LogInfo("->return result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hr, swapchainWrap, origSwapChain);
 	return hr;
 }
 
 // -----------------------------------------------------------------------------
+// This hook should work in all variants, including the CreateSwapChain1
+// and CreateSwapChainForHwnd
 
+void HookCreateSwapChain(void* factory)
+{
+	LogInfo("*** IDXGIFactory creating hook for CreateSwapChain. \n");
+
+	IDXGIFactory* dxgiFactory = reinterpret_cast<IDXGIFactory*>(factory);
+
+	SIZE_T hook_id;
+	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigCreateSwapChain,
+		lpvtbl_CreateSwapChain(dxgiFactory), Hooked_CreateSwapChain, 0);
+
+	if (dwOsErr == ERROR_SUCCESS)
+		LogInfo("  Successfully installed IDXGIFactory->CreateSwapChain hook.\n");
+	else
+		LogInfo("  *** Failed install IDXGIFactory->CreateSwapChain hook.\n");
+}
+
+
+// -----------------------------------------------------------------------------
 // Actual function called by the game for every CreateDXGIFactory they make.
 // This is only called for the in-process game, not system wide.
 //
-// This is our replacement, so that we can return a wrapped factory, which
-// will allow us access to the SwapChain.
+// We are going to always upcast to an IDXGIFactory2 for any calls here.
+// The only time we'll not use Factory2 is on Win7 without the evil update.
 
-// It's legal to request a DXGIFactory2 here, so if platform_update is 
-// enabled we'll go ahead and return that.  We are also going to always
-// return at least a DXGIFactory1 now, because that is the baseline
-// expected object for Win7, and allows us to better handle QueryInterface
-// and GetParent calls.
+HRESULT(__stdcall *fnOrigCreateDXGIFactory)(
+	REFIID riid,
+	_Out_ void   **ppFactory
+	) = nullptr;
 
-static HRESULT WINAPI Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
+HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
+	LogInfo("*** Hooked_CreateDXGIFactory called with riid: %s\n", NameFromIID(riid).c_str());
+
+	// If this happens to be first call from the game, let's make sure to load
+	// up our d3d11.dll and the .ini file.
 	InitD311();
-	LogInfo("Hooked_CreateDXGIFactory called with riid: %s\n", NameFromIID(riid).c_str());
-	LogInfo("  calling original CreateDXGIFactory API\n");
 
 	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
 	if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
@@ -184,40 +479,60 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 		return E_NOINTERFACE;
 	}
 
-	HRESULT hr;
-	if (G->enable_platform_update)
-		hr = WrapFactory2(ppFactory);
-	else
-		hr = WrapFactory1(ppFactory);
+	HRESULT hr = fnOrigCreateDXGIFactory(riid, ppFactory);
+	if (FAILED(hr))
+	{
+		LogInfo("->failed with HRESULT=%x\n", hr);
+		return hr;
+	}
 
+	if (!fnOrigCreateSwapChain)
+		HookCreateSwapChain(*ppFactory);
+
+	// With the addition of the platform_update, we need to allow for specifically
+	// creating a DXGIFactory2 instead of DXGIFactory1.  We want to always upcast
+	// the highest supported object for each scenario, to properly suppport
+	// QueryInterface and GetParent upcasts.
+
+	IDXGIFactory2* dxgiFactory = reinterpret_cast<IDXGIFactory2*>(*ppFactory);
+	HRESULT res = dxgiFactory->QueryInterface(IID_PPV_ARGS(&dxgiFactory));
+	if (SUCCEEDED(res))
+	{
+		*ppFactory = (void*)dxgiFactory;
+		LogInfo("  Upcast QueryInterface(IDXGIFactory2) returned result = %x, factory = %p\n", res, dxgiFactory);
+
+		if (!fnOrigCreateSwapChainForHwnd)
+			HookCreateSwapChainForHwnd(*ppFactory);
+	}
+
+	LogInfo("  CreateDXGIFactory returned factory = %p, result = %x\n", *ppFactory, hr);
 	return hr;
 }
 
 
 // -----------------------------------------------------------------------------
-
-// It's not legal to mix Factory1 and Factory in the same app, so we'll not
-// look for Factory here.  Bizarrely though, Factory2 is expected.
-// Except that, Dragon Age makes the mistake of calling Factory1 for Factory. D'oh!
-
-// Dishonored2 requires platform_update=1.  In this case, let's make sure to always
-// create a DXGIFactory2, as the highest level object available.  Because they can
-// always upcast at any time using QueryInterface.  We have previously been rewrapping
-// and returning different objects, which seems wrong, especially if they ever do
-// pointer comparisons.
-// If we return DXGIFactory2 and they only ever need DXGIFactory1, that should cause
-// no problems, as the interfaces are the same.
 //
-// Another factor is the use of GetParent, to get back to this DXGIFactory1 object.
-// If we have wrapped extra times, then we'll return a different object.  We need
-// to maintain the chain of objects so that GetParent from the Device will return
-// the correct Adapter, which can then return the correct Factory.
+// We are going to always upcast to an IDXGIFactory2 for any calls here.
+// The only time we'll not use Factory2 is on Win7 without the evil update.
+//
+// ToDo: It is probably possible for a game to fetch a Factory2 via QueryInterface,
+//  and we might need to hook that as well.  However, in order to Query, they
+//  need a Factory or Factory1 to do so, which will call us here anyway.  At least
+//  until Win10, where the d3d11.dll also then includes CreateDXGIFactory2. We only 
+//  really care about installing a hook for CreateSwapChain which will still get done.
 
-static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
+HRESULT(__stdcall *fnOrigCreateDXGIFactory1)(
+	REFIID riid,
+	_Out_ void   **ppFactory
+	) = nullptr;
+
+HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 {
+	LogInfo("*** Hooked_CreateDXGIFactory1 called with riid: %s\n", NameFromIID(riid).c_str());
+
+	// If this happens to be first call from the game, let's make sure to load
+	// up our d3d11.dll and the .ini file.
 	InitD311();
-	LogInfo("Hooked_CreateDXGIFactory1 called with riid: %s\n", NameFromIID(riid).c_str());
-	LogInfo("  calling original CreateDXGIFactory1 API\n");
 
 	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
 	if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
@@ -229,104 +544,35 @@ static HRESULT WINAPI Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 
 	// Call original factory, regardless of what they requested, to keep the
 	// same expected sequence from their perspective.  (Which includes refcounts)
+	HRESULT hr = fnOrigCreateDXGIFactory1(riid, ppFactory1);
+	if (FAILED(hr))
+	{
+		LogInfo("->failed with HRESULT=%x\n", hr);
+		return hr;
+	}
+
+	if (!fnOrigCreateSwapChain)
+		HookCreateSwapChain(*ppFactory1);
 
 	// With the addition of the platform_update, we need to allow for specifically
 	// creating a DXGIFactory2 instead of DXGIFactory1.  We want to always upcast
 	// the highest supported object for each scenario, to properly suppport
 	// QueryInterface and GetParent upcasts.
 
-	// Minimal Factory supported for base Win7 is IDXGIFactory1, so let's always
-	// return at least that.
+	IDXGIFactory2* dxgiFactory = reinterpret_cast<IDXGIFactory2*>(*ppFactory1);
+	HRESULT res = dxgiFactory->QueryInterface(IID_PPV_ARGS(&dxgiFactory));
+	if (SUCCEEDED(res))
+	{
+		*ppFactory1 = (void*)dxgiFactory;
+		LogInfo("  Upcast QueryInterface(IDXGIFactory2) returned result = %x, factory = %p\n", res, dxgiFactory);
 
-	HRESULT hr;
-	if (G->enable_platform_update)
-		hr = WrapFactory2(ppFactory1);
-	else
-		hr = WrapFactory1(ppFactory1);
+		if (!fnOrigCreateSwapChainForHwnd)
+			HookCreateSwapChainForHwnd(*ppFactory1);
+	}
 
-	// This sequence makes Witcher3 crash.  They also send in uuid=IDXGIFactory to this
-	// Factory1 object.  Not supposed to be legal, but apparently the factory will still 
-	// make a Factory1 object.  
-	// If we were requested to create a DXGIFactory, go ahead and make our wrapper.
-	//if (riid == __uuidof(IDXGIFactory))
-	//{
-	//	HackerDXGIFactory *factoryWrap;
-	//	factoryWrap = new HackerDXGIFactory(static_cast<IDXGIFactory*>(origFactory1));
-	//	if (ppFactory1)
-	//		*ppFactory1 = factoryWrap;
-	//	LogInfo("  new HackerDXGIFactory(%s@%p) wrapped %p\n", type_name(factoryWrap), factoryWrap, origFactory1);
-	//}
-	//else
-	//   Seems like we really need to return the highest level object supported at runtime,
-	//   in order to more closely match how DXGI works.  It looks to me like the DXGI will
-	//   always create a higher level object, and return it as a downcast, and then return
-	//   the high level object when QueryInterface upcast is used.  Sucky hacky mechanism,
-	//   but I'm pretty sure that's how it works.
-
-
-	// ToDo: Skipped null checks as they would throw exceptions- but
-	// we should handle exceptions.
-
-	// We are returning a "IDXGIFactory1" here, but it will actually be wrapped as a
-	// Hacker object, and be either HackerDXGIFactory1 or HackerDXGIFactory2;
-
+	LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x\n", *ppFactory1, hr);
 	return hr;
 }
-
-
-// -----------------------------------------------------------------------------
-
-// Load the dxgi.dll and hook the two calls for CreateFactory.
-// Any Factory2 use has to be fetched from one of these two.
-
-bool InstallDXGIHooks(void)
-{
-	HINSTANCE hDXGI;
-	LPVOID fnCreateDXGIFactory;
-	LPVOID fnCreateDXGIFactory1;
-	DWORD dwOsErr;
-
-	// Not certain this is necessary, but it won't hurt, and ensures it's loaded.
-	LoadLibrary(L"dxgi.dll");
-
-	DoubleLog("Attempting to hook dxgi CreateFactory using Deviare in-proc.\n");
-	cHookMgr.SetEnableDebugOutput(bLog);
-
-	hDXGI = NktHookLibHelpers::GetModuleBaseAddress(L"dxgi.dll");
-	if (hDXGI == NULL)
-	{
-		DoubleLog("  Failed to get dxgi module for CreateFactory hook.\n");
-		return false;
-	}
-
-	fnCreateDXGIFactory = NktHookLibHelpers::GetProcedureAddress(hDXGI, "CreateDXGIFactory");
-	if (fnCreateDXGIFactory == NULL)
-	{
-		DoubleLog("  Failed to GetProcedureAddress of CreateDXGIFactory for dxgi hook.\n");
-		return false;
-	}
-	dwOsErr = cHookMgr.Hook(&nFactory_ID, (LPVOID*)&(fnOrigCreateFactory),
-		fnCreateDXGIFactory, Hooked_CreateDXGIFactory);
-	DoubleLog("  Install Hook for DXGI::CreateDXGIFactory using Deviare in-proc: %x\n", dwOsErr);
-	if (dwOsErr != 0)
-		return false;
-
-	fnCreateDXGIFactory1 = NktHookLibHelpers::GetProcedureAddress(hDXGI, "CreateDXGIFactory1");
-	if (fnCreateDXGIFactory1 == NULL)
-	{
-		DoubleLog("  Failed to GetProcedureAddress of CreateDXGIFactory1 for dxgi hook.\n");
-		return false;
-	}
-	dwOsErr = cHookMgr.Hook(&nFactory1_ID, (LPVOID*)&(fnOrigCreateFactory1),
-		fnCreateDXGIFactory1, Hooked_CreateDXGIFactory1);
-	DoubleLog("  Install Hook for DXGI::CreateDXGIFactory1 using Deviare in-proc: %x\n", dwOsErr);
-	if (dwOsErr != 0)
-		return false;
-
-	DoubleLog("  Successfully hooked CreateDXGIFactory using Deviare in-proc.\n");
-	return true;
-}
-
 
 
 // -----------------------------------------------------------------------------
@@ -365,185 +611,111 @@ bool InstallDXGIHooks(void)
 // This is only used for .cpp file here, not the .h file, because otherwise other
 // units get compiled with this CINTERFACE, which wrecks their calling out.
 
-// -----------------------------------------------------------------------------
-
-// Obsolete code that is useful for reference only.
-// This is a technique I created, doesn't exist on the internet.
-
-//#define CINTERFACE
-//#include <dxgi.h>
-//#undef CINTERFACE
-//
-//#include <d3d11.h>
-//
-//#include "log.h"
-//#include "DLLMainHook.h"
-////#include "Overlay.h"
-
-//bool InstallDXGIHooks(void)
-//{
-//	// Seems like we need to do this in order to init any use of COM here.
-//	CoInitializeEx(NULL, COINIT_MULTITHREADED);
-//
-//	HRESULT result;
-//	IDXGIFactory* factory;
-//		
-//	// We need a DXGI interface factory in order to get access to the CreateSwapChain
-//	// call. This CreateDXGIFactory call is defined as an export in dxgi.dll and is
-//	// called normally.  It will return an interface to a COM object.
-//	// We will have access to the COM routines available after we have one of these.
-//
-//	result = CreateDXGIFactory(IID_IDXGIFactory, (void**)(&factory));
-//	if (FAILED(result))
-//	{
-//		LogInfo("*** InstallDXGIHooks CreateDXGIFactory failed: %d\n", result);
-//		return false;
-//	}
-//
-//	// Hook the factory call for CreateSwapChain, as the game may use that to create
-//	// its swapchain instead of CreateDeviceAndSwapChain.
-//
-//	cHookMgr.SetEnableDebugOutput(TRUE);
-//
-//	// Routine address fetched from the COM vtable.  This address will be patched by
-//	// deviare to jump to HookedCreateSwapChain, which will then need the original
-//	// address to call the unmodified function, found in OrigCreateSwapChain.
-//
-//	LPVOID CreateSwapChain = factory->lpVtbl->CreateSwapChain;
-//
-//	DWORD dwOsErr;
-//	dwOsErr = cHookMgr.Hook(&nCSCHookId, &CreateSwapChain, &OrigCreateSwapChain, HookedCreateSwapChain);
-//	if (FAILED(dwOsErr))
-//	{
-//		LogInfo("*** InstallDXGIHooks Hook failed: %d\n", dwOsErr);
-//		return false;
-//	}
-//
-//	LogInfo("InstallDXGIHooks CreateSwapChain result: %d, at: %p\n", dwOsErr, OrigCreateSwapChain);
-//
-//
-//	// Create a SwapChain, just so we can get access to its vtable, and thus hook
-//	// the Present() call to ours.
-//
-//	// not sure where to get device from.
-//	//IDXGIFactory_CreateSwapChain(factory, pDevice, pDesc, ppSwapChain);
-//
-//	//HackerDevice *pDevice;
-//	//DXGI_SWAP_CHAIN_DESC *pDesc;
-//	//IDXGISwapChain *ppSwapChain;
-//	//IDXGIFactory2_CreateSwapChain(factory, pDevice, pDesc, &ppSwapChain);
-//
-//	return true;
-//}
-
-//void UninstallDXGIHooks()
-//{
-//	DWORD dwOsErr; 
-//	dwOsErr = cHookMgr.Unhook(nCSCHookId);
-//}
 
 // -----------------------------------------------------------------------------
-//HookedSwapChain::HookedSwapChain(IDXGISwapChain* pOrigSwapChain)
+// Functionality removed during refactoring.
+// 
+// These are here, because our HackerDXGI is only HackerSwapChain now.
+// If we want these calls, we'll need to add further hooks here.
+
+
+//STDMETHODIMP HackerDXGIFactory::MakeWindowAssociation(THIS_
+//	HWND WindowHandle,
+//	UINT Flags)
 //{
-//	DWORD dwOsErr;
-//
-//	mOrigSwapChain = pOrigSwapChain;
-//
-//	if (pOrigPresent == NULL)
+//	if (LogFile)
 //	{
-//		LPVOID dxgiSwapChain = pOrigSwapChain->lpVtbl->Present;
-//
-//		cHookMgr.SetEnableDebugOutput(TRUE);
-//		dwOsErr = cHookMgr.Hook(&nCSCHookId, (LPVOID*)&pOrigPresent, &dxgiSwapChain, HookedPresent);
-//		if (dwOsErr)
-//		{
-//			LogInfo("*** HookedSwapChain::HookedSwapChain Hook failed: %d\n", dwOsErr);
-//			return;
-//		}
-//	}
-//	LogInfo("HookedSwapChain::HookedSwapChain hooked Present result: %d, at: %p\n", dwOsErr, pOrigPresent);
-//}
-//
-//
-//HookedSwapChain::~HookedSwapChain()
-//{
-//	
-//}
-
-
-// Hook the Present call in the DXGI COM interface.
-// Will only hook once, because there is only one instance
-// of the actual underlying code.
-//
-// The cHookMgr is assumed to already be created and initialized by the
-// C++ runtime, even if we are not hooking in DLLMain.
-
-//void HookSwapChain(IDXGISwapChain* pSwapChain, ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
-//{
-//	DWORD dwOsErr;
-//	HRESULT hr;
-//
-//	if (pOrigPresent != NULL)
-//	{
-//		LogInfo("*** HookSwapChain called again. SwapChain: %p, Device: %p, Context: %p\n", pSwapChain, pDevice, pContext);
-//		return;
+//		LogInfo("HackerDXGIFactory::MakeWindowAssociation(%s@%p) called with WindowHandle = %p, Flags = %x\n", type_name(this), this, WindowHandle, Flags);
+//		if (Flags) LogInfoNoNL("  Flags =");
+//		if (Flags & DXGI_MWA_NO_WINDOW_CHANGES) LogInfoNoNL(" DXGI_MWA_NO_WINDOW_CHANGES(no monitoring)");
+//		if (Flags & DXGI_MWA_NO_ALT_ENTER) LogInfoNoNL(" DXGI_MWA_NO_ALT_ENTER");
+//		if (Flags & DXGI_MWA_NO_PRINT_SCREEN) LogInfoNoNL(" DXGI_MWA_NO_PRINT_SCREEN");
+//		if (Flags) LogInfo("\n");
 //	}
 //
-//	// Seems like we need to do this in order to init any use of COM here.
-//	hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
-//	if (hr != NOERROR)
-//		LogInfo("HookSwapChain CoInitialize return error: %d\n", hr);
-//
-//	// The tricky part- fetching the actual address of the original
-//	// DXGI::Present call.
-//	LPVOID dxgiSwapChain = pSwapChain->lpVtbl->Present;
-//
-//	cHookMgr.SetEnableDebugOutput(bLog);
-//
-//	dwOsErr = cHookMgr.Hook(&nHookId, (LPVOID*)&pOrigPresent, dxgiSwapChain, HookedPresent, 0);
-//	if (dwOsErr)
+//	if (G->SCREEN_ALLOW_COMMANDS && Flags)
 //	{
-//		LogInfo("*** HookSwapChain Hook failed: %d\n", dwOsErr);
-//		return;
+//		LogInfo("  overriding Flags to allow all window commands\n");
+//
+//		Flags = 0;
 //	}
-//
-//
-//	// Create Overlay class that will be responsible for drawing any text
-//	// info over the game. Using the original Device and Context.
-//	//	overlay = new Overlay(pDevice, pContext);
-//
-//	LogInfo("HookSwapChain hooked Present result: %d, at: %p\n", dwOsErr, pOrigPresent);
-//}
-
-// -----------------------------------------------------------------------------
-
-// The hooked static version of Present.
-//
-// It is worth noting, since it took me 3 days to figure it out, than even though
-// this is defined C style, that it must use STDMETHODCALLTYPE (or__stdcall) 
-// because otherwise the stack is broken by the different calling conventions.
-//
-// In normal method calls, the 'this' parameter is implicitly added.  Since we are
-// using the C style dxgi interface though, we are declaring this routine differently.
-//
-// Since we want to allow reentrancy for this call, we need to use the returned
-// lpfnPresent to call the original, instead of the alternate approach offered by
-// Deviare.
-
-//static HRESULT STDMETHODCALLTYPE HookedPresent(
-//	IDXGISwapChain * This,
-//	/* [in] */ UINT SyncInterval,
-//	/* [in] */ UINT Flags)
-//{
-//	HRESULT hr;
-//
-//	// Draw the on-screen overlay text with hunting info, before final Present.
-//	//overlay->DrawOverlay();
-//
-//	hr = pOrigPresent(This, SyncInterval, Flags);
-//
-//	LogDebug("HookedPresent result: %d\n", hr);
+//	HRESULT hr = mOrigFactory->MakeWindowAssociation(WindowHandle, Flags);
+//	LogInfo("  returns result = %x\n", hr);
 //
 //	return hr;
 //}
+//
+//
 
+//
+//static bool FilterRate(int rate)
+//{
+//	if (!G->FILTER_REFRESH[0]) return false;
+//	int i = 0;
+//	while (G->FILTER_REFRESH[i] && G->FILTER_REFRESH[i] != rate)
+//		++i;
+//	return G->FILTER_REFRESH[i] == 0;
+//}
+//
+//STDMETHODIMP HackerDXGIOutput::GetDisplayModeList(THIS_
+//	/* [in] */ DXGI_FORMAT EnumFormat,
+//	/* [in] */ UINT Flags,
+//	/* [annotation][out][in] */
+//	__inout  UINT *pNumModes,
+//	/* [annotation][out] */
+//	__out_ecount_part_opt(*pNumModes, *pNumModes)  DXGI_MODE_DESC *pDesc)
+//{
+//	LogInfo("HackerDXGIOutput::GetDisplayModeList(%s@%p) called\n", type_name(this), this);
+//
+//	HRESULT ret = mOrigOutput->GetDisplayModeList(EnumFormat, Flags, pNumModes, pDesc);
+//	if (ret == S_OK && pDesc)
+//	{
+//		for (UINT j = 0; j < *pNumModes; ++j)
+//		{
+//			int rate = pDesc[j].RefreshRate.Numerator / pDesc[j].RefreshRate.Denominator;
+//			if (FilterRate(rate))
+//			{
+//				LogInfo("  Skipping mode: width=%d, height=%d, refresh rate=%f\n", pDesc[j].Width, pDesc[j].Height,
+//					(float)pDesc[j].RefreshRate.Numerator / (float)pDesc[j].RefreshRate.Denominator);
+//				// ToDo: Does this work?  I have no idea why setting width and height to 8 would matter.
+//				pDesc[j].Width = 8; pDesc[j].Height = 8;
+//			}
+//			else
+//			{
+//				LogInfo("  Mode detected: width=%d, height=%d, refresh rate=%f\n", pDesc[j].Width, pDesc[j].Height,
+//					(float)pDesc[j].RefreshRate.Numerator / (float)pDesc[j].RefreshRate.Denominator);
+//			}
+//		}
+//	}
+//
+//	return ret;
+//}
+//
+//STDMETHODIMP HackerDXGIOutput::FindClosestMatchingMode(THIS_
+//	/* [annotation][in] */
+//	__in  const DXGI_MODE_DESC *pModeToMatch,
+//	/* [annotation][out] */
+//	__out  DXGI_MODE_DESC *pClosestMatch,
+//	/* [annotation][in] */
+//	__in_opt  IUnknown *pConcernedDevice)
+//{
+//	if (pModeToMatch) LogInfo("HackerDXGIOutput::FindClosestMatchingMode(%s@%p) called: width=%d, height=%d, refresh rate=%f\n", type_name(this), this,
+//		pModeToMatch->Width, pModeToMatch->Height, (float)pModeToMatch->RefreshRate.Numerator / (float)pModeToMatch->RefreshRate.Denominator);
+//
+//	HRESULT hr = mOrigOutput->FindClosestMatchingMode(pModeToMatch, pClosestMatch, pConcernedDevice);
+//
+//	if (pClosestMatch && G->SCREEN_REFRESH >= 0)
+//	{
+//		pClosestMatch->RefreshRate.Numerator = G->SCREEN_REFRESH;
+//		pClosestMatch->RefreshRate.Denominator = 1;
+//	}
+//	if (pClosestMatch && G->SCREEN_WIDTH >= 0) pClosestMatch->Width = G->SCREEN_WIDTH;
+//	if (pClosestMatch && G->SCREEN_HEIGHT >= 0) pClosestMatch->Height = G->SCREEN_HEIGHT;
+//	if (pClosestMatch) LogInfo("  returning width=%d, height=%d, refresh rate=%f\n",
+//		pClosestMatch->Width, pClosestMatch->Height, (float)pClosestMatch->RefreshRate.Numerator / (float)pClosestMatch->RefreshRate.Denominator);
+//
+//	LogInfo("  returns hr=%x\n", hr);
+//	return hr;
+//}
+//
+//

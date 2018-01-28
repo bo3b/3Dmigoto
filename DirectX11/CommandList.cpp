@@ -8,6 +8,7 @@
 #include "HackerContext.h"
 #include "Override.h"
 #include "D3D11Wrapper.h"
+#include "IniHandler.h"
 
 #include <D3DCompiler.h>
 
@@ -52,13 +53,13 @@ static void CommandListFlushState(CommandListState *state)
 	HRESULT hr;
 
 	if (state->update_params) {
-		hr = state->mOrigContext->Map(state->mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		hr = state->mOrigContext1->Map(state->mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(hr)) {
 			LogInfo("CommandListFlushState: Map failed\n");
 			return;
 		}
 		memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
-		state->mOrigContext->Unmap(state->mHackerDevice->mIniTexture, 0);
+		state->mOrigContext1->Unmap(state->mHackerDevice->mIniTexture, 0);
 		state->update_params = false;
 	}
 }
@@ -74,8 +75,8 @@ static void RunCommandListComplete(HackerDevice *mHackerDevice,
 	CommandListState state;
 	state.mHackerDevice = mHackerDevice;
 	state.mHackerContext = mHackerContext;
-	state.mOrigDevice = mHackerDevice->GetPassThroughOrigDevice();
-	state.mOrigContext = mHackerContext->GetPassThroughOrigContext();
+	state.mOrigDevice1 = mHackerDevice->GetPassThroughOrigDevice1();
+	state.mOrigContext1 = mHackerContext->GetPassThroughOrigContext1();
 
 	state.call_info = call_info;
 	state.resource = resource;
@@ -688,7 +689,7 @@ void PresetCommand::run(CommandListState *state)
 void DrawCommand::run(CommandListState *state)
 {
 	HackerContext *mHackerContext = state->mHackerContext;
-	ID3D11DeviceContext *mOrigContext = state->mOrigContext;
+	ID3D11DeviceContext *mOrigContext1 = state->mOrigContext1;
 
 	// Ensure IniParams are visible:
 	CommandListFlushState(state);
@@ -696,31 +697,31 @@ void DrawCommand::run(CommandListState *state)
 	switch (type) {
 		case DrawCommandType::DRAW:
 			COMMAND_LIST_LOG(state, "[%S] Draw(%u, %u)\n", ini_section.c_str(), args[0], args[1]);
-			mOrigContext->Draw(args[0], args[1]);
+			mOrigContext1->Draw(args[0], args[1]);
 			break;
 		case DrawCommandType::DRAW_AUTO:
 			COMMAND_LIST_LOG(state, "[%S] DrawAuto()\n", ini_section.c_str());
-			mOrigContext->DrawAuto();
+			mOrigContext1->DrawAuto();
 			break;
 		case DrawCommandType::DRAW_INDEXED:
 			COMMAND_LIST_LOG(state, "[%S] DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), args[0], args[1], (INT)args[2]);
-			mOrigContext->DrawIndexed(args[0], args[1], (INT)args[2]);
+			mOrigContext1->DrawIndexed(args[0], args[1], (INT)args[2]);
 			break;
 		case DrawCommandType::DRAW_INDEXED_INSTANCED:
 			COMMAND_LIST_LOG(state, "[%S] DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), args[0], args[1], args[2], (INT)args[3], args[4]);
-			mOrigContext->DrawIndexedInstanced(args[0], args[1], args[2], (INT)args[3], args[4]);
+			mOrigContext1->DrawIndexedInstanced(args[0], args[1], args[2], (INT)args[3], args[4]);
 			break;
 		// TODO: case DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT:
 		// TODO: 	break;
 		case DrawCommandType::DRAW_INSTANCED:
 			COMMAND_LIST_LOG(state, "[%S] DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), args[0], args[1], args[2], args[3]);
-			mOrigContext->DrawInstanced(args[0], args[1], args[2], args[3]);
+			mOrigContext1->DrawInstanced(args[0], args[1], args[2], args[3]);
 			break;
 		// TODO: case DrawCommandType::DRAW_INSTANCED_INDIRECT:
 		// TODO: 	break;
 		case DrawCommandType::DISPATCH:
 			COMMAND_LIST_LOG(state, "[%S] Dispatch(%u, %u, %u)\n", ini_section.c_str(), args[0], args[1], args[2]);
-			mOrigContext->Dispatch(args[0], args[1], args[2]);
+			mOrigContext1->Dispatch(args[0], args[1], args[2]);
 			break;
 		// TODO: case DrawCommandType::DISPATCH_INDIRECT:
 		// TODO: 	break;
@@ -737,24 +738,24 @@ void DrawCommand::run(CommandListState *state)
 			if (info->InstanceCount) {
 				if (info->IndexCount) {
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
-					mOrigContext->DrawIndexedInstanced(info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
+					mOrigContext1->DrawIndexedInstanced(info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
 				} else {
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
-					mOrigContext->DrawInstanced(info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
+					mOrigContext1->DrawInstanced(info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
 				}
 			} else if (info->IndexCount) {
 				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), info->IndexCount, info->FirstIndex, info->FirstVertex);
-				mOrigContext->DrawIndexed(info->IndexCount, info->FirstIndex, info->FirstVertex);
+				mOrigContext1->DrawIndexed(info->IndexCount, info->FirstIndex, info->FirstVertex);
 			} else if (info->VertexCount) {
 				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> Draw(%u, %u)\n", ini_section.c_str(), info->VertexCount, info->FirstVertex);
-				mOrigContext->Draw(info->VertexCount, info->FirstVertex);
+				mOrigContext1->Draw(info->VertexCount, info->FirstVertex);
 			} else if (info->indirect_buffer) {
 				if (info->DrawInstancedIndirect) {
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
-					mOrigContext->DrawInstancedIndirect(info->indirect_buffer, info->args_offset);
+					mOrigContext1->DrawInstancedIndirect(info->indirect_buffer, info->args_offset);
 				} else {
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
-					mOrigContext->DrawIndexedInstancedIndirect(info->indirect_buffer, info->args_offset);
+					mOrigContext1->DrawIndexedInstancedIndirect(info->indirect_buffer, info->args_offset);
 				}
 			} else {
 				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawAuto()\n", ini_section.c_str());
@@ -1089,60 +1090,60 @@ err:
 	return true;
 }
 
-void CustomShader::substantiate(ID3D11Device *mOrigDevice)
+void CustomShader::substantiate(ID3D11Device *mOrigDevice1)
 {
 	if (substantiated)
 		return;
 	substantiated = true;
 
 	if (vs_bytecode) {
-		mOrigDevice->CreateVertexShader(vs_bytecode->GetBufferPointer(), vs_bytecode->GetBufferSize(), NULL, &vs);
+		mOrigDevice1->CreateVertexShader(vs_bytecode->GetBufferPointer(), vs_bytecode->GetBufferSize(), NULL, &vs);
 		CleanupShaderMaps(vs);
 		vs_bytecode->Release();
 		vs_bytecode = NULL;
 	}
 	if (hs_bytecode) {
-		mOrigDevice->CreateHullShader(hs_bytecode->GetBufferPointer(), hs_bytecode->GetBufferSize(), NULL, &hs);
+		mOrigDevice1->CreateHullShader(hs_bytecode->GetBufferPointer(), hs_bytecode->GetBufferSize(), NULL, &hs);
 		CleanupShaderMaps(hs);
 		hs_bytecode->Release();
 		hs_bytecode = NULL;
 	}
 	if (ds_bytecode) {
-		mOrigDevice->CreateDomainShader(ds_bytecode->GetBufferPointer(), ds_bytecode->GetBufferSize(), NULL, &ds);
+		mOrigDevice1->CreateDomainShader(ds_bytecode->GetBufferPointer(), ds_bytecode->GetBufferSize(), NULL, &ds);
 		CleanupShaderMaps(ds);
 		ds_bytecode->Release();
 		ds_bytecode = NULL;
 	}
 	if (gs_bytecode) {
-		mOrigDevice->CreateGeometryShader(gs_bytecode->GetBufferPointer(), gs_bytecode->GetBufferSize(), NULL, &gs);
+		mOrigDevice1->CreateGeometryShader(gs_bytecode->GetBufferPointer(), gs_bytecode->GetBufferSize(), NULL, &gs);
 		CleanupShaderMaps(gs);
 		gs_bytecode->Release();
 		gs_bytecode = NULL;
 	}
 	if (ps_bytecode) {
-		mOrigDevice->CreatePixelShader(ps_bytecode->GetBufferPointer(), ps_bytecode->GetBufferSize(), NULL, &ps);
+		mOrigDevice1->CreatePixelShader(ps_bytecode->GetBufferPointer(), ps_bytecode->GetBufferSize(), NULL, &ps);
 		CleanupShaderMaps(ps);
 		ps_bytecode->Release();
 		ps_bytecode = NULL;
 	}
 	if (cs_bytecode) {
-		mOrigDevice->CreateComputeShader(cs_bytecode->GetBufferPointer(), cs_bytecode->GetBufferSize(), NULL, &cs);
+		mOrigDevice1->CreateComputeShader(cs_bytecode->GetBufferPointer(), cs_bytecode->GetBufferSize(), NULL, &cs);
 		CleanupShaderMaps(cs);
 		cs_bytecode->Release();
 		cs_bytecode = NULL;
 	}
 
 	if (blend_override == 1) // 2 will merge the blend state at draw time
-		mOrigDevice->CreateBlendState(&blend_desc, &blend_state);
+		mOrigDevice1->CreateBlendState(&blend_desc, &blend_state);
 
 	if (depth_stencil_override == 1) // 2 will merge depth/stencil state at draw time
-		mOrigDevice->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
+		mOrigDevice1->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
 
 	if (rs_override == 1) // 2 will merge rasterizer state at draw time
-		mOrigDevice->CreateRasterizerState(&rs_desc, &rs_state);
+		mOrigDevice1->CreateRasterizerState(&rs_desc, &rs_state);
 
 	if (sampler_override == 1)
-		mOrigDevice->CreateSamplerState(&sampler_desc, &sampler_state);
+		mOrigDevice1->CreateSamplerState(&sampler_desc, &sampler_state);
 }
 
 // Similar to memcpy, but also takes a mask. Any bits in the mask that are set
@@ -1159,7 +1160,7 @@ static void memcpy_masked_merge(void *dest, void *src, void *mask, size_t n)
 		c_dest[i] = c_dest[i] & ~c_mask[i] | c_src[i] & c_mask[i];
 }
 
-void CustomShader::merge_blend_states(ID3D11BlendState *src_state, FLOAT src_blend_factor[4], UINT src_sample_mask, ID3D11Device *mOrigDevice)
+void CustomShader::merge_blend_states(ID3D11BlendState *src_state, FLOAT src_blend_factor[4], UINT src_sample_mask, ID3D11Device *mOrigDevice1)
 {
 	D3D11_BLEND_DESC src_desc;
 	int i;
@@ -1199,10 +1200,10 @@ void CustomShader::merge_blend_states(ID3D11BlendState *src_state, FLOAT src_ble
 	}
 	blend_sample_mask = blend_sample_mask & ~blend_sample_mask_merge_mask | src_sample_mask & blend_sample_mask_merge_mask;
 
-	mOrigDevice->CreateBlendState(&blend_desc, &blend_state);
+	mOrigDevice1->CreateBlendState(&blend_desc, &blend_state);
 }
 
-void CustomShader::merge_depth_stencil_states(ID3D11DepthStencilState *src_state, UINT src_stencil_ref, ID3D11Device *mOrigDevice)
+void CustomShader::merge_depth_stencil_states(ID3D11DepthStencilState *src_state, UINT src_stencil_ref, ID3D11Device *mOrigDevice1)
 {
 	D3D11_DEPTH_STENCIL_DESC src_desc;
 
@@ -1238,10 +1239,10 @@ void CustomShader::merge_depth_stencil_states(ID3D11DepthStencilState *src_state
 	memcpy_masked_merge(&depth_stencil_desc, &src_desc, &depth_stencil_mask, sizeof(D3D11_DEPTH_STENCIL_DESC));
 	stencil_ref = stencil_ref & ~stencil_ref_mask | src_stencil_ref & stencil_ref_mask;
 
-	mOrigDevice->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
+	mOrigDevice1->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
 }
 
-void CustomShader::merge_rasterizer_states(ID3D11RasterizerState *src_state, ID3D11Device *mOrigDevice)
+void CustomShader::merge_rasterizer_states(ID3D11RasterizerState *src_state, ID3D11Device *mOrigDevice1)
 {
 	D3D11_RASTERIZER_DESC src_desc;
 
@@ -1272,7 +1273,7 @@ void CustomShader::merge_rasterizer_states(ID3D11RasterizerState *src_state, ID3
 
 	memcpy_masked_merge(&rs_desc, &src_desc, &rs_mask, sizeof(D3D11_RASTERIZER_DESC));
 
-	mOrigDevice->CreateRasterizerState(&rs_desc, &rs_state);
+	mOrigDevice1->CreateRasterizerState(&rs_desc, &rs_state);
 }
 
 struct saved_shader_inst
@@ -1311,7 +1312,7 @@ static void get_all_rts_dsv_uavs(CommandListState *state,
 	// information that we don't know. So, we have to do a few extra steps
 	// to find that info.
 
-	state->mOrigContext->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, rtvs, dsv);
+	state->mOrigContext1->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, rtvs, dsv);
 
 	*NumRTVs = 0;
 	if (rtvs) {
@@ -1329,13 +1330,13 @@ static void get_all_rts_dsv_uavs(CommandListState *state,
 
 	// Finally get all the UAVs. Since we already retrieved the RTVs and
 	// DSV we can skip getting them:
-	state->mOrigContext->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, *UAVStartSlot, *NumUAVs, uavs);
+	state->mOrigContext1->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, *UAVStartSlot, *NumUAVs, uavs);
 }
 
 void RunCustomShaderCommand::run(CommandListState *state)
 {
-	ID3D11Device *mOrigDevice = state->mOrigDevice;
-	ID3D11DeviceContext *mOrigContext = state->mOrigContext;
+	ID3D11Device *mOrigDevice1 = state->mOrigDevice1;
+	ID3D11DeviceContext *mOrigContext1 = state->mOrigContext1;
 	ID3D11VertexShader *saved_vs = NULL;
 	ID3D11HullShader *saved_hs = NULL;
 	ID3D11DomainShader *saved_ds = NULL;
@@ -1378,7 +1379,7 @@ void RunCustomShaderCommand::run(CommandListState *state)
 		}
 	}
 
-	custom_shader->substantiate(mOrigDevice);
+	custom_shader->substantiate(mOrigDevice1);
 
 	saved_shader_inst vs_inst, hs_inst, ds_inst, gs_inst, ps_inst, cs_inst;
 
@@ -1390,56 +1391,56 @@ void RunCustomShaderCommand::run(CommandListState *state)
 	// the draw call.
 
 	if (custom_shader->vs_override) {
-		mOrigContext->VSGetShader(&saved_vs, vs_inst.instances, &vs_inst.num_instances);
-		mOrigContext->VSSetShader(custom_shader->vs, NULL, 0);
+		mOrigContext1->VSGetShader(&saved_vs, vs_inst.instances, &vs_inst.num_instances);
+		mOrigContext1->VSSetShader(custom_shader->vs, NULL, 0);
 	}
 	if (custom_shader->hs_override) {
-		mOrigContext->HSGetShader(&saved_hs, hs_inst.instances, &hs_inst.num_instances);
-		mOrigContext->HSSetShader(custom_shader->hs, NULL, 0);
+		mOrigContext1->HSGetShader(&saved_hs, hs_inst.instances, &hs_inst.num_instances);
+		mOrigContext1->HSSetShader(custom_shader->hs, NULL, 0);
 	}
 	if (custom_shader->ds_override) {
-		mOrigContext->DSGetShader(&saved_ds, ds_inst.instances, &ds_inst.num_instances);
-		mOrigContext->DSSetShader(custom_shader->ds, NULL, 0);
+		mOrigContext1->DSGetShader(&saved_ds, ds_inst.instances, &ds_inst.num_instances);
+		mOrigContext1->DSSetShader(custom_shader->ds, NULL, 0);
 	}
 	if (custom_shader->gs_override) {
-		mOrigContext->GSGetShader(&saved_gs, gs_inst.instances, &gs_inst.num_instances);
-		mOrigContext->GSSetShader(custom_shader->gs, NULL, 0);
+		mOrigContext1->GSGetShader(&saved_gs, gs_inst.instances, &gs_inst.num_instances);
+		mOrigContext1->GSSetShader(custom_shader->gs, NULL, 0);
 	}
 	if (custom_shader->ps_override) {
-		mOrigContext->PSGetShader(&saved_ps, ps_inst.instances, &ps_inst.num_instances);
-		mOrigContext->PSSetShader(custom_shader->ps, NULL, 0);
+		mOrigContext1->PSGetShader(&saved_ps, ps_inst.instances, &ps_inst.num_instances);
+		mOrigContext1->PSSetShader(custom_shader->ps, NULL, 0);
 	}
 	if (custom_shader->cs_override) {
-		mOrigContext->CSGetShader(&saved_cs, cs_inst.instances, &cs_inst.num_instances);
-		mOrigContext->CSSetShader(custom_shader->cs, NULL, 0);
+		mOrigContext1->CSGetShader(&saved_cs, cs_inst.instances, &cs_inst.num_instances);
+		mOrigContext1->CSSetShader(custom_shader->cs, NULL, 0);
 	}
 	if (custom_shader->blend_override) {
-		mOrigContext->OMGetBlendState(&saved_blend, saved_blend_factor, &saved_sample_mask);
-		custom_shader->merge_blend_states(saved_blend, saved_blend_factor, saved_sample_mask, mOrigDevice);
-		mOrigContext->OMSetBlendState(custom_shader->blend_state, custom_shader->blend_factor, custom_shader->blend_sample_mask);
+		mOrigContext1->OMGetBlendState(&saved_blend, saved_blend_factor, &saved_sample_mask);
+		custom_shader->merge_blend_states(saved_blend, saved_blend_factor, saved_sample_mask, mOrigDevice1);
+		mOrigContext1->OMSetBlendState(custom_shader->blend_state, custom_shader->blend_factor, custom_shader->blend_sample_mask);
 	}
 	if (custom_shader->depth_stencil_override) {
-		mOrigContext->OMGetDepthStencilState(&saved_depth_stencil, &saved_stencil_ref);
-		custom_shader->merge_depth_stencil_states(saved_depth_stencil, saved_stencil_ref, mOrigDevice);
-		mOrigContext->OMSetDepthStencilState(custom_shader->depth_stencil_state, custom_shader->stencil_ref);
+		mOrigContext1->OMGetDepthStencilState(&saved_depth_stencil, &saved_stencil_ref);
+		custom_shader->merge_depth_stencil_states(saved_depth_stencil, saved_stencil_ref, mOrigDevice1);
+		mOrigContext1->OMSetDepthStencilState(custom_shader->depth_stencil_state, custom_shader->stencil_ref);
 	}
 	if (custom_shader->rs_override) {
-		mOrigContext->RSGetState(&saved_rs);
-		custom_shader->merge_rasterizer_states(saved_rs, mOrigDevice);
-		mOrigContext->RSSetState(custom_shader->rs_state);
+		mOrigContext1->RSGetState(&saved_rs);
+		custom_shader->merge_rasterizer_states(saved_rs, mOrigDevice1);
+		mOrigContext1->RSSetState(custom_shader->rs_state);
 	}
 	if (custom_shader->topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED) {
-		mOrigContext->IAGetPrimitiveTopology(&saved_topology);
-		mOrigContext->IASetPrimitiveTopology(custom_shader->topology);
+		mOrigContext1->IAGetPrimitiveTopology(&saved_topology);
+		mOrigContext1->IASetPrimitiveTopology(custom_shader->topology);
 	}
 	if (custom_shader->sampler_override) {
-		mOrigContext->PSGetSamplers(0, num_sampler, saved_sampler_states);
-		mOrigContext->PSSetSamplers(0, 1, &custom_shader->sampler_state); //just one slot for the moment TODO: allow more via *.ini file
+		mOrigContext1->PSGetSamplers(0, num_sampler, saved_sampler_states);
+		mOrigContext1->PSSetSamplers(0, 1, &custom_shader->sampler_state); //just one slot for the moment TODO: allow more via *.ini file
 	}
 	// We save off the viewports unconditionally for now. We could
 	// potentially skip this by flagging if a command list may alter them,
 	// but that probably wouldn't buy us anything:
-	mOrigContext->RSGetViewports(&num_viewports, saved_viewports);
+	mOrigContext1->RSGetViewports(&num_viewports, saved_viewports);
 	// Likewise, save off all RTVs, UAVs and DSVs unconditionally:
 	get_all_rts_dsv_uavs(state, &NumRTVs, saved_rtvs, &saved_dsv, &UAVStartSlot, &NumUAVs, saved_uavs);
 
@@ -1456,30 +1457,30 @@ void RunCustomShaderCommand::run(CommandListState *state)
 
 	// Finally restore the original shaders
 	if (custom_shader->vs_override)
-		mOrigContext->VSSetShader(saved_vs, vs_inst.instances, vs_inst.num_instances);
+		mOrigContext1->VSSetShader(saved_vs, vs_inst.instances, vs_inst.num_instances);
 	if (custom_shader->hs_override)
-		mOrigContext->HSSetShader(saved_hs, hs_inst.instances, hs_inst.num_instances);
+		mOrigContext1->HSSetShader(saved_hs, hs_inst.instances, hs_inst.num_instances);
 	if (custom_shader->ds_override)
-		mOrigContext->DSSetShader(saved_ds, ds_inst.instances, ds_inst.num_instances);
+		mOrigContext1->DSSetShader(saved_ds, ds_inst.instances, ds_inst.num_instances);
 	if (custom_shader->gs_override)
-		mOrigContext->GSSetShader(saved_gs, gs_inst.instances, gs_inst.num_instances);
+		mOrigContext1->GSSetShader(saved_gs, gs_inst.instances, gs_inst.num_instances);
 	if (custom_shader->ps_override)
-		mOrigContext->PSSetShader(saved_ps, ps_inst.instances, ps_inst.num_instances);
+		mOrigContext1->PSSetShader(saved_ps, ps_inst.instances, ps_inst.num_instances);
 	if (custom_shader->cs_override)
-		mOrigContext->CSSetShader(saved_cs, cs_inst.instances, cs_inst.num_instances);
+		mOrigContext1->CSSetShader(saved_cs, cs_inst.instances, cs_inst.num_instances);
 	if (custom_shader->blend_override)
-		mOrigContext->OMSetBlendState(saved_blend, saved_blend_factor, saved_sample_mask);
+		mOrigContext1->OMSetBlendState(saved_blend, saved_blend_factor, saved_sample_mask);
 	if (custom_shader->depth_stencil_override)
-		mOrigContext->OMSetDepthStencilState(saved_depth_stencil, saved_stencil_ref);
+		mOrigContext1->OMSetDepthStencilState(saved_depth_stencil, saved_stencil_ref);
 	if (custom_shader->rs_override)
-		mOrigContext->RSSetState(saved_rs);
+		mOrigContext1->RSSetState(saved_rs);
 	if (custom_shader->topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED)
-		mOrigContext->IASetPrimitiveTopology(saved_topology);
+		mOrigContext1->IASetPrimitiveTopology(saved_topology);
 	if (custom_shader->sampler_override)
-		mOrigContext->PSSetSamplers(0, num_sampler, saved_sampler_states);
+		mOrigContext1->PSSetSamplers(0, num_sampler, saved_sampler_states);
 
-	mOrigContext->RSSetViewports(num_viewports, saved_viewports);
-	mOrigContext->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, saved_rtvs, saved_dsv, UAVStartSlot, NumUAVs, saved_uavs, uav_counts);
+	mOrigContext1->RSSetViewports(num_viewports, saved_viewports);
+	mOrigContext1->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, saved_rtvs, saved_dsv, UAVStartSlot, NumUAVs, saved_uavs, uav_counts);
 
 	if (saved_vs)
 		saved_vs->Release();
@@ -1546,7 +1547,7 @@ static void ProcessParamRTSize(CommandListState *state)
 	if (state->rt_width != -1)
 		return;
 
-	state->mOrigContext->OMGetRenderTargets(1, &view, NULL);
+	state->mOrigContext1->OMGetRenderTargets(1, &view, NULL);
 	if (!view)
 		return;
 
@@ -1606,8 +1607,8 @@ float ParamOverride::process_texture_filter(CommandListState *state)
 CommandListState::CommandListState() :
 	mHackerDevice(NULL),
 	mHackerContext(NULL),
-	mOrigDevice(NULL),
-	mOrigContext(NULL),
+	mOrigDevice1(NULL),
+	mOrigContext1(NULL),
 	rt_width(-1),
 	rt_height(-1),
 	call_info(NULL),
@@ -1766,7 +1767,7 @@ static void _CreateTextureFromBitmap(HDC dc, BITMAP *bitmap_obj,
 	desc.CPUAccessFlags = 0;
 	desc.MiscFlags = 0;
 
-	hr = state->mOrigDevice->CreateTexture2D(&desc, &data, tex);
+	hr = state->mOrigDevice1->CreateTexture2D(&desc, &data, tex);
 	if (FAILED(hr)) {
 		LogInfo("Software Mouse: CreateTexture2D Failed: 0x%x\n", hr);
 		goto err_free;
@@ -1777,7 +1778,7 @@ static void _CreateTextureFromBitmap(HDC dc, BITMAP *bitmap_obj,
 	rv_desc.Texture2D.MostDetailedMip = 0;
 	rv_desc.Texture2D.MipLevels = 1;
 
-	hr = state->mOrigDevice->CreateShaderResourceView(*tex, &rv_desc, view);
+	hr = state->mOrigDevice1->CreateShaderResourceView(*tex, &rv_desc, view);
 	if (FAILED(hr)) {
 		LogInfo("Software Mouse: CreateShaderResourceView Failed: 0x%x\n", hr);
 		goto err_release_tex;
@@ -2143,7 +2144,7 @@ static ResourceType* GetResourceFromPool(
 	} catch (std::out_of_range) {
 		LogInfo("Creating cached resource %S\n", ini_line->c_str());
 
-		hr = (state->mOrigDevice->*CreateResource)(desc, NULL, &resource);
+		hr = (state->mOrigDevice1->*CreateResource)(desc, NULL, &resource);
 		if (FAILED(hr)) {
 			LogInfo("Resource copy failed %S: 0x%x\n", ini_line->c_str(), hr);
 			LogResourceDesc(desc);
@@ -2234,7 +2235,7 @@ bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVA
 	return false;
 }
 
-void CustomResource::Substantiate(ID3D11Device *mOrigDevice, StereoHandle mStereoHandle)
+void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mStereoHandle)
 {
 	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
 	bool restore_create_mode = false;
@@ -2262,23 +2263,23 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice, StereoHandle mStere
 	restore_create_mode = OverrideSurfaceCreationMode(mStereoHandle, &orig_mode);
 
 	if (!filename.empty()) {
-		LoadFromFile(mOrigDevice);
+		LoadFromFile(mOrigDevice1);
 	} else {
 		switch (override_type) {
 			case CustomResourceType::BUFFER:
 			case CustomResourceType::STRUCTURED_BUFFER:
 			case CustomResourceType::RAW_BUFFER:
-				SubstantiateBuffer(mOrigDevice, NULL, 0);
+				SubstantiateBuffer(mOrigDevice1, NULL, 0);
 				break;
 			case CustomResourceType::TEXTURE1D:
-				SubstantiateTexture1D(mOrigDevice);
+				SubstantiateTexture1D(mOrigDevice1);
 				break;
 			case CustomResourceType::TEXTURE2D:
 			case CustomResourceType::CUBE:
-				SubstantiateTexture2D(mOrigDevice);
+				SubstantiateTexture2D(mOrigDevice1);
 				break;
 			case CustomResourceType::TEXTURE3D:
-				SubstantiateTexture3D(mOrigDevice);
+				SubstantiateTexture3D(mOrigDevice1);
 				break;
 		}
 	}
@@ -2287,7 +2288,7 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice, StereoHandle mStere
 		NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
 }
 
-void CustomResource::LoadBufferFromFile(ID3D11Device *mOrigDevice)
+void CustomResource::LoadBufferFromFile(ID3D11Device *mOrigDevice1)
 {
 	DWORD size, read_size;
 	void *buf = NULL;
@@ -2311,7 +2312,7 @@ void CustomResource::LoadBufferFromFile(ID3D11Device *mOrigDevice)
 		goto out_delete;
 	}
 
-	SubstantiateBuffer(mOrigDevice, &buf, size);
+	SubstantiateBuffer(mOrigDevice1, &buf, size);
 
 out_delete:
 	free(buf);
@@ -2319,7 +2320,7 @@ out_close:
 	CloseHandle(f);
 }
 
-void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice)
+void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 {
 	wstring ext;
 	HRESULT hr;
@@ -2328,7 +2329,7 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice)
 		case CustomResourceType::BUFFER:
 		case CustomResourceType::STRUCTURED_BUFFER:
 		case CustomResourceType::RAW_BUFFER:
-			return LoadBufferFromFile(mOrigDevice);
+			return LoadBufferFromFile(mOrigDevice1);
 	}
 
 	// XXX: We are not creating a view with DirecXTK because
@@ -2347,13 +2348,13 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice)
 	ext = filename.substr(filename.rfind(L"."));
 	if (!_wcsicmp(ext.c_str(), L".dds")) {
 		LogInfoW(L"Loading custom resource %s as DDS\n", filename.c_str());
-		hr = DirectX::CreateDDSTextureFromFileEx(mOrigDevice,
+		hr = DirectX::CreateDDSTextureFromFileEx(mOrigDevice1,
 				filename.c_str(), 0,
 				D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
 				false, &resource, NULL, NULL);
 	} else {
 		LogInfoW(L"Loading custom resource %s as WIC\n", filename.c_str());
-		hr = DirectX::CreateWICTextureFromFileEx(mOrigDevice,
+		hr = DirectX::CreateWICTextureFromFileEx(mOrigDevice1,
 				filename.c_str(), 0,
 				D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
 				false, &resource, NULL);
@@ -2366,7 +2367,7 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice)
 		LogInfoW(L"Failed to load custom texture resource %s: 0x%x\n", filename.c_str(), hr);
 }
 
-void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice, void **buf, DWORD size)
+void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, DWORD size)
 {
 	D3D11_SUBRESOURCE_DATA data = {0}, *pInitialData = NULL;
 	ID3D11Buffer *buffer;
@@ -2418,7 +2419,7 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice, void **buf, D
 		pInitialData = &data;
 	}
 
-	hr = mOrigDevice->CreateBuffer(&desc, pInitialData, &buffer);
+	hr = mOrigDevice1->CreateBuffer(&desc, pInitialData, &buffer);
 	if (SUCCEEDED(hr)) {
 		LogInfo("Substantiated custom %S [%S]\n",
 				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
@@ -2434,7 +2435,7 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice, void **buf, D
 		BeepFailure();
 	}
 }
-void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice)
+void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice1)
 {
 	ID3D11Texture1D *tex1d;
 	D3D11_TEXTURE1D_DESC desc;
@@ -2445,7 +2446,7 @@ void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice)
 	desc.BindFlags = bind_flags;
 	OverrideTexDesc(&desc);
 
-	hr = mOrigDevice->CreateTexture1D(&desc, NULL, &tex1d);
+	hr = mOrigDevice1->CreateTexture1D(&desc, NULL, &tex1d);
 	if (SUCCEEDED(hr)) {
 		LogInfo("Substantiated custom %S [%S]\n",
 				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
@@ -2459,7 +2460,7 @@ void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice)
 		BeepFailure();
 	}
 }
-void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice)
+void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice1)
 {
 	ID3D11Texture2D *tex2d;
 	D3D11_TEXTURE2D_DESC desc;
@@ -2470,7 +2471,7 @@ void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice)
 	desc.BindFlags = bind_flags;
 	OverrideTexDesc(&desc);
 
-	hr = mOrigDevice->CreateTexture2D(&desc, NULL, &tex2d);
+	hr = mOrigDevice1->CreateTexture2D(&desc, NULL, &tex2d);
 	if (SUCCEEDED(hr)) {
 		LogInfo("Substantiated custom %S [%S]\n",
 				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
@@ -2484,7 +2485,7 @@ void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice)
 		BeepFailure();
 	}
 }
-void CustomResource::SubstantiateTexture3D(ID3D11Device *mOrigDevice)
+void CustomResource::SubstantiateTexture3D(ID3D11Device *mOrigDevice1)
 {
 	ID3D11Texture3D *tex3d;
 	D3D11_TEXTURE3D_DESC desc;
@@ -2495,7 +2496,7 @@ void CustomResource::SubstantiateTexture3D(ID3D11Device *mOrigDevice)
 	desc.BindFlags = bind_flags;
 	OverrideTexDesc(&desc);
 
-	hr = mOrigDevice->CreateTexture3D(&desc, NULL, &tex3d);
+	hr = mOrigDevice1->CreateTexture3D(&desc, NULL, &tex3d);
 	if (SUCCEEDED(hr)) {
 		LogInfo("Substantiated custom %S [%S]\n",
 				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
@@ -2865,8 +2866,8 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		UINT *buf_size)      // Used when creating a view of the buffer
 {
 	HackerDevice *mHackerDevice = state->mHackerDevice;
-	ID3D11Device *mOrigDevice = state->mOrigDevice;
-	ID3D11DeviceContext *mOrigContext = state->mOrigContext;
+	ID3D11Device *mOrigDevice1 = state->mOrigDevice1;
+	ID3D11DeviceContext *mOrigContext1 = state->mOrigContext1;
 	ID3D11Resource *res = NULL;
 	ID3D11Buffer *buf = NULL;
 	ID3D11Buffer *so_bufs[D3D11_SO_STREAM_COUNT];
@@ -2882,22 +2883,22 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		// Get/SetConstantBuffers1 and copy the offset into the buffer as well
 		switch(shader_type) {
 		case L'v':
-			mOrigContext->VSGetConstantBuffers(slot, 1, &buf);
+			mOrigContext1->VSGetConstantBuffers(slot, 1, &buf);
 			return buf;
 		case L'h':
-			mOrigContext->HSGetConstantBuffers(slot, 1, &buf);
+			mOrigContext1->HSGetConstantBuffers(slot, 1, &buf);
 			return buf;
 		case L'd':
-			mOrigContext->DSGetConstantBuffers(slot, 1, &buf);
+			mOrigContext1->DSGetConstantBuffers(slot, 1, &buf);
 			return buf;
 		case L'g':
-			mOrigContext->GSGetConstantBuffers(slot, 1, &buf);
+			mOrigContext1->GSGetConstantBuffers(slot, 1, &buf);
 			return buf;
 		case L'p':
-			mOrigContext->PSGetConstantBuffers(slot, 1, &buf);
+			mOrigContext1->PSGetConstantBuffers(slot, 1, &buf);
 			return buf;
 		case L'c':
-			mOrigContext->CSGetConstantBuffers(slot, 1, &buf);
+			mOrigContext1->CSGetConstantBuffers(slot, 1, &buf);
 			return buf;
 		default:
 			// Should not happen
@@ -2908,22 +2909,22 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 	case ResourceCopyTargetType::SHADER_RESOURCE:
 		switch(shader_type) {
 		case L'v':
-			mOrigContext->VSGetShaderResources(slot, 1, &resource_view);
+			mOrigContext1->VSGetShaderResources(slot, 1, &resource_view);
 			break;
 		case L'h':
-			mOrigContext->HSGetShaderResources(slot, 1, &resource_view);
+			mOrigContext1->HSGetShaderResources(slot, 1, &resource_view);
 			break;
 		case L'd':
-			mOrigContext->DSGetShaderResources(slot, 1, &resource_view);
+			mOrigContext1->DSGetShaderResources(slot, 1, &resource_view);
 			break;
 		case L'g':
-			mOrigContext->GSGetShaderResources(slot, 1, &resource_view);
+			mOrigContext1->GSGetShaderResources(slot, 1, &resource_view);
 			break;
 		case L'p':
-			mOrigContext->PSGetShaderResources(slot, 1, &resource_view);
+			mOrigContext1->PSGetShaderResources(slot, 1, &resource_view);
 			break;
 		case L'c':
-			mOrigContext->CSGetShaderResources(slot, 1, &resource_view);
+			mOrigContext1->CSGetShaderResources(slot, 1, &resource_view);
 			break;
 		default:
 			// Should not happen
@@ -2949,7 +2950,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		// TODO: If copying this to a constant buffer, provide some
 		// means to get the strides + offsets from within the shader.
 		// Perhaps as an IniParam, or in another constant buffer?
-		mOrigContext->IAGetVertexBuffers(slot, 1, &buf, stride, offset);
+		mOrigContext1->IAGetVertexBuffers(slot, 1, &buf, stride, offset);
 
 		// To simplify things we just copy the part of the buffer
 		// referred to by this call, so adjust the offset with the
@@ -2964,7 +2965,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 	case ResourceCopyTargetType::INDEX_BUFFER:
 		// TODO: Similar comment as vertex buffers above, provide a
 		// means for a shader to get format + offset.
-		mOrigContext->IAGetIndexBuffer(&buf, format, offset);
+		mOrigContext1->IAGetIndexBuffer(&buf, format, offset);
 		if (stride && format)
 			*stride = dxgi_format_size(*format);
 
@@ -2980,7 +2981,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 
 	case ResourceCopyTargetType::STREAM_OUTPUT:
 		// XXX: Does not give us the offset
-		mOrigContext->SOGetTargets(slot + 1, so_bufs);
+		mOrigContext1->SOGetTargets(slot + 1, so_bufs);
 
 		// Release any buffers we aren't after:
 		for (i = 0; i < slot; i++) {
@@ -2993,7 +2994,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return so_bufs[slot];
 
 	case ResourceCopyTargetType::RENDER_TARGET:
-		mOrigContext->OMGetRenderTargets(slot + 1, render_view, NULL);
+		mOrigContext1->OMGetRenderTargets(slot + 1, render_view, NULL);
 
 		// Release any views we aren't after:
 		for (i = 0; i < slot; i++) {
@@ -3016,7 +3017,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return res;
 
 	case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
-		mOrigContext->OMGetRenderTargets(0, NULL, &depth_view);
+		mOrigContext1->OMGetRenderTargets(0, NULL, &depth_view);
 		if (!depth_view)
 			return NULL;
 
@@ -3036,10 +3037,10 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		case L'p':
 			// XXX: Not clear if the start slot is ok like this from the docs?
 			// Particularly, what happens if we retrieve a subsequent UAV?
-			mOrigContext->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, slot, 1, &unordered_view);
+			mOrigContext1->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, slot, 1, &unordered_view);
 			break;
 		case L'c':
-			mOrigContext->CSGetUnorderedAccessViews(slot, 1, &unordered_view);
+			mOrigContext1->CSGetUnorderedAccessViews(slot, 1, &unordered_view);
 			break;
 		default:
 			// Should not happen
@@ -3059,7 +3060,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return res;
 
 	case ResourceCopyTargetType::CUSTOM_RESOURCE:
-		custom_resource->Substantiate(mOrigDevice, mHackerDevice->mStereoHandle);
+		custom_resource->Substantiate(mOrigDevice1, mHackerDevice->mStereoHandle);
 
 		if (stride)
 			*stride = custom_resource->stride;
@@ -3128,7 +3129,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return state->resource;
 
 	case ResourceCopyTargetType::SWAP_CHAIN:
-		mHackerDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+		mHackerDevice->GetHackerSwapChain()->GetOrigSwapChain1()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
 		return res;
 
 	case ResourceCopyTargetType::FAKE_SWAP_CHAIN:
@@ -3148,7 +3149,7 @@ void ResourceCopyTarget::SetResource(
 		DXGI_FORMAT format,
 		UINT buf_size)
 {
-	ID3D11DeviceContext *mOrigContext = state->mOrigContext;
+	ID3D11DeviceContext *mOrigContext1 = state->mOrigContext1;
 	ID3D11Buffer *buf = NULL;
 	ID3D11Buffer *so_bufs[D3D11_SO_STREAM_COUNT];
 	ID3D11ShaderResourceView *resource_view = NULL;
@@ -3165,22 +3166,22 @@ void ResourceCopyTarget::SetResource(
 		buf = (ID3D11Buffer*)res;
 		switch(shader_type) {
 		case L'v':
-			mOrigContext->VSSetConstantBuffers(slot, 1, &buf);
+			mOrigContext1->VSSetConstantBuffers(slot, 1, &buf);
 			return;
 		case L'h':
-			mOrigContext->HSSetConstantBuffers(slot, 1, &buf);
+			mOrigContext1->HSSetConstantBuffers(slot, 1, &buf);
 			return;
 		case L'd':
-			mOrigContext->DSSetConstantBuffers(slot, 1, &buf);
+			mOrigContext1->DSSetConstantBuffers(slot, 1, &buf);
 			return;
 		case L'g':
-			mOrigContext->GSSetConstantBuffers(slot, 1, &buf);
+			mOrigContext1->GSSetConstantBuffers(slot, 1, &buf);
 			return;
 		case L'p':
-			mOrigContext->PSSetConstantBuffers(slot, 1, &buf);
+			mOrigContext1->PSSetConstantBuffers(slot, 1, &buf);
 			return;
 		case L'c':
-			mOrigContext->CSSetConstantBuffers(slot, 1, &buf);
+			mOrigContext1->CSSetConstantBuffers(slot, 1, &buf);
 			return;
 		default:
 			// Should not happen
@@ -3192,22 +3193,22 @@ void ResourceCopyTarget::SetResource(
 		resource_view = (ID3D11ShaderResourceView*)view;
 		switch(shader_type) {
 		case L'v':
-			mOrigContext->VSSetShaderResources(slot, 1, &resource_view);
+			mOrigContext1->VSSetShaderResources(slot, 1, &resource_view);
 			break;
 		case L'h':
-			mOrigContext->HSSetShaderResources(slot, 1, &resource_view);
+			mOrigContext1->HSSetShaderResources(slot, 1, &resource_view);
 			break;
 		case L'd':
-			mOrigContext->DSSetShaderResources(slot, 1, &resource_view);
+			mOrigContext1->DSSetShaderResources(slot, 1, &resource_view);
 			break;
 		case L'g':
-			mOrigContext->GSSetShaderResources(slot, 1, &resource_view);
+			mOrigContext1->GSSetShaderResources(slot, 1, &resource_view);
 			break;
 		case L'p':
-			mOrigContext->PSSetShaderResources(slot, 1, &resource_view);
+			mOrigContext1->PSSetShaderResources(slot, 1, &resource_view);
 			break;
 		case L'c':
-			mOrigContext->CSSetShaderResources(slot, 1, &resource_view);
+			mOrigContext1->CSSetShaderResources(slot, 1, &resource_view);
 			break;
 		default:
 			// Should not happen
@@ -3220,25 +3221,25 @@ void ResourceCopyTarget::SetResource(
 
 	case ResourceCopyTargetType::VERTEX_BUFFER:
 		buf = (ID3D11Buffer*)res;
-		mOrigContext->IASetVertexBuffers(slot, 1, &buf, &stride, &offset);
+		mOrigContext1->IASetVertexBuffers(slot, 1, &buf, &stride, &offset);
 		return;
 
 	case ResourceCopyTargetType::INDEX_BUFFER:
 		buf = (ID3D11Buffer*)res;
-		mOrigContext->IASetIndexBuffer(buf, format, offset);
+		mOrigContext1->IASetIndexBuffer(buf, format, offset);
 		break;
 
 	case ResourceCopyTargetType::STREAM_OUTPUT:
 		// XXX: HERE BE UNTESTED CODE PATHS!
 		buf = (ID3D11Buffer*)res;
-		mOrigContext->SOGetTargets(D3D11_SO_STREAM_COUNT, so_bufs);
+		mOrigContext1->SOGetTargets(D3D11_SO_STREAM_COUNT, so_bufs);
 		if (so_bufs[slot])
 			so_bufs[slot]->Release();
 		so_bufs[slot] = buf;
 		// XXX: We set offsets to NULL here. We should really preserve
 		// them, but I'm not sure how to get their original values,
 		// so... too bad. Probably will never even use this anyway.
-		mOrigContext->SOSetTargets(D3D11_SO_STREAM_COUNT, so_bufs, NULL);
+		mOrigContext1->SOSetTargets(D3D11_SO_STREAM_COUNT, so_bufs, NULL);
 
 		for (i = 0; i < D3D11_SO_STREAM_COUNT; i++) {
 			if (so_bufs[i])
@@ -3248,13 +3249,13 @@ void ResourceCopyTarget::SetResource(
 		break;
 
 	case ResourceCopyTargetType::RENDER_TARGET:
-		mOrigContext->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, render_view, &depth_view);
+		mOrigContext1->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, render_view, &depth_view);
 
 		if (render_view[slot])
 			render_view[slot]->Release();
 		render_view[slot] = (ID3D11RenderTargetView*)view;
 
-		mOrigContext->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, render_view, depth_view);
+		mOrigContext1->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, render_view, depth_view);
 
 		for (i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++) {
 			if (i != slot && render_view[i])
@@ -3266,13 +3267,13 @@ void ResourceCopyTarget::SetResource(
 		break;
 
 	case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
-		mOrigContext->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, render_view, &depth_view);
+		mOrigContext1->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, render_view, &depth_view);
 
 		if (depth_view)
 			depth_view->Release();
 		depth_view = (ID3D11DepthStencilView*)view;
 
-		mOrigContext->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, render_view, depth_view);
+		mOrigContext1->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, render_view, depth_view);
 
 		for (i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++) {
 			if (render_view[i])
@@ -3287,12 +3288,12 @@ void ResourceCopyTarget::SetResource(
 		case L'p':
 			// XXX: Not clear if this will unbind other UAVs or not?
 			// TODO: Allow pUAVInitialCounts to optionally be set
-			mOrigContext->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL,
+			mOrigContext1->OMSetRenderTargetsAndUnorderedAccessViews(D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL,
 				NULL, NULL, slot, 1, &unordered_view, &uav_counter);
 			return;
 		case L'c':
 			// TODO: Allow pUAVInitialCounts to optionally be set
-			mOrigContext->CSSetUnorderedAccessViews(slot, 1, &unordered_view, &uav_counter);
+			mOrigContext1->CSSetUnorderedAccessViews(slot, 1, &unordered_view, &uav_counter);
 			return;
 		default:
 			// Should not happen
@@ -4284,7 +4285,7 @@ static ID3D11View* _CreateCompatibleView(
 			break;
 	}
 
-	hr = (state->mOrigDevice->*CreateView)(resource, pDesc, &view);
+	hr = (state->mOrigDevice1->*CreateView)(resource, pDesc, &view);
 	if (FAILED(hr)) {
 		LogInfo("Resource copy CreateCompatibleView failed: %x\n", hr);
 		if (pDesc)
@@ -4369,7 +4370,7 @@ static void SetViewportFromResource(CommandListState *state, ID3D11Resource *res
 			viewport.Height = (float)tex3d_desc.Height;
 	}
 
-	state->mOrigContext->RSSetViewports(1, &viewport);
+	state->mOrigContext1->RSSetViewports(1, &viewport);
 }
 
 ResourceCopyOperation::ResourceCopyOperation() :
@@ -4401,13 +4402,13 @@ HRESULT ResourceStagingOperation::map(CommandListState *state, D3D11_MAPPED_SUBR
 	if (!cached_resource)
 		return E_FAIL;
 
-	return state->mOrigContext->Map(cached_resource, 0, D3D11_MAP_READ, D3D11_MAP_FLAG_DO_NOT_WAIT, mapping);
+	return state->mOrigContext1->Map(cached_resource, 0, D3D11_MAP_READ, D3D11_MAP_FLAG_DO_NOT_WAIT, mapping);
 }
 
 void ResourceStagingOperation::unmap(CommandListState *state)
 {
 	if (cached_resource)
-		state->mOrigContext->Unmap(cached_resource, 0);
+		state->mOrigContext1->Unmap(cached_resource, 0);
 }
 
 static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resource, CommandListState *state)
@@ -4429,7 +4430,7 @@ static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resour
 	dst->GetDesc(&desc);
 	fmt = EnsureNotTypeless(desc.Format);
 
-	hr = state->mOrigDevice->CheckFormatSupport( fmt, &support );
+	hr = state->mOrigDevice1->CheckFormatSupport( fmt, &support );
 	if (FAILED(hr) || !(support & D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE)) {
 		// TODO: Implement a fallback using a SM5 shader to resolve it
 		LogInfo("Resource copy cannot resolve MSAA format %d\n", fmt);
@@ -4439,7 +4440,7 @@ static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resour
 	for (item = 0; item < desc.ArraySize; item++) {
 		for (level = 0; level < desc.MipLevels; level++) {
 			index = D3D11CalcSubresource(level, item, max(desc.MipLevels, 1));
-			state->mOrigContext->ResolveSubresource(dst, index, src, index, fmt);
+			state->mOrigContext1->ResolveSubresource(dst, index, src, index, fmt);
 		}
 	}
 }
@@ -4503,7 +4504,7 @@ static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_
 				index = D3D11CalcSubresource(level, item, max(srcDesc.MipLevels, 1));
 				srcBox.right = width >> level;
 				srcBox.bottom = height >> level;
-				state->mOrigContext->CopySubresourceRegion(dst_resource, index,
+				state->mOrigContext1->CopySubresourceRegion(dst_resource, index,
 						fallbackside * srcBox.right, 0, 0,
 						src, index, &srcBox);
 			}
@@ -4540,7 +4541,7 @@ static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource 
 	src_box.front = 0;
 	src_box.back = 1;
 
-	state->mOrigContext->CopySubresourceRegion(dst_resource, 0, 0, 0, 0, src_resource, 0, &src_box);
+	state->mOrigContext1->CopySubresourceRegion(dst_resource, 0, 0, 0, 0, src_resource, 0, &src_box);
 
 	// We have effectively removed the offset during the region copy, so
 	// set it to 0 to make sure nothing will try to use it again elsewhere:
@@ -4790,7 +4791,7 @@ void ClearViewCommand::clear_unknown_view(ID3D11View *view, CommandListState *st
 
 	if (rtv) {
 		COMMAND_LIST_LOG(state, "  clearing RTV\n");
-		state->mOrigContext->ClearRenderTargetView(rtv, fval);
+		state->mOrigContext1->ClearRenderTargetView(rtv, fval);
 	}
 	if (dsv) {
 		D3D11_CLEAR_FLAG flags = (D3D11_CLEAR_FLAG)0;
@@ -4803,7 +4804,7 @@ void ClearViewCommand::clear_unknown_view(ID3D11View *view, CommandListState *st
 		else if (clear_stencil)
 			flags = D3D11_CLEAR_STENCIL;
 
-		state->mOrigContext->ClearDepthStencilView(dsv, flags, dsv_depth, dsv_stencil);
+		state->mOrigContext1->ClearDepthStencilView(dsv, flags, dsv_depth, dsv_stencil);
 	}
 	if (uav) {
 		// We can clear UAVs with either floats or uints, but which
@@ -4813,10 +4814,10 @@ void ClearViewCommand::clear_unknown_view(ID3D11View *view, CommandListState *st
 		// unless the user specificially told us to use the int clear.
 		if (clear_uav_uint || !UAVSupportsFloatClear(uav)) {
 			COMMAND_LIST_LOG(state, "  clearing UAV (uint)\n");
-			state->mOrigContext->ClearUnorderedAccessViewUint(uav, uval);
+			state->mOrigContext1->ClearUnorderedAccessViewUint(uav, uval);
 		} else {
 			COMMAND_LIST_LOG(state, "  clearing UAV (float)\n");
-			state->mOrigContext->ClearUnorderedAccessViewFloat(uav, fval);
+			state->mOrigContext1->ClearUnorderedAccessViewFloat(uav, fval);
 		}
 	}
 
@@ -4891,7 +4892,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 {
 	HackerDevice *mHackerDevice = state->mHackerDevice;
 	HackerContext *mHackerContext = state->mHackerContext;
-	ID3D11DeviceContext *mOrigContext = state->mOrigContext;
+	ID3D11DeviceContext *mOrigContext1 = state->mOrigContext1;
 	ID3D11Resource *src_resource = NULL;
 	ID3D11Resource *dst_resource = NULL;
 	ID3D11Resource **pp_cached_resource = &cached_resource;
@@ -4991,7 +4992,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 
 			ReverseStereoBlit(stereo2mono_intermediate, src_resource, state);
 
-			mOrigContext->CopyResource(dst_resource, stereo2mono_intermediate);
+			mOrigContext1->CopyResource(dst_resource, stereo2mono_intermediate);
 
 		} else if (options & ResourceCopyOptions::RESOLVE_MSAA) {
 			COMMAND_LIST_LOG(state, "  resolving MSAA\n");
@@ -5003,7 +5004,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 					buf_src_size, buf_dst_size);
 		} else {
 			COMMAND_LIST_LOG(state, "  performing full copy\n");
-			mOrigContext->CopyResource(dst_resource, src_resource);
+			mOrigContext1->CopyResource(dst_resource, src_resource);
 		}
 	} else {
 		COMMAND_LIST_LOG(state, "  copying by reference\n");

@@ -342,11 +342,11 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	if (FAILED(hr))
 		LogInfo("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
-	hr = pDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
+	hr = pDevice->GetHackerSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
 	if (SUCCEEDED(hr))
 	{
 		swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls.jpg", G->SHADER_PATH, hash, shaderType.c_str());
-		hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext(), backBuffer, GUID_ContainerFormatJpeg, fullName);
+		hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext1(), backBuffer, GUID_ContainerFormatJpeg, fullName);
 		backBuffer->Release();
 	}
 
@@ -367,7 +367,7 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	HRESULT hr;
 	NvAPI_Status nvret;
 
-	hr = pDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
+	hr = pDevice->GetHackerSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
 	if (FAILED(hr))
 		return;
 
@@ -377,7 +377,7 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	srcWidth = desc.Width;
 	desc.Width = srcWidth * 2;
 
-	hr = pDevice->GetOrigDevice()->CreateTexture2D(&desc, NULL, &stereoBackBuffer);
+	hr = pDevice->GetOrigDevice1()->CreateTexture2D(&desc, NULL, &stereoBackBuffer);
 	if (FAILED(hr)) {
 		LogInfo("StereoScreenShot failed to create intermediate texture resource: 0x%x\n", hr);
 		return;
@@ -400,14 +400,14 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	// NVAPI documentation hasn't been updated to indicate which is the
 	// correct function to use for the reverse stereo blit in DX11...
 	// Fortunately there was really only one possibility, which is:
-	pDevice->GetPassThroughOrigContext()->CopySubresourceRegion(stereoBackBuffer, 0, 0, 0, 0, backBuffer, 0, &srcBox);
+	pDevice->GetPassThroughOrigContext1()->CopySubresourceRegion(stereoBackBuffer, 0, 0, 0, 0, backBuffer, 0, &srcBox);
 
 	hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	if (FAILED(hr))
 		LogInfo("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
 	wsprintf(fullName, L"%ls\\%016I64x-%ls.jps", G->SHADER_PATH, hash, shaderType.c_str());
-	hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext(), stereoBackBuffer, GUID_ContainerFormatJpeg, fullName);
+	hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext1(), stereoBackBuffer, GUID_ContainerFormatJpeg, fullName);
 
 	LogInfoW(L"  StereoScreenShot on Mark: %s, result: %d\n", fullName, hr);
 
@@ -783,37 +783,37 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			// This needs to call the real CreateVertexShader, not our wrapped version
 			if (shaderType.compare(L"vs") == 0)
 			{
-				hr = device->GetOrigDevice()->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+				hr = device->GetOrigDevice1()->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(ID3D11VertexShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"ps") == 0)
 			{
-				hr = device->GetOrigDevice()->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+				hr = device->GetOrigDevice1()->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(ID3D11PixelShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"cs") == 0)
 			{
-				hr = device->GetOrigDevice()->CreateComputeShader(pShaderBytecode->GetBufferPointer(),
+				hr = device->GetOrigDevice1()->CreateComputeShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11ComputeShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"gs") == 0)
 			{
-				hr = device->GetOrigDevice()->CreateGeometryShader(pShaderBytecode->GetBufferPointer(),
+				hr = device->GetOrigDevice1()->CreateGeometryShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11GeometryShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"hs") == 0)
 			{
-				hr = device->GetOrigDevice()->CreateHullShader(pShaderBytecode->GetBufferPointer(),
+				hr = device->GetOrigDevice1()->CreateHullShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11HullShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"ds") == 0)
 			{
-				hr = device->GetOrigDevice()->CreateDomainShader(pShaderBytecode->GetBufferPointer(),
+				hr = device->GetOrigDevice1()->CreateDomainShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11DomainShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}

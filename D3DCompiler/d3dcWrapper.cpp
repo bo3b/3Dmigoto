@@ -1,4 +1,4 @@
-#include <d3d11.h>
+#include <d3d11_1.h>
 #include <D3D11ShaderTracing.h>
 #include <Shlobj.h>
 #include <algorithm>
@@ -827,6 +827,14 @@ BOOL WINAPI DllMain(
 	_In_  LPVOID lpvReserved)
 {
 	bool result = true;
+
+	//bool waitfordebugger = false;
+	//waitfordebugger = true;
+	//do
+	//{
+	//	Sleep(250);
+	//} while (!IsDebuggerPresent());
+	//__debugbreak();
 
 	switch (fdwReason)
 	{

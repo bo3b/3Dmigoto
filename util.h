@@ -567,6 +567,9 @@ static std::string NameFromIID(IID id)
 	if (__uuidof(IUnknown) == id)
 		return "IUnknown";
 
+	if (__uuidof(ID3D10Multithread) == id)
+		return "ID3D10Multithread";
+
 	if (__uuidof(ID3D11DeviceChild) == id)
 		return "ID3D11DeviceChild";
 	if (__uuidof(ID3DDeviceContextState) == id)
@@ -686,8 +689,8 @@ static std::string NameFromIID(IID id)
 
 static const char* type_name(IUnknown *object)
 {
-	ID3D11Device *device;
-	ID3D11DeviceContext *context;
+	ID3D11Device1 *device;
+	ID3D11DeviceContext1 *context;
 
 	// Seems that not even try / catch is safe in all cases of this
 	// (grumble grumble poorly designed grumble...). The only cases where
@@ -695,10 +698,10 @@ static const char* type_name(IUnknown *object)
 	// hooking the device and/or context, so check if it is one of those
 	// cases:
 
-	device = lookup_hooked_device((ID3D11Device*)object);
+	device = lookup_hooked_device((ID3D11Device1*)object);
 	if (device)
 		return "Hooked_ID3D11Device";
-	context = lookup_hooked_context((ID3D11DeviceContext*)object);
+	context = lookup_hooked_context((ID3D11DeviceContext1*)object);
 	if (context)
 		return "Hooked_ID3D11DeviceContext";
 
@@ -920,18 +923,3 @@ static bool ParseIniParamName(const wchar_t *name, int *idx, float DirectX::XMFL
 	return false;
 }
 
-// -----------------------------------------------------------------------------------------------
-
-// Very simple exception class that can be updated to cover multiple fail cases.
-// Presently only used by the HackerUpscalingDXGISwapChain.
-
-class Exception3DMigoto
-{
-public:
-	Exception3DMigoto(const std::string& what) : m_what(what) {}
-	__inline const std::string& what() const { return m_what; }
-
-private:
-	std::string m_what;
-
-};

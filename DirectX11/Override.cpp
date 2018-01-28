@@ -325,7 +325,7 @@ void KeyOverrideCycle::DownEvent(HackerDevice *device)
 static void UpdateIniParams(HackerDevice* wrapper,
 		DirectX::XMFLOAT4 *params)
 {
-	ID3D11DeviceContext* realContext = wrapper->GetOrigContext();
+	ID3D11DeviceContext1* realContext = wrapper->GetOrigContext1();
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	int i;
 	bool updated = false;

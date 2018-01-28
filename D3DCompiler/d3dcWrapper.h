@@ -1,6 +1,6 @@
 #pragma once
 
-#include <D3D11.h>
+#include <d3d11_1.h>
 
 //
 // Forward declerations

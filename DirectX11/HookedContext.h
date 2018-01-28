@@ -1,8 +1,9 @@
 #pragma once
 
-#include <D3D11.h>
+#include <d3d11_1.h>
+
 #include "DLLMainHook.h"
 
-ID3D11DeviceContext* hook_context(ID3D11DeviceContext *orig_context, ID3D11DeviceContext *hacker_context, EnableHooks enable_hooks);
+ID3D11DeviceContext1* hook_context(ID3D11DeviceContext1 *orig_context, ID3D11DeviceContext1 *hacker_context);
 
-ID3D11DeviceContext* lookup_hooked_context(ID3D11DeviceContext *orig_context);
+ID3D11DeviceContext1* lookup_hooked_context(ID3D11DeviceContext1 *orig_context);
