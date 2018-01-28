@@ -27,7 +27,8 @@ enum class EnableHooks {
 
 	// All recommended hooks and workarounds. Does not include
 	// skip_dxgi_factory as that could lead to us missing the present call:
-	RECOMMENDED                 = 0x00070007,
+	// No longer enables workarounds - now fixed in updated Deviare library
+	RECOMMENDED                 = 0x00000007,
 };
 SENSIBLE_ENUM(EnableHooks);
 static EnumName_t<wchar_t *, EnableHooks> EnableHooksNames[] = {

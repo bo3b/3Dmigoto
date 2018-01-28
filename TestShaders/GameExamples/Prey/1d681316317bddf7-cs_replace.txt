@@ -1,0 +1,1902 @@
+// Lights Reflections From very first room, the Apartment.  1 of 2 CS.
+// ---- Created with 3Dmigoto v1.2.67 on Sun Dec 03 15:55:46 2017
+
+cbuffer PER_BATCH : register(b0)
+{
+  float4 irreg_kernel_2d[8] : packoffset(c0);
+  float4 SunDir : packoffset(c8);
+  float4 ViewportSize : packoffset(c9);
+  float4 SSDOParams : packoffset(c10);
+  float4 ScreenSize : packoffset(c11);
+  float4 g_vVisAreasParams[64] : packoffset(c12);
+}
+
+cbuffer CBPerViewGlobal : register(b13)
+{
+  row_major float4x4 CV_ViewProjZeroMatr : packoffset(c0);
+  float4 CV_AnimGenParams : packoffset(c4);
+  row_major float4x4 CV_ViewProjMatr : packoffset(c5);
+  row_major float4x4 CV_ViewProjNearestMatr : packoffset(c9);
+  row_major float4x4 CV_InvViewProj : packoffset(c13);
+  row_major float4x4 CV_PrevViewProjMatr : packoffset(c17);
+  row_major float4x4 CV_PrevViewProjNearestMatr : packoffset(c21);
+  row_major float3x4 CV_ScreenToWorldBasis : packoffset(c25);
+  float4 CV_TessInfo : packoffset(c28);
+  float4 CV_CameraFrontVector : packoffset(c29);
+  float4 CV_CameraUpVector : packoffset(c30);
+  float4 CV_ScreenSize : packoffset(c31);
+  float4 CV_HPosScale : packoffset(c32);
+  float4 CV_ProjRatio : packoffset(c33);
+  float4 CV_NearestScaled : packoffset(c34);
+  float4 CV_NearFarClipDist : packoffset(c35);
+  float4 CV_SunLightDir : packoffset(c36);
+  float4 CV_SunColor : packoffset(c37);
+  float4 CV_SkyColor : packoffset(c38);
+  float4 CV_FogColor : packoffset(c39);
+  float4 CV_TerrainInfo : packoffset(c40);
+  float4 CV_DecalZFightingRemedy : packoffset(c41);
+  row_major float4x4 CV_FrustumPlaneEquation : packoffset(c42);
+  float4 CV_WindGridOffset : packoffset(c46);
+  row_major float4x4 CV_ViewMatr : packoffset(c47);
+  row_major float4x4 CV_InvViewMatr : packoffset(c51);
+  float CV_LookingGlass_SunSelector : packoffset(c55);
+  float CV_LookingGlass_DepthScalar : packoffset(c55.y);
+  float CV_PADDING0 : packoffset(c55.z);
+  float CV_PADDING1 : packoffset(c55.w);
+}
+
+cbuffer _TiledLightsShadeInfoCB : register(b11)
+{
+
+  struct
+  {
+    uint lightType;
+    uint shadowMaskIndex;
+    uint resIndices;
+    uint stencilID;
+    float4 posRad;
+    float2 attenuationParams;
+    float2 shadowParams;
+    float4 color;
+    row_major float4x4 projectorMatrix;
+    row_major float4x4 shadowMatrix;
+    float4 sceneSelection;
+  } TiledLightsShadeInfo[255] : packoffset(c0);
+
+}
+
+SamplerState SampStateTrilinearClamp_s : register(s0);
+Texture2D<float4> DepthRT : register(t0);
+Texture2D<float4> NormalRT : register(t1);
+Texture2D<float4> SpecularRT : register(t2);
+Texture2D<float4> DiffuseRT : register(t3);
+Texture2DArray<float> ShadowMaskRT : register(t4);
+Texture2D<float4> DirectionalOccRT : register(t5);
+Texture2D<float4> SSReflectionRT : register(t6);
+Texture2D<float4> EnvBRDF : register(t7);
+Texture2D<float4> ClipVolumeIndexRT : register(t8);
+Texture2D<float4> AOColorBleedRT : register(t9);
+Texture2D<float4> CausticsRT : register(t12);
+Texture2D<float4> SceneMaskRT : register(t13);
+TextureCubeArray<float4> SpecCubeArray : register(t17);
+TextureCubeArray<float4> DiffuseCubeArray : register(t18);
+Texture2DArray<float4> SpotTexArray : register(t19);
+Buffer<uint> TileLightMask : register(t22);
+Texture2DArray<float4> ColorSpotTexArray : register(t30);
+
+// Resource bind info for TiledClipVolumeInfo
+// {
+//
+//   struct STiledClipVolumeInfo
+//   {
+//       
+//       uint data;                     // Offset:    0
+//
+//   } $Element;                        // Offset:    0 Size:     4
+//
+// }
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t23, 4 
+StructuredBuffer<uint> TiledClipVolumeInfo : register(t23);
+
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u1
+RWTexture2D<float4> g_outputTexture1 : register(u1); 
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u2
+RWTexture2D<float4> g_outputTexture2 : register(u2); 
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_tgsm_raw g0, 4
+groupshared uint g0;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_tgsm_structured g1, 4, 256
+groupshared uint g1[256];        
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_tgsm_raw g2, 4
+groupshared uint g2;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_tgsm_structured g3, 4, 8
+groupshared uint g3[8];        
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_tgsm_structured g4, 4, 8
+groupshared uint g4[8];        
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 8, 8, 1
+[numthreads(8, 8, 1)]  
+
+void main(
+uint3 vThreadGroupID : SV_GroupID,				  // missing
+uint3 vThreadIDInGroup : SV_GroupThreadID		// missing
+)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = mad((int)vThreadIDInGroup.y, 8, (int)vThreadIDInGroup.x);
+  r1.xy = mad((int2)vThreadGroupID.xy, int2(8,8), (int2)vThreadIDInGroup.xy);
+  r0.yz = (uint2)r1.xy;
+  r0.yz = float2(0.5,0.5) + r0.yz;
+  r0.yz = ScreenSize.zw * r0.yz;
+  r2.xy = cmp(float2(0,0) < r0.yz);
+  r0.w = r2.y ? r2.x : 0;
+  r2.xy = cmp(r0.yz < float2(1,1));
+  r2.x = r2.y ? r2.x : 0;
+  r0.w = r2.x ? r0.w : 0;
+  if (r0.x == 0) {
+    // No code for instruction (needs manual fix):
+    // store_raw g2.x, l(0), l(0)
+    g0.x = 0; 
+  }
+  r2.x = cmp((uint)r0.x < 8);
+  if (r2.x != 0) {
+    r2.y = 0.125 * ViewportSize.x;
+    r2.y = ceil(r2.y);
+    r2.zw = (uint2)vThreadGroupID.yx;
+    r2.y = r2.z * r2.y + r2.w;
+    r2.y = (uint)r2.y;
+    r2.y = (uint)r2.y << 3;
+    if (r0.x == 0) {
+      // No code for instruction (needs manual fix):
+      // store_raw g2.x, l(0), l(0)
+      g2.x = 0; 
+    }
+    r2.y = (int)r0.x + (int)r2.y;
+    r2.y = TileLightMask.Load(r2.y).x;
+    // store_structured g3.x, r0.x, l(0), r2.y
+    g3[r0.x].x = r2.y;
+    
+    r2.y = countbits((uint)r2.y);
+    
+    // store_structured g4.x, r0.x, l(0), r2.y
+    g4[r0.x].x = r2.y;
+    // Needs manual fix for instruction:
+    // atomic_iadd g0, l(0), r2.y
+    InterlockedAdd(g0, 0, r2.y);
+  }
+  GroupMemoryBarrierWithGroupSync();
+  if (r2.x != 0) {
+    r2.xy = float2(0,0);
+    while (true) {
+      r2.z = cmp((uint)r2.y >= (uint)r0.x);
+      if (r2.z != 0) break;
+      // Known bad code for instruction (needs manual fix):
+      // ld_structured r2.z, r2.y, l(0), g4.xxxx
+      r2.z = g4[r2.y + 0].x;
+        
+      r2.x = (int)r2.z + (int)r2.x;
+      r2.y = (int)r2.y + 1;
+    }
+    // Known bad code for instruction (needs manual fix):
+    // ld_structured r2.y, r0.x, l(0), g3.xxxx
+    r2.y = g3[r0.x + 0].x;
+    
+    r2.z = firstbitlow((uint)r2.y);
+    r2.w = (uint)vThreadIDInGroup.x << 5;
+    r2.w = mad((int)vThreadIDInGroup.y, 256, (int)r2.w);
+    r3.x = 0;
+    r3.y = r2.z;
+    while (true) {
+      r3.z = cmp((int)r3.y < 0);
+      if (r3.z != 0) break;
+      r3.z = (int)r3.x + 1;
+      r3.w = (int)r2.x + (int)r3.x;
+      r4.x = (int)r2.w + (int)r3.y;
+      // store_structured g1.x, r3.w, l(0), r4.x
+      g1[r3.w].x = r4.x;
+      
+      r3.w = cmp((int)r3.y < 31);
+      r4.x = (int)r3.y + 1;
+      // bitmask.w = ((~(-1 << r4.x)) << 0) & 0xffffffff;  r3.w = (((uint)0 << 0) & bitmask.w) | ((uint)r3.w & ~bitmask.w);
+      bitmask.w = ((~(-1 << (uint)r4.x)) << 0) & 0xffffffff;  r3.w = (((uint)0 << 0) & bitmask.w) | ((uint)r3.w & ~bitmask.w);
+      
+      r3.w = (int)r2.y & (int)r3.w;
+      r3.y = firstbitlow((uint)r3.w);
+      r3.xy = r3.zy;
+    }
+    if (r0.x == 0) {
+      // No code for instruction (needs manual fix):
+      // ld_raw r0.x, l(0), g0.xxxx
+      r0.x = g0.x;
+    }
+  }
+  if (r0.w != 0) {
+    // No code for instruction (needs manual fix):
+    // store_raw g2.x, l(0), l(1)
+    g2.x = 1;
+  }
+  GroupMemoryBarrierWithGroupSync();
+  // No code for instruction (needs manual fix):
+  // ld_raw r0.x, l(0), g2.xxxx
+  r0.x = g2.x;
+  
+  if (r0.x == 0) {
+    return;
+  }
+  r1.w = 0;
+  r2.z = DepthRT.Load(r1.xyw).x;
+  r3.xyzw = NormalRT.Load(r1.xyw).xyzw;
+  r4.xyzw = SpecularRT.Load(r1.xyw).yxzw;
+  r0.x = 3.99609375 * r3.w;
+  r0.w = floor(r0.x);
+  r0.w = (int)r0.w;
+  r3.xyz = r3.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r2.w = dot(r3.xyz, r3.xyz);
+  r2.w = rsqrt(r2.w);
+  r3.xyz = r3.xyz * r2.www;
+  r5.yz = r4.zw * float2(2.00787401,2.00787401) + float2(-1,-1);
+  r6.yz = r0.ww ? float2(0,0) : r5.yz;
+  r6.x = r4.x;
+  r7.y = dot(float3(1,-0.344099998,-0.714100003), r6.xyz);
+  r7.xz = r6.zy * float2(1.40199995,1.77199996) + r4.xx;
+  r6.xyz = r7.xyz * r7.xyz;
+  r4.zw = cmp((int2)r0.ww == int2(1,3));
+  r5.x = frac(r0.x);
+  r8.y = dot(float3(1,-0.344099998,-0.714100003), r5.xyz);
+  r8.xz = r5.zy * float2(1.40199995,1.77199996) + r5.xx;
+  r5.xyz = r8.xyz * r8.xyz;
+  r5.xyz = r4.zzz ? r5.xyz : 0;
+  r0.x = SceneMaskRT.Load(r1.xyw).x;
+  r0.x = r2.z + -r0.x;
+  r8.xy = (int2)r1.xy;
+  r2.xy = r8.xy * r2.zz;
+  
+  r8.x = dot(CV_ScreenToWorldBasis._m00_m01_m02, r2.xyz);
+  r8.y = dot(CV_ScreenToWorldBasis._m10_m11_m12, r2.xyz);
+  r8.z = dot(CV_ScreenToWorldBasis._m20_m21_m22, r2.xyz);
+  
+  r0.w = dot(-r8.xyz, -r8.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = -r8.xyz * r0.www;
+  // No code for instruction (needs manual fix):
+  // ld_raw r2.w, l(0), g0.xxxx
+  r2.w = g0.x;
+  
+  r5.w = cmp(0 < (uint)r2.w);
+  // Known bad code for instruction (needs manual fix):
+  // ld_structured r6.w, l(0), l(0), g1.xxxx
+  r6.w = g1[0].x;
+
+  r5.w = r5.w ? r6.w : 0;
+  r9.xy = ClipVolumeIndexRT.Load(r1.xyw).xy;
+  r6.w = 255 * r9.x;
+  r6.w = (uint)r6.w;
+  r7.w = (int)r6.w & 63;
+  
+  // Known bad code for instruction (needs manual fix):
+  // ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r7.w, r7.w, l(0), t23.xxxx
+  r7.w = TiledClipVolumeInfo[r7.w].x;
+
+  if (r4.w == 0) {
+    r8.w = dot(r8.xyz, r3.xyz);
+    r8.w = r8.w + r8.w;
+    r9.xzw = r3.xyz * -r8.www + r8.xyz;
+    r8.w = dot(r9.xzw, r9.xzw);
+    r8.w = rsqrt(r8.w);
+    r9.xzw = r9.xzw * r8.www;
+    r8.w = -r4.y * 6 + 6;
+    r10.x = (int)r7.w & 8;
+    r10.y = (uint)r7.w >> 24;
+    if (8 == 0) r10.z = 0; else if (8+16 < 32) {     r10.z = (uint)r7.w << (32-(8 + 16)); r10.z = (uint)r10.z >> (32-8);    } else r10.z = (uint)r7.w >> 16;
+    r10.w = 1 + -r9.y;
+    r11.x = TiledLightsShadeInfo[222].color._m03;
+    r11.y = TiledLightsShadeInfo[222].projectorMatrix._m13;
+    r11.z = TiledLightsShadeInfo[222].projectorMatrix._m23;
+    r12.xyz = cmp(float3(0,0,0) < r9.xzw);
+    r13.xyz = r3.xyz;
+    r14.xyz = float3(0,0,0);
+    r15.xyz = float3(0,0,0);
+    r11.w = 0;
+    r12.w = 0;
+    r14.w = r5.w;
+    while (true) {
+      r15.w = cmp((uint)r12.w < (uint)r2.w);
+      r16.x = (int)r14.w * 13;
+      r16.y = cmp(1 == (int9)TiledLightsShadeInfo[r16.x].lightType);
+      r15.w = r15.w ? r16.y : 0;
+      if (r15.w == 0) break;
+      r15.w = TiledLightsShadeInfo[r16.x].sceneSelection.x * r0.x;
+      r15.w = cmp(r15.w >= 0);
+      if (r15.w != 0) {
+        r15.w = 255 & (int9)TiledLightsShadeInfo[r16.x].stencilID;
+        r16.y = (uint9)TiledLightsShadeInfo[r16.x].stencilID >> 16;
+        r16.z = cmp((int)r15.w == 255);
+        r16.w = cmp((int)r10.y == (int)r15.w);
+        r17.x = cmp((int)r10.z == (int)r15.w);
+        r17.y = r16.w ? r9.y : r10.w;
+        r16.w = (int)r16.w | (int)r17.x;
+        r16.w = r10.x ? r16.w : 0;
+        r15.w = cmp((int)r6.w == (int)r15.w);
+        r16.y = cmp((int)r6.w == (int)r16.y);
+        r15.w = (int)r15.w | (int)r16.y;
+        r15.w = r15.w ? 1.000000 : 0;
+        r15.w = r16.w ? r17.y : r15.w;
+        r15.w = r16.z ? 1 : r15.w;
+        r16.y = cmp(r11.w < 1);
+        r16.z = cmp(0 < r15.w);
+        r16.y = r16.z ? r16.y : 0;
+        if (r16.y != 0) {
+          r16.yzw = TiledLightsShadeInfo[r16.x].posRad.xyz + -r11.xyz;
+          r17.xyz = r16.yzw + -r8.xyz;
+          r18.x = dot(TiledLightsShadeInfo[r16.x/4]._m00_m01_m02, r17.xyz);
+          r18.y = dot(TiledLightsShadeInfo[r16.x/4]._m10_m11_m12, r17.xyz);
+          r18.z = dot(TiledLightsShadeInfo[r16.x/4]._m20_m21_m22, r17.xyz);
+          r17.x = max(abs(r18.x), abs(r18.y));
+          r17.x = max(r17.x, abs(r18.z));
+          r17.x = cmp(r17.x < 1);
+          if (r17.x != 0) {
+            r17.xyz = r18.zxy * r18.zxy;
+            r19.xyz = -r17.zxy * float3(0.5,0.5,0.5) + float3(1,1,1);
+            r19.xyz = -r17.xyz * float3(0.5,0.5,0.5) + r19.xyz;
+            r17.xyz = r17.xyz * r17.zxy;
+            r17.xyz = r17.xyz * float3(0.333000004,0.333000004,0.333000004) + r19.xyz;
+            r17.xyz = sqrt(r17.xyz);
+            r17.xyz = r18.xyz * r17.xyz;
+            r17.x = dot(r17.xyz, -r17.xyz);
+            r17.x = saturate(1 + r17.x);
+            r17.x = saturate(r17.x / TiledLightsShadeInfo[r16.x].attenuationParams.y);
+            r17.y = r17.x * r17.x;
+            r17.x = -r17.x * 2 + 3;
+            r17.x = r17.y * r17.x;
+            r17.x = TiledLightsShadeInfo[r16.x].attenuationParams.x * r17.x;
+            r17.y = 0x0000ffff & (int10)TiledLightsShadeInfo[r16.x].resIndices;
+            r17.z = (uint10)TiledLightsShadeInfo[r16.x].resIndices >> 16;
+            r3.w = (uint)r17.y;
+            r18.xyz = DiffuseCubeArray.SampleLevel(SampStateTrilinearClamp_s, r3.xyzw, 0).xyz;
+            r13.w = (uint)r17.z;
+            r17.yzw = DiffuseCubeArray.SampleLevel(SampStateTrilinearClamp_s, r13.xyzw, 0).xyz;
+            r17.yzw = r17.yzw + -r18.xyz;
+            r17.yzw = TiledLightsShadeInfo[r16.x].sceneSelection.www * r17.yzw + r18.xyz;
+            if (r4.z != 0) {
+              r18.xyzw = float4(-1,-1,-1,1) * r3.xyzw;
+              r19.xyz = DiffuseCubeArray.SampleLevel(SampStateTrilinearClamp_s, r18.xyzw, 0).xyz;
+              r18.w = r13.w;
+              r18.xyz = DiffuseCubeArray.SampleLevel(SampStateTrilinearClamp_s, r18.xyzw, 0).xyz;
+              r18.xyz = r18.xyz + -r19.xyz;
+              r18.xyz = TiledLightsShadeInfo[r16.x].sceneSelection.www * r18.xyz + r19.xyz;
+              r17.yzw = r18.xyz * r5.xyz + r17.yzw;
+            }
+            r18.x = 1 + -r11.w;
+            r17.x = r18.x * r17.x;
+            r18.x = r17.x * r15.w;
+            r17.yzw = TiledLightsShadeInfo[r16.x].color.xyz * r17.yzw;
+            r14.xyz = r17.yzw * r18.xxx + r14.xyz;
+            r17.yzw = TiledLightsShadeInfo[r16.x/4]._m10_m11_m12 + r16.yzw;
+            r17.yzw = r17.yzw + -r8.xyz;
+            r17.yzw = r17.yzw / r9.xzw;
+            r18.yzw = TiledLightsShadeInfo[r16.x/4]._m00_m01_m02 + r16.yzw;
+            r18.yzw = r18.yzw + -r8.xyz;
+            r18.yzw = r18.yzw / r9.xzw;
+            r17.yzw = r12.xyz ? r17.yzw : r18.yzw;
+            r17.y = min(r17.y, r17.z);
+            r17.y = min(r17.y, r17.w);
+            r17.yzw = r9.xzw * r17.yyy + r8.xyz;
+            r19.xyz = r17.yzw + -r16.yzw;
+            r19.w = r3.w;
+            r16.yzw = SpecCubeArray.SampleLevel(SampStateTrilinearClamp_s, r19.xyzw, r8.w).xyz;
+            r19.w = r13.w;
+            r17.yzw = SpecCubeArray.SampleLevel(SampStateTrilinearClamp_s, r19.xyzw, r8.w).xyz;
+            r17.yzw = r17.yzw + -r16.yzw;
+            r16.yzw = TiledLightsShadeInfo[r16.x].sceneSelection.www * r17.yzw + r16.yzw;
+            r16.yzw = TiledLightsShadeInfo[r16.x].color.xyz * r16.yzw;
+            r16.xyz = TiledLightsShadeInfo[r16.x].color.www * r16.yzw;
+            r15.xyz = r16.xyz * r18.xxx + r15.xyz;
+            r11.w = r17.x * r15.w + r11.w;
+          }
+        }
+      }
+      r12.w = (int)r12.w + 1;
+      r13.w = min(254, (int)r12.w);
+    // Known bad code for instruction (needs manual fix):
+        ld_structured r14.w, r13.w, l(0), g1.xxxx
+    r14.w = SampStateTrilinearClamp[]..swiz;
+    }
+    r5.w = r14.w;
+  } else {
+    r3.w = 64;
+    r14.xyz = DiffuseCubeArray.SampleLevel(SampStateTrilinearClamp_s, r3.xyzw, 0).xyz;
+    r2.w = dot(r8.xyz, r3.xyz);
+    r2.w = r2.w + r2.w;
+    r9.xzw = r3.xyz * -r2.www + r8.xyz;
+    r2.w = dot(r9.xzw, r9.xzw);
+    r2.w = rsqrt(r2.w);
+    r10.xyz = r9.xzw * r2.www;
+    r2.w = -r4.y * 6 + 6;
+    r10.w = 64;
+    r15.xyz = SpecCubeArray.SampleLevel(SampStateTrilinearClamp_s, r10.xyzw, r2.w).xyz;
+    r12.w = 0;
+  }
+  r10.xyzw = DirectionalOccRT.Load(r1.xyw).xyzw;
+  r9.xzw = r10.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r10.xy = saturate(-r10.ww * SSDOParams.yz + float2(1,1));
+  r10.xy = r10.xy * r10.xy;
+  r11.xyz = AOColorBleedRT.SampleLevel(SampStateTrilinearClamp_s, r0.yz, 0).xyz;
+  r12.xyz = r11.xyz * r11.xyz;
+  r11.xyz = r12.xyz * r11.xyz;
+  r11.xyz = float3(3,3,3) * r11.xyz;
+  r11.xyz = min(float3(0.699999988,0.699999988,0.699999988), r11.xyz);
+  r11.xyz = float3(1,1,1) + -r11.xyz;
+  r2.w = log2(r10.x);
+  r10.xzw = r11.xyz * r2.www;
+  r10.xzw = exp2(r10.xzw);
+  r10.xzw = r14.xyz * r10.xzw;
+  r2.w = dot(r8.xyz, r8.xyz);
+  r2.w = rsqrt(r2.w);
+  r11.xyz = r8.xyz * r2.www;
+  r4.x = dot(-r11.xyz, r3.xyz);
+  r2.w = max(0.300000012, r10.y);
+  r3.w = r4.x + r2.w;
+  r3.w = log2(r3.w);
+  r3.w = r4.y * r3.w;
+  r3.w = exp2(r3.w);
+  r3.w = -1 + r3.w;
+  r2.w = saturate(r3.w + r2.w);
+  r11.xyz = r15.xyz * r2.www;
+// No code for instruction (needs manual fix):
+ld_raw r2.w, l(0), g0.xxxx
+  r3.w = (int)r7.w & 8;
+  r8.w = (uint)r7.w >> 24;
+  if (8 == 0) r7.w = 0; else if (8+16 < 32) {   r7.w = (uint)r7.w << (32-(8 + 16)); r7.w = (uint)r7.w >> (32-8);  } else r7.w = (uint)r7.w >> 16;
+  r10.y = 1 + -r9.y;
+  r12.x = TiledLightsShadeInfo[222].color._m03;
+  r12.y = TiledLightsShadeInfo[222].projectorMatrix._m13;
+  r12.z = TiledLightsShadeInfo[222].projectorMatrix._m23;
+  r13.xyz = r12.xyz + r8.xyz;
+  r14.xz = float2(1,1);
+  r13.w = 1;
+  r15.xyz = r10.xzw;
+  r16.xyz = r11.xyz;
+  r11.w = r12.w;
+  r15.w = r5.w;
+  while (true) {
+    r16.w = cmp((uint)r11.w < (uint)r2.w);
+    r17.x = (int)r15.w * 13;
+    r17.y = cmp(4 >= (int9)TiledLightsShadeInfo[r17.x].lightType);
+    r16.w = r16.w ? r17.y : 0;
+    if (r16.w == 0) break;
+    r16.w = 255 & (int9)TiledLightsShadeInfo[r17.x].stencilID;
+    r17.y = (uint9)TiledLightsShadeInfo[r17.x].stencilID >> 16;
+    r17.z = cmp((int)r16.w == 255);
+    r17.w = cmp((int)r8.w == (int)r16.w);
+    r18.x = cmp((int)r7.w == (int)r16.w);
+    r18.y = r17.w ? r9.y : r10.y;
+    r17.w = (int)r17.w | (int)r18.x;
+    r17.w = r3.w ? r17.w : 0;
+    r16.w = cmp((int)r6.w == (int)r16.w);
+    r17.y = cmp((int)r6.w == (int)r17.y);
+    r16.w = (int)r16.w | (int)r17.y;
+    r16.w = r16.w ? 1.000000 : 0;
+    r16.w = r17.w ? r18.y : r16.w;
+    r16.w = r17.z ? 1 : r16.w;
+    r17.y = cmp(r16.w != 0.000000);
+    r17.z = TiledLightsShadeInfo[r17.x].sceneSelection.x * r0.x;
+    r17.z = cmp(r17.z >= 0);
+    r17.y = r17.z ? r17.y : 0;
+    if (r17.y != 0) {
+      r17.yzw = TiledLightsShadeInfo[r17.x].posRad.xyz + -r12.xyz;
+      r17.yzw = r17.yzw + -r8.xyz;
+      r18.x = cmp(4 == (int9)TiledLightsShadeInfo[r17.x].lightType);
+      if (r18.x != 0) {
+        r18.x = dot(TiledLightsShadeInfo[r17.x/4]._m00_m01_m02, r17.yzw);
+        r18.xyz = r18.xxx * TiledLightsShadeInfo[r17.x/4]._m00_m01_m02 + -r17.yzw;
+        r19.x = dot(r18.xyz, TiledLightsShadeInfo[r17.x/4]._m10_m11_m12);
+        r19.y = dot(r18.xyz, TiledLightsShadeInfo[r17.x/4]._m20_m21_m22);
+        r18.xy = max(-TiledLightsShadeInfo[r17.x/4]._m30_m31, r19.xy);
+        r18.xy = min(TiledLightsShadeInfo[r17.x/4]._m30_m31, r18.xy);
+        r18.yzw = TiledLightsShadeInfo[r17.x/4]._m20_m21_m22 * r18.yyy;
+        r18.xyz = TiledLightsShadeInfo[r17.x/4]._m10_m11_m12 * r18.xxx + r18.yzw;
+        r18.xyz = r18.xyz + r17.yzw;
+        r18.w = 1 / TiledLightsShadeInfo[r17.x].posRad.w;
+        r19.xyz = r18.xyz * r18.www;
+        r18.w = dot(r19.xyz, -r19.xyz);
+        r18.w = saturate(1 + r18.w);
+        r19.x = dot(r18.xyz, r18.xyz);
+        r19.x = rsqrt(r19.x);
+        r18.xyz = r19.xxx * r18.xyz;
+        r19.x = dot(-r18.xyz, TiledLightsShadeInfo[r17.x/4]._m00_m01_m02);
+        r19.y = 9.99999997e-007 + r19.x;
+        r19.y = saturate(TiledLightsShadeInfo[r17.x/4]._m33 / r19.y);
+        r19.y = log2(r19.y);
+        r19.y = TiledLightsShadeInfo[r17.x].posRad.w * r19.y;
+        r19.y = exp2(r19.y);
+        r19.y = 1 + -r19.y;
+        r18.w = r19.y * r18.w;
+        r14.y = r18.w * r18.w;
+        r18.w = saturate(dot(r3.xyz, r18.xyz));
+        r19.y = saturate(r19.x);
+        r18.w = r19.y * r18.w;
+        r19.yz = r14.xy;
+      } else {
+        r14.y = cmp(0 < TiledLightsShadeInfo[r17.x].attenuationParams.x);
+        if (r14.y != 0) {
+          r14.y = dot(r17.yzw, r17.yzw);
+          r14.y = sqrt(r14.y);
+          r19.w = 1 / TiledLightsShadeInfo[r17.x].posRad.w;
+          r20.x = TiledLightsShadeInfo[r17.x].posRad.w + -r14.y;
+          r19.w = 5 * r19.w;
+          r19.w = saturate(r20.x * r19.w);
+          r14.y = -TiledLightsShadeInfo[r17.x].attenuationParams.x + r14.y;
+          r14.y = max(0, r14.y);
+          r14.y = r14.y / TiledLightsShadeInfo[r17.x].attenuationParams.x;
+          r14.y = 1 + r14.y;
+          r19.w = r19.w * r19.w;
+          r14.y = r14.y * r14.y;
+          r19.z = r19.w / r14.y;
+        } else {
+          r14.y = 1 / TiledLightsShadeInfo[r17.x].posRad.w;
+          r20.xyz = r17.yzw * r14.yyy;
+          r14.y = dot(r20.xyz, -r20.xyz);
+          r19.z = saturate(1 + r14.y);
+        }
+        r14.y = dot(r17.yzw, r17.yzw);
+        r14.y = rsqrt(r14.y);
+        r18.xyz = r17.yzw * r14.yyy;
+        r18.w = saturate(dot(r3.xyz, r18.xyz));
+        r14.y = cmp(3 == (int9)TiledLightsShadeInfo[r17.x].lightType);
+        if (r14.y != 0) {
+          r14.y = cmp(0 < r19.z);
+          if (r14.y != 0) {
+            r20.x = dot(TiledLightsShadeInfo[r17.x/4]._m00_m01_m02_m03, r13.xyzw);
+            r20.y = dot(TiledLightsShadeInfo[r17.x/4]._m10_m11_m12_m13, r13.xyzw);
+            r14.y = dot(TiledLightsShadeInfo[r17.x/4]._m30_m31_m32_m33, r13.xyzw);
+            r20.xy = r20.xy / r14.yy;
+            r14.y = cmp(0 < r14.y);
+            r17.yz = r20.xy * float2(2,2) + float2(-1,-1);
+            r17.y = max(abs(r17.y), abs(r17.z));
+            r17.y = cmp(r17.y < 1);
+            r14.y = r14.y ? r17.y : 0;
+            if (r14.y != 0) {
+              r14.y = 0x0000ffff & (int10)TiledLightsShadeInfo[r17.x].resIndices;
+              r20.z = (uint)r14.y;
+              r19.y = SpotTexArray.SampleLevel(SampStateTrilinearClamp_s, r20.xyz, 0).x;
+            } else {
+              r19.y = 0;
+            }
+          } else {
+            r19.y = 0;
+          }
+        } else {
+          r14.w = r19.z * r19.z;
+          r19.yz = r14.zw;
+        }
+        r19.x = 1;
+      }
+      r14.y = dot(r18.xyz, r9.xzw);
+      r14.y = saturate(SSDOParams.x * r14.y);
+      r14.y = 1 + -r14.y;
+      r14.y = r14.y * 0.699999988 + 0.300000012;
+      r17.yzw = cmp(float3(1,1,1) < TiledLightsShadeInfo[r17.x].color.xyz);
+      r14.y = r18.w * r14.y;
+      r19.x = saturate(r19.x);
+      r17.yzw = r17.yzw ? r14.yyy : r19.xxx;
+      r14.y = r19.z * r16.w;
+      r14.y = r14.y * r19.y;
+      r17.yzw = r14.yyy * r17.yzw;
+      r18.xyz = TiledLightsShadeInfo[r17.x].color.xyz + float3(-1,-1,-1);
+      r17.xyz = r17.yzw * r18.xyz + float3(1,1,1);
+      r15.xyz = r17.xyz * r15.xyz;
+      r16.xyz = r17.xyz * r16.xyz;
+    }
+    r11.w = (int)r11.w + 1;
+    r14.y = min(254, (int)r11.w);
+  // Known bad code for instruction (needs manual fix):
+    ld_structured r15.w, r14.y, l(0), g1.xxxx
+  r15.w = SampStateTrilinearClamp[]..swiz;
+  }
+  r14.xyzw = SSReflectionRT.SampleLevel(SampStateTrilinearClamp_s, r0.yz, 0).xyzw;
+  r10.xzw = r14.xyz + -r16.xyz;
+  r10.xzw = r14.www * r10.xzw + r16.xyz;
+  r11.xy = EnvBRDF.SampleLevel(SampStateTrilinearClamp_s, r4.xy, 0).xy;
+  r2.w = r11.y + -r11.x;
+  r11.xyz = r6.xyz * r2.www + r11.xxx;
+  r10.xzw = r11.xyz * r10.xzw;
+  r11.xyz = CausticsRT.SampleLevel(SampStateTrilinearClamp_s, r0.yz, 0).xyz;
+  r11.xyz = r15.xyz + r11.xyz;
+// No code for instruction (needs manual fix):
+ld_raw r0.y, l(0), g0.xxxx
+  r14.xyz = SunDir.xyz * SunDir.www;
+// Known bad code for instruction (needs manual fix):
+ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.z, r6.w, l(0), t23.xxxx
+r0.z = SampStateTrilinearClamp[]..swiz;
+  r0.z = (int)r0.z & 4;
+  r0.z = r0.z ? 1 : 0;
+  r0.z = r4.w ? 0 : r0.z;
+  r2.w = 1 + -r4.y;
+  r2.w = r2.w * r2.w;
+  r4.x = r2.w * r2.w;
+  r4.x = r4.x * r2.w;
+  r4.y = dot(r3.xyz, r2.xyz);
+  r4.w = r4.x * 0.287787139 + 1;
+  r4.w = 1 / r4.w;
+  r4.x = r4.x * r4.w;
+  r5.w = dot(r5.xyz, float3(0.212599993,0.715200007,0.0722000003));
+  r12.w = r5.w * 0.5 + 1;
+  r12.w = r12.w * r12.w;
+  r12.w = rcp(r12.w);
+  r2.w = max(0.00100000005, r2.w);
+  r14.w = r4.y + r4.y;
+  r15.xyz = r3.xyz * -r14.www + r2.xyz;
+  r14.w = r2.w * r2.w;
+  r16.x = 9.99999975e-006 + abs(r4.y);
+  r16.y = r2.w * 0.5 + 0.800000012;
+  r16.y = r16.y * r16.y;
+  r16.z = 0.5 * r16.y;
+  r16.y = -r16.y * 0.5 + 1;
+  r16.x = r16.x * r16.y + r16.z;
+  r16.w = dot(r6.xyz, float3(0.333330005,0.333330005,0.333330005));
+  r16.w = 50 * r16.w;
+  r16.w = min(1, r16.w);
+  r7.xyz = -r7.xyz * r7.xyz + r16.www;
+  r13.w = 1;
+  r17.xyz = r11.xyz;
+  r18.xyz = r10.xzw;
+  r16.w = r11.w;
+  r17.w = r15.w;
+  while (true) {
+    r19.x = cmp((uint)r16.w >= (uint)r0.y);
+    if (r19.x != 0) break;
+    r19.x = (int)r17.w * 13;
+    r19.y = cmp(10 == (int9)TiledLightsShadeInfo[r19.x].lightType);
+    if (r19.y != 0) {
+      r19.yzw = SunDir.xyz;
+      r20.xyz = r14.xyz;
+      r20.w = r0.z;
+      r21.x = 1;
+    } else {
+      r21.y = cmp(9 == (int9)TiledLightsShadeInfo[r19.x].lightType);
+      if (r21.y != 0) {
+        r21.y = 255 & (int9)TiledLightsShadeInfo[r19.x].stencilID;
+        r21.z = (uint9)TiledLightsShadeInfo[r19.x].stencilID >> 16;
+        r21.w = cmp((int)r21.y == 255);
+        r22.x = cmp((int)r8.w == (int)r21.y);
+        r22.y = cmp((int)r7.w == (int)r21.y);
+        r22.z = r22.x ? r9.y : r10.y;
+        r22.x = (int)r22.y | (int)r22.x;
+        r22.x = r3.w ? r22.x : 0;
+        r21.yz = cmp((int2)r6.ww == (int2)r21.yz);
+        r21.y = (int)r21.z | (int)r21.y;
+        r21.y = r21.y ? 1.000000 : 0;
+        r21.y = r22.x ? r22.z : r21.y;
+        r21.y = r21.w ? 1 : r21.y;
+        r22.xyz = TiledLightsShadeInfo[r19.x].posRad.xyz + -r12.xyz;
+        r20.xyz = r22.xyz + -r8.xyz;
+        r21.z = dot(TiledLightsShadeInfo[r19.x/4]._m00_m01_m02, r20.xyz);
+        r22.xyz = r21.zzz * TiledLightsShadeInfo[r19.x/4]._m00_m01_m02 + -r20.xyz;
+        r23.x = dot(r22.xyz, TiledLightsShadeInfo[r19.x/4]._m10_m11_m12);
+        r23.y = dot(r22.xyz, TiledLightsShadeInfo[r19.x/4]._m20_m21_m22);
+        r21.zw = max(-TiledLightsShadeInfo[r19.x/4]._m30_m31, r23.xy);
+        r21.zw = min(TiledLightsShadeInfo[r19.x/4]._m30_m31, r21.zw);
+        r22.xyz = TiledLightsShadeInfo[r19.x/4]._m20_m21_m22 * r21.www;
+        r22.xyz = TiledLightsShadeInfo[r19.x/4]._m10_m11_m12 * r21.zzz + r22.xyz;
+        r22.xyz = r22.xyz + r20.xyz;
+        r21.z = dot(r22.xyz, r22.xyz);
+        r21.w = sqrt(r21.z);
+        r22.w = 1 / TiledLightsShadeInfo[r19.x].posRad.w;
+        r23.x = TiledLightsShadeInfo[r19.x].posRad.w + -r21.w;
+        r22.w = 5 * r22.w;
+        r22.w = saturate(r23.x * r22.w);
+        r21.w = -TiledLightsShadeInfo[r19.x].attenuationParams.x + r21.w;
+        r21.w = max(0, r21.w);
+        r21.w = r21.w / TiledLightsShadeInfo[r19.x].attenuationParams.x;
+        r21.w = 1 + r21.w;
+        r22.w = r22.w * r22.w;
+        r21.w = r21.w * r21.w;
+        r21.w = r22.w / r21.w;
+        r21.y = r21.w * r21.y;
+        r21.z = rsqrt(r21.z);
+        r19.yzw = r22.xyz * r21.zzz;
+        r21.x = dot(-r19.yzw, TiledLightsShadeInfo[r19.x/4]._m00_m01_m02);
+        r21.z = 9.99999997e-007 + r21.x;
+        r21.z = saturate(TiledLightsShadeInfo[r19.x/4]._m33 / r21.z);
+        r21.z = log2(r21.z);
+        r21.z = TiledLightsShadeInfo[r19.x].posRad.w * r21.z;
+        r21.z = exp2(r21.z);
+        r21.z = 1 + -r21.z;
+        r21.w = cmp(r21.x >= 0);
+        r21.w = r21.w ? 1.000000 : 0;
+        r21.z = r21.z * r21.w;
+        r20.w = r21.y * r21.z;
+      } else {
+        r21.y = 255 & (int9)TiledLightsShadeInfo[r19.x].stencilID;
+        r21.z = (uint9)TiledLightsShadeInfo[r19.x].stencilID >> 16;
+        r21.w = cmp((int)r21.y == 255);
+        r22.x = cmp((int)r8.w == (int)r21.y);
+        r22.y = cmp((int)r7.w == (int)r21.y);
+        r22.z = r22.x ? r9.y : r10.y;
+        r22.x = (int)r22.y | (int)r22.x;
+        r22.x = r3.w ? r22.x : 0;
+        r21.yz = cmp((int2)r6.ww == (int2)r21.yz);
+        r21.y = (int)r21.z | (int)r21.y;
+        r21.y = r21.y ? 1.000000 : 0;
+        r21.y = r22.x ? r22.z : r21.y;
+        r21.y = r21.w ? 1 : r21.y;
+        r22.xyz = TiledLightsShadeInfo[r19.x].posRad.xyz + -r12.xyz;
+        r20.xyz = r22.xyz + -r8.xyz;
+        r21.z = dot(r20.xyz, r20.xyz);
+        r21.w = sqrt(r21.z);
+        r22.x = 1 / TiledLightsShadeInfo[r19.x].posRad.w;
+        r22.y = TiledLightsShadeInfo[r19.x].posRad.w + -r21.w;
+        r22.x = 5 * r22.x;
+        r22.x = saturate(r22.y * r22.x);
+        r21.w = -TiledLightsShadeInfo[r19.x].attenuationParams.x + r21.w;
+        r21.w = max(0, r21.w);
+        r21.w = r21.w / TiledLightsShadeInfo[r19.x].attenuationParams.x;
+        r21.w = 1 + r21.w;
+        r22.x = r22.x * r22.x;
+        r21.w = r21.w * r21.w;
+        r21.w = r22.x / r21.w;
+        r20.w = r21.w * r21.y;
+        r21.y = rsqrt(r21.z);
+        r19.yzw = r21.yyy * r20.xyz;
+        r21.x = 1;
+      }
+    }
+    r21.y = dot(r3.xyz, r19.yzw);
+    r21.xz = saturate(r21.xy);
+    r21.x = r21.z * r21.x;
+    r21.z = cmp(0 < r20.w);
+    r21.w = cmp(0 < r21.x);
+    r21.w = (int)r4.z | (int)r21.w;
+    r21.z = r21.w ? r21.z : 0;
+    if (r21.z != 0) {
+      r21.z = cmp(0 < TiledLightsShadeInfo[r19.x].shadowParams.x);
+      r21.w = TiledLightsShadeInfo[r19.x].sceneSelection.x * r0.x;
+      r21.w = cmp(r21.w >= 0);
+      if (r21.w != 0) {
+        r21.w = cmp(10 != (int9)TiledLightsShadeInfo[r19.x].lightType);
+        if (r21.w != 0) {
+          r22.xy = cmp(int2(6,7) == (int9)TiledLightsShadeInfo[r19.x].lightType);
+          r21.w = (int)r22.y | (int)r22.x;
+          if (r21.w != 0) {
+            r23.x = dot(TiledLightsShadeInfo[r19.x/4]._m00_m01_m02_m03, r13.xyzw);
+            r23.y = dot(TiledLightsShadeInfo[r19.x/4]._m10_m11_m12_m13, r13.xyzw);
+            r21.w = dot(TiledLightsShadeInfo[r19.x/4]._m30_m31_m32_m33, r13.xyzw);
+            r23.xy = r23.xy / r21.ww;
+            r21.w = cmp(r21.w < 0);
+            r22.xz = r23.xy * float2(2,2) + float2(-1,-1);
+            r22.x = max(abs(r22.x), abs(r22.z));
+            r22.x = cmp(1 < r22.x);
+            r21.w = (int)r21.w | (int)r22.x;
+            if (r21.w != 0) {
+              r22.xzw = float3(1,1,1);
+              r21.w = -1;
+            } else {
+              r24.x = 0x0000ffff & (int10)TiledLightsShadeInfo[r19.x].resIndices;
+              if (r22.y != 0) {
+                r23.z = (uint)r24.x;
+                r22.xzw = ColorSpotTexArray.SampleLevel(SampStateTrilinearClamp_s, r23.xyz, 0).xyz;
+              } else {
+                r23.w = (uint)r24.x;
+                r22.y = SpotTexArray.SampleLevel(SampStateTrilinearClamp_s, r23.xyw, 0).x;
+                r22.xzw = r22.yyy;
+              }
+              r21.w = 0;
+            }
+          } else {
+            r22.y = cmp(8 == (int9)TiledLightsShadeInfo[r19.x].lightType);
+            r23.xyz = cmp(abs(r19.zww) < abs(r19.yyz));
+            r24.xyz = cmp(r19.ywz < float3(0,0,0));
+            r24.xyz = r24.xyz ? float3(0,5.60519386e-045,2.80259693e-045) : float3(1,5,3);
+            r23.yz = r23.yz ? r24.xz : r24.yy;
+            r23.x = r23.x ? r23.y : r23.z;
+            r23.y = 0x0000ffff & (int10)TiledLightsShadeInfo[r19.x].resIndices;
+            r23.x = cmp((int)r23.x != (int)r23.y);
+            r21.w = r22.y ? r23.x : 0;
+            r22.xzw = float3(1,1,1);
+          }
+        } else {
+          r22.xzw = float3(1,1,1);
+          r21.w = 0;
+        }
+      } else {
+        r22.xzw = float3(1,1,1);
+        r21.w = -1;
+      }
+      if (r21.w == 0) {
+        if (r21.z != 0) {
+          r1.z = TiledLightsShadeInfo[r19.x].shadowMaskIndex;
+          r1.z = ShadowMaskRT.Load(r1.xyzw).x;
+          r1.z = 1 + -r1.z;
+        } else {
+          r1.z = 1;
+        }
+        r21.z = cmp(0 < r1.z);
+        if (r21.z != 0) {
+          r21.z = dot(r19.yzw, r9.xzw);
+          r21.z = saturate(SSDOParams.x * r21.z);
+          r21.z = 1 + -r21.z;
+          r21.z = r21.z * r21.z;
+          r1.z = r20.w * r1.z;
+          r1.z = r1.z * r21.z;
+          r22.xyz = r22.xzw * r1.zzz;
+          r1.z = dot(r19.yzw, r2.xyz);
+          r1.z = -r21.y * r4.y + r1.z;
+          r19.y = cmp(0 >= r1.z);
+          r19.z = max(r21.y, r4.y);
+          r19.z = max(9.99999997e-007, r19.z);
+          r19.y = r19.y ? 1 : r19.z;
+          r1.z = r1.z / r19.y;
+          r1.z = r4.x * r1.z + r4.w;
+          r1.z = max(0, r1.z);
+          r1.z = r21.x * r1.z;
+          r19.y = r5.w * 0.5 + -r21.y;
+          r19.z = r5.w * 0.5 + r21.y;
+          r19.yz = saturate(r19.yz * r12.ww);
+          r19.yzw = r5.xyz * r19.yyy + r19.zzz;
+          r21.yzw = TiledLightsShadeInfo[r19.x].color.xyz * r22.xyz;
+          r19.yzw = r4.zzz ? r19.yzw : r1.zzz;
+          r17.xyz = r21.yzw * r19.yzw + r17.xyz;
+          r1.z = cmp(9 != (int9)TiledLightsShadeInfo[r19.x].lightType);
+          r23.x = r1.z ? TiledLightsShadeInfo[r19.x].attenuationParams.y : TiledLightsShadeInfo[r19.x/4]._m31;
+          r1.z = cmp(9 == (int9)TiledLightsShadeInfo[r19.x].lightType);
+          if (r1.z != 0) {
+            r19.y = dot(TiledLightsShadeInfo[r19.x/4]._m00_m01_m02, r15.xyz);
+            r19.y = 9.99999997e-007 + r19.y;
+            r19.z = dot(TiledLightsShadeInfo[r19.x/4]._m00_m01_m02, r20.xyz);
+            r19.y = r19.z / r19.y;
+            r19.yzw = r15.xyz * -abs(r19.yyy) + -r20.xyz;
+            r24.x = dot(r19.yzw, TiledLightsShadeInfo[r19.x/4]._m10_m11_m12);
+            r24.y = dot(r19.yzw, TiledLightsShadeInfo[r19.x/4]._m20_m21_m22);
+            r23.y = TiledLightsShadeInfo[r19.x/4]._m30;
+            r19.yz = max(r24.xy, -r23.yx);
+            r19.yz = min(r19.yz, r23.yx);
+            r21.yzw = TiledLightsShadeInfo[r19.x/4]._m10_m11_m12 * r19.yyy + r20.xyz;
+            r19.yzw = TiledLightsShadeInfo[r19.x/4]._m20_m21_m22 * r19.zzz + r21.yzw;
+          } else {
+            r20.w = dot(r20.xyz, r15.xyz);
+            r21.yzw = -r20.www * r15.xyz + r20.xyz;
+            r20.w = dot(r21.yzw, r21.yzw);
+            r20.w = sqrt(r20.w);
+            r20.w = 9.99999997e-007 + r20.w;
+            r20.w = saturate(r23.x / r20.w);
+            r19.yzw = -r21.yzw * r20.www + r20.xyz;
+          }
+          r20.x = dot(r19.yzw, r19.yzw);
+          r20.x = sqrt(r20.x);
+          r20.x = max(9.99999997e-007, r20.x);
+          r19.yzw = r19.yzw / r20.xxx;
+          r23.z = TiledLightsShadeInfo[r19.x/4]._m30;
+          r20.y = dot(r23.xz, r23.xz);
+          r20.y = sqrt(r20.y);
+          r1.z = r1.z ? r20.y : r23.x;
+          r1.z = saturate(r1.z / r20.x);
+          r1.z = r1.z * 0.5 + r2.w;
+          r1.z = min(1, r1.z);
+          r1.z = r2.w / r1.z;
+          r1.z = r1.z * r1.z;
+          r20.xyz = -r8.xyz * r0.www + r19.yzw;
+          r20.w = dot(r20.xyz, r20.xyz);
+          r20.w = rsqrt(r20.w);
+          r20.xyz = r20.xyz * r20.www;
+          r20.w = saturate(dot(r3.xyz, r20.xyz));
+          r21.y = r20.w * r14.w + -r20.w;
+          r20.w = r21.y * r20.w + 1;
+          r20.w = r20.w * r20.w;
+          r20.w = r14.w / r20.w;
+          r1.z = r20.w * r1.z;
+          r20.w = saturate(dot(r3.xyz, r19.yzw));
+          r20.w = r20.w * r16.y + r16.z;
+          r20.w = r20.w * r16.x;
+          r20.w = max(9.99999997e-007, r20.w);
+          r1.z = r1.z / r20.w;
+          r19.y = saturate(dot(r19.yzw, r20.xyz));
+          r19.y = 1 + -r19.y;
+          r19.z = r19.y * r19.y;
+          r19.z = r19.z * r19.z;
+          r19.y = r19.y * r19.z;
+          r19.yzw = r19.yyy * r7.xyz + r6.xyz;
+          r19.yzw = r19.yzw * r1.zzz;
+          r19.yzw = float3(0.25,0.25,0.25) * r19.yzw;
+          r20.xyz = TiledLightsShadeInfo[r19.x].color.www * r22.xyz;
+          r19.yzw = r20.xyz * r19.yzw;
+          r19.yzw = r19.yzw * r21.xxx;
+          r18.xyz = r19.yzw * TiledLightsShadeInfo[r19.x].color.xyz + r18.xyz;
+        }
+      }
+    }
+    r16.w = (int)r16.w + 1;
+    r1.z = min(254, (int)r16.w);
+  // Known bad code for instruction (needs manual fix):
+    ld_structured r17.w, r1.z, l(0), g1.xxxx
+  r17.w = SampStateTrilinearClamp[]..swiz;
+  }
+  r0.xyzw = DiffuseRT.Load(r1.xyw).xyzw;
+  r0.xyz = r0.xyz * r0.xyz;
+  r1.z = dot(r6.xyz, float3(0.212599993,0.715200007,0.0722000003));
+  r1.z = 1 + -r1.z;
+  r1.z = max(0, r1.z);
+  r0.xyz = r1.zzz * r0.xyz;
+  r1.z = cmp(0 < r0.w);
+  if (r1.z != 0) {
+    r0.w = 3.99609375 * r0.w;
+    r0.w = floor(r0.w);
+    r0.w = cmp(r0.w != 1.000000);
+    r2.xyz = sqrt(r0.xyz);
+    r2.xyz = r0.www ? r2.xyz : float3(1,1,1);
+    r2.xyz = r17.xyz * r2.xyz;
+  } else {
+    r18.xyz = r17.xyz * r0.xyz + r18.xyz;
+    r2.xyz = float3(0,0,0);
+  }
+  r2.w = 0;
+  // No code for instruction (needs manual fix):
+  // store_uav_typed u2.xyzw, r1.xyyy, r2.xyzw
+  g_outputTexture2[r1.xy].xyzw = r2.xyzw;
+  
+  r18.w = 0;
+  // No code for instruction (needs manual fix):
+  // store_uav_typed u1.xyzw, r1.xyyy, r18.xyzw
+  g_outputTexture1[r1.xy].xyzw = r18.xyzw;
+  
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.30.9200.20546
+//
+//   using 3Dmigoto v1.2.67 on Sun Dec 03 15:55:46 2017
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer PER_BATCH
+// {
+//
+//   float4 irreg_kernel_2d[8];         // Offset:    0 Size:   128 [unused]
+//   float4 SunDir;                     // Offset:  128 Size:    16
+//   float4 ViewportSize;               // Offset:  144 Size:    16
+//   float4 SSDOParams;                 // Offset:  160 Size:    16
+//   float4 ScreenSize;                 // Offset:  176 Size:    16
+//   float4 g_vVisAreasParams[64];      // Offset:  192 Size:  1024 [unused]
+//
+// }
+//
+// cbuffer CBPerViewGlobal
+// {
+//
+//   row_major float4x4 CV_ViewProjZeroMatr;// Offset:    0 Size:    64 [unused]
+//   float4 CV_AnimGenParams;           // Offset:   64 Size:    16 [unused]
+//   row_major float4x4 CV_ViewProjMatr;// Offset:   80 Size:    64 [unused]
+//   row_major float4x4 CV_ViewProjNearestMatr;// Offset:  144 Size:    64 [unused]
+//   row_major float4x4 CV_InvViewProj; // Offset:  208 Size:    64 [unused]
+//   row_major float4x4 CV_PrevViewProjMatr;// Offset:  272 Size:    64 [unused]
+//   row_major float4x4 CV_PrevViewProjNearestMatr;// Offset:  336 Size:    64 [unused]
+//   row_major float3x4 CV_ScreenToWorldBasis;// Offset:  400 Size:    48
+//   float4 CV_TessInfo;                // Offset:  448 Size:    16 [unused]
+//   float4 CV_CameraFrontVector;       // Offset:  464 Size:    16 [unused]
+//   float4 CV_CameraUpVector;          // Offset:  480 Size:    16 [unused]
+//   float4 CV_ScreenSize;              // Offset:  496 Size:    16 [unused]
+//   float4 CV_HPosScale;               // Offset:  512 Size:    16 [unused]
+//   float4 CV_ProjRatio;               // Offset:  528 Size:    16 [unused]
+//   float4 CV_NearestScaled;           // Offset:  544 Size:    16 [unused]
+//   float4 CV_NearFarClipDist;         // Offset:  560 Size:    16 [unused]
+//   float4 CV_SunLightDir;             // Offset:  576 Size:    16 [unused]
+//   float4 CV_SunColor;                // Offset:  592 Size:    16 [unused]
+//   float4 CV_SkyColor;                // Offset:  608 Size:    16 [unused]
+//   float4 CV_FogColor;                // Offset:  624 Size:    16 [unused]
+//   float4 CV_TerrainInfo;             // Offset:  640 Size:    16 [unused]
+//   float4 CV_DecalZFightingRemedy;    // Offset:  656 Size:    16 [unused]
+//   row_major float4x4 CV_FrustumPlaneEquation;// Offset:  672 Size:    64 [unused]
+//   float4 CV_WindGridOffset;          // Offset:  736 Size:    16 [unused]
+//   row_major float4x4 CV_ViewMatr;    // Offset:  752 Size:    64 [unused]
+//   row_major float4x4 CV_InvViewMatr; // Offset:  816 Size:    64 [unused]
+//   float CV_LookingGlass_SunSelector; // Offset:  880 Size:     4 [unused]
+//   float CV_LookingGlass_DepthScalar; // Offset:  884 Size:     4 [unused]
+//   float CV_PADDING0;                 // Offset:  888 Size:     4 [unused]
+//   float CV_PADDING1;                 // Offset:  892 Size:     4 [unused]
+//
+// }
+//
+// cbuffer _TiledLightsShadeInfoCB
+// {
+//
+//   struct STiledLightShadeInfo
+//   {
+//       
+//       uint lightType;                // Offset:    0
+//       uint shadowMaskIndex;          // Offset:    4
+//       uint resIndices;               // Offset:    8
+//       uint stencilID;                // Offset:   12
+//       float4 posRad;                 // Offset:   16
+//       float2 attenuationParams;      // Offset:   32
+//       float2 shadowParams;           // Offset:   40
+//       float4 color;                  // Offset:   48
+//       row_major float4x4 projectorMatrix;// Offset:   64
+//       row_major float4x4 shadowMatrix;// Offset:  128
+//       float4 sceneSelection;         // Offset:  192
+//
+//   } TiledLightsShadeInfo[255];       // Offset:    0 Size: 53040
+//
+// }
+//
+// Resource bind info for TiledClipVolumeInfo
+// {
+//
+//   struct STiledClipVolumeInfo
+//   {
+//       
+//       uint data;                     // Offset:    0
+//
+//   } $Element;                        // Offset:    0 Size:     4
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// SampStateTrilinearClamp           sampler      NA          NA    0        1
+// DepthRT                           texture  float4          2d    0        1
+// NormalRT                          texture  float4          2d    1        1
+// SpecularRT                        texture  float4          2d    2        1
+// DiffuseRT                         texture  float4          2d    3        1
+// ShadowMaskRT                      texture   float     2darray    4        1
+// DirectionalOccRT                  texture  float4          2d    5        1
+// SSReflectionRT                    texture  float4          2d    6        1
+// EnvBRDF                           texture  float4          2d    7        1
+// ClipVolumeIndexRT                 texture  float4          2d    8        1
+// AOColorBleedRT                    texture  float4          2d    9        1
+// CausticsRT                        texture  float4          2d   12        1
+// SceneMaskRT                       texture  float4          2d   13        1
+// SpecCubeArray                     texture  float4   cubearray   17        1
+// DiffuseCubeArray                  texture  float4   cubearray   18        1
+// SpotTexArray                      texture  float4     2darray   19        1
+// TileLightMask                     texture    uint         buf   22        1
+// TiledClipVolumeInfo               texture  struct         r/o   23        1
+// ColorSpotTexArray                 texture  float4     2darray   30        1
+// HDRSceneTargetUAV                     UAV  float4          2d    1        1
+// DiffuseAccUAV                         UAV  float4          2d    2        1
+// PER_BATCH                         cbuffer      NA          NA    0        1
+// _TiledLightsShadeInfoCB           cbuffer      NA          NA   11        1
+// CBPerViewGlobal                   cbuffer      NA          NA   13        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// no Input
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// no Output
+cs_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb0[12], immediateIndexed
+dcl_constantbuffer cb13[28], immediateIndexed
+dcl_constantbuffer cb11[3315], dynamicIndexed
+dcl_sampler s0, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_texture2d (float,float,float,float) t3
+dcl_resource_texture2darray (float,float,float,float) t4
+dcl_resource_texture2d (float,float,float,float) t5
+dcl_resource_texture2d (float,float,float,float) t6
+dcl_resource_texture2d (float,float,float,float) t7
+dcl_resource_texture2d (float,float,float,float) t8
+dcl_resource_texture2d (float,float,float,float) t9
+dcl_resource_texture2d (float,float,float,float) t12
+dcl_resource_texture2d (float,float,float,float) t13
+dcl_resource_texturecubearray (float,float,float,float) t17
+dcl_resource_texturecubearray (float,float,float,float) t18
+dcl_resource_texture2darray (float,float,float,float) t19
+dcl_resource_buffer (uint,uint,uint,uint) t22
+dcl_resource_structured t23, 4 
+dcl_resource_texture2darray (float,float,float,float) t30
+dcl_uav_typed_texture2d (float,float,float,float) u1
+dcl_uav_typed_texture2d (float,float,float,float) u2
+dcl_input vThreadGroupID.xy
+dcl_input vThreadIDInGroup.xy
+dcl_temps 25
+dcl_tgsm_raw g0, 4
+dcl_tgsm_structured g1, 4, 256
+dcl_tgsm_raw g2, 4
+dcl_tgsm_structured g3, 4, 8
+dcl_tgsm_structured g4, 4, 8
+dcl_thread_group 8, 8, 1
+imad r0.x, vThreadIDInGroup.y, l(8), vThreadIDInGroup.x
+imad r1.xy, vThreadGroupID.xyxx, l(8, 8, 0, 0), vThreadIDInGroup.xyxx
+utof r0.yz, r1.xxyx
+add r0.yz, r0.yyzy, l(0.000000, 0.500000, 0.500000, 0.000000)
+mul r0.yz, r0.yyzy, cb0[11].zzwz
+lt r2.xy, l(0.000000, 0.000000, 0.000000, 0.000000), r0.yzyy
+and r0.w, r2.y, r2.x
+lt r2.xy, r0.yzyy, l(1.000000, 1.000000, 0.000000, 0.000000)
+and r2.x, r2.y, r2.x
+and r0.w, r0.w, r2.x
+if_z r0.x
+  store_raw g2.x, l(0), l(0)
+endif 
+ult r2.x, r0.x, l(8)
+if_nz r2.x
+  mul r2.y, cb0[9].x, l(0.125000)
+  round_pi r2.y, r2.y
+  utof r2.zw, vThreadGroupID.yyyx
+  mad r2.y, r2.z, r2.y, r2.w
+  ftou r2.y, r2.y
+  ishl r2.y, r2.y, l(3)
+  if_z r0.x
+    store_raw g0.x, l(0), l(0)
+  endif 
+  iadd r2.y, r0.x, r2.y
+  ld_indexable(buffer)(uint,uint,uint,uint) r2.y, r2.yyyy, t22.yxzw
+  store_structured g3.x, r0.x, l(0), r2.y
+  countbits r2.y, r2.y
+  store_structured g4.x, r0.x, l(0), r2.y
+  atomic_iadd g0, l(0), r2.y
+endif 
+sync_g_t
+if_nz r2.x
+  mov r2.xy, l(0,0,0,0)
+  loop 
+    uge r2.z, r2.y, r0.x
+    breakc_nz r2.z
+    ld_structured r2.z, r2.y, l(0), g4.xxxx
+    iadd r2.x, r2.z, r2.x
+    iadd r2.y, r2.y, l(1)
+  endloop 
+  ld_structured r2.y, r0.x, l(0), g3.xxxx
+  firstbit_lo r2.z, r2.y
+  ishl r2.w, vThreadIDInGroup.x, l(5)
+  imad r2.w, vThreadIDInGroup.y, l(256), r2.w
+  mov r3.x, l(0)
+  mov r3.y, r2.z
+  loop 
+    ilt r3.z, r3.y, l(0)
+    breakc_nz r3.z
+    iadd r3.z, r3.x, l(1)
+    iadd r3.w, r2.x, r3.x
+    iadd r4.x, r2.w, r3.y
+    store_structured g1.x, r3.w, l(0), r4.x
+    ilt r3.w, r3.y, l(31)
+    iadd r4.x, r3.y, l(1)
+    bfi r3.w, r4.x, l(0), l(0), r3.w
+    and r3.w, r2.y, r3.w
+    firstbit_lo r3.y, r3.w
+    mov r3.xy, r3.zyzz
+  endloop 
+  if_z r0.x
+    ld_raw r0.x, l(0), g0.xxxx
+    store_structured g1.x, r0.x, l(0), l(0)
+  endif 
+endif 
+if_nz r0.w
+  store_raw g2.x, l(0), l(1)
+endif 
+sync_g_t
+ld_raw r0.x, l(0), g2.xxxx
+if_z r0.x
+  ret 
+endif 
+mov r1.w, l(0)
+ld_indexable(texture2d)(float,float,float,float) r2.z, r1.xyww, t0.yzxw
+ld_indexable(texture2d)(float,float,float,float) r3.xyzw, r1.xyww, t1.xyzw
+ld_indexable(texture2d)(float,float,float,float) r4.xyzw, r1.xyww, t2.yxzw
+mul r0.x, r3.w, l(3.99609375)
+round_ni r0.w, r0.x
+ftoi r0.w, r0.w
+mad r3.xyz, r3.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+dp3 r2.w, r3.xyzx, r3.xyzx
+rsq r2.w, r2.w
+mul r3.xyz, r2.wwww, r3.xyzx
+mad r5.yz, r4.zzwz, l(0.000000, 2.007874, 2.007874, 0.000000), l(0.000000, -1.000000, -1.000000, 0.000000)
+movc r6.yz, r0.wwww, l(0,0,0,0), r5.yyzy
+mov r6.x, r4.x
+dp3 r7.y, l(1.000000, -0.344100, -0.714100, 0.000000), r6.xyzx
+mad r7.xz, r6.zzyz, l(1.402000, 0.000000, 1.772000, 0.000000), r4.xxxx
+mul r6.xyz, r7.xyzx, r7.xyzx
+ieq r4.zw, r0.wwww, l(0, 0, 1, 3)
+frc r5.x, r0.x
+dp3 r8.y, l(1.000000, -0.344100, -0.714100, 0.000000), r5.xyzx
+mad r8.xz, r5.zzyz, l(1.402000, 0.000000, 1.772000, 0.000000), r5.xxxx
+mul r5.xyz, r8.xyzx, r8.xyzx
+and r5.xyz, r4.zzzz, r5.xyzx
+ld_indexable(texture2d)(float,float,float,float) r0.x, r1.xyww, t13.xyzw
+add r0.x, -r0.x, r2.z
+itof r8.xy, r1.xyxx
+mul r2.xy, r2.zzzz, r8.xyxx
+dp3 r8.x, cb13[25].xyzx, r2.xyzx
+dp3 r8.y, cb13[26].xyzx, r2.xyzx
+dp3 r8.z, cb13[27].xyzx, r2.xyzx
+dp3 r0.w, -r8.xyzx, -r8.xyzx
+rsq r0.w, r0.w
+mul r2.xyz, r0.wwww, -r8.xyzx
+ld_raw r2.w, l(0), g0.xxxx
+ult r5.w, l(0), r2.w
+ld_structured r6.w, l(0), l(0), g1.xxxx
+and r5.w, r5.w, r6.w
+ld_indexable(texture2d)(float,float,float,float) r9.xy, r1.xyww, t8.xyzw
+mul r6.w, r9.x, l(255.000000)
+ftou r6.w, r6.w
+and r7.w, r6.w, l(63)
+ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r7.w, r7.w, l(0), t23.xxxx
+if_z r4.w
+  dp3 r8.w, r8.xyzx, r3.xyzx
+  add r8.w, r8.w, r8.w
+  mad r9.xzw, r3.xxyz, -r8.wwww, r8.xxyz
+  dp3 r8.w, r9.xzwx, r9.xzwx
+  rsq r8.w, r8.w
+  mul r9.xzw, r8.wwww, r9.xxzw
+  mad r8.w, -r4.y, l(6.000000), l(6.000000)
+  and r10.x, r7.w, l(8)
+  ushr r10.y, r7.w, l(24)
+  ubfe r10.z, l(8), l(16), r7.w
+  add r10.w, -r9.y, l(1.000000)
+  mov r11.x, cb13[25].w
+  mov r11.y, cb13[26].w
+  mov r11.z, cb13[27].w
+  lt r12.xyz, l(0.000000, 0.000000, 0.000000, 0.000000), r9.xzwx
+  mov r13.xyz, r3.xyzx
+  mov r14.xyz, l(0,0,0,0)
+  mov r15.xyz, l(0,0,0,0)
+  mov r11.w, l(0)
+  mov r12.w, l(0)
+  mov r14.w, r5.w
+  loop 
+    ult r15.w, r12.w, r2.w
+    imul null, r16.x, r14.w, l(13)
+    ieq r16.y, l(1), cb11[r16.x + 0].x
+    and r15.w, r15.w, r16.y
+    breakc_z r15.w
+    mul r15.w, r0.x, cb11[r16.x + 12].x
+    ge r15.w, r15.w, l(0.000000)
+    if_nz r15.w
+      and r15.w, l(255), cb11[r16.x + 0].w
+      ushr r16.y, cb11[r16.x + 0].w, l(16)
+      ieq r16.z, r15.w, l(255)
+      ieq r16.w, r10.y, r15.w
+      ieq r17.x, r10.z, r15.w
+      movc r17.y, r16.w, r9.y, r10.w
+      or r16.w, r16.w, r17.x
+      movc r16.w, r10.x, r16.w, l(0)
+      ieq r15.w, r6.w, r15.w
+      ieq r16.y, r6.w, r16.y
+      or r15.w, r15.w, r16.y
+      and r15.w, r15.w, l(0x3f800000)
+      movc r15.w, r16.w, r17.y, r15.w
+      movc r15.w, r16.z, l(1.000000), r15.w
+      lt r16.y, r11.w, l(1.000000)
+      lt r16.z, l(0.000000), r15.w
+      and r16.y, r16.z, r16.y
+      if_nz r16.y
+        add r16.yzw, -r11.xxyz, cb11[r16.x + 1].xxyz
+        add r17.xyz, -r8.xyzx, r16.yzwy
+        dp3 r18.x, cb11[r16.x + 4].xyzx, r17.xyzx
+        dp3 r18.y, cb11[r16.x + 5].xyzx, r17.xyzx
+        dp3 r18.z, cb11[r16.x + 6].xyzx, r17.xyzx
+        max r17.x, |r18.y|, |r18.x|
+        max r17.x, |r18.z|, r17.x
+        lt r17.x, r17.x, l(1.000000)
+        if_nz r17.x
+          mul r17.xyz, r18.zxyz, r18.zxyz
+          mad r19.xyz, -r17.zxyz, l(0.500000, 0.500000, 0.500000, 0.000000), l(1.000000, 1.000000, 1.000000, 0.000000)
+          mad r19.xyz, -r17.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000), r19.xyzx
+          mul r17.xyz, r17.zxyz, r17.xyzx
+          mad r17.xyz, r17.xyzx, l(0.333000, 0.333000, 0.333000, 0.000000), r19.xyzx
+          sqrt r17.xyz, r17.xyzx
+          mul r17.xyz, r17.xyzx, r18.xyzx
+          dp3 r17.x, r17.xyzx, -r17.xyzx
+          add_sat r17.x, r17.x, l(1.000000)
+          div_sat r17.x, r17.x, cb11[r16.x + 2].y
+          mul r17.y, r17.x, r17.x
+          mad r17.x, -r17.x, l(2.000000), l(3.000000)
+          mul r17.x, r17.x, r17.y
+          mul r17.x, r17.x, cb11[r16.x + 2].x
+          and r17.y, l(0x0000ffff), cb11[r16.x + 0].z
+          ushr r17.z, cb11[r16.x + 0].z, l(16)
+          utof r3.w, r17.y
+          sample_l_indexable(texturecubearray)(float,float,float,float) r18.xyz, r3.xyzw, t18.xyzw, s0, l(0.000000)
+          utof r13.w, r17.z
+          sample_l_indexable(texturecubearray)(float,float,float,float) r17.yzw, r13.xyzw, t18.wxyz, s0, l(0.000000)
+          add r17.yzw, -r18.xxyz, r17.yyzw
+          mad r17.yzw, cb11[r16.x + 12].wwww, r17.yyzw, r18.xxyz
+          if_nz r4.z
+            mul r18.xyzw, r3.xyzw, l(-1.000000, -1.000000, -1.000000, 1.000000)
+            sample_l_indexable(texturecubearray)(float,float,float,float) r19.xyz, r18.xyzw, t18.xyzw, s0, l(0.000000)
+            mov r18.w, r13.w
+            sample_l_indexable(texturecubearray)(float,float,float,float) r18.xyz, r18.xyzw, t18.xyzw, s0, l(0.000000)
+            add r18.xyz, -r19.xyzx, r18.xyzx
+            mad r18.xyz, cb11[r16.x + 12].wwww, r18.xyzx, r19.xyzx
+            mad r17.yzw, r18.xxyz, r5.xxyz, r17.yyzw
+          endif 
+          add r18.x, -r11.w, l(1.000000)
+          mul r17.x, r17.x, r18.x
+          mul r18.x, r15.w, r17.x
+          mul r17.yzw, r17.yyzw, cb11[r16.x + 3].xxyz
+          mad r14.xyz, r17.yzwy, r18.xxxx, r14.xyzx
+          add r17.yzw, r16.yyzw, cb11[r16.x + 9].xxyz
+          add r17.yzw, -r8.xxyz, r17.yyzw
+          div r17.yzw, r17.yyzw, r9.xxzw
+          add r18.yzw, r16.yyzw, cb11[r16.x + 8].xxyz
+          add r18.yzw, -r8.xxyz, r18.yyzw
+          div r18.yzw, r18.yyzw, r9.xxzw
+          movc r17.yzw, r12.xxyz, r17.yyzw, r18.yyzw
+          min r17.y, r17.z, r17.y
+          min r17.y, r17.w, r17.y
+          mad r17.yzw, r9.xxzw, r17.yyyy, r8.xxyz
+          add r19.xyz, -r16.yzwy, r17.yzwy
+          mov r19.w, r3.w
+          sample_l_indexable(texturecubearray)(float,float,float,float) r16.yzw, r19.xyzw, t17.wxyz, s0, r8.w
+          mov r19.w, r13.w
+          sample_l_indexable(texturecubearray)(float,float,float,float) r17.yzw, r19.xyzw, t17.wxyz, s0, r8.w
+          add r17.yzw, -r16.yyzw, r17.yyzw
+          mad r16.yzw, cb11[r16.x + 12].wwww, r17.yyzw, r16.yyzw
+          mul r16.yzw, r16.yyzw, cb11[r16.x + 3].xxyz
+          mul r16.xyz, r16.yzwy, cb11[r16.x + 3].wwww
+          mad r15.xyz, r16.xyzx, r18.xxxx, r15.xyzx
+          mad r11.w, r17.x, r15.w, r11.w
+        endif 
+      endif 
+    endif 
+    iadd r12.w, r12.w, l(1)
+    imin r13.w, r12.w, l(254)
+    ld_structured r14.w, r13.w, l(0), g1.xxxx
+  endloop 
+  mov r5.w, r14.w
+else 
+  mov r3.w, l(64.000000)
+  sample_l_indexable(texturecubearray)(float,float,float,float) r14.xyz, r3.xyzw, t18.xyzw, s0, l(0.000000)
+  dp3 r2.w, r8.xyzx, r3.xyzx
+  add r2.w, r2.w, r2.w
+  mad r9.xzw, r3.xxyz, -r2.wwww, r8.xxyz
+  dp3 r2.w, r9.xzwx, r9.xzwx
+  rsq r2.w, r2.w
+  mul r10.xyz, r2.wwww, r9.xzwx
+  mad r2.w, -r4.y, l(6.000000), l(6.000000)
+  mov r10.w, l(64.000000)
+  sample_l_indexable(texturecubearray)(float,float,float,float) r15.xyz, r10.xyzw, t17.xyzw, s0, r2.w
+  mov r12.w, l(0)
+endif 
+ld_indexable(texture2d)(float,float,float,float) r10.xyzw, r1.xyww, t5.xyzw
+mad r9.xzw, r10.xxyz, l(2.000000, 0.000000, 2.000000, 2.000000), l(-1.000000, 0.000000, -1.000000, -1.000000)
+mad_sat r10.xy, -r10.wwww, cb0[10].yzyy, l(1.000000, 1.000000, 0.000000, 0.000000)
+mul r10.xy, r10.xyxx, r10.xyxx
+sample_l_indexable(texture2d)(float,float,float,float) r11.xyz, r0.yzyy, t9.xyzw, s0, l(0.000000)
+mul r12.xyz, r11.xyzx, r11.xyzx
+mul r11.xyz, r11.xyzx, r12.xyzx
+mul r11.xyz, r11.xyzx, l(3.000000, 3.000000, 3.000000, 0.000000)
+min r11.xyz, r11.xyzx, l(0.700000, 0.700000, 0.700000, 0.000000)
+add r11.xyz, -r11.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+log r2.w, r10.x
+mul r10.xzw, r2.wwww, r11.xxyz
+exp r10.xzw, r10.xxzw
+mul r10.xzw, r10.xxzw, r14.xxyz
+dp3 r2.w, r8.xyzx, r8.xyzx
+rsq r2.w, r2.w
+mul r11.xyz, r2.wwww, r8.xyzx
+dp3 r4.x, -r11.xyzx, r3.xyzx
+max r2.w, r10.y, l(0.300000)
+add r3.w, r2.w, r4.x
+log r3.w, r3.w
+mul r3.w, r3.w, r4.y
+exp r3.w, r3.w
+add r3.w, r3.w, l(-1.000000)
+add_sat r2.w, r2.w, r3.w
+mul r11.xyz, r2.wwww, r15.xyzx
+ld_raw r2.w, l(0), g0.xxxx
+and r3.w, r7.w, l(8)
+ushr r8.w, r7.w, l(24)
+ubfe r7.w, l(8), l(16), r7.w
+add r10.y, -r9.y, l(1.000000)
+mov r12.x, cb13[25].w
+mov r12.y, cb13[26].w
+mov r12.z, cb13[27].w
+add r13.xyz, r8.xyzx, r12.xyzx
+mov r14.xz, l(1.000000,0,1.000000,0)
+mov r13.w, l(1.000000)
+mov r15.xyz, r10.xzwx
+mov r16.xyz, r11.xyzx
+mov r11.w, r12.w
+mov r15.w, r5.w
+loop 
+  ult r16.w, r11.w, r2.w
+  imul null, r17.x, r15.w, l(13)
+  ige r17.y, l(4), cb11[r17.x + 0].x
+  and r16.w, r16.w, r17.y
+  breakc_z r16.w
+  and r16.w, l(255), cb11[r17.x + 0].w
+  ushr r17.y, cb11[r17.x + 0].w, l(16)
+  ieq r17.z, r16.w, l(255)
+  ieq r17.w, r8.w, r16.w
+  ieq r18.x, r7.w, r16.w
+  movc r18.y, r17.w, r9.y, r10.y
+  or r17.w, r17.w, r18.x
+  movc r17.w, r3.w, r17.w, l(0)
+  ieq r16.w, r6.w, r16.w
+  ieq r17.y, r6.w, r17.y
+  or r16.w, r16.w, r17.y
+  and r16.w, r16.w, l(0x3f800000)
+  movc r16.w, r17.w, r18.y, r16.w
+  movc r16.w, r17.z, l(1.000000), r16.w
+  ne r17.y, r16.w, l(0.000000)
+  mul r17.z, r0.x, cb11[r17.x + 12].x
+  ge r17.z, r17.z, l(0.000000)
+  and r17.y, r17.z, r17.y
+  if_nz r17.y
+    add r17.yzw, -r12.xxyz, cb11[r17.x + 1].xxyz
+    add r17.yzw, -r8.xxyz, r17.yyzw
+    ieq r18.x, l(4), cb11[r17.x + 0].x
+    if_nz r18.x
+      dp3 r18.x, cb11[r17.x + 4].xyzx, r17.yzwy
+      mad r18.xyz, r18.xxxx, cb11[r17.x + 4].xyzx, -r17.yzwy
+      dp3 r19.x, r18.xyzx, cb11[r17.x + 5].xyzx
+      dp3 r19.y, r18.xyzx, cb11[r17.x + 6].xyzx
+      max r18.xy, r19.xyxx, -cb11[r17.x + 7].xyxx
+      min r18.xy, r18.xyxx, cb11[r17.x + 7].xyxx
+      mul r18.yzw, r18.yyyy, cb11[r17.x + 6].xxyz
+      mad r18.xyz, cb11[r17.x + 5].xyzx, r18.xxxx, r18.yzwy
+      add r18.xyz, r17.yzwy, r18.xyzx
+      div r18.w, l(1.000000, 1.000000, 1.000000, 1.000000), cb11[r17.x + 1].w
+      mul r19.xyz, r18.wwww, r18.xyzx
+      dp3 r18.w, r19.xyzx, -r19.xyzx
+      add_sat r18.w, r18.w, l(1.000000)
+      dp3 r19.x, r18.xyzx, r18.xyzx
+      rsq r19.x, r19.x
+      mul r18.xyz, r18.xyzx, r19.xxxx
+      dp3 r19.x, -r18.xyzx, cb11[r17.x + 4].xyzx
+      add r19.y, r19.x, l(0.000001)
+      div_sat r19.y, cb11[r17.x + 7].w, r19.y
+      log r19.y, r19.y
+      mul r19.y, r19.y, cb11[r17.x + 1].w
+      exp r19.y, r19.y
+      add r19.y, -r19.y, l(1.000000)
+      mul r18.w, r18.w, r19.y
+      mul r14.y, r18.w, r18.w
+      dp3_sat r18.w, r3.xyzx, r18.xyzx
+      mov_sat r19.y, r19.x
+      mul r18.w, r18.w, r19.y
+      mov r19.yz, r14.xxyx
+    else 
+      lt r14.y, l(0.000000), cb11[r17.x + 2].x
+      if_nz r14.y
+        dp3 r14.y, r17.yzwy, r17.yzwy
+        sqrt r14.y, r14.y
+        div r19.w, l(1.000000, 1.000000, 1.000000, 1.000000), cb11[r17.x + 1].w
+        add r20.x, -r14.y, cb11[r17.x + 1].w
+        mul r19.w, r19.w, l(5.000000)
+        mul_sat r19.w, r19.w, r20.x
+        add r14.y, r14.y, -cb11[r17.x + 2].x
+        max r14.y, r14.y, l(0.000000)
+        div r14.y, r14.y, cb11[r17.x + 2].x
+        add r14.y, r14.y, l(1.000000)
+        mul r19.w, r19.w, r19.w
+        mul r14.y, r14.y, r14.y
+        div r19.z, r19.w, r14.y
+      else 
+        div r14.y, l(1.000000, 1.000000, 1.000000, 1.000000), cb11[r17.x + 1].w
+        mul r20.xyz, r14.yyyy, r17.yzwy
+        dp3 r14.y, r20.xyzx, -r20.xyzx
+        add_sat r19.z, r14.y, l(1.000000)
+      endif 
+      dp3 r14.y, r17.yzwy, r17.yzwy
+      rsq r14.y, r14.y
+      mul r18.xyz, r14.yyyy, r17.yzwy
+      dp3_sat r18.w, r3.xyzx, r18.xyzx
+      ieq r14.y, l(3), cb11[r17.x + 0].x
+      if_nz r14.y
+        lt r14.y, l(0.000000), r19.z
+        if_nz r14.y
+          dp4 r20.x, cb11[r17.x + 4].xyzw, r13.xyzw
+          dp4 r20.y, cb11[r17.x + 5].xyzw, r13.xyzw
+          dp4 r14.y, cb11[r17.x + 7].xyzw, r13.xyzw
+          div r20.xy, r20.xyxx, r14.yyyy
+          lt r14.y, l(0.000000), r14.y
+          mad r17.yz, r20.xxyx, l(0.000000, 2.000000, 2.000000, 0.000000), l(0.000000, -1.000000, -1.000000, 0.000000)
+          max r17.y, |r17.z|, |r17.y|
+          lt r17.y, r17.y, l(1.000000)
+          and r14.y, r14.y, r17.y
+          if_nz r14.y
+            and r14.y, l(0x0000ffff), cb11[r17.x + 0].z
+            utof r20.z, r14.y
+            sample_l_indexable(texture2darray)(float,float,float,float) r19.y, r20.xyzx, t19.zxyw, s0, l(0.000000)
+          else 
+            mov r19.y, l(0)
+          endif 
+        else 
+          mov r19.y, l(0)
+        endif 
+      else 
+        mul r14.w, r19.z, r19.z
+        mov r19.yz, r14.zzwz
+      endif 
+      mov r19.x, l(1.000000)
+    endif 
+    dp3 r14.y, r18.xyzx, r9.xzwx
+    mul_sat r14.y, r14.y, cb0[10].x
+    add r14.y, -r14.y, l(1.000000)
+    mad r14.y, r14.y, l(0.700000), l(0.300000)
+    lt r17.yzw, l(0.000000, 1.000000, 1.000000, 1.000000), cb11[r17.x + 3].xxyz
+    mul r14.y, r14.y, r18.w
+    mov_sat r19.x, r19.x
+    movc r17.yzw, r17.yyzw, r14.yyyy, r19.xxxx
+    mul r14.y, r16.w, r19.z
+    mul r14.y, r19.y, r14.y
+    mul r17.yzw, r17.yyzw, r14.yyyy
+    add r18.xyz, l(-1.000000, -1.000000, -1.000000, 0.000000), cb11[r17.x + 3].xyzx
+    mad r17.xyz, r17.yzwy, r18.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+    mul r15.xyz, r15.xyzx, r17.xyzx
+    mul r16.xyz, r16.xyzx, r17.xyzx
+  endif 
+  iadd r11.w, r11.w, l(1)
+  imin r14.y, r11.w, l(254)
+  ld_structured r15.w, r14.y, l(0), g1.xxxx
+endloop 
+sample_l_indexable(texture2d)(float,float,float,float) r14.xyzw, r0.yzyy, t6.xyzw, s0, l(0.000000)
+add r10.xzw, -r16.xxyz, r14.xxyz
+mad r10.xzw, r14.wwww, r10.xxzw, r16.xxyz
+sample_l_indexable(texture2d)(float,float,float,float) r11.xy, r4.xyxx, t7.xyzw, s0, l(0.000000)
+add r2.w, -r11.x, r11.y
+mad r11.xyz, r6.xyzx, r2.wwww, r11.xxxx
+mul r10.xzw, r10.xxzw, r11.xxyz
+sample_l_indexable(texture2d)(float,float,float,float) r11.xyz, r0.yzyy, t12.xyzw, s0, l(0.000000)
+add r11.xyz, r11.xyzx, r15.xyzx
+ld_raw r0.y, l(0), g0.xxxx
+mul r14.xyz, cb0[8].wwww, cb0[8].xyzx
+ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.z, r6.w, l(0), t23.xxxx
+and r0.z, r0.z, l(4)
+movc r0.z, r0.z, l(1.000000), l(0)
+movc r0.z, r4.w, l(0), r0.z
+add r2.w, -r4.y, l(1.000000)
+mul r2.w, r2.w, r2.w
+mul r4.x, r2.w, r2.w
+mul r4.x, r2.w, r4.x
+dp3 r4.y, r3.xyzx, r2.xyzx
+mad r4.w, r4.x, l(0.287787139), l(1.000000)
+div r4.w, l(1.000000, 1.000000, 1.000000, 1.000000), r4.w
+mul r4.x, r4.w, r4.x
+dp3 r5.w, r5.xyzx, l(0.212600, 0.715200, 0.072200, 0.000000)
+mad r12.w, r5.w, l(0.500000), l(1.000000)
+mul r12.w, r12.w, r12.w
+rcp r12.w, r12.w
+max r2.w, r2.w, l(0.001000)
+add r14.w, r4.y, r4.y
+mad r15.xyz, r3.xyzx, -r14.wwww, r2.xyzx
+mul r14.w, r2.w, r2.w
+add r16.x, |r4.y|, l(0.000010)
+mad r16.y, r2.w, l(0.500000), l(0.800000)
+mul r16.y, r16.y, r16.y
+mul r16.z, r16.y, l(0.500000)
+mad r16.y, -r16.y, l(0.500000), l(1.000000)
+mad r16.x, r16.x, r16.y, r16.z
+dp3 r16.w, r6.xyzx, l(0.333330, 0.333330, 0.333330, 0.000000)
+mul r16.w, r16.w, l(50.000000)
+min r16.w, r16.w, l(1.000000)
+mad r7.xyz, -r7.xyzx, r7.xyzx, r16.wwww
+mov r13.w, l(1.000000)
+mov r17.xyz, r11.xyzx
+mov r18.xyz, r10.xzwx
+mov r16.w, r11.w
+mov r17.w, r15.w
+loop 
+  uge r19.x, r16.w, r0.y
+  breakc_nz r19.x
+  imul null, r19.x, r17.w, l(13)
+  ieq r19.y, l(10), cb11[r19.x + 0].x
+  if_nz r19.y
+    mov r19.yzw, cb0[8].xxyz
+    mov r20.xyz, r14.xyzx
+    mov r20.w, r0.z
+    mov r21.x, l(1.000000)
+  else 
+    ieq r21.y, l(9), cb11[r19.x + 0].x
+    if_nz r21.y
+      and r21.y, l(255), cb11[r19.x + 0].w
+      ushr r21.z, cb11[r19.x + 0].w, l(16)
+      ieq r21.w, r21.y, l(255)
+      ieq r22.x, r8.w, r21.y
+      ieq r22.y, r7.w, r21.y
+      movc r22.z, r22.x, r9.y, r10.y
+      or r22.x, r22.y, r22.x
+      movc r22.x, r3.w, r22.x, l(0)
+      ieq r21.yz, r6.wwww, r21.yyzy
+      or r21.y, r21.z, r21.y
+      and r21.y, r21.y, l(0x3f800000)
+      movc r21.y, r22.x, r22.z, r21.y
+      movc r21.y, r21.w, l(1.000000), r21.y
+      add r22.xyz, -r12.xyzx, cb11[r19.x + 1].xyzx
+      add r20.xyz, -r8.xyzx, r22.xyzx
+      dp3 r21.z, cb11[r19.x + 4].xyzx, r20.xyzx
+      mad r22.xyz, r21.zzzz, cb11[r19.x + 4].xyzx, -r20.xyzx
+      dp3 r23.x, r22.xyzx, cb11[r19.x + 5].xyzx
+      dp3 r23.y, r22.xyzx, cb11[r19.x + 6].xyzx
+      max r21.zw, r23.xxxy, -cb11[r19.x + 7].xxxy
+      min r21.zw, r21.zzzw, cb11[r19.x + 7].xxxy
+      mul r22.xyz, r21.wwww, cb11[r19.x + 6].xyzx
+      mad r22.xyz, cb11[r19.x + 5].xyzx, r21.zzzz, r22.xyzx
+      add r22.xyz, r20.xyzx, r22.xyzx
+      dp3 r21.z, r22.xyzx, r22.xyzx
+      sqrt r21.w, r21.z
+      div r22.w, l(1.000000, 1.000000, 1.000000, 1.000000), cb11[r19.x + 1].w
+      add r23.x, -r21.w, cb11[r19.x + 1].w
+      mul r22.w, r22.w, l(5.000000)
+      mul_sat r22.w, r22.w, r23.x
+      add r21.w, r21.w, -cb11[r19.x + 2].x
+      max r21.w, r21.w, l(0.000000)
+      div r21.w, r21.w, cb11[r19.x + 2].x
+      add r21.w, r21.w, l(1.000000)
+      mul r22.w, r22.w, r22.w
+      mul r21.w, r21.w, r21.w
+      div r21.w, r22.w, r21.w
+      mul r21.y, r21.y, r21.w
+      rsq r21.z, r21.z
+      mul r19.yzw, r21.zzzz, r22.xxyz
+      dp3 r21.x, -r19.yzwy, cb11[r19.x + 4].xyzx
+      add r21.z, r21.x, l(0.000001)
+      div_sat r21.z, cb11[r19.x + 7].w, r21.z
+      log r21.z, r21.z
+      mul r21.z, r21.z, cb11[r19.x + 1].w
+      exp r21.z, r21.z
+      add r21.z, -r21.z, l(1.000000)
+      ge r21.w, r21.x, l(0.000000)
+      and r21.w, r21.w, l(0x3f800000)
+      mul r21.z, r21.w, r21.z
+      mul r20.w, r21.z, r21.y
+    else 
+      and r21.y, l(255), cb11[r19.x + 0].w
+      ushr r21.z, cb11[r19.x + 0].w, l(16)
+      ieq r21.w, r21.y, l(255)
+      ieq r22.x, r8.w, r21.y
+      ieq r22.y, r7.w, r21.y
+      movc r22.z, r22.x, r9.y, r10.y
+      or r22.x, r22.y, r22.x
+      movc r22.x, r3.w, r22.x, l(0)
+      ieq r21.yz, r6.wwww, r21.yyzy
+      or r21.y, r21.z, r21.y
+      and r21.y, r21.y, l(0x3f800000)
+      movc r21.y, r22.x, r22.z, r21.y
+      movc r21.y, r21.w, l(1.000000), r21.y
+      add r22.xyz, -r12.xyzx, cb11[r19.x + 1].xyzx
+      add r20.xyz, -r8.xyzx, r22.xyzx
+      dp3 r21.z, r20.xyzx, r20.xyzx
+      sqrt r21.w, r21.z
+      div r22.x, l(1.000000, 1.000000, 1.000000, 1.000000), cb11[r19.x + 1].w
+      add r22.y, -r21.w, cb11[r19.x + 1].w
+      mul r22.x, r22.x, l(5.000000)
+      mul_sat r22.x, r22.x, r22.y
+      add r21.w, r21.w, -cb11[r19.x + 2].x
+      max r21.w, r21.w, l(0.000000)
+      div r21.w, r21.w, cb11[r19.x + 2].x
+      add r21.w, r21.w, l(1.000000)
+      mul r22.x, r22.x, r22.x
+      mul r21.w, r21.w, r21.w
+      div r21.w, r22.x, r21.w
+      mul r20.w, r21.y, r21.w
+      rsq r21.y, r21.z
+      mul r19.yzw, r20.xxyz, r21.yyyy
+      mov r21.x, l(1.000000)
+    endif 
+  endif 
+  dp3 r21.y, r3.xyzx, r19.yzwy
+  mov_sat r21.xz, r21.xxyx
+  mul r21.x, r21.x, r21.z
+  lt r21.z, l(0.000000), r20.w
+  lt r21.w, l(0.000000), r21.x
+  or r21.w, r4.z, r21.w
+  and r21.z, r21.w, r21.z
+  if_nz r21.z
+    lt r21.z, l(0.000000), cb11[r19.x + 2].z
+    mul r21.w, r0.x, cb11[r19.x + 12].x
+    ge r21.w, r21.w, l(0.000000)
+    if_nz r21.w
+      ine r21.w, l(10), cb11[r19.x + 0].x
+      if_nz r21.w
+        ieq r22.xy, l(6, 7, 0, 0), cb11[r19.x + 0].xxxx
+        or r21.w, r22.y, r22.x
+        if_nz r21.w
+          dp4 r23.x, cb11[r19.x + 4].xyzw, r13.xyzw
+          dp4 r23.y, cb11[r19.x + 5].xyzw, r13.xyzw
+          dp4 r21.w, cb11[r19.x + 7].xyzw, r13.xyzw
+          div r23.xy, r23.xyxx, r21.wwww
+          lt r21.w, r21.w, l(0.000000)
+          mad r22.xz, r23.xxyx, l(2.000000, 0.000000, 2.000000, 0.000000), l(-1.000000, 0.000000, -1.000000, 0.000000)
+          max r22.x, |r22.z|, |r22.x|
+          lt r22.x, l(1.000000), r22.x
+          or r21.w, r21.w, r22.x
+          if_nz r21.w
+            mov r22.xzw, l(1.000000,0,1.000000,1.000000)
+            mov r21.w, l(-1)
+          else 
+            and r24.x, l(0x0000ffff), cb11[r19.x + 0].z
+            if_nz r22.y
+              utof r23.z, r24.x
+              sample_l_indexable(texture2darray)(float,float,float,float) r22.xzw, r23.xyzx, t30.xwyz, s0, l(0.000000)
+            else 
+              utof r23.w, r24.x
+              sample_l_indexable(texture2darray)(float,float,float,float) r22.y, r23.xywx, t19.yxzw, s0, l(0.000000)
+              mov r22.xzw, r22.yyyy
+            endif 
+            mov r21.w, l(0)
+          endif 
+        else 
+          ieq r22.y, l(8), cb11[r19.x + 0].x
+          lt r23.xyz, |r19.zwwz|, |r19.yyzy|
+          lt r24.xyz, r19.ywzy, l(0.000000, 0.000000, 0.000000, 0.000000)
+          movc r24.xyz, r24.xyzx, l(0,4,2,0), l(1,5,3,0)
+          movc r23.yz, r23.yyzy, r24.xxzx, r24.yyyy
+          movc r23.x, r23.x, r23.y, r23.z
+          and r23.y, l(0x0000ffff), cb11[r19.x + 0].z
+          ine r23.x, r23.x, r23.y
+          and r21.w, r22.y, r23.x
+          mov r22.xzw, l(1.000000,0,1.000000,1.000000)
+        endif 
+      else 
+        mov r22.xzw, l(1.000000,0,1.000000,1.000000)
+        mov r21.w, l(0)
+      endif 
+    else 
+      mov r22.xzw, l(1.000000,0,1.000000,1.000000)
+      mov r21.w, l(-1)
+    endif 
+    if_z r21.w
+      if_nz r21.z
+        mov r1.z, cb11[r19.x + 0].y
+        ld_indexable(texture2darray)(float,float,float,float) r1.z, r1.xyzw, t4.yzxw
+        add r1.z, -r1.z, l(1.000000)
+      else 
+        mov r1.z, l(1.000000)
+      endif 
+      lt r21.z, l(0.000000), r1.z
+      if_nz r21.z
+        dp3 r21.z, r19.yzwy, r9.xzwx
+        mul_sat r21.z, r21.z, cb0[10].x
+        add r21.z, -r21.z, l(1.000000)
+        mul r21.z, r21.z, r21.z
+        mul r1.z, r1.z, r20.w
+        mul r1.z, r21.z, r1.z
+        mul r22.xyz, r1.zzzz, r22.xzwx
+        dp3 r1.z, r19.yzwy, r2.xyzx
+        mad r1.z, -r21.y, r4.y, r1.z
+        ge r19.y, l(0.000000), r1.z
+        max r19.z, r4.y, r21.y
+        max r19.z, r19.z, l(0.000001)
+        movc r19.y, r19.y, l(1.000000), r19.z
+        div r1.z, r1.z, r19.y
+        mad r1.z, r4.x, r1.z, r4.w
+        max r1.z, r1.z, l(0.000000)
+        mul r1.z, r1.z, r21.x
+        mad r19.y, r5.w, l(0.500000), -r21.y
+        mad r19.z, r5.w, l(0.500000), r21.y
+        mul_sat r19.yz, r12.wwww, r19.yyzy
+        mad r19.yzw, r5.xxyz, r19.yyyy, r19.zzzz
+        mul r21.yzw, r22.xxyz, cb11[r19.x + 3].xxyz
+        movc r19.yzw, r4.zzzz, r19.yyzw, r1.zzzz
+        mad r17.xyz, r21.yzwy, r19.yzwy, r17.xyzx
+        ine r1.z, l(9), cb11[r19.x + 0].x
+        movc r23.x, r1.z, cb11[r19.x + 2].y, cb11[r19.x + 7].y
+        ieq r1.z, l(9), cb11[r19.x + 0].x
+        if_nz r1.z
+          dp3 r19.y, cb11[r19.x + 4].xyzx, r15.xyzx
+          add r19.y, r19.y, l(0.000001)
+          dp3 r19.z, cb11[r19.x + 4].xyzx, r20.xyzx
+          div r19.y, r19.z, r19.y
+          mad r19.yzw, r15.xxyz, -|r19.yyyy|, -r20.xxyz
+          dp3 r24.x, r19.yzwy, cb11[r19.x + 5].xyzx
+          dp3 r24.y, r19.yzwy, cb11[r19.x + 6].xyzx
+          mov r23.y, cb11[r19.x + 7].x
+          max r19.yz, -r23.yyxy, r24.xxyx
+          min r19.yz, r23.yyxy, r19.yyzy
+          mad r21.yzw, cb11[r19.x + 5].xxyz, r19.yyyy, r20.xxyz
+          mad r19.yzw, cb11[r19.x + 6].xxyz, r19.zzzz, r21.yyzw
+        else 
+          dp3 r20.w, r20.xyzx, r15.xyzx
+          mad r21.yzw, -r20.wwww, r15.xxyz, r20.xxyz
+          dp3 r20.w, r21.yzwy, r21.yzwy
+          sqrt r20.w, r20.w
+          add r20.w, r20.w, l(0.000001)
+          div_sat r20.w, r23.x, r20.w
+          mad r19.yzw, -r21.yyzw, r20.wwww, r20.xxyz
+        endif 
+        dp3 r20.x, r19.yzwy, r19.yzwy
+        sqrt r20.x, r20.x
+        max r20.x, r20.x, l(0.000001)
+        div r19.yzw, r19.yyzw, r20.xxxx
+        mov r23.z, cb11[r19.x + 7].x
+        dp2 r20.y, r23.xzxx, r23.xzxx
+        sqrt r20.y, r20.y
+        movc r1.z, r1.z, r20.y, r23.x
+        div_sat r1.z, r1.z, r20.x
+        mad r1.z, r1.z, l(0.500000), r2.w
+        min r1.z, r1.z, l(1.000000)
+        div r1.z, r2.w, r1.z
+        mul r1.z, r1.z, r1.z
+        mad r20.xyz, -r8.xyzx, r0.wwww, r19.yzwy
+        dp3 r20.w, r20.xyzx, r20.xyzx
+        rsq r20.w, r20.w
+        mul r20.xyz, r20.wwww, r20.xyzx
+        dp3_sat r20.w, r3.xyzx, r20.xyzx
+        mad r21.y, r20.w, r14.w, -r20.w
+        mad r20.w, r21.y, r20.w, l(1.000000)
+        mul r20.w, r20.w, r20.w
+        div r20.w, r14.w, r20.w
+        mul r1.z, r1.z, r20.w
+        dp3_sat r20.w, r3.xyzx, r19.yzwy
+        mad r20.w, r20.w, r16.y, r16.z
+        mul r20.w, r16.x, r20.w
+        max r20.w, r20.w, l(0.000001)
+        div r1.z, r1.z, r20.w
+        dp3_sat r19.y, r19.yzwy, r20.xyzx
+        add r19.y, -r19.y, l(1.000000)
+        mul r19.z, r19.y, r19.y
+        mul r19.z, r19.z, r19.z
+        mul r19.y, r19.z, r19.y
+        mad r19.yzw, r19.yyyy, r7.xxyz, r6.xxyz
+        mul r19.yzw, r1.zzzz, r19.yyzw
+        mul r19.yzw, r19.yyzw, l(0.000000, 0.250000, 0.250000, 0.250000)
+        mul r20.xyz, r22.xyzx, cb11[r19.x + 3].wwww
+        mul r19.yzw, r19.yyzw, r20.xxyz
+        mul r19.yzw, r21.xxxx, r19.yyzw
+        mad r18.xyz, r19.yzwy, cb11[r19.x + 3].xyzx, r18.xyzx
+      endif 
+    endif 
+  endif 
+  iadd r16.w, r16.w, l(1)
+  imin r1.z, r16.w, l(254)
+  ld_structured r17.w, r1.z, l(0), g1.xxxx
+endloop 
+ld_indexable(texture2d)(float,float,float,float) r0.xyzw, r1.xyww, t3.xyzw
+mul r0.xyz, r0.xyzx, r0.xyzx
+dp3 r1.z, r6.xyzx, l(0.212600, 0.715200, 0.072200, 0.000000)
+add r1.z, -r1.z, l(1.000000)
+max r1.z, r1.z, l(0.000000)
+mul r0.xyz, r0.xyzx, r1.zzzz
+lt r1.z, l(0.000000), r0.w
+if_nz r1.z
+  mul r0.w, r0.w, l(3.99609375)
+  round_ni r0.w, r0.w
+  ne r0.w, r0.w, l(1.000000)
+  sqrt r2.xyz, r0.xyzx
+  movc r2.xyz, r0.wwww, r2.xyzx, l(1.000000,1.000000,1.000000,0)
+  mul r2.xyz, r2.xyzx, r17.xyzx
+else 
+  mad r18.xyz, r17.xyzx, r0.xyzx, r18.xyzx
+  mov r2.xyz, l(0,0,0,0)
+endif 
+mov r2.w, l(0)
+store_uav_typed u2.xyzw, r1.xyyy, r2.xyzw
+mov r18.w, l(0)
+store_uav_typed u1.xyzw, r1.xyyy, r18.xyzw
+ret 
+// Approximately 762 instruction slots used
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

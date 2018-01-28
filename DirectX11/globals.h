@@ -81,28 +81,18 @@ struct OriginalShaderInfo
 	std::wstring infoText;
 };
 
+// Call this after any CreateXXXShader call to ensure that all references to
+// the handle have been removed in the event that it has been reused:
+void CleanupShaderMaps(ID3D11DeviceChild *handle);
+
 // Key is the overridden shader that was given back to the game at CreateVertexShader (vs or ps)
 typedef std::unordered_map<ID3D11DeviceChild *, OriginalShaderInfo> ShaderReloadMap;
 
-// Key is vertexshader, value is hash key.
-typedef std::unordered_map<ID3D11VertexShader *, UINT64> VertexShaderMap;
-typedef std::unordered_map<ID3D11VertexShader *, ID3D11VertexShader *> VertexShaderReplacementMap;
+// TODO: We can probably merge this into ShaderReloadMap
+typedef std::unordered_map<ID3D11DeviceChild *, ID3D11DeviceChild *> ShaderReplacementMap;
 
-// Key is pixelshader, value is hash key.
-typedef std::unordered_map<ID3D11PixelShader *, UINT64> PixelShaderMap;
-typedef std::unordered_map<ID3D11PixelShader *, ID3D11PixelShader *> PixelShaderReplacementMap;
-
-typedef std::unordered_map<ID3D11ComputeShader *, UINT64> ComputeShaderMap;
-typedef std::unordered_map<ID3D11ComputeShader *, ID3D11ComputeShader *> ComputeShaderReplacementMap;
-
-typedef std::unordered_map<ID3D11HullShader *, UINT64> HullShaderMap;
-typedef std::unordered_map<ID3D11HullShader *, ID3D11HullShader *> HullShaderReplacementMap;
-
-typedef std::unordered_map<ID3D11DomainShader *, UINT64> DomainShaderMap;
-typedef std::unordered_map<ID3D11DomainShader *, ID3D11DomainShader *> DomainShaderReplacementMap;
-
-typedef std::unordered_map<ID3D11GeometryShader *, UINT64> GeometryShaderMap;
-typedef std::unordered_map<ID3D11GeometryShader *, ID3D11GeometryShader *> GeometryShaderReplacementMap;
+// Key is shader, value is hash key.
+typedef std::unordered_map<ID3D11DeviceChild *, UINT64> ShaderMap;
 
 enum class FrameAnalysisOptions {
 	INVALID         = 0,
@@ -190,27 +180,20 @@ static EnumName_t<wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
 };
 
 struct ShaderOverride {
-	float separation;
-	float convergence;
-	std::vector<int> iterations; // Only for separation changes, not shaders.
 	DepthBufferFilter depth_filter;
 	UINT64 partner_hash;
 	FrameAnalysisOptions analyse_options;
 	char model[20]; // More than long enough for even ps_4_0_level_9_0
-	int disable_scissor;
 	bool allow_duplicate_hashes;
 
 	CommandList command_list;
 	CommandList post_command_list;
 
 	ShaderOverride() :
-		separation(FLT_MAX),
-		convergence(FLT_MAX),
 		depth_filter(DepthBufferFilter::NONE),
 		partner_hash(0),
 		analyse_options(FrameAnalysisOptions::INVALID),
-		allow_duplicate_hashes(true),
-		disable_scissor(-1)
+		allow_duplicate_hashes(true)
 	{
 		model[0] = '\0';
 	}
@@ -218,6 +201,7 @@ struct ShaderOverride {
 typedef std::unordered_map<UINT64, struct ShaderOverride> ShaderOverrideMap;
 
 struct TextureOverride {
+	std::wstring ini_section;
 	int stereoMode;
 	int format;
 	int width;
@@ -244,13 +228,37 @@ struct TextureOverride {
 };
 typedef std::unordered_map<uint32_t, struct TextureOverride> TextureOverrideMap;
 
+// We use this when collecting resource info for ShaderUsage.txt to take a
+// snapshot of the resource handle, hash and original hash. We used to just
+// save the resource handle, but that was problematic since handles can get
+// reused, and so we could record the wrong hash in the ShaderUsage.txt
+struct ResourceSnapshot
+{
+	ID3D11Resource *handle;
+	uint32_t hash;
+	uint32_t orig_hash;
+
+	ResourceSnapshot(ID3D11Resource *handle, uint32_t hash, uint32_t orig_hash):
+		handle(handle), hash(hash), orig_hash(orig_hash)
+	{}
+};
+static inline bool operator<(const ResourceSnapshot &lhs, const ResourceSnapshot &rhs)
+{
+	if (lhs.orig_hash != rhs.orig_hash)
+		return (lhs.orig_hash < rhs.orig_hash);
+	if (lhs.hash != rhs.hash)
+		return (lhs.hash < rhs.hash);
+	return (lhs.handle < rhs.handle);
+}
+
 struct ShaderInfoData
 {
 	// All are std::map or std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
-	std::map<int, std::set<ID3D11Resource *>> ResourceRegisters;
-	std::set<UINT64> PartnerShader;
-	std::vector<std::set<ID3D11Resource *>> RenderTargets;
-	std::set<ID3D11Resource *> DepthTargets;
+	std::map<int, std::set<ResourceSnapshot>> ResourceRegisters;
+	std::set<UINT64> PeerShaders;
+	std::vector<std::set<ResourceSnapshot>> RenderTargets;
+	std::map<int, std::set<ResourceSnapshot>> UAVs;
+	std::set<ResourceSnapshot> DepthTargets;
 };
 
 enum class GetResolutionFrom {
@@ -289,6 +297,7 @@ struct Globals
 	bool gReloadConfigPending;
 	bool gLogInput;
 	bool dump_all_profiles;
+	DWORD ticks_at_launch;
 
 	wchar_t SHADER_PATH[MAX_PATH];
 	wchar_t SHADER_CACHE_PATH[MAX_PATH];
@@ -388,51 +397,41 @@ struct Globals
 
 	CompiledShaderMap mCompiledShaderMap;
 
-	VertexShaderMap mVertexShaders;							// All shaders ever registered with CreateVertexShader
-	VertexShaderReplacementMap mOriginalVertexShaders;		// When MarkingMode=Original, switch to original
-	VertexShaderReplacementMap mZeroVertexShaders;			// When MarkingMode=zero.
 	std::set<UINT64> mVisitedVertexShaders;					// Only shaders seen since last hunting timeout; std::set for consistent order while hunting
 	UINT64 mSelectedVertexShader;				 			// Hash.  -1 now for unselected state. The shader selected using Input object.
 	int mSelectedVertexShaderPos;							// -1 for unselected state.
 	std::set<uint32_t> mSelectedVertexShader_IndexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
 
-	PixelShaderMap mPixelShaders;							// All shaders ever registered with CreatePixelShader
-	PixelShaderReplacementMap mOriginalPixelShaders;
-	PixelShaderReplacementMap mZeroPixelShaders;
 	std::set<UINT64> mVisitedPixelShaders;					// std::set is sorted for consistent order while hunting
 	UINT64 mSelectedPixelShader;							// Hash.  -1 now for unselected state.
 	int mSelectedPixelShaderPos;							// -1 for unselected state.
 	std::set<uint32_t> mSelectedPixelShader_IndexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
 	ID3D11PixelShader* mPinkingShader;						// Special pixels shader to mark a selection with hot pink.
 
+	ShaderMap mShaders;										// All shaders ever registered with CreateXXXShader
 	ShaderReloadMap mReloadedShaders;						// Shaders that were reloaded live from ShaderFixes
+	ShaderReplacementMap mOriginalShaders;					// When MarkingMode=Original, switch to original. Also used for show_original and shader reversion
+	ShaderReplacementMap mZeroShaders;						// When MarkingMode=zero.
 
-	ComputeShaderMap mComputeShaders;
-	ComputeShaderReplacementMap mOriginalComputeShaders;
 	std::set<UINT64> mVisitedComputeShaders;
 	UINT64 mSelectedComputeShader;
 	int mSelectedComputeShaderPos;
 
-	GeometryShaderMap mGeometryShaders;
-	GeometryShaderReplacementMap mOriginalGeometryShaders;
 	std::set<UINT64> mVisitedGeometryShaders;
 	UINT64 mSelectedGeometryShader;
 	int mSelectedGeometryShaderPos;
 
-	DomainShaderMap mDomainShaders;
-	DomainShaderReplacementMap mOriginalDomainShaders;
 	std::set<UINT64> mVisitedDomainShaders;
 	UINT64 mSelectedDomainShader;
 	int mSelectedDomainShaderPos;
 
-	HullShaderMap mHullShaders;
-	HullShaderReplacementMap mOriginalHullShaders;
 	std::set<UINT64> mVisitedHullShaders;
 	UINT64 mSelectedHullShader;
 	int mSelectedHullShaderPos;
 
 	ShaderOverrideMap mShaderOverrideMap;
 	TextureOverrideMap mTextureOverrideMap;
+	FuzzyTextureOverrides mFuzzyTextureOverrides;
 
 	// Statistics
 	std::unordered_map<ID3D11Resource *, ResourceHandleInfo> mResources;
@@ -441,6 +440,7 @@ struct Globals
 	// These five items work with the *original* resource hash:
 	std::unordered_map<uint32_t, struct ResourceHashInfo> mResourceInfo;
 	std::set<uint32_t> mRenderTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::set<uint32_t> mUnorderedAccessInfo;				// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mDepthTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mShaderResourceInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mCopiedResourceInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
@@ -453,7 +453,11 @@ struct Globals
 	std::set<ID3D11Resource *> mSelectedRenderTargetSnapshotList;			// std::set so that render targets will be sorted in log when marked
 	// Relations
 	std::map<UINT64, ShaderInfoData> mVertexShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<UINT64, ShaderInfoData> mHullShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<UINT64, ShaderInfoData> mDomainShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<UINT64, ShaderInfoData> mGeometryShaderInfo;		// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::map<UINT64, ShaderInfoData> mPixelShaderInfo;			// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+	std::map<UINT64, ShaderInfoData> mComputeShaderInfo;		// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 
 	Globals() :
 		mSelectedRenderTargetSnapshot(0),
@@ -463,7 +467,7 @@ struct Globals
 		mSelectedPixelShaderPos(-1),
 		mSelectedVertexShader(-1),
 		mSelectedVertexShaderPos(-1),
-		mSelectedIndexBuffer(1),
+		mSelectedIndexBuffer(-1),
 		mSelectedIndexBufferPos(-1),
 		mSelectedComputeShader(-1),
 		mSelectedComputeShaderPos(-1),
@@ -560,6 +564,8 @@ struct Globals
 			iniParams[i].z = FLT_MAX;
 			iniParams[i].w = FLT_MAX;
 		}
+
+		ticks_at_launch = GetTickCount();
 	}
 };
 

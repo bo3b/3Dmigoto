@@ -7,12 +7,21 @@
 #include "HackerDevice.h"
 #include "HackerContext.h"
 #include "Override.h"
+#include "D3D11Wrapper.h"
 
 #include <D3DCompiler.h>
 
 CustomResources customResources;
 CustomShaders customShaders;
 ExplicitCommandListSections explicitCommandListSections;
+
+// Adds consistent "3DMigoto" prefix to frame analysis log with appropriate
+// level of indentation for the current recursion level. Using a
+// macro instead of a function for this to concatenate static strings:
+#define COMMAND_LIST_LOG(state, fmt, ...) \
+	do { \
+		(state)->mHackerContext->FrameAnalysisLog("3DMigoto%*s " fmt, state->recursion, "", __VA_ARGS__); \
+	} while (0)
 
 static void _RunCommandList(CommandList *command_list, CommandListState *state)
 {
@@ -23,11 +32,18 @@ static void _RunCommandList(CommandList *command_list, CommandListState *state)
 		return;
 	}
 
+	if (command_list->empty())
+		return;
+
+	COMMAND_LIST_LOG(state, "%s {\n", state->post ? "post" : "pre");
+
 	state->recursion++;
 	for (i = command_list->begin(); i < command_list->end() && !state->aborted; i++) {
 		(*i)->run(state);
 	}
 	state->recursion--;
+
+	COMMAND_LIST_LOG(state, "}\n");
 }
 
 static void CommandListFlushState(CommandListState *state)
@@ -58,8 +74,8 @@ static void RunCommandListComplete(HackerDevice *mHackerDevice,
 	CommandListState state;
 	state.mHackerDevice = mHackerDevice;
 	state.mHackerContext = mHackerContext;
-	state.mOrigDevice = mHackerDevice->GetOrigDevice();
-	state.mOrigContext = mHackerContext->GetOrigContext();
+	state.mOrigDevice = mHackerDevice->GetPassThroughOrigDevice();
+	state.mOrigContext = mHackerContext->GetPassThroughOrigContext();
 
 	state.call_info = call_info;
 	state.resource = resource;
@@ -76,8 +92,12 @@ void RunCommandList(HackerDevice *mHackerDevice,
 		DrawCallInfo *call_info,
 		bool post)
 {
+	ID3D11Resource *resource = NULL;
+	if (call_info)
+		resource = call_info->indirect_buffer;
+
 	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
-			call_info, NULL, NULL, post);
+			call_info, resource, NULL, post);
 }
 
 void RunResourceCommandList(HackerDevice *mHackerDevice,
@@ -184,7 +204,7 @@ static bool ParseResetPerFrameLimits(const wchar_t *section,
 		operation->resource = &res->second;
 	}
 
-	if (!wcsncmp(val->c_str(), L"customshader", 12)) {
+	if (!wcsncmp(val->c_str(), L"customshader", 12) || !wcsncmp(val->c_str(), L"builtincustomshader", 19)) {
 		wstring shader_id(val->c_str());
 
 		shader = customShaders.find(shader_id);
@@ -475,6 +495,47 @@ bail:
 	return false;
 }
 
+static bool ParsePerDrawStereoOverride(const wchar_t *section,
+		const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list,
+		bool is_separation)
+{
+	PerDrawStereoOverrideCommand *operation = NULL;
+	int ret, len1;
+
+	if (is_separation)
+		operation = new PerDrawSeparationOverrideCommand(!explicit_command_list);
+	else
+		operation = new PerDrawConvergenceOverrideCommand(!explicit_command_list);
+
+	// Try parsing value as a float
+	ret = swscanf_s(val->c_str(), L"%f%n", &operation->val, &len1);
+	if (ret != 0 && ret != EOF && len1 == val->length())
+		goto success;
+
+	// Try parsing value as a resource target for staging auto-convergence
+	if (operation->staging_op.src.ParseTarget(val->c_str(), true)) {
+		operation->staging_type = true;
+		goto success;
+	}
+
+	goto bail;
+
+success:
+	// Add to both command lists by default - the pre command list will set
+	// the value, and the post command list will restore the original. If
+	// an explicit command list is specified then the value will only be
+	// set, not restored (regardless of whether that is pre or post)
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
+
+bail:
+	delete operation;
+	return false;
+}
+
 bool ParseCommandListGeneralCommands(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
@@ -484,10 +545,10 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 		return ParseCheckTextureOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	if (!wcscmp(key, L"run")) {
-		if (!wcsncmp(val->c_str(), L"customshader", 12))
+		if (!wcsncmp(val->c_str(), L"customshader", 12) || !wcsncmp(val->c_str(), L"builtincustomshader", 19))
 			return ParseRunShader(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
-		if (!wcsncmp(val->c_str(), L"commandlist", 11))
+		if (!wcsncmp(val->c_str(), L"commandlist", 11) || !wcsncmp(val->c_str(), L"builtincommandlist", 18))
 			return ParseRunExplicitCommandList(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 	}
 
@@ -512,22 +573,30 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 	if (!wcscmp(key, L"clear"))
 		return ParseClearView(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
+	if (!wcscmp(key, L"separation"))
+		return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, true);
+
+	if (!wcscmp(key, L"convergence"))
+		return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, false);
+
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
 
 void CheckTextureOverrideCommand::run(CommandListState *state)
 {
-	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
+	TextureOverrideMatches matches;
+	unsigned i;
 
-	TextureOverride *override = target.FindTextureOverride(state, NULL);
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-	if (!override)
-		return;
+	target.FindTextureOverrides(state, NULL, &matches);
 
-	if (state->post)
-		_RunCommandList(&override->post_command_list, state);
-	else
-		_RunCommandList(&override->command_list, state);
+	for (i = 0; i < matches.size(); i++) {
+		if (state->post)
+			_RunCommandList(&matches[i]->post_command_list, state);
+		else
+			_RunCommandList(&matches[i]->command_list, state);
+	}
 }
 
 ClearViewCommand::ClearViewCommand() :
@@ -600,7 +669,7 @@ static bool UAVSupportsFloatClear(ID3D11UnorderedAccessView *uav)
 
 void ResetPerFrameLimitsCommand::run(CommandListState *state)
 {
-	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	if (shader)
 		shader->executions_this_frame = 0;
@@ -611,7 +680,7 @@ void ResetPerFrameLimitsCommand::run(CommandListState *state)
 
 void PresetCommand::run(CommandListState *state)
 {
-	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	preset->Activate(state->mHackerDevice);
 }
@@ -626,31 +695,31 @@ void DrawCommand::run(CommandListState *state)
 
 	switch (type) {
 		case DrawCommandType::DRAW:
-			mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw(%u, %u)\n", ini_section.c_str(), args[0], args[1]);
+			COMMAND_LIST_LOG(state, "[%S] Draw(%u, %u)\n", ini_section.c_str(), args[0], args[1]);
 			mOrigContext->Draw(args[0], args[1]);
 			break;
 		case DrawCommandType::DRAW_AUTO:
-			mHackerContext->FrameAnalysisLog("3DMigoto [%S] DrawAuto()\n", ini_section.c_str());
+			COMMAND_LIST_LOG(state, "[%S] DrawAuto()\n", ini_section.c_str());
 			mOrigContext->DrawAuto();
 			break;
 		case DrawCommandType::DRAW_INDEXED:
-			mHackerContext->FrameAnalysisLog("3DMigoto [%S] DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), args[0], args[1], (INT)args[2]);
+			COMMAND_LIST_LOG(state, "[%S] DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), args[0], args[1], (INT)args[2]);
 			mOrigContext->DrawIndexed(args[0], args[1], (INT)args[2]);
 			break;
 		case DrawCommandType::DRAW_INDEXED_INSTANCED:
-			mHackerContext->FrameAnalysisLog("3DMigoto [%S] DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), args[0], args[1], args[2], (INT)args[3], args[4]);
+			COMMAND_LIST_LOG(state, "[%S] DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), args[0], args[1], args[2], (INT)args[3], args[4]);
 			mOrigContext->DrawIndexedInstanced(args[0], args[1], args[2], (INT)args[3], args[4]);
 			break;
 		// TODO: case DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT:
 		// TODO: 	break;
 		case DrawCommandType::DRAW_INSTANCED:
-			mHackerContext->FrameAnalysisLog("3DMigoto [%S] DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), args[0], args[1], args[2], args[3]);
+			COMMAND_LIST_LOG(state, "[%S] DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), args[0], args[1], args[2], args[3]);
 			mOrigContext->DrawInstanced(args[0], args[1], args[2], args[3]);
 			break;
 		// TODO: case DrawCommandType::DRAW_INSTANCED_INDIRECT:
 		// TODO: 	break;
 		case DrawCommandType::DISPATCH:
-			mHackerContext->FrameAnalysisLog("3DMigoto [%S] Dispatch(%u, %u, %u)\n", ini_section.c_str(), args[0], args[1], args[2]);
+			COMMAND_LIST_LOG(state, "[%S] Dispatch(%u, %u, %u)\n", ini_section.c_str(), args[0], args[1], args[2]);
 			mOrigContext->Dispatch(args[0], args[1], args[2]);
 			break;
 		// TODO: case DrawCommandType::DISPATCH_INDIRECT:
@@ -658,45 +727,190 @@ void DrawCommand::run(CommandListState *state)
 		case DrawCommandType::FROM_CALLER:
 			DrawCallInfo *info = state->call_info;
 			if (!info) {
-				mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> NO ACTIVE DRAW CALL\n", ini_section.c_str());
+				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> NO ACTIVE DRAW CALL\n", ini_section.c_str());
+				break;
+			}
+			if (info->hunting_skip) {
+				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> SKIPPED DUE TO HUNTING\n", ini_section.c_str());
 				break;
 			}
 			if (info->InstanceCount) {
 				if (info->IndexCount) {
-					mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
 					mOrigContext->DrawIndexedInstanced(info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
 				} else {
-					mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
 					mOrigContext->DrawInstanced(info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
 				}
 			} else if (info->IndexCount) {
-				mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), info->IndexCount, info->FirstIndex, info->FirstVertex);
+				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), info->IndexCount, info->FirstIndex, info->FirstVertex);
 				mOrigContext->DrawIndexed(info->IndexCount, info->FirstIndex, info->FirstVertex);
 			} else if (info->VertexCount) {
-				mHackerContext->FrameAnalysisLog("3DMigoto [%S] Draw = from_caller -> Draw(%u, %u)\n", ini_section.c_str(), info->VertexCount, info->FirstVertex);
+				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> Draw(%u, %u)\n", ini_section.c_str(), info->VertexCount, info->FirstVertex);
 				mOrigContext->Draw(info->VertexCount, info->FirstVertex);
+			} else if (info->indirect_buffer) {
+				if (info->DrawInstancedIndirect) {
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
+					mOrigContext->DrawInstancedIndirect(info->indirect_buffer, info->args_offset);
+				} else {
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
+					mOrigContext->DrawIndexedInstancedIndirect(info->indirect_buffer, info->args_offset);
+				}
+			} else {
+				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawAuto()\n", ini_section.c_str());
+				mHackerContext->DrawAuto();
 			}
-			// TODO: Save enough state to know if it's DrawAuto or
-			// an Indirect draw call (and the buffer)
+			// TODO: dispatch = from_caller
 			break;
 	}
 }
 
 void SkipCommand::run(CommandListState *state)
 {
-	state->mHackerContext->FrameAnalysisLog("3DMigoto [%S] handling = skip\n", ini_section.c_str());
+	COMMAND_LIST_LOG(state, "[%S] handling = skip\n", ini_section.c_str());
 
 	if (state->call_info)
 		state->call_info->skip = true;
 	else
-		state->mHackerContext->FrameAnalysisLog("3DMigoto   No active draw call to skip\n");
+		COMMAND_LIST_LOG(state, "  No active draw call to skip\n");
 }
 
 void AbortCommand::run(CommandListState *state)
 {
-	state->mHackerContext->FrameAnalysisLog("3DMigoto [%S] handling = abort\n", ini_section.c_str());
+	COMMAND_LIST_LOG(state, "[%S] handling = abort\n", ini_section.c_str());
 
 	state->aborted = true;
+}
+
+PerDrawStereoOverrideCommand::PerDrawStereoOverrideCommand(bool restore_on_post) :
+		staging_type(false),
+		val(FLT_MAX),
+		saved(FLT_MAX),
+		restore_on_post(restore_on_post),
+		did_set_value_on_pre(false)
+{}
+
+bool PerDrawStereoOverrideCommand::update_val(CommandListState *state)
+{
+	D3D11_MAPPED_SUBRESOURCE mapping;
+	HRESULT hr;
+	float tmp;
+	bool ret = false;
+
+	if (!staging_type)
+		return true;
+
+	if (staging_op.staging) {
+		hr = staging_op.map(state, &mapping);
+		if (FAILED(hr)) {
+			if (hr == DXGI_ERROR_WAS_STILL_DRAWING)
+				COMMAND_LIST_LOG(state, "  Transfer in progress...\n");
+			else
+				COMMAND_LIST_LOG(state, "  Unknown error: 0x%x\n", hr);
+			return false;
+		}
+
+		// FIXME: Check if resource is at least 4 bytes (maybe we can
+		// use RowPitch, but MSDN contradicts itself so I'm not sure.
+		// Otherwise we can refer to the resource description)
+		tmp = ((float*)mapping.pData)[0];
+		staging_op.unmap(state);
+
+		if (isnan(tmp)) {
+			COMMAND_LIST_LOG(state, "  Disregarding NAN\n");
+		} else {
+			val = tmp;
+			ret = true;
+		}
+
+		// To make auto-convergence as responsive as possible, we start
+		// the next transfer as soon as we have retrieved the value
+		// from the previous transfer. This should minimise the number
+		// of frames displayed with wrong convergence on scene changes.
+	}
+
+	staging_op.staging = true;
+	staging_op.run(state);
+	return ret;
+}
+
+void PerDrawStereoOverrideCommand::run(CommandListState *state)
+{
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+
+	if (!state->mHackerDevice->mStereoHandle) {
+		COMMAND_LIST_LOG(state, "  No Stereo Handle\n");
+		return;
+	}
+
+	if (restore_on_post) {
+		if (state->post) {
+			if (!did_set_value_on_pre)
+				return;
+			did_set_value_on_pre = false;
+
+			COMMAND_LIST_LOG(state, "  Restoring %s = %f\n", stereo_param_name(), saved);
+			set_stereo_value(state, saved);
+		} else {
+			if (!(did_set_value_on_pre = update_val(state)))
+				return;
+
+			saved = get_stereo_value(state);
+
+			COMMAND_LIST_LOG(state, "  Setting per-draw call %s = %f * %f = %f\n",
+					stereo_param_name(), val, saved, val * saved);
+
+			// The original ShaderOverride code multiplied the new
+			// separation and convergence by the old ones, so I'm
+			// doing that as well, but while that makes sense for
+			// separation, I'm not really convinced it makes sense
+			// for convergence. Still, the convergence override is
+			// generally only useful to use convergence=0 to move
+			// something to infinity, and in that case it won't
+			// matter.
+			set_stereo_value(state, val * saved);
+		}
+	} else {
+		if (!update_val(state))
+			return;
+
+		COMMAND_LIST_LOG(state, "  Setting %s = %f\n", stereo_param_name(), val);
+		set_stereo_value(state, val);
+	}
+}
+
+float PerDrawSeparationOverrideCommand::get_stereo_value(CommandListState *state)
+{
+	float ret = 0.0f;
+
+	if (NVAPI_OK != NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, &ret))
+		COMMAND_LIST_LOG(state, "  Stereo_GetSeparation failed\n");
+
+	return ret;
+}
+
+void PerDrawSeparationOverrideCommand::set_stereo_value(CommandListState *state, float val)
+{
+	NvAPIOverride();
+	if (NVAPI_OK != NvAPI_Stereo_SetSeparation(state->mHackerDevice->mStereoHandle, val))
+		COMMAND_LIST_LOG(state, "  Stereo_SetSeparation failed\n");
+}
+
+float PerDrawConvergenceOverrideCommand::get_stereo_value(CommandListState *state)
+{
+	float ret = 0.0f;
+
+	if (NVAPI_OK != NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, &ret))
+		COMMAND_LIST_LOG(state, "  Stereo_GetConvergence failed\n");
+
+	return ret;
+}
+
+void PerDrawConvergenceOverrideCommand::set_stereo_value(CommandListState *state, float val)
+{
+	NvAPIOverride();
+	if (NVAPI_OK != NvAPI_Stereo_SetConvergence(state->mHackerDevice->mStereoHandle, val))
+		COMMAND_LIST_LOG(state, "  Stereo_SetConvergence failed\n");
 }
 
 CustomShader::CustomShader() :
@@ -883,31 +1097,37 @@ void CustomShader::substantiate(ID3D11Device *mOrigDevice)
 
 	if (vs_bytecode) {
 		mOrigDevice->CreateVertexShader(vs_bytecode->GetBufferPointer(), vs_bytecode->GetBufferSize(), NULL, &vs);
+		CleanupShaderMaps(vs);
 		vs_bytecode->Release();
 		vs_bytecode = NULL;
 	}
 	if (hs_bytecode) {
 		mOrigDevice->CreateHullShader(hs_bytecode->GetBufferPointer(), hs_bytecode->GetBufferSize(), NULL, &hs);
+		CleanupShaderMaps(hs);
 		hs_bytecode->Release();
 		hs_bytecode = NULL;
 	}
 	if (ds_bytecode) {
 		mOrigDevice->CreateDomainShader(ds_bytecode->GetBufferPointer(), ds_bytecode->GetBufferSize(), NULL, &ds);
+		CleanupShaderMaps(ds);
 		ds_bytecode->Release();
 		ds_bytecode = NULL;
 	}
 	if (gs_bytecode) {
 		mOrigDevice->CreateGeometryShader(gs_bytecode->GetBufferPointer(), gs_bytecode->GetBufferSize(), NULL, &gs);
+		CleanupShaderMaps(gs);
 		gs_bytecode->Release();
 		gs_bytecode = NULL;
 	}
 	if (ps_bytecode) {
 		mOrigDevice->CreatePixelShader(ps_bytecode->GetBufferPointer(), ps_bytecode->GetBufferSize(), NULL, &ps);
+		CleanupShaderMaps(ps);
 		ps_bytecode->Release();
 		ps_bytecode = NULL;
 	}
 	if (cs_bytecode) {
 		mOrigDevice->CreateComputeShader(cs_bytecode->GetBufferPointer(), cs_bytecode->GetBufferSize(), NULL, &cs);
+		CleanupShaderMaps(cs);
 		cs_bytecode->Release();
 		cs_bytecode = NULL;
 	}
@@ -1146,14 +1366,14 @@ void RunCustomShaderCommand::run(CommandListState *state)
 		saved_sampler_states[i] = nullptr;
 	}
 
-	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	if (custom_shader->max_executions_per_frame) {
 		if (custom_shader->frame_no != G->frame_no) {
 			custom_shader->frame_no = G->frame_no;
 			custom_shader->executions_this_frame = 1;
 		} else if (custom_shader->executions_this_frame++ >= custom_shader->max_executions_per_frame) {
-			state->mHackerContext->FrameAnalysisLog("3DMigoto   max_executions_per_frame exceeded\n");
+			COMMAND_LIST_LOG(state, "  max_executions_per_frame exceeded\n");
 			return;
 		}
 	}
@@ -1296,7 +1516,7 @@ void RunCustomShaderCommand::run(CommandListState *state)
 
 void RunExplicitCommandList::run(CommandListState *state)
 {
-	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	if (state->post)
 		_RunCommandList(&command_list_section->post_command_list, state);
@@ -1353,9 +1573,10 @@ out_release_view:
 
 float ParamOverride::process_texture_filter(CommandListState *state)
 {
+	TextureOverrideMatches matches;
 	bool resource_found;
 
-	TextureOverride *texture_override = texture_filter_target.FindTextureOverride(state, &resource_found);
+	texture_filter_target.FindTextureOverrides(state, &resource_found, &matches);
 
 	// If there is no resource bound we want to return a special value that
 	// is distinct from simply not finding a texture override section. For
@@ -1373,10 +1594,12 @@ float ParamOverride::process_texture_filter(CommandListState *state)
 		return -0.0;
 
 	// A resource was bound, but no matching texture override was found:
-	if (!texture_override)
+	if (matches.empty())
 		return 0;
 
-	return texture_override->filter_index;
+	// If there are multiple matches, we want the filter_index with the
+	// highest priority, which will be the last in the list:
+	return matches.back()->filter_index;
 }
 
 
@@ -1697,7 +1920,7 @@ void ParamOverride::run(CommandListState *state)
 	float *dest = &(G->iniParams[param_idx].*param_component);
 	float orig = *dest;
 
-	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	switch (type) {
 		case ParamOverrideType::VALUE:
@@ -1784,11 +2007,39 @@ void ParamOverride::run(CommandListState *state)
 			UpdateCursorInfoEx(state);
 			*dest = (float)state->cursor_info_ex.yHotspot;
 			break;
+		case ParamOverrideType::TIME:
+			*dest = (float)(GetTickCount() - G->ticks_at_launch) / 1000.0f;
+			break;
+		case ParamOverrideType::RAW_SEPARATION:
+			// We could use cached values of these (nvapi is known
+			// to become a bottleneck with too many calls / frame),
+			// but they need to be up to date, taking into account
+			// any changes made via the command list already this
+			// frame (this is used for snapshots and getting the
+			// current convergence regardless of whether an
+			// asynchronous transfer from the GPU has or has not
+			// completed) - StereoParams is currently unsuitable
+			// for this as it is only updated once / frame... We
+			// could change it so that StereoParams is always up to
+			// date - it would differ from the historical
+			// behaviour, but I doubt it would break anything.
+			// Otherwise we could have a separate cache. Whatever -
+			// this is rarely used, so let's just go with this for
+			// now and worry about optimisations only if it proves
+			// to be a bottleneck in practice:
+			NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, dest);
+			break;
+		case ParamOverrideType::CONVERGENCE:
+			NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, dest);
+			break;
+		case ParamOverrideType::EYE_SEPARATION:
+			NvAPI_Stereo_GetEyeSeparation(state->mHackerDevice->mStereoHandle, dest);
+			break;
 		default:
 			return;
 	}
 
-	state->mHackerContext->FrameAnalysisLog("3DMigoto   ini param override = %f\n", *dest);
+	COMMAND_LIST_LOG(state, "  ini param override = %f\n", *dest);
 
 	state->update_params |= (*dest != orig);
 }
@@ -1943,7 +2194,9 @@ CustomResource::CustomResource() :
 	override_byte_width(-1),
 	override_stride(-1),
 	width_multiply(1.0f),
-	height_multiply(1.0f)
+	height_multiply(1.0f),
+	initial_data(NULL),
+	initial_data_size(0)
 {}
 
 CustomResource::~CustomResource()
@@ -1952,6 +2205,7 @@ CustomResource::~CustomResource()
 		resource->Release();
 	if (view)
 		view->Release();
+	free(initial_data);
 }
 
 bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE *orig_mode)
@@ -2119,23 +2373,44 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice, void **buf, D
 	D3D11_BUFFER_DESC desc;
 	HRESULT hr;
 
+	if (!buf) {
+		// If no file is passed in, we use the optional initial data to
+		// initialise the buffer. We do this even if no initial data
+		// has been specified, so that the buffer will be initialised
+		// with zeroes for safety.
+		buf = &initial_data;
+		size = (DWORD)initial_data_size;
+	}
+
 	memset(&desc, 0, sizeof(desc));
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = bind_flags;
+
+	// Allow the buffer size to be set from the file / initial data size,
+	// but it can be overridden if specified explicitly. If it's a
+	// structured buffer, we assume just a single structure by default, but
+	// again this can be overridden. The reason for doing this here, and
+	// not in OverrideBufferDesc, is that this only applies if we are
+	// substantiating the resource from scratch, not when copying a resource.
+	if (size) {
+		desc.ByteWidth = size;
+		if (override_type == CustomResourceType::STRUCTURED_BUFFER)
+			desc.StructureByteStride = size;
+	}
+
 	OverrideBufferDesc(&desc);
 
-	if (buf) {
-		// Fill in size from the file, allowing for an override to make
-		// it larger or smaller, which may involve reallocating the
-		// buffer from the caller.
-		if (desc.ByteWidth <= 0) {
-			desc.ByteWidth = size;
-		} else if (desc.ByteWidth > size) {
+	if (desc.ByteWidth > 0) {
+		// Fill in size from the file/initial data, allowing for an
+		// override to make it larger or smaller, which may involve
+		// reallocating the buffer from the caller.
+		if (desc.ByteWidth > size) {
 			void *new_buf = realloc(*buf, desc.ByteWidth);
 			if (!new_buf) {
 				LogInfo("Out of memory enlarging buffer: [%S]\n", name.c_str());
 				return;
 			}
+			memset((char*)new_buf + size, 0, desc.ByteWidth - size);
 			*buf = new_buf;
 		}
 
@@ -3067,10 +3342,15 @@ void ResourceCopyTarget::SetResource(
 	case ResourceCopyTargetType::INI_PARAMS:
 	case ResourceCopyTargetType::SWAP_CHAIN:
 	case ResourceCopyTargetType::FAKE_SWAP_CHAIN:
+	case ResourceCopyTargetType::CPU:
 		// Only way we could "set" a resource to the (fake) back buffer is by
 		// copying to it. Might implement overwrites later, but no
 		// pressing need. To write something to the back buffer, assign
 		// it as a render target instead.
+		//
+		// We can't set values on the CPU directly from here, since the
+		// values won't have finished transferring yet. These will be
+		// set from elsewhere.
 		break;
 	}
 }
@@ -3099,6 +3379,7 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 		case ResourceCopyTargetType::STEREO_PARAMS:
 		case ResourceCopyTargetType::INI_PARAMS:
 		case ResourceCopyTargetType::SWAP_CHAIN:
+		case ResourceCopyTargetType::CPU:
 			// N/A since swap chain can't be set as a destination
 			return (D3D11_BIND_FLAG)0;
 	}
@@ -3107,10 +3388,9 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 	throw(std::range_error("Bad 3DMigoto ResourceCopyTarget"));
 }
 
-TextureOverride* ResourceCopyTarget::FindTextureOverride(CommandListState *state, bool *resource_found)
+void ResourceCopyTarget::FindTextureOverrides(CommandListState *state, bool *resource_found, TextureOverrideMatches *matches)
 {
 	TextureOverrideMap::iterator i;
-	TextureOverride *ret = NULL;
 	ID3D11Resource *resource = NULL;
 	ID3D11View *view = NULL;
 	uint32_t hash = 0;
@@ -3121,31 +3401,15 @@ TextureOverride* ResourceCopyTarget::FindTextureOverride(CommandListState *state
 		*resource_found = !!resource;
 
 	if (!resource)
-		return NULL;
+		return;
 
-	if (G->mTextureOverrideMap.empty())
-		goto out_release_resource;
+	find_texture_overrides_for_resource(resource, matches);
 
-	EnterCriticalSection(&G->mCriticalSection);
-		hash = GetResourceHash(resource);
-	LeaveCriticalSection(&G->mCriticalSection);
-	if (!hash)
-		goto out_release_resource;
+	//COMMAND_LIST_LOG(state, "  found texture hash = %08llx\n", hash);
 
-	state->mHackerContext->FrameAnalysisLog("3DMigoto   found texture hash = %08llx\n", hash);
-
-	i = G->mTextureOverrideMap.find(hash);
-	if (i == G->mTextureOverrideMap.end())
-		goto out_release_resource;
-
-	ret = &i->second;
-
-out_release_resource:
-	if (resource)
-		resource->Release();
+	resource->Release();
 	if (view)
 		view->Release();
-	return ret;
 }
 
 static bool IsCoersionToStructuredBufferRequired(ID3D11View *view, UINT stride,
@@ -3183,7 +3447,7 @@ static bool IsCoersionToStructuredBufferRequired(ID3D11View *view, UINT stride,
 
 static ID3D11Buffer *RecreateCompatibleBuffer(
 		wstring *ini_line,
-		ResourceCopyTarget *dst,
+		ResourceCopyTarget *dst, // May be NULL
 		ID3D11Buffer *src_resource,
 		ID3D11Buffer *dst_resource,
 		ResourcePool *resource_pool,
@@ -3200,9 +3464,15 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 	UINT dst_size;
 
 	src_resource->GetDesc(&new_desc);
-	new_desc.Usage = D3D11_USAGE_DEFAULT;
 	new_desc.BindFlags = bind_flags;
-	new_desc.CPUAccessFlags = 0;
+
+	if (dst && dst->type == ResourceCopyTargetType::CPU) {
+		new_desc.Usage = D3D11_USAGE_STAGING;
+		new_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+	} else {
+		new_desc.Usage = D3D11_USAGE_DEFAULT;
+		new_desc.CPUAccessFlags = 0;
+	}
 
 	// TODO: Add a keyword to allow raw views:
 	// D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS
@@ -3472,7 +3742,7 @@ template <typename ResourceType,
 	>
 static ResourceType* RecreateCompatibleTexture(
 		wstring *ini_line,
-		ResourceCopyTarget *dst,
+		ResourceCopyTarget *dst, // May be NULL
 		ResourceType *src_resource,
 		ResourceType *dst_resource,
 		ResourcePool *resource_pool,
@@ -3484,9 +3754,15 @@ static ResourceType* RecreateCompatibleTexture(
 	DescType new_desc;
 
 	src_resource->GetDesc(&new_desc);
-	new_desc.Usage = D3D11_USAGE_DEFAULT;
 	new_desc.BindFlags = bind_flags;
-	new_desc.CPUAccessFlags = 0;
+
+	if (dst && dst->type == ResourceCopyTargetType::CPU) {
+		new_desc.Usage = D3D11_USAGE_STAGING;
+		new_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+	} else {
+		new_desc.Usage = D3D11_USAGE_DEFAULT;
+		new_desc.CPUAccessFlags = 0;
+	}
 
 	// New strategy - we make the new resources typeless whenever possible
 	// and will fill the type back in in the view instead. This gives us
@@ -3520,7 +3796,7 @@ static ResourceType* RecreateCompatibleTexture(
 
 static void RecreateCompatibleResource(
 		wstring *ini_line,
-		ResourceCopyTarget *dst,
+		ResourceCopyTarget *dst, // May be NULL
 		ID3D11Resource *src_resource,
 		ID3D11Resource **dst_resource,
 		ResourcePool *resource_pool,
@@ -3576,7 +3852,7 @@ static void RecreateCompatibleResource(
 			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
 		}
-	} else if (dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE) {
+	} else if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE) {
 		restore_create_mode = dst->custom_resource->OverrideSurfaceCreationMode(mStereoHandle, &orig_mode);
 	}
 
@@ -4112,6 +4388,28 @@ ResourceCopyOperation::~ResourceCopyOperation()
 		cached_view->Release();
 }
 
+ResourceStagingOperation::ResourceStagingOperation()
+{
+	dst.type = ResourceCopyTargetType::CPU;
+	options = ResourceCopyOptions::COPY;
+	staging = false;
+	ini_line = L"  Beginning transfer to CPU...";
+}
+
+HRESULT ResourceStagingOperation::map(CommandListState *state, D3D11_MAPPED_SUBRESOURCE *mapping)
+{
+	if (!cached_resource)
+		return E_FAIL;
+
+	return state->mOrigContext->Map(cached_resource, 0, D3D11_MAP_READ, D3D11_MAP_FLAG_DO_NOT_WAIT, mapping);
+}
+
+void ResourceStagingOperation::unmap(CommandListState *state)
+{
+	if (cached_resource)
+		state->mOrigContext->Unmap(cached_resource, 0);
+}
+
 static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resource, CommandListState *state)
 {
 	UINT item, level, index, support;
@@ -4491,12 +4789,12 @@ void ClearViewCommand::clear_unknown_view(ID3D11View *view, CommandListState *st
 	view->QueryInterface(__uuidof(ID3D11UnorderedAccessView), (void**)&uav);
 
 	if (rtv) {
-		state->mHackerContext->FrameAnalysisLog("3DMigoto   clearing RTV\n");
+		COMMAND_LIST_LOG(state, "  clearing RTV\n");
 		state->mOrigContext->ClearRenderTargetView(rtv, fval);
 	}
 	if (dsv) {
 		D3D11_CLEAR_FLAG flags = (D3D11_CLEAR_FLAG)0;
-		state->mHackerContext->FrameAnalysisLog("3DMigoto   clearing DSV\n");
+		COMMAND_LIST_LOG(state, "  clearing DSV\n");
 
 		if (!clear_depth && !clear_stencil)
 			flags = (D3D11_CLEAR_FLAG)(D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL);
@@ -4514,10 +4812,10 @@ void ClearViewCommand::clear_unknown_view(ID3D11View *view, CommandListState *st
 		// formats, so we try to predict if the float clear will pass
 		// unless the user specificially told us to use the int clear.
 		if (clear_uav_uint || !UAVSupportsFloatClear(uav)) {
-			state->mHackerContext->FrameAnalysisLog("3DMigoto   clearing UAV (uint)\n");
+			COMMAND_LIST_LOG(state, "  clearing UAV (uint)\n");
 			state->mOrigContext->ClearUnorderedAccessViewUint(uav, uval);
 		} else {
-			state->mHackerContext->FrameAnalysisLog("3DMigoto   clearing UAV (float)\n");
+			COMMAND_LIST_LOG(state, "  clearing UAV (float)\n");
 			state->mOrigContext->ClearUnorderedAccessViewFloat(uav, fval);
 		}
 	}
@@ -4539,11 +4837,11 @@ void ClearViewCommand::run(CommandListState *state)
 	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
 	UINT buf_src_size = 0;
 
-	state->mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	resource = target.GetResource(state, &view, &stride, &offset, &format, &buf_src_size);
 	if (!resource) {
-		state->mHackerContext->FrameAnalysisLog("3DMigoto   No resource to clear\n");
+		COMMAND_LIST_LOG(state, "  No resource to clear\n");
 		return;
 	}
 
@@ -4553,7 +4851,7 @@ void ClearViewCommand::run(CommandListState *state)
 	if (view)
 		clear_unknown_view(view, state);
 	else
-		state->mHackerContext->FrameAnalysisLog("3DMigoto   No view and unable to create view to clear resource\n");
+		COMMAND_LIST_LOG(state, "  No view and unable to create view to clear resource\n");
 
 	if (resource)
 		resource->Release();
@@ -4606,7 +4904,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
 	UINT buf_src_size = 0, buf_dst_size = 0;
 
-	mHackerContext->FrameAnalysisLog("3DMigoto %S\n", ini_line.c_str());
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	if (src.type == ResourceCopyTargetType::EMPTY) {
 		dst.SetResource(state, NULL, NULL, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
@@ -4615,7 +4913,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 
 	src_resource = src.GetResource(state, &src_view, &stride, &offset, &format, &buf_src_size);
 	if (!src_resource) {
-		mHackerContext->FrameAnalysisLog("3DMigoto   Copy source was NULL\n");
+		COMMAND_LIST_LOG(state, "  Copy source was NULL\n");
 		if (!(options & ResourceCopyOptions::UNLESS_NULL)) {
 			// Still set destination to NULL - if we are copying a
 			// resource we generally expect it to be there, and
@@ -4642,7 +4940,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 				dst.custom_resource->frame_no = G->frame_no;
 				dst.custom_resource->copies_this_frame = 1;
 			} else if (dst.custom_resource->copies_this_frame++ >= dst.custom_resource->max_copies_per_frame) {
-				mHackerContext->FrameAnalysisLog("3DMigoto   max_copies_per_frame exceeded\n");
+				COMMAND_LIST_LOG(state, "  max_copies_per_frame exceeded\n");
 				return;
 			}
 		}
@@ -4667,9 +4965,9 @@ void ResourceCopyOperation::run(CommandListState *state)
 
 		if (options & ResourceCopyOptions::COPY_DESC) {
 			// RecreateCompatibleResource has already done the work
-			mHackerContext->FrameAnalysisLog("3DMigoto   copying resource description\n");
+			COMMAND_LIST_LOG(state, "  copying resource description\n");
 		} else if (options & ResourceCopyOptions::STEREO2MONO) {
-			mHackerContext->FrameAnalysisLog("3DMigoto   performing reverse stereo blit\n");
+			COMMAND_LIST_LOG(state, "  performing reverse stereo blit\n");
 
 			// TODO: Resolve MSAA to an intermediate resource first
 			// if necessary (but keep in mind this may have
@@ -4696,19 +4994,19 @@ void ResourceCopyOperation::run(CommandListState *state)
 			mOrigContext->CopyResource(dst_resource, stereo2mono_intermediate);
 
 		} else if (options & ResourceCopyOptions::RESOLVE_MSAA) {
-			mHackerContext->FrameAnalysisLog("3DMigoto   resolving MSAA\n");
+			COMMAND_LIST_LOG(state, "  resolving MSAA\n");
 			ResolveMSAA(dst_resource, src_resource, state);
 		} else if (buf_dst_size) {
-			mHackerContext->FrameAnalysisLog("3DMigoto   performing region copy\n");
+			COMMAND_LIST_LOG(state, "  performing region copy\n");
 			SpecialCopyBufferRegion(dst_resource, src_resource,
 					state, stride, &offset,
 					buf_src_size, buf_dst_size);
 		} else {
-			mHackerContext->FrameAnalysisLog("3DMigoto   performing full copy\n");
+			COMMAND_LIST_LOG(state, "  performing full copy\n");
 			mOrigContext->CopyResource(dst_resource, src_resource);
 		}
 	} else {
-		mHackerContext->FrameAnalysisLog("3DMigoto   copying by reference\n");
+		COMMAND_LIST_LOG(state, "  copying by reference\n");
 		dst_resource = src_resource;
 		if (src_view && (EquivTarget(src.type) == EquivTarget(dst.type))) {
 			dst_view = src_view;

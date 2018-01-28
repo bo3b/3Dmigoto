@@ -181,6 +181,7 @@ void HackerDevice::CreatePinkHuntingResources()
 		if (SUCCEEDED(hr))
 		{
 			hr = mOrigDevice->CreatePixelShader((DWORD*)blob->GetBufferPointer(), blob->GetBufferSize(), NULL, &G->mPinkingShader);
+			CleanupShaderMaps(G->mPinkingShader);
 			if (FAILED(hr))
 				LogInfo("  Failed to create pinking pixel shader: %d\n", hr);
 			blob->Release();
@@ -249,14 +250,35 @@ void HackerDevice::SetHackerSwapChain(HackerDXGISwapChain *pHackerSwapChain)
 	mHackerSwapChain = pHackerSwapChain;
 }
 
-
+// Returns the "real" DirectX object. Note that if hooking is enabled calls
+// through this object will go back into 3DMigoto, which would then subject
+// them to extra logging and any processing 3DMigoto applies, which may be
+// undesirable in some cases. This used to cause a crash if a command list
+// issued a draw call, since that would then trigger the command list and
+// recurse until the stack ran out:
 ID3D11Device* HackerDevice::GetOrigDevice()
 {
 	return mRealOrigDevice;
 }
 
+// Use this one when you specifically don't want calls through this object to
+// ever go back into 3DMigoto. If hooking is disabled this is identical to the
+// above, but when hooking this will be the trampoline object instead:
+ID3D11Device* HackerDevice::GetPassThroughOrigDevice()
+{
+	return mOrigDevice;
+}
+
 ID3D11DeviceContext* HackerDevice::GetOrigContext()
 {
+	return mOrigContext;
+}
+
+ID3D11DeviceContext* HackerDevice::GetPassThroughOrigContext()
+{
+	if (mHackerContext)
+		return mHackerContext->GetPassThroughOrigContext();
+
 	return mOrigContext;
 }
 
@@ -506,6 +528,12 @@ static void RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring 
 	ID3D11ClassLinkage* pClassLinkage, ID3DBlob* byteCode, FILETIME timeStamp, wstring text, bool deferred_replacement_candidate)
 {
 	LogInfo("    shader registered for possible reloading: %016llx_%ls as %s - %ls\n", hash, shaderType.c_str(), shaderModel.c_str(), text.c_str());
+
+	// Pretty sure we had a bug before since we would save a pointer to the
+	// class linkage object without bumping its refcount, but I don't know
+	// of any game that uses this to test it.
+	if (pClassLinkage)
+		pClassLinkage->AddRef();
 
 	G->mReloadedShaders[ppShader].hash = hash;
 	G->mReloadedShaders[ppShader].shaderType = shaderType;
@@ -1202,15 +1230,17 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					pCompiledOutput->Release(); pCompiledOutput = 0;
 					if (!wcscmp(shaderType, L"vs"))
 					{
-						ID3D11VertexShader *zeroVertexShader;
+						ID3D11VertexShader *zeroVertexShader = NULL;
 						HRESULT hr = mOrigDevice->CreateVertexShader(code, codeSize, 0, &zeroVertexShader);
+						CleanupShaderMaps(zeroVertexShader);
 						if (hr == S_OK)
 							*zeroShader = zeroVertexShader;
 					}
 					else if (!wcscmp(shaderType, L"ps"))
 					{
-						ID3D11PixelShader *zeroPixelShader;
+						ID3D11PixelShader *zeroPixelShader = NULL;
 						HRESULT hr = mOrigDevice->CreatePixelShader(code, codeSize, 0, &zeroPixelShader);
+						CleanupShaderMaps(zeroPixelShader);
 						if (hr == S_OK)
 							*zeroShader = zeroPixelShader;
 					}
@@ -1259,6 +1289,72 @@ bool HackerDevice::NeedOriginalShader(UINT64 hash)
 	return false;
 }
 
+// This function ensures that a shader handle is expunged from all our shader
+// maps. Ideally we would call this when the shader is released, but since we
+// don't wrap or hook that call we can't do that. Instead, we call it just
+// after any CreateXXXShader call - at that time we know the handle was
+// previously invalid and is now valid, but we haven't used it yet.
+//
+// This is a big hammer, and we could probably cut this down, but I want to
+// make very certain that we don't have any other unusual sequences that could
+// lead to us using stale entries (e.g. suppose an application called
+// XXGetShader() and retrieved a shader 3DMigoto had set, then later called
+// XXSetShader() - we would look up that handle, and if that handle had been
+// reused we might end up trying to replace it). This fixes an issue where we
+// could sometimes mistakingly revert one shader to an unrelated shader on F10:
+//
+//   https://github.com/bo3b/3Dmigoto/issues/86
+//
+void CleanupShaderMaps(ID3D11DeviceChild *handle)
+{
+	if (!handle)
+		return;
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	{
+		ShaderMap::iterator i = G->mShaders.find(handle);
+		if (i != G->mShaders.end()) {
+			LogInfo("Shader handle %p reused, previous hash was: %016llx\n", handle, i->second);
+			G->mShaders.erase(i);
+		}
+	}
+
+	{
+		ShaderReloadMap::iterator i = G->mReloadedShaders.find(handle);
+		if (i != G->mReloadedShaders.end()) {
+			LogInfo("Shader handle %p reused, found in mReloadedShaders\n", handle);
+			if (i->second.replacement)
+				i->second.replacement->Release();
+			if (i->second.byteCode)
+				i->second.byteCode->Release();
+			if (i->second.linkage)
+				i->second.linkage->Release();
+			G->mReloadedShaders.erase(i);
+		}
+	}
+
+	{
+		ShaderReplacementMap::iterator i = G->mOriginalShaders.find(handle);
+		if (i != G->mOriginalShaders.end()) {
+			LogInfo("Shader handle %p reused, releasing previous original shader\n", handle);
+			i->second->Release();
+			G->mOriginalShaders.erase(i);
+		}
+	}
+
+	{
+		ShaderReplacementMap::iterator i = G->mZeroShaders.find(handle);
+		if (i != G->mZeroShaders.end()) {
+			LogInfo("Shader handle %p reused, releasing previous zero shader\n", handle);
+			i->second->Release();
+			G->mZeroShaders.erase(i);
+		}
+	}
+
+	LeaveCriticalSection(&G->mCriticalSection);
+}
+
 // Keep the original shader around if it may be needed by a filter in a
 // [ShaderOverride] section, or if hunting is enabled and either the
 // marking_mode=original, or reload_config support is enabled
@@ -1273,10 +1369,9 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType,
 		ID3D11Shader *pShader,
 		const void *pShaderBytecode,
 		SIZE_T BytecodeLength,
-		ID3D11ClassLinkage *pClassLinkage,
-		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders)
+		ID3D11ClassLinkage *pClassLinkage)
 {
-	ID3D11Shader *originalShader;
+	ID3D11Shader *originalShader = NULL;
 	HRESULT hr;
 
 	if (!NeedOriginalShader(hash))
@@ -1287,8 +1382,9 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType,
 	EnterCriticalSection(&G->mCriticalSection);
 
 		hr = (mOrigDevice->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+		CleanupShaderMaps(originalShader);
 		if (SUCCEEDED(hr))
-			(*originalShaders)[pShader] = originalShader;
+			G->mOriginalShaders[pShader] = originalShader;
 
 		// Unlike the *other* code path in CreateShader that can also
 		// fill out this structure, we do *not* bump the refcount on
@@ -1565,6 +1661,146 @@ STDMETHODIMP_(UINT) HackerDevice::GetExceptionMode(THIS)
 
 // -----------------------------------------------------------------------------------------------
 
+static bool check_texture_override_iteration(TextureOverride *textureOverride)
+{
+	if (textureOverride->iterations.empty())
+		return true;
+
+	std::vector<int>::iterator k = textureOverride->iterations.begin();
+	int currentIteration = textureOverride->iterations[0] = textureOverride->iterations[0] + 1;
+	LogInfo("  current iteration = %d\n", currentIteration);
+
+	while (++k != textureOverride->iterations.end()) {
+		if (currentIteration == *k)
+			return true;
+	}
+
+	LogInfo("  override skipped\n");
+	return false;
+}
+
+// Only Texture2D surfaces can be square. Use template specialisation to skip
+// the check on other resource types:
+template <typename DescType>
+static bool is_square_surface(DescType *desc) {
+	return false;
+}
+static bool is_square_surface(D3D11_TEXTURE2D_DESC *desc)
+{
+	return (desc && G->gSurfaceSquareCreateMode >= 0
+			&& desc->Width == desc->Height
+			&& (desc->Usage & D3D11_USAGE_IMMUTABLE) == 0);
+}
+
+// Template specialisations to override resource descriptions.
+// TODO: Refactor this to use common code with CustomResource.
+// TODO: Add overrides for BindFlags since they can affect the stereo mode.
+// Maybe MiscFlags as well in case we need to do something like forcing a
+// buffer to be unstructured to allow it to be steroised when
+// StereoFlagsDX10=0x000C000.
+
+template <typename DescType>
+static void override_resource_desc_common_2d_3d(DescType *desc, TextureOverride *textureOverride)
+{
+	if (textureOverride->format != -1) {
+		LogInfo("  setting custom format to %d\n", textureOverride->format);
+		desc->Format = (DXGI_FORMAT) textureOverride->format;
+	}
+
+	if (textureOverride->width != -1) {
+		LogInfo("  setting custom width to %d\n", textureOverride->width);
+		desc->Width = textureOverride->width;
+	}
+
+	if (textureOverride->height != -1) {
+		LogInfo("  setting custom height to %d\n", textureOverride->height);
+		desc->Height = textureOverride->height;
+	}
+}
+
+static void override_resource_desc(D3D11_BUFFER_DESC *desc, TextureOverride *textureOverride) {}
+static void override_resource_desc(D3D11_TEXTURE1D_DESC *desc, TextureOverride *textureOverride) {}
+static void override_resource_desc(D3D11_TEXTURE2D_DESC *desc, TextureOverride *textureOverride)
+{
+	override_resource_desc_common_2d_3d(desc, textureOverride);
+}
+static void override_resource_desc(D3D11_TEXTURE3D_DESC *desc, TextureOverride *textureOverride)
+{
+	override_resource_desc_common_2d_3d(desc, textureOverride);
+}
+
+template <typename DescType>
+static const DescType* process_texture_override(uint32_t hash,
+		StereoHandle mStereoHandle,
+		const DescType *origDesc,
+		DescType *newDesc,
+		NVAPI_STEREO_SURFACECREATEMODE *oldMode)
+{
+	NVAPI_STEREO_SURFACECREATEMODE newMode = (NVAPI_STEREO_SURFACECREATEMODE) -1;
+	TextureOverrideMatches matches;
+	TextureOverride *textureOverride = NULL;
+	const DescType* ret = origDesc;
+	unsigned i;
+
+	*oldMode = (NVAPI_STEREO_SURFACECREATEMODE) -1;
+
+	// Check for square surfaces. We used to do this after processing the
+	// StereoMode in TextureOverrides, but realistically we always want the
+	// TextureOverrides to be able to override this since they are more
+	// specific, so now we do this first.
+	if (is_square_surface(origDesc))
+		newMode = (NVAPI_STEREO_SURFACECREATEMODE) G->gSurfaceSquareCreateMode;
+
+	find_texture_overrides(hash, origDesc, &matches);
+
+	if (origDesc && !matches.empty()) {
+		// There is at least one matching texture override, which means
+		// we may possibly be altering the resource description. Make a
+		// copy of it and adjust the return pointer to the copy:
+		*newDesc = *origDesc;
+		ret = newDesc;
+
+		// We go through each matching texture override applying any
+		// resource description and stereo mode overrides. The texture
+		// overrides with higher priorities come later in the list, so
+		// if there are any conflicts they will override the earlier
+		// lower priority ones.
+		for (i = 0; i < matches.size(); i++) {
+			textureOverride = matches[i];
+
+			LogInfo("  %S matched resource with hash=%08x\n", textureOverride->ini_section.c_str(), hash);
+
+			if (!check_texture_override_iteration(textureOverride))
+				continue;
+
+			if (textureOverride->stereoMode != -1)
+				newMode = (NVAPI_STEREO_SURFACECREATEMODE) textureOverride->stereoMode;
+
+			override_resource_desc(newDesc, textureOverride);
+		}
+	}
+
+	if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) -1) {
+		NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
+		NvAPIOverride();
+		LogInfo("  setting custom surface creation mode.\n");
+
+		if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
+			LogInfo("    call failed.\n");
+	}
+
+	return ret;
+}
+
+static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMode, StereoHandle mStereoHandle)
+{
+	if (oldMode == (NVAPI_STEREO_SURFACECREATEMODE) - 1)
+		return;
+
+	if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
+		LogInfo("    restore call failed.\n");
+}
+
 STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	/* [annotation] */
 	__in  const D3D11_BUFFER_DESC *pDesc,
@@ -1573,37 +1809,46 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Buffer **ppBuffer)
 {
+	D3D11_BUFFER_DESC newDesc;
+	const D3D11_BUFFER_DESC *pNewDesc = NULL;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
+
 	LogDebug("HackerDevice::CreateBuffer called\n");
 	if (pDesc)
 		LogDebugResourceDesc(pDesc);
 
-	HRESULT hr = mOrigDevice->CreateBuffer(pDesc, pInitialData, ppBuffer);
+	// Create hash from the raw buffer data if available, but also include
+	// the pDesc data as a unique fingerprint for a buffer.
+	uint32_t data_hash = 0, hash = 0;
+	if (pInitialData && pInitialData->pSysMem && pDesc)
+		hash = data_hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->ByteWidth);
+	if (pDesc)
+		hash = crc32c_hw(hash, pDesc, sizeof(D3D11_BUFFER_DESC));
+
+	// Override custom settings?
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
+
+	HRESULT hr = mOrigDevice->CreateBuffer(pNewDesc, pInitialData, ppBuffer);
+	restore_old_surface_create_mode(oldMode, mStereoHandle);
 	if (hr == S_OK && ppBuffer && *ppBuffer)
 	{
-		// Create hash from the raw buffer data if available, but also include
-		// the pDesc data as a unique fingerprint for a buffer.
-		uint32_t data_hash = 0, hash = 0;
-		if (pInitialData && pInitialData->pSysMem && pDesc)
-			hash = data_hash = crc32c_hw(hash, pInitialData->pSysMem, pDesc->ByteWidth);
-		if (pDesc)
-			hash = crc32c_hw(hash, pDesc, sizeof(D3D11_BUFFER_DESC));
-
 		EnterCriticalSection(&G->mCriticalSection);
-			G->mResources[*ppBuffer].hash = hash;
-			G->mResources[*ppBuffer].orig_hash = hash;
+			ResourceHandleInfo *handle_info = &G->mResources[*ppBuffer];
+			handle_info->type = D3D11_RESOURCE_DIMENSION_BUFFER;
+			handle_info->hash = hash;
+			handle_info->orig_hash = hash;
+			handle_info->data_hash = data_hash;
 
-			// If we ever need hash tracking for buffers we will
-			// need this, but I'd rather avoid it if we can get
-			// away without it given how often buffers get updated:
-			// G->mResources[*ppBuffer].data_hash = data_hash;
+			// XXX: This is only used for hash tracking, which we
+			// don't enable for buffers for performance reasons:
 			// if (pDesc)
-			// 	memcpy(&G->mResources[*ppBuffer].descBuf, pDesc, sizeof(D3D11_BUFFER_DESC));
+			//	memcpy(&handle_info->descBuf, pDesc, sizeof(D3D11_BUFFER_DESC));
 
-			// TODO: For stat collection and hash contamination tracking:
-			// if (G->hunting && pDesc) {
-			// 	G->mResourceInfo[hash] = *pDesc;
-			// 	G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
-			// }
+			// For stat collection and hash contamination tracking:
+			if (G->hunting && pDesc) {
+				G->mResourceInfo[hash] = *pDesc;
+				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+			}
 		LeaveCriticalSection(&G->mCriticalSection);
 	}
 	return hr;
@@ -1617,7 +1862,48 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Texture1D **ppTexture1D)
 {
-	return mOrigDevice->CreateTexture1D(pDesc, pInitialData, ppTexture1D);
+	D3D11_TEXTURE1D_DESC newDesc;
+	const D3D11_TEXTURE1D_DESC *pNewDesc = NULL;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
+	uint32_t data_hash, hash;
+
+	LogDebug("HackerDevice::CreateTexture1D called\n");
+	if (pDesc)
+		LogDebugResourceDesc(pDesc);
+
+	hash = data_hash = CalcTexture1DDataHash(pDesc, pInitialData);
+	if (pDesc)
+		hash = crc32c_hw(hash, pDesc, sizeof(D3D11_TEXTURE1D_DESC));
+	LogDebug("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
+
+	// Override custom settings?
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
+
+	HRESULT hr = mOrigDevice->CreateTexture1D(pNewDesc, pInitialData, ppTexture1D);
+
+	restore_old_surface_create_mode(oldMode, mStereoHandle);
+
+	if (hr == S_OK && ppTexture1D && *ppTexture1D)
+	{
+		EnterCriticalSection(&G->mCriticalSection);
+			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture1D];
+			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE1D;
+			handle_info->hash = hash;
+			handle_info->orig_hash = hash;
+			handle_info->data_hash = data_hash;
+
+			// TODO: For hash tracking if we ever need it for Texture1Ds:
+			// if (pDesc)
+			// 	memcpy(&handle_info->desc1D, pDesc, sizeof(D3D11_TEXTURE1D_DESC));
+
+			// For stat collection and hash contamination tracking:
+			if (G->hunting && pDesc) {
+				G->mResourceInfo[hash] = *pDesc;
+				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+			}
+		LeaveCriticalSection(&G->mCriticalSection);
+	}
+	return hr;
 }
 
 static bool heuristic_could_be_possible_resolution(unsigned width, unsigned height)
@@ -1647,8 +1933,9 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Texture2D **ppTexture2D)
 {
-	TextureOverride *textureOverride = NULL;
-	bool override = false;
+	D3D11_TEXTURE2D_DESC newDesc;
+	const D3D11_TEXTURE2D_DESC *pNewDesc = NULL;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
 
 	LogDebug("HackerDevice::CreateTexture2D called with parameters\n");
 	if (pDesc)
@@ -1713,94 +2000,24 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	LogDebug("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
 	// Override custom settings?
-	NVAPI_STEREO_SURFACECREATEMODE oldMode = (NVAPI_STEREO_SURFACECREATEMODE) - 1, newMode = (NVAPI_STEREO_SURFACECREATEMODE) - 1;
-	D3D11_TEXTURE2D_DESC newDesc = *pDesc;
-
-	TextureOverrideMap::iterator i = G->mTextureOverrideMap.find(hash);
-	if (i != G->mTextureOverrideMap.end()) 
-	{
-		textureOverride = &i->second;
-
-		override = true;
-		if (textureOverride->stereoMode != -1)
-			newMode = (NVAPI_STEREO_SURFACECREATEMODE) textureOverride->stereoMode;
-		// Check iteration.
-		if (!textureOverride->iterations.empty()) 
-		{
-			std::vector<int>::iterator k = textureOverride->iterations.begin();
-			int currentIteration = textureOverride->iterations[0] = textureOverride->iterations[0] + 1;
-			LogInfo("  current iteration = %d\n", currentIteration);
-
-			override = false;
-			while (++k != textureOverride->iterations.end())
-			{
-				if (currentIteration == *k)
-				{
-					override = true;
-					break;
-				}
-			}
-			if (!override)
-				LogInfo("  override skipped\n");
-		}
-	}
-
-	if (pDesc && G->gSurfaceSquareCreateMode >= 0 && pDesc->Width == pDesc->Height && (pDesc->Usage & D3D11_USAGE_IMMUTABLE) == 0)
-	{
-		override = true;
-		newMode = (NVAPI_STEREO_SURFACECREATEMODE) G->gSurfaceSquareCreateMode;
-	}
-	if (override)
-	{
-		if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1)
-		{
-			NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &oldMode);
-			NvAPIOverride();
-			LogInfo("  setting custom surface creation mode.\n");
-
-			if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
-				LogInfo("    call failed.\n");
-		}
-		if (textureOverride && textureOverride->format != -1)
-		{
-			LogInfo("  setting custom format to %d\n", textureOverride->format);
-
-			newDesc.Format = (DXGI_FORMAT) textureOverride->format;
-		}
-
-		if (textureOverride && textureOverride->width != -1)
-		{
-			LogInfo("  setting custom width to %d\n", textureOverride->width);
-
-			newDesc.Width = textureOverride->width;
-		}
-
-		if (textureOverride && textureOverride->height != -1)
-		{
-			LogInfo("  setting custom height to %d\n", textureOverride->height);
-
-			newDesc.Height = textureOverride->height;
-		}
-	}
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
 
 	// Actual creation:
-	HRESULT hr = mOrigDevice->CreateTexture2D(&newDesc, pInitialData, ppTexture2D);
-	if (oldMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1)
-	{
-		if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
-			LogInfo("    restore call failed.\n");
-	}
+	HRESULT hr = mOrigDevice->CreateTexture2D(pNewDesc, pInitialData, ppTexture2D);
+	restore_old_surface_create_mode(oldMode, mStereoHandle);
 	if (ppTexture2D) LogDebug("  returns result = %x, handle = %p\n", hr, *ppTexture2D);
 
 	// Register texture. Every one seen.
 	if (hr == S_OK && ppTexture2D)
 	{
 		EnterCriticalSection(&G->mCriticalSection);
-			G->mResources[*ppTexture2D].hash = hash;
-			G->mResources[*ppTexture2D].orig_hash = hash;
-			G->mResources[*ppTexture2D].data_hash = data_hash;
+			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture2D];
+			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
+			handle_info->hash = hash;
+			handle_info->orig_hash = hash;
+			handle_info->data_hash = data_hash;
 			if (pDesc)
-				memcpy(&G->mResources[*ppTexture2D].desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
+				memcpy(&handle_info->desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
 			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
 				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
@@ -1819,6 +2036,10 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11Texture3D **ppTexture3D)
 {
+	D3D11_TEXTURE3D_DESC newDesc;
+	const D3D11_TEXTURE3D_DESC *pNewDesc = NULL;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
+
 	LogInfo("HackerDevice::CreateTexture3D called with parameters\n");
 	if (pDesc)
 		LogDebugResourceDesc(pDesc);
@@ -1846,17 +2067,24 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 		hash = CalcTexture3DDescHash(hash, pDesc);
 	LogInfo("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
-	HRESULT hr = mOrigDevice->CreateTexture3D(pDesc, pInitialData, ppTexture3D);
+	// Override custom settings?
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
+
+	HRESULT hr = mOrigDevice->CreateTexture3D(pNewDesc, pInitialData, ppTexture3D);
+
+	restore_old_surface_create_mode(oldMode, mStereoHandle);
 
 	// Register texture.
 	if (hr == S_OK && ppTexture3D)
 	{
 		EnterCriticalSection(&G->mCriticalSection);
-			G->mResources[*ppTexture3D].hash = hash;
-			G->mResources[*ppTexture3D].orig_hash = hash;
-			G->mResources[*ppTexture3D].data_hash = data_hash;
+			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture3D];
+			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE3D;
+			handle_info->hash = hash;
+			handle_info->orig_hash = hash;
+			handle_info->data_hash = data_hash;
 			if (pDesc)
-				memcpy(&G->mResources[*ppTexture3D].desc3D, pDesc, sizeof(D3D11_TEXTURE3D_DESC));
+				memcpy(&handle_info->desc3D, pDesc, sizeof(D3D11_TEXTURE3D_DESC));
 			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
 				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
@@ -2009,11 +2237,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	__in_opt  ID3D11ClassLinkage *pClassLinkage,
 	/* [annotation] */
 	__out_opt  ID3D11Shader **ppShader,
-	wchar_t *shaderType,
-	std::unordered_map<ID3D11Shader *, UINT64> *shaders,
-	std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders,
-	std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders
-	)
+	wchar_t *shaderType)
 {
 	HRESULT hr = E_FAIL;
 	UINT64 hash;
@@ -2059,6 +2283,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 
 			*ppShader = NULL; // Appease the static analysis gods
 			hr = (mOrigDevice->*OrigCreateShader)(replaceShader, replaceShaderSize, pClassLinkage, ppShader);
+			CleanupShaderMaps(*ppShader);
 			if (SUCCEEDED(hr))
 			{
 				LogInfo("    shader successfully replaced.\n");
@@ -2079,9 +2304,9 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 					}
 				}
 				// FIXME: We have some very similar data structures that we should merge together:
-				// mReloadedShaders and all the mOriginalXXXShader maps.
+				// mReloadedShaders and mOriginalShader.
 				KeepOriginalShader<ID3D11Shader, OrigCreateShader>
-					(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage, originalShaders);
+					(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
 			}
 			else
 			{
@@ -2109,6 +2334,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		if (ppShader)
 			*ppShader = NULL; // Appease the static analysis gods
 		hr = (mOrigDevice->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
+		CleanupShaderMaps(*ppShader);
 
 		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
 		// have a copy for every shader seen. If we are performing any sort of deferred shader replacement, such as pipline
@@ -2126,14 +2352,14 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 					// Also add the original shader to the original shaders
 					// map so that if it is later replaced marking_mode =
 					// original and depth buffer filtering will work:
-					if (originalShaders->count(*ppShader) == 0) {
+					if (G->mOriginalShaders.count(*ppShader) == 0) {
 						// Since we are both returning *and* storing this we need to
 						// bump the refcount to 2, otherwise it could get freed and we
 						// may get a crash later in RevertMissingShaders, especially
 						// easy to expose with the auto shader patching engine
 						// and reverting shaders:
 						(*ppShader)->AddRef();
-						(*originalShaders)[*ppShader] = *ppShader;
+						G->mOriginalShaders[*ppShader] = *ppShader;
 					}
 				}
 			LeaveCriticalSection(&G->mCriticalSection);
@@ -2143,12 +2369,12 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	if (hr == S_OK && ppShader && pShaderBytecode)
 	{
 		EnterCriticalSection(&G->mCriticalSection);
-			(*shaders)[*ppShader] = hash;
+			G->mShaders[*ppShader] = hash;
 			LogDebugW(L"    %ls: handle = %p, hash = %016I64x\n", shaderType, *ppShader, hash);
 
-			if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader && zeroShaders)
+			if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
 			{
-				(*zeroShaders)[*ppShader] = zeroShader;
+				G->mZeroShaders[*ppShader] = zeroShader;
 			}
 
 			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
@@ -2177,8 +2403,7 @@ STDMETHODIMP HackerDevice::CreateVertexShader(THIS_
 	LogInfo("HackerDevice::CreateVertexShader called with BytecodeLength = %Iu, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
 
 	return CreateShader<ID3D11VertexShader, &ID3D11Device::CreateVertexShader>
-			(pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader,
-			 L"vs", &G->mVertexShaders, &G->mOriginalVertexShaders, &G->mZeroVertexShaders);
+			(pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader, L"vs");
 }
 
 STDMETHODIMP HackerDevice::CreateGeometryShader(THIS_
@@ -2194,11 +2419,7 @@ STDMETHODIMP HackerDevice::CreateGeometryShader(THIS_
 	LogInfo("HackerDevice::CreateGeometryShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	return CreateShader<ID3D11GeometryShader, &ID3D11Device::CreateGeometryShader>
-			(pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader,
-			 L"gs",
-			 &G->mGeometryShaders,
-			 &G->mOriginalGeometryShaders,
-			 NULL /* TODO: &G->mZeroGeometryShaders */);
+			(pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader, L"gs");
 }
 
 STDMETHODIMP HackerDevice::CreateGeometryShaderWithStreamOutput(THIS_
@@ -2246,8 +2467,7 @@ STDMETHODIMP HackerDevice::CreatePixelShader(THIS_
 	LogInfo("HackerDevice::CreatePixelShader called with BytecodeLength = %Iu, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
 
 	return CreateShader<ID3D11PixelShader, &ID3D11Device::CreatePixelShader>
-			(pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader,
-			 L"ps", &G->mPixelShaders, &G->mOriginalPixelShaders, &G->mZeroPixelShaders);
+			(pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader, L"ps");
 }
 
 STDMETHODIMP HackerDevice::CreateHullShader(THIS_
@@ -2263,11 +2483,7 @@ STDMETHODIMP HackerDevice::CreateHullShader(THIS_
 	LogInfo("HackerDevice::CreateHullShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	return CreateShader<ID3D11HullShader, &ID3D11Device::CreateHullShader>
-			(pShaderBytecode, BytecodeLength, pClassLinkage, ppHullShader,
-			 L"hs",
-			 &G->mHullShaders,
-			 &G->mOriginalHullShaders,
-			 NULL /* TODO: &G->mZeroHullShaders */);
+			(pShaderBytecode, BytecodeLength, pClassLinkage, ppHullShader, L"hs");
 }
 
 STDMETHODIMP HackerDevice::CreateDomainShader(THIS_
@@ -2283,11 +2499,7 @@ STDMETHODIMP HackerDevice::CreateDomainShader(THIS_
 	LogInfo("HackerDevice::CreateDomainShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	return CreateShader<ID3D11DomainShader, &ID3D11Device::CreateDomainShader>
-			(pShaderBytecode, BytecodeLength, pClassLinkage, ppDomainShader,
-			 L"ds",
-			 &G->mDomainShaders,
-			 &G->mOriginalDomainShaders,
-			 NULL /* TODO: &G->mZeroDomainShaders */);
+			(pShaderBytecode, BytecodeLength, pClassLinkage, ppDomainShader, L"ds");
 }
 
 STDMETHODIMP HackerDevice::CreateComputeShader(THIS_
@@ -2303,11 +2515,7 @@ STDMETHODIMP HackerDevice::CreateComputeShader(THIS_
 	LogInfo("HackerDevice::CreateComputeShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
 	return CreateShader<ID3D11ComputeShader, &ID3D11Device::CreateComputeShader>
-			(pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader,
-			 L"cs",
-			 &G->mComputeShaders,
-			 &G->mOriginalComputeShaders,
-			 NULL /* TODO (if this even makes sense?): &G->mZeroComputeShaders */);
+			(pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader, L"cs");
 }
 
 STDMETHODIMP HackerDevice::CreateRasterizerState(THIS_
@@ -2324,6 +2532,12 @@ STDMETHODIMP HackerDevice::CreateRasterizerState(THIS_
 		pRasterizerDesc->FillMode, pRasterizerDesc->CullMode, pRasterizerDesc->DepthBias, pRasterizerDesc->DepthBiasClamp,
 		pRasterizerDesc->SlopeScaledDepthBias, pRasterizerDesc->DepthClipEnable, pRasterizerDesc->ScissorEnable,
 		pRasterizerDesc->MultisampleEnable, pRasterizerDesc->AntialiasedLineEnable);
+
+	if (G->SCISSOR_DISABLE && pRasterizerDesc && pRasterizerDesc->ScissorEnable)
+	{
+		LogDebug("  disabling scissor mode.\n");
+		const_cast<D3D11_RASTERIZER_DESC*>(pRasterizerDesc)->ScissorEnable = FALSE;
+	}
 
 	hr = mOrigDevice->CreateRasterizerState(pRasterizerDesc, ppRasterizerState);
 
@@ -2357,6 +2571,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 		ID3D11DeviceContext *origContext = static_cast<ID3D11DeviceContext*>(*ppDeferredContext);
 		HackerContext *hackerContext = new HackerContext(mRealOrigDevice, origContext);
 		hackerContext->SetHackerDevice(this);
+		hackerContext->Bind3DMigotoResources();
 
 		if (G->enable_hooks & EnableHooks::DEFERRED_CONTEXTS)
 			hackerContext->HookContext();
@@ -2425,6 +2640,7 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 
 		mHackerContext = new HackerContext(mRealOrigDevice, *ppImmediateContext);
 		mHackerContext->SetHackerDevice(this);
+		mHackerContext->Bind3DMigotoResources();
 		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
 			mHackerContext->HookContext();
 		LogInfo("  HackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);

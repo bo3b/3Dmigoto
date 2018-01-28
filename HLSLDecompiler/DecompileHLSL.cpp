@@ -3695,6 +3695,15 @@ public:
 						removeBoolean(op1);
 						break;
 
+						// Newly found in CS for Prey
+					case OPCODE_COUNTBITS:
+						remapTarget(op1);
+						applySwizzle(op1, op2, true);
+						sprintf(buffer, "  %s = countbits(%s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+
 						// Add the Firstbit ops, because now Just Cause 3 uses them.
 						// firstbit{_hi|_lo|_shi} dest[.mask], src0[.swizzle]
 					case OPCODE_FIRSTBIT_HI:

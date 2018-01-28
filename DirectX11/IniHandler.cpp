@@ -5,6 +5,7 @@
 #include <strsafe.h>
 #include <fstream>
 #include <sstream>
+#include <memory>
 
 #include "log.h"
 #include "Globals.h"
@@ -35,6 +36,8 @@ static Section CommandListSections[] = {
 	{L"TextureOverride", true},
 	{L"CustomShader", true},
 	{L"CommandList", true},
+	{L"BuiltInCustomShader", true},
+	{L"BuiltInCommandList", true},
 	{L"Present", false},
 	{L"ClearRenderTargetView", false},
 	{L"ClearDepthStencilView", false},
@@ -327,43 +330,17 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 	section_vector->emplace_back(key, val, *wline);
 }
 
-
-// Parse the ini file into data structures. We used to use the
-// GetPrivateProfile family of Windows API calls to parse the ini file, but
-// they have the disadvantage that they open and parse the whole ini file every
-// time they are called, which can lead to lengthy ini files taking a long time
-// to parse (e.g. Dreamfall Chapters takes around 1 minute 45). By reading the
-// ini file once we can drastically reduce that time.
-//
-// I considered using a third party library to provide this, but eventually
-// decided against it - ini files are relatively simple and easy to parse
-// ourselves, and we don't strictly adhere to the ini spec since we allow for
-// repeated keys and lines without equals signs, and the order of lines is
-// important in some sections. We could rely on the Windows APIs to provide
-// these guarantees because Microsoft is highly unlikely to change their
-// behaviour, but the same cannot be said of a third party library. Therefore,
-// let's just do it ourselves to be sure it meets our requirements.
-//
-// NOTE: If adding any debugging / logging into this routine and expect to see
-// it, make sure you delay calling it until after the log file has been opened!
-static void ParseIni(const wchar_t *ini)
+static void ParseIniStream(istream *stream)
 {
 	string aline;
-	wstring wline, section, key, val;
+	wstring wline, section;
 	size_t first, last;
 	IniSectionVector *section_vector = NULL;
 	bool warn_duplicates = true;
 	bool warn_lines_without_equals = true;
 
-	ini_sections.clear();
 
-	ifstream f(ini, ios::in, _SH_DENYNO);
-	if (!f) {
-		LogInfo("  Error opening d3dx.ini\n");
-		return;
-	}
-
-	while (std::getline(f, aline)) {
+	while (std::getline(*stream, aline)) {
 		// Convert to wstring for compatibility with GetPrivateProfile*
 		// APIs. If we assume the d3dx.ini is always ASCII we could
 		// drop this, but that would require us to change a great many
@@ -402,6 +379,72 @@ static void ParseIni(const wchar_t *ini)
 
 		ParseIniKeyValLine(&wline, &section, warn_duplicates,
 				   warn_lines_without_equals, section_vector);
+	}
+}
+
+static void ParseIniExcerpt(const char *excerpt)
+{
+	std::istringstream stream(excerpt);
+
+	ParseIniStream(&stream);
+}
+
+// Parse the ini file into data structures. We used to use the
+// GetPrivateProfile family of Windows API calls to parse the ini file, but
+// they have the disadvantage that they open and parse the whole ini file every
+// time they are called, which can lead to lengthy ini files taking a long time
+// to parse (e.g. Dreamfall Chapters takes around 1 minute 45). By reading the
+// ini file once we can drastically reduce that time.
+//
+// I considered using a third party library to provide this, but eventually
+// decided against it - ini files are relatively simple and easy to parse
+// ourselves, and we don't strictly adhere to the ini spec since we allow for
+// repeated keys and lines without equals signs, and the order of lines is
+// important in some sections. We could rely on the Windows APIs to provide
+// these guarantees because Microsoft is highly unlikely to change their
+// behaviour, but the same cannot be said of a third party library. Therefore,
+// let's just do it ourselves to be sure it meets our requirements.
+//
+// NOTE: If adding any debugging / logging into this routine and expect to see
+// it, make sure you delay calling it until after the log file has been opened!
+static void ParseIniFile(const wchar_t *ini)
+{
+	ini_sections.clear();
+
+	ifstream f(ini, ios::in, _SH_DENYNO);
+	if (!f) {
+		LogInfo("  Error opening d3dx.ini\n");
+		return;
+	}
+
+	ParseIniStream(&f);
+}
+
+static void InsertBuiltInIniSections()
+{
+	static const char text[] =
+		"[BuiltInCustomShaderDisableScissorClipping]\n"
+		"scissor_enable = false\n"
+		"rasterizer_state_merge = true\n"
+		"draw = from_caller\n"
+		"handling = skip\n"
+
+		"[BuiltInCustomShaderEnableScissorClipping]\n"
+		"scissor_enable = true\n"
+		"rasterizer_state_merge = true\n"
+		"draw = from_caller\n"
+		"handling = skip\n"
+	;
+
+	ParseIniExcerpt(text);
+}
+
+static bool IniHasKey(const wchar_t *section, const wchar_t *key)
+{
+	try {
+		return !!ini_sections.at(section).kv_map.count(key);
+	} catch (std::out_of_range) {
+		return false;
 	}
 }
 
@@ -763,6 +806,288 @@ static void ParsePresetOverrideSections()
 	}
 }
 
+static char* type_to_format(float type)
+{
+	return "%f%n";
+}
+
+static char* type_to_format(unsigned int type)
+{
+	return "%u%n";
+}
+
+static char* type_to_format(signed int type)
+{
+	return "%i%n";
+}
+
+static char* type_to_format(unsigned short type)
+{
+	return "%hu%n";
+}
+
+static char* type_to_format(signed short type)
+{
+	return "%hi%n";
+}
+
+static char* type_to_format(unsigned char type)
+{
+	return "%hhu%n";
+}
+
+static char* type_to_format(signed char type)
+{
+	return "%hhi%n";
+}
+
+template <typename T>
+static std::vector<T> string_to_typed_array(std::istringstream *tokens)
+{
+	std::string token;
+	std::vector<T> list;
+	T val = 0;
+	int ret, len;
+	unsigned uval;
+
+	while (std::getline(*tokens, token, ' ')) {
+		ret = sscanf_s(token.c_str(), "0x%x%n", &uval, &len);
+		if (ret != 0 && ret != EOF && len == token.length()) {
+			// Reinterpret the 32bit unsigned integer as whatever
+			// type we are supposed to be returning.
+			// Classic endian bug: This conversion only works in
+			// little-endian when converting to a smaller type
+			list.push_back(*(T*)&uval);
+			continue;
+		}
+
+		ret = sscanf_s(token.c_str(), type_to_format(val), &val, &len);
+		if (ret != 0 && ret != EOF && len == token.length()) {
+			list.push_back(val);
+			continue;
+		}
+
+		IniWarning("  WARNING: Parse error: %s\n", token.c_str());
+	}
+
+	return list;
+}
+
+template <typename T>
+static void ConstructInitialData(CustomResource *custom_resource, std::istringstream *tokens)
+{
+	std::vector<T> vals;
+
+	vals = string_to_typed_array<T>(tokens);
+
+	// We use malloc() here because the custom resource may realloc() the
+	// buffer to the correct size when substantiating:
+	custom_resource->initial_data_size = sizeof(T) * vals.size();
+	custom_resource->initial_data = malloc(custom_resource->initial_data_size);
+	if (!custom_resource->initial_data) {
+		IniWarning("  ERROR allocating initial data\n");
+		return;
+	}
+
+	memcpy(custom_resource->initial_data, vals.data(), custom_resource->initial_data_size);
+}
+
+
+static void ConstructInitialDataNorm(CustomResource *custom_resource, std::istringstream *tokens, int bytes, bool snorm)
+{
+	std::vector<float> vals;
+	union {
+		void *union_buf;
+		unsigned short *unorm16_buf;
+		signed short *snorm16_buf;
+		unsigned char *unorm8_buf;
+		signed char *snorm8_buf;
+	};
+	unsigned i;
+	float val;
+
+	vals = string_to_typed_array<float>(tokens);
+
+	// We use malloc() here because the custom resource may realloc() the
+	// buffer to the correct size when substantiating:
+	custom_resource->initial_data_size = bytes * vals.size();
+	custom_resource->initial_data = malloc(custom_resource->initial_data_size);
+	if (!custom_resource->initial_data) {
+		IniWarning("  ERROR allocating initial data\n");
+		return;
+	}
+
+	union_buf = custom_resource->initial_data;
+
+	for (i = 0; i < vals.size(); i++) {
+		val = vals[i];
+
+		if (isnan(val)) {
+			IniWarning("  WARNING: Special value unsupported as normalized integer: %f\n", val);
+			val = 0;
+		} else if (snorm) {
+			if (val < -1.0 || val > 1.0)
+				IniWarning("  WARNING: Value out of [-1, +1] range: %f\n", val);
+			val = max(min(val, 1.0f), -1.0f);
+		} else {
+			if (val < 0.0 || val > 1.0)
+				IniWarning("  WARNING: Value out of [0, +1] range: %f\n", val);
+			val = max(min(val, 1.0f), 0.0f);
+		}
+
+		if (bytes == 2) {
+			if (snorm)
+				snorm16_buf[i] = (signed short)(val * 0x7fff);
+			else
+				unorm16_buf[i] = (unsigned short)(val * 0xffff);
+		} else {
+			if (snorm)
+				snorm8_buf[i] = (signed char)(val * 0x7f);
+			else
+				unorm8_buf[i] = (unsigned char)(val * 0xff);
+		}
+	}
+}
+
+static void ParseResourceInitialData(CustomResource *custom_resource, const wchar_t *section)
+{
+	std::string setting, token;
+	int format_size = 0;
+	int format_type = 0;
+	DXGI_FORMAT format;
+
+	if (!GetIniStringAndLog(section, L"data", NULL, &setting))
+		return;
+
+	std::istringstream tokens(setting);
+
+	switch (custom_resource->override_type) {
+		case CustomResourceType::BUFFER:
+		case CustomResourceType::STRUCTURED_BUFFER:
+		case CustomResourceType::RAW_BUFFER:
+			break;
+		default:
+			IniWarning("  WARNING: initial data currently only supported on buffers\n");
+			// TODO: Support Textures as well (remember to fill out row/depth pitch)
+			return;
+	}
+
+	if (!custom_resource->filename.empty()) {
+		IniWarning("  WARNING: initial data and filename cannot be used together\n");
+		return;
+	}
+
+	// The format can be specified inline as the first entry in the data
+	// line, or separately as its own setting. Specifying it inline is
+	// mostly intended for structured buffers, where the resource doesn't
+	// have one format, but we might still want to specify initial data,
+	// and we will need a format for that. Later we might expand this to
+	// allow formats to be specified elsewhere in the data line to switch
+	// parsing formats on the fly for more complex structured buffers.
+	// e.g. data = R32_FLOAT 1 2 3 4
+	std::getline(tokens, token, ' ');
+	format = ParseFormatString(token.c_str(), false);
+	if (format == (DXGI_FORMAT)-1) {
+		format = custom_resource->override_format;
+		tokens.seekg(0);
+	}
+
+	switch (format) {
+	case DXGI_FORMAT_R32G32B32A32_FLOAT:
+	case DXGI_FORMAT_R32G32B32_FLOAT:
+	case DXGI_FORMAT_R32G32_FLOAT:
+	case DXGI_FORMAT_D32_FLOAT:
+	case DXGI_FORMAT_R32_FLOAT:
+		ConstructInitialData<float>(custom_resource, &tokens);
+		break;
+
+	case DXGI_FORMAT_R32G32B32A32_UINT:
+	case DXGI_FORMAT_R32G32B32_UINT:
+	case DXGI_FORMAT_R32G32_UINT:
+	case DXGI_FORMAT_R32_UINT:
+		ConstructInitialData<unsigned int>(custom_resource, &tokens);
+		break;
+
+	case DXGI_FORMAT_R32G32B32A32_SINT:
+	case DXGI_FORMAT_R32G32B32_SINT:
+	case DXGI_FORMAT_R32G32_SINT:
+	case DXGI_FORMAT_R32_SINT:
+		ConstructInitialData<signed int>(custom_resource, &tokens);
+		break;
+
+	// TODO: 16-bit floats:
+	// case DXGI_FORMAT_R16G16B16A16_FLOAT:
+	// case DXGI_FORMAT_R16G16_FLOAT:
+	// case DXGI_FORMAT_R16_FLOAT:
+	// 	break;
+
+	case DXGI_FORMAT_R16G16B16A16_UNORM:
+	case DXGI_FORMAT_R16G16_UNORM:
+	case DXGI_FORMAT_D16_UNORM:
+	case DXGI_FORMAT_R16_UNORM:
+		ConstructInitialDataNorm(custom_resource, &tokens, 2, false);
+		break;
+
+	case DXGI_FORMAT_R16G16B16A16_SNORM:
+	case DXGI_FORMAT_R16G16_SNORM:
+	case DXGI_FORMAT_R16_SNORM:
+		ConstructInitialDataNorm(custom_resource, &tokens, 2, true);
+		break;
+
+	case DXGI_FORMAT_R16G16B16A16_UINT:
+	case DXGI_FORMAT_R16G16_UINT:
+	case DXGI_FORMAT_R16_UINT:
+		ConstructInitialData<unsigned short>(custom_resource, &tokens);
+		break;
+
+	case DXGI_FORMAT_R16G16B16A16_SINT:
+	case DXGI_FORMAT_R16G16_SINT:
+	case DXGI_FORMAT_R16_SINT:
+		ConstructInitialData<signed short>(custom_resource, &tokens);
+		break;
+
+	case DXGI_FORMAT_R8G8B8A8_UNORM:
+	case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+	case DXGI_FORMAT_R8G8_UNORM:
+	case DXGI_FORMAT_R8_UNORM:
+	case DXGI_FORMAT_A8_UNORM:
+	case DXGI_FORMAT_R8G8_B8G8_UNORM:
+	case DXGI_FORMAT_G8R8_G8B8_UNORM:
+	case DXGI_FORMAT_B8G8R8A8_UNORM:
+	case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+	// TODO: Not positive if I want to auto-expand the unused field to 0,
+	// or parse it like the A8 versions. Putting off the decision:
+	//	case DXGI_FORMAT_B8G8R8X8_UNORM:
+	//	case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+		ConstructInitialDataNorm(custom_resource, &tokens, 1, false);
+		break;
+
+	case DXGI_FORMAT_R8G8B8A8_SNORM:
+	case DXGI_FORMAT_R8G8_SNORM:
+	case DXGI_FORMAT_R8_SNORM:
+		ConstructInitialDataNorm(custom_resource, &tokens, 1, true);
+		break;
+
+	case DXGI_FORMAT_R8G8B8A8_UINT:
+	case DXGI_FORMAT_R8G8_UINT:
+	case DXGI_FORMAT_R8_UINT:
+		ConstructInitialData<unsigned char>(custom_resource, &tokens);
+		break;
+
+	case DXGI_FORMAT_R8G8B8A8_SINT:
+	case DXGI_FORMAT_R8G8_SINT:
+	case DXGI_FORMAT_R8_SINT:
+		ConstructInitialData<signed char>(custom_resource, &tokens);
+		break;
+
+	// TODO: case DXGI_FORMAT_R1_UNORM:
+
+	default:
+		IniWarning("  WARNING: unsupported format for specifying initial data\n");
+		return;
+	}
+}
+
 static void ParseResourceSections()
 {
 	IniSections::iterator lower, upper, i;
@@ -816,7 +1141,7 @@ static void ParseResourceSections()
 		}
 
 		if (GetIniString(i->first.c_str(), L"format", 0, setting, MAX_PATH)) {
-			custom_resource->override_format = ParseFormatString(setting);
+			custom_resource->override_format = ParseFormatString(setting, true);
 			if (custom_resource->override_format == (DXGI_FORMAT)-1) {
 				IniWarning("  WARNING: Unknown format \"%S\"\n", setting);
 			} else {
@@ -838,12 +1163,42 @@ static void ParseResourceSections()
 		custom_resource->height_multiply = GetIniFloat(i->first.c_str(), L"height_multiply", 1.0f, NULL);
 
 		if (GetIniStringAndLog(i->first.c_str(), L"bind_flags", 0, setting, MAX_PATH)) {
-			custom_resource->override_bind_flags = parse_enum_option_string<wchar_t *, CustomResourceBindFlags>
+			custom_resource->override_bind_flags = parse_enum_option_string<const wchar_t *, CustomResourceBindFlags, wchar_t*>
 				(CustomResourceBindFlagNames, setting, NULL);
 		}
 
+		ParseResourceInitialData(custom_resource, i->first.c_str());
+
 		// TODO: Overrides for misc flags, etc
 	}
+}
+
+static bool ParseCommandListLine(const wchar_t *ini_section,
+		const wchar_t *lhs, wstring *rhs,
+		CommandList *command_list,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
+{
+	if (ParseCommandListGeneralCommands(ini_section, lhs, rhs, explicit_command_list, pre_command_list, post_command_list))
+		return true;
+
+	if (ParseCommandListIniParamOverride(ini_section, lhs, rhs, command_list))
+		return true;
+
+	if (ParseCommandListResourceCopyDirective(ini_section, lhs, rhs, command_list))
+		return true;
+
+	return false;
+}
+
+static bool ParseCommandListLine(const wchar_t *ini_section,
+		const wchar_t *lhs, const wchar_t *rhs,
+		CommandList *command_list)
+{
+	wstring srhs = wstring(rhs);
+
+	return ParseCommandListLine(ini_section, lhs, &srhs, command_list, command_list, NULL, NULL);
 }
 
 // This tries to parse each line in a section in order as part of a command
@@ -914,19 +1269,12 @@ static void ParseCommandList(const wchar_t *id,
 			}
 		}
 
-		if (ParseCommandListGeneralCommands(id, key_ptr, val, explicit_command_list, pre_command_list, post_command_list))
-			goto log_continue;
-
-		if (ParseCommandListIniParamOverride(id, key_ptr, val, command_list))
-			goto log_continue;
-
-		if (ParseCommandListResourceCopyDirective(id, key_ptr, val, command_list))
-			goto log_continue;
+		if (ParseCommandListLine(id, key_ptr, val, command_list, explicit_command_list, pre_command_list, post_command_list)) {
+			LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
+			continue;
+		}
 
 		IniWarning("  WARNING: Unrecognised entry: %S=%S\n", key->c_str(), val->c_str());
-		continue;
-log_continue:
-		LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
 	}
 }
 
@@ -954,11 +1302,8 @@ static void ParseDriverProfile()
 wchar_t *ShaderOverrideIniKeys[] = {
 	L"hash",
 	L"allow_duplicate_hash",
-	L"separation",
-	L"convergence",
 	L"depth_filter",
 	L"partner",
-	L"iteration",
 	L"analyse_options",
 	L"model",
 	L"disable_scissor",
@@ -972,6 +1317,7 @@ static void ParseShaderOverrideSections()
 	ShaderOverride *override;
 	UINT64 hash;
 	bool duplicate, allow_duplicates, found;
+	bool disable_scissor;
 
 	// Lock entire routine. This can be re-inited live.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
@@ -1019,9 +1365,6 @@ static void ParseShaderOverrideSections()
 
 		override->allow_duplicate_hashes = allow_duplicates;
 
-		override->separation = GetIniFloat(id, L"Separation", override->separation, NULL);
-		override->convergence = GetIniFloat(id, L"Convergence", override->convergence, NULL);
-
 		if (GetIniStringAndLog(id, L"depth_filter", 0, setting, MAX_PATH)) {
 			override->depth_filter = lookup_enum_val<wchar_t *, DepthBufferFilter>
 				(DepthBufferFilterNames, setting, DepthBufferFilter::INVALID);
@@ -1036,18 +1379,6 @@ static void ParseShaderOverrideSections()
 		// partner's [ShaderOverride] section.
 		override->partner_hash = GetIniHash(id, L"partner", 0, NULL);
 
-		if (GetIniStringAndLog(id, L"Iteration", 0, setting, MAX_PATH))
-		{
-			// XXX: This differs from the TextureOverride
-			// iterations, in that there can only be one iteration
-			// here - not sure why.
-			int iteration;
-			override->iterations.clear();
-			override->iterations.push_back(0);
-			swscanf_s(setting, L"%d", &iteration);
-			override->iterations.push_back(iteration);
-		}
-
 		if (GetIniStringAndLog(id, L"analyse_options", 0, setting, MAX_PATH)) {
 			override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
 				(FrameAnalysisOptionNames, setting, NULL);
@@ -1058,9 +1389,17 @@ static void ParseShaderOverrideSections()
 			override->model[ARRAYSIZE(override->model) - 1] = '\0';
 		}
 
-		override->disable_scissor = GetIniInt(id, L"disable_scissor", override->disable_scissor, NULL);
-
 		ParseCommandList(id, &override->command_list, &override->post_command_list, ShaderOverrideIniKeys);
+
+		// For backwards compatibility with Nier Automata fix,
+		// translate disable_scissor into an equivalent command list:
+		disable_scissor = GetIniBool(id, L"disable_scissor", false, &found);
+		if (found) {
+			if (disable_scissor)
+				ParseCommandListLine(id, L"run", L"builtincustomshaderdisablescissorclipping", &override->command_list);
+			else
+				ParseCommandListLine(id, L"run", L"builtincustomshaderenablescissorclipping", &override->command_list);
+		}
 	}
 	LeaveCriticalSection(&G->mCriticalSection);
 }
@@ -1311,6 +1650,29 @@ static void ParseShaderRegexSections()
 	}
 }
 
+// For fuzzy matching instead of using hash. Using terms consistent
+// with [Resource] section. TODO: Consider providing MS naming aliases.
+// If any of these appear in a section that also contains a hash= the parser
+// will issue an error, since hash is always a specific match they cannot be
+// mixed. Macro so this can be included in multiple string lists.
+#define TEXTURE_OVERRIDE_FUZZY_MATCHES \
+	L"match_type", \
+	L"match_priority", \
+	L"match_usage", \
+	L"match_bind_flags", \
+	L"match_cpu_access_flags", \
+	L"match_misc_flags", \
+	L"match_byte_width", \
+	L"match_stride", \
+	L"match_mips", \
+	L"match_format", \
+	L"match_width", \
+	L"match_height", \
+	L"match_depth", \
+	L"match_array", \
+	L"match_msaa", \
+	L"match_msaa_quality"
+
 // List of keys in [TextureOverride] sections that are processed in this
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *TextureOverrideIniKeys[] = {
@@ -1324,12 +1686,345 @@ wchar_t *TextureOverrideIniKeys[] = {
 	L"filter_index",
 	L"expand_region_copy",
 	L"deny_cpu_read",
+	TEXTURE_OVERRIDE_FUZZY_MATCHES,
 	NULL
 };
+// List of keys for fuzzy matching that cannot be used together with hash:
+wchar_t *TextureOverrideFuzzyMatchesIniKeys[] = {
+	TEXTURE_OVERRIDE_FUZZY_MATCHES,
+	NULL
+};
+static void parse_texture_override_common(const wchar_t *id, TextureOverride *override)
+{
+	wchar_t setting[MAX_PATH];
+
+	override->stereoMode = GetIniInt(id, L"StereoMode", -1, NULL);
+	override->format = GetIniInt(id, L"Format", -1, NULL);
+	override->width = GetIniInt(id, L"Width", -1, NULL);
+	override->height = GetIniInt(id, L"Height", -1, NULL);
+
+	if (GetIniString(id, L"Iteration", 0, setting, MAX_PATH))
+	{
+		// TODO: This supports more iterations than the
+		// ShaderOverride iteration parameter, and it's not
+		// clear why there is a difference. This seems like the
+		// better way, but should change it to use my list
+		// parsing code rather than hard coding a maximum of 10
+		// supported iterations.
+		override->iterations.clear();
+		override->iterations.push_back(0);
+		int id[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+		swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", id + 0, id + 1, id + 2, id + 3, id + 4, id + 5, id + 6, id + 7, id + 8, id + 9);
+		for (int j = 0; j < 10; ++j)
+		{
+			if (id[j] <= 0) break;
+			override->iterations.push_back(id[j]);
+			LogInfo("  Iteration=%d\n", id[j]);
+		}
+	}
+
+	if (GetIniStringAndLog(id, L"analyse_options", 0, setting, MAX_PATH)) {
+		override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
+			(FrameAnalysisOptionNames, setting, NULL);
+	}
+
+	override->filter_index = GetIniFloat(id, L"filter_index", 1.0f, NULL);
+
+	override->expand_region_copy = GetIniBool(id, L"expand_region_copy", false, NULL);
+	override->deny_cpu_read = GetIniBool(id, L"deny_cpu_read", false, NULL);
+
+	ParseCommandList(id, &override->command_list, &override->post_command_list, TextureOverrideIniKeys);
+}
+
+static bool texture_override_section_has_fuzzy_match_keys(const wchar_t *section)
+{
+	int i;
+
+	for (i = 0; TextureOverrideFuzzyMatchesIniKeys[i]; i++) {
+		if (IniHasKey(section, TextureOverrideFuzzyMatchesIniKeys[i]))
+			return true;
+	}
+
+	return false;
+}
+
+template <class T>
+static bool parse_masked_flags_field(const wstring setting, unsigned *val, unsigned *mask,
+		struct EnumName_t<const wchar_t *, T> *enum_names)
+{
+	std::vector<std::wstring> tokens;
+	std::wstring token;
+	int ret, len1, len2;
+	unsigned i;
+	bool use_mask = false;
+	bool set;
+	unsigned tmp;
+
+	// Allow empty strings and 0 to indicate it matches 0 / 0xffffffff:
+	if (!setting.size() || !setting.compare(L"0")) {
+		*val = 0;
+		*mask = 0xffffffff;
+		LogInfo("    Using: 0x%08x / 0x%08x\n", *val, *mask);
+		return true;
+	}
+
+	// Try parsing the field as a hex string with an optional mask:
+	ret = swscanf_s(setting.c_str(), L"0x%x%n / 0x%x%n", val, &len1, mask, &len2);
+	if (ret != 0 && ret != EOF && (len1 == setting.length() || len2 == setting.length())) {
+		if (ret == 2)
+			*mask = 0xffffffff;
+		LogInfo("    Using: 0x%08x / 0x%08x\n", *val, *mask);
+		return true;
+	}
+
+	tokens = split_string(&setting, L' ');
+	*val = 0;
+	*mask = 0;
+
+	for (i = 0; i < tokens.size(); i++) {
+		if (tokens[i][0] == L'+') {
+			token = tokens[i].substr(1);
+			use_mask = true;
+			set = true;
+		} else if (tokens[i][0] == L'-') {
+			token = tokens[i].substr(1);
+			use_mask = true;
+			set = false;
+		} else {
+			token = tokens[i];
+			set = true;
+		}
+
+		tmp = (unsigned)lookup_enum_val<const wchar_t*, T>
+			(enum_names, token.c_str(), (T)0);
+
+		if (!tmp) {
+			IniWarning("  WARNING: Invalid flag %S\n", token.c_str());
+			return false;
+		}
+
+		if ((*mask & tmp) == tmp) {
+			IniWarning("  WARNING: Duplicate flag %S\n", token.c_str());
+			return false;
+		}
+
+		*mask |= tmp;
+		if (set)
+			*val |= tmp;
+	}
+
+	if (!use_mask)
+		*mask = 0xffffffff;
+	LogInfo("    Using: 0x%08x / 0x%08x\n", *val, *mask);
+
+	return true;
+}
+
+static void parse_fuzzy_numeric_match_expression_error(const wchar_t *text)
+{
+	IniWarning("  WARNING: Unable to parse expression - must be in the simple form:\n"
+	           "    [ operator ] value | field_name [ * multiplier ] [ / divider ]\n"
+	           "    Parse error on text: \"%S\"\n", text);
+}
+
+static void parse_fuzzy_numeric_match_expression(const wchar_t *setting, FuzzyMatch *matcher)
+{
+	const wchar_t *ptr = setting;
+	int ret, len;
+
+	// For now we're just supporting fairly simple expressions in the form:
+	//
+	//   [ operator ] ( value | ( field_name [ * multiplier ] [ / divider ] ) )
+	//
+	//     operator   =   "=" | "!" | "<" | ">" | "<=" | ">="
+	//     field_name =   "width" | "height" | "depth" | "array" | "res_width" | "res_height"
+	//     value, multiplier and divider are integers.
+	//
+	// That should be enough to match most things we need, including aspect
+	// ratios, downsampled resources, etc. We can add a full expression
+	// parser later if we really want.
+
+	// operator. Make sure to check <= before < because of overlapping prefix:
+	if (!wcsncmp(ptr, L"<=", 2)) {
+		matcher->op = FuzzyMatchOp::LESS_EQUAL;
+		ptr += 2;
+	} else if (!wcsncmp(ptr, L">=", 2)) {
+		matcher->op = FuzzyMatchOp::GREATER_EQUAL;
+		ptr += 2;
+	} else if (!wcsncmp(ptr, L"=", 1)) {
+		matcher->op = FuzzyMatchOp::EQUAL;
+		ptr++;
+	} else if (!wcsncmp(ptr, L"!", 1)) {
+		matcher->op = FuzzyMatchOp::NOT_EQUAL;
+		ptr++;
+	} else if (!wcsncmp(ptr, L"<", 1)) {
+		matcher->op = FuzzyMatchOp::LESS;
+		ptr++;
+	} else if (!wcsncmp(ptr, L">", 1)) {
+		matcher->op = FuzzyMatchOp::GREATER;
+		ptr++;
+	} else {
+		matcher->op = FuzzyMatchOp::EQUAL;
+	}
+
+	// whitespace
+	for (; *ptr == L' '; ptr++);
+
+	// Try parsing remaining string as integer. Has to reach end of string.
+	ret = swscanf_s(ptr, L"%u%n", &matcher->val, &len);
+	if (ret != 0 && ret != EOF && len == wcslen(ptr))
+		return;
+
+	// field_name
+	if (!wcsncmp(ptr, L"width", 5)) {
+		matcher->rhs_type = FuzzyMatchOperandType::WIDTH;
+		ptr += 5;
+	} else if (!wcsncmp(ptr, L"height", 6)) {
+		matcher->rhs_type = FuzzyMatchOperandType::HEIGHT;
+		ptr += 6;
+	} else if (!wcsncmp(ptr, L"depth", 5)) {
+		matcher->rhs_type = FuzzyMatchOperandType::DEPTH;
+		ptr += 5;
+	} else if (!wcsncmp(ptr, L"array", 5)) {
+		matcher->rhs_type = FuzzyMatchOperandType::ARRAY;
+		ptr += 5;
+	} else if (!wcsncmp(ptr, L"res_width", 9)) {
+		matcher->rhs_type = FuzzyMatchOperandType::RES_WIDTH;
+		ptr += 9;
+	} else if (!wcsncmp(ptr, L"res_height", 10)) {
+		matcher->rhs_type = FuzzyMatchOperandType::RES_HEIGHT;
+		ptr += 10;
+	}
+	// Check for bad field name
+	if (*ptr && *ptr != L' ')
+		return parse_fuzzy_numeric_match_expression_error(ptr);
+
+	// whitespace
+	for (; *ptr == L' '; ptr++);
+
+	// numerator
+	if (*ptr == L'*') {
+		ret = swscanf_s(++ptr, L"%u%n", &matcher->numerator, &len);
+		if (ret == 0 || ret == EOF)
+			return parse_fuzzy_numeric_match_expression_error(ptr);
+		ptr += len;
+	}
+
+	// whitespace
+	for (; *ptr == L' '; ptr++);
+
+	// denominator
+	if (*ptr == L'/') {
+		ret = swscanf_s(++ptr, L"%u%n", &matcher->denominator, &len);
+		if (ret == 0 || ret == EOF)
+			return parse_fuzzy_numeric_match_expression_error(ptr);
+		if (matcher->denominator == 0) {
+			matcher->denominator = 1;
+			IniWarning("  WARNING: Denominator is zero: %S\n", ptr);
+			return;
+		}
+		ptr += len;
+	}
+
+	if (*ptr)
+		return parse_fuzzy_numeric_match_expression_error(ptr);
+}
+
+static void parse_texture_override_fuzzy_match(const wchar_t *section)
+{
+	FuzzyMatchResourceDesc *fuzzy;
+	wchar_t setting[MAX_PATH];
+	bool found;
+	int ival;
+
+	fuzzy = new FuzzyMatchResourceDesc(section);
+
+	fuzzy->priority = GetIniInt(section, L"match_priority", 0, NULL);
+
+	ival = GetIniEnum(section, L"match_type",
+			D3D11_RESOURCE_DIMENSION_UNKNOWN, &found,
+			L"D3D11_RESOURCE_DIMENSION_", ResourceDimensions,
+			ARRAYSIZE(ResourceDimensions), 1);
+	fuzzy->set_resource_type((D3D11_RESOURCE_DIMENSION)ival);
+
+	// We always use match_usage=default if it is not explicitly specified,
+	// since forcing the stereo mode doesn't make much sense for other
+	// usage types and forcing immutable resources to mono/stereo is
+	// suspected, though not confirmed of possibly contributing to some
+	// driver crashes, and this shouldn't hurt if that is not the case:
+	// https://forums.geforce.com/default/topic/1029242/3d-vision/mass-effect-andromeda-100-plus-10-3d-vision-ready-fix/post/5279617/#5279617
+	//
+	// If someone needs to match a different usage type they can always
+	// explicitly specify it, or match by hash.
+	ival = GetIniEnum(section, L"match_usage",
+			D3D11_USAGE_DEFAULT, &found, L"D3D11_USAGE_",
+			ResourceUsage, ARRAYSIZE(ResourceUsage), 0);
+	fuzzy->Usage.op = FuzzyMatchOp::EQUAL;
+	fuzzy->Usage.val = ival;
+
+	// Flags
+	if (GetIniStringAndLog(section, L"match_bind_flags", 0, setting, MAX_PATH)) {
+		if (parse_masked_flags_field(setting, &fuzzy->BindFlags.val, &fuzzy->BindFlags.mask, CustomResourceBindFlagNames)) {
+			fuzzy->BindFlags.op = FuzzyMatchOp::EQUAL;
+		}
+	}
+	if (GetIniStringAndLog(section, L"match_cpu_access_flags", 0, setting, MAX_PATH)) {
+		if (parse_masked_flags_field(setting, &fuzzy->CPUAccessFlags.val, &fuzzy->CPUAccessFlags.mask, ResourceCPUAccessFlagNames)) {
+			fuzzy->CPUAccessFlags.op = FuzzyMatchOp::EQUAL;
+		}
+	}
+	if (GetIniStringAndLog(section, L"match_misc_flags", 0, setting, MAX_PATH)) {
+		if (parse_masked_flags_field(setting, &fuzzy->MiscFlags.val, &fuzzy->MiscFlags.mask, ResourceMiscFlagNames)) {
+			fuzzy->MiscFlags.op = FuzzyMatchOp::EQUAL;
+		}
+	}
+
+	// Format string
+	if (GetIniStringAndLog(section, L"match_format", 0, setting, MAX_PATH)) {
+		fuzzy->Format.val = ParseFormatString(setting, true);
+		if (fuzzy->Format.val == (DXGI_FORMAT)-1)
+			IniWarning("  WARNING: Unknown format \"%S\"\n", setting);
+		else
+			fuzzy->Format.op = FuzzyMatchOp::EQUAL;
+	}
+
+	// Simple numeric expressions:
+	if (GetIniStringAndLog(section, L"match_byte_width", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->ByteWidth);
+	if (GetIniStringAndLog(section, L"match_stride", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->StructureByteStride);
+	if (GetIniStringAndLog(section, L"match_mips", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->MipLevels);
+	if (GetIniStringAndLog(section, L"match_width", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->Width);
+	if (GetIniStringAndLog(section, L"match_height", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->Height);
+	if (GetIniStringAndLog(section, L"match_depth", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->Depth);
+	if (GetIniStringAndLog(section, L"match_array", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->ArraySize);
+	if (GetIniStringAndLog(section, L"match_msaa", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->SampleDesc_Count);
+	if (GetIniStringAndLog(section, L"match_msaa_quality", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &fuzzy->SampleDesc_Quality);
+
+	if (!fuzzy->update_types_matched()) {
+		IniWarning("  WARNING: [%S] can never match any resources\n", section);
+		delete fuzzy;
+		return;
+	}
+
+	parse_texture_override_common(section, fuzzy->texture_override);
+
+	if (!G->mFuzzyTextureOverrides.insert(std::shared_ptr<FuzzyMatchResourceDesc>(fuzzy)).second) {
+		IniWarning("BUG: Unexpected error inserting fuzzy texture override\n");
+		DoubleBeepExit();
+	}
+}
+
 static void ParseTextureOverrideSections()
 {
 	IniSections::iterator lower, upper, i;
-	wchar_t setting[MAX_PATH];
 	const wchar_t *id;
 	TextureOverride *override;
 	uint32_t hash;
@@ -1341,63 +2036,37 @@ static void ParseTextureOverrideSections()
 	EnterCriticalSection(&G->mCriticalSection);
 
 	G->mTextureOverrideMap.clear();
+	G->mFuzzyTextureOverrides.clear();
 
 	lower = ini_sections.lower_bound(wstring(L"TextureOverride"));
 	upper = prefix_upper_bound(ini_sections, wstring(L"TextureOverride"));
 
-	for (i = lower; i != upper; i++) 
-	{
+	for (i = lower; i != upper; i++) {
 		id = i->first.c_str();
 
 		LogInfo("[%S]\n", id);
 
 		hash = (uint32_t)GetIniHash(id, L"Hash", 0, &found);
 		if (!found) {
-			IniWarning("  WARNING: [%S] missing Hash=\n", id);
+			if (texture_override_section_has_fuzzy_match_keys(id)) {
+				parse_texture_override_fuzzy_match(id);
+				continue;
+			}
+
+			IniWarning("  WARNING: [%S] missing Hash= or valid match options\n", id);
 			continue;
 		}
 
-		if (G->mTextureOverrideMap.count(hash)) {
+		if (G->mTextureOverrideMap.count(hash))
 			IniWarning("  WARNING: Duplicate TextureOverride hash: %08lx\n", hash);
-		}
+
+		if (texture_override_section_has_fuzzy_match_keys(id))
+			IniWarning("  WARNING: [%S] Cannot use hash= and match options together!\n", id);
+
 		override = &G->mTextureOverrideMap[hash];
+		override->ini_section = id;
 
-		override->stereoMode = GetIniInt(id, L"StereoMode", -1, NULL);
-		override->format = GetIniInt(id, L"Format", -1, NULL);
-		override->width = GetIniInt(id, L"Width", -1, NULL);
-		override->height = GetIniInt(id, L"Height", -1, NULL);
-
-		if (GetIniString(id, L"Iteration", 0, setting, MAX_PATH))
-		{
-			// TODO: This supports more iterations than the
-			// ShaderOverride iteration parameter, and it's not
-			// clear why there is a difference. This seems like the
-			// better way, but should change it to use my list
-			// parsing code rather than hard coding a maximum of 10
-			// supported iterations.
-			override->iterations.clear();
-			override->iterations.push_back(0);
-			int id[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-			swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", id + 0, id + 1, id + 2, id + 3, id + 4, id + 5, id + 6, id + 7, id + 8, id + 9);
-			for (int j = 0; j < 10; ++j)
-			{
-				if (id[j] <= 0) break;
-				override->iterations.push_back(id[j]);
-				LogInfo("  Iteration=%d\n", id[j]);
-			}
-		}
-
-		if (GetIniStringAndLog(id, L"analyse_options", 0, setting, MAX_PATH)) {
-			override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
-				(FrameAnalysisOptionNames, setting, NULL);
-		}
-
-		override->filter_index = GetIniFloat(id, L"filter_index", 1.0f, NULL);
-
-		override->expand_region_copy = GetIniBool(id, L"expand_region_copy", false, NULL);
-		override->deny_cpu_read = GetIniBool(id, L"deny_cpu_read", false, NULL);
-
-		ParseCommandList(id, &override->command_list, &override->post_command_list, TextureOverrideIniKeys);
+		parse_texture_override_common(id, override);
 	}
 	LeaveCriticalSection(&G->mCriticalSection);
 }
@@ -2020,15 +2689,11 @@ wchar_t *CustomShaderIniKeys[] = {
 				// For now due to the lack of sampler as a custom resource only filtering is added no further parameter are implemented
 	NULL
 };
-static void EnumerateCustomShaderSections()
+static void _EnumerateCustomShaderSections(IniSections::iterator lower, IniSections::iterator upper)
 {
-	IniSections::iterator lower, upper, i;
+	IniSections::iterator i;
 	wstring shader_id;
 
-	customShaders.clear();
-
-	lower = ini_sections.lower_bound(wstring(L"CustomShader"));
-	upper = prefix_upper_bound(ini_sections, wstring(L"CustomShader"));
 	for (i = lower; i != upper; i++) {
 		// Convert section name to lower case so our keys will be
 		// consistent in the unordered_map:
@@ -2038,6 +2703,20 @@ static void EnumerateCustomShaderSections()
 		// Construct a custom shader in the global list:
 		customShaders[shader_id];
 	}
+}
+static void EnumerateCustomShaderSections()
+{
+	IniSections::iterator lower, upper;
+
+	customShaders.clear();
+
+	lower = ini_sections.lower_bound(wstring(L"BuiltInCustomShader"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"BuiltInCustomShader"));
+	_EnumerateCustomShaderSections(lower, upper);
+
+	lower = ini_sections.lower_bound(wstring(L"CustomShader"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"CustomShader"));
+	_EnumerateCustomShaderSections(lower, upper);
 }
 static void ParseCustomShaderSections()
 {
@@ -2095,15 +2774,11 @@ static void ParseCustomShaderSections()
 // "Explicit" means that this parses command lists sections that are
 // *explicitly* called [CommandList*], as opposed to other sections that are
 // implicitly command lists (such as ShaderOverride, Present, etc).
-static void EnumerateExplicitCommandListSections()
+static void _EnumerateExplicitCommandListSections(IniSections::iterator lower, IniSections::iterator upper)
 {
-	IniSections::iterator lower, upper, i;
+	IniSections::iterator i;
 	wstring section_id;
 
-	explicitCommandListSections.clear();
-
-	lower = ini_sections.lower_bound(wstring(L"CommandList"));
-	upper = prefix_upper_bound(ini_sections, wstring(L"CommandList"));
 	for (i = lower; i != upper; i++) {
 		// Convert section name to lower case so our keys will be
 		// consistent in the unordered_map:
@@ -2113,6 +2788,20 @@ static void EnumerateExplicitCommandListSections()
 		// Construct an explicit command list section in the global list:
 		explicitCommandListSections[section_id];
 	}
+}
+static void EnumerateExplicitCommandListSections()
+{
+	IniSections::iterator lower, upper;
+
+	explicitCommandListSections.clear();
+
+	lower = ini_sections.lower_bound(wstring(L"BuiltInCommandList"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"BuiltInCommandList"));
+	_EnumerateExplicitCommandListSections(lower, upper);
+
+	lower = ini_sections.lower_bound(wstring(L"CommandList"));
+	upper = prefix_upper_bound(ini_sections, wstring(L"CommandList"));
+	_EnumerateExplicitCommandListSections(lower, upper);
 }
 
 static void ParseExplicitCommandListSections()
@@ -2226,7 +2915,8 @@ void LoadConfigFile()
 	LogInfo("  calls=1\n");
 
 	ArmIniWarningTones();
-	ParseIni(iniFile);
+	ParseIniFile(iniFile);
+	InsertBuiltInIniSections();
 
 	G->gLogInput = GetIniBool(L"Logging", L"input", false, NULL);
 	gLogDebug = GetIniBool(L"Logging", L"debug", false, NULL);
@@ -2596,7 +3286,7 @@ void LoadProfileManagerConfig(const wchar_t *exe_path)
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
 
-	ParseIni(iniFile);
+	ParseIniFile(iniFile);
 
 	gLogDebug = GetIniBool(L"Logging", L"debug", false, NULL);
 

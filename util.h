@@ -201,10 +201,10 @@ static T1 lookup_enum_name(struct EnumName_t<T1, T2> *enum_names, T2 val)
 // argument, provide a pointer to a pointer in the 'unrecognised' field and the
 // unrecognised option will be returned. Multiple unrecognised options are
 // still considered errors.
-template <class T1, class T2>
-static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T1 option_string, T1 *unrecognised)
+template <class T1, class T2, class T3>
+static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T3 option_string, T1 *unrecognised)
 {
-	T1 ptr = option_string, cur;
+	T3 ptr = option_string, cur;
 	T2 ret = T2::INVALID;
 	T2 tmp = T2::INVALID;
 
@@ -240,6 +240,18 @@ static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T1 opt
 		ret |= tmp;
 	}
 	return ret;
+}
+
+// Two template argument version is the typical case for now. We probably want
+// to start adding the 'const' modifier in a bunch of places as we work towards
+// migrating to C++ strings, since .c_str() always returns a const string.
+// Since the parse_enum_option_string currently modified one of its inputs, it
+// cannot use const, so the three argument template version above is to allow
+// both const and non-const types passed in.
+template <class T1, class T2>
+static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T1 option_string, T1 *unrecognised)
+{
+	return parse_enum_option_string<T1, T2, T1>(enum_names, option_string, unrecognised);
 }
 
 // http://msdn.microsoft.com/en-us/library/windows/desktop/bb173059(v=vs.85).aspx
@@ -369,32 +381,41 @@ static char *TexFormatStr(unsigned int format)
 	return "UNKNOWN";
 }
 
-static DXGI_FORMAT ParseFormatString(const wchar_t *wfmt)
+static DXGI_FORMAT ParseFormatString(const char *fmt, bool allow_numeric_format)
 {
 	size_t num_formats = sizeof(DXGIFormats) / sizeof(DXGIFormats[0]);
-	char afmt[30];
 	unsigned format;
 	int nargs, end;
 
-	// Try parsing format string as decimal:
-	nargs = swscanf_s(wfmt, L"%u%n", &format, &end);
-	if (nargs == 1 && end == wcslen(wfmt))
-		return (DXGI_FORMAT)format;
+	if (allow_numeric_format) {
+		// Try parsing format string as decimal:
+		nargs = sscanf_s(fmt, "%u%n", &format, &end);
+		if (nargs == 1 && end == strlen(fmt))
+			return (DXGI_FORMAT)format;
+	}
 
-	if (!_wcsnicmp(wfmt, L"DXGI_FORMAT_", 12))
-		wfmt += 12;
+	if (!_strnicmp(fmt, "DXGI_FORMAT_", 12))
+		fmt += 12;
 
 	// Look up format string:
-	wcstombs(afmt, wfmt, 30);
-	afmt[29] = '\0';
 	for (format = 0; format < num_formats; format++) {
-		if (!_strnicmp(afmt, DXGIFormats[format], 30))
+		if (!_strnicmp(fmt, DXGIFormats[format], 30))
 			return (DXGI_FORMAT)format;
 	}
 
 	// UNKNOWN/0 is a valid format (e.g. for structured buffers), so return
 	// -1 cast to a DXGI_FORMAT to signify an error:
 	return (DXGI_FORMAT)-1;
+}
+
+static DXGI_FORMAT ParseFormatString(const wchar_t *wfmt, bool allow_numeric_format)
+{
+	char afmt[42];
+
+	wcstombs(afmt, wfmt, 42);
+	afmt[41] = '\0';
+
+	return ParseFormatString(afmt, allow_numeric_format);
 }
 
 // From DirectXTK with extra formats added
@@ -530,6 +551,14 @@ static UINT dxgi_format_size(DXGI_FORMAT format)
 // DEFINE_GUID(IID_IDXGIFactory,0x7b7166ec,0x21c7,0x44ae,0xb2,0x1a,0xc9,0xae,0x32,0x1a,0xe3,0x69);
 // 
 
+// For the time being, since we are not setup to use the Win10 SDK, we'll add
+// these manually. Some games under Win10 are requesting these.
+
+struct _declspec(uuid("9d06dffa-d1e5-4d07-83a8-1bb123f2f841")) ID3D11Device2;
+struct _declspec(uuid("420d5b32-b90c-4da4-bef0-359f6a24a83a")) ID3D11DeviceContext2;
+struct _declspec(uuid("A8BE2AC4-199F-4946-B331-79599FB98DE7")) IDXGISwapChain2;
+struct _declspec(uuid("94D99BDB-F1F8-4AB0-B236-7DA0170EDAB1")) IDXGISwapChain3;
+
 static std::string NameFromIID(IID id)
 {
 	// Adding every MIDL_INTERFACE from d3d11_1.h to make this reporting complete.
@@ -551,15 +580,15 @@ static std::string NameFromIID(IID id)
 		return "ID3D11Device";
 	if (__uuidof(ID3D11Device1) == id)
 		return "ID3D11Device1";
-	//if (__uuidof(ID3D11Device2) == id)  for d3d11_2.h when the time comes
-	//	return "ID3D11Device2";
+	if (__uuidof(ID3D11Device2) == id)  // d3d11_2.h when the time comes
+		return "ID3D11Device2";
 
 	if (__uuidof(ID3D11DeviceContext) == id)
 		return "ID3D11DeviceContext";
 	if (__uuidof(ID3D11DeviceContext1) == id)
 		return "ID3D11DeviceContext1";
-	//if (__uuidof(ID3D11DeviceContext2) == id) for d3d11_2.h when the time comes
-	//	return "ID3D11DeviceContext2";
+	if (__uuidof(ID3D11DeviceContext2) == id) // d3d11_2.h when the time comes
+		return "ID3D11DeviceContext2";
 
 	if (__uuidof(ID3D11InfoQueue) == id)
 		return "ID3D11InfoQueue";
@@ -603,6 +632,10 @@ static std::string NameFromIID(IID id)
 		return "IDXGISwapChain";
 	if (__uuidof(IDXGISwapChain1) == id)
 		return "IDXGISwapChain1";
+	if (__uuidof(IDXGISwapChain2) == id)		// dxgi1_3 A8BE2AC4-199F-4946-B331-79599FB98DE7
+		return "IDXGISwapChain2";
+	if (__uuidof(IDXGISwapChain3) == id)		// dxgi1_4 94D99BDB-F1F8-4AB0-B236-7DA0170EDAB1
+		return "IDXGISwapChain3";
 
 	if (__uuidof(IDXGIAdapter) == id)
 		return "IDXGIAdapter";

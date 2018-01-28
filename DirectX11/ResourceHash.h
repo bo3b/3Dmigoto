@@ -5,10 +5,15 @@
 #include <tuple>
 #include <map>
 #include <set>
+#include <vector>
+#include <memory>
+
+#include "util.h"
 
 // Tracks info about specific resource instances:
 struct ResourceHandleInfo
 {
+	D3D11_RESOURCE_DIMENSION type;
 	uint32_t hash;
 	uint32_t orig_hash;	// Original hash at the time of creation
 	uint32_t data_hash;	// Just the data hash for track_texture_updates
@@ -27,6 +32,7 @@ struct ResourceHandleInfo
 	};
 
 	ResourceHandleInfo() :
+		type(D3D11_RESOURCE_DIMENSION_UNKNOWN),
 		hash(0),
 		orig_hash(0),
 		data_hash(0)
@@ -92,6 +98,8 @@ struct ResourceHashInfo
 {
 	D3D11_RESOURCE_DIMENSION type;
 	union {
+		D3D11_BUFFER_DESC buf_desc;
+		D3D11_TEXTURE1D_DESC tex1d_desc;
 		D3D11_TEXTURE2D_DESC tex2d_desc;
 		D3D11_TEXTURE3D_DESC tex3d_desc;
 	};
@@ -109,6 +117,20 @@ struct ResourceHashInfo
 		hash_contaminated(false)
 	{}
 
+	struct ResourceHashInfo & operator= (D3D11_BUFFER_DESC desc)
+	{
+		type = D3D11_RESOURCE_DIMENSION_BUFFER;
+		buf_desc = desc;
+		return *this;
+	}
+
+	struct ResourceHashInfo & operator= (D3D11_TEXTURE1D_DESC desc)
+	{
+		type = D3D11_RESOURCE_DIMENSION_TEXTURE1D;
+		tex1d_desc = desc;
+		return *this;
+	}
+
 	struct ResourceHashInfo & operator= (D3D11_TEXTURE2D_DESC desc)
 	{
 		type = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
@@ -124,13 +146,14 @@ struct ResourceHashInfo
 	}
 };
 
-
 uint32_t CalcTexture2DDescHash(uint32_t initial_hash, const D3D11_TEXTURE2D_DESC *const_desc);
 uint32_t CalcTexture3DDescHash(uint32_t initial_hash, const D3D11_TEXTURE3D_DESC *const_desc);
 
+uint32_t CalcTexture1DDataHash(const D3D11_TEXTURE1D_DESC *pDesc, const D3D11_SUBRESOURCE_DATA *pInitialData);
 uint32_t CalcTexture2DDataHash(const D3D11_TEXTURE2D_DESC *pDesc, const D3D11_SUBRESOURCE_DATA *pInitialData);
 uint32_t CalcTexture3DDataHash(const D3D11_TEXTURE3D_DESC *pDesc, const D3D11_SUBRESOURCE_DATA *pInitialData);
 
+ResourceHandleInfo* GetResourceHandleInfo(ID3D11Resource *resource);
 uint32_t GetOrigResourceHash(ID3D11Resource *resource);
 uint32_t GetResourceHash(ID3D11Resource *resource);
 
@@ -166,3 +189,190 @@ static void LogDebugViewDesc(DescType *desc)
 	if (gLogDebug)
 		LogViewDesc(desc);
 }
+
+
+// -----------------------------------------------------------------------------------------------
+//                       Fuzzy Texture Override Matching Support
+// -----------------------------------------------------------------------------------------------
+
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476202(v=vs.85).aspx
+static wchar_t *ResourceDimensions[] = {
+	L"UNKNOWN",
+	L"BUFFER",
+	L"TEXTURE1D",
+	L"TEXTURE2D",
+	L"TEXTURE3D",
+};
+
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476259(v=vs.85).aspx
+static wchar_t *ResourceUsage[] = {
+	L"DEFAULT",
+	L"IMMUTABLE",
+	L"DYNAMIC",
+	L"STAGING"
+};
+static wchar_t *TexResourceUsage(UINT usage)
+{
+	if (usage < sizeof(ResourceUsage) / sizeof(ResourceUsage[0]))
+		return ResourceUsage[usage];
+	return L"UNKNOWN";
+}
+
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476106(v=vs.85).aspx
+enum class ResourceCPUAccessFlags {
+	INVALID = 0,
+	WRITE   = 0x00010000,
+	READ    = 0x00020000,
+};
+static EnumName_t<const wchar_t *, ResourceCPUAccessFlags> ResourceCPUAccessFlagNames[] = {
+	{L"write", ResourceCPUAccessFlags::WRITE},
+	{L"read", ResourceCPUAccessFlags::READ},
+	{NULL, ResourceCPUAccessFlags::INVALID} // End of list marker
+};
+
+enum class ResourceMiscFlags {
+	INVALID                          = 0,
+	GENERATE_MIPS                    = 0x00000001,
+	SHARED                           = 0x00000002,
+	TEXTURECUBE                      = 0x00000004,
+	DRAWINDIRECT_ARGS                = 0x00000010,
+	BUFFER_ALLOW_RAW_VIEWS           = 0x00000020,
+	BUFFER_STRUCTURED                = 0x00000040,
+	RESOURCE_CLAMP                   = 0x00000080,
+	SHARED_KEYEDMUTEX                = 0x00000100,
+	GDI_COMPATIBLE                   = 0x00000200,
+	SHARED_NTHANDLE                  = 0x00000800,
+	RESTRICTED_CONTENT               = 0x00001000,
+	RESTRICT_SHARED_RESOURCE         = 0x00002000,
+	RESTRICT_SHARED_RESOURCE_DRIVER  = 0x00004000,
+	GUARDED                          = 0x00008000,
+	TILE_POOL                        = 0x00020000,
+	TILED                            = 0x00040000,
+	HW_PROTECTED                     = 0x00080000,
+};
+static EnumName_t<const wchar_t *, ResourceMiscFlags> ResourceMiscFlagNames[] = {
+	{L"generate_mips", ResourceMiscFlags::GENERATE_MIPS},
+	{L"shared", ResourceMiscFlags::SHARED},
+	{L"texturecube", ResourceMiscFlags::TEXTURECUBE},
+	{L"drawindirect_args", ResourceMiscFlags::DRAWINDIRECT_ARGS},
+	{L"buffer_allow_raw_views", ResourceMiscFlags::BUFFER_ALLOW_RAW_VIEWS},
+	{L"buffer_structured", ResourceMiscFlags::BUFFER_STRUCTURED},
+	{L"resource_clamp", ResourceMiscFlags::RESOURCE_CLAMP},
+	{L"shared_keyedmutex", ResourceMiscFlags::SHARED_KEYEDMUTEX},
+	{L"gdi_compatible", ResourceMiscFlags::GDI_COMPATIBLE},
+	{L"shared_nthandle", ResourceMiscFlags::SHARED_NTHANDLE},
+	{L"restricted_content", ResourceMiscFlags::RESTRICTED_CONTENT},
+	{L"restrict_shared_resource", ResourceMiscFlags::RESTRICT_SHARED_RESOURCE},
+	{L"restrict_shared_resource_driver", ResourceMiscFlags::RESTRICT_SHARED_RESOURCE_DRIVER},
+	{L"guarded", ResourceMiscFlags::GUARDED},
+	{L"tile_pool", ResourceMiscFlags::TILE_POOL},
+	{L"tiled", ResourceMiscFlags::TILED},
+	{L"hw_protected", ResourceMiscFlags::HW_PROTECTED},
+	{NULL, ResourceMiscFlags::INVALID} // End of list marker
+};
+
+enum class FuzzyMatchOp {
+	ALWAYS,
+	EQUAL,
+	LESS,
+	LESS_EQUAL,
+	GREATER,
+	GREATER_EQUAL,
+	NOT_EQUAL,
+};
+
+enum class FuzzyMatchOperandType {
+	VALUE,
+	WIDTH,      // Width, Height & Depth useful for checking
+	HEIGHT,     // for square/cube/rectangular textures.
+	DEPTH,
+	ARRAY,      // Probably not useful, but similar to depth
+	RES_WIDTH,  // Useful for detecting full screen buffers
+	RES_HEIGHT, // including arbitrary multiples of the resolution
+};
+
+class FuzzyMatch {
+public:
+	FuzzyMatchOp op;
+	FuzzyMatchOperandType rhs_type;
+
+	// TODO: Support more operand types, such as texture/resolution
+	// width/height. Maybe for advanced usage even allow an operand to be
+	// an ini param so it can be changed on the fly (might be useful for
+	// MEA to replace the mid-game profile switch, but I'd be surprised if
+	// there isn't a better way to achieve that).
+	UINT val;
+	UINT mask;
+	UINT numerator;
+	UINT denominator;
+
+	FuzzyMatch();
+	template <typename DescType>
+	bool matches(UINT lhs, const DescType *desc) const;
+};
+
+// Forward declaration to resolve circular dependency. One of these days we
+// really need to start splitting everything out of globals and making an
+// effort to reduce our cyclic dependencies. Downside of this is it
+// necessitates using a pointer for the textureoverride contained in the below
+// struct since the definition needs to be known to statically contain one, but
+// we'll hold off until post 1.3 since the FrameAnalysisOptions needs to go in
+// FrameAnalysis.h to make that work, and that is an area that diverged from 1.2:
+struct TextureOverride;
+
+class FuzzyMatchResourceDesc {
+private:
+	template <typename DescType>
+	bool check_common_resource_fields(const DescType *desc) const;
+	template <typename DescType>
+	bool check_common_texture_fields(const DescType *desc) const;
+public:
+	struct TextureOverride *texture_override;
+
+	int priority;
+
+	bool matches_buffer;
+	bool matches_tex1d;
+	bool matches_tex2d;
+	bool matches_tex3d;
+
+	// TODO: Consider making this a vector we iterate over so we only
+	// process tests specified in this texture override
+	FuzzyMatch Usage;               // Common
+	FuzzyMatch BindFlags;           // Common
+	FuzzyMatch CPUAccessFlags;      // Common
+	FuzzyMatch MiscFlags;           // Common
+	FuzzyMatch ByteWidth;           // Buffer+StructuredBuffer
+	FuzzyMatch StructureByteStride; //        StructuredBuffer XXX: I think I may have seen this later set to 0 if it was initially set on a regular buffer?
+	FuzzyMatch MipLevels;           // 1D+2D+3D XXX: Need to check what happens for resources created with mips=0 and mips generated later
+	FuzzyMatch Format;              // 1D+2D+3D
+	FuzzyMatch Width;               // 1D+2D+3D
+	FuzzyMatch Height;              //    2D+3D
+	FuzzyMatch Depth;               //       3D
+	FuzzyMatch ArraySize;           // 1D+2D
+	FuzzyMatch SampleDesc_Count;    //    2D
+	FuzzyMatch SampleDesc_Quality;  //    2D    XXX Can anything change here if count=1?
+
+	FuzzyMatchResourceDesc(std::wstring section);
+	~FuzzyMatchResourceDesc();
+	bool matches(const D3D11_BUFFER_DESC *desc) const;
+	bool matches(const D3D11_TEXTURE1D_DESC *desc) const;
+	bool matches(const D3D11_TEXTURE2D_DESC *desc) const;
+	bool matches(const D3D11_TEXTURE3D_DESC *desc) const;
+
+	void set_resource_type(D3D11_RESOURCE_DIMENSION type);
+	bool update_types_matched();
+};
+struct FuzzyMatchResourceDescLess {
+	bool operator() (const std::shared_ptr<FuzzyMatchResourceDesc> &lhs, const std::shared_ptr<FuzzyMatchResourceDesc> &rhs) const;
+};
+// This set is sorted because multiple fuzzy texture overrides may match a
+// given resource, but we want to make sure we always process them in the same
+// order for consistent results.
+typedef std::set<std::shared_ptr<FuzzyMatchResourceDesc>, FuzzyMatchResourceDescLess> FuzzyTextureOverrides;
+
+typedef std::vector<TextureOverride*> TextureOverrideMatches;
+
+template <typename DescType>
+void find_texture_overrides(uint32_t hash, const DescType *desc, TextureOverrideMatches *matches);
+void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverrideMatches *matches);

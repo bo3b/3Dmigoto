@@ -638,7 +638,8 @@ static vector<string> strToWords(string s) {
 	}
 	for (size_t i = 0; i < words.size(); i++) {
 		string s2 = words[i];
-		if (s2[s2.size() - 1] == ',')
+		// Fixed access before start of array -DarkStarSword
+		if (!s2.empty() && s2[s2.size() - 1] == ',')
 			s2.erase(--s2.end());
 		words[i] = s2;
 	}
@@ -2027,7 +2028,10 @@ vector<string> stringToLines(const char* start, size_t size) {
 	}
 	for (unsigned int i = 0; i < lines.size(); i++) {
 		string s = lines[i];
-		if (s.size() > 1 && s[s.size() - 1] == '\r')
+		// Bug fixed: This would not strip carriage returns from DOS
+		// style newlines if they were the only character on the line,
+		// corrupting the resulting shader binary. -DarkStarSword
+		if (s.size() >= 1 && s[s.size() - 1] == '\r')
 			s.erase(--s.end());
 		lines[i] = s;
 	}

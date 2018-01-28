@@ -233,13 +233,77 @@ STDMETHODIMP_(ULONG) HackerUnknown::Release(THIS)
 	return ulRef;
 }
 
+// In the game Elex, we see them call do the unusual SwapChain->QueryInterface(SwapChain).  
+// We need to return This when that happens, because otherwise they disconnect us and
+// we never get calls to Present.  Rather than do just this one-off, let's always 
+// return This for any time this might happen, as we've seen it happen in HackerContext
+// too, for Mafia 3.  So any future instances cannot leak.
+//
+// From: https://msdn.microsoft.com/en-us/library/windows/desktop/ms682521(v=vs.85).aspx
+// And: https://blogs.msdn.microsoft.com/oldnewthing/20040326-00/?p=40033
+//
+//  For any one object, a specific query for the IUnknown interface on any of the object's 
+//	interfaces must always return the same pointer value. This enables a client to determine 
+//	whether two pointers point to the same component by calling QueryInterface with 
+//	IID_IUnknown and comparing the results. 
+//	It is specifically not the case that queries for interfaces other than IUnknown (even 
+//	the same interface through the same pointer) must return the same pointer value.
+
 STDMETHODIMP HackerUnknown::QueryInterface(THIS_
 	/* [in] */ REFIID riid,
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-	LogDebug("HackerUnknown::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
+	LogInfo("HackerUnknown::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
+
 	HRESULT hr = mOrigUnknown->QueryInterface(riid, ppvObject);
-	LogDebug("  returns result = %x for %p\n", hr, ppvObject);
+	if (FAILED(hr) || !*ppvObject)
+	{
+		LogInfo("  failed result = %x for %p\n", hr, ppvObject);
+		return hr;
+	}
+
+	// For TheDivision, only upon Win10, it will request these.  Even though the object
+	// we would return is the exact same pointer in memory, it still calls into the object
+	// with a vtable entry that does not match what they expected. Somehow they decide
+	// they are on Win10, and know these APIs ought to exist.  Does not crash on Win7.
+	//
+	// Returning an E_NOINTERFACE here seems to work, but this does call into question our 
+	// entire wrapping strategy.  If the object we've wrapped is a superclass of the
+	// object they desire, the vtable is not going to match.
+
+	if (riid == __uuidof(IDXGISwapChain2))
+	{
+		LogInfo("***  returns E_NOINTERFACE as error for IDXGISwapChain2.\n");
+		*ppvObject = NULL;
+		return E_NOINTERFACE;
+	}
+	if (riid == __uuidof(IDXGISwapChain3))
+	{
+		LogInfo("***  returns E_NOINTERFACE as error for IDXGISwapChain3.\n");
+		*ppvObject = NULL;
+		return E_NOINTERFACE;
+	}
+
+	IUnknown* unk_this;
+	HRESULT hr_this = mOrigUnknown->QueryInterface(__uuidof(IUnknown), (void**)&unk_this);
+
+	IUnknown* unk_ppvObject;
+	HRESULT hr_ppvObject = static_cast<IUnknown*>(*ppvObject)->QueryInterface(__uuidof(IUnknown), (void**)&unk_ppvObject);
+
+	if (SUCCEEDED(hr_this) && SUCCEEDED(hr_ppvObject))
+	{
+		// For an actual case of this->QueryInterface(this), just return our Hacker object.
+		if (unk_this == unk_ppvObject)
+			*ppvObject = this;
+	
+		unk_this->Release();
+		unk_ppvObject->Release();
+
+		LogInfo("  return HackerUnknown(%s@%p) wrapper of %p\n", type_name(this), this, mOrigUnknown);
+		return hr;
+	}
+
+	LogInfo("  returns result = %x for %p\n", hr, ppvObject);
 	return hr;
 }
 
@@ -682,6 +746,54 @@ STDMETHODIMP HackerDXGIFactory::GetWindowAssociation(THIS_
 	return hr;
 }
 
+static void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc, BOOL Windowed)
+{
+	// Historically we have only forced the refresh rate when full-screen.
+	// Not positive if it would hurt to do otherwise, but for now assuming
+	// we might have had a good reason and keeping that behaviour. See also
+	// the note in ResizeTarget().
+	if (G->SCREEN_REFRESH >= 0 && !Windowed)
+	{
+		// FIXME: This may disable flipping (and use blitting instead)
+		// if the forced numerator and denominator does not exactly
+		// match a mode enumerated on the output. e.g. We would force
+		// 60Hz as 60/1, but the display might actually use 60000/1001
+		// for 60Hz and we would lose flipping and degrade performance.
+		BufferDesc->RefreshRate.Numerator = G->SCREEN_REFRESH;
+		BufferDesc->RefreshRate.Denominator = 1;
+		LogInfo("->Forcing refresh rate to = %f\n",
+			(float)BufferDesc->RefreshRate.Numerator / (float)BufferDesc->RefreshRate.Denominator);
+	}
+	if (G->SCREEN_WIDTH >= 0)
+	{
+		BufferDesc->Width = G->SCREEN_WIDTH;
+		LogInfo("->Forcing Width to = %d\n", BufferDesc->Width);
+	}
+	if (G->SCREEN_HEIGHT >= 0)
+	{
+		BufferDesc->Height = G->SCREEN_HEIGHT;
+		LogInfo("->Forcing Height to = %d\n", BufferDesc->Height);
+	}
+
+	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
+	// swapchain to be 2x its normal width.
+	//
+	// I don't particularly like that we've lumped this in with direct mode
+	// - direct mode does *not* require a 2x width back buffer - it has two
+	// completely separate back buffers, switched via nvapi. This is a hack
+	// for one specific tool that has yet to see the light of day, and
+	// ideally this would have been done in that tool, not here. For
+	// quickly getting up and running, I don't see why the ordinary
+	// resolution overrides would not have been sufficient, or adding a
+	// multiplier to those if necessary.
+	//   - DarkStarSword
+	if (G->gForceStereo == 2)
+	{
+		BufferDesc->Width *= 2;
+		LogInfo("->Direct Mode: Forcing Width to = %d\n", BufferDesc->Width);
+	}
+}
+
 // This tweaks the parameters passed to the real CreateSwapChain, to change behavior.
 // These global parameters come originally from the d3dx.ini, so the user can
 // change them.
@@ -717,31 +829,7 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 		InstallSetWindowPosHook();
 	}
 
-	if (G->SCREEN_REFRESH >= 0 && !pDesc->Windowed)
-	{
-		pDesc->BufferDesc.RefreshRate.Numerator = G->SCREEN_REFRESH;
-		pDesc->BufferDesc.RefreshRate.Denominator = 1;
-		LogInfo("->Forcing refresh rate to = %f\n",
-			(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
-	}
-	if (G->SCREEN_WIDTH >= 0)
-	{
-		pDesc->BufferDesc.Width = G->SCREEN_WIDTH;
-		LogInfo("->Forcing Width to = %d\n", pDesc->BufferDesc.Width);
-	}
-	if (G->SCREEN_HEIGHT >= 0)
-	{
-		pDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
-		LogInfo("->Forcing Height to = %d\n", pDesc->BufferDesc.Height);
-	}
-
-	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
-	// swapchain to be 2x its normal width.  
-	if (G->gForceStereo == 2)
-	{
-		pDesc->BufferDesc.Width *= 2;
-		LogInfo("->Direct Mode: Forcing Width to = %d\n", pDesc->BufferDesc.Width);
-	}
+	ForceDisplayMode(&pDesc->BufferDesc, pDesc->Windowed);
 }
 
 
@@ -2073,16 +2161,31 @@ STDMETHODIMP HackerDXGISwapChain::ResizeTarget(THIS_
             /* [annotation][in] */ 
             _In_  const DXGI_MODE_DESC *pNewTargetParameters)
 {
+	BOOL fullscreen;
+	IDXGIOutput *target = NULL;
+	DXGI_MODE_DESC new_desc;
+
 	LogInfo("HackerDXGISwapChain::ResizeTarget(%s@%p) called\n", type_name(this), this);
 
-	// In Direct Mode, we need to ensure that we are keeping our 2x width target.
-	if ((G->gForceStereo == 2) && (pNewTargetParameters->Width == G->mResolutionInfo.width))
-	{
-		const_cast<DXGI_MODE_DESC*>(pNewTargetParameters)->Width *= 2;
-		LogInfo("-> forced 2x width for Direct Mode: %d\n", pNewTargetParameters->Width);
-	}
-	
-	HRESULT hr = mOrigSwapChain->ResizeTarget(pNewTargetParameters);
+	// We will only force the refresh rate if we are currently in
+	// full-screen. I don't have a particularly good reason for doing this
+	// other than that's how ForceDisplayParams() has always worked and
+	// maybe there was a reason for doing so? Then again maybe not? One
+	// problem with this approach is that ResizeTarget and
+	// SetFullscreenState can be called in any order, so if ResizeTarget is
+	// called first while the game is still windowed we won't force the
+	// refresh rate at all. For now this is enough to get the refresh rate
+	// override working in UE4 (SetFullscreenState then ResizeTarget), and
+	// we can revisit this later with a game that does the opposite to work
+	// out the best way to handle it.
+	mOrigSwapChain->GetFullscreenState(&fullscreen, &target);
+	if (target)
+		target->Release();
+
+	memcpy(&new_desc, pNewTargetParameters, sizeof(DXGI_MODE_DESC));
+	ForceDisplayMode(&new_desc, !fullscreen);
+
+	HRESULT hr = mOrigSwapChain->ResizeTarget(&new_desc);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }
@@ -2137,6 +2240,7 @@ STDMETHODIMP HackerDXGISwapChain::GetLastPresentCount(THIS_
 	return hr;
 }
 
+
 // -----------------------------------------------------------------------------
 
 // HackerUpscalingDXGISwapChain, to provide post-process upscaling to arbitrary
@@ -2177,7 +2281,7 @@ void HackerUpscalingDXGISwapChain::CreateRenderTarget(const DXGI_SWAP_CHAIN_DESC
 			fake_buffer_desc.Height = FakeSwapChainDesc->BufferDesc.Height;
 			fake_buffer_desc.CPUAccessFlags = 0;
 
-			hr = mHackerDevice->CreateTexture2D(&fake_buffer_desc, nullptr, &mFakeBackBuffer);
+			hr = mHackerDevice->GetPassThroughOrigDevice()->CreateTexture2D(&fake_buffer_desc, nullptr, &mFakeBackBuffer);
 		}
 		break;
 	case 1:
@@ -2217,12 +2321,17 @@ STDMETHODIMP HackerUpscalingDXGISwapChain::GetBuffer(THIS_
 	HRESULT hr = S_OK;
 
 	// if upscaling is on give the game fake back buffer
-	if (mFakeBackBuffer)
-		*ppSurface = mFakeBackBuffer;
-	else if (mFakeSwapChain)
+	if (mFakeBackBuffer) {
+		// Use QueryInterface on mFakeBackBuffer, which validates that
+		// the requested interface is supported, that ppSurface is not
+		// NULL, and bumps the refcount if successful:
+		hr = mFakeBackBuffer->QueryInterface(riid, ppSurface);
+	} else if (mFakeSwapChain) {
 		hr = mFakeSwapChain->GetBuffer(Buffer, riid, ppSurface);
-	else
-		assert(hr); // should never be triggered (class hierarchy)
+	} else {
+		LogInfo("BUG: HackerUpscalingDXGISwapChain::GetBuffer(): Missing upscaling object\n");
+		DoubleBeepExit();
+	}
 
 	LogDebug("  returns %x\n", hr);
 	return hr;
@@ -2360,7 +2469,7 @@ STDMETHODIMP HackerUpscalingDXGISwapChain::ResizeBuffers(THIS_
 			fd.Height = Height;
 			fd.Format = NewFormat;
 			// just recreate texture with new width and height
-			hr = mHackerDevice->CreateTexture2D(&fd, nullptr, &mFakeBackBuffer);
+			hr = mHackerDevice->GetPassThroughOrigDevice()->CreateTexture2D(&fd, nullptr, &mFakeBackBuffer);
 		}
 		else  // nothing to resize
 			hr = S_OK;
@@ -2372,7 +2481,8 @@ STDMETHODIMP HackerUpscalingDXGISwapChain::ResizeBuffers(THIS_
 	}
 	else
 	{
-		assert(false); // should never be triggered (class hierarchy)
+		LogInfo("BUG: HackerUpscalingDXGISwapChain::ResizeBuffers(): Missing upscaling object\n");
+		DoubleBeepExit();
 	}
 
 	if (SUCCEEDED(hr))

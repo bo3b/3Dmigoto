@@ -53,16 +53,16 @@ void Override::ParseIniSection(LPCWSTR section)
 
 	for (i = 0; i < INI_PARAMS_SIZE; i++) {
 		StringCchPrintf(param_name, 8, L"x%.0i", i);
-		mOverrideParams[i].x = GetIniFloat(section, param_name, 0, NULL);
+		mOverrideParams[i].x = GetIniFloat(section, param_name, FLT_MAX, NULL);
 
 		StringCchPrintf(param_name, 8, L"y%.0i", i);
-		mOverrideParams[i].y = GetIniFloat(section, param_name, 0, NULL);
+		mOverrideParams[i].y = GetIniFloat(section, param_name, FLT_MAX, NULL);
 
 		StringCchPrintf(param_name, 8, L"z%.0i", i);
-		mOverrideParams[i].z = GetIniFloat(section, param_name, 0, NULL);
+		mOverrideParams[i].z = GetIniFloat(section, param_name, FLT_MAX, NULL);
 
 		StringCchPrintf(param_name, 8, L"w%.0i", i);
-		mOverrideParams[i].w = GetIniFloat(section, param_name, 0, NULL);
+		mOverrideParams[i].w = GetIniFloat(section, param_name, FLT_MAX, NULL);
 	}
 
 	transition = GetIniInt(section, L"transition", 0, NULL);

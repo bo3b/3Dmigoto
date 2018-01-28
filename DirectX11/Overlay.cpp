@@ -64,7 +64,7 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapC
 	// to draw the text, and we don't want to intercept those.
 	mFont.reset(new DirectX::SpriteFont(pDevice->GetOrigDevice(), fontBlob, fontSize));
 	mFont->SetDefaultCharacter(L'?');
-	mSpriteBatch.reset(new DirectX::SpriteBatch(pContext->GetOrigContext()));
+	mSpriteBatch.reset(new DirectX::SpriteBatch(pContext->GetPassThroughOrigContext()));
 }
 
 Overlay::~Overlay()
@@ -102,7 +102,7 @@ void Overlay::SaveState()
 {
 	memset(&state, 0, sizeof(state));
 
-	ID3D11DeviceContext *context = mHackerContext->GetOrigContext();
+	ID3D11DeviceContext *context = mHackerContext->GetPassThroughOrigContext();
 
 	context->OMGetRenderTargets(1, &state.pRenderTargetView, &state.pDepthStencilView);
 	state.RSNumViewPorts = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
@@ -125,7 +125,7 @@ void Overlay::SaveState()
 void Overlay::RestoreState()
 {
 	unsigned i;
-	ID3D11DeviceContext *context = mHackerContext->GetOrigContext();
+	ID3D11DeviceContext *context = mHackerContext->GetPassThroughOrigContext();
 
 	context->OMSetRenderTargets(1, &state.pRenderTargetView, state.pDepthStencilView);
 	if (state.pRenderTargetView)
@@ -210,11 +210,19 @@ HRESULT Overlay::InitDrawState()
 		return hr;
 
 	// set the first render target as the back buffer, with no stencil
-	mHackerContext->GetOrigContext()->OMSetRenderTargets(1, &backbuffer, NULL);
+	mHackerContext->GetPassThroughOrigContext()->OMSetRenderTargets(1, &backbuffer, NULL);
+
+	// Holding onto a view of the back buffer can cause a crash on
+	// ResizeBuffers, so it is very important we release it here - it will
+	// still have a reference so long as it is bound to the pipeline -
+	// i.e. until RestoreState() unbinds it. Holding onto this view caused
+	// a crash in Mass Effect Andromeda when toggling full screen if the
+	// hunting overlay had ever been displayed since launch.
+	backbuffer->Release();
 
 	// Make sure there is at least one open viewport for DirectXTK to use.
 	D3D11_VIEWPORT openView = CD3D11_VIEWPORT(0.0, 0.0, float(mResolution.x), float(mResolution.y));
-	mHackerContext->GetOrigContext()->RSSetViewports(1, &openView);
+	mHackerContext->GetPassThroughOrigContext()->RSSetViewports(1, &openView);
 
 	return S_OK;
 }
@@ -258,6 +266,10 @@ static void CreateShaderCountString(wchar_t *counts)
 	AppendShaderText(counts, L"GS", G->mSelectedGeometryShaderPos, G->mVisitedGeometryShaders.size());
 	AppendShaderText(counts, L"DS", G->mSelectedDomainShaderPos, G->mVisitedDomainShaders.size());
 	AppendShaderText(counts, L"HS", G->mSelectedHullShaderPos, G->mVisitedHullShaders.size());
+	if (G->mSelectedIndexBuffer != -1)
+		AppendShaderText(counts, L"IB", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
+	if (G->mSelectedRenderTarget != (ID3D11Resource *)-1)
+		AppendShaderText(counts, L"RT", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
 }
 
 
@@ -271,8 +283,21 @@ static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 	{
 		if ((loaded.second.hash == selectedShader) && !loaded.second.infoText.empty())
 		{
+			// We now use wcsncat_s instead of wcscat_s here,
+			// because the later will terminate us if the resulting
+			// string would overflow the destination buffer (or
+			// fail with EINVAL if we change the parameter
+			// validation so it doesn't terminate us). wcsncat_s
+			// has a _TRUNCATE option that tells it to fill up as
+			// much of the buffer as possible without overflowing
+			// and will still NULL terminate the resulting string,
+			// which will work fine for this case since that will
+			// be more than we can fit on the screen anyway.
+			// wcsncat would also work, but its count field is
+			// silly (maxstring-strlen(info)-1) and VS complains.
+			//
 			// Skip past first two characters, which will always be //
-			wcscat_s(info, maxstring, loaded.second.infoText.c_str() + 2);
+			wcsncat_s(info, maxstring, loaded.second.infoText.c_str() + 2, _TRUNCATE);
 			return true;
 		}
 	}
@@ -286,23 +311,30 @@ static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 // example, we'll show one line for each, but only those that are present
 // in ShaderFixes and have something other than a blank line at the top.
 
-void Overlay::DrawShaderInfoLine(char type, UINT64 selectedShader, int *y)
+void Overlay::DrawShaderInfoLine(char *type, UINT64 selectedShader, int *y, bool shader)
 {
 	wchar_t osdString[maxstring];
 	Vector2 strSize;
 	Vector2 textPosition;
 	float x = 0;
 
-	if (selectedShader == -1)
-		return;
+	if (shader) {
+		if (selectedShader == -1)
+			return;
 
-	if (G->verbose_overlay)
-		swprintf_s(osdString, maxstring, L"%cS %016llx:", type, selectedShader);
-	else
-		swprintf_s(osdString, maxstring, L"%cS:", type);
+		if (G->verbose_overlay)
+			swprintf_s(osdString, maxstring, L"%S %016llx:", type, selectedShader);
+		else
+			swprintf_s(osdString, maxstring, L"%S:", type);
 
-	if (!FindInfoText(osdString, selectedShader) && !G->verbose_overlay)
-		return;
+		if (!FindInfoText(osdString, selectedShader) && !G->verbose_overlay)
+			return;
+	} else {
+		if (selectedShader == 0xffffffff || !G->verbose_overlay)
+			return;
+
+		swprintf_s(osdString, maxstring, L"%S %08llx", type, selectedShader);
+	}
 
 	strSize = mFont->MeasureString(osdString);
 
@@ -323,12 +355,16 @@ void Overlay::DrawShaderInfoLines()
 	// purposes). Since these only show up while hunting, it is better to
 	// have them reflect the actual order that they are run in. The summary
 	// line can stay in order of importance since it is always shown.
-	DrawShaderInfoLine('V', G->mSelectedVertexShader, &y);
-	DrawShaderInfoLine('H', G->mSelectedHullShader, &y);
-	DrawShaderInfoLine('D', G->mSelectedDomainShader, &y);
-	DrawShaderInfoLine('G', G->mSelectedGeometryShader, &y);
-	DrawShaderInfoLine('P', G->mSelectedPixelShader, &y);
-	DrawShaderInfoLine('C', G->mSelectedComputeShader, &y);
+	DrawShaderInfoLine("IB", G->mSelectedIndexBuffer, &y, false);
+	DrawShaderInfoLine("VS", G->mSelectedVertexShader, &y, true);
+	DrawShaderInfoLine("HS", G->mSelectedHullShader, &y, true);
+	DrawShaderInfoLine("DS", G->mSelectedDomainShader, &y, true);
+	DrawShaderInfoLine("GS", G->mSelectedGeometryShader, &y, true);
+	DrawShaderInfoLine("PS", G->mSelectedPixelShader, &y, true);
+	DrawShaderInfoLine("CS", G->mSelectedComputeShader, &y, true);
+	// FIXME? This one is stored as a handle, not a hash:
+	if (G->mSelectedRenderTarget != (ID3D11Resource *)-1)
+		DrawShaderInfoLine("RT", GetOrigResourceHash(G->mSelectedRenderTarget), &y, false);
 }
 
 

@@ -7,30 +7,23 @@
 #include "ResourceHash.h"
 #include "DrawCallInfo.h"
 
-extern GUID GUID_RasterizerStateDisableScissor;
-
 struct DrawContext
 {
-	bool override;
 	float oldSeparation;
-	float oldConvergence;
 	ID3D11PixelShader *oldPixelShader;
 	ID3D11VertexShader *oldVertexShader;
-	ID3D11RasterizerState *oldRasterizerState;
-	int disable_scissor;
 	CommandList *post_commands[5];
 	DrawCallInfo call_info;
 
 	DrawContext(UINT VertexCount, UINT IndexCount, UINT InstanceCount,
-			UINT FirstVertex, UINT FirstIndex, UINT FirstInstance) :
-		override(false),
+			UINT FirstVertex, UINT FirstIndex, UINT FirstInstance,
+			ID3D11Buffer *indirect_buffer, UINT args_offset,
+			bool DrawInstancedIndirect) :
 		oldSeparation(FLT_MAX),
-		oldConvergence(FLT_MAX),
 		oldVertexShader(NULL),
 		oldPixelShader(NULL),
-		oldRasterizerState(NULL),
-		disable_scissor(-1),
-		call_info(VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance)
+		call_info(VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance,
+				indirect_buffer, args_offset, DrawInstancedIndirect)
 	{
 		memset(post_commands, 0, sizeof(post_commands));
 	}
@@ -95,6 +88,8 @@ private:
 	ID3D11HullShader *mCurrentHullShaderHandle;
 	std::vector<ID3D11Resource *> mCurrentRenderTargets;
 	ID3D11Resource *mCurrentDepthTarget;
+	UINT mCurrentPSUAVStartSlot;
+	UINT mCurrentPSNumUAVs;
 	FrameAnalysisOptions analyse_options;
 	FILE *frame_analysis_log;
 
@@ -125,15 +120,20 @@ private:
 		UINT Subresource, D3D11_MAP MapType, UINT MapFlags,
 		D3D11_MAPPED_SUBRESOURCE *pMappedResource);
 	void TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresource);
-	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader,
-		DrawContext *data,float *separationValue, float *convergenceValue);
+	void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader, DrawContext *data);
 	ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
 	ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
-	void ProcessScissorRects(DrawContext &data);
 	void RecordDepthStencil(ID3D11DepthStencilView *target);
-	void RecordShaderResourceUsage();
+	template <void (__stdcall ID3D11DeviceContext::*GetShaderResources)(THIS_
+		UINT StartSlot,
+		UINT NumViews,
+		ID3D11ShaderResourceView **ppShaderResourceViews)>
+	void RecordShaderResourceUsage(ShaderInfoData *shader_info);
+	void RecordGraphicsShaderStats();
+	void RecordComputeShaderStats();
+	void RecordPeerShaders(std::set<UINT64> *PeerShaders, UINT64 this_shader_hash);
 	void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);
-	ID3D11Resource* RecordResourceViewStats(ID3D11ShaderResourceView *view);
+	ID3D11Resource* RecordResourceViewStats(ID3D11View *view, std::set<uint32_t> *resource_info);
 
 	// Functions for the frame analysis. Would be good to split this out,
 	// but it's pretty tightly coupled to the context at the moment:
@@ -195,9 +195,6 @@ private:
 		/* [annotation] */
 		__in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
 		UINT NumClassInstances,
-		std::unordered_map<ID3D11Shader *, UINT64> *shaders,
-		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *originalShaders,
-		std::unordered_map<ID3D11Shader *, ID3D11Shader *> *zeroShaders,
 		std::set<UINT64> *visitedShaders,
 		UINT64 selectedShader,
 		UINT64 *currentShaderHash,
@@ -207,6 +204,11 @@ private:
 			UINT NumViews,
 			ID3D11ShaderResourceView *const *ppShaderResourceViews)>
 	void BindStereoResources();
+	template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
+			UINT StartSlot,
+			UINT NumViews,
+			ID3D11ShaderResourceView *const *ppShaderResourceViews)>
+	void SetShaderResources(UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
 protected:
 	// Protected to allow HackerContext1 access, but not external
@@ -223,7 +225,9 @@ public:
 	HackerContext(ID3D11Device *pDevice, ID3D11DeviceContext *pContext);
 
 	void SetHackerDevice(HackerDevice *pDevice);
+	void Bind3DMigotoResources();
 	ID3D11DeviceContext* GetOrigContext();
+	ID3D11DeviceContext* GetPassThroughOrigContext();
 	void HookContext();
 
 	// public to allow CommandList access
