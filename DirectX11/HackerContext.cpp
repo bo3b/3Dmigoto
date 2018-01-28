@@ -2057,7 +2057,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 		// lookup/find takes measurable amounts of CPU time.
 		//
 		// grumble grumble this optimisation caught me out *TWICE* grumble grumble -DSS
-		if (!G->mShaderOverrideMap.empty() || !G->shader_regex_groups.empty() || (G->hunting == HUNTING_MODE_ENABLED)) {
+		if (!G->mShaderOverrideMap.empty() || !shader_regex_groups.empty() || (G->hunting == HUNTING_MODE_ENABLED)) {
 			ShaderMap::iterator i = G->mShaders.find(pShader);
 			if (i != G->mShaders.end()) {
 				*currentShaderHash = i->second;
