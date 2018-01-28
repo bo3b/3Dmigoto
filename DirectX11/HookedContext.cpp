@@ -2202,7 +2202,7 @@ static HRESULT STDMETHODCALLTYPE FinishCommandList(ID3D11DeviceContext1 *This,
 	return orig_vtable.FinishCommandList(This, RestoreDeferredContextState, ppCommandList);
 }
 
-static void install_hooks(ID3D11DeviceContext1 *context, EnableHooks enable_hooks)
+static void install_hooks(ID3D11DeviceContext1 *context)
 {
 	SIZE_T hook_id;
 
@@ -2226,21 +2226,9 @@ static void install_hooks(ID3D11DeviceContext1 *context, EnableHooks enable_hook
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetPrivateData,                            context->lpVtbl->SetPrivateData,                            SetPrivateData);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetPrivateDataInterface,                   context->lpVtbl->SetPrivateDataInterface,                   SetPrivateDataInterface);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.VSSetConstantBuffers,                      context->lpVtbl->VSSetConstantBuffers,                      VSSetConstantBuffers);
-
-	if (!(enable_hooks & EnableHooks::EXCEPT_SET_SHADER_RESOURCES)) {
-		// hooking PSSetShaderResources has caused crashes in MGSV:TPP when called with NumViews=0, that we have yet to explain
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.PSSetShaderResources,                      context->lpVtbl->PSSetShaderResources,                      PSSetShaderResources);
-	}
-
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.PSSetShaderResources,                      context->lpVtbl->PSSetShaderResources,                      PSSetShaderResources);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.PSSetShader,                               context->lpVtbl->PSSetShader,                               PSSetShader);
-
-	if (!(enable_hooks & EnableHooks::EXCEPT_SET_SAMPLERS)) {
-		// Crashes MGSVGZ on Win10. This call was also implicated in
-		// Witcher 3 found to be executing instructions off in la-la
-		// land with a nonsense stack
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.PSSetSamplers,                             context->lpVtbl->PSSetSamplers,                             PSSetSamplers);
-	}
-
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.PSSetSamplers,                             context->lpVtbl->PSSetSamplers,                             PSSetSamplers);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.VSSetShader,                               context->lpVtbl->VSSetShader,                               VSSetShader);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.DrawIndexed,                               context->lpVtbl->DrawIndexed,                               DrawIndexed);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.Draw,                                      context->lpVtbl->Draw,                                      Draw);
@@ -2255,35 +2243,14 @@ static void install_hooks(ID3D11DeviceContext1 *context, EnableHooks enable_hook
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.GSSetConstantBuffers,                      context->lpVtbl->GSSetConstantBuffers,                      GSSetConstantBuffers);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.GSSetShader,                               context->lpVtbl->GSSetShader,                               GSSetShader);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.IASetPrimitiveTopology,                    context->lpVtbl->IASetPrimitiveTopology,                    IASetPrimitiveTopology);
-
-	if (!(enable_hooks & EnableHooks::EXCEPT_SET_SHADER_RESOURCES)) {
-		// hooking VSSetShaderResources has caused crashes in MGSV:TPP when called with NumViews=0, that we have yet to explain
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.VSSetShaderResources,                      context->lpVtbl->VSSetShaderResources,                      VSSetShaderResources);
-	}
-
-	if (!(enable_hooks & EnableHooks::EXCEPT_SET_SAMPLERS)) {
-		// Crashes MGSVGZ on Win10. This call was also implicated in
-		// Witcher 3 found to be executing instructions off in la-la
-		// land with a nonsense stack
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.VSSetSamplers,                             context->lpVtbl->VSSetSamplers,                             VSSetSamplers);
-	}
-
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.VSSetShaderResources,                      context->lpVtbl->VSSetShaderResources,                      VSSetShaderResources);
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.VSSetSamplers,                             context->lpVtbl->VSSetSamplers,                             VSSetSamplers);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.Begin,                                     context->lpVtbl->Begin,                                     Begin);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.End,                                       context->lpVtbl->End,                                       End);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.GetData,                                   context->lpVtbl->GetData,                                   GetData);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetPredication,                            context->lpVtbl->SetPredication,                            SetPredication);
-
-	if (!(enable_hooks & EnableHooks::EXCEPT_SET_SHADER_RESOURCES)) {
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.GSSetShaderResources,                      context->lpVtbl->GSSetShaderResources,                      GSSetShaderResources);
-	}
-
-	if (!(enable_hooks & EnableHooks::EXCEPT_SET_SAMPLERS)) {
-		// Crashes MGSVGZ on Win10. This call was also implicated in
-		// Witcher 3 found to be executing instructions off in la-la
-		// land with a nonsense stack
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.GSSetSamplers,                             context->lpVtbl->GSSetSamplers,                             GSSetSamplers);
-	}
-
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.GSSetShaderResources,                      context->lpVtbl->GSSetShaderResources,                      GSSetShaderResources);
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.GSSetSamplers,                             context->lpVtbl->GSSetSamplers,                             GSSetSamplers);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.OMSetRenderTargets,                        context->lpVtbl->OMSetRenderTargets,                        OMSetRenderTargets);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.OMSetRenderTargetsAndUnorderedAccessViews, context->lpVtbl->OMSetRenderTargetsAndUnorderedAccessViews, OMSetRenderTargetsAndUnorderedAccessViews);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.OMSetBlendState,                           context->lpVtbl->OMSetBlendState,                           OMSetBlendState);
@@ -2294,11 +2261,7 @@ static void install_hooks(ID3D11DeviceContext1 *context, EnableHooks enable_hook
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.DrawInstancedIndirect,                     context->lpVtbl->DrawInstancedIndirect,                     DrawInstancedIndirect);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.Dispatch,                                  context->lpVtbl->Dispatch,                                  Dispatch);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.DispatchIndirect,                          context->lpVtbl->DispatchIndirect,                          DispatchIndirect);
-
-	if (!(enable_hooks & EnableHooks::EXCEPT_SET_RASTERIZER_STATE)) {
-		// Hangs in MGSVGZ on Win7 *WITHOUT* the evil update installed
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.RSSetState,                                context->lpVtbl->RSSetState,                                RSSetState);
-	}
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.RSSetState,                                context->lpVtbl->RSSetState,                                RSSetState);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.RSSetViewports,                            context->lpVtbl->RSSetViewports,                            RSSetViewports);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.RSSetScissorRects,                         context->lpVtbl->RSSetScissorRects,                         RSSetScissorRects);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.CopySubresourceRegion,                     context->lpVtbl->CopySubresourceRegion,                     CopySubresourceRegion);
@@ -2314,51 +2277,18 @@ static void install_hooks(ID3D11DeviceContext1 *context, EnableHooks enable_hook
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.GetResourceMinLOD,                         context->lpVtbl->GetResourceMinLOD,                         GetResourceMinLOD);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.ResolveSubresource,                        context->lpVtbl->ResolveSubresource,                        ResolveSubresource);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.ExecuteCommandList,                        context->lpVtbl->ExecuteCommandList,                        ExecuteCommandList);
-
-	if (!(enable_hooks & EnableHooks::EXCEPT_SET_SHADER_RESOURCES)) {
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.HSSetShaderResources,                      context->lpVtbl->HSSetShaderResources,                      HSSetShaderResources);
-	}
-
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.HSSetShaderResources,                      context->lpVtbl->HSSetShaderResources,                      HSSetShaderResources);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.HSSetShader,                               context->lpVtbl->HSSetShader,                               HSSetShader);
-
-	if (!(enable_hooks & EnableHooks::EXCEPT_SET_SAMPLERS)) {
-		// Crashes MGSVGZ on Win10. This call was also implicated in
-		// Witcher 3 found to be executing instructions off in la-la
-		// land with a nonsense stack
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.HSSetSamplers,                             context->lpVtbl->HSSetSamplers,                             HSSetSamplers);
-	}
-
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.HSSetSamplers,                             context->lpVtbl->HSSetSamplers,                             HSSetSamplers);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.HSSetConstantBuffers,                      context->lpVtbl->HSSetConstantBuffers,                      HSSetConstantBuffers);
-
-	if (!(enable_hooks & EnableHooks::EXCEPT_SET_SHADER_RESOURCES)) {
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.DSSetShaderResources,                      context->lpVtbl->DSSetShaderResources,                      DSSetShaderResources);
-	}
-
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.DSSetShaderResources,                      context->lpVtbl->DSSetShaderResources,                      DSSetShaderResources);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.DSSetShader,                               context->lpVtbl->DSSetShader,                               DSSetShader);
-
-	if (!(enable_hooks & EnableHooks::EXCEPT_SET_SAMPLERS)) {
-		// Crashes MGSVGZ on Win10. This call was also implicated in
-		// Witcher 3 found to be executing instructions off in la-la
-		// land with a nonsense stack
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.DSSetSamplers,                             context->lpVtbl->DSSetSamplers,                             DSSetSamplers);
-	}
-
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.DSSetSamplers,                             context->lpVtbl->DSSetSamplers,                             DSSetSamplers);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.DSSetConstantBuffers,                      context->lpVtbl->DSSetConstantBuffers,                      DSSetConstantBuffers);
-
-	if (!(enable_hooks & EnableHooks::EXCEPT_SET_SHADER_RESOURCES)) {
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.CSSetShaderResources,                      context->lpVtbl->CSSetShaderResources,                      CSSetShaderResources);
-	}
-
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.CSSetShaderResources,                      context->lpVtbl->CSSetShaderResources,                      CSSetShaderResources);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.CSSetUnorderedAccessViews,                 context->lpVtbl->CSSetUnorderedAccessViews,                 CSSetUnorderedAccessViews);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.CSSetShader,                               context->lpVtbl->CSSetShader,                               CSSetShader);
-
-	if (!(enable_hooks & EnableHooks::EXCEPT_SET_SAMPLERS)) {
-		// Crashes MGSVGZ on Win10. This call was also implicated in
-		// Witcher 3 found to be executing instructions off in la-la
-		// land with a nonsense stack
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.CSSetSamplers,                             context->lpVtbl->CSSetSamplers,                             CSSetSamplers);
-	}
-
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.CSSetSamplers,                             context->lpVtbl->CSSetSamplers,                             CSSetSamplers);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.CSSetConstantBuffers,                      context->lpVtbl->CSSetConstantBuffers,                      CSSetConstantBuffers);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.VSGetConstantBuffers,                      context->lpVtbl->VSGetConstantBuffers,                      VSGetConstantBuffers);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.PSGetShaderResources,                      context->lpVtbl->PSGetShaderResources,                      PSGetShaderResources);
@@ -3724,13 +3654,13 @@ static CONST_VTBL struct ID3D11DeviceContext1Vtbl trampoline_vtable = {
 	TrampolineFinishCommandList,
 };
 
-ID3D11DeviceContext1* hook_context(ID3D11DeviceContext1 *orig_context, ID3D11DeviceContext1 *hacker_context, EnableHooks enable_hooks)
+ID3D11DeviceContext1* hook_context(ID3D11DeviceContext1 *orig_context, ID3D11DeviceContext1 *hacker_context)
 {
 	ID3D11DeviceContext1Trampoline *trampoline_context = new ID3D11DeviceContext1Trampoline();
 	trampoline_context->lpVtbl = &trampoline_vtable;
 	trampoline_context->orig_this = orig_context;
 
-	install_hooks(orig_context, enable_hooks);
+	install_hooks(orig_context);
 	EnterCriticalSection(&context_map_lock);
 	context_map[orig_context] = hacker_context;
 	LeaveCriticalSection(&context_map_lock);
