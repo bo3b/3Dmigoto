@@ -640,17 +640,34 @@ STDMETHODIMP HackerSwapChain::ResizeTarget(THIS_
 	/* [annotation][in] */
 	_In_  const DXGI_MODE_DESC *pNewTargetParameters)
 {
+	BOOL fullscreen;
+	IDXGIOutput *target = NULL;
+	DXGI_MODE_DESC new_desc;
+
 	LogInfo("HackerSwapChain::ResizeTarget(%s@%p) called\n", type_name(this), this);
 	LogInfo("  Width: %d, Height: %d\n", pNewTargetParameters->Width, pNewTargetParameters->Height);
+	LogInfo("     Refresh rate = %f\n",
+		(float)pNewTargetParameters->RefreshRate.Numerator / (float)pNewTargetParameters->RefreshRate.Denominator);
 
-	// In Direct Mode, we need to ensure that we are keeping our 2x width target.
-	if ((G->gForceStereo == 2) && (pNewTargetParameters->Width == G->mResolutionInfo.width))
-	{
-		const_cast<DXGI_MODE_DESC*>(pNewTargetParameters)->Width *= 2;
-		LogInfo("-> forced 2x width for Direct Mode: %d\n", pNewTargetParameters->Width);
-	}
+	// We will only force the refresh rate if we are currently in
+	// full-screen. I don't have a particularly good reason for doing this
+	// other than that's how ForceDisplayParams() has always worked and
+	// maybe there was a reason for doing so? Then again maybe not? One
+	// problem with this approach is that ResizeTarget and
+	// SetFullscreenState can be called in any order, so if ResizeTarget is
+	// called first while the game is still windowed we won't force the
+	// refresh rate at all. For now this is enough to get the refresh rate
+	// override working in UE4 (SetFullscreenState then ResizeTarget), and
+	// we can revisit this later with a game that does the opposite to work
+	// out the best way to handle it.
+	mOrigSwapChain->GetFullscreenState(&fullscreen, &target);
+	if (target)
+		target->Release();
 
-	HRESULT hr = mOrigSwapChain1->ResizeTarget(pNewTargetParameters);
+	memcpy(&new_desc, pNewTargetParameters, sizeof(DXGI_MODE_DESC));
+	ForceDisplayMode(&new_desc, !fullscreen);
+
+	HRESULT hr = mOrigSwapChain1->ResizeTarget(&new_desc);
 	LogInfo("  returns result = %x\n", hr);
 	return hr;
 }

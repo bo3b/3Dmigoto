@@ -238,3 +238,5 @@ public:
 		_In_  const DXGI_MODE_DESC *pNewTargetParameters);
 
 };
+
+void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc, BOOL Windowed);

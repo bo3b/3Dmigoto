@@ -48,6 +48,53 @@
 // Deviare.
 
 
+void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc, BOOL Windowed)
+{
+	// Historically we have only forced the refresh rate when full-screen.
+	// Not positive if it would hurt to do otherwise, but for now assuming
+	// we might have had a good reason and keeping that behaviour. See also
+	// the note in ResizeTarget().
+	if (G->SCREEN_REFRESH >= 0 && !Windowed)
+	{
+		// FIXME: This may disable flipping (and use blitting instead)
+		// if the forced numerator and denominator does not exactly
+		// match a mode enumerated on the output. e.g. We would force
+		// 60Hz as 60/1, but the display might actually use 60000/1001
+		// for 60Hz and we would lose flipping and degrade performance.
+		BufferDesc->RefreshRate.Numerator = G->SCREEN_REFRESH;
+		BufferDesc->RefreshRate.Denominator = 1;
+		LogInfo("->Forcing refresh rate to = %f\n",
+			(float)BufferDesc->RefreshRate.Numerator / (float)BufferDesc->RefreshRate.Denominator);
+	}
+	if (G->SCREEN_WIDTH >= 0)
+	{
+		BufferDesc->Width = G->SCREEN_WIDTH;
+		LogInfo("->Forcing Width to = %d\n", BufferDesc->Width);
+	}
+	if (G->SCREEN_HEIGHT >= 0)
+	{
+		BufferDesc->Height = G->SCREEN_HEIGHT;
+		LogInfo("->Forcing Height to = %d\n", BufferDesc->Height);
+	}
+
+	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
+	// swapchain to be 2x its normal width.
+	//
+	// I don't particularly like that we've lumped this in with direct mode
+	// - direct mode does *not* require a 2x width back buffer - it has two
+	// completely separate back buffers, switched via nvapi. This is a hack
+	// for one specific tool that has yet to see the light of day, and
+	// ideally this would have been done in that tool, not here. For
+	// quickly getting up and running, I don't see why the ordinary
+	// resolution overrides would not have been sufficient, or adding a
+	// multiplier to those if necessary.
+	//   - DarkStarSword
+	if (G->gForceStereo == 2)
+	{
+		BufferDesc->Width *= 2;
+		LogInfo("->Direct Mode: Forcing Width to = %d\n", BufferDesc->Width);
+	}
+}
 
 
 // -----------------------------------------------------------------------------
@@ -85,31 +132,7 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 		InstallSetWindowPosHook();
 	}
 
-	if (G->SCREEN_REFRESH >= 0 && !pDesc->Windowed)
-	{
-		pDesc->BufferDesc.RefreshRate.Numerator = G->SCREEN_REFRESH;
-		pDesc->BufferDesc.RefreshRate.Denominator = 1;
-		LogInfo("->Forcing refresh rate to = %f\n",
-			(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
-	}
-	if (G->SCREEN_WIDTH >= 0)
-	{
-		pDesc->BufferDesc.Width = G->SCREEN_WIDTH;
-		LogInfo("->Forcing Width to = %d\n", pDesc->BufferDesc.Width);
-	}
-	if (G->SCREEN_HEIGHT >= 0)
-	{
-		pDesc->BufferDesc.Height = G->SCREEN_HEIGHT;
-		LogInfo("->Forcing Height to = %d\n", pDesc->BufferDesc.Height);
-	}
-
-	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
-	// swapchain to be 2x its normal width.  
-	if (G->gForceStereo == 2)
-	{
-		pDesc->BufferDesc.Width *= 2;
-		LogInfo("->Direct Mode: Forcing Width to = %d\n", pDesc->BufferDesc.Width);
-	}
+	ForceDisplayMode(&pDesc->BufferDesc, pDesc->Windowed);
 }
 
 // Different variant for the CreateSwapChainForHwnd.

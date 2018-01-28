@@ -1947,12 +1947,20 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
 			ARRAYSIZE(ResourceDimensions), 1);
 	fuzzy->set_resource_type((D3D11_RESOURCE_DIMENSION)ival);
 
-	ival = GetIniEnum(section, L"match_usage", 0, &found, L"D3D11_USAGE_",
+	// We always use match_usage=default if it is not explicitly specified,
+	// since forcing the stereo mode doesn't make much sense for other
+	// usage types and forcing immutable resources to mono/stereo is
+	// suspected, though not confirmed of possibly contributing to some
+	// driver crashes, and this shouldn't hurt if that is not the case:
+	// https://forums.geforce.com/default/topic/1029242/3d-vision/mass-effect-andromeda-100-plus-10-3d-vision-ready-fix/post/5279617/#5279617
+	//
+	// If someone needs to match a different usage type they can always
+	// explicitly specify it, or match by hash.
+	ival = GetIniEnum(section, L"match_usage",
+			D3D11_USAGE_DEFAULT, &found, L"D3D11_USAGE_",
 			ResourceUsage, ARRAYSIZE(ResourceUsage), 0);
-	if (found) {
-		fuzzy->Usage.op = FuzzyMatchOp::EQUAL;
-		fuzzy->Usage.val = ival;
-	}
+	fuzzy->Usage.op = FuzzyMatchOp::EQUAL;
+	fuzzy->Usage.val = ival;
 
 	// Flags
 	if (GetIniStringAndLog(section, L"match_bind_flags", 0, setting, MAX_PATH)) {
