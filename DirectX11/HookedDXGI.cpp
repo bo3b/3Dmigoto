@@ -398,7 +398,7 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 
 	ForceDisplayParams(pDesc);
 
-	HRESULT hr = fnOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
+	HRESULT hr = fnOrigCreateSwapChain(This, hackerDevice->GetOrigDevice1(), pDesc, ppSwapChain);
 	if (FAILED(hr))
 	{
 		LogInfo("->Failed result %#x\n\n", hr);
