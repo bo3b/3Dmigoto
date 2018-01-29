@@ -49,6 +49,7 @@ private:
 	ID3D11Device1 *mOrigDevice1;
 	ID3D11Device1 *mRealOrigDevice1;
 	ID3D11DeviceContext1 *mOrigContext1;
+	IUnknown *mUnknown;
 
 	HackerContext *mHackerContext;
 	HackerSwapChain *mHackerSwapChain;
@@ -112,6 +113,7 @@ public:
 	ID3D11Device1* GetPassThroughOrigDevice1();
 	ID3D11DeviceContext1* GetOrigContext1();
 	ID3D11DeviceContext1* GetPassThroughOrigContext1();
+	IUnknown* GetIUnknown();
 	void HookDevice();
 
 
@@ -479,3 +481,4 @@ public:
 		_Out_  void **ppResource); 
 };
 
+HackerDevice* lookup_hacker_device(IUnknown *unknown);
