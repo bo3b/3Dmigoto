@@ -1270,6 +1270,15 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 {
 	LogDebug("HackerDevice::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
 
+	if (ppvObject && IsEqualIID(riid, IID_HackerDevice)) {
+		// This is a special case - only 3DMigoto itself should know
+		// this IID, so this is us checking if it has a HackerDevice.
+		// There's no need to call through to DX for this one.
+		AddRef();
+		*ppvObject = this;
+		return S_OK;
+	}
+
 	HRESULT hr = mOrigDevice1->QueryInterface(riid, ppvObject);
 	if (FAILED(hr))
 	{
