@@ -253,7 +253,13 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	}
 
 	IDXGISwapChain1* origSwapChain = *ppSwapChain;
-	HackerDevice* hackerDevice = reinterpret_cast<HackerDevice*>(pDevice);
+
+	HackerDevice *hackerDevice = lookup_hacker_device(pDevice);
+	if (!hackerDevice)
+	{
+		LogInfo("Fatal: CreateSwapChainForHwnd could not locate HackerDevice for %p\n", pDevice);
+		DoubleBeepExit();
+	}
 	HackerContext* hackerContext = hackerDevice->GetHackerContext();
 
 	HackerSwapChain* hackerSwapChain;
