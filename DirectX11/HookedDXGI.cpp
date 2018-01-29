@@ -245,14 +245,7 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 		pFullscreenDesc = &fullScreenDesc;
 	ForceDisplayParams1(&fullScreenDesc);
 
-	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
-	if (FAILED(hr))
-	{
-		LogInfo("->Failed result %#x\n\n", hr);
-		return hr;
-	}
-
-	IDXGISwapChain1* origSwapChain = *ppSwapChain;
+	// FIXME: Get resolution from swap chain
 
 	HackerDevice *hackerDevice = lookup_hacker_device(pDevice);
 	if (!hackerDevice)
@@ -261,6 +254,15 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 		DoubleBeepExit();
 	}
 	HackerContext* hackerContext = hackerDevice->GetHackerContext();
+
+	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, hackerDevice->GetOrigDevice1(), hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
+	if (FAILED(hr))
+	{
+		LogInfo("->Failed result %#x\n\n", hr);
+		goto out_release;
+	}
+
+	IDXGISwapChain1* origSwapChain = *ppSwapChain;
 
 	HackerSwapChain* hackerSwapChain;
 	hackerSwapChain = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
@@ -272,6 +274,8 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	*ppSwapChain = hackerSwapChain;
 
 	LogInfo("->return result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hr, hackerSwapChain, origSwapChain);
+out_release:
+	hackerDevice->Release();
 	return hr;
 }
 
