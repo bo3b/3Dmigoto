@@ -3,10 +3,15 @@
 #include <unordered_map>
 
 #include <d3d11_1.h>
+#include <INITGUID.h>
 
 #include "nvstereo.h"
 #include "HackerContext.h"
 #include "HackerDXGI.h"
+
+// {83FFD841-A5C9-46F4-8109-BC259558FEF4}
+DEFINE_GUID(IID_HackerDevice,
+0x83ffd841, 0xa5c9, 0x46f4, 0x81, 0x9, 0xbc, 0x25, 0x95, 0x58, 0xfe, 0xf4);
 
 // Forward declaration to allow circular reference between HackerContext and HackerDevice. 
 // We need this to allow each to reference the other as needed.
@@ -44,6 +49,7 @@ private:
 	ID3D11Device1 *mOrigDevice1;
 	ID3D11Device1 *mRealOrigDevice1;
 	ID3D11DeviceContext1 *mOrigContext1;
+	IUnknown *mUnknown;
 
 	HackerContext *mHackerContext;
 	HackerSwapChain *mHackerSwapChain;
@@ -107,6 +113,7 @@ public:
 	ID3D11Device1* GetPassThroughOrigDevice1();
 	ID3D11DeviceContext1* GetOrigContext1();
 	ID3D11DeviceContext1* GetPassThroughOrigContext1();
+	IUnknown* GetIUnknown();
 	void HookDevice();
 
 
@@ -474,3 +481,4 @@ public:
 		_Out_  void **ppResource); 
 };
 
+HackerDevice* lookup_hacker_device(IUnknown *unknown);

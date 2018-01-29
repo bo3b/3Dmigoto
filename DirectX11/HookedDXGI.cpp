@@ -245,16 +245,24 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 		pFullscreenDesc = &fullScreenDesc;
 	ForceDisplayParams1(&fullScreenDesc);
 
-	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
+	// FIXME: Get resolution from swap chain
+
+	HackerDevice *hackerDevice = lookup_hacker_device(pDevice);
+	if (!hackerDevice)
+	{
+		LogInfo("Fatal: CreateSwapChainForHwnd could not locate HackerDevice for %p\n", pDevice);
+		DoubleBeepExit();
+	}
+	HackerContext* hackerContext = hackerDevice->GetHackerContext();
+
+	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, hackerDevice->GetOrigDevice1(), hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
 	if (FAILED(hr))
 	{
 		LogInfo("->Failed result %#x\n\n", hr);
-		return hr;
+		goto out_release;
 	}
 
 	IDXGISwapChain1* origSwapChain = *ppSwapChain;
-	HackerDevice* hackerDevice = reinterpret_cast<HackerDevice*>(pDevice);
-	HackerContext* hackerContext = hackerDevice->GetHackerContext();
 
 	HackerSwapChain* hackerSwapChain;
 	hackerSwapChain = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
@@ -266,6 +274,8 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	*ppSwapChain = hackerSwapChain;
 
 	LogInfo("->return result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hr, hackerSwapChain, origSwapChain);
+out_release:
+	hackerDevice->Release();
 	return hr;
 }
 
@@ -333,16 +343,35 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
 	LogInfo("  Description = %p\n", pDesc);
 
-	// If hooking is enabled, pDevice will be the original DirectX object
-	// with hooks to call into our code. Try looking up the corresponding
-	// HackerDevice and use it if found:
-	HackerDevice *hackerDevice = (HackerDevice*)lookup_hooked_device((ID3D11Device1*)pDevice);
+	// pDevice could be one of several different things:
+	// - It could be a HackerDevice, if the game called CreateSwapChain()
+	//   with the HackerDevice we returned from CreateDevice().
+	// - It could be the original ID3D11Device if we have hooking enabled,
+	//   as this has hooks to call into our code instead of being wrapped.
+	// - It could be an IDXGIDevice if the game is being tricky (e.g. UE4
+	//   finds this from QueryInterface on the ID3D11Device). This is
+	//   legal, as an IDXGIDevice is just an interface to a D3D Device,
+	//   same as ID3D11Device is an interface to a D3D Device.
+	// - Since we have hooked this function, CreateDeviceAndSwapChain()
+	//   could also call in here straight from the real d3d11.dll with an
+	//   ID3D11Device that we haven't seen or wrapped yet. We avoid this
+	//   case by re-implementing CreateDeviceAndSwapChain() ourselves, so
+	//   now we will get a HackerDevice in that case.
+	//
+	// We call lookup_hacker_device to look it up from the IUnknown,
+	// relying on COM's guarantee that IUnknown will match for different
+	// interfaces to the same object, and noting that this call will bump
+	// the refcount on hackerDevice:
+	HackerDevice *hackerDevice = lookup_hacker_device(pDevice);
 	if (!hackerDevice)
 	{
-		// Without hooking pDevice input is always going to be a
-		// HackerDevice, because the startup path now builds
-		// HackerDevice before creating a swapchain.
-		hackerDevice = reinterpret_cast<HackerDevice*>(pDevice);
+		// If we do end up in another situation where we are seeing a
+		// device for the first time (like CreateDeviceAndSwapChain
+		// calling back into us), we could consider creating our
+		// HackerDevice here. But for now we aren't expecting this to
+		// happen, so treat it as fatal if it does.
+		LogInfo("Fatal: CreateSwapChain could not locate HackerDevice for %p\n", pDevice);
+		DoubleBeepExit();
 	}
 	HackerContext* hackerContext = hackerDevice->GetHackerContext();
 
@@ -379,11 +408,11 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 
 	ForceDisplayParams(pDesc);
 
-	HRESULT hr = fnOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
+	HRESULT hr = fnOrigCreateSwapChain(This, hackerDevice->GetOrigDevice1(), pDesc, ppSwapChain);
 	if (FAILED(hr))
 	{
 		LogInfo("->Failed result %#x\n\n", hr);
-		return hr;
+		goto out_release;
 	}
 
 	// Always upcast to IDXGISwapChain1 whenever possible.
@@ -427,6 +456,8 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	*ppSwapChain = swapchainWrap;
 
 	LogInfo("->return result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hr, swapchainWrap, origSwapChain);
+out_release:
+	hackerDevice->Release();
 	return hr;
 }
 

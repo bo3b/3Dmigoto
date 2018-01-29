@@ -28,6 +28,168 @@
 #include "ResourceHash.h"
 #include "ShaderRegex.h"
 
+// A map to look up the HackerDevice from an IUnknown. The reason for using an
+// IUnknown as the key is that an ID3D11Device and IDXGIDevice are actually two
+// different interfaces to the same object, which means that QueryInterface()
+// can be used to traverse between them. They do not however inherit from each
+// other and using C style casting between them will not work. We need to be
+// able to find our HackerDevice from either interface, including hooked
+// versions, so we need to find a common handle to use as a key between them.
+//
+// We could probably get away with calling QueryInterface(IID_ID3D11Device),
+// however COM does not guarantee that pointers returned to the same interface
+// will be identical (they can be "tear-off" interfaces independently
+// refcounted from the main object and potentially from each other, or they
+// could just be implemented in the main object with shared refcounting - we
+// shouldn't assume which is in use for a given interface, because it's an
+// implementation detail that could change).
+//
+// COM does however offer a guarantee that calling QueryInterface(IID_IUnknown)
+// will return a consistent pointer for all interfaces to the same object, so
+// we can safely use that. Note that it is important we use QueryInterface() to
+// get this pointer, not C/C++ style casting, as using the later on pointers is
+// really just a noop, and will return the same pointer we pass into them.
+//
+// In practice we see the consequences of ID3D11Device and IDXGIDevice being
+// the same object in UE4 games (in all versions since the source was
+// released), that call ID3D11Device::QueryInterface(IID_IDXGIDevice), and pass
+// the returned pointer to CreateSwapChain. Since we no longer wrap the
+// IDXGIDevice interface we can't directly get back to our HackerDevice, and so
+// we use this map to look it up instead.
+//
+// Note that there is a real possibility that a game could then call
+// QueryInterface on the IDXGIDevice to get back to the ID3D11Device, but since
+// we aren't intercepting that call it would get the real ID3D11Device and
+// could effectively unhook us. If that becomes a problem in practice, we will
+// have to rethink this - either bringing back our IDXGIDevice wrapper (or a
+// simplified version of it, that respects the relationship to ID3D11Device),
+// hooking the QueryInterface on the returned object (but beware that DX itself
+// could potentially then call into us), or denying the game from recieving the
+// IDXGIDevice in the first place and hoping that it has a fallback path (it
+// won't).
+typedef std::unordered_map<IUnknown *, HackerDevice *> DeviceMap;
+static DeviceMap device_map;
+
+// This will look up a HackerDevice corresponding to some unknown device object
+// (ID3D11Device*, IDXGIDevice*, etc). It will bump the refcount on the
+// returned interface.
+HackerDevice* lookup_hacker_device(IUnknown *unknown)
+{
+	HackerDevice *ret = NULL;
+	IUnknown *real_unknown = NULL;
+	DeviceMap::iterator i;
+
+	// First, check if this is already a HackerDevice. This is a fast path,
+	// but is also kind of important in case we ever make
+	// HackerDevice::QueryInterface(IID_IUnknown) return the HackerDevice
+	// (which is conceivable we might need to do some day if we find a game
+	// that uses that to get back to the real DX interfaces), since doing
+	// so would break the COM guarantee we rely on below.
+	//
+	// HookedDevices will also follow this path, since they hook
+	// QueryInterface and will return the corresponding HackerDevice here,
+	// but even if they didn't they would still be looked up in the map, so
+	// either way we no longer need to call lookup_hooked_device.
+	if (SUCCEEDED(unknown->QueryInterface(IID_HackerDevice, (void**)&ret))) {
+		LogInfo("lookup_hacker_device(%p): Supports HackerDevice\n", unknown);
+		return ret;
+	}
+
+	// We've been passed an IUnknown, but it may not have been gained via
+	// QueryInterface (and for convenience it's probably just been cast
+	// with C style casting), but we need the real IUnknown pointer with
+	// the COM guarantee that it will match for all interfaces of the same
+	// object, so we call QueryInterface on it again to get this:
+	if (FAILED(unknown->QueryInterface(IID_IUnknown, (void**)&real_unknown))) {
+		// ... ehh, what? Shouldn't happen. Fatal.
+		LogInfo("lookup_hacker_device: QueryInterface(IID_Unknown) failed\n");
+		DoubleBeepExit();
+	}
+
+	EnterCriticalSection(&G->mCriticalSection);
+	i = device_map.find(real_unknown);
+	if (i != device_map.end()) {
+		ret = i->second;
+		ret->AddRef();
+	}
+	LeaveCriticalSection(&G->mCriticalSection);
+
+	real_unknown->Release();
+
+	LogInfo("lookup_hacker_device(%p) IUnknown: %p HackerDevice: %p\n",
+			unknown, real_unknown, ret);
+
+	return ret;
+}
+
+static IUnknown* register_hacker_device(HackerDevice *hacker_device)
+{
+	IUnknown *real_unknown = NULL;
+
+	// As above, our key is the real IUnknown gained through QueryInterface
+	if (FAILED(hacker_device->GetPassThroughOrigDevice1()->QueryInterface(IID_IUnknown, (void**)&real_unknown))) {
+		LogInfo("register_hacker_device: QueryInterface(IID_Unknown) failed\n");
+		DoubleBeepExit();
+	}
+
+	LogInfo("register_hacker_device: Registering IUnknown: %p -> HackerDevice: %p\n",
+			real_unknown, hacker_device);
+
+	EnterCriticalSection(&G->mCriticalSection);
+	device_map[real_unknown] = hacker_device;
+	LeaveCriticalSection(&G->mCriticalSection);
+
+	real_unknown->Release();
+
+	// We return the IUnknown for convenience, since the HackerDevice needs
+	// to store it so it can later unregister it after the real Device has
+	// been Released and we will no longer be able to find it through
+	// QueryInterface. We have dropped the refcount on this - dangerous I
+	// know, but otherwise it will never be released.
+	return real_unknown;
+}
+
+static void unregister_hacker_device(HackerDevice *hacker_device)
+{
+	IUnknown *real_unknown;
+	DeviceMap::iterator i;
+
+	// We can't do a QueryInterface() here to get the real IUnknown,
+	// because the device has already been released. Instead, we use the
+	// real IUnknown pointer saved in the HackerDevice.
+	real_unknown = hacker_device->GetIUnknown();
+
+	// I have some concerns about our HackerDevice refcounting, and suspect
+	// there are cases where our HackerDevice wrapper won't be released
+	// along with the wrapped object (because COM refcounting is
+	// complicated, and there are several different models it could be
+	// using, and our wrapper relies on the ID3D11Device::Release as being
+	// the final Release, and not say, IDXGIDevice::Release), and there is
+	// a small chance that the handle could have already been reused.
+	//
+	// Now there is an obvious race here that this critical section should
+	// really be held around the original Release() call as well in case it
+	// gets reused by another thread before we get here, but I think we
+	// have bigger issues than just that, and it doesn't really matter
+	// anyway if it does hit, so I'd rather not expand that lock if we
+	// don't need to. Just detect if the handle has been reused and print
+	// out a message - we know that the HackerDevice won't have been reused
+	// yet, so this is safe.
+	EnterCriticalSection(&G->mCriticalSection);
+	i = device_map.find(real_unknown);
+	if (i != device_map.end()) {
+		if (i->second == hacker_device) {
+			LogInfo("unregister_hacker_device: Unregistering IUnknown %p -> HackerDevice %p\n",
+			        real_unknown, hacker_device);
+			device_map.erase(i);
+		} else {
+			LogInfo("BUG: Removing HackerDevice from device_map"
+			        "     IUnknown %p expected to map to %p, actually %p\n",
+			        real_unknown, hacker_device, i->second);
+		}
+	}
+	LeaveCriticalSection(&G->mCriticalSection);
+}
 
 // -----------------------------------------------------------------------------------------------
 
@@ -39,6 +201,8 @@ HackerDevice::HackerDevice(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pConte
 	mOrigDevice1 = pDevice1;
 	mRealOrigDevice1 = pDevice1;
 	mOrigContext1 = pContext1;
+	// Must be done after mOrigDevice1 is set:
+	mUnknown = register_hacker_device(this);
 }
 
 HRESULT HackerDevice::CreateStereoParamResources()
@@ -280,6 +444,11 @@ ID3D11DeviceContext1* HackerDevice::GetPassThroughOrigContext1()
 		return mHackerContext->GetPassThroughOrigContext1();
 
 	return mOrigContext1;
+}
+
+IUnknown* HackerDevice::GetIUnknown()
+{
+	return mUnknown;
 }
 
 void HackerDevice::HookDevice()
@@ -1202,6 +1371,8 @@ STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 			LogInfo("HackerDevice::Release counter=%d, this=%p\n", ulRef, this);
 		LogInfo("  deleting self\n");
 
+		unregister_hacker_device(this);
+
 		if (mStereoHandle)
 		{
 			int result = NvAPI_Stereo_DestroyHandle(mStereoHandle);
@@ -1269,6 +1440,15 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
 	LogDebug("HackerDevice::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
+
+	if (ppvObject && IsEqualIID(riid, IID_HackerDevice)) {
+		// This is a special case - only 3DMigoto itself should know
+		// this IID, so this is us checking if it has a HackerDevice.
+		// There's no need to call through to DX for this one.
+		AddRef();
+		*ppvObject = this;
+		return S_OK;
+	}
 
 	HRESULT hr = mOrigDevice1->QueryInterface(riid, ppvObject);
 	if (FAILED(hr))

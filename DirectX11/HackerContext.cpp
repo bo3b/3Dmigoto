@@ -839,7 +839,16 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
 	/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
 	LogDebug("HackerContext::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
-		
+
+	if (ppvObject && IsEqualIID(riid, IID_HackerContext)) {
+		// This is a special case - only 3DMigoto itself should know
+		// this IID, so this is us checking if it has a HackerContext.
+		// There's no need to call through to DX for this one.
+		AddRef();
+		*ppvObject = this;
+		return S_OK;
+	}
+
 	HRESULT hr = mOrigContext1->QueryInterface(riid, ppvObject);
 	if (FAILED(hr))
 	{
