@@ -24,6 +24,7 @@
     <ClCompile Include="ShaderRegex.cpp" />
     <ClCompile Include="HookAddresses.c" />
     <ClCompile Include="HackerDXGI.cpp" />
+    <ClCompile Include="..\iid.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
