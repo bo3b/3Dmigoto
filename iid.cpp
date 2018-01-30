@@ -16,11 +16,13 @@
 #endif
 
 #ifdef NTDDI_WINBLUE
-// TODO: SDK 8.1 or higher
-#endif
-
+// SDK 8.1 or higher
 #include <dxgi1_3.h>
 #include <d3d11_2.h>
+#endif
+
+#include <dxgi1_2.h>
+#include <d3d11_1.h>
 #include <dxgidebug.h>
 #include <d3d9.h>
 #include <d3d10_1.h>
@@ -43,27 +45,20 @@ static const struct IID_name known_interfaces[] = {
 	IID(IDXGIAdapter1),
 	IID(IDXGIAdapter2),
 	IID(IDXGIDebug),
-	IID(IDXGIDebug1),
-	IID(IDXGIDecodeSwapChain),
 	IID(IDXGIDevice),
 	IID(IDXGIDevice1),
 	IID(IDXGIDevice2),
-	IID(IDXGIDevice3),
 	IID(IDXGIDeviceSubObject),
 	IID(IDXGIDisplayControl),
 	IID(IDXGIFactory),
 	IID(IDXGIFactory1),
 	IID(IDXGIFactory2),
-	IID(IDXGIFactory3),
 	// FIXME: IID_IDXGIFactory6, Supposed to be in dxgi1_6.h, but not present in SDK 10.0.16299.0
-	IID(IDXGIFactoryMedia),
 	IID(IDXGIInfoQueue),
 	IID(IDXGIKeyedMutex),
 	IID(IDXGIObject),
 	IID(IDXGIOutput),
 	IID(IDXGIOutput1),
-	IID(IDXGIOutput2),
-	IID(IDXGIOutput3),
 	IID(IDXGIOutputDuplication),
 	IID(IDXGIResource),
 	IID(IDXGIResource1),
@@ -72,8 +67,6 @@ static const struct IID_name known_interfaces[] = {
 	IID(IDXGISurface2),
 	IID(IDXGISwapChain),
 	IID(IDXGISwapChain1),
-	IID(IDXGISwapChain2),
-	IID(IDXGISwapChainMedia),
 
 	// D3D9 https://msdn.microsoft.com/en-us/library/windows/desktop/ff471470(v=vs.85).aspx
 	// ??? IID(ID3DXFile),
@@ -138,11 +131,9 @@ static const struct IID_name known_interfaces[] = {
 	IID(ID3D11DepthStencilState),
 	IID(ID3D11Device),
 	IID(ID3D11Device1),
-	IID(ID3D11Device2),
 	IID(ID3D11DeviceChild),
 	IID(ID3D11DeviceContext),
 	IID(ID3D11DeviceContext1),
-	IID(ID3D11DeviceContext2),
 	IID(ID3DDeviceContextState),
 	IID(ID3D11InputLayout),
 	IID(ID3D11Predicate),
@@ -150,6 +141,21 @@ static const struct IID_name known_interfaces[] = {
 	IID(ID3D11RasterizerState),
 	IID(ID3D11RasterizerState1),
 	IID(ID3D11SamplerState),
+
+#ifdef NTDDI_WINBLUE
+	// Win 8.1 SDK or higher
+	IID(IDXGIDebug1),
+	IID(IDXGIDecodeSwapChain),
+	IID(IDXGIDevice3),
+	IID(IDXGIFactory3),
+	IID(IDXGIFactoryMedia),
+	IID(IDXGIOutput2),
+	IID(IDXGIOutput3),
+	IID(IDXGISwapChain2),
+	IID(IDXGISwapChainMedia),
+	IID(ID3D11Device2),
+	IID(ID3D11DeviceContext2),
+#endif
 
 #ifdef NTDDI_WIN10
 	// Win 10.x SDK. Haven't checked which specific SDK versions introduced these
