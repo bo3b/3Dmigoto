@@ -923,3 +923,4 @@ static bool ParseIniParamName(const wchar_t *name, int *idx, float DirectX::XMFL
 	return false;
 }
 
+void analyse_iunknown(IUnknown *unknown);
