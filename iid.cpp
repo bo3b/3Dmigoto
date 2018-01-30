@@ -2,13 +2,29 @@
 // DEFINE_GUID work for the IIDs:
 #include <INITGUID.h>
 
+#ifdef NTDDI_WIN10_RS3
+// SDK 10.0.16299.0 or higher
+// Haven't checked if this was also in RS2
 #include <dxgi1_6.h>
+#endif
+
+#ifdef NTDDI_WIN10
+// FIXME: Check if any of these require a minimum 10.x SDK version
+#include <d3d12.h>
+#include <dxgi1_5.h>
+#include <d3d11_4.h>
+#endif
+
+#ifdef NTDDI_WINBLUE
+// TODO: SDK 8.1 or higher
+#endif
+
+#include <dxgi1_3.h>
+#include <d3d11_2.h>
 #include <dxgidebug.h>
 #include <d3d9.h>
 #include <d3d10_1.h>
 #include <d3d10shader.h>
-#include <d3d11_4.h>
-#include <d3d12.h>
 
 #include "log.h"
 
@@ -26,8 +42,6 @@ static const struct IID_name known_interfaces[] = {
 	IID(IDXGIAdapter),
 	IID(IDXGIAdapter1),
 	IID(IDXGIAdapter2),
-	IID(IDXGIAdapter3),
-	IID(IDXGIAdapter4),
 	IID(IDXGIDebug),
 	IID(IDXGIDebug1),
 	IID(IDXGIDecodeSwapChain),
@@ -35,15 +49,12 @@ static const struct IID_name known_interfaces[] = {
 	IID(IDXGIDevice1),
 	IID(IDXGIDevice2),
 	IID(IDXGIDevice3),
-	IID(IDXGIDevice4),
 	IID(IDXGIDeviceSubObject),
 	IID(IDXGIDisplayControl),
 	IID(IDXGIFactory),
 	IID(IDXGIFactory1),
 	IID(IDXGIFactory2),
 	IID(IDXGIFactory3),
-	IID(IDXGIFactory4),
-	IID(IDXGIFactory5),
 	// FIXME: IID_IDXGIFactory6, Supposed to be in dxgi1_6.h, but not present in SDK 10.0.16299.0
 	IID(IDXGIFactoryMedia),
 	IID(IDXGIInfoQueue),
@@ -53,9 +64,6 @@ static const struct IID_name known_interfaces[] = {
 	IID(IDXGIOutput1),
 	IID(IDXGIOutput2),
 	IID(IDXGIOutput3),
-	IID(IDXGIOutput4),
-	IID(IDXGIOutput5),
-	IID(IDXGIOutput6),
 	IID(IDXGIOutputDuplication),
 	IID(IDXGIResource),
 	IID(IDXGIResource1),
@@ -65,8 +73,6 @@ static const struct IID_name known_interfaces[] = {
 	IID(IDXGISwapChain),
 	IID(IDXGISwapChain1),
 	IID(IDXGISwapChain2),
-	IID(IDXGISwapChain3),
-	IID(IDXGISwapChain4),
 	IID(IDXGISwapChainMedia),
 
 	// D3D9 https://msdn.microsoft.com/en-us/library/windows/desktop/ff471470(v=vs.85).aspx
@@ -133,26 +139,34 @@ static const struct IID_name known_interfaces[] = {
 	IID(ID3D11Device),
 	IID(ID3D11Device1),
 	IID(ID3D11Device2),
-	IID(ID3D11Device3),
-	IID(ID3D11Device4),
-	IID(ID3D11Device5),
 	IID(ID3D11DeviceChild),
 	IID(ID3D11DeviceContext),
 	IID(ID3D11DeviceContext1),
 	IID(ID3D11DeviceContext2),
-	IID(ID3D11DeviceContext3),
-	IID(ID3D11DeviceContext4),
 	IID(ID3DDeviceContextState),
-	IID(ID3D11Fence),
 	IID(ID3D11InputLayout),
-	IID(ID3D11Multithread),
 	IID(ID3D11Predicate),
 	IID(ID3D11Query),
-	IID(ID3D11Query1),
 	IID(ID3D11RasterizerState),
 	IID(ID3D11RasterizerState1),
-	IID(ID3D11RasterizerState2),
 	IID(ID3D11SamplerState),
+
+#ifdef NTDDI_WIN10
+	// Win 10.x SDK. Haven't checked which specific SDK versions introduced these
+	IID(IDXGIAdapter3),
+	IID(IDXGIDevice4),
+	IID(IDXGIFactory4),
+	IID(IDXGIFactory5),
+	IID(IDXGIOutput4),
+	IID(IDXGIOutput5),
+	IID(IDXGISwapChain3),
+	IID(IDXGISwapChain4),
+	IID(ID3D11Device3),
+	IID(ID3D11Device4),
+	IID(ID3D11DeviceContext3),
+	IID(ID3D11Multithread),
+	IID(ID3D11Query1),
+	IID(ID3D11RasterizerState2),
 
 	// D3D12 https://msdn.microsoft.com/en-us/library/windows/desktop/dn770457(v=vs.85).aspx
 	IID(ID3D12CommandAllocator),
@@ -162,26 +176,38 @@ static const struct IID_name known_interfaces[] = {
 	IID(ID3D12DescriptorHeap),
 	IID(ID3D12Device),
 	IID(ID3D12Device1),
-	IID(ID3D12Device2),
-	IID(ID3D12Device3),
 	IID(ID3D12DeviceChild),
 	IID(ID3D12Fence),
-	IID(ID3D12Fence1),
 	IID(ID3D12GraphicsCommandList),
-	IID(ID3D12GraphicsCommandList1),
-	IID(ID3D12GraphicsCommandList2),
 	IID(ID3D12Heap),
 	IID(ID3D12Object),
 	IID(ID3D12Pageable),
 	IID(ID3D12PipelineLibrary),
-	IID(ID3D12PipelineLibrary1),
 	IID(ID3D12PipelineState),
 	IID(ID3D12QueryHeap),
 	IID(ID3D12Resource),
 	IID(ID3D12RootSignature),
 	IID(ID3D12RootSignatureDeserializer),
-	IID(ID3D12Tools),
 	IID(ID3D12VersionedRootSignatureDeserializer),
+#endif
+
+#ifdef NTDDI_WIN10_RS3
+	//   Not in SDK 10.0.14393.0 / NTDDI_WIN10_RS1
+	//             Haven't checked NTDDI_WIN10_RS2
+	// Found in SDK 10.0.16299.0 / NTDDI_WIN10_RS3
+	IID(IDXGIAdapter4),
+	IID(IDXGIOutput6),
+	IID(ID3D11Device5),
+	IID(ID3D11DeviceContext4),
+	IID(ID3D11Fence),
+	IID(ID3D12Device2),
+	IID(ID3D12Device3),
+	IID(ID3D12Fence1),
+	IID(ID3D12GraphicsCommandList1),
+	IID(ID3D12GraphicsCommandList2),
+	IID(ID3D12PipelineLibrary1),
+	IID(ID3D12Tools),
+#endif
 };
 
 static void check_interface(IUnknown *unknown, REFIID riid, char *iid_name)
@@ -204,5 +230,15 @@ void analyse_iunknown(IUnknown *unknown)
 
 	for (i = 0; i < ARRAYSIZE(known_interfaces); i++)
 		check_interface(unknown, known_interfaces[i].iid, known_interfaces[i].name);
+
+#ifndef NTDDI_WINBLUE
+	LogInfo("  Win 8.1 interfaces not checked (3DMigoto built with old SDK)\n");
+#endif
+#ifndef NTDDI_WIN10
+	LogInfo("  Win 10 & DX12 interfaces not checked (3DMigoto built with old SDK)\n");
+#endif
+#ifndef NTDDI_WIN10_RS3
+	LogInfo("  Win 10 RS3 interfaces not checked (3DMigoto built with old SDK)\n");
+#endif
 }
 
