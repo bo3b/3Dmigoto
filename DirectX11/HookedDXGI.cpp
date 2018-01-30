@@ -104,6 +104,13 @@ static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device)
 		}
 
 		LogInfo("FATAL: Unsupported DirectX Version!\n");
+
+		// Normally we flush the log file on the Present() call, but if
+		// we didn't wrap the swap chain that will probably never
+		// happen. Flush it now to ensure the above message shows up so
+		// we know why:
+		fflush(LogFile);
+
 		// The swap chain is being created with a device that does NOT
 		// support the DX11 API. 3DMigoto is probably doomed to fail at
 		// this point, unless the game is about to retry with a
