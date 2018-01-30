@@ -251,6 +251,7 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	if (!hackerDevice)
 	{
 		LogInfo("Fatal: CreateSwapChainForHwnd could not locate HackerDevice for %p\n", pDevice);
+		analyse_iunknown(pDevice);
 		DoubleBeepExit();
 	}
 	HackerContext* hackerContext = hackerDevice->GetHackerContext();
@@ -371,6 +372,7 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 		// HackerDevice here. But for now we aren't expecting this to
 		// happen, so treat it as fatal if it does.
 		LogInfo("Fatal: CreateSwapChain could not locate HackerDevice for %p\n", pDevice);
+		analyse_iunknown(pDevice);
 		DoubleBeepExit();
 	}
 	HackerContext* hackerContext = hackerDevice->GetHackerContext();
