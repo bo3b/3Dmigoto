@@ -49,3 +49,21 @@ typedef HRESULT(WINAPI *tD3D11CreateDeviceAndSwapChain)(
 	ID3D11DeviceContext **ppImmediateContext);
 extern "C" tD3D11CreateDeviceAndSwapChain _D3D11CreateDeviceAndSwapChain;
 
+#ifdef NTDDI_WIN10
+// 11On12 requires Win 10 SDK
+#include <d3d11on12.h>
+
+typedef HRESULT(WINAPI *tD3D11On12CreateDevice)(
+	IUnknown* pDevice,
+	UINT Flags,
+	CONST D3D_FEATURE_LEVEL* pFeatureLevels,
+	UINT FeatureLevels,
+	IUnknown* CONST* ppCommandQueues,
+	UINT NumQueues,
+	UINT NodeMask,
+	ID3D11Device** ppDevice,
+	ID3D11DeviceContext** ppImmediateContext,
+	D3D_FEATURE_LEVEL* pChosenFeatureLevel);
+
+extern "C" tD3D11On12CreateDevice _D3D11On12CreateDevice;
+#endif

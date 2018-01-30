@@ -47,6 +47,85 @@
 // fnOrig* to call the original, instead of the alternate approach offered by
 // Deviare.
 
+#ifdef NTDDI_WIN10
+// 3DMigoto was built with the Win 10 SDK (vs2015 branch) - we can use the
+// 11On12 compatibility mode to enable some 3DMigoto functionality on DX12 to
+// get the overlay working and display a warning. This won't be enough to
+// enable hunting or replace shaders or anything, and the only noteworthy call
+// from the game we will be intercepting is Present().
+#include <d3d11on12.h>
+
+static HackerDevice* prepare_devices_for_dx12_warning(IUnknown *unknown_device)
+{
+	ID3D12CommandQueue *d3d12_queue = NULL;
+	ID3D12Device *d3d12_device = NULL;
+	ID3D11Device *d3d11_device = NULL;
+	ID3D11DeviceContext *d3d11_context = NULL;
+	HackerDevice *dev_wrap = NULL;
+	HackerContext *context_wrap = NULL;
+	HRESULT hr;
+
+	if (FAILED(unknown_device->QueryInterface(IID_ID3D12CommandQueue, (void**)&d3d12_queue)))
+		goto out;
+
+	LogInfo("Preparing to enable D3D11On12 compatibility mode for overlay...\n");
+
+	if (FAILED(d3d12_queue->GetDevice(IID_ID3D12Device, (void**)&d3d12_device)))
+		goto out;
+
+	LogInfo(" ID3D12Device: %p\n", d3d12_device);
+
+	// If you need the debug layer, force it in dxcpl.exe instead of here,
+	// since we won't have enabled it on the D3D12 device, and doing so now
+	// would reset it. If the game has used the flag to prevent the control
+	// panel's registry key override we'd need to go to more heroics.
+	hr = (*_D3D11On12CreateDevice)(d3d12_device,
+			0, /* flags */
+			NULL, 0, /* feature levels */
+			(IUnknown**)&d3d12_queue,
+			1, /* num queues */
+			0, /* node mask */
+			&d3d11_device, &d3d11_context, NULL);
+	if (FAILED(hr)) {
+		LogInfo("D3D11On12CreateDevice failed: 0x%x\n", hr);
+		goto out;
+	}
+
+	LogInfo(" ID3D11Device: %p\n", d3d11_device);
+	LogInfo(" ID3D11DeviceContext: %p\n", d3d11_context);
+
+	dev_wrap = new HackerDevice((ID3D11Device1*)d3d11_device, (ID3D11DeviceContext1*)d3d11_context);
+	context_wrap = HackerContextFactory((ID3D11Device1*)d3d11_device, (ID3D11DeviceContext1*)d3d11_context);
+
+	LogInfo(" HackerDevice: %p\n", dev_wrap);
+	LogInfo(" HackerContext: %p\n", context_wrap);
+
+	dev_wrap->SetHackerContext(context_wrap);
+	context_wrap->SetHackerDevice(dev_wrap);
+	dev_wrap->Create3DMigotoResources();
+	context_wrap->Bind3DMigotoResources();
+
+	// We're going to intentionally leak the D3D11 objects, because we have
+	// nothing to manage the reference to them and keep them alive - the
+	// Hacker wrappers don't, because they expect the game to.
+
+out:
+	if (d3d12_device)
+		d3d12_device->Release();
+	if (d3d12_queue)
+		d3d12_queue->Release();
+
+	return dev_wrap;
+}
+
+#else
+
+static HackerDevice* prepare_devices_for_dx12_warning(IUnknown *unknown_device)
+{
+	return NULL;
+}
+
+#endif
 
 // Takes an IUnknown device and finds the corresponding HackerDevice and
 // DirectX device interfaces. The passed in IUnknown may be modified to point
@@ -122,7 +201,9 @@ static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device)
 		// though I don't think it actually tried creating swap chains
 		// for them. Still issue an audible warning as a hint at what
 		// has happened:
-		BeepProfileFail();
+		hackerDevice = prepare_devices_for_dx12_warning(*device);
+		if (!hackerDevice)
+			BeepProfileFail();
 	}
 
 	return hackerDevice;
