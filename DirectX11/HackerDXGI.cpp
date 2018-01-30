@@ -147,7 +147,7 @@ HackerSwapChain::HackerSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pDev
 	try {
 		// Create Overlay class that will be responsible for drawing any text
 		// info over the game. Using the Hacker Device and Context we gave the game.
-		mOverlay = new Overlay(pDevice, pContext, this);
+		mOverlay = new Overlay(pDevice, pContext, mOrigSwapChain1);
 	}
 	catch (...) {
 		LogInfo("  *** Failed to create Overlay. Exception caught.\n");
