@@ -48,6 +48,86 @@
 // Deviare.
 
 
+// Takes an IUnknown device and finds the corresponding HackerDevice and
+// DirectX device interfaces. The passed in IUnknown may be modified to point
+// to the real DirectX device so ensure that it will be safe to pass to the
+// original CreateSwapChain call.
+static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device)
+{
+	HackerDevice *hackerDevice;
+
+	// pDevice could be one of several different things:
+	// - It could be a HackerDevice, if the game called CreateSwapChain()
+	//   with the HackerDevice we returned from CreateDevice().
+	// - It could be the original ID3D11Device if we have hooking enabled,
+	//   as this has hooks to call into our code instead of being wrapped.
+	// - It could be an IDXGIDevice if the game is being tricky (e.g. UE4
+	//   finds this from QueryInterface on the ID3D11Device). This is
+	//   legal, as an IDXGIDevice is just an interface to a D3D Device,
+	//   same as ID3D11Device is an interface to a D3D Device.
+	// - Since we have hooked this function, CreateDeviceAndSwapChain()
+	//   could also call in here straight from the real d3d11.dll with an
+	//   ID3D11Device that we haven't seen or wrapped yet. We avoid this
+	//   case by re-implementing CreateDeviceAndSwapChain() ourselves, so
+	//   now we will get a HackerDevice in that case.
+	// - It could be an ID3D10Device
+	// - It could be an ID3D12CommandQueue
+	// - It could be some other thing we haven't heard of yet
+	//
+	// We call lookup_hacker_device to look it up from the IUnknown,
+	// relying on COM's guarantee that IUnknown will match for different
+	// interfaces to the same object, and noting that this call will bump
+	// the refcount on hackerDevice:
+	hackerDevice = lookup_hacker_device(*device);
+	if (hackerDevice) {
+		// Ensure that pDevice points to the real DX device before
+		// passing it into DX for safety. We can probably get away
+		// without this since it's an IUnknown and DX will have to
+		// QueryInterface() it, but let's not tempt fate:
+		*device = (hackerDevice)->GetOrigDevice1();
+	} else {
+		LogInfo("WARNING: Could not locate HackerDevice for %p\n", *device);
+		analyse_iunknown(*device);
+
+		if (check_interface_supported(*device, IID_ID3D11Device)) {
+			// If we do end up in another situation where we are
+			// seeing a device for the first time (like
+			// CreateDeviceAndSwapChain calling back into us), we
+			// could consider creating our HackerDevice here. But
+			// for now we aren't expecting this to happen, so treat
+			// it as fatal if it does.
+			//
+			// D3D11On12CreateDevice() could possibly lead us here,
+			// depending on how that works.
+			LogInfo("BUG: Unwrapped ID3D11Device!\n");
+			DoubleBeepExit();
+		}
+
+		LogInfo("FATAL: Unsupported DirectX Version!\n");
+
+		// Normally we flush the log file on the Present() call, but if
+		// we didn't wrap the swap chain that will probably never
+		// happen. Flush it now to ensure the above message shows up so
+		// we know why:
+		fflush(LogFile);
+
+		// The swap chain is being created with a device that does NOT
+		// support the DX11 API. 3DMigoto is probably doomed to fail at
+		// this point, unless the game is about to retry with a
+		// different device. Maybe we are better off just doing a
+		// DoubleBeepExit(), but let's try to make sure we at least
+		// don't crash things, which may be important if an application
+		// uses mixed APIs for some reason - I've certainly seen the
+		// Origin overlay try to init every DX version under the sun,
+		// though I don't think it actually tried creating swap chains
+		// for them. Still issue an audible warning as a hint at what
+		// has happened:
+		BeepProfileFail();
+	}
+
+	return hackerDevice;
+}
+
 void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc, BOOL Windowed)
 {
 	// Historically we have only forced the refresh rate when full-screen.
@@ -234,6 +314,11 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	/* [annotation][out] */
 	_Out_  IDXGISwapChain1 **ppSwapChain)
 {
+	HackerDevice *hackerDevice = NULL;
+	HackerContext *hackerContext = NULL;
+	HackerSwapChain *hackerSwapChain = NULL;
+	IDXGISwapChain1 *origSwapChain = NULL;
+
 	LogInfo("Hooked IDXGIFactory2::CreateSwapChainForHwnd(%p) called\n", This);
 	LogInfo("  Device = %p\n", pDevice);
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
@@ -247,36 +332,31 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 
 	// FIXME: Get resolution from swap chain
 
-	HackerDevice *hackerDevice = lookup_hacker_device(pDevice);
-	if (!hackerDevice)
-	{
-		LogInfo("Fatal: CreateSwapChainForHwnd could not locate HackerDevice for %p\n", pDevice);
-		analyse_iunknown(pDevice);
-		DoubleBeepExit();
-	}
-	HackerContext* hackerContext = hackerDevice->GetHackerContext();
+	hackerDevice = sort_out_swap_chain_device_mess(&pDevice);
 
-	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, hackerDevice->GetOrigDevice1(), hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
+	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
 	if (FAILED(hr))
 	{
 		LogInfo("->Failed result %#x\n\n", hr);
 		goto out_release;
 	}
 
-	IDXGISwapChain1* origSwapChain = *ppSwapChain;
+	if (hackerDevice) {
+		origSwapChain = *ppSwapChain;
+		hackerContext = hackerDevice->GetHackerContext();
 
-	HackerSwapChain* hackerSwapChain;
-	hackerSwapChain = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
+		hackerSwapChain = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
 
-
-	// When creating a new swapchain, we can assume this is the game creating 
-	// the most important object, and return the wrapped swapchain to the game 
-	// so it will call our Present.
-	*ppSwapChain = hackerSwapChain;
+		// When creating a new swapchain, we can assume this is the game creating
+		// the most important object, and return the wrapped swapchain to the game
+		// so it will call our Present.
+		*ppSwapChain = hackerSwapChain;
+	}
 
 	LogInfo("->return result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hr, hackerSwapChain, origSwapChain);
 out_release:
-	hackerDevice->Release();
+	if (hackerDevice)
+		hackerDevice->Release();
 	return hr;
 }
 
@@ -339,44 +419,17 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	/* [annotation][out] */
 	_Out_  IDXGISwapChain **ppSwapChain)
 {
+	HackerDevice *hackerDevice = NULL;
+	HackerContext *hackerContext = NULL;
+	HackerSwapChain *swapchainWrap = NULL;
+	IDXGISwapChain1 *origSwapChain = NULL;
+
 	LogInfo("\nHooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
 	LogInfo("  Device = %p\n", pDevice);
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
 	LogInfo("  Description = %p\n", pDesc);
 
-	// pDevice could be one of several different things:
-	// - It could be a HackerDevice, if the game called CreateSwapChain()
-	//   with the HackerDevice we returned from CreateDevice().
-	// - It could be the original ID3D11Device if we have hooking enabled,
-	//   as this has hooks to call into our code instead of being wrapped.
-	// - It could be an IDXGIDevice if the game is being tricky (e.g. UE4
-	//   finds this from QueryInterface on the ID3D11Device). This is
-	//   legal, as an IDXGIDevice is just an interface to a D3D Device,
-	//   same as ID3D11Device is an interface to a D3D Device.
-	// - Since we have hooked this function, CreateDeviceAndSwapChain()
-	//   could also call in here straight from the real d3d11.dll with an
-	//   ID3D11Device that we haven't seen or wrapped yet. We avoid this
-	//   case by re-implementing CreateDeviceAndSwapChain() ourselves, so
-	//   now we will get a HackerDevice in that case.
-	//
-	// We call lookup_hacker_device to look it up from the IUnknown,
-	// relying on COM's guarantee that IUnknown will match for different
-	// interfaces to the same object, and noting that this call will bump
-	// the refcount on hackerDevice:
-	HackerDevice *hackerDevice = lookup_hacker_device(pDevice);
-	if (!hackerDevice)
-	{
-		// If we do end up in another situation where we are seeing a
-		// device for the first time (like CreateDeviceAndSwapChain
-		// calling back into us), we could consider creating our
-		// HackerDevice here. But for now we aren't expecting this to
-		// happen, so treat it as fatal if it does.
-		LogInfo("Fatal: CreateSwapChain could not locate HackerDevice for %p\n", pDevice);
-		analyse_iunknown(pDevice);
-		DoubleBeepExit();
-	}
-	HackerContext* hackerContext = hackerDevice->GetHackerContext();
-
+	hackerDevice = sort_out_swap_chain_device_mess(&pDevice);
 
 	DXGI_SWAP_CHAIN_DESC origSwapChainDesc;
 	if (pDesc != nullptr)
@@ -410,56 +463,58 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 
 	ForceDisplayParams(pDesc);
 
-	HRESULT hr = fnOrigCreateSwapChain(This, hackerDevice->GetOrigDevice1(), pDesc, ppSwapChain);
+	HRESULT hr = fnOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
 	if (FAILED(hr))
 	{
 		LogInfo("->Failed result %#x\n\n", hr);
 		goto out_release;
 	}
 
-	// Always upcast to IDXGISwapChain1 whenever possible.
-	// If the upcast fails, that means we have a normal IDXGISwapChain,
-	// but we'll still store it as an IDXGISwapChain1.  It's a little
-	// weird to reinterpret this way, but should cause no problems in
-	// the Win7 no platform_udpate case.
-	IDXGISwapChain1* origSwapChain;
-	(*ppSwapChain)->QueryInterface(IID_PPV_ARGS(&origSwapChain));
-	if (origSwapChain == nullptr)
-		origSwapChain = reinterpret_cast<IDXGISwapChain1*>(*ppSwapChain);
+	if (hackerDevice) {
+		// Always upcast to IDXGISwapChain1 whenever possible.
+		// If the upcast fails, that means we have a normal IDXGISwapChain,
+		// but we'll still store it as an IDXGISwapChain1.  It's a little
+		// weird to reinterpret this way, but should cause no problems in
+		// the Win7 no platform_udpate case.
+		(*ppSwapChain)->QueryInterface(IID_PPV_ARGS(&origSwapChain));
+		if (origSwapChain == nullptr)
+			origSwapChain = reinterpret_cast<IDXGISwapChain1*>(*ppSwapChain);
 
+		hackerContext = hackerDevice->GetHackerContext();
 
-	// Original swapchain has been successfully created. Now we want to 
-	// wrap the returned swapchain as either HackerSwapChain or HackerUpscalingSwapChain.  
-	HackerSwapChain* swapchainWrap;
+		// Original swapchain has been successfully created. Now we want to
+		// wrap the returned swapchain as either HackerSwapChain or HackerUpscalingSwapChain.
 
-	if (G->SCREEN_UPSCALING == 0)		// Normal case
-	{
-		swapchainWrap = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
-		LogInfo("->HackerSwapChain %p created to wrap %p\n", swapchainWrap, *ppSwapChain);
-	}
-	else								// Upscaling case
-	{
-		swapchainWrap = new HackerUpscalingSwapChain(origSwapChain, hackerDevice, hackerContext,
-			&origSwapChainDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, This);
-		LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, *ppSwapChain);
-
-		if (G->SCREEN_UPSCALING == 2 || !origSwapChainDesc.Windowed)
+		if (G->SCREEN_UPSCALING == 0)		// Normal case
 		{
-			// Some games react very strange (like render nothing) if set full screen state is called here)
-			// Other games like The Witcher 3 need the call to ensure entering the full screen on start
-			// (seems to be game internal stuff)  ToDo: retest if this is still necessary, lots of changes.
-			(*ppSwapChain)->SetFullscreenState(TRUE, nullptr);
+			swapchainWrap = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
+			LogInfo("->HackerSwapChain %p created to wrap %p\n", swapchainWrap, *ppSwapChain);
 		}
-	}
+		else								// Upscaling case
+		{
+			swapchainWrap = new HackerUpscalingSwapChain(origSwapChain, hackerDevice, hackerContext,
+				&origSwapChainDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, This);
+			LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, *ppSwapChain);
 
-	// When creating a new swapchain, we can assume this is the game creating 
-	// the most important object. Return the wrapped swapchain to the game so it 
-	// will call our Present.
-	*ppSwapChain = swapchainWrap;
+			if (G->SCREEN_UPSCALING == 2 || !origSwapChainDesc.Windowed)
+			{
+				// Some games react very strange (like render nothing) if set full screen state is called here)
+				// Other games like The Witcher 3 need the call to ensure entering the full screen on start
+				// (seems to be game internal stuff)  ToDo: retest if this is still necessary, lots of changes.
+				(*ppSwapChain)->SetFullscreenState(TRUE, nullptr);
+			}
+		}
+
+		// When creating a new swapchain, we can assume this is the game creating
+		// the most important object. Return the wrapped swapchain to the game so it
+		// will call our Present.
+		*ppSwapChain = swapchainWrap;
+	}
 
 	LogInfo("->return result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hr, swapchainWrap, origSwapChain);
 out_release:
-	hackerDevice->Release();
+	if (hackerDevice)
+		hackerDevice->Release();
 	return hr;
 }
 

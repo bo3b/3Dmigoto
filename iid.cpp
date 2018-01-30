@@ -218,16 +218,32 @@ static const struct IID_name known_interfaces[] = {
 #endif
 };
 
-static void check_interface(IUnknown *unknown, REFIID riid, char *iid_name)
+// NOTE: This releases the interface it returns.
+static IUnknown* _check_interface(IUnknown *unknown, REFIID riid)
 {
 	IUnknown *test;
 
 	if (SUCCEEDED(unknown->QueryInterface(riid, (void**)&test))) {
-		LogInfo("  Supports %s: %p\n", iid_name, test);
 		test->Release();
-	} else {
-		LogDebug("  %s not supported\n", iid_name);
+		return test;
 	}
+
+	return NULL;
+}
+
+bool check_interface_supported(IUnknown *unknown, REFIID riid)
+{
+	return !!_check_interface(unknown, riid);
+}
+
+static void check_interface(IUnknown *unknown, REFIID riid, char *iid_name)
+{
+	IUnknown *test = _check_interface(unknown, riid);
+
+	if (test)
+		LogInfo("  Supports %s: %p\n", iid_name, test);
+	else
+		LogDebug("  %s not supported\n", iid_name);
 }
 
 void analyse_iunknown(IUnknown *unknown)
