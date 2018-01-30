@@ -361,6 +361,9 @@ tD3D11CreateDevice _D3D11CreateDevice;
 
 tD3D11CreateDeviceAndSwapChain _D3D11CreateDeviceAndSwapChain;
 
+#ifdef NTDDI_WIN10
+tD3D11On12CreateDevice _D3D11On12CreateDevice;
+#endif
 
 
 
@@ -452,6 +455,10 @@ void InitD311()
 	_D3DKMTOpenAdapterFromHdc = (tD3DKMTOpenAdapterFromHdc)GetProcAddress(hD3D11, "D3DKMTOpenAdapterFromHdc");
 	_D3DKMTOpenResource = (tD3DKMTOpenResource)GetProcAddress(hD3D11, "D3DKMTOpenResource");
 	_D3DKMTQueryResourceInfo = (tD3DKMTQueryResourceInfo)GetProcAddress(hD3D11, "D3DKMTQueryResourceInfo");
+
+#ifdef NTDDI_WIN10
+	_D3D11On12CreateDevice = (tD3D11On12CreateDevice)GetProcAddress(hD3D11, "D3D11On12CreateDevice");
+#endif
 }
 
 int WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)

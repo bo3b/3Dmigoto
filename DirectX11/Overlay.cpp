@@ -187,6 +187,144 @@ void Overlay::RestoreState()
 		state.pShaderResourceViews[0]->Release();
 }
 
+#ifdef NTDDI_WIN10
+#include <d3d11on12.h>
+#include <dxgi1_4.h>
+static ID3D11Texture2D* get_11on12_backbuffer(ID3D11Device *mOrigDevice, IDXGISwapChain *mOrigSwapChain)
+{
+	ID3D12Resource *d3d12_bb = NULL;
+	ID3D11Texture2D *d3d11_bb = NULL;
+	ID3D11On12Device *d3d11on12_dev = NULL;
+	IDXGISwapChain3 *swap_chain_3 = NULL;
+	D3D11_RESOURCE_FLAGS flags = { D3D11_BIND_RENDER_TARGET };
+	UINT bb_idx;
+	HRESULT hr;
+
+	if (FAILED(mOrigDevice->QueryInterface(IID_ID3D11On12Device, (void**)&d3d11on12_dev)))
+		return NULL;
+	LogDebug("  ID3D11On12Device: %p\n", d3d11on12_dev);
+
+	// In D3D12 we need to make sure we are writing to the correct back
+	// buffer for the current frame, and failing to do this will lead to a
+	// DXGI_ERROR_ACCESS_DENIED. This differs from DX11 where index 0
+	// always points to the current back buffer. We need the SwapChain3
+	// interface to determine which back buffer is currently active:
+	if (FAILED(mOrigSwapChain->QueryInterface(IID_IDXGISwapChain3, (void**)&swap_chain_3)))
+		goto out;
+	bb_idx = swap_chain_3->GetCurrentBackBufferIndex();
+	LogDebug("  Current Back Buffer Index: %i\n", bb_idx);
+
+	if (FAILED(mOrigSwapChain->GetBuffer(bb_idx, IID_ID3D12Resource, (void**)&d3d12_bb)))
+		goto out;
+	LogDebug("  ID3D12Resource: %p\n", d3d12_bb);
+
+	// At the moment I'm creating a wrapped resource every frame, though
+	// the 11on12 sample code does this once for every back buffer index
+	// and uses AcquireWrappedResources() instead each frame. The sample
+	// code also doesn't cope with resizing swap chains on alt+enter, so
+	// I'm not at all confident that following it to the letter would work.
+	// We know holding a reference to a back buffer will prevent alt+enter
+	// from working - maybe Acquire gets around that, but I don't trust it.
+	//
+	// I'm specifying RT -> PRESENT state transitions here, which follows
+	// the 11to12 sample code, but I don't think this is strictly correct -
+	// surely the game should have already transitioned the back buffer to
+	// the PRESENT state before calling Present(), in which case shouldn't
+	// our in state be PRESENT, not RT? However, while both cases seem to
+	// work just fine, in Fifa 2018 the debug layer seems to indicate both
+	// are wrong - RT->PRESENT says the barrier doesn't match the current
+	// resource state of RT, and PRESENT->PRESENT says it doesn't match the
+	// previous barrier transitioning it to RT.
+	//
+	// ... I don't even ...
+	//
+	// ... What? ...
+	//
+	// ... That doesn't make sense!!! Maybe they have a game bug and left
+	// it as RT by mistake, but that still doesn't make sense!!! I'm either
+	// misinterpreting one of the debug messages or I'm missing something.
+	//
+	// AFAICT there's no way to query the current "state" to answer this
+	// correctly, because despite the name there is actually no "state"
+	// anywhere outside of the debug layer. D3D11 tracked this stuff and
+	// automatically submitted the correct memory barrier type to the GPU,
+	// but DX12 saves some CPU cycles and doesn't track anything, leaving
+	// it up to the application to know which barrier to use, and the
+	// "state transition" is really just a way to assist an inexperienced
+	// developer in choosing the right one (that's actually kind of clever
+	// - memory barriers are really easy to mess up and not realise) - so,
+	// this isn't a state transition at all, it's a memory barrier.
+	//
+	// Okay, so it's a memory barrier - knowing that, what would be the
+	// safest thing to do? Well, if the game already transitioned to
+	// PRESENT, then they already did a memory barrier of their own, and so
+	// long as we do another after we finish writing to the back buffer it
+	// should be fine, and shouldn't matter if we start writing to it now
+	// without another barrier to transition it back to RT. If the game
+	// didn't transition it to PRESENT, and the last barrier they did left
+	// it as RT, then (they have a bug) it won't matter if we start writing
+	// to it immediately as is, but we should still do a memory barrier
+	// once we are finished. Ok, either way I don't think it actually
+	// matters unless they have done something very weird and we need a
+	// different barrier altogether, or I haven't considered some subtlty -
+	// let's go with RT->PRESENT for now and see how it goes in practice:
+	hr = d3d11on12_dev->CreateWrappedResource(d3d12_bb, &flags,
+			D3D12_RESOURCE_STATE_RENDER_TARGET, /* in "state" */
+			D3D12_RESOURCE_STATE_PRESENT, /* out "state" */
+			IID_ID3D11Texture2D, (void**)&d3d11_bb);
+	LogDebug("  ID3D11Texture2D: %p, result: 0x%x\n", d3d11_bb, hr);
+
+out:
+	if (d3d12_bb)
+		d3d12_bb->Release();
+	if (swap_chain_3)
+		swap_chain_3->Release();
+	if (d3d11on12_dev)
+		d3d11on12_dev->Release();
+
+	return d3d11_bb;
+}
+
+static void flush_d3d11on12(ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext)
+{
+	ID3D11On12Device *d3d11on12_dev = NULL;
+
+	if (FAILED(mOrigDevice->QueryInterface(IID_ID3D11On12Device, (void**)&d3d11on12_dev)))
+		return;
+
+	// We need to tell 11on12 to release the resources it is wrapping,
+	// otherwise it will still hold a reference to the back buffer which
+	// will prevent alt+enter from working. This should also transition the
+	// D3D12 resource state from RENDER_TARGET to PRESENT. We haven't
+	// bothered keeping our own reference to the back buffer, so just have
+	// it release all of them - that should be fine unless the game or
+	// another overlay is also using 11on12 and for some reason did not
+	// release a resource and isn't expecting to have to re-acquire it:
+	d3d11on12_dev->ReleaseWrappedResources(NULL, 0);
+	d3d11on12_dev->Release();
+
+	// D3D11 Immediate context must be flushed before any further D3D12
+	// work can be performed. This should be done as late as possible to
+	// ensure no commands are queued up, and in particular needs to be done
+	// after we have released any references to the back buffer, including
+	// unbinding it from the pipeline, and after ReleaseWrappedResources(),
+	// since all the releases can be delayed:
+	mOrigContext->Flush();
+}
+
+#else
+
+static ID3D11Texture2D* get_11on12_backbuffer(ID3D11Device *mOrigDevice, IDXGISwapChain *mOrigSwapChain)
+{
+	return NULL;
+}
+
+static void flush_d3d11on12(ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext)
+{
+}
+
+#endif
+
 // We can't trust the game to have a proper drawing environment for DirectXTK.
 //
 // For two games we know of (Batman Arkham Knight and Project Cars) we were not
@@ -200,8 +338,14 @@ HRESULT Overlay::InitDrawState()
 
 	ID3D11Texture2D *pBackBuffer;
 	hr = mOrigSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
-	if (FAILED(hr))
-		return hr;
+	if (FAILED(hr)) {
+		// The back buffer doesn't support the D3D11 Texture2D
+		// interface. Maybe this is DX12 - if we have been built with
+		// the Win 10 SDK we can handle that via 11On12:
+		pBackBuffer = get_11on12_backbuffer(mOrigDevice, mOrigSwapChain);
+		if (!pBackBuffer)
+			return hr;
+	}
 
 	// By doing this every frame, we are always up to date with correct size,
 	// and we need the address of the BackBuffer anyway, so this is low cost.
@@ -443,4 +587,6 @@ void Overlay::DrawOverlay(void)
 	}
 fail_restore:
 	RestoreState();
+
+	flush_d3d11on12(mOrigDevice, mOrigContext);
 }
