@@ -2,6 +2,8 @@
 // DEFINE_GUID work for the IIDs:
 #include <INITGUID.h>
 
+#include <sdkddkver.h>
+
 #ifdef NTDDI_WIN10_RS3
 // SDK 10.0.16299.0 or higher
 // Haven't checked if this was also in RS2
