@@ -131,9 +131,11 @@ static HackerDevice* prepare_devices_for_dx12_warning(IUnknown *unknown_device)
 // DirectX device interfaces. The passed in IUnknown may be modified to point
 // to the real DirectX device so ensure that it will be safe to pass to the
 // original CreateSwapChain call.
-static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device)
+static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device, bool *is_dx12)
 {
 	HackerDevice *hackerDevice;
+
+	*is_dx12 = false;
 
 	// pDevice could be one of several different things:
 	// - It could be a HackerDevice, if the game called CreateSwapChain()
@@ -202,7 +204,9 @@ static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device)
 		// for them. Still issue an audible warning as a hint at what
 		// has happened:
 		hackerDevice = prepare_devices_for_dx12_warning(*device);
-		if (!hackerDevice)
+		if (hackerDevice)
+			*is_dx12 = true;
+		else
 			BeepProfileFail();
 	}
 
@@ -399,6 +403,7 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	HackerContext *hackerContext = NULL;
 	HackerSwapChain *hackerSwapChain = NULL;
 	IDXGISwapChain1 *origSwapChain = NULL;
+	bool is_dx12 = false;
 
 	LogInfo("Hooked IDXGIFactory2::CreateSwapChainForHwnd(%p) called\n", This);
 	LogInfo("  Device = %p\n", pDevice);
@@ -413,7 +418,7 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 
 	// FIXME: Get resolution from swap chain
 
-	hackerDevice = sort_out_swap_chain_device_mess(&pDevice);
+	hackerDevice = sort_out_swap_chain_device_mess(&pDevice, &is_dx12);
 
 	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
 	if (FAILED(hr))
@@ -427,6 +432,9 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 		hackerContext = hackerDevice->GetHackerContext();
 
 		hackerSwapChain = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
+
+		if (is_dx12)
+			LogOverlayW(hackerSwapChain, LOG_DIRE, L"3DMigoto does not support DirectX 12\nPlease set the game to use DirectX 11\n");
 
 		// When creating a new swapchain, we can assume this is the game creating
 		// the most important object, and return the wrapped swapchain to the game
@@ -504,13 +512,14 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	HackerContext *hackerContext = NULL;
 	HackerSwapChain *swapchainWrap = NULL;
 	IDXGISwapChain1 *origSwapChain = NULL;
+	bool is_dx12 = false;
 
 	LogInfo("\nHooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
 	LogInfo("  Device = %p\n", pDevice);
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
 	LogInfo("  Description = %p\n", pDesc);
 
-	hackerDevice = sort_out_swap_chain_device_mess(&pDevice);
+	hackerDevice = sort_out_swap_chain_device_mess(&pDevice, &is_dx12);
 
 	DXGI_SWAP_CHAIN_DESC origSwapChainDesc;
 	if (pDesc != nullptr)
@@ -585,6 +594,9 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 				(*ppSwapChain)->SetFullscreenState(TRUE, nullptr);
 			}
 		}
+
+		if (is_dx12)
+			LogOverlayW(swapchainWrap, LOG_DIRE, L"3DMigoto does not support DirectX 12\nPlease set the game to use DirectX 11\n");
 
 		// When creating a new swapchain, we can assume this is the game creating
 		// the most important object. Return the wrapped swapchain to the game so it
