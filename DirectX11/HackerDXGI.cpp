@@ -214,10 +214,9 @@ void HackerSwapChain::RunFrameActions()
 	// affect something at the start of the frame.
 	RunCommandList(mHackerDevice, mHackerContext, &G->present_command_list, NULL, false);
 
-	// Draw the on-screen overlay text with hunting info, before final Present.
-	// But only when hunting is enabled, this will also make it obvious when
-	// hunting is on.
-	if ((G->hunting == HUNTING_MODE_ENABLED) && mOverlay)
+	// Draw the on-screen overlay text with hunting and informational
+	// messages, before final Present.
+	if (mOverlay)
 		mOverlay->DrawOverlay();
 
 	if (G->analyse_frame) {

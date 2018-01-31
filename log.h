@@ -22,6 +22,8 @@ extern bool gLogDebug;
 	do { if (LogFile) vfprintf(LogFile, fmt, va_args); } while (0)
 #define LogInfoW(fmt, ...) \
 	do { if (LogFile) fwprintf(LogFile, fmt, __VA_ARGS__); } while (0)
+#define vLogInfoW(fmt, va_args) \
+	do { if (LogFile) vfwprintf(LogFile, fmt, va_args); } while (0)
 
 #define LogDebug(fmt, ...) \
 	do { if (gLogDebug) LogInfo(fmt, __VA_ARGS__); } while (0)
