@@ -18,7 +18,20 @@
 #include "HackerDevice.h"
 #include "HackerContext.h"
 
+#define MAX_SIMULTANEOUS_NOTICES 6
 
+struct LogLevelParams {
+	DirectX::XMVECTORF32 colour;
+	DWORD duration;
+	bool hide_in_release;
+};
+
+struct LogLevelParams log_levels[] = {
+	{ DirectX::Colors::Red,       20000, false }, // DIRE
+	{ DirectX::Colors::OrangeRed, 10000, false }, // WARNING
+	{ DirectX::Colors::Orange,     5000,  true }, // NOTICE
+	{ DirectX::Colors::LimeGreen,  2000,  true }, // INFO
+};
 
 // Side note: Not really stoked with C++ string handling.  There are like 4 or
 // 5 different ways to do things, all partly compatible, none a clear winner in
@@ -53,7 +66,8 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	mOrigSwapChain = pSwapChain;
 	mOrigDevice = mHackerDevice->GetOrigDevice1();
 	mOrigContext = pContext->GetOrigContext1();
-		
+	has_notice = false;
+
 	// The courierbold.spritefont is now included as binary resource data attached
 	// to the d3d11.dll.  We can fetch that resource and pass it to new SpriteFont
 	// to avoid having to drag around the font file.
@@ -464,7 +478,7 @@ static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 // example, we'll show one line for each, but only those that are present
 // in ShaderFixes and have something other than a blank line at the top.
 
-void Overlay::DrawShaderInfoLine(char *type, UINT64 selectedShader, int *y, bool shader)
+void Overlay::DrawShaderInfoLine(char *type, UINT64 selectedShader, float *y, bool shader)
 {
 	wchar_t osdString[maxstring];
 	Vector2 strSize;
@@ -494,30 +508,69 @@ void Overlay::DrawShaderInfoLine(char *type, UINT64 selectedShader, int *y, bool
 	if (!G->verbose_overlay)
 		x = max(float(mResolution.x - strSize.x) / 2, 0);
 
-	textPosition = Vector2(x, 10 + ((*y)++ * strSize.y));
+	textPosition = Vector2(x, *y);
+	*y += strSize.y;
 	mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 }
 
-void Overlay::DrawShaderInfoLines()
+void Overlay::DrawShaderInfoLines(float *y)
 {
-	int y = 1;
-
 	// Order is the same as the pipeline... Not quite the same as the count
 	// summary line, which is sorted by "the order in which we added them"
 	// (which to be fair, is pretty much their order of importance for our
 	// purposes). Since these only show up while hunting, it is better to
 	// have them reflect the actual order that they are run in. The summary
 	// line can stay in order of importance since it is always shown.
-	DrawShaderInfoLine("IB", G->mSelectedIndexBuffer, &y, false);
-	DrawShaderInfoLine("VS", G->mSelectedVertexShader, &y, true);
-	DrawShaderInfoLine("HS", G->mSelectedHullShader, &y, true);
-	DrawShaderInfoLine("DS", G->mSelectedDomainShader, &y, true);
-	DrawShaderInfoLine("GS", G->mSelectedGeometryShader, &y, true);
-	DrawShaderInfoLine("PS", G->mSelectedPixelShader, &y, true);
-	DrawShaderInfoLine("CS", G->mSelectedComputeShader, &y, true);
+	DrawShaderInfoLine("IB", G->mSelectedIndexBuffer, y, false);
+	DrawShaderInfoLine("VS", G->mSelectedVertexShader, y, true);
+	DrawShaderInfoLine("HS", G->mSelectedHullShader, y, true);
+	DrawShaderInfoLine("DS", G->mSelectedDomainShader, y, true);
+	DrawShaderInfoLine("GS", G->mSelectedGeometryShader, y, true);
+	DrawShaderInfoLine("PS", G->mSelectedPixelShader, y, true);
+	DrawShaderInfoLine("CS", G->mSelectedComputeShader, y, true);
 	// FIXME? This one is stored as a handle, not a hash:
 	if (G->mSelectedRenderTarget != (ID3D11Resource *)-1)
-		DrawShaderInfoLine("RT", GetOrigResourceHash(G->mSelectedRenderTarget), &y, false);
+		DrawShaderInfoLine("RT", GetOrigResourceHash(G->mSelectedRenderTarget), y, false);
+}
+
+void Overlay::DrawNotices(float y)
+{
+	std::vector<OverlayNotice>::iterator notice;
+	DWORD time = GetTickCount();
+	Vector2 textPosition;
+	Vector2 strSize;
+	int level, displayed = 0;
+
+	has_notice = false;
+	for (level = 0; level < NUM_LOG_LEVELS; level++) {
+		if (log_levels[level].hide_in_release && G->hunting == HUNTING_MODE_DISABLED)
+			continue;
+
+		for (notice = notices[level].begin(); notice != notices[level].end() && displayed < MAX_SIMULTANEOUS_NOTICES; ) {
+			if (!notice->timestamp) {
+				// Set the timestamp on the first present call
+				// that we display the message after it was
+				// issued. Means messages won't be missed if
+				// they exceed the maximum we can display
+				// simultaneously, and helps combat messages
+				// disappearing too quickly if there have been
+				// no present calls for a while after they were
+				// issued.
+				notice->timestamp = time;
+			} else if ((time - notice->timestamp) > log_levels[level].duration) {
+				notice = notices[level].erase(notice);
+				continue;
+			}
+
+			mFont->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, y), log_levels[level].colour);
+			strSize = mFont->MeasureString(notice->message.c_str());
+			y += strSize.y + 5;
+
+			has_notice = true;
+			notice++;
+			displayed++;
+		}
+	}
 }
 
 
@@ -554,6 +607,9 @@ void Overlay::DrawOverlay(void)
 {
 	HRESULT hr;
 
+	if (G->hunting != HUNTING_MODE_ENABLED && !has_notice)
+		return;
+
 	// Since some games did not like having us change their drawing state from
 	// SpriteBatch, we now save and restore all state information for the GPU
 	// around our drawing.  
@@ -568,20 +624,26 @@ void Overlay::DrawOverlay(void)
 			wchar_t osdString[maxstring];
 			Vector2 strSize;
 			Vector2 textPosition;
+			float y = 10.0f;
 
-			// Top of screen
-			CreateShaderCountString(osdString);
-			strSize = mFont->MeasureString(osdString);
-			textPosition = Vector2(float(mResolution.x - strSize.x) / 2, 10);
-			mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+			if (G->hunting == HUNTING_MODE_ENABLED) {
+				// Top of screen
+				CreateShaderCountString(osdString);
+				strSize = mFont->MeasureString(osdString);
+				textPosition = Vector2(float(mResolution.x - strSize.x) / 2, y);
+				mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+				y += strSize.y;
 
-			DrawShaderInfoLines();
+				DrawShaderInfoLines(&y);
 
-			// Bottom of screen
-			CreateStereoInfoString(mHackerDevice->mStereoHandle, osdString);
-			strSize = mFont->MeasureString(osdString);
-			textPosition = Vector2(float(mResolution.x - strSize.x) / 2, float(mResolution.y - strSize.y - 10));
-			mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+				// Bottom of screen
+				CreateStereoInfoString(mHackerDevice->mStereoHandle, osdString);
+				strSize = mFont->MeasureString(osdString);
+				textPosition = Vector2(float(mResolution.x - strSize.x) / 2, float(mResolution.y - strSize.y - 10));
+				mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+			}
+
+			DrawNotices(y);
 		}
 		mSpriteBatch->End();
 	}
@@ -589,4 +651,48 @@ fail_restore:
 	RestoreState();
 
 	flush_d3d11on12(mOrigDevice, mOrigContext);
+}
+
+OverlayNotice::OverlayNotice(std::wstring message) :
+	message(message),
+	timestamp(0)
+{
+}
+
+void Overlay::ClearNotices()
+{
+	int level;
+
+	for (level = 0; level < NUM_LOG_LEVELS; level++)
+		notices[level].clear();
+
+	has_notice = false;
+}
+
+void Overlay::vNotice(LogLevel level, wchar_t *fmt, va_list ap)
+{
+	wchar_t msg[maxstring];
+
+	// Using _vsnwprintf_s so we don't crash if the message is too long for
+	// the buffer, and truncate it instead - unless we can automatically
+	// wrap the message, which DirectXTK doesn't appear to support, who
+	// cares if it gets cut off somewhere off screen anyway?
+	_vsnwprintf_s(msg, maxstring, _TRUNCATE, fmt, ap);
+
+	notices[level].emplace_back(msg);
+	has_notice = true;
+}
+
+void LogOverlayW(HackerSwapChain *chain, LogLevel level, wchar_t *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vLogInfoW(fmt, ap);
+	if (chain) {
+		if (chain->mOverlay) {
+			chain->mOverlay->vNotice(level, fmt, ap);
+		}
+	}
+	va_end(ap);
 }

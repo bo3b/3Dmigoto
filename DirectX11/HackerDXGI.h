@@ -27,7 +27,6 @@ protected:
 	IDXGISwapChain1 *mOrigSwapChain1;
 	HackerDevice *mHackerDevice;
 	HackerContext *mHackerContext;
-	Overlay *mOverlay;
 
 public:
 	HackerSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pDevice, HackerContext *pContext);
@@ -35,6 +34,7 @@ public:
 	IDXGISwapChain1* GetOrigSwapChain1();
 	void UpdateStereoParams();
 	void RunFrameActions();
+	Overlay *mOverlay;
 
 
 	/** IUnknown **/
