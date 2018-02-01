@@ -213,11 +213,6 @@ void HackerSwapChain::RunFrameActions()
 	// affect something at the start of the frame.
 	RunCommandList(mHackerDevice, mHackerContext, &G->present_command_list, NULL, false);
 
-	// Draw the on-screen overlay text with hunting and informational
-	// messages, before final Present.
-	if (mOverlay)
-		mOverlay->DrawOverlay();
-
 	if (G->analyse_frame) {
 		// We don't allow hold to be changed mid-frame due to potential
 		// for filename conflicts, so use def_analyse_options:
@@ -248,13 +243,25 @@ void HackerSwapChain::RunFrameActions()
 	CurrentTransition.UpdatePresets(mHackerDevice);
 	CurrentTransition.UpdateTransitions(mHackerDevice);
 
-	G->frame_no++;
-
 	// The config file is not safe to reload from within the input handler
 	// since it needs to change the key bindings, so it sets this flag
 	// instead and we handle it now.
 	if (G->gReloadConfigPending)
 		ReloadConfig(mHackerDevice);
+
+	// Draw the on-screen overlay text with hunting and informational
+	// messages, before final Present. We now do this after the shader and
+	// config reloads, so if they have any notices we will see them this
+	// frame (just in case we crash next frame or something).
+	if (mOverlay)
+		mOverlay->DrawOverlay();
+
+	// This must happen on the same side of the config and shader reloads
+	// to ensure the config reload can't clear messages from the shader
+	// reload. It doesn't really matter which side we do it on at the
+	// moment, but let's do it last, because logically it makes sense to be
+	// incremented when we call the original present call:
+	G->frame_no++;
 
 	// When not hunting most keybindings won't have been registered, but
 	// still skip the below logic that only applies while hunting.
