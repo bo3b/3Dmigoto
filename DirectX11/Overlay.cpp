@@ -20,6 +20,9 @@
 
 #define MAX_SIMULTANEOUS_NOTICES 6
 
+static std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
+static bool has_notice = false;
+
 struct LogLevelParams {
 	DirectX::XMVECTORF32 colour;
 	DWORD duration;
@@ -66,7 +69,6 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	mOrigSwapChain = pSwapChain;
 	mOrigDevice = mHackerDevice->GetOrigDevice1();
 	mOrigContext = pContext->GetOrigContext1();
-	has_notice = false;
 
 	// The courierbold.spritefont is now included as binary resource data attached
 	// to the d3d11.dll.  We can fetch that resource and pass it to new SpriteFont
@@ -541,6 +543,8 @@ void Overlay::DrawNotices(float y)
 	Vector2 strSize;
 	int level, displayed = 0;
 
+	EnterCriticalSection(&G->mCriticalSection);
+
 	has_notice = false;
 	for (level = 0; level < NUM_LOG_LEVELS; level++) {
 		if (log_levels[level].hide_in_release && G->hunting == HUNTING_MODE_DISABLED)
@@ -571,6 +575,8 @@ void Overlay::DrawNotices(float y)
 			displayed++;
 		}
 	}
+
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 
@@ -643,7 +649,8 @@ void Overlay::DrawOverlay(void)
 				mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 			}
 
-			DrawNotices(y);
+			if (has_notice)
+				DrawNotices(y);
 		}
 		mSpriteBatch->End();
 	}
@@ -659,19 +666,27 @@ OverlayNotice::OverlayNotice(std::wstring message) :
 {
 }
 
-void Overlay::ClearNotices()
+void ClearNotices()
 {
 	int level;
+
+	EnterCriticalSection(&G->mCriticalSection);
 
 	for (level = 0; level < NUM_LOG_LEVELS; level++)
 		notices[level].clear();
 
 	has_notice = false;
+
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
-void Overlay::vNotice(LogLevel level, wchar_t *fmt, va_list ap)
+void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
 {
 	wchar_t msg[maxstring];
+	va_list ap;
+
+	va_start(ap, fmt);
+	vLogInfoW(fmt, ap);
 
 	// Using _vsnwprintf_s so we don't crash if the message is too long for
 	// the buffer, and truncate it instead - unless we can automatically
@@ -679,20 +694,12 @@ void Overlay::vNotice(LogLevel level, wchar_t *fmt, va_list ap)
 	// cares if it gets cut off somewhere off screen anyway?
 	_vsnwprintf_s(msg, maxstring, _TRUNCATE, fmt, ap);
 
+	EnterCriticalSection(&G->mCriticalSection);
+
 	notices[level].emplace_back(msg);
 	has_notice = true;
-}
 
-void LogOverlayW(HackerSwapChain *chain, LogLevel level, wchar_t *fmt, ...)
-{
-	va_list ap;
+	LeaveCriticalSection(&G->mCriticalSection);
 
-	va_start(ap, fmt);
-	vLogInfoW(fmt, ap);
-	if (chain) {
-		if (chain->mOverlay) {
-			chain->mOverlay->vNotice(level, fmt, ap);
-		}
-	}
 	va_end(ap);
 }

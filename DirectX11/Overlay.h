@@ -56,9 +56,6 @@ private:
 	std::unique_ptr<DirectX::SpriteFont> mFont;
 	std::unique_ptr<DirectX::SpriteBatch> mSpriteBatch;
 
-	std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
-	bool has_notice;
-
 	// These are all state that we save away before drawing the overlay and
 	// restore again afterwards. Basically everything that DirectTK
 	// SimpleSprite may clobber:
@@ -117,9 +114,7 @@ public:
 	~Overlay();
 
 	void DrawOverlay(void);
-
-	void ClearNotices();
-	void vNotice(LogLevel level, wchar_t *fmt, va_list ap);
 };
 
-void LogOverlayW(HackerSwapChain *chain, LogLevel level, wchar_t *fmt, ...);
+void ClearNotices();
+void LogOverlayW(LogLevel level, wchar_t *fmt, ...);
