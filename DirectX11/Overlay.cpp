@@ -22,6 +22,7 @@
 
 static std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
 static bool has_notice = false;
+static unsigned notice_cleared_frame = 0;
 
 struct LogLevelParams {
 	DirectX::XMVECTORF32 colour;
@@ -670,11 +671,15 @@ void ClearNotices()
 {
 	int level;
 
+	if (notice_cleared_frame == G->frame_no)
+		return;
+
 	EnterCriticalSection(&G->mCriticalSection);
 
 	for (level = 0; level < NUM_LOG_LEVELS; level++)
 		notices[level].clear();
 
+	notice_cleared_frame = G->frame_no;
 	has_notice = false;
 
 	LeaveCriticalSection(&G->mCriticalSection);
