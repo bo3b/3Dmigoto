@@ -331,26 +331,22 @@ void ForceDisplayParams1(DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc1)
 	// and are stubbed out with error reporting. Can be implemented when cases arise.
 	if (G->SCREEN_REFRESH >= 0 && !pDesc1->Windowed)
 	{
-		LogInfo("*** Unimplemented feature for refresh_rate in CreateSwapChainForHwnd\n");
-		BeepFailure();
+		LogOverlay(LOG_DIRE, "*** Unimplemented feature for refresh_rate in CreateSwapChainForHwnd\n");
 	}
 	if (G->SCREEN_WIDTH >= 0)
 	{
-		LogInfo("*** Unimplemented feature to force screen width in CreateSwapChainForHwnd\n");
-		BeepFailure();
+		LogOverlay(LOG_DIRE, "*** Unimplemented feature to force screen width in CreateSwapChainForHwnd\n");
 	}
 	if (G->SCREEN_HEIGHT >= 0)
 	{
-		LogInfo("*** Unimplemented feature to force screen height in CreateSwapChainForHwnd\n");
-		BeepFailure();
+		LogOverlay(LOG_DIRE, "*** Unimplemented feature to force screen height in CreateSwapChainForHwnd\n");
 	}
 
 	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
 	// swapchain to be 2x its normal width.  
 	if (G->gForceStereo == 2)
 	{
-		LogInfo("*** Unimplemented feature for Direct Mode in CreateSwapChainForHwnd\n");
-		BeepFailure();
+		LogOverlay(LOG_DIRE, "*** Unimplemented feature for Direct Mode in CreateSwapChainForHwnd\n");
 	}
 }
 

@@ -114,8 +114,7 @@ void InstallSetWindowPosHook()
 	fail |= InstallHook(hUser32, "SetWindowPos", (void**)&fnOrigSetWindowPos, Hooked_SetWindowPos, true);
 
 	if (fail) {
-		LogInfo("Failed to hook SetWindowPos for full_screen=2\n");
-		BeepFailure2();
+		LogOverlay(LOG_DIRE, "Failed to hook SetWindowPos for full_screen=2\n");
 		return;
 	}
 
@@ -928,7 +927,9 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 	{
 		if (pFactory == nullptr)
 		{
-			LogInfo("HackerUpscalingSwapChain::createRenderTarget failed provided factory pointer is invalid.\n");
+			LogOverlay(LOG_DIRE, "HackerUpscalingSwapChain::createRenderTarget failed provided factory pointer is invalid.\n");
+			// Not positive if we will be able to get an overlay to
+			// display the error, so also issue an audible warning:
 			BeepFailure2();
 		}
 		const UINT flagBackup = pFakeSwapChainDesc->Flags;
@@ -947,7 +948,9 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 	}
 	break;
 	default:
-		LogInfo("*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed ==> provided upscaling mode is not valid.\n");
+		LogOverlay(LOG_DIRE, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed ==> provided upscaling mode is not valid.\n");
+		// Not positive if we will be able to get an overlay to
+		// display the error, so also issue an audible warning:
 		BeepFailure2();
 	}
 
@@ -955,7 +958,9 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 
 	if (FAILED(hr))
 	{
-		LogInfo("*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed\n");
+		LogOverlay(LOG_DIRE, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed\n");
+		// Not positive if we will be able to get an overlay to
+		// display the error, so also issue an audible warning:
 		BeepFailure2();
 	}
 }
