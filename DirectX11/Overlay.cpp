@@ -53,7 +53,7 @@ struct LogLevelParams log_levels[] = {
 // the standard c runtime, but use the _s safe versions.
 
 // Max expected on-screen string size, used for buffer safe calls.
-const int maxstring = 200;
+const int maxstring = 1024;
 
 
 Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain)
