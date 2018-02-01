@@ -1703,6 +1703,13 @@ STDMETHODIMP_(void) HackerContext::ExecuteCommandList(THIS_
 {
 	if (G->deferred_contexts_enabled)
 		mOrigContext1->ExecuteCommandList(pCommandList, RestoreContextState);
+
+	if (!RestoreContextState) {
+		// This is equivalent to calling ClearState() afterwards, so we
+		// need to rebind the 3DMigoto resources now. See also
+		// FinishCommandList's RestoreDeferredContextState:
+		Bind3DMigotoResources();
+	}
 }
 
 STDMETHODIMP_(void) HackerContext::HSSetShaderResources(THIS_
@@ -2411,7 +2418,8 @@ STDMETHODIMP HackerContext::FinishCommandList(THIS_
 
 	if (!RestoreDeferredContextState) {
 		// This is equivalent to calling ClearState() afterwards, so we
-		// need to rebind the 3DMigoto resources now
+		// need to rebind the 3DMigoto resources now. See also
+		// ExecuteCommandList's RestoreContextState:
 		Bind3DMigotoResources();
 	}
 
