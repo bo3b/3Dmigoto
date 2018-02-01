@@ -54,6 +54,7 @@ private:
 
 	DirectX::XMUINT2 mResolution;
 	std::unique_ptr<DirectX::SpriteFont> mFont;
+	std::unique_ptr<DirectX::SpriteFont> mFontNotifications;
 	std::unique_ptr<DirectX::SpriteBatch> mSpriteBatch;
 
 	// These are all state that we save away before drawing the overlay and

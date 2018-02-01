@@ -85,6 +85,19 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	// to draw the text, and we don't want to intercept those.
 	mFont.reset(new DirectX::SpriteFont(mOrigDevice, fontBlob, fontSize));
 	mFont->SetDefaultCharacter(L'?');
+
+	// Courier is a nice choice for hunting status lines, and showing the
+	// shader hashes since it is monospace, but for arbitrary notifications
+	// we want something a little smaller, and variable width. Liberation
+	// Sans has essentially the same metrics as Arial,
+	// but is not encumbered.
+	rc = FindResource(handle, MAKEINTRESOURCE(IDR_LIBERATION_SANS), MAKEINTRESOURCE(SPRITEFONT));
+	rcData = LoadResource(handle, rc);
+	fontSize = SizeofResource(handle, rc);
+	fontBlob = static_cast<const uint8_t*>(LockResource(rcData));
+	mFontNotifications.reset(new DirectX::SpriteFont(mOrigDevice, fontBlob, fontSize));
+	mFontNotifications->SetDefaultCharacter(L'?');
+
 	mSpriteBatch.reset(new DirectX::SpriteBatch(mOrigContext));
 }
 
@@ -567,8 +580,8 @@ void Overlay::DrawNotices(float y)
 				continue;
 			}
 
-			mFont->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, y), log_levels[level].colour);
-			strSize = mFont->MeasureString(notice->message.c_str());
+			mFontNotifications->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, y), log_levels[level].colour);
+			strSize = mFontNotifications->MeasureString(notice->message.c_str());
 			y += strSize.y + 5;
 
 			has_notice = true;
