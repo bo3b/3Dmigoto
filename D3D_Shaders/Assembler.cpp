@@ -2033,6 +2033,18 @@ vector<string> stringToLines(const char* start, size_t size) {
 		// corrupting the resulting shader binary. -DarkStarSword
 		if (s.size() >= 1 && s[s.size() - 1] == '\r')
 			s.erase(--s.end());
+
+		// Strip whitespace from the end of each line. This isn't
+		// strictly necessary, but the MS disassembler inserts an extra
+		// space after "ret ", "else " and "endif ", which has been a
+		// gotcha for trying to match it with ShaderRegex since it's
+		// easy to miss the fact that there is a space there and not
+		// understand why the pattern isn't matching. By removing
+		// excess spaces from the end of each line now we can make this
+		// gotcha go away.
+		while (s.size() >= 1 && s[s.size() - 1] == ' ')
+			s.erase(--s.end());
+
 		lines[i] = s;
 	}
 	return lines;
