@@ -438,14 +438,13 @@ static bool WriteHLSL(string hlslText, string asmText, UINT64 hash, wstring shad
 	_wfopen_s(&fw, fullName, L"rb");
 	if (fw)
 	{
-		LogInfoW(L"    marked shader file already exists: %s\n", fullName);
+		LogOverlayW(LOG_INFO, L"marked shader file already exists: %s\n", fullName);
 		fclose(fw);
 		_wfopen_s(&fw, fullName, L"ab");
 		if (fw) {
 			fprintf_s(fw, " ");					// Touch file to update mod date as a convenience.
 			fclose(fw);
 		}
-		BeepShort();						// Short High beep for for double beep that it's already there.
 		return true;
 	}
 
@@ -862,6 +861,12 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 	string asmText;
 	string decompiled;
 
+	// Clears any notices currently displayed on the overlay. This ensures
+	// that any notices that haven't timed out yet (e.g. from a previous
+	// failed dump attempt) are removed so that the only messages
+	// displayed will be relevant to the current dump attempt.
+	ClearNotices();
+
 	// The key of the map is the actual shader, we thus need to do a linear search to find our marked hash.
 	for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
 	{
@@ -905,13 +910,11 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 
 	if (success)
 	{
-		BeepSuccess();			// High beep for success, to notify it's running fresh fixes.
-		LogInfo("> successfully copied Marked shader to ShaderFixes\n");
+		LogOverlay(LOG_INFO, "> successfully copied Marked shader to ShaderFixes\n");
 	}
 	else
 	{
-		BeepFailure();			// Bonk sound for failure.
-		LogInfo("> FAILED to copy Marked shader to ShaderFixes\n");
+		LogOverlay(LOG_WARNING, "> FAILED to copy Marked shader to ShaderFixes\n");
 	}
 }
 
@@ -928,8 +931,7 @@ static void TakeScreenShot(HackerDevice *wrapped, void *private_data)
 		err = NvAPI_Stereo_CapturePngImage(wrapped->mStereoHandle);
 		if (err != NVAPI_OK)
 		{
-			LogInfo("> screenshot failed, error:%d\n", err);
-			BeepFailure2();		// Brnk, dunk sound for failure.
+			LogOverlay(LOG_WARNING, "> screenshot failed, error:%d\n", err);
 		}
 	}
 }
@@ -993,6 +995,16 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 		WIN32_FIND_DATA findFileData;
 		wchar_t fileName[MAX_PATH];
 
+		// Clears any notices currently displayed on the overlay. This ensures
+		// that any notices that haven't timed out yet (e.g. from a previous
+		// failed reload attempt) are removed so that the only messages
+		// displayed will be relevant to the current reload attempt.
+		//
+		// The config reload is separate and will also attempt to clear old
+		// notices - ClearNotices() itself will ensure that only the first one
+		// of these actually takes effect in the current frame.
+		ClearNotices();
+
 		for (ShaderReloadMap::iterator iter = G->mReloadedShaders.begin(); iter != G->mReloadedShaders.end(); iter++)
 			iter->second.found = false;
 
@@ -1016,13 +1028,11 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 
 		if (success)
 		{
-			BeepSuccess();		// High beep for success, to notify it's running fresh fixes.
-			LogInfo("> successfully reloaded shaders from ShaderFixes\n");
+			LogOverlay(LOG_INFO, "> successfully reloaded shaders from ShaderFixes\n");
 		}
 		else
 		{
-			BeepFailure();			// Bonk sound for failure.
-			LogInfo("> FAILED to reload shaders from ShaderFixes\n");
+			LogOverlay(LOG_WARNING, "> FAILED to reload shaders from ShaderFixes\n");
 		}
 	}
 }

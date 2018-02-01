@@ -192,30 +192,7 @@ static IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &
 	return sections.end();
 }
 
-// These are used to limit the number of audible warnings we will issue
-// whenever we load or reload the d3dx.ini. This prevents things like missing
-// custom shaders, compile failures or duplicate sections from causing an
-// endless cascade of warning tones as every line that refers to them will then
-// fail to parse. This is of particular importance in UE4, which uses a
-// watchdog timer to kill the game after 30 seconds if it believes it has hung.
-static int IniWarningToneCounter = 3;
-
-static void ArmIniWarningTones()
-{
-	IniWarningToneCounter = 3;
-}
-
-static void IniWarning(char *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-	vLogInfo(fmt, ap);
-	va_end(ap);
-
-	if (IniWarningToneCounter-- > 0)
-		BeepFailure2();
-}
+#define IniWarning(fmt, ...) do { LogOverlay(LOG_WARNING, fmt, __VA_ARGS__); } while (0)
 
 static void ParseIniSectionLine(wstring *wline, wstring *section,
 		bool *warn_duplicates, bool *warn_lines_without_equals,
@@ -3237,8 +3214,7 @@ void InstallMouseHooks(bool hide)
 	fail |= InstallHook(hUser32, "GetClientRect", (void**)&trampoline_GetClientRect, Hooked_GetClientRect, true);
 
 	if (fail) {
-		LogInfo("Failed to hook mouse cursor functions - hide_cursor will not work\n");
-		BeepFailure2();
+		LogOverlay(LOG_DIRE, "Failed to hook mouse cursor functions - hide_cursor will not work\n");
 		return;
 	}
 
@@ -3275,7 +3251,6 @@ void LoadConfigFile()
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
 
-	ArmIniWarningTones();
 	ParseIniFile(iniFile);
 	InsertBuiltInIniSections();
 
@@ -3695,6 +3670,16 @@ void ReloadConfig(HackerDevice *device)
 	// contexts) while we do this
 	EnterCriticalSection(&G->mCriticalSection);
 
+	// Clears any notices currently displayed on the overlay. This ensures
+	// that any notices that haven't timed out yet (e.g. from a previous
+	// failed reload attempt) are removed so that the only messages
+	// displayed will be relevant to the current reload attempt.
+	//
+	// The shader reload is separate and will also attempt to clear old
+	// notices - ClearNotices() itself will ensure that only the first one
+	// of these actually takes effect in the current frame.
+	ClearNotices();
+
 	// Clear the key bindings. There may be other things that need to be
 	// cleared as well, but for the sake of clarity I'd rather clear as
 	// many as possible inside LoadConfigFile() where they are set.
@@ -3710,7 +3695,6 @@ void ReloadConfig(HackerDevice *device)
 	LeaveCriticalSection(&G->mCriticalSection);
 
 	// Update the iniParams resource from the config file:
-	// FIXME: THIS CRASHES IF 3D IS DISABLED (ROOT CAUSE LIKELY ELSEWHERE)
 	hr = realContext->Map(device->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (FAILED(hr)) {
 		LogInfo("Failed to update IniParams\n");
@@ -3718,4 +3702,6 @@ void ReloadConfig(HackerDevice *device)
 	}
 	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
 	realContext->Unmap(device->mIniTexture, 0);
+
+	LogOverlay(LOG_INFO, "> d3dx.ini reloaded");
 }
