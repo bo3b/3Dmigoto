@@ -593,12 +593,23 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 
 		LogInfo("    compile result for replacement HLSL shader: %x\n", ret);
 
-		if (LogFile && pErrorMsgs)
+		if (pErrorMsgs)
 		{
 			LPVOID errMsg = pErrorMsgs->GetBufferPointer();
 			SIZE_T errSize = pErrorMsgs->GetBufferSize();
 			LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
-			fwrite(errMsg, 1, errSize - 1, LogFile);
+			if (FAILED(ret))
+			{
+				// If there are errors they go to the overlay
+				LogOverlay(LOG_NOTICE, "%*s\n", errSize, errMsg);
+			}
+			else if (LogFile)
+			{
+				// If there are only warnings they go to the
+				// log file, because it's too noisy to send all
+				// these to the overlay.
+				fwrite(errMsg, 1, errSize - 1, LogFile);
+			}
 			LogInfo("---------------------------------------------- END ----------------------------------------------\n");
 			pErrorMsgs->Release();
 		}
