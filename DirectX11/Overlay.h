@@ -118,3 +118,4 @@ public:
 
 void ClearNotices();
 void LogOverlayW(LogLevel level, wchar_t *fmt, ...);
+void LogOverlay(LogLevel level, char *fmt, ...);

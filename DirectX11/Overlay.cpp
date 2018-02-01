@@ -708,3 +708,34 @@ void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
 
 	va_end(ap);
 }
+
+// ASCII version of the above. DirectXTK only understands wide strings, so we
+// need to convert it to that, but we can't just convert the format and hand it
+// to LogOverlayW, because that would reverse the meaning of %s and %S in the
+// format string. Instead we do our own vLogInfo and _vsnprintf_s to handle the
+// format string correctly and convert the result to a wide string.
+void LogOverlay(LogLevel level, char *fmt, ...)
+{
+	char amsg[maxstring];
+	wchar_t wmsg[maxstring];
+	va_list ap;
+
+	va_start(ap, fmt);
+	vLogInfo(fmt, ap);
+
+	// Using _vsnprintf_s so we don't crash if the message is too long for
+	// the buffer, and truncate it instead - unless we can automatically
+	// wrap the message, which DirectXTK doesn't appear to support, who
+	// cares if it gets cut off somewhere off screen anyway?
+	_vsnprintf_s(amsg, maxstring, _TRUNCATE, fmt, ap);
+	mbstowcs(wmsg, amsg, maxstring);
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	notices[level].emplace_back(wmsg);
+	has_notice = true;
+
+	LeaveCriticalSection(&G->mCriticalSection);
+
+	va_end(ap);
+}
