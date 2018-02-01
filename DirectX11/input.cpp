@@ -451,9 +451,8 @@ void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
 			try {
 				button = new InputButtonList(keyName);
 			} catch (KeyParseError) {
-				LogInfoW(L"  WARNING: UNABLE TO PARSE KEY BINDING %s=%s\n",
+				LogOverlayW(LOG_WARNING, L"WARNING: UNABLE TO PARSE KEY BINDING %s=%s\n",
 						iniKey, keyName);
-				BeepFailure2();
 				return;
 			}
 		}
