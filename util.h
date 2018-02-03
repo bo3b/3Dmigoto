@@ -935,3 +935,5 @@ private:
 	std::string m_what;
 
 };
+
+BOOL CreateDirectoryEnsuringAccess(LPCWSTR path);

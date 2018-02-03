@@ -23,6 +23,7 @@
     <ClCompile Include="nvprofile.cpp" />
     <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
     <ClCompile Include="ShaderRegex.cpp" />
+    <ClCompile Include="..\util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />

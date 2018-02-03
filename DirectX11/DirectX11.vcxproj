@@ -42,6 +42,7 @@
     <ClCompile Include="..\D3D_Shaders\Assembler.cpp" />
     <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
+    <ClCompile Include="..\util.cpp" />
     <ClCompile Include="D3D11Wrapper.cpp" />
     <ClCompile Include="DLLMainHook.cpp" />
     <ClCompile Include="FrameAnalysis.cpp" />
