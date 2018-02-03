@@ -405,9 +405,15 @@ void InitD311()
 
 	// Chain through to the either the original DLL in the system, or to a proxy
 	// DLL with the same interface, specified in the d3dx.ini file.
+	// In the proxy load case, the load_library_redirect flag must be set to
+	// zero, otherwise the proxy d3d11.dll will call back into us, and create
+	// an infinite loop.
 
 	if (G->CHAIN_DLL_PATH[0])
 	{
+		LogInfo("Proxy loading active, Forcing load_library_redirect=0\n");
+		G->load_library_redirect = 0;
+
 		wchar_t sysDir[MAX_PATH] = {0};
 		if (!GetModuleFileName(0, sysDir, MAX_PATH)) {
 			LogInfo("GetModuleFileName failed\n");
@@ -432,6 +438,7 @@ void InitD311()
 			}
 			hD3D11 = LoadLibrary(G->CHAIN_DLL_PATH);
 		}
+		LogInfo("Proxy loading result: %p\n", hD3D11);
 	}
 	else
 	{

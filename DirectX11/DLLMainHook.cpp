@@ -127,18 +127,30 @@ static HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserve
 		return NULL;
 	}
 
+	// Only do these overrides if they are specified in the d3dx.ini file.
+	//  load_library_redirect=0 for off, allowing all through unchanged. 
+	//  load_library_redirect=1 for nvapi.dll override only, forced to game folder.
+	//  load_library_redirect=2 for both d3d11.dll and nvapi.dll forced to game folder.
+	// This flag can be set by the proxy loading, because it must be off in that case.
 	if (hook_enabled) {
-		module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_d3d11.dll", L"d3d11.dll");
-		if (module)
-			return module;
 
-		module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi64.dll", L"nvapi64.dll");
-		if (module)
-			return module;
+		if (G->load_library_redirect > 1)
+		{
+			module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_d3d11.dll", L"d3d11.dll");
+			if (module)
+				return module;
+		}
 
-		module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi.dll", L"nvapi.dll");
-		if (module)
-			return module;
+		if (G->load_library_redirect > 0)
+		{
+			module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi64.dll", L"nvapi64.dll");
+			if (module)
+				return module;
+
+			module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi.dll", L"nvapi.dll");
+			if (module)
+				return module;
+		}
 	} else
 		hook_enabled = true;
 

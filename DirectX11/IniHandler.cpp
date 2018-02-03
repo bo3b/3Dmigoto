@@ -2953,7 +2953,9 @@ void LoadConfigFile()
 
 	// [System]
 	LogInfo("[System]\n");
-	GetIniStringAndLog(L"System", L"proxy_d3d11", 0, G->CHAIN_DLL_PATH, MAX_PATH);
+	GetIniStringAndLog(L"System", L"proxy_d3d11", 0, G->CHAIN_DLL_PATH, MAX_PATH);	
+	G->load_library_redirect = GetIniInt(L"System", L"load_library_redirect", 0, NULL);
+
 	if (GetIniStringAndLog(L"System", L"hook", 0, setting, MAX_PATH))
 	{
 		G->enable_hooks = parse_enum_option_string<wchar_t *, EnableHooks>
