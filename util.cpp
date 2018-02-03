@@ -35,7 +35,8 @@ BOOL CreateDirectoryEnsuringAccess(LPCWSTR path)
 			L"D:" // Discretionary ACL
 			// Removed string from MSDN that denies guests/anonymous users
 			L"(A;OICI;GRGX;;;WD)" // Give everyone read/execute access
-			L"(A;OICI;GRGWGX;;;AU)" // Allow read/write/execute to authenticated users
+			L"(A;OICI;GA;;;AU)" // Allow full control to authenticated users (GRGWGX is not enough to delete contents?)
+			// Using "CO" for Creator/Owner instead of "AU" seems ineffective
 			L"(A;OICI;GA;;;BA)" // Allow full control to administrators
 			, SDDL_REVISION_1, &sa.lpSecurityDescriptor, NULL)) {
 		psa = &sa;
