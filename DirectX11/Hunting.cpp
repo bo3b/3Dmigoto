@@ -1089,7 +1089,7 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 	// Bail if the analysis directory already exists or can't be created.
 	// This currently limits us to one / second, but that's probably
 	// enough. We can always increase the granuality if needed.
-	if (!CreateDirectory(path, 0)) {
+	if (!CreateDirectoryEnsuringAccess(path)) {
 		LogInfoW(L"Error creating frame analysis directory: %i\n", GetLastError());
 		return;
 	}

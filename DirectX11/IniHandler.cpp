@@ -3368,7 +3368,7 @@ void LoadConfigFile()
 			wcscpy(G->SHADER_PATH, setting);
 		}
 		// Create directory?
-		CreateDirectory(G->SHADER_PATH, 0);
+		CreateDirectoryEnsuringAccess(G->SHADER_PATH);
 	}
 	if (GetIniStringAndLog(L"Rendering", L"cache_directory", 0, G->SHADER_CACHE_PATH, MAX_PATH))
 	{
@@ -3382,7 +3382,7 @@ void LoadConfigFile()
 			wcscpy(G->SHADER_CACHE_PATH, setting);
 		}
 		// Create directory?
-		CreateDirectory(G->SHADER_CACHE_PATH, 0);
+		CreateDirectoryEnsuringAccess(G->SHADER_CACHE_PATH);
 	}
 
 	G->CACHE_SHADERS = GetIniBool(L"Rendering", L"cache_shaders", false, NULL);

@@ -923,5 +923,9 @@ static bool ParseIniParamName(const wchar_t *name, int *idx, float DirectX::XMFL
 	return false;
 }
 
+// -----------------------------------------------------------------------------------------------
+
+BOOL CreateDirectoryEnsuringAccess(LPCWSTR path);
+
 bool check_interface_supported(IUnknown *unknown, REFIID riid);
 void analyse_iunknown(IUnknown *unknown);
