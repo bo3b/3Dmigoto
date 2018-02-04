@@ -101,9 +101,10 @@ public:
 	ID3D11Texture1D *mIniTexture;
 	ID3D11ShaderResourceView *mIniResourceView;
 
-	HackerDevice(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
+	HackerDevice(ID3D11Device1 *pDevice1);
 
 	void Create3DMigotoResources();
+	void SetOrigImmediateContext(ID3D11DeviceContext1 *pContext);
 	void SetHackerContext(HackerContext *pHackerContext);
 	void SetHackerSwapChain(HackerSwapChain *pHackerSwapChain);
 
@@ -481,4 +482,5 @@ public:
 		_Out_  void **ppResource); 
 };
 
-HackerDevice* lookup_hacker_device(IUnknown *unknown);
+HackerDevice* lookup_or_wrap_hacker_device(IUnknown *unknown);
+void wrap_d3d11_device(ID3D11Device **pDevice);

@@ -1315,3 +1315,5 @@ public:
 		_In_reads_opt_(NumRects)  const D3D11_RECT *pRects,
 		UINT NumRects);
 };
+
+void wrap_and_finalise_d3d11_immediate_context(ID3D11DeviceContext **ppContext);

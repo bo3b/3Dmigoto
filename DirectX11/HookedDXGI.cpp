@@ -94,12 +94,13 @@ static HackerDevice* prepare_devices_for_dx12_warning(IUnknown *unknown_device)
 	LogInfo(" ID3D11Device: %p\n", d3d11_device);
 	LogInfo(" ID3D11DeviceContext: %p\n", d3d11_context);
 
-	dev_wrap = new HackerDevice((ID3D11Device1*)d3d11_device, (ID3D11DeviceContext1*)d3d11_context);
+	dev_wrap = new HackerDevice((ID3D11Device1*)d3d11_device);
 	context_wrap = HackerContextFactory((ID3D11Device1*)d3d11_device, (ID3D11DeviceContext1*)d3d11_context);
 
 	LogInfo(" HackerDevice: %p\n", dev_wrap);
 	LogInfo(" HackerContext: %p\n", context_wrap);
 
+	dev_wrap->SetOrigImmediateContext((ID3D11DeviceContext1*)d3d11_context);
 	dev_wrap->SetHackerContext(context_wrap);
 	context_wrap->SetHackerDevice(dev_wrap);
 	dev_wrap->Create3DMigotoResources();
@@ -157,7 +158,7 @@ static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device)
 	// relying on COM's guarantee that IUnknown will match for different
 	// interfaces to the same object, and noting that this call will bump
 	// the refcount on hackerDevice:
-	hackerDevice = lookup_hacker_device(*device);
+	hackerDevice = lookup_or_wrap_hacker_device(*device);
 	if (hackerDevice) {
 		// Ensure that pDevice points to the real DX device before
 		// passing it into DX for safety. We can probably get away

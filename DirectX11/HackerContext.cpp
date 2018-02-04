@@ -26,6 +26,90 @@
 
 // -----------------------------------------------------------------------------------------------
 
+// Called from D3D11CreateDevice[AndSwapChain] to wrap a DX immediate context
+// in a HackerContext, fix up the return pointer.
+void wrap_and_finalise_d3d11_immediate_context(ID3D11DeviceContext **ppContext)
+{
+	ID3D11DeviceContext1 *origContext1 = nullptr;
+	ID3D11Device *origDevice = nullptr;
+	HackerDevice *hackerDevice = nullptr;
+	HackerContext *hackerContext = nullptr;
+	HRESULT res;
+
+	if (!ppContext || !*ppContext)
+		return;
+
+	// We now want to always upconvert to ID3D11Device1 and ID3D11DeviceContext1,
+	// and will only use the downlevel objects if we get an error on QueryInterface.
+	// This is not strictly necessary, and this complexity paved the way
+	// for a refcounting bug in the early days of 1.3, but given that we
+	// are going to treat the wrapped object as though it was a context1
+	// this just seems more foolproof.
+	res = (*ppContext)->QueryInterface(IID_PPV_ARGS(&origContext1));
+	LogInfo("  QueryInterface(ID3D11DeviceContext1) returned result = %x, context1 handle = %p\n", res, origContext1);
+	if (SUCCEEDED(res)) {
+		(*ppContext)->Release();
+	} else {
+		origContext1 = static_cast<ID3D11DeviceContext1*>(*ppContext);
+	}
+
+	// We don't pass in the original device because there is some
+	// complexity as to whether it is a HackerDevice or hooked device, and
+	// maybe it could even be NULL. Let's just GetDevice() on the original
+	// context to find the original device and lookup our HackerDevice from
+	// there.
+	(*ppContext)->GetDevice(&origDevice);
+	if (!origDevice) {
+		LogInfo("Unexpected orphaned context\n");
+		DoubleBeepExit();
+	}
+
+	hackerDevice = lookup_or_wrap_hacker_device(origDevice);
+	if (!hackerDevice) {
+		// Shouldn't happen - even if we somehow got this far without
+		// wrapping the device, the above function should have so long
+		// as it is a D3D11 device, but if not we shouldn't be here.
+		LogInfo("BUG: D3D11 context yet no HackerDevice?\n");
+		analyse_iunknown(origDevice);
+		DoubleBeepExit();
+	}
+
+	origDevice->Release();
+
+	// Create a wrapped version of the original context to return to the game.
+	// We call GetOrigDevice1 here to ensure the HackerContext is referring
+	// to the same device1 as the HackerDevice (using origDevice directly
+	// should also work, but this is more foolproof)
+	hackerContext = HackerContextFactory(hackerDevice->GetOrigDevice1(), origContext1);
+	LogInfo("  HackerContext %p created to wrap %p\n", hackerContext, origContext1);
+
+	if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT) {
+		hackerContext->HookContext();
+		*ppContext = origContext1;
+	} else {
+		*ppContext = hackerContext;
+	}
+
+	// Let each of the new Hacker objects know about the other, needed for unusual
+	// calls in the Hacker objects where we want to return the Hacker versions.
+	hackerDevice->SetOrigImmediateContext(hackerContext->GetOrigContext1());
+	hackerDevice->SetHackerContext(hackerContext);
+	hackerContext->SetHackerDevice(hackerDevice);
+
+	// lookup_or_wrap_hacker_device will have bumped the refcount on the
+	// device, which we release now. Just in case GetDevice() ever gives us
+	// a tear-off interface with an independent refcount (it shouldn't) we
+	// make sure we're not destroying the last reference, since that would
+	// leave HackerContext with a bad pointer, which would be bad:
+	if (hackerDevice->Release() == 0) {
+		LogInfo("Unexpectedly low refcount on context parent\n");
+		DoubleBeepExit();
+	}
+
+	// With all the interacting objects set up, we can now safely finish the HackerDevice init.
+	hackerContext->Bind3DMigotoResources();
+}
+
 HackerContext* HackerContextFactory(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1)
 {
 	// We can either create a straight HackerContext, or a souped up

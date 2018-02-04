@@ -28,6 +28,55 @@
 #include "ResourceHash.h"
 #include "ShaderRegex.h"
 
+static HackerDevice* HackerDeviceFactory(IUnknown *unknown_device)
+{
+	ID3D11Device1 *origDevice1 = NULL;
+	HackerDevice *deviceWrap = NULL;
+	HRESULT res;
+
+	// We're passed an IUnknown, which we can't be sure is directly
+	// castable to an ID3D11Device (The IUnknown pointers are a bit of a
+	// special case in COM, since they may represent a whole object, not
+	// just an interface. The subtle gotcha here is that while an interface
+	// inherits from IUnknown could be cast to one, that will not
+	// necessarily return the same pointer as using QueryInterface to get
+	// the IUnknown). If you still don't follow, try passing real_unknown
+	// into this function from lookup_hacker_device instead of unknown,
+	// remove the below QueryInterface and observe the explosion.
+	//
+	// We try to get the highest interface level that we support wrapping
+	// via QueryInterface, then fall back to a regular ID3D11Device if that
+	// is not supported. Either way, we stick the result in the same
+	// pointer because those interfaces are directly castable - it will
+	// work so long as we don't call any Device1 methods if it is in fact
+	// just a Device0. In fact, we don't really need to try getting a
+	// Device1 at all at this point - just getting the bare ID3D11Device
+	// would work just fine, but we get a device1 anyway because that's how
+	// we're going to treat it, so it seems more foolproof.
+	//
+	// Note that this will bump the refcount on the wrapped device.
+	// To make sure everything balances, D3D11CreateDevice[AndSwapChain] is
+	// expected to release the reference on the original interface that was
+	// created but that it is *NOT* returning to the game, and replace it
+	// with either the HackerDevice, or the interface the HackerDevice is
+	// wrapping (if using hooking).
+	res = unknown_device->QueryInterface(IID_ID3D11Device1, (void**)&origDevice1);
+	LogInfo("  QueryInterface(ID3D11Device1) returned result = %x, device1 handle = %p\n", res, origDevice1);
+	if (FAILED(res)) {
+		res = unknown_device->QueryInterface(IID_ID3D11Device, (void**)&origDevice1);
+		LogInfo("  QueryInterface(ID3D11Device) returned result = %x, device handle = %p\n", res, origDevice1);
+	}
+
+	if (!origDevice1)
+		return NULL;
+
+	// Create a wrapped version of the original device to return to the game.
+	deviceWrap = new HackerDevice(origDevice1);
+	LogInfo("  HackerDevice %p created to wrap %p\n", deviceWrap, origDevice1);
+
+	return deviceWrap;
+}
+
 // A map to look up the HackerDevice from an IUnknown. The reason for using an
 // IUnknown as the key is that an ID3D11Device and IDXGIDevice are actually two
 // different interfaces to the same object, which means that QueryInterface()
@@ -73,11 +122,14 @@ static DeviceMap device_map;
 // This will look up a HackerDevice corresponding to some unknown device object
 // (ID3D11Device*, IDXGIDevice*, etc). It will bump the refcount on the
 // returned interface.
-HackerDevice* lookup_hacker_device(IUnknown *unknown)
+HackerDevice* lookup_or_wrap_hacker_device(IUnknown *unknown)
 {
 	HackerDevice *ret = NULL;
 	IUnknown *real_unknown = NULL;
 	DeviceMap::iterator i;
+
+	if (!unknown)
+		return NULL;
 
 	// First, check if this is already a HackerDevice. This is a fast path,
 	// but is also kind of important in case we ever make
@@ -91,7 +143,7 @@ HackerDevice* lookup_hacker_device(IUnknown *unknown)
 	// but even if they didn't they would still be looked up in the map, so
 	// either way we no longer need to call lookup_hooked_device.
 	if (SUCCEEDED(unknown->QueryInterface(IID_HackerDevice, (void**)&ret))) {
-		LogInfo("lookup_hacker_device(%p): Supports HackerDevice\n", unknown);
+		LogInfo("lookup_or_wrap_hacker_device(%p): Supports HackerDevice\n", unknown);
 		return ret;
 	}
 
@@ -102,7 +154,7 @@ HackerDevice* lookup_hacker_device(IUnknown *unknown)
 	// object, so we call QueryInterface on it again to get this:
 	if (FAILED(unknown->QueryInterface(IID_IUnknown, (void**)&real_unknown))) {
 		// ... ehh, what? Shouldn't happen. Fatal.
-		LogInfo("lookup_hacker_device: QueryInterface(IID_Unknown) failed\n");
+		LogInfo("lookup_or_wrap_hacker_device: QueryInterface(IID_Unknown) failed\n");
 		DoubleBeepExit();
 	}
 
@@ -111,15 +163,55 @@ HackerDevice* lookup_hacker_device(IUnknown *unknown)
 	if (i != device_map.end()) {
 		ret = i->second;
 		ret->AddRef();
+	} else {
+		// There is no existing HackerDevice wrapping this object, so
+		// we create one now. HackerDeviceFactory will bump the refcount
+		ret = HackerDeviceFactory(unknown);
 	}
 	LeaveCriticalSection(&G->mCriticalSection);
 
 	real_unknown->Release();
 
-	LogInfo("lookup_hacker_device(%p) IUnknown: %p HackerDevice: %p\n",
+	LogInfo("lookup_or_wrap_hacker_device(%p) IUnknown: %p HackerDevice: %p\n",
 			unknown, real_unknown, ret);
 
 	return ret;
+}
+
+// Called from D3D11CreateDevice[AndSwapChain] to wrap a DX device in a
+// HackerDevice and fix up the return pointer. In actual fact, we might have
+// already created a HackerDevice if we already saw a sneak preview of this
+// device in CreateSwapChain (thanks to hooking DX can call back into us from
+// CreateDeviceAndSwapChain), so this function may just retrieve that
+// HackerDevice instead.
+void wrap_d3d11_device(ID3D11Device **ppDevice)
+{
+	HackerDevice *deviceWrap = nullptr;
+
+	if (!ppDevice || !*ppDevice)
+		return;
+
+	// The device might have already been wrapped, or not. This function
+	// will look it up if it already exists, and create it if it does not.
+	deviceWrap = lookup_or_wrap_hacker_device(*ppDevice);
+	if (!deviceWrap)
+		return;
+
+	// wrap_hacker_device bumped the refcount on the interface the
+	// HackerDevice is wrapping, and expects us to release the
+	// original interface (since we aren't returning it to the
+	// game) and replace it with the HackerDevice, or the interface
+	// it is wrapping depending on whether we are hooking or not.
+	(*ppDevice)->Release();
+
+	if (G->enable_hooks & EnableHooks::DEVICE) {
+		deviceWrap->HookDevice();
+		*ppDevice = deviceWrap->GetOrigDevice1();
+	} else {
+		*ppDevice = deviceWrap;
+	}
+
+	deviceWrap->Create3DMigotoResources();
 }
 
 static IUnknown* register_hacker_device(HackerDevice *hacker_device)
@@ -193,14 +285,13 @@ static void unregister_hacker_device(HackerDevice *hacker_device)
 
 // -----------------------------------------------------------------------------------------------
 
-HackerDevice::HackerDevice(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1) : 
+HackerDevice::HackerDevice(ID3D11Device1 *pDevice1) :
 	mStereoHandle(0), mStereoResourceView(0), mStereoTexture(0),
 	mIniResourceView(0), mIniTexture(0),
-	mZBufferResourceView(0)
+	mZBufferResourceView(0), mOrigContext1(NULL)
 {
 	mOrigDevice1 = pDevice1;
 	mRealOrigDevice1 = pDevice1;
-	mOrigContext1 = pContext1;
 	// Must be done after mOrigDevice1 is set:
 	mUnknown = register_hacker_device(this);
 }
@@ -391,6 +482,11 @@ void HackerDevice::Create3DMigotoResources()
 
 
 // Save reference to corresponding HackerContext during CreateDevice, needed for GetImmediateContext.
+
+void HackerDevice::SetOrigImmediateContext(ID3D11DeviceContext1 *pContext1)
+{
+	mOrigContext1 = pContext1;
+}
 
 void HackerDevice::SetHackerContext(HackerContext *pHackerContext)
 {
@@ -2762,6 +2858,8 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
 			mHackerContext->HookContext();
 		LogInfo("  HackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);
+
+		// FIXME: Should we do SetOrigImmediateContext() at this point?
 	}
 	else if (mHackerContext->GetOrigContext1() != *ppImmediateContext)
 	{
