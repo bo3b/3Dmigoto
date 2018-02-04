@@ -1,11 +1,15 @@
 #pragma once
 
 #include <dxgi1_2.h>
+#include <INITGUID.h>
 
 #include "HackerDevice.h"
 #include "HackerContext.h"
 #include "Overlay.h"
 
+// {906B9CE2-CBAB-45B5-8D94-D9BAD8AA509F}
+DEFINE_GUID(IID_HackerSwapChain,
+0x906b9ce2, 0xcbab, 0x45b5, 0x8d, 0x94, 0xd9, 0xba, 0xd8, 0xaa, 0x50, 0x9f);
 
 // Forward references required because of circular references from the
 // other 'Hacker' objects.
