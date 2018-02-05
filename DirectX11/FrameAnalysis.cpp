@@ -9,8 +9,6 @@
 FrameAnalysisContext::FrameAnalysisContext(ID3D11Device1 *pDevice, ID3D11DeviceContext1 *pContext) :
 	HackerContext(pDevice, pContext)
 {
-	mOrigContext = pContext;
-
 	frame_analysis_log = NULL;
 }
 
@@ -49,7 +47,7 @@ void FrameAnalysisContext::vFrameAnalysisLog(char *fmt, va_list ap)
 	if (!frame_analysis_log) {
 		// Use the original context to check the type, otherwise we
 		// will recursively call ourselves:
-		if (mOrigContext->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)
+		if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)
 			swprintf_s(filename, MAX_PATH, L"%ls\\log.txt", G->ANALYSIS_PATH);
 		else
 			swprintf_s(filename, MAX_PATH, L"%ls\\log-0x%p.txt", G->ANALYSIS_PATH, this);
