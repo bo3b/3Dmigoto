@@ -331,6 +331,7 @@ struct Globals
 
 	int marking_mode;
 	int mark_snapshot;
+	bool confirmation_tones;
 	int gForceStereo;
 	bool gCreateStereoProfile;
 	int gSurfaceCreateMode;

@@ -445,6 +445,8 @@ static bool WriteHLSL(string hlslText, string asmText, UINT64 hash, wstring shad
 			fprintf_s(fw, " ");					// Touch file to update mod date as a convenience.
 			fclose(fw);
 		}
+		if (G->confirmation_tones)
+			BeepShort();
 		return true;
 	}
 
@@ -922,10 +924,14 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 	if (success)
 	{
 		LogOverlay(LOG_INFO, "> successfully copied Marked shader to ShaderFixes\n");
+		if (G->confirmation_tones)
+			BeepSuccess();
 	}
 	else
 	{
 		LogOverlay(LOG_WARNING, "> FAILED to copy Marked shader to ShaderFixes\n");
+		if (G->confirmation_tones)
+			BeepFailure();
 	}
 }
 
@@ -1040,10 +1046,14 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 		if (success)
 		{
 			LogOverlay(LOG_INFO, "> successfully reloaded shaders from ShaderFixes\n");
+			if (G->confirmation_tones)
+				BeepSuccess();
 		}
 		else
 		{
 			LogOverlay(LOG_WARNING, "> FAILED to reload shaders from ShaderFixes\n");
+			if (G->confirmation_tones)
+				BeepFailure();
 		}
 	}
 }
