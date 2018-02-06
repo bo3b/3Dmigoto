@@ -104,7 +104,7 @@ void HackerContext::SetHackerDevice(HackerDevice *pDevice)
 // undesirable in some cases. This used to cause a crash if a command list
 // issued a draw call, since that would then trigger the command list and
 // recurse until the stack ran out:
-ID3D11DeviceContext1* HackerContext::GetOrigContext1(void)
+ID3D11DeviceContext1* HackerContext::GetPossiblyHookedOrigContext1(void)
 {
 	return mRealOrigContext1;
 }

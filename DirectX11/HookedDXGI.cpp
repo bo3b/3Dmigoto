@@ -163,7 +163,7 @@ static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device)
 		// passing it into DX for safety. We can probably get away
 		// without this since it's an IUnknown and DX will have to
 		// QueryInterface() it, but let's not tempt fate:
-		*device = (hackerDevice)->GetOrigDevice1();
+		*device = (hackerDevice)->GetPossiblyHookedOrigDevice1();
 	} else {
 		LogInfo("WARNING: Could not locate HackerDevice for %p\n", *device);
 		analyse_iunknown(*device);
@@ -555,8 +555,9 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 		// but we'll still store it as an IDXGISwapChain1.  It's a little
 		// weird to reinterpret this way, but should cause no problems in
 		// the Win7 no platform_udpate case.
-		(*ppSwapChain)->QueryInterface(IID_PPV_ARGS(&origSwapChain));
-		if (origSwapChain == nullptr)
+		if (SUCCEEDED((*ppSwapChain)->QueryInterface(IID_PPV_ARGS(&origSwapChain))))
+			(*ppSwapChain)->Release();
+		else
 			origSwapChain = reinterpret_cast<IDXGISwapChain1*>(*ppSwapChain);
 
 		hackerContext = hackerDevice->GetHackerContext();
@@ -567,20 +568,20 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 		if (G->SCREEN_UPSCALING == 0)		// Normal case
 		{
 			swapchainWrap = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
-			LogInfo("->HackerSwapChain %p created to wrap %p\n", swapchainWrap, *ppSwapChain);
+			LogInfo("->HackerSwapChain %p created to wrap %p\n", swapchainWrap, origSwapChain);
 		}
 		else								// Upscaling case
 		{
 			swapchainWrap = new HackerUpscalingSwapChain(origSwapChain, hackerDevice, hackerContext,
 				&origSwapChainDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, This);
-			LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, *ppSwapChain);
+			LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, origSwapChain);
 
 			if (G->SCREEN_UPSCALING == 2 || !origSwapChainDesc.Windowed)
 			{
 				// Some games react very strange (like render nothing) if set full screen state is called here)
 				// Other games like The Witcher 3 need the call to ensure entering the full screen on start
 				// (seems to be game internal stuff)  ToDo: retest if this is still necessary, lots of changes.
-				(*ppSwapChain)->SetFullscreenState(TRUE, nullptr);
+				origSwapChain->SetFullscreenState(TRUE, nullptr);
 			}
 		}
 
@@ -661,10 +662,12 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 	// the highest supported object for each scenario, to properly suppport
 	// QueryInterface and GetParent upcasts.
 
+	IUnknown* factoryUnknown = reinterpret_cast<IUnknown*>(*ppFactory);
 	IDXGIFactory2* dxgiFactory = reinterpret_cast<IDXGIFactory2*>(*ppFactory);
-	HRESULT res = dxgiFactory->QueryInterface(IID_PPV_ARGS(&dxgiFactory));
+	HRESULT res = factoryUnknown->QueryInterface(IID_PPV_ARGS(&dxgiFactory));
 	if (SUCCEEDED(res))
 	{
+		factoryUnknown->Release();
 		*ppFactory = (void*)dxgiFactory;
 		LogInfo("  Upcast QueryInterface(IDXGIFactory2) returned result = %x, factory = %p\n", res, dxgiFactory);
 
@@ -726,10 +729,12 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	// the highest supported object for each scenario, to properly suppport
 	// QueryInterface and GetParent upcasts.
 
+	IUnknown* factoryUnknown = reinterpret_cast<IUnknown*>(*ppFactory1);
 	IDXGIFactory2* dxgiFactory = reinterpret_cast<IDXGIFactory2*>(*ppFactory1);
-	HRESULT res = dxgiFactory->QueryInterface(IID_PPV_ARGS(&dxgiFactory));
+	HRESULT res = factoryUnknown->QueryInterface(IID_PPV_ARGS(&dxgiFactory));
 	if (SUCCEEDED(res))
 	{
+		factoryUnknown->Release();
 		*ppFactory1 = (void*)dxgiFactory;
 		LogInfo("  Upcast QueryInterface(IDXGIFactory2) returned result = %x, factory = %p\n", res, dxgiFactory);
 
