@@ -62,14 +62,15 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	LogInfo("  on HackerDevice: %p, HackerContext: %p\n", pDevice, pContext);
 
 	// Drawing environment for this swap chain. This is the game environment.
-	// These should specifically avoid Hacker* objects, to avoid object 
+	// These should specifically avoid Hacker* objects, to avoid object
 	// callbacks or other problems. We just want to draw here, nothing tricky.
-	// The only exception being that we need the HackerDevice in order to 
+	// The only exception being that we need the HackerDevice in order to
 	// draw the current stereoparams.
 	mHackerDevice = pDevice;
 	mOrigSwapChain = pSwapChain;
-	mOrigDevice = mHackerDevice->GetOrigDevice1();
-	mOrigContext = pContext->GetOrigContext1();
+	// Must use trampoline context to prevent 3DMigoto hunting its own overlay:
+	mOrigDevice = mHackerDevice->GetPassThroughOrigDevice1();
+	mOrigContext = pContext->GetPassThroughOrigContext1();
 
 	// The courierbold.spritefont is now included as binary resource data attached
 	// to the d3d11.dll.  We can fetch that resource and pass it to new SpriteFont
