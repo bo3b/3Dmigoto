@@ -742,14 +742,18 @@ HRESULT WINAPI HackerCreateDevice(
 	{
 		res = retDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
 		LogInfo("  QueryInterface(ID3D11Device1) returned result = %x, device1 handle = %p\n", res, origDevice1);
-		if (FAILED(res))
+		if (SUCCEEDED(res))
+			retDevice->Release();
+		else
 			origDevice1 = static_cast<ID3D11Device1*>(retDevice);
 	}
 	if (retContext != nullptr)
 	{
 		res = retContext->QueryInterface(IID_PPV_ARGS(&origContext1));
 		LogInfo("  QueryInterface(ID3D11DeviceContext1) returned result = %x, context1 handle = %p\n", res, origContext1);
-		if (FAILED(res))
+		if (SUCCEEDED(res))
+			retContext->Release();
+		else
 			origContext1 = static_cast<ID3D11DeviceContext1*>(retContext);
 	}
 
