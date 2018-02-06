@@ -163,7 +163,7 @@ static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device)
 		// passing it into DX for safety. We can probably get away
 		// without this since it's an IUnknown and DX will have to
 		// QueryInterface() it, but let's not tempt fate:
-		*device = (hackerDevice)->GetOrigDevice1();
+		*device = (hackerDevice)->GetPossiblyHookedOrigDevice1();
 	} else {
 		LogInfo("WARNING: Could not locate HackerDevice for %p\n", *device);
 		analyse_iunknown(*device);

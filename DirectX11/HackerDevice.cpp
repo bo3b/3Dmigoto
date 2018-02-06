@@ -420,7 +420,7 @@ HackerSwapChain* HackerDevice::GetHackerSwapChain()
 // undesirable in some cases. This used to cause a crash if a command list
 // issued a draw call, since that would then trigger the command list and
 // recurse until the stack ran out:
-ID3D11Device1* HackerDevice::GetOrigDevice1()
+ID3D11Device1* HackerDevice::GetPossiblyHookedOrigDevice1()
 {
 	return mRealOrigDevice1;
 }
@@ -433,7 +433,7 @@ ID3D11Device1* HackerDevice::GetPassThroughOrigDevice1()
 	return mOrigDevice1;
 }
 
-ID3D11DeviceContext1* HackerDevice::GetOrigContext1()
+ID3D11DeviceContext1* HackerDevice::GetPossiblyHookedOrigContext1()
 {
 	return mOrigContext1;
 }
@@ -2763,10 +2763,10 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 			mHackerContext->HookContext();
 		LogInfo("  HackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);
 	}
-	else if (mHackerContext->GetOrigContext1() != *ppImmediateContext)
+	else if (mHackerContext->GetPossiblyHookedOrigContext1() != *ppImmediateContext)
 	{
 		LogInfo("WARNING: mHackerContext %p found to be wrapping %p instead of %p at HackerDevice::GetImmediateContext!\n",
-				mHackerContext, mHackerContext->GetOrigContext1(), *ppImmediateContext);
+				mHackerContext, mHackerContext->GetPossiblyHookedOrigContext1(), *ppImmediateContext);
 	}
 
 	if (!(G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT))
@@ -2817,10 +2817,10 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext1(
 		mHackerContext->SetHackerDevice(this);
 		LogInfo("  mHackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);
 	}
-	else if (mHackerContext->GetOrigContext1() != *ppImmediateContext)
+	else if (mHackerContext->GetPossiblyHookedOrigContext1() != *ppImmediateContext)
 	{
 		LogInfo("WARNING: mHackerContext %p found to be wrapping %p instead of %p at HackerDevice::GetImmediateContext1!\n",
-			mHackerContext, mHackerContext->GetOrigContext1(), *ppImmediateContext);
+			mHackerContext, mHackerContext->GetPossiblyHookedOrigContext1(), *ppImmediateContext);
 	}
 
 	*ppImmediateContext = reinterpret_cast<ID3D11DeviceContext1*>(mHackerContext);

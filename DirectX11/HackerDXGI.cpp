@@ -944,7 +944,7 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 		// fake swap chain should have no influence on window
 		pFakeSwapChainDesc->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 		IDXGISwapChain* swapChain;
-		hr = fnOrigCreateSwapChain(pFactory, mHackerDevice->GetOrigDevice1(), pFakeSwapChainDesc, &swapChain);
+		hr = fnOrigCreateSwapChain(pFactory, mHackerDevice->GetPossiblyHookedOrigDevice1(), pFakeSwapChainDesc, &swapChain);
 
 		HRESULT res = swapChain->QueryInterface(IID_PPV_ARGS(&mFakeSwapChain1));
 		if (SUCCEEDED(res))

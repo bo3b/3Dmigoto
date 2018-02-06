@@ -377,7 +377,7 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	srcWidth = desc.Width;
 	desc.Width = srcWidth * 2;
 
-	hr = pDevice->GetOrigDevice1()->CreateTexture2D(&desc, NULL, &stereoBackBuffer);
+	hr = pDevice->GetPossiblyHookedOrigDevice1()->CreateTexture2D(&desc, NULL, &stereoBackBuffer);
 	if (FAILED(hr)) {
 		LogInfo("StereoScreenShot failed to create intermediate texture resource: 0x%x\n", hr);
 		return;
@@ -795,37 +795,37 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			// This needs to call the real CreateVertexShader, not our wrapped version
 			if (shaderType.compare(L"vs") == 0)
 			{
-				hr = device->GetOrigDevice1()->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+				hr = device->GetPossiblyHookedOrigDevice1()->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(ID3D11VertexShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"ps") == 0)
 			{
-				hr = device->GetOrigDevice1()->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+				hr = device->GetPossiblyHookedOrigDevice1()->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(ID3D11PixelShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"cs") == 0)
 			{
-				hr = device->GetOrigDevice1()->CreateComputeShader(pShaderBytecode->GetBufferPointer(),
+				hr = device->GetPossiblyHookedOrigDevice1()->CreateComputeShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11ComputeShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"gs") == 0)
 			{
-				hr = device->GetOrigDevice1()->CreateGeometryShader(pShaderBytecode->GetBufferPointer(),
+				hr = device->GetPossiblyHookedOrigDevice1()->CreateGeometryShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11GeometryShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"hs") == 0)
 			{
-				hr = device->GetOrigDevice1()->CreateHullShader(pShaderBytecode->GetBufferPointer(),
+				hr = device->GetPossiblyHookedOrigDevice1()->CreateHullShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11HullShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"ds") == 0)
 			{
-				hr = device->GetOrigDevice1()->CreateDomainShader(pShaderBytecode->GetBufferPointer(),
+				hr = device->GetPossiblyHookedOrigDevice1()->CreateDomainShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11DomainShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
