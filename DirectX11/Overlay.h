@@ -3,6 +3,7 @@
 #include <memory>
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
+#include <wrl/client.h>
 
 
 // Since we are using SDK 8.0, we need to use the adapter code.
@@ -21,6 +22,10 @@ namespace DirectX
 
 #include "SpriteFont.h"
 #include "SpriteBatch.h"
+#include "PrimitiveBatch.h"
+#include "CommonStates.h"
+#include "Effects.h"
+#include "VertexTypes.h"
 
 #include "HackerDevice.h"
 #include "HackerContext.h"
@@ -56,6 +61,10 @@ private:
 	std::unique_ptr<DirectX::SpriteFont> mFont;
 	std::unique_ptr<DirectX::SpriteFont> mFontNotifications;
 	std::unique_ptr<DirectX::SpriteBatch> mSpriteBatch;
+	std::unique_ptr<DirectX::CommonStates> mStates;
+	std::unique_ptr<DirectX::BasicEffect> mEffect;
+	std::unique_ptr<DirectX::PrimitiveBatch<DirectX::VertexPositionColor>> mPrimitiveBatch;
+	Microsoft::WRL::ComPtr<ID3D11InputLayout> mInputLayout;
 
 	// These are all state that we save away before drawing the overlay and
 	// restore again afterwards. Basically everything that DirectTK
@@ -109,6 +118,7 @@ private:
 	void DrawShaderInfoLine(char *type, UINT64 selectedShader, float *y, bool shader);
 	void DrawShaderInfoLines(float *y);
 	void DrawNotices(float y);
+	void DrawRectangle(float x, float y, float w, float h, float r, float g, float b, float opacity);
 
 public:
 	Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain);

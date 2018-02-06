@@ -100,6 +100,26 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	mFontNotifications->SetDefaultCharacter(L'?');
 
 	mSpriteBatch.reset(new DirectX::SpriteBatch(mOrigContext));
+
+	// For dark background behind notification text, following
+	// https://github.com/Microsoft/DirectXTK/wiki/Simple-rendering
+	mStates.reset(new DirectX::CommonStates(mOrigDevice));
+	mEffect.reset(new DirectX::BasicEffect(mOrigDevice));
+
+	void const *shaderByteCode;
+	size_t byteCodeLength;
+
+	mEffect->SetVertexColorEnabled(true);
+	mEffect->GetVertexShaderBytecode(&shaderByteCode, &byteCodeLength);
+
+	HRESULT hr = mOrigDevice->CreateInputLayout(DirectX::VertexPositionColor::InputElements,
+			DirectX::VertexPositionColor::InputElementCount,
+			shaderByteCode, byteCodeLength,
+			mInputLayout.ReleaseAndGetAddressOf());
+	if (FAILED(hr))
+		throw std::runtime_error("CreateInputLayout failed");
+
+	mPrimitiveBatch.reset(new DirectX::PrimitiveBatch<DirectX::VertexPositionColor>(mOrigContext));
 }
 
 Overlay::~Overlay()
@@ -411,6 +431,36 @@ HRESULT Overlay::InitDrawState()
 	return S_OK;
 }
 
+void Overlay::DrawRectangle(float x, float y, float w, float h, float r, float g, float b, float opacity)
+{
+	DirectX::XMVECTORF32 colour = {r, g, b, opacity};
+
+	mOrigContext->OMSetBlendState(mStates->AlphaBlend(), nullptr, 0xFFFFFFFF);
+	mOrigContext->OMSetDepthStencilState(mStates->DepthNone(), 0);
+	mOrigContext->RSSetState(mStates->CullNone());
+
+	// Use pixel coordinates to match SpriteBatch:
+	Matrix proj = Matrix::CreateScale(2.0f / mResolution.x, -2.0f / mResolution.y, 1)
+		* Matrix::CreateTranslation(-1, 1, 0);
+	mEffect->SetProjection(proj);
+
+	mEffect->Apply(mOrigContext);
+
+	mOrigContext->IASetInputLayout(mInputLayout.Get());
+
+	mPrimitiveBatch->Begin();
+
+	// DirectXTK is using 0,1,2 0,2,3, so layout the vectors clockwise:
+	DirectX::VertexPositionColor v1(Vector3(x  , y  , 0), colour);
+	DirectX::VertexPositionColor v2(Vector3(x+w, y  , 0), colour);
+	DirectX::VertexPositionColor v3(Vector3(x+w, y+h, 0), colour);
+	DirectX::VertexPositionColor v4(Vector3(x  , y+h, 0), colour);
+
+	mPrimitiveBatch->DrawQuad(v1, v2, v3, v4);
+
+	mPrimitiveBatch->End();
+}
+
 // -----------------------------------------------------------------------------
 
 // The active shader will show where we are in each list. / 0 / 0 will mean that we are not 
@@ -581,8 +631,11 @@ void Overlay::DrawNotices(float y)
 				continue;
 			}
 
-			mFontNotifications->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, y), log_levels[level].colour);
 			strSize = mFontNotifications->MeasureString(notice->message.c_str());
+
+			DrawRectangle(0, y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
+
+			mFontNotifications->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, y), log_levels[level].colour);
 			y += strSize.y + 5;
 
 			has_notice = true;
