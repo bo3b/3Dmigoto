@@ -682,14 +682,16 @@ bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
 // the reference as a normal ID3D11Device.
 // In the no platform_update case, the mOrigDevice1 will actually be an ID3D11Device.
 
-HRESULT WINAPI D3D11CreateDevice(
+// Internal only version of CreateDevice, to avoid other tools that hook this.
+
+HRESULT WINAPI HackerCreateDevice(
 	_In_opt_        IDXGIAdapter        *pAdapter,
-					D3D_DRIVER_TYPE     DriverType,
-					HMODULE             Software,
-					UINT                Flags,
+	D3D_DRIVER_TYPE     DriverType,
+	HMODULE             Software,
+	UINT                Flags,
 	_In_reads_opt_(FeatureLevels) const D3D_FEATURE_LEVEL   *pFeatureLevels,
-					UINT                FeatureLevels,
-					UINT                SDKVersion,
+	UINT                FeatureLevels,
+	UINT                SDKVersion,
 	_Out_opt_       ID3D11Device        **ppDevice,
 	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
 	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
@@ -798,6 +800,32 @@ HRESULT WINAPI D3D11CreateDevice(
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// This is the actual routine that is wrapping the d3d11.dll function.
+// Because it's a wrapper, and not a hook, we can have scenarios where another tool will
+// hook this function.  When we call through to this from our CreateDeviceAndSwapChain,
+// that then sets up a recursive loop.  To avoid this, we can just put our work function
+// outside of this wrapper function, where it will not be hooked.  
+//
+// We see this behavior with the SpecialK tool, and this solves a crash with it.
+
+HRESULT WINAPI D3D11CreateDevice(
+	_In_opt_        IDXGIAdapter        *pAdapter,
+	D3D_DRIVER_TYPE     DriverType,
+	HMODULE             Software,
+	UINT                Flags,
+	_In_reads_opt_(FeatureLevels) const D3D_FEATURE_LEVEL   *pFeatureLevels,
+	UINT                FeatureLevels,
+	UINT                SDKVersion,
+	_Out_opt_       ID3D11Device        **ppDevice,
+	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
+	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
+{
+	return HackerCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels,
+		FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Additional strategy here, after learning from games.  Several games like DragonAge
 // and Watch Dogs pass nullptr for some of these parameters, including the returned
 // ppSwapChain.  Why you would call CreateDeviceAndSwapChain, then pass null is anyone's
@@ -861,9 +889,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	Flags = EnableDebugFlags(Flags);
 #endif
 
-	// Create the Device that the caller specified, but using our wrapped CreateDevice
+	// Create the Device that the caller specified, but using our interal HackerCreateDevice
 	// on purpose, so that we get a HackerDevice back in ppDevice.  
-	hr = D3D11CreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, 
+	hr = HackerCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion,
 		ppDevice, pFeatureLevel, ppImmediateContext);
 
 	// Can fail with null arguments, so follow the behavior of the original call.	
