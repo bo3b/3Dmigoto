@@ -92,7 +92,7 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	// we want something a little smaller, and variable width. Liberation
 	// Sans has essentially the same metrics as Arial,
 	// but is not encumbered.
-	rc = FindResource(handle, MAKEINTRESOURCE(IDR_LIBERATION_SANS), MAKEINTRESOURCE(SPRITEFONT));
+	rc = FindResource(handle, MAKEINTRESOURCE(IDR_ARIAL), MAKEINTRESOURCE(SPRITEFONT));
 	rcData = LoadResource(handle, rc);
 	fontSize = SizeofResource(handle, rc);
 	fontBlob = static_cast<const uint8_t*>(LockResource(rcData));

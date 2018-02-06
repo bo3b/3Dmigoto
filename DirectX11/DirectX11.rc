@@ -52,8 +52,8 @@ END
 /////////////////////////////////////////////////////////////////////////////
 // CourierBold.SprintFont as an embedded resource, instead of the file.
 
-IDR_COURIERBOLD		SPRITEFONT		"..\courierbold.spritefont"
-IDR_LIBERATION_SANS	SPRITEFONT		"..\liberation_sans.spritefont"
+IDR_COURIERBOLD		SPRITEFONT		"..\\courierbold.spritefont"
+IDR_ARIAL		SPRITEFONT		"..\\arial.spritefont"
 
 
 /////////////////////////////////////////////////////////////////////////////

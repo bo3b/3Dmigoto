@@ -17,7 +17,7 @@
 // Used for embedded font resource for overlay
 #define SPRITEFONT					256
 #define IDR_COURIERBOLD				101
-#define IDR_LIBERATION_SANS				102
+#define IDR_ARIAL				102
 
 
 // Actual version, name, copyright information that is built into the dlls.
