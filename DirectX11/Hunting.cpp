@@ -449,7 +449,7 @@ static bool WriteHLSL(string hlslText, string asmText, UINT64 hash, wstring shad
 		return true;
 	}
 
-	_wfopen_s(&fw, fullName, L"wb");
+	wfopen_ensuring_access(&fw, fullName, L"wb");
 	if (!fw)
 	{
 		LogInfoW(L"    error storing marked shader to %s\n", fullName);

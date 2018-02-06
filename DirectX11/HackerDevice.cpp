@@ -587,7 +587,7 @@ static void ExportOrigBinary(UINT64 hash, const wchar_t *pShaderType, const void
 	if (!exists)
 	{
 		FILE *fw;
-		_wfopen_s(&fw, path, L"wb");
+		wfopen_ensuring_access(&fw, path, L"wb");
 		if (fw)
 		{
 			LogInfoW(L"    storing original binary shader to %s\n", path);
@@ -813,7 +813,7 @@ static void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 			{
 				swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, pShaderType);
 				FILE *fw;
-				_wfopen_s(&fw, path, L"wb");
+				wfopen_ensuring_access(&fw, path, L"wb");
 				if (LogFile)
 				{
 					char fileName[MAX_PATH];
@@ -911,7 +911,7 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 					// Write reassembled binary output as a cached shader.
 					FILE *fw;
 					swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
-					_wfopen_s(&fw, path, L"wb");
+					wfopen_ensuring_access(&fw, path, L"wb");
 					if (fw)
 					{
 						LogInfoW(L"    storing reassembled binary to %s\n", path);
@@ -1105,7 +1105,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 
 				if (!errorOccurred && ((G->EXPORT_HLSL >= 1) || (G->EXPORT_FIXED && patched)))
 				{
-					errno_t err = _wfopen_s(&fw, val, L"wb");
+					errno_t err = wfopen_ensuring_access(&fw, val, L"wb");
 					if (err != 0)
 					{
 						LogInfo("    !!! Fail to open replace.txt file: 0x%x\n", err);

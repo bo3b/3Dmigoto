@@ -937,3 +937,4 @@ private:
 };
 
 BOOL CreateDirectoryEnsuringAccess(LPCWSTR path);
+errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t *filename, const wchar_t *mode);
