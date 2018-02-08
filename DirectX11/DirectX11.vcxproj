@@ -169,7 +169,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt;$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(VC_LibraryPath_x86)</LibraryPath>
     <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
@@ -177,7 +177,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt;$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x64;$(VC_LibraryPath_x64)</LibraryPath>
     <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x64\$(Configuration)\</IntDir>
@@ -185,7 +185,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt;$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(VC_LibraryPath_x86)</LibraryPath>
     <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
@@ -193,7 +193,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt;$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x64;$(VC_LibraryPath_x64)</LibraryPath>
     <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x64\$(Configuration)\</IntDir>
@@ -201,7 +201,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt;$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x86;$(VC_LibraryPath_x86)</LibraryPath>
     <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
@@ -209,7 +209,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(VC_IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt;$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSdkDir_80)Lib\win8\um\x64;$(VC_LibraryPath_x64)</LibraryPath>
     <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x64\$(Configuration)\</IntDir>

@@ -3,7 +3,7 @@
 #include <memory>
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
-#include <wrl/client.h>
+#include <wrl.h>
 
 
 // Since we are using SDK 8.0, we need to use the adapter code.
