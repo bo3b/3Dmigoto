@@ -239,4 +239,4 @@ public:
 
 };
 
-void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc, BOOL Windowed);
+void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc);

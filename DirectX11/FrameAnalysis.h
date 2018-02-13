@@ -11,8 +11,6 @@
 class FrameAnalysisContext : public HackerContext
 {
 private:
-	ID3D11DeviceContext1 *mOrigContext;
-
 	template <class ID3D11Shader>
 	void FrameAnalysisLogShaderHash(ID3D11Shader *shader);
 	void FrameAnalysisLogResourceHash(ID3D11Resource *resource);

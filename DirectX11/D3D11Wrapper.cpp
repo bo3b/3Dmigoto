@@ -380,9 +380,15 @@ void InitD311()
 
 	// Chain through to the either the original DLL in the system, or to a proxy
 	// DLL with the same interface, specified in the d3dx.ini file.
+	// In the proxy load case, the load_library_redirect flag must be set to
+	// zero, otherwise the proxy d3d11.dll will call back into us, and create
+	// an infinite loop.
 
 	if (G->CHAIN_DLL_PATH[0])
 	{
+		LogInfo("Proxy loading active, Forcing load_library_redirect=0\n");
+		G->load_library_redirect = 0;
+
 		wchar_t sysDir[MAX_PATH] = {0};
 		if (!GetModuleFileName(0, sysDir, MAX_PATH)) {
 			LogInfo("GetModuleFileName failed\n");
@@ -407,6 +413,7 @@ void InitD311()
 			}
 			hD3D11 = LoadLibrary(G->CHAIN_DLL_PATH);
 		}
+		LogInfo("Proxy loading result: %p\n", hD3D11);
 	}
 	else
 	{
@@ -675,14 +682,16 @@ bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
 // the reference as a normal ID3D11Device.
 // In the no platform_update case, the mOrigDevice1 will actually be an ID3D11Device.
 
-HRESULT WINAPI D3D11CreateDevice(
+// Internal only version of CreateDevice, to avoid other tools that hook this.
+
+HRESULT WINAPI HackerCreateDevice(
 	_In_opt_        IDXGIAdapter        *pAdapter,
-					D3D_DRIVER_TYPE     DriverType,
-					HMODULE             Software,
-					UINT                Flags,
+	D3D_DRIVER_TYPE     DriverType,
+	HMODULE             Software,
+	UINT                Flags,
 	_In_reads_opt_(FeatureLevels) const D3D_FEATURE_LEVEL   *pFeatureLevels,
-					UINT                FeatureLevels,
-					UINT                SDKVersion,
+	UINT                FeatureLevels,
+	UINT                SDKVersion,
 	_Out_opt_       ID3D11Device        **ppDevice,
 	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
 	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
@@ -733,14 +742,18 @@ HRESULT WINAPI D3D11CreateDevice(
 	{
 		res = retDevice->QueryInterface(IID_PPV_ARGS(&origDevice1));
 		LogInfo("  QueryInterface(ID3D11Device1) returned result = %x, device1 handle = %p\n", res, origDevice1);
-		if (FAILED(res))
+		if (SUCCEEDED(res))
+			retDevice->Release();
+		else
 			origDevice1 = static_cast<ID3D11Device1*>(retDevice);
 	}
 	if (retContext != nullptr)
 	{
 		res = retContext->QueryInterface(IID_PPV_ARGS(&origContext1));
 		LogInfo("  QueryInterface(ID3D11DeviceContext1) returned result = %x, context1 handle = %p\n", res, origContext1);
-		if (FAILED(res))
+		if (SUCCEEDED(res))
+			retContext->Release();
+		else
 			origContext1 = static_cast<ID3D11DeviceContext1*>(retContext);
 	}
 
@@ -787,6 +800,32 @@ HRESULT WINAPI D3D11CreateDevice(
 		ret, origDevice1, deviceWrap, origContext1, contextWrap);
 
 	return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// This is the actual routine that is wrapping the d3d11.dll function.
+// Because it's a wrapper, and not a hook, we can have scenarios where another tool will
+// hook this function.  When we call through to this from our CreateDeviceAndSwapChain,
+// that then sets up a recursive loop.  To avoid this, we can just put our work function
+// outside of this wrapper function, where it will not be hooked.  
+//
+// We see this behavior with the SpecialK tool, and this solves a crash with it.
+
+HRESULT WINAPI D3D11CreateDevice(
+	_In_opt_        IDXGIAdapter        *pAdapter,
+	D3D_DRIVER_TYPE     DriverType,
+	HMODULE             Software,
+	UINT                Flags,
+	_In_reads_opt_(FeatureLevels) const D3D_FEATURE_LEVEL   *pFeatureLevels,
+	UINT                FeatureLevels,
+	UINT                SDKVersion,
+	_Out_opt_       ID3D11Device        **ppDevice,
+	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
+	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
+{
+	return HackerCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels,
+		FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -854,9 +893,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	Flags = EnableDebugFlags(Flags);
 #endif
 
-	// Create the Device that the caller specified, but using our wrapped CreateDevice
+	// Create the Device that the caller specified, but using our interal HackerCreateDevice
 	// on purpose, so that we get a HackerDevice back in ppDevice.  
-	hr = D3D11CreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, 
+	hr = HackerCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion,
 		ppDevice, pFeatureLevel, ppImmediateContext);
 
 	// Can fail with null arguments, so follow the behavior of the original call.	
@@ -1103,18 +1142,30 @@ HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ H
 		return NULL;
 	}
 
+	// Only do these overrides if they are specified in the d3dx.ini file.
+	//  load_library_redirect=0 for off, allowing all through unchanged. 
+	//  load_library_redirect=1 for nvapi.dll override only, forced to game folder.
+	//  load_library_redirect=2 for both d3d11.dll and nvapi.dll forced to game folder.
+	// This flag can be set by the proxy loading, because it must be off in that case.
 	if (hook_enabled) {
-		module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_d3d11.dll", L"d3d11.dll");
-		if (module)
-			return module;
 
-		module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi64.dll", L"nvapi64.dll");
-		if (module)
-			return module;
+		if (G->load_library_redirect > 1)
+		{
+			module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_d3d11.dll", L"d3d11.dll");
+			if (module)
+				return module;
+		}
 
-		module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi.dll", L"nvapi.dll");
-		if (module)
-			return module;
+		if (G->load_library_redirect > 0)
+		{
+			module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi64.dll", L"nvapi64.dll");
+			if (module)
+				return module;
+
+			module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi.dll", L"nvapi.dll");
+			if (module)
+				return module;
+		}
 	}
 	else
 		hook_enabled = true;

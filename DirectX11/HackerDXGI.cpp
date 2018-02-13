@@ -114,8 +114,7 @@ void InstallSetWindowPosHook()
 	fail |= InstallHook(hUser32, "SetWindowPos", (void**)&fnOrigSetWindowPos, Hooked_SetWindowPos, true);
 
 	if (fail) {
-		LogInfo("Failed to hook SetWindowPos for full_screen=2\n");
-		BeepFailure2();
+		LogOverlay(LOG_DIRE, "Failed to hook SetWindowPos for full_screen=2\n");
 		return;
 	}
 
@@ -214,11 +213,6 @@ void HackerSwapChain::RunFrameActions()
 	// affect something at the start of the frame.
 	RunCommandList(mHackerDevice, mHackerContext, &G->present_command_list, NULL, false);
 
-	// Draw the on-screen overlay text with hunting and informational
-	// messages, before final Present.
-	if (mOverlay)
-		mOverlay->DrawOverlay();
-
 	if (G->analyse_frame) {
 		// We don't allow hold to be changed mid-frame due to potential
 		// for filename conflicts, so use def_analyse_options:
@@ -249,13 +243,25 @@ void HackerSwapChain::RunFrameActions()
 	CurrentTransition.UpdatePresets(mHackerDevice);
 	CurrentTransition.UpdateTransitions(mHackerDevice);
 
-	G->frame_no++;
-
 	// The config file is not safe to reload from within the input handler
 	// since it needs to change the key bindings, so it sets this flag
 	// instead and we handle it now.
 	if (G->gReloadConfigPending)
 		ReloadConfig(mHackerDevice);
+
+	// Draw the on-screen overlay text with hunting and informational
+	// messages, before final Present. We now do this after the shader and
+	// config reloads, so if they have any notices we will see them this
+	// frame (just in case we crash next frame or something).
+	if (mOverlay)
+		mOverlay->DrawOverlay();
+
+	// This must happen on the same side of the config and shader reloads
+	// to ensure the config reload can't clear messages from the shader
+	// reload. It doesn't really matter which side we do it on at the
+	// moment, but let's do it last, because logically it makes sense to be
+	// incremented when we call the original present call:
+	G->frame_no++;
 
 	// When not hunting most keybindings won't have been registered, but
 	// still skip the below logic that only applies while hunting.
@@ -639,8 +645,6 @@ STDMETHODIMP HackerSwapChain::ResizeTarget(THIS_
 	/* [annotation][in] */
 	_In_  const DXGI_MODE_DESC *pNewTargetParameters)
 {
-	BOOL fullscreen;
-	IDXGIOutput *target = NULL;
 	DXGI_MODE_DESC new_desc;
 
 	LogInfo("HackerSwapChain::ResizeTarget(%s@%p) called\n", type_name(this), this);
@@ -648,23 +652,20 @@ STDMETHODIMP HackerSwapChain::ResizeTarget(THIS_
 	LogInfo("     Refresh rate = %f\n",
 		(float)pNewTargetParameters->RefreshRate.Numerator / (float)pNewTargetParameters->RefreshRate.Denominator);
 
-	// We will only force the refresh rate if we are currently in
-	// full-screen. I don't have a particularly good reason for doing this
-	// other than that's how ForceDisplayParams() has always worked and
-	// maybe there was a reason for doing so? Then again maybe not? One
-	// problem with this approach is that ResizeTarget and
-	// SetFullscreenState can be called in any order, so if ResizeTarget is
-	// called first while the game is still windowed we won't force the
-	// refresh rate at all. For now this is enough to get the refresh rate
-	// override working in UE4 (SetFullscreenState then ResizeTarget), and
-	// we can revisit this later with a game that does the opposite to work
-	// out the best way to handle it.
-	mOrigSwapChain1->GetFullscreenState(&fullscreen, &target);
-	if (target)
-		target->Release();
+	// Historically we have only forced the refresh rate when full-screen.
+	// I don't know if we ever had a good reason for that, but it
+	// complicates forcing the refresh rate in games that start windowed
+	// and later switch to full screen, depending on the order in which
+	// the game calls ResizeTarget and SetFullscreenState so now forcing it
+	// unconditionally to see how that goes. Helps Unity games work with 3D
+	// TV play. If we need to restore the old behaviour for some reason,
+	// check the git history, but we will need further heroics.
+	//
+	// UE4 does SetFullscreenState -> ResizeBuffers -> ResizeTarget
+	// Unity does ResizeTarget -> SetFullscreenState -> ResizeBuffers
 
 	memcpy(&new_desc, pNewTargetParameters, sizeof(DXGI_MODE_DESC));
-	ForceDisplayMode(&new_desc, !fullscreen);
+	ForceDisplayMode(&new_desc);
 
 	HRESULT hr = mOrigSwapChain1->ResizeTarget(&new_desc);
 	LogInfo("  returns result = %x\n", hr);
@@ -928,7 +929,9 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 	{
 		if (pFactory == nullptr)
 		{
-			LogInfo("HackerUpscalingSwapChain::createRenderTarget failed provided factory pointer is invalid.\n");
+			LogOverlay(LOG_DIRE, "HackerUpscalingSwapChain::createRenderTarget failed provided factory pointer is invalid.\n");
+			// Not positive if we will be able to get an overlay to
+			// display the error, so also issue an audible warning:
 			BeepFailure2();
 		}
 		const UINT flagBackup = pFakeSwapChainDesc->Flags;
@@ -936,10 +939,12 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 		// fake swap chain should have no influence on window
 		pFakeSwapChainDesc->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 		IDXGISwapChain* swapChain;
-		hr = fnOrigCreateSwapChain(pFactory, mHackerDevice->GetOrigDevice1(), pFakeSwapChainDesc, &swapChain);
+		hr = fnOrigCreateSwapChain(pFactory, mHackerDevice->GetPossiblyHookedOrigDevice1(), pFakeSwapChainDesc, &swapChain);
 
 		HRESULT res = swapChain->QueryInterface(IID_PPV_ARGS(&mFakeSwapChain1));
-		if (FAILED(res))
+		if (SUCCEEDED(res))
+			swapChain->Release();
+		else
 			mFakeSwapChain1 = reinterpret_cast<IDXGISwapChain1*>(swapChain);
 
 		// restore old state in case fall back is required ToDo: Unlikely needed now.
@@ -947,7 +952,9 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 	}
 	break;
 	default:
-		LogInfo("*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed ==> provided upscaling mode is not valid.\n");
+		LogOverlay(LOG_DIRE, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed ==> provided upscaling mode is not valid.\n");
+		// Not positive if we will be able to get an overlay to
+		// display the error, so also issue an audible warning:
 		BeepFailure2();
 	}
 
@@ -955,7 +962,9 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 
 	if (FAILED(hr))
 	{
-		LogInfo("*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed\n");
+		LogOverlay(LOG_DIRE, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed\n");
+		// Not positive if we will be able to get an overlay to
+		// display the error, so also issue an audible warning:
 		BeepFailure2();
 	}
 }

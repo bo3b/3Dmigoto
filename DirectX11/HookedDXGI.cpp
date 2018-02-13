@@ -131,11 +131,9 @@ static HackerDevice* prepare_devices_for_dx12_warning(IUnknown *unknown_device)
 // DirectX device interfaces. The passed in IUnknown may be modified to point
 // to the real DirectX device so ensure that it will be safe to pass to the
 // original CreateSwapChain call.
-static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device, bool *is_dx12)
+static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device)
 {
 	HackerDevice *hackerDevice;
-
-	*is_dx12 = false;
 
 	// pDevice could be one of several different things:
 	// - It could be a HackerDevice, if the game called CreateSwapChain()
@@ -165,7 +163,7 @@ static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device, bool *is
 		// passing it into DX for safety. We can probably get away
 		// without this since it's an IUnknown and DX will have to
 		// QueryInterface() it, but let's not tempt fate:
-		*device = (hackerDevice)->GetOrigDevice1();
+		*device = (hackerDevice)->GetPossiblyHookedOrigDevice1();
 	} else {
 		LogInfo("WARNING: Could not locate HackerDevice for %p\n", *device);
 		analyse_iunknown(*device);
@@ -205,7 +203,7 @@ static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device, bool *is
 		// has happened:
 		hackerDevice = prepare_devices_for_dx12_warning(*device);
 		if (hackerDevice)
-			*is_dx12 = true;
+			LogOverlayW(LOG_DIRE, L"3DMigoto does not support DirectX 12\nPlease set the game to use DirectX 11\n");
 		else
 			BeepProfileFail();
 	}
@@ -213,13 +211,17 @@ static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device, bool *is
 	return hackerDevice;
 }
 
-void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc, BOOL Windowed)
+void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc)
 {
 	// Historically we have only forced the refresh rate when full-screen.
-	// Not positive if it would hurt to do otherwise, but for now assuming
-	// we might have had a good reason and keeping that behaviour. See also
-	// the note in ResizeTarget().
-	if (G->SCREEN_REFRESH >= 0 && !Windowed)
+	// I don't know if we ever had a good reason for that, but it
+	// complicates forcing the refresh rate in games that start windowed
+	// and later switch to full screen, so now forcing it unconditionally
+	// to see how that goes. Helps Unity games work with 3D TV Play.
+	//
+	// UE4 does SetFullscreenState -> ResizeBuffers -> ResizeTarget
+	// Unity does ResizeTarget -> SetFullscreenState -> ResizeBuffers
+	if (G->SCREEN_REFRESH >= 0)
 	{
 		// FIXME: This may disable flipping (and use blitting instead)
 		// if the forced numerator and denominator does not exactly
@@ -297,7 +299,7 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 		InstallSetWindowPosHook();
 	}
 
-	ForceDisplayMode(&pDesc->BufferDesc, pDesc->Windowed);
+	ForceDisplayMode(&pDesc->BufferDesc);
 }
 
 // Different variant for the CreateSwapChainForHwnd.
@@ -306,17 +308,34 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 // Batman Telltale needs this.
 // The rest of the variants are less clear.
 
-void ForceDisplayParams1(DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc1)
+static void ForceDisplayParams1(DXGI_SWAP_CHAIN_DESC1 *pDesc, DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc)
 {
-	if (pDesc1 == NULL)
-		return;
+	if (pFullscreenDesc) {
+		LogInfo("     Windowed = %d\n", pFullscreenDesc->Windowed);
+		LogInfo("     Refresh rate = %f\n",
+			(float)pFullscreenDesc->RefreshRate.Numerator / (float)pFullscreenDesc->RefreshRate.Denominator);
 
-	LogInfo("     Windowed = %d\n", pDesc1->Windowed);
+		if (G->SCREEN_FULLSCREEN > 0)
+		{
+			pFullscreenDesc->Windowed = false;
+			LogInfo("->Forcing Windowed to = %d\n", pFullscreenDesc->Windowed);
+		}
 
-	if (G->SCREEN_FULLSCREEN > 0)
-	{
-		pDesc1->Windowed = false;
-		LogInfo("->Forcing Windowed to = %d\n", pDesc1->Windowed);
+		if (G->SCREEN_REFRESH >= 0)
+		{
+			// Historically we have only forced the refresh rate when full-screen.
+			// I don't know if we ever had a good reason for that, but it
+			// complicates forcing the refresh rate in games that start windowed
+			// and later switch to full screen, so now forcing it unconditionally
+			// to see how that goes. Helps Unity games work with 3D TV Play.
+			//
+			// UE4 does SetFullscreenState -> ResizeBuffers -> ResizeTarget
+			// Unity does ResizeTarget -> SetFullscreenState -> ResizeBuffers
+			pFullscreenDesc->RefreshRate.Numerator = G->SCREEN_REFRESH;
+			pFullscreenDesc->RefreshRate.Denominator = 1;
+			LogInfo("->Forcing refresh rate to = %f\n",
+				(float)pFullscreenDesc->RefreshRate.Numerator / (float)pFullscreenDesc->RefreshRate.Denominator);
+		}
 	}
 
 	if (G->SCREEN_FULLSCREEN == 2)
@@ -329,30 +348,26 @@ void ForceDisplayParams1(DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc1)
 		InstallSetWindowPosHook();
 	}
 
-	// These input parameters are not clear how to implement for CreateSwapChainForHwnd,
-	// and are stubbed out with error reporting. Can be implemented when cases arise.
-	if (G->SCREEN_REFRESH >= 0 && !pDesc1->Windowed)
+	if (pDesc)
 	{
-		LogInfo("*** Unimplemented feature for refresh_rate in CreateSwapChainForHwnd\n");
-		BeepFailure();
-	}
-	if (G->SCREEN_WIDTH >= 0)
-	{
-		LogInfo("*** Unimplemented feature to force screen width in CreateSwapChainForHwnd\n");
-		BeepFailure();
-	}
-	if (G->SCREEN_HEIGHT >= 0)
-	{
-		LogInfo("*** Unimplemented feature to force screen height in CreateSwapChainForHwnd\n");
-		BeepFailure();
-	}
+		LogInfo("     Width = %d\n", pDesc->Width);
+		LogInfo("     Height = %d\n", pDesc->Height);
 
-	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
-	// swapchain to be 2x its normal width.  
-	if (G->gForceStereo == 2)
-	{
-		LogInfo("*** Unimplemented feature for Direct Mode in CreateSwapChainForHwnd\n");
-		BeepFailure();
+		if (G->SCREEN_WIDTH >= 0)
+		{
+			LogOverlay(LOG_DIRE, "*** Unimplemented feature to force screen width in CreateSwapChainForHwnd\n");
+		}
+		if (G->SCREEN_HEIGHT >= 0)
+		{
+			LogOverlay(LOG_DIRE, "*** Unimplemented feature to force screen height in CreateSwapChainForHwnd\n");
+		}
+
+		// To support 3D Vision Direct Mode, we need to force the backbuffer from the
+		// swapchain to be 2x its normal width.
+		if (G->gForceStereo == 2)
+		{
+			LogOverlay(LOG_DIRE, "*** Unimplemented feature for Direct Mode in CreateSwapChainForHwnd\n");
+		}
 	}
 }
 
@@ -403,7 +418,6 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	HackerContext *hackerContext = NULL;
 	HackerSwapChain *hackerSwapChain = NULL;
 	IDXGISwapChain1 *origSwapChain = NULL;
-	bool is_dx12 = false;
 
 	LogInfo("Hooked IDXGIFactory2::CreateSwapChainForHwnd(%p) called\n", This);
 	LogInfo("  Device = %p\n", pDevice);
@@ -411,14 +425,42 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	LogInfo("  Description1 = %p\n", pDesc);
 	LogInfo("  FullScreenDescription = %p\n", pFullscreenDesc);
 
+	// Save window handle so we can translate mouse coordinates to the window:
+	G->hWnd = hWnd;
+
+	if (pDesc != nullptr)
+	{
+		// Required in case the software mouse and upscaling are on at the same time
+		// TODO: Use a helper class to track *all* different resolutions
+		G->GAME_INTERNAL_WIDTH = pDesc->Width;
+		G->GAME_INTERNAL_HEIGHT = pDesc->Height;
+
+		if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN)
+		{
+			// TODO: Use a helper class to track *all* different resolutions
+			G->mResolutionInfo.width = pDesc->Width;
+			G->mResolutionInfo.height = pDesc->Height;
+			LogInfo("Got resolution from swap chain: %ix%i\n",
+				G->mResolutionInfo.width, G->mResolutionInfo.height);
+		}
+	}
+
+	// Inputs structures are const, so copy them to allow modification:
+	DXGI_SWAP_CHAIN_DESC1 desc1 = { 0 };
 	DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullScreenDesc = { 0 };
-	if (!pFullscreenDesc)
+	if (pDesc) {
+		memcpy(&desc1, pDesc, sizeof(DXGI_SWAP_CHAIN_DESC1));
+		pDesc = &desc1;
+	}
+	if (pFullscreenDesc) {
+		memcpy(&fullScreenDesc, pFullscreenDesc, sizeof(DXGI_SWAP_CHAIN_FULLSCREEN_DESC));
 		pFullscreenDesc = &fullScreenDesc;
-	ForceDisplayParams1(&fullScreenDesc);
+	}
+	ForceDisplayParams1(&desc1, &fullScreenDesc);
 
-	// FIXME: Get resolution from swap chain
+	// FIXME: Implement upscaling
 
-	hackerDevice = sort_out_swap_chain_device_mess(&pDevice, &is_dx12);
+	hackerDevice = sort_out_swap_chain_device_mess(&pDevice);
 
 	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
 	if (FAILED(hr))
@@ -432,9 +474,6 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 		hackerContext = hackerDevice->GetHackerContext();
 
 		hackerSwapChain = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
-
-		if (is_dx12)
-			LogOverlayW(hackerSwapChain, LOG_DIRE, L"3DMigoto does not support DirectX 12\nPlease set the game to use DirectX 11\n");
 
 		// When creating a new swapchain, we can assume this is the game creating
 		// the most important object, and return the wrapped swapchain to the game
@@ -512,14 +551,13 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	HackerContext *hackerContext = NULL;
 	HackerSwapChain *swapchainWrap = NULL;
 	IDXGISwapChain1 *origSwapChain = NULL;
-	bool is_dx12 = false;
 
 	LogInfo("\nHooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
 	LogInfo("  Device = %p\n", pDevice);
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
 	LogInfo("  Description = %p\n", pDesc);
 
-	hackerDevice = sort_out_swap_chain_device_mess(&pDevice, &is_dx12);
+	hackerDevice = sort_out_swap_chain_device_mess(&pDevice);
 
 	DXGI_SWAP_CHAIN_DESC origSwapChainDesc;
 	if (pDesc != nullptr)
@@ -566,8 +604,9 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 		// but we'll still store it as an IDXGISwapChain1.  It's a little
 		// weird to reinterpret this way, but should cause no problems in
 		// the Win7 no platform_udpate case.
-		(*ppSwapChain)->QueryInterface(IID_PPV_ARGS(&origSwapChain));
-		if (origSwapChain == nullptr)
+		if (SUCCEEDED((*ppSwapChain)->QueryInterface(IID_PPV_ARGS(&origSwapChain))))
+			(*ppSwapChain)->Release();
+		else
 			origSwapChain = reinterpret_cast<IDXGISwapChain1*>(*ppSwapChain);
 
 		hackerContext = hackerDevice->GetHackerContext();
@@ -578,25 +617,22 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 		if (G->SCREEN_UPSCALING == 0)		// Normal case
 		{
 			swapchainWrap = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
-			LogInfo("->HackerSwapChain %p created to wrap %p\n", swapchainWrap, *ppSwapChain);
+			LogInfo("->HackerSwapChain %p created to wrap %p\n", swapchainWrap, origSwapChain);
 		}
 		else								// Upscaling case
 		{
 			swapchainWrap = new HackerUpscalingSwapChain(origSwapChain, hackerDevice, hackerContext,
 				&origSwapChainDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, This);
-			LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, *ppSwapChain);
+			LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, origSwapChain);
 
 			if (G->SCREEN_UPSCALING == 2 || !origSwapChainDesc.Windowed)
 			{
 				// Some games react very strange (like render nothing) if set full screen state is called here)
 				// Other games like The Witcher 3 need the call to ensure entering the full screen on start
 				// (seems to be game internal stuff)  ToDo: retest if this is still necessary, lots of changes.
-				(*ppSwapChain)->SetFullscreenState(TRUE, nullptr);
+				origSwapChain->SetFullscreenState(TRUE, nullptr);
 			}
 		}
-
-		if (is_dx12)
-			LogOverlayW(swapchainWrap, LOG_DIRE, L"3DMigoto does not support DirectX 12\nPlease set the game to use DirectX 11\n");
 
 		// When creating a new swapchain, we can assume this is the game creating
 		// the most important object. Return the wrapped swapchain to the game so it
@@ -675,10 +711,12 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 	// the highest supported object for each scenario, to properly suppport
 	// QueryInterface and GetParent upcasts.
 
+	IUnknown* factoryUnknown = reinterpret_cast<IUnknown*>(*ppFactory);
 	IDXGIFactory2* dxgiFactory = reinterpret_cast<IDXGIFactory2*>(*ppFactory);
-	HRESULT res = dxgiFactory->QueryInterface(IID_PPV_ARGS(&dxgiFactory));
+	HRESULT res = factoryUnknown->QueryInterface(IID_PPV_ARGS(&dxgiFactory));
 	if (SUCCEEDED(res))
 	{
+		factoryUnknown->Release();
 		*ppFactory = (void*)dxgiFactory;
 		LogInfo("  Upcast QueryInterface(IDXGIFactory2) returned result = %x, factory = %p\n", res, dxgiFactory);
 
@@ -740,10 +778,12 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	// the highest supported object for each scenario, to properly suppport
 	// QueryInterface and GetParent upcasts.
 
+	IUnknown* factoryUnknown = reinterpret_cast<IUnknown*>(*ppFactory1);
 	IDXGIFactory2* dxgiFactory = reinterpret_cast<IDXGIFactory2*>(*ppFactory1);
-	HRESULT res = dxgiFactory->QueryInterface(IID_PPV_ARGS(&dxgiFactory));
+	HRESULT res = factoryUnknown->QueryInterface(IID_PPV_ARGS(&dxgiFactory));
 	if (SUCCEEDED(res))
 	{
+		factoryUnknown->Release();
 		*ppFactory1 = (void*)dxgiFactory;
 		LogInfo("  Upcast QueryInterface(IDXGIFactory2) returned result = %x, factory = %p\n", res, dxgiFactory);
 

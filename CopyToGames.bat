@@ -27,8 +27,6 @@ REM xcopy /C "%1*.*" "W:\Games\The Crew (Worldwide)\" /F /Y /S
 REM xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\Call of Duty Ghosts\"  /F /Y /S
 REM xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\Project CARS\" /F /Y /S
  xcopy /C "%1*.*" "W:\Games\Watch_Dogs\bin"  /F /Y /S
-xcopy /C "%1*.*" "G:\SteamLibrary\SteamApps\common\HeadLander\" /F /Y /S
- xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\NieRAutomata\" /F /Y /S
 xcopy /C "%1*.*" "G:\Games\Batman - The Telltale Series\" /F /Y /S
 xcopy /C "%1*.*" "G:\SteamLibrary\steamapps\common\Dishonored2\" /F /Y /S
 
@@ -42,3 +40,5 @@ REM xcopy /C "%1*.*" "G:\uPlay\Tom Clancy's The Division\" /F /Y /S
 xcopy /C "%1*.*" "G:\SteamLibrary\SteamApps\common\Metal Gear Solid Ground Zeroes\" /F /Y /S
 xcopy /C "%1*.*" "G:\SteamLibrary\SteamApps\common\Just Cause 3\" /F /Y /S
 xcopy /C "%1*.*" "G:\SteamLibrary\SteamApps\common\ShadowOfMordor\x64\" /F /Y /S
+xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\HeadLander\" /F /Y /S
+xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\NieRAutomata\" /F /Y /S

@@ -20,6 +20,10 @@
 
 #define MAX_SIMULTANEOUS_NOTICES 6
 
+static std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
+static bool has_notice = false;
+static unsigned notice_cleared_frame = 0;
+
 struct LogLevelParams {
 	DirectX::XMVECTORF32 colour;
 	DWORD duration;
@@ -49,7 +53,7 @@ struct LogLevelParams log_levels[] = {
 // the standard c runtime, but use the _s safe versions.
 
 // Max expected on-screen string size, used for buffer safe calls.
-const int maxstring = 200;
+const int maxstring = 1024;
 
 
 Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain)
@@ -58,15 +62,15 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	LogInfo("  on HackerDevice: %p, HackerContext: %p\n", pDevice, pContext);
 
 	// Drawing environment for this swap chain. This is the game environment.
-	// These should specifically avoid Hacker* objects, to avoid object 
+	// These should specifically avoid Hacker* objects, to avoid object
 	// callbacks or other problems. We just want to draw here, nothing tricky.
-	// The only exception being that we need the HackerDevice in order to 
+	// The only exception being that we need the HackerDevice in order to
 	// draw the current stereoparams.
 	mHackerDevice = pDevice;
 	mOrigSwapChain = pSwapChain;
-	mOrigDevice = mHackerDevice->GetOrigDevice1();
-	mOrigContext = pContext->GetOrigContext1();
-	has_notice = false;
+	// Must use trampoline context to prevent 3DMigoto hunting its own overlay:
+	mOrigDevice = mHackerDevice->GetPassThroughOrigDevice1();
+	mOrigContext = pContext->GetPassThroughOrigContext1();
 
 	// The courierbold.spritefont is now included as binary resource data attached
 	// to the d3d11.dll.  We can fetch that resource and pass it to new SpriteFont
@@ -82,7 +86,40 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	// to draw the text, and we don't want to intercept those.
 	mFont.reset(new DirectX::SpriteFont(mOrigDevice, fontBlob, fontSize));
 	mFont->SetDefaultCharacter(L'?');
+
+	// Courier is a nice choice for hunting status lines, and showing the
+	// shader hashes since it is monospace, but for arbitrary notifications
+	// we want something a little smaller, and variable width. Liberation
+	// Sans has essentially the same metrics as Arial,
+	// but is not encumbered.
+	rc = FindResource(handle, MAKEINTRESOURCE(IDR_ARIAL), MAKEINTRESOURCE(SPRITEFONT));
+	rcData = LoadResource(handle, rc);
+	fontSize = SizeofResource(handle, rc);
+	fontBlob = static_cast<const uint8_t*>(LockResource(rcData));
+	mFontNotifications.reset(new DirectX::SpriteFont(mOrigDevice, fontBlob, fontSize));
+	mFontNotifications->SetDefaultCharacter(L'?');
+
 	mSpriteBatch.reset(new DirectX::SpriteBatch(mOrigContext));
+
+	// For dark background behind notification text, following
+	// https://github.com/Microsoft/DirectXTK/wiki/Simple-rendering
+	mStates.reset(new DirectX::CommonStates(mOrigDevice));
+	mEffect.reset(new DirectX::BasicEffect(mOrigDevice));
+
+	void const *shaderByteCode;
+	size_t byteCodeLength;
+
+	mEffect->SetVertexColorEnabled(true);
+	mEffect->GetVertexShaderBytecode(&shaderByteCode, &byteCodeLength);
+
+	HRESULT hr = mOrigDevice->CreateInputLayout(DirectX::VertexPositionColor::InputElements,
+			DirectX::VertexPositionColor::InputElementCount,
+			shaderByteCode, byteCodeLength,
+			mInputLayout.ReleaseAndGetAddressOf());
+	if (FAILED(hr))
+		throw std::runtime_error("CreateInputLayout failed");
+
+	mPrimitiveBatch.reset(new DirectX::PrimitiveBatch<DirectX::VertexPositionColor>(mOrigContext));
 }
 
 Overlay::~Overlay()
@@ -394,6 +431,36 @@ HRESULT Overlay::InitDrawState()
 	return S_OK;
 }
 
+void Overlay::DrawRectangle(float x, float y, float w, float h, float r, float g, float b, float opacity)
+{
+	DirectX::XMVECTORF32 colour = {r, g, b, opacity};
+
+	mOrigContext->OMSetBlendState(mStates->AlphaBlend(), nullptr, 0xFFFFFFFF);
+	mOrigContext->OMSetDepthStencilState(mStates->DepthNone(), 0);
+	mOrigContext->RSSetState(mStates->CullNone());
+
+	// Use pixel coordinates to match SpriteBatch:
+	Matrix proj = Matrix::CreateScale(2.0f / mResolution.x, -2.0f / mResolution.y, 1)
+		* Matrix::CreateTranslation(-1, 1, 0);
+	mEffect->SetProjection(proj);
+
+	mEffect->Apply(mOrigContext);
+
+	mOrigContext->IASetInputLayout(mInputLayout.Get());
+
+	mPrimitiveBatch->Begin();
+
+	// DirectXTK is using 0,1,2 0,2,3, so layout the vectors clockwise:
+	DirectX::VertexPositionColor v1(Vector3(x  , y  , 0), colour);
+	DirectX::VertexPositionColor v2(Vector3(x+w, y  , 0), colour);
+	DirectX::VertexPositionColor v3(Vector3(x+w, y+h, 0), colour);
+	DirectX::VertexPositionColor v4(Vector3(x  , y+h, 0), colour);
+
+	mPrimitiveBatch->DrawQuad(v1, v2, v3, v4);
+
+	mPrimitiveBatch->End();
+}
+
 // -----------------------------------------------------------------------------
 
 // The active shader will show where we are in each list. / 0 / 0 will mean that we are not 
@@ -541,6 +608,8 @@ void Overlay::DrawNotices(float y)
 	Vector2 strSize;
 	int level, displayed = 0;
 
+	EnterCriticalSection(&G->mCriticalSection);
+
 	has_notice = false;
 	for (level = 0; level < NUM_LOG_LEVELS; level++) {
 		if (log_levels[level].hide_in_release && G->hunting == HUNTING_MODE_DISABLED)
@@ -562,8 +631,11 @@ void Overlay::DrawNotices(float y)
 				continue;
 			}
 
-			mFont->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, y), log_levels[level].colour);
-			strSize = mFont->MeasureString(notice->message.c_str());
+			strSize = mFontNotifications->MeasureString(notice->message.c_str());
+
+			DrawRectangle(0, y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
+
+			mFontNotifications->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, y), log_levels[level].colour);
 			y += strSize.y + 5;
 
 			has_notice = true;
@@ -571,6 +643,8 @@ void Overlay::DrawNotices(float y)
 			displayed++;
 		}
 	}
+
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 
@@ -643,7 +717,8 @@ void Overlay::DrawOverlay(void)
 				mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 			}
 
-			DrawNotices(y);
+			if (has_notice)
+				DrawNotices(y);
 		}
 		mSpriteBatch->End();
 	}
@@ -659,19 +734,31 @@ OverlayNotice::OverlayNotice(std::wstring message) :
 {
 }
 
-void Overlay::ClearNotices()
+void ClearNotices()
 {
 	int level;
+
+	if (notice_cleared_frame == G->frame_no)
+		return;
+
+	EnterCriticalSection(&G->mCriticalSection);
 
 	for (level = 0; level < NUM_LOG_LEVELS; level++)
 		notices[level].clear();
 
+	notice_cleared_frame = G->frame_no;
 	has_notice = false;
+
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
-void Overlay::vNotice(LogLevel level, wchar_t *fmt, va_list ap)
+void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
 {
 	wchar_t msg[maxstring];
+	va_list ap;
+
+	va_start(ap, fmt);
+	vLogInfoW(fmt, ap);
 
 	// Using _vsnwprintf_s so we don't crash if the message is too long for
 	// the buffer, and truncate it instead - unless we can automatically
@@ -679,20 +766,43 @@ void Overlay::vNotice(LogLevel level, wchar_t *fmt, va_list ap)
 	// cares if it gets cut off somewhere off screen anyway?
 	_vsnwprintf_s(msg, maxstring, _TRUNCATE, fmt, ap);
 
+	EnterCriticalSection(&G->mCriticalSection);
+
 	notices[level].emplace_back(msg);
 	has_notice = true;
+
+	LeaveCriticalSection(&G->mCriticalSection);
+
+	va_end(ap);
 }
 
-void LogOverlayW(HackerSwapChain *chain, LogLevel level, wchar_t *fmt, ...)
+// ASCII version of the above. DirectXTK only understands wide strings, so we
+// need to convert it to that, but we can't just convert the format and hand it
+// to LogOverlayW, because that would reverse the meaning of %s and %S in the
+// format string. Instead we do our own vLogInfo and _vsnprintf_s to handle the
+// format string correctly and convert the result to a wide string.
+void LogOverlay(LogLevel level, char *fmt, ...)
 {
+	char amsg[maxstring];
+	wchar_t wmsg[maxstring];
 	va_list ap;
 
 	va_start(ap, fmt);
-	vLogInfoW(fmt, ap);
-	if (chain) {
-		if (chain->mOverlay) {
-			chain->mOverlay->vNotice(level, fmt, ap);
-		}
-	}
+	vLogInfo(fmt, ap);
+
+	// Using _vsnprintf_s so we don't crash if the message is too long for
+	// the buffer, and truncate it instead - unless we can automatically
+	// wrap the message, which DirectXTK doesn't appear to support, who
+	// cares if it gets cut off somewhere off screen anyway?
+	_vsnprintf_s(amsg, maxstring, _TRUNCATE, fmt, ap);
+	mbstowcs(wmsg, amsg, maxstring);
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	notices[level].emplace_back(wmsg);
+	has_notice = true;
+
+	LeaveCriticalSection(&G->mCriticalSection);
+
 	va_end(ap);
 }

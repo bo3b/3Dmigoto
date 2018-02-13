@@ -9,8 +9,6 @@
 FrameAnalysisContext::FrameAnalysisContext(ID3D11Device1 *pDevice, ID3D11DeviceContext1 *pContext) :
 	HackerContext(pDevice, pContext)
 {
-	mOrigContext = pContext;
-
 	frame_analysis_log = NULL;
 }
 
@@ -49,7 +47,7 @@ void FrameAnalysisContext::vFrameAnalysisLog(char *fmt, va_list ap)
 	if (!frame_analysis_log) {
 		// Use the original context to check the type, otherwise we
 		// will recursively call ourselves:
-		if (mOrigContext->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)
+		if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)
 			swprintf_s(filename, MAX_PATH, L"%ls\\log.txt", G->ANALYSIS_PATH);
 		else
 			swprintf_s(filename, MAX_PATH, L"%ls\\log-0x%p.txt", G->ANALYSIS_PATH, this);
@@ -566,7 +564,7 @@ void HackerContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *m
 	UINT i, c;
 	errno_t err;
 
-	err = _wfopen_s(&fd, filename, L"w");
+	err = wfopen_ensuring_access(&fd, filename, L"w");
 	if (!fd) {
 		FALogInfo("Unable to create %S: %u\n", filename, err);
 		return;
@@ -604,7 +602,7 @@ void HackerContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 	UINT i, j, start, end, buf_idx;
 	errno_t err;
 
-	err = _wfopen_s(&fd, filename, L"w");
+	err = wfopen_ensuring_access(&fd, filename, L"w");
 	if (!fd) {
 		FALogInfo("Unable to create %S: %u\n", filename, err);
 		return;
@@ -655,7 +653,7 @@ void HackerContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 	UINT start, end, i;
 	errno_t err;
 
-	err = _wfopen_s(&fd, filename, L"w");
+	err = wfopen_ensuring_access(&fd, filename, L"w");
 	if (!fd) {
 		FALogInfo("Unable to create %S: %u\n", filename, err);
 		return;
@@ -741,7 +739,7 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	if (options & FrameAnalysisOptions::DUMP_XX_BIN) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".buf");
 
-		err = _wfopen_s(&fd, filename, L"wb");
+		err = wfopen_ensuring_access(&fd, filename, L"wb");
 		if (!fd) {
 			FALogInfo("Unable to create %S: %u\n", filename, err);
 			goto out_unmap;

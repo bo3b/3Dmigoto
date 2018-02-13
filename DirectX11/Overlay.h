@@ -3,9 +3,14 @@
 #include <memory>
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
+#include <wrl.h>
 
 #include "SpriteFont.h"
 #include "SpriteBatch.h"
+#include "PrimitiveBatch.h"
+#include "CommonStates.h"
+#include "Effects.h"
+#include "VertexTypes.h"
 
 #include "HackerDevice.h"
 #include "HackerContext.h"
@@ -39,10 +44,12 @@ private:
 
 	DirectX::XMUINT2 mResolution;
 	std::unique_ptr<DirectX::SpriteFont> mFont;
+	std::unique_ptr<DirectX::SpriteFont> mFontNotifications;
 	std::unique_ptr<DirectX::SpriteBatch> mSpriteBatch;
-
-	std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
-	bool has_notice;
+	std::unique_ptr<DirectX::CommonStates> mStates;
+	std::unique_ptr<DirectX::BasicEffect> mEffect;
+	std::unique_ptr<DirectX::PrimitiveBatch<DirectX::VertexPositionColor>> mPrimitiveBatch;
+	Microsoft::WRL::ComPtr<ID3D11InputLayout> mInputLayout;
 
 	// These are all state that we save away before drawing the overlay and
 	// restore again afterwards. Basically everything that DirectTK
@@ -96,15 +103,15 @@ private:
 	void DrawShaderInfoLine(char *type, UINT64 selectedShader, float *y, bool shader);
 	void DrawShaderInfoLines(float *y);
 	void DrawNotices(float y);
+	void DrawRectangle(float x, float y, float w, float h, float r, float g, float b, float opacity);
 
 public:
 	Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain);
 	~Overlay();
 
 	void DrawOverlay(void);
-
-	void ClearNotices();
-	void vNotice(LogLevel level, wchar_t *fmt, va_list ap);
 };
 
-void LogOverlayW(HackerSwapChain *chain, LogLevel level, wchar_t *fmt, ...);
+void ClearNotices();
+void LogOverlayW(LogLevel level, wchar_t *fmt, ...);
+void LogOverlay(LogLevel level, char *fmt, ...);

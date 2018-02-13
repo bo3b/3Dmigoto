@@ -109,9 +109,9 @@ public:
 
 	HackerContext* GetHackerContext();
 	HackerSwapChain* GetHackerSwapChain();
-	ID3D11Device1* GetOrigDevice1();
+	ID3D11Device1* GetPossiblyHookedOrigDevice1();
 	ID3D11Device1* GetPassThroughOrigDevice1();
-	ID3D11DeviceContext1* GetOrigContext1();
+	ID3D11DeviceContext1* GetPossiblyHookedOrigContext1();
 	ID3D11DeviceContext1* GetPassThroughOrigContext1();
 	IUnknown* GetIUnknown();
 	void HookDevice();

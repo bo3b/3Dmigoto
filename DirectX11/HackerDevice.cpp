@@ -420,7 +420,7 @@ HackerSwapChain* HackerDevice::GetHackerSwapChain()
 // undesirable in some cases. This used to cause a crash if a command list
 // issued a draw call, since that would then trigger the command list and
 // recurse until the stack ran out:
-ID3D11Device1* HackerDevice::GetOrigDevice1()
+ID3D11Device1* HackerDevice::GetPossiblyHookedOrigDevice1()
 {
 	return mRealOrigDevice1;
 }
@@ -433,7 +433,7 @@ ID3D11Device1* HackerDevice::GetPassThroughOrigDevice1()
 	return mOrigDevice1;
 }
 
-ID3D11DeviceContext1* HackerDevice::GetOrigContext1()
+ID3D11DeviceContext1* HackerDevice::GetPossiblyHookedOrigContext1()
 {
 	return mOrigContext1;
 }
@@ -543,7 +543,7 @@ void ExportOrigBinary(UINT64 hash, const wchar_t *pShaderType, const void *pShad
 	if (!exists)
 	{
 		FILE *fw;
-		_wfopen_s(&fw, path, L"wb");
+		wfopen_ensuring_access(&fw, path, L"wb");
 		if (fw)
 		{
 			LogInfoW(L"    storing original binary shader to %s\n", path);
@@ -711,7 +711,7 @@ void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 			{
 				swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, pShaderType);
 				FILE *fw;
-				_wfopen_s(&fw, path, L"wb");
+				wfopen_ensuring_access(&fw, path, L"wb");
 				if (LogFile)
 				{
 					char fileName[MAX_PATH];
@@ -809,7 +809,7 @@ void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *
 					// Write reassembled binary output as a cached shader.
 					FILE *fw;
 					swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
-					_wfopen_s(&fw, path, L"wb");
+					wfopen_ensuring_access(&fw, path, L"wb");
 					if (fw)
 					{
 						LogInfoW(L"    storing reassembled binary to %s\n", path);
@@ -1003,7 +1003,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 
 				if (!errorOccurred && ((G->EXPORT_HLSL >= 1) || (G->EXPORT_FIXED && patched)))
 				{
-					errno_t err = _wfopen_s(&fw, val, L"wb");
+					errno_t err = wfopen_ensuring_access(&fw, val, L"wb");
 					if (err != 0)
 					{
 						LogInfo("    !!! Fail to open replace.txt file: 0x%x\n", err);
@@ -2763,10 +2763,10 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 			mHackerContext->HookContext();
 		LogInfo("  HackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);
 	}
-	else if (mHackerContext->GetOrigContext1() != *ppImmediateContext)
+	else if (mHackerContext->GetPossiblyHookedOrigContext1() != *ppImmediateContext)
 	{
 		LogInfo("WARNING: mHackerContext %p found to be wrapping %p instead of %p at HackerDevice::GetImmediateContext!\n",
-				mHackerContext, mHackerContext->GetOrigContext1(), *ppImmediateContext);
+				mHackerContext, mHackerContext->GetPossiblyHookedOrigContext1(), *ppImmediateContext);
 	}
 
 	if (!(G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT))
@@ -2817,10 +2817,10 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext1(
 		mHackerContext->SetHackerDevice(this);
 		LogInfo("  mHackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);
 	}
-	else if (mHackerContext->GetOrigContext1() != *ppImmediateContext)
+	else if (mHackerContext->GetPossiblyHookedOrigContext1() != *ppImmediateContext)
 	{
 		LogInfo("WARNING: mHackerContext %p found to be wrapping %p instead of %p at HackerDevice::GetImmediateContext1!\n",
-			mHackerContext, mHackerContext->GetOrigContext1(), *ppImmediateContext);
+			mHackerContext, mHackerContext->GetPossiblyHookedOrigContext1(), *ppImmediateContext);
 	}
 
 	*ppImmediateContext = reinterpret_cast<ID3D11DeviceContext1*>(mHackerContext);

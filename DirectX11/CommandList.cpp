@@ -1022,6 +1022,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 			break;
 		default:
 			// Should not happen
+			LogOverlay(LOG_DIRE, "CustomShader::compile: invalid shader type\n");
 			goto err;
 	}
 
@@ -1030,7 +1031,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 		return false;
 
 	if (!GetModuleFileName(0, wpath, MAX_PATH)) {
-		LogInfo("GetModuleFileName failed\n");
+		LogOverlay(LOG_DIRE, "CustomShader::compile: GetModuleFileName failed\n");
 		goto err;
 	}
 	wcsrchr(wpath, L'\\')[1] = 0;
@@ -1038,7 +1039,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 
 	f = CreateFile(wpath, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE) {
-		LogInfo("    Shader not found: %S\n", wpath);
+		LogOverlay(LOG_WARNING, "Shader not found: %S\n", wpath);
 		goto err;
 	}
 
@@ -1068,17 +1069,19 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 	hr = D3DCompile(srcData.data(), srcDataSize, apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, ppBytecode, &pErrorMsgs);
 
-	if (pErrorMsgs && LogFile) { // Check LogFile so the fwrite doesn't crash
+	if (pErrorMsgs) {
 		LPVOID errMsg = pErrorMsgs->GetBufferPointer();
 		SIZE_T errSize = pErrorMsgs->GetBufferSize();
 		LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
-		fwrite(errMsg, 1, errSize - 1, LogFile);
+		LogOverlay(LOG_NOTICE, "%*s\n", errSize, errMsg);
 		LogInfo("---------------------------------------------- END ----------------------------------------------\n");
 		pErrorMsgs->Release();
 	}
 
-	if (FAILED(hr))
+	if (FAILED(hr)) {
+		LogOverlay(LOG_WARNING, "Error compiling custom shader\n");
 		goto err;
+	}
 
 	// TODO: Cache bytecode
 
@@ -1086,7 +1089,6 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 err_close:
 	CloseHandle(f);
 err:
-	BeepFailure();
 	return true;
 }
 
@@ -2429,10 +2431,9 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, 
 		if (override_format != (DXGI_FORMAT)-1)
 			format = override_format;
 	} else {
-		LogInfo("Failed to substantiate custom %S [%S]: 0x%x\n",
+		LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
 				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), hr);
 		LogResourceDesc(&desc);
-		BeepFailure();
 	}
 }
 void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice1)
@@ -2454,10 +2455,9 @@ void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice1)
 		resource = (ID3D11Resource*)tex1d;
 		is_null = false;
 	} else {
-		LogInfo("Failed to substantiate custom %S [%S]: 0x%x\n",
+		LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
 				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), hr);
 		LogResourceDesc(&desc);
-		BeepFailure();
 	}
 }
 void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice1)
@@ -2479,10 +2479,9 @@ void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice1)
 		resource = (ID3D11Resource*)tex2d;
 		is_null = false;
 	} else {
-		LogInfo("Failed to substantiate custom %S [%S]: 0x%x\n",
+		LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
 				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), hr);
 		LogResourceDesc(&desc);
-		BeepFailure();
 	}
 }
 void CustomResource::SubstantiateTexture3D(ID3D11Device *mOrigDevice1)
@@ -2504,10 +2503,9 @@ void CustomResource::SubstantiateTexture3D(ID3D11Device *mOrigDevice1)
 		resource = (ID3D11Resource*)tex3d;
 		is_null = false;
 	} else {
-		LogInfo("Failed to substantiate custom %S [%S]: 0x%x\n",
+		LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
 				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), hr);
 		LogResourceDesc(&desc);
-		BeepFailure();
 	}
 }
 
