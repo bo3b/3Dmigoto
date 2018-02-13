@@ -45,6 +45,21 @@ extern "C" HRESULT(__stdcall *fnOrigCreateSwapChain)(
 	/* [annotation][out] */
 	_Out_  IDXGISwapChain **ppSwapChain);
 
+extern "C" HRESULT(__stdcall *fnOrigCreateSwapChainForHwnd)(
+	IDXGIFactory2 * This,
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][in] */
+	_In_  HWND hWnd,
+	/* [annotation][in] */
+	_In_  const DXGI_SWAP_CHAIN_DESC1 *pDesc,
+	/* [annotation][in] */
+	_In_opt_  const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
+	/* [annotation][in] */
+	_In_opt_  IDXGIOutput *pRestrictToOutput,
+	/* [annotation][out] */
+	_Out_  IDXGISwapChain1 **ppSwapChain);
+
 
 // Called from HookedDXGI
 

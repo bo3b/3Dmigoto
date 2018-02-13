@@ -449,7 +449,9 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	}
 
 	// Inputs structures are const, so copy them to allow modification:
+	const DXGI_SWAP_CHAIN_DESC1 *origSwapChainDesc = pDesc;
 	DXGI_SWAP_CHAIN_DESC1 desc1 = { 0 };
+	const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *origFullScreenDesc = pFullscreenDesc;
 	DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullScreenDesc = { 0 };
 	if (pDesc) {
 		memcpy(&desc1, pDesc, sizeof(DXGI_SWAP_CHAIN_DESC1));
@@ -476,7 +478,25 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 		origSwapChain = *ppSwapChain;
 		hackerContext = hackerDevice->GetHackerContext();
 
-		hackerSwapChain = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
+		if (G->SCREEN_UPSCALING == 0)		// Normal case
+		{
+			hackerSwapChain = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
+			LogInfo("->HackerSwapChain %p created to wrap %p\n", hackerSwapChain, origSwapChain);
+		}
+		else								// Upscaling case
+		{
+			hackerSwapChain = new HackerUpscalingSwapChain(origSwapChain, hackerDevice, hackerContext,
+				hWnd, origSwapChainDesc, origFullScreenDesc, pRestrictToOutput, pDesc->Width, pDesc->Height, This);
+			LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", hackerSwapChain, origSwapChain);
+
+			if (G->SCREEN_UPSCALING == 2 || !origFullScreenDesc->Windowed)
+			{
+				// Some games react very strange (like render nothing) if set full screen state is called here)
+				// Other games like The Witcher 3 need the call to ensure entering the full screen on start
+				// (seems to be game internal stuff)  ToDo: retest if this is still necessary, lots of changes.
+				origSwapChain->SetFullscreenState(TRUE, nullptr);
+			}
+		}
 
 		// When creating a new swapchain, we can assume this is the game creating
 		// the most important object, and return the wrapped swapchain to the game

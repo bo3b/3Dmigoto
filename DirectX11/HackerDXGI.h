@@ -201,12 +201,18 @@ private:
 	UINT mHeight;
 
 public:
-	HackerUpscalingSwapChain::HackerUpscalingSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pHackerDevice, HackerContext *pHackerContext,
+	HackerUpscalingSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pHackerDevice, HackerContext *pHackerContext,
 		DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc, UINT newWidth, UINT newHeight, IDXGIFactory* pFactory);
+	HackerUpscalingSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pHackerDevice, HackerContext *pHackerContext,
+		HWND hWnd, const DXGI_SWAP_CHAIN_DESC1* pFakeSwapChainDesc, const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
+		IDXGIOutput *pRestrictToOutput, UINT newWidth, UINT newHeight, IDXGIFactory2* pFactory);
 	~HackerUpscalingSwapChain();
 
 private:
 	void CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc, IDXGIFactory* pFactory);
+	void CreateRenderTargetForHwnd(HWND hWnd, const DXGI_SWAP_CHAIN_DESC1* pFakeSwapChainDesc,
+		const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc, IDXGIOutput *pRestrictToOutput,
+		IDXGIFactory2* pFactory);
 
 public:
 

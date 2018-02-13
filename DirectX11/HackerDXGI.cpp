@@ -889,6 +889,26 @@ HackerUpscalingSwapChain::HackerUpscalingSwapChain(IDXGISwapChain1 *pSwapChain, 
 	mHeight = newHeight;
 }
 
+HackerUpscalingSwapChain::HackerUpscalingSwapChain(
+		IDXGISwapChain1 *pSwapChain,
+		HackerDevice *pHackerDevice,
+		HackerContext *pHackerContext,
+		HWND hWnd,
+		const DXGI_SWAP_CHAIN_DESC1* pFakeSwapChainDesc,
+		const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
+		IDXGIOutput *pRestrictToOutput,
+		UINT newWidth,
+		UINT newHeight,
+		IDXGIFactory2* pFactory)
+	: HackerSwapChain(pSwapChain, pHackerDevice, pHackerContext),
+	mFakeBackBuffer(nullptr), mFakeSwapChain1(nullptr), mWidth(0), mHeight(0)
+{
+	CreateRenderTargetForHwnd(hWnd, pFakeSwapChainDesc, pFullscreenDesc, pRestrictToOutput, pFactory);
+
+	mWidth = newWidth;
+	mHeight = newHeight;
+}
+
 
 HackerUpscalingSwapChain::~HackerUpscalingSwapChain()
 {
@@ -949,6 +969,77 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 
 		// restore old state in case fall back is required ToDo: Unlikely needed now.
 		pFakeSwapChainDesc->Flags = flagBackup;
+	}
+	break;
+	default:
+		LogOverlay(LOG_DIRE, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed ==> provided upscaling mode is not valid.\n");
+		// Not positive if we will be able to get an overlay to
+		// display the error, so also issue an audible warning:
+		BeepFailure2();
+	}
+
+	LogInfo("HackerUpscalingSwapChain::HackerUpscalingSwapChain(): result %d\n", hr);
+
+	if (FAILED(hr))
+	{
+		LogOverlay(LOG_DIRE, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed\n");
+		// Not positive if we will be able to get an overlay to
+		// display the error, so also issue an audible warning:
+		BeepFailure2();
+	}
+}
+
+// FIXME: Refactor common code with above
+void HackerUpscalingSwapChain::CreateRenderTargetForHwnd(HWND hWnd,
+		const DXGI_SWAP_CHAIN_DESC1* pFakeSwapChainDesc,
+		const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
+		IDXGIOutput *pRestrictToOutput,
+		IDXGIFactory2* pFactory)
+{
+	HRESULT hr;
+
+	switch (G->UPSCALE_MODE)
+	{
+	case 0:
+	{
+		// TODO: multisampled swap chain
+		// TODO: multiple buffers within one spaw chain
+		// ==> in this case upscale_mode = 1 should be used at the moment
+		D3D11_TEXTURE2D_DESC fake_buffer_desc;
+		std::memset(&fake_buffer_desc, 0, sizeof(D3D11_TEXTURE2D_DESC));
+		fake_buffer_desc.ArraySize = 1;
+		fake_buffer_desc.MipLevels = 1;
+		fake_buffer_desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+		fake_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+		fake_buffer_desc.SampleDesc.Count = 1;
+		fake_buffer_desc.Format = pFakeSwapChainDesc->Format;
+		fake_buffer_desc.MiscFlags = 0;
+		fake_buffer_desc.Width = pFakeSwapChainDesc->Width;
+		fake_buffer_desc.Height = pFakeSwapChainDesc->Height;
+		fake_buffer_desc.CPUAccessFlags = 0;
+
+		hr = mHackerDevice->GetPassThroughOrigDevice1()->CreateTexture2D(&fake_buffer_desc, nullptr, &mFakeBackBuffer);
+	}
+	break;
+	case 1:
+	{
+		if (pFactory == nullptr)
+		{
+			LogOverlay(LOG_DIRE, "HackerUpscalingSwapChain::createRenderTarget failed provided factory pointer is invalid.\n");
+			// Not positive if we will be able to get an overlay to
+			// display the error, so also issue an audible warning:
+			BeepFailure2();
+		}
+
+		DXGI_SWAP_CHAIN_DESC1 pFakeSwapChainDescModified;
+		memcpy(&pFakeSwapChainDescModified, pFakeSwapChainDesc, sizeof(DXGI_SWAP_CHAIN_DESC1));
+
+		// fake swap chain should have no influence on window
+		pFakeSwapChainDescModified.Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+		hr = fnOrigCreateSwapChainForHwnd(pFactory,
+				mHackerDevice->GetPossiblyHookedOrigDevice1(),
+				hWnd, &pFakeSwapChainDescModified, pFullscreenDesc,
+				pRestrictToOutput, &mFakeSwapChain1);
 	}
 	break;
 	default:
