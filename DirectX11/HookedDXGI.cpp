@@ -355,18 +355,21 @@ static void ForceDisplayParams1(DXGI_SWAP_CHAIN_DESC1 *pDesc, DXGI_SWAP_CHAIN_FU
 
 		if (G->SCREEN_WIDTH >= 0)
 		{
-			LogOverlay(LOG_DIRE, "*** Unimplemented feature to force screen width in CreateSwapChainForHwnd\n");
+			pDesc->Width = G->SCREEN_WIDTH;
+			LogInfo("->Forcing Width to = %d\n", pDesc->Width);
 		}
 		if (G->SCREEN_HEIGHT >= 0)
 		{
-			LogOverlay(LOG_DIRE, "*** Unimplemented feature to force screen height in CreateSwapChainForHwnd\n");
+			pDesc->Height = G->SCREEN_HEIGHT;
+			LogInfo("->Forcing Height to = %d\n", pDesc->Height);
 		}
 
 		// To support 3D Vision Direct Mode, we need to force the backbuffer from the
 		// swapchain to be 2x its normal width.
 		if (G->gForceStereo == 2)
 		{
-			LogOverlay(LOG_DIRE, "*** Unimplemented feature for Direct Mode in CreateSwapChainForHwnd\n");
+			pDesc->Width *= 2;
+			LogInfo("->Direct Mode: Forcing Width to = %d\n", pDesc->Width);
 		}
 	}
 }
