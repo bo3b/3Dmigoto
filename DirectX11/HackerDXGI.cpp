@@ -645,8 +645,6 @@ STDMETHODIMP HackerSwapChain::ResizeTarget(THIS_
 	/* [annotation][in] */
 	_In_  const DXGI_MODE_DESC *pNewTargetParameters)
 {
-	BOOL fullscreen;
-	IDXGIOutput *target = NULL;
 	DXGI_MODE_DESC new_desc;
 
 	LogInfo("HackerSwapChain::ResizeTarget(%s@%p) called\n", type_name(this), this);
@@ -654,23 +652,20 @@ STDMETHODIMP HackerSwapChain::ResizeTarget(THIS_
 	LogInfo("     Refresh rate = %f\n",
 		(float)pNewTargetParameters->RefreshRate.Numerator / (float)pNewTargetParameters->RefreshRate.Denominator);
 
-	// We will only force the refresh rate if we are currently in
-	// full-screen. I don't have a particularly good reason for doing this
-	// other than that's how ForceDisplayParams() has always worked and
-	// maybe there was a reason for doing so? Then again maybe not? One
-	// problem with this approach is that ResizeTarget and
-	// SetFullscreenState can be called in any order, so if ResizeTarget is
-	// called first while the game is still windowed we won't force the
-	// refresh rate at all. For now this is enough to get the refresh rate
-	// override working in UE4 (SetFullscreenState then ResizeTarget), and
-	// we can revisit this later with a game that does the opposite to work
-	// out the best way to handle it.
-	mOrigSwapChain1->GetFullscreenState(&fullscreen, &target);
-	if (target)
-		target->Release();
+	// Historically we have only forced the refresh rate when full-screen.
+	// I don't know if we ever had a good reason for that, but it
+	// complicates forcing the refresh rate in games that start windowed
+	// and later switch to full screen, depending on the order in which
+	// the game calls ResizeTarget and SetFullscreenState so now forcing it
+	// unconditionally to see how that goes. Helps Unity games work with 3D
+	// TV play. If we need to restore the old behaviour for some reason,
+	// check the git history, but we will need further heroics.
+	//
+	// UE4 does SetFullscreenState -> ResizeBuffers -> ResizeTarget
+	// Unity does ResizeTarget -> SetFullscreenState -> ResizeBuffers
 
 	memcpy(&new_desc, pNewTargetParameters, sizeof(DXGI_MODE_DESC));
-	ForceDisplayMode(&new_desc, !fullscreen);
+	ForceDisplayMode(&new_desc);
 
 	HRESULT hr = mOrigSwapChain1->ResizeTarget(&new_desc);
 	LogInfo("  returns result = %x\n", hr);

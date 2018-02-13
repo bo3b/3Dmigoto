@@ -211,13 +211,17 @@ static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device)
 	return hackerDevice;
 }
 
-void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc, BOOL Windowed)
+void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc)
 {
 	// Historically we have only forced the refresh rate when full-screen.
-	// Not positive if it would hurt to do otherwise, but for now assuming
-	// we might have had a good reason and keeping that behaviour. See also
-	// the note in ResizeTarget().
-	if (G->SCREEN_REFRESH >= 0 && !Windowed)
+	// I don't know if we ever had a good reason for that, but it
+	// complicates forcing the refresh rate in games that start windowed
+	// and later switch to full screen, so now forcing it unconditionally
+	// to see how that goes. Helps Unity games work with 3D TV Play.
+	//
+	// UE4 does SetFullscreenState -> ResizeBuffers -> ResizeTarget
+	// Unity does ResizeTarget -> SetFullscreenState -> ResizeBuffers
+	if (G->SCREEN_REFRESH >= 0)
 	{
 		// FIXME: This may disable flipping (and use blitting instead)
 		// if the forced numerator and denominator does not exactly
@@ -295,7 +299,7 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 		InstallSetWindowPosHook();
 	}
 
-	ForceDisplayMode(&pDesc->BufferDesc, pDesc->Windowed);
+	ForceDisplayMode(&pDesc->BufferDesc);
 }
 
 // Different variant for the CreateSwapChainForHwnd.
@@ -317,8 +321,16 @@ static void ForceDisplayParams1(DXGI_SWAP_CHAIN_DESC1 *pDesc, DXGI_SWAP_CHAIN_FU
 			LogInfo("->Forcing Windowed to = %d\n", pFullscreenDesc->Windowed);
 		}
 
-		if (G->SCREEN_REFRESH >= 0 && !pFullscreenDesc->Windowed)
+		if (G->SCREEN_REFRESH >= 0)
 		{
+			// Historically we have only forced the refresh rate when full-screen.
+			// I don't know if we ever had a good reason for that, but it
+			// complicates forcing the refresh rate in games that start windowed
+			// and later switch to full screen, so now forcing it unconditionally
+			// to see how that goes. Helps Unity games work with 3D TV Play.
+			//
+			// UE4 does SetFullscreenState -> ResizeBuffers -> ResizeTarget
+			// Unity does ResizeTarget -> SetFullscreenState -> ResizeBuffers
 			pFullscreenDesc->RefreshRate.Numerator = G->SCREEN_REFRESH;
 			pFullscreenDesc->RefreshRate.Denominator = 1;
 			LogInfo("->Forcing refresh rate to = %f\n",
