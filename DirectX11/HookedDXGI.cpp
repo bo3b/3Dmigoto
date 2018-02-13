@@ -304,17 +304,26 @@ void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 // Batman Telltale needs this.
 // The rest of the variants are less clear.
 
-void ForceDisplayParams1(DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc1)
+static void ForceDisplayParams1(DXGI_SWAP_CHAIN_DESC1 *pDesc, DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc)
 {
-	if (pDesc1 == NULL)
-		return;
+	if (pFullscreenDesc) {
+		LogInfo("     Windowed = %d\n", pFullscreenDesc->Windowed);
+		LogInfo("     Refresh rate = %f\n",
+			(float)pFullscreenDesc->RefreshRate.Numerator / (float)pFullscreenDesc->RefreshRate.Denominator);
 
-	LogInfo("     Windowed = %d\n", pDesc1->Windowed);
+		if (G->SCREEN_FULLSCREEN > 0)
+		{
+			pFullscreenDesc->Windowed = false;
+			LogInfo("->Forcing Windowed to = %d\n", pFullscreenDesc->Windowed);
+		}
 
-	if (G->SCREEN_FULLSCREEN > 0)
-	{
-		pDesc1->Windowed = false;
-		LogInfo("->Forcing Windowed to = %d\n", pDesc1->Windowed);
+		if (G->SCREEN_REFRESH >= 0 && !pFullscreenDesc->Windowed)
+		{
+			pFullscreenDesc->RefreshRate.Numerator = G->SCREEN_REFRESH;
+			pFullscreenDesc->RefreshRate.Denominator = 1;
+			LogInfo("->Forcing refresh rate to = %f\n",
+				(float)pFullscreenDesc->RefreshRate.Numerator / (float)pFullscreenDesc->RefreshRate.Denominator);
+		}
 	}
 
 	if (G->SCREEN_FULLSCREEN == 2)
@@ -327,26 +336,26 @@ void ForceDisplayParams1(DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc1)
 		InstallSetWindowPosHook();
 	}
 
-	// These input parameters are not clear how to implement for CreateSwapChainForHwnd,
-	// and are stubbed out with error reporting. Can be implemented when cases arise.
-	if (G->SCREEN_REFRESH >= 0 && !pDesc1->Windowed)
+	if (pDesc)
 	{
-		LogOverlay(LOG_DIRE, "*** Unimplemented feature for refresh_rate in CreateSwapChainForHwnd\n");
-	}
-	if (G->SCREEN_WIDTH >= 0)
-	{
-		LogOverlay(LOG_DIRE, "*** Unimplemented feature to force screen width in CreateSwapChainForHwnd\n");
-	}
-	if (G->SCREEN_HEIGHT >= 0)
-	{
-		LogOverlay(LOG_DIRE, "*** Unimplemented feature to force screen height in CreateSwapChainForHwnd\n");
-	}
+		LogInfo("     Width = %d\n", pDesc->Width);
+		LogInfo("     Height = %d\n", pDesc->Height);
 
-	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
-	// swapchain to be 2x its normal width.  
-	if (G->gForceStereo == 2)
-	{
-		LogOverlay(LOG_DIRE, "*** Unimplemented feature for Direct Mode in CreateSwapChainForHwnd\n");
+		if (G->SCREEN_WIDTH >= 0)
+		{
+			LogOverlay(LOG_DIRE, "*** Unimplemented feature to force screen width in CreateSwapChainForHwnd\n");
+		}
+		if (G->SCREEN_HEIGHT >= 0)
+		{
+			LogOverlay(LOG_DIRE, "*** Unimplemented feature to force screen height in CreateSwapChainForHwnd\n");
+		}
+
+		// To support 3D Vision Direct Mode, we need to force the backbuffer from the
+		// swapchain to be 2x its normal width.
+		if (G->gForceStereo == 2)
+		{
+			LogOverlay(LOG_DIRE, "*** Unimplemented feature for Direct Mode in CreateSwapChainForHwnd\n");
+		}
 	}
 }
 
@@ -404,12 +413,40 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	LogInfo("  Description1 = %p\n", pDesc);
 	LogInfo("  FullScreenDescription = %p\n", pFullscreenDesc);
 
-	DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullScreenDesc = { 0 };
-	if (!pFullscreenDesc)
-		pFullscreenDesc = &fullScreenDesc;
-	ForceDisplayParams1(&fullScreenDesc);
+	// Save window handle so we can translate mouse coordinates to the window:
+	G->hWnd = hWnd;
 
-	// FIXME: Get resolution from swap chain
+	if (pDesc != nullptr)
+	{
+		// Required in case the software mouse and upscaling are on at the same time
+		// TODO: Use a helper class to track *all* different resolutions
+		G->GAME_INTERNAL_WIDTH = pDesc->Width;
+		G->GAME_INTERNAL_HEIGHT = pDesc->Height;
+
+		if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN)
+		{
+			// TODO: Use a helper class to track *all* different resolutions
+			G->mResolutionInfo.width = pDesc->Width;
+			G->mResolutionInfo.height = pDesc->Height;
+			LogInfo("Got resolution from swap chain: %ix%i\n",
+				G->mResolutionInfo.width, G->mResolutionInfo.height);
+		}
+	}
+
+	// Inputs structures are const, so copy them to allow modification:
+	DXGI_SWAP_CHAIN_DESC1 desc1 = { 0 };
+	DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullScreenDesc = { 0 };
+	if (pDesc) {
+		memcpy(&desc1, pDesc, sizeof(DXGI_SWAP_CHAIN_DESC1));
+		pDesc = &desc1;
+	}
+	if (pFullscreenDesc) {
+		memcpy(&fullScreenDesc, pFullscreenDesc, sizeof(DXGI_SWAP_CHAIN_FULLSCREEN_DESC));
+		pFullscreenDesc = &fullScreenDesc;
+	}
+	ForceDisplayParams1(&desc1, &fullScreenDesc);
+
+	// FIXME: Implement upscaling
 
 	hackerDevice = sort_out_swap_chain_device_mess(&pDevice);
 
