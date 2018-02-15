@@ -193,8 +193,8 @@ static T1 lookup_enum_name(struct EnumName_t<T1, T2> *enum_names, T2 val)
 }
 
 // Parses an option string of names given by enum_names. The enum used with
-// this function should have an INVALID=0, other flags declared as powers of
-// two, and the SENSIBLE_ENUM macro used to enable the bitwise and logical
+// this function should have an INVALID entry, other flags declared as powers
+// of two, and the SENSIBLE_ENUM macro used to enable the bitwise and logical
 // operators. As above, the EnumName_t list must be terminated with {NULL, 0}
 //
 // If you wish to parse an option string that contains exactly one unrecognised
@@ -205,7 +205,7 @@ template <class T1, class T2, class T3>
 static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T3 option_string, T1 *unrecognised)
 {
 	T3 ptr = option_string, cur;
-	T2 ret = T2::INVALID;
+	T2 ret = (T2)0;
 	T2 tmp = T2::INVALID;
 
 	if (unrecognised)
@@ -229,14 +229,16 @@ static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T3 opt
 
 		// Lookup the value of the current entry:
 		tmp = lookup_enum_val<T1, T2> (enum_names, cur, T2::INVALID);
-		if (tmp == T2::INVALID) {
+		if (tmp != T2::INVALID) {
+			ret |= tmp;
+		} else {
 			if (unrecognised && !(*unrecognised)) {
 				*unrecognised = cur;
 			} else {
 				LogOverlayW(LOG_WARNING, L"WARNING: Unknown option: %s\n", cur);
+				ret |= T2::INVALID;
 			}
 		}
-		ret |= tmp;
 	}
 	return ret;
 }
