@@ -2651,7 +2651,7 @@ static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *CustomShaderIniKeys[] = {
 	L"vs", L"hs", L"ds", L"gs", L"ps", L"cs",
-	L"max_executions_per_frame",
+	L"max_executions_per_frame", L"flags",
 	// OM Blend State overrides:
 	L"blend", L"alpha", L"mask",
 	L"blend[0]", L"blend[1]", L"blend[2]", L"blend[3]",
@@ -2727,6 +2727,14 @@ static void ParseCustomShaderSections()
 		LogInfoW(L"[%s]\n", shader_id->c_str());
 
 		failed = false;
+
+		// Flags is currently just applied to every shader in the chain
+		// because it's so rarely needed and it doesn't really matter.
+		// We can add vs_flags and so on later if we really need to.
+		if (GetIniStringAndLog(shader_id->c_str(), L"flags", 0, setting, MAX_PATH)) {
+			custom_shader->compile_flags = parse_enum_option_string<const wchar_t *, D3DCompileFlags, wchar_t*>
+				(D3DCompileFlagNames, setting, NULL);
+		}
 
 		if (GetIniString(shader_id->c_str(), L"vs", 0, setting, MAX_PATH))
 			failed |= custom_shader->compile('v', setting, shader_id);

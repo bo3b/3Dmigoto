@@ -931,7 +931,8 @@ CustomShader::CustomShader() :
 	frame_no(0),
 	executions_this_frame(0),
 	sampler_override(0),
-	sampler_state(nullptr)
+	sampler_state(nullptr),
+	compile_flags(D3DCompileFlags::OPTIMIZATION_LEVEL3)
 {
 	int i;
 
@@ -1067,7 +1068,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 	// that we can make reloading work better when using includes:
 	wcstombs(apath, wpath, MAX_PATH);
 	hr = D3DCompile(srcData.data(), srcDataSize, apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, ppBytecode, &pErrorMsgs);
+		"main", shaderModel, (UINT)compile_flags, 0, ppBytecode, &pErrorMsgs);
 
 	if (pErrorMsgs) {
 		LPVOID errMsg = pErrorMsgs->GetBufferPointer();
