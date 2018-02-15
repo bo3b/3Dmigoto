@@ -18,7 +18,7 @@
 #include "HackerDevice.h"
 #include "HackerContext.h"
 
-#define MAX_SIMULTANEOUS_NOTICES 6
+#define MAX_SIMULTANEOUS_NOTICES 10
 
 static std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
 static bool has_notice = false;
