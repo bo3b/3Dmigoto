@@ -930,8 +930,7 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 	else
 	{
 		LogOverlay(LOG_WARNING, "> FAILED to copy Marked shader to ShaderFixes\n");
-		if (G->confirmation_tones)
-			BeepFailure();
+		BeepFailure();
 	}
 }
 
@@ -1052,8 +1051,7 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 		else
 		{
 			LogOverlay(LOG_WARNING, "> FAILED to reload shaders from ShaderFixes\n");
-			if (G->confirmation_tones)
-				BeepFailure();
+			BeepFailure();
 		}
 	}
 }

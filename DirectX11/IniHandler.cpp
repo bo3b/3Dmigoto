@@ -192,7 +192,22 @@ static IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &
 	return sections.end();
 }
 
-#define IniWarning(fmt, ...) do { LogOverlay(LOG_WARNING, fmt, __VA_ARGS__); } while (0)
+// We now emit a single warning tone after the config file is [re]loaded to get
+// the shaderhackers attention if something needs to be addressed, since their
+// eyes may be focussed elsewhere and may miss the notification message[s].
+static bool ini_warned = false;
+#define IniWarning(fmt, ...) do { \
+	ini_warned = true; \
+	LogOverlay(LOG_WARNING, fmt, __VA_ARGS__); \
+} while (0)
+
+static void emit_ini_warning_tone()
+{
+	if (!ini_warned)
+		return;
+	ini_warned = false;
+	BeepFailure();
+}
 
 static void ParseIniSectionLine(wstring *wline, wstring *section,
 		bool *warn_duplicates, bool *warn_lines_without_equals,
@@ -3596,6 +3611,8 @@ void LoadConfigFile()
 
 	if (G->hide_cursor || G->SCREEN_UPSCALING)
 		InstallMouseHooks(G->hide_cursor);
+
+	emit_ini_warning_tone();
 }
 
 // This variant is called by the profile manager helper with the path to the
