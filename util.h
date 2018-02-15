@@ -233,8 +233,7 @@ static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T3 opt
 			if (unrecognised && !(*unrecognised)) {
 				*unrecognised = cur;
 			} else {
-				LogInfoW(L"WARNING: Unknown option: %s\n", cur);
-				BeepFailure2();
+				LogOverlayW(LOG_WARNING, L"WARNING: Unknown option: %s\n", cur);
 			}
 		}
 		ret |= tmp;
