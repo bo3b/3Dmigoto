@@ -3529,7 +3529,6 @@ void LoadConfigFile()
 	}
 
 	G->mark_snapshot = GetIniInt(L"Hunting", L"mark_snapshot", 0, NULL);
-	G->confirmation_tones = GetIniBool(L"Hunting", L"confirmation_tones", false, NULL);
 
 	RegisterHuntingKeyBindings();
 	RegisterPresetKeyBindings();
