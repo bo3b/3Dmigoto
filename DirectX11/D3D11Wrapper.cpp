@@ -3,6 +3,7 @@
 #include "log.h"
 #include "Globals.h"
 #include "IniHandler.h"
+#include "HookedDXGI.h"
 
 #include "nvprofile.h"
 
@@ -696,15 +697,7 @@ HRESULT WINAPI HackerCreateDevice(
 	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
 	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
 {
-	InitD311();
-	LogInfo("\n\n *** D3D11CreateDevice called with\n");
-	LogInfo("    pAdapter = %p\n", pAdapter);
-	LogInfo("    Flags = %#x\n", Flags);
-	LogInfo("    pFeatureLevels = %#x\n", pFeatureLevels ? *pFeatureLevels : 0);
-	LogInfo("    FeatureLevels = %d\n", FeatureLevels);
-	LogInfo("    ppDevice = %p\n", ppDevice);
-	LogInfo("    pFeatureLevel = %#x\n", pFeatureLevel ? *pFeatureLevel : 0);
-	LogInfo("    ppImmediateContext = %p\n", ppImmediateContext);
+	LogInfo("-- HackerCreateDevice called\n");
 
 	if (ForceDX11(const_cast<D3D_FEATURE_LEVEL*>(pFeatureLevels)))
 		return E_INVALIDARG;
@@ -796,7 +789,7 @@ HRESULT WINAPI HackerCreateDevice(
 	if (contextWrap != nullptr)
 		contextWrap->Bind3DMigotoResources();
 
-	LogInfo("->D3D11CreateDevice result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n\n",
+	LogInfo("->HackerCreateDevice result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n",
 		ret, origDevice1, deviceWrap, origContext1, contextWrap);
 
 	return ret;
@@ -824,8 +817,22 @@ HRESULT WINAPI D3D11CreateDevice(
 	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
 	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
 {
-	return HackerCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels,
+	InitD311();
+
+	LogInfo("\n\n *** D3D11CreateDevice called with\n");
+	LogInfo("    pAdapter = %p\n", pAdapter);
+	LogInfo("    Flags = %#x\n", Flags);
+	LogInfo("    pFeatureLevels = %#x\n", pFeatureLevels ? *pFeatureLevels : 0);
+	LogInfo("    FeatureLevels = %d\n", FeatureLevels);
+	LogInfo("    ppDevice = %p\n", ppDevice);
+	LogInfo("    pFeatureLevel = %#x\n", pFeatureLevel ? *pFeatureLevel : 0);
+	LogInfo("    ppImmediateContext = %p\n", ppImmediateContext);
+
+	HRESULT hr = HackerCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels,
 		FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
+
+	LogInfo("->D3D11CreateDevice result = %x\n\n", hr);
+	return hr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -886,12 +893,6 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	LogInfo("    pFeatureLevel = %#x\n", pFeatureLevel ? *pFeatureLevel: 0);
 	LogInfo("    ppImmediateContext = %p\n", ppImmediateContext);
 
-	if (ForceDX11(const_cast<D3D_FEATURE_LEVEL*>(pFeatureLevels)))
-		return E_INVALIDARG;
-
-#if _DEBUG_LAYER
-	Flags = EnableDebugFlags(Flags);
-#endif
 
 	// Create the Device that the caller specified, but using our interal HackerCreateDevice
 	// on purpose, so that we get a HackerDevice back in ppDevice.  
@@ -939,10 +940,10 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	if (FAILED(hr))
 		goto fatalExit;
 
-	// This will implicitly call IDXGIFactory->CreateSwapChain, which we have hooked
-	// in HookedDXGI. That hook will always create and return the HackerSwapChain, 
+	// Directly call our root function HackerCreateSwapChain, to avoid any possible
+	// hooks on the factory function. This will always create and return the HackerSwapChain, 
 	// create the Overlay, and ForceDisplayParams if required.
-	hr = dxgiFactory->CreateSwapChain(*ppDevice, pSwapChainDesc, ppSwapChain);
+	hr = HackerCreateSwapChain(dxgiFactory, *ppDevice, pSwapChainDesc, ppSwapChain);
 
 	dxgiFactory->Release();
 	dxgiAdapter->Release();

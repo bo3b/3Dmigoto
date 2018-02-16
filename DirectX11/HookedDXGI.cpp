@@ -419,7 +419,7 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	HackerSwapChain *hackerSwapChain = NULL;
 	IDXGISwapChain1 *origSwapChain = NULL;
 
-	LogInfo("Hooked IDXGIFactory2::CreateSwapChainForHwnd(%p) called\n", This);
+	LogInfo("*** Hooked IDXGIFactory2::CreateSwapChainForHwnd(%p) called\n", This);
 	LogInfo("  Device = %p\n", pDevice);
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
 	LogInfo("  Description1 = %p\n", pDesc);
@@ -440,7 +440,7 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 			// TODO: Use a helper class to track *all* different resolutions
 			G->mResolutionInfo.width = pDesc->Width;
 			G->mResolutionInfo.height = pDesc->Height;
-			LogInfo("Got resolution from swap chain: %ix%i\n",
+			LogInfo("  Got resolution from swap chain: %ix%i\n",
 				G->mResolutionInfo.width, G->mResolutionInfo.height);
 		}
 	}
@@ -509,24 +509,6 @@ void HookCreateSwapChainForHwnd(void* factory2)
 }
 
 // -----------------------------------------------------------------------------
-// Actual hook for any IDXGICreateSwapChain calls the game makes.
-//
-// There are two primary paths that can arrive here.
-// ---1. d3d11->CreateDeviceAndSwapChain
-//	This path arrives here with a normal ID3D11Device1 device, not a HackerDevice.
-//	This is called implictly from the middle of CreateDeviceAndSwapChain.---
-//	No longer necessary, with CreateDeviceAndSwapChain broken into two direct calls.
-// 2. IDXGIFactory->CreateSwapChain after CreateDevice
-//	This path requires a pDevice passed in, which is a HackerDevice.  This is the
-//	secret path, where they take the Device and QueryInterface to get IDXGIDevice
-//	up to getting Factory, where they call CreateSwapChain. In this path, we can
-//	expect the input pDevice to have already been setup as a HackerDevice.
-//
-//
-// In prior code, we were looking for possible IDXGIDevice's as the pDevice input.
-// That should not be a problem now, because we are specifically trying to cast
-// that input into an ID3D11Device1 using QueryInterface.  Leaving the original
-// code commented out at the bottom of the file, for reference.
 
 HRESULT(__stdcall *fnOrigCreateSwapChain)(
 	IDXGIFactory * This,
@@ -538,7 +520,7 @@ HRESULT(__stdcall *fnOrigCreateSwapChain)(
 	_Out_  IDXGISwapChain **ppSwapChain) = nullptr;
 
 
-HRESULT __stdcall Hooked_CreateSwapChain(
+HRESULT __stdcall HackerCreateSwapChain(
 	IDXGIFactory * This,
 	/* [annotation][in] */
 	_In_  IUnknown *pDevice,
@@ -547,15 +529,13 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	/* [annotation][out] */
 	_Out_  IDXGISwapChain **ppSwapChain)
 {
+	LogInfo("-- HackerCreateSwapChain called\n");
+
 	HackerDevice *hackerDevice = NULL;
 	HackerContext *hackerContext = NULL;
 	HackerSwapChain *swapchainWrap = NULL;
 	IDXGISwapChain1 *origSwapChain = NULL;
 
-	LogInfo("\nHooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
-	LogInfo("  Device = %p\n", pDevice);
-	LogInfo("  SwapChain = %p\n", ppSwapChain);
-	LogInfo("  Description = %p\n", pDesc);
 
 	hackerDevice = sort_out_swap_chain_device_mess(&pDevice);
 
@@ -617,7 +597,7 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 		if (G->SCREEN_UPSCALING == 0)		// Normal case
 		{
 			swapchainWrap = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
-			LogInfo("->HackerSwapChain %p created to wrap %p\n", swapchainWrap, origSwapChain);
+			LogInfo("  HackerSwapChain %p created to wrap %p\n", swapchainWrap, origSwapChain);
 		}
 		else								// Upscaling case
 		{
@@ -640,12 +620,60 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 		*ppSwapChain = swapchainWrap;
 	}
 
-	LogInfo("->return result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hr, swapchainWrap, origSwapChain);
+	LogInfo("->HackerCreateSwapChain result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n", hr, swapchainWrap, origSwapChain);
 out_release:
 	if (hackerDevice)
 		hackerDevice->Release();
 	return hr;
 }
+
+// Actual hook for any IDXGICreateSwapChain calls the game makes.
+//
+// There are two primary paths that can arrive here.
+// ---1. d3d11->CreateDeviceAndSwapChain
+//	This path arrives here with a normal ID3D11Device1 device, not a HackerDevice.
+//	This is called implictly from the middle of CreateDeviceAndSwapChain.---
+//	No longer necessary, with CreateDeviceAndSwapChain broken into two direct calls.
+// 2. IDXGIFactory->CreateSwapChain after CreateDevice
+//	This path requires a pDevice passed in, which is a HackerDevice.  This is the
+//	secret path, where they take the Device and QueryInterface to get IDXGIDevice
+//	up to getting Factory, where they call CreateSwapChain. In this path, we can
+//	expect the input pDevice to have already been setup as a HackerDevice.
+//
+//
+// In prior code, we were looking for possible IDXGIDevice's as the pDevice input.
+// That should not be a problem now, because we are specifically trying to cast
+// that input into an ID3D11Device1 using QueryInterface.  Leaving the original
+// code commented out at the bottom of the file, for reference.
+//
+// It's also probable that other tools will hook this same call.  Overlays of any
+// form want access to the SwapChain and Present, just like us.  To avoid our code
+// from interacting with theirs, we make this shim routine, that will call into 
+// our actual functionality.  That way any outside hook will see this call, and
+// our internal use in CreateDeviceAndSwapChain will use HackerCreateSwapChain
+// to avoid outside hooks.  We have no known scenario where this causes a problem,
+// but this is safer and makes it match our handling of CreateDevice.
+
+HRESULT __stdcall Hooked_CreateSwapChain(
+	IDXGIFactory * This,
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][in] */
+	_In_  DXGI_SWAP_CHAIN_DESC *pDesc,
+	/* [annotation][out] */
+	_Out_  IDXGISwapChain **ppSwapChain)
+{
+	LogInfo("\n*** Hooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
+	LogInfo("  Device = %p\n", pDevice);
+	LogInfo("  SwapChain = %p\n", ppSwapChain);
+	LogInfo("  Description = %p\n", pDesc);
+
+	HRESULT hr = HackerCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
+
+	LogInfo("->IDXGIFactory::CreateSwapChain return result %#x\n\n", hr);
+	return hr;
+}
+
 
 // -----------------------------------------------------------------------------
 // This hook should work in all variants, including the CreateSwapChain1
