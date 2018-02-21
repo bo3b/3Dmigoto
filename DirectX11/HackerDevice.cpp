@@ -555,7 +555,7 @@ static void RegisterForReload(ID3D11DeviceChild* ppShader, UINT64 hash, wstring 
 // feature in the d3dx.ini.  Seems like it might be nice to have them named *_orig.bin, to
 // make them more clear.
 
-void ExportOrigBinary(UINT64 hash, const wchar_t *pShaderType, const void *pShaderBytecode, SIZE_T pBytecodeLength)
+static void ExportOrigBinary(UINT64 hash, const wchar_t *pShaderType, const void *pShaderBytecode, SIZE_T pBytecodeLength)
 {
 	wchar_t path[MAX_PATH];
 	HANDLE f;
@@ -605,7 +605,7 @@ void ExportOrigBinary(UINT64 hash, const wchar_t *pShaderType, const void *pShad
 // Load .bin shaders from the ShaderFixes folder as cached shaders.
 // This will load either *_replace.bin, or *.bin variants.
 
-void LoadBinaryShaders(__in UINT64 hash, const wchar_t *pShaderType,
+static void LoadBinaryShaders(__in UINT64 hash, const wchar_t *pShaderType,
 	__out char* &pCode, SIZE_T &pCodeSize, string &pShaderModel, FILETIME &pTimeStamp)
 {
 	wchar_t path[MAX_PATH];
@@ -663,7 +663,7 @@ void LoadBinaryShaders(__in UINT64 hash, const wchar_t *pShaderType,
 // Load an HLSL text file as the replacement shader.  Recompile it using D3DCompile.
 // If caching is enabled, save a .bin replacement for this new shader.
 
-void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType, 
+static void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 	__in const void *pShaderBytecode, SIZE_T pBytecodeLength, const char *pOverrideShaderModel,
 	__out char* &pCode, SIZE_T &pCodeSize, string &pShaderModel, FILETIME &pTimeStamp, wstring &pHeaderLine)
 {
@@ -794,7 +794,7 @@ void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 //
 // So it should be clear by name, what type of file they are.  
 
-void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *pShaderBytecode, SIZE_T pBytecodeLength,
+static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *pShaderBytecode, SIZE_T pBytecodeLength,
 	__out char* &pCode, SIZE_T &pCodeSize, string &pShaderModel, FILETIME &pTimeStamp, wstring &pHeaderLine)
 {
 	wchar_t path[MAX_PATH];
