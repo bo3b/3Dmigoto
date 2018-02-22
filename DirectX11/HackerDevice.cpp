@@ -615,6 +615,18 @@ static bool GetFileLastWriteTime(wchar_t *path, FILETIME *ftWrite)
 	return true;
 }
 
+static void SetFileLastWriteTime(wchar_t *path, FILETIME *ftWrite)
+{
+	HANDLE f;
+
+	f = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (f == INVALID_HANDLE_VALUE)
+		return;
+
+	SetFileTime(f, NULL, NULL, ftWrite);
+	CloseHandle(f);
+}
+
 static bool CheckCacheTimestamp(HANDLE binHandle, wchar_t *binPath, FILETIME &pTimeStamp)
 {
 	FILETIME txtTime, binTime;
@@ -625,16 +637,20 @@ static bool CheckCacheTimestamp(HANDLE binHandle, wchar_t *binPath, FILETIME &pT
 	wcscpy_s(end, sizeof(L".bin"), L".txt");
 	if (GetFileLastWriteTime(txtPath, &txtTime) && GetFileTime(binHandle, NULL, NULL, &binTime)) {
 		// We need to compare the timestamp on the .bin and .txt files.
-		// If the .bin is older than the .txt file, it is a stale cache
-		// and we bail without using it.
-		if (CompareFileTime(&binTime, &txtTime) == -1)
+		// This needs to be an exact match to ensure that the .bin file
+		// corresponds to this .txt file (and we need to explicitly set
+		// this timestamp when creating the .bin file). Just checking
+		// for newer modification time is not enough, since the .txt
+		// files in the zip files that fixes are distributed in contain
+		// a timestamp that may be older than .bin files generated on
+		// an end-users system.
+		if (CompareFileTime(&binTime, &txtTime))
 			return false;
 
-		// If the .bin is newer, we still need to save off the
-		// timestamp of the .txt file instead of the .bin file, because
-		// on reload we check for an exact match of the .txt file's
-		// timestamp, not newer (we could probably change that, but
-		// this works).
+		// It no longer matters which timestamp we save for later
+		// comparison, since they need to match, but we save the .txt
+		// file's timestamp since that is the one we are comparing
+		// against later.
 		pTimeStamp = txtTime;
 		return true;
 	}
@@ -827,6 +843,10 @@ static void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 				{
 					fwrite(pCode, 1, pCodeSize, fw);
 					fclose(fw);
+
+					// Set the last modified timestamp on the cached shader to match the
+					// .txt file it is created from, so we can later check its validity:
+					SetFileLastWriteTime(path, &ftWrite);
 				}
 			}
 		}
@@ -917,6 +937,10 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 						LogInfoW(L"    storing reassembled binary to %s\n", path);
 						fwrite(byteCode.data(), 1, byteCode.size(), fw);
 						fclose(fw);
+
+						// Set the last modified timestamp on the cached shader to match the
+						// .txt file it is created from, so we can later check its validity:
+						SetFileLastWriteTime(path, &ftWrite);
 					}
 					else
 					{
