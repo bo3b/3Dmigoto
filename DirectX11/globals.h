@@ -534,7 +534,7 @@ struct Globals
 		ZBufferHashToInject(0),
 		SCISSOR_DISABLE(0),
 
-		load_library_redirect(0),
+		load_library_redirect(2),
 		enable_hooks(EnableHooks::INVALID),
 		enable_check_interface(false),
 		enable_dxgi1_2(0),
