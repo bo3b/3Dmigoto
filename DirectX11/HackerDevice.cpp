@@ -556,7 +556,61 @@ static void ExportOrigBinary(UINT64 hash, const wchar_t *pShaderType, const void
 		}
 	}
 }
-	
+
+
+static bool GetFileLastWriteTime(wchar_t *path, FILETIME *ftWrite)
+{
+	HANDLE f;
+
+	f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (f == INVALID_HANDLE_VALUE)
+		return false;
+
+	GetFileTime(f, NULL, NULL, ftWrite);
+	CloseHandle(f);
+	return true;
+}
+
+static bool LoadCachedShader(wchar_t *path, const wchar_t *pShaderType,
+	__out char* &pCode, SIZE_T &pCodeSize, string &pShaderModel, FILETIME &pTimeStamp)
+{
+	wchar_t *end = NULL;
+	HANDLE f;
+	DWORD codeSize, readSize;
+	FILETIME ftWrite;
+
+	f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (f == INVALID_HANDLE_VALUE)
+		return false;
+
+	LogInfoW(L"    Replacement binary shader found: %s\n", path);
+
+	codeSize = GetFileSize(f, 0);
+	pCode = new char[codeSize];
+	if (!ReadFile(f, pCode, codeSize, &readSize, 0)
+		|| !GetFileTime(f, NULL, NULL, &ftWrite)
+		|| codeSize != readSize)
+	{
+		LogInfo("    Error reading binary file.\n");
+		delete[] pCode; pCode = NULL;
+		CloseHandle(f);
+		return false;
+	}
+
+	pCodeSize = codeSize;
+	LogInfo("    Bytecode loaded. Size = %Iu\n", pCodeSize);
+	CloseHandle(f);
+
+	pShaderModel = "bin";		// tag it as reload candidate, but needing disassemble
+
+	// For timestamp, we need the time stamp on the .txt file for comparison, not this .bin file.
+	end = wcsstr(path, L".bin");
+	wcscpy_s(end, sizeof(L".bin"), L".txt");
+	if (GetFileLastWriteTime(path, &ftWrite))
+		pTimeStamp = ftWrite;
+
+	return true;
+}
 
 // Load .bin shaders from the ShaderFixes folder as cached shaders.
 // This will load either *_replace.bin, or *.bin variants.
@@ -565,54 +619,14 @@ static void LoadBinaryShaders(__in UINT64 hash, const wchar_t *pShaderType,
 	__out char* &pCode, SIZE_T &pCodeSize, string &pShaderModel, FILETIME &pTimeStamp)
 {
 	wchar_t path[MAX_PATH];
-	HANDLE f;
 
 	swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, pShaderType);
-	f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (LoadCachedShader(path, pShaderType, pCode, pCodeSize, pShaderModel, pTimeStamp))
+		return;
 
 	// If we can't find an HLSL compiled version, look for ASM assembled one.
-	if (f == INVALID_HANDLE_VALUE)
-	{
-		swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
-		f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	}
-
-	if (f != INVALID_HANDLE_VALUE)
-	{
-		LogInfoW(L"    Replacement binary shader found: %s\n", path);
-
-		DWORD codeSize = GetFileSize(f, 0);
-		pCode = new char[codeSize];
-		DWORD readSize;
-		FILETIME ftWrite;
-		if (!ReadFile(f, pCode, codeSize, &readSize, 0)
-			|| !GetFileTime(f, NULL, NULL, &ftWrite)
-			|| codeSize != readSize)
-		{
-			LogInfo("    Error reading binary file.\n");
-			delete[] pCode; pCode = 0;
-			CloseHandle(f);
-		}
-		else
-		{
-			pCodeSize = codeSize;
-			LogInfo("    Bytecode loaded. Size = %Iu\n", pCodeSize);
-			CloseHandle(f);
-
-			pShaderModel = "bin";		// tag it as reload candidate, but needing disassemble
-
-			// For timestamp, we need the time stamp on the .txt file for comparison, not this .bin file.
-			wchar_t *end = wcsstr(path, L".bin");
-			wcscpy_s(end, sizeof(L".bin"), L".txt");
-			f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-			if ((f != INVALID_HANDLE_VALUE)
-				&& GetFileTime(f, NULL, NULL, &ftWrite))
-			{
-				pTimeStamp = ftWrite;
-				CloseHandle(f);
-			}
-		}
-	}
+	swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
+	LoadCachedShader(path, pShaderType, pCode, pCodeSize, pShaderModel, pTimeStamp);
 }
 
 
@@ -897,7 +911,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 		// Read the binary compiled shaders, as previously cached shaders.  This is how
 		// fixes normally ship, so that we just load previously compiled/assembled shaders.
 		LoadBinaryShaders(hash, shaderType, pCode, pCodeSize, foundShaderModel, timeStamp);
-		
+
 		// Load previously created HLSL shaders, but only from ShaderFixes.
 		if (!pCode)
 		{
