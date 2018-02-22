@@ -571,30 +571,73 @@ static bool GetFileLastWriteTime(wchar_t *path, FILETIME *ftWrite)
 	return true;
 }
 
-static bool LoadCachedShader(wchar_t *path, const wchar_t *pShaderType,
+static bool CheckCacheTimestamp(HANDLE binHandle, wchar_t *binPath, FILETIME &pTimeStamp)
+{
+	FILETIME txtTime, binTime;
+	wchar_t txtPath[MAX_PATH], *end = NULL;
+
+	wcscpy_s(txtPath, MAX_PATH, binPath);
+	end = wcsstr(txtPath, L".bin");
+	wcscpy_s(end, sizeof(L".bin"), L".txt");
+	if (GetFileLastWriteTime(txtPath, &txtTime) && GetFileTime(binHandle, NULL, NULL, &binTime)) {
+		// We need to compare the timestamp on the .bin and .txt files.
+		// If the .bin is older than the .txt file, it is a stale cache
+		// and we bail without using it.
+		if (CompareFileTime(&binTime, &txtTime) == -1)
+			return false;
+
+		// If the .bin is newer, we still need to save off the
+		// timestamp of the .txt file instead of the .bin file, because
+		// on reload we check for an exact match of the .txt file's
+		// timestamp, not newer (we could probably change that, but
+		// this works).
+		pTimeStamp = txtTime;
+		return true;
+	}
+
+	// If we couldn't get the timestamps it probably means the
+	// corresponding .txt file no longer exists. This is actually a bit of
+	// an odd (but not impossible) situation to be in - if a user used
+	// uninstall.bat when updating a fix they should have removed any stale
+	// .bin files as well, and if they didn't use uninstall.bat then they
+	// should only be adding new files... so how did a shader that used to
+	// be present disappear but leave the cache next to it?
+	//
+	// A shaderhacker might hit this if they removed the .txt file but not
+	// the .bin file, but we could consider that to be user error, so it's
+	// not clear any policy here would be correct. Alternatively, a fix
+	// might have been shipped with only .bin files - historically we have
+	// allowed (but discouraged) that scenario, so for now we issue a
+	// warning but allow it.
+	LogInfo("    WARNING: Unable to validate timestamp of %S"
+			" - no corresponding .txt file?\n", binPath);
+	return true;
+}
+
+static bool LoadCachedShader(wchar_t *binPath, const wchar_t *pShaderType,
 	__out char* &pCode, SIZE_T &pCodeSize, string &pShaderModel, FILETIME &pTimeStamp)
 {
-	wchar_t *end = NULL;
 	HANDLE f;
 	DWORD codeSize, readSize;
-	FILETIME ftWrite;
 
-	f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	f = CreateFile(binPath, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE)
 		return false;
 
-	LogInfoW(L"    Replacement binary shader found: %s\n", path);
+	if (!CheckCacheTimestamp(f, binPath, pTimeStamp)) {
+		LogInfoW(L"    Discarding stale cached shader: %s\n", binPath);
+		goto bail_close_handle;
+	}
+
+	LogInfoW(L"    Replacement binary shader found: %s\n", binPath);
 
 	codeSize = GetFileSize(f, 0);
 	pCode = new char[codeSize];
 	if (!ReadFile(f, pCode, codeSize, &readSize, 0)
-		|| !GetFileTime(f, NULL, NULL, &ftWrite)
 		|| codeSize != readSize)
 	{
 		LogInfo("    Error reading binary file.\n");
-		delete[] pCode; pCode = NULL;
-		CloseHandle(f);
-		return false;
+		goto err_free_code;
 	}
 
 	pCodeSize = codeSize;
@@ -603,13 +646,14 @@ static bool LoadCachedShader(wchar_t *path, const wchar_t *pShaderType,
 
 	pShaderModel = "bin";		// tag it as reload candidate, but needing disassemble
 
-	// For timestamp, we need the time stamp on the .txt file for comparison, not this .bin file.
-	end = wcsstr(path, L".bin");
-	wcscpy_s(end, sizeof(L".bin"), L".txt");
-	if (GetFileLastWriteTime(path, &ftWrite))
-		pTimeStamp = ftWrite;
-
 	return true;
+
+err_free_code:
+	delete[] pCode;
+	pCode = NULL;
+bail_close_handle:
+	CloseHandle(f);
+	return false;
 }
 
 // Load .bin shaders from the ShaderFixes folder as cached shaders.
