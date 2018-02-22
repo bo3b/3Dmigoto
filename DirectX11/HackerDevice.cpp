@@ -630,6 +630,7 @@ static bool LoadCachedShader(wchar_t *binPath, const wchar_t *pShaderType,
 	}
 
 	LogInfoW(L"    Replacement binary shader found: %s\n", binPath);
+	WarnIfConflictingShaderExists(binPath, end_user_conflicting_shader_msg);
 
 	codeSize = GetFileSize(f, 0);
 	pCode = new char[codeSize];
@@ -690,6 +691,7 @@ static void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 	if (f != INVALID_HANDLE_VALUE)
 	{
 		LogInfo("    Replacement shader found. Loading replacement HLSL code.\n");
+		WarnIfConflictingShaderExists(path, end_user_conflicting_shader_msg);
 
 		DWORD srcDataSize = GetFileSize(f, 0);
 		char *srcData = new char[srcDataSize];
@@ -820,6 +822,7 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 	if (f != INVALID_HANDLE_VALUE)
 	{
 		LogInfo("    Replacement ASM shader found. Assembling replacement ASM code.\n");
+		WarnIfConflictingShaderExists(path, end_user_conflicting_shader_msg);
 
 		DWORD srcDataSize = GetFileSize(f, 0);
 		vector<char> asmTextBytes(srcDataSize);

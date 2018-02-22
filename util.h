@@ -799,3 +799,7 @@ struct _declspec(uuid("A8BE2AC4-199F-4946-B331-79599FB98DE7")) IDXGISwapChain2;
 struct _declspec(uuid("94D99BDB-F1F8-4AB0-B236-7DA0170EDAB1")) IDXGISwapChain3;
 
 std::string NameFromIID(IID id);
+
+void WarnIfConflictingShaderExists(wchar_t *orig_path, const char *message = "");
+static const char *end_user_conflicting_shader_msg =
+	"Conflicting shaders present - please use uninstall.bat and reinstall the fix.\n";

@@ -265,3 +265,41 @@ std::string NameFromIID(IID id)
 	return iidString;
 }
 
+static void WarnIfConflictingFileExists(wchar_t *path, wchar_t *conflicting_path, const char *message)
+{
+	DWORD attrib = GetFileAttributes(conflicting_path);
+
+	if (attrib == INVALID_FILE_ATTRIBUTES)
+		return;
+
+	LogOverlay(LOG_DIRE, "WARNING: %s\"%S\" conflicts with \"%S\"\n", message, conflicting_path, path);
+}
+
+void WarnIfConflictingShaderExists(wchar_t *orig_path, const char *message)
+{
+	wchar_t conflicting_path[MAX_PATH], *postfix;
+
+	wcscpy_s(conflicting_path, MAX_PATH, orig_path);
+
+	// If we're using a HLSL shader, make sure there are no conflicting
+	// assembly shaders, either text or binary:
+	postfix = wcsstr(conflicting_path, L"_replace");
+	if (postfix) {
+		wcscpy_s(postfix, conflicting_path + MAX_PATH - postfix, L".txt");
+		WarnIfConflictingFileExists(orig_path, conflicting_path, message);
+		wcscpy_s(postfix, conflicting_path + MAX_PATH - postfix, L".bin");
+		WarnIfConflictingFileExists(orig_path, conflicting_path, message);
+		return;
+	}
+
+	// If we're using an assembly shader, make sure there are no
+	// conflicting HLSL shaders, either text or binary:
+	postfix = wcsstr(conflicting_path, L".");
+	if (postfix) {
+		wcscpy_s(postfix, conflicting_path + MAX_PATH - postfix, L"_replace.txt");
+		WarnIfConflictingFileExists(orig_path, conflicting_path, message);
+		wcscpy_s(postfix, conflicting_path + MAX_PATH - postfix, L"_replace.bin");
+		WarnIfConflictingFileExists(orig_path, conflicting_path, message);
+		return;
+	}
+}

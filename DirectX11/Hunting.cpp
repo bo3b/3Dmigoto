@@ -538,6 +538,8 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 	char apath[MAX_PATH];
 	swprintf_s(fullName, MAX_PATH, L"%s\\%s", shaderFixPath, fileName);
 
+	WarnIfConflictingShaderExists(fullName);
+
 	HANDLE f = CreateFile(fullName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE)
 	{
