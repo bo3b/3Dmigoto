@@ -13,23 +13,90 @@
 
 #pragma once
 
+#if !defined(__d3d11_h__) && !defined(__d3d11_x_h__) && !defined(__d3d12_h__) && !defined(__d3d12_x_h__)
+#error include d3d11.h or d3d12.h before including SimpleMath.h
+#endif
+
+#if !defined(_XBOX_ONE) || !defined(_TITLE)
+#include <dxgi1_2.h>
+#endif
+
 #include <functional>
+#include <assert.h>
 #include <memory.h>
 
 #include <DirectXMath.h>
 #include <DirectXPackedVector.h>
 #include <DirectXCollision.h>
 
+
 namespace DirectX
 {
 
 namespace SimpleMath
 {
-    
+
+struct Vector2;
 struct Vector4;
 struct Matrix;
 struct Quaternion;
 struct Plane;
+
+//------------------------------------------------------------------------------
+// 2D rectangle
+struct Rectangle
+{
+    long x;
+    long y;
+    long width;
+    long height;
+
+    // Creators
+    Rectangle() : x(0), y(0), width(0), height(0) {}
+    Rectangle(long ix, long iy, long iw, long ih) : x(ix), y(iy), width(iw), height(ih) {}
+    explicit Rectangle(const RECT& rct) : x(rct.left), y(rct.top), width(rct.right - rct.left), height(rct.bottom - rct.top) {}
+
+    operator RECT() { RECT rct; rct.left = x; rct.top = y; rct.right = (x + width); rct.bottom = (y + height); return rct; }
+#ifdef __cplusplus_winrt
+    operator Windows::Foundation::Rect() { return Windows::Foundation::Rect(float(x), float(y), float(width), float(height)); }
+#endif
+
+    // Comparison operators
+    bool operator == (const Rectangle& r) const { return (x == r.x) && (y == r.y) && (width == r.width) && (height == r.height); }
+    bool operator == (const RECT& rct) const { return (x == rct.left) && (y == rct.top) && (width == (rct.right - rct.left)) && (height == (rct.bottom - rct.top)); }
+
+    bool operator != (const Rectangle& r) const { return (x != r.x) || (y != r.y) || (width != r.width) || (height != r.height); }
+    bool operator != (const RECT& rct) const { return (x != rct.left) || (y != rct.top) || (width != (rct.right - rct.left)) || (height != (rct.bottom - rct.top)); }
+
+    // Assignment operators
+    Rectangle& operator=(_In_ const Rectangle& r) { x = r.x; y = r.y; width = r.width; height = r.height; return *this; }
+    Rectangle& operator=(_In_ const RECT& rct) { x = rct.left; y = rct.top; width = (rct.right - rct.left); height = (rct.bottom - rct.top); return *this; }
+
+    // Rectangle operations
+    Vector2 Location() const;
+    Vector2 Center() const;
+
+    bool IsEmpty() const { return (width == 0 && height == 0 && x == 0 && y == 0); }
+
+    bool Contains(long ix, long iy) const { return (x <= ix) && (ix < (x + width)) && (y <= iy) && (iy < (y + height)); }
+    bool Contains(const Vector2& point) const;
+    bool Contains(const Rectangle& r) const { return (x <= r.x) && ((r.x + r.width) <= (x + width)) && (y <= r.y) && ((r.y + r.height) <= (y + height)); }
+    bool Contains(const RECT& rct) const { return (x <= rct.left) && (rct.right <= (x + width)) && (y <= rct.top) && (rct.bottom <= (y + height)); }
+
+    void Inflate(long horizAmount, long vertAmount);
+
+    bool Intersects(const Rectangle& r) const { return (r.x < (x + width)) && (x < (r.x + r.width)) && (r.y < (y + height)) && (y < (r.y + r.height)); }
+    bool Intersects(const RECT& rct) const { return (rct.left < (x + width)) && (x < rct.right) && (rct.top < (y + height)) && (y < rct.bottom); }
+
+    void Offset(long ox, long oy) { x += ox; y += oy; }
+    
+    // Static functions
+    static Rectangle Intersect(const Rectangle& ra, const Rectangle& rb);
+    static RECT Intersect(const RECT& rcta, const RECT& rctb);
+
+    static Rectangle Union(const Rectangle& ra, const Rectangle& rb);
+    static RECT Union(const RECT& rcta, const RECT& rctb);
+};
 
 //------------------------------------------------------------------------------
 // 2D vector
@@ -40,22 +107,26 @@ struct Vector2 : public XMFLOAT2
     Vector2(float _x, float _y) : XMFLOAT2(_x, _y) {}
     explicit Vector2(_In_reads_(2) const float *pArray) : XMFLOAT2(pArray) {}
     Vector2(FXMVECTOR V) { XMStoreFloat2( this, V ); }
+    Vector2(const XMFLOAT2& V) { this->x = V.x; this->y = V.y; }
+    explicit Vector2(const XMVECTORF32& F) { this->x = F.f[0]; this->y = F.f[1]; }
 
     operator XMVECTOR() const { return XMLoadFloat2( this ); }
 
-    // Comparision operators
+    // Comparison operators
     bool operator == ( const Vector2& V ) const;
     bool operator != ( const Vector2& V ) const;
 
     // Assignment operators
     Vector2& operator= (const Vector2& V) { x = V.x; y = V.y; return *this; }
+    Vector2& operator= (const XMFLOAT2& V) { x = V.x; y = V.y; return *this; }
+    Vector2& operator= (const XMVECTORF32& F) { x = F.f[0]; y = F.f[1]; return *this; }
     Vector2& operator+= (const Vector2& V);
     Vector2& operator-= (const Vector2& V);
     Vector2& operator*= (const Vector2& V);
     Vector2& operator*= (float S);
     Vector2& operator/= (float S);
 
-    // Urnary operators
+    // Unary operators
     Vector2 operator+ () const { return *this; }
     Vector2 operator- () const { return Vector2(-x, -y); }
 
@@ -144,22 +215,26 @@ struct Vector3 : public XMFLOAT3
     Vector3(float _x, float _y, float _z) : XMFLOAT3(_x, _y, _z) {}
     explicit Vector3(_In_reads_(3) const float *pArray) : XMFLOAT3(pArray) {}
     Vector3(FXMVECTOR V) { XMStoreFloat3( this, V ); }
+    Vector3(const XMFLOAT3& V) { this->x = V.x; this->y = V.y; this->z = V.z; }
+    explicit Vector3(const XMVECTORF32& F) { this->x = F.f[0]; this->y = F.f[1]; this->z = F.f[2]; }
 
     operator XMVECTOR() const { return XMLoadFloat3( this ); }
 
-    // Comparision operators
+    // Comparison operators
     bool operator == ( const Vector3& V ) const;
     bool operator != ( const Vector3& V ) const;
 
     // Assignment operators
     Vector3& operator= (const Vector3& V) { x = V.x; y = V.y; z = V.z; return *this; }
+    Vector3& operator= (const XMFLOAT3& V) { x = V.x; y = V.y; z = V.z; return *this; }
+    Vector3& operator= (const XMVECTORF32& F) { x = F.f[0]; y = F.f[1]; z = F.f[2]; return *this; }
     Vector3& operator+= (const Vector3& V);
     Vector3& operator-= (const Vector3& V);
     Vector3& operator*= (const Vector3& V);
     Vector3& operator*= (float S);
     Vector3& operator/= (float S);
 
-    // Urnary operators
+    // Unary operators
     Vector3 operator+ () const { return *this; }
     Vector3 operator- () const;
 
@@ -255,22 +330,26 @@ struct Vector4 : public XMFLOAT4
     Vector4(float _x, float _y, float _z, float _w) : XMFLOAT4(_x, _y, _z, _w) {}
     explicit Vector4(_In_reads_(4) const float *pArray) : XMFLOAT4(pArray) {}
     Vector4(FXMVECTOR V) { XMStoreFloat4( this, V ); }
+    Vector4(const XMFLOAT4& V) { this->x = V.x; this->y = V.y; this->z = V.z; this->w = V.w; }
+    explicit Vector4(const XMVECTORF32& F) { this->x = F.f[0]; this->y = F.f[1]; this->z = F.f[2]; this->w = F.f[3]; }
 
     operator XMVECTOR() const { return XMLoadFloat4( this ); }
 
-    // Comparision operators
+    // Comparison operators
     bool operator == ( const Vector4& V ) const;
     bool operator != ( const Vector4& V ) const;
 
     // Assignment operators
     Vector4& operator= (const Vector4& V) { x = V.x; y = V.y; z = V.z; w = V.w; return *this; }
+    Vector4& operator= (const XMFLOAT4& V) { x = V.x; y = V.y; z = V.z; w = V.w; return *this; }
+    Vector4& operator= (const XMVECTORF32& F) { x = F.f[0]; y = F.f[1]; z = F.f[2]; w = F.f[3]; return *this; }
     Vector4& operator+= (const Vector4& V);
     Vector4& operator-= (const Vector4& V);
     Vector4& operator*= (const Vector4& V);
     Vector4& operator*= (float S);
     Vector4& operator/= (float S);
 
-    // Urnary operators
+    // Unary operators
     Vector4 operator+ () const { return *this; }
     Vector4 operator- () const;
 
@@ -374,17 +453,24 @@ struct Matrix : public XMFLOAT4X4
                                                                                                                 r1.x, r1.y, r1.z, r1.w,
                                                                                                                 r2.x, r2.y, r2.z, r2.w,
                                                                                                                 r3.x, r3.y, r3.z, r3.w ) {}
+    Matrix(const XMFLOAT4X4& M) { memcpy_s(this, sizeof(float)*16, &M, sizeof(XMFLOAT4X4)); }
+    Matrix(const XMFLOAT3X3& M);
+    Matrix(const XMFLOAT4X3& M);
+
     explicit Matrix(_In_reads_(16) const float *pArray) : XMFLOAT4X4(pArray) {}
     Matrix( CXMMATRIX M ) { XMStoreFloat4x4( this, M ); }
 
     operator XMMATRIX() const { return XMLoadFloat4x4( this ); }
 
-    // Comparision operators
-     bool operator == ( const Matrix& M ) const;
+    // Comparison operators
+    bool operator == ( const Matrix& M ) const;
     bool operator != ( const Matrix& M ) const;
 
     // Assignment operators
-    Matrix& operator= (const Matrix& M) { memcpy_s( this, sizeof(float)*16, &M, sizeof(float)*16); return *this; }
+    Matrix& operator= (const Matrix& M) { memcpy_s( this, sizeof(float)*16, &M, sizeof(float)*16 ); return *this; }
+    Matrix& operator= (const XMFLOAT4X4& M) { memcpy_s( this, sizeof(float)*16, &M, sizeof(XMFLOAT4X4) ); return *this; }
+    Matrix& operator= (const XMFLOAT3X3& M);
+    Matrix& operator= (const XMFLOAT4X3& M);
     Matrix& operator+= (const Matrix& M);
     Matrix& operator-= (const Matrix& M);
     Matrix& operator*= (const Matrix& M);
@@ -394,7 +480,7 @@ struct Matrix : public XMFLOAT4X4
     Matrix& operator/= (const Matrix& M);
         // Element-wise divide
 
-    // Urnary operators
+    // Unary operators
     Matrix operator+ () const { return *this; }
     Matrix operator- () const;
 
@@ -500,15 +586,19 @@ struct Plane : public XMFLOAT4
     explicit Plane(const Vector4& v) : XMFLOAT4(v.x, v.y, v.z, v.w) {}
     explicit Plane(_In_reads_(4) const float *pArray) : XMFLOAT4(pArray) {}
     Plane(FXMVECTOR V) { XMStoreFloat4( this, V ); }
+    Plane(const XMFLOAT4& p) { this->x = p.x; this->y = p.y; this->z = p.z; this->w = p.w; }
+    explicit Plane(const XMVECTORF32& F) { this->x = F.f[0]; this->y = F.f[1]; this->z = F.f[2]; this->w = F.f[3]; }
 
     operator XMVECTOR() const { return XMLoadFloat4( this ); }
 
-    // Comparision operators
+    // Comparison operators
     bool operator == ( const Plane& p ) const;
     bool operator != ( const Plane& p ) const;
 
     // Assignment operators
     Plane& operator= (const Plane& p) { x = p.x; y = p.y; z = p.z; w = p.w; return *this; }
+    Plane& operator= (const XMFLOAT4& p) { x = p.x; y = p.y; z = p.z; w = p.w; return *this; }
+    Plane& operator= (const XMVECTORF32& F) { x = F.f[0]; y = F.f[1]; z = F.f[2]; w = F.f[3]; return *this; }
 
     // Properties
     Vector3 Normal() const { return Vector3( x, y, z ); }
@@ -544,22 +634,26 @@ struct Quaternion : public XMFLOAT4
     explicit Quaternion( const Vector4& v ) : XMFLOAT4( v.x, v.y, v.z, v.w ) {}
     explicit Quaternion(_In_reads_(4) const float *pArray) : XMFLOAT4(pArray) {}
     Quaternion(FXMVECTOR V) { XMStoreFloat4( this, V ); }
+    Quaternion(const XMFLOAT4& q) { this->x = q.x; this->y = q.y; this->z = q.z; this->w = q.w; }
+    explicit Quaternion(const XMVECTORF32& F) { this->x = F.f[0]; this->y = F.f[1]; this->z = F.f[2]; this->w = F.f[3]; }
 
     operator XMVECTOR() const { return XMLoadFloat4( this ); }
 
-    // Comparision operators
+    // Comparison operators
     bool operator == ( const Quaternion& q ) const;
     bool operator != ( const Quaternion& q ) const;
 
     // Assignment operators
     Quaternion& operator= (const Quaternion& q) { x = q.x; y = q.y; z = q.z; w = q.w; return *this; }
+    Quaternion& operator= (const XMFLOAT4& q) { x = q.x; y = q.y; z = q.z; w = q.w; return *this; }
+    Quaternion& operator= (const XMVECTORF32& F) { x = F.f[0]; y = F.f[1]; z = F.f[2]; w = F.f[3]; return *this; }
     Quaternion& operator+= (const Quaternion& q);
     Quaternion& operator-= (const Quaternion& q);
     Quaternion& operator*= (const Quaternion& q);
     Quaternion& operator*= (float S);
     Quaternion& operator/= (const Quaternion& q);
 
-    // Urnary operators
+    // Unary operators
     Quaternion operator+ () const { return *this; }
     Quaternion operator- () const;
 
@@ -614,6 +708,8 @@ struct Color : public XMFLOAT4
     explicit Color( const Vector4& clr ) : XMFLOAT4( clr.x, clr.y, clr.z, clr.w ) {}
     explicit Color(_In_reads_(4) const float *pArray) : XMFLOAT4(pArray) {}
     Color(FXMVECTOR V) { XMStoreFloat4( this, V ); }
+    Color(const XMFLOAT4& c) { this->x = c.x; this->y = c.y; this->z = c.z; this->w = c.w; }
+    explicit Color(const XMVECTORF32& F) { this->x = F.f[0]; this->y = F.f[1]; this->z = F.f[2]; this->w = F.f[3]; }
 
     explicit Color( const DirectX::PackedVector::XMCOLOR& Packed );
         // BGRA Direct3D 9 D3DCOLOR packed color
@@ -624,19 +720,23 @@ struct Color : public XMFLOAT4
     operator XMVECTOR() const { return XMLoadFloat4( this ); }
     operator const float*() const { return reinterpret_cast<const float*>(this); }
 
-    // Comparision operators
+    // Comparison operators
     bool operator == ( const Color& c ) const;
     bool operator != ( const Color& c ) const;
 
     // Assignment operators
     Color& operator= (const Color& c) { x = c.x; y = c.y; z = c.z; w = c.w; return *this; }
+    Color& operator= (const XMFLOAT4& c) { x = c.x; y = c.y; z = c.z; w = c.w; return *this; }
+    Color& operator= (const XMVECTORF32& F) { x = F.f[0]; y = F.f[1]; z = F.f[2]; w = F.f[3]; return *this; }
+    Color& operator= (const DirectX::PackedVector::XMCOLOR& Packed);
+    Color& operator= (const DirectX::PackedVector::XMUBYTEN4& Packed);
     Color& operator+= (const Color& c);
     Color& operator-= (const Color& c);
     Color& operator*= (const Color& c);
     Color& operator*= (float S);
     Color& operator/= (const Color& c);
 
-    // Urnary operators
+    // Unary operators
     Color operator+ () const { return *this; }
     Color operator- () const;
 
@@ -702,7 +802,7 @@ public:
     Ray() : position(0,0,0), direction(0,0,1) {}
     Ray( const Vector3& pos, const Vector3& dir ) : position(pos), direction(dir) {}
 
-    // Comparision operators
+    // Comparison operators
     bool operator == ( const Ray& r ) const;
     bool operator != ( const Ray& r ) const;
 
@@ -711,6 +811,74 @@ public:
     bool Intersects( const BoundingBox& box, _Out_ float& Dist ) const;
     bool Intersects( const Vector3& tri0, const Vector3& tri1, const Vector3& tri2, _Out_ float& Dist ) const;
     bool Intersects( const Plane& plane, _Out_ float& Dist ) const;
+};
+
+//------------------------------------------------------------------------------
+// Viewport
+class Viewport
+{
+public:
+    float x;
+    float y;
+    float width;
+    float height;
+    float minDepth;
+    float maxDepth;
+
+    Viewport() :
+        x(0.f), y(0.f), width(0.f), height(0.f), minDepth(0.f), maxDepth(1.f) {}
+    Viewport( float ix, float iy, float iw, float ih, float iminz = 0.f, float imaxz = 1.f ) :
+        x(ix), y(iy), width(iw), height(ih), minDepth(iminz), maxDepth(imaxz) {}
+    explicit Viewport(const RECT& rct) :
+        x(float(rct.left)), y(float(rct.top)),
+        width(float(rct.right - rct.left)),
+        height(float(rct.bottom - rct.top)),
+        minDepth(0.f), maxDepth(1.f) {}
+
+#if defined(__d3d11_h__) || defined(__d3d11_x_h__)
+    // Direct3D 11 interop
+    explicit Viewport(const D3D11_VIEWPORT& vp) :
+        x(vp.TopLeftX), y(vp.TopLeftY),
+        width(vp.Width), height(vp.Height),
+        minDepth(vp.MinDepth), maxDepth(vp.MaxDepth) {}
+
+    operator D3D11_VIEWPORT() { return *reinterpret_cast<const D3D11_VIEWPORT*>(this); }
+    const D3D11_VIEWPORT* Get11() const { return reinterpret_cast<const D3D11_VIEWPORT*>(this); }
+    Viewport& operator= (const D3D11_VIEWPORT& vp);
+#endif
+
+#if defined(__d3d12_h__) || defined(__d3d12_x_h__)
+    // Direct3D 12 interop
+    explicit Viewport(const D3D12_VIEWPORT& vp) :
+        x(vp.TopLeftX), y(vp.TopLeftY),
+        width(vp.Width), height(vp.Height),
+        minDepth(vp.MinDepth), maxDepth(vp.MaxDepth) {}
+
+    operator D3D12_VIEWPORT() { return *reinterpret_cast<const D3D12_VIEWPORT*>(this); }
+    const D3D12_VIEWPORT* Get12() const { return reinterpret_cast<const D3D12_VIEWPORT*>(this); }
+    Viewport& operator= (const D3D12_VIEWPORT& vp);
+#endif
+
+    // Comparison operators
+    bool operator == ( const Viewport& vp ) const;
+    bool operator != ( const Viewport& vp ) const;
+
+    // Assignment operators
+    Viewport& operator= (const Viewport& vp);
+    Viewport& operator= (const RECT& rct);
+
+    // Viewport operations
+    float AspectRatio() const;
+
+    Vector3 Project(const Vector3& p, const Matrix& proj, const Matrix& view, const Matrix& world ) const;
+    void Project(const Vector3& p, const Matrix& proj, const Matrix& view, const Matrix& world, Vector3& result ) const;
+
+    Vector3 Unproject(const Vector3& p, const Matrix& proj, const Matrix& view, const Matrix& world ) const;
+    void Unproject(const Vector3& p, const Matrix& proj, const Matrix& view, const Matrix& world, Vector3& result ) const;
+
+    // Static methods
+    static RECT __cdecl ComputeDisplayArea(DXGI_SCALING scaling, UINT backBufferWidth, UINT backBufferHeight, int outputWidth, int outputHeight);
+    static RECT __cdecl ComputeTitleSafeArea(UINT backBufferWidth, UINT backBufferHeight);
 };
 
 #include "SimpleMath.inl"
@@ -723,6 +891,17 @@ public:
 // Support for SimpleMath and Standard C++ Library containers
 namespace std
 {
+
+    template<> struct less<DirectX::SimpleMath::Rectangle>
+    {
+        bool operator()(const DirectX::SimpleMath::Rectangle& r1, const DirectX::SimpleMath::Rectangle& r2) const
+        {
+            return ((r1.x < r2.x)
+                || ((r1.x == r2.x) && (r1.y < r2.y))
+                || ((r1.x == r2.x) && (r1.y == r2.y) && (r1.width < r2.width))
+                || ((r1.x == r2.x) && (r1.y == r2.y) && (r1.width == r2.width) && (r1.height < r2.height)));
+        }
+    };
 
     template<> struct less<DirectX::SimpleMath::Vector2>
     {
@@ -822,6 +1001,23 @@ namespace std
             if (R1.direction.x != R2.direction.x) return R1.direction.x < R2.direction.x;
             if (R1.direction.y != R2.direction.y) return R1.direction.y < R2.direction.y;
             if (R1.direction.z != R2.direction.z) return R1.direction.z < R2.direction.z;
+
+            return false;
+        }
+    };
+
+    template<> struct less<DirectX::SimpleMath::Viewport>
+    {
+        bool operator()(const DirectX::SimpleMath::Viewport& vp1, const DirectX::SimpleMath::Viewport& vp2) const
+        {
+            if (vp1.x != vp2.x) return (vp1.x < vp2.x);
+            if (vp1.y != vp2.y) return (vp1.y < vp2.y);
+
+            if (vp1.width != vp2.width) return (vp1.width < vp2.width);
+            if (vp1.height != vp2.height) return (vp1.height < vp2.height);
+
+            if (vp1.minDepth != vp2.minDepth) return (vp1.minDepth < vp2.minDepth);
+            if (vp1.maxDepth != vp2.maxDepth) return (vp1.maxDepth < vp2.maxDepth);
 
             return false;
         }

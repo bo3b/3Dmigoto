@@ -1,7 +1,7 @@
 #pragma once
 
-#include <d3d11.h>
-#include <dxgi.h>
+#include <d3d11_1.h>
+#include <dxgi1_2.h>
 
 // -----------------------------------------------------------------------------
 // This class is 'Hooked', instead of 'Hacker', because it's a hook version, instead
@@ -21,25 +21,61 @@
 // so we'll come back to it later.
 
 
+// Called from DLLMainHook
 
-// Cannot be declared static, even though that is what I want, because of some
-// twisted C++ concept of keeping that local to only this translation unit, .h file.
-// All non-member functions are implicitly static, and I hate implict stuff.  
+extern "C" HRESULT (__stdcall *fnOrigCreateDXGIFactory)(
+	REFIID riid,
+	_Out_ void   **ppFactory
+	);
 
-bool InstallDXGIHooks(void);
+extern "C" HRESULT(__stdcall *fnOrigCreateDXGIFactory1)(
+	REFIID riid,
+	_Out_ void   **ppFactory
+	);
 
-void HookSwapChain(IDXGISwapChain* pSwapChain, ID3D11Device* pDevice, ID3D11DeviceContext* pContext);
+
+// Called from HackerDXGI
+
+extern "C" HRESULT(__stdcall *fnOrigCreateSwapChain)(
+	IDXGIFactory * This,
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][in] */
+	_In_  DXGI_SWAP_CHAIN_DESC *pDesc,
+	/* [annotation][out] */
+	_Out_  IDXGISwapChain **ppSwapChain);
 
 
+// Called from d3d11Wrapper for CreateDeviceAndSwapChain
 
-//class HookedSwapChain
-//{
-//private:
-//	IDXGISwapChain* mOrigSwapChain;
-//
-//public:
-//	HookedSwapChain(IDXGISwapChain* pOrigSwapChain);
-//	~HookedSwapChain();
-//
-//};
+extern "C" HRESULT __stdcall HackerCreateSwapChain(
+	IDXGIFactory * This,
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][in] */
+	_In_  DXGI_SWAP_CHAIN_DESC *pDesc,
+	/* [annotation][out] */
+	_Out_  IDXGISwapChain **ppSwapChain);
+
+
+// Called from HookedDXGI
+
+extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory);
+
+extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1);
+
+
+extern "C" LPVOID lpvtbl_QueryInterface(IDXGIFactory* pFactory);
+
+extern "C" LPVOID lpvtbl_CreateSwapChain(IDXGIFactory* pFactory);
+
+extern "C" LPVOID lpvtbl_CreateSwapChainForHwnd(IDXGIFactory2* pFactory2);
+
+extern "C" LPVOID lpvtbl_CreateSwapChainForCoreWindow(IDXGIFactory2* pFactory2);
+
+extern "C" LPVOID lpvtbl_CreateSwapChainForComposition(IDXGIFactory2* pFactory2);
+
+extern "C" LPVOID lpvtbl_Present(IDXGISwapChain* pSwapChain);
+
+extern "C" LPVOID lpvtbl_Present1(IDXGISwapChain1* pSwapChain1);
 

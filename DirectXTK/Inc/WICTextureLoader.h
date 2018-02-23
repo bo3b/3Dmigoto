@@ -1,7 +1,7 @@
 //--------------------------------------------------------------------------------------
 // File: WICTextureLoader.h
 //
-// Function for loading a WIC image and creating a Direct3D 11 runtime texture for it
+// Function for loading a WIC image and creating a Direct3D runtime texture for it
 // (auto-generating mipmaps if possible)
 //
 // Note: Assumes application has already called CoInitializeEx
@@ -27,128 +27,129 @@
 
 #pragma once
 
-#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP) && (_WIN32_WINNT <= _WIN32_WINNT_WIN8)
-#error WIC is not supported on Windows Phone 8.0
-#endif
-
 #if defined(_XBOX_ONE) && defined(_TITLE)
 #include <d3d11_x.h>
 #else
 #include <d3d11_1.h>
 #endif
 
-#pragma warning(push)
-#pragma warning(disable : 4005)
 #include <stdint.h>
-#pragma warning(pop)
+
 
 namespace DirectX
 {
-    // Standard version
-    HRESULT __cdecl CreateWICTextureFromMemory( _In_ ID3D11Device* d3dDevice,
-                                                _In_reads_bytes_(wicDataSize) const uint8_t* wicData,
-                                                _In_ size_t wicDataSize,
-                                                _Out_opt_ ID3D11Resource** texture,
-                                                _Out_opt_ ID3D11ShaderResourceView** textureView,
-                                                _In_ size_t maxsize = 0
-                                              );
+    enum WIC_LOADER_FLAGS
+    {
+        WIC_LOADER_DEFAULT      = 0,
+        WIC_LOADER_FORCE_SRGB   = 0x1,
+        WIC_LOADER_IGNORE_SRGB  = 0x2,
+    };
 
-    HRESULT __cdecl CreateWICTextureFromFile( _In_ ID3D11Device* d3dDevice,
-                                              _In_z_ const wchar_t* szFileName,
-                                              _Out_opt_ ID3D11Resource** texture,
-                                              _Out_opt_ ID3D11ShaderResourceView** textureView,
-                                              _In_ size_t maxsize = 0
-                                            );
+    // Standard version
+    HRESULT __cdecl CreateWICTextureFromMemory(
+        _In_ ID3D11Device* d3dDevice,
+        _In_reads_bytes_(wicDataSize) const uint8_t* wicData,
+        _In_ size_t wicDataSize,
+        _Outptr_opt_ ID3D11Resource** texture,
+        _Outptr_opt_ ID3D11ShaderResourceView** textureView,
+        _In_ size_t maxsize = 0);
+
+    HRESULT __cdecl CreateWICTextureFromFile(
+        _In_ ID3D11Device* d3dDevice,
+        _In_z_ const wchar_t* szFileName,
+        _Outptr_opt_ ID3D11Resource** texture,
+        _Outptr_opt_ ID3D11ShaderResourceView** textureView,
+        _In_ size_t maxsize = 0);
 
     // Standard version with optional auto-gen mipmap support
+    HRESULT __cdecl CreateWICTextureFromMemory(
     #if defined(_XBOX_ONE) && defined(_TITLE)
-    HRESULT __cdecl CreateWICTextureFromMemory( _In_ ID3D11DeviceX* d3dDevice,
-                                                _In_opt_ ID3D11DeviceContextX* d3dContext,
+        _In_ ID3D11DeviceX* d3dDevice,
+        _In_opt_ ID3D11DeviceContextX* d3dContext,
     #else
-    HRESULT __cdecl CreateWICTextureFromMemory( _In_ ID3D11Device* d3dDevice,
-                                                _In_opt_ ID3D11DeviceContext* d3dContext,
+        _In_ ID3D11Device* d3dDevice,
+        _In_opt_ ID3D11DeviceContext* d3dContext,
     #endif
-                                                _In_reads_bytes_(wicDataSize) const uint8_t* wicData,
-                                                _In_ size_t wicDataSize,
-                                                _Out_opt_ ID3D11Resource** texture,
-                                                _Out_opt_ ID3D11ShaderResourceView** textureView,
-                                                _In_ size_t maxsize = 0
-                                              );
+        _In_reads_bytes_(wicDataSize) const uint8_t* wicData,
+        _In_ size_t wicDataSize,
+        _Outptr_opt_ ID3D11Resource** texture,
+        _Outptr_opt_ ID3D11ShaderResourceView** textureView,
+        _In_ size_t maxsize = 0);
 
+    HRESULT __cdecl CreateWICTextureFromFile(
     #if defined(_XBOX_ONE) && defined(_TITLE)
-    HRESULT __cdecl CreateWICTextureFromFile( _In_ ID3D11DeviceX* d3dDevice,
-                                              _In_opt_ ID3D11DeviceContextX* d3dContext,
+        _In_ ID3D11DeviceX* d3dDevice,
+        _In_opt_ ID3D11DeviceContextX* d3dContext,
     #else
-    HRESULT __cdecl CreateWICTextureFromFile( _In_ ID3D11Device* d3dDevice,
-                                              _In_opt_ ID3D11DeviceContext* d3dContext,
+        _In_ ID3D11Device* d3dDevice,
+        _In_opt_ ID3D11DeviceContext* d3dContext,
     #endif
-                                              _In_z_ const wchar_t* szFileName,
-                                              _Out_opt_ ID3D11Resource** texture,
-                                              _Out_opt_ ID3D11ShaderResourceView** textureView,
-                                              _In_ size_t maxsize = 0
-                                            );
+        _In_z_ const wchar_t* szFileName,
+        _Outptr_opt_ ID3D11Resource** texture,
+        _Outptr_opt_ ID3D11ShaderResourceView** textureView,
+        _In_ size_t maxsize = 0);
 
     // Extended version
-    HRESULT __cdecl CreateWICTextureFromMemoryEx( _In_ ID3D11Device* d3dDevice,
-                                                  _In_reads_bytes_(wicDataSize) const uint8_t* wicData,
-                                                  _In_ size_t wicDataSize,
-                                                  _In_ size_t maxsize,
-                                                  _In_ D3D11_USAGE usage,
-                                                  _In_ unsigned int bindFlags,
-                                                  _In_ unsigned int cpuAccessFlags,
-                                                  _In_ unsigned int miscFlags,
-                                                  _In_ bool forceSRGB,
-                                                  _Out_opt_ ID3D11Resource** texture,
-                                                  _Out_opt_ ID3D11ShaderResourceView** textureView
-                                                );
+    HRESULT __cdecl CreateWICTextureFromMemoryEx(
+        _In_ ID3D11Device* d3dDevice,
+        _In_reads_bytes_(wicDataSize) const uint8_t* wicData,
+        _In_ size_t wicDataSize,
+        _In_ size_t maxsize,
+        _In_ D3D11_USAGE usage,
+        _In_ unsigned int bindFlags,
+        _In_ unsigned int cpuAccessFlags,
+        _In_ unsigned int miscFlags,
+        _In_ unsigned int loadFlags,
+        _Outptr_opt_ ID3D11Resource** texture,
+        _Outptr_opt_ ID3D11ShaderResourceView** textureView);
 
-    HRESULT __cdecl CreateWICTextureFromFileEx( _In_ ID3D11Device* d3dDevice,
-                                                _In_z_ const wchar_t* szFileName,
-                                                _In_ size_t maxsize,
-                                                _In_ D3D11_USAGE usage,
-                                                _In_ unsigned int bindFlags,
-                                                _In_ unsigned int cpuAccessFlags,
-                                                _In_ unsigned int miscFlags,
-                                                _In_ bool forceSRGB,
-                                                _Out_opt_ ID3D11Resource** texture,
-                                                _Out_opt_ ID3D11ShaderResourceView** textureView
-                                              );
+    HRESULT __cdecl CreateWICTextureFromFileEx(
+        _In_ ID3D11Device* d3dDevice,
+        _In_z_ const wchar_t* szFileName,
+        _In_ size_t maxsize,
+        _In_ D3D11_USAGE usage,
+        _In_ unsigned int bindFlags,
+        _In_ unsigned int cpuAccessFlags,
+        _In_ unsigned int miscFlags,
+        _In_ unsigned int loadFlags,
+        _Outptr_opt_ ID3D11Resource** texture,
+        _Outptr_opt_ ID3D11ShaderResourceView** textureView);
 
     // Extended version with optional auto-gen mipmap support
-    #if defined(_XBOX_ONE) && defined(_TITLE)
-    HRESULT __cdecl CreateWICTextureFromMemoryEx( _In_ ID3D11DeviceX* d3dDevice,
-                                                  _In_opt_ ID3D11DeviceContextX* d3dContext,
+    HRESULT __cdecl CreateWICTextureFromMemoryEx(
+#if defined(_XBOX_ONE) && defined(_TITLE)
+        _In_ ID3D11DeviceX* d3dDevice,
+        _In_opt_ ID3D11DeviceContextX* d3dContext,
     #else
-    HRESULT __cdecl CreateWICTextureFromMemoryEx( _In_ ID3D11Device* d3dDevice,
-                                                  _In_opt_ ID3D11DeviceContext* d3dContext,
+        _In_ ID3D11Device* d3dDevice,
+        _In_opt_ ID3D11DeviceContext* d3dContext,
     #endif
-                                                  _In_reads_bytes_(wicDataSize) const uint8_t* wicData,
-                                                  _In_ size_t wicDataSize,
-                                                  _In_ size_t maxsize,
-                                                  _In_ D3D11_USAGE usage,
-                                                  _In_ unsigned int bindFlags,
-                                                  _In_ unsigned int cpuAccessFlags,
-                                                  _In_ unsigned int miscFlags,
-                                                  _In_ bool forceSRGB,
-                                                  _Out_opt_ ID3D11Resource** texture,
-                                                  _Out_opt_ ID3D11ShaderResourceView** textureView
-                                              );
+        _In_reads_bytes_(wicDataSize) const uint8_t* wicData,
+        _In_ size_t wicDataSize,
+        _In_ size_t maxsize,
+        _In_ D3D11_USAGE usage,
+        _In_ unsigned int bindFlags,
+        _In_ unsigned int cpuAccessFlags,
+        _In_ unsigned int miscFlags,
+        _In_ unsigned int loadFlags,
+        _Outptr_opt_ ID3D11Resource** texture,
+        _Outptr_opt_ ID3D11ShaderResourceView** textureView);
 
+    HRESULT __cdecl CreateWICTextureFromFileEx(
     #if defined(_XBOX_ONE) && defined(_TITLE)
-    HRESULT __cdecl CreateWICTextureFromFileEx( _In_ ID3D11DeviceX* d3dDevice,
-                                                _In_opt_ ID3D11DeviceContextX* d3dContext,
+        _In_ ID3D11DeviceX* d3dDevice,
+        _In_opt_ ID3D11DeviceContextX* d3dContext,
     #else
-    HRESULT __cdecl CreateWICTextureFromFileEx( _In_ ID3D11Device* d3dDevice,
-                                                _In_opt_ ID3D11DeviceContext* d3dContext,
+        _In_ ID3D11Device* d3dDevice,
+        _In_opt_ ID3D11DeviceContext* d3dContext,
     #endif
-                                                _In_z_ const wchar_t* szFileName,
-                                                _In_ size_t maxsize,
-                                                _In_ D3D11_USAGE usage,
-                                                _In_ unsigned int bindFlags,
-                                                _In_ unsigned int cpuAccessFlags,
-                                                _In_ unsigned int miscFlags,
-                                                _In_ bool forceSRGB,
-                                                _Out_opt_ ID3D11Resource** texture,
-                                                _Out_opt_ ID3D11ShaderResourceView** textureView
-                                            );
+        _In_z_ const wchar_t* szFileName,
+        _In_ size_t maxsize,
+        _In_ D3D11_USAGE usage,
+        _In_ unsigned int bindFlags,
+        _In_ unsigned int cpuAccessFlags,
+        _In_ unsigned int miscFlags,
+        _In_ unsigned int loadFlags,
+        _Outptr_opt_ ID3D11Resource** texture,
+        _Outptr_opt_ ID3D11ShaderResourceView** textureView);
 }

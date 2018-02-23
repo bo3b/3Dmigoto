@@ -192,29 +192,21 @@ static IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &
 	return sections.end();
 }
 
-// These are used to limit the number of audible warnings we will issue
-// whenever we load or reload the d3dx.ini. This prevents things like missing
-// custom shaders, compile failures or duplicate sections from causing an
-// endless cascade of warning tones as every line that refers to them will then
-// fail to parse. This is of particular importance in UE4, which uses a
-// watchdog timer to kill the game after 30 seconds if it believes it has hung.
-static int IniWarningToneCounter = 3;
+// We now emit a single warning tone after the config file is [re]loaded to get
+// the shaderhackers attention if something needs to be addressed, since their
+// eyes may be focussed elsewhere and may miss the notification message[s].
+static bool ini_warned = false;
+#define IniWarning(fmt, ...) do { \
+	ini_warned = true; \
+	LogOverlay(LOG_WARNING, fmt, __VA_ARGS__); \
+} while (0)
 
-static void ArmIniWarningTones()
+static void emit_ini_warning_tone()
 {
-	IniWarningToneCounter = 3;
-}
-
-static void IniWarning(char *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-	vLogInfo(fmt, ap);
-	va_end(ap);
-
-	if (IniWarningToneCounter-- > 0)
-		BeepFailure2();
+	if (!ini_warned)
+		return;
+	ini_warned = false;
+	BeepFailure();
 }
 
 static void ParseIniSectionLine(wstring *wline, wstring *section,
@@ -470,7 +462,7 @@ int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 			// Funky return code of GetPrivateProfileString Not
 			// sure if we depend on this - if we don't I'd like a
 			// nicer return code or to raise an exception.
-			IniWarning("  WARNING: [%S] \"%S=%S\" too long\n",
+			IniWarning("WARNING: [%S] \"%S=%S\" too long\n",
 					section, key, val.c_str());
 			rc = size - 1;
 		} else {
@@ -564,7 +556,7 @@ float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, bool *f
 	if (GetIniString(section, key, 0, val, 32)) {
 		swscanf_s(val, L"%f%n", &ret, &len);
 		if (len != wcslen(val)) {
-			IniWarning("  WARNING: Floating point parse error: %S=%S\n", key, val);
+			IniWarning("WARNING: Floating point parse error: %S=%S\n", key, val);
 		} else {
 			if (found)
 				*found = true;
@@ -588,7 +580,7 @@ int GetIniInt(const wchar_t *section, const wchar_t *key, int def, bool *found)
 	if (GetIniString(section, key, 0, val, 32)) {
 		swscanf_s(val, L"%d%n", &ret, &len);
 		if (len != wcslen(val)) {
-			IniWarning("  WARNING: Integer parse error: %S=%S\n", key, val);
+			IniWarning("WARNING: Integer parse error: %S=%S\n", key, val);
 		} else {
 			if (found)
 				*found = true;
@@ -622,7 +614,7 @@ bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, bool *foun
 			return false;
 		}
 
-		IniWarning("  WARNING: Boolean parse error: %S=%S\n", key, val);
+		IniWarning("WARNING: Boolean parse error: %S=%S\n", key, val);
 	}
 
 	return ret;
@@ -640,7 +632,7 @@ static UINT64 GetIniHash(const wchar_t *section, const wchar_t *key, UINT64 def,
 	if (GetIniString(section, key, NULL, &val)) {
 		sscanf_s(val.c_str(), "%16llx%n", &ret, &len);
 		if (len != val.length()) {
-			IniWarning("  WARNING: Hash parse error: %S=%s\n", key, val.c_str());
+			IniWarning("WARNING: Hash parse error: %S=%s\n", key, val.c_str());
 		} else {
 			if (found)
 				*found = true;
@@ -663,7 +655,7 @@ static int GetIniHexString(const wchar_t *section, const wchar_t *key, int def, 
 	if (GetIniString(section, key, NULL, &val)) {
 		sscanf_s(val.c_str(), "%x%n", &ret, &len);
 		if (len != val.length()) {
-			IniWarning("  WARNING: Hex string parse error: %S=%s\n", key, val.c_str());
+			IniWarning("WARNING: Hex string parse error: %S=%s\n", key, val.c_str());
 		} else {
 			if (found)
 				*found = true;
@@ -712,7 +704,7 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, bool 
 				*found = true;
 			LogInfo("  %S=%S\n", key, val);
 		} catch (EnumParseError) {
-			IniWarning("  WARNING: Unrecognised %S=%S\n", key, val);
+			IniWarning("WARNING: Unrecognised %S=%S\n", key, val);
 		}
 	}
 
@@ -749,7 +741,7 @@ static void RegisterPresetKeyBindings()
 		LogInfo("[%S]\n", id);
 
 		if (!GetIniString(id, L"Key", 0, key, MAX_PATH)) {
-			IniWarning("  WARNING: [%S] missing Key=\n", id);
+			IniWarning("WARNING: [%S] missing Key=\n", id);
 			continue;
 		}
 
@@ -762,7 +754,7 @@ static void RegisterPresetKeyBindings()
 			type = lookup_enum_val<wchar_t *, KeyOverrideType>
 				(KeyOverrideTypeNames, buf, KeyOverrideType::INVALID);
 			if (type == KeyOverrideType::INVALID) {
-				IniWarning("  WARNING: UNKNOWN KEY BINDING TYPE %S\n", buf);
+				IniWarning("WARNING: UNKNOWN KEY BINDING TYPE %S\n", buf);
 			}
 		}
 
@@ -867,7 +859,7 @@ static std::vector<T> string_to_typed_array(std::istringstream *tokens)
 			continue;
 		}
 
-		IniWarning("  WARNING: Parse error: %s\n", token.c_str());
+		IniWarning("WARNING: Parse error: %s\n", token.c_str());
 	}
 
 	return list;
@@ -885,7 +877,7 @@ static void ConstructInitialData(CustomResource *custom_resource, std::istringst
 	custom_resource->initial_data_size = sizeof(T) * vals.size();
 	custom_resource->initial_data = malloc(custom_resource->initial_data_size);
 	if (!custom_resource->initial_data) {
-		IniWarning("  ERROR allocating initial data\n");
+		IniWarning("ERROR allocating initial data\n");
 		return;
 	}
 
@@ -913,7 +905,7 @@ static void ConstructInitialDataNorm(CustomResource *custom_resource, std::istri
 	custom_resource->initial_data_size = bytes * vals.size();
 	custom_resource->initial_data = malloc(custom_resource->initial_data_size);
 	if (!custom_resource->initial_data) {
-		IniWarning("  ERROR allocating initial data\n");
+		IniWarning("ERROR allocating initial data\n");
 		return;
 	}
 
@@ -923,15 +915,15 @@ static void ConstructInitialDataNorm(CustomResource *custom_resource, std::istri
 		val = vals[i];
 
 		if (isnan(val)) {
-			IniWarning("  WARNING: Special value unsupported as normalized integer: %f\n", val);
+			IniWarning("WARNING: Special value unsupported as normalized integer: %f\n", val);
 			val = 0;
 		} else if (snorm) {
 			if (val < -1.0 || val > 1.0)
-				IniWarning("  WARNING: Value out of [-1, +1] range: %f\n", val);
+				IniWarning("WARNING: Value out of [-1, +1] range: %f\n", val);
 			val = max(min(val, 1.0f), -1.0f);
 		} else {
 			if (val < 0.0 || val > 1.0)
-				IniWarning("  WARNING: Value out of [0, +1] range: %f\n", val);
+				IniWarning("WARNING: Value out of [0, +1] range: %f\n", val);
 			val = max(min(val, 1.0f), 0.0f);
 		}
 
@@ -967,13 +959,13 @@ static void ParseResourceInitialData(CustomResource *custom_resource, const wcha
 		case CustomResourceType::RAW_BUFFER:
 			break;
 		default:
-			IniWarning("  WARNING: initial data currently only supported on buffers\n");
+			IniWarning("WARNING: initial data currently only supported on buffers\n");
 			// TODO: Support Textures as well (remember to fill out row/depth pitch)
 			return;
 	}
 
 	if (!custom_resource->filename.empty()) {
-		IniWarning("  WARNING: initial data and filename cannot be used together\n");
+		IniWarning("WARNING: initial data and filename cannot be used together\n");
 		return;
 	}
 
@@ -1083,7 +1075,7 @@ static void ParseResourceInitialData(CustomResource *custom_resource, const wcha
 	// TODO: case DXGI_FORMAT_R1_UNORM:
 
 	default:
-		IniWarning("  WARNING: unsupported format for specifying initial data\n");
+		IniWarning("WARNING: unsupported format for specifying initial data\n");
 		return;
 	}
 }
@@ -1128,7 +1120,7 @@ static void ParseResourceSections()
 			custom_resource->override_type = lookup_enum_val<const wchar_t *, CustomResourceType>
 				(CustomResourceTypeNames, setting, CustomResourceType::INVALID);
 			if (custom_resource->override_type == CustomResourceType::INVALID) {
-				IniWarning("  WARNING: Unknown type \"%S\"\n", setting);
+				IniWarning("WARNING: Unknown type \"%S\"\n", setting);
 			}
 		}
 
@@ -1136,14 +1128,14 @@ static void ParseResourceSections()
 			custom_resource->override_mode = lookup_enum_val<const wchar_t *, CustomResourceMode>
 				(CustomResourceModeNames, setting, CustomResourceMode::DEFAULT);
 			if (custom_resource->override_mode == CustomResourceMode::DEFAULT) {
-				IniWarning("  WARNING: Unknown mode \"%S\"\n", setting);
+				IniWarning("WARNING: Unknown mode \"%S\"\n", setting);
 			}
 		}
 
 		if (GetIniString(i->first.c_str(), L"format", 0, setting, MAX_PATH)) {
 			custom_resource->override_format = ParseFormatString(setting, true);
 			if (custom_resource->override_format == (DXGI_FORMAT)-1) {
-				IniWarning("  WARNING: Unknown format \"%S\"\n", setting);
+				IniWarning("WARNING: Unknown format \"%S\"\n", setting);
 			} else {
 				LogInfo("  format=%s\n", TexFormatStr(custom_resource->override_format));
 			}
@@ -1274,7 +1266,7 @@ static void ParseCommandList(const wchar_t *id,
 			continue;
 		}
 
-		IniWarning("  WARNING: Unrecognised entry: %S=%S\n", key->c_str(), val->c_str());
+		IniWarning("WARNING: Unrecognised entry: %S=%S\n", key->c_str(), val->c_str());
 	}
 }
 
@@ -1335,7 +1327,7 @@ static void ParseShaderOverrideSections()
 
 		hash = GetIniHash(id, L"Hash", 0, &found);
 		if (!found) {
-			IniWarning("  WARNING: [%S] missing Hash=\n", id);
+			IniWarning("WARNING: [%S] missing Hash=\n", id);
 			continue;
 		}
 
@@ -1360,7 +1352,7 @@ static void ParseShaderOverrideSections()
 				   && override->allow_duplicate_hashes;
 
 		if (duplicate && !allow_duplicates) {
-			IniWarning("  WARNING: Duplicate ShaderOverride hash: %016llx\n", hash);
+			IniWarning("WARNING: Duplicate ShaderOverride hash: %016llx\n", hash);
 		}
 
 		override->allow_duplicate_hashes = allow_duplicates;
@@ -1369,7 +1361,7 @@ static void ParseShaderOverrideSections()
 			override->depth_filter = lookup_enum_val<wchar_t *, DepthBufferFilter>
 				(DepthBufferFilterNames, setting, DepthBufferFilter::INVALID);
 			if (override->depth_filter == DepthBufferFilter::INVALID) {
-				IniWarning("  WARNING: Unknown depth_filter \"%S\"\n", setting);
+				IniWarning("WARNING: Unknown depth_filter \"%S\"\n", setting);
 				override->depth_filter = DepthBufferFilter::NONE;
 			}
 		}
@@ -1449,7 +1441,7 @@ static bool parse_shader_regex_section_main(const std::wstring *section_id, Shad
 	std::vector<std::string> items;
 
 	if (!GetIniStringAndLog(section_id->c_str(), L"shader_model", NULL, &setting)) {
-		IniWarning("  WARNING: [%S] missing shader_model\n", section_id->c_str());
+		IniWarning("WARNING: [%S] missing shader_model\n", section_id->c_str());
 		return false;
 	}
 	regex_group->shader_models = vec_to_set(split_string(&setting, ' '));
@@ -1497,7 +1489,7 @@ static bool parse_shader_regex_section_pattern(const std::wstring *section_id, c
 		return false;
 
 	if (regex_pattern->named_group_overlaps(regex_group->temp_regs)) {
-		IniWarning("  WARNING: Named capture group overlaps with temp regs!\n");
+		IniWarning("WARNING: Named capture group overlaps with temp regs!\n");
 		return false;
 	}
 
@@ -1542,7 +1534,7 @@ static bool parse_shader_regex_section_replace(const std::wstring *section_id, c
 	try {
 		regex_pattern = &regex_group->patterns.at(*pattern_id);
 	} catch (std::out_of_range) {
-		IniWarning("  WARNING: Missing corresponding pattern section for %S\n", section_id->c_str());
+		IniWarning("WARNING: Missing corresponding pattern section for %S\n", section_id->c_str());
 		return false;
 	}
 
@@ -1577,7 +1569,7 @@ static ShaderRegexGroup* get_regex_group(std::wstring *regex_id, bool allow_crea
 	try {
 		return &shader_regex_groups.at(*regex_id);
 	} catch (std::out_of_range) {
-		IniWarning("  WARNING: Missing [%S] section\n", regex_id->c_str());
+		IniWarning("WARNING: Missing [%S] section\n", regex_id->c_str());
 		return NULL;
 	}
 }
@@ -1645,7 +1637,7 @@ static void ParseShaderRegexSections()
 		// We delete the whole regex data structure if any of the subsections
 		// are not present, or fail to parse or compile so that we don't end up
 		// applying an incomplete regex to any shaders.
-		IniWarning("  WARNING: disabling entire shader regex group [%S]\n", subsection_names[0].c_str());
+		IniWarning("WARNING: disabling entire shader regex group [%S]\n", subsection_names[0].c_str());
 		delete_regex_group(&subsection_names[0]);
 	}
 }
@@ -1799,12 +1791,12 @@ static bool parse_masked_flags_field(const wstring setting, unsigned *val, unsig
 			(enum_names, token.c_str(), (T)0);
 
 		if (!tmp) {
-			IniWarning("  WARNING: Invalid flag %S\n", token.c_str());
+			IniWarning("WARNING: Invalid flag %S\n", token.c_str());
 			return false;
 		}
 
 		if ((*mask & tmp) == tmp) {
-			IniWarning("  WARNING: Duplicate flag %S\n", token.c_str());
+			IniWarning("WARNING: Duplicate flag %S\n", token.c_str());
 			return false;
 		}
 
@@ -1822,7 +1814,7 @@ static bool parse_masked_flags_field(const wstring setting, unsigned *val, unsig
 
 static void parse_fuzzy_numeric_match_expression_error(const wchar_t *text)
 {
-	IniWarning("  WARNING: Unable to parse expression - must be in the simple form:\n"
+	IniWarning("WARNING: Unable to parse expression - must be in the simple form:\n"
 	           "    [ operator ] value | field_name [ * multiplier ] [ / divider ]\n"
 	           "    Parse error on text: \"%S\"\n", text);
 }
@@ -1920,7 +1912,7 @@ static void parse_fuzzy_numeric_match_expression(const wchar_t *setting, FuzzyMa
 			return parse_fuzzy_numeric_match_expression_error(ptr);
 		if (matcher->denominator == 0) {
 			matcher->denominator = 1;
-			IniWarning("  WARNING: Denominator is zero: %S\n", ptr);
+			IniWarning("WARNING: Denominator is zero: %S\n", ptr);
 			return;
 		}
 		ptr += len;
@@ -1983,7 +1975,7 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
 	if (GetIniStringAndLog(section, L"match_format", 0, setting, MAX_PATH)) {
 		fuzzy->Format.val = ParseFormatString(setting, true);
 		if (fuzzy->Format.val == (DXGI_FORMAT)-1)
-			IniWarning("  WARNING: Unknown format \"%S\"\n", setting);
+			IniWarning("WARNING: Unknown format \"%S\"\n", setting);
 		else
 			fuzzy->Format.op = FuzzyMatchOp::EQUAL;
 	}
@@ -2009,7 +2001,7 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
 		parse_fuzzy_numeric_match_expression(setting, &fuzzy->SampleDesc_Quality);
 
 	if (!fuzzy->update_types_matched()) {
-		IniWarning("  WARNING: [%S] can never match any resources\n", section);
+		IniWarning("WARNING: [%S] can never match any resources\n", section);
 		delete fuzzy;
 		return;
 	}
@@ -2053,15 +2045,15 @@ static void ParseTextureOverrideSections()
 				continue;
 			}
 
-			IniWarning("  WARNING: [%S] missing Hash= or valid match options\n", id);
+			IniWarning("WARNING: [%S] missing Hash= or valid match options\n", id);
 			continue;
 		}
 
 		if (G->mTextureOverrideMap.count(hash))
-			IniWarning("  WARNING: Duplicate TextureOverride hash: %08lx\n", hash);
+			IniWarning("WARNING: Duplicate TextureOverride hash: %08lx\n", hash);
 
 		if (texture_override_section_has_fuzzy_match_keys(id))
-			IniWarning("  WARNING: [%S] Cannot use hash= and match options together!\n", id);
+			IniWarning("WARNING: [%S] Cannot use hash= and match options together!\n", id);
 
 		override = &G->mTextureOverrideMap[hash];
 		override->ini_section = id;
@@ -2115,26 +2107,26 @@ static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D11_BLEND_OP *op, D3D11_B
 			src_buf, (unsigned)ARRAYSIZE(src_buf),
 			dst_buf, (unsigned)ARRAYSIZE(dst_buf));
 	if (i != 3) {
-		IniWarning("  WARNING: Unrecognised %S=%S\n", key, val);
+		IniWarning("WARNING: Unrecognised %S=%S\n", key, val);
 		return;
 	}
 
 	try {
 		*op = (D3D11_BLEND_OP)ParseEnum(op_buf, L"D3D11_BLEND_OP_", BlendOPs, ARRAYSIZE(BlendOPs), 1);
 	} catch (EnumParseError) {
-		IniWarning("  WARNING: Unrecognised blend operation %S\n", op_buf);
+		IniWarning("WARNING: Unrecognised blend operation %S\n", op_buf);
 	}
 
 	try {
 		*src = (D3D11_BLEND)ParseEnum(src_buf, L"D3D11_BLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
 	} catch (EnumParseError) {
-		IniWarning("  WARNING: Unrecognised blend source factor %S\n", src_buf);
+		IniWarning("WARNING: Unrecognised blend source factor %S\n", src_buf);
 	}
 
 	try {
 		*dst = (D3D11_BLEND)ParseEnum(dst_buf, L"D3D11_BLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
 	} catch (EnumParseError) {
-		IniWarning("  WARNING: Unrecognised blend destination factor %S\n", dst_buf);
+		IniWarning("WARNING: Unrecognised blend destination factor %S\n", dst_buf);
 	}
 }
 
@@ -2312,32 +2304,32 @@ static void ParseStencilOp(wchar_t *key, wchar_t *val, D3D11_DEPTH_STENCILOP_DES
 			depth_fail_buf, (unsigned)ARRAYSIZE(depth_fail_buf),
 			stencil_fail_buf, (unsigned)ARRAYSIZE(stencil_fail_buf));
 	if (i != 4) {
-		IniWarning("  WARNING: Unrecognised %S=%S\n", key, val);
+		IniWarning("WARNING: Unrecognised %S=%S\n", key, val);
 		return;
 	}
 
 	try {
 		desc->StencilFunc = (D3D11_COMPARISON_FUNC)ParseEnum(func_buf, L"D3D11_COMPARISON_", ComparisonFuncs, ARRAYSIZE(ComparisonFuncs), 1);
 	} catch (EnumParseError) {
-		IniWarning("  WARNING: Unrecognised stencil function %S\n", func_buf);
+		IniWarning("WARNING: Unrecognised stencil function %S\n", func_buf);
 	}
 
 	try {
 		desc->StencilPassOp = (D3D11_STENCIL_OP)ParseEnum(both_pass_buf, L"D3D11_STENCIL_OP_", StencilOps, ARRAYSIZE(StencilOps), 1);
 	} catch (EnumParseError) {
-		IniWarning("  WARNING: Unrecognised stencil + depth pass operation %S\n", both_pass_buf);
+		IniWarning("WARNING: Unrecognised stencil + depth pass operation %S\n", both_pass_buf);
 	}
 
 	try {
 		desc->StencilDepthFailOp = (D3D11_STENCIL_OP)ParseEnum(depth_fail_buf, L"D3D11_STENCIL_OP_", StencilOps, ARRAYSIZE(StencilOps), 1);
 	} catch (EnumParseError) {
-		IniWarning("  WARNING: Unrecognised stencil pass / depth fail operation %S\n", depth_fail_buf);
+		IniWarning("WARNING: Unrecognised stencil pass / depth fail operation %S\n", depth_fail_buf);
 	}
 
 	try {
 		desc->StencilFailOp = (D3D11_STENCIL_OP)ParseEnum(stencil_fail_buf, L"D3D11_STENCIL_OP_", StencilOps, ARRAYSIZE(StencilOps), 1);
 	} catch (EnumParseError) {
-		IniWarning("  WARNING: Unrecognised stencil fail operation %S\n", stencil_fail_buf);
+		IniWarning("WARNING: Unrecognised stencil fail operation %S\n", stencil_fail_buf);
 	}
 }
 
@@ -2596,7 +2588,7 @@ static void ParseTopology(CustomShader *shader, const wchar_t *section)
 
 	}
 
-	IniWarning("  WARNING: Unrecognised primitive topology=%S\n", val);
+	IniWarning("WARNING: Unrecognised primitive topology=%S\n", val);
 }
 
 static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
@@ -2650,7 +2642,7 @@ static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
 			return;
 		}
 
-		IniWarning("  WARNING: Unknown sampler \"%S\"\n", setting);
+		IniWarning("WARNING: Unknown sampler \"%S\"\n", setting);
 	}
 }
 
@@ -2659,7 +2651,7 @@ static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *CustomShaderIniKeys[] = {
 	L"vs", L"hs", L"ds", L"gs", L"ps", L"cs",
-	L"max_executions_per_frame",
+	L"max_executions_per_frame", L"flags",
 	// OM Blend State overrides:
 	L"blend", L"alpha", L"mask",
 	L"blend[0]", L"blend[1]", L"blend[2]", L"blend[3]",
@@ -2735,6 +2727,14 @@ static void ParseCustomShaderSections()
 		LogInfoW(L"[%s]\n", shader_id->c_str());
 
 		failed = false;
+
+		// Flags is currently just applied to every shader in the chain
+		// because it's so rarely needed and it doesn't really matter.
+		// We can add vs_flags and so on later if we really need to.
+		if (GetIniStringAndLog(shader_id->c_str(), L"flags", 0, setting, MAX_PATH)) {
+			custom_shader->compile_flags = parse_enum_option_string<const wchar_t *, D3DCompileFlags, wchar_t*>
+				(D3DCompileFlagNames, setting, NULL);
+		}
 
 		if (GetIniString(shader_id->c_str(), L"vs", 0, setting, MAX_PATH))
 			failed |= custom_shader->compile('v', setting, shader_id);
@@ -2884,6 +2884,366 @@ static void ToggleFullScreen(HackerDevice *device, void *private_data)
 	LogInfo("> full screen forcing toggled to %d (will not take effect until next mode switch)\n", G->SCREEN_FULLSCREEN);
 }
 
+
+//////////////////////////// HARDWARE MOUSE CURSOR SUPPRESSION //////////////////////////
+// To suppress the hardware mouse cursor you would think we just have to call
+// ShowCursor(FALSE) somewhere to decrement the count by one, but doing so from
+// DLL initialization permanently disables the cursor (in Dreamfall Chapters at
+// least), and calling it from RunFrameActions or elsewhere has no effect
+// (though the call does not indicate an error and does seem to affect a
+// counter).
+//
+// My first attempt to solve this was to hook ShowCursor and keep a separate
+// counter for the software curser visibility, but it turns out the Steam
+// Overlay also hooks this function, but has a bug where it calls the original
+// vs hooked versions inconsistently when showing vs hiding the overlay,
+// leading to it reading the visibility count of the *hardware* cursor when the
+// overlay is shown, then setting the visibility count of the *software* cursor
+// to match when the overlay is hidden, leading to the cursor disappearing.
+//
+// This is a second attempt to suppress the hardware cursor - this time we
+// leave the visibility count alone and instead replace the cursor icon with a
+// completely invisible one. Since the hardware cursor technically is
+// displayed, the visibility counts for software and hardware cursors match, so
+// we no longer need to manage them separately. We hook into SetCursor,
+// GetCursor and GetCursorInfo to keep a handle of the cursor the game set and
+// return it whenever something (including our own software mouse
+// implementation) asks for it.
+
+HCURSOR current_cursor = NULL;
+
+typedef LRESULT(WINAPI *lpfnDefWindowProc)(_In_ HWND hWnd,
+	_In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam);
+
+static lpfnDefWindowProc trampoline_DefWindowProcA = DefWindowProcA;
+static lpfnDefWindowProc trampoline_DefWindowProcW = DefWindowProcW;
+
+static HCURSOR(WINAPI *trampoline_SetCursor)(_In_opt_ HCURSOR hCursor) = SetCursor;
+static HCURSOR(WINAPI *trampoline_GetCursor)(void) = GetCursor;
+static BOOL(WINAPI *trampoline_GetCursorInfo)(_Inout_ PCURSORINFO pci) = GetCursorInfo;
+static BOOL(WINAPI* trampoline_SetCursorPos)(_In_ int X, _In_ int Y) = SetCursorPos;
+static BOOL(WINAPI* trampoline_GetCursorPos)(_Out_ LPPOINT lpPoint) = GetCursorPos;
+static BOOL(WINAPI* trampoline_ScreenToClient)(_In_ HWND hWnd, LPPOINT lpPoint) = ScreenToClient;
+static BOOL(WINAPI* trampoline_GetClientRect)(_In_ HWND hWnd, _Out_ LPRECT lpRect) = GetClientRect;
+
+// This routine creates an invisible cursor that we can set whenever we are
+// hiding the cursor. It is static, so will only be created the first time this
+// is called.
+static HCURSOR InvisibleCursor()
+{
+	static HCURSOR cursor = NULL;
+	int width, height;
+	unsigned pitch, size;
+	char *and, *xor;
+
+	if (!cursor) {
+		width = GetSystemMetrics(SM_CXCURSOR);
+		height = GetSystemMetrics(SM_CYCURSOR);
+		pitch = ((width + 31) / 32) * 4;
+		size = pitch * height;
+
+		and = new char[size];
+		xor = new char[size];
+
+		memset(and, 0xff, size);
+		memset(xor, 0x00, size);
+
+		cursor = CreateCursor(GetModuleHandle(NULL), 0, 0, width, height, and, xor);
+
+		delete[] and;
+		delete[] xor;
+	}
+
+	return cursor;
+}
+
+// We hook the SetCursor call so that we can catch the current cursor that the
+// game has set and return it in the GetCursorInfo call whenever the software
+// cursor is visible but the hardware cursor is not.
+static HCURSOR WINAPI Hooked_SetCursor(
+	_In_opt_ HCURSOR hCursor)
+{
+	current_cursor = hCursor;
+
+	if (G->hide_cursor)
+		return trampoline_SetCursor(InvisibleCursor());
+	else
+		return trampoline_SetCursor(hCursor);
+}
+
+static HCURSOR WINAPI Hooked_GetCursor(void)
+{
+	if (G->hide_cursor)
+		return current_cursor;
+	else
+		return trampoline_GetCursor();
+}
+
+static BOOL WINAPI HideCursor_GetCursorInfo(
+	_Inout_ PCURSORINFO pci)
+{
+	BOOL rc = trampoline_GetCursorInfo(pci);
+
+	if (rc && (pci->flags & CURSOR_SHOWING))
+		pci->hCursor = current_cursor;
+
+	return rc;
+}
+
+static BOOL WINAPI Hooked_GetCursorInfo(
+	_Inout_ PCURSORINFO pci)
+{
+	BOOL rc = HideCursor_GetCursorInfo(pci);
+	RECT client;
+
+	if (rc && G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client) && client.right && client.bottom)
+	{
+		pci->ptScreenPos.x = pci->ptScreenPos.x * G->GAME_INTERNAL_WIDTH / client.right;
+		pci->ptScreenPos.y = pci->ptScreenPos.y * G->GAME_INTERNAL_HEIGHT / client.bottom;
+	}
+
+	return rc;
+}
+
+BOOL WINAPI CursorUpscalingBypass_GetCursorInfo(
+	_Inout_ PCURSORINFO pci)
+{
+	if (G->cursor_upscaling_bypass)
+	{
+		// Still need to process hide_cursor logic:
+		return HideCursor_GetCursorInfo(pci);
+	}
+	return GetCursorInfo(pci);
+}
+
+static BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
+{
+	BOOL rc;
+	RECT client;
+	bool translate = G->SCREEN_UPSCALING > 0 && lpPoint
+		&& trampoline_GetClientRect(G->hWnd, &client)
+		&& client.right && client.bottom
+		&& G->GAME_INTERNAL_WIDTH && G->GAME_INTERNAL_HEIGHT;
+
+	if (translate)
+	{
+		// Scale back to original screen coordinates:
+		lpPoint->x = lpPoint->x * client.right / G->GAME_INTERNAL_WIDTH;
+		lpPoint->y = lpPoint->y * client.bottom / G->GAME_INTERNAL_HEIGHT;
+	}
+
+	rc = trampoline_ScreenToClient(hWnd, lpPoint);
+
+	if (translate)
+	{
+		// Now scale to fake game coordinates:
+		lpPoint->x = lpPoint->x * G->GAME_INTERNAL_WIDTH / client.right;
+		lpPoint->y = lpPoint->y * G->GAME_INTERNAL_HEIGHT / client.bottom;
+	}
+
+	return rc;
+}
+
+BOOL WINAPI CursorUpscalingBypass_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
+{
+	if (G->cursor_upscaling_bypass)
+		return trampoline_ScreenToClient(hWnd, lpPoint);
+	return ScreenToClient(hWnd, lpPoint);
+}
+
+static BOOL WINAPI Hooked_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
+{
+	BOOL rc = trampoline_GetClientRect(hWnd, lpRect);
+
+	if (G->upscaling_hooks_armed && rc && G->SCREEN_UPSCALING > 0 && lpRect != NULL)
+	{
+		lpRect->right = G->GAME_INTERNAL_WIDTH;
+		lpRect->bottom = G->GAME_INTERNAL_HEIGHT;
+	}
+
+	return rc;
+}
+
+BOOL WINAPI CursorUpscalingBypass_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
+{
+	if (G->cursor_upscaling_bypass)
+		return trampoline_GetClientRect(hWnd, lpRect);
+	return GetClientRect(hWnd, lpRect);
+}
+
+static BOOL WINAPI Hooked_GetCursorPos(_Out_ LPPOINT lpPoint)
+{
+	BOOL res = trampoline_GetCursorPos(lpPoint);
+	RECT client;
+
+	if (lpPoint && res && G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client) && client.right && client.bottom)
+	{
+		// This should work with all games that uses this function to gatter the mouse coords
+		// Tested with witcher 3 and dreamfall chapters
+		// TODO: Maybe there is a better way than use globals for the original game resolution
+		lpPoint->x = lpPoint->x * G->GAME_INTERNAL_WIDTH / client.right;
+		lpPoint->y = lpPoint->y * G->GAME_INTERNAL_HEIGHT / client.bottom;
+	}
+
+	return res;
+}
+
+static BOOL WINAPI Hooked_SetCursorPos(_In_ int X, _In_ int Y)
+{
+	RECT client;
+
+	if (G->SCREEN_UPSCALING > 0 && trampoline_GetClientRect(G->hWnd, &client) && G->GAME_INTERNAL_WIDTH && G->GAME_INTERNAL_HEIGHT)
+	{
+		// TODO: Maybe there is a better way than use globals for the original game resolution
+		const int new_x = X * client.right / G->GAME_INTERNAL_WIDTH;
+		const int new_y = Y * client.bottom / G->GAME_INTERNAL_HEIGHT;
+		return trampoline_SetCursorPos(new_x, new_y);
+	}
+	else
+		return trampoline_SetCursorPos(X, Y);
+}
+
+// DefWindowProc can bypass our SetCursor hook, which means that some games
+// such would continue showing the hardware cursor, and our knowledge of what
+// cursor was supposed to be set may be inaccurate (e.g. Akiba's Trip doesn't
+// hide the cursor and sometimes the software cursor uses the busy cursor
+// instead of the arrow cursor). We fix this by hooking DefWindowProc and
+// processing WM_SETCURSOR message just as the original DefWindowProc would
+// have done, but without bypassing our SetCursor hook.
+//
+// An alternative to hooking DefWindowProc in this manner might be to use
+// SetWindowsHookEx since it can also hook window messages.
+static LRESULT WINAPI Hooked_DefWindowProc(
+	_In_ HWND   hWnd,
+	_In_ UINT   Msg,
+	_In_ WPARAM wParam,
+	_In_ LPARAM lParam,
+	lpfnDefWindowProc trampoline_DefWindowProc)
+{
+
+	HWND parent = NULL;
+	HCURSOR cursor = NULL;
+	LPARAM ret = 0;
+
+	if (Msg == WM_SETCURSOR) {
+		// XXX: Should we use GetParent or GetAncestor? GetParent can
+		// return an "owner" window, while GetAncestor only returns
+		// parents... Not sure which the official DefWindowProc uses,
+		// but I suspect the answer is GetAncestor, so go with that:
+		parent = GetAncestor(hWnd, GA_PARENT);
+
+		if (parent) {
+			// Pass the message to the parent window, just like the
+			// real DefWindowProc does. This may call back in here
+			// if the parent also doesn't handle this message, and
+			// we stop processing if the parent handled it.
+			ret = SendMessage(parent, Msg, wParam, lParam);
+			if (ret)
+				return ret;
+		}
+
+		// If the mouse is in the client area and the window class has
+		// a cursor associated with it we set that. This will call into
+		// our hooked version of SetCursor (whereas the real
+		// DefWindowProc would bypass that) so that we can track the
+		// current cursor set by the game and force the hardware cursor
+		// to remain hidden.
+		if ((lParam & 0xffff) == HTCLIENT) {
+			cursor = (HCURSOR)GetClassLongPtr(hWnd, GCLP_HCURSOR);
+			if (cursor)
+				SetCursor(cursor);
+		}
+		else {
+			// Not in client area. We could continue emulating
+			// DefWindowProc by setting an arrow cursor, bypassing
+			// our hook to set the *real* hardware cursor, but
+			// since the real DefWindowProc already bypasses our
+			// hook let's just call that and allow it to take care
+			// of any other edge cases we may not know about (like
+			// HTERROR):
+			return trampoline_DefWindowProc(hWnd, Msg, wParam, lParam);
+		}
+
+		// Return false to allow children to set their class cursor:
+		return FALSE;
+	}
+
+	return trampoline_DefWindowProc(hWnd, Msg, wParam, lParam);
+}
+
+static LRESULT WINAPI Hooked_DefWindowProcA(_In_ HWND hWnd, _In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+	return Hooked_DefWindowProc(hWnd, Msg, wParam, lParam, trampoline_DefWindowProcA);
+}
+
+static LRESULT WINAPI Hooked_DefWindowProcW(_In_ HWND hWnd, _In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+	return Hooked_DefWindowProc(hWnd, Msg, wParam, lParam, trampoline_DefWindowProcW);
+}
+
+
+int InstallHook(HINSTANCE module, char *func, void **trampoline, void *hook, bool LogInfo_is_safe)
+{
+	SIZE_T hook_id;
+	DWORD dwOsErr;
+	void *fnOrig;
+
+	// Early exit with error so the caller doesn't need to explicitly deal
+	// with errors getting the module handle:
+	if (!module)
+		return 1;
+
+	fnOrig = NktHookLibHelpers::GetProcedureAddress(module, func);
+	if (fnOrig == NULL) {
+		LogInfo("Failed to get address of %s\n", func);
+		return 1;
+	}
+
+	dwOsErr = cHookMgr.Hook(&hook_id, trampoline, fnOrig, hook);
+	if (dwOsErr) {
+		LogInfo("Failed to hook %s: 0x%x\n", func, dwOsErr);
+		return 1;
+	}
+
+	return 0;
+}
+
+void InstallMouseHooks(bool hide)
+{
+	HINSTANCE hUser32;
+	static bool hook_installed = false;
+	int fail = 0;
+
+	// Only attempt to hook it once:
+	if (hook_installed)
+		return;
+	hook_installed = true;
+
+	// Init our handle to the current cursor now before installing the
+	// hooks, and from now on it will be kept up to date from SetCursor:
+	current_cursor = GetCursor();
+	if (hide)
+		SetCursor(InvisibleCursor());
+
+	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
+	fail |= InstallHook(hUser32, "SetCursor", (void**)&trampoline_SetCursor, Hooked_SetCursor, true);
+	fail |= InstallHook(hUser32, "GetCursor", (void**)&trampoline_GetCursor, Hooked_GetCursor, true);
+	fail |= InstallHook(hUser32, "GetCursorInfo", (void**)&trampoline_GetCursorInfo, Hooked_GetCursorInfo, true);
+	fail |= InstallHook(hUser32, "DefWindowProcA", (void**)&trampoline_DefWindowProcA, Hooked_DefWindowProcA, true);
+	fail |= InstallHook(hUser32, "DefWindowProcW", (void**)&trampoline_DefWindowProcW, Hooked_DefWindowProcW, true);
+	fail |= InstallHook(hUser32, "SetCursorPos", (void**)&trampoline_SetCursorPos, Hooked_SetCursorPos, true);
+	fail |= InstallHook(hUser32, "GetCursorPos", (void**)&trampoline_GetCursorPos, Hooked_GetCursorPos, true);
+	fail |= InstallHook(hUser32, "ScreenToClient", (void**)&trampoline_ScreenToClient, Hooked_ScreenToClient, true);
+	fail |= InstallHook(hUser32, "GetClientRect", (void**)&trampoline_GetClientRect, Hooked_GetClientRect, true);
+
+	if (fail) {
+		LogOverlay(LOG_DIRE, "Failed to hook mouse cursor functions - hide_cursor will not work\n");
+		return;
+	}
+
+	LogInfo("Successfully hooked mouse cursor functions for hide_cursor\n");
+}
+
 void LoadConfigFile()
 {
 	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
@@ -2914,7 +3274,6 @@ void LoadConfigFile()
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
 
-	ArmIniWarningTones();
 	ParseIniFile(iniFile);
 	InsertBuiltInIniSections();
 
@@ -2960,8 +3319,10 @@ void LoadConfigFile()
 	{
 		G->enable_hooks = parse_enum_option_string<wchar_t *, EnableHooks>
 			(EnableHooksNames, setting, NULL);
+
+		if (G->enable_hooks & EnableHooks::DEPRECATED)
+			LogOverlay(LOG_NOTICE, "Deprecated hook options: Please remove \"except\" and \"skip\" options\n");
 	}
-	G->enable_dxgi1_2 = GetIniInt(L"System", L"allow_dxgi1_2", 0, NULL);
 	G->enable_check_interface = GetIniBool(L"System", L"allow_check_interface", false, NULL);
 	G->enable_create_device = GetIniInt(L"System", L"allow_create_device", 0, NULL);
 	G->enable_platform_update = GetIniBool(L"System", L"allow_platform_update", false, NULL);
@@ -2991,7 +3352,7 @@ void LoadConfigFile()
 		G->mResolutionInfo.from = lookup_enum_val<wchar_t *, GetResolutionFrom>
 			(GetResolutionFromNames, setting, GetResolutionFrom::INVALID);
 		if (G->mResolutionInfo.from == GetResolutionFrom::INVALID) {
-			IniWarning("  WARNING: Unknown get_resolution_from %S\n", setting);
+			IniWarning("WARNING: Unknown get_resolution_from %S\n", setting);
 		}
 	} else
 		G->mResolutionInfo.from = GetResolutionFrom::INVALID;
@@ -3015,7 +3376,7 @@ void LoadConfigFile()
 		G->shader_hash_type = lookup_enum_val<wchar_t *, ShaderHashType>
 			(ShaderHashNames, setting, ShaderHashType::INVALID);
 		if (G->shader_hash_type == ShaderHashType::INVALID) {
-			IniWarning("  WARNING: Unknown shader_hash \"%S\"\n", setting);
+			IniWarning("WARNING: Unknown shader_hash \"%S\"\n", setting);
 			G->shader_hash_type = ShaderHashType::FNV;
 		}
 	}
@@ -3257,6 +3618,8 @@ void LoadConfigFile()
 
 	if (G->hide_cursor || G->SCREEN_UPSCALING)
 		InstallMouseHooks(G->hide_cursor);
+
+	emit_ini_warning_tone();
 }
 
 // This variant is called by the profile manager helper with the path to the
@@ -3337,6 +3700,16 @@ void ReloadConfig(HackerDevice *device)
 	// contexts) while we do this
 	EnterCriticalSection(&G->mCriticalSection);
 
+	// Clears any notices currently displayed on the overlay. This ensures
+	// that any notices that haven't timed out yet (e.g. from a previous
+	// failed reload attempt) are removed so that the only messages
+	// displayed will be relevant to the current reload attempt.
+	//
+	// The shader reload is separate and will also attempt to clear old
+	// notices - ClearNotices() itself will ensure that only the first one
+	// of these actually takes effect in the current frame.
+	ClearNotices();
+
 	// Clear the key bindings. There may be other things that need to be
 	// cleared as well, but for the sake of clarity I'd rather clear as
 	// many as possible inside LoadConfigFile() where they are set.
@@ -3352,7 +3725,6 @@ void ReloadConfig(HackerDevice *device)
 	LeaveCriticalSection(&G->mCriticalSection);
 
 	// Update the iniParams resource from the config file:
-	// FIXME: THIS CRASHES IF 3D IS DISABLED (ROOT CAUSE LIKELY ELSEWHERE)
 	hr = realContext->Map(device->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (FAILED(hr)) {
 		LogInfo("Failed to update IniParams\n");
@@ -3360,4 +3732,6 @@ void ReloadConfig(HackerDevice *device)
 	}
 	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
 	realContext->Unmap(device->mIniTexture, 0);
+
+	LogOverlay(LOG_INFO, "> d3dx.ini reloaded");
 }

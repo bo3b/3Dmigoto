@@ -15,7 +15,7 @@
 #include "EffectCommon.h"
 
 using namespace DirectX;
-using namespace Microsoft::WRL;
+using Microsoft::WRL::ComPtr;
 
 
 // Constant buffer layout. Must match the shader!
@@ -82,6 +82,7 @@ namespace
 }
 
 
+template<>
 const ShaderBytecode EffectBase<DualTextureEffectTraits>::VertexShaderBytecode[] =
 {
     { DualTextureEffect_VSDualTexture,        sizeof(DualTextureEffect_VSDualTexture)        },
@@ -92,6 +93,7 @@ const ShaderBytecode EffectBase<DualTextureEffectTraits>::VertexShaderBytecode[]
 };
 
 
+template<>
 const int EffectBase<DualTextureEffectTraits>::VertexShaderIndices[] =
 {
     0,      // basic
@@ -101,6 +103,7 @@ const int EffectBase<DualTextureEffectTraits>::VertexShaderIndices[] =
 };
 
 
+template<>
 const ShaderBytecode EffectBase<DualTextureEffectTraits>::PixelShaderBytecode[] =
 {
     { DualTextureEffect_PSDualTexture,        sizeof(DualTextureEffect_PSDualTexture)        },
@@ -109,6 +112,7 @@ const ShaderBytecode EffectBase<DualTextureEffectTraits>::PixelShaderBytecode[] 
 };
 
 
+template<>
 const int EffectBase<DualTextureEffectTraits>::PixelShaderIndices[] =
 {
     0,      // basic
@@ -119,6 +123,7 @@ const int EffectBase<DualTextureEffectTraits>::PixelShaderIndices[] =
 
 
 // Global pool of per-device DualTextureEffect resources.
+template<>
 SharedResourcePool<ID3D11Device*, EffectBase<DualTextureEffectTraits>::DeviceResources> EffectBase<DualTextureEffectTraits>::deviceResourcesPool;
 
 
@@ -206,6 +211,7 @@ DualTextureEffect::~DualTextureEffect()
 }
 
 
+// IEffect methods.
 void DualTextureEffect::Apply(_In_ ID3D11DeviceContext* deviceContext)
 {
     pImpl->Apply(deviceContext);
@@ -218,6 +224,7 @@ void DualTextureEffect::GetVertexShaderBytecode(_Out_ void const** pShaderByteCo
 }
 
 
+// Camera settings.
 void XM_CALLCONV DualTextureEffect::SetWorld(FXMMATRIX value)
 {
     pImpl->matrices.world = value;
@@ -242,6 +249,17 @@ void XM_CALLCONV DualTextureEffect::SetProjection(FXMMATRIX value)
 }
 
 
+void XM_CALLCONV DualTextureEffect::SetMatrices(FXMMATRIX world, CXMMATRIX view, CXMMATRIX projection)
+{
+    pImpl->matrices.world = world;
+    pImpl->matrices.view = view;
+    pImpl->matrices.projection = projection;
+
+    pImpl->dirtyFlags |= EffectDirtyFlags::WorldViewProj | EffectDirtyFlags::WorldInverseTranspose | EffectDirtyFlags::EyePosition | EffectDirtyFlags::FogVector;
+}
+
+
+// Material settings.
 void XM_CALLCONV DualTextureEffect::SetDiffuseColor(FXMVECTOR value)
 {
     pImpl->color.diffuseColor = value;
@@ -258,6 +276,16 @@ void DualTextureEffect::SetAlpha(float value)
 }
 
 
+void XM_CALLCONV DualTextureEffect::SetColorAndAlpha(FXMVECTOR value)
+{
+    pImpl->color.diffuseColor = value;
+    pImpl->color.alpha = XMVectorGetW(value);
+
+    pImpl->dirtyFlags |= EffectDirtyFlags::MaterialColor;
+}
+
+
+// Fog settings.
 void DualTextureEffect::SetFogEnabled(bool value)
 {
     pImpl->fog.enabled = value;
@@ -290,12 +318,14 @@ void XM_CALLCONV DualTextureEffect::SetFogColor(FXMVECTOR value)
 }
 
 
+// Vertex color setting.
 void DualTextureEffect::SetVertexColorEnabled(bool value)
 {
     pImpl->vertexColorEnabled = value;
 }
 
 
+// Texture settings.
 void DualTextureEffect::SetTexture(_In_opt_ ID3D11ShaderResourceView* value)
 {
     pImpl->texture = value;

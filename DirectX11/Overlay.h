@@ -1,34 +1,71 @@
 #pragma once
 
 #include <memory>
-#include <d3d11.h>
+#include <d3d11_1.h>
+#include <dxgi1_2.h>
+#include <wrl.h>
+
+
+// Since we are using SDK 8.0, we need to use the adapter code.
+// This allows us to use the latest version of DirectXTK with our
+// old SDK. https://github.com/Microsoft/DirectXMath/wiki
+
+#include <DirectXMath.h>
+namespace DirectX
+{
+#if (DIRECTX_MATH_VERSION < 305) && !defined(XM_CALLCONV)
+#define XM_CALLCONV __fastcall
+	typedef const XMVECTOR& HXMVECTOR;
+	typedef const XMMATRIX& FXMMATRIX;
+#endif
+}
 
 #include "SpriteFont.h"
 #include "SpriteBatch.h"
+#include "PrimitiveBatch.h"
+#include "CommonStates.h"
+#include "Effects.h"
+#include "VertexTypes.h"
 
 #include "HackerDevice.h"
 #include "HackerContext.h"
-#include "HackerDXGI.h"
-#include "nvapi.h"
 
+class HackerSwapChain;
 
-// Forward references required because of circular references from the
-// other 'Hacker' objects.
+enum LogLevel {
+	LOG_DIRE,
+	LOG_WARNING,
+	LOG_NOTICE,
+	LOG_INFO,
 
-class HackerDevice;
-class HackerContext;
-class HackerDXGISwapChain;
+	NUM_LOG_LEVELS
+};
+
+class OverlayNotice {
+public:
+	std::wstring message;
+	DWORD timestamp;
+
+	OverlayNotice(std::wstring message);
+};
 
 class Overlay
 {
 private:
-	HackerDXGISwapChain *mHackerSwapChain;
-	HackerDevice *mHackerDevice;
-	HackerContext *mHackerContext;
+	IDXGISwapChain* mOrigSwapChain;
+	ID3D11Device* mOrigDevice;
+	ID3D11DeviceContext* mOrigContext;
+	HackerDevice* mHackerDevice;
+	HackerContext* mHackerContext;
 
 	DirectX::XMUINT2 mResolution;
 	std::unique_ptr<DirectX::SpriteFont> mFont;
+	std::unique_ptr<DirectX::SpriteFont> mFontNotifications;
 	std::unique_ptr<DirectX::SpriteBatch> mSpriteBatch;
+	std::unique_ptr<DirectX::CommonStates> mStates;
+	std::unique_ptr<DirectX::BasicEffect> mEffect;
+	std::unique_ptr<DirectX::PrimitiveBatch<DirectX::VertexPositionColor>> mPrimitiveBatch;
+	Microsoft::WRL::ComPtr<ID3D11InputLayout> mInputLayout;
 
 	// These are all state that we save away before drawing the overlay and
 	// restore again afterwards. Basically everything that DirectTK
@@ -79,14 +116,18 @@ private:
 	void SaveState();
 	void RestoreState();
 	HRESULT InitDrawState();
-	void DrawShaderInfoLine(char *type, UINT64 selectedShader, int *y, bool shader);
-	void DrawShaderInfoLines();
+	void DrawShaderInfoLine(char *type, UINT64 selectedShader, float *y, bool shader);
+	void DrawShaderInfoLines(float *y);
+	void DrawNotices(float y);
+	void DrawRectangle(float x, float y, float w, float h, float r, float g, float b, float opacity);
 
 public:
-	Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapChain *pSwapChain);
+	Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain);
 	~Overlay();
 
 	void DrawOverlay(void);
-	void Resize(UINT Width, UINT Height);
 };
 
+void ClearNotices();
+void LogOverlayW(LogLevel level, wchar_t *fmt, ...);
+void LogOverlay(LogLevel level, char *fmt, ...);

@@ -342,11 +342,11 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	if (FAILED(hr))
 		LogInfo("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
-	hr = pDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
+	hr = pDevice->GetHackerSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
 	if (SUCCEEDED(hr))
 	{
 		swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls.jpg", G->SHADER_PATH, hash, shaderType.c_str());
-		hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext(), backBuffer, GUID_ContainerFormatJpeg, fullName);
+		hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext1(), backBuffer, GUID_ContainerFormatJpeg, fullName);
 		backBuffer->Release();
 	}
 
@@ -367,7 +367,7 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	HRESULT hr;
 	NvAPI_Status nvret;
 
-	hr = pDevice->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
+	hr = pDevice->GetHackerSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
 	if (FAILED(hr))
 		return;
 
@@ -377,7 +377,7 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	srcWidth = desc.Width;
 	desc.Width = srcWidth * 2;
 
-	hr = pDevice->GetOrigDevice()->CreateTexture2D(&desc, NULL, &stereoBackBuffer);
+	hr = pDevice->GetPassThroughOrigDevice1()->CreateTexture2D(&desc, NULL, &stereoBackBuffer);
 	if (FAILED(hr)) {
 		LogInfo("StereoScreenShot failed to create intermediate texture resource: 0x%x\n", hr);
 		return;
@@ -400,14 +400,14 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	// NVAPI documentation hasn't been updated to indicate which is the
 	// correct function to use for the reverse stereo blit in DX11...
 	// Fortunately there was really only one possibility, which is:
-	pDevice->GetPassThroughOrigContext()->CopySubresourceRegion(stereoBackBuffer, 0, 0, 0, 0, backBuffer, 0, &srcBox);
+	pDevice->GetPassThroughOrigContext1()->CopySubresourceRegion(stereoBackBuffer, 0, 0, 0, 0, backBuffer, 0, &srcBox);
 
 	hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	if (FAILED(hr))
 		LogInfo("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
 	wsprintf(fullName, L"%ls\\%016I64x-%ls.jps", G->SHADER_PATH, hash, shaderType.c_str());
-	hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext(), stereoBackBuffer, GUID_ContainerFormatJpeg, fullName);
+	hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext1(), stereoBackBuffer, GUID_ContainerFormatJpeg, fullName);
 
 	LogInfoW(L"  StereoScreenShot on Mark: %s, result: %d\n", fullName, hr);
 
@@ -438,14 +438,13 @@ static bool WriteHLSL(string hlslText, string asmText, UINT64 hash, wstring shad
 	_wfopen_s(&fw, fullName, L"rb");
 	if (fw)
 	{
-		LogInfoW(L"    marked shader file already exists: %s\n", fullName);
+		LogOverlayW(LOG_INFO, L"marked shader file already exists: %s\n", fullName);
 		fclose(fw);
 		_wfopen_s(&fw, fullName, L"ab");
 		if (fw) {
 			fprintf_s(fw, " ");					// Touch file to update mod date as a convenience.
 			fclose(fw);
 		}
-		BeepShort();						// Short High beep for for double beep that it's already there.
 		return true;
 	}
 
@@ -539,6 +538,8 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 	char apath[MAX_PATH];
 	swprintf_s(fullName, MAX_PATH, L"%s\\%s", shaderFixPath, fileName);
 
+	WarnIfConflictingShaderExists(fullName);
+
 	HANDLE f = CreateFile(fullName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE)
 	{
@@ -594,12 +595,23 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 
 		LogInfo("    compile result for replacement HLSL shader: %x\n", ret);
 
-		if (LogFile && pErrorMsgs)
+		if (pErrorMsgs)
 		{
 			LPVOID errMsg = pErrorMsgs->GetBufferPointer();
 			SIZE_T errSize = pErrorMsgs->GetBufferSize();
 			LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
-			fwrite(errMsg, 1, errSize - 1, LogFile);
+			if (FAILED(ret))
+			{
+				// If there are errors they go to the overlay
+				LogOverlay(LOG_NOTICE, "%*s\n", errSize, errMsg);
+			}
+			else if (LogFile)
+			{
+				// If there are only warnings they go to the
+				// log file, because it's too noisy to send all
+				// these to the overlay.
+				fwrite(errMsg, 1, errSize - 1, LogFile);
+			}
 			LogInfo("---------------------------------------------- END ----------------------------------------------\n");
 			pErrorMsgs->Release();
 		}
@@ -783,37 +795,37 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			// This needs to call the real CreateVertexShader, not our wrapped version
 			if (shaderType.compare(L"vs") == 0)
 			{
-				hr = device->GetOrigDevice()->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+				hr = device->GetPassThroughOrigDevice1()->CreateVertexShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(ID3D11VertexShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"ps") == 0)
 			{
-				hr = device->GetOrigDevice()->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
+				hr = device->GetPassThroughOrigDevice1()->CreatePixelShader(pShaderBytecode->GetBufferPointer(), pShaderBytecode->GetBufferSize(), classLinkage,
 					(ID3D11PixelShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"cs") == 0)
 			{
-				hr = device->GetOrigDevice()->CreateComputeShader(pShaderBytecode->GetBufferPointer(),
+				hr = device->GetPassThroughOrigDevice1()->CreateComputeShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11ComputeShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"gs") == 0)
 			{
-				hr = device->GetOrigDevice()->CreateGeometryShader(pShaderBytecode->GetBufferPointer(),
+				hr = device->GetPassThroughOrigDevice1()->CreateGeometryShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11GeometryShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"hs") == 0)
 			{
-				hr = device->GetOrigDevice()->CreateHullShader(pShaderBytecode->GetBufferPointer(),
+				hr = device->GetPassThroughOrigDevice1()->CreateHullShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11HullShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
 			else if (shaderType.compare(L"ds") == 0)
 			{
-				hr = device->GetOrigDevice()->CreateDomainShader(pShaderBytecode->GetBufferPointer(),
+				hr = device->GetPassThroughOrigDevice1()->CreateDomainShader(pShaderBytecode->GetBufferPointer(),
 					pShaderBytecode->GetBufferSize(), classLinkage, (ID3D11DomainShader**)&replacement);
 				CleanupShaderMaps(replacement);
 			}
@@ -862,6 +874,12 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 	string asmText;
 	string decompiled;
 
+	// Clears any notices currently displayed on the overlay. This ensures
+	// that any notices that haven't timed out yet (e.g. from a previous
+	// failed dump attempt) are removed so that the only messages
+	// displayed will be relevant to the current dump attempt.
+	ClearNotices();
+
 	// The key of the map is the actual shader, we thus need to do a linear search to find our marked hash.
 	for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
 	{
@@ -905,13 +923,12 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 
 	if (success)
 	{
-		BeepSuccess();			// High beep for success, to notify it's running fresh fixes.
-		LogInfo("> successfully copied Marked shader to ShaderFixes\n");
+		LogOverlay(LOG_INFO, "> successfully copied Marked shader to ShaderFixes\n");
 	}
 	else
 	{
-		BeepFailure();			// Bonk sound for failure.
-		LogInfo("> FAILED to copy Marked shader to ShaderFixes\n");
+		LogOverlay(LOG_WARNING, "> FAILED to copy Marked shader to ShaderFixes\n");
+		BeepFailure();
 	}
 }
 
@@ -928,8 +945,7 @@ static void TakeScreenShot(HackerDevice *wrapped, void *private_data)
 		err = NvAPI_Stereo_CapturePngImage(wrapped->mStereoHandle);
 		if (err != NVAPI_OK)
 		{
-			LogInfo("> screenshot failed, error:%d\n", err);
-			BeepFailure2();		// Brnk, dunk sound for failure.
+			LogOverlay(LOG_WARNING, "> screenshot failed, error:%d\n", err);
 		}
 	}
 }
@@ -993,6 +1009,16 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 		WIN32_FIND_DATA findFileData;
 		wchar_t fileName[MAX_PATH];
 
+		// Clears any notices currently displayed on the overlay. This ensures
+		// that any notices that haven't timed out yet (e.g. from a previous
+		// failed reload attempt) are removed so that the only messages
+		// displayed will be relevant to the current reload attempt.
+		//
+		// The config reload is separate and will also attempt to clear old
+		// notices - ClearNotices() itself will ensure that only the first one
+		// of these actually takes effect in the current frame.
+		ClearNotices();
+
 		for (ShaderReloadMap::iterator iter = G->mReloadedShaders.begin(); iter != G->mReloadedShaders.end(); iter++)
 			iter->second.found = false;
 
@@ -1016,13 +1042,12 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 
 		if (success)
 		{
-			BeepSuccess();		// High beep for success, to notify it's running fresh fixes.
-			LogInfo("> successfully reloaded shaders from ShaderFixes\n");
+			LogOverlay(LOG_INFO, "> successfully reloaded shaders from ShaderFixes\n");
 		}
 		else
 		{
-			BeepFailure();			// Bonk sound for failure.
-			LogInfo("> FAILED to reload shaders from ShaderFixes\n");
+			LogOverlay(LOG_WARNING, "> FAILED to reload shaders from ShaderFixes\n");
+			BeepFailure();
 		}
 	}
 }

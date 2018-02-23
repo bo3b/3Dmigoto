@@ -14,6 +14,137 @@
 #pragma once
 
 /****************************************************************************
+*
+* Rectangle
+*
+****************************************************************************/
+
+//------------------------------------------------------------------------------
+// Rectangle operations
+//------------------------------------------------------------------------------
+inline Vector2 Rectangle::Location() const
+{
+    return Vector2(float(x), float(y));
+}
+
+inline Vector2 Rectangle::Center() const
+{
+    return Vector2(float(x) + float(width / 2.f), float(y) + float(height / 2.f));
+}
+
+inline bool Rectangle::Contains(const Vector2& point) const
+{
+    return (float(x) <= point.x) && (point.x < float(x + width)) && (float(y) <= point.y) && (point.y < float(y + height));
+}
+
+inline void Rectangle::Inflate(long horizAmount, long vertAmount)
+{
+    x -= horizAmount;
+    y -= vertAmount;
+    width += horizAmount;
+    height += vertAmount;
+}
+
+//------------------------------------------------------------------------------
+// Static functions
+//------------------------------------------------------------------------------
+
+inline Rectangle Rectangle::Intersect(const Rectangle& ra, const Rectangle& rb)
+{
+    long righta = ra.x + ra.width;
+    long rightb = rb.x + rb.width;
+
+    long bottoma = ra.y + ra.height;
+    long bottomb = rb.y + rb.height;
+
+    long maxX = ra.x > rb.x ? ra.x : rb.x;
+    long maxY = ra.y > rb.y ? ra.y : rb.y;
+
+    long minRight = righta < rightb ? righta : rightb;
+    long minBottom = bottoma < bottomb ? bottoma : bottomb;
+
+    Rectangle result;
+
+    if ((minRight > maxX) && (minBottom > maxY))
+    {
+        result.x = maxX;
+        result.y = maxY;
+        result.width = minRight - maxX;
+        result.height = minBottom - maxY;
+    }
+    else
+    {
+        result.x = 0;
+        result.y = 0;
+        result.width = 0;
+        result.height = 0;
+    }
+
+    return result;
+}
+
+inline RECT Rectangle::Intersect(const RECT& rcta, const RECT& rctb)
+{
+    long maxX = rcta.left > rctb.left ? rcta.left : rctb.left;
+    long maxY = rcta.top > rctb.top ? rcta.top : rctb.top;
+
+    long minRight = rcta.right < rctb.right ? rcta.right : rctb.right;
+    long minBottom = rcta.bottom < rctb.bottom ? rcta.bottom : rctb.bottom;
+
+    RECT result;
+
+    if ((minRight > maxX) && (minBottom > maxY))
+    {
+        result.left = maxX;
+        result.top = maxY;
+        result.right = minRight;
+        result.bottom = minBottom;
+    }
+    else
+    {
+        result.left = 0;
+        result.top = 0;
+        result.right = 0;
+        result.bottom = 0;
+    }
+
+    return result;
+}
+
+inline Rectangle Rectangle::Union(const Rectangle& ra, const Rectangle& rb)
+{
+    long righta = ra.x + ra.width;
+    long rightb = rb.x + rb.width;
+
+    long bottoma = ra.y + ra.height;
+    long bottomb = rb.y + rb.height;
+
+    int minX = ra.x < rb.x ? ra.x : rb.x;
+    int minY = ra.y < rb.y ? ra.y : rb.y;
+
+    int maxRight = righta > rightb ? righta : rightb;
+    int maxBottom = bottoma > bottomb ? bottoma : bottomb;
+
+    Rectangle result;
+    result.x = minX;
+    result.y = minY;
+    result.width = maxRight - minX;
+    result.height = maxBottom - minY;
+    return result;
+}
+
+inline RECT Rectangle::Union(const RECT& rcta, const RECT& rctb)
+{
+    RECT result;
+    result.left = rcta.left < rctb.left ? rcta.left : rctb.left;
+    result.top = rcta.top < rctb.top ? rcta.top : rctb.top;
+    result.right = rcta.right > rctb.right ? rcta.right : rctb.right;
+    result.bottom = rcta.bottom > rctb.bottom ? rcta.bottom : rctb.bottom;
+    return result;
+}
+
+
+/****************************************************************************
  *
  * Vector2
  *
@@ -1792,13 +1923,47 @@ inline bool Matrix::operator != ( const Matrix& M ) const
 // Assignment operators
 //------------------------------------------------------------------------------
 
+inline Matrix::Matrix(const XMFLOAT3X3& M)
+{
+    _11 = M._11; _12 = M._12; _13 = M._13; _14 = 0.f;
+    _21 = M._21; _22 = M._22; _23 = M._23; _24 = 0.f;
+    _31 = M._31; _32 = M._32; _33 = M._33; _34 = 0.f;
+    _41 = 0.f;   _42 = 0.f;   _43 = 0.f;   _44 = 1.f;
+}
+
+inline Matrix::Matrix(const XMFLOAT4X3& M)
+{
+    _11 = M._11; _12 = M._12; _13 = M._13; _14 = 0.f;
+    _21 = M._21; _22 = M._22; _23 = M._23; _24 = 0.f;
+    _31 = M._31; _32 = M._32; _33 = M._33; _34 = 0.f;
+    _41 = M._41; _42 = M._42; _43 = M._43; _44 = 1.f;
+}
+
+inline Matrix& Matrix::operator= (const XMFLOAT3X3& M)
+{
+    _11 = M._11; _12 = M._12; _13 = M._13; _14 = 0.f;
+    _21 = M._21; _22 = M._22; _23 = M._23; _24 = 0.f;
+    _31 = M._31; _32 = M._32; _33 = M._33; _34 = 0.f;
+    _41 = 0.f;   _42 = 0.f;   _43 = 0.f;   _44 = 1.f;
+    return *this;
+}
+
+inline Matrix& Matrix::operator= (const XMFLOAT4X3& M)
+{
+    _11 = M._11; _12 = M._12; _13 = M._13; _14 = 0.f;
+    _21 = M._21; _22 = M._22; _23 = M._23; _24 = 0.f;
+    _31 = M._31; _32 = M._32; _33 = M._33; _34 = 0.f;
+    _41 = M._41; _42 = M._42; _43 = M._43; _44 = 1.f;
+    return *this;
+}
+
 inline Matrix& Matrix::operator+= (const Matrix& M)
 {
     using namespace DirectX;
-    XMVECTOR x1 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_11) );
-    XMVECTOR x2 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_21) );
-    XMVECTOR x3 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_31) );
-    XMVECTOR x4 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_41) );
+    XMVECTOR x1 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_11) );
+    XMVECTOR x2 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_21) );
+    XMVECTOR x3 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_31) );
+    XMVECTOR x4 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_41) );
 
     XMVECTOR y1 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&M._11) );
     XMVECTOR y2 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&M._21) );
@@ -1820,10 +1985,10 @@ inline Matrix& Matrix::operator+= (const Matrix& M)
 inline Matrix& Matrix::operator-= (const Matrix& M)
 {
     using namespace DirectX;
-    XMVECTOR x1 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_11) );
-    XMVECTOR x2 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_21) );
-    XMVECTOR x3 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_31) );
-    XMVECTOR x4 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_41) );
+    XMVECTOR x1 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_11) );
+    XMVECTOR x2 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_21) );
+    XMVECTOR x3 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_31) );
+    XMVECTOR x4 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_41) );
 
     XMVECTOR y1 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&M._11) );
     XMVECTOR y2 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&M._21) );
@@ -1855,10 +2020,10 @@ inline Matrix& Matrix::operator*= (const Matrix& M)
 inline Matrix& Matrix::operator*= (float S)
 {
     using namespace DirectX;
-    XMVECTOR x1 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_11) );
-    XMVECTOR x2 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_21) );
-    XMVECTOR x3 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_31) );
-    XMVECTOR x4 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_41) );
+    XMVECTOR x1 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_11) );
+    XMVECTOR x2 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_21) );
+    XMVECTOR x3 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_31) );
+    XMVECTOR x4 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_41) );
 
     x1 = XMVectorScale( x1, S );
     x2 = XMVectorScale( x2, S );
@@ -1876,10 +2041,10 @@ inline Matrix& Matrix::operator/= (float S)
 {
     using namespace DirectX;
     assert( S != 0.f );
-    XMVECTOR x1 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_11) );
-    XMVECTOR x2 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_21) );
-    XMVECTOR x3 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_31) );
-    XMVECTOR x4 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_41) );
+    XMVECTOR x1 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_11) );
+    XMVECTOR x2 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_21) );
+    XMVECTOR x3 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_31) );
+    XMVECTOR x4 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_41) );
 
     float rs = 1.f / S;
 
@@ -1898,10 +2063,10 @@ inline Matrix& Matrix::operator/= (float S)
 inline Matrix& Matrix::operator/= (const Matrix& M)
 {
     using namespace DirectX;
-    XMVECTOR x1 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_11) );
-    XMVECTOR x2 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_21) );
-    XMVECTOR x3 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_31) );
-    XMVECTOR x4 = XMLoadFloat4( reinterpret_cast<XMFLOAT4*>(&_41) );
+    XMVECTOR x1 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_11) );
+    XMVECTOR x2 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_21) );
+    XMVECTOR x3 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_31) );
+    XMVECTOR x4 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&_41) );
 
     XMVECTOR y1 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&M._11) );
     XMVECTOR y2 = XMLoadFloat4( reinterpret_cast<const XMFLOAT4*>(&M._21) );
@@ -2219,7 +2384,7 @@ inline Matrix Matrix::CreateConstrainedBillboard( const Vector3& object, const V
 {
     using namespace DirectX;
 
-    static const XMVECTORF32 s_minAngle = { 0.99825467075f, 0.99825467075f, 0.99825467075f, 0.99825467075f }; // 1.0 - XMConvertToRadians( 0.1f );
+    static const XMVECTORF32 s_minAngle = { { { 0.99825467075f, 0.99825467075f, 0.99825467075f, 0.99825467075f } } }; // 1.0 - XMConvertToRadians( 0.1f );
 
     XMVECTOR O = XMLoadFloat3( &object );
     XMVECTOR C = XMLoadFloat3( &cameraPosition );
@@ -3057,6 +3222,20 @@ inline bool Color::operator != ( const Color& c ) const
 // Assignment operators
 //------------------------------------------------------------------------------
 
+inline Color& Color::operator= (const DirectX::PackedVector::XMCOLOR& Packed)
+{
+    using namespace DirectX;
+    XMStoreFloat4( this, PackedVector::XMLoadColor( &Packed ) );
+    return *this;
+}
+
+inline Color& Color::operator= (const DirectX::PackedVector::XMUBYTEN4& Packed)
+{
+    using namespace DirectX;
+    XMStoreFloat4( this, PackedVector::XMLoadUByteN4( &Packed ) );
+    return *this;
+}
+
 inline Color& Color::operator+= (const Color& c)
 {
     using namespace DirectX;
@@ -3406,4 +3585,122 @@ inline bool Ray::Intersects( const Plane& plane, _Out_ float& Dist ) const
             return true;
         }
     }
+}
+
+
+/****************************************************************************
+ *
+ * Viewport
+ *
+ ****************************************************************************/
+
+//------------------------------------------------------------------------------
+// Comparision operators
+//------------------------------------------------------------------------------
+
+inline bool Viewport::operator == ( const Viewport& vp ) const
+{
+    return (x == vp.x && y == vp.y
+            && width == vp.width && height == vp.height
+            && minDepth == vp.minDepth && maxDepth == vp.maxDepth);
+}
+
+inline bool Viewport::operator != ( const Viewport& vp ) const
+{
+    return (x != vp.x || y != vp.y
+            || width != vp.width || height != vp.height
+            || minDepth != vp.minDepth || maxDepth != vp.maxDepth);
+}
+
+//------------------------------------------------------------------------------
+// Assignment operators
+//------------------------------------------------------------------------------
+
+inline Viewport& Viewport::operator= (const Viewport& vp)
+{
+    x = vp.x; y = vp.y;
+    width = vp.width; height = vp.height;
+    minDepth = vp.minDepth; maxDepth = vp.maxDepth;
+    return *this;
+}
+
+inline Viewport& Viewport::operator= (const RECT& rct)
+{
+    x = float(rct.left); y = float(rct.top);
+    width = float(rct.right - rct.left);
+    height = float(rct.bottom - rct.top);
+    minDepth = 0.f; maxDepth = 1.f;
+    return *this;
+}
+
+#if defined(__d3d11_h__) || defined(__d3d11_x_h__)
+inline Viewport& Viewport::operator= (const D3D11_VIEWPORT& vp)
+{
+    x = vp.TopLeftX; y = vp.TopLeftY;
+    width = vp.Width; height = vp.Height;
+    minDepth = vp.MinDepth; maxDepth = vp.MaxDepth;
+    return *this;
+}
+#endif
+
+#if defined(__d3d12_h__) || defined(__d3d12_x_h__)
+inline Viewport& Viewport::operator= (const D3D12_VIEWPORT& vp)
+{
+    x = vp.TopLeftX; y = vp.TopLeftY;
+    width = vp.Width; height = vp.Height;
+    minDepth = vp.MinDepth; maxDepth = vp.MaxDepth;
+    return *this;
+}
+#endif
+
+//------------------------------------------------------------------------------
+// Viewport operations
+//------------------------------------------------------------------------------
+
+inline float Viewport::AspectRatio() const
+{
+    if (width == 0.f || height == 0.f)
+        return 0.f;
+
+    return (width / height);
+}
+
+inline Vector3 Viewport::Project(const Vector3& p, const Matrix& proj, const Matrix& view, const Matrix& world) const
+{
+    using namespace DirectX;
+    XMVECTOR v = XMLoadFloat3(&p);
+    XMMATRIX projection = XMLoadFloat4x4(&proj);
+    v = XMVector3Project(v, x, y, width, height, minDepth, maxDepth, projection, view, world);
+    Vector3 result;
+    XMStoreFloat3(&result, v);
+    return result;
+}
+
+inline void Viewport::Project(const Vector3& p, const Matrix& proj, const Matrix& view, const Matrix& world, Vector3& result) const
+{
+    using namespace DirectX;
+    XMVECTOR v = XMLoadFloat3(&p);
+    XMMATRIX projection = XMLoadFloat4x4(&proj);
+    v = XMVector3Project(v, x, y, width, height, minDepth, maxDepth, projection, view, world);
+    XMStoreFloat3(&result, v);
+}
+
+inline Vector3 Viewport::Unproject(const Vector3& p, const Matrix& proj, const Matrix& view, const Matrix& world) const
+{
+    using namespace DirectX;
+    XMVECTOR v = XMLoadFloat3(&p);
+    XMMATRIX projection = XMLoadFloat4x4(&proj);
+    v = XMVector3Unproject(v, x, y, width, height, minDepth, maxDepth, projection, view, world);
+    Vector3 result;
+    XMStoreFloat3(&result, v);
+    return result;
+}
+
+inline void Viewport::Unproject(const Vector3& p, const Matrix& proj, const Matrix& view, const Matrix& world, Vector3& result) const
+{
+    using namespace DirectX;
+    XMVECTOR v = XMLoadFloat3(&p);
+    XMMATRIX projection = XMLoadFloat4x4(&proj);
+    v = XMVector3Unproject(v, x, y, width, height, minDepth, maxDepth, projection, view, world);
+    XMStoreFloat3(&result, v);
 }

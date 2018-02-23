@@ -13,34 +13,24 @@
 
 #pragma once
 
+#if (_WIN32_WINNT < 0x0A00 /*_WIN32_WINNT_WIN10*/)
 #ifndef _XBOX_ONE
 #if !defined(WINAPI_FAMILY) || (WINAPI_FAMILY != WINAPI_FAMILY_PHONE_APP)
-#if (_WIN32_WINNT >= 0x0602)
+#if (_WIN32_WINNT >= 0x0602 /*_WIN32_WINNT_WIN8*/ )
 #pragma comment(lib,"xinput.lib")
 #else
 #pragma comment(lib,"xinput9_1_0.lib")
 #endif
 #endif
 #endif
-
-// VS 2010/2012 do not support =default =delete
-#ifndef DIRECTX_CTOR_DEFAULT
-#if defined(_MSC_VER) && (_MSC_VER < 1800)
-#define DIRECTX_CTOR_DEFAULT {}
-#define DIRECTX_CTOR_DELETE ;
-#else
-#define DIRECTX_CTOR_DEFAULT =default;
-#define DIRECTX_CTOR_DELETE =delete;
-#endif
 #endif
 
 #include <memory>
-
-#pragma warning(push)
-#pragma warning(disable : 4005)
 #include <stdint.h>
-#include <intsafe.h>
-#pragma warning(pop)
+
+#if (_WIN32_WINNT >= _WIN32_WINNT_WIN10)
+#include <string>
+#endif
 
 
 namespace DirectX
@@ -51,9 +41,13 @@ namespace DirectX
         GamePad();
         GamePad(GamePad&& moveFrom);
         GamePad& operator= (GamePad&& moveFrom);
+
+        GamePad(GamePad const&) = delete;
+        GamePad& operator=(GamePad const&) = delete;
+
         virtual ~GamePad();
 
-#ifdef _XBOX_ONE
+#if (_WIN32_WINNT >= 0x0A00 /*_WIN32_WINNT_WIN10*/ ) || defined(_XBOX_ONE)
         static const int MAX_PLAYER_COUNT = 8;
 #else
         static const int MAX_PLAYER_COUNT = 4;
@@ -76,8 +70,16 @@ namespace DirectX
             bool rightStick;
             bool leftShoulder;
             bool rightShoulder;
-            bool back;
-            bool start;
+            union
+            {
+                bool back;
+                bool view;
+            };
+            union
+            {
+                bool start;
+                bool menu;
+            };
         };
 
         struct DPad
@@ -126,9 +128,9 @@ namespace DirectX
             bool __cdecl IsRightShoulderPressed() const { return buttons.rightShoulder; }
 
             bool __cdecl IsBackPressed() const { return buttons.back; }
-            bool __cdecl IsViewPressed() const { return buttons.back; }
+            bool __cdecl IsViewPressed() const { return buttons.view; }
             bool __cdecl IsStartPressed() const { return buttons.start; }
-            bool __cdecl IsMenuPressed() const { return buttons.start; }
+            bool __cdecl IsMenuPressed() const { return buttons.menu; }
 
             bool __cdecl IsDPadDownPressed() const { return dpad.down; };
             bool __cdecl IsDPadUpPressed() const { return dpad.up; };
@@ -166,9 +168,13 @@ namespace DirectX
                 ARCADE_PAD = 19,
             };
 
-            bool        connected;
-            Type        gamepadType;
-            uint64_t    id;
+            bool            connected;
+            Type            gamepadType;
+#if (_WIN32_WINNT >= 0x0A00 /*_WIN32_WINNT_WIN10*/)
+            std::wstring    id;
+#else
+            uint64_t        id;
+#endif
 
             bool __cdecl IsConnected() const { return connected; }
         };
@@ -195,19 +201,43 @@ namespace DirectX
             ButtonState leftShoulder;
             ButtonState rightShoulder;
 
-            ButtonState back;
-            ButtonState start;
+            union
+            {
+                ButtonState back;
+                ButtonState view;
+            };
+
+            union
+            {
+                ButtonState start;
+                ButtonState menu;
+            };
 
             ButtonState dpadUp;
             ButtonState dpadDown;
             ButtonState dpadLeft;
             ButtonState dpadRight;
 
+            ButtonState leftStickUp;
+            ButtonState leftStickDown;
+            ButtonState leftStickLeft;
+            ButtonState leftStickRight;
+
+            ButtonState rightStickUp;
+            ButtonState rightStickDown;
+            ButtonState rightStickLeft;
+            ButtonState rightStickRight;
+
+            ButtonState leftTrigger;
+            ButtonState rightTrigger;
+
             ButtonStateTracker() { Reset(); }
 
             void __cdecl Update( const State& state );
 
             void __cdecl Reset();
+
+            State __cdecl GetLastState() const { return lastState; }
 
         private:
             State lastState;
@@ -226,14 +256,17 @@ namespace DirectX
         void __cdecl Suspend();
         void __cdecl Resume();
 
+#if (_WIN32_WINNT >= 0x0A00 /*_WIN32_WINNT_WIN10*/ ) || defined(_XBOX_ONE)
+        void __cdecl RegisterEvents(void* ctrlChanged, void* userChanged);
+#endif
+
+        // Singleton
+        static GamePad& __cdecl Get();
+
     private:
         // Private implementation.
         class Impl;
 
         std::unique_ptr<Impl> pImpl;
-
-        // Prevent copying.
-        GamePad(GamePad const&) DIRECTX_CTOR_DELETE
-        GamePad& operator=(GamePad const&) DIRECTX_CTOR_DELETE
     };
 }

@@ -193,8 +193,8 @@ static T1 lookup_enum_name(struct EnumName_t<T1, T2> *enum_names, T2 val)
 }
 
 // Parses an option string of names given by enum_names. The enum used with
-// this function should have an INVALID=0, other flags declared as powers of
-// two, and the SENSIBLE_ENUM macro used to enable the bitwise and logical
+// this function should have an INVALID entry, other flags declared as powers
+// of two, and the SENSIBLE_ENUM macro used to enable the bitwise and logical
 // operators. As above, the EnumName_t list must be terminated with {NULL, 0}
 //
 // If you wish to parse an option string that contains exactly one unrecognised
@@ -205,7 +205,7 @@ template <class T1, class T2, class T3>
 static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T3 option_string, T1 *unrecognised)
 {
 	T3 ptr = option_string, cur;
-	T2 ret = T2::INVALID;
+	T2 ret = (T2)0;
 	T2 tmp = T2::INVALID;
 
 	if (unrecognised)
@@ -229,15 +229,16 @@ static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T3 opt
 
 		// Lookup the value of the current entry:
 		tmp = lookup_enum_val<T1, T2> (enum_names, cur, T2::INVALID);
-		if (tmp == T2::INVALID) {
+		if (tmp != T2::INVALID) {
+			ret |= tmp;
+		} else {
 			if (unrecognised && !(*unrecognised)) {
 				*unrecognised = cur;
 			} else {
-				LogInfoW(L"WARNING: Unknown option: %s\n", cur);
-				BeepFailure2();
+				LogOverlayW(LOG_WARNING, L"WARNING: Unknown option: %s\n", cur);
+				ret |= T2::INVALID;
 			}
 		}
-		ret |= tmp;
 	}
 	return ret;
 }
@@ -545,149 +546,10 @@ static UINT dxgi_format_size(DXGI_FORMAT format)
 }
 
 
-// When logging, it's not very helpful to have long sequences of hex instead of
-// the actual names of the objects in question.
-// e.g.
-// DEFINE_GUID(IID_IDXGIFactory,0x7b7166ec,0x21c7,0x44ae,0xb2,0x1a,0xc9,0xae,0x32,0x1a,0xe3,0x69);
-// 
-
-// For the time being, since we are not setup to use the Win10 SDK, we'll add
-// these manually. Some games under Win10 are requesting these.
-
-struct _declspec(uuid("9d06dffa-d1e5-4d07-83a8-1bb123f2f841")) ID3D11Device2;
-struct _declspec(uuid("420d5b32-b90c-4da4-bef0-359f6a24a83a")) ID3D11DeviceContext2;
-struct _declspec(uuid("A8BE2AC4-199F-4946-B331-79599FB98DE7")) IDXGISwapChain2;
-struct _declspec(uuid("94D99BDB-F1F8-4AB0-B236-7DA0170EDAB1")) IDXGISwapChain3;
-
-static std::string NameFromIID(IID id)
-{
-	// Adding every MIDL_INTERFACE from d3d11_1.h to make this reporting complete.
-	// Doesn't seem useful to do every object from d3d11.h itself.
-
-	if (__uuidof(IUnknown) == id)
-		return "IUnknown";
-
-	if (__uuidof(ID3D11DeviceChild) == id)
-		return "ID3D11DeviceChild";
-	if (__uuidof(ID3DDeviceContextState) == id)
-		return "ID3DDeviceContextState";
-
-	if (__uuidof(IDirect3DDevice9) == id)
-		return "IDirect3DDevice9";
-	if (__uuidof(ID3D10Device) == id)
-		return "ID3D10Device";
-	if (__uuidof(ID3D11Device) == id)
-		return "ID3D11Device";
-	if (__uuidof(ID3D11Device1) == id)
-		return "ID3D11Device1";
-	if (__uuidof(ID3D11Device2) == id)  // d3d11_2.h when the time comes
-		return "ID3D11Device2";
-
-	if (__uuidof(ID3D11DeviceContext) == id)
-		return "ID3D11DeviceContext";
-	if (__uuidof(ID3D11DeviceContext1) == id)
-		return "ID3D11DeviceContext1";
-	if (__uuidof(ID3D11DeviceContext2) == id) // d3d11_2.h when the time comes
-		return "ID3D11DeviceContext2";
-
-	if (__uuidof(ID3D11InfoQueue) == id)
-		return "ID3D11InfoQueue";
-	if (__uuidof(ID3DUserDefinedAnnotation) == id)
-		return "ID3DUserDefinedAnnotation";
-
-	if (__uuidof(ID3D11BlendState) == id)
-		return "ID3D11BlendState";
-	if (__uuidof(ID3D11BlendState1) == id)
-		return "ID3D11BlendState1";
-	if (__uuidof(ID3D11RasterizerState) == id)
-		return "ID3D11RasterizerState";
-	if (__uuidof(ID3D11RasterizerState1) == id)
-		return "ID3D11RasterizerState1";
-
-	if (__uuidof(ID3D11Texture2D) == id)	// Used to fetch backbuffer
-		return "ID3D11Texture2D";
-
-	// All the DXGI interfaces from dxgi.h, and dxgi1_2.h
-
-	if (__uuidof(IDXGIObject) == id)
-		return "IDXGIObject";
-	if (__uuidof(IDXGIDeviceSubObject) == id)
-		return "IDXGIDeviceSubObject";
-
-	if (__uuidof(IDXGIFactory) == id)
-		return "IDXGIFactory";
-	if (__uuidof(IDXGIFactory1) == id)
-		return "IDXGIFactory1";
-	if (__uuidof(IDXGIFactory2) == id)
-		return "IDXGIFactory2";
-
-	if (__uuidof(IDXGIDevice) == id)
-		return "IDXGIDevice";
-	if (__uuidof(IDXGIDevice1) == id)
-		return "IDXGIDevice1";
-	if (__uuidof(IDXGIDevice2) == id)
-		return "IDXGIDevice2";
-
-	if (__uuidof(IDXGISwapChain) == id)
-		return "IDXGISwapChain";
-	if (__uuidof(IDXGISwapChain1) == id)
-		return "IDXGISwapChain1";
-	if (__uuidof(IDXGISwapChain2) == id)		// dxgi1_3 A8BE2AC4-199F-4946-B331-79599FB98DE7
-		return "IDXGISwapChain2";
-	if (__uuidof(IDXGISwapChain3) == id)		// dxgi1_4 94D99BDB-F1F8-4AB0-B236-7DA0170EDAB1
-		return "IDXGISwapChain3";
-
-	if (__uuidof(IDXGIAdapter) == id)
-		return "IDXGIAdapter";
-	if (__uuidof(IDXGIAdapter1) == id)
-		return "IDXGIAdapter1";
-	if (__uuidof(IDXGIAdapter2) == id)
-		return "IDXGIAdapter2";
-
-	if (__uuidof(IDXGIOutputDuplication) == id)
-		return "IDXGIOutputDuplication";
-	if (__uuidof(IDXGIDisplayControl) == id)
-		return "IDXGIDisplayControl";
-
-	if (__uuidof(IDXGIOutput) == id)
-		return "IDXGIOutput";
-	if (__uuidof(IDXGIOutput1) == id)
-		return "IDXGIOutput1";
-	if (__uuidof(IDXGIResource) == id)
-		return "IDXGIResource";
-	if (__uuidof(IDXGIResource1) == id)
-		return "IDXGIResource1";
-	if (__uuidof(IDXGISurface) == id)
-		return "IDXGISurface";
-	if (__uuidof(IDXGISurface1) == id)
-		return "IDXGIResource";
-	if (__uuidof(IDXGISurface2) == id)
-		return "IDXGISurface2";
-	if (__uuidof(IDXGIKeyedMutex) == id)
-		return "IDXGIKeyedMutex";
-
-	// For unknown IIDs lets return the hex string.
-	// Converting from wchar_t to string using stackoverflow suggestion.
-
-	std::string iidString;
-	wchar_t wiid[128];
-	if (SUCCEEDED(StringFromGUID2(id, wiid, 128)))
-	{
-		std::wstring convert = std::wstring(wiid);
-		iidString = std::string(convert.begin(), convert.end());
-	}
-	else
-	{
-		iidString = "unknown";
-	}
-
-	return iidString;
-}
-
 static const char* type_name(IUnknown *object)
 {
-	ID3D11Device *device;
-	ID3D11DeviceContext *context;
+	ID3D11Device1 *device;
+	ID3D11DeviceContext1 *context;
 
 	// Seems that not even try / catch is safe in all cases of this
 	// (grumble grumble poorly designed grumble...). The only cases where
@@ -695,10 +557,10 @@ static const char* type_name(IUnknown *object)
 	// hooking the device and/or context, so check if it is one of those
 	// cases:
 
-	device = lookup_hooked_device((ID3D11Device*)object);
+	device = lookup_hooked_device((ID3D11Device1*)object);
 	if (device)
 		return "Hooked_ID3D11Device";
-	context = lookup_hooked_context((ID3D11DeviceContext*)object);
+	context = lookup_hooked_context((ID3D11DeviceContext1*)object);
 	if (context)
 		return "Hooked_ID3D11DeviceContext";
 
@@ -922,19 +784,22 @@ static bool ParseIniParamName(const wchar_t *name, int *idx, float DirectX::XMFL
 
 // -----------------------------------------------------------------------------------------------
 
-// Very simple exception class that can be updated to cover multiple fail cases.
-// Presently only used by the HackerUpscalingDXGISwapChain.
-
-class Exception3DMigoto
-{
-public:
-	Exception3DMigoto(const std::string& what) : m_what(what) {}
-	__inline const std::string& what() const { return m_what; }
-
-private:
-	std::string m_what;
-
-};
-
 BOOL CreateDirectoryEnsuringAccess(LPCWSTR path);
 errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t *filename, const wchar_t *mode);
+
+bool check_interface_supported(IUnknown *unknown, REFIID riid);
+void analyse_iunknown(IUnknown *unknown);
+
+// For the time being, since we are not setup to use the Win10 SDK, we'll add
+// these manually. Some games under Win10 are requesting these.
+
+struct _declspec(uuid("9d06dffa-d1e5-4d07-83a8-1bb123f2f841")) ID3D11Device2;
+struct _declspec(uuid("420d5b32-b90c-4da4-bef0-359f6a24a83a")) ID3D11DeviceContext2;
+struct _declspec(uuid("A8BE2AC4-199F-4946-B331-79599FB98DE7")) IDXGISwapChain2;
+struct _declspec(uuid("94D99BDB-F1F8-4AB0-B236-7DA0170EDAB1")) IDXGISwapChain3;
+
+std::string NameFromIID(IID id);
+
+void WarnIfConflictingShaderExists(wchar_t *orig_path, const char *message = "");
+static const char *end_user_conflicting_shader_msg =
+	"Conflicting shaders present - please use uninstall.bat and reinstall the fix.\n";

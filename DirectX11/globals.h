@@ -1,22 +1,27 @@
 #pragma once
 
-#include <d3d11.h>
+#include <d3d11_1.h>
 #include <ctime>
 #include <vector>
 #include <set>
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
+#include <memory>
 
-#include "util.h"
-#include "CommandList.h"
-#include "ResourceHash.h"
 #include "DLLMainHook.h"
+#include "DirectXMath.h"
+#include "util.h"
+
+#include "ResourceHash.h"
+#include "CommandList.h"
+
 
 // Resolve circular include dependency between Globals.h ->
 // CommandList.h -> HackerContext.h -> Globals.h
 class CommandListCommand;
 typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
+
 
 enum HuntingMode {
 	HUNTING_MODE_DISABLED = 0,
@@ -43,7 +48,9 @@ static EnumName_t<wchar_t *, ShaderHashType> ShaderHashNames[] = {
 	{NULL, ShaderHashType::INVALID} // End of list marker
 };
 
+
 // Key is index/vertex buffer, value is hash key.
+
 typedef std::unordered_map<ID3D11Buffer *, uint32_t> DataBufferMap;
 
 // Source compiled shaders.
@@ -307,7 +314,6 @@ struct Globals
 	EnableHooks enable_hooks;
 	
 	bool enable_check_interface;
-	int enable_dxgi1_2;
 	int enable_create_device;
 	bool enable_platform_update;
 
@@ -461,6 +467,7 @@ struct Globals
 	std::map<UINT64, ShaderInfoData> mComputeShaderInfo;		// std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 
 	Globals() :
+
 		mSelectedRenderTargetSnapshot(0),
 		mSelectedRenderTargetPos(-1),
 		mSelectedRenderTarget((ID3D11Resource *)-1),
@@ -537,7 +544,6 @@ struct Globals
 		load_library_redirect(2),
 		enable_hooks(EnableHooks::INVALID),
 		enable_check_interface(false),
-		enable_dxgi1_2(0),
 		enable_create_device(0),
 		enable_platform_update(false),
 		gInitialized(false),

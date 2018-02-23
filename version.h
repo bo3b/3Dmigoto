@@ -17,6 +17,7 @@
 // Used for embedded font resource for overlay
 #define SPRITEFONT					256
 #define IDR_COURIERBOLD				101
+#define IDR_ARIAL				102
 
 
 // Actual version, name, copyright information that is built into the dlls.
@@ -25,8 +26,8 @@
 // The VERSION_REVISION is automatically incremented for every Publish build.
 
 #define VERSION_MAJOR               1
-#define VERSION_MINOR               2
-#define VERSION_REVISION            73
+#define VERSION_MINOR               3
+#define VERSION_REVISION            4
  
 #define STRINGIZE2(s) #s
 #define STRINGIZE(s) STRINGIZE2(s)

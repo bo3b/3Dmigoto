@@ -71,18 +71,16 @@ void Override::ParseIniSection(LPCWSTR section)
 	if (GetIniStringAndLog(section, L"transition_type", 0, buf, MAX_PATH)) {
 		transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
 		if (transition_type == TransitionType::INVALID) {
-			LogInfoW(L"WARNING: Invalid transition_type=\"%s\"\n", buf);
+			LogOverlayW(LOG_WARNING, L"WARNING: Invalid transition_type=\"%s\"\n", buf);
 			transition_type = TransitionType::LINEAR;
-			BeepFailure2();
 		}
 	}
 
 	if (GetIniStringAndLog(section, L"release_transition_type", 0, buf, MAX_PATH)) {
 		release_transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
 		if (release_transition_type == TransitionType::INVALID) {
-			LogInfoW(L"WARNING: Invalid release_transition_type=\"%s\"\n", buf);
+			LogOverlayW(LOG_WARNING, L"WARNING: Invalid release_transition_type=\"%s\"\n", buf);
 			release_transition_type = TransitionType::LINEAR;
-			BeepFailure2();
 		}
 	}
 
@@ -95,8 +93,7 @@ void Override::ParseIniSection(LPCWSTR section)
 		// implement in the command list along with flow control.
 
 		if (!ParseIniParamName(buf, &condition_param_idx, &condition_param_component)) {
-			LogInfoW(L"WARNING: Invalid condition=\"%s\"\n", buf);
-			BeepFailure2();
+			LogOverlayW(LOG_WARNING, L"WARNING: Invalid condition=\"%s\"\n", buf);
 		} else {
 			is_conditional = true;
 		}
@@ -191,8 +188,7 @@ struct KeyOverrideCycleParam
 
 		val = lookup_enum_val<wchar_t *, TransitionType>(enum_names, cur, (T2)-1);
 		if (val == (T2)-1) {
-			LogInfoW(L"WARNING: Unmatched value \"%s\"\n", cur);
-			BeepFailure2();
+			LogOverlayW(LOG_WARNING, L"WARNING: Unmatched value \"%s\"\n", cur);
 			return default;
 		}
 
@@ -207,8 +203,7 @@ struct KeyOverrideCycleParam
 		}
 
 		if (!ParseIniParamName(buf, idx, component)) {
-			LogInfoW(L"WARNING: Invalid condition=\"%s\"\n", buf);
-			BeepFailure2();
+			LogOverlayW(LOG_WARNING, L"WARNING: Invalid condition=\"%s\"\n", buf);
 			return false;
 		}
 
@@ -325,7 +320,7 @@ void KeyOverrideCycle::DownEvent(HackerDevice *device)
 static void UpdateIniParams(HackerDevice* wrapper,
 		DirectX::XMFLOAT4 *params)
 {
-	ID3D11DeviceContext* realContext = wrapper->GetOrigContext();
+	ID3D11DeviceContext1* realContext = wrapper->GetPassThroughOrigContext1();
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	int i;
 	bool updated = false;

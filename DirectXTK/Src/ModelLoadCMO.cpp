@@ -23,7 +23,8 @@
 #include "BinaryReader.h"
 
 using namespace DirectX;
-using namespace Microsoft::WRL;
+using Microsoft::WRL::ComPtr;
+
 
 //--------------------------------------------------------------------------------------
 // .CMO files are built by Visual Studio 2012 and an example renderer is provided
@@ -158,6 +159,18 @@ namespace VSD3DStarter
 
     #pragma pack(pop)
 
+    const Material s_defMaterial =
+    {
+        { 0.2f, 0.2f, 0.2f, 1.f },
+        { 0.8f, 0.8f, 0.8f, 1.f },
+        { 0.0f, 0.0f, 0.0f, 1.f },
+        1.f,
+        { 0.0f, 0.0f, 0.0f, 1.0f },
+        { 1.f, 0.f, 0.f, 0.f,
+          0.f, 1.f, 0.f, 0.f,
+          0.f, 0.f, 1.f, 0.f,
+          0.f, 0.f, 0.f, 1.f },
+    };
 }; // namespace
 
 static_assert( sizeof(VSD3DStarter::Material) == 132, "CMO Mesh structure size incorrect" );
@@ -168,68 +181,76 @@ static_assert( sizeof(VSD3DStarter::Bone) == 196, "CMO Mesh structure size incor
 static_assert( sizeof(VSD3DStarter::Clip) == 12, "CMO Mesh structure size incorrect" );
 static_assert( sizeof(VSD3DStarter::Keyframe)== 72, "CMO Mesh structure size incorrect" );
 
-//--------------------------------------------------------------------------------------
-struct MaterialRecordCMO
+namespace
 {
-    const VSD3DStarter::Material*   pMaterial;
-    std::wstring                    name;
-    std::wstring                    pixelShader;
-    std::wstring                    texture[VSD3DStarter::MAX_TEXTURE];
-    std::shared_ptr<IEffect>        effect;
-    ComPtr<ID3D11InputLayout>       il;
-};
-
-// Helper for creating a D3D input layout.
-static void CreateInputLayout(_In_ ID3D11Device* device, IEffect* effect, _Out_ ID3D11InputLayout** pInputLayout, bool skinning )
-{
-    void const* shaderByteCode;
-    size_t byteCodeLength;
-
-    effect->GetVertexShaderBytecode(&shaderByteCode, &byteCodeLength);
-
-    if ( skinning )
+    //----------------------------------------------------------------------------------
+    struct MaterialRecordCMO
     {
-        ThrowIfFailed(
-            device->CreateInputLayout( VertexPositionNormalTangentColorTextureSkinning::InputElements,
-                                       VertexPositionNormalTangentColorTextureSkinning::InputElementCount,
-                                       shaderByteCode, byteCodeLength,
-                                       pInputLayout)
-        );
-    }
-    else
+        const VSD3DStarter::Material*   pMaterial;
+        std::wstring                    name;
+        std::wstring                    pixelShader;
+        std::wstring                    texture[VSD3DStarter::MAX_TEXTURE];
+        std::shared_ptr<IEffect>        effect;
+        ComPtr<ID3D11InputLayout>       il;
+    };
+
+    // Helper for creating a D3D input layout.
+    void CreateInputLayout(_In_ ID3D11Device* device, IEffect* effect, _Out_ ID3D11InputLayout** pInputLayout, bool skinning)
     {
-        ThrowIfFailed(
-            device->CreateInputLayout( VertexPositionNormalTangentColorTexture::InputElements,
-                                       VertexPositionNormalTangentColorTexture::InputElementCount,
-                                       shaderByteCode, byteCodeLength,
-                                       pInputLayout)
-        );
+        void const* shaderByteCode;
+        size_t byteCodeLength;
+
+        effect->GetVertexShaderBytecode(&shaderByteCode, &byteCodeLength);
+
+        if (skinning)
+        {
+            ThrowIfFailed(
+                device->CreateInputLayout(VertexPositionNormalTangentColorTextureSkinning::InputElements,
+                    VertexPositionNormalTangentColorTextureSkinning::InputElementCount,
+                    shaderByteCode, byteCodeLength,
+                    pInputLayout)
+            );
+        }
+        else
+        {
+            ThrowIfFailed(
+                device->CreateInputLayout(VertexPositionNormalTangentColorTexture::InputElements,
+                    VertexPositionNormalTangentColorTexture::InputElementCount,
+                    shaderByteCode, byteCodeLength,
+                    pInputLayout)
+            );
+        }
+
+        _Analysis_assume_(*pInputLayout != 0);
+
+        SetDebugObjectName(*pInputLayout, "ModelCMO");
     }
 
-    SetDebugObjectName(*pInputLayout, "ModelCMO");
+    // Shared VB input element description
+    INIT_ONCE g_InitOnce = INIT_ONCE_STATIC_INIT;
+    std::shared_ptr<std::vector<D3D11_INPUT_ELEMENT_DESC>> g_vbdecl;
+    std::shared_ptr<std::vector<D3D11_INPUT_ELEMENT_DESC>> g_vbdeclSkinning;
+
+    BOOL CALLBACK InitializeDecl(PINIT_ONCE initOnce, PVOID Parameter, PVOID *lpContext)
+    {
+        UNREFERENCED_PARAMETER(initOnce);
+        UNREFERENCED_PARAMETER(Parameter);
+        UNREFERENCED_PARAMETER(lpContext);
+
+        g_vbdecl = std::make_shared<std::vector<D3D11_INPUT_ELEMENT_DESC>>(VertexPositionNormalTangentColorTexture::InputElements,
+            VertexPositionNormalTangentColorTexture::InputElements + VertexPositionNormalTangentColorTexture::InputElementCount);
+
+        g_vbdeclSkinning = std::make_shared<std::vector<D3D11_INPUT_ELEMENT_DESC>>(VertexPositionNormalTangentColorTextureSkinning::InputElements,
+            VertexPositionNormalTangentColorTextureSkinning::InputElements + VertexPositionNormalTangentColorTextureSkinning::InputElementCount);
+        return TRUE;
+    }
 }
 
-// Shared VB input element description
-static INIT_ONCE g_InitOnce = INIT_ONCE_STATIC_INIT;
-static std::shared_ptr<std::vector<D3D11_INPUT_ELEMENT_DESC>> g_vbdecl;
-static std::shared_ptr<std::vector<D3D11_INPUT_ELEMENT_DESC>> g_vbdeclSkinning;
 
-static BOOL CALLBACK InitializeDecl( PINIT_ONCE initOnce, PVOID Parameter, PVOID *lpContext )
-{
-    UNREFERENCED_PARAMETER( initOnce );
-    UNREFERENCED_PARAMETER( Parameter );
-    UNREFERENCED_PARAMETER( lpContext );
+//======================================================================================
+// Model Loader
+//======================================================================================
 
-    g_vbdecl = std::make_shared<std::vector<D3D11_INPUT_ELEMENT_DESC>>( VertexPositionNormalTangentColorTexture::InputElements,
-           VertexPositionNormalTangentColorTexture::InputElements + VertexPositionNormalTangentColorTexture::InputElementCount );
-
-    g_vbdeclSkinning = std::make_shared<std::vector<D3D11_INPUT_ELEMENT_DESC>>( VertexPositionNormalTangentColorTextureSkinning::InputElements,
-           VertexPositionNormalTangentColorTextureSkinning::InputElements + VertexPositionNormalTangentColorTextureSkinning::InputElementCount );
-    return TRUE;
-}
-
-
-//--------------------------------------------------------------------------------------
 _Use_decl_annotations_
 std::unique_ptr<Model> DirectX::Model::CreateFromCMO( ID3D11Device* d3dDevice, const uint8_t* meshData, size_t dataSize, IEffectFactory& fxFactory, bool ccw, bool pmalpha )
 {
@@ -340,6 +361,15 @@ std::unique_ptr<Model> DirectX::Model::CreateFromCMO( ID3D11Device* d3dDevice, c
 
         assert( materials.size() == *nMats );
 
+        if (materials.empty())
+        {
+            // Add default material if none defined
+            MaterialRecordCMO m;
+            m.pMaterial = &VSD3DStarter::s_defMaterial;
+            m.name = L"Default";
+            materials.emplace_back(m);
+        }
+
         // Skeletal data?
         auto bSkeleton = reinterpret_cast<const BYTE*>( meshData + usedSize );
         usedSize += sizeof(BYTE);
@@ -403,12 +433,12 @@ std::unique_ptr<Model> DirectX::Model::CreateFromCMO( ID3D11Device* d3dDevice, c
             ib.ptr = indexes;
             ibData.emplace_back( ib );
 
-            D3D11_BUFFER_DESC desc = {0};
+            D3D11_BUFFER_DESC desc = {};
             desc.Usage = D3D11_USAGE_DEFAULT;
             desc.ByteWidth = static_cast<UINT>( ibBytes );
             desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 
-            D3D11_SUBRESOURCE_DATA initData = {0};
+            D3D11_SUBRESOURCE_DATA initData = {};
             initData.pSysMem = indexes;
 
             ThrowIfFailed(
@@ -614,7 +644,7 @@ std::unique_ptr<Model> DirectX::Model::CreateFromCMO( ID3D11Device* d3dDevice, c
 
             size_t bytes = stride * nVerts;
 
-            D3D11_BUFFER_DESC desc = {0};
+            D3D11_BUFFER_DESC desc = {};
             desc.Usage = D3D11_USAGE_DEFAULT;
             desc.ByteWidth = static_cast<UINT>( bytes );
             desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
@@ -622,7 +652,7 @@ std::unique_ptr<Model> DirectX::Model::CreateFromCMO( ID3D11Device* d3dDevice, c
             if ( fxFactoryDGSL && !enableSkinning )
             {
                 // Can use CMO vertex data directly
-                D3D11_SUBRESOURCE_DATA initData = {0};
+                D3D11_SUBRESOURCE_DATA initData = {};
                 initData.pSysMem = vbData[j].ptr;
 
                 ThrowIfFailed(
@@ -631,7 +661,7 @@ std::unique_ptr<Model> DirectX::Model::CreateFromCMO( ID3D11Device* d3dDevice, c
             }
             else
             {
-                std::unique_ptr<uint8_t> temp( new uint8_t[ bytes + ( sizeof(UINT) * nVerts ) ] );
+                std::unique_ptr<uint8_t[]> temp( new uint8_t[ bytes + ( sizeof(UINT) * nVerts ) ] );
 
                 auto visited = reinterpret_cast<UINT*>( temp.get() + bytes );
                 memset( visited, 0xff, sizeof(UINT) * nVerts );
@@ -676,7 +706,7 @@ std::unique_ptr<Model> DirectX::Model::CreateFromCMO( ID3D11Device* d3dDevice, c
                             continue;
 
                         if ( (sm.IndexBufferIndex >= *nIBs)
-                             || (sm.MaterialIndex >= *nMats) )
+                             || (sm.MaterialIndex >= materials.size()) )
                              throw std::exception("Invalid submesh found\n");
 
                         XMMATRIX uvTransform = XMLoadFloat4x4( &materials[ sm.MaterialIndex ].pMaterial->UVTransform );
@@ -724,7 +754,7 @@ std::unique_ptr<Model> DirectX::Model::CreateFromCMO( ID3D11Device* d3dDevice, c
                 }
 
                 // Create vertex buffer from temporary buffer
-                D3D11_SUBRESOURCE_DATA initData = {0};
+                D3D11_SUBRESOURCE_DATA initData = {};
                 initData.pSysMem = temp.get();
 
                 ThrowIfFailed(
@@ -738,7 +768,7 @@ std::unique_ptr<Model> DirectX::Model::CreateFromCMO( ID3D11Device* d3dDevice, c
         assert( vbs.size() == *nVBs );
         
         // Create Effects
-        for( UINT j = 0; j < *nMats; ++j )
+        for( size_t j = 0; j < materials.size(); ++j )
         {
             auto& m = materials[ j ];
 
@@ -754,12 +784,15 @@ std::unique_ptr<Model> DirectX::Model::CreateFromCMO( ID3D11Device* d3dDevice, c
                 info.diffuseColor = XMFLOAT3( m.pMaterial->Diffuse.x, m.pMaterial->Diffuse.y, m.pMaterial->Diffuse.z );
                 info.specularColor = XMFLOAT3( m.pMaterial->Specular.x, m.pMaterial->Specular.y, m.pMaterial->Specular.z );
                 info.emissiveColor = XMFLOAT3( m.pMaterial->Emissive.x, m.pMaterial->Emissive.y, m.pMaterial->Emissive.z );
-                info.texture = m.texture[0].c_str();
+                info.diffuseTexture = m.texture[0].empty() ? nullptr : m.texture[0].c_str();
+                info.specularTexture = m.texture[1].empty() ? nullptr : m.texture[1].c_str();
+                info.normalTexture = m.texture[2].empty() ? nullptr : m.texture[2].c_str();
                 info.pixelShader = m.pixelShader.c_str();
                 
-                for( int i = 0; i < 7; ++i )
+                const int offset = DGSLEffectFactory::DGSLEffectInfo::BaseTextureOffset;
+                for( int i = 0; i < (DGSLEffect::MaxTextures - offset); ++i )
                 {
-                    info.textures[i] = m.texture[ i+1 ].empty() ? nullptr : m.texture[ i+1 ].c_str();
+                    info.textures[i] = m.texture[ i + offset ].empty() ? nullptr : m.texture[ i + offset ].c_str();
                 }
 
                 m.effect = fxFactoryDGSL->CreateDGSLEffect( info, nullptr );
@@ -779,7 +812,7 @@ std::unique_ptr<Model> DirectX::Model::CreateFromCMO( ID3D11Device* d3dDevice, c
                 info.diffuseColor = XMFLOAT3( m.pMaterial->Diffuse.x, m.pMaterial->Diffuse.y, m.pMaterial->Diffuse.z );
                 info.specularColor = XMFLOAT3( m.pMaterial->Specular.x, m.pMaterial->Specular.y, m.pMaterial->Specular.z );
                 info.emissiveColor = XMFLOAT3( m.pMaterial->Emissive.x, m.pMaterial->Emissive.y, m.pMaterial->Emissive.z );
-                info.texture = m.texture[0].c_str();
+                info.diffuseTexture = m.texture[0].c_str();
 
                 m.effect = fxFactory.CreateEffect( info, nullptr );
             }
@@ -794,7 +827,7 @@ std::unique_ptr<Model> DirectX::Model::CreateFromCMO( ID3D11Device* d3dDevice, c
 
             if ( (sm.IndexBufferIndex >= *nIBs)
                  || (sm.VertexBufferIndex >= *nVBs)
-                 || (sm.MaterialIndex >= *nMats) )
+                 || (sm.MaterialIndex >= materials.size()) )
                  throw std::exception("Invalid submesh found\n");
 
             auto& mat = materials[ sm.MaterialIndex ];

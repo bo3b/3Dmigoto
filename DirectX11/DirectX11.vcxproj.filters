@@ -12,7 +12,6 @@
     <ClCompile Include="Override.cpp" />
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
     <ClCompile Include="HookedDXGI.cpp" />
-    <ClCompile Include="HackerDXGI.cpp" />
     <ClCompile Include="FrameAnalysis.cpp" />
     <ClCompile Include="..\D3D_Shaders\Assembler.cpp" />
     <ClCompile Include="..\crc32c-hw-1.0.5\src\crc32c.cpp" />
@@ -23,6 +22,9 @@
     <ClCompile Include="nvprofile.cpp" />
     <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
     <ClCompile Include="ShaderRegex.cpp" />
+    <ClCompile Include="HookAddresses.c" />
+    <ClCompile Include="HackerDXGI.cpp" />
+    <ClCompile Include="..\iid.cpp" />
     <ClCompile Include="..\util.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -44,7 +46,6 @@
     <ClInclude Include="DLLMainHook.h" />
     <ClInclude Include="..\log.h" />
     <ClInclude Include="..\util.h" />
-    <ClInclude Include="HackerDXGI.h" />
     <ClInclude Include="..\version.h" />
     <ClInclude Include="..\crc32c-hw-1.0.5\include\crc32c.h" />
     <ClInclude Include="CommandList.h" />
@@ -54,6 +55,8 @@
     <ClInclude Include="..\shader.h" />
     <ClInclude Include="nvprofile.h" />
     <ClInclude Include="ShaderRegex.h" />
+    <ClInclude Include="FrameAnalysis.h" />
+    <ClInclude Include="HackerDXGI.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

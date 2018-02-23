@@ -19,24 +19,9 @@
 #include <d3d11_1.h>
 #endif
 
-// VS 2010/2012 do not support =default =delete
-#ifndef DIRECTX_CTOR_DEFAULT
-#if defined(_MSC_VER) && (_MSC_VER < 1800)
-#define DIRECTX_CTOR_DEFAULT {}
-#define DIRECTX_CTOR_DELETE ;
-#else
-#define DIRECTX_CTOR_DEFAULT =default;
-#define DIRECTX_CTOR_DELETE =delete;
-#endif
-#endif
-
-#include <memory.h>
 #include <memory>
-
-#pragma warning(push)
-#pragma warning(disable: 4005)
+#include <utility>
 #include <stdint.h>
-#pragma warning(pop)
 
 
 namespace DirectX
@@ -50,6 +35,10 @@ namespace DirectX
             PrimitiveBatchBase(_In_ ID3D11DeviceContext* deviceContext, size_t maxIndices, size_t maxVertices, size_t vertexSize);
             PrimitiveBatchBase(PrimitiveBatchBase&& moveFrom);
             PrimitiveBatchBase& operator= (PrimitiveBatchBase&& moveFrom);
+
+            PrimitiveBatchBase(PrimitiveBatchBase const&) = delete;
+            PrimitiveBatchBase& operator= (PrimitiveBatchBase const&) = delete;
+
             virtual ~PrimitiveBatchBase();
 
         public:
@@ -66,10 +55,6 @@ namespace DirectX
             class Impl;
 
             std::unique_ptr<Impl> pImpl;
-
-            // Prevent copying.
-            PrimitiveBatchBase(PrimitiveBatchBase const&) DIRECTX_CTOR_DELETE
-            PrimitiveBatchBase& operator= (PrimitiveBatchBase const&) DIRECTX_CTOR_DELETE
         };
     }
 
@@ -81,7 +66,7 @@ namespace DirectX
         static const size_t DefaultBatchSize = 2048;
 
     public:
-        PrimitiveBatch(_In_ ID3D11DeviceContext* deviceContext, size_t maxIndices = DefaultBatchSize * 3, size_t maxVertices = DefaultBatchSize)
+        explicit PrimitiveBatch(_In_ ID3D11DeviceContext* deviceContext, size_t maxIndices = DefaultBatchSize * 3, size_t maxVertices = DefaultBatchSize)
           : PrimitiveBatchBase(deviceContext, maxIndices, maxVertices, sizeof(TVertex))
         { }
 
@@ -89,7 +74,7 @@ namespace DirectX
           : PrimitiveBatchBase(std::move(moveFrom))
         { }
 
-        PrimitiveBatch& __cdecl operator= (PrimitiveBatch&& moveFrom)
+        PrimitiveBatch& operator= (PrimitiveBatch&& moveFrom)
         {
             PrimitiveBatchBase::operator=(std::move(moveFrom));
             return *this;
@@ -97,7 +82,7 @@ namespace DirectX
 
 
         // Similar to the D3D9 API DrawPrimitiveUP.
-        void __cdecl Draw(D3D11_PRIMITIVE_TOPOLOGY topology, _In_reads_(vertexCount) TVertex const* vertices, size_t vertexCount)
+        void Draw(D3D11_PRIMITIVE_TOPOLOGY topology, _In_reads_(vertexCount) TVertex const* vertices, size_t vertexCount)
         {
             void* mappedVertices;
 
@@ -108,7 +93,7 @@ namespace DirectX
 
 
         // Similar to the D3D9 API DrawIndexedPrimitiveUP.
-        void __cdecl DrawIndexed(D3D11_PRIMITIVE_TOPOLOGY topology, _In_reads_(indexCount) uint16_t const* indices, size_t indexCount, _In_reads_(vertexCount) TVertex const* vertices, size_t vertexCount)
+        void DrawIndexed(D3D11_PRIMITIVE_TOPOLOGY topology, _In_reads_(indexCount) uint16_t const* indices, size_t indexCount, _In_reads_(vertexCount) TVertex const* vertices, size_t vertexCount)
         {
             void* mappedVertices;
 
@@ -118,7 +103,7 @@ namespace DirectX
         }
 
 
-        void __cdecl DrawLine(TVertex const& v1, TVertex const& v2)
+        void DrawLine(TVertex const& v1, TVertex const& v2)
         {
             TVertex* mappedVertices;
 
@@ -129,7 +114,7 @@ namespace DirectX
         }
 
 
-        void __cdecl DrawTriangle(TVertex const& v1, TVertex const& v2, TVertex const& v3)
+        void DrawTriangle(TVertex const& v1, TVertex const& v2, TVertex const& v3)
         {
             TVertex* mappedVertices;
 
@@ -141,7 +126,7 @@ namespace DirectX
         }
 
 
-        void __cdecl DrawQuad(TVertex const& v1, TVertex const& v2, TVertex const& v3, TVertex const& v4)
+        void DrawQuad(TVertex const& v1, TVertex const& v2, TVertex const& v3, TVertex const& v4)
         {
             static const uint16_t quadIndices[] = { 0, 1, 2, 0, 2, 3 };
 

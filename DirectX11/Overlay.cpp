@@ -4,13 +4,38 @@
 #include "Overlay.h"
 
 #include <DirectXColors.h>
-#include <StrSafe.h>
+//#include <StrSafe.h>
 
-#include "D3D11Wrapper.h"
 #include "SimpleMath.h"
 #include "SpriteBatch.h"
-#include "nvapi.h"
 
+#include "log.h"
+#include "version.h"
+#include "D3D11Wrapper.h"
+//#include "nvapi.h"
+#include "Globals.h"
+
+#include "HackerDevice.h"
+#include "HackerContext.h"
+
+#define MAX_SIMULTANEOUS_NOTICES 10
+
+static std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
+static bool has_notice = false;
+static unsigned notice_cleared_frame = 0;
+
+struct LogLevelParams {
+	DirectX::XMVECTORF32 colour;
+	DWORD duration;
+	bool hide_in_release;
+};
+
+struct LogLevelParams log_levels[] = {
+	{ DirectX::Colors::Red,       20000, false }, // DIRE
+	{ DirectX::Colors::OrangeRed, 10000, false }, // WARNING
+	{ DirectX::Colors::Orange,     5000,  true }, // NOTICE
+	{ DirectX::Colors::LimeGreen,  2000,  true }, // INFO
+};
 
 // Side note: Not really stoked with C++ string handling.  There are like 4 or
 // 5 different ways to do things, all partly compatible, none a clear winner in
@@ -28,27 +53,32 @@
 // the standard c runtime, but use the _s safe versions.
 
 // Max expected on-screen string size, used for buffer safe calls.
-const int maxstring = 200;
+const int maxstring = 1024;
 
 
-Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapChain *pSwapChain)
+Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain)
 {
-	HRESULT hr;
-
-	LogInfo("Overlay::Overlay created for %p: %s\n", pSwapChain, type_name(pSwapChain));
+	LogInfo("Overlay::Overlay created for %p\n", pSwapChain);
 	LogInfo("  on HackerDevice: %p, HackerContext: %p\n", pDevice, pContext);
 
-	// Not positive we need all of these references, but let's keep them handy.
-	// We need the context at a minimum.
+	// Drawing environment for this swap chain. This is the game environment.
+	// These should specifically avoid Hacker* objects, to avoid object
+	// callbacks or other problems. We just want to draw here, nothing tricky.
+	// The only exception being that we need the HackerDevice in order to
+	// draw the current stereoparams.
 	mHackerDevice = pDevice;
 	mHackerContext = pContext;
-	mHackerSwapChain = pSwapChain;
+	mOrigSwapChain = pSwapChain;
 
-	DXGI_SWAP_CHAIN_DESC description;
-	hr = pSwapChain->GetDesc(&description);
-	if (FAILED(hr))
-		return;
-	mResolution = DirectX::XMUINT2(description.BufferDesc.Width, description.BufferDesc.Height);
+	// Must use trampoline context to prevent 3DMigoto hunting its own overlay:
+	mOrigDevice = mHackerDevice->GetPassThroughOrigDevice1();
+	mOrigContext = pContext->GetPassThroughOrigContext1();
+
+	// We are actively using the Device and Context and SwapChain, so we need to 
+	// make sure they do not get Released without us.  This happened in FFXIV.
+	mHackerDevice->AddRef();
+	mHackerContext->AddRef();
+	mOrigSwapChain->AddRef();
 
 	// The courierbold.spritefont is now included as binary resource data attached
 	// to the d3d11.dll.  We can fetch that resource and pass it to new SpriteFont
@@ -62,13 +92,50 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, HackerDXGISwapC
 	// We want to use the original device and original context here, because
 	// these will be used by DirectXTK to generate VertexShaders and PixelShaders
 	// to draw the text, and we don't want to intercept those.
-	mFont.reset(new DirectX::SpriteFont(pDevice->GetOrigDevice(), fontBlob, fontSize));
+	mFont.reset(new DirectX::SpriteFont(mOrigDevice, fontBlob, fontSize));
 	mFont->SetDefaultCharacter(L'?');
-	mSpriteBatch.reset(new DirectX::SpriteBatch(pContext->GetPassThroughOrigContext()));
+
+	// Courier is a nice choice for hunting status lines, and showing the
+	// shader hashes since it is monospace, but for arbitrary notifications
+	// we want something a little smaller, and variable width. Liberation
+	// Sans has essentially the same metrics as Arial,
+	// but is not encumbered.
+	rc = FindResource(handle, MAKEINTRESOURCE(IDR_ARIAL), MAKEINTRESOURCE(SPRITEFONT));
+	rcData = LoadResource(handle, rc);
+	fontSize = SizeofResource(handle, rc);
+	fontBlob = static_cast<const uint8_t*>(LockResource(rcData));
+	mFontNotifications.reset(new DirectX::SpriteFont(mOrigDevice, fontBlob, fontSize));
+	mFontNotifications->SetDefaultCharacter(L'?');
+
+	mSpriteBatch.reset(new DirectX::SpriteBatch(mOrigContext));
+
+	// For dark background behind notification text, following
+	// https://github.com/Microsoft/DirectXTK/wiki/Simple-rendering
+	mStates.reset(new DirectX::CommonStates(mOrigDevice));
+	mEffect.reset(new DirectX::BasicEffect(mOrigDevice));
+
+	void const *shaderByteCode;
+	size_t byteCodeLength;
+
+	mEffect->SetVertexColorEnabled(true);
+	mEffect->GetVertexShaderBytecode(&shaderByteCode, &byteCodeLength);
+
+	HRESULT hr = mOrigDevice->CreateInputLayout(DirectX::VertexPositionColor::InputElements,
+			DirectX::VertexPositionColor::InputElementCount,
+			shaderByteCode, byteCodeLength,
+			mInputLayout.ReleaseAndGetAddressOf());
+	if (FAILED(hr))
+		throw std::runtime_error("CreateInputLayout failed");
+
+	mPrimitiveBatch.reset(new DirectX::PrimitiveBatch<DirectX::VertexPositionColor>(mOrigContext));
 }
 
 Overlay::~Overlay()
 {
+	LogInfo("Overlay::~Overlay deleted for SwapChain %p\n", mOrigSwapChain);
+	mOrigSwapChain->Release();
+	mOrigContext->Release();
+	mOrigDevice->Release();
 }
 
 
@@ -101,90 +168,225 @@ using namespace DirectX::SimpleMath;
 void Overlay::SaveState()
 {
 	memset(&state, 0, sizeof(state));
-
-	ID3D11DeviceContext *context = mHackerContext->GetPassThroughOrigContext();
-
-	context->OMGetRenderTargets(1, &state.pRenderTargetView, &state.pDepthStencilView);
+	
+	mOrigContext->OMGetRenderTargets(1, &state.pRenderTargetView, &state.pDepthStencilView);
 	state.RSNumViewPorts = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
-	context->RSGetViewports(&state.RSNumViewPorts, state.pViewPorts);
+	mOrigContext->RSGetViewports(&state.RSNumViewPorts, state.pViewPorts);
 
-	context->OMGetBlendState(&state.pBlendState, state.BlendFactor, &state.SampleMask);
-	context->OMGetDepthStencilState(&state.pDepthStencilState, &state.StencilRef);
-	context->RSGetState(&state.pRasterizerState);
-	context->PSGetSamplers(0, 1, state.samplers);
-	context->IAGetPrimitiveTopology(&state.topology);
-	context->IAGetInputLayout(&state.pInputLayout);
-	context->VSGetShader(&state.pVertexShader, state.pVSClassInstances, &state.VSNumClassInstances);
-	context->PSGetShader(&state.pPixelShader, state.pPSClassInstances, &state.PSNumClassInstances);
-	context->IAGetVertexBuffers(0, 1, state.pVertexBuffers, state.Strides, state.Offsets);
-	context->IAGetIndexBuffer(&state.IndexBuffer, &state.Format, &state.Offset);
-	context->VSGetConstantBuffers(0, 1, state.pConstantBuffers);
-	context->PSGetShaderResources(0, 1, state.pShaderResourceViews);
+	mOrigContext->OMGetBlendState(&state.pBlendState, state.BlendFactor, &state.SampleMask);
+	mOrigContext->OMGetDepthStencilState(&state.pDepthStencilState, &state.StencilRef);
+	mOrigContext->RSGetState(&state.pRasterizerState);
+	mOrigContext->PSGetSamplers(0, 1, state.samplers);
+	mOrigContext->IAGetPrimitiveTopology(&state.topology);
+	mOrigContext->IAGetInputLayout(&state.pInputLayout);
+	mOrigContext->VSGetShader(&state.pVertexShader, state.pVSClassInstances, &state.VSNumClassInstances);
+	mOrigContext->PSGetShader(&state.pPixelShader, state.pPSClassInstances, &state.PSNumClassInstances);
+	mOrigContext->IAGetVertexBuffers(0, 1, state.pVertexBuffers, state.Strides, state.Offsets);
+	mOrigContext->IAGetIndexBuffer(&state.IndexBuffer, &state.Format, &state.Offset);
+	mOrigContext->VSGetConstantBuffers(0, 1, state.pConstantBuffers);
+	mOrigContext->PSGetShaderResources(0, 1, state.pShaderResourceViews);
 }
 
 void Overlay::RestoreState()
 {
 	unsigned i;
-	ID3D11DeviceContext *context = mHackerContext->GetPassThroughOrigContext();
 
-	context->OMSetRenderTargets(1, &state.pRenderTargetView, state.pDepthStencilView);
+	mOrigContext->OMSetRenderTargets(1, &state.pRenderTargetView, state.pDepthStencilView);
 	if (state.pRenderTargetView)
 		state.pRenderTargetView->Release();
 	if (state.pDepthStencilView)
 		state.pDepthStencilView->Release();
 
-	context->RSSetViewports(state.RSNumViewPorts, state.pViewPorts);
+	mOrigContext->RSSetViewports(state.RSNumViewPorts, state.pViewPorts);
 	
-	context->OMSetBlendState(state.pBlendState, state.BlendFactor, state.SampleMask);
+	mOrigContext->OMSetBlendState(state.pBlendState, state.BlendFactor, state.SampleMask);
 	if (state.pBlendState)
 		state.pBlendState->Release();
 
-	context->OMSetDepthStencilState(state.pDepthStencilState, state.StencilRef);
+	mOrigContext->OMSetDepthStencilState(state.pDepthStencilState, state.StencilRef);
 	if (state.pDepthStencilState)
 		state.pDepthStencilState->Release();
 
-	context->RSSetState(state.pRasterizerState);
+	mOrigContext->RSSetState(state.pRasterizerState);
 	if (state.pRasterizerState)
 		state.pRasterizerState->Release();
 
-	context->PSSetSamplers(0, 1, state.samplers);
+	mOrigContext->PSSetSamplers(0, 1, state.samplers);
 	if (state.samplers[0])
 		state.samplers[0]->Release();
 
-	context->IASetPrimitiveTopology(state.topology);
+	mOrigContext->IASetPrimitiveTopology(state.topology);
 
-	context->IASetInputLayout(state.pInputLayout);
+	mOrigContext->IASetInputLayout(state.pInputLayout);
 	if (state.pInputLayout)
 		state.pInputLayout->Release();
 
-	context->VSSetShader(state.pVertexShader, state.pVSClassInstances, state.VSNumClassInstances);
+	mOrigContext->VSSetShader(state.pVertexShader, state.pVSClassInstances, state.VSNumClassInstances);
 	if (state.pVertexShader)
 		state.pVertexShader->Release();
 	for (i = 0; i < state.VSNumClassInstances; i++)
 		state.pVSClassInstances[i]->Release();
 
-	context->PSSetShader(state.pPixelShader, state.pPSClassInstances, state.PSNumClassInstances);
+	mOrigContext->PSSetShader(state.pPixelShader, state.pPSClassInstances, state.PSNumClassInstances);
 	if (state.pPixelShader)
 		state.pPixelShader->Release();
 	for (i = 0; i < state.PSNumClassInstances; i++)
 		state.pPSClassInstances[i]->Release();
 
-	context->IASetVertexBuffers(0, 1, state.pVertexBuffers, state.Strides, state.Offsets);
+	mOrigContext->IASetVertexBuffers(0, 1, state.pVertexBuffers, state.Strides, state.Offsets);
 	if (state.pVertexBuffers[0])
 		state.pVertexBuffers[0]->Release();
 
-	context->IASetIndexBuffer(state.IndexBuffer, state.Format, state.Offset);
+	mOrigContext->IASetIndexBuffer(state.IndexBuffer, state.Format, state.Offset);
 	if (state.IndexBuffer)
 		state.IndexBuffer->Release();
 
-	context->VSSetConstantBuffers(0, 1, state.pConstantBuffers);
+	mOrigContext->VSSetConstantBuffers(0, 1, state.pConstantBuffers);
 	if (state.pConstantBuffers[0])
 		state.pConstantBuffers[0]->Release();
 
-	context->PSSetShaderResources(0, 1, state.pShaderResourceViews);
+	mOrigContext->PSSetShaderResources(0, 1, state.pShaderResourceViews);
 	if (state.pShaderResourceViews[0])
 		state.pShaderResourceViews[0]->Release();
 }
+
+#ifdef NTDDI_WIN10
+#include <d3d11on12.h>
+#include <dxgi1_4.h>
+static ID3D11Texture2D* get_11on12_backbuffer(ID3D11Device *mOrigDevice, IDXGISwapChain *mOrigSwapChain)
+{
+	ID3D12Resource *d3d12_bb = NULL;
+	ID3D11Texture2D *d3d11_bb = NULL;
+	ID3D11On12Device *d3d11on12_dev = NULL;
+	IDXGISwapChain3 *swap_chain_3 = NULL;
+	D3D11_RESOURCE_FLAGS flags = { D3D11_BIND_RENDER_TARGET };
+	UINT bb_idx;
+	HRESULT hr;
+
+	if (FAILED(mOrigDevice->QueryInterface(IID_ID3D11On12Device, (void**)&d3d11on12_dev)))
+		return NULL;
+	LogDebug("  ID3D11On12Device: %p\n", d3d11on12_dev);
+
+	// In D3D12 we need to make sure we are writing to the correct back
+	// buffer for the current frame, and failing to do this will lead to a
+	// DXGI_ERROR_ACCESS_DENIED. This differs from DX11 where index 0
+	// always points to the current back buffer. We need the SwapChain3
+	// interface to determine which back buffer is currently active:
+	if (FAILED(mOrigSwapChain->QueryInterface(IID_IDXGISwapChain3, (void**)&swap_chain_3)))
+		goto out;
+	bb_idx = swap_chain_3->GetCurrentBackBufferIndex();
+	LogDebug("  Current Back Buffer Index: %i\n", bb_idx);
+
+	if (FAILED(mOrigSwapChain->GetBuffer(bb_idx, IID_ID3D12Resource, (void**)&d3d12_bb)))
+		goto out;
+	LogDebug("  ID3D12Resource: %p\n", d3d12_bb);
+
+	// At the moment I'm creating a wrapped resource every frame, though
+	// the 11on12 sample code does this once for every back buffer index
+	// and uses AcquireWrappedResources() instead each frame. The sample
+	// code also doesn't cope with resizing swap chains on alt+enter, so
+	// I'm not at all confident that following it to the letter would work.
+	// We know holding a reference to a back buffer will prevent alt+enter
+	// from working - maybe Acquire gets around that, but I don't trust it.
+	//
+	// I'm specifying RT -> PRESENT state transitions here, which follows
+	// the 11to12 sample code, but I don't think this is strictly correct -
+	// surely the game should have already transitioned the back buffer to
+	// the PRESENT state before calling Present(), in which case shouldn't
+	// our in state be PRESENT, not RT? However, while both cases seem to
+	// work just fine, in Fifa 2018 the debug layer seems to indicate both
+	// are wrong - RT->PRESENT says the barrier doesn't match the current
+	// resource state of RT, and PRESENT->PRESENT says it doesn't match the
+	// previous barrier transitioning it to RT.
+	//
+	// ... I don't even ...
+	//
+	// ... What? ...
+	//
+	// ... That doesn't make sense!!! Maybe they have a game bug and left
+	// it as RT by mistake, but that still doesn't make sense!!! I'm either
+	// misinterpreting one of the debug messages or I'm missing something.
+	//
+	// AFAICT there's no way to query the current "state" to answer this
+	// correctly, because despite the name there is actually no "state"
+	// anywhere outside of the debug layer. D3D11 tracked this stuff and
+	// automatically submitted the correct memory barrier type to the GPU,
+	// but DX12 saves some CPU cycles and doesn't track anything, leaving
+	// it up to the application to know which barrier to use, and the
+	// "state transition" is really just a way to assist an inexperienced
+	// developer in choosing the right one (that's actually kind of clever
+	// - memory barriers are really easy to mess up and not realise) - so,
+	// this isn't a state transition at all, it's a memory barrier.
+	//
+	// Okay, so it's a memory barrier - knowing that, what would be the
+	// safest thing to do? Well, if the game already transitioned to
+	// PRESENT, then they already did a memory barrier of their own, and so
+	// long as we do another after we finish writing to the back buffer it
+	// should be fine, and shouldn't matter if we start writing to it now
+	// without another barrier to transition it back to RT. If the game
+	// didn't transition it to PRESENT, and the last barrier they did left
+	// it as RT, then (they have a bug) it won't matter if we start writing
+	// to it immediately as is, but we should still do a memory barrier
+	// once we are finished. Ok, either way I don't think it actually
+	// matters unless they have done something very weird and we need a
+	// different barrier altogether, or I haven't considered some subtlty -
+	// let's go with RT->PRESENT for now and see how it goes in practice:
+	hr = d3d11on12_dev->CreateWrappedResource(d3d12_bb, &flags,
+			D3D12_RESOURCE_STATE_RENDER_TARGET, /* in "state" */
+			D3D12_RESOURCE_STATE_PRESENT, /* out "state" */
+			IID_ID3D11Texture2D, (void**)&d3d11_bb);
+	LogDebug("  ID3D11Texture2D: %p, result: 0x%x\n", d3d11_bb, hr);
+
+out:
+	if (d3d12_bb)
+		d3d12_bb->Release();
+	if (swap_chain_3)
+		swap_chain_3->Release();
+	if (d3d11on12_dev)
+		d3d11on12_dev->Release();
+
+	return d3d11_bb;
+}
+
+static void flush_d3d11on12(ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext)
+{
+	ID3D11On12Device *d3d11on12_dev = NULL;
+
+	if (FAILED(mOrigDevice->QueryInterface(IID_ID3D11On12Device, (void**)&d3d11on12_dev)))
+		return;
+
+	// We need to tell 11on12 to release the resources it is wrapping,
+	// otherwise it will still hold a reference to the back buffer which
+	// will prevent alt+enter from working. This should also transition the
+	// D3D12 resource state from RENDER_TARGET to PRESENT. We haven't
+	// bothered keeping our own reference to the back buffer, so just have
+	// it release all of them - that should be fine unless the game or
+	// another overlay is also using 11on12 and for some reason did not
+	// release a resource and isn't expecting to have to re-acquire it:
+	d3d11on12_dev->ReleaseWrappedResources(NULL, 0);
+	d3d11on12_dev->Release();
+
+	// D3D11 Immediate context must be flushed before any further D3D12
+	// work can be performed. This should be done as late as possible to
+	// ensure no commands are queued up, and in particular needs to be done
+	// after we have released any references to the back buffer, including
+	// unbinding it from the pipeline, and after ReleaseWrappedResources(),
+	// since all the releases can be delayed:
+	mOrigContext->Flush();
+}
+
+#else
+
+static ID3D11Texture2D* get_11on12_backbuffer(ID3D11Device *mOrigDevice, IDXGISwapChain *mOrigSwapChain)
+{
+	return NULL;
+}
+
+static void flush_d3d11on12(ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext)
+{
+}
+
+#endif
 
 // We can't trust the game to have a proper drawing environment for DirectXTK.
 //
@@ -198,19 +400,33 @@ HRESULT Overlay::InitDrawState()
 	HRESULT hr;
 
 	ID3D11Texture2D *pBackBuffer;
-	hr = mHackerSwapChain->GetOrigSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
-	if (FAILED(hr))
-		return hr;
+	hr = mOrigSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+	if (FAILED(hr)) {
+		// The back buffer doesn't support the D3D11 Texture2D
+		// interface. Maybe this is DX12 - if we have been built with
+		// the Win 10 SDK we can handle that via 11On12:
+		pBackBuffer = get_11on12_backbuffer(mOrigDevice, mOrigSwapChain);
+		if (!pBackBuffer)
+			return hr;
+	}
+
+	// By doing this every frame, we are always up to date with correct size,
+	// and we need the address of the BackBuffer anyway, so this is low cost.
+	D3D11_TEXTURE2D_DESC description;
+	pBackBuffer->GetDesc(&description);
+	mResolution = DirectX::XMUINT2(description.Width, description.Height);
 
 	// use the back buffer address to create the render target
 	ID3D11RenderTargetView *backbuffer;
-	hr = mHackerDevice->GetOrigDevice()->CreateRenderTargetView(pBackBuffer, NULL, &backbuffer);
+	hr = mOrigDevice->CreateRenderTargetView(pBackBuffer, NULL, &backbuffer);
+
 	pBackBuffer->Release();
+
 	if (FAILED(hr))
 		return hr;
 
 	// set the first render target as the back buffer, with no stencil
-	mHackerContext->GetPassThroughOrigContext()->OMSetRenderTargets(1, &backbuffer, NULL);
+	mOrigContext->OMSetRenderTargets(1, &backbuffer, NULL);
 
 	// Holding onto a view of the back buffer can cause a crash on
 	// ResizeBuffers, so it is very important we release it here - it will
@@ -222,9 +438,39 @@ HRESULT Overlay::InitDrawState()
 
 	// Make sure there is at least one open viewport for DirectXTK to use.
 	D3D11_VIEWPORT openView = CD3D11_VIEWPORT(0.0, 0.0, float(mResolution.x), float(mResolution.y));
-	mHackerContext->GetPassThroughOrigContext()->RSSetViewports(1, &openView);
+	mOrigContext->RSSetViewports(1, &openView);
 
 	return S_OK;
+}
+
+void Overlay::DrawRectangle(float x, float y, float w, float h, float r, float g, float b, float opacity)
+{
+	DirectX::XMVECTORF32 colour = {r, g, b, opacity};
+
+	mOrigContext->OMSetBlendState(mStates->AlphaBlend(), nullptr, 0xFFFFFFFF);
+	mOrigContext->OMSetDepthStencilState(mStates->DepthNone(), 0);
+	mOrigContext->RSSetState(mStates->CullNone());
+
+	// Use pixel coordinates to match SpriteBatch:
+	Matrix proj = Matrix::CreateScale(2.0f / mResolution.x, -2.0f / mResolution.y, 1)
+		* Matrix::CreateTranslation(-1, 1, 0);
+	mEffect->SetProjection(proj);
+
+	mEffect->Apply(mOrigContext);
+
+	mOrigContext->IASetInputLayout(mInputLayout.Get());
+
+	mPrimitiveBatch->Begin();
+
+	// DirectXTK is using 0,1,2 0,2,3, so layout the vectors clockwise:
+	DirectX::VertexPositionColor v1(Vector3(x  , y  , 0), colour);
+	DirectX::VertexPositionColor v2(Vector3(x+w, y  , 0), colour);
+	DirectX::VertexPositionColor v3(Vector3(x+w, y+h, 0), colour);
+	DirectX::VertexPositionColor v4(Vector3(x  , y+h, 0), colour);
+
+	mPrimitiveBatch->DrawQuad(v1, v2, v3, v4);
+
+	mPrimitiveBatch->End();
 }
 
 // -----------------------------------------------------------------------------
@@ -311,7 +557,7 @@ static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 // example, we'll show one line for each, but only those that are present
 // in ShaderFixes and have something other than a blank line at the top.
 
-void Overlay::DrawShaderInfoLine(char *type, UINT64 selectedShader, int *y, bool shader)
+void Overlay::DrawShaderInfoLine(char *type, UINT64 selectedShader, float *y, bool shader)
 {
 	wchar_t osdString[maxstring];
 	Vector2 strSize;
@@ -341,30 +587,76 @@ void Overlay::DrawShaderInfoLine(char *type, UINT64 selectedShader, int *y, bool
 	if (!G->verbose_overlay)
 		x = max(float(mResolution.x - strSize.x) / 2, 0);
 
-	textPosition = Vector2(x, 10 + ((*y)++ * strSize.y));
+	textPosition = Vector2(x, *y);
+	*y += strSize.y;
 	mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 }
 
-void Overlay::DrawShaderInfoLines()
+void Overlay::DrawShaderInfoLines(float *y)
 {
-	int y = 1;
-
 	// Order is the same as the pipeline... Not quite the same as the count
 	// summary line, which is sorted by "the order in which we added them"
 	// (which to be fair, is pretty much their order of importance for our
 	// purposes). Since these only show up while hunting, it is better to
 	// have them reflect the actual order that they are run in. The summary
 	// line can stay in order of importance since it is always shown.
-	DrawShaderInfoLine("IB", G->mSelectedIndexBuffer, &y, false);
-	DrawShaderInfoLine("VS", G->mSelectedVertexShader, &y, true);
-	DrawShaderInfoLine("HS", G->mSelectedHullShader, &y, true);
-	DrawShaderInfoLine("DS", G->mSelectedDomainShader, &y, true);
-	DrawShaderInfoLine("GS", G->mSelectedGeometryShader, &y, true);
-	DrawShaderInfoLine("PS", G->mSelectedPixelShader, &y, true);
-	DrawShaderInfoLine("CS", G->mSelectedComputeShader, &y, true);
+	DrawShaderInfoLine("IB", G->mSelectedIndexBuffer, y, false);
+	DrawShaderInfoLine("VS", G->mSelectedVertexShader, y, true);
+	DrawShaderInfoLine("HS", G->mSelectedHullShader, y, true);
+	DrawShaderInfoLine("DS", G->mSelectedDomainShader, y, true);
+	DrawShaderInfoLine("GS", G->mSelectedGeometryShader, y, true);
+	DrawShaderInfoLine("PS", G->mSelectedPixelShader, y, true);
+	DrawShaderInfoLine("CS", G->mSelectedComputeShader, y, true);
 	// FIXME? This one is stored as a handle, not a hash:
 	if (G->mSelectedRenderTarget != (ID3D11Resource *)-1)
-		DrawShaderInfoLine("RT", GetOrigResourceHash(G->mSelectedRenderTarget), &y, false);
+		DrawShaderInfoLine("RT", GetOrigResourceHash(G->mSelectedRenderTarget), y, false);
+}
+
+void Overlay::DrawNotices(float y)
+{
+	std::vector<OverlayNotice>::iterator notice;
+	DWORD time = GetTickCount();
+	Vector2 textPosition;
+	Vector2 strSize;
+	int level, displayed = 0;
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	has_notice = false;
+	for (level = 0; level < NUM_LOG_LEVELS; level++) {
+		if (log_levels[level].hide_in_release && G->hunting == HUNTING_MODE_DISABLED)
+			continue;
+
+		for (notice = notices[level].begin(); notice != notices[level].end() && displayed < MAX_SIMULTANEOUS_NOTICES; ) {
+			if (!notice->timestamp) {
+				// Set the timestamp on the first present call
+				// that we display the message after it was
+				// issued. Means messages won't be missed if
+				// they exceed the maximum we can display
+				// simultaneously, and helps combat messages
+				// disappearing too quickly if there have been
+				// no present calls for a while after they were
+				// issued.
+				notice->timestamp = time;
+			} else if ((time - notice->timestamp) > log_levels[level].duration) {
+				notice = notices[level].erase(notice);
+				continue;
+			}
+
+			strSize = mFontNotifications->MeasureString(notice->message.c_str());
+
+			DrawRectangle(0, y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
+
+			mFontNotifications->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, y), log_levels[level].colour);
+			y += strSize.y + 5;
+
+			has_notice = true;
+			notice++;
+			displayed++;
+		}
+	}
+
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 
@@ -397,15 +689,12 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
 		swprintf_s(info, maxstring, L"Stereo disabled");
 }
 
-void Overlay::Resize(UINT Width, UINT Height)
-{
-	mResolution.x = Width;
-	mResolution.y = Height;
-}
-
 void Overlay::DrawOverlay(void)
 {
 	HRESULT hr;
+
+	if (G->hunting != HUNTING_MODE_ENABLED && !has_notice)
+		return;
 
 	// Since some games did not like having us change their drawing state from
 	// SpriteBatch, we now save and restore all state information for the GPU
@@ -421,23 +710,111 @@ void Overlay::DrawOverlay(void)
 			wchar_t osdString[maxstring];
 			Vector2 strSize;
 			Vector2 textPosition;
+			float y = 10.0f;
 
-			// Top of screen
-			CreateShaderCountString(osdString);
-			strSize = mFont->MeasureString(osdString);
-			textPosition = Vector2(float(mResolution.x - strSize.x) / 2, 10);
-			mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+			if (G->hunting == HUNTING_MODE_ENABLED) {
+				// Top of screen
+				CreateShaderCountString(osdString);
+				strSize = mFont->MeasureString(osdString);
+				textPosition = Vector2(float(mResolution.x - strSize.x) / 2, y);
+				mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+				y += strSize.y;
 
-			DrawShaderInfoLines();
+				DrawShaderInfoLines(&y);
 
-			// Bottom of screen
-			CreateStereoInfoString(mHackerDevice->mStereoHandle, osdString);
-			strSize = mFont->MeasureString(osdString);
-			textPosition = Vector2(float(mResolution.x - strSize.x) / 2, float(mResolution.y - strSize.y - 10));
-			mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+				// Bottom of screen
+				CreateStereoInfoString(mHackerDevice->mStereoHandle, osdString);
+				strSize = mFont->MeasureString(osdString);
+				textPosition = Vector2(float(mResolution.x - strSize.x) / 2, float(mResolution.y - strSize.y - 10));
+				mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+			}
+
+			if (has_notice)
+				DrawNotices(y);
 		}
 		mSpriteBatch->End();
 	}
 fail_restore:
 	RestoreState();
+
+	flush_d3d11on12(mOrigDevice, mOrigContext);
+}
+
+OverlayNotice::OverlayNotice(std::wstring message) :
+	message(message),
+	timestamp(0)
+{
+}
+
+void ClearNotices()
+{
+	int level;
+
+	if (notice_cleared_frame == G->frame_no)
+		return;
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	for (level = 0; level < NUM_LOG_LEVELS; level++)
+		notices[level].clear();
+
+	notice_cleared_frame = G->frame_no;
+	has_notice = false;
+
+	LeaveCriticalSection(&G->mCriticalSection);
+}
+
+void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
+{
+	wchar_t msg[maxstring];
+	va_list ap;
+
+	va_start(ap, fmt);
+	vLogInfoW(fmt, ap);
+
+	// Using _vsnwprintf_s so we don't crash if the message is too long for
+	// the buffer, and truncate it instead - unless we can automatically
+	// wrap the message, which DirectXTK doesn't appear to support, who
+	// cares if it gets cut off somewhere off screen anyway?
+	_vsnwprintf_s(msg, maxstring, _TRUNCATE, fmt, ap);
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	notices[level].emplace_back(msg);
+	has_notice = true;
+
+	LeaveCriticalSection(&G->mCriticalSection);
+
+	va_end(ap);
+}
+
+// ASCII version of the above. DirectXTK only understands wide strings, so we
+// need to convert it to that, but we can't just convert the format and hand it
+// to LogOverlayW, because that would reverse the meaning of %s and %S in the
+// format string. Instead we do our own vLogInfo and _vsnprintf_s to handle the
+// format string correctly and convert the result to a wide string.
+void LogOverlay(LogLevel level, char *fmt, ...)
+{
+	char amsg[maxstring];
+	wchar_t wmsg[maxstring];
+	va_list ap;
+
+	va_start(ap, fmt);
+	vLogInfo(fmt, ap);
+
+	// Using _vsnprintf_s so we don't crash if the message is too long for
+	// the buffer, and truncate it instead - unless we can automatically
+	// wrap the message, which DirectXTK doesn't appear to support, who
+	// cares if it gets cut off somewhere off screen anyway?
+	_vsnprintf_s(amsg, maxstring, _TRUNCATE, fmt, ap);
+	mbstowcs(wmsg, amsg, maxstring);
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	notices[level].emplace_back(wmsg);
+	has_notice = true;
+
+	LeaveCriticalSection(&G->mCriticalSection);
+
+	va_end(ap);
 }

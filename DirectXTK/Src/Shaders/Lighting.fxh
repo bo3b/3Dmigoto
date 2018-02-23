@@ -39,7 +39,7 @@ ColorPair ComputeLights(float3 eyeVector, float3 worldNormal, uniform int numLig
     float3 zeroL = step(0, dotL);
 
     float3 diffuse  = zeroL * dotL;
-    float3 specular = pow(max(dotH, 0) * zeroL, SpecularPower);
+    float3 specular = pow(max(dotH, 0) * zeroL, SpecularPower) * dotL;
 
     ColorPair result;
     
@@ -95,3 +95,4 @@ CommonVSOutputPixelLighting ComputeCommonVSOutputPixelLighting(float4 position, 
     vout.PositionPS = cout.Pos_ps; \
     vout.PositionWS = float4(cout.Pos_ws, cout.FogFactor); \
     vout.NormalWS = cout.Normal_ws;
+

@@ -24,17 +24,31 @@
 
 namespace DirectX
 {
-    #if (DIRECTX_MATH_VERSION < 305) && !defined(XM_CALLCONV)
-    #define XM_CALLCONV __fastcall
-    typedef const XMVECTOR& HXMVECTOR;
-    typedef const XMMATRIX& FXMMATRIX;
-    #endif
+    // Vertex struct holding position information.
+    struct VertexPosition
+    {
+        VertexPosition() = default;
+
+        VertexPosition(XMFLOAT3 const& position)
+            : position(position)
+        { }
+
+        VertexPosition(FXMVECTOR position)
+        {
+            XMStoreFloat3(&this->position, position);
+        }
+
+        XMFLOAT3 position;
+
+        static const int InputElementCount = 1;
+        static const D3D11_INPUT_ELEMENT_DESC InputElements[InputElementCount];
+    };
+
 
     // Vertex struct holding position and color information.
     struct VertexPositionColor
     {
-        VertexPositionColor()
-        { }
+        VertexPositionColor() = default;
 
         VertexPositionColor(XMFLOAT3 const& position, XMFLOAT4 const& color)
           : position(position),
@@ -58,8 +72,7 @@ namespace DirectX
     // Vertex struct holding position and texture mapping information.
     struct VertexPositionTexture
     {
-        VertexPositionTexture()
-        { }
+        VertexPositionTexture() = default;
 
         VertexPositionTexture(XMFLOAT3 const& position, XMFLOAT2 const& textureCoordinate)
           : position(position),
@@ -80,11 +93,39 @@ namespace DirectX
     };
 
 
+    // Vertex struct holding position and dual texture mapping information.
+    struct VertexPositionDualTexture
+    {
+        VertexPositionDualTexture() = default;
+
+        VertexPositionDualTexture(XMFLOAT3 const& position, XMFLOAT2 const& textureCoordinate0, XMFLOAT2 const& textureCoordinate1)
+            : position(position),
+            textureCoordinate0(textureCoordinate0),
+            textureCoordinate1(textureCoordinate1)
+        { }
+
+        VertexPositionDualTexture(FXMVECTOR position,
+            FXMVECTOR textureCoordinate0,
+            FXMVECTOR textureCoordinate1)
+        {
+            XMStoreFloat3(&this->position, position);
+            XMStoreFloat2(&this->textureCoordinate0, textureCoordinate0);
+            XMStoreFloat2(&this->textureCoordinate1, textureCoordinate1);
+        }
+
+        XMFLOAT3 position;
+        XMFLOAT2 textureCoordinate0;
+        XMFLOAT2 textureCoordinate1;
+
+        static const int InputElementCount = 3;
+        static const D3D11_INPUT_ELEMENT_DESC InputElements[InputElementCount];
+    };
+
+
     // Vertex struct holding position and normal vector.
     struct VertexPositionNormal
     {
-        VertexPositionNormal()
-        { }
+        VertexPositionNormal() = default;
 
         VertexPositionNormal(XMFLOAT3 const& position, XMFLOAT3 const& normal)
           : position(position),
@@ -108,8 +149,7 @@ namespace DirectX
     // Vertex struct holding position, color, and texture mapping information.
     struct VertexPositionColorTexture
     {
-        VertexPositionColorTexture()
-        { }
+        VertexPositionColorTexture() = default;
 
         VertexPositionColorTexture(XMFLOAT3 const& position, XMFLOAT4 const& color, XMFLOAT2 const& textureCoordinate)
           : position(position),
@@ -136,8 +176,7 @@ namespace DirectX
     // Vertex struct holding position, normal vector, and color information.
     struct VertexPositionNormalColor
     {
-        VertexPositionNormalColor()
-        { }
+        VertexPositionNormalColor() = default;
 
         VertexPositionNormalColor(XMFLOAT3 const& position, XMFLOAT3 const& normal, XMFLOAT4 const& color)
           : position(position),
@@ -164,8 +203,7 @@ namespace DirectX
     // Vertex struct holding position, normal vector, and texture mapping information.
     struct VertexPositionNormalTexture
     {
-        VertexPositionNormalTexture()
-        { }
+        VertexPositionNormalTexture() = default;
 
         VertexPositionNormalTexture(XMFLOAT3 const& position, XMFLOAT3 const& normal, XMFLOAT2 const& textureCoordinate)
           : position(position),
@@ -192,8 +230,7 @@ namespace DirectX
     // Vertex struct holding position, normal vector, color, and texture mapping information.
     struct VertexPositionNormalColorTexture
     {
-        VertexPositionNormalColorTexture()
-        { }
+        VertexPositionNormalColorTexture() = default;
 
         VertexPositionNormalColorTexture(XMFLOAT3 const& position, XMFLOAT3 const& normal, XMFLOAT4 const& color, XMFLOAT2 const& textureCoordinate)
           : position(position),
@@ -224,8 +261,7 @@ namespace DirectX
     // tangent, color (RGBA), and texture mapping information
     struct VertexPositionNormalTangentColorTexture
     {
-        VertexPositionNormalTangentColorTexture()
-        { }
+        VertexPositionNormalTangentColorTexture() = default;
 
         XMFLOAT3 position;
         XMFLOAT3 normal;
@@ -282,8 +318,7 @@ namespace DirectX
     // tangent, color (RGBA), texture mapping information, and skinning weights
     struct VertexPositionNormalTangentColorTextureSkinning : public VertexPositionNormalTangentColorTexture
     {
-        VertexPositionNormalTangentColorTextureSkinning()
-        { }
+        VertexPositionNormalTangentColorTextureSkinning() = default;
 
         uint32_t indices;
         uint32_t weights;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <d3d11_1.h>
+
 struct DrawCallInfo
 {
 	UINT VertexCount, IndexCount, InstanceCount;
