@@ -2953,7 +2953,9 @@ void LoadConfigFile()
 
 	// [System]
 	LogInfo("[System]\n");
-	GetIniStringAndLog(L"System", L"proxy_d3d11", 0, G->CHAIN_DLL_PATH, MAX_PATH);
+	GetIniStringAndLog(L"System", L"proxy_d3d11", 0, G->CHAIN_DLL_PATH, MAX_PATH);	
+	G->load_library_redirect = GetIniInt(L"System", L"load_library_redirect", 2, NULL);
+
 	if (GetIniStringAndLog(L"System", L"hook", 0, setting, MAX_PATH))
 	{
 		G->enable_hooks = parse_enum_option_string<wchar_t *, EnableHooks>
@@ -3030,7 +3032,7 @@ void LoadConfigFile()
 			wcscpy(G->SHADER_PATH, setting);
 		}
 		// Create directory?
-		CreateDirectory(G->SHADER_PATH, 0);
+		CreateDirectoryEnsuringAccess(G->SHADER_PATH);
 	}
 	if (GetIniStringAndLog(L"Rendering", L"cache_directory", 0, G->SHADER_CACHE_PATH, MAX_PATH))
 	{
@@ -3044,7 +3046,7 @@ void LoadConfigFile()
 			wcscpy(G->SHADER_CACHE_PATH, setting);
 		}
 		// Create directory?
-		CreateDirectory(G->SHADER_CACHE_PATH, 0);
+		CreateDirectoryEnsuringAccess(G->SHADER_CACHE_PATH);
 	}
 
 	G->CACHE_SHADERS = GetIniBool(L"Rendering", L"cache_shaders", false, NULL);

@@ -518,7 +518,7 @@ void HackerContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *m
 	UINT i, c;
 	errno_t err;
 
-	err = _wfopen_s(&fd, filename, L"w");
+	err = wfopen_ensuring_access(&fd, filename, L"w");
 	if (!fd) {
 		FALogInfo("Unable to create %S: %u\n", filename, err);
 		return;
@@ -556,7 +556,7 @@ void HackerContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 	UINT i, j, start, end, buf_idx;
 	errno_t err;
 
-	err = _wfopen_s(&fd, filename, L"w");
+	err = wfopen_ensuring_access(&fd, filename, L"w");
 	if (!fd) {
 		FALogInfo("Unable to create %S: %u\n", filename, err);
 		return;
@@ -607,7 +607,7 @@ void HackerContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 	UINT start, end, i;
 	errno_t err;
 
-	err = _wfopen_s(&fd, filename, L"w");
+	err = wfopen_ensuring_access(&fd, filename, L"w");
 	if (!fd) {
 		FALogInfo("Unable to create %S: %u\n", filename, err);
 		return;
@@ -693,7 +693,7 @@ void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	if (options & FrameAnalysisOptions::DUMP_XX_BIN) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".buf");
 
-		err = _wfopen_s(&fd, filename, L"wb");
+		err = wfopen_ensuring_access(&fd, filename, L"wb");
 		if (!fd) {
 			FALogInfo("Unable to create %S: %u\n", filename, err);
 			goto out_unmap;

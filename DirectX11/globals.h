@@ -302,6 +302,7 @@ struct Globals
 	wchar_t SHADER_PATH[MAX_PATH];
 	wchar_t SHADER_CACHE_PATH[MAX_PATH];
 	wchar_t CHAIN_DLL_PATH[MAX_PATH];
+	int load_library_redirect;
 
 	EnableHooks enable_hooks;
 	
@@ -533,6 +534,7 @@ struct Globals
 		ZBufferHashToInject(0),
 		SCISSOR_DISABLE(0),
 
+		load_library_redirect(2),
 		enable_hooks(EnableHooks::INVALID),
 		enable_check_interface(false),
 		enable_dxgi1_2(0),
