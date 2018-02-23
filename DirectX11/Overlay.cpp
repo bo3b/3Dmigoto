@@ -18,7 +18,7 @@
 #include "HackerDevice.h"
 #include "HackerContext.h"
 
-#define MAX_SIMULTANEOUS_NOTICES 6
+#define MAX_SIMULTANEOUS_NOTICES 10
 
 static std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
 static bool has_notice = false;
@@ -67,10 +67,18 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	// The only exception being that we need the HackerDevice in order to
 	// draw the current stereoparams.
 	mHackerDevice = pDevice;
+	mHackerContext = pContext;
 	mOrigSwapChain = pSwapChain;
+
 	// Must use trampoline context to prevent 3DMigoto hunting its own overlay:
 	mOrigDevice = mHackerDevice->GetPassThroughOrigDevice1();
 	mOrigContext = pContext->GetPassThroughOrigContext1();
+
+	// We are actively using the Device and Context and SwapChain, so we need to 
+	// make sure they do not get Released without us.  This happened in FFXIV.
+	mHackerDevice->AddRef();
+	mHackerContext->AddRef();
+	mOrigSwapChain->AddRef();
 
 	// The courierbold.spritefont is now included as binary resource data attached
 	// to the d3d11.dll.  We can fetch that resource and pass it to new SpriteFont
@@ -124,6 +132,10 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 
 Overlay::~Overlay()
 {
+	LogInfo("Overlay::~Overlay deleted for SwapChain %p\n", mOrigSwapChain);
+	mOrigSwapChain->Release();
+	mOrigContext->Release();
+	mOrigDevice->Release();
 }
 
 

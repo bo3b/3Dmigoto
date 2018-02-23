@@ -331,7 +331,6 @@ struct Globals
 
 	int marking_mode;
 	int mark_snapshot;
-	bool confirmation_tones;
 	int gForceStereo;
 	bool gCreateStereoProfile;
 	int gSurfaceCreateMode;
@@ -542,7 +541,7 @@ struct Globals
 		ZBufferHashToInject(0),
 		SCISSOR_DISABLE(0),
 
-		load_library_redirect(0),
+		load_library_redirect(2),
 		enable_hooks(EnableHooks::INVALID),
 		enable_check_interface(false),
 		enable_create_device(0),

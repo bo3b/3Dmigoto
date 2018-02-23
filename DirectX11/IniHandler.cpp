@@ -192,7 +192,22 @@ static IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &
 	return sections.end();
 }
 
-#define IniWarning(fmt, ...) do { LogOverlay(LOG_WARNING, fmt, __VA_ARGS__); } while (0)
+// We now emit a single warning tone after the config file is [re]loaded to get
+// the shaderhackers attention if something needs to be addressed, since their
+// eyes may be focussed elsewhere and may miss the notification message[s].
+static bool ini_warned = false;
+#define IniWarning(fmt, ...) do { \
+	ini_warned = true; \
+	LogOverlay(LOG_WARNING, fmt, __VA_ARGS__); \
+} while (0)
+
+static void emit_ini_warning_tone()
+{
+	if (!ini_warned)
+		return;
+	ini_warned = false;
+	BeepFailure();
+}
 
 static void ParseIniSectionLine(wstring *wline, wstring *section,
 		bool *warn_duplicates, bool *warn_lines_without_equals,
@@ -2636,7 +2651,7 @@ static void ParseSamplerState(CustomShader *shader, const wchar_t *section)
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *CustomShaderIniKeys[] = {
 	L"vs", L"hs", L"ds", L"gs", L"ps", L"cs",
-	L"max_executions_per_frame",
+	L"max_executions_per_frame", L"flags",
 	// OM Blend State overrides:
 	L"blend", L"alpha", L"mask",
 	L"blend[0]", L"blend[1]", L"blend[2]", L"blend[3]",
@@ -2712,6 +2727,14 @@ static void ParseCustomShaderSections()
 		LogInfoW(L"[%s]\n", shader_id->c_str());
 
 		failed = false;
+
+		// Flags is currently just applied to every shader in the chain
+		// because it's so rarely needed and it doesn't really matter.
+		// We can add vs_flags and so on later if we really need to.
+		if (GetIniStringAndLog(shader_id->c_str(), L"flags", 0, setting, MAX_PATH)) {
+			custom_shader->compile_flags = parse_enum_option_string<const wchar_t *, D3DCompileFlags, wchar_t*>
+				(D3DCompileFlagNames, setting, NULL);
+		}
 
 		if (GetIniString(shader_id->c_str(), L"vs", 0, setting, MAX_PATH))
 			failed |= custom_shader->compile('v', setting, shader_id);
@@ -3290,7 +3313,7 @@ void LoadConfigFile()
 	// [System]
 	LogInfo("[System]\n");
 	GetIniStringAndLog(L"System", L"proxy_d3d11", 0, G->CHAIN_DLL_PATH, MAX_PATH);	
-	G->load_library_redirect = GetIniInt(L"System", L"load_library_redirect", 0, NULL);
+	G->load_library_redirect = GetIniInt(L"System", L"load_library_redirect", 2, NULL);
 
 	if (GetIniStringAndLog(L"System", L"hook", 0, setting, MAX_PATH))
 	{
@@ -3514,7 +3537,6 @@ void LoadConfigFile()
 	}
 
 	G->mark_snapshot = GetIniInt(L"Hunting", L"mark_snapshot", 0, NULL);
-	G->confirmation_tones = GetIniBool(L"Hunting", L"confirmation_tones", false, NULL);
 
 	RegisterHuntingKeyBindings();
 	RegisterPresetKeyBindings();
@@ -3596,6 +3618,8 @@ void LoadConfigFile()
 
 	if (G->hide_cursor || G->SCREEN_UPSCALING)
 		InstallMouseHooks(G->hide_cursor);
+
+	emit_ini_warning_tone();
 }
 
 // This variant is called by the profile manager helper with the path to the

@@ -1,9 +1,86 @@
+#define cursor_pass     IniParams[5].w
+#define cursor_window   IniParams[6].xy
+#define cursor_hotspot  IniParams[6].zw
+#define cursor_showing  IniParams[7].y
+#define window_size     IniParams[7].zw
+
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
 Texture2D<float4> cursor_mask : register(t100);
 Texture2D<float4> cursor_color : register(t101);
 
+struct vs2ps {
+	float4 pos : SV_Position0;
+	float2 texcoord : TEXCOORD0;
+};
+
+#ifdef VERTEX_SHADER
+void main(out vs2ps output, uint vertex : SV_VertexID)
+{
+	uint mask_width, mask_height;
+	uint color_width, color_height;
+	float2 cursor_size;
+
+	// For easy bailing:
+	output.pos = 0;
+	output.texcoord = 0;
+
+	if (!cursor_showing)
+		return;
+
+	cursor_color.GetDimensions(color_width, color_height);
+	cursor_mask.GetDimensions(mask_width, mask_height);
+
+	if (color_width) {
+		// Colour cursor, bail if we are in the black and white / inverted cursor pass:
+		if (cursor_pass == 2)
+			return;
+		cursor_size = float2(color_width, color_height);
+	} else {
+		// Black and white / inverted cursor, bail if we are in the colour cursor pass:
+		if (cursor_pass == 1)
+			return;
+		cursor_size = float2(mask_width, mask_height / 2);
+	}
+
+	output.pos.xy = cursor_window - cursor_hotspot;
+
+	// Not using vertex buffers so manufacture our own coordinates.
+	switch(vertex) {
+		case 0:
+			output.texcoord = float2(0, cursor_size.y);
+			break;
+		case 1:
+			output.texcoord = float2(0, 0);
+			output.pos.y += cursor_size.y;
+			break;
+		case 2:
+			output.texcoord = float2(cursor_size.x, cursor_size.y);
+			output.pos.x += cursor_size.x;
+			break;
+		case 3:
+			output.texcoord = float2(cursor_size.x, 0);
+			output.pos.xy += cursor_size;
+			break;
+		default:
+			output.pos.xy = 0;
+			break;
+	};
+
+	// Scale from pixels to clip space:
+	output.pos.xy = (output.pos.xy / window_size * 2 - 1) * float2(1, -1);
+	output.pos.zw = float2(0, 1);
+
+	// Adjust stereo depth of pos here using whatever means you feel is
+	// suitable for this game, e.g. with a suitable crosshair.hlsl you
+	// could automatically adjust it from the depth buffer:
+	//float2 mouse_pos = (cursor_window / window_size * 2 - 1);
+	//output.pos.x += adjust_from_depth_buffer(mouse_pos.x, mouse_pos.y);
+}
+#endif /* VERTEX_SHADER */
+
+#ifdef PIXEL_SHADER
 // Draw a black and white, and possibly inverted cursor,
 // e.g. use "Windows Standard", "Windows Inverted" or "Windows Black" to test
 float4 draw_cursor_bw(float2 texcoord, float2 dimensions)
@@ -135,7 +212,8 @@ float4 draw_cursor(float2 texcoord)
 		return smooth_cursor_bw(texcoord);
 }
 
-void main(float4 pos : SV_Position0, float2 texcoord : TEXCOORD0, out float4 result : SV_Target0)
+void main(vs2ps input, out float4 result : SV_Target0)
 {
-	result = draw_cursor(texcoord);
+	result = draw_cursor(input.texcoord);
 }
+#endif /* PIXEL_SHADER */

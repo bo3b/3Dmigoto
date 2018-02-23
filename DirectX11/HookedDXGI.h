@@ -46,6 +46,18 @@ extern "C" HRESULT(__stdcall *fnOrigCreateSwapChain)(
 	_Out_  IDXGISwapChain **ppSwapChain);
 
 
+// Called from d3d11Wrapper for CreateDeviceAndSwapChain
+
+extern "C" HRESULT __stdcall HackerCreateSwapChain(
+	IDXGIFactory * This,
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][in] */
+	_In_  DXGI_SWAP_CHAIN_DESC *pDesc,
+	/* [annotation][out] */
+	_Out_  IDXGISwapChain **ppSwapChain);
+
+
 // Called from HookedDXGI
 
 extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory);

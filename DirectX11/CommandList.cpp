@@ -931,7 +931,8 @@ CustomShader::CustomShader() :
 	frame_no(0),
 	executions_this_frame(0),
 	sampler_override(0),
-	sampler_state(nullptr)
+	sampler_state(nullptr),
+	compile_flags(D3DCompileFlags::OPTIMIZATION_LEVEL3)
 {
 	int i;
 
@@ -979,6 +980,13 @@ CustomShader::~CustomShader()
 		sampler_state->Release();
 }
 
+static const D3D_SHADER_MACRO vs_macros[] = { "VERTEX_SHADER", "", NULL, NULL };
+static const D3D_SHADER_MACRO hs_macros[] = { "HULL_SHADER", "", NULL, NULL };
+static const D3D_SHADER_MACRO ds_macros[] = { "DOMAIN_SHADER", "", NULL, NULL };
+static const D3D_SHADER_MACRO gs_macros[] = { "GEOMETRY_SHADER", "", NULL, NULL };
+static const D3D_SHADER_MACRO ps_macros[] = { "PIXEL_SHADER", "", NULL, NULL };
+static const D3D_SHADER_MACRO cs_macros[] = { "COMPUTE_SHADER", "", NULL, NULL };
+
 // This is similar to the other compile routines, but still distinct enough to
 // get it's own function for now - TODO: Refactor out the common code
 bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
@@ -992,32 +1000,39 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 	char shaderModel[7];
 	ID3DBlob **ppBytecode = NULL;
 	ID3DBlob *pErrorMsgs = NULL;
+	const D3D_SHADER_MACRO *macros = NULL;
 
 	LogInfo("  %cs=%S\n", type, filename);
 
 	switch(type) {
 		case 'v':
 			ppBytecode = &vs_bytecode;
+			macros = vs_macros;
 			vs_override = true;
 			break;
 		case 'h':
 			ppBytecode = &hs_bytecode;
+			macros = hs_macros;
 			hs_override = true;
 			break;
 		case 'd':
 			ppBytecode = &ds_bytecode;
+			macros = ds_macros;
 			ds_override = true;
 			break;
 		case 'g':
 			ppBytecode = &gs_bytecode;
+			macros = gs_macros;
 			gs_override = true;
 			break;
 		case 'p':
 			ppBytecode = &ps_bytecode;
+			macros = ps_macros;
 			ps_override = true;
 			break;
 		case 'c':
 			ppBytecode = &cs_bytecode;
+			macros = cs_macros;
 			cs_override = true;
 			break;
 		default:
@@ -1066,8 +1081,8 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 	// Later we could add a custom include handler to track dependencies so
 	// that we can make reloading work better when using includes:
 	wcstombs(apath, wpath, MAX_PATH);
-	hr = D3DCompile(srcData.data(), srcDataSize, apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, ppBytecode, &pErrorMsgs);
+	hr = D3DCompile(srcData.data(), srcDataSize, apath, macros, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"main", shaderModel, (UINT)compile_flags, 0, ppBytecode, &pErrorMsgs);
 
 	if (pErrorMsgs) {
 		LPVOID errMsg = pErrorMsgs->GetBufferPointer();

@@ -286,7 +286,7 @@ bool ShaderRegexPattern::patch(std::string *asm_text, ShaderRegexTemps *temp_reg
 			(PCRE2_SPTR)replace_copy.c_str(), replace_copy.length(),
 			buf, &output_size);
 
-	if (rc == PCRE2_SUBSTITUTE_OVERFLOW_LENGTH) {
+	if (rc == PCRE2_ERROR_NOMEMORY) {
 		LogInfo("  NOTICE: regex replace requires a %u byte buffer\n", (unsigned)output_size);
 		LogInfo("  NOTICE: We underestimated by %u bytes and have to start over\n", (unsigned)(output_size - est_size));
 		LogInfo("  NOTICE: What kind of crazy are you doing to get down this code path?\n");

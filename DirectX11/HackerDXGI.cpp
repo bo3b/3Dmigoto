@@ -359,7 +359,7 @@ STDMETHODIMP HackerSwapChain::QueryInterface(THIS_
 		unk_this->Release();
 		unk_ppvObject->Release();
 
-		LogInfo("  return HackerUnknown(%s@%p) wrapper of %p\n", type_name(this), this, mOrigSwapChain1);
+		LogInfo("  return HackerSwapChain(%s@%p) wrapper of %p\n", type_name(this), this, mOrigSwapChain1);
 		return hr;
 	}
 
@@ -370,17 +370,20 @@ STDMETHODIMP HackerSwapChain::QueryInterface(THIS_
 STDMETHODIMP_(ULONG) HackerSwapChain::AddRef(THIS)
 {
 	ULONG ulRef = mOrigSwapChain1->AddRef();
-	LogInfo("HackerUnknown::AddRef(%s@%p), counter=%d, this=%p\n", type_name(this), this, ulRef, this);
+	LogInfo("HackerSwapChain::AddRef(%s@%p), counter=%d, this=%p\n", type_name(this), this, ulRef, this);
 	return ulRef;
 }
 
 STDMETHODIMP_(ULONG) HackerSwapChain::Release(THIS)
 {
 	ULONG ulRef = mOrigSwapChain1->Release();
-	LogInfo("HackerUnknown::Release(%s@%p), counter=%d, this=%p\n", type_name(this), this, ulRef, this);
+	LogInfo("HackerSwapChain::Release(%s@%p), counter=%d, this=%p\n", type_name(this), this, ulRef, this);
 
 	if (ulRef <= 0)
 	{
+		if (mOverlay)
+			delete mOverlay;
+
 		LogInfo("  counter=%d, this=%p, deleting self.\n", ulRef, this);
 
 		delete this;

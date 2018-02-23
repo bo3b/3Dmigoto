@@ -41,6 +41,7 @@ private:
 	ID3D11Device* mOrigDevice;
 	ID3D11DeviceContext* mOrigContext;
 	HackerDevice* mHackerDevice;
+	HackerContext* mHackerContext;
 
 	DirectX::XMUINT2 mResolution;
 	std::unique_ptr<DirectX::SpriteFont> mFont;

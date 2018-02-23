@@ -125,10 +125,66 @@ public:
 	void run(CommandListState*) override;
 };
 
+// https://msdn.microsoft.com/en-us/library/windows/desktop/gg615083(v=vs.85).aspx
+enum class D3DCompileFlags {
+	DEBUG                              = (1 << 0),
+	SKIP_VALIDATION                    = (1 << 1),
+	SKIP_OPTIMIZATION                  = (1 << 2),
+	PACK_MATRIX_ROW_MAJOR              = (1 << 3),
+	PACK_MATRIX_COLUMN_MAJOR           = (1 << 4),
+	PARTIAL_PRECISION                  = (1 << 5),
+	FORCE_VS_SOFTWARE_NO_OPT           = (1 << 6),
+	FORCE_PS_SOFTWARE_NO_OPT           = (1 << 7),
+	NO_PRESHADER                       = (1 << 8),
+	AVOID_FLOW_CONTROL                 = (1 << 9),
+	PREFER_FLOW_CONTROL                = (1 << 10),
+	ENABLE_STRICTNESS                  = (1 << 11),
+	ENABLE_BACKWARDS_COMPATIBILITY     = (1 << 12),
+	IEEE_STRICTNESS                    = (1 << 13),
+	OPTIMIZATION_LEVEL0                = (1 << 14),
+	OPTIMIZATION_LEVEL1                = 0,
+	OPTIMIZATION_LEVEL2                = ((1 << 14) | (1 << 15)),
+	OPTIMIZATION_LEVEL3                = (1 << 15),
+	WARNINGS_ARE_ERRORS                = (1 << 18),
+	RESOURCES_MAY_ALIAS                = (1 << 19),
+	ENABLE_UNBOUNDED_DESCRIPTOR_TABLES = (1 << 20),
+	ALL_RESOURCES_BOUND                = (1 << 21),
+	INVALID                            = (signed)0xffffffff,
+};
+SENSIBLE_ENUM(D3DCompileFlags);
+static EnumName_t<const wchar_t *, D3DCompileFlags> D3DCompileFlagNames[] = {
+	{L"debug", D3DCompileFlags::DEBUG},
+	{L"skip_validation", D3DCompileFlags::SKIP_VALIDATION},
+	{L"skip_optimization", D3DCompileFlags::SKIP_OPTIMIZATION},
+	{L"pack_matrix_row_major", D3DCompileFlags::PACK_MATRIX_ROW_MAJOR},
+	{L"pack_matrix_column_major", D3DCompileFlags::PACK_MATRIX_COLUMN_MAJOR},
+	{L"partial_precision", D3DCompileFlags::PARTIAL_PRECISION},
+	{L"force_vs_software_no_opt", D3DCompileFlags::FORCE_VS_SOFTWARE_NO_OPT},
+	{L"force_ps_software_no_opt", D3DCompileFlags::FORCE_PS_SOFTWARE_NO_OPT},
+	{L"no_preshader", D3DCompileFlags::NO_PRESHADER},
+	{L"avoid_flow_control", D3DCompileFlags::AVOID_FLOW_CONTROL},
+	{L"prefer_flow_control", D3DCompileFlags::PREFER_FLOW_CONTROL},
+	{L"enable_strictness", D3DCompileFlags::ENABLE_STRICTNESS},
+	{L"enable_backwards_compatibility", D3DCompileFlags::ENABLE_BACKWARDS_COMPATIBILITY},
+	{L"ieee_strictness", D3DCompileFlags::IEEE_STRICTNESS},
+	{L"optimization_level0", D3DCompileFlags::OPTIMIZATION_LEVEL0},
+	{L"optimization_level1", D3DCompileFlags::OPTIMIZATION_LEVEL1},
+	{L"optimization_level2", D3DCompileFlags::OPTIMIZATION_LEVEL2},
+	{L"optimization_level3", D3DCompileFlags::OPTIMIZATION_LEVEL3},
+	{L"warnings_are_errors", D3DCompileFlags::WARNINGS_ARE_ERRORS},
+	// d3dcompiler47 only, but they won't hurt and adding them now means we
+	// can use them when we do migrate later:
+	{L"resources_may_alias", D3DCompileFlags::RESOURCES_MAY_ALIAS},
+	{L"enable_unbounded_descriptor_tables", D3DCompileFlags::ENABLE_UNBOUNDED_DESCRIPTOR_TABLES},
+	{L"all_resources_bound", D3DCompileFlags::ALL_RESOURCES_BOUND},
+	{NULL, D3DCompileFlags::INVALID} // End of list marker
+};
+
 class CustomShader
 {
 public:
 	bool vs_override, hs_override, ds_override, gs_override, ps_override, cs_override;
+	D3DCompileFlags compile_flags;
 	ID3D11VertexShader *vs;
 	ID3D11HullShader *hs;
 	ID3D11DomainShader *ds;
