@@ -39,7 +39,7 @@ bool gLogDebug = false;
 // During the initialize, we will also Log every setting that is enabled, so that the log
 // has a complete list of active settings.  This should make it more accurate and clear.
 
-bool InitializeDLL()
+static bool InitializeDLL()
 {
 	if (G->gInitialized)
 		return true;
@@ -579,7 +579,7 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 // catch bogus setup or bad calls to the GPU environment.
 // The prevent threading optimizations can help show if we have a multi-threading problem.
 
-UINT EnableDebugFlags(UINT flags)
+static UINT EnableDebugFlags(UINT flags)
 {
 	flags |= D3D11_CREATE_DEVICE_DEBUG;
 	flags |= D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
@@ -594,7 +594,7 @@ UINT EnableDebugFlags(UINT flags)
 // This call shows that the layer is active, and the initial LiveObjectState.
 // And enable debugger breaks for errors that we might be introducing.
 
-void ShowDebugInfo(ID3D11Device *origDevice)
+static void ShowDebugInfo(ID3D11Device *origDevice)
 {
 	ID3D11Debug *d3dDebug = nullptr;
 	if (origDevice != nullptr)
@@ -651,7 +651,7 @@ void ShowDebugInfo(ID3D11Device *origDevice)
 // 
 // Returns true if we need to error out with E_INVALIDARG, which is default in d3dx.ini.
 
-bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
+static bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
 {
 	if (!featureLevels)
 	{
@@ -698,7 +698,7 @@ bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
 
 // Internal only version of CreateDevice, to avoid other tools that hook this.
 
-HRESULT WINAPI HackerCreateDevice(
+static HRESULT WINAPI HackerCreateDevice(
 	_In_opt_        IDXGIAdapter        *pAdapter,
 	D3D_DRIVER_TYPE     DriverType,
 	HMODULE             Software,
