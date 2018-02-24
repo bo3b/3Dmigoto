@@ -271,7 +271,7 @@ void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc)
 //
 // There is now also ForceDisplayParams1 which has some overlap.
 
-void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
+static void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 {
 	if (pDesc == NULL)
 		return;
@@ -492,7 +492,7 @@ out_release:
 // This hook should work in all variants, including the CreateSwapChain1
 // and CreateSwapChainForHwnd
 
-void HookCreateSwapChainForHwnd(void* factory2)
+static void HookCreateSwapChainForHwnd(void* factory2)
 {
 	LogInfo("*** IDXGIFactory2 creating hook for CreateSwapChainForHwnd. \n");
 
@@ -679,7 +679,7 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 // This hook should work in all variants, including the CreateSwapChain1
 // and CreateSwapChainForHwnd
 
-void HookCreateSwapChain(void* factory)
+static void HookCreateSwapChain(void* factory)
 {
 	LogInfo("*** IDXGIFactory creating hook for CreateSwapChain. \n");
 
