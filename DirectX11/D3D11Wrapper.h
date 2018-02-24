@@ -6,6 +6,7 @@
 
 
 void InitD311();
+void DestroyDLL();
 
 void NvAPIOverride();
 
