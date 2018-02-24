@@ -120,6 +120,9 @@ static HRESULT HookDXGIFactories()
 	if (FAILED(hr))
 		return E_FAIL;
 
+	// We do not care if this fails - this function does not exist on Win7
+	InstallHook(L"dxgi.dll", "CreateDXGIFactory2", (LPVOID*)&fnOrigCreateDXGIFactory2, Hooked_CreateDXGIFactory2);
+
 	return NOERROR;
 }
 

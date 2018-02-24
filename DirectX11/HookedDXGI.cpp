@@ -823,6 +823,68 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	return hr;
 }
 
+// We cannot statically initialise this, since the function doesn't exist until
+// Win 8.1, and refering to it would prevent the dynamic linker from loading us
+// on Win 7 (this warning is only applicable to the vs2015 branch with newer
+// Windows SDKs, since it is not possible to refer to this on the older SDK):
+HRESULT(__stdcall *fnOrigCreateDXGIFactory2)(
+	UINT Flags,
+	REFIID riid,
+	_Out_ void   **ppFactory
+	) = nullptr;
+
+HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFactory2)
+{
+	LogInfo("*** Hooked_CreateDXGIFactory2 called with riid: %s\n", NameFromIID(riid).c_str());
+
+	// If this happens to be first call from the game, let's make sure to load
+	// up our d3d11.dll and the .ini file.
+	InitD311();
+
+	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
+	if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
+	{
+		LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
+		*ppFactory2 = NULL;
+		return E_NOINTERFACE;
+	}
+
+	// Call original factory, regardless of what they requested, to keep the
+	// same expected sequence from their perspective.  (Which includes refcounts)
+	HRESULT hr = fnOrigCreateDXGIFactory2(Flags, riid, ppFactory2);
+	if (FAILED(hr))
+	{
+		LogInfo("->failed with HRESULT=%x\n", hr);
+		return hr;
+	}
+
+	if (!fnOrigCreateSwapChain)
+		HookCreateSwapChain(*ppFactory2);
+
+	// We still upcast, even in CreateDXGIFactory2, because the game could
+	// have passed a lower version riid, and this way is safer. The version
+	// of this function isn't actually strongly related to the interface
+	// version it returns at all - CreateFactory2 is for DXGI 1.3, but
+	// really it just has an extra flags field compared to the previous
+	// version. There's also a Factory 4, 5 and 6, but no CreateFactory 4,
+	// 5 or 6 - the version numbers aren't related.
+
+	IUnknown* factoryUnknown = reinterpret_cast<IUnknown*>(*ppFactory2);
+	IDXGIFactory2* dxgiFactory = reinterpret_cast<IDXGIFactory2*>(*ppFactory2);
+	HRESULT res = factoryUnknown->QueryInterface(IID_PPV_ARGS(&dxgiFactory));
+	if (SUCCEEDED(res))
+	{
+		factoryUnknown->Release();
+		*ppFactory2 = (void*)dxgiFactory;
+		LogInfo("  Upcast QueryInterface(IDXGIFactory2) returned result = %x, factory = %p\n", res, dxgiFactory);
+
+		if (!fnOrigCreateSwapChainForHwnd)
+			HookCreateSwapChainForHwnd(*ppFactory2);
+	}
+
+	LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x\n", *ppFactory2, hr);
+	return hr;
+}
 
 // -----------------------------------------------------------------------------
 
