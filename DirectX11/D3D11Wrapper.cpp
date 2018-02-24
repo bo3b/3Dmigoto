@@ -1223,3 +1223,29 @@ HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ H
 	// Normal unchanged case.
 	return fnOrigLoadLibraryExW(lpLibFileName, hFile, dwFlags);
 }
+
+// This callback proc allows us to hook into any application we need. It is
+// installed from an external program (of matching bit size) with code like:
+//
+// HMODULE module = LoadLibraryA("d3d11.dll");
+// HOOKPROC fn = (HOOKPROC)GetProcAddress(module, "CBTProc");
+// HHOOK hook = SetWindowsHookEx(WH_CBT, fn, module, 0);
+// ... launch the game ...
+// UnhookWindowsHookEx(hook);
+//
+// If it loads us named d3d11.dll it seems we may actually be able to just work
+// with no further heroics (confirmed in Unity games at least), but beware that
+// we will be hooked into *every* application, including core OS components,
+// which we may want to bail from in DllMain.
+//
+// This method can even get us into Windows Store apps, if the external program
+// installing the hook has the permissions to do so (UIAccess=true, digitally
+// signed by a trusted root certificate, run from Program Files), but beware
+// that by itself is not enough for us to be functional inside a Windows Store
+// app - we don't automatically intercept the real d3d11.dll, and any attempt
+// to breach the container (say, by accessing one of our files outside of where
+// the container allows) may result in us being mercilessly killed.
+LRESULT CALLBACK CBTProc(_In_ int nCode, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+	return CallNextHookEx(0, nCode, wParam, lParam);
+}
