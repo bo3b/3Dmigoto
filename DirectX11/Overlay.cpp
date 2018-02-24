@@ -82,8 +82,14 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 
 	// The courierbold.spritefont is now included as binary resource data attached
 	// to the d3d11.dll.  We can fetch that resource and pass it to new SpriteFont
-	// to avoid having to drag around the font file.
-	HMODULE handle = GetModuleHandle(L"d3d11.dll");
+	// to avoid having to drag around the font file. We get the module
+	// handle by address to ensure we don't get some other d3d11.dll, which
+	// is of particular importance when we are injected into a Windows
+	// Store app and may not even be called that ourselves.
+	HMODULE handle = NULL;
+	GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+			| GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+			(LPCWSTR)LogOverlay, &handle);
 	HRSRC rc = FindResource(handle, MAKEINTRESOURCE(IDR_COURIERBOLD), MAKEINTRESOURCE(SPRITEFONT));
 	HGLOBAL rcData = LoadResource(handle, rc);
 	DWORD fontSize = SizeofResource(handle, rc);
