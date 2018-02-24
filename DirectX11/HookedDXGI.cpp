@@ -706,7 +706,7 @@ static void HookCreateSwapChain(void* factory)
 HRESULT(__stdcall *fnOrigCreateDXGIFactory)(
 	REFIID riid,
 	_Out_ void   **ppFactory
-	) = nullptr;
+	) = CreateDXGIFactory;
 
 HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
@@ -771,7 +771,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 HRESULT(__stdcall *fnOrigCreateDXGIFactory1)(
 	REFIID riid,
 	_Out_ void   **ppFactory
-	) = nullptr;
+	) = CreateDXGIFactory1;
 
 HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 {

@@ -1136,7 +1136,7 @@ HMODULE(__stdcall *fnOrigLoadLibraryExW)(
 	_In_       LPCTSTR lpFileName,
 	_Reserved_ HANDLE  hFile,
 	_In_       DWORD   dwFlags
-	) = nullptr;
+	) = LoadLibraryExW;
 
 HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
 {
