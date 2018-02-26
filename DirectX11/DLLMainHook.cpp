@@ -126,6 +126,34 @@ static HRESULT HookDXGIFactories()
 	return NOERROR;
 }
 
+static HRESULT HookD3D11(HINSTANCE our_dll)
+{
+	HRESULT hr;
+
+	LogHooking("Hooking d3d11.dll...\n");
+
+	// TODO: What if d3d11.dll isn't loaded in the process yet? We can't
+	// use LoadLibrary() from DllMain. Does Nektra handle this somehow, or
+	// should we defer the hook until later (perhaps our LoadLibrary hook)?
+
+	hr = InstallHook(L"d3d11.dll", "D3D11CreateDevice",
+			(LPVOID*)&_D3D11CreateDevice, D3D11CreateDevice);
+	if (FAILED(hr))
+		return E_FAIL;
+
+	// Directly using D3D11CreateDeviceAndSwapChain was giving an
+	// unresolved external - looks like the function signature doesn't
+	// quite match the prototype in the Win 10 SDK. Whatever - it's
+	// compatible, so just use GetProcAddress() rather than fight it.
+	hr = InstallHook(L"d3d11.dll", "D3D11CreateDeviceAndSwapChain",
+			(LPVOID*)&_D3D11CreateDeviceAndSwapChain,
+			GetProcAddress(our_dll, "D3D11CreateDeviceAndSwapChain"));
+	if (FAILED(hr))
+		return E_FAIL;
+
+	return S_OK;
+}
+
 
 // ----------------------------------------------------------------------------
 static void RemoveHooks()
@@ -153,6 +181,13 @@ BOOL WINAPI DllMain(
 	{
 		case DLL_PROCESS_ATTACH:
 			cHookMgr.SetEnableDebugOutput(bLog);
+
+			// Hook d3d11.dll if we are loaded via injection either
+			// under a different name, or just not as the primary
+			// d3d11.dll. I'm not positive if this is the "best"
+			// way to check for this, but it seems to work:
+			if (hinstDLL != GetModuleHandleA("d3d11.dll"))
+				HookD3D11(hinstDLL);
 
 			if (FAILED(HookLoadLibraryExW()))
 				return false;
