@@ -528,7 +528,7 @@ HRESULT(__stdcall *fnOrigCreateSwapChain)(
 	_Out_  IDXGISwapChain **ppSwapChain) = nullptr;
 
 
-HRESULT __stdcall HackerCreateSwapChain(
+HRESULT __stdcall UnhookableCreateSwapChain(
 	IDXGIFactory * This,
 	/* [annotation][in] */
 	_In_  IUnknown *pDevice,
@@ -537,7 +537,7 @@ HRESULT __stdcall HackerCreateSwapChain(
 	/* [annotation][out] */
 	_Out_  IDXGISwapChain **ppSwapChain)
 {
-	LogInfo("-- HackerCreateSwapChain called\n");
+	LogInfo("-- UnhookableCreateSwapChain called\n");
 
 	HackerDevice *hackerDevice = NULL;
 	HackerContext *hackerContext = NULL;
@@ -630,7 +630,7 @@ HRESULT __stdcall HackerCreateSwapChain(
 		*ppSwapChain = swapchainWrap;
 	}
 
-	LogInfo("->HackerCreateSwapChain result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n", hr, swapchainWrap, origSwapChain);
+	LogInfo("->UnhookableCreateSwapChain result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n", hr, swapchainWrap, origSwapChain);
 out_release:
 	if (hackerDevice)
 		hackerDevice->Release();
@@ -660,7 +660,7 @@ out_release:
 // form want access to the SwapChain and Present, just like us.  To avoid our code
 // from interacting with theirs, we make this shim routine, that will call into 
 // our actual functionality.  That way any outside hook will see this call, and
-// our internal use in CreateDeviceAndSwapChain will use HackerCreateSwapChain
+// our internal use in CreateDeviceAndSwapChain will use UnhookableCreateSwapChain
 // to avoid outside hooks.  We have no known scenario where this causes a problem,
 // but this is safer and makes it match our handling of CreateDevice.
 
@@ -687,7 +687,7 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
 	LogInfo("  Description = %p\n", pDesc);
 
-	HRESULT hr = HackerCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
+	HRESULT hr = UnhookableCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
 
 	LogInfo("->IDXGIFactory::CreateSwapChain return result %#x\n\n", hr);
 	return hr;

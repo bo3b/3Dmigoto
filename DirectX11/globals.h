@@ -603,7 +603,7 @@ struct TLS
 	// into us, but does not protect against unknown cases of the same
 	// problem, or cases where we call a function that has been hooked by a
 	// third party tool (which we can use other strategies to avoid, such
-	// as the unhookable HackerCreateDevice).
+	// as the unhookable UnhookableCreateDevice).
 	bool hooking_quirk_protection;
 
 	TLS() :

@@ -53,7 +53,7 @@ extern "C" HRESULT(__stdcall *fnOrigCreateSwapChain)(
 
 // Called from d3d11Wrapper for CreateDeviceAndSwapChain
 
-extern "C" HRESULT __stdcall HackerCreateSwapChain(
+extern "C" HRESULT __stdcall UnhookableCreateSwapChain(
 	IDXGIFactory * This,
 	/* [annotation][in] */
 	_In_  IUnknown *pDevice,

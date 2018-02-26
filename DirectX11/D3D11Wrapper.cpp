@@ -698,7 +698,7 @@ static bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
 
 // Internal only version of CreateDevice, to avoid other tools that hook this.
 
-static HRESULT WINAPI HackerCreateDevice(
+static HRESULT WINAPI UnhookableCreateDevice(
 	_In_opt_        IDXGIAdapter        *pAdapter,
 	D3D_DRIVER_TYPE     DriverType,
 	HMODULE             Software,
@@ -710,7 +710,7 @@ static HRESULT WINAPI HackerCreateDevice(
 	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
 	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
 {
-	LogInfo("-- HackerCreateDevice called\n");
+	LogInfo("-- UnhookableCreateDevice called\n");
 
 	if (ForceDX11(const_cast<D3D_FEATURE_LEVEL*>(pFeatureLevels)))
 		return E_INVALIDARG;
@@ -804,7 +804,7 @@ static HRESULT WINAPI HackerCreateDevice(
 	if (contextWrap != nullptr)
 		contextWrap->Bind3DMigotoResources();
 
-	LogInfo("->HackerCreateDevice result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n",
+	LogInfo("->UnhookableCreateDevice result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n",
 		ret, origDevice1, deviceWrap, origContext1, contextWrap);
 
 	return ret;
@@ -852,7 +852,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	LogInfo("    pFeatureLevel = %#x\n", pFeatureLevel ? *pFeatureLevel : 0);
 	LogInfo("    ppImmediateContext = %p\n", ppImmediateContext);
 
-	HRESULT hr = HackerCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels,
+	HRESULT hr = UnhookableCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels,
 		FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
 
 	LogInfo("->D3D11CreateDevice result = %x\n\n", hr);
@@ -929,9 +929,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	LogInfo("    ppImmediateContext = %p\n", ppImmediateContext);
 
 
-	// Create the Device that the caller specified, but using our interal HackerCreateDevice
+	// Create the Device that the caller specified, but using our interal UnhookableCreateDevice
 	// on purpose, so that we get a HackerDevice back in ppDevice.  
-	hr = HackerCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion,
+	hr = UnhookableCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion,
 		ppDevice, pFeatureLevel, ppImmediateContext);
 
 	// Can fail with null arguments, so follow the behavior of the original call.	
@@ -975,10 +975,10 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	if (FAILED(hr))
 		goto fatalExit;
 
-	// Directly call our root function HackerCreateSwapChain, to avoid any possible
+	// Directly call our root function UnhookableCreateSwapChain, to avoid any possible
 	// hooks on the factory function. This will always create and return the HackerSwapChain, 
 	// create the Overlay, and ForceDisplayParams if required.
-	hr = HackerCreateSwapChain(dxgiFactory, *ppDevice, pSwapChainDesc, ppSwapChain);
+	hr = UnhookableCreateSwapChain(dxgiFactory, *ppDevice, pSwapChainDesc, ppSwapChain);
 
 	dxgiFactory->Release();
 	dxgiAdapter->Release();
