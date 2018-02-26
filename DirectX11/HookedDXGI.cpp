@@ -518,6 +518,100 @@ static void HookCreateSwapChainForHwnd(void* factory2)
 
 // -----------------------------------------------------------------------------
 
+// If we ever restored D3D11CreateDeviceAndSwapChain to call through to the
+// original it would need to call these two functions that have been refactored
+// out of CreateSwapChain
+
+static void override_swap_chain(DXGI_SWAP_CHAIN_DESC *pDesc, DXGI_SWAP_CHAIN_DESC *origSwapChainDesc)
+{
+	if (pDesc == nullptr)
+		return;
+
+	// Save window handle so we can translate mouse coordinates to the window:
+	G->hWnd = pDesc->OutputWindow;
+
+	if (G->SCREEN_UPSCALING > 0)
+	{
+		// Copy input swap chain desc in case it's modified
+		memcpy(&origSwapChainDesc, pDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
+
+		// For the upscaling case, fullscreen has to be set after swap chain is created
+		pDesc->Windowed = true;
+	}
+
+	// Required in case the software mouse and upscaling are on at the same time
+	// TODO: Use a helper class to track *all* different resolutions
+	G->GAME_INTERNAL_WIDTH = pDesc->BufferDesc.Width;
+	G->GAME_INTERNAL_HEIGHT = pDesc->BufferDesc.Height;
+
+	if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN)
+	{
+		// TODO: Use a helper class to track *all* different resolutions
+		G->mResolutionInfo.width = pDesc->BufferDesc.Width;
+		G->mResolutionInfo.height = pDesc->BufferDesc.Height;
+		LogInfo("Got resolution from swap chain: %ix%i\n",
+			G->mResolutionInfo.width, G->mResolutionInfo.height);
+	}
+
+	ForceDisplayParams(pDesc);
+}
+
+static void wrap_swap_chain(HackerDevice *hackerDevice,
+		IDXGISwapChain **ppSwapChain,
+		DXGI_SWAP_CHAIN_DESC *overrideSwapChainDesc,
+		DXGI_SWAP_CHAIN_DESC *origSwapChainDesc,
+		IDXGIFactory *factory)
+{
+	HackerContext *hackerContext = NULL;
+	HackerSwapChain *swapchainWrap = NULL;
+	IDXGISwapChain1 *origSwapChain = NULL;
+
+	if (!hackerDevice)
+		return;
+
+	// Always upcast to IDXGISwapChain1 whenever possible.
+	// If the upcast fails, that means we have a normal IDXGISwapChain,
+	// but we'll still store it as an IDXGISwapChain1.  It's a little
+	// weird to reinterpret this way, but should cause no problems in
+	// the Win7 no platform_udpate case.
+	if (SUCCEEDED((*ppSwapChain)->QueryInterface(IID_PPV_ARGS(&origSwapChain))))
+		(*ppSwapChain)->Release();
+	else
+		origSwapChain = reinterpret_cast<IDXGISwapChain1*>(*ppSwapChain);
+
+	hackerContext = hackerDevice->GetHackerContext();
+
+	// Original swapchain has been successfully created. Now we want to
+	// wrap the returned swapchain as either HackerSwapChain or HackerUpscalingSwapChain.
+
+	if (G->SCREEN_UPSCALING == 0)		// Normal case
+	{
+		swapchainWrap = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
+		LogInfo("  HackerSwapChain %p created to wrap %p\n", swapchainWrap, origSwapChain);
+	}
+	else								// Upscaling case
+	{
+		swapchainWrap = new HackerUpscalingSwapChain(origSwapChain, hackerDevice, hackerContext,
+			origSwapChainDesc, overrideSwapChainDesc->BufferDesc.Width, overrideSwapChainDesc->BufferDesc.Height, factory);
+		LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, origSwapChain);
+
+		if (G->SCREEN_UPSCALING == 2 || !origSwapChainDesc->Windowed)
+		{
+			// Some games react very strange (like render nothing) if set full screen state is called here)
+			// Other games like The Witcher 3 need the call to ensure entering the full screen on start
+			// (seems to be game internal stuff)  ToDo: retest if this is still necessary, lots of changes.
+			origSwapChain->SetFullscreenState(TRUE, nullptr);
+		}
+	}
+
+	// When creating a new swapchain, we can assume this is the game creating
+	// the most important object. Return the wrapped swapchain to the game so it
+	// will call our Present.
+	*ppSwapChain = swapchainWrap;
+
+	LogInfo("-> HackerSwapChain = %p wrapper of ppSwapChain = %p\n", swapchainWrap, origSwapChain);
+}
+
 HRESULT(__stdcall *fnOrigCreateSwapChain)(
 	IDXGIFactory * This,
 	/* [annotation][in] */
@@ -537,47 +631,14 @@ HRESULT __stdcall UnhookableCreateSwapChain(
 	/* [annotation][out] */
 	_Out_  IDXGISwapChain **ppSwapChain)
 {
-	LogInfo("-- UnhookableCreateSwapChain called\n");
-
 	HackerDevice *hackerDevice = NULL;
-	HackerContext *hackerContext = NULL;
-	HackerSwapChain *swapchainWrap = NULL;
-	IDXGISwapChain1 *origSwapChain = NULL;
+	DXGI_SWAP_CHAIN_DESC origSwapChainDesc;
 
+	LogInfo("-- UnhookableCreateSwapChain called\n");
 
 	hackerDevice = sort_out_swap_chain_device_mess(&pDevice);
 
-	DXGI_SWAP_CHAIN_DESC origSwapChainDesc;
-	if (pDesc != nullptr)
-	{
-		// Save window handle so we can translate mouse coordinates to the window:
-		G->hWnd = pDesc->OutputWindow;
-
-		if (G->SCREEN_UPSCALING > 0)
-		{
-			// Copy input swap chain desc in case it's modified
-			memcpy(&origSwapChainDesc, pDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
-
-			// For the upscaling case, fullscreen has to be set after swap chain is created
-			pDesc->Windowed = true;
-		}
-
-		// Required in case the software mouse and upscaling are on at the same time
-		// TODO: Use a helper class to track *all* different resolutions
-		G->GAME_INTERNAL_WIDTH = pDesc->BufferDesc.Width;
-		G->GAME_INTERNAL_HEIGHT = pDesc->BufferDesc.Height;
-
-		if (G->mResolutionInfo.from == GetResolutionFrom::SWAP_CHAIN)
-		{
-			// TODO: Use a helper class to track *all* different resolutions
-			G->mResolutionInfo.width = pDesc->BufferDesc.Width;
-			G->mResolutionInfo.height = pDesc->BufferDesc.Height;
-			LogInfo("Got resolution from swap chain: %ix%i\n",
-				G->mResolutionInfo.width, G->mResolutionInfo.height);
-		}
-	}
-
-	ForceDisplayParams(pDesc);
+	override_swap_chain(pDesc, &origSwapChainDesc);
 
 	get_tls()->hooking_quirk_protection = true;
 	HRESULT hr = fnOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
@@ -588,49 +649,9 @@ HRESULT __stdcall UnhookableCreateSwapChain(
 		goto out_release;
 	}
 
-	if (hackerDevice) {
-		// Always upcast to IDXGISwapChain1 whenever possible.
-		// If the upcast fails, that means we have a normal IDXGISwapChain,
-		// but we'll still store it as an IDXGISwapChain1.  It's a little
-		// weird to reinterpret this way, but should cause no problems in
-		// the Win7 no platform_udpate case.
-		if (SUCCEEDED((*ppSwapChain)->QueryInterface(IID_PPV_ARGS(&origSwapChain))))
-			(*ppSwapChain)->Release();
-		else
-			origSwapChain = reinterpret_cast<IDXGISwapChain1*>(*ppSwapChain);
+	wrap_swap_chain(hackerDevice, ppSwapChain, pDesc, &origSwapChainDesc, This);
 
-		hackerContext = hackerDevice->GetHackerContext();
-
-		// Original swapchain has been successfully created. Now we want to
-		// wrap the returned swapchain as either HackerSwapChain or HackerUpscalingSwapChain.
-
-		if (G->SCREEN_UPSCALING == 0)		// Normal case
-		{
-			swapchainWrap = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
-			LogInfo("  HackerSwapChain %p created to wrap %p\n", swapchainWrap, origSwapChain);
-		}
-		else								// Upscaling case
-		{
-			swapchainWrap = new HackerUpscalingSwapChain(origSwapChain, hackerDevice, hackerContext,
-				&origSwapChainDesc, pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, This);
-			LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, origSwapChain);
-
-			if (G->SCREEN_UPSCALING == 2 || !origSwapChainDesc.Windowed)
-			{
-				// Some games react very strange (like render nothing) if set full screen state is called here)
-				// Other games like The Witcher 3 need the call to ensure entering the full screen on start
-				// (seems to be game internal stuff)  ToDo: retest if this is still necessary, lots of changes.
-				origSwapChain->SetFullscreenState(TRUE, nullptr);
-			}
-		}
-
-		// When creating a new swapchain, we can assume this is the game creating
-		// the most important object. Return the wrapped swapchain to the game so it
-		// will call our Present.
-		*ppSwapChain = swapchainWrap;
-	}
-
-	LogInfo("->UnhookableCreateSwapChain result %#x, HackerSwapChain = %p wrapper of ppSwapChain = %p\n", hr, swapchainWrap, origSwapChain);
+	LogInfo("->UnhookableCreateSwapChain result %#x\n", hr);
 out_release:
 	if (hackerDevice)
 		hackerDevice->Release();
