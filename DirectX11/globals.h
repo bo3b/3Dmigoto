@@ -587,7 +587,27 @@ struct Globals
 // structure for the current thread.
 struct TLS
 {
-	TLS()
+	// This is set before calling into a DirectX function known to be
+	// problematic if hooks are in use that can lead to one of our
+	// functions being called unexpectedly if DirectX (or a third party
+	// tool sitting between us and DirectX) has implemented the function we
+	// are calling in terms of other hooked functions. We check if it is
+	// set from any function known to be one called by DirectX and call
+	// straight through to the original function if it is set.
+	//
+	// This is very much a band-aid solution to one of the fundamental
+	// problems associated with hooking, but unfortunately hooking is a
+	// reality we cannot avoid and in many cases a necessary evil to solve
+	// certain problems. This is not a complete solution - it protects
+	// against known cases where a function we call can manage to call back
+	// into us, but does not protect against unknown cases of the same
+	// problem, or cases where we call a function that has been hooked by a
+	// third party tool (which we can use other strategies to avoid, such
+	// as the unhookable HackerCreateDevice).
+	bool hooking_quirk_protection;
+
+	TLS() :
+		hooking_quirk_protection(false)
 	{}
 };
 

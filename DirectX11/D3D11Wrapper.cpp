@@ -719,8 +719,10 @@ static HRESULT WINAPI HackerCreateDevice(
 	Flags = EnableDebugFlags(Flags);
 #endif
 
+	get_tls()->hooking_quirk_protection = true;
 	HRESULT ret = (*_D3D11CreateDevice)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
 		FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
+	get_tls()->hooking_quirk_protection = false;
 
 	if (FAILED(ret))
 	{
@@ -830,6 +832,15 @@ HRESULT WINAPI D3D11CreateDevice(
 	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
 	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
 {
+	if (get_tls()->hooking_quirk_protection) {
+		LogInfo("Hooking Quirk: Unexpected call back into D3D11CreateDevice, passing through\n");
+		// No confirmed cases
+		return _D3D11CreateDevice(pAdapter, DriverType, Software,
+				Flags, pFeatureLevels, FeatureLevels,
+				SDKVersion, ppDevice, pFeatureLevel,
+				ppImmediateContext);
+	}
+
 	InitD311();
 
 	LogInfo("\n\n *** D3D11CreateDevice called with\n");
@@ -891,6 +902,17 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	_Out_opt_			D3D_FEATURE_LEVEL    *pFeatureLevel,
 	_Out_opt_			ID3D11DeviceContext  **ppImmediateContext)
 {
+	if (get_tls()->hooking_quirk_protection) {
+		LogInfo("Hooking Quirk: Unexpected call back into D3D11CreateDeviceAndSwapChain, passing through\n");
+		// Known case: DirectX implements D3D11CreateDevice by calling
+		//             D3D11CreateDeviceAndSwapChain, triggering this
+		//             if we call the former and have hooked the later.
+		return _D3D11CreateDeviceAndSwapChain(pAdapter, DriverType,
+				Software, Flags, pFeatureLevels, FeatureLevels,
+				SDKVersion, pSwapChainDesc, ppSwapChain,
+				ppDevice, pFeatureLevel, ppImmediateContext);
+	}
+
 	HRESULT hr;
 
 	InitD311();

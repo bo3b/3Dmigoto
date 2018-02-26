@@ -414,6 +414,12 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 	/* [annotation][out] */
 	_Out_  IDXGISwapChain1 **ppSwapChain)
 {
+	if (get_tls()->hooking_quirk_protection) {
+		LogInfo("Hooking Quirk: Unexpected call back into IDXGIFactory2::CreateSwapChainForHwnd, passing through\n");
+		// No known cases
+		return fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
+	}
+
 	HackerDevice *hackerDevice = NULL;
 	HackerContext *hackerContext = NULL;
 	HackerSwapChain *hackerSwapChain = NULL;
@@ -462,7 +468,9 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 
 	hackerDevice = sort_out_swap_chain_device_mess(&pDevice);
 
+	get_tls()->hooking_quirk_protection = true;
 	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
+	get_tls()->hooking_quirk_protection = false;
 	if (FAILED(hr))
 	{
 		LogInfo("->Failed result %#x\n\n", hr);
@@ -571,7 +579,9 @@ HRESULT __stdcall HackerCreateSwapChain(
 
 	ForceDisplayParams(pDesc);
 
+	get_tls()->hooking_quirk_protection = true;
 	HRESULT hr = fnOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
+	get_tls()->hooking_quirk_protection = false;
 	if (FAILED(hr))
 	{
 		LogInfo("->Failed result %#x\n\n", hr);
@@ -663,6 +673,15 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	/* [annotation][out] */
 	_Out_  IDXGISwapChain **ppSwapChain)
 {
+	if (get_tls()->hooking_quirk_protection) {
+		LogInfo("Hooking Quirk: Unexpected call back into IDXGIFactory::CreateSwapChain, passing through\n");
+		// Known case: DirectX implements D3D11CreateDeviceAndSwapChain
+		//             by calling DXGIFactory::CreateSwapChain (if
+		//             ppSwapChain is not NULL), triggering this if we
+		//             call the former and have hooked the later.
+		return fnOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
+	}
+
 	LogInfo("\n*** Hooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
 	LogInfo("  Device = %p\n", pDevice);
 	LogInfo("  SwapChain = %p\n", ppSwapChain);
