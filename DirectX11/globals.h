@@ -577,4 +577,32 @@ struct Globals
 	}
 };
 
+// Everything in this struct has a unique copy per thread. It would be vastly
+// simpler to just use the "thread_local" keyword, but MSDN warns that it can
+// interfere with delay loading DLLs (without any detail as to what it means by
+// that), so to err on the side of caution I'm using the old Win32 TLS API. We
+// are using a structure to ensure we only consume a single TLS slot since they
+// are limited, regardless of how many thread local variables we might want in
+// the future. Use the below accessor function to get a pointer to this
+// structure for the current thread.
+struct TLS
+{
+	TLS()
+	{}
+};
+
+extern DWORD tls_idx;
+static struct TLS* get_tls()
+{
+	TLS *tls;
+
+	tls = (TLS*)TlsGetValue(tls_idx);
+	if (!tls) {
+		tls = new TLS();
+		TlsSetValue(tls_idx, tls);
+	}
+
+	return tls;
+}
+
 extern Globals *G;
