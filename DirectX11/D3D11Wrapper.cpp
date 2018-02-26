@@ -682,64 +682,11 @@ static bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
 	return false;
 }
 
-
-// For creating the device, we need to call the original D3D11CreateDevice in order to initialize
-// Direct3D, and collect the original Device and original Context.  Both of those will be handed
-// off to the wrapped HackerDevice and HackerContext objects, so they can call out to the originals
-// as needed.  Both Hacker objects need access to both Context and Device, so since both are 
-// created here, it's easy enough to provide them upon instantiation.
-//
-// Now intended to be fully null safe- as games seem to have a lot of variance.
-//
-// 1-8-18: Switching tacks to always return ID3D11Device1 objects, which are the 
-// platform_update required type.  Since it's a superset, we can in general just
-// the reference as a normal ID3D11Device.
-// In the no platform_update case, the mOrigDevice1 will actually be an ID3D11Device.
-
-// Internal only version of CreateDevice, to avoid other tools that hook this.
-
-static HRESULT WINAPI UnhookableCreateDevice(
-	_In_opt_        IDXGIAdapter        *pAdapter,
-	D3D_DRIVER_TYPE     DriverType,
-	HMODULE             Software,
-	UINT                Flags,
-	_In_reads_opt_(FeatureLevels) const D3D_FEATURE_LEVEL   *pFeatureLevels,
-	UINT                FeatureLevels,
-	UINT                SDKVersion,
-	_Out_opt_       ID3D11Device        **ppDevice,
-	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
-	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
+static void wrap_d3d11_device_and_context(ID3D11Device **ppDevice, ID3D11DeviceContext **ppImmediateContext)
 {
-	LogInfo("-- UnhookableCreateDevice called\n");
-
-	if (ForceDX11(const_cast<D3D_FEATURE_LEVEL*>(pFeatureLevels)))
-		return E_INVALIDARG;
-
-#if _DEBUG_LAYER
-	Flags = EnableDebugFlags(Flags);
-#endif
-
-	get_tls()->hooking_quirk_protection = true;
-	HRESULT ret = (*_D3D11CreateDevice)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
-		FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
-	get_tls()->hooking_quirk_protection = false;
-
-	if (FAILED(ret))
-	{
-		LogInfo("->failed with HRESULT=%x\n", ret);
-		return ret;
-	}
-
 	// Optional parameters means these might be null.
 	ID3D11Device *retDevice = ppDevice ? *ppDevice : nullptr;
 	ID3D11DeviceContext *retContext = ppImmediateContext ? *ppImmediateContext : nullptr;
-
-	LogInfo("  D3D11CreateDevice returned device handle = %p, context handle = %p\n",
-		retDevice, retContext);
-
-#if _DEBUG_LAYER
-	ShowDebugInfo(retDevice);
-#endif
 
 	// We now want to always upconvert to ID3D11Device1 and ID3D11DeviceContext1,
 	// and will only use the downlevel objects if we get an error on QueryInterface.
@@ -804,8 +751,71 @@ static HRESULT WINAPI UnhookableCreateDevice(
 	if (contextWrap != nullptr)
 		contextWrap->Bind3DMigotoResources();
 
-	LogInfo("->UnhookableCreateDevice result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n",
-		ret, origDevice1, deviceWrap, origContext1, contextWrap);
+	LogInfo("-> device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n",
+		origDevice1, deviceWrap, origContext1, contextWrap);
+}
+
+// For creating the device, we need to call the original D3D11CreateDevice in order to initialize
+// Direct3D, and collect the original Device and original Context.  Both of those will be handed
+// off to the wrapped HackerDevice and HackerContext objects, so they can call out to the originals
+// as needed.  Both Hacker objects need access to both Context and Device, so since both are 
+// created here, it's easy enough to provide them upon instantiation.
+//
+// Now intended to be fully null safe- as games seem to have a lot of variance.
+//
+// 1-8-18: Switching tacks to always return ID3D11Device1 objects, which are the 
+// platform_update required type.  Since it's a superset, we can in general just
+// the reference as a normal ID3D11Device.
+// In the no platform_update case, the mOrigDevice1 will actually be an ID3D11Device.
+
+// Internal only version of CreateDevice, to avoid other tools that hook this.
+
+static HRESULT WINAPI UnhookableCreateDevice(
+	_In_opt_        IDXGIAdapter        *pAdapter,
+	D3D_DRIVER_TYPE     DriverType,
+	HMODULE             Software,
+	UINT                Flags,
+	_In_reads_opt_(FeatureLevels) const D3D_FEATURE_LEVEL   *pFeatureLevels,
+	UINT                FeatureLevels,
+	UINT                SDKVersion,
+	_Out_opt_       ID3D11Device        **ppDevice,
+	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
+	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
+{
+	LogInfo("-- UnhookableCreateDevice called\n");
+
+	if (ForceDX11(const_cast<D3D_FEATURE_LEVEL*>(pFeatureLevels)))
+		return E_INVALIDARG;
+
+#if _DEBUG_LAYER
+	Flags = EnableDebugFlags(Flags);
+#endif
+
+	get_tls()->hooking_quirk_protection = true;
+	HRESULT ret = (*_D3D11CreateDevice)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
+		FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
+	get_tls()->hooking_quirk_protection = false;
+
+	if (FAILED(ret))
+	{
+		LogInfo("->failed with HRESULT=%x\n", ret);
+		return ret;
+	}
+
+	// Optional parameters means these might be null.
+	ID3D11Device *retDevice = ppDevice ? *ppDevice : nullptr;
+	ID3D11DeviceContext *retContext = ppImmediateContext ? *ppImmediateContext : nullptr;
+
+	LogInfo("  D3D11CreateDevice returned device handle = %p, context handle = %p\n",
+		retDevice, retContext);
+
+#if _DEBUG_LAYER
+	ShowDebugInfo(retDevice);
+#endif
+
+	wrap_d3d11_device_and_context(ppDevice, ppImmediateContext);
+
+	LogInfo("->UnhookableCreateDevice result = %x\n", ret);
 
 	return ret;
 }
