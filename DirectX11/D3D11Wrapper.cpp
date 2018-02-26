@@ -1012,6 +1012,8 @@ static nvapi_QueryInterfaceType nvapi_QueryInterfacePtr;
 
 void NvAPIOverride()
 {
+	static bool warned = false;
+
 	if (nvapi_failed)
 		return;
 
@@ -1038,8 +1040,10 @@ void NvAPIOverride()
 
 	// One shot, override custom settings.
 	intptr_t ret = (intptr_t)nvapi_QueryInterfacePtr(0xb03bb03b);
-	if ((ret & 0xffffffff) != 0xeecc34ab)
+	if (!warned && (ret & 0xffffffff) != 0xeecc34ab) {
 		LogInfo("  overriding NVAPI wrapper failed.\n");
+		warned = true;
+	}
 }
 
 
