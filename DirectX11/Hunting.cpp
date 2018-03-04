@@ -1103,7 +1103,7 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 	G->cur_analyse_options = G->def_analyse_options;
 	G->frame_analysis_seen_rts.clear();
 	G->analyse_frame_no = 1;
-	G->analyse_frame = 1;
+	G->analyse_frame = true;
 }
 
 static void AnalyseFrameStop(HackerDevice *device, void *private_data)
@@ -1113,7 +1113,7 @@ static void AnalyseFrameStop(HackerDevice *device, void *private_data)
 	// We don't allow hold to be changed mid-frame due to potential
 	// for filename conflicts, so use def_analyse_options:
 	if (G->analyse_frame && (G->def_analyse_options & FrameAnalysisOptions::HOLD)) {
-		G->analyse_frame = 0;
+		G->analyse_frame = false;
 		if (G->DumpUsage) {
 			EnterCriticalSection(&G->mCriticalSection);
 				DumpUsage(G->ANALYSIS_PATH);

@@ -11,6 +11,7 @@ FrameAnalysisContext::FrameAnalysisContext(ID3D11Device1 *pDevice, ID3D11DeviceC
 {
 	analyse_options = FrameAnalysisOptions::INVALID;
 	frame_analysis_log = NULL;
+	draw_call = 0;
 }
 
 FrameAnalysisContext::~FrameAnalysisContext()
@@ -58,6 +59,7 @@ void FrameAnalysisContext::vFrameAnalysisLog(char *fmt, va_list ap)
 			LogInfoW(L"Error opening %s\n", filename);
 			return;
 		}
+		draw_call = 1;
 
 		fprintf(frame_analysis_log, "analyse_options: %08x\n", G->cur_analyse_options);
 	}
@@ -66,7 +68,7 @@ void FrameAnalysisContext::vFrameAnalysisLog(char *fmt, va_list ap)
 	// for filename conflicts, so use def_analyse_options:
 	if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
 		fprintf(frame_analysis_log, "%u.", G->analyse_frame_no);
-	fprintf(frame_analysis_log, "%06u ", G->analyse_frame);
+	fprintf(frame_analysis_log, "%06u ", draw_call);
 
 	vfprintf(frame_analysis_log, fmt, ap);
 }
@@ -817,7 +819,7 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t si
 		// for filename conflicts, so use def_analyse_options:
 		if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
 			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i.", G->analyse_frame_no);
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i-", G->analyse_frame);
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i-", draw_call);
 	}
 
 	if (shader_type)
@@ -833,7 +835,7 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t si
 		// for filename conflicts, so use def_analyse_options:
 		if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
 			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i.", G->analyse_frame_no);
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i", G->analyse_frame);
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i", draw_call);
 	}
 
 	if (hash) {
@@ -900,7 +902,7 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, s
 	// for filename conflicts, so use def_analyse_options:
 	if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i.", G->analyse_frame_no);
-	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i-", G->analyse_frame);
+	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i-", draw_call);
 
 	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%s-", type);
 
@@ -1389,8 +1391,10 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 	// clear if it would have to be enabled while submitting the copy
 	// commands in the deferred context, or while playing the command queue
 	// in the immediate context, or both.
-	if (GetPassThroughOrigContext1()->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)
+	if (GetPassThroughOrigContext1()->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE) {
+		draw_call++;
 		return;
+	}
 
 	analyse_options = G->cur_analyse_options;
 
@@ -1446,7 +1450,7 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 		NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
 	}
 
-	G->analyse_frame++;
+	draw_call++;
 }
 
 void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
@@ -1481,7 +1485,7 @@ void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 	LeaveCriticalSection(&G->mCriticalSection);
 
 	// XXX: Might be better to use a second counter for these
-	G->analyse_frame++;
+	draw_call++;
 }
 
 void FrameAnalysisContext::FrameAnalysisAfterUnmap(ID3D11Resource *resource)

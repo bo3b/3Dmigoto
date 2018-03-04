@@ -346,7 +346,7 @@ struct Globals
 
 	bool deferred_contexts_enabled;
 
-	unsigned analyse_frame;
+	bool analyse_frame;
 	unsigned analyse_frame_no;
 	wchar_t ANALYSIS_PATH[MAX_PATH];
 	FrameAnalysisOptions def_analyse_options, cur_analyse_options;
@@ -496,7 +496,7 @@ struct Globals
 
 		deferred_contexts_enabled(true),
 
-		analyse_frame(0),
+		analyse_frame(false),
 		analyse_frame_no(0),
 		def_analyse_options(FrameAnalysisOptions::INVALID),
 		cur_analyse_options(FrameAnalysisOptions::INVALID),

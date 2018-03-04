@@ -22,6 +22,7 @@ private:
 	void FrameAnalysisLogAsyncQuery(ID3D11Asynchronous *async);
 	void FrameAnalysisLogData(void *buf, UINT size);
 	FILE *frame_analysis_log;
+	unsigned draw_call;
 
 	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
 			bool stereo, FrameAnalysisOptions type_mask);
