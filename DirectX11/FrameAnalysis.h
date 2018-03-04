@@ -23,6 +23,52 @@ private:
 	void FrameAnalysisLogData(void *buf, UINT size);
 	FILE *frame_analysis_log;
 
+	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
+			bool stereo, FrameAnalysisOptions type_mask);
+	HRESULT CreateStagingResource(ID3D11Texture2D **resource,
+		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa);
+	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename,
+			FrameAnalysisOptions type_mask);
+	void DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
+			UINT size, char type, int idx, UINT stride, UINT offset);
+	void DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
+			UINT size, int idx, UINT stride, UINT offset,
+			UINT first, UINT count);
+	void DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
+			UINT size, DXGI_FORMAT ib_fmt, UINT offset,
+			UINT first, UINT count);
+	void DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
+			FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
+			UINT stride, UINT offset, UINT first, UINT count);
+	void DumpResource(ID3D11Resource *resource, wchar_t *filename,
+			FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
+			UINT stride, UINT offset);
+	void _DumpCBs(char shader_type, bool compute,
+		ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT]);
+	void _DumpTextures(char shader_type, bool compute,
+		ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]);
+	void DumpCBs(bool compute);
+	void DumpVBs(DrawCallInfo *call_info);
+	void DumpIB(DrawCallInfo *call_info);
+	void DumpTextures(bool compute);
+	void DumpRenderTargets();
+	void DumpDepthStencilTargets();
+	void DumpUAVs(bool compute);
+	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
+			wchar_t *reg, char shader_type, int idx, uint32_t hash, uint32_t orig_hash,
+			ID3D11Resource *handle);
+	HRESULT FrameAnalysisFilenameResource(wchar_t *filename, size_t size, wchar_t *type,
+			uint32_t hash, uint32_t orig_hash, ID3D11Resource *handle);
+	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
+	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
+	void FrameAnalysisProcessTriggers(bool compute);
+	void FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info);
+	void _FrameAnalysisAfterUpdate(ID3D11Resource *pResource,
+			FrameAnalysisOptions type_mask, wchar_t *type);
+	void FrameAnalysisAfterUnmap(ID3D11Resource *pResource);
+	void FrameAnalysisAfterUpdate(ID3D11Resource *pResource);
+
+	FrameAnalysisOptions analyse_options;
 public:
 
 	FrameAnalysisContext(ID3D11Device1 *pDevice, ID3D11DeviceContext1 *pContext);

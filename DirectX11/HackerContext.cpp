@@ -85,8 +85,6 @@ HackerContext::HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pCon
 	mCurrentDepthTarget = NULL;
 	mCurrentPSUAVStartSlot = 0;
 	mCurrentPSNumUAVs = 0;
-
-	analyse_options = FrameAnalysisOptions::INVALID;
 }
 
 
@@ -96,6 +94,11 @@ HackerContext::HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pCon
 void HackerContext::SetHackerDevice(HackerDevice *pDevice)
 {
 	mHackerDevice = pDevice;
+}
+
+HackerDevice* HackerContext::GetHackerDevice()
+{
+	return mHackerDevice;
 }
 
 // Returns the "real" DirectX object. Note that if hooking is enabled calls
@@ -771,9 +774,6 @@ void HackerContext::AfterDraw(DrawContext &data)
 		}
 	}
 
-	if (G->analyse_frame)
-		FrameAnalysisAfterDraw(false, &data.call_info);
-
 	if (mHackerDevice->mStereoHandle && data.oldSeparation != FLT_MAX) {
 		NvAPIOverride();
 		if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, data.oldSeparation))
@@ -1170,9 +1170,6 @@ STDMETHODIMP_(void) HackerContext::Unmap(THIS_
 {
 	TrackAndDivertUnmap(pResource, Subresource);
 	mOrigContext1->Unmap(pResource, Subresource);
-
-	if (G->analyse_frame)
-		FrameAnalysisAfterUnmap(pResource);
 }
 
 STDMETHODIMP_(void) HackerContext::PSSetConstantBuffers(THIS_
@@ -1390,9 +1387,6 @@ void HackerContext::AfterDispatch(DispatchContext *context)
 {
 	if (context->post_commands)
 		RunCommandList(mHackerDevice, this, context->post_commands, NULL, true);
-
-	if (G->analyse_frame)
-		FrameAnalysisAfterDraw(true, NULL);
 }
 
 STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
@@ -1603,9 +1597,6 @@ STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
 	// enable as an option in the future if there is a proven need.
 	if (G->track_texture_updates && DstSubresource == 0 && pDstBox == NULL)
 		UpdateResourceHashFromCPU(pDstResource, pSrcData, SrcRowPitch, SrcDepthPitch);
-
-	if (G->analyse_frame)
-		FrameAnalysisAfterUpdate(pDstResource);
 }
 
 STDMETHODIMP_(void) HackerContext::CopyStructureCount(THIS_
@@ -1835,7 +1826,6 @@ STDMETHODIMP_(void) HackerContext::CSSetUnorderedAccessViews(THIS_
 			if (!ppUnorderedAccessViews[i])
 				continue;
 			// TODO: Record stats
-			FrameAnalysisClearUAV(ppUnorderedAccessViews[i]);
 		}
 	}
 
@@ -2697,7 +2687,6 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 					continue;
 				if (G->DumpUsage)
 					RecordRenderTargetInfo(ppRenderTargetViews[i], i);
-				FrameAnalysisClearRT(ppRenderTargetViews[i]);
 			}
 		}
 
@@ -2739,7 +2728,6 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 						continue;
 					if (G->DumpUsage)
 						RecordRenderTargetInfo(ppRenderTargetViews[i], i);
-					FrameAnalysisClearRT(ppRenderTargetViews[i]);
 				}
 			}
 
@@ -2747,14 +2735,7 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 				RecordDepthStencil(pDepthStencilView);
 		}
 
-		if (ppUnorderedAccessViews && (NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS)) {
-			for (UINT i = 0; i < NumUAVs; ++i) {
-				if (!ppUnorderedAccessViews[i])
-					continue;
-				// TODO: Record stats
-				FrameAnalysisClearUAV(ppUnorderedAccessViews[i]);
-			}
-		}
+		// TODO: Record UAV stats
 	}
 
 	mOrigContext1->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, ppRenderTargetViews, pDepthStencilView,
