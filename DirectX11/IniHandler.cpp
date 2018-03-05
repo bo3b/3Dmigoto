@@ -2884,6 +2884,18 @@ static void ToggleFullScreen(HackerDevice *device, void *private_data)
 	LogInfo("> full screen forcing toggled to %d (will not take effect until next mode switch)\n", G->SCREEN_FULLSCREEN);
 }
 
+static void ForceFullScreen(HackerDevice *device, void *private_data)
+{
+	IDXGISwapChain1 *swap_chain;
+
+	LogInfo("> Switching to exclusive full screen mode\n");
+
+	swap_chain = device->GetHackerSwapChain()->GetOrigSwapChain1();
+
+	swap_chain->SetFullscreenState(TRUE, NULL);
+	swap_chain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+}
+
 
 //////////////////////////// HARDWARE MOUSE CURSOR SUPPRESSION //////////////////////////
 // To suppress the hardware mouse cursor you would think we just have to call
@@ -3345,6 +3357,7 @@ void LoadConfigFile()
 
 	G->SCREEN_FULLSCREEN = GetIniInt(L"Device", L"full_screen", -1, NULL);
 	RegisterIniKeyBinding(L"Device", L"toggle_full_screen", ToggleFullScreen, NULL, 0, NULL);
+	RegisterIniKeyBinding(L"Device", L"force_full_screen_on_key", ForceFullScreen, NULL, 0, NULL);
 	G->gForceStereo = GetIniInt(L"Device", L"force_stereo", 0, NULL);
 	G->SCREEN_ALLOW_COMMANDS = GetIniBool(L"Device", L"allow_windowcommands", false, NULL);
 
