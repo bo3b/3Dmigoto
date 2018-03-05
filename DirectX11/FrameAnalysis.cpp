@@ -366,8 +366,18 @@ void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 		*filename, bool stereo, FrameAnalysisOptions type_mask)
 {
 	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
+	ID3D11DeviceContext *immediate_context = this;
 	HRESULT hr = S_OK, dont_care;
 	wchar_t *ext;
+
+	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_DEFERRED) {
+		// XXX Experimental deferred context support: We need to use
+		// the immediate context to stage a resource back to the CPU.
+		// This may not be thread safe - if it proves problematic we
+		// may have to look into delaying this until the deferred
+		// context command queue is submitted to the immediate context.
+		immediate_context = GetHackerDevice()->GetPassThroughOrigContext1();
+	}
 
 	ext = wcsrchr(filename, L'.');
 	if (!ext) {
@@ -391,14 +401,14 @@ void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 			wcscpy_s(ext, MAX_PATH + filename - ext, L".jps");
 		else
 			wcscpy_s(ext, MAX_PATH + filename - ext, L".jpg");
-		hr = DirectX::SaveWICTextureToFile(GetPassThroughOrigContext1(), resource, GUID_ContainerFormatJpeg, filename);
+		hr = DirectX::SaveWICTextureToFile(immediate_context, resource, GUID_ContainerFormatJpeg, filename);
 	}
 
 
 	if ((options & FrameAnalysisOptions::DUMP_XXX_DDS) ||
 	   ((options & FrameAnalysisOptions::DUMP_XXX) && FAILED(hr))) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".dds");
-		hr = DirectX::SaveDDSTextureToFile(GetPassThroughOrigContext1(), resource, filename);
+		hr = DirectX::SaveDDSTextureToFile(immediate_context, resource, filename);
 	}
 
 	if (FAILED(hr))
@@ -705,6 +715,7 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		UINT stride, UINT offset, UINT first, UINT count)
 {
 	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
+	ID3D11DeviceContext *immediate_context = this;
 	D3D11_BUFFER_DESC desc;
 	D3D11_MAPPED_SUBRESOURCE map;
 	ID3D11Buffer *staging = NULL;
@@ -717,6 +728,15 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	if (!ext) {
 		FALogInfo("DumpBuffer: Filename missing extension\n");
 		return;
+	}
+
+	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_DEFERRED) {
+		// XXX Experimental deferred context support: We need to use
+		// the immediate context to stage a resource back to the CPU.
+		// This may not be thread safe - if it proves problematic we
+		// may have to look into delaying this until the deferred
+		// context command queue is submitted to the immediate context.
+		immediate_context = GetHackerDevice()->GetPassThroughOrigContext1();
 	}
 
 	buffer->GetDesc(&desc);
@@ -732,8 +752,8 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		return;
 	}
 
-	GetPassThroughOrigContext1()->CopyResource(staging, buffer);
-	hr = GetPassThroughOrigContext1()->Map(staging, 0, D3D11_MAP_READ, 0, &map);
+	immediate_context->CopyResource(staging, buffer);
+	hr = immediate_context->Map(staging, 0, D3D11_MAP_READ, 0, &map);
 	if (FAILED(hr)) {
 		FALogInfo("DumpBuffer failed to map staging resource: 0x%x\n", hr);
 		return;
@@ -769,7 +789,7 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	// offset, size, first entry and num entries into account.
 
 out_unmap:
-	GetPassThroughOrigContext1()->Unmap(staging, 0);
+	immediate_context->Unmap(staging, 0);
 	staging->Release();
 }
 
@@ -803,6 +823,24 @@ void FrameAnalysisContext::DumpResource(ID3D11Resource *resource, wchar_t *filen
 	}
 }
 
+static BOOL CreateDeferredFADirectory(LPCWSTR path)
+{
+	DWORD err;
+
+	// Deferred contexts don't have an opportunity to create their
+	// dumps directory earlier, so do so now:
+
+	if (!CreateDirectoryEnsuringAccess(path)) {
+		err = GetLastError();
+		if (err != ERROR_ALREADY_EXISTS) {
+			LogInfoW(L"Error creating deferred frame analysis directory: %i\n", err);
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
 HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
 		wchar_t *reg, char shader_type, int idx, uint32_t hash, uint32_t orig_hash,
 		ID3D11Resource *handle)
@@ -813,6 +851,11 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t si
 	HRESULT hr;
 
 	StringCchPrintfExW(filename, size, &pos, &rem, NULL, L"%ls\\", G->ANALYSIS_PATH);
+	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_DEFERRED) {
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"0x%p\\", this);
+		if (!CreateDeferredFADirectory(filename))
+			return E_FAIL;
+	}
 
 	if (!(analyse_options & FrameAnalysisOptions::FILENAME_REG)) {
 		// We don't allow hold to be changed mid-frame due to potential
@@ -897,6 +940,11 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, s
 	HRESULT hr;
 
 	StringCchPrintfExW(filename, size, &pos, &rem, NULL, L"%ls\\", G->ANALYSIS_PATH);
+	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_DEFERRED) {
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"0x%p\\", this);
+		if (!CreateDeferredFADirectory(filename))
+			return E_FAIL;
+	}
 
 	// We don't allow hold to be changed mid-frame due to potential
 	// for filename conflicts, so use def_analyse_options:
@@ -1375,14 +1423,19 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 {
 	NvAPI_Status nvret;
 
-	// Bail if we are a deferred context, as there will not be anything to
-	// dump out yet and we don't want to alter the global draw count. Later
-	// we might want to think about ways we could analyse deferred contexts
-	// - a simple approach would be to dump out the back buffer after
-	// executing a command list in the immediate context, however this
-	// would only show the combined result of all the draw calls from the
-	// deferred context, and not the results of the individual draw
-	// operations.
+	// Update: We now have an option to allow analysis on deferred
+	// contexts, because it can still be useful to dump some types of
+	// resources in these cases. Render and depth targets will be pretty
+	// useless, and their use in texture slots will be similarly useless,
+	// but textures that come from the CPU, constant buffers, vertex
+	// buffers, etc that aren't changed on the GPU can still be useful.
+	//
+	// Later we might want to think about ways we could analyse render
+	// targets & UAVs in deferred contexts - a simple approach would be to
+	// dump out the back buffer after executing a command list in the
+	// immediate context, however this would only show the combined result
+	// of all the draw calls from the deferred context, and not the results
+	// of the individual draw operations.
 	//
 	// Another more in-depth approach would be to create the stereo
 	// resources now and issue the reverse blits, then dump them all after
@@ -1391,7 +1444,8 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 	// clear if it would have to be enabled while submitting the copy
 	// commands in the deferred context, or while playing the command queue
 	// in the immediate context, or both.
-	if (GetPassThroughOrigContext1()->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE) {
+	if (!(analyse_options & FrameAnalysisOptions::DEFERRED_CONTEXT) &&
+	   (GetPassThroughOrigContext1()->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
 		draw_call++;
 		return;
 	}
