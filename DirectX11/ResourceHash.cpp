@@ -4,6 +4,12 @@
 #include "util.h"
 #include "globals.h"
 
+// DirectXTK headers fail to include their own pre-requisits. We just want
+// GetSurfaceInfo from LoaderHelpers
+#include "DirectXTK/Src/pch.h"
+#include "DirectXTK/Src/PlatformHelpers.h"
+#include "DirectXTK/Src/LoaderHelpers.h"
+
 // Overloaded functions to log any kind of resource description (useful to call
 // from templates):
 
@@ -580,15 +586,53 @@ static size_t Texture3DLength(
 	return padded_width * padded_height * mip_depth / 16 * block_size;
 }
 
+static uint32_t hash_tex2d_data(uint32_t hash, const void *data, size_t length,
+		const D3D11_TEXTURE2D_DESC *pDesc, bool skip_padding, UINT mapped_row_pitch)
+{
+	size_t row_pitch, slice_pitch, row_count;
+
+	// Each row in a 2D texture has some alignment constraint, and the
+	// unused bytes at the end of each row can be garbage, interfering with
+	// the hash calculation. We should probably have always been discarding
+	// these bytes for the hash calculations, but it wasn't easily apparent
+	// that would be necessary and now too many fixes depend on it to just
+	// change it, but we might consider adding an option to do this.
+	//
+	// However, these garbage bytes are proven to interfere with frame
+	// analysis de-duplication - not fatally so, but they do mess up the
+	// hashes on many resources so the hashes are not fully de-duped
+	// (easily observable dumping HUD textures in DOAXVV twice in a row and
+	// many of the de-duped hashes will have changed).
+	//
+	// This is based partially from DirectXTK's SaveDDSTextureToFile, but
+	// with the length capped based on our length calculation.
+
+	if (!skip_padding)
+		return crc32c_hw(hash, data, length);
+
+	DirectX::LoaderHelpers::GetSurfaceInfo(pDesc->Width, pDesc->Height, pDesc->Format, &slice_pitch, &row_pitch, &row_count);
+
+	uint8_t *sptr = (uint8_t*)data;
+	size_t msize = min(row_pitch, mapped_row_pitch);
+
+	signed remaining = (signed)length;
+	for (size_t h = 0; h < row_count && remaining > 0; h++) {
+		hash = crc32c_hw(hash, sptr, min(msize, remaining));
+		sptr += mapped_row_pitch;
+		remaining -= (signed)msize;
+	}
+
+	return hash;
+}
 
 uint32_t CalcTexture2DDataHash(
 	const D3D11_TEXTURE2D_DESC *pDesc,
-	const D3D11_SUBRESOURCE_DATA *pInitialData)
+	const D3D11_SUBRESOURCE_DATA *pInitialData,
+	bool skip_padding)
 {
 	uint32_t hash = 0;
 	size_t length_v12;
 	size_t length;
-	UINT item = 0, level = 0, index;
 
 	if (!pDesc || !pInitialData || !pInitialData->pSysMem)
 		return 0;
@@ -623,7 +667,8 @@ uint32_t CalcTexture2DDataHash(
 		if (length_v12 < length || pDesc->ArraySize > 1) {
 			LogDebug("  Using 3DMigoto v1.2.1 compatible Texture2D CRC calculation\n");
 		}
-		return crc32c_hw(hash, pInitialData[0].pSysMem, length_v12);
+		return hash_tex2d_data(hash, pInitialData[0].pSysMem, length_v12,
+				pDesc, skip_padding, pInitialData[0].SysMemPitch);
 	}
 
 	// If we are here it means the old length had overflowed the buffer,
@@ -663,20 +708,13 @@ uint32_t CalcTexture2DDataHash(
 	// I am fairly confident that there won't be any impact to this change
 	// either.
 	//
-	//for (item = 0; item < pDesc->ArraySize; item++) {
-		// We could potentially consider multiple mip-map levels, but
-		// they are unlikely to differentiate any textures that the
-		// main mip-map level alone could not, and few games hand them
-		// to us anyway. Alternatively, using only a smaller mip-map
-		// could potentially be used to improve performance if the
-		// largest mip-map level was enormous (but again, only if the
-		// game actually handed them to us).
-		// for (level = 0; level < pDesc->MipLevels; level++) {
+	// This is now fairly ingrained that we only consider the first
+	// subresource. Changing this would break hash tracking and frame
+	// analysis de-duplication.
 
-		index = D3D11CalcSubresource(level, item, max(pDesc->MipLevels, 1));
-		length = Texture2DLength(pDesc, &pInitialData[index], level);
-		hash = crc32c_hw(hash, pInitialData[index].pSysMem, length);
-	//}
+	length = Texture2DLength(pDesc, &pInitialData[0], 0);
+	hash = hash_tex2d_data(hash, pInitialData[0].pSysMem, length,
+			pDesc, skip_padding, pInitialData[0].SysMemPitch);
 
 	return hash;
 }
@@ -737,9 +775,6 @@ uint32_t CalcTexture1DDataHash(
 	if (!pDesc || !pInitialData || !pInitialData->pSysMem)
 		return 0;
 
-	// As above, we could potentially consider multiple mip-map levels blah
-	// blah blah...
-
 	length = Texture1DLength(pDesc, &pInitialData[0], 0);
 	return crc32c_hw(0, pInitialData[0].pSysMem, length);
 }
@@ -795,10 +830,6 @@ uint32_t CalcTexture3DDataHash(
 	// last time we need to change this.
 
 	LogDebug("  Using 3DMigoto v1.2.9+ Texture3D CRC calculation\n");
-
-	// As above, we could potentially consider multiple mip-map levels blah
-	// blah blah... Difference is, there can only be one array entry in a
-	// 3D texture
 
 	hash = crc32c_hw(hash, pInitialData[0].pSysMem, length);
 

@@ -1169,7 +1169,7 @@ wchar_t* FrameAnalysisContext::dedupe_tex2d_filename(ID3D11Texture2D *resource,
 	// CalcTexture2DDataHash takes a D3D11_SUBRESOURCE_DATA*, which happens
 	// to be binary identical to a D3D11_MAPPED_SUBRESOURCE (though it is
 	// not an array), so we can safely cast it:
-	hash = CalcTexture2DDataHash(orig_desc, (D3D11_SUBRESOURCE_DATA*)&map);
+	hash = CalcTexture2DDataHash(orig_desc, (D3D11_SUBRESOURCE_DATA*)&map, true);
 	hash = CalcTexture2DDescHash(hash, orig_desc);
 
 	GetImmediateContext()->Unmap(resource, 0);
