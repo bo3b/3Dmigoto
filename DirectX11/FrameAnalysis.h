@@ -62,6 +62,9 @@ private:
 	void DumpRenderTargets();
 	void DumpDepthStencilTargets();
 	void DumpUAVs(bool compute);
+	template <typename DescType>
+	void DumpDesc(DescType *desc, wchar_t *filename);
+
 	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
 			wchar_t *reg, char shader_type, int idx, uint32_t hash, uint32_t orig_hash,
 			ID3D11Resource *handle);

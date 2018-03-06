@@ -379,7 +379,7 @@ void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 		*filename, bool stereo, FrameAnalysisOptions type_mask,
 		D3D11_TEXTURE2D_DESC *orig_desc)
 {
-	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
+	FrameAnalysisOptions type_mask_options = (FrameAnalysisOptions)(analyse_options & type_mask);
 	HRESULT hr = S_OK, dont_care;
 	wchar_t dedupe_filename[MAX_PATH], *save_filename;
 	wchar_t *wic_ext = (stereo ? L".jps" : L".jpg");
@@ -414,8 +414,8 @@ void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 	// Needs to be called at some point before SaveXXXTextureToFile:
 	dont_care = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
-	if ((options & FrameAnalysisOptions::DUMP_XXX_JPS) ||
-	    (options & FrameAnalysisOptions::DUMP_XXX)) {
+	if ((type_mask_options & FrameAnalysisOptions::DUMP_XXX_JPS) ||
+	    (type_mask_options & FrameAnalysisOptions::DUMP_XXX)) {
 		// save a JPS file. This will be missing extra channels (e.g.
 		// transparency, depth buffer, specular power, etc) or bit depth that
 		// can be found in the DDS file, but is generally easier to work with.
@@ -433,8 +433,8 @@ void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 	}
 
 
-	if ((options & FrameAnalysisOptions::DUMP_XXX_DDS) ||
-	   ((options & FrameAnalysisOptions::DUMP_XXX) && FAILED(hr))) {
+	if ((type_mask_options & FrameAnalysisOptions::DUMP_XXX_DDS) ||
+	   ((type_mask_options & FrameAnalysisOptions::DUMP_XXX) && FAILED(hr))) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".dds");
 		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, L".dds");
 
@@ -446,6 +446,19 @@ void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 
 	if (FAILED(hr))
 		FALogInfo("Failed to dump Texture2D %S -> %S: 0x%x\n", filename, save_filename, hr);
+
+	// Intentionally not using type_mask_options here - this one isn't
+	// related to any specific resource type, just dumped in conjunction
+	// with other files. Might later consider decoupling JPS/DDS from the
+	// resource types as well.
+	if (analyse_options & FrameAnalysisOptions::DUMP_DESC) {
+		wcscpy_s(ext, MAX_PATH + filename - ext, L".dsc");
+		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, L".dsc");
+
+		if (GetFileAttributes(save_filename) == INVALID_FILE_ATTRIBUTES)
+			DumpDesc(desc, save_filename);
+		link_deduplicated_files(filename, save_filename);
+	}
 
 out_release:
 	if (staging != resource)
@@ -797,11 +810,30 @@ void FrameAnalysisContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE
 	fclose(fd);
 }
 
+template <typename DescType>
+void FrameAnalysisContext::DumpDesc(DescType *desc, wchar_t *filename)
+{
+	FILE *fd = NULL;
+	char buf[256];
+	errno_t err;
+
+	StrResourceDesc(buf, 256, desc);
+
+	err = wfopen_ensuring_access(&fd, filename, L"w");
+	if (!fd) {
+		FALogInfo("Unable to create %S: %u\n", filename, err);
+		return;
+	}
+	fwrite(buf, 1, strlen(buf), fd);
+	putc('\n', fd);
+	fclose(fd);
+}
+
 void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
 		UINT stride, UINT offset, UINT first, UINT count)
 {
-	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
+	FrameAnalysisOptions type_mask_options = (FrameAnalysisOptions)(analyse_options & type_mask);
 	wchar_t dedupe_filename[MAX_PATH], *save_filename;
 	D3D11_BUFFER_DESC desc, orig_desc;
 	D3D11_MAPPED_SUBRESOURCE map;
@@ -841,7 +873,7 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		goto out_unmap;
 	}
 
-	if (options & FrameAnalysisOptions::DUMP_XX_BIN) {
+	if (type_mask_options & FrameAnalysisOptions::DUMP_XX_BIN) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".buf");
 		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, L".buf");
 
@@ -857,18 +889,18 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		link_deduplicated_files(filename, save_filename);
 	}
 
-	if (options & FrameAnalysisOptions::DUMP_XX_TXT) {
+	if (type_mask_options & FrameAnalysisOptions::DUMP_XX_TXT) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".txt");
 		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, L".txt");
 
 		if (GetFileAttributes(save_filename) == INVALID_FILE_ATTRIBUTES) {
-			if (options & FrameAnalysisOptions::DUMP_CB_TXT)
+			if (type_mask_options & FrameAnalysisOptions::DUMP_CB_TXT)
 				DumpBufferTxt(save_filename, &map, desc.ByteWidth, 'c', idx, stride, offset);
-			else if (options & FrameAnalysisOptions::DUMP_VB_TXT)
+			else if (type_mask_options & FrameAnalysisOptions::DUMP_VB_TXT)
 				DumpVBTxt(save_filename, &map, desc.ByteWidth, idx, stride, offset, first, count);
-			else if (options & FrameAnalysisOptions::DUMP_IB_TXT)
+			else if (type_mask_options & FrameAnalysisOptions::DUMP_IB_TXT)
 				DumpIBTxt(save_filename, &map, desc.ByteWidth, ib_fmt, offset, first, count);
-			else if (options & FrameAnalysisOptions::DUMP_ON_XXXXXX) {
+			else if (type_mask_options & FrameAnalysisOptions::DUMP_ON_XXXXXX) {
 				// We don't know what kind of buffer this is, so just
 				// use the generic dump routine:
 				DumpBufferTxt(save_filename, &map, desc.ByteWidth, '?', idx, stride, offset);
@@ -878,6 +910,19 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	}
 	// TODO: Dump UAV, RT and SRV buffers as text taking their format,
 	// offset, size, first entry and num entries into account.
+
+	// Intentionally not using type_mask_options here - this one isn't
+	// related to any specific resource type, just dumped in conjunction
+	// with other files. Might later consider decoupling JPS/DDS from the
+	// resource types as well.
+	if (analyse_options & FrameAnalysisOptions::DUMP_DESC) {
+		wcscpy_s(ext, MAX_PATH + filename - ext, L".dsc");
+		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, L".dsc");
+
+		if (GetFileAttributes(save_filename) == INVALID_FILE_ATTRIBUTES)
+			DumpDesc(&orig_desc, save_filename);
+		link_deduplicated_files(filename, save_filename);
+	}
 
 out_unmap:
 	GetImmediateContext()->Unmap(staging, 0);

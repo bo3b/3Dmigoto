@@ -168,6 +168,12 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src);
 
 bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource);
 
+int StrResourceDesc(char *buf, size_t size, D3D11_BUFFER_DESC *desc);
+int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE1D_DESC *desc);
+int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc);
+int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE3D_DESC *desc);
+int StrResourceDesc(char *buf, size_t size, struct ResourceHashInfo &info);
+
 void LogResourceDesc(const D3D11_BUFFER_DESC *desc);
 void LogResourceDesc(const D3D11_TEXTURE1D_DESC *desc);
 void LogResourceDesc(const D3D11_TEXTURE2D_DESC *desc);
