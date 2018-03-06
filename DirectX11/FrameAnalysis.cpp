@@ -5,6 +5,7 @@
 #include <wincodec.h>
 #include <Strsafe.h>
 #include <stdarg.h>
+#include <Shlwapi.h>
 
 // For windows shortcuts:
 #include <shobjidl.h>
@@ -1301,6 +1302,8 @@ static bool create_shortcut(wchar_t *filename, wchar_t *dedupe_filename)
 
 void FrameAnalysisContext::link_deduplicated_files(wchar_t *filename, wchar_t *dedupe_filename)
 {
+	wchar_t relative_path[MAX_PATH] = {0};
+
 	// Bail if source didn't get created:
 	if (GetFileAttributes(dedupe_filename) == INVALID_FILE_ATTRIBUTES)
 		return;
@@ -1309,14 +1312,16 @@ void FrameAnalysisContext::link_deduplicated_files(wchar_t *filename, wchar_t *d
 	if (GetFileAttributes(filename) != INVALID_FILE_ATTRIBUTES)
 		return;
 
-	if (CreateSymbolicLink(filename, dedupe_filename, SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE))
-		return;
+	if (PathRelativePathTo(relative_path, filename, 0, dedupe_filename, 0)) {
+		if (CreateSymbolicLink(filename, relative_path, SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE))
+			return;
+	}
 
 	// Too noisy if symlinks aren't available, and pretty likely case (e.g.
 	// Windows 10 only allows symlinks if developer mode is enabled), so
 	// reserve this message for debug logging:
 	LogDebug("Symlinking %S -> %S failed (0x%u), trying hard link\n",
-			filename, dedupe_filename, GetLastError());
+			filename, relative_path, GetLastError());
 
 	if (CreateHardLink(filename, dedupe_filename, NULL))
 		return;
