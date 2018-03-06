@@ -587,7 +587,7 @@ static size_t Texture3DLength(
 }
 
 static uint32_t hash_tex2d_data(uint32_t hash, const void *data, size_t length,
-		const D3D11_TEXTURE2D_DESC *pDesc, bool skip_padding, UINT mapped_row_pitch)
+		const D3D11_TEXTURE2D_DESC *pDesc, bool zero_padding, UINT mapped_row_pitch)
 {
 	size_t row_pitch, slice_pitch, row_count;
 
@@ -604,10 +604,24 @@ static uint32_t hash_tex2d_data(uint32_t hash, const void *data, size_t length,
 	// (easily observable dumping HUD textures in DOAXVV twice in a row and
 	// many of the de-duped hashes will have changed).
 	//
+	// Replacing the padding bytes with zeroes makes the hashes consistent
+	// and fixes about half the hashes to match the texture hashes of those
+	// that should, however the other half are still incorrect (but
+	// consistent at least) and further investigation is required.
+	//
+	// Two possibilities come to mind to investigate:
+	// - The textures may have been created with garbage in the padding
+	//   bytes that we ideally should ignore.
+	// - The SysMemPitch used to create the resources may not be preserved
+	//   by DirectX, so the RowPitch we use here may not match leading to
+	//   the zero hash being incorrect. Ideally we would skip the padding
+	//   rather than replace it with zeroes.
+	//
 	// This is based partially from DirectXTK's SaveDDSTextureToFile, but
-	// with the length capped based on our length calculation.
+	// with the length capped based on our length calculation, and with the
+	// padding replaced with zeroes rather than skipped.
 
-	if (!skip_padding)
+	if (!zero_padding)
 		return crc32c_hw(hash, data, length);
 
 	DirectX::LoaderHelpers::GetSurfaceInfo(pDesc->Width, pDesc->Height, pDesc->Format, &slice_pitch, &row_pitch, &row_count);
@@ -615,20 +629,33 @@ static uint32_t hash_tex2d_data(uint32_t hash, const void *data, size_t length,
 	uint8_t *sptr = (uint8_t*)data;
 	size_t msize = min(row_pitch, mapped_row_pitch);
 
+	signed padding = (signed)mapped_row_pitch - (signed)row_pitch;
+	uint8_t *zeroes = NULL;
+	if (padding > 0) {
+		zeroes = new uint8_t[padding];
+		memset(zeroes, 0, padding);
+	}
+
 	signed remaining = (signed)length;
 	for (size_t h = 0; h < row_count && remaining > 0; h++) {
 		hash = crc32c_hw(hash, sptr, min(msize, remaining));
 		sptr += mapped_row_pitch;
 		remaining -= (signed)msize;
+
+		if (zeroes && remaining > 0) {
+			hash = crc32c_hw(hash, zeroes, min(padding, remaining));
+			remaining -= padding;
+		}
 	}
 
+	delete [] zeroes;
 	return hash;
 }
 
 uint32_t CalcTexture2DDataHash(
 	const D3D11_TEXTURE2D_DESC *pDesc,
 	const D3D11_SUBRESOURCE_DATA *pInitialData,
-	bool skip_padding)
+	bool zero_padding)
 {
 	uint32_t hash = 0;
 	size_t length_v12;
@@ -668,7 +695,7 @@ uint32_t CalcTexture2DDataHash(
 			LogDebug("  Using 3DMigoto v1.2.1 compatible Texture2D CRC calculation\n");
 		}
 		return hash_tex2d_data(hash, pInitialData[0].pSysMem, length_v12,
-				pDesc, skip_padding, pInitialData[0].SysMemPitch);
+				pDesc, zero_padding, pInitialData[0].SysMemPitch);
 	}
 
 	// If we are here it means the old length had overflowed the buffer,
@@ -714,7 +741,7 @@ uint32_t CalcTexture2DDataHash(
 
 	length = Texture2DLength(pDesc, &pInitialData[0], 0);
 	hash = hash_tex2d_data(hash, pInitialData[0].pSysMem, length,
-			pDesc, skip_padding, pInitialData[0].SysMemPitch);
+			pDesc, zero_padding, pInitialData[0].SysMemPitch);
 
 	return hash;
 }
