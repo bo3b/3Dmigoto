@@ -362,22 +362,25 @@ void FrameAnalysisContext::FrameAnalysisLogData(void *buf, UINT size)
 	fprintf(frame_analysis_log, "\n");
 }
 
+ID3D11DeviceContext* FrameAnalysisContext::GetImmediateContext()
+{
+	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)
+		return GetPassThroughOrigContext1();
+
+	// XXX Experimental deferred context support: We need to use
+	// the immediate context to stage a resource back to the CPU.
+	// This may not be thread safe - if it proves problematic we
+	// may have to look into delaying this until the deferred
+	// context command queue is submitted to the immediate context.
+	return GetHackerDevice()->GetPassThroughOrigContext1();
+}
+
 void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 		*filename, bool stereo, FrameAnalysisOptions type_mask)
 {
 	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
-	ID3D11DeviceContext *immediate_context = this;
 	HRESULT hr = S_OK, dont_care;
 	wchar_t *ext;
-
-	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_DEFERRED) {
-		// XXX Experimental deferred context support: We need to use
-		// the immediate context to stage a resource back to the CPU.
-		// This may not be thread safe - if it proves problematic we
-		// may have to look into delaying this until the deferred
-		// context command queue is submitted to the immediate context.
-		immediate_context = GetHackerDevice()->GetPassThroughOrigContext1();
-	}
 
 	ext = wcsrchr(filename, L'.');
 	if (!ext) {
@@ -401,14 +404,14 @@ void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 			wcscpy_s(ext, MAX_PATH + filename - ext, L".jps");
 		else
 			wcscpy_s(ext, MAX_PATH + filename - ext, L".jpg");
-		hr = DirectX::SaveWICTextureToFile(immediate_context, resource, GUID_ContainerFormatJpeg, filename);
+		hr = DirectX::SaveWICTextureToFile(GetImmediateContext(), resource, GUID_ContainerFormatJpeg, filename);
 	}
 
 
 	if ((options & FrameAnalysisOptions::DUMP_XXX_DDS) ||
 	   ((options & FrameAnalysisOptions::DUMP_XXX) && FAILED(hr))) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".dds");
-		hr = DirectX::SaveDDSTextureToFile(immediate_context, resource, filename);
+		hr = DirectX::SaveDDSTextureToFile(GetImmediateContext(), resource, filename);
 	}
 
 	if (FAILED(hr))
@@ -715,7 +718,6 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		UINT stride, UINT offset, UINT first, UINT count)
 {
 	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
-	ID3D11DeviceContext *immediate_context = this;
 	D3D11_BUFFER_DESC desc;
 	D3D11_MAPPED_SUBRESOURCE map;
 	ID3D11Buffer *staging = NULL;
@@ -728,15 +730,6 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	if (!ext) {
 		FALogInfo("DumpBuffer: Filename missing extension\n");
 		return;
-	}
-
-	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_DEFERRED) {
-		// XXX Experimental deferred context support: We need to use
-		// the immediate context to stage a resource back to the CPU.
-		// This may not be thread safe - if it proves problematic we
-		// may have to look into delaying this until the deferred
-		// context command queue is submitted to the immediate context.
-		immediate_context = GetHackerDevice()->GetPassThroughOrigContext1();
 	}
 
 	buffer->GetDesc(&desc);
@@ -752,8 +745,8 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		return;
 	}
 
-	immediate_context->CopyResource(staging, buffer);
-	hr = immediate_context->Map(staging, 0, D3D11_MAP_READ, 0, &map);
+	GetImmediateContext()->CopyResource(staging, buffer);
+	hr = GetImmediateContext()->Map(staging, 0, D3D11_MAP_READ, 0, &map);
 	if (FAILED(hr)) {
 		FALogInfo("DumpBuffer failed to map staging resource: 0x%x\n", hr);
 		return;
@@ -789,7 +782,7 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	// offset, size, first entry and num entries into account.
 
 out_unmap:
-	immediate_context->Unmap(staging, 0);
+	GetImmediateContext()->Unmap(staging, 0);
 	staging->Release();
 }
 
