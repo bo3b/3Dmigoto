@@ -27,6 +27,10 @@ private:
 	ID3D11DeviceContext* GetImmediateContext();
 	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
 			bool stereo, FrameAnalysisOptions type_mask);
+	HRESULT ResolveMSAA(ID3D11Texture2D *src, D3D11_TEXTURE2D_DESC *srcDesc,
+			ID3D11Texture2D **resolved);
+	HRESULT StageResource(ID3D11Texture2D *src,
+			D3D11_TEXTURE2D_DESC *srcDesc, ID3D11Texture2D **dst);
 	HRESULT CreateStagingResource(ID3D11Texture2D **resource,
 		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa);
 	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename,

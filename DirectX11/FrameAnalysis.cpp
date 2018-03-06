@@ -465,6 +465,87 @@ HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
 	hr = GetHackerDevice()->GetPassThroughOrigDevice1()->CreateTexture2D(&desc, NULL, resource);
 
 	NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, orig_mode);
+
+	return hr;
+}
+
+HRESULT FrameAnalysisContext::ResolveMSAA(ID3D11Texture2D *src,
+		D3D11_TEXTURE2D_DESC *srcDesc, ID3D11Texture2D **dst)
+{
+	ID3D11Texture2D *resolved = NULL;
+	UINT item, level, index;
+	HRESULT hr;
+
+	*dst = NULL;
+
+	if (srcDesc->SampleDesc.Count <= 1)
+		return S_OK;
+
+	// Resolve MSAA surfaces. Procedure copied from DirectXTK
+	// These need to have D3D11_USAGE_DEFAULT to resolve,
+	// so we need yet another intermediate texture:
+	hr = CreateStagingResource(&resolved, *srcDesc, false, true);
+	if (FAILED(hr)) {
+		FALogInfo("ResolveMSAA failed to create intermediate texture: 0x%x\n", hr);
+		return hr;
+	}
+
+	DXGI_FORMAT fmt = EnsureNotTypeless(srcDesc->Format);
+	UINT support = 0;
+
+	hr = GetHackerDevice()->GetPassThroughOrigDevice1()->CheckFormatSupport( fmt, &support );
+	if (FAILED(hr) || !(support & D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE)) {
+		FALogInfo("ResolveMSAA cannot resolve MSAA format %d\n", fmt);
+		goto err_release;
+	}
+
+	for (item = 0; item < srcDesc->ArraySize; item++) {
+		for (level = 0; level < srcDesc->MipLevels; level++) {
+			index = D3D11CalcSubresource(level, item, max(srcDesc->MipLevels, 1));
+			GetImmediateContext()->ResolveSubresource(resolved, index, src, index, fmt);
+		}
+	}
+
+	*dst = resolved;
+	return S_OK;
+
+err_release:
+	resolved->Release();
+	return hr;
+}
+
+HRESULT FrameAnalysisContext::StageResource(ID3D11Texture2D *src,
+		D3D11_TEXTURE2D_DESC *srcDesc, ID3D11Texture2D **dst)
+{
+	ID3D11Texture2D *staging = NULL;
+	ID3D11Texture2D *resolved = NULL;
+	HRESULT hr;
+
+	*dst = NULL;
+
+	hr = CreateStagingResource(&staging, *srcDesc, false, false);
+	if (FAILED(hr)) {
+		FALogInfo("StageResource failed to create intermediate texture: 0x%x\n", hr);
+		return hr;
+	}
+
+	hr = ResolveMSAA(src, srcDesc, &resolved);
+	if (FAILED(hr))
+		goto err_release;
+	if (resolved)
+		src = resolved;
+
+	GetImmediateContext()->CopyResource(staging, src);
+
+	if (resolved)
+		resolved->Release();
+
+	*dst = staging;
+	return S_OK;
+
+err_release:
+	if (staging)
+		staging->Release();
 	return hr;
 }
 
@@ -475,7 +556,6 @@ void FrameAnalysisContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t
 {
 	ID3D11Texture2D *stereoResource = NULL;
 	ID3D11Texture2D *tmpResource = NULL;
-	ID3D11Texture2D *tmpResource2 = NULL;
 	ID3D11Texture2D *src = resource;
 	D3D11_TEXTURE2D_DESC srcDesc;
 	D3D11_BOX srcBox;
@@ -496,41 +576,9 @@ void FrameAnalysisContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t
 		// since CopySubresourceRegion() will fail if the source and
 		// destination dimensions don't match, so use yet another
 		// intermediate staging resource first.
-		hr = CreateStagingResource(&tmpResource, srcDesc, false, false);
-		if (FAILED(hr)) {
-			FALogInfo("DumpStereoResource failed to create intermediate texture: 0x%x\n", hr);
+		hr = StageResource(src, &srcDesc, &tmpResource);
+		if (FAILED(hr))
 			goto out;
-		}
-
-		if (srcDesc.SampleDesc.Count > 1) {
-			// Resolve MSAA surfaces. Procedure copied from DirectXTK
-			// These need to have D3D11_USAGE_DEFAULT to resolve,
-			// so we need yet another intermediate texture:
-			hr = CreateStagingResource(&tmpResource2, srcDesc, false, true);
-			if (FAILED(hr)) {
-				FALogInfo("DumpStereoResource failed to create intermediate texture: 0x%x\n", hr);
-				goto out1;
-			}
-
-			DXGI_FORMAT fmt = EnsureNotTypeless(srcDesc.Format);
-			UINT support = 0;
-
-			hr = GetHackerDevice()->GetPassThroughOrigDevice1()->CheckFormatSupport( fmt, &support );
-			if (FAILED(hr) || !(support & D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE)) {
-				FALogInfo("DumpStereoResource cannot resolve MSAA format %d\n", fmt);
-				goto out2;
-			}
-
-			for (item = 0; item < srcDesc.ArraySize; item++) {
-				for (level = 0; level < srcDesc.MipLevels; level++) {
-					index = D3D11CalcSubresource(level, item, max(srcDesc.MipLevels, 1));
-					GetPassThroughOrigContext1()->ResolveSubresource(tmpResource2, index, src, index, fmt);
-				}
-			}
-			src = tmpResource2;
-		}
-
-		GetPassThroughOrigContext1()->CopyResource(tmpResource, src);
 		src = tmpResource;
 	}
 
@@ -555,10 +603,6 @@ void FrameAnalysisContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t
 
 	Dump2DResource(stereoResource, filename, true, type_mask);
 
-out2:
-	if (tmpResource2)
-		tmpResource2->Release();
-out1:
 	if (tmpResource)
 		tmpResource->Release();
 
