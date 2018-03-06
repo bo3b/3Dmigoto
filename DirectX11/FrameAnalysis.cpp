@@ -376,16 +376,39 @@ ID3D11DeviceContext* FrameAnalysisContext::GetImmediateContext()
 }
 
 void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
-		*filename, bool stereo, FrameAnalysisOptions type_mask)
+		*filename, bool stereo, FrameAnalysisOptions type_mask,
+		D3D11_TEXTURE2D_DESC *orig_desc)
 {
 	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
 	HRESULT hr = S_OK, dont_care;
-	wchar_t *ext;
+	wchar_t dedupe_filename[MAX_PATH], *save_filename;
+	wchar_t *wic_ext = (stereo ? L".jps" : L".jpg");
+	wchar_t *ext, *save_ext;
+	ID3D11Texture2D *staging = resource;
+	D3D11_TEXTURE2D_DESC staging_desc, *desc = orig_desc;
+
+	// In order to de-dupe Texture2D resources, we need to compare their
+	// contents before dumping them to a file, so we copy them into a
+	// staging resource (if we did not already do so earlier for the
+	// reverse stereo blit). DirectXTK will notice this has been done and
+	// skip doing it again.
+	resource->GetDesc(&staging_desc);
+	if ((staging_desc.Usage != D3D11_USAGE_STAGING) || !(staging_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ)) {
+		hr = StageResource(resource, &staging_desc, &staging);
+		if (FAILED(hr))
+			return;
+	}
+
+	if (!orig_desc)
+		desc = &staging_desc;
+
+	save_filename = dedupe_tex2d_filename(staging, desc, dedupe_filename, MAX_PATH, filename);
 
 	ext = wcsrchr(filename, L'.');
-	if (!ext) {
+	save_ext = wcsrchr(save_filename, L'.');
+	if (!ext || !save_ext) {
 		FALogInfo("Dump2DResource: Filename missing extension\n");
-		return;
+		goto out_release;
 	}
 
 	// Needs to be called at some point before SaveXXXTextureToFile:
@@ -400,22 +423,33 @@ void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 		// Not all formats can be saved as JPS with this function - if
 		// only dump_rt was specified (as opposed to dump_rt_jps) we
 		// will dump out DDS files for those instead.
-		if (stereo)
-			wcscpy_s(ext, MAX_PATH + filename - ext, L".jps");
-		else
-			wcscpy_s(ext, MAX_PATH + filename - ext, L".jpg");
-		hr = DirectX::SaveWICTextureToFile(GetImmediateContext(), resource, GUID_ContainerFormatJpeg, filename);
+		wcscpy_s(ext, MAX_PATH + filename - ext, wic_ext);
+		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, wic_ext);
+
+		hr = S_OK;
+		if (GetFileAttributes(save_filename) == INVALID_FILE_ATTRIBUTES)
+			hr = DirectX::SaveWICTextureToFile(GetImmediateContext(), staging, GUID_ContainerFormatJpeg, save_filename);
+		link_deduplicated_files(filename, save_filename);
 	}
 
 
 	if ((options & FrameAnalysisOptions::DUMP_XXX_DDS) ||
 	   ((options & FrameAnalysisOptions::DUMP_XXX) && FAILED(hr))) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".dds");
-		hr = DirectX::SaveDDSTextureToFile(GetImmediateContext(), resource, filename);
+		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, L".dds");
+
+		hr = S_OK;
+		if (GetFileAttributes(save_filename) == INVALID_FILE_ATTRIBUTES)
+			hr = DirectX::SaveDDSTextureToFile(GetImmediateContext(), staging, save_filename);
+		link_deduplicated_files(filename, save_filename);
 	}
 
 	if (FAILED(hr))
-		FALogInfo("Failed to dump Texture2D: 0x%x\n", hr);
+		FALogInfo("Failed to dump Texture2D %S -> %S: 0x%x\n", filename, save_filename, hr);
+
+out_release:
+	if (staging != resource)
+		staging->Release();
 }
 
 HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
@@ -453,18 +487,24 @@ HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
 	desc.SampleDesc.Count = 1;
 	desc.SampleDesc.Quality = 0;
 
-	// Force surface creation mode to stereo to prevent driver heuristics
-	// interfering. If the original surface was mono that's ok - thaks to
-	// the intermediate stages we'll end up with both eyes the same
-	// (without this one eye would be blank instead, which is arguably
-	// better since it will be immediately obvious, but risks missing the
-	// second perspective if the original resource was actually stereo)
-	NvAPI_Stereo_GetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, &orig_mode);
-	NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
+	if (analyse_options & FrameAnalysisOptions::STEREO) {
+		// If we are dumping stereo at all force surface creation mode
+		// to stereo (regardless of whether we are creating this double
+		// width) to prevent driver heuristics interfering. If the
+		// original surface was mono that's ok - thaks to the
+		// intermediate stages we'll end up with both eyes the same
+		// (without this one eye would be blank instead, which is
+		// arguably better since it will be immediately obvious, but
+		// risks missing the second perspective if the original
+		// resource was actually stereo)
+		NvAPI_Stereo_GetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, &orig_mode);
+		NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
+	}
 
 	hr = GetHackerDevice()->GetPassThroughOrigDevice1()->CreateTexture2D(&desc, NULL, resource);
 
-	NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, orig_mode);
+	if (analyse_options & FrameAnalysisOptions::STEREO)
+		NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, orig_mode);
 
 	return hr;
 }
@@ -601,7 +641,7 @@ void FrameAnalysisContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t
 		}
 	}
 
-	Dump2DResource(stereoResource, filename, true, type_mask);
+	Dump2DResource(stereoResource, filename, true, type_mask, &srcDesc);
 
 	if (tmpResource)
 		tmpResource->Release();
@@ -762,21 +802,17 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		UINT stride, UINT offset, UINT first, UINT count)
 {
 	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
-	D3D11_BUFFER_DESC desc;
+	wchar_t dedupe_filename[MAX_PATH], *save_filename;
+	D3D11_BUFFER_DESC desc, orig_desc;
 	D3D11_MAPPED_SUBRESOURCE map;
 	ID3D11Buffer *staging = NULL;
 	HRESULT hr;
 	FILE *fd = NULL;
-	wchar_t *ext;
+	wchar_t *ext, *save_ext;
 	errno_t err;
 
-	ext = wcsrchr(filename, L'.');
-	if (!ext) {
-		FALogInfo("DumpBuffer: Filename missing extension\n");
-		return;
-	}
-
 	buffer->GetDesc(&desc);
+	memcpy(&orig_desc, &desc, sizeof(D3D11_BUFFER_DESC));
 
 	desc.Usage = D3D11_USAGE_STAGING;
 	desc.BindFlags = 0;
@@ -793,40 +829,59 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	hr = GetImmediateContext()->Map(staging, 0, D3D11_MAP_READ, 0, &map);
 	if (FAILED(hr)) {
 		FALogInfo("DumpBuffer failed to map staging resource: 0x%x\n", hr);
-		return;
+		goto out_release;
+	}
+
+	save_filename = dedupe_buf_filename(staging, &orig_desc, &map, dedupe_filename, MAX_PATH);
+
+	ext = wcsrchr(filename, L'.');
+	save_ext = wcsrchr(save_filename, L'.');
+	if (!ext || !save_ext) {
+		FALogInfo("DumpBuffer: Filename missing extension\n");
+		goto out_unmap;
 	}
 
 	if (options & FrameAnalysisOptions::DUMP_XX_BIN) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".buf");
+		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, L".buf");
 
-		err = wfopen_ensuring_access(&fd, filename, L"wb");
-		if (!fd) {
-			FALogInfo("Unable to create %S: %u\n", filename, err);
-			goto out_unmap;
+		if (GetFileAttributes(save_filename) == INVALID_FILE_ATTRIBUTES) {
+			err = wfopen_ensuring_access(&fd, save_filename, L"wb");
+			if (!fd) {
+				FALogInfo("Unable to create %S: %u\n", save_filename, err);
+				goto out_unmap;
+			}
+			fwrite(map.pData, 1, desc.ByteWidth, fd);
+			fclose(fd);
 		}
-		fwrite(map.pData, 1, desc.ByteWidth, fd);
-		fclose(fd);
+		link_deduplicated_files(filename, save_filename);
 	}
 
 	if (options & FrameAnalysisOptions::DUMP_XX_TXT) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".txt");
-		if (options & FrameAnalysisOptions::DUMP_CB_TXT)
-			DumpBufferTxt(filename, &map, desc.ByteWidth, 'c', idx, stride, offset);
-		else if (options & FrameAnalysisOptions::DUMP_VB_TXT)
-			DumpVBTxt(filename, &map, desc.ByteWidth, idx, stride, offset, first, count);
-		else if (options & FrameAnalysisOptions::DUMP_IB_TXT)
-			DumpIBTxt(filename, &map, desc.ByteWidth, ib_fmt, offset, first, count);
-		else if (options & FrameAnalysisOptions::DUMP_ON_XXXXXX) {
-			// We don't know what kind of buffer this is, so just
-			// use the generic dump routine:
-			DumpBufferTxt(filename, &map, desc.ByteWidth, '?', idx, stride, offset);
+		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, L".txt");
+
+		if (GetFileAttributes(save_filename) == INVALID_FILE_ATTRIBUTES) {
+			if (options & FrameAnalysisOptions::DUMP_CB_TXT)
+				DumpBufferTxt(save_filename, &map, desc.ByteWidth, 'c', idx, stride, offset);
+			else if (options & FrameAnalysisOptions::DUMP_VB_TXT)
+				DumpVBTxt(save_filename, &map, desc.ByteWidth, idx, stride, offset, first, count);
+			else if (options & FrameAnalysisOptions::DUMP_IB_TXT)
+				DumpIBTxt(save_filename, &map, desc.ByteWidth, ib_fmt, offset, first, count);
+			else if (options & FrameAnalysisOptions::DUMP_ON_XXXXXX) {
+				// We don't know what kind of buffer this is, so just
+				// use the generic dump routine:
+				DumpBufferTxt(save_filename, &map, desc.ByteWidth, '?', idx, stride, offset);
+			}
 		}
+		link_deduplicated_files(filename, save_filename);
 	}
 	// TODO: Dump UAV, RT and SRV buffers as text taking their format,
 	// offset, size, first entry and num entries into account.
 
 out_unmap:
 	GetImmediateContext()->Unmap(staging, 0);
+out_release:
 	staging->Release();
 }
 
@@ -849,7 +904,7 @@ void FrameAnalysisContext::DumpResource(ID3D11Resource *resource, wchar_t *filen
 			if (analyse_options & FrameAnalysisOptions::STEREO)
 				DumpStereoResource((ID3D11Texture2D*)resource, filename, type_mask);
 			if (analyse_options & FrameAnalysisOptions::MONO)
-				Dump2DResource((ID3D11Texture2D*)resource, filename, false, type_mask);
+				Dump2DResource((ID3D11Texture2D*)resource, filename, false, type_mask, NULL);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
 			FALogInfo("Skipped dumping Texture3D resource\n");
@@ -876,6 +931,14 @@ static BOOL CreateDeferredFADirectory(LPCWSTR path)
 	}
 
 	return TRUE;
+}
+
+static void CreateDedupedDirectory()
+{
+	wchar_t path[MAX_PATH];
+
+	_snwprintf_s(path, MAX_PATH, MAX_PATH, L"%ls\\deduped", G->ANALYSIS_PATH);
+	CreateDirectoryEnsuringAccess(path);
 }
 
 HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
@@ -1022,6 +1085,115 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, s
 		FALogInfo("Failed to create filename: 0x%x\n", hr);
 
 	return hr;
+}
+
+wchar_t* FrameAnalysisContext::dedupe_tex2d_filename(ID3D11Texture2D *resource,
+		D3D11_TEXTURE2D_DESC *orig_desc, wchar_t *dedupe_filename,
+		size_t size, wchar_t *traditional_filename)
+{
+	D3D11_MAPPED_SUBRESOURCE map;
+	HRESULT hr;
+	uint32_t hash;
+
+	// Many of the files dumped with frame analysis are identical, and this
+	// can take a very long time and waste a lot of disk space to dump them
+	// all. We employ a new strategy to minimise this by saving only unique
+	// files and hardlinking them into their traditional FA location.
+	//
+	// This function is responsible for finding a filename that will be
+	// unique for the given resource, with its current contents (not the
+	// contents it was created with). To do this, we will re-hash the
+	// resource now. If there happen to be any hash collisions in a frame
+	// analysis dump it will become misleading, as the later resource will
+	// point to the earlier resource with the same hash, but I'm not
+	// expecting this to be a major problem in practice.
+	//
+	// We use the original description from the resource prior to being
+	// staged to try to get the best chance of matching the 3DMigoto hash
+	// for textures that have not been changed on the GPU. There may still
+	// be reasons it won't if the description retrieved from DirectX
+	// doesn't match the description used to create it (e.g. mip-maps being
+	// generated after creation I guess).
+
+	hr = GetImmediateContext()->Map(resource, 0, D3D11_MAP_READ, 0, &map);
+	if (FAILED(hr)) {
+		FALogInfo("Frame Analysis filename deduplication failed to map resource: 0x%x\n", hr);
+		goto err;
+	};
+
+	// CalcTexture2DDataHash takes a D3D11_SUBRESOURCE_DATA*, which happens
+	// to be binary identical to a D3D11_MAPPED_SUBRESOURCE (though it is
+	// not an array), so we can safely cast it:
+	hash = CalcTexture2DDataHash(orig_desc, (D3D11_SUBRESOURCE_DATA*)&map);
+	hash = CalcTexture2DDescHash(hash, orig_desc);
+
+	GetImmediateContext()->Unmap(resource, 0);
+
+	CreateDedupedDirectory();
+	_snwprintf_s(dedupe_filename, size, size, L"%ls\\deduped\\%08x.XXX", G->ANALYSIS_PATH, hash);
+
+	return dedupe_filename;
+err:
+	return traditional_filename;
+}
+
+wchar_t* FrameAnalysisContext::dedupe_buf_filename(ID3D11Buffer *resource,
+		D3D11_BUFFER_DESC *orig_desc, D3D11_MAPPED_SUBRESOURCE *map,
+		wchar_t *dedupe_filename, size_t size)
+{
+	uint32_t hash;
+
+	// Many of the files dumped with frame analysis are identical, and this
+	// can take a very long time and waste a lot of disk space to dump them
+	// all. We employ a new strategy to minimise this by saving only unique
+	// files and hardlinking them into their traditional FA location.
+	//
+	// This function is responsible for finding a filename that will be
+	// unique for the given resource, with its current contents (not the
+	// contents it was created with). To do this, we will re-hash the
+	// resource now. If there happen to be any hash collisions in a frame
+	// analysis dump it will become misleading, as the later resource will
+	// point to the earlier resource with the same hash, but I'm not
+	// expecting this to be a major problem in practice.
+	//
+	// We use the original description from the resource prior to being
+	// staged to try to get the best chance of matching the 3DMigoto hash
+	// for textures that have not been changed on the GPU. There may still
+	// be reasons it won't if the description retrieved from DirectX
+	// doesn't match the description used to create it (e.g. unused fields
+	// for a given buffer type being zeroed out).
+
+	hash = crc32c_hw(0, map->pData, orig_desc->ByteWidth);
+	hash = crc32c_hw(hash, orig_desc, sizeof(D3D11_BUFFER_DESC));
+
+	CreateDedupedDirectory();
+	_snwprintf_s(dedupe_filename, size, size, L"%ls\\deduped\\%08x.XXX", G->ANALYSIS_PATH, hash);
+
+	return dedupe_filename;
+}
+
+void FrameAnalysisContext::link_deduplicated_files(wchar_t *filename, wchar_t *dedupe_filename)
+{
+	// Bail if source didn't get created:
+	if (GetFileAttributes(dedupe_filename) == INVALID_FILE_ATTRIBUTES)
+		return;
+
+	// Bail if destination already exists:
+	if (GetFileAttributes(filename) != INVALID_FILE_ATTRIBUTES)
+		return;
+
+	if (CreateSymbolicLink(filename, dedupe_filename, SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE))
+		return;
+
+	FALogInfo("Symlinking %S -> %S failed (0x%u), trying hard link\n", filename, dedupe_filename, GetLastError());
+
+	if (CreateHardLink(filename, dedupe_filename, NULL))
+		return;
+
+	FALogInfo("Hard linking %S -> %S failed (0x%u), giving up\n", filename, dedupe_filename, GetLastError());
+
+	// TODO: We could keep going and try windows shortcuts next, then copy
+	// the file if nothing else worked
 }
 
 void FrameAnalysisContext::_DumpCBs(char shader_type, bool compute,

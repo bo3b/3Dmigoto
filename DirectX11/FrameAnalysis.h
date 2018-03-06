@@ -26,13 +26,15 @@ private:
 
 	ID3D11DeviceContext* GetImmediateContext();
 	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
-			bool stereo, FrameAnalysisOptions type_mask);
+			bool stereo, FrameAnalysisOptions type_mask,
+			D3D11_TEXTURE2D_DESC *orig_desc);
 	HRESULT ResolveMSAA(ID3D11Texture2D *src, D3D11_TEXTURE2D_DESC *srcDesc,
 			ID3D11Texture2D **resolved);
 	HRESULT StageResource(ID3D11Texture2D *src,
 			D3D11_TEXTURE2D_DESC *srcDesc, ID3D11Texture2D **dst);
 	HRESULT CreateStagingResource(ID3D11Texture2D **resource,
 		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa);
+
 	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename,
 			FrameAnalysisOptions type_mask);
 	void DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
@@ -65,6 +67,15 @@ private:
 			ID3D11Resource *handle);
 	HRESULT FrameAnalysisFilenameResource(wchar_t *filename, size_t size, wchar_t *type,
 			uint32_t hash, uint32_t orig_hash, ID3D11Resource *handle);
+	wchar_t* dedupe_tex2d_filename(ID3D11Texture2D *resource,
+			D3D11_TEXTURE2D_DESC *desc, wchar_t *dedupe_filename,
+			size_t size, wchar_t *traditional_filename);
+	wchar_t* dedupe_buf_filename(ID3D11Buffer *resource,
+			D3D11_BUFFER_DESC *orig_desc,
+			D3D11_MAPPED_SUBRESOURCE *map,
+			wchar_t *dedupe_filename, size_t size);
+	void link_deduplicated_files(wchar_t *filename, wchar_t *dedupe_filename);
+
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
 	void FrameAnalysisProcessTriggers(bool compute);
