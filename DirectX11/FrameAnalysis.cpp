@@ -1661,6 +1661,8 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 {
 	NvAPI_Status nvret;
 
+	analyse_options = G->cur_analyse_options;
+
 	// Update: We now have an option to allow analysis on deferred
 	// contexts, because it can still be useful to dump some types of
 	// resources in these cases. Render and depth targets will be pretty
@@ -1687,8 +1689,6 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 		draw_call++;
 		return;
 	}
-
-	analyse_options = G->cur_analyse_options;
 
 	FrameAnalysisProcessTriggers(compute);
 
