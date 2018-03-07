@@ -117,6 +117,8 @@ private:
 	ID3D11GeometryShader *mCurrentGeometryShaderHandle;
 	ID3D11DomainShader *mCurrentDomainShaderHandle;
 	ID3D11HullShader *mCurrentHullShaderHandle;
+	std::vector<ID3D11Resource *> mCurrentRenderTargets;
+	ID3D11Resource *mCurrentDepthTarget;
 	UINT mCurrentPSUAVStartSlot;
 	UINT mCurrentPSNumUAVs;
 
@@ -199,8 +201,6 @@ protected:
 	UINT64 mCurrentGeometryShader;
 	UINT64 mCurrentPixelShader;
 	UINT64 mCurrentComputeShader;
-	std::vector<ID3D11Resource *> mCurrentRenderTargets;
-	ID3D11Resource *mCurrentDepthTarget;
 
 public:
 	HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
@@ -214,6 +214,7 @@ public:
 
 	// public to allow CommandList access
 	virtual void FrameAnalysisLog(char *fmt, ...) {};
+	virtual void FrameAnalysisTrigger(FrameAnalysisOptions new_options) {};
 
 
 	/*** IUnknown methods ***/

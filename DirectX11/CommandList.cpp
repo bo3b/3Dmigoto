@@ -580,6 +580,9 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 	if (!wcscmp(key, L"convergence"))
 		return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, false);
 
+	if (!wcscmp(key, L"analyse_options"))
+		return AddCommandToList(new FrameAnalysisChangeOptionsCommand(section, key, val), explicit_command_list, pre_command_list, NULL, NULL);
+
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
 
@@ -912,6 +915,33 @@ void PerDrawConvergenceOverrideCommand::set_stereo_value(CommandListState *state
 	NvAPIOverride();
 	if (NVAPI_OK != NvAPI_Stereo_SetConvergence(state->mHackerDevice->mStereoHandle, val))
 		COMMAND_LIST_LOG(state, "  Stereo_SetConvergence failed\n");
+}
+
+FrameAnalysisChangeOptionsCommand::FrameAnalysisChangeOptionsCommand(wstring section, wstring key, wstring *val)
+{
+	wchar_t *buf;
+	size_t size = val->size() + 1;
+
+	// parse_enum_option_string replaces spaces with NULLs, so it can't
+	// operate on the buffer in the wstring directly. I could potentially
+	// change it to work without modifying the string, but for now it's
+	// easier to just make a copy of the string:
+	buf = new wchar_t[size];
+	wcscpy_s(buf, size, val->c_str());
+
+	analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
+		(FrameAnalysisOptionNames, buf, NULL);
+
+	delete [] buf;
+
+	ini_line = L"[" + wstring(section) + L"] " + key + L" = " + *val;
+}
+
+void FrameAnalysisChangeOptionsCommand::run(CommandListState *state)
+{
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+
+	state->mHackerContext->FrameAnalysisTrigger(analyse_options);
 }
 
 CustomShader::CustomShader() :

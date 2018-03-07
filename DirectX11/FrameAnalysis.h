@@ -81,7 +81,7 @@ private:
 
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
-	void FrameAnalysisProcessTriggers(bool compute);
+	void update_per_draw_analyse_options();
 	void FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info);
 	void _FrameAnalysisAfterUpdate(ID3D11Resource *pResource,
 			FrameAnalysisOptions type_mask, wchar_t *type);
@@ -89,6 +89,8 @@ private:
 	void FrameAnalysisAfterUpdate(ID3D11Resource *pResource);
 
 	FrameAnalysisOptions analyse_options;
+	FrameAnalysisOptions oneshot_analyse_options;
+	bool oneshot_valid;
 public:
 
 	FrameAnalysisContext(ID3D11Device1 *pDevice, ID3D11DeviceContext1 *pContext);
@@ -102,6 +104,8 @@ public:
 	// reference, but later we might actually make the default function
 	// insert a newline:
 #define FrameAnalysisLogNoNL FrameAnalysisLog
+
+	void FrameAnalysisTrigger(FrameAnalysisOptions new_options) override;
 
 	/*** IUnknown methods ***/
 

@@ -1296,7 +1296,6 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"allow_duplicate_hash",
 	L"depth_filter",
 	L"partner",
-	L"analyse_options",
 	L"model",
 	L"disable_scissor",
 	NULL
@@ -1370,11 +1369,6 @@ static void ParseShaderOverrideSections()
 		// filtering can be achieved by setting an ini param in the
 		// partner's [ShaderOverride] section.
 		override->partner_hash = GetIniHash(id, L"partner", 0, NULL);
-
-		if (GetIniStringAndLog(id, L"analyse_options", 0, setting, MAX_PATH)) {
-			override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
-				(FrameAnalysisOptionNames, setting, NULL);
-		}
 
 		if (GetIniStringAndLog(id, L"model", 0, setting, MAX_PATH)) {
 			wcstombs(override->model, setting, ARRAYSIZE(override->model));
@@ -1674,7 +1668,6 @@ wchar_t *TextureOverrideIniKeys[] = {
 	L"width",
 	L"height",
 	L"iteration",
-	L"analyse_options",
 	L"filter_index",
 	L"expand_region_copy",
 	L"deny_cpu_read",
@@ -1713,11 +1706,6 @@ static void parse_texture_override_common(const wchar_t *id, TextureOverride *ov
 			override->iterations.push_back(id[j]);
 			LogInfo("  Iteration=%d\n", id[j]);
 		}
-	}
-
-	if (GetIniStringAndLog(id, L"analyse_options", 0, setting, MAX_PATH)) {
-		override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
-			(FrameAnalysisOptionNames, setting, NULL);
 	}
 
 	override->filter_index = GetIniFloat(id, L"filter_index", 1.0f, NULL);

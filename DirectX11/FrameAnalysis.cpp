@@ -15,6 +15,8 @@ FrameAnalysisContext::FrameAnalysisContext(ID3D11Device1 *pDevice, ID3D11DeviceC
 	HackerContext(pDevice, pContext)
 {
 	analyse_options = FrameAnalysisOptions::INVALID;
+	oneshot_analyse_options = FrameAnalysisOptions::INVALID;
+	oneshot_valid = false;
 	frame_analysis_log = NULL;
 	draw_call = 0;
 }
@@ -1694,83 +1696,44 @@ void FrameAnalysisContext::FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav)
 	GetPassThroughOrigContext1()->ClearUnorderedAccessViewUint(uav, values);
 }
 
-void FrameAnalysisContext::FrameAnalysisProcessTriggers(bool compute)
+void FrameAnalysisContext::FrameAnalysisTrigger(FrameAnalysisOptions new_options)
 {
-	FrameAnalysisOptions new_options = FrameAnalysisOptions::INVALID;
-	struct ShaderOverride *shaderOverride;
-	struct TextureOverride *textureOverride;
-	uint32_t hash;
-	UINT i;
-
-	// TODO: Trigger on texture inputs
-
-	if (compute) {
-		try {
-			shaderOverride = &G->mShaderOverrideMap.at(mCurrentComputeShader);
-			new_options |= shaderOverride->analyse_options;
-		} catch (std::out_of_range) {}
-
-		// TODO: Trigger on current UAVs
-	} else {
-		try {
-			shaderOverride = &G->mShaderOverrideMap.at(mCurrentVertexShader);
-			new_options |= shaderOverride->analyse_options;
-		} catch (std::out_of_range) {}
-
-		try {
-			shaderOverride = &G->mShaderOverrideMap.at(mCurrentHullShader);
-			new_options |= shaderOverride->analyse_options;
-		} catch (std::out_of_range) {}
-
-		try {
-			shaderOverride = &G->mShaderOverrideMap.at(mCurrentDomainShader);
-			new_options |= shaderOverride->analyse_options;
-		} catch (std::out_of_range) {}
-
-		try {
-			shaderOverride = &G->mShaderOverrideMap.at(mCurrentGeometryShader);
-			new_options |= shaderOverride->analyse_options;
-		} catch (std::out_of_range) {}
-
-		try {
-			shaderOverride = &G->mShaderOverrideMap.at(mCurrentPixelShader);
-			new_options |= shaderOverride->analyse_options;
-		} catch (std::out_of_range) {}
-
-		for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
-			try {
-				hash = G->mResources.at(mCurrentRenderTargets[i]).hash;
-				textureOverride = &G->mTextureOverrideMap.at(hash);
-				new_options |= textureOverride->analyse_options;
-			} catch (std::out_of_range) {}
-		}
-
-		if (mCurrentDepthTarget) {
-			try {
-				hash = G->mResources.at(mCurrentDepthTarget).hash;
-				textureOverride = &G->mTextureOverrideMap.at(hash);
-				new_options |= textureOverride->analyse_options;
-			} catch (std::out_of_range) {}
-		}
-	}
-
-	if (!new_options)
-		return;
-
-	analyse_options = new_options;
-
 	if (new_options & FrameAnalysisOptions::PERSIST) {
 		G->cur_analyse_options = new_options;
-		FALogInfo("analyse_options (persistent): %08x\n", new_options);
-	} else
-		FALogInfo("analyse_options (one-shot): %08x\n", new_options);
+	} else {
+		if (oneshot_valid)
+			oneshot_analyse_options |= new_options;
+		else
+			oneshot_analyse_options = new_options;
+		oneshot_valid = true;
+	}
+}
+
+void FrameAnalysisContext::update_per_draw_analyse_options()
+{
+	analyse_options = G->cur_analyse_options;
+
+	// Log whenever new persistent options take effect, but only once:
+	if (G->cur_analyse_options & FrameAnalysisOptions::PERSIST) {
+		FALogInfo("analyse_options (persistent): %08x\n", G->cur_analyse_options);
+		G->cur_analyse_options &= (FrameAnalysisOptions)~FrameAnalysisOptions::PERSIST;
+	}
+
+	if (!oneshot_valid)
+		return;
+
+	FALogInfo("analyse_options (one-shot): %08x\n", oneshot_analyse_options);
+
+	analyse_options = oneshot_analyse_options;
+	oneshot_analyse_options = FrameAnalysisOptions::INVALID;
+	oneshot_valid = false;
 }
 
 void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info)
 {
 	NvAPI_Status nvret;
 
-	analyse_options = G->cur_analyse_options;
+	update_per_draw_analyse_options();
 
 	// Update: We now have an option to allow analysis on deferred
 	// contexts, because it can still be useful to dump some types of
@@ -1798,8 +1761,6 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 		draw_call++;
 		return;
 	}
-
-	FrameAnalysisProcessTriggers(compute);
 
 	// If neither stereo or mono specified, default to stereo:
 	if (!(analyse_options & FrameAnalysisOptions::STEREO_MASK))
@@ -2252,6 +2213,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::Dispatch(THIS_
 
 	if (G->analyse_frame)
 		FrameAnalysisAfterDraw(true, NULL);
+	oneshot_valid = false;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DispatchIndirect(THIS_
@@ -2267,6 +2229,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DispatchIndirect(THIS_
 
 	if (G->analyse_frame)
 		FrameAnalysisAfterDraw(true, NULL);
+	oneshot_valid = false;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::RSSetState(THIS_
@@ -3371,6 +3334,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexed(THIS_
 		DrawCallInfo call_info(0, IndexCount, 0, BaseVertexLocation, StartIndexLocation, 0, NULL, 0, false);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
+	oneshot_valid = false;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::Draw(THIS_
@@ -3388,6 +3352,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::Draw(THIS_
 		DrawCallInfo call_info(VertexCount, 0, 0, StartVertexLocation, 0, 0, NULL, 0, false);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
+	oneshot_valid = false;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::IASetIndexBuffer(THIS_
@@ -3427,6 +3392,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstanced(THIS_
 		DrawCallInfo call_info(0, IndexCountPerInstance, InstanceCount, BaseVertexLocation, StartIndexLocation, StartInstanceLocation, NULL, 0, false);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
+	oneshot_valid = false;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DrawInstanced(THIS_
@@ -3448,6 +3414,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawInstanced(THIS_
 		DrawCallInfo call_info(VertexCountPerInstance, 0, InstanceCount, StartVertexLocation, 0, StartInstanceLocation, NULL, 0, false);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
+	oneshot_valid = false;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::VSSetShaderResources(THIS_
@@ -3544,6 +3511,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawAuto(THIS)
 		DrawCallInfo call_info(0, 0, 0, 0, 0, 0, NULL, 0, false);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
+	oneshot_valid = false;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstancedIndirect(THIS_
@@ -3561,6 +3529,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstancedIndirect(THIS_
 		DrawCallInfo call_info(0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs, false);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
+	oneshot_valid = false;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DrawInstancedIndirect(THIS_
@@ -3578,6 +3547,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawInstancedIndirect(THIS_
 		DrawCallInfo call_info(0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs, true);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
+	oneshot_valid = false;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::ClearRenderTargetView(THIS_

@@ -21,6 +21,7 @@
 // include Hacker*.h, which includes Globals.h, which includes us):
 class HackerDevice;
 class HackerContext;
+enum class FrameAnalysisOptions;
 
 class CommandListState {
 public:
@@ -834,6 +835,16 @@ public:
 	void set_stereo_value(CommandListState*, float val) override;
 };
 
+class FrameAnalysisChangeOptionsCommand : public CommandListCommand {
+public:
+	wstring ini_line;
+
+	FrameAnalysisOptions analyse_options;
+
+	FrameAnalysisChangeOptionsCommand(wstring section, wstring key, wstring *val);
+
+	void run(CommandListState*) override;
+};
 
 void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,

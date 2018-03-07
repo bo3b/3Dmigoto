@@ -193,7 +193,6 @@ static EnumName_t<wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
 struct ShaderOverride {
 	DepthBufferFilter depth_filter;
 	UINT64 partner_hash;
-	FrameAnalysisOptions analyse_options;
 	char model[20]; // More than long enough for even ps_4_0_level_9_0
 	bool allow_duplicate_hashes;
 
@@ -203,7 +202,6 @@ struct ShaderOverride {
 	ShaderOverride() :
 		depth_filter(DepthBufferFilter::NONE),
 		partner_hash(0),
-		analyse_options(FrameAnalysisOptions::INVALID),
 		allow_duplicate_hashes(true)
 	{
 		model[0] = '\0';
@@ -218,7 +216,6 @@ struct TextureOverride {
 	int width;
 	int height;
 	std::vector<int> iterations;
-	FrameAnalysisOptions analyse_options;
 	bool expand_region_copy;
 	bool deny_cpu_read;
 	float filter_index;
@@ -231,7 +228,6 @@ struct TextureOverride {
 		format(-1),
 		width(-1),
 		height(-1),
-		analyse_options(FrameAnalysisOptions::INVALID),
 		expand_region_copy(false),
 		deny_cpu_read(false),
 		filter_index(1.0)
