@@ -1231,6 +1231,43 @@ wchar_t* FrameAnalysisContext::dedupe_buf_filename(ID3D11Buffer *resource,
 	return dedupe_filename;
 }
 
+void FrameAnalysisContext::rotate_deduped_file(wchar_t *dedupe_filename)
+{
+	wchar_t rotated_filename[MAX_PATH];
+	unsigned rotate;
+	size_t ext_pos;
+	wchar_t *ext;
+
+	ext = wcsrchr(dedupe_filename, L'.');
+	if (ext) {
+		ext_pos = ext - dedupe_filename;
+	} else {
+		ext_pos = wcslen(dedupe_filename);
+		ext = L"";
+	}
+
+	for (rotate = 1; rotate; rotate++) {
+		swprintf_s(rotated_filename, MAX_PATH,
+				L"%.*s.%d%s", (int)ext_pos, dedupe_filename, rotate, ext);
+
+		if (GetFileAttributes(rotated_filename) == INVALID_FILE_ATTRIBUTES) {
+			// Move the base file to have the rotated filename,
+			// then copy it back to the original filename. That
+			// way code creating the link doesn't have to know
+			// about this rotation, and we only deal with it when
+			// we hit the too many hard links error:
+			// xxxxxxx.xxx - n hard links
+			// xxxxxxx.1.xxx - max 1023 hard links
+			// xxxxxxx.2.xxx - max 1023 hard links
+			// etc.
+			FALogInfo("Max hard links exceeded, rotating deduped file: %S\n", rotated_filename);
+			MoveFile(dedupe_filename, rotated_filename);
+			CopyFile(rotated_filename, dedupe_filename, TRUE);
+			return;
+		}
+	}
+}
+
 void FrameAnalysisContext::link_deduplicated_files(wchar_t *filename, wchar_t *dedupe_filename)
 {
 	// Bail if source didn't get created:
@@ -1251,6 +1288,11 @@ void FrameAnalysisContext::link_deduplicated_files(wchar_t *filename, wchar_t *d
 
 	if (CreateHardLink(filename, dedupe_filename, NULL))
 		return;
+	if (GetLastError() == ERROR_TOO_MANY_LINKS) {
+		rotate_deduped_file(dedupe_filename);
+		if (CreateHardLink(filename, dedupe_filename, NULL))
+			return;
+	}
 
 	FALogInfo("Hard linking %S -> %S failed (0x%u), giving up\n", filename, dedupe_filename, GetLastError());
 

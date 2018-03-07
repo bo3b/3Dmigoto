@@ -77,6 +77,7 @@ private:
 			D3D11_MAPPED_SUBRESOURCE *map,
 			wchar_t *dedupe_filename, size_t size);
 	void link_deduplicated_files(wchar_t *filename, wchar_t *dedupe_filename);
+	void rotate_deduped_file(wchar_t *dedupe_filename);
 
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
