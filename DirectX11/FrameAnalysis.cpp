@@ -1244,7 +1244,10 @@ void FrameAnalysisContext::link_deduplicated_files(wchar_t *filename, wchar_t *d
 	if (CreateSymbolicLink(filename, dedupe_filename, SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE))
 		return;
 
-	FALogInfo("Symlinking %S -> %S failed (0x%u), trying hard link\n", filename, dedupe_filename, GetLastError());
+	// Too noisy if symlinks aren't available, and pretty likely case (e.g.
+	// Windows 10 only allows symlinks if developer mode is enabled), so
+	// reserve this message for debug logging:
+	LogDebug("Symlinking %S -> %S failed (0x%u), trying hard link\n", filename, dedupe_filename, GetLastError());
 
 	if (CreateHardLink(filename, dedupe_filename, NULL))
 		return;
