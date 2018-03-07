@@ -1543,47 +1543,63 @@ void FrameAnalysisContext::DumpTextures(bool compute)
 void FrameAnalysisContext::DumpRenderTargets()
 {
 	UINT i;
+	ID3D11RenderTargetView *rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
+	ID3D11Resource *resource;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
 
-	for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
-		// TODO: Decouple from HackerContext and remove dependency on
-		// stat collection by querying the DeviceContext directly like
-		// we do for all other resources
+	GetPassThroughOrigContext1()->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, rtvs, NULL);
+
+	for (i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i) {
+		if (!rtvs[i])
+			continue;
+
+		rtvs[i]->GetResource(&resource);
+		if (!resource) {
+			rtvs[i]->Release();
+			continue;
+		}
 
 		// TODO: process description to get offset, strides & size for
 		// buffer type RTVs and pass down to dump routines, although I
 		// have no idea how to determine which of the entries in the
 		// two D3D11_BUFFER_RTV unions will be valid.
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"o", NULL, i,
-				(ID3D11Resource*)mCurrentRenderTargets[i]);
-		if (FAILED(hr))
-			return;
-		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename,
-				FrameAnalysisOptions::DUMP_RT_MASK, i,
-				DXGI_FORMAT_UNKNOWN, 0, 0);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"o", NULL, i, resource);
+		if (SUCCEEDED(hr)) {
+			DumpResource(resource, filename,
+					FrameAnalysisOptions::DUMP_RT_MASK, i,
+					DXGI_FORMAT_UNKNOWN, 0, 0);
+		}
+
+		resource->Release();
+		rtvs[i]->Release();
 	}
 }
 
 void FrameAnalysisContext::DumpDepthStencilTargets()
 {
+	ID3D11DepthStencilView *dsv = NULL;
+	ID3D11Resource *resource = NULL;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
 
-	if (mCurrentDepthTarget) {
-		// TODO: Decouple from HackerContext and remove dependency on
-		// stat collection by querying the DeviceContext directly like
-		// we do for all other resources
+	GetPassThroughOrigContext1()->OMGetRenderTargets(0, NULL, &dsv);
+	if (!dsv)
+		return;
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"oD", NULL, -1,
-				(ID3D11Resource*)mCurrentDepthTarget);
-		if (FAILED(hr))
-			return;
-		DumpResource((ID3D11Resource*)mCurrentDepthTarget, filename,
-				FrameAnalysisOptions::DUMP_DEPTH_MASK, -1,
-				DXGI_FORMAT_UNKNOWN, 0, 0);
+	dsv->GetResource(&resource);
+	if (!resource) {
+		dsv->Release();
+		return;
 	}
+
+	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"oD", NULL, -1, resource);
+	if (FAILED(hr))
+		return;
+
+	DumpResource(resource, filename, FrameAnalysisOptions::DUMP_DEPTH_MASK,
+			-1, DXGI_FORMAT_UNKNOWN, 0, 0);
 }
 
 void FrameAnalysisContext::DumpUAVs(bool compute)
