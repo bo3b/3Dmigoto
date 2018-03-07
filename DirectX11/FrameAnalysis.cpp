@@ -997,7 +997,7 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t si
 
 	StringCchPrintfExW(filename, size, &pos, &rem, NULL, L"%ls\\", G->ANALYSIS_PATH);
 	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_DEFERRED) {
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"0x%p\\", this);
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"ctx-0x%p\\", this);
 		if (!CreateDeferredFADirectory(filename))
 			return E_FAIL;
 	}
@@ -1086,7 +1086,7 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, s
 
 	StringCchPrintfExW(filename, size, &pos, &rem, NULL, L"%ls\\", G->ANALYSIS_PATH);
 	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_DEFERRED) {
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"0x%p\\", this);
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"ctx-0x%p\\", this);
 		if (!CreateDeferredFADirectory(filename))
 			return E_FAIL;
 	}
