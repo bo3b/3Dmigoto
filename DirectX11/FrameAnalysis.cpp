@@ -19,6 +19,7 @@ FrameAnalysisContext::FrameAnalysisContext(ID3D11Device1 *pDevice, ID3D11DeviceC
 	oneshot_valid = false;
 	frame_analysis_log = NULL;
 	draw_call = 0;
+	non_draw_call_dump_counter = 0;
 }
 
 FrameAnalysisContext::~FrameAnalysisContext()
@@ -1090,7 +1091,7 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t si
 	return hr;
 }
 
-HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, size_t size, wchar_t *type, ID3D11Resource *handle)
+HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, size_t size, const wchar_t *type, ID3D11Resource *handle, bool force_filename_handle)
 {
 	struct ResourceHashInfo *info;
 	uint32_t hash, orig_hash;
@@ -1109,9 +1110,9 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, s
 	// for filename conflicts, so use def_analyse_options:
 	if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i.", G->analyse_frame_no);
-	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i-", draw_call);
+	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i.%i-", draw_call, non_draw_call_dump_counter);
 
-	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%s-", type);
+	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%s", type);
 
 	try {
 		hash = G->mResources.at(handle).hash;
@@ -1143,8 +1144,9 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, s
 			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"(%08x)", orig_hash);
 	}
 
-	// Always do this for resource dumps since hashes are likely to clash:
-	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"@%p", handle);
+	// Always do this for update/unmap resource dumps since hashes are likely to clash:
+	if (force_filename_handle || (analyse_options & FrameAnalysisOptions::FILENAME_HANDLE))
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"@%p", handle);
 
 	hr = StringCchPrintfW(pos, rem, L".XXX");
 	if (FAILED(hr))
@@ -1832,15 +1834,14 @@ void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 
 	EnterCriticalSection(&G->mCriticalSection);
 
-	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, type, resource);
+	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, type, resource, true);
 	if (SUCCEEDED(hr)) {
 		DumpResource(resource, filename, type_mask, -1, DXGI_FORMAT_UNKNOWN, 0, 0);
 	}
 
 	LeaveCriticalSection(&G->mCriticalSection);
 
-	// XXX: Might be better to use a second counter for these
-	draw_call++;
+	non_draw_call_dump_counter++;
 }
 
 void FrameAnalysisContext::FrameAnalysisAfterUnmap(ID3D11Resource *resource)
@@ -1851,6 +1852,52 @@ void FrameAnalysisContext::FrameAnalysisAfterUnmap(ID3D11Resource *resource)
 void FrameAnalysisContext::FrameAnalysisAfterUpdate(ID3D11Resource *resource)
 {
 	_FrameAnalysisAfterUpdate(resource, FrameAnalysisOptions::DUMP_ON_UPDATE, L"update");
+}
+
+void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnalysisOptions options,
+		const wchar_t *target, DXGI_FORMAT ib_fmt, UINT stride, UINT offset)
+{
+	wchar_t filename[MAX_PATH];
+	NvAPI_Status nvret;
+	HRESULT hr;
+
+	analyse_options = options;
+
+	// If neither stereo or mono specified, default to stereo:
+	if (!(analyse_options & FrameAnalysisOptions::STEREO_MASK))
+		analyse_options |= FrameAnalysisOptions::STEREO;
+
+	// If no dump options were enabled, dump jps if possible, dds if not,
+	// and dump buffers as both text and binary:
+	if (!(analyse_options & FrameAnalysisOptions::DUMP_XXX_MASK))
+		analyse_options |= FrameAnalysisOptions::DUMP_XXX;
+
+	if (analyse_options & FrameAnalysisOptions::STEREO) {
+		// Enable reverse stereo blit for all resources we are about to dump:
+		nvret = NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
+		if (nvret != NVAPI_OK) {
+			FALogInfo("FrameAnalyisDump failed to enable reverse stereo blit\n");
+			// Continue anyway, we should still be able to dump in 2D...
+		}
+	}
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, target, resource, false);
+	if (FAILED(hr)) {
+		// If the ini section and resource name makes the filename too
+		// long, try again without them:
+		hr = FrameAnalysisFilenameResource(filename, MAX_PATH, L"...", resource, false);
+	}
+	if (SUCCEEDED(hr))
+		DumpResource(resource, filename, FrameAnalysisOptions::DUMP_ON_XXXXXX, -1, ib_fmt, stride, offset);
+
+	LeaveCriticalSection(&G->mCriticalSection);
+
+	if (analyse_options & FrameAnalysisOptions::STEREO)
+		NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
+
+	non_draw_call_dump_counter++;
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -2214,6 +2261,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::Dispatch(THIS_
 	if (G->analyse_frame)
 		FrameAnalysisAfterDraw(true, NULL);
 	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DispatchIndirect(THIS_
@@ -2230,6 +2278,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DispatchIndirect(THIS_
 	if (G->analyse_frame)
 		FrameAnalysisAfterDraw(true, NULL);
 	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::RSSetState(THIS_
@@ -3335,6 +3384,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexed(THIS_
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::Draw(THIS_
@@ -3353,6 +3403,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::Draw(THIS_
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::IASetIndexBuffer(THIS_
@@ -3393,6 +3444,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstanced(THIS_
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DrawInstanced(THIS_
@@ -3415,6 +3467,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawInstanced(THIS_
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::VSSetShaderResources(THIS_
@@ -3512,6 +3565,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawAuto(THIS)
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstancedIndirect(THIS_
@@ -3530,6 +3584,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstancedIndirect(THIS_
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DrawInstancedIndirect(THIS_
@@ -3548,6 +3603,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawInstancedIndirect(THIS_
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::ClearRenderTargetView(THIS_

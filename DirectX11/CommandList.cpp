@@ -537,6 +537,55 @@ bail:
 	return false;
 }
 
+static bool ParseFrameAnalysisDump(const wchar_t *section,
+		const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
+{
+	FrameAnalysisDumpCommand *operation = new FrameAnalysisDumpCommand();
+	wchar_t *buf;
+	size_t size = val->size() + 1;
+	wchar_t *target = NULL;
+
+	// parse_enum_option_string replaces spaces with NULLs, so it can't
+	// operate on the buffer in the wstring directly. I could potentially
+	// change it to work without modifying the string, but for now it's
+	// easier to just make a copy of the string:
+	buf = new wchar_t[size];
+	wcscpy_s(buf, size, val->c_str());
+
+	operation->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
+		(FrameAnalysisOptionNames, buf, &target);
+
+	if (!target)
+		goto bail;
+
+	if (!operation->target.ParseTarget(target, true))
+		goto bail;
+
+	operation->target_name = L"[" + wstring(section) + L"]-" + wstring(target);
+	// target_name will be used in the filenames, so replace any reserved characters:
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'<', L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'>', L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L':', L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'"', L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'/', L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'\\',L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'|', L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'?', L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'*', L'_');
+
+	delete [] buf;
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+
+bail:
+	delete [] buf;
+	delete operation;
+	return false;
+}
+
 bool ParseCommandListGeneralCommands(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
@@ -582,6 +631,9 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 
 	if (!wcscmp(key, L"analyse_options"))
 		return AddCommandToList(new FrameAnalysisChangeOptionsCommand(section, key, val), explicit_command_list, pre_command_list, NULL, NULL);
+
+	if (!wcscmp(key, L"dump"))
+		return ParseFrameAnalysisDump(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
@@ -942,6 +994,34 @@ void FrameAnalysisChangeOptionsCommand::run(CommandListState *state)
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	state->mHackerContext->FrameAnalysisTrigger(analyse_options);
+}
+
+void FrameAnalysisDumpCommand::run(CommandListState *state)
+{
+	ID3D11Resource *resource = NULL;
+	ID3D11View *view = NULL;
+	UINT stride = 0;
+	UINT offset = 0;
+	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+
+	// Fast exit if frame analysis is currently inactive:
+	if (!G->analyse_frame)
+		return;
+
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+
+	resource = target.GetResource(state, &view, &stride, &offset, &format, NULL);
+	if (!resource) {
+		COMMAND_LIST_LOG(state, "  No resource to dump\n");
+		return;
+	}
+
+	state->mHackerContext->FrameAnalysisDump(resource, analyse_options, target_name.c_str(), format, stride, offset);
+
+	if (resource)
+		resource->Release();
+	if (view)
+		view->Release();
 }
 
 CustomShader::CustomShader() :

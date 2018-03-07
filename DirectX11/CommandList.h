@@ -846,6 +846,17 @@ public:
 	void run(CommandListState*) override;
 };
 
+class FrameAnalysisDumpCommand : public CommandListCommand {
+public:
+	wstring ini_line;
+
+	ResourceCopyTarget target;
+	wstring target_name;
+	FrameAnalysisOptions analyse_options;
+
+	void run(CommandListState*) override;
+};
+
 void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list, DrawCallInfo *call_info,

@@ -23,6 +23,7 @@ private:
 	void FrameAnalysisLogData(void *buf, UINT size);
 	FILE *frame_analysis_log;
 	unsigned draw_call;
+	unsigned non_draw_call_dump_counter;
 
 	ID3D11DeviceContext* GetImmediateContext();
 	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
@@ -67,8 +68,8 @@ private:
 
 	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
 			wchar_t *reg, char shader_type, int idx, ID3D11Resource *handle);
-	HRESULT FrameAnalysisFilenameResource(wchar_t *filename, size_t size, wchar_t *type,
-			ID3D11Resource *handle);
+	HRESULT FrameAnalysisFilenameResource(wchar_t *filename, size_t size, const wchar_t *type,
+			ID3D11Resource *handle, bool force_filename_handle);
 	wchar_t* dedupe_tex2d_filename(ID3D11Texture2D *resource,
 			D3D11_TEXTURE2D_DESC *desc, wchar_t *dedupe_filename,
 			size_t size, wchar_t *traditional_filename);
@@ -106,6 +107,8 @@ public:
 #define FrameAnalysisLogNoNL FrameAnalysisLog
 
 	void FrameAnalysisTrigger(FrameAnalysisOptions new_options) override;
+	void FrameAnalysisDump(ID3D11Resource *resource, FrameAnalysisOptions options,
+		const wchar_t *target, DXGI_FORMAT ib_fmt, UINT stride, UINT offset) override;
 
 	/*** IUnknown methods ***/
 

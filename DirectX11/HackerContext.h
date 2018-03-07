@@ -215,6 +215,8 @@ public:
 	// public to allow CommandList access
 	virtual void FrameAnalysisLog(char *fmt, ...) {};
 	virtual void FrameAnalysisTrigger(FrameAnalysisOptions new_options) {};
+	virtual void FrameAnalysisDump(ID3D11Resource *resource, FrameAnalysisOptions options,
+		const wchar_t *target, DXGI_FORMAT ib_fmt, UINT stride, UINT offset) {};
 
 
 	/*** IUnknown methods ***/
