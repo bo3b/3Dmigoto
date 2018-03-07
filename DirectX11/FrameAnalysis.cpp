@@ -6,6 +6,10 @@
 #include <Strsafe.h>
 #include <stdarg.h>
 
+// For windows shortcuts:
+#include <shobjidl.h>
+#include <shlguid.h>
+
 FrameAnalysisContext::FrameAnalysisContext(ID3D11Device1 *pDevice, ID3D11DeviceContext1 *pContext) :
 	HackerContext(pDevice, pContext)
 {
@@ -1268,6 +1272,33 @@ void FrameAnalysisContext::rotate_deduped_file(wchar_t *dedupe_filename)
 	}
 }
 
+static bool create_shortcut(wchar_t *filename, wchar_t *dedupe_filename)
+{
+	IShellLink *psl;
+	IPersistFile *ppf;
+	HRESULT hr, dont_care;
+	wchar_t lnk_path[MAX_PATH];
+
+	dont_care = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+
+	// https://msdn.microsoft.com/en-us/library/aa969393.aspx#Shellink_Creating_Shortcut
+	hr = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLink, (LPVOID*)&psl);
+	if (SUCCEEDED(hr)) {
+		psl->SetPath(dedupe_filename);
+		hr = psl->QueryInterface(IID_IPersistFile, (LPVOID*)&ppf);
+		if (SUCCEEDED(hr)) {
+			swprintf_s(lnk_path, MAX_PATH, L"%s.lnk", filename);
+			hr = ppf->Save(lnk_path, TRUE);
+			ppf->Release();
+		}
+		psl->Release();
+	}
+
+	CoUninitialize();
+
+	return SUCCEEDED(hr);
+}
+
 void FrameAnalysisContext::link_deduplicated_files(wchar_t *filename, wchar_t *dedupe_filename)
 {
 	// Bail if source didn't get created:
@@ -1284,7 +1315,8 @@ void FrameAnalysisContext::link_deduplicated_files(wchar_t *filename, wchar_t *d
 	// Too noisy if symlinks aren't available, and pretty likely case (e.g.
 	// Windows 10 only allows symlinks if developer mode is enabled), so
 	// reserve this message for debug logging:
-	LogDebug("Symlinking %S -> %S failed (0x%u), trying hard link\n", filename, dedupe_filename, GetLastError());
+	LogDebug("Symlinking %S -> %S failed (0x%u), trying hard link\n",
+			filename, dedupe_filename, GetLastError());
 
 	if (CreateHardLink(filename, dedupe_filename, NULL))
 		return;
@@ -1294,10 +1326,21 @@ void FrameAnalysisContext::link_deduplicated_files(wchar_t *filename, wchar_t *d
 			return;
 	}
 
-	FALogInfo("Hard linking %S -> %S failed (0x%u), giving up\n", filename, dedupe_filename, GetLastError());
+	// Hard links may fail e.g. if running the game off a FAT32 partition:
+	LogDebug("Hard linking %S -> %S failed (0x%u), trying windows shortcut\n",
+			filename, dedupe_filename, GetLastError());
 
-	// TODO: We could keep going and try windows shortcuts next, then copy
-	// the file if nothing else worked
+	if (create_shortcut(filename, dedupe_filename))
+		return;
+
+	LogDebug("Creating shortcut %S -> %S failed. Cannot deduplicate file, moving back.\n",
+			filename, dedupe_filename);
+
+	if (MoveFile(dedupe_filename, filename))
+		return;
+
+	FALogInfo("All attempts to link deduplicated file failed, giving up: %S -> %S\n",
+			filename, dedupe_filename);
 }
 
 void FrameAnalysisContext::_DumpCBs(char shader_type, bool compute,
