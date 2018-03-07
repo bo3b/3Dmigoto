@@ -66,10 +66,9 @@ private:
 	void DumpDesc(DescType *desc, wchar_t *filename);
 
 	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
-			wchar_t *reg, char shader_type, int idx, uint32_t hash, uint32_t orig_hash,
-			ID3D11Resource *handle);
+			wchar_t *reg, char shader_type, int idx, ID3D11Resource *handle);
 	HRESULT FrameAnalysisFilenameResource(wchar_t *filename, size_t size, wchar_t *type,
-			uint32_t hash, uint32_t orig_hash, ID3D11Resource *handle);
+			ID3D11Resource *handle);
 	wchar_t* dedupe_tex2d_filename(ID3D11Texture2D *resource,
 			D3D11_TEXTURE2D_DESC *desc, wchar_t *dedupe_filename,
 			size_t size, wchar_t *traditional_filename);

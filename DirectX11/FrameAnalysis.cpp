@@ -987,10 +987,10 @@ static void CreateDedupedDirectory()
 }
 
 HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
-		wchar_t *reg, char shader_type, int idx, uint32_t hash, uint32_t orig_hash,
-		ID3D11Resource *handle)
+		wchar_t *reg, char shader_type, int idx, ID3D11Resource *handle)
 {
 	struct ResourceHashInfo *info;
+	uint32_t hash, orig_hash;
 	wchar_t *pos;
 	size_t rem;
 	HRESULT hr;
@@ -1024,6 +1024,13 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t si
 		if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
 			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i.", G->analyse_frame_no);
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i", draw_call);
+	}
+
+	try {
+		hash = G->mResources.at(handle).hash;
+		orig_hash = G->mResources.at(handle).orig_hash;
+	} catch (std::out_of_range) {
+		hash = orig_hash = 0;
 	}
 
 	if (hash) {
@@ -1076,10 +1083,10 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t si
 	return hr;
 }
 
-HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, size_t size, wchar_t *type,
-		uint32_t hash, uint32_t orig_hash, ID3D11Resource *handle)
+HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, size_t size, wchar_t *type, ID3D11Resource *handle)
 {
 	struct ResourceHashInfo *info;
+	uint32_t hash, orig_hash;
 	wchar_t *pos;
 	size_t rem;
 	HRESULT hr;
@@ -1098,6 +1105,13 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, s
 	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i-", draw_call);
 
 	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%s-", type);
+
+	try {
+		hash = G->mResources.at(handle).hash;
+		orig_hash = G->mResources.at(handle).orig_hash;
+	} catch (std::out_of_range) {
+		hash = orig_hash = 0;
+	}
 
 	if (hash) {
 		try {
@@ -1252,7 +1266,7 @@ void FrameAnalysisContext::_DumpCBs(char shader_type, bool compute,
 		if (!buffers[i])
 			continue;
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"cb", shader_type, i, 0, 0, buffers[i]);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"cb", shader_type, i, buffers[i]);
 		if (SUCCEEDED(hr)) {
 			DumpResource(buffers[i], filename,
 					FrameAnalysisOptions::DUMP_CB_MASK, i,
@@ -1269,7 +1283,6 @@ void FrameAnalysisContext::_DumpTextures(char shader_type, bool compute,
 	ID3D11Resource *resource;
 	D3D11_RESOURCE_DIMENSION dim;
 	wchar_t filename[MAX_PATH];
-	uint32_t hash, orig_hash;
 	HRESULT hr;
 	UINT i;
 
@@ -1285,19 +1298,12 @@ void FrameAnalysisContext::_DumpTextures(char shader_type, bool compute,
 
 		resource->GetType(&dim);
 
-		try {
-			hash = G->mResources.at((ID3D11Texture2D *)resource).hash;
-			orig_hash = G->mResources.at((ID3D11Texture2D *)resource).orig_hash;
-		} catch (std::out_of_range) {
-			hash = orig_hash = 0;
-		}
-
 		// TODO: process description to get offset, strides & size for
 		// buffer & bufferex type SRVs and pass down to dump routines,
 		// although I have no idea how to determine which of the
 		// entries in the two D3D11_BUFFER_SRV unions will be valid.
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"t", shader_type, i, hash, orig_hash, resource);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"t", shader_type, i, resource);
 		if (SUCCEEDED(hr)) {
 			DumpResource(resource, filename,
 					FrameAnalysisOptions::DUMP_TEX_MASK, i,
@@ -1369,7 +1375,7 @@ void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info)
 		if (!buffers[i])
 			continue;
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"vb", NULL, i, 0, 0, buffers[i]);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"vb", NULL, i, buffers[i]);
 		if (SUCCEEDED(hr)) {
 			DumpBuffer(buffers[i], filename,
 				FrameAnalysisOptions::DUMP_VB_MASK, i,
@@ -1398,7 +1404,7 @@ void FrameAnalysisContext::DumpIB(DrawCallInfo *call_info)
 	if (!buffer)
 		return;
 
-	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"ib", NULL, -1, 0, 0, buffer);
+	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"ib", NULL, -1, buffer);
 	if (SUCCEEDED(hr)) {
 		DumpBuffer(buffer, filename,
 				FrameAnalysisOptions::DUMP_IB_MASK, -1,
@@ -1446,18 +1452,11 @@ void FrameAnalysisContext::DumpRenderTargets()
 	UINT i;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	uint32_t hash, orig_hash;
 
 	for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
 		// TODO: Decouple from HackerContext and remove dependency on
 		// stat collection by querying the DeviceContext directly like
 		// we do for all other resources
-		try {
-			hash = G->mResources.at(mCurrentRenderTargets[i]).hash;
-			orig_hash = G->mResources.at(mCurrentRenderTargets[i]).orig_hash;
-		} catch (std::out_of_range) {
-			hash = orig_hash = 0;
-		}
 
 		// TODO: process description to get offset, strides & size for
 		// buffer type RTVs and pass down to dump routines, although I
@@ -1465,7 +1464,7 @@ void FrameAnalysisContext::DumpRenderTargets()
 		// two D3D11_BUFFER_RTV unions will be valid.
 
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"o", NULL, i,
-				hash, orig_hash, (ID3D11Resource*)mCurrentRenderTargets[i]);
+				(ID3D11Resource*)mCurrentRenderTargets[i]);
 		if (FAILED(hr))
 			return;
 		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename,
@@ -1478,21 +1477,14 @@ void FrameAnalysisContext::DumpDepthStencilTargets()
 {
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	uint32_t hash, orig_hash;
 
 	if (mCurrentDepthTarget) {
 		// TODO: Decouple from HackerContext and remove dependency on
 		// stat collection by querying the DeviceContext directly like
 		// we do for all other resources
-		try {
-			hash = G->mResources.at(mCurrentDepthTarget).hash;
-			orig_hash = G->mResources.at(mCurrentDepthTarget).orig_hash;
-		} catch (std::out_of_range) {
-			hash = orig_hash = 0;
-		}
 
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"oD", NULL, -1,
-				hash, orig_hash, (ID3D11Resource*)mCurrentDepthTarget);
+				(ID3D11Resource*)mCurrentDepthTarget);
 		if (FAILED(hr))
 			return;
 		DumpResource((ID3D11Resource*)mCurrentDepthTarget, filename,
@@ -1508,7 +1500,6 @@ void FrameAnalysisContext::DumpUAVs(bool compute)
 	ID3D11Resource *resource;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	uint32_t hash, orig_hash;
 
 	if (compute)
 		GetPassThroughOrigContext1()->CSGetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
@@ -1525,17 +1516,10 @@ void FrameAnalysisContext::DumpUAVs(bool compute)
 			continue;
 		}
 
-		try {
-			hash = G->mResources.at(resource).hash;
-			orig_hash = G->mResources.at(resource).orig_hash;
-		} catch (std::out_of_range) {
-			hash = orig_hash = 0;
-		}
-
 		// TODO: process description to get offset & size for buffer
 		// type UAVs and pass down to dump routines.
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"u", NULL, i, hash, orig_hash, resource);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"u", NULL, i, resource);
 		if (SUCCEEDED(hr)) {
 			DumpResource(resource, filename,
 					FrameAnalysisOptions::DUMP_RT_MASK, i,
@@ -1765,7 +1749,6 @@ void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 		FrameAnalysisOptions type_mask, wchar_t *type)
 {
 	wchar_t filename[MAX_PATH];
-	uint32_t hash = 0, orig_hash = 0;
 	HRESULT hr;
 
 	analyse_options = G->cur_analyse_options;
@@ -1779,13 +1762,7 @@ void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 
 	EnterCriticalSection(&G->mCriticalSection);
 
-	try {
-		hash = G->mResources.at(resource).hash;
-		orig_hash = G->mResources.at(resource).orig_hash;
-	} catch (std::out_of_range) {
-	}
-
-	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, type, hash, orig_hash, resource);
+	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, type, resource);
 	if (SUCCEEDED(hr)) {
 		DumpResource(resource, filename, type_mask, -1, DXGI_FORMAT_UNKNOWN, 0, 0);
 	}
