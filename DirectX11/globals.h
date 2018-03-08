@@ -147,8 +147,10 @@ enum class FrameAnalysisOptions {
 	HOLD            = 0x00040000,
 	DUMP_ON_UNMAP   = 0x00080000,
 	DUMP_ON_UPDATE  = 0x00100000,
-	DEFERRED_CONTEXT= 0x00200000,
-	SHARE_DEDUPED   = 0x00400000,
+	SHARE_DEDUPED   = 0x00200000,
+	DEFRD_CTX_IMM   = 0x00400000,
+	DEFRD_CTX_DELAY = 0x00800000,
+	DEFRD_CTX_MASK  = 0x00c00000,
 	DEPRECATED      = (signed)0x80000000,
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
@@ -183,7 +185,8 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"hold", FrameAnalysisOptions::HOLD},
 	{L"dump_on_unmap", FrameAnalysisOptions::DUMP_ON_UNMAP},
 	{L"dump_on_update", FrameAnalysisOptions::DUMP_ON_UPDATE},
-	{L"deferred_ctx", FrameAnalysisOptions::DEFERRED_CONTEXT},
+	{L"deferred_ctx_immediate", FrameAnalysisOptions::DEFRD_CTX_IMM},
+	{L"deferred_ctx_accurate", FrameAnalysisOptions::DEFRD_CTX_DELAY},
 	{L"share_dupes", FrameAnalysisOptions::SHARE_DEDUPED},
 
 	// Legacy combo options:

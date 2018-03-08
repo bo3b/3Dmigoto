@@ -12,6 +12,9 @@
 #include <shobjidl.h>
 #include <shlguid.h>
 
+static unordered_map<ID3D11CommandList*, FrameAnalysisDeferredBuffersPtr> frame_analysis_deferred_buffer_lists;
+static unordered_map<ID3D11CommandList*, FrameAnalysisDeferredTex2DPtr> frame_analysis_deferred_tex2d_lists;
+
 FrameAnalysisContext::FrameAnalysisContext(ID3D11Device1 *pDevice, ID3D11DeviceContext1 *pContext) :
 	HackerContext(pDevice, pContext)
 {
@@ -376,21 +379,94 @@ ID3D11DeviceContext* FrameAnalysisContext::GetImmediateContext()
 	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)
 		return GetPassThroughOrigContext1();
 
-	// XXX Experimental deferred context support: We need to use
-	// the immediate context to stage a resource back to the CPU.
-	// This may not be thread safe - if it proves problematic we
-	// may have to look into delaying this until the deferred
-	// context command queue is submitted to the immediate context.
-	return GetHackerDevice()->GetPassThroughOrigContext1();
+	if (analyse_options & FrameAnalysisOptions::DEFRD_CTX_IMM) {
+		// XXX Experimental deferred context support: We need to use
+		// the immediate context to stage a resource back to the CPU.
+		// This may not be thread safe - if it proves problematic we
+		// may have to look into delaying this until the deferred
+		// context command queue is submitted to the immediate context.
+		return GetHackerDevice()->GetPassThroughOrigContext1();
+	}
+
+	// XXX Even more experiemental deferred context support - in
+	// this mode we are back to using the current context, but we
+	// will delay CPU reads until the command list is executed in
+	// the immediate context.
+	return GetPassThroughOrigContext1();
+}
+
+void FrameAnalysisContext::Dump2DResourceImmediateCtx(
+		FrameAnalysisOptions analyse_options, ID3D11Texture2D *staging,
+		wstring filename, bool stereo, D3D11_TEXTURE2D_DESC *orig_desc)
+{
+	HRESULT hr = S_OK, dont_care;
+	wchar_t dedupe_filename[MAX_PATH];
+	wstring save_filename;
+	wchar_t *wic_ext = (stereo ? L".jps" : L".jpg");
+	size_t ext, save_ext;
+
+	// This function has a local copy of analyse_options, since they may
+	// have changed since dumping the resource was deferred
+
+	save_filename = dedupe_tex2d_filename(staging, orig_desc, dedupe_filename, MAX_PATH, filename.c_str());
+
+	ext = filename.find_last_of(L'.');
+	save_ext = save_filename.find_last_of(L'.');
+	if (ext == wstring::npos || save_ext == wstring::npos) {
+		FALogInfo("Dump2DResource: Filename missing extension\n");
+		return;
+	}
+
+	// Needs to be called at some point before SaveXXXTextureToFile:
+	dont_care = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+
+	if ((analyse_options & FrameAnalysisOptions::FMT_2D_JPS) ||
+	    (analyse_options & FrameAnalysisOptions::FMT_2D_AUTO)) {
+		// save a JPS file. This will be missing extra channels (e.g.
+		// transparency, depth buffer, specular power, etc) or bit depth that
+		// can be found in the DDS file, but is generally easier to work with.
+		//
+		// Not all formats can be saved as JPS with this function - if
+		// only dump_rt was specified (as opposed to dump_rt_jps) we
+		// will dump out DDS files for those instead.
+		filename.replace(ext, wstring::npos, wic_ext);
+		save_filename.replace(save_ext, wstring::npos, wic_ext);
+
+		hr = S_OK;
+		if (GetFileAttributes(save_filename.c_str()) == INVALID_FILE_ATTRIBUTES)
+			hr = DirectX::SaveWICTextureToFile(GetImmediateContext(), staging, GUID_ContainerFormatJpeg, save_filename.c_str());
+		link_deduplicated_files(filename.c_str(), save_filename.c_str());
+	}
+
+
+	if ((analyse_options & FrameAnalysisOptions::FMT_2D_DDS) ||
+	   ((analyse_options & FrameAnalysisOptions::FMT_2D_AUTO) && FAILED(hr))) {
+		filename.replace(ext, wstring::npos, L".dds");
+		save_filename.replace(save_ext, wstring::npos, L".dds");
+
+		hr = S_OK;
+		if (GetFileAttributes(save_filename.c_str()) == INVALID_FILE_ATTRIBUTES)
+			hr = DirectX::SaveDDSTextureToFile(GetImmediateContext(), staging, save_filename.c_str());
+		link_deduplicated_files(filename.c_str(), save_filename.c_str());
+	}
+
+	if (FAILED(hr))
+		FALogInfo("Failed to dump Texture2D %S -> %S: 0x%x\n", filename.c_str(), save_filename.c_str(), hr);
+
+	if (analyse_options & FrameAnalysisOptions::FMT_DESC) {
+		filename.replace(ext, wstring::npos, L".dsc");
+		save_filename.replace(save_ext, wstring::npos, L".dsc");
+
+		if (GetFileAttributes(save_filename.c_str()) == INVALID_FILE_ATTRIBUTES)
+			DumpDesc(orig_desc, save_filename.c_str());
+		link_deduplicated_files(filename.c_str(), save_filename.c_str());
+	}
 }
 
 void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 		*filename, bool stereo, D3D11_TEXTURE2D_DESC *orig_desc)
 {
-	HRESULT hr = S_OK, dont_care;
-	wchar_t dedupe_filename[MAX_PATH], *save_filename;
-	wchar_t *wic_ext = (stereo ? L".jps" : L".jpg");
-	wchar_t *ext, *save_ext;
+	HRESULT hr = S_OK;
 	ID3D11Texture2D *staging = resource;
 	D3D11_TEXTURE2D_DESC staging_desc, *desc = orig_desc;
 
@@ -409,61 +485,9 @@ void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 	if (!orig_desc)
 		desc = &staging_desc;
 
-	save_filename = dedupe_tex2d_filename(staging, desc, dedupe_filename, MAX_PATH, filename);
+	if (!DeferDump2DResource(staging, filename, stereo, desc))
+		Dump2DResourceImmediateCtx(analyse_options, staging, filename, stereo, desc);
 
-	ext = wcsrchr(filename, L'.');
-	save_ext = wcsrchr(save_filename, L'.');
-	if (!ext || !save_ext) {
-		FALogInfo("Dump2DResource: Filename missing extension\n");
-		goto out_release;
-	}
-
-	// Needs to be called at some point before SaveXXXTextureToFile:
-	dont_care = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-
-	if ((analyse_options & FrameAnalysisOptions::FMT_2D_JPS) ||
-	    (analyse_options & FrameAnalysisOptions::FMT_2D_AUTO)) {
-		// save a JPS file. This will be missing extra channels (e.g.
-		// transparency, depth buffer, specular power, etc) or bit depth that
-		// can be found in the DDS file, but is generally easier to work with.
-		//
-		// Not all formats can be saved as JPS with this function - if
-		// only dump_rt was specified (as opposed to dump_rt_jps) we
-		// will dump out DDS files for those instead.
-		wcscpy_s(ext, MAX_PATH + filename - ext, wic_ext);
-		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, wic_ext);
-
-		hr = S_OK;
-		if (GetFileAttributes(save_filename) == INVALID_FILE_ATTRIBUTES)
-			hr = DirectX::SaveWICTextureToFile(GetImmediateContext(), staging, GUID_ContainerFormatJpeg, save_filename);
-		link_deduplicated_files(filename, save_filename);
-	}
-
-
-	if ((analyse_options & FrameAnalysisOptions::FMT_2D_DDS) ||
-	   ((analyse_options & FrameAnalysisOptions::FMT_2D_AUTO) && FAILED(hr))) {
-		wcscpy_s(ext, MAX_PATH + filename - ext, L".dds");
-		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, L".dds");
-
-		hr = S_OK;
-		if (GetFileAttributes(save_filename) == INVALID_FILE_ATTRIBUTES)
-			hr = DirectX::SaveDDSTextureToFile(GetImmediateContext(), staging, save_filename);
-		link_deduplicated_files(filename, save_filename);
-	}
-
-	if (FAILED(hr))
-		FALogInfo("Failed to dump Texture2D %S -> %S: 0x%x\n", filename, save_filename, hr);
-
-	if (analyse_options & FrameAnalysisOptions::FMT_DESC) {
-		wcscpy_s(ext, MAX_PATH + filename - ext, L".dsc");
-		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, L".dsc");
-
-		if (GetFileAttributes(save_filename) == INVALID_FILE_ATTRIBUTES)
-			DumpDesc(desc, save_filename);
-		link_deduplicated_files(filename, save_filename);
-	}
-
-out_release:
 	if (staging != resource)
 		staging->Release();
 }
@@ -903,7 +927,7 @@ void FrameAnalysisContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE
 }
 
 template <typename DescType>
-void FrameAnalysisContext::DumpDesc(DescType *desc, wchar_t *filename)
+void FrameAnalysisContext::DumpDesc(DescType *desc, const wchar_t *filename)
 {
 	FILE *fd = NULL;
 	char buf[256];
@@ -921,18 +945,207 @@ void FrameAnalysisContext::DumpDesc(DescType *desc, wchar_t *filename)
 	fclose(fd);
 }
 
+bool FrameAnalysisContext::DeferDump2DResource(ID3D11Texture2D *staging,
+		wchar_t *filename, bool stereo, D3D11_TEXTURE2D_DESC *orig_desc)
+{
+	if (!(analyse_options & FrameAnalysisOptions::DEFRD_CTX_DELAY))
+		return false;
+
+	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)
+		return false;
+
+	if (!deferred_tex2d) {
+		deferred_tex2d = make_unique<FrameAnalysisDeferredTex2D>();
+		FALogInfo("Creating deferred staging Texture2D list %p on context %p\n", deferred_tex2d.get(), this);
+	}
+
+	FALogInfo("Deferring Frame Analysis Dump Texture2D: %S\n", filename);
+	deferred_tex2d->emplace_back(analyse_options, staging, filename, stereo, orig_desc);
+
+	return true;
+}
+
+bool FrameAnalysisContext::DeferDumpBuffer(ID3D11Buffer *staging,
+		D3D11_BUFFER_DESC *orig_desc, wchar_t *filename,
+		FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
+		UINT stride, UINT offset, UINT first, UINT count)
+{
+	if (!(analyse_options & FrameAnalysisOptions::DEFRD_CTX_DELAY))
+		return false;
+
+	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)
+		return false;
+
+	if (!deferred_buffers) {
+		deferred_buffers = make_unique<FrameAnalysisDeferredBuffers>();
+		FALogInfo("Creating deferred staging Buffer list %p on context %p\n", deferred_buffers.get(), this);
+	}
+
+	FALogInfo("Deferring Frame Analysis Dump Buffer: %S\n", filename);
+	deferred_buffers->emplace_back(analyse_options, staging, orig_desc, filename,
+			buf_type_mask, idx, ib_fmt, stride, offset, first, count);
+	return true;
+}
+
+void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_list)
+{
+	FrameAnalysisDeferredBuffersPtr deferred_buffers = nullptr;
+	FrameAnalysisDeferredTex2DPtr deferred_tex2d = nullptr;
+
+	if (!command_list)
+		return;
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	try {
+		deferred_buffers = std::move(frame_analysis_deferred_buffer_lists.at(command_list));
+		frame_analysis_deferred_buffer_lists.erase(command_list);
+	} catch (std::out_of_range) {}
+	if (deferred_buffers) {
+		for (FrameAnalysisDeferredDumpBufferArgs &i : *deferred_buffers) {
+			FALogInfo("Dumping Deferred Buffer: %S\n", i.filename.c_str());
+			DumpBufferImmediateCtx(i.analyse_options, i.staging.Get(),
+					&i.orig_desc, i.filename, i.buf_type_mask,
+					i.idx, i.ib_fmt, i.stride, i.offset, i.first,
+					i.count);
+		}
+	}
+
+	try {
+		deferred_tex2d = std::move(frame_analysis_deferred_tex2d_lists.at(command_list));
+		frame_analysis_deferred_tex2d_lists.erase(command_list);
+	} catch (std::out_of_range) {}
+	if (deferred_tex2d) {
+		for (FrameAnalysisDeferredDumpTex2DArgs &i : *deferred_tex2d) {
+			FALogInfo("Dumping Deferred Texture2D: %S\n", i.filename.c_str());
+			Dump2DResourceImmediateCtx(i.analyse_options, i.staging.Get(),
+					i.filename, i.stereo, &i.orig_desc);
+		}
+	}
+
+	LeaveCriticalSection(&G->mCriticalSection);
+}
+
+void FrameAnalysisContext::finish_deferred_resources(ID3D11CommandList *command_list)
+{
+	if (!command_list || (!deferred_buffers && !deferred_tex2d))
+		return;
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	if (deferred_buffers) {
+		FALogInfo("Finishing deferred staging Buffer list %p on context %p\n", deferred_buffers.get(), this);
+		frame_analysis_deferred_buffer_lists.erase(command_list);
+		frame_analysis_deferred_buffer_lists.emplace(command_list, std::move(deferred_buffers));
+	}
+
+	if (deferred_tex2d) {
+		FALogInfo("Finishing deferred staging Texture2D list %p on context %p\n", deferred_tex2d.get(), this);
+		frame_analysis_deferred_tex2d_lists.erase(command_list);
+		frame_analysis_deferred_tex2d_lists.emplace(command_list, std::move(deferred_tex2d));
+	}
+
+	LeaveCriticalSection(&G->mCriticalSection);
+}
+
+void FrameAnalysisContext::DumpBufferImmediateCtx(FrameAnalysisOptions analyse_options, ID3D11Buffer *staging,
+		D3D11_BUFFER_DESC *orig_desc, wstring filename, FrameAnalysisOptions buf_type_mask, int idx,
+		DXGI_FORMAT ib_fmt, UINT stride, UINT offset, UINT first, UINT count)
+{
+	wchar_t bin_filename[MAX_PATH], txt_filename[MAX_PATH];
+	D3D11_MAPPED_SUBRESOURCE map;
+	HRESULT hr;
+	FILE *fd = NULL;
+	wchar_t *bin_ext;
+	size_t ext;
+	errno_t err;
+
+	// This function has a local copy of analyse_options, since they may
+	// have changed since dumping the resource was deferred
+
+	hr = GetImmediateContext()->Map(staging, 0, D3D11_MAP_READ, 0, &map);
+	if (FAILED(hr)) {
+		FALogInfo("DumpBuffer failed to map staging resource: 0x%x\n", hr);
+		return;
+	}
+
+	dedupe_buf_filename(staging, orig_desc, &map, bin_filename, MAX_PATH);
+
+	ext = filename.find_last_of(L'.');
+	bin_ext = wcsrchr(bin_filename, L'.');
+	if (ext == wstring::npos || !bin_ext) {
+		FALogInfo("DumpBuffer: Filename missing extension\n");
+		goto out_unmap;
+	}
+
+	if (analyse_options & FrameAnalysisOptions::FMT_BUF_BIN) {
+		filename.replace(ext, wstring::npos, L".buf");
+		wcscpy_s(bin_ext, MAX_PATH + bin_filename - bin_ext, L".buf");
+
+		if (GetFileAttributes(bin_filename) == INVALID_FILE_ATTRIBUTES) {
+			err = wfopen_ensuring_access(&fd, bin_filename, L"wb");
+			if (!fd) {
+				FALogInfo("Unable to create %S: %u\n", bin_filename, err);
+				goto out_unmap;
+			}
+			fwrite(map.pData, 1, orig_desc->ByteWidth, fd);
+			fclose(fd);
+		}
+		link_deduplicated_files(filename.c_str(), bin_filename);
+	}
+
+	if (analyse_options & FrameAnalysisOptions::FMT_BUF_TXT) {
+		filename.replace(ext, wstring::npos, L".txt");
+
+		if (buf_type_mask & FrameAnalysisOptions::DUMP_CB) {
+			dedupe_buf_filename_txt(bin_filename, txt_filename, MAX_PATH, 'c', idx, stride, offset);
+			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
+				DumpBufferTxt(txt_filename, &map, orig_desc->ByteWidth, 'c', idx, stride, offset);
+			}
+		} else if (buf_type_mask & FrameAnalysisOptions::DUMP_VB) {
+			dedupe_buf_filename_vb_txt(bin_filename, txt_filename, MAX_PATH, idx, stride, offset, first, count);
+			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
+				DumpVBTxt(txt_filename, &map, orig_desc->ByteWidth, idx, stride, offset, first, count);
+			}
+		} else if (buf_type_mask & FrameAnalysisOptions::DUMP_IB) {
+			dedupe_buf_filename_ib_txt(bin_filename, txt_filename, MAX_PATH, ib_fmt, offset, first, count);
+			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
+				DumpIBTxt(txt_filename, &map, orig_desc->ByteWidth, ib_fmt, offset, first, count);
+			}
+		} else {
+			// We don't know what kind of buffer this is, so just
+			// use the generic dump routine:
+
+			dedupe_buf_filename_txt(bin_filename, txt_filename, MAX_PATH, '?', idx, stride, offset);
+			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
+				DumpBufferTxt(txt_filename, &map, orig_desc->ByteWidth, '?', idx, stride, offset);
+			}
+		}
+		link_deduplicated_files(filename.c_str(), txt_filename);
+	}
+	// TODO: Dump UAV, RT and SRV buffers as text taking their format,
+	// offset, size, first entry and num entries into account.
+
+	if (analyse_options & FrameAnalysisOptions::FMT_DESC) {
+		filename.replace(ext, wstring::npos, L".dsc");
+		wcscpy_s(bin_ext, MAX_PATH + bin_filename - bin_ext, L".dsc");
+
+		if (GetFileAttributes(bin_filename) == INVALID_FILE_ATTRIBUTES)
+			DumpDesc(orig_desc, bin_filename);
+		link_deduplicated_files(filename.c_str(), bin_filename);
+	}
+
+out_unmap:
+	GetImmediateContext()->Unmap(staging, 0);
+}
+
 void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
 		UINT stride, UINT offset, UINT first, UINT count)
 {
-	wchar_t bin_filename[MAX_PATH], txt_filename[MAX_PATH];
 	D3D11_BUFFER_DESC desc, orig_desc;
-	D3D11_MAPPED_SUBRESOURCE map;
 	ID3D11Buffer *staging = NULL;
 	HRESULT hr;
-	FILE *fd = NULL;
-	wchar_t *ext, *bin_ext;
-	errno_t err;
 
 	buffer->GetDesc(&desc);
 	memcpy(&orig_desc, &desc, sizeof(D3D11_BUFFER_DESC));
@@ -949,81 +1162,10 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	}
 
 	GetImmediateContext()->CopyResource(staging, buffer);
-	hr = GetImmediateContext()->Map(staging, 0, D3D11_MAP_READ, 0, &map);
-	if (FAILED(hr)) {
-		FALogInfo("DumpBuffer failed to map staging resource: 0x%x\n", hr);
-		goto out_release;
-	}
 
-	dedupe_buf_filename(staging, &orig_desc, &map, bin_filename, MAX_PATH);
+	if (!DeferDumpBuffer(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count))
+		DumpBufferImmediateCtx(analyse_options, staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count);
 
-	ext = wcsrchr(filename, L'.');
-	bin_ext = wcsrchr(bin_filename, L'.');
-	if (!ext || !bin_ext) {
-		FALogInfo("DumpBuffer: Filename missing extension\n");
-		goto out_unmap;
-	}
-
-	if (analyse_options & FrameAnalysisOptions::FMT_BUF_BIN) {
-		wcscpy_s(ext, MAX_PATH + filename - ext, L".buf");
-		wcscpy_s(bin_ext, MAX_PATH + bin_filename - bin_ext, L".buf");
-
-		if (GetFileAttributes(bin_filename) == INVALID_FILE_ATTRIBUTES) {
-			err = wfopen_ensuring_access(&fd, bin_filename, L"wb");
-			if (!fd) {
-				FALogInfo("Unable to create %S: %u\n", bin_filename, err);
-				goto out_unmap;
-			}
-			fwrite(map.pData, 1, desc.ByteWidth, fd);
-			fclose(fd);
-		}
-		link_deduplicated_files(filename, bin_filename);
-	}
-
-	if (analyse_options & FrameAnalysisOptions::FMT_BUF_TXT) {
-		wcscpy_s(ext, MAX_PATH + filename - ext, L".txt");
-
-		if (buf_type_mask & FrameAnalysisOptions::DUMP_CB) {
-			dedupe_buf_filename_txt(bin_filename, txt_filename, MAX_PATH, 'c', idx, stride, offset);
-			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
-				DumpBufferTxt(txt_filename, &map, desc.ByteWidth, 'c', idx, stride, offset);
-			}
-		} else if (buf_type_mask & FrameAnalysisOptions::DUMP_VB) {
-			dedupe_buf_filename_vb_txt(bin_filename, txt_filename, MAX_PATH, idx, stride, offset, first, count);
-			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
-				DumpVBTxt(txt_filename, &map, desc.ByteWidth, idx, stride, offset, first, count);
-			}
-		} else if (buf_type_mask & FrameAnalysisOptions::DUMP_IB) {
-			dedupe_buf_filename_ib_txt(bin_filename, txt_filename, MAX_PATH, ib_fmt, offset, first, count);
-			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
-				DumpIBTxt(txt_filename, &map, desc.ByteWidth, ib_fmt, offset, first, count);
-			}
-		} else {
-			// We don't know what kind of buffer this is, so just
-			// use the generic dump routine:
-
-			dedupe_buf_filename_txt(bin_filename, txt_filename, MAX_PATH, '?', idx, stride, offset);
-			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
-				DumpBufferTxt(txt_filename, &map, desc.ByteWidth, '?', idx, stride, offset);
-			}
-		}
-		link_deduplicated_files(filename, txt_filename);
-	}
-	// TODO: Dump UAV, RT and SRV buffers as text taking their format,
-	// offset, size, first entry and num entries into account.
-
-	if (analyse_options & FrameAnalysisOptions::FMT_DESC) {
-		wcscpy_s(ext, MAX_PATH + filename - ext, L".dsc");
-		wcscpy_s(bin_ext, MAX_PATH + bin_filename - bin_ext, L".dsc");
-
-		if (GetFileAttributes(bin_filename) == INVALID_FILE_ATTRIBUTES)
-			DumpDesc(&orig_desc, bin_filename);
-		link_deduplicated_files(filename, bin_filename);
-	}
-
-out_unmap:
-	GetImmediateContext()->Unmap(staging, 0);
-out_release:
 	staging->Release();
 }
 
@@ -1250,9 +1392,9 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, s
 	return hr;
 }
 
-wchar_t* FrameAnalysisContext::dedupe_tex2d_filename(ID3D11Texture2D *resource,
+const wchar_t* FrameAnalysisContext::dedupe_tex2d_filename(ID3D11Texture2D *resource,
 		D3D11_TEXTURE2D_DESC *orig_desc, wchar_t *dedupe_filename,
-		size_t size, wchar_t *traditional_filename)
+		size_t size, const wchar_t *traditional_filename)
 {
 	D3D11_MAPPED_SUBRESOURCE map;
 	HRESULT hr;
@@ -1335,12 +1477,12 @@ void FrameAnalysisContext::dedupe_buf_filename(ID3D11Buffer *resource,
 	_snwprintf_s(dedupe_filename, size, size, L"%ls\\%08x.XXX", dedupe_dir, hash);
 }
 
-void FrameAnalysisContext::rotate_deduped_file(wchar_t *dedupe_filename)
+void FrameAnalysisContext::rotate_deduped_file(const wchar_t *dedupe_filename)
 {
 	wchar_t rotated_filename[MAX_PATH];
 	unsigned rotate;
 	size_t ext_pos;
-	wchar_t *ext;
+	const wchar_t *ext;
 
 	ext = wcsrchr(dedupe_filename, L'.');
 	if (ext) {
@@ -1372,7 +1514,7 @@ void FrameAnalysisContext::rotate_deduped_file(wchar_t *dedupe_filename)
 	}
 }
 
-static bool create_shortcut(wchar_t *filename, wchar_t *dedupe_filename)
+static bool create_shortcut(const wchar_t *filename, const wchar_t *dedupe_filename)
 {
 	IShellLink *psl;
 	IPersistFile *ppf;
@@ -1399,7 +1541,7 @@ static bool create_shortcut(wchar_t *filename, wchar_t *dedupe_filename)
 	return SUCCEEDED(hr);
 }
 
-void FrameAnalysisContext::link_deduplicated_files(wchar_t *filename, wchar_t *dedupe_filename)
+void FrameAnalysisContext::link_deduplicated_files(const wchar_t *filename, const wchar_t *dedupe_filename)
 {
 	wchar_t relative_path[MAX_PATH] = {0};
 
@@ -1896,7 +2038,7 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 	// clear if it would have to be enabled while submitting the copy
 	// commands in the deferred context, or while playing the command queue
 	// in the immediate context, or both.
-	if (!(analyse_options & FrameAnalysisOptions::DEFERRED_CONTEXT) &&
+	if (!(analyse_options & FrameAnalysisOptions::DEFRD_CTX_MASK) &&
 	   (GetPassThroughOrigContext1()->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
 		draw_call++;
 		return;
@@ -1965,7 +2107,7 @@ void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 	if (!(analyse_options & type_mask))
 		return;
 
-	if (!(analyse_options & FrameAnalysisOptions::DEFERRED_CONTEXT) &&
+	if (!(analyse_options & FrameAnalysisOptions::DEFRD_CTX_MASK) &&
 	   (GetPassThroughOrigContext1()->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
 		FALogInfo("WARNING: dump_on_%S used on deferred context, but no deferred_ctx options enabled\n", type);
 		non_draw_call_dump_counter++;
@@ -2009,7 +2151,7 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 
 	analyse_options = options;
 
-	if (!(analyse_options & FrameAnalysisOptions::DEFERRED_CONTEXT) &&
+	if (!(analyse_options & FrameAnalysisOptions::DEFRD_CTX_MASK) &&
 	   (GetPassThroughOrigContext1()->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
 		FALogInfo("WARNING: dump used on deferred context, but no deferred_ctx options enabled\n");
 		non_draw_call_dump_counter++;
@@ -2651,6 +2793,8 @@ STDMETHODIMP_(void) FrameAnalysisContext::ExecuteCommandList(THIS_
 			pCommandList, RestoreContextState ? "true" : "false");
 
 	HackerContext::ExecuteCommandList(pCommandList, RestoreContextState);
+
+	dump_deferred_resources(pCommandList);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::HSSetShaderResources(THIS_
@@ -3467,6 +3611,10 @@ STDMETHODIMP FrameAnalysisContext::FinishCommandList(THIS_
 	HRESULT ret = HackerContext::FinishCommandList(RestoreDeferredContextState, ppCommandList);
 
 	FrameAnalysisLog("FinishCommandList(ppCommandList:0x%p -> 0x%p) = %u\n", ppCommandList, ppCommandList ? *ppCommandList : NULL, ret);
+
+	if (ppCommandList)
+		finish_deferred_resources(*ppCommandList);
+
 	return ret;
 }
 
