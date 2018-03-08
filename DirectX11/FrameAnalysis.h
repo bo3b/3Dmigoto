@@ -73,10 +73,19 @@ private:
 	wchar_t* dedupe_tex2d_filename(ID3D11Texture2D *resource,
 			D3D11_TEXTURE2D_DESC *desc, wchar_t *dedupe_filename,
 			size_t size, wchar_t *traditional_filename);
-	wchar_t* dedupe_buf_filename(ID3D11Buffer *resource,
+	void dedupe_buf_filename(ID3D11Buffer *resource,
 			D3D11_BUFFER_DESC *orig_desc,
 			D3D11_MAPPED_SUBRESOURCE *map,
 			wchar_t *dedupe_filename, size_t size);
+	void dedupe_buf_filename_txt(const wchar_t *bin_filename,
+			wchar_t *txt_filename, size_t size, char type, int idx,
+			UINT stride, UINT offset);
+	void dedupe_buf_filename_vb_txt(const wchar_t *bin_filename,
+			wchar_t *txt_filename, size_t size, int idx,
+			UINT stride, UINT offset, UINT first, UINT count);
+	void dedupe_buf_filename_ib_txt(const wchar_t *bin_filename,
+			wchar_t *txt_filename, size_t size, DXGI_FORMAT ib_fmt,
+			UINT offset, UINT first, UINT count);
 	void link_deduplicated_files(wchar_t *filename, wchar_t *dedupe_filename);
 	void rotate_deduped_file(wchar_t *dedupe_filename);
 	void get_deduped_dir(wchar_t *path, size_t size);

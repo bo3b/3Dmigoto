@@ -671,6 +671,42 @@ out:
 	stereoResource->Release();
 }
 
+static void copy_until_extension(wchar_t *txt_filename, const wchar_t *bin_filename, size_t size, wchar_t **pos, size_t *rem)
+{
+	size_t ext_pos;
+	const wchar_t *ext;
+
+	ext = wcsrchr(bin_filename, L'.');
+	if (ext)
+		ext_pos = ext - bin_filename;
+	else
+		ext_pos = wcslen(bin_filename);
+
+	StringCchPrintfExW(txt_filename, size, pos, rem, NULL, L"%.*s", ext_pos, bin_filename);
+}
+
+void FrameAnalysisContext::dedupe_buf_filename_txt(const wchar_t *bin_filename,
+		wchar_t *txt_filename, size_t size, char type, int idx,
+		UINT stride, UINT offset)
+{
+	wchar_t *pos;
+	size_t rem;
+
+	copy_until_extension(txt_filename, bin_filename, MAX_PATH, &pos, &rem);
+
+	if (idx != -1)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-%cb%i", type, idx);
+
+	if (offset)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-offset=%u", offset);
+
+	if (stride)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-stride=%u", stride);
+
+	if (FAILED(StringCchPrintfW(pos, rem, L".txt")))
+		FALogInfo("Failed to create buffer filename\n");
+}
+
 /*
  * This just treats the buffer as an array of float4s. In the future we might
  * try to use the reflection information in the shaders to add names and
@@ -706,6 +742,33 @@ void FrameAnalysisContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESO
 	}
 
 	fclose(fd);
+}
+
+void FrameAnalysisContext::dedupe_buf_filename_vb_txt(const wchar_t *bin_filename,
+		wchar_t *txt_filename, size_t size, int idx, UINT stride,
+		UINT offset, UINT first, UINT count)
+{
+	wchar_t *pos;
+	size_t rem;
+
+	copy_until_extension(txt_filename, bin_filename, MAX_PATH, &pos, &rem);
+
+	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-vb%i", idx);
+
+	if (offset)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-offset=%u", offset);
+
+	if (stride)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-stride=%u", stride);
+
+	if (first)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-first=%u", first);
+
+	if (count)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-count=%u", count);
+
+	if (FAILED(StringCchPrintfW(pos, rem, L".txt")))
+		FALogInfo("Failed to create vertex buffer filename\n");
 }
 
 /*
@@ -763,6 +826,33 @@ void FrameAnalysisContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE
 	}
 
 	fclose(fd);
+}
+
+void FrameAnalysisContext::dedupe_buf_filename_ib_txt(const wchar_t *bin_filename,
+		wchar_t *txt_filename, size_t size, DXGI_FORMAT ib_fmt,
+		UINT offset, UINT first, UINT count)
+{
+	wchar_t *pos;
+	size_t rem;
+
+	copy_until_extension(txt_filename, bin_filename, MAX_PATH, &pos, &rem);
+
+	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ib");
+
+	if (ib_fmt != DXGI_FORMAT_UNKNOWN)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-format=%S", TexFormatStr(ib_fmt));
+
+	if (offset)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-offset=%u", offset);
+
+	if (first)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-first=%u", first);
+
+	if (count)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-count=%u", count);
+
+	if (FAILED(StringCchPrintfW(pos, rem, L".txt")))
+		FALogInfo("Failed to create index buffer filename\n");
 }
 
 void FrameAnalysisContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
@@ -842,13 +932,13 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		UINT stride, UINT offset, UINT first, UINT count)
 {
 	FrameAnalysisOptions type_mask_options = (FrameAnalysisOptions)(analyse_options & type_mask);
-	wchar_t dedupe_filename[MAX_PATH], *save_filename;
+	wchar_t bin_filename[MAX_PATH], txt_filename[MAX_PATH];
 	D3D11_BUFFER_DESC desc, orig_desc;
 	D3D11_MAPPED_SUBRESOURCE map;
 	ID3D11Buffer *staging = NULL;
 	HRESULT hr;
 	FILE *fd = NULL;
-	wchar_t *ext, *save_ext;
+	wchar_t *ext, *bin_ext;
 	errno_t err;
 
 	buffer->GetDesc(&desc);
@@ -872,49 +962,59 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		goto out_release;
 	}
 
-	save_filename = dedupe_buf_filename(staging, &orig_desc, &map, dedupe_filename, MAX_PATH);
+	dedupe_buf_filename(staging, &orig_desc, &map, bin_filename, MAX_PATH);
 
 	ext = wcsrchr(filename, L'.');
-	save_ext = wcsrchr(save_filename, L'.');
-	if (!ext || !save_ext) {
+	bin_ext = wcsrchr(bin_filename, L'.');
+	if (!ext || !bin_ext) {
 		FALogInfo("DumpBuffer: Filename missing extension\n");
 		goto out_unmap;
 	}
 
 	if (type_mask_options & FrameAnalysisOptions::DUMP_XX_BIN) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".buf");
-		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, L".buf");
+		wcscpy_s(bin_ext, MAX_PATH + bin_filename - bin_ext, L".buf");
 
-		if (GetFileAttributes(save_filename) == INVALID_FILE_ATTRIBUTES) {
-			err = wfopen_ensuring_access(&fd, save_filename, L"wb");
+		if (GetFileAttributes(bin_filename) == INVALID_FILE_ATTRIBUTES) {
+			err = wfopen_ensuring_access(&fd, bin_filename, L"wb");
 			if (!fd) {
-				FALogInfo("Unable to create %S: %u\n", save_filename, err);
+				FALogInfo("Unable to create %S: %u\n", bin_filename, err);
 				goto out_unmap;
 			}
 			fwrite(map.pData, 1, desc.ByteWidth, fd);
 			fclose(fd);
 		}
-		link_deduplicated_files(filename, save_filename);
+		link_deduplicated_files(filename, bin_filename);
 	}
 
 	if (type_mask_options & FrameAnalysisOptions::DUMP_XX_TXT) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".txt");
-		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, L".txt");
 
-		if (GetFileAttributes(save_filename) == INVALID_FILE_ATTRIBUTES) {
-			if (type_mask_options & FrameAnalysisOptions::DUMP_CB_TXT)
-				DumpBufferTxt(save_filename, &map, desc.ByteWidth, 'c', idx, stride, offset);
-			else if (type_mask_options & FrameAnalysisOptions::DUMP_VB_TXT)
-				DumpVBTxt(save_filename, &map, desc.ByteWidth, idx, stride, offset, first, count);
-			else if (type_mask_options & FrameAnalysisOptions::DUMP_IB_TXT)
-				DumpIBTxt(save_filename, &map, desc.ByteWidth, ib_fmt, offset, first, count);
-			else if (type_mask_options & FrameAnalysisOptions::DUMP_ON_XXXXXX) {
-				// We don't know what kind of buffer this is, so just
-				// use the generic dump routine:
-				DumpBufferTxt(save_filename, &map, desc.ByteWidth, '?', idx, stride, offset);
+		if (type_mask_options & FrameAnalysisOptions::DUMP_CB_TXT) {
+			dedupe_buf_filename_txt(bin_filename, txt_filename, MAX_PATH, 'c', idx, stride, offset);
+			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
+				DumpBufferTxt(txt_filename, &map, desc.ByteWidth, 'c', idx, stride, offset);
+			}
+		} else if (type_mask_options & FrameAnalysisOptions::DUMP_VB_TXT) {
+			dedupe_buf_filename_vb_txt(bin_filename, txt_filename, MAX_PATH, idx, stride, offset, first, count);
+			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
+				DumpVBTxt(txt_filename, &map, desc.ByteWidth, idx, stride, offset, first, count);
+			}
+		} else if (type_mask_options & FrameAnalysisOptions::DUMP_IB_TXT) {
+			dedupe_buf_filename_ib_txt(bin_filename, txt_filename, MAX_PATH, ib_fmt, offset, first, count);
+			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
+				DumpIBTxt(txt_filename, &map, desc.ByteWidth, ib_fmt, offset, first, count);
+			}
+		} else if (type_mask_options & FrameAnalysisOptions::DUMP_ON_XXXXXX) {
+			// We don't know what kind of buffer this is, so just
+			// use the generic dump routine:
+
+			dedupe_buf_filename_txt(bin_filename, txt_filename, MAX_PATH, '?', idx, stride, offset);
+			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
+				DumpBufferTxt(txt_filename, &map, desc.ByteWidth, '?', idx, stride, offset);
 			}
 		}
-		link_deduplicated_files(filename, save_filename);
+		link_deduplicated_files(filename, txt_filename);
 	}
 	// TODO: Dump UAV, RT and SRV buffers as text taking their format,
 	// offset, size, first entry and num entries into account.
@@ -925,11 +1025,11 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	// resource types as well.
 	if (analyse_options & FrameAnalysisOptions::DUMP_DESC) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".dsc");
-		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, L".dsc");
+		wcscpy_s(bin_ext, MAX_PATH + bin_filename - bin_ext, L".dsc");
 
-		if (GetFileAttributes(save_filename) == INVALID_FILE_ATTRIBUTES)
-			DumpDesc(&orig_desc, save_filename);
-		link_deduplicated_files(filename, save_filename);
+		if (GetFileAttributes(bin_filename) == INVALID_FILE_ATTRIBUTES)
+			DumpDesc(&orig_desc, bin_filename);
+		link_deduplicated_files(filename, bin_filename);
 	}
 
 out_unmap:
@@ -1212,7 +1312,7 @@ err:
 	return traditional_filename;
 }
 
-wchar_t* FrameAnalysisContext::dedupe_buf_filename(ID3D11Buffer *resource,
+void FrameAnalysisContext::dedupe_buf_filename(ID3D11Buffer *resource,
 		D3D11_BUFFER_DESC *orig_desc, D3D11_MAPPED_SUBRESOURCE *map,
 		wchar_t *dedupe_filename, size_t size)
 {
@@ -1244,8 +1344,6 @@ wchar_t* FrameAnalysisContext::dedupe_buf_filename(ID3D11Buffer *resource,
 
 	get_deduped_dir(dedupe_dir, MAX_PATH);
 	_snwprintf_s(dedupe_filename, size, size, L"%ls\\%08x.XXX", dedupe_dir, hash);
-
-	return dedupe_filename;
 }
 
 void FrameAnalysisContext::rotate_deduped_file(wchar_t *dedupe_filename)
