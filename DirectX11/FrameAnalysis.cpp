@@ -1006,7 +1006,7 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
 				DumpIBTxt(txt_filename, &map, desc.ByteWidth, ib_fmt, offset, first, count);
 			}
-		} else if (type_mask_options & FrameAnalysisOptions::DUMP_ON_XXXXXX) {
+		} else if (type_mask_options & FrameAnalysisOptions::DUMP_XB_TXT) {
 			// We don't know what kind of buffer this is, so just
 			// use the generic dump routine:
 
@@ -1958,11 +1958,16 @@ void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 	analyse_options &= (FrameAnalysisOptions)~FrameAnalysisOptions::STEREO_MASK;
 	analyse_options |= FrameAnalysisOptions::MONO;
 
+	// If no dump options were enabled, dump jps if possible, dds if not,
+	// and dump buffers as both text (generic) and binary:
+	if (!(analyse_options & FrameAnalysisOptions::DUMP_XXX_XX_MASK))
+		analyse_options |= FrameAnalysisOptions::DUMP_XXX_XX;
+
 	EnterCriticalSection(&G->mCriticalSection);
 
 	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, type, resource, true);
 	if (SUCCEEDED(hr)) {
-		DumpResource(resource, filename, type_mask, -1, DXGI_FORMAT_UNKNOWN, 0, 0);
+		DumpResource(resource, filename, FrameAnalysisOptions::DUMP_XXX_XX_MASK, -1, DXGI_FORMAT_UNKNOWN, 0, 0);
 	}
 
 	LeaveCriticalSection(&G->mCriticalSection);
@@ -1992,9 +1997,9 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 	update_stereo_dumping_mode();
 
 	// If no dump options were enabled, dump jps if possible, dds if not,
-	// and dump buffers as both text and binary:
-	if (!(analyse_options & FrameAnalysisOptions::DUMP_XXX_MASK))
-		analyse_options |= FrameAnalysisOptions::DUMP_XXX;
+	// and dump buffers as both text (generic) and binary:
+	if (!(analyse_options & FrameAnalysisOptions::DUMP_XXX_XX_MASK))
+		analyse_options |= FrameAnalysisOptions::DUMP_XXX_XX;
 
 	if (analyse_options & FrameAnalysisOptions::STEREO) {
 		// Enable reverse stereo blit for all resources we are about to dump:
@@ -2014,7 +2019,7 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 		hr = FrameAnalysisFilenameResource(filename, MAX_PATH, L"...", resource, false);
 	}
 	if (SUCCEEDED(hr))
-		DumpResource(resource, filename, FrameAnalysisOptions::DUMP_ON_XXXXXX, -1, ib_fmt, stride, offset);
+		DumpResource(resource, filename, FrameAnalysisOptions::DUMP_XXX_XX_MASK, -1, ib_fmt, stride, offset);
 
 	LeaveCriticalSection(&G->mCriticalSection);
 

@@ -106,21 +106,21 @@ enum class FrameAnalysisOptions {
 	DUMP_RT         = 0x00000001,
 	DUMP_RT_JPS     = 0x00000002,
 	DUMP_RT_DDS     = 0x00000004,
-	DUMP_RT_MASK    = 0x00000007,
+	DUMP_RT_MASK    = 0x30000007,
 	CLEAR_RT        = 0x00000008,
 	DUMP_DEPTH      = 0x00000010,
 	DUMP_DEPTH_JPS  = 0x00000020,
 	DUMP_DEPTH_DDS  = 0x00000040,
-	DUMP_DEPTH_MASK = 0x00000070,
+	DUMP_DEPTH_MASK = 0x00000070, // DSV does not support buffers
 	FILENAME_REG    = 0x00000080,
 	DUMP_TEX        = 0x00000100,
 	DUMP_TEX_JPS    = 0x00000200,
 	DUMP_TEX_DDS    = 0x00000400,
-	DUMP_TEX_MASK   = 0x00000700,
-	DUMP_XXX        = 0x01800111,
-	DUMP_XXX_JPS    = 0x01800222,
-	DUMP_XXX_DDS    = 0x01800444,
-	DUMP_XXX_MASK   = 0x01800777,
+	DUMP_TEX_MASK   = 0x30000700,
+	DUMP_XXX        = 0x00000111,
+	DUMP_XXX_JPS    = 0x00000222,
+	DUMP_XXX_DDS    = 0x00000444,
+	DUMP_XXX_MASK   = 0x30000777,
 	PERSIST         = 0x00000800, // Used by shader/texture triggers
 	STEREO          = 0x00001000,
 	MONO            = 0x00002000,
@@ -134,17 +134,20 @@ enum class FrameAnalysisOptions {
 	DUMP_IB_BIN     = 0x00040000,
 	DUMP_IB_TXT     = 0x00080000,
 	DUMP_IB_MASK    = 0x000c0000,
-	DUMP_XX_BIN     = 0x01854505, // Includes anything that can be a buffer: CB, VB, IB, SRVs, RTs & UAVs
-	DUMP_XX_TXT     = 0x018a8000, // Not including SRVs, RTs or UAVs for now
+	DUMP_XX_BIN     = 0x10054505, // Includes anything that can be a buffer: CB, VB, IB, SRVs, RTs & UAVs
+	DUMP_XX_TXT     = 0x200a8000, // Not including SRVs, RTs or UAVs for now
+	DUMP_XXX_XX     = 0x30054111, // Textures preference jps, fallback to dds. Buffers dump both binary and *generic* text
+	DUMP_XXX_XX_MASK= 0x300fc777, // Includes all buffer and texture dumping options
 	FILENAME_HANDLE = 0x00100000,
-	LOG_DEPRECATED  = 0x00200000, // Always enabled now - there is no situation we don't want this.
+	LOG_DEPRECATED  = 0x00200000,
 	HOLD            = 0x00400000,
-	DUMP_ON_UNMAP   = 0x00800000, // XXX: For now including in all XX masks
-	DUMP_ON_UPDATE  = 0x01000000, // XXX: For now including in all XX masks
-	DUMP_ON_XXXXXX  = 0x01800000,
+	DUMP_ON_UNMAP   = 0x00800000,
+	DUMP_ON_UPDATE  = 0x01000000,
 	DEFERRED_CONTEXT= 0x02000000,
 	DUMP_DESC       = 0x04000000, // Separate from type masks. TODO: Consider splitting JPS/DDS out like this
 	SHARE_DEDUPED   = 0x08000000,
+	DUMP_XB_BIN     = 0x10000000, // Dumps an unknown/generic buffer as binary
+	DUMP_XB_TXT     = 0x20000000, // Dumps an unknown/generic buffer as text
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
@@ -168,6 +171,8 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"dump_vb_txt", FrameAnalysisOptions::DUMP_VB_TXT},
 	{L"dump_ib", FrameAnalysisOptions::DUMP_IB_BIN},
 	{L"dump_ib_txt", FrameAnalysisOptions::DUMP_IB_TXT},
+	{L"dump_buf_bin", FrameAnalysisOptions::DUMP_XB_BIN},
+	{L"dump_buf_txt", FrameAnalysisOptions::DUMP_XB_TXT},
 	{L"filename_handle", FrameAnalysisOptions::FILENAME_HANDLE},
 	{L"log", FrameAnalysisOptions::LOG_DEPRECATED}, // Left in the list for backwards compatibility, but this is now always enabled
 	{L"hold", FrameAnalysisOptions::HOLD},
