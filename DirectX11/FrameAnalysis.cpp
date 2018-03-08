@@ -1,3 +1,4 @@
+#include "D3D11Wrapper.h"
 #include "FrameAnalysis.h"
 #include "Globals.h"
 
@@ -1837,6 +1838,27 @@ void FrameAnalysisContext::update_per_draw_analyse_options()
 	oneshot_valid = false;
 }
 
+void FrameAnalysisContext::update_stereo_dumping_mode()
+{
+	NvU8 stereo = false;
+
+	NvAPIOverride();
+	NvAPI_Stereo_IsEnabled(&stereo);
+	if (stereo)
+		NvAPI_Stereo_IsActivated(GetHackerDevice()->mStereoHandle, &stereo);
+
+	if (!stereo) {
+		// 3D Vision is disabled, force mono dumping mode:
+		analyse_options &= (FrameAnalysisOptions)~FrameAnalysisOptions::STEREO_MASK;
+		analyse_options |= FrameAnalysisOptions::MONO;
+		return;
+	}
+
+	// If neither stereo or mono specified, default to stereo:
+	if (!(analyse_options & FrameAnalysisOptions::STEREO_MASK))
+		analyse_options |= FrameAnalysisOptions::STEREO;
+}
+
 void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info)
 {
 	NvAPI_Status nvret;
@@ -1870,9 +1892,7 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 		return;
 	}
 
-	// If neither stereo or mono specified, default to stereo:
-	if (!(analyse_options & FrameAnalysisOptions::STEREO_MASK))
-		analyse_options |= FrameAnalysisOptions::STEREO;
+	update_stereo_dumping_mode();
 
 	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_MASK) &&
 	    (analyse_options & FrameAnalysisOptions::STEREO)) {
@@ -1969,9 +1989,7 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 
 	analyse_options = options;
 
-	// If neither stereo or mono specified, default to stereo:
-	if (!(analyse_options & FrameAnalysisOptions::STEREO_MASK))
-		analyse_options |= FrameAnalysisOptions::STEREO;
+	update_stereo_dumping_mode();
 
 	// If no dump options were enabled, dump jps if possible, dds if not,
 	// and dump buffers as both text and binary:

@@ -98,6 +98,7 @@ private:
 			FrameAnalysisOptions type_mask, wchar_t *type);
 	void FrameAnalysisAfterUnmap(ID3D11Resource *pResource);
 	void FrameAnalysisAfterUpdate(ID3D11Resource *pResource);
+	void update_stereo_dumping_mode();
 
 	FrameAnalysisOptions analyse_options;
 	FrameAnalysisOptions oneshot_analyse_options;
