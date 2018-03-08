@@ -2553,8 +2553,7 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, 
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)buffer;
 		is_null = false;
-		if (override_format != (DXGI_FORMAT)-1)
-			format = override_format;
+		OverrideOutOfBandInfo(&format, &stride);
 	} else {
 		LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
 				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), hr);
