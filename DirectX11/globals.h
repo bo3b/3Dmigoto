@@ -184,7 +184,7 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"dump_on_unmap", FrameAnalysisOptions::DUMP_ON_UNMAP},
 	{L"dump_on_update", FrameAnalysisOptions::DUMP_ON_UPDATE},
 	{L"deferred_ctx", FrameAnalysisOptions::DEFERRED_CONTEXT},
-	{L"share_deduped", FrameAnalysisOptions::SHARE_DEDUPED},
+	{L"share_dupes", FrameAnalysisOptions::SHARE_DEDUPED},
 
 	// Legacy combo options:
 	{L"dump_rt_jps", FrameAnalysisOptions::DUMP_RT_JPS},
