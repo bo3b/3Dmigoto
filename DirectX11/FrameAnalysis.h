@@ -79,6 +79,7 @@ private:
 			wchar_t *dedupe_filename, size_t size);
 	void link_deduplicated_files(wchar_t *filename, wchar_t *dedupe_filename);
 	void rotate_deduped_file(wchar_t *dedupe_filename);
+	void get_deduped_dir(wchar_t *path, size_t size);
 
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);

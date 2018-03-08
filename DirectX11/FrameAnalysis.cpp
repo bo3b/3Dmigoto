@@ -986,11 +986,17 @@ static BOOL CreateDeferredFADirectory(LPCWSTR path)
 	return TRUE;
 }
 
-static void CreateDedupedDirectory()
+void FrameAnalysisContext::get_deduped_dir(wchar_t *path, size_t size)
 {
-	wchar_t path[MAX_PATH];
+	if (analyse_options & FrameAnalysisOptions::SHARE_DEDUPED) {
+		if (!GetModuleFileName(0, path, (DWORD)size))
+			return;
+		wcsrchr(path, L'\\')[1] = 0;
+		wcscat_s(path, size, L"FrameAnalysisDeduped");
+	} else {
+		_snwprintf_s(path, size, size, L"%ls\\deduped", G->ANALYSIS_PATH);
+	}
 
-	_snwprintf_s(path, MAX_PATH, MAX_PATH, L"%ls\\deduped", G->ANALYSIS_PATH);
 	CreateDirectoryEnsuringAccess(path);
 }
 
@@ -1162,6 +1168,7 @@ wchar_t* FrameAnalysisContext::dedupe_tex2d_filename(ID3D11Texture2D *resource,
 	D3D11_MAPPED_SUBRESOURCE map;
 	HRESULT hr;
 	uint32_t hash;
+	wchar_t dedupe_dir[MAX_PATH];
 
 	// Many of the files dumped with frame analysis are identical, and this
 	// can take a very long time and waste a lot of disk space to dump them
@@ -1197,8 +1204,8 @@ wchar_t* FrameAnalysisContext::dedupe_tex2d_filename(ID3D11Texture2D *resource,
 
 	GetImmediateContext()->Unmap(resource, 0);
 
-	CreateDedupedDirectory();
-	_snwprintf_s(dedupe_filename, size, size, L"%ls\\deduped\\%08x.XXX", G->ANALYSIS_PATH, hash);
+	get_deduped_dir(dedupe_dir, MAX_PATH);
+	_snwprintf_s(dedupe_filename, size, size, L"%ls\\%08x.XXX", dedupe_dir, hash);
 
 	return dedupe_filename;
 err:
@@ -1209,6 +1216,7 @@ wchar_t* FrameAnalysisContext::dedupe_buf_filename(ID3D11Buffer *resource,
 		D3D11_BUFFER_DESC *orig_desc, D3D11_MAPPED_SUBRESOURCE *map,
 		wchar_t *dedupe_filename, size_t size)
 {
+	wchar_t dedupe_dir[MAX_PATH];
 	uint32_t hash;
 
 	// Many of the files dumped with frame analysis are identical, and this
@@ -1234,8 +1242,8 @@ wchar_t* FrameAnalysisContext::dedupe_buf_filename(ID3D11Buffer *resource,
 	hash = crc32c_hw(0, map->pData, orig_desc->ByteWidth);
 	hash = crc32c_hw(hash, orig_desc, sizeof(D3D11_BUFFER_DESC));
 
-	CreateDedupedDirectory();
-	_snwprintf_s(dedupe_filename, size, size, L"%ls\\deduped\\%08x.XXX", G->ANALYSIS_PATH, hash);
+	get_deduped_dir(dedupe_dir, MAX_PATH);
+	_snwprintf_s(dedupe_filename, size, size, L"%ls\\%08x.XXX", dedupe_dir, hash);
 
 	return dedupe_filename;
 }

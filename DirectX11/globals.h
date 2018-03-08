@@ -144,6 +144,7 @@ enum class FrameAnalysisOptions {
 	DUMP_ON_XXXXXX  = 0x01800000,
 	DEFERRED_CONTEXT= 0x02000000,
 	DUMP_DESC       = 0x04000000, // Separate from type masks. TODO: Consider splitting JPS/DDS out like this
+	SHARE_DEDUPED   = 0x08000000,
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
@@ -174,6 +175,7 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"dump_on_update", FrameAnalysisOptions::DUMP_ON_UPDATE},
 	{L"deferred_ctx", FrameAnalysisOptions::DEFERRED_CONTEXT},
 	{L"dump_desc", FrameAnalysisOptions::DUMP_DESC},
+	{L"share_deduped", FrameAnalysisOptions::SHARE_DEDUPED},
 	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
 };
 
