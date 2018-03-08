@@ -1965,6 +1965,13 @@ void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 	if (!(analyse_options & type_mask))
 		return;
 
+	if (!(analyse_options & FrameAnalysisOptions::DEFERRED_CONTEXT) &&
+	   (GetPassThroughOrigContext1()->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
+		FALogInfo("WARNING: dump_on_%S used on deferred context, but no deferred_ctx options enabled\n", type);
+		non_draw_call_dump_counter++;
+		return;
+	}
+
 	// Don't bother trying to dump as stereo - Map/Unmap/Update are inherently mono
 	analyse_options &= (FrameAnalysisOptions)~FrameAnalysisOptions::STEREO_MASK;
 	analyse_options |= FrameAnalysisOptions::MONO;
@@ -2001,6 +2008,13 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 	HRESULT hr;
 
 	analyse_options = options;
+
+	if (!(analyse_options & FrameAnalysisOptions::DEFERRED_CONTEXT) &&
+	   (GetPassThroughOrigContext1()->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
+		FALogInfo("WARNING: dump used on deferred context, but no deferred_ctx options enabled\n");
+		non_draw_call_dump_counter++;
+		return;
+	}
 
 	update_stereo_dumping_mode();
 	set_default_dump_formats(false);
