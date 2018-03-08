@@ -27,8 +27,7 @@ private:
 
 	ID3D11DeviceContext* GetImmediateContext();
 	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
-			bool stereo, FrameAnalysisOptions type_mask,
-			D3D11_TEXTURE2D_DESC *orig_desc);
+			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc);
 	HRESULT ResolveMSAA(ID3D11Texture2D *src, D3D11_TEXTURE2D_DESC *srcDesc,
 			ID3D11Texture2D **resolved);
 	HRESULT StageResource(ID3D11Texture2D *src,
@@ -36,8 +35,7 @@ private:
 	HRESULT CreateStagingResource(ID3D11Texture2D **resource,
 		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa);
 
-	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename,
-			FrameAnalysisOptions type_mask);
+	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename);
 	void DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 			UINT size, char type, int idx, UINT stride, UINT offset);
 	void DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
@@ -47,10 +45,10 @@ private:
 			UINT size, DXGI_FORMAT ib_fmt, UINT offset,
 			UINT first, UINT count);
 	void DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
-			FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
+			FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
 			UINT stride, UINT offset, UINT first, UINT count);
 	void DumpResource(ID3D11Resource *resource, wchar_t *filename,
-			FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
+			FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
 			UINT stride, UINT offset);
 	void _DumpCBs(char shader_type, bool compute,
 		ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT]);
@@ -99,6 +97,7 @@ private:
 	void FrameAnalysisAfterUnmap(ID3D11Resource *pResource);
 	void FrameAnalysisAfterUpdate(ID3D11Resource *pResource);
 	void update_stereo_dumping_mode();
+	void set_default_dump_formats(bool draw);
 
 	FrameAnalysisOptions analyse_options;
 	FrameAnalysisOptions oneshot_analyse_options;

@@ -385,10 +385,8 @@ ID3D11DeviceContext* FrameAnalysisContext::GetImmediateContext()
 }
 
 void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
-		*filename, bool stereo, FrameAnalysisOptions type_mask,
-		D3D11_TEXTURE2D_DESC *orig_desc)
+		*filename, bool stereo, D3D11_TEXTURE2D_DESC *orig_desc)
 {
-	FrameAnalysisOptions type_mask_options = (FrameAnalysisOptions)(analyse_options & type_mask);
 	HRESULT hr = S_OK, dont_care;
 	wchar_t dedupe_filename[MAX_PATH], *save_filename;
 	wchar_t *wic_ext = (stereo ? L".jps" : L".jpg");
@@ -423,8 +421,8 @@ void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 	// Needs to be called at some point before SaveXXXTextureToFile:
 	dont_care = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
-	if ((type_mask_options & FrameAnalysisOptions::DUMP_XXX_JPS) ||
-	    (type_mask_options & FrameAnalysisOptions::DUMP_XXX)) {
+	if ((analyse_options & FrameAnalysisOptions::FMT_2D_JPS) ||
+	    (analyse_options & FrameAnalysisOptions::FMT_2D_AUTO)) {
 		// save a JPS file. This will be missing extra channels (e.g.
 		// transparency, depth buffer, specular power, etc) or bit depth that
 		// can be found in the DDS file, but is generally easier to work with.
@@ -442,8 +440,8 @@ void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 	}
 
 
-	if ((type_mask_options & FrameAnalysisOptions::DUMP_XXX_DDS) ||
-	   ((type_mask_options & FrameAnalysisOptions::DUMP_XXX) && FAILED(hr))) {
+	if ((analyse_options & FrameAnalysisOptions::FMT_2D_DDS) ||
+	   ((analyse_options & FrameAnalysisOptions::FMT_2D_AUTO) && FAILED(hr))) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".dds");
 		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, L".dds");
 
@@ -456,11 +454,7 @@ void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 	if (FAILED(hr))
 		FALogInfo("Failed to dump Texture2D %S -> %S: 0x%x\n", filename, save_filename, hr);
 
-	// Intentionally not using type_mask_options here - this one isn't
-	// related to any specific resource type, just dumped in conjunction
-	// with other files. Might later consider decoupling JPS/DDS from the
-	// resource types as well.
-	if (analyse_options & FrameAnalysisOptions::DUMP_DESC) {
+	if (analyse_options & FrameAnalysisOptions::FMT_DESC) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".dsc");
 		wcscpy_s(save_ext, MAX_PATH + save_filename - save_ext, L".dsc");
 
@@ -613,8 +607,7 @@ err_release:
 
 // TODO: Refactor this with StereoScreenShot().
 // Expects the reverse stereo blit to be enabled by the caller
-void FrameAnalysisContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename,
-		FrameAnalysisOptions type_mask)
+void FrameAnalysisContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename)
 {
 	ID3D11Texture2D *stereoResource = NULL;
 	ID3D11Texture2D *tmpResource = NULL;
@@ -663,7 +656,7 @@ void FrameAnalysisContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t
 		}
 	}
 
-	Dump2DResource(stereoResource, filename, true, type_mask, &srcDesc);
+	Dump2DResource(stereoResource, filename, true, &srcDesc);
 
 	if (tmpResource)
 		tmpResource->Release();
@@ -929,10 +922,9 @@ void FrameAnalysisContext::DumpDesc(DescType *desc, wchar_t *filename)
 }
 
 void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
-		FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
+		FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
 		UINT stride, UINT offset, UINT first, UINT count)
 {
-	FrameAnalysisOptions type_mask_options = (FrameAnalysisOptions)(analyse_options & type_mask);
 	wchar_t bin_filename[MAX_PATH], txt_filename[MAX_PATH];
 	D3D11_BUFFER_DESC desc, orig_desc;
 	D3D11_MAPPED_SUBRESOURCE map;
@@ -972,7 +964,7 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		goto out_unmap;
 	}
 
-	if (type_mask_options & FrameAnalysisOptions::DUMP_XX_BIN) {
+	if (analyse_options & FrameAnalysisOptions::FMT_BUF_BIN) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".buf");
 		wcscpy_s(bin_ext, MAX_PATH + bin_filename - bin_ext, L".buf");
 
@@ -988,25 +980,25 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		link_deduplicated_files(filename, bin_filename);
 	}
 
-	if (type_mask_options & FrameAnalysisOptions::DUMP_XX_TXT) {
+	if (analyse_options & FrameAnalysisOptions::FMT_BUF_TXT) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".txt");
 
-		if (type_mask_options & FrameAnalysisOptions::DUMP_CB_TXT) {
+		if (buf_type_mask & FrameAnalysisOptions::DUMP_CB) {
 			dedupe_buf_filename_txt(bin_filename, txt_filename, MAX_PATH, 'c', idx, stride, offset);
 			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
 				DumpBufferTxt(txt_filename, &map, desc.ByteWidth, 'c', idx, stride, offset);
 			}
-		} else if (type_mask_options & FrameAnalysisOptions::DUMP_VB_TXT) {
+		} else if (buf_type_mask & FrameAnalysisOptions::DUMP_VB) {
 			dedupe_buf_filename_vb_txt(bin_filename, txt_filename, MAX_PATH, idx, stride, offset, first, count);
 			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
 				DumpVBTxt(txt_filename, &map, desc.ByteWidth, idx, stride, offset, first, count);
 			}
-		} else if (type_mask_options & FrameAnalysisOptions::DUMP_IB_TXT) {
+		} else if (buf_type_mask & FrameAnalysisOptions::DUMP_IB) {
 			dedupe_buf_filename_ib_txt(bin_filename, txt_filename, MAX_PATH, ib_fmt, offset, first, count);
 			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
 				DumpIBTxt(txt_filename, &map, desc.ByteWidth, ib_fmt, offset, first, count);
 			}
-		} else if (type_mask_options & FrameAnalysisOptions::DUMP_XB_TXT) {
+		} else {
 			// We don't know what kind of buffer this is, so just
 			// use the generic dump routine:
 
@@ -1020,11 +1012,7 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	// TODO: Dump UAV, RT and SRV buffers as text taking their format,
 	// offset, size, first entry and num entries into account.
 
-	// Intentionally not using type_mask_options here - this one isn't
-	// related to any specific resource type, just dumped in conjunction
-	// with other files. Might later consider decoupling JPS/DDS from the
-	// resource types as well.
-	if (analyse_options & FrameAnalysisOptions::DUMP_DESC) {
+	if (analyse_options & FrameAnalysisOptions::FMT_DESC) {
 		wcscpy_s(ext, MAX_PATH + filename - ext, L".dsc");
 		wcscpy_s(bin_ext, MAX_PATH + bin_filename - bin_ext, L".dsc");
 
@@ -1040,7 +1028,7 @@ out_release:
 }
 
 void FrameAnalysisContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
-		FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
+		FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
 		UINT stride, UINT offset)
 {
 	D3D11_RESOURCE_DIMENSION dim;
@@ -1049,16 +1037,16 @@ void FrameAnalysisContext::DumpResource(ID3D11Resource *resource, wchar_t *filen
 
 	switch (dim) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			DumpBuffer((ID3D11Buffer*)resource, filename, type_mask, idx, ib_fmt, stride, offset, 0, 0);
+			DumpBuffer((ID3D11Buffer*)resource, filename, buf_type_mask, idx, ib_fmt, stride, offset, 0, 0);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			FALogInfo("Skipped dumping Texture1D resource\n");
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			if (analyse_options & FrameAnalysisOptions::STEREO)
-				DumpStereoResource((ID3D11Texture2D*)resource, filename, type_mask);
+				DumpStereoResource((ID3D11Texture2D*)resource, filename);
 			if (analyse_options & FrameAnalysisOptions::MONO)
-				Dump2DResource((ID3D11Texture2D*)resource, filename, false, type_mask, NULL);
+				Dump2DResource((ID3D11Texture2D*)resource, filename, false, NULL);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
 			FALogInfo("Skipped dumping Texture3D resource\n");
@@ -1473,7 +1461,7 @@ void FrameAnalysisContext::_DumpCBs(char shader_type, bool compute,
 		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"cb", shader_type, i, buffers[i]);
 		if (SUCCEEDED(hr)) {
 			DumpResource(buffers[i], filename,
-					FrameAnalysisOptions::DUMP_CB_MASK, i,
+					FrameAnalysisOptions::DUMP_CB, i,
 					DXGI_FORMAT_UNKNOWN, 0, 0);
 		}
 
@@ -1510,7 +1498,7 @@ void FrameAnalysisContext::_DumpTextures(char shader_type, bool compute,
 		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"t", shader_type, i, resource);
 		if (SUCCEEDED(hr)) {
 			DumpResource(resource, filename,
-					FrameAnalysisOptions::DUMP_TEX_MASK, i,
+					FrameAnalysisOptions::DUMP_SRV, i,
 					DXGI_FORMAT_UNKNOWN, 0, 0);
 		}
 
@@ -1582,7 +1570,7 @@ void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info)
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"vb", NULL, i, buffers[i]);
 		if (SUCCEEDED(hr)) {
 			DumpBuffer(buffers[i], filename,
-				FrameAnalysisOptions::DUMP_VB_MASK, i,
+				FrameAnalysisOptions::DUMP_VB, i,
 				DXGI_FORMAT_UNKNOWN, strides[i], offsets[i],
 				first, count);
 		}
@@ -1611,7 +1599,7 @@ void FrameAnalysisContext::DumpIB(DrawCallInfo *call_info)
 	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"ib", NULL, -1, buffer);
 	if (SUCCEEDED(hr)) {
 		DumpBuffer(buffer, filename,
-				FrameAnalysisOptions::DUMP_IB_MASK, -1,
+				FrameAnalysisOptions::DUMP_IB, -1,
 				format, 0, offset, first, count);
 	}
 
@@ -1679,7 +1667,7 @@ void FrameAnalysisContext::DumpRenderTargets()
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"o", NULL, i, resource);
 		if (SUCCEEDED(hr)) {
 			DumpResource(resource, filename,
-					FrameAnalysisOptions::DUMP_RT_MASK, i,
+					FrameAnalysisOptions::DUMP_RT, i,
 					DXGI_FORMAT_UNKNOWN, 0, 0);
 		}
 
@@ -1709,7 +1697,7 @@ void FrameAnalysisContext::DumpDepthStencilTargets()
 	if (FAILED(hr))
 		return;
 
-	DumpResource(resource, filename, FrameAnalysisOptions::DUMP_DEPTH_MASK,
+	DumpResource(resource, filename, FrameAnalysisOptions::DUMP_DEPTH,
 			-1, DXGI_FORMAT_UNKNOWN, 0, 0);
 }
 
@@ -1742,7 +1730,7 @@ void FrameAnalysisContext::DumpUAVs(bool compute)
 		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"u", NULL, i, resource);
 		if (SUCCEEDED(hr)) {
 			DumpResource(resource, filename,
-					FrameAnalysisOptions::DUMP_RT_MASK, i,
+					FrameAnalysisOptions::DUMP_RT, i,
 					DXGI_FORMAT_UNKNOWN, 0, 0);
 		}
 
@@ -1859,6 +1847,28 @@ void FrameAnalysisContext::update_stereo_dumping_mode()
 		analyse_options |= FrameAnalysisOptions::STEREO;
 }
 
+void FrameAnalysisContext::set_default_dump_formats(bool draw)
+{
+	// Textures: default to .jps when possible, .bin otherwise:
+	if (!(analyse_options & FrameAnalysisOptions::FMT_2D_MASK))
+		analyse_options |= FrameAnalysisOptions::FMT_2D_AUTO;
+
+	if (!(analyse_options & FrameAnalysisOptions::FMT_BUF_MASK)) {
+		if (draw) {
+			// If we are dumping specific buffer binds slots default to
+			// txt, otherwise buffers aren't dumped by default:
+			if (analyse_options & FrameAnalysisOptions::DUMP_XB_MASK)
+				analyse_options |= FrameAnalysisOptions::FMT_BUF_TXT;
+		} else {
+			// Command list dump, or dump_on_update/unmap - we always want
+			// to dump both textures and buffers. For buffers we default to
+			// both binary and text for now:
+			analyse_options |= FrameAnalysisOptions::FMT_BUF_TXT;
+			analyse_options |= FrameAnalysisOptions::FMT_BUF_BIN;
+		}
+	}
+}
+
 void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info)
 {
 	NvAPI_Status nvret;
@@ -1893,8 +1903,9 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 	}
 
 	update_stereo_dumping_mode();
+	set_default_dump_formats(true);
 
-	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_MASK) &&
+	if ((analyse_options & FrameAnalysisOptions::FMT_2D_MASK) &&
 	    (analyse_options & FrameAnalysisOptions::STEREO)) {
 		// Enable reverse stereo blit for all resources we are about to dump:
 		nvret = NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
@@ -1908,21 +1919,21 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 	// dumping for mResources
 	EnterCriticalSection(&G->mCriticalSection);
 
-	if (analyse_options & FrameAnalysisOptions::DUMP_CB_MASK)
+	if (analyse_options & FrameAnalysisOptions::DUMP_CB)
 		DumpCBs(compute);
 
 	if (!compute) {
-		if (analyse_options & FrameAnalysisOptions::DUMP_VB_MASK)
+		if (analyse_options & FrameAnalysisOptions::DUMP_VB)
 			DumpVBs(call_info);
 
-		if (analyse_options & FrameAnalysisOptions::DUMP_IB_MASK)
+		if (analyse_options & FrameAnalysisOptions::DUMP_IB)
 			DumpIB(call_info);
 	}
 
-	if (analyse_options & FrameAnalysisOptions::DUMP_TEX_MASK)
+	if (analyse_options & FrameAnalysisOptions::DUMP_SRV)
 		DumpTextures(compute);
 
-	if (analyse_options & FrameAnalysisOptions::DUMP_RT_MASK) {
+	if (analyse_options & FrameAnalysisOptions::DUMP_RT) {
 		if (!compute)
 			DumpRenderTargets();
 
@@ -1930,12 +1941,12 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 		DumpUAVs(compute);
 	}
 
-	if (analyse_options & FrameAnalysisOptions::DUMP_DEPTH_MASK && !compute)
+	if (analyse_options & FrameAnalysisOptions::DUMP_DEPTH && !compute)
 		DumpDepthStencilTargets();
 
 	LeaveCriticalSection(&G->mCriticalSection);
 
-	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_MASK) &&
+	if ((analyse_options & FrameAnalysisOptions::FMT_2D_MASK) &&
 	    (analyse_options & FrameAnalysisOptions::STEREO)) {
 		NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
 	}
@@ -1958,16 +1969,13 @@ void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 	analyse_options &= (FrameAnalysisOptions)~FrameAnalysisOptions::STEREO_MASK;
 	analyse_options |= FrameAnalysisOptions::MONO;
 
-	// If no dump options were enabled, dump jps if possible, dds if not,
-	// and dump buffers as both text (generic) and binary:
-	if (!(analyse_options & FrameAnalysisOptions::DUMP_XXX_XX_MASK))
-		analyse_options |= FrameAnalysisOptions::DUMP_XXX_XX;
+	set_default_dump_formats(false);
 
 	EnterCriticalSection(&G->mCriticalSection);
 
 	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, type, resource, true);
 	if (SUCCEEDED(hr)) {
-		DumpResource(resource, filename, FrameAnalysisOptions::DUMP_XXX_XX_MASK, -1, DXGI_FORMAT_UNKNOWN, 0, 0);
+		DumpResource(resource, filename, analyse_options, -1, DXGI_FORMAT_UNKNOWN, 0, 0);
 	}
 
 	LeaveCriticalSection(&G->mCriticalSection);
@@ -1995,11 +2003,7 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 	analyse_options = options;
 
 	update_stereo_dumping_mode();
-
-	// If no dump options were enabled, dump jps if possible, dds if not,
-	// and dump buffers as both text (generic) and binary:
-	if (!(analyse_options & FrameAnalysisOptions::DUMP_XXX_XX_MASK))
-		analyse_options |= FrameAnalysisOptions::DUMP_XXX_XX;
+	set_default_dump_formats(false);
 
 	if (analyse_options & FrameAnalysisOptions::STEREO) {
 		// Enable reverse stereo blit for all resources we are about to dump:
@@ -2019,7 +2023,7 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 		hr = FrameAnalysisFilenameResource(filename, MAX_PATH, L"...", resource, false);
 	}
 	if (SUCCEEDED(hr))
-		DumpResource(resource, filename, FrameAnalysisOptions::DUMP_XXX_XX_MASK, -1, ib_fmt, stride, offset);
+		DumpResource(resource, filename, analyse_options, -1, ib_fmt, stride, offset);
 
 	LeaveCriticalSection(&G->mCriticalSection);
 

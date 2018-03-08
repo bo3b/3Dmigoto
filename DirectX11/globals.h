@@ -103,84 +103,100 @@ typedef std::unordered_map<ID3D11DeviceChild *, UINT64> ShaderMap;
 
 enum class FrameAnalysisOptions {
 	INVALID         = 0,
+
+	// Bind selection:
 	DUMP_RT         = 0x00000001,
-	DUMP_RT_JPS     = 0x00000002,
-	DUMP_RT_DDS     = 0x00000004,
-	DUMP_RT_MASK    = 0x30000007,
-	CLEAR_RT        = 0x00000008,
-	DUMP_DEPTH      = 0x00000010,
-	DUMP_DEPTH_JPS  = 0x00000020,
-	DUMP_DEPTH_DDS  = 0x00000040,
-	DUMP_DEPTH_MASK = 0x00000070, // DSV does not support buffers
-	FILENAME_REG    = 0x00000080,
-	DUMP_TEX        = 0x00000100,
-	DUMP_TEX_JPS    = 0x00000200,
-	DUMP_TEX_DDS    = 0x00000400,
-	DUMP_TEX_MASK   = 0x30000700,
-	DUMP_XXX        = 0x00000111,
-	DUMP_XXX_JPS    = 0x00000222,
-	DUMP_XXX_DDS    = 0x00000444,
-	DUMP_XXX_MASK   = 0x30000777,
-	PERSIST         = 0x00000800, // Used by shader/texture triggers
-	STEREO          = 0x00001000,
-	MONO            = 0x00002000,
-	STEREO_MASK     = 0x00003000,
-	DUMP_CB_BIN     = 0x00004000,
-	DUMP_CB_TXT     = 0x00008000,
-	DUMP_CB_MASK    = 0x0000c000,
-	DUMP_VB_BIN     = 0x00010000,
-	DUMP_VB_TXT     = 0x00020000,
-	DUMP_VB_MASK    = 0x00030000,
-	DUMP_IB_BIN     = 0x00040000,
-	DUMP_IB_TXT     = 0x00080000,
-	DUMP_IB_MASK    = 0x000c0000,
-	DUMP_XX_BIN     = 0x10054505, // Includes anything that can be a buffer: CB, VB, IB, SRVs, RTs & UAVs
-	DUMP_XX_TXT     = 0x200a8000, // Not including SRVs, RTs or UAVs for now
-	DUMP_XXX_XX     = 0x30054111, // Textures preference jps, fallback to dds. Buffers dump both binary and *generic* text
-	DUMP_XXX_XX_MASK= 0x300fc777, // Includes all buffer and texture dumping options
-	FILENAME_HANDLE = 0x00100000,
-	LOG_DEPRECATED  = 0x00200000,
-	HOLD            = 0x00400000,
-	DUMP_ON_UNMAP   = 0x00800000,
-	DUMP_ON_UPDATE  = 0x01000000,
-	DEFERRED_CONTEXT= 0x02000000,
-	DUMP_DESC       = 0x04000000, // Separate from type masks. TODO: Consider splitting JPS/DDS out like this
-	SHARE_DEDUPED   = 0x08000000,
-	DUMP_XB_BIN     = 0x10000000, // Dumps an unknown/generic buffer as binary
-	DUMP_XB_TXT     = 0x20000000, // Dumps an unknown/generic buffer as text
+	DUMP_DEPTH      = 0x00000002,
+	DUMP_SRV        = 0x00000004,
+	DUMP_CB         = 0x00000008,
+	DUMP_VB         = 0x00000010,
+	DUMP_IB         = 0x00000020,
+
+	// Format selection:
+	FMT_2D_AUTO     = 0x00000040,
+	FMT_2D_JPS      = 0x00000080,
+	FMT_2D_DDS      = 0x00000100,
+	FMT_BUF_BIN     = 0x00000200,
+	FMT_BUF_TXT     = 0x00000400,
+	FMT_DESC        = 0x00000800,
+
+	// Masks:
+	DUMP_XB_MASK    = 0x00000038, // CB+VB+IB, to check if a user specified any of these
+	FMT_2D_MASK     = 0x000009c0, // Mask of Texture2D formats
+	FMT_BUF_MASK    = 0x00000e00, // Mask of Buffer formats
+
+	// Legacy bind + format combo options:
+	DUMP_RT_JPS     = 0x00000081,
+	DUMP_RT_DDS     = 0x00000301,
+	DUMP_DEPTH_JPS  = 0x00000082,
+	DUMP_DEPTH_DDS  = 0x00000302,
+	DUMP_TEX_JPS    = 0x00000084,
+	DUMP_TEX_DDS    = 0x00000304,
+	DUMP_CB_TXT     = 0x00000408,
+	DUMP_VB_TXT     = 0x00000410,
+	DUMP_IB_TXT     = 0x00000420,
+
+	// Misc options:
+	CLEAR_RT        = 0x00001000,
+	FILENAME_REG    = 0x00002000,
+	FILENAME_HANDLE = 0x00004000,
+	PERSIST         = 0x00008000, // Used by shader/texture triggers
+	STEREO          = 0x00010000,
+	MONO            = 0x00020000,
+	STEREO_MASK     = 0x00030000,
+	HOLD            = 0x00040000,
+	DUMP_ON_UNMAP   = 0x00080000,
+	DUMP_ON_UPDATE  = 0x00100000,
+	DEFERRED_CONTEXT= 0x00200000,
+	SHARE_DEDUPED   = 0x00400000,
+	DEPRECATED      = (signed)0x80000000,
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
+	// Bind flag selection:
 	{L"dump_rt", FrameAnalysisOptions::DUMP_RT},
-	{L"dump_rt_jps", FrameAnalysisOptions::DUMP_RT_JPS},
-	{L"dump_rt_dds", FrameAnalysisOptions::DUMP_RT_DDS},
-	{L"clear_rt", FrameAnalysisOptions::CLEAR_RT},
 	{L"dump_depth", FrameAnalysisOptions::DUMP_DEPTH},
-	{L"dump_depth_jps", FrameAnalysisOptions::DUMP_DEPTH_JPS}, // Doesn't work yet
-	{L"dump_depth_dds", FrameAnalysisOptions::DUMP_DEPTH_DDS},
-	{L"dump_tex", FrameAnalysisOptions::DUMP_TEX},
-	{L"dump_tex_jps", FrameAnalysisOptions::DUMP_TEX_JPS},
-	{L"dump_tex_dds", FrameAnalysisOptions::DUMP_TEX_DDS},
+	{L"dump_tex", FrameAnalysisOptions::DUMP_SRV},
+	{L"dump_cb", FrameAnalysisOptions::DUMP_CB},
+	{L"dump_vb", FrameAnalysisOptions::DUMP_VB},
+	{L"dump_ib", FrameAnalysisOptions::DUMP_IB},
+
+	// Texture2D format selection:
+	{L"jps", FrameAnalysisOptions::FMT_2D_JPS},
+	{L"dds", FrameAnalysisOptions::FMT_2D_DDS},
+	{L"jps_dds", FrameAnalysisOptions::FMT_2D_AUTO},
+
+	// Buffer format selection:
+	{L"buf", FrameAnalysisOptions::FMT_BUF_BIN},
+	{L"txt", FrameAnalysisOptions::FMT_BUF_TXT},
+
+	{L"desc", FrameAnalysisOptions::FMT_DESC},
+
+	// Misc options:
+	{L"clear_rt", FrameAnalysisOptions::CLEAR_RT},
 	{L"persist", FrameAnalysisOptions::PERSIST},
 	{L"stereo", FrameAnalysisOptions::STEREO},
 	{L"mono", FrameAnalysisOptions::MONO},
 	{L"filename_reg", FrameAnalysisOptions::FILENAME_REG},
-	{L"dump_cb", FrameAnalysisOptions::DUMP_CB_BIN},
-	{L"dump_cb_txt", FrameAnalysisOptions::DUMP_CB_TXT},
-	{L"dump_vb", FrameAnalysisOptions::DUMP_VB_BIN},
-	{L"dump_vb_txt", FrameAnalysisOptions::DUMP_VB_TXT},
-	{L"dump_ib", FrameAnalysisOptions::DUMP_IB_BIN},
-	{L"dump_ib_txt", FrameAnalysisOptions::DUMP_IB_TXT},
-	{L"dump_buf_bin", FrameAnalysisOptions::DUMP_XB_BIN},
-	{L"dump_buf_txt", FrameAnalysisOptions::DUMP_XB_TXT},
 	{L"filename_handle", FrameAnalysisOptions::FILENAME_HANDLE},
-	{L"log", FrameAnalysisOptions::LOG_DEPRECATED}, // Left in the list for backwards compatibility, but this is now always enabled
+	{L"log", FrameAnalysisOptions::DEPRECATED}, // Left in the list for backwards compatibility, but this is now always enabled
 	{L"hold", FrameAnalysisOptions::HOLD},
 	{L"dump_on_unmap", FrameAnalysisOptions::DUMP_ON_UNMAP},
 	{L"dump_on_update", FrameAnalysisOptions::DUMP_ON_UPDATE},
 	{L"deferred_ctx", FrameAnalysisOptions::DEFERRED_CONTEXT},
-	{L"dump_desc", FrameAnalysisOptions::DUMP_DESC},
 	{L"share_deduped", FrameAnalysisOptions::SHARE_DEDUPED},
+
+	// Legacy combo options:
+	{L"dump_rt_jps", FrameAnalysisOptions::DUMP_RT_JPS},
+	{L"dump_rt_dds", FrameAnalysisOptions::DUMP_RT_DDS},
+	{L"dump_depth_jps", FrameAnalysisOptions::DUMP_DEPTH_JPS}, // Doesn't work yet
+	{L"dump_depth_dds", FrameAnalysisOptions::DUMP_DEPTH_DDS},
+	{L"dump_tex_jps", FrameAnalysisOptions::DUMP_TEX_JPS},
+	{L"dump_tex_dds", FrameAnalysisOptions::DUMP_TEX_DDS},
+	{L"dump_cb_txt", FrameAnalysisOptions::DUMP_CB_TXT},
+	{L"dump_vb_txt", FrameAnalysisOptions::DUMP_VB_TXT},
+	{L"dump_ib_txt", FrameAnalysisOptions::DUMP_IB_TXT},
+
 	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
 };
 
