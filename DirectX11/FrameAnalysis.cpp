@@ -12,6 +12,12 @@
 #include <shobjidl.h>
 #include <shlguid.h>
 
+// Flag introduced in Windows 10 Fall Creators Update
+// Someone was clearly on crack when they decided this flag was necessary
+#ifndef SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
+#define SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE 0x2
+#endif
+
 static unordered_map<ID3D11CommandList*, FrameAnalysisDeferredBuffersPtr> frame_analysis_deferred_buffer_lists;
 static unordered_map<ID3D11CommandList*, FrameAnalysisDeferredTex2DPtr> frame_analysis_deferred_tex2d_lists;
 

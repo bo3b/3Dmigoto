@@ -639,7 +639,7 @@ static uint32_t hash_tex2d_data(uint32_t hash, const void *data, size_t length,
 
 	signed remaining = (signed)length;
 	for (size_t h = 0; h < row_count && remaining > 0; h++) {
-		hash = crc32c_hw(hash, sptr, min(msize, remaining));
+		hash = crc32c_hw(hash, sptr, min(msize, (unsigned)remaining));
 		sptr += mapped_row_pitch;
 		remaining -= (signed)msize;
 
