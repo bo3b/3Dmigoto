@@ -3381,6 +3381,7 @@ void LoadConfigFile()
 			G->shader_hash_type = ShaderHashType::FNV;
 		}
 	}
+	G->texture_hash_version = GetIniInt(L"Rendering", L"texture_hash", 0, NULL);
 
 	if (GetIniStringAndLog(L"Rendering", L"override_directory", 0, G->SHADER_PATH, MAX_PATH))
 	{

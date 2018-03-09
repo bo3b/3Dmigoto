@@ -665,6 +665,9 @@ uint32_t CalcTexture2DDataHash(
 	if (!pDesc || !pInitialData || !pInitialData->pSysMem)
 		return 0;
 
+	if (G->texture_hash_version)
+		return CalcTexture2DDataHashAccurate(pDesc, pInitialData);
+
 	// In 3DMigoto v1.2, this is what we were using as the length of the
 	// buffer in bytes. Unfortunately this is not right since pDesc->Width
 	// is in texels, not bytes, and if pDesc->ArraySize was greater than 1
