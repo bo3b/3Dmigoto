@@ -374,24 +374,22 @@ void FrameAnalysisContext::FrameAnalysisLogData(void *buf, UINT size)
 	fprintf(frame_analysis_log, "\n");
 }
 
-ID3D11DeviceContext* FrameAnalysisContext::GetImmediateContext()
+ID3D11DeviceContext* FrameAnalysisContext::GetDumpingContext()
 {
 	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)
 		return GetPassThroughOrigContext1();
 
 	if (analyse_options & FrameAnalysisOptions::DEFRD_CTX_IMM) {
-		// XXX Experimental deferred context support: We need to use
-		// the immediate context to stage a resource back to the CPU.
-		// This may not be thread safe - if it proves problematic we
-		// may have to look into delaying this until the deferred
-		// context command queue is submitted to the immediate context.
+		// XXX Experimental deferred context support: Use the immediate
+		// context to stage a resource back to the CPU and dump it to
+		// disk, before the deferred command list has executed. This
+		// may not be thread safe.
 		return GetHackerDevice()->GetPassThroughOrigContext1();
 	}
 
-	// XXX Even more experiemental deferred context support - in
-	// this mode we are back to using the current context, but we
-	// will delay CPU reads until the command list is executed in
-	// the immediate context.
+	// XXX Alternate experiemental deferred context support - in this mode
+	// we are back to using the current context, but we will delay CPU
+	// reads until the command list is executed in the immediate context.
 	return GetPassThroughOrigContext1();
 }
 
@@ -434,7 +432,7 @@ void FrameAnalysisContext::Dump2DResourceImmediateCtx(
 
 		hr = S_OK;
 		if (GetFileAttributes(save_filename.c_str()) == INVALID_FILE_ATTRIBUTES)
-			hr = DirectX::SaveWICTextureToFile(GetImmediateContext(), staging, GUID_ContainerFormatJpeg, save_filename.c_str());
+			hr = DirectX::SaveWICTextureToFile(GetDumpingContext(), staging, GUID_ContainerFormatJpeg, save_filename.c_str());
 		link_deduplicated_files(filename.c_str(), save_filename.c_str());
 	}
 
@@ -446,7 +444,7 @@ void FrameAnalysisContext::Dump2DResourceImmediateCtx(
 
 		hr = S_OK;
 		if (GetFileAttributes(save_filename.c_str()) == INVALID_FILE_ATTRIBUTES)
-			hr = DirectX::SaveDDSTextureToFile(GetImmediateContext(), staging, save_filename.c_str());
+			hr = DirectX::SaveDDSTextureToFile(GetDumpingContext(), staging, save_filename.c_str());
 		link_deduplicated_files(filename.c_str(), save_filename.c_str());
 	}
 
@@ -582,7 +580,7 @@ HRESULT FrameAnalysisContext::ResolveMSAA(ID3D11Texture2D *src,
 	for (item = 0; item < srcDesc->ArraySize; item++) {
 		for (level = 0; level < srcDesc->MipLevels; level++) {
 			index = D3D11CalcSubresource(level, item, max(srcDesc->MipLevels, 1));
-			GetImmediateContext()->ResolveSubresource(resolved, index, src, index, fmt);
+			GetDumpingContext()->ResolveSubresource(resolved, index, src, index, fmt);
 		}
 	}
 
@@ -615,7 +613,7 @@ HRESULT FrameAnalysisContext::StageResource(ID3D11Texture2D *src,
 	if (resolved)
 		src = resolved;
 
-	GetImmediateContext()->CopyResource(staging, src);
+	GetDumpingContext()->CopyResource(staging, src);
 
 	if (resolved)
 		resolved->Release();
@@ -1063,7 +1061,7 @@ void FrameAnalysisContext::DumpBufferImmediateCtx(FrameAnalysisOptions analyse_o
 	// This function has a local copy of analyse_options, since they may
 	// have changed since dumping the resource was deferred
 
-	hr = GetImmediateContext()->Map(staging, 0, D3D11_MAP_READ, 0, &map);
+	hr = GetDumpingContext()->Map(staging, 0, D3D11_MAP_READ, 0, &map);
 	if (FAILED(hr)) {
 		FALogInfo("DumpBuffer failed to map staging resource: 0x%x\n", hr);
 		return;
@@ -1136,7 +1134,7 @@ void FrameAnalysisContext::DumpBufferImmediateCtx(FrameAnalysisOptions analyse_o
 	}
 
 out_unmap:
-	GetImmediateContext()->Unmap(staging, 0);
+	GetDumpingContext()->Unmap(staging, 0);
 }
 
 void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
@@ -1161,7 +1159,7 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		return;
 	}
 
-	GetImmediateContext()->CopyResource(staging, buffer);
+	GetDumpingContext()->CopyResource(staging, buffer);
 
 	if (!DeferDumpBuffer(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count))
 		DumpBufferImmediateCtx(analyse_options, staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count);
@@ -1421,7 +1419,7 @@ const wchar_t* FrameAnalysisContext::dedupe_tex2d_filename(ID3D11Texture2D *reso
 	// doesn't match the description used to create it (e.g. mip-maps being
 	// generated after creation I guess).
 
-	hr = GetImmediateContext()->Map(resource, 0, D3D11_MAP_READ, 0, &map);
+	hr = GetDumpingContext()->Map(resource, 0, D3D11_MAP_READ, 0, &map);
 	if (FAILED(hr)) {
 		FALogInfo("Frame Analysis filename deduplication failed to map resource: 0x%x\n", hr);
 		goto err;
@@ -1433,7 +1431,7 @@ const wchar_t* FrameAnalysisContext::dedupe_tex2d_filename(ID3D11Texture2D *reso
 	hash = CalcTexture2DDataHash(orig_desc, (D3D11_SUBRESOURCE_DATA*)&map, true);
 	hash = CalcTexture2DDescHash(hash, orig_desc);
 
-	GetImmediateContext()->Unmap(resource, 0);
+	GetDumpingContext()->Unmap(resource, 0);
 
 	get_deduped_dir(dedupe_dir, MAX_PATH);
 	_snwprintf_s(dedupe_filename, size, size, L"%ls\\%08x.XXX", dedupe_dir, hash);

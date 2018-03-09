@@ -87,7 +87,7 @@ private:
 	FrameAnalysisDeferredBuffersPtr deferred_buffers;
 	FrameAnalysisDeferredTex2DPtr deferred_tex2d;
 
-	ID3D11DeviceContext* GetImmediateContext();
+	ID3D11DeviceContext* GetDumpingContext();
 
 	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
 			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc);
