@@ -290,6 +290,8 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 		backBuffer->Release();
 	}
 
+	CoUninitialize();
+
 	LogInfoW(L"  SimpleScreenShot on Mark: %s, result: %d\n", fullName, hr);
 }
 
@@ -348,6 +350,8 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 
 	wsprintf(fullName, L"%ls\\%016I64x-%ls.jps", G->SHADER_PATH, hash, shaderType.c_str());
 	hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext1(), stereoBackBuffer, GUID_ContainerFormatJpeg, fullName);
+
+	CoUninitialize();
 
 	LogInfoW(L"  StereoScreenShot on Mark: %s, result: %d\n", fullName, hr);
 

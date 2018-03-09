@@ -459,6 +459,8 @@ void FrameAnalysisContext::Dump2DResourceImmediateCtx(
 			DumpDesc(orig_desc, save_filename.c_str());
 		link_deduplicated_files(filename.c_str(), save_filename.c_str());
 	}
+
+	CoUninitialize();
 }
 
 void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
