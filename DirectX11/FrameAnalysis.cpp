@@ -2046,7 +2046,8 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 	set_default_dump_formats(true);
 
 	if ((analyse_options & FrameAnalysisOptions::FMT_2D_MASK) &&
-	    (analyse_options & FrameAnalysisOptions::STEREO)) {
+	    (analyse_options & FrameAnalysisOptions::STEREO) &&
+	    (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
 		// Enable reverse stereo blit for all resources we are about to dump:
 		nvret = NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
 		if (nvret != NVAPI_OK) {
@@ -2087,7 +2088,8 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 	LeaveCriticalSection(&G->mCriticalSection);
 
 	if ((analyse_options & FrameAnalysisOptions::FMT_2D_MASK) &&
-	    (analyse_options & FrameAnalysisOptions::STEREO)) {
+	    (analyse_options & FrameAnalysisOptions::STEREO) &&
+	    (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
 		NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
 	}
 
@@ -2159,7 +2161,8 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 	update_stereo_dumping_mode();
 	set_default_dump_formats(false);
 
-	if (analyse_options & FrameAnalysisOptions::STEREO) {
+	if ((analyse_options & FrameAnalysisOptions::STEREO) &&
+	    (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
 		// Enable reverse stereo blit for all resources we are about to dump:
 		nvret = NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
 		if (nvret != NVAPI_OK) {
@@ -2181,8 +2184,10 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 
 	LeaveCriticalSection(&G->mCriticalSection);
 
-	if (analyse_options & FrameAnalysisOptions::STEREO)
+	if ((analyse_options & FrameAnalysisOptions::STEREO) &&
+	    (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
 		NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
+	}
 
 	non_draw_call_dump_counter++;
 }
@@ -2787,10 +2792,27 @@ STDMETHODIMP_(void) FrameAnalysisContext::ExecuteCommandList(THIS_
 		__in  ID3D11CommandList *pCommandList,
 		BOOL RestoreContextState)
 {
+	NvAPI_Status nvret;
+
 	FrameAnalysisLog("ExecuteCommandList(pCommandList:0x%p, RestoreContextState:%s)\n",
 			pCommandList, RestoreContextState ? "true" : "false");
 
+	if (G->analyse_frame) {
+		// Reverse stereo blit only applies to the immediate context - to work
+		// on a deferred context it must be enabled on the immediate context
+		// when the command list is executed. We don't know what options may
+		// have been used during the dump, so enable it unconditionally.
+		nvret = NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
+		if (nvret != NVAPI_OK) {
+			FALogInfo("FrameAnalyisDump failed to enable reverse stereo blit\n");
+			// Continue anyway, we should still be able to dump in 2D...
+		}
+	}
+
 	HackerContext::ExecuteCommandList(pCommandList, RestoreContextState);
+
+	if (G->analyse_frame)
+		NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
 
 	dump_deferred_resources(pCommandList);
 }
