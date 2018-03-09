@@ -587,7 +587,8 @@ static size_t Texture3DLength(
 }
 
 static uint32_t hash_tex2d_data(uint32_t hash, const void *data, size_t length,
-		const D3D11_TEXTURE2D_DESC *pDesc, bool zero_padding, UINT mapped_row_pitch)
+		const D3D11_TEXTURE2D_DESC *pDesc, bool zero_padding,
+		bool skip_padding, UINT mapped_row_pitch)
 {
 	size_t row_pitch, slice_pitch, row_count;
 
@@ -621,7 +622,7 @@ static uint32_t hash_tex2d_data(uint32_t hash, const void *data, size_t length,
 	// with the length capped based on our length calculation, and with the
 	// padding replaced with zeroes rather than skipped.
 
-	if (!zero_padding)
+	if (!zero_padding && !skip_padding)
 		return crc32c_hw(hash, data, length);
 
 	DirectX::LoaderHelpers::GetSurfaceInfo(pDesc->Width, pDesc->Height, pDesc->Format, &slice_pitch, &row_pitch, &row_count);
@@ -631,7 +632,7 @@ static uint32_t hash_tex2d_data(uint32_t hash, const void *data, size_t length,
 
 	signed padding = (signed)mapped_row_pitch - (signed)row_pitch;
 	uint8_t *zeroes = NULL;
-	if (padding > 0) {
+	if (zero_padding && padding > 0) {
 		zeroes = new uint8_t[padding];
 		memset(zeroes, 0, padding);
 	}
@@ -695,7 +696,7 @@ uint32_t CalcTexture2DDataHash(
 			LogDebug("  Using 3DMigoto v1.2.1 compatible Texture2D CRC calculation\n");
 		}
 		return hash_tex2d_data(hash, pInitialData[0].pSysMem, length_v12,
-				pDesc, zero_padding, pInitialData[0].SysMemPitch);
+				pDesc, zero_padding, false, pInitialData[0].SysMemPitch);
 	}
 
 	// If we are here it means the old length had overflowed the buffer,
@@ -741,7 +742,37 @@ uint32_t CalcTexture2DDataHash(
 
 	length = Texture2DLength(pDesc, &pInitialData[0], 0);
 	hash = hash_tex2d_data(hash, pInitialData[0].pSysMem, length,
-			pDesc, zero_padding, pInitialData[0].SysMemPitch);
+			pDesc, false, true, pInitialData[0].SysMemPitch);
+
+	return hash;
+}
+
+uint32_t CalcTexture2DDataHashAccurate(
+	const D3D11_TEXTURE2D_DESC *pDesc,
+	const D3D11_SUBRESOURCE_DATA *pInitialData)
+{
+	uint32_t hash = 0;
+
+	// The regular data hash we are using is woefully innaccurate, as it
+	// will not hash the entire image. Mostly OK for texture filtering, but
+	// no good for frame analysis deduplication - especially evident when
+	// the HUD is being rendered, as only HUD elements that alter the upper
+	// third of the image cause the hash to change, while HUD elements in
+	// the mid to lower half of the image don't affect the hash at all
+	// (observed in DOAXVV).
+	//
+	// This function throws away all backwards compatibility with our
+	// legacy hashing code to just try to do it right. The hashes won't
+	// match those used for texture filtering at all, but it's more
+	// important that this get it right.
+
+	if (!pDesc || !pInitialData || !pInitialData->pSysMem)
+		return 0;
+
+	// Passing length=INT_MAX, since that is an upper bound and
+	// hash_tex2d_data will work it out from DirectXTK
+	hash = hash_tex2d_data(hash, pInitialData[0].pSysMem, INT_MAX,
+			pDesc, false, true, pInitialData[0].SysMemPitch);
 
 	return hash;
 }

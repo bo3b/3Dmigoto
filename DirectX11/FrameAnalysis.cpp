@@ -1429,8 +1429,14 @@ const wchar_t* FrameAnalysisContext::dedupe_tex2d_filename(ID3D11Texture2D *reso
 
 	// CalcTexture2DDataHash takes a D3D11_SUBRESOURCE_DATA*, which happens
 	// to be binary identical to a D3D11_MAPPED_SUBRESOURCE (though it is
-	// not an array), so we can safely cast it:
-	hash = CalcTexture2DDataHash(orig_desc, (D3D11_SUBRESOURCE_DATA*)&map, true);
+	// not an array), so we can safely cast it.
+	//
+	// Now using CalcTexture2DDataHashAccurate to take the full texture
+	// into consideration when generating the hash - necessary as our
+	// legacy texture hash is very broken (passable for texture filtering,
+	// but not for this) and doesn't hash anywhere near the full image, so
+	// changes in the mid to lower half of the image won't affect the hash.
+	hash = CalcTexture2DDataHashAccurate(orig_desc, (D3D11_SUBRESOURCE_DATA*)&map);
 	hash = CalcTexture2DDescHash(hash, orig_desc);
 
 	GetDumpingContext()->Unmap(resource, 0);
