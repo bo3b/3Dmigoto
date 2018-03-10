@@ -416,10 +416,9 @@ static void override_swap_chain(DXGI_SWAP_CHAIN_DESC *pDesc, DXGI_SWAP_CHAIN_DES
 static void override_factory2_swap_chain(
 		_In_ const DXGI_SWAP_CHAIN_DESC1 **ppDesc,
 		_In_ DXGI_SWAP_CHAIN_DESC1 *descCopy,
-		_In_opt_ const DXGI_SWAP_CHAIN_FULLSCREEN_DESC **ppFullscreenDesc,
 		_In_opt_ DXGI_SWAP_CHAIN_FULLSCREEN_DESC *fullscreenCopy)
 {
-	if (*ppDesc != nullptr)
+	if (ppDesc && *ppDesc != nullptr)
 	{
 		// Required in case the software mouse and upscaling are on at the same time
 		// TODO: Use a helper class to track *all* different resolutions
@@ -441,13 +440,9 @@ static void override_factory2_swap_chain(
 	// doesn't directly use the copies themselves - we update the pointers
 	// to point at the copies instead, which allows the cases where these
 	// pointers were originally NULL to maintain that.
-	if (*ppDesc) {
+	if (ppDesc && *ppDesc) {
 		memcpy(descCopy, *ppDesc, sizeof(DXGI_SWAP_CHAIN_DESC1));
 		*ppDesc = descCopy;
-	}
-	if (ppFullscreenDesc && *ppFullscreenDesc) {
-		memcpy(fullscreenCopy, *ppFullscreenDesc, sizeof(DXGI_SWAP_CHAIN_FULLSCREEN_DESC));
-		*ppFullscreenDesc = fullscreenCopy;
 	}
 	ForceDisplayParams1(descCopy, fullscreenCopy);
 
@@ -598,10 +593,18 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
 
 	hackerDevice = sort_out_swap_chain_device_mess(&pDevice);
 
-	override_factory2_swap_chain(&pDesc, &descCopy, &pFullscreenDesc, &fullscreenCopy);
+	// The game may pass in NULL for pFullscreenDesc, but we may still want
+	// to override it. To keep things simpler we always use our own full
+	// screen struct, which is either a copy of the one the game passed in,
+	// or specifies windowed mode, which should be equivelent to NULL.
+	fullscreenCopy.Windowed = true;
+	if (pFullscreenDesc)
+		memcpy(&fullscreenCopy, pFullscreenDesc, sizeof(DXGI_SWAP_CHAIN_FULLSCREEN_DESC));
+
+	override_factory2_swap_chain(&pDesc, &descCopy, &fullscreenCopy);
 
 	get_tls()->hooking_quirk_protection = true;
-	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
+	HRESULT hr = fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, &fullscreenCopy, pRestrictToOutput, ppSwapChain);
 	get_tls()->hooking_quirk_protection = false;
 	if (FAILED(hr))
 	{
@@ -664,7 +667,7 @@ HRESULT __stdcall Hooked_CreateSwapChainForCoreWindow(
 
 	hackerDevice = sort_out_swap_chain_device_mess(&pDevice);
 
-	override_factory2_swap_chain(&pDesc, &descCopy, NULL, NULL);
+	override_factory2_swap_chain(&pDesc, &descCopy, NULL);
 
 	get_tls()->hooking_quirk_protection = true;
 	HRESULT hr = fnOrigCreateSwapChainForCoreWindow(This, pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
@@ -728,7 +731,7 @@ HRESULT __stdcall Hooked_CreateSwapChainForComposition(
 
 	hackerDevice = sort_out_swap_chain_device_mess(&pDevice);
 
-	override_factory2_swap_chain(&pDesc, &descCopy, NULL, NULL);
+	override_factory2_swap_chain(&pDesc, &descCopy, NULL);
 
 	get_tls()->hooking_quirk_protection = true;
 	HRESULT hr = fnOrigCreateSwapChainForComposition(This, pDevice, pDesc, pRestrictToOutput, ppSwapChain);
