@@ -814,7 +814,7 @@ void DrawCommand::run(CommandListState *state)
 				}
 			} else {
 				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawAuto()\n", ini_section.c_str());
-				mHackerContext->DrawAuto();
+				mOrigContext1->DrawAuto();
 			}
 			// TODO: dispatch = from_caller
 			break;
