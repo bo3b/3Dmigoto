@@ -89,6 +89,11 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	// since we can always get access to the device and immediate context
 	// via SwapChain->GetParent(ID3D11Device) and GetImmediateContext(),
 	// but that would mean extra calls in a fast path.
+	//
+	// Note that the swap chain itself also holds references to these two
+	// now, so this is technically unecessary, but since the overlay code
+	// still accesses these it is more safer to leave this in place (more
+	// resistant to code changes in the swap chain breaking this).
 	mHackerDevice->AddRef();
 	mHackerContext->AddRef();
 
