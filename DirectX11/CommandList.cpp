@@ -2163,6 +2163,13 @@ void ParamOverride::run(CommandListState *state)
 		case ParamOverrideType::EYE_SEPARATION:
 			NvAPI_Stereo_GetEyeSeparation(state->mHackerDevice->mStereoHandle, dest);
 			break;
+		case ParamOverrideType::STEREO_ACTIVE:
+			{
+				NvU8 stereo = false;
+				NvAPI_Stereo_IsActivated(state->mHackerDevice->mStereoHandle, &stereo);
+				*dest = !!stereo;
+			}
+			break;
 		default:
 			return;
 	}

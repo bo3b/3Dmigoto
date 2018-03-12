@@ -665,14 +665,18 @@ enum class ParamOverrideType {
 	RAW_SEPARATION, // These get the values as they are right now -
 	EYE_SEPARATION, // StereoParams is only updated at the start of each
 	CONVERGENCE,    // frame. Intended for use if the convergence may have
-			// been changed during the frame (e.g. if staged from
+	STEREO_ACTIVE,	// been changed during the frame (e.g. if staged from
 			// the GPU and it is unknown whether the operation has
 			// completed). Comparing these immediately before and
 			// after present can be useful to determine if the user
 			// is currently adjusting them, which is used for the
 			// auto-convergence in Life is Strange: Before the
 			// Storm to convert user convergence adjustments into
-			// equivalent popout adjustments.
+			// equivalent popout adjustments. stereo_active is used
+			// for auto-convergence to remember if stereo was
+			// enabled last frame, since it cannot note this itself
+			// because if stereo was disabled it would not have run
+			// in both eyes to be able to update its state buffer.
 	// TODO:
 	// DEPTH_ACTIVE
 	// etc.
@@ -700,6 +704,7 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"raw_separation", ParamOverrideType::RAW_SEPARATION},
 	{L"eye_separation", ParamOverrideType::EYE_SEPARATION},
 	{L"convergence", ParamOverrideType::CONVERGENCE},
+	{L"stereo_active", ParamOverrideType::STEREO_ACTIVE},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
 class ParamOverride : public CommandListCommand {
