@@ -2466,6 +2466,32 @@ void HackerContext::Bind3DMigotoResources()
 	BindStereoResources<&ID3D11DeviceContext::CSSetShaderResources>();
 }
 
+void HackerContext::InitIniParams()
+{
+	// Only the immediate context is allowed to perform [Constants]
+	// initialisation, as otherwise creating a deferred context could
+	// clobber any changes since then. The only exception I can think of is
+	// if a deferred context is created before the immediate context, but
+	// an immediate context will have to be created before the frame ends
+	// to execute that deferred context, so the worst case is that a
+	// deferred context may run for one frame without the constants command
+	// list being run. This situation is unlikely, and even if it does
+	// happen is unlikely to cause any issues in practice, so let's not try
+	// to do anything heroic to deal with it.
+	if (mOrigContext1->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE) {
+		LogInfo("BUG: InitIniParams called on a deferred context\n");
+		DoubleBeepExit();
+	}
+
+	// The command list only changes ini params that are defined, but for
+	// consistency we want all other ini params to be initialised as well:
+	memset(G->iniParams, 0, sizeof(G->iniParams));
+
+	// The command list will take care of the Map/Unmap to update the
+	// resource on the GPU:
+	RunCommandList(mHackerDevice, this, &G->constants_command_list, NULL, false);
+}
+
 // This function makes sure that the StereoParams and IniParams resources
 // remain pinned whenever the game assigns shader resources:
 template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(THIS_

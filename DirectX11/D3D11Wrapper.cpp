@@ -747,8 +747,10 @@ static void wrap_d3d11_device_and_context(ID3D11Device **ppDevice, ID3D11DeviceC
 	// With all the interacting objects set up, we can now safely finish the HackerDevice init.
 	if (deviceWrap != nullptr)
 		deviceWrap->Create3DMigotoResources();
-	if (contextWrap != nullptr)
+	if (contextWrap != nullptr) {
 		contextWrap->Bind3DMigotoResources();
+		contextWrap->InitIniParams();
+	}
 
 	LogInfo("-> device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n",
 		origDevice1, deviceWrap, origContext1, contextWrap);

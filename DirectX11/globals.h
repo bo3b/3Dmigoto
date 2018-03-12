@@ -416,6 +416,7 @@ struct Globals
 	CommandList post_clear_uav_float_command_list;
 	CommandList clear_uav_uint_command_list;
 	CommandList post_clear_uav_uint_command_list;
+	CommandList constants_command_list;
 	unsigned frame_no;
 	HWND hWnd; // To translate mouse coordinates to the window
 	bool hide_cursor;
@@ -594,12 +595,7 @@ struct Globals
 		for (i = 0; i < 11; i++)
 			FILTER_REFRESH[i] = 0;
 
-		for (i = 0; i < INI_PARAMS_SIZE; i++) {
-			iniParams[i].x = FLT_MAX;
-			iniParams[i].y = FLT_MAX;
-			iniParams[i].z = FLT_MAX;
-			iniParams[i].w = FLT_MAX;
-		}
+		memset(iniParams, 0, sizeof(iniParams));
 
 		ticks_at_launch = GetTickCount();
 	}

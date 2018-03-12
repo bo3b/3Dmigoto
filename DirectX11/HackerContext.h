@@ -208,6 +208,7 @@ public:
 	void SetHackerDevice(HackerDevice *pDevice);
 	HackerDevice* GetHackerDevice();
 	void Bind3DMigotoResources();
+	void InitIniParams();
 	ID3D11DeviceContext1* GetPossiblyHookedOrigContext1();
 	ID3D11DeviceContext1* GetPassThroughOrigContext1();
 	void HookContext();

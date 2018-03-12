@@ -2844,6 +2844,7 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 		mHackerContext = HackerContextFactory(mRealOrigDevice1, origContext1);
 		mHackerContext->SetHackerDevice(this);
 		mHackerContext->Bind3DMigotoResources();
+		mHackerContext->InitIniParams();
 		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
 			mHackerContext->HookContext();
 		LogInfo("  HackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);
