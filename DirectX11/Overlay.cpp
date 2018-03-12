@@ -156,8 +156,11 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 Overlay::~Overlay()
 {
 	LogInfo("Overlay::~Overlay deleted for SwapChain %p\n", mOrigSwapChain);
-	mOrigContext->Release();
-	mOrigDevice->Release();
+	// We Release the same interface we called AddRef on, and we use the
+	// Hacker interfaces to make sure that our cleanup code is run if this
+	// is the last reference.
+	mHackerContext->Release();
+	mHackerDevice->Release();
 }
 
 
