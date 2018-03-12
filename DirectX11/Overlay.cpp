@@ -74,11 +74,23 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	mOrigDevice = mHackerDevice->GetPassThroughOrigDevice1();
 	mOrigContext = pContext->GetPassThroughOrigContext1();
 
-	// We are actively using the Device and Context and SwapChain, so we need to 
-	// make sure they do not get Released without us.  This happened in FFXIV.
+	// We are actively using the Device and Context, so we need to make
+	// sure they do not get Released without us.  This happened in FFXIV.
+	//
+	// We do not hold a reference on the swap chain, as that would prevent
+	// the swap chain from being released until the overlay is deleted, but
+	// the overlay will not be deleted until the swap chain is released,
+	// and since the overlay also holds references to the device and
+	// context this would prevent everything from being released. So long
+	// as the overlay exists we know the swap chain hasn't been released
+	// yet, so this is safe.
+	//
+	// Alternatively, we could forgo holding pointers to these at all,
+	// since we can always get access to the device and immediate context
+	// via SwapChain->GetParent(ID3D11Device) and GetImmediateContext(),
+	// but that would mean extra calls in a fast path.
 	mHackerDevice->AddRef();
 	mHackerContext->AddRef();
-	mOrigSwapChain->AddRef();
 
 	// The courierbold.spritefont is now included as binary resource data attached
 	// to the d3d11.dll.  We can fetch that resource and pass it to new SpriteFont
@@ -139,7 +151,6 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 Overlay::~Overlay()
 {
 	LogInfo("Overlay::~Overlay deleted for SwapChain %p\n", mOrigSwapChain);
-	mOrigSwapChain->Release();
 	mOrigContext->Release();
 	mOrigDevice->Release();
 }
