@@ -381,6 +381,12 @@ STDMETHODIMP_(ULONG) HackerSwapChain::Release(THIS)
 
 	if (ulRef <= 0)
 	{
+		if (mHackerDevice && mHackerDevice->GetHackerSwapChain() == this) {
+			LogInfo("  Clearing mHackerDevice->mHackerSwapChain\n");
+			mHackerDevice->SetHackerSwapChain(nullptr);
+		} else
+			LogInfo("  mHackerDevice %p not using mHackerSwapchain %p\n", mHackerDevice, this);
+
 		if (mOverlay)
 			delete mOverlay;
 

@@ -3258,11 +3258,23 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return state->resource;
 
 	case ResourceCopyTargetType::SWAP_CHAIN:
-		mHackerDevice->GetHackerSwapChain()->GetOrigSwapChain1()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+		{
+			HackerSwapChain *mHackerSwapChain = mHackerDevice->GetHackerSwapChain();
+			if (mHackerSwapChain)
+				mHackerSwapChain->GetOrigSwapChain1()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+			else
+				COMMAND_LIST_LOG(state, "  Unable to get access to swap chain\n");
+		}
 		return res;
 
 	case ResourceCopyTargetType::FAKE_SWAP_CHAIN:
-		mHackerDevice->GetHackerSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+		{
+			HackerSwapChain *mHackerSwapChain = mHackerDevice->GetHackerSwapChain();
+			if (mHackerSwapChain)
+				mHackerSwapChain->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+			else
+				COMMAND_LIST_LOG(state, "  Unable to get access to fake swap chain\n");
+		}
 		return res;
 	}
 

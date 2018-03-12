@@ -2874,11 +2874,17 @@ static void ToggleFullScreen(HackerDevice *device, void *private_data)
 
 static void ForceFullScreen(HackerDevice *device, void *private_data)
 {
+	HackerSwapChain *mHackerSwapChain = device->GetHackerSwapChain();
 	IDXGISwapChain1 *swap_chain;
 
 	LogInfo("> Switching to exclusive full screen mode\n");
 
-	swap_chain = device->GetHackerSwapChain()->GetOrigSwapChain1();
+	if (!mHackerSwapChain) {
+		LogOverlay(LOG_DIRE, "force_full_screen_on_key: Unable to find swap chain\n");
+		return;
+	}
+
+	swap_chain = mHackerSwapChain->GetOrigSwapChain1();
 
 	swap_chain->SetFullscreenState(TRUE, NULL);
 	swap_chain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);

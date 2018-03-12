@@ -277,12 +277,18 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 {
 	wchar_t fullName[MAX_PATH];
 	ID3D11Texture2D *backBuffer;
+	HackerSwapChain *mHackerSwapChain = pDevice->GetHackerSwapChain();
+
+	if (!mHackerSwapChain) {
+		LogOverlay(LOG_DIRE, "mark_snapshot=1: Unable to get back buffer\n");
+		return;
+	}
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	if (FAILED(hr))
 		LogInfo("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
-	hr = pDevice->GetHackerSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
+	hr = mHackerSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
 	if (SUCCEEDED(hr))
 	{
 		swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls.jpg", G->SHADER_PATH, hash, shaderType.c_str());
@@ -300,6 +306,7 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 
 static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderType)
 {
+	HackerSwapChain *mHackerSwapChain = pDevice->GetHackerSwapChain();
 	wchar_t fullName[MAX_PATH];
 	ID3D11Texture2D *backBuffer = NULL;
 	ID3D11Texture2D *stereoBackBuffer = NULL;
@@ -309,7 +316,12 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	HRESULT hr;
 	NvAPI_Status nvret;
 
-	hr = pDevice->GetHackerSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
+	if (!mHackerSwapChain) {
+		LogOverlay(LOG_DIRE, "mark_snapshot=2: Unable to get back buffer\n");
+		return;
+	}
+
+	hr = mHackerSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
 	if (FAILED(hr))
 		return;
 
