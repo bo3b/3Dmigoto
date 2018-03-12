@@ -401,7 +401,7 @@ ID3D11DeviceContext* FrameAnalysisContext::GetDumpingContext()
 
 void FrameAnalysisContext::Dump2DResourceImmediateCtx(
 		FrameAnalysisOptions analyse_options, ID3D11Texture2D *staging,
-		wstring filename, bool stereo, D3D11_TEXTURE2D_DESC *orig_desc)
+		wstring filename, bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format)
 {
 	HRESULT hr = S_OK, dont_care;
 	wchar_t dedupe_filename[MAX_PATH];
@@ -412,7 +412,7 @@ void FrameAnalysisContext::Dump2DResourceImmediateCtx(
 	// This function has a local copy of analyse_options, since they may
 	// have changed since dumping the resource was deferred
 
-	save_filename = dedupe_tex2d_filename(staging, orig_desc, dedupe_filename, MAX_PATH, filename.c_str());
+	save_filename = dedupe_tex2d_filename(staging, orig_desc, dedupe_filename, MAX_PATH, filename.c_str(), format);
 
 	ext = filename.find_last_of(L'.');
 	save_ext = save_filename.find_last_of(L'.');
@@ -470,7 +470,7 @@ void FrameAnalysisContext::Dump2DResourceImmediateCtx(
 }
 
 void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
-		*filename, bool stereo, D3D11_TEXTURE2D_DESC *orig_desc)
+		*filename, bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format)
 {
 	HRESULT hr = S_OK;
 	ID3D11Texture2D *staging = resource;
@@ -482,8 +482,8 @@ void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 	// reverse stereo blit). DirectXTK will notice this has been done and
 	// skip doing it again.
 	resource->GetDesc(&staging_desc);
-	if ((staging_desc.Usage != D3D11_USAGE_STAGING) || !(staging_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ)) {
-		hr = StageResource(resource, &staging_desc, &staging);
+	if ((staging_desc.Usage != D3D11_USAGE_STAGING) || !(staging_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ) || (staging_desc.Format != format)) {
+		hr = StageResource(resource, &staging_desc, &staging, format);
 		if (FAILED(hr))
 			return;
 	}
@@ -491,15 +491,15 @@ void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 	if (!orig_desc)
 		desc = &staging_desc;
 
-	if (!DeferDump2DResource(staging, filename, stereo, desc))
-		Dump2DResourceImmediateCtx(analyse_options, staging, filename, stereo, desc);
+	if (!DeferDump2DResource(staging, filename, stereo, desc, format))
+		Dump2DResourceImmediateCtx(analyse_options, staging, filename, stereo, desc, format);
 
 	if (staging != resource)
 		staging->Release();
 }
 
 HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
-		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa)
+		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa, DXGI_FORMAT format)
 {
 	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
 	HRESULT hr;
@@ -533,6 +533,14 @@ HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
 	desc.SampleDesc.Count = 1;
 	desc.SampleDesc.Quality = 0;
 
+	// We want the staging resource to be fully typed if possible, to
+	// maximise compatibility with other programs that won't necessarily
+	// know what to do with a typeless resource (including texconv from
+	// DirectXTex). Since views must be fully typed, we can usually use the
+	// format from the view used to obtain this resource.
+	if (format != DXGI_FORMAT_UNKNOWN)
+		desc.Format = format;
+
 	if (analyse_options & FrameAnalysisOptions::STEREO) {
 		// If we are dumping stereo at all force surface creation mode
 		// to stereo (regardless of whether we are creating this double
@@ -556,7 +564,7 @@ HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
 }
 
 HRESULT FrameAnalysisContext::ResolveMSAA(ID3D11Texture2D *src,
-		D3D11_TEXTURE2D_DESC *srcDesc, ID3D11Texture2D **dst)
+		D3D11_TEXTURE2D_DESC *srcDesc, ID3D11Texture2D **dst, DXGI_FORMAT format)
 {
 	ID3D11Texture2D *resolved = NULL;
 	UINT item, level, index;
@@ -570,7 +578,7 @@ HRESULT FrameAnalysisContext::ResolveMSAA(ID3D11Texture2D *src,
 	// Resolve MSAA surfaces. Procedure copied from DirectXTK
 	// These need to have D3D11_USAGE_DEFAULT to resolve,
 	// so we need yet another intermediate texture:
-	hr = CreateStagingResource(&resolved, *srcDesc, false, true);
+	hr = CreateStagingResource(&resolved, *srcDesc, false, true, format);
 	if (FAILED(hr)) {
 		FALogInfo("ResolveMSAA failed to create intermediate texture: 0x%x\n", hr);
 		return hr;
@@ -601,7 +609,7 @@ err_release:
 }
 
 HRESULT FrameAnalysisContext::StageResource(ID3D11Texture2D *src,
-		D3D11_TEXTURE2D_DESC *srcDesc, ID3D11Texture2D **dst)
+		D3D11_TEXTURE2D_DESC *srcDesc, ID3D11Texture2D **dst, DXGI_FORMAT format)
 {
 	ID3D11Texture2D *staging = NULL;
 	ID3D11Texture2D *resolved = NULL;
@@ -609,13 +617,13 @@ HRESULT FrameAnalysisContext::StageResource(ID3D11Texture2D *src,
 
 	*dst = NULL;
 
-	hr = CreateStagingResource(&staging, *srcDesc, false, false);
+	hr = CreateStagingResource(&staging, *srcDesc, false, false, format);
 	if (FAILED(hr)) {
 		FALogInfo("StageResource failed to create intermediate texture: 0x%x\n", hr);
 		return hr;
 	}
 
-	hr = ResolveMSAA(src, srcDesc, &resolved);
+	hr = ResolveMSAA(src, srcDesc, &resolved, format);
 	if (FAILED(hr))
 		goto err_release;
 	if (resolved)
@@ -637,7 +645,7 @@ err_release:
 
 // TODO: Refactor this with StereoScreenShot().
 // Expects the reverse stereo blit to be enabled by the caller
-void FrameAnalysisContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename)
+void FrameAnalysisContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename, DXGI_FORMAT format)
 {
 	ID3D11Texture2D *stereoResource = NULL;
 	ID3D11Texture2D *tmpResource = NULL;
@@ -649,7 +657,7 @@ void FrameAnalysisContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t
 
 	resource->GetDesc(&srcDesc);
 
-	hr = CreateStagingResource(&stereoResource, srcDesc, true, false);
+	hr = CreateStagingResource(&stereoResource, srcDesc, true, false, format);
 	if (FAILED(hr)) {
 		FALogInfo("DumpStereoResource failed to create stereo texture: 0x%x\n", hr);
 		return;
@@ -661,7 +669,7 @@ void FrameAnalysisContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t
 		// since CopySubresourceRegion() will fail if the source and
 		// destination dimensions don't match, so use yet another
 		// intermediate staging resource first.
-		hr = StageResource(src, &srcDesc, &tmpResource);
+		hr = StageResource(src, &srcDesc, &tmpResource, format);
 		if (FAILED(hr))
 			goto out;
 		src = tmpResource;
@@ -686,7 +694,7 @@ void FrameAnalysisContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t
 		}
 	}
 
-	Dump2DResource(stereoResource, filename, true, &srcDesc);
+	Dump2DResource(stereoResource, filename, true, &srcDesc, format);
 
 	if (tmpResource)
 		tmpResource->Release();
@@ -952,7 +960,7 @@ void FrameAnalysisContext::DumpDesc(DescType *desc, const wchar_t *filename)
 }
 
 bool FrameAnalysisContext::DeferDump2DResource(ID3D11Texture2D *staging,
-		wchar_t *filename, bool stereo, D3D11_TEXTURE2D_DESC *orig_desc)
+		wchar_t *filename, bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format)
 {
 	if (!(analyse_options & FrameAnalysisOptions::DEFRD_CTX_DELAY))
 		return false;
@@ -966,7 +974,7 @@ bool FrameAnalysisContext::DeferDump2DResource(ID3D11Texture2D *staging,
 	}
 
 	FALogInfo("Deferring Frame Analysis Dump Texture2D: %S\n", filename);
-	deferred_tex2d->emplace_back(analyse_options, staging, filename, stereo, orig_desc);
+	deferred_tex2d->emplace_back(analyse_options, staging, filename, stereo, orig_desc, format);
 
 	return true;
 }
@@ -1025,7 +1033,7 @@ void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_li
 		for (FrameAnalysisDeferredDumpTex2DArgs &i : *deferred_tex2d) {
 			FALogInfo("Dumping Deferred Texture2D: %S\n", i.filename.c_str());
 			Dump2DResourceImmediateCtx(i.analyse_options, i.staging.Get(),
-					i.filename, i.stereo, &i.orig_desc);
+					i.filename, i.stereo, &i.orig_desc, i.format);
 		}
 	}
 
@@ -1176,7 +1184,7 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 }
 
 void FrameAnalysisContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
-		FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
+		FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT format,
 		UINT stride, UINT offset)
 {
 	D3D11_RESOURCE_DIMENSION dim;
@@ -1185,16 +1193,16 @@ void FrameAnalysisContext::DumpResource(ID3D11Resource *resource, wchar_t *filen
 
 	switch (dim) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			DumpBuffer((ID3D11Buffer*)resource, filename, buf_type_mask, idx, ib_fmt, stride, offset, 0, 0);
+			DumpBuffer((ID3D11Buffer*)resource, filename, buf_type_mask, idx, format, stride, offset, 0, 0);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			FALogInfo("Skipped dumping Texture1D resource\n");
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			if (analyse_options & FrameAnalysisOptions::STEREO)
-				DumpStereoResource((ID3D11Texture2D*)resource, filename);
+				DumpStereoResource((ID3D11Texture2D*)resource, filename, format);
 			if (analyse_options & FrameAnalysisOptions::MONO)
-				Dump2DResource((ID3D11Texture2D*)resource, filename, false, NULL);
+				Dump2DResource((ID3D11Texture2D*)resource, filename, false, NULL, format);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
 			FALogInfo("Skipped dumping Texture3D resource\n");
@@ -1400,7 +1408,7 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, s
 
 const wchar_t* FrameAnalysisContext::dedupe_tex2d_filename(ID3D11Texture2D *resource,
 		D3D11_TEXTURE2D_DESC *orig_desc, wchar_t *dedupe_filename,
-		size_t size, const wchar_t *traditional_filename)
+		size_t size, const wchar_t *traditional_filename, DXGI_FORMAT format)
 {
 	D3D11_MAPPED_SUBRESOURCE map;
 	HRESULT hr;
@@ -1448,7 +1456,7 @@ const wchar_t* FrameAnalysisContext::dedupe_tex2d_filename(ID3D11Texture2D *reso
 	GetDumpingContext()->Unmap(resource, 0);
 
 	get_deduped_dir(dedupe_dir, MAX_PATH);
-	_snwprintf_s(dedupe_filename, size, size, L"%ls\\%08x.XXX", dedupe_dir, hash);
+	_snwprintf_s(dedupe_filename, size, size, L"%ls\\%08x-%S.XXX", dedupe_dir, hash, TexFormatStr(format));
 
 	return dedupe_filename;
 err:
@@ -1627,7 +1635,7 @@ void FrameAnalysisContext::_DumpTextures(char shader_type, bool compute,
 	ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT])
 {
 	ID3D11Resource *resource;
-	D3D11_RESOURCE_DIMENSION dim;
+	D3D11_SHADER_RESOURCE_VIEW_DESC view_desc;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
 	UINT i;
@@ -1642,7 +1650,7 @@ void FrameAnalysisContext::_DumpTextures(char shader_type, bool compute,
 			continue;
 		}
 
-		resource->GetType(&dim);
+		views[i]->GetDesc(&view_desc);
 
 		// TODO: process description to get offset, strides & size for
 		// buffer & bufferex type SRVs and pass down to dump routines,
@@ -1653,7 +1661,7 @@ void FrameAnalysisContext::_DumpTextures(char shader_type, bool compute,
 		if (SUCCEEDED(hr)) {
 			DumpResource(resource, filename,
 					FrameAnalysisOptions::DUMP_SRV, i,
-					DXGI_FORMAT_UNKNOWN, 0, 0);
+					view_desc.Format, 0, 0);
 		}
 
 		resource->Release();
@@ -1798,6 +1806,7 @@ void FrameAnalysisContext::DumpRenderTargets()
 	UINT i;
 	ID3D11RenderTargetView *rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
 	ID3D11Resource *resource;
+	D3D11_RENDER_TARGET_VIEW_DESC view_desc;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
 
@@ -1813,6 +1822,8 @@ void FrameAnalysisContext::DumpRenderTargets()
 			continue;
 		}
 
+		rtvs[i]->GetDesc(&view_desc);
+
 		// TODO: process description to get offset, strides & size for
 		// buffer type RTVs and pass down to dump routines, although I
 		// have no idea how to determine which of the entries in the
@@ -1822,7 +1833,7 @@ void FrameAnalysisContext::DumpRenderTargets()
 		if (SUCCEEDED(hr)) {
 			DumpResource(resource, filename,
 					FrameAnalysisOptions::DUMP_RT, i,
-					DXGI_FORMAT_UNKNOWN, 0, 0);
+					view_desc.Format, 0, 0);
 		}
 
 		resource->Release();
@@ -1834,6 +1845,7 @@ void FrameAnalysisContext::DumpDepthStencilTargets()
 {
 	ID3D11DepthStencilView *dsv = NULL;
 	ID3D11Resource *resource = NULL;
+	D3D11_DEPTH_STENCIL_VIEW_DESC view_desc;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
 
@@ -1847,12 +1859,14 @@ void FrameAnalysisContext::DumpDepthStencilTargets()
 		return;
 	}
 
+	dsv->GetDesc(&view_desc);
+
 	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"oD", NULL, -1, resource);
 	if (FAILED(hr))
 		return;
 
 	DumpResource(resource, filename, FrameAnalysisOptions::DUMP_DEPTH,
-			-1, DXGI_FORMAT_UNKNOWN, 0, 0);
+			-1, view_desc.Format, 0, 0);
 }
 
 void FrameAnalysisContext::DumpUAVs(bool compute)
@@ -1860,6 +1874,7 @@ void FrameAnalysisContext::DumpUAVs(bool compute)
 	UINT i;
 	ID3D11UnorderedAccessView *uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
 	ID3D11Resource *resource;
+	D3D11_UNORDERED_ACCESS_VIEW_DESC view_desc;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
 
@@ -1878,6 +1893,8 @@ void FrameAnalysisContext::DumpUAVs(bool compute)
 			continue;
 		}
 
+		uavs[i]->GetDesc(&view_desc);
+
 		// TODO: process description to get offset & size for buffer
 		// type UAVs and pass down to dump routines.
 
@@ -1885,7 +1902,7 @@ void FrameAnalysisContext::DumpUAVs(bool compute)
 		if (SUCCEEDED(hr)) {
 			DumpResource(resource, filename,
 					FrameAnalysisOptions::DUMP_RT, i,
-					DXGI_FORMAT_UNKNOWN, 0, 0);
+					view_desc.Format, 0, 0);
 		}
 
 		resource->Release();
@@ -2136,6 +2153,10 @@ void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 
 	EnterCriticalSection(&G->mCriticalSection);
 
+	// We don't have a view at this point to get a fully typed format, so
+	// we leave format as DXGI_FORMAT_UNKNOWN, which will use the format
+	// from the resource description.
+
 	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, type, resource, true);
 	if (SUCCEEDED(hr)) {
 		DumpResource(resource, filename, analyse_options, -1, DXGI_FORMAT_UNKNOWN, 0, 0);
@@ -2157,7 +2178,7 @@ void FrameAnalysisContext::FrameAnalysisAfterUpdate(ID3D11Resource *resource)
 }
 
 void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnalysisOptions options,
-		const wchar_t *target, DXGI_FORMAT ib_fmt, UINT stride, UINT offset)
+		const wchar_t *target, DXGI_FORMAT format, UINT stride, UINT offset)
 {
 	wchar_t filename[MAX_PATH];
 	NvAPI_Status nvret;
@@ -2194,7 +2215,7 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 		hr = FrameAnalysisFilenameResource(filename, MAX_PATH, L"...", resource, false);
 	}
 	if (SUCCEEDED(hr))
-		DumpResource(resource, filename, analyse_options, -1, ib_fmt, stride, offset);
+		DumpResource(resource, filename, analyse_options, -1, format, stride, offset);
 
 	LeaveCriticalSection(&G->mCriticalSection);
 

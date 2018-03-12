@@ -43,12 +43,13 @@ struct FrameAnalysisDeferredDumpTex2DArgs {
 	wstring filename;
 	bool stereo;
 	D3D11_TEXTURE2D_DESC orig_desc;
+	DXGI_FORMAT format;
 
 	FrameAnalysisDeferredDumpTex2DArgs(FrameAnalysisOptions analyse_options,
 			ID3D11Texture2D *staging, wchar_t *filename,
-			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc) :
+			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format) :
 		analyse_options(analyse_options), staging(staging),
-		filename(filename), stereo(stereo), orig_desc(*orig_desc)
+		filename(filename), stereo(stereo), orig_desc(*orig_desc), format(format)
 	{}
 };
 
@@ -90,21 +91,21 @@ private:
 	ID3D11DeviceContext* GetDumpingContext();
 
 	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
-			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc);
+			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format);
 	bool DeferDump2DResource(ID3D11Texture2D *staging, wchar_t *filename,
-			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc);
+			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format);
 	void Dump2DResourceImmediateCtx(FrameAnalysisOptions analyse_options,
 			ID3D11Texture2D *staging, wstring filename,
-			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc);
+			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format);
 
 	HRESULT ResolveMSAA(ID3D11Texture2D *src, D3D11_TEXTURE2D_DESC *srcDesc,
-			ID3D11Texture2D **resolved);
+			ID3D11Texture2D **resolved, DXGI_FORMAT format);
 	HRESULT StageResource(ID3D11Texture2D *src,
-			D3D11_TEXTURE2D_DESC *srcDesc, ID3D11Texture2D **dst);
+			D3D11_TEXTURE2D_DESC *srcDesc, ID3D11Texture2D **dst, DXGI_FORMAT format);
 	HRESULT CreateStagingResource(ID3D11Texture2D **resource,
-		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa);
+		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa, DXGI_FORMAT format);
 
-	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename);
+	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename, DXGI_FORMAT format);
 	void DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 			UINT size, char type, int idx, UINT stride, UINT offset);
 	void DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
@@ -128,7 +129,7 @@ private:
 			UINT first, UINT count);
 
 	void DumpResource(ID3D11Resource *resource, wchar_t *filename,
-			FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
+			FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT format,
 			UINT stride, UINT offset);
 	void _DumpCBs(char shader_type, bool compute,
 		ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT]);
@@ -153,7 +154,7 @@ private:
 			ID3D11Resource *handle, bool force_filename_handle);
 	const wchar_t* dedupe_tex2d_filename(ID3D11Texture2D *resource,
 			D3D11_TEXTURE2D_DESC *desc, wchar_t *dedupe_filename,
-			size_t size, const wchar_t *traditional_filename);
+			size_t size, const wchar_t *traditional_filename, DXGI_FORMAT format);
 	void dedupe_buf_filename(ID3D11Buffer *resource,
 			D3D11_BUFFER_DESC *orig_desc,
 			D3D11_MAPPED_SUBRESOURCE *map,
@@ -201,7 +202,7 @@ public:
 
 	void FrameAnalysisTrigger(FrameAnalysisOptions new_options) override;
 	void FrameAnalysisDump(ID3D11Resource *resource, FrameAnalysisOptions options,
-		const wchar_t *target, DXGI_FORMAT ib_fmt, UINT stride, UINT offset) override;
+		const wchar_t *target, DXGI_FORMAT format, UINT stride, UINT offset) override;
 
 	/*** IUnknown methods ***/
 
