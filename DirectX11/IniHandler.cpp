@@ -3695,7 +3695,8 @@ static void MarkAllShadersDeferredUnprocessed()
 
 void ReloadConfig(HackerDevice *device)
 {
-	ID3D11DeviceContext* realContext; device->GetImmediateContext(&realContext);
+	HackerContext *mHackerContext;
+	ID3D11DeviceContext *realContext;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	HRESULT hr;
 
@@ -3732,6 +3733,9 @@ void ReloadConfig(HackerDevice *device)
 
 	LeaveCriticalSection(&G->mCriticalSection);
 
+	device->GetImmediateContext((ID3D11DeviceContext**)&mHackerContext);
+	realContext = mHackerContext->GetPassThroughOrigContext1();
+
 	// Update the iniParams resource from the config file:
 	hr = realContext->Map(device->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (FAILED(hr)) {
@@ -3740,6 +3744,8 @@ void ReloadConfig(HackerDevice *device)
 	}
 	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
 	realContext->Unmap(device->mIniTexture, 0);
+
+	mHackerContext->Release();
 
 	LogOverlay(LOG_INFO, "> d3dx.ini reloaded");
 }
