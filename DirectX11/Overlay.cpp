@@ -208,7 +208,8 @@ void Overlay::SaveState()
 	mOrigContext->PSGetShader(&state.pPixelShader, state.pPSClassInstances, &state.PSNumClassInstances);
 	mOrigContext->IAGetVertexBuffers(0, 1, state.pVertexBuffers, state.Strides, state.Offsets);
 	mOrigContext->IAGetIndexBuffer(&state.IndexBuffer, &state.Format, &state.Offset);
-	mOrigContext->VSGetConstantBuffers(0, 1, state.pConstantBuffers);
+	mOrigContext->VSGetConstantBuffers(0, 1, state.pVSConstantBuffers);
+	mOrigContext->PSGetConstantBuffers(0, 1, state.pPSConstantBuffers);
 	mOrigContext->PSGetShaderResources(0, 1, state.pShaderResourceViews);
 }
 
@@ -266,9 +267,13 @@ void Overlay::RestoreState()
 	if (state.IndexBuffer)
 		state.IndexBuffer->Release();
 
-	mOrigContext->VSSetConstantBuffers(0, 1, state.pConstantBuffers);
-	if (state.pConstantBuffers[0])
-		state.pConstantBuffers[0]->Release();
+	mOrigContext->VSSetConstantBuffers(0, 1, state.pVSConstantBuffers);
+	if (state.pVSConstantBuffers[0])
+		state.pVSConstantBuffers[0]->Release();
+
+	mOrigContext->PSSetConstantBuffers(0, 1, state.pPSConstantBuffers);
+	if (state.pPSConstantBuffers[0])
+		state.pPSConstantBuffers[0]->Release();
 
 	mOrigContext->PSSetShaderResources(0, 1, state.pShaderResourceViews);
 	if (state.pShaderResourceViews[0])
@@ -481,6 +486,7 @@ void Overlay::DrawRectangle(float x, float y, float w, float h, float r, float g
 		* Matrix::CreateTranslation(-1, 1, 0);
 	mEffect->SetProjection(proj);
 
+	// This call will change VS + PS + constant buffer state:
 	mEffect->Apply(mOrigContext);
 
 	mOrigContext->IASetInputLayout(mInputLayout.Get());

@@ -95,10 +95,12 @@ private:
 		ID3D11VertexShader *pVertexShader;
 		ID3D11ClassInstance *pVSClassInstances[256];
 		UINT VSNumClassInstances;
+		ID3D11Buffer *pVSConstantBuffers[1];
 
 		ID3D11PixelShader *pPixelShader;
 		ID3D11ClassInstance *pPSClassInstances[256];
 		UINT PSNumClassInstances;
+		ID3D11Buffer *pPSConstantBuffers[1];
 
 		ID3D11Buffer *pVertexBuffers[1];
 		UINT Strides[1];
@@ -107,8 +109,6 @@ private:
 		ID3D11Buffer *IndexBuffer;
 		DXGI_FORMAT Format;
 		UINT Offset;
-
-		ID3D11Buffer *pConstantBuffers[1];
 
 		ID3D11ShaderResourceView *pShaderResourceViews[1];
 	} state;
