@@ -1890,11 +1890,13 @@ void FrameAnalysisContext::DumpDepthStencilTargets()
 	dsv->GetDesc(&view_desc);
 
 	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"oD", NULL, -1, resource);
-	if (FAILED(hr))
-		return;
+	if (SUCCEEDED(hr)) {
+		DumpResource(resource, filename, FrameAnalysisOptions::DUMP_DEPTH,
+				-1, view_desc.Format, 0, 0);
+	}
 
-	DumpResource(resource, filename, FrameAnalysisOptions::DUMP_DEPTH,
-			-1, view_desc.Format, 0, 0);
+	resource->Release();
+	dsv->Release();
 }
 
 void FrameAnalysisContext::DumpUAVs(bool compute)
