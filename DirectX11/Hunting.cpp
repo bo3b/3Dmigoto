@@ -1026,11 +1026,30 @@ static void EnableFix(HackerDevice *device, void *private_data)
 	G->fix_enabled = true;
 }
 
+static void _AnalyseFrameStop()
+{
+	G->analyse_frame = false;
+	if (G->DumpUsage) {
+		EnterCriticalSection(&G->mCriticalSection);
+			DumpUsage(G->ANALYSIS_PATH);
+		LeaveCriticalSection(&G->mCriticalSection);
+	}
+	LogOverlay(LOG_INFO, "Frame analysis saved to %S\n", G->ANALYSIS_PATH);
+}
+
 static void AnalyseFrame(HackerDevice *device, void *private_data)
 {
 	wchar_t path[MAX_PATH], subdir[MAX_PATH];
 	time_t ltime;
 	struct tm tm;
+
+	if (G->analyse_frame) {
+		// Frame analysis key has been pressed again while FA was
+		// already in progress, abort:
+		device->GetHackerContext()->FrameAnalysisLog("----- Frame analysis aborted -----\n");
+		LogOverlay(LOG_NOTICE, "Frame analysis aborted\n");
+		return _AnalyseFrameStop();
+	}
 
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
@@ -1064,17 +1083,19 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 
 static void AnalyseFrameStop(HackerDevice *device, void *private_data)
 {
-	// One of two places we can stop the frame analysis - the other is in
+	// One of three places we can stop the frame analysis - the other is in
 	// the present call. We use this one when analyse_options=hold.
 	// We don't allow hold to be changed mid-frame due to potential
 	// for filename conflicts, so use def_analyse_options:
 	if (G->analyse_frame && (G->def_analyse_options & FrameAnalysisOptions::HOLD)) {
-		G->analyse_frame = false;
-		if (G->DumpUsage) {
-			EnterCriticalSection(&G->mCriticalSection);
-				DumpUsage(G->ANALYSIS_PATH);
-			LeaveCriticalSection(&G->mCriticalSection);
-		}
+		// Sice we now process input during a frame analysis session,
+		// hold mode may have ended partway through a frame, and may
+		// not even have captured a complete frame. Report how many
+		// complete frames it dumped so the user knows if they did it
+		// right at a glance.
+		LogOverlay(LOG_NOTICE, "Frame analysis hold mode ended after %i complete frames\n",
+				G->analyse_frame_no - 1);
+		_AnalyseFrameStop();
 	}
 }
 

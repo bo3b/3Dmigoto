@@ -238,12 +238,11 @@ void HackerSwapChain::RunFrameActions()
 			// at the key up event instead), but we do increment
 			// the frame count and reset the draw count:
 			G->analyse_frame_no++;
-			G->analyse_frame = true;
-		}
-		else {
+		} else {
 			G->analyse_frame = false;
 			if (G->DumpUsage)
 				DumpUsage(G->ANALYSIS_PATH);
+			LogOverlay(LOG_INFO, "Frame analysis saved to %S\n", G->ANALYSIS_PATH);
 		}
 	}
 

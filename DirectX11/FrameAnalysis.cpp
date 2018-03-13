@@ -1,6 +1,7 @@
 #include "D3D11Wrapper.h"
 #include "FrameAnalysis.h"
 #include "Globals.h"
+#include "input.h"
 
 #include <ScreenGrab.h>
 #include <wincodec.h>
@@ -1013,6 +1014,11 @@ void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_li
 	} catch (std::out_of_range) {}
 	if (deferred_buffers) {
 		for (FrameAnalysisDeferredDumpBufferArgs &i : *deferred_buffers) {
+			// Process key inputs to allow user to abort long running frame analysis sessions:
+			DispatchInputEvents(GetHackerDevice());
+			if (!G->analyse_frame)
+				break;
+
 			FALogInfo("Dumping Deferred Buffer: %S\n", i.filename.c_str());
 			this->analyse_options = i.analyse_options;
 			DumpBufferImmediateCtx(i.staging.Get(), &i.orig_desc,
@@ -1028,6 +1034,11 @@ void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_li
 	} catch (std::out_of_range) {}
 	if (deferred_tex2d) {
 		for (FrameAnalysisDeferredDumpTex2DArgs &i : *deferred_tex2d) {
+			// Process key inputs to allow user to abort long running frame analysis sessions:
+			DispatchInputEvents(GetHackerDevice());
+			if (!G->analyse_frame)
+				break;
+
 			FALogInfo("Dumping Deferred Texture2D: %S\n", i.filename.c_str());
 			this->analyse_options = i.analyse_options;
 			Dump2DResourceImmediateCtx(i.staging.Get(), i.filename,
@@ -1183,6 +1194,11 @@ void FrameAnalysisContext::DumpResource(ID3D11Resource *resource, wchar_t *filen
 		UINT stride, UINT offset)
 {
 	D3D11_RESOURCE_DIMENSION dim;
+
+	// Process key inputs to allow user to abort long running frame analysis sessions:
+	DispatchInputEvents(GetHackerDevice());
+	if (!G->analyse_frame)
+		return;
 
 	resource->GetType(&dim);
 
@@ -1614,7 +1630,7 @@ void FrameAnalysisContext::_DumpCBs(char shader_type, bool compute,
 	HRESULT hr;
 	UINT i;
 
-	for (i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; i++) {
+	for (i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT && G->analyse_frame; i++) {
 		if (!buffers[i])
 			continue;
 
@@ -1638,7 +1654,7 @@ void FrameAnalysisContext::_DumpTextures(char shader_type, bool compute,
 	HRESULT hr;
 	UINT i;
 
-	for (i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
+	for (i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT && G->analyse_frame; i++) {
 		if (!views[i])
 			continue;
 
@@ -1810,7 +1826,7 @@ void FrameAnalysisContext::DumpRenderTargets()
 
 	GetPassThroughOrigContext1()->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, rtvs, NULL);
 
-	for (i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i) {
+	for (i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT && G->analyse_frame; ++i) {
 		if (!rtvs[i])
 			continue;
 
@@ -1881,7 +1897,7 @@ void FrameAnalysisContext::DumpUAVs(bool compute)
 	else
 		GetPassThroughOrigContext1()->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, 0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
 
-	for (i = 0; i < D3D11_PS_CS_UAV_REGISTER_COUNT; ++i) {
+	for (i = 0; i < D3D11_PS_CS_UAV_REGISTER_COUNT && G->analyse_frame; ++i) {
 		if (!uavs[i])
 			continue;
 
