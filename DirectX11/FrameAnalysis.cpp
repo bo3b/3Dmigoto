@@ -1450,6 +1450,9 @@ const wchar_t* FrameAnalysisContext::dedupe_tex2d_filename(ID3D11Texture2D *reso
 
 	GetDumpingContext()->Unmap(resource, 0);
 
+	if (format == DXGI_FORMAT_UNKNOWN)
+		format = orig_desc->Format;
+
 	get_deduped_dir(dedupe_dir, MAX_PATH);
 	_snwprintf_s(dedupe_filename, size, size, L"%ls\\%08x-%S.XXX", dedupe_dir, hash, TexFormatStr(format));
 
