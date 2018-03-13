@@ -997,12 +997,140 @@ void FrameAnalysisChangeOptionsCommand::run(CommandListState *state)
 	state->mHackerContext->FrameAnalysisTrigger(analyse_options);
 }
 
+static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resource, ID3D11View *view,
+		UINT *stride, UINT *offset, UINT *buf_size, DXGI_FORMAT *format)
+{
+	D3D11_RESOURCE_DIMENSION dimension;
+	D3D11_BUFFER_DESC buf_desc;
+	ID3D11Buffer *buffer;
+
+	ID3D11ShaderResourceView *resource_view = NULL;
+	ID3D11RenderTargetView *render_view = NULL;
+	ID3D11DepthStencilView *depth_view = NULL;
+	ID3D11UnorderedAccessView *unordered_view = NULL;
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC resource_view_desc;
+	D3D11_RENDER_TARGET_VIEW_DESC render_view_desc;
+	D3D11_DEPTH_STENCIL_VIEW_DESC depth_view_desc;
+	D3D11_UNORDERED_ACCESS_VIEW_DESC unordered_view_desc;
+
+	ID3D11Texture1D *tex1d;
+	ID3D11Texture2D *tex2d;
+	ID3D11Texture3D *tex3d;
+	D3D11_TEXTURE1D_DESC tex1d_desc;
+	D3D11_TEXTURE2D_DESC tex2d_desc;
+	D3D11_TEXTURE3D_DESC tex3d_desc;
+
+	// Some of these may already be filled in when getting the resource
+	// (either because it is stored in the pipeline state and retrieved
+	// with the resource, or was stored in a custom resource). If they are
+	// not we will try to fill them in here from either the resource or
+	// view description as they may be necessary later to create a
+	// compatible view or perform a region copy:
+
+	resource->GetType(&dimension);
+	if (dimension == D3D11_RESOURCE_DIMENSION_BUFFER) {
+		buffer = (ID3D11Buffer*)resource;
+		buffer->GetDesc(&buf_desc);
+		if (*buf_size)
+			*buf_size = min(*buf_size, buf_desc.ByteWidth);
+		else
+			*buf_size = buf_desc.ByteWidth;
+
+		if (!*stride)
+			*stride = buf_desc.StructureByteStride;
+	}
+
+	if (view) {
+		switch (type) {
+			case ResourceCopyTargetType::SHADER_RESOURCE:
+				resource_view = (ID3D11ShaderResourceView*)view;
+				resource_view->GetDesc(&resource_view_desc);
+				if (*format == DXGI_FORMAT_UNKNOWN)
+					*format = resource_view_desc.Format;
+				if (!*stride)
+					*stride = dxgi_format_size(*format);
+				if (!*offset)
+					*offset = resource_view_desc.Buffer.FirstElement * *stride;
+				if (!*buf_size)
+					*buf_size = resource_view_desc.Buffer.NumElements * *stride + *offset;
+				break;
+			case ResourceCopyTargetType::RENDER_TARGET:
+				render_view = (ID3D11RenderTargetView*)view;
+				render_view->GetDesc(&render_view_desc);
+				if (*format == DXGI_FORMAT_UNKNOWN)
+					*format = render_view_desc.Format;
+				if (!*stride)
+					*stride = dxgi_format_size(*format);
+				if (!*offset)
+					*offset = render_view_desc.Buffer.FirstElement * *stride;
+				if (!*buf_size)
+					*buf_size = render_view_desc.Buffer.NumElements * *stride + *offset;
+				break;
+			case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
+				depth_view = (ID3D11DepthStencilView*)view;
+				depth_view->GetDesc(&depth_view_desc);
+				if (*format == DXGI_FORMAT_UNKNOWN)
+					*format = depth_view_desc.Format;
+				if (!*stride)
+					*stride = dxgi_format_size(*format);
+				// Depth stencil buffers cannot be buffers
+				break;
+			case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
+				unordered_view = (ID3D11UnorderedAccessView*)view;
+				unordered_view->GetDesc(&unordered_view_desc);
+				if (*format == DXGI_FORMAT_UNKNOWN)
+					*format = unordered_view_desc.Format;
+				if (!*stride)
+					*stride = dxgi_format_size(*format);
+				if (!*offset)
+					*offset = unordered_view_desc.Buffer.FirstElement * *stride;
+				if (!*buf_size)
+					*buf_size = unordered_view_desc.Buffer.NumElements * *stride + *offset;
+				break;
+		}
+	} else if (*format == DXGI_FORMAT_UNKNOWN) {
+		// If we *still* don't know the format and it's a texture, get it from
+		// the resource description. This will be the case for the back buffer
+		// since that does not have a view.
+		switch (dimension) {
+			case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+				tex1d = (ID3D11Texture1D*)resource;
+				tex1d->GetDesc(&tex1d_desc);
+				*format = tex1d_desc.Format;
+				break;
+			case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+				tex2d = (ID3D11Texture2D*)resource;
+				tex2d->GetDesc(&tex2d_desc);
+				*format = tex2d_desc.Format;
+				break;
+			case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+				tex3d = (ID3D11Texture3D*)resource;
+				tex3d->GetDesc(&tex3d_desc);
+				*format = tex3d_desc.Format;
+		}
+	}
+
+	if (!*stride) {
+		// This will catch index buffers, which are not structured and
+		// don't have a view, but they do have a format we can use:
+		*stride = dxgi_format_size(*format);
+
+		// This will catch constant buffers, which are not structured
+		// and don't have either a view or format, so set the stride to
+		// the size of the whole buffer:
+		if (!*stride)
+			*stride = *buf_size;
+	}
+}
+
 void FrameAnalysisDumpCommand::run(CommandListState *state)
 {
 	ID3D11Resource *resource = NULL;
 	ID3D11View *view = NULL;
 	UINT stride = 0;
 	UINT offset = 0;
+	UINT buf_size = 0;
 	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
 
 	// Fast exit if frame analysis is currently inactive:
@@ -1016,6 +1144,11 @@ void FrameAnalysisDumpCommand::run(CommandListState *state)
 		COMMAND_LIST_LOG(state, "  No resource to dump\n");
 		return;
 	}
+
+	// Fill in any missing info before handing it to frame analysis. The
+	// format is particularly important to try to avoid saving TYPELESS
+	// resources:
+	FillInMissingInfo(target.type, resource, view, &stride, &offset, &buf_size, &format);
 
 	state->mHackerContext->FrameAnalysisDump(resource, analyse_options, target_name.c_str(), format, stride, offset);
 
@@ -4688,133 +4821,6 @@ static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource 
 	// We have effectively removed the offset during the region copy, so
 	// set it to 0 to make sure nothing will try to use it again elsewhere:
 	*offset = 0;
-}
-
-static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resource, ID3D11View *view,
-		UINT *stride, UINT *offset, UINT *buf_size, DXGI_FORMAT *format)
-{
-	D3D11_RESOURCE_DIMENSION dimension;
-	D3D11_BUFFER_DESC buf_desc;
-	ID3D11Buffer *buffer;
-
-	ID3D11ShaderResourceView *resource_view = NULL;
-	ID3D11RenderTargetView *render_view = NULL;
-	ID3D11DepthStencilView *depth_view = NULL;
-	ID3D11UnorderedAccessView *unordered_view = NULL;
-
-	D3D11_SHADER_RESOURCE_VIEW_DESC resource_view_desc;
-	D3D11_RENDER_TARGET_VIEW_DESC render_view_desc;
-	D3D11_DEPTH_STENCIL_VIEW_DESC depth_view_desc;
-	D3D11_UNORDERED_ACCESS_VIEW_DESC unordered_view_desc;
-
-	ID3D11Texture1D *tex1d;
-	ID3D11Texture2D *tex2d;
-	ID3D11Texture3D *tex3d;
-	D3D11_TEXTURE1D_DESC tex1d_desc;
-	D3D11_TEXTURE2D_DESC tex2d_desc;
-	D3D11_TEXTURE3D_DESC tex3d_desc;
-
-	// Some of these may already be filled in when getting the resource
-	// (either because it is stored in the pipeline state and retrieved
-	// with the resource, or was stored in a custom resource). If they are
-	// not we will try to fill them in here from either the resource or
-	// view description as they may be necessary later to create a
-	// compatible view or perform a region copy:
-
-	resource->GetType(&dimension);
-	if (dimension == D3D11_RESOURCE_DIMENSION_BUFFER) {
-		buffer = (ID3D11Buffer*)resource;
-		buffer->GetDesc(&buf_desc);
-		if (*buf_size)
-			*buf_size = min(*buf_size, buf_desc.ByteWidth);
-		else
-			*buf_size = buf_desc.ByteWidth;
-
-		if (!*stride)
-			*stride = buf_desc.StructureByteStride;
-	}
-
-	if (view) {
-		switch (type) {
-			case ResourceCopyTargetType::SHADER_RESOURCE:
-				resource_view = (ID3D11ShaderResourceView*)view;
-				resource_view->GetDesc(&resource_view_desc);
-				if (*format == DXGI_FORMAT_UNKNOWN)
-					*format = resource_view_desc.Format;
-				if (!*stride)
-					*stride = dxgi_format_size(*format);
-				if (!*offset)
-					*offset = resource_view_desc.Buffer.FirstElement * *stride;
-				if (!*buf_size)
-					*buf_size = resource_view_desc.Buffer.NumElements * *stride + *offset;
-				break;
-			case ResourceCopyTargetType::RENDER_TARGET:
-				render_view = (ID3D11RenderTargetView*)view;
-				render_view->GetDesc(&render_view_desc);
-				if (*format == DXGI_FORMAT_UNKNOWN)
-					*format = render_view_desc.Format;
-				if (!*stride)
-					*stride = dxgi_format_size(*format);
-				if (!*offset)
-					*offset = render_view_desc.Buffer.FirstElement * *stride;
-				if (!*buf_size)
-					*buf_size = render_view_desc.Buffer.NumElements * *stride + *offset;
-				break;
-			case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
-				depth_view = (ID3D11DepthStencilView*)view;
-				depth_view->GetDesc(&depth_view_desc);
-				if (*format == DXGI_FORMAT_UNKNOWN)
-					*format = depth_view_desc.Format;
-				if (!*stride)
-					*stride = dxgi_format_size(*format);
-				// Depth stencil buffers cannot be buffers
-				break;
-			case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
-				unordered_view = (ID3D11UnorderedAccessView*)view;
-				unordered_view->GetDesc(&unordered_view_desc);
-				if (*format == DXGI_FORMAT_UNKNOWN)
-					*format = unordered_view_desc.Format;
-				if (!*stride)
-					*stride = dxgi_format_size(*format);
-				if (!*offset)
-					*offset = unordered_view_desc.Buffer.FirstElement * *stride;
-				if (!*buf_size)
-					*buf_size = unordered_view_desc.Buffer.NumElements * *stride + *offset;
-				break;
-		}
-	} else if (*format == DXGI_FORMAT_UNKNOWN) {
-		// If we *still* don't know the format and it's a texture, get it from
-		// the resource description. This will be the case for the back buffer
-		// since that does not have a view.
-		switch (dimension) {
-			case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
-				tex1d = (ID3D11Texture1D*)resource;
-				tex1d->GetDesc(&tex1d_desc);
-				*format = tex1d_desc.Format;
-				break;
-			case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-				tex2d = (ID3D11Texture2D*)resource;
-				tex2d->GetDesc(&tex2d_desc);
-				*format = tex2d_desc.Format;
-				break;
-			case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-				tex3d = (ID3D11Texture3D*)resource;
-				tex3d->GetDesc(&tex3d_desc);
-				*format = tex3d_desc.Format;
-		}
-	}
-
-	if (!*stride) {
-		// This will catch index buffers, which are not structured and
-		// don't have a view, but they do have a format we can use:
-		*stride = dxgi_format_size(*format);
-
-		// This will catch constant buffers, which are not structured
-		// and don't have either a view or format, so set the stride to
-		// the size of the whole buffer:
-		if (!*stride)
-			*stride = *buf_size;
-	}
 }
 
 static UINT get_resource_bind_flags(ID3D11Resource *resource)
