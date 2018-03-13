@@ -399,8 +399,7 @@ ID3D11DeviceContext* FrameAnalysisContext::GetDumpingContext()
 	return GetPassThroughOrigContext1();
 }
 
-void FrameAnalysisContext::Dump2DResourceImmediateCtx(
-		FrameAnalysisOptions analyse_options, ID3D11Texture2D *staging,
+void FrameAnalysisContext::Dump2DResourceImmediateCtx(ID3D11Texture2D *staging,
 		wstring filename, bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format)
 {
 	HRESULT hr = S_OK, dont_care;
@@ -408,9 +407,6 @@ void FrameAnalysisContext::Dump2DResourceImmediateCtx(
 	wstring save_filename;
 	wchar_t *wic_ext = (stereo ? L".jps" : L".jpg");
 	size_t ext, save_ext;
-
-	// This function has a local copy of analyse_options, since they may
-	// have changed since dumping the resource was deferred
 
 	save_filename = dedupe_tex2d_filename(staging, orig_desc, dedupe_filename, MAX_PATH, filename.c_str(), format);
 
@@ -492,7 +488,7 @@ void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 		desc = &staging_desc;
 
 	if (!DeferDump2DResource(staging, filename, stereo, desc, format))
-		Dump2DResourceImmediateCtx(analyse_options, staging, filename, stereo, desc, format);
+		Dump2DResourceImmediateCtx(staging, filename, stereo, desc, format);
 
 	if (staging != resource)
 		staging->Release();
@@ -1018,9 +1014,10 @@ void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_li
 	if (deferred_buffers) {
 		for (FrameAnalysisDeferredDumpBufferArgs &i : *deferred_buffers) {
 			FALogInfo("Dumping Deferred Buffer: %S\n", i.filename.c_str());
-			DumpBufferImmediateCtx(i.analyse_options, i.staging.Get(),
-					&i.orig_desc, i.filename, i.buf_type_mask,
-					i.idx, i.ib_fmt, i.stride, i.offset, i.first,
+			this->analyse_options = i.analyse_options;
+			DumpBufferImmediateCtx(i.staging.Get(), &i.orig_desc,
+					i.filename, i.buf_type_mask, i.idx,
+					i.ib_fmt, i.stride, i.offset, i.first,
 					i.count);
 		}
 	}
@@ -1032,8 +1029,9 @@ void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_li
 	if (deferred_tex2d) {
 		for (FrameAnalysisDeferredDumpTex2DArgs &i : *deferred_tex2d) {
 			FALogInfo("Dumping Deferred Texture2D: %S\n", i.filename.c_str());
-			Dump2DResourceImmediateCtx(i.analyse_options, i.staging.Get(),
-					i.filename, i.stereo, &i.orig_desc, i.format);
+			this->analyse_options = i.analyse_options;
+			Dump2DResourceImmediateCtx(i.staging.Get(), i.filename,
+					i.stereo, &i.orig_desc, i.format);
 		}
 	}
 
@@ -1062,8 +1060,8 @@ void FrameAnalysisContext::finish_deferred_resources(ID3D11CommandList *command_
 	LeaveCriticalSection(&G->mCriticalSection);
 }
 
-void FrameAnalysisContext::DumpBufferImmediateCtx(FrameAnalysisOptions analyse_options, ID3D11Buffer *staging,
-		D3D11_BUFFER_DESC *orig_desc, wstring filename, FrameAnalysisOptions buf_type_mask, int idx,
+void FrameAnalysisContext::DumpBufferImmediateCtx(ID3D11Buffer *staging, D3D11_BUFFER_DESC *orig_desc,
+		wstring filename, FrameAnalysisOptions buf_type_mask, int idx,
 		DXGI_FORMAT ib_fmt, UINT stride, UINT offset, UINT first, UINT count)
 {
 	wchar_t bin_filename[MAX_PATH], txt_filename[MAX_PATH];
@@ -1073,9 +1071,6 @@ void FrameAnalysisContext::DumpBufferImmediateCtx(FrameAnalysisOptions analyse_o
 	wchar_t *bin_ext;
 	size_t ext;
 	errno_t err;
-
-	// This function has a local copy of analyse_options, since they may
-	// have changed since dumping the resource was deferred
 
 	hr = GetDumpingContext()->Map(staging, 0, D3D11_MAP_READ, 0, &map);
 	if (FAILED(hr)) {
@@ -1178,7 +1173,7 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	GetDumpingContext()->CopyResource(staging, buffer);
 
 	if (!DeferDumpBuffer(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count))
-		DumpBufferImmediateCtx(analyse_options, staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count);
+		DumpBufferImmediateCtx(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count);
 
 	staging->Release();
 }

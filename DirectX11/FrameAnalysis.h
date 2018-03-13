@@ -94,8 +94,7 @@ private:
 			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format);
 	bool DeferDump2DResource(ID3D11Texture2D *staging, wchar_t *filename,
 			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format);
-	void Dump2DResourceImmediateCtx(FrameAnalysisOptions analyse_options,
-			ID3D11Texture2D *staging, wstring filename,
+	void Dump2DResourceImmediateCtx(ID3D11Texture2D *staging, wstring filename,
 			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format);
 
 	HRESULT ResolveMSAA(ID3D11Texture2D *src, D3D11_TEXTURE2D_DESC *srcDesc,
@@ -122,8 +121,7 @@ private:
 			D3D11_BUFFER_DESC *orig_desc, wchar_t *filename,
 			FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
 			UINT stride, UINT offset, UINT first, UINT count);
-	void DumpBufferImmediateCtx(FrameAnalysisOptions analyse_options,
-			ID3D11Buffer *staging, D3D11_BUFFER_DESC *orig_desc,
+	void DumpBufferImmediateCtx(ID3D11Buffer *staging, D3D11_BUFFER_DESC *orig_desc,
 			wstring filename, FrameAnalysisOptions buf_type_mask,
 			int idx, DXGI_FORMAT ib_fmt, UINT stride, UINT offset,
 			UINT first, UINT count);
