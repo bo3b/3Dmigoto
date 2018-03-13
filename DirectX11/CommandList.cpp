@@ -503,13 +503,14 @@ static bool ParsePerDrawStereoOverride(const wchar_t *section,
 		CommandList *post_command_list,
 		bool is_separation)
 {
+	bool restore_on_post = !explicit_command_list && pre_command_list && post_command_list;
 	PerDrawStereoOverrideCommand *operation = NULL;
 	int ret, len1;
 
 	if (is_separation)
-		operation = new PerDrawSeparationOverrideCommand(!explicit_command_list);
+		operation = new PerDrawSeparationOverrideCommand(restore_on_post);
 	else
-		operation = new PerDrawConvergenceOverrideCommand(!explicit_command_list);
+		operation = new PerDrawConvergenceOverrideCommand(restore_on_post);
 
 	// Try parsing value as a float
 	ret = swscanf_s(val->c_str(), L"%f%n", &operation->val, &len1);
