@@ -151,6 +151,7 @@ enum class FrameAnalysisOptions {
 	DEFRD_CTX_IMM   = 0x00400000,
 	DEFRD_CTX_DELAY = 0x00800000,
 	DEFRD_CTX_MASK  = 0x00c00000,
+	SYMLINK         = 0x01000000,
 	DEPRECATED      = (signed)0x80000000,
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
@@ -188,6 +189,7 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 	{L"deferred_ctx_immediate", FrameAnalysisOptions::DEFRD_CTX_IMM},
 	{L"deferred_ctx_accurate", FrameAnalysisOptions::DEFRD_CTX_DELAY},
 	{L"share_dupes", FrameAnalysisOptions::SHARE_DEDUPED},
+	{L"symlink", FrameAnalysisOptions::SYMLINK},
 
 	// Legacy combo options:
 	{L"dump_rt_jps", FrameAnalysisOptions::DUMP_RT_JPS},
