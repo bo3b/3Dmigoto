@@ -504,6 +504,15 @@ void Overlay::DrawRectangle(float x, float y, float w, float h, float r, float g
 	mPrimitiveBatch->End();
 }
 
+void Overlay::DrawOutlinedString(DirectX::SpriteFont *font, wchar_t const *text, DirectX::XMFLOAT2 const &position, DirectX::FXMVECTOR color)
+{
+	font->DrawString(mSpriteBatch.get(), text, position + Vector2(-1, 0), DirectX::Colors::Black);
+	font->DrawString(mSpriteBatch.get(), text, position + Vector2( 1, 0), DirectX::Colors::Black);
+	font->DrawString(mSpriteBatch.get(), text, position + Vector2( 0,-1), DirectX::Colors::Black);
+	font->DrawString(mSpriteBatch.get(), text, position + Vector2( 0, 1), DirectX::Colors::Black);
+	font->DrawString(mSpriteBatch.get(), text, position, color);
+}
+
 // -----------------------------------------------------------------------------
 
 // The active shader will show where we are in each list. / 0 / 0 will mean that we are not 
@@ -620,7 +629,7 @@ void Overlay::DrawShaderInfoLine(char *type, UINT64 selectedShader, float *y, bo
 
 	textPosition = Vector2(x, *y);
 	*y += strSize.y;
-	mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+	DrawOutlinedString(mFont.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 }
 
 void Overlay::DrawShaderInfoLines(float *y)
@@ -748,7 +757,7 @@ void Overlay::DrawOverlay(void)
 				CreateShaderCountString(osdString);
 				strSize = mFont->MeasureString(osdString);
 				textPosition = Vector2(float(mResolution.x - strSize.x) / 2, y);
-				mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+				DrawOutlinedString(mFont.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 				y += strSize.y;
 
 				DrawShaderInfoLines(&y);
@@ -757,7 +766,7 @@ void Overlay::DrawOverlay(void)
 				CreateStereoInfoString(mHackerDevice->mStereoHandle, osdString);
 				strSize = mFont->MeasureString(osdString);
 				textPosition = Vector2(float(mResolution.x - strSize.x) / 2, float(mResolution.y - strSize.y - 10));
-				mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+				DrawOutlinedString(mFont.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 			}
 
 			if (has_notice)
