@@ -724,7 +724,7 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
 	}
 
 	if (stereo)
-		swprintf_s(info, maxstring, L"Sep:%.0f  Conv:%.1f", separation, convergence);
+		swprintf_s(info, maxstring, L"Sep:%.0f  Conv:%.2f", separation, convergence);
 	else
 		swprintf_s(info, maxstring, L"Stereo disabled");
 }
