@@ -3765,7 +3765,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexed(THIS_
 	HackerContext::DrawIndexed(IndexCount, StartIndexLocation, BaseVertexLocation);
 
 	if (G->analyse_frame) {
-		DrawCallInfo call_info(0, IndexCount, 0, BaseVertexLocation, StartIndexLocation, 0, NULL, 0, false);
+		DrawCallInfo call_info(DrawCall::DrawIndexed, 0, IndexCount, 0, BaseVertexLocation, StartIndexLocation, 0, NULL, 0);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
@@ -3784,7 +3784,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::Draw(THIS_
 	HackerContext::Draw(VertexCount, StartVertexLocation);
 
 	if (G->analyse_frame) {
-		DrawCallInfo call_info(VertexCount, 0, 0, StartVertexLocation, 0, 0, NULL, 0, false);
+		DrawCallInfo call_info(DrawCall::Draw, VertexCount, 0, 0, StartVertexLocation, 0, 0, NULL, 0);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
@@ -3825,7 +3825,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstanced(THIS_
 			BaseVertexLocation, StartInstanceLocation);
 
 	if (G->analyse_frame) {
-		DrawCallInfo call_info(0, IndexCountPerInstance, InstanceCount, BaseVertexLocation, StartIndexLocation, StartInstanceLocation, NULL, 0, false);
+		DrawCallInfo call_info(DrawCall::DrawIndexedInstanced, 0, IndexCountPerInstance, InstanceCount, BaseVertexLocation, StartIndexLocation, StartInstanceLocation, NULL, 0);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
@@ -3848,7 +3848,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawInstanced(THIS_
 	HackerContext::DrawInstanced(VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
 
 	if (G->analyse_frame) {
-		DrawCallInfo call_info(VertexCountPerInstance, 0, InstanceCount, StartVertexLocation, 0, StartInstanceLocation, NULL, 0, false);
+		DrawCallInfo call_info(DrawCall::DrawInstanced, VertexCountPerInstance, 0, InstanceCount, StartVertexLocation, 0, StartInstanceLocation, NULL, 0);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
@@ -3946,7 +3946,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawAuto(THIS)
 	HackerContext::DrawAuto();
 
 	if (G->analyse_frame) {
-		DrawCallInfo call_info(0, 0, 0, 0, 0, 0, NULL, 0, false);
+		DrawCallInfo call_info(DrawCall::DrawAuto, 0, 0, 0, 0, 0, 0, NULL, 0);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
@@ -3965,7 +3965,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstancedIndirect(THIS_
 	HackerContext::DrawIndexedInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 
 	if (G->analyse_frame) {
-		DrawCallInfo call_info(0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs, false);
+		DrawCallInfo call_info(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
@@ -3984,7 +3984,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawInstancedIndirect(THIS_
 	HackerContext::DrawInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 
 	if (G->analyse_frame) {
-		DrawCallInfo call_info(0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs, true);
+		DrawCallInfo call_info(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;

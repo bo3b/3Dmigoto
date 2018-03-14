@@ -38,15 +38,15 @@ struct DrawContext
 	CommandList *post_commands[5];
 	DrawCallInfo call_info;
 
-	DrawContext(UINT VertexCount, UINT IndexCount, UINT InstanceCount,
+	DrawContext(DrawCall type,
+			UINT VertexCount, UINT IndexCount, UINT InstanceCount,
 			UINT FirstVertex, UINT FirstIndex, UINT FirstInstance,
-			ID3D11Buffer *indirect_buffer, UINT args_offset,
-			bool DrawInstancedIndirect) :
+			ID3D11Buffer *indirect_buffer, UINT args_offset) :
 		oldSeparation(FLT_MAX),
 		oldVertexShader(NULL),
 		oldPixelShader(NULL),
-		call_info(VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance,
-				indirect_buffer, args_offset, DrawInstancedIndirect)
+		call_info(type, VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance,
+				indirect_buffer, args_offset)
 	{
 		memset(post_commands, 0, sizeof(post_commands));
 	}

@@ -791,31 +791,38 @@ void DrawCommand::run(CommandListState *state)
 				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> SKIPPED DUE TO HUNTING\n", ini_section.c_str());
 				break;
 			}
-			if (info->InstanceCount) {
-				if (info->IndexCount) {
+			switch (info->type) {
+				case DrawCall::DrawIndexedInstanced:
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
 					mOrigContext1->DrawIndexedInstanced(info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
-				} else {
+					break;
+				case DrawCall::DrawInstanced:
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
 					mOrigContext1->DrawInstanced(info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
-				}
-			} else if (info->IndexCount) {
-				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), info->IndexCount, info->FirstIndex, info->FirstVertex);
-				mOrigContext1->DrawIndexed(info->IndexCount, info->FirstIndex, info->FirstVertex);
-			} else if (info->VertexCount) {
-				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> Draw(%u, %u)\n", ini_section.c_str(), info->VertexCount, info->FirstVertex);
-				mOrigContext1->Draw(info->VertexCount, info->FirstVertex);
-			} else if (info->indirect_buffer) {
-				if (info->DrawInstancedIndirect) {
+					break;
+				case DrawCall::DrawIndexed:
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), info->IndexCount, info->FirstIndex, info->FirstVertex);
+					mOrigContext1->DrawIndexed(info->IndexCount, info->FirstIndex, info->FirstVertex);
+					break;
+				case DrawCall::Draw:
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> Draw(%u, %u)\n", ini_section.c_str(), info->VertexCount, info->FirstVertex);
+					mOrigContext1->Draw(info->VertexCount, info->FirstVertex);
+					break;
+				case DrawCall::DrawInstancedIndirect:
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
 					mOrigContext1->DrawInstancedIndirect(info->indirect_buffer, info->args_offset);
-				} else {
+					break;
+				case DrawCall::DrawIndexedInstancedIndirect:
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
 					mOrigContext1->DrawIndexedInstancedIndirect(info->indirect_buffer, info->args_offset);
-				}
-			} else {
-				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawAuto()\n", ini_section.c_str());
-				mOrigContext1->DrawAuto();
+					break;
+				case DrawCall::DrawAuto:
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawAuto()\n", ini_section.c_str());
+					mOrigContext1->DrawAuto();
+					break;
+				default:
+					LogInfo("BUG: draw = from_caller -> unknown draw call type\n");
+					DoubleBeepExit();
 			}
 			// TODO: dispatch = from_caller
 			break;
