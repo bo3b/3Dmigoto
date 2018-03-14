@@ -1672,6 +1672,11 @@ void FrameAnalysisContext::_DumpTextures(char shader_type, bool compute,
 		if (!views[i])
 			continue;
 
+		if (i == G->StereoParamsReg || i == G->IniParamsReg) {
+			FALogInfo("Skipped 3DMigoto resource in slot %cs-t%i\n", shader_type, i);
+			continue;
+		}
+
 		views[i]->GetResource(&resource);
 		if (!resource) {
 			views[i]->Release();
