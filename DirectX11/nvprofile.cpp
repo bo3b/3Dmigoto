@@ -1186,11 +1186,15 @@ static void spawn_privileged_profile_helper_task()
 		DeleteFile(d3dcompiler_temp_path);
 	}
 
+	CoUninitialize();
+
 	return;
 err_close:
 	CloseHandle(info.hProcess);
 err:
 	LogInfo("Error while requesting admin privileges to install driver profile\n");
+
+	CoUninitialize();
 
 	if (do_rm) {
 		DeleteFile(migoto_short_path);

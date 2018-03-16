@@ -4,8 +4,72 @@
 #include "util.h"
 #include "globals.h"
 
+// DirectXTK headers fail to include their own pre-requisits. We just want
+// GetSurfaceInfo from LoaderHelpers
+#include "DirectXTK/Src/pch.h"
+#include "DirectXTK/Src/PlatformHelpers.h"
+#include "DirectXTK/Src/LoaderHelpers.h"
+
 // Overloaded functions to log any kind of resource description (useful to call
 // from templates):
+
+int StrResourceDesc(char *buf, size_t size, D3D11_BUFFER_DESC *desc)
+{
+	return _snprintf_s(buf, size, size, "type=Buffer byte_width=%u "
+		"usage=\"%S\" bind_flags=0x%x cpu_access_flags=0x%x misc_flags=0x%x "
+		"stride=%u",
+		desc->ByteWidth, TexResourceUsage(desc->Usage),
+		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags,
+		desc->StructureByteStride);
+}
+
+int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE1D_DESC *desc)
+{
+	return _snprintf_s(buf, size, size, "type=Texture1D width=%u mips=%u "
+		"array=%u format=\"%s\" usage=\"%S\" bind_flags=0x%x "
+		"cpu_access_flags=0x%x misc_flags=0x%x",
+		desc->Width, desc->MipLevels, desc->ArraySize,
+		TexFormatStr(desc->Format), TexResourceUsage(desc->Usage),
+		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags);
+}
+
+int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc)
+{
+	return _snprintf_s(buf, size, size, "type=Texture2D width=%u height=%u mips=%u "
+		"array=%u format=\"%s\" msaa=%u "
+		"msaa_quality=%u usage=\"%S\" bind_flags=0x%x "
+		"cpu_access_flags=0x%x misc_flags=0x%x",
+		desc->Width, desc->Height, desc->MipLevels, desc->ArraySize,
+		TexFormatStr(desc->Format), desc->SampleDesc.Count,
+		desc->SampleDesc.Quality, TexResourceUsage(desc->Usage),
+		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags);
+}
+
+int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE3D_DESC *desc)
+{
+	return _snprintf_s(buf, size, size, "type=Texture3D width=%u height=%u depth=%u "
+		"mips=%u format=\"%s\" usage=\"%S\" bind_flags=0x%x "
+		"cpu_access_flags=0x%x misc_flags=0x%x",
+		desc->Width, desc->Height, desc->Depth, desc->MipLevels,
+		TexFormatStr(desc->Format), TexResourceUsage(desc->Usage),
+		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags);
+}
+
+int StrResourceDesc(char *buf, size_t size, struct ResourceHashInfo &info)
+{
+	switch (info.type) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+			return StrResourceDesc(buf, size, &info.buf_desc);
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+			return StrResourceDesc(buf, size, &info.tex1d_desc);
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+			return StrResourceDesc(buf, size, &info.tex2d_desc);
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+			return StrResourceDesc(buf, size, &info.tex3d_desc);
+		default:
+			return _snprintf_s(buf, size, size, "type=%i", info.type);
+	}
+}
 
 template <typename DescType>
 static void LogResourceDescCommon(DescType *desc)
@@ -522,18 +586,87 @@ static size_t Texture3DLength(
 	return padded_width * padded_height * mip_depth / 16 * block_size;
 }
 
+static uint32_t hash_tex2d_data(uint32_t hash, const void *data, size_t length,
+		const D3D11_TEXTURE2D_DESC *pDesc, bool zero_padding,
+		bool skip_padding, UINT mapped_row_pitch)
+{
+	size_t row_pitch, slice_pitch, row_count;
+
+	// Each row in a 2D texture has some alignment constraint, and the
+	// unused bytes at the end of each row can be garbage, interfering with
+	// the hash calculation. We should probably have always been discarding
+	// these bytes for the hash calculations, but it wasn't easily apparent
+	// that would be necessary and now too many fixes depend on it to just
+	// change it, but we might consider adding an option to do this.
+	//
+	// However, these garbage bytes are proven to interfere with frame
+	// analysis de-duplication - not fatally so, but they do mess up the
+	// hashes on many resources so the hashes are not fully de-duped
+	// (easily observable dumping HUD textures in DOAXVV twice in a row and
+	// many of the de-duped hashes will have changed).
+	//
+	// Replacing the padding bytes with zeroes makes the hashes consistent
+	// and fixes about half the hashes to match the texture hashes of those
+	// that should, however the other half are still incorrect (but
+	// consistent at least) and further investigation is required.
+	//
+	// Two possibilities come to mind to investigate:
+	// - The textures may have been created with garbage in the padding
+	//   bytes that we ideally should ignore.
+	// - The SysMemPitch used to create the resources may not be preserved
+	//   by DirectX, so the RowPitch we use here may not match leading to
+	//   the zero hash being incorrect. Ideally we would skip the padding
+	//   rather than replace it with zeroes.
+	//
+	// This is based partially from DirectXTK's SaveDDSTextureToFile, but
+	// with the length capped based on our length calculation, and with the
+	// padding replaced with zeroes rather than skipped.
+
+	if (!zero_padding && !skip_padding)
+		return crc32c_hw(hash, data, length);
+
+	DirectX::LoaderHelpers::GetSurfaceInfo(pDesc->Width, pDesc->Height, pDesc->Format, &slice_pitch, &row_pitch, &row_count);
+
+	uint8_t *sptr = (uint8_t*)data;
+	size_t msize = min(row_pitch, mapped_row_pitch);
+
+	signed padding = (signed)mapped_row_pitch - (signed)row_pitch;
+	uint8_t *zeroes = NULL;
+	if (zero_padding && padding > 0) {
+		zeroes = new uint8_t[padding];
+		memset(zeroes, 0, padding);
+	}
+
+	signed remaining = (signed)length;
+	for (size_t h = 0; h < row_count && remaining > 0; h++) {
+		hash = crc32c_hw(hash, sptr, min(msize, (unsigned)remaining));
+		sptr += mapped_row_pitch;
+		remaining -= (signed)msize;
+
+		if (zeroes && remaining > 0) {
+			hash = crc32c_hw(hash, zeroes, min(padding, remaining));
+			remaining -= padding;
+		}
+	}
+
+	delete [] zeroes;
+	return hash;
+}
 
 uint32_t CalcTexture2DDataHash(
 	const D3D11_TEXTURE2D_DESC *pDesc,
-	const D3D11_SUBRESOURCE_DATA *pInitialData)
+	const D3D11_SUBRESOURCE_DATA *pInitialData,
+	bool zero_padding)
 {
 	uint32_t hash = 0;
 	size_t length_v12;
 	size_t length;
-	UINT item = 0, level = 0, index;
 
 	if (!pDesc || !pInitialData || !pInitialData->pSysMem)
 		return 0;
+
+	if (G->texture_hash_version)
+		return CalcTexture2DDataHashAccurate(pDesc, pInitialData);
 
 	// In 3DMigoto v1.2, this is what we were using as the length of the
 	// buffer in bytes. Unfortunately this is not right since pDesc->Width
@@ -565,7 +698,8 @@ uint32_t CalcTexture2DDataHash(
 		if (length_v12 < length || pDesc->ArraySize > 1) {
 			LogDebug("  Using 3DMigoto v1.2.1 compatible Texture2D CRC calculation\n");
 		}
-		return crc32c_hw(hash, pInitialData[0].pSysMem, length_v12);
+		return hash_tex2d_data(hash, pInitialData[0].pSysMem, length_v12,
+				pDesc, zero_padding, false, pInitialData[0].SysMemPitch);
 	}
 
 	// If we are here it means the old length had overflowed the buffer,
@@ -605,20 +739,43 @@ uint32_t CalcTexture2DDataHash(
 	// I am fairly confident that there won't be any impact to this change
 	// either.
 	//
-	//for (item = 0; item < pDesc->ArraySize; item++) {
-		// We could potentially consider multiple mip-map levels, but
-		// they are unlikely to differentiate any textures that the
-		// main mip-map level alone could not, and few games hand them
-		// to us anyway. Alternatively, using only a smaller mip-map
-		// could potentially be used to improve performance if the
-		// largest mip-map level was enormous (but again, only if the
-		// game actually handed them to us).
-		// for (level = 0; level < pDesc->MipLevels; level++) {
+	// This is now fairly ingrained that we only consider the first
+	// subresource. Changing this would break hash tracking and frame
+	// analysis de-duplication.
 
-		index = D3D11CalcSubresource(level, item, max(pDesc->MipLevels, 1));
-		length = Texture2DLength(pDesc, &pInitialData[index], level);
-		hash = crc32c_hw(hash, pInitialData[index].pSysMem, length);
-	//}
+	length = Texture2DLength(pDesc, &pInitialData[0], 0);
+	hash = hash_tex2d_data(hash, pInitialData[0].pSysMem, length,
+			pDesc, false, true, pInitialData[0].SysMemPitch);
+
+	return hash;
+}
+
+uint32_t CalcTexture2DDataHashAccurate(
+	const D3D11_TEXTURE2D_DESC *pDesc,
+	const D3D11_SUBRESOURCE_DATA *pInitialData)
+{
+	uint32_t hash = 0;
+
+	// The regular data hash we are using is woefully innaccurate, as it
+	// will not hash the entire image. Mostly OK for texture filtering, but
+	// no good for frame analysis deduplication - especially evident when
+	// the HUD is being rendered, as only HUD elements that alter the upper
+	// third of the image cause the hash to change, while HUD elements in
+	// the mid to lower half of the image don't affect the hash at all
+	// (observed in DOAXVV).
+	//
+	// This function throws away all backwards compatibility with our
+	// legacy hashing code to just try to do it right. The hashes won't
+	// match those used for texture filtering at all, but it's more
+	// important that this get it right.
+
+	if (!pDesc || !pInitialData || !pInitialData->pSysMem)
+		return 0;
+
+	// Passing length=INT_MAX, since that is an upper bound and
+	// hash_tex2d_data will work it out from DirectXTK
+	hash = hash_tex2d_data(hash, pInitialData[0].pSysMem, INT_MAX,
+			pDesc, false, true, pInitialData[0].SysMemPitch);
 
 	return hash;
 }
@@ -679,9 +836,6 @@ uint32_t CalcTexture1DDataHash(
 	if (!pDesc || !pInitialData || !pInitialData->pSysMem)
 		return 0;
 
-	// As above, we could potentially consider multiple mip-map levels blah
-	// blah blah...
-
 	length = Texture1DLength(pDesc, &pInitialData[0], 0);
 	return crc32c_hw(0, pInitialData[0].pSysMem, length);
 }
@@ -737,10 +891,6 @@ uint32_t CalcTexture3DDataHash(
 	// last time we need to change this.
 
 	LogDebug("  Using 3DMigoto v1.2.9+ Texture3D CRC calculation\n");
-
-	// As above, we could potentially consider multiple mip-map levels blah
-	// blah blah... Difference is, there can only be one array entry in a
-	// 3D texture
 
 	hash = crc32c_hw(hash, pInitialData[0].pSysMem, length);
 

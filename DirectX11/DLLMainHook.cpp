@@ -120,6 +120,9 @@ static HRESULT HookDXGIFactories()
 	if (FAILED(hr))
 		return E_FAIL;
 
+	// We do not care if this fails - this function does not exist on Win7
+	InstallHook(L"dxgi.dll", "CreateDXGIFactory2", (LPVOID*)&fnOrigCreateDXGIFactory2, Hooked_CreateDXGIFactory2);
+
 	return NOERROR;
 }
 
@@ -138,6 +141,9 @@ static void RemoveHooks()
 //
 // If we return false here, then the game will error out and not run.
 
+
+DWORD tls_idx = TLS_OUT_OF_INDEXES;
+
 BOOL WINAPI DllMain(
 	_In_  HINSTANCE hinstDLL,
 	_In_  DWORD fdwReason,
@@ -152,18 +158,44 @@ BOOL WINAPI DllMain(
 				return false;
 			if (FAILED(HookDXGIFactories()))
 				return false;
+
+			tls_idx = TlsAlloc();
+			if (tls_idx == TLS_OUT_OF_INDEXES)
+				return false;
+
 			break;
 
 		case DLL_PROCESS_DETACH:
 			RemoveHooks();
+			if (tls_idx != TLS_OUT_OF_INDEXES) {
+				// FIXME: If we are being dynamically unloaded
+				// (lpvReserved == NULL), we should delete the
+				// TLS structure from all other threads, but we
+				// don't have an easy way to get that at the
+				// moment. On program termination (lpvReserved
+				// != NULL) we are not permitted to do that, so
+				// for now just release the TLS structure from
+				// the current thread (if allocated) and
+				// release the TLS index allocated for the DLL.
+				delete TlsGetValue(tls_idx);
+				TlsFree(tls_idx);
+			}
+			DestroyDLL();
 			break;
 
 		case DLL_THREAD_ATTACH:
 			// Do thread-specific initialization.
+
+			// We could allocate a TLS structure here, but why
+			// bother? This isn't called for threads that already
+			// exist when we were attached and get_tls() will
+			// allocate the structure on demand as needed.
+
 			break;
 
 		case DLL_THREAD_DETACH:
 			// Do thread-specific cleanup.
+			delete TlsGetValue(tls_idx);
 			break;
 	}
 

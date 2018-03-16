@@ -503,13 +503,14 @@ static bool ParsePerDrawStereoOverride(const wchar_t *section,
 		CommandList *post_command_list,
 		bool is_separation)
 {
+	bool restore_on_post = !explicit_command_list && pre_command_list && post_command_list;
 	PerDrawStereoOverrideCommand *operation = NULL;
 	int ret, len1;
 
 	if (is_separation)
-		operation = new PerDrawSeparationOverrideCommand(!explicit_command_list);
+		operation = new PerDrawSeparationOverrideCommand(restore_on_post);
 	else
-		operation = new PerDrawConvergenceOverrideCommand(!explicit_command_list);
+		operation = new PerDrawConvergenceOverrideCommand(restore_on_post);
 
 	// Try parsing value as a float
 	ret = swscanf_s(val->c_str(), L"%f%n", &operation->val, &len1);
@@ -533,6 +534,55 @@ success:
 	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
 
 bail:
+	delete operation;
+	return false;
+}
+
+static bool ParseFrameAnalysisDump(const wchar_t *section,
+		const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
+{
+	FrameAnalysisDumpCommand *operation = new FrameAnalysisDumpCommand();
+	wchar_t *buf;
+	size_t size = val->size() + 1;
+	wchar_t *target = NULL;
+
+	// parse_enum_option_string replaces spaces with NULLs, so it can't
+	// operate on the buffer in the wstring directly. I could potentially
+	// change it to work without modifying the string, but for now it's
+	// easier to just make a copy of the string:
+	buf = new wchar_t[size];
+	wcscpy_s(buf, size, val->c_str());
+
+	operation->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
+		(FrameAnalysisOptionNames, buf, &target);
+
+	if (!target)
+		goto bail;
+
+	if (!operation->target.ParseTarget(target, true))
+		goto bail;
+
+	operation->target_name = L"[" + wstring(section) + L"]-" + wstring(target);
+	// target_name will be used in the filenames, so replace any reserved characters:
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'<', L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'>', L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L':', L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'"', L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'/', L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'\\',L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'|', L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'?', L'_');
+	std::replace(operation->target_name.begin(), operation->target_name.end(), L'*', L'_');
+
+	delete [] buf;
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+
+bail:
+	delete [] buf;
 	delete operation;
 	return false;
 }
@@ -579,6 +629,12 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 
 	if (!wcscmp(key, L"convergence"))
 		return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, false);
+
+	if (!wcscmp(key, L"analyse_options"))
+		return AddCommandToList(new FrameAnalysisChangeOptionsCommand(section, key, val), explicit_command_list, pre_command_list, NULL, NULL);
+
+	if (!wcscmp(key, L"dump"))
+		return ParseFrameAnalysisDump(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
@@ -735,31 +791,38 @@ void DrawCommand::run(CommandListState *state)
 				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> SKIPPED DUE TO HUNTING\n", ini_section.c_str());
 				break;
 			}
-			if (info->InstanceCount) {
-				if (info->IndexCount) {
+			switch (info->type) {
+				case DrawCall::DrawIndexedInstanced:
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
 					mOrigContext1->DrawIndexedInstanced(info->IndexCount, info->InstanceCount, info->FirstIndex, info->FirstVertex, info->FirstInstance);
-				} else {
+					break;
+				case DrawCall::DrawInstanced:
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
 					mOrigContext1->DrawInstanced(info->VertexCount, info->InstanceCount, info->FirstVertex, info->FirstInstance);
-				}
-			} else if (info->IndexCount) {
-				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), info->IndexCount, info->FirstIndex, info->FirstVertex);
-				mOrigContext1->DrawIndexed(info->IndexCount, info->FirstIndex, info->FirstVertex);
-			} else if (info->VertexCount) {
-				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> Draw(%u, %u)\n", ini_section.c_str(), info->VertexCount, info->FirstVertex);
-				mOrigContext1->Draw(info->VertexCount, info->FirstVertex);
-			} else if (info->indirect_buffer) {
-				if (info->DrawInstancedIndirect) {
+					break;
+				case DrawCall::DrawIndexed:
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), info->IndexCount, info->FirstIndex, info->FirstVertex);
+					mOrigContext1->DrawIndexed(info->IndexCount, info->FirstIndex, info->FirstVertex);
+					break;
+				case DrawCall::Draw:
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> Draw(%u, %u)\n", ini_section.c_str(), info->VertexCount, info->FirstVertex);
+					mOrigContext1->Draw(info->VertexCount, info->FirstVertex);
+					break;
+				case DrawCall::DrawInstancedIndirect:
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
 					mOrigContext1->DrawInstancedIndirect(info->indirect_buffer, info->args_offset);
-				} else {
+					break;
+				case DrawCall::DrawIndexedInstancedIndirect:
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
 					mOrigContext1->DrawIndexedInstancedIndirect(info->indirect_buffer, info->args_offset);
-				}
-			} else {
-				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawAuto()\n", ini_section.c_str());
-				mHackerContext->DrawAuto();
+					break;
+				case DrawCall::DrawAuto:
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawAuto()\n", ini_section.c_str());
+					mOrigContext1->DrawAuto();
+					break;
+				default:
+					LogInfo("BUG: draw = from_caller -> unknown draw call type\n");
+					DoubleBeepExit();
 			}
 			// TODO: dispatch = from_caller
 			break;
@@ -912,6 +975,194 @@ void PerDrawConvergenceOverrideCommand::set_stereo_value(CommandListState *state
 	NvAPIOverride();
 	if (NVAPI_OK != NvAPI_Stereo_SetConvergence(state->mHackerDevice->mStereoHandle, val))
 		COMMAND_LIST_LOG(state, "  Stereo_SetConvergence failed\n");
+}
+
+FrameAnalysisChangeOptionsCommand::FrameAnalysisChangeOptionsCommand(wstring section, wstring key, wstring *val)
+{
+	wchar_t *buf;
+	size_t size = val->size() + 1;
+
+	// parse_enum_option_string replaces spaces with NULLs, so it can't
+	// operate on the buffer in the wstring directly. I could potentially
+	// change it to work without modifying the string, but for now it's
+	// easier to just make a copy of the string:
+	buf = new wchar_t[size];
+	wcscpy_s(buf, size, val->c_str());
+
+	analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
+		(FrameAnalysisOptionNames, buf, NULL);
+
+	delete [] buf;
+
+	ini_line = L"[" + wstring(section) + L"] " + key + L" = " + *val;
+}
+
+void FrameAnalysisChangeOptionsCommand::run(CommandListState *state)
+{
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+
+	state->mHackerContext->FrameAnalysisTrigger(analyse_options);
+}
+
+static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resource, ID3D11View *view,
+		UINT *stride, UINT *offset, UINT *buf_size, DXGI_FORMAT *format)
+{
+	D3D11_RESOURCE_DIMENSION dimension;
+	D3D11_BUFFER_DESC buf_desc;
+	ID3D11Buffer *buffer;
+
+	ID3D11ShaderResourceView *resource_view = NULL;
+	ID3D11RenderTargetView *render_view = NULL;
+	ID3D11DepthStencilView *depth_view = NULL;
+	ID3D11UnorderedAccessView *unordered_view = NULL;
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC resource_view_desc;
+	D3D11_RENDER_TARGET_VIEW_DESC render_view_desc;
+	D3D11_DEPTH_STENCIL_VIEW_DESC depth_view_desc;
+	D3D11_UNORDERED_ACCESS_VIEW_DESC unordered_view_desc;
+
+	ID3D11Texture1D *tex1d;
+	ID3D11Texture2D *tex2d;
+	ID3D11Texture3D *tex3d;
+	D3D11_TEXTURE1D_DESC tex1d_desc;
+	D3D11_TEXTURE2D_DESC tex2d_desc;
+	D3D11_TEXTURE3D_DESC tex3d_desc;
+
+	// Some of these may already be filled in when getting the resource
+	// (either because it is stored in the pipeline state and retrieved
+	// with the resource, or was stored in a custom resource). If they are
+	// not we will try to fill them in here from either the resource or
+	// view description as they may be necessary later to create a
+	// compatible view or perform a region copy:
+
+	resource->GetType(&dimension);
+	if (dimension == D3D11_RESOURCE_DIMENSION_BUFFER) {
+		buffer = (ID3D11Buffer*)resource;
+		buffer->GetDesc(&buf_desc);
+		if (*buf_size)
+			*buf_size = min(*buf_size, buf_desc.ByteWidth);
+		else
+			*buf_size = buf_desc.ByteWidth;
+
+		if (!*stride)
+			*stride = buf_desc.StructureByteStride;
+	}
+
+	if (view) {
+		switch (type) {
+			case ResourceCopyTargetType::SHADER_RESOURCE:
+				resource_view = (ID3D11ShaderResourceView*)view;
+				resource_view->GetDesc(&resource_view_desc);
+				if (*format == DXGI_FORMAT_UNKNOWN)
+					*format = resource_view_desc.Format;
+				if (!*stride)
+					*stride = dxgi_format_size(*format);
+				if (!*offset)
+					*offset = resource_view_desc.Buffer.FirstElement * *stride;
+				if (!*buf_size)
+					*buf_size = resource_view_desc.Buffer.NumElements * *stride + *offset;
+				break;
+			case ResourceCopyTargetType::RENDER_TARGET:
+				render_view = (ID3D11RenderTargetView*)view;
+				render_view->GetDesc(&render_view_desc);
+				if (*format == DXGI_FORMAT_UNKNOWN)
+					*format = render_view_desc.Format;
+				if (!*stride)
+					*stride = dxgi_format_size(*format);
+				if (!*offset)
+					*offset = render_view_desc.Buffer.FirstElement * *stride;
+				if (!*buf_size)
+					*buf_size = render_view_desc.Buffer.NumElements * *stride + *offset;
+				break;
+			case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
+				depth_view = (ID3D11DepthStencilView*)view;
+				depth_view->GetDesc(&depth_view_desc);
+				if (*format == DXGI_FORMAT_UNKNOWN)
+					*format = depth_view_desc.Format;
+				if (!*stride)
+					*stride = dxgi_format_size(*format);
+				// Depth stencil buffers cannot be buffers
+				break;
+			case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
+				unordered_view = (ID3D11UnorderedAccessView*)view;
+				unordered_view->GetDesc(&unordered_view_desc);
+				if (*format == DXGI_FORMAT_UNKNOWN)
+					*format = unordered_view_desc.Format;
+				if (!*stride)
+					*stride = dxgi_format_size(*format);
+				if (!*offset)
+					*offset = unordered_view_desc.Buffer.FirstElement * *stride;
+				if (!*buf_size)
+					*buf_size = unordered_view_desc.Buffer.NumElements * *stride + *offset;
+				break;
+		}
+	} else if (*format == DXGI_FORMAT_UNKNOWN) {
+		// If we *still* don't know the format and it's a texture, get it from
+		// the resource description. This will be the case for the back buffer
+		// since that does not have a view.
+		switch (dimension) {
+			case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+				tex1d = (ID3D11Texture1D*)resource;
+				tex1d->GetDesc(&tex1d_desc);
+				*format = tex1d_desc.Format;
+				break;
+			case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+				tex2d = (ID3D11Texture2D*)resource;
+				tex2d->GetDesc(&tex2d_desc);
+				*format = tex2d_desc.Format;
+				break;
+			case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+				tex3d = (ID3D11Texture3D*)resource;
+				tex3d->GetDesc(&tex3d_desc);
+				*format = tex3d_desc.Format;
+		}
+	}
+
+	if (!*stride) {
+		// This will catch index buffers, which are not structured and
+		// don't have a view, but they do have a format we can use:
+		*stride = dxgi_format_size(*format);
+
+		// This will catch constant buffers, which are not structured
+		// and don't have either a view or format, so set the stride to
+		// the size of the whole buffer:
+		if (!*stride)
+			*stride = *buf_size;
+	}
+}
+
+void FrameAnalysisDumpCommand::run(CommandListState *state)
+{
+	ID3D11Resource *resource = NULL;
+	ID3D11View *view = NULL;
+	UINT stride = 0;
+	UINT offset = 0;
+	UINT buf_size = 0;
+	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+
+	// Fast exit if frame analysis is currently inactive:
+	if (!G->analyse_frame)
+		return;
+
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+
+	resource = target.GetResource(state, &view, &stride, &offset, &format, NULL);
+	if (!resource) {
+		COMMAND_LIST_LOG(state, "  No resource to dump\n");
+		return;
+	}
+
+	// Fill in any missing info before handing it to frame analysis. The
+	// format is particularly important to try to avoid saving TYPELESS
+	// resources:
+	FillInMissingInfo(target.type, resource, view, &stride, &offset, &buf_size, &format);
+
+	state->mHackerContext->FrameAnalysisDump(resource, analyse_options, target_name.c_str(), format, stride, offset);
+
+	if (resource)
+		resource->Release();
+	if (view)
+		view->Release();
 }
 
 CustomShader::CustomShader() :
@@ -2053,6 +2304,13 @@ void ParamOverride::run(CommandListState *state)
 		case ParamOverrideType::EYE_SEPARATION:
 			NvAPI_Stereo_GetEyeSeparation(state->mHackerDevice->mStereoHandle, dest);
 			break;
+		case ParamOverrideType::STEREO_ACTIVE:
+			{
+				NvU8 stereo = false;
+				NvAPI_Stereo_IsActivated(state->mHackerDevice->mStereoHandle, &stereo);
+				*dest = !!stereo;
+			}
+			break;
 		default:
 			return;
 	}
@@ -2443,8 +2701,7 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, 
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)buffer;
 		is_null = false;
-		if (override_format != (DXGI_FORMAT)-1)
-			format = override_format;
+		OverrideOutOfBandInfo(&format, &stride);
 	} else {
 		LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
 				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), hr);
@@ -3142,11 +3399,23 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return state->resource;
 
 	case ResourceCopyTargetType::SWAP_CHAIN:
-		mHackerDevice->GetHackerSwapChain()->GetOrigSwapChain1()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+		{
+			HackerSwapChain *mHackerSwapChain = mHackerDevice->GetHackerSwapChain();
+			if (mHackerSwapChain)
+				mHackerSwapChain->GetOrigSwapChain1()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+			else
+				COMMAND_LIST_LOG(state, "  Unable to get access to swap chain\n");
+		}
 		return res;
 
 	case ResourceCopyTargetType::FAKE_SWAP_CHAIN:
-		mHackerDevice->GetHackerSwapChain()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+		{
+			HackerSwapChain *mHackerSwapChain = mHackerDevice->GetHackerSwapChain();
+			if (mHackerSwapChain)
+				mHackerSwapChain->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+			else
+				COMMAND_LIST_LOG(state, "  Unable to get access to fake swap chain\n");
+		}
 		return res;
 	}
 
@@ -4559,133 +4828,6 @@ static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource 
 	// We have effectively removed the offset during the region copy, so
 	// set it to 0 to make sure nothing will try to use it again elsewhere:
 	*offset = 0;
-}
-
-static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resource, ID3D11View *view,
-		UINT *stride, UINT *offset, UINT *buf_size, DXGI_FORMAT *format)
-{
-	D3D11_RESOURCE_DIMENSION dimension;
-	D3D11_BUFFER_DESC buf_desc;
-	ID3D11Buffer *buffer;
-
-	ID3D11ShaderResourceView *resource_view = NULL;
-	ID3D11RenderTargetView *render_view = NULL;
-	ID3D11DepthStencilView *depth_view = NULL;
-	ID3D11UnorderedAccessView *unordered_view = NULL;
-
-	D3D11_SHADER_RESOURCE_VIEW_DESC resource_view_desc;
-	D3D11_RENDER_TARGET_VIEW_DESC render_view_desc;
-	D3D11_DEPTH_STENCIL_VIEW_DESC depth_view_desc;
-	D3D11_UNORDERED_ACCESS_VIEW_DESC unordered_view_desc;
-
-	ID3D11Texture1D *tex1d;
-	ID3D11Texture2D *tex2d;
-	ID3D11Texture3D *tex3d;
-	D3D11_TEXTURE1D_DESC tex1d_desc;
-	D3D11_TEXTURE2D_DESC tex2d_desc;
-	D3D11_TEXTURE3D_DESC tex3d_desc;
-
-	// Some of these may already be filled in when getting the resource
-	// (either because it is stored in the pipeline state and retrieved
-	// with the resource, or was stored in a custom resource). If they are
-	// not we will try to fill them in here from either the resource or
-	// view description as they may be necessary later to create a
-	// compatible view or perform a region copy:
-
-	resource->GetType(&dimension);
-	if (dimension == D3D11_RESOURCE_DIMENSION_BUFFER) {
-		buffer = (ID3D11Buffer*)resource;
-		buffer->GetDesc(&buf_desc);
-		if (*buf_size)
-			*buf_size = min(*buf_size, buf_desc.ByteWidth);
-		else
-			*buf_size = buf_desc.ByteWidth;
-
-		if (!*stride)
-			*stride = buf_desc.StructureByteStride;
-	}
-
-	if (view) {
-		switch (type) {
-			case ResourceCopyTargetType::SHADER_RESOURCE:
-				resource_view = (ID3D11ShaderResourceView*)view;
-				resource_view->GetDesc(&resource_view_desc);
-				if (*format == DXGI_FORMAT_UNKNOWN)
-					*format = resource_view_desc.Format;
-				if (!*stride)
-					*stride = dxgi_format_size(*format);
-				if (!*offset)
-					*offset = resource_view_desc.Buffer.FirstElement * *stride;
-				if (!*buf_size)
-					*buf_size = resource_view_desc.Buffer.NumElements * *stride + *offset;
-				break;
-			case ResourceCopyTargetType::RENDER_TARGET:
-				render_view = (ID3D11RenderTargetView*)view;
-				render_view->GetDesc(&render_view_desc);
-				if (*format == DXGI_FORMAT_UNKNOWN)
-					*format = render_view_desc.Format;
-				if (!*stride)
-					*stride = dxgi_format_size(*format);
-				if (!*offset)
-					*offset = render_view_desc.Buffer.FirstElement * *stride;
-				if (!*buf_size)
-					*buf_size = render_view_desc.Buffer.NumElements * *stride + *offset;
-				break;
-			case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
-				depth_view = (ID3D11DepthStencilView*)view;
-				depth_view->GetDesc(&depth_view_desc);
-				if (*format == DXGI_FORMAT_UNKNOWN)
-					*format = depth_view_desc.Format;
-				if (!*stride)
-					*stride = dxgi_format_size(*format);
-				// Depth stencil buffers cannot be buffers
-				break;
-			case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
-				unordered_view = (ID3D11UnorderedAccessView*)view;
-				unordered_view->GetDesc(&unordered_view_desc);
-				if (*format == DXGI_FORMAT_UNKNOWN)
-					*format = unordered_view_desc.Format;
-				if (!*stride)
-					*stride = dxgi_format_size(*format);
-				if (!*offset)
-					*offset = unordered_view_desc.Buffer.FirstElement * *stride;
-				if (!*buf_size)
-					*buf_size = unordered_view_desc.Buffer.NumElements * *stride + *offset;
-				break;
-		}
-	} else if (*format == DXGI_FORMAT_UNKNOWN) {
-		// If we *still* don't know the format and it's a texture, get it from
-		// the resource description. This will be the case for the back buffer
-		// since that does not have a view.
-		switch (dimension) {
-			case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
-				tex1d = (ID3D11Texture1D*)resource;
-				tex1d->GetDesc(&tex1d_desc);
-				*format = tex1d_desc.Format;
-				break;
-			case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-				tex2d = (ID3D11Texture2D*)resource;
-				tex2d->GetDesc(&tex2d_desc);
-				*format = tex2d_desc.Format;
-				break;
-			case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-				tex3d = (ID3D11Texture3D*)resource;
-				tex3d->GetDesc(&tex3d_desc);
-				*format = tex3d_desc.Format;
-		}
-	}
-
-	if (!*stride) {
-		// This will catch index buffers, which are not structured and
-		// don't have a view, but they do have a format we can use:
-		*stride = dxgi_format_size(*format);
-
-		// This will catch constant buffers, which are not structured
-		// and don't have either a view or format, so set the stride to
-		// the size of the whole buffer:
-		if (!*stride)
-			*stride = *buf_size;
-	}
 }
 
 static UINT get_resource_bind_flags(ID3D11Resource *resource)

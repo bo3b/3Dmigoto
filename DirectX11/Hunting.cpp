@@ -15,66 +15,6 @@
 #include "IniHandler.h"
 #include "D3D_Shaders\stdafx.h"
 
-static int StrRenderTargetBuf(char *buf, size_t size, D3D11_BUFFER_DESC *desc)
-{
-	return _snprintf_s(buf, size, size, "type=Buffer byte_width=%u "
-		"usage=\"%S\" bind_flags=0x%x cpu_access_flags=0x%x misc_flags=0x%x "
-		"stride=%u",
-		desc->ByteWidth, TexResourceUsage(desc->Usage),
-		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags,
-		desc->StructureByteStride);
-}
-
-static int StrRenderTarget1D(char *buf, size_t size, D3D11_TEXTURE1D_DESC *desc)
-{
-	return _snprintf_s(buf, size, size, "type=Texture1D width=%u mips=%u "
-		"array=%u format=\"%s\" usage=\"%S\" bind_flags=0x%x "
-		"cpu_access_flags=0x%x misc_flags=0x%x",
-		desc->Width, desc->MipLevels, desc->ArraySize,
-		TexFormatStr(desc->Format), TexResourceUsage(desc->Usage),
-		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags);
-}
-
-static int StrRenderTarget2D(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc)
-{
-	return _snprintf_s(buf, size, size, "type=Texture2D width=%u height=%u mips=%u "
-		"array=%u format=\"%s\" msaa=%u "
-		"msaa_quality=%u usage=\"%S\" bind_flags=0x%x "
-		"cpu_access_flags=0x%x misc_flags=0x%x",
-		desc->Width, desc->Height, desc->MipLevels, desc->ArraySize,
-		TexFormatStr(desc->Format), desc->SampleDesc.Count,
-		desc->SampleDesc.Quality, TexResourceUsage(desc->Usage),
-		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags);
-}
-
-static int StrRenderTarget3D(char *buf, size_t size, D3D11_TEXTURE3D_DESC *desc)
-{
-
-	return _snprintf_s(buf, size, size, "type=Texture3D width=%u height=%u depth=%u "
-		"mips=%u format=\"%s\" usage=\"%S\" bind_flags=0x%x "
-		"cpu_access_flags=0x%x misc_flags=0x%x",
-		desc->Width, desc->Height, desc->Depth, desc->MipLevels,
-		TexFormatStr(desc->Format), TexResourceUsage(desc->Usage),
-		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags);
-}
-
-static int StrRenderTarget(char *buf, size_t size, struct ResourceHashInfo &info)
-{
-	switch (info.type) {
-		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			return StrRenderTargetBuf(buf, size, &info.buf_desc);
-		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
-			return StrRenderTarget1D(buf, size, &info.tex1d_desc);
-		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-			return StrRenderTarget2D(buf, size, &info.tex2d_desc);
-		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-			return StrRenderTarget3D(buf, size, &info.tex3d_desc);
-		default:
-			return _snprintf_s(buf, size, size, "type=%i", info.type);
-	}
-}
-
-
 // bo3b: For this routine, we have a lot of warnings in x64, from converting a size_t result into the needed
 //  DWORD type for the Write calls.  These are writing 256 byte strings, so there is never a chance that it 
 //  will lose data, so rather than do anything heroic here, I'm just doing type casts on the strlen function.
@@ -108,7 +48,7 @@ static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *ta
 		}
 		_snprintf_s(buf, 256, 256, "<%s orig_hash=%08lx ", tag, *orig_hash);
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
-		StrRenderTarget(buf, 256, *info);
+		StrResourceDesc(buf, 256, *info);
 		WriteFile(f, buf, castStrLen(buf), &written, 0);
 
 		if (info->hash_contaminated) {
@@ -337,18 +277,26 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 {
 	wchar_t fullName[MAX_PATH];
 	ID3D11Texture2D *backBuffer;
+	HackerSwapChain *mHackerSwapChain = pDevice->GetHackerSwapChain();
+
+	if (!mHackerSwapChain) {
+		LogOverlay(LOG_DIRE, "mark_snapshot=1: Unable to get back buffer\n");
+		return;
+	}
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	if (FAILED(hr))
 		LogInfo("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
-	hr = pDevice->GetHackerSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
+	hr = mHackerSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
 	if (SUCCEEDED(hr))
 	{
 		swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls.jpg", G->SHADER_PATH, hash, shaderType.c_str());
 		hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext1(), backBuffer, GUID_ContainerFormatJpeg, fullName);
 		backBuffer->Release();
 	}
+
+	CoUninitialize();
 
 	LogInfoW(L"  SimpleScreenShot on Mark: %s, result: %d\n", fullName, hr);
 }
@@ -358,6 +306,7 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 
 static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderType)
 {
+	HackerSwapChain *mHackerSwapChain = pDevice->GetHackerSwapChain();
 	wchar_t fullName[MAX_PATH];
 	ID3D11Texture2D *backBuffer = NULL;
 	ID3D11Texture2D *stereoBackBuffer = NULL;
@@ -367,7 +316,12 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	HRESULT hr;
 	NvAPI_Status nvret;
 
-	hr = pDevice->GetHackerSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
+	if (!mHackerSwapChain) {
+		LogOverlay(LOG_DIRE, "mark_snapshot=2: Unable to get back buffer\n");
+		return;
+	}
+
+	hr = mHackerSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
 	if (FAILED(hr))
 		return;
 
@@ -408,6 +362,8 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 
 	wsprintf(fullName, L"%ls\\%016I64x-%ls.jps", G->SHADER_PATH, hash, shaderType.c_str());
 	hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext1(), stereoBackBuffer, GUID_ContainerFormatJpeg, fullName);
+
+	CoUninitialize();
 
 	LogInfoW(L"  StereoScreenShot on Mark: %s, result: %d\n", fullName, hr);
 
@@ -1070,11 +1026,30 @@ static void EnableFix(HackerDevice *device, void *private_data)
 	G->fix_enabled = true;
 }
 
+static void _AnalyseFrameStop()
+{
+	G->analyse_frame = false;
+	if (G->DumpUsage) {
+		EnterCriticalSection(&G->mCriticalSection);
+			DumpUsage(G->ANALYSIS_PATH);
+		LeaveCriticalSection(&G->mCriticalSection);
+	}
+	LogOverlay(LOG_INFO, "Frame analysis saved to %S\n", G->ANALYSIS_PATH);
+}
+
 static void AnalyseFrame(HackerDevice *device, void *private_data)
 {
 	wchar_t path[MAX_PATH], subdir[MAX_PATH];
 	time_t ltime;
 	struct tm tm;
+
+	if (G->analyse_frame) {
+		// Frame analysis key has been pressed again while FA was
+		// already in progress, abort:
+		device->GetHackerContext()->FrameAnalysisLog("----- Frame analysis aborted -----\n");
+		LogOverlay(LOG_NOTICE, "Frame analysis aborted\n");
+		return _AnalyseFrameStop();
+	}
 
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
@@ -1103,22 +1078,24 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 	G->cur_analyse_options = G->def_analyse_options;
 	G->frame_analysis_seen_rts.clear();
 	G->analyse_frame_no = 1;
-	G->analyse_frame = 1;
+	G->analyse_frame = true;
 }
 
 static void AnalyseFrameStop(HackerDevice *device, void *private_data)
 {
-	// One of two places we can stop the frame analysis - the other is in
+	// One of three places we can stop the frame analysis - the other is in
 	// the present call. We use this one when analyse_options=hold.
 	// We don't allow hold to be changed mid-frame due to potential
 	// for filename conflicts, so use def_analyse_options:
 	if (G->analyse_frame && (G->def_analyse_options & FrameAnalysisOptions::HOLD)) {
-		G->analyse_frame = 0;
-		if (G->DumpUsage) {
-			EnterCriticalSection(&G->mCriticalSection);
-				DumpUsage(G->ANALYSIS_PATH);
-			LeaveCriticalSection(&G->mCriticalSection);
-		}
+		// Sice we now process input during a frame analysis session,
+		// hold mode may have ended partway through a frame, and may
+		// not even have captured a complete frame. Report how many
+		// complete frames it dumped so the user knows if they did it
+		// right at a glance.
+		LogOverlay(LOG_NOTICE, "Frame analysis hold mode ended after %i complete frames\n",
+				G->analyse_frame_no - 1);
+		_AnalyseFrameStop();
 	}
 }
 
@@ -1438,7 +1415,7 @@ static void LogRenderTarget(ID3D11Resource *target, char *log_prefix)
 	uint32_t hash = G->mResources[target].hash;
 	uint32_t orig_hash = G->mResources[target].orig_hash;
 	struct ResourceHashInfo &info = G->mResourceInfo[orig_hash];
-	StrRenderTarget(buf, 256, info);
+	StrResourceDesc(buf, 256, info);
 	LogInfo("%srender target handle = %p, hash = %08lx, orig_hash = %08lx, %s\n",
 		log_prefix, target, hash, orig_hash, buf);
 }

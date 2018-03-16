@@ -74,16 +74,39 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	mOrigDevice = mHackerDevice->GetPassThroughOrigDevice1();
 	mOrigContext = pContext->GetPassThroughOrigContext1();
 
-	// We are actively using the Device and Context and SwapChain, so we need to 
-	// make sure they do not get Released without us.  This happened in FFXIV.
+	// We are actively using the Device and Context, so we need to make
+	// sure they do not get Released without us.  This happened in FFXIV.
+	//
+	// We do not hold a reference on the swap chain, as that would prevent
+	// the swap chain from being released until the overlay is deleted, but
+	// the overlay will not be deleted until the swap chain is released,
+	// and since the overlay also holds references to the device and
+	// context this would prevent everything from being released. So long
+	// as the overlay exists we know the swap chain hasn't been released
+	// yet, so this is safe.
+	//
+	// Alternatively, we could forgo holding pointers to these at all,
+	// since we can always get access to the device and immediate context
+	// via SwapChain->GetParent(ID3D11Device) and GetImmediateContext(),
+	// but that would mean extra calls in a fast path.
+	//
+	// Note that the swap chain itself also holds references to these two
+	// now, so this is technically unecessary, but since the overlay code
+	// still accesses these it is more safer to leave this in place (more
+	// resistant to code changes in the swap chain breaking this).
 	mHackerDevice->AddRef();
 	mHackerContext->AddRef();
-	mOrigSwapChain->AddRef();
 
 	// The courierbold.spritefont is now included as binary resource data attached
 	// to the d3d11.dll.  We can fetch that resource and pass it to new SpriteFont
-	// to avoid having to drag around the font file.
-	HMODULE handle = GetModuleHandle(L"d3d11.dll");
+	// to avoid having to drag around the font file. We get the module
+	// handle by address to ensure we don't get some other d3d11.dll, which
+	// is of particular importance when we are injected into a Windows
+	// Store app and may not even be called that ourselves.
+	HMODULE handle = NULL;
+	GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+			| GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+			(LPCWSTR)LogOverlay, &handle);
 	HRSRC rc = FindResource(handle, MAKEINTRESOURCE(IDR_COURIERBOLD), MAKEINTRESOURCE(SPRITEFONT));
 	HGLOBAL rcData = LoadResource(handle, rc);
 	DWORD fontSize = SizeofResource(handle, rc);
@@ -133,9 +156,11 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 Overlay::~Overlay()
 {
 	LogInfo("Overlay::~Overlay deleted for SwapChain %p\n", mOrigSwapChain);
-	mOrigSwapChain->Release();
-	mOrigContext->Release();
-	mOrigDevice->Release();
+	// We Release the same interface we called AddRef on, and we use the
+	// Hacker interfaces to make sure that our cleanup code is run if this
+	// is the last reference.
+	mHackerContext->Release();
+	mHackerDevice->Release();
 }
 
 
@@ -183,7 +208,8 @@ void Overlay::SaveState()
 	mOrigContext->PSGetShader(&state.pPixelShader, state.pPSClassInstances, &state.PSNumClassInstances);
 	mOrigContext->IAGetVertexBuffers(0, 1, state.pVertexBuffers, state.Strides, state.Offsets);
 	mOrigContext->IAGetIndexBuffer(&state.IndexBuffer, &state.Format, &state.Offset);
-	mOrigContext->VSGetConstantBuffers(0, 1, state.pConstantBuffers);
+	mOrigContext->VSGetConstantBuffers(0, 1, state.pVSConstantBuffers);
+	mOrigContext->PSGetConstantBuffers(0, 1, state.pPSConstantBuffers);
 	mOrigContext->PSGetShaderResources(0, 1, state.pShaderResourceViews);
 }
 
@@ -241,9 +267,13 @@ void Overlay::RestoreState()
 	if (state.IndexBuffer)
 		state.IndexBuffer->Release();
 
-	mOrigContext->VSSetConstantBuffers(0, 1, state.pConstantBuffers);
-	if (state.pConstantBuffers[0])
-		state.pConstantBuffers[0]->Release();
+	mOrigContext->VSSetConstantBuffers(0, 1, state.pVSConstantBuffers);
+	if (state.pVSConstantBuffers[0])
+		state.pVSConstantBuffers[0]->Release();
+
+	mOrigContext->PSSetConstantBuffers(0, 1, state.pPSConstantBuffers);
+	if (state.pPSConstantBuffers[0])
+		state.pPSConstantBuffers[0]->Release();
 
 	mOrigContext->PSSetShaderResources(0, 1, state.pShaderResourceViews);
 	if (state.pShaderResourceViews[0])
@@ -456,6 +486,7 @@ void Overlay::DrawRectangle(float x, float y, float w, float h, float r, float g
 		* Matrix::CreateTranslation(-1, 1, 0);
 	mEffect->SetProjection(proj);
 
+	// This call will change VS + PS + constant buffer state:
 	mEffect->Apply(mOrigContext);
 
 	mOrigContext->IASetInputLayout(mInputLayout.Get());
@@ -471,6 +502,15 @@ void Overlay::DrawRectangle(float x, float y, float w, float h, float r, float g
 	mPrimitiveBatch->DrawQuad(v1, v2, v3, v4);
 
 	mPrimitiveBatch->End();
+}
+
+void Overlay::DrawOutlinedString(DirectX::SpriteFont *font, wchar_t const *text, DirectX::XMFLOAT2 const &position, DirectX::FXMVECTOR color)
+{
+	font->DrawString(mSpriteBatch.get(), text, position + Vector2(-1, 0), DirectX::Colors::Black);
+	font->DrawString(mSpriteBatch.get(), text, position + Vector2( 1, 0), DirectX::Colors::Black);
+	font->DrawString(mSpriteBatch.get(), text, position + Vector2( 0,-1), DirectX::Colors::Black);
+	font->DrawString(mSpriteBatch.get(), text, position + Vector2( 0, 1), DirectX::Colors::Black);
+	font->DrawString(mSpriteBatch.get(), text, position, color);
 }
 
 // -----------------------------------------------------------------------------
@@ -589,7 +629,7 @@ void Overlay::DrawShaderInfoLine(char *type, UINT64 selectedShader, float *y, bo
 
 	textPosition = Vector2(x, *y);
 	*y += strSize.y;
-	mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+	DrawOutlinedString(mFont.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 }
 
 void Overlay::DrawShaderInfoLines(float *y)
@@ -684,7 +724,7 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
 	}
 
 	if (stereo)
-		swprintf_s(info, maxstring, L"Sep:%.0f  Conv:%.1f", separation, convergence);
+		swprintf_s(info, maxstring, L"Sep:%.0f  Conv:%.2f", separation, convergence);
 	else
 		swprintf_s(info, maxstring, L"Stereo disabled");
 }
@@ -717,7 +757,7 @@ void Overlay::DrawOverlay(void)
 				CreateShaderCountString(osdString);
 				strSize = mFont->MeasureString(osdString);
 				textPosition = Vector2(float(mResolution.x - strSize.x) / 2, y);
-				mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+				DrawOutlinedString(mFont.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 				y += strSize.y;
 
 				DrawShaderInfoLines(&y);
@@ -726,7 +766,7 @@ void Overlay::DrawOverlay(void)
 				CreateStereoInfoString(mHackerDevice->mStereoHandle, osdString);
 				strSize = mFont->MeasureString(osdString);
 				textPosition = Vector2(float(mResolution.x - strSize.x) / 2, float(mResolution.y - strSize.y - 10));
-				mFont->DrawString(mSpriteBatch.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
+				DrawOutlinedString(mFont.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 			}
 
 			if (has_notice)

@@ -80,10 +80,12 @@ private:
 		ID3D11VertexShader *pVertexShader;
 		ID3D11ClassInstance *pVSClassInstances[256];
 		UINT VSNumClassInstances;
+		ID3D11Buffer *pVSConstantBuffers[1];
 
 		ID3D11PixelShader *pPixelShader;
 		ID3D11ClassInstance *pPSClassInstances[256];
 		UINT PSNumClassInstances;
+		ID3D11Buffer *pPSConstantBuffers[1];
 
 		ID3D11Buffer *pVertexBuffers[1];
 		UINT Strides[1];
@@ -92,8 +94,6 @@ private:
 		ID3D11Buffer *IndexBuffer;
 		DXGI_FORMAT Format;
 		UINT Offset;
-
-		ID3D11Buffer *pConstantBuffers[1];
 
 		ID3D11ShaderResourceView *pShaderResourceViews[1];
 	} state;
@@ -105,6 +105,7 @@ private:
 	void DrawShaderInfoLines(float *y);
 	void DrawNotices(float y);
 	void DrawRectangle(float x, float y, float w, float h, float r, float g, float b, float opacity);
+	void DrawOutlinedString(DirectX::SpriteFont *font, wchar_t const *text, DirectX::XMFLOAT2 const &position, DirectX::FXMVECTOR color);
 
 public:
 	Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain);

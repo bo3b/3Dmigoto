@@ -38,15 +38,15 @@ struct DrawContext
 	CommandList *post_commands[5];
 	DrawCallInfo call_info;
 
-	DrawContext(UINT VertexCount, UINT IndexCount, UINT InstanceCount,
+	DrawContext(DrawCall type,
+			UINT VertexCount, UINT IndexCount, UINT InstanceCount,
 			UINT FirstVertex, UINT FirstIndex, UINT FirstInstance,
-			ID3D11Buffer *indirect_buffer, UINT args_offset,
-			bool DrawInstancedIndirect) :
+			ID3D11Buffer *indirect_buffer, UINT args_offset) :
 		oldSeparation(FLT_MAX),
 		oldVertexShader(NULL),
 		oldPixelShader(NULL),
-		call_info(VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance,
-				indirect_buffer, args_offset, DrawInstancedIndirect)
+		call_info(type, VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance,
+				indirect_buffer, args_offset)
 	{
 		memset(post_commands, 0, sizeof(post_commands));
 	}
@@ -111,23 +111,16 @@ private:
 
 	// These are per-context, moved from globals.h:
 	uint32_t mCurrentIndexBuffer; // Only valid while hunting=1
-	UINT64 mCurrentVertexShader;
 	ID3D11VertexShader *mCurrentVertexShaderHandle;
-	UINT64 mCurrentPixelShader;
 	ID3D11PixelShader *mCurrentPixelShaderHandle;
-	UINT64 mCurrentComputeShader;
 	ID3D11ComputeShader *mCurrentComputeShaderHandle;
-	UINT64 mCurrentGeometryShader;
 	ID3D11GeometryShader *mCurrentGeometryShaderHandle;
-	UINT64 mCurrentDomainShader;
 	ID3D11DomainShader *mCurrentDomainShaderHandle;
-	UINT64 mCurrentHullShader;
 	ID3D11HullShader *mCurrentHullShaderHandle;
 	std::vector<ID3D11Resource *> mCurrentRenderTargets;
 	ID3D11Resource *mCurrentDepthTarget;
 	UINT mCurrentPSUAVStartSlot;
 	UINT mCurrentPSNumUAVs;
-	FrameAnalysisOptions analyse_options;
 
 	// Used for deny_cpu_read, track_texture_updates and constant buffer matching
 	typedef std::unordered_map<ID3D11Resource*, MappedResourceInfo> MappedResources;
@@ -171,53 +164,6 @@ private:
 	void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);
 	ID3D11Resource* RecordResourceViewStats(ID3D11View *view, std::set<uint32_t> *resource_info);
 
-	// Functions for the frame analysis. Would be good to split this out,
-	// but it's pretty tightly coupled to the context at the moment:
-	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
-			bool stereo, FrameAnalysisOptions type_mask);
-	HRESULT CreateStagingResource(ID3D11Texture2D **resource,
-		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa);
-	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename,
-			FrameAnalysisOptions type_mask);
-	void DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
-			UINT size, char type, int idx, UINT stride, UINT offset);
-	void DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
-			UINT size, int idx, UINT stride, UINT offset,
-			UINT first, UINT count);
-	void DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
-			UINT size, DXGI_FORMAT ib_fmt, UINT offset,
-			UINT first, UINT count);
-	void DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
-			FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
-			UINT stride, UINT offset, UINT first, UINT count);
-	void DumpResource(ID3D11Resource *resource, wchar_t *filename,
-			FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
-			UINT stride, UINT offset);
-	void _DumpCBs(char shader_type, bool compute,
-		ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT]);
-	void _DumpTextures(char shader_type, bool compute,
-		ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]);
-	void DumpCBs(bool compute);
-	void DumpVBs(DrawCallInfo *call_info);
-	void DumpIB(DrawCallInfo *call_info);
-	void DumpTextures(bool compute);
-	void DumpRenderTargets();
-	void DumpDepthStencilTargets();
-	void DumpUAVs(bool compute);
-	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
-			wchar_t *reg, char shader_type, int idx, uint32_t hash, uint32_t orig_hash,
-			ID3D11Resource *handle);
-	HRESULT FrameAnalysisFilenameResource(wchar_t *filename, size_t size, wchar_t *type,
-			uint32_t hash, uint32_t orig_hash, ID3D11Resource *handle);
-	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
-	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
-	void FrameAnalysisProcessTriggers(bool compute);
-	void FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info);
-	void _FrameAnalysisAfterUpdate(ID3D11Resource *pResource,
-			FrameAnalysisOptions type_mask, wchar_t *type);
-	void FrameAnalysisAfterUnmap(ID3D11Resource *pResource);
-	void FrameAnalysisAfterUpdate(ID3D11Resource *pResource);
-
 	// Templates to reduce duplicated code:
 	template <class ID3D11Shader,
 		 void (__stdcall ID3D11DeviceContext::*OrigSetShader)(THIS_
@@ -246,17 +192,32 @@ private:
 			ID3D11ShaderResourceView *const *ppShaderResourceViews)>
 	void SetShaderResources(UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
+protected:
+	// Allow FrameAnalysisContext access to these as an interim measure
+	// until it has been further decoupled from HackerContext:
+	UINT64 mCurrentVertexShader;
+	UINT64 mCurrentHullShader;
+	UINT64 mCurrentDomainShader;
+	UINT64 mCurrentGeometryShader;
+	UINT64 mCurrentPixelShader;
+	UINT64 mCurrentComputeShader;
+
 public:
 	HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
 
 	void SetHackerDevice(HackerDevice *pDevice);
+	HackerDevice* GetHackerDevice();
 	void Bind3DMigotoResources();
+	void InitIniParams();
 	ID3D11DeviceContext1* GetPossiblyHookedOrigContext1();
 	ID3D11DeviceContext1* GetPassThroughOrigContext1();
 	void HookContext();
 
 	// public to allow CommandList access
 	virtual void FrameAnalysisLog(char *fmt, ...) {};
+	virtual void FrameAnalysisTrigger(FrameAnalysisOptions new_options) {};
+	virtual void FrameAnalysisDump(ID3D11Resource *resource, FrameAnalysisOptions options,
+		const wchar_t *target, DXGI_FORMAT format, UINT stride, UINT offset) {};
 
 
 	/*** IUnknown methods ***/

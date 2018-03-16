@@ -39,7 +39,7 @@ bool gLogDebug = false;
 // During the initialize, we will also Log every setting that is enabled, so that the log
 // has a complete list of active settings.  This should make it more accurate and clear.
 
-bool InitializeDLL()
+static bool InitializeDLL()
 {
 	if (G->gInitialized)
 		return true;
@@ -358,12 +358,11 @@ static tD3DKMTOpenResource _D3DKMTOpenResource;
 typedef int (WINAPI *tD3DKMTQueryResourceInfo)(int a);
 static tD3DKMTQueryResourceInfo _D3DKMTQueryResourceInfo;
 
-tD3D11CreateDevice _D3D11CreateDevice;
-
-tD3D11CreateDeviceAndSwapChain _D3D11CreateDeviceAndSwapChain;
+PFN_D3D11_CREATE_DEVICE _D3D11CreateDevice;
+PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN _D3D11CreateDeviceAndSwapChain;
 
 #ifdef NTDDI_WIN10
-tD3D11On12CreateDevice _D3D11On12CreateDevice;
+PFN_D3D11ON12_CREATE_DEVICE _D3D11On12CreateDevice;
 #endif
 
 
@@ -470,15 +469,15 @@ void InitD311()
 	_D3D11CoreCreateLayeredDevice = (tD3D11CoreCreateLayeredDevice)GetProcAddress(hD3D11, "D3D11CoreCreateLayeredDevice");
 	_D3D11CoreGetLayeredDeviceSize = (tD3D11CoreGetLayeredDeviceSize)GetProcAddress(hD3D11, "D3D11CoreGetLayeredDeviceSize");
 	_D3D11CoreRegisterLayers = (tD3D11CoreRegisterLayers)GetProcAddress(hD3D11, "D3D11CoreRegisterLayers");
-	_D3D11CreateDevice = (tD3D11CreateDevice)GetProcAddress(hD3D11, "D3D11CreateDevice");
-	_D3D11CreateDeviceAndSwapChain = (tD3D11CreateDeviceAndSwapChain)GetProcAddress(hD3D11, "D3D11CreateDeviceAndSwapChain");
+	_D3D11CreateDevice = (PFN_D3D11_CREATE_DEVICE)GetProcAddress(hD3D11, "D3D11CreateDevice");
+	_D3D11CreateDeviceAndSwapChain = (PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN)GetProcAddress(hD3D11, "D3D11CreateDeviceAndSwapChain");
 	_D3DKMTGetDeviceState = (tD3DKMTGetDeviceState)GetProcAddress(hD3D11, "D3DKMTGetDeviceState");
 	_D3DKMTOpenAdapterFromHdc = (tD3DKMTOpenAdapterFromHdc)GetProcAddress(hD3D11, "D3DKMTOpenAdapterFromHdc");
 	_D3DKMTOpenResource = (tD3DKMTOpenResource)GetProcAddress(hD3D11, "D3DKMTOpenResource");
 	_D3DKMTQueryResourceInfo = (tD3DKMTQueryResourceInfo)GetProcAddress(hD3D11, "D3DKMTQueryResourceInfo");
 
 #ifdef NTDDI_WIN10
-	_D3D11On12CreateDevice = (tD3D11On12CreateDevice)GetProcAddress(hD3D11, "D3D11On12CreateDevice");
+	_D3D11On12CreateDevice = (PFN_D3D11ON12_CREATE_DEVICE)GetProcAddress(hD3D11, "D3D11On12CreateDevice");
 #endif
 }
 
@@ -579,7 +578,7 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 // catch bogus setup or bad calls to the GPU environment.
 // The prevent threading optimizations can help show if we have a multi-threading problem.
 
-UINT EnableDebugFlags(UINT flags)
+static UINT EnableDebugFlags(UINT flags)
 {
 	flags |= D3D11_CREATE_DEVICE_DEBUG;
 	flags |= D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS;
@@ -594,7 +593,7 @@ UINT EnableDebugFlags(UINT flags)
 // This call shows that the layer is active, and the initial LiveObjectState.
 // And enable debugger breaks for errors that we might be introducing.
 
-void ShowDebugInfo(ID3D11Device *origDevice)
+static void ShowDebugInfo(ID3D11Device *origDevice)
 {
 	ID3D11Debug *d3dDebug = nullptr;
 	if (origDevice != nullptr)
@@ -651,7 +650,7 @@ void ShowDebugInfo(ID3D11Device *origDevice)
 // 
 // Returns true if we need to error out with E_INVALIDARG, which is default in d3dx.ini.
 
-bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
+static bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
 {
 	if (!featureLevels)
 	{
@@ -682,62 +681,11 @@ bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
 	return false;
 }
 
-
-// For creating the device, we need to call the original D3D11CreateDevice in order to initialize
-// Direct3D, and collect the original Device and original Context.  Both of those will be handed
-// off to the wrapped HackerDevice and HackerContext objects, so they can call out to the originals
-// as needed.  Both Hacker objects need access to both Context and Device, so since both are 
-// created here, it's easy enough to provide them upon instantiation.
-//
-// Now intended to be fully null safe- as games seem to have a lot of variance.
-//
-// 1-8-18: Switching tacks to always return ID3D11Device1 objects, which are the 
-// platform_update required type.  Since it's a superset, we can in general just
-// the reference as a normal ID3D11Device.
-// In the no platform_update case, the mOrigDevice1 will actually be an ID3D11Device.
-
-// Internal only version of CreateDevice, to avoid other tools that hook this.
-
-HRESULT WINAPI HackerCreateDevice(
-	_In_opt_        IDXGIAdapter        *pAdapter,
-	D3D_DRIVER_TYPE     DriverType,
-	HMODULE             Software,
-	UINT                Flags,
-	_In_reads_opt_(FeatureLevels) const D3D_FEATURE_LEVEL   *pFeatureLevels,
-	UINT                FeatureLevels,
-	UINT                SDKVersion,
-	_Out_opt_       ID3D11Device        **ppDevice,
-	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
-	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
+static void wrap_d3d11_device_and_context(ID3D11Device **ppDevice, ID3D11DeviceContext **ppImmediateContext)
 {
-	LogInfo("-- HackerCreateDevice called\n");
-
-	if (ForceDX11(const_cast<D3D_FEATURE_LEVEL*>(pFeatureLevels)))
-		return E_INVALIDARG;
-
-#if _DEBUG_LAYER
-	Flags = EnableDebugFlags(Flags);
-#endif
-
-	HRESULT ret = (*_D3D11CreateDevice)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
-		FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
-
-	if (FAILED(ret))
-	{
-		LogInfo("->failed with HRESULT=%x\n", ret);
-		return ret;
-	}
-
 	// Optional parameters means these might be null.
 	ID3D11Device *retDevice = ppDevice ? *ppDevice : nullptr;
 	ID3D11DeviceContext *retContext = ppImmediateContext ? *ppImmediateContext : nullptr;
-
-	LogInfo("  D3D11CreateDevice returned device handle = %p, context handle = %p\n",
-		retDevice, retContext);
-
-#if _DEBUG_LAYER
-	ShowDebugInfo(retDevice);
-#endif
 
 	// We now want to always upconvert to ID3D11Device1 and ID3D11DeviceContext1,
 	// and will only use the downlevel objects if we get an error on QueryInterface.
@@ -799,11 +747,76 @@ HRESULT WINAPI HackerCreateDevice(
 	// With all the interacting objects set up, we can now safely finish the HackerDevice init.
 	if (deviceWrap != nullptr)
 		deviceWrap->Create3DMigotoResources();
-	if (contextWrap != nullptr)
+	if (contextWrap != nullptr) {
 		contextWrap->Bind3DMigotoResources();
+		contextWrap->InitIniParams();
+	}
 
-	LogInfo("->HackerCreateDevice result = %x, device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n",
-		ret, origDevice1, deviceWrap, origContext1, contextWrap);
+	LogInfo("-> device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n",
+		origDevice1, deviceWrap, origContext1, contextWrap);
+}
+
+// For creating the device, we need to call the original D3D11CreateDevice in order to initialize
+// Direct3D, and collect the original Device and original Context.  Both of those will be handed
+// off to the wrapped HackerDevice and HackerContext objects, so they can call out to the originals
+// as needed.  Both Hacker objects need access to both Context and Device, so since both are 
+// created here, it's easy enough to provide them upon instantiation.
+//
+// Now intended to be fully null safe- as games seem to have a lot of variance.
+//
+// 1-8-18: Switching tacks to always return ID3D11Device1 objects, which are the 
+// platform_update required type.  Since it's a superset, we can in general just
+// the reference as a normal ID3D11Device.
+// In the no platform_update case, the mOrigDevice1 will actually be an ID3D11Device.
+
+// Internal only version of CreateDevice, to avoid other tools that hook this.
+
+static HRESULT WINAPI UnhookableCreateDevice(
+	_In_opt_        IDXGIAdapter        *pAdapter,
+	D3D_DRIVER_TYPE     DriverType,
+	HMODULE             Software,
+	UINT                Flags,
+	_In_reads_opt_(FeatureLevels) const D3D_FEATURE_LEVEL   *pFeatureLevels,
+	UINT                FeatureLevels,
+	UINT                SDKVersion,
+	_Out_opt_       ID3D11Device        **ppDevice,
+	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
+	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
+{
+	LogInfo("-- UnhookableCreateDevice called\n");
+
+	if (ForceDX11(const_cast<D3D_FEATURE_LEVEL*>(pFeatureLevels)))
+		return E_INVALIDARG;
+
+#if _DEBUG_LAYER
+	Flags = EnableDebugFlags(Flags);
+#endif
+
+	get_tls()->hooking_quirk_protection = true;
+	HRESULT ret = (*_D3D11CreateDevice)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
+		FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
+	get_tls()->hooking_quirk_protection = false;
+
+	if (FAILED(ret))
+	{
+		LogInfo("->failed with HRESULT=%x\n", ret);
+		return ret;
+	}
+
+	// Optional parameters means these might be null.
+	ID3D11Device *retDevice = ppDevice ? *ppDevice : nullptr;
+	ID3D11DeviceContext *retContext = ppImmediateContext ? *ppImmediateContext : nullptr;
+
+	LogInfo("  D3D11CreateDevice returned device handle = %p, context handle = %p\n",
+		retDevice, retContext);
+
+#if _DEBUG_LAYER
+	ShowDebugInfo(retDevice);
+#endif
+
+	wrap_d3d11_device_and_context(ppDevice, ppImmediateContext);
+
+	LogInfo("->UnhookableCreateDevice result = %x\n", ret);
 
 	return ret;
 }
@@ -830,6 +843,15 @@ HRESULT WINAPI D3D11CreateDevice(
 	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
 	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
 {
+	if (get_tls()->hooking_quirk_protection) {
+		LogInfo("Hooking Quirk: Unexpected call back into D3D11CreateDevice, passing through\n");
+		// No confirmed cases
+		return _D3D11CreateDevice(pAdapter, DriverType, Software,
+				Flags, pFeatureLevels, FeatureLevels,
+				SDKVersion, ppDevice, pFeatureLevel,
+				ppImmediateContext);
+	}
+
 	InitD311();
 
 	LogInfo("\n\n *** D3D11CreateDevice called with\n");
@@ -841,7 +863,7 @@ HRESULT WINAPI D3D11CreateDevice(
 	LogInfo("    pFeatureLevel = %#x\n", pFeatureLevel ? *pFeatureLevel : 0);
 	LogInfo("    ppImmediateContext = %p\n", ppImmediateContext);
 
-	HRESULT hr = HackerCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels,
+	HRESULT hr = UnhookableCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels,
 		FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
 
 	LogInfo("->D3D11CreateDevice result = %x\n\n", hr);
@@ -891,6 +913,17 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	_Out_opt_			D3D_FEATURE_LEVEL    *pFeatureLevel,
 	_Out_opt_			ID3D11DeviceContext  **ppImmediateContext)
 {
+	if (get_tls()->hooking_quirk_protection) {
+		LogInfo("Hooking Quirk: Unexpected call back into D3D11CreateDeviceAndSwapChain, passing through\n");
+		// Known case: DirectX implements D3D11CreateDevice by calling
+		//             D3D11CreateDeviceAndSwapChain, triggering this
+		//             if we call the former and have hooked the later.
+		return _D3D11CreateDeviceAndSwapChain(pAdapter, DriverType,
+				Software, Flags, pFeatureLevels, FeatureLevels,
+				SDKVersion, pSwapChainDesc, ppSwapChain,
+				ppDevice, pFeatureLevel, ppImmediateContext);
+	}
+
 	HRESULT hr;
 
 	InitD311();
@@ -907,9 +940,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	LogInfo("    ppImmediateContext = %p\n", ppImmediateContext);
 
 
-	// Create the Device that the caller specified, but using our interal HackerCreateDevice
+	// Create the Device that the caller specified, but using our interal UnhookableCreateDevice
 	// on purpose, so that we get a HackerDevice back in ppDevice.  
-	hr = HackerCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion,
+	hr = UnhookableCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion,
 		ppDevice, pFeatureLevel, ppImmediateContext);
 
 	// Can fail with null arguments, so follow the behavior of the original call.	
@@ -953,10 +986,10 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	if (FAILED(hr))
 		goto fatalExit;
 
-	// Directly call our root function HackerCreateSwapChain, to avoid any possible
+	// Directly call our root function UnhookableCreateSwapChain, to avoid any possible
 	// hooks on the factory function. This will always create and return the HackerSwapChain, 
 	// create the Overlay, and ForceDisplayParams if required.
-	hr = HackerCreateSwapChain(dxgiFactory, *ppDevice, pSwapChainDesc, ppSwapChain);
+	hr = UnhookableCreateSwapChain(dxgiFactory, *ppDevice, pSwapChainDesc, ppSwapChain);
 
 	dxgiFactory->Release();
 	dxgiAdapter->Release();
@@ -1012,6 +1045,8 @@ static nvapi_QueryInterfaceType nvapi_QueryInterfacePtr;
 
 void NvAPIOverride()
 {
+	static bool warned = false;
+
 	if (nvapi_failed)
 		return;
 
@@ -1038,8 +1073,10 @@ void NvAPIOverride()
 
 	// One shot, override custom settings.
 	intptr_t ret = (intptr_t)nvapi_QueryInterfacePtr(0xb03bb03b);
-	if ((ret & 0xffffffff) != 0xeecc34ab)
+	if (!warned && (ret & 0xffffffff) != 0xeecc34ab) {
 		LogInfo("  overriding NVAPI wrapper failed.\n");
+		warned = true;
+	}
 }
 
 
@@ -1136,7 +1173,7 @@ HMODULE(__stdcall *fnOrigLoadLibraryExW)(
 	_In_       LPCTSTR lpFileName,
 	_Reserved_ HANDLE  hFile,
 	_In_       DWORD   dwFlags
-	) = nullptr;
+	) = LoadLibraryExW;
 
 HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
 {
@@ -1186,4 +1223,30 @@ HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ H
 
 	// Normal unchanged case.
 	return fnOrigLoadLibraryExW(lpLibFileName, hFile, dwFlags);
+}
+
+// This callback proc allows us to hook into any application we need. It is
+// installed from an external program (of matching bit size) with code like:
+//
+// HMODULE module = LoadLibraryA("d3d11.dll");
+// HOOKPROC fn = (HOOKPROC)GetProcAddress(module, "CBTProc");
+// HHOOK hook = SetWindowsHookEx(WH_CBT, fn, module, 0);
+// ... launch the game ...
+// UnhookWindowsHookEx(hook);
+//
+// If it loads us named d3d11.dll it seems we may actually be able to just work
+// with no further heroics (confirmed in Unity games at least), but beware that
+// we will be hooked into *every* application, including core OS components,
+// which we may want to bail from in DllMain.
+//
+// This method can even get us into Windows Store apps, if the external program
+// installing the hook has the permissions to do so (UIAccess=true, digitally
+// signed by a trusted root certificate, run from Program Files), but beware
+// that by itself is not enough for us to be functional inside a Windows Store
+// app - we don't automatically intercept the real d3d11.dll, and any attempt
+// to breach the container (say, by accessing one of our files outside of where
+// the container allows) may result in us being mercilessly killed.
+LRESULT CALLBACK CBTProc(_In_ int nCode, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+	return CallNextHookEx(0, nCode, wParam, lParam);
 }

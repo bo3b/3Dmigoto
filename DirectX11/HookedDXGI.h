@@ -33,6 +33,11 @@ extern "C" HRESULT(__stdcall *fnOrigCreateDXGIFactory1)(
 	_Out_ void   **ppFactory
 	);
 
+extern "C" HRESULT(__stdcall *fnOrigCreateDXGIFactory2)(
+	UINT Flags,
+	REFIID riid,
+	_Out_ void   **ppFactory
+	);
 
 // Called from HackerDXGI
 
@@ -48,7 +53,7 @@ extern "C" HRESULT(__stdcall *fnOrigCreateSwapChain)(
 
 // Called from d3d11Wrapper for CreateDeviceAndSwapChain
 
-extern "C" HRESULT __stdcall HackerCreateSwapChain(
+extern "C" HRESULT __stdcall UnhookableCreateSwapChain(
 	IDXGIFactory * This,
 	/* [annotation][in] */
 	_In_  IUnknown *pDevice,
@@ -63,6 +68,8 @@ extern "C" HRESULT __stdcall HackerCreateSwapChain(
 extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory);
 
 extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1);
+
+extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFactory1);
 
 
 extern "C" LPVOID lpvtbl_QueryInterface(IDXGIFactory* pFactory);

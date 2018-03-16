@@ -1,15 +1,36 @@
+#include "D3D11Wrapper.h"
 #include "FrameAnalysis.h"
 #include "Globals.h"
+#include "input.h"
 
 #include <ScreenGrab.h>
 #include <wincodec.h>
 #include <Strsafe.h>
 #include <stdarg.h>
+#include <Shlwapi.h>
+
+// For windows shortcuts:
+#include <shobjidl.h>
+#include <shlguid.h>
+
+// Flag introduced in Windows 10 Fall Creators Update
+// Someone was clearly on crack when they decided this flag was necessary
+#ifndef SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
+#define SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE 0x2
+#endif
+
+static unordered_map<ID3D11CommandList*, FrameAnalysisDeferredBuffersPtr> frame_analysis_deferred_buffer_lists;
+static unordered_map<ID3D11CommandList*, FrameAnalysisDeferredTex2DPtr> frame_analysis_deferred_tex2d_lists;
 
 FrameAnalysisContext::FrameAnalysisContext(ID3D11Device1 *pDevice, ID3D11DeviceContext1 *pContext) :
 	HackerContext(pDevice, pContext)
 {
+	analyse_options = FrameAnalysisOptions::INVALID;
+	oneshot_analyse_options = FrameAnalysisOptions::INVALID;
+	oneshot_valid = false;
 	frame_analysis_log = NULL;
+	draw_call = 0;
+	non_draw_call_dump_counter = 0;
 }
 
 FrameAnalysisContext::~FrameAnalysisContext()
@@ -57,6 +78,7 @@ void FrameAnalysisContext::vFrameAnalysisLog(char *fmt, va_list ap)
 			LogInfoW(L"Error opening %s\n", filename);
 			return;
 		}
+		draw_call = 1;
 
 		fprintf(frame_analysis_log, "analyse_options: %08x\n", G->cur_analyse_options);
 	}
@@ -65,7 +87,7 @@ void FrameAnalysisContext::vFrameAnalysisLog(char *fmt, va_list ap)
 	// for filename conflicts, so use def_analyse_options:
 	if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
 		fprintf(frame_analysis_log, "%u.", G->analyse_frame_no);
-	fprintf(frame_analysis_log, "%06u ", G->analyse_frame);
+	fprintf(frame_analysis_log, "%06u ", draw_call);
 
 	vfprintf(frame_analysis_log, fmt, ap);
 }
@@ -80,8 +102,12 @@ void FrameAnalysisContext::FrameAnalysisLog(char *fmt, ...)
 }
 
 #define FALogInfo(fmt, ...) { \
+	FrameAnalysisLog("3DMigoto " fmt, __VA_ARGS__); \
+} while (0)
+
+#define FALogErr(fmt, ...) { \
 	LogInfo("Frame Analysis: " fmt, __VA_ARGS__); \
-	FrameAnalysisLog(fmt, __VA_ARGS__); \
+	FrameAnalysisLog("3DMigoto " fmt, __VA_ARGS__); \
 } while (0)
 
 
@@ -359,24 +385,48 @@ void FrameAnalysisContext::FrameAnalysisLogData(void *buf, UINT size)
 	fprintf(frame_analysis_log, "\n");
 }
 
-void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
-		*filename, bool stereo, FrameAnalysisOptions type_mask)
+ID3D11DeviceContext* FrameAnalysisContext::GetDumpingContext()
 {
-	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
-	HRESULT hr = S_OK, dont_care;
-	wchar_t *ext;
+	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)
+		return GetPassThroughOrigContext1();
 
-	ext = wcsrchr(filename, L'.');
-	if (!ext) {
-		FALogInfo("Dump2DResource: Filename missing extension\n");
+	if (analyse_options & FrameAnalysisOptions::DEFRD_CTX_IMM) {
+		// XXX Experimental deferred context support: Use the immediate
+		// context to stage a resource back to the CPU and dump it to
+		// disk, before the deferred command list has executed. This
+		// may not be thread safe.
+		return GetHackerDevice()->GetPassThroughOrigContext1();
+	}
+
+	// XXX Alternate experiemental deferred context support - in this mode
+	// we are back to using the current context, but we will delay CPU
+	// reads until the command list is executed in the immediate context.
+	return GetPassThroughOrigContext1();
+}
+
+void FrameAnalysisContext::Dump2DResourceImmediateCtx(ID3D11Texture2D *staging,
+		wstring filename, bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format)
+{
+	HRESULT hr = S_OK, dont_care;
+	wchar_t dedupe_filename[MAX_PATH];
+	wstring save_filename;
+	wchar_t *wic_ext = (stereo ? L".jps" : L".jpg");
+	size_t ext, save_ext;
+
+	save_filename = dedupe_tex2d_filename(staging, orig_desc, dedupe_filename, MAX_PATH, filename.c_str(), format);
+
+	ext = filename.find_last_of(L'.');
+	save_ext = save_filename.find_last_of(L'.');
+	if (ext == wstring::npos || save_ext == wstring::npos) {
+		FALogErr("Dump2DResource: Filename missing extension\n");
 		return;
 	}
 
 	// Needs to be called at some point before SaveXXXTextureToFile:
 	dont_care = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
-	if ((options & FrameAnalysisOptions::DUMP_XXX_JPS) ||
-	    (options & FrameAnalysisOptions::DUMP_XXX)) {
+	if ((analyse_options & FrameAnalysisOptions::FMT_2D_JPS) ||
+	    (analyse_options & FrameAnalysisOptions::FMT_2D_AUTO)) {
 		// save a JPS file. This will be missing extra channels (e.g.
 		// transparency, depth buffer, specular power, etc) or bit depth that
 		// can be found in the DDS file, but is generally easier to work with.
@@ -384,26 +434,76 @@ void HackerContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
 		// Not all formats can be saved as JPS with this function - if
 		// only dump_rt was specified (as opposed to dump_rt_jps) we
 		// will dump out DDS files for those instead.
-		if (stereo)
-			wcscpy_s(ext, MAX_PATH + filename - ext, L".jps");
-		else
-			wcscpy_s(ext, MAX_PATH + filename - ext, L".jpg");
-		hr = DirectX::SaveWICTextureToFile(mOrigContext1, resource, GUID_ContainerFormatJpeg, filename);
+		filename.replace(ext, wstring::npos, wic_ext);
+		save_filename.replace(save_ext, wstring::npos, wic_ext);
+		FALogInfo("Dumping Texture2D %S -> %S\n", filename.c_str(), save_filename.c_str());
+
+		hr = S_OK;
+		if (GetFileAttributes(save_filename.c_str()) == INVALID_FILE_ATTRIBUTES)
+			hr = DirectX::SaveWICTextureToFile(GetDumpingContext(), staging, GUID_ContainerFormatJpeg, save_filename.c_str());
+		link_deduplicated_files(filename.c_str(), save_filename.c_str());
 	}
 
 
-	if ((options & FrameAnalysisOptions::DUMP_XXX_DDS) ||
-	   ((options & FrameAnalysisOptions::DUMP_XXX) && FAILED(hr))) {
-		wcscpy_s(ext, MAX_PATH + filename - ext, L".dds");
-		hr = DirectX::SaveDDSTextureToFile(mOrigContext1, resource, filename);
+	if ((analyse_options & FrameAnalysisOptions::FMT_2D_DDS) ||
+	   ((analyse_options & FrameAnalysisOptions::FMT_2D_AUTO) && FAILED(hr))) {
+		filename.replace(ext, wstring::npos, L".dds");
+		save_filename.replace(save_ext, wstring::npos, L".dds");
+		FALogInfo("Dumping Texture2D %S -> %S\n", filename.c_str(), save_filename.c_str());
+
+		hr = S_OK;
+		if (GetFileAttributes(save_filename.c_str()) == INVALID_FILE_ATTRIBUTES)
+			hr = DirectX::SaveDDSTextureToFile(GetDumpingContext(), staging, save_filename.c_str());
+		link_deduplicated_files(filename.c_str(), save_filename.c_str());
 	}
 
 	if (FAILED(hr))
-		FALogInfo("Failed to dump Texture2D: 0x%x\n", hr);
+		FALogErr("Failed to dump Texture2D %S -> %S: 0x%x\n", filename.c_str(), save_filename.c_str(), hr);
+
+	if (analyse_options & FrameAnalysisOptions::FMT_DESC) {
+		filename.replace(ext, wstring::npos, L".dsc");
+		save_filename.replace(save_ext, wstring::npos, L".dsc");
+		FALogInfo("Dumping Texture2D %S -> %S\n", filename.c_str(), save_filename.c_str());
+
+		if (GetFileAttributes(save_filename.c_str()) == INVALID_FILE_ATTRIBUTES)
+			DumpDesc(orig_desc, save_filename.c_str());
+		link_deduplicated_files(filename.c_str(), save_filename.c_str());
+	}
+
+	CoUninitialize();
 }
 
-HRESULT HackerContext::CreateStagingResource(ID3D11Texture2D **resource,
-		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa)
+void FrameAnalysisContext::Dump2DResource(ID3D11Texture2D *resource, wchar_t
+		*filename, bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format)
+{
+	HRESULT hr = S_OK;
+	ID3D11Texture2D *staging = resource;
+	D3D11_TEXTURE2D_DESC staging_desc, *desc = orig_desc;
+
+	// In order to de-dupe Texture2D resources, we need to compare their
+	// contents before dumping them to a file, so we copy them into a
+	// staging resource (if we did not already do so earlier for the
+	// reverse stereo blit). DirectXTK will notice this has been done and
+	// skip doing it again.
+	resource->GetDesc(&staging_desc);
+	if ((staging_desc.Usage != D3D11_USAGE_STAGING) || !(staging_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ) || (staging_desc.Format != format)) {
+		hr = StageResource(resource, &staging_desc, &staging, format);
+		if (FAILED(hr))
+			return;
+	}
+
+	if (!orig_desc)
+		desc = &staging_desc;
+
+	if (!DeferDump2DResource(staging, filename, stereo, desc, format))
+		Dump2DResourceImmediateCtx(staging, filename, stereo, desc, format);
+
+	if (staging != resource)
+		staging->Release();
+}
+
+HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
+		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa, DXGI_FORMAT format)
 {
 	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
 	HRESULT hr;
@@ -437,29 +537,122 @@ HRESULT HackerContext::CreateStagingResource(ID3D11Texture2D **resource,
 	desc.SampleDesc.Count = 1;
 	desc.SampleDesc.Quality = 0;
 
-	// Force surface creation mode to stereo to prevent driver heuristics
-	// interfering. If the original surface was mono that's ok - thaks to
-	// the intermediate stages we'll end up with both eyes the same
-	// (without this one eye would be blank instead, which is arguably
-	// better since it will be immediately obvious, but risks missing the
-	// second perspective if the original resource was actually stereo)
-	NvAPI_Stereo_GetSurfaceCreationMode(mHackerDevice->mStereoHandle, &orig_mode);
-	NvAPI_Stereo_SetSurfaceCreationMode(mHackerDevice->mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
+	// We want the staging resource to be fully typed if possible, to
+	// maximise compatibility with other programs that won't necessarily
+	// know what to do with a typeless resource (including texconv from
+	// DirectXTex). Since views must be fully typed, we can usually use the
+	// format from the view used to obtain this resource.
+	if (format != DXGI_FORMAT_UNKNOWN)
+		desc.Format = format;
 
-	hr = mOrigDevice1->CreateTexture2D(&desc, NULL, resource);
+	if (analyse_options & FrameAnalysisOptions::STEREO) {
+		// If we are dumping stereo at all force surface creation mode
+		// to stereo (regardless of whether we are creating this double
+		// width) to prevent driver heuristics interfering. If the
+		// original surface was mono that's ok - thaks to the
+		// intermediate stages we'll end up with both eyes the same
+		// (without this one eye would be blank instead, which is
+		// arguably better since it will be immediately obvious, but
+		// risks missing the second perspective if the original
+		// resource was actually stereo)
+		NvAPI_Stereo_GetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, &orig_mode);
+		NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
+	}
 
-	NvAPI_Stereo_SetSurfaceCreationMode(mHackerDevice->mStereoHandle, orig_mode);
+	hr = GetHackerDevice()->GetPassThroughOrigDevice1()->CreateTexture2D(&desc, NULL, resource);
+
+	if (analyse_options & FrameAnalysisOptions::STEREO)
+		NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, orig_mode);
+
+	return hr;
+}
+
+HRESULT FrameAnalysisContext::ResolveMSAA(ID3D11Texture2D *src,
+		D3D11_TEXTURE2D_DESC *srcDesc, ID3D11Texture2D **dst, DXGI_FORMAT format)
+{
+	ID3D11Texture2D *resolved = NULL;
+	UINT item, level, index;
+	HRESULT hr;
+
+	*dst = NULL;
+
+	if (srcDesc->SampleDesc.Count <= 1)
+		return S_OK;
+
+	// Resolve MSAA surfaces. Procedure copied from DirectXTK
+	// These need to have D3D11_USAGE_DEFAULT to resolve,
+	// so we need yet another intermediate texture:
+	hr = CreateStagingResource(&resolved, *srcDesc, false, true, format);
+	if (FAILED(hr)) {
+		FALogErr("ResolveMSAA failed to create intermediate texture: 0x%x\n", hr);
+		return hr;
+	}
+
+	DXGI_FORMAT fmt = EnsureNotTypeless(srcDesc->Format);
+	UINT support = 0;
+
+	hr = GetHackerDevice()->GetPassThroughOrigDevice1()->CheckFormatSupport( fmt, &support );
+	if (FAILED(hr) || !(support & D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE)) {
+		FALogErr("ResolveMSAA cannot resolve MSAA format %d\n", fmt);
+		goto err_release;
+	}
+
+	for (item = 0; item < srcDesc->ArraySize; item++) {
+		for (level = 0; level < srcDesc->MipLevels; level++) {
+			index = D3D11CalcSubresource(level, item, max(srcDesc->MipLevels, 1));
+			GetDumpingContext()->ResolveSubresource(resolved, index, src, index, fmt);
+		}
+	}
+
+	*dst = resolved;
+	return S_OK;
+
+err_release:
+	resolved->Release();
+	return hr;
+}
+
+HRESULT FrameAnalysisContext::StageResource(ID3D11Texture2D *src,
+		D3D11_TEXTURE2D_DESC *srcDesc, ID3D11Texture2D **dst, DXGI_FORMAT format)
+{
+	ID3D11Texture2D *staging = NULL;
+	ID3D11Texture2D *resolved = NULL;
+	HRESULT hr;
+
+	*dst = NULL;
+
+	hr = CreateStagingResource(&staging, *srcDesc, false, false, format);
+	if (FAILED(hr)) {
+		FALogErr("StageResource failed to create intermediate texture: 0x%x\n", hr);
+		return hr;
+	}
+
+	hr = ResolveMSAA(src, srcDesc, &resolved, format);
+	if (FAILED(hr))
+		goto err_release;
+	if (resolved)
+		src = resolved;
+
+	GetDumpingContext()->CopyResource(staging, src);
+
+	if (resolved)
+		resolved->Release();
+
+	*dst = staging;
+	return S_OK;
+
+err_release:
+	if (staging)
+		staging->Release();
 	return hr;
 }
 
 // TODO: Refactor this with StereoScreenShot().
 // Expects the reverse stereo blit to be enabled by the caller
-void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename,
-		FrameAnalysisOptions type_mask)
+void FrameAnalysisContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename, DXGI_FORMAT format)
 {
 	ID3D11Texture2D *stereoResource = NULL;
 	ID3D11Texture2D *tmpResource = NULL;
-	ID3D11Texture2D *tmpResource2 = NULL;
 	ID3D11Texture2D *src = resource;
 	D3D11_TEXTURE2D_DESC srcDesc;
 	D3D11_BOX srcBox;
@@ -468,9 +661,9 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 
 	resource->GetDesc(&srcDesc);
 
-	hr = CreateStagingResource(&stereoResource, srcDesc, true, false);
+	hr = CreateStagingResource(&stereoResource, srcDesc, true, false, format);
 	if (FAILED(hr)) {
-		FALogInfo("DumpStereoResource failed to create stereo texture: 0x%x\n", hr);
+		FALogErr("DumpStereoResource failed to create stereo texture: 0x%x\n", hr);
 		return;
 	}
 
@@ -480,41 +673,9 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 		// since CopySubresourceRegion() will fail if the source and
 		// destination dimensions don't match, so use yet another
 		// intermediate staging resource first.
-		hr = CreateStagingResource(&tmpResource, srcDesc, false, false);
-		if (FAILED(hr)) {
-			FALogInfo("DumpStereoResource failed to create intermediate texture: 0x%x\n", hr);
+		hr = StageResource(src, &srcDesc, &tmpResource, format);
+		if (FAILED(hr))
 			goto out;
-		}
-
-		if (srcDesc.SampleDesc.Count > 1) {
-			// Resolve MSAA surfaces. Procedure copied from DirectXTK
-			// These need to have D3D11_USAGE_DEFAULT to resolve,
-			// so we need yet another intermediate texture:
-			hr = CreateStagingResource(&tmpResource2, srcDesc, false, true);
-			if (FAILED(hr)) {
-				FALogInfo("DumpStereoResource failed to create intermediate texture: 0x%x\n", hr);
-				goto out1;
-			}
-
-			DXGI_FORMAT fmt = EnsureNotTypeless(srcDesc.Format);
-			UINT support = 0;
-
-			hr = mOrigDevice1->CheckFormatSupport( fmt, &support );
-			if (FAILED(hr) || !(support & D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE)) {
-				FALogInfo("DumpStereoResource cannot resolve MSAA format %d\n", fmt);
-				goto out2;
-			}
-
-			for (item = 0; item < srcDesc.ArraySize; item++) {
-				for (level = 0; level < srcDesc.MipLevels; level++) {
-					index = D3D11CalcSubresource(level, item, max(srcDesc.MipLevels, 1));
-					mOrigContext1->ResolveSubresource(tmpResource2, index, src, index, fmt);
-				}
-			}
-			src = tmpResource2;
-		}
-
-		mOrigContext1->CopyResource(tmpResource, src);
 		src = tmpResource;
 	}
 
@@ -532,17 +693,13 @@ void HackerContext::DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filen
 			index = D3D11CalcSubresource(level, item, max(srcDesc.MipLevels, 1));
 			srcBox.right = width >> level;
 			srcBox.bottom = height >> level;
-			mOrigContext1->CopySubresourceRegion(stereoResource, index, 0, 0, 0,
+			GetPassThroughOrigContext1()->CopySubresourceRegion(stereoResource, index, 0, 0, 0,
 					src, index, &srcBox);
 		}
 	}
 
-	Dump2DResource(stereoResource, filename, true, type_mask);
+	Dump2DResource(stereoResource, filename, true, &srcDesc, format);
 
-out2:
-	if (tmpResource2)
-		tmpResource2->Release();
-out1:
 	if (tmpResource)
 		tmpResource->Release();
 
@@ -550,12 +707,48 @@ out:
 	stereoResource->Release();
 }
 
+static void copy_until_extension(wchar_t *txt_filename, const wchar_t *bin_filename, size_t size, wchar_t **pos, size_t *rem)
+{
+	size_t ext_pos;
+	const wchar_t *ext;
+
+	ext = wcsrchr(bin_filename, L'.');
+	if (ext)
+		ext_pos = ext - bin_filename;
+	else
+		ext_pos = wcslen(bin_filename);
+
+	StringCchPrintfExW(txt_filename, size, pos, rem, NULL, L"%.*s", ext_pos, bin_filename);
+}
+
+void FrameAnalysisContext::dedupe_buf_filename_txt(const wchar_t *bin_filename,
+		wchar_t *txt_filename, size_t size, char type, int idx,
+		UINT stride, UINT offset)
+{
+	wchar_t *pos;
+	size_t rem;
+
+	copy_until_extension(txt_filename, bin_filename, MAX_PATH, &pos, &rem);
+
+	if (idx != -1)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-%cb%i", type, idx);
+
+	if (offset)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-offset=%u", offset);
+
+	if (stride)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-stride=%u", stride);
+
+	if (FAILED(StringCchPrintfW(pos, rem, L".txt")))
+		FALogErr("Failed to create buffer filename\n");
+}
+
 /*
  * This just treats the buffer as an array of float4s. In the future we might
  * try to use the reflection information in the shaders to add names and
  * correct types.
  */
-void HackerContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
+void FrameAnalysisContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 		UINT size, char type, int idx, UINT stride, UINT offset)
 {
 	FILE *fd = NULL;
@@ -566,7 +759,7 @@ void HackerContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *m
 
 	err = wfopen_ensuring_access(&fd, filename, L"w");
 	if (!fd) {
-		FALogInfo("Unable to create %S: %u\n", filename, err);
+		FALogErr("Unable to create %S: %u\n", filename, err);
 		return;
 	}
 
@@ -587,12 +780,39 @@ void HackerContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *m
 	fclose(fd);
 }
 
+void FrameAnalysisContext::dedupe_buf_filename_vb_txt(const wchar_t *bin_filename,
+		wchar_t *txt_filename, size_t size, int idx, UINT stride,
+		UINT offset, UINT first, UINT count)
+{
+	wchar_t *pos;
+	size_t rem;
+
+	copy_until_extension(txt_filename, bin_filename, MAX_PATH, &pos, &rem);
+
+	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-vb%i", idx);
+
+	if (offset)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-offset=%u", offset);
+
+	if (stride)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-stride=%u", stride);
+
+	if (first)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-first=%u", first);
+
+	if (count)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-count=%u", count);
+
+	if (FAILED(StringCchPrintfW(pos, rem, L".txt")))
+		FALogErr("Failed to create vertex buffer filename\n");
+}
+
 /*
  * Dumps the vertex buffer in several formats.
  * FIXME: We should wrap the input layout object to get the correct format (and
  * other info like the semantic).
  */
-void HackerContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
+void FrameAnalysisContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 		UINT size, int idx, UINT stride, UINT offset, UINT first, UINT count)
 {
 	FILE *fd = NULL;
@@ -604,7 +824,7 @@ void HackerContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 
 	err = wfopen_ensuring_access(&fd, filename, L"w");
 	if (!fd) {
-		FALogInfo("Unable to create %S: %u\n", filename, err);
+		FALogErr("Unable to create %S: %u\n", filename, err);
 		return;
 	}
 
@@ -616,7 +836,7 @@ void HackerContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 		fprintf(fd, "vertex count: %u\n", count);
 	}
 	if (!stride) {
-		FALogInfo("Cannot dump vertex buffer with stride=0\n");
+		FALogErr("Cannot dump vertex buffer with stride=0\n");
 		return;
 	}
 
@@ -644,7 +864,34 @@ void HackerContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 	fclose(fd);
 }
 
-void HackerContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
+void FrameAnalysisContext::dedupe_buf_filename_ib_txt(const wchar_t *bin_filename,
+		wchar_t *txt_filename, size_t size, DXGI_FORMAT ib_fmt,
+		UINT offset, UINT first, UINT count)
+{
+	wchar_t *pos;
+	size_t rem;
+
+	copy_until_extension(txt_filename, bin_filename, MAX_PATH, &pos, &rem);
+
+	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ib");
+
+	if (ib_fmt != DXGI_FORMAT_UNKNOWN)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-format=%S", TexFormatStr(ib_fmt));
+
+	if (offset)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-offset=%u", offset);
+
+	if (first)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-first=%u", first);
+
+	if (count)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-count=%u", count);
+
+	if (FAILED(StringCchPrintfW(pos, rem, L".txt")))
+		FALogErr("Failed to create index buffer filename\n");
+}
+
+void FrameAnalysisContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 		UINT size, DXGI_FORMAT format, UINT offset, UINT first, UINT count)
 {
 	FILE *fd = NULL;
@@ -655,7 +902,7 @@ void HackerContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 
 	err = wfopen_ensuring_access(&fd, filename, L"w");
 	if (!fd) {
-		FALogInfo("Unable to create %S: %u\n", filename, err);
+		FALogErr("Unable to create %S: %u\n", filename, err);
 		return;
 	}
 
@@ -697,126 +944,354 @@ void HackerContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 	fclose(fd);
 }
 
-void HackerContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
-		FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
-		UINT stride, UINT offset, UINT first, UINT count)
+template <typename DescType>
+void FrameAnalysisContext::DumpDesc(DescType *desc, const wchar_t *filename)
 {
-	FrameAnalysisOptions options = (FrameAnalysisOptions)(analyse_options & type_mask);
-	D3D11_BUFFER_DESC desc;
-	D3D11_MAPPED_SUBRESOURCE map;
-	ID3D11Buffer *staging = NULL;
-	HRESULT hr;
 	FILE *fd = NULL;
-	wchar_t *ext;
+	char buf[256];
 	errno_t err;
 
-	ext = wcsrchr(filename, L'.');
-	if (!ext) {
-		FALogInfo("DumpBuffer: Filename missing extension\n");
+	StrResourceDesc(buf, 256, desc);
+
+	err = wfopen_ensuring_access(&fd, filename, L"w");
+	if (!fd) {
+		FALogErr("Unable to create %S: %u\n", filename, err);
+		return;
+	}
+	fwrite(buf, 1, strlen(buf), fd);
+	putc('\n', fd);
+	fclose(fd);
+}
+
+bool FrameAnalysisContext::DeferDump2DResource(ID3D11Texture2D *staging,
+		wchar_t *filename, bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format)
+{
+	if (!(analyse_options & FrameAnalysisOptions::DEFRD_CTX_DELAY))
+		return false;
+
+	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)
+		return false;
+
+	if (!deferred_tex2d) {
+		deferred_tex2d = make_unique<FrameAnalysisDeferredTex2D>();
+		FALogInfo("Creating deferred staging Texture2D list %p on context %p\n", deferred_tex2d.get(), this);
+	}
+
+	FALogInfo("Deferring Texture2D dump: %S\n", filename);
+	deferred_tex2d->emplace_back(analyse_options, staging, filename, stereo, orig_desc, format);
+
+	return true;
+}
+
+bool FrameAnalysisContext::DeferDumpBuffer(ID3D11Buffer *staging,
+		D3D11_BUFFER_DESC *orig_desc, wchar_t *filename,
+		FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
+		UINT stride, UINT offset, UINT first, UINT count)
+{
+	if (!(analyse_options & FrameAnalysisOptions::DEFRD_CTX_DELAY))
+		return false;
+
+	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)
+		return false;
+
+	if (!deferred_buffers) {
+		deferred_buffers = make_unique<FrameAnalysisDeferredBuffers>();
+		FALogInfo("Creating deferred staging Buffer list %p on context %p\n", deferred_buffers.get(), this);
+	}
+
+	FALogInfo("Deferring Buffer dump: %S\n", filename);
+	deferred_buffers->emplace_back(analyse_options, staging, orig_desc, filename,
+			buf_type_mask, idx, ib_fmt, stride, offset, first, count);
+	return true;
+}
+
+void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_list)
+{
+	FrameAnalysisDeferredBuffersPtr deferred_buffers = nullptr;
+	FrameAnalysisDeferredTex2DPtr deferred_tex2d = nullptr;
+
+	if (!command_list)
+		return;
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	try {
+		deferred_buffers = std::move(frame_analysis_deferred_buffer_lists.at(command_list));
+		frame_analysis_deferred_buffer_lists.erase(command_list);
+	} catch (std::out_of_range) {}
+	if (deferred_buffers) {
+		for (FrameAnalysisDeferredDumpBufferArgs &i : *deferred_buffers) {
+			// Process key inputs to allow user to abort long running frame analysis sessions:
+			DispatchInputEvents(GetHackerDevice());
+			if (!G->analyse_frame)
+				break;
+
+			this->analyse_options = i.analyse_options;
+			DumpBufferImmediateCtx(i.staging.Get(), &i.orig_desc,
+					i.filename, i.buf_type_mask, i.idx,
+					i.ib_fmt, i.stride, i.offset, i.first,
+					i.count);
+		}
+	}
+
+	try {
+		deferred_tex2d = std::move(frame_analysis_deferred_tex2d_lists.at(command_list));
+		frame_analysis_deferred_tex2d_lists.erase(command_list);
+	} catch (std::out_of_range) {}
+	if (deferred_tex2d) {
+		for (FrameAnalysisDeferredDumpTex2DArgs &i : *deferred_tex2d) {
+			// Process key inputs to allow user to abort long running frame analysis sessions:
+			DispatchInputEvents(GetHackerDevice());
+			if (!G->analyse_frame)
+				break;
+
+			this->analyse_options = i.analyse_options;
+			Dump2DResourceImmediateCtx(i.staging.Get(), i.filename,
+					i.stereo, &i.orig_desc, i.format);
+		}
+	}
+
+	LeaveCriticalSection(&G->mCriticalSection);
+}
+
+void FrameAnalysisContext::finish_deferred_resources(ID3D11CommandList *command_list)
+{
+	if (!command_list || (!deferred_buffers && !deferred_tex2d))
+		return;
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	if (deferred_buffers) {
+		FALogInfo("Finishing deferred staging Buffer list %p on context %p\n", deferred_buffers.get(), this);
+		frame_analysis_deferred_buffer_lists.erase(command_list);
+		frame_analysis_deferred_buffer_lists.emplace(command_list, std::move(deferred_buffers));
+	}
+
+	if (deferred_tex2d) {
+		FALogInfo("Finishing deferred staging Texture2D list %p on context %p\n", deferred_tex2d.get(), this);
+		frame_analysis_deferred_tex2d_lists.erase(command_list);
+		frame_analysis_deferred_tex2d_lists.emplace(command_list, std::move(deferred_tex2d));
+	}
+
+	LeaveCriticalSection(&G->mCriticalSection);
+}
+
+void FrameAnalysisContext::DumpBufferImmediateCtx(ID3D11Buffer *staging, D3D11_BUFFER_DESC *orig_desc,
+		wstring filename, FrameAnalysisOptions buf_type_mask, int idx,
+		DXGI_FORMAT ib_fmt, UINT stride, UINT offset, UINT first, UINT count)
+{
+	wchar_t bin_filename[MAX_PATH], txt_filename[MAX_PATH];
+	D3D11_MAPPED_SUBRESOURCE map;
+	HRESULT hr;
+	FILE *fd = NULL;
+	wchar_t *bin_ext;
+	size_t ext;
+	errno_t err;
+
+	hr = GetDumpingContext()->Map(staging, 0, D3D11_MAP_READ, 0, &map);
+	if (FAILED(hr)) {
+		FALogErr("DumpBuffer failed to map staging resource: 0x%x\n", hr);
 		return;
 	}
 
+	dedupe_buf_filename(staging, orig_desc, &map, bin_filename, MAX_PATH);
+
+	ext = filename.find_last_of(L'.');
+	bin_ext = wcsrchr(bin_filename, L'.');
+	if (ext == wstring::npos || !bin_ext) {
+		FALogErr("DumpBuffer: Filename missing extension\n");
+		goto out_unmap;
+	}
+
+	if (analyse_options & FrameAnalysisOptions::FMT_BUF_BIN) {
+		filename.replace(ext, wstring::npos, L".buf");
+		wcscpy_s(bin_ext, MAX_PATH + bin_filename - bin_ext, L".buf");
+		FALogInfo("Dumping Buffer %S -> %S\n", filename.c_str(), bin_filename);
+
+		if (GetFileAttributes(bin_filename) == INVALID_FILE_ATTRIBUTES) {
+			err = wfopen_ensuring_access(&fd, bin_filename, L"wb");
+			if (!fd) {
+				FALogErr("Unable to create %S: %u\n", bin_filename, err);
+				goto out_unmap;
+			}
+			fwrite(map.pData, 1, orig_desc->ByteWidth, fd);
+			fclose(fd);
+		}
+		link_deduplicated_files(filename.c_str(), bin_filename);
+	}
+
+	if (analyse_options & FrameAnalysisOptions::FMT_BUF_TXT) {
+		filename.replace(ext, wstring::npos, L".txt");
+		FALogInfo("Dumping Buffer %S -> %S\n", filename.c_str(), txt_filename);
+
+		if (buf_type_mask & FrameAnalysisOptions::DUMP_CB) {
+			dedupe_buf_filename_txt(bin_filename, txt_filename, MAX_PATH, 'c', idx, stride, offset);
+			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
+				DumpBufferTxt(txt_filename, &map, orig_desc->ByteWidth, 'c', idx, stride, offset);
+			}
+		} else if (buf_type_mask & FrameAnalysisOptions::DUMP_VB) {
+			dedupe_buf_filename_vb_txt(bin_filename, txt_filename, MAX_PATH, idx, stride, offset, first, count);
+			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
+				DumpVBTxt(txt_filename, &map, orig_desc->ByteWidth, idx, stride, offset, first, count);
+			}
+		} else if (buf_type_mask & FrameAnalysisOptions::DUMP_IB) {
+			dedupe_buf_filename_ib_txt(bin_filename, txt_filename, MAX_PATH, ib_fmt, offset, first, count);
+			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
+				DumpIBTxt(txt_filename, &map, orig_desc->ByteWidth, ib_fmt, offset, first, count);
+			}
+		} else {
+			// We don't know what kind of buffer this is, so just
+			// use the generic dump routine:
+
+			dedupe_buf_filename_txt(bin_filename, txt_filename, MAX_PATH, '?', idx, stride, offset);
+			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
+				DumpBufferTxt(txt_filename, &map, orig_desc->ByteWidth, '?', idx, stride, offset);
+			}
+		}
+		link_deduplicated_files(filename.c_str(), txt_filename);
+	}
+	// TODO: Dump UAV, RT and SRV buffers as text taking their format,
+	// offset, size, first entry and num entries into account.
+
+	if (analyse_options & FrameAnalysisOptions::FMT_DESC) {
+		filename.replace(ext, wstring::npos, L".dsc");
+		wcscpy_s(bin_ext, MAX_PATH + bin_filename - bin_ext, L".dsc");
+		FALogInfo("Dumping Buffer %S -> %S\n", filename.c_str(), bin_filename);
+
+		if (GetFileAttributes(bin_filename) == INVALID_FILE_ATTRIBUTES)
+			DumpDesc(orig_desc, bin_filename);
+		link_deduplicated_files(filename.c_str(), bin_filename);
+	}
+
+out_unmap:
+	GetDumpingContext()->Unmap(staging, 0);
+}
+
+void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
+		FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
+		UINT stride, UINT offset, UINT first, UINT count)
+{
+	D3D11_BUFFER_DESC desc, orig_desc;
+	ID3D11Buffer *staging = NULL;
+	HRESULT hr;
+
 	buffer->GetDesc(&desc);
+	memcpy(&orig_desc, &desc, sizeof(D3D11_BUFFER_DESC));
 
 	desc.Usage = D3D11_USAGE_STAGING;
 	desc.BindFlags = 0;
 	desc.MiscFlags = 0;
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
-	hr = mOrigDevice1->CreateBuffer(&desc, NULL, &staging);
+	hr = GetHackerDevice()->GetPassThroughOrigDevice1()->CreateBuffer(&desc, NULL, &staging);
 	if (FAILED(hr)) {
-		FALogInfo("DumpBuffer failed to create staging buffer: 0x%x\n", hr);
+		FALogErr("DumpBuffer failed to create staging buffer: 0x%x\n", hr);
 		return;
 	}
 
-	mOrigContext1->CopyResource(staging, buffer);
-	hr = mOrigContext1->Map(staging, 0, D3D11_MAP_READ, 0, &map);
-	if (FAILED(hr)) {
-		FALogInfo("DumpBuffer failed to map staging resource: 0x%x\n", hr);
-		return;
-	}
+	GetDumpingContext()->CopyResource(staging, buffer);
 
-	if (options & FrameAnalysisOptions::DUMP_XX_BIN) {
-		wcscpy_s(ext, MAX_PATH + filename - ext, L".buf");
+	if (!DeferDumpBuffer(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count))
+		DumpBufferImmediateCtx(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count);
 
-		err = wfopen_ensuring_access(&fd, filename, L"wb");
-		if (!fd) {
-			FALogInfo("Unable to create %S: %u\n", filename, err);
-			goto out_unmap;
-		}
-		fwrite(map.pData, 1, desc.ByteWidth, fd);
-		fclose(fd);
-	}
-
-	if (options & FrameAnalysisOptions::DUMP_XX_TXT) {
-		wcscpy_s(ext, MAX_PATH + filename - ext, L".txt");
-		if (options & FrameAnalysisOptions::DUMP_CB_TXT)
-			DumpBufferTxt(filename, &map, desc.ByteWidth, 'c', idx, stride, offset);
-		else if (options & FrameAnalysisOptions::DUMP_VB_TXT)
-			DumpVBTxt(filename, &map, desc.ByteWidth, idx, stride, offset, first, count);
-		else if (options & FrameAnalysisOptions::DUMP_IB_TXT)
-			DumpIBTxt(filename, &map, desc.ByteWidth, ib_fmt, offset, first, count);
-		else if (options & FrameAnalysisOptions::DUMP_ON_XXXXXX) {
-			// We don't know what kind of buffer this is, so just
-			// use the generic dump routine:
-			DumpBufferTxt(filename, &map, desc.ByteWidth, '?', idx, stride, offset);
-		}
-	}
-	// TODO: Dump UAV, RT and SRV buffers as text taking their format,
-	// offset, size, first entry and num entries into account.
-
-out_unmap:
-	mOrigContext1->Unmap(staging, 0);
 	staging->Release();
 }
 
-void HackerContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
-		FrameAnalysisOptions type_mask, int idx, DXGI_FORMAT ib_fmt,
+void FrameAnalysisContext::DumpResource(ID3D11Resource *resource, wchar_t *filename,
+		FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT format,
 		UINT stride, UINT offset)
 {
 	D3D11_RESOURCE_DIMENSION dim;
+
+	// Process key inputs to allow user to abort long running frame analysis sessions:
+	DispatchInputEvents(GetHackerDevice());
+	if (!G->analyse_frame)
+		return;
 
 	resource->GetType(&dim);
 
 	switch (dim) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			DumpBuffer((ID3D11Buffer*)resource, filename, type_mask, idx, ib_fmt, stride, offset, 0, 0);
+			if (analyse_options & FrameAnalysisOptions::FMT_BUF_MASK)
+				DumpBuffer((ID3D11Buffer*)resource, filename, buf_type_mask, idx, format, stride, offset, 0, 0);
+			else
+				FALogInfo("Skipped dumping Buffer (No buffer formats enabled): %S\n", filename);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
-			FALogInfo("Skipped dumping Texture1D resource\n");
+			FALogInfo("Skipped dumping Texture1D: %S\n", filename);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-			if (analyse_options & FrameAnalysisOptions::STEREO)
-				DumpStereoResource((ID3D11Texture2D*)resource, filename, type_mask);
-			if (analyse_options & FrameAnalysisOptions::MONO)
-				Dump2DResource((ID3D11Texture2D*)resource, filename, false, type_mask);
+			if (analyse_options & FrameAnalysisOptions::FMT_2D_MASK) {
+				if (analyse_options & FrameAnalysisOptions::STEREO)
+					DumpStereoResource((ID3D11Texture2D*)resource, filename, format);
+				if (analyse_options & FrameAnalysisOptions::MONO)
+					Dump2DResource((ID3D11Texture2D*)resource, filename, false, NULL, format);
+			} else
+				FALogInfo("Skipped dumping Texture2D (No Texture2D formats enabled): %S\n", filename);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-			FALogInfo("Skipped dumping Texture3D resource\n");
+			FALogInfo("Skipped dumping Texture3D: %S\n", filename);
 			break;
 		default:
-			FALogInfo("Skipped dumping resource of unknown type %i\n", dim);
+			FALogInfo("Skipped dumping resource of unknown type %i: %S\n", dim, filename);
 			break;
 	}
 }
 
-HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
-		wchar_t *reg, char shader_type, int idx, uint32_t hash, uint32_t orig_hash,
-		ID3D11Resource *handle)
+static BOOL CreateDeferredFADirectory(LPCWSTR path)
+{
+	DWORD err;
+
+	// Deferred contexts don't have an opportunity to create their
+	// dumps directory earlier, so do so now:
+
+	if (!CreateDirectoryEnsuringAccess(path)) {
+		err = GetLastError();
+		if (err != ERROR_ALREADY_EXISTS) {
+			LogInfoW(L"Error creating deferred frame analysis directory: %i\n", err);
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
+void FrameAnalysisContext::get_deduped_dir(wchar_t *path, size_t size)
+{
+	if (analyse_options & FrameAnalysisOptions::SHARE_DEDUPED) {
+		if (!GetModuleFileName(0, path, (DWORD)size))
+			return;
+		wcsrchr(path, L'\\')[1] = 0;
+		wcscat_s(path, size, L"FrameAnalysisDeduped");
+	} else {
+		_snwprintf_s(path, size, size, L"%ls\\deduped", G->ANALYSIS_PATH);
+	}
+
+	CreateDirectoryEnsuringAccess(path);
+}
+
+HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
+		wchar_t *reg, char shader_type, int idx, ID3D11Resource *handle)
 {
 	struct ResourceHashInfo *info;
+	uint32_t hash, orig_hash;
 	wchar_t *pos;
 	size_t rem;
 	HRESULT hr;
 
 	StringCchPrintfExW(filename, size, &pos, &rem, NULL, L"%ls\\", G->ANALYSIS_PATH);
+	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_DEFERRED) {
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"ctx-0x%p\\", this);
+		if (!CreateDeferredFADirectory(filename))
+			return E_FAIL;
+	}
 
 	if (!(analyse_options & FrameAnalysisOptions::FILENAME_REG)) {
 		// We don't allow hold to be changed mid-frame due to potential
 		// for filename conflicts, so use def_analyse_options:
 		if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
 			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i.", G->analyse_frame_no);
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i-", G->analyse_frame);
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i-", draw_call);
 	}
 
 	if (shader_type)
@@ -832,7 +1307,14 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 		// for filename conflicts, so use def_analyse_options:
 		if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
 			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i.", G->analyse_frame_no);
-		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i", G->analyse_frame);
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i", draw_call);
+	}
+
+	try {
+		hash = G->mResources.at(handle).hash;
+		orig_hash = G->mResources.at(handle).orig_hash;
+	} catch (std::out_of_range) {
+		hash = orig_hash = 0;
 	}
 
 	if (hash) {
@@ -877,7 +1359,7 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 
 	hr = StringCchPrintfW(pos, rem, L".XXX");
 	if (FAILED(hr)) {
-		FALogInfo("Failed to create filename: 0x%x\n", hr);
+		FALogErr("Failed to create filename: 0x%x\n", hr);
 		// Could create a shorter filename without hashes if this
 		// becomes a problem in practice
 	}
@@ -885,23 +1367,35 @@ HRESULT HackerContext::FrameAnalysisFilename(wchar_t *filename, size_t size, boo
 	return hr;
 }
 
-HRESULT HackerContext::FrameAnalysisFilenameResource(wchar_t *filename, size_t size, wchar_t *type,
-		uint32_t hash, uint32_t orig_hash, ID3D11Resource *handle)
+HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, size_t size, const wchar_t *type, ID3D11Resource *handle, bool force_filename_handle)
 {
 	struct ResourceHashInfo *info;
+	uint32_t hash, orig_hash;
 	wchar_t *pos;
 	size_t rem;
 	HRESULT hr;
 
 	StringCchPrintfExW(filename, size, &pos, &rem, NULL, L"%ls\\", G->ANALYSIS_PATH);
+	if (GetPassThroughOrigContext1()->GetType() == D3D11_DEVICE_CONTEXT_DEFERRED) {
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"ctx-0x%p\\", this);
+		if (!CreateDeferredFADirectory(filename))
+			return E_FAIL;
+	}
 
 	// We don't allow hold to be changed mid-frame due to potential
 	// for filename conflicts, so use def_analyse_options:
 	if (G->def_analyse_options & FrameAnalysisOptions::HOLD)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%i.", G->analyse_frame_no);
-	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i-", G->analyse_frame);
+	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i.%i-", draw_call, non_draw_call_dump_counter);
 
-	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%s-", type);
+	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%s", type);
+
+	try {
+		hash = G->mResources.at(handle).hash;
+		orig_hash = G->mResources.at(handle).orig_hash;
+	} catch (std::out_of_range) {
+		hash = orig_hash = 0;
+	}
 
 	if (hash) {
 		try {
@@ -926,31 +1420,238 @@ HRESULT HackerContext::FrameAnalysisFilenameResource(wchar_t *filename, size_t s
 			StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"(%08x)", orig_hash);
 	}
 
-	// Always do this for resource dumps since hashes are likely to clash:
-	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"@%p", handle);
+	// Always do this for update/unmap resource dumps since hashes are likely to clash:
+	if (force_filename_handle || (analyse_options & FrameAnalysisOptions::FILENAME_HANDLE))
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"@%p", handle);
 
 	hr = StringCchPrintfW(pos, rem, L".XXX");
 	if (FAILED(hr))
-		FALogInfo("Failed to create filename: 0x%x\n", hr);
+		FALogErr("Failed to create filename: 0x%x\n", hr);
 
 	return hr;
 }
 
-void HackerContext::_DumpCBs(char shader_type, bool compute,
+const wchar_t* FrameAnalysisContext::dedupe_tex2d_filename(ID3D11Texture2D *resource,
+		D3D11_TEXTURE2D_DESC *orig_desc, wchar_t *dedupe_filename,
+		size_t size, const wchar_t *traditional_filename, DXGI_FORMAT format)
+{
+	D3D11_MAPPED_SUBRESOURCE map;
+	HRESULT hr;
+	uint32_t hash;
+	wchar_t dedupe_dir[MAX_PATH];
+
+	// Many of the files dumped with frame analysis are identical, and this
+	// can take a very long time and waste a lot of disk space to dump them
+	// all. We employ a new strategy to minimise this by saving only unique
+	// files and hardlinking them into their traditional FA location.
+	//
+	// This function is responsible for finding a filename that will be
+	// unique for the given resource, with its current contents (not the
+	// contents it was created with). To do this, we will re-hash the
+	// resource now. If there happen to be any hash collisions in a frame
+	// analysis dump it will become misleading, as the later resource will
+	// point to the earlier resource with the same hash, but I'm not
+	// expecting this to be a major problem in practice.
+	//
+	// We use the original description from the resource prior to being
+	// staged to try to get the best chance of matching the 3DMigoto hash
+	// for textures that have not been changed on the GPU. There may still
+	// be reasons it won't if the description retrieved from DirectX
+	// doesn't match the description used to create it (e.g. mip-maps being
+	// generated after creation I guess).
+
+	hr = GetDumpingContext()->Map(resource, 0, D3D11_MAP_READ, 0, &map);
+	if (FAILED(hr)) {
+		FALogErr("Frame Analysis filename deduplication failed to map resource: 0x%x\n", hr);
+		goto err;
+	};
+
+	// CalcTexture2DDataHash takes a D3D11_SUBRESOURCE_DATA*, which happens
+	// to be binary identical to a D3D11_MAPPED_SUBRESOURCE (though it is
+	// not an array), so we can safely cast it.
+	//
+	// Now using CalcTexture2DDataHashAccurate to take the full texture
+	// into consideration when generating the hash - necessary as our
+	// legacy texture hash is very broken (passable for texture filtering,
+	// but not for this) and doesn't hash anywhere near the full image, so
+	// changes in the mid to lower half of the image won't affect the hash.
+	hash = CalcTexture2DDataHashAccurate(orig_desc, (D3D11_SUBRESOURCE_DATA*)&map);
+	hash = CalcTexture2DDescHash(hash, orig_desc);
+
+	GetDumpingContext()->Unmap(resource, 0);
+
+	if (format == DXGI_FORMAT_UNKNOWN)
+		format = orig_desc->Format;
+
+	get_deduped_dir(dedupe_dir, MAX_PATH);
+	_snwprintf_s(dedupe_filename, size, size, L"%ls\\%08x-%S.XXX", dedupe_dir, hash, TexFormatStr(format));
+
+	return dedupe_filename;
+err:
+	return traditional_filename;
+}
+
+void FrameAnalysisContext::dedupe_buf_filename(ID3D11Buffer *resource,
+		D3D11_BUFFER_DESC *orig_desc, D3D11_MAPPED_SUBRESOURCE *map,
+		wchar_t *dedupe_filename, size_t size)
+{
+	wchar_t dedupe_dir[MAX_PATH];
+	uint32_t hash;
+
+	// Many of the files dumped with frame analysis are identical, and this
+	// can take a very long time and waste a lot of disk space to dump them
+	// all. We employ a new strategy to minimise this by saving only unique
+	// files and hardlinking them into their traditional FA location.
+	//
+	// This function is responsible for finding a filename that will be
+	// unique for the given resource, with its current contents (not the
+	// contents it was created with). To do this, we will re-hash the
+	// resource now. If there happen to be any hash collisions in a frame
+	// analysis dump it will become misleading, as the later resource will
+	// point to the earlier resource with the same hash, but I'm not
+	// expecting this to be a major problem in practice.
+	//
+	// We use the original description from the resource prior to being
+	// staged to try to get the best chance of matching the 3DMigoto hash
+	// for textures that have not been changed on the GPU. There may still
+	// be reasons it won't if the description retrieved from DirectX
+	// doesn't match the description used to create it (e.g. unused fields
+	// for a given buffer type being zeroed out).
+
+	hash = crc32c_hw(0, map->pData, orig_desc->ByteWidth);
+	hash = crc32c_hw(hash, orig_desc, sizeof(D3D11_BUFFER_DESC));
+
+	get_deduped_dir(dedupe_dir, MAX_PATH);
+	_snwprintf_s(dedupe_filename, size, size, L"%ls\\%08x.XXX", dedupe_dir, hash);
+}
+
+void FrameAnalysisContext::rotate_deduped_file(const wchar_t *dedupe_filename)
+{
+	wchar_t rotated_filename[MAX_PATH];
+	unsigned rotate;
+	size_t ext_pos;
+	const wchar_t *ext;
+
+	ext = wcsrchr(dedupe_filename, L'.');
+	if (ext) {
+		ext_pos = ext - dedupe_filename;
+	} else {
+		ext_pos = wcslen(dedupe_filename);
+		ext = L"";
+	}
+
+	for (rotate = 1; rotate; rotate++) {
+		swprintf_s(rotated_filename, MAX_PATH,
+				L"%.*s.%d%s", (int)ext_pos, dedupe_filename, rotate, ext);
+
+		if (GetFileAttributes(rotated_filename) == INVALID_FILE_ATTRIBUTES) {
+			// Move the base file to have the rotated filename,
+			// then copy it back to the original filename. That
+			// way code creating the link doesn't have to know
+			// about this rotation, and we only deal with it when
+			// we hit the too many hard links error:
+			// xxxxxxx.xxx - n hard links
+			// xxxxxxx.1.xxx - max 1023 hard links
+			// xxxxxxx.2.xxx - max 1023 hard links
+			// etc.
+			FALogInfo("Max hard links exceeded, rotating deduped file: %S\n", rotated_filename);
+			MoveFile(dedupe_filename, rotated_filename);
+			CopyFile(rotated_filename, dedupe_filename, TRUE);
+			return;
+		}
+	}
+}
+
+static bool create_shortcut(const wchar_t *filename, const wchar_t *dedupe_filename)
+{
+	IShellLink *psl;
+	IPersistFile *ppf;
+	HRESULT hr, dont_care;
+	wchar_t lnk_path[MAX_PATH];
+
+	dont_care = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+
+	// https://msdn.microsoft.com/en-us/library/aa969393.aspx#Shellink_Creating_Shortcut
+	hr = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLink, (LPVOID*)&psl);
+	if (SUCCEEDED(hr)) {
+		psl->SetPath(dedupe_filename);
+		hr = psl->QueryInterface(IID_IPersistFile, (LPVOID*)&ppf);
+		if (SUCCEEDED(hr)) {
+			swprintf_s(lnk_path, MAX_PATH, L"%s.lnk", filename);
+			hr = ppf->Save(lnk_path, TRUE);
+			ppf->Release();
+		}
+		psl->Release();
+	}
+
+	CoUninitialize();
+
+	return SUCCEEDED(hr);
+}
+
+void FrameAnalysisContext::link_deduplicated_files(const wchar_t *filename, const wchar_t *dedupe_filename)
+{
+	wchar_t relative_path[MAX_PATH] = {0};
+
+	// Bail if source didn't get created:
+	if (GetFileAttributes(dedupe_filename) == INVALID_FILE_ATTRIBUTES)
+		return;
+
+	// Bail if destination already exists:
+	if (GetFileAttributes(filename) != INVALID_FILE_ATTRIBUTES)
+		return;
+
+	if (analyse_options & FrameAnalysisOptions::SYMLINK) {
+		if (PathRelativePathTo(relative_path, filename, 0, dedupe_filename, 0)) {
+			if (CreateSymbolicLink(filename, relative_path, SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE))
+				return;
+		}
+
+		// May fail if developer mode is not enabled on Windows 10:
+		FALogErr("Symlinking %S -> %S failed (0x%u), trying hard link\n",
+				filename, relative_path, GetLastError());
+	}
+
+	if (CreateHardLink(filename, dedupe_filename, NULL))
+		return;
+	if (GetLastError() == ERROR_TOO_MANY_LINKS) {
+		rotate_deduped_file(dedupe_filename);
+		if (CreateHardLink(filename, dedupe_filename, NULL))
+			return;
+	}
+
+	// Hard links may fail e.g. if running the game off a FAT32 partition:
+	LogDebug("Hard linking %S -> %S failed (0x%u), trying windows shortcut\n",
+			filename, dedupe_filename, GetLastError());
+
+	if (create_shortcut(filename, dedupe_filename))
+		return;
+
+	LogDebug("Creating shortcut %S -> %S failed. Cannot deduplicate file, moving back.\n",
+			filename, dedupe_filename);
+
+	if (MoveFile(dedupe_filename, filename))
+		return;
+
+	FALogErr("All attempts to link deduplicated file failed, giving up: %S -> %S\n",
+			filename, dedupe_filename);
+}
+
+void FrameAnalysisContext::_DumpCBs(char shader_type, bool compute,
 	ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT])
 {
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
 	UINT i;
 
-	for (i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; i++) {
+	for (i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT && G->analyse_frame; i++) {
 		if (!buffers[i])
 			continue;
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"cb", shader_type, i, 0, 0, buffers[i]);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"cb", shader_type, i, buffers[i]);
 		if (SUCCEEDED(hr)) {
 			DumpResource(buffers[i], filename,
-					FrameAnalysisOptions::DUMP_CB_MASK, i,
+					FrameAnalysisOptions::DUMP_CB, i,
 					DXGI_FORMAT_UNKNOWN, 0, 0);
 		}
 
@@ -958,19 +1659,23 @@ void HackerContext::_DumpCBs(char shader_type, bool compute,
 	}
 }
 
-void HackerContext::_DumpTextures(char shader_type, bool compute,
+void FrameAnalysisContext::_DumpTextures(char shader_type, bool compute,
 	ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT])
 {
 	ID3D11Resource *resource;
-	D3D11_RESOURCE_DIMENSION dim;
+	D3D11_SHADER_RESOURCE_VIEW_DESC view_desc;
 	wchar_t filename[MAX_PATH];
-	uint32_t hash, orig_hash;
 	HRESULT hr;
 	UINT i;
 
-	for (i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
+	for (i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT && G->analyse_frame; i++) {
 		if (!views[i])
 			continue;
+
+		if (i == G->StereoParamsReg || i == G->IniParamsReg) {
+			FALogInfo("Skipped 3DMigoto resource in slot %cs-t%i\n", shader_type, i);
+			continue;
+		}
 
 		views[i]->GetResource(&resource);
 		if (!resource) {
@@ -978,25 +1683,18 @@ void HackerContext::_DumpTextures(char shader_type, bool compute,
 			continue;
 		}
 
-		resource->GetType(&dim);
-
-		try {
-			hash = G->mResources.at((ID3D11Texture2D *)resource).hash;
-			orig_hash = G->mResources.at((ID3D11Texture2D *)resource).orig_hash;
-		} catch (std::out_of_range) {
-			hash = orig_hash = 0;
-		}
+		views[i]->GetDesc(&view_desc);
 
 		// TODO: process description to get offset, strides & size for
 		// buffer & bufferex type SRVs and pass down to dump routines,
 		// although I have no idea how to determine which of the
 		// entries in the two D3D11_BUFFER_SRV unions will be valid.
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"t", shader_type, i, hash, orig_hash, resource);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"t", shader_type, i, resource);
 		if (SUCCEEDED(hr)) {
 			DumpResource(resource, filename,
-					FrameAnalysisOptions::DUMP_TEX_MASK, i,
-					DXGI_FORMAT_UNKNOWN, 0, 0);
+					FrameAnalysisOptions::DUMP_SRV, i,
+					view_desc.Format, 0, 0);
 		}
 
 		resource->Release();
@@ -1004,40 +1702,40 @@ void HackerContext::_DumpTextures(char shader_type, bool compute,
 	}
 }
 
-void HackerContext::DumpCBs(bool compute)
+void FrameAnalysisContext::DumpCBs(bool compute)
 {
 	ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
 
 	if (compute) {
 		if (mCurrentComputeShader) {
-			mOrigContext1->CSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			GetPassThroughOrigContext1()->CSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('c', compute, buffers);
 		}
 	} else {
 		if (mCurrentVertexShader) {
-			mOrigContext1->VSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			GetPassThroughOrigContext1()->VSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('v', compute, buffers);
 		}
 		if (mCurrentHullShader) {
-			mOrigContext1->HSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			GetPassThroughOrigContext1()->HSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('h', compute, buffers);
 		}
 		if (mCurrentDomainShader) {
-			mOrigContext1->DSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			GetPassThroughOrigContext1()->DSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('d', compute, buffers);
 		}
 		if (mCurrentGeometryShader) {
-			mOrigContext1->GSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			GetPassThroughOrigContext1()->GSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('g', compute, buffers);
 		}
 		if (mCurrentPixelShader) {
-			mOrigContext1->PSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
+			GetPassThroughOrigContext1()->PSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
 			_DumpCBs('p', compute, buffers);
 		}
 	}
 }
 
-void HackerContext::DumpVBs(DrawCallInfo *call_info)
+void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info)
 {
 	ID3D11Buffer *buffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 	UINT strides[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
@@ -1058,16 +1756,16 @@ void HackerContext::DumpVBs(DrawCallInfo *call_info)
 	// (there may be other good reasons to consider wrapping the input
 	// layout if we ever do anything advanced with the vertex buffers).
 
-	mOrigContext1->IAGetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, buffers, strides, offsets);
+	GetPassThroughOrigContext1()->IAGetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, buffers, strides, offsets);
 
 	for (i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
 		if (!buffers[i])
 			continue;
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"vb", NULL, i, 0, 0, buffers[i]);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"vb", NULL, i, buffers[i]);
 		if (SUCCEEDED(hr)) {
 			DumpBuffer(buffers[i], filename,
-				FrameAnalysisOptions::DUMP_VB_MASK, i,
+				FrameAnalysisOptions::DUMP_VB, i,
 				DXGI_FORMAT_UNKNOWN, strides[i], offsets[i],
 				first, count);
 		}
@@ -1076,7 +1774,7 @@ void HackerContext::DumpVBs(DrawCallInfo *call_info)
 	}
 }
 
-void HackerContext::DumpIB(DrawCallInfo *call_info)
+void FrameAnalysisContext::DumpIB(DrawCallInfo *call_info)
 {
 	ID3D11Buffer *buffer = NULL;
 	wchar_t filename[MAX_PATH];
@@ -1089,128 +1787,138 @@ void HackerContext::DumpIB(DrawCallInfo *call_info)
 		count = call_info->IndexCount;
 	}
 
-	mOrigContext1->IAGetIndexBuffer(&buffer, &format, &offset);
+	GetPassThroughOrigContext1()->IAGetIndexBuffer(&buffer, &format, &offset);
 	if (!buffer)
 		return;
 
-	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"ib", NULL, -1, 0, 0, buffer);
+	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"ib", NULL, -1, buffer);
 	if (SUCCEEDED(hr)) {
 		DumpBuffer(buffer, filename,
-				FrameAnalysisOptions::DUMP_IB_MASK, -1,
+				FrameAnalysisOptions::DUMP_IB, -1,
 				format, 0, offset, first, count);
 	}
 
 	buffer->Release();
 }
 
-void HackerContext::DumpTextures(bool compute)
+void FrameAnalysisContext::DumpTextures(bool compute)
 {
 	ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
 
 	if (compute) {
 		if (mCurrentComputeShader) {
-			mOrigContext1->CSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			GetPassThroughOrigContext1()->CSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('c', compute, views);
 		}
 	} else {
 		if (mCurrentVertexShader) {
-			mOrigContext1->VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			GetPassThroughOrigContext1()->VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('v', compute, views);
 		}
 		if (mCurrentHullShader) {
-			mOrigContext1->HSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			GetPassThroughOrigContext1()->HSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('h', compute, views);
 		}
 		if (mCurrentDomainShader) {
-			mOrigContext1->DSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			GetPassThroughOrigContext1()->DSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('d', compute, views);
 		}
 		if (mCurrentGeometryShader) {
-			mOrigContext1->GSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			GetPassThroughOrigContext1()->GSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('g', compute, views);
 		}
 		if (mCurrentPixelShader) {
-			mOrigContext1->PSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+			GetPassThroughOrigContext1()->PSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 			_DumpTextures('p', compute, views);
 		}
 	}
 }
 
-void HackerContext::DumpRenderTargets()
+void FrameAnalysisContext::DumpRenderTargets()
 {
 	UINT i;
+	ID3D11RenderTargetView *rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
+	ID3D11Resource *resource;
+	D3D11_RENDER_TARGET_VIEW_DESC view_desc;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	uint32_t hash, orig_hash;
 
-	for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
-		// TODO: Decouple from HackerContext and remove dependency on
-		// stat collection by querying the DeviceContext directly like
-		// we do for all other resources
-		try {
-			hash = G->mResources.at(mCurrentRenderTargets[i]).hash;
-			orig_hash = G->mResources.at(mCurrentRenderTargets[i]).orig_hash;
-		} catch (std::out_of_range) {
-			hash = orig_hash = 0;
+	GetPassThroughOrigContext1()->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, rtvs, NULL);
+
+	for (i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT && G->analyse_frame; ++i) {
+		if (!rtvs[i])
+			continue;
+
+		rtvs[i]->GetResource(&resource);
+		if (!resource) {
+			rtvs[i]->Release();
+			continue;
 		}
+
+		rtvs[i]->GetDesc(&view_desc);
 
 		// TODO: process description to get offset, strides & size for
 		// buffer type RTVs and pass down to dump routines, although I
 		// have no idea how to determine which of the entries in the
 		// two D3D11_BUFFER_RTV unions will be valid.
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"o", NULL, i,
-				hash, orig_hash, (ID3D11Resource*)mCurrentRenderTargets[i]);
-		if (FAILED(hr))
-			return;
-		DumpResource((ID3D11Resource*)mCurrentRenderTargets[i], filename,
-				FrameAnalysisOptions::DUMP_RT_MASK, i,
-				DXGI_FORMAT_UNKNOWN, 0, 0);
-	}
-}
-
-void HackerContext::DumpDepthStencilTargets()
-{
-	wchar_t filename[MAX_PATH];
-	HRESULT hr;
-	uint32_t hash, orig_hash;
-
-	if (mCurrentDepthTarget) {
-		// TODO: Decouple from HackerContext and remove dependency on
-		// stat collection by querying the DeviceContext directly like
-		// we do for all other resources
-		try {
-			hash = G->mResources.at(mCurrentDepthTarget).hash;
-			orig_hash = G->mResources.at(mCurrentDepthTarget).orig_hash;
-		} catch (std::out_of_range) {
-			hash = orig_hash = 0;
+		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"o", NULL, i, resource);
+		if (SUCCEEDED(hr)) {
+			DumpResource(resource, filename,
+					FrameAnalysisOptions::DUMP_RT, i,
+					view_desc.Format, 0, 0);
 		}
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"oD", NULL, -1,
-				hash, orig_hash, (ID3D11Resource*)mCurrentDepthTarget);
-		if (FAILED(hr))
-			return;
-		DumpResource((ID3D11Resource*)mCurrentDepthTarget, filename,
-				FrameAnalysisOptions::DUMP_DEPTH_MASK, -1,
-				DXGI_FORMAT_UNKNOWN, 0, 0);
+		resource->Release();
+		rtvs[i]->Release();
 	}
 }
 
-void HackerContext::DumpUAVs(bool compute)
+void FrameAnalysisContext::DumpDepthStencilTargets()
+{
+	ID3D11DepthStencilView *dsv = NULL;
+	ID3D11Resource *resource = NULL;
+	D3D11_DEPTH_STENCIL_VIEW_DESC view_desc;
+	wchar_t filename[MAX_PATH];
+	HRESULT hr;
+
+	GetPassThroughOrigContext1()->OMGetRenderTargets(0, NULL, &dsv);
+	if (!dsv)
+		return;
+
+	dsv->GetResource(&resource);
+	if (!resource) {
+		dsv->Release();
+		return;
+	}
+
+	dsv->GetDesc(&view_desc);
+
+	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"oD", NULL, -1, resource);
+	if (SUCCEEDED(hr)) {
+		DumpResource(resource, filename, FrameAnalysisOptions::DUMP_DEPTH,
+				-1, view_desc.Format, 0, 0);
+	}
+
+	resource->Release();
+	dsv->Release();
+}
+
+void FrameAnalysisContext::DumpUAVs(bool compute)
 {
 	UINT i;
 	ID3D11UnorderedAccessView *uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
 	ID3D11Resource *resource;
+	D3D11_UNORDERED_ACCESS_VIEW_DESC view_desc;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	uint32_t hash, orig_hash;
 
 	if (compute)
-		mOrigContext1->CSGetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
+		GetPassThroughOrigContext1()->CSGetUnorderedAccessViews(0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
 	else
-		mOrigContext1->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, 0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
+		GetPassThroughOrigContext1()->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, 0, D3D11_PS_CS_UAV_REGISTER_COUNT, uavs);
 
-	for (i = 0; i < D3D11_PS_CS_UAV_REGISTER_COUNT; ++i) {
+	for (i = 0; i < D3D11_PS_CS_UAV_REGISTER_COUNT && G->analyse_frame; ++i) {
 		if (!uavs[i])
 			continue;
 
@@ -1220,21 +1928,16 @@ void HackerContext::DumpUAVs(bool compute)
 			continue;
 		}
 
-		try {
-			hash = G->mResources.at(resource).hash;
-			orig_hash = G->mResources.at(resource).orig_hash;
-		} catch (std::out_of_range) {
-			hash = orig_hash = 0;
-		}
+		uavs[i]->GetDesc(&view_desc);
 
 		// TODO: process description to get offset & size for buffer
 		// type UAVs and pass down to dump routines.
 
-		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"u", NULL, i, hash, orig_hash, resource);
+		hr = FrameAnalysisFilename(filename, MAX_PATH, compute, L"u", NULL, i, resource);
 		if (SUCCEEDED(hr)) {
 			DumpResource(resource, filename,
-					FrameAnalysisOptions::DUMP_RT_MASK, i,
-					DXGI_FORMAT_UNKNOWN, 0, 0);
+					FrameAnalysisOptions::DUMP_RT, i,
+					view_desc.Format, 0, 0);
 		}
 
 		resource->Release();
@@ -1242,7 +1945,7 @@ void HackerContext::DumpUAVs(bool compute)
 	}
 }
 
-void HackerContext::FrameAnalysisClearRT(ID3D11RenderTargetView *target)
+void FrameAnalysisContext::FrameAnalysisClearRT(ID3D11RenderTargetView *target)
 {
 	FLOAT colour[4] = {0,0,0,0};
 	ID3D11Resource *resource = NULL;
@@ -1266,10 +1969,10 @@ void HackerContext::FrameAnalysisClearRT(ID3D11RenderTargetView *target)
 		return;
 	G->frame_analysis_seen_rts.insert(resource);
 
-	mOrigContext1->ClearRenderTargetView(target, colour);
+	GetPassThroughOrigContext1()->ClearRenderTargetView(target, colour);
 }
 
-void HackerContext::FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav)
+void FrameAnalysisContext::FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav)
 {
 	UINT values[4] = {0,0,0,0};
 	ID3D11Resource *resource = NULL;
@@ -1293,93 +1996,104 @@ void HackerContext::FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav)
 		return;
 	G->frame_analysis_seen_rts.insert(resource);
 
-	mOrigContext1->ClearUnorderedAccessViewUint(uav, values);
+	GetPassThroughOrigContext1()->ClearUnorderedAccessViewUint(uav, values);
 }
 
-void HackerContext::FrameAnalysisProcessTriggers(bool compute)
+void FrameAnalysisContext::FrameAnalysisTrigger(FrameAnalysisOptions new_options)
 {
-	FrameAnalysisOptions new_options = FrameAnalysisOptions::INVALID;
-	struct ShaderOverride *shaderOverride;
-	struct TextureOverride *textureOverride;
-	uint32_t hash;
-	UINT i;
-
-	// TODO: Trigger on texture inputs
-
-	if (compute) {
-		try {
-			shaderOverride = &G->mShaderOverrideMap.at(mCurrentComputeShader);
-			new_options |= shaderOverride->analyse_options;
-		} catch (std::out_of_range) {}
-
-		// TODO: Trigger on current UAVs
-	} else {
-		try {
-			shaderOverride = &G->mShaderOverrideMap.at(mCurrentVertexShader);
-			new_options |= shaderOverride->analyse_options;
-		} catch (std::out_of_range) {}
-
-		try {
-			shaderOverride = &G->mShaderOverrideMap.at(mCurrentHullShader);
-			new_options |= shaderOverride->analyse_options;
-		} catch (std::out_of_range) {}
-
-		try {
-			shaderOverride = &G->mShaderOverrideMap.at(mCurrentDomainShader);
-			new_options |= shaderOverride->analyse_options;
-		} catch (std::out_of_range) {}
-
-		try {
-			shaderOverride = &G->mShaderOverrideMap.at(mCurrentGeometryShader);
-			new_options |= shaderOverride->analyse_options;
-		} catch (std::out_of_range) {}
-
-		try {
-			shaderOverride = &G->mShaderOverrideMap.at(mCurrentPixelShader);
-			new_options |= shaderOverride->analyse_options;
-		} catch (std::out_of_range) {}
-
-		for (i = 0; i < mCurrentRenderTargets.size(); ++i) {
-			try {
-				hash = G->mResources.at(mCurrentRenderTargets[i]).hash;
-				textureOverride = &G->mTextureOverrideMap.at(hash);
-				new_options |= textureOverride->analyse_options;
-			} catch (std::out_of_range) {}
-		}
-
-		if (mCurrentDepthTarget) {
-			try {
-				hash = G->mResources.at(mCurrentDepthTarget).hash;
-				textureOverride = &G->mTextureOverrideMap.at(hash);
-				new_options |= textureOverride->analyse_options;
-			} catch (std::out_of_range) {}
-		}
-	}
-
-	if (!new_options)
-		return;
-
-	analyse_options = new_options;
-
 	if (new_options & FrameAnalysisOptions::PERSIST) {
 		G->cur_analyse_options = new_options;
-		FALogInfo("analyse_options (persistent): %08x\n", new_options);
-	} else
-		FALogInfo("analyse_options (one-shot): %08x\n", new_options);
+	} else {
+		if (oneshot_valid)
+			oneshot_analyse_options |= new_options;
+		else
+			oneshot_analyse_options = new_options;
+		oneshot_valid = true;
+	}
 }
 
-void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info)
+void FrameAnalysisContext::update_per_draw_analyse_options()
+{
+	analyse_options = G->cur_analyse_options;
+
+	// Log whenever new persistent options take effect, but only once:
+	if (G->cur_analyse_options & FrameAnalysisOptions::PERSIST) {
+		FALogInfo("analyse_options (persistent): %08x\n", G->cur_analyse_options);
+		G->cur_analyse_options &= (FrameAnalysisOptions)~FrameAnalysisOptions::PERSIST;
+	}
+
+	if (!oneshot_valid)
+		return;
+
+	FALogInfo("analyse_options (one-shot): %08x\n", oneshot_analyse_options);
+
+	analyse_options = oneshot_analyse_options;
+	oneshot_analyse_options = FrameAnalysisOptions::INVALID;
+	oneshot_valid = false;
+}
+
+void FrameAnalysisContext::update_stereo_dumping_mode()
+{
+	NvU8 stereo = false;
+
+	NvAPIOverride();
+	NvAPI_Stereo_IsEnabled(&stereo);
+	if (stereo)
+		NvAPI_Stereo_IsActivated(GetHackerDevice()->mStereoHandle, &stereo);
+
+	if (!stereo) {
+		// 3D Vision is disabled, force mono dumping mode:
+		analyse_options &= (FrameAnalysisOptions)~FrameAnalysisOptions::STEREO_MASK;
+		analyse_options |= FrameAnalysisOptions::MONO;
+		return;
+	}
+
+	// If neither stereo or mono specified, default to stereo:
+	if (!(analyse_options & FrameAnalysisOptions::STEREO_MASK))
+		analyse_options |= FrameAnalysisOptions::STEREO;
+}
+
+void FrameAnalysisContext::set_default_dump_formats(bool draw)
+{
+	// Textures: default to .jps when possible, .bin otherwise:
+	if (!(analyse_options & FrameAnalysisOptions::FMT_2D_MASK))
+		analyse_options |= FrameAnalysisOptions::FMT_2D_AUTO;
+
+	if (!(analyse_options & FrameAnalysisOptions::FMT_BUF_MASK)) {
+		if (draw) {
+			// If we are dumping specific buffer binds slots default to
+			// txt, otherwise buffers aren't dumped by default:
+			if (analyse_options & FrameAnalysisOptions::DUMP_XB_MASK)
+				analyse_options |= FrameAnalysisOptions::FMT_BUF_TXT;
+		} else {
+			// Command list dump, or dump_on_update/unmap - we always want
+			// to dump both textures and buffers. For buffers we default to
+			// both binary and text for now:
+			analyse_options |= FrameAnalysisOptions::FMT_BUF_TXT;
+			analyse_options |= FrameAnalysisOptions::FMT_BUF_BIN;
+		}
+	}
+}
+
+void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info)
 {
 	NvAPI_Status nvret;
 
-	// Bail if we are a deferred context, as there will not be anything to
-	// dump out yet and we don't want to alter the global draw count. Later
-	// we might want to think about ways we could analyse deferred contexts
-	// - a simple approach would be to dump out the back buffer after
-	// executing a command list in the immediate context, however this
-	// would only show the combined result of all the draw calls from the
-	// deferred context, and not the results of the individual draw
-	// operations.
+	update_per_draw_analyse_options();
+
+	// Update: We now have an option to allow analysis on deferred
+	// contexts, because it can still be useful to dump some types of
+	// resources in these cases. Render and depth targets will be pretty
+	// useless, and their use in texture slots will be similarly useless,
+	// but textures that come from the CPU, constant buffers, vertex
+	// buffers, etc that aren't changed on the GPU can still be useful.
+	//
+	// Later we might want to think about ways we could analyse render
+	// targets & UAVs in deferred contexts - a simple approach would be to
+	// dump out the back buffer after executing a command list in the
+	// immediate context, however this would only show the combined result
+	// of all the draw calls from the deferred context, and not the results
+	// of the individual draw operations.
 	//
 	// Another more in-depth approach would be to create the stereo
 	// resources now and issue the reverse blits, then dump them all after
@@ -1388,23 +2102,22 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info
 	// clear if it would have to be enabled while submitting the copy
 	// commands in the deferred context, or while playing the command queue
 	// in the immediate context, or both.
-	if (mOrigContext1->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)
+	if (!(analyse_options & FrameAnalysisOptions::DEFRD_CTX_MASK) &&
+	   (GetPassThroughOrigContext1()->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
+		draw_call++;
 		return;
+	}
 
-	analyse_options = G->cur_analyse_options;
+	update_stereo_dumping_mode();
+	set_default_dump_formats(true);
 
-	FrameAnalysisProcessTriggers(compute);
-
-	// If neither stereo or mono specified, default to stereo:
-	if (!(analyse_options & FrameAnalysisOptions::STEREO_MASK))
-		analyse_options |= FrameAnalysisOptions::STEREO;
-
-	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_MASK) &&
-	    (analyse_options & FrameAnalysisOptions::STEREO)) {
+	if ((analyse_options & FrameAnalysisOptions::FMT_2D_MASK) &&
+	    (analyse_options & FrameAnalysisOptions::STEREO) &&
+	    (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
 		// Enable reverse stereo blit for all resources we are about to dump:
-		nvret = NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, true);
+		nvret = NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
 		if (nvret != NVAPI_OK) {
-			FALogInfo("DumpStereoResource failed to enable reverse stereo blit\n");
+			FALogErr("DumpStereoResource failed to enable reverse stereo blit\n");
 			// Continue anyway, we should still be able to dump in 2D...
 		}
 	}
@@ -1413,21 +2126,21 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info
 	// dumping for mResources
 	EnterCriticalSection(&G->mCriticalSection);
 
-	if (analyse_options & FrameAnalysisOptions::DUMP_CB_MASK)
+	if (analyse_options & FrameAnalysisOptions::DUMP_CB)
 		DumpCBs(compute);
 
 	if (!compute) {
-		if (analyse_options & FrameAnalysisOptions::DUMP_VB_MASK)
+		if (analyse_options & FrameAnalysisOptions::DUMP_VB)
 			DumpVBs(call_info);
 
-		if (analyse_options & FrameAnalysisOptions::DUMP_IB_MASK)
+		if (analyse_options & FrameAnalysisOptions::DUMP_IB)
 			DumpIB(call_info);
 	}
 
-	if (analyse_options & FrameAnalysisOptions::DUMP_TEX_MASK)
+	if (analyse_options & FrameAnalysisOptions::DUMP_SRV)
 		DumpTextures(compute);
 
-	if (analyse_options & FrameAnalysisOptions::DUMP_RT_MASK) {
+	if (analyse_options & FrameAnalysisOptions::DUMP_RT) {
 		if (!compute)
 			DumpRenderTargets();
 
@@ -1435,24 +2148,24 @@ void HackerContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info
 		DumpUAVs(compute);
 	}
 
-	if (analyse_options & FrameAnalysisOptions::DUMP_DEPTH_MASK && !compute)
+	if (analyse_options & FrameAnalysisOptions::DUMP_DEPTH && !compute)
 		DumpDepthStencilTargets();
 
 	LeaveCriticalSection(&G->mCriticalSection);
 
-	if ((analyse_options & FrameAnalysisOptions::DUMP_XXX_MASK) &&
-	    (analyse_options & FrameAnalysisOptions::STEREO)) {
-		NvAPI_Stereo_ReverseStereoBlitControl(mHackerDevice->mStereoHandle, false);
+	if ((analyse_options & FrameAnalysisOptions::FMT_2D_MASK) &&
+	    (analyse_options & FrameAnalysisOptions::STEREO) &&
+	    (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
+		NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
 	}
 
-	G->analyse_frame++;
+	draw_call++;
 }
 
-void HackerContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
+void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 		FrameAnalysisOptions type_mask, wchar_t *type)
 {
 	wchar_t filename[MAX_PATH];
-	uint32_t hash = 0, orig_hash = 0;
 	HRESULT hr;
 
 	analyse_options = G->cur_analyse_options;
@@ -1460,37 +2173,93 @@ void HackerContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 	if (!(analyse_options & type_mask))
 		return;
 
+	if (!(analyse_options & FrameAnalysisOptions::DEFRD_CTX_MASK) &&
+	   (GetPassThroughOrigContext1()->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
+		FALogInfo("WARNING: dump_on_%S used on deferred context, but no deferred_ctx options enabled\n", type);
+		non_draw_call_dump_counter++;
+		return;
+	}
+
 	// Don't bother trying to dump as stereo - Map/Unmap/Update are inherently mono
 	analyse_options &= (FrameAnalysisOptions)~FrameAnalysisOptions::STEREO_MASK;
 	analyse_options |= FrameAnalysisOptions::MONO;
 
+	set_default_dump_formats(false);
+
 	EnterCriticalSection(&G->mCriticalSection);
 
-	try {
-		hash = G->mResources.at(resource).hash;
-		orig_hash = G->mResources.at(resource).orig_hash;
-	} catch (std::out_of_range) {
-	}
+	// We don't have a view at this point to get a fully typed format, so
+	// we leave format as DXGI_FORMAT_UNKNOWN, which will use the format
+	// from the resource description.
 
-	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, type, hash, orig_hash, resource);
+	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, type, resource, true);
 	if (SUCCEEDED(hr)) {
-		DumpResource(resource, filename, type_mask, -1, DXGI_FORMAT_UNKNOWN, 0, 0);
+		DumpResource(resource, filename, analyse_options, -1, DXGI_FORMAT_UNKNOWN, 0, 0);
 	}
 
 	LeaveCriticalSection(&G->mCriticalSection);
 
-	// XXX: Might be better to use a second counter for these
-	G->analyse_frame++;
+	non_draw_call_dump_counter++;
 }
 
-void HackerContext::FrameAnalysisAfterUnmap(ID3D11Resource *resource)
+void FrameAnalysisContext::FrameAnalysisAfterUnmap(ID3D11Resource *resource)
 {
 	_FrameAnalysisAfterUpdate(resource, FrameAnalysisOptions::DUMP_ON_UNMAP, L"unmap");
 }
 
-void HackerContext::FrameAnalysisAfterUpdate(ID3D11Resource *resource)
+void FrameAnalysisContext::FrameAnalysisAfterUpdate(ID3D11Resource *resource)
 {
 	_FrameAnalysisAfterUpdate(resource, FrameAnalysisOptions::DUMP_ON_UPDATE, L"update");
+}
+
+void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnalysisOptions options,
+		const wchar_t *target, DXGI_FORMAT format, UINT stride, UINT offset)
+{
+	wchar_t filename[MAX_PATH];
+	NvAPI_Status nvret;
+	HRESULT hr;
+
+	analyse_options = options;
+
+	if (!(analyse_options & FrameAnalysisOptions::DEFRD_CTX_MASK) &&
+	   (GetPassThroughOrigContext1()->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
+		FALogInfo("WARNING: dump used on deferred context, but no deferred_ctx options enabled\n");
+		non_draw_call_dump_counter++;
+		return;
+	}
+
+	update_stereo_dumping_mode();
+	set_default_dump_formats(false);
+
+	if ((analyse_options & FrameAnalysisOptions::STEREO) &&
+	    (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
+		// Enable reverse stereo blit for all resources we are about to dump:
+		nvret = NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
+		if (nvret != NVAPI_OK) {
+			FALogErr("FrameAnalyisDump failed to enable reverse stereo blit\n");
+			// Continue anyway, we should still be able to dump in 2D...
+		}
+	}
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, target, resource, false);
+	if (FAILED(hr)) {
+		// If the ini section and resource name makes the filename too
+		// long, try again without them:
+		hr = FrameAnalysisFilenameResource(filename, MAX_PATH, L"...", resource, false);
+	}
+	if (SUCCEEDED(hr))
+		DumpResource(resource, filename, analyse_options, -1, format, stride, offset);
+
+	LeaveCriticalSection(&G->mCriticalSection);
+
+	if ((analyse_options & FrameAnalysisOptions::STEREO) &&
+	    (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
+		NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
+	}
+
+	non_draw_call_dump_counter++;
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -1595,6 +2364,9 @@ STDMETHODIMP_(void) FrameAnalysisContext::Unmap(THIS_
 	FrameAnalysisLogResourceHash(pResource);
 
 	HackerContext::Unmap(pResource, Subresource);
+
+	if (G->analyse_frame)
+		FrameAnalysisAfterUnmap(pResource);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::PSSetConstantBuffers(THIS_
@@ -1847,6 +2619,11 @@ STDMETHODIMP_(void) FrameAnalysisContext::Dispatch(THIS_
 			ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
 
 	HackerContext::Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+
+	if (G->analyse_frame)
+		FrameAnalysisAfterDraw(true, NULL);
+	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DispatchIndirect(THIS_
@@ -1859,6 +2636,11 @@ STDMETHODIMP_(void) FrameAnalysisContext::DispatchIndirect(THIS_
 			pBufferForArgs, AlignedByteOffsetForArgs);
 
 	HackerContext::DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
+
+	if (G->analyse_frame)
+		FrameAnalysisAfterDraw(true, NULL);
+	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::RSSetState(THIS_
@@ -1956,6 +2738,9 @@ STDMETHODIMP_(void) FrameAnalysisContext::UpdateSubresource(THIS_
 
 	HackerContext::UpdateSubresource(pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch,
 			SrcDepthPitch);
+
+	if (G->analyse_frame)
+		FrameAnalysisAfterUpdate(pDstResource);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::CopyStructureCount(THIS_
@@ -2077,10 +2862,29 @@ STDMETHODIMP_(void) FrameAnalysisContext::ExecuteCommandList(THIS_
 		__in  ID3D11CommandList *pCommandList,
 		BOOL RestoreContextState)
 {
+	NvAPI_Status nvret;
+
 	FrameAnalysisLog("ExecuteCommandList(pCommandList:0x%p, RestoreContextState:%s)\n",
 			pCommandList, RestoreContextState ? "true" : "false");
 
+	if (G->analyse_frame) {
+		// Reverse stereo blit only applies to the immediate context - to work
+		// on a deferred context it must be enabled on the immediate context
+		// when the command list is executed. We don't know what options may
+		// have been used during the dump, so enable it unconditionally.
+		nvret = NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
+		if (nvret != NVAPI_OK) {
+			FALogErr("FrameAnalyisDump failed to enable reverse stereo blit\n");
+			// Continue anyway, we should still be able to dump in 2D...
+		}
+	}
+
 	HackerContext::ExecuteCommandList(pCommandList, RestoreContextState);
+
+	if (G->analyse_frame)
+		NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
+
+	dump_deferred_resources(pCommandList);
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::HSSetShaderResources(THIS_
@@ -2231,6 +3035,13 @@ STDMETHODIMP_(void) FrameAnalysisContext::CSSetUnorderedAccessViews(THIS_
 	FrameAnalysisLogViewArray(StartSlot, NumUAVs, (ID3D11View *const *)ppUnorderedAccessViews);
 
 	HackerContext::CSSetUnorderedAccessViews(StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
+
+	if (G->analyse_frame && ppUnorderedAccessViews) {
+		for (UINT i = 0; i < NumUAVs; ++i) {
+			if (ppUnorderedAccessViews[i])
+				FrameAnalysisClearUAV(ppUnorderedAccessViews[i]);
+		}
+	}
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::CSSetShader(THIS_
@@ -2890,6 +3701,10 @@ STDMETHODIMP FrameAnalysisContext::FinishCommandList(THIS_
 	HRESULT ret = HackerContext::FinishCommandList(RestoreDeferredContextState, ppCommandList);
 
 	FrameAnalysisLog("FinishCommandList(ppCommandList:0x%p -> 0x%p) = %u\n", ppCommandList, ppCommandList ? *ppCommandList : NULL, ret);
+
+	if (ppCommandList)
+		finish_deferred_resources(*ppCommandList);
+
 	return ret;
 }
 
@@ -2948,6 +3763,13 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexed(THIS_
 			IndexCount, StartIndexLocation, BaseVertexLocation);
 
 	HackerContext::DrawIndexed(IndexCount, StartIndexLocation, BaseVertexLocation);
+
+	if (G->analyse_frame) {
+		DrawCallInfo call_info(DrawCall::DrawIndexed, 0, IndexCount, 0, BaseVertexLocation, StartIndexLocation, 0, NULL, 0);
+		FrameAnalysisAfterDraw(false, &call_info);
+	}
+	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::Draw(THIS_
@@ -2960,6 +3782,13 @@ STDMETHODIMP_(void) FrameAnalysisContext::Draw(THIS_
 			VertexCount, StartVertexLocation);
 
 	HackerContext::Draw(VertexCount, StartVertexLocation);
+
+	if (G->analyse_frame) {
+		DrawCallInfo call_info(DrawCall::Draw, VertexCount, 0, 0, StartVertexLocation, 0, 0, NULL, 0);
+		FrameAnalysisAfterDraw(false, &call_info);
+	}
+	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::IASetIndexBuffer(THIS_
@@ -2994,6 +3823,13 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstanced(THIS_
 
 	HackerContext::DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation,
 			BaseVertexLocation, StartInstanceLocation);
+
+	if (G->analyse_frame) {
+		DrawCallInfo call_info(DrawCall::DrawIndexedInstanced, 0, IndexCountPerInstance, InstanceCount, BaseVertexLocation, StartIndexLocation, StartInstanceLocation, NULL, 0);
+		FrameAnalysisAfterDraw(false, &call_info);
+	}
+	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DrawInstanced(THIS_
@@ -3010,6 +3846,13 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawInstanced(THIS_
 			VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
 
 	HackerContext::DrawInstanced(VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
+
+	if (G->analyse_frame) {
+		DrawCallInfo call_info(DrawCall::DrawInstanced, VertexCountPerInstance, 0, InstanceCount, StartVertexLocation, 0, StartInstanceLocation, NULL, 0);
+		FrameAnalysisAfterDraw(false, &call_info);
+	}
+	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::VSSetShaderResources(THIS_
@@ -3041,6 +3884,13 @@ STDMETHODIMP_(void) FrameAnalysisContext::OMSetRenderTargets(THIS_
 	FrameAnalysisLogView(-1, "D", pDepthStencilView);
 
 	HackerContext::OMSetRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView);
+
+	if (G->analyse_frame && ppRenderTargetViews) {
+		for (UINT i = 0; i < NumViews; ++i) {
+			if (ppRenderTargetViews[i])
+				FrameAnalysisClearRT(ppRenderTargetViews[i]);
+		}
+	}
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::OMSetRenderTargetsAndUnorderedAccessViews(THIS_
@@ -3069,6 +3919,24 @@ STDMETHODIMP_(void) FrameAnalysisContext::OMSetRenderTargetsAndUnorderedAccessVi
 
 	HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, ppRenderTargetViews, pDepthStencilView,
 			UAVStartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
+
+	if (G->analyse_frame) {
+		if (NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) {
+			if (ppRenderTargetViews) {
+				for (UINT i = 0; i < NumRTVs; ++i) {
+					if (ppRenderTargetViews[i])
+						FrameAnalysisClearRT(ppRenderTargetViews[i]);
+				}
+			}
+		}
+
+		if (ppUnorderedAccessViews && (NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS)) {
+			for (UINT i = 0; i < NumUAVs; ++i) {
+				if (ppUnorderedAccessViews[i])
+					FrameAnalysisClearUAV(ppUnorderedAccessViews[i]);
+			}
+		}
+	}
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DrawAuto(THIS)
@@ -3076,6 +3944,13 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawAuto(THIS)
 	FrameAnalysisLog("DrawAuto()\n");
 
 	HackerContext::DrawAuto();
+
+	if (G->analyse_frame) {
+		DrawCallInfo call_info(DrawCall::DrawAuto, 0, 0, 0, 0, 0, 0, NULL, 0);
+		FrameAnalysisAfterDraw(false, &call_info);
+	}
+	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstancedIndirect(THIS_
@@ -3088,6 +3963,13 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstancedIndirect(THIS_
 			pBufferForArgs, AlignedByteOffsetForArgs);
 
 	HackerContext::DrawIndexedInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
+
+	if (G->analyse_frame) {
+		DrawCallInfo call_info(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
+		FrameAnalysisAfterDraw(false, &call_info);
+	}
+	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::DrawInstancedIndirect(THIS_
@@ -3100,6 +3982,13 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawInstancedIndirect(THIS_
 			pBufferForArgs, AlignedByteOffsetForArgs);
 
 	HackerContext::DrawInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
+
+	if (G->analyse_frame) {
+		DrawCallInfo call_info(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
+		FrameAnalysisAfterDraw(false, &call_info);
+	}
+	oneshot_valid = false;
+	non_draw_call_dump_counter = 0;
 }
 
 STDMETHODIMP_(void) FrameAnalysisContext::ClearRenderTargetView(THIS_

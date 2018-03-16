@@ -85,8 +85,6 @@ HackerContext::HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pCon
 	mCurrentDepthTarget = NULL;
 	mCurrentPSUAVStartSlot = 0;
 	mCurrentPSNumUAVs = 0;
-
-	analyse_options = FrameAnalysisOptions::INVALID;
 }
 
 
@@ -96,6 +94,11 @@ HackerContext::HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pCon
 void HackerContext::SetHackerDevice(HackerDevice *pDevice)
 {
 	mHackerDevice = pDevice;
+}
+
+HackerDevice* HackerContext::GetHackerDevice()
+{
+	return mHackerDevice;
 }
 
 // Returns the "real" DirectX object. Note that if hooking is enabled calls
@@ -771,9 +774,6 @@ void HackerContext::AfterDraw(DrawContext &data)
 		}
 	}
 
-	if (G->analyse_frame)
-		FrameAnalysisAfterDraw(false, &data.call_info);
-
 	if (mHackerDevice->mStereoHandle && data.oldSeparation != FLT_MAX) {
 		NvAPIOverride();
 		if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, data.oldSeparation))
@@ -1170,9 +1170,6 @@ STDMETHODIMP_(void) HackerContext::Unmap(THIS_
 {
 	TrackAndDivertUnmap(pResource, Subresource);
 	mOrigContext1->Unmap(pResource, Subresource);
-
-	if (G->analyse_frame)
-		FrameAnalysisAfterUnmap(pResource);
 }
 
 STDMETHODIMP_(void) HackerContext::PSSetConstantBuffers(THIS_
@@ -1390,9 +1387,6 @@ void HackerContext::AfterDispatch(DispatchContext *context)
 {
 	if (context->post_commands)
 		RunCommandList(mHackerDevice, this, context->post_commands, NULL, true);
-
-	if (G->analyse_frame)
-		FrameAnalysisAfterDraw(true, NULL);
 }
 
 STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
@@ -1603,9 +1597,6 @@ STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
 	// enable as an option in the future if there is a proven need.
 	if (G->track_texture_updates && DstSubresource == 0 && pDstBox == NULL)
 		UpdateResourceHashFromCPU(pDstResource, pSrcData, SrcRowPitch, SrcDepthPitch);
-
-	if (G->analyse_frame)
-		FrameAnalysisAfterUpdate(pDstResource);
 }
 
 STDMETHODIMP_(void) HackerContext::CopyStructureCount(THIS_
@@ -1835,7 +1826,6 @@ STDMETHODIMP_(void) HackerContext::CSSetUnorderedAccessViews(THIS_
 			if (!ppUnorderedAccessViews[i])
 				continue;
 			// TODO: Record stats
-			FrameAnalysisClearUAV(ppUnorderedAccessViews[i]);
 		}
 	}
 
@@ -2476,6 +2466,32 @@ void HackerContext::Bind3DMigotoResources()
 	BindStereoResources<&ID3D11DeviceContext::CSSetShaderResources>();
 }
 
+void HackerContext::InitIniParams()
+{
+	// Only the immediate context is allowed to perform [Constants]
+	// initialisation, as otherwise creating a deferred context could
+	// clobber any changes since then. The only exception I can think of is
+	// if a deferred context is created before the immediate context, but
+	// an immediate context will have to be created before the frame ends
+	// to execute that deferred context, so the worst case is that a
+	// deferred context may run for one frame without the constants command
+	// list being run. This situation is unlikely, and even if it does
+	// happen is unlikely to cause any issues in practice, so let's not try
+	// to do anything heroic to deal with it.
+	if (mOrigContext1->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE) {
+		LogInfo("BUG: InitIniParams called on a deferred context\n");
+		DoubleBeepExit();
+	}
+
+	// The command list only changes ini params that are defined, but for
+	// consistency we want all other ini params to be initialised as well:
+	memset(G->iniParams, 0, sizeof(G->iniParams));
+
+	// The command list will take care of the Map/Unmap to update the
+	// resource on the GPU:
+	RunCommandList(mHackerDevice, this, &G->constants_command_list, NULL, false);
+}
+
 // This function makes sure that the StereoParams and IniParams resources
 // remain pinned whenever the game assigns shader resources:
 template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
@@ -2580,7 +2596,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexed(THIS_
 	/* [annotation] */
 	__in  INT BaseVertexLocation)
 {
-	DrawContext c = DrawContext(0, IndexCount, 0, BaseVertexLocation, StartIndexLocation, 0, NULL, 0, false);
+	DrawContext c = DrawContext(DrawCall::DrawIndexed, 0, IndexCount, 0, BaseVertexLocation, StartIndexLocation, 0, NULL, 0);
 	BeforeDraw(c);
 
 	if (!c.call_info.skip)
@@ -2594,7 +2610,7 @@ STDMETHODIMP_(void) HackerContext::Draw(THIS_
 	/* [annotation] */
 	__in  UINT StartVertexLocation)
 {
-	DrawContext c = DrawContext(VertexCount, 0, 0, StartVertexLocation, 0, 0, NULL, 0, false);
+	DrawContext c = DrawContext(DrawCall::Draw, VertexCount, 0, 0, StartVertexLocation, 0, 0, NULL, 0);
 	BeforeDraw(c);
 
 	if (!c.call_info.skip)
@@ -2638,7 +2654,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstanced(THIS_
 	/* [annotation] */
 	__in  UINT StartInstanceLocation)
 {
-	DrawContext c = DrawContext(0, IndexCountPerInstance, InstanceCount, BaseVertexLocation, StartIndexLocation, StartInstanceLocation, NULL, 0, false);
+	DrawContext c = DrawContext(DrawCall::DrawIndexedInstanced, 0, IndexCountPerInstance, InstanceCount, BaseVertexLocation, StartIndexLocation, StartInstanceLocation, NULL, 0);
 	BeforeDraw(c);
 
 	if (!c.call_info.skip)
@@ -2657,7 +2673,7 @@ STDMETHODIMP_(void) HackerContext::DrawInstanced(THIS_
 	/* [annotation] */
 	__in  UINT StartInstanceLocation)
 {
-	DrawContext c = DrawContext(VertexCountPerInstance, 0, InstanceCount, StartVertexLocation, 0, StartInstanceLocation, NULL, 0, false);
+	DrawContext c = DrawContext(DrawCall::DrawInstanced, VertexCountPerInstance, 0, InstanceCount, StartVertexLocation, 0, StartInstanceLocation, NULL, 0);
 	BeforeDraw(c);
 
 	if (!c.call_info.skip)
@@ -2697,7 +2713,6 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 					continue;
 				if (G->DumpUsage)
 					RecordRenderTargetInfo(ppRenderTargetViews[i], i);
-				FrameAnalysisClearRT(ppRenderTargetViews[i]);
 			}
 		}
 
@@ -2739,7 +2754,6 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 						continue;
 					if (G->DumpUsage)
 						RecordRenderTargetInfo(ppRenderTargetViews[i], i);
-					FrameAnalysisClearRT(ppRenderTargetViews[i]);
 				}
 			}
 
@@ -2747,14 +2761,7 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 				RecordDepthStencil(pDepthStencilView);
 		}
 
-		if (ppUnorderedAccessViews && (NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS)) {
-			for (UINT i = 0; i < NumUAVs; ++i) {
-				if (!ppUnorderedAccessViews[i])
-					continue;
-				// TODO: Record stats
-				FrameAnalysisClearUAV(ppUnorderedAccessViews[i]);
-			}
-		}
+		// TODO: Record UAV stats
 	}
 
 	mOrigContext1->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, ppRenderTargetViews, pDepthStencilView,
@@ -2763,7 +2770,7 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 
 STDMETHODIMP_(void) HackerContext::DrawAuto(THIS)
 {
-	DrawContext c = DrawContext(0, 0, 0, 0, 0, 0, NULL, 0, false);
+	DrawContext c = DrawContext(DrawCall::DrawAuto, 0, 0, 0, 0, 0, 0, NULL, 0);
 	BeforeDraw(c);
 
 	if (!c.call_info.skip)
@@ -2777,7 +2784,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	DrawContext c = DrawContext(0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs, false);
+	DrawContext c = DrawContext(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
 	BeforeDraw(c);
 
 	if (!c.call_info.skip)
@@ -2791,7 +2798,7 @@ STDMETHODIMP_(void) HackerContext::DrawInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	DrawContext c = DrawContext(0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs, true);
+	DrawContext c = DrawContext(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
 	BeforeDraw(c);
 
 	if (!c.call_info.skip)

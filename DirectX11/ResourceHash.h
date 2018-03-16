@@ -150,7 +150,8 @@ uint32_t CalcTexture2DDescHash(uint32_t initial_hash, const D3D11_TEXTURE2D_DESC
 uint32_t CalcTexture3DDescHash(uint32_t initial_hash, const D3D11_TEXTURE3D_DESC *const_desc);
 
 uint32_t CalcTexture1DDataHash(const D3D11_TEXTURE1D_DESC *pDesc, const D3D11_SUBRESOURCE_DATA *pInitialData);
-uint32_t CalcTexture2DDataHash(const D3D11_TEXTURE2D_DESC *pDesc, const D3D11_SUBRESOURCE_DATA *pInitialData);
+uint32_t CalcTexture2DDataHash(const D3D11_TEXTURE2D_DESC *pDesc, const D3D11_SUBRESOURCE_DATA *pInitialData, bool zero_padding = false);
+uint32_t CalcTexture2DDataHashAccurate(const D3D11_TEXTURE2D_DESC *pDesc, const D3D11_SUBRESOURCE_DATA *pInitialData);
 uint32_t CalcTexture3DDataHash(const D3D11_TEXTURE3D_DESC *pDesc, const D3D11_SUBRESOURCE_DATA *pInitialData);
 
 ResourceHandleInfo* GetResourceHandleInfo(ID3D11Resource *resource);
@@ -167,6 +168,12 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src);
 
 bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource);
+
+int StrResourceDesc(char *buf, size_t size, D3D11_BUFFER_DESC *desc);
+int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE1D_DESC *desc);
+int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc);
+int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE3D_DESC *desc);
+int StrResourceDesc(char *buf, size_t size, struct ResourceHashInfo &info);
 
 void LogResourceDesc(const D3D11_BUFFER_DESC *desc);
 void LogResourceDesc(const D3D11_TEXTURE1D_DESC *desc);

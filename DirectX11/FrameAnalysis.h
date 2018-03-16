@@ -3,6 +3,66 @@
 #include <d3d11_1.h>
 #include "HackerContext.h"
 
+struct FrameAnalysisDeferredDumpBufferArgs {
+	FrameAnalysisOptions analyse_options;
+
+	// Using a ComPtr here because the vector that this class is placed in
+	// likes to makes copies of this class, and I don't particularly want
+	// to override the default copy and/or move constructors and operator=
+	// just to properly handle the refcounting on a raw COM pointer.
+	Microsoft::WRL::ComPtr<ID3D11Buffer> staging;
+
+	D3D11_BUFFER_DESC orig_desc;
+	wstring filename;
+	FrameAnalysisOptions buf_type_mask;
+	int idx;
+	DXGI_FORMAT ib_fmt;
+	UINT stride;
+	UINT offset;
+	UINT first;
+	UINT count;
+
+	FrameAnalysisDeferredDumpBufferArgs(FrameAnalysisOptions analyse_options, ID3D11Buffer *staging,
+			D3D11_BUFFER_DESC *orig_desc, wchar_t *filename, FrameAnalysisOptions buf_type_mask, int idx,
+			DXGI_FORMAT ib_fmt, UINT stride, UINT offset, UINT first, UINT count) :
+		analyse_options(analyse_options), staging(staging),
+		orig_desc(*orig_desc), filename(filename),
+		buf_type_mask(buf_type_mask), idx(idx), ib_fmt(ib_fmt),
+		stride(stride), offset(offset), first(first), count(count)
+	{}
+};
+struct FrameAnalysisDeferredDumpTex2DArgs {
+	FrameAnalysisOptions analyse_options;
+
+	// Using a ComPtr here because the vector that this class is placed in
+	// likes to makes copies of this class, and I don't particularly want
+	// to override the default copy and/or move constructors and operator=
+	// just to properly handle the refcounting on a raw COM pointer.
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> staging;
+
+	wstring filename;
+	bool stereo;
+	D3D11_TEXTURE2D_DESC orig_desc;
+	DXGI_FORMAT format;
+
+	FrameAnalysisDeferredDumpTex2DArgs(FrameAnalysisOptions analyse_options,
+			ID3D11Texture2D *staging, wchar_t *filename,
+			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format) :
+		analyse_options(analyse_options), staging(staging),
+		filename(filename), stereo(stereo), orig_desc(*orig_desc), format(format)
+	{}
+};
+
+// The deferred resource lists are unique pointers that start in the deferred
+// context and are moved to the global lookup map when the command list is
+// finished, then moved into the immediate context when the command list is
+// executed before finally being garbage collected. They move around, but they
+// are only ever have one owner at a time.
+typedef vector<FrameAnalysisDeferredDumpBufferArgs> FrameAnalysisDeferredBuffers;
+typedef std::unique_ptr<FrameAnalysisDeferredBuffers> FrameAnalysisDeferredBuffersPtr;
+typedef vector<FrameAnalysisDeferredDumpTex2DArgs> FrameAnalysisDeferredTex2D;
+typedef std::unique_ptr<FrameAnalysisDeferredTex2D> FrameAnalysisDeferredTex2DPtr;
+
 // We make the frame analysis context directly implement ID3D11DeviceContext1 -
 // no funky implementation inheritance or alternate versions here, just a
 // straight forward object implementing an interface. Accessing it as
@@ -22,7 +82,108 @@ private:
 	void FrameAnalysisLogAsyncQuery(ID3D11Asynchronous *async);
 	void FrameAnalysisLogData(void *buf, UINT size);
 	FILE *frame_analysis_log;
+	unsigned draw_call;
+	unsigned non_draw_call_dump_counter;
 
+	FrameAnalysisDeferredBuffersPtr deferred_buffers;
+	FrameAnalysisDeferredTex2DPtr deferred_tex2d;
+
+	ID3D11DeviceContext* GetDumpingContext();
+
+	void Dump2DResource(ID3D11Texture2D *resource, wchar_t *filename,
+			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format);
+	bool DeferDump2DResource(ID3D11Texture2D *staging, wchar_t *filename,
+			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format);
+	void Dump2DResourceImmediateCtx(ID3D11Texture2D *staging, wstring filename,
+			bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format);
+
+	HRESULT ResolveMSAA(ID3D11Texture2D *src, D3D11_TEXTURE2D_DESC *srcDesc,
+			ID3D11Texture2D **resolved, DXGI_FORMAT format);
+	HRESULT StageResource(ID3D11Texture2D *src,
+			D3D11_TEXTURE2D_DESC *srcDesc, ID3D11Texture2D **dst, DXGI_FORMAT format);
+	HRESULT CreateStagingResource(ID3D11Texture2D **resource,
+		D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa, DXGI_FORMAT format);
+
+	void DumpStereoResource(ID3D11Texture2D *resource, wchar_t *filename, DXGI_FORMAT format);
+	void DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
+			UINT size, char type, int idx, UINT stride, UINT offset);
+	void DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
+			UINT size, int idx, UINT stride, UINT offset,
+			UINT first, UINT count);
+	void DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
+			UINT size, DXGI_FORMAT ib_fmt, UINT offset,
+			UINT first, UINT count);
+
+	void DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
+			FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
+			UINT stride, UINT offset, UINT first, UINT count);
+	bool DeferDumpBuffer(ID3D11Buffer *staging,
+			D3D11_BUFFER_DESC *orig_desc, wchar_t *filename,
+			FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
+			UINT stride, UINT offset, UINT first, UINT count);
+	void DumpBufferImmediateCtx(ID3D11Buffer *staging, D3D11_BUFFER_DESC *orig_desc,
+			wstring filename, FrameAnalysisOptions buf_type_mask,
+			int idx, DXGI_FORMAT ib_fmt, UINT stride, UINT offset,
+			UINT first, UINT count);
+
+	void DumpResource(ID3D11Resource *resource, wchar_t *filename,
+			FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT format,
+			UINT stride, UINT offset);
+	void _DumpCBs(char shader_type, bool compute,
+		ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT]);
+	void _DumpTextures(char shader_type, bool compute,
+		ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]);
+	void DumpCBs(bool compute);
+	void DumpVBs(DrawCallInfo *call_info);
+	void DumpIB(DrawCallInfo *call_info);
+	void DumpTextures(bool compute);
+	void DumpRenderTargets();
+	void DumpDepthStencilTargets();
+	void DumpUAVs(bool compute);
+	template <typename DescType>
+	void DumpDesc(DescType *desc, const wchar_t *filename);
+
+	void dump_deferred_resources(ID3D11CommandList *command_list);
+	void finish_deferred_resources(ID3D11CommandList *command_list);
+
+	HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
+			wchar_t *reg, char shader_type, int idx, ID3D11Resource *handle);
+	HRESULT FrameAnalysisFilenameResource(wchar_t *filename, size_t size, const wchar_t *type,
+			ID3D11Resource *handle, bool force_filename_handle);
+	const wchar_t* dedupe_tex2d_filename(ID3D11Texture2D *resource,
+			D3D11_TEXTURE2D_DESC *desc, wchar_t *dedupe_filename,
+			size_t size, const wchar_t *traditional_filename, DXGI_FORMAT format);
+	void dedupe_buf_filename(ID3D11Buffer *resource,
+			D3D11_BUFFER_DESC *orig_desc,
+			D3D11_MAPPED_SUBRESOURCE *map,
+			wchar_t *dedupe_filename, size_t size);
+	void dedupe_buf_filename_txt(const wchar_t *bin_filename,
+			wchar_t *txt_filename, size_t size, char type, int idx,
+			UINT stride, UINT offset);
+	void dedupe_buf_filename_vb_txt(const wchar_t *bin_filename,
+			wchar_t *txt_filename, size_t size, int idx,
+			UINT stride, UINT offset, UINT first, UINT count);
+	void dedupe_buf_filename_ib_txt(const wchar_t *bin_filename,
+			wchar_t *txt_filename, size_t size, DXGI_FORMAT ib_fmt,
+			UINT offset, UINT first, UINT count);
+	void link_deduplicated_files(const wchar_t *filename, const wchar_t *dedupe_filename);
+	void rotate_deduped_file(const wchar_t *dedupe_filename);
+	void get_deduped_dir(wchar_t *path, size_t size);
+
+	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
+	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
+	void update_per_draw_analyse_options();
+	void FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info);
+	void _FrameAnalysisAfterUpdate(ID3D11Resource *pResource,
+			FrameAnalysisOptions type_mask, wchar_t *type);
+	void FrameAnalysisAfterUnmap(ID3D11Resource *pResource);
+	void FrameAnalysisAfterUpdate(ID3D11Resource *pResource);
+	void update_stereo_dumping_mode();
+	void set_default_dump_formats(bool draw);
+
+	FrameAnalysisOptions analyse_options;
+	FrameAnalysisOptions oneshot_analyse_options;
+	bool oneshot_valid;
 public:
 
 	FrameAnalysisContext(ID3D11Device1 *pDevice, ID3D11DeviceContext1 *pContext);
@@ -36,6 +197,10 @@ public:
 	// reference, but later we might actually make the default function
 	// insert a newline:
 #define FrameAnalysisLogNoNL FrameAnalysisLog
+
+	void FrameAnalysisTrigger(FrameAnalysisOptions new_options) override;
+	void FrameAnalysisDump(ID3D11Resource *resource, FrameAnalysisOptions options,
+		const wchar_t *target, DXGI_FORMAT format, UINT stride, UINT offset) override;
 
 	/*** IUnknown methods ***/
 

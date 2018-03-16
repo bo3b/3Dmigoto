@@ -43,6 +43,7 @@ static Section CommandListSections[] = {
 	{L"ClearDepthStencilView", false},
 	{L"ClearUnorderedAccessViewUint", false},
 	{L"ClearUnorderedAccessViewFloat", false},
+	{L"Constants", false},
 };
 
 // List all remaining sections so we can verify that every section listed in
@@ -57,7 +58,6 @@ static Section RegularSections[] = {
 	{L"Stereo", false},
 	{L"Rendering", false},
 	{L"Hunting", false},
-	{L"Constants", false},
 	{L"Profile", false},
 	{L"ConvergenceMap", false}, // Only used in nvapi wrapper
 	{L"Resource", true},
@@ -1296,7 +1296,6 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"allow_duplicate_hash",
 	L"depth_filter",
 	L"partner",
-	L"analyse_options",
 	L"model",
 	L"disable_scissor",
 	NULL
@@ -1370,11 +1369,6 @@ static void ParseShaderOverrideSections()
 		// filtering can be achieved by setting an ini param in the
 		// partner's [ShaderOverride] section.
 		override->partner_hash = GetIniHash(id, L"partner", 0, NULL);
-
-		if (GetIniStringAndLog(id, L"analyse_options", 0, setting, MAX_PATH)) {
-			override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
-				(FrameAnalysisOptionNames, setting, NULL);
-		}
 
 		if (GetIniStringAndLog(id, L"model", 0, setting, MAX_PATH)) {
 			wcstombs(override->model, setting, ARRAYSIZE(override->model));
@@ -1674,7 +1668,6 @@ wchar_t *TextureOverrideIniKeys[] = {
 	L"width",
 	L"height",
 	L"iteration",
-	L"analyse_options",
 	L"filter_index",
 	L"expand_region_copy",
 	L"deny_cpu_read",
@@ -1713,11 +1706,6 @@ static void parse_texture_override_common(const wchar_t *id, TextureOverride *ov
 			override->iterations.push_back(id[j]);
 			LogInfo("  Iteration=%d\n", id[j]);
 		}
-	}
-
-	if (GetIniStringAndLog(id, L"analyse_options", 0, setting, MAX_PATH)) {
-		override->analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
-			(FrameAnalysisOptionNames, setting, NULL);
 	}
 
 	override->filter_index = GetIniFloat(id, L"filter_index", 1.0f, NULL);
@@ -2884,6 +2872,24 @@ static void ToggleFullScreen(HackerDevice *device, void *private_data)
 	LogInfo("> full screen forcing toggled to %d (will not take effect until next mode switch)\n", G->SCREEN_FULLSCREEN);
 }
 
+static void ForceFullScreen(HackerDevice *device, void *private_data)
+{
+	HackerSwapChain *mHackerSwapChain = device->GetHackerSwapChain();
+	IDXGISwapChain1 *swap_chain;
+
+	LogInfo("> Switching to exclusive full screen mode\n");
+
+	if (!mHackerSwapChain) {
+		LogOverlay(LOG_DIRE, "force_full_screen_on_key: Unable to find swap chain\n");
+		return;
+	}
+
+	swap_chain = mHackerSwapChain->GetOrigSwapChain1();
+
+	swap_chain->SetFullscreenState(TRUE, NULL);
+	swap_chain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+}
+
 
 //////////////////////////// HARDWARE MOUSE CURSOR SUPPRESSION //////////////////////////
 // To suppress the hardware mouse cursor you would think we just have to call
@@ -3248,7 +3254,6 @@ void LoadConfigFile()
 {
 	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
 	wchar_t setting[MAX_PATH];
-	int i;
 
 	G->gInitialized = true;
 
@@ -3345,6 +3350,7 @@ void LoadConfigFile()
 
 	G->SCREEN_FULLSCREEN = GetIniInt(L"Device", L"full_screen", -1, NULL);
 	RegisterIniKeyBinding(L"Device", L"toggle_full_screen", ToggleFullScreen, NULL, 0, NULL);
+	RegisterIniKeyBinding(L"Device", L"force_full_screen_on_key", ForceFullScreen, NULL, 0, NULL);
 	G->gForceStereo = GetIniInt(L"Device", L"force_stereo", 0, NULL);
 	G->SCREEN_ALLOW_COMMANDS = GetIniBool(L"Device", L"allow_windowcommands", false, NULL);
 
@@ -3380,6 +3386,7 @@ void LoadConfigFile()
 			G->shader_hash_type = ShaderHashType::FNV;
 		}
 	}
+	G->texture_hash_version = GetIniInt(L"Rendering", L"texture_hash", 0, NULL);
 
 	if (GetIniStringAndLog(L"Rendering", L"override_directory", 0, G->SHADER_PATH, MAX_PATH))
 	{
@@ -3589,27 +3596,15 @@ void LoadConfigFile()
 	G->post_clear_uav_float_command_list.clear();
 	ParseCommandList(L"ClearUnorderedAccessViewFloat", &G->clear_uav_float_command_list, &G->post_clear_uav_float_command_list, NULL);
 
-	// Read in any constants defined in the ini, for use as shader parameters
-	// Any result of the default FLT_MAX means the parameter is not in use.
-	// stof will crash if passed FLT_MAX, hence the extra check.
-	// We use FLT_MAX instead of the more logical INFINITY, because Microsoft *always* generates 
-	// warnings, even for simple comparisons. And NaN comparisons are similarly broken.
+	// The naming on this one is historical - [Constants] used to define
+	// iniParams that couldn't change, then later we allowed them to be
+	// changed by key inputs and this became the initial state, and now
+	// this is implemented as a command list run on immediate context
+	// creation & config reload, which allows it to be used for any one
+	// time initialisation.
 	LogInfo("[Constants]\n");
-	for (i = 0; i < INI_PARAMS_SIZE; i++) {
-		wchar_t buf[8];
-
-		StringCchPrintf(buf, 8, L"x%.0i", i);
-		G->iniParams[i].x = GetIniFloat(L"Constants", buf, 0, NULL);
-
-		StringCchPrintf(buf, 8, L"y%.0i", i);
-		G->iniParams[i].y = GetIniFloat(L"Constants", buf, 0, NULL);
-
-		StringCchPrintf(buf, 8, L"z%.0i", i);
-		G->iniParams[i].z = GetIniFloat(L"Constants", buf, 0, NULL);
-
-		StringCchPrintf(buf, 8, L"w%.0i", i);
-		G->iniParams[i].w = GetIniFloat(L"Constants", buf, 0, NULL);
-	}
+	G->constants_command_list.clear();
+	ParseCommandList(L"Constants", &G->constants_command_list, NULL, NULL);
 
 	LogInfo("[Profile]\n");
 	ParseDriverProfile();
@@ -3687,9 +3682,7 @@ static void MarkAllShadersDeferredUnprocessed()
 
 void ReloadConfig(HackerDevice *device)
 {
-	ID3D11DeviceContext* realContext; device->GetImmediateContext(&realContext);
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	HRESULT hr;
+	HackerContext *mHackerContext = NULL;
 
 	LogInfo("Reloading d3dx.ini (EXPERIMENTAL)...\n");
 
@@ -3724,14 +3717,14 @@ void ReloadConfig(HackerDevice *device)
 
 	LeaveCriticalSection(&G->mCriticalSection);
 
-	// Update the iniParams resource from the config file:
-	hr = realContext->Map(device->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	if (FAILED(hr)) {
-		LogInfo("Failed to update IniParams\n");
-		return;
+	// Execute the [Constants] command list in the immediate context to
+	// initialise iniParams and perform any other custom initialisation the
+	// user may have defined:
+	device->GetImmediateContext((ID3D11DeviceContext**)&mHackerContext);
+	if (mHackerContext) {
+		mHackerContext->InitIniParams();
+		mHackerContext->Release();
 	}
-	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
-	realContext->Unmap(device->mIniTexture, 0);
 
 	LogOverlay(LOG_INFO, "> d3dx.ini reloaded");
 }

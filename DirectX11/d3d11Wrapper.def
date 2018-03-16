@@ -110,3 +110,4 @@ EXPORTS
 ; We are not exporting an ordinal here, since a text string is less likely to
 ; clash with any future changes to the real d3d11.dll or another wrapper.
 Install3DMigotoDriverProfileW
+CBTProc

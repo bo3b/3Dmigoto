@@ -103,73 +103,105 @@ typedef std::unordered_map<ID3D11DeviceChild *, UINT64> ShaderMap;
 
 enum class FrameAnalysisOptions {
 	INVALID         = 0,
+
+	// Bind selection:
 	DUMP_RT         = 0x00000001,
-	DUMP_RT_JPS     = 0x00000002,
-	DUMP_RT_DDS     = 0x00000004,
-	DUMP_RT_MASK    = 0x00000007,
-	CLEAR_RT        = 0x00000008,
-	DUMP_DEPTH      = 0x00000010,
-	DUMP_DEPTH_JPS  = 0x00000020,
-	DUMP_DEPTH_DDS  = 0x00000040,
-	DUMP_DEPTH_MASK = 0x00000070,
-	FILENAME_REG    = 0x00000080,
-	DUMP_TEX        = 0x00000100,
-	DUMP_TEX_JPS    = 0x00000200,
-	DUMP_TEX_DDS    = 0x00000400,
-	DUMP_TEX_MASK   = 0x00000700,
-	DUMP_XXX        = 0x01800111,
-	DUMP_XXX_JPS    = 0x01800222,
-	DUMP_XXX_DDS    = 0x01800444,
-	DUMP_XXX_MASK   = 0x01800777,
-	PERSIST         = 0x00000800, // Used by shader/texture triggers
-	STEREO          = 0x00001000,
-	MONO            = 0x00002000,
-	STEREO_MASK     = 0x00003000,
-	DUMP_CB_BIN     = 0x00004000,
-	DUMP_CB_TXT     = 0x00008000,
-	DUMP_CB_MASK    = 0x0000c000,
-	DUMP_VB_BIN     = 0x00010000,
-	DUMP_VB_TXT     = 0x00020000,
-	DUMP_VB_MASK    = 0x00030000,
-	DUMP_IB_BIN     = 0x00040000,
-	DUMP_IB_TXT     = 0x00080000,
-	DUMP_IB_MASK    = 0x000c0000,
-	DUMP_XX_BIN     = 0x01854505, // Includes anything that can be a buffer: CB, VB, IB, SRVs, RTs & UAVs
-	DUMP_XX_TXT     = 0x018a8000, // Not including SRVs, RTs or UAVs for now
-	FILENAME_HANDLE = 0x00100000,
-	LOG_DEPRECATED  = 0x00200000, // Always enabled now - there is no situation we don't want this.
-	HOLD            = 0x00400000,
-	DUMP_ON_UNMAP   = 0x00800000, // XXX: For now including in all XX masks
-	DUMP_ON_UPDATE  = 0x01000000, // XXX: For now including in all XX masks
-	DUMP_ON_XXXXXX  = 0x01800000,
+	DUMP_DEPTH      = 0x00000002,
+	DUMP_SRV        = 0x00000004,
+	DUMP_CB         = 0x00000008,
+	DUMP_VB         = 0x00000010,
+	DUMP_IB         = 0x00000020,
+
+	// Format selection:
+	FMT_2D_AUTO     = 0x00000040,
+	FMT_2D_JPS      = 0x00000080,
+	FMT_2D_DDS      = 0x00000100,
+	FMT_BUF_BIN     = 0x00000200,
+	FMT_BUF_TXT     = 0x00000400,
+	FMT_DESC        = 0x00000800,
+
+	// Masks:
+	DUMP_XB_MASK    = 0x00000038, // CB+VB+IB, to check if a user specified any of these
+	FMT_2D_MASK     = 0x000009c0, // Mask of Texture2D formats
+	FMT_BUF_MASK    = 0x00000e00, // Mask of Buffer formats
+
+	// Legacy bind + format combo options:
+	DUMP_RT_JPS     = 0x00000081,
+	DUMP_RT_DDS     = 0x00000301,
+	DUMP_DEPTH_JPS  = 0x00000082,
+	DUMP_DEPTH_DDS  = 0x00000302,
+	DUMP_TEX_JPS    = 0x00000084,
+	DUMP_TEX_DDS    = 0x00000304,
+	DUMP_CB_TXT     = 0x00000408,
+	DUMP_VB_TXT     = 0x00000410,
+	DUMP_IB_TXT     = 0x00000420,
+
+	// Misc options:
+	CLEAR_RT        = 0x00001000,
+	FILENAME_REG    = 0x00002000,
+	FILENAME_HANDLE = 0x00004000,
+	PERSIST         = 0x00008000, // Used by shader/texture triggers
+	STEREO          = 0x00010000,
+	MONO            = 0x00020000,
+	STEREO_MASK     = 0x00030000,
+	HOLD            = 0x00040000,
+	DUMP_ON_UNMAP   = 0x00080000,
+	DUMP_ON_UPDATE  = 0x00100000,
+	SHARE_DEDUPED   = 0x00200000,
+	DEFRD_CTX_IMM   = 0x00400000,
+	DEFRD_CTX_DELAY = 0x00800000,
+	DEFRD_CTX_MASK  = 0x00c00000,
+	SYMLINK         = 0x01000000,
+	DEPRECATED      = (signed)0x80000000,
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
+	// Bind flag selection:
 	{L"dump_rt", FrameAnalysisOptions::DUMP_RT},
-	{L"dump_rt_jps", FrameAnalysisOptions::DUMP_RT_JPS},
-	{L"dump_rt_dds", FrameAnalysisOptions::DUMP_RT_DDS},
-	{L"clear_rt", FrameAnalysisOptions::CLEAR_RT},
 	{L"dump_depth", FrameAnalysisOptions::DUMP_DEPTH},
-	{L"dump_depth_jps", FrameAnalysisOptions::DUMP_DEPTH_JPS}, // Doesn't work yet
-	{L"dump_depth_dds", FrameAnalysisOptions::DUMP_DEPTH_DDS},
-	{L"dump_tex", FrameAnalysisOptions::DUMP_TEX},
-	{L"dump_tex_jps", FrameAnalysisOptions::DUMP_TEX_JPS},
-	{L"dump_tex_dds", FrameAnalysisOptions::DUMP_TEX_DDS},
+	{L"dump_tex", FrameAnalysisOptions::DUMP_SRV},
+	{L"dump_cb", FrameAnalysisOptions::DUMP_CB},
+	{L"dump_vb", FrameAnalysisOptions::DUMP_VB},
+	{L"dump_ib", FrameAnalysisOptions::DUMP_IB},
+
+	// Texture2D format selection:
+	{L"jps", FrameAnalysisOptions::FMT_2D_JPS},
+	{L"dds", FrameAnalysisOptions::FMT_2D_DDS},
+	{L"jps_dds", FrameAnalysisOptions::FMT_2D_AUTO},
+
+	// Buffer format selection:
+	{L"buf", FrameAnalysisOptions::FMT_BUF_BIN},
+	{L"txt", FrameAnalysisOptions::FMT_BUF_TXT},
+
+	{L"desc", FrameAnalysisOptions::FMT_DESC},
+
+	// Misc options:
+	{L"clear_rt", FrameAnalysisOptions::CLEAR_RT},
 	{L"persist", FrameAnalysisOptions::PERSIST},
 	{L"stereo", FrameAnalysisOptions::STEREO},
 	{L"mono", FrameAnalysisOptions::MONO},
 	{L"filename_reg", FrameAnalysisOptions::FILENAME_REG},
-	{L"dump_cb", FrameAnalysisOptions::DUMP_CB_BIN},
-	{L"dump_cb_txt", FrameAnalysisOptions::DUMP_CB_TXT},
-	{L"dump_vb", FrameAnalysisOptions::DUMP_VB_BIN},
-	{L"dump_vb_txt", FrameAnalysisOptions::DUMP_VB_TXT},
-	{L"dump_ib", FrameAnalysisOptions::DUMP_IB_BIN},
-	{L"dump_ib_txt", FrameAnalysisOptions::DUMP_IB_TXT},
 	{L"filename_handle", FrameAnalysisOptions::FILENAME_HANDLE},
-	{L"log", FrameAnalysisOptions::LOG_DEPRECATED}, // Left in the list for backwards compatibility, but this is now always enabled
+	{L"log", FrameAnalysisOptions::DEPRECATED}, // Left in the list for backwards compatibility, but this is now always enabled
 	{L"hold", FrameAnalysisOptions::HOLD},
 	{L"dump_on_unmap", FrameAnalysisOptions::DUMP_ON_UNMAP},
 	{L"dump_on_update", FrameAnalysisOptions::DUMP_ON_UPDATE},
+	{L"deferred_ctx_immediate", FrameAnalysisOptions::DEFRD_CTX_IMM},
+	{L"deferred_ctx_accurate", FrameAnalysisOptions::DEFRD_CTX_DELAY},
+	{L"share_dupes", FrameAnalysisOptions::SHARE_DEDUPED},
+	{L"symlink", FrameAnalysisOptions::SYMLINK},
+
+	// Legacy combo options:
+	{L"dump_rt_jps", FrameAnalysisOptions::DUMP_RT_JPS},
+	{L"dump_rt_dds", FrameAnalysisOptions::DUMP_RT_DDS},
+	{L"dump_depth_jps", FrameAnalysisOptions::DUMP_DEPTH_JPS}, // Doesn't work yet
+	{L"dump_depth_dds", FrameAnalysisOptions::DUMP_DEPTH_DDS},
+	{L"dump_tex_jps", FrameAnalysisOptions::DUMP_TEX_JPS},
+	{L"dump_tex_dds", FrameAnalysisOptions::DUMP_TEX_DDS},
+	{L"dump_cb_txt", FrameAnalysisOptions::DUMP_CB_TXT},
+	{L"dump_vb_txt", FrameAnalysisOptions::DUMP_VB_TXT},
+	{L"dump_ib_txt", FrameAnalysisOptions::DUMP_IB_TXT},
+
 	{NULL, FrameAnalysisOptions::INVALID} // End of list marker
 };
 
@@ -189,7 +221,6 @@ static EnumName_t<wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
 struct ShaderOverride {
 	DepthBufferFilter depth_filter;
 	UINT64 partner_hash;
-	FrameAnalysisOptions analyse_options;
 	char model[20]; // More than long enough for even ps_4_0_level_9_0
 	bool allow_duplicate_hashes;
 
@@ -199,7 +230,6 @@ struct ShaderOverride {
 	ShaderOverride() :
 		depth_filter(DepthBufferFilter::NONE),
 		partner_hash(0),
-		analyse_options(FrameAnalysisOptions::INVALID),
 		allow_duplicate_hashes(true)
 	{
 		model[0] = '\0';
@@ -214,7 +244,6 @@ struct TextureOverride {
 	int width;
 	int height;
 	std::vector<int> iterations;
-	FrameAnalysisOptions analyse_options;
 	bool expand_region_copy;
 	bool deny_cpu_read;
 	float filter_index;
@@ -227,7 +256,6 @@ struct TextureOverride {
 		format(-1),
 		width(-1),
 		height(-1),
-		analyse_options(FrameAnalysisOptions::INVALID),
 		expand_region_copy(false),
 		deny_cpu_read(false),
 		filter_index(1.0)
@@ -346,13 +374,14 @@ struct Globals
 
 	bool deferred_contexts_enabled;
 
-	unsigned analyse_frame;
+	bool analyse_frame;
 	unsigned analyse_frame_no;
 	wchar_t ANALYSIS_PATH[MAX_PATH];
 	FrameAnalysisOptions def_analyse_options, cur_analyse_options;
 	std::unordered_set<void*> frame_analysis_seen_rts;
 
 	ShaderHashType shader_hash_type;
+	int texture_hash_version;
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
 	bool EXPORT_SHADERS, EXPORT_FIXED, EXPORT_BINARY, CACHE_SHADERS, SCISSOR_DISABLE;
 	bool track_texture_updates;
@@ -389,6 +418,7 @@ struct Globals
 	CommandList post_clear_uav_float_command_list;
 	CommandList clear_uav_uint_command_list;
 	CommandList post_clear_uav_uint_command_list;
+	CommandList constants_command_list;
 	unsigned frame_no;
 	HWND hWnd; // To translate mouse coordinates to the window
 	bool hide_cursor;
@@ -496,12 +526,13 @@ struct Globals
 
 		deferred_contexts_enabled(true),
 
-		analyse_frame(0),
+		analyse_frame(false),
 		analyse_frame_no(0),
 		def_analyse_options(FrameAnalysisOptions::INVALID),
 		cur_analyse_options(FrameAnalysisOptions::INVALID),
 
 		shader_hash_type(ShaderHashType::FNV),
+		texture_hash_version(0),
 		EXPORT_SHADERS(false),
 		EXPORT_HLSL(0),
 		EXPORT_FIXED(false),
@@ -566,15 +597,58 @@ struct Globals
 		for (i = 0; i < 11; i++)
 			FILTER_REFRESH[i] = 0;
 
-		for (i = 0; i < INI_PARAMS_SIZE; i++) {
-			iniParams[i].x = FLT_MAX;
-			iniParams[i].y = FLT_MAX;
-			iniParams[i].z = FLT_MAX;
-			iniParams[i].w = FLT_MAX;
-		}
+		memset(iniParams, 0, sizeof(iniParams));
 
 		ticks_at_launch = GetTickCount();
 	}
 };
+
+// Everything in this struct has a unique copy per thread. It would be vastly
+// simpler to just use the "thread_local" keyword, but MSDN warns that it can
+// interfere with delay loading DLLs (without any detail as to what it means by
+// that), so to err on the side of caution I'm using the old Win32 TLS API. We
+// are using a structure to ensure we only consume a single TLS slot since they
+// are limited, regardless of how many thread local variables we might want in
+// the future. Use the below accessor function to get a pointer to this
+// structure for the current thread.
+struct TLS
+{
+	// This is set before calling into a DirectX function known to be
+	// problematic if hooks are in use that can lead to one of our
+	// functions being called unexpectedly if DirectX (or a third party
+	// tool sitting between us and DirectX) has implemented the function we
+	// are calling in terms of other hooked functions. We check if it is
+	// set from any function known to be one called by DirectX and call
+	// straight through to the original function if it is set.
+	//
+	// This is very much a band-aid solution to one of the fundamental
+	// problems associated with hooking, but unfortunately hooking is a
+	// reality we cannot avoid and in many cases a necessary evil to solve
+	// certain problems. This is not a complete solution - it protects
+	// against known cases where a function we call can manage to call back
+	// into us, but does not protect against unknown cases of the same
+	// problem, or cases where we call a function that has been hooked by a
+	// third party tool (which we can use other strategies to avoid, such
+	// as the unhookable UnhookableCreateDevice).
+	bool hooking_quirk_protection;
+
+	TLS() :
+		hooking_quirk_protection(false)
+	{}
+};
+
+extern DWORD tls_idx;
+static struct TLS* get_tls()
+{
+	TLS *tls;
+
+	tls = (TLS*)TlsGetValue(tls_idx);
+	if (!tls) {
+		tls = new TLS();
+		TlsSetValue(tls_idx, tls);
+	}
+
+	return tls;
+}
 
 extern Globals *G;

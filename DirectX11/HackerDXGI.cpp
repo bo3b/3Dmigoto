@@ -134,26 +134,42 @@ HackerSwapChain::HackerSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pDev
 {
 	mOrigSwapChain1 = pSwapChain;
 
-	if (pContext == NULL)
-	{
-		pDevice->GetImmediateContext(reinterpret_cast<ID3D11DeviceContext**>(&pContext));
-	}
 	mHackerDevice = pDevice;
 	mHackerContext = pContext;
+
+	// Bump the refcounts on the device and context to make sure they can't
+	// be released as long as the swap chain is alive and we may be
+	// accessing them. We probably don't actually need to do this for the
+	// device, since the DirectX swap chain should already hold a reference
+	// to the DirectX device, but it shouldn't hurt and makes the code more
+	// semantically correct since we access the device as well. We could
+	// skip both by looking them up on demand, but that would need extra
+	// lookups in fast paths and there's no real need.
+	//
+	// The overlay also bumps these refcounts, which is technically
+	// unecessary given we now do so here, but also shouldn't hurt, and is
+	// safer in case we ever change this again and forget about it.
+
+	mHackerDevice->AddRef();
+	if (mHackerContext) {
+		mHackerContext->AddRef();
+	} else {
+		// GetImmediateContext will bump the refcount for us:
+		pDevice->GetImmediateContext(reinterpret_cast<ID3D11DeviceContext**>(&mHackerContext));
+	}
 
 	mHackerDevice->SetHackerSwapChain(this);
 
 	try {
 		// Create Overlay class that will be responsible for drawing any text
 		// info over the game. Using the Hacker Device and Context we gave the game.
-		mOverlay = new Overlay(pDevice, pContext, mOrigSwapChain1);
+		mOverlay = new Overlay(mHackerDevice, mHackerContext, mOrigSwapChain1);
 	}
 	catch (...) {
 		LogInfo("  *** Failed to create Overlay. Exception caught.\n");
 		mOverlay = NULL;
 	}
 }
-
 
 IDXGISwapChain1* HackerSwapChain::GetOrigSwapChain1()
 {
@@ -222,12 +238,11 @@ void HackerSwapChain::RunFrameActions()
 			// at the key up event instead), but we do increment
 			// the frame count and reset the draw count:
 			G->analyse_frame_no++;
-			G->analyse_frame = 1;
-		}
-		else {
-			G->analyse_frame = 0;
+		} else {
+			G->analyse_frame = false;
 			if (G->DumpUsage)
 				DumpUsage(G->ANALYSIS_PATH);
+			LogOverlay(LOG_INFO, "Frame analysis saved to %S\n", G->ANALYSIS_PATH);
 		}
 	}
 
@@ -381,6 +396,18 @@ STDMETHODIMP_(ULONG) HackerSwapChain::Release(THIS)
 
 	if (ulRef <= 0)
 	{
+		if (mHackerDevice) {
+			if (mHackerDevice->GetHackerSwapChain() == this) {
+				LogInfo("  Clearing mHackerDevice->mHackerSwapChain\n");
+				mHackerDevice->SetHackerSwapChain(nullptr);
+			} else
+				LogInfo("  mHackerDevice %p not using mHackerSwapchain %p\n", mHackerDevice, this);
+			mHackerDevice->Release();
+		}
+
+		if (mHackerContext)
+			mHackerContext->Release();
+
 		if (mOverlay)
 			delete mOverlay;
 
@@ -942,7 +969,9 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 		// fake swap chain should have no influence on window
 		pFakeSwapChainDesc->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 		IDXGISwapChain* swapChain;
+		get_tls()->hooking_quirk_protection = true;
 		hr = fnOrigCreateSwapChain(pFactory, mHackerDevice->GetPossiblyHookedOrigDevice1(), pFakeSwapChainDesc, &swapChain);
+		get_tls()->hooking_quirk_protection = false;
 
 		HRESULT res = swapChain->QueryInterface(IID_PPV_ARGS(&mFakeSwapChain1));
 		if (SUCCEEDED(res))
