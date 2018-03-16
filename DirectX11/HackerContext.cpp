@@ -2741,27 +2741,28 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 {
 	if (G->hunting == HUNTING_MODE_ENABLED) {
 		EnterCriticalSection(&G->mCriticalSection);
-			mCurrentRenderTargets.clear();
-			mCurrentDepthTarget = NULL;
-			mCurrentPSUAVStartSlot = UAVStartSlot;
-			mCurrentPSNumUAVs = NumUAVs;
-		LeaveCriticalSection(&G->mCriticalSection);
 
 		if (NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) {
-			if (ppRenderTargetViews) {
-				for (UINT i = 0; i < NumRTVs; ++i) {
-					if (!ppRenderTargetViews[i])
-						continue;
-					if (G->DumpUsage)
-						RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+			mCurrentRenderTargets.clear();
+			mCurrentDepthTarget = NULL;
+			if (G->DumpUsage) {
+				if (ppRenderTargetViews) {
+					for (UINT i = 0; i < NumRTVs; ++i) {
+						if (ppRenderTargetViews[i])
+							RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+					}
 				}
-			}
-
-			if (G->DumpUsage)
 				RecordDepthStencil(pDepthStencilView);
+			}
 		}
 
-		// TODO: Record UAV stats
+		if (NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS) {
+			mCurrentPSUAVStartSlot = UAVStartSlot;
+			mCurrentPSNumUAVs = NumUAVs;
+			// TODO: Record UAV stats
+		}
+
+		LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	mOrigContext1->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, ppRenderTargetViews, pDepthStencilView,
