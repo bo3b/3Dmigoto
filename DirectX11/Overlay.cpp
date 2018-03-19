@@ -842,19 +842,21 @@ void LogOverlay(LogLevel level, char *fmt, ...)
 	va_start(ap, fmt);
 	vLogInfo(fmt, ap);
 
-	// Using _vsnprintf_s so we don't crash if the message is too long for
-	// the buffer, and truncate it instead - unless we can automatically
-	// wrap the message, which DirectXTK doesn't appear to support, who
-	// cares if it gets cut off somewhere off screen anyway?
-	_vsnprintf_s(amsg, maxstring, _TRUNCATE, fmt, ap);
-	mbstowcs(wmsg, amsg, maxstring);
+	if (!log_levels[level].hide_in_release || G->hunting) {
+		// Using _vsnprintf_s so we don't crash if the message is too long for
+		// the buffer, and truncate it instead - unless we can automatically
+		// wrap the message, which DirectXTK doesn't appear to support, who
+		// cares if it gets cut off somewhere off screen anyway?
+		_vsnprintf_s(amsg, maxstring, _TRUNCATE, fmt, ap);
+		mbstowcs(wmsg, amsg, maxstring);
 
-	EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 
-	notices[level].emplace_back(wmsg);
-	has_notice = true;
+		notices[level].emplace_back(wmsg);
+		has_notice = true;
 
-	LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mCriticalSection);
+	}
 
 	va_end(ap);
 }
