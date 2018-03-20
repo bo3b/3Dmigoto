@@ -43,7 +43,6 @@ public:
 class Override : public virtual OverrideBase
 {
 private:
-	bool active;
 	int transition, release_transition;
 	TransitionType transition_type, release_transition_type;
 
@@ -53,6 +52,9 @@ private:
 
 	CommandList activate_command_list;
 	CommandList deactivate_command_list;
+
+protected:
+	bool active;
 
 public:
 	DirectX::XMFLOAT4 mOverrideParams[INI_PARAMS_SIZE];
@@ -88,7 +90,7 @@ public:
 
 	void ParseIniSection(LPCWSTR section) override;
 
-	void Activate(HackerDevice *device, bool run_post_command_list);
+	void Activate(HackerDevice *device, bool override_has_deactivate_condition);
 	void Deactivate(HackerDevice *device);
 	void Toggle(HackerDevice *device);
 };
@@ -146,15 +148,11 @@ public:
 class PresetOverride : public Override
 {
 private:
-	bool activated;
 	bool triggered;
 
-	void Activate(HackerDevice *device);
-	void Deactivate(HackerDevice *device);
 public:
 	PresetOverride() :
-		Override(),
-		activated(false)
+		Override()
 	{}
 
 	void Trigger();

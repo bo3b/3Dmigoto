@@ -340,7 +340,7 @@ void KeyOverrideCycle::DownEvent(HackerDevice *device)
 	if (presets.empty())
 		return;
 
-	presets[current].Activate(device, true);
+	presets[current].Activate(device, false);
 	current = (current + 1) % presets.size();
 }
 
@@ -389,7 +389,7 @@ static void UpdateIniParams(HackerDevice* wrapper,
 	LogDebug("\n");
 }
 
-void Override::Activate(HackerDevice *device, bool run_post_command_list)
+void Override::Activate(HackerDevice *device, bool override_has_deactivate_condition)
 {
 	if (is_conditional && G->iniParams[condition_param_idx].*condition_param_component == 0) {
 		LogInfo("Skipping override activation: condition not met\n");
@@ -397,6 +397,11 @@ void Override::Activate(HackerDevice *device, bool run_post_command_list)
 	}
 
 	LogInfo("User key activation -->\n");
+
+	if (override_has_deactivate_condition) {
+		active = true;
+		OverrideSave.Save(device, this);
+	}
 
 	CurrentTransition.ScheduleTransition(device,
 			mOverrideSeparation,
@@ -406,7 +411,7 @@ void Override::Activate(HackerDevice *device, bool run_post_command_list)
 			transition_type);
 
 	RunCommandList(device, device->GetHackerContext(), &activate_command_list, NULL, false);
-	if (run_post_command_list) {
+	if (!override_has_deactivate_condition) {
 		// type=activate or type=cycle that don't have an explicit deactivate
 		RunCommandList(device, device->GetHackerContext(), &deactivate_command_list, NULL, true);
 	}
@@ -414,7 +419,15 @@ void Override::Activate(HackerDevice *device, bool run_post_command_list)
 
 void Override::Deactivate(HackerDevice *device)
 {
+	if (!active) {
+		LogInfo("Skipping override deactivation: not active\n");
+		return;
+	}
+
 	LogInfo("User key deactivation <--\n");
+
+	active = false;
+	OverrideSave.Restore(this);
 
 	CurrentTransition.ScheduleTransition(device,
 			mUserSeparation,
@@ -433,13 +446,9 @@ void Override::Toggle(HackerDevice *device)
 		return;
 	}
 
-	active = !active;
-	if (!active) {
-		OverrideSave.Restore(this);
+	if (active)
 		return Deactivate(device);
-	}
-	OverrideSave.Save(device, this);
-	return Activate(device, false);
+	return Activate(device, true);
 }
 
 void KeyOverride::DownEvent(HackerDevice *device)
@@ -447,20 +456,16 @@ void KeyOverride::DownEvent(HackerDevice *device)
 	if (type == KeyOverrideType::TOGGLE)
 		return Toggle(device);
 
-	if (type == KeyOverrideType::HOLD) {
-		OverrideSave.Save(device, this);
-		return Activate(device, false);
-	}
+	if (type == KeyOverrideType::HOLD)
+		return Activate(device, true);
 
-	return Activate(device, true);
+	return Activate(device, false);
 }
 
 void KeyOverride::UpEvent(HackerDevice *device)
 {
-	if (type == KeyOverrideType::HOLD) {
-		OverrideSave.Restore(this);
+	if (type == KeyOverrideType::HOLD)
 		return Deactivate(device);
-	}
 }
 
 void PresetOverride::Trigger()
@@ -468,38 +473,14 @@ void PresetOverride::Trigger()
 	triggered = true;
 }
 
-void PresetOverride::Activate(HackerDevice *device)
-{
-	if (activated)
-		return;
-
-	OverrideSave.Save(device, this);
-
-	Override::Activate(device, false);
-
-	activated = true;
-}
-
-void PresetOverride::Deactivate(HackerDevice *device)
-{
-	if (!activated)
-		return;
-
-	OverrideSave.Restore(this);
-
-	Override::Deactivate(device);
-
-	activated = false;
-}
-
 // Called on present to update the activation status. If the preset was
 // triggered this frame it will remain active, otherwise it will deactivate.
 void PresetOverride::Update(HackerDevice *wrapper)
 {
-	if (!activated && triggered)
-		Activate(wrapper);
-	else if (activated && !triggered)
-		Deactivate(wrapper);
+	if (!active && triggered)
+		Override::Activate(wrapper, true);
+	else if (active && !triggered)
+		Override::Deactivate(wrapper);
 	triggered = false;
 }
 
