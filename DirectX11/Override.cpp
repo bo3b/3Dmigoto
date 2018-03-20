@@ -216,8 +216,8 @@ struct KeyOverrideCycleParam
 			return false;
 		}
 
-		if (!ParseIniParamName(buf, idx, component)) {
-			LogOverlayW(LOG_WARNING, L"WARNING: Invalid condition=\"%s\"\n", buf);
+		if (!ParseIniParamName(cur, idx, component)) {
+			LogOverlayW(LOG_WARNING, L"WARNING: Invalid condition=\"%s\"\n", cur);
 			return false;
 		}
 
