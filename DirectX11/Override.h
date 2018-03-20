@@ -138,10 +138,22 @@ private:
 	int current;
 public:
 	KeyOverrideCycle() :
-		current(0)
+		current(-1)
 	{}
 
 	void ParseIniSection(LPCWSTR section) override;
+	void DownEvent(HackerDevice *device);
+	void BackEvent(HackerDevice *device);
+};
+
+class KeyOverrideCycleBack : public InputListener
+{
+	shared_ptr<KeyOverrideCycle> cycle;
+public:
+	KeyOverrideCycleBack(shared_ptr<KeyOverrideCycle> cycle) :
+		cycle(cycle)
+	{}
+
 	void DownEvent(HackerDevice *device);
 };
 

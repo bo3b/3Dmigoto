@@ -76,7 +76,7 @@ static bool whitelisted_duplicate_key(const wchar_t *section, const wchar_t *key
 {
 	// FIXME: Make this declarative
 	if (!_wcsnicmp(section, L"key", 3)) {
-		if (!_wcsicmp(key, L"key"))
+		if (!_wcsicmp(key, L"key") || !_wcsicmp(key, L"back"))
 			return true;
 	}
 
@@ -759,6 +759,7 @@ static void RegisterPresetKeyBindings()
 	int delay, release_delay;
 	IniSections::iterator lower, upper, i;
 	vector<wstring> keys;
+	vector<wstring> back;
 
 	lower = ini_sections.lower_bound(wstring(L"Key"));
 	upper = prefix_upper_bound(ini_sections, wstring(L"Key"));
@@ -769,7 +770,8 @@ static void RegisterPresetKeyBindings()
 		LogInfo("[%S]\n", id);
 
 		keys = GetIniStringMultipleKeys(id, L"Key");
-		if (keys.empty()) {
+		back = GetIniStringMultipleKeys(id, L"Back");
+		if (keys.empty() && back.empty()) {
 			IniWarning("WARNING: [%S] missing Key=\n", id);
 			continue;
 		}
@@ -791,7 +793,11 @@ static void RegisterPresetKeyBindings()
 		release_delay = GetIniInt(id, L"release_delay", 0, NULL);
 
 		if (type == KeyOverrideType::CYCLE) {
-			preset = make_shared<KeyOverrideCycle>();
+			shared_ptr<KeyOverrideCycle> cycle_preset = make_shared<KeyOverrideCycle>();
+			shared_ptr<KeyOverrideCycleBack> cycle_back = make_shared<KeyOverrideCycleBack>(cycle_preset);
+			preset = cycle_preset;
+			for (wstring key : back)
+				RegisterKeyBinding(L"Back", key.c_str(), cycle_back, 0, delay, release_delay);
 		} else {
 			preset = make_shared<KeyOverride>(type);
 		}

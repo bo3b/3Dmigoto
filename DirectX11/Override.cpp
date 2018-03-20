@@ -340,8 +340,30 @@ void KeyOverrideCycle::DownEvent(HackerDevice *device)
 	if (presets.empty())
 		return;
 
+	if (current == -1)
+		current = 0;
+	else
+		current = (current + 1) % presets.size();
+
 	presets[current].Activate(device, false);
-	current = (current + 1) % presets.size();
+}
+
+void KeyOverrideCycle::BackEvent(HackerDevice *device)
+{
+	if (presets.empty())
+		return;
+
+	if (current == -1)
+		current = (int)presets.size() - 1;
+	else
+		current = (int)(current ? current : presets.size()) - 1;
+
+	presets[current].Activate(device, false);
+}
+
+void KeyOverrideCycleBack::DownEvent(HackerDevice *device)
+{
+	return cycle->BackEvent(device);
 }
 
 // In order to change the iniParams, we need to map them back to system memory so that the CPU
