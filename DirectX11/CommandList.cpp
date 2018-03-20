@@ -741,7 +741,7 @@ void PresetCommand::run(CommandListState *state)
 {
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-	preset->Activate(state->mHackerDevice);
+	preset->Trigger();
 }
 
 void DrawCommand::run(CommandListState *state)

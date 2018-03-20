@@ -148,14 +148,16 @@ class PresetOverride : public Override
 private:
 	bool activated;
 	bool triggered;
+
+	void Activate(HackerDevice *device);
+	void Deactivate(HackerDevice *device);
 public:
 	PresetOverride() :
 		Override(),
 		activated(false)
 	{}
 
-	void Activate(HackerDevice *device);
-	void Deactivate(HackerDevice *device);
+	void Trigger();
 	void Update(HackerDevice *device);
 };
 typedef std::unordered_map<std::wstring, class PresetOverride> PresetOverrideMap;

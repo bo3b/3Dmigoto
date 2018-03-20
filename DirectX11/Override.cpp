@@ -463,10 +463,13 @@ void KeyOverride::UpEvent(HackerDevice *device)
 	}
 }
 
-void PresetOverride::Activate(HackerDevice *device)
+void PresetOverride::Trigger()
 {
 	triggered = true;
+}
 
+void PresetOverride::Activate(HackerDevice *device)
+{
 	if (activated)
 		return;
 
@@ -493,7 +496,9 @@ void PresetOverride::Deactivate(HackerDevice *device)
 // triggered this frame it will remain active, otherwise it will deactivate.
 void PresetOverride::Update(HackerDevice *wrapper)
 {
-	if (activated && !triggered)
+	if (!activated && triggered)
+		Activate(wrapper);
+	else if (activated && !triggered)
 		Deactivate(wrapper);
 	triggered = false;
 }
