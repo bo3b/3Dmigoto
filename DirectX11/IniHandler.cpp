@@ -3545,24 +3545,24 @@ void LoadConfigFile()
 
 	G->mark_snapshot = GetIniInt(L"Hunting", L"mark_snapshot", 0, NULL);
 
+	// Splitting the enumeration of these sections out from parsing them as
+	// they can be referenced from other command list sections, keys and
+	// presets (via the run command), including sections of the same type.
+	// Most of the other sections don't need this so long as we parse them
+	// in an appropriate order so that sections that can be referred to are
+	// parsed before sections that can refer to them (e.g. Resource
+	// sections are parsed before all command list sections for this
+	// reason), but these are special since they can both refer to other
+	// sections and be referred to by other sections, and we don't want the
+	// parse order to determine if the reference will work or not.
+	EnumerateCustomShaderSections();
+	EnumerateExplicitCommandListSections();
+
 	RegisterHuntingKeyBindings();
 	RegisterPresetKeyBindings();
 
 	ParsePresetOverrideSections();
 	ParseResourceSections();
-
-	// Splitting the enumeration of these sections out from parsing them as
-	// they can be referenced from other command list sections (via the run
-	// command), including sections of the same type. Most of the other
-	// sections don't need this so long as we parse them in an appropriate
-	// order so that sections that can be referred to are parsed before
-	// sections that can refer to them (e.g. Resource sections are parsed
-	// before all command list sections for this reason), but these are
-	// special since they can both refer to other sections and be referred
-	// to by other sections, and we don't want the parse order to determine
-	// if the reference will work or not.
-	EnumerateCustomShaderSections();
-	EnumerateExplicitCommandListSections();
 
 	ParseCustomShaderSections();
 	ParseExplicitCommandListSections();

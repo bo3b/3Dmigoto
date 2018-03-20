@@ -348,7 +348,7 @@ bail:
 	return false;
 }
 
-static bool ParseRunExplicitCommandList(const wchar_t *section,
+bool ParseRunExplicitCommandList(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
@@ -357,10 +357,12 @@ static bool ParseRunExplicitCommandList(const wchar_t *section,
 	RunExplicitCommandList *operation = new RunExplicitCommandList();
 	ExplicitCommandListSections::iterator shader;
 
-	// Value should already have been transformed to lower case from
-	// ParseCommandList, so our keys will be consistent in the
-	// unordered_map:
+	// We need value in lower case so our keys will be consistent in the
+	// unordered_map. ParseCommandList will have already done this, but the
+	// Key/Preset parsing code will not have, and rather than require it to
+	// we do it here:
 	wstring section_id(val->c_str());
+	std::transform(section_id.begin(), section_id.end(), section_id.begin(), ::towlower);
 
 	shader = explicitCommandListSections.find(section_id);
 	if (shader == explicitCommandListSections.end())

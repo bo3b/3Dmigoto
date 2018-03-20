@@ -875,6 +875,12 @@ void RunViewCommandList(HackerDevice *mHackerDevice,
 		CommandList *command_list, ID3D11View *view,
 		bool post);
 
+bool ParseRunExplicitCommandList(const wchar_t *section,
+		const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list);
+
 bool ParseCommandListGeneralCommands(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,

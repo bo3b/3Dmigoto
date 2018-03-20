@@ -51,6 +51,9 @@ private:
 	int condition_param_idx;
 	float DirectX::XMFLOAT4::*condition_param_component;
 
+	CommandList activate_command_list;
+	CommandList deactivate_command_list;
+
 public:
 	DirectX::XMFLOAT4 mOverrideParams[INI_PARAMS_SIZE];
 	float mOverrideSeparation;
@@ -66,7 +69,8 @@ public:
 		 TransitionType transition_type,
 		 TransitionType release_transition_type,
 		 bool is_conditional, int condition_param_idx,
-		 float DirectX::XMFLOAT4::*condition_param_component) :
+		 float DirectX::XMFLOAT4::*condition_param_component,
+		 CommandList activate_command_list, CommandList deactivate_command_list) :
 		mOverrideSeparation(separation),
 		mOverrideConvergence(convergence),
 		transition(transition),
@@ -75,14 +79,16 @@ public:
 		release_transition_type(release_transition_type),
 		is_conditional(is_conditional),
 		condition_param_idx(condition_param_idx),
-		condition_param_component(condition_param_component)
+		condition_param_component(condition_param_component),
+		activate_command_list(activate_command_list),
+		deactivate_command_list(deactivate_command_list)
 	{
 		memcpy(&mOverrideParams, params, sizeof(DirectX::XMFLOAT4[INI_PARAMS_SIZE]));
 	}
 
 	void ParseIniSection(LPCWSTR section) override;
 
-	void Activate(HackerDevice *device);
+	void Activate(HackerDevice *device, bool run_post_command_list);
 	void Deactivate(HackerDevice *device);
 	void Toggle(HackerDevice *device);
 };
@@ -107,12 +113,14 @@ public:
 			TransitionType transition_type,
 			TransitionType release_transition_type,
 			bool is_conditional, int condition_param_idx,
-			float DirectX::XMFLOAT4::*condition_param_component) :
+			float DirectX::XMFLOAT4::*condition_param_component,
+			CommandList activate_command_list, CommandList deactivate_command_list) :
 		Override(params, separation, convergence, transition,
 				release_transition, transition_type,
 				release_transition_type, is_conditional,
 				condition_param_idx,
-				condition_param_component),
+				condition_param_component,
+				activate_command_list, deactivate_command_list),
 		type(type)
 	{}
 
@@ -144,21 +152,6 @@ public:
 	PresetOverride() :
 		Override(),
 		activated(false)
-	{}
-	PresetOverride(DirectX::XMFLOAT4 *params,
-			float separation, float convergence,
-			int transition, int release_transition,
-			TransitionType transition_type,
-			TransitionType release_transition_type,
-			bool is_conditional, int condition_param_idx,
-			float DirectX::XMFLOAT4::*condition_param_component) :
-		Override(params, separation, convergence, transition,
-				release_transition, transition_type,
-				release_transition_type, is_conditional,
-				condition_param_idx,
-				condition_param_component),
-		activated(false),
-		triggered(false)
 	{}
 
 	void Activate(HackerDevice *device);
