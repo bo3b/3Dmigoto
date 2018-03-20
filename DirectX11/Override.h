@@ -136,9 +136,11 @@ class KeyOverrideCycle : public KeyOverrideBase
 private:
 	std::vector<class KeyOverride> presets;
 	int current;
+	bool wrap;
 public:
 	KeyOverrideCycle() :
-		current(-1)
+		current(-1),
+		wrap(true)
 	{}
 
 	void ParseIniSection(LPCWSTR section) override;

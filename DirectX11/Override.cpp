@@ -256,6 +256,8 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 	float DirectX::XMFLOAT4::*condition_param_component = NULL;
 	CommandList activate_command_list, deactivate_command_list;
 
+	wrap = GetIniBool(section, L"wrap", true, NULL);
+
 	for (j = 0; j < INI_PARAMS_SIZE; j++) {
 		StringCchPrintf(buf, 8, L"x%.0i", j);
 		GetIniString(section, buf, 0, x[j].buf, MAX_PATH);
@@ -342,8 +344,12 @@ void KeyOverrideCycle::DownEvent(HackerDevice *device)
 
 	if (current == -1)
 		current = 0;
-	else
+	else if (wrap)
 		current = (current + 1) % presets.size();
+	else if (current < presets.size() - 1)
+		current++;
+	else
+		return;
 
 	presets[current].Activate(device, false);
 }
@@ -355,8 +361,12 @@ void KeyOverrideCycle::BackEvent(HackerDevice *device)
 
 	if (current == -1)
 		current = (int)presets.size() - 1;
-	else
+	else if (wrap)
 		current = (int)(current ? current : presets.size()) - 1;
+	else if (current > 0)
+		current--;
+	else
+		return;
 
 	presets[current].Activate(device, false);
 }
