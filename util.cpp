@@ -303,3 +303,53 @@ void WarnIfConflictingShaderExists(wchar_t *orig_path, const char *message)
 		return;
 	}
 }
+
+void save_om_state(ID3D11DeviceContext *context, struct OMState *state)
+{
+	int i;
+
+	// OMGetRenderTargetAndUnorderedAccessViews is a poorly designed API as
+	// to use it properly to get all RTVs and UAVs we need to pass it some
+	// information that we don't know. So, we have to do a few extra steps
+	// to find that info.
+
+	context->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, state->rtvs, &state->dsv);
+
+	state->NumRTVs = 0;
+	for (i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++) {
+		if (state->rtvs[i])
+			state->NumRTVs = i + 1;
+	}
+
+	state->UAVStartSlot = state->NumRTVs;
+	// Set NumUAVs to the max to retrieve them all now, and so that later
+	// when rebinding them we will unbind any others that the command list
+	// bound in the meantime
+	state->NumUAVs = D3D11_PS_CS_UAV_REGISTER_COUNT - state->UAVStartSlot;
+
+	// Finally get all the UAVs. Since we already retrieved the RTVs and
+	// DSV we can skip getting them:
+	context->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, state->UAVStartSlot, state->NumUAVs, state->uavs);
+}
+
+void restore_om_state(ID3D11DeviceContext *context, struct OMState *state)
+{
+	static const UINT uav_counts[D3D11_PS_CS_UAV_REGISTER_COUNT] = {(UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1};
+	UINT i;
+
+	context->OMSetRenderTargetsAndUnorderedAccessViews(state->NumRTVs, state->rtvs, state->dsv,
+			state->UAVStartSlot, state->NumUAVs, state->uavs, uav_counts);
+
+	for (i = 0; i < state->NumRTVs; i++) {
+		if (state->rtvs[i])
+			state->rtvs[i]->Release();
+	}
+
+	if (state->dsv)
+		state->dsv->Release();
+
+	for (i = 0; i < state->NumUAVs; i++) {
+		if (state->uavs[i])
+			state->uavs[i]->Release();
+	}
+}

@@ -193,8 +193,8 @@ using namespace DirectX::SimpleMath;
 void Overlay::SaveState()
 {
 	memset(&state, 0, sizeof(state));
-	
-	mOrigContext->OMGetRenderTargets(1, &state.pRenderTargetView, &state.pDepthStencilView);
+
+	save_om_state(mOrigContext, &state.om_state);
 	state.RSNumViewPorts = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
 	mOrigContext->RSGetViewports(&state.RSNumViewPorts, state.pViewPorts);
 
@@ -217,14 +217,10 @@ void Overlay::RestoreState()
 {
 	unsigned i;
 
-	mOrigContext->OMSetRenderTargets(1, &state.pRenderTargetView, state.pDepthStencilView);
-	if (state.pRenderTargetView)
-		state.pRenderTargetView->Release();
-	if (state.pDepthStencilView)
-		state.pDepthStencilView->Release();
+	restore_om_state(mOrigContext, &state.om_state);
 
 	mOrigContext->RSSetViewports(state.RSNumViewPorts, state.pViewPorts);
-	
+
 	mOrigContext->OMSetBlendState(state.pBlendState, state.BlendFactor, state.SampleMask);
 	if (state.pBlendState)
 		state.pBlendState->Release();

@@ -804,3 +804,15 @@ std::string NameFromIID(IID id);
 void WarnIfConflictingShaderExists(wchar_t *orig_path, const char *message = "");
 static const char *end_user_conflicting_shader_msg =
 	"Conflicting shaders present - please use uninstall.bat and reinstall the fix.\n";
+
+struct OMState {
+	UINT NumRTVs;
+	ID3D11RenderTargetView *rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
+	ID3D11DepthStencilView *dsv;
+	UINT UAVStartSlot;
+	UINT NumUAVs;
+	ID3D11UnorderedAccessView *uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
+};
+
+void save_om_state(ID3D11DeviceContext *context, struct OMState *state);
+void restore_om_state(ID3D11DeviceContext *context, struct OMState *state);

@@ -1566,43 +1566,6 @@ struct saved_shader_inst
 	}
 };
 
-static void get_all_rts_dsv_uavs(CommandListState *state,
-	UINT *NumRTVs,
-	ID3D11RenderTargetView *rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT],
-	ID3D11DepthStencilView **dsv,
-	UINT *UAVStartSlot,
-	UINT *NumUAVs,
-	ID3D11UnorderedAccessView *uavs[D3D11_PS_CS_UAV_REGISTER_COUNT])
-
-{
-	int i;
-
-	// OMGetRenderTargetAndUnorderedAccessViews is a poorly designed API as
-	// to use it properly to get all RTVs and UAVs we need to pass it some
-	// information that we don't know. So, we have to do a few extra steps
-	// to find that info.
-
-	state->mOrigContext1->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, rtvs, dsv);
-
-	*NumRTVs = 0;
-	if (rtvs) {
-		for (i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++) {
-			if (rtvs[i])
-				*NumRTVs = i + 1;
-		}
-	}
-
-	*UAVStartSlot = *NumRTVs;
-	// Set NumUAVs to the max to retrieve them all now, and so that later
-	// when rebinding them we will unbind any others that the command list
-	// bound in the meantime
-	*NumUAVs = D3D11_PS_CS_UAV_REGISTER_COUNT - *UAVStartSlot;
-
-	// Finally get all the UAVs. Since we already retrieved the RTVs and
-	// DSV we can skip getting them:
-	state->mOrigContext1->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, *UAVStartSlot, *NumUAVs, uavs);
-}
-
 void RunCustomShaderCommand::run(CommandListState *state)
 {
 	ID3D11Device *mOrigDevice1 = state->mOrigDevice1;
@@ -1622,11 +1585,7 @@ void RunCustomShaderCommand::run(CommandListState *state)
 	UINT saved_sample_mask;
 	UINT saved_stencil_ref;
 	bool saved_post;
-	UINT NumRTVs, UAVStartSlot, NumUAVs;
-	ID3D11RenderTargetView *saved_rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
-	ID3D11DepthStencilView *saved_dsv;
-	ID3D11UnorderedAccessView *saved_uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
-	UINT uav_counts[D3D11_PS_CS_UAV_REGISTER_COUNT] = {(UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1};
+	struct OMState om_state;
 	UINT i;
 	D3D11_PRIMITIVE_TOPOLOGY saved_topology;
 	UINT num_sampler = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
@@ -1712,7 +1671,7 @@ void RunCustomShaderCommand::run(CommandListState *state)
 	// but that probably wouldn't buy us anything:
 	mOrigContext1->RSGetViewports(&num_viewports, saved_viewports);
 	// Likewise, save off all RTVs, UAVs and DSVs unconditionally:
-	get_all_rts_dsv_uavs(state, &NumRTVs, saved_rtvs, &saved_dsv, &UAVStartSlot, &NumUAVs, saved_uavs);
+	save_om_state(state->mOrigContext1, &om_state);
 
 	// Run the command lists. This should generally include a draw or
 	// dispatch call, or call out to another command list which does.
@@ -1750,7 +1709,7 @@ void RunCustomShaderCommand::run(CommandListState *state)
 		mOrigContext1->PSSetSamplers(0, num_sampler, saved_sampler_states);
 
 	mOrigContext1->RSSetViewports(num_viewports, saved_viewports);
-	mOrigContext1->OMSetRenderTargetsAndUnorderedAccessViews(NumRTVs, saved_rtvs, saved_dsv, UAVStartSlot, NumUAVs, saved_uavs, uav_counts);
+	restore_om_state(mOrigContext1, &om_state);
 
 	if (saved_vs)
 		saved_vs->Release();
@@ -1774,14 +1733,6 @@ void RunCustomShaderCommand::run(CommandListState *state)
 	for (i = 0; i < num_sampler; ++i) {
 		if (saved_sampler_states[i])
 			saved_sampler_states[i]->Release();
-	}
-	for (i = 0; i < NumRTVs; i++) {
-		if (saved_rtvs[i])
-			saved_rtvs[i]->Release();
-	}
-	for (i = 0; i < NumUAVs; i++) {
-		if (saved_uavs[i])
-			saved_uavs[i]->Release();
 	}
 }
 
