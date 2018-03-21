@@ -1,49 +1,71 @@
 LIBRARY dxgi.dll
 
-HEAPSIZE 10485760
-
 EXPORTS
-	D3DKMTCloseAdapter					@1 
-	D3DKMTDestroyAllocation				@2
-	D3DKMTDestroyContext				@3 
-	D3DKMTDestroyDevice					@4 
-	D3DKMTDestroySynchronizationObject	@5 
-	D3DKMTQueryAdapterInfo              @6 
-	D3DKMTSetDisplayPrivateDriverFormat @7 
-	D3DKMTSignalSynchronizationObject   @8 
-	D3DKMTUnlock                        @9 
-	D3DKMTWaitForSynchronizationObject  @10
-	DXGIDumpJournal                     @11
-	OpenAdapter10                       @12
-	OpenAdapter10_2                     @13
-	CreateDXGIFactory1                  @14
-	CreateDXGIFactory                   @15
-	D3DKMTCreateAllocation              @16
-	D3DKMTCreateContext                 @17
-	D3DKMTCreateDevice                  @18
-	D3DKMTCreateSynchronizationObject   @19
-	D3DKMTEscape                        @20
-	D3DKMTGetContextSchedulingPriority  @21
-	D3DKMTGetDeviceState                @22
-	D3DKMTGetDisplayModeList            @23
-	D3DKMTGetMultisampleMethodList      @24
-	D3DKMTGetRuntimeData                @25
-	D3DKMTGetSharedPrimaryHandle        @26
-	D3DKMTLock                          @27
-	D3DKMTOpenAdapterFromHdc            @28
-	D3DKMTOpenResource                  @29
-	D3DKMTPresent                       @30
-	D3DKMTQueryAllocationResidency      @31
-	D3DKMTQueryResourceInfo             @32
-	D3DKMTRender                        @33
-	D3DKMTSetAllocationPriority         @34
-	D3DKMTSetContextSchedulingPriority  @35
-	D3DKMTSetDisplayMode                @36
-	D3DKMTSetGammaRamp                  @37
-	D3DKMTSetVidPnSourceOwner           @38
-	D3DKMTWaitForVerticalBlankEvent     @39
-	DXGID3D10CreateDevice               @40
-	DXGID3D10CreateLayeredDevice        @41
-	DXGID3D10GetLayeredDeviceSize       @42
-	DXGID3D10RegisterLayers             @43
-	DXGIReportAdapterConfiguration      @44
+	D3DKMTCloseAdapter
+	D3DKMTDestroyAllocation
+	D3DKMTDestroyContext
+	D3DKMTDestroyDevice
+	D3DKMTDestroySynchronizationObject
+	D3DKMTQueryAdapterInfo
+	D3DKMTSetDisplayPrivateDriverFormat
+	D3DKMTSignalSynchronizationObject
+	D3DKMTUnlock
+	D3DKMTWaitForSynchronizationObject
+	DXGIDumpJournal
+	OpenAdapter10
+	OpenAdapter10_2
+	CreateDXGIFactory1
+	CreateDXGIFactory
+	D3DKMTCreateAllocation
+	D3DKMTCreateContext
+	D3DKMTCreateDevice
+	D3DKMTCreateSynchronizationObject
+	D3DKMTEscape
+	D3DKMTGetContextSchedulingPriority
+	D3DKMTGetDeviceState
+	D3DKMTGetDisplayModeList
+	D3DKMTGetMultisampleMethodList
+	D3DKMTGetRuntimeData
+	D3DKMTGetSharedPrimaryHandle
+	D3DKMTLock
+	D3DKMTOpenAdapterFromHdc
+	D3DKMTOpenResource
+	D3DKMTPresent
+	D3DKMTQueryAllocationResidency
+	D3DKMTQueryResourceInfo
+	D3DKMTRender
+	D3DKMTSetAllocationPriority
+	D3DKMTSetContextSchedulingPriority
+	D3DKMTSetDisplayMode
+	D3DKMTSetGammaRamp
+	D3DKMTSetVidPnSourceOwner
+	D3DKMTWaitForVerticalBlankEvent
+	DXGID3D10CreateDevice
+	DXGID3D10CreateLayeredDevice
+	DXGID3D10GetLayeredDeviceSize
+	DXGID3D10RegisterLayers
+	DXGIReportAdapterConfiguration
+
+; Added for Win10 support
+
+;    *    1    0 00018F30 ApplyCompatResolutionQuirking
+;    *    2    1 00005AD0 CompatString
+;    *    3    2 00005A40 CompatValue
+;        10    3 00006490 CreateDXGIFactory
+;        11    4 00007030 CreateDXGIFactory1
+;    *   12    5 000065F0 CreateDXGIFactory2
+;        13    6 000207B0 DXGID3D10CreateDevice
+;        14    7 000207B0 DXGID3D10CreateLayeredDevice
+;    *   15    8 0001A120 DXGID3D10ETWRundown
+;        16    9 00045230 DXGID3D10GetLayeredDeviceSize
+;        17    A 000207B0 DXGID3D10RegisterLayers
+;    *    4    B 000432C0 DXGIDumpJournal
+;    *   18    C 00045240 DXGIGetDebugInterface1
+;        19    D 000038C0 DXGIReportAdapterConfiguration
+;    *    5    E 000434D0 DXGIRevertToSxS
+;    *    6    F 000208D0 PIXBeginCapture
+;    *    7   10 000208D0 PIXEndCapture
+;    *    8   11 000208D0 PIXGetCaptureState
+;    *    9   12 00044100 SetAppCompatStringPointer
+
+	CreateDXGIFactory2
