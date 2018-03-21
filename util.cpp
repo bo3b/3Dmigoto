@@ -217,6 +217,8 @@ std::string NameFromIID(IID id)
 		return "IDXGISwapChain2";
 	if (__uuidof(IDXGISwapChain3) == id)		// dxgi1_4 94D99BDB-F1F8-4AB0-B236-7DA0170EDAB1
 		return "IDXGISwapChain3";
+	if (__uuidof(IDXGISwapChain4) == id)		// dxgi1_5 3D585D5A-BD4A-489E-B1F4-3DBCB6452FFB
+		return "IDXGISwapChain4";
 
 	if (__uuidof(IDXGIAdapter) == id)
 		return "IDXGIAdapter";
