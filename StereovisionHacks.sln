@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.27428.2011
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectX9", "DirectX9\DirectX9.vcxproj", "{4265C0D8-8671-49C0-8EB5-EB940FD08482}"
 EndProject
@@ -75,7 +75,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "pcre2", "pcre2", "{2356EA4F
 		pcre2\pcre2.h = pcre2\pcre2.h
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectXTK_Desktop_2015", "DirectXTK\DirectXTK_Desktop_2015.vcxproj", "{E0B52AE7-E160-4D32-BF3F-910B785E5A8E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectXTK_Desktop_2017", "DirectXTK\DirectXTK_Desktop_2017.vcxproj", "{E0B52AE7-E160-4D32-BF3F-910B785E5A8E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -212,5 +212,8 @@ Global
 		{09915712-7D63-41F9-8110-D5667F1F9FCF} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 		{83DCC342-4199-4E03-B720-80E5EDF18500} = {1693604A-42AF-4848-B892-D1540FB17FDE}
 		{2356EA4F-1B7B-439C-803F-6F30F7A86FE3} = {83DCC342-4199-4E03-B720-80E5EDF18500}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A93030B7-FA63-4CBB-87C6-2E430AF6A6BA}
 	EndGlobalSection
 EndGlobal
