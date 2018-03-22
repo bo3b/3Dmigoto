@@ -346,7 +346,7 @@ void KeyOverrideCycle::DownEvent(HackerDevice *device)
 		current = 0;
 	else if (wrap)
 		current = (current + 1) % presets.size();
-	else if (current < presets.size() - 1)
+	else if ((unsigned)current < presets.size() - 1)
 		current++;
 	else
 		return;
