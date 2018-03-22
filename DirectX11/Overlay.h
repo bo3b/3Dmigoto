@@ -60,8 +60,7 @@ private:
 		FLOAT BlendFactor[4];
 		UINT SampleMask;
 
-		ID3D11RenderTargetView  *pRenderTargetView;
-		ID3D11DepthStencilView  *pDepthStencilView;
+		OMState om_state;
 
 		D3D11_VIEWPORT pViewPorts[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
 		UINT RSNumViewPorts;

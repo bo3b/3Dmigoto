@@ -167,6 +167,7 @@ private:
 			wchar_t *txt_filename, size_t size, DXGI_FORMAT ib_fmt,
 			UINT offset, UINT first, UINT count);
 	void link_deduplicated_files(const wchar_t *filename, const wchar_t *dedupe_filename);
+	void rotate_when_nearing_hard_link_limit(const wchar_t *dedupe_filename);
 	void rotate_deduped_file(const wchar_t *dedupe_filename);
 	void get_deduped_dir(wchar_t *path, size_t size);
 

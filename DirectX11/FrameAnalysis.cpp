@@ -1562,6 +1562,35 @@ void FrameAnalysisContext::rotate_deduped_file(const wchar_t *dedupe_filename)
 	}
 }
 
+void FrameAnalysisContext::rotate_when_nearing_hard_link_limit(const wchar_t *dedupe_filename)
+{
+	HANDLE f;
+	BY_HANDLE_FILE_INFORMATION info;
+
+	// Waiting until we hit the hard link limit before rotating a file can
+	// result in certin other applications having difficulty if they
+	// perform some operation by using a temporary hard link, such as
+	// happens when moving files from one directory to another with cygwin,
+	// so this function aims to leave one free link for each file. I'm not
+	// sure how to query the actual max hard links available at a given
+	// path, so for now this assumes the limit is 1024 (NTFS). We will also
+	// keep the error path for rotating when actually hitting the limit to
+	// handle any cases where the limit may be lower for some reason.
+
+	f = CreateFile(dedupe_filename, GENERIC_READ, FILE_SHARE_READ |
+			FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
+			OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (f == INVALID_HANDLE_VALUE)
+		return;
+
+	if (GetFileInformationByHandle(f, &info)) {
+		if (info.nNumberOfLinks >= 1023)
+			rotate_deduped_file(dedupe_filename);
+	}
+
+	CloseHandle(f);
+}
+
 static bool create_shortcut(const wchar_t *filename, const wchar_t *dedupe_filename)
 {
 	IShellLink *psl;
@@ -1612,6 +1641,7 @@ void FrameAnalysisContext::link_deduplicated_files(const wchar_t *filename, cons
 				filename, relative_path, GetLastError());
 	}
 
+	rotate_when_nearing_hard_link_limit(dedupe_filename);
 	if (CreateHardLink(filename, dedupe_filename, NULL))
 		return;
 	if (GetLastError() == ERROR_TOO_MANY_LINKS) {

@@ -193,8 +193,8 @@ using namespace DirectX::SimpleMath;
 void Overlay::SaveState()
 {
 	memset(&state, 0, sizeof(state));
-	
-	mOrigContext->OMGetRenderTargets(1, &state.pRenderTargetView, &state.pDepthStencilView);
+
+	save_om_state(mOrigContext, &state.om_state);
 	state.RSNumViewPorts = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
 	mOrigContext->RSGetViewports(&state.RSNumViewPorts, state.pViewPorts);
 
@@ -217,14 +217,10 @@ void Overlay::RestoreState()
 {
 	unsigned i;
 
-	mOrigContext->OMSetRenderTargets(1, &state.pRenderTargetView, state.pDepthStencilView);
-	if (state.pRenderTargetView)
-		state.pRenderTargetView->Release();
-	if (state.pDepthStencilView)
-		state.pDepthStencilView->Release();
+	restore_om_state(mOrigContext, &state.om_state);
 
 	mOrigContext->RSSetViewports(state.RSNumViewPorts, state.pViewPorts);
-	
+
 	mOrigContext->OMSetBlendState(state.pBlendState, state.BlendFactor, state.SampleMask);
 	if (state.pBlendState)
 		state.pBlendState->Release();
@@ -842,19 +838,21 @@ void LogOverlay(LogLevel level, char *fmt, ...)
 	va_start(ap, fmt);
 	vLogInfo(fmt, ap);
 
-	// Using _vsnprintf_s so we don't crash if the message is too long for
-	// the buffer, and truncate it instead - unless we can automatically
-	// wrap the message, which DirectXTK doesn't appear to support, who
-	// cares if it gets cut off somewhere off screen anyway?
-	_vsnprintf_s(amsg, maxstring, _TRUNCATE, fmt, ap);
-	mbstowcs(wmsg, amsg, maxstring);
+	if (!log_levels[level].hide_in_release || G->hunting) {
+		// Using _vsnprintf_s so we don't crash if the message is too long for
+		// the buffer, and truncate it instead - unless we can automatically
+		// wrap the message, which DirectXTK doesn't appear to support, who
+		// cares if it gets cut off somewhere off screen anyway?
+		_vsnprintf_s(amsg, maxstring, _TRUNCATE, fmt, ap);
+		mbstowcs(wmsg, amsg, maxstring);
 
-	EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 
-	notices[level].emplace_back(wmsg);
-	has_notice = true;
+		notices[level].emplace_back(wmsg);
+		has_notice = true;
 
-	LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mCriticalSection);
+	}
 
 	va_end(ap);
 }

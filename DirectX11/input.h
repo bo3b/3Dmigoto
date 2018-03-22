@@ -102,7 +102,7 @@ class InputButtonList : public InputButton {
 	void clear();
 
 public:
-	InputButtonList(wchar_t *keyName);
+	InputButtonList(const wchar_t *keyName);
 	~InputButtonList();
 	bool CheckState() override;
 };
@@ -116,9 +116,9 @@ class InputAction {
 public:
 	bool last_state;
 	InputButton *button;
-	InputListener *listener;
+	shared_ptr<InputListener> listener;
 
-	InputAction(InputButton *button, InputListener *listener);
+	InputAction(InputButton *button, shared_ptr<InputListener> listener);
 	virtual ~InputAction();
 
 	virtual bool Dispatch(HackerDevice *device);
@@ -134,7 +134,7 @@ private:
 	ULONGLONG lastTick = 0;
 
 public:
-	RepeatingInputAction(InputButton *button, InputListener *listener, int repeat);
+	RepeatingInputAction(InputButton *button, shared_ptr<InputListener> listener, int repeat);
 	bool Dispatch(HackerDevice *device) override;
 };
 
@@ -147,7 +147,7 @@ private:
 	bool effective_state;
 	ULONGLONG state_change_time;
 public:
-	DelayedInputAction(InputButton *button, InputListener *listener, int delayDown, int delayUp);
+	DelayedInputAction(InputButton *button, shared_ptr<InputListener> listener, int delayDown, int delayUp);
 	bool Dispatch(HackerDevice *device) override;
 };
 
@@ -158,8 +158,8 @@ public:
 // Right now these are the only two combinations we need, but feel free to add 
 // more variants as needed.
 
-void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
-		InputListener *listener, int auto_repeat, int down_delay,
+void RegisterKeyBinding(LPCWSTR iniKey, const wchar_t *keyName,
+		shared_ptr<InputListener> listener, int auto_repeat, int down_delay,
 		int up_delay);
 bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key,
 		InputCallback down_cb, InputCallback up_cb, int auto_repeat,
