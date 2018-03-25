@@ -2359,7 +2359,7 @@ static ResourceType* GetResourceFromPool(
 	// the resolution override could produce the same hash for distinct
 	// texture descriptions. This hash isn't exposed to the user, so
 	// doesn't matter what we use - just has to be fast.
-	hash = crc32c_hw(0, &desc, sizeof(DescType));
+	hash = crc32c_hw(0, desc, sizeof(DescType));
 
 	try {
 		resource = (ResourceType*)resource_pool->cache.at(hash);
