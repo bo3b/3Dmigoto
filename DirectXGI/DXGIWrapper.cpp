@@ -15,6 +15,13 @@
 //	wrong one, and leads to not being able to use the overlay or advanced features.
 //
 //	This will just be a loader, like the D3D_Compiler46, not required.
+//
+// 3-21-18: Added Win10 support by changing the .def file to include CreateDXGIFactory2,
+//  as a direct export. This makes it work as a loader on both Win10 and Win7.
+//  Removed the LoadLibrary function by adding the ID3D11CreateDevice external
+//  load requirement as part of the Link in project file.  This makes the DLL loader
+//  in Windows directly load our d3d11.dll without any code or other requirements.
+
 
 #include <Windows.h>
 #include <stdio.h>
@@ -268,7 +275,7 @@ static tCreateDXGIFactory1 _CreateDXGIFactory1;
 // Doesn't exist as a dll export, except for under 8.1 or greater
 // Signature now includes Flags parameter.
 typedef HRESULT(WINAPI *tCreateDXGIFactory2)(UINT Flags, REFIID riid, void **ppFactory);
-static tCreateDXGIFactory2 _CreateDXGIFactory2;
+static tCreateDXGIFactory2 _CreateDXGIFactory2 = nullptr;
 
 
 static void InitDXGI()
@@ -306,9 +313,29 @@ static void InitDXGI()
 
 	// 8.1 and above, implemented in Win10 version of dxgi.dll
 	_CreateDXGIFactory2 = (tCreateDXGIFactory2) GetProcAddress(hDXGI, "CreateDXGIFactory2");
-	
-	LogInfo("DXGI GetProcAddress for CreateDXGIFactory2: %p\n", _CreateDXGIFactory2);
+
+	LogInfo("DXGI GetProcAddress for CreateDXGIFactory2: %p \n\n", _CreateDXGIFactory2);
 }
+
+
+// -----------------------------------------------------------------------------
+
+std::string UUIDtoString(REFIID id)
+{
+	wchar_t wiid[128];
+	if (SUCCEEDED(StringFromGUID2(id, wiid, 128)))
+	{
+		std::wstring convert = std::wstring(wiid);
+		return std::string(convert.begin(), convert.end());
+	}
+	else
+	{
+		return "unknown";
+	}
+}
+
+// -----------------------------------------------------------------------------
+
 
 HRESULT WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
 {
@@ -369,34 +396,58 @@ HRESULT WINAPI DXGIReportAdapterConfiguration(int a)
 }
 
 
+// -----------------------------------------------------------------------------
+
 HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
-	LogInfo("DXGI CreateDXGIFactory called \n");
-
 	InitDXGI();
-	return (*_CreateDXGIFactory)(riid, ppFactory);
+	LogInfo("DXGI CreateDXGIFactory(%s) called \n", UUIDtoString(riid).c_str());
+
+	HRESULT hr = (*_CreateDXGIFactory)(riid, ppFactory);
+
+	LogInfo("  return: %x, factory = %p \n", hr, *ppFactory);
+	return hr;
 }
 
 HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 {
-	LogInfo("DXGI CreateDXGIFactory1 called \n");
-
 	InitDXGI();
-	return (*_CreateDXGIFactory1)(riid, ppFactory);
+	LogInfo("DXGI CreateDXGIFactory1(%s) called \n", UUIDtoString(riid).c_str());
+
+	HRESULT hr = (*_CreateDXGIFactory1)(riid, ppFactory);
+
+	LogInfo("  return: %x, factory = %p \n", hr, *ppFactory);
+	return hr;
 }
 
 
-// Signature is different than before 
+// Signature is different than previous Creates. 
 
 HRESULT WINAPI CreateDXGIFactory2(
 	UINT   Flags,
 	REFIID riid,
 	_Out_ void   **ppFactory)
 {
-	LogInfo("DXGI CreateDXGIFactory2 called \n");
-
 	InitDXGI();
-	return (*_CreateDXGIFactory2)(Flags, riid, ppFactory);
+	LogInfo("DXGI CreateDXGIFactory2(%s) called Flags = %d \n", UUIDtoString(riid).c_str(), Flags);
+
+	// If the _CreateDXGIFactory2 function is still nullptr, that means we
+	// are running on Win7 where the CreateDXGIFactory2 function is not exported.  
+	// If the platform update happens to be installed, we will still get the 
+	// proper object by passing the IDXGIFactory2 RIID to CreateDXGIFactory. 
+	// The reason to do all this is to make it possible to have a single 
+	// dxgi.dll loader that works on all Win7 and Win10.
+	if (_CreateDXGIFactory2 == nullptr)
+	{
+		HRESULT hr = (*_CreateDXGIFactory)(riid, ppFactory);
+		LogInfo("  _CreateDXGIFactory returns %x factory = %p \n", hr, *ppFactory);
+		return hr;
+	}
+
+	HRESULT hr = (*_CreateDXGIFactory2)(Flags, riid, ppFactory);
+
+	LogInfo("  return: %x, factory = %p \n", hr, *ppFactory);
+	return hr;
 }
 
 // -----------------------------------------------------------------------------
