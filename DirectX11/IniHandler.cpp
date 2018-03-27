@@ -72,6 +72,17 @@ static Section AllowLinesWithoutEquals[] = {
 	{L"ShaderRegex", true},
 };
 
+static bool whitelisted_duplicate_key(const wchar_t *section, const wchar_t *key)
+{
+	// FIXME: Make this declarative
+	if (!_wcsnicmp(section, L"key", 3)) {
+		if (!_wcsicmp(key, L"key") || !_wcsicmp(key, L"back"))
+			return true;
+	}
+
+	return false;
+}
+
 static bool SectionInList(const wchar_t *section, Section section_list[], int list_size)
 {
 	size_t len;
@@ -303,7 +314,7 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 		// behaviour of GetPrivateProfileString for duplicate
 		// keys within a single section:
 		inserted = ini_sections.at(*section).kv_map.emplace(key, val).second;
-		if (warn_duplicates && !inserted) {
+		if (warn_duplicates && !inserted && !whitelisted_duplicate_key(section->c_str(), key.c_str())) {
 			IniWarning("WARNING: Duplicate key found in d3dx.ini: [%S] %S\n",
 					section->c_str(), key.c_str());
 		}
@@ -440,6 +451,18 @@ static bool IniHasKey(const wchar_t *section, const wchar_t *key)
 	}
 }
 
+static void GetIniSection(IniSectionVector **key_vals, const wchar_t *section)
+{
+	static IniSectionVector empty_section_vector;
+
+	try {
+		*key_vals = &ini_sections.at(section).kv_vec;
+	} catch (std::out_of_range) {
+		LogDebug("WARNING: GetIniSection() called on a section not in the ini_sections map: %S\n", section);
+		*key_vals = &empty_section_vector;
+	}
+}
+
 // This emulates the behaviour of the old GetPrivateProfileString API to
 // facilitate switching to our own ini parser. Later we might consider changing
 // the return values (e.g. return found/not found instead of string length),
@@ -518,6 +541,23 @@ static bool GetIniString(const wchar_t *section, const wchar_t *key, const wchar
 	// parsing API forced on us so we don't need this re-conversion:
 	*ret = std::string(wret.begin(), wret.end());
 	return found;
+}
+
+// For sections that allow the same key to be used multiple times with
+// different values, fills out a vector with all values of the key
+static std::vector<std::wstring> GetIniStringMultipleKeys(const wchar_t *section, const wchar_t *key)
+{
+	std::vector<std::wstring> ret;
+	IniSectionVector *sv = NULL;
+	IniSectionVector::iterator entry;
+
+	GetIniSection(&sv, section);
+	for (entry = sv->begin(); entry < sv->end(); entry++) {
+		if (!_wcsicmp(key, entry->first.c_str()))
+			ret.push_back(entry->second);
+	}
+
+	return ret;
 }
 
 // Helper functions to parse common types and log their values. TODO: Convert
@@ -711,26 +751,15 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, bool 
 	return ret;
 }
 
-static void GetIniSection(IniSectionVector **key_vals, const wchar_t *section)
-{
-	static IniSectionVector empty_section_vector;
-
-	try {
-		*key_vals = &ini_sections.at(section).kv_vec;
-	} catch (std::out_of_range) {
-		LogDebug("WARNING: GetIniSection() called on a section not in the ini_sections map: %S\n", section);
-		*key_vals = &empty_section_vector;
-	}
-}
-
 static void RegisterPresetKeyBindings()
 {
 	KeyOverrideType type;
-	wchar_t key[MAX_PATH];
 	wchar_t buf[MAX_PATH];
-	KeyOverrideBase *preset;
+	shared_ptr<KeyOverrideBase> preset;
 	int delay, release_delay;
 	IniSections::iterator lower, upper, i;
+	vector<wstring> keys;
+	vector<wstring> back;
 
 	lower = ini_sections.lower_bound(wstring(L"Key"));
 	upper = prefix_upper_bound(ini_sections, wstring(L"Key"));
@@ -740,7 +769,9 @@ static void RegisterPresetKeyBindings()
 
 		LogInfo("[%S]\n", id);
 
-		if (!GetIniString(id, L"Key", 0, key, MAX_PATH)) {
+		keys = GetIniStringMultipleKeys(id, L"Key");
+		back = GetIniStringMultipleKeys(id, L"Back");
+		if (keys.empty() && back.empty()) {
 			IniWarning("WARNING: [%S] missing Key=\n", id);
 			continue;
 		}
@@ -761,13 +792,20 @@ static void RegisterPresetKeyBindings()
 		delay = GetIniInt(id, L"delay", 0, NULL);
 		release_delay = GetIniInt(id, L"release_delay", 0, NULL);
 
-		if (type == KeyOverrideType::CYCLE)
-			preset = new KeyOverrideCycle();
-		else
-			preset = new KeyOverride(type);
+		if (type == KeyOverrideType::CYCLE) {
+			shared_ptr<KeyOverrideCycle> cycle_preset = make_shared<KeyOverrideCycle>();
+			shared_ptr<KeyOverrideCycleBack> cycle_back = make_shared<KeyOverrideCycleBack>(cycle_preset);
+			preset = cycle_preset;
+			for (wstring key : back)
+				RegisterKeyBinding(L"Back", key.c_str(), cycle_back, 0, delay, release_delay);
+		} else {
+			preset = make_shared<KeyOverride>(type);
+		}
+
 		preset->ParseIniSection(id);
 
-		RegisterKeyBinding(L"Key", key, preset, 0, delay, release_delay);
+		for (wstring key : keys)
+			RegisterKeyBinding(L"Key", key.c_str(), preset, 0, delay, release_delay);
 	}
 }
 
@@ -3545,24 +3583,24 @@ void LoadConfigFile()
 
 	G->mark_snapshot = GetIniInt(L"Hunting", L"mark_snapshot", 0, NULL);
 
+	// Splitting the enumeration of these sections out from parsing them as
+	// they can be referenced from other command list sections, keys and
+	// presets (via the run command), including sections of the same type.
+	// Most of the other sections don't need this so long as we parse them
+	// in an appropriate order so that sections that can be referred to are
+	// parsed before sections that can refer to them (e.g. Resource
+	// sections are parsed before all command list sections for this
+	// reason), but these are special since they can both refer to other
+	// sections and be referred to by other sections, and we don't want the
+	// parse order to determine if the reference will work or not.
+	EnumerateCustomShaderSections();
+	EnumerateExplicitCommandListSections();
+
 	RegisterHuntingKeyBindings();
 	RegisterPresetKeyBindings();
 
 	ParsePresetOverrideSections();
 	ParseResourceSections();
-
-	// Splitting the enumeration of these sections out from parsing them as
-	// they can be referenced from other command list sections (via the run
-	// command), including sections of the same type. Most of the other
-	// sections don't need this so long as we parse them in an appropriate
-	// order so that sections that can be referred to are parsed before
-	// sections that can refer to them (e.g. Resource sections are parsed
-	// before all command list sections for this reason), but these are
-	// special since they can both refer to other sections and be referred
-	// to by other sections, and we don't want the parse order to determine
-	// if the reference will work or not.
-	EnumerateCustomShaderSections();
-	EnumerateExplicitCommandListSections();
 
 	ParseCustomShaderSections();
 	ParseExplicitCommandListSections();

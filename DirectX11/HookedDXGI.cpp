@@ -390,7 +390,7 @@ static void override_swap_chain(DXGI_SWAP_CHAIN_DESC *pDesc, DXGI_SWAP_CHAIN_DES
 	if (G->SCREEN_UPSCALING > 0)
 	{
 		// Copy input swap chain desc in case it's modified
-		memcpy(&origSwapChainDesc, pDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
+		memcpy(origSwapChainDesc, pDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
 
 		// For the upscaling case, fullscreen has to be set after swap chain is created
 		pDesc->Windowed = true;

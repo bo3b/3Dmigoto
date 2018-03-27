@@ -83,7 +83,7 @@ void InputCallbacks::UpEvent(HackerDevice *device)
 
 // -----------------------------------------------------------------------------
 
-InputAction::InputAction(InputButton *button, InputListener *listener) :
+InputAction::InputAction(InputButton *button, shared_ptr<InputListener> listener) :
 		last_state(false),
 		button(button),
 		listener(listener)
@@ -92,7 +92,6 @@ InputAction::InputAction(InputButton *button, InputListener *listener) :
 InputAction::~InputAction()
 {
 	delete button;
-	delete listener;
 }
 
 bool InputAction::Dispatch(HackerDevice *device)
@@ -154,7 +153,7 @@ bool VKInputButton::CheckState()
 // TODO: Determine if an alternate thread can properly provide time. That would make
 // it possible to simply have the OS call us as desired.
 
-RepeatingInputAction::RepeatingInputAction(InputButton *button, InputListener *listener, int repeat) :
+RepeatingInputAction::RepeatingInputAction(InputButton *button, shared_ptr<InputListener> listener, int repeat) :
 	repeatRate(repeat),
 	InputAction(button, listener)
 {}
@@ -184,7 +183,7 @@ bool RepeatingInputAction::Dispatch(HackerDevice *device)
 	return false;
 }
 
-DelayedInputAction::DelayedInputAction(InputButton *button, InputListener *listener, int delay_down, int delay_up) :
+DelayedInputAction::DelayedInputAction(InputButton *button, shared_ptr<InputListener> listener, int delay_down, int delay_up) :
 	delay_down(delay_down),
 	delay_up(delay_up),
 	effective_state(false),
@@ -347,9 +346,9 @@ bool XInputButton::CheckState()
 	return false;
 }
 
-InputButtonList::InputButtonList(wchar_t *keyName)
+InputButtonList::InputButtonList(const wchar_t *keyName)
 {
-	wchar_t *ptr = keyName, *cur = NULL;
+	const wchar_t *ptr = keyName, *cur = NULL;
 	wstring cur_key;
 
 	while (*ptr) {
@@ -429,14 +428,12 @@ bool InputButtonList::CheckState()
 
 static std::vector<class InputAction *> actions;
 
-void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
-		InputListener *listener, int auto_repeat, int down_delay,
+void RegisterKeyBinding(LPCWSTR iniKey, const wchar_t *keyName,
+		shared_ptr<InputListener> listener, int auto_repeat, int down_delay,
 		int up_delay)
 {
 	class InputAction *action;
 	class InputButton *button;
-
-	RightStripW(keyName);
 
 	// We could potentially only use the InputButtonList here, but that
 	// does not work with some of our backwards compatibility key names
@@ -473,7 +470,7 @@ bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR iniKey,
 		InputCallback down_cb, InputCallback up_cb, int auto_repeat,
 		void *private_data)
 {
-	InputCallbacks *callbacks = new InputCallbacks(down_cb, up_cb, private_data);
+	shared_ptr<InputCallbacks> callbacks = make_shared<InputCallbacks>(down_cb, up_cb, private_data);
 	wchar_t keyName[MAX_PATH];
 
 	if (!GetIniString(app, iniKey, 0, keyName, MAX_PATH))

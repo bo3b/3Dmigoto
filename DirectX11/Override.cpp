@@ -98,6 +98,20 @@ void Override::ParseIniSection(LPCWSTR section)
 			is_conditional = true;
 		}
 	}
+
+	// The keys/presets sections have too much conflicting syntax to be
+	// turned into a command list (at least not easily - transitions &
+	// cycles are the ones that complicate matters), but we still want to
+	// be able to trigger command lists on keys, so we allow for a run
+	// command to trigger a command list. Since this run command is a
+	// subset of the command list syntax it does not itself make it any
+	// harder to turn the entire section into a command list if we wanted
+	// to in the future, provided we can deal with the other problems.
+	if (GetIniStringAndLog(section, L"run", NULL, buf, MAX_PATH)) {
+		wstring sbuf(buf);
+		if (!ParseRunExplicitCommandList(section, L"run", &sbuf, NULL, &activate_command_list, &deactivate_command_list))
+			LogOverlay(LOG_WARNING, "WARNING: Invalid run=\"%S\"\n", sbuf.c_str());
+	}
 }
 
 struct KeyOverrideCycleParam
@@ -202,12 +216,25 @@ struct KeyOverrideCycleParam
 			return false;
 		}
 
-		if (!ParseIniParamName(buf, idx, component)) {
-			LogOverlayW(LOG_WARNING, L"WARNING: Invalid condition=\"%s\"\n", buf);
+		if (!ParseIniParamName(cur, idx, component)) {
+			LogOverlayW(LOG_WARNING, L"WARNING: Invalid condition=\"%s\"\n", cur);
 			return false;
 		}
 
 		return true;
+	}
+
+	void as_run_command(LPCWSTR section, CommandList *pre_command_list, CommandList *deactivate_command_list)
+	{
+		wstring scur(cur);
+
+		if (*cur == L'\0') {
+			// Blank entry
+			return;
+		}
+
+		if (!ParseRunExplicitCommandList(section, L"run", &scur, NULL, pre_command_list, deactivate_command_list))
+			LogOverlay(LOG_WARNING, "WARNING: Invalid run=\"%S\"\n", scur.c_str());
 	}
 };
 
@@ -219,6 +246,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 	struct KeyOverrideCycleParam transition, release_transition;
 	struct KeyOverrideCycleParam transition_type, release_transition_type;
 	struct KeyOverrideCycleParam condition;
+	struct KeyOverrideCycleParam run;
 	bool not_done = true;
 	int i, j;
 	wchar_t buf[8];
@@ -226,7 +254,9 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 	bool is_conditional;
 	int condition_param_idx = 0;
 	float DirectX::XMFLOAT4::*condition_param_component = NULL;
+	CommandList activate_command_list, deactivate_command_list;
 
+	wrap = GetIniBool(section, L"wrap", true, NULL);
 
 	for (j = 0; j < INI_PARAMS_SIZE; j++) {
 		StringCchPrintf(buf, 8, L"x%.0i", j);
@@ -245,6 +275,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 	GetIniString(section, L"transition_type", 0, transition_type.buf, MAX_PATH);
 	GetIniString(section, L"release_transition_type", 0, release_transition_type.buf, MAX_PATH);
 	GetIniString(section, L"condition", 0, condition.buf, MAX_PATH);
+	GetIniString(section, L"run", 0, run.buf, MAX_PATH);
 
 	for (i = 1; not_done; i++) {
 		not_done = false;
@@ -262,6 +293,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 		not_done = transition_type.next() || not_done;
 		not_done = release_transition_type.next() || not_done;
 		not_done = condition.next() || not_done;
+		not_done = run.next() || not_done;
 
 		if (!not_done)
 			break;
@@ -284,6 +316,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 		}
 
 		is_conditional = condition.as_ini_param(&condition_param_idx, &condition_param_component);
+		run.as_run_command(section, &activate_command_list, &deactivate_command_list);
 
 		separation.log(L"separation");
 		convergence.log(L"convergence");
@@ -292,6 +325,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 		transition_type.log(L"transition_type");
 		release_transition_type.log(L"release_transition_type");
 		condition.log(L"condition");
+		run.log(L"run");
 		LogInfo("\n");
 
 		presets.push_back(KeyOverride(KeyOverrideType::CYCLE, params,
@@ -299,7 +333,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 			transition.as_int(0), release_transition.as_int(0),
 			transition_type.as_enum<wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
 			release_transition_type.as_enum<wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
-			is_conditional, condition_param_idx, condition_param_component));
+			is_conditional, condition_param_idx, condition_param_component, activate_command_list, deactivate_command_list));
 	}
 }
 
@@ -308,8 +342,38 @@ void KeyOverrideCycle::DownEvent(HackerDevice *device)
 	if (presets.empty())
 		return;
 
-	presets[current].Activate(device);
-	current = (current + 1) % presets.size();
+	if (current == -1)
+		current = 0;
+	else if (wrap)
+		current = (current + 1) % presets.size();
+	else if ((unsigned)current < presets.size() - 1)
+		current++;
+	else
+		return;
+
+	presets[current].Activate(device, false);
+}
+
+void KeyOverrideCycle::BackEvent(HackerDevice *device)
+{
+	if (presets.empty())
+		return;
+
+	if (current == -1)
+		current = (int)presets.size() - 1;
+	else if (wrap)
+		current = (int)(current ? current : presets.size()) - 1;
+	else if (current > 0)
+		current--;
+	else
+		return;
+
+	presets[current].Activate(device, false);
+}
+
+void KeyOverrideCycleBack::DownEvent(HackerDevice *device)
+{
+	return cycle->BackEvent(device);
 }
 
 // In order to change the iniParams, we need to map them back to system memory so that the CPU
@@ -357,7 +421,7 @@ static void UpdateIniParams(HackerDevice* wrapper,
 	LogDebug("\n");
 }
 
-void Override::Activate(HackerDevice *device)
+void Override::Activate(HackerDevice *device, bool override_has_deactivate_condition)
 {
 	if (is_conditional && G->iniParams[condition_param_idx].*condition_param_component == 0) {
 		LogInfo("Skipping override activation: condition not met\n");
@@ -366,17 +430,36 @@ void Override::Activate(HackerDevice *device)
 
 	LogInfo("User key activation -->\n");
 
+	if (override_has_deactivate_condition) {
+		active = true;
+		OverrideSave.Save(device, this);
+	}
+
 	CurrentTransition.ScheduleTransition(device,
 			mOverrideSeparation,
 			mOverrideConvergence,
 			mOverrideParams,
 			transition,
 			transition_type);
+
+	RunCommandList(device, device->GetHackerContext(), &activate_command_list, NULL, false);
+	if (!override_has_deactivate_condition) {
+		// type=activate or type=cycle that don't have an explicit deactivate
+		RunCommandList(device, device->GetHackerContext(), &deactivate_command_list, NULL, true);
+	}
 }
 
 void Override::Deactivate(HackerDevice *device)
 {
+	if (!active) {
+		LogInfo("Skipping override deactivation: not active\n");
+		return;
+	}
+
 	LogInfo("User key deactivation <--\n");
+
+	active = false;
+	OverrideSave.Restore(this);
 
 	CurrentTransition.ScheduleTransition(device,
 			mUserSeparation,
@@ -384,6 +467,8 @@ void Override::Deactivate(HackerDevice *device)
 			mSavedParams,
 			release_transition,
 			release_transition_type);
+
+	RunCommandList(device, device->GetHackerContext(), &deactivate_command_list, NULL, true);
 }
 
 void Override::Toggle(HackerDevice *device)
@@ -393,64 +478,41 @@ void Override::Toggle(HackerDevice *device)
 		return;
 	}
 
-	active = !active;
-	if (!active) {
-		OverrideSave.Restore(this);
+	if (active)
 		return Deactivate(device);
-	}
-	OverrideSave.Save(device, this);
-	return Activate(device);
+	return Activate(device, true);
 }
 
 void KeyOverride::DownEvent(HackerDevice *device)
 {
 	if (type == KeyOverrideType::TOGGLE)
 		return Toggle(device);
+
 	if (type == KeyOverrideType::HOLD)
-		OverrideSave.Save(device, this);
-	return Activate(device);
+		return Activate(device, true);
+
+	return Activate(device, false);
 }
 
 void KeyOverride::UpEvent(HackerDevice *device)
 {
-	if (type == KeyOverrideType::HOLD) {
-		OverrideSave.Restore(this);
+	if (type == KeyOverrideType::HOLD)
 		return Deactivate(device);
-	}
 }
 
-void PresetOverride::Activate(HackerDevice *device)
+void PresetOverride::Trigger()
 {
 	triggered = true;
-
-	if (activated)
-		return;
-
-	OverrideSave.Save(device, this);
-
-	Override::Activate(device);
-
-	activated = true;
-}
-
-void PresetOverride::Deactivate(HackerDevice *device)
-{
-	if (!activated)
-		return;
-
-	OverrideSave.Restore(this);
-
-	Override::Deactivate(device);
-
-	activated = false;
 }
 
 // Called on present to update the activation status. If the preset was
 // triggered this frame it will remain active, otherwise it will deactivate.
 void PresetOverride::Update(HackerDevice *wrapper)
 {
-	if (activated && !triggered)
-		Deactivate(wrapper);
+	if (!active && triggered)
+		Override::Activate(wrapper, true);
+	else if (active && !triggered)
+		Override::Deactivate(wrapper);
 	triggered = false;
 }
 

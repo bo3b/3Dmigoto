@@ -15,6 +15,13 @@
 //	wrong one, and leads to not being able to use the overlay or advanced features.
 //
 //	This will just be a loader, like the D3D_Compiler46, not required.
+//
+// 3-21-18: Added Win10 support by changing the .def file to include CreateDXGIFactory2,
+//  as a direct export. This makes it work as a loader on both Win10 and Win7.
+//  Removed the LoadLibrary function by adding the ID3D11CreateDevice external
+//  load requirement as part of the Link in project file.  This makes the DLL loader
+//  in Windows directly load our d3d11.dll without any code or other requirements.
+
 
 #include <Windows.h>
 #include <stdio.h>
@@ -166,6 +173,31 @@ HRESULT WINAPI D3DKMTSetGammaRamp() { return 0; }
 HRESULT WINAPI D3DKMTSetVidPnSourceOwner() { return 0; }
 HRESULT WINAPI D3DKMTWaitForVerticalBlankEvent() { return 0; }
 
+// All Win10 routines that are exported.  We only need to export
+// CreateDXGIFactory2, as the others are never expected to be seen,
+// and will give a clear unambiguous error if they ever are.
+// * items are new.
+
+//    *	1    0 00018F30 ApplyCompatResolutionQuirking
+//    *	2    1 00005AD0 CompatString
+//    *	3    2 00005A40 CompatValue
+//      10    3 00006490 CreateDXGIFactory
+//      11    4 00007030 CreateDXGIFactory1
+//    *	12    5 000065F0 CreateDXGIFactory2
+//      13    6 000207B0 DXGID3D10CreateDevice
+//      14    7 000207B0 DXGID3D10CreateLayeredDevice
+//    *	15    8 0001A120 DXGID3D10ETWRundown
+//      16    9 00045230 DXGID3D10GetLayeredDeviceSize
+//      17    A 000207B0 DXGID3D10RegisterLayers
+//    *	4    B 000432C0 DXGIDumpJournal
+//    *	18    C 00045240 DXGIGetDebugInterface1
+//      19    D 000038C0 DXGIReportAdapterConfiguration
+//    *	5    E 000434D0 DXGIRevertToSxS
+//    *	6    F 000208D0 PIXBeginCapture
+//    *	7   10 000208D0 PIXEndCapture
+//    *	8   11 000208D0 PIXGetCaptureState
+//    *	9   12 00044100 SetAppCompatStringPointer
+
 
 typedef ULONG 	D3DKMT_HANDLE;
 typedef int		KMTQUERYADAPTERINFOTYPE;
@@ -240,9 +272,11 @@ static tCreateDXGIFactory _CreateDXGIFactory;
 typedef HRESULT(WINAPI *tCreateDXGIFactory1)(REFIID riid, void **ppFactory);
 static tCreateDXGIFactory1 _CreateDXGIFactory1;
 
-// Doesn't exist as a dll export, except for under 8.1
-typedef HRESULT(WINAPI *tCreateDXGIFactory2)(REFIID riid, void **ppFactory);
-static tCreateDXGIFactory2 _CreateDXGIFactory2;
+// Doesn't exist as a dll export, except for under 8.1 or greater
+// Signature now includes Flags parameter.
+typedef HRESULT(WINAPI *tCreateDXGIFactory2)(UINT Flags, REFIID riid, void **ppFactory);
+static tCreateDXGIFactory2 _CreateDXGIFactory2 = nullptr;
+
 
 static void InitDXGI()
 {
@@ -250,14 +284,14 @@ static void InitDXGI()
 	InitializeDLL();
 
 	// It's OK to get the system dxgi.dll here, as most games do not ship with
-	// a dxgi.dll.
+	// a dxgi.dll.  This might interfere with other modding tools though.
 	wchar_t sysDir[MAX_PATH];
 	SHGetFolderPath(0, CSIDL_SYSTEM, 0, SHGFP_TYPE_CURRENT, sysDir);
 	wcscat(sysDir, L"\\dxgi.dll");
 	hDXGI = LoadLibrary(sysDir);	
     if (hDXGI == NULL)
     {
-        LogInfo("\n *** LoadLibrary on dxgi.dll failed *** \n\n");
+        LogInfo("\n *** LoadLibrary on System32 dxgi.dll failed *** \n\n");
         
         return;
     }
@@ -277,22 +311,31 @@ static void InitDXGI()
 	_CreateDXGIFactory = (tCreateDXGIFactory) GetProcAddress(hDXGI, "CreateDXGIFactory");
 	_CreateDXGIFactory1 = (tCreateDXGIFactory1) GetProcAddress(hDXGI, "CreateDXGIFactory1");
 
-	// 8.1 only
+	// 8.1 and above, implemented in Win10 version of dxgi.dll
 	_CreateDXGIFactory2 = (tCreateDXGIFactory2) GetProcAddress(hDXGI, "CreateDXGIFactory2");
 
-	// Loader for d3d11, for the case where this dxgi.dll is used as preloader for 3Dmigoto,
-	// in games that have unusual launch sequences.
-	wchar_t workingDir[MAX_PATH];
-	GetModuleFileName(0, workingDir, MAX_PATH);
-	wcsrchr(workingDir, L'\\')[1] = 0;
-	wcscat(workingDir, L"d3d11.dll");
-	HMODULE hD3D11 = 0;
-	hD3D11 = LoadLibrary(workingDir);
-	if (!hD3D11)
+	LogInfo("DXGI GetProcAddress for CreateDXGIFactory2: %p \n\n", _CreateDXGIFactory2);
+}
+
+
+// -----------------------------------------------------------------------------
+
+std::string UUIDtoString(REFIID id)
+{
+	wchar_t wiid[128];
+	if (SUCCEEDED(StringFromGUID2(id, wiid, 128)))
 	{
-		LogInfo("LoadLibrary on d3d11.dll wrapper failed\n");
+		std::wstring convert = std::wstring(wiid);
+		return std::string(convert.begin(), convert.end());
+	}
+	else
+	{
+		return "unknown";
 	}
 }
+
+// -----------------------------------------------------------------------------
+
 
 HRESULT WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
 {
@@ -353,22 +396,58 @@ HRESULT WINAPI DXGIReportAdapterConfiguration(int a)
 }
 
 
+// -----------------------------------------------------------------------------
+
 HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
 	InitDXGI();
-	return (*_CreateDXGIFactory)(riid, ppFactory);
+	LogInfo("DXGI CreateDXGIFactory(%s) called \n", UUIDtoString(riid).c_str());
+
+	HRESULT hr = (*_CreateDXGIFactory)(riid, ppFactory);
+
+	LogInfo("  return: %x, factory = %p \n", hr, *ppFactory);
+	return hr;
 }
 
 HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 {
 	InitDXGI();
-	return (*_CreateDXGIFactory1)(riid, ppFactory);
+	LogInfo("DXGI CreateDXGIFactory1(%s) called \n", UUIDtoString(riid).c_str());
+
+	HRESULT hr = (*_CreateDXGIFactory1)(riid, ppFactory);
+
+	LogInfo("  return: %x, factory = %p \n", hr, *ppFactory);
+	return hr;
 }
 
-HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
+
+// Signature is different than previous Creates. 
+
+HRESULT WINAPI CreateDXGIFactory2(
+	UINT   Flags,
+	REFIID riid,
+	_Out_ void   **ppFactory)
 {
 	InitDXGI();
-	return (*_CreateDXGIFactory2)(riid, ppFactory);
+	LogInfo("DXGI CreateDXGIFactory2(%s) called Flags = %d \n", UUIDtoString(riid).c_str(), Flags);
+
+	// If the _CreateDXGIFactory2 function is still nullptr, that means we
+	// are running on Win7 where the CreateDXGIFactory2 function is not exported.  
+	// If the platform update happens to be installed, we will still get the 
+	// proper object by passing the IDXGIFactory2 RIID to CreateDXGIFactory. 
+	// The reason to do all this is to make it possible to have a single 
+	// dxgi.dll loader that works on all Win7 and Win10.
+	if (_CreateDXGIFactory2 == nullptr)
+	{
+		HRESULT hr = (*_CreateDXGIFactory)(riid, ppFactory);
+		LogInfo("  _CreateDXGIFactory returns %x factory = %p \n", hr, *ppFactory);
+		return hr;
+	}
+
+	HRESULT hr = (*_CreateDXGIFactory2)(Flags, riid, ppFactory);
+
+	LogInfo("  return: %x, factory = %p \n", hr, *ppFactory);
+	return hr;
 }
 
 // -----------------------------------------------------------------------------
@@ -693,11 +772,16 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 //	}
 //}
 
+
 // We need to get control as early as possible in order to pre-load our 
 // d3d11 and nvapi64 dlls.  This will get called at static load time to
 // get us hooked into place.  
 //
-// Be Careful of the restrictions on this entry point. No LogInfo e.g.
+// Be Careful of the restrictions on this entry point. No LogInfo, No LoadLibrary e.g.
+//
+// This project has a static link to the d3d11.dll call of D3D11CreateDevice, so that any
+// load of this dll will also statically load our d3d11.dll. That avoids the need to
+// do any LoadLibrary here.
 
 BOOL WINAPI DllMain(
 	_In_  HINSTANCE hinstDLL,
@@ -709,21 +793,15 @@ BOOL WINAPI DllMain(
 	switch (fdwReason)
 	{
 	case DLL_PROCESS_ATTACH:
-	{
-		wchar_t localPath[MAX_PATH] = L"d3d11.dll";
-		LoadLibrary(localPath);
 		break;
-	}
 
 	case DLL_PROCESS_DETACH:
 		break;
 
 	case DLL_THREAD_ATTACH:
-		// Do thread-specific initialization.
 		break;
 
 	case DLL_THREAD_DETACH:
-		// Do thread-specific cleanup.
 		break;
 	}
 
