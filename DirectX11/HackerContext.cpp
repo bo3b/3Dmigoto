@@ -1433,22 +1433,6 @@ STDMETHODIMP_(void) HackerContext::RSSetViewports(THIS_
 	/* [annotation] */
 	__in_ecount_opt(NumViewports)  const D3D11_VIEWPORT *pViewports)
 {
-	// In the 3D Vision Direct Mode, we need to double the width of any ViewPorts
-	// We specifically modify the input, so that the game is using full 2x width.
-	// Modifying every ViewPort rect seems wrong, so we are only doing those that
-	// match the screen resolution. 
-	if (G->gForceStereo == 2)
-	{
-		for (size_t i = 0; i < NumViewports; i++)
-		{
-			if (pViewports[i].Width == G->mResolutionInfo.width)
-			{
-				const_cast<D3D11_VIEWPORT *>(pViewports)[i].Width *= 2;
-				LogInfo("-> forced 2x width for Direct Mode: %.0f\n", pViewports[i].Width);
-			}
-		}
-	}
-
 	 mOrigContext1->RSSetViewports(NumViewports, pViewports);
 }
 

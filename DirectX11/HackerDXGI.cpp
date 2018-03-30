@@ -662,15 +662,6 @@ STDMETHODIMP HackerSwapChain::ResizeBuffers(THIS_
 			G->mResolutionInfo.width, G->mResolutionInfo.height);
 	}
 
-	// In Direct Mode, we need to ensure that we are keeping our 2x width backbuffer.
-	// We are specifically modifying the value passed to the call, but saving the desired
-	// resolution before this.
-	if (G->gForceStereo == 2)
-	{
-		Width *= 2;
-		LogInfo("-> forced 2x width for Direct Mode: %d\n", Width);
-	}
-
 	HRESULT hr = mOrigSwapChain1->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
 
 	LogInfo("  returns result = %x\n", hr);
@@ -1143,15 +1134,6 @@ STDMETHODIMP HackerUpscalingSwapChain::ResizeBuffers(THIS_
 			G->mResolutionInfo.width, G->mResolutionInfo.height);
 	}
 
-	// In Direct Mode, we need to ensure that we are keeping our 2x width backbuffer.
-	// We are specifically modifying the value passed to the call, but saving the desired
-	// resolution before this.
-	if (G->gForceStereo == 2)
-	{
-		Width *= 2;
-		LogInfo("-> forced 2x width for Direct Mode: %d\n", Width);
-	}
-
 	HRESULT hr;
 
 	if (mFakeBackBuffer) // UPSCALE_MODE 0
@@ -1206,20 +1188,6 @@ STDMETHODIMP HackerUpscalingSwapChain::ResizeTarget(THIS_
 		G->GAME_INTERNAL_WIDTH = pNewTargetParameters->Width;
 		G->GAME_INTERNAL_HEIGHT = pNewTargetParameters->Height;
 	}
-
-	// In Direct Mode, we need to ensure that we are keeping our 2x width target.
-	if ((G->gForceStereo == 2) && (pNewTargetParameters->Width == G->mResolutionInfo.width))
-	{
-		const_cast<DXGI_MODE_DESC*>(pNewTargetParameters)->Width *= 2;
-		LogInfo("-> forced 2x width for Direct Mode: %d\n", pNewTargetParameters->Width);
-	}
-
-	/*
-		TODO: what about 3dv direct mode? why the resize target need to use double width?
-		this would resize target window and have some other drawbacks, but again
-		im not very familiar with directx 11 maybe it will cause no problems:
-		Anyway need to consider new code for the upscaling later
-		*/
 
 	// Some games like Witcher seems to drop fullscreen everytime the resizetarget is called (original one)
 	// Some other games seems to require the function 

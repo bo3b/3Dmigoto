@@ -243,24 +243,6 @@ void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc)
 		BufferDesc->Height = G->SCREEN_HEIGHT;
 		LogInfo("->Forcing Height to = %d\n", BufferDesc->Height);
 	}
-
-	// To support 3D Vision Direct Mode, we need to force the backbuffer from the
-	// swapchain to be 2x its normal width.
-	//
-	// I don't particularly like that we've lumped this in with direct mode
-	// - direct mode does *not* require a 2x width back buffer - it has two
-	// completely separate back buffers, switched via nvapi. This is a hack
-	// for one specific tool that has yet to see the light of day, and
-	// ideally this would have been done in that tool, not here. For
-	// quickly getting up and running, I don't see why the ordinary
-	// resolution overrides would not have been sufficient, or adding a
-	// multiplier to those if necessary.
-	//   - DarkStarSword
-	if (G->gForceStereo == 2)
-	{
-		BufferDesc->Width *= 2;
-		LogInfo("->Direct Mode: Forcing Width to = %d\n", BufferDesc->Width);
-	}
 }
 
 
@@ -360,13 +342,6 @@ static void ForceDisplayParams1(DXGI_SWAP_CHAIN_DESC1 *pDesc, DXGI_SWAP_CHAIN_FU
 		if (G->SCREEN_HEIGHT >= 0)
 		{
 			LogOverlay(LOG_DIRE, "*** Unimplemented feature to force screen height in CreateSwapChainForHwnd\n");
-		}
-
-		// To support 3D Vision Direct Mode, we need to force the backbuffer from the
-		// swapchain to be 2x its normal width.
-		if (G->gForceStereo == 2)
-		{
-			LogOverlay(LOG_DIRE, "*** Unimplemented feature for Direct Mode in CreateSwapChainForHwnd\n");
 		}
 	}
 }
