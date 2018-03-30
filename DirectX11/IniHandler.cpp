@@ -1705,6 +1705,8 @@ wchar_t *TextureOverrideIniKeys[] = {
 	L"format",
 	L"width",
 	L"height",
+	L"width_multiply",
+	L"height_multiply",
 	L"iteration",
 	L"filter_index",
 	L"expand_region_copy",
@@ -1725,6 +1727,8 @@ static void parse_texture_override_common(const wchar_t *id, TextureOverride *ov
 	override->format = GetIniInt(id, L"Format", -1, NULL);
 	override->width = GetIniInt(id, L"Width", -1, NULL);
 	override->height = GetIniInt(id, L"Height", -1, NULL);
+	override->width_multiply = GetIniFloat(id, L"width_multiply", 1.0f, NULL);
+	override->height_multiply = GetIniFloat(id, L"height_multiply", 1.0f, NULL);
 
 	if (GetIniString(id, L"Iteration", 0, setting, MAX_PATH))
 	{

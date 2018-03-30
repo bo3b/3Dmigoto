@@ -1909,9 +1909,19 @@ static void override_resource_desc_common_2d_3d(DescType *desc, TextureOverride 
 		desc->Width = textureOverride->width;
 	}
 
+	if (textureOverride->width_multiply != 1.0f) {
+		desc->Width = (UINT)(desc->Width * textureOverride->width_multiply);
+		LogInfo("  multiplying custom width by %f to %d\n", textureOverride->width_multiply, desc->Width);
+	}
+
 	if (textureOverride->height != -1) {
 		LogInfo("  setting custom height to %d\n", textureOverride->height);
 		desc->Height = textureOverride->height;
+	}
+
+	if (textureOverride->height_multiply != 1.0f) {
+		desc->Height = (UINT)(desc->Height * textureOverride->height_multiply);
+		LogInfo("  multiplying custom height by %f to %d\n", textureOverride->height_multiply, desc->Height);
 	}
 }
 
