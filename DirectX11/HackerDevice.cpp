@@ -2552,7 +2552,8 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		if (ppShader)
 			*ppShader = NULL; // Appease the static analysis gods
 		hr = (mOrigDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
-		CleanupShaderMaps(*ppShader);
+		if (SUCCEEDED(hr) && ppShader)
+			CleanupShaderMaps(*ppShader);
 
 		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
 		// have a copy for every shader seen. If we are performing any sort of deferred shader replacement, such as pipline
