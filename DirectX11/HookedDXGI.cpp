@@ -263,6 +263,9 @@ static void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 	LogInfo("     Height = %d\n", pDesc->BufferDesc.Height);
 	LogInfo("     Refresh rate = %f\n",
 		(float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
+	LogInfo("     BufferCount = %d\n", pDesc->BufferCount);
+	LogInfo("     SwapEffect = %d\n", pDesc->SwapEffect);
+	LogInfo("     Flags = 0x%x\n", pDesc->Flags);
 
 	if (G->SCREEN_UPSCALING == 0 && G->SCREEN_FULLSCREEN > 0)
 	{
@@ -334,6 +337,9 @@ static void ForceDisplayParams1(DXGI_SWAP_CHAIN_DESC1 *pDesc, DXGI_SWAP_CHAIN_FU
 	{
 		LogInfo("     Width = %d\n", pDesc->Width);
 		LogInfo("     Height = %d\n", pDesc->Height);
+		LogInfo("     BufferCount = %d\n", pDesc->BufferCount);
+		LogInfo("     SwapEffect = %d\n", pDesc->SwapEffect);
+		LogInfo("     Flags = 0x%x\n", pDesc->Flags);
 
 		if (G->SCREEN_WIDTH >= 0)
 		{
