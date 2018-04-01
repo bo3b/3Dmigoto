@@ -842,19 +842,372 @@ static void dump_ia_layout(FILE *fd, D3D11_INPUT_ELEMENT_DESC *layout_desc, size
 	}
 }
 
+static void dump_vb_unknown_layout(FILE *fd, D3D11_MAPPED_SUBRESOURCE *map, int slot, UINT start, UINT vertex, UINT stride)
+{
+	float *buff = (float*)map->pData;
+	uint32_t *buf32 = (uint32_t*)map->pData;
+	uint8_t *buf8 = (uint8_t*)map->pData;
+	UINT j, buf_idx;
+
+	for (j = 0; j < stride / 4; j++) {
+		buf_idx = vertex * stride / 4 + j;
+		fprintf(fd, "vb%i[%u]+%03u: 0x%08x %.9g\n", slot, vertex - start, j*4, buf32[buf_idx], buff[buf_idx]);
+	}
+	// In case we find one that is not a 32bit multiple finish off one byte at a time:
+	for (j = j * 4; j < stride; j++) {
+		buf_idx = vertex * stride + j;
+		fprintf(fd, "vb%i[%u]+%03u: 0x%02x\n", slot, vertex - start, j, buf8[buf_idx]);
+	}
+}
+
+static UINT dxgi_format_alignment(DXGI_FORMAT format)
+{
+	// I'm not positive what the alignment constraints actually are - MSDN
+	// mentions they exist, but I don't think they go so far as being
+	// aligned to the size of the full format (I'm seeing vertex buffers
+	// that clearly are not). For now I'm going with the assumption that
+	// the alignment must match the individual components, and skipping
+	// those with variable sized components or unusual formats.
+	switch (format) {
+		case DXGI_FORMAT_R32G32B32A32_TYPELESS:
+		case DXGI_FORMAT_R32G32B32A32_FLOAT:
+		case DXGI_FORMAT_R32G32B32A32_UINT:
+		case DXGI_FORMAT_R32G32B32A32_SINT:
+		case DXGI_FORMAT_R32G32B32_TYPELESS:
+		case DXGI_FORMAT_R32G32B32_FLOAT:
+		case DXGI_FORMAT_R32G32B32_UINT:
+		case DXGI_FORMAT_R32G32B32_SINT:
+		case DXGI_FORMAT_R32G32_TYPELESS:
+		case DXGI_FORMAT_R32G32_FLOAT:
+		case DXGI_FORMAT_R32G32_UINT:
+		case DXGI_FORMAT_R32G32_SINT:
+		case DXGI_FORMAT_R32_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT:
+		case DXGI_FORMAT_R32_FLOAT:
+		case DXGI_FORMAT_R32_UINT:
+		case DXGI_FORMAT_R32_SINT:
+			return 4;
+		case DXGI_FORMAT_R16G16B16A16_TYPELESS:
+		case DXGI_FORMAT_R16G16B16A16_FLOAT:
+		case DXGI_FORMAT_R16G16B16A16_UNORM:
+		case DXGI_FORMAT_R16G16B16A16_UINT:
+		case DXGI_FORMAT_R16G16B16A16_SNORM:
+		case DXGI_FORMAT_R16G16B16A16_SINT:
+		case DXGI_FORMAT_R16G16_TYPELESS:
+		case DXGI_FORMAT_R16G16_FLOAT:
+		case DXGI_FORMAT_R16G16_UNORM:
+		case DXGI_FORMAT_R16G16_UINT:
+		case DXGI_FORMAT_R16G16_SNORM:
+		case DXGI_FORMAT_R16G16_SINT:
+		case DXGI_FORMAT_R16_TYPELESS:
+		case DXGI_FORMAT_R16_FLOAT:
+		case DXGI_FORMAT_D16_UNORM:
+		case DXGI_FORMAT_R16_UNORM:
+		case DXGI_FORMAT_R16_UINT:
+		case DXGI_FORMAT_R16_SNORM:
+		case DXGI_FORMAT_R16_SINT:
+			return 2;
+		case DXGI_FORMAT_R8G8B8A8_TYPELESS:
+		case DXGI_FORMAT_R8G8B8A8_UNORM:
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+		case DXGI_FORMAT_R8G8B8A8_UINT:
+		case DXGI_FORMAT_R8G8B8A8_SNORM:
+		case DXGI_FORMAT_R8G8B8A8_SINT:
+		case DXGI_FORMAT_R8G8_TYPELESS:
+		case DXGI_FORMAT_R8G8_UNORM:
+		case DXGI_FORMAT_R8G8_UINT:
+		case DXGI_FORMAT_R8G8_SNORM:
+		case DXGI_FORMAT_R8G8_SINT:
+		case DXGI_FORMAT_R8_TYPELESS:
+		case DXGI_FORMAT_R8_UNORM:
+		case DXGI_FORMAT_R8_UINT:
+		case DXGI_FORMAT_R8_SNORM:
+		case DXGI_FORMAT_R8_SINT:
+		case DXGI_FORMAT_A8_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_UNORM:
+		case DXGI_FORMAT_B8G8R8X8_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_TYPELESS:
+		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+		case DXGI_FORMAT_B8G8R8X8_TYPELESS:
+		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+			return 1;
+	}
+	return 0;
+}
+
+static float float16(uint16_t f16)
+{
+	// Shift sign and mantissa to new positions:
+	uint32_t f32 = ((f16 & 0x8000) << 16) | ((f16 & 0x3ff) << 13);
+	// Need to check special cases of the biased exponent:
+	int biased_exponent = (f16 & 0x7c00) >> 10;
+
+	if (biased_exponent == 0) {
+		// Zero / subnormal: New biased exponent remains zero
+	} else if (biased_exponent == 0x1f) {
+		// Infinity / NaN: New biased exponent is filled with 1s
+		f32 |= 0x7f800000;
+	} else {
+		// Normal number: Adjust the exponent bias:
+		biased_exponent = biased_exponent - 15 + 127;
+		f32 |= biased_exponent << 23;
+	}
+
+	return *(float*)&f32;
+}
+
+static float unorm24(uint32_t val)
+{
+	return (float)val / (float)0xffffff;
+}
+
+static float unorm16(uint16_t val)
+{
+	return (float)val / (float)0xffff;
+}
+
+static float snorm16(int16_t val)
+{
+	return (float)val / (float)0x7fff;
+}
+
+static float unorm8(uint8_t val)
+{
+	return (float)val / (float)0xff;
+}
+
+static float snorm8(int8_t val)
+{
+	return (float)val / (float)0x7f;
+}
+
+static int fprint_dxgi_format(FILE *fd, DXGI_FORMAT format, uint8_t *buf)
+{
+	float *f = (float*)buf;
+	uint32_t *u32 = (uint32_t*)buf;
+	int32_t *s32 = (int32_t*)buf;
+	uint16_t *u16 = (uint16_t*)buf;
+	int16_t *s16 = (int16_t*)buf;
+	uint8_t *u8 = (uint8_t*)buf;
+	int8_t *s8 = (int8_t*)buf;
+	unsigned i;
+
+	switch (format) {
+		// --- 32-bit ---
+		case DXGI_FORMAT_R32G32B32A32_TYPELESS:
+			return fprintf(fd, "%08x, %08x, %08x, %08x", u32[0], u32[1], u32[2], u32[3]);
+		case DXGI_FORMAT_R32G32B32_TYPELESS:
+			return fprintf(fd, "%08x, %08x, %08x", u32[0], u32[1], u32[2]);
+		case DXGI_FORMAT_R32G32_TYPELESS:
+			return fprintf(fd, "%08x, %08x", u32[0], u32[1]);
+		case DXGI_FORMAT_R32_TYPELESS:
+			return fprintf(fd, "%08x", u32[0]);
+
+		case DXGI_FORMAT_R32G32B32A32_FLOAT:
+			return fprintf(fd, "%.9g, %.9g, %.9g, %.9g", f[0], f[1], f[2], f[3]);
+		case DXGI_FORMAT_R32G32B32_FLOAT:
+			return fprintf(fd, "%.9g, %.9g, %.9g", f[0], f[1], f[2]);
+		case DXGI_FORMAT_R32G32_FLOAT:
+			return fprintf(fd, "%.9g, %.9g", f[0], f[1]);
+		case DXGI_FORMAT_D32_FLOAT:
+		case DXGI_FORMAT_R32_FLOAT:
+			return fprintf(fd, "%.9g", f[0]);
+
+		case DXGI_FORMAT_R32G32B32A32_UINT:
+			return fprintf(fd, "%u, %u, %u, %u", u32[0], u32[1], u32[2], u32[3]);
+		case DXGI_FORMAT_R32G32B32_UINT:
+			return fprintf(fd, "%u, %u, %u", u32[0], u32[1], u32[2]);
+		case DXGI_FORMAT_R32G32_UINT:
+			return fprintf(fd, "%u, %u", u32[0], u32[1]);
+		case DXGI_FORMAT_R32_UINT:
+			return fprintf(fd, "%u", u32[0]);
+
+		case DXGI_FORMAT_R32G32B32A32_SINT:
+			return fprintf(fd, "%d, %d, %d, %d", s32[0], s32[1], s32[2], s32[3]);
+		case DXGI_FORMAT_R32G32B32_SINT:
+			return fprintf(fd, "%d, %d, %d", s32[0], s32[1], s32[2]);
+		case DXGI_FORMAT_R32G32_SINT:
+			return fprintf(fd, "%d, %d", s32[0], s32[1]);
+		case DXGI_FORMAT_R32_SINT:
+			return fprintf(fd, "%d", s32[0]);
+
+		// --- 16-bit ---
+		case DXGI_FORMAT_R16G16B16A16_TYPELESS:
+			return fprintf(fd, "%04x, %04x, %04x, %04x", u16[0], u16[1], u16[2], u16[3]);
+		case DXGI_FORMAT_R16G16_TYPELESS:
+			return fprintf(fd, "%04x, %04x", u16[0], u16[1]);
+		case DXGI_FORMAT_R16_TYPELESS:
+			return fprintf(fd, "%04x", u16[0]);
+
+		// %.9g is probably excessive, but I haven't calculated or
+		// verified the actual decimal precision needed to ensure
+		// 16-bit floats can be reproduced exactly, and I know that
+		// %.9g is enough for 32-bit floats so it is safer for now:
+		case DXGI_FORMAT_R16G16B16A16_FLOAT:
+			return fprintf(fd, "%.9g, %.9g, %.9g, %.9g", float16(u16[0]), float16(u16[1]), float16(u16[2]), float16(u16[3]));
+		case DXGI_FORMAT_R16G16_FLOAT:
+			return fprintf(fd, "%.9g, %.9g", float16(u16[0]), float16(u16[1]));
+		case DXGI_FORMAT_R16_FLOAT:
+			return fprintf(fd, "%.9g", float16(u16[0]));
+
+		// And of course, if we were to work out a better decimal
+		// precision value, remember that a 16-bit UNORM has 16 bits of
+		// precision, while a 16-bit FLOAT only has 11.
+		case DXGI_FORMAT_R16G16B16A16_UNORM:
+			return fprintf(fd, "%.9g, %.9g, %.9g, %.9g", unorm16(u16[0]), unorm16(u16[1]), unorm16(u16[2]), unorm16(u16[3]));
+		case DXGI_FORMAT_R16G16_UNORM:
+			return fprintf(fd, "%.9g, %.9g", unorm16(u16[0]), unorm16(u16[1]));
+		case DXGI_FORMAT_D16_UNORM:
+		case DXGI_FORMAT_R16_UNORM:
+			return fprintf(fd, "%.9g", unorm16(u16[0]));
+
+		case DXGI_FORMAT_R16G16B16A16_SNORM:
+			return fprintf(fd, "%.9g, %.9g, %.9g, %.9g", snorm16(s16[0]), snorm16(s16[1]), snorm16(s16[2]), snorm16(s16[3]));
+		case DXGI_FORMAT_R16G16_SNORM:
+			return fprintf(fd, "%.9g, %.9g", snorm16(s16[0]), snorm16(s16[1]));
+		case DXGI_FORMAT_R16_SNORM:
+			return fprintf(fd, "%.9g", snorm16(s16[0]));
+
+		case DXGI_FORMAT_R16G16B16A16_UINT:
+			return fprintf(fd, "%u, %u, %u, %u", u16[0], u16[1], u16[2], u16[3]);
+		case DXGI_FORMAT_R16G16_UINT:
+			return fprintf(fd, "%u, %u", u16[0], u16[1]);
+		case DXGI_FORMAT_R16_UINT:
+			return fprintf(fd, "%u", u16[0]);
+
+		case DXGI_FORMAT_R16G16B16A16_SINT:
+			return fprintf(fd, "%d, %d, %d, %d", s16[0], s16[1], s16[2], s16[3]);
+		case DXGI_FORMAT_R16G16_SINT:
+			return fprintf(fd, "%d, %d", s16[0], s16[1]);
+		case DXGI_FORMAT_R16_SINT:
+			return fprintf(fd, "%d", s16[0]);
+
+		// --- 8-bit ---
+		case DXGI_FORMAT_R8G8B8A8_TYPELESS:
+		case DXGI_FORMAT_B8G8R8A8_TYPELESS:
+			return fprintf(fd, "%02x, %02x, %02x, %02x", u8[0], u8[1], u8[2], u8[3]);
+		case DXGI_FORMAT_B8G8R8X8_TYPELESS:
+			return fprintf(fd, "%02x, %02x, %02x", u8[0], u8[1], u8[2]);
+		case DXGI_FORMAT_R8G8_TYPELESS:
+			return fprintf(fd, "%02x, %02x", u8[0], u8[1]);
+		case DXGI_FORMAT_R8_TYPELESS:
+			return fprintf(fd, "%02x", u8[0]);
+
+		case DXGI_FORMAT_R8G8B8A8_UNORM:
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: // XXX: Should we apply the SRGB formula?
+		case DXGI_FORMAT_B8G8R8A8_UNORM:
+		case DXGI_FORMAT_B8G8R8X8_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: // XXX: Should we apply the SRGB formula?
+		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB: // XXX: Should we apply the SRGB formula?
+		case DXGI_FORMAT_R8G8_B8G8_UNORM:
+		case DXGI_FORMAT_G8R8_G8B8_UNORM:
+			return fprintf(fd, "%.9g, %.9g, %.9g, %.9g", unorm8(u8[0]), unorm8(u8[1]), unorm8(u8[2]), unorm8(u8[3]));
+		case DXGI_FORMAT_R8G8_UNORM:
+			return fprintf(fd, "%.9g, %.9g", unorm8(u8[0]), unorm8(u8[1]));
+		case DXGI_FORMAT_R8_UNORM:
+			return fprintf(fd, "%.9g", unorm8(u8[0]));
+
+		case DXGI_FORMAT_R8G8B8A8_SNORM:
+			return fprintf(fd, "%.9g, %.9g, %.9g, %.9g", snorm8(s8[0]), snorm8(s8[1]), snorm8(s8[2]), snorm8(s8[3]));
+		case DXGI_FORMAT_R8G8_SNORM:
+			return fprintf(fd, "%.9g, %.9g", snorm8(s8[0]), snorm8(s8[1]));
+		case DXGI_FORMAT_R8_SNORM:
+		case DXGI_FORMAT_A8_UNORM:
+			return fprintf(fd, "%.9g", snorm8(s8[0]));
+
+		case DXGI_FORMAT_R8G8B8A8_UINT:
+			return fprintf(fd, "%u, %u, %u, %u", u8[0], u8[1], u8[2], u8[3]);
+		case DXGI_FORMAT_R8G8_UINT:
+			return fprintf(fd, "%u, %u", u8[0], u8[1]);
+		case DXGI_FORMAT_R8_UINT:
+			return fprintf(fd, "%u", u8[0]);
+
+		case DXGI_FORMAT_R8G8B8A8_SINT:
+			return fprintf(fd, "%d, %d, %d, %d", s8[0], s8[1], s8[2], s8[3]);
+		case DXGI_FORMAT_R8G8_SINT:
+			return fprintf(fd, "%d, %d", s8[0], s8[1]);
+		case DXGI_FORMAT_R8_SINT:
+			return fprintf(fd, "%d", s8[0]);
+
+		case DXGI_FORMAT_R32G8X24_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+			return fprintf(fd, "%.9g, %d", f[0], u8[4]);
+
+		case DXGI_FORMAT_R24G8_TYPELESS:
+		case DXGI_FORMAT_D24_UNORM_S8_UINT:
+		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+			return fprintf(fd, "%.9g, %d", unorm24(u32[0] & 0xffffff), u8[3]);
+
+		// TODO: Unusual field sizes:
+		// case DXGI_FORMAT_R10G10B10A2_TYPELESS:
+		// case DXGI_FORMAT_R10G10B10A2_UNORM:
+		// case DXGI_FORMAT_R10G10B10A2_UINT:
+		// case DXGI_FORMAT_R11G11B10_FLOAT:
+		// case DXGI_FORMAT_R1_UNORM:
+		// case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
+		// case DXGI_FORMAT_B5G6R5_UNORM:
+		// case DXGI_FORMAT_B5G5R5A1_UNORM:
+		// case DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM:
+	}
+
+	for (i = 0; i < dxgi_format_size(format); i++)
+		fprintf(fd, "%02x", buf[i]);
+	return i * 2;
+}
+
+static void dump_vb_known_layout(FILE *fd, uint8_t *buf,
+		D3D11_INPUT_ELEMENT_DESC *layout_desc, size_t layout_elements,
+		int slot, UINT vertex, UINT stride)
+{
+	UINT elem, offset = 0, alignment, size;
+
+	for (elem = 0; elem < layout_elements; elem++) {
+		if (layout_desc[elem].InputSlot != slot)
+			continue;
+
+		if (layout_desc[elem].AlignedByteOffset != D3D11_APPEND_ALIGNED_ELEMENT) {
+			offset = layout_desc[elem].AlignedByteOffset;
+		} else {
+			alignment = dxgi_format_alignment(layout_desc[elem].Format);
+			if (!alignment) {
+				fprintf(fd, "# WARNING: Unknown format alignment, vertex buffer may be decoded incorrectly\n");
+			} else if (offset % alignment) {
+				fprintf(fd, "# WARNING: Untested alignment code in use, please report incorrectly decoded vertex buffers\n");
+				// XXX: Also, what if the entire vertex is misaligned in the buffer?
+				offset += alignment - (offset % alignment);
+			}
+		}
+
+		fprintf(fd, "vb%i[%u]+%03u %s", slot, vertex, offset, layout_desc[elem].SemanticName);
+		if (layout_desc[elem].SemanticIndex)
+			fprintf(fd, "%u", layout_desc[elem].SemanticIndex);
+		fprintf(fd, ": ");
+
+		fprint_dxgi_format(fd, layout_desc[elem].Format, buf + offset);
+		fprintf(fd, "\n");
+
+		size = dxgi_format_size(layout_desc[elem].Format);
+		if (!size)
+			fprintf(fd, "# WARNING: Unknown format size, vertex buffer may be decoded incorrectly\n");
+		offset += size;
+		if (offset > stride)
+			fprintf(fd, "# WARNING: Offset exceeded stride, vertex buffer may be decoded incorrectly\n");
+	}
+}
+
 /*
  * Dumps the vertex buffer in several formats.
  * FIXME: We should wrap the input layout object to get the correct format (and
  * other info like the semantic).
  */
 void FrameAnalysisContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
-		UINT size, int idx, UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout)
+		UINT size, int slot, UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout)
 {
 	FILE *fd = NULL;
-	float *buff = (float*)map->pData;
-	int *buf32 = (int*)map->pData;
-	char *buf8 = (char*)map->pData;
-	UINT i, j, start, end, buf_idx;
+	UINT vertex, start, end;
 	errno_t err;
 	D3D11_INPUT_ELEMENT_DESC *layout_desc = NULL;
 	size_t layout_elements;
@@ -887,20 +1240,13 @@ void FrameAnalysisContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE
 	if (count)
 		end = min(end, start + count);
 
-	// FIXME: For vertex buffers we should wrap the input layout object to
-	// get the format (and other info like the semantic).
-
-	for (i = start; i < end; i++) {
+	for (vertex = start; vertex < end; vertex++) {
 		fprintf(fd, "\n");
-		for (j = 0; j < stride / 4; j++) {
-			buf_idx = i * stride / 4 + j;
-			fprintf(fd, "vb%i[%d]+%03d: 0x%08x %.9g\n", idx, i - start, j*4, buf32[buf_idx], buff[buf_idx]);
-		}
-		// In case we find one that is not a 32bit multiple finish off one byte at a time:
-		for (j = j * 4; j < stride; j++) {
-			buf_idx = i * stride + j;
-			fprintf(fd, "vb%i[%d]+%03d: 0x%02x\n", idx, i - start, j, buf8[buf_idx]);
-		}
+		if (layout_desc)
+			dump_vb_known_layout(fd, (uint8_t*)map->pData + stride*vertex,
+					layout_desc, layout_elements, slot, vertex - start, stride);
+		else
+			dump_vb_unknown_layout(fd, map, slot, start, vertex, stride);
 	}
 
 out_close:
