@@ -782,14 +782,20 @@ void FrameAnalysisContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESO
 
 void FrameAnalysisContext::dedupe_buf_filename_vb_txt(const wchar_t *bin_filename,
 		wchar_t *txt_filename, size_t size, int idx, UINT stride,
-		UINT offset, UINT first, UINT count)
+		UINT offset, UINT first, UINT count, ID3DBlob *layout)
 {
 	wchar_t *pos;
 	size_t rem;
+	uint32_t layout_hash;
 
 	copy_until_extension(txt_filename, bin_filename, MAX_PATH, &pos, &rem);
 
 	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-vb%i", idx);
+
+	if (layout) {
+		layout_hash = crc32c_hw(0, layout->GetBufferPointer(), layout->GetBufferSize());
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-layout=%08x", layout_hash);
+	}
 
 	if (offset)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-offset=%u", offset);
@@ -807,13 +813,42 @@ void FrameAnalysisContext::dedupe_buf_filename_vb_txt(const wchar_t *bin_filenam
 		FALogErr("Failed to create vertex buffer filename\n");
 }
 
+static void dump_ia_layout(FILE *fd, D3D11_INPUT_ELEMENT_DESC *layout_desc, size_t layout_elements)
+{
+	UINT i;
+
+	for (i = 0; i < layout_elements; i++) {
+		fprintf(fd, "element[%i]:\n", i);
+		fprintf(fd, "  SemanticName: %s\n", layout_desc[i].SemanticName);
+		fprintf(fd, "  SemanticIndex: %u\n", layout_desc[i].SemanticIndex);
+		fprintf(fd, "  Format: %s\n", TexFormatStr(layout_desc[i].Format));
+		fprintf(fd, "  InputSlot: %u\n", layout_desc[i].InputSlot);
+		if (layout_desc[i].AlignedByteOffset == D3D11_APPEND_ALIGNED_ELEMENT)
+			fprintf(fd, "  AlignedByteOffset: append\n");
+		else
+			fprintf(fd, "  AlignedByteOffset: %u\n", layout_desc[i].AlignedByteOffset);
+		switch(layout_desc[i].InputSlotClass) {
+			case D3D11_INPUT_PER_VERTEX_DATA:
+				fprintf(fd, "  InputSlotClass: per-vertex\n");
+				break;
+			case D3D11_INPUT_PER_INSTANCE_DATA:
+				fprintf(fd, "  InputSlotClass: per-instance\n");
+				break;
+			default:
+				fprintf(fd, "  InputSlotClass: %u\n", layout_desc[i].InputSlotClass);
+				break;
+		}
+		fprintf(fd, "  InstanceDataStepRate: %u\n", layout_desc[i].InstanceDataStepRate);
+	}
+}
+
 /*
  * Dumps the vertex buffer in several formats.
  * FIXME: We should wrap the input layout object to get the correct format (and
  * other info like the semantic).
  */
 void FrameAnalysisContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
-		UINT size, int idx, UINT stride, UINT offset, UINT first, UINT count)
+		UINT size, int idx, UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout)
 {
 	FILE *fd = NULL;
 	float *buff = (float*)map->pData;
@@ -821,6 +856,8 @@ void FrameAnalysisContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE
 	char *buf8 = (char*)map->pData;
 	UINT i, j, start, end, buf_idx;
 	errno_t err;
+	D3D11_INPUT_ELEMENT_DESC *layout_desc = NULL;
+	size_t layout_elements;
 
 	err = wfopen_ensuring_access(&fd, filename, L"w");
 	if (!fd) {
@@ -835,9 +872,14 @@ void FrameAnalysisContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE
 		fprintf(fd, "first vertex: %u\n", first);
 		fprintf(fd, "vertex count: %u\n", count);
 	}
+	if (layout) {
+		layout_desc = (D3D11_INPUT_ELEMENT_DESC*)layout->GetBufferPointer();
+		layout_elements = layout->GetBufferSize() / sizeof(D3D11_INPUT_ELEMENT_DESC);
+		dump_ia_layout(fd, layout_desc, layout_elements);
+	}
 	if (!stride) {
 		FALogErr("Cannot dump vertex buffer with stride=0\n");
-		return;
+		goto out_close;
 	}
 
 	start = offset / stride + first;
@@ -861,6 +903,7 @@ void FrameAnalysisContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE
 		}
 	}
 
+out_close:
 	fclose(fd);
 }
 
@@ -986,7 +1029,7 @@ bool FrameAnalysisContext::DeferDump2DResource(ID3D11Texture2D *staging,
 bool FrameAnalysisContext::DeferDumpBuffer(ID3D11Buffer *staging,
 		D3D11_BUFFER_DESC *orig_desc, wchar_t *filename,
 		FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
-		UINT stride, UINT offset, UINT first, UINT count)
+		UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout)
 {
 	if (!(analyse_options & FrameAnalysisOptions::DEFRD_CTX_DELAY))
 		return false;
@@ -1001,7 +1044,7 @@ bool FrameAnalysisContext::DeferDumpBuffer(ID3D11Buffer *staging,
 
 	FALogInfo("Deferring Buffer dump: %S\n", filename);
 	deferred_buffers->emplace_back(analyse_options, staging, orig_desc, filename,
-			buf_type_mask, idx, ib_fmt, stride, offset, first, count);
+			buf_type_mask, idx, ib_fmt, stride, offset, first, count, layout);
 	return true;
 }
 
@@ -1030,7 +1073,7 @@ void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_li
 			DumpBufferImmediateCtx(i.staging.Get(), &i.orig_desc,
 					i.filename, i.buf_type_mask, i.idx,
 					i.ib_fmt, i.stride, i.offset, i.first,
-					i.count);
+					i.count, i.layout.Get());
 		}
 	}
 
@@ -1078,7 +1121,7 @@ void FrameAnalysisContext::finish_deferred_resources(ID3D11CommandList *command_
 
 void FrameAnalysisContext::DumpBufferImmediateCtx(ID3D11Buffer *staging, D3D11_BUFFER_DESC *orig_desc,
 		wstring filename, FrameAnalysisOptions buf_type_mask, int idx,
-		DXGI_FORMAT ib_fmt, UINT stride, UINT offset, UINT first, UINT count)
+		DXGI_FORMAT ib_fmt, UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout)
 {
 	wchar_t bin_filename[MAX_PATH], txt_filename[MAX_PATH];
 	D3D11_MAPPED_SUBRESOURCE map;
@@ -1130,9 +1173,9 @@ void FrameAnalysisContext::DumpBufferImmediateCtx(ID3D11Buffer *staging, D3D11_B
 				DumpBufferTxt(txt_filename, &map, orig_desc->ByteWidth, 'c', idx, stride, offset);
 			}
 		} else if (buf_type_mask & FrameAnalysisOptions::DUMP_VB) {
-			dedupe_buf_filename_vb_txt(bin_filename, txt_filename, MAX_PATH, idx, stride, offset, first, count);
+			dedupe_buf_filename_vb_txt(bin_filename, txt_filename, MAX_PATH, idx, stride, offset, first, count, layout);
 			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
-				DumpVBTxt(txt_filename, &map, orig_desc->ByteWidth, idx, stride, offset, first, count);
+				DumpVBTxt(txt_filename, &map, orig_desc->ByteWidth, idx, stride, offset, first, count, layout);
 			}
 		} else if (buf_type_mask & FrameAnalysisOptions::DUMP_IB) {
 			dedupe_buf_filename_ib_txt(bin_filename, txt_filename, MAX_PATH, ib_fmt, offset, first, count);
@@ -1169,7 +1212,7 @@ out_unmap:
 
 void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
-		UINT stride, UINT offset, UINT first, UINT count)
+		UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout)
 {
 	D3D11_BUFFER_DESC desc, orig_desc;
 	ID3D11Buffer *staging = NULL;
@@ -1191,8 +1234,8 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 
 	GetDumpingContext()->CopyResource(staging, buffer);
 
-	if (!DeferDumpBuffer(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count))
-		DumpBufferImmediateCtx(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count);
+	if (!DeferDumpBuffer(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count, layout))
+		DumpBufferImmediateCtx(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count, layout);
 
 	staging->Release();
 }
@@ -1213,7 +1256,7 @@ void FrameAnalysisContext::DumpResource(ID3D11Resource *resource, wchar_t *filen
 	switch (dim) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
 			if (analyse_options & FrameAnalysisOptions::FMT_BUF_MASK)
-				DumpBuffer((ID3D11Buffer*)resource, filename, buf_type_mask, idx, format, stride, offset, 0, 0);
+				DumpBuffer((ID3D11Buffer*)resource, filename, buf_type_mask, idx, format, stride, offset, 0, 0, NULL);
 			else
 				FALogInfo("Skipped dumping Buffer (No buffer formats enabled): %S\n", filename);
 			break;
@@ -1773,20 +1816,27 @@ void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info)
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
 	UINT i, first = 0, count = 0;
+	ID3D11InputLayout *layout = NULL;
+	ID3DBlob *layout_desc = NULL;
 
 	if (call_info) {
 		first = call_info->FirstVertex;
 		count = call_info->VertexCount;
 	}
 
-	// TODO: The format of each vertex buffer cannot be obtained from this
-	// call. Rather, it is available in the input layout assigned to the
-	// pipeline. There is no API to get the layout description, so if we
-	// want to obtain it we will need to wrap the input layout objects
-	// (there may be other good reasons to consider wrapping the input
-	// layout if we ever do anything advanced with the vertex buffers).
+	// The format of each vertex buffer cannot be obtained from this call.
+	// Rather, it is available in the input layout assigned to the
+	// pipeline, and there is no API to get the layout description, so we
+	// store it in a blob attached to the layout when it was created that
+	// we retrieve here.
 
 	GetPassThroughOrigContext1()->IAGetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, buffers, strides, offsets);
+	GetPassThroughOrigContext1()->IAGetInputLayout(&layout);
+	if (layout) {
+		UINT size = sizeof(ID3DBlob*);
+		layout->GetPrivateData(InputLayoutDescGuid, &size, &layout_desc);
+		layout->Release();
+	}
 
 	for (i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
 		if (!buffers[i])
@@ -1797,11 +1847,17 @@ void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info)
 			DumpBuffer(buffers[i], filename,
 				FrameAnalysisOptions::DUMP_VB, i,
 				DXGI_FORMAT_UNKNOWN, strides[i], offsets[i],
-				first, count);
+				first, count, layout_desc);
 		}
 
 		buffers[i]->Release();
 	}
+
+	// Although the documentation fails to mention it, GetPrivateData()
+	// does bump the refcount if SetPrivateDataInterface() was used, so we
+	// need to balance it here:
+	if (layout_desc)
+		layout_desc->Release();
 }
 
 void FrameAnalysisContext::DumpIB(DrawCallInfo *call_info)
@@ -1825,7 +1881,7 @@ void FrameAnalysisContext::DumpIB(DrawCallInfo *call_info)
 	if (SUCCEEDED(hr)) {
 		DumpBuffer(buffer, filename,
 				FrameAnalysisOptions::DUMP_IB, -1,
-				format, 0, offset, first, count);
+				format, 0, offset, first, count, NULL);
 	}
 
 	buffer->Release();

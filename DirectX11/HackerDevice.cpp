@@ -10,6 +10,7 @@
 
 #include "HackerDevice.h"
 #include "HookedDevice.h"
+#include "FrameAnalysis.h"
 
 #include <D3Dcompiler.h>
 #include <codecvt>
@@ -1644,8 +1645,31 @@ STDMETHODIMP HackerDevice::CreateInputLayout(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11InputLayout **ppInputLayout)
 {
-	return mOrigDevice1->CreateInputLayout(pInputElementDescs, NumElements, pShaderBytecodeWithInputSignature,
+	HRESULT ret;
+	ID3DBlob *blob;
+
+	ret = mOrigDevice1->CreateInputLayout(pInputElementDescs, NumElements, pShaderBytecodeWithInputSignature,
 		BytecodeLength, ppInputLayout);
+
+	if (G->hunting && SUCCEEDED(ret) && ppInputLayout && *ppInputLayout) {
+		// When dumping vertex buffers to text file in frame analysis
+		// we want to use the input layout to decode the buffer, but
+		// DirectX provides no API to query this. So, we store a copy
+		// of the input layout in a blob inside the private data of the
+		// input layout object. The private data is slow to access, so
+		// we should not use this in a hot path, but for frame analysis
+		// it doesn't matter. We use a blob to manage releasing the
+		// backing memory, since the anonymous void* version of this
+		// API does not appear to free the private data on release.
+
+		if (SUCCEEDED(D3DCreateBlob(sizeof(D3D11_INPUT_ELEMENT_DESC) * NumElements, &blob))) {
+			memcpy(blob->GetBufferPointer(), pInputElementDescs, blob->GetBufferSize());
+			(*ppInputLayout)->SetPrivateDataInterface(InputLayoutDescGuid, blob);
+			blob->Release();
+		}
+	}
+
+	return ret;
 }
 
 STDMETHODIMP HackerDevice::CreateClassLinkage(THIS_
