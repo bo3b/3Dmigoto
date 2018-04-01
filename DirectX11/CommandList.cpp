@@ -524,10 +524,6 @@ static bool ParseDirectModeSetActiveEyeCommand(const wchar_t *section,
 	goto bail;
 
 success:
-	// Add to both command lists by default - the pre command list will set
-	// the value, and the post command list will restore the original. If
-	// an explicit command list is specified then the value will only be
-	// set, not restored (regardless of whether that is pre or post)
 	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 
