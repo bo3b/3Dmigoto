@@ -498,6 +498,44 @@ bail:
 	return false;
 }
 
+static bool ParseDirectModeSetActiveEyeCommand(const wchar_t *section,
+		const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
+{
+	DirectModeSetActiveEyeCommand *operation = new DirectModeSetActiveEyeCommand();
+
+	if (!wcscmp(val->c_str(), L"mono")) {
+		operation->eye = NVAPI_STEREO_EYE_MONO;
+		goto success;
+	}
+
+	if (!wcscmp(val->c_str(), L"left")) {
+		operation->eye = NVAPI_STEREO_EYE_LEFT;
+		goto success;
+	}
+
+	if (!wcscmp(val->c_str(), L"right")) {
+		operation->eye = NVAPI_STEREO_EYE_RIGHT;
+		goto success;
+	}
+
+	goto bail;
+
+success:
+	// Add to both command lists by default - the pre command list will set
+	// the value, and the post command list will restore the original. If
+	// an explicit command list is specified then the value will only be
+	// set, not restored (regardless of whether that is pre or post)
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+
+bail:
+	delete operation;
+	return false;
+}
+
 static bool ParsePerDrawStereoOverride(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
@@ -631,6 +669,9 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 
 	if (!wcscmp(key, L"convergence"))
 		return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, false);
+
+	if (!wcscmp(key, L"direct_mode_eye"))
+		return ParseDirectModeSetActiveEyeCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	if (!wcscmp(key, L"analyse_options"))
 		return AddCommandToList(new FrameAnalysisChangeOptionsCommand(section, key, val), explicit_command_list, pre_command_list, NULL, NULL);
@@ -943,6 +984,14 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
 		COMMAND_LIST_LOG(state, "  Setting %s = %f\n", stereo_param_name(), val);
 		set_stereo_value(state, val);
 	}
+}
+
+void DirectModeSetActiveEyeCommand::run(CommandListState *state)
+{
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+
+	if (NVAPI_OK != NvAPI_Stereo_SetActiveEye(state->mHackerDevice->mStereoHandle, eye))
+		COMMAND_LIST_LOG(state, "  Stereo_SetActiveEye failed\n");
 }
 
 float PerDrawSeparationOverrideCommand::get_stereo_value(CommandListState *state)

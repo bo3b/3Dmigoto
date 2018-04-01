@@ -840,6 +840,15 @@ public:
 	void set_stereo_value(CommandListState*, float val) override;
 };
 
+class DirectModeSetActiveEyeCommand : public CommandListCommand {
+public:
+	wstring ini_line;
+
+	NV_STEREO_ACTIVE_EYE eye;
+
+	void run(CommandListState*) override;
+};
+
 class FrameAnalysisChangeOptionsCommand : public CommandListCommand {
 public:
 	wstring ini_line;
