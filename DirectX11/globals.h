@@ -166,8 +166,12 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 
 	// Texture2D format selection:
 	{L"jps", FrameAnalysisOptions::FMT_2D_JPS},
+	{L"jpg", FrameAnalysisOptions::FMT_2D_JPS},
+	{L"jpeg", FrameAnalysisOptions::FMT_2D_JPS},
 	{L"dds", FrameAnalysisOptions::FMT_2D_DDS},
 	{L"jps_dds", FrameAnalysisOptions::FMT_2D_AUTO},
+	{L"jpg_dds", FrameAnalysisOptions::FMT_2D_AUTO},
+	{L"jpeg_dds", FrameAnalysisOptions::FMT_2D_AUTO},
 
 	// Buffer format selection:
 	{L"buf", FrameAnalysisOptions::FMT_BUF_BIN},
