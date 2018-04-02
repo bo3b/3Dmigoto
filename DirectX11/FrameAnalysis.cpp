@@ -780,9 +780,59 @@ void FrameAnalysisContext::DumpBufferTxt(wchar_t *filename, D3D11_MAPPED_SUBRESO
 	fclose(fd);
 }
 
+static const char* TopologyStr(D3D11_PRIMITIVE_TOPOLOGY topology)
+{
+	switch(topology) {
+		case D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED: return "undefined";
+		case D3D11_PRIMITIVE_TOPOLOGY_POINTLIST: return "pointlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_LINELIST: return "linelist";
+		case D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP: return "linestrip";
+		case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST: return "trianglelist";
+		case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP: return "trianglestrip";
+		case D3D11_PRIMITIVE_TOPOLOGY_LINELIST_ADJ: return "linelist_adj";
+		case D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ: return "linestrip_adj";
+		case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ: return "trianglelist_adj";
+		case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ: return "trianglestrip_adj";
+		case D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST: return "1_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_2_CONTROL_POINT_PATCHLIST: return "2_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST: return "3_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST: return "4_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_5_CONTROL_POINT_PATCHLIST: return "5_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_6_CONTROL_POINT_PATCHLIST: return "6_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_7_CONTROL_POINT_PATCHLIST: return "7_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_8_CONTROL_POINT_PATCHLIST: return "8_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_9_CONTROL_POINT_PATCHLIST: return "9_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_10_CONTROL_POINT_PATCHLIST: return "10_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_11_CONTROL_POINT_PATCHLIST: return "11_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_12_CONTROL_POINT_PATCHLIST: return "12_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_13_CONTROL_POINT_PATCHLIST: return "13_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_14_CONTROL_POINT_PATCHLIST: return "14_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_15_CONTROL_POINT_PATCHLIST: return "15_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST: return "16_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_17_CONTROL_POINT_PATCHLIST: return "17_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_18_CONTROL_POINT_PATCHLIST: return "18_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_19_CONTROL_POINT_PATCHLIST: return "19_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_20_CONTROL_POINT_PATCHLIST: return "20_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_21_CONTROL_POINT_PATCHLIST: return "21_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_22_CONTROL_POINT_PATCHLIST: return "22_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_23_CONTROL_POINT_PATCHLIST: return "23_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_24_CONTROL_POINT_PATCHLIST: return "24_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_25_CONTROL_POINT_PATCHLIST: return "25_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_26_CONTROL_POINT_PATCHLIST: return "26_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_27_CONTROL_POINT_PATCHLIST: return "27_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_28_CONTROL_POINT_PATCHLIST: return "28_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_29_CONTROL_POINT_PATCHLIST: return "29_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_30_CONTROL_POINT_PATCHLIST: return "30_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_31_CONTROL_POINT_PATCHLIST: return "31_control_point_patchlist";
+		case D3D11_PRIMITIVE_TOPOLOGY_32_CONTROL_POINT_PATCHLIST: return "32_control_point_patchlist";
+	}
+	return "invalid";
+}
+
 void FrameAnalysisContext::dedupe_buf_filename_vb_txt(const wchar_t *bin_filename,
 		wchar_t *txt_filename, size_t size, int idx, UINT stride,
-		UINT offset, UINT first, UINT count, ID3DBlob *layout, DrawCallInfo *call_info)
+		UINT offset, UINT first, UINT count, ID3DBlob *layout,
+		D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info)
 {
 	wchar_t *pos;
 	size_t rem;
@@ -796,6 +846,9 @@ void FrameAnalysisContext::dedupe_buf_filename_vb_txt(const wchar_t *bin_filenam
 		layout_hash = crc32c_hw(0, layout->GetBufferPointer(), layout->GetBufferSize());
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-layout=%08x", layout_hash);
 	}
+
+	if (topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-topology=%S", TopologyStr(topology));
 
 	if (offset)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-offset=%u", offset);
@@ -1277,7 +1330,8 @@ static void dump_vb_instance_data(FILE *fd, D3D11_MAPPED_SUBRESOURCE *map,
  * other info like the semantic).
  */
 void FrameAnalysisContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
-		UINT size, int slot, UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout, DrawCallInfo *call_info)
+		UINT size, int slot, UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
+		D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info)
 {
 	FILE *fd = NULL;
 	errno_t err;
@@ -1302,6 +1356,8 @@ void FrameAnalysisContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE
 		fprintf(fd, "first instance: %u\n", call_info->FirstInstance);
 		fprintf(fd, "instance count: %u\n", call_info->InstanceCount);
 	}
+	if (topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED)
+		fprintf(fd, "topology: %s\n", TopologyStr(topology));
 	if (layout) {
 		layout_desc = (D3D11_INPUT_ELEMENT_DESC*)layout->GetBufferPointer();
 		layout_elements = layout->GetBufferSize() / sizeof(D3D11_INPUT_ELEMENT_DESC);
@@ -1336,7 +1392,7 @@ out_close:
 
 void FrameAnalysisContext::dedupe_buf_filename_ib_txt(const wchar_t *bin_filename,
 		wchar_t *txt_filename, size_t size, DXGI_FORMAT ib_fmt,
-		UINT offset, UINT first, UINT count)
+		UINT offset, UINT first, UINT count, D3D11_PRIMITIVE_TOPOLOGY topology)
 {
 	wchar_t *pos;
 	size_t rem;
@@ -1347,6 +1403,9 @@ void FrameAnalysisContext::dedupe_buf_filename_ib_txt(const wchar_t *bin_filenam
 
 	if (ib_fmt != DXGI_FORMAT_UNKNOWN)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-format=%S", TexFormatStr(ib_fmt));
+
+	if (topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED)
+		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-topology=%S", TopologyStr(topology));
 
 	if (offset)
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-offset=%u", offset);
@@ -1362,13 +1421,15 @@ void FrameAnalysisContext::dedupe_buf_filename_ib_txt(const wchar_t *bin_filenam
 }
 
 void FrameAnalysisContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
-		UINT size, DXGI_FORMAT format, UINT offset, UINT first, UINT count)
+		UINT size, DXGI_FORMAT format, UINT offset, UINT first, UINT count,
+		D3D11_PRIMITIVE_TOPOLOGY topology)
 {
 	FILE *fd = NULL;
 	uint16_t *buf16 = (uint16_t*)map->pData;
 	uint32_t *buf32 = (uint32_t*)map->pData;
 	UINT start, end, i;
 	errno_t err;
+	int grouping = 1;
 
 	err = wfopen_ensuring_access(&fd, filename, L"w");
 	if (!fd) {
@@ -1382,6 +1443,18 @@ void FrameAnalysisContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE
 		fprintf(fd, "index count: %u\n", count);
 	}
 
+	if (topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED)
+		fprintf(fd, "topology: %s\n", TopologyStr(topology));
+	switch(topology) {
+		case D3D11_PRIMITIVE_TOPOLOGY_LINELIST:
+			grouping = 2;
+			break;
+		case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST:
+			grouping = 3;
+			break;
+		// TODO: Appropriate grouping for other input topologies
+	}
+
 	switch(format) {
 	case DXGI_FORMAT_R16_UINT:
 		fprintf(fd, "format: DXGI_FORMAT_R16_UINT\n");
@@ -1391,8 +1464,14 @@ void FrameAnalysisContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE
 		if (count)
 			end = min(end, start + count);
 
-		for (i = start; i < end; i++)
-			fprintf(fd, "%u\n", buf16[i]);
+		for (i = start; i < end; i++) {
+			if ((i-start) % grouping == 0)
+				fprintf(fd, "\n");
+			else
+				fprintf(fd, " ");
+			fprintf(fd, "%u", buf16[i]);
+		}
+		fprintf(fd, "\n");
 		break;
 	case DXGI_FORMAT_R32_UINT:
 		fprintf(fd, "format: DXGI_FORMAT_R32_UINT\n");
@@ -1402,8 +1481,14 @@ void FrameAnalysisContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE
 		if (count)
 			end = min(end, start + count);
 
-		for (i = start; i < end; i++)
-			fprintf(fd, "%u\n", buf32[i]);
+		for (i = start; i < end; i++) {
+			if ((i-start) % grouping == 0)
+				fprintf(fd, "\n");
+			else
+				fprintf(fd, " ");
+			fprintf(fd, "%u", buf32[i]);
+		}
+		fprintf(fd, "\n");
 		break;
 	default:
 		// Illegal format for an index buffer
@@ -1457,7 +1542,8 @@ bool FrameAnalysisContext::DeferDumpBuffer(ID3D11Buffer *staging,
 		D3D11_BUFFER_DESC *orig_desc, wchar_t *filename,
 		FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
 		UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
-		DrawCallInfo *call_info, ID3D11Buffer *staged_ib_for_vb, UINT ib_off_for_vb)
+		D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info,
+		ID3D11Buffer *staged_ib_for_vb, UINT ib_off_for_vb)
 {
 	if (!(analyse_options & FrameAnalysisOptions::DEFRD_CTX_DELAY))
 		return false;
@@ -1473,7 +1559,7 @@ bool FrameAnalysisContext::DeferDumpBuffer(ID3D11Buffer *staging,
 	FALogInfo("Deferring Buffer dump: %S\n", filename);
 	deferred_buffers->emplace_back(analyse_options, staging, orig_desc, filename,
 			buf_type_mask, idx, ib_fmt, stride, offset, first, count, layout,
-			call_info, staged_ib_for_vb, ib_off_for_vb);
+			topology, call_info, staged_ib_for_vb, ib_off_for_vb);
 	return true;
 }
 
@@ -1502,7 +1588,7 @@ void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_li
 			DumpBufferImmediateCtx(i.staging.Get(), &i.orig_desc,
 					i.filename, i.buf_type_mask, i.idx,
 					i.ib_fmt, i.stride, i.offset, i.first,
-					i.count, i.layout.Get(), &i.call_info,
+					i.count, i.layout.Get(), i.topology, &i.call_info,
 					i.staged_ib_for_vb.Get(), i.ib_off_for_vb);
 		}
 	}
@@ -1611,7 +1697,8 @@ void FrameAnalysisContext::determine_vb_count(UINT *count, ID3D11Buffer *staged_
 void FrameAnalysisContext::DumpBufferImmediateCtx(ID3D11Buffer *staging, D3D11_BUFFER_DESC *orig_desc,
 		wstring filename, FrameAnalysisOptions buf_type_mask, int idx,
 		DXGI_FORMAT ib_fmt, UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
-		DrawCallInfo *call_info, ID3D11Buffer *staged_ib_for_vb, UINT ib_off_for_vb)
+		D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info,
+		ID3D11Buffer *staged_ib_for_vb, UINT ib_off_for_vb)
 {
 	wchar_t bin_filename[MAX_PATH], txt_filename[MAX_PATH];
 	D3D11_MAPPED_SUBRESOURCE map;
@@ -1664,14 +1751,14 @@ void FrameAnalysisContext::DumpBufferImmediateCtx(ID3D11Buffer *staging, D3D11_B
 			}
 		} else if (buf_type_mask & FrameAnalysisOptions::DUMP_VB) {
 			determine_vb_count(&count, staged_ib_for_vb, call_info, ib_off_for_vb, ib_fmt);
-			dedupe_buf_filename_vb_txt(bin_filename, txt_filename, MAX_PATH, idx, stride, offset, first, count, layout, call_info);
+			dedupe_buf_filename_vb_txt(bin_filename, txt_filename, MAX_PATH, idx, stride, offset, first, count, layout, topology, call_info);
 			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
-				DumpVBTxt(txt_filename, &map, orig_desc->ByteWidth, idx, stride, offset, first, count, layout, call_info);
+				DumpVBTxt(txt_filename, &map, orig_desc->ByteWidth, idx, stride, offset, first, count, layout, topology, call_info);
 			}
 		} else if (buf_type_mask & FrameAnalysisOptions::DUMP_IB) {
-			dedupe_buf_filename_ib_txt(bin_filename, txt_filename, MAX_PATH, ib_fmt, offset, first, count);
+			dedupe_buf_filename_ib_txt(bin_filename, txt_filename, MAX_PATH, ib_fmt, offset, first, count, topology);
 			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
-				DumpIBTxt(txt_filename, &map, orig_desc->ByteWidth, ib_fmt, offset, first, count);
+				DumpIBTxt(txt_filename, &map, orig_desc->ByteWidth, ib_fmt, offset, first, count, topology);
 			}
 		} else {
 			// We don't know what kind of buffer this is, so just
@@ -1704,8 +1791,8 @@ out_unmap:
 void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
 		UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
-		DrawCallInfo *call_info, ID3D11Buffer **staged_ib_ret,
-		ID3D11Buffer *staged_ib_for_vb, UINT ib_off_for_vb)
+		D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info,
+		ID3D11Buffer **staged_ib_ret, ID3D11Buffer *staged_ib_for_vb, UINT ib_off_for_vb)
 {
 	D3D11_BUFFER_DESC desc, orig_desc;
 	ID3D11Buffer *staging = NULL;
@@ -1734,8 +1821,8 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 
 	GetDumpingContext()->CopyResource(staging, buffer);
 
-	if (!DeferDumpBuffer(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count, layout, call_info, staged_ib_for_vb, ib_off_for_vb))
-		DumpBufferImmediateCtx(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count, layout, call_info, staged_ib_for_vb, ib_off_for_vb);
+	if (!DeferDumpBuffer(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count, layout, topology, call_info, staged_ib_for_vb, ib_off_for_vb))
+		DumpBufferImmediateCtx(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count, layout, topology, call_info, staged_ib_for_vb, ib_off_for_vb);
 
 	// We can return the staged index buffer for later use when dumping the
 	// vertex buffers as text, to determine the maximum vertex count:
@@ -1763,7 +1850,8 @@ void FrameAnalysisContext::DumpResource(ID3D11Resource *resource, wchar_t *filen
 	switch (dim) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
 			if (analyse_options & FrameAnalysisOptions::FMT_BUF_MASK)
-				DumpBuffer((ID3D11Buffer*)resource, filename, buf_type_mask, idx, format, stride, offset, 0, 0, NULL, NULL, NULL, NULL, 0);
+				DumpBuffer((ID3D11Buffer*)resource, filename, buf_type_mask, idx, format, stride, offset,
+						0, 0, NULL, D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED, NULL, NULL, NULL, 0);
 			else
 				FALogInfo("Skipped dumping Buffer (No buffer formats enabled): %S\n", filename);
 			break;
@@ -2366,6 +2454,7 @@ void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info, ID3D11Buffer *staged
 	ID3D11Buffer *buffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 	UINT strides[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 	UINT offsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+	D3D11_PRIMITIVE_TOPOLOGY topology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
 	UINT i, first = 0, count = 0;
@@ -2385,6 +2474,7 @@ void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info, ID3D11Buffer *staged
 
 	GetPassThroughOrigContext1()->IAGetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, buffers, strides, offsets);
 	GetPassThroughOrigContext1()->IAGetInputLayout(&layout);
+	GetPassThroughOrigContext1()->IAGetPrimitiveTopology(&topology);
 	if (layout) {
 		UINT size = sizeof(ID3DBlob*);
 		layout->GetPrivateData(InputLayoutDescGuid, &size, &layout_desc);
@@ -2404,8 +2494,8 @@ void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info, ID3D11Buffer *staged
 			DumpBuffer(buffers[i], filename,
 				FrameAnalysisOptions::DUMP_VB, i,
 				ib_fmt, strides[i], offsets[i],
-				first, count, layout_desc, call_info,
-				NULL, staged_ib, ib_off);
+				first, count, layout_desc, topology,
+				call_info, NULL, staged_ib, ib_off);
 		}
 
 continue_release:
@@ -2425,6 +2515,7 @@ void FrameAnalysisContext::DumpIB(DrawCallInfo *call_info, ID3D11Buffer **staged
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
 	UINT first = 0, count = 0;
+	D3D11_PRIMITIVE_TOPOLOGY topology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
 
 	if (call_info) {
 		first = call_info->FirstIndex;
@@ -2434,13 +2525,14 @@ void FrameAnalysisContext::DumpIB(DrawCallInfo *call_info, ID3D11Buffer **staged
 	GetPassThroughOrigContext1()->IAGetIndexBuffer(&buffer, format, offset);
 	if (!buffer)
 		return;
+	GetPassThroughOrigContext1()->IAGetPrimitiveTopology(&topology);
 
 	hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"ib", NULL, -1, buffer);
 	if (SUCCEEDED(hr)) {
 		DumpBuffer(buffer, filename,
 				FrameAnalysisOptions::DUMP_IB, -1,
 				*format, 0, *offset, first, count, NULL,
-				call_info, staged_ib, NULL, 0);
+				topology, call_info, staged_ib, NULL, 0);
 	}
 
 	buffer->Release();
