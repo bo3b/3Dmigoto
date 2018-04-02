@@ -121,7 +121,7 @@ private:
 			UINT size, char type, int idx, UINT stride, UINT offset);
 	void DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 			UINT size, int idx, UINT stride, UINT offset,
-			UINT first, UINT count, ID3DBlob *layout);
+			UINT first, UINT count, ID3DBlob *layout, DrawCallInfo *call_info);
 	void DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 			UINT size, DXGI_FORMAT ib_fmt, UINT offset,
 			UINT first, UINT count);
@@ -179,7 +179,8 @@ private:
 			UINT stride, UINT offset);
 	void dedupe_buf_filename_vb_txt(const wchar_t *bin_filename,
 			wchar_t *txt_filename, size_t size, int idx,
-			UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout);
+			UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
+			DrawCallInfo *call_info);
 	void dedupe_buf_filename_ib_txt(const wchar_t *bin_filename,
 			wchar_t *txt_filename, size_t size, DXGI_FORMAT ib_fmt,
 			UINT offset, UINT first, UINT count);
