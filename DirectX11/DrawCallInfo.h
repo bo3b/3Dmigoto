@@ -9,7 +9,8 @@ enum class DrawCall {
 	DrawIndexedInstanced,
 	DrawInstancedIndirect,
 	DrawIndexedInstancedIndirect,
-	DrawAuto
+	DrawAuto,
+	Invalid
 };
 
 struct DrawCallInfo
@@ -23,6 +24,20 @@ struct DrawCallInfo
 	UINT args_offset;
 
 	bool skip, hunting_skip;
+
+	DrawCallInfo() :
+		type(DrawCall::Invalid),
+		VertexCount(0),
+		IndexCount(0),
+		InstanceCount(0),
+		FirstVertex(0),
+		FirstIndex(0),
+		FirstInstance(0),
+		indirect_buffer(NULL),
+		args_offset(0),
+		skip(false),
+		hunting_skip(false)
+	{}
 
 	DrawCallInfo(DrawCall type,
 			UINT VertexCount, UINT IndexCount, UINT InstanceCount,

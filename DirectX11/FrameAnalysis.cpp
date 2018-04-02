@@ -1284,8 +1284,8 @@ void FrameAnalysisContext::DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE
 		UINT size, DXGI_FORMAT format, UINT offset, UINT first, UINT count)
 {
 	FILE *fd = NULL;
-	short *buf16 = (short*)map->pData;
-	int *buf32 = (int*)map->pData;
+	uint16_t *buf16 = (uint16_t*)map->pData;
+	uint32_t *buf32 = (uint32_t*)map->pData;
 	UINT start, end, i;
 	errno_t err;
 
@@ -1375,7 +1375,8 @@ bool FrameAnalysisContext::DeferDump2DResource(ID3D11Texture2D *staging,
 bool FrameAnalysisContext::DeferDumpBuffer(ID3D11Buffer *staging,
 		D3D11_BUFFER_DESC *orig_desc, wchar_t *filename,
 		FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
-		UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout)
+		UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
+		DrawCallInfo *call_info, ID3D11Buffer *staged_ib_for_vb, UINT ib_off_for_vb)
 {
 	if (!(analyse_options & FrameAnalysisOptions::DEFRD_CTX_DELAY))
 		return false;
@@ -1390,7 +1391,8 @@ bool FrameAnalysisContext::DeferDumpBuffer(ID3D11Buffer *staging,
 
 	FALogInfo("Deferring Buffer dump: %S\n", filename);
 	deferred_buffers->emplace_back(analyse_options, staging, orig_desc, filename,
-			buf_type_mask, idx, ib_fmt, stride, offset, first, count, layout);
+			buf_type_mask, idx, ib_fmt, stride, offset, first, count, layout,
+			call_info, staged_ib_for_vb, ib_off_for_vb);
 	return true;
 }
 
@@ -1419,7 +1421,8 @@ void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_li
 			DumpBufferImmediateCtx(i.staging.Get(), &i.orig_desc,
 					i.filename, i.buf_type_mask, i.idx,
 					i.ib_fmt, i.stride, i.offset, i.first,
-					i.count, i.layout.Get());
+					i.count, i.layout.Get(), &i.call_info,
+					i.staged_ib_for_vb.Get(), i.ib_off_for_vb);
 		}
 	}
 
@@ -1465,9 +1468,69 @@ void FrameAnalysisContext::finish_deferred_resources(ID3D11CommandList *command_
 	LeaveCriticalSection(&G->mCriticalSection);
 }
 
+void FrameAnalysisContext::determine_vb_count(UINT *count, ID3D11Buffer *staged_ib_for_vb,
+		DrawCallInfo *call_info, UINT ib_off_for_vb, DXGI_FORMAT ib_fmt)
+{
+	D3D11_MAPPED_SUBRESOURCE ib_map;
+	UINT i, ib_start, ib_end, max_vertex = 0;
+	D3D11_BUFFER_DESC ib_desc;
+	uint16_t *buf16;
+	uint32_t *buf32;
+	HRESULT hr;
+
+	// If an indexed draw call is in use, we don't explicitly know how many
+	// vertices we will need to dump from the vertex buffer, so we used to
+	// dump every vertex from the offset/first to the end of the buffer.
+	// This worked, but resulted in many quite large text files with lots
+	// of overlap for games that used larger vertex buffers to cover many
+	// objects (e.g. Witcher 3). This function scans over the staged index
+	// buffer from the draw call to find the largest vertex it refers to
+	// determine how many vertices we will need to dump.
+
+	if (!staged_ib_for_vb || !call_info || call_info->IndexCount == 0)
+		return;
+
+	hr = GetDumpingContext()->Map(staged_ib_for_vb, 0, D3D11_MAP_READ, 0, &ib_map);
+	if (FAILED(hr)) {
+		FALogErr("determine_vb_count failed to map index buffer staging resource: 0x%x\n", hr);
+		return;
+	}
+
+	buf16 = (uint16_t*)ib_map.pData;
+	buf32 = (uint32_t*)ib_map.pData;
+
+	staged_ib_for_vb->GetDesc(&ib_desc);
+
+	switch(ib_fmt) {
+	case DXGI_FORMAT_R16_UINT:
+		ib_start = ib_off_for_vb / 2 + call_info->FirstIndex;
+		ib_end = ib_desc.ByteWidth / 2;
+		if (call_info->IndexCount)
+			ib_end = min(ib_end, ib_start + call_info->IndexCount);
+
+		for (i = ib_start; i < ib_end; i++)
+			max_vertex = max(max_vertex, buf16[i]);
+		*count = max_vertex + 1;
+		break;
+	case DXGI_FORMAT_R32_UINT:
+		ib_start = ib_off_for_vb / 4 + call_info->FirstIndex;
+		ib_end = ib_desc.ByteWidth / 4;
+		if (call_info->IndexCount)
+			ib_end = min(ib_end, ib_start + call_info->IndexCount);
+
+		for (i = ib_start; i < ib_end; i++)
+			max_vertex = max(max_vertex, buf32[i]);
+		*count = max_vertex + 1;
+		break;
+	}
+
+	GetDumpingContext()->Unmap(staged_ib_for_vb, 0);
+}
+
 void FrameAnalysisContext::DumpBufferImmediateCtx(ID3D11Buffer *staging, D3D11_BUFFER_DESC *orig_desc,
 		wstring filename, FrameAnalysisOptions buf_type_mask, int idx,
-		DXGI_FORMAT ib_fmt, UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout)
+		DXGI_FORMAT ib_fmt, UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
+		DrawCallInfo *call_info, ID3D11Buffer *staged_ib_for_vb, UINT ib_off_for_vb)
 {
 	wchar_t bin_filename[MAX_PATH], txt_filename[MAX_PATH];
 	D3D11_MAPPED_SUBRESOURCE map;
@@ -1519,6 +1582,7 @@ void FrameAnalysisContext::DumpBufferImmediateCtx(ID3D11Buffer *staging, D3D11_B
 				DumpBufferTxt(txt_filename, &map, orig_desc->ByteWidth, 'c', idx, stride, offset);
 			}
 		} else if (buf_type_mask & FrameAnalysisOptions::DUMP_VB) {
+			determine_vb_count(&count, staged_ib_for_vb, call_info, ib_off_for_vb, ib_fmt);
 			dedupe_buf_filename_vb_txt(bin_filename, txt_filename, MAX_PATH, idx, stride, offset, first, count, layout);
 			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
 				DumpVBTxt(txt_filename, &map, orig_desc->ByteWidth, idx, stride, offset, first, count, layout);
@@ -1558,7 +1622,9 @@ out_unmap:
 
 void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 		FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
-		UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout)
+		UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
+		DrawCallInfo *call_info, ID3D11Buffer **staged_ib_ret,
+		ID3D11Buffer *staged_ib_for_vb, UINT ib_off_for_vb)
 {
 	D3D11_BUFFER_DESC desc, orig_desc;
 	ID3D11Buffer *staging = NULL;
@@ -1580,8 +1646,15 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 
 	GetDumpingContext()->CopyResource(staging, buffer);
 
-	if (!DeferDumpBuffer(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count, layout))
-		DumpBufferImmediateCtx(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count, layout);
+	if (!DeferDumpBuffer(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count, layout, call_info, staged_ib_for_vb, ib_off_for_vb))
+		DumpBufferImmediateCtx(staging, &orig_desc, filename, buf_type_mask, idx, ib_fmt, stride, offset, first, count, layout, call_info, staged_ib_for_vb, ib_off_for_vb);
+
+	// We can return the staged index buffer for later use when dumping the
+	// vertex buffers as text, to determine the maximum vertex count:
+	if (staged_ib_ret) {
+		*staged_ib_ret = staging;
+		staging->AddRef();
+	}
 
 	staging->Release();
 }
@@ -1602,7 +1675,7 @@ void FrameAnalysisContext::DumpResource(ID3D11Resource *resource, wchar_t *filen
 	switch (dim) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
 			if (analyse_options & FrameAnalysisOptions::FMT_BUF_MASK)
-				DumpBuffer((ID3D11Buffer*)resource, filename, buf_type_mask, idx, format, stride, offset, 0, 0, NULL);
+				DumpBuffer((ID3D11Buffer*)resource, filename, buf_type_mask, idx, format, stride, offset, 0, 0, NULL, NULL, NULL, NULL, 0);
 			else
 				FALogInfo("Skipped dumping Buffer (No buffer formats enabled): %S\n", filename);
 			break;
@@ -2154,7 +2227,34 @@ void FrameAnalysisContext::DumpCBs(bool compute)
 	}
 }
 
-void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info)
+void FrameAnalysisContext::DumpMesh(DrawCallInfo *call_info)
+{
+	bool dump_ibs = !!(analyse_options & FrameAnalysisOptions::DUMP_IB);
+	bool dump_vbs = !!(analyse_options & FrameAnalysisOptions::DUMP_VB);
+	ID3D11Buffer *staged_ib = NULL;
+	DXGI_FORMAT ib_fmt = DXGI_FORMAT_UNKNOWN;
+	UINT ib_off = 0;
+
+	// If we are dumping vertex buffers as text and an indexed draw call
+	// was in use, we also need to dump (or at the very least stage) the
+	// index buffer so that we can determine the maximum vertex count to
+	// dump to keep the text files small. This is not applicable when only
+	// dumping vertex buffers as binary, since we always dump the entire
+	// buffer in that case.
+	if (dump_vbs && (analyse_options & FrameAnalysisOptions::FMT_BUF_TXT) && call_info->IndexCount)
+		dump_ibs = true;
+
+	if (dump_ibs)
+		DumpIB(call_info, &staged_ib, &ib_fmt, &ib_off);
+
+	if (dump_vbs)
+		DumpVBs(call_info, staged_ib, ib_fmt, ib_off);
+
+	if (staged_ib)
+		staged_ib->Release();
+}
+
+void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info, ID3D11Buffer *staged_ib, DXGI_FORMAT ib_fmt, UINT ib_off)
 {
 	ID3D11Buffer *buffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 	UINT strides[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
@@ -2192,8 +2292,9 @@ void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info)
 		if (SUCCEEDED(hr)) {
 			DumpBuffer(buffers[i], filename,
 				FrameAnalysisOptions::DUMP_VB, i,
-				DXGI_FORMAT_UNKNOWN, strides[i], offsets[i],
-				first, count, layout_desc);
+				ib_fmt, strides[i], offsets[i],
+				first, count, layout_desc, call_info,
+				NULL, staged_ib, ib_off);
 		}
 
 		buffers[i]->Release();
@@ -2206,20 +2307,19 @@ void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info)
 		layout_desc->Release();
 }
 
-void FrameAnalysisContext::DumpIB(DrawCallInfo *call_info)
+void FrameAnalysisContext::DumpIB(DrawCallInfo *call_info, ID3D11Buffer **staged_ib, DXGI_FORMAT *format, UINT *offset)
 {
 	ID3D11Buffer *buffer = NULL;
 	wchar_t filename[MAX_PATH];
 	HRESULT hr;
-	DXGI_FORMAT format;
-	UINT offset, first = 0, count = 0;
+	UINT first = 0, count = 0;
 
 	if (call_info) {
 		first = call_info->FirstIndex;
 		count = call_info->IndexCount;
 	}
 
-	GetPassThroughOrigContext1()->IAGetIndexBuffer(&buffer, &format, &offset);
+	GetPassThroughOrigContext1()->IAGetIndexBuffer(&buffer, format, offset);
 	if (!buffer)
 		return;
 
@@ -2227,7 +2327,8 @@ void FrameAnalysisContext::DumpIB(DrawCallInfo *call_info)
 	if (SUCCEEDED(hr)) {
 		DumpBuffer(buffer, filename,
 				FrameAnalysisOptions::DUMP_IB, -1,
-				format, 0, offset, first, count, NULL);
+				*format, 0, *offset, first, count, NULL,
+				call_info, staged_ib, NULL, 0);
 	}
 
 	buffer->Release();
@@ -2561,13 +2662,8 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 	if (analyse_options & FrameAnalysisOptions::DUMP_CB)
 		DumpCBs(compute);
 
-	if (!compute) {
-		if (analyse_options & FrameAnalysisOptions::DUMP_VB)
-			DumpVBs(call_info);
-
-		if (analyse_options & FrameAnalysisOptions::DUMP_IB)
-			DumpIB(call_info);
-	}
+	if (!compute)
+		DumpMesh(call_info);
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_SRV)
 		DumpTextures(compute);
