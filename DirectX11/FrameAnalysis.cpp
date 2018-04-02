@@ -2342,6 +2342,25 @@ void FrameAnalysisContext::DumpMesh(DrawCallInfo *call_info)
 		staged_ib->Release();
 }
 
+static bool vb_slot_in_layout(int slot, ID3DBlob *layout)
+{
+	D3D11_INPUT_ELEMENT_DESC *layout_desc = NULL;
+	size_t layout_elements;
+	int i;
+
+	if (!layout)
+		return true;
+
+	layout_desc = (D3D11_INPUT_ELEMENT_DESC*)layout->GetBufferPointer();
+	layout_elements = layout->GetBufferSize() / sizeof(D3D11_INPUT_ELEMENT_DESC);
+
+	for (i = 0; i < layout_elements; i++)
+		if (layout_desc[i].InputSlot == slot)
+			return true;
+
+	return false;
+}
+
 void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info, ID3D11Buffer *staged_ib, DXGI_FORMAT ib_fmt, UINT ib_off)
 {
 	ID3D11Buffer *buffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
@@ -2376,6 +2395,10 @@ void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info, ID3D11Buffer *staged
 		if (!buffers[i])
 			continue;
 
+		// Skip this vertex buffer if it is not used in the IA layout:
+		if (!vb_slot_in_layout(i, layout_desc))
+			goto continue_release;
+
 		hr = FrameAnalysisFilename(filename, MAX_PATH, false, L"vb", NULL, i, buffers[i]);
 		if (SUCCEEDED(hr)) {
 			DumpBuffer(buffers[i], filename,
@@ -2385,6 +2408,7 @@ void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info, ID3D11Buffer *staged
 				NULL, staged_ib, ib_off);
 		}
 
+continue_release:
 		buffers[i]->Release();
 	}
 
