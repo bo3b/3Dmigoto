@@ -1630,6 +1630,13 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	ID3D11Buffer *staging = NULL;
 	HRESULT hr;
 
+	// Process key inputs to allow user to abort long running frame
+	// analysis sessions (this case is specifically for dump_vb and dump_ib
+	// which bypasses DumpResource()):
+	DispatchInputEvents(GetHackerDevice());
+	if (!G->analyse_frame)
+		return;
+
 	buffer->GetDesc(&desc);
 	memcpy(&orig_desc, &desc, sizeof(D3D11_BUFFER_DESC));
 
