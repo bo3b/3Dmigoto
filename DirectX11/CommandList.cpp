@@ -785,6 +785,16 @@ void DrawCommand::run(CommandListState *state)
 {
 	HackerContext *mHackerContext = state->mHackerContext;
 	ID3D11DeviceContext *mOrigContext1 = state->mOrigContext1;
+	DrawCallInfo *info = state->call_info;
+
+	// If this command list was triggered from something currently skipped
+	// due to hunting, we also skip any custom draw calls, so that if we
+	// are replacing the original draw call we will still be able to see
+	// the object being hunted.
+	if (info && info->hunting_skip) {
+		COMMAND_LIST_LOG(state, "[%S] Draw -> SKIPPED DUE TO HUNTING\n", ini_section.c_str());
+		return;
+	}
 
 	// Ensure IniParams are visible:
 	CommandListFlushState(state);
@@ -821,13 +831,8 @@ void DrawCommand::run(CommandListState *state)
 		// TODO: case DrawCommandType::DISPATCH_INDIRECT:
 		// TODO: 	break;
 		case DrawCommandType::FROM_CALLER:
-			DrawCallInfo *info = state->call_info;
 			if (!info) {
 				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> NO ACTIVE DRAW CALL\n", ini_section.c_str());
-				break;
-			}
-			if (info->hunting_skip) {
-				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> SKIPPED DUE TO HUNTING\n", ini_section.c_str());
 				break;
 			}
 			switch (info->type) {
