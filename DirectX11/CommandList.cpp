@@ -2569,19 +2569,19 @@ void CustomResource::LoadBufferFromFile(ID3D11Device *mOrigDevice1)
 
 	f = CreateFile(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE) {
-		LogInfo("Failed to load custom buffer resource %S: %d\n", filename.c_str(), GetLastError());
+		LogOverlay(LOG_WARNING, "Failed to load custom buffer resource %S: %d\n", filename.c_str(), GetLastError());
 		return;
 	}
 
 	size = GetFileSize(f, 0);
 	buf = malloc(size); // malloc to allow realloc to resize it if the user overrode the size
 	if (!buf) {
-		LogInfo("Out of memory loading %S\n", filename.c_str());
+		LogOverlay(LOG_DIRE, "Out of memory loading %S\n", filename.c_str());
 		goto out_close;
 	}
 
 	if (!ReadFile(f, buf, size, &read_size, 0) || size != read_size) {
-		LogInfo("Error reading custom buffer from file %S\n", filename.c_str());
+		LogOverlay(LOG_WARNING, "Error reading custom buffer from file %S\n", filename.c_str());
 		goto out_delete;
 	}
 
@@ -2637,7 +2637,7 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 		// TODO:
 		// format = ...
 	} else
-		LogInfoW(L"Failed to load custom texture resource %s: 0x%x\n", filename.c_str(), hr);
+		LogOverlay(LOG_WARNING, "Failed to load custom texture resource %S: 0x%x\n", filename.c_str(), hr);
 }
 
 void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, DWORD size)
