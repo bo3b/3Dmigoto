@@ -2434,7 +2434,7 @@ static bool vb_slot_in_layout(int slot, ID3DBlob *layout)
 {
 	D3D11_INPUT_ELEMENT_DESC *layout_desc = NULL;
 	size_t layout_elements;
-	int i;
+	UINT i;
 
 	if (!layout)
 		return true;
