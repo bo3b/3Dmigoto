@@ -1712,6 +1712,15 @@ wchar_t *TextureOverrideIniKeys[] = {
 	L"expand_region_copy",
 	L"deny_cpu_read",
 	TEXTURE_OVERRIDE_FUZZY_MATCHES,
+	// Since these match something other than the resource description
+	// they can be used in conjunction with hash, so they don't go in
+	// TEXTURE_OVERRIDE_FUZZY_MATCHES:
+	L"match_first_vertex",
+	L"match_first_index",
+	L"match_first_instance",
+	L"match_vertex_count",
+	L"match_index_count",
+	L"match_instance_count",
 	NULL
 };
 // List of keys for fuzzy matching that cannot be used together with hash:
@@ -1719,128 +1728,6 @@ wchar_t *TextureOverrideFuzzyMatchesIniKeys[] = {
 	TEXTURE_OVERRIDE_FUZZY_MATCHES,
 	NULL
 };
-static void parse_texture_override_common(const wchar_t *id, TextureOverride *override)
-{
-	wchar_t setting[MAX_PATH];
-
-	override->stereoMode = GetIniInt(id, L"StereoMode", -1, NULL);
-	override->format = GetIniInt(id, L"Format", -1, NULL);
-	override->width = GetIniInt(id, L"Width", -1, NULL);
-	override->height = GetIniInt(id, L"Height", -1, NULL);
-	override->width_multiply = GetIniFloat(id, L"width_multiply", 1.0f, NULL);
-	override->height_multiply = GetIniFloat(id, L"height_multiply", 1.0f, NULL);
-
-	if (GetIniString(id, L"Iteration", 0, setting, MAX_PATH))
-	{
-		// TODO: This supports more iterations than the
-		// ShaderOverride iteration parameter, and it's not
-		// clear why there is a difference. This seems like the
-		// better way, but should change it to use my list
-		// parsing code rather than hard coding a maximum of 10
-		// supported iterations.
-		override->iterations.clear();
-		override->iterations.push_back(0);
-		int id[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-		swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", id + 0, id + 1, id + 2, id + 3, id + 4, id + 5, id + 6, id + 7, id + 8, id + 9);
-		for (int j = 0; j < 10; ++j)
-		{
-			if (id[j] <= 0) break;
-			override->iterations.push_back(id[j]);
-			LogInfo("  Iteration=%d\n", id[j]);
-		}
-	}
-
-	override->filter_index = GetIniFloat(id, L"filter_index", 1.0f, NULL);
-
-	override->expand_region_copy = GetIniBool(id, L"expand_region_copy", false, NULL);
-	override->deny_cpu_read = GetIniBool(id, L"deny_cpu_read", false, NULL);
-
-	ParseCommandList(id, &override->command_list, &override->post_command_list, TextureOverrideIniKeys);
-}
-
-static bool texture_override_section_has_fuzzy_match_keys(const wchar_t *section)
-{
-	int i;
-
-	for (i = 0; TextureOverrideFuzzyMatchesIniKeys[i]; i++) {
-		if (IniHasKey(section, TextureOverrideFuzzyMatchesIniKeys[i]))
-			return true;
-	}
-
-	return false;
-}
-
-template <class T>
-static bool parse_masked_flags_field(const wstring setting, unsigned *val, unsigned *mask,
-		struct EnumName_t<const wchar_t *, T> *enum_names)
-{
-	std::vector<std::wstring> tokens;
-	std::wstring token;
-	int ret, len1, len2;
-	unsigned i;
-	bool use_mask = false;
-	bool set;
-	unsigned tmp;
-
-	// Allow empty strings and 0 to indicate it matches 0 / 0xffffffff:
-	if (!setting.size() || !setting.compare(L"0")) {
-		*val = 0;
-		*mask = 0xffffffff;
-		LogInfo("    Using: 0x%08x / 0x%08x\n", *val, *mask);
-		return true;
-	}
-
-	// Try parsing the field as a hex string with an optional mask:
-	ret = swscanf_s(setting.c_str(), L"0x%x%n / 0x%x%n", val, &len1, mask, &len2);
-	if (ret != 0 && ret != EOF && (len1 == setting.length() || len2 == setting.length())) {
-		if (ret == 2)
-			*mask = 0xffffffff;
-		LogInfo("    Using: 0x%08x / 0x%08x\n", *val, *mask);
-		return true;
-	}
-
-	tokens = split_string(&setting, L' ');
-	*val = 0;
-	*mask = 0;
-
-	for (i = 0; i < tokens.size(); i++) {
-		if (tokens[i][0] == L'+') {
-			token = tokens[i].substr(1);
-			use_mask = true;
-			set = true;
-		} else if (tokens[i][0] == L'-') {
-			token = tokens[i].substr(1);
-			use_mask = true;
-			set = false;
-		} else {
-			token = tokens[i];
-			set = true;
-		}
-
-		tmp = (unsigned)lookup_enum_val<const wchar_t*, T>
-			(enum_names, token.c_str(), (T)0);
-
-		if (!tmp) {
-			IniWarning("WARNING: Invalid flag %S\n", token.c_str());
-			return false;
-		}
-
-		if ((*mask & tmp) == tmp) {
-			IniWarning("WARNING: Duplicate flag %S\n", token.c_str());
-			return false;
-		}
-
-		*mask |= tmp;
-		if (set)
-			*val |= tmp;
-	}
-
-	if (!use_mask)
-		*mask = 0xffffffff;
-	LogInfo("    Using: 0x%08x / 0x%08x\n", *val, *mask);
-
-	return true;
-}
 
 static void parse_fuzzy_numeric_match_expression_error(const wchar_t *text)
 {
@@ -1950,6 +1837,142 @@ static void parse_fuzzy_numeric_match_expression(const wchar_t *setting, FuzzyMa
 
 	if (*ptr)
 		return parse_fuzzy_numeric_match_expression_error(ptr);
+}
+
+static void parse_texture_override_common(const wchar_t *id, TextureOverride *override)
+{
+	wchar_t setting[MAX_PATH];
+
+	override->stereoMode = GetIniInt(id, L"StereoMode", -1, NULL);
+	override->format = GetIniInt(id, L"Format", -1, NULL);
+	override->width = GetIniInt(id, L"Width", -1, NULL);
+	override->height = GetIniInt(id, L"Height", -1, NULL);
+	override->width_multiply = GetIniFloat(id, L"width_multiply", 1.0f, NULL);
+	override->height_multiply = GetIniFloat(id, L"height_multiply", 1.0f, NULL);
+
+	if (GetIniString(id, L"Iteration", 0, setting, MAX_PATH))
+	{
+		// TODO: This supports more iterations than the
+		// ShaderOverride iteration parameter, and it's not
+		// clear why there is a difference. This seems like the
+		// better way, but should change it to use my list
+		// parsing code rather than hard coding a maximum of 10
+		// supported iterations.
+		override->iterations.clear();
+		override->iterations.push_back(0);
+		int id[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+		swscanf_s(setting, L"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", id + 0, id + 1, id + 2, id + 3, id + 4, id + 5, id + 6, id + 7, id + 8, id + 9);
+		for (int j = 0; j < 10; ++j)
+		{
+			if (id[j] <= 0) break;
+			override->iterations.push_back(id[j]);
+			LogInfo("  Iteration=%d\n", id[j]);
+		}
+	}
+
+	override->filter_index = GetIniFloat(id, L"filter_index", 1.0f, NULL);
+
+	override->expand_region_copy = GetIniBool(id, L"expand_region_copy", false, NULL);
+	override->deny_cpu_read = GetIniBool(id, L"deny_cpu_read", false, NULL);
+
+	if (GetIniStringAndLog(id, L"match_first_vertex", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &override->match_first_vertex);
+	if (GetIniStringAndLog(id, L"match_first_index", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &override->match_first_index);
+	if (GetIniStringAndLog(id, L"match_first_instance", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &override->match_first_instance);
+	if (GetIniStringAndLog(id, L"match_vertex_count", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &override->match_vertex_count);
+	if (GetIniStringAndLog(id, L"match_index_count", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &override->match_index_count);
+	if (GetIniStringAndLog(id, L"match_instance_count", 0, setting, MAX_PATH))
+		parse_fuzzy_numeric_match_expression(setting, &override->match_instance_count);
+
+	ParseCommandList(id, &override->command_list, &override->post_command_list, TextureOverrideIniKeys);
+}
+
+static bool texture_override_section_has_fuzzy_match_keys(const wchar_t *section)
+{
+	int i;
+
+	for (i = 0; TextureOverrideFuzzyMatchesIniKeys[i]; i++) {
+		if (IniHasKey(section, TextureOverrideFuzzyMatchesIniKeys[i]))
+			return true;
+	}
+
+	return false;
+}
+
+template <class T>
+static bool parse_masked_flags_field(const wstring setting, unsigned *val, unsigned *mask,
+		struct EnumName_t<const wchar_t *, T> *enum_names)
+{
+	std::vector<std::wstring> tokens;
+	std::wstring token;
+	int ret, len1, len2;
+	unsigned i;
+	bool use_mask = false;
+	bool set;
+	unsigned tmp;
+
+	// Allow empty strings and 0 to indicate it matches 0 / 0xffffffff:
+	if (!setting.size() || !setting.compare(L"0")) {
+		*val = 0;
+		*mask = 0xffffffff;
+		LogInfo("    Using: 0x%08x / 0x%08x\n", *val, *mask);
+		return true;
+	}
+
+	// Try parsing the field as a hex string with an optional mask:
+	ret = swscanf_s(setting.c_str(), L"0x%x%n / 0x%x%n", val, &len1, mask, &len2);
+	if (ret != 0 && ret != EOF && (len1 == setting.length() || len2 == setting.length())) {
+		if (ret == 2)
+			*mask = 0xffffffff;
+		LogInfo("    Using: 0x%08x / 0x%08x\n", *val, *mask);
+		return true;
+	}
+
+	tokens = split_string(&setting, L' ');
+	*val = 0;
+	*mask = 0;
+
+	for (i = 0; i < tokens.size(); i++) {
+		if (tokens[i][0] == L'+') {
+			token = tokens[i].substr(1);
+			use_mask = true;
+			set = true;
+		} else if (tokens[i][0] == L'-') {
+			token = tokens[i].substr(1);
+			use_mask = true;
+			set = false;
+		} else {
+			token = tokens[i];
+			set = true;
+		}
+
+		tmp = (unsigned)lookup_enum_val<const wchar_t*, T>
+			(enum_names, token.c_str(), (T)0);
+
+		if (!tmp) {
+			IniWarning("WARNING: Invalid flag %S\n", token.c_str());
+			return false;
+		}
+
+		if ((*mask & tmp) == tmp) {
+			IniWarning("WARNING: Duplicate flag %S\n", token.c_str());
+			return false;
+		}
+
+		*mask |= tmp;
+		if (set)
+			*val |= tmp;
+	}
+
+	if (!use_mask)
+		*mask = 0xffffffff;
+	LogInfo("    Using: 0x%08x / 0x%08x\n", *val, *mask);
+
+	return true;
 }
 
 static void parse_texture_override_fuzzy_match(const wchar_t *section)

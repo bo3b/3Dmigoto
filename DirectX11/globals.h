@@ -254,6 +254,13 @@ struct TextureOverride {
 	bool deny_cpu_read;
 	float filter_index;
 
+	FuzzyMatch match_first_vertex;
+	FuzzyMatch match_first_index;
+	FuzzyMatch match_first_instance;
+	FuzzyMatch match_vertex_count;
+	FuzzyMatch match_index_count;
+	FuzzyMatch match_instance_count;
+
 	CommandList command_list;
 	CommandList post_command_list;
 

@@ -3689,7 +3689,7 @@ void ResourceCopyTarget::FindTextureOverrides(CommandListState *state, bool *res
 	if (!resource)
 		return;
 
-	find_texture_overrides_for_resource(resource, matches);
+	find_texture_overrides_for_resource(resource, matches, state->call_info);
 
 	//COMMAND_LIST_LOG(state, "  found texture hash = %08llx\n", hash);
 

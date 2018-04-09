@@ -9,6 +9,7 @@
 #include <memory>
 
 #include "util.h"
+#include "DrawCallInfo.h"
 
 // Tracks info about specific resource instances:
 struct ResourceHandleInfo
@@ -299,6 +300,7 @@ enum class FuzzyMatchOperandType {
 };
 
 class FuzzyMatch {
+	bool matches_common(UINT lhs, UINT effective) const;
 public:
 	FuzzyMatchOp op;
 	FuzzyMatchOperandType rhs_type;
@@ -316,6 +318,7 @@ public:
 	FuzzyMatch();
 	template <typename DescType>
 	bool matches(UINT lhs, const DescType *desc) const;
+	bool matches_uint(UINT lhs) const;
 };
 
 // Forward declaration to resolve circular dependency. One of these days we
@@ -381,5 +384,5 @@ typedef std::set<std::shared_ptr<FuzzyMatchResourceDesc>, FuzzyMatchResourceDesc
 typedef std::vector<TextureOverride*> TextureOverrideMatches;
 
 template <typename DescType>
-void find_texture_overrides(uint32_t hash, const DescType *desc, TextureOverrideMatches *matches);
-void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverrideMatches *matches);
+void find_texture_overrides(uint32_t hash, const DescType *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
+void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverrideMatches *matches, DrawCallInfo *call_info);

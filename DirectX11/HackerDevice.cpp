@@ -1982,7 +1982,7 @@ static const DescType* process_texture_override(uint32_t hash,
 	if (is_square_surface(origDesc))
 		newMode = (NVAPI_STEREO_SURFACECREATEMODE) G->gSurfaceSquareCreateMode;
 
-	find_texture_overrides(hash, origDesc, &matches);
+	find_texture_overrides(hash, origDesc, &matches, NULL);
 
 	if (origDesc && !matches.empty()) {
 		// There is at least one matching texture override, which means
