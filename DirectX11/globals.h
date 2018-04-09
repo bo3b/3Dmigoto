@@ -254,6 +254,8 @@ struct TextureOverride {
 	bool deny_cpu_read;
 	float filter_index;
 
+	bool has_draw_context_match;
+	int priority;
 	FuzzyMatch match_first_vertex;
 	FuzzyMatch match_first_index;
 	FuzzyMatch match_first_instance;
@@ -273,10 +275,20 @@ struct TextureOverride {
 		height_multiply(1.0),
 		expand_region_copy(false),
 		deny_cpu_read(false),
-		filter_index(1.0)
+		filter_index(1.0),
+		has_draw_context_match(false),
+		priority(0)
 	{}
 };
-typedef std::unordered_map<uint32_t, struct TextureOverride> TextureOverrideMap;
+
+// The TextureOverrideList will be sorted because we want multiple
+// [TextureOverrides] that share the same hash (differentiated by draw context
+// matching) to always be processed in the same order for consistent results.
+// We can't use a std::set to enforce this ordering, as that makes the
+// TextureOverrides const, but there are a few places we modify it. Instead, we
+// will sort it in the ini parser when we create the list.
+typedef std::vector<struct TextureOverride> TextureOverrideList;
+typedef std::unordered_map<uint32_t, TextureOverrideList> TextureOverrideMap;
 
 // We use this when collecting resource info for ShaderUsage.txt to take a
 // snapshot of the resource handle, hash and original hash. We used to just

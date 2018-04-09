@@ -1317,7 +1317,6 @@ bool FuzzyMatch::matches_common(UINT lhs, UINT effective) const
 }
 
 FuzzyMatchResourceDesc::FuzzyMatchResourceDesc(std::wstring section) :
-	priority(0),
 	matches_buffer(true),
 	matches_tex1d(true),
 	matches_tex2d(true),
@@ -1481,8 +1480,11 @@ bool FuzzyMatchResourceDesc::update_types_matched()
 
 static bool matches_draw_info(TextureOverride *tex_override, DrawCallInfo *call_info)
 {
-	if (!call_info)
+	if (!tex_override->has_draw_context_match)
 		return true;
+
+	if (!call_info)
+		return false;
 
 	if (!tex_override->match_first_vertex.matches_uint(call_info->FirstVertex))
 		return false;
@@ -1499,37 +1501,38 @@ static bool matches_draw_info(TextureOverride *tex_override, DrawCallInfo *call_
 	return true;
 }
 
-static TextureOverride* find_texture_override_for_hash(uint32_t hash, DrawCallInfo *call_info)
+static void find_texture_override_for_hash(uint32_t hash, TextureOverrideMatches *matches, DrawCallInfo *call_info)
 {
 	TextureOverrideMap::iterator i;
+	TextureOverrideList::iterator j;
 
 	i = G->mTextureOverrideMap.find(hash);
 	if (i == G->mTextureOverrideMap.end())
-		return NULL;
+		return;
 
-	if (!matches_draw_info(&i->second, call_info))
-		return NULL;
-
-	return &i->second;
+	for (j = i->second.begin(); j != i->second.end(); j++) {
+		if (matches_draw_info(&(*j), call_info))
+			matches->push_back(&(*j));
+	}
 }
 
-static TextureOverride* find_texture_override_for_resource_by_hash(ID3D11Resource *resource, DrawCallInfo *call_info)
+static void find_texture_override_for_resource_by_hash(ID3D11Resource *resource, TextureOverrideMatches *matches, DrawCallInfo *call_info)
 {
 	uint32_t hash = 0;
 
 	if (!resource)
-		return NULL;
+		return;
 
 	if (G->mTextureOverrideMap.empty())
-		return NULL;
+		return;
 
 	EnterCriticalSection(&G->mCriticalSection);
 		hash = GetResourceHash(resource);
 	LeaveCriticalSection(&G->mCriticalSection);
 	if (!hash)
-		return NULL;
+		return;
 
-	return find_texture_override_for_hash(hash, call_info);
+	find_texture_override_for_hash(hash, matches, call_info);
 }
 
 template <typename DescType>
@@ -1546,13 +1549,10 @@ static void find_texture_overrides_for_desc(const DescType *desc, TextureOverrid
 template <typename DescType>
 void find_texture_overrides(uint32_t hash, const DescType *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info)
 {
-	TextureOverride *tex_override;
-
-	tex_override = find_texture_override_for_hash(hash, call_info);
-	if (tex_override) {
+	find_texture_override_for_hash(hash, matches, call_info);
+	if (!matches->empty()) {
 		// If we got a result it was matched by hash - that's an exact
 		// match and we don't process any fuzzy matches
-		matches->push_back(tex_override);
 		return;
 	}
 
@@ -1576,13 +1576,11 @@ void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverri
 	D3D11_TEXTURE1D_DESC tex1d_desc;
 	D3D11_TEXTURE2D_DESC tex2d_desc;
 	D3D11_TEXTURE3D_DESC tex3d_desc;
-	TextureOverride *tex_override;
 
-	tex_override = find_texture_override_for_resource_by_hash(resource, call_info);
-	if (tex_override) {
+	find_texture_override_for_resource_by_hash(resource, matches, call_info);
+	if (!matches->empty()) {
 		// If we got a result it was matched by hash - that's an exact
 		// match and we don't process any fuzzy matches
-		matches->push_back(tex_override);
 		return;
 	}
 
@@ -1607,8 +1605,7 @@ void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverri
 	}
 }
 
-
-bool FuzzyMatchResourceDescLess::operator() (const std::shared_ptr<FuzzyMatchResourceDesc> &lhs, const std::shared_ptr<FuzzyMatchResourceDesc> &rhs) const
+bool TextureOverrideLess(const struct TextureOverride &lhs, const struct TextureOverride &rhs)
 {
 	// For texture create time overrides we want the highest priority
 	// texture override to take precedence, which will happen if it is
@@ -1616,7 +1613,11 @@ bool FuzzyMatchResourceDescLess::operator() (const std::shared_ptr<FuzzyMatchRes
 	// are equal, we use the ini section name for sorting to make sure that
 	// we get consistent results.
 
-	if (lhs->priority != rhs->priority)
-		return lhs->priority < rhs->priority;
-	return lhs->texture_override->ini_section < rhs->texture_override->ini_section;
+	if (lhs.priority != rhs.priority)
+		return lhs.priority < rhs.priority;
+	return lhs.ini_section < rhs.ini_section;
+}
+bool FuzzyMatchResourceDescLess::operator() (const std::shared_ptr<FuzzyMatchResourceDesc> &lhs, const std::shared_ptr<FuzzyMatchResourceDesc> &rhs) const
+{
+	return TextureOverrideLess(*lhs->texture_override, *rhs->texture_override);
 }

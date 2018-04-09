@@ -339,8 +339,6 @@ private:
 public:
 	struct TextureOverride *texture_override;
 
-	int priority;
-
 	bool matches_buffer;
 	bool matches_tex1d;
 	bool matches_tex2d;
@@ -373,6 +371,7 @@ public:
 	void set_resource_type(D3D11_RESOURCE_DIMENSION type);
 	bool update_types_matched();
 };
+bool TextureOverrideLess(const struct TextureOverride &lhs, const struct TextureOverride &rhs);
 struct FuzzyMatchResourceDescLess {
 	bool operator() (const std::shared_ptr<FuzzyMatchResourceDesc> &lhs, const std::shared_ptr<FuzzyMatchResourceDesc> &rhs) const;
 };

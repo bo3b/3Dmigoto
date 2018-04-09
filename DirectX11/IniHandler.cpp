@@ -1681,7 +1681,6 @@ static void ParseShaderRegexSections()
 // mixed. Macro so this can be included in multiple string lists.
 #define TEXTURE_OVERRIDE_FUZZY_MATCHES \
 	L"match_type", \
-	L"match_priority", \
 	L"match_usage", \
 	L"match_bind_flags", \
 	L"match_cpu_access_flags", \
@@ -1697,6 +1696,16 @@ static void ParseShaderRegexSections()
 	L"match_msaa", \
 	L"match_msaa_quality"
 
+// These match the draw context, and may be used in conjunction with either
+// hash or fuzzy description matching:
+#define TEXTURE_OVERRIDE_DRAW_CALL_MATCHES \
+	L"match_first_vertex", \
+	L"match_first_index", \
+	L"match_first_instance", \
+	L"match_vertex_count", \
+	L"match_index_count", \
+	L"match_instance_count"
+
 // List of keys in [TextureOverride] sections that are processed in this
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *TextureOverrideIniKeys[] = {
@@ -1711,21 +1720,19 @@ wchar_t *TextureOverrideIniKeys[] = {
 	L"filter_index",
 	L"expand_region_copy",
 	L"deny_cpu_read",
+	L"match_priority",
 	TEXTURE_OVERRIDE_FUZZY_MATCHES,
-	// Since these match something other than the resource description
-	// they can be used in conjunction with hash, so they don't go in
-	// TEXTURE_OVERRIDE_FUZZY_MATCHES:
-	L"match_first_vertex",
-	L"match_first_index",
-	L"match_first_instance",
-	L"match_vertex_count",
-	L"match_index_count",
-	L"match_instance_count",
+	TEXTURE_OVERRIDE_DRAW_CALL_MATCHES,
 	NULL
 };
 // List of keys for fuzzy matching that cannot be used together with hash:
 wchar_t *TextureOverrideFuzzyMatchesIniKeys[] = {
 	TEXTURE_OVERRIDE_FUZZY_MATCHES,
+	NULL
+};
+// List of keys for fuzzy matching that can be used together with hash:
+wchar_t *TextureOverrideDrawCallMatchesIniKeys[] = {
+	TEXTURE_OVERRIDE_DRAW_CALL_MATCHES,
 	NULL
 };
 
@@ -1843,6 +1850,7 @@ static void parse_texture_override_common(const wchar_t *id, TextureOverride *ov
 {
 	wchar_t setting[MAX_PATH];
 
+	override->priority = GetIniInt(id, L"match_priority", 0, NULL);
 	override->stereoMode = GetIniInt(id, L"StereoMode", -1, NULL);
 	override->format = GetIniInt(id, L"Format", -1, NULL);
 	override->width = GetIniInt(id, L"Width", -1, NULL);
@@ -1875,18 +1883,31 @@ static void parse_texture_override_common(const wchar_t *id, TextureOverride *ov
 	override->expand_region_copy = GetIniBool(id, L"expand_region_copy", false, NULL);
 	override->deny_cpu_read = GetIniBool(id, L"deny_cpu_read", false, NULL);
 
-	if (GetIniStringAndLog(id, L"match_first_vertex", 0, setting, MAX_PATH))
+	// Draw call context matching:
+	if (GetIniStringAndLog(id, L"match_first_vertex", 0, setting, MAX_PATH)) {
 		parse_fuzzy_numeric_match_expression(setting, &override->match_first_vertex);
-	if (GetIniStringAndLog(id, L"match_first_index", 0, setting, MAX_PATH))
+		override->has_draw_context_match = true;
+	}
+	if (GetIniStringAndLog(id, L"match_first_index", 0, setting, MAX_PATH)) {
 		parse_fuzzy_numeric_match_expression(setting, &override->match_first_index);
-	if (GetIniStringAndLog(id, L"match_first_instance", 0, setting, MAX_PATH))
+		override->has_draw_context_match = true;
+	}
+	if (GetIniStringAndLog(id, L"match_first_instance", 0, setting, MAX_PATH)) {
 		parse_fuzzy_numeric_match_expression(setting, &override->match_first_instance);
-	if (GetIniStringAndLog(id, L"match_vertex_count", 0, setting, MAX_PATH))
+		override->has_draw_context_match = true;
+	}
+	if (GetIniStringAndLog(id, L"match_vertex_count", 0, setting, MAX_PATH)) {
 		parse_fuzzy_numeric_match_expression(setting, &override->match_vertex_count);
-	if (GetIniStringAndLog(id, L"match_index_count", 0, setting, MAX_PATH))
+		override->has_draw_context_match = true;
+	}
+	if (GetIniStringAndLog(id, L"match_index_count", 0, setting, MAX_PATH)) {
 		parse_fuzzy_numeric_match_expression(setting, &override->match_index_count);
-	if (GetIniStringAndLog(id, L"match_instance_count", 0, setting, MAX_PATH))
+		override->has_draw_context_match = true;
+	}
+	if (GetIniStringAndLog(id, L"match_instance_count", 0, setting, MAX_PATH)) {
 		parse_fuzzy_numeric_match_expression(setting, &override->match_instance_count);
+		override->has_draw_context_match = true;
+	}
 
 	ParseCommandList(id, &override->command_list, &override->post_command_list, TextureOverrideIniKeys);
 }
@@ -1897,6 +1918,18 @@ static bool texture_override_section_has_fuzzy_match_keys(const wchar_t *section
 
 	for (i = 0; TextureOverrideFuzzyMatchesIniKeys[i]; i++) {
 		if (IniHasKey(section, TextureOverrideFuzzyMatchesIniKeys[i]))
+			return true;
+	}
+
+	return false;
+}
+
+static bool texture_override_section_has_draw_call_match_keys(const wchar_t *section)
+{
+	int i;
+
+	for (i = 0; TextureOverrideDrawCallMatchesIniKeys[i]; i++) {
+		if (IniHasKey(section, TextureOverrideDrawCallMatchesIniKeys[i]))
 			return true;
 	}
 
@@ -1984,8 +2017,6 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
 
 	fuzzy = new FuzzyMatchResourceDesc(section);
 
-	fuzzy->priority = GetIniInt(section, L"match_priority", 0, NULL);
-
 	ival = GetIniEnum(section, L"match_type",
 			D3D11_RESOURCE_DIMENSION_UNKNOWN, &found,
 			L"D3D11_RESOURCE_DIMENSION_", ResourceDimensions,
@@ -2067,6 +2098,26 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
 	}
 }
 
+static void warn_if_hash_in_texture_overrides(uint32_t hash)
+{
+	TextureOverrideMap::iterator i;
+	TextureOverrideList::iterator j;
+
+	i = G->mTextureOverrideMap.find(hash);
+	if (i == G->mTextureOverrideMap.end())
+		return;
+
+	for (j = i->second.begin(); j != i->second.end(); j++) {
+		if (j->has_draw_context_match) {
+			// Duplicate hashes permitted
+			continue;
+		}
+
+		IniWarning("WARNING: Duplicate TextureOverride hash: %08lx\n", hash);
+		return;
+	}
+}
+
 static void ParseTextureOverrideSections()
 {
 	IniSections::iterator lower, upper, i;
@@ -2102,16 +2153,30 @@ static void ParseTextureOverrideSections()
 			continue;
 		}
 
-		if (G->mTextureOverrideMap.count(hash))
-			IniWarning("WARNING: Duplicate TextureOverride hash: %08lx\n", hash);
-
 		if (texture_override_section_has_fuzzy_match_keys(id))
 			IniWarning("WARNING: [%S] Cannot use hash= and match options together!\n", id);
 
-		override = &G->mTextureOverrideMap[hash];
+		// Warn if same hash is used two or more times in sections that
+		// do not have a draw context match
+		if (!texture_override_section_has_draw_call_match_keys(id))
+			warn_if_hash_in_texture_overrides(hash);
+
+		G->mTextureOverrideMap[hash].emplace_back();
+		override = &G->mTextureOverrideMap[hash].back();
 		override->ini_section = id;
 
 		parse_texture_override_common(id, override);
+
+		// Sort the TextureOverride sections sharing the same hash to
+		// ensure we get consistent results when processing them.
+		// TextureOverrideLess will sort by priority first and ini
+		// section name second. We can't use a std::set to keep this
+		// sorted, because std::set makes it const, but the
+		// TextureOverride will be mutated later and that just becomes
+		// a horrible mess. We could do a more efficient insertion
+		// sort, but given this cost is only paid on launch and config
+		// reload I'd rather keep the sorting down here at the end:
+		std::sort(G->mTextureOverrideMap[hash].begin(), G->mTextureOverrideMap[hash].end(), TextureOverrideLess);
 	}
 	LeaveCriticalSection(&G->mCriticalSection);
 }

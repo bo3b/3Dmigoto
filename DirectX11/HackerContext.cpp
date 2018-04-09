@@ -1008,7 +1008,7 @@ bool HackerContext::MapDenyCPURead(
 	if (i == G->mTextureOverrideMap.end())
 		return false;
 
-	return i->second.deny_cpu_read;
+	return i->second.begin()->deny_cpu_read;
 }
 
 void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
@@ -1484,7 +1484,7 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 	if (i == G->mTextureOverrideMap.end())
 		return false;
 
-	if (!i->second.expand_region_copy)
+	if (!i->second.begin()->expand_region_copy)
 		return false;
 
 	memcpy(replaceBox, pSrcBox, sizeof(D3D11_BOX));
