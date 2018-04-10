@@ -511,18 +511,24 @@ void PresetOverride::Trigger(CommandListCommand *triggered_from)
 	}
 }
 
+void PresetOverride::Exclude()
+{
+	excluded = true;
+}
+
 // Called on present to update the activation status. If the preset was
 // triggered this frame it will remain active, otherwise it will deactivate.
 void PresetOverride::Update(HackerDevice *wrapper)
 {
-	if (!active && triggered)
+	if (!active && triggered && !excluded)
 		Override::Activate(wrapper, true);
-	else if (active && !triggered)
+	else if (active && (!triggered || excluded))
 		Override::Deactivate(wrapper);
 
 	if (unique_triggers_required)
 		triggers_this_frame.clear();
 	triggered = false;
+	excluded = false;
 }
 
 static void _ScheduleTransition(struct OverrideTransitionParam *transition,

@@ -85,9 +85,11 @@ class PresetCommand : public CommandListCommand {
 public:
 	wstring ini_line;
 	PresetOverride *preset;
+	bool exclude;
 
 	PresetCommand() :
-		preset(NULL)
+		preset(NULL),
+		exclude(false)
 	{}
 
 	void run(CommandListState*) override;

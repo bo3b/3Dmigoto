@@ -385,7 +385,8 @@ static bool ParsePreset(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		bool exclude)
 {
 	PresetCommand *operation = new PresetCommand();
 
@@ -422,6 +423,7 @@ static bool ParsePreset(const wchar_t *section,
 
 	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->preset = &i->second;
+	operation->exclude = exclude;
 
 	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 
@@ -645,7 +647,9 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 	}
 
 	if (!wcscmp(key, L"preset"))
-		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list, false);
+	if (!wcscmp(key, L"exclude_preset"))
+		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list, true);
 
 	if (!wcscmp(key, L"handling")) {
 		// skip only makes sense in pre command lists, since it needs
@@ -783,7 +787,10 @@ void PresetCommand::run(CommandListState *state)
 {
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-	preset->Trigger(this);
+	if (exclude)
+		preset->Exclude();
+	else
+		preset->Trigger(this);
 }
 
 static UINT get_index_count_from_current_ib(ID3D11DeviceContext *mOrigContext1)
