@@ -266,7 +266,10 @@ enum class DrawCommandType {
 	DRAW_INSTANCED_INDIRECT,
 	DISPATCH,
 	DISPATCH_INDIRECT,
+
+	// 3DMigoto special draw commands:
 	FROM_CALLER,
+	AUTO_INDEX_COUNT,
 };
 
 class DrawCommand : public CommandListCommand {

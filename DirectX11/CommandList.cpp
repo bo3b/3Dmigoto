@@ -452,10 +452,15 @@ static bool ParseDrawCommand(const wchar_t *section,
 	} else if (!wcscmp(key, L"drawauto")) {
 		operation->type = DrawCommandType::DRAW_AUTO;
 	} else if (!wcscmp(key, L"drawindexed")) {
-		operation->type = DrawCommandType::DRAW_INDEXED;
-		nargs = swscanf_s(val->c_str(), L"%u, %u, %i%n", &operation->args[0], &operation->args[1], (INT*)&operation->args[2], &end);
-		if (nargs != 3)
-			goto bail;
+		if (!wcscmp(val->c_str(), L"auto")) {
+			operation->type = DrawCommandType::AUTO_INDEX_COUNT;
+			end = (int)val->length();
+		} else {
+			operation->type = DrawCommandType::DRAW_INDEXED;
+			nargs = swscanf_s(val->c_str(), L"%u, %u, %i%n", &operation->args[0], &operation->args[1], (INT*)&operation->args[2], &end);
+			if (nargs != 3)
+				goto bail;
+		}
 	} else if (!wcscmp(key, L"drawindexedinstanced")) {
 		operation->type = DrawCommandType::DRAW_INDEXED_INSTANCED;
 		nargs = swscanf_s(val->c_str(), L"%u, %u, %u, %i, %u%n",
@@ -781,11 +786,36 @@ void PresetCommand::run(CommandListState *state)
 	preset->Trigger();
 }
 
+static UINT get_index_count_from_current_ib(ID3D11DeviceContext *mOrigContext1)
+{
+	ID3D11Buffer *ib;
+	D3D11_BUFFER_DESC desc;
+	DXGI_FORMAT format;
+	UINT offset;
+
+	mOrigContext1->IAGetIndexBuffer(&ib, &format, &offset);
+	if (!ib)
+		return 0;
+
+	ib->GetDesc(&desc);
+	ib->Release();
+
+	switch(format) {
+		case DXGI_FORMAT_R16_UINT:
+			return (desc.ByteWidth - offset) / 2;
+		case DXGI_FORMAT_R32_UINT:
+			return (desc.ByteWidth - offset) / 4;
+	}
+
+	return 0;
+}
+
 void DrawCommand::run(CommandListState *state)
 {
 	HackerContext *mHackerContext = state->mHackerContext;
 	ID3D11DeviceContext *mOrigContext1 = state->mOrigContext1;
 	DrawCallInfo *info = state->call_info;
+	UINT auto_count = 0;
 
 	// If this command list was triggered from something currently skipped
 	// due to hunting, we also skip any custom draw calls, so that if we
@@ -869,6 +899,14 @@ void DrawCommand::run(CommandListState *state)
 					DoubleBeepExit();
 			}
 			// TODO: dispatch = from_caller
+			break;
+		case DrawCommandType::AUTO_INDEX_COUNT:
+			auto_count = get_index_count_from_current_ib(mOrigContext1);
+			COMMAND_LIST_LOG(state, "[%S] drawindexed = auto -> DrawIndexed(%u, 0, 0)\n", ini_section.c_str(), auto_count);
+			if (auto_count)
+				mOrigContext1->DrawIndexed(auto_count, 0, 0);
+			else
+				COMMAND_LIST_LOG(state, "  Unable to determine index count\n");
 			break;
 	}
 }
