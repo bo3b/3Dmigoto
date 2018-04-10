@@ -163,14 +163,19 @@ class PresetOverride : public Override
 {
 private:
 	bool triggered;
+	unordered_set<CommandListCommand*> triggers_this_frame;
 
 public:
 	PresetOverride() :
-		Override()
+		Override(),
+		triggered(false),
+		unique_triggers_required(0)
 	{}
 
-	void Trigger();
+	void Trigger(CommandListCommand *triggered_from);
 	void Update(HackerDevice *device);
+
+	int unique_triggers_required;
 };
 typedef std::unordered_map<std::wstring, class PresetOverride> PresetOverrideMap;
 extern PresetOverrideMap presetOverrides;

@@ -783,7 +783,7 @@ void PresetCommand::run(CommandListState *state)
 {
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-	preset->Trigger();
+	preset->Trigger(this);
 }
 
 static UINT get_index_count_from_current_ib(ID3D11DeviceContext *mOrigContext1)

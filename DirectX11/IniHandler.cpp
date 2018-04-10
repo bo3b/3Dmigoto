@@ -833,6 +833,8 @@ static void ParsePresetOverrideSections()
 		presetOverrides[preset_id];
 		preset = &presetOverrides[preset_id];
 		preset->ParseIniSection(id);
+
+		preset->unique_triggers_required = GetIniInt(id, L"unique_triggers_required", 0, NULL);
 	}
 }
 

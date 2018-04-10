@@ -500,9 +500,15 @@ void KeyOverride::UpEvent(HackerDevice *device)
 		return Deactivate(device);
 }
 
-void PresetOverride::Trigger()
+void PresetOverride::Trigger(CommandListCommand *triggered_from)
 {
-	triggered = true;
+	if (unique_triggers_required) {
+		triggers_this_frame.insert(triggered_from);
+		if (triggers_this_frame.size() >= unique_triggers_required)
+			triggered = true;
+	} else {
+		triggered = true;
+	}
 }
 
 // Called on present to update the activation status. If the preset was
@@ -513,6 +519,9 @@ void PresetOverride::Update(HackerDevice *wrapper)
 		Override::Activate(wrapper, true);
 	else if (active && !triggered)
 		Override::Deactivate(wrapper);
+
+	if (unique_triggers_required)
+		triggers_this_frame.clear();
 	triggered = false;
 }
 
