@@ -2655,6 +2655,14 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 			return LoadBufferFromFile(mOrigDevice1);
 	}
 
+	// This code path doesn't get a chance to override the resource
+	// description, since DirectXTK takes care of that, but we can pass in
+	// bind flags at least, which is sometimes necessary in complex
+	// situations where 3DMigoto cannot automatically determine these or
+	// when manipulating driver heuristics:
+	if (override_bind_flags != CustomResourceBindFlags::INVALID)
+		bind_flags = (D3D11_BIND_FLAG)override_bind_flags;
+
 	// XXX: We are not creating a view with DirecXTK because
 	// 1) it assumes we want a shader resource view, which is an
 	//    assumption that doesn't fit with the goal of this code to
