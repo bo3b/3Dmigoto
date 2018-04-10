@@ -2955,9 +2955,13 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 
 	if (!(analyse_options & FrameAnalysisOptions::DEFRD_CTX_MASK) &&
 	   (GetPassThroughOrigContext1()->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
-		FALogInfo("WARNING: dump used on deferred context, but no deferred_ctx options enabled\n");
-		non_draw_call_dump_counter++;
-		return;
+		// If the dump command is used, the user probably expects it to
+		// just work, so turn on dumping from deferred contexts. This
+		// generally should be fine since the dump command is only used
+		// for specific resources and so we are likely to be able to
+		// fit them all in memory. We can't afford the same to
+		// analyse_options though.
+		analyse_options |= FrameAnalysisOptions::DEFRD_CTX_DELAY;
 	}
 
 	update_stereo_dumping_mode();
