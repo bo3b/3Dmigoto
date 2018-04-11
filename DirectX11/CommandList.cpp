@@ -174,7 +174,7 @@ static bool ParseCheckTextureOverride(const wchar_t *section,
 	CheckTextureOverrideCommand *operation = new CheckTextureOverrideCommand();
 
 	// Parse value as consistent with texture filtering and resource copying
-	ret = operation->target.ParseTarget(val->c_str(), true);
+	ret = operation->target.ParseTarget(section, val->c_str(), true);
 	if (ret) {
 		operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 		return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
@@ -242,7 +242,7 @@ static bool ParseClearView(const wchar_t *section,
 
 	while (getline(token_stream, token, L' ')) {
 		if (operation->target.type == ResourceCopyTargetType::INVALID) {
-			ret = operation->target.ParseTarget(token.c_str(), true);
+			ret = operation->target.ParseTarget(section, token.c_str(), true);
 			if (ret)
 				continue;
 		}
@@ -329,13 +329,18 @@ static bool ParseRunShader(const wchar_t *section,
 {
 	RunCustomShaderCommand *operation = new RunCustomShaderCommand();
 	CustomShaders::iterator shader;
+	wstring namespaced_section;
 
 	// Value should already have been transformed to lower case from
 	// ParseCommandList, so our keys will be consistent in the
 	// unordered_map:
 	wstring shader_id(val->c_str());
 
-	shader = customShaders.find(shader_id);
+	shader = customShaders.end();
+	if (get_referenced_section_namespaced_name(section, &shader_id, &namespaced_section))
+		shader = customShaders.find(namespaced_section);
+	if (shader == customShaders.end())
+		shader = customShaders.find(shader_id);
 	if (shader == customShaders.end())
 		goto bail;
 
@@ -356,6 +361,7 @@ bool ParseRunExplicitCommandList(const wchar_t *section,
 {
 	RunExplicitCommandList *operation = new RunExplicitCommandList();
 	ExplicitCommandListSections::iterator shader;
+	wstring namespaced_section;
 
 	// We need value in lower case so our keys will be consistent in the
 	// unordered_map. ParseCommandList will have already done this, but the
@@ -364,7 +370,11 @@ bool ParseRunExplicitCommandList(const wchar_t *section,
 	wstring section_id(val->c_str());
 	std::transform(section_id.begin(), section_id.end(), section_id.begin(), ::towlower);
 
-	shader = explicitCommandListSections.find(section_id);
+	shader = explicitCommandListSections.end();
+	if (get_referenced_section_namespaced_name(section, &section_id, &namespaced_section))
+		shader = explicitCommandListSections.find(namespaced_section);
+	if (shader == explicitCommandListSections.end())
+		shader = explicitCommandListSections.find(section_id);
 	if (shader == explicitCommandListSections.end())
 		goto bail;
 
@@ -389,6 +399,7 @@ static bool ParsePreset(const wchar_t *section,
 		bool exclude)
 {
 	PresetCommand *operation = new PresetCommand();
+	wstring prefixed_section, namespaced_section;
 
 	PresetOverrideMap::iterator i;
 
@@ -407,19 +418,26 @@ static bool ParsePreset(const wchar_t *section,
 	// is referenced, so it is good to support here... but for backwards
 	// compatibility and less redundancy for those that prefer not to say
 	// "preset" twice we support both ways.
+	prefixed_section = wstring(L"preset") + preset_id;
 
-	// First, try without the prefix:
-	i = presetOverrides.find(preset_id);
+	// And now with namespacing, we have four permutations to try...
+	i = presetOverrides.end();
+	// First, add the 'Preset' (i.e. the user did not) and try namespaced:
+	if (get_referenced_section_namespaced_name(section, &prefixed_section, &namespaced_section))
+		i = presetOverrides.find(namespaced_section);
+	// Second, try namespaced without adding the prefix:
 	if (i == presetOverrides.end()) {
-		// If the 'Preset' prefix was specified, strip it and try again:
-		if (!wcsncmp(val->c_str(), L"preset", 6)) {
-			preset_id = val->c_str() + 6;
-
-			i = presetOverrides.find(preset_id);
-			if (i == presetOverrides.end())
-				goto bail;
-		}
+		if (get_referenced_section_namespaced_name(section, &preset_id, &namespaced_section))
+			i = presetOverrides.find(namespaced_section);
 	}
+	// Third, add the 'Preset' and try global:
+	if (i == presetOverrides.end())
+		i = presetOverrides.find(prefixed_section);
+	// Finally, don't add the prefix and try global:
+	if (i == presetOverrides.end())
+		i = presetOverrides.find(preset_id);
+	if (i == presetOverrides.end())
+		goto bail;
 
 	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->preset = &i->second;
@@ -561,7 +579,7 @@ static bool ParsePerDrawStereoOverride(const wchar_t *section,
 		goto success;
 
 	// Try parsing value as a resource target for staging auto-convergence
-	if (operation->staging_op.src.ParseTarget(val->c_str(), true)) {
+	if (operation->staging_op.src.ParseTarget(section, val->c_str(), true)) {
 		operation->staging_type = true;
 		goto success;
 	}
@@ -605,7 +623,7 @@ static bool ParseFrameAnalysisDump(const wchar_t *section,
 	if (!target)
 		goto bail;
 
-	if (!operation->target.ParseTarget(target, true))
+	if (!operation->target.ParseTarget(section, target, true))
 		goto bail;
 
 	operation->target_name = L"[" + wstring(section) + L"]-" + wstring(target);
@@ -1337,7 +1355,7 @@ static const D3D_SHADER_MACRO cs_macros[] = { "COMPUTE_SHADER", "", NULL, NULL }
 
 // This is similar to the other compile routines, but still distinct enough to
 // get it's own function for now - TODO: Refactor out the common code
-bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
+bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, const wstring *namespace_path)
 {
 	wchar_t wpath[MAX_PATH];
 	char apath[MAX_PATH];
@@ -1349,6 +1367,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 	ID3DBlob **ppBytecode = NULL;
 	ID3DBlob *pErrorMsgs = NULL;
 	const D3D_SHADER_MACRO *macros = NULL;
+	bool found = false;
 
 	LogInfo("  %cs=%S\n", type, filename);
 
@@ -1393,12 +1412,26 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 	if (!_wcsicmp(filename, L"null"))
 		return false;
 
-	if (!GetModuleFileName(0, wpath, MAX_PATH)) {
-		LogOverlay(LOG_DIRE, "CustomShader::compile: GetModuleFileName failed\n");
-		goto err;
+	// If this section was not in the main d3dx.ini, look
+	// for a file relative to the config it came from
+	// first, then try relative to the 3DMigoto directory:
+	found = false;
+	if (!namespace_path->empty()) {
+		GetModuleFileName(0, wpath, MAX_PATH);
+		wcsrchr(wpath, L'\\')[1] = 0;
+		wcscat(wpath, namespace_path->c_str());
+		wcscat(wpath, filename);
+		if (GetFileAttributes(wpath) != INVALID_FILE_ATTRIBUTES)
+			found = true;
 	}
-	wcsrchr(wpath, L'\\')[1] = 0;
-	wcscat(wpath, filename);
+	if (!found) {
+		if (!GetModuleFileName(0, wpath, MAX_PATH)) {
+			LogOverlay(LOG_DIRE, "CustomShader::compile: GetModuleFileName failed\n");
+			goto err;
+		}
+		wcsrchr(wpath, L'\\')[1] = 0;
+		wcscat(wpath, filename);
+	}
 
 	f = CreateFile(wpath, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE) {
@@ -2390,7 +2423,7 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 	}
 
 	// Try parsing value as a resource target for texture filtering
-	ret = param->texture_filter_target.ParseTarget(val->c_str(), true);
+	ret = param->texture_filter_target.ParseTarget(section, val->c_str(), true);
 	if (ret) {
 		param->type = ParamOverrideType::TEXTURE;
 		goto success;
@@ -2946,7 +2979,7 @@ void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
 }
 
 
-bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source)
+bool ResourceCopyTarget::ParseTarget(const wchar_t *section, const wchar_t *target, bool is_source)
 {
 	int ret, len;
 	size_t length = wcslen(target);
@@ -3020,8 +3053,13 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source)
 		// case from ParseCommandList, so our keys will be consistent
 		// in the unordered_map:
 		wstring resource_id(target);
+		wstring namespaced_section;
 
-		res = customResources.find(resource_id);
+		res = customResources.end();
+		if (get_referenced_section_namespaced_name(section, &resource_id, &namespaced_section))
+			res = customResources.find(namespaced_section);
+		if (res == customResources.end())
+			res = customResources.find(resource_id);
 		if (res == customResources.end())
 			return false;
 
@@ -3098,7 +3136,7 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 	wchar_t buf[MAX_PATH];
 	wchar_t *src_ptr = NULL;
 
-	if (!operation->dst.ParseTarget(key, false))
+	if (!operation->dst.ParseTarget(section, key, false))
 		goto bail;
 
 	// parse_enum_option_string replaces spaces with NULLs, so it can't
@@ -3115,7 +3153,7 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 	if (!src_ptr)
 		goto bail;
 
-	if (!operation->src.ParseTarget(src_ptr, true))
+	if (!operation->src.ParseTarget(section, src_ptr, true))
 		goto bail;
 
 	if (!(operation->options & ResourceCopyOptions::COPY_TYPE_MASK)) {

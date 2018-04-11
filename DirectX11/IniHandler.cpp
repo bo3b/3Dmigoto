@@ -63,6 +63,7 @@ static Section RegularSections[] = {
 	{L"Resource", true},
 	{L"Key", true},
 	{L"Preset", true},
+	{L"Include", true}, // Prefix so that it may be namespaced to allow included files to include more files with relative paths
 };
 
 // List of sections that will not trigger a warning if they contain a line
@@ -79,6 +80,9 @@ static bool whitelisted_duplicate_key(const wchar_t *section, const wchar_t *key
 		if (!_wcsicmp(key, L"key") || !_wcsicmp(key, L"back"))
 			return true;
 	}
+
+	if (!_wcsicmp(section, L"include"))
+		return true;
 
 	return false;
 }
@@ -115,6 +119,32 @@ static bool IsRegularSection(const wchar_t *section)
 static bool DoesSectionAllowLinesWithoutEquals(const wchar_t *section)
 {
 	return SectionInList(section, AllowLinesWithoutEquals, ARRAYSIZE(AllowLinesWithoutEquals));
+}
+
+static const wchar_t* SectionPrefixFromList(const wchar_t *section, Section section_list[], int list_size)
+{
+	size_t len;
+	int i;
+
+	for (i = 0; i < list_size; i++) {
+		if (section_list[i].prefix) {
+			len = wcslen(section_list[i].section);
+			if (!_wcsnicmp(section, section_list[i].section, len))
+				return section_list[i].section;
+		}
+	}
+
+	return false;
+}
+
+static const wchar_t* SectionPrefix(const wchar_t *section)
+{
+	const wchar_t *ret;
+
+	ret = SectionPrefixFromList(section, CommandListSections, ARRAYSIZE(CommandListSections));
+	if (!ret)
+		ret = SectionPrefixFromList(section, RegularSections, ARRAYSIZE(RegularSections));
+	return ret;
 }
 
 // Case insensitive version of less comparitor. This is used to create case
@@ -180,6 +210,7 @@ typedef std::unordered_set<wstring, WStringInsensitiveHash, WStringInsensitiveEq
 struct IniSection {
 	IniSectionMap kv_map;
 	IniSectionVector kv_vec;
+	wstring ini_namespace;
 };
 
 // std::map is used so this is sorted for iterating over a prefix:
@@ -220,12 +251,87 @@ static void emit_ini_warning_tone()
 	BeepFailure();
 }
 
-static void ParseIniSectionLine(wstring *wline, wstring *section,
-		bool *warn_duplicates, bool *warn_lines_without_equals,
-		IniSectionVector **section_vector)
+static bool get_namespaced_section_name(const wstring *section, const wstring *ini_namespace, wstring *ret)
 {
+	const wchar_t *section_prefix = SectionPrefix(section->c_str());
+	if (!section_prefix)
+		return false;
+
+	*ret = wstring(section_prefix) + wstring(L"\\") + *ini_namespace +
+		wstring(L"\\") + section->substr(wcslen(section_prefix));
+	return true;
+}
+
+static bool get_section_namespace(IniSections *custom_ini_sections, const wchar_t *section, wstring *ret)
+{
+	try {
+		*ret = custom_ini_sections->at(wstring(section)).ini_namespace;
+	} catch (std::out_of_range) {
+		return false;
+	}
+	return (!ret->empty());
+}
+
+static size_t get_section_namespace_endpos(const wchar_t *section)
+{
+	const wchar_t *section_prefix;
+	wstring ini_namespace;
+
+	section_prefix = SectionPrefix(section);
+	if (!section_prefix)
+		return 0;
+
+	if (!get_section_namespace(&ini_sections, section, &ini_namespace))
+		return wcslen(section_prefix);
+
+	return wcslen(section_prefix) + ini_namespace.length() + 2;
+}
+
+bool get_referenced_section_namespaced_name(const wchar_t *this_section, const wstring *referenced_section, wstring *ret)
+{
+	wstring ini_namespace;
+	bool rc;
+
+	if (!get_section_namespace(&ini_sections, this_section, &ini_namespace))
+		return false;
+
+	rc = get_namespaced_section_name(referenced_section, &ini_namespace, ret);
+	if (rc)
+		std::transform(ret->begin(), ret->end(), ret->begin(), ::towlower);
+	return rc;
+}
+
+static bool _get_namespaced_section_path(IniSections *custom_ini_sections, const wchar_t *section, wstring *ret)
+{
+	wstring::size_type pos;
+
+	if (!get_section_namespace(custom_ini_sections, section, ret))
+		return false;
+
+	// Strip the ini name from the end of the namespace leaving the relative path:
+	pos = ret->rfind(L"\\");
+	if (pos != ret->npos)
+		ret->resize(pos + 1);
+	else
+		*ret = L"";
+	return true;
+}
+
+static bool get_namespaced_section_path(const wchar_t *section, wstring *ret)
+{
+	return _get_namespaced_section_path(&ini_sections, section, ret);
+}
+
+static void ParseIniSectionLine(wstring *wline, wstring *section,
+		int *warn_duplicates, bool *warn_lines_without_equals,
+		IniSectionVector **section_vector, const wstring *ini_namespace)
+{
+	bool allow_duplicate_sections = false;
 	size_t first, last;
 	bool inserted;
+
+	*warn_duplicates = 1;
+	*warn_lines_without_equals = true;
 
 	// To match the behaviour of GetPrivateProfileString, we use up until
 	// the first ] as the section name. If there is no ] character, we use
@@ -238,6 +344,17 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 	first = wline->find_first_not_of(L" \t", 1);
 	last = wline->find_last_not_of(L" \t", last - 1);
 	*section = wline->substr(first, last - first + 1);
+
+	// Config files aside from the main one are namespaced to reduce the
+	// potential of mod conflicts. Only sections that have prefixes can be
+	// namespaced, since global sections are always global, but we do allow
+	// these config files to append/override values in global sections:
+	if (ini_namespace) {
+		if (!get_namespaced_section_name(section, ini_namespace, section)) {
+			allow_duplicate_sections = true;
+			*warn_duplicates = 2;
+		}
+	}
 
 	// If we find a duplicate section we only parse the first one to match
 	// the behaviour of GetPrivateProfileString. We might actually want to
@@ -254,7 +371,7 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 	// continue warning about duplicate sections and match the old
 	// behaviour.
 	inserted = ini_sections.emplace(*section, IniSection{}).second;
-	if (!inserted) {
+	if (!inserted && !allow_duplicate_sections) {
 		IniWarning("WARNING: Duplicate section found in d3dx.ini: [%S]\n",
 				section->c_str());
 		section->clear();
@@ -264,17 +381,19 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 
 	*section_vector = &ini_sections[*section].kv_vec;
 
-	// Some of the code below has been moved from the old GetIniSection()
-	*warn_duplicates = true;
-	*warn_lines_without_equals = true;
+	// Record the namespace so we can use it later when looking up any
+	// referenced sections:
+	if (ini_namespace)
+		ini_sections[*section].ini_namespace = *ini_namespace;
 
 	// Sections that utilise a command list are allowed to have duplicate
 	// keys, while other sections are not. The command list parser will
 	// still check for duplicate keys that are not part of the command
 	// list.
-	if (IsCommandListSection(section->c_str()))
-		*warn_duplicates = false;
-	else if (!IsRegularSection(section->c_str())) {
+	if (IsCommandListSection(section->c_str())) {
+		if (*warn_duplicates == 1)
+			*warn_duplicates = 0;
+	} else if (!IsRegularSection(section->c_str())) {
 		IniWarning("WARNING: Unknown section in d3dx.ini: [%S]\n", section->c_str());
 	}
 
@@ -283,7 +402,7 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 }
 
 static void ParseIniKeyValLine(wstring *wline, wstring *section,
-		bool warn_duplicates, bool warn_lines_without_equals,
+		int warn_duplicates, bool warn_lines_without_equals,
 		IniSectionVector *section_vector)
 {
 	size_t first, last, delim;
@@ -306,17 +425,23 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 		if (first != wline->npos)
 			val = wline->substr(first);
 
-		// We use "at" on the sections to access an existing
-		// section (alternatively we could use the [] operator
-		// to permit it to be created if it doesn't exist), but
-		// we use emplace within the section so that only the
-		// first item with a given key is inserted to match the
-		// behaviour of GetPrivateProfileString for duplicate
-		// keys within a single section:
-		inserted = ini_sections.at(*section).kv_map.emplace(key, val).second;
-		if (warn_duplicates && !inserted && !whitelisted_duplicate_key(section->c_str(), key.c_str())) {
-			IniWarning("WARNING: Duplicate key found in d3dx.ini: [%S] %S\n",
-					section->c_str(), key.c_str());
+		if (warn_duplicates == 2) {
+			// Recursively loaded config files are permitted to
+			// override values from the main d3dx.ini:
+			ini_sections.at(*section).kv_map[key] = val;
+		} else {
+			// We use "at" on the sections to access an existing
+			// section (alternatively we could use the [] operator
+			// to permit it to be created if it doesn't exist), but
+			// we use emplace within the section so that only the
+			// first item with a given key is inserted to match the
+			// behaviour of GetPrivateProfileString for duplicate
+			// keys within a single section:
+			inserted = ini_sections.at(*section).kv_map.emplace(key, val).second;
+			if ((warn_duplicates == 1) && !inserted && !whitelisted_duplicate_key(section->c_str(), key.c_str())) {
+				IniWarning("WARNING: Duplicate key found in d3dx.ini: [%S] %S\n",
+						section->c_str(), key.c_str());
+			}
 		}
 	} else {
 		// No = on line, don't store in key lookup maps to
@@ -333,13 +458,13 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 	section_vector->emplace_back(key, val, *wline);
 }
 
-static void ParseIniStream(istream *stream)
+static void ParseIniStream(istream *stream, const wstring *ini_namespace)
 {
 	string aline;
 	wstring wline, section;
 	size_t first, last;
 	IniSectionVector *section_vector = NULL;
-	bool warn_duplicates = true;
+	int warn_duplicates = 1;
 	bool warn_lines_without_equals = true;
 
 
@@ -376,7 +501,7 @@ static void ParseIniStream(istream *stream)
 		if (wline[0] == L'[') {
 			ParseIniSectionLine(&wline, &section, &warn_duplicates,
 					    &warn_lines_without_equals,
-					    &section_vector);
+					    &section_vector, ini_namespace);
 			continue;
 		}
 
@@ -389,7 +514,7 @@ static void ParseIniExcerpt(const char *excerpt)
 {
 	std::istringstream stream(excerpt);
 
-	ParseIniStream(&stream);
+	ParseIniStream(&stream, NULL);
 }
 
 // Parse the ini file into data structures. We used to use the
@@ -410,17 +535,22 @@ static void ParseIniExcerpt(const char *excerpt)
 //
 // NOTE: If adding any debugging / logging into this routine and expect to see
 // it, make sure you delay calling it until after the log file has been opened!
+static void ParseNamespacedIniFile(const wchar_t *ini, const wstring *ini_namespace)
+{
+	ifstream f(ini, ios::in, _SH_DENYNO);
+	if (!f) {
+		LogOverlay(LOG_WARNING, "  Error opening %S\n", ini);
+		return;
+	}
+
+	ParseIniStream(&f, ini_namespace);
+}
+
 static void ParseIniFile(const wchar_t *ini)
 {
 	ini_sections.clear();
 
-	ifstream f(ini, ios::in, _SH_DENYNO);
-	if (!f) {
-		LogInfo("  Error opening d3dx.ini\n");
-		return;
-	}
-
-	ParseIniStream(&f);
+	return ParseNamespacedIniFile(ini, NULL);
 }
 
 static void InsertBuiltInIniSections()
@@ -442,6 +572,47 @@ static void InsertBuiltInIniSections()
 	ParseIniExcerpt(text);
 }
 
+static void ParseIniFilesRecursive(const wstring &rel_path)
+{
+	std::set<wstring, WStringInsensitiveLess> ini_files, directories;
+	wchar_t migoto_path[MAX_PATH];
+	WIN32_FIND_DATA find_data;
+	HANDLE hFind;
+	wstring search_path, ini_path, ini_namespace;
+
+	GetModuleFileName(0, migoto_path, MAX_PATH);
+	wcsrchr(migoto_path, L'\\')[1] = 0;
+	search_path = wstring(migoto_path) + rel_path + L"\\*";
+
+	// We want to make sure the order will be consistent in case of any
+	// interactions between mods, so we read the entire directory, sort it
+	// in a case insensitive manner, then process the matching files &
+	// directories in the same order every time
+	hFind = FindFirstFile(search_path.c_str(), &find_data);
+	if (hFind != INVALID_HANDLE_VALUE) {
+		do {
+			if (find_data.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY) {
+				if (wcscmp(find_data.cFileName, L".") && wcscmp(find_data.cFileName, L".."))
+					directories.insert(wstring(find_data.cFileName));
+			} else if (!wcscmp(find_data.cFileName + wcslen(find_data.cFileName) - 4, L".ini")) {
+				ini_files.insert(wstring(find_data.cFileName));
+			}
+		} while (FindNextFile(hFind, &find_data));
+		FindClose(hFind);
+	}
+
+	for (wstring i: ini_files) {
+		ini_namespace = rel_path + wstring(L"\\") + i;
+		ini_path = wstring(migoto_path) + ini_namespace;
+		ParseNamespacedIniFile(ini_path.c_str(), &ini_namespace);
+	}
+
+	for (wstring i: directories) {
+		ini_namespace = rel_path + wstring(L"\\") + i;
+		ParseIniFilesRecursive(ini_namespace);
+	}
+}
+
 static bool IniHasKey(const wchar_t *section, const wchar_t *key)
 {
 	try {
@@ -451,16 +622,21 @@ static bool IniHasKey(const wchar_t *section, const wchar_t *key)
 	}
 }
 
-static void GetIniSection(IniSectionVector **key_vals, const wchar_t *section)
+static void _GetIniSection(IniSections *custom_ini_sections, IniSectionVector **key_vals, const wchar_t *section)
 {
 	static IniSectionVector empty_section_vector;
 
 	try {
-		*key_vals = &ini_sections.at(section).kv_vec;
+		*key_vals = &custom_ini_sections->at(section).kv_vec;
 	} catch (std::out_of_range) {
 		LogDebug("WARNING: GetIniSection() called on a section not in the ini_sections map: %S\n", section);
 		*key_vals = &empty_section_vector;
 	}
+}
+
+static void GetIniSection(IniSectionVector **key_vals, const wchar_t *section)
+{
+	return _GetIniSection(&ini_sections, key_vals, section);
 }
 
 // This emulates the behaviour of the old GetPrivateProfileString API to
@@ -751,6 +927,65 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, bool 
 	return ret;
 }
 
+static void ParseIncludedIniFiles()
+{
+	IniSections include_sections;
+	IniSections::iterator lower, upper, i;
+	const wchar_t *section_id;
+	IniSectionVector *section = NULL;
+	IniSectionVector::iterator entry;
+	wstring *key, *val;
+	std::unordered_set<wstring> seen;
+	wstring namespace_path, rel_path;
+
+	do {
+		// To safely allow included files to include more files, we
+		// transfer the includes we currently know about into a
+		// separate data structure and remove them from the global
+		// ini_sections data structure. Then, after parsing more
+		// included files anything new in the ini_sections data
+		// will be included from one of the newly parsed files. We
+		// repeat this process until no more include files appear.
+		lower = ini_sections.lower_bound(wstring(L"Include"));
+		upper = prefix_upper_bound(ini_sections, wstring(L"Include"));
+		include_sections.clear();
+		include_sections.insert(lower, upper);
+		ini_sections.erase(lower, upper);
+
+		for (i = include_sections.begin(); i != include_sections.end(); i++) {
+			section_id = i->first.c_str();
+			LogInfo("[%S]\n", section_id);
+
+			_get_namespaced_section_path(&include_sections, i->first.c_str(), &namespace_path);
+
+			_GetIniSection(&include_sections, &section, section_id);
+			for (entry = section->begin(); entry < section->end(); entry++) {
+				key = &entry->first;
+				val = &entry->second;
+				LogInfo("  %S=%S\n", key->c_str(), val->c_str());
+
+				rel_path = namespace_path + *val;
+
+				// This is not a strong protection against including the same file multiple times,
+				// but it is intended to ensure that this do while loop will eventually terminate.
+				if (seen.count(rel_path)) {
+					IniWarning("WARNING: File included multiple times: %S\n", rel_path.c_str());
+					continue;
+				}
+				seen.insert(rel_path);
+
+				if (!wcscmp(key->c_str(), L"include")) {
+					ParseNamespacedIniFile(rel_path.c_str(), &rel_path);
+				} else if (!wcscmp(key->c_str(), L"include_recursive")) {
+					ParseIniFilesRecursive(rel_path);
+				} else {
+					IniWarning("WARNING: Unrecognised entry: %S=%S\n", key->c_str(), rel_path.c_str());
+				}
+			}
+		}
+	} while (!include_sections.empty());
+}
+
 static void RegisterPresetKeyBindings()
 {
 	KeyOverrideType type;
@@ -825,8 +1060,8 @@ static void ParsePresetOverrideSections()
 
 		LogInfo("[%S]\n", id);
 
-		// Remove prefix and convert to lower case
-		preset_id = id + 6;
+		// Convert to lower case
+		preset_id = id;
 		std::transform(preset_id.begin(), preset_id.end(), preset_id.begin(), ::towlower);
 
 		// Read parameters from ini
@@ -1126,6 +1361,8 @@ static void ParseResourceSections()
 	wstring resource_id;
 	CustomResource *custom_resource;
 	wchar_t setting[MAX_PATH], path[MAX_PATH];
+	wstring namespace_path;
+	bool found;
 
 	customResources.clear();
 
@@ -1150,9 +1387,24 @@ static void ParseResourceSections()
 			GetIniInt(i->first.c_str(), L"max_copies_per_frame", 0, NULL);
 
 		if (GetIniStringAndLog(i->first.c_str(), L"filename", 0, setting, MAX_PATH)) {
-			GetModuleFileName(0, path, MAX_PATH);
-			wcsrchr(path, L'\\')[1] = 0;
-			wcscat(path, setting);
+			// If this section was not in the main d3dx.ini, look
+			// for a file relative to the config it came from
+			// first, then try relative to the 3DMigoto directory:
+			get_namespaced_section_path(i->first.c_str(), &namespace_path);
+			found = false;
+			if (!namespace_path.empty()) {
+				GetModuleFileName(0, path, MAX_PATH);
+				wcsrchr(path, L'\\')[1] = 0;
+				wcscat(path, namespace_path.c_str());
+				wcscat(path, setting);
+				if (GetFileAttributes(path) != INVALID_FILE_ATTRIBUTES)
+					found = true;
+			}
+			if (!found) {
+				GetModuleFileName(0, path, MAX_PATH);
+				wcsrchr(path, L'\\')[1] = 0;
+				wcscat(path, setting);
+			}
 			custom_resource->filename = path;
 		}
 
@@ -1620,8 +1872,10 @@ static void ParseShaderRegexSections()
 {
 	IniSections::iterator lower, upper, i;
 	const std::wstring *section_id;
+	std::wstring section_prefix, section_suffix;
 	std::vector<std::wstring> subsection_names;
 	ShaderRegexGroup *regex_group;
+	size_t namespace_endpos = 0;
 
 	shader_regex_groups.clear();
 
@@ -1631,7 +1885,16 @@ static void ParseShaderRegexSections()
 		section_id = &i->first;
 		LogInfo("[%S]\n", section_id->c_str());
 
-		subsection_names = split_string(section_id, L'.');
+		// namespaced sections may have a dot in the namespace, so we
+		// only split the string after the namespace text
+		namespace_endpos = get_section_namespace_endpos(section_id->c_str());
+		section_prefix = section_id->substr(0, namespace_endpos);
+		section_suffix = section_id->substr(namespace_endpos);
+		subsection_names = split_string(&section_suffix, L'.');
+		if (subsection_names.size())
+			subsection_names[0] = section_prefix + subsection_names[0];
+		else
+			subsection_names.push_back(section_prefix);
 
 		regex_group = get_regex_group(&subsection_names[0], subsection_names.size() == 1);
 		if (!regex_group)
@@ -2837,6 +3100,7 @@ static void ParseCustomShaderSections()
 	CustomShader *custom_shader;
 	wchar_t setting[MAX_PATH];
 	bool failed;
+	wstring namespace_path;
 
 	for (i = customShaders.begin(); i != customShaders.end();) {
 		shader_id = &i->first;
@@ -2856,18 +3120,20 @@ static void ParseCustomShaderSections()
 				(D3DCompileFlagNames, setting, NULL);
 		}
 
+		get_namespaced_section_path(i->first.c_str(), &namespace_path);
+
 		if (GetIniString(shader_id->c_str(), L"vs", 0, setting, MAX_PATH))
-			failed |= custom_shader->compile('v', setting, shader_id);
+			failed |= custom_shader->compile('v', setting, shader_id, &namespace_path);
 		if (GetIniString(shader_id->c_str(), L"hs", 0, setting, MAX_PATH))
-			failed |= custom_shader->compile('h', setting, shader_id);
+			failed |= custom_shader->compile('h', setting, shader_id, &namespace_path);
 		if (GetIniString(shader_id->c_str(), L"ds", 0, setting, MAX_PATH))
-			failed |= custom_shader->compile('d', setting, shader_id);
+			failed |= custom_shader->compile('d', setting, shader_id, &namespace_path);
 		if (GetIniString(shader_id->c_str(), L"gs", 0, setting, MAX_PATH))
-			failed |= custom_shader->compile('g', setting, shader_id);
+			failed |= custom_shader->compile('g', setting, shader_id, &namespace_path);
 		if (GetIniString(shader_id->c_str(), L"ps", 0, setting, MAX_PATH))
-			failed |= custom_shader->compile('p', setting, shader_id);
+			failed |= custom_shader->compile('p', setting, shader_id, &namespace_path);
 		if (GetIniString(shader_id->c_str(), L"cs", 0, setting, MAX_PATH))
-			failed |= custom_shader->compile('c', setting, shader_id);
+			failed |= custom_shader->compile('c', setting, shader_id, &namespace_path);
 
 
 		ParseBlendState(custom_shader, shader_id->c_str());
@@ -3446,6 +3712,9 @@ void LoadConfigFile()
 	}
 
 	G->dump_all_profiles = GetIniBool(L"Logging", L"dump_all_profiles", false, NULL);
+
+	// [Include]
+	ParseIncludedIniFiles();
 
 	// [System]
 	LogInfo("[System]\n");

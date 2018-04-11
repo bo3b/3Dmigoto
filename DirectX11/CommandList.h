@@ -234,7 +234,7 @@ public:
 	CustomShader();
 	~CustomShader();
 
-	bool compile(char type, wchar_t *filename, const wstring *wname);
+	bool compile(char type, wchar_t *filename, const wstring *wname, const wstring *mod_namespace);
 	void substantiate(ID3D11Device *mOrigDevice);
 
 	void merge_blend_states(ID3D11BlendState *state, FLOAT blend_factor[4], UINT sample_mask, ID3D11Device *mOrigDevice);
@@ -529,7 +529,7 @@ public:
 		forbid_view_cache(false)
 	{}
 
-	bool ParseTarget(const wchar_t *target, bool is_source);
+	bool ParseTarget(const wchar_t *section, const wchar_t *target, bool is_source);
 	ID3D11Resource *GetResource(CommandListState *state,
 			ID3D11View **view,
 			UINT *stride,
