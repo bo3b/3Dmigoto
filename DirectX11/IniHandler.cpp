@@ -606,16 +606,13 @@ static void InsertBuiltInIniSections()
 	ParseIniExcerpt(text);
 }
 
-static void ParseIniFilesRecursive(const wstring &rel_path)
+static void ParseIniFilesRecursive(wchar_t *migoto_path, const wstring &rel_path)
 {
 	std::set<wstring, WStringInsensitiveLess> ini_files, directories;
-	wchar_t migoto_path[MAX_PATH];
 	WIN32_FIND_DATA find_data;
 	HANDLE hFind;
 	wstring search_path, ini_path, ini_namespace;
 
-	GetModuleFileName(0, migoto_path, MAX_PATH);
-	wcsrchr(migoto_path, L'\\')[1] = 0;
 	search_path = wstring(migoto_path) + rel_path + L"\\*";
 
 	// We want to make sure the order will be consistent in case of any
@@ -643,7 +640,7 @@ static void ParseIniFilesRecursive(const wstring &rel_path)
 
 	for (wstring i: directories) {
 		ini_namespace = rel_path + wstring(L"\\") + i;
-		ParseIniFilesRecursive(ini_namespace);
+		ParseIniFilesRecursive(migoto_path, ini_namespace);
 	}
 }
 
@@ -970,7 +967,11 @@ static void ParseIncludedIniFiles()
 	IniSectionVector::iterator entry;
 	wstring *key, *val;
 	std::unordered_set<wstring> seen;
-	wstring namespace_path, rel_path;
+	wstring namespace_path, rel_path, ini_path;
+	wchar_t migoto_path[MAX_PATH];
+
+	GetModuleFileName(0, migoto_path, MAX_PATH);
+	wcsrchr(migoto_path, L'\\')[1] = 0;
 
 	do {
 		// To safely allow included files to include more files, we
@@ -1009,9 +1010,10 @@ static void ParseIncludedIniFiles()
 				seen.insert(rel_path);
 
 				if (!wcscmp(key->c_str(), L"include")) {
-					ParseNamespacedIniFile(rel_path.c_str(), &rel_path);
+					ini_path = wstring(migoto_path) + rel_path;
+					ParseNamespacedIniFile(ini_path.c_str(), &rel_path);
 				} else if (!wcscmp(key->c_str(), L"include_recursive")) {
-					ParseIniFilesRecursive(rel_path);
+					ParseIniFilesRecursive(migoto_path, rel_path);
 				} else {
 					IniWarning("WARNING: Unrecognised entry: %S=%S\n", key->c_str(), rel_path.c_str());
 				}
