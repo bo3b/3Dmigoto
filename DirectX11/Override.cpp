@@ -109,7 +109,10 @@ void Override::ParseIniSection(LPCWSTR section)
 	// to in the future, provided we can deal with the other problems.
 	if (GetIniStringAndLog(section, L"run", NULL, buf, MAX_PATH)) {
 		wstring sbuf(buf);
-		if (!ParseRunExplicitCommandList(section, L"run", &sbuf, NULL, &activate_command_list, &deactivate_command_list))
+		wstring ini_namespace;
+		get_section_namespace(section, &ini_namespace);
+
+		if (!ParseRunExplicitCommandList(section, L"run", &sbuf, NULL, &activate_command_list, &deactivate_command_list, &ini_namespace))
 			LogOverlay(LOG_WARNING, "WARNING: Invalid run=\"%S\"\n", sbuf.c_str());
 	}
 }
@@ -227,13 +230,16 @@ struct KeyOverrideCycleParam
 	void as_run_command(LPCWSTR section, CommandList *pre_command_list, CommandList *deactivate_command_list)
 	{
 		wstring scur(cur);
+		wstring ini_namespace;
 
 		if (*cur == L'\0') {
 			// Blank entry
 			return;
 		}
 
-		if (!ParseRunExplicitCommandList(section, L"run", &scur, NULL, pre_command_list, deactivate_command_list))
+		get_section_namespace(section, &ini_namespace);
+
+		if (!ParseRunExplicitCommandList(section, L"run", &scur, NULL, pre_command_list, deactivate_command_list, &ini_namespace))
 			LogOverlay(LOG_WARNING, "WARNING: Invalid run=\"%S\"\n", scur.c_str());
 	}
 };

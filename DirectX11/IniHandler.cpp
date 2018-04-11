@@ -191,10 +191,17 @@ struct IniLine {
 	// the whole line is still stripped):
 	wstring raw_line;
 
-	IniLine(wstring &key, wstring &val, wstring &line) :
+	// Namespaced sections can determine the namespace from the section as
+	// a whole, but global sections like [Present] can have lines from many
+	// different namespaces, so each line stores the namespace it came from
+	// to resolve references within the namespace:
+	const wstring ini_namespace;
+
+	IniLine(wstring &key, wstring &val, wstring &line, const wstring &ini_namespace) :
 		first(key),
 		second(val),
-		raw_line(line)
+		raw_line(line),
+		ini_namespace(ini_namespace)
 	{}
 };
 
@@ -210,6 +217,10 @@ typedef std::unordered_set<wstring, WStringInsensitiveHash, WStringInsensitiveEq
 struct IniSection {
 	IniSectionMap kv_map;
 	IniSectionVector kv_vec;
+
+	// Stores the ini namespace/path that this section came from. Note that
+	// there is also an ini_namespace in the IniLine structure for global
+	// sections where the namespacing can be per-line:
 	wstring ini_namespace;
 };
 
@@ -262,7 +273,17 @@ static bool get_namespaced_section_name(const wstring *section, const wstring *i
 	return true;
 }
 
-static bool get_section_namespace(IniSections *custom_ini_sections, const wchar_t *section, wstring *ret)
+bool get_namespaced_section_name_lower(const wstring *section, const wstring *ini_namespace, wstring *ret)
+{
+	bool rc;
+
+	rc = get_namespaced_section_name(section, ini_namespace, ret);
+	if (rc)
+		std::transform(ret->begin(), ret->end(), ret->begin(), ::towlower);
+	return rc;
+}
+
+static bool _get_section_namespace(IniSections *custom_ini_sections, const wchar_t *section, wstring *ret)
 {
 	try {
 		*ret = custom_ini_sections->at(wstring(section)).ini_namespace;
@@ -270,6 +291,11 @@ static bool get_section_namespace(IniSections *custom_ini_sections, const wchar_
 		return false;
 	}
 	return (!ret->empty());
+}
+
+bool get_section_namespace(const wchar_t *section, wstring *ret)
+{
+	return _get_section_namespace(&ini_sections, section, ret);
 }
 
 static size_t get_section_namespace_endpos(const wchar_t *section)
@@ -281,31 +307,17 @@ static size_t get_section_namespace_endpos(const wchar_t *section)
 	if (!section_prefix)
 		return 0;
 
-	if (!get_section_namespace(&ini_sections, section, &ini_namespace))
+	if (!get_section_namespace(section, &ini_namespace))
 		return wcslen(section_prefix);
 
 	return wcslen(section_prefix) + ini_namespace.length() + 2;
-}
-
-bool get_referenced_section_namespaced_name(const wchar_t *this_section, const wstring *referenced_section, wstring *ret)
-{
-	wstring ini_namespace;
-	bool rc;
-
-	if (!get_section_namespace(&ini_sections, this_section, &ini_namespace))
-		return false;
-
-	rc = get_namespaced_section_name(referenced_section, &ini_namespace, ret);
-	if (rc)
-		std::transform(ret->begin(), ret->end(), ret->begin(), ::towlower);
-	return rc;
 }
 
 static bool _get_namespaced_section_path(IniSections *custom_ini_sections, const wchar_t *section, wstring *ret)
 {
 	wstring::size_type pos;
 
-	if (!get_section_namespace(custom_ini_sections, section, ret))
+	if (!_get_section_namespace(custom_ini_sections, section, ret))
 		return false;
 
 	// Strip the ini name from the end of the namespace leaving the relative path:
@@ -329,6 +341,7 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 	bool allow_duplicate_sections = false;
 	size_t first, last;
 	bool inserted;
+	bool namespaced_section = false;
 
 	*warn_duplicates = 1;
 	*warn_lines_without_equals = true;
@@ -349,8 +362,10 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 	// potential of mod conflicts. Only sections that have prefixes can be
 	// namespaced, since global sections are always global, but we do allow
 	// these config files to append/override values in global sections:
-	if (ini_namespace) {
-		if (!get_namespaced_section_name(section, ini_namespace, section)) {
+	if (!ini_namespace->empty()) {
+		if (get_namespaced_section_name(section, ini_namespace, section)) {
+			namespaced_section = true;
+		} else {
 			allow_duplicate_sections = true;
 			*warn_duplicates = 2;
 		}
@@ -382,8 +397,9 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 	*section_vector = &ini_sections[*section].kv_vec;
 
 	// Record the namespace so we can use it later when looking up any
-	// referenced sections:
-	if (ini_namespace)
+	// referenced sections. Only for namespaced sections, not global
+	// sections:
+	if (namespaced_section)
 		ini_sections[*section].ini_namespace = *ini_namespace;
 
 	// Sections that utilise a command list are allowed to have duplicate
@@ -403,7 +419,7 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 
 static void ParseIniKeyValLine(wstring *wline, wstring *section,
 		int warn_duplicates, bool warn_lines_without_equals,
-		IniSectionVector *section_vector)
+		IniSectionVector *section_vector, const wstring *ini_namespace)
 {
 	size_t first, last, delim;
 	wstring key, val;
@@ -455,10 +471,10 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 		}
 	}
 
-	section_vector->emplace_back(key, val, *wline);
+	section_vector->emplace_back(key, val, *wline, *ini_namespace);
 }
 
-static void ParseIniStream(istream *stream, const wstring *ini_namespace)
+static void ParseIniStream(istream *stream, const wstring *_ini_namespace)
 {
 	string aline;
 	wstring wline, section;
@@ -466,7 +482,13 @@ static void ParseIniStream(istream *stream, const wstring *ini_namespace)
 	IniSectionVector *section_vector = NULL;
 	int warn_duplicates = 1;
 	bool warn_lines_without_equals = true;
+	wstring ini_namespace;
 
+	// Simplify code further on by translating NULL to "" here:
+	if (_ini_namespace)
+		ini_namespace = *_ini_namespace;
+	else
+		ini_namespace = L"";
 
 	while (std::getline(*stream, aline)) {
 		// Convert to wstring for compatibility with GetPrivateProfile*
@@ -501,12 +523,13 @@ static void ParseIniStream(istream *stream, const wstring *ini_namespace)
 		if (wline[0] == L'[') {
 			ParseIniSectionLine(&wline, &section, &warn_duplicates,
 					    &warn_lines_without_equals,
-					    &section_vector, ini_namespace);
+					    &section_vector, &ini_namespace);
 			continue;
 		}
 
 		ParseIniKeyValLine(&wline, &section, warn_duplicates,
-				   warn_lines_without_equals, section_vector);
+				   warn_lines_without_equals, section_vector,
+				   &ini_namespace);
 	}
 }
 
@@ -1462,15 +1485,16 @@ static bool ParseCommandListLine(const wchar_t *ini_section,
 		CommandList *command_list,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
-	if (ParseCommandListGeneralCommands(ini_section, lhs, rhs, explicit_command_list, pre_command_list, post_command_list))
+	if (ParseCommandListGeneralCommands(ini_section, lhs, rhs, explicit_command_list, pre_command_list, post_command_list, ini_namespace))
 		return true;
 
-	if (ParseCommandListIniParamOverride(ini_section, lhs, rhs, command_list))
+	if (ParseCommandListIniParamOverride(ini_section, lhs, rhs, command_list, ini_namespace))
 		return true;
 
-	if (ParseCommandListResourceCopyDirective(ini_section, lhs, rhs, command_list))
+	if (ParseCommandListResourceCopyDirective(ini_section, lhs, rhs, command_list, ini_namespace))
 		return true;
 
 	return false;
@@ -1478,11 +1502,12 @@ static bool ParseCommandListLine(const wchar_t *ini_section,
 
 static bool ParseCommandListLine(const wchar_t *ini_section,
 		const wchar_t *lhs, const wchar_t *rhs,
-		CommandList *command_list)
+		CommandList *command_list,
+		const wstring *ini_namespace)
 {
 	wstring srhs = wstring(rhs);
 
-	return ParseCommandListLine(ini_section, lhs, &srhs, command_list, command_list, NULL, NULL);
+	return ParseCommandListLine(ini_section, lhs, &srhs, command_list, command_list, NULL, NULL, ini_namespace);
 }
 
 // This tries to parse each line in a section in order as part of a command
@@ -1553,7 +1578,7 @@ static void ParseCommandList(const wchar_t *id,
 			}
 		}
 
-		if (ParseCommandListLine(id, key_ptr, val, command_list, explicit_command_list, pre_command_list, post_command_list)) {
+		if (ParseCommandListLine(id, key_ptr, val, command_list, explicit_command_list, pre_command_list, post_command_list, &entry->ini_namespace)) {
 			LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
 			continue;
 		}
@@ -1673,10 +1698,13 @@ static void ParseShaderOverrideSections()
 		// translate disable_scissor into an equivalent command list:
 		disable_scissor = GetIniBool(id, L"disable_scissor", false, &found);
 		if (found) {
+			wstring ini_namespace;
+			get_section_namespace(id, &ini_namespace);
+
 			if (disable_scissor)
-				ParseCommandListLine(id, L"run", L"builtincustomshaderdisablescissorclipping", &override->command_list);
+				ParseCommandListLine(id, L"run", L"builtincustomshaderdisablescissorclipping", &override->command_list, &ini_namespace);
 			else
-				ParseCommandListLine(id, L"run", L"builtincustomshaderenablescissorclipping", &override->command_list);
+				ParseCommandListLine(id, L"run", L"builtincustomshaderenablescissorclipping", &override->command_list, &ini_namespace);
 		}
 	}
 	LeaveCriticalSection(&G->mCriticalSection);

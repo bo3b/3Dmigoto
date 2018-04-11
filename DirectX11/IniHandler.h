@@ -14,7 +14,8 @@ int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 int GetIniStringAndLog(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 		 wchar_t *ret, unsigned size);
 
-bool get_referenced_section_namespaced_name(const wchar_t *this_section, const wstring *referenced_section, wstring *ret);
+bool get_namespaced_section_name_lower(const wstring *section, const wstring *ini_namespace, wstring *ret);
+bool get_section_namespace(const wchar_t *section, wstring *ret);
 
 // These functions will bypass our hooks *if* the option to do so has been enabled:
 BOOL WINAPI CursorUpscalingBypass_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect);

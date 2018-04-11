@@ -167,14 +167,15 @@ static bool ParseCheckTextureOverride(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
 	int ret;
 
 	CheckTextureOverrideCommand *operation = new CheckTextureOverrideCommand();
 
 	// Parse value as consistent with texture filtering and resource copying
-	ret = operation->target.ParseTarget(section, val->c_str(), true);
+	ret = operation->target.ParseTarget(section, val->c_str(), true, ini_namespace);
 	if (ret) {
 		operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 		return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
@@ -227,7 +228,8 @@ static bool ParseClearView(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
 	CustomResources::iterator res;
 	CustomShaders::iterator shader;
@@ -242,7 +244,7 @@ static bool ParseClearView(const wchar_t *section,
 
 	while (getline(token_stream, token, L' ')) {
 		if (operation->target.type == ResourceCopyTargetType::INVALID) {
-			ret = operation->target.ParseTarget(section, token.c_str(), true);
+			ret = operation->target.ParseTarget(section, token.c_str(), true, ini_namespace);
 			if (ret)
 				continue;
 		}
@@ -325,7 +327,8 @@ static bool ParseRunShader(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
 	RunCustomShaderCommand *operation = new RunCustomShaderCommand();
 	CustomShaders::iterator shader;
@@ -337,7 +340,7 @@ static bool ParseRunShader(const wchar_t *section,
 	wstring shader_id(val->c_str());
 
 	shader = customShaders.end();
-	if (get_referenced_section_namespaced_name(section, &shader_id, &namespaced_section))
+	if (get_namespaced_section_name_lower(&shader_id, ini_namespace, &namespaced_section))
 		shader = customShaders.find(namespaced_section);
 	if (shader == customShaders.end())
 		shader = customShaders.find(shader_id);
@@ -357,7 +360,8 @@ bool ParseRunExplicitCommandList(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
 	RunExplicitCommandList *operation = new RunExplicitCommandList();
 	ExplicitCommandListSections::iterator shader;
@@ -371,7 +375,7 @@ bool ParseRunExplicitCommandList(const wchar_t *section,
 	std::transform(section_id.begin(), section_id.end(), section_id.begin(), ::towlower);
 
 	shader = explicitCommandListSections.end();
-	if (get_referenced_section_namespaced_name(section, &section_id, &namespaced_section))
+	if (get_namespaced_section_name_lower(&section_id, ini_namespace, &namespaced_section))
 		shader = explicitCommandListSections.find(namespaced_section);
 	if (shader == explicitCommandListSections.end())
 		shader = explicitCommandListSections.find(section_id);
@@ -396,7 +400,7 @@ static bool ParsePreset(const wchar_t *section,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
 		CommandList *post_command_list,
-		bool exclude)
+		bool exclude, const wstring *ini_namespace)
 {
 	PresetCommand *operation = new PresetCommand();
 	wstring prefixed_section, namespaced_section;
@@ -423,11 +427,11 @@ static bool ParsePreset(const wchar_t *section,
 	// And now with namespacing, we have four permutations to try...
 	i = presetOverrides.end();
 	// First, add the 'Preset' (i.e. the user did not) and try namespaced:
-	if (get_referenced_section_namespaced_name(section, &prefixed_section, &namespaced_section))
+	if (get_namespaced_section_name_lower(&prefixed_section, ini_namespace, &namespaced_section))
 		i = presetOverrides.find(namespaced_section);
 	// Second, try namespaced without adding the prefix:
 	if (i == presetOverrides.end()) {
-		if (get_referenced_section_namespaced_name(section, &preset_id, &namespaced_section))
+		if (get_namespaced_section_name_lower(&preset_id, ini_namespace, &namespaced_section))
 			i = presetOverrides.find(namespaced_section);
 	}
 	// Third, add the 'Preset' and try global:
@@ -562,7 +566,8 @@ static bool ParsePerDrawStereoOverride(const wchar_t *section,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
 		CommandList *post_command_list,
-		bool is_separation)
+		bool is_separation,
+		const wstring *ini_namespace)
 {
 	bool restore_on_post = !explicit_command_list && pre_command_list && post_command_list;
 	PerDrawStereoOverrideCommand *operation = NULL;
@@ -579,7 +584,7 @@ static bool ParsePerDrawStereoOverride(const wchar_t *section,
 		goto success;
 
 	// Try parsing value as a resource target for staging auto-convergence
-	if (operation->staging_op.src.ParseTarget(section, val->c_str(), true)) {
+	if (operation->staging_op.src.ParseTarget(section, val->c_str(), true, ini_namespace)) {
 		operation->staging_type = true;
 		goto success;
 	}
@@ -603,7 +608,8 @@ static bool ParseFrameAnalysisDump(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
 	FrameAnalysisDumpCommand *operation = new FrameAnalysisDumpCommand();
 	wchar_t *buf;
@@ -623,7 +629,7 @@ static bool ParseFrameAnalysisDump(const wchar_t *section,
 	if (!target)
 		goto bail;
 
-	if (!operation->target.ParseTarget(section, target, true))
+	if (!operation->target.ParseTarget(section, target, true, ini_namespace))
 		goto bail;
 
 	operation->target_name = L"[" + wstring(section) + L"]-" + wstring(target);
@@ -651,23 +657,24 @@ bail:
 bool ParseCommandListGeneralCommands(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
-		CommandList *pre_command_list, CommandList *post_command_list)
+		CommandList *pre_command_list, CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
 	if (!wcscmp(key, L"checktextureoverride"))
-		return ParseCheckTextureOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+		return ParseCheckTextureOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
 	if (!wcscmp(key, L"run")) {
 		if (!wcsncmp(val->c_str(), L"customshader", 12) || !wcsncmp(val->c_str(), L"builtincustomshader", 19))
-			return ParseRunShader(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+			return ParseRunShader(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
 		if (!wcsncmp(val->c_str(), L"commandlist", 11) || !wcsncmp(val->c_str(), L"builtincommandlist", 18))
-			return ParseRunExplicitCommandList(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+			return ParseRunExplicitCommandList(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 	}
 
 	if (!wcscmp(key, L"preset"))
-		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list, false);
+		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list, false, ini_namespace);
 	if (!wcscmp(key, L"exclude_preset"))
-		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list, true);
+		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list, true, ini_namespace);
 
 	if (!wcscmp(key, L"handling")) {
 		// skip only makes sense in pre command lists, since it needs
@@ -685,13 +692,13 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 		return ParseResetPerFrameLimits(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	if (!wcscmp(key, L"clear"))
-		return ParseClearView(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+		return ParseClearView(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
 	if (!wcscmp(key, L"separation"))
-		return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, true);
+		return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, true, ini_namespace);
 
 	if (!wcscmp(key, L"convergence"))
-		return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, false);
+		return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, false, ini_namespace);
 
 	if (!wcscmp(key, L"direct_mode_eye"))
 		return ParseDirectModeSetActiveEyeCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
@@ -700,7 +707,7 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 		return AddCommandToList(new FrameAnalysisChangeOptionsCommand(section, key, val), explicit_command_list, pre_command_list, NULL, NULL);
 
 	if (!wcscmp(key, L"dump"))
-		return ParseFrameAnalysisDump(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+		return ParseFrameAnalysisDump(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
@@ -2407,7 +2414,8 @@ void ParamOverride::run(CommandListState *state)
 // z3 = rt_width / rt_height (set parameter to render target width/height)
 // w4 = res_width / res_height (set parameter to resolution width/height)
 bool ParseCommandListIniParamOverride(const wchar_t *section,
-		const wchar_t *key, wstring *val, CommandList *command_list)
+		const wchar_t *key, wstring *val, CommandList *command_list,
+		const wstring *ini_namespace)
 {
 	int ret, len1;
 	ParamOverride *param = new ParamOverride();
@@ -2423,7 +2431,7 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 	}
 
 	// Try parsing value as a resource target for texture filtering
-	ret = param->texture_filter_target.ParseTarget(section, val->c_str(), true);
+	ret = param->texture_filter_target.ParseTarget(section, val->c_str(), true, ini_namespace);
 	if (ret) {
 		param->type = ParamOverrideType::TEXTURE;
 		goto success;
@@ -2979,7 +2987,8 @@ void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
 }
 
 
-bool ResourceCopyTarget::ParseTarget(const wchar_t *section, const wchar_t *target, bool is_source)
+bool ResourceCopyTarget::ParseTarget(const wchar_t *section, const wchar_t *target,
+		bool is_source, const wstring *ini_namespace)
 {
 	int ret, len;
 	size_t length = wcslen(target);
@@ -3056,7 +3065,7 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *section, const wchar_t *targ
 		wstring namespaced_section;
 
 		res = customResources.end();
-		if (get_referenced_section_namespaced_name(section, &resource_id, &namespaced_section))
+		if (get_namespaced_section_name_lower(&resource_id, ini_namespace, &namespaced_section))
 			res = customResources.find(namespaced_section);
 		if (res == customResources.end())
 			res = customResources.find(resource_id);
@@ -3130,13 +3139,14 @@ check_shader_type:
 
 
 bool ParseCommandListResourceCopyDirective(const wchar_t *section,
-		const wchar_t *key, wstring *val, CommandList *command_list)
+		const wchar_t *key, wstring *val, CommandList *command_list,
+		const wstring *ini_namespace)
 {
 	ResourceCopyOperation *operation = new ResourceCopyOperation();
 	wchar_t buf[MAX_PATH];
 	wchar_t *src_ptr = NULL;
 
-	if (!operation->dst.ParseTarget(section, key, false))
+	if (!operation->dst.ParseTarget(section, key, false, ini_namespace))
 		goto bail;
 
 	// parse_enum_option_string replaces spaces with NULLs, so it can't
@@ -3153,7 +3163,7 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 	if (!src_ptr)
 		goto bail;
 
-	if (!operation->src.ParseTarget(section, src_ptr, true))
+	if (!operation->src.ParseTarget(section, src_ptr, true, ini_namespace))
 		goto bail;
 
 	if (!(operation->options & ResourceCopyOptions::COPY_TYPE_MASK)) {

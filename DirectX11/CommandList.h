@@ -529,7 +529,7 @@ public:
 		forbid_view_cache(false)
 	{}
 
-	bool ParseTarget(const wchar_t *section, const wchar_t *target, bool is_source);
+	bool ParseTarget(const wchar_t *section, const wchar_t *target, bool is_source, const wstring *ini_namespace);
 	ID3D11Resource *GetResource(CommandListState *state,
 			ID3D11View **view,
 			UINT *stride,
@@ -893,14 +893,18 @@ bool ParseRunExplicitCommandList(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list);
+		CommandList *post_command_list,
+		const wstring *ini_namespace);
 
 bool ParseCommandListGeneralCommands(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
-		CommandList *pre_command_list, CommandList *post_command_list);
+		CommandList *pre_command_list, CommandList *post_command_list,
+		const wstring *ini_namespace);
 bool ParseCommandListIniParamOverride(const wchar_t *section,
-		const wchar_t *key, wstring *val, CommandList *command_list);
+		const wchar_t *key, wstring *val, CommandList *command_list,
+		const wstring *ini_namespace);
 bool ParseCommandListResourceCopyDirective(const wchar_t *section,
-		const wchar_t *key, wstring *val, CommandList *command_list);
+		const wchar_t *key, wstring *val, CommandList *command_list,
+		const wstring *ini_namespace);
 void LinkCommandLists(CommandList *dst, CommandList *link);
