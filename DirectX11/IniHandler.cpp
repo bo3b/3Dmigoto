@@ -590,6 +590,17 @@ static void InsertBuiltInIniSections()
 		"rasterizer_state_merge = true\n"
 		"draw = from_caller\n"
 		"handling = skip\n"
+
+		"[BuiltInCommandListUnbindAllRenderTargets]\n"
+		"o0 = null\n"
+		"o1 = null\n"
+		"o2 = null\n"
+		"o3 = null\n"
+		"o4 = null\n"
+		"o5 = null\n"
+		"o6 = null\n"
+		"o7 = null\n"
+		"oD = null\n"
 	;
 
 	ParseIniExcerpt(text);
