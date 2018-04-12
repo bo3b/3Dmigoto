@@ -255,6 +255,7 @@ struct TextureOverride {
 	float filter_index;
 
 	bool has_draw_context_match;
+	bool has_match_priority;
 	int priority;
 	FuzzyMatch match_first_vertex;
 	FuzzyMatch match_first_index;
@@ -277,6 +278,7 @@ struct TextureOverride {
 		deny_cpu_read(false),
 		filter_index(1.0),
 		has_draw_context_match(false),
+		has_match_priority(false),
 		priority(0)
 	{}
 };

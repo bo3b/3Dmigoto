@@ -2117,11 +2117,6 @@ wchar_t *TextureOverrideFuzzyMatchesIniKeys[] = {
 	TEXTURE_OVERRIDE_FUZZY_MATCHES,
 	NULL
 };
-// List of keys for fuzzy matching that can be used together with hash:
-wchar_t *TextureOverrideDrawCallMatchesIniKeys[] = {
-	TEXTURE_OVERRIDE_DRAW_CALL_MATCHES,
-	NULL
-};
 
 static void parse_fuzzy_numeric_match_expression_error(const wchar_t *text)
 {
@@ -2236,8 +2231,15 @@ static void parse_fuzzy_numeric_match_expression(const wchar_t *setting, FuzzyMa
 static void parse_texture_override_common(const wchar_t *id, TextureOverride *override)
 {
 	wchar_t setting[MAX_PATH];
+	bool found;
 
-	override->priority = GetIniInt(id, L"match_priority", 0, NULL);
+	// Priority can be used for both fuzzy resource description matching
+	// and draw context matching. It can also indicate that a duplicate
+	// hash is intentional, since it defines an order between the sections.
+	override->priority = GetIniInt(id, L"match_priority", 0, &found);
+	if (found)
+		override->has_match_priority = true;
+
 	override->stereoMode = GetIniInt(id, L"StereoMode", -1, NULL);
 	override->format = GetIniInt(id, L"Format", -1, NULL);
 	override->width = GetIniInt(id, L"Width", -1, NULL);
@@ -2305,18 +2307,6 @@ static bool texture_override_section_has_fuzzy_match_keys(const wchar_t *section
 
 	for (i = 0; TextureOverrideFuzzyMatchesIniKeys[i]; i++) {
 		if (IniHasKey(section, TextureOverrideFuzzyMatchesIniKeys[i]))
-			return true;
-	}
-
-	return false;
-}
-
-static bool texture_override_section_has_draw_call_match_keys(const wchar_t *section)
-{
-	int i;
-
-	for (i = 0; TextureOverrideDrawCallMatchesIniKeys[i]; i++) {
-		if (IniHasKey(section, TextureOverrideDrawCallMatchesIniKeys[i]))
 			return true;
 	}
 
@@ -2485,23 +2475,38 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
 	}
 }
 
-static void warn_if_hash_in_texture_overrides(uint32_t hash)
+static void warn_if_duplicate_texture_hash(TextureOverride *override, uint32_t hash)
 {
 	TextureOverrideMap::iterator i;
 	TextureOverrideList::iterator j;
+	char *shaderhacker_msg = "";
+
+	if (override->has_draw_context_match || override->has_match_priority)
+		return;
 
 	i = G->mTextureOverrideMap.find(hash);
 	if (i == G->mTextureOverrideMap.end())
 		return;
 
 	for (j = i->second.begin(); j != i->second.end(); j++) {
-		if (j->has_draw_context_match) {
-			// Duplicate hashes permitted
+		if (&(*j) == override)
 			continue;
-		}
 
-		IniWarning("WARNING: Duplicate TextureOverride hash: %08lx\n", hash);
-		return;
+		// Duplicate hashes are permitted (or at least not warned about) for:
+		// 1. Fuzzy resource description matching (no hash - will have bailed above)
+		// 2. Draw context matching
+		// 3. Whenever a match_priority has been specified
+		if (j->has_draw_context_match || j->has_match_priority)
+			continue;
+
+		if (G->hunting)
+			shaderhacker_msg = "If this is intentional, add a match_priority=n to suppress warning and disambiguate order\n";
+
+		IniWarning("WARNING: Possible Mod Conflict: Duplicate TextureOverride hash=%08lx\n"
+			   "[%S]\n"
+			   "[%S]\n"
+			   "%s", hash, j->ini_section.c_str(),
+				       override->ini_section.c_str(), shaderhacker_msg);
 	}
 }
 
@@ -2543,16 +2548,15 @@ static void ParseTextureOverrideSections()
 		if (texture_override_section_has_fuzzy_match_keys(id))
 			IniWarning("WARNING: [%S] Cannot use hash= and match options together!\n", id);
 
-		// Warn if same hash is used two or more times in sections that
-		// do not have a draw context match
-		if (!texture_override_section_has_draw_call_match_keys(id))
-			warn_if_hash_in_texture_overrides(hash);
-
-		G->mTextureOverrideMap[hash].emplace_back();
+		G->mTextureOverrideMap[hash].emplace_back(); // C++ gotcha: invalidates pointers into the vector
 		override = &G->mTextureOverrideMap[hash].back();
 		override->ini_section = id;
 
 		parse_texture_override_common(id, override);
+
+		// Warn if same hash is used two or more times in sections that
+		// do not have a draw context match or match_priority:
+		warn_if_duplicate_texture_hash(override, hash);
 
 		// Sort the TextureOverride sections sharing the same hash to
 		// ensure we get consistent results when processing them.
