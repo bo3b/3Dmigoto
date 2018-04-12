@@ -6,6 +6,8 @@
 #include <fstream>
 #include <sstream>
 #include <memory>
+#include <pcre2.h>
+#include <codecvt>
 
 #include "log.h"
 #include "Globals.h"
@@ -606,7 +608,74 @@ static void InsertBuiltInIniSections()
 	ParseIniExcerpt(text);
 }
 
-static void ParseIniFilesRecursive(wchar_t *migoto_path, const wstring &rel_path)
+static pcre2_code* glob_to_regex(wstring &pattern)
+{
+	PCRE2_UCHAR *converted = NULL;
+	PCRE2_SIZE blength = 0;
+	pcre2_code *regex = NULL;
+	string apattern(pattern.begin(), pattern.end());
+	PCRE2_SIZE err_off;
+	int err;
+
+	if (pcre2_pattern_convert((PCRE2_SPTR)apattern.c_str(),
+				apattern.length(), PCRE2_CONVERT_GLOB,
+				&converted, &blength, NULL)) {
+		LogInfo("Bad pattern: exclude_recursive=%S\n", pattern.c_str());
+		return NULL;
+	}
+
+	regex = pcre2_compile(converted, blength, PCRE2_CASELESS, &err, &err_off, NULL);
+	if (!regex)
+		LogInfo("WARNING: exclude_recursive PCRE2 regex compilation failed");
+
+	pcre2_converted_pattern_free(converted);
+	return regex;
+}
+
+static vector<pcre2_code*> globbing_vector_to_regex(vector<wstring> &globbing_patterns)
+{
+	vector<pcre2_code*> ret;
+	pcre2_code *regex;
+
+	for (wstring pattern : globbing_patterns) {
+		regex = glob_to_regex(pattern);
+		if (regex)
+			ret.push_back(regex);
+	}
+
+	return ret;
+}
+
+static void free_globbing_vector(vector<pcre2_code*> &patterns) {
+	for (pcre2_code *regex : patterns)
+		pcre2_code_free(regex);
+}
+
+static bool matches_globbing_vector(wchar_t *filename, vector<pcre2_code*> &patterns) {
+	string afilename;
+	pcre2_match_data *md;
+	int rc;
+
+	// In a lot of cases we just use fake conversion to/from wstring,
+	// because we assume the d3dx.ini is ASCII (at some point we should
+	// eliminate all unecessary uses of wchar_t/wstring). Since this is a
+	// filename, it can contain legitimate unicode characters, so we should
+	// convert it properly to UTF8:
+	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> codec;
+	afilename = codec.to_bytes(filename); // to_bytes = to utf8
+
+	for (pcre2_code *regex : patterns) {
+		md = pcre2_match_data_create_from_pattern(regex, NULL);
+		rc = pcre2_match(regex, (PCRE2_SPTR)afilename.c_str(), PCRE2_ZERO_TERMINATED, 0, 0, md, NULL);
+		pcre2_match_data_free(md);
+		if (rc > 0)
+			return true;
+	}
+
+	return false;
+}
+
+static void ParseIniFilesRecursive(wchar_t *migoto_path, const wstring &rel_path, vector<pcre2_code*> &exclude)
 {
 	std::set<wstring, WStringInsensitiveLess> ini_files, directories;
 	WIN32_FIND_DATA find_data;
@@ -622,6 +691,9 @@ static void ParseIniFilesRecursive(wchar_t *migoto_path, const wstring &rel_path
 	hFind = FindFirstFile(search_path.c_str(), &find_data);
 	if (hFind != INVALID_HANDLE_VALUE) {
 		do {
+			if (matches_globbing_vector(find_data.cFileName, exclude))
+				continue;
+
 			if (find_data.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY) {
 				if (wcscmp(find_data.cFileName, L".") && wcscmp(find_data.cFileName, L".."))
 					directories.insert(wstring(find_data.cFileName));
@@ -640,7 +712,7 @@ static void ParseIniFilesRecursive(wchar_t *migoto_path, const wstring &rel_path
 
 	for (wstring i: directories) {
 		ini_namespace = rel_path + wstring(L"\\") + i;
-		ParseIniFilesRecursive(migoto_path, ini_namespace);
+		ParseIniFilesRecursive(migoto_path, ini_namespace, exclude);
 	}
 }
 
@@ -969,9 +1041,14 @@ static void ParseIncludedIniFiles()
 	std::unordered_set<wstring> seen;
 	wstring namespace_path, rel_path, ini_path;
 	wchar_t migoto_path[MAX_PATH];
+	vector<pcre2_code*> exclude;
 
 	GetModuleFileName(0, migoto_path, MAX_PATH);
 	wcsrchr(migoto_path, L'\\')[1] = 0;
+
+	// Do this before removing [Include] from ini_sections. TODO: Allow
+	// recursively included files to modify the exclude mid-recursion:
+	exclude = globbing_vector_to_regex(GetIniStringMultipleKeys(L"Include", L"exclude_recursive"));
 
 	do {
 		// To safely allow included files to include more files, we
@@ -1013,13 +1090,17 @@ static void ParseIncludedIniFiles()
 					ini_path = wstring(migoto_path) + rel_path;
 					ParseNamespacedIniFile(ini_path.c_str(), &rel_path);
 				} else if (!wcscmp(key->c_str(), L"include_recursive")) {
-					ParseIniFilesRecursive(migoto_path, rel_path);
+					ParseIniFilesRecursive(migoto_path, rel_path, exclude);
+				} else if (!wcscmp(key->c_str(), L"exclude_recursive")) {
+					// Handled above
 				} else {
 					IniWarning("WARNING: Unrecognised entry: %S=%S\n", key->c_str(), rel_path.c_str());
 				}
 			}
 		}
 	} while (!include_sections.empty());
+
+	free_globbing_vector(exclude);
 }
 
 static void RegisterPresetKeyBindings()
