@@ -7,6 +7,7 @@
 #include <set>
 #include <vector>
 #include <memory>
+#include <atomic>
 
 #include "util.h"
 #include "DrawCallInfo.h"
@@ -146,6 +147,38 @@ struct ResourceHashInfo
 		return *this;
 	}
 };
+
+// This is a COM object that can be attached to a resource via
+// ID3D11DeviceChild::SetPrivateDataInterface(), so that when the resource is
+// released this class will be as well, giving us a way to reliably know when a
+// resource is released and purge it from G->mResources to make sure that if
+// the address is later reused we won't use stale data.
+//
+// This approach is a bit of an experiment - we know the performance of
+// Set/GetPrivateData sucks and must be avoided in fast paths, but we never
+// look this up so hopefully the overhead will be limited to resource creation
+// time where it should be acceptable. An alternative approach would be what we
+// do for shaders - purging stale entries after every shader creation anywhere
+// in 3DMigoto, but I'm hoping that this will work well enough that we can
+// adapt the shaders to use it as well, since the shader approach has a high
+// risk of regressions.
+//
+// Should fix a bug occasionally seen where a custom resource bound to the
+// pipeline would act as though it was a game resource when used with
+// checktextureoverride, etc.
+class ResourceReleaseTracker : public IUnknown
+{
+	std::atomic_ulong ref;
+	ID3D11Resource *resource;
+
+public:
+	ResourceReleaseTracker(ID3D11Resource *resource);
+
+	HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void **ppvObject);
+	ULONG STDMETHODCALLTYPE AddRef(void);
+	ULONG STDMETHODCALLTYPE Release(void);
+};
+void track_resource_release(ID3D11Resource *resource);
 
 uint32_t CalcTexture2DDescHash(uint32_t initial_hash, const D3D11_TEXTURE2D_DESC *const_desc);
 uint32_t CalcTexture3DDescHash(uint32_t initial_hash, const D3D11_TEXTURE3D_DESC *const_desc);

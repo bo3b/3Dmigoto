@@ -1,5 +1,6 @@
 #include "ResourceHash.h"
 
+#include <INITGUID.h>
 #include "log.h"
 #include "util.h"
 #include "globals.h"
@@ -1204,6 +1205,70 @@ bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource)
 	// can be turned on live and work. But there's a few pieces we would
 	// need for that to work so for now let's not over-complicate things.
 	return G->track_texture_updates && Subresource == 0;
+}
+
+// -----------------------------------------------------------------------------------------------
+//                       Automatic Data Structure Cleanup on Resource Release
+// -----------------------------------------------------------------------------------------------
+
+// {4A40BF2F-6358-470F-BA0A-662E3E2D8CD3}
+DEFINE_GUID(ResourceReleaseTrackerGuid,
+0x4a40bf2f, 0x6358, 0x470f, 0xba, 0xa, 0x66, 0x2e, 0x3e, 0x2d, 0x8c, 0xd3);
+
+ResourceReleaseTracker::ResourceReleaseTracker(ID3D11Resource *resource) :
+	resource(resource),
+	ref(1)
+{
+	HRESULT hr = resource->SetPrivateDataInterface(ResourceReleaseTrackerGuid, this);
+	// LogDebug("ResourceReleaseTracker %p tracking %p: 0x%x\n", this, resource, hr);
+}
+
+HRESULT STDMETHODCALLTYPE ResourceReleaseTracker::QueryInterface(REFIID riid, _COM_Outptr_ void **ppvObject)
+{
+	LogInfo("ResourceReleaseTracker::QueryInterface(%p:%p) called with IID: %s\n", this, resource, NameFromIID(riid).c_str());
+
+	// The only interface we support is IUnknown
+	if (ppvObject && IsEqualIID(riid, IID_IUnknown)) {
+		AddRef();
+		*ppvObject = this;
+		return S_OK;
+	}
+
+	return E_NOINTERFACE;
+}
+
+ULONG STDMETHODCALLTYPE ResourceReleaseTracker::AddRef(void)
+{
+	ULONG ret = ++ref;
+	// LogDebug("ResourceReleaseTracker::AddRef(%p:%p) -> %lu\n", this, resource, ret);
+	return ret;
+}
+
+ULONG STDMETHODCALLTYPE ResourceReleaseTracker::Release(void)
+{
+	ULONG ret = --ref;
+	// LogDebug("ResourceReleaseTracker::Release(%p:%p) -> %lu\n", this, resource, ret);
+	if (ret == 0) {
+		// LogDebug("Removing %p from mResources\n", resource);
+		EnterCriticalSection(&G->mCriticalSection);
+		G->mResources.erase(resource);
+		LeaveCriticalSection(&G->mCriticalSection);
+		delete this;
+	}
+	return ret;
+}
+
+void track_resource_release(ID3D11Resource *resource)
+{
+	ResourceReleaseTracker *tracker;
+
+	if (!resource)
+		return;
+
+	// I could do this inside the constructor, but the refcounting would be
+	// a bit odd, and what do we do if it fails? This way is balanced.
+	tracker = new ResourceReleaseTracker(resource);
+	tracker->Release();
 }
 
 // -----------------------------------------------------------------------------------------------

@@ -2065,6 +2065,7 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	{
 		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppBuffer];
+			track_resource_release(*ppBuffer);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_BUFFER;
 			handle_info->hash = hash;
 			handle_info->orig_hash = hash;
@@ -2118,6 +2119,7 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 	{
 		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture1D];
+			track_resource_release(*ppTexture1D);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE1D;
 			handle_info->hash = hash;
 			handle_info->orig_hash = hash;
@@ -2230,6 +2232,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	{
 		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture2D];
+			track_resource_release(*ppTexture2D);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
 			handle_info->hash = hash;
 			handle_info->orig_hash = hash;
@@ -2297,6 +2300,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	{
 		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture3D];
+			track_resource_release(*ppTexture3D);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE3D;
 			handle_info->hash = hash;
 			handle_info->orig_hash = hash;
