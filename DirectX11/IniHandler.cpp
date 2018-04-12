@@ -886,7 +886,7 @@ float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, bool *f
 	return ret;
 }
 
-int GetIniInt(const wchar_t *section, const wchar_t *key, int def, bool *found)
+int GetIniInt(const wchar_t *section, const wchar_t *key, int def, bool *found, bool warn)
 {
 	wchar_t val[32];
 	int ret = def;
@@ -899,7 +899,8 @@ int GetIniInt(const wchar_t *section, const wchar_t *key, int def, bool *found)
 	if (GetIniString(section, key, 0, val, 32)) {
 		swscanf_s(val, L"%d%n", &ret, &len);
 		if (len != wcslen(val)) {
-			IniWarning("WARNING: Integer parse error: %S=%S\n", key, val);
+			if (warn)
+				IniWarning("WARNING: Integer parse error: %S=%S\n", key, val);
 		} else {
 			if (found)
 				*found = true;
@@ -910,7 +911,7 @@ int GetIniInt(const wchar_t *section, const wchar_t *key, int def, bool *found)
 	return ret;
 }
 
-bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, bool *found)
+bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, bool *found, bool warn)
 {
 	wchar_t val[32];
 	bool ret = def;
@@ -918,7 +919,6 @@ bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, bool *foun
 	if (found)
 		*found = false;
 
-	// Not using GetPrivateProfileInt as it doesn't tell us if the key existed
 	if (GetIniString(section, key, 0, val, 32)) {
 		if (!_wcsicmp(val, L"1") || !_wcsicmp(val, L"true") || !_wcsicmp(val, L"yes") || !_wcsicmp(val, L"on")) {
 			LogInfo("  %S=1\n", key);
@@ -933,7 +933,8 @@ bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, bool *foun
 			return false;
 		}
 
-		IniWarning("WARNING: Boolean parse error: %S=%S\n", key, val);
+		if (warn)
+			IniWarning("WARNING: Boolean parse error: %S=%S\n", key, val);
 	}
 
 	return ret;
@@ -1028,6 +1029,33 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, bool 
 	}
 
 	return ret;
+}
+
+// For options that used to be booleans or integers and are now enums. Boolean
+// values (0/1/true/false/yes/no/on/off) will continue retuning 0/1 for
+// backwards compatibility, integers will return the integer value (provided it
+// is within the range of the enum), otherwise the enum will be used.
+static int GetIniBoolIntOrEnum(const wchar_t *section, const wchar_t *key, int def, bool *found,
+		wchar_t *prefix, wchar_t *names[], int names_len, int first)
+{
+	int ret;
+	bool tmp_found;
+
+	ret = GetIniBool(section, key, !!def, &tmp_found, false);
+	if (tmp_found) {
+		if (found)
+			*found = tmp_found;
+		return ret;
+	}
+
+	ret = GetIniInt(section, key, def, &tmp_found, false);
+	if (tmp_found && ret >= 0 && ret < names_len) {
+		if (found)
+			*found = tmp_found;
+		return ret;
+	}
+
+	return GetIniEnum(section, key, def, found, prefix, names, names_len, first);
 }
 
 static void ParseIncludedIniFiles()
@@ -1700,6 +1728,63 @@ static void ParseDriverProfile()
 	}
 }
 
+static wchar_t *true_false_overrule[] = {
+	L"false", // GetIniBoolIntOrEnum will also accept 0/false/no/off
+	L"true", // GetIniBoolIntOrEnum will also accept 1/true/yes/on
+	L"overrule", // GetIniBoolIntOrEnum will also accept 2
+};
+
+static void check_shaderoverride_duplicates(bool duplicate, const wchar_t *id, ShaderOverride *override, UINT64 hash)
+{
+	int allow_duplicates;
+
+	// Options to permit ShaderOverride sections with duplicate hashes.
+	// This has to be explicitly opted in to and the section names still
+	// have to be unique (or namespaced), and Note that you won't get
+	// warnings of duplicate settings between the sections, but at least we
+	// try not to clobber their values from earlier sections with the
+	// defaults.
+	allow_duplicates = GetIniBoolIntOrEnum(id, L"allow_duplicate_hash", 0, NULL,
+			NULL, true_false_overrule, ARRAYSIZE(true_false_overrule), 0);
+
+	if (allow_duplicates == 2 || override->allow_duplicate_hashes == 2) {
+		// Overrule - one section said it doesn't care if any other
+		// sections have the same hash. Mostly for use with third party
+		// mods where a mod author may not be able to change another
+		// mod directly, but has confirmed that the two are ok to work
+		// together. Far from perfect since it might allow other actual
+		// conflicts to go through unchecked, but a reasonable
+		// compromise.
+		allow_duplicates = 2;
+	} else {
+		// Cooperative - all sections sharing the same hash must opt in
+		// and will warn if even one section does not. This is intended
+		// that scripts will set this flag on any sections they create
+		// so that if a user creates a ShaderOverride with the same
+		// hash they will get a warning at first, but can choose to
+		// allow it so that they can add their own commands without
+		// having to merge them with the section from the script,
+		// allowing all the auto generated sections to be grouped
+		// together. The section names still have to be distinct, which
+		// offers protection against scripts adding multiple identical
+		// sections if run multiple times.
+		allow_duplicates = allow_duplicates && override->allow_duplicate_hashes;
+	}
+
+	if (duplicate && !allow_duplicates) {
+		char *shaderhacker_msg = "";
+		if (G->hunting)
+			shaderhacker_msg = "If this is intentional, add allow_duplicates=true or allow_duplicates=overrule to suppress warning\n";
+
+		IniWarning("WARNING: Possible Mod Conflict: Duplicate ShaderOverride hash=%16llx\n"
+			   "[%S]\n"
+			   "[%S]\n"
+			   "%s", hash, override->first_ini_section.c_str(), id, shaderhacker_msg);
+	}
+
+	override->allow_duplicate_hashes = allow_duplicates;
+}
+
 // List of keys in [ShaderOverride] sections that are processed in this
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *ShaderOverrideIniKeys[] = {
@@ -1718,7 +1803,7 @@ static void ParseShaderOverrideSections()
 	const wchar_t *id;
 	ShaderOverride *override;
 	UINT64 hash;
-	bool duplicate, allow_duplicates, found;
+	bool duplicate, found;
 	bool disable_scissor;
 
 	// Lock entire routine. This can be re-inited live.  These shaderoverrides
@@ -1743,29 +1828,10 @@ static void ParseShaderOverrideSections()
 
 		duplicate = !!G->mShaderOverrideMap.count(hash);
 		override = &G->mShaderOverrideMap[hash];
+		if (!duplicate)
+			override->first_ini_section = id;
 
-		// We permit hash= to be duplicate, but only if every section
-		// indicates they are ok with it, and the section names still
-		// have to be distinct. This is intended that scripts will set
-		// this flag on any sections they create so that if a user
-		// creates a shaderoverride with the same hash they will get a
-		// warning at first, but can choose to allow it so that they
-		// can add their own commands without having to merge them with
-		// the section from the script, allowing all the auto generated
-		// sections to be grouped together. The section names still
-		// have to be distinct, which offers protection against scripts
-		// adding multiple identical sections if run multiple times.
-		// Note that you won't get warnings of duplicate settings
-		// between the sections, but at least we try not to clobber
-		// their values from earlier sections with the defaults.
-		allow_duplicates = GetIniBool(id, L"allow_duplicate_hash", false, NULL)
-				   && override->allow_duplicate_hashes;
-
-		if (duplicate && !allow_duplicates) {
-			IniWarning("WARNING: Duplicate ShaderOverride hash: %016llx\n", hash);
-		}
-
-		override->allow_duplicate_hashes = allow_duplicates;
+		check_shaderoverride_duplicates(duplicate, id, override, hash);
 
 		if (GetIniStringAndLog(id, L"depth_filter", 0, setting, MAX_PATH)) {
 			override->depth_filter = lookup_enum_val<wchar_t *, DepthBufferFilter>

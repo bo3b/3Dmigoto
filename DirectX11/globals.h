@@ -223,10 +223,11 @@ static EnumName_t<wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
 };
 
 struct ShaderOverride {
+	std::wstring first_ini_section;
 	DepthBufferFilter depth_filter;
 	UINT64 partner_hash;
 	char model[20]; // More than long enough for even ps_4_0_level_9_0
-	bool allow_duplicate_hashes;
+	int allow_duplicate_hashes;
 
 	CommandList command_list;
 	CommandList post_command_list;
@@ -234,7 +235,7 @@ struct ShaderOverride {
 	ShaderOverride() :
 		depth_filter(DepthBufferFilter::NONE),
 		partner_hash(0),
-		allow_duplicate_hashes(true)
+		allow_duplicate_hashes(1)
 	{
 		model[0] = '\0';
 	}
