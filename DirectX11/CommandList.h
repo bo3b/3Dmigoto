@@ -38,6 +38,9 @@ public:
 	bool post;
 	bool aborted;
 
+	bool scissor_valid;
+	D3D11_RECT scissor_rects[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+
 	// If set this resource is in some way related to the command list
 	// invocation - a constant buffer we are analysing, a render target
 	// being cleared, etc.
@@ -663,11 +666,15 @@ enum class ParamOverrideType {
 	CURSOR_SCREEN_Y,
 	CURSOR_WINDOW_X, // Cursor in window client area coordinates in pixels
 	CURSOR_WINDOW_Y,
-	CURSOR_X, // Cursor position scaled so that client area is the range [0:1]
+	CURSOR_X,        // Cursor position scaled so that client area is the range [0:1]
 	CURSOR_Y,
 	CURSOR_HOTSPOT_X,
 	CURSOR_HOTSPOT_Y,
 	TIME,
+	SCISSOR_LEFT,   // May have an optional scissor rectangle index
+	SCISSOR_TOP,    // specified, which is parsed in code, or not -
+	SCISSOR_RIGHT,  // in which case it will match the keyword list
+	SCISSOR_BOTTOM,
 	RAW_SEPARATION, // These get the values as they are right now -
 	EYE_SEPARATION, // StereoParams is only updated at the start of each
 	CONVERGENCE,    // frame. Intended for use if the convergence may have
@@ -707,6 +714,10 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"cursor_hotspot_x", ParamOverrideType::CURSOR_HOTSPOT_X},
 	{L"cursor_hotspot_y", ParamOverrideType::CURSOR_HOTSPOT_Y},
 	{L"time", ParamOverrideType::TIME},
+	{L"scissor_left", ParamOverrideType::SCISSOR_LEFT},
+	{L"scissor_top", ParamOverrideType::SCISSOR_TOP},
+	{L"scissor_right", ParamOverrideType::SCISSOR_RIGHT},
+	{L"scissor_bottom", ParamOverrideType::SCISSOR_BOTTOM},
 	{L"raw_separation", ParamOverrideType::RAW_SEPARATION},
 	{L"eye_separation", ParamOverrideType::EYE_SEPARATION},
 	{L"convergence", ParamOverrideType::CONVERGENCE},
@@ -726,22 +737,15 @@ public:
 	// For texture filters:
 	ResourceCopyTarget texture_filter_target;
 
-	// TODO: Ability to override value until:
-	// a) From now on
-	// b) Single draw call only
-	// c) Until end of this frame (e.g. mark when post processing starts)
-	// d) Until end of next frame (e.g. for scene detection)
-	// Since the duration of the convergence and separation settings are
-	// not currently consistent between [ShaderOverride] and [Key] sections
-	// we could also make this apply to them to make it consistent, but
-	// still allow for the existing behaviour for the fixes that depend on
-	// it (like DG2).
+	// For scissor rectangle:
+	unsigned scissor;
 
 	ParamOverride() :
 		param_idx(-1),
 		param_component(NULL),
 		type(ParamOverrideType::INVALID),
-		val(FLT_MAX)
+		val(FLT_MAX),
+		scissor(0)
 	{}
 
 	void run(CommandListState*) override;

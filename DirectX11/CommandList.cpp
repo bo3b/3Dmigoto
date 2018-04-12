@@ -1951,6 +1951,18 @@ out_release_view:
 	view->Release();
 }
 
+static void UpdateScissorInfo(CommandListState *state)
+{
+	UINT num = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
+
+	if (state->scissor_valid)
+		return;
+
+	state->mOrigContext1->RSGetScissorRects(&num, state->scissor_rects);
+
+	state->scissor_valid = true;
+}
+
 float ParamOverride::process_texture_filter(CommandListState *state)
 {
 	TextureOverrideMatches matches;
@@ -2000,7 +2012,8 @@ CommandListState::CommandListState() :
 	cursor_color_tex(NULL),
 	cursor_color_view(NULL),
 	recursion(0),
-	aborted(false)
+	aborted(false),
+	scissor_valid(false)
 {
 	memset(&cursor_info, 0, sizeof(CURSORINFO));
 	memset(&cursor_info_ex, 0, sizeof(ICONINFO));
@@ -2390,6 +2403,22 @@ void ParamOverride::run(CommandListState *state)
 		case ParamOverrideType::TIME:
 			*dest = (float)(GetTickCount() - G->ticks_at_launch) / 1000.0f;
 			break;
+		case ParamOverrideType::SCISSOR_LEFT:
+			UpdateScissorInfo(state);
+			*dest = (float)state->scissor_rects[scissor].left;
+			break;
+		case ParamOverrideType::SCISSOR_TOP:
+			UpdateScissorInfo(state);
+			*dest = (float)state->scissor_rects[scissor].top;
+			break;
+		case ParamOverrideType::SCISSOR_RIGHT:
+			UpdateScissorInfo(state);
+			*dest = (float)state->scissor_rects[scissor].right;
+			break;
+		case ParamOverrideType::SCISSOR_BOTTOM:
+			UpdateScissorInfo(state);
+			*dest = (float)state->scissor_rects[scissor].bottom;
+			break;
 		case ParamOverrideType::RAW_SEPARATION:
 			// We could use cached values of these (nvapi is known
 			// to become a bottleneck with too many calls / frame),
@@ -2457,6 +2486,23 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 	ret = param->texture_filter_target.ParseTarget(section, val->c_str(), true, ini_namespace);
 	if (ret) {
 		param->type = ParamOverrideType::TEXTURE;
+		goto success;
+	}
+
+	// Try parsing value as a scissor rectangle. scissor_<side> also
+	// appears in the keywords list for uses of the default rectangle 0.
+	ret = swscanf_s(val->c_str(), L"scissor%u_%n", &param->scissor, &len1);
+	if (ret == 1 && param->scissor < D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE) {
+		if (!wcscmp(val->c_str() + len1, L"left"))
+			param->type = ParamOverrideType::SCISSOR_LEFT;
+		else if (!wcscmp(val->c_str() + len1, L"top"))
+			param->type = ParamOverrideType::SCISSOR_TOP;
+		else if (!wcscmp(val->c_str() + len1, L"right"))
+			param->type = ParamOverrideType::SCISSOR_RIGHT;
+		else if (!wcscmp(val->c_str() + len1, L"bottom"))
+			param->type = ParamOverrideType::SCISSOR_BOTTOM;
+		else
+			goto bail;
 		goto success;
 	}
 
