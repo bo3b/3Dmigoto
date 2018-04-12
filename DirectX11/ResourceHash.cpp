@@ -1217,7 +1217,7 @@ DEFINE_GUID(ResourceReleaseTrackerGuid,
 
 ResourceReleaseTracker::ResourceReleaseTracker(ID3D11Resource *resource) :
 	resource(resource),
-	ref(1)
+	ref(0)
 {
 	HRESULT hr = resource->SetPrivateDataInterface(ResourceReleaseTrackerGuid, this);
 	// LogDebug("ResourceReleaseTracker %p tracking %p: 0x%x\n", this, resource, hr);
@@ -1256,19 +1256,6 @@ ULONG STDMETHODCALLTYPE ResourceReleaseTracker::Release(void)
 		delete this;
 	}
 	return ret;
-}
-
-void track_resource_release(ID3D11Resource *resource)
-{
-	ResourceReleaseTracker *tracker;
-
-	if (!resource)
-		return;
-
-	// I could do this inside the constructor, but the refcounting would be
-	// a bit odd, and what do we do if it fails? This way is balanced.
-	tracker = new ResourceReleaseTracker(resource);
-	tracker->Release();
 }
 
 // -----------------------------------------------------------------------------------------------
