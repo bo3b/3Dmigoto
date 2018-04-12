@@ -545,6 +545,8 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
 		// shaders get the new values for the current frame:
 		UpdateStereoParams();
 
+		G->bb_is_upscaling_bb = !!G->SCREEN_UPSCALING && G->upscaling_command_list_using_explicit_bb_flip;
+
 		// Run the post present command list now, which can be used to restore
 		// state changed in the pre-present command list, or to perform some
 		// action at the start of a frame:

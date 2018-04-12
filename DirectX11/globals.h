@@ -386,6 +386,8 @@ struct Globals
 	int FILTER_REFRESH[11];
 	bool SCREEN_ALLOW_COMMANDS;
 	bool upscaling_hooks_armed;
+	bool upscaling_command_list_using_explicit_bb_flip;
+	bool bb_is_upscaling_bb;
 
 	int marking_mode;
 	int mark_snapshot;
@@ -591,6 +593,8 @@ struct Globals
 		SCREEN_FULLSCREEN(0),
 		SCREEN_ALLOW_COMMANDS(false),
 		upscaling_hooks_armed(true),
+		upscaling_command_list_using_explicit_bb_flip(false),
+		bb_is_upscaling_bb(false),
 
 		marking_mode(-1),
 		mark_snapshot(2),

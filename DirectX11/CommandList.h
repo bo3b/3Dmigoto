@@ -508,8 +508,9 @@ enum class ResourceCopyTargetType {
 	CURSOR_MASK,
 	CURSOR_COLOR,
 	THIS_RESOURCE, // For constant buffer analysis & render/depth target clearing
-	SWAP_CHAIN,
-	FAKE_SWAP_CHAIN, // need this for upscaling used with "f_bb" flag in  the .ini file
+	SWAP_CHAIN, // Meaning depends on whether or not upscaling has run yet this frame
+	REAL_SWAP_CHAIN, // need this for upscaling used with "r_bb"
+	FAKE_SWAP_CHAIN, // need this for upscaling used with "f_bb"
 	CPU, // For staging resources to the CPU, e.g. for auto-convergence
 };
 
@@ -872,6 +873,16 @@ public:
 	ResourceCopyTarget target;
 	wstring target_name;
 	FrameAnalysisOptions analyse_options;
+
+	void run(CommandListState*) override;
+};
+
+class UpscalingFlipBBCommand : public CommandListCommand {
+public:
+	wstring ini_section;
+
+	UpscalingFlipBBCommand(wstring section);
+	~UpscalingFlipBBCommand();
 
 	void run(CommandListState*) override;
 };

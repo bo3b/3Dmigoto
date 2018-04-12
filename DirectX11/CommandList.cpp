@@ -709,6 +709,11 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 	if (!wcscmp(key, L"dump"))
 		return ParseFrameAnalysisDump(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
+	if (!wcscmp(key, L"special")) {
+		if (!wcscmp(val->c_str(), L"upscaling_switch_bb"))
+			return AddCommandToList(new UpscalingFlipBBCommand(section), explicit_command_list, pre_command_list, NULL, NULL);
+	}
+
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
 
@@ -1285,6 +1290,24 @@ void FrameAnalysisDumpCommand::run(CommandListState *state)
 		resource->Release();
 	if (view)
 		view->Release();
+}
+
+UpscalingFlipBBCommand::UpscalingFlipBBCommand(wstring section) :
+	ini_section(section)
+{
+	G->upscaling_command_list_using_explicit_bb_flip = true;
+}
+
+UpscalingFlipBBCommand::~UpscalingFlipBBCommand()
+{
+	G->upscaling_command_list_using_explicit_bb_flip = false;
+}
+
+void UpscalingFlipBBCommand::run(CommandListState *state)
+{
+	COMMAND_LIST_LOG(state, "[%S] special = upscaling_switch_bb\n", ini_section.c_str());
+
+	G->bb_is_upscaling_bb = false;
 }
 
 CustomShader::CustomShader() :
@@ -3116,6 +3139,17 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *section, const wchar_t *targ
 		return true;
 	}
 
+	if (is_source && !wcscmp(target, L"r_bb")) {
+		type = ResourceCopyTargetType::REAL_SWAP_CHAIN;
+		// Holding a reference on the back buffer will prevent
+		// ResizeBuffers() from working, so forbid caching any views of
+		// the back buffer. Leaving it bound could also be a problem,
+		// but since this is usually only used from custom shader
+		// sections they will take care of unbinding it automatically:
+		forbid_view_cache = true;
+		return true;
+	}
+
 	if (is_source && !wcscmp(target, L"f_bb")) {
 		type = ResourceCopyTargetType::FAKE_SWAP_CHAIN;
 		// Holding a reference on the back buffer will prevent
@@ -3505,10 +3539,23 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 	case ResourceCopyTargetType::SWAP_CHAIN:
 		{
 			HackerSwapChain *mHackerSwapChain = mHackerDevice->GetHackerSwapChain();
+			if (mHackerSwapChain) {
+				if (G->bb_is_upscaling_bb)
+					mHackerSwapChain->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+				else
+					mHackerSwapChain->GetOrigSwapChain1()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+			} else
+				COMMAND_LIST_LOG(state, "  Unable to get access to swap chain\n");
+		}
+		return res;
+
+	case ResourceCopyTargetType::REAL_SWAP_CHAIN:
+		{
+			HackerSwapChain *mHackerSwapChain = mHackerDevice->GetHackerSwapChain();
 			if (mHackerSwapChain)
 				mHackerSwapChain->GetOrigSwapChain1()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
 			else
-				COMMAND_LIST_LOG(state, "  Unable to get access to swap chain\n");
+				COMMAND_LIST_LOG(state, "  Unable to get access to real swap chain\n");
 		}
 		return res;
 
