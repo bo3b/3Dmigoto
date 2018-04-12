@@ -1772,14 +1772,11 @@ static void check_shaderoverride_duplicates(bool duplicate, const wchar_t *id, S
 	}
 
 	if (duplicate && !allow_duplicates) {
-		char *shaderhacker_msg = "";
-		if (G->hunting)
-			shaderhacker_msg = "If this is intentional, add allow_duplicates=true or allow_duplicates=overrule to suppress warning\n";
-
 		IniWarning("WARNING: Possible Mod Conflict: Duplicate ShaderOverride hash=%16llx\n"
 			   "[%S]\n"
 			   "[%S]\n"
-			   "%s", hash, override->first_ini_section.c_str(), id, shaderhacker_msg);
+			   "If this is intentional, add allow_duplicates=true or allow_duplicates=overrule to suppress warning\n",
+			   hash, override->first_ini_section.c_str(), id);
 	}
 
 	override->allow_duplicate_hashes = allow_duplicates;
@@ -2545,7 +2542,6 @@ static void warn_if_duplicate_texture_hash(TextureOverride *override, uint32_t h
 {
 	TextureOverrideMap::iterator i;
 	TextureOverrideList::iterator j;
-	char *shaderhacker_msg = "";
 
 	if (override->has_draw_context_match || override->has_match_priority)
 		return;
@@ -2565,14 +2561,11 @@ static void warn_if_duplicate_texture_hash(TextureOverride *override, uint32_t h
 		if (j->has_draw_context_match || j->has_match_priority)
 			continue;
 
-		if (G->hunting)
-			shaderhacker_msg = "If this is intentional, add a match_priority=n to suppress warning and disambiguate order\n";
-
 		IniWarning("WARNING: Possible Mod Conflict: Duplicate TextureOverride hash=%08lx\n"
 			   "[%S]\n"
 			   "[%S]\n"
-			   "%s", hash, j->ini_section.c_str(),
-				       override->ini_section.c_str(), shaderhacker_msg);
+			   "If this is intentional, add a match_priority=n to suppress warning and disambiguate order\n",
+			   hash, j->ini_section.c_str(), override->ini_section.c_str());
 	}
 }
 
