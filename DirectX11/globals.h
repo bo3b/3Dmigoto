@@ -277,7 +277,7 @@ struct TextureOverride {
 		height_multiply(1.0),
 		expand_region_copy(false),
 		deny_cpu_read(false),
-		filter_index(1.0),
+		filter_index(FLT_MAX),
 		has_draw_context_match(false),
 		has_match_priority(false),
 		priority(0)

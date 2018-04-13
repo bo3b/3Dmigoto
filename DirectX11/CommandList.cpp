@@ -1966,6 +1966,7 @@ static void UpdateScissorInfo(CommandListState *state)
 float ParamOverride::process_texture_filter(CommandListState *state)
 {
 	TextureOverrideMatches matches;
+	TextureOverrideMatches::reverse_iterator rit;
 	bool resource_found;
 
 	texture_filter_target.FindTextureOverrides(state, &resource_found, &matches);
@@ -1990,8 +1991,19 @@ float ParamOverride::process_texture_filter(CommandListState *state)
 		return 0;
 
 	// If there are multiple matches, we want the filter_index with the
-	// highest priority, which will be the last in the list:
-	return matches.back()->filter_index;
+	// highest priority, which will be the last in the list that has a
+	// filter index. In the future we may also want a namespaced version of
+	// this (and checktextureoverride) to limit the check to sections
+	// appearing in the same namespace or with a given prefix (but we don't
+	// want to do string processing on the namespace here - the candidates
+	// should already be narrowed down during ini parsing):
+	for (rit = matches.rbegin(); rit != matches.rend(); rit++) {
+		if ((*rit)->filter_index != FLT_MAX)
+			return (*rit)->filter_index;
+	}
+
+	// No match had a filter_index, but there was at least one match:
+	return 1.0;
 }
 
 

@@ -2330,7 +2330,7 @@ static void parse_texture_override_common(const wchar_t *id, TextureOverride *ov
 		}
 	}
 
-	override->filter_index = GetIniFloat(id, L"filter_index", 1.0f, NULL);
+	override->filter_index = GetIniFloat(id, L"filter_index", FLT_MAX, NULL);
 
 	override->expand_region_copy = GetIniBool(id, L"expand_region_copy", false, NULL);
 	override->deny_cpu_read = GetIniBool(id, L"deny_cpu_read", false, NULL);
