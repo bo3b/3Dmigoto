@@ -154,8 +154,13 @@ HackerSwapChain::HackerSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pDev
 	if (mHackerContext) {
 		mHackerContext->AddRef();
 	} else {
-		// GetImmediateContext will bump the refcount for us:
-		pDevice->GetImmediateContext(reinterpret_cast<ID3D11DeviceContext**>(&mHackerContext));
+		ID3D11DeviceContext *tmpContext = NULL;
+		// GetImmediateContext will bump the refcount for us.
+		// In the case of hooking, GetImmediateContext will not return
+		// a HackerContext, so we don't use it's return directly, but
+		// rather just use it to make GetHackerContext valid:
+		mHackerDevice->GetImmediateContext(&tmpContext);
+		mHackerContext = mHackerDevice->GetHackerContext();
 	}
 
 	mHackerDevice->SetHackerSwapChain(this);

@@ -4268,7 +4268,7 @@ static void MarkAllShadersDeferredUnprocessed()
 
 void ReloadConfig(HackerDevice *device)
 {
-	HackerContext *mHackerContext = NULL;
+	HackerContext *mHackerContext = device->GetHackerContext();
 
 	LogInfo("Reloading d3dx.ini (EXPERIMENTAL)...\n");
 
@@ -4306,11 +4306,18 @@ void ReloadConfig(HackerDevice *device)
 	// Execute the [Constants] command list in the immediate context to
 	// initialise iniParams and perform any other custom initialisation the
 	// user may have defined:
-	device->GetImmediateContext((ID3D11DeviceContext**)&mHackerContext);
 	if (mHackerContext) {
 		mHackerContext->InitIniParams();
-		mHackerContext->Release();
+	} else {
+		// We used to use GetImmediateContext here, which would ensure
+		// that the HackerContext had been created if it didn't exist
+		// for some reason, but that doesn't work in the case of
+		// hooking. I'm not positive we actually needed that (and if we
+		// did the [Present] command list would also be broken), so
+		// rather than continue to use it, issue a warning if the
+		// HackerContext doesn't exist.
+		LogOverlay(LOG_DIRE, "BUG: No HackerContext at ReloadConfig - please report this\n");
 	}
 
-	LogOverlay(LOG_INFO, "> d3dx.ini reloaded");
+	LogOverlay(LOG_INFO, "> d3dx.ini reloaded\n");
 }
