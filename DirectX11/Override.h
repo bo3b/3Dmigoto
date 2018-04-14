@@ -178,7 +178,7 @@ public:
 	void Exclude();
 	void Update(HackerDevice *device);
 
-	int unique_triggers_required;
+	unsigned unique_triggers_required;
 };
 typedef std::unordered_map<std::wstring, class PresetOverride> PresetOverrideMap;
 extern PresetOverrideMap presetOverrides;

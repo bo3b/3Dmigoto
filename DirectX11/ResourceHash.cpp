@@ -1216,9 +1216,9 @@ DEFINE_GUID(ResourceReleaseTrackerGuid,
 0x4a40bf2f, 0x6358, 0x470f, 0xba, 0xa, 0x66, 0x2e, 0x3e, 0x2d, 0x8c, 0xd3);
 
 ResourceReleaseTracker::ResourceReleaseTracker(ID3D11Resource *resource) :
-	resource(resource),
-	ref(0)
+	resource(resource)
 {
+	ref = 0;
 	HRESULT hr = resource->SetPrivateDataInterface(ResourceReleaseTrackerGuid, this);
 	// LogDebug("ResourceReleaseTracker %p tracking %p: 0x%x\n", this, resource, hr);
 }
