@@ -683,30 +683,41 @@ static void ParseIniFilesRecursive(wchar_t *migoto_path, const wstring &rel_path
 	wstring search_path, ini_path, ini_namespace;
 
 	search_path = wstring(migoto_path) + rel_path + L"\\*";
+	LogInfo("    Searching \"%S\"\n", search_path.c_str());
 
 	// We want to make sure the order will be consistent in case of any
 	// interactions between mods, so we read the entire directory, sort it
 	// in a case insensitive manner, then process the matching files &
 	// directories in the same order every time
-	hFind = FindFirstFile(search_path.c_str(), &find_data);
-	if (hFind != INVALID_HANDLE_VALUE) {
-		do {
-			if (matches_globbing_vector(find_data.cFileName, exclude))
-				continue;
 
-			if (find_data.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY) {
-				if (wcscmp(find_data.cFileName, L".") && wcscmp(find_data.cFileName, L".."))
-					directories.insert(wstring(find_data.cFileName));
-			} else if (!wcscmp(find_data.cFileName + wcslen(find_data.cFileName) - 4, L".ini")) {
-				ini_files.insert(wstring(find_data.cFileName));
-			}
-		} while (FindNextFile(hFind, &find_data));
-		FindClose(hFind);
+	hFind = FindFirstFile(search_path.c_str(), &find_data);
+	if (hFind == INVALID_HANDLE_VALUE) {
+		LogInfo("    Recursive include path \"%S\" not found\n", search_path.c_str());
+		return;
 	}
+
+	do {
+		if (matches_globbing_vector(find_data.cFileName, exclude)) {
+			LogInfo("    Excluding \"%S\"\n", find_data.cFileName);
+			continue;
+		}
+
+		if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+			if (wcscmp(find_data.cFileName, L".") && wcscmp(find_data.cFileName, L".."))
+				directories.insert(wstring(find_data.cFileName));
+		} else if (!wcscmp(find_data.cFileName + wcslen(find_data.cFileName) - 4, L".ini")) {
+			ini_files.insert(wstring(find_data.cFileName));
+		} else {
+			LogDebug("    Not a directory or ini file: \"%S\"\n", find_data.cFileName);
+		}
+	} while (FindNextFile(hFind, &find_data));
+
+	FindClose(hFind);
 
 	for (wstring i: ini_files) {
 		ini_namespace = rel_path + wstring(L"\\") + i;
 		ini_path = wstring(migoto_path) + ini_namespace;
+		LogInfo("    Processing \"%S\"\n", ini_path.c_str());
 		ParseNamespacedIniFile(ini_path.c_str(), &ini_namespace);
 	}
 
