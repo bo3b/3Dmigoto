@@ -2571,6 +2571,7 @@ static ResourceType* GetResourceFromPool(
 	uint32_t hash;
 	size_t size;
 	HRESULT hr;
+	ResourcePoolCache::iterator pool_i;
 
 	// We don't want to use the CalTexture2D/3DDescHash functions because
 	// the resolution override could produce the same hash for distinct
@@ -2578,15 +2579,16 @@ static ResourceType* GetResourceFromPool(
 	// doesn't matter what we use - just has to be fast.
 	hash = crc32c_hw(0, desc, sizeof(DescType));
 
-	try {
-		resource = (ResourceType*)resource_pool->cache.at(hash);
+	pool_i = resource_pool->cache.find(hash);
+	if (pool_i != resource_pool->cache.end()) {
+		resource = (ResourceType*)pool_i->second;
 		if (resource == dst_resource)
 			return NULL;
 		if (resource) {
 			LogDebug("Switching cached resource %S\n", ini_line->c_str());
 			resource->AddRef();
 		}
-	} catch (std::out_of_range) {
+	} else {
 		LogInfo("Creating cached resource %S\n", ini_line->c_str());
 
 		hr = (state->mOrigDevice1->*CreateResource)(desc, NULL, &resource);

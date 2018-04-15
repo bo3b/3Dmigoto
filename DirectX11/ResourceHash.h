@@ -148,6 +148,8 @@ struct ResourceHashInfo
 	}
 };
 
+typedef std::unordered_map<uint32_t, struct ResourceHashInfo> ResourceInfoMap;
+
 // This is a COM object that can be attached to a resource via
 // ID3D11DeviceChild::SetPrivateDataInterface(), so that when the resource is
 // released this class will be as well, giving us a way to reliably know when a

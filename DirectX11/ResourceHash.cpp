@@ -948,6 +948,7 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 	UINT srcWidth = 1, srcHeight = 1, srcDepth = 1, srcMip = 0, srcIdx = 0, srcArraySize = 1;
 	UINT dstWidth = 1, dstHeight = 1, dstDepth = 1, dstMip = 0, dstIdx = 0, dstArraySize = 1;
 	bool partial = false;
+	ResourceInfoMap::iterator info_i;
 
 	if (!dest)
 		return;
@@ -965,11 +966,11 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 	if (!dstHash)
 		goto out_unlock;
 
-	try {
-		dstInfo = &G->mResourceInfo.at(dstHash);
-	} catch (std::out_of_range) {
+	// Faster than catching an out_of_range exception from .at():
+	info_i = G->mResourceInfo.find(dstHash);
+	if (info_i == G->mResourceInfo.end())
 		goto out_unlock;
-	}
+	dstInfo = &info_i->second;
 
 	GetResourceInfoFields(dstInfo, DstSubresource,
 			&dstWidth, &dstHeight, &dstDepth,
@@ -985,8 +986,10 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 		srcHash = GetOrigResourceHash(src);
 		G->mCopiedResourceInfo.insert(srcHash);
 
-		try {
-			srcInfo = &G->mResourceInfo.at(srcHash);
+		// Faster than catching an out_of_range exception from .at():
+		info_i = G->mResourceInfo.find(srcHash);
+		if (info_i != G->mResourceInfo.end()) {
+			srcInfo = &info_i->second;
 			GetResourceInfoFields(srcInfo, srcSubresource,
 					&srcWidth, &srcHeight, &srcDepth,
 					&srcIdx, &srcMip, &srcArraySize);
@@ -996,7 +999,6 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 				if (!G->track_texture_updates)
 					dstInfo->hash_contaminated = true;
 			}
-		} catch (std::out_of_range) {
 		}
 	}
 

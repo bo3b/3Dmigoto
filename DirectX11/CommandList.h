@@ -411,10 +411,11 @@ static EnumName_t<const wchar_t *, CustomResourceBindFlags> CustomResourceBindFl
 // the description size of each resource type is unique - and it would be
 // highly unusual (though not forbidden) to mix different resource types in a
 // single pool anyway.
+typedef unordered_map<uint32_t, ID3D11Resource*> ResourcePoolCache;
 class ResourcePool
 {
 public:
-	unordered_map<uint32_t, ID3D11Resource*> cache;
+	ResourcePoolCache cache;
 
 	~ResourcePool();
 

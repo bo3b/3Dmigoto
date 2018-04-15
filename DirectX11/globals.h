@@ -507,7 +507,7 @@ struct Globals
 	std::unordered_map<ID3D11Asynchronous*, AsyncQueryType> mQueryTypes;
 
 	// These five items work with the *original* resource hash:
-	std::unordered_map<uint32_t, struct ResourceHashInfo> mResourceInfo;
+	ResourceInfoMap mResourceInfo;
 	std::set<uint32_t> mRenderTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mUnorderedAccessInfo;				// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mDepthTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)

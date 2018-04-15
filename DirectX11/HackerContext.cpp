@@ -491,6 +491,7 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 {
 	ID3D11Shader *orig_shader = NULL, *patched_shader = NULL;
 	ID3D11ClassInstance *class_instances[256];
+	ShaderReloadMap::iterator orig_info_i;
 	OriginalShaderInfo *orig_info = NULL;
 	UINT num_instances = 0;
 	string asm_text;
@@ -499,11 +500,11 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	unsigned i;
 	wstring tagline(L"//");
 
-	try {
-		orig_info = &G->mReloadedShaders.at(shader);
-	} catch (std::out_of_range) {
+	// Faster than catching an out_of_range exception from .at():
+	orig_info_i = G->mReloadedShaders.find(shader);
+	if (orig_info_i == G->mReloadedShaders.end())
 		return;
-	}
+	orig_info = &orig_info_i->second;
 
 	if (!orig_info->deferred_replacement_candidate || orig_info->deferred_replacement_processed)
 		return;
