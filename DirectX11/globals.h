@@ -49,10 +49,6 @@ static EnumName_t<wchar_t *, ShaderHashType> ShaderHashNames[] = {
 };
 
 
-// Key is index/vertex buffer, value is hash key.
-
-typedef std::unordered_map<ID3D11Buffer *, uint32_t> DataBufferMap;
-
 // Source compiled shaders.
 typedef std::unordered_map<UINT64, std::string> CompiledShaderMap;
 
