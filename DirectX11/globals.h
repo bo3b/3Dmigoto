@@ -30,12 +30,13 @@ enum HuntingMode {
 };
 
 enum class MarkingMode {
-	INVALID = -1,
-	SKIP = 0,
-	MONO = 1,
-	ORIGINAL = 2,
-	ZERO = 3,
-	PINK = 4,
+	SKIP,
+	ORIGINAL,
+	PINK,
+	MONO,
+	ZERO,
+
+	INVALID, // Must be last - used for next_marking_mode
 };
 static EnumName_t<const wchar_t *, MarkingMode> MarkingModeNames[] = {
 	{L"skip", MarkingMode::SKIP},

@@ -1071,6 +1071,8 @@ T GetIniEnumClass(const wchar_t *section, const wchar_t *key, T def, bool *found
 // the compiler to generate them so they can be used from other source files:
 template TransitionType GetIniEnumClass<TransitionType>(const wchar_t *section, const wchar_t *key, TransitionType def, bool *found,
 		struct EnumName_t<const wchar_t *, TransitionType> *enum_names);
+template MarkingMode GetIniEnumClass<MarkingMode>(const wchar_t *section, const wchar_t *key, MarkingMode def, bool *found,
+		struct EnumName_t<const wchar_t *, MarkingMode> *enum_names);
 
 // For options that used to be booleans or integers and are now enums. Boolean
 // values (0/1/true/false/yes/no/on/off) will continue retuning 0/1 for
@@ -4109,14 +4111,8 @@ void LoadConfigFile()
 	if (GetIniStringAndLog(L"Rendering", L"fix_MatrixOperand1Multiplier", 0, setting, MAX_PATH))
 		G->MatrixPos_MUL1 = readStringParameter(setting);
 
-
 	// [Hunting]
-	LogInfo("[Hunting]\n");
-	G->hunting = GetIniInt(L"Hunting", L"hunting", 0, NULL);
-
-	G->marking_mode = GetIniEnumClass(L"Hunting", L"marking_mode", MarkingMode::SKIP, NULL, MarkingModeNames);
-
-	G->mark_snapshot = GetIniInt(L"Hunting", L"mark_snapshot", 0, NULL);
+	ParseHuntingSection();
 
 	// Splitting the enumeration of these sections out from parsing them as
 	// they can be referenced from other command list sections, keys and
@@ -4131,7 +4127,6 @@ void LoadConfigFile()
 	EnumerateCustomShaderSections();
 	EnumerateExplicitCommandListSections();
 
-	RegisterHuntingKeyBindings();
 	RegisterPresetKeyBindings();
 
 	ParsePresetOverrideSections();

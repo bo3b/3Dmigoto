@@ -1117,6 +1117,20 @@ static void EnableDeferred(HackerDevice *device, void *private_data)
 	G->deferred_contexts_enabled = true;
 }
 
+static void NextMarkingMode(HackerDevice *device, void *private_data)
+{
+	if (G->hunting != HUNTING_MODE_ENABLED)
+		return;
+
+	G->marking_mode = (MarkingMode)((int)G->marking_mode + 1);
+
+	// FIXME: Zero mode can crash and needs some work:
+	if (G->marking_mode == MarkingMode::ZERO)
+		G->marking_mode = (MarkingMode)((int)G->marking_mode + 1);
+
+	if (G->marking_mode == MarkingMode::INVALID)
+		G->marking_mode = MarkingMode::SKIP;
+}
 
 template <typename ItemType>
 static void HuntNext(char *type, std::set<ItemType> *visited,
@@ -1521,11 +1535,16 @@ static void ToggleHunting(HackerDevice *device, void *private_data)
 	LogInfo("> Hunting toggled to %d\n", G->hunting);
 }
 
-void RegisterHuntingKeyBindings()
+void ParseHuntingSection()
 {
 	intptr_t i;
 	wchar_t buf[MAX_PATH];
 	int repeat = 8, noRepeat = 0;
+	MarkingMode new_marking_mode;
+	static MarkingMode prev_marking_mode = MarkingMode::INVALID;
+
+	LogInfo("[Hunting]\n");
+	G->hunting = GetIniInt(L"Hunting", L"hunting", 0, NULL);
 
 	// reload_config is registered even if not hunting - this allows us to
 	// turn on hunting in the ini dynamically without having to relaunch
@@ -1544,6 +1563,16 @@ void RegisterHuntingKeyBindings()
 	RegisterIniKeyBinding(L"Hunting", L"toggle_hunting", ToggleHunting, NULL, noRepeat, NULL);
 
 	repeat = GetIniInt(L"Hunting", L"repeat_rate", repeat, NULL);
+
+	// For a better user experience we avoid resetting the marking mode on
+	// config reload if the next_marking_mode key is enabled, unless
+	// marking_mode was actually changed since the last config reload:
+	new_marking_mode = GetIniEnumClass(L"Hunting", L"marking_mode", MarkingMode::INVALID, NULL, MarkingModeNames);
+	if (new_marking_mode != prev_marking_mode)
+		G->marking_mode = new_marking_mode;
+	RegisterIniKeyBinding(L"Hunting", L"next_marking_mode", NextMarkingMode, NULL, noRepeat, NULL);
+
+	G->mark_snapshot = GetIniInt(L"Hunting", L"mark_snapshot", 0, NULL);
 
 	RegisterIniKeyBinding(L"Hunting", L"next_pixelshader", NextPixelShader, NULL, repeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"previous_pixelshader", PrevPixelShader, NULL, repeat, NULL);
