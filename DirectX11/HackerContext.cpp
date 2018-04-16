@@ -686,7 +686,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 					G->mSelectedVertexShader_IndexBuffer.insert(mCurrentIndexBuffer);
 				if (mCurrentPixelShader == G->mSelectedPixelShader)
 					G->mSelectedPixelShader_IndexBuffer.insert(mCurrentIndexBuffer);
-				if (G->marking_mode == MARKING_MODE_MONO && mHackerDevice->mStereoHandle)
+				if (G->marking_mode == MarkingMode::MONO && mHackerDevice->mStereoHandle)
 				{
 					LogDebug("  setting separation=0 for hunting\n");
 
@@ -697,7 +697,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 					if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, 0))
 						LogDebug("    Stereo_SetSeparation failed.\n");
 				}
-				else if (G->marking_mode == MARKING_MODE_SKIP)
+				else if (G->marking_mode == MarkingMode::SKIP)
 				{
 					data.call_info.skip = true;
 
@@ -708,7 +708,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 					// use a second skip flag specifically for hunting:
 					data.call_info.hunting_skip = true;
 				}
-				else if (G->marking_mode == MARKING_MODE_PINK)
+				else if (G->marking_mode == MarkingMode::PINK)
 				{
 					if (G->mPinkingShader)
 						data.oldPixelShader = SwitchPSShader(G->mPinkingShader);
@@ -1356,7 +1356,7 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 		RecordComputeShaderStats();
 
 		if (mCurrentComputeShader == G->mSelectedComputeShader) {
-			if (G->marking_mode == MARKING_MODE_SKIP)
+			if (G->marking_mode == MarkingMode::SKIP)
 				return false;
 		}
 	}
@@ -1892,13 +1892,13 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 
 		if (G->hunting == HUNTING_MODE_ENABLED) {
 			// Replacement map.
-			if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
+			if (G->marking_mode == MarkingMode::ORIGINAL || !G->fix_enabled) {
 				ShaderReplacementMap::iterator j = G->mOriginalShaders.find(pShader);
 				if ((selectedShader == *currentShaderHash || !G->fix_enabled) && j != G->mOriginalShaders.end()) {
 					repl_shader = (ID3D11Shader*)j->second;
 				}
 			}
-			if (G->marking_mode == MARKING_MODE_ZERO) {
+			if (G->marking_mode == MarkingMode::ZERO) {
 				ShaderReplacementMap::iterator j = G->mZeroShaders.find(pShader);
 				if (selectedShader == *currentShaderHash && j != G->mZeroShaders.end()) {
 					repl_shader = (ID3D11Shader*)j->second;

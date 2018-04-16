@@ -4114,14 +4114,7 @@ void LoadConfigFile()
 	LogInfo("[Hunting]\n");
 	G->hunting = GetIniInt(L"Hunting", L"hunting", 0, NULL);
 
-	G->marking_mode = MARKING_MODE_SKIP;
-	if (GetIniStringAndLog(L"Hunting", L"marking_mode", 0, setting, MAX_PATH)) {
-		if (!_wcsicmp(setting, L"skip")) G->marking_mode = MARKING_MODE_SKIP;
-		if (!_wcsicmp(setting, L"mono")) G->marking_mode = MARKING_MODE_MONO;
-		if (!_wcsicmp(setting, L"original")) G->marking_mode = MARKING_MODE_ORIGINAL;
-		if (!_wcsicmp(setting, L"zero")) G->marking_mode = MARKING_MODE_ZERO;
-		if (!_wcsicmp(setting, L"pink")) G->marking_mode = MARKING_MODE_PINK;
-	}
+	G->marking_mode = GetIniEnumClass(L"Hunting", L"marking_mode", MarkingMode::SKIP, NULL, MarkingModeNames);
 
 	G->mark_snapshot = GetIniInt(L"Hunting", L"mark_snapshot", 0, NULL);
 

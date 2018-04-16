@@ -29,11 +29,22 @@ enum HuntingMode {
 	HUNTING_MODE_SOFT_DISABLED = 2,
 };
 
-const int MARKING_MODE_SKIP = 0;
-const int MARKING_MODE_MONO = 1;
-const int MARKING_MODE_ORIGINAL = 2;
-const int MARKING_MODE_ZERO = 3;
-const int MARKING_MODE_PINK = 4;
+enum class MarkingMode {
+	INVALID = -1,
+	SKIP = 0,
+	MONO = 1,
+	ORIGINAL = 2,
+	ZERO = 3,
+	PINK = 4,
+};
+static EnumName_t<const wchar_t *, MarkingMode> MarkingModeNames[] = {
+	{L"skip", MarkingMode::SKIP},
+	{L"mono", MarkingMode::MONO},
+	{L"original", MarkingMode::ORIGINAL},
+	{L"zero", MarkingMode::ZERO},
+	{L"pink", MarkingMode::PINK},
+	{NULL, MarkingMode::INVALID} // End of list marker
+};
 
 enum class ShaderHashType {
 	INVALID = -1,
@@ -385,7 +396,7 @@ struct Globals
 	bool upscaling_command_list_using_explicit_bb_flip;
 	bool bb_is_upscaling_bb;
 
-	int marking_mode;
+	MarkingMode marking_mode;
 	int mark_snapshot;
 	int gForceStereo;
 	bool gCreateStereoProfile;
@@ -592,7 +603,7 @@ struct Globals
 		upscaling_command_list_using_explicit_bb_flip(false),
 		bb_is_upscaling_bb(false),
 
-		marking_mode(-1),
+		marking_mode(MarkingMode::INVALID),
 		mark_snapshot(2),
 		gForceStereo(0),
 		gCreateStereoProfile(false),

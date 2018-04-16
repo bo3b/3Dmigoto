@@ -326,7 +326,7 @@ HRESULT HackerDevice::CreateIniParamResources()
 void HackerDevice::CreatePinkHuntingResources()
 {
 	// Only create special pink mode PixelShader when requested.
-	if (G->hunting && (G->marking_mode == MARKING_MODE_PINK || G->config_reloadable))
+	if (G->hunting && (G->marking_mode == MarkingMode::PINK || G->config_reloadable))
 	{
 		char* hlsl =
 			"float4 pshader() : SV_Target0"
@@ -1220,7 +1220,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 	}
 
 	// Zero shader?
-	if (G->marking_mode == MARKING_MODE_ZERO)
+	if (G->marking_mode == MarkingMode::ZERO)
 	{
 		// Disassemble old shader for fixing.
 		string asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength);
@@ -1312,7 +1312,7 @@ bool HackerDevice::NeedOriginalShader(UINT64 hash)
 	ShaderOverride *shaderOverride;
 	ShaderOverrideMap::iterator i;
 
-	if (G->hunting && (G->marking_mode == MARKING_MODE_ORIGINAL || G->config_reloadable || G->show_original_enabled))
+	if (G->hunting && (G->marking_mode == MarkingMode::ORIGINAL || G->config_reloadable || G->show_original_enabled))
 		return true;
 
 	i = G->mShaderOverrideMap.find(hash);
@@ -2595,7 +2595,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 			G->mShaders[*ppShader] = hash;
 			LogDebugW(L"    %ls: handle = %p, hash = %016I64x\n", shaderType, *ppShader, hash);
 
-			if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
+			if ((G->marking_mode == MarkingMode::ZERO) && zeroShader)
 			{
 				G->mZeroShaders[*ppShader] = zeroShader;
 			}
