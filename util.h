@@ -172,12 +172,18 @@ static DECLSPEC_NORETURN void DoubleBeepExit()
 // To use this function be sure to terminate an EnumName_t list with {NULL, 0}
 // as it cannot use ArraySize on passed in arrays.
 template <class T1, class T2>
-static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, T2 default)
+static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, T2 default, bool *found=NULL)
 {
 	for (; enum_names->name; enum_names++) {
-		if (!_wcsicmp(name, enum_names->name))
+		if (!_wcsicmp(name, enum_names->name)) {
+			if (found)
+				*found = true;
 			return enum_names->val;
+		}
 	}
+
+	if (found)
+		*found = false;
 
 	return default;
 }

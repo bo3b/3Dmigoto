@@ -41,7 +41,7 @@ enum class ShaderHashType {
 	EMBEDDED,
 	BYTECODE,
 };
-static EnumName_t<wchar_t *, ShaderHashType> ShaderHashNames[] = {
+static EnumName_t<const wchar_t *, ShaderHashType> ShaderHashNames[] = {
 	{L"3dmigoto", ShaderHashType::FNV},
 	{L"embedded", ShaderHashType::EMBEDDED},
 	{L"bytecode", ShaderHashType::BYTECODE},
@@ -211,7 +211,7 @@ enum class DepthBufferFilter {
 	DEPTH_ACTIVE,
 	DEPTH_INACTIVE,
 };
-static EnumName_t<wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
+static EnumName_t<const wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
 	{L"none", DepthBufferFilter::NONE},
 	{L"depth_active", DepthBufferFilter::DEPTH_ACTIVE},
 	{L"depth_inactive", DepthBufferFilter::DEPTH_INACTIVE},
@@ -327,7 +327,7 @@ enum class GetResolutionFrom {
 	SWAP_CHAIN,
 	DEPTH_STENCIL,
 };
-static EnumName_t<wchar_t *, GetResolutionFrom> GetResolutionFromNames[] = {
+static EnumName_t<const wchar_t *, GetResolutionFrom> GetResolutionFromNames[] = {
 	{L"swap_chain", GetResolutionFrom::SWAP_CHAIN},
 	{L"depth_stencil", GetResolutionFrom::DEPTH_STENCIL},
 	{NULL, GetResolutionFrom::INVALID} // End of list marker

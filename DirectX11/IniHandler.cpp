@@ -1042,6 +1042,36 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, bool 
 	return ret;
 }
 
+template <class T>
+T GetIniEnumClass(const wchar_t *section, const wchar_t *key, T def, bool *found,
+		struct EnumName_t<const wchar_t *, T> *enum_names)
+{
+	wchar_t val[MAX_PATH];
+	T ret = def;
+	bool tmp_found;
+
+	if (found)
+		*found = false;
+
+	if (GetIniString(section, key, 0, val, MAX_PATH)) {
+		ret = lookup_enum_val<const wchar_t *, T>(enum_names, val, def, &tmp_found);
+		if (tmp_found) {
+			if (found)
+				*found = tmp_found;
+			LogInfo("  %S=%S\n", key, val);
+		} else {
+			IniWarning("WARNING: Unknown %S=%S\n", key, val);
+		}
+	}
+
+	return ret;
+}
+
+// Explicit template expansion is necessary to generate these functions for
+// the compiler to generate them so they can be used from other source files:
+template TransitionType GetIniEnumClass<TransitionType>(const wchar_t *section, const wchar_t *key, TransitionType def, bool *found,
+		struct EnumName_t<const wchar_t *, TransitionType> *enum_names);
+
 // For options that used to be booleans or integers and are now enums. Boolean
 // values (0/1/true/false/yes/no/on/off) will continue retuning 0/1 for
 // backwards compatibility, integers will return the integer value (provided it
@@ -1145,7 +1175,6 @@ static void ParseIncludedIniFiles()
 static void RegisterPresetKeyBindings()
 {
 	KeyOverrideType type;
-	wchar_t buf[MAX_PATH];
 	shared_ptr<KeyOverrideBase> preset;
 	int delay, release_delay;
 	IniSections::iterator lower, upper, i;
@@ -1167,18 +1196,7 @@ static void RegisterPresetKeyBindings()
 			continue;
 		}
 
-		type = KeyOverrideType::ACTIVATE;
-
-		if (GetIniStringAndLog(id, L"type", 0, buf, MAX_PATH)) {
-			// XXX: hold & toggle types will restore the previous
-			// settings on release - there's possibly also another
-			// use case for setting a specific profile instead.
-			type = lookup_enum_val<wchar_t *, KeyOverrideType>
-				(KeyOverrideTypeNames, buf, KeyOverrideType::INVALID);
-			if (type == KeyOverrideType::INVALID) {
-				IniWarning("WARNING: UNKNOWN KEY BINDING TYPE %S\n", buf);
-			}
-		}
+		type = GetIniEnumClass(id, L"type", KeyOverrideType::ACTIVATE, NULL, KeyOverrideTypeNames);
 
 		delay = GetIniInt(id, L"delay", 0, NULL);
 		release_delay = GetIniInt(id, L"release_delay", 0, NULL);
@@ -1564,21 +1582,8 @@ static void ParseResourceSections()
 			custom_resource->filename = path;
 		}
 
-		if (GetIniStringAndLog(i->first.c_str(), L"type", 0, setting, MAX_PATH)) {
-			custom_resource->override_type = lookup_enum_val<const wchar_t *, CustomResourceType>
-				(CustomResourceTypeNames, setting, CustomResourceType::INVALID);
-			if (custom_resource->override_type == CustomResourceType::INVALID) {
-				IniWarning("WARNING: Unknown type \"%S\"\n", setting);
-			}
-		}
-
-		if (GetIniStringAndLog(i->first.c_str(), L"mode", 0, setting, MAX_PATH)) {
-			custom_resource->override_mode = lookup_enum_val<const wchar_t *, CustomResourceMode>
-				(CustomResourceModeNames, setting, CustomResourceMode::DEFAULT);
-			if (custom_resource->override_mode == CustomResourceMode::DEFAULT) {
-				IniWarning("WARNING: Unknown mode \"%S\"\n", setting);
-			}
-		}
+		custom_resource->override_type = GetIniEnumClass(i->first.c_str(), L"type", CustomResourceType::INVALID, NULL, CustomResourceTypeNames);
+		custom_resource->override_mode = GetIniEnumClass(i->first.c_str(), L"mode", CustomResourceMode::DEFAULT, NULL, CustomResourceModeNames);
 
 		if (GetIniString(i->first.c_str(), L"format", 0, setting, MAX_PATH)) {
 			custom_resource->override_format = ParseFormatString(setting, true);
@@ -1841,14 +1846,7 @@ static void ParseShaderOverrideSections()
 
 		check_shaderoverride_duplicates(duplicate, id, override, hash);
 
-		if (GetIniStringAndLog(id, L"depth_filter", 0, setting, MAX_PATH)) {
-			override->depth_filter = lookup_enum_val<wchar_t *, DepthBufferFilter>
-				(DepthBufferFilterNames, setting, DepthBufferFilter::INVALID);
-			if (override->depth_filter == DepthBufferFilter::INVALID) {
-				IniWarning("WARNING: Unknown depth_filter \"%S\"\n", setting);
-				override->depth_filter = DepthBufferFilter::NONE;
-			}
-		}
+		override->depth_filter = GetIniEnumClass(id, L"depth_filter", DepthBufferFilter::NONE, NULL, DepthBufferFilterNames);
 
 		// Simple partner shader filtering. Deprecated - more advanced
 		// filtering can be achieved by setting an ini param in the
@@ -3951,14 +3949,7 @@ void LoadConfigFile()
 	G->gForceStereo = GetIniInt(L"Device", L"force_stereo", 0, NULL);
 	G->SCREEN_ALLOW_COMMANDS = GetIniBool(L"Device", L"allow_windowcommands", false, NULL);
 
-	if (GetIniStringAndLog(L"Device", L"get_resolution_from", 0, setting, MAX_PATH)) {
-		G->mResolutionInfo.from = lookup_enum_val<wchar_t *, GetResolutionFrom>
-			(GetResolutionFromNames, setting, GetResolutionFrom::INVALID);
-		if (G->mResolutionInfo.from == GetResolutionFrom::INVALID) {
-			IniWarning("WARNING: Unknown get_resolution_from %S\n", setting);
-		}
-	} else
-		G->mResolutionInfo.from = GetResolutionFrom::INVALID;
+	G->mResolutionInfo.from = GetIniEnumClass(L"Device", L"get_resolution_from", GetResolutionFrom::INVALID, NULL, GetResolutionFromNames);
 
 	G->hide_cursor = GetIniBool(L"Device", L"hide_cursor", false, NULL);
 	G->cursor_upscaling_bypass = GetIniBool(L"Device", L"cursor_upscaling_bypass", true, NULL);
@@ -3974,15 +3965,7 @@ void LoadConfigFile()
 	// [Rendering]
 	LogInfo("[Rendering]\n");
 
-	G->shader_hash_type = ShaderHashType::FNV;
-	if (GetIniStringAndLog(L"Rendering", L"shader_hash", 0, setting, MAX_PATH)) {
-		G->shader_hash_type = lookup_enum_val<wchar_t *, ShaderHashType>
-			(ShaderHashNames, setting, ShaderHashType::INVALID);
-		if (G->shader_hash_type == ShaderHashType::INVALID) {
-			IniWarning("WARNING: Unknown shader_hash \"%S\"\n", setting);
-			G->shader_hash_type = ShaderHashType::FNV;
-		}
-	}
+	G->shader_hash_type = GetIniEnumClass(L"Rendering", L"shader_hash", ShaderHashType::FNV, NULL, ShaderHashNames);
 	G->texture_hash_version = GetIniInt(L"Rendering", L"texture_hash", 0, NULL);
 
 	if (GetIniStringAndLog(L"Rendering", L"override_directory", 0, G->SHADER_PATH, MAX_PATH))

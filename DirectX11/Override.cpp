@@ -68,21 +68,8 @@ void Override::ParseIniSection(LPCWSTR section)
 	transition = GetIniInt(section, L"transition", 0, NULL);
 	release_transition = GetIniInt(section, L"release_transition", 0, NULL);
 
-	if (GetIniStringAndLog(section, L"transition_type", 0, buf, MAX_PATH)) {
-		transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
-		if (transition_type == TransitionType::INVALID) {
-			LogOverlayW(LOG_WARNING, L"WARNING: Invalid transition_type=\"%s\"\n", buf);
-			transition_type = TransitionType::LINEAR;
-		}
-	}
-
-	if (GetIniStringAndLog(section, L"release_transition_type", 0, buf, MAX_PATH)) {
-		release_transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
-		if (release_transition_type == TransitionType::INVALID) {
-			LogOverlayW(LOG_WARNING, L"WARNING: Invalid release_transition_type=\"%s\"\n", buf);
-			release_transition_type = TransitionType::LINEAR;
-		}
-	}
+	transition_type = GetIniEnumClass(section, L"transition_type", TransitionType::LINEAR, NULL, TransitionTypeNames);
+	release_transition_type = GetIniEnumClass(section, L"release_transition_type", TransitionType::LINEAR, NULL, TransitionTypeNames);
 
 	if (GetIniStringAndLog(section, L"condition", 0, buf, MAX_PATH)) {
 		// For now these conditions are just an IniParam being
@@ -203,7 +190,7 @@ struct KeyOverrideCycleParam
 			return default;
 		}
 
-		val = lookup_enum_val<wchar_t *, TransitionType>(enum_names, cur, (T2)-1);
+		val = lookup_enum_val<const wchar_t *, TransitionType>(enum_names, cur, (T2)-1);
 		if (val == (T2)-1) {
 			LogOverlayW(LOG_WARNING, L"WARNING: Unmatched value \"%s\"\n", cur);
 			return default;
@@ -337,8 +324,8 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 		presets.push_back(KeyOverride(KeyOverrideType::CYCLE, params,
 			separation.as_float(FLT_MAX), convergence.as_float(FLT_MAX),
 			transition.as_int(0), release_transition.as_int(0),
-			transition_type.as_enum<wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
-			release_transition_type.as_enum<wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
+			transition_type.as_enum<const wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
+			release_transition_type.as_enum<const wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
 			is_conditional, condition_param_idx, condition_param_component, activate_command_list, deactivate_command_list));
 	}
 }
@@ -564,7 +551,7 @@ void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
 	if (time) {
 		LogInfoNoNL(" transition: %ims", time);
 		LogInfoWNoNL(L" transition_type: %s",
-			lookup_enum_name<wchar_t *, TransitionType>(TransitionTypeNames, transition_type));
+			lookup_enum_name<const wchar_t *, TransitionType>(TransitionTypeNames, transition_type));
 	}
 
 	if (target_separation != FLT_MAX) {
