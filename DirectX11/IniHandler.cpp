@@ -1793,7 +1793,7 @@ static void check_shaderoverride_duplicates(bool duplicate, const wchar_t *id, S
 		IniWarning("WARNING: Possible Mod Conflict: Duplicate ShaderOverride hash=%16llx\n"
 			   "[%S]\n"
 			   "[%S]\n"
-			   "If this is intentional, add allow_duplicates=true or allow_duplicates=overrule to suppress warning\n",
+			   "If this is intentional, add allow_duplicate_hash=true or allow_duplicate_hash=overrule to suppress warning\n",
 			   hash, override->first_ini_section.c_str(), id);
 	}
 
