@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <d3d11_1.h>
 #include <DirectXMath.h>
 #include <util.h>
@@ -80,9 +81,22 @@ class CommandList {
 public:
 	// Using vector of pointers to allow mixed types, and shared_ptr to handle
 	// destruction of each object:
-	typedef std::vector<std::shared_ptr<CommandListCommand>> CommandListCommands;
-	CommandListCommands commands;
+	typedef std::vector<std::shared_ptr<CommandListCommand>> Commands;
+	Commands commands;
+
+	// For performance metrics:
+	wstring ini_section;
+	bool post;
+	LARGE_INTEGER time_spent;
+	unsigned executions;
+
+	CommandList() :
+		ini_section(L"<UNINITIALISED>"),
+		post(false)
+	{}
 };
+
+extern std::unordered_set<CommandList*> command_lists_perf;
 
 // Forward declaration to avoid circular reference since Override.h includes
 // HackerDevice.h includes HackerContext.h includes CommandList.h

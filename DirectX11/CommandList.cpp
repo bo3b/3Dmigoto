@@ -15,6 +15,8 @@
 CustomResources customResources;
 CustomShaders customShaders;
 ExplicitCommandListSections explicitCommandListSections;
+std::unordered_set<CommandList*> command_lists_perf;
+
 
 // Adds consistent "3DMigoto" prefix to frame analysis log with appropriate
 // level of indentation for the current recursion level. Using a
@@ -26,7 +28,9 @@ ExplicitCommandListSections explicitCommandListSections;
 
 static void _RunCommandList(CommandList *command_list, CommandListState *state)
 {
-	CommandList::CommandListCommands::iterator i;
+	CommandList::Commands::iterator i;
+	LARGE_INTEGER list_start_time, list_end_time;
+	bool inserted;
 
 	if (state->recursion > MAX_COMMAND_LIST_RECURSION) {
 		LogInfo("WARNING: Command list recursion limit exceeded! Circular reference?\n");
@@ -37,13 +41,28 @@ static void _RunCommandList(CommandList *command_list, CommandListState *state)
 		return;
 
 	COMMAND_LIST_LOG(state, "%s {\n", state->post ? "post" : "pre");
-
 	state->recursion++;
+
+	if (G->profiling) {
+		inserted = command_lists_perf.insert(command_list).second;
+		if (inserted) {
+			command_list->time_spent.QuadPart = 0;
+			command_list->executions = 0;
+		}
+		QueryPerformanceCounter(&list_start_time);
+	}
+
 	for (i = command_list->commands.begin(); i < command_list->commands.end() && !state->aborted; i++) {
 		(*i)->run(state);
 	}
-	state->recursion--;
 
+	if (G->profiling) {
+		QueryPerformanceCounter(&list_end_time);
+		command_list->time_spent.QuadPart += list_end_time.QuadPart - list_start_time.QuadPart;
+		command_list->executions++;
+	}
+
+	state->recursion--;
 	COMMAND_LIST_LOG(state, "}\n");
 }
 

@@ -1673,6 +1673,13 @@ static void ParseCommandList(const wchar_t *id,
 		DoubleBeepExit();
 	}
 
+	pre_command_list->ini_section = id;
+	pre_command_list->post = false;
+	if (post_command_list) {
+		post_command_list->ini_section = id;
+		post_command_list->post = true;
+	}
+
 	GetIniSection(&section, id);
 	for (entry = section->begin(); entry < section->end(); entry++) {
 		key = &entry->first;
@@ -4275,6 +4282,10 @@ void ReloadConfig(HackerDevice *device)
 	// cleared as well, but for the sake of clarity I'd rather clear as
 	// many as possible inside LoadConfigFile() where they are set.
 	ClearKeyBindings();
+
+	// Clear active command lists set, as the pointers in this set will
+	// become invalid as the config is reloaded:
+	command_lists_perf.clear();
 
 	// Reset the counters on the global parameter save area:
 	OverrideSave.Reset(device);

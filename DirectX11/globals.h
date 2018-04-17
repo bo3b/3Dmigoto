@@ -419,6 +419,9 @@ struct Globals
 	wchar_t ANALYSIS_PATH[MAX_PATH];
 	FrameAnalysisOptions def_analyse_options, cur_analyse_options;
 	std::unordered_set<void*> frame_analysis_seen_rts;
+	bool profiling;
+	unsigned profiling_start_frame_no;
+	LARGE_INTEGER profiling_start_time;
 
 	ShaderHashType shader_hash_type;
 	int texture_hash_version;
@@ -570,6 +573,8 @@ struct Globals
 		analyse_frame_no(0),
 		def_analyse_options(FrameAnalysisOptions::INVALID),
 		cur_analyse_options(FrameAnalysisOptions::INVALID),
+		profiling(false),
+		profiling_start_frame_no(0),
 
 		shader_hash_type(ShaderHashType::FNV),
 		texture_hash_version(0),

@@ -3,6 +3,7 @@
 #include <string>
 #include <D3Dcompiler.h>
 #include <codecvt>
+#include <algorithm>
 
 #include "ScreenGrab.h"
 #include "wincodec.h"
@@ -14,6 +15,7 @@
 #include "Globals.h"
 #include "IniHandler.h"
 #include "D3D_Shaders\stdafx.h"
+#include "CommandList.h"
 
 // bo3b: For this routine, we have a lot of warnings in x64, from converting a size_t result into the needed
 //  DWORD type for the Write calls.  These are writing 256 byte strings, so there is never a chance that it 
@@ -1099,6 +1101,61 @@ static void AnalyseFrameStop(HackerDevice *device, void *private_data)
 	}
 }
 
+static void AnalysePerf(HackerDevice *device, void *private_data)
+{
+	command_lists_perf.clear();
+	G->profiling = true;
+	G->profiling_start_frame_no = G->frame_no;
+	QueryPerformanceCounter(&G->profiling_start_time);
+}
+
+static bool by_time_spent_descending(const CommandList *lhs, const CommandList *rhs)
+{
+	return lhs->time_spent.QuadPart > rhs->time_spent.QuadPart;
+}
+
+static void AnalysePerfStop(HackerDevice *device, void *private_data)
+{
+	vector<CommandList*> sorted(command_lists_perf.begin(), command_lists_perf.end());
+	LARGE_INTEGER freq, us, end_time, collection_duration;
+	unsigned frames = G->frame_no - G->profiling_start_frame_no;
+	double fps;
+
+	QueryPerformanceCounter(&end_time);
+	QueryPerformanceFrequency(&freq);
+
+	std::sort(sorted.begin(), sorted.end(), by_time_spent_descending);
+
+	collection_duration.QuadPart = (end_time.QuadPart - G->profiling_start_time.QuadPart) * 1000000;
+	collection_duration.QuadPart /= freq.QuadPart;
+
+	LogInfo("Top Command Lists in last %lluus / %u frames:\n", collection_duration.QuadPart, frames);
+	LogInfo("  Total CPU CPU/frame est fps cost executions exe/frame\n");
+	LogInfo("  --------- --------- ------------ ---------- ---------\n");
+	for (CommandList *command_list : sorted) {
+		us.QuadPart = command_list->time_spent.QuadPart * 1000000;
+		us.QuadPart /= freq.QuadPart;
+
+		// fps estimate based on the assumption that if we took 100%
+		// CPU time it would cost all 60fps:
+		fps = 60.0 * us.QuadPart / collection_duration.QuadPart;
+
+		LogInfo("  %7lluus %7lluus %12f %10u %9.1f %4s [%S]\n",
+				us.QuadPart,
+				us.QuadPart / frames,
+				fps,
+				command_list->executions,
+				(float)command_list->executions / frames,
+				command_list->post ? "post" : "pre",
+				command_list->ini_section.c_str()
+		);
+		// TODO: GPU time spent
+	}
+
+	G->profiling = false;
+	command_lists_perf.clear();
+}
+
 static void DisableDeferred(HackerDevice *device, void *private_data)
 {
 	if (G->hunting != HUNTING_MODE_ENABLED)
@@ -1620,6 +1677,8 @@ void ParseHuntingSection()
 			(FrameAnalysisOptionNames, buf, NULL);
 	} else
 		G->def_analyse_options = FrameAnalysisOptions::INVALID;
+
+	RegisterIniKeyBinding(L"Hunting", L"analyse_performance", AnalysePerf, AnalysePerfStop, noRepeat, NULL);
 
 	// Quick hacks to see if DX11 features that we only have limited support for are responsible for anything important:
 	RegisterIniKeyBinding(L"Hunting", L"kill_deferred", DisableDeferred, EnableDeferred, noRepeat, NULL);
