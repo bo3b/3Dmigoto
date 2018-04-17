@@ -363,7 +363,8 @@ void ShaderRegexGroup::apply_regex_patterns(std::string *asm_text, bool *match, 
 
 void ShaderRegexGroup::link_command_lists(UINT64 shader_hash)
 {
-	ShaderOverride *shader_override;
+	ShaderOverride *shader_override = NULL;
+	wchar_t buf[32];
 
 	// Only link the command lists if we have something in ours to link in,
 	// because this will create ShaderOverride sections for shaders that
@@ -377,6 +378,13 @@ void ShaderRegexGroup::link_command_lists(UINT64 shader_hash)
 	if (!post_command_list.commands.empty()) {
 		shader_override = &G->mShaderOverrideMap[shader_hash];
 		LinkCommandLists(&shader_override->post_command_list, &post_command_list);
+	}
+
+	if (shader_override && shader_override->command_list.ini_section.empty()) {
+		swprintf_s(buf, ARRAYSIZE(buf), L".Match=%016llx", shader_hash);
+		shader_override->command_list.ini_section = command_list.ini_section + buf;
+		shader_override->post_command_list.ini_section = post_command_list.ini_section + buf;
+		shader_override->post_command_list.post = true;
 	}
 }
 

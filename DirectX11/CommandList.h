@@ -93,7 +93,6 @@ public:
 	unsigned executions;
 
 	CommandList() :
-		ini_section(L"<UNINITIALISED>"),
 		post(false)
 	{}
 };
