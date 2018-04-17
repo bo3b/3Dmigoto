@@ -180,7 +180,10 @@ public:
 
 	unsigned unique_triggers_required;
 };
-typedef std::unordered_map<std::wstring, class PresetOverride> PresetOverrideMap;
+
+// Sorted map so that if multiple presets affect the same thing the results
+// will be consistent:
+typedef std::map<std::wstring, class PresetOverride> PresetOverrideMap;
 extern PresetOverrideMap presetOverrides;
 
 struct OverrideTransitionParam
