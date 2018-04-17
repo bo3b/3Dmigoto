@@ -20,7 +20,7 @@
 // Resolve circular include dependency between Globals.h ->
 // CommandList.h -> HackerContext.h -> Globals.h
 class CommandListCommand;
-typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
+class CommandList;
 
 
 enum HuntingMode {

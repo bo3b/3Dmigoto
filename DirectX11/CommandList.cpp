@@ -26,20 +26,20 @@ ExplicitCommandListSections explicitCommandListSections;
 
 static void _RunCommandList(CommandList *command_list, CommandListState *state)
 {
-	CommandList::iterator i;
+	CommandList::CommandListCommands::iterator i;
 
 	if (state->recursion > MAX_COMMAND_LIST_RECURSION) {
 		LogInfo("WARNING: Command list recursion limit exceeded! Circular reference?\n");
 		return;
 	}
 
-	if (command_list->empty())
+	if (command_list->commands.empty())
 		return;
 
 	COMMAND_LIST_LOG(state, "%s {\n", state->post ? "post" : "pre");
 
 	state->recursion++;
-	for (i = command_list->begin(); i < command_list->end() && !state->aborted; i++) {
+	for (i = command_list->commands.begin(); i < command_list->commands.end() && !state->aborted; i++) {
 		(*i)->run(state);
 	}
 	state->recursion--;
@@ -138,12 +138,12 @@ static bool AddCommandToList(CommandListCommand *command,
 	if (explicit_command_list) {
 		// User explicitly specified "pre" or "post", so only add the
 		// command to that list
-		explicit_command_list->push_back(std::shared_ptr<CommandListCommand>(command));
+		explicit_command_list->commands.push_back(std::shared_ptr<CommandListCommand>(command));
 	} else if (sensible_command_list) {
 		// User did not specify which command list to add it to, but
 		// the command they specified has a sensible default, so add it
 		// to that list:
-		sensible_command_list->push_back(std::shared_ptr<CommandListCommand>(command));
+		sensible_command_list->commands.push_back(std::shared_ptr<CommandListCommand>(command));
 	} else {
 		// The command's default is to add it to both lists (e.g. the
 		// checktextureoverride directive will call command lists in
@@ -155,9 +155,9 @@ static bool AddCommandToList(CommandListCommand *command,
 		// pointer to two lists and have it garbage collected only once
 		// both are destroyed:
 		std::shared_ptr<CommandListCommand> p(command);
-		pre_command_list->push_back(p);
+		pre_command_list->commands.push_back(p);
 		if (post_command_list)
-			post_command_list->push_back(p);
+			post_command_list->commands.push_back(p);
 	}
 
 	return true;
@@ -1907,7 +1907,7 @@ void RunExplicitCommandList::run(CommandListState *state)
 void LinkCommandLists(CommandList *dst, CommandList *link)
 {
 	RunLinkedCommandList *operation = new RunLinkedCommandList(link);
-	dst->push_back(std::shared_ptr<CommandListCommand>(operation));
+	dst->commands.push_back(std::shared_ptr<CommandListCommand>(operation));
 }
 
 void RunLinkedCommandList::run(CommandListState *state)
@@ -2526,7 +2526,7 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 
 success:
 	param->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	command_list->push_back(std::shared_ptr<CommandListCommand>(param));
+	command_list->commands.push_back(std::shared_ptr<CommandListCommand>(param));
 	return true;
 bail:
 	delete param;
@@ -3318,7 +3318,7 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 	}
 
 	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	command_list->push_back(std::shared_ptr<CommandListCommand>(operation));
+	command_list->commands.push_back(std::shared_ptr<CommandListCommand>(operation));
 	return true;
 bail:
 	delete operation;

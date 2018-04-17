@@ -369,12 +369,12 @@ void ShaderRegexGroup::link_command_lists(UINT64 shader_hash)
 	// because this will create ShaderOverride sections for shaders that
 	// don't already have one, adding more work in the draw calls.
 
-	if (!command_list.empty()) {
+	if (!command_list.commands.empty()) {
 		shader_override = &G->mShaderOverrideMap[shader_hash];
 		LinkCommandLists(&shader_override->command_list, &command_list);
 	}
 
-	if (!post_command_list.empty()) {
+	if (!post_command_list.commands.empty()) {
 		shader_override = &G->mShaderOverrideMap[shader_hash];
 		LinkCommandLists(&shader_override->post_command_list, &post_command_list);
 	}

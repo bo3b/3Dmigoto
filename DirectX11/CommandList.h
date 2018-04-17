@@ -76,9 +76,13 @@ public:
 	virtual void run(CommandListState*) = 0;
 };
 
-// Using vector of pointers to allow mixed types, and shared_ptr to handle
-// destruction of each object:
-typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
+class CommandList {
+public:
+	// Using vector of pointers to allow mixed types, and shared_ptr to handle
+	// destruction of each object:
+	typedef std::vector<std::shared_ptr<CommandListCommand>> CommandListCommands;
+	CommandListCommands commands;
+};
 
 // Forward declaration to avoid circular reference since Override.h includes
 // HackerDevice.h includes HackerContext.h includes CommandList.h

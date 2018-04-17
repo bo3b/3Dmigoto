@@ -4140,28 +4140,28 @@ void LoadConfigFile()
 	ParseTextureOverrideSections();
 
 	LogInfo("[Present]\n");
-	G->present_command_list.clear();
-	G->post_present_command_list.clear();
+	G->present_command_list.commands.clear();
+	G->post_present_command_list.commands.clear();
 	ParseCommandList(L"Present", &G->present_command_list, &G->post_present_command_list, NULL);
 
 	LogInfo("[ClearRenderTargetView]\n");
-	G->clear_rtv_command_list.clear();
-	G->post_clear_rtv_command_list.clear();
+	G->clear_rtv_command_list.commands.clear();
+	G->post_clear_rtv_command_list.commands.clear();
 	ParseCommandList(L"ClearRenderTargetView", &G->clear_rtv_command_list, &G->post_clear_rtv_command_list, NULL);
 
 	LogInfo("[ClearDepthStencilView]\n");
-	G->clear_dsv_command_list.clear();
-	G->post_clear_dsv_command_list.clear();
+	G->clear_dsv_command_list.commands.clear();
+	G->post_clear_dsv_command_list.commands.clear();
 	ParseCommandList(L"ClearDepthStencilView", &G->clear_dsv_command_list, &G->post_clear_dsv_command_list, NULL);
 
 	LogInfo("[ClearUnorderedAccessViewUint]\n");
-	G->clear_uav_uint_command_list.clear();
-	G->post_clear_uav_uint_command_list.clear();
+	G->clear_uav_uint_command_list.commands.clear();
+	G->post_clear_uav_uint_command_list.commands.clear();
 	ParseCommandList(L"ClearUnorderedAccessViewUint", &G->clear_uav_uint_command_list, &G->post_clear_uav_uint_command_list, NULL);
 
 	LogInfo("[ClearUnorderedAccessViewFloat]\n");
-	G->clear_uav_float_command_list.clear();
-	G->post_clear_uav_float_command_list.clear();
+	G->clear_uav_float_command_list.commands.clear();
+	G->post_clear_uav_float_command_list.commands.clear();
 	ParseCommandList(L"ClearUnorderedAccessViewFloat", &G->clear_uav_float_command_list, &G->post_clear_uav_float_command_list, NULL);
 
 	// The naming on this one is historical - [Constants] used to define
@@ -4171,7 +4171,7 @@ void LoadConfigFile()
 	// creation & config reload, which allows it to be used for any one
 	// time initialisation.
 	LogInfo("[Constants]\n");
-	G->constants_command_list.clear();
+	G->constants_command_list.commands.clear();
 	ParseCommandList(L"Constants", &G->constants_command_list, NULL, NULL);
 
 	LogInfo("[Profile]\n");
