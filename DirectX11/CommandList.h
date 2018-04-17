@@ -62,6 +62,7 @@ public:
 	RECT window_rect;
 
 	int recursion;
+	LARGE_INTEGER profiling_time_recursive;
 
 	// Anything that needs to be updated at the end of the command list:
 	bool update_params;
@@ -87,7 +88,8 @@ public:
 	// For performance metrics:
 	wstring ini_section;
 	bool post;
-	LARGE_INTEGER time_spent;
+	LARGE_INTEGER time_spent_inclusive;
+	LARGE_INTEGER time_spent_exclusive;
 	unsigned executions;
 
 	CommandList() :

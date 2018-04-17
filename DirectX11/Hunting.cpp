@@ -1109,41 +1109,48 @@ static void AnalysePerf(HackerDevice *device, void *private_data)
 	QueryPerformanceCounter(&G->profiling_start_time);
 }
 
-static bool by_time_spent_descending(const CommandList *lhs, const CommandList *rhs)
+static bool by_time_spent_inclusive_descending(const CommandList *lhs, const CommandList *rhs)
 {
-	return lhs->time_spent.QuadPart > rhs->time_spent.QuadPart;
+	return lhs->time_spent_inclusive.QuadPart > rhs->time_spent_inclusive.QuadPart;
 }
 
 static void AnalysePerfStop(HackerDevice *device, void *private_data)
 {
 	vector<CommandList*> sorted(command_lists_perf.begin(), command_lists_perf.end());
-	LARGE_INTEGER freq, us, end_time, collection_duration;
+	LARGE_INTEGER freq, inclusive, exclusive, end_time, collection_duration;
 	unsigned frames = G->frame_no - G->profiling_start_frame_no;
-	double fps;
+	double inclusive_fps, exclusive_fps;
 
 	QueryPerformanceCounter(&end_time);
 	QueryPerformanceFrequency(&freq);
 
-	std::sort(sorted.begin(), sorted.end(), by_time_spent_descending);
+	std::sort(sorted.begin(), sorted.end(), by_time_spent_inclusive_descending);
 
 	collection_duration.QuadPart = (end_time.QuadPart - G->profiling_start_time.QuadPart) * 1000000;
 	collection_duration.QuadPart /= freq.QuadPart;
 
 	LogInfo("Top Command Lists in last %lluus / %u frames:\n", collection_duration.QuadPart, frames);
-	LogInfo("  Total CPU CPU/frame est fps cost executions exe/frame\n");
-	LogInfo("  --------- --------- ------------ ---------- ---------\n");
+	LogInfo("            Inclusive              |           Exclusive              |\n");
+	LogInfo("  Total CPU CPU/frame est fps cost | Total CPU CPU/frame est fps cost | Executions exe/frame\n");
+	LogInfo("  --------- --------- ------------ | --------- --------- ------------ | ---------- ----------\n");
 	for (CommandList *command_list : sorted) {
-		us.QuadPart = command_list->time_spent.QuadPart * 1000000;
-		us.QuadPart /= freq.QuadPart;
+		inclusive.QuadPart = command_list->time_spent_inclusive.QuadPart * 1000000;
+		inclusive.QuadPart /= freq.QuadPart;
+		exclusive.QuadPart = command_list->time_spent_exclusive.QuadPart * 1000000;
+		exclusive.QuadPart /= freq.QuadPart;
 
 		// fps estimate based on the assumption that if we took 100%
 		// CPU time it would cost all 60fps:
-		fps = 60.0 * us.QuadPart / collection_duration.QuadPart;
+		inclusive_fps = 60.0 * inclusive.QuadPart / collection_duration.QuadPart;
+		exclusive_fps = 60.0 * exclusive.QuadPart / collection_duration.QuadPart;
 
-		LogInfo("  %7lluus %7lluus %12f %10u %9.1f %4s [%S]\n",
-				us.QuadPart,
-				us.QuadPart / frames,
-				fps,
+		LogInfo("  %7lluus %7lluus %12f | %7lluus %7lluus %12f | %10u %9.1f %4s [%S]\n",
+				inclusive.QuadPart,
+				inclusive.QuadPart / frames,
+				inclusive_fps,
+				exclusive.QuadPart,
+				exclusive.QuadPart / frames,
+				exclusive_fps,
 				command_list->executions,
 				(float)command_list->executions / frames,
 				command_list->post ? "post" : "pre",

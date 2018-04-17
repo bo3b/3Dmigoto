@@ -29,7 +29,7 @@ std::unordered_set<CommandList*> command_lists_perf;
 static void _RunCommandList(CommandList *command_list, CommandListState *state)
 {
 	CommandList::Commands::iterator i;
-	LARGE_INTEGER list_start_time, list_end_time;
+	LARGE_INTEGER list_start_time, list_end_time, saved_recursive_time, duration;
 	bool inserted;
 
 	if (state->recursion > MAX_COMMAND_LIST_RECURSION) {
@@ -46,9 +46,14 @@ static void _RunCommandList(CommandList *command_list, CommandListState *state)
 	if (G->profiling) {
 		inserted = command_lists_perf.insert(command_list).second;
 		if (inserted) {
-			command_list->time_spent.QuadPart = 0;
+			command_list->time_spent_inclusive.QuadPart = 0;
+			command_list->time_spent_exclusive.QuadPart = 0;
 			command_list->executions = 0;
 		}
+
+		saved_recursive_time = state->profiling_time_recursive;
+		state->profiling_time_recursive.QuadPart = 0;
+
 		QueryPerformanceCounter(&list_start_time);
 	}
 
@@ -58,8 +63,11 @@ static void _RunCommandList(CommandList *command_list, CommandListState *state)
 
 	if (G->profiling) {
 		QueryPerformanceCounter(&list_end_time);
-		command_list->time_spent.QuadPart += list_end_time.QuadPart - list_start_time.QuadPart;
+		duration.QuadPart = list_end_time.QuadPart - list_start_time.QuadPart;
+		command_list->time_spent_inclusive.QuadPart += duration.QuadPart;
+		command_list->time_spent_exclusive.QuadPart += duration.QuadPart - state->profiling_time_recursive.QuadPart;
 		command_list->executions++;
+		state->profiling_time_recursive.QuadPart = saved_recursive_time.QuadPart + duration.QuadPart;
 	}
 
 	state->recursion--;
