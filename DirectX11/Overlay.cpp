@@ -130,6 +130,14 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	mFontNotifications.reset(new DirectX::SpriteFont(mOrigDevice, fontBlob, fontSize));
 	mFontNotifications->SetDefaultCharacter(L'?');
 
+	// Smaller monospaced font for profiling text
+	rc = FindResource(handle, MAKEINTRESOURCE(IDR_COURIERSMALL), MAKEINTRESOURCE(SPRITEFONT));
+	rcData = LoadResource(handle, rc);
+	fontSize = SizeofResource(handle, rc);
+	fontBlob = static_cast<const uint8_t*>(LockResource(rcData));
+	mFontProfiling.reset(new DirectX::SpriteFont(mOrigDevice, fontBlob, fontSize));
+	mFontProfiling->SetDefaultCharacter(L'?');
+
 	mSpriteBatch.reset(new DirectX::SpriteBatch(mOrigContext));
 
 	// For dark background behind notification text, following
@@ -650,7 +658,7 @@ void Overlay::DrawShaderInfoLines(float *y)
 		DrawShaderInfoLine("RT", GetOrigResourceHash(G->mSelectedRenderTarget), y, false);
 }
 
-void Overlay::DrawNotices(float y)
+void Overlay::DrawNotices(float *y)
 {
 	std::vector<OverlayNotice>::iterator notice;
 	DWORD time = GetTickCount();
@@ -683,10 +691,10 @@ void Overlay::DrawNotices(float y)
 
 			strSize = mFontNotifications->MeasureString(notice->message.c_str());
 
-			DrawRectangle(0, y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
+			DrawRectangle(0, *y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
 
-			mFontNotifications->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, y), log_levels[level].colour);
-			y += strSize.y + 5;
+			mFontNotifications->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, *y), log_levels[level].colour);
+			*y += strSize.y + 5;
 
 			has_notice = true;
 			notice++;
@@ -697,6 +705,15 @@ void Overlay::DrawNotices(float y)
 	LeaveCriticalSection(&G->mCriticalSection);
 }
 
+void Overlay::DrawProfiling(float *y)
+{
+	Vector2 strSize;
+
+	strSize = mFontProfiling->MeasureString(G->profiling_txt.c_str());
+	DrawRectangle(0, *y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
+
+	mFontProfiling->DrawString(mSpriteBatch.get(), G->profiling_txt.c_str(), Vector2(0, *y), DirectX::Colors::Goldenrod);
+}
 
 // Create a string for display on the bottom edge of the screen, that contains the current
 // stereo info of separation and convergence. 
@@ -731,7 +748,7 @@ void Overlay::DrawOverlay(void)
 {
 	HRESULT hr;
 
-	if (G->hunting != HUNTING_MODE_ENABLED && !has_notice)
+	if (G->hunting != HUNTING_MODE_ENABLED && !has_notice && !G->profiling)
 		return;
 
 	// Since some games did not like having us change their drawing state from
@@ -768,7 +785,10 @@ void Overlay::DrawOverlay(void)
 			}
 
 			if (has_notice)
-				DrawNotices(y);
+				DrawNotices(&y);
+
+			if (G->profiling)
+				DrawProfiling(&y);
 		}
 		mSpriteBatch->End();
 	}

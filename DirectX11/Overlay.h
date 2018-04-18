@@ -61,6 +61,7 @@ private:
 	DirectX::XMUINT2 mResolution;
 	std::unique_ptr<DirectX::SpriteFont> mFont;
 	std::unique_ptr<DirectX::SpriteFont> mFontNotifications;
+	std::unique_ptr<DirectX::SpriteFont> mFontProfiling;
 	std::unique_ptr<DirectX::SpriteBatch> mSpriteBatch;
 	std::unique_ptr<DirectX::CommonStates> mStates;
 	std::unique_ptr<DirectX::BasicEffect> mEffect;
@@ -117,7 +118,8 @@ private:
 	HRESULT InitDrawState();
 	void DrawShaderInfoLine(char *type, UINT64 selectedShader, float *y, bool shader);
 	void DrawShaderInfoLines(float *y);
-	void DrawNotices(float y);
+	void DrawNotices(float *y);
+	void DrawProfiling(float *y);
 	void DrawRectangle(float x, float y, float w, float h, float r, float g, float b, float opacity);
 	void DrawOutlinedString(DirectX::SpriteFont *font, wchar_t const *text, DirectX::XMFLOAT2 const &position, DirectX::FXMVECTOR color);
 

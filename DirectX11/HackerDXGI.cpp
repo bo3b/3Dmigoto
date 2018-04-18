@@ -54,6 +54,7 @@
 // the HackerSwapChain.  The model is the same as that used in HackerDevice
 // and HackerContext.
 
+#include <algorithm>
 
 #include "HackerDXGI.h"
 #include "HookedDevice.h"
@@ -65,6 +66,7 @@
 #include "Hunting.h"
 #include "Override.h"
 #include "IniHandler.h"
+#include "CommandList.h"
 
 
 // -----------------------------------------------------------------------------
@@ -215,6 +217,66 @@ void HackerSwapChain::UpdateStereoParams()
 	}
 }
 
+static void UpdateProfilingTxt()
+{
+	static LARGE_INTEGER freq = {0};
+	LARGE_INTEGER inclusive, exclusive, end_time, collection_duration;
+	unsigned frames = G->frame_no - G->profiling_start_frame_no;
+	double inclusive_fps, exclusive_fps;
+	wchar_t buf[256];
+
+	QueryPerformanceCounter(&end_time);
+	if (!freq.QuadPart)
+		QueryPerformanceFrequency(&freq);
+
+	collection_duration.QuadPart = (end_time.QuadPart - G->profiling_start_time.QuadPart) * 1000000 / freq.QuadPart;
+	if (collection_duration.QuadPart < 1000000)
+		return;
+
+	vector<CommandList*> sorted(command_lists_perf.begin(), command_lists_perf.end());
+	std::sort(sorted.begin(), sorted.end(), [](const CommandList *lhs, const CommandList *rhs) {
+		return lhs->time_spent_inclusive.QuadPart > rhs->time_spent_inclusive.QuadPart;
+	});
+
+	_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
+	                    L"Top Command Lists in last %lluus / %u frames:\n", collection_duration.QuadPart, frames);
+	G->profiling_txt = buf;
+	G->profiling_txt += L"          Inclusive              |           Exclusive              |\n"
+	                    L"Total CPU CPU/frame est fps cost | Total CPU CPU/frame est fps cost | Executions exe/frame\n"
+	                    L"--------- --------- ------------ | --------- --------- ------------ | ---------- ----------\n";
+	for (CommandList *command_list : sorted) {
+		inclusive.QuadPart = command_list->time_spent_inclusive.QuadPart * 1000000 / freq.QuadPart;
+		exclusive.QuadPart = command_list->time_spent_exclusive.QuadPart * 1000000 / freq.QuadPart;
+
+		// fps estimate based on the assumption that if we took 100%
+		// CPU time it would cost all 60fps:
+		inclusive_fps = 60.0 * inclusive.QuadPart / collection_duration.QuadPart;
+		exclusive_fps = 60.0 * exclusive.QuadPart / collection_duration.QuadPart;
+
+		_snwprintf_s(buf, 256, _TRUNCATE, L"%7lluus %7lluus %12f | %7lluus %7lluus %12f | %10u %9.1f %4s [%s]\n",
+				inclusive.QuadPart,
+				inclusive.QuadPart / frames,
+				inclusive_fps,
+				exclusive.QuadPart,
+				exclusive.QuadPart / frames,
+				exclusive_fps,
+				command_list->executions,
+				(float)command_list->executions / frames,
+				command_list->post ? L"post" : L"pre",
+				command_list->ini_section.c_str()
+		);
+		G->profiling_txt += buf;
+		// TODO: GPU time spent
+	}
+
+	// LogInfoW(L"%s", G->profiling_txt.c_str());
+
+	// Restart profiling for the next time interval:
+	command_lists_perf.clear();
+	G->profiling_start_frame_no = G->frame_no;
+	G->profiling_start_time = end_time;
+}
+
 // Called at each DXGI::Present() to give us reliable time to execute user
 // input and hunting commands.
 
@@ -268,6 +330,9 @@ void HackerSwapChain::RunFrameActions()
 	// instead and we handle it now.
 	if (G->gReloadConfigPending)
 		ReloadConfig(mHackerDevice);
+
+	if (G->profiling)
+		UpdateProfilingTxt();
 
 	// Draw the on-screen overlay text with hunting and informational
 	// messages, before final Present. We now do this after the shader and

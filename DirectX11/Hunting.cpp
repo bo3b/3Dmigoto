@@ -3,7 +3,6 @@
 #include <string>
 #include <D3Dcompiler.h>
 #include <codecvt>
-#include <algorithm>
 
 #include "ScreenGrab.h"
 #include "wincodec.h"
@@ -1104,63 +1103,12 @@ static void AnalyseFrameStop(HackerDevice *device, void *private_data)
 static void AnalysePerf(HackerDevice *device, void *private_data)
 {
 	command_lists_perf.clear();
-	G->profiling = true;
-	G->profiling_start_frame_no = G->frame_no;
-	QueryPerformanceCounter(&G->profiling_start_time);
-}
-
-static bool by_time_spent_inclusive_descending(const CommandList *lhs, const CommandList *rhs)
-{
-	return lhs->time_spent_inclusive.QuadPart > rhs->time_spent_inclusive.QuadPart;
-}
-
-static void AnalysePerfStop(HackerDevice *device, void *private_data)
-{
-	vector<CommandList*> sorted(command_lists_perf.begin(), command_lists_perf.end());
-	LARGE_INTEGER freq, inclusive, exclusive, end_time, collection_duration;
-	unsigned frames = G->frame_no - G->profiling_start_frame_no;
-	double inclusive_fps, exclusive_fps;
-
-	QueryPerformanceCounter(&end_time);
-	QueryPerformanceFrequency(&freq);
-
-	std::sort(sorted.begin(), sorted.end(), by_time_spent_inclusive_descending);
-
-	collection_duration.QuadPart = (end_time.QuadPart - G->profiling_start_time.QuadPart) * 1000000;
-	collection_duration.QuadPart /= freq.QuadPart;
-
-	LogInfo("Top Command Lists in last %lluus / %u frames:\n", collection_duration.QuadPart, frames);
-	LogInfo("            Inclusive              |           Exclusive              |\n");
-	LogInfo("  Total CPU CPU/frame est fps cost | Total CPU CPU/frame est fps cost | Executions exe/frame\n");
-	LogInfo("  --------- --------- ------------ | --------- --------- ------------ | ---------- ----------\n");
-	for (CommandList *command_list : sorted) {
-		inclusive.QuadPart = command_list->time_spent_inclusive.QuadPart * 1000000;
-		inclusive.QuadPart /= freq.QuadPart;
-		exclusive.QuadPart = command_list->time_spent_exclusive.QuadPart * 1000000;
-		exclusive.QuadPart /= freq.QuadPart;
-
-		// fps estimate based on the assumption that if we took 100%
-		// CPU time it would cost all 60fps:
-		inclusive_fps = 60.0 * inclusive.QuadPart / collection_duration.QuadPart;
-		exclusive_fps = 60.0 * exclusive.QuadPart / collection_duration.QuadPart;
-
-		LogInfo("  %7lluus %7lluus %12f | %7lluus %7lluus %12f | %10u %9.1f %4s [%S]\n",
-				inclusive.QuadPart,
-				inclusive.QuadPart / frames,
-				inclusive_fps,
-				exclusive.QuadPart,
-				exclusive.QuadPart / frames,
-				exclusive_fps,
-				command_list->executions,
-				(float)command_list->executions / frames,
-				command_list->post ? "post" : "pre",
-				command_list->ini_section.c_str()
-		);
-		// TODO: GPU time spent
+	G->profiling = !G->profiling;
+	if (G->profiling) {
+		G->profiling_start_frame_no = G->frame_no;
+		QueryPerformanceCounter(&G->profiling_start_time);
+		G->profiling_txt = L"Profiling...";
 	}
-
-	G->profiling = false;
-	command_lists_perf.clear();
 }
 
 static void DisableDeferred(HackerDevice *device, void *private_data)
@@ -1685,7 +1633,7 @@ void ParseHuntingSection()
 	} else
 		G->def_analyse_options = FrameAnalysisOptions::INVALID;
 
-	RegisterIniKeyBinding(L"Hunting", L"analyse_performance", AnalysePerf, AnalysePerfStop, noRepeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"monitor_performance", AnalysePerf, NULL, noRepeat, NULL);
 
 	// Quick hacks to see if DX11 features that we only have limited support for are responsible for anything important:
 	RegisterIniKeyBinding(L"Hunting", L"kill_deferred", DisableDeferred, EnableDeferred, noRepeat, NULL);

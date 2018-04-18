@@ -422,6 +422,7 @@ struct Globals
 	bool profiling;
 	unsigned profiling_start_frame_no;
 	LARGE_INTEGER profiling_start_time;
+	wstring profiling_txt;
 
 	ShaderHashType shader_hash_type;
 	int texture_hash_version;
