@@ -643,6 +643,11 @@ void HackerContext::DeferredShaderReplacementBeforeDispatch()
 
 void HackerContext::BeforeDraw(DrawContext &data)
 {
+	LARGE_INTEGER start_time, end_time;
+
+	if (G->profiling)
+		QueryPerformanceCounter(&start_time);
+
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
 	if (G->hunting == HUNTING_MODE_ENABLED)
 	{
@@ -719,7 +724,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 	}
 
 	if (!G->fix_enabled)
-		return;
+		goto out_profile;
 
 	DeferredShaderReplacementBeforeDraw();
 
@@ -763,11 +768,21 @@ void HackerContext::BeforeDraw(DrawContext &data)
 			ProcessShaderOverride(&i->second, true, &data);
 		}
 	}
+
+out_profile:
+	if (G->profiling) {
+		QueryPerformanceCounter(&end_time);
+		G->draw_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
+	}
 }
 
 void HackerContext::AfterDraw(DrawContext &data)
 {
 	int i;
+	LARGE_INTEGER start_time, end_time;
+
+	if (G->profiling)
+		QueryPerformanceCounter(&start_time);
 
 	for (i = 0; i < 5; i++) {
 		if (data.post_commands[i]) {
@@ -794,6 +809,11 @@ void HackerContext::AfterDraw(DrawContext &data)
 		data.oldPixelShader->Release();
 		if (ret)
 			ret->Release();
+	}
+
+	if (G->profiling) {
+		QueryPerformanceCounter(&end_time);
+		G->draw_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
 	}
 }
 
@@ -1029,9 +1049,13 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 	void *replace = NULL;
 	bool divertable = false, divert = false, track = false;
 	bool write = false, read = false, deny = false;
+	LARGE_INTEGER start_time, end_time;
+
+	if (G->profiling)
+		QueryPerformanceCounter(&start_time);
 
 	if (FAILED(map_hr) || !pResource || !pMappedResource || !pMappedResource->pData)
-		return;
+		goto out_profile;
 
 	switch (MapType) {
 		case D3D11_MAP_READ_WRITE:
@@ -1064,14 +1088,14 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 	}
 
 	if (!track && !divert)
-		return;
+		goto out_profile;
 
 	map_info = &mMappedResources[pResource];
 	map_info->mapped_writable = write;
 	memcpy(&map_info->map, pMappedResource, sizeof(D3D11_MAPPED_SUBRESOURCE));
 
 	if (!divertable || !divert)
-		return;
+		goto out_profile;
 
 	pResource->GetType(&dim);
 	switch (dim) {
@@ -1096,13 +1120,13 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 			map_info->size = pMappedResource->DepthPitch * tex3d_desc.Depth;
 			break;
 		default:
-			return;
+			goto out_profile;
 	}
 
 	replace = malloc(map_info->size);
 	if (!replace) {
 		LogInfo("TrackAndDivertMap out of memory\n");
-		return;
+		goto out_profile;
 	}
 
 	if (read && !deny)
@@ -1113,19 +1137,29 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 	map_info->orig_pData = pMappedResource->pData;
 	map_info->map.pData = replace;
 	pMappedResource->pData = replace;
+
+out_profile:
+	if (G->profiling) {
+		QueryPerformanceCounter(&end_time);
+		G->map_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
+	}
 }
 
 void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresource)
 {
 	MappedResources::iterator i;
 	MappedResourceInfo *map_info = NULL;
+	LARGE_INTEGER start_time, end_time;
+
+	if (G->profiling)
+		QueryPerformanceCounter(&start_time);
 
 	if (mMappedResources.empty())
-		return;
+		goto out_profile;
 
 	i = mMappedResources.find(pResource);
 	if (i == mMappedResources.end())
-		return;
+		goto out_profile;
 	map_info = &i->second;
 
 	if (G->track_texture_updates && Subresource == 0 && map_info->mapped_writable)
@@ -1140,6 +1174,12 @@ void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresou
 	}
 
 	mMappedResources.erase(i);
+
+out_profile:
+	if (G->profiling) {
+		QueryPerformanceCounter(&end_time);
+		G->map_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
+	}
 }
 
 STDMETHODIMP HackerContext::Map(THIS_

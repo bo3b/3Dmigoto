@@ -1108,6 +1108,12 @@ static void AnalysePerf(HackerDevice *device, void *private_data)
 		G->profiling_start_frame_no = G->frame_no;
 		QueryPerformanceCounter(&G->profiling_start_time);
 		G->profiling_txt = L"Profiling...";
+
+		G->present_overhead.QuadPart = 0;
+		G->overlay_overhead.QuadPart = 0;
+		G->draw_overhead.QuadPart = 0;
+		G->map_overhead.QuadPart = 0;
+		G->hash_tracking_overhead.QuadPart = 0;
 	}
 }
 

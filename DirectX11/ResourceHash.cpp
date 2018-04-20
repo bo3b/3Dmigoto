@@ -949,9 +949,13 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 	UINT dstWidth = 1, dstHeight = 1, dstDepth = 1, dstMip = 0, dstIdx = 0, dstArraySize = 1;
 	bool partial = false;
 	ResourceInfoMap::iterator info_i;
+	LARGE_INTEGER start_time, end_time;
 
 	if (!dest)
 		return;
+
+	if (G->profiling)
+		QueryPerformanceCounter(&start_time);
 
 	EnterCriticalSection(&G->mCriticalSection);
 
@@ -1054,6 +1058,11 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 
 out_unlock:
 	LeaveCriticalSection(&G->mCriticalSection);
+
+	if (G->profiling) {
+		QueryPerformanceCounter(&end_time);
+		G->hash_tracking_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
+	}
 }
 
 void UpdateResourceHashFromCPU(ID3D11Resource *resource,
@@ -1067,9 +1076,13 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 	D3D11_TEXTURE3D_DESC *desc3D;
 	uint32_t old_data_hash, old_hash;
 	ResourceHandleInfo *info = NULL;
+	LARGE_INTEGER start_time, end_time;
 
 	if (!resource || !data)
 		return;
+
+	if (G->profiling)
+		QueryPerformanceCounter(&start_time);
 
 	EnterCriticalSection(&G->mCriticalSection);
 
@@ -1127,6 +1140,11 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 
 out_unlock:
 	LeaveCriticalSection(&G->mCriticalSection);
+
+	if (G->profiling) {
+		QueryPerformanceCounter(&end_time);
+		G->hash_tracking_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
+	}
 }
 
 void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
@@ -1136,6 +1154,10 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 	D3D11_TEXTURE2D_DESC *desc2D;
 	D3D11_TEXTURE3D_DESC *desc3D;
 	uint32_t old_data_hash, old_hash;
+	LARGE_INTEGER start_time, end_time;
+
+	if (G->profiling)
+		QueryPerformanceCounter(&start_time);
 
 	EnterCriticalSection(&G->mCriticalSection);
 
@@ -1193,6 +1215,11 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 
 out_unlock:
 	LeaveCriticalSection(&G->mCriticalSection);
+
+	if (G->profiling) {
+		QueryPerformanceCounter(&end_time);
+		G->hash_tracking_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
+	}
 }
 
 bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource)

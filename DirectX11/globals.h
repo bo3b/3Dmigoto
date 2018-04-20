@@ -423,6 +423,11 @@ struct Globals
 	unsigned profiling_start_frame_no;
 	LARGE_INTEGER profiling_start_time;
 	wstring profiling_txt;
+	LARGE_INTEGER present_overhead;
+	LARGE_INTEGER overlay_overhead;
+	LARGE_INTEGER draw_overhead;
+	LARGE_INTEGER map_overhead;
+	LARGE_INTEGER hash_tracking_overhead;
 
 	ShaderHashType shader_hash_type;
 	int texture_hash_version;

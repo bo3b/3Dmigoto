@@ -746,10 +746,14 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
 
 void Overlay::DrawOverlay(void)
 {
+	LARGE_INTEGER start_time, end_time;
 	HRESULT hr;
 
 	if (G->hunting != HUNTING_MODE_ENABLED && !has_notice && !G->profiling)
 		return;
+
+	if (G->profiling)
+		QueryPerformanceCounter(&start_time);
 
 	// Since some games did not like having us change their drawing state from
 	// SpriteBatch, we now save and restore all state information for the GPU
@@ -796,6 +800,11 @@ fail_restore:
 	RestoreState();
 
 	flush_d3d11on12(mOrigDevice, mOrigContext);
+
+	if (G->profiling) {
+		QueryPerformanceCounter(&end_time);
+		G->overlay_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
+	}
 }
 
 OverlayNotice::OverlayNotice(std::wstring message) :
