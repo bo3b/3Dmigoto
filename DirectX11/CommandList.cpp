@@ -3446,15 +3446,6 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		// means to get the strides + offsets from within the shader.
 		// Perhaps as an IniParam, or in another constant buffer?
 		mOrigContext1->IAGetVertexBuffers(slot, 1, &buf, stride, offset);
-
-		// To simplify things we just copy the part of the buffer
-		// referred to by this call, so adjust the offset with the
-		// call-specific first vertex. Do NOT set the buffer size here
-		// as if it's too small it will disable the region copy later.
-		// TODO: Add a keyword to ignore offsets in case we want the
-		// whole buffer regardless
-		if (state->call_info && stride && offset)
-			*offset += state->call_info->FirstVertex * *stride;
 		return buf;
 
 	case ResourceCopyTargetType::INDEX_BUFFER:
@@ -3463,15 +3454,6 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		mOrigContext1->IAGetIndexBuffer(&buf, format, offset);
 		if (stride && format)
 			*stride = dxgi_format_size(*format);
-
-		// To simplify things we just copy the part of the buffer
-		// referred to by this call, so adjust the offset with the
-		// call-specific first index. Do NOT set the buffer size here
-		// as if it's too small it will disable the region copy later.
-		// TODO: Add a keyword to ignore offsets in case we want the
-		// whole buffer regardless
-		if (state->call_info && stride && offset)
-			*offset += state->call_info->FirstIndex * *stride;
 		return buf;
 
 	case ResourceCopyTargetType::STREAM_OUTPUT:
@@ -4437,6 +4419,9 @@ static void FillOutBufferDescCommon(DescType *desc, UINT stride,
 	// knocked out the offset for us. We could alternatively do it
 	// here (and the below should work), but we would need to
 	// create a new view every time the offset changes.
+	//
+	// TODO: Handle vertex/index buffers with "first vertex/index" here, or
+	// give shaders a way to access that via ini params.
 	if (stride) {
 		desc->Buffer.FirstElement = offset / stride;
 		desc->Buffer.NumElements = (buf_src_size - offset) / stride;
