@@ -4285,7 +4285,8 @@ void ReloadConfig(HackerDevice *device)
 
 	// Clear active command lists set, as the pointers in this set will
 	// become invalid as the config is reloaded:
-	command_lists_perf.clear();
+	command_lists_profiling.clear();
+	command_lists_cmd_profiling.clear();
 
 	// Reset the counters on the global parameter save area:
 	OverrideSave.Reset(device);

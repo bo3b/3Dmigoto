@@ -15,7 +15,8 @@
 CustomResources customResources;
 CustomShaders customShaders;
 ExplicitCommandListSections explicitCommandListSections;
-std::unordered_set<CommandList*> command_lists_perf;
+std::unordered_set<CommandList*> command_lists_profiling;
+std::unordered_set<CommandListCommand*> command_lists_cmd_profiling;
 
 
 // Adds consistent "3DMigoto" prefix to frame analysis log with appropriate
@@ -28,6 +29,7 @@ std::unordered_set<CommandList*> command_lists_perf;
 
 struct command_list_profiling_state {
 	LARGE_INTEGER list_start_time;
+	LARGE_INTEGER cmd_start_time;
 	LARGE_INTEGER saved_recursive_time;
 };
 
@@ -39,7 +41,7 @@ static inline void profile_command_list_start(CommandList *command_list, Command
 	if (!G->profiling)
 		return;
 
-	inserted = command_lists_perf.insert(command_list).second;
+	inserted = command_lists_profiling.insert(command_list).second;
 	if (inserted) {
 		command_list->time_spent_inclusive.QuadPart = 0;
 		command_list->time_spent_exclusive.QuadPart = 0;
@@ -68,6 +70,36 @@ static inline void profile_command_list_end(CommandList *command_list, CommandLi
 	state->profiling_time_recursive.QuadPart = profiling_state->saved_recursive_time.QuadPart + duration.QuadPart;
 }
 
+static inline void profile_command_list_cmd_start(CommandListCommand *cmd,
+		command_list_profiling_state *profiling_state)
+{
+	bool inserted;
+
+	if (!G->profiling)
+		return;
+
+	inserted = command_lists_cmd_profiling.insert(cmd).second;
+	if (inserted) {
+		cmd->time_spent.QuadPart = 0;
+		cmd->executions = 0;
+	}
+
+	QueryPerformanceCounter(&profiling_state->cmd_start_time);
+}
+
+static inline void profile_command_list_cmd_end(CommandListCommand *cmd,
+		command_list_profiling_state *profiling_state)
+{
+	LARGE_INTEGER end_time;
+
+	if (!G->profiling)
+		return;
+
+	QueryPerformanceCounter(&end_time);
+	cmd->time_spent.QuadPart += end_time.QuadPart - profiling_state->cmd_start_time.QuadPart;
+	cmd->executions++;
+}
+
 static void _RunCommandList(CommandList *command_list, CommandListState *state)
 {
 	CommandList::Commands::iterator i;
@@ -87,7 +119,9 @@ static void _RunCommandList(CommandList *command_list, CommandListState *state)
 	profile_command_list_start(command_list, state, &profiling_state);
 
 	for (i = command_list->commands.begin(); i < command_list->commands.end() && !state->aborted; i++) {
+		profile_command_list_cmd_start(i->get(), &profiling_state);
 		(*i)->run(state);
+		profile_command_list_cmd_end(i->get(), &profiling_state);
 	}
 
 	profile_command_list_end(command_list, state, &profiling_state);

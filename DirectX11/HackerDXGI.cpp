@@ -234,7 +234,7 @@ static void UpdateProfilingTxt()
 	if (collection_duration.QuadPart < 1000000)
 		return;
 
-	vector<CommandList*> sorted(command_lists_perf.begin(), command_lists_perf.end());
+	vector<CommandList*> sorted(command_lists_profiling.begin(), command_lists_profiling.end());
 	std::sort(sorted.begin(), sorted.end(), [](const CommandList *lhs, const CommandList *rhs) {
 		return lhs->time_spent_inclusive.QuadPart > rhs->time_spent_inclusive.QuadPart;
 	});
@@ -300,7 +300,7 @@ static void UpdateProfilingTxt()
 	// LogInfoW(L"%s", G->profiling_txt.c_str());
 
 	// Restart profiling for the next time interval:
-	command_lists_perf.clear();
+	command_lists_profiling.clear();
 	G->profiling_start_frame_no = G->frame_no;
 	G->profiling_start_time = end_time;
 	G->present_overhead.QuadPart = 0;

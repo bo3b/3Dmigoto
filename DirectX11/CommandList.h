@@ -75,6 +75,10 @@ class CommandListCommand {
 public:
 	wstring ini_line;
 
+	// For performance metrics:
+	LARGE_INTEGER time_spent;
+	unsigned executions;
+
 	virtual ~CommandListCommand() {};
 
 	virtual void run(CommandListState*) = 0;
@@ -99,7 +103,8 @@ public:
 	{}
 };
 
-extern std::unordered_set<CommandList*> command_lists_perf;
+extern std::unordered_set<CommandList*> command_lists_profiling;
+extern std::unordered_set<CommandListCommand*> command_lists_cmd_profiling;
 
 // Forward declaration to avoid circular reference since Override.h includes
 // HackerDevice.h includes HackerContext.h includes CommandList.h

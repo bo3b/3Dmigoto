@@ -1102,7 +1102,8 @@ static void AnalyseFrameStop(HackerDevice *device, void *private_data)
 
 static void AnalysePerf(HackerDevice *device, void *private_data)
 {
-	command_lists_perf.clear();
+	command_lists_profiling.clear();
+	command_lists_cmd_profiling.clear();
 	G->profiling = !G->profiling;
 	if (G->profiling) {
 		G->profiling_start_frame_no = G->frame_no;
