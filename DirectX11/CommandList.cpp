@@ -26,11 +26,52 @@ std::unordered_set<CommandList*> command_lists_perf;
 		(state)->mHackerContext->FrameAnalysisLog("3DMigoto%*s " fmt, state->recursion, "", __VA_ARGS__); \
 	} while (0)
 
+struct command_list_profiling_state {
+	LARGE_INTEGER list_start_time;
+	LARGE_INTEGER saved_recursive_time;
+};
+
+static inline void profile_command_list_start(CommandList *command_list, CommandListState *state,
+		command_list_profiling_state *profiling_state)
+{
+	bool inserted;
+
+	if (!G->profiling)
+		return;
+
+	inserted = command_lists_perf.insert(command_list).second;
+	if (inserted) {
+		command_list->time_spent_inclusive.QuadPart = 0;
+		command_list->time_spent_exclusive.QuadPart = 0;
+		command_list->executions = 0;
+	}
+
+	profiling_state->saved_recursive_time = state->profiling_time_recursive;
+	state->profiling_time_recursive.QuadPart = 0;
+
+	QueryPerformanceCounter(&profiling_state->list_start_time);
+}
+
+static inline void profile_command_list_end(CommandList *command_list, CommandListState *state,
+		command_list_profiling_state *profiling_state)
+{
+	LARGE_INTEGER list_end_time, duration;
+
+	if (!G->profiling)
+		return;
+
+	QueryPerformanceCounter(&list_end_time);
+	duration.QuadPart = list_end_time.QuadPart - profiling_state->list_start_time.QuadPart;
+	command_list->time_spent_inclusive.QuadPart += duration.QuadPart;
+	command_list->time_spent_exclusive.QuadPart += duration.QuadPart - state->profiling_time_recursive.QuadPart;
+	command_list->executions++;
+	state->profiling_time_recursive.QuadPart = profiling_state->saved_recursive_time.QuadPart + duration.QuadPart;
+}
+
 static void _RunCommandList(CommandList *command_list, CommandListState *state)
 {
 	CommandList::Commands::iterator i;
-	LARGE_INTEGER list_start_time, list_end_time, saved_recursive_time, duration;
-	bool inserted;
+	command_list_profiling_state profiling_state;
 
 	if (state->recursion > MAX_COMMAND_LIST_RECURSION) {
 		LogInfo("WARNING: Command list recursion limit exceeded! Circular reference?\n");
@@ -43,32 +84,13 @@ static void _RunCommandList(CommandList *command_list, CommandListState *state)
 	COMMAND_LIST_LOG(state, "%s {\n", state->post ? "post" : "pre");
 	state->recursion++;
 
-	if (G->profiling) {
-		inserted = command_lists_perf.insert(command_list).second;
-		if (inserted) {
-			command_list->time_spent_inclusive.QuadPart = 0;
-			command_list->time_spent_exclusive.QuadPart = 0;
-			command_list->executions = 0;
-		}
-
-		saved_recursive_time = state->profiling_time_recursive;
-		state->profiling_time_recursive.QuadPart = 0;
-
-		QueryPerformanceCounter(&list_start_time);
-	}
+	profile_command_list_start(command_list, state, &profiling_state);
 
 	for (i = command_list->commands.begin(); i < command_list->commands.end() && !state->aborted; i++) {
 		(*i)->run(state);
 	}
 
-	if (G->profiling) {
-		QueryPerformanceCounter(&list_end_time);
-		duration.QuadPart = list_end_time.QuadPart - list_start_time.QuadPart;
-		command_list->time_spent_inclusive.QuadPart += duration.QuadPart;
-		command_list->time_spent_exclusive.QuadPart += duration.QuadPart - state->profiling_time_recursive.QuadPart;
-		command_list->executions++;
-		state->profiling_time_recursive.QuadPart = saved_recursive_time.QuadPart + duration.QuadPart;
-	}
+	profile_command_list_end(command_list, state, &profiling_state);
 
 	state->recursion--;
 	COMMAND_LIST_LOG(state, "}\n");
