@@ -182,8 +182,12 @@ static bool AddCommandToList(CommandListCommand *command,
 		CommandList *explicit_command_list,
 		CommandList *sensible_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wchar_t *section,
+		const wchar_t *key, wstring *val)
 {
+	command->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+
 	if (explicit_command_list) {
 		// User explicitly specified "pre" or "post", so only add the
 		// command to that list
@@ -226,8 +230,7 @@ static bool ParseCheckTextureOverride(const wchar_t *section,
 	// Parse value as consistent with texture filtering and resource copying
 	ret = operation->target.ParseTarget(section, val->c_str(), true, ini_namespace);
 	if (ret) {
-		operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-		return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
+		return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
 	}
 
 	delete operation;
@@ -265,8 +268,7 @@ static bool ParseResetPerFrameLimits(const wchar_t *section,
 		operation->shader = &shader->second;
 	}
 
-	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
 	delete operation;
@@ -363,8 +365,7 @@ static bool ParseClearView(const wchar_t *section,
 		operation->fval[idx] = operation->fval[idx - 1];
 	}
 
-	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
 	delete operation;
@@ -396,9 +397,8 @@ static bool ParseRunShader(const wchar_t *section,
 	if (shader == customShaders.end())
 		goto bail;
 
-	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->custom_shader = &shader->second;
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
 	delete operation;
@@ -431,13 +431,12 @@ bool ParseRunExplicitCommandList(const wchar_t *section,
 	if (shader == explicitCommandListSections.end())
 		goto bail;
 
-	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->command_list_section = &shader->second;
 	// This function is nearly identical to ParseRunShader, but in case we
 	// later refactor these together note that here we do not specify a
 	// sensible command list, so it will be added to both pre and post
 	// command lists:
-	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
+	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
 
 bail:
 	delete operation;
@@ -492,11 +491,10 @@ static bool ParsePreset(const wchar_t *section,
 	if (i == presetOverrides.end())
 		goto bail;
 
-	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->preset = &i->second;
 	operation->exclude = exclude;
 
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
 	delete operation;
@@ -569,7 +567,7 @@ static bool ParseDrawCommand(const wchar_t *section,
 		goto bail;
 
 	operation->ini_section = section;
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
 	delete operation;
@@ -602,8 +600,7 @@ static bool ParseDirectModeSetActiveEyeCommand(const wchar_t *section,
 	goto bail;
 
 success:
-	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
 	delete operation;
@@ -645,8 +642,7 @@ success:
 	// the value, and the post command list will restore the original. If
 	// an explicit command list is specified then the value will only be
 	// set, not restored (regardless of whether that is pre or post)
-	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
+	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
 
 bail:
 	delete operation;
@@ -694,8 +690,7 @@ static bool ParseFrameAnalysisDump(const wchar_t *section,
 	std::replace(operation->target_name.begin(), operation->target_name.end(), L'*', L'_');
 
 	delete [] buf;
-	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
 	delete [] buf;
@@ -729,12 +724,12 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 		// skip only makes sense in pre command lists, since it needs
 		// to run before the original draw call:
 		if (!wcscmp(val->c_str(), L"skip"))
-			return AddCommandToList(new SkipCommand(section), explicit_command_list, pre_command_list, NULL, NULL);
+			return AddCommandToList(new SkipCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 		// abort defaults to both command lists, to abort command list
 		// execution both before and after the draw call:
 		if (!wcscmp(val->c_str(), L"abort"))
-			return AddCommandToList(new AbortCommand(section), explicit_command_list, NULL, pre_command_list, post_command_list);
+			return AddCommandToList(new AbortCommand(section), explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
 	}
 
 	if (!wcscmp(key, L"reset_per_frame_limits"))
@@ -753,14 +748,14 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 		return ParseDirectModeSetActiveEyeCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	if (!wcscmp(key, L"analyse_options"))
-		return AddCommandToList(new FrameAnalysisChangeOptionsCommand(section, key, val), explicit_command_list, pre_command_list, NULL, NULL);
+		return AddCommandToList(new FrameAnalysisChangeOptionsCommand(val), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 	if (!wcscmp(key, L"dump"))
 		return ParseFrameAnalysisDump(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
 	if (!wcscmp(key, L"special")) {
 		if (!wcscmp(val->c_str(), L"upscaling_switch_bb"))
-			return AddCommandToList(new UpscalingFlipBBCommand(section), explicit_command_list, pre_command_list, NULL, NULL);
+			return AddCommandToList(new UpscalingFlipBBCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 	}
 
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
@@ -1153,7 +1148,7 @@ void PerDrawConvergenceOverrideCommand::set_stereo_value(CommandListState *state
 		COMMAND_LIST_LOG(state, "  Stereo_SetConvergence failed\n");
 }
 
-FrameAnalysisChangeOptionsCommand::FrameAnalysisChangeOptionsCommand(wstring section, wstring key, wstring *val)
+FrameAnalysisChangeOptionsCommand::FrameAnalysisChangeOptionsCommand(wstring *val)
 {
 	wchar_t *buf;
 	size_t size = val->size() + 1;
@@ -1169,8 +1164,6 @@ FrameAnalysisChangeOptionsCommand::FrameAnalysisChangeOptionsCommand(wstring sec
 		(FrameAnalysisOptionNames, buf, NULL);
 
 	delete [] buf;
-
-	ini_line = L"[" + wstring(section) + L"] " + key + L" = " + *val;
 }
 
 void FrameAnalysisChangeOptionsCommand::run(CommandListState *state)

@@ -73,6 +73,8 @@ public:
 
 class CommandListCommand {
 public:
+	wstring ini_line;
+
 	virtual ~CommandListCommand() {};
 
 	virtual void run(CommandListState*) = 0;
@@ -105,7 +107,6 @@ class PresetOverride;
 
 class PresetCommand : public CommandListCommand {
 public:
-	wstring ini_line;
 	PresetOverride *preset;
 	bool exclude;
 
@@ -129,7 +130,6 @@ extern ExplicitCommandListSections explicitCommandListSections;
 
 class RunExplicitCommandList : public CommandListCommand {
 public:
-	wstring ini_line;
 	ExplicitCommandListSection *command_list_section;
 
 	RunExplicitCommandList() :
@@ -269,7 +269,6 @@ extern CustomShaders customShaders;
 
 class RunCustomShaderCommand : public CommandListCommand {
 public:
-	wstring ini_line;
 	CustomShader *custom_shader;
 
 	RunCustomShaderCommand() :
@@ -632,8 +631,6 @@ static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
 
 class ResourceCopyOperation : public CommandListCommand {
 public:
-	wstring ini_line;
-
 	ResourceCopyTarget src;
 	ResourceCopyTarget dst;
 	ResourceCopyOptions options;
@@ -746,8 +743,6 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 };
 class ParamOverride : public CommandListCommand {
 public:
-	wstring ini_line;
-
 	int param_idx;
 	float DirectX::XMFLOAT4::*param_component;
 
@@ -775,7 +770,6 @@ public:
 
 class CheckTextureOverrideCommand : public CommandListCommand {
 public:
-	wstring ini_line;
 	// For processing command lists in TextureOverride sections:
 	ResourceCopyTarget target;
 
@@ -784,8 +778,6 @@ public:
 
 class ClearViewCommand : public CommandListCommand {
 public:
-	wstring ini_line;
-
 	ResourceCopyTarget target;
 
 	FLOAT dsv_depth;
@@ -814,8 +806,6 @@ public:
 
 class ResetPerFrameLimitsCommand : public CommandListCommand {
 public:
-	wstring ini_line;
-
 	CustomShader *shader;
 	CustomResource *resource;
 
@@ -829,8 +819,6 @@ public:
 
 class PerDrawStereoOverrideCommand : public CommandListCommand {
 public:
-	wstring ini_line;
-
 	float val;
 	float saved;
 	bool restore_on_post;
@@ -872,8 +860,6 @@ public:
 
 class DirectModeSetActiveEyeCommand : public CommandListCommand {
 public:
-	wstring ini_line;
-
 	NV_STEREO_ACTIVE_EYE eye;
 
 	void run(CommandListState*) override;
@@ -881,19 +867,15 @@ public:
 
 class FrameAnalysisChangeOptionsCommand : public CommandListCommand {
 public:
-	wstring ini_line;
-
 	FrameAnalysisOptions analyse_options;
 
-	FrameAnalysisChangeOptionsCommand(wstring section, wstring key, wstring *val);
+	FrameAnalysisChangeOptionsCommand(wstring *val);
 
 	void run(CommandListState*) override;
 };
 
 class FrameAnalysisDumpCommand : public CommandListCommand {
 public:
-	wstring ini_line;
-
 	ResourceCopyTarget target;
 	wstring target_name;
 	FrameAnalysisOptions analyse_options;
