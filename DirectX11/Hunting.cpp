@@ -1110,6 +1110,7 @@ static void AnalysePerf(HackerDevice *device, void *private_data)
 	command_lists_profiling.clear();
 	command_lists_cmd_profiling.clear();
 	G->profiling_txt.clear();
+	G->profiling_freeze = false;
 
 	G->profiling_start_frame_no = G->frame_no;
 	QueryPerformanceCounter(&G->profiling_start_time);
@@ -1119,6 +1120,17 @@ static void AnalysePerf(HackerDevice *device, void *private_data)
 	G->draw_overhead.QuadPart = 0;
 	G->map_overhead.QuadPart = 0;
 	G->hash_tracking_overhead.QuadPart = 0;
+}
+
+static void FreezePerf(HackerDevice *device, void *private_data)
+{
+	if (G->profiling == ProfilingMode::NONE)
+		return;
+
+	G->profiling_freeze = !G->profiling_freeze;
+
+	if (G->profiling_freeze)
+		LogInfoW(L"%s", G->profiling_txt.c_str());
 }
 
 static void DisableDeferred(HackerDevice *device, void *private_data)
@@ -1580,6 +1592,8 @@ void ParseHuntingSection()
 	// (possibly even especially in release mode), particularly if we want
 	// a user to send us a screenshot of the profiling info:
 	RegisterIniKeyBinding(L"Hunting", L"monitor_performance", AnalysePerf, NULL, noRepeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"freeze_performance_monitor", FreezePerf, NULL, noRepeat, NULL);
+	G->profiling_interval = (INT64)(GetIniFloat(L"Hunting", L"monitor_performance_interval", 1.0f, NULL) * 1000000);
 
 	// Don't register hunting keys when hard disabled. In this case the
 	// only way to turn hunting on is to edit the ini file and reload it.

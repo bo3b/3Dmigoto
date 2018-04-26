@@ -710,6 +710,7 @@ void Overlay::DrawNotices(float *y)
 static void UpdateProfilingTxtSummary(LARGE_INTEGER collection_duration, LARGE_INTEGER freq, unsigned frames)
 {
 	LARGE_INTEGER present_overhead = {0};
+	LARGE_INTEGER command_list_overhead = {0};
 	wchar_t buf[512];
 
 	// The overlay overhead should be a subset of the present overhead, but
@@ -721,26 +722,33 @@ static void UpdateProfilingTxtSummary(LARGE_INTEGER collection_duration, LARGE_I
 	if (G->present_overhead.QuadPart > G->overlay_overhead.QuadPart)
 		present_overhead.QuadPart = G->present_overhead.QuadPart - G->overlay_overhead.QuadPart;
 
+	for (CommandList *command_list : command_lists_profiling)
+		command_list_overhead.QuadPart += command_list->time_spent_exclusive.QuadPart;
+
 	G->profiling_txt += L" (Summary):\n";
 	_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
-	                    L"   Present overhead: %7lluus (%7lluus/frame) ~%ffps\n"
-	                    L"   Overlay overhead: %7lluus (%7lluus/frame) ~%ffps\n"
-	                    L" Draw call overhead: %7lluus (%7lluus/frame) ~%ffps\n"
-	                    L" Map/Unmap overhead: %7lluus (%7lluus/frame) ~%ffps\n"
-	                    L"Hash Track overhead: %7lluus (%7lluus/frame) ~%ffps\n",
-			    present_overhead.QuadPart, present_overhead.QuadPart / frames,
+	                    L"   Present overhead: %7.2fus/frame ~%ffps\n"
+	                    L"   Overlay overhead: %7.2fus/frame ~%ffps\n"
+	                    L" Draw call overhead: %7.2fus/frame ~%ffps\n"
+	                    L"Command lists total: %7.2fus/frame ~%ffps\n"
+	                    L" Map/Unmap overhead: %7.2fus/frame ~%ffps\n"
+	                    L"Hash Track overhead: %7.2fus/frame ~%ffps\n",
+			    (float)present_overhead.QuadPart / frames,
 			    60.0 * present_overhead.QuadPart / collection_duration.QuadPart,
 
-			    G->overlay_overhead.QuadPart, G->overlay_overhead.QuadPart / frames,
+			    (float)G->overlay_overhead.QuadPart / frames,
 			    60.0 * G->overlay_overhead.QuadPart / collection_duration.QuadPart,
 
-			    G->draw_overhead.QuadPart, G->draw_overhead.QuadPart / frames,
+			    (float)G->draw_overhead.QuadPart / frames,
 			    60.0 * G->draw_overhead.QuadPart / collection_duration.QuadPart,
 
-			    G->map_overhead.QuadPart, G->map_overhead.QuadPart / frames,
+			    (float)command_list_overhead.QuadPart / frames,
+			    60.0 * command_list_overhead.QuadPart / collection_duration.QuadPart,
+
+			    (float)G->map_overhead.QuadPart / frames,
 			    60.0 * G->map_overhead.QuadPart / collection_duration.QuadPart,
 
-			    G->hash_tracking_overhead.QuadPart, G->hash_tracking_overhead.QuadPart / frames,
+			    (float)G->hash_tracking_overhead.QuadPart / frames,
 			    60.0 * G->hash_tracking_overhead.QuadPart / collection_duration.QuadPart
 	);
 	G->profiling_txt += buf;
@@ -758,9 +766,9 @@ static void UpdateProfilingTxtCommandLists(LARGE_INTEGER collection_duration, LA
 	});
 
 	G->profiling_txt += L" (Top Command Lists):\n"
-	                    L"          Inclusive              |           Exclusive              |\n"
-	                    L"Total CPU CPU/frame est fps cost | Total CPU CPU/frame est fps cost | Executions exe/frame\n"
-	                    L"--------- --------- ------------ | --------- --------- ------------ | ---------- ----------\n";
+	                    L"      | Including sub-lists | Excluding sub-lists |\n"
+	                    L"count | CPU/frame ~fps cost | CPU/frame ~fps cost |\n"
+	                    L"----- | --------- --------- | --------- --------- |\n";
 	for (CommandList *command_list : sorted) {
 		inclusive.QuadPart = command_list->time_spent_inclusive.QuadPart * 1000000 / freq.QuadPart;
 		exclusive.QuadPart = command_list->time_spent_exclusive.QuadPart * 1000000 / freq.QuadPart;
@@ -771,15 +779,12 @@ static void UpdateProfilingTxtCommandLists(LARGE_INTEGER collection_duration, LA
 		exclusive_fps = 60.0 * exclusive.QuadPart / collection_duration.QuadPart;
 
 		_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
-				L"%7lluus %7lluus %12f | %7lluus %7lluus %12f | %10u %9.1f %4s [%s]\n",
-				inclusive.QuadPart,
-				inclusive.QuadPart / frames,
+				L"%5.0f | %7.2fus %9f | %7.2fus %9f | %4s [%s]\n",
+				ceil((float)command_list->executions / frames),
+				(float)inclusive.QuadPart / frames,
 				inclusive_fps,
-				exclusive.QuadPart,
-				exclusive.QuadPart / frames,
+				(float)exclusive.QuadPart / frames,
 				exclusive_fps,
-				command_list->executions,
-				(float)command_list->executions / frames,
 				command_list->post ? L"post" : L"pre",
 				command_list->ini_section.c_str()
 		);
@@ -800,10 +805,9 @@ static void UpdateProfilingTxtCommands(LARGE_INTEGER collection_duration, LARGE_
 		return lhs->time_spent.QuadPart > rhs->time_spent.QuadPart;
 	});
 
-	G->profiling_txt += L" (Top Commands):\n";
-	                    L"          Inclusive              |\n"
-	                    L"Total CPU CPU/frame est fps cost | Executions exe/frame\n"
-	                    L"--------- --------- ------------ | ---------- ----------\n";
+	G->profiling_txt += L" (Top Commands):\n"
+	                    L"count | CPU/frame ~fps cost |\n"
+	                    L"----- | --------- --------- |\n";
 	for (CommandListCommand *cmd : sorted) {
 		time_spent.QuadPart = cmd->time_spent.QuadPart * 1000000 / freq.QuadPart;
 
@@ -812,12 +816,10 @@ static void UpdateProfilingTxtCommands(LARGE_INTEGER collection_duration, LARGE_
 		fps_cost = 60.0 * time_spent.QuadPart / collection_duration.QuadPart;
 
 		_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
-				L"%7lluus %7lluus %12f | %10u %9.1f %s\n",
-				time_spent.QuadPart,
-				time_spent.QuadPart / frames,
+				L"%5.0f | %7.2fus %9f | %s\n",
+				ceil((float)cmd->executions / frames),
+				(float)time_spent.QuadPart / frames,
 				fps_cost,
-				cmd->executions,
-				(float)cmd->executions / frames,
 				cmd->ini_line.c_str()
 		);
 		G->profiling_txt += buf;
@@ -832,6 +834,9 @@ static void UpdateProfilingTxt()
 	unsigned frames = G->frame_no - G->profiling_start_frame_no;
 	wchar_t buf[256];
 
+	if (G->profiling_freeze)
+		return;
+
 	QueryPerformanceCounter(&end_time);
 	if (!freq.QuadPart)
 		QueryPerformanceFrequency(&freq);
@@ -841,12 +846,12 @@ static void UpdateProfilingTxt()
 		return;
 
 	collection_duration.QuadPart = (end_time.QuadPart - G->profiling_start_time.QuadPart) * 1000000 / freq.QuadPart;
-	if (collection_duration.QuadPart < 1000000 && !G->profiling_txt.empty())
+	if (collection_duration.QuadPart < G->profiling_interval && !G->profiling_txt.empty())
 		return;
 
 	if (frames && collection_duration.QuadPart) {
 		_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
-				    L"Performance data from last %lluus / %u frames", collection_duration.QuadPart, frames);
+				    L"Performance Monitor %.1ffps", frames * 1000000.0 / collection_duration.QuadPart);
 		G->profiling_txt = buf;
 
 		switch (G->profiling) {
@@ -861,8 +866,6 @@ static void UpdateProfilingTxt()
 				break;
 		}
 	}
-
-	// LogInfoW(L"%s", G->profiling_txt.c_str());
 
 	// Restart profiling for the next time interval:
 	command_lists_profiling.clear();

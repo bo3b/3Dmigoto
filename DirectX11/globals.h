@@ -429,8 +429,10 @@ struct Globals
 	std::unordered_set<void*> frame_analysis_seen_rts;
 	ProfilingMode profiling;
 	unsigned profiling_start_frame_no;
+	INT64 profiling_interval;
 	LARGE_INTEGER profiling_start_time;
 	wstring profiling_txt;
+	bool profiling_freeze;
 	LARGE_INTEGER present_overhead;
 	LARGE_INTEGER overlay_overhead;
 	LARGE_INTEGER draw_overhead;
@@ -589,6 +591,8 @@ struct Globals
 		cur_analyse_options(FrameAnalysisOptions::INVALID),
 		profiling(ProfilingMode::NONE),
 		profiling_start_frame_no(0),
+		profiling_freeze(false),
+		profiling_interval(1000000),
 
 		shader_hash_type(ShaderHashType::FNV),
 		texture_hash_version(0),
