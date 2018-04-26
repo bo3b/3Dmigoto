@@ -1108,7 +1108,7 @@ static void AnalysePerf(HackerDevice *device, void *private_data)
 	if (G->profiling) {
 		G->profiling_start_frame_no = G->frame_no;
 		QueryPerformanceCounter(&G->profiling_start_time);
-		G->profiling_txt = L"Profiling...";
+		G->profiling_txt.clear();
 
 		G->present_overhead.QuadPart = 0;
 		G->overlay_overhead.QuadPart = 0;

@@ -54,8 +54,6 @@
 // the HackerSwapChain.  The model is the same as that used in HackerDevice
 // and HackerContext.
 
-#include <algorithm>
-
 #include "HackerDXGI.h"
 #include "HookedDevice.h"
 #include "HookedDXGI.h"
@@ -217,99 +215,6 @@ void HackerSwapChain::UpdateStereoParams()
 	}
 }
 
-static void UpdateProfilingTxt()
-{
-	static LARGE_INTEGER freq = {0};
-	LARGE_INTEGER inclusive, exclusive, end_time, collection_duration;
-	unsigned frames = G->frame_no - G->profiling_start_frame_no;
-	double inclusive_fps, exclusive_fps;
-	wchar_t buf[512];
-	LARGE_INTEGER present_overhead;
-
-	QueryPerformanceCounter(&end_time);
-	if (!freq.QuadPart)
-		QueryPerformanceFrequency(&freq);
-
-	collection_duration.QuadPart = (end_time.QuadPart - G->profiling_start_time.QuadPart) * 1000000 / freq.QuadPart;
-	if (collection_duration.QuadPart < 1000000)
-		return;
-
-	vector<CommandList*> sorted(command_lists_profiling.begin(), command_lists_profiling.end());
-	std::sort(sorted.begin(), sorted.end(), [](const CommandList *lhs, const CommandList *rhs) {
-		return lhs->time_spent_inclusive.QuadPart > rhs->time_spent_inclusive.QuadPart;
-	});
-
-	// The overlay overhead should be a subset of the present overhead, but
-	// given that it includes the overhead of drawing the profiling HUD we
-	// want it counted separately:
-	present_overhead.QuadPart = G->present_overhead.QuadPart - G->overlay_overhead.QuadPart;
-
-	_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
-	                    L"Top Command Lists in last %lluus / %u frames:\n", collection_duration.QuadPart, frames);
-	G->profiling_txt = buf;
-	_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
-	                    L"   Present overhead: %7lluus (%7lluus/frame) ~%ffps\n"
-	                    L"   Overlay overhead: %7lluus (%7lluus/frame) ~%ffps\n"
-	                    L" Draw call overhead: %7lluus (%7lluus/frame) ~%ffps\n"
-	                    L" Map/Unmap overhead: %7lluus (%7lluus/frame) ~%ffps\n"
-	                    L"Hash Track overhead: %7lluus (%7lluus/frame) ~%ffps\n",
-			    present_overhead.QuadPart, present_overhead.QuadPart / frames,
-			    60.0 * present_overhead.QuadPart / collection_duration.QuadPart,
-
-			    G->overlay_overhead.QuadPart, G->overlay_overhead.QuadPart / frames,
-			    60.0 * G->overlay_overhead.QuadPart / collection_duration.QuadPart,
-
-			    G->draw_overhead.QuadPart, G->draw_overhead.QuadPart / frames,
-			    60.0 * G->draw_overhead.QuadPart / collection_duration.QuadPart,
-
-			    G->map_overhead.QuadPart, G->map_overhead.QuadPart / frames,
-			    60.0 * G->map_overhead.QuadPart / collection_duration.QuadPart,
-
-			    G->hash_tracking_overhead.QuadPart, G->hash_tracking_overhead.QuadPart / frames,
-			    60.0 * G->hash_tracking_overhead.QuadPart / collection_duration.QuadPart
-	);
-	G->profiling_txt += buf;
-	G->profiling_txt += L"          Inclusive              |           Exclusive              |\n"
-	                    L"Total CPU CPU/frame est fps cost | Total CPU CPU/frame est fps cost | Executions exe/frame\n"
-	                    L"--------- --------- ------------ | --------- --------- ------------ | ---------- ----------\n";
-	for (CommandList *command_list : sorted) {
-		inclusive.QuadPart = command_list->time_spent_inclusive.QuadPart * 1000000 / freq.QuadPart;
-		exclusive.QuadPart = command_list->time_spent_exclusive.QuadPart * 1000000 / freq.QuadPart;
-
-		// fps estimate based on the assumption that if we took 100%
-		// CPU time it would cost all 60fps:
-		inclusive_fps = 60.0 * inclusive.QuadPart / collection_duration.QuadPart;
-		exclusive_fps = 60.0 * exclusive.QuadPart / collection_duration.QuadPart;
-
-		_snwprintf_s(buf, 256, _TRUNCATE, L"%7lluus %7lluus %12f | %7lluus %7lluus %12f | %10u %9.1f %4s [%s]\n",
-				inclusive.QuadPart,
-				inclusive.QuadPart / frames,
-				inclusive_fps,
-				exclusive.QuadPart,
-				exclusive.QuadPart / frames,
-				exclusive_fps,
-				command_list->executions,
-				(float)command_list->executions / frames,
-				command_list->post ? L"post" : L"pre",
-				command_list->ini_section.c_str()
-		);
-		G->profiling_txt += buf;
-		// TODO: GPU time spent
-	}
-
-	// LogInfoW(L"%s", G->profiling_txt.c_str());
-
-	// Restart profiling for the next time interval:
-	command_lists_profiling.clear();
-	G->profiling_start_frame_no = G->frame_no;
-	G->profiling_start_time = end_time;
-	G->present_overhead.QuadPart = 0;
-	G->overlay_overhead.QuadPart = 0;
-	G->draw_overhead.QuadPart = 0;
-	G->map_overhead.QuadPart = 0;
-	G->hash_tracking_overhead.QuadPart = 0;
-}
-
 // Called at each DXGI::Present() to give us reliable time to execute user
 // input and hunting commands.
 
@@ -363,9 +268,6 @@ void HackerSwapChain::RunFrameActions()
 	// instead and we handle it now.
 	if (G->gReloadConfigPending)
 		ReloadConfig(mHackerDevice);
-
-	if (G->profiling)
-		UpdateProfilingTxt();
 
 	// Draw the on-screen overlay text with hunting and informational
 	// messages, before final Present. We now do this after the shader and
