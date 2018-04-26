@@ -60,6 +60,14 @@ static EnumName_t<const wchar_t *, ShaderHashType> ShaderHashNames[] = {
 	{NULL, ShaderHashType::INVALID} // End of list marker
 };
 
+enum class ProfilingMode {
+	NONE = 0,
+	SUMMARY,
+	TOP_COMMAND_LISTS,
+	TOP_COMMANDS,
+
+	INVALID, // Must be last
+};
 
 // Source compiled shaders.
 typedef std::unordered_map<UINT64, std::string> CompiledShaderMap;
@@ -419,7 +427,7 @@ struct Globals
 	wchar_t ANALYSIS_PATH[MAX_PATH];
 	FrameAnalysisOptions def_analyse_options, cur_analyse_options;
 	std::unordered_set<void*> frame_analysis_seen_rts;
-	bool profiling;
+	ProfilingMode profiling;
 	unsigned profiling_start_frame_no;
 	LARGE_INTEGER profiling_start_time;
 	wstring profiling_txt;
@@ -579,7 +587,7 @@ struct Globals
 		analyse_frame_no(0),
 		def_analyse_options(FrameAnalysisOptions::INVALID),
 		cur_analyse_options(FrameAnalysisOptions::INVALID),
-		profiling(false),
+		profiling(ProfilingMode::NONE),
 		profiling_start_frame_no(0),
 
 		shader_hash_type(ShaderHashType::FNV),

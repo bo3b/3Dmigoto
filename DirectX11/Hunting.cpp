@@ -1102,20 +1102,23 @@ static void AnalyseFrameStop(HackerDevice *device, void *private_data)
 
 static void AnalysePerf(HackerDevice *device, void *private_data)
 {
+	G->profiling = (ProfilingMode)((int)G->profiling + 1);
+
+	if (G->profiling == ProfilingMode::INVALID)
+		G->profiling = ProfilingMode::NONE;
+
 	command_lists_profiling.clear();
 	command_lists_cmd_profiling.clear();
-	G->profiling = !G->profiling;
-	if (G->profiling) {
-		G->profiling_start_frame_no = G->frame_no;
-		QueryPerformanceCounter(&G->profiling_start_time);
-		G->profiling_txt.clear();
+	G->profiling_txt.clear();
 
-		G->present_overhead.QuadPart = 0;
-		G->overlay_overhead.QuadPart = 0;
-		G->draw_overhead.QuadPart = 0;
-		G->map_overhead.QuadPart = 0;
-		G->hash_tracking_overhead.QuadPart = 0;
-	}
+	G->profiling_start_frame_no = G->frame_no;
+	QueryPerformanceCounter(&G->profiling_start_time);
+
+	G->present_overhead.QuadPart = 0;
+	G->overlay_overhead.QuadPart = 0;
+	G->draw_overhead.QuadPart = 0;
+	G->map_overhead.QuadPart = 0;
+	G->hash_tracking_overhead.QuadPart = 0;
 }
 
 static void DisableDeferred(HackerDevice *device, void *private_data)
@@ -1573,6 +1576,11 @@ void ParseHuntingSection()
 	// find the effect again later.
 	G->config_reloadable = RegisterIniKeyBinding(L"Hunting", L"reload_config", FlagConfigReload, NULL, noRepeat, NULL);
 
+	// We're interested in performance measurements even in release mode
+	// (possibly even especially in release mode), particularly if we want
+	// a user to send us a screenshot of the profiling info:
+	RegisterIniKeyBinding(L"Hunting", L"monitor_performance", AnalysePerf, NULL, noRepeat, NULL);
+
 	// Don't register hunting keys when hard disabled. In this case the
 	// only way to turn hunting on is to edit the ini file and reload it.
 	if (G->hunting == HUNTING_MODE_DISABLED)
@@ -1639,8 +1647,6 @@ void ParseHuntingSection()
 			(FrameAnalysisOptionNames, buf, NULL);
 	} else
 		G->def_analyse_options = FrameAnalysisOptions::INVALID;
-
-	RegisterIniKeyBinding(L"Hunting", L"monitor_performance", AnalysePerf, NULL, noRepeat, NULL);
 
 	// Quick hacks to see if DX11 features that we only have limited support for are responsible for anything important:
 	RegisterIniKeyBinding(L"Hunting", L"kill_deferred", DisableDeferred, EnableDeferred, noRepeat, NULL);

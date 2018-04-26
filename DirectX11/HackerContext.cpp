@@ -645,7 +645,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 {
 	LARGE_INTEGER start_time, end_time;
 
-	if (G->profiling)
+	if (G->profiling != ProfilingMode::NONE)
 		QueryPerformanceCounter(&start_time);
 
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
@@ -770,7 +770,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 	}
 
 out_profile:
-	if (G->profiling) {
+	if (G->profiling != ProfilingMode::NONE) {
 		QueryPerformanceCounter(&end_time);
 		G->draw_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
 	}
@@ -781,7 +781,7 @@ void HackerContext::AfterDraw(DrawContext &data)
 	int i;
 	LARGE_INTEGER start_time, end_time;
 
-	if (G->profiling)
+	if (G->profiling != ProfilingMode::NONE)
 		QueryPerformanceCounter(&start_time);
 
 	for (i = 0; i < 5; i++) {
@@ -811,7 +811,7 @@ void HackerContext::AfterDraw(DrawContext &data)
 			ret->Release();
 	}
 
-	if (G->profiling) {
+	if (G->profiling != ProfilingMode::NONE) {
 		QueryPerformanceCounter(&end_time);
 		G->draw_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
 	}
@@ -1051,7 +1051,7 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 	bool write = false, read = false, deny = false;
 	LARGE_INTEGER start_time, end_time;
 
-	if (G->profiling)
+	if (G->profiling != ProfilingMode::NONE)
 		QueryPerformanceCounter(&start_time);
 
 	if (FAILED(map_hr) || !pResource || !pMappedResource || !pMappedResource->pData)
@@ -1139,7 +1139,7 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 	pMappedResource->pData = replace;
 
 out_profile:
-	if (G->profiling) {
+	if (G->profiling != ProfilingMode::NONE) {
 		QueryPerformanceCounter(&end_time);
 		G->map_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
 	}
@@ -1151,7 +1151,7 @@ void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresou
 	MappedResourceInfo *map_info = NULL;
 	LARGE_INTEGER start_time, end_time;
 
-	if (G->profiling)
+	if (G->profiling != ProfilingMode::NONE)
 		QueryPerformanceCounter(&start_time);
 
 	if (mMappedResources.empty())
@@ -1176,7 +1176,7 @@ void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresou
 	mMappedResources.erase(i);
 
 out_profile:
-	if (G->profiling) {
+	if (G->profiling != ProfilingMode::NONE) {
 		QueryPerformanceCounter(&end_time);
 		G->map_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
 	}
