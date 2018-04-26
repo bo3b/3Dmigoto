@@ -832,24 +832,30 @@ static void UpdateProfilingTxt()
 	if (!freq.QuadPart)
 		QueryPerformanceFrequency(&freq);
 
+	// Safety - in case of zero frequency avoid divide by zero:
+	if (!freq.QuadPart)
+		return;
+
 	collection_duration.QuadPart = (end_time.QuadPart - G->profiling_start_time.QuadPart) * 1000000 / freq.QuadPart;
 	if (collection_duration.QuadPart < 1000000 && !G->profiling_txt.empty())
 		return;
 
-	_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
-	                    L"Performance data from last %lluus / %u frames", collection_duration.QuadPart, frames);
-	G->profiling_txt = buf;
+	if (frames && collection_duration.QuadPart) {
+		_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
+				    L"Performance data from last %lluus / %u frames", collection_duration.QuadPart, frames);
+		G->profiling_txt = buf;
 
-	switch (G->profiling) {
-		case ProfilingMode::SUMMARY:
-			UpdateProfilingTxtSummary(collection_duration, freq, frames);
-			break;
-		case ProfilingMode::TOP_COMMAND_LISTS:
-			UpdateProfilingTxtCommandLists(collection_duration, freq, frames);
-			break;
-		case ProfilingMode::TOP_COMMANDS:
-			UpdateProfilingTxtCommands(collection_duration, freq, frames);
-			break;
+		switch (G->profiling) {
+			case ProfilingMode::SUMMARY:
+				UpdateProfilingTxtSummary(collection_duration, freq, frames);
+				break;
+			case ProfilingMode::TOP_COMMAND_LISTS:
+				UpdateProfilingTxtCommandLists(collection_duration, freq, frames);
+				break;
+			case ProfilingMode::TOP_COMMANDS:
+				UpdateProfilingTxtCommands(collection_duration, freq, frames);
+				break;
+		}
 	}
 
 	// LogInfoW(L"%s", G->profiling_txt.c_str());
