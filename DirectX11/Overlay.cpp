@@ -711,6 +711,10 @@ static void UpdateProfilingTxtSummary(LARGE_INTEGER collection_duration, LARGE_I
 {
 	LARGE_INTEGER present_overhead = {0};
 	LARGE_INTEGER command_list_overhead = {0};
+	LARGE_INTEGER overlay_overhead;
+	LARGE_INTEGER draw_overhead;
+	LARGE_INTEGER map_overhead;
+	LARGE_INTEGER hash_tracking_overhead;
 	wchar_t buf[512];
 
 	// The overlay overhead should be a subset of the present overhead, but
@@ -725,6 +729,13 @@ static void UpdateProfilingTxtSummary(LARGE_INTEGER collection_duration, LARGE_I
 	for (CommandList *command_list : command_lists_profiling)
 		command_list_overhead.QuadPart += command_list->time_spent_exclusive.QuadPart;
 
+	present_overhead.QuadPart = present_overhead.QuadPart * 1000000 / freq.QuadPart;
+	command_list_overhead.QuadPart = command_list_overhead.QuadPart * 1000000 / freq.QuadPart;
+	overlay_overhead.QuadPart = G->overlay_overhead.QuadPart * 1000000 / freq.QuadPart;
+	draw_overhead.QuadPart = G->draw_overhead.QuadPart * 1000000 / freq.QuadPart;
+	map_overhead.QuadPart = G->map_overhead.QuadPart * 1000000 / freq.QuadPart;
+	hash_tracking_overhead.QuadPart = G->hash_tracking_overhead.QuadPart * 1000000 / freq.QuadPart;
+
 	G->profiling_txt += L" (Summary):\n";
 	_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
 	                    L"   Present overhead: %7.2fus/frame ~%ffps\n"
@@ -736,20 +747,20 @@ static void UpdateProfilingTxtSummary(LARGE_INTEGER collection_duration, LARGE_I
 			    (float)present_overhead.QuadPart / frames,
 			    60.0 * present_overhead.QuadPart / collection_duration.QuadPart,
 
-			    (float)G->overlay_overhead.QuadPart / frames,
-			    60.0 * G->overlay_overhead.QuadPart / collection_duration.QuadPart,
+			    (float)overlay_overhead.QuadPart / frames,
+			    60.0 * overlay_overhead.QuadPart / collection_duration.QuadPart,
 
-			    (float)G->draw_overhead.QuadPart / frames,
-			    60.0 * G->draw_overhead.QuadPart / collection_duration.QuadPart,
+			    (float)draw_overhead.QuadPart / frames,
+			    60.0 * draw_overhead.QuadPart / collection_duration.QuadPart,
 
 			    (float)command_list_overhead.QuadPart / frames,
 			    60.0 * command_list_overhead.QuadPart / collection_duration.QuadPart,
 
-			    (float)G->map_overhead.QuadPart / frames,
-			    60.0 * G->map_overhead.QuadPart / collection_duration.QuadPart,
+			    (float)map_overhead.QuadPart / frames,
+			    60.0 * map_overhead.QuadPart / collection_duration.QuadPart,
 
-			    (float)G->hash_tracking_overhead.QuadPart / frames,
-			    60.0 * G->hash_tracking_overhead.QuadPart / collection_duration.QuadPart
+			    (float)hash_tracking_overhead.QuadPart / frames,
+			    60.0 * hash_tracking_overhead.QuadPart / collection_duration.QuadPart
 	);
 	G->profiling_txt += buf;
 }
