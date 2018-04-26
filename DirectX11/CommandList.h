@@ -929,4 +929,4 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 		const wchar_t *key, wstring *val, CommandList *command_list,
 		const wstring *ini_namespace);
-void LinkCommandLists(CommandList *dst, CommandList *link);
+void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line);

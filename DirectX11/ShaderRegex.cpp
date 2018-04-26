@@ -365,27 +365,32 @@ void ShaderRegexGroup::link_command_lists(UINT64 shader_hash)
 {
 	ShaderOverride *shader_override = NULL;
 	wchar_t buf[32];
+	wstring ini_section, ini_line;
 
 	// Only link the command lists if we have something in ours to link in,
 	// because this will create ShaderOverride sections for shaders that
 	// don't already have one, adding more work in the draw calls.
 
-	if (!command_list.commands.empty()) {
-		shader_override = &G->mShaderOverrideMap[shader_hash];
-		LinkCommandLists(&shader_override->command_list, &command_list);
-	}
+	if (command_list.commands.empty() && post_command_list.commands.empty())
+		return;
 
-	if (!post_command_list.commands.empty()) {
-		shader_override = &G->mShaderOverrideMap[shader_hash];
-		LinkCommandLists(&shader_override->post_command_list, &post_command_list);
-	}
+	swprintf_s(buf, ARRAYSIZE(buf), L".Match=%016llx", shader_hash);
+	ini_section = command_list.ini_section + buf;
 
-	if (shader_override && shader_override->command_list.ini_section.empty()) {
-		swprintf_s(buf, ARRAYSIZE(buf), L".Match=%016llx", shader_hash);
-		shader_override->command_list.ini_section = command_list.ini_section + buf;
-		shader_override->post_command_list.ini_section = post_command_list.ini_section + buf;
+	shader_override = &G->mShaderOverrideMap[shader_hash];
+	if (shader_override->command_list.ini_section.empty()) {
+		shader_override->command_list.ini_section = ini_section;
+		shader_override->post_command_list.ini_section = ini_section;
 		shader_override->post_command_list.post = true;
 	}
+
+	ini_line = L"[" + shader_override->command_list.ini_section + L"] run = " + command_list.ini_section;
+
+	if (!command_list.commands.empty())
+		LinkCommandLists(&shader_override->command_list, &command_list, &ini_line);
+
+	if (!post_command_list.commands.empty())
+		LinkCommandLists(&shader_override->post_command_list, &post_command_list, &ini_line);
 }
 
 bool apply_shader_regex_groups(std::string *asm_text, std::string *shader_model, UINT64 hash, std::wstring *tagline)

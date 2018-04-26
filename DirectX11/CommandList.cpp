@@ -1990,9 +1990,10 @@ void RunExplicitCommandList::run(CommandListState *state)
 		_RunCommandList(&command_list_section->command_list, state);
 }
 
-void LinkCommandLists(CommandList *dst, CommandList *link)
+void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line)
 {
 	RunLinkedCommandList *operation = new RunLinkedCommandList(link);
+	operation->ini_line = *ini_line;
 	dst->commands.push_back(std::shared_ptr<CommandListCommand>(operation));
 }
 
