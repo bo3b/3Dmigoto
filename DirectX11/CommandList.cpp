@@ -80,14 +80,16 @@ static inline void profile_command_list_cmd_start(CommandListCommand *cmd,
 
 	inserted = command_lists_cmd_profiling.insert(cmd).second;
 	if (inserted) {
-		cmd->time_spent.QuadPart = 0;
-		cmd->executions = 0;
+		cmd->pre_time_spent.QuadPart = 0;
+		cmd->post_time_spent.QuadPart = 0;
+		cmd->pre_executions = 0;
+		cmd->post_executions = 0;
 	}
 
 	QueryPerformanceCounter(&profiling_state->cmd_start_time);
 }
 
-static inline void profile_command_list_cmd_end(CommandListCommand *cmd,
+static inline void profile_command_list_cmd_end(CommandListCommand *cmd, CommandListState *state,
 		command_list_profiling_state *profiling_state)
 {
 	LARGE_INTEGER end_time;
@@ -96,8 +98,13 @@ static inline void profile_command_list_cmd_end(CommandListCommand *cmd,
 		return;
 
 	QueryPerformanceCounter(&end_time);
-	cmd->time_spent.QuadPart += end_time.QuadPart - profiling_state->cmd_start_time.QuadPart;
-	cmd->executions++;
+	if (state->post) {
+		cmd->post_time_spent.QuadPart += end_time.QuadPart - profiling_state->cmd_start_time.QuadPart;
+		cmd->post_executions++;
+	} else {
+		cmd->pre_time_spent.QuadPart += end_time.QuadPart - profiling_state->cmd_start_time.QuadPart;
+		cmd->pre_executions++;
+	}
 }
 
 static void _RunCommandList(CommandList *command_list, CommandListState *state)
@@ -121,7 +128,7 @@ static void _RunCommandList(CommandList *command_list, CommandListState *state)
 	for (i = command_list->commands.begin(); i < command_list->commands.end() && !state->aborted; i++) {
 		profile_command_list_cmd_start(i->get(), &profiling_state);
 		(*i)->run(state);
-		profile_command_list_cmd_end(i->get(), &profiling_state);
+		profile_command_list_cmd_end(i->get(), state, &profiling_state);
 	}
 
 	profile_command_list_end(command_list, state, &profiling_state);

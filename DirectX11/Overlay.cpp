@@ -806,31 +806,38 @@ static void UpdateProfilingTxtCommandLists(LARGE_INTEGER collection_duration, LA
 
 static void UpdateProfilingTxtCommands(LARGE_INTEGER collection_duration, LARGE_INTEGER freq, unsigned frames)
 {
-	LARGE_INTEGER time_spent;
-	double fps_cost;
+	LARGE_INTEGER pre_time_spent, post_time_spent;
+	double pre_fps_cost, post_fps_cost;
 	wchar_t buf[256];
 
 	vector<CommandListCommand*> sorted(command_lists_cmd_profiling.begin(), command_lists_cmd_profiling.end());
 
 	std::sort(sorted.begin(), sorted.end(), [](const CommandListCommand *lhs, const CommandListCommand *rhs) {
-		return lhs->time_spent.QuadPart > rhs->time_spent.QuadPart;
+		return (lhs->pre_time_spent.QuadPart + lhs->post_time_spent.QuadPart) >
+		       (rhs->pre_time_spent.QuadPart + rhs->post_time_spent.QuadPart);
 	});
 
 	G->profiling_txt += L" (Top Commands):\n"
-	                    L"count | CPU/frame ~fps cost |\n"
-	                    L"----- | --------- --------- |\n";
+	                    L"         pre              |         post\n"
+	                    L"count CPU/frame ~fps cost | count CPU/frame ~fps cost \n"
+	                    L"----- --------- --------- | ----- --------- --------- \n";
 	for (CommandListCommand *cmd : sorted) {
-		time_spent.QuadPart = cmd->time_spent.QuadPart * 1000000 / freq.QuadPart;
+		pre_time_spent.QuadPart = cmd->pre_time_spent.QuadPart * 1000000 / freq.QuadPart;
+		post_time_spent.QuadPart = cmd->post_time_spent.QuadPart * 1000000 / freq.QuadPart;
 
 		// fps estimate based on the assumption that if we took 100%
 		// CPU time it would cost all 60fps:
-		fps_cost = 60.0 * time_spent.QuadPart / collection_duration.QuadPart;
+		pre_fps_cost = 60.0 * pre_time_spent.QuadPart / collection_duration.QuadPart;
+		post_fps_cost = 60.0 * post_time_spent.QuadPart / collection_duration.QuadPart;
 
 		_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
-				L"%5.0f | %7.2fus %9f | %s\n",
-				ceil((float)cmd->executions / frames),
-				(float)time_spent.QuadPart / frames,
-				fps_cost,
+				L"%5.0f %7.2fus %9f | %5.0f %7.2fus %9f %s\n",
+				ceil((float)cmd->pre_executions / frames),
+				(float)pre_time_spent.QuadPart / frames,
+				pre_fps_cost,
+				ceil((float)cmd->post_executions / frames),
+				(float)post_time_spent.QuadPart / frames,
+				post_fps_cost,
 				cmd->ini_line.c_str()
 		);
 		G->profiling_txt += buf;

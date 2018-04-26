@@ -76,8 +76,10 @@ public:
 	wstring ini_line;
 
 	// For performance metrics:
-	LARGE_INTEGER time_spent;
-	unsigned executions;
+	LARGE_INTEGER pre_time_spent;
+	LARGE_INTEGER post_time_spent;
+	unsigned pre_executions;
+	unsigned post_executions;
 
 	virtual ~CommandListCommand() {};
 
