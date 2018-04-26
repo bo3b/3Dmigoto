@@ -709,13 +709,17 @@ void Overlay::DrawNotices(float *y)
 
 static void UpdateProfilingTxtSummary(LARGE_INTEGER collection_duration, LARGE_INTEGER freq, unsigned frames)
 {
-	LARGE_INTEGER present_overhead;
+	LARGE_INTEGER present_overhead = {0};
 	wchar_t buf[512];
 
 	// The overlay overhead should be a subset of the present overhead, but
 	// given that it includes the overhead of drawing the profiling HUD we
-	// want it counted separately:
-	present_overhead.QuadPart = G->present_overhead.QuadPart - G->overlay_overhead.QuadPart;
+	// want it counted separately. The > check is to stop the case where
+	// the profiling overlay was only just turned on and the first frame
+	// won't have counted any present overhead yet, but will have counted
+	// overlay overhead:
+	if (G->present_overhead.QuadPart > G->overlay_overhead.QuadPart)
+		present_overhead.QuadPart = G->present_overhead.QuadPart - G->overlay_overhead.QuadPart;
 
 	G->profiling_txt += L" (Summary):\n";
 	_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,

@@ -533,7 +533,7 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
 	/* [in] */ UINT SyncInterval,
 	/* [in] */ UINT Flags)
 {
-	LARGE_INTEGER start_time, end_time;
+	LARGE_INTEGER start_time = {0}, end_time;
 
 	LogDebug("HackerSwapChain::Present(%s@%p) called with\n", type_name(this), this);
 	LogDebug("  SyncInterval = %d\n", SyncInterval);
@@ -547,7 +547,7 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
 		// which enables hunting, and snapshots, and aiming overrides and other inputs
 		RunFrameActions();
 
-		if (G->profiling != ProfilingMode::NONE) {
+		if (start_time.QuadPart) { // G->profiling may have changed during RunFrameActions
 			QueryPerformanceCounter(&end_time);
 			G->present_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
 		}
@@ -556,7 +556,7 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
 	HRESULT hr = mOrigSwapChain1->Present(SyncInterval, Flags);
 
 	if (!(Flags & DXGI_PRESENT_TEST)) {
-		if (G->profiling != ProfilingMode::NONE)
+		if (start_time.QuadPart)
 			QueryPerformanceCounter(&start_time);
 
 		// Update the stereo params texture just after the present so that 
@@ -570,7 +570,7 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
 		// action at the start of a frame:
 		RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
 
-		if (G->profiling != ProfilingMode::NONE) {
+		if (start_time.QuadPart) {
 			QueryPerformanceCounter(&end_time);
 			G->present_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
 		}
@@ -835,7 +835,7 @@ STDMETHODIMP HackerSwapChain::Present1(THIS_
 	/* [annotation][in] */
 	_In_  const DXGI_PRESENT_PARAMETERS *pPresentParameters)
 {
-	LARGE_INTEGER start_time, end_time;
+	LARGE_INTEGER start_time = {0}, end_time;
 	gLogDebug = true;
 
 	LogDebug("HackerSwapChain::Present1(%s@%p) called\n", type_name(this), this);
@@ -850,7 +850,7 @@ STDMETHODIMP HackerSwapChain::Present1(THIS_
 		// which enables hunting, and snapshots, and aiming overrides and other inputs
 		RunFrameActions();
 
-		if (G->profiling != ProfilingMode::NONE) {
+		if (start_time.QuadPart) { // G->profiling may have changed during RunFrameActions
 			QueryPerformanceCounter(&end_time);
 			G->present_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
 		}
@@ -859,7 +859,7 @@ STDMETHODIMP HackerSwapChain::Present1(THIS_
 	HRESULT hr = mOrigSwapChain1->Present1(SyncInterval, PresentFlags, pPresentParameters);
 
 	if (!(PresentFlags & DXGI_PRESENT_TEST)) {
-		if (G->profiling != ProfilingMode::NONE)
+		if (start_time.QuadPart)
 			QueryPerformanceCounter(&start_time);
 
 		// Update the stereo params texture just after the present so that we
@@ -873,7 +873,7 @@ STDMETHODIMP HackerSwapChain::Present1(THIS_
 		// action at the start of a frame:
 		RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
 
-		if (G->profiling != ProfilingMode::NONE) {
+		if (start_time.QuadPart) {
 			QueryPerformanceCounter(&end_time);
 			G->present_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
 		}
