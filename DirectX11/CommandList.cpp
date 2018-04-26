@@ -275,17 +275,23 @@ static bool ParseResetPerFrameLimits(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
 	CustomResources::iterator res;
 	CustomShaders::iterator shader;
+	wstring namespaced_section;
 
 	ResetPerFrameLimitsCommand *operation = new ResetPerFrameLimitsCommand();
 
 	if (!wcsncmp(val->c_str(), L"resource", 8)) {
 		wstring resource_id(val->c_str());
 
-		res = customResources.find(resource_id);
+		res = customResources.end();
+		if (get_namespaced_section_name_lower(&resource_id, ini_namespace, &namespaced_section))
+			res = customResources.find(namespaced_section);
+		if (res == customResources.end())
+			res = customResources.find(resource_id);
 		if (res == customResources.end())
 			goto bail;
 
@@ -295,7 +301,11 @@ static bool ParseResetPerFrameLimits(const wchar_t *section,
 	if (!wcsncmp(val->c_str(), L"customshader", 12) || !wcsncmp(val->c_str(), L"builtincustomshader", 19)) {
 		wstring shader_id(val->c_str());
 
-		shader = customShaders.find(shader_id);
+		shader = customShaders.end();
+		if (get_namespaced_section_name_lower(&shader_id, ini_namespace, &namespaced_section))
+			shader = customShaders.find(namespaced_section);
+		if (shader == customShaders.end())
+			shader = customShaders.find(shader_id);
 		if (shader == customShaders.end())
 			goto bail;
 
@@ -767,7 +777,7 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 	}
 
 	if (!wcscmp(key, L"reset_per_frame_limits"))
-		return ParseResetPerFrameLimits(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+		return ParseResetPerFrameLimits(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
 	if (!wcscmp(key, L"clear"))
 		return ParseClearView(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
