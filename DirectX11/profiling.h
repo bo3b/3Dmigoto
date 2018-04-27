@@ -2,11 +2,15 @@
 
 #include <wrl.h>
 #include <string>
+#include <vector>
+#include <d3d11_1.h>
 
-#include "HackerDevice.h"
-#include "HackerContext.h"
+class HackerDevice;
+class HackerContext;
 
 namespace Profiling {
+	typedef std::vector<Microsoft::WRL::ComPtr<ID3D11Query>> Pool;
+
 	enum class Mode {
 		NONE = 0,
 		SUMMARY,
@@ -20,7 +24,7 @@ namespace Profiling {
 
 	struct State {
 		LARGE_INTEGER start_time;
-		ID3D11Query *start_time_query;
+		Microsoft::WRL::ComPtr<ID3D11Query> start_time_query;
 	};
 
 	void start(State *state, HackerDevice *device, HackerContext *context);

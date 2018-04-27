@@ -1,21 +1,99 @@
 #include "profiling.h"
 #include "globals.h"
 
-#include <algorithm>
+#include "HackerDevice.h"
+#include "HackerContext.h"
 
-typedef vector<pair<Microsoft::WRL::ComPtr<ID3D11Query>, Microsoft::WRL::ComPtr<ID3D11Query>>> GPUOverhead;
+#include <algorithm>
+#include <deque>
+
+static const struct D3D11_QUERY_DESC query_disjoint = {
+	D3D11_QUERY_TIMESTAMP_DISJOINT,
+	0,
+};
+static const struct D3D11_QUERY_DESC query_timestamp = {
+	D3D11_QUERY_TIMESTAMP,
+	0,
+};
+
+static Microsoft::WRL::ComPtr<ID3D11Query> get_query(HackerDevice *device)
+{
+	Microsoft::WRL::ComPtr<ID3D11Query> ret;
+
+	EnterCriticalSection(&G->mCriticalSection);
+
+	if (device->profiling_pool.empty()) {
+		device->GetPassThroughOrigDevice1()->CreateQuery(&query_timestamp, &ret);
+	} else {
+		ret = device->profiling_pool.back();
+		device->profiling_pool.pop_back();
+	}
+
+	LeaveCriticalSection(&G->mCriticalSection);
+
+	return ret;
+}
+
+static void put_query(HackerDevice *device, Microsoft::WRL::ComPtr<ID3D11Query> query)
+{
+	EnterCriticalSection(&G->mCriticalSection);
+	device->profiling_pool.push_back(query);
+	LeaveCriticalSection(&G->mCriticalSection);
+}
+
+typedef deque<pair<Microsoft::WRL::ComPtr<ID3D11Query>, Microsoft::WRL::ComPtr<ID3D11Query>>> GPUTimestampQueries;
 class Profiling::Overhead {
 public:
 	LARGE_INTEGER cpu;
-	GPUOverhead gpu;
+	GPUTimestampQueries queries;
+	UINT64 gpu;
 
 	void clear();
+	bool tally(HackerDevice *device, HackerContext *context);
 };
 
 void Profiling::Overhead::clear()
 {
 	cpu.QuadPart = 0;
-	gpu.clear();
+	gpu = 0;
+	EnterCriticalSection(&G->mCriticalSection);
+	queries.clear();
+	LeaveCriticalSection(&G->mCriticalSection);
+}
+
+bool Profiling::Overhead::tally(HackerDevice *device, HackerContext *context)
+{
+	UINT64 start, end;
+
+	EnterCriticalSection(&G->mCriticalSection);
+	while (!queries.empty()) {
+		if ((context->GetPassThroughOrigContext1()->GetData(queries.front().first.Get(), &start, sizeof(start), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_FALSE)
+		 || (context->GetPassThroughOrigContext1()->GetData(queries.front().second.Get(), &end, sizeof(end), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_FALSE)) {
+			LeaveCriticalSection(&G->mCriticalSection);
+			return true;
+		}
+		gpu += end - start;
+
+		put_query(device, queries.front().first);
+		put_query(device, queries.front().second);
+		queries.pop_front();
+	}
+	LeaveCriticalSection(&G->mCriticalSection);
+
+	return false;
+}
+
+static bool tally_gpu_overhead(HackerDevice *device, HackerContext *context)
+{
+	bool tallying = false;
+
+	tallying = Profiling::present_overhead.tally(device, context) || tallying;
+	tallying = Profiling::overlay_overhead.tally(device, context) || tallying;
+	tallying = Profiling::draw_overhead.tally(device, context) || tallying;
+	tallying = Profiling::map_overhead.tally(device, context) || tallying;
+	tallying = Profiling::hash_tracking_overhead.tally(device, context) || tallying;
+
+	return tallying;
 }
 
 namespace Profiling {
@@ -32,25 +110,16 @@ namespace Profiling {
 
 static LARGE_INTEGER profiling_start_time;
 static unsigned start_frame_no;
-
-static const struct D3D11_QUERY_DESC query_disjoint = {
-	D3D11_QUERY_TIMESTAMP_DISJOINT,
-	0,
-};
-static const struct D3D11_QUERY_DESC query_timestamp = {
-	D3D11_QUERY_TIMESTAMP,
-	0,
-};
+static int pending_final_queries;
 
 void Profiling::start(State *state, HackerDevice *device, HackerContext *context)
 {
-	HRESULT hr;
+	state->start_time_query.Reset();
 
-	state->start_time_query = NULL;
 	if (device && context) {
-		hr = device->GetPassThroughOrigDevice1()->CreateQuery(&query_timestamp, &state->start_time_query);
-		if (SUCCEEDED(hr))
-			context->GetPassThroughOrigContext1()->End(state->start_time_query);
+		state->start_time_query = get_query(device);
+		if (state->start_time_query)
+			context->GetPassThroughOrigContext1()->End(state->start_time_query.Get());
 	}
 
 	QueryPerformanceCounter(&state->start_time);
@@ -59,42 +128,32 @@ void Profiling::start(State *state, HackerDevice *device, HackerContext *context
 void Profiling::end(State *state, HackerDevice *device, HackerContext *context, Profiling::Overhead *overhead)
 {
 	LARGE_INTEGER end_time;
-	ID3D11Query *end_time_query;
-	HRESULT hr;
+	Microsoft::WRL::ComPtr<ID3D11Query> end_time_query;
+
+	// If we are currently waiting on final queries from the GPU to update
+	// the display, don't add any new ones, and don't even tally CPU
+	// overhead during this time. Also don't add any new queries if the
+	// profiling display has been frozen by the user - otherwise we would
+	// keep allocating new queries killing performance.
+	if (pending_final_queries)
+		return;
 
 	QueryPerformanceCounter(&end_time);
 	overhead->cpu.QuadPart += end_time.QuadPart - state->start_time.QuadPart;
 
 	if (state->start_time_query) {
-		hr = device->GetPassThroughOrigDevice1()->CreateQuery(&query_timestamp, &end_time_query);
-		if (SUCCEEDED(hr)) {
-			context->GetPassThroughOrigContext1()->End(end_time_query);
-			overhead->gpu.emplace_back(state->start_time_query, end_time_query);
-			end_time_query->Release();
+		end_time_query = get_query(device);
+		if (end_time_query) {
+			context->GetPassThroughOrigContext1()->End(end_time_query.Get());
+			EnterCriticalSection(&G->mCriticalSection);
+			overhead->queries.emplace_back(state->start_time_query, end_time_query);
+			LeaveCriticalSection(&G->mCriticalSection);
 		}
-		state->start_time_query->Release();
 	}
-}
-
-static UINT64 tally_gpu_overhead(GPUOverhead *overhead, UINT64 gpu_freq, HackerContext *context)
-{
-	GPUOverhead::iterator i;
-	UINT64 start, end, total = 0;
-
-	if (!gpu_freq)
-		return 0;
-
-	for (i = overhead->begin(); i != overhead->end(); i++) {
-		while (context->GetPassThroughOrigContext1()->GetData(i->first.Get(), &start, sizeof(start), 0) == S_FALSE);
-		while (context->GetPassThroughOrigContext1()->GetData(i->second.Get(), &end, sizeof(end), 0) == S_FALSE);
-		total += end - start;
-	}
-
-	return total * 1000000 / gpu_freq;
 }
 
 static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER freq,
-		UINT64 gpu_freq, unsigned frames, HackerContext *context)
+		UINT64 gpu_freq, unsigned frames)
 {
 	LARGE_INTEGER cpu_present_overhead = {0};
 	LARGE_INTEGER cpu_command_list_overhead = {0};
@@ -102,10 +161,10 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 	LARGE_INTEGER cpu_draw_overhead;
 	LARGE_INTEGER cpu_map_overhead;
 	LARGE_INTEGER cpu_hash_tracking_overhead;
-	UINT64 gpu_present_overhead = tally_gpu_overhead(&Profiling::present_overhead.gpu, gpu_freq, context);
-	UINT64 gpu_overlay_overhead = tally_gpu_overhead(&Profiling::overlay_overhead.gpu, gpu_freq, context);
-	UINT64 gpu_draw_overhead = tally_gpu_overhead(&Profiling::draw_overhead.gpu, gpu_freq, context);
-	UINT64 gpu_map_overhead = tally_gpu_overhead(&Profiling::map_overhead.gpu, gpu_freq, context);
+	UINT64 gpu_present_overhead = Profiling::present_overhead.gpu * 1000000 / gpu_freq;
+	UINT64 gpu_overlay_overhead = Profiling::overlay_overhead.gpu * 1000000 / gpu_freq;
+	UINT64 gpu_draw_overhead = Profiling::draw_overhead.gpu * 1000000 / gpu_freq;
+	UINT64 gpu_map_overhead = Profiling::map_overhead.gpu * 1000000 / gpu_freq;
 	wchar_t buf[512];
 
 	// The overlay overhead should be a subset of the present overhead, but
@@ -169,7 +228,7 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 }
 
 static void update_txt_command_lists(LARGE_INTEGER collection_duration, LARGE_INTEGER freq,
-		UINT64 gpu_freq, unsigned frames, HackerContext *context)
+		UINT64 gpu_freq, unsigned frames)
 {
 	LARGE_INTEGER inclusive, exclusive;
 	double inclusive_fps, exclusive_fps;
@@ -209,7 +268,7 @@ static void update_txt_command_lists(LARGE_INTEGER collection_duration, LARGE_IN
 }
 
 static void update_txt_commands(LARGE_INTEGER collection_duration, LARGE_INTEGER freq,
-		UINT64 gpu_freq, unsigned frames, HackerContext *context)
+		UINT64 gpu_freq, unsigned frames)
 {
 	LARGE_INTEGER pre_time_spent, post_time_spent;
 	double pre_fps_cost, post_fps_cost;
@@ -255,25 +314,46 @@ void Profiling::update_txt(HackerDevice *device, HackerContext *context)
 	static LARGE_INTEGER freq = {0};
 	static UINT64 gpu_freq = 0;
 	D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint;
-	LARGE_INTEGER end_time, collection_duration;
-	unsigned frames = G->frame_no - start_frame_no;
+	static LARGE_INTEGER end_time, collection_duration;
+	static unsigned frames;
 	wchar_t buf[256];
+	bool tallying;
+
+	// Do this every frame to drain the queries as they become ready,
+	// otherwise we will stall when we try to drain them all at once to
+	// update the display
+	tallying = tally_gpu_overhead(device, context);
 
 	if (freeze)
 		return;
 
-	QueryPerformanceCounter(&end_time);
-	if (!freq.QuadPart)
-		QueryPerformanceFrequency(&freq);
-	// Safety - in case of zero frequency avoid divide by zero:
-	if (!freq.QuadPart)
-		return;
+	if (!pending_final_queries) {
+		QueryPerformanceCounter(&end_time);
+
+		if (!freq.QuadPart)
+			QueryPerformanceFrequency(&freq);
+		// Safety - in case of zero frequency avoid divide by zero:
+		if (!freq.QuadPart)
+			return;
+
+		collection_duration.QuadPart = (end_time.QuadPart - profiling_start_time.QuadPart) * 1000000 / freq.QuadPart;
+		if (collection_duration.QuadPart < interval && !Profiling::text.empty())
+			return;
+
+		frames = G->frame_no - start_frame_no;
+	}
 
 	if (device && context && device->disjoint_query) {
-		context->GetPassThroughOrigContext1()->End(device->disjoint_query);
+		if (!pending_final_queries) {
+			context->GetPassThroughOrigContext1()->End(device->disjoint_query);
+			pending_final_queries = 1;
+		}
 
-		// FIXME: Defer to a future frame when this is ready rather than blocking:
-		while (context->GetPassThroughOrigContext1()->GetData(device->disjoint_query, &disjoint, sizeof(disjoint), 0) == S_FALSE);
+		if (pending_final_queries == 1 && context->GetPassThroughOrigContext1()->GetData(device->disjoint_query, &disjoint, sizeof(disjoint), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_FALSE) {
+			return;
+		}
+
+		pending_final_queries = 2;
 
 		// FIXME: Disjoint query is only sometimes returning the
 		// frequency. Not positive why - maybe the game is also running
@@ -284,9 +364,9 @@ void Profiling::update_txt(HackerDevice *device, HackerContext *context)
 			gpu_freq = disjoint.Frequency;
 	}
 
-	collection_duration.QuadPart = (end_time.QuadPart - profiling_start_time.QuadPart) * 1000000 / freq.QuadPart;
-	if (collection_duration.QuadPart < interval && !Profiling::text.empty())
+	if (tallying)
 		return;
+	pending_final_queries = 0;
 
 	if (frames && collection_duration.QuadPart) {
 		_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
@@ -295,13 +375,13 @@ void Profiling::update_txt(HackerDevice *device, HackerContext *context)
 
 		switch (Profiling::mode) {
 			case Profiling::Mode::SUMMARY:
-				update_txt_summary(collection_duration, freq, gpu_freq, frames, context);
+				update_txt_summary(collection_duration, freq, gpu_freq, frames);
 				break;
 			case Profiling::Mode::TOP_COMMAND_LISTS:
-				update_txt_command_lists(collection_duration, freq, gpu_freq, frames, context);
+				update_txt_command_lists(collection_duration, freq, gpu_freq, frames);
 				break;
 			case Profiling::Mode::TOP_COMMANDS:
-				update_txt_commands(collection_duration, freq, gpu_freq, frames, context);
+				update_txt_commands(collection_duration, freq, gpu_freq, frames);
 				break;
 		}
 	}

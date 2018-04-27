@@ -8,6 +8,7 @@
 #include "nvstereo.h"
 #include "HackerContext.h"
 #include "HackerDXGI.h"
+#include "profiling.h"
 
 // {83FFD841-A5C9-46F4-8109-BC259558FEF4}
 DEFINE_GUID(IID_HackerDevice,
@@ -101,6 +102,7 @@ public:
 	ID3D11Texture1D *mIniTexture;
 	ID3D11ShaderResourceView *mIniResourceView;
 	ID3D11Query *disjoint_query;
+	Profiling::Pool profiling_pool;
 
 	HackerDevice(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
 
