@@ -15,6 +15,7 @@
 #include "IniHandler.h"
 #include "D3D_Shaders\stdafx.h"
 #include "CommandList.h"
+#include "profiling.h"
 
 // bo3b: For this routine, we have a lot of warnings in x64, from converting a size_t result into the needed
 //  DWORD type for the Write calls.  These are writing 256 byte strings, so there is never a chance that it 
@@ -1102,35 +1103,23 @@ static void AnalyseFrameStop(HackerDevice *device, void *private_data)
 
 static void AnalysePerf(HackerDevice *device, void *private_data)
 {
-	G->profiling = (ProfilingMode)((int)G->profiling + 1);
+	Profiling::mode = (Profiling::Mode)((int)Profiling::mode + 1);
+	if (Profiling::mode == Profiling::Mode::INVALID)
+		Profiling::mode = Profiling::Mode::NONE;
 
-	if (G->profiling == ProfilingMode::INVALID)
-		G->profiling = ProfilingMode::NONE;
-
-	command_lists_profiling.clear();
-	command_lists_cmd_profiling.clear();
-	G->profiling_txt.clear();
-	G->profiling_freeze = false;
-
-	G->profiling_start_frame_no = G->frame_no;
-	QueryPerformanceCounter(&G->profiling_start_time);
-
-	G->present_overhead.QuadPart = 0;
-	G->overlay_overhead.QuadPart = 0;
-	G->draw_overhead.QuadPart = 0;
-	G->map_overhead.QuadPart = 0;
-	G->hash_tracking_overhead.QuadPart = 0;
+	Profiling::text.clear();
+	Profiling::clear();
 }
 
 static void FreezePerf(HackerDevice *device, void *private_data)
 {
-	if (G->profiling == ProfilingMode::NONE)
+	if (Profiling::mode == Profiling::Mode::NONE)
 		return;
 
-	G->profiling_freeze = !G->profiling_freeze;
+	Profiling::freeze = !Profiling::freeze;
 
-	if (G->profiling_freeze)
-		LogInfoW(L"%s", G->profiling_txt.c_str());
+	if (Profiling::freeze)
+		LogInfoW(L"%s", Profiling::text.c_str());
 }
 
 static void DisableDeferred(HackerDevice *device, void *private_data)
@@ -1593,7 +1582,7 @@ void ParseHuntingSection()
 	// a user to send us a screenshot of the profiling info:
 	RegisterIniKeyBinding(L"Hunting", L"monitor_performance", AnalysePerf, NULL, noRepeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"freeze_performance_monitor", FreezePerf, NULL, noRepeat, NULL);
-	G->profiling_interval = (INT64)(GetIniFloat(L"Hunting", L"monitor_performance_interval", 1.0f, NULL) * 1000000);
+	Profiling::interval = (INT64)(GetIniFloat(L"Hunting", L"monitor_performance_interval", 1.0f, NULL) * 1000000);
 
 	// Don't register hunting keys when hard disabled. In this case the
 	// only way to turn hunting on is to edit the ini file and reload it.

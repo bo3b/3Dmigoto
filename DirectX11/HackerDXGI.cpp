@@ -65,6 +65,7 @@
 #include "Override.h"
 #include "IniHandler.h"
 #include "CommandList.h"
+#include "profiling.h"
 
 
 // -----------------------------------------------------------------------------
@@ -533,31 +534,32 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
 	/* [in] */ UINT SyncInterval,
 	/* [in] */ UINT Flags)
 {
-	LARGE_INTEGER start_time = {0}, end_time;
+	Profiling::State profiling_state = {0};
+	bool profiling = false;
 
 	LogDebug("HackerSwapChain::Present(%s@%p) called with\n", type_name(this), this);
 	LogDebug("  SyncInterval = %d\n", SyncInterval);
 	LogDebug("  Flags = %d\n", Flags);
 
 	if (!(Flags & DXGI_PRESENT_TEST)) {
-		if (G->profiling != ProfilingMode::NONE)
-			QueryPerformanceCounter(&start_time);
+		// Profiling::mode may change below, so make a copy
+		profiling = Profiling::mode == Profiling::Mode::SUMMARY;
+		if (profiling)
+			Profiling::start(&profiling_state);
 
 		// Every presented frame, we want to take some CPU time to run our actions,
 		// which enables hunting, and snapshots, and aiming overrides and other inputs
 		RunFrameActions();
 
-		if (start_time.QuadPart) { // G->profiling may have changed during RunFrameActions
-			QueryPerformanceCounter(&end_time);
-			G->present_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
-		}
+		if (profiling)
+			Profiling::end(&profiling_state, &Profiling::present_overhead);
 	}
 
 	HRESULT hr = mOrigSwapChain1->Present(SyncInterval, Flags);
 
 	if (!(Flags & DXGI_PRESENT_TEST)) {
-		if (start_time.QuadPart)
-			QueryPerformanceCounter(&start_time);
+		if (profiling)
+			Profiling::start(&profiling_state);
 
 		// Update the stereo params texture just after the present so that 
 		// shaders get the new values for the current frame:
@@ -570,10 +572,8 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
 		// action at the start of a frame:
 		RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
 
-		if (start_time.QuadPart) {
-			QueryPerformanceCounter(&end_time);
-			G->present_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
-		}
+		if (profiling)
+			Profiling::end(&profiling_state, &Profiling::present_overhead);
 	}
 
 	LogDebug("  returns %x\n", hr);
@@ -835,32 +835,33 @@ STDMETHODIMP HackerSwapChain::Present1(THIS_
 	/* [annotation][in] */
 	_In_  const DXGI_PRESENT_PARAMETERS *pPresentParameters)
 {
-	LARGE_INTEGER start_time = {0}, end_time;
+	Profiling::State profiling_state = {0};
 	gLogDebug = true;
+	bool profiling = false;
 
 	LogDebug("HackerSwapChain::Present1(%s@%p) called\n", type_name(this), this);
 	LogDebug("  SyncInterval = %d\n", SyncInterval);
 	LogDebug("  Flags = %d\n", PresentFlags);
 
 	if (!(PresentFlags & DXGI_PRESENT_TEST)) {
-		if (G->profiling != ProfilingMode::NONE)
-			QueryPerformanceCounter(&start_time);
+		// Profiling::mode may change below, so make a copy
+		profiling = Profiling::mode == Profiling::Mode::SUMMARY;
+		if (profiling)
+			Profiling::start(&profiling_state);
 
 		// Every presented frame, we want to take some CPU time to run our actions,
 		// which enables hunting, and snapshots, and aiming overrides and other inputs
 		RunFrameActions();
 
-		if (start_time.QuadPart) { // G->profiling may have changed during RunFrameActions
-			QueryPerformanceCounter(&end_time);
-			G->present_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
-		}
+		if (profiling)
+			Profiling::end(&profiling_state, &Profiling::present_overhead);
 	}
 
 	HRESULT hr = mOrigSwapChain1->Present1(SyncInterval, PresentFlags, pPresentParameters);
 
 	if (!(PresentFlags & DXGI_PRESENT_TEST)) {
-		if (start_time.QuadPart)
-			QueryPerformanceCounter(&start_time);
+		if (profiling)
+			Profiling::start(&profiling_state);
 
 		// Update the stereo params texture just after the present so that we
 		// get the new values for the current frame:
@@ -873,10 +874,8 @@ STDMETHODIMP HackerSwapChain::Present1(THIS_
 		// action at the start of a frame:
 		RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
 
-		if (start_time.QuadPart) {
-			QueryPerformanceCounter(&end_time);
-			G->present_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
-		}
+		if (profiling)
+			Profiling::end(&profiling_state, &Profiling::present_overhead);
 	}
 
 	LogDebug("  returns %x\n", hr);

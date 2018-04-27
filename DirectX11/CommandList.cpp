@@ -9,6 +9,7 @@
 #include "Override.h"
 #include "D3D11Wrapper.h"
 #include "IniHandler.h"
+#include "profiling.h"
 
 #include <D3DCompiler.h>
 
@@ -38,7 +39,7 @@ static inline void profile_command_list_start(CommandList *command_list, Command
 {
 	bool inserted;
 
-	if (G->profiling == ProfilingMode::NONE)
+	if (Profiling::mode == Profiling::Mode::NONE)
 		return;
 
 	inserted = command_lists_profiling.insert(command_list).second;
@@ -59,7 +60,7 @@ static inline void profile_command_list_end(CommandList *command_list, CommandLi
 {
 	LARGE_INTEGER list_end_time, duration;
 
-	if (G->profiling == ProfilingMode::NONE)
+	if (Profiling::mode == Profiling::Mode::NONE)
 		return;
 
 	QueryPerformanceCounter(&list_end_time);
@@ -75,7 +76,7 @@ static inline void profile_command_list_cmd_start(CommandListCommand *cmd,
 {
 	bool inserted;
 
-	if (G->profiling == ProfilingMode::NONE)
+	if (Profiling::mode == Profiling::Mode::NONE)
 		return;
 
 	inserted = command_lists_cmd_profiling.insert(cmd).second;
@@ -94,7 +95,7 @@ static inline void profile_command_list_cmd_end(CommandListCommand *cmd, Command
 {
 	LARGE_INTEGER end_time;
 
-	if (G->profiling == ProfilingMode::NONE)
+	if (Profiling::mode == Profiling::Mode::NONE)
 		return;
 
 	QueryPerformanceCounter(&end_time);

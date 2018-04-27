@@ -4,6 +4,7 @@
 #include "log.h"
 #include "util.h"
 #include "globals.h"
+#include "profiling.h"
 
 // DirectXTK headers fail to include their own pre-requisits. We just want
 // GetSurfaceInfo from LoaderHelpers
@@ -949,13 +950,13 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 	UINT dstWidth = 1, dstHeight = 1, dstDepth = 1, dstMip = 0, dstIdx = 0, dstArraySize = 1;
 	bool partial = false;
 	ResourceInfoMap::iterator info_i;
-	LARGE_INTEGER start_time, end_time;
+	Profiling::State profiling_state;
 
 	if (!dest)
 		return;
 
-	if (G->profiling != ProfilingMode::NONE)
-		QueryPerformanceCounter(&start_time);
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	EnterCriticalSection(&G->mCriticalSection);
 
@@ -1059,10 +1060,8 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 out_unlock:
 	LeaveCriticalSection(&G->mCriticalSection);
 
-	if (G->profiling != ProfilingMode::NONE) {
-		QueryPerformanceCounter(&end_time);
-		G->hash_tracking_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
-	}
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
 }
 
 void UpdateResourceHashFromCPU(ID3D11Resource *resource,
@@ -1076,13 +1075,13 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 	D3D11_TEXTURE3D_DESC *desc3D;
 	uint32_t old_data_hash, old_hash;
 	ResourceHandleInfo *info = NULL;
-	LARGE_INTEGER start_time, end_time;
+	Profiling::State profiling_state;
 
 	if (!resource || !data)
 		return;
 
-	if (G->profiling != ProfilingMode::NONE)
-		QueryPerformanceCounter(&start_time);
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	EnterCriticalSection(&G->mCriticalSection);
 
@@ -1141,10 +1140,8 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 out_unlock:
 	LeaveCriticalSection(&G->mCriticalSection);
 
-	if (G->profiling != ProfilingMode::NONE) {
-		QueryPerformanceCounter(&end_time);
-		G->hash_tracking_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
-	}
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
 }
 
 void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
@@ -1154,10 +1151,10 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 	D3D11_TEXTURE2D_DESC *desc2D;
 	D3D11_TEXTURE3D_DESC *desc3D;
 	uint32_t old_data_hash, old_hash;
-	LARGE_INTEGER start_time, end_time;
+	Profiling::State profiling_state;
 
-	if (G->profiling != ProfilingMode::NONE)
-		QueryPerformanceCounter(&start_time);
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	EnterCriticalSection(&G->mCriticalSection);
 
@@ -1216,10 +1213,8 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 out_unlock:
 	LeaveCriticalSection(&G->mCriticalSection);
 
-	if (G->profiling != ProfilingMode::NONE) {
-		QueryPerformanceCounter(&end_time);
-		G->hash_tracking_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
-	}
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
 }
 
 bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource)

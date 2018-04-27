@@ -3,8 +3,6 @@
 
 #include "Overlay.h"
 
-#include <algorithm>
-
 #include <DirectXColors.h>
 //#include <StrSafe.h>
 
@@ -16,6 +14,7 @@
 #include "D3D11Wrapper.h"
 //#include "nvapi.h"
 #include "Globals.h"
+#include "profiling.h"
 
 #include "HackerDevice.h"
 #include "HackerContext.h"
@@ -707,207 +706,16 @@ void Overlay::DrawNotices(float *y)
 	LeaveCriticalSection(&G->mCriticalSection);
 }
 
-static void UpdateProfilingTxtSummary(LARGE_INTEGER collection_duration, LARGE_INTEGER freq, unsigned frames)
-{
-	LARGE_INTEGER present_overhead = {0};
-	LARGE_INTEGER command_list_overhead = {0};
-	LARGE_INTEGER overlay_overhead;
-	LARGE_INTEGER draw_overhead;
-	LARGE_INTEGER map_overhead;
-	LARGE_INTEGER hash_tracking_overhead;
-	wchar_t buf[512];
-
-	// The overlay overhead should be a subset of the present overhead, but
-	// given that it includes the overhead of drawing the profiling HUD we
-	// want it counted separately. The > check is to stop the case where
-	// the profiling overlay was only just turned on and the first frame
-	// won't have counted any present overhead yet, but will have counted
-	// overlay overhead:
-	if (G->present_overhead.QuadPart > G->overlay_overhead.QuadPart)
-		present_overhead.QuadPart = G->present_overhead.QuadPart - G->overlay_overhead.QuadPart;
-
-	for (CommandList *command_list : command_lists_profiling)
-		command_list_overhead.QuadPart += command_list->time_spent_exclusive.QuadPart;
-
-	present_overhead.QuadPart = present_overhead.QuadPart * 1000000 / freq.QuadPart;
-	command_list_overhead.QuadPart = command_list_overhead.QuadPart * 1000000 / freq.QuadPart;
-	overlay_overhead.QuadPart = G->overlay_overhead.QuadPart * 1000000 / freq.QuadPart;
-	draw_overhead.QuadPart = G->draw_overhead.QuadPart * 1000000 / freq.QuadPart;
-	map_overhead.QuadPart = G->map_overhead.QuadPart * 1000000 / freq.QuadPart;
-	hash_tracking_overhead.QuadPart = G->hash_tracking_overhead.QuadPart * 1000000 / freq.QuadPart;
-
-	G->profiling_txt += L" (Summary):\n";
-	_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
-	                    L"   Present overhead: %7.2fus/frame ~%ffps\n"
-	                    L"   Overlay overhead: %7.2fus/frame ~%ffps\n"
-	                    L" Draw call overhead: %7.2fus/frame ~%ffps\n"
-	                    L"Command lists total: %7.2fus/frame ~%ffps\n"
-	                    L" Map/Unmap overhead: %7.2fus/frame ~%ffps\n"
-	                    L"Hash Track overhead: %7.2fus/frame ~%ffps\n",
-			    (float)present_overhead.QuadPart / frames,
-			    60.0 * present_overhead.QuadPart / collection_duration.QuadPart,
-
-			    (float)overlay_overhead.QuadPart / frames,
-			    60.0 * overlay_overhead.QuadPart / collection_duration.QuadPart,
-
-			    (float)draw_overhead.QuadPart / frames,
-			    60.0 * draw_overhead.QuadPart / collection_duration.QuadPart,
-
-			    (float)command_list_overhead.QuadPart / frames,
-			    60.0 * command_list_overhead.QuadPart / collection_duration.QuadPart,
-
-			    (float)map_overhead.QuadPart / frames,
-			    60.0 * map_overhead.QuadPart / collection_duration.QuadPart,
-
-			    (float)hash_tracking_overhead.QuadPart / frames,
-			    60.0 * hash_tracking_overhead.QuadPart / collection_duration.QuadPart
-	);
-	G->profiling_txt += buf;
-}
-
-static void UpdateProfilingTxtCommandLists(LARGE_INTEGER collection_duration, LARGE_INTEGER freq, unsigned frames)
-{
-	LARGE_INTEGER inclusive, exclusive;
-	double inclusive_fps, exclusive_fps;
-	wchar_t buf[256];
-
-	vector<CommandList*> sorted(command_lists_profiling.begin(), command_lists_profiling.end());
-	std::sort(sorted.begin(), sorted.end(), [](const CommandList *lhs, const CommandList *rhs) {
-		return lhs->time_spent_inclusive.QuadPart > rhs->time_spent_inclusive.QuadPart;
-	});
-
-	G->profiling_txt += L" (Top Command Lists):\n"
-	                    L"      | Including sub-lists | Excluding sub-lists |\n"
-	                    L"count | CPU/frame ~fps cost | CPU/frame ~fps cost |\n"
-	                    L"----- | --------- --------- | --------- --------- |\n";
-	for (CommandList *command_list : sorted) {
-		inclusive.QuadPart = command_list->time_spent_inclusive.QuadPart * 1000000 / freq.QuadPart;
-		exclusive.QuadPart = command_list->time_spent_exclusive.QuadPart * 1000000 / freq.QuadPart;
-
-		// fps estimate based on the assumption that if we took 100%
-		// CPU time it would cost all 60fps:
-		inclusive_fps = 60.0 * inclusive.QuadPart / collection_duration.QuadPart;
-		exclusive_fps = 60.0 * exclusive.QuadPart / collection_duration.QuadPart;
-
-		_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
-				L"%5.0f | %7.2fus %9f | %7.2fus %9f | %4s [%s]\n",
-				ceil((float)command_list->executions / frames),
-				(float)inclusive.QuadPart / frames,
-				inclusive_fps,
-				(float)exclusive.QuadPart / frames,
-				exclusive_fps,
-				command_list->post ? L"post" : L"pre",
-				command_list->ini_section.c_str()
-		);
-		G->profiling_txt += buf;
-		// TODO: GPU time spent
-	}
-}
-
-static void UpdateProfilingTxtCommands(LARGE_INTEGER collection_duration, LARGE_INTEGER freq, unsigned frames)
-{
-	LARGE_INTEGER pre_time_spent, post_time_spent;
-	double pre_fps_cost, post_fps_cost;
-	wchar_t buf[256];
-
-	vector<CommandListCommand*> sorted(command_lists_cmd_profiling.begin(), command_lists_cmd_profiling.end());
-
-	std::sort(sorted.begin(), sorted.end(), [](const CommandListCommand *lhs, const CommandListCommand *rhs) {
-		return (lhs->pre_time_spent.QuadPart + lhs->post_time_spent.QuadPart) >
-		       (rhs->pre_time_spent.QuadPart + rhs->post_time_spent.QuadPart);
-	});
-
-	G->profiling_txt += L" (Top Commands):\n"
-	                    L"         pre              |         post\n"
-	                    L"count CPU/frame ~fps cost | count CPU/frame ~fps cost \n"
-	                    L"----- --------- --------- | ----- --------- --------- \n";
-	for (CommandListCommand *cmd : sorted) {
-		pre_time_spent.QuadPart = cmd->pre_time_spent.QuadPart * 1000000 / freq.QuadPart;
-		post_time_spent.QuadPart = cmd->post_time_spent.QuadPart * 1000000 / freq.QuadPart;
-
-		// fps estimate based on the assumption that if we took 100%
-		// CPU time it would cost all 60fps:
-		pre_fps_cost = 60.0 * pre_time_spent.QuadPart / collection_duration.QuadPart;
-		post_fps_cost = 60.0 * post_time_spent.QuadPart / collection_duration.QuadPart;
-
-		_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
-				L"%5.0f %7.2fus %9f | %5.0f %7.2fus %9f %s\n",
-				ceil((float)cmd->pre_executions / frames),
-				(float)pre_time_spent.QuadPart / frames,
-				pre_fps_cost,
-				ceil((float)cmd->post_executions / frames),
-				(float)post_time_spent.QuadPart / frames,
-				post_fps_cost,
-				cmd->ini_line.c_str()
-		);
-		G->profiling_txt += buf;
-		// TODO: GPU time spent
-	}
-}
-
-static void UpdateProfilingTxt()
-{
-	static LARGE_INTEGER freq = {0};
-	LARGE_INTEGER end_time, collection_duration;
-	unsigned frames = G->frame_no - G->profiling_start_frame_no;
-	wchar_t buf[256];
-
-	if (G->profiling_freeze)
-		return;
-
-	QueryPerformanceCounter(&end_time);
-	if (!freq.QuadPart)
-		QueryPerformanceFrequency(&freq);
-
-	// Safety - in case of zero frequency avoid divide by zero:
-	if (!freq.QuadPart)
-		return;
-
-	collection_duration.QuadPart = (end_time.QuadPart - G->profiling_start_time.QuadPart) * 1000000 / freq.QuadPart;
-	if (collection_duration.QuadPart < G->profiling_interval && !G->profiling_txt.empty())
-		return;
-
-	if (frames && collection_duration.QuadPart) {
-		_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
-				    L"Performance Monitor %.1ffps", frames * 1000000.0 / collection_duration.QuadPart);
-		G->profiling_txt = buf;
-
-		switch (G->profiling) {
-			case ProfilingMode::SUMMARY:
-				UpdateProfilingTxtSummary(collection_duration, freq, frames);
-				break;
-			case ProfilingMode::TOP_COMMAND_LISTS:
-				UpdateProfilingTxtCommandLists(collection_duration, freq, frames);
-				break;
-			case ProfilingMode::TOP_COMMANDS:
-				UpdateProfilingTxtCommands(collection_duration, freq, frames);
-				break;
-		}
-	}
-
-	// Restart profiling for the next time interval:
-	command_lists_profiling.clear();
-	command_lists_cmd_profiling.clear();
-	G->profiling_start_frame_no = G->frame_no;
-	G->profiling_start_time = end_time;
-	G->present_overhead.QuadPart = 0;
-	G->overlay_overhead.QuadPart = 0;
-	G->draw_overhead.QuadPart = 0;
-	G->map_overhead.QuadPart = 0;
-	G->hash_tracking_overhead.QuadPart = 0;
-}
-
-
 void Overlay::DrawProfiling(float *y)
 {
 	Vector2 strSize;
 
-	UpdateProfilingTxt();
+	Profiling::update_txt();
 
-	strSize = mFontProfiling->MeasureString(G->profiling_txt.c_str());
+	strSize = mFontProfiling->MeasureString(Profiling::text.c_str());
 	DrawRectangle(0, *y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
 
-	mFontProfiling->DrawString(mSpriteBatch.get(), G->profiling_txt.c_str(), Vector2(0, *y), DirectX::Colors::Goldenrod);
+	mFontProfiling->DrawString(mSpriteBatch.get(), Profiling::text.c_str(), Vector2(0, *y), DirectX::Colors::Goldenrod);
 }
 
 // Create a string for display on the bottom edge of the screen, that contains the current
@@ -941,14 +749,14 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
 
 void Overlay::DrawOverlay(void)
 {
-	LARGE_INTEGER start_time, end_time;
+	Profiling::State profiling_state;
 	HRESULT hr;
 
-	if (G->hunting != HUNTING_MODE_ENABLED && !has_notice && G->profiling == ProfilingMode::NONE)
+	if (G->hunting != HUNTING_MODE_ENABLED && !has_notice && Profiling::mode == Profiling::Mode::NONE)
 		return;
 
-	if (G->profiling != ProfilingMode::NONE)
-		QueryPerformanceCounter(&start_time);
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	// Since some games did not like having us change their drawing state from
 	// SpriteBatch, we now save and restore all state information for the GPU
@@ -986,7 +794,7 @@ void Overlay::DrawOverlay(void)
 			if (has_notice)
 				DrawNotices(&y);
 
-			if (G->profiling != ProfilingMode::NONE)
+			if (Profiling::mode != Profiling::Mode::NONE)
 				DrawProfiling(&y);
 		}
 		mSpriteBatch->End();
@@ -996,10 +804,8 @@ fail_restore:
 
 	flush_d3d11on12(mOrigDevice, mOrigContext);
 
-	if (G->profiling != ProfilingMode::NONE) {
-		QueryPerformanceCounter(&end_time);
-		G->overlay_overhead.QuadPart += end_time.QuadPart - start_time.QuadPart;
-	}
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::overlay_overhead);
 }
 
 OverlayNotice::OverlayNotice(std::wstring message) :
