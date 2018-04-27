@@ -100,6 +100,7 @@ public:
 	ID3D11ShaderResourceView *mZBufferResourceView;
 	ID3D11Texture1D *mIniTexture;
 	ID3D11ShaderResourceView *mIniResourceView;
+	ID3D11Query *disjoint_query;
 
 	HackerDevice(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
 

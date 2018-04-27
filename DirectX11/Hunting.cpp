@@ -1108,7 +1108,7 @@ static void AnalysePerf(HackerDevice *device, void *private_data)
 		Profiling::mode = Profiling::Mode::NONE;
 
 	Profiling::text.clear();
-	Profiling::clear();
+	Profiling::clear(device, device->GetHackerContext());
 }
 
 static void FreezePerf(HackerDevice *device, void *private_data)

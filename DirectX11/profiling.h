@@ -3,6 +3,9 @@
 #include <wrl.h>
 #include <string>
 
+#include "HackerDevice.h"
+#include "HackerContext.h"
+
 namespace Profiling {
 	enum class Mode {
 		NONE = 0,
@@ -17,13 +20,16 @@ namespace Profiling {
 
 	struct State {
 		LARGE_INTEGER start_time;
+		ID3D11Query *start_time_query;
 	};
 
-	void start(State *state);
-	void end(State *state, Overhead *overhead);
+	void start(State *state, HackerDevice *device, HackerContext *context);
+	void end(State *state, HackerDevice *device, HackerContext *context, Overhead *overhead);
 
-	void update_txt();
-	void clear();
+	void update_txt(HackerDevice *device, HackerContext *context);
+	void clear(HackerDevice *device, HackerContext *context);
+
+	void create_disjoint_query(HackerDevice *device);
 
 	extern Mode mode;
 	extern Overhead present_overhead;

@@ -710,7 +710,7 @@ void Overlay::DrawProfiling(float *y)
 {
 	Vector2 strSize;
 
-	Profiling::update_txt();
+	Profiling::update_txt(mHackerDevice, mHackerContext);
 
 	strSize = mFontProfiling->MeasureString(Profiling::text.c_str());
 	DrawRectangle(0, *y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
@@ -756,7 +756,7 @@ void Overlay::DrawOverlay(void)
 		return;
 
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::start(&profiling_state);
+		Profiling::start(&profiling_state, mHackerDevice, mHackerContext);
 
 	// Since some games did not like having us change their drawing state from
 	// SpriteBatch, we now save and restore all state information for the GPU
@@ -805,7 +805,7 @@ fail_restore:
 	flush_d3d11on12(mOrigDevice, mOrigContext);
 
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::end(&profiling_state, &Profiling::overlay_overhead);
+		Profiling::end(&profiling_state, mHackerDevice, mHackerContext, &Profiling::overlay_overhead);
 }
 
 OverlayNotice::OverlayNotice(std::wstring message) :

@@ -28,6 +28,7 @@
 #include "D3D_Shaders\stdafx.h"
 #include "ResourceHash.h"
 #include "ShaderRegex.h"
+#include "profiling.h"
 
 // A map to look up the HackerDevice from an IUnknown. The reason for using an
 // IUnknown as the key is that an ID3D11Device and IDXGIDevice are actually two
@@ -197,7 +198,7 @@ static void unregister_hacker_device(HackerDevice *hacker_device)
 HackerDevice::HackerDevice(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1) : 
 	mStereoHandle(0), mStereoResourceView(0), mStereoTexture(0),
 	mIniResourceView(0), mIniTexture(0),
-	mZBufferResourceView(0)
+	mZBufferResourceView(0), disjoint_query(NULL)
 {
 	mOrigDevice1 = pDevice1;
 	mRealOrigDevice1 = pDevice1;
@@ -388,6 +389,7 @@ void HackerDevice::Create3DMigotoResources()
 	CreateIniParamResources();
 	CreatePinkHuntingResources();
 	SetGlobalNVSurfaceCreationMode();
+	Profiling::create_disjoint_query(this);
 }
 
 
@@ -1488,6 +1490,12 @@ STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 			long result = mIniTexture->Release();
 			mIniTexture = 0;
 			LogInfo("  releasing iniparams texture, result = %d\n", result);
+		}
+		if (disjoint_query)
+		{
+			long result = disjoint_query->Release();
+			disjoint_query = 0;
+			LogInfo("  releasing profiling disjoint query, result = %d\n", result);
 		}
 		delete this;
 		return 0L;

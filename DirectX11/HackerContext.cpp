@@ -647,7 +647,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 	Profiling::State profiling_state;
 
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::start(&profiling_state);
+		Profiling::start(&profiling_state, mHackerDevice, this);
 
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
 	if (G->hunting == HUNTING_MODE_ENABLED)
@@ -772,7 +772,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 
 out_profile:
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::end(&profiling_state, &Profiling::draw_overhead);
+		Profiling::end(&profiling_state, mHackerDevice, this, &Profiling::draw_overhead);
 }
 
 void HackerContext::AfterDraw(DrawContext &data)
@@ -781,7 +781,7 @@ void HackerContext::AfterDraw(DrawContext &data)
 	Profiling::State profiling_state;
 
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::start(&profiling_state);
+		Profiling::start(&profiling_state, mHackerDevice, this);
 
 	for (i = 0; i < 5; i++) {
 		if (data.post_commands[i]) {
@@ -811,7 +811,7 @@ void HackerContext::AfterDraw(DrawContext &data)
 	}
 
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::end(&profiling_state, &Profiling::draw_overhead);
+		Profiling::end(&profiling_state, mHackerDevice, this, &Profiling::draw_overhead);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -1049,7 +1049,7 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 	Profiling::State profiling_state;
 
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::start(&profiling_state);
+		Profiling::start(&profiling_state, mHackerDevice, this);
 
 	if (FAILED(map_hr) || !pResource || !pMappedResource || !pMappedResource->pData)
 		goto out_profile;
@@ -1137,7 +1137,7 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 
 out_profile:
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::end(&profiling_state, &Profiling::map_overhead);
+		Profiling::end(&profiling_state, mHackerDevice, this, &Profiling::map_overhead);
 }
 
 void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresource)
@@ -1147,7 +1147,7 @@ void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresou
 	Profiling::State profiling_state;
 
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::start(&profiling_state);
+		Profiling::start(&profiling_state, mHackerDevice, this);
 
 	if (mMappedResources.empty())
 		goto out_profile;
@@ -1172,7 +1172,7 @@ void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresou
 
 out_profile:
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::end(&profiling_state, &Profiling::map_overhead);
+		Profiling::end(&profiling_state, mHackerDevice, this, &Profiling::map_overhead);
 }
 
 STDMETHODIMP HackerContext::Map(THIS_

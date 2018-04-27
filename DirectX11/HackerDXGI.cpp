@@ -545,21 +545,21 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
 		// Profiling::mode may change below, so make a copy
 		profiling = Profiling::mode == Profiling::Mode::SUMMARY;
 		if (profiling)
-			Profiling::start(&profiling_state);
+			Profiling::start(&profiling_state, mHackerDevice, mHackerContext);
 
 		// Every presented frame, we want to take some CPU time to run our actions,
 		// which enables hunting, and snapshots, and aiming overrides and other inputs
 		RunFrameActions();
 
 		if (profiling)
-			Profiling::end(&profiling_state, &Profiling::present_overhead);
+			Profiling::end(&profiling_state, mHackerDevice, mHackerContext, &Profiling::present_overhead);
 	}
 
 	HRESULT hr = mOrigSwapChain1->Present(SyncInterval, Flags);
 
 	if (!(Flags & DXGI_PRESENT_TEST)) {
 		if (profiling)
-			Profiling::start(&profiling_state);
+			Profiling::start(&profiling_state, mHackerDevice, mHackerContext);
 
 		// Update the stereo params texture just after the present so that 
 		// shaders get the new values for the current frame:
@@ -573,7 +573,7 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
 		RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
 
 		if (profiling)
-			Profiling::end(&profiling_state, &Profiling::present_overhead);
+			Profiling::end(&profiling_state, mHackerDevice, mHackerContext, &Profiling::present_overhead);
 	}
 
 	LogDebug("  returns %x\n", hr);
@@ -847,21 +847,21 @@ STDMETHODIMP HackerSwapChain::Present1(THIS_
 		// Profiling::mode may change below, so make a copy
 		profiling = Profiling::mode == Profiling::Mode::SUMMARY;
 		if (profiling)
-			Profiling::start(&profiling_state);
+			Profiling::start(&profiling_state, mHackerDevice, mHackerContext);
 
 		// Every presented frame, we want to take some CPU time to run our actions,
 		// which enables hunting, and snapshots, and aiming overrides and other inputs
 		RunFrameActions();
 
 		if (profiling)
-			Profiling::end(&profiling_state, &Profiling::present_overhead);
+			Profiling::end(&profiling_state, mHackerDevice, mHackerContext, &Profiling::present_overhead);
 	}
 
 	HRESULT hr = mOrigSwapChain1->Present1(SyncInterval, PresentFlags, pPresentParameters);
 
 	if (!(PresentFlags & DXGI_PRESENT_TEST)) {
 		if (profiling)
-			Profiling::start(&profiling_state);
+			Profiling::start(&profiling_state, mHackerDevice, mHackerContext);
 
 		// Update the stereo params texture just after the present so that we
 		// get the new values for the current frame:
@@ -875,7 +875,7 @@ STDMETHODIMP HackerSwapChain::Present1(THIS_
 		RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
 
 		if (profiling)
-			Profiling::end(&profiling_state, &Profiling::present_overhead);
+			Profiling::end(&profiling_state, mHackerDevice, mHackerContext, &Profiling::present_overhead);
 	}
 
 	LogDebug("  returns %x\n", hr);
