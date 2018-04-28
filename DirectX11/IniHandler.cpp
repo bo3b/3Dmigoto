@@ -1074,12 +1074,10 @@ template TransitionType GetIniEnumClass<TransitionType>(const wchar_t *section, 
 template MarkingMode GetIniEnumClass<MarkingMode>(const wchar_t *section, const wchar_t *key, MarkingMode def, bool *found,
 		struct EnumName_t<const wchar_t *, MarkingMode> *enum_names);
 
-// For options that used to be booleans or integers and are now enums. Boolean
-// values (0/1/true/false/yes/no/on/off) will continue retuning 0/1 for
-// backwards compatibility, integers will return the integer value (provided it
-// is within the range of the enum), otherwise the enum will be used.
-static int GetIniBoolIntOrEnum(const wchar_t *section, const wchar_t *key, int def, bool *found,
-		wchar_t *prefix, wchar_t *names[], int names_len, int first)
+// For options that used to be booleans and are now integers. Boolean values
+// (0/1/true/false/yes/no/on/off) will continue retuning 0/1 for backwards
+// compatibility and integers will return the integer value
+static int GetIniBoolOrInt(const wchar_t *section, const wchar_t *key, int def, bool *found)
 {
 	int ret;
 	bool tmp_found;
@@ -1091,7 +1089,20 @@ static int GetIniBoolIntOrEnum(const wchar_t *section, const wchar_t *key, int d
 		return ret;
 	}
 
-	ret = GetIniInt(section, key, def, &tmp_found, false);
+	return GetIniInt(section, key, def, found, false);
+}
+
+// For options that used to be booleans or integers and are now enums. Boolean
+// values (0/1/true/false/yes/no/on/off) will continue retuning 0/1 for
+// backwards compatibility, integers will return the integer value (provided it
+// is within the range of the enum), otherwise the enum will be used.
+static int GetIniBoolIntOrEnum(const wchar_t *section, const wchar_t *key, int def, bool *found,
+		wchar_t *prefix, wchar_t *names[], int names_len, int first)
+{
+	int ret;
+	bool tmp_found;
+
+	ret = GetIniBoolOrInt(section, key, def, &tmp_found);
 	if (tmp_found && ret >= 0 && ret < names_len) {
 		if (found)
 			*found = tmp_found;
@@ -4032,7 +4043,7 @@ void LoadConfigFile()
 
 	G->CACHE_SHADERS = GetIniBool(L"Rendering", L"cache_shaders", false, NULL);
 	G->SCISSOR_DISABLE = GetIniBool(L"Rendering", L"rasterizer_disable_scissor", false, NULL);
-	G->track_texture_updates = GetIniBool(L"Rendering", L"track_texture_updates", false, NULL);
+	G->track_texture_updates = GetIniBoolOrInt(L"Rendering", L"track_texture_updates", 0, NULL);
 	G->assemble_signature_comments = GetIniBool(L"Rendering", L"assemble_signature_comments", false, NULL);
 
 	G->EXPORT_FIXED = GetIniBool(L"Rendering", L"export_fixed", false, NULL);

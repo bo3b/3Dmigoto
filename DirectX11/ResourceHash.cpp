@@ -1001,7 +1001,7 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 
 			if (dstHash != srcHash && srcInfo->initial_data_used_in_hash) {
 				dstInfo->initial_data_used_in_hash = true;
-				if (!G->track_texture_updates)
+				if (G->track_texture_updates == 0)
 					dstInfo->hash_contaminated = true;
 			}
 		}
@@ -1011,13 +1011,13 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 		case 'U':
 			dstInfo->update_contamination.insert(DstSubresource);
 			dstInfo->initial_data_used_in_hash = true;
-			if (!G->track_texture_updates)
+			if (G->track_texture_updates == 0)
 				dstInfo->hash_contaminated = true;
 			break;
 		case 'M':
 			dstInfo->map_contamination.insert(DstSubresource);
 			dstInfo->initial_data_used_in_hash = true;
-			if (!G->track_texture_updates)
+			if (G->track_texture_updates == 0)
 				dstInfo->hash_contaminated = true;
 			break;
 		case 'C':
@@ -1219,7 +1219,7 @@ out_unlock:
 
 bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource)
 {
-	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
+	if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pResource, Subresource, NULL, 0, 'M', 0, 0, 0, NULL);
 	}
 
@@ -1228,7 +1228,7 @@ bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource)
 	// updates regardless (just not the full resource hash) so the option
 	// can be turned on live and work. But there's a few pieces we would
 	// need for that to work so for now let's not over-complicate things.
-	return G->track_texture_updates && Subresource == 0;
+	return G->track_texture_updates == 1 && Subresource == 0;
 }
 
 // -----------------------------------------------------------------------------------------------

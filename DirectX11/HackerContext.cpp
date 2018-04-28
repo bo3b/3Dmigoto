@@ -1171,7 +1171,7 @@ void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresou
 		goto out_profile;
 	map_info = &i->second;
 
-	if (G->track_texture_updates && Subresource == 0 && map_info->mapped_writable)
+	if (G->track_texture_updates == 1 && Subresource == 0 && map_info->mapped_writable)
 		UpdateResourceHashFromCPU(pResource, map_info->map.pData, map_info->map.RowPitch, map_info->map.DepthPitch);
 
 	if (map_info->orig_pData) {
@@ -1565,7 +1565,7 @@ STDMETHODIMP_(void) HackerContext::CopySubresourceRegion(THIS_
 	D3D11_BOX replaceSrcBox;
 	UINT replaceDstX = DstX;
 
-	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
+	if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, DstSubresource, pSrcResource, SrcSubresource, 'S', DstX, DstY, DstZ, pSrcBox);
 	}
 
@@ -1581,7 +1581,7 @@ STDMETHODIMP_(void) HackerContext::CopySubresourceRegion(THIS_
 	// it stands to reason that it won't always fill the entire resource
 	// and the hashes might be less predictable. Possibly something to
 	// enable as an option in the future if there is a proven need.
-	if (G->track_texture_updates && DstSubresource == 0 && DstX == 0 && DstY == 0 && DstZ == 0 && pSrcBox == NULL)
+	if (G->track_texture_updates == 1 && DstSubresource == 0 && DstX == 0 && DstY == 0 && DstZ == 0 && pSrcBox == NULL)
 		PropagateResourceHash(pDstResource, pSrcResource);
 }
 
@@ -1591,13 +1591,13 @@ STDMETHODIMP_(void) HackerContext::CopyResource(THIS_
 	/* [annotation] */
 	__in  ID3D11Resource *pSrcResource)
 {
-	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
+	if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, 0, pSrcResource, 0, 'C', 0, 0, 0, NULL);
 	}
 
 	 mOrigContext1->CopyResource(pDstResource, pSrcResource);
 
-	if (G->track_texture_updates)
+	if (G->track_texture_updates == 1)
 		PropagateResourceHash(pDstResource, pSrcResource);
 }
 
@@ -1615,7 +1615,7 @@ STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
 	/* [annotation] */
 	__in  UINT SrcDepthPitch)
 {
-	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
+	if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, DstSubresource, NULL, 0, 'U', 0, 0, 0, NULL);
 	}
 
@@ -1628,7 +1628,7 @@ STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
 	// it stands to reason that it won't always fill the entire resource
 	// and the hashes might be less predictable. Possibly something to
 	// enable as an option in the future if there is a proven need.
-	if (G->track_texture_updates && DstSubresource == 0 && pDstBox == NULL)
+	if (G->track_texture_updates == 1 && DstSubresource == 0 && pDstBox == NULL)
 		UpdateResourceHashFromCPU(pDstResource, pSrcData, SrcRowPitch, SrcDepthPitch);
 }
 
