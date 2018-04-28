@@ -2754,8 +2754,119 @@ bool CommandListOperand::optimise(HackerDevice *device)
 	return true;
 }
 
+enum class TokenType {
+	FLOAT,
+	IDENTIFIER,
+	OPERATOR,
+	RESOURCE_SLOT,
+};
+
+struct Token {
+	wstring text;
+	enum class TokenType type;
+
+	Token(wstring text, enum class TokenType type) :
+		text(text), type(type)
+	{}
+};
+
+static const wchar_t *operator_tokens[] = {
+	L"(", L")",
+	L"!",
+	L"*", L"/", L"%",
+	L"+", L"-", /* May be unary with higher precedence */
+	L"<=", L">=", L"<", L">"
+	L"==", L"!=",
+	L"&&", L"||",
+};
+
+static bool tokenise(const wstring *expression, vector<Token> *tokens, const wstring *ini_namespace)
+{
+	wstring remain = *expression;
+	ResourceCopyTarget texture_filter_target;
+	wstring token;
+	size_t pos = 0;
+	float fval;
+	int ret;
+	int i;
+
+	LogInfo("    Tokenising \"%S\"\n", expression->c_str());
+
+	while (true) {
+next_token:
+		// Skip whitespace:
+		pos = remain.find_first_not_of(L" \t", pos);
+		if (pos == wstring::npos)
+			return true;
+		remain = remain.substr(pos);
+
+		// Texture Filtering / Resource Slots:
+		// - Many of these slots include a hyphen character, which
+		//   conflicts with the subtraction/negation operators,
+		//   potentially making something like "x = ps-t0" ambiguous as
+		//   to whether it is referring to pixel shader texture slot 0,
+		//   or subtracting "t0" from "ps", but in practice this should
+		//   be generally be fine since we don't have anything called
+		//   "ps", "t0" or similar, and if we did simply adding
+		//   whitespace around the subtraction would disambiguate it.
+		// - The characters we check for here preclude some arbitrary
+		//   custom Resource names, including namespaced resources, but
+		//   that's ok since this is only for texture filtering, which
+		//   doesn't work if custom resources are checked. If we need
+		//   to match these for some other reason, we could add \ and .
+		//   to this list, which will cover most namespaced resources.
+		pos = remain.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_-0123456789");
+		if (pos) {
+			token = remain.substr(0, pos);
+			ret = texture_filter_target.ParseTarget(token.c_str(), true, ini_namespace);
+			if (ret) {
+				tokens->emplace_back(token, TokenType::RESOURCE_SLOT);
+				LogInfo("      Resource Slot: \"%S\"\n", tokens->back().text.c_str());
+				continue;
+			}
+		}
+
+		// Operators:
+		for (i = 0; i < ARRAYSIZE(operator_tokens); i++) {
+			if (!remain.compare(0, wcslen(operator_tokens[i]), operator_tokens[i])) {
+				pos = wcslen(operator_tokens[i]);
+				tokens->emplace_back(remain.substr(0, pos), TokenType::OPERATOR);
+				LogInfo("      Operator: \"%S\"\n", tokens->back().text.c_str());
+				goto next_token; // continue would continue wrong loop
+			}
+		}
+
+		// Floats:
+		// - Must tokenise subtraction operation first
+		//   - Static optimisation will merge unary negation
+		// - Parse this before identifier to catch "nan", "inf", etc
+		//   (depends on modern C++ standard library - vs2015 or later)
+		ret = swscanf_s(remain.c_str(), L"%f%zn", &fval, &pos);
+		if (ret != 0 && ret != EOF) {
+			tokens->emplace_back(remain.substr(0, pos), TokenType::FLOAT);
+			LogInfo("      Float: \"%S\"\n", tokens->back().text.c_str());
+			continue;
+		}
+
+		// Identifiers:
+		pos = remain.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_0123456789");
+		if (pos) {
+			tokens->emplace_back(remain.substr(0, pos), TokenType::IDENTIFIER);
+			LogInfo("      Identifier: \"%S\"\n", tokens->back().text.c_str());
+			continue;
+		}
+
+		return false;
+	}
+}
+
 bool CommandListExpression::parse(const wstring *expression, const wstring *ini_namespace, bool command_list_context)
 {
+	vector<Token> tokens;
+
+	if (!tokenise(expression, &tokens, ini_namespace))
+		return false;
+
 	return operand.parse(expression, ini_namespace, command_list_context);
 }
 
