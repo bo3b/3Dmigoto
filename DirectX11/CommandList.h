@@ -779,8 +779,8 @@ public:
 		scissor(0)
 	{}
 
-	bool parse(const wstring *operand, const wstring *ini_namespace);
-	float evaluate(CommandListState *state);
+	bool parse(const wstring *operand, const wstring *ini_namespace, bool command_list_context=true);
+	float evaluate(CommandListState *state, HackerDevice *device=NULL);
 	bool static_evaluate(float *ret);
 };
 class ParamOverride : public CommandListCommand {

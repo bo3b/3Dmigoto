@@ -37,8 +37,6 @@ Override::Override()
 	mUserConvergence = FLT_MAX;
 
 	is_conditional = false;
-	condition_param_idx = 0;
-	condition_param_component = NULL;
 
 	active = false;
 }
@@ -47,6 +45,9 @@ void Override::ParseIniSection(LPCWSTR section)
 {
 	wchar_t buf[MAX_PATH], param_name[8];
 	int i;
+	wstring ini_namespace;
+
+	get_section_namespace(section, &ini_namespace);
 
 	mOverrideSeparation = GetIniFloat(section, L"separation", FLT_MAX, NULL);
 	mOverrideConvergence = GetIniFloat(section, L"convergence", FLT_MAX, NULL);
@@ -72,15 +73,10 @@ void Override::ParseIniSection(LPCWSTR section)
 	release_transition_type = GetIniEnumClass(section, L"release_transition_type", TransitionType::LINEAR, NULL, TransitionTypeNames);
 
 	if (GetIniStringAndLog(section, L"condition", 0, buf, MAX_PATH)) {
-		// For now these conditions are just an IniParam being
-		// non-zero. In the future we could implement more complicated
-		// conditionals, perhaps even all the way up to a full logic
-		// expression parser... but for now that's overkill, and
-		// potentially something that might prove more useful to
-		// implement in the command list along with flow control.
+		wstring sbuf(buf);
 
-		if (!ParseIniParamName(buf, &condition_param_idx, &condition_param_component)) {
-			LogOverlayW(LOG_WARNING, L"WARNING: Invalid condition=\"%s\"\n", buf);
+		if (!condition.parse(&sbuf, &ini_namespace, false)) {
+			LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%S\"\n", buf);
 		} else {
 			is_conditional = true;
 		}
@@ -96,8 +92,6 @@ void Override::ParseIniSection(LPCWSTR section)
 	// to in the future, provided we can deal with the other problems.
 	if (GetIniStringAndLog(section, L"run", NULL, buf, MAX_PATH)) {
 		wstring sbuf(buf);
-		wstring ini_namespace;
-		get_section_namespace(section, &ini_namespace);
 
 		if (!ParseRunExplicitCommandList(section, L"run", &sbuf, NULL, &activate_command_list, &deactivate_command_list, &ini_namespace))
 			LogOverlay(LOG_WARNING, "WARNING: Invalid run=\"%S\"\n", sbuf.c_str());
@@ -199,15 +193,20 @@ struct KeyOverrideCycleParam
 		return val;
 	}
 
-	bool as_ini_param(int *idx, float DirectX::XMFLOAT4::**component)
+	bool as_ini_param(LPCWSTR section, CommandListOperand *operand)
 	{
+		wstring scur(cur);
+		wstring ini_namespace;
+
 		if (*cur == L'\0') {
 			// Blank entry
 			return false;
 		}
 
-		if (!ParseIniParamName(cur, idx, component)) {
-			LogOverlayW(LOG_WARNING, L"WARNING: Invalid condition=\"%s\"\n", cur);
+		get_section_namespace(section, &ini_namespace);
+
+		if (!operand->parse(&scur, &ini_namespace, false)) {
+			LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%S\"\n", cur);
 			return false;
 		}
 
@@ -245,8 +244,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 	wchar_t buf[8];
 	DirectX::XMFLOAT4 params[INI_PARAMS_SIZE];
 	bool is_conditional;
-	int condition_param_idx = 0;
-	float DirectX::XMFLOAT4::*condition_param_component = NULL;
+	CommandListOperand condition_operand;
 	CommandList activate_command_list, deactivate_command_list;
 
 	wrap = GetIniBool(section, L"wrap", true, NULL);
@@ -308,7 +306,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 			params[j].w = w[j].as_float(FLT_MAX);
 		}
 
-		is_conditional = condition.as_ini_param(&condition_param_idx, &condition_param_component);
+		is_conditional = condition.as_ini_param(section, &condition_operand);
 		run.as_run_command(section, &activate_command_list, &deactivate_command_list);
 
 		separation.log(L"separation");
@@ -326,7 +324,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 			transition.as_int(0), release_transition.as_int(0),
 			transition_type.as_enum<const wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
 			release_transition_type.as_enum<const wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
-			is_conditional, condition_param_idx, condition_param_component, activate_command_list, deactivate_command_list));
+			is_conditional, condition_operand, activate_command_list, deactivate_command_list));
 	}
 }
 
@@ -416,7 +414,7 @@ static void UpdateIniParams(HackerDevice* wrapper,
 
 void Override::Activate(HackerDevice *device, bool override_has_deactivate_condition)
 {
-	if (is_conditional && G->iniParams[condition_param_idx].*condition_param_component == 0) {
+	if (is_conditional && condition.evaluate(NULL, device) == 0) {
 		LogInfo("Skipping override activation: condition not met\n");
 		return;
 	}
@@ -466,7 +464,7 @@ void Override::Deactivate(HackerDevice *device)
 
 void Override::Toggle(HackerDevice *device)
 {
-	if (is_conditional && G->iniParams[condition_param_idx].*condition_param_component == 0) {
+	if (is_conditional && condition.evaluate(NULL, device) == 0) {
 		LogInfo("Skipping toggle override: condition not met\n");
 		return;
 	}

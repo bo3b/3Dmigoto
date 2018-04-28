@@ -2546,26 +2546,77 @@ static void UpdateCursorResources(CommandListState *state)
 	ReleaseDC(NULL, dc);
 }
 
-float CommandListOperand::evaluate(CommandListState *state)
+float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device)
 {
 	NvU8 stereo = false;
 	float fret;
 
+	if (state)
+		device = state->mHackerDevice;
+	else if (!device) {
+		LogInfo("BUG: CommandListOperand::evaluate called with neither state nor device\n");
+		DoubleBeepExit();
+	}
+
+	// XXX: If updating this list, be sure to also update
+	// XXX: operand_allowed_in_context()
 	switch (type) {
 		case ParamOverrideType::VALUE:
 			return val;
 		case ParamOverrideType::INI_PARAM:
 			return G->iniParams[param_idx].*param_component;
+		case ParamOverrideType::RES_WIDTH:
+			return (float)G->mResolutionInfo.width;
+		case ParamOverrideType::RES_HEIGHT:
+			return (float)G->mResolutionInfo.height;
+		case ParamOverrideType::TIME:
+			return (float)(GetTickCount() - G->ticks_at_launch) / 1000.0f;
+		case ParamOverrideType::RAW_SEPARATION:
+			// We could use cached values of these (nvapi is known
+			// to become a bottleneck with too many calls / frame),
+			// but they need to be up to date, taking into account
+			// any changes made via the command list already this
+			// frame (this is used for snapshots and getting the
+			// current convergence regardless of whether an
+			// asynchronous transfer from the GPU has or has not
+			// completed) - StereoParams is currently unsuitable
+			// for this as it is only updated once / frame... We
+			// could change it so that StereoParams is always up to
+			// date - it would differ from the historical
+			// behaviour, but I doubt it would break anything.
+			// Otherwise we could have a separate cache. Whatever -
+			// this is rarely used, so let's just go with this for
+			// now and worry about optimisations only if it proves
+			// to be a bottleneck in practice:
+			NvAPI_Stereo_GetSeparation(device->mStereoHandle, &fret);
+			return fret;
+		case ParamOverrideType::CONVERGENCE:
+			NvAPI_Stereo_GetConvergence(device->mStereoHandle, &fret);
+			return fret;
+		case ParamOverrideType::EYE_SEPARATION:
+			NvAPI_Stereo_GetEyeSeparation(device->mStereoHandle, &fret);
+			return fret;
+		case ParamOverrideType::STEREO_ACTIVE:
+			NvAPI_Stereo_IsActivated(device->mStereoHandle, &stereo);
+			return !!stereo;
+		// XXX: If updating this list, be sure to also update
+		// XXX: operand_allowed_in_context()
+	}
+
+	if (!state) {
+		// FIXME: Some of these only use the state object for cache,
+		// and could still be evaluated if we forgo the cache
+		LogOverlay(LOG_WARNING, "BUG: Operand type %i cannot be evaluated outside of a command list\n", type);
+		return 0;
+	}
+
+	switch (type) {
 		case ParamOverrideType::RT_WIDTH:
 			ProcessParamRTSize(state);
 			return state->rt_width;
 		case ParamOverrideType::RT_HEIGHT:
 			ProcessParamRTSize(state);
 			return state->rt_height;
-		case ParamOverrideType::RES_WIDTH:
-			return (float)G->mResolutionInfo.width;
-		case ParamOverrideType::RES_HEIGHT:
-			return (float)G->mResolutionInfo.height;
 		case ParamOverrideType::WINDOW_WIDTH:
 			UpdateWindowInfo(state);
 			return (float)state->window_rect.right;
@@ -2615,8 +2666,6 @@ float CommandListOperand::evaluate(CommandListState *state)
 		case ParamOverrideType::CURSOR_HOTSPOT_Y:
 			UpdateCursorInfoEx(state);
 			return (float)state->cursor_info_ex.yHotspot;
-		case ParamOverrideType::TIME:
-			return (float)(GetTickCount() - G->ticks_at_launch) / 1000.0f;
 		case ParamOverrideType::SCISSOR_LEFT:
 			UpdateScissorInfo(state);
 			return (float)state->scissor_rects[scissor].left;
@@ -2629,34 +2678,6 @@ float CommandListOperand::evaluate(CommandListState *state)
 		case ParamOverrideType::SCISSOR_BOTTOM:
 			UpdateScissorInfo(state);
 			return (float)state->scissor_rects[scissor].bottom;
-		case ParamOverrideType::RAW_SEPARATION:
-			// We could use cached values of these (nvapi is known
-			// to become a bottleneck with too many calls / frame),
-			// but they need to be up to date, taking into account
-			// any changes made via the command list already this
-			// frame (this is used for snapshots and getting the
-			// current convergence regardless of whether an
-			// asynchronous transfer from the GPU has or has not
-			// completed) - StereoParams is currently unsuitable
-			// for this as it is only updated once / frame... We
-			// could change it so that StereoParams is always up to
-			// date - it would differ from the historical
-			// behaviour, but I doubt it would break anything.
-			// Otherwise we could have a separate cache. Whatever -
-			// this is rarely used, so let's just go with this for
-			// now and worry about optimisations only if it proves
-			// to be a bottleneck in practice:
-			NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, &fret);
-			return fret;
-		case ParamOverrideType::CONVERGENCE:
-			NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, &fret);
-			return fret;
-		case ParamOverrideType::EYE_SEPARATION:
-			NvAPI_Stereo_GetEyeSeparation(state->mHackerDevice->mStereoHandle, &fret);
-			return fret;
-		case ParamOverrideType::STEREO_ACTIVE:
-			NvAPI_Stereo_IsActivated(state->mHackerDevice->mStereoHandle, &stereo);
-			return !!stereo;
 	}
 
 	LogOverlay(LOG_DIRE, "BUG: Unhandled operand type %i\n", type);
@@ -2701,7 +2722,27 @@ void ParamOverride::run(CommandListState *state)
 	state->update_params |= (*dest != orig);
 }
 
-bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namespace)
+static bool operand_allowed_in_context(ParamOverrideType type, bool command_list_context)
+{
+	if (command_list_context)
+		return true;
+
+	switch (type) {
+		case ParamOverrideType::VALUE:
+		case ParamOverrideType::INI_PARAM:
+		case ParamOverrideType::RES_WIDTH:
+		case ParamOverrideType::RES_HEIGHT:
+		case ParamOverrideType::TIME:
+		case ParamOverrideType::RAW_SEPARATION:
+		case ParamOverrideType::CONVERGENCE:
+		case ParamOverrideType::EYE_SEPARATION:
+		case ParamOverrideType::STEREO_ACTIVE:
+			return true;
+	}
+	return false;
+}
+
+bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namespace, bool command_list_context)
 {
 	int ret, len1;
 
@@ -2709,20 +2750,20 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 	ret = swscanf_s(operand->c_str(), L"%f%n", &val, &len1);
 	if (ret != 0 && ret != EOF && len1 == operand->length()) {
 		type = ParamOverrideType::VALUE;
-		return true;
+		return operand_allowed_in_context(type, command_list_context);
 	}
 
 	// Try parsing operand as an ini param:
 	if (ParseIniParamName(operand->c_str(), &param_idx, &param_component)) {
 		type = ParamOverrideType::INI_PARAM;
-		return true;
+		return operand_allowed_in_context(type, command_list_context);
 	}
 
 	// Try parsing value as a resource target for texture filtering
 	ret = texture_filter_target.ParseTarget(operand->c_str(), true, ini_namespace);
 	if (ret) {
 		type = ParamOverrideType::TEXTURE;
-		return true;
+		return operand_allowed_in_context(type, command_list_context);
 	}
 
 	// Try parsing value as a scissor rectangle. scissor_<side> also
@@ -2739,7 +2780,7 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 			type = ParamOverrideType::SCISSOR_BOTTOM;
 		else
 			return false;
-		return true;
+		return operand_allowed_in_context(type, command_list_context);
 	}
 
 	// Check special keywords
@@ -2750,7 +2791,7 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 			LogInfo("   > Statically evaluated %S as %f\n", operand->c_str(), val);
 			type = ParamOverrideType::VALUE;
 		}
-		return true;
+		return operand_allowed_in_context(type, command_list_context);
 	}
 
 	return false;
