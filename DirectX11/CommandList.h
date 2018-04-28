@@ -791,6 +791,35 @@ public:
 	void run(CommandListState*) override;
 };
 
+class IfCommand : public CommandListCommand {
+public:
+	CommandListOperand expression;
+	bool pre_finalised, post_finalised;
+	wstring else_line;
+
+	// Commands cannot statically contain command lists, because the
+	// command may be optimised out and the command list freed while we are
+	// still in the middle of optimisations. These are dynamically
+	// allocated, and also stored in a second data structure until
+	// optimisations are complete
+	std::shared_ptr<CommandList> true_commands_pre;
+	std::shared_ptr<CommandList> true_commands_post;
+	std::shared_ptr<CommandList> false_commands_pre;
+	std::shared_ptr<CommandList> false_commands_post;
+
+	IfCommand();
+
+	void run(CommandListState*) override;
+	bool noop(bool post, bool ignore_cto) override;
+};
+
+class CommandPlaceholder : public CommandListCommand {
+public:
+	void run(CommandListState*) override;
+	bool noop(bool post, bool ignore_cto) override;
+};
+class ElsePlaceholder : public CommandPlaceholder {
+};
 
 class CheckTextureOverrideCommand : public CommandListCommand {
 public:
@@ -952,6 +981,9 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 		const wstring *ini_namespace);
 bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 		const wchar_t *key, wstring *val, CommandList *command_list,
+		const wstring *ini_namespace);
+bool ParseCommandListFlowControl(const wchar_t *section, const wstring *line,
+		CommandList *pre_command_list, CommandList *post_command_list,
 		const wstring *ini_namespace);
 void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line);
 void optimise_command_lists();

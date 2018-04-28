@@ -19,6 +19,7 @@ ExplicitCommandListSections explicitCommandListSections;
 std::vector<CommandList*> registered_command_lists;
 std::unordered_set<CommandList*> command_lists_profiling;
 std::unordered_set<CommandListCommand*> command_lists_cmd_profiling;
+std::vector<std::shared_ptr<CommandList>> dynamically_allocated_command_lists;
 
 
 // Adds consistent "3DMigoto" prefix to frame analysis log with appropriate
@@ -285,6 +286,9 @@ void optimise_command_lists()
 		// add a special command for that particular case, but would be
 		// nice if this sort of thing worked more generally.
 	} while (making_progress);
+
+	registered_command_lists.clear();
+	dynamically_allocated_command_lists.clear();
 }
 
 static bool AddCommandToList(CommandListCommand *command,
@@ -295,7 +299,11 @@ static bool AddCommandToList(CommandListCommand *command,
 		const wchar_t *section,
 		const wchar_t *key, wstring *val)
 {
-	command->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	if (section && key) {
+		command->ini_line = L"[" + wstring(section) + L"] " + wstring(key);
+		if (val)
+			command->ini_line += L" = " + *val;
+	}
 
 	if (explicit_command_list) {
 		// User explicitly specified "pre" or "post", so only add the
@@ -3552,6 +3560,193 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 bail:
 	delete operation;
 	return false;
+}
+
+static bool ParseIfCommand(const wchar_t *section, const wstring *line,
+		CommandList *pre_command_list, CommandList *post_command_list,
+		const wstring *ini_namespace)
+{
+	IfCommand *operation = new IfCommand();
+	wstring expression = line->substr(line->find_first_not_of(L" \t", 3));
+
+	if (!operation->expression.parse(&expression, ini_namespace))
+		goto bail;
+
+	return AddCommandToList(operation, NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
+bail:
+	delete operation;
+	return false;
+}
+
+static bool ParseElseCommand(const wchar_t *section,
+		CommandList *pre_command_list, CommandList *post_command_list)
+{
+	return AddCommandToList(new ElsePlaceholder(), NULL, NULL, pre_command_list, post_command_list, section, L"else", NULL);
+}
+
+static bool _ParseEndIfCommand(const wchar_t *section,
+		CommandList *command_list, bool post)
+{
+	CommandList::Commands::reverse_iterator rit;
+	IfCommand *if_command;
+	ElsePlaceholder *else_command = NULL;
+	CommandList::Commands::iterator else_pos = command_list->commands.end();
+
+	for (rit = command_list->commands.rbegin(); rit != command_list->commands.rend(); rit++) {
+		else_command = dynamic_cast<ElsePlaceholder*>(rit->get());
+		if (else_command) {
+			// C++ gotcha: reverse_iterator::base() points to the *next* element
+			else_pos = rit.base() - 1;
+		}
+
+		if_command = dynamic_cast<IfCommand*>(rit->get());
+		if (if_command) {
+			// Transfer the commands since the if command until the
+			// endif into the if command's true/false lists
+			if (post && !if_command->post_finalised) {
+				// C++ gotcha: reverse_iterator::base() points to the *next* element
+				if_command->true_commands_post->commands.assign(rit.base(), else_pos);
+				if_command->true_commands_post->ini_section = if_command->ini_line;
+				if (else_pos != command_list->commands.end()) {
+					// Discard the else placeholder command:
+					if_command->false_commands_post->commands.assign(else_pos + 1, command_list->commands.end());
+					if_command->false_commands_post->ini_section = if_command->ini_line + L" <else>";
+				}
+				command_list->commands.erase(rit.base(), command_list->commands.end());
+				if_command->post_finalised = true;
+				return true;
+			} else if (!post && !if_command->pre_finalised) {
+				// C++ gotcha: reverse_iterator::base() points to the *next* element
+				if_command->true_commands_pre->commands.assign(rit.base(), else_pos);
+				if_command->true_commands_pre->ini_section = if_command->ini_line;
+				if (else_pos != command_list->commands.end()) {
+					// Discard the else placeholder command:
+					if_command->false_commands_pre->commands.assign(else_pos + 1, command_list->commands.end());
+					if_command->false_commands_pre->ini_section = if_command->ini_line + L" <else>";
+				}
+				command_list->commands.erase(rit.base(), command_list->commands.end());
+				if_command->pre_finalised = true;
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+static bool ParseEndIfCommand(const wchar_t *section,
+		CommandList *pre_command_list, CommandList *post_command_list)
+{
+	bool ret;
+
+	return _ParseEndIfCommand(section, pre_command_list, false)
+	    && _ParseEndIfCommand(section, post_command_list, true);
+
+	return ret;
+}
+
+bool ParseCommandListFlowControl(const wchar_t *section, const wstring *line,
+		CommandList *pre_command_list, CommandList *post_command_list,
+		const wstring *ini_namespace)
+{
+	if (!wcsncmp(line->c_str(), L"if ", 3))
+		return ParseIfCommand(section, line, pre_command_list, post_command_list, ini_namespace);
+	// TODO if (!wcsncmp(line->c_str(), L"elif ", 5))
+	// TODO	return ParseElseIfCommand(section, line->substr(5), pre_command_list, post_command_list, ini_namespace);
+	if (!wcscmp(line->c_str(), L"else"))
+		return ParseElseCommand(section, pre_command_list, post_command_list);
+	if (!wcscmp(line->c_str(), L"endif"))
+		return ParseEndIfCommand(section, pre_command_list, post_command_list);
+
+	return false;
+}
+
+IfCommand::IfCommand() :
+	pre_finalised(false),
+	post_finalised(false)
+{
+	true_commands_pre = std::make_shared<CommandList>();
+	true_commands_post = std::make_shared<CommandList>();
+	false_commands_pre = std::make_shared<CommandList>();
+	false_commands_post = std::make_shared<CommandList>();
+	true_commands_post->post = true;
+	false_commands_post->post = true;
+
+	// Placeholder names to be replaced by endif processing - we should
+	// never see these, but in case they do show up somewhere these will
+	// provide a clue as to what they are:
+	true_commands_pre->ini_section = L"if placeholder";
+	true_commands_post->ini_section = L"if placeholder";
+	false_commands_pre->ini_section = L"else placeholder";
+	false_commands_post->ini_section = L"else placeholder";
+
+	// Place the dynamically allocated command lists in this data structure
+	// to ensure they stay alive until after the optimisation stage, even
+	// if the IfCommand is freed, e.g. by being optimised out:
+	dynamically_allocated_command_lists.push_back(true_commands_pre);
+	dynamically_allocated_command_lists.push_back(true_commands_post);
+	dynamically_allocated_command_lists.push_back(false_commands_pre);
+	dynamically_allocated_command_lists.push_back(false_commands_post);
+
+	// And register these command lists for later optimisation:
+	registered_command_lists.push_back(true_commands_pre.get());
+	registered_command_lists.push_back(true_commands_post.get());
+	registered_command_lists.push_back(false_commands_pre.get());
+	registered_command_lists.push_back(false_commands_post.get());
+}
+
+void IfCommand::run(CommandListState *state)
+{
+	if (expression.evaluate(state)) {
+		COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+		if (state->post)
+			_RunCommandList(true_commands_post.get(), state);
+		else
+			_RunCommandList(true_commands_pre.get(), state);
+	} else {
+		COMMAND_LIST_LOG(state, "%S\n", else_line.c_str());
+		if (state->post)
+			_RunCommandList(false_commands_post.get(), state);
+		else
+			_RunCommandList(false_commands_pre.get(), state);
+	}
+}
+
+bool IfCommand::noop(bool post, bool ignore_cto)
+{
+	float static_val;
+	bool is_static;
+
+	if ((post && !post_finalised) || (!post && !pre_finalised)) {
+		LogOverlay(LOG_WARNING, "WARNING: If missing endif: %S\n", ini_line.c_str());
+		return true;
+	}
+
+	is_static = expression.static_evaluate(&static_val);
+	if (is_static) {
+		if (static_val) {
+			false_commands_pre->commands.clear();
+			false_commands_post->commands.clear();
+		} else {
+			true_commands_pre->commands.clear();
+			true_commands_post->commands.clear();
+		}
+	}
+
+	if (post)
+		return true_commands_post->commands.empty() && false_commands_post->commands.empty();
+	return true_commands_pre->commands.empty() && false_commands_pre->commands.empty();
+}
+
+void CommandPlaceholder::run(CommandListState*)
+{
+	LogOverlay(LOG_DIRE, "BUG: Placeholder command executed: %S\n", ini_line.c_str());
+}
+
+bool CommandPlaceholder::noop(bool post, bool ignore_cto)
+{
+	LogOverlay(LOG_WARNING, "WARNING: Command not terminated: %S\n", ini_line.c_str());
+	return true;
 }
 
 ID3D11Resource *ResourceCopyTarget::GetResource(

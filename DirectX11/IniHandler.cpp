@@ -69,7 +69,8 @@ static Section RegularSections[] = {
 };
 
 // List of sections that will not trigger a warning if they contain a line
-// without an equals sign
+// without an equals sign. All command lists are also permitted this privilege
+// to allow for cleaner flow control syntax (if/else/endif)
 static Section AllowLinesWithoutEquals[] = {
 	{L"Profile", false},
 	{L"ShaderRegex", true},
@@ -120,7 +121,8 @@ static bool IsRegularSection(const wchar_t *section)
 
 static bool DoesSectionAllowLinesWithoutEquals(const wchar_t *section)
 {
-	return SectionInList(section, AllowLinesWithoutEquals, ARRAYSIZE(AllowLinesWithoutEquals));
+	return SectionInList(section, AllowLinesWithoutEquals, ARRAYSIZE(AllowLinesWithoutEquals))
+		|| IsCommandListSection(section);
 }
 
 static const wchar_t* SectionPrefixFromList(const wchar_t *section, Section section_list[], int list_size)
@@ -1632,7 +1634,7 @@ static void ParseResourceSections()
 }
 
 static bool ParseCommandListLine(const wchar_t *ini_section,
-		const wchar_t *lhs, wstring *rhs,
+		const wchar_t *lhs, wstring *rhs, wstring *raw_line,
 		CommandList *command_list,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
@@ -1648,17 +1650,21 @@ static bool ParseCommandListLine(const wchar_t *ini_section,
 	if (ParseCommandListResourceCopyDirective(ini_section, lhs, rhs, command_list, ini_namespace))
 		return true;
 
+	if (raw_line && !explicit_command_list &&
+			ParseCommandListFlowControl(ini_section, raw_line, pre_command_list, post_command_list, ini_namespace))
+		return true;
+
 	return false;
 }
 
 static bool ParseCommandListLine(const wchar_t *ini_section,
-		const wchar_t *lhs, const wchar_t *rhs,
+		const wchar_t *lhs, const wchar_t *rhs, wstring *raw_line,
 		CommandList *command_list,
 		const wstring *ini_namespace)
 {
 	wstring srhs = wstring(rhs);
 
-	return ParseCommandListLine(ini_section, lhs, &srhs, command_list, command_list, NULL, NULL, ini_namespace);
+	return ParseCommandListLine(ini_section, lhs, &srhs, raw_line, command_list, command_list, NULL, NULL, ini_namespace);
 }
 
 // This tries to parse each line in a section in order as part of a command
@@ -1671,7 +1677,7 @@ static void ParseCommandList(const wchar_t *id,
 {
 	IniSectionVector *section = NULL;
 	IniSectionVector::iterator entry;
-	wstring *key, *val;
+	wstring *key, *val, *raw_line;
 	const wchar_t *key_ptr;
 	CommandList *command_list, *explicit_command_list;
 	IniSectionSet whitelisted_keys;
@@ -1700,11 +1706,13 @@ static void ParseCommandList(const wchar_t *id,
 	for (entry = section->begin(); entry < section->end(); entry++) {
 		key = &entry->first;
 		val = &entry->second;
+		raw_line = &entry->raw_line;
 
 		// Convert key + val to lower case since ini files are supposed
 		// to be case insensitive:
 		std::transform(key->begin(), key->end(), key->begin(), ::towlower);
 		std::transform(val->begin(), val->end(), val->begin(), ::towlower);
+		std::transform(raw_line->begin(), raw_line->end(), raw_line->begin(), ::towlower);
 
 		// Skip any whitelisted entries that are parsed elsewhere.
 		if (whitelist) {
@@ -1741,12 +1749,18 @@ static void ParseCommandList(const wchar_t *id,
 			}
 		}
 
-		if (ParseCommandListLine(id, key_ptr, val, command_list, explicit_command_list, pre_command_list, post_command_list, &entry->ini_namespace)) {
-			LogInfoW(L"  %ls=%s\n", key->c_str(), val->c_str());
+		if (ParseCommandListLine(id, key_ptr, val, raw_line, command_list, explicit_command_list, pre_command_list, post_command_list, &entry->ini_namespace)) {
+			if (!key->empty())
+				LogInfo("  %S=%S\n", key->c_str(), val->c_str());
+			else
+				LogInfo("  %S\n", raw_line->c_str());
 			continue;
 		}
 
-		IniWarning("WARNING: Unrecognised entry: %S=%S\n", key->c_str(), val->c_str());
+		if (!key->empty())
+			IniWarning("WARNING: Unrecognised entry: %S=%S\n", key->c_str(), val->c_str());
+		else
+			IniWarning("WARNING: Unrecognised entry: %S\n", raw_line->c_str());
 	}
 }
 
@@ -1893,9 +1907,9 @@ static void ParseShaderOverrideSections()
 			get_section_namespace(id, &ini_namespace);
 
 			if (disable_scissor)
-				ParseCommandListLine(id, L"run", L"builtincustomshaderdisablescissorclipping", &override->command_list, &ini_namespace);
+				ParseCommandListLine(id, L"run", L"builtincustomshaderdisablescissorclipping", NULL, &override->command_list, &ini_namespace);
 			else
-				ParseCommandListLine(id, L"run", L"builtincustomshaderenablescissorclipping", &override->command_list, &ini_namespace);
+				ParseCommandListLine(id, L"run", L"builtincustomshaderenablescissorclipping", NULL, &override->command_list, &ini_namespace);
 		}
 	}
 	LeaveCriticalSection(&G->mCriticalSection);
