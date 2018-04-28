@@ -2551,6 +2551,8 @@ float CommandListOperand::evaluate(CommandListState *state)
 	switch (type) {
 		case ParamOverrideType::VALUE:
 			return val;
+		case ParamOverrideType::INI_PARAM:
+			return G->iniParams[param_idx].*param_component;
 		case ParamOverrideType::RT_WIDTH:
 			ProcessParamRTSize(state);
 			return state->rt_width;
@@ -2704,6 +2706,12 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 	ret = swscanf_s(operand->c_str(), L"%f%n", &val, &len1);
 	if (ret != 0 && ret != EOF && len1 == operand->length()) {
 		type = ParamOverrideType::VALUE;
+		return true;
+	}
+
+	// Try parsing operand as an ini param:
+	if (ParseIniParamName(operand->c_str(), &param_idx, &param_component)) {
+		type = ParamOverrideType::INI_PARAM;
 		return true;
 	}
 

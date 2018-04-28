@@ -675,6 +675,7 @@ public:
 enum class ParamOverrideType {
 	INVALID,
 	VALUE,
+	INI_PARAM,
 	RT_WIDTH,
 	RT_HEIGHT,
 	RES_WIDTH,
@@ -760,6 +761,10 @@ public:
 	ParamOverrideType type;
 	float val;
 
+	// For INI_PARAM type:
+	float DirectX::XMFLOAT4::*param_component;
+	int param_idx;
+
 	// For texture filters:
 	ResourceCopyTarget texture_filter_target;
 
@@ -769,6 +774,8 @@ public:
 	CommandListOperand() :
 		type(ParamOverrideType::INVALID),
 		val(FLT_MAX),
+		param_component(NULL),
+		param_idx(0),
 		scissor(0)
 	{}
 
