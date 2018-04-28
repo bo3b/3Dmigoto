@@ -4239,11 +4239,6 @@ void LoadConfigFile()
 
 	LogInfo("\n");
 
-	// Should be done after every command list has been parsed:
-	LogInfo("Optimising Command Lists...\n");
-	optimise_command_lists();
-	LogInfo("\n");
-
 	if (G->hide_cursor || G->SCREEN_UPSCALING)
 		InstallMouseHooks(G->hide_cursor);
 
@@ -4350,6 +4345,7 @@ void ReloadConfig(HackerDevice *device)
 	OverrideSave.Reset(device);
 
 	LoadConfigFile();
+	optimise_command_lists(device);
 
 	MarkAllShadersDeferredUnprocessed();
 

@@ -224,7 +224,7 @@ void RunViewCommandList(HackerDevice *mHackerDevice,
 		res->Release();
 }
 
-void optimise_command_lists()
+void optimise_command_lists(HackerDevice *device)
 {
 	bool making_progress;
 	bool ignore_cto, ignore_cto_pre, ignore_cto_post;
@@ -268,6 +268,9 @@ void optimise_command_lists()
 				ignore_cto = ignore_cto_post;
 
 			for (i = 0; i < command_list->commands.size(); ) {
+				if (command_list->commands[i]->optimise(device))
+					making_progress = true;
+
 				if (command_list->commands[i]->noop(command_list->post, ignore_cto)) {
 					LogInfo("Optimised out %s %S\n",
 							command_list->post ? "post" : "pre",
@@ -1239,6 +1242,11 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
 		COMMAND_LIST_LOG(state, "  Setting %s = %f\n", stereo_param_name(), val);
 		set_stereo_value(state, val);
 	}
+}
+
+bool PerDrawStereoOverrideCommand::optimise(HackerDevice *device)
+{
+	return expression.optimise(device);
 }
 
 bool PerDrawStereoOverrideCommand::noop(bool post, bool ignore_cto)
@@ -2546,6 +2554,21 @@ static void UpdateCursorResources(CommandListState *state)
 	ReleaseDC(NULL, dc);
 }
 
+static bool sli_enabled(HackerDevice *device)
+{
+	NV_GET_CURRENT_SLI_STATE sli_state;
+	sli_state.version = NV_GET_CURRENT_SLI_STATE_VER;
+	NvAPI_Status status;
+
+	status = NvAPI_D3D_GetCurrentSLIState(device->GetPossiblyHookedOrigDevice1(), &sli_state);
+	if (status != NVAPI_OK) {
+		LogInfo("Unable to retrieve SLI state from nvapi\n");
+		return false;
+	}
+
+	return sli_state.maxNumAFRGroups > 1;
+}
+
 float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device)
 {
 	NvU8 stereo = false;
@@ -2599,6 +2622,8 @@ float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device
 		case ParamOverrideType::STEREO_ACTIVE:
 			NvAPI_Stereo_IsActivated(device->mStereoHandle, &stereo);
 			return !!stereo;
+		case ParamOverrideType::SLI:
+			return sli_enabled(device);
 		// XXX: If updating this list, be sure to also update
 		// XXX: operand_allowed_in_context()
 	}
@@ -2684,7 +2709,7 @@ float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device
 	return 0;
 }
 
-bool CommandListOperand::static_evaluate(float *ret)
+bool CommandListOperand::static_evaluate(float *ret, HackerDevice *device)
 {
 	NvU8 stereo = false;
 
@@ -2703,9 +2728,30 @@ bool CommandListOperand::static_evaluate(float *ret)
 				return true;
 			}
 			break;
+		case ParamOverrideType::SLI:
+			if (device) {
+				*ret = sli_enabled(device);
+				return true;
+			}
+			break;
 	}
 
 	return false;
+}
+
+bool CommandListOperand::optimise(HackerDevice *device)
+{
+	if (type == ParamOverrideType::VALUE)
+		return false;
+
+	if (!static_evaluate(&val, device))
+		return false;
+
+	LogInfo("Statically evaluated %S as %f\n",
+		lookup_enum_name(ParamOverrideTypeNames, type), val);
+
+	type = ParamOverrideType::VALUE;
+	return true;
 }
 
 void ParamOverride::run(CommandListState *state)
@@ -2720,6 +2766,11 @@ void ParamOverride::run(CommandListState *state)
 	COMMAND_LIST_LOG(state, "  ini param override = %f\n", *dest);
 
 	state->update_params |= (*dest != orig);
+}
+
+bool ParamOverride::optimise(HackerDevice *device)
+{
+	return expression.optimise(device);
 }
 
 static bool operand_allowed_in_context(ParamOverrideType type, bool command_list_context)
@@ -2737,6 +2788,7 @@ static bool operand_allowed_in_context(ParamOverrideType type, bool command_list
 		case ParamOverrideType::CONVERGENCE:
 		case ParamOverrideType::EYE_SEPARATION:
 		case ParamOverrideType::STEREO_ACTIVE:
+		case ParamOverrideType::SLI:
 			return true;
 	}
 	return false;
@@ -2786,13 +2838,8 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 	// Check special keywords
 	type = lookup_enum_val<const wchar_t *, ParamOverrideType>
 		(ParamOverrideTypeNames, operand->c_str(), ParamOverrideType::INVALID);
-	if (type != ParamOverrideType::INVALID) {
-		if (static_evaluate(&val)) {
-			LogInfo("   > Statically evaluated %S as %f\n", operand->c_str(), val);
-			type = ParamOverrideType::VALUE;
-		}
+	if (type != ParamOverrideType::INVALID)
 		return operand_allowed_in_context(type, command_list_context);
-	}
 
 	return false;
 }
@@ -3762,6 +3809,11 @@ void IfCommand::run(CommandListState *state)
 		else
 			_RunCommandList(false_commands_pre.get(), state);
 	}
+}
+
+bool IfCommand::optimise(HackerDevice *device)
+{
+	return expression.optimise(device);
 }
 
 bool IfCommand::noop(bool post, bool ignore_cto)

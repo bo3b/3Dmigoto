@@ -84,6 +84,7 @@ public:
 	virtual ~CommandListCommand() {};
 
 	virtual void run(CommandListState*) = 0;
+	virtual bool optimise(HackerDevice *device) { return false; }
 	virtual bool noop(bool post, bool ignore_cto) { return false; }
 };
 
@@ -720,9 +721,7 @@ enum class ParamOverrideType {
 			// enabled last frame, since it cannot note this itself
 			// because if stereo was disabled it would not have run
 			// in both eyes to be able to update its state buffer.
-	// TODO:
-	// DEPTH_ACTIVE
-	// etc.
+	SLI,
 };
 static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
 	{L"rt_width", ParamOverrideType::RT_WIDTH},
@@ -752,6 +751,7 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"eye_separation", ParamOverrideType::EYE_SEPARATION},
 	{L"convergence", ParamOverrideType::CONVERGENCE},
 	{L"stereo_active", ParamOverrideType::STEREO_ACTIVE},
+	{L"sli", ParamOverrideType::SLI},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
 class CommandListOperand {
@@ -781,7 +781,8 @@ public:
 
 	bool parse(const wstring *operand, const wstring *ini_namespace, bool command_list_context=true);
 	float evaluate(CommandListState *state, HackerDevice *device=NULL);
-	bool static_evaluate(float *ret);
+	bool static_evaluate(float *ret, HackerDevice *device=NULL);
+	bool optimise(HackerDevice *device);
 };
 class ParamOverride : public CommandListCommand {
 public:
@@ -796,6 +797,7 @@ public:
 	{}
 
 	void run(CommandListState*) override;
+	bool optimise(HackerDevice *device) override;
 };
 
 class IfCommand : public CommandListCommand {
@@ -817,6 +819,7 @@ public:
 	IfCommand();
 
 	void run(CommandListState*) override;
+	bool optimise(HackerDevice *device) override;
 	bool noop(bool post, bool ignore_cto) override;
 };
 
@@ -891,6 +894,7 @@ public:
 	PerDrawStereoOverrideCommand(bool restore_on_post);
 
 	void run(CommandListState*) override;
+	bool optimise(HackerDevice *device) override;
 	bool noop(bool post, bool ignore_cto) override;
 	bool update_val(CommandListState *state);
 
@@ -994,4 +998,4 @@ bool ParseCommandListFlowControl(const wchar_t *section, const wstring *line,
 		CommandList *pre_command_list, CommandList *post_command_list,
 		const wstring *ini_namespace);
 void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line);
-void optimise_command_lists();
+void optimise_command_lists(HackerDevice *device);

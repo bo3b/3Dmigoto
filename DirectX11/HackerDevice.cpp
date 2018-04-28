@@ -28,6 +28,7 @@
 #include "D3D_Shaders\stdafx.h"
 #include "ResourceHash.h"
 #include "ShaderRegex.h"
+#include "CommandList.h"
 
 // A map to look up the HackerDevice from an IUnknown. The reason for using an
 // IUnknown as the key is that an ID3D11Device and IDXGIDevice are actually two
@@ -388,6 +389,8 @@ void HackerDevice::Create3DMigotoResources()
 	CreateIniParamResources();
 	CreatePinkHuntingResources();
 	SetGlobalNVSurfaceCreationMode();
+
+	optimise_command_lists(this);
 }
 
 
