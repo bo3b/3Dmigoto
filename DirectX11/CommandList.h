@@ -564,7 +564,7 @@ public:
 		forbid_view_cache(false)
 	{}
 
-	bool ParseTarget(const wchar_t *section, const wchar_t *target, bool is_source, const wstring *ini_namespace);
+	bool ParseTarget(const wchar_t *target, bool is_source, const wstring *ini_namespace);
 	ID3D11Resource *GetResource(CommandListState *state,
 			ID3D11View **view,
 			UINT *stride,
@@ -753,11 +753,10 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"stereo_active", ParamOverrideType::STEREO_ACTIVE},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
-class ParamOverride : public CommandListCommand {
+class CommandListOperand {
+	float process_texture_filter(CommandListState*);
 public:
-	int param_idx;
-	float DirectX::XMFLOAT4::*param_component;
-
+	// TODO: Break up into separate classes for each operand type
 	ParamOverrideType type;
 	float val;
 
@@ -767,16 +766,29 @@ public:
 	// For scissor rectangle:
 	unsigned scissor;
 
-	ParamOverride() :
-		param_idx(-1),
-		param_component(NULL),
+	CommandListOperand() :
 		type(ParamOverrideType::INVALID),
 		val(FLT_MAX),
 		scissor(0)
 	{}
 
+	bool parse(const wstring *operand, const wstring *ini_namespace);
+	float evaluate(CommandListState *state);
+	// TODO: float static_evaluate();
+};
+class ParamOverride : public CommandListCommand {
+public:
+	int param_idx;
+	float DirectX::XMFLOAT4::*param_component;
+
+	CommandListOperand expression;
+
+	ParamOverride() :
+		param_idx(-1),
+		param_component(NULL)
+	{}
+
 	void run(CommandListState*) override;
-	float process_texture_filter(CommandListState*);
 };
 
 

@@ -337,7 +337,7 @@ static bool ParseCheckTextureOverride(const wchar_t *section,
 	CheckTextureOverrideCommand *operation = new CheckTextureOverrideCommand();
 
 	// Parse value as consistent with texture filtering and resource copying
-	ret = operation->target.ParseTarget(section, val->c_str(), true, ini_namespace);
+	ret = operation->target.ParseTarget(val->c_str(), true, ini_namespace);
 	if (ret) {
 		return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
 	}
@@ -414,7 +414,7 @@ static bool ParseClearView(const wchar_t *section,
 
 	while (getline(token_stream, token, L' ')) {
 		if (operation->target.type == ResourceCopyTargetType::INVALID) {
-			ret = operation->target.ParseTarget(section, token.c_str(), true, ini_namespace);
+			ret = operation->target.ParseTarget(token.c_str(), true, ini_namespace);
 			if (ret)
 				continue;
 		}
@@ -749,7 +749,7 @@ static bool ParsePerDrawStereoOverride(const wchar_t *section,
 		goto success;
 
 	// Try parsing value as a resource target for staging auto-convergence
-	if (operation->staging_op.src.ParseTarget(section, val->c_str(), true, ini_namespace)) {
+	if (operation->staging_op.src.ParseTarget(val->c_str(), true, ini_namespace)) {
 		operation->staging_type = true;
 		goto success;
 	}
@@ -793,7 +793,7 @@ static bool ParseFrameAnalysisDump(const wchar_t *section,
 	if (!target)
 		goto bail;
 
-	if (!operation->target.ParseTarget(section, target, true, ini_namespace))
+	if (!operation->target.ParseTarget(target, true, ini_namespace))
 		goto bail;
 
 	operation->target_name = L"[" + wstring(section) + L"]-" + wstring(target);
@@ -2178,7 +2178,7 @@ static void UpdateScissorInfo(CommandListState *state)
 	state->scissor_valid = true;
 }
 
-float ParamOverride::process_texture_filter(CommandListState *state)
+float CommandListOperand::process_texture_filter(CommandListState *state)
 {
 	TextureOverrideMatches matches;
 	TextureOverrideMatches::reverse_iterator rit;
@@ -2535,117 +2535,87 @@ static void UpdateCursorResources(CommandListState *state)
 	ReleaseDC(NULL, dc);
 }
 
-void ParamOverride::run(CommandListState *state)
+float CommandListOperand::evaluate(CommandListState *state)
 {
-	float *dest = &(G->iniParams[param_idx].*param_component);
-	float orig = *dest;
-
-	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+	NvU8 stereo = false;
+	float fret;
 
 	switch (type) {
 		case ParamOverrideType::VALUE:
-			*dest = val;
-			break;
+			return val;
 		case ParamOverrideType::RT_WIDTH:
 			ProcessParamRTSize(state);
-			*dest = state->rt_width;
-			break;
+			return state->rt_width;
 		case ParamOverrideType::RT_HEIGHT:
 			ProcessParamRTSize(state);
-			*dest = state->rt_height;
-			break;
+			return state->rt_height;
 		case ParamOverrideType::RES_WIDTH:
-			*dest = (float)G->mResolutionInfo.width;
-			break;
+			return (float)G->mResolutionInfo.width;
 		case ParamOverrideType::RES_HEIGHT:
-			*dest = (float)G->mResolutionInfo.height;
-			break;
+			return (float)G->mResolutionInfo.height;
 		case ParamOverrideType::WINDOW_WIDTH:
 			UpdateWindowInfo(state);
-			*dest = (float)state->window_rect.right;
-			break;
+			return (float)state->window_rect.right;
 		case ParamOverrideType::WINDOW_HEIGHT:
 			UpdateWindowInfo(state);
-			*dest = (float)state->window_rect.bottom;
-			break;
+			return (float)state->window_rect.bottom;
 		case ParamOverrideType::TEXTURE:
-			*dest = process_texture_filter(state);
-			break;
+			return process_texture_filter(state);
 		case ParamOverrideType::VERTEX_COUNT:
 			if (state->call_info)
-				*dest = (float)state->call_info->VertexCount;
-			else
-				*dest = 0;
-			break;
+				return (float)state->call_info->VertexCount;
+			return 0;
 		case ParamOverrideType::INDEX_COUNT:
 			if (state->call_info)
-				*dest = (float)state->call_info->IndexCount;
-			else
-				*dest = 0;
-			break;
+				return (float)state->call_info->IndexCount;
+			return 0;
 		case ParamOverrideType::INSTANCE_COUNT:
 			if (state->call_info)
-				*dest = (float)state->call_info->InstanceCount;
-			else
-				*dest = 0;
-			break;
+				return (float)state->call_info->InstanceCount;
+			return 0;
 		case ParamOverrideType::CURSOR_VISIBLE:
 			UpdateCursorInfo(state);
-			*dest = !!(state->cursor_info.flags & CURSOR_SHOWING);
-			break;
+			return !!(state->cursor_info.flags & CURSOR_SHOWING);
 		case ParamOverrideType::CURSOR_SCREEN_X:
 			UpdateCursorInfo(state);
-			*dest = (float)state->cursor_info.ptScreenPos.x;
-			break;
+			return (float)state->cursor_info.ptScreenPos.x;
 		case ParamOverrideType::CURSOR_SCREEN_Y:
 			UpdateCursorInfo(state);
-			*dest = (float)state->cursor_info.ptScreenPos.y;
-			break;
+			return (float)state->cursor_info.ptScreenPos.y;
 		case ParamOverrideType::CURSOR_WINDOW_X:
 			UpdateCursorInfo(state);
-			*dest = (float)state->cursor_window_coords.x;
-			break;
+			return (float)state->cursor_window_coords.x;
 		case ParamOverrideType::CURSOR_WINDOW_Y:
 			UpdateCursorInfo(state);
-			*dest = (float)state->cursor_window_coords.y;
-			break;
+			return (float)state->cursor_window_coords.y;
 		case ParamOverrideType::CURSOR_X:
 			UpdateCursorInfo(state);
 			UpdateWindowInfo(state);
-			*dest = (float)state->cursor_window_coords.x / (float)state->window_rect.right;
-			break;
+			return (float)state->cursor_window_coords.x / (float)state->window_rect.right;
 		case ParamOverrideType::CURSOR_Y:
 			UpdateCursorInfo(state);
 			UpdateWindowInfo(state);
-			*dest = (float)state->cursor_window_coords.y / (float)state->window_rect.bottom;
-			break;
+			return (float)state->cursor_window_coords.y / (float)state->window_rect.bottom;
 		case ParamOverrideType::CURSOR_HOTSPOT_X:
 			UpdateCursorInfoEx(state);
-			*dest = (float)state->cursor_info_ex.xHotspot;
-			break;
+			return (float)state->cursor_info_ex.xHotspot;
 		case ParamOverrideType::CURSOR_HOTSPOT_Y:
 			UpdateCursorInfoEx(state);
-			*dest = (float)state->cursor_info_ex.yHotspot;
-			break;
+			return (float)state->cursor_info_ex.yHotspot;
 		case ParamOverrideType::TIME:
-			*dest = (float)(GetTickCount() - G->ticks_at_launch) / 1000.0f;
-			break;
+			return (float)(GetTickCount() - G->ticks_at_launch) / 1000.0f;
 		case ParamOverrideType::SCISSOR_LEFT:
 			UpdateScissorInfo(state);
-			*dest = (float)state->scissor_rects[scissor].left;
-			break;
+			return (float)state->scissor_rects[scissor].left;
 		case ParamOverrideType::SCISSOR_TOP:
 			UpdateScissorInfo(state);
-			*dest = (float)state->scissor_rects[scissor].top;
-			break;
+			return (float)state->scissor_rects[scissor].top;
 		case ParamOverrideType::SCISSOR_RIGHT:
 			UpdateScissorInfo(state);
-			*dest = (float)state->scissor_rects[scissor].right;
-			break;
+			return (float)state->scissor_rects[scissor].right;
 		case ParamOverrideType::SCISSOR_BOTTOM:
 			UpdateScissorInfo(state);
-			*dest = (float)state->scissor_rects[scissor].bottom;
-			break;
+			return (float)state->scissor_rects[scissor].bottom;
 		case ParamOverrideType::RAW_SEPARATION:
 			// We could use cached values of these (nvapi is known
 			// to become a bottleneck with too many calls / frame),
@@ -2663,28 +2633,79 @@ void ParamOverride::run(CommandListState *state)
 			// this is rarely used, so let's just go with this for
 			// now and worry about optimisations only if it proves
 			// to be a bottleneck in practice:
-			NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, dest);
-			break;
+			NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, &fret);
+			return fret;
 		case ParamOverrideType::CONVERGENCE:
-			NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, dest);
-			break;
+			NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, &fret);
+			return fret;
 		case ParamOverrideType::EYE_SEPARATION:
-			NvAPI_Stereo_GetEyeSeparation(state->mHackerDevice->mStereoHandle, dest);
-			break;
+			NvAPI_Stereo_GetEyeSeparation(state->mHackerDevice->mStereoHandle, &fret);
+			return fret;
 		case ParamOverrideType::STEREO_ACTIVE:
-			{
-				NvU8 stereo = false;
-				NvAPI_Stereo_IsActivated(state->mHackerDevice->mStereoHandle, &stereo);
-				*dest = !!stereo;
-			}
-			break;
-		default:
-			return;
+			NvAPI_Stereo_IsActivated(state->mHackerDevice->mStereoHandle, &stereo);
+			return !!stereo;
 	}
+
+	LogOverlay(LOG_DIRE, "BUG: Unhandled operand type %i\n", type);
+	return 0;
+}
+
+void ParamOverride::run(CommandListState *state)
+{
+	float *dest = &(G->iniParams[param_idx].*param_component);
+	float orig = *dest;
+
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+
+	*dest = expression.evaluate(state);
 
 	COMMAND_LIST_LOG(state, "  ini param override = %f\n", *dest);
 
 	state->update_params |= (*dest != orig);
+}
+
+bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namespace)
+{
+	int ret, len1;
+
+	// Try parsing value as a float
+	ret = swscanf_s(operand->c_str(), L"%f%n", &val, &len1);
+	if (ret != 0 && ret != EOF && len1 == operand->length()) {
+		type = ParamOverrideType::VALUE;
+		return true;
+	}
+
+	// Try parsing value as a resource target for texture filtering
+	ret = texture_filter_target.ParseTarget(operand->c_str(), true, ini_namespace);
+	if (ret) {
+		type = ParamOverrideType::TEXTURE;
+		return true;
+	}
+
+	// Try parsing value as a scissor rectangle. scissor_<side> also
+	// appears in the keywords list for uses of the default rectangle 0.
+	ret = swscanf_s(operand->c_str(), L"scissor%u_%n", &scissor, &len1);
+	if (ret == 1 && scissor < D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE) {
+		if (!wcscmp(operand->c_str() + len1, L"left"))
+			type = ParamOverrideType::SCISSOR_LEFT;
+		else if (!wcscmp(operand->c_str() + len1, L"top"))
+			type = ParamOverrideType::SCISSOR_TOP;
+		else if (!wcscmp(operand->c_str() + len1, L"right"))
+			type = ParamOverrideType::SCISSOR_RIGHT;
+		else if (!wcscmp(operand->c_str() + len1, L"bottom"))
+			type = ParamOverrideType::SCISSOR_BOTTOM;
+		else
+			return false;
+		return true;
+	}
+
+	// Check special keywords
+	type = lookup_enum_val<const wchar_t *, ParamOverrideType>
+		(ParamOverrideTypeNames, operand->c_str(), ParamOverrideType::INVALID);
+	if (type != ParamOverrideType::INVALID)
+		return true;
+
+	return false;
 }
 
 // Parse IniParams overrides, in forms such as
@@ -2696,50 +2717,14 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 		const wchar_t *key, wstring *val, CommandList *command_list,
 		const wstring *ini_namespace)
 {
-	int ret, len1;
 	ParamOverride *param = new ParamOverride();
 
 	if (!ParseIniParamName(key, &param->param_idx, &param->param_component))
 		goto bail;
 
-	// Try parsing value as a float
-	ret = swscanf_s(val->c_str(), L"%f%n", &param->val, &len1);
-	if (ret != 0 && ret != EOF && len1 == val->length()) {
-		param->type = ParamOverrideType::VALUE;
-		goto success;
-	}
-
-	// Try parsing value as a resource target for texture filtering
-	ret = param->texture_filter_target.ParseTarget(section, val->c_str(), true, ini_namespace);
-	if (ret) {
-		param->type = ParamOverrideType::TEXTURE;
-		goto success;
-	}
-
-	// Try parsing value as a scissor rectangle. scissor_<side> also
-	// appears in the keywords list for uses of the default rectangle 0.
-	ret = swscanf_s(val->c_str(), L"scissor%u_%n", &param->scissor, &len1);
-	if (ret == 1 && param->scissor < D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE) {
-		if (!wcscmp(val->c_str() + len1, L"left"))
-			param->type = ParamOverrideType::SCISSOR_LEFT;
-		else if (!wcscmp(val->c_str() + len1, L"top"))
-			param->type = ParamOverrideType::SCISSOR_TOP;
-		else if (!wcscmp(val->c_str() + len1, L"right"))
-			param->type = ParamOverrideType::SCISSOR_RIGHT;
-		else if (!wcscmp(val->c_str() + len1, L"bottom"))
-			param->type = ParamOverrideType::SCISSOR_BOTTOM;
-		else
-			goto bail;
-		goto success;
-	}
-
-	// Check special keywords
-	param->type = lookup_enum_val<const wchar_t *, ParamOverrideType>
-		(ParamOverrideTypeNames, val->c_str(), ParamOverrideType::INVALID);
-	if (param->type == ParamOverrideType::INVALID)
+	if (!param->expression.parse(val, ini_namespace))
 		goto bail;
 
-success:
 	param->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	command_list->commands.push_back(std::shared_ptr<CommandListCommand>(param));
 	return true;
@@ -3285,7 +3270,7 @@ void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
 }
 
 
-bool ResourceCopyTarget::ParseTarget(const wchar_t *section, const wchar_t *target,
+bool ResourceCopyTarget::ParseTarget(const wchar_t *target,
 		bool is_source, const wstring *ini_namespace)
 {
 	int ret, len;
@@ -3455,7 +3440,7 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 	wchar_t buf[MAX_PATH];
 	wchar_t *src_ptr = NULL;
 
-	if (!operation->dst.ParseTarget(section, key, false, ini_namespace))
+	if (!operation->dst.ParseTarget(key, false, ini_namespace))
 		goto bail;
 
 	// parse_enum_option_string replaces spaces with NULLs, so it can't
@@ -3472,7 +3457,7 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 	if (!src_ptr)
 		goto bail;
 
-	if (!operation->src.ParseTarget(section, src_ptr, true, ini_namespace))
+	if (!operation->src.ParseTarget(src_ptr, true, ini_namespace))
 		goto bail;
 
 	if (!(operation->options & ResourceCopyOptions::COPY_TYPE_MASK)) {
