@@ -84,6 +84,7 @@ public:
 	virtual ~CommandListCommand() {};
 
 	virtual void run(CommandListState*) = 0;
+	virtual bool noop(bool post, bool ignore_cto) { return false; }
 };
 
 class CommandList {
@@ -105,6 +106,7 @@ public:
 	{}
 };
 
+extern std::vector<CommandList*> registered_command_lists;
 extern std::unordered_set<CommandList*> command_lists_profiling;
 extern std::unordered_set<CommandListCommand*> command_lists_cmd_profiling;
 
@@ -144,6 +146,7 @@ public:
 	{}
 
 	void run(CommandListState*) override;
+	bool noop(bool post, bool ignore_cto) override;
 };
 
 class RunLinkedCommandList : public CommandListCommand {
@@ -155,6 +158,7 @@ public:
 	{}
 
 	void run(CommandListState*) override;
+	bool noop(bool post, bool ignore_cto) override;
 };
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/gg615083(v=vs.85).aspx
@@ -283,6 +287,7 @@ public:
 	{}
 
 	void run(CommandListState*) override;
+	bool noop(bool post, bool ignore_cto) override;
 };
 
 enum class DrawCommandType {
@@ -781,6 +786,7 @@ public:
 	ResourceCopyTarget target;
 
 	void run(CommandListState*) override;
+	bool noop(bool post, bool ignore_cto) override;
 };
 
 class ClearViewCommand : public CommandListCommand {
@@ -836,6 +842,7 @@ public:
 	PerDrawStereoOverrideCommand(bool restore_on_post);
 
 	void run(CommandListState*) override;
+	bool noop(bool post, bool ignore_cto) override;
 	bool update_val(CommandListState *state);
 
 	virtual const char* stereo_param_name() = 0;
@@ -870,6 +877,7 @@ public:
 	NV_STEREO_ACTIVE_EYE eye;
 
 	void run(CommandListState*) override;
+	bool noop(bool post, bool ignore_cto) override;
 };
 
 class FrameAnalysisChangeOptionsCommand : public CommandListCommand {
@@ -879,6 +887,7 @@ public:
 	FrameAnalysisChangeOptionsCommand(wstring *val);
 
 	void run(CommandListState*) override;
+	bool noop(bool post, bool ignore_cto) override;
 };
 
 class FrameAnalysisDumpCommand : public CommandListCommand {
@@ -888,6 +897,7 @@ public:
 	FrameAnalysisOptions analyse_options;
 
 	void run(CommandListState*) override;
+	bool noop(bool post, bool ignore_cto) override;
 };
 
 class UpscalingFlipBBCommand : public CommandListCommand {
@@ -932,3 +942,4 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 		const wchar_t *key, wstring *val, CommandList *command_list,
 		const wstring *ini_namespace);
 void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line);
+void optimise_command_lists();

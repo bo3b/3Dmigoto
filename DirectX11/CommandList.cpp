@@ -16,6 +16,7 @@
 CustomResources customResources;
 CustomShaders customShaders;
 ExplicitCommandListSections explicitCommandListSections;
+std::vector<CommandList*> registered_command_lists;
 std::unordered_set<CommandList*> command_lists_profiling;
 std::unordered_set<CommandListCommand*> command_lists_cmd_profiling;
 
@@ -218,6 +219,70 @@ void RunViewCommandList(HackerDevice *mHackerDevice,
 
 	if (res)
 		res->Release();
+}
+
+void optimise_command_lists()
+{
+	bool making_progress;
+	bool ignore_cto, ignore_cto_pre, ignore_cto_post;
+	int i;
+	CommandList::Commands::iterator new_end;
+
+	do {
+		making_progress = false;
+		ignore_cto_pre = true;
+		ignore_cto_post = true;
+
+		// If all TextureOverride sections have empty command lists of
+		// either pre or post, we can treat checktextureoverride as a
+		// noop. This is intended to catch the case where we only have
+		// "pre" commands in the TextureOverride sections to optimise
+		// out the implicit "post checktextureoverride" commands, as
+		// these can add up if they are used on very common shaders
+		// (e.g. in DOAXVV this can easily save 0.2fps on a 4GHz CPU,
+		// more on a slower CPU since this command is used in the
+		// shadow map shaders)
+		//
+		// FIXME: This should itself ignore any checktextureoverrides
+		// inside these command lists
+		for (auto &tolkv : G->mTextureOverrideMap) {
+			for (TextureOverride &to : tolkv.second) {
+				ignore_cto_pre = ignore_cto_pre && to.command_list.commands.empty();
+				ignore_cto_post = ignore_cto_post && to.post_command_list.commands.empty();
+			}
+		}
+		for (auto &tof : G->mFuzzyTextureOverrides) {
+			ignore_cto_pre = ignore_cto_pre && tof->texture_override->command_list.commands.empty();
+			ignore_cto_post = ignore_cto_post && tof->texture_override->post_command_list.commands.empty();
+		}
+
+		// Go through each registered command list and remove any
+		// commands that are noops to eliminate the runtime overhead of
+		// processing these
+		for (CommandList *command_list : registered_command_lists) {
+			ignore_cto = ignore_cto_pre;
+			if (command_list->post)
+				ignore_cto = ignore_cto_post;
+
+			for (i = 0; i < command_list->commands.size(); ) {
+				if (command_list->commands[i]->noop(command_list->post, ignore_cto)) {
+					LogInfo("Optimised out %s %S\n",
+							command_list->post ? "post" : "pre",
+							command_list->commands[i]->ini_line.c_str());
+					command_list->commands.erase(command_list->commands.begin() + i);
+					making_progress = true;
+					continue;
+				}
+				i++;
+			}
+		}
+
+		// TODO: Merge adjacent commands if possible, e.g. all the
+		// commands in BuiltInCommandListUnbindAllRenderTargets would
+		// be good candidates to merge into a single command. We could
+		// add a special command for that particular case, but would be
+		// nice if this sort of thing worked more generally.
+	} while (making_progress);
 }
 
 static bool AddCommandToList(CommandListCommand *command,
@@ -830,6 +895,11 @@ void CheckTextureOverrideCommand::run(CommandListState *state)
 	}
 }
 
+bool CheckTextureOverrideCommand::noop(bool post, bool ignore_cto)
+{
+	return ignore_cto;
+}
+
 ClearViewCommand::ClearViewCommand() :
 	dsv_depth(0.0),
 	dsv_stencil(0),
@@ -1158,12 +1228,33 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
 	}
 }
 
+bool PerDrawStereoOverrideCommand::noop(bool post, bool ignore_cto)
+{
+	NvU8 enabled = false;
+
+	NvAPIOverride();
+	NvAPI_Stereo_IsEnabled(&enabled);
+	return !enabled;
+}
+
 void DirectModeSetActiveEyeCommand::run(CommandListState *state)
 {
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	if (NVAPI_OK != NvAPI_Stereo_SetActiveEye(state->mHackerDevice->mStereoHandle, eye))
 		COMMAND_LIST_LOG(state, "  Stereo_SetActiveEye failed\n");
+}
+
+bool DirectModeSetActiveEyeCommand::noop(bool post, bool ignore_cto)
+{
+	NvU8 enabled = false;
+
+	NvAPIOverride();
+	NvAPI_Stereo_IsEnabled(&enabled);
+	return !enabled;
+
+	// FIXME: Should also return false if direct mode is disabled...
+	// if only nvapi provided a GetDriverMode() API to determine that
 }
 
 float PerDrawSeparationOverrideCommand::get_stereo_value(CommandListState *state)
@@ -1223,6 +1314,11 @@ void FrameAnalysisChangeOptionsCommand::run(CommandListState *state)
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	state->mHackerContext->FrameAnalysisTrigger(analyse_options);
+}
+
+bool FrameAnalysisChangeOptionsCommand::noop(bool post, bool ignore_cto)
+{
+	return (G->hunting == HUNTING_MODE_DISABLED || G->frame_analysis_registered == false);
 }
 
 static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resource, ID3D11View *view,
@@ -1384,6 +1480,11 @@ void FrameAnalysisDumpCommand::run(CommandListState *state)
 		resource->Release();
 	if (view)
 		view->Release();
+}
+
+bool FrameAnalysisDumpCommand::noop(bool post, bool ignore_cto)
+{
+	return (G->hunting == HUNTING_MODE_DISABLED || G->frame_analysis_registered == false);
 }
 
 UpscalingFlipBBCommand::UpscalingFlipBBCommand(wstring section) :
@@ -1988,6 +2089,11 @@ void RunCustomShaderCommand::run(CommandListState *state)
 	}
 }
 
+bool RunCustomShaderCommand::noop(bool post, bool ignore_cto)
+{
+	return (custom_shader->command_list.commands.empty() && custom_shader->post_command_list.commands.empty());
+}
+
 void RunExplicitCommandList::run(CommandListState *state)
 {
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
@@ -1996,6 +2102,13 @@ void RunExplicitCommandList::run(CommandListState *state)
 		_RunCommandList(&command_list_section->post_command_list, state);
 	else
 		_RunCommandList(&command_list_section->command_list, state);
+}
+
+bool RunExplicitCommandList::noop(bool post, bool ignore_cto)
+{
+	if (post)
+		return command_list_section->post_command_list.commands.empty();
+	return command_list_section->command_list.commands.empty();
 }
 
 void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line)
@@ -2008,6 +2121,11 @@ void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_li
 void RunLinkedCommandList::run(CommandListState *state)
 {
 	_RunCommandList(link, state);
+}
+
+bool RunLinkedCommandList::noop(bool post, bool ignore_cto)
+{
+	return link->commands.empty();
 }
 
 static void ProcessParamRTSize(CommandListState *state)

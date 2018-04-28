@@ -1656,7 +1656,7 @@ static bool ParseCommandListLine(const wchar_t *ini_section,
 // part of the command list.
 static void ParseCommandList(const wchar_t *id,
 		CommandList *pre_command_list, CommandList *post_command_list,
-		wchar_t *whitelist[])
+		wchar_t *whitelist[], bool register_command_lists=true)
 {
 	IniSectionVector *section = NULL;
 	IniSectionVector::iterator entry;
@@ -1673,11 +1673,16 @@ static void ParseCommandList(const wchar_t *id,
 		DoubleBeepExit();
 	}
 
+	LogDebug("Registering command list: %S\n", id);
 	pre_command_list->ini_section = id;
 	pre_command_list->post = false;
+	if (register_command_lists)
+		registered_command_lists.push_back(pre_command_list);
 	if (post_command_list) {
 		post_command_list->ini_section = id;
 		post_command_list->post = true;
+		if (register_command_lists)
+			registered_command_lists.push_back(post_command_list);
 	}
 
 	GetIniSection(&section, id);
@@ -2309,7 +2314,7 @@ static void parse_fuzzy_numeric_match_expression(const wchar_t *setting, FuzzyMa
 		return parse_fuzzy_numeric_match_expression_error(ptr);
 }
 
-static void parse_texture_override_common(const wchar_t *id, TextureOverride *override)
+static void parse_texture_override_common(const wchar_t *id, TextureOverride *override, bool register_command_lists)
 {
 	wchar_t setting[MAX_PATH];
 	bool found;
@@ -2379,7 +2384,7 @@ static void parse_texture_override_common(const wchar_t *id, TextureOverride *ov
 		override->has_draw_context_match = true;
 	}
 
-	ParseCommandList(id, &override->command_list, &override->post_command_list, TextureOverrideIniKeys);
+	ParseCommandList(id, &override->command_list, &override->post_command_list, TextureOverrideIniKeys, register_command_lists);
 }
 
 static bool texture_override_section_has_fuzzy_match_keys(const wchar_t *section)
@@ -2548,7 +2553,7 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
 		return;
 	}
 
-	parse_texture_override_common(section, fuzzy->texture_override);
+	parse_texture_override_common(section, fuzzy->texture_override, true);
 
 	if (!G->mFuzzyTextureOverrides.insert(std::shared_ptr<FuzzyMatchResourceDesc>(fuzzy)).second) {
 		IniWarning("BUG: Unexpected error inserting fuzzy texture override\n");
@@ -2629,12 +2634,15 @@ static void ParseTextureOverrideSections()
 		override = &G->mTextureOverrideMap[hash].back();
 		override->ini_section = id;
 
-		parse_texture_override_common(id, override);
+		// Important that we do *not* register the command lists yet:
+		parse_texture_override_common(id, override, false);
 
 		// Warn if same hash is used two or more times in sections that
 		// do not have a draw context match or match_priority:
 		warn_if_duplicate_texture_hash(override, hash);
+	}
 
+	for (auto &tolkv : G->mTextureOverrideMap) {
 		// Sort the TextureOverride sections sharing the same hash to
 		// ensure we get consistent results when processing them.
 		// TextureOverrideLess will sort by priority first and ini
@@ -2644,8 +2652,24 @@ static void ParseTextureOverrideSections()
 		// a horrible mess. We could do a more efficient insertion
 		// sort, but given this cost is only paid on launch and config
 		// reload I'd rather keep the sorting down here at the end:
-		std::sort(G->mTextureOverrideMap[hash].begin(), G->mTextureOverrideMap[hash].end(), TextureOverrideLess);
+		std::sort(tolkv.second.begin(), tolkv.second.end(), TextureOverrideLess);
+
+		// We cannot register the non-fuzzy TextureOverride command
+		// lists automatically when parsing them like we do for other
+		// command lists, because the command lists will move around in
+		// memory as more TextureOverride sections are added to the
+		// vector, and again when the vector is sorted... Thanks C++
+		//
+		// Might be worthwhile considering changing the data structure
+		// to hold pointers so it can rearrange the pointers however it
+		// likes without changing the TextureOverrides they point to,
+		// similar to how the CommandList data structures work.
+		for (TextureOverride &to : tolkv.second) {
+			registered_command_lists.push_back(&to.command_list);
+			registered_command_lists.push_back(&to.post_command_list);
+		}
 	}
+
 	LeaveCriticalSection(&G->mCriticalSection);
 }
 
@@ -4121,6 +4145,10 @@ void LoadConfigFile()
 	// [Hunting]
 	ParseHuntingSection();
 
+	// Must be done prior to parsing any command list sections, as every
+	// section registered in this set will be a candidate for optimisation:
+	registered_command_lists.clear();
+
 	// Splitting the enumeration of these sections out from parsing them as
 	// they can be referenced from other command list sections, keys and
 	// presets (via the run command), including sections of the same type.
@@ -4184,6 +4212,11 @@ void LoadConfigFile()
 	LogInfo("[Profile]\n");
 	ParseDriverProfile();
 
+	LogInfo("\n");
+
+	// Should be done after every command list has been parsed:
+	LogInfo("Optimising Command Lists...\n");
+	optimise_command_lists();
 	LogInfo("\n");
 
 	if (G->hide_cursor || G->SCREEN_UPSCALING)

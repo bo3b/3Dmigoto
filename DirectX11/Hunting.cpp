@@ -1644,7 +1644,7 @@ void ParseHuntingSection()
 
 	G->show_original_enabled = RegisterIniKeyBinding(L"Hunting", L"show_original", DisableFix, EnableFix, noRepeat, NULL);
 
-	RegisterIniKeyBinding(L"Hunting", L"analyse_frame", AnalyseFrame, AnalyseFrameStop, noRepeat, NULL);
+	G->frame_analysis_registered = RegisterIniKeyBinding(L"Hunting", L"analyse_frame", AnalyseFrame, AnalyseFrameStop, noRepeat, NULL);
 	if (GetIniStringAndLog(L"Hunting", L"analyse_options", 0, buf, MAX_PATH)) {
 		G->def_analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
 			(FrameAnalysisOptionNames, buf, NULL);
