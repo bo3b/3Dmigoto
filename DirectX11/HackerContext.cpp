@@ -225,6 +225,10 @@ void HackerContext::RecordGraphicsShaderStats()
 	ShaderInfoData *info;
 	ID3D11Resource *resource;
 	UINT i;
+	Profiling::State profiling_state;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	if (mCurrentVertexShader) {
 		info = &G->mVertexShaderInfo[mCurrentVertexShader];
@@ -280,6 +284,9 @@ void HackerContext::RecordGraphicsShaderStats()
 			}
 		}
 	}
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::stat_overhead);
 }
 
 void HackerContext::RecordComputeShaderStats()
@@ -290,6 +297,10 @@ void HackerContext::RecordComputeShaderStats()
 	UINT num_uavs = (level >= D3D_FEATURE_LEVEL_11_1 ? D3D11_1_UAV_SLOT_COUNT : D3D11_PS_CS_UAV_REGISTER_COUNT);
 	ID3D11Resource *resource;
 	UINT i;
+	Profiling::State profiling_state;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	RecordShaderResourceUsage<&ID3D11DeviceContext::CSGetShaderResources>(info);
 
@@ -303,6 +314,9 @@ void HackerContext::RecordComputeShaderStats()
 			uavs[i]->Release();
 		}
 	}
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::stat_overhead);
 }
 
 void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num)
@@ -1386,7 +1400,8 @@ STDMETHODIMP_(void) HackerContext::SOSetTargets(THIS_
 bool HackerContext::BeforeDispatch(DispatchContext *context)
 {
 	if (G->hunting == HUNTING_MODE_ENABLED) {
-		RecordComputeShaderStats();
+		if (G->DumpUsage)
+			RecordComputeShaderStats();
 
 		if (mCurrentComputeShader == G->mSelectedComputeShader) {
 			if (G->marking_mode == MarkingMode::SKIP)
@@ -2718,6 +2733,8 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 	/* [annotation] */
 	__in_opt ID3D11DepthStencilView *pDepthStencilView)
 {
+	Profiling::State profiling_state;
+
 	if (G->hunting == HUNTING_MODE_ENABLED) {
 		EnterCriticalSection(&G->mCriticalSection);
 			mCurrentRenderTargets.clear();
@@ -2725,17 +2742,23 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 			mCurrentPSNumUAVs = 0;
 		LeaveCriticalSection(&G->mCriticalSection);
 
-		if (ppRenderTargetViews) {
-			for (UINT i = 0; i < NumViews; ++i) {
-				if (!ppRenderTargetViews[i])
-					continue;
-				if (G->DumpUsage)
-					RecordRenderTargetInfo(ppRenderTargetViews[i], i);
-			}
-		}
+		if (G->DumpUsage) {
+			if (Profiling::mode == Profiling::Mode::SUMMARY)
+				Profiling::start(&profiling_state);
 
-		if (G->DumpUsage)
+			if (ppRenderTargetViews) {
+				for (UINT i = 0; i < NumViews; ++i) {
+					if (!ppRenderTargetViews[i])
+						continue;
+					RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+				}
+			}
+
 			RecordDepthStencil(pDepthStencilView);
+
+			if (Profiling::mode == Profiling::Mode::SUMMARY)
+				Profiling::end(&profiling_state, &Profiling::stat_overhead);
+		}
 	}
 
 	mOrigContext1->OMSetRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView);
@@ -2757,6 +2780,8 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 	/* [annotation] */
 	__in_ecount_opt(NumUAVs)  const UINT *pUAVInitialCounts)
 {
+	Profiling::State profiling_state;
+
 	if (G->hunting == HUNTING_MODE_ENABLED) {
 		EnterCriticalSection(&G->mCriticalSection);
 
@@ -2764,6 +2789,9 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 			mCurrentRenderTargets.clear();
 			mCurrentDepthTarget = NULL;
 			if (G->DumpUsage) {
+				if (Profiling::mode == Profiling::Mode::SUMMARY)
+					Profiling::start(&profiling_state);
+
 				if (ppRenderTargetViews) {
 					for (UINT i = 0; i < NumRTVs; ++i) {
 						if (ppRenderTargetViews[i])
@@ -2771,6 +2799,9 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 					}
 				}
 				RecordDepthStencil(pDepthStencilView);
+
+				if (Profiling::mode == Profiling::Mode::SUMMARY)
+					Profiling::end(&profiling_state, &Profiling::stat_overhead);
 			}
 		}
 

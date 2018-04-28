@@ -22,6 +22,7 @@ namespace Profiling {
 	Overhead draw_overhead;
 	Overhead map_overhead;
 	Overhead hash_tracking_overhead;
+	Overhead stat_overhead;
 	wstring text;
 	INT64 interval;
 	bool freeze;
@@ -56,6 +57,7 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 	LARGE_INTEGER draw_overhead;
 	LARGE_INTEGER map_overhead;
 	LARGE_INTEGER hash_tracking_overhead;
+	LARGE_INTEGER stat_overhead;
 	wchar_t buf[512];
 
 	// The overlay overhead should be a subset of the present overhead, but
@@ -76,15 +78,17 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 	draw_overhead.QuadPart = Profiling::draw_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 	map_overhead.QuadPart = Profiling::map_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 	hash_tracking_overhead.QuadPart = Profiling::hash_tracking_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+	stat_overhead.QuadPart = Profiling::stat_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 
 	Profiling::text += L" (Summary):\n";
 	_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
-			    L"   Present overhead: %7.2fus/frame ~%ffps\n"
-			    L"   Overlay overhead: %7.2fus/frame ~%ffps\n"
-			    L" Draw call overhead: %7.2fus/frame ~%ffps\n"
-			    L"Command lists total: %7.2fus/frame ~%ffps\n"
-			    L" Map/Unmap overhead: %7.2fus/frame ~%ffps\n"
-			    L"Hash Track overhead: %7.2fus/frame ~%ffps\n",
+			    L"     Present overhead: %7.2fus/frame ~%ffps\n"
+			    L"     Overlay overhead: %7.2fus/frame ~%ffps\n"
+			    L"   Draw call overhead: %7.2fus/frame ~%ffps\n"
+			    L"  Command lists total: %7.2fus/frame ~%ffps\n"
+			    L"   Map/Unmap overhead: %7.2fus/frame ~%ffps\n"
+			    L"track_texture_updates: %7.2fus/frame ~%ffps\n"
+			    L"  dump_usage overhead: %7.2fus/frame ~%ffps\n",
 			    (float)present_overhead.QuadPart / frames,
 			    60.0 * present_overhead.QuadPart / collection_duration.QuadPart,
 
@@ -101,7 +105,10 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 			    60.0 * map_overhead.QuadPart / collection_duration.QuadPart,
 
 			    (float)hash_tracking_overhead.QuadPart / frames,
-			    60.0 * hash_tracking_overhead.QuadPart / collection_duration.QuadPart
+			    60.0 * hash_tracking_overhead.QuadPart / collection_duration.QuadPart,
+
+			    (float)stat_overhead.QuadPart / frames,
+			    60.0 * stat_overhead.QuadPart / collection_duration.QuadPart
 	);
 	Profiling::text += buf;
 }
@@ -248,6 +255,7 @@ void Profiling::clear()
 	draw_overhead.clear();
 	map_overhead.clear();
 	hash_tracking_overhead.clear();
+	stat_overhead.clear();
 	freeze = false;
 
 	start_frame_no = G->frame_no;

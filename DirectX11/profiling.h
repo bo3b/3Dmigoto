@@ -31,6 +31,7 @@ namespace Profiling {
 	extern Overhead draw_overhead;
 	extern Overhead map_overhead;
 	extern Overhead hash_tracking_overhead;
+	extern Overhead stat_overhead;
 	extern std::wstring text;
 	extern INT64 interval;
 	extern bool freeze;
