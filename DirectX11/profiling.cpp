@@ -171,17 +171,26 @@ static void update_txt_commands(LARGE_INTEGER collection_duration, LARGE_INTEGER
 		pre_fps_cost = 60.0 * pre_time_spent.QuadPart / collection_duration.QuadPart;
 		post_fps_cost = 60.0 * post_time_spent.QuadPart / collection_duration.QuadPart;
 
-		_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
-				L"%5.0f %7.2fus %9f | %5.0f %7.2fus %9f %s\n",
-				ceil((float)cmd->pre_executions / frames),
-				(float)pre_time_spent.QuadPart / frames,
-				pre_fps_cost,
-				ceil((float)cmd->post_executions / frames),
-				(float)post_time_spent.QuadPart / frames,
-				post_fps_cost,
-				cmd->ini_line.c_str()
-		);
-		Profiling::text += buf;
+		if (cmd->pre_executions) {
+			_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
+					L"%5.0f %7.2fus %9f | ",
+					ceil((float)cmd->pre_executions / frames),
+					(float)pre_time_spent.QuadPart / frames,
+					pre_fps_cost);
+			Profiling::text += buf;
+		} else
+			Profiling::text += L"                          | ";
+		if (cmd->post_executions) {
+			_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
+					L"%5.0f %7.2fus %9f ",
+					ceil((float)cmd->post_executions / frames),
+					(float)post_time_spent.QuadPart / frames,
+					post_fps_cost);
+			Profiling::text += buf;
+		} else
+			Profiling::text += L"                          ";
+		Profiling::text += cmd->ini_line;
+		Profiling::text += L"\n";
 		// TODO: GPU time spent
 	}
 }
