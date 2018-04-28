@@ -2650,6 +2650,30 @@ float CommandListOperand::evaluate(CommandListState *state)
 	return 0;
 }
 
+bool CommandListOperand::static_evaluate(float *ret)
+{
+	NvU8 stereo = false;
+
+	switch (type) {
+		case ParamOverrideType::VALUE:
+			*ret = val;
+			return true;
+		case ParamOverrideType::RAW_SEPARATION:
+		case ParamOverrideType::CONVERGENCE:
+		case ParamOverrideType::EYE_SEPARATION:
+		case ParamOverrideType::STEREO_ACTIVE:
+			NvAPIOverride();
+			NvAPI_Stereo_IsEnabled(&stereo);
+			if (!stereo) {
+				*ret = 0.0;
+				return true;
+			}
+			break;
+	}
+
+	return false;
+}
+
 void ParamOverride::run(CommandListState *state)
 {
 	float *dest = &(G->iniParams[param_idx].*param_component);
@@ -2702,8 +2726,13 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 	// Check special keywords
 	type = lookup_enum_val<const wchar_t *, ParamOverrideType>
 		(ParamOverrideTypeNames, operand->c_str(), ParamOverrideType::INVALID);
-	if (type != ParamOverrideType::INVALID)
+	if (type != ParamOverrideType::INVALID) {
+		if (static_evaluate(&val)) {
+			LogInfo("   > Statically evaluated %S as %f\n", operand->c_str(), val);
+			type = ParamOverrideType::VALUE;
+		}
 		return true;
+	}
 
 	return false;
 }

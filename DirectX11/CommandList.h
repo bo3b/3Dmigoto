@@ -774,7 +774,7 @@ public:
 
 	bool parse(const wstring *operand, const wstring *ini_namespace);
 	float evaluate(CommandListState *state);
-	// TODO: float static_evaluate();
+	bool static_evaluate(float *ret);
 };
 class ParamOverride : public CommandListCommand {
 public:
