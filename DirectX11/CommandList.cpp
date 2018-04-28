@@ -2754,6 +2754,26 @@ bool CommandListOperand::optimise(HackerDevice *device)
 	return true;
 }
 
+bool CommandListExpression::parse(const wstring *expression, const wstring *ini_namespace, bool command_list_context)
+{
+	return operand.parse(expression, ini_namespace, command_list_context);
+}
+
+float CommandListExpression::evaluate(CommandListState *state, HackerDevice *device)
+{
+	return operand.evaluate(state, device);
+}
+
+bool CommandListExpression::static_evaluate(float *ret, HackerDevice *device)
+{
+	return operand.static_evaluate(ret, device);
+}
+
+bool CommandListExpression::optimise(HackerDevice *device)
+{
+	return operand.optimise(device);
+}
+
 void ParamOverride::run(CommandListState *state)
 {
 	float *dest = &(G->iniParams[param_idx].*param_component);

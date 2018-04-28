@@ -47,7 +47,7 @@ private:
 	TransitionType transition_type, release_transition_type;
 
 	bool is_conditional;
-	CommandListOperand condition;
+	CommandListExpression condition;
 
 	CommandList activate_command_list;
 	CommandList deactivate_command_list;
@@ -69,7 +69,7 @@ public:
 		 float convergence, int transition, int release_transition,
 		 TransitionType transition_type,
 		 TransitionType release_transition_type,
-		 bool is_conditional, CommandListOperand condition,
+		 bool is_conditional, CommandListExpression condition,
 		 CommandList activate_command_list, CommandList deactivate_command_list) :
 		mOverrideSeparation(separation),
 		mOverrideConvergence(convergence),
@@ -111,7 +111,7 @@ public:
 			int transition, int release_transition,
 			TransitionType transition_type,
 			TransitionType release_transition_type,
-			bool is_conditional, CommandListOperand condition,
+			bool is_conditional, CommandListExpression condition,
 			CommandList activate_command_list, CommandList deactivate_command_list) :
 		Override(params, separation, convergence,
 				transition, release_transition,

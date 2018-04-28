@@ -784,12 +784,23 @@ public:
 	bool static_evaluate(float *ret, HackerDevice *device=NULL);
 	bool optimise(HackerDevice *device);
 };
+
+class CommandListExpression {
+public:
+	CommandListOperand operand;
+
+	bool parse(const wstring *expression, const wstring *ini_namespace, bool command_list_context=true);
+	float evaluate(CommandListState *state, HackerDevice *device=NULL);
+	bool static_evaluate(float *ret, HackerDevice *device=NULL);
+	bool optimise(HackerDevice *device);
+};
+
 class ParamOverride : public CommandListCommand {
 public:
 	int param_idx;
 	float DirectX::XMFLOAT4::*param_component;
 
-	CommandListOperand expression;
+	CommandListExpression expression;
 
 	ParamOverride() :
 		param_idx(-1),
@@ -802,7 +813,7 @@ public:
 
 class IfCommand : public CommandListCommand {
 public:
-	CommandListOperand expression;
+	CommandListExpression expression;
 	bool pre_finalised, post_finalised;
 	wstring else_line;
 
@@ -883,7 +894,7 @@ public:
 
 class PerDrawStereoOverrideCommand : public CommandListCommand {
 public:
-	CommandListOperand expression;
+	CommandListExpression expression;
 	float val;
 	float saved;
 	bool restore_on_post;

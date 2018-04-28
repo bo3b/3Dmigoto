@@ -193,7 +193,7 @@ struct KeyOverrideCycleParam
 		return val;
 	}
 
-	bool as_ini_param(LPCWSTR section, CommandListOperand *operand)
+	bool as_ini_param(LPCWSTR section, CommandListExpression *expression)
 	{
 		wstring scur(cur);
 		wstring ini_namespace;
@@ -205,7 +205,7 @@ struct KeyOverrideCycleParam
 
 		get_section_namespace(section, &ini_namespace);
 
-		if (!operand->parse(&scur, &ini_namespace, false)) {
+		if (!expression->parse(&scur, &ini_namespace, false)) {
 			LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%S\"\n", cur);
 			return false;
 		}
@@ -244,7 +244,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 	wchar_t buf[8];
 	DirectX::XMFLOAT4 params[INI_PARAMS_SIZE];
 	bool is_conditional;
-	CommandListOperand condition_operand;
+	CommandListExpression condition_expression;
 	CommandList activate_command_list, deactivate_command_list;
 
 	wrap = GetIniBool(section, L"wrap", true, NULL);
@@ -306,7 +306,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 			params[j].w = w[j].as_float(FLT_MAX);
 		}
 
-		is_conditional = condition.as_ini_param(section, &condition_operand);
+		is_conditional = condition.as_ini_param(section, &condition_expression);
 		run.as_run_command(section, &activate_command_list, &deactivate_command_list);
 
 		separation.log(L"separation");
@@ -324,7 +324,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 			transition.as_int(0), release_transition.as_int(0),
 			transition_type.as_enum<const wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
 			release_transition_type.as_enum<const wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
-			is_conditional, condition_operand, activate_command_list, deactivate_command_list));
+			is_conditional, condition_expression, activate_command_list, deactivate_command_list));
 	}
 }
 
