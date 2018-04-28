@@ -744,25 +744,22 @@ static bool ParsePerDrawStereoOverride(const wchar_t *section,
 {
 	bool restore_on_post = !explicit_command_list && pre_command_list && post_command_list;
 	PerDrawStereoOverrideCommand *operation = NULL;
-	int ret, len1;
 
 	if (is_separation)
 		operation = new PerDrawSeparationOverrideCommand(restore_on_post);
 	else
 		operation = new PerDrawConvergenceOverrideCommand(restore_on_post);
 
-	// Try parsing value as a float
-	ret = swscanf_s(val->c_str(), L"%f%n", &operation->val, &len1);
-	if (ret != 0 && ret != EOF && len1 == val->length())
-		goto success;
-
 	// Try parsing value as a resource target for staging auto-convergence
+	// Do this first, because the operand parsing would treat these as for
+	// texture filtering
 	if (operation->staging_op.src.ParseTarget(val->c_str(), true, ini_namespace)) {
 		operation->staging_type = true;
 		goto success;
 	}
 
-	goto bail;
+	if (!operation->expression.parse(val, ini_namespace))
+		goto bail;
 
 success:
 	// Add to both command lists by default - the pre command list will set
@@ -1211,8 +1208,11 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
 			COMMAND_LIST_LOG(state, "  Restoring %s = %f\n", stereo_param_name(), saved);
 			set_stereo_value(state, saved);
 		} else {
-			if (!(did_set_value_on_pre = update_val(state)))
-				return;
+			if (staging_type) {
+				if (!(did_set_value_on_pre = update_val(state)))
+					return;
+			} else
+				val = expression.evaluate(state);
 
 			saved = get_stereo_value(state);
 
@@ -1230,8 +1230,11 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
 			set_stereo_value(state, val * saved);
 		}
 	} else {
-		if (!update_val(state))
-			return;
+		if (staging_type) {
+			if (!update_val(state))
+				return;
+		} else
+			val = expression.evaluate(state);
 
 		COMMAND_LIST_LOG(state, "  Setting %s = %f\n", stereo_param_name(), val);
 		set_stereo_value(state, val);

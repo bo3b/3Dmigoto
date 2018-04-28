@@ -880,6 +880,7 @@ public:
 
 class PerDrawStereoOverrideCommand : public CommandListCommand {
 public:
+	CommandListOperand expression;
 	float val;
 	float saved;
 	bool restore_on_post;
