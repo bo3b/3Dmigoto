@@ -40,7 +40,8 @@ static inline void profile_command_list_start(CommandList *command_list, Command
 {
 	bool inserted;
 
-	if (Profiling::mode == Profiling::Mode::NONE)
+	if ((Profiling::mode != Profiling::Mode::SUMMARY)
+	 && (Profiling::mode != Profiling::Mode::TOP_COMMAND_LISTS))
 		return;
 
 	inserted = command_lists_profiling.insert(command_list).second;
@@ -61,7 +62,8 @@ static inline void profile_command_list_end(CommandList *command_list, CommandLi
 {
 	LARGE_INTEGER list_end_time, duration;
 
-	if (Profiling::mode == Profiling::Mode::NONE)
+	if ((Profiling::mode != Profiling::Mode::SUMMARY)
+	 && (Profiling::mode != Profiling::Mode::TOP_COMMAND_LISTS))
 		return;
 
 	QueryPerformanceCounter(&list_end_time);
@@ -77,7 +79,7 @@ static inline void profile_command_list_cmd_start(CommandListCommand *cmd,
 {
 	bool inserted;
 
-	if (Profiling::mode == Profiling::Mode::NONE)
+	if (Profiling::mode != Profiling::Mode::TOP_COMMANDS)
 		return;
 
 	inserted = command_lists_cmd_profiling.insert(cmd).second;
@@ -96,7 +98,7 @@ static inline void profile_command_list_cmd_end(CommandListCommand *cmd, Command
 {
 	LARGE_INTEGER end_time;
 
-	if (Profiling::mode == Profiling::Mode::NONE)
+	if (Profiling::mode != Profiling::Mode::TOP_COMMANDS)
 		return;
 
 	QueryPerformanceCounter(&end_time);
