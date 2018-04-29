@@ -673,6 +673,33 @@ public:
 	void unmap(CommandListState *state);
 };
 
+class CommandListToken {
+public:
+	wstring token;
+	size_t token_pos;
+
+	CommandListToken(size_t token_pos, wstring token=L"") :
+		token_pos(token_pos), token(token)
+	{}
+	virtual ~CommandListToken() {};
+};
+class CommandListSyntaxTree : public CommandListToken {
+public:
+	CommandListSyntaxTree(size_t pos) :
+		CommandListToken(pos)
+	{}
+
+	typedef std::vector<std::shared_ptr<CommandListToken>> Tokens;
+	Tokens tokens;
+};
+
+class CommandListOperator : public CommandListToken {
+public:
+	CommandListOperator(size_t pos, wstring token) :
+		CommandListToken(pos, token)
+	{}
+};
+
 enum class ParamOverrideType {
 	INVALID,
 	VALUE,
@@ -754,7 +781,7 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"sli", ParamOverrideType::SLI},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
-class CommandListOperand {
+class CommandListOperand : public CommandListToken {
 	float process_texture_filter(CommandListState*);
 public:
 	// TODO: Break up into separate classes for each operand type
@@ -771,7 +798,8 @@ public:
 	// For scissor rectangle:
 	unsigned scissor;
 
-	CommandListOperand() :
+	CommandListOperand(size_t pos, wstring token=L"") :
+		CommandListToken(pos, token),
 		type(ParamOverrideType::INVALID),
 		val(FLT_MAX),
 		param_component(NULL),
@@ -788,6 +816,10 @@ public:
 class CommandListExpression {
 public:
 	CommandListOperand operand;
+
+	CommandListExpression() :
+		operand(0) // FIXME: Remove once we have a syntax tree in here
+	{}
 
 	bool parse(const wstring *expression, const wstring *ini_namespace, bool command_list_context=true);
 	float evaluate(CommandListState *state, HackerDevice *device=NULL);

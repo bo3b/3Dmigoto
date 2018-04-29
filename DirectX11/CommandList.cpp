@@ -2754,41 +2754,48 @@ bool CommandListOperand::optimise(HackerDevice *device)
 	return true;
 }
 
-enum class TokenType {
-	FLOAT,
-	IDENTIFIER,
-	OPERATOR,
-	RESOURCE_SLOT,
+static const wchar_t *operator_tokens[] = {
+	// Two character tokens first:
+	L"==", L"!=", L"//", L"<=", L">=", L"&&", L"||", L"**",
+	// Single character tokens last:
+	L"(", L")", L"!", L"*", L"/", L"%", L"+", L"-", L"<", L">",
+#if 0
+	// Proposed operator precedence
+	L"(", L")",
+	L"**", /* Exponential (Right associative) */
+	L"!", /* Unary+, Unary- (Right associative) */
+	L"*", L"//", L"/", L"%",
+	L"+", L"-", /* Addition, Subtraction */
+	L"<=", L">=", L"<", L">",
+	L"==", L"!=",
+	L"&&",
+	L"||",
+#endif
 };
 
-struct Token {
-	wstring text;
-	enum class TokenType type;
+class CommandListSyntaxError: public exception
+{
+public:
+	wstring msg;
+	size_t pos;
 
-	Token(wstring text, enum class TokenType type) :
-		text(text), type(type)
+	CommandListSyntaxError(wstring msg, size_t pos) :
+		msg(msg), pos(pos)
 	{}
 };
 
-static const wchar_t *operator_tokens[] = {
-	L"(", L")",
-	L"!",
-	L"*", L"/", L"%",
-	L"+", L"-", /* May be unary with higher precedence */
-	L"<=", L">=", L"<", L">"
-	L"==", L"!=",
-	L"&&", L"||",
-};
-
-static bool tokenise(const wstring *expression, vector<Token> *tokens, const wstring *ini_namespace)
+static void tokenise(const wstring *expression, CommandListSyntaxTree *tree, const wstring *ini_namespace, bool command_list_context)
 {
 	wstring remain = *expression;
 	ResourceCopyTarget texture_filter_target;
+	shared_ptr<CommandListOperand> operand;
 	wstring token;
 	size_t pos = 0;
+	size_t friendly_pos = 0;
 	float fval;
 	int ret;
 	int i;
+	bool last_was_operand = false;
 
 	LogInfo("    Tokenising \"%S\"\n", expression->c_str());
 
@@ -2797,8 +2804,20 @@ next_token:
 		// Skip whitespace:
 		pos = remain.find_first_not_of(L" \t", pos);
 		if (pos == wstring::npos)
-			return true;
+			return;
 		remain = remain.substr(pos);
+		friendly_pos += pos;
+
+		// Operators:
+		for (i = 0; i < ARRAYSIZE(operator_tokens); i++) {
+			if (!remain.compare(0, wcslen(operator_tokens[i]), operator_tokens[i])) {
+				pos = wcslen(operator_tokens[i]);
+				tree->tokens.emplace_back(make_shared<CommandListOperator>(friendly_pos, remain.substr(0, pos)));
+				LogInfo("      Operator: \"%S\"\n", tree->tokens.back()->token.c_str());
+				last_was_operand = false;
+				goto next_token; // continue would continue wrong loop
+			}
+		}
 
 		// Texture Filtering / Resource Slots:
 		// - Many of these slots include a hyphen character, which
@@ -2820,52 +2839,157 @@ next_token:
 			token = remain.substr(0, pos);
 			ret = texture_filter_target.ParseTarget(token.c_str(), true, ini_namespace);
 			if (ret) {
-				tokens->emplace_back(token, TokenType::RESOURCE_SLOT);
-				LogInfo("      Resource Slot: \"%S\"\n", tokens->back().text.c_str());
-				continue;
+				operand = make_shared<CommandListOperand>(friendly_pos, token);
+				if (operand->parse(&token, ini_namespace, command_list_context)) {
+					tree->tokens.emplace_back(std::move(operand));
+					LogInfo("      Resource Slot: \"%S\"\n", tree->tokens.back()->token.c_str());
+					if (last_was_operand)
+						throw CommandListSyntaxError(L"Expected: Operator", friendly_pos);
+					last_was_operand = true;
+					continue;
+				} else {
+					LogOverlay(LOG_DIRE, "BUG: Token parsed as resource slot, but not as operand: %S\n", token.c_str());
+					DoubleBeepExit();
+				}
 			}
 		}
 
-		// Operators:
-		for (i = 0; i < ARRAYSIZE(operator_tokens); i++) {
-			if (!remain.compare(0, wcslen(operator_tokens[i]), operator_tokens[i])) {
-				pos = wcslen(operator_tokens[i]);
-				tokens->emplace_back(remain.substr(0, pos), TokenType::OPERATOR);
-				LogInfo("      Operator: \"%S\"\n", tokens->back().text.c_str());
-				goto next_token; // continue would continue wrong loop
+		// Identifiers:
+		// - Parse this before floats to make sure that the special
+		//   cases "inf" and "nan" are identifiers by themselves, not
+		//   the start of some other identifier. Only applies to
+		//   vs2015+ as older toolchains lack parsing for these.
+		// - Identifiers cannot start with a number
+		if (remain[0] < '0' || remain[0] > '9') {
+			pos = remain.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_0123456789");
+			if (pos) {
+				token = remain.substr(0, pos);
+				operand = make_shared<CommandListOperand>(friendly_pos, token);
+				if (operand->parse(&token, ini_namespace, command_list_context)) {
+					tree->tokens.emplace_back(std::move(operand));
+					LogInfo("      Identifier: \"%S\"\n", tree->tokens.back()->token.c_str());
+					if (last_was_operand)
+						throw CommandListSyntaxError(L"Expected: Operator", friendly_pos);
+					last_was_operand = true;
+					continue;
+				}
+				throw CommandListSyntaxError(L"Unrecognised identifier: " + token, friendly_pos);
 			}
 		}
 
 		// Floats:
 		// - Must tokenise subtraction operation first
 		//   - Static optimisation will merge unary negation
-		// - Parse this before identifier to catch "nan", "inf", etc
-		//   (depends on modern C++ standard library - vs2015 or later)
+		// - Identifier match will catch "nan" and "inf" special cases
+		//   if the toolchain supports them
 		ret = swscanf_s(remain.c_str(), L"%f%zn", &fval, &pos);
 		if (ret != 0 && ret != EOF) {
-			tokens->emplace_back(remain.substr(0, pos), TokenType::FLOAT);
-			LogInfo("      Float: \"%S\"\n", tokens->back().text.c_str());
-			continue;
+			token = remain.substr(0, pos);
+			operand = make_shared<CommandListOperand>(friendly_pos, token);
+			if (operand->parse(&token, ini_namespace, command_list_context)) {
+				tree->tokens.emplace_back(std::move(operand));
+				LogInfo("      Float: \"%S\"\n", tree->tokens.back()->token.c_str());
+				if (last_was_operand)
+					throw CommandListSyntaxError(L"Expected: Operator", friendly_pos);
+				last_was_operand = true;
+				continue;
+			} else {
+				LogOverlay(LOG_DIRE, "BUG: Token parsed as float, but not as operand: %S\n", token.c_str());
+				DoubleBeepExit();
+			}
 		}
 
-		// Identifiers:
-		pos = remain.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_0123456789");
-		if (pos) {
-			tokens->emplace_back(remain.substr(0, pos), TokenType::IDENTIFIER);
-			LogInfo("      Identifier: \"%S\"\n", tokens->back().text.c_str());
-			continue;
-		}
-
-		return false;
+		throw CommandListSyntaxError(L"Parse error", friendly_pos);
 	}
+}
+
+static void group_parenthesis(CommandListSyntaxTree *tree)
+{
+	CommandListSyntaxTree::Tokens::iterator i;
+	CommandListSyntaxTree::Tokens::reverse_iterator rit;
+	CommandListOperator *rbracket, *lbracket;
+	std::shared_ptr<CommandListSyntaxTree> inner;
+
+	for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
+		rbracket = dynamic_cast<CommandListOperator*>(i->get());
+		if (rbracket && !rbracket->token.compare(L")")) {
+			for (rit = std::reverse_iterator<CommandListSyntaxTree::Tokens::iterator>(i); rit != tree->tokens.rend(); rit++) {
+				lbracket = dynamic_cast<CommandListOperator*>(rit->get());
+				if (lbracket && !lbracket->token.compare(L"(")) {
+					inner = std::make_shared<CommandListSyntaxTree>(lbracket->token_pos);
+					// XXX: Double check bounds are right:
+					inner->tokens.assign(rit.base(), i);
+					i = tree->tokens.erase(rit.base() - 1, i + 1);
+					i = tree->tokens.insert(i, std::move(inner));
+					goto continue_rbracket_search; // continue would continue wrong loop
+				}
+			}
+			throw CommandListSyntaxError(L"Unmatched )", rbracket->token_pos);
+		}
+	continue_rbracket_search: false;
+	}
+
+	for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
+		lbracket = dynamic_cast<CommandListOperator*>(i->get());
+		if (lbracket && !lbracket->token.compare(L"("))
+			throw CommandListSyntaxError(L"Unmatched (", lbracket->token_pos);
+	}
+}
+
+static void _log_syntax_tree(CommandListSyntaxTree *tree)
+{
+	CommandListSyntaxTree::Tokens::iterator i;
+	CommandListSyntaxTree *inner;
+	CommandListOperator *op;
+	CommandListOperand *operand;
+
+	LogInfoNoNL("SyntaxTree[ ");
+	for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
+		inner = dynamic_cast<CommandListSyntaxTree*>(i->get());
+		op = dynamic_cast<CommandListOperator*>(i->get());
+		operand = dynamic_cast<CommandListOperand*>(i->get());
+		if (inner) {
+			_log_syntax_tree(inner);
+		} else if (op) {
+			LogInfoNoNL("Operator \"%S\"", (*i)->token.c_str());
+		} else if (operand) {
+			LogInfoNoNL("Operand \"%S\"", (*i)->token.c_str());
+		} else {
+			LogInfoNoNL("Token \"%S\"", (*i)->token.c_str());
+		}
+		if (i != tree->tokens.end()-1)
+			LogInfoNoNL(", ");
+	}
+	LogInfoNoNL(" ]");
+}
+
+static void log_syntax_tree(CommandListSyntaxTree *tree)
+{
+	_log_syntax_tree(tree);
+	LogInfo("\n");
 }
 
 bool CommandListExpression::parse(const wstring *expression, const wstring *ini_namespace, bool command_list_context)
 {
-	vector<Token> tokens;
+	CommandListSyntaxTree tree(0);
 
-	if (!tokenise(expression, &tokens, ini_namespace))
+	try {
+		tokenise(expression, &tree, ini_namespace, command_list_context);
+
+		LogInfo("After tokenisation, before parenthesis grouping:\n");
+		log_syntax_tree(&tree);
+
+		group_parenthesis(&tree);
+
+		LogInfo("After parenthesis grouping:\n");
+		log_syntax_tree(&tree);
+	} catch (const CommandListSyntaxError &e) {
+		LogOverlay(LOG_WARNING_MONOSPACE,
+				"Syntax Error: %S\n"
+				"              %*s: %S\n",
+				expression->c_str(), (int)e.pos+1, "^", e.msg.c_str());
 		return false;
+	}
 
 	return operand.parse(expression, ini_namespace, command_list_context);
 }
