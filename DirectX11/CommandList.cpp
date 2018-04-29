@@ -2937,11 +2937,14 @@ public: \
 }; \
 static CommandListOperatorFactory<name##T> name;
 
-// TODO: DEFINE_OPERATOR(exponent_operator,      "**", (pow(lhs, rhs))); // right-associative binary operator
-
+// Highest level of precedence, allows for negative numbers
 DEFINE_OPERATOR(unary_not_operator,     "!",  (!rhs));
 DEFINE_OPERATOR(unary_plus_operator,    "+",  (+rhs));
 DEFINE_OPERATOR(unary_negate_operator,  "-",  (-rhs));
+
+// High level of precedence, right-associative. Lower than unary operators, so
+// that 4**-2 works for square root
+DEFINE_OPERATOR(exponent_operator,      "**", (pow(lhs, rhs)));
 
 DEFINE_OPERATOR(multiplication_operator,"*",  (lhs * rhs));
 DEFINE_OPERATOR(division_operator,      "/",  (lhs / rhs));
@@ -2959,8 +2962,9 @@ DEFINE_OPERATOR(greater_equal_operator, ">=", (lhs >= rhs));
 DEFINE_OPERATOR(equality_operator,      "==", (lhs == rhs));
 DEFINE_OPERATOR(inequality_operator,    "!=", (lhs != rhs));
 
-DEFINE_OPERATOR(or_operator,            "||", (lhs || rhs));
 DEFINE_OPERATOR(and_operator,           "&&", (lhs && rhs));
+
+DEFINE_OPERATOR(or_operator,            "||", (lhs || rhs));
 
 // TODO: Ternary if operator
 
@@ -2968,6 +2972,9 @@ static CommandListOperatorFactoryBase *unary_operators[] = {
 	&unary_not_operator,
 	&unary_negate_operator,
 	&unary_plus_operator,
+};
+static CommandListOperatorFactoryBase *exponent_operators[] = {
+	&exponent_operator,
 };
 static CommandListOperatorFactoryBase *multi_division_operators[] = {
 	&multiplication_operator,
@@ -2989,9 +2996,11 @@ static CommandListOperatorFactoryBase *equality_operators[] = {
 	&equality_operator,
 	&inequality_operator,
 };
-static CommandListOperatorFactoryBase *logical_operators[] = {
-	&or_operator,
+static CommandListOperatorFactoryBase *and_operators[] = {
 	&and_operator,
+};
+static CommandListOperatorFactoryBase *or_operators[] = {
+	&or_operator,
 };
 
 static CommandListSyntaxTree::Tokens::iterator transform_operators_token(
@@ -3064,7 +3073,11 @@ static void transform_operators_visit(CommandListSyntaxTree *tree,
 				rit = std::reverse_iterator<CommandListSyntaxTree::Tokens::iterator>(i + 1);
 			}
 		} else {
-			throw CommandListSyntaxError(L"FIXME: Implement right-associative binary operators", 0);
+			for (rit = tree->tokens.rbegin() + 1; rit < tree->tokens.rend() - 1; rit++) {
+				// C++ gotcha: reverse_iterator::base() points to the *next* element
+				i = transform_operators_token(tree, rit.base() - 1, factories, num_factories, unary);
+				rit = std::reverse_iterator<CommandListSyntaxTree::Tokens::iterator>(i + 1);
+			}
 		}
 	} else {
 		if (unary) {
@@ -3176,18 +3189,17 @@ bool CommandListExpression::parse(const wstring *expression, const wstring *ini_
 
 	try {
 		tokenise(expression, &tree, ini_namespace, command_list_context);
-		// log_syntax_tree(&tree, "After tokenisation:\n");
 
 		group_parenthesis(&tree);
-		// log_syntax_tree(&tree, "After grouping parenthesis:\n");
 
-		// TODO: Unary operators
+		transform_operators_recursive(&tree, unary_operators, ARRAYSIZE(unary_operators), true, true);
+		transform_operators_recursive(&tree, exponent_operators, ARRAYSIZE(exponent_operators), true, false);
 		transform_operators_recursive(&tree, multi_division_operators, ARRAYSIZE(multi_division_operators), false, false);
 		transform_operators_recursive(&tree, add_subtract_operators, ARRAYSIZE(add_subtract_operators), false, false);
 		transform_operators_recursive(&tree, relational_operators, ARRAYSIZE(relational_operators), false, false);
 		transform_operators_recursive(&tree, equality_operators, ARRAYSIZE(equality_operators), false, false);
-		transform_operators_recursive(&tree, logical_operators, ARRAYSIZE(logical_operators), false, false);
-		// log_syntax_tree(&tree, "After transforming operators:\n");
+		transform_operators_recursive(&tree, and_operators, ARRAYSIZE(and_operators), false, false);
+		transform_operators_recursive(&tree, or_operators, ARRAYSIZE(or_operators), false, false);
 
 		evaluatable = tree.finalise();
 		log_syntax_tree(evaluatable, "Final syntax tree:\n");
