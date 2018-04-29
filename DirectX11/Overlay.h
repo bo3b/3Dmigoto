@@ -35,6 +35,7 @@ class HackerSwapChain;
 enum LogLevel {
 	LOG_DIRE,
 	LOG_WARNING,
+	LOG_WARNING_MONOSPACE,
 	LOG_NOTICE,
 	LOG_INFO,
 
@@ -59,9 +60,6 @@ private:
 	HackerContext* mHackerContext;
 
 	DirectX::XMUINT2 mResolution;
-	std::unique_ptr<DirectX::SpriteFont> mFont;
-	std::unique_ptr<DirectX::SpriteFont> mFontNotifications;
-	std::unique_ptr<DirectX::SpriteFont> mFontProfiling;
 	std::unique_ptr<DirectX::SpriteBatch> mSpriteBatch;
 	std::unique_ptr<DirectX::CommonStates> mStates;
 	std::unique_ptr<DirectX::BasicEffect> mEffect;
@@ -124,6 +122,10 @@ private:
 	void DrawOutlinedString(DirectX::SpriteFont *font, wchar_t const *text, DirectX::XMFLOAT2 const &position, DirectX::FXMVECTOR color);
 
 public:
+	std::unique_ptr<DirectX::SpriteFont> mFont;
+	std::unique_ptr<DirectX::SpriteFont> mFontNotifications;
+	std::unique_ptr<DirectX::SpriteFont> mFontProfiling;
+
 	Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain);
 	~Overlay();
 

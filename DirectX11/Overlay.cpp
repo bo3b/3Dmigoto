@@ -29,13 +29,15 @@ struct LogLevelParams {
 	DirectX::XMVECTORF32 colour;
 	DWORD duration;
 	bool hide_in_release;
+	std::unique_ptr<DirectX::SpriteFont> Overlay::*font;
 };
 
 struct LogLevelParams log_levels[] = {
-	{ DirectX::Colors::Red,       20000, false }, // DIRE
-	{ DirectX::Colors::OrangeRed, 10000, false }, // WARNING
-	{ DirectX::Colors::Orange,     5000,  true }, // NOTICE
-	{ DirectX::Colors::LimeGreen,  2000,  true }, // INFO
+	{ DirectX::Colors::Red,       20000, false, &Overlay::mFontNotifications }, // DIRE
+	{ DirectX::Colors::OrangeRed, 10000, false, &Overlay::mFontNotifications }, // WARNING
+	{ DirectX::Colors::OrangeRed, 10000, false, &Overlay::mFontProfiling     }, // WARNING_MONOSPACE
+	{ DirectX::Colors::Orange,     5000,  true, &Overlay::mFontNotifications }, // NOTICE
+	{ DirectX::Colors::LimeGreen,  2000,  true, &Overlay::mFontNotifications }, // INFO
 };
 
 // Side note: Not really stoked with C++ string handling.  There are like 4 or
@@ -690,11 +692,11 @@ void Overlay::DrawNotices(float *y)
 				continue;
 			}
 
-			strSize = mFontNotifications->MeasureString(notice->message.c_str());
+			strSize = (this->*log_levels[level].font)->MeasureString(notice->message.c_str());
 
 			DrawRectangle(0, *y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
 
-			mFontNotifications->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, *y), log_levels[level].colour);
+			(this->*log_levels[level].font)->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, *y), log_levels[level].colour);
 			*y += strSize.y + 5;
 
 			has_notice = true;
