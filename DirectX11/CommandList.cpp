@@ -491,7 +491,7 @@ static bool ParseClearView(const wchar_t *section,
 	// allows a single value to be specified to clear all channels in RTVs
 	// and UAVs. Note that this is done after noting the DSV values because
 	// we never want to propagate the depth value to the stencil value:
-	for (idx++; idx < 4; idx++) {
+	for (idx = max(1, idx); idx < 4; idx++) {
 		operation->uval[idx] = operation->uval[idx - 1];
 		operation->fval[idx] = operation->fval[idx - 1];
 	}
