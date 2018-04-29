@@ -693,25 +693,58 @@ public:
 };
 class CommandListOperandBase : public CommandListToken {
 public:
-	CommandListOperandBase(size_t pos, wstring token=L"") :
-		CommandListToken(pos, token)
-	{}
+	using CommandListToken::CommandListToken;
 };
-class CommandListSyntaxTree : public CommandListOperandBase {
+class CommandListFinalisable {
 public:
-	CommandListSyntaxTree(size_t pos) :
-		CommandListOperandBase(pos)
-	{}
-
+	virtual std::shared_ptr<CommandListEvaluatable> finalise() = 0;
+};
+class CommandListSyntaxTree : public CommandListOperandBase, public CommandListFinalisable {
+public:
 	typedef std::vector<std::shared_ptr<CommandListToken>> Tokens;
 	Tokens tokens;
+
+	using CommandListOperandBase::CommandListOperandBase;
+	std::shared_ptr<CommandListEvaluatable> finalise() override;
 };
 
-class CommandListOperator : public CommandListToken {
+class CommandListOperatorToken : public CommandListToken {
 public:
-	CommandListOperator(size_t pos, wstring token) :
-		CommandListToken(pos, token)
+	using CommandListToken::CommandListToken;
+};
+
+class CommandListOperator : public CommandListOperatorToken, public CommandListEvaluatable, public CommandListFinalisable {
+public:
+	std::shared_ptr<CommandListToken> lhs_tree;
+	std::shared_ptr<CommandListToken> rhs_tree;
+	std::shared_ptr<CommandListEvaluatable> lhs;
+	std::shared_ptr<CommandListEvaluatable> rhs;
+
+	CommandListOperator(
+			std::shared_ptr<CommandListToken> lhs,
+			CommandListOperatorToken &t,
+			std::shared_ptr<CommandListToken> rhs
+		) : CommandListOperatorToken(t), lhs_tree(lhs), rhs_tree(rhs)
 	{}
+
+	std::shared_ptr<CommandListEvaluatable> finalise() override;
+	float evaluate(CommandListState *state, HackerDevice *device=NULL) override;
+	bool static_evaluate(float *ret, HackerDevice *device=NULL) override;
+
+	// Override these for each operator:
+	// static wchar_t* pattern() { return L"<PATTERN>"; }
+	virtual float evaluate(float lhs, float rhs) = 0;
+	// Defaults are the common left-associative binary operators:
+	static const bool right_associative() { return false; }
+	static const bool unary() { return false; }
+};
+
+class CommandListEqualityOperator : public CommandListOperator {
+public:
+	using CommandListOperator::CommandListOperator;
+
+	static const wchar_t* pattern() { return L"=="; }
+	float evaluate(float lhs, float rhs) override { return lhs == rhs; }
 };
 
 enum class ParamOverrideType {

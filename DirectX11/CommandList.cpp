@@ -2815,7 +2815,7 @@ next_token:
 		for (i = 0; i < ARRAYSIZE(operator_tokens); i++) {
 			if (!remain.compare(0, wcslen(operator_tokens[i]), operator_tokens[i])) {
 				pos = wcslen(operator_tokens[i]);
-				tree->tokens.emplace_back(make_shared<CommandListOperator>(friendly_pos, remain.substr(0, pos)));
+				tree->tokens.emplace_back(make_shared<CommandListOperatorToken>(friendly_pos, remain.substr(0, pos)));
 				LogInfo("      Operator: \"%S\"\n", tree->tokens.back()->token.c_str());
 				last_was_operand = false;
 				goto next_token; // continue would continue wrong loop
@@ -2910,14 +2910,14 @@ static void group_parenthesis(CommandListSyntaxTree *tree)
 {
 	CommandListSyntaxTree::Tokens::iterator i;
 	CommandListSyntaxTree::Tokens::reverse_iterator rit;
-	CommandListOperator *rbracket, *lbracket;
+	CommandListOperatorToken *rbracket, *lbracket;
 	std::shared_ptr<CommandListSyntaxTree> inner;
 
 	for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
-		rbracket = dynamic_cast<CommandListOperator*>(i->get());
+		rbracket = dynamic_cast<CommandListOperatorToken*>(i->get());
 		if (rbracket && !rbracket->token.compare(L")")) {
 			for (rit = std::reverse_iterator<CommandListSyntaxTree::Tokens::iterator>(i); rit != tree->tokens.rend(); rit++) {
-				lbracket = dynamic_cast<CommandListOperator*>(rit->get());
+				lbracket = dynamic_cast<CommandListOperatorToken*>(rit->get());
 				if (lbracket && !lbracket->token.compare(L"(")) {
 					inner = std::make_shared<CommandListSyntaxTree>(lbracket->token_pos);
 					// XXX: Double check bounds are right:
@@ -2933,9 +2933,43 @@ static void group_parenthesis(CommandListSyntaxTree *tree)
 	}
 
 	for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
-		lbracket = dynamic_cast<CommandListOperator*>(i->get());
+		lbracket = dynamic_cast<CommandListOperatorToken*>(i->get());
 		if (lbracket && !lbracket->token.compare(L"("))
 			throw CommandListSyntaxError(L"Unmatched (", lbracket->token_pos);
+	}
+}
+
+//template <class CommandListEqualityOperator>
+static void convert_operators(CommandListSyntaxTree *tree)
+{
+	CommandListSyntaxTree::Tokens::iterator i;
+	std::shared_ptr<CommandListOperatorToken> token;
+	std::shared_ptr<CommandListEqualityOperator> op;
+	std::shared_ptr<CommandListOperandBase> lhs;
+	std::shared_ptr<CommandListOperandBase> rhs;
+
+	if (CommandListEqualityOperator::right_associative())
+		throw CommandListSyntaxError(L"FIXME: Implement right-associativity", 0);
+	if (CommandListEqualityOperator::unary())
+		throw CommandListSyntaxError(L"FIXME: Implement unary operators", 0);
+
+	for (i = tree->tokens.begin() + 1; i < tree->tokens.end() - 1; i++) {
+		token = dynamic_pointer_cast<CommandListOperatorToken>(*i);
+		// TODO: Walk recursively down syntax trees and operators
+		if (token && !token->token.compare(CommandListEqualityOperator::pattern())) {
+			LogInfo("Operator matched\n");
+			lhs = dynamic_pointer_cast<CommandListOperandBase>(*(i-1));
+			if (!lhs) // FIXME: Drop this for unary-
+				throw CommandListSyntaxError(L"Expected: Operand", lhs->token_pos);
+			rhs = dynamic_pointer_cast<CommandListOperandBase>(*(i+1));
+			if (!rhs) // FIXME: Drop this for unary-
+				throw CommandListSyntaxError(L"Expected: Operand", rhs->token_pos);
+			if (lhs && rhs) {
+				op = std::make_shared<CommandListEqualityOperator>(std::move(lhs), *token, std::move(rhs));
+				i = tree->tokens.erase(i - 1, i + 2);
+				i = tree->tokens.insert(i, std::move(op));
+			}
+		}
 	}
 }
 
@@ -2943,13 +2977,13 @@ static void _log_syntax_tree(CommandListSyntaxTree *tree)
 {
 	CommandListSyntaxTree::Tokens::iterator i;
 	CommandListSyntaxTree *inner;
-	CommandListOperator *op;
+	CommandListOperatorToken *op;
 	CommandListOperand *operand;
 
 	LogInfoNoNL("SyntaxTree[ ");
 	for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
 		inner = dynamic_cast<CommandListSyntaxTree*>(i->get());
-		op = dynamic_cast<CommandListOperator*>(i->get());
+		op = dynamic_cast<CommandListOperatorToken*>(i->get());
 		operand = dynamic_cast<CommandListOperand*>(i->get());
 		if (inner) {
 			_log_syntax_tree(inner);
@@ -2978,24 +3012,19 @@ bool CommandListExpression::parse(const wstring *expression, const wstring *ini_
 
 	try {
 		tokenise(expression, &tree, ini_namespace, command_list_context);
-
 		LogInfo("After tokenisation, before parenthesis grouping:\n");
 		log_syntax_tree(&tree);
 
 		group_parenthesis(&tree);
-
 		LogInfo("After parenthesis grouping:\n");
 		log_syntax_tree(&tree);
 
-		if (tree.tokens.empty())
-			throw CommandListSyntaxError(L"Empty expression", 0);
+		//convert_operators<CommandListEqualityOperator>(&tree);
+		convert_operators(&tree);
+		LogInfo("After processing == operators:\n");
+		log_syntax_tree(&tree);
 
-		if (tree.tokens.size() > 1)
-			throw CommandListSyntaxError(L"Unexpected", tree.tokens[1]->token_pos);
-
-		evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(tree.tokens[0]);
-		if (!evaluatable)
-			throw CommandListSyntaxError(L"Syntax tree not evaluatable", 0);
+		evaluatable = tree.finalise();
 		return true;
 	} catch (const CommandListSyntaxError &e) {
 		LogOverlay(LOG_WARNING_MONOSPACE,
@@ -3025,6 +3054,96 @@ bool CommandListExpression::optimise(HackerDevice *device)
 	}
 	return evaluatable->optimise(device);
 }
+
+std::shared_ptr<CommandListEvaluatable> CommandListOperator::finalise()
+{
+	auto lhs_finalisable = dynamic_pointer_cast<CommandListFinalisable>(lhs_tree);
+	auto rhs_finalisable = dynamic_pointer_cast<CommandListFinalisable>(rhs_tree);
+	auto lhs_evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(lhs_tree);
+	auto rhs_evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(rhs_tree);
+
+	if (!lhs && lhs_finalisable)
+		lhs = lhs_finalisable->finalise();
+	if (!lhs && lhs_evaluatable)
+		lhs = lhs_evaluatable;
+	if (!lhs)
+		throw CommandListSyntaxError(L"BUG: LHS operand invalid", token_pos);
+
+	if (!rhs && rhs_finalisable)
+		rhs = rhs_finalisable->finalise();
+	if (!rhs && rhs_evaluatable)
+		rhs = rhs_evaluatable;
+	if (!rhs)
+		throw CommandListSyntaxError(L"BUG: RHS operand invalid", token_pos);
+
+	return nullptr;
+}
+
+std::shared_ptr<CommandListEvaluatable> CommandListSyntaxTree::finalise()
+{
+	std::shared_ptr<CommandListFinalisable> finalisable;
+	std::shared_ptr<CommandListEvaluatable> evaluatable;
+	std::shared_ptr<CommandListToken> token;
+	Tokens::iterator i;
+
+	for (i = tokens.begin(); i != tokens.end(); i++) {
+		finalisable = dynamic_pointer_cast<CommandListFinalisable>(*i);
+		if (finalisable) {
+			evaluatable = finalisable->finalise();
+			if (evaluatable) {
+				// A recursive syntax tree has been finalised
+				// and we replace it with its sole evaluatable
+				// contents:
+				token = dynamic_pointer_cast<CommandListToken>(evaluatable);
+				if (!token) {
+					LogInfo("BUG: finalised token did not cast back\n");
+					DoubleBeepExit();
+				}
+				i = tokens.erase(i);
+				i = tokens.insert(i, std::move(token));
+			}
+		}
+	}
+
+	// A finalised syntax tree should be reduced to a single evaluatable
+	// operator/operand, which we pass back up the stack to replace this
+	// tree
+	if (tokens.empty())
+		throw CommandListSyntaxError(L"Empty expression", 0);
+
+	if (tokens.size() > 1)
+		throw CommandListSyntaxError(L"Unexpected", tokens[1]->token_pos);
+
+	evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(tokens[0]);
+	if (!evaluatable)
+		throw CommandListSyntaxError(L"Non-evaluatable", tokens[0]->token_pos);
+
+	return evaluatable;
+}
+
+float CommandListOperator::evaluate(CommandListState *state, HackerDevice *device)
+{
+	return evaluate(lhs->evaluate(state, device), rhs->evaluate(state, device));
+}
+
+bool CommandListOperator::static_evaluate(float *ret, HackerDevice *device)
+{
+	float lhs_static, rhs_static;
+
+	if (lhs->static_evaluate(&lhs_static, device) && rhs->static_evaluate(&rhs_static, device)) {
+		if (ret)
+			*ret = evaluate(lhs_static, rhs_static);
+		return true;
+	}
+
+	return false;
+}
+
+// TODO bool CommandListOperator::optimise(HackerDevice *device)
+// TODO {
+// TODO 	// FIXME: Stub
+// TODO 	return false;
+// TODO }
 
 void ParamOverride::run(CommandListState *state)
 {
