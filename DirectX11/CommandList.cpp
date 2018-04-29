@@ -268,7 +268,7 @@ void optimise_command_lists(HackerDevice *device)
 				ignore_cto = ignore_cto_post;
 
 			for (i = 0; i < command_list->commands.size(); ) {
-				LogInfo("Optimising %S\n", command_list->commands[i]->ini_line.c_str());
+				LogDebug("Optimising %S\n", command_list->commands[i]->ini_line.c_str());
 				if (command_list->commands[i]->optimise(device))
 					making_progress = true;
 
@@ -2800,7 +2800,7 @@ static void tokenise(const wstring *expression, CommandListSyntaxTree *tree, con
 	int i;
 	bool last_was_operand = false;
 
-	LogInfo("    Tokenising \"%S\"\n", expression->c_str());
+	LogDebug("    Tokenising \"%S\"\n", expression->c_str());
 
 	while (true) {
 next_token:
@@ -2816,7 +2816,7 @@ next_token:
 			if (!remain.compare(0, wcslen(operator_tokens[i]), operator_tokens[i])) {
 				pos = wcslen(operator_tokens[i]);
 				tree->tokens.emplace_back(make_shared<CommandListOperatorToken>(friendly_pos, remain.substr(0, pos)));
-				LogInfo("      Operator: \"%S\"\n", tree->tokens.back()->token.c_str());
+				LogDebug("      Operator: \"%S\"\n", tree->tokens.back()->token.c_str());
 				last_was_operand = false;
 				goto next_token; // continue would continue wrong loop
 			}
@@ -2845,7 +2845,7 @@ next_token:
 				operand = make_shared<CommandListOperand>(friendly_pos, token);
 				if (operand->parse(&token, ini_namespace, command_list_context)) {
 					tree->tokens.emplace_back(std::move(operand));
-					LogInfo("      Resource Slot: \"%S\"\n", tree->tokens.back()->token.c_str());
+					LogDebug("      Resource Slot: \"%S\"\n", tree->tokens.back()->token.c_str());
 					if (last_was_operand)
 						throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
 					last_was_operand = true;
@@ -2870,7 +2870,7 @@ next_token:
 				operand = make_shared<CommandListOperand>(friendly_pos, token);
 				if (operand->parse(&token, ini_namespace, command_list_context)) {
 					tree->tokens.emplace_back(std::move(operand));
-					LogInfo("      Identifier: \"%S\"\n", tree->tokens.back()->token.c_str());
+					LogDebug("      Identifier: \"%S\"\n", tree->tokens.back()->token.c_str());
 					if (last_was_operand)
 						throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
 					last_was_operand = true;
@@ -2891,7 +2891,7 @@ next_token:
 			operand = make_shared<CommandListOperand>(friendly_pos, token);
 			if (operand->parse(&token, ini_namespace, command_list_context)) {
 				tree->tokens.emplace_back(std::move(operand));
-				LogInfo("      Float: \"%S\"\n", tree->tokens.back()->token.c_str());
+				LogDebug("      Float: \"%S\"\n", tree->tokens.back()->token.c_str());
 				if (last_was_operand)
 					throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
 				last_was_operand = true;
@@ -2980,8 +2980,13 @@ static void transform_operators(CommandListSyntaxTree *tree,
 	if (unary)
 		throw CommandListSyntaxError(L"FIXME: Implement unary operators", 0);
 
+	for (auto &inner: tree->walk())
+		transform_operators(inner.get(), factories, num_factories, right_associative, unary);
+
+	// Check for operators. Since this is currently only binary operators,
+	// skip the first and last nodes as they must be operands, and this way
+	// I don't have to worry about bounds checks.
 	for (i = tree->tokens.begin() + 1; i < tree->tokens.end() - 1; i++) {
-		// TODO: Walk recursively down syntax trees and operators
 		token = dynamic_pointer_cast<CommandListOperatorToken>(*i);
 		if (!token)
 			continue;
@@ -3010,6 +3015,12 @@ static void _log_token(std::shared_ptr<CommandListToken> token)
 	CommandListOperatorToken *op_tok;
 	CommandListOperand *operand;
 
+	if (!token)
+		return;
+
+	// Can't use CommandListWalkable here, because it only walks over inner
+	// syntax trees and this debug dumper needs to walk over everything
+
 	inner = dynamic_cast<CommandListSyntaxTree*>(token.get());
 	op = dynamic_cast<CommandListOperator*>(token.get());
 	op_tok = dynamic_cast<CommandListOperatorToken*>(token.get());
@@ -3020,10 +3031,14 @@ static void _log_token(std::shared_ptr<CommandListToken> token)
 		LogInfoNoNL("Operator \"%S\"[ ", token->token.c_str());
 		if (op->lhs_tree)
 			_log_token(op->lhs_tree);
-		if (op->lhs_tree && op->rhs_tree)
+		else if (op->lhs)
+			_log_token(dynamic_pointer_cast<CommandListToken>(op->lhs));
+		if ((op->lhs_tree || op->lhs) && (op->rhs_tree || op->rhs))
 			LogInfoNoNL(", ");
 		if (op->rhs_tree)
 			_log_token(op->rhs_tree);
+		else if (op->rhs)
+			_log_token(dynamic_pointer_cast<CommandListToken>(op->rhs));
 		LogInfoNoNL(" ]");
 	} else if (op_tok) {
 		LogInfoNoNL("OperatorToken \"%S\"", token->token.c_str());
@@ -3046,9 +3061,14 @@ static void _log_syntax_tree(CommandListSyntaxTree *tree)
 	LogInfoNoNL(" ]");
 }
 
-static void log_syntax_tree(CommandListSyntaxTree *tree)
+template<class T>
+static void log_syntax_tree(T token, const char *msg)
 {
-	_log_syntax_tree(tree);
+	if (!gLogDebug)
+		return;
+
+	LogInfo(msg);
+	_log_token(dynamic_pointer_cast<CommandListToken>(token));
 	LogInfo("\n");
 }
 
@@ -3058,18 +3078,13 @@ bool CommandListExpression::parse(const wstring *expression, const wstring *ini_
 
 	try {
 		tokenise(expression, &tree, ini_namespace, command_list_context);
-		LogInfo("After tokenisation, before parenthesis grouping:\n");
-		log_syntax_tree(&tree);
 
 		group_parenthesis(&tree);
-		LogInfo("After parenthesis grouping:\n");
-		log_syntax_tree(&tree);
 
 		transform_operators(&tree, command_list_operator_factories, ARRAYSIZE(command_list_operator_factories), false, false);
-		LogInfo("After processing ==, != operators:\n");
-		log_syntax_tree(&tree);
 
 		evaluatable = tree.finalise();
+		log_syntax_tree(evaluatable, "Final syntax tree:\n");
 		return true;
 	} catch (const CommandListSyntaxError &e) {
 		LogOverlay(LOG_WARNING_MONOSPACE,
@@ -3184,6 +3199,21 @@ std::shared_ptr<CommandListEvaluatable> CommandListSyntaxTree::finalise()
 	return evaluatable;
 }
 
+CommandListSyntaxTree::Walk CommandListSyntaxTree::walk()
+{
+	Walk ret;
+	std::shared_ptr<CommandListSyntaxTree> inner;
+	Tokens::iterator i;
+
+	for (i = tokens.begin(); i != tokens.end(); i++) {
+		inner = dynamic_pointer_cast<CommandListSyntaxTree>(*i);
+		if (inner)
+			ret.push_back(std::move(inner));
+	}
+
+	return ret;
+}
+
 float CommandListOperator::evaluate(CommandListState *state, HackerDevice *device)
 {
 	return evaluate(lhs->evaluate(state, device), rhs->evaluate(state, device));
@@ -3207,6 +3237,23 @@ bool CommandListOperator::static_evaluate(float *ret, HackerDevice *device)
 // TODO 	// FIXME: Stub
 // TODO 	return false;
 // TODO }
+
+CommandListSyntaxTree::Walk CommandListOperator::walk()
+{
+	Walk ret;
+	std::shared_ptr<CommandListSyntaxTree> lhs;
+	std::shared_ptr<CommandListSyntaxTree> rhs;
+
+	lhs = dynamic_pointer_cast<CommandListSyntaxTree>(lhs_tree);
+	rhs = dynamic_pointer_cast<CommandListSyntaxTree>(rhs_tree);
+
+	if (lhs)
+		ret.push_back(std::move(lhs));
+	if (rhs)
+		ret.push_back(std::move(rhs));
+
+	return ret;
+}
 
 void ParamOverride::run(CommandListState *state)
 {

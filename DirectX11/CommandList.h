@@ -712,16 +712,30 @@ public:
 	virtual std::shared_ptr<CommandListEvaluatable> finalise() = 0;
 };
 
+// Signifies that a node contains other syntax trees that can be walked over.
+// Keeping things simple by just returning a vector of contained syntax trees
+// that the caller can iterate over - note that this vector will not iterate
+// over all the tokens in those syntax trees, just the trees themselves.
+// Alternatives are implementing our own iterator, or the visitor pattern.
+class CommandListSyntaxTree;
+class CommandListWalkable {
+public:
+	typedef std::vector<std::shared_ptr<CommandListSyntaxTree>> Walk;
+	virtual Walk walk() = 0;
+};
+
 class CommandListSyntaxTree :
 	public CommandListToken,
 	public CommandListOperandBase,
-	public CommandListFinalisable {
+	public CommandListFinalisable,
+	public CommandListWalkable {
 public:
 	typedef std::vector<std::shared_ptr<CommandListToken>> Tokens;
 	Tokens tokens;
 
 	using CommandListToken::CommandListToken;
 	std::shared_ptr<CommandListEvaluatable> finalise() override;
+	Walk walk() override;
 };
 
 // Placeholder for operator tokens from the tokenisation stage. These will all
@@ -739,7 +753,8 @@ class CommandListOperator :
 	public CommandListOperatorToken,
 	public CommandListEvaluatable,
 	public CommandListFinalisable,
-	public CommandListOperandBase {
+	public CommandListOperandBase,
+	public CommandListWalkable {
 public:
 	std::shared_ptr<CommandListToken> lhs_tree;
 	std::shared_ptr<CommandListToken> rhs_tree;
@@ -756,6 +771,7 @@ public:
 	std::shared_ptr<CommandListEvaluatable> finalise() override;
 	float evaluate(CommandListState *state, HackerDevice *device=NULL) override;
 	bool static_evaluate(float *ret, HackerDevice *device=NULL) override;
+	Walk walk() override;
 
 	static const wchar_t* pattern() { return L"<IMPLEMENT ME>"; }
 	virtual float evaluate(float lhs, float rhs) = 0;
