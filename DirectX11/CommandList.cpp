@@ -2762,18 +2762,6 @@ static const wchar_t *operator_tokens[] = {
 	L"==", L"!=", L"//", L"<=", L">=", L"&&", L"||", L"**",
 	// Single character tokens last:
 	L"(", L")", L"!", L"*", L"/", L"%", L"+", L"-", L"<", L">",
-#if 0
-	// Proposed operator precedence
-	L"(", L")",
-	L"**", /* Exponential (Right associative) */
-	L"!", /* Unary+, Unary- (Right associative) */
-	L"*", L"//", L"/", L"%",
-	L"+", L"-", /* Addition, Subtraction */
-	L"<=", L">=", L"<", L">",
-	L"==", L"!=",
-	L"&&",
-	L"||",
-#endif
 };
 
 class CommandListSyntaxError: public exception
@@ -2940,27 +2928,65 @@ static void group_parenthesis(CommandListSyntaxTree *tree)
 }
 
 // Expression operator definitions:
-class CommandListEqualityOperator : public CommandListOperator {
-public:
-	using CommandListOperator::CommandListOperator;
-	static const wchar_t* pattern() { return L"=="; }
-	float evaluate(float lhs, float rhs) override { return lhs == rhs; }
+#define DEFINE_OPERATOR(name, operator_pattern, fn) \
+class name##T : public CommandListOperator { \
+public: \
+	using CommandListOperator::CommandListOperator; \
+	static const wchar_t* pattern() { return L##operator_pattern; } \
+	float evaluate(float lhs, float rhs) override { return (fn); } \
+}; \
+static CommandListOperatorFactory<name##T> name;
+
+// TODO: DEFINE_OPERATOR(exponent_operator,      "**", (pow(lhs, rhs))); // right-associative binary operator
+//
+// TODO: DEFINE_OPERATOR(unary_not_operator,     "!",  (!rhs));
+// TODO: DEFINE_OPERATOR(unary_negate_operator,  "+",  (+rhs));
+// TODO: DEFINE_OPERATOR(unary_plus_operator,    "-",  (-rhs));
+
+DEFINE_OPERATOR(multiplication_operator,"*",  (lhs * rhs));
+DEFINE_OPERATOR(division_operator,      "/",  (lhs / rhs));
+DEFINE_OPERATOR(floor_division_operator,"//", (floor(lhs / rhs)));
+DEFINE_OPERATOR(modulus_operator,       "%",  (fmod(lhs, rhs)));
+
+DEFINE_OPERATOR(addition_operator,      "+",  (lhs + rhs));
+DEFINE_OPERATOR(subtraction_operator,   "-",  (lhs - rhs));
+
+DEFINE_OPERATOR(less_operator,          "<",  (lhs < rhs));
+DEFINE_OPERATOR(less_equal_operator,    "<=", (lhs <= rhs));
+DEFINE_OPERATOR(greater_operator,       ">",  (lhs > rhs));
+DEFINE_OPERATOR(greater_equal_operator, ">=", (lhs >= rhs));
+
+DEFINE_OPERATOR(equality_operator,      "==", (lhs == rhs));
+DEFINE_OPERATOR(inequality_operator,    "!=", (lhs != rhs));
+
+DEFINE_OPERATOR(or_operator,            "||", (lhs || rhs));
+DEFINE_OPERATOR(and_operator,           "&&", (lhs && rhs));
+
+// TODO: Ternary if operator
+
+static CommandListOperatorFactoryBase *multi_division_operators[] = {
+	&multiplication_operator,
+	&division_operator,
+	&floor_division_operator,
+	&modulus_operator,
 };
-
-class CommandListInequalityOperator : public CommandListOperator {
-public:
-	using CommandListOperator::CommandListOperator;
-	static const wchar_t* pattern() { return L"!="; }
-	float evaluate(float lhs, float rhs) override { return lhs != rhs; }
+static CommandListOperatorFactoryBase *add_subtract_operators[] = {
+	&addition_operator,
+	&subtraction_operator,
 };
-
-// Expression operator factory templates:
-static CommandListOperatorFactory<CommandListEqualityOperator> command_list_equality_operator_factory;
-static CommandListOperatorFactory<CommandListInequalityOperator> command_list_inequality_operator_factory;
-
-static CommandListOperatorFactoryBase *command_list_operator_factories[] = {
-	&command_list_equality_operator_factory,
-	&command_list_inequality_operator_factory,
+static CommandListOperatorFactoryBase *relational_operators[] = {
+	&less_operator,
+	&less_equal_operator,
+	&greater_operator,
+	&greater_equal_operator,
+};
+static CommandListOperatorFactoryBase *equality_operators[] = {
+	&equality_operator,
+	&inequality_operator,
+};
+static CommandListOperatorFactoryBase *logical_operators[] = {
+	&or_operator,
+	&and_operator,
 };
 
 // Transforms operator tokens in the syntax tree into actual operators
@@ -3081,7 +3107,12 @@ bool CommandListExpression::parse(const wstring *expression, const wstring *ini_
 
 		group_parenthesis(&tree);
 
-		transform_operators(&tree, command_list_operator_factories, ARRAYSIZE(command_list_operator_factories), false, false);
+		// TODO: Unary operators
+		transform_operators(&tree, multi_division_operators, ARRAYSIZE(multi_division_operators), false, false);
+		transform_operators(&tree, add_subtract_operators, ARRAYSIZE(add_subtract_operators), false, false);
+		transform_operators(&tree, relational_operators, ARRAYSIZE(relational_operators), false, false);
+		transform_operators(&tree, equality_operators, ARRAYSIZE(equality_operators), false, false);
+		transform_operators(&tree, logical_operators, ARRAYSIZE(logical_operators), false, false);
 
 		evaluatable = tree.finalise();
 		log_syntax_tree(evaluatable, "Final syntax tree:\n");
