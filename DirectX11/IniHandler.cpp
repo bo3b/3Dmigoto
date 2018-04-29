@@ -1750,17 +1750,11 @@ static void ParseCommandList(const wchar_t *id,
 		}
 
 		if (ParseCommandListLine(id, key_ptr, val, raw_line, command_list, explicit_command_list, pre_command_list, post_command_list, &entry->ini_namespace)) {
-			if (!key->empty())
-				LogInfo("  %S=%S\n", key->c_str(), val->c_str());
-			else
-				LogInfo("  %S\n", raw_line->c_str());
+			LogInfo("  %S\n", raw_line->c_str());
 			continue;
 		}
 
-		if (!key->empty())
-			IniWarning("WARNING: Unrecognised entry: %S=%S\n", key->c_str(), val->c_str());
-		else
-			IniWarning("WARNING: Unrecognised entry: %S\n", raw_line->c_str());
+		IniWarning("WARNING: Unrecognised entry: %S\n", raw_line->c_str());
 	}
 }
 

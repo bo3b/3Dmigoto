@@ -683,6 +683,10 @@ public:
 	{}
 	virtual ~CommandListToken() {}; // Because C++
 };
+
+// Expression nodes that are evaluatable - nodes start off as non-evaluatable
+// tokens and are later transformed into evaluatable operators and operands
+// that inherit from this class.
 class CommandListEvaluatable {
 public:
 	virtual ~CommandListEvaluatable() {}; // Because C++
@@ -691,29 +695,51 @@ public:
 	virtual bool static_evaluate(float *ret, HackerDevice *device=NULL) = 0; // { return false; }
 	virtual bool optimise(HackerDevice *device) { return false; }
 };
-class CommandListOperandBase : public CommandListToken {
+
+// Indicates that this node can be used as an operand, checked when
+// transforming operators to bind adjacent operands. Includes groups of syntax
+// that as a whole could be an operand, such as everything between parenthesis,
+// and even (transformed) operators. Essentially, everything that is or will
+// eventually become evaluatable
+class CommandListOperandBase {
 public:
-	using CommandListToken::CommandListToken;
 };
+
+// Indicates this node requires finalisation - replaces syntax parsing trees
+// with evaluatable operands and operators
 class CommandListFinalisable {
 public:
 	virtual std::shared_ptr<CommandListEvaluatable> finalise() = 0;
 };
-class CommandListSyntaxTree : public CommandListOperandBase, public CommandListFinalisable {
+
+class CommandListSyntaxTree :
+	public CommandListToken,
+	public CommandListOperandBase,
+	public CommandListFinalisable {
 public:
 	typedef std::vector<std::shared_ptr<CommandListToken>> Tokens;
 	Tokens tokens;
 
-	using CommandListOperandBase::CommandListOperandBase;
+	using CommandListToken::CommandListToken;
 	std::shared_ptr<CommandListEvaluatable> finalise() override;
 };
 
+// Placeholder for operator tokens from the tokenisation stage. These will all
+// be transformed into proper operators later in the expression parsing, and
+// there should be none left in the final tree.
 class CommandListOperatorToken : public CommandListToken {
 public:
 	using CommandListToken::CommandListToken;
 };
 
-class CommandListOperator : public CommandListOperatorToken, public CommandListEvaluatable, public CommandListFinalisable {
+// Base class for operators. Subclass this and provide a static pattern and
+// concrete evaluate function to implement an operator, then use the factory
+// template below to transform matching operator tokens into these.
+class CommandListOperator :
+	public CommandListOperatorToken,
+	public CommandListEvaluatable,
+	public CommandListFinalisable,
+	public CommandListOperandBase {
 public:
 	std::shared_ptr<CommandListToken> lhs_tree;
 	std::shared_ptr<CommandListToken> rhs_tree;
@@ -731,20 +757,38 @@ public:
 	float evaluate(CommandListState *state, HackerDevice *device=NULL) override;
 	bool static_evaluate(float *ret, HackerDevice *device=NULL) override;
 
-	// Override these for each operator:
-	// static wchar_t* pattern() { return L"<PATTERN>"; }
+	static const wchar_t* pattern() { return L"<IMPLEMENT ME>"; }
 	virtual float evaluate(float lhs, float rhs) = 0;
-	// Defaults are the common left-associative binary operators:
-	static const bool right_associative() { return false; }
-	static const bool unary() { return false; }
 };
 
-class CommandListEqualityOperator : public CommandListOperator {
+// Abstract base factory class for defining operators. Statically instantiate
+// the template below for each implemented operator.
+class CommandListOperatorFactoryBase {
 public:
-	using CommandListOperator::CommandListOperator;
+	virtual const wchar_t* pattern() = 0;
+	virtual std::shared_ptr<CommandListOperator> create(
+			std::shared_ptr<CommandListToken> lhs,
+			CommandListOperatorToken &t,
+			std::shared_ptr<CommandListToken> rhs) = 0;
+};
 
-	static const wchar_t* pattern() { return L"=="; }
-	float evaluate(float lhs, float rhs) override { return lhs == rhs; }
+// Template factory class for defining operators. Statically instantiate this
+// and pass it in a list to transform_operators to transform all matching
+// operator tokens in the syntax tree into fully fledged operators
+template <class T>
+class CommandListOperatorFactory : public CommandListOperatorFactoryBase {
+public:
+	const wchar_t* pattern() override {
+		return T::pattern();
+	}
+
+	std::shared_ptr<CommandListOperator> create(
+			std::shared_ptr<CommandListToken> lhs,
+			CommandListOperatorToken &t,
+			std::shared_ptr<CommandListToken> rhs) override
+	{
+		return std::make_shared<T>(lhs, t, rhs);
+	}
 };
 
 enum class ParamOverrideType {
@@ -828,7 +872,10 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"sli", ParamOverrideType::SLI},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
-class CommandListOperand : public CommandListOperandBase, public CommandListEvaluatable {
+class CommandListOperand :
+	public CommandListToken,
+	public CommandListOperandBase,
+	public CommandListEvaluatable {
 	float process_texture_filter(CommandListState*);
 public:
 	// TODO: Break up into separate classes for each operand type
@@ -846,7 +893,7 @@ public:
 	unsigned scissor;
 
 	CommandListOperand(size_t pos, wstring token=L"") :
-		CommandListOperandBase(pos, token),
+		CommandListToken(pos, token),
 		type(ParamOverrideType::INVALID),
 		val(FLT_MAX),
 		param_component(NULL),

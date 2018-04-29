@@ -2939,61 +2939,107 @@ static void group_parenthesis(CommandListSyntaxTree *tree)
 	}
 }
 
-//template <class CommandListEqualityOperator>
-static void convert_operators(CommandListSyntaxTree *tree)
+// Expression operator definitions:
+class CommandListEqualityOperator : public CommandListOperator {
+public:
+	using CommandListOperator::CommandListOperator;
+	static const wchar_t* pattern() { return L"=="; }
+	float evaluate(float lhs, float rhs) override { return lhs == rhs; }
+};
+
+class CommandListInequalityOperator : public CommandListOperator {
+public:
+	using CommandListOperator::CommandListOperator;
+	static const wchar_t* pattern() { return L"!="; }
+	float evaluate(float lhs, float rhs) override { return lhs != rhs; }
+};
+
+// Expression operator factory templates:
+static CommandListOperatorFactory<CommandListEqualityOperator> command_list_equality_operator_factory;
+static CommandListOperatorFactory<CommandListInequalityOperator> command_list_inequality_operator_factory;
+
+static CommandListOperatorFactoryBase *command_list_operator_factories[] = {
+	&command_list_equality_operator_factory,
+	&command_list_inequality_operator_factory,
+};
+
+// Transforms operator tokens in the syntax tree into actual operators
+static void transform_operators(CommandListSyntaxTree *tree,
+		CommandListOperatorFactoryBase *factories[], int num_factories,
+		bool right_associative, bool unary)
 {
 	CommandListSyntaxTree::Tokens::iterator i;
 	std::shared_ptr<CommandListOperatorToken> token;
-	std::shared_ptr<CommandListEqualityOperator> op;
+	std::shared_ptr<CommandListOperator> op;
 	std::shared_ptr<CommandListOperandBase> lhs;
 	std::shared_ptr<CommandListOperandBase> rhs;
+	int f;
 
-	if (CommandListEqualityOperator::right_associative())
+	if (right_associative)
 		throw CommandListSyntaxError(L"FIXME: Implement right-associativity", 0);
-	if (CommandListEqualityOperator::unary())
+	if (unary)
 		throw CommandListSyntaxError(L"FIXME: Implement unary operators", 0);
 
 	for (i = tree->tokens.begin() + 1; i < tree->tokens.end() - 1; i++) {
-		token = dynamic_pointer_cast<CommandListOperatorToken>(*i);
 		// TODO: Walk recursively down syntax trees and operators
-		if (token && !token->token.compare(CommandListEqualityOperator::pattern())) {
-			LogInfo("Operator matched\n");
+		token = dynamic_pointer_cast<CommandListOperatorToken>(*i);
+		if (!token)
+			continue;
+
+		for (f = 0; f < num_factories; f++) {
+			if (token->token.compare(factories[f]->pattern()))
+				continue;
+
 			lhs = dynamic_pointer_cast<CommandListOperandBase>(*(i-1));
-			if (!lhs) // FIXME: Drop this for unary-
-				throw CommandListSyntaxError(L"Expected: Operand", lhs->token_pos);
 			rhs = dynamic_pointer_cast<CommandListOperandBase>(*(i+1));
-			if (!rhs) // FIXME: Drop this for unary-
-				throw CommandListSyntaxError(L"Expected: Operand", rhs->token_pos);
 			if (lhs && rhs) {
-				op = std::make_shared<CommandListEqualityOperator>(std::move(lhs), *token, std::move(rhs));
-				i = tree->tokens.erase(i - 1, i + 2);
+				op = factories[f]->create(*(i-1), *token, *(i+1));
+				i = tree->tokens.erase(i-1, i+2);
 				i = tree->tokens.insert(i, std::move(op));
+				break;
 			}
 		}
 	}
 }
 
+static void _log_syntax_tree(CommandListSyntaxTree *tree);
+static void _log_token(std::shared_ptr<CommandListToken> token)
+{
+	CommandListSyntaxTree *inner;
+	CommandListOperator *op;
+	CommandListOperatorToken *op_tok;
+	CommandListOperand *operand;
+
+	inner = dynamic_cast<CommandListSyntaxTree*>(token.get());
+	op = dynamic_cast<CommandListOperator*>(token.get());
+	op_tok = dynamic_cast<CommandListOperatorToken*>(token.get());
+	operand = dynamic_cast<CommandListOperand*>(token.get());
+	if (inner) {
+		_log_syntax_tree(inner);
+	} else if (op) {
+		LogInfoNoNL("Operator \"%S\"[ ", token->token.c_str());
+		if (op->lhs_tree)
+			_log_token(op->lhs_tree);
+		if (op->lhs_tree && op->rhs_tree)
+			LogInfoNoNL(", ");
+		if (op->rhs_tree)
+			_log_token(op->rhs_tree);
+		LogInfoNoNL(" ]");
+	} else if (op_tok) {
+		LogInfoNoNL("OperatorToken \"%S\"", token->token.c_str());
+	} else if (operand) {
+		LogInfoNoNL("Operand \"%S\"", token->token.c_str());
+	} else {
+		LogInfoNoNL("Token \"%S\"", token->token.c_str());
+	}
+}
 static void _log_syntax_tree(CommandListSyntaxTree *tree)
 {
 	CommandListSyntaxTree::Tokens::iterator i;
-	CommandListSyntaxTree *inner;
-	CommandListOperatorToken *op;
-	CommandListOperand *operand;
 
 	LogInfoNoNL("SyntaxTree[ ");
 	for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
-		inner = dynamic_cast<CommandListSyntaxTree*>(i->get());
-		op = dynamic_cast<CommandListOperatorToken*>(i->get());
-		operand = dynamic_cast<CommandListOperand*>(i->get());
-		if (inner) {
-			_log_syntax_tree(inner);
-		} else if (op) {
-			LogInfoNoNL("Operator \"%S\"", (*i)->token.c_str());
-		} else if (operand) {
-			LogInfoNoNL("Operand \"%S\"", (*i)->token.c_str());
-		} else {
-			LogInfoNoNL("Token \"%S\"", (*i)->token.c_str());
-		}
+		_log_token(*i);
 		if (i != tree->tokens.end()-1)
 			LogInfoNoNL(", ");
 	}
@@ -3019,9 +3065,8 @@ bool CommandListExpression::parse(const wstring *expression, const wstring *ini_
 		LogInfo("After parenthesis grouping:\n");
 		log_syntax_tree(&tree);
 
-		//convert_operators<CommandListEqualityOperator>(&tree);
-		convert_operators(&tree);
-		LogInfo("After processing == operators:\n");
+		transform_operators(&tree, command_list_operator_factories, ARRAYSIZE(command_list_operator_factories), false, false);
+		LogInfo("After processing ==, != operators:\n");
 		log_syntax_tree(&tree);
 
 		evaluatable = tree.finalise();
@@ -3055,6 +3100,8 @@ bool CommandListExpression::optimise(HackerDevice *device)
 	return evaluatable->optimise(device);
 }
 
+// Finalises the syntax trees in the operator into evaluatable operands,
+// thereby making this operator also evaluatable.
 std::shared_ptr<CommandListEvaluatable> CommandListOperator::finalise()
 {
 	auto lhs_finalisable = dynamic_pointer_cast<CommandListFinalisable>(lhs_tree);
@@ -3062,12 +3109,18 @@ std::shared_ptr<CommandListEvaluatable> CommandListOperator::finalise()
 	auto lhs_evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(lhs_tree);
 	auto rhs_evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(rhs_tree);
 
+	if (lhs || rhs) {
+		LogInfo("BUG: Attempted to finalise already final operator\n");
+		DoubleBeepExit();
+	}
+
 	if (!lhs && lhs_finalisable)
 		lhs = lhs_finalisable->finalise();
 	if (!lhs && lhs_evaluatable)
 		lhs = lhs_evaluatable;
-	if (!lhs)
+	if (!lhs) // FIXME: Allow for unary operators
 		throw CommandListSyntaxError(L"BUG: LHS operand invalid", token_pos);
+	lhs_tree = nullptr;
 
 	if (!rhs && rhs_finalisable)
 		rhs = rhs_finalisable->finalise();
@@ -3075,10 +3128,20 @@ std::shared_ptr<CommandListEvaluatable> CommandListOperator::finalise()
 		rhs = rhs_evaluatable;
 	if (!rhs)
 		throw CommandListSyntaxError(L"BUG: RHS operand invalid", token_pos);
+	rhs_tree = nullptr;
 
+	// Can't return "this", because that is an unmanaged version of the
+	// pointer which is already managed elsewhere - if we were to create a
+	// new managed pointer from that, we would have undefined behaviour.
+	// Instead we just return nullptr to signify that this node does not
+	// need to be replaced.
 	return nullptr;
 }
 
+// Recursively finalises every node in the syntax tree. If the expression is
+// valid the tree should be left with a single evaluatable node, which will be
+// returned to the caller so that it can replace this tree with just the node.
+// Throws a syntax error if the finalised nodes are not right.
 std::shared_ptr<CommandListEvaluatable> CommandListSyntaxTree::finalise()
 {
 	std::shared_ptr<CommandListFinalisable> finalisable;
