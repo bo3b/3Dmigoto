@@ -268,6 +268,7 @@ void optimise_command_lists(HackerDevice *device)
 				ignore_cto = ignore_cto_post;
 
 			for (i = 0; i < command_list->commands.size(); ) {
+				LogInfo("Optimising %S\n", command_list->commands[i]->ini_line.c_str());
 				if (command_list->commands[i]->optimise(device))
 					making_progress = true;
 
@@ -1246,6 +1247,8 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
 
 bool PerDrawStereoOverrideCommand::optimise(HackerDevice *device)
 {
+	if (staging_type)
+		return false;
 	return expression.optimise(device);
 }
 
@@ -2844,7 +2847,7 @@ next_token:
 					tree->tokens.emplace_back(std::move(operand));
 					LogInfo("      Resource Slot: \"%S\"\n", tree->tokens.back()->token.c_str());
 					if (last_was_operand)
-						throw CommandListSyntaxError(L"Expected: Operator", friendly_pos);
+						throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
 					last_was_operand = true;
 					continue;
 				} else {
@@ -2869,7 +2872,7 @@ next_token:
 					tree->tokens.emplace_back(std::move(operand));
 					LogInfo("      Identifier: \"%S\"\n", tree->tokens.back()->token.c_str());
 					if (last_was_operand)
-						throw CommandListSyntaxError(L"Expected: Operator", friendly_pos);
+						throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
 					last_was_operand = true;
 					continue;
 				}
@@ -2890,7 +2893,7 @@ next_token:
 				tree->tokens.emplace_back(std::move(operand));
 				LogInfo("      Float: \"%S\"\n", tree->tokens.back()->token.c_str());
 				if (last_was_operand)
-					throw CommandListSyntaxError(L"Expected: Operator", friendly_pos);
+					throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
 				last_was_operand = true;
 				continue;
 			} else {
@@ -2983,6 +2986,17 @@ bool CommandListExpression::parse(const wstring *expression, const wstring *ini_
 
 		LogInfo("After parenthesis grouping:\n");
 		log_syntax_tree(&tree);
+
+		if (tree.tokens.empty())
+			throw CommandListSyntaxError(L"Empty expression", 0);
+
+		if (tree.tokens.size() > 1)
+			throw CommandListSyntaxError(L"Unexpected", tree.tokens[1]->token_pos);
+
+		evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(tree.tokens[0]);
+		if (!evaluatable)
+			throw CommandListSyntaxError(L"Syntax tree not evaluatable", 0);
+		return true;
 	} catch (const CommandListSyntaxError &e) {
 		LogOverlay(LOG_WARNING_MONOSPACE,
 				"Syntax Error: %S\n"
@@ -2990,23 +3004,26 @@ bool CommandListExpression::parse(const wstring *expression, const wstring *ini_
 				expression->c_str(), (int)e.pos+1, "^", e.msg.c_str());
 		return false;
 	}
-
-	return operand.parse(expression, ini_namespace, command_list_context);
 }
 
 float CommandListExpression::evaluate(CommandListState *state, HackerDevice *device)
 {
-	return operand.evaluate(state, device);
+	return evaluatable->evaluate(state, device);
 }
 
 bool CommandListExpression::static_evaluate(float *ret, HackerDevice *device)
 {
-	return operand.static_evaluate(ret, device);
+	return evaluatable->static_evaluate(ret, device);
 }
 
 bool CommandListExpression::optimise(HackerDevice *device)
 {
-	return operand.optimise(device);
+	if (!evaluatable) {
+		LogOverlay(LOG_DIRE, "BUG: Non-evaluatable expression, please report this and provide your d3dx.ini\n");
+		evaluatable = std::make_shared<CommandListOperand>(0, L"<BUG>");
+		return false;
+	}
+	return evaluatable->optimise(device);
 }
 
 void ParamOverride::run(CommandListState *state)

@@ -681,12 +681,26 @@ public:
 	CommandListToken(size_t token_pos, wstring token=L"") :
 		token_pos(token_pos), token(token)
 	{}
-	virtual ~CommandListToken() {};
+	virtual ~CommandListToken() {}; // Because C++
 };
-class CommandListSyntaxTree : public CommandListToken {
+class CommandListEvaluatable {
+public:
+	virtual ~CommandListEvaluatable() {}; // Because C++
+
+	virtual float evaluate(CommandListState *state, HackerDevice *device=NULL) = 0;
+	virtual bool static_evaluate(float *ret, HackerDevice *device=NULL) = 0; // { return false; }
+	virtual bool optimise(HackerDevice *device) { return false; }
+};
+class CommandListOperandBase : public CommandListToken {
+public:
+	CommandListOperandBase(size_t pos, wstring token=L"") :
+		CommandListToken(pos, token)
+	{}
+};
+class CommandListSyntaxTree : public CommandListOperandBase {
 public:
 	CommandListSyntaxTree(size_t pos) :
-		CommandListToken(pos)
+		CommandListOperandBase(pos)
 	{}
 
 	typedef std::vector<std::shared_ptr<CommandListToken>> Tokens;
@@ -781,7 +795,7 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"sli", ParamOverrideType::SLI},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
-class CommandListOperand : public CommandListToken {
+class CommandListOperand : public CommandListOperandBase, public CommandListEvaluatable {
 	float process_texture_filter(CommandListState*);
 public:
 	// TODO: Break up into separate classes for each operand type
@@ -799,7 +813,7 @@ public:
 	unsigned scissor;
 
 	CommandListOperand(size_t pos, wstring token=L"") :
-		CommandListToken(pos, token),
+		CommandListOperandBase(pos, token),
 		type(ParamOverrideType::INVALID),
 		val(FLT_MAX),
 		param_component(NULL),
@@ -808,18 +822,14 @@ public:
 	{}
 
 	bool parse(const wstring *operand, const wstring *ini_namespace, bool command_list_context=true);
-	float evaluate(CommandListState *state, HackerDevice *device=NULL);
-	bool static_evaluate(float *ret, HackerDevice *device=NULL);
-	bool optimise(HackerDevice *device);
+	float evaluate(CommandListState *state, HackerDevice *device=NULL) override;
+	bool static_evaluate(float *ret, HackerDevice *device=NULL) override;
+	bool optimise(HackerDevice *device) override;
 };
 
 class CommandListExpression {
 public:
-	CommandListOperand operand;
-
-	CommandListExpression() :
-		operand(0) // FIXME: Remove once we have a syntax tree in here
-	{}
+	std::shared_ptr<CommandListEvaluatable> evaluatable;
 
 	bool parse(const wstring *expression, const wstring *ini_namespace, bool command_list_context=true);
 	float evaluate(CommandListState *state, HackerDevice *device=NULL);
