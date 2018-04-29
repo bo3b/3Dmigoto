@@ -2990,7 +2990,7 @@ static CommandListOperatorFactoryBase *logical_operators[] = {
 };
 
 // Transforms operator tokens in the syntax tree into actual operators
-static void transform_operators(CommandListSyntaxTree *tree,
+static void transform_operators_visit(CommandListSyntaxTree *tree,
 		CommandListOperatorFactoryBase *factories[], int num_factories,
 		bool right_associative, bool unary)
 {
@@ -3001,13 +3001,13 @@ static void transform_operators(CommandListSyntaxTree *tree,
 	std::shared_ptr<CommandListOperandBase> rhs;
 	int f;
 
+	if (!tree)
+		return;
+
 	if (right_associative)
 		throw CommandListSyntaxError(L"FIXME: Implement right-associativity", 0);
 	if (unary)
 		throw CommandListSyntaxError(L"FIXME: Implement unary operators", 0);
-
-	for (auto &inner: tree->walk())
-		transform_operators(inner.get(), factories, num_factories, right_associative, unary);
 
 	// Check for operators. Since this is currently only binary operators,
 	// skip the first and last nodes as they must be operands, and this way
@@ -3031,6 +3031,22 @@ static void transform_operators(CommandListSyntaxTree *tree,
 			}
 		}
 	}
+}
+
+static void transform_operators_recursive(CommandListWalkable *tree,
+		CommandListOperatorFactoryBase *factories[], int num_factories,
+		bool right_associative, bool unary)
+{
+	// Depth first to ensure that we have visited all sub-trees before
+	// transforming operators in this level, since that may add new
+	// sub-trees
+	for (auto &inner: tree->walk()) {
+		transform_operators_recursive(dynamic_cast<CommandListWalkable*>(inner.get()),
+				factories, num_factories, right_associative, unary);
+	}
+
+	transform_operators_visit(dynamic_cast<CommandListSyntaxTree*>(tree),
+			factories, num_factories, right_associative, unary);
 }
 
 static void _log_syntax_tree(CommandListSyntaxTree *tree);
@@ -3087,6 +3103,16 @@ static void _log_syntax_tree(CommandListSyntaxTree *tree)
 	LogInfoNoNL(" ]");
 }
 
+static void log_syntax_tree(CommandListSyntaxTree *tree, const char *msg)
+{
+	if (!gLogDebug)
+		return;
+
+	LogInfo(msg);
+	_log_syntax_tree(tree);
+	LogInfo("\n");
+}
+
 template<class T>
 static void log_syntax_tree(T token, const char *msg)
 {
@@ -3104,15 +3130,18 @@ bool CommandListExpression::parse(const wstring *expression, const wstring *ini_
 
 	try {
 		tokenise(expression, &tree, ini_namespace, command_list_context);
+		// log_syntax_tree(&tree, "After tokenisation:\n");
 
 		group_parenthesis(&tree);
+		// log_syntax_tree(&tree, "After grouping parenthesis:\n");
 
 		// TODO: Unary operators
-		transform_operators(&tree, multi_division_operators, ARRAYSIZE(multi_division_operators), false, false);
-		transform_operators(&tree, add_subtract_operators, ARRAYSIZE(add_subtract_operators), false, false);
-		transform_operators(&tree, relational_operators, ARRAYSIZE(relational_operators), false, false);
-		transform_operators(&tree, equality_operators, ARRAYSIZE(equality_operators), false, false);
-		transform_operators(&tree, logical_operators, ARRAYSIZE(logical_operators), false, false);
+		transform_operators_recursive(&tree, multi_division_operators, ARRAYSIZE(multi_division_operators), false, false);
+		transform_operators_recursive(&tree, add_subtract_operators, ARRAYSIZE(add_subtract_operators), false, false);
+		transform_operators_recursive(&tree, relational_operators, ARRAYSIZE(relational_operators), false, false);
+		transform_operators_recursive(&tree, equality_operators, ARRAYSIZE(equality_operators), false, false);
+		transform_operators_recursive(&tree, logical_operators, ARRAYSIZE(logical_operators), false, false);
+		// log_syntax_tree(&tree, "After transforming operators:\n");
 
 		evaluatable = tree.finalise();
 		log_syntax_tree(evaluatable, "Final syntax tree:\n");
@@ -3233,11 +3262,11 @@ std::shared_ptr<CommandListEvaluatable> CommandListSyntaxTree::finalise()
 CommandListSyntaxTree::Walk CommandListSyntaxTree::walk()
 {
 	Walk ret;
-	std::shared_ptr<CommandListSyntaxTree> inner;
+	std::shared_ptr<CommandListWalkable> inner;
 	Tokens::iterator i;
 
 	for (i = tokens.begin(); i != tokens.end(); i++) {
-		inner = dynamic_pointer_cast<CommandListSyntaxTree>(*i);
+		inner = dynamic_pointer_cast<CommandListWalkable>(*i);
 		if (inner)
 			ret.push_back(std::move(inner));
 	}
@@ -3272,11 +3301,11 @@ bool CommandListOperator::static_evaluate(float *ret, HackerDevice *device)
 CommandListSyntaxTree::Walk CommandListOperator::walk()
 {
 	Walk ret;
-	std::shared_ptr<CommandListSyntaxTree> lhs;
-	std::shared_ptr<CommandListSyntaxTree> rhs;
+	std::shared_ptr<CommandListWalkable> lhs;
+	std::shared_ptr<CommandListWalkable> rhs;
 
-	lhs = dynamic_pointer_cast<CommandListSyntaxTree>(lhs_tree);
-	rhs = dynamic_pointer_cast<CommandListSyntaxTree>(rhs_tree);
+	lhs = dynamic_pointer_cast<CommandListWalkable>(lhs_tree);
+	rhs = dynamic_pointer_cast<CommandListWalkable>(rhs_tree);
 
 	if (lhs)
 		ret.push_back(std::move(lhs));

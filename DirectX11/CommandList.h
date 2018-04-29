@@ -717,10 +717,9 @@ public:
 // that the caller can iterate over - note that this vector will not iterate
 // over all the tokens in those syntax trees, just the trees themselves.
 // Alternatives are implementing our own iterator, or the visitor pattern.
-class CommandListSyntaxTree;
 class CommandListWalkable {
 public:
-	typedef std::vector<std::shared_ptr<CommandListSyntaxTree>> Walk;
+	typedef std::vector<std::shared_ptr<CommandListWalkable>> Walk;
 	virtual Walk walk() = 0;
 };
 
