@@ -2938,10 +2938,10 @@ public: \
 static CommandListOperatorFactory<name##T> name;
 
 // TODO: DEFINE_OPERATOR(exponent_operator,      "**", (pow(lhs, rhs))); // right-associative binary operator
-//
-// TODO: DEFINE_OPERATOR(unary_not_operator,     "!",  (!rhs));
-// TODO: DEFINE_OPERATOR(unary_negate_operator,  "+",  (+rhs));
-// TODO: DEFINE_OPERATOR(unary_plus_operator,    "-",  (-rhs));
+
+DEFINE_OPERATOR(unary_not_operator,     "!",  (!rhs));
+DEFINE_OPERATOR(unary_plus_operator,    "+",  (+rhs));
+DEFINE_OPERATOR(unary_negate_operator,  "-",  (-rhs));
 
 DEFINE_OPERATOR(multiplication_operator,"*",  (lhs * rhs));
 DEFINE_OPERATOR(division_operator,      "/",  (lhs / rhs));
@@ -2964,6 +2964,11 @@ DEFINE_OPERATOR(and_operator,           "&&", (lhs && rhs));
 
 // TODO: Ternary if operator
 
+static CommandListOperatorFactoryBase *unary_operators[] = {
+	&unary_not_operator,
+	&unary_negate_operator,
+	&unary_plus_operator,
+};
 static CommandListOperatorFactoryBase *multi_division_operators[] = {
 	&multiplication_operator,
 	&division_operator,
@@ -2989,46 +2994,87 @@ static CommandListOperatorFactoryBase *logical_operators[] = {
 	&and_operator,
 };
 
-// Transforms operator tokens in the syntax tree into actual operators
-static void transform_operators_visit(CommandListSyntaxTree *tree,
+static CommandListSyntaxTree::Tokens::iterator transform_operators_token(
+		CommandListSyntaxTree *tree,
+		CommandListSyntaxTree::Tokens::iterator i,
 		CommandListOperatorFactoryBase *factories[], int num_factories,
-		bool right_associative, bool unary)
+		bool unary)
 {
-	CommandListSyntaxTree::Tokens::iterator i;
 	std::shared_ptr<CommandListOperatorToken> token;
 	std::shared_ptr<CommandListOperator> op;
 	std::shared_ptr<CommandListOperandBase> lhs;
 	std::shared_ptr<CommandListOperandBase> rhs;
 	int f;
 
-	if (!tree)
-		return;
+	token = dynamic_pointer_cast<CommandListOperatorToken>(*i);
+	if (!token)
+		return i;
 
-	if (right_associative)
-		throw CommandListSyntaxError(L"FIXME: Implement right-associativity", 0);
-	if (unary)
-		throw CommandListSyntaxError(L"FIXME: Implement unary operators", 0);
-
-	// Check for operators. Since this is currently only binary operators,
-	// skip the first and last nodes as they must be operands, and this way
-	// I don't have to worry about bounds checks.
-	for (i = tree->tokens.begin() + 1; i < tree->tokens.end() - 1; i++) {
-		token = dynamic_pointer_cast<CommandListOperatorToken>(*i);
-		if (!token)
+	for (f = 0; f < num_factories; f++) {
+		if (token->token.compare(factories[f]->pattern()))
 			continue;
 
-		for (f = 0; f < num_factories; f++) {
-			if (token->token.compare(factories[f]->pattern()))
-				continue;
-
+		lhs = nullptr;
+		rhs = nullptr;
+		if (i > tree->tokens.begin())
 			lhs = dynamic_pointer_cast<CommandListOperandBase>(*(i-1));
+		if (i < tree->tokens.end() - 1)
 			rhs = dynamic_pointer_cast<CommandListOperandBase>(*(i+1));
+
+		if (unary) {
+			// It is particularly important that we check that the
+			// LHS is *not* an operand so the unary +/- operators
+			// don't trump the binary addition/subtraction operators:
+			if (rhs && !lhs) {
+				op = factories[f]->create(nullptr, *token, *(i+1));
+				i = tree->tokens.erase(i, i+2);
+				i = tree->tokens.insert(i, std::move(op));
+				break;
+			}
+		} else {
 			if (lhs && rhs) {
 				op = factories[f]->create(*(i-1), *token, *(i+1));
 				i = tree->tokens.erase(i-1, i+2);
 				i = tree->tokens.insert(i, std::move(op));
 				break;
 			}
+		}
+	}
+
+	return i;
+}
+
+// Transforms operator tokens in the syntax tree into actual operators
+static void transform_operators_visit(CommandListSyntaxTree *tree,
+		CommandListOperatorFactoryBase *factories[], int num_factories,
+		bool right_associative, bool unary)
+{
+	CommandListSyntaxTree::Tokens::iterator i;
+	CommandListSyntaxTree::Tokens::reverse_iterator rit;
+
+	if (!tree)
+		return;
+
+	if (right_associative) {
+		if (unary) {
+			// Start at the second from the right
+			for (rit = tree->tokens.rbegin() + 1; rit != tree->tokens.rend(); rit++) {
+				// C++ gotcha: reverse_iterator::base() points to the *next* element
+				i = transform_operators_token(tree, rit.base() - 1, factories, num_factories, unary);
+				rit = std::reverse_iterator<CommandListSyntaxTree::Tokens::iterator>(i + 1);
+			}
+		} else {
+			throw CommandListSyntaxError(L"FIXME: Implement right-associative binary operators", 0);
+		}
+	} else {
+		if (unary) {
+			throw CommandListSyntaxError(L"FIXME: Implement left-associative unary operators", 0);
+		} else {
+			// Since this is binary operators, skip the first and last
+			// nodes as they must be operands, and this way I don't have to
+			// worry about bounds checks.
+			for (i = tree->tokens.begin() + 1; i < tree->tokens.end() - 1; i++)
+				i = transform_operators_token(tree, i, factories, num_factories, unary);
 		}
 	}
 }
@@ -3189,13 +3235,15 @@ std::shared_ptr<CommandListEvaluatable> CommandListOperator::finalise()
 		DoubleBeepExit();
 	}
 
-	if (!lhs && lhs_finalisable)
-		lhs = lhs_finalisable->finalise();
-	if (!lhs && lhs_evaluatable)
-		lhs = lhs_evaluatable;
-	if (!lhs) // FIXME: Allow for unary operators
-		throw CommandListSyntaxError(L"BUG: LHS operand invalid", token_pos);
-	lhs_tree = nullptr;
+	if (lhs_tree) { // Binary operators only
+		if (!lhs && lhs_finalisable)
+			lhs = lhs_finalisable->finalise();
+		if (!lhs && lhs_evaluatable)
+			lhs = lhs_evaluatable;
+		if (!lhs)
+			throw CommandListSyntaxError(L"BUG: LHS operand invalid", token_pos);
+		lhs_tree = nullptr;
+	}
 
 	if (!rhs && rhs_finalisable)
 		rhs = rhs_finalisable->finalise();
@@ -3276,14 +3324,21 @@ CommandListSyntaxTree::Walk CommandListSyntaxTree::walk()
 
 float CommandListOperator::evaluate(CommandListState *state, HackerDevice *device)
 {
-	return evaluate(lhs->evaluate(state, device), rhs->evaluate(state, device));
+	if (lhs) // Binary operator
+		return evaluate(lhs->evaluate(state, device), rhs->evaluate(state, device));
+	return evaluate(std::numeric_limits<float>::quiet_NaN(), rhs->evaluate(state, device));
 }
 
 bool CommandListOperator::static_evaluate(float *ret, HackerDevice *device)
 {
-	float lhs_static, rhs_static;
+	float lhs_static = std::numeric_limits<float>::quiet_NaN(), rhs_static;
+	bool is_static;
 
-	if (lhs->static_evaluate(&lhs_static, device) && rhs->static_evaluate(&rhs_static, device)) {
+	is_static = rhs->static_evaluate(&rhs_static, device);
+	if (lhs) // Binary operator
+		is_static = lhs->static_evaluate(&lhs_static, device) && is_static;
+
+	if (is_static) {
 		if (ret)
 			*ret = evaluate(lhs_static, rhs_static);
 		return true;
