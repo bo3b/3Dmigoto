@@ -228,7 +228,7 @@ void optimise_command_lists(HackerDevice *device)
 {
 	bool making_progress;
 	bool ignore_cto, ignore_cto_pre, ignore_cto_post;
-	int i;
+	size_t i;
 	CommandList::Commands::iterator new_end;
 
 	do {
@@ -2933,7 +2933,12 @@ static void group_parenthesis(CommandListSyntaxTree *tree)
 #define DEFINE_OPERATOR(name, operator_pattern, fn) \
 class name##T : public CommandListOperator { \
 public: \
-	using CommandListOperator::CommandListOperator; \
+	name##T( \
+			std::shared_ptr<CommandListToken> lhs, \
+			CommandListOperatorToken &t, \
+			std::shared_ptr<CommandListToken> rhs \
+		) : CommandListOperator(lhs, t, rhs) \
+	{} \
 	static const wchar_t* pattern() { return L##operator_pattern; } \
 	float evaluate(float lhs, float rhs) override { return (fn); } \
 }; \

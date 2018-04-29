@@ -732,7 +732,9 @@ public:
 	typedef std::vector<std::shared_ptr<CommandListToken>> Tokens;
 	Tokens tokens;
 
-	using CommandListToken::CommandListToken;
+	CommandListSyntaxTree(size_t token_pos) :
+		CommandListToken(token_pos)
+	{}
 	std::shared_ptr<CommandListEvaluatable> finalise() override;
 	Walk walk() override;
 };
@@ -742,7 +744,9 @@ public:
 // there should be none left in the final tree.
 class CommandListOperatorToken : public CommandListToken {
 public:
-	using CommandListToken::CommandListToken;
+	CommandListOperatorToken(size_t token_pos, wstring token=L"") :
+		CommandListToken(token_pos, token)
+	{}
 };
 
 // Base class for operators. Subclass this and provide a static pattern and
