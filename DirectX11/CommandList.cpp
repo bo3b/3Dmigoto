@@ -2758,7 +2758,9 @@ bool CommandListOperand::optimise(HackerDevice *device, std::shared_ptr<CommandL
 }
 
 static const wchar_t *operator_tokens[] = {
-	// Two character tokens first:
+	// Three character tokens first:
+	L"===", L"!==",
+	// Two character tokens next:
 	L"==", L"!=", L"//", L"<=", L">=", L"&&", L"||", L"**",
 	// Single character tokens last:
 	L"(", L")", L"!", L"*", L"/", L"%", L"+", L"-", L"<", L">",
@@ -2959,8 +2961,16 @@ DEFINE_OPERATOR(less_equal_operator,    "<=", (lhs <= rhs));
 DEFINE_OPERATOR(greater_operator,       ">",  (lhs > rhs));
 DEFINE_OPERATOR(greater_equal_operator, ">=", (lhs >= rhs));
 
+// The triple equals operator tests for binary equivalence - in particular,
+// this allows us to test for negative zero, used in texture filtering to
+// signify that nothing is bound to a given slot. Negative zero cannot be
+// tested for using the regular equals operator, since -0.0 == +0.0. This
+// operator could also test for specific cases of NAN (though, without the
+// vs2015 toolchain "nan" won't parse as such).
 DEFINE_OPERATOR(equality_operator,      "==", (lhs == rhs));
 DEFINE_OPERATOR(inequality_operator,    "!=", (lhs != rhs));
+DEFINE_OPERATOR(identical_operator,     "===",(*(uint32_t*)&lhs == *(uint32_t*)&rhs));
+DEFINE_OPERATOR(not_identical_operator, "!==",(*(uint32_t*)&lhs != *(uint32_t*)&rhs));
 
 DEFINE_OPERATOR(and_operator,           "&&", (lhs && rhs));
 
@@ -2995,6 +3005,8 @@ static CommandListOperatorFactoryBase *relational_operators[] = {
 static CommandListOperatorFactoryBase *equality_operators[] = {
 	&equality_operator,
 	&inequality_operator,
+	&identical_operator,
+	&not_identical_operator,
 };
 static CommandListOperatorFactoryBase *and_operators[] = {
 	&and_operator,
