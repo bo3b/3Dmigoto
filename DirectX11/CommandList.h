@@ -692,8 +692,8 @@ public:
 	virtual ~CommandListEvaluatable() {}; // Because C++
 
 	virtual float evaluate(CommandListState *state, HackerDevice *device=NULL) = 0;
-	virtual bool static_evaluate(float *ret, HackerDevice *device=NULL) = 0; // { return false; }
-	virtual bool optimise(HackerDevice *device) { return false; }
+	virtual bool static_evaluate(float *ret, HackerDevice *device=NULL) = 0;
+	virtual bool optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement) = 0;
 };
 
 // Indicates that this node can be used as an operand, checked when
@@ -770,6 +770,7 @@ public:
 	std::shared_ptr<CommandListEvaluatable> finalise() override;
 	float evaluate(CommandListState *state, HackerDevice *device=NULL) override;
 	bool static_evaluate(float *ret, HackerDevice *device=NULL) override;
+	bool optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement) override;
 	Walk walk() override;
 
 	static const wchar_t* pattern() { return L"<IMPLEMENT ME>"; }
@@ -919,7 +920,7 @@ public:
 	bool parse(const wstring *operand, const wstring *ini_namespace, bool command_list_context=true);
 	float evaluate(CommandListState *state, HackerDevice *device=NULL) override;
 	bool static_evaluate(float *ret, HackerDevice *device=NULL) override;
-	bool optimise(HackerDevice *device) override;
+	bool optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement) override;
 };
 
 class CommandListExpression {

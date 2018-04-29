@@ -2742,7 +2742,7 @@ bool CommandListOperand::static_evaluate(float *ret, HackerDevice *device)
 	return false;
 }
 
-bool CommandListOperand::optimise(HackerDevice *device)
+bool CommandListOperand::optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement)
 {
 	if (type == ParamOverrideType::VALUE)
 		return false;
@@ -3108,8 +3108,9 @@ static void transform_operators_recursive(CommandListWalkable *tree,
 			factories, num_factories, right_associative, unary);
 }
 
+// Using raw pointers here so that ::optimise() can call it with "this"
 static void _log_syntax_tree(CommandListSyntaxTree *tree);
-static void _log_token(std::shared_ptr<CommandListToken> token)
+static void _log_token(CommandListToken *token)
 {
 	CommandListSyntaxTree *inner;
 	CommandListOperator *op;
@@ -3122,24 +3123,24 @@ static void _log_token(std::shared_ptr<CommandListToken> token)
 	// Can't use CommandListWalkable here, because it only walks over inner
 	// syntax trees and this debug dumper needs to walk over everything
 
-	inner = dynamic_cast<CommandListSyntaxTree*>(token.get());
-	op = dynamic_cast<CommandListOperator*>(token.get());
-	op_tok = dynamic_cast<CommandListOperatorToken*>(token.get());
-	operand = dynamic_cast<CommandListOperand*>(token.get());
+	inner = dynamic_cast<CommandListSyntaxTree*>(token);
+	op = dynamic_cast<CommandListOperator*>(token);
+	op_tok = dynamic_cast<CommandListOperatorToken*>(token);
+	operand = dynamic_cast<CommandListOperand*>(token);
 	if (inner) {
 		_log_syntax_tree(inner);
 	} else if (op) {
 		LogInfoNoNL("Operator \"%S\"[ ", token->token.c_str());
 		if (op->lhs_tree)
-			_log_token(op->lhs_tree);
+			_log_token(op->lhs_tree.get());
 		else if (op->lhs)
-			_log_token(dynamic_pointer_cast<CommandListToken>(op->lhs));
+			_log_token(dynamic_cast<CommandListToken*>(op->lhs.get()));
 		if ((op->lhs_tree || op->lhs) && (op->rhs_tree || op->rhs))
 			LogInfoNoNL(", ");
 		if (op->rhs_tree)
-			_log_token(op->rhs_tree);
+			_log_token(op->rhs_tree.get());
 		else if (op->rhs)
-			_log_token(dynamic_pointer_cast<CommandListToken>(op->rhs));
+			_log_token(dynamic_cast<CommandListToken*>(op->rhs.get()));
 		LogInfoNoNL(" ]");
 	} else if (op_tok) {
 		LogInfoNoNL("OperatorToken \"%S\"", token->token.c_str());
@@ -3155,7 +3156,7 @@ static void _log_syntax_tree(CommandListSyntaxTree *tree)
 
 	LogInfoNoNL("SyntaxTree[ ");
 	for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
-		_log_token(*i);
+		_log_token((*i).get());
 		if (i != tree->tokens.end()-1)
 			LogInfoNoNL(", ");
 	}
@@ -3179,7 +3180,7 @@ static void log_syntax_tree(T token, const char *msg)
 		return;
 
 	LogInfo(msg);
-	_log_token(dynamic_pointer_cast<CommandListToken>(token));
+	_log_token(dynamic_cast<CommandListToken*>(token.get()));
 	LogInfo("\n");
 }
 
@@ -3225,12 +3226,21 @@ bool CommandListExpression::static_evaluate(float *ret, HackerDevice *device)
 
 bool CommandListExpression::optimise(HackerDevice *device)
 {
+	std::shared_ptr<CommandListEvaluatable> replacement;
+	bool ret;
+
 	if (!evaluatable) {
 		LogOverlay(LOG_DIRE, "BUG: Non-evaluatable expression, please report this and provide your d3dx.ini\n");
 		evaluatable = std::make_shared<CommandListOperand>(0, L"<BUG>");
 		return false;
 	}
-	return evaluatable->optimise(device);
+
+	ret = evaluatable->optimise(device, &replacement);
+
+	if (replacement)
+		evaluatable = replacement;
+
+	return ret;
 }
 
 // Finalises the syntax trees in the operator into evaluatable operands,
@@ -3359,11 +3369,40 @@ bool CommandListOperator::static_evaluate(float *ret, HackerDevice *device)
 	return false;
 }
 
-// TODO bool CommandListOperator::optimise(HackerDevice *device)
-// TODO {
-// TODO 	// FIXME: Stub
-// TODO 	return false;
-// TODO }
+bool CommandListOperator::optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement)
+{
+	std::shared_ptr<CommandListEvaluatable> lhs_replacement;
+	std::shared_ptr<CommandListEvaluatable> rhs_replacement;
+	shared_ptr<CommandListOperand> operand;
+	bool making_progress = false;
+	float static_val;
+	wstring static_val_str;
+
+	if (lhs)
+		making_progress = lhs->optimise(device, &lhs_replacement) || making_progress;
+	if (rhs)
+		making_progress = rhs->optimise(device, &rhs_replacement) || making_progress;
+
+	if (lhs_replacement)
+		lhs = lhs_replacement;
+	if (rhs_replacement)
+		rhs = rhs_replacement;
+
+	if (!static_evaluate(&static_val, device))
+		return making_progress;
+
+	// FIXME: Pretty print rather than dumping syntax tree
+	LogInfoNoNL("Statically evaluated \"");
+	_log_token(dynamic_cast<CommandListToken*>(this));
+	LogInfo("\" as %f\n", static_val);
+	static_val_str = std::to_wstring(static_val);
+
+	operand = make_shared<CommandListOperand>(token_pos, static_val_str.c_str());
+	operand->type = ParamOverrideType::VALUE;
+	operand->val = static_val;
+	*replacement = dynamic_pointer_cast<CommandListEvaluatable>(operand);
+	return true;
+}
 
 CommandListSyntaxTree::Walk CommandListOperator::walk()
 {
