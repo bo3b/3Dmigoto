@@ -10,6 +10,7 @@
 
 #include "HackerDevice.h"
 #include "HookedDevice.h"
+#include "FrameAnalysis.h"
 
 #include <D3Dcompiler.h>
 #include <codecvt>
@@ -27,6 +28,7 @@
 #include "D3D_Shaders\stdafx.h"
 #include "ResourceHash.h"
 #include "ShaderRegex.h"
+#include "CommandList.h"
 
 // A map to look up the HackerDevice from an IUnknown. The reason for using an
 // IUnknown as the key is that an ID3D11Device and IDXGIDevice are actually two
@@ -325,7 +327,7 @@ HRESULT HackerDevice::CreateIniParamResources()
 void HackerDevice::CreatePinkHuntingResources()
 {
 	// Only create special pink mode PixelShader when requested.
-	if (G->hunting && (G->marking_mode == MARKING_MODE_PINK || G->config_reloadable))
+	if (G->hunting && (G->marking_mode == MarkingMode::PINK || G->config_reloadable))
 	{
 		char* hlsl =
 			"float4 pshader() : SV_Target0"
@@ -387,6 +389,8 @@ void HackerDevice::Create3DMigotoResources()
 	CreateIniParamResources();
 	CreatePinkHuntingResources();
 	SetGlobalNVSurfaceCreationMode();
+
+	optimise_command_lists(this);
 }
 
 
@@ -1219,7 +1223,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 	}
 
 	// Zero shader?
-	if (G->marking_mode == MARKING_MODE_ZERO)
+	if (G->marking_mode == MarkingMode::ZERO)
 	{
 		// Disassemble old shader for fixing.
 		string asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength);
@@ -1311,7 +1315,7 @@ bool HackerDevice::NeedOriginalShader(UINT64 hash)
 	ShaderOverride *shaderOverride;
 	ShaderOverrideMap::iterator i;
 
-	if (G->hunting && (G->marking_mode == MARKING_MODE_ORIGINAL || G->config_reloadable || G->show_original_enabled))
+	if (G->hunting && (G->marking_mode == MarkingMode::ORIGINAL || G->config_reloadable || G->show_original_enabled))
 		return true;
 
 	i = G->mShaderOverrideMap.find(hash);
@@ -1644,8 +1648,31 @@ STDMETHODIMP HackerDevice::CreateInputLayout(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11InputLayout **ppInputLayout)
 {
-	return mOrigDevice1->CreateInputLayout(pInputElementDescs, NumElements, pShaderBytecodeWithInputSignature,
+	HRESULT ret;
+	ID3DBlob *blob;
+
+	ret = mOrigDevice1->CreateInputLayout(pInputElementDescs, NumElements, pShaderBytecodeWithInputSignature,
 		BytecodeLength, ppInputLayout);
+
+	if (G->hunting && SUCCEEDED(ret) && ppInputLayout && *ppInputLayout) {
+		// When dumping vertex buffers to text file in frame analysis
+		// we want to use the input layout to decode the buffer, but
+		// DirectX provides no API to query this. So, we store a copy
+		// of the input layout in a blob inside the private data of the
+		// input layout object. The private data is slow to access, so
+		// we should not use this in a hot path, but for frame analysis
+		// it doesn't matter. We use a blob to manage releasing the
+		// backing memory, since the anonymous void* version of this
+		// API does not appear to free the private data on release.
+
+		if (SUCCEEDED(D3DCreateBlob(sizeof(D3D11_INPUT_ELEMENT_DESC) * NumElements, &blob))) {
+			memcpy(blob->GetBufferPointer(), pInputElementDescs, blob->GetBufferSize());
+			(*ppInputLayout)->SetPrivateDataInterface(InputLayoutDescGuid, blob);
+			blob->Release();
+		}
+	}
+
+	return ret;
 }
 
 STDMETHODIMP HackerDevice::CreateClassLinkage(THIS_
@@ -1909,9 +1936,19 @@ static void override_resource_desc_common_2d_3d(DescType *desc, TextureOverride 
 		desc->Width = textureOverride->width;
 	}
 
+	if (textureOverride->width_multiply != 1.0f) {
+		desc->Width = (UINT)(desc->Width * textureOverride->width_multiply);
+		LogInfo("  multiplying custom width by %f to %d\n", textureOverride->width_multiply, desc->Width);
+	}
+
 	if (textureOverride->height != -1) {
 		LogInfo("  setting custom height to %d\n", textureOverride->height);
 		desc->Height = textureOverride->height;
+	}
+
+	if (textureOverride->height_multiply != 1.0f) {
+		desc->Height = (UINT)(desc->Height * textureOverride->height_multiply);
+		LogInfo("  multiplying custom height by %f to %d\n", textureOverride->height_multiply, desc->Height);
 	}
 }
 
@@ -1948,7 +1985,7 @@ static const DescType* process_texture_override(uint32_t hash,
 	if (is_square_surface(origDesc))
 		newMode = (NVAPI_STEREO_SURFACECREATEMODE) G->gSurfaceSquareCreateMode;
 
-	find_texture_overrides(hash, origDesc, &matches);
+	find_texture_overrides(hash, origDesc, &matches, NULL);
 
 	if (origDesc && !matches.empty()) {
 		// There is at least one matching texture override, which means
@@ -2031,6 +2068,7 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	{
 		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppBuffer];
+			new ResourceReleaseTracker(*ppBuffer);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_BUFFER;
 			handle_info->hash = hash;
 			handle_info->orig_hash = hash;
@@ -2084,6 +2122,7 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 	{
 		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture1D];
+			new ResourceReleaseTracker(*ppTexture1D);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE1D;
 			handle_info->hash = hash;
 			handle_info->orig_hash = hash;
@@ -2160,19 +2199,6 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 			G->mResolutionInfo.width, G->mResolutionInfo.height);
 	}
 
-	// If we are running in 3D Vision Direct Mode, we want to double the 
-	// size of any stencil texture, that will later be passed to CreateDepthStencilView
-	// This will also specifically modify the input pDesc, because we want
-	// the game to use the full 2x width, in order to match the ViewPort.
-	if ((G->gForceStereo == 2) &&
-		pDesc &&
-		(pDesc->BindFlags & (D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_RENDER_TARGET)) &&
-		(pDesc->Width == G->mResolutionInfo.width))
-	{
-		const_cast<D3D11_TEXTURE2D_DESC *>(pDesc)->Width *= 2;
-		LogInfo("->Depth stencil width forced 2x for Direct Mode = %d\n", pDesc->Width);
-	}
-
 	// Hash based on raw texture data
 	// TODO: Wrap these texture objects and return them to the game.
 	//  That would avoid the hash lookup later.
@@ -2209,6 +2235,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	{
 		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture2D];
+			new ResourceReleaseTracker(*ppTexture2D);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
 			handle_info->hash = hash;
 			handle_info->orig_hash = hash;
@@ -2276,6 +2303,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	{
 		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture3D];
+			new ResourceReleaseTracker(*ppTexture3D);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE3D;
 			handle_info->hash = hash;
 			handle_info->orig_hash = hash;
@@ -2531,7 +2559,8 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		if (ppShader)
 			*ppShader = NULL; // Appease the static analysis gods
 		hr = (mOrigDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
-		CleanupShaderMaps(*ppShader);
+		if (SUCCEEDED(hr) && ppShader)
+			CleanupShaderMaps(*ppShader);
 
 		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
 		// have a copy for every shader seen. If we are performing any sort of deferred shader replacement, such as pipline
@@ -2569,7 +2598,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 			G->mShaders[*ppShader] = hash;
 			LogDebugW(L"    %ls: handle = %p, hash = %016I64x\n", shaderType, *ppShader, hash);
 
-			if ((G->marking_mode == MARKING_MODE_ZERO) && zeroShader)
+			if ((G->marking_mode == MarkingMode::ZERO) && zeroShader)
 			{
 				G->mZeroShaders[*ppShader] = zeroShader;
 			}

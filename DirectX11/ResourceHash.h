@@ -7,8 +7,10 @@
 #include <set>
 #include <vector>
 #include <memory>
+#include <atomic>
 
 #include "util.h"
+#include "DrawCallInfo.h"
 
 // Tracks info about specific resource instances:
 struct ResourceHandleInfo
@@ -144,6 +146,39 @@ struct ResourceHashInfo
 		tex3d_desc = desc;
 		return *this;
 	}
+};
+
+typedef std::unordered_map<uint32_t, struct ResourceHashInfo> ResourceInfoMap;
+
+// This is a COM object that can be attached to a resource via
+// ID3D11DeviceChild::SetPrivateDataInterface(), so that when the resource is
+// released this class will be as well, giving us a way to reliably know when a
+// resource is released and purge it from G->mResources to make sure that if
+// the address is later reused we won't use stale data.
+//
+// This approach is a bit of an experiment - we know the performance of
+// Set/GetPrivateData sucks and must be avoided in fast paths, but we never
+// look this up so hopefully the overhead will be limited to resource creation
+// time where it should be acceptable. An alternative approach would be what we
+// do for shaders - purging stale entries after every shader creation anywhere
+// in 3DMigoto, but I'm hoping that this will work well enough that we can
+// adapt the shaders to use it as well, since the shader approach has a high
+// risk of regressions.
+//
+// Should fix a bug occasionally seen where a custom resource bound to the
+// pipeline would act as though it was a game resource when used with
+// checktextureoverride, etc.
+class ResourceReleaseTracker : public IUnknown
+{
+	std::atomic_ulong ref;
+	ID3D11Resource *resource;
+
+public:
+	ResourceReleaseTracker(ID3D11Resource *resource);
+
+	HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void **ppvObject);
+	ULONG STDMETHODCALLTYPE AddRef(void);
+	ULONG STDMETHODCALLTYPE Release(void);
 };
 
 uint32_t CalcTexture2DDescHash(uint32_t initial_hash, const D3D11_TEXTURE2D_DESC *const_desc);
@@ -299,6 +334,7 @@ enum class FuzzyMatchOperandType {
 };
 
 class FuzzyMatch {
+	bool matches_common(UINT lhs, UINT effective) const;
 public:
 	FuzzyMatchOp op;
 	FuzzyMatchOperandType rhs_type;
@@ -316,6 +352,7 @@ public:
 	FuzzyMatch();
 	template <typename DescType>
 	bool matches(UINT lhs, const DescType *desc) const;
+	bool matches_uint(UINT lhs) const;
 };
 
 // Forward declaration to resolve circular dependency. One of these days we
@@ -335,8 +372,6 @@ private:
 	bool check_common_texture_fields(const DescType *desc) const;
 public:
 	struct TextureOverride *texture_override;
-
-	int priority;
 
 	bool matches_buffer;
 	bool matches_tex1d;
@@ -370,6 +405,7 @@ public:
 	void set_resource_type(D3D11_RESOURCE_DIMENSION type);
 	bool update_types_matched();
 };
+bool TextureOverrideLess(const struct TextureOverride &lhs, const struct TextureOverride &rhs);
 struct FuzzyMatchResourceDescLess {
 	bool operator() (const std::shared_ptr<FuzzyMatchResourceDesc> &lhs, const std::shared_ptr<FuzzyMatchResourceDesc> &rhs) const;
 };
@@ -381,5 +417,5 @@ typedef std::set<std::shared_ptr<FuzzyMatchResourceDesc>, FuzzyMatchResourceDesc
 typedef std::vector<TextureOverride*> TextureOverrideMatches;
 
 template <typename DescType>
-void find_texture_overrides(uint32_t hash, const DescType *desc, TextureOverrideMatches *matches);
-void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverrideMatches *matches);
+void find_texture_overrides(uint32_t hash, const DescType *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
+void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverrideMatches *matches, DrawCallInfo *call_info);

@@ -6,13 +6,19 @@ void LoadConfigFile();
 void ReloadConfig(HackerDevice *device);
 void LoadProfileManagerConfig(const wchar_t *exe_path);
 
-int GetIniInt(const wchar_t *section, const wchar_t *key, int def, bool *found);
-bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, bool *found);
+int GetIniInt(const wchar_t *section, const wchar_t *key, int def, bool *found, bool warn=true);
+bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, bool *found, bool warn=true);
 float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, bool *found);
 int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 		 wchar_t *ret, unsigned size);
 int GetIniStringAndLog(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 		 wchar_t *ret, unsigned size);
+template <class T>
+T GetIniEnumClass(const wchar_t *section, const wchar_t *key, T def, bool *found,
+		struct EnumName_t<const wchar_t *, T> *enum_names);
+
+bool get_namespaced_section_name_lower(const wstring *section, const wstring *ini_namespace, wstring *ret);
+bool get_section_namespace(const wchar_t *section, wstring *ret);
 
 // These functions will bypass our hooks *if* the option to do so has been enabled:
 BOOL WINAPI CursorUpscalingBypass_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect);

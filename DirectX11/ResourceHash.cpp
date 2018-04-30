@@ -1,8 +1,10 @@
 #include "ResourceHash.h"
 
+#include <INITGUID.h>
 #include "log.h"
 #include "util.h"
 #include "globals.h"
+#include "profiling.h"
 
 // DirectXTK headers fail to include their own pre-requisits. We just want
 // GetSurfaceInfo from LoaderHelpers
@@ -947,9 +949,14 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 	UINT srcWidth = 1, srcHeight = 1, srcDepth = 1, srcMip = 0, srcIdx = 0, srcArraySize = 1;
 	UINT dstWidth = 1, dstHeight = 1, dstDepth = 1, dstMip = 0, dstIdx = 0, dstArraySize = 1;
 	bool partial = false;
+	ResourceInfoMap::iterator info_i;
+	Profiling::State profiling_state;
 
 	if (!dest)
 		return;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	EnterCriticalSection(&G->mCriticalSection);
 
@@ -964,11 +971,11 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 	if (!dstHash)
 		goto out_unlock;
 
-	try {
-		dstInfo = &G->mResourceInfo.at(dstHash);
-	} catch (std::out_of_range) {
+	// Faster than catching an out_of_range exception from .at():
+	info_i = G->mResourceInfo.find(dstHash);
+	if (info_i == G->mResourceInfo.end())
 		goto out_unlock;
-	}
+	dstInfo = &info_i->second;
 
 	GetResourceInfoFields(dstInfo, DstSubresource,
 			&dstWidth, &dstHeight, &dstDepth,
@@ -984,18 +991,19 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 		srcHash = GetOrigResourceHash(src);
 		G->mCopiedResourceInfo.insert(srcHash);
 
-		try {
-			srcInfo = &G->mResourceInfo.at(srcHash);
+		// Faster than catching an out_of_range exception from .at():
+		info_i = G->mResourceInfo.find(srcHash);
+		if (info_i != G->mResourceInfo.end()) {
+			srcInfo = &info_i->second;
 			GetResourceInfoFields(srcInfo, srcSubresource,
 					&srcWidth, &srcHeight, &srcDepth,
 					&srcIdx, &srcMip, &srcArraySize);
 
 			if (dstHash != srcHash && srcInfo->initial_data_used_in_hash) {
 				dstInfo->initial_data_used_in_hash = true;
-				if (!G->track_texture_updates)
+				if (G->track_texture_updates == 0)
 					dstInfo->hash_contaminated = true;
 			}
-		} catch (std::out_of_range) {
 		}
 	}
 
@@ -1003,13 +1011,13 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 		case 'U':
 			dstInfo->update_contamination.insert(DstSubresource);
 			dstInfo->initial_data_used_in_hash = true;
-			if (!G->track_texture_updates)
+			if (G->track_texture_updates == 0)
 				dstInfo->hash_contaminated = true;
 			break;
 		case 'M':
 			dstInfo->map_contamination.insert(DstSubresource);
 			dstInfo->initial_data_used_in_hash = true;
-			if (!G->track_texture_updates)
+			if (G->track_texture_updates == 0)
 				dstInfo->hash_contaminated = true;
 			break;
 		case 'C':
@@ -1051,6 +1059,9 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 
 out_unlock:
 	LeaveCriticalSection(&G->mCriticalSection);
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
 }
 
 void UpdateResourceHashFromCPU(ID3D11Resource *resource,
@@ -1064,9 +1075,13 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 	D3D11_TEXTURE3D_DESC *desc3D;
 	uint32_t old_data_hash, old_hash;
 	ResourceHandleInfo *info = NULL;
+	Profiling::State profiling_state;
 
 	if (!resource || !data)
 		return;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	EnterCriticalSection(&G->mCriticalSection);
 
@@ -1124,6 +1139,9 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 
 out_unlock:
 	LeaveCriticalSection(&G->mCriticalSection);
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
 }
 
 void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
@@ -1133,6 +1151,10 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 	D3D11_TEXTURE2D_DESC *desc2D;
 	D3D11_TEXTURE3D_DESC *desc3D;
 	uint32_t old_data_hash, old_hash;
+	Profiling::State profiling_state;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	EnterCriticalSection(&G->mCriticalSection);
 
@@ -1190,11 +1212,14 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 
 out_unlock:
 	LeaveCriticalSection(&G->mCriticalSection);
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
 }
 
 bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource)
 {
-	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
+	if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pResource, Subresource, NULL, 0, 'M', 0, 0, 0, NULL);
 	}
 
@@ -1203,7 +1228,58 @@ bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource)
 	// updates regardless (just not the full resource hash) so the option
 	// can be turned on live and work. But there's a few pieces we would
 	// need for that to work so for now let's not over-complicate things.
-	return G->track_texture_updates && Subresource == 0;
+	return G->track_texture_updates == 1 && Subresource == 0;
+}
+
+// -----------------------------------------------------------------------------------------------
+//                       Automatic Data Structure Cleanup on Resource Release
+// -----------------------------------------------------------------------------------------------
+
+// {4A40BF2F-6358-470F-BA0A-662E3E2D8CD3}
+DEFINE_GUID(ResourceReleaseTrackerGuid,
+0x4a40bf2f, 0x6358, 0x470f, 0xba, 0xa, 0x66, 0x2e, 0x3e, 0x2d, 0x8c, 0xd3);
+
+ResourceReleaseTracker::ResourceReleaseTracker(ID3D11Resource *resource) :
+	resource(resource)
+{
+	ref = 0;
+	HRESULT hr = resource->SetPrivateDataInterface(ResourceReleaseTrackerGuid, this);
+	// LogDebug("ResourceReleaseTracker %p tracking %p: 0x%x\n", this, resource, hr);
+}
+
+HRESULT STDMETHODCALLTYPE ResourceReleaseTracker::QueryInterface(REFIID riid, _COM_Outptr_ void **ppvObject)
+{
+	LogInfo("ResourceReleaseTracker::QueryInterface(%p:%p) called with IID: %s\n", this, resource, NameFromIID(riid).c_str());
+
+	// The only interface we support is IUnknown
+	if (ppvObject && IsEqualIID(riid, IID_IUnknown)) {
+		AddRef();
+		*ppvObject = this;
+		return S_OK;
+	}
+
+	return E_NOINTERFACE;
+}
+
+ULONG STDMETHODCALLTYPE ResourceReleaseTracker::AddRef(void)
+{
+	ULONG ret = ++ref;
+	// LogDebug("ResourceReleaseTracker::AddRef(%p:%p) -> %lu\n", this, resource, ret);
+	return ret;
+}
+
+ULONG STDMETHODCALLTYPE ResourceReleaseTracker::Release(void)
+{
+	ULONG ret = --ref;
+	// LogDebug("ResourceReleaseTracker::Release(%p:%p) -> %lu\n", this, resource, ret);
+	if (ret == 0) {
+		// LogDebug("Removing %p from mResources\n", resource);
+		EnterCriticalSection(&G->mCriticalSection);
+		G->mResources.erase(resource);
+		LeaveCriticalSection(&G->mCriticalSection);
+		delete this;
+	}
+	return ret;
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -1273,6 +1349,23 @@ bool FuzzyMatch::matches(UINT lhs, const DescType *desc) const
 			break;
 	};
 
+	return matches_common(lhs, effective);
+}
+
+bool FuzzyMatch::matches_uint(UINT lhs) const
+{
+	// Common case:
+	if (op == FuzzyMatchOp::ALWAYS)
+		return true;
+
+	if (rhs_type != FuzzyMatchOperandType::VALUE)
+		return false;
+
+	return matches_common(lhs, val);
+}
+
+bool FuzzyMatch::matches_common(UINT lhs, UINT effective) const
+{
 	// For now just supporting a single integer numerator and denominator,
 	// which should be sufficient to match most aspect ratios, downsampled
 	// textures and so on. TODO: Add a full expression evaluator.
@@ -1300,7 +1393,6 @@ bool FuzzyMatch::matches(UINT lhs, const DescType *desc) const
 }
 
 FuzzyMatchResourceDesc::FuzzyMatchResourceDesc(std::wstring section) :
-	priority(0),
 	matches_buffer(true),
 	matches_tex1d(true),
 	matches_tex2d(true),
@@ -1462,71 +1554,94 @@ bool FuzzyMatchResourceDesc::update_types_matched()
 	return matches_buffer || matches_tex1d || matches_tex2d || matches_tex3d;
 }
 
+static bool matches_draw_info(TextureOverride *tex_override, DrawCallInfo *call_info)
+{
+	if (!tex_override->has_draw_context_match)
+		return true;
 
-static TextureOverride* find_texture_override_for_hash(uint32_t hash)
+	if (!call_info)
+		return false;
+
+	if (!tex_override->match_first_vertex.matches_uint(call_info->FirstVertex))
+		return false;
+	if (!tex_override->match_first_index.matches_uint(call_info->FirstIndex))
+		return false;
+	if (!tex_override->match_first_instance.matches_uint(call_info->FirstInstance))
+		return false;
+	if (!tex_override->match_vertex_count.matches_uint(call_info->VertexCount))
+		return false;
+	if (!tex_override->match_index_count.matches_uint(call_info->IndexCount))
+		return false;
+	if (!tex_override->match_instance_count.matches_uint(call_info->InstanceCount))
+		return false;
+	return true;
+}
+
+static void find_texture_override_for_hash(uint32_t hash, TextureOverrideMatches *matches, DrawCallInfo *call_info)
 {
 	TextureOverrideMap::iterator i;
+	TextureOverrideList::iterator j;
 
 	i = G->mTextureOverrideMap.find(hash);
 	if (i == G->mTextureOverrideMap.end())
-		return NULL;
+		return;
 
-	return &i->second;
+	for (j = i->second.begin(); j != i->second.end(); j++) {
+		if (matches_draw_info(&(*j), call_info))
+			matches->push_back(&(*j));
+	}
 }
 
-static TextureOverride* find_texture_override_for_resource_by_hash(ID3D11Resource *resource)
+static void find_texture_override_for_resource_by_hash(ID3D11Resource *resource, TextureOverrideMatches *matches, DrawCallInfo *call_info)
 {
 	uint32_t hash = 0;
 
 	if (!resource)
-		return NULL;
+		return;
 
 	if (G->mTextureOverrideMap.empty())
-		return NULL;
+		return;
 
 	EnterCriticalSection(&G->mCriticalSection);
 		hash = GetResourceHash(resource);
 	LeaveCriticalSection(&G->mCriticalSection);
 	if (!hash)
-		return NULL;
+		return;
 
-	return find_texture_override_for_hash(hash);
+	find_texture_override_for_hash(hash, matches, call_info);
 }
 
 template <typename DescType>
-static void find_texture_overrides_for_desc(const DescType *desc, TextureOverrideMatches *matches)
+static void find_texture_overrides_for_desc(const DescType *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info)
 {
 	FuzzyTextureOverrides::iterator i;
 
 	for (i = G->mFuzzyTextureOverrides.begin(); i != G->mFuzzyTextureOverrides.end(); i++) {
-		if ((*i)->matches(desc))
+		if ((*i)->matches(desc) && matches_draw_info((*i)->texture_override, call_info))
 			matches->push_back((*i)->texture_override);
 	}
 }
 
 template <typename DescType>
-void find_texture_overrides(uint32_t hash, const DescType *desc, TextureOverrideMatches *matches)
+void find_texture_overrides(uint32_t hash, const DescType *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info)
 {
-	TextureOverride *tex_override;
-
-	tex_override = find_texture_override_for_hash(hash);
-	if (tex_override) {
+	find_texture_override_for_hash(hash, matches, call_info);
+	if (!matches->empty()) {
 		// If we got a result it was matched by hash - that's an exact
 		// match and we don't process any fuzzy matches
-		matches->push_back(tex_override);
 		return;
 	}
 
-	find_texture_overrides_for_desc(desc, matches);
+	find_texture_overrides_for_desc(desc, matches, call_info);
 }
 // Explicit template expansion is necessary to generate these functions for
 // the compiler to generate them so they can be used from other source files:
-template void find_texture_overrides<D3D11_BUFFER_DESC>(uint32_t hash, const D3D11_BUFFER_DESC *desc, TextureOverrideMatches *matches);
-template void find_texture_overrides<D3D11_TEXTURE1D_DESC>(uint32_t hash, const D3D11_TEXTURE1D_DESC *desc, TextureOverrideMatches *matches);
-template void find_texture_overrides<D3D11_TEXTURE2D_DESC>(uint32_t hash, const D3D11_TEXTURE2D_DESC *desc, TextureOverrideMatches *matches);
-template void find_texture_overrides<D3D11_TEXTURE3D_DESC>(uint32_t hash, const D3D11_TEXTURE3D_DESC *desc, TextureOverrideMatches *matches);
+template void find_texture_overrides<D3D11_BUFFER_DESC>(uint32_t hash, const D3D11_BUFFER_DESC *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
+template void find_texture_overrides<D3D11_TEXTURE1D_DESC>(uint32_t hash, const D3D11_TEXTURE1D_DESC *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
+template void find_texture_overrides<D3D11_TEXTURE2D_DESC>(uint32_t hash, const D3D11_TEXTURE2D_DESC *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
+template void find_texture_overrides<D3D11_TEXTURE3D_DESC>(uint32_t hash, const D3D11_TEXTURE3D_DESC *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
 
-void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverrideMatches *matches)
+void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverrideMatches *matches, DrawCallInfo *call_info)
 {
 	D3D11_RESOURCE_DIMENSION dimension;
 	ID3D11Buffer *buf = NULL;
@@ -1537,13 +1652,11 @@ void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverri
 	D3D11_TEXTURE1D_DESC tex1d_desc;
 	D3D11_TEXTURE2D_DESC tex2d_desc;
 	D3D11_TEXTURE3D_DESC tex3d_desc;
-	TextureOverride *tex_override;
 
-	tex_override = find_texture_override_for_resource_by_hash(resource);
-	if (tex_override) {
+	find_texture_override_for_resource_by_hash(resource, matches, call_info);
+	if (!matches->empty()) {
 		// If we got a result it was matched by hash - that's an exact
 		// match and we don't process any fuzzy matches
-		matches->push_back(tex_override);
 		return;
 	}
 
@@ -1552,24 +1665,23 @@ void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverri
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
 			buf = (ID3D11Buffer*)resource;
 			buf->GetDesc(&buf_desc);
-			return find_texture_overrides_for_desc(&buf_desc, matches);
+			return find_texture_overrides_for_desc(&buf_desc, matches, call_info);
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			tex1d = (ID3D11Texture1D*)resource;
 			tex1d->GetDesc(&tex1d_desc);
-			return find_texture_overrides_for_desc(&tex1d_desc, matches);
+			return find_texture_overrides_for_desc(&tex1d_desc, matches, call_info);
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
 			tex2d = (ID3D11Texture2D*)resource;
 			tex2d->GetDesc(&tex2d_desc);
-			return find_texture_overrides_for_desc(&tex2d_desc, matches);
+			return find_texture_overrides_for_desc(&tex2d_desc, matches, call_info);
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
 			tex3d = (ID3D11Texture3D*)resource;
 			tex3d->GetDesc(&tex3d_desc);
-			return find_texture_overrides_for_desc(&tex3d_desc, matches);
+			return find_texture_overrides_for_desc(&tex3d_desc, matches, call_info);
 	}
 }
 
-
-bool FuzzyMatchResourceDescLess::operator() (const std::shared_ptr<FuzzyMatchResourceDesc> &lhs, const std::shared_ptr<FuzzyMatchResourceDesc> &rhs) const
+bool TextureOverrideLess(const struct TextureOverride &lhs, const struct TextureOverride &rhs)
 {
 	// For texture create time overrides we want the highest priority
 	// texture override to take precedence, which will happen if it is
@@ -1577,7 +1689,11 @@ bool FuzzyMatchResourceDescLess::operator() (const std::shared_ptr<FuzzyMatchRes
 	// are equal, we use the ini section name for sorting to make sure that
 	// we get consistent results.
 
-	if (lhs->priority != rhs->priority)
-		return lhs->priority < rhs->priority;
-	return lhs->texture_override->ini_section < rhs->texture_override->ini_section;
+	if (lhs.priority != rhs.priority)
+		return lhs.priority < rhs.priority;
+	return lhs.ini_section < rhs.ini_section;
+}
+bool FuzzyMatchResourceDescLess::operator() (const std::shared_ptr<FuzzyMatchResourceDesc> &lhs, const std::shared_ptr<FuzzyMatchResourceDesc> &rhs) const
+{
+	return TextureOverrideLess(*lhs->texture_override, *rhs->texture_override);
 }

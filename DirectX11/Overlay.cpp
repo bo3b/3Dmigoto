@@ -14,6 +14,7 @@
 #include "D3D11Wrapper.h"
 //#include "nvapi.h"
 #include "Globals.h"
+#include "profiling.h"
 
 #include "HackerDevice.h"
 #include "HackerContext.h"
@@ -28,13 +29,15 @@ struct LogLevelParams {
 	DirectX::XMVECTORF32 colour;
 	DWORD duration;
 	bool hide_in_release;
+	std::unique_ptr<DirectX::SpriteFont> Overlay::*font;
 };
 
 struct LogLevelParams log_levels[] = {
-	{ DirectX::Colors::Red,       20000, false }, // DIRE
-	{ DirectX::Colors::OrangeRed, 10000, false }, // WARNING
-	{ DirectX::Colors::Orange,     5000,  true }, // NOTICE
-	{ DirectX::Colors::LimeGreen,  2000,  true }, // INFO
+	{ DirectX::Colors::Red,       20000, false, &Overlay::mFontNotifications }, // DIRE
+	{ DirectX::Colors::OrangeRed, 10000, false, &Overlay::mFontNotifications }, // WARNING
+	{ DirectX::Colors::OrangeRed, 10000, false, &Overlay::mFontProfiling     }, // WARNING_MONOSPACE
+	{ DirectX::Colors::Orange,     5000,  true, &Overlay::mFontNotifications }, // NOTICE
+	{ DirectX::Colors::LimeGreen,  2000,  true, &Overlay::mFontNotifications }, // INFO
 };
 
 // Side note: Not really stoked with C++ string handling.  There are like 4 or
@@ -129,6 +132,14 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	fontBlob = static_cast<const uint8_t*>(LockResource(rcData));
 	mFontNotifications.reset(new DirectX::SpriteFont(mOrigDevice, fontBlob, fontSize));
 	mFontNotifications->SetDefaultCharacter(L'?');
+
+	// Smaller monospaced font for profiling text
+	rc = FindResource(handle, MAKEINTRESOURCE(IDR_COURIERSMALL), MAKEINTRESOURCE(SPRITEFONT));
+	rcData = LoadResource(handle, rc);
+	fontSize = SizeofResource(handle, rc);
+	fontBlob = static_cast<const uint8_t*>(LockResource(rcData));
+	mFontProfiling.reset(new DirectX::SpriteFont(mOrigDevice, fontBlob, fontSize));
+	mFontProfiling->SetDefaultCharacter(L'?');
 
 	mSpriteBatch.reset(new DirectX::SpriteBatch(mOrigContext));
 
@@ -552,6 +563,8 @@ static void CreateShaderCountString(wchar_t *counts)
 		AppendShaderText(counts, L"IB", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
 	if (G->mSelectedRenderTarget != (ID3D11Resource *)-1)
 		AppendShaderText(counts, L"RT", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
+
+	wcscat_s(counts, maxstring, lookup_enum_name(MarkingModeNames, G->marking_mode));
 }
 
 
@@ -648,7 +661,7 @@ void Overlay::DrawShaderInfoLines(float *y)
 		DrawShaderInfoLine("RT", GetOrigResourceHash(G->mSelectedRenderTarget), y, false);
 }
 
-void Overlay::DrawNotices(float y)
+void Overlay::DrawNotices(float *y)
 {
 	std::vector<OverlayNotice>::iterator notice;
 	DWORD time = GetTickCount();
@@ -679,12 +692,12 @@ void Overlay::DrawNotices(float y)
 				continue;
 			}
 
-			strSize = mFontNotifications->MeasureString(notice->message.c_str());
+			strSize = (this->*log_levels[level].font)->MeasureString(notice->message.c_str());
 
-			DrawRectangle(0, y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
+			DrawRectangle(0, *y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
 
-			mFontNotifications->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, y), log_levels[level].colour);
-			y += strSize.y + 5;
+			(this->*log_levels[level].font)->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, *y), log_levels[level].colour);
+			*y += strSize.y + 5;
 
 			has_notice = true;
 			notice++;
@@ -695,6 +708,17 @@ void Overlay::DrawNotices(float y)
 	LeaveCriticalSection(&G->mCriticalSection);
 }
 
+void Overlay::DrawProfiling(float *y)
+{
+	Vector2 strSize;
+
+	Profiling::update_txt();
+
+	strSize = mFontProfiling->MeasureString(Profiling::text.c_str());
+	DrawRectangle(0, *y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
+
+	mFontProfiling->DrawString(mSpriteBatch.get(), Profiling::text.c_str(), Vector2(0, *y), DirectX::Colors::Goldenrod);
+}
 
 // Create a string for display on the bottom edge of the screen, that contains the current
 // stereo info of separation and convergence. 
@@ -727,10 +751,14 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
 
 void Overlay::DrawOverlay(void)
 {
+	Profiling::State profiling_state;
 	HRESULT hr;
 
-	if (G->hunting != HUNTING_MODE_ENABLED && !has_notice)
+	if (G->hunting != HUNTING_MODE_ENABLED && !has_notice && Profiling::mode == Profiling::Mode::NONE)
 		return;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	// Since some games did not like having us change their drawing state from
 	// SpriteBatch, we now save and restore all state information for the GPU
@@ -766,7 +794,10 @@ void Overlay::DrawOverlay(void)
 			}
 
 			if (has_notice)
-				DrawNotices(y);
+				DrawNotices(&y);
+
+			if (Profiling::mode != Profiling::Mode::NONE)
+				DrawProfiling(&y);
 		}
 		mSpriteBatch->End();
 	}
@@ -774,6 +805,9 @@ fail_restore:
 	RestoreState();
 
 	flush_d3d11on12(mOrigDevice, mOrigContext);
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::overlay_overhead);
 }
 
 OverlayNotice::OverlayNotice(std::wstring message) :

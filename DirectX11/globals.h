@@ -20,7 +20,7 @@
 // Resolve circular include dependency between Globals.h ->
 // CommandList.h -> HackerContext.h -> Globals.h
 class CommandListCommand;
-typedef std::vector<std::shared_ptr<CommandListCommand>> CommandList;
+class CommandList;
 
 
 enum HuntingMode {
@@ -29,11 +29,23 @@ enum HuntingMode {
 	HUNTING_MODE_SOFT_DISABLED = 2,
 };
 
-const int MARKING_MODE_SKIP = 0;
-const int MARKING_MODE_MONO = 1;
-const int MARKING_MODE_ORIGINAL = 2;
-const int MARKING_MODE_ZERO = 3;
-const int MARKING_MODE_PINK = 4;
+enum class MarkingMode {
+	SKIP,
+	ORIGINAL,
+	PINK,
+	MONO,
+	ZERO,
+
+	INVALID, // Must be last - used for next_marking_mode
+};
+static EnumName_t<const wchar_t *, MarkingMode> MarkingModeNames[] = {
+	{L"skip", MarkingMode::SKIP},
+	{L"mono", MarkingMode::MONO},
+	{L"original", MarkingMode::ORIGINAL},
+	{L"zero", MarkingMode::ZERO},
+	{L"pink", MarkingMode::PINK},
+	{NULL, MarkingMode::INVALID} // End of list marker
+};
 
 enum class ShaderHashType {
 	INVALID = -1,
@@ -41,17 +53,12 @@ enum class ShaderHashType {
 	EMBEDDED,
 	BYTECODE,
 };
-static EnumName_t<wchar_t *, ShaderHashType> ShaderHashNames[] = {
+static EnumName_t<const wchar_t *, ShaderHashType> ShaderHashNames[] = {
 	{L"3dmigoto", ShaderHashType::FNV},
 	{L"embedded", ShaderHashType::EMBEDDED},
 	{L"bytecode", ShaderHashType::BYTECODE},
 	{NULL, ShaderHashType::INVALID} // End of list marker
 };
-
-
-// Key is index/vertex buffer, value is hash key.
-
-typedef std::unordered_map<ID3D11Buffer *, uint32_t> DataBufferMap;
 
 // Source compiled shaders.
 typedef std::unordered_map<UINT64, std::string> CompiledShaderMap;
@@ -166,8 +173,12 @@ static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = 
 
 	// Texture2D format selection:
 	{L"jps", FrameAnalysisOptions::FMT_2D_JPS},
+	{L"jpg", FrameAnalysisOptions::FMT_2D_JPS},
+	{L"jpeg", FrameAnalysisOptions::FMT_2D_JPS},
 	{L"dds", FrameAnalysisOptions::FMT_2D_DDS},
 	{L"jps_dds", FrameAnalysisOptions::FMT_2D_AUTO},
+	{L"jpg_dds", FrameAnalysisOptions::FMT_2D_AUTO},
+	{L"jpeg_dds", FrameAnalysisOptions::FMT_2D_AUTO},
 
 	// Buffer format selection:
 	{L"buf", FrameAnalysisOptions::FMT_BUF_BIN},
@@ -211,7 +222,7 @@ enum class DepthBufferFilter {
 	DEPTH_ACTIVE,
 	DEPTH_INACTIVE,
 };
-static EnumName_t<wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
+static EnumName_t<const wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
 	{L"none", DepthBufferFilter::NONE},
 	{L"depth_active", DepthBufferFilter::DEPTH_ACTIVE},
 	{L"depth_inactive", DepthBufferFilter::DEPTH_INACTIVE},
@@ -219,10 +230,11 @@ static EnumName_t<wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
 };
 
 struct ShaderOverride {
+	std::wstring first_ini_section;
 	DepthBufferFilter depth_filter;
 	UINT64 partner_hash;
 	char model[20]; // More than long enough for even ps_4_0_level_9_0
-	bool allow_duplicate_hashes;
+	int allow_duplicate_hashes;
 
 	CommandList command_list;
 	CommandList post_command_list;
@@ -230,7 +242,7 @@ struct ShaderOverride {
 	ShaderOverride() :
 		depth_filter(DepthBufferFilter::NONE),
 		partner_hash(0),
-		allow_duplicate_hashes(true)
+		allow_duplicate_hashes(1)
 	{
 		model[0] = '\0';
 	}
@@ -243,10 +255,22 @@ struct TextureOverride {
 	int format;
 	int width;
 	int height;
+	float width_multiply;
+	float height_multiply;
 	std::vector<int> iterations;
 	bool expand_region_copy;
 	bool deny_cpu_read;
 	float filter_index;
+
+	bool has_draw_context_match;
+	bool has_match_priority;
+	int priority;
+	FuzzyMatch match_first_vertex;
+	FuzzyMatch match_first_index;
+	FuzzyMatch match_first_instance;
+	FuzzyMatch match_vertex_count;
+	FuzzyMatch match_index_count;
+	FuzzyMatch match_instance_count;
 
 	CommandList command_list;
 	CommandList post_command_list;
@@ -256,12 +280,25 @@ struct TextureOverride {
 		format(-1),
 		width(-1),
 		height(-1),
+		width_multiply(1.0),
+		height_multiply(1.0),
 		expand_region_copy(false),
 		deny_cpu_read(false),
-		filter_index(1.0)
+		filter_index(FLT_MAX),
+		has_draw_context_match(false),
+		has_match_priority(false),
+		priority(0)
 	{}
 };
-typedef std::unordered_map<uint32_t, struct TextureOverride> TextureOverrideMap;
+
+// The TextureOverrideList will be sorted because we want multiple
+// [TextureOverrides] that share the same hash (differentiated by draw context
+// matching) to always be processed in the same order for consistent results.
+// We can't use a std::set to enforce this ordering, as that makes the
+// TextureOverrides const, but there are a few places we modify it. Instead, we
+// will sort it in the ini parser when we create the list.
+typedef std::vector<struct TextureOverride> TextureOverrideList;
+typedef std::unordered_map<uint32_t, TextureOverrideList> TextureOverrideMap;
 
 // We use this when collecting resource info for ShaderUsage.txt to take a
 // snapshot of the resource handle, hash and original hash. We used to just
@@ -301,7 +338,7 @@ enum class GetResolutionFrom {
 	SWAP_CHAIN,
 	DEPTH_STENCIL,
 };
-static EnumName_t<wchar_t *, GetResolutionFrom> GetResolutionFromNames[] = {
+static EnumName_t<const wchar_t *, GetResolutionFrom> GetResolutionFromNames[] = {
 	{L"swap_chain", GetResolutionFrom::SWAP_CHAIN},
 	{L"depth_stencil", GetResolutionFrom::DEPTH_STENCIL},
 	{NULL, GetResolutionFrom::INVALID} // End of list marker
@@ -356,8 +393,10 @@ struct Globals
 	int FILTER_REFRESH[11];
 	bool SCREEN_ALLOW_COMMANDS;
 	bool upscaling_hooks_armed;
+	bool upscaling_command_list_using_explicit_bb_flip;
+	bool bb_is_upscaling_bb;
 
-	int marking_mode;
+	MarkingMode marking_mode;
 	int mark_snapshot;
 	int gForceStereo;
 	bool gCreateStereoProfile;
@@ -374,6 +413,7 @@ struct Globals
 
 	bool deferred_contexts_enabled;
 
+	bool frame_analysis_registered;
 	bool analyse_frame;
 	unsigned analyse_frame_no;
 	wchar_t ANALYSIS_PATH[MAX_PATH];
@@ -384,7 +424,7 @@ struct Globals
 	int texture_hash_version;
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
 	bool EXPORT_SHADERS, EXPORT_FIXED, EXPORT_BINARY, CACHE_SHADERS, SCISSOR_DISABLE;
-	bool track_texture_updates;
+	int track_texture_updates;
 	bool assemble_signature_comments;
 	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
 	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
@@ -475,7 +515,7 @@ struct Globals
 	std::unordered_map<ID3D11Asynchronous*, AsyncQueryType> mQueryTypes;
 
 	// These five items work with the *original* resource hash:
-	std::unordered_map<uint32_t, struct ResourceHashInfo> mResourceInfo;
+	ResourceInfoMap mResourceInfo;
 	std::set<uint32_t> mRenderTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mUnorderedAccessInfo;				// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
 	std::set<uint32_t> mDepthTargetInfo;					// std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
@@ -526,6 +566,7 @@ struct Globals
 
 		deferred_contexts_enabled(true),
 
+		frame_analysis_registered(false),
 		analyse_frame(false),
 		analyse_frame_no(0),
 		def_analyse_options(FrameAnalysisOptions::INVALID),
@@ -561,8 +602,10 @@ struct Globals
 		SCREEN_FULLSCREEN(0),
 		SCREEN_ALLOW_COMMANDS(false),
 		upscaling_hooks_armed(true),
+		upscaling_command_list_using_explicit_bb_flip(false),
+		bb_is_upscaling_bb(false),
 
-		marking_mode(-1),
+		marking_mode(MarkingMode::INVALID),
 		mark_snapshot(2),
 		gForceStereo(0),
 		gCreateStereoProfile(false),

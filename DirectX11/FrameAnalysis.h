@@ -3,6 +3,10 @@
 #include <d3d11_1.h>
 #include "HackerContext.h"
 
+// {4EAF92BD-5552-44C7-804C-4CE1014C1B17}
+DEFINE_GUID(InputLayoutDescGuid,
+0x4eaf92bd, 0x5552, 0x44c7, 0x80, 0x4c, 0x4c, 0xe1, 0x1, 0x4c, 0x1b, 0x17);
+
 struct FrameAnalysisDeferredDumpBufferArgs {
 	FrameAnalysisOptions analyse_options;
 
@@ -11,6 +15,8 @@ struct FrameAnalysisDeferredDumpBufferArgs {
 	// to override the default copy and/or move constructors and operator=
 	// just to properly handle the refcounting on a raw COM pointer.
 	Microsoft::WRL::ComPtr<ID3D11Buffer> staging;
+	Microsoft::WRL::ComPtr<ID3DBlob> layout;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> staged_ib_for_vb;
 
 	D3D11_BUFFER_DESC orig_desc;
 	wstring filename;
@@ -21,14 +27,22 @@ struct FrameAnalysisDeferredDumpBufferArgs {
 	UINT offset;
 	UINT first;
 	UINT count;
+	DrawCallInfo call_info;
+	UINT ib_off_for_vb;
+	D3D11_PRIMITIVE_TOPOLOGY topology;
 
 	FrameAnalysisDeferredDumpBufferArgs(FrameAnalysisOptions analyse_options, ID3D11Buffer *staging,
 			D3D11_BUFFER_DESC *orig_desc, wchar_t *filename, FrameAnalysisOptions buf_type_mask, int idx,
-			DXGI_FORMAT ib_fmt, UINT stride, UINT offset, UINT first, UINT count) :
+			DXGI_FORMAT ib_fmt, UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
+			D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info,
+			ID3D11Buffer *staged_ib_for_vb, UINT ib_off_for_vb) :
 		analyse_options(analyse_options), staging(staging),
 		orig_desc(*orig_desc), filename(filename),
 		buf_type_mask(buf_type_mask), idx(idx), ib_fmt(ib_fmt),
-		stride(stride), offset(offset), first(first), count(count)
+		stride(stride), offset(offset), first(first), count(count),
+		layout(layout), topology(topology),
+		call_info(call_info ? *call_info : DrawCallInfo()),
+		staged_ib_for_vb(staged_ib_for_vb), ib_off_for_vb(ib_off_for_vb)
 	{}
 };
 struct FrameAnalysisDeferredDumpTex2DArgs {
@@ -109,22 +123,29 @@ private:
 			UINT size, char type, int idx, UINT stride, UINT offset);
 	void DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 			UINT size, int idx, UINT stride, UINT offset,
-			UINT first, UINT count);
+			UINT first, UINT count, ID3DBlob *layout,
+			D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info);
 	void DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
 			UINT size, DXGI_FORMAT ib_fmt, UINT offset,
-			UINT first, UINT count);
+			UINT first, UINT count, D3D11_PRIMITIVE_TOPOLOGY topology);
 
 	void DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 			FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
-			UINT stride, UINT offset, UINT first, UINT count);
+			UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
+			D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info,
+			ID3D11Buffer **staged_ib_ret, ID3D11Buffer *staged_ib_for_vb, UINT ib_off_for_vb);
 	bool DeferDumpBuffer(ID3D11Buffer *staging,
 			D3D11_BUFFER_DESC *orig_desc, wchar_t *filename,
 			FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT ib_fmt,
-			UINT stride, UINT offset, UINT first, UINT count);
+			UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
+			D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info,
+			ID3D11Buffer *staged_ib_for_vb, UINT ib_off_for_vb);
 	void DumpBufferImmediateCtx(ID3D11Buffer *staging, D3D11_BUFFER_DESC *orig_desc,
 			wstring filename, FrameAnalysisOptions buf_type_mask,
 			int idx, DXGI_FORMAT ib_fmt, UINT stride, UINT offset,
-			UINT first, UINT count);
+			UINT first, UINT count, ID3DBlob *layout,
+			D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info,
+			ID3D11Buffer *staged_ib_for_vb, UINT ib_off_for_vb);
 
 	void DumpResource(ID3D11Resource *resource, wchar_t *filename,
 			FrameAnalysisOptions buf_type_mask, int idx, DXGI_FORMAT format,
@@ -134,8 +155,9 @@ private:
 	void _DumpTextures(char shader_type, bool compute,
 		ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]);
 	void DumpCBs(bool compute);
-	void DumpVBs(DrawCallInfo *call_info);
-	void DumpIB(DrawCallInfo *call_info);
+	void DumpVBs(DrawCallInfo *call_info, ID3D11Buffer *staged_ib, DXGI_FORMAT ib_fmt, UINT ib_off);
+	void DumpIB(DrawCallInfo *call_info, ID3D11Buffer **staged_ib, DXGI_FORMAT *format, UINT *offset);
+	void DumpMesh(DrawCallInfo *call_info);
 	void DumpTextures(bool compute);
 	void DumpRenderTargets();
 	void DumpDepthStencilTargets();
@@ -162,14 +184,18 @@ private:
 			UINT stride, UINT offset);
 	void dedupe_buf_filename_vb_txt(const wchar_t *bin_filename,
 			wchar_t *txt_filename, size_t size, int idx,
-			UINT stride, UINT offset, UINT first, UINT count);
+			UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
+			D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info);
 	void dedupe_buf_filename_ib_txt(const wchar_t *bin_filename,
 			wchar_t *txt_filename, size_t size, DXGI_FORMAT ib_fmt,
-			UINT offset, UINT first, UINT count);
+			UINT offset, UINT first, UINT count, D3D11_PRIMITIVE_TOPOLOGY topology);
 	void link_deduplicated_files(const wchar_t *filename, const wchar_t *dedupe_filename);
 	void rotate_when_nearing_hard_link_limit(const wchar_t *dedupe_filename);
 	void rotate_deduped_file(const wchar_t *dedupe_filename);
 	void get_deduped_dir(wchar_t *path, size_t size);
+
+	void determine_vb_count(UINT *count, ID3D11Buffer *staged_ib_for_vb,
+			DrawCallInfo *call_info, UINT ib_off_for_vb, DXGI_FORMAT ib_fmt);
 
 	void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
 	void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);

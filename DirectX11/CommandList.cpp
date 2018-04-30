@@ -9,12 +9,18 @@
 #include "Override.h"
 #include "D3D11Wrapper.h"
 #include "IniHandler.h"
+#include "profiling.h"
 
 #include <D3DCompiler.h>
 
 CustomResources customResources;
 CustomShaders customShaders;
 ExplicitCommandListSections explicitCommandListSections;
+std::vector<CommandList*> registered_command_lists;
+std::unordered_set<CommandList*> command_lists_profiling;
+std::unordered_set<CommandListCommand*> command_lists_cmd_profiling;
+std::vector<std::shared_ptr<CommandList>> dynamically_allocated_command_lists;
+
 
 // Adds consistent "3DMigoto" prefix to frame analysis log with appropriate
 // level of indentation for the current recursion level. Using a
@@ -24,26 +30,115 @@ ExplicitCommandListSections explicitCommandListSections;
 		(state)->mHackerContext->FrameAnalysisLog("3DMigoto%*s " fmt, state->recursion, "", __VA_ARGS__); \
 	} while (0)
 
+struct command_list_profiling_state {
+	LARGE_INTEGER list_start_time;
+	LARGE_INTEGER cmd_start_time;
+	LARGE_INTEGER saved_recursive_time;
+};
+
+static inline void profile_command_list_start(CommandList *command_list, CommandListState *state,
+		command_list_profiling_state *profiling_state)
+{
+	bool inserted;
+
+	if ((Profiling::mode != Profiling::Mode::SUMMARY)
+	 && (Profiling::mode != Profiling::Mode::TOP_COMMAND_LISTS))
+		return;
+
+	inserted = command_lists_profiling.insert(command_list).second;
+	if (inserted) {
+		command_list->time_spent_inclusive.QuadPart = 0;
+		command_list->time_spent_exclusive.QuadPart = 0;
+		command_list->executions = 0;
+	}
+
+	profiling_state->saved_recursive_time = state->profiling_time_recursive;
+	state->profiling_time_recursive.QuadPart = 0;
+
+	QueryPerformanceCounter(&profiling_state->list_start_time);
+}
+
+static inline void profile_command_list_end(CommandList *command_list, CommandListState *state,
+		command_list_profiling_state *profiling_state)
+{
+	LARGE_INTEGER list_end_time, duration;
+
+	if ((Profiling::mode != Profiling::Mode::SUMMARY)
+	 && (Profiling::mode != Profiling::Mode::TOP_COMMAND_LISTS))
+		return;
+
+	QueryPerformanceCounter(&list_end_time);
+	duration.QuadPart = list_end_time.QuadPart - profiling_state->list_start_time.QuadPart;
+	command_list->time_spent_inclusive.QuadPart += duration.QuadPart;
+	command_list->time_spent_exclusive.QuadPart += duration.QuadPart - state->profiling_time_recursive.QuadPart;
+	command_list->executions++;
+	state->profiling_time_recursive.QuadPart = profiling_state->saved_recursive_time.QuadPart + duration.QuadPart;
+}
+
+static inline void profile_command_list_cmd_start(CommandListCommand *cmd,
+		command_list_profiling_state *profiling_state)
+{
+	bool inserted;
+
+	if (Profiling::mode != Profiling::Mode::TOP_COMMANDS)
+		return;
+
+	inserted = command_lists_cmd_profiling.insert(cmd).second;
+	if (inserted) {
+		cmd->pre_time_spent.QuadPart = 0;
+		cmd->post_time_spent.QuadPart = 0;
+		cmd->pre_executions = 0;
+		cmd->post_executions = 0;
+	}
+
+	QueryPerformanceCounter(&profiling_state->cmd_start_time);
+}
+
+static inline void profile_command_list_cmd_end(CommandListCommand *cmd, CommandListState *state,
+		command_list_profiling_state *profiling_state)
+{
+	LARGE_INTEGER end_time;
+
+	if (Profiling::mode != Profiling::Mode::TOP_COMMANDS)
+		return;
+
+	QueryPerformanceCounter(&end_time);
+	if (state->post) {
+		cmd->post_time_spent.QuadPart += end_time.QuadPart - profiling_state->cmd_start_time.QuadPart;
+		cmd->post_executions++;
+	} else {
+		cmd->pre_time_spent.QuadPart += end_time.QuadPart - profiling_state->cmd_start_time.QuadPart;
+		cmd->pre_executions++;
+	}
+}
+
 static void _RunCommandList(CommandList *command_list, CommandListState *state)
 {
-	CommandList::iterator i;
+	CommandList::Commands::iterator i;
+	command_list_profiling_state profiling_state;
 
 	if (state->recursion > MAX_COMMAND_LIST_RECURSION) {
 		LogInfo("WARNING: Command list recursion limit exceeded! Circular reference?\n");
 		return;
 	}
 
-	if (command_list->empty())
+	if (command_list->commands.empty())
 		return;
 
 	COMMAND_LIST_LOG(state, "%s {\n", state->post ? "post" : "pre");
-
 	state->recursion++;
-	for (i = command_list->begin(); i < command_list->end() && !state->aborted; i++) {
-		(*i)->run(state);
-	}
-	state->recursion--;
 
+	profile_command_list_start(command_list, state, &profiling_state);
+
+	for (i = command_list->commands.begin(); i < command_list->commands.end() && !state->aborted; i++) {
+		profile_command_list_cmd_start(i->get(), &profiling_state);
+		(*i)->run(state);
+		profile_command_list_cmd_end(i->get(), state, &profiling_state);
+	}
+
+	profile_command_list_end(command_list, state, &profiling_state);
+
+	state->recursion--;
 	COMMAND_LIST_LOG(state, "}\n");
 }
 
@@ -129,21 +224,100 @@ void RunViewCommandList(HackerDevice *mHackerDevice,
 		res->Release();
 }
 
+void optimise_command_lists(HackerDevice *device)
+{
+	bool making_progress;
+	bool ignore_cto, ignore_cto_pre, ignore_cto_post;
+	size_t i;
+	CommandList::Commands::iterator new_end;
+
+	do {
+		making_progress = false;
+		ignore_cto_pre = true;
+		ignore_cto_post = true;
+
+		// If all TextureOverride sections have empty command lists of
+		// either pre or post, we can treat checktextureoverride as a
+		// noop. This is intended to catch the case where we only have
+		// "pre" commands in the TextureOverride sections to optimise
+		// out the implicit "post checktextureoverride" commands, as
+		// these can add up if they are used on very common shaders
+		// (e.g. in DOAXVV this can easily save 0.2fps on a 4GHz CPU,
+		// more on a slower CPU since this command is used in the
+		// shadow map shaders)
+		//
+		// FIXME: This should itself ignore any checktextureoverrides
+		// inside these command lists
+		for (auto &tolkv : G->mTextureOverrideMap) {
+			for (TextureOverride &to : tolkv.second) {
+				ignore_cto_pre = ignore_cto_pre && to.command_list.commands.empty();
+				ignore_cto_post = ignore_cto_post && to.post_command_list.commands.empty();
+			}
+		}
+		for (auto &tof : G->mFuzzyTextureOverrides) {
+			ignore_cto_pre = ignore_cto_pre && tof->texture_override->command_list.commands.empty();
+			ignore_cto_post = ignore_cto_post && tof->texture_override->post_command_list.commands.empty();
+		}
+
+		// Go through each registered command list and remove any
+		// commands that are noops to eliminate the runtime overhead of
+		// processing these
+		for (CommandList *command_list : registered_command_lists) {
+			ignore_cto = ignore_cto_pre;
+			if (command_list->post)
+				ignore_cto = ignore_cto_post;
+
+			for (i = 0; i < command_list->commands.size(); ) {
+				LogDebug("Optimising %S\n", command_list->commands[i]->ini_line.c_str());
+				if (command_list->commands[i]->optimise(device))
+					making_progress = true;
+
+				if (command_list->commands[i]->noop(command_list->post, ignore_cto)) {
+					LogInfo("Optimised out %s %S\n",
+							command_list->post ? "post" : "pre",
+							command_list->commands[i]->ini_line.c_str());
+					command_list->commands.erase(command_list->commands.begin() + i);
+					making_progress = true;
+					continue;
+				}
+				i++;
+			}
+		}
+
+		// TODO: Merge adjacent commands if possible, e.g. all the
+		// commands in BuiltInCommandListUnbindAllRenderTargets would
+		// be good candidates to merge into a single command. We could
+		// add a special command for that particular case, but would be
+		// nice if this sort of thing worked more generally.
+	} while (making_progress);
+
+	registered_command_lists.clear();
+	dynamically_allocated_command_lists.clear();
+}
+
 static bool AddCommandToList(CommandListCommand *command,
 		CommandList *explicit_command_list,
 		CommandList *sensible_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wchar_t *section,
+		const wchar_t *key, wstring *val)
 {
+	if (section && key) {
+		command->ini_line = L"[" + wstring(section) + L"] " + wstring(key);
+		if (val)
+			command->ini_line += L" = " + *val;
+	}
+
 	if (explicit_command_list) {
 		// User explicitly specified "pre" or "post", so only add the
 		// command to that list
-		explicit_command_list->push_back(std::shared_ptr<CommandListCommand>(command));
+		explicit_command_list->commands.push_back(std::shared_ptr<CommandListCommand>(command));
 	} else if (sensible_command_list) {
 		// User did not specify which command list to add it to, but
 		// the command they specified has a sensible default, so add it
 		// to that list:
-		sensible_command_list->push_back(std::shared_ptr<CommandListCommand>(command));
+		sensible_command_list->commands.push_back(std::shared_ptr<CommandListCommand>(command));
 	} else {
 		// The command's default is to add it to both lists (e.g. the
 		// checktextureoverride directive will call command lists in
@@ -155,9 +329,9 @@ static bool AddCommandToList(CommandListCommand *command,
 		// pointer to two lists and have it garbage collected only once
 		// both are destroyed:
 		std::shared_ptr<CommandListCommand> p(command);
-		pre_command_list->push_back(p);
+		pre_command_list->commands.push_back(p);
 		if (post_command_list)
-			post_command_list->push_back(p);
+			post_command_list->commands.push_back(p);
 	}
 
 	return true;
@@ -167,17 +341,17 @@ static bool ParseCheckTextureOverride(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
 	int ret;
 
 	CheckTextureOverrideCommand *operation = new CheckTextureOverrideCommand();
 
 	// Parse value as consistent with texture filtering and resource copying
-	ret = operation->target.ParseTarget(val->c_str(), true);
+	ret = operation->target.ParseTarget(val->c_str(), true, ini_namespace);
 	if (ret) {
-		operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-		return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
+		return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
 	}
 
 	delete operation;
@@ -188,17 +362,23 @@ static bool ParseResetPerFrameLimits(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
 	CustomResources::iterator res;
 	CustomShaders::iterator shader;
+	wstring namespaced_section;
 
 	ResetPerFrameLimitsCommand *operation = new ResetPerFrameLimitsCommand();
 
 	if (!wcsncmp(val->c_str(), L"resource", 8)) {
 		wstring resource_id(val->c_str());
 
-		res = customResources.find(resource_id);
+		res = customResources.end();
+		if (get_namespaced_section_name_lower(&resource_id, ini_namespace, &namespaced_section))
+			res = customResources.find(namespaced_section);
+		if (res == customResources.end())
+			res = customResources.find(resource_id);
 		if (res == customResources.end())
 			goto bail;
 
@@ -208,15 +388,18 @@ static bool ParseResetPerFrameLimits(const wchar_t *section,
 	if (!wcsncmp(val->c_str(), L"customshader", 12) || !wcsncmp(val->c_str(), L"builtincustomshader", 19)) {
 		wstring shader_id(val->c_str());
 
-		shader = customShaders.find(shader_id);
+		shader = customShaders.end();
+		if (get_namespaced_section_name_lower(&shader_id, ini_namespace, &namespaced_section))
+			shader = customShaders.find(namespaced_section);
+		if (shader == customShaders.end())
+			shader = customShaders.find(shader_id);
 		if (shader == customShaders.end())
 			goto bail;
 
 		operation->shader = &shader->second;
 	}
 
-	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
 	delete operation;
@@ -227,7 +410,8 @@ static bool ParseClearView(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
 	CustomResources::iterator res;
 	CustomShaders::iterator shader;
@@ -242,7 +426,7 @@ static bool ParseClearView(const wchar_t *section,
 
 	while (getline(token_stream, token, L' ')) {
 		if (operation->target.type == ResourceCopyTargetType::INVALID) {
-			ret = operation->target.ParseTarget(token.c_str(), true);
+			ret = operation->target.ParseTarget(token.c_str(), true, ini_namespace);
 			if (ret)
 				continue;
 		}
@@ -307,13 +491,12 @@ static bool ParseClearView(const wchar_t *section,
 	// allows a single value to be specified to clear all channels in RTVs
 	// and UAVs. Note that this is done after noting the DSV values because
 	// we never want to propagate the depth value to the stencil value:
-	for (idx++; idx < 4; idx++) {
+	for (idx = max(1, idx); idx < 4; idx++) {
 		operation->uval[idx] = operation->uval[idx - 1];
 		operation->fval[idx] = operation->fval[idx - 1];
 	}
 
-	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
 	delete operation;
@@ -325,23 +508,28 @@ static bool ParseRunShader(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
 	RunCustomShaderCommand *operation = new RunCustomShaderCommand();
 	CustomShaders::iterator shader;
+	wstring namespaced_section;
 
 	// Value should already have been transformed to lower case from
 	// ParseCommandList, so our keys will be consistent in the
 	// unordered_map:
 	wstring shader_id(val->c_str());
 
-	shader = customShaders.find(shader_id);
+	shader = customShaders.end();
+	if (get_namespaced_section_name_lower(&shader_id, ini_namespace, &namespaced_section))
+		shader = customShaders.find(namespaced_section);
+	if (shader == customShaders.end())
+		shader = customShaders.find(shader_id);
 	if (shader == customShaders.end())
 		goto bail;
 
-	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->custom_shader = &shader->second;
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
 	delete operation;
@@ -352,10 +540,12 @@ bool ParseRunExplicitCommandList(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
 	RunExplicitCommandList *operation = new RunExplicitCommandList();
 	ExplicitCommandListSections::iterator shader;
+	wstring namespaced_section;
 
 	// We need value in lower case so our keys will be consistent in the
 	// unordered_map. ParseCommandList will have already done this, but the
@@ -364,17 +554,20 @@ bool ParseRunExplicitCommandList(const wchar_t *section,
 	wstring section_id(val->c_str());
 	std::transform(section_id.begin(), section_id.end(), section_id.begin(), ::towlower);
 
-	shader = explicitCommandListSections.find(section_id);
+	shader = explicitCommandListSections.end();
+	if (get_namespaced_section_name_lower(&section_id, ini_namespace, &namespaced_section))
+		shader = explicitCommandListSections.find(namespaced_section);
+	if (shader == explicitCommandListSections.end())
+		shader = explicitCommandListSections.find(section_id);
 	if (shader == explicitCommandListSections.end())
 		goto bail;
 
-	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->command_list_section = &shader->second;
 	// This function is nearly identical to ParseRunShader, but in case we
 	// later refactor these together note that here we do not specify a
 	// sensible command list, so it will be added to both pre and post
 	// command lists:
-	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
+	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
 
 bail:
 	delete operation;
@@ -385,9 +578,11 @@ static bool ParsePreset(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		bool exclude, const wstring *ini_namespace)
 {
 	PresetCommand *operation = new PresetCommand();
+	wstring prefixed_section, namespaced_section;
 
 	PresetOverrideMap::iterator i;
 
@@ -406,24 +601,31 @@ static bool ParsePreset(const wchar_t *section,
 	// is referenced, so it is good to support here... but for backwards
 	// compatibility and less redundancy for those that prefer not to say
 	// "preset" twice we support both ways.
+	prefixed_section = wstring(L"preset") + preset_id;
 
-	// First, try without the prefix:
-	i = presetOverrides.find(preset_id);
+	// And now with namespacing, we have four permutations to try...
+	i = presetOverrides.end();
+	// First, add the 'Preset' (i.e. the user did not) and try namespaced:
+	if (get_namespaced_section_name_lower(&prefixed_section, ini_namespace, &namespaced_section))
+		i = presetOverrides.find(namespaced_section);
+	// Second, try namespaced without adding the prefix:
 	if (i == presetOverrides.end()) {
-		// If the 'Preset' prefix was specified, strip it and try again:
-		if (!wcsncmp(val->c_str(), L"preset", 6)) {
-			preset_id = val->c_str() + 6;
-
-			i = presetOverrides.find(preset_id);
-			if (i == presetOverrides.end())
-				goto bail;
-		}
+		if (get_namespaced_section_name_lower(&preset_id, ini_namespace, &namespaced_section))
+			i = presetOverrides.find(namespaced_section);
 	}
+	// Third, add the 'Preset' and try global:
+	if (i == presetOverrides.end())
+		i = presetOverrides.find(prefixed_section);
+	// Finally, don't add the prefix and try global:
+	if (i == presetOverrides.end())
+		i = presetOverrides.find(preset_id);
+	if (i == presetOverrides.end())
+		goto bail;
 
-	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->preset = &i->second;
+	operation->exclude = exclude;
 
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
 	delete operation;
@@ -452,10 +654,15 @@ static bool ParseDrawCommand(const wchar_t *section,
 	} else if (!wcscmp(key, L"drawauto")) {
 		operation->type = DrawCommandType::DRAW_AUTO;
 	} else if (!wcscmp(key, L"drawindexed")) {
-		operation->type = DrawCommandType::DRAW_INDEXED;
-		nargs = swscanf_s(val->c_str(), L"%u, %u, %i%n", &operation->args[0], &operation->args[1], (INT*)&operation->args[2], &end);
-		if (nargs != 3)
-			goto bail;
+		if (!wcscmp(val->c_str(), L"auto")) {
+			operation->type = DrawCommandType::AUTO_INDEX_COUNT;
+			end = (int)val->length();
+		} else {
+			operation->type = DrawCommandType::DRAW_INDEXED;
+			nargs = swscanf_s(val->c_str(), L"%u, %u, %i%n", &operation->args[0], &operation->args[1], (INT*)&operation->args[2], &end);
+			if (nargs != 3)
+				goto bail;
+		}
 	} else if (!wcscmp(key, L"drawindexedinstanced")) {
 		operation->type = DrawCommandType::DRAW_INDEXED_INSTANCED;
 		nargs = swscanf_s(val->c_str(), L"%u, %u, %u, %i, %u%n",
@@ -491,7 +698,40 @@ static bool ParseDrawCommand(const wchar_t *section,
 		goto bail;
 
 	operation->ini_section = section;
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+
+bail:
+	delete operation;
+	return false;
+}
+
+static bool ParseDirectModeSetActiveEyeCommand(const wchar_t *section,
+		const wchar_t *key, wstring *val,
+		CommandList *explicit_command_list,
+		CommandList *pre_command_list,
+		CommandList *post_command_list)
+{
+	DirectModeSetActiveEyeCommand *operation = new DirectModeSetActiveEyeCommand();
+
+	if (!wcscmp(val->c_str(), L"mono")) {
+		operation->eye = NVAPI_STEREO_EYE_MONO;
+		goto success;
+	}
+
+	if (!wcscmp(val->c_str(), L"left")) {
+		operation->eye = NVAPI_STEREO_EYE_LEFT;
+		goto success;
+	}
+
+	if (!wcscmp(val->c_str(), L"right")) {
+		operation->eye = NVAPI_STEREO_EYE_RIGHT;
+		goto success;
+	}
+
+	goto bail;
+
+success:
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
 	delete operation;
@@ -503,37 +743,34 @@ static bool ParsePerDrawStereoOverride(const wchar_t *section,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
 		CommandList *post_command_list,
-		bool is_separation)
+		bool is_separation,
+		const wstring *ini_namespace)
 {
 	bool restore_on_post = !explicit_command_list && pre_command_list && post_command_list;
 	PerDrawStereoOverrideCommand *operation = NULL;
-	int ret, len1;
 
 	if (is_separation)
 		operation = new PerDrawSeparationOverrideCommand(restore_on_post);
 	else
 		operation = new PerDrawConvergenceOverrideCommand(restore_on_post);
 
-	// Try parsing value as a float
-	ret = swscanf_s(val->c_str(), L"%f%n", &operation->val, &len1);
-	if (ret != 0 && ret != EOF && len1 == val->length())
-		goto success;
-
 	// Try parsing value as a resource target for staging auto-convergence
-	if (operation->staging_op.src.ParseTarget(val->c_str(), true)) {
+	// Do this first, because the operand parsing would treat these as for
+	// texture filtering
+	if (operation->staging_op.src.ParseTarget(val->c_str(), true, ini_namespace)) {
 		operation->staging_type = true;
 		goto success;
 	}
 
-	goto bail;
+	if (!operation->expression.parse(val, ini_namespace))
+		goto bail;
 
 success:
 	// Add to both command lists by default - the pre command list will set
 	// the value, and the post command list will restore the original. If
 	// an explicit command list is specified then the value will only be
 	// set, not restored (regardless of whether that is pre or post)
-	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
+	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
 
 bail:
 	delete operation;
@@ -544,7 +781,8 @@ static bool ParseFrameAnalysisDump(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
 	FrameAnalysisDumpCommand *operation = new FrameAnalysisDumpCommand();
 	wchar_t *buf;
@@ -564,7 +802,7 @@ static bool ParseFrameAnalysisDump(const wchar_t *section,
 	if (!target)
 		goto bail;
 
-	if (!operation->target.ParseTarget(target, true))
+	if (!operation->target.ParseTarget(target, true, ini_namespace))
 		goto bail;
 
 	operation->target_name = L"[" + wstring(section) + L"]-" + wstring(target);
@@ -580,8 +818,7 @@ static bool ParseFrameAnalysisDump(const wchar_t *section,
 	std::replace(operation->target_name.begin(), operation->target_name.end(), L'*', L'_');
 
 	delete [] buf;
-	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
 	delete [] buf;
@@ -592,51 +829,62 @@ bail:
 bool ParseCommandListGeneralCommands(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
-		CommandList *pre_command_list, CommandList *post_command_list)
+		CommandList *pre_command_list, CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
 	if (!wcscmp(key, L"checktextureoverride"))
-		return ParseCheckTextureOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+		return ParseCheckTextureOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
 	if (!wcscmp(key, L"run")) {
 		if (!wcsncmp(val->c_str(), L"customshader", 12) || !wcsncmp(val->c_str(), L"builtincustomshader", 19))
-			return ParseRunShader(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+			return ParseRunShader(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
 		if (!wcsncmp(val->c_str(), L"commandlist", 11) || !wcsncmp(val->c_str(), L"builtincommandlist", 18))
-			return ParseRunExplicitCommandList(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+			return ParseRunExplicitCommandList(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 	}
 
 	if (!wcscmp(key, L"preset"))
-		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list, false, ini_namespace);
+	if (!wcscmp(key, L"exclude_preset"))
+		return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list, true, ini_namespace);
 
 	if (!wcscmp(key, L"handling")) {
 		// skip only makes sense in pre command lists, since it needs
 		// to run before the original draw call:
 		if (!wcscmp(val->c_str(), L"skip"))
-			return AddCommandToList(new SkipCommand(section), explicit_command_list, pre_command_list, NULL, NULL);
+			return AddCommandToList(new SkipCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 		// abort defaults to both command lists, to abort command list
 		// execution both before and after the draw call:
 		if (!wcscmp(val->c_str(), L"abort"))
-			return AddCommandToList(new AbortCommand(section), explicit_command_list, NULL, pre_command_list, post_command_list);
+			return AddCommandToList(new AbortCommand(section), explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
 	}
 
 	if (!wcscmp(key, L"reset_per_frame_limits"))
-		return ParseResetPerFrameLimits(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+		return ParseResetPerFrameLimits(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
 	if (!wcscmp(key, L"clear"))
-		return ParseClearView(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+		return ParseClearView(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
 	if (!wcscmp(key, L"separation"))
-		return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, true);
+		return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, true, ini_namespace);
 
 	if (!wcscmp(key, L"convergence"))
-		return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, false);
+		return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, false, ini_namespace);
+
+	if (!wcscmp(key, L"direct_mode_eye"))
+		return ParseDirectModeSetActiveEyeCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	if (!wcscmp(key, L"analyse_options"))
-		return AddCommandToList(new FrameAnalysisChangeOptionsCommand(section, key, val), explicit_command_list, pre_command_list, NULL, NULL);
+		return AddCommandToList(new FrameAnalysisChangeOptionsCommand(val), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 	if (!wcscmp(key, L"dump"))
-		return ParseFrameAnalysisDump(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+		return ParseFrameAnalysisDump(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
+
+	if (!wcscmp(key, L"special")) {
+		if (!wcscmp(val->c_str(), L"upscaling_switch_bb"))
+			return AddCommandToList(new UpscalingFlipBBCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+	}
 
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
@@ -656,6 +904,11 @@ void CheckTextureOverrideCommand::run(CommandListState *state)
 		else
 			_RunCommandList(&matches[i]->command_list, state);
 	}
+}
+
+bool CheckTextureOverrideCommand::noop(bool post, bool ignore_cto)
+{
+	return ignore_cto;
 }
 
 ClearViewCommand::ClearViewCommand() :
@@ -741,13 +994,51 @@ void PresetCommand::run(CommandListState *state)
 {
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-	preset->Trigger();
+	if (exclude)
+		preset->Exclude();
+	else
+		preset->Trigger(this);
+}
+
+static UINT get_index_count_from_current_ib(ID3D11DeviceContext *mOrigContext1)
+{
+	ID3D11Buffer *ib;
+	D3D11_BUFFER_DESC desc;
+	DXGI_FORMAT format;
+	UINT offset;
+
+	mOrigContext1->IAGetIndexBuffer(&ib, &format, &offset);
+	if (!ib)
+		return 0;
+
+	ib->GetDesc(&desc);
+	ib->Release();
+
+	switch(format) {
+		case DXGI_FORMAT_R16_UINT:
+			return (desc.ByteWidth - offset) / 2;
+		case DXGI_FORMAT_R32_UINT:
+			return (desc.ByteWidth - offset) / 4;
+	}
+
+	return 0;
 }
 
 void DrawCommand::run(CommandListState *state)
 {
 	HackerContext *mHackerContext = state->mHackerContext;
 	ID3D11DeviceContext *mOrigContext1 = state->mOrigContext1;
+	DrawCallInfo *info = state->call_info;
+	UINT auto_count = 0;
+
+	// If this command list was triggered from something currently skipped
+	// due to hunting, we also skip any custom draw calls, so that if we
+	// are replacing the original draw call we will still be able to see
+	// the object being hunted.
+	if (info && info->hunting_skip) {
+		COMMAND_LIST_LOG(state, "[%S] Draw -> SKIPPED DUE TO HUNTING\n", ini_section.c_str());
+		return;
+	}
 
 	// Ensure IniParams are visible:
 	CommandListFlushState(state);
@@ -784,13 +1075,8 @@ void DrawCommand::run(CommandListState *state)
 		// TODO: case DrawCommandType::DISPATCH_INDIRECT:
 		// TODO: 	break;
 		case DrawCommandType::FROM_CALLER:
-			DrawCallInfo *info = state->call_info;
 			if (!info) {
 				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> NO ACTIVE DRAW CALL\n", ini_section.c_str());
-				break;
-			}
-			if (info->hunting_skip) {
-				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> SKIPPED DUE TO HUNTING\n", ini_section.c_str());
 				break;
 			}
 			switch (info->type) {
@@ -823,10 +1109,18 @@ void DrawCommand::run(CommandListState *state)
 					mOrigContext1->DrawAuto();
 					break;
 				default:
-					LogInfo("BUG: draw = from_caller -> unknown draw call type\n");
-					DoubleBeepExit();
+					LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> unknown draw call type\n");
+					break;
 			}
 			// TODO: dispatch = from_caller
+			break;
+		case DrawCommandType::AUTO_INDEX_COUNT:
+			auto_count = get_index_count_from_current_ib(mOrigContext1);
+			COMMAND_LIST_LOG(state, "[%S] drawindexed = auto -> DrawIndexed(%u, 0, 0)\n", ini_section.c_str(), auto_count);
+			if (auto_count)
+				mOrigContext1->DrawIndexed(auto_count, 0, 0);
+			else
+				COMMAND_LIST_LOG(state, "  Unable to determine index count\n");
 			break;
 	}
 }
@@ -918,8 +1212,11 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
 			COMMAND_LIST_LOG(state, "  Restoring %s = %f\n", stereo_param_name(), saved);
 			set_stereo_value(state, saved);
 		} else {
-			if (!(did_set_value_on_pre = update_val(state)))
-				return;
+			if (staging_type) {
+				if (!(did_set_value_on_pre = update_val(state)))
+					return;
+			} else
+				val = expression.evaluate(state);
 
 			saved = get_stereo_value(state);
 
@@ -937,12 +1234,51 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
 			set_stereo_value(state, val * saved);
 		}
 	} else {
-		if (!update_val(state))
-			return;
+		if (staging_type) {
+			if (!update_val(state))
+				return;
+		} else
+			val = expression.evaluate(state);
 
 		COMMAND_LIST_LOG(state, "  Setting %s = %f\n", stereo_param_name(), val);
 		set_stereo_value(state, val);
 	}
+}
+
+bool PerDrawStereoOverrideCommand::optimise(HackerDevice *device)
+{
+	if (staging_type)
+		return false;
+	return expression.optimise(device);
+}
+
+bool PerDrawStereoOverrideCommand::noop(bool post, bool ignore_cto)
+{
+	NvU8 enabled = false;
+
+	NvAPIOverride();
+	NvAPI_Stereo_IsEnabled(&enabled);
+	return !enabled;
+}
+
+void DirectModeSetActiveEyeCommand::run(CommandListState *state)
+{
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+
+	if (NVAPI_OK != NvAPI_Stereo_SetActiveEye(state->mHackerDevice->mStereoHandle, eye))
+		COMMAND_LIST_LOG(state, "  Stereo_SetActiveEye failed\n");
+}
+
+bool DirectModeSetActiveEyeCommand::noop(bool post, bool ignore_cto)
+{
+	NvU8 enabled = false;
+
+	NvAPIOverride();
+	NvAPI_Stereo_IsEnabled(&enabled);
+	return !enabled;
+
+	// FIXME: Should also return false if direct mode is disabled...
+	// if only nvapi provided a GetDriverMode() API to determine that
 }
 
 float PerDrawSeparationOverrideCommand::get_stereo_value(CommandListState *state)
@@ -979,7 +1315,7 @@ void PerDrawConvergenceOverrideCommand::set_stereo_value(CommandListState *state
 		COMMAND_LIST_LOG(state, "  Stereo_SetConvergence failed\n");
 }
 
-FrameAnalysisChangeOptionsCommand::FrameAnalysisChangeOptionsCommand(wstring section, wstring key, wstring *val)
+FrameAnalysisChangeOptionsCommand::FrameAnalysisChangeOptionsCommand(wstring *val)
 {
 	wchar_t *buf;
 	size_t size = val->size() + 1;
@@ -995,8 +1331,6 @@ FrameAnalysisChangeOptionsCommand::FrameAnalysisChangeOptionsCommand(wstring sec
 		(FrameAnalysisOptionNames, buf, NULL);
 
 	delete [] buf;
-
-	ini_line = L"[" + wstring(section) + L"] " + key + L" = " + *val;
 }
 
 void FrameAnalysisChangeOptionsCommand::run(CommandListState *state)
@@ -1004,6 +1338,11 @@ void FrameAnalysisChangeOptionsCommand::run(CommandListState *state)
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	state->mHackerContext->FrameAnalysisTrigger(analyse_options);
+}
+
+bool FrameAnalysisChangeOptionsCommand::noop(bool post, bool ignore_cto)
+{
+	return (G->hunting == HUNTING_MODE_DISABLED || G->frame_analysis_registered == false);
 }
 
 static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resource, ID3D11View *view,
@@ -1167,6 +1506,29 @@ void FrameAnalysisDumpCommand::run(CommandListState *state)
 		view->Release();
 }
 
+bool FrameAnalysisDumpCommand::noop(bool post, bool ignore_cto)
+{
+	return (G->hunting == HUNTING_MODE_DISABLED || G->frame_analysis_registered == false);
+}
+
+UpscalingFlipBBCommand::UpscalingFlipBBCommand(wstring section) :
+	ini_section(section)
+{
+	G->upscaling_command_list_using_explicit_bb_flip = true;
+}
+
+UpscalingFlipBBCommand::~UpscalingFlipBBCommand()
+{
+	G->upscaling_command_list_using_explicit_bb_flip = false;
+}
+
+void UpscalingFlipBBCommand::run(CommandListState *state)
+{
+	COMMAND_LIST_LOG(state, "[%S] special = upscaling_switch_bb\n", ini_section.c_str());
+
+	G->bb_is_upscaling_bb = false;
+}
+
 CustomShader::CustomShader() :
 	vs_override(false), hs_override(false), ds_override(false),
 	gs_override(false), ps_override(false), cs_override(false),
@@ -1242,7 +1604,7 @@ static const D3D_SHADER_MACRO cs_macros[] = { "COMPUTE_SHADER", "", NULL, NULL }
 
 // This is similar to the other compile routines, but still distinct enough to
 // get it's own function for now - TODO: Refactor out the common code
-bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
+bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, const wstring *namespace_path)
 {
 	wchar_t wpath[MAX_PATH];
 	char apath[MAX_PATH];
@@ -1254,6 +1616,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 	ID3DBlob **ppBytecode = NULL;
 	ID3DBlob *pErrorMsgs = NULL;
 	const D3D_SHADER_MACRO *macros = NULL;
+	bool found = false;
 
 	LogInfo("  %cs=%S\n", type, filename);
 
@@ -1298,12 +1661,26 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname)
 	if (!_wcsicmp(filename, L"null"))
 		return false;
 
-	if (!GetModuleFileName(0, wpath, MAX_PATH)) {
-		LogOverlay(LOG_DIRE, "CustomShader::compile: GetModuleFileName failed\n");
-		goto err;
+	// If this section was not in the main d3dx.ini, look
+	// for a file relative to the config it came from
+	// first, then try relative to the 3DMigoto directory:
+	found = false;
+	if (!namespace_path->empty()) {
+		GetModuleFileName(0, wpath, MAX_PATH);
+		wcsrchr(wpath, L'\\')[1] = 0;
+		wcscat(wpath, namespace_path->c_str());
+		wcscat(wpath, filename);
+		if (GetFileAttributes(wpath) != INVALID_FILE_ATTRIBUTES)
+			found = true;
 	}
-	wcsrchr(wpath, L'\\')[1] = 0;
-	wcscat(wpath, filename);
+	if (!found) {
+		if (!GetModuleFileName(0, wpath, MAX_PATH)) {
+			LogOverlay(LOG_DIRE, "CustomShader::compile: GetModuleFileName failed\n");
+			goto err;
+		}
+		wcsrchr(wpath, L'\\')[1] = 0;
+		wcscat(wpath, filename);
+	}
 
 	f = CreateFile(wpath, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE) {
@@ -1736,6 +2113,11 @@ void RunCustomShaderCommand::run(CommandListState *state)
 	}
 }
 
+bool RunCustomShaderCommand::noop(bool post, bool ignore_cto)
+{
+	return (custom_shader->command_list.commands.empty() && custom_shader->post_command_list.commands.empty());
+}
+
 void RunExplicitCommandList::run(CommandListState *state)
 {
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
@@ -1746,15 +2128,28 @@ void RunExplicitCommandList::run(CommandListState *state)
 		_RunCommandList(&command_list_section->command_list, state);
 }
 
-void LinkCommandLists(CommandList *dst, CommandList *link)
+bool RunExplicitCommandList::noop(bool post, bool ignore_cto)
+{
+	if (post)
+		return command_list_section->post_command_list.commands.empty();
+	return command_list_section->command_list.commands.empty();
+}
+
+void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line)
 {
 	RunLinkedCommandList *operation = new RunLinkedCommandList(link);
-	dst->push_back(std::shared_ptr<CommandListCommand>(operation));
+	operation->ini_line = *ini_line;
+	dst->commands.push_back(std::shared_ptr<CommandListCommand>(operation));
 }
 
 void RunLinkedCommandList::run(CommandListState *state)
 {
 	_RunCommandList(link, state);
+}
+
+bool RunLinkedCommandList::noop(bool post, bool ignore_cto)
+{
+	return link->commands.empty();
 }
 
 static void ProcessParamRTSize(CommandListState *state)
@@ -1793,9 +2188,22 @@ out_release_view:
 	view->Release();
 }
 
-float ParamOverride::process_texture_filter(CommandListState *state)
+static void UpdateScissorInfo(CommandListState *state)
+{
+	UINT num = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
+
+	if (state->scissor_valid)
+		return;
+
+	state->mOrigContext1->RSGetScissorRects(&num, state->scissor_rects);
+
+	state->scissor_valid = true;
+}
+
+float CommandListOperand::process_texture_filter(CommandListState *state)
 {
 	TextureOverrideMatches matches;
+	TextureOverrideMatches::reverse_iterator rit;
 	bool resource_found;
 
 	texture_filter_target.FindTextureOverrides(state, &resource_found, &matches);
@@ -1820,8 +2228,19 @@ float ParamOverride::process_texture_filter(CommandListState *state)
 		return 0;
 
 	// If there are multiple matches, we want the filter_index with the
-	// highest priority, which will be the last in the list:
-	return matches.back()->filter_index;
+	// highest priority, which will be the last in the list that has a
+	// filter index. In the future we may also want a namespaced version of
+	// this (and checktextureoverride) to limit the check to sections
+	// appearing in the same namespace or with a given prefix (but we don't
+	// want to do string processing on the namespace here - the candidates
+	// should already be narrowed down during ini parsing):
+	for (rit = matches.rbegin(); rit != matches.rend(); rit++) {
+		if ((*rit)->filter_index != FLT_MAX)
+			return (*rit)->filter_index;
+	}
+
+	// No match had a filter_index, but there was at least one match:
+	return 1.0;
 }
 
 
@@ -1842,7 +2261,8 @@ CommandListState::CommandListState() :
 	cursor_color_tex(NULL),
 	cursor_color_view(NULL),
 	recursion(0),
-	aborted(false)
+	aborted(false),
+	scissor_valid(false)
 {
 	memset(&cursor_info, 0, sizeof(CURSORINFO));
 	memset(&cursor_info_ex, 0, sizeof(ICONINFO));
@@ -2137,101 +2557,46 @@ static void UpdateCursorResources(CommandListState *state)
 	ReleaseDC(NULL, dc);
 }
 
-void ParamOverride::run(CommandListState *state)
+static bool sli_enabled(HackerDevice *device)
 {
-	float *dest = &(G->iniParams[param_idx].*param_component);
-	float orig = *dest;
+	NV_GET_CURRENT_SLI_STATE sli_state;
+	sli_state.version = NV_GET_CURRENT_SLI_STATE_VER;
+	NvAPI_Status status;
 
-	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+	status = NvAPI_D3D_GetCurrentSLIState(device->GetPossiblyHookedOrigDevice1(), &sli_state);
+	if (status != NVAPI_OK) {
+		LogInfo("Unable to retrieve SLI state from nvapi\n");
+		return false;
+	}
 
+	return sli_state.maxNumAFRGroups > 1;
+}
+
+float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device)
+{
+	NvU8 stereo = false;
+	float fret;
+
+	if (state)
+		device = state->mHackerDevice;
+	else if (!device) {
+		LogOverlay(LOG_DIRE, "BUG: CommandListOperand::evaluate called with neither state nor device\n");
+		return 0;
+	}
+
+	// XXX: If updating this list, be sure to also update
+	// XXX: operand_allowed_in_context()
 	switch (type) {
 		case ParamOverrideType::VALUE:
-			*dest = val;
-			break;
-		case ParamOverrideType::RT_WIDTH:
-			ProcessParamRTSize(state);
-			*dest = state->rt_width;
-			break;
-		case ParamOverrideType::RT_HEIGHT:
-			ProcessParamRTSize(state);
-			*dest = state->rt_height;
-			break;
+			return val;
+		case ParamOverrideType::INI_PARAM:
+			return G->iniParams[param_idx].*param_component;
 		case ParamOverrideType::RES_WIDTH:
-			*dest = (float)G->mResolutionInfo.width;
-			break;
+			return (float)G->mResolutionInfo.width;
 		case ParamOverrideType::RES_HEIGHT:
-			*dest = (float)G->mResolutionInfo.height;
-			break;
-		case ParamOverrideType::WINDOW_WIDTH:
-			UpdateWindowInfo(state);
-			*dest = (float)state->window_rect.right;
-			break;
-		case ParamOverrideType::WINDOW_HEIGHT:
-			UpdateWindowInfo(state);
-			*dest = (float)state->window_rect.bottom;
-			break;
-		case ParamOverrideType::TEXTURE:
-			*dest = process_texture_filter(state);
-			break;
-		case ParamOverrideType::VERTEX_COUNT:
-			if (state->call_info)
-				*dest = (float)state->call_info->VertexCount;
-			else
-				*dest = 0;
-			break;
-		case ParamOverrideType::INDEX_COUNT:
-			if (state->call_info)
-				*dest = (float)state->call_info->IndexCount;
-			else
-				*dest = 0;
-			break;
-		case ParamOverrideType::INSTANCE_COUNT:
-			if (state->call_info)
-				*dest = (float)state->call_info->InstanceCount;
-			else
-				*dest = 0;
-			break;
-		case ParamOverrideType::CURSOR_VISIBLE:
-			UpdateCursorInfo(state);
-			*dest = !!(state->cursor_info.flags & CURSOR_SHOWING);
-			break;
-		case ParamOverrideType::CURSOR_SCREEN_X:
-			UpdateCursorInfo(state);
-			*dest = (float)state->cursor_info.ptScreenPos.x;
-			break;
-		case ParamOverrideType::CURSOR_SCREEN_Y:
-			UpdateCursorInfo(state);
-			*dest = (float)state->cursor_info.ptScreenPos.y;
-			break;
-		case ParamOverrideType::CURSOR_WINDOW_X:
-			UpdateCursorInfo(state);
-			*dest = (float)state->cursor_window_coords.x;
-			break;
-		case ParamOverrideType::CURSOR_WINDOW_Y:
-			UpdateCursorInfo(state);
-			*dest = (float)state->cursor_window_coords.y;
-			break;
-		case ParamOverrideType::CURSOR_X:
-			UpdateCursorInfo(state);
-			UpdateWindowInfo(state);
-			*dest = (float)state->cursor_window_coords.x / (float)state->window_rect.right;
-			break;
-		case ParamOverrideType::CURSOR_Y:
-			UpdateCursorInfo(state);
-			UpdateWindowInfo(state);
-			*dest = (float)state->cursor_window_coords.y / (float)state->window_rect.bottom;
-			break;
-		case ParamOverrideType::CURSOR_HOTSPOT_X:
-			UpdateCursorInfoEx(state);
-			*dest = (float)state->cursor_info_ex.xHotspot;
-			break;
-		case ParamOverrideType::CURSOR_HOTSPOT_Y:
-			UpdateCursorInfoEx(state);
-			*dest = (float)state->cursor_info_ex.yHotspot;
-			break;
+			return (float)G->mResolutionInfo.height;
 		case ParamOverrideType::TIME:
-			*dest = (float)(GetTickCount() - G->ticks_at_launch) / 1000.0f;
-			break;
+			return (float)(GetTickCount() - G->ticks_at_launch) / 1000.0f;
 		case ParamOverrideType::RAW_SEPARATION:
 			// We could use cached values of these (nvapi is known
 			// to become a bottleneck with too many calls / frame),
@@ -2249,28 +2614,924 @@ void ParamOverride::run(CommandListState *state)
 			// this is rarely used, so let's just go with this for
 			// now and worry about optimisations only if it proves
 			// to be a bottleneck in practice:
-			NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, dest);
-			break;
+			NvAPI_Stereo_GetSeparation(device->mStereoHandle, &fret);
+			return fret;
 		case ParamOverrideType::CONVERGENCE:
-			NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, dest);
-			break;
+			NvAPI_Stereo_GetConvergence(device->mStereoHandle, &fret);
+			return fret;
 		case ParamOverrideType::EYE_SEPARATION:
-			NvAPI_Stereo_GetEyeSeparation(state->mHackerDevice->mStereoHandle, dest);
-			break;
+			NvAPI_Stereo_GetEyeSeparation(device->mStereoHandle, &fret);
+			return fret;
 		case ParamOverrideType::STEREO_ACTIVE:
-			{
-				NvU8 stereo = false;
-				NvAPI_Stereo_IsActivated(state->mHackerDevice->mStereoHandle, &stereo);
-				*dest = !!stereo;
+			NvAPI_Stereo_IsActivated(device->mStereoHandle, &stereo);
+			return !!stereo;
+		case ParamOverrideType::SLI:
+			return sli_enabled(device);
+		// XXX: If updating this list, be sure to also update
+		// XXX: operand_allowed_in_context()
+	}
+
+	if (!state) {
+		// FIXME: Some of these only use the state object for cache,
+		// and could still be evaluated if we forgo the cache
+		LogOverlay(LOG_WARNING, "BUG: Operand type %i cannot be evaluated outside of a command list\n", type);
+		return 0;
+	}
+
+	switch (type) {
+		case ParamOverrideType::RT_WIDTH:
+			ProcessParamRTSize(state);
+			return state->rt_width;
+		case ParamOverrideType::RT_HEIGHT:
+			ProcessParamRTSize(state);
+			return state->rt_height;
+		case ParamOverrideType::WINDOW_WIDTH:
+			UpdateWindowInfo(state);
+			return (float)state->window_rect.right;
+		case ParamOverrideType::WINDOW_HEIGHT:
+			UpdateWindowInfo(state);
+			return (float)state->window_rect.bottom;
+		case ParamOverrideType::TEXTURE:
+			return process_texture_filter(state);
+		case ParamOverrideType::VERTEX_COUNT:
+			if (state->call_info)
+				return (float)state->call_info->VertexCount;
+			return 0;
+		case ParamOverrideType::INDEX_COUNT:
+			if (state->call_info)
+				return (float)state->call_info->IndexCount;
+			return 0;
+		case ParamOverrideType::INSTANCE_COUNT:
+			if (state->call_info)
+				return (float)state->call_info->InstanceCount;
+			return 0;
+		case ParamOverrideType::CURSOR_VISIBLE:
+			UpdateCursorInfo(state);
+			return !!(state->cursor_info.flags & CURSOR_SHOWING);
+		case ParamOverrideType::CURSOR_SCREEN_X:
+			UpdateCursorInfo(state);
+			return (float)state->cursor_info.ptScreenPos.x;
+		case ParamOverrideType::CURSOR_SCREEN_Y:
+			UpdateCursorInfo(state);
+			return (float)state->cursor_info.ptScreenPos.y;
+		case ParamOverrideType::CURSOR_WINDOW_X:
+			UpdateCursorInfo(state);
+			return (float)state->cursor_window_coords.x;
+		case ParamOverrideType::CURSOR_WINDOW_Y:
+			UpdateCursorInfo(state);
+			return (float)state->cursor_window_coords.y;
+		case ParamOverrideType::CURSOR_X:
+			UpdateCursorInfo(state);
+			UpdateWindowInfo(state);
+			return (float)state->cursor_window_coords.x / (float)state->window_rect.right;
+		case ParamOverrideType::CURSOR_Y:
+			UpdateCursorInfo(state);
+			UpdateWindowInfo(state);
+			return (float)state->cursor_window_coords.y / (float)state->window_rect.bottom;
+		case ParamOverrideType::CURSOR_HOTSPOT_X:
+			UpdateCursorInfoEx(state);
+			return (float)state->cursor_info_ex.xHotspot;
+		case ParamOverrideType::CURSOR_HOTSPOT_Y:
+			UpdateCursorInfoEx(state);
+			return (float)state->cursor_info_ex.yHotspot;
+		case ParamOverrideType::SCISSOR_LEFT:
+			UpdateScissorInfo(state);
+			return (float)state->scissor_rects[scissor].left;
+		case ParamOverrideType::SCISSOR_TOP:
+			UpdateScissorInfo(state);
+			return (float)state->scissor_rects[scissor].top;
+		case ParamOverrideType::SCISSOR_RIGHT:
+			UpdateScissorInfo(state);
+			return (float)state->scissor_rects[scissor].right;
+		case ParamOverrideType::SCISSOR_BOTTOM:
+			UpdateScissorInfo(state);
+			return (float)state->scissor_rects[scissor].bottom;
+	}
+
+	LogOverlay(LOG_DIRE, "BUG: Unhandled operand type %i\n", type);
+	return 0;
+}
+
+bool CommandListOperand::static_evaluate(float *ret, HackerDevice *device)
+{
+	NvU8 stereo = false;
+
+	switch (type) {
+		case ParamOverrideType::VALUE:
+			*ret = val;
+			return true;
+		case ParamOverrideType::RAW_SEPARATION:
+		case ParamOverrideType::CONVERGENCE:
+		case ParamOverrideType::EYE_SEPARATION:
+		case ParamOverrideType::STEREO_ACTIVE:
+			NvAPIOverride();
+			NvAPI_Stereo_IsEnabled(&stereo);
+			if (!stereo) {
+				*ret = 0.0;
+				return true;
 			}
 			break;
-		default:
-			return;
+		case ParamOverrideType::SLI:
+			if (device) {
+				*ret = sli_enabled(device);
+				return true;
+			}
+			break;
 	}
+
+	return false;
+}
+
+bool CommandListOperand::optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement)
+{
+	if (type == ParamOverrideType::VALUE)
+		return false;
+
+	if (!static_evaluate(&val, device))
+		return false;
+
+	LogInfo("Statically evaluated %S as %f\n",
+		lookup_enum_name(ParamOverrideTypeNames, type), val);
+
+	type = ParamOverrideType::VALUE;
+	return true;
+}
+
+static const wchar_t *operator_tokens[] = {
+	// Three character tokens first:
+	L"===", L"!==",
+	// Two character tokens next:
+	L"==", L"!=", L"//", L"<=", L">=", L"&&", L"||", L"**",
+	// Single character tokens last:
+	L"(", L")", L"!", L"*", L"/", L"%", L"+", L"-", L"<", L">",
+};
+
+class CommandListSyntaxError: public exception
+{
+public:
+	wstring msg;
+	size_t pos;
+
+	CommandListSyntaxError(wstring msg, size_t pos) :
+		msg(msg), pos(pos)
+	{}
+};
+
+static void tokenise(const wstring *expression, CommandListSyntaxTree *tree, const wstring *ini_namespace, bool command_list_context)
+{
+	wstring remain = *expression;
+	ResourceCopyTarget texture_filter_target;
+	shared_ptr<CommandListOperand> operand;
+	wstring token;
+	size_t pos = 0;
+	int ipos = 0;
+	size_t friendly_pos = 0;
+	float fval;
+	int ret;
+	int i;
+	bool last_was_operand = false;
+
+	LogDebug("    Tokenising \"%S\"\n", expression->c_str());
+
+	while (true) {
+next_token:
+		// Skip whitespace:
+		pos = remain.find_first_not_of(L" \t", pos);
+		if (pos == wstring::npos)
+			return;
+		remain = remain.substr(pos);
+		friendly_pos += pos;
+
+		// Operators:
+		for (i = 0; i < ARRAYSIZE(operator_tokens); i++) {
+			if (!remain.compare(0, wcslen(operator_tokens[i]), operator_tokens[i])) {
+				pos = wcslen(operator_tokens[i]);
+				tree->tokens.emplace_back(make_shared<CommandListOperatorToken>(friendly_pos, remain.substr(0, pos)));
+				LogDebug("      Operator: \"%S\"\n", tree->tokens.back()->token.c_str());
+				last_was_operand = false;
+				goto next_token; // continue would continue wrong loop
+			}
+		}
+
+		// Texture Filtering / Resource Slots:
+		// - Many of these slots include a hyphen character, which
+		//   conflicts with the subtraction/negation operators,
+		//   potentially making something like "x = ps-t0" ambiguous as
+		//   to whether it is referring to pixel shader texture slot 0,
+		//   or subtracting "t0" from "ps", but in practice this should
+		//   be generally be fine since we don't have anything called
+		//   "ps", "t0" or similar, and if we did simply adding
+		//   whitespace around the subtraction would disambiguate it.
+		// - The characters we check for here preclude some arbitrary
+		//   custom Resource names, including namespaced resources, but
+		//   that's ok since this is only for texture filtering, which
+		//   doesn't work if custom resources are checked. If we need
+		//   to match these for some other reason, we could add \ and .
+		//   to this list, which will cover most namespaced resources.
+		pos = remain.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_-0123456789");
+		if (pos) {
+			token = remain.substr(0, pos);
+			ret = texture_filter_target.ParseTarget(token.c_str(), true, ini_namespace);
+			if (ret) {
+				operand = make_shared<CommandListOperand>(friendly_pos, token);
+				if (operand->parse(&token, ini_namespace, command_list_context)) {
+					tree->tokens.emplace_back(std::move(operand));
+					LogDebug("      Resource Slot: \"%S\"\n", tree->tokens.back()->token.c_str());
+					if (last_was_operand)
+						throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
+					last_was_operand = true;
+					continue;
+				} else {
+					LogOverlay(LOG_DIRE, "BUG: Token parsed as resource slot, but not as operand: \"%S\"\n", token.c_str());
+					throw CommandListSyntaxError(L"BUG", friendly_pos);
+				}
+			}
+		}
+
+		// Identifiers:
+		// - Parse this before floats to make sure that the special
+		//   cases "inf" and "nan" are identifiers by themselves, not
+		//   the start of some other identifier. Only applies to
+		//   vs2015+ as older toolchains lack parsing for these.
+		// - Identifiers cannot start with a number
+		if (remain[0] < '0' || remain[0] > '9') {
+			pos = remain.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_0123456789");
+			if (pos) {
+				token = remain.substr(0, pos);
+				operand = make_shared<CommandListOperand>(friendly_pos, token);
+				if (operand->parse(&token, ini_namespace, command_list_context)) {
+					tree->tokens.emplace_back(std::move(operand));
+					LogDebug("      Identifier: \"%S\"\n", tree->tokens.back()->token.c_str());
+					if (last_was_operand)
+						throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
+					last_was_operand = true;
+					continue;
+				}
+				throw CommandListSyntaxError(L"Unrecognised identifier: " + token, friendly_pos);
+			}
+		}
+
+		// Floats:
+		// - Must tokenise subtraction operation first
+		//   - Static optimisation will merge unary negation
+		// - Identifier match will catch "nan" and "inf" special cases
+		//   if the toolchain supports them
+		ret = swscanf_s(remain.c_str(), L"%f%n", &fval, &ipos);
+		if (ret != 0 && ret != EOF) {
+			// VS2013 Issue: size_t z/I modifiers do not work with %n
+			// We could make pos an int and cast it everywhere it is used
+			// as a size_t, but this way highlights the toolchain issue.
+			pos = ipos;
+
+			token = remain.substr(0, ipos);
+			operand = make_shared<CommandListOperand>(friendly_pos, token);
+			if (operand->parse(&token, ini_namespace, command_list_context)) {
+				tree->tokens.emplace_back(std::move(operand));
+				LogDebug("      Float: \"%S\"\n", tree->tokens.back()->token.c_str());
+				if (last_was_operand)
+					throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
+				last_was_operand = true;
+				continue;
+			} else {
+				LogOverlay(LOG_DIRE, "BUG: Token parsed as float, but not as operand: \"%S\"\n", token.c_str());
+				throw CommandListSyntaxError(L"BUG", friendly_pos);
+			}
+		}
+
+		throw CommandListSyntaxError(L"Parse error", friendly_pos);
+	}
+}
+
+static void group_parenthesis(CommandListSyntaxTree *tree)
+{
+	CommandListSyntaxTree::Tokens::iterator i;
+	CommandListSyntaxTree::Tokens::reverse_iterator rit;
+	CommandListOperatorToken *rbracket, *lbracket;
+	std::shared_ptr<CommandListSyntaxTree> inner;
+
+	for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
+		rbracket = dynamic_cast<CommandListOperatorToken*>(i->get());
+		if (rbracket && !rbracket->token.compare(L")")) {
+			for (rit = std::reverse_iterator<CommandListSyntaxTree::Tokens::iterator>(i); rit != tree->tokens.rend(); rit++) {
+				lbracket = dynamic_cast<CommandListOperatorToken*>(rit->get());
+				if (lbracket && !lbracket->token.compare(L"(")) {
+					inner = std::make_shared<CommandListSyntaxTree>(lbracket->token_pos);
+					// XXX: Double check bounds are right:
+					inner->tokens.assign(rit.base(), i);
+					i = tree->tokens.erase(rit.base() - 1, i + 1);
+					i = tree->tokens.insert(i, std::move(inner));
+					goto continue_rbracket_search; // continue would continue wrong loop
+				}
+			}
+			throw CommandListSyntaxError(L"Unmatched )", rbracket->token_pos);
+		}
+	continue_rbracket_search: false;
+	}
+
+	for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
+		lbracket = dynamic_cast<CommandListOperatorToken*>(i->get());
+		if (lbracket && !lbracket->token.compare(L"("))
+			throw CommandListSyntaxError(L"Unmatched (", lbracket->token_pos);
+	}
+}
+
+// Expression operator definitions:
+#define DEFINE_OPERATOR(name, operator_pattern, fn) \
+class name##T : public CommandListOperator { \
+public: \
+	name##T( \
+			std::shared_ptr<CommandListToken> lhs, \
+			CommandListOperatorToken &t, \
+			std::shared_ptr<CommandListToken> rhs \
+		) : CommandListOperator(lhs, t, rhs) \
+	{} \
+	static const wchar_t* pattern() { return L##operator_pattern; } \
+	float evaluate(float lhs, float rhs) override { return (fn); } \
+}; \
+static CommandListOperatorFactory<name##T> name;
+
+// Highest level of precedence, allows for negative numbers
+DEFINE_OPERATOR(unary_not_operator,     "!",  (!rhs));
+DEFINE_OPERATOR(unary_plus_operator,    "+",  (+rhs));
+DEFINE_OPERATOR(unary_negate_operator,  "-",  (-rhs));
+
+// High level of precedence, right-associative. Lower than unary operators, so
+// that 4**-2 works for square root
+DEFINE_OPERATOR(exponent_operator,      "**", (pow(lhs, rhs)));
+
+DEFINE_OPERATOR(multiplication_operator,"*",  (lhs * rhs));
+DEFINE_OPERATOR(division_operator,      "/",  (lhs / rhs));
+DEFINE_OPERATOR(floor_division_operator,"//", (floor(lhs / rhs)));
+DEFINE_OPERATOR(modulus_operator,       "%",  (fmod(lhs, rhs)));
+
+DEFINE_OPERATOR(addition_operator,      "+",  (lhs + rhs));
+DEFINE_OPERATOR(subtraction_operator,   "-",  (lhs - rhs));
+
+DEFINE_OPERATOR(less_operator,          "<",  (lhs < rhs));
+DEFINE_OPERATOR(less_equal_operator,    "<=", (lhs <= rhs));
+DEFINE_OPERATOR(greater_operator,       ">",  (lhs > rhs));
+DEFINE_OPERATOR(greater_equal_operator, ">=", (lhs >= rhs));
+
+// The triple equals operator tests for binary equivalence - in particular,
+// this allows us to test for negative zero, used in texture filtering to
+// signify that nothing is bound to a given slot. Negative zero cannot be
+// tested for using the regular equals operator, since -0.0 == +0.0. This
+// operator could also test for specific cases of NAN (though, without the
+// vs2015 toolchain "nan" won't parse as such).
+DEFINE_OPERATOR(equality_operator,      "==", (lhs == rhs));
+DEFINE_OPERATOR(inequality_operator,    "!=", (lhs != rhs));
+DEFINE_OPERATOR(identical_operator,     "===",(*(uint32_t*)&lhs == *(uint32_t*)&rhs));
+DEFINE_OPERATOR(not_identical_operator, "!==",(*(uint32_t*)&lhs != *(uint32_t*)&rhs));
+
+DEFINE_OPERATOR(and_operator,           "&&", (lhs && rhs));
+
+DEFINE_OPERATOR(or_operator,            "||", (lhs || rhs));
+
+// TODO: Ternary if operator
+
+static CommandListOperatorFactoryBase *unary_operators[] = {
+	&unary_not_operator,
+	&unary_negate_operator,
+	&unary_plus_operator,
+};
+static CommandListOperatorFactoryBase *exponent_operators[] = {
+	&exponent_operator,
+};
+static CommandListOperatorFactoryBase *multi_division_operators[] = {
+	&multiplication_operator,
+	&division_operator,
+	&floor_division_operator,
+	&modulus_operator,
+};
+static CommandListOperatorFactoryBase *add_subtract_operators[] = {
+	&addition_operator,
+	&subtraction_operator,
+};
+static CommandListOperatorFactoryBase *relational_operators[] = {
+	&less_operator,
+	&less_equal_operator,
+	&greater_operator,
+	&greater_equal_operator,
+};
+static CommandListOperatorFactoryBase *equality_operators[] = {
+	&equality_operator,
+	&inequality_operator,
+	&identical_operator,
+	&not_identical_operator,
+};
+static CommandListOperatorFactoryBase *and_operators[] = {
+	&and_operator,
+};
+static CommandListOperatorFactoryBase *or_operators[] = {
+	&or_operator,
+};
+
+static CommandListSyntaxTree::Tokens::iterator transform_operators_token(
+		CommandListSyntaxTree *tree,
+		CommandListSyntaxTree::Tokens::iterator i,
+		CommandListOperatorFactoryBase *factories[], int num_factories,
+		bool unary)
+{
+	std::shared_ptr<CommandListOperatorToken> token;
+	std::shared_ptr<CommandListOperator> op;
+	std::shared_ptr<CommandListOperandBase> lhs;
+	std::shared_ptr<CommandListOperandBase> rhs;
+	int f;
+
+	token = dynamic_pointer_cast<CommandListOperatorToken>(*i);
+	if (!token)
+		return i;
+
+	for (f = 0; f < num_factories; f++) {
+		if (token->token.compare(factories[f]->pattern()))
+			continue;
+
+		lhs = nullptr;
+		rhs = nullptr;
+		if (i > tree->tokens.begin())
+			lhs = dynamic_pointer_cast<CommandListOperandBase>(*(i-1));
+		if (i < tree->tokens.end() - 1)
+			rhs = dynamic_pointer_cast<CommandListOperandBase>(*(i+1));
+
+		if (unary) {
+			// It is particularly important that we check that the
+			// LHS is *not* an operand so the unary +/- operators
+			// don't trump the binary addition/subtraction operators:
+			if (rhs && !lhs) {
+				op = factories[f]->create(nullptr, *token, *(i+1));
+				i = tree->tokens.erase(i, i+2);
+				i = tree->tokens.insert(i, std::move(op));
+				break;
+			}
+		} else {
+			if (lhs && rhs) {
+				op = factories[f]->create(*(i-1), *token, *(i+1));
+				i = tree->tokens.erase(i-1, i+2);
+				i = tree->tokens.insert(i, std::move(op));
+				break;
+			}
+		}
+	}
+
+	return i;
+}
+
+// Transforms operator tokens in the syntax tree into actual operators
+static void transform_operators_visit(CommandListSyntaxTree *tree,
+		CommandListOperatorFactoryBase *factories[], int num_factories,
+		bool right_associative, bool unary)
+{
+	CommandListSyntaxTree::Tokens::iterator i;
+	CommandListSyntaxTree::Tokens::reverse_iterator rit;
+
+	if (!tree)
+		return;
+
+	if (right_associative) {
+		if (unary) {
+			// Start at the second from the right
+			for (rit = tree->tokens.rbegin() + 1; rit != tree->tokens.rend(); rit++) {
+				// C++ gotcha: reverse_iterator::base() points to the *next* element
+				i = transform_operators_token(tree, rit.base() - 1, factories, num_factories, unary);
+				rit = std::reverse_iterator<CommandListSyntaxTree::Tokens::iterator>(i + 1);
+			}
+		} else {
+			for (rit = tree->tokens.rbegin() + 1; rit < tree->tokens.rend() - 1; rit++) {
+				// C++ gotcha: reverse_iterator::base() points to the *next* element
+				i = transform_operators_token(tree, rit.base() - 1, factories, num_factories, unary);
+				rit = std::reverse_iterator<CommandListSyntaxTree::Tokens::iterator>(i + 1);
+			}
+		}
+	} else {
+		if (unary) {
+			throw CommandListSyntaxError(L"FIXME: Implement left-associative unary operators", 0);
+		} else {
+			// Since this is binary operators, skip the first and last
+			// nodes as they must be operands, and this way I don't have to
+			// worry about bounds checks.
+			for (i = tree->tokens.begin() + 1; i < tree->tokens.end() - 1; i++)
+				i = transform_operators_token(tree, i, factories, num_factories, unary);
+		}
+	}
+}
+
+static void transform_operators_recursive(CommandListWalkable *tree,
+		CommandListOperatorFactoryBase *factories[], int num_factories,
+		bool right_associative, bool unary)
+{
+	// Depth first to ensure that we have visited all sub-trees before
+	// transforming operators in this level, since that may add new
+	// sub-trees
+	for (auto &inner: tree->walk()) {
+		transform_operators_recursive(dynamic_cast<CommandListWalkable*>(inner.get()),
+				factories, num_factories, right_associative, unary);
+	}
+
+	transform_operators_visit(dynamic_cast<CommandListSyntaxTree*>(tree),
+			factories, num_factories, right_associative, unary);
+}
+
+// Using raw pointers here so that ::optimise() can call it with "this"
+static void _log_syntax_tree(CommandListSyntaxTree *tree);
+static void _log_token(CommandListToken *token)
+{
+	CommandListSyntaxTree *inner;
+	CommandListOperator *op;
+	CommandListOperatorToken *op_tok;
+	CommandListOperand *operand;
+
+	if (!token)
+		return;
+
+	// Can't use CommandListWalkable here, because it only walks over inner
+	// syntax trees and this debug dumper needs to walk over everything
+
+	inner = dynamic_cast<CommandListSyntaxTree*>(token);
+	op = dynamic_cast<CommandListOperator*>(token);
+	op_tok = dynamic_cast<CommandListOperatorToken*>(token);
+	operand = dynamic_cast<CommandListOperand*>(token);
+	if (inner) {
+		_log_syntax_tree(inner);
+	} else if (op) {
+		LogInfoNoNL("Operator \"%S\"[ ", token->token.c_str());
+		if (op->lhs_tree)
+			_log_token(op->lhs_tree.get());
+		else if (op->lhs)
+			_log_token(dynamic_cast<CommandListToken*>(op->lhs.get()));
+		if ((op->lhs_tree || op->lhs) && (op->rhs_tree || op->rhs))
+			LogInfoNoNL(", ");
+		if (op->rhs_tree)
+			_log_token(op->rhs_tree.get());
+		else if (op->rhs)
+			_log_token(dynamic_cast<CommandListToken*>(op->rhs.get()));
+		LogInfoNoNL(" ]");
+	} else if (op_tok) {
+		LogInfoNoNL("OperatorToken \"%S\"", token->token.c_str());
+	} else if (operand) {
+		LogInfoNoNL("Operand \"%S\"", token->token.c_str());
+	} else {
+		LogInfoNoNL("Token \"%S\"", token->token.c_str());
+	}
+}
+static void _log_syntax_tree(CommandListSyntaxTree *tree)
+{
+	CommandListSyntaxTree::Tokens::iterator i;
+
+	LogInfoNoNL("SyntaxTree[ ");
+	for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
+		_log_token((*i).get());
+		if (i != tree->tokens.end()-1)
+			LogInfoNoNL(", ");
+	}
+	LogInfoNoNL(" ]");
+}
+
+static void log_syntax_tree(CommandListSyntaxTree *tree, const char *msg)
+{
+	if (!gLogDebug)
+		return;
+
+	LogInfo(msg);
+	_log_syntax_tree(tree);
+	LogInfo("\n");
+}
+
+template<class T>
+static void log_syntax_tree(T token, const char *msg)
+{
+	if (!gLogDebug)
+		return;
+
+	LogInfo(msg);
+	_log_token(dynamic_cast<CommandListToken*>(token.get()));
+	LogInfo("\n");
+}
+
+bool CommandListExpression::parse(const wstring *expression, const wstring *ini_namespace, bool command_list_context)
+{
+	CommandListSyntaxTree tree(0);
+
+	try {
+		tokenise(expression, &tree, ini_namespace, command_list_context);
+
+		group_parenthesis(&tree);
+
+		transform_operators_recursive(&tree, unary_operators, ARRAYSIZE(unary_operators), true, true);
+		transform_operators_recursive(&tree, exponent_operators, ARRAYSIZE(exponent_operators), true, false);
+		transform_operators_recursive(&tree, multi_division_operators, ARRAYSIZE(multi_division_operators), false, false);
+		transform_operators_recursive(&tree, add_subtract_operators, ARRAYSIZE(add_subtract_operators), false, false);
+		transform_operators_recursive(&tree, relational_operators, ARRAYSIZE(relational_operators), false, false);
+		transform_operators_recursive(&tree, equality_operators, ARRAYSIZE(equality_operators), false, false);
+		transform_operators_recursive(&tree, and_operators, ARRAYSIZE(and_operators), false, false);
+		transform_operators_recursive(&tree, or_operators, ARRAYSIZE(or_operators), false, false);
+
+		evaluatable = tree.finalise();
+		log_syntax_tree(evaluatable, "Final syntax tree:\n");
+		return true;
+	} catch (const CommandListSyntaxError &e) {
+		LogOverlay(LOG_WARNING_MONOSPACE,
+				"Syntax Error: %S\n"
+				"              %*s: %S\n",
+				expression->c_str(), (int)e.pos+1, "^", e.msg.c_str());
+		return false;
+	}
+}
+
+float CommandListExpression::evaluate(CommandListState *state, HackerDevice *device)
+{
+	return evaluatable->evaluate(state, device);
+}
+
+bool CommandListExpression::static_evaluate(float *ret, HackerDevice *device)
+{
+	return evaluatable->static_evaluate(ret, device);
+}
+
+bool CommandListExpression::optimise(HackerDevice *device)
+{
+	std::shared_ptr<CommandListEvaluatable> replacement;
+	bool ret;
+
+	if (!evaluatable) {
+		LogOverlay(LOG_DIRE, "BUG: Non-evaluatable expression, please report this and provide your d3dx.ini\n");
+		evaluatable = std::make_shared<CommandListOperand>(0, L"<BUG>");
+		return false;
+	}
+
+	ret = evaluatable->optimise(device, &replacement);
+
+	if (replacement)
+		evaluatable = replacement;
+
+	return ret;
+}
+
+// Finalises the syntax trees in the operator into evaluatable operands,
+// thereby making this operator also evaluatable.
+std::shared_ptr<CommandListEvaluatable> CommandListOperator::finalise()
+{
+	auto lhs_finalisable = dynamic_pointer_cast<CommandListFinalisable>(lhs_tree);
+	auto rhs_finalisable = dynamic_pointer_cast<CommandListFinalisable>(rhs_tree);
+	auto lhs_evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(lhs_tree);
+	auto rhs_evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(rhs_tree);
+
+	if (lhs || rhs) {
+		LogInfo("BUG: Attempted to finalise already final operator\n");
+		throw CommandListSyntaxError(L"BUG", token_pos);
+	}
+
+	if (lhs_tree) { // Binary operators only
+		if (!lhs && lhs_finalisable)
+			lhs = lhs_finalisable->finalise();
+		if (!lhs && lhs_evaluatable)
+			lhs = lhs_evaluatable;
+		if (!lhs)
+			throw CommandListSyntaxError(L"BUG: LHS operand invalid", token_pos);
+		lhs_tree = nullptr;
+	}
+
+	if (!rhs && rhs_finalisable)
+		rhs = rhs_finalisable->finalise();
+	if (!rhs && rhs_evaluatable)
+		rhs = rhs_evaluatable;
+	if (!rhs)
+		throw CommandListSyntaxError(L"BUG: RHS operand invalid", token_pos);
+	rhs_tree = nullptr;
+
+	// Can't return "this", because that is an unmanaged version of the
+	// pointer which is already managed elsewhere - if we were to create a
+	// new managed pointer from that, we would have undefined behaviour.
+	// Instead we just return nullptr to signify that this node does not
+	// need to be replaced.
+	return nullptr;
+}
+
+// Recursively finalises every node in the syntax tree. If the expression is
+// valid the tree should be left with a single evaluatable node, which will be
+// returned to the caller so that it can replace this tree with just the node.
+// Throws a syntax error if the finalised nodes are not right.
+std::shared_ptr<CommandListEvaluatable> CommandListSyntaxTree::finalise()
+{
+	std::shared_ptr<CommandListFinalisable> finalisable;
+	std::shared_ptr<CommandListEvaluatable> evaluatable;
+	std::shared_ptr<CommandListToken> token;
+	Tokens::iterator i;
+
+	for (i = tokens.begin(); i != tokens.end(); i++) {
+		finalisable = dynamic_pointer_cast<CommandListFinalisable>(*i);
+		if (finalisable) {
+			evaluatable = finalisable->finalise();
+			if (evaluatable) {
+				// A recursive syntax tree has been finalised
+				// and we replace it with its sole evaluatable
+				// contents:
+				token = dynamic_pointer_cast<CommandListToken>(evaluatable);
+				if (!token) {
+					LogInfo("BUG: finalised token did not cast back\n");
+					throw CommandListSyntaxError(L"BUG", token_pos);
+				}
+				i = tokens.erase(i);
+				i = tokens.insert(i, std::move(token));
+			}
+		}
+	}
+
+	// A finalised syntax tree should be reduced to a single evaluatable
+	// operator/operand, which we pass back up the stack to replace this
+	// tree
+	if (tokens.empty())
+		throw CommandListSyntaxError(L"Empty expression", 0);
+
+	if (tokens.size() > 1)
+		throw CommandListSyntaxError(L"Unexpected", tokens[1]->token_pos);
+
+	evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(tokens[0]);
+	if (!evaluatable)
+		throw CommandListSyntaxError(L"Non-evaluatable", tokens[0]->token_pos);
+
+	return evaluatable;
+}
+
+CommandListSyntaxTree::Walk CommandListSyntaxTree::walk()
+{
+	Walk ret;
+	std::shared_ptr<CommandListWalkable> inner;
+	Tokens::iterator i;
+
+	for (i = tokens.begin(); i != tokens.end(); i++) {
+		inner = dynamic_pointer_cast<CommandListWalkable>(*i);
+		if (inner)
+			ret.push_back(std::move(inner));
+	}
+
+	return ret;
+}
+
+float CommandListOperator::evaluate(CommandListState *state, HackerDevice *device)
+{
+	if (lhs) // Binary operator
+		return evaluate(lhs->evaluate(state, device), rhs->evaluate(state, device));
+	return evaluate(std::numeric_limits<float>::quiet_NaN(), rhs->evaluate(state, device));
+}
+
+bool CommandListOperator::static_evaluate(float *ret, HackerDevice *device)
+{
+	float lhs_static = std::numeric_limits<float>::quiet_NaN(), rhs_static;
+	bool is_static;
+
+	is_static = rhs->static_evaluate(&rhs_static, device);
+	if (lhs) // Binary operator
+		is_static = lhs->static_evaluate(&lhs_static, device) && is_static;
+
+	if (is_static) {
+		if (ret)
+			*ret = evaluate(lhs_static, rhs_static);
+		return true;
+	}
+
+	return false;
+}
+
+bool CommandListOperator::optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement)
+{
+	std::shared_ptr<CommandListEvaluatable> lhs_replacement;
+	std::shared_ptr<CommandListEvaluatable> rhs_replacement;
+	shared_ptr<CommandListOperand> operand;
+	bool making_progress = false;
+	float static_val;
+	wstring static_val_str;
+
+	if (lhs)
+		making_progress = lhs->optimise(device, &lhs_replacement) || making_progress;
+	if (rhs)
+		making_progress = rhs->optimise(device, &rhs_replacement) || making_progress;
+
+	if (lhs_replacement)
+		lhs = lhs_replacement;
+	if (rhs_replacement)
+		rhs = rhs_replacement;
+
+	if (!static_evaluate(&static_val, device))
+		return making_progress;
+
+	// FIXME: Pretty print rather than dumping syntax tree
+	LogInfoNoNL("Statically evaluated \"");
+	_log_token(dynamic_cast<CommandListToken*>(this));
+	LogInfo("\" as %f\n", static_val);
+	static_val_str = std::to_wstring(static_val);
+
+	operand = make_shared<CommandListOperand>(token_pos, static_val_str.c_str());
+	operand->type = ParamOverrideType::VALUE;
+	operand->val = static_val;
+	*replacement = dynamic_pointer_cast<CommandListEvaluatable>(operand);
+	return true;
+}
+
+CommandListSyntaxTree::Walk CommandListOperator::walk()
+{
+	Walk ret;
+	std::shared_ptr<CommandListWalkable> lhs;
+	std::shared_ptr<CommandListWalkable> rhs;
+
+	lhs = dynamic_pointer_cast<CommandListWalkable>(lhs_tree);
+	rhs = dynamic_pointer_cast<CommandListWalkable>(rhs_tree);
+
+	if (lhs)
+		ret.push_back(std::move(lhs));
+	if (rhs)
+		ret.push_back(std::move(rhs));
+
+	return ret;
+}
+
+void ParamOverride::run(CommandListState *state)
+{
+	float *dest = &(G->iniParams[param_idx].*param_component);
+	float orig = *dest;
+
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+
+	*dest = expression.evaluate(state);
 
 	COMMAND_LIST_LOG(state, "  ini param override = %f\n", *dest);
 
 	state->update_params |= (*dest != orig);
+}
+
+bool ParamOverride::optimise(HackerDevice *device)
+{
+	return expression.optimise(device);
+}
+
+static bool operand_allowed_in_context(ParamOverrideType type, bool command_list_context)
+{
+	if (command_list_context)
+		return true;
+
+	switch (type) {
+		case ParamOverrideType::VALUE:
+		case ParamOverrideType::INI_PARAM:
+		case ParamOverrideType::RES_WIDTH:
+		case ParamOverrideType::RES_HEIGHT:
+		case ParamOverrideType::TIME:
+		case ParamOverrideType::RAW_SEPARATION:
+		case ParamOverrideType::CONVERGENCE:
+		case ParamOverrideType::EYE_SEPARATION:
+		case ParamOverrideType::STEREO_ACTIVE:
+		case ParamOverrideType::SLI:
+			return true;
+	}
+	return false;
+}
+
+bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namespace, bool command_list_context)
+{
+	int ret, len1;
+
+	// Try parsing value as a float
+	ret = swscanf_s(operand->c_str(), L"%f%n", &val, &len1);
+	if (ret != 0 && ret != EOF && len1 == operand->length()) {
+		type = ParamOverrideType::VALUE;
+		return operand_allowed_in_context(type, command_list_context);
+	}
+
+	// Try parsing operand as an ini param:
+	if (ParseIniParamName(operand->c_str(), &param_idx, &param_component)) {
+		type = ParamOverrideType::INI_PARAM;
+		return operand_allowed_in_context(type, command_list_context);
+	}
+
+	// Try parsing value as a resource target for texture filtering
+	ret = texture_filter_target.ParseTarget(operand->c_str(), true, ini_namespace);
+	if (ret) {
+		type = ParamOverrideType::TEXTURE;
+		return operand_allowed_in_context(type, command_list_context);
+	}
+
+	// Try parsing value as a scissor rectangle. scissor_<side> also
+	// appears in the keywords list for uses of the default rectangle 0.
+	ret = swscanf_s(operand->c_str(), L"scissor%u_%n", &scissor, &len1);
+	if (ret == 1 && scissor < D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE) {
+		if (!wcscmp(operand->c_str() + len1, L"left"))
+			type = ParamOverrideType::SCISSOR_LEFT;
+		else if (!wcscmp(operand->c_str() + len1, L"top"))
+			type = ParamOverrideType::SCISSOR_TOP;
+		else if (!wcscmp(operand->c_str() + len1, L"right"))
+			type = ParamOverrideType::SCISSOR_RIGHT;
+		else if (!wcscmp(operand->c_str() + len1, L"bottom"))
+			type = ParamOverrideType::SCISSOR_BOTTOM;
+		else
+			return false;
+		return operand_allowed_in_context(type, command_list_context);
+	}
+
+	// Check special keywords
+	type = lookup_enum_val<const wchar_t *, ParamOverrideType>
+		(ParamOverrideTypeNames, operand->c_str(), ParamOverrideType::INVALID);
+	if (type != ParamOverrideType::INVALID)
+		return operand_allowed_in_context(type, command_list_context);
+
+	return false;
 }
 
 // Parse IniParams overrides, in forms such as
@@ -2279,37 +3540,19 @@ void ParamOverride::run(CommandListState *state)
 // z3 = rt_width / rt_height (set parameter to render target width/height)
 // w4 = res_width / res_height (set parameter to resolution width/height)
 bool ParseCommandListIniParamOverride(const wchar_t *section,
-		const wchar_t *key, wstring *val, CommandList *command_list)
+		const wchar_t *key, wstring *val, CommandList *command_list,
+		const wstring *ini_namespace)
 {
-	int ret, len1;
 	ParamOverride *param = new ParamOverride();
 
 	if (!ParseIniParamName(key, &param->param_idx, &param->param_component))
 		goto bail;
 
-	// Try parsing value as a float
-	ret = swscanf_s(val->c_str(), L"%f%n", &param->val, &len1);
-	if (ret != 0 && ret != EOF && len1 == val->length()) {
-		param->type = ParamOverrideType::VALUE;
-		goto success;
-	}
-
-	// Try parsing value as a resource target for texture filtering
-	ret = param->texture_filter_target.ParseTarget(val->c_str(), true);
-	if (ret) {
-		param->type = ParamOverrideType::TEXTURE;
-		goto success;
-	}
-
-	// Check special keywords
-	param->type = lookup_enum_val<const wchar_t *, ParamOverrideType>
-		(ParamOverrideTypeNames, val->c_str(), ParamOverrideType::INVALID);
-	if (param->type == ParamOverrideType::INVALID)
+	if (!param->expression.parse(val, ini_namespace))
 		goto bail;
 
-success:
 	param->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	command_list->push_back(std::shared_ptr<CommandListCommand>(param));
+	command_list->commands.push_back(std::shared_ptr<CommandListCommand>(param));
 	return true;
 bail:
 	delete param;
@@ -2354,6 +3597,7 @@ static ResourceType* GetResourceFromPool(
 	uint32_t hash;
 	size_t size;
 	HRESULT hr;
+	ResourcePoolCache::iterator pool_i;
 
 	// We don't want to use the CalTexture2D/3DDescHash functions because
 	// the resolution override could produce the same hash for distinct
@@ -2361,15 +3605,16 @@ static ResourceType* GetResourceFromPool(
 	// doesn't matter what we use - just has to be fast.
 	hash = crc32c_hw(0, desc, sizeof(DescType));
 
-	try {
-		resource = (ResourceType*)resource_pool->cache.at(hash);
+	pool_i = resource_pool->cache.find(hash);
+	if (pool_i != resource_pool->cache.end()) {
+		resource = (ResourceType*)pool_i->second;
 		if (resource == dst_resource)
 			return NULL;
 		if (resource) {
 			LogDebug("Switching cached resource %S\n", ini_line->c_str());
 			resource->AddRef();
 		}
-	} catch (std::out_of_range) {
+	} else {
 		LogInfo("Creating cached resource %S\n", ini_line->c_str());
 
 		hr = (state->mOrigDevice1->*CreateResource)(desc, NULL, &resource);
@@ -2524,19 +3769,19 @@ void CustomResource::LoadBufferFromFile(ID3D11Device *mOrigDevice1)
 
 	f = CreateFile(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE) {
-		LogInfo("Failed to load custom buffer resource %S: %d\n", filename.c_str(), GetLastError());
+		LogOverlay(LOG_WARNING, "Failed to load custom buffer resource %S: %d\n", filename.c_str(), GetLastError());
 		return;
 	}
 
 	size = GetFileSize(f, 0);
 	buf = malloc(size); // malloc to allow realloc to resize it if the user overrode the size
 	if (!buf) {
-		LogInfo("Out of memory loading %S\n", filename.c_str());
+		LogOverlay(LOG_DIRE, "Out of memory loading %S\n", filename.c_str());
 		goto out_close;
 	}
 
 	if (!ReadFile(f, buf, size, &read_size, 0) || size != read_size) {
-		LogInfo("Error reading custom buffer from file %S\n", filename.c_str());
+		LogOverlay(LOG_WARNING, "Error reading custom buffer from file %S\n", filename.c_str());
 		goto out_delete;
 	}
 
@@ -2559,6 +3804,14 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 		case CustomResourceType::RAW_BUFFER:
 			return LoadBufferFromFile(mOrigDevice1);
 	}
+
+	// This code path doesn't get a chance to override the resource
+	// description, since DirectXTK takes care of that, but we can pass in
+	// bind flags at least, which is sometimes necessary in complex
+	// situations where 3DMigoto cannot automatically determine these or
+	// when manipulating driver heuristics:
+	if (override_bind_flags != CustomResourceBindFlags::INVALID)
+		bind_flags = (D3D11_BIND_FLAG)override_bind_flags;
 
 	// XXX: We are not creating a view with DirecXTK because
 	// 1) it assumes we want a shader resource view, which is an
@@ -2592,7 +3845,7 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 		// TODO:
 		// format = ...
 	} else
-		LogInfoW(L"Failed to load custom texture resource %s: 0x%x\n", filename.c_str(), hr);
+		LogOverlay(LOG_WARNING, "Failed to load custom texture resource %S: 0x%x\n", filename.c_str(), hr);
 }
 
 void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, DWORD size)
@@ -2843,7 +4096,8 @@ void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
 }
 
 
-bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source)
+bool ResourceCopyTarget::ParseTarget(const wchar_t *target,
+		bool is_source, const wstring *ini_namespace)
 {
 	int ret, len;
 	size_t length = wcslen(target);
@@ -2917,8 +4171,13 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source)
 		// case from ParseCommandList, so our keys will be consistent
 		// in the unordered_map:
 		wstring resource_id(target);
+		wstring namespaced_section;
 
-		res = customResources.find(resource_id);
+		res = customResources.end();
+		if (get_namespaced_section_name_lower(&resource_id, ini_namespace, &namespaced_section))
+			res = customResources.find(namespaced_section);
+		if (res == customResources.end())
+			res = customResources.find(resource_id);
 		if (res == customResources.end())
 			return false;
 
@@ -2966,6 +4225,17 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source)
 		return true;
 	}
 
+	if (is_source && !wcscmp(target, L"r_bb")) {
+		type = ResourceCopyTargetType::REAL_SWAP_CHAIN;
+		// Holding a reference on the back buffer will prevent
+		// ResizeBuffers() from working, so forbid caching any views of
+		// the back buffer. Leaving it bound could also be a problem,
+		// but since this is usually only used from custom shader
+		// sections they will take care of unbinding it automatically:
+		forbid_view_cache = true;
+		return true;
+	}
+
 	if (is_source && !wcscmp(target, L"f_bb")) {
 		type = ResourceCopyTargetType::FAKE_SWAP_CHAIN;
 		// Holding a reference on the back buffer will prevent
@@ -2989,13 +4259,14 @@ check_shader_type:
 
 
 bool ParseCommandListResourceCopyDirective(const wchar_t *section,
-		const wchar_t *key, wstring *val, CommandList *command_list)
+		const wchar_t *key, wstring *val, CommandList *command_list,
+		const wstring *ini_namespace)
 {
 	ResourceCopyOperation *operation = new ResourceCopyOperation();
 	wchar_t buf[MAX_PATH];
 	wchar_t *src_ptr = NULL;
 
-	if (!operation->dst.ParseTarget(key, false))
+	if (!operation->dst.ParseTarget(key, false, ini_namespace))
 		goto bail;
 
 	// parse_enum_option_string replaces spaces with NULLs, so it can't
@@ -3012,7 +4283,7 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 	if (!src_ptr)
 		goto bail;
 
-	if (!operation->src.ParseTarget(src_ptr, true))
+	if (!operation->src.ParseTarget(src_ptr, true, ini_namespace))
 		goto bail;
 
 	if (!(operation->options & ResourceCopyOptions::COPY_TYPE_MASK)) {
@@ -3073,11 +4344,203 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 	}
 
 	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	command_list->push_back(std::shared_ptr<CommandListCommand>(operation));
+	command_list->commands.push_back(std::shared_ptr<CommandListCommand>(operation));
 	return true;
 bail:
 	delete operation;
 	return false;
+}
+
+static bool ParseIfCommand(const wchar_t *section, const wstring *line,
+		CommandList *pre_command_list, CommandList *post_command_list,
+		const wstring *ini_namespace)
+{
+	IfCommand *operation = new IfCommand();
+	wstring expression = line->substr(line->find_first_not_of(L" \t", 3));
+
+	if (!operation->expression.parse(&expression, ini_namespace))
+		goto bail;
+
+	return AddCommandToList(operation, NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
+bail:
+	delete operation;
+	return false;
+}
+
+static bool ParseElseCommand(const wchar_t *section,
+		CommandList *pre_command_list, CommandList *post_command_list)
+{
+	return AddCommandToList(new ElsePlaceholder(), NULL, NULL, pre_command_list, post_command_list, section, L"else", NULL);
+}
+
+static bool _ParseEndIfCommand(const wchar_t *section,
+		CommandList *command_list, bool post)
+{
+	CommandList::Commands::reverse_iterator rit;
+	IfCommand *if_command;
+	ElsePlaceholder *else_command = NULL;
+	CommandList::Commands::iterator else_pos = command_list->commands.end();
+
+	for (rit = command_list->commands.rbegin(); rit != command_list->commands.rend(); rit++) {
+		else_command = dynamic_cast<ElsePlaceholder*>(rit->get());
+		if (else_command) {
+			// C++ gotcha: reverse_iterator::base() points to the *next* element
+			else_pos = rit.base() - 1;
+		}
+
+		if_command = dynamic_cast<IfCommand*>(rit->get());
+		if (if_command) {
+			// Transfer the commands since the if command until the
+			// endif into the if command's true/false lists
+			if (post && !if_command->post_finalised) {
+				// C++ gotcha: reverse_iterator::base() points to the *next* element
+				if_command->true_commands_post->commands.assign(rit.base(), else_pos);
+				if_command->true_commands_post->ini_section = if_command->ini_line;
+				if (else_pos != command_list->commands.end()) {
+					// Discard the else placeholder command:
+					if_command->false_commands_post->commands.assign(else_pos + 1, command_list->commands.end());
+					if_command->false_commands_post->ini_section = if_command->ini_line + L" <else>";
+				}
+				command_list->commands.erase(rit.base(), command_list->commands.end());
+				if_command->post_finalised = true;
+				return true;
+			} else if (!post && !if_command->pre_finalised) {
+				// C++ gotcha: reverse_iterator::base() points to the *next* element
+				if_command->true_commands_pre->commands.assign(rit.base(), else_pos);
+				if_command->true_commands_pre->ini_section = if_command->ini_line;
+				if (else_pos != command_list->commands.end()) {
+					// Discard the else placeholder command:
+					if_command->false_commands_pre->commands.assign(else_pos + 1, command_list->commands.end());
+					if_command->false_commands_pre->ini_section = if_command->ini_line + L" <else>";
+				}
+				command_list->commands.erase(rit.base(), command_list->commands.end());
+				if_command->pre_finalised = true;
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+static bool ParseEndIfCommand(const wchar_t *section,
+		CommandList *pre_command_list, CommandList *post_command_list)
+{
+	bool ret;
+
+	return _ParseEndIfCommand(section, pre_command_list, false)
+	    && _ParseEndIfCommand(section, post_command_list, true);
+
+	return ret;
+}
+
+bool ParseCommandListFlowControl(const wchar_t *section, const wstring *line,
+		CommandList *pre_command_list, CommandList *post_command_list,
+		const wstring *ini_namespace)
+{
+	if (!wcsncmp(line->c_str(), L"if ", 3))
+		return ParseIfCommand(section, line, pre_command_list, post_command_list, ini_namespace);
+	// TODO if (!wcsncmp(line->c_str(), L"elif ", 5))
+	// TODO	return ParseElseIfCommand(section, line->substr(5), pre_command_list, post_command_list, ini_namespace);
+	if (!wcscmp(line->c_str(), L"else"))
+		return ParseElseCommand(section, pre_command_list, post_command_list);
+	if (!wcscmp(line->c_str(), L"endif"))
+		return ParseEndIfCommand(section, pre_command_list, post_command_list);
+
+	return false;
+}
+
+IfCommand::IfCommand() :
+	pre_finalised(false),
+	post_finalised(false)
+{
+	true_commands_pre = std::make_shared<CommandList>();
+	true_commands_post = std::make_shared<CommandList>();
+	false_commands_pre = std::make_shared<CommandList>();
+	false_commands_post = std::make_shared<CommandList>();
+	true_commands_post->post = true;
+	false_commands_post->post = true;
+
+	// Placeholder names to be replaced by endif processing - we should
+	// never see these, but in case they do show up somewhere these will
+	// provide a clue as to what they are:
+	true_commands_pre->ini_section = L"if placeholder";
+	true_commands_post->ini_section = L"if placeholder";
+	false_commands_pre->ini_section = L"else placeholder";
+	false_commands_post->ini_section = L"else placeholder";
+
+	// Place the dynamically allocated command lists in this data structure
+	// to ensure they stay alive until after the optimisation stage, even
+	// if the IfCommand is freed, e.g. by being optimised out:
+	dynamically_allocated_command_lists.push_back(true_commands_pre);
+	dynamically_allocated_command_lists.push_back(true_commands_post);
+	dynamically_allocated_command_lists.push_back(false_commands_pre);
+	dynamically_allocated_command_lists.push_back(false_commands_post);
+
+	// And register these command lists for later optimisation:
+	registered_command_lists.push_back(true_commands_pre.get());
+	registered_command_lists.push_back(true_commands_post.get());
+	registered_command_lists.push_back(false_commands_pre.get());
+	registered_command_lists.push_back(false_commands_post.get());
+}
+
+void IfCommand::run(CommandListState *state)
+{
+	if (expression.evaluate(state)) {
+		COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+		if (state->post)
+			_RunCommandList(true_commands_post.get(), state);
+		else
+			_RunCommandList(true_commands_pre.get(), state);
+	} else {
+		COMMAND_LIST_LOG(state, "%S\n", else_line.c_str());
+		if (state->post)
+			_RunCommandList(false_commands_post.get(), state);
+		else
+			_RunCommandList(false_commands_pre.get(), state);
+	}
+}
+
+bool IfCommand::optimise(HackerDevice *device)
+{
+	return expression.optimise(device);
+}
+
+bool IfCommand::noop(bool post, bool ignore_cto)
+{
+	float static_val;
+	bool is_static;
+
+	if ((post && !post_finalised) || (!post && !pre_finalised)) {
+		LogOverlay(LOG_WARNING, "WARNING: If missing endif: %S\n", ini_line.c_str());
+		return true;
+	}
+
+	is_static = expression.static_evaluate(&static_val);
+	if (is_static) {
+		if (static_val) {
+			false_commands_pre->commands.clear();
+			false_commands_post->commands.clear();
+		} else {
+			true_commands_pre->commands.clear();
+			true_commands_post->commands.clear();
+		}
+	}
+
+	if (post)
+		return true_commands_post->commands.empty() && false_commands_post->commands.empty();
+	return true_commands_pre->commands.empty() && false_commands_pre->commands.empty();
+}
+
+void CommandPlaceholder::run(CommandListState*)
+{
+	LogOverlay(LOG_DIRE, "BUG: Placeholder command executed: %S\n", ini_line.c_str());
+}
+
+bool CommandPlaceholder::noop(bool post, bool ignore_cto)
+{
+	LogOverlay(LOG_WARNING, "WARNING: Command not terminated: %S\n", ini_line.c_str());
+	return true;
 }
 
 ID3D11Resource *ResourceCopyTarget::GetResource(
@@ -3174,15 +4637,6 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		// means to get the strides + offsets from within the shader.
 		// Perhaps as an IniParam, or in another constant buffer?
 		mOrigContext1->IAGetVertexBuffers(slot, 1, &buf, stride, offset);
-
-		// To simplify things we just copy the part of the buffer
-		// referred to by this call, so adjust the offset with the
-		// call-specific first vertex. Do NOT set the buffer size here
-		// as if it's too small it will disable the region copy later.
-		// TODO: Add a keyword to ignore offsets in case we want the
-		// whole buffer regardless
-		if (state->call_info && stride && offset)
-			*offset += state->call_info->FirstVertex * *stride;
 		return buf;
 
 	case ResourceCopyTargetType::INDEX_BUFFER:
@@ -3191,15 +4645,6 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		mOrigContext1->IAGetIndexBuffer(&buf, format, offset);
 		if (stride && format)
 			*stride = dxgi_format_size(*format);
-
-		// To simplify things we just copy the part of the buffer
-		// referred to by this call, so adjust the offset with the
-		// call-specific first index. Do NOT set the buffer size here
-		// as if it's too small it will disable the region copy later.
-		// TODO: Add a keyword to ignore offsets in case we want the
-		// whole buffer regardless
-		if (state->call_info && stride && offset)
-			*offset += state->call_info->FirstIndex * *stride;
 		return buf;
 
 	case ResourceCopyTargetType::STREAM_OUTPUT:
@@ -3354,10 +4799,23 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 	case ResourceCopyTargetType::SWAP_CHAIN:
 		{
 			HackerSwapChain *mHackerSwapChain = mHackerDevice->GetHackerSwapChain();
+			if (mHackerSwapChain) {
+				if (G->bb_is_upscaling_bb)
+					mHackerSwapChain->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+				else
+					mHackerSwapChain->GetOrigSwapChain1()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
+			} else
+				COMMAND_LIST_LOG(state, "  Unable to get access to swap chain\n");
+		}
+		return res;
+
+	case ResourceCopyTargetType::REAL_SWAP_CHAIN:
+		{
+			HackerSwapChain *mHackerSwapChain = mHackerDevice->GetHackerSwapChain();
 			if (mHackerSwapChain)
 				mHackerSwapChain->GetOrigSwapChain1()->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&res);
 			else
-				COMMAND_LIST_LOG(state, "  Unable to get access to swap chain\n");
+				COMMAND_LIST_LOG(state, "  Unable to get access to real swap chain\n");
 		}
 		return res;
 
@@ -3639,7 +5097,7 @@ void ResourceCopyTarget::FindTextureOverrides(CommandListState *state, bool *res
 	if (!resource)
 		return;
 
-	find_texture_overrides_for_resource(resource, matches);
+	find_texture_overrides_for_resource(resource, matches, state->call_info);
 
 	//COMMAND_LIST_LOG(state, "  found texture hash = %08llx\n", hash);
 
@@ -4152,6 +5610,9 @@ static void FillOutBufferDescCommon(DescType *desc, UINT stride,
 	// knocked out the offset for us. We could alternatively do it
 	// here (and the below should work), but we would need to
 	// create a new view every time the offset changes.
+	//
+	// TODO: Handle vertex/index buffers with "first vertex/index" here, or
+	// give shaders a way to access that via ini params.
 	if (stride) {
 		desc->Buffer.FirstElement = offset / stride;
 		desc->Buffer.NumElements = (buf_src_size - offset) / stride;

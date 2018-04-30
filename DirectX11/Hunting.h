@@ -5,5 +5,5 @@
 #include "HackerDevice.h"
 
 void TimeoutHuntingBuffers();
-void RegisterHuntingKeyBindings();
+void ParseHuntingSection();
 void DumpUsage(wchar_t *dir);

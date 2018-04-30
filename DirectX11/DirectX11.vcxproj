@@ -61,6 +61,7 @@
     <ClCompile Include="Overlay.cpp" />
     <ClCompile Include="Override.cpp" />
     <ClCompile Include="CommandList.cpp" />
+    <ClCompile Include="profiling.cpp" />
     <ClCompile Include="ResourceHash.cpp" />
     <ClCompile Include="ShaderRegex.cpp" />
   </ItemGroup>
@@ -91,6 +92,7 @@
     <ClInclude Include="Overlay.h" />
     <ClInclude Include="Override.h" />
     <ClInclude Include="CommandList.h" />
+    <ClInclude Include="profiling.h" />
     <ClInclude Include="ResourceHash.h" />
     <ClInclude Include="ShaderRegex.h" />
     <ClInclude Include="vkeys.h" />

@@ -23,6 +23,7 @@
 //#include "Override.h"
 #include "ShaderRegex.h"
 #include "FrameAnalysis.h"
+#include "profiling.h"
 
 // -----------------------------------------------------------------------------------------------
 
@@ -224,6 +225,10 @@ void HackerContext::RecordGraphicsShaderStats()
 	ShaderInfoData *info;
 	ID3D11Resource *resource;
 	UINT i;
+	Profiling::State profiling_state;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	if (mCurrentVertexShader) {
 		info = &G->mVertexShaderInfo[mCurrentVertexShader];
@@ -279,6 +284,9 @@ void HackerContext::RecordGraphicsShaderStats()
 			}
 		}
 	}
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::stat_overhead);
 }
 
 void HackerContext::RecordComputeShaderStats()
@@ -289,6 +297,10 @@ void HackerContext::RecordComputeShaderStats()
 	UINT num_uavs = (level >= D3D_FEATURE_LEVEL_11_1 ? D3D11_1_UAV_SLOT_COUNT : D3D11_PS_CS_UAV_REGISTER_COUNT);
 	ID3D11Resource *resource;
 	UINT i;
+	Profiling::State profiling_state;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	RecordShaderResourceUsage<&ID3D11DeviceContext::CSGetShaderResources>(info);
 
@@ -302,6 +314,9 @@ void HackerContext::RecordComputeShaderStats()
 			uavs[i]->Release();
 		}
 	}
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::stat_overhead);
 }
 
 void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num)
@@ -491,6 +506,7 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 {
 	ID3D11Shader *orig_shader = NULL, *patched_shader = NULL;
 	ID3D11ClassInstance *class_instances[256];
+	ShaderReloadMap::iterator orig_info_i;
 	OriginalShaderInfo *orig_info = NULL;
 	UINT num_instances = 0;
 	string asm_text;
@@ -499,11 +515,11 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	unsigned i;
 	wstring tagline(L"//");
 
-	try {
-		orig_info = &G->mReloadedShaders.at(shader);
-	} catch (std::out_of_range) {
+	// Faster than catching an out_of_range exception from .at():
+	orig_info_i = G->mReloadedShaders.find(shader);
+	if (orig_info_i == G->mReloadedShaders.end())
 		return;
-	}
+	orig_info = &orig_info_i->second;
 
 	if (!orig_info->deferred_replacement_candidate || orig_info->deferred_replacement_processed)
 		return;
@@ -642,6 +658,11 @@ void HackerContext::DeferredShaderReplacementBeforeDispatch()
 
 void HackerContext::BeforeDraw(DrawContext &data)
 {
+	Profiling::State profiling_state;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
+
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
 	if (G->hunting == HUNTING_MODE_ENABLED)
 	{
@@ -685,7 +706,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 					G->mSelectedVertexShader_IndexBuffer.insert(mCurrentIndexBuffer);
 				if (mCurrentPixelShader == G->mSelectedPixelShader)
 					G->mSelectedPixelShader_IndexBuffer.insert(mCurrentIndexBuffer);
-				if (G->marking_mode == MARKING_MODE_MONO && mHackerDevice->mStereoHandle)
+				if (G->marking_mode == MarkingMode::MONO && mHackerDevice->mStereoHandle)
 				{
 					LogDebug("  setting separation=0 for hunting\n");
 
@@ -696,7 +717,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 					if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, 0))
 						LogDebug("    Stereo_SetSeparation failed.\n");
 				}
-				else if (G->marking_mode == MARKING_MODE_SKIP)
+				else if (G->marking_mode == MarkingMode::SKIP)
 				{
 					data.call_info.skip = true;
 
@@ -707,7 +728,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 					// use a second skip flag specifically for hunting:
 					data.call_info.hunting_skip = true;
 				}
-				else if (G->marking_mode == MARKING_MODE_PINK)
+				else if (G->marking_mode == MarkingMode::PINK)
 				{
 					if (G->mPinkingShader)
 						data.oldPixelShader = SwitchPSShader(G->mPinkingShader);
@@ -718,7 +739,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 	}
 
 	if (!G->fix_enabled)
-		return;
+		goto out_profile;
 
 	DeferredShaderReplacementBeforeDraw();
 
@@ -762,11 +783,19 @@ void HackerContext::BeforeDraw(DrawContext &data)
 			ProcessShaderOverride(&i->second, true, &data);
 		}
 	}
+
+out_profile:
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::draw_overhead);
 }
 
 void HackerContext::AfterDraw(DrawContext &data)
 {
 	int i;
+	Profiling::State profiling_state;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	for (i = 0; i < 5; i++) {
 		if (data.post_commands[i]) {
@@ -794,6 +823,9 @@ void HackerContext::AfterDraw(DrawContext &data)
 		if (ret)
 			ret->Release();
 	}
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::draw_overhead);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -1008,7 +1040,7 @@ bool HackerContext::MapDenyCPURead(
 	if (i == G->mTextureOverrideMap.end())
 		return false;
 
-	return i->second.deny_cpu_read;
+	return i->second.begin()->deny_cpu_read;
 }
 
 void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
@@ -1028,9 +1060,13 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 	void *replace = NULL;
 	bool divertable = false, divert = false, track = false;
 	bool write = false, read = false, deny = false;
+	Profiling::State profiling_state;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	if (FAILED(map_hr) || !pResource || !pMappedResource || !pMappedResource->pData)
-		return;
+		goto out_profile;
 
 	switch (MapType) {
 		case D3D11_MAP_READ_WRITE:
@@ -1063,14 +1099,14 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 	}
 
 	if (!track && !divert)
-		return;
+		goto out_profile;
 
 	map_info = &mMappedResources[pResource];
 	map_info->mapped_writable = write;
 	memcpy(&map_info->map, pMappedResource, sizeof(D3D11_MAPPED_SUBRESOURCE));
 
 	if (!divertable || !divert)
-		return;
+		goto out_profile;
 
 	pResource->GetType(&dim);
 	switch (dim) {
@@ -1095,13 +1131,13 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 			map_info->size = pMappedResource->DepthPitch * tex3d_desc.Depth;
 			break;
 		default:
-			return;
+			goto out_profile;
 	}
 
 	replace = malloc(map_info->size);
 	if (!replace) {
 		LogInfo("TrackAndDivertMap out of memory\n");
-		return;
+		goto out_profile;
 	}
 
 	if (read && !deny)
@@ -1112,22 +1148,30 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 	map_info->orig_pData = pMappedResource->pData;
 	map_info->map.pData = replace;
 	pMappedResource->pData = replace;
+
+out_profile:
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::map_overhead);
 }
 
 void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresource)
 {
 	MappedResources::iterator i;
 	MappedResourceInfo *map_info = NULL;
+	Profiling::State profiling_state;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	if (mMappedResources.empty())
-		return;
+		goto out_profile;
 
 	i = mMappedResources.find(pResource);
 	if (i == mMappedResources.end())
-		return;
+		goto out_profile;
 	map_info = &i->second;
 
-	if (G->track_texture_updates && Subresource == 0 && map_info->mapped_writable)
+	if (G->track_texture_updates == 1 && Subresource == 0 && map_info->mapped_writable)
 		UpdateResourceHashFromCPU(pResource, map_info->map.pData, map_info->map.RowPitch, map_info->map.DepthPitch);
 
 	if (map_info->orig_pData) {
@@ -1139,6 +1183,10 @@ void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresou
 	}
 
 	mMappedResources.erase(i);
+
+out_profile:
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::map_overhead);
 }
 
 STDMETHODIMP HackerContext::Map(THIS_
@@ -1352,10 +1400,11 @@ STDMETHODIMP_(void) HackerContext::SOSetTargets(THIS_
 bool HackerContext::BeforeDispatch(DispatchContext *context)
 {
 	if (G->hunting == HUNTING_MODE_ENABLED) {
-		RecordComputeShaderStats();
+		if (G->DumpUsage)
+			RecordComputeShaderStats();
 
 		if (mCurrentComputeShader == G->mSelectedComputeShader) {
-			if (G->marking_mode == MARKING_MODE_SKIP)
+			if (G->marking_mode == MarkingMode::SKIP)
 				return false;
 		}
 	}
@@ -1433,22 +1482,6 @@ STDMETHODIMP_(void) HackerContext::RSSetViewports(THIS_
 	/* [annotation] */
 	__in_ecount_opt(NumViewports)  const D3D11_VIEWPORT *pViewports)
 {
-	// In the 3D Vision Direct Mode, we need to double the width of any ViewPorts
-	// We specifically modify the input, so that the game is using full 2x width.
-	// Modifying every ViewPort rect seems wrong, so we are only doing those that
-	// match the screen resolution. 
-	if (G->gForceStereo == 2)
-	{
-		for (size_t i = 0; i < NumViewports; i++)
-		{
-			if (pViewports[i].Width == G->mResolutionInfo.width)
-			{
-				const_cast<D3D11_VIEWPORT *>(pViewports)[i].Width *= 2;
-				LogInfo("-> forced 2x width for Direct Mode: %.0f\n", pViewports[i].Width);
-			}
-		}
-	}
-
 	 mOrigContext1->RSSetViewports(NumViewports, pViewports);
 }
 
@@ -1500,7 +1533,7 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 	if (i == G->mTextureOverrideMap.end())
 		return false;
 
-	if (!i->second.expand_region_copy)
+	if (!i->second.begin()->expand_region_copy)
 		return false;
 
 	memcpy(replaceBox, pSrcBox, sizeof(D3D11_BOX));
@@ -1532,7 +1565,7 @@ STDMETHODIMP_(void) HackerContext::CopySubresourceRegion(THIS_
 	D3D11_BOX replaceSrcBox;
 	UINT replaceDstX = DstX;
 
-	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
+	if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, DstSubresource, pSrcResource, SrcSubresource, 'S', DstX, DstY, DstZ, pSrcBox);
 	}
 
@@ -1548,7 +1581,7 @@ STDMETHODIMP_(void) HackerContext::CopySubresourceRegion(THIS_
 	// it stands to reason that it won't always fill the entire resource
 	// and the hashes might be less predictable. Possibly something to
 	// enable as an option in the future if there is a proven need.
-	if (G->track_texture_updates && DstSubresource == 0 && DstX == 0 && DstY == 0 && DstZ == 0 && pSrcBox == NULL)
+	if (G->track_texture_updates == 1 && DstSubresource == 0 && DstX == 0 && DstY == 0 && DstZ == 0 && pSrcBox == NULL)
 		PropagateResourceHash(pDstResource, pSrcResource);
 }
 
@@ -1558,13 +1591,13 @@ STDMETHODIMP_(void) HackerContext::CopyResource(THIS_
 	/* [annotation] */
 	__in  ID3D11Resource *pSrcResource)
 {
-	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
+	if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, 0, pSrcResource, 0, 'C', 0, 0, 0, NULL);
 	}
 
 	 mOrigContext1->CopyResource(pDstResource, pSrcResource);
 
-	if (G->track_texture_updates)
+	if (G->track_texture_updates == 1)
 		PropagateResourceHash(pDstResource, pSrcResource);
 }
 
@@ -1582,7 +1615,7 @@ STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
 	/* [annotation] */
 	__in  UINT SrcDepthPitch)
 {
-	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
+	if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, DstSubresource, NULL, 0, 'U', 0, 0, 0, NULL);
 	}
 
@@ -1595,7 +1628,7 @@ STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
 	// it stands to reason that it won't always fill the entire resource
 	// and the hashes might be less predictable. Possibly something to
 	// enable as an option in the future if there is a proven need.
-	if (G->track_texture_updates && DstSubresource == 0 && pDstBox == NULL)
+	if (G->track_texture_updates == 1 && DstSubresource == 0 && pDstBox == NULL)
 		UpdateResourceHashFromCPU(pDstResource, pSrcData, SrcRowPitch, SrcDepthPitch);
 }
 
@@ -1907,13 +1940,13 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 
 		if (G->hunting == HUNTING_MODE_ENABLED) {
 			// Replacement map.
-			if (G->marking_mode == MARKING_MODE_ORIGINAL || !G->fix_enabled) {
+			if (G->marking_mode == MarkingMode::ORIGINAL || !G->fix_enabled) {
 				ShaderReplacementMap::iterator j = G->mOriginalShaders.find(pShader);
 				if ((selectedShader == *currentShaderHash || !G->fix_enabled) && j != G->mOriginalShaders.end()) {
 					repl_shader = (ID3D11Shader*)j->second;
 				}
 			}
-			if (G->marking_mode == MARKING_MODE_ZERO) {
+			if (G->marking_mode == MarkingMode::ZERO) {
 				ShaderReplacementMap::iterator j = G->mZeroShaders.find(pShader);
 				if (selectedShader == *currentShaderHash && j != G->mZeroShaders.end()) {
 					repl_shader = (ID3D11Shader*)j->second;
@@ -2700,6 +2733,8 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 	/* [annotation] */
 	__in_opt ID3D11DepthStencilView *pDepthStencilView)
 {
+	Profiling::State profiling_state;
+
 	if (G->hunting == HUNTING_MODE_ENABLED) {
 		EnterCriticalSection(&G->mCriticalSection);
 			mCurrentRenderTargets.clear();
@@ -2707,17 +2742,23 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 			mCurrentPSNumUAVs = 0;
 		LeaveCriticalSection(&G->mCriticalSection);
 
-		if (ppRenderTargetViews) {
-			for (UINT i = 0; i < NumViews; ++i) {
-				if (!ppRenderTargetViews[i])
-					continue;
-				if (G->DumpUsage)
-					RecordRenderTargetInfo(ppRenderTargetViews[i], i);
-			}
-		}
+		if (G->DumpUsage) {
+			if (Profiling::mode == Profiling::Mode::SUMMARY)
+				Profiling::start(&profiling_state);
 
-		if (G->DumpUsage)
+			if (ppRenderTargetViews) {
+				for (UINT i = 0; i < NumViews; ++i) {
+					if (!ppRenderTargetViews[i])
+						continue;
+					RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+				}
+			}
+
 			RecordDepthStencil(pDepthStencilView);
+
+			if (Profiling::mode == Profiling::Mode::SUMMARY)
+				Profiling::end(&profiling_state, &Profiling::stat_overhead);
+		}
 	}
 
 	mOrigContext1->OMSetRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView);
@@ -2739,6 +2780,8 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 	/* [annotation] */
 	__in_ecount_opt(NumUAVs)  const UINT *pUAVInitialCounts)
 {
+	Profiling::State profiling_state;
+
 	if (G->hunting == HUNTING_MODE_ENABLED) {
 		EnterCriticalSection(&G->mCriticalSection);
 
@@ -2746,6 +2789,9 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 			mCurrentRenderTargets.clear();
 			mCurrentDepthTarget = NULL;
 			if (G->DumpUsage) {
+				if (Profiling::mode == Profiling::Mode::SUMMARY)
+					Profiling::start(&profiling_state);
+
 				if (ppRenderTargetViews) {
 					for (UINT i = 0; i < NumRTVs; ++i) {
 						if (ppRenderTargetViews[i])
@@ -2753,6 +2799,9 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 					}
 				}
 				RecordDepthStencil(pDepthStencilView);
+
+				if (Profiling::mode == Profiling::Mode::SUMMARY)
+					Profiling::end(&profiling_state, &Profiling::stat_overhead);
 			}
 		}
 

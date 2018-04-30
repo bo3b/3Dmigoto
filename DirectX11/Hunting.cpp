@@ -14,6 +14,8 @@
 #include "Globals.h"
 #include "IniHandler.h"
 #include "D3D_Shaders\stdafx.h"
+#include "CommandList.h"
+#include "profiling.h"
 
 // bo3b: For this routine, we have a lot of warnings in x64, from converting a size_t result into the needed
 //  DWORD type for the Write calls.  These are writing 256 byte strings, so there is never a chance that it 
@@ -1099,6 +1101,27 @@ static void AnalyseFrameStop(HackerDevice *device, void *private_data)
 	}
 }
 
+static void AnalysePerf(HackerDevice *device, void *private_data)
+{
+	Profiling::mode = (Profiling::Mode)((int)Profiling::mode + 1);
+	if (Profiling::mode == Profiling::Mode::INVALID)
+		Profiling::mode = Profiling::Mode::NONE;
+
+	Profiling::text.clear();
+	Profiling::clear();
+}
+
+static void FreezePerf(HackerDevice *device, void *private_data)
+{
+	if (Profiling::mode == Profiling::Mode::NONE)
+		return;
+
+	Profiling::freeze = !Profiling::freeze;
+
+	if (Profiling::freeze)
+		LogInfoW(L"%s", Profiling::text.c_str());
+}
+
 static void DisableDeferred(HackerDevice *device, void *private_data)
 {
 	if (G->hunting != HUNTING_MODE_ENABLED)
@@ -1117,6 +1140,20 @@ static void EnableDeferred(HackerDevice *device, void *private_data)
 	G->deferred_contexts_enabled = true;
 }
 
+static void NextMarkingMode(HackerDevice *device, void *private_data)
+{
+	if (G->hunting != HUNTING_MODE_ENABLED)
+		return;
+
+	G->marking_mode = (MarkingMode)((int)G->marking_mode + 1);
+
+	// FIXME: Zero mode can crash and needs some work:
+	if (G->marking_mode == MarkingMode::ZERO)
+		G->marking_mode = (MarkingMode)((int)G->marking_mode + 1);
+
+	if (G->marking_mode == MarkingMode::INVALID)
+		G->marking_mode = MarkingMode::SKIP;
+}
 
 template <typename ItemType>
 static void HuntNext(char *type, std::set<ItemType> *visited,
@@ -1521,11 +1558,16 @@ static void ToggleHunting(HackerDevice *device, void *private_data)
 	LogInfo("> Hunting toggled to %d\n", G->hunting);
 }
 
-void RegisterHuntingKeyBindings()
+void ParseHuntingSection()
 {
 	intptr_t i;
 	wchar_t buf[MAX_PATH];
 	int repeat = 8, noRepeat = 0;
+	MarkingMode new_marking_mode;
+	static MarkingMode prev_marking_mode = MarkingMode::INVALID;
+
+	LogInfo("[Hunting]\n");
+	G->hunting = GetIniInt(L"Hunting", L"hunting", 0, NULL);
 
 	// reload_config is registered even if not hunting - this allows us to
 	// turn on hunting in the ini dynamically without having to relaunch
@@ -1534,6 +1576,13 @@ void RegisterHuntingKeyBindings()
 	// discovered while playing normally where it may not be easy/fast to
 	// find the effect again later.
 	G->config_reloadable = RegisterIniKeyBinding(L"Hunting", L"reload_config", FlagConfigReload, NULL, noRepeat, NULL);
+
+	// We're interested in performance measurements even in release mode
+	// (possibly even especially in release mode), particularly if we want
+	// a user to send us a screenshot of the profiling info:
+	RegisterIniKeyBinding(L"Hunting", L"monitor_performance", AnalysePerf, NULL, noRepeat, NULL);
+	RegisterIniKeyBinding(L"Hunting", L"freeze_performance_monitor", FreezePerf, NULL, noRepeat, NULL);
+	Profiling::interval = (INT64)(GetIniFloat(L"Hunting", L"monitor_performance_interval", 1.0f, NULL) * 1000000);
 
 	// Don't register hunting keys when hard disabled. In this case the
 	// only way to turn hunting on is to edit the ini file and reload it.
@@ -1544,6 +1593,16 @@ void RegisterHuntingKeyBindings()
 	RegisterIniKeyBinding(L"Hunting", L"toggle_hunting", ToggleHunting, NULL, noRepeat, NULL);
 
 	repeat = GetIniInt(L"Hunting", L"repeat_rate", repeat, NULL);
+
+	// For a better user experience we avoid resetting the marking mode on
+	// config reload if the next_marking_mode key is enabled, unless
+	// marking_mode was actually changed since the last config reload:
+	new_marking_mode = GetIniEnumClass(L"Hunting", L"marking_mode", MarkingMode::INVALID, NULL, MarkingModeNames);
+	if (new_marking_mode != prev_marking_mode)
+		G->marking_mode = new_marking_mode;
+	RegisterIniKeyBinding(L"Hunting", L"next_marking_mode", NextMarkingMode, NULL, noRepeat, NULL);
+
+	G->mark_snapshot = GetIniInt(L"Hunting", L"mark_snapshot", 0, NULL);
 
 	RegisterIniKeyBinding(L"Hunting", L"next_pixelshader", NextPixelShader, NULL, repeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"previous_pixelshader", PrevPixelShader, NULL, repeat, NULL);
@@ -1585,7 +1644,7 @@ void RegisterHuntingKeyBindings()
 
 	G->show_original_enabled = RegisterIniKeyBinding(L"Hunting", L"show_original", DisableFix, EnableFix, noRepeat, NULL);
 
-	RegisterIniKeyBinding(L"Hunting", L"analyse_frame", AnalyseFrame, AnalyseFrameStop, noRepeat, NULL);
+	G->frame_analysis_registered = RegisterIniKeyBinding(L"Hunting", L"analyse_frame", AnalyseFrame, AnalyseFrameStop, noRepeat, NULL);
 	if (GetIniStringAndLog(L"Hunting", L"analyse_options", 0, buf, MAX_PATH)) {
 		G->def_analyse_options = parse_enum_option_string<wchar_t *, FrameAnalysisOptions>
 			(FrameAnalysisOptionNames, buf, NULL);

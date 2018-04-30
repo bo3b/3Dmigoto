@@ -15,7 +15,7 @@ enum class KeyOverrideType {
 	TOGGLE,
 	CYCLE,
 };
-static EnumName_t<wchar_t *, KeyOverrideType> KeyOverrideTypeNames[] = {
+static EnumName_t<const wchar_t *, KeyOverrideType> KeyOverrideTypeNames[] = {
 	{L"activate", KeyOverrideType::ACTIVATE},
 	{L"hold", KeyOverrideType::HOLD},
 	{L"toggle", KeyOverrideType::TOGGLE},
@@ -28,7 +28,7 @@ enum class TransitionType {
 	LINEAR,
 	COSINE,
 };
-static EnumName_t<wchar_t *, TransitionType> TransitionTypeNames[] = {
+static EnumName_t<const wchar_t *, TransitionType> TransitionTypeNames[] = {
 	{L"linear", TransitionType::LINEAR},
 	{L"cosine", TransitionType::COSINE},
 	{NULL, TransitionType::INVALID} // End of list marker
@@ -47,8 +47,7 @@ private:
 	TransitionType transition_type, release_transition_type;
 
 	bool is_conditional;
-	int condition_param_idx;
-	float DirectX::XMFLOAT4::*condition_param_component;
+	CommandListExpression condition;
 
 	CommandList activate_command_list;
 	CommandList deactivate_command_list;
@@ -70,8 +69,7 @@ public:
 		 float convergence, int transition, int release_transition,
 		 TransitionType transition_type,
 		 TransitionType release_transition_type,
-		 bool is_conditional, int condition_param_idx,
-		 float DirectX::XMFLOAT4::*condition_param_component,
+		 bool is_conditional, CommandListExpression condition,
 		 CommandList activate_command_list, CommandList deactivate_command_list) :
 		mOverrideSeparation(separation),
 		mOverrideConvergence(convergence),
@@ -80,8 +78,7 @@ public:
 		transition_type(transition_type),
 		release_transition_type(release_transition_type),
 		is_conditional(is_conditional),
-		condition_param_idx(condition_param_idx),
-		condition_param_component(condition_param_component),
+		condition(condition),
 		activate_command_list(activate_command_list),
 		deactivate_command_list(deactivate_command_list)
 	{
@@ -114,14 +111,12 @@ public:
 			int transition, int release_transition,
 			TransitionType transition_type,
 			TransitionType release_transition_type,
-			bool is_conditional, int condition_param_idx,
-			float DirectX::XMFLOAT4::*condition_param_component,
+			bool is_conditional, CommandListExpression condition,
 			CommandList activate_command_list, CommandList deactivate_command_list) :
-		Override(params, separation, convergence, transition,
-				release_transition, transition_type,
-				release_transition_type, is_conditional,
-				condition_param_idx,
-				condition_param_component,
+		Override(params, separation, convergence,
+				transition, release_transition,
+				transition_type, release_transition_type,
+				is_conditional, condition,
 				activate_command_list, deactivate_command_list),
 		type(type)
 	{}
@@ -163,16 +158,27 @@ class PresetOverride : public Override
 {
 private:
 	bool triggered;
+	bool excluded;
+	unordered_set<CommandListCommand*> triggers_this_frame;
 
 public:
 	PresetOverride() :
-		Override()
+		Override(),
+		triggered(false),
+		excluded(false),
+		unique_triggers_required(0)
 	{}
 
-	void Trigger();
+	void Trigger(CommandListCommand *triggered_from);
+	void Exclude();
 	void Update(HackerDevice *device);
+
+	unsigned unique_triggers_required;
 };
-typedef std::unordered_map<std::wstring, class PresetOverride> PresetOverrideMap;
+
+// Sorted map so that if multiple presets affect the same thing the results
+// will be consistent:
+typedef std::map<std::wstring, class PresetOverride> PresetOverrideMap;
 extern PresetOverrideMap presetOverrides;
 
 struct OverrideTransitionParam
