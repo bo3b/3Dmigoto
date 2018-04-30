@@ -1109,8 +1109,8 @@ void DrawCommand::run(CommandListState *state)
 					mOrigContext1->DrawAuto();
 					break;
 				default:
-					LogInfo("BUG: draw = from_caller -> unknown draw call type\n");
-					DoubleBeepExit();
+					LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> unknown draw call type\n");
+					break;
 			}
 			// TODO: dispatch = from_caller
 			break;
@@ -2580,8 +2580,8 @@ float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device
 	if (state)
 		device = state->mHackerDevice;
 	else if (!device) {
-		LogInfo("BUG: CommandListOperand::evaluate called with neither state nor device\n");
-		DoubleBeepExit();
+		LogOverlay(LOG_DIRE, "BUG: CommandListOperand::evaluate called with neither state nor device\n");
+		return 0;
 	}
 
 	// XXX: If updating this list, be sure to also update
@@ -2841,8 +2841,8 @@ next_token:
 					last_was_operand = true;
 					continue;
 				} else {
-					LogOverlay(LOG_DIRE, "BUG: Token parsed as resource slot, but not as operand: %S\n", token.c_str());
-					DoubleBeepExit();
+					LogOverlay(LOG_DIRE, "BUG: Token parsed as resource slot, but not as operand: \"%S\"\n", token.c_str());
+					throw CommandListSyntaxError(L"BUG", friendly_pos);
 				}
 			}
 		}
@@ -2887,8 +2887,8 @@ next_token:
 				last_was_operand = true;
 				continue;
 			} else {
-				LogOverlay(LOG_DIRE, "BUG: Token parsed as float, but not as operand: %S\n", token.c_str());
-				DoubleBeepExit();
+				LogOverlay(LOG_DIRE, "BUG: Token parsed as float, but not as operand: \"%S\"\n", token.c_str());
+				throw CommandListSyntaxError(L"BUG", friendly_pos);
 			}
 		}
 
@@ -3271,7 +3271,7 @@ std::shared_ptr<CommandListEvaluatable> CommandListOperator::finalise()
 
 	if (lhs || rhs) {
 		LogInfo("BUG: Attempted to finalise already final operator\n");
-		DoubleBeepExit();
+		throw CommandListSyntaxError(L"BUG", token_pos);
 	}
 
 	if (lhs_tree) { // Binary operators only
@@ -3322,7 +3322,7 @@ std::shared_ptr<CommandListEvaluatable> CommandListSyntaxTree::finalise()
 				token = dynamic_pointer_cast<CommandListToken>(evaluatable);
 				if (!token) {
 					LogInfo("BUG: finalised token did not cast back\n");
-					DoubleBeepExit();
+					throw CommandListSyntaxError(L"BUG", token_pos);
 				}
 				i = tokens.erase(i);
 				i = tokens.insert(i, std::move(token));
