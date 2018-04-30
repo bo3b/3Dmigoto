@@ -2784,6 +2784,7 @@ static void tokenise(const wstring *expression, CommandListSyntaxTree *tree, con
 	shared_ptr<CommandListOperand> operand;
 	wstring token;
 	size_t pos = 0;
+	int ipos = 0;
 	size_t friendly_pos = 0;
 	float fval;
 	int ret;
@@ -2875,9 +2876,14 @@ next_token:
 		//   - Static optimisation will merge unary negation
 		// - Identifier match will catch "nan" and "inf" special cases
 		//   if the toolchain supports them
-		ret = swscanf_s(remain.c_str(), L"%f%zn", &fval, &pos);
+		ret = swscanf_s(remain.c_str(), L"%f%n", &fval, &ipos);
 		if (ret != 0 && ret != EOF) {
-			token = remain.substr(0, pos);
+			// VS2013 Issue: size_t z/I modifiers do not work with %n
+			// We could make pos an int and cast it everywhere it is used
+			// as a size_t, but this way highlights the toolchain issue.
+			pos = ipos;
+
+			token = remain.substr(0, ipos);
 			operand = make_shared<CommandListOperand>(friendly_pos, token);
 			if (operand->parse(&token, ini_namespace, command_list_context)) {
 				tree->tokens.emplace_back(std::move(operand));
