@@ -5860,7 +5860,7 @@ static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutTex2DDesc(
 }
 static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutTex3DDesc(
 		D3D11_SHADER_RESOURCE_VIEW_DESC *view_desc,
-		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
+		DXGI_FORMAT format)
 {
 	view_desc->Format = MakeNonDSVFormat(format);
 
@@ -5872,7 +5872,7 @@ static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutTex3DDesc(
 }
 static D3D11_RENDER_TARGET_VIEW_DESC* FillOutTex3DDesc(
 		D3D11_RENDER_TARGET_VIEW_DESC *view_desc,
-		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
+		DXGI_FORMAT format)
 {
 	view_desc->Format = MakeNonDSVFormat(format);
 
@@ -5885,7 +5885,7 @@ static D3D11_RENDER_TARGET_VIEW_DESC* FillOutTex3DDesc(
 }
 static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutTex3DDesc(
 		D3D11_DEPTH_STENCIL_VIEW_DESC *view_desc,
-		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
+		DXGI_FORMAT format)
 {
 	// DSV cannot be a Texture3D
 
@@ -5893,7 +5893,7 @@ static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutTex3DDesc(
 }
 static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutTex3DDesc(
 		D3D11_UNORDERED_ACCESS_VIEW_DESC *view_desc,
-		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
+		DXGI_FORMAT format)
 {
 	view_desc->Format = MakeNonDSVFormat(format);
 
@@ -5925,10 +5925,8 @@ static ID3D11View* _CreateCompatibleView(
 	D3D11_RESOURCE_DIMENSION dimension;
 	ID3D11Texture1D *tex1d;
 	ID3D11Texture2D *tex2d;
-	ID3D11Texture3D *tex3d;
 	D3D11_TEXTURE1D_DESC tex1d_desc;
 	D3D11_TEXTURE2D_DESC tex2d_desc;
-	D3D11_TEXTURE3D_DESC tex3d_desc;
 	ViewType *view = NULL;
 	DescType view_desc, *pDesc = NULL;
 	HRESULT hr;
@@ -5976,9 +5974,7 @@ static ID3D11View* _CreateCompatibleView(
 			pDesc = FillOutTex2DDesc(&view_desc, &tex2d_desc, format);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-			tex3d = (ID3D11Texture3D*)resource;
-			tex3d->GetDesc(&tex3d_desc);
-			pDesc = FillOutTex3DDesc(&view_desc, &tex3d_desc, format);
+			pDesc = FillOutTex3DDesc(&view_desc, format);
 			break;
 	}
 
