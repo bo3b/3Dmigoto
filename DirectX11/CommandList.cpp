@@ -5603,11 +5603,32 @@ static void FillOutBufferDescCommon(DescType *desc, UINT stride,
 	}
 }
 
-static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutBufferDesc(
+static bool requires_raw_view(ID3D11Buffer *buf, DXGI_FORMAT format)
+{
+	D3D11_BUFFER_DESC buf_desc;
+
+	buf->GetDesc(&buf_desc);
+	if (!(buf_desc.MiscFlags & D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS))
+		return false;
+
+	// The buffer allows raw views, but that doesn't forbid other access.
+	// However, other non-structured access (structured cannot have the
+	// above flag) requires us to know the data format, so if we don't know
+	// the data type than raw access is the only remaining option:
+	switch (format) {
+		case DXGI_FORMAT_UNKNOWN:
+		case DXGI_FORMAT_R32_TYPELESS:
+			return true;
+	}
+
+	return false;
+}
+
+static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutBufferDesc(ID3D11Buffer *buf,
 		D3D11_SHADER_RESOURCE_VIEW_DESC *desc, UINT stride,
 		UINT offset, UINT buf_src_size, ResourceCopyOptions options)
 {
-       if (options & ResourceCopyOptions::RAW_VIEW) {
+	if (options & ResourceCopyOptions::RAW_VIEW || requires_raw_view(buf, desc->Format)) {
                desc->ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
                desc->BufferEx.Flags = D3D11_BUFFEREX_SRV_FLAG_RAW;
 	       // Although not specified in MSDN, raw views in SRVs appear to
@@ -5619,14 +5640,14 @@ static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutBufferDesc(
 	       // don't:
 	       desc->Format = DXGI_FORMAT_R32_TYPELESS;
 	       stride = 4;
-               FillOutBufferDescCommon<D3D11_BUFFEREX_SRV>(&desc->BufferEx, stride, offset, buf_src_size);
+	       FillOutBufferDescCommon<D3D11_BUFFEREX_SRV>(&desc->BufferEx, stride, offset, buf_src_size);
 	} else {
 		desc->ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
 		FillOutBufferDescCommon<D3D11_BUFFER_SRV>(&desc->Buffer, stride, offset, buf_src_size);
 	}
 	return desc;
 }
-static D3D11_RENDER_TARGET_VIEW_DESC* FillOutBufferDesc(
+static D3D11_RENDER_TARGET_VIEW_DESC* FillOutBufferDesc(ID3D11Buffer *buf,
 		D3D11_RENDER_TARGET_VIEW_DESC *desc, UINT stride,
 		UINT offset, UINT buf_src_size, ResourceCopyOptions options)
 {
@@ -5635,14 +5656,14 @@ static D3D11_RENDER_TARGET_VIEW_DESC* FillOutBufferDesc(
 	FillOutBufferDescCommon<D3D11_BUFFER_RTV>(&desc->Buffer, stride, offset, buf_src_size);
 	return desc;
 }
-static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutBufferDesc(
+static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutBufferDesc(ID3D11Buffer *buf,
 		D3D11_UNORDERED_ACCESS_VIEW_DESC *desc, UINT stride,
 		UINT offset, UINT buf_src_size, ResourceCopyOptions options)
 {
 	desc->ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
 	desc->Buffer.Flags = 0;
 
-	if (options & ResourceCopyOptions::RAW_VIEW) {
+	if (options & ResourceCopyOptions::RAW_VIEW || requires_raw_view(buf, desc->Format)) {
 		desc->Buffer.Flags |= D3D11_BUFFER_UAV_FLAG_RAW;
 		desc->Format = DXGI_FORMAT_R32_TYPELESS;
 		stride = 4;
@@ -5652,7 +5673,7 @@ static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutBufferDesc(
 	FillOutBufferDescCommon<D3D11_BUFFER_UAV>(&desc->Buffer, stride, offset, buf_src_size);
 	return desc;
 }
-static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutBufferDesc(
+static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutBufferDesc(ID3D11Buffer *buf,
 		D3D11_DEPTH_STENCIL_VIEW_DESC *desc, UINT stride,
 		UINT offset, UINT buf_src_size, ResourceCopyOptions options)
 {
@@ -5923,6 +5944,7 @@ static ID3D11View* _CreateCompatibleView(
 		ResourceCopyOptions options)
 {
 	D3D11_RESOURCE_DIMENSION dimension;
+	ID3D11Buffer *buf;
 	ID3D11Texture1D *tex1d;
 	ID3D11Texture2D *tex2d;
 	D3D11_TEXTURE1D_DESC tex1d_desc;
@@ -5940,7 +5962,8 @@ static ID3D11View* _CreateCompatibleView(
 
 			view_desc.Format = format;
 
-			pDesc = FillOutBufferDesc(&view_desc, stride, offset, buf_src_size, options);
+			buf = (ID3D11Buffer*)resource;
+			pDesc = FillOutBufferDesc(buf, &view_desc, stride, offset, buf_src_size, options);
 
 			// This should already handle things like:
 			// - Copying a vertex buffer to a SRV or constant buffer
