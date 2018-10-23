@@ -55,6 +55,7 @@ enum class MarkingAction {
 	AUTO       = 0x0000008, // TODO: HLSL if possible, Asm if not. Not implemented
 	MONO_SS    = 0x0000010,
 	STEREO_SS  = 0x0000020,
+	SS_IF_PINK = 0x0000040,
 
 	DEFAULT    = 0x0000003,
 };
@@ -64,6 +65,7 @@ static EnumName_t<const wchar_t *, MarkingAction> MarkingActionNames[] = {
 	{L"clipboard", MarkingAction::CLIPBOARD},
 	{L"mono_snapshot", MarkingAction::MONO_SS},
 	{L"stereo_snapshot", MarkingAction::STEREO_SS},
+	{L"snapshot_if_pink", MarkingAction::SS_IF_PINK},
 	{NULL, MarkingAction::INVALID} // End of list marker
 };
 

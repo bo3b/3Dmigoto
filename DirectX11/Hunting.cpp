@@ -381,6 +381,10 @@ out:
 template <typename HashType>
 static void MarkingScreenShots(HackerDevice *device, HashType hash, char *short_type)
 {
+	if ((G->marking_actions & MarkingAction::SS_IF_PINK) &&
+	   !(G->marking_mode == MarkingMode::PINK))
+		return;
+
 	// Let's now make a screen shot of the backbuffer as a good way to
 	// remember what the HLSL affects. This will be with it disabled in the
 	// picture.
