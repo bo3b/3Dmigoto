@@ -396,6 +396,9 @@ out_release_bb:
 template <typename HashType>
 static void MarkingScreenShots(HackerDevice *device, HashType hash, char *short_type)
 {
+	if (!hash || hash == (HashType)-1)
+		return;
+
 	if ((G->marking_actions & MarkingAction::SS_IF_PINK) &&
 	   !(G->marking_mode == MarkingMode::PINK))
 		return;
@@ -1373,6 +1376,9 @@ static void HashToClipboard(char *type, HashType hash)
 	HGLOBAL hMem;
 	int hash_len = sizeof(HashType) * 2;
 	size_t nt_len = hash_len + 1;
+
+	if (!hash || hash == (HashType)-1)
+		return;
 
 	hMem = GlobalAlloc(GMEM_MOVEABLE, nt_len);
 	if (!hMem)
