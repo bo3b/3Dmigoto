@@ -1345,7 +1345,36 @@ static void PrevRenderTarget(HackerDevice *device, void *private_data)
 	HuntPrev<ID3D11Resource *>("render target", &G->mVisitedRenderTargets, &G->mSelectedRenderTarget, &G->mSelectedRenderTargetPos);
 }
 
+static void HashToClipboard(char *type, uint32_t hash)
+{
+	HGLOBAL hMem;
 
+	hMem = GlobalAlloc(GMEM_MOVEABLE, 9);
+	if (!hMem)
+		goto err;
+
+	_snprintf_s((char*)GlobalLock(hMem), 9, 9, "%08x", hash);
+	GlobalUnlock(hMem);
+
+	if (!OpenClipboard(NULL))
+		goto err_free;
+
+	EmptyClipboard();
+
+	if (!SetClipboardData(CF_TEXT, hMem))
+		goto err_free;
+
+	// The system now owns hMem - we must not free it
+	CloseClipboard();
+
+	LogOverlay(LOG_INFO, "> %s hash %08x copied to clipboard\n", type, hash);
+	return;
+
+err_free:
+	GlobalFree(hMem);
+err:
+	LogOverlay(LOG_WARNING, "> error copying %s hash %08x to clipboard\n", type, hash);
+}
 
 static void MarkVertexBuffer(HackerDevice *device, void *private_data)
 {
@@ -1353,6 +1382,8 @@ static void MarkVertexBuffer(HackerDevice *device, void *private_data)
 		return;
 
 	EnterCriticalSection(&G->mCriticalSection);
+
+	HashToClipboard("vertex buffer", G->mSelectedVertexBuffer);
 
 	LogInfo(">>>> Vertex buffer marked: vertex buffer hash = %08x\n", G->mSelectedVertexBuffer);
 	for (std::set<UINT64>::iterator i = G->mSelectedVertexBuffer_PixelShader.begin(); i != G->mSelectedVertexBuffer_PixelShader.end(); ++i)
@@ -1372,6 +1403,8 @@ static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 		return;
 
 	EnterCriticalSection(&G->mCriticalSection);
+
+	HashToClipboard("index buffer", G->mSelectedIndexBuffer);
 
 	LogInfo(">>>> Index buffer marked: index buffer hash = %08x\n", G->mSelectedIndexBuffer);
 	for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_PixelShader.begin(); i != G->mSelectedIndexBuffer_PixelShader.end(); ++i)
@@ -1481,14 +1514,14 @@ static void MarkHullShader(HackerDevice *device, void *private_data)
 	MarkShaderEnd(device, "hull shader", G->mSelectedHullShader);
 }
 
-static void LogRenderTarget(ID3D11Resource *target, char *log_prefix)
+static uint32_t LogRenderTarget(ID3D11Resource *target, char *log_prefix)
 {
 	char buf[256];
 
 	if (!target || target == (ID3D11Resource *)-1)
 	{
 		LogInfo("No render target selected for marking\n");
-		return;
+		return 0;
 	}
 
 	uint32_t hash = G->mResources[target].hash;
@@ -1497,21 +1530,27 @@ static void LogRenderTarget(ID3D11Resource *target, char *log_prefix)
 	StrResourceDesc(buf, 256, info);
 	LogInfo("%srender target handle = %p, hash = %08lx, orig_hash = %08lx, %s\n",
 		log_prefix, target, hash, orig_hash, buf);
+
+	return orig_hash;
 }
 
 static void MarkRenderTarget(HackerDevice *device, void *private_data)
 {
+	uint32_t hash;
+
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
 	EnterCriticalSection(&G->mCriticalSection);
 
-	LogRenderTarget(G->mSelectedRenderTarget, ">>>> Render target marked: ");
+	hash = LogRenderTarget(G->mSelectedRenderTarget, ">>>> Render target marked: ");
 	for (std::set<ID3D11Resource *>::iterator i = G->mSelectedRenderTargetSnapshotList.begin(); i != G->mSelectedRenderTargetSnapshotList.end(); ++i)
 		LogRenderTarget(*i, "       ");
 
 	if (G->DumpUsage)
 		DumpUsage(NULL);
+
+	HashToClipboard("render target", hash);
 
 	LeaveCriticalSection(&G->mCriticalSection);
 }
