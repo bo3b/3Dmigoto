@@ -832,12 +832,6 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 	string asmText;
 	string decompiled;
 
-	// Clears any notices currently displayed on the overlay. This ensures
-	// that any notices that haven't timed out yet (e.g. from a previous
-	// failed dump attempt) are removed so that the only messages
-	// displayed will be relevant to the current dump attempt.
-	ClearNotices();
-
 	// The key of the map is the actual shader, we thus need to do a linear search to find our marked hash.
 	for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
 	{
@@ -1345,15 +1339,18 @@ static void PrevRenderTarget(HackerDevice *device, void *private_data)
 	HuntPrev<ID3D11Resource *>("render target", &G->mVisitedRenderTargets, &G->mSelectedRenderTarget, &G->mSelectedRenderTargetPos);
 }
 
-static void HashToClipboard(char *type, uint32_t hash)
+template <typename HashType>
+static void HashToClipboard(char *type, HashType hash)
 {
 	HGLOBAL hMem;
+	int hash_len = sizeof(HashType) * 2;
+	size_t nt_len = hash_len + 1;
 
-	hMem = GlobalAlloc(GMEM_MOVEABLE, 9);
+	hMem = GlobalAlloc(GMEM_MOVEABLE, nt_len);
 	if (!hMem)
 		goto err;
 
-	_snprintf_s((char*)GlobalLock(hMem), 9, 9, "%08x", hash);
+	_snprintf_s((char*)GlobalLock(hMem), nt_len, nt_len, "%0*llx", hash_len, (UINT64)hash);
 	GlobalUnlock(hMem);
 
 	if (!OpenClipboard(NULL))
@@ -1367,13 +1364,13 @@ static void HashToClipboard(char *type, uint32_t hash)
 	// The system now owns hMem - we must not free it
 	CloseClipboard();
 
-	LogOverlay(LOG_INFO, "> %s hash %08x copied to clipboard\n", type, hash);
+	LogOverlay(LOG_INFO, "> %s hash %0*llx copied to clipboard\n", type, hash_len, (UINT64)hash);
 	return;
 
 err_free:
 	GlobalFree(hMem);
 err:
-	LogOverlay(LOG_WARNING, "> error copying %s hash %08x to clipboard\n", type, hash);
+	LogOverlay(LOG_WARNING, "> error copying %s hash %0*llx to clipboard\n", type, hash_len, (UINT64)hash);
 }
 
 static void MarkVertexBuffer(HackerDevice *device, void *private_data)
@@ -1383,7 +1380,8 @@ static void MarkVertexBuffer(HackerDevice *device, void *private_data)
 
 	EnterCriticalSection(&G->mCriticalSection);
 
-	HashToClipboard("vertex buffer", G->mSelectedVertexBuffer);
+	if (G->marking_actions & MarkingAction::CLIPBOARD)
+		HashToClipboard("vertex buffer", G->mSelectedVertexBuffer);
 
 	LogInfo(">>>> Vertex buffer marked: vertex buffer hash = %08x\n", G->mSelectedVertexBuffer);
 	for (std::set<UINT64>::iterator i = G->mSelectedVertexBuffer_PixelShader.begin(); i != G->mSelectedVertexBuffer_PixelShader.end(); ++i)
@@ -1404,7 +1402,8 @@ static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 
 	EnterCriticalSection(&G->mCriticalSection);
 
-	HashToClipboard("index buffer", G->mSelectedIndexBuffer);
+	if (G->marking_actions & MarkingAction::CLIPBOARD)
+		HashToClipboard("index buffer", G->mSelectedIndexBuffer);
 
 	LogInfo(">>>> Index buffer marked: index buffer hash = %08x\n", G->mSelectedIndexBuffer);
 	for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_PixelShader.begin(); i != G->mSelectedIndexBuffer_PixelShader.end(); ++i)
@@ -1431,12 +1430,22 @@ static bool MarkShaderBegin(char *type, UINT64 selected)
 }
 static void MarkShaderEnd(HackerDevice *device, char *type, UINT64 selected)
 {
+	// Clears any notices currently displayed on the overlay. This ensures
+	// that any notices that haven't timed out yet (e.g. from a previous
+	// failed dump attempt) are removed so that the only messages
+	// displayed will be relevant to the current dump attempt.
+	ClearNotices();
+
 	CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(selected);
 	if (i != G->mCompiledShaderMap.end())
 		LogInfo("       %s was compiled from source code %s\n", type, i->second.c_str());
 
+	if (G->marking_actions & MarkingAction::CLIPBOARD)
+		HashToClipboard(type, selected);
+
 	// Copy marked shader to ShaderFixes
-	CopyToFixes(selected, device);
+	if (G->marking_actions & MarkingAction::HLSL)
+		CopyToFixes(selected, device);
 
 	if (G->DumpUsage)
 		DumpUsage(NULL);
@@ -1550,7 +1559,8 @@ static void MarkRenderTarget(HackerDevice *device, void *private_data)
 	if (G->DumpUsage)
 		DumpUsage(NULL);
 
-	HashToClipboard("render target", hash);
+	if (G->marking_actions & MarkingAction::CLIPBOARD)
+		HashToClipboard("render target", hash);
 
 	LeaveCriticalSection(&G->mCriticalSection);
 }
@@ -1695,6 +1705,12 @@ void ParseHuntingSection()
 	if (new_marking_mode != prev_marking_mode)
 		G->marking_mode = new_marking_mode;
 	RegisterIniKeyBinding(L"Hunting", L"next_marking_mode", NextMarkingMode, NULL, noRepeat, NULL);
+
+	if (GetIniStringAndLog(L"Hunting", L"marking_actions", 0, buf, MAX_PATH)) {
+		G->marking_actions = parse_enum_option_string<const wchar_t *, MarkingAction>
+			(MarkingActionNames, buf, NULL);
+	} else
+		G->marking_actions = MarkingAction::DEFAULT;
 
 	G->mark_snapshot = GetIniInt(L"Hunting", L"mark_snapshot", 0, NULL);
 

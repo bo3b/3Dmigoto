@@ -47,6 +47,22 @@ static EnumName_t<const wchar_t *, MarkingMode> MarkingModeNames[] = {
 	{NULL, MarkingMode::INVALID} // End of list marker
 };
 
+enum class MarkingAction {
+	INVALID    = 0,
+	CLIPBOARD  = 0x0000001,
+	HLSL       = 0x0000002,
+	ASM        = 0x0000004, // TODO: Not implemented
+	AUTO       = 0x0000008, // TODO: HLSL if possible, Asm if not. Not implemented
+
+	DEFAULT    = 0x0000003,
+};
+SENSIBLE_ENUM(MarkingAction);
+static EnumName_t<const wchar_t *, MarkingAction> MarkingActionNames[] = {
+	{L"hlsl", MarkingAction::HLSL},
+	{L"clipboard", MarkingAction::CLIPBOARD},
+	{NULL, MarkingAction::INVALID} // End of list marker
+};
+
 enum class ShaderHashType {
 	INVALID = -1,
 	FNV,
@@ -397,6 +413,7 @@ struct Globals
 	bool bb_is_upscaling_bb;
 
 	MarkingMode marking_mode;
+	MarkingAction marking_actions;
 	int mark_snapshot;
 	int gForceStereo;
 	bool gCreateStereoProfile;
@@ -616,6 +633,7 @@ struct Globals
 		bb_is_upscaling_bb(false),
 
 		marking_mode(MarkingMode::INVALID),
+		marking_actions(MarkingAction::INVALID),
 		mark_snapshot(2),
 		gForceStereo(0),
 		gCreateStereoProfile(false),
