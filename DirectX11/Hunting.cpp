@@ -275,14 +275,16 @@ void DumpUsage(wchar_t *dir)
 // CoInitialize must be called for WIC to work.  We can call it multiple times, it will
 // return the S_FALSE if it's already inited.
 
-static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderType)
+template <typename HashType>
+static void SimpleScreenShot(HackerDevice *pDevice, HashType hash, char *shaderType)
 {
 	wchar_t fullName[MAX_PATH];
 	ID3D11Texture2D *backBuffer;
 	HackerSwapChain *mHackerSwapChain = pDevice->GetHackerSwapChain();
+	int hash_len = sizeof(HashType) * 2;
 
 	if (!mHackerSwapChain) {
-		LogOverlay(LOG_DIRE, "mark_snapshot=1: Unable to get back buffer\n");
+		LogOverlay(LOG_DIRE, "marking_actions=mono_snapshot: Unable to get back buffer\n");
 		return;
 	}
 
@@ -293,7 +295,7 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	hr = mHackerSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
 	if (SUCCEEDED(hr))
 	{
-		swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls.jpg", G->SHADER_PATH, hash, shaderType.c_str());
+		swprintf_s(fullName, MAX_PATH, L"%ls\\%0*llx-%S.jpg", G->SHADER_PATH, hash_len, (UINT64)hash, shaderType);
 		hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext1(), backBuffer, GUID_ContainerFormatJpeg, fullName);
 		backBuffer->Release();
 	}
@@ -306,7 +308,8 @@ static void SimpleScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 // Similar to above, but this version enables the reverse stereo blit in nvapi
 // to get the second back buffer and create a stereo 3D JPS:
 
-static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderType)
+template <typename HashType>
+static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderType)
 {
 	HackerSwapChain *mHackerSwapChain = pDevice->GetHackerSwapChain();
 	wchar_t fullName[MAX_PATH];
@@ -317,9 +320,10 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	UINT srcWidth;
 	HRESULT hr;
 	NvAPI_Status nvret;
+	int hash_len = sizeof(HashType) * 2;
 
 	if (!mHackerSwapChain) {
-		LogOverlay(LOG_DIRE, "mark_snapshot=2: Unable to get back buffer\n");
+		LogOverlay(LOG_DIRE, "marking_actions=stereo_snapshot: Unable to get back buffer\n");
 		return;
 	}
 
@@ -362,7 +366,7 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	if (FAILED(hr))
 		LogInfo("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
-	wsprintf(fullName, L"%ls\\%016I64x-%ls.jps", G->SHADER_PATH, hash, shaderType.c_str());
+	swprintf_s(fullName, MAX_PATH, L"%ls\\%0*llx-%S.jps", G->SHADER_PATH, hash_len, (UINT64)hash, shaderType);
 	hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext1(), stereoBackBuffer, GUID_ContainerFormatJpeg, fullName);
 
 	CoUninitialize();
@@ -372,6 +376,18 @@ static void StereoScreenShot(HackerDevice *pDevice, UINT64 hash, wstring shaderT
 	NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, false);
 out:
 	stereoBackBuffer->Release();
+}
+
+template <typename HashType>
+static void MarkingScreenShots(HackerDevice *device, HashType hash, char *short_type)
+{
+	// Let's now make a screen shot of the backbuffer as a good way to
+	// remember what the HLSL affects. This will be with it disabled in the
+	// picture.
+	if (G->marking_actions & MarkingAction::MONO_SS)
+		SimpleScreenShot(device, hash, short_type);
+	if (G->marking_actions & MarkingAction::STEREO_SS)
+		StereoScreenShot(device, hash, short_type);
 }
 
 
@@ -837,13 +853,6 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 	{
 		if (iter.second.hash == hash)
 		{
-			// Whether we succeed or fail on decompile, let's now make a screen shot of the backbuffer
-			// as a good way to remember what the HLSL affects. This will be with it disabled in the picture.
-			if (G->mark_snapshot == 1)
-				SimpleScreenShot(device, hash, iter.second.shaderType);
-			else if (G->mark_snapshot == 2)
-				StereoScreenShot(device, hash, iter.second.shaderType);
-
 			asmText = BinaryToAsmText(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize());
 			if (asmText.empty())
 				break;
@@ -1383,6 +1392,8 @@ static void MarkVertexBuffer(HackerDevice *device, void *private_data)
 	if (G->marking_actions & MarkingAction::CLIPBOARD)
 		HashToClipboard("vertex buffer", G->mSelectedVertexBuffer);
 
+	MarkingScreenShots(device, G->mSelectedVertexBuffer, "vb");
+
 	LogInfo(">>>> Vertex buffer marked: vertex buffer hash = %08x\n", G->mSelectedVertexBuffer);
 	for (std::set<UINT64>::iterator i = G->mSelectedVertexBuffer_PixelShader.begin(); i != G->mSelectedVertexBuffer_PixelShader.end(); ++i)
 		LogInfo("     visited pixel shader hash = %016I64x\n", *i);
@@ -1404,6 +1415,8 @@ static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 
 	if (G->marking_actions & MarkingAction::CLIPBOARD)
 		HashToClipboard("index buffer", G->mSelectedIndexBuffer);
+
+	MarkingScreenShots(device, G->mSelectedIndexBuffer, "ib");
 
 	LogInfo(">>>> Index buffer marked: index buffer hash = %08x\n", G->mSelectedIndexBuffer);
 	for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_PixelShader.begin(); i != G->mSelectedIndexBuffer_PixelShader.end(); ++i)
@@ -1428,7 +1441,7 @@ static bool MarkShaderBegin(char *type, UINT64 selected)
 
 	return true;
 }
-static void MarkShaderEnd(HackerDevice *device, char *type, UINT64 selected)
+static void MarkShaderEnd(HackerDevice *device, char *long_type, char *short_type, UINT64 selected)
 {
 	// Clears any notices currently displayed on the overlay. This ensures
 	// that any notices that haven't timed out yet (e.g. from a previous
@@ -1438,10 +1451,12 @@ static void MarkShaderEnd(HackerDevice *device, char *type, UINT64 selected)
 
 	CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(selected);
 	if (i != G->mCompiledShaderMap.end())
-		LogInfo("       %s was compiled from source code %s\n", type, i->second.c_str());
+		LogInfo("       %s was compiled from source code %s\n", long_type, i->second.c_str());
 
 	if (G->marking_actions & MarkingAction::CLIPBOARD)
-		HashToClipboard(type, selected);
+		HashToClipboard(long_type, selected);
+
+	MarkingScreenShots(device, selected, short_type);
 
 	// Copy marked shader to ShaderFixes
 	if (G->marking_actions & MarkingAction::HLSL)
@@ -1465,7 +1480,7 @@ static void MarkPixelShader(HackerDevice *device, void *private_data)
 	for (std::set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PeerShaders.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PeerShaders.end(); ++i)
 		LogInfo("     visited peer shader hash = %016I64x\n", *i);
 
-	MarkShaderEnd(device, "pixel shader", G->mSelectedPixelShader);
+	MarkShaderEnd(device, "pixel shader", "ps", G->mSelectedPixelShader);
 }
 
 static void MarkVertexShader(HackerDevice *device, void *private_data)
@@ -1480,14 +1495,14 @@ static void MarkVertexShader(HackerDevice *device, void *private_data)
 	for (std::set<UINT64>::iterator i = G->mVertexShaderInfo[G->mSelectedVertexShader].PeerShaders.begin(); i != G->mVertexShaderInfo[G->mSelectedVertexShader].PeerShaders.end(); ++i)
 		LogInfo("     visited peer shader hash = %016I64x\n", *i);
 
-	MarkShaderEnd(device, "vertex shader", G->mSelectedVertexShader);
+	MarkShaderEnd(device, "vertex shader", "vs", G->mSelectedVertexShader);
 }
 
 static void MarkComputeShader(HackerDevice *device, void *private_data)
 {
 	if (!MarkShaderBegin("compute shader", G->mSelectedComputeShader))
 		return;
-	MarkShaderEnd(device, "compute shader", G->mSelectedComputeShader);
+	MarkShaderEnd(device, "computer shader", "cs", G->mSelectedComputeShader);
 }
 
 static void MarkGeometryShader(HackerDevice *device, void *private_data)
@@ -1498,7 +1513,7 @@ static void MarkGeometryShader(HackerDevice *device, void *private_data)
 	for (std::set<UINT64>::iterator i = G->mGeometryShaderInfo[G->mSelectedGeometryShader].PeerShaders.begin(); i != G->mGeometryShaderInfo[G->mSelectedGeometryShader].PeerShaders.end(); ++i)
 		LogInfo("     visited peer shader hash = %016I64x\n", *i);
 
-	MarkShaderEnd(device, "geometry shader", G->mSelectedGeometryShader);
+	MarkShaderEnd(device, "geometry shader", "gs", G->mSelectedGeometryShader);
 }
 
 static void MarkDomainShader(HackerDevice *device, void *private_data)
@@ -1509,7 +1524,7 @@ static void MarkDomainShader(HackerDevice *device, void *private_data)
 	for (std::set<UINT64>::iterator i = G->mDomainShaderInfo[G->mSelectedDomainShader].PeerShaders.begin(); i != G->mDomainShaderInfo[G->mSelectedDomainShader].PeerShaders.end(); ++i)
 		LogInfo("     visited peer shader hash = %016I64x\n", *i);
 
-	MarkShaderEnd(device, "domain shader", G->mSelectedDomainShader);
+	MarkShaderEnd(device, "domain shader", "ds", G->mSelectedDomainShader);
 }
 
 static void MarkHullShader(HackerDevice *device, void *private_data)
@@ -1520,7 +1535,7 @@ static void MarkHullShader(HackerDevice *device, void *private_data)
 	for (std::set<UINT64>::iterator i = G->mHullShaderInfo[G->mSelectedHullShader].PeerShaders.begin(); i != G->mHullShaderInfo[G->mSelectedHullShader].PeerShaders.end(); ++i)
 		LogInfo("     visited peer shader hash = %016I64x\n", *i);
 
-	MarkShaderEnd(device, "hull shader", G->mSelectedHullShader);
+	MarkShaderEnd(device, "hull shader", "hs", G->mSelectedHullShader);
 }
 
 static uint32_t LogRenderTarget(ID3D11Resource *target, char *log_prefix)
@@ -1561,6 +1576,8 @@ static void MarkRenderTarget(HackerDevice *device, void *private_data)
 
 	if (G->marking_actions & MarkingAction::CLIPBOARD)
 		HashToClipboard("render target", hash);
+
+	MarkingScreenShots(device, hash, "rt");
 
 	LeaveCriticalSection(&G->mCriticalSection);
 }
@@ -1712,7 +1729,14 @@ void ParseHuntingSection()
 	} else
 		G->marking_actions = MarkingAction::DEFAULT;
 
-	G->mark_snapshot = GetIniInt(L"Hunting", L"mark_snapshot", 0, NULL);
+	int mark_snapshot = GetIniInt(L"Hunting", L"mark_snapshot", 0, NULL);
+	if (mark_snapshot) {
+		LogOverlay(LOG_NOTICE, "Deprecation warning: \"mark_snapshot\" will be removed in the future. Use \"marking_actions\" instead.\n");
+		if (mark_snapshot == 1)
+			G->marking_actions |= MarkingAction::MONO_SS;
+		else
+			G->marking_actions |= MarkingAction::STEREO_SS;
+	}
 
 	RegisterIniKeyBinding(L"Hunting", L"next_pixelshader", NextPixelShader, NULL, repeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"previous_pixelshader", PrevPixelShader, NULL, repeat, NULL);

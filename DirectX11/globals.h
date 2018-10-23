@@ -53,6 +53,8 @@ enum class MarkingAction {
 	HLSL       = 0x0000002,
 	ASM        = 0x0000004, // TODO: Not implemented
 	AUTO       = 0x0000008, // TODO: HLSL if possible, Asm if not. Not implemented
+	MONO_SS    = 0x0000010,
+	STEREO_SS  = 0x0000020,
 
 	DEFAULT    = 0x0000003,
 };
@@ -60,6 +62,8 @@ SENSIBLE_ENUM(MarkingAction);
 static EnumName_t<const wchar_t *, MarkingAction> MarkingActionNames[] = {
 	{L"hlsl", MarkingAction::HLSL},
 	{L"clipboard", MarkingAction::CLIPBOARD},
+	{L"mono_snapshot", MarkingAction::MONO_SS},
+	{L"stereo_snapshot", MarkingAction::STEREO_SS},
 	{NULL, MarkingAction::INVALID} // End of list marker
 };
 
@@ -414,7 +418,6 @@ struct Globals
 
 	MarkingMode marking_mode;
 	MarkingAction marking_actions;
-	int mark_snapshot;
 	int gForceStereo;
 	bool gCreateStereoProfile;
 	int gSurfaceCreateMode;
@@ -634,7 +637,6 @@ struct Globals
 
 		marking_mode(MarkingMode::INVALID),
 		marking_actions(MarkingAction::INVALID),
-		mark_snapshot(2),
 		gForceStereo(0),
 		gCreateStereoProfile(false),
 		gSurfaceCreateMode(-1),
