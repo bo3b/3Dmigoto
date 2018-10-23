@@ -7,6 +7,7 @@
 #include "ScreenGrab.h"
 #include "wincodec.h"
 
+#include "D3D11Wrapper.h"
 #include "util.h"
 #include "DecompileHLSL.h"
 #include "Input.h"
@@ -321,6 +322,18 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 	HRESULT hr;
 	NvAPI_Status nvret;
 	int hash_len = sizeof(HashType) * 2;
+	NvU8 stereo = false;
+
+	NvAPIOverride();
+	NvAPI_Stereo_IsEnabled(&stereo);
+	if (stereo)
+		NvAPI_Stereo_IsActivated(pDevice->mStereoHandle, &stereo);
+
+	if (!stereo) {
+		LogInfo("marking_actions=stereo_snapshot: Stereo disabled, falling back to mono snapshot\n");
+		SimpleScreenShot(pDevice, hash, shaderType);
+		return;
+	}
 
 	if (!mHackerSwapChain) {
 		LogOverlay(LOG_DIRE, "marking_actions=stereo_snapshot: Unable to get back buffer\n");
