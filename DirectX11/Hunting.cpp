@@ -892,9 +892,6 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 
 static void TakeScreenShot(HackerDevice *wrapped, void *private_data)
 {
-	if (G->hunting != HUNTING_MODE_ENABLED)
-		return;
-
 	LogInfo("> capturing screenshot\n");
 
 	if (wrapped->mStereoHandle)
@@ -1637,6 +1634,11 @@ void ParseHuntingSection()
 	RegisterIniKeyBinding(L"Hunting", L"freeze_performance_monitor", FreezePerf, NULL, noRepeat, NULL);
 	Profiling::interval = (INT64)(GetIniFloat(L"Hunting", L"monitor_performance_interval", 1.0f, NULL) * 1000000);
 
+	// Taking a screenshot does not really belong in the hunting section,
+	// so we no longer make it depend on Hunting, but it still falls under
+	// the [Hunting] section for historical reasons:
+	RegisterIniKeyBinding(L"Hunting", L"take_screenshot", TakeScreenShot, NULL, noRepeat, NULL);
+
 	// Don't register hunting keys when hard disabled. In this case the
 	// only way to turn hunting on is to edit the ini file and reload it.
 	if (G->hunting == HUNTING_MODE_DISABLED)
@@ -1660,8 +1662,6 @@ void ParseHuntingSection()
 	RegisterIniKeyBinding(L"Hunting", L"next_pixelshader", NextPixelShader, NULL, repeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"previous_pixelshader", PrevPixelShader, NULL, repeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"mark_pixelshader", MarkPixelShader, NULL, noRepeat, NULL);
-
-	RegisterIniKeyBinding(L"Hunting", L"take_screenshot", TakeScreenShot, NULL, noRepeat, NULL);
 
 	RegisterIniKeyBinding(L"Hunting", L"next_vertexbuffer", NextVertexBuffer, NULL, repeat, NULL);
 	RegisterIniKeyBinding(L"Hunting", L"previous_vertexbuffer", PrevVertexBuffer, NULL, repeat, NULL);
