@@ -340,13 +340,13 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 	hr = pDevice->GetPassThroughOrigDevice1()->CreateTexture2D(&desc, NULL, &stereoBackBuffer);
 	if (FAILED(hr)) {
 		LogInfo("StereoScreenShot failed to create intermediate texture resource: 0x%x\n", hr);
-		return;
+		goto out_release_bb;
 	}
 
 	nvret = NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, true);
 	if (nvret != NVAPI_OK) {
 		LogInfo("StereoScreenShot failed to enable reverse stereo blit\n");
-		goto out;
+		goto out_release_stereo_bb;
 	}
 
 	// Set the source box as per the nvapi documentation:
@@ -374,8 +374,10 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 	LogInfoW(L"  StereoScreenShot on Mark: %s, result: %d\n", fullName, hr);
 
 	NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, false);
-out:
+out_release_stereo_bb:
 	stereoBackBuffer->Release();
+out_release_bb:
+	backBuffer->Release();
 }
 
 template <typename HashType>
