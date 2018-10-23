@@ -110,6 +110,7 @@ private:
 	HackerDevice *mHackerDevice;
 
 	// These are per-context, moved from globals.h:
+	uint32_t mCurrentVertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 	uint32_t mCurrentIndexBuffer; // Only valid while hunting=1
 	ID3D11VertexShader *mCurrentVertexShaderHandle;
 	ID3D11PixelShader *mCurrentPixelShaderHandle;

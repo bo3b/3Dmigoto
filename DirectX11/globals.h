@@ -472,17 +472,25 @@ struct Globals
 	std::set<UINT64> mSelectedIndexBuffer_VertexShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
 	std::set<UINT64> mSelectedIndexBuffer_PixelShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
 
+	std::set<uint32_t> mVisitedVertexBuffers;				// std::set is sorted for consistent order while hunting
+	uint32_t mSelectedVertexBuffer;
+	int mSelectedVertexBufferPos;
+	std::set<UINT64> mSelectedVertexBuffer_VertexShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
+	std::set<UINT64> mSelectedVertexBuffer_PixelShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
+
 	CompiledShaderMap mCompiledShaderMap;
 
 	std::set<UINT64> mVisitedVertexShaders;					// Only shaders seen since last hunting timeout; std::set for consistent order while hunting
 	UINT64 mSelectedVertexShader;				 			// Hash.  -1 now for unselected state. The shader selected using Input object.
 	int mSelectedVertexShaderPos;							// -1 for unselected state.
 	std::set<uint32_t> mSelectedVertexShader_IndexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
+	std::set<uint32_t> mSelectedVertexShader_VertexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
 
 	std::set<UINT64> mVisitedPixelShaders;					// std::set is sorted for consistent order while hunting
 	UINT64 mSelectedPixelShader;							// Hash.  -1 now for unselected state.
 	int mSelectedPixelShaderPos;							// -1 for unselected state.
 	std::set<uint32_t> mSelectedPixelShader_IndexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
+	std::set<uint32_t> mSelectedPixelShader_VertexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
 	ID3D11PixelShader* mPinkingShader;						// Special pixels shader to mark a selection with hot pink.
 
 	ShaderMap mShaders;										// All shaders ever registered with CreateXXXShader
@@ -547,6 +555,8 @@ struct Globals
 		mSelectedVertexShaderPos(-1),
 		mSelectedIndexBuffer(-1),
 		mSelectedIndexBufferPos(-1),
+		mSelectedVertexBuffer(-1),
+		mSelectedVertexBufferPos(-1),
 		mSelectedComputeShader(-1),
 		mSelectedComputeShaderPos(-1),
 		mSelectedGeometryShader(-1),

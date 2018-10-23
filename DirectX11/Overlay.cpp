@@ -559,6 +559,8 @@ static void CreateShaderCountString(wchar_t *counts)
 	AppendShaderText(counts, L"GS", G->mSelectedGeometryShaderPos, G->mVisitedGeometryShaders.size());
 	AppendShaderText(counts, L"DS", G->mSelectedDomainShaderPos, G->mVisitedDomainShaders.size());
 	AppendShaderText(counts, L"HS", G->mSelectedHullShaderPos, G->mVisitedHullShaders.size());
+	if (G->mSelectedVertexBuffer != -1)
+		AppendShaderText(counts, L"VB", G->mSelectedVertexBufferPos, G->mVisitedVertexBuffers.size());
 	if (G->mSelectedIndexBuffer != -1)
 		AppendShaderText(counts, L"IB", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
 	if (G->mSelectedRenderTarget != (ID3D11Resource *)-1)
@@ -649,6 +651,7 @@ void Overlay::DrawShaderInfoLines(float *y)
 	// purposes). Since these only show up while hunting, it is better to
 	// have them reflect the actual order that they are run in. The summary
 	// line can stay in order of importance since it is always shown.
+	DrawShaderInfoLine("VB", G->mSelectedVertexBuffer, y, false);
 	DrawShaderInfoLine("IB", G->mSelectedIndexBuffer, y, false);
 	DrawShaderInfoLine("VS", G->mSelectedVertexShader, y, true);
 	DrawShaderInfoLine("HS", G->mSelectedHullShader, y, true);
