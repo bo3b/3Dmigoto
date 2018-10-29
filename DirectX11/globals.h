@@ -51,7 +51,8 @@ enum class MarkingAction {
 	INVALID    = 0,
 	CLIPBOARD  = 0x0000001,
 	HLSL       = 0x0000002,
-	ASM        = 0x0000004, // TODO: Not implemented
+	ASM        = 0x0000004,
+	DUMP_MASK  = 0x0000006, // HLSL and/or Assembly is selected
 	AUTO       = 0x0000008, // TODO: HLSL if possible, Asm if not. Not implemented
 	MONO_SS    = 0x0000010,
 	STEREO_SS  = 0x0000020,
@@ -62,6 +63,8 @@ enum class MarkingAction {
 SENSIBLE_ENUM(MarkingAction);
 static EnumName_t<const wchar_t *, MarkingAction> MarkingActionNames[] = {
 	{L"hlsl", MarkingAction::HLSL},
+	{L"asm", MarkingAction::ASM},
+	{L"assembly", MarkingAction::ASM},
 	{L"clipboard", MarkingAction::CLIPBOARD},
 	{L"mono_snapshot", MarkingAction::MONO_SS},
 	{L"stereo_snapshot", MarkingAction::STEREO_SS},

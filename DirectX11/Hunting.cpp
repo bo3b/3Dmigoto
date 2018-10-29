@@ -810,6 +810,23 @@ err:
 	goto out;
 }
 
+static bool WriteASM(string *asmText, UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device)
+{
+	wchar_t fileName[MAX_PATH];
+	wchar_t fullName[MAX_PATH];
+	HRESULT hr;
+
+	swprintf_s(fileName, MAX_PATH, L"%016llx-%ls.txt", hash, shader_info.shaderType.c_str());
+	swprintf_s(fullName, MAX_PATH, L"%ls\\%ls", G->SHADER_PATH, fileName);
+	hr = CreateTextFile(fullName, asmText, false);
+	if (FAILED(hr))
+		return false;
+
+	// Lastly, reload the shader generated, to check for decompile errors, set it as the active
+	// shader code, in case there are visual errors, and make it the match the code in the file.
+	return ReloadShader(G->SHADER_PATH, fileName, device);
+}
+
 // Write the decompiled text as HLSL source code to the txt file.
 // Now also writing the ASM text to the bottom of the file, commented out.
 // This keeps the ASM with the HLSL for reference and should be more convenient.
@@ -937,8 +954,16 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 			if (asmText.empty())
 				break;
 
-			// Save the decompiled text, and ASM text into the HLSL .txt source file:
-			success = WriteHLSL(&asmText, hash, iter.second, device);
+			if (G->marking_actions & MarkingAction::HLSL) {
+				// Save the decompiled text, and ASM text into the HLSL .txt source file:
+				success = WriteHLSL(&asmText, hash, iter.second, device);
+				break;
+			}
+
+			if (G->marking_actions & MarkingAction::ASM) {
+				success = WriteASM(&asmText, hash, iter.second, device);
+				break;
+			}
 
 			// There can be more than one in the map with the same hash, but we only need a single copy to
 			// make the hlsl file output, so exit with success.
@@ -1529,7 +1554,7 @@ static void MarkShaderEnd(HackerDevice *device, char *long_type, char *short_typ
 	// asm dumping is enabled, as this provides useful feedback on the
 	// overlay and touches the shader timestamp if it exists:
 	if (!shader_already_dumped(selected, short_type)) {
-		if (G->marking_actions & MarkingAction::HLSL) {
+		if (G->marking_actions & MarkingAction::DUMP_MASK) {
 			// Copy marked shader to ShaderFixes
 			CopyToFixes(selected, device);
 		}

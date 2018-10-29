@@ -689,7 +689,7 @@ static string GetShaderModel(const void *pShaderBytecode, size_t bytecodeLength)
 // We previously would overwrite the file only after checking if the contents were different,
 // this relaxes that to just being same file name.
 
-static HRESULT CreateTextFile(wchar_t* fullPath, string asmText, bool overwrite)
+static HRESULT CreateTextFile(wchar_t *fullPath, string *asmText, bool overwrite)
 {
 	FILE *f;
 
@@ -706,7 +706,7 @@ static HRESULT CreateTextFile(wchar_t* fullPath, string asmText, bool overwrite)
 	_wfopen_s(&f, fullPath, L"wb");
 	if (f)
 	{
-		fwrite(asmText.data(), 1, asmText.size(), f);
+		fwrite(asmText->data(), 1, asmText->size(), f);
 		fclose(f);
 	}
 
@@ -731,7 +731,7 @@ static HRESULT CreateAsmTextFile(wchar_t* fileDirectory, UINT64 hash, const wcha
 	wchar_t fullPath[MAX_PATH];
 	swprintf_s(fullPath, MAX_PATH, L"%ls\\%016llx-%ls.txt", fileDirectory, hash, shaderType);
 
-	HRESULT hr = CreateTextFile(fullPath, asmText, false);
+	HRESULT hr = CreateTextFile(fullPath, &asmText, false);
 
 	if (SUCCEEDED(hr))
 		LogInfoW(L"    storing disassembly to %s\n", fullPath);
