@@ -951,7 +951,7 @@ static bool shader_already_dumped(UINT64 hash, char *type)
 static void CopyToFixes(UINT64 hash, HackerDevice *device)
 {
 	bool success = false;
-	bool asm_enabled = G->marking_actions & MarkingAction::ASM;
+	bool asm_enabled = !!(G->marking_actions & MarkingAction::ASM);
 	string asmText;
 
 	// The key of the map is the actual shader, we thus need to do a linear search to find our marked hash.
