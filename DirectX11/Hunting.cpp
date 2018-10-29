@@ -416,48 +416,10 @@ static void MarkingScreenShots(HackerDevice *device, HashType hash, char *short_
 
 //--------------------------------------------------------------------------------------------------
 
-// Write the decompiled text as HLSL source code to the txt file.
-// Now also writing the ASM text to the bottom of the file, commented out.
-// This keeps the ASM with the HLSL for reference and should be more convenient.
-//
-// This will not overwrite any file that is already there. 
-// The assumption is that the shaderByteCode that we have here is always the most up to date,
-// and thus is not different than the file on disk.
-// If a file was already extant in the ShaderFixes, it will be picked up at game launch as the master shaderByteCode.
-
-static bool WriteHLSL(string hlslText, string asmText, UINT64 hash, wstring shaderType)
-{
-	wchar_t fullName[MAX_PATH];
-	FILE *fw;
-
-	// We no longer check if the file exists and touch it at this point -
-	// this has been moved to the earlier shader_already_dumped() routine,
-	// and that no longer modifies the file when touching it.
-
-	swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shaderType.c_str());
-	wfopen_ensuring_access(&fw, fullName, L"wb");
-	if (!fw)
-	{
-		LogInfoW(L"    error storing marked shader to %s\n", fullName);
-		return false;
-	}
-
-	LogInfoW(L"    storing patched shader to %s\n", fullName);
-
-	fwrite(hlslText.c_str(), 1, hlslText.size(), fw);
-
-	fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-	fwrite(asmText.c_str(), 1, asmText.size(), fw);
-	fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
-
-	fclose(fw);
-	return true;
-}
-
 // This is pretty heavyweight obviously, so it is only being done during Mark operations.
 // Todo: another copy/paste job, we really need some subroutines, utility library.
 
-static string Decompile(ID3DBlob* pShaderByteCode, string asmText)
+static string Decompile(ID3DBlob *pShaderByteCode, string *asmText)
 {
 	LogInfo("    creating HLSL representation.\n");
 
@@ -469,8 +431,8 @@ static string Decompile(ID3DBlob* pShaderByteCode, string asmText)
 	// own struct so we don't have to copy all this junk
 	ParseParameters p;
 	p.bytecode = pShaderByteCode->GetBufferPointer();
-	p.decompiled = asmText.c_str();
-	p.decompiledSize = asmText.size();
+	p.decompiled = asmText->c_str();
+	p.decompiledSize = asmText->size();
 	p.StereoParamsReg = G->StereoParamsReg;
 	p.IniParamsReg = G->IniParamsReg;
 	p.recompileVs = G->FIX_Recompile_VS;
@@ -848,6 +810,55 @@ err:
 	goto out;
 }
 
+// Write the decompiled text as HLSL source code to the txt file.
+// Now also writing the ASM text to the bottom of the file, commented out.
+// This keeps the ASM with the HLSL for reference and should be more convenient.
+//
+// This will not overwrite any file that is already there.
+// The assumption is that the shaderByteCode that we have here is always the most up to date,
+// and thus is not different than the file on disk.
+// If a file was already extant in the ShaderFixes, it will be picked up at game launch as the master shaderByteCode.
+
+static bool WriteHLSL(string *asmText, UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device)
+{
+	wchar_t fileName[MAX_PATH];
+	wchar_t fullName[MAX_PATH];
+	string hlslText;
+	FILE *fw;
+
+	// Try to decompile the current byte code into HLSL:
+	hlslText = Decompile(shader_info.byteCode, asmText);
+	if (hlslText.empty())
+		return false;
+
+	// We no longer check if the file exists and touch it at this point -
+	// this has been moved to the earlier shader_already_dumped() routine,
+	// and that no longer modifies the file when touching it.
+
+	swprintf_s(fileName, MAX_PATH, L"%016llx-%ls_replace.txt", hash, shader_info.shaderType.c_str());
+	swprintf_s(fullName, MAX_PATH, L"%ls\\%ls", G->SHADER_PATH, fileName);
+	wfopen_ensuring_access(&fw, fullName, L"wb");
+	if (!fw)
+	{
+		LogInfoW(L"    error storing marked shader to %s\n", fullName);
+		return false;
+	}
+
+	LogInfoW(L"    storing patched shader to %s\n", fullName);
+
+	fwrite(hlslText.c_str(), 1, hlslText.size(), fw);
+
+	fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+	fwrite(asmText->c_str(), 1, asmText->size(), fw);
+	fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
+
+	fclose(fw);
+
+	// Lastly, reload the shader generated, to check for decompile errors, set it as the active
+	// shader code, in case there are visual errors, and make it the match the code in the file.
+	return ReloadShader(G->SHADER_PATH, fileName, device);
+}
+
 static bool check_shader_file_already_exists(wchar_t *path, bool bin)
 {
 	DWORD attrib;
@@ -916,7 +927,6 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 {
 	bool success = false;
 	string asmText;
-	string decompiled;
 
 	// The key of the map is the actual shader, we thus need to do a linear search to find our marked hash.
 	for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
@@ -927,27 +937,11 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 			if (asmText.empty())
 				break;
 
-			// Disassembly file is written, now decompile the current byte code into HLSL.
-			decompiled = Decompile(iter.second.byteCode, asmText);
-			if (decompiled.empty())
-				break;
-
-			// Save the decompiled text, and ASM text into the .txt source file.
-			if (!WriteHLSL(decompiled, asmText, hash, iter.second.shaderType))
-				break;
-
-
-			// Lastly, reload the shader generated, to check for decompile errors, set it as the active 
-			// shader code, in case there are visual errors, and make it the match the code in the file.
-			wchar_t fileName[MAX_PATH];
-
-			swprintf_s(fileName, MAX_PATH, L"%016llx-%ls_replace.txt", hash, iter.second.shaderType.c_str());
-			if (!ReloadShader(G->SHADER_PATH, fileName, device))
-				break;
+			// Save the decompiled text, and ASM text into the HLSL .txt source file:
+			success = WriteHLSL(&asmText, hash, iter.second, device);
 
 			// There can be more than one in the map with the same hash, but we only need a single copy to
 			// make the hlsl file output, so exit with success.
-			success = true;
 			break;
 		}
 	}
@@ -1531,6 +1525,9 @@ static void MarkShaderEnd(HackerDevice *device, char *long_type, char *short_typ
 
 	MarkingScreenShots(device, selected, short_type);
 
+	// We always test if a shader is already dumped even if neither HLSL or
+	// asm dumping is enabled, as this provides useful feedback on the
+	// overlay and touches the shader timestamp if it exists:
 	if (!shader_already_dumped(selected, short_type)) {
 		if (G->marking_actions & MarkingAction::HLSL) {
 			// Copy marked shader to ShaderFixes
