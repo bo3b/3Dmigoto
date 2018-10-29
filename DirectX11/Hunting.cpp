@@ -434,6 +434,7 @@ static bool WriteHLSL(string hlslText, string asmText, UINT64 hash, wstring shad
 	// this has been moved to the earlier shader_already_dumped() routine,
 	// and that no longer modifies the file when touching it.
 
+	swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shaderType.c_str());
 	wfopen_ensuring_access(&fw, fullName, L"wb");
 	if (!fw)
 	{
