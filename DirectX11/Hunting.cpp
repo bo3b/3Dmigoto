@@ -867,6 +867,9 @@ static bool check_shader_file_already_exists(wchar_t *path, bool bin)
 		// file (avoiding the annoying extra space added at the end of
 		// the file) but rather modifies the timestamp directly:
 		touch_file(path);
+		// To force explorer to immediately re-sort, touch the
+		// modification timestamp on the ShaderFixes directory as well:
+		touch_dir(G->SHADER_PATH);
 	}
 	return true;
 }

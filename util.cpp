@@ -125,11 +125,11 @@ errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t *filename, const wcha
 	return 0;
 }
 
-void set_file_last_write_time(wchar_t *path, FILETIME *ftWrite)
+void set_file_last_write_time(wchar_t *path, FILETIME *ftWrite, DWORD flags)
 {
 	HANDLE f;
 
-	f = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	f = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | flags, NULL);
 	if (f == INVALID_HANDLE_VALUE)
 		return;
 
@@ -137,14 +137,14 @@ void set_file_last_write_time(wchar_t *path, FILETIME *ftWrite)
 	CloseHandle(f);
 }
 
-void touch_file(wchar_t *path)
+void touch_file(wchar_t *path, DWORD flags)
 {
 	FILETIME ft;
 	SYSTEMTIME st;
 
 	GetSystemTime(&st);
 	SystemTimeToFileTime(&st, &ft);
-	set_file_last_write_time(path, &ft);
+	set_file_last_write_time(path, &ft, flags);
 }
 
 
