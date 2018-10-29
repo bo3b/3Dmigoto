@@ -857,7 +857,54 @@ err:
 	goto out;
 }
 
+static bool check_shader_file_already_exists(wchar_t *path, bool bin)
+{
+	DWORD attrib;
 
+	attrib = GetFileAttributes(path);
+	if (attrib == INVALID_FILE_ATTRIBUTES)
+		return false;
+
+	WarnIfConflictingShaderExists(path);
+
+	if (bin)
+		LogOverlay(LOG_NOTICE, "cached shader found, but lacks a matching .txt file: %S\n", path);
+	else
+		LogOverlay(LOG_INFO, "marked shader file already exists: %S\n", path);
+	return true;
+}
+
+static bool shader_already_dumped(UINT64 hash, char *type)
+{
+	wchar_t path[MAX_PATH];
+	int ret = 0;
+
+	swprintf_s(path, MAX_PATH, L"%s\\%016llx-%S_replace.txt", G->SHADER_PATH, hash, type);
+	ret += check_shader_file_already_exists(path, false);
+	swprintf_s(path, MAX_PATH, L"%s\\%016llx-%S.txt", G->SHADER_PATH, hash, type);
+	ret += check_shader_file_already_exists(path, false);
+
+	if (!ret) {
+		// We also check for existing .bin files, but only warn about
+		// them if there are no .txt files to avoid a second warning if
+		// caching is enabled.
+		//
+		// It's a bit of a policy decision as to whether these should
+		// also prevent copy on mark - we don't encourage the use of
+		// shipping .bin files without .txt files and so it may well be
+		// that most times anyone hits this code path is after deleting
+		// a .txt file but forgetting about the .bin file so maybe we
+		// could save them some hassle by dumping a new .txt file
+		// anyway... but for now erring on the side of warning and
+		// leaving it to the shaderhacker rather than assuming.
+		swprintf_s(path, MAX_PATH, L"%s\\%016llx-%S_replace.bin", G->SHADER_PATH, hash, type);
+		ret += check_shader_file_already_exists(path, true);
+		swprintf_s(path, MAX_PATH, L"%s\\%016llx-%S.bin", G->SHADER_PATH, hash, type);
+		ret += check_shader_file_already_exists(path, true);
+	}
+
+	return !!ret;
+}
 
 // When a shader is marked by the user, we want to automatically move it to the ShaderFixes folder
 // The universal way to do this is to keep the shaderByteCode around, and when mark happens, use that as
@@ -1483,9 +1530,12 @@ static void MarkShaderEnd(HackerDevice *device, char *long_type, char *short_typ
 
 	MarkingScreenShots(device, selected, short_type);
 
-	// Copy marked shader to ShaderFixes
-	if (G->marking_actions & MarkingAction::HLSL)
-		CopyToFixes(selected, device);
+	if (!shader_already_dumped(selected, short_type)) {
+		if (G->marking_actions & MarkingAction::HLSL) {
+			// Copy marked shader to ShaderFixes
+			CopyToFixes(selected, device);
+		}
+	}
 
 	if (G->DumpUsage)
 		DumpUsage(NULL);
