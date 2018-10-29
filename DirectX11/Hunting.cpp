@@ -836,12 +836,13 @@ static bool WriteASM(string *asmText, UINT64 hash, OriginalShaderInfo shader_inf
 // and thus is not different than the file on disk.
 // If a file was already extant in the ShaderFixes, it will be picked up at game launch as the master shaderByteCode.
 
-static bool WriteHLSL(string *asmText, UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device)
+static bool WriteHLSL(string *asmText, UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device, bool remove_failed)
 {
 	wchar_t fileName[MAX_PATH];
 	wchar_t fullName[MAX_PATH];
 	string hlslText;
 	FILE *fw;
+	bool ret;
 
 	// Try to decompile the current byte code into HLSL:
 	hlslText = Decompile(shader_info.byteCode, asmText);
@@ -873,7 +874,14 @@ static bool WriteHLSL(string *asmText, UINT64 hash, OriginalShaderInfo shader_in
 
 	// Lastly, reload the shader generated, to check for decompile errors, set it as the active
 	// shader code, in case there are visual errors, and make it the match the code in the file.
-	return ReloadShader(G->SHADER_PATH, fileName, device);
+	ret = ReloadShader(G->SHADER_PATH, fileName, device);
+
+	if (!ret && remove_failed) {
+		LogInfo("    removing shader that failed to reload: %S\n", fullName);
+		DeleteFile(fullName);
+	}
+
+	return ret;
 }
 
 static bool check_shader_file_already_exists(wchar_t *path, bool bin)
@@ -943,6 +951,7 @@ static bool shader_already_dumped(UINT64 hash, char *type)
 static void CopyToFixes(UINT64 hash, HackerDevice *device)
 {
 	bool success = false;
+	bool asm_enabled = G->marking_actions & MarkingAction::ASM;
 	string asmText;
 
 	// The key of the map is the actual shader, we thus need to do a linear search to find our marked hash.
@@ -956,11 +965,14 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 
 			if (G->marking_actions & MarkingAction::HLSL) {
 				// Save the decompiled text, and ASM text into the HLSL .txt source file:
-				success = WriteHLSL(&asmText, hash, iter.second, device);
-				break;
+				success = WriteHLSL(&asmText, hash, iter.second, device, asm_enabled);
+				if (success)
+					break;
+				else if (asm_enabled)
+					LogOverlay(LOG_NOTICE, "> HLSL decompilation failed. Falling back to assembly\n");
 			}
 
-			if (G->marking_actions & MarkingAction::ASM) {
+			if (asm_enabled) {
 				success = WriteASM(&asmText, hash, iter.second, device);
 				break;
 			}

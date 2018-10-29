@@ -53,7 +53,6 @@ enum class MarkingAction {
 	HLSL       = 0x0000002,
 	ASM        = 0x0000004,
 	DUMP_MASK  = 0x0000006, // HLSL and/or Assembly is selected
-	AUTO       = 0x0000008, // TODO: HLSL if possible, Asm if not. Not implemented
 	MONO_SS    = 0x0000010,
 	STEREO_SS  = 0x0000020,
 	SS_IF_PINK = 0x0000040,
