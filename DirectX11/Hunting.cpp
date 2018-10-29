@@ -430,19 +430,9 @@ static bool WriteHLSL(string hlslText, string asmText, UINT64 hash, wstring shad
 	wchar_t fullName[MAX_PATH];
 	FILE *fw;
 
-	swprintf_s(fullName, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shaderType.c_str());
-	_wfopen_s(&fw, fullName, L"rb");
-	if (fw)
-	{
-		LogOverlayW(LOG_INFO, L"marked shader file already exists: %s\n", fullName);
-		fclose(fw);
-		_wfopen_s(&fw, fullName, L"ab");
-		if (fw) {
-			fprintf_s(fw, " ");					// Touch file to update mod date as a convenience.
-			fclose(fw);
-		}
-		return true;
-	}
+	// We no longer check if the file exists and touch it at this point -
+	// this has been moved to the earlier shader_already_dumped() routine,
+	// and that no longer modifies the file when touching it.
 
 	wfopen_ensuring_access(&fw, fullName, L"wb");
 	if (!fw)
@@ -867,10 +857,17 @@ static bool check_shader_file_already_exists(wchar_t *path, bool bin)
 
 	WarnIfConflictingShaderExists(path);
 
-	if (bin)
+	if (bin) {
 		LogOverlay(LOG_NOTICE, "cached shader found, but lacks a matching .txt file: %S\n", path);
-	else
+	} else {
 		LogOverlay(LOG_INFO, "marked shader file already exists: %S\n", path);
+		// Touch the file to make it easy to spot in explorer. We only
+		// do this for .txt files so as not to risk making a stale .bin
+		// file appear valid. This no longer requires modifying the
+		// file (avoiding the annoying extra space added at the end of
+		// the file) but rather modifies the timestamp directly:
+		touch_file(path);
+	}
 	return true;
 }
 

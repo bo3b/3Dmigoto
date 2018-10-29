@@ -792,6 +792,8 @@ static bool ParseIniParamName(const wchar_t *name, int *idx, float DirectX::XMFL
 
 BOOL CreateDirectoryEnsuringAccess(LPCWSTR path);
 errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t *filename, const wchar_t *mode);
+void set_file_last_write_time(wchar_t *path, FILETIME *ftWrite);
+void touch_file(wchar_t *path);
 
 bool check_interface_supported(IUnknown *unknown, REFIID riid);
 void analyse_iunknown(IUnknown *unknown);
