@@ -36,6 +36,14 @@
 #include "log.h"
 #include "version.h"
 
+// MSVC insists we use MS's secure version of scanf, which in turn insists we
+// pass the size of each string/char array as an unsigned integer. We want to
+// use something like sizeof/_countof/ARRAYSIZE to make that safe even if we
+// change the size of one of the buffers, but that returns a size_t, which does
+// not match the type scanf is expecting to find on the stack on x64 so we need
+// to cast it. That's a bit ugly, so we use this helper:
+#define UCOUNTOF(...) (unsigned)_countof(__VA_ARGS__)
+
 using namespace std;
 
 enum DataType
@@ -237,7 +245,7 @@ public:
 		size_t pos = 0;
 
 		int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
-			name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &reg1, sysvalue, (int)sizeof(sysvalue), format, (int)sizeof(format));
+			name, UCOUNTOF(name), &index, mask, UCOUNTOF(mask), &reg1, sysvalue, UCOUNTOF(sysvalue), format, UCOUNTOF(format));
 		if (numRead != 6)
 			return false;
 		name[sizeof(name) - 1] = '\0'; // Appease the static analysis gods
@@ -255,7 +263,7 @@ public:
 		while (c[pos] != 0x0a && pos < 200) pos++; pos++;
 
 		numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
-			name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &reg2, sysvalue, (int)sizeof(sysvalue), format, (int)sizeof(format));
+			name, UCOUNTOF(name), &index, mask, UCOUNTOF(mask), &reg2, sysvalue, UCOUNTOF(sysvalue), format, UCOUNTOF(format));
 		if (numRead != 6)
 			return false;
 		name[sizeof(name) - 1] = '\0'; // Appease the static analysis gods
@@ -387,7 +395,7 @@ public:
 			if (!strncmp(c + pos, "// no Input", strlen("// no Input")))
 				break;
 			int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
-				name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &slot, format2, (int)sizeof(format2), format, (int)sizeof(format));
+				name, UCOUNTOF(name), &index, mask, UCOUNTOF(mask), &slot, format2, UCOUNTOF(format2), format, UCOUNTOF(format));
 			if (numRead != 6)
 			{
 				logDecompileError("Error parsing input signature: " + string(c + pos, 80));
@@ -482,7 +490,7 @@ public:
 			// -------------------- ----- ------ -------- -------- ------- ------
 			// SV_Target                0   xyzw        0   TARGET   float   xyzw
 			int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
-				name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &slot, format2, (int)sizeof(format2), format, (int)sizeof(format));
+				name, UCOUNTOF(name), &index, mask, UCOUNTOF(mask), &slot, format2, UCOUNTOF(format2), format, UCOUNTOF(format));
 			if (numRead == 6)
 			{
 				// finish type.
@@ -537,7 +545,7 @@ public:
 				// -------------------- ----- ------ -------- -------- ------- ------
 				// SV_Depth                 0    N/A   oDepth    DEPTH   float    YES
 				numRead = sscanf_s(c + pos, "// %s %d %s %s %s %s",
-					name, (int)sizeof(name), &index, mask, (int)sizeof(mask), reg, (int)sizeof(reg), sysValue, (int)sizeof(sysValue), format, (int)sizeof(format));
+					name, UCOUNTOF(name), &index, mask, UCOUNTOF(mask), reg, UCOUNTOF(reg), sysValue, UCOUNTOF(sysValue), format, UCOUNTOF(format));
 				sprintf(buffer, "  out %s %s : %s,\n", format, reg, name);
 				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 			}
@@ -587,7 +595,7 @@ public:
 			if (!strncmp(c + pos, "// no Output", strlen("// no Output")))
 				break;
 			int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
-				name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &slot, format2, (int)sizeof(format2), format, (int)sizeof(format));
+				name, UCOUNTOF(name), &index, mask, UCOUNTOF(mask), &slot, format2, UCOUNTOF(format2), format, UCOUNTOF(format));
 			if (numRead == 6)
 			{
 				// Already used?
@@ -613,7 +621,7 @@ public:
 			{
 				char sysValue[64];
 				int numRead = sscanf_s(c + pos, "// %s %d %s %s %s %s",
-					name, (int)sizeof(name), &index, mask, (int)sizeof(mask), sysValue, (int)sizeof(sysValue), format2, (int)sizeof(format2), format, (int)sizeof(format));
+					name, UCOUNTOF(name), &index, mask, UCOUNTOF(mask), sysValue, UCOUNTOF(sysValue), format2, UCOUNTOF(format2), format, UCOUNTOF(format));
 				// Write.
 				char buffer[256];
 				sprintf(buffer, "  %s = 0;\n", sysValue);
@@ -665,7 +673,7 @@ public:
 			int slot, arraySize;
 			type[0] = 0;
 			int numRead = sscanf_s(c + pos, "// %s %s %s %s %d %d",
-				name, (int)sizeof(name), type, (int)sizeof(type), format, (int)sizeof(format), dim, (int)sizeof(dim), &slot, &arraySize);
+				name, UCOUNTOF(name), type, UCOUNTOF(type), format, UCOUNTOF(format), dim, UCOUNTOF(dim), &slot, &arraySize);
 			if (numRead != 6)
 				logDecompileError("Error parsing resource declaration: " + string(c + pos, 80));
 			if (!strcmp(type, "sampler"))
@@ -899,7 +907,7 @@ public:
 			}
 			if (pos >= size - strlen(headerid)) return;
 			char name[256];
-			int numRead = sscanf_s(c + pos, "// cbuffer %s", name, (int)sizeof(name));
+			int numRead = sscanf_s(c + pos, "// cbuffer %s", name, UCOUNTOF(name));
 			if (numRead != 1)
 			{
 				logDecompileError("Error parsing buffer name: " + string(c + pos, 80));
@@ -1040,7 +1048,7 @@ public:
 				//   float2 __0RealtimeReflMul__1EnvCubeReflMul__2__3;// Offset:   96 Size:     8
 				// This caused the %s %s to fail, so now looking specifically for required semicolon.
 				char type[16]; type[0] = 0;
-				numRead = sscanf_s(c + pos, "// %s %[^;]", type, (int)sizeof(type), name, (int)sizeof(name));
+				numRead = sscanf_s(c + pos, "// %s %[^;]", type, UCOUNTOF(type), name, UCOUNTOF(name));
 				if (numRead != 2)
 				{
 					logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
@@ -1054,7 +1062,7 @@ public:
 					e.isRowMajor = !strcmp(type, "row_major");
 					modifier = type;
 					modifier.push_back(' ');
-					numRead = sscanf_s(c + pos, "// %s %s %[^;]", buffer, (int)sizeof(buffer), type, (int)sizeof(type), name, (int)sizeof(name));
+					numRead = sscanf_s(c + pos, "// %s %s %[^;]", buffer, UCOUNTOF(buffer), type, UCOUNTOF(type), name, UCOUNTOF(name));
 					if (numRead != 3)
 					{
 						logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
@@ -1497,7 +1505,7 @@ public:
 				// crushed the spaces out of the input.
 
 				// Like: -cb2[r12.w+63].xyzx  as : -cb(bufIndex)[(regAndSwiz)+(bufOffset)]
-				if (sscanf_s(strPos, "cb%d[%[^+]+%d]", &bufIndex, regAndSwiz, (int)sizeof(regAndSwiz), &bufOffset) == 3)
+				if (sscanf_s(strPos, "cb%d[%[^+]+%d]", &bufIndex, regAndSwiz, UCOUNTOF(regAndSwiz), &bufOffset) == 3)
 				{
 					// Some constant buffers no longer have variable names, giving us generic names like cb0[23].
 					// The syntax doesn't work to use those names, so in this scenario, we want to just use the strPos name, unchanged.
@@ -1522,12 +1530,12 @@ public:
 					regAndSwiz[0] = 0;
 				}
 				// Like: cb0[r0.w].xy
-				else if (sscanf_s(strPos, "cb%d[%s]", &bufIndex, regAndSwiz, (int)sizeof(regAndSwiz)) == 2)
+				else if (sscanf_s(strPos, "cb%d[%s]", &bufIndex, regAndSwiz, UCOUNTOF(regAndSwiz)) == 2)
 				{
 					bufOffset = 0;
 				}
 				// Like: icb[r0.w+0].xyzw
-				else if (sscanf_s(strPos, "cb[%[^+]+%d]", regAndSwiz, (int)sizeof(regAndSwiz), &bufOffset) == 2)
+				else if (sscanf_s(strPos, "cb[%[^+]+%d]", regAndSwiz, UCOUNTOF(regAndSwiz), &bufOffset) == 2)
 				{
 					bufIndex = -1;		// -1 is used as 'index' for icb entries.
 				}
@@ -1538,7 +1546,7 @@ public:
 					regAndSwiz[0] = 0;
 				}
 				// Like: icb[r1.z].xy
-				else if (sscanf_s(strPos, "cb[%s]", regAndSwiz, (int)sizeof(regAndSwiz)) == 1)
+				else if (sscanf_s(strPos, "cb[%s]", regAndSwiz, UCOUNTOF(regAndSwiz)) == 1)
 				{
 					bufIndex = -1;		// -1 is used as 'index' for icb entries.
 					bufOffset = 0;
@@ -1748,7 +1756,7 @@ public:
 		op9[0] = 0; op10[0] = 0; op11[0] = 0; op12[0] = 0; op13[0] = 0; op14[0] = 0; op15[0] = 0;
 
 		int numRead = sscanf_s(lineBuffer, "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s",
-			statement, (int)sizeof(statement),
+			statement, UCOUNTOF(statement),
 			op1, opcodeSize, op2, opcodeSize, op3, opcodeSize, op4, opcodeSize, op5, opcodeSize, op6, opcodeSize, op7, opcodeSize, op8, opcodeSize,
 			op9, opcodeSize, op10, opcodeSize, op11, opcodeSize, op12, opcodeSize, op13, opcodeSize, op14, opcodeSize, op15, opcodeSize);
 
@@ -3320,7 +3328,7 @@ public:
 				const char *varDecl = "  float4 ";
 				mOutput.insert(mOutput.end(), varDecl, varDecl + strlen(varDecl));
 				int numTemps;
-				sscanf_s(c + pos, "%s %d", statement, (int)sizeof(statement), &numTemps);
+				sscanf_s(c + pos, "%s %d", statement, UCOUNTOF(statement), &numTemps);
 				for (int i = 0; i < numTemps; ++i)
 				{
 					sprintf(buffer, "r%d,", i);
