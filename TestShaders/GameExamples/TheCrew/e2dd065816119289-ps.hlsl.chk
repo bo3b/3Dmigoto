@@ -1,4 +1,25 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:16 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:18:37 2018
+
+struct t0_struct
+{
+    float t0_float;                // Offset:    0
+};
+
+struct t1_struct
+{
+    float4 t1_index0;              // Offset:    0
+    float3 t1_index16;             // Offset:   16
+};
+
+struct t2_struct
+{
+    float2 t2_float2;              // Offset:    0
+};
+
+struct t3_struct
+{
+    float t3_float;                // Offset:    0
+};
 
 cbuffer cb0 : register(b0)
 {
@@ -22,10 +43,10 @@ cbuffer cb3 : register(b3)
 
 SamplerState s0_s_s : register(s0);
 SamplerState s1_s_s : register(s1);
-StructuredBuffer<t0_buff> t0_buff : register(t0);
-StructuredBuffer<t1_buff> t1_buff : register(t1);
-StructuredBuffer<t2_buff> t2_buff : register(t2);
-StructuredBuffer<t3_buff> t3_buff : register(t3);
+StructuredBuffer<t0_struct> t0_buff : register(t0);
+StructuredBuffer<t1_struct> t1_buff : register(t1);
+StructuredBuffer<t2_struct> t2_buff : register(t2);
+StructuredBuffer<t3_struct> t3_buff : register(t3);
 Texture2DMS<float4> t4 : register(t4);
 Texture2DMS<float4> t5 : register(t5);
 Texture2D<float4> t6 : register(t6);

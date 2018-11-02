@@ -1,4 +1,19 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:05 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:17:27 2018
+
+struct g_lightCullInput_res
+{
+    uint4 g_lightCullInput_uint4;  // Offset:    0
+};
+
+struct g_lightIndexInput_res
+{
+    uint g_lightIndexInput_uint;   // Offset:    0
+};
+
+struct g_compactTileGridBuffer_res
+{
+    uint g_compactTileGridBuffer_uint;// Offset:    0
+};
 
 cbuffer cbLocalIBLLightInfo : register(b5)
 {
@@ -52,9 +67,9 @@ Texture2D<float> g_depthTexture : register(t6);
 TextureCubeArray<float4> g_specularLocalIBLsTexture : register(t7);
 Texture2D<float4> g_preIntegratedFGTexture : register(t8);
 Texture2D<float> g_diffuseOcclusionTexture : register(t10);
-StructuredBuffer<g_lightCullInput> g_lightCullInput : register(t19);
-StructuredBuffer<g_lightIndexInput> g_lightIndexInput : register(t20);
-StructuredBuffer<g_compactTileGridBuffer> g_compactTileGridBuffer : register(t24);
+StructuredBuffer<g_lightCullInput_res> g_lightCullInput : register(t19);
+StructuredBuffer<g_lightIndexInput_res> g_lightIndexInput : register(t20);
+StructuredBuffer<g_compactTileGridBuffer_res> g_compactTileGridBuffer : register(t24);
 
 
 // 3Dmigoto declarations

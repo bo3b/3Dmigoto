@@ -1,4 +1,12 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:08 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:18:16 2018
+
+struct ResourceStruct
+{
+    float3 vPosition;              // Offset:    0
+    float3 vVelocity;              // Offset:   12
+    float fTime;                   // Offset:   24
+    float fUserData;               // Offset:   28
+};
 
 cbuffer _Globals : register(b0)
 {
@@ -54,7 +62,7 @@ cbuffer CBuffer_View : register(b12)
   float4 k_vMotionBlurParams : packoffset(c50);
 }
 
-StructuredBuffer<BufferSrc> BufferSrc : register(t0);
+StructuredBuffer<ResourceStruct> BufferSrc : register(t0);
 
 
 // 3Dmigoto declarations

@@ -112,6 +112,8 @@ public:
 	map<int, int>    mTextureNamesArraySize;
 	map<int, string> mTextureType;
 
+	map<string, string> mStructuredBufferTypes;
+
 	// Output register tracking.
 	map<string, string> mOutputRegisterValues;
 	map<string, DataType> mOutputRegisterType;
@@ -191,7 +193,7 @@ public:
 	}
 
 	// Make this bump to new line slightly more clear by making it a convenience routine.
-	void NextLine(const char *c, size_t &pos, size_t max)
+	static void NextLine(const char *c, size_t &pos, size_t max)
 	{
 		while (c[pos] != 0x0a && pos < max) 
 			pos++; 
@@ -750,9 +752,9 @@ public:
 				else if (!strcmp(dim, "buf"))
 					mTextureType[slot] = "Buffer<" + string(format) + ">";	
 				else if (!strcmp(dim, "r/o"))
-					mTextureType[slot] = "StructuredBuffer<" + string(name) + ">";
+					mTextureType[slot] = "StructuredBuffer<" + mStructuredBufferTypes[name] + ">";
 				//else if (!strcmp(dim, "r/w"))
-				//	mTextureType[slot] = "RWStructuredBuffer<" + string(name) + ">";  // probable, not seen yet.
+				//	mTextureType[slot] = "RWStructuredBuffer<" + mStructuredBufferTypes[name] + ">"; // Type=UAV
 				else
 					logDecompileError("Unknown texture dimension: " + string(dim));
 			}
@@ -1371,6 +1373,128 @@ public:
 			// Write closing declaration.
 			const char *endBuffer = "}\n";
 			mOutput.insert(mOutput.end(), endBuffer, endBuffer + strlen(endBuffer));
+		}
+	}
+
+	// TODO: Convert other parsers to use this helper
+	static size_t find_next_header(const char *headerid, const char *c, size_t pos, size_t size)
+	{
+		size_t header_len = strlen(headerid);
+
+		while (pos < size - header_len) {
+			if (!strncmp(c + pos, headerid, header_len))
+				return pos;
+			else
+				NextLine(c, pos, size);
+		}
+
+		return 0;
+	}
+
+	bool warn_if_line_is_not(const char *expect, const char *c)
+	{
+		if (strncmp(c, expect, strlen(expect))) {
+			logDecompileError("WARNING: Unexpected string in shader"
+					"\n  Expected: " + string(expect) +
+					"\n     Found: " + string(c, 80));
+			return true;
+		}
+		return false;
+	}
+
+	void ParseStructureDefinitions(Shader *shader, const char *c, size_t size)
+	{
+		// Pulls out struct type declaration for structured buffers.
+		// These will be referenced later when parsing the resource
+		// bindings and any structured load/write instructions.
+		//
+		// - The struct definition in the assembly comment can be
+		//   directly added to HLSL with only minimal changes:
+		//   - We strip the $Element syntax from the end
+		//   - We need to add a struct type name for shader model 4
+		//     (SM5 already includes the type name we will use)
+		//
+		// - We will need to note down which member is at each offset
+		//   for use in later load instructions.
+		//
+		// - TBD: What happens if multiple structured buffers have the
+		//        same type name?
+		//
+		// - TBD: Can structs be embedded within other structs? fxc
+		//        rejected my test cases trying this.
+		//
+		// TestShaders\resource_types* include test cases for these.
+
+		size_t pos = 0;
+		size_t spos;
+		char bind_name[256];
+		char type_name_buf[256];
+		string type_name;
+		int n;
+		string hlsl;
+
+		while (pos = find_next_header("// Resource bind info for ", c, pos, size)) {
+			n = sscanf_s(c + pos, "// Resource bind info for %s", bind_name, UCOUNTOF(bind_name));
+			if (n != 1) {
+				logDecompileError("Error parsing structure bind name: " + string(c + pos, 80));
+				continue;
+			}
+			NextLine(c, pos, size);
+
+			warn_if_line_is_not("// {\n", c + pos);
+			NextLine(c, pos, size);
+			warn_if_line_is_not("//\n", c + pos);
+			NextLine(c, pos, size);
+
+			if (!strncmp(c + pos, "//   struct ", 12)) {
+				// Shader model 5 has a type name after the
+				// struct. We can't do this scanf without first
+				// checking for this case since " " also
+				// matches "\n" in scanf:
+				n = sscanf_s(c + pos + 12, "%s", type_name_buf, UCOUNTOF(type_name_buf));
+				if (n != 1) {
+					logDecompileError("Error parsing structure type name: " + string(c + pos, 80));
+					continue;
+				}
+				type_name = type_name_buf;
+			} else {
+				warn_if_line_is_not("//   struct\n", c + pos);
+				// Shader model 4 lacks a type name after the
+				// struct, so we have to invent one.
+				type_name = bind_name + string("_type");
+			}
+			mStructuredBufferTypes[bind_name] = type_name;
+			NextLine(c, pos, size);
+
+			warn_if_line_is_not("//   {\n", c + pos);
+			NextLine(c, pos, size);
+			warn_if_line_is_not("//       \n", c + pos);
+			NextLine(c, pos, size);
+
+			hlsl = "\nstruct " + string(type_name) + "\n{\n";
+
+			while (true) {
+				// Strip comments:
+				if (warn_if_line_is_not("//", c + pos))
+					break;
+				spos = pos + 2;
+
+				// Strip optional indentation:
+				if (!strncmp(c + spos, "   ", 3))
+					spos += 3;
+
+				// Check if done signified by "} $Element;",
+				// but for safety only checking "}"
+				if (!strncmp(c + spos, "}", 1))
+					break;
+
+				// Add the stripped line to the HLSL output, unless blank:
+				NextLine(c, pos, size);
+				if (c[spos] != '\n')
+					hlsl += string(c, spos, pos - spos);
+			}
+			hlsl += "};\n";
+			mOutput.insert(mOutput.end(), hlsl.begin(), hlsl.end());
 		}
 	}
 
@@ -5438,6 +5562,7 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 		Shader *shader = DecodeDXBC((uint32_t*)params.bytecode);
 		if (!shader) return string();
 
+		d.ParseStructureDefinitions(shader, params.decompiled, params.decompiledSize);
 		d.ReadResourceBindings(params.decompiled, params.decompiledSize);
 		d.ParseBufferDefinitions(shader, params.decompiled, params.decompiledSize);
 		d.WriteResourceDefinitions();

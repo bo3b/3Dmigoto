@@ -1,0 +1,74 @@
+// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:19:09 2018
+
+struct struct_buf_1_type
+{
+    float foo;                     // Offset:    0
+    uint bar;                      // Offset:    4
+    float baz;                     // Offset:    8
+    int buz;                       // Offset:   12
+};
+
+struct struct_buf_2_type
+{
+    float foofoo;                  // Offset:    0
+    uint foobar;                   // Offset:    4
+    float foobaz;                  // Offset:    8
+    int foobuz[8];                 // Offset:   12
+};
+
+StructuredBuffer<struct_buf_1_type> struct_buf_1 : register(t110);
+StructuredBuffer<struct_buf_2_type> struct_buf_2 : register(t111);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  nointerpolation uint4 v0 : TEXCOORD0,
+  float v1 : TEXCOORD1,
+  out float4 o0 : SV_Target0)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t110, 16 
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t111, 44 
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Known bad code for instruction (needs manual fix):
+ld_structured r0.x, l(2), l(4), t110.xxxx
+r0.x = struct_buf_1[]..swiz;
+  r0.x = (uint)r0.x;
+// Known bad code for instruction (needs manual fix):
+ld_structured r1.x, l(0), l(0), t110.xxxx
+r1.x = struct_buf_1[]..swiz;
+  r0.x = r1.x + r0.x;
+// Known bad code for instruction (needs manual fix):
+ld_structured r1.x, l(1), l(8), t110.xxxx
+r1.x = struct_buf_1[]..swiz;
+  r0.x = r1.x + r0.x;
+// Known bad code for instruction (needs manual fix):
+ld_structured r1.x, l(3), l(12), t110.xxxx
+r1.x = struct_buf_1[]..swiz;
+  r0.y = (int)r1.x;
+  r0.x = r0.x + r0.y;
+// Known bad code for instruction (needs manual fix):
+ld_structured r1.xyz, v0.x, l(0), t111.xyzx
+r1.x = struct_buf_1[]..swiz;
+r1.y = struct_buf_1[]..swiz;
+r1.z = struct_buf_1[]..swiz;
+  r0.x = r1.x + r0.x;
+  r0.y = (uint)r1.y;
+  r0.x = r0.x + r0.y;
+  r0.x = r0.x + r1.z;
+// Known bad code for instruction (needs manual fix):
+ld_structured r1.x, v0.x, l(24), t111.xxxx
+r1.x = struct_buf_1[]..swiz;
+  r0.y = (int)r1.x;
+  o0.xyzw = r0.xxxx + r0.yyyy;
+  return;
+}
