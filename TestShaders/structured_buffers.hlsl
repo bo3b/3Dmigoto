@@ -8,6 +8,17 @@ struct foo {
 struct bar {
 	float foofoo;
 	uint foobar;
+#ifdef USE_INNER_STRUCT
+	struct {
+		float foo;
+		float bar;
+	} inner_struct_1;
+	struct {
+		float baz;
+		float bug;
+		struct foo inner_struct_3;
+	} inner_struct_2[2];
+#endif
 	snorm float foobaz;
 	int foobuz[8];
 };
@@ -42,6 +53,13 @@ void main(uint idx : TEXCOORD0, float val : TEXCOORD1, out float4 output : SV_Ta
 	output += struct_buf_1.Load(3).buz;
 	output += struct_buf_2[idx].foofoo;
 	output += struct_buf_2[idx].foobar;
+#ifdef USE_INNER_STRUCT
+	output += struct_buf_2[idx].inner_struct_1.foo;
+	output += struct_buf_2[idx].inner_struct_1.bar;
+	output += struct_buf_2[idx].inner_struct_2[0].baz;
+	output += struct_buf_2[idx].inner_struct_2[1].bug;
+	output += struct_buf_2[idx].inner_struct_2[idx].inner_struct_3.buz;
+#endif
 	output += struct_buf_2[idx].foobaz;
 	output += struct_buf_2[idx].foobuz[3];
 #ifdef USE_DUP_NAME
