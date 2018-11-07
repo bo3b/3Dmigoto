@@ -18,6 +18,14 @@ StructuredBuffer<struct bar> struct_buf_2 : register(t111);
 StructuredBuffer<struct foo> struct_buf_3 : register(t112);
 #endif
 
+#ifdef USE_PRIMITIVE_TYPES
+StructuredBuffer<float> prim_struct_float : register(t90);
+StructuredBuffer<float2> prim_struct_float2 : register(t91);
+StructuredBuffer<float4> prim_struct_float4 : register(t92);
+StructuredBuffer<float4x4> prim_struct_float4x4 : register(t93);
+StructuredBuffer<matrix> prim_struct_matrix : register(t94);
+#endif
+
 #ifdef USE_RW_STRUCTURED_BUFFER
 RWStructuredBuffer<struct foo> rw_struct_buf : register(u1);
 #endif
@@ -41,6 +49,14 @@ void main(uint idx : TEXCOORD0, float val : TEXCOORD1, out float4 output : SV_Ta
 	output += struct_buf_3[idx].bar;
 	output += struct_buf_3[idx].baz;
 	output += struct_buf_3[idx].buz;
+#endif
+
+#ifdef USE_PRIMITIVE_TYPES
+	output += prim_struct_float[idx];
+	output.xy += prim_struct_float2[idx];
+	output += prim_struct_float4[idx];
+	output += prim_struct_float4x4[idx]._m00_m10_m30_m20;
+	output += prim_struct_matrix[idx]._m00_m11_m22_m33;
 #endif
 
 #ifdef USE_RW_STRUCTURED_BUFFER
