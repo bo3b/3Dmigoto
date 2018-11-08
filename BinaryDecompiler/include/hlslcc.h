@@ -255,6 +255,8 @@ struct ConstantBuffer
     std::vector<ShaderVar> asVars;
 
     uint32_t ui32TotalSizeInBytes;
+
+	int iUnsized;
 };
 
 struct ClassType

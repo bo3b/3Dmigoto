@@ -263,6 +263,8 @@ static const uint32_t* ReadConstantBuffer(ShaderInfo* psShaderInfo,
         ui32BufferType = *pui32Tokens++;
     }
 
+	psBuffer->iUnsized = 0;
+
     return pui32Tokens;
 }
 
@@ -499,6 +501,163 @@ int GetInterfaceVarFromOffset(uint32_t ui32Offset, ShaderInfo* psShaderInfo, Sha
     }
     return 0;
 }
+
+// Manually added from latest James-Jones HLSLCrossCompiler for StructuredBuffer support -DSS
+static int IsOffsetInType(ShaderVarType* psType,
+						  uint32_t parentOffset,
+						  uint32_t offsetToFind,
+						  const uint32_t* pui32Swizzle,
+						  int32_t* pi32Index,
+						  int32_t* pi32Rebase)
+{
+	uint32_t thisOffset = parentOffset + psType->Offset;
+	uint32_t thisSize = psType->Columns * psType->Rows * 4;
+
+	if(psType->Elements)
+	{
+		// Everything smaller than vec4 in an array takes the space of vec4, except for the last one
+		if (thisSize < 4 * 4)
+		{
+			thisSize = (4 * 4 * (psType->Elements - 1)) + thisSize;
+		}
+		else
+		{
+			thisSize *= psType->Elements;
+		}
+	}
+
+    //Swizzle can point to another variable. In the example below
+	//cbUIUpdates.g_uMaxFaces would be cb1[2].z. The scalars are combined
+	//into vectors. psCBuf->ui32NumVars will be 3.
+
+	// cbuffer cbUIUpdates
+	// {
+	//
+	//   float g_fLifeSpan;                 // Offset:    0 Size:     4
+	//   float g_fLifeSpanVar;              // Offset:    4 Size:     4 [unused]
+	//   float g_fRadiusMin;                // Offset:    8 Size:     4 [unused]
+	//   float g_fRadiusMax;                // Offset:   12 Size:     4 [unused]
+	//   float g_fGrowTime;                 // Offset:   16 Size:     4 [unused]
+	//   float g_fStepSize;                 // Offset:   20 Size:     4
+	//   float g_fTurnRate;                 // Offset:   24 Size:     4
+	//   float g_fTurnSpeed;                // Offset:   28 Size:     4 [unused]
+	//   float g_fLeafRate;                 // Offset:   32 Size:     4
+	//   float g_fShrinkTime;               // Offset:   36 Size:     4 [unused]
+	//   uint g_uMaxFaces;                  // Offset:   40 Size:     4
+	//
+	// }
+
+	// Name                                 Type  Format         Dim Slot Elements
+	// ------------------------------ ---------- ------- ----------- ---- --------
+	// cbUIUpdates                       cbuffer      NA          NA    1        1
+
+    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_Y)
+    {
+        offsetToFind += 4;
+    }
+    else
+    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_Z)
+    {
+        offsetToFind += 8;
+    }
+    else
+    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_W)
+    {
+        offsetToFind += 12;
+    }
+
+	if((offsetToFind >= thisOffset) &&
+		offsetToFind < (thisOffset + thisSize))
+	{
+
+        if(psType->Class == SVC_MATRIX_ROWS || 
+            psType->Class == SVC_MATRIX_COLUMNS)
+        {
+			//Matrices are treated as arrays of vectors.
+			pi32Index[0] = (offsetToFind - thisOffset) / 16;
+        }
+		//Check for array of scalars or vectors (both take up 16 bytes per element)
+		else if ((psType->Class == SVC_SCALAR || psType->Class == SVC_VECTOR) && psType->Elements > 1)
+		{
+			pi32Index[0] = (offsetToFind - thisOffset) / 16;
+		}
+		else if(psType->Class == SVC_VECTOR && psType->Columns > 1)
+		{
+			//Check for vector starting at a non-vec4 offset.
+
+			// cbuffer $Globals
+			// {
+			//
+			//   float angle;                       // Offset:    0 Size:     4
+			//   float2 angle2;                     // Offset:    4 Size:     8
+			//
+			// }
+
+			//cb0[0].x = angle
+			//cb0[0].yzyy = angle2.xyxx
+
+			//Rebase angle2 so that .y maps to .x, .z maps to .y
+
+			pi32Rebase[0] = thisOffset % 16;
+		}
+
+		return 1;
+	}
+	return 0;
+}
+
+// Manually added from latest James-Jones HLSLCrossCompiler for StructuredBuffer support -DSS
+int GetShaderVarFromOffset(const uint32_t ui32Vec4Offset,
+						   const uint32_t* pui32Swizzle,
+						   ConstantBuffer* psCBuf,
+						   ShaderVarType** ppsShaderVar,
+						   int32_t* pi32Index,
+						   int32_t* pi32Rebase)
+{
+    uint32_t i;
+    const uint32_t ui32BaseByteOffset = ui32Vec4Offset * 16;
+
+    uint32_t ui32ByteOffset = ui32Vec4Offset * 16;
+
+    const uint32_t ui32NumVars = (uint32_t)psCBuf->asVars.size();
+
+	if(psCBuf->iUnsized && ui32NumVars == 1 && psCBuf->asVars[0].sType.Class != SVC_STRUCT)
+	{
+		ppsShaderVar[0] = &psCBuf->asVars[0].sType;
+		return 1;
+	}
+
+    for(i=0; i<ui32NumVars; ++i)
+    {
+		if(psCBuf->asVars[i].sType.Class == SVC_STRUCT)
+		{
+			uint32_t m = 0;
+
+			for(m=0; m < psCBuf->asVars[i].sType.MemberCount; ++m)
+			{
+				ShaderVarType* psMember = psCBuf->asVars[i].sType.Members + m;
+
+				ASSERT(psMember->Class != SVC_STRUCT);
+
+				if(IsOffsetInType(psMember, psCBuf->asVars[i].ui32StartOffset, ui32ByteOffset, pui32Swizzle, pi32Index, pi32Rebase))
+				{
+					ppsShaderVar[0] = psMember;
+					return 1;
+				}
+			}
+		}
+		else
+		{
+			if(IsOffsetInType(&psCBuf->asVars[i].sType, psCBuf->asVars[i].ui32StartOffset, ui32ByteOffset, pui32Swizzle, pi32Index, pi32Rebase))
+			{
+				ppsShaderVar[0] = &psCBuf->asVars[i].sType;
+				return 1;
+			}
+		}
+    }
+    return 0;
+}
+
 
 void LoadShaderInfo(const uint32_t ui32MajorVersion,
     const uint32_t ui32MinorVersion,
@@ -797,4 +956,5 @@ void LoadD3D9ConstantTable(const char* data,
 		}
     }
     psConstantBuffer->ui32TotalSizeInBytes = ui32ConstantBufferSize;
+	psConstantBuffer->iUnsized = 0;
 }

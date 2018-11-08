@@ -12,6 +12,13 @@ void GetUAVBufferFromBindingPoint(const uint32_t ui32BindPoint, ShaderInfo* psSh
 
 int GetInterfaceVarFromOffset(uint32_t ui32Offset, ShaderInfo* psShaderInfo, ShaderVar** ppsShaderVar);
 
+int GetShaderVarFromOffset(const uint32_t ui32Vec4Offset,
+						   const uint32_t* pui32Swizzle,
+						   ConstantBuffer* psCBuf,
+						   ShaderVarType** ppsShaderVar,
+						   int32_t* pi32Index,
+						   int32_t* pi32Rebase);
+
 typedef struct
 {
     uint32_t* pui32Inputs;
