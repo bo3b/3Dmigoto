@@ -475,6 +475,85 @@ int GetInterfaceVarFromOffset(uint32_t ui32Offset, ShaderInfo* psShaderInfo, Sha
     return 0;
 }
 
+int GetInputSignatureFromRegister(const uint32_t ui32Register, const ShaderInfo* psShaderInfo, InOutSignature** ppsOut)
+{
+    uint32_t i;
+    const uint32_t ui32NumVars = psShaderInfo->ui32NumInputSignatures;
+
+    for(i=0; i<ui32NumVars; ++i)
+    {
+        InOutSignature* psInputSignatures = psShaderInfo->psInputSignatures;
+        if(ui32Register == psInputSignatures[i].ui32Register)
+	    {
+		    *ppsOut = psInputSignatures+i;
+		    return 1;
+	    }
+    }
+    return 0;
+}
+
+int GetOutputSignatureFromRegister(const uint32_t currentPhase,
+									const uint32_t ui32Register,
+								   const uint32_t ui32CompMask,
+								   const uint32_t ui32Stream,
+								   ShaderInfo* psShaderInfo,
+								   InOutSignature** ppsOut)
+{
+    uint32_t i;
+
+	if(currentPhase == HS_JOIN_PHASE || currentPhase == HS_FORK_PHASE)
+	{
+		const uint32_t ui32NumVars = psShaderInfo->ui32NumPatchConstantSignatures;
+
+		for(i=0; i<ui32NumVars; ++i)
+		{
+			InOutSignature* psOutputSignatures = psShaderInfo->psPatchConstantSignatures;
+			if(ui32Register == psOutputSignatures[i].ui32Register &&
+				(ui32CompMask & psOutputSignatures[i].ui32Mask) &&
+				ui32Stream == psOutputSignatures[i].ui32Stream)
+			{
+				*ppsOut = psOutputSignatures+i;
+				return 1;
+			}
+		}
+	}
+	else
+	{
+		const uint32_t ui32NumVars = psShaderInfo->ui32NumOutputSignatures;
+
+		for(i=0; i<ui32NumVars; ++i)
+		{
+			InOutSignature* psOutputSignatures = psShaderInfo->psOutputSignatures;
+			if(ui32Register == psOutputSignatures[i].ui32Register &&
+				(ui32CompMask & psOutputSignatures[i].ui32Mask) &&
+				ui32Stream == psOutputSignatures[i].ui32Stream)
+			{
+				*ppsOut = psOutputSignatures+i;
+				return 1;
+			}
+		}
+	}
+    return 0;
+}
+
+int GetOutputSignatureFromSystemValue(SPECIAL_NAME eSystemValueType, uint32_t ui32SemanticIndex, ShaderInfo* psShaderInfo, InOutSignature** ppsOut)
+{
+    uint32_t i;
+    const uint32_t ui32NumVars = psShaderInfo->ui32NumOutputSignatures;
+
+    for(i=0; i<ui32NumVars; ++i)
+    {
+        InOutSignature* psOutputSignatures = psShaderInfo->psOutputSignatures;
+        if(eSystemValueType == psOutputSignatures[i].eSystemValueType &&
+            ui32SemanticIndex == psOutputSignatures[i].ui32SemanticIndex)
+	    {
+		    *ppsOut = psOutputSignatures+i;
+		    return 1;
+	    }
+    }
+    return 0;
+}
+
 // Manually added from latest James-Jones HLSLCrossCompiler for StructuredBuffer support -DSS
 static int IsOffsetInType(ShaderVarType* psType,
 						  uint32_t parentOffset,

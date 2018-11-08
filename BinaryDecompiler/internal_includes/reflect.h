@@ -11,6 +11,16 @@ void GetConstantBufferFromBindingPoint(const ResourceGroup eGroup, const uint32_
 
 int GetInterfaceVarFromOffset(uint32_t ui32Offset, ShaderInfo* psShaderInfo, ShaderVar** ppsShaderVar);
 
+int GetInputSignatureFromRegister(const uint32_t ui32Register, const ShaderInfo* psShaderInfo, InOutSignature** ppsOut);
+int GetOutputSignatureFromRegister(const uint32_t currentPhase,
+								   const uint32_t ui32Register,
+								   const uint32_t ui32Stream,
+								   const uint32_t ui32CompMask,
+								   ShaderInfo* psShaderInfo,
+								   InOutSignature** ppsOut);
+
+int GetOutputSignatureFromSystemValue(SPECIAL_NAME eSystemValueType, uint32_t ui32SemanticIndex, ShaderInfo* psShaderInfo, InOutSignature** ppsOut);
+
 int GetShaderVarFromOffset(const uint32_t ui32Vec4Offset,
 						   const uint32_t* pui32Swizzle,
 						   ConstantBuffer* psCBuf,

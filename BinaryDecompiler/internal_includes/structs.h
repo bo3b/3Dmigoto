@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include "hlslcc.h"
+#include "cbstring/bstrlib.h"
 
 #include "internal_includes/tokens.h"
 #include "internal_includes/reflect.h"
@@ -142,6 +143,10 @@ struct Declaration
 
 };
 
+enum {MAX_GROUPSHARED = 8};
+
+enum {MAX_DX9_IMMCONST = 256};
+
 struct Shader
 {
     uint32_t ui32MajorVersion;
@@ -223,6 +228,9 @@ struct Shader
 
 	//int aiOpcodeUsed[NUM_OPCODES];
 
+	uint32_t ui32NumDx9ImmConst;
+	uint32_t aui32Dx9ImmConstArrayRemap[MAX_DX9_IMMCONST];
+
 	Shader() :
 		ui32MajorVersion(0),
 		ui32MinorVersion(0),
@@ -277,3 +285,19 @@ static const uint32_t HS_CTRL_POINT_PHASE = 2;
 static const uint32_t HS_JOIN_PHASE = 3;
 enum{ NUM_PHASES = 4};
 
+struct HLSLCrossCompilerContext
+{
+    bstring glsl;
+	bstring earlyMain;//Code to be inserted at the start of main()
+    bstring postShaderCode[NUM_PHASES];//End of main or before emit()
+
+    bstring* currentGLSLString;//either glsl or earlyMain
+
+    int havePostShaderCode[NUM_PHASES];
+    uint32_t currentPhase;
+
+    int indent;
+    unsigned int flags;
+    Shader* psShader;
+    // GLSLCrossDependencyData* psDependencies; Removed as it is GLSL Specific -DSS
+};

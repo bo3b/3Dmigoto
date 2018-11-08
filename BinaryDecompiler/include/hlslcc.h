@@ -23,6 +23,7 @@ typedef enum
     LANG_DEFAULT,// Depends on the HLSL shader model.
     LANG_ES_100,
     LANG_ES_300,
+	LANG_ES_310,
     LANG_120,
     LANG_130,
     LANG_140,
@@ -316,6 +317,9 @@ struct ShaderInfo
     uint32_t ui32NumOutputSignatures;
     InOutSignature* psOutputSignatures;
 
+	uint32_t ui32NumPatchConstantSignatures;
+    InOutSignature* psPatchConstantSignatures;
+
     uint32_t ui32NumResourceBindings;
     ResourceBinding* psResourceBindings;
 
@@ -370,6 +374,22 @@ typedef enum INTERPOLATION_MODE
     INTERPOLATION_LINEAR_SAMPLE = 6,
     INTERPOLATION_LINEAR_NOPERSPECTIVE_SAMPLE = 7,
 } INTERPOLATION_MODE;
+
+/*HLSL constant buffers are treated as default-block unform arrays by default. This is done
+  to support versions of GLSL which lack ARB_uniform_buffer_object functionality.
+  Setting this flag causes each one to have its own uniform block.
+  Note: Currently the nth const buffer will be named UnformBufferN. This is likey to change to the original HLSL name in the future.*/
+static const unsigned int HLSLCC_FLAG_UNIFORM_BUFFER_OBJECT = 0x1;
+
+static const unsigned int HLSLCC_FLAG_TESS_ENABLED = 0x20;
+
+//If set, shader inputs and outputs are declared with their semantic name.
+static const unsigned int HLSLCC_FLAG_INOUT_SEMANTIC_NAMES = 0x80;
+//If set, shader inputs and outputs are declared with their semantic name appended.
+static const unsigned int HLSLCC_FLAG_INOUT_APPEND_SEMANTIC_NAMES = 0x100;
+
+//If set, global uniforms are not stored in a struct.
+static const unsigned int HLSLCC_FLAG_DISABLE_GLOBALS_STRUCT = 0x800;
 
 #endif
 

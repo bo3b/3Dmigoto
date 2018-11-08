@@ -225,8 +225,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="cbstring\bsafe.c" />
+    <ClCompile Include="cbstring\bstraux.c" />
+    <ClCompile Include="cbstring\bstrlib.c" />
     <ClCompile Include="decode.cpp" />
     <ClCompile Include="reflect.cpp" />
+    <ClCompile Include="toHLSLDeclaration.cpp" />
+    <ClCompile Include="toHLSLInstruction.cpp" />
+    <ClCompile Include="toHLSLOperand.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\hlslcc.h" />
@@ -239,6 +245,9 @@
     <ClInclude Include="internal_includes\reflect.h" />
     <ClInclude Include="internal_includes\shaderLimits.h" />
     <ClInclude Include="internal_includes\structs.h" />
+    <ClInclude Include="internal_includes\toHLSLDeclaration.h" />
+    <ClInclude Include="internal_includes\toHLSLInstruction.h" />
+    <ClInclude Include="internal_includes\toHLSLOperand.h" />
     <ClInclude Include="internal_includes\tokens.h" />
     <ClInclude Include="internal_includes\tokensDX9.h" />
   </ItemGroup>

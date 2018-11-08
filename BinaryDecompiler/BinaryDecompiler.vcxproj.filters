@@ -21,6 +21,24 @@
     <ClCompile Include="reflect.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="toHLSLInstruction.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="toHLSLOperand.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cbstring\bsafe.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cbstring\bstraux.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cbstring\bstrlib.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="toHLSLDeclaration.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\hlslcc.h">
@@ -57,6 +75,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="internal_includes\tokensDX9.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="internal_includes\toHLSLInstruction.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="internal_includes\toHLSLOperand.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="internal_includes\toHLSLDeclaration.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
