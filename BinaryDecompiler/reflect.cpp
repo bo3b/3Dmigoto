@@ -157,7 +157,7 @@ static void ReadShaderVariableType(const uint32_t ui32MajorVersion,
 
 	if(ui32MemberCount)
 	{
-		varType->Members = (ShaderVarType*)malloc(sizeof(ShaderVarType)*ui32MemberCount);
+		varType->Members = new ShaderVarType[ui32MemberCount];
 
 		ui32MemberOffset = pui32tokens[3];
 	
