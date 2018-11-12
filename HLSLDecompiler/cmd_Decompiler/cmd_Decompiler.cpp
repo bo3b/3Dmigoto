@@ -58,6 +58,13 @@ static void PrintHelp(int argc, char *argv[])
 	exit(EXIT_FAILURE);
 }
 
+static void PrintVersion()
+{
+	LogInfo("3DMigoto cmd_Decompiler version %s\n", VER_FILE_VERSION_STR);
+
+	exit(EXIT_SUCCESS);
+}
+
 static struct {
 	std::vector<std::string> files;
 	bool decompile;
@@ -90,6 +97,9 @@ void parse_args(int argc, char *argv[])
 		if (!terminated && !strncmp(arg, "-", 1)) {
 			if (!strcmp(arg, "--help") || !strcmp(arg, "--usage")) {
 				PrintHelp(argc, argv); // Does not return
+			}
+			if (!strcmp(arg, "--version")) {
+				PrintVersion(); // Does not return
 			}
 			if (!strcmp(arg, "--")) {
 				terminated = true;
