@@ -1,0 +1,98 @@
+// Lights on outside of motel, shining down on walls.
+
+cbuffer Viewport : register(b0)
+{
+  float4x4 _ViewRotProjectionMatrix : packoffset(c0);
+  float4x4 _ViewProjectionMatrix : packoffset(c4);
+  float4x4 _ProjectionMatrix : packoffset(c8);
+  float4x4 _InvProjectionMatrix : packoffset(c12);
+  float4x4 _InvProjectionMatrixDepth : packoffset(c16);
+  float4x4 _DepthTextureTransform : packoffset(c20);
+  float4x3 _ViewMatrix : packoffset(c24);
+  float4x3 _InvViewMatrix : packoffset(c27);
+  float4x4 _PreviousViewProjectionMatrix : packoffset(c30);
+  float4 _CameraDistances : packoffset(c34);
+  float4 _ViewportSize : packoffset(c35);
+  float4 _CameraPosition_MaxStaticReflectionMipIndex : packoffset(c36);
+  float4 _CameraDirection_MaxParaboloidReflectionMipIndex : packoffset(c37);
+  float4 _ViewPoint_ExposureScale : packoffset(c38);
+  float4 _FogColorVector_ExposedWhitePointOverExposureScale : packoffset(c39);
+  float3 _SideFogColor : packoffset(c40);
+  float3 _SunFogColorDelta : packoffset(c41);
+  float3 _OppositeFogColorDelta : packoffset(c42);
+  float4 _FogValues0 : packoffset(c43);
+  float4 _FogValues1 : packoffset(c44);
+  float4 _CameraNearPlaneSize : packoffset(c45);
+  float4 _UncompressDepthWeights_ShadowProjDepthMinValue : packoffset(c46);
+  float4 _UncompressDepthWeightsWS_ReflectionFadeTarget : packoffset(c47);
+  float4 _WorldAmbientColorParams0 : packoffset(c48);
+  float4 _WorldAmbientColorParams1 : packoffset(c49);
+  float4 _WorldAmbientColorParams2 : packoffset(c50);
+  float4 _GlobalWorldTextureParams : packoffset(c51);
+  float4 _CullingCameraPosition_OneOverAutoExposureScale : packoffset(c52);
+  float4 _AmbientSkyColor_ReflectionScaleStrength : packoffset(c53);
+  float4 _AmbientGroundColor_ReflectionScaleDistanceMul : packoffset(c54);
+  float4 _FacettedShadowCastParams : packoffset(c55);
+  float4 _FSMClipPlanes : packoffset(c56);
+  float2 _ReflectionGIControl : packoffset(c57);
+}
+
+cbuffer LightData : register(b1)
+{
+  float4 _CascadedShadowDepthRanges : packoffset(c0);
+  float4 _CascadedShadowRanges : packoffset(c1);
+  float4 _CascadedShadowScale : packoffset(c2);
+  float4 _CascadedShadowSliceDepthOffsets : packoffset(c3);
+  float4 _CascadedShadowSliceDepthScales : packoffset(c4);
+  float4 _CascadedShadowSliceScaleOffsets[3] : packoffset(c5);
+  float4 _CascadedShadowSliceScaleOffsetsBiased[3] : packoffset(c8);
+  float4 _FacettedShadowReceiveParams : packoffset(c11);
+  float4 _LightCapsuleDivLength : packoffset(c12);
+  float4 _LightFadingClipPlanes[8] : packoffset(c13);
+  float4 _LightProjectedVideoUnpack[8] : packoffset(c21);
+  float4 _LightShadowFactor : packoffset(c29);
+  float4 _LightShadowMapSize : packoffset(c30);
+  float4x4 _LightSpotShadowProjections : packoffset(c31);
+  float4x4 _LightVolumeTransform : packoffset(c35);
+  float4 _LongRangeShadowVolumePosScaleBias : packoffset(c39);
+  float4 _LongRangeShadowVolumeUvScaleBias : packoffset(c40);
+  float4 _RainLightViewpointLPS_DistVPToEdgesLPS : packoffset(c41);
+  float3 _LightAttenuation : packoffset(c42);
+  float _LightSpecularIntensity : packoffset(c42.w);
+  float3 _LightCapsuleMulLength : packoffset(c43);
+  float _LightSpotNearClipFactor : packoffset(c43.w);
+  float3 _LightDirection : packoffset(c44);
+  float3 _LightFrontColor : packoffset(c45);
+  float3 _LightPosition : packoffset(c46);
+  float2 _LightCapsuleParams : packoffset(c47);
+  float2 _LightShadowDepthTransform : packoffset(c47.z);
+  float2 _LightSpotConeFactors : packoffset(c48);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : position0,
+  out float4 o0 : SV_Position0)
+{
+  float4 r0,r1;
+  uint4 bitmask;
+  r0.x = dot(v0.xyzw, _LightVolumeTransform._m00_m10_m20_m30);
+  r0.y = dot(v0.xyzw, _LightVolumeTransform._m01_m11_m21_m31);
+  r0.z = dot(v0.xyzw, _LightVolumeTransform._m02_m12_m22_m32);
+  r1.x = dot(r0.xyz, _ViewMatrix._m00_m10_m20);
+  r1.y = dot(r0.xyz, _ViewMatrix._m01_m11_m21);
+  r1.z = dot(r0.xyz, _ViewMatrix._m02_m12_m22);
+  r1.w = 1.000000000e+000;
+  o0.x = dot(r1.xyzw, _ProjectionMatrix._m00_m10_m20_m30);
+  o0.y = dot(r1.xyzw, _ProjectionMatrix._m01_m11_m21_m31);
+  o0.z = dot(r1.xyzw, _ProjectionMatrix._m02_m12_m22_m32);
+  o0.w = dot(r1.xyzw, _ProjectionMatrix._m03_m13_m23_m33);
+
+float4 stereo = StereoParams.Load(0);
+float separation = stereo.x;
+float convergence = stereo.y;
+
+o0.x += separation * (o0.w - convergence);
+  return;
+}

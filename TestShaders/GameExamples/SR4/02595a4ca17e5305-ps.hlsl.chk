@@ -1,0 +1,209 @@
+// Sea in distance
+// Manually fixed shader for 0x3f8000000 = 1.0
+
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[5];
+}
+
+
+cbuffer vc0 : register(b0)
+{
+  float4 Detail_Normal_Map_Tiling : packoffset(c0);
+  float2 Detail_Normal_Map_Amount : packoffset(c1);
+  float2 High_Detail_Cutoff_Dist : packoffset(c2);
+  float Normal_Map_Refl_Offset : packoffset(c3);
+  float Reflection_Plane_Height : packoffset(c4);
+  float Base_Reflectivity : packoffset(c5);
+  float3 TOD_Light_Direction : packoffset(c6);
+  float3 TOD_Light_Color : packoffset(c7);
+  float Specular_Power : packoffset(c8);
+  float3 Specular_Color : packoffset(c9);
+  float Specular_Alpha : packoffset(c10);
+  float Min_Opacity : packoffset(c11);
+  float Max_Fresnel : packoffset(c12);
+  float3 Crest_Color : packoffset(c13);
+  float Crest_Threshold : packoffset(c14);
+  float4 Blend_Map_Extents : packoffset(c15);
+  float4 Diffuse_Color2 : packoffset(c16);
+  float Max_Fog_Depth2 : packoffset(c17);
+  float2 Max_Fog_Depth : packoffset(c18);
+  float4 Diffuse_Color : packoffset(c19);
+}
+
+cbuffer vc1 : register(b1)
+{
+  float4 Time : packoffset(c0);
+  float2 Target_dimensions : packoffset(c2);
+}
+
+cbuffer vc4 : register(b4)
+{
+  float4 Tint_color : packoffset(c1);
+  float4 Fog_color : packoffset(c4);
+  float4 IR_Similarity_Data : packoffset(c10);
+}
+SamplerState Normal_MapSampler_s : register(s0);
+SamplerState Reflection_MapSampler_s : register(s1);
+SamplerState Blend_MapSampler_s : register(s2);
+SamplerState Diffuse_MapSampler_s : register(s3);
+Texture2D<float4> Normal_MapSampler : register(t0);
+Texture2D<float4> Reflection_MapSampler : register(t1);
+Texture2D<float4> Blend_MapSampler : register(t2);
+Texture2D<float4> Diffuse_MapSampler : register(t3);
+
+Texture2D<float4> StereoParams : register(t125);
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float3 v5 : TEXCOORD4,
+  float4 v6 : TEXCOORD5,
+  float4 v7 : TEXCOORD6,
+  float3 v8 : TEXCOORD7,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask;
+  r0.x = dot(v3.xyz, v3.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = v3.xyz * r0.xxx;
+  r0.w = dot(v2.xyz, v2.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = v2.xyz * r0.www;
+  r2.xyzw = float4(2.011000e+003,1.640000e+003,2.520000e+002,3.380000e+002) + v8.xzxz;
+  r0.w = dot(r2.zw, r2.zw);
+  r2.xy = saturate(float2(2.275313e-004,2.906977e-004) * r2.xy);
+  r0.w = sqrt(r0.w);
+  r1.w = Time.x + Time.x;
+  r0.w = r0.w * 1.000000015e-001 + -r1.w;
+  r0.w = sin(r0.w);
+  r1.w = dot(v5.xyz, v5.xyz);
+  r2.w = sqrt(r1.w);
+  r1.w = rsqrt(r1.w);
+  r3.xyz = v5.xyz * r1.www;
+  r1.w = -7.000000000e+001 + r2.w;
+  r1.w = saturate(3.333333507e-002 * r1.w);
+  r0.w = r1.w * r0.w;
+  r1.w = 4.000000060e-001 * r0.w;
+  r4.x = r0.w * 4.000000060e-001 + -5.000000000e-001;
+  r0.w = -r1.w * r1.w + 1.000000000e+000;
+  r0.w = sqrt(r0.w);
+  r1.xyz = r0.www * r1.xyz;
+  r0.xyz = r1.www * r0.xyz + r1.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r0.w = dot(r3.xyz, r0.xyz);
+  r1.x = r0.w + r0.w;
+  r0.w = saturate(r0.w);
+  r0.w = 1.000000000e+000 + -r0.w;
+  r1.xyz = r1.xxx * r0.xyz + -r3.xyz;
+  r1.x = saturate(dot(r1.xyz, TOD_Light_Direction.xyz));
+  r1.x = log2(r1.x);
+  r1.y = Specular_Power * 2.000000000e+001;
+  r1.x = r1.y * r1.x;
+  r1.x = exp2(r1.x);
+  r1.x = 5.000000000e+001 * r1.x;
+  r1.yzw = Specular_Color.xyz * TOD_Light_Color.xyz;
+  r1.xyz = r1.yzw * r1.xxx;
+  r1.xyz = Specular_Alpha * r1.xyz;
+  r1.w = r0.w * r0.w;
+  r0.w = r1.w * r0.w;
+  r1.w = -Base_Reflectivity + 1.000000000e+000;
+  r0.w = r0.w * r1.w + Base_Reflectivity;
+  r3.xyz = r1.xyz * r0.www;
+  r1.xyz = -r1.xyz * r0.www + Crest_Color.xyz;
+  r1.w = dot(r0.xyz, r0.xyz);
+  r1.w = rsqrt(r1.w);
+  r1.w = r1.w * r0.z;
+  r1.w = r1.w >= Crest_Threshold;
+
+  // r1.w = r1.w ? 0x3f800000 : 0;
+r1.w = r1.w ? 1.0 : 0;
+  r1.xyz = r1.www * r1.xyz + r3.xyz;
+  r0.y = r0.y * 3.000000000e+002 + -2.980000000e+002;
+  r0.xz = Normal_Map_Refl_Offset * r0.xz;
+  r1.w = Time.x + 2.500000000e+000;
+  r3.xy = r1.ww * float2(1.000000e-001,1.000000e-001) + v1.zw;
+  r3.xyzw = Normal_MapSampler.Sample(Normal_MapSampler_s, r3.xy).xyzw;
+  r0.y = r3.x * 4.000000000e+000 + r0.y;
+  r0.y = saturate(-2.000000000e+000 + r0.y);
+  r1.w = -r2.w * 1.999999955e-002 + 1.000000000e+000;
+  r1.w = max(r1.w, 0.000000000e+000);
+  r0.y = r1.w * r0.y;
+  r3.zw = float2(1.000000e+000,1.000000e+000) / Target_dimensions.xy;
+  r0.xz = r3.zw * r0.xz;
+  r1.w = 1.000000000e+002 / r2.w;
+  r2.w = -High_Detail_Cutoff_Dist.x + r2.w;
+  r2.w = saturate(High_Detail_Cutoff_Dist.y * r2.w);
+  r2.w = 1.000000000e+000 + -r2.w;
+  r1.w = min(r1.w, 1.000000000e+000);
+  r3.zw = v6.xy / v6.ww;
+  r5.xy = r3.zw * float2(5.000000e-001,5.000000e-001) + float2(5.000000e-001,5.000000e-001);
+  r5.z = 1.000000000e+000 + -r5.y;
+  r0.xz = r0.xz * r1.ww + r5.xz;
+  r0.xz = r3.xy * float2(5.000000e-002,5.000000e-002) + r0.xz;
+  r3.xyzw = Reflection_MapSampler.Sample(Reflection_MapSampler_s, r0.xz).xyzw;
+  r3.xyz = r3.xyz * r0.www;
+  r0.x = r3.w < 1.000000000e+000;
+
+  // r0.x = r0.x ? 0x3f800000 : 0;
+r0.x = r0.x ? 1.0 : 0;
+  r0.z = min(r0.w, Max_Fresnel);
+  r3.xyz = r3.xyz / cb4[1].xyz;
+  r5.xyz = float3(1.661540e+000,3.179220e-001,1.224920e-001) + -r3.xyz;
+  r3.xyz = r0.yyy * r5.xyz + r3.xyz;
+  r2.z = -r2.x;
+  r5.xyzw = Blend_MapSampler.Sample(Blend_MapSampler_s, r2.zy).xyzw;
+  r2.xyz = -Diffuse_Color.xyz + Diffuse_Color2.xyz;
+  r2.xyz = r5.zzz * r2.xyz + Diffuse_Color.xyz;
+  r0.y = 3.000000119e-001 + -r5.z;
+  r0.y = saturate(3.333333254e+000 * r0.y);
+  r3.xyz = r3.xyz + -r2.xyz;
+  r3.xyz = r0.zzz * r3.xyz + r2.xyz;
+  r0.xzw = r0.xxx * r1.xyz + r3.xyz;
+  r1.x = r0.y * -2.000000000e+000 + 3.000000000e+000;
+  r0.y = r0.y * r0.y;
+  r0.y = r1.x * r0.y;
+  r4.y = -5.000000000e-001;
+  r1.xyzw = float4(1.000000e-003,1.000000e-003,4.000000e-002,4.000000e-002) * v8.xzxz;
+  r1.zw = r4.xy * float2(1.700000e-002,1.700000e-002) + r1.zw;
+  r3.xyzw = Diffuse_MapSampler.Sample(Diffuse_MapSampler_s, r1.xy).xyzw;
+  r1.xyzw = Diffuse_MapSampler.Sample(Diffuse_MapSampler_s, r1.zw).xyzw;
+  r1.xyz = r1.xyz * r3.zzz;
+  r1.xyz = TOD_Light_Color.xyz * r1.xyz;
+  r1.yzw = r1.xyz * r0.yyy + -r2.xyz;
+  r0.y = r1.x * r0.y + -1.000000015e-001;
+  r0.y = saturate(r0.y + r0.y);
+  r1.x = r0.y * -2.000000000e+000 + 3.000000000e+000;
+  r0.y = r0.y * r0.y;
+  r0.y = r1.x * r0.y;
+  r1.xyz = r0.yyy * r1.yzw + r2.xyz;
+  r0.y = r0.y * r2.w;
+  r1.xyz = r1.xyz + -r0.xzw;
+  r0.xyz = r0.yyy * r1.xyz + r0.xzw;
+  r0.w = v7.x * -v5.y;
+  r1.x = -1.442695022e+000 * r0.w;
+  r1.x = exp2(r1.x);
+  r1.x = 1.000000000e+000 + -r1.x;
+  r0.w = r1.x / r0.w;
+  r1.x = 5.000000075e-002 < abs(v5.y);
+  r0.w = r1.x ? r0.w : 1.000000000e+000;
+  r1.x = dot(-v5.xyz, -v5.xyz);
+  r1.x = sqrt(r1.x);
+  r1.x = v7.y * r1.x;
+  r0.w = r0.w * r1.x + -v7.w;
+  r0.w = exp2(-r0.w);
+  r0.w = min(r0.w, 1.000000000e+000);
+  r0.w = 1.000000000e+000 + -r0.w;
+  r1.x = 1.000000000e+000 + -r0.w;
+  r0.xyz = r1.xxx * r0.xyz;
+  r0.xyz = r0.www * cb4[4].xyz + r0.xyz;
+  r0.w = max(1.000000000e+000, Min_Opacity);
+  o0.xyzw = cb4[1].xyzw * r0.xyzw;
+  return;
+}

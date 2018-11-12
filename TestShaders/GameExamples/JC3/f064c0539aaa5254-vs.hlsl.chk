@@ -1,0 +1,383 @@
+// ---- Created with 3Dmigoto v1.2.27 on Tue Jan 26 15:36:23 2016
+
+// Example manual shader fix for previously unknown ld_raw_indexable
+
+cbuffer cb1 : register(b1)
+{
+  float4 m_WorldPos_PatchLod : packoffset(c0);
+  float2 VertexTextureSize : packoffset(c1);
+  float m_MeshOffset : packoffset(c1.z);
+  float m_ChildMapBorder : packoffset(c1.w);
+}
+
+cbuffer cb2 : register(b2)
+{
+  float4 m_PatchPackDataXZ[4] : packoffset(c0);
+  float4 m_PatchPackDataY : packoffset(c4);
+  uint m_BaseLod : packoffset(c5);
+}
+
+cbuffer cb3 : register(b3)
+{
+  uint m_StartIndex : packoffset(c0);
+  uint m_Lod : packoffset(c0.y);
+}
+
+  // Manual copy from ASM.
+  struct SPositionInfo
+  {
+      
+      uint xy_comp;                  // Offset:    0
+      uint zw_comp;                  // Offset:    4
+      uint normal;                   // Offset:    8
+
+  };                        // Offset:    0 Size:    12
+
+  // Manual copy from ASM.
+  struct STriangleOutputBuffer
+  {
+      
+      uint m_IndexStart;             // Offset:    0
+
+  };                        // Offset:    0 Size:     4
+
+  // Manual copy from ASM.
+  struct SPatchOutputBuffer
+  {
+      
+      int m_PatchX;                  // Offset:    0
+      int m_PatchZ;                  // Offset:    4
+      uint m_PatchIndex;             // Offset:    8
+      uint m_NumOfQuads;             // Offset:   12
+      uint m_TriangleCount;          // Offset:   16
+      uint m_PatchTriangleCount[4];  // Offset:   20
+      uint m_PatchTriangleOffset[4]; // Offset:   36
+      float3 m_LocalCamera;          // Offset:   52
+      float3 m_CameraPos;            // Offset:   64
+
+  };                        // Offset:    0 Size:    76
+
+SamplerState TileMaskSampler_s : register(s1);
+
+  // Use proper struct name
+  StructuredBuffer<SPositionInfo> PositionInfo : register(t0);
+
+Texture2D<float4> TileMask : register(t1);
+Texture2D<float4> TileMaskFadeIn : register(t2);
+Buffer<uint> IndexBuffer : register(t3);
+
+  // raw
+  //StructuredBuffer<VertexBuffer> VertexBuffer : register(t4); 
+  ByteAddressBuffer VertexBuffer : register(t4);
+  
+  // Use proper struct name
+  StructuredBuffer<STriangleOutputBuffer> IndexIntoIndexBuffer : register(t5);
+  StructuredBuffer<SPatchOutputBuffer> PatchOutputBuffer : register(t6);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main( 
+  uint v0 : SV_VertexID0,
+  uint v1 : SV_InstanceID0,
+  out float4 o0 : TEXCOORD1,
+  out float4 o1 : TEXCOORD2,
+  out float4 o2 : TEXCOORD3)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  
+  // r0.x = m_Lod << 2;
+  // r0.x = (int)r0.x + 36;
+// Known bad code for instruction (needs manual fix):
+// Multi level struct offset necessary, and must comment out above, as they are created
+// as part of the struct indexing.
+// ld_structured_indexable(structured_buffer, stride=76)(mixed,mixed,mixed,mixed) r0.x, cb3[0].x, r0.x, t6.xxxx
+r0.x = PatchOutputBuffer[m_StartIndex].m_PatchTriangleOffset[m_Lod];
+  
+  uiDest.x = (uint)v0.x / 3;
+  r2.x = (uint)v0.x % 3;
+  r1.x = uiDest.x;
+  r0.x = (int)r0.x + (int)r1.x;
+  
+// Known bad code for instruction (needs manual fix):
+// ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, r0.x, l(0), t5.xxxx
+r0.x = IndexIntoIndexBuffer[r0.x].m_IndexStart;
+  
+  r0.x = (int)r0.x + (int)r2.x;
+  r0.x = IndexBuffer.Load(r0.x).x;
+  r0.x = (uint)r0.x << 3;
+  
+// No code for instruction (needs manual fix):
+// ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r0.xy, r0.x, t4.xyxx
+ // Tricky because it's a raw buffer load, so it's not using [] form.
+ //VertexBuffer
+r0.xy = VertexBuffer.Load2(r0.x);
+ 
+// Known bad code for instruction (needs manual fix):
+// ld_structured_indexable(structured_buffer, stride=12)(mixed,mixed,mixed,mixed) r0.xzw, r0.x, l(0), t0.xxyz
+r0.x = PositionInfo[r0.x].xy_comp;
+r0.z = PositionInfo[r0.x].zw_comp;
+r0.w = PositionInfo[r0.x].normal;
+
+  if (8 == 0) r1.x = 0; else if (8+8 < 32) {   r1.x = (int)r0.w << (32-(8 + 8)); r1.x = (uint)r1.x >> (32-8);  } else r1.x = (uint)r0.w >> 8;
+  if (8 == 0) r1.y = 0; else if (8+16 < 32) {   r1.y = (int)r0.w << (32-(8 + 16)); r1.y = (uint)r1.y >> (32-8);  } else r1.y = (uint)r0.w >> 16;
+  r1.xy = (uint2)r1.xy;
+  r1.zw = cmp(float2(127,127) < r1.xy);
+  r2.xy = float2(-256,-256) + r1.xy;
+  r1.yz = r1.zw ? r2.xy : r1.xy;
+  r2.xyz = (int3)r0.xzw & int3(0,0,255);
+  r0.x = (uint)r0.x >> 16;
+  r0.x = (uint)r0.x;
+  r0.x = m_PatchPackDataY.y * r0.x;
+  r3.y = r0.x * 1.52590219e-005 + m_PatchPackDataY.x;
+  r0.xzw = (uint3)r2.xyz;
+  r1.w = cmp(127 < r0.w);
+  r2.x = -256 + r0.w;
+  r1.x = r1.w ? r2.x : r0.w;
+  r0.xz = float2(1.52590219e-005,1.52590219e-005) * r0.xz;
+  r1.xyz = float3(0.00787401572,0.00787401572,0.00787401572) * r1.xyz;
+  r0.w = (uint)m_WorldPos_PatchLod.w;
+  r1.w = (uint)r0.w << 2;
+  r1.w = -28 + (int)r1.w;
+  r1.w = (uint)r1.w;
+  r2.xyz = r1.xyz * r1.www;
+  o1.xyz = r1.xyz;
+  r1.x = (int)r0.w + -m_BaseLod;
+  r0.w = cmp(9 < (uint)r0.w);
+  r1.x = min(3, (uint)r1.x);
+  r1.y = 65535 / m_PatchPackDataXZ[r1.x].z;
+  r1.y = m_PatchPackDataXZ[r1.x].y * r1.y;
+  r3.xz = r0.xz * r1.yy + m_PatchPackDataXZ[r1.x].xx;
+  r0.xz = m_WorldPos_PatchLod.xz + r3.xz;
+  r0.xz = float2(0.5,0.5) + r0.xz;
+  r0.xz = r0.xz * float2(3.05175781e-005,3.05175781e-005) + float2(0.5,0.5);
+  r1.x = TileMask.SampleLevel(TileMaskSampler_s, r0.xz, 0).x;
+  r0.x = TileMaskFadeIn.SampleLevel(TileMaskSampler_s, r0.xz, 0).x;
+  r0.x = 1 + -r0.x;
+  r0.x = saturate(-r0.x * 2.0999999 + 1);
+  r1.yzw = r2.xyz * r0.xxx;
+  r1.yzw = r0.www ? float3(-0,-0,-0) : -r1.yzw;
+  r0.x = saturate(2.0999999 * r1.x);
+  r0.x = 1 + -r0.x;
+  r2.xyz = r2.xyz * r0.xxx;
+  r0.xzw = r0.www ? -r2.xyz : float3(-0,-0,-0);
+  r0.xzw = r3.xyz + r0.xzw;
+  o0.xyz = r0.xzw + r1.yzw;
+  r0.x = (int)r0.y & 0x0000ffff;
+  r0.y = (uint)r0.y >> 16;
+  r0.xy = (uint2)r0.xy;
+  r0.zw = VertexTextureSize.xy * r0.xy;
+  r0.xy = float2(1.52590219e-005,1.52590219e-005) * r0.zw;
+  r0.xy = floor(r0.xy);
+  o2.xy = r0.xy / VertexTextureSize.xy;
+  o2.zw = r0.xy;
+  return;
+}
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// Generated by Microsoft (R) HLSL Shader Compiler 9.29.952.3111
+//
+//   using 3Dmigoto v1.2.27 on Tue Jan 26 15:36:23 2016
+//
+//
+// Buffer Definitions: 
+//
+// cbuffer cb1
+// {
+//
+//   float4 m_WorldPos_PatchLod;        // Offset:    0 Size:    16
+//   float2 VertexTextureSize;          // Offset:   16 Size:     8
+//   float m_MeshOffset;                // Offset:   24 Size:     4 [unused]
+//   float m_ChildMapBorder;            // Offset:   28 Size:     4 [unused]
+//
+// }
+//
+// cbuffer cb2
+// {
+//
+//   float4 m_PatchPackDataXZ[4];       // Offset:    0 Size:    64
+//   float4 m_PatchPackDataY;           // Offset:   64 Size:    16
+//   uint m_BaseLod;                    // Offset:   80 Size:     4
+//
+// }
+//
+// cbuffer cb3
+// {
+//
+//   uint m_StartIndex;                 // Offset:    0 Size:     4
+//   uint m_Lod;                        // Offset:    4 Size:     4
+//
+// }
+//
+// Resource bind info for PositionInfo
+// {
+//
+//   struct SPositionInfo
+//   {
+//       
+//       uint xy_comp;                  // Offset:    0
+//       uint zw_comp;                  // Offset:    4
+//       uint normal;                   // Offset:    8
+//
+//   } $Element;                        // Offset:    0 Size:    12
+//
+// }
+//
+// Resource bind info for IndexIntoIndexBuffer
+// {
+//
+//   struct STriangleOutputBuffer
+//   {
+//       
+//       uint m_IndexStart;             // Offset:    0
+//
+//   } $Element;                        // Offset:    0 Size:     4
+//
+// }
+//
+// Resource bind info for PatchOutputBuffer
+// {
+//
+//   struct SPatchOutputBuffer
+//   {
+//       
+//       int m_PatchX;                  // Offset:    0
+//       int m_PatchZ;                  // Offset:    4
+//       uint m_PatchIndex;             // Offset:    8
+//       uint m_NumOfQuads;             // Offset:   12
+//       uint m_TriangleCount;          // Offset:   16
+//       uint m_PatchTriangleCount[4];  // Offset:   20
+//       uint m_PatchTriangleOffset[4]; // Offset:   36
+//       float3 m_LocalCamera;          // Offset:   52
+//       float3 m_CameraPos;            // Offset:   64
+//
+//   } $Element;                        // Offset:    0 Size:    76
+//
+// }
+//
+//
+// Resource Bindings:
+//
+// Name                                 Type  Format         Dim Slot Elements
+// ------------------------------ ---------- ------- ----------- ---- --------
+// TileMaskSampler                   sampler      NA          NA    1        1
+// PositionInfo                      texture  struct         r/o    0        1
+// TileMask                          texture  float4          2d    1        1
+// TileMaskFadeIn                    texture  float4          2d    2        1
+// IndexBuffer                       texture    uint         buf    3        1
+// VertexBuffer                      texture    byte         r/o    4        1
+// IndexIntoIndexBuffer              texture  struct         r/o    5        1
+// PatchOutputBuffer                 texture  struct         r/o    6        1
+// cb1                               cbuffer      NA          NA    1        1
+// cb2                               cbuffer      NA          NA    2        1
+// cb3                               cbuffer      NA          NA    3        1
+//
+//
+//
+// Input signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// SV_VertexID              0   x           0   VERTID    uint   x   
+// SV_InstanceID            0   x           1   INSTID    uint       
+//
+//
+// Output signature:
+//
+// Name                 Index   Mask Register SysValue  Format   Used
+// -------------------- ----- ------ -------- -------- ------- ------
+// TEXCOORD                 1   xyz         0     NONE   float   xyz 
+// TEXCOORD                 2   xyz         1     NONE   float   xyz 
+// TEXCOORD                 3   xyzw        2     NONE   float   xyzw
+//
+vs_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer cb1[2], immediateIndexed
+dcl_constantbuffer cb2[6], dynamicIndexed
+dcl_constantbuffer cb3[1], immediateIndexed
+dcl_sampler s1, mode_default
+dcl_resource_structured t0, 12 
+dcl_resource_texture2d (float,float,float,float) t1
+dcl_resource_texture2d (float,float,float,float) t2
+dcl_resource_buffer (uint,uint,uint,uint) t3
+dcl_resource_raw t4
+dcl_resource_structured t5, 4 
+dcl_resource_structured t6, 76 
+dcl_input_sgv v0.x, vertex_id
+dcl_output o0.xyz
+dcl_output o1.xyz
+dcl_output o2.xyzw
+dcl_temps 4
+ishl r0.x, cb3[0].y, l(2)
+iadd r0.x, r0.x, l(36)
+ld_structured_indexable(structured_buffer, stride=76)(mixed,mixed,mixed,mixed) r0.x, cb3[0].x, r0.x, t6.xxxx
+udiv r1.x, r2.x, v0.x, l(3)
+iadd r0.x, r0.x, r1.x
+ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, r0.x, l(0), t5.xxxx
+iadd r0.x, r0.x, r2.x
+ld_indexable(buffer)(uint,uint,uint,uint) r0.x, r0.xxxx, t3.xyzw
+ishl r0.x, r0.x, l(3)
+ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r0.xy, r0.x, t4.xyxx
+ld_structured_indexable(structured_buffer, stride=12)(mixed,mixed,mixed,mixed) r0.xzw, r0.x, l(0), t0.xxyz
+ubfe r1.xy, l(8, 8, 0, 0), l(8, 16, 0, 0), r0.wwww
+utof r1.xy, r1.xyxx
+lt r1.zw, l(0.000000, 0.000000, 127.000000, 127.000000), r1.xxxy
+add r2.xy, r1.xyxx, l(-256.000000, -256.000000, 0.000000, 0.000000)
+movc r1.yz, r1.zzwz, r2.xxyx, r1.xxyx
+and r2.xyz, r0.xzwx, l(0x0000ffff, 0x0000ffff, 255, 0)
+ushr r0.x, r0.x, l(16)
+utof r0.x, r0.x
+mul r0.x, r0.x, cb2[4].y
+mad r3.y, r0.x, l(0.0000152590219), cb2[4].x
+utof r0.xzw, r2.xxyz
+lt r1.w, l(127.000000), r0.w
+add r2.x, r0.w, l(-256.000000)
+movc r1.x, r1.w, r2.x, r0.w
+mul r0.xz, r0.xxzx, l(0.0000152590219, 0.000000, 0.0000152590219, 0.000000)
+mul r1.xyz, r1.xyzx, l(0.00787401572, 0.00787401572, 0.00787401572, 0.000000)
+ftou r0.w, cb1[0].w
+ishl r1.w, r0.w, l(2)
+iadd r1.w, l(-28), r1.w
+utof r1.w, r1.w
+mul r2.xyz, r1.wwww, r1.xyzx
+mov o1.xyz, r1.xyzx
+iadd r1.x, r0.w, -cb2[5].x
+ult r0.w, l(9), r0.w
+umin r1.x, r1.x, l(3)
+div r1.y, l(65535.000000), cb2[r1.x + 0].z
+mul r1.y, r1.y, cb2[r1.x + 0].y
+mad r3.xz, r0.xxzx, r1.yyyy, cb2[r1.x + 0].xxxx
+add r0.xz, r3.xxzx, cb1[0].xxzx
+add r0.xz, r0.xxzx, l(0.500000, 0.000000, 0.500000, 0.000000)
+mad r0.xz, r0.xxzx, l(0.0000305175781, 0.000000, 0.0000305175781, 0.000000), l(0.500000, 0.000000, 0.500000, 0.000000)
+sample_l_indexable(texture2d)(float,float,float,float) r1.x, r0.xzxx, t1.xyzw, s1, l(0.000000)
+sample_l_indexable(texture2d)(float,float,float,float) r0.x, r0.xzxx, t2.xyzw, s1, l(0.000000)
+add r0.x, -r0.x, l(1.000000)
+mad_sat r0.x, -r0.x, l(2.100000), l(1.000000)
+mul r1.yzw, r0.xxxx, r2.xxyz
+movc r1.yzw, r0.wwww, l(0,-0.000000,-0.000000,-0.000000), -r1.yyzw
+mul_sat r0.x, r1.x, l(2.100000)
+add r0.x, -r0.x, l(1.000000)
+mul r2.xyz, r0.xxxx, r2.xyzx
+movc r0.xzw, r0.wwww, -r2.xxyz, l(-0.000000,0,-0.000000,-0.000000)
+add r0.xzw, r0.xxzw, r3.xxyz
+add o0.xyz, r1.yzwy, r0.xzwx
+and r0.x, r0.y, l(0x0000ffff)
+ushr r0.y, r0.y, l(16)
+utof r0.xy, r0.xyxx
+mul r0.zw, r0.xxxy, cb1[1].xxxy
+mul r0.xy, r0.zwzz, l(0.0000152590219, 0.0000152590219, 0.000000, 0.000000)
+round_ni r0.xy, r0.xyxx
+div o2.xy, r0.xyxx, cb1[1].xyxx
+mov o2.zw, r0.xxxy
+ret 
+// Approximately 63 instruction slots used
+*/
