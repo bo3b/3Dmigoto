@@ -85,19 +85,24 @@ run_decompiler_test()
 	recompiled="${dst}_recompiled.bin"
 	check="$decompiled.chk"
 
-	model=$("$FXC" /nologo /dumpbin "$compiled" | grep -av '^\/\/' | head -n 1 | tr -d '\r')
 	fail=0
 
 	rm "$decompiled" "$recompiled" 2>/dev/null
-	"$CMD_DECOMPILER" -D "$compiled" >/dev/null 2>&1 # produces "$decompiled"
-	if [ ! -f "$decompiled" ]; then
-		echo -n " HLSL decompilation failed."
+	model=$(timeout 5s "$FXC" /nologo /dumpbin "$compiled" | grep -av '^\/\/' | head -n 1 | tr -d '\r')
+	if [ -z "$model" ]; then
+		echo -n " Unable to get shader model - bad binary?"
 		fail=1
 	else
-		check_decompiler_result "$decompiled" "$check" "$update_chk" || fail=1
-		if ! "$FXC" /nologo "$decompiled" /T "$model" /Fo "$recompiled" >/dev/null 2>&1; then
-			echo -n " Recompilation failed."
+		"$CMD_DECOMPILER" -D "$compiled" >/dev/null 2>&1 # produces "$decompiled"
+		if [ ! -f "$decompiled" ]; then
+			echo -n " HLSL decompilation failed."
 			fail=1
+		else
+			check_decompiler_result "$decompiled" "$check" "$update_chk" || fail=1
+			if ! "$FXC" /nologo "$decompiled" /T "$model" /Fo "$recompiled" >/dev/null 2>&1; then
+				echo -n " Recompilation failed."
+				fail=1
+			fi
 		fi
 	fi
 
