@@ -1,0 +1,59 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:08 2018
+
+cbuffer _Globals : register(b0)
+{
+  float DefaultHeight : packoffset(c0) = {100};
+  float DefaultWidth : packoffset(c0.y) = {100};
+
+  struct
+  {
+    float2 m_Position;
+  } MaterialVertexDef_Rigid : packoffset(c1);
+
+
+  struct
+  {
+    float2 m_Position;
+    float4 m_Weights;
+    float4 m_Indices;
+  } MaterialVertexDef_Skeletal : packoffset(c2);
+
+  bool bHalfPrecision : packoffset(c5) = false;
+  float4 k_fBoxBlurParams : packoffset(c6) = {2,1,0,1};
+  float3 k_fFarDOFParams : packoffset(c7) = {0,1,0};
+  float3 k_fNearDOFParams : packoffset(c8) = {0,1,0};
+  float4 k_vSourceBufferSize : packoffset(c9) = {0,0,0,0};
+  bool k_bOITFastVolumetricApprox : packoffset(c10);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float2 v0 : SV_POSITION0,
+  float4 v1 : BLENDWEIGHT0,
+  float4 v2 : BLENDINDICES0,
+  out float4 o0 : SV_POSITION0,
+  out float2 o1 : TEXCOORD0,
+  out float2 p1 : TEXCOORD1,
+  out float4 o2 : TEXCOORD2,
+  out float4 o3 : TEXCOORD3)
+{
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  o0.xy = v0.xy;
+  o0.zw = float2(0,1);
+  o1.xyzw = v0.xyxy * float4(0.5,-0.5,1,-1) + float4(0.5,0.5,0,0);
+  r0.xyzw = v0.xyxy * float4(0.5,-0.5,0.5,-0.5) + float4(0.5,0.5,0.5,0.5);
+  r1.xyzw = float4(1,1,1,1) / k_vSourceBufferSize.xyxy;
+  o2.xyzw = r1.zwzw * float4(-0.444671988,-1.33924401,1.33924401,-0.444671988) + r0.zwzw;
+  o3.xyzw = r1.xyzw * float4(-1.33924401,0.444671988,0.444671988,1.33924401) + r0.xyzw;
+  return;
+}

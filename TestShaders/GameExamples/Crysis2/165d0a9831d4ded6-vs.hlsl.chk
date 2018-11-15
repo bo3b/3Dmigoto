@@ -1,0 +1,41 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:55 2018
+
+cbuffer PER_BATCH : register(b0)
+{
+  row_major float4x4 TexGen0 : packoffset(c0);
+}
+
+cbuffer PER_INSTANCE : register(b1)
+{
+  row_major float4x4 CompMatrix : packoffset(c0);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : POSITION0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Position0)
+{
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = dot(TexGen0._m00_m01_m02_m03, v0.xyzw);
+  r0.y = dot(TexGen0._m10_m11_m12_m13, v0.xyzw);
+  r0.z = dot(TexGen0._m20_m21_m22_m23, v0.xyzw);
+  r0.w = dot(TexGen0._m30_m31_m32_m33, v0.xyzw);
+  r0.xyz = r0.xyz / r0.www;
+  r0.w = 1;
+  o0.x = dot(CompMatrix._m00_m01_m02_m03, r0.xyzw);
+  o0.y = dot(CompMatrix._m10_m11_m12_m13, r0.xyzw);
+  o0.z = dot(CompMatrix._m20_m21_m22_m23, r0.xyzw);
+  o0.w = dot(CompMatrix._m30_m31_m32_m33, r0.xyzw);
+  return;
+}

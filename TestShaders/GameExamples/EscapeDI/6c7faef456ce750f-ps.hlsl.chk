@@ -1,0 +1,94 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:28:02 2018
+
+cbuffer global_viewport : register(b0)
+{
+  float3 camera_unprojection : packoffset(c0);
+  float3 camera_pos : packoffset(c1);
+  float4x4 camera_view : packoffset(c2);
+  float4x4 camera_inv_view : packoffset(c6);
+  float4x4 camera_projection : packoffset(c10);
+  float4x4 camera_inv_projection : packoffset(c14);
+  float4x4 camera_world : packoffset(c18);
+  float time : packoffset(c22);
+  float delta_time : packoffset(c22.y);
+  float2 back_buffer_size : packoffset(c22.z);
+  float g_tessellation : packoffset(c23);
+  float g_tessellation_tri_size : packoffset(c23.y);
+  float g_tessellation_detail : packoffset(c23.z);
+}
+
+cbuffer c0 : register(b1)
+{
+  float4x4 world_view_proj : packoffset(c0);
+  float4x4 world_to_shadow_map : packoffset(c4);
+}
+
+SamplerState depth_s_s : register(s0);
+SamplerComparisonState shadow_map_sampler_s_s : register(s1);
+Texture2D<float4> depth : register(t0);
+Texture2D<float> shadow_map_slice_0 : register(t1);
+Texture2D<float4> nv_stereo_params : register(t2);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  out float4 o0 : SV_TARGET0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = depth.Sample(depth_s_s, v1.xy).xyzw;
+  r0.y = saturate(0.0199999996 * r0.x);
+  r0.y = r0.y * 0.194999993 + 0.00499999989;
+  r0.x = r0.x + -r0.y;
+  r1.xyzw = nv_stereo_params.Load(float4(0,0,0,0)).xyzw;
+  r0.y = camera_unprojection.x * r1.y;
+  r1.x = camera_inv_view._m00 * r0.y;
+  r1.y = camera_inv_view._m01 * r0.y;
+  r1.z = camera_inv_view._m02 * r0.y;
+  r1.xyz = v2.xyz + -r1.xyz;
+  r1.xyz = r1.xyz / v2.www;
+  r2.x = r0.y * camera_inv_view._m00 + camera_inv_view._m30;
+  r2.y = r0.y * camera_inv_view._m01 + camera_inv_view._m31;
+  r2.z = r0.y * camera_inv_view._m02 + camera_inv_view._m32;
+  r0.xyz = r1.xyz * r0.xxx + r2.xyz;
+  r0.w = 1;
+  r1.x = dot(r0.xyzw, world_to_shadow_map._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, world_to_shadow_map._m01_m11_m21_m31);
+  r0.x = dot(r0.xyzw, world_to_shadow_map._m02_m12_m22_m32);
+  shadow_map_slice_0.GetDimensions(0, fDest.x, fDest.y, fDest.z);
+  r2.xyzw = fDest.xyzw;
+  r0.yz = float2(1,1) / r2.xy;
+  r0.w = 0;
+  r1.z = -0.5;
+  while (true) {
+    r1.w = cmp(0.5 < r1.z);
+    if (r1.w != 0) break;
+    r2.x = r1.z;
+    r1.w = r0.w;
+    r2.z = -0.5;
+    while (true) {
+      r2.w = cmp(0.5 < r2.z);
+      if (r2.w != 0) break;
+      r2.y = r2.z;
+      r2.yw = r2.xy * r0.yz + r1.xy;
+      r2.y = shadow_map_slice_0.SampleCmpLevelZero(shadow_map_sampler_s_s, r2.yw, r0.x).x;
+      r1.w = r2.y + r1.w;
+      r2.z = 1 + r2.z;
+    }
+    r0.w = r1.w;
+    r1.z = 1 + r1.z;
+  }
+  o0.xyz = float3(0.25,0.25,0.25) * r0.www;
+  o0.w = 1;
+  return;
+}

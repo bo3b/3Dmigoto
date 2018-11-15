@@ -1,0 +1,290 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:44 2018
+
+cbuffer cb_g_Pass : register(b2)
+{
+
+  struct
+  {
+    float4 m_EyePosition;
+    float4 m_EyeDirection;
+    float4x4 m_ViewToWorld;
+    float4x4 m_WorldToView;
+    float4x4 m_ProjMatrix;
+    float4x4 m_ViewProj;
+    float4x4 m_ViewNoTranslationProj;
+    float4 m_ViewTranslation;
+
+    struct
+    {
+      float4x4 clipXYZToViewPos;
+      float4x4 clipXYZToWorldPos;
+      float4 clipZToViewZ;
+    } reverseProjParams;
+
+    float4 m_VPosToUV;
+    float4 m_ViewportScaleOffset;
+    float4 m_ClipPlane;
+    float4 m_GlobalLightingScale;
+    float4 m_ViewSpaceLightingBackWS;
+    float4 m_ThinGeomAAPixelScale;
+  } g_Pass : packoffset(c0);
+
+}
+
+cbuffer cb_g_DeferredLights : register(b5)
+{
+
+  struct
+  {
+
+    struct
+    {
+      float4 m_Position;
+      float4 m_Color;
+      float4 m_Attenuation;
+    } m_OmniLight;
+
+
+    struct
+    {
+      float4 m_Direction;
+      float4 m_Color;
+    } m_DirectLight;
+
+
+    struct
+    {
+      float4 m_Position;
+      float4 m_Color;
+      float4 m_Attenuation;
+      float4 m_Direction;
+      float4 m_ConeAngles;
+      float4 m_PositionAtNearClip;
+    } m_SpotLight;
+
+
+    struct
+    {
+      float4x4 worldToLight[6];
+      float4 shadowMapScaleOffset[6];
+      float4 noiseScale;
+    } m_Projections;
+
+
+    struct
+    {
+      float4x4 worldToCookie;
+      int4 cookieArrayIndex;
+    } m_Cookie;
+
+    float4 m_BackgroundColor;
+    float4 m_DepthParams;
+    float4 m_EyeXAxis;
+    float4 m_EyeYAxis;
+    float4 m_EyeZAxis;
+    float4 m_VPOSToUVs_Resolve;
+    float4 m_EyeWorldPosition_Resolve;
+    float4 m_WeatherExposedParams;
+    float4x4 m_LightClipToWorldMat;
+    float4 m_IsolateVars;
+    float m_EnvironmentSpecularScale;
+  } g_DeferredLights : packoffset(c0);
+
+}
+
+SamplerState s_PointClamp_s_s : register(s10);
+SamplerState s_TrilinearClamp_s_s : register(s12);
+SamplerState s_TrilinearWrap_s_s : register(s13);
+Texture2D<float4> t_Albedo : register(t0);
+Texture2D<float4> t_Normals : register(t1);
+Texture2D<float4> t_DepthSurface : register(t2);
+Texture2D<float4> t_SpecularReflectance : register(t3);
+Texture2D<float4> t_SSAO : register(t4);
+TextureCubeArray<float4> t_g_ProjectorCubeCookie : register(t10);
+Texture2D<float4> t_MiscProps : register(t15);
+Texture2D<float4> t_BRDFLUT : register(t55);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_Position0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = g_Pass.m_VPosToUV.xy * v0.xy;
+  r1.z = t_DepthSurface.SampleLevel(s_PointClamp_s_s, r0.xy, 0).x;
+  r1.xy = r0.xy * float2(2,-2) + float2(-1,1);
+  r1.w = 1;
+  r2.x = dot(r1.xyzw, g_Pass.reverseProjParams.clipXYZToViewPos._m00_m10_m20_m30);
+  r2.y = dot(r1.xyzw, g_Pass.reverseProjParams.clipXYZToViewPos._m01_m11_m21_m31);
+  r2.z = dot(r1.xyzw, g_Pass.reverseProjParams.clipXYZToViewPos._m02_m12_m22_m32);
+  r0.z = dot(r1.xyzw, g_Pass.reverseProjParams.clipXYZToViewPos._m03_m13_m23_m33);
+  r1.xyz = r2.xyz / r0.zzz;
+  r1.w = 1;
+  r2.x = dot(r1.xyzw, g_Pass.m_ViewToWorld._m00_m10_m20_m30);
+  r2.y = dot(r1.xyzw, g_Pass.m_ViewToWorld._m01_m11_m21_m31);
+  r2.z = dot(r1.xyzw, g_Pass.m_ViewToWorld._m02_m12_m22_m32);
+  r1.xyzw = t_Albedo.SampleLevel(s_PointClamp_s_s, r0.xy, 0).xyzw;
+  r3.xyzw = t_Normals.SampleLevel(s_PointClamp_s_s, r0.xy, 0).xyzw;
+  r4.xyzw = t_SpecularReflectance.SampleLevel(s_PointClamp_s_s, r0.xy, 0).yxzw;
+  r5.xyzw = t_MiscProps.SampleLevel(s_PointClamp_s_s, r0.xy, 0).xyzw;
+  r3.xyz = r3.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r0.z = dot(r3.xyz, r3.xyz);
+  r0.z = rsqrt(r0.z);
+  r3.xyz = r3.xyz * r0.zzz;
+  r0.z = max(9.99999975e-006, r1.w);
+  r0.z = log2(r0.z);
+  r0.z = 2.20000005 * r0.z;
+  r0.z = exp2(r0.z);
+  r0.w = 19 * r3.w;
+  r6.x = exp2(r0.w);
+  r0.w = 255 * r5.w;
+  r0.w = (uint)r0.w;
+  r0.w = cmp((int)r0.w == 255);
+  if (r0.w != 0) {
+    r1.w = cmp(9.99999975e-005 < r4.w);
+    r7.xyz = sqrt(r1.xyz);
+    r1.xyz = r1.www ? r7.xyz : r1.xyz;
+    r7.xyz = r5.xyz * float3(2,2,2) + float3(-1,-1,-1);
+    r1.w = dot(r7.xyz, r7.xyz);
+    r1.w = rsqrt(r1.w);
+    r7.xyz = r7.xyz * r1.www;
+    r1.w = 19 * r4.y;
+    r6.y = exp2(r1.w);
+    r8.xyz = r0.zzz;
+    r9.y = 0;
+    r0.z = 1;
+    r5.xz = float2(0,0);
+  } else {
+    r8.xyz = r4.yxz;
+    r7.xyz = float3(1,1,1);
+    r1.xyz = float3(0,0,0);
+    r9.y = r5.y;
+    r6.y = 1;
+    r4.xz = float2(1,0);
+  }
+  r1.w = r0.w ? r4.x : 1;
+  r4.xyw = g_DeferredLights.m_OmniLight.m_Position.xyz + -r2.xyz;
+  r2.w = dot(r4.xyw, r4.xyw);
+  r3.w = rsqrt(r2.w);
+  r10.xyz = r4.xyw * r3.www;
+  r5.y = saturate(g_DeferredLights.m_OmniLight.m_Attenuation.z / r2.w);
+  r2.w = saturate(r2.w * g_DeferredLights.m_OmniLight.m_Attenuation.x + g_DeferredLights.m_OmniLight.m_Attenuation.y);
+  r5.w = r2.w * r2.w;
+  r2.w = -r2.w * 2 + 3;
+  r2.w = r5.w * r2.w;
+  r2.w = r5.y * r2.w;
+  r0.x = t_SSAO.Sample(s_PointClamp_s_s, r0.xy).x;
+  r11.xyz = -g_DeferredLights.m_OmniLight.m_Position.xyz + r2.xyz;
+  r12.x = dot(r11.xyz, g_DeferredLights.m_Cookie.worldToCookie._m00_m10_m20);
+  r12.y = dot(r11.xyz, g_DeferredLights.m_Cookie.worldToCookie._m01_m11_m21);
+  r12.z = dot(r11.xyz, g_DeferredLights.m_Cookie.worldToCookie._m02_m12_m22);
+  r12.w = (int)g_DeferredLights.m_Cookie.cookieArrayIndex.x;
+  r11.xyz = t_g_ProjectorCubeCookie.SampleLevel(s_TrilinearWrap_s_s, r12.xyzw, 0).xyz;
+  r0.y = dot(r10.xyz, r7.xyz);
+  r12.xyz = -r0.yyy * r7.xyz + r10.xyz;
+  r0.y = dot(r12.xyz, r12.xyz);
+  r0.y = rsqrt(r0.y);
+  r12.xyz = r12.xyz * r0.yyy;
+  r3.xyz = r0.www ? r12.xyz : r3.xyz;
+  r2.xyz = g_Pass.m_EyePosition.xyz + -r2.xyz;
+  r0.y = dot(r2.xyz, r2.xyz);
+  r0.y = rsqrt(r0.y);
+  r2.xyz = r2.xyz * r0.yyy;
+  r4.xyw = r4.xyw * r3.www + r2.xyz;
+  r0.y = dot(r4.xyw, r4.xyw);
+  r0.y = rsqrt(r0.y);
+  r4.xyw = r4.xyw * r0.yyy;
+  r0.y = dot(r3.xyz, r10.xyz);
+  r3.w = dot(r3.xyz, r4.xyw);
+  r9.x = r0.y * 0.5 + 0.5;
+  r5.yw = r9.xy * float2(0.96875,0.96875) + float2(0.015625,0.015625);
+  r5.y = t_BRDFLUT.SampleLevel(s_TrilinearClamp_s_s, r5.yw, 0).z;
+  r5.w = saturate(-r0.y);
+  r5.z = r5.z * r5.w;
+  r9.xyz = r11.xyz * r2.www;
+  r9.xyz = g_DeferredLights.m_OmniLight.m_Color.xyz * r9.xyz;
+  r10.xyz = r9.xyz * r5.yyy;
+  r5.yzw = r5.zzz * r9.xyz + r10.xyz;
+  r5.yzw = r5.yzw * r1.www;
+  r1.w = dot(r10.xyz, float3(0.212599993,0.715200007,0.0722000003));
+  if (r0.w != 0) {
+    r6.zw = float2(1,1) + r6.xy;
+    r6.zw = sqrt(r6.zw);
+    r6.zw = float2(0.125,0.125) * r6.zw;
+    r0.w = dot(r4.xyw, r7.xyz);
+    r0.w = r0.w * r0.w;
+    r7.xy = r0.ww * r6.xy;
+    r0.w = 1 + r3.w;
+    r7.xy = -r7.xy / r0.ww;
+    r7.xy = float2(1.44269502,1.44269502) * r7.xy;
+    r7.xy = exp2(r7.xy);
+    r6.yz = r7.xy * r6.zw;
+    r7.xyz = r6.yyy * r8.xyz;
+    r0.w = r6.z * r4.z;
+    r1.xyz = r7.xyz * r1.xyz + r0.www;
+    r1.xyz = r1.xyz * r10.xyz;
+  } else {
+    r0.w = r6.x * 0.5 + 1;
+    r0.w = 1 / r0.w;
+    r0.y = saturate(r0.y);
+    r2.w = saturate(dot(r3.xyz, r2.xyz));
+    r3.w = saturate(r3.w);
+    r2.x = saturate(dot(r2.xyz, r4.xyw));
+    r2.y = -1 + r0.w;
+    r2.z = r3.w * r3.w;
+    r2.y = r2.z * r2.y + 1;
+    r2.y = r2.y * r2.y;
+    r2.y = r0.w / r2.y;
+    r3.xyz = float3(1,1,1) + -r8.xyz;
+    r2.x = 1 + -r2.x;
+    r4.x = r2.x * r2.x;
+    r4.x = r4.x * r4.x;
+    r2.x = r4.x * r2.x;
+    r3.xyz = r3.xyz * r2.xxx + r8.xyz;
+    r2.x = 1 + -r0.w;
+    r4.x = r0.y * r2.x + r0.w;
+    r4.x = sqrt(r4.x);
+    r0.y = r4.x + r0.y;
+    r0.y = 1 / r0.y;
+    r2.x = r2.w * r2.x + r0.w;
+    r2.x = sqrt(r2.x);
+    r2.x = r2.w + r2.x;
+    r2.x = 1 / r2.x;
+    r0.y = r2.x * r0.y;
+    r2.x = r2.y * r0.y;
+    r2.w = cmp(0 < r5.x);
+    r3.w = -r3.w * r3.w + 1.00010002;
+    r4.x = r3.w * r3.w;
+    r2.z = r2.z / r3.w;
+    r2.z = -r2.z / r0.w;
+    r2.z = 1.44269502 * r2.z;
+    r2.z = exp2(r2.z);
+    r2.z = 4 * r2.z;
+    r2.z = r2.z / r4.x;
+    r2.z = 1 + r2.z;
+    r0.w = r0.w * 4 + 1;
+    r0.w = r2.z / r0.w;
+    r0.y = -r2.y * r0.y + r0.w;
+    r0.y = r5.x * r0.y + r2.x;
+    r0.y = r2.w ? r0.y : r2.x;
+    r2.xyz = r3.xyz * r0.zzz;
+    r0.xzw = r2.xyz * r0.xxx;
+    r0.xyz = r0.yyy * r0.xzw;
+    r1.xyz = r10.xyz * r0.xyz;
+  }
+  o0.xyz = g_Pass.m_GlobalLightingScale.xxx * r5.yzw;
+  o1.xyz = g_Pass.m_GlobalLightingScale.xxx * r1.xyz;
+  o0.w = g_Pass.m_GlobalLightingScale.x * r1.w;
+  o1.w = 1;
+  return;
+}

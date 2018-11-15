@@ -1,0 +1,18 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:17 2018
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float v0 : SV_ClipDistance0,
+  float4 v1 : SV_Position0,
+  out float4 o0 : SV_Target0)
+{
+  o0.xyzw = float4(0,0,0,0);
+  return;
+}

@@ -47,6 +47,30 @@ static EnumName_t<const wchar_t *, MarkingMode> MarkingModeNames[] = {
 	{NULL, MarkingMode::INVALID} // End of list marker
 };
 
+enum class MarkingAction {
+	INVALID    = 0,
+	CLIPBOARD  = 0x0000001,
+	HLSL       = 0x0000002,
+	ASM        = 0x0000004,
+	DUMP_MASK  = 0x0000006, // HLSL and/or Assembly is selected
+	MONO_SS    = 0x0000010,
+	STEREO_SS  = 0x0000020,
+	SS_IF_PINK = 0x0000040,
+
+	DEFAULT    = 0x0000003,
+};
+SENSIBLE_ENUM(MarkingAction);
+static EnumName_t<const wchar_t *, MarkingAction> MarkingActionNames[] = {
+	{L"hlsl", MarkingAction::HLSL},
+	{L"asm", MarkingAction::ASM},
+	{L"assembly", MarkingAction::ASM},
+	{L"clipboard", MarkingAction::CLIPBOARD},
+	{L"mono_snapshot", MarkingAction::MONO_SS},
+	{L"stereo_snapshot", MarkingAction::STEREO_SS},
+	{L"snapshot_if_pink", MarkingAction::SS_IF_PINK},
+	{NULL, MarkingAction::INVALID} // End of list marker
+};
+
 enum class ShaderHashType {
 	INVALID = -1,
 	FNV,
@@ -397,7 +421,7 @@ struct Globals
 	bool bb_is_upscaling_bb;
 
 	MarkingMode marking_mode;
-	int mark_snapshot;
+	MarkingAction marking_actions;
 	int gForceStereo;
 	bool gCreateStereoProfile;
 	int gSurfaceCreateMode;
@@ -472,17 +496,25 @@ struct Globals
 	std::set<UINT64> mSelectedIndexBuffer_VertexShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
 	std::set<UINT64> mSelectedIndexBuffer_PixelShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
 
+	std::set<uint32_t> mVisitedVertexBuffers;				// std::set is sorted for consistent order while hunting
+	uint32_t mSelectedVertexBuffer;
+	int mSelectedVertexBufferPos;
+	std::set<UINT64> mSelectedVertexBuffer_VertexShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
+	std::set<UINT64> mSelectedVertexBuffer_PixelShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
+
 	CompiledShaderMap mCompiledShaderMap;
 
 	std::set<UINT64> mVisitedVertexShaders;					// Only shaders seen since last hunting timeout; std::set for consistent order while hunting
 	UINT64 mSelectedVertexShader;				 			// Hash.  -1 now for unselected state. The shader selected using Input object.
 	int mSelectedVertexShaderPos;							// -1 for unselected state.
 	std::set<uint32_t> mSelectedVertexShader_IndexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
+	std::set<uint32_t> mSelectedVertexShader_VertexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
 
 	std::set<UINT64> mVisitedPixelShaders;					// std::set is sorted for consistent order while hunting
 	UINT64 mSelectedPixelShader;							// Hash.  -1 now for unselected state.
 	int mSelectedPixelShaderPos;							// -1 for unselected state.
 	std::set<uint32_t> mSelectedPixelShader_IndexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
+	std::set<uint32_t> mSelectedPixelShader_VertexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
 	ID3D11PixelShader* mPinkingShader;						// Special pixels shader to mark a selection with hot pink.
 
 	ShaderMap mShaders;										// All shaders ever registered with CreateXXXShader
@@ -547,6 +579,8 @@ struct Globals
 		mSelectedVertexShaderPos(-1),
 		mSelectedIndexBuffer(-1),
 		mSelectedIndexBufferPos(-1),
+		mSelectedVertexBuffer(-1),
+		mSelectedVertexBufferPos(-1),
 		mSelectedComputeShader(-1),
 		mSelectedComputeShaderPos(-1),
 		mSelectedGeometryShader(-1),
@@ -606,7 +640,7 @@ struct Globals
 		bb_is_upscaling_bb(false),
 
 		marking_mode(MarkingMode::INVALID),
-		mark_snapshot(2),
+		marking_actions(MarkingAction::INVALID),
 		gForceStereo(0),
 		gCreateStereoProfile(false),
 		gSurfaceCreateMode(-1),

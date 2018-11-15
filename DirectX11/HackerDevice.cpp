@@ -575,18 +575,6 @@ static bool GetFileLastWriteTime(wchar_t *path, FILETIME *ftWrite)
 	return true;
 }
 
-static void SetFileLastWriteTime(wchar_t *path, FILETIME *ftWrite)
-{
-	HANDLE f;
-
-	f = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (f == INVALID_HANDLE_VALUE)
-		return;
-
-	SetFileTime(f, NULL, NULL, ftWrite);
-	CloseHandle(f);
-}
-
 static bool CheckCacheTimestamp(HANDLE binHandle, wchar_t *binPath, FILETIME &pTimeStamp)
 {
 	FILETIME txtTime, binTime;
@@ -808,7 +796,7 @@ static void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 
 					// Set the last modified timestamp on the cached shader to match the
 					// .txt file it is created from, so we can later check its validity:
-					SetFileLastWriteTime(path, &ftWrite);
+					set_file_last_write_time(path, &ftWrite);
 				}
 			}
 		}
@@ -903,7 +891,7 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 
 						// Set the last modified timestamp on the cached shader to match the
 						// .txt file it is created from, so we can later check its validity:
-						SetFileLastWriteTime(path, &ftWrite);
+						set_file_last_write_time(path, &ftWrite);
 					}
 					else
 					{

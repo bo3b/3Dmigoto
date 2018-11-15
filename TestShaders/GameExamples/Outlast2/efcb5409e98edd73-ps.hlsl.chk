@@ -1,0 +1,545 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:09 2018
+
+cbuffer _Globals : register(b0)
+{
+  float3 LightingChannelsAndModel : packoffset(c0);
+  float4 ShadowMapAtlasSize : packoffset(c1);
+  float2 InvClusterScreenSize : packoffset(c2);
+  float3 ReflectionShadowPlane : packoffset(c3);
+  float2 ReflectionInvBufferSize : packoffset(c4);
+  bool bShowLightComplexity : packoffset(c4.z);
+  bool4 bClusteredForwardRenderingOptions : packoffset(c5);
+  float3 DominantDirectionalLightDirection : packoffset(c6);
+  float3 DominantDirectionalLightColor : packoffset(c7);
+}
+
+cbuffer PSOffsetConstants : register(b2)
+{
+  float4 ScreenPositionScaleBias : packoffset(c0);
+  float4 MinZ_MaxZRatio : packoffset(c1);
+  float NvStereoEnabled : packoffset(c2);
+  float MetallicOverrideParameter : packoffset(c2.y);
+  float4 DiffuseOverrideParameter : packoffset(c3);
+  float4 SpecularOverrideParameter : packoffset(c4);
+  float4 CameraPositionPS : packoffset(c5);
+  float4 ScreenAndTexelSize : packoffset(c6);
+  float4 ViewClampRect : packoffset(c7);
+  float2 ProjectionInvScale : packoffset(c8);
+  float4x4 ViewProjectionMatrixPS : packoffset(c9);
+  float2 SceneColorExponentBias : packoffset(c13);
+}
+
+cbuffer ClusteredLightsConstants : register(b6)
+{
+
+  struct
+  {
+    float4 PositionInvRadius;
+    float4 ColorFalloffExponent;
+    float3 Direction;
+    uint LightingChannels;
+    float2 SpotAngles;
+    bool bCastShadows;
+    float HairScatteringScale;
+    float4 SimpleLightFunctionScaleBiasFade;
+    float4x4 WorldToShadowMatrix;
+    float3x3 WorldToLightMatrix;
+    float4 ShadowClipScaleBias;
+    float4 ShadowFilterScale;
+    float4 ShadowFilterBias;
+    float2 ShadowGradientParams;
+    float DiffuseIntensity;
+    float DiffuseBackfaceHack;
+    bool bUseFakeWaterReflection;
+    bool bCastNightVisionShadow;
+    float4 FaceUVScaleBias[6];
+  } ClusteredLights[64] : packoffset(c0);
+
+}
+
+cbuffer ClusteredReflectionsConstants : register(b8)
+{
+
+  struct
+  {
+    float3 Position;
+    float ArrayIndex;
+    float4 RotationXY;
+    float3 Size;
+    uint ReflectionChannels;
+    float3 InvSize;
+    float InvInnerEdgeTransition;
+    float3 TransitionBias;
+    float Fade;
+    float3 TransitionScale;
+    float MinMip;
+  } ClusteredCubeMaps[64] : packoffset(c0);
+
+}
+
+SamplerState PointWrapSampler_s_s : register(s0);
+SamplerState TrilinearClampSampler_s_s : register(s1);
+SamplerState WorldNormalGBufferTextureSampler_s_s : register(s2);
+SamplerState BaseColorGBufferTextureSampler_s_s : register(s3);
+SamplerState SpecularGBufferTextureSampler_s_s : register(s4);
+SamplerState SceneDepthTextureSampler_s_s : register(s5);
+SamplerComparisonState ShadowComparisonSampler_s_s : register(s6);
+Texture2D<float4> EnvironmentBRDFTexture : register(t0);
+Buffer<uint> LightIndexListTexture : register(t1);
+Texture3D<uint2> ClusteredTexture3D : register(t2);
+Texture2D<float4> ShadowMapAtlasTexture : register(t3);
+Texture3D<float4> RandomAngles3DTexture : register(t4);
+Texture2D<float4> SimpleLightFunctionsAtlasTexture : register(t5);
+TextureCubeArray<float4> EnvironmentReflectionTextureArray : register(t6);
+Texture2D<float4> WorldNormalGBufferTexture : register(t7);
+Texture2D<float4> BaseColorGBufferTexture : register(t8);
+Texture2D<float4> SpecularGBufferTexture : register(t9);
+Texture2D<float4> SceneDepthTexture : register(t10);
+Texture2D<float4> ReflectionShadowMaskTexture : register(t11);
+Texture2D<float4> NightVisionShadowsTexture : register(t12);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : TEXCOORD0,
+  float3 v1 : TEXCOORD1,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = v0.xy * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+  r1.xyzw = WorldNormalGBufferTexture.SampleLevel(WorldNormalGBufferTextureSampler_s_s, r0.xy, 0).xyzw;
+  r0.z = SceneDepthTexture.SampleLevel(SceneDepthTextureSampler_s_s, r0.xy, 0).x;
+  r0.w = 0.00100000005 + r1.w;
+  r0.w = 3 * r0.w;
+  r0.w = (uint)r0.w;
+  r0.z = max(0.00100000005, r0.z);
+  r0.z = r0.z * MinZ_MaxZRatio.z + -MinZ_MaxZRatio.w;
+  r0.z = 1 / r0.z;
+  r2.xyz = v1.xyz * r0.zzz + CameraPositionPS.xyz;
+  r1.w = RandomAngles3DTexture.CalculateLevelOfDetailUnclamped(PointWrapSampler_s_s, r2.xyz);
+  if (r0.w != 0) {
+    r3.xyzw = BaseColorGBufferTexture.SampleLevel(BaseColorGBufferTextureSampler_s_s, r0.xy, 0).xyzw;
+    r4.xyzw = SpecularGBufferTexture.SampleLevel(SpecularGBufferTextureSampler_s_s, r0.xy, 0).xyzw;
+    r5.xyz = r3.xyz * r3.xyz;
+    r2.w = 0.00100000005 + r3.w;
+    r2.w = 255 * r2.w;
+    r2.w = (uint)r2.w;
+    r3.w = 0.00100000005 + r4.w;
+    r3.w = 31.875 * r3.w;
+    r4.w = frac(r3.w);
+    r4.w = 8 * r4.w;
+    r4.w = (uint)r4.w;
+    r1.xyz = r1.xyz * float3(2,2,2) + float3(-1,-1,-1);
+    r5.w = dot(r1.xyz, r1.xyz);
+    r5.w = rsqrt(r5.w);
+    r1.xyz = r5.www * r1.xyz;
+    r3.w = floor(r3.w);
+    r5.w = 0.0322580002 * r3.w;
+    r0.w = cmp((int)r0.w == 2);
+    SceneDepthTexture.GetDimensions(0, fDest.x, fDest.y, fDest.z);
+    r6.xy = fDest.xy;
+    r6.z = dot(v1.xyz, v1.xyz);
+    r6.z = rsqrt(r6.z);
+    r7.xyz = v1.xyz * r6.zzz;
+    r6.xy = r6.xy * r0.xy;
+    r6.xy = (uint2)r6.xy;
+    r8.xy = (uint2)r6.xy >> int2(6,6);
+    r0.z = 0.00999999978 * r0.z;
+    r0.z = log2(r0.z);
+    r0.z = r0.z * 3.11064291 + 1;
+    r0.z = max(0, r0.z);
+    r8.z = (uint)r0.z;
+    r8.w = 0;
+    r8.xy = ClusteredTexture3D.Load(r8.xyzw).xy;
+    r0.z = (int)r8.y & 255;
+    if (8 == 0) r7.w = 0; else if (8+8 < 32) {     r7.w = (uint)r8.y << (32-(8 + 8)); r7.w = (uint)r7.w >> (32-8);    } else r7.w = (uint)r8.y >> 8;
+    r1.w = round(r1.w);
+    r1.w = exp2(-r1.w);
+    r8.yzw = r2.xyz * r1.www;
+    r8.yz = RandomAngles3DTexture.SampleLevel(PointWrapSampler_s_s, r8.yzw, 0).xy;
+    r9.x = dot(r1.xyz, -r7.xyz);
+    r1.w = cmp(r9.x < 0);
+    r8.w = r9.x + r9.x;
+    r10.xyz = r1.xyz * -r8.www + -r7.xyz;
+    r10.xyz = r1.www ? r1.xyz : -r10.xyz;
+    r1.w = (int)r4.w & 4;
+    if (r1.w != 0) {
+      r0.x = ReflectionShadowMaskTexture.SampleLevel(TrilinearClampSampler_s_s, r0.xy, 0).x;
+      r0.y = -ReflectionShadowPlane.x + r2.z;
+      r0.y = ReflectionShadowPlane.y * r0.y;
+      r0.y = 1 + -abs(r0.y);
+      r1.w = saturate(r1.z);
+      r1.w = r1.w * r1.w;
+      r8.w = r0.x + r4.z;
+      r0.x = -r0.x * r4.z + r8.w;
+      r0.y = r1.w * r0.y;
+      r0.y = min(ReflectionShadowPlane.z, r0.y);
+      r0.x = -1 + r0.x;
+      r0.x = r0.y * r0.x + 1;
+    } else {
+      r0.x = r0.w ? r4.y : r5.w;
+    }
+    r9.x = saturate(r9.x);
+    r9.y = r4.z;
+    r9.xy = EnvironmentBRDFTexture.SampleLevel(TrilinearClampSampler_s_s, r9.xy, 0).xy;
+    r0.y = log2(r4.z);
+    r0.y = r0.y * 1.79999995 + 8;
+    r1.w = MetallicOverrideParameter * r4.x;
+    r3.xyz = r3.xyz * r3.xyz + float3(-0.0399999991,-0.0399999991,-0.0399999991);
+    r3.xyz = r1.www * r3.xyz + float3(0.0399999991,0.0399999991,0.0399999991);
+    r9.xyz = r3.xyz * r9.xxx + r9.yyy;
+    r11.xyz = float3(0,0,0);
+    r4.x = r8.x;
+    r8.w = 0;
+    r9.w = 0;
+    while (true) {
+      r10.w = cmp((uint)r9.w >= (uint)r7.w);
+      if (r10.w != 0) break;
+      r10.w = (int)r4.x + 1;
+      r11.w = LightIndexListTexture.Load(r4.x).x;
+      r11.w = (int)r11.w * 6;
+      r12.x = (int)r4.w & (int18)ClusteredCubeMaps[r11.w].ReflectionChannels;
+      if (r12.x != 0) {
+        r12.xyz = -ClusteredCubeMaps[r11.w].Position.xyz + r2.xyz;
+        r13.x = dot(ClusteredCubeMaps[r11.w].RotationXY.xy, r12.xy);
+        r13.y = dot(ClusteredCubeMaps[r11.w].RotationXY.zw, r12.xy);
+        r13.z = ClusteredCubeMaps[r11.w].InvSize.z * r12.z;
+        r12.xyz = saturate(ClusteredCubeMaps[r11.w].TransitionBias.xyz + abs(r13.xyz));
+        r12.xyz = ClusteredCubeMaps[r11.w].TransitionScale.xyz * r12.xyz;
+        r12.y = max(r12.y, r12.z);
+        r12.x = max(r12.x, r12.y);
+        r12.x = 1 + -r12.x;
+        r12.y = cmp(0 < r12.x);
+        if (r12.y != 0) {
+          r14.x = dot(ClusteredCubeMaps[r11.w].RotationXY.xy, r10.xy);
+          r14.y = dot(ClusteredCubeMaps[r11.w].RotationXY.zw, r10.xy);
+          r14.z = ClusteredCubeMaps[r11.w].InvSize.z * r10.z;
+          r12.yzw = cmp(float3(0,0,0) < r14.xyz);
+          r15.xyz = cmp(r14.xyz < float3(0,0,0));
+          r12.yzw = (int3)r12.yzw + (int3)-r15.xyz;
+          r12.yzw = (int3)r12.yzw;
+          r12.yzw = r13.xyz * r12.yzw + float3(1,1,1);
+          r12.yzw = r12.yzw / abs(r14.xyz);
+          r12.z = min(r12.z, r12.w);
+          r12.y = min(r12.y, r12.z);
+          r12.z = saturate(ClusteredCubeMaps[r11.w].InvInnerEdgeTransition * r12.y);
+          r12.w = r12.x * r12.z;
+          r13.xyz = r12.yyy * r10.xyz + r2.xyz;
+          r13.xyz = -ClusteredCubeMaps[r11.w].Position.xyz + r13.xyz;
+          r12.y = max(ClusteredCubeMaps[r11.w].MinMip, r0.y);
+          r13.w = ClusteredCubeMaps[r11.w].ArrayIndex;
+          r13.xyz = EnvironmentReflectionTextureArray.SampleLevel(TrilinearClampSampler_s_s, r13.xyzw, r12.y).xyz;
+          r13.xyz = ClusteredCubeMaps[r11.w].Fade * r13.xyz;
+          r13.xyz = r13.xyz * r9.xyz;
+          r11.xyz = r13.xyz * r12.www + r11.xyz;
+          r8.w = r12.x * r12.z + r8.w;
+        }
+      }
+      r9.w = (int)r9.w + 1;
+      r4.x = r10.w;
+    }
+    r0.y = cmp(1 < r8.w);
+    r9.xyz = r11.xyz / r8.www;
+    r9.xyz = r0.yyy ? r9.xyz : r11.xyz;
+    r9.xyz = r9.xyz * r0.xxx;
+    r0.x = (int)r7.w + (int)r8.x;
+    r6.zw = float2(0,0);
+    r0.y = NightVisionShadowsTexture.Load(r6.xyz).y;
+    r6.xyz = r5.xyz * DiffuseOverrideParameter.www + DiffuseOverrideParameter.xyz;
+    r6.xyz = float3(0.318309993,0.318309993,0.318309993) * r6.xyz;
+    r3.w = -r3.w * 0.0322580002 + 1;
+    r4.x = r4.z * r4.z;
+    r4.w = r4.x * r4.x;
+    r6.w = 2 / r4.w;
+    r6.w = -2 + r6.w;
+    r6.w = max(9.99999975e-006, r6.w);
+    r8.x = 3.14159298 * r4.w;
+    r5.xyz = r1.www * -r5.xyz + r5.xyz;
+    r5.xyz = r5.xyz * DiffuseOverrideParameter.www + DiffuseOverrideParameter.xyz;
+    r5.xyz = float3(0.318309993,0.318309993,0.318309993) * r5.xyz;
+    r1.w = r4.x * r4.x + -0.999499977;
+    r4.x = r4.z * 0.234375 + 0.015625;
+    r4.z = 1 + -r4.x;
+    r10.yz = float2(-1,1);
+    r11.y = -1;
+    r12.xyz = r9.xyz;
+    r8.w = r0.x;
+    r9.w = 0;
+    r11.z = 0;
+    while (true) {
+      r11.w = cmp((uint)r11.z >= (uint)r0.z);
+      if (r11.w != 0) break;
+      r11.w = (int)r8.w + 1;
+      r13.x = LightIndexListTexture.Load(r8.w).x;
+      r13.y = (int)r13.x * 23;
+      r13.z = (int)r2.w & (int16)ClusteredLights[r13.y].LightingChannels;
+      if (r13.z != 0) {
+        r14.xyz = ClusteredLights[r13.y].PositionInvRadius.xyz + -r2.xyz;
+        r15.xyz = ClusteredLights[r13.y].PositionInvRadius.www * r14.xyz;
+        r13.z = dot(r15.xyz, r15.xyz);
+        r13.z = min(1, r13.z);
+        r13.z = 1 + -r13.z;
+        r13.z = log2(r13.z);
+        r13.z = ClusteredLights[r13.y].ColorFalloffExponent.w * r13.z;
+        r13.z = exp2(r13.z);
+        r13.w = cmp(0 < ClusteredLights[r13.y].SpotAngles.x);
+        if (r13.w != 0) {
+          r14.w = dot(r14.xyz, r14.xyz);
+          r14.w = rsqrt(r14.w);
+          r15.xyz = r14.xyz * r14.www;
+          r14.w = dot(r15.xyz, -ClusteredLights[r13.y].Direction.xyz);
+          r14.w = -ClusteredLights[r13.y].SpotAngles.x + r14.w;
+          r14.w = saturate(ClusteredLights[r13.y].SpotAngles.y * r14.w);
+          r14.w = r14.w * r14.w;
+          r13.z = r14.w * r13.z;
+        }
+        r14.w = cmp(9.99999975e-006 < r13.z);
+        r15.x = dot(r1.xyz, r14.xyz);
+        r15.x = cmp(0 < r15.x);
+        r15.x = (int)r0.w | (int)r15.x;
+        r15.y = cmp(0 != ClusteredLights[r13.y].DiffuseBackfaceHack);
+        r15.x = (int)r15.y | (int)r15.x;
+        r14.w = r14.w ? r15.x : 0;
+        if (r14.w != 0) {
+          r14.w = cmp(0 != (int12)ClusteredLights[r13.y].bCastShadows);
+          r14.w = cmp((int)r14.w == -1);
+          if (r14.w != 0) {
+            if (r13.w != 0) {
+              r15.xyzw = ClusteredLights[r13.y/4]._m01_m11_m21_m31 * r2.yyyy;
+              r15.xyzw = ClusteredLights[r13.y/4]._m00_m10_m20_m30 * r2.xxxx + r15.xyzw;
+              r15.xyzw = ClusteredLights[r13.y/4]._m02_m12_m22_m32 * r2.zzzz + r15.xyzw;
+              r15.xyzw = ClusteredLights[r13.y/4]._m23_m03_m13_m33 + r15.zxyw;
+              r15.yz = r15.yz / r15.ww;
+            } else {
+              r13.w = max(abs(r14.y), abs(r14.z));
+              r13.w = max(abs(r14.x), r13.w);
+              r16.xyz = cmp(float3(0,0,0) < -r14.xyz);
+              r17.xyz = cmp(-r14.xyz < float3(0,0,0));
+              r14.w = (int)r16.x + (int)-r17.x;
+              r10.x = (int)r14.w;
+              r18.xy = -r14.zy * r10.xy;
+              r19.xyz = cmp(-r14.xyz == abs(r14.xyz));
+              r16.xw = cmp(abs(r14.xy) == r13.ww);
+              r16.yz = (int2)-r16.yz + (int2)r17.yz;
+              r10.w = (int)r16.y;
+              r17.xy = -r14.xz * r10.zw;
+              r11.x = (int)r16.z;
+              r20.xy = -r14.xy * r11.xy;
+              r19.xyz = r19.xyz ? float3(0,2.80259693e-045,5.60519386e-045) : float3(1,3,5);
+              r17.z = r19.y;
+              r20.z = r19.z;
+              r16.yzw = r16.www ? r17.xyz : r20.xyz;
+              r18.z = r19.x;
+              r16.xyz = r16.xxx ? r18.xyz : r16.yzw;
+              r10.xw = r16.xy / r13.ww;
+              r11.x = mad((int)r13.x, 23, (int)r16.z);
+              r15.yz = r10.xw * ClusteredLights[r11.x].FaceUVScaleBias[0].xy + ClusteredLights[r11.x].FaceUVScaleBias[0].zw;
+              r15.x = ClusteredLights[r13.y].PositionInvRadius.w * r13.w;
+            }
+            r16.xyzw = r8.yzzy * ClusteredLights[r13.y].ShadowFilterScale.xzyw + ClusteredLights[r13.y].ShadowFilterBias.xzyw;
+            r10.xw = r16.xy * float2(0.0829999968,0.0829999968) + r15.yz;
+            r10.x = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r10.xw, r15.x).x;
+            r13.xw = -r16.xy * float2(0.0829999968,0.0829999968) + r15.yz;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = float2(-0.0829999968,-0.0829999968) * r16.zw;
+            r13.xw = r16.xy * float2(-0.143999994,-0.143999994) + r13.xw;
+            r17.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r17.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = float2(0.216999993,0.216999993) * r16.zw;
+            r13.xw = r16.xy * float2(0.125,0.125) + r13.xw;
+            r17.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r17.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r16.zw * float2(-0.333000004,-0.333000004) + r15.yz;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = -r16.zw * float2(-0.333000004,-0.333000004) + r15.yz;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r17.xyzw = float4(-0.208000004,-0.208000004,0.361000001,0.361000001) * r16.xyzw;
+            r13.xw = r17.xy + r17.zw;
+            r17.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r17.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r17.xyzw = float4(0.432999998,0.432999998,-0.25,-0.25) * r16.xyzw;
+            r13.xw = r17.xy + r17.zw;
+            r17.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r17.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r16.xy * float2(-0.583000004,-0.583000004) + r15.yz;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = -r16.xy * float2(-0.583000004,-0.583000004) + r15.yz;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = float2(0.333000004,0.333000004) * r16.zw;
+            r13.xw = r16.xy * float2(0.577000022,0.577000022) + r13.xw;
+            r17.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r17.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = float2(-0.649999976,-0.649999976) * r16.zw;
+            r13.xw = r16.xy * float2(-0.375,-0.375) + r13.xw;
+            r17.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r17.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r16.zw * float2(0.833000004,0.833000004) + r15.yz;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = -r16.zw * float2(0.833000004,0.833000004) + r15.yz;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r17.xyzw = float4(0.458000004,0.458000004,-0.79400003,-0.79400003) * r16.xyzw;
+            r13.xw = r17.xy + r17.zw;
+            r17.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r17.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r16.xyzw = float4(-0.865999997,-0.865999997,0.5,0.5) * r16.xyzw;
+            r13.xw = r16.xy + r16.zw;
+            r16.xy = r15.yz + r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r16.xy, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r13.xw = r15.yz + -r13.xw;
+            r10.w = ShadowMapAtlasTexture.SampleCmpLevelZero(ShadowComparisonSampler_s_s, r13.xw, r15.x).x;
+            r10.x = r10.x + r10.w;
+            r10.x = 0.0416669995 * r10.x;
+            r10.x = r10.x * r10.x;
+            r13.z = r13.z * r10.x;
+          } else {
+            if (ClusteredLights[r13.y].bUseFakeWaterReflection != 0) {
+              r13.z = r13.z * r0.y;
+            }
+          }
+          r13.xzw = ClusteredLights[r13.y].ColorFalloffExponent.xyz * r13.zzz;
+          r10.x = cmp(0.000000 != ClusteredLights[r13.y].SimpleLightFunctionScaleBiasFade.x);
+          if (r10.x != 0) {
+            r15.xyz = ClusteredLights[r13.y].WorldToLightMatrix._m01_m11_m21 * -r14.yyy;
+            r15.xyz = ClusteredLights[r13.y].WorldToLightMatrix._m00_m10_m20 * -r14.xxx + r15.xyz;
+            r15.xyz = ClusteredLights[r13.y].WorldToLightMatrix._m02_m12_m22 * -r14.zzz + r15.xyz;
+            r10.xw = r15.xy / r15.zz;
+            r10.xw = r10.xw * ClusteredLights[r13.y].SimpleLightFunctionScaleBiasFade.xx + ClusteredLights[r13.y].SimpleLightFunctionScaleBiasFade.yz;
+            r10.xw = abs(r10.xw);
+            r11.x = saturate(ClusteredLights[r13.y].SimpleLightFunctionScaleBiasFade.w * r15.z);
+            r15.xyz = SimpleLightFunctionsAtlasTexture.SampleLevel(TrilinearClampSampler_s_s, r10.xw, 0).xyz;
+            r16.xyz = float3(1,1,1) + -r15.xyz;
+            r15.xyz = r11.xxx * r16.xyz + r15.xyz;
+            r13.xzw = r15.xyz * r13.xzw;
+          }
+          if (r0.w != 0) {
+            r10.x = dot(r14.xyz, r14.xyz);
+            r10.x = rsqrt(r10.x);
+            r15.xyz = r14.xyz * r10.xxx;
+            r16.xyz = r14.xyz * r10.xxx + -r7.xyz;
+            r10.x = dot(r16.xyz, r16.xyz);
+            r10.x = rsqrt(r10.x);
+            r16.xyz = r16.xyz * r10.xxx;
+            r10.x = dot(r1.xyz, r15.xyz);
+            r10.w = saturate(r10.x);
+            r11.x = dot(r1.xyz, r16.xyz);
+            r11.x = max(9.99999997e-007, r11.x);
+            r11.x = min(1, r11.x);
+            r10.x = saturate(r10.x * 5 + 0.5);
+            r10.x = r10.x * r3.w + r5.w;
+            r14.w = r10.w * 0.5 + 0.5;
+            r10.x = r14.w * r10.x;
+            r11.x = log2(r11.x);
+            r11.x = r11.x * r6.w;
+            r11.x = exp2(r11.x);
+            r11.x = r11.x / r8.x;
+            r10.w = r11.x * r10.w;
+            r10.w = 0.00999999978 * r10.w;
+            r15.xyz = r6.xyz * r10.xxx + r10.www;
+            r12.xyz = r15.xyz * r13.xzw + r12.xyz;
+          } else {
+            r10.x = dot(r14.xyz, r14.xyz);
+            r10.x = rsqrt(r10.x);
+            r15.xyz = r14.xyz * r10.xxx;
+            r14.xyz = r14.xyz * r10.xxx + -r7.xyz;
+            r10.x = dot(r14.xyz, r14.xyz);
+            r10.x = rsqrt(r10.x);
+            r14.xyz = r14.xyz * r10.xxx;
+            r10.x = dot(r1.xyz, r15.xyz);
+            r10.w = saturate(r10.x);
+            r11.x = saturate(dot(r1.xyz, r14.xyz));
+            r14.x = saturate(dot(r15.xyz, r14.xyz));
+            r14.y = ClusteredLights[r13.y].DiffuseBackfaceHack + r10.x;
+            r14.y = 0.333330005 * r14.y;
+            r10.x = saturate(max(r14.y, r10.x));
+            r10.x = ClusteredLights[r13.y].DiffuseIntensity * r10.x;
+            r11.x = r11.x * r11.x;
+            r11.x = r11.x * r1.w + 1;
+            r11.x = r11.x * r11.x;
+            r11.x = 3.14159298 * r11.x;
+            r11.x = r4.w / r11.x;
+            r13.y = r14.x * r14.x;
+            r13.y = r13.y * r4.z + r4.x;
+            r13.y = 4 * r13.y;
+            r13.y = rcp(r13.y);
+            r14.y = r14.x * -5.55472994 + -6.98316002;
+            r14.x = r14.y * r14.x;
+            r14.x = exp2(r14.x);
+            r14.xyz = r14.xxx + r3.xyz;
+            r14.xyz = r14.xyz * SpecularOverrideParameter.www + SpecularOverrideParameter.xyz;
+            r11.x = r13.y * r11.x;
+            r14.xyz = r11.xxx * r14.xyz;
+            r14.xyz = r14.xyz * r10.www;
+            r14.xyz = r5.xyz * r10.xxx + r14.xyz;
+            r12.xyz = r14.xyz * r13.xzw + r12.xyz;
+          }
+        }
+        r9.w = (int)r9.w + 1;
+      }
+      r11.z = (int)r11.z + 1;
+      r8.w = r11.w;
+    }
+    r0.x = (int)r7.w + (int)r9.w;
+    r0.x = (uint)r0.x;
+    r0.x = 0.25 * r0.x;
+    r0.x = min(1, r0.x);
+    r0.y = cmp(0 < r0.x);
+    r12.w = 0;
+    r0.xzw = r0.xxx * float3(1,-1,0) + r12.wyw;
+    r1.xz = r12.xz;
+    r1.y = 1;
+    r0.xzw = r1.xyz + r0.xzw;
+    r0.xyz = r0.yyy ? r0.xzw : r12.xyz;
+    r0.xyz = bShowLightComplexity ? r0.xyz : r12.xyz;
+    r0.xyz = r0.xyz * r4.yyy;
+    r0.xyz = SceneColorExponentBias.xxx * r0.xyz;
+  } else {
+    r0.xyz = float3(0,0,0);
+  }
+  o0.xyz = r0.xyz;
+  o0.w = 0;
+  return;
+}

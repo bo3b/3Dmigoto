@@ -1,0 +1,73 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:58 2018
+
+cbuffer PER_BATCH : register(b0)
+{
+  float4 VS_SunColor : packoffset(c0);
+}
+
+cbuffer PER_INSTANCE : register(b1)
+{
+  row_major float3x4 ObjWorldMatrix : packoffset(c0);
+}
+
+cbuffer PER_FRAME : register(b2)
+{
+  float4 g_VS_WorldViewPos : packoffset(c6);
+}
+
+cbuffer PER_MATERIAL : register(b3)
+{
+  float4 MatSpecColor : packoffset(c1);
+  float3 __0bendDetailFrequency__1bendDetailLeafAmplitude__2bendDetailBranchAmplitude__3 : packoffset(c2);
+  float4 __0AnimFrequency__1AnimAmplitudeWav0__2AnimPhase__3AnimAmplitudeWav2 : packoffset(c3);
+  float2 __0Tilling__1DetailTilling__2__3 : packoffset(c4);
+  float VertexWaveScale : packoffset(c6);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : POSITION0,
+  float2 v1 : TEXCOORD0,
+  float4 v2 : COLOR0,
+  out float4 o0 : TEXCOORD0,
+  out float4 o1 : TEXCOORD1,
+  out float4 o2 : TEXCOORD2,
+  out float4 o3 : TEXCOORD3,
+  out float4 o4 : TEXCOORD4)
+{
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = 1;
+  r0.z = __0Tilling__1DetailTilling__2__3.x;
+  r0.xyzw = v1.xyxy * r0.xxzz;
+  r0.xyzw = __0Tilling__1DetailTilling__2__3.xxyy * r0.xyzw;
+  o0.xyzw = float4(1,1,2,2) * r0.xyzw;
+  o1.xyzw = float4(1,1,0.85857898,1);
+  r0.xyz = v0.xyz;
+  r0.w = 1;
+  r1.x = dot(ObjWorldMatrix._m00_m01_m02_m03, r0.xyzw);
+  r1.y = dot(ObjWorldMatrix._m10_m11_m12_m13, r0.xyzw);
+  r1.z = dot(ObjWorldMatrix._m20_m21_m22_m23, r0.xyzw);
+  r0.xyz = g_VS_WorldViewPos.xyz + r1.xyz;
+  r1.xyz = g_VS_WorldViewPos.xyz + -r0.xyz;
+  o4.xyz = r0.xyz;
+  r0.x = cmp(0 < r1.z);
+  r0.y = cmp(r1.z < 0);
+  o2.xyz = r1.xyz;
+  r0.x = (int)-r0.x + (int)r0.y;
+  o2.w = (int)r0.x;
+  r0.xyz = MatSpecColor.xyz * VS_SunColor.xyz;
+  o3.xyz = VS_SunColor.www * r0.xyz;
+  o3.w = 1;
+  o4.w = v0.z;
+  return;
+}

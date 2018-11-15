@@ -1,0 +1,1035 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:44 2018
+Texture2D<uint4> t29 : register(t29);
+
+Texture3D<uint4> t24 : register(t24);
+
+Texture3D<float4> t23 : register(t23);
+
+Texture3D<float4> t22 : register(t22);
+
+Texture3D<float4> t21 : register(t21);
+
+Texture3D<float4> t20 : register(t20);
+
+SamplerState s4_s : register(s4);
+
+
+cbuffer cb_g_Frame : register(b1)
+{
+
+  struct
+  {
+    float4 m_CurrentTime;
+    bool m_DeconstructionEnabled;
+    float4 m_DeconstructionRanges;
+    float4 m_DeconstructionOrigin;
+    float4 m_GlobalWind;
+    float4 m_WeatherInfo;
+    float4 m_SkyVisibilityWetnessBias;
+    float4 m_MainPlayerPosition;
+
+    struct
+    {
+      float4 m_ShadowMapSize;
+      float4 m_Offsets[4];
+      float4 m_Scales[4];
+      float4 m_SplitBlendMulAddUVAndZ[4];
+      float4 m_NoiseScale;
+      float4 m_NearFar;
+      float4 m_FadeParams;
+      float4 m_CascadesRangesMax;
+      float4 m_CascadesRangesMin;
+      float4 m_ShadowSplitBlendUVAmount;
+      float4x4 m_WorldToLightProj;
+      float4x4 m_FarWorldToLightProj;
+      float4x4 m_DebugShadowVisiblePixelMat;
+    } m_SunShadows;
+
+
+    struct
+    {
+      float4 m_Direction;
+      float4 m_Color;
+    } m_SunLight;
+
+
+    struct
+    {
+      float4 Params;
+      float4 WSToIndirectionScale;
+      float4 WSToIndirectionBias;
+      float4 InvVolumeSize;
+      float4 InvVolumeAtlasSize;
+    } m_GIConsts;
+
+    float4 m_LocalCubeMapParams[2];
+
+    struct
+    {
+      float4 boxMax;
+      float4 boxMin;
+      float4 innerBlendBoxMax;
+      float4 blendBoxMax;
+      float4 worldPosition;
+      float4x4 worldToLocal;
+      uint cubeMapArrayIndex;
+      float padding;
+    } m_LocalCubeMaps[32];
+
+
+    struct
+    {
+      float4 VolumeInvTransZ;
+      float4 VolumeTexScale;
+      float4 VolumeTexBias;
+      float4 SunColor;
+      float4 SunColorByOneOverPi;
+    } m_VolumetricFog;
+
+
+    struct
+    {
+      float RippleScale;
+      float2 SurfaceFloodLevelRef;
+      float4 RippleImpactSurfaceSizeInvSize;
+    } m_SurfaceWeatherModifications;
+
+
+    struct
+    {
+      float4 HeightMapSize;
+      float4 HeightMapOffset;
+    } m_RainBlockerConsts;
+
+    float4 m_WorldMapFogExtents;
+    float4 m_WorldMapFogTextureSize;
+    float m_WorldMapFogMinHeight;
+    float m_WorldMapFogMaxHeight;
+    uint m_WorldMapFogVisibilityFlags;
+    float4 m_WorldMapDistrictColors[32];
+    float4 m_UILighting[6];
+    float m_CharacterEffectMultiplier;
+  } g_Frame : packoffset(c0);
+
+}
+
+cbuffer cb_g_Pass : register(b2)
+{
+
+  struct
+  {
+    float4 m_EyePosition;
+    float4 m_EyeDirection;
+    float4x4 m_ViewToWorld;
+    float4x4 m_WorldToView;
+    float4x4 m_ProjMatrix;
+    float4x4 m_ViewProj;
+    float4x4 m_ViewNoTranslationProj;
+    float4 m_ViewTranslation;
+
+    struct
+    {
+      float4x4 clipXYZToViewPos;
+      float4x4 clipXYZToWorldPos;
+      float4 clipZToViewZ;
+    } reverseProjParams;
+
+    float4 m_VPosToUV;
+    float4 m_ViewportScaleOffset;
+    float4 m_ClipPlane;
+    float4 m_GlobalLightingScale;
+    float4 m_ViewSpaceLightingBackWS;
+    float4 m_ThinGeomAAPixelScale;
+  } g_Pass : packoffset(c0);
+
+}
+
+cbuffer cb_g_DeferredLights : register(b5)
+{
+
+  struct
+  {
+
+    struct
+    {
+      float4 m_Position;
+      float4 m_Color;
+      float4 m_Attenuation;
+    } m_OmniLight;
+
+
+    struct
+    {
+      float4 m_Direction;
+      float4 m_Color;
+    } m_DirectLight;
+
+
+    struct
+    {
+      float4 m_Position;
+      float4 m_Color;
+      float4 m_Attenuation;
+      float4 m_Direction;
+      float4 m_ConeAngles;
+      float4 m_PositionAtNearClip;
+    } m_SpotLight;
+
+
+    struct
+    {
+      float4x4 worldToLight[6];
+      float4 shadowMapScaleOffset[6];
+      float4 noiseScale;
+    } m_Projections;
+
+
+    struct
+    {
+      float4x4 worldToCookie;
+      int4 cookieArrayIndex;
+    } m_Cookie;
+
+    float4 m_BackgroundColor;
+    float4 m_DepthParams;
+    float4 m_EyeXAxis;
+    float4 m_EyeYAxis;
+    float4 m_EyeZAxis;
+    float4 m_VPOSToUVs_Resolve;
+    float4 m_EyeWorldPosition_Resolve;
+    float4 m_WeatherExposedParams;
+    float4x4 m_LightClipToWorldMat;
+    float4 m_IsolateVars;
+    float m_EnvironmentSpecularScale;
+  } g_DeferredLights : packoffset(c0);
+
+}
+
+cbuffer cb_g_VolumeCloudsShadow : register(b10)
+{
+
+  struct
+  {
+    float4 CloudScale;
+    float4 CloudTranslate;
+    float4 CloudProject;
+    float4 UseCloudShadow;
+    float4 CloudShadowMipBias;
+  } g_VolumeCloudsShadow : packoffset(c0);
+
+}
+
+SamplerState s_LocalCubeMaps_s_s : register(s8);
+SamplerState s_PointClamp_s_s : register(s10);
+SamplerState s_TrilinearClamp_s_s : register(s12);
+SamplerState s_TrilinearWrap_s_s : register(s13);
+SamplerComparisonState s_LinearCmpWithBorder_s_s : register(s15);
+Texture2D<float4> t_Albedo : register(t0);
+Texture2D<float4> t_Normals : register(t1);
+Texture2D<float4> t_DepthSurface : register(t2);
+Texture2D<float4> t_SpecularReflectance : register(t3);
+Texture2D<float4> t_SSAO : register(t4);
+TextureCubeArray<float4> t_LocalCubeMaps : register(t5);
+Texture2D<float4> t_Emissive : register(t12);
+TextureCube<float4> t_g_SkyLightingCubeTexture : register(t13);
+Texture2D<float4> t_g_ShadowSampler : register(t14);
+Texture2D<float4> t_MiscProps : register(t15);
+TextureCube<float4> t_GlobalEnvMap : register(t25);
+Buffer<float4> g_GILocalCubeMapsSRV : register(t48);
+Texture3D<float4> t_g_CloudShadowTexture : register(t54);
+Texture2D<float4> t_BRDFLUT : register(t55);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_Position0,
+  nointerpolation int4 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t26, 64 
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t28, 52 
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t56, 144 
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = g_Pass.m_VPosToUV.xy * v0.xy;
+  r1.z = t_DepthSurface.SampleLevel(s_PointClamp_s_s, r0.xy, 0).x;
+  r1.xy = r0.xy * float2(2,-2) + float2(-1,1);
+  r1.w = 1;
+  r2.x = dot(r1.xyzw, g_Pass.reverseProjParams.clipXYZToViewPos._m00_m10_m20_m30);
+  r2.y = dot(r1.xyzw, g_Pass.reverseProjParams.clipXYZToViewPos._m01_m11_m21_m31);
+  r2.z = dot(r1.xyzw, g_Pass.reverseProjParams.clipXYZToViewPos._m02_m12_m22_m32);
+  r0.z = dot(r1.xyzw, g_Pass.reverseProjParams.clipXYZToViewPos._m03_m13_m23_m33);
+  r1.xyz = r2.xyz / r0.zzz;
+  r1.w = 1;
+  r2.x = dot(r1.xyzw, g_Pass.m_ViewToWorld._m00_m10_m20_m30);
+  r2.y = dot(r1.xyzw, g_Pass.m_ViewToWorld._m01_m11_m21_m31);
+  r2.z = dot(r1.xyzw, g_Pass.m_ViewToWorld._m02_m12_m22_m32);
+  r1.xyzw = t_Albedo.SampleLevel(s_PointClamp_s_s, r0.xy, 0).xyzw;
+  r3.xyzw = t_Normals.SampleLevel(s_PointClamp_s_s, r0.xy, 0).xyzw;
+  r4.xyzw = t_SpecularReflectance.SampleLevel(s_PointClamp_s_s, r0.xy, 0).yxzw;
+  r5.xyzw = t_MiscProps.SampleLevel(s_PointClamp_s_s, r0.xy, 0).xyzw;
+  r3.xyz = r3.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r0.z = dot(r3.xyz, r3.xyz);
+  r0.z = rsqrt(r0.z);
+  r6.xyz = r3.xyz * r0.zzz;
+  r0.z = max(9.99999975e-006, r1.w);
+  r0.z = log2(r0.z);
+  r0.z = 2.20000005 * r0.z;
+  r0.z = exp2(r0.z);
+  r0.w = 19 * r3.w;
+  r3.x = exp2(r0.w);
+  r0.w = r3.x * 0.5 + 1;
+  r7.y = 1 / r0.w;
+  r0.w = 255 * r5.w;
+  r0.w = (uint)r0.w;
+  r0.w = cmp((int)r0.w == 255);
+  if (r0.w != 0) {
+    r1.w = cmp(9.99999975e-005 < r4.w);
+    r8.xyz = sqrt(r1.xyz);
+    r1.xyz = r1.www ? r8.xyz : r1.xyz;
+    r8.xyz = r5.xyz * float3(2,2,2) + float3(-1,-1,-1);
+    r1.w = dot(r8.xyz, r8.xyz);
+    r1.w = rsqrt(r1.w);
+    r8.xyz = r8.xyz * r1.www;
+    r1.w = 19 * r4.y;
+    r3.y = exp2(r1.w);
+    r9.xyz = float3(0,0,0);
+    r10.xyz = r0.zzz;
+    r11.y = 0;
+    r0.z = 1;
+    r5.xz = float2(0,0);
+  } else {
+    r9.xyz = t_Emissive.SampleLevel(s_PointClamp_s_s, r0.xy, 0).xyz;
+    r10.xyz = r4.yxz;
+    r8.xyz = float3(1,1,1);
+    r1.xyz = float3(0,0,0);
+    r11.y = r5.y;
+    r3.y = 1;
+    r4.xz = float2(1,0);
+  }
+  r1.w = r0.w ? r4.x : 1;
+  r0.x = t_SSAO.Sample(s_PointClamp_s_s, r0.xy).x;
+  r4.xyw = g_Pass.m_EyePosition.xyz + -r2.xyz;
+  r2.w = 1;
+  r12.x = dot(r2.xyzw, g_Frame.m_SunShadows.m_WorldToLightProj._m00_m10_m20_m30);
+  r12.y = dot(r2.xyzw, g_Frame.m_SunShadows.m_WorldToLightProj._m01_m11_m21_m31);
+  r12.z = dot(r2.xyzw, g_Frame.m_SunShadows.m_WorldToLightProj._m02_m12_m22_m32);
+  r13.xyz = r12.xyz * g_Frame.m_SunShadows.m_Scales[0].xyz + g_Frame.m_SunShadows.m_Offsets[0].xyz;
+  r14.xyz = r12.xyz * g_Frame.m_SunShadows.m_Scales[1].xyz + g_Frame.m_SunShadows.m_Offsets[1].xyz;
+  r15.xyz = r12.xyz * g_Frame.m_SunShadows.m_Scales[2].xyz + g_Frame.m_SunShadows.m_Offsets[2].xyz;
+  r12.xyz = r12.xyz * g_Frame.m_SunShadows.m_Scales[3].xyz + g_Frame.m_SunShadows.m_Offsets[3].xyz;
+  r5.yw = cmp((int2)v1.xx == int2(1,2));
+  r16.x = r15.z;
+  r16.yz = float2(0.25,0.75);
+  r12.w = 0.75;
+  r16.xyz = r5.www ? r16.xyz : r12.zww;
+  r12.xyzw = r5.wwww ? r15.yxxx : r12.yxxx;
+  r15.x = r14.z;
+  r15.yz = float2(0.75,0.25);
+  r15.xyz = r5.yyy ? r15.xyz : r16.xyz;
+  r12.xyzw = r5.yyyy ? r14.yxxx : r12.xyzw;
+  r13.w = 0.25;
+  r14.xyz = v1.xxx ? r15.xyz : r13.zww;
+  r12.xyzw = v1.xxxx ? r12.xyzw : r13.yxxx;
+  r12.xyzw = r12.xyzw * float4(0.25,0.25,0.25,0.25) + r14.zyyy;
+  r5.yw = float2(1,1) / g_Frame.m_SunShadows.m_ShadowMapSize.xy;
+  r12.xyzw = r12.xyzw / r5.wyyy;
+  r12.xyzw = float4(-2.5,-2.5,-2.5,-2.5) + r12.xyzw;
+  r7.zw = floor(r12.wx);
+  r12.xyzw = r12.xyzw + -r7.wzzz;
+  r5.yw = r7.zw * r5.yw;
+  r13.xyz = cmp(float3(0,0,0) != g_Frame.m_SunShadows.m_NoiseScale.xyz);
+  if (r13.x != 0) {
+    r15.xyzw = t_g_ShadowSampler.GatherCmp(s_LinearCmpWithBorder_s_s, r5.yw, r14.x, int2(1,1)).xyzw;
+    r16.xyzw = t_g_ShadowSampler.GatherCmp(s_LinearCmpWithBorder_s_s, r5.yw, r14.x, int2(3,1)).xyzw;
+    r17.xyzw = t_g_ShadowSampler.GatherCmp(s_LinearCmpWithBorder_s_s, r5.yw, r14.x, int2(5,1)).xyzw;
+    r18.xyzw = float4(0.535534024,1.53553402,1,1) + -r12.wwxw;
+    r7.zw = saturate(r18.xy + -r12.xx);
+    r0.y = r7.z * r7.z;
+    r0.y = r0.y * r15.w;
+    r11.zw = min(r18.zw, r7.ww);
+    r18.xy = saturate(r18.xy);
+    r13.xw = float2(1,1) + -r18.xy;
+    r3.z = min(r13.x, r11.z);
+    r7.z = -r3.z * 0.5 + r11.z;
+    r3.z = r7.z * r3.z;
+    r3.z = r11.z * r18.x + r3.z;
+    r7.z = saturate(0.535534024 + -r12.x);
+    r8.w = 1 + -r7.z;
+    r9.w = min(r11.w, r8.w);
+    r10.w = -r9.w * 0.5 + r11.w;
+    r9.w = r10.w * r9.w;
+    r9.w = r11.w * r7.z + r9.w;
+    r10.w = -r12.x + -r12.w;
+    r10.w = saturate(2.53553391 + r10.w);
+    r11.z = 1 + -r7.w;
+    r11.z = min(r11.z, r10.w);
+    r11.w = -r11.z * 0.5 + r10.w;
+    r11.z = r11.w * r11.z;
+    r7.w = r10.w * r7.w + r11.z;
+    r3.z = r15.z * r3.z;
+    r0.y = r0.y * 0.5 + r3.z;
+    r0.y = r15.x * r9.w + r0.y;
+    r0.y = r15.y * r7.w + r0.y;
+    r3.z = min(r18.z, r13.w);
+    r7.w = -r3.z * 0.5 + r18.z;
+    r3.z = r7.w * r3.z;
+    r3.z = r18.z * r18.y + r3.z;
+    r7.w = saturate(0.535534024 + r12.w);
+    r9.w = 1 + -r7.w;
+    r9.w = min(r18.z, r9.w);
+    r10.w = -r9.w * 0.5 + r18.z;
+    r9.w = r10.w * r9.w;
+    r7.w = r18.z * r7.w + r9.w;
+    r9.w = r12.w + r12.x;
+    r9.w = saturate(-1.53553402 + r9.w);
+    r9.w = r9.w * r9.w;
+    r9.w = -r9.w * 0.5 + 1;
+    r10.w = r18.w + r12.x;
+    r10.w = saturate(-1.53553402 + r10.w);
+    r10.w = r10.w * r10.w;
+    r10.w = -r10.w * 0.5 + 1;
+    r0.y = r16.w * r3.z + r0.y;
+    r0.y = r16.z * r7.w + r0.y;
+    r0.y = r16.x * r9.w + r0.y;
+    r0.y = r16.y * r10.w + r0.y;
+    r11.zw = float2(0.535534024,1) + -r18.ww;
+    r3.z = saturate(r11.z + -r12.x);
+    r3.z = r3.z * r3.z;
+    r3.z = r3.z * r17.z;
+    r7.w = -r18.w + -r12.x;
+    r13.xw = saturate(float2(1.53553402,2.53553391) + r7.ww);
+    r7.w = min(r18.z, r13.x);
+    r11.z = saturate(r11.z);
+    r9.w = 1 + -r11.z;
+    r9.w = min(r9.w, r7.w);
+    r10.w = -r9.w * 0.5 + r7.w;
+    r9.w = r10.w * r9.w;
+    r7.w = r7.w * r11.z + r9.w;
+    r9.w = min(r13.x, r11.w);
+    r8.w = min(r9.w, r8.w);
+    r10.w = -r8.w * 0.5 + r9.w;
+    r8.w = r10.w * r8.w;
+    r7.z = r9.w * r7.z + r8.w;
+    r8.w = 1 + -r13.x;
+    r8.w = min(r13.w, r8.w);
+    r9.w = -r8.w * 0.5 + r13.w;
+    r8.w = r9.w * r8.w;
+    r8.w = r13.w * r13.x + r8.w;
+    r0.y = r17.w * r7.w + r0.y;
+    r0.y = r3.z * 0.5 + r0.y;
+    r0.y = r17.x * r8.w + r0.y;
+    r0.y = r17.y * r7.z + r0.y;
+  } else {
+    r0.y = 0;
+  }
+  if (r13.y != 0) {
+    r15.xyzw = t_g_ShadowSampler.GatherCmp(s_LinearCmpWithBorder_s_s, r5.yw, r14.x, int2(1,3)).xyzw;
+    r16.xyzw = t_g_ShadowSampler.GatherCmp(s_LinearCmpWithBorder_s_s, r5.yw, r14.x, int2(3,3)).xyzw;
+    r17.xyzw = t_g_ShadowSampler.GatherCmp(s_LinearCmpWithBorder_s_s, r5.yw, r14.x, int2(5,3)).xyzw;
+    r13.xyw = float3(1.53553402,1,1) + -r12.xwx;
+    r13.x = saturate(r13.x);
+    r3.z = 1 + -r13.x;
+    r7.z = min(r13.y, r3.z);
+    r7.w = -r7.z * 0.5 + r13.y;
+    r7.z = r7.w * r7.z;
+    r7.z = r13.y * r13.x + r7.z;
+    r7.w = saturate(0.535534024 + r12.x);
+    r8.w = 1 + -r7.w;
+    r9.w = min(r13.y, r8.w);
+    r10.w = -r9.w * 0.5 + r13.y;
+    r9.w = r10.w * r9.w;
+    r9.w = r13.y * r7.w + r9.w;
+    r10.w = r12.x + r12.w;
+    r10.w = saturate(-1.53553402 + r10.w);
+    r10.w = r10.w * r10.w;
+    r10.w = -r10.w * 0.5 + 1;
+    r11.zw = r13.wy + r12.wx;
+    r11.zw = saturate(float2(-1.53553402,-1.53553402) + r11.zw);
+    r11.zw = r11.zw * r11.zw;
+    r11.zw = -r11.zw * float2(0.5,0.5) + float2(1,1);
+    r7.z = r15.w * r7.z + r0.y;
+    r7.z = r15.z * r10.w + r7.z;
+    r7.z = r15.x * r9.w + r7.z;
+    r7.z = r15.y * r11.z + r7.z;
+    r7.z = r7.z + r16.w;
+    r7.z = r7.z + r16.z;
+    r7.z = r7.z + r16.x;
+    r7.z = r7.z + r16.y;
+    r9.w = 1 + -r13.y;
+    r3.z = min(r9.w, r3.z);
+    r10.w = -r3.z * 0.5 + r9.w;
+    r3.z = r10.w * r3.z;
+    r3.z = r9.w * r13.x + r3.z;
+    r8.w = min(r9.w, r8.w);
+    r10.w = -r8.w * 0.5 + r9.w;
+    r8.w = r10.w * r8.w;
+    r7.w = r9.w * r7.w + r8.w;
+    r8.w = r13.w + r13.y;
+    r8.w = saturate(-1.53553402 + r8.w);
+    r8.w = r8.w * r8.w;
+    r8.w = -r8.w * 0.5 + 1;
+    r7.z = r17.w * r11.w + r7.z;
+    r3.z = r17.z * r3.z + r7.z;
+    r3.z = r17.x * r8.w + r3.z;
+    r0.y = r17.y * r7.w + r3.z;
+  }
+  if (r13.z != 0) {
+    r13.xyzw = t_g_ShadowSampler.GatherCmp(s_LinearCmpWithBorder_s_s, r5.yw, r14.x, int2(1,5)).xyzw;
+    r15.xyzw = t_g_ShadowSampler.GatherCmp(s_LinearCmpWithBorder_s_s, r5.yw, r14.x, int2(3,5)).xyzw;
+    r14.xyzw = t_g_ShadowSampler.GatherCmp(s_LinearCmpWithBorder_s_s, r5.yw, r14.x, int2(5,5)).xyzw;
+    r16.xyzw = float4(0.535534024,1.53553402,1,1) + -r12.yzxw;
+    r5.yw = saturate(r16.xy + -r16.zz);
+    r3.z = r5.y * r5.y;
+    r3.z = r3.z * r13.x;
+    r17.xyzw = float4(1,0.535534024,0.535534024,1) + -r16.zzww;
+    r5.y = min(r17.x, r5.w);
+    r16.xy = saturate(r16.xy);
+    r7.zw = float2(1,1) + -r16.xy;
+    r7.z = min(r7.z, r5.y);
+    r8.w = -r7.z * 0.5 + r5.y;
+    r7.z = r8.w * r7.z;
+    r5.y = r5.y * r16.x + r7.z;
+    r7.z = min(r16.w, r5.w);
+    r11.zw = saturate(r17.yz);
+    r12.xy = float2(1,1) + -r11.zw;
+    r8.w = min(r12.x, r7.z);
+    r9.w = -r8.w * 0.5 + r7.z;
+    r8.w = r9.w * r8.w;
+    r7.z = r7.z * r11.z + r8.w;
+    r8.w = -r16.z + -r12.w;
+    r8.w = saturate(2.53553391 + r8.w);
+    r9.w = 1 + -r5.w;
+    r9.w = min(r9.w, r8.w);
+    r10.w = -r9.w * 0.5 + r8.w;
+    r9.w = r10.w * r9.w;
+    r5.w = r8.w * r5.w + r9.w;
+    r7.z = r13.w * r7.z + r0.y;
+    r5.w = r13.z * r5.w + r7.z;
+    r3.z = r3.z * 0.5 + r5.w;
+    r3.z = r13.y * r5.y + r3.z;
+    r5.y = min(r17.x, r7.w);
+    r5.w = -r5.y * 0.5 + r17.x;
+    r5.y = r5.w * r5.y;
+    r5.y = r17.x * r16.y + r5.y;
+    r5.w = saturate(0.535534024 + r12.w);
+    r7.z = 1 + -r5.w;
+    r7.z = min(r17.x, r7.z);
+    r7.w = -r7.z * 0.5 + r17.x;
+    r7.z = r7.w * r7.z;
+    r5.w = r17.x * r5.w + r7.z;
+    r7.z = r16.z + r12.w;
+    r7.z = saturate(-1.53553402 + r7.z);
+    r7.z = r7.z * r7.z;
+    r7.z = -r7.z * 0.5 + 1;
+    r7.w = r16.w + r16.z;
+    r7.w = saturate(-1.53553402 + r7.w);
+    r7.w = r7.w * r7.w;
+    r7.w = -r7.w * 0.5 + 1;
+    r3.z = r15.w * r7.z + r3.z;
+    r3.z = r15.z * r7.w + r3.z;
+    r3.z = r15.x * r5.y + r3.z;
+    r3.z = r15.y * r5.w + r3.z;
+    r5.y = saturate(r17.z + -r16.z);
+    r5.y = r5.y * r5.y;
+    r5.y = r5.y * r14.y;
+    r5.w = -r16.z + -r16.w;
+    r7.zw = saturate(float2(1.53553402,2.53553391) + r5.ww);
+    r12.zw = min(r17.wx, r7.zz);
+    r12.xy = min(r12.zw, r12.xy);
+    r13.xy = -r12.xy * float2(0.5,0.5) + r12.zw;
+    r12.xy = r13.xy * r12.xy;
+    r11.zw = r12.zw * r11.zw + r12.xy;
+    r5.w = 1 + -r7.z;
+    r5.w = min(r7.w, r5.w);
+    r8.w = -r5.w * 0.5 + r7.w;
+    r5.w = r8.w * r5.w;
+    r5.w = r7.w * r7.z + r5.w;
+    r3.z = r14.w * r5.w + r3.z;
+    r3.z = r14.z * r11.z + r3.z;
+    r3.z = r14.x * r11.w + r3.z;
+    r0.y = r5.y * 0.5 + r3.z;
+  }
+  r0.y = 0.0482840016 * r0.y;
+  r3.z = dot(r4.xyw, r4.xyw);
+  r5.y = cmp(0 != g_VolumeCloudsShadow.UseCloudShadow.x);
+  if (r5.y != 0) {
+    r12.xyz = r2.xyz * g_VolumeCloudsShadow.CloudScale.xyz + g_VolumeCloudsShadow.CloudTranslate.xyz;
+    r5.y = g_VolumeCloudsShadow.CloudProject.z * r12.z;
+    r12.xy = g_VolumeCloudsShadow.CloudProject.xy * r5.yy + r12.xy;
+    r12.z = g_VolumeCloudsShadow.CloudTranslate.w;
+    r5.y = t_g_CloudShadowTexture.SampleLevel(s_TrilinearWrap_s_s, r12.xyz, g_VolumeCloudsShadow.CloudShadowMipBias.x).y;
+    r5.w = saturate(r3.z * g_VolumeCloudsShadow.UseCloudShadow.z + g_VolumeCloudsShadow.UseCloudShadow.w);
+    r7.z = 1 + -g_VolumeCloudsShadow.UseCloudShadow.y;
+    r5.w = r5.w * r7.z + g_VolumeCloudsShadow.UseCloudShadow.y;
+    r5.y = -1 + r5.y;
+    r5.y = r5.w * r5.y + 1;
+  } else {
+    r5.y = 1;
+  }
+  r0.y = r5.y * r0.y;
+  r5.w = dot(g_DeferredLights.m_DirectLight.m_Direction.xyz, r8.xyz);
+  r12.xyz = -r5.www * r8.xyz + g_DeferredLights.m_DirectLight.m_Direction.xyz;
+  r5.w = dot(r12.xyz, r12.xyz);
+  r5.w = rsqrt(r5.w);
+  r12.xyz = r12.xyz * r5.www;
+  r12.xyz = r0.www ? r12.xyz : r6.xyz;
+  r3.z = rsqrt(r3.z);
+  r13.xyz = r4.xyw * r3.zzz;
+  r4.xyw = r4.xyw * r3.zzz + g_DeferredLights.m_DirectLight.m_Direction.xyz;
+  r3.z = dot(r4.xyw, r4.xyw);
+  r3.z = rsqrt(r3.z);
+  r4.xyw = r4.xyw * r3.zzz;
+  r3.z = dot(r12.xyz, g_DeferredLights.m_DirectLight.m_Direction.xyz);
+  r7.x = saturate(dot(r12.xyz, r13.xyz));
+  r5.w = dot(r12.xyz, r4.xyw);
+  r11.x = r3.z * 0.5 + 0.5;
+  r7.zw = r11.xy * float2(0.96875,0.96875) + float2(0.015625,0.015625);
+  r7.z = t_BRDFLUT.SampleLevel(s_TrilinearClamp_s_s, r7.zw, 0).z;
+  r7.w = saturate(-r3.z);
+  r5.z = r7.w * r5.z;
+  r11.xyz = g_DeferredLights.m_DirectLight.m_Color.xyz * r0.yyy;
+  r14.xyz = r11.xyz * r7.zzz;
+  r11.xyz = r5.zzz * r11.xyz + r14.xyz;
+  r11.xyz = r11.xyz * r1.www;
+  r0.y = dot(r14.xyz, float3(0.212599993,0.715200007,0.0722000003));
+  if (r0.w != 0) {
+    r7.zw = float2(1,1) + r3.xy;
+    r7.zw = sqrt(r7.zw);
+    r7.zw = float2(0.125,0.125) * r7.zw;
+    r5.z = dot(r4.xyw, r8.xyz);
+    r5.z = r5.z * r5.z;
+    r3.xy = r5.zz * r3.xy;
+    r5.z = 1 + r5.w;
+    r3.xy = -r3.xy / r5.zz;
+    r3.xy = float2(1.44269502,1.44269502) * r3.xy;
+    r3.xy = exp2(r3.xy);
+    r3.xy = r7.zw * r3.xy;
+    r8.xyz = r3.xxx * r10.xyz;
+    r3.x = r3.y * r4.z;
+    r8.xyz = r8.xyz * r1.xyz + r3.xxx;
+    r8.xyz = r8.xyz * r14.xyz;
+  } else {
+    r3.z = saturate(r3.z);
+    r5.w = saturate(r5.w);
+    r3.x = saturate(dot(r13.xyz, r4.xyw));
+    r3.y = -1 + r7.y;
+    r4.x = r5.w * r5.w;
+    r3.y = r4.x * r3.y + 1;
+    r3.y = r3.y * r3.y;
+    r3.y = r7.y / r3.y;
+    r4.yzw = float3(1,1,1) + -r10.xyz;
+    r3.x = 1 + -r3.x;
+    r5.z = r3.x * r3.x;
+    r5.z = r5.z * r5.z;
+    r3.x = r5.z * r3.x;
+    r4.yzw = r4.yzw * r3.xxx + r10.xyz;
+    r3.x = 1 + -r7.y;
+    r5.z = r3.z * r3.x + r7.y;
+    r5.z = sqrt(r5.z);
+    r3.z = r5.z + r3.z;
+    r3.z = 1 / r3.z;
+    r3.x = r7.x * r3.x + r7.y;
+    r3.x = sqrt(r3.x);
+    r3.x = r7.x + r3.x;
+    r3.x = 1 / r3.x;
+    r3.x = r3.z * r3.x;
+    r3.z = r3.y * r3.x;
+    r5.z = cmp(0 < r5.x);
+    r5.w = -r5.w * r5.w + 1.00010002;
+    r7.z = r5.w * r5.w;
+    r4.x = r4.x / r5.w;
+    r4.x = -r4.x / r7.y;
+    r4.x = 1.44269502 * r4.x;
+    r4.x = exp2(r4.x);
+    r4.x = 4 * r4.x;
+    r4.x = r4.x / r7.z;
+    r4.x = 1 + r4.x;
+    r5.w = r7.y * 4 + 1;
+    r4.x = r4.x / r5.w;
+    r3.x = -r3.y * r3.x + r4.x;
+    r3.x = r5.x * r3.x + r3.z;
+    r3.x = r5.z ? r3.x : r3.z;
+    r4.xyz = r4.yzw * r0.zzz;
+    r4.xyz = r4.xyz * r0.xxx;
+    r3.xyz = r4.xyz * r3.xxx;
+    r8.xyz = r14.xyz * r3.xyz;
+  }
+  r3.x = cmp(0 != g_DeferredLights.m_IsolateVars.x);
+  if (r3.x != 0) {
+    r3.x = dot(-r13.xyz, r12.xyz);
+    r3.x = r3.x + r3.x;
+    r4.xyz = r12.xyz * -r3.xxx + -r13.xyz;
+    r3.xyz = g_Frame.m_GIConsts.Params.yyy * r6.xyz;
+    r12.xyz = r3.xyz * float3(0.5,0.5,0.5) + r2.xyz;
+    r3.xyz = r12.xyz * g_Frame.m_GIConsts.WSToIndirectionScale.xyz + g_Frame.m_GIConsts.WSToIndirectionBias.xyz;
+    r13.xyz = (uint3)r3.xyz;
+    r13.w = 0;
+    r3.x = t24.Load(r13.xyzw).x;
+    if (r3.x != 0) {
+      r13.xy = (uint2)v0.xy;
+      r13.zw = float2(0,0);
+      r3.y = t29.Load(r13.xyz).x;
+      r3.z = (int)r3.x + -1;
+    // Known bad code for instruction (needs manual fix):
+        ld_structured_indexable(structured_buffer, stride=52)(mixed,mixed,mixed,mixed) r13.xyzw, r3.z, l(0), t28.xyzw
+    r13.x = s_LocalCubeMaps_s[]..swiz;
+    r13.y = s_LocalCubeMaps_s[]..swiz;
+    r13.z = s_LocalCubeMaps_s[]..swiz;
+    r13.w = s_LocalCubeMaps_s[]..swiz;
+    // Known bad code for instruction (needs manual fix):
+        ld_structured_indexable(structured_buffer, stride=52)(mixed,mixed,mixed,mixed) r14.xyzw, r3.z, l(16), t28.zwxy
+    r14.x = s_LocalCubeMaps_s[]..swiz;
+    r14.y = s_LocalCubeMaps_s[]..swiz;
+    r14.z = s_LocalCubeMaps_s[]..swiz;
+    r14.w = s_LocalCubeMaps_s[]..swiz;
+    // Known bad code for instruction (needs manual fix):
+        ld_structured_indexable(structured_buffer, stride=52)(mixed,mixed,mixed,mixed) r15.xyzw, r3.z, l(32), t28.xyzw
+    r15.x = s_LocalCubeMaps_s[]..swiz;
+    r15.y = s_LocalCubeMaps_s[]..swiz;
+    r15.z = s_LocalCubeMaps_s[]..swiz;
+    r15.w = s_LocalCubeMaps_s[]..swiz;
+    // Known bad code for instruction (needs manual fix):
+        ld_structured_indexable(structured_buffer, stride=52)(mixed,mixed,mixed,mixed) r3.z, r3.z, l(48), t28.xxxx
+    r3.z = s_LocalCubeMaps_s[]..swiz;
+      r16.x = r13.w;
+      r16.yz = r14.zw;
+      r13.xyz = r12.xyz * r13.xyz + r16.xyz;
+      r16.xyz = r6.xyz * r3.zzz;
+      r13.xyz = saturate(r16.xyz * g_Frame.m_GIConsts.Params.yyy + r13.xyz);
+      r14.z = r15.x;
+      r13.xyz = r13.xyz * r14.xyz + r15.yzw;
+      r14.xyzw = t20.SampleLevel(s4_s, r13.xyz, 0).xyzw;
+      r15.xyzw = t21.SampleLevel(s4_s, r13.xyz, 0).xyzw;
+      r16.xyzw = t22.SampleLevel(s4_s, r13.xyz, 0).xyzw;
+      r13.xyzw = t23.SampleLevel(s4_s, r13.xyz, 0).xyzw;
+      r3.z = (int)r3.y & 0x0000ffff;
+      if (r3.z != 0) {
+        r3.z = (int)r3.y & 255;
+        r3.z = (int)r3.z + -1;
+      // Known bad code for instruction (needs manual fix):
+            ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r17.xyzw, r3.z, l(0), t26.xyzw
+      r17.x = s_LocalCubeMaps_s[]..swiz;
+      r17.y = s_LocalCubeMaps_s[]..swiz;
+      r17.z = s_LocalCubeMaps_s[]..swiz;
+      r17.w = s_LocalCubeMaps_s[]..swiz;
+      // Known bad code for instruction (needs manual fix):
+            ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r18.xyzw, r3.z, l(16), t26.xyzw
+      r18.x = s_LocalCubeMaps_s[]..swiz;
+      r18.y = s_LocalCubeMaps_s[]..swiz;
+      r18.z = s_LocalCubeMaps_s[]..swiz;
+      r18.w = s_LocalCubeMaps_s[]..swiz;
+      // Known bad code for instruction (needs manual fix):
+            ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r19.xyzw, r3.z, l(32), t26.xyzw
+      r19.x = s_LocalCubeMaps_s[]..swiz;
+      r19.y = s_LocalCubeMaps_s[]..swiz;
+      r19.z = s_LocalCubeMaps_s[]..swiz;
+      r19.w = s_LocalCubeMaps_s[]..swiz;
+        r12.w = 1;
+        r17.x = dot(r12.xyzw, r17.xyzw);
+        r17.y = dot(r12.xyzw, r18.xyzw);
+        r17.z = dot(r12.xyzw, r19.xyzw);
+        if (8 == 0) r3.z = 0; else if (8+8 < 32) {         r3.z = (uint)r3.y << (32-(8 + 8)); r3.z = (uint)r3.z >> (32-8);        } else r3.z = (uint)r3.y >> 8;
+        r3.z = (uint)r3.z;
+        r3.z = 0.00392200006 * r3.z;
+        r18.xyzw = t20.SampleLevel(s4_s, r17.xyz, 0).xyzw;
+        r19.xyzw = t21.SampleLevel(s4_s, r17.xyz, 0).xyzw;
+        r20.xyzw = t22.SampleLevel(s4_s, r17.xyz, 0).xyzw;
+        r17.xyzw = t23.SampleLevel(s4_s, r17.xyz, 0).xyzw;
+        r18.xyzw = r18.xyzw + -r14.xyzw;
+        r14.xyzw = r3.zzzz * r18.xyzw + r14.xyzw;
+        r18.xyzw = r19.xyzw + -r15.xyzw;
+        r15.xyzw = r3.zzzz * r18.xyzw + r15.xyzw;
+        r18.xyzw = r20.xyzw + -r16.xyzw;
+        r16.xyzw = r3.zzzz * r18.xyzw + r16.xyzw;
+        r17.xyzw = r17.xyzw + -r13.xyzw;
+        r13.xyzw = r3.zzzz * r17.xyzw + r13.xyzw;
+      } else {
+        r3.z = 0;
+      }
+      r5.z = (uint)r3.y >> 16;
+      if (r5.z != 0) {
+        if (8 == 0) r3.y = 0; else if (8+16 < 32) {         r3.y = (uint)r3.y << (32-(8 + 16)); r3.y = (uint)r3.y >> (32-8);        } else r3.y = (uint)r3.y >> 16;
+        r3.y = (int)r3.y + -1;
+      // Known bad code for instruction (needs manual fix):
+            ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r17.xyzw, r3.y, l(0), t26.xyzw
+      r17.x = s_LocalCubeMaps_s[]..swiz;
+      r17.y = s_LocalCubeMaps_s[]..swiz;
+      r17.z = s_LocalCubeMaps_s[]..swiz;
+      r17.w = s_LocalCubeMaps_s[]..swiz;
+      // Known bad code for instruction (needs manual fix):
+            ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r18.xyzw, r3.y, l(16), t26.xyzw
+      r18.x = s_LocalCubeMaps_s[]..swiz;
+      r18.y = s_LocalCubeMaps_s[]..swiz;
+      r18.z = s_LocalCubeMaps_s[]..swiz;
+      r18.w = s_LocalCubeMaps_s[]..swiz;
+      // Known bad code for instruction (needs manual fix):
+            ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r19.xyzw, r3.y, l(32), t26.xyzw
+      r19.x = s_LocalCubeMaps_s[]..swiz;
+      r19.y = s_LocalCubeMaps_s[]..swiz;
+      r19.z = s_LocalCubeMaps_s[]..swiz;
+      r19.w = s_LocalCubeMaps_s[]..swiz;
+        r12.w = 1;
+        r17.x = dot(r12.xyzw, r17.xyzw);
+        r17.y = dot(r12.xyzw, r18.xyzw);
+        r17.z = dot(r12.xyzw, r19.xyzw);
+        r3.y = (uint)r5.z >> 8;
+        r3.y = (uint)r3.y;
+        r3.y = 0.00392200006 * r3.y;
+        r12.xyzw = t20.SampleLevel(s4_s, r17.xyz, 0).xyzw;
+        r18.xyzw = t21.SampleLevel(s4_s, r17.xyz, 0).xyzw;
+        r19.xyzw = t22.SampleLevel(s4_s, r17.xyz, 0).xyzw;
+        r17.xyzw = t23.SampleLevel(s4_s, r17.xyz, 0).xyzw;
+        r3.z = 1 + -r3.z;
+        r3.y = min(r3.y, r3.z);
+        r12.xyzw = r12.xyzw + -r14.xyzw;
+        r14.xyzw = r3.yyyy * r12.xyzw + r14.xyzw;
+        r12.xyzw = r18.xyzw + -r15.xyzw;
+        r15.xyzw = r3.yyyy * r12.xyzw + r15.xyzw;
+        r12.xyzw = r19.xyzw + -r16.xyzw;
+        r16.xyzw = r3.yyyy * r12.xyzw + r16.xyzw;
+        r12.xyzw = r17.xyzw + -r13.xyzw;
+        r13.xyzw = r3.yyyy * r12.xyzw + r13.xyzw;
+      }
+      r3.y = g_Pass.m_GlobalLightingScale.y * r5.y;
+      r12.xyzw = r14.xyzw * r3.yyyy;
+      r14.xyzw = r15.xyzw * r3.yyyy;
+      r15.xyzw = r16.xyzw * r3.yyyy;
+      r6.w = 1;
+      r16.x = dot(r12.xyzw, r6.xyzw);
+      r16.y = dot(r14.xyzw, r6.xyzw);
+      r16.z = dot(r15.xyzw, r6.xyzw);
+    // Known bad code for instruction (needs manual fix):
+        ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r17.xyzw, l(0), l(0), t56.xyzw
+    r17.x = s_LocalCubeMaps_s[]..swiz;
+    r17.y = s_LocalCubeMaps_s[]..swiz;
+    r17.z = s_LocalCubeMaps_s[]..swiz;
+    r17.w = s_LocalCubeMaps_s[]..swiz;
+    // Known bad code for instruction (needs manual fix):
+        ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r18.xyzw, l(0), l(16), t56.xyzw
+    r18.x = s_LocalCubeMaps_s[]..swiz;
+    r18.y = s_LocalCubeMaps_s[]..swiz;
+    r18.z = s_LocalCubeMaps_s[]..swiz;
+    r18.w = s_LocalCubeMaps_s[]..swiz;
+    // Known bad code for instruction (needs manual fix):
+        ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r19.xyzw, l(0), l(32), t56.xyzw
+    r19.x = s_LocalCubeMaps_s[]..swiz;
+    r19.y = s_LocalCubeMaps_s[]..swiz;
+    r19.z = s_LocalCubeMaps_s[]..swiz;
+    r19.w = s_LocalCubeMaps_s[]..swiz;
+    // Known bad code for instruction (needs manual fix):
+        ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r20.xyzw, l(0), l(48), t56.xyzw
+    r20.x = s_LocalCubeMaps_s[]..swiz;
+    r20.y = s_LocalCubeMaps_s[]..swiz;
+    r20.z = s_LocalCubeMaps_s[]..swiz;
+    r20.w = s_LocalCubeMaps_s[]..swiz;
+    // Known bad code for instruction (needs manual fix):
+        ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r21.xyzw, l(0), l(64), t56.xyzw
+    r21.x = s_LocalCubeMaps_s[]..swiz;
+    r21.y = s_LocalCubeMaps_s[]..swiz;
+    r21.z = s_LocalCubeMaps_s[]..swiz;
+    r21.w = s_LocalCubeMaps_s[]..swiz;
+    // Known bad code for instruction (needs manual fix):
+        ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r22.xyzw, l(0), l(80), t56.xyzw
+    r22.x = s_LocalCubeMaps_s[]..swiz;
+    r22.y = s_LocalCubeMaps_s[]..swiz;
+    r22.z = s_LocalCubeMaps_s[]..swiz;
+    r22.w = s_LocalCubeMaps_s[]..swiz;
+    // Known bad code for instruction (needs manual fix):
+        ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r5.yzw, l(0), l(96), t56.xxyz
+    r5.y = s_LocalCubeMaps_s[]..swiz;
+    r5.z = s_LocalCubeMaps_s[]..swiz;
+    r5.w = s_LocalCubeMaps_s[]..swiz;
+      r23.x = dot(r17.xyzw, r6.xyzw);
+      r23.y = dot(r18.xyzw, r6.xyzw);
+      r23.z = dot(r19.xyzw, r6.xyzw);
+      r24.xyzw = r6.xyzx * r6.yzzz;
+      r20.x = dot(r20.xyzw, r24.xyzw);
+      r20.y = dot(r21.xyzw, r24.xyzw);
+      r20.z = dot(r22.xyzw, r24.xyzw);
+      r3.y = r6.y * r6.y;
+      r3.y = r6.x * r6.x + -r3.y;
+      r20.xyz = r23.xyz + r20.xyz;
+      r5.yzw = r5.yzw * r3.yyy + r20.xyz;
+      r5.yzw = max(float3(0,0,0), r5.yzw);
+      r3.y = dot(r13.xyzw, r6.xyzw);
+      r5.yzw = r5.yzw * r3.yyy + r16.xyz;
+      r4.w = 1;
+      r3.y = dot(r13.xyzw, r4.xyzw);
+      r12.x = dot(r12.xyzw, r4.xyzw);
+      r12.y = dot(r14.xyzw, r4.xyzw);
+      r12.z = dot(r15.xyzw, r4.xyzw);
+      r13.x = dot(r17.xyzw, r4.xyzw);
+      r13.y = dot(r18.xyzw, r4.xyzw);
+      r13.z = dot(r19.xyzw, r4.xyzw);
+      r13.xyz = max(float3(0,0,0), r13.xyz);
+      r12.xyz = r13.xyz * r3.yyy + r12.xyz;
+      r3.z = dot(r12.xyz, float3(0.212599993,0.715200007,0.0722000003));
+    } else {
+      r5.yzw = float3(0,0,0);
+      r3.yz = float2(1,1);
+    }
+    r6.w = cmp(0 != g_Frame.m_GIConsts.Params.x);
+    r6.w = ~(int)r6.w;
+    r3.x = cmp((int)r3.x == 0);
+    r3.x = (int)r3.x | (int)r6.w;
+    if (r3.x != 0) {
+      r5.yzw = t_g_SkyLightingCubeTexture.SampleLevel(s_TrilinearClamp_s_s, r6.xyz, 0).xyz;
+      r3.z = dot(r5.yzw, float3(0.212599993,0.715200007,0.0722000003));
+      r3.y = r6.z * 0.5 + 0.5;
+    }
+    r5.yzw = r5.yzw * r0.xxx;
+    r0.x = r0.z * r0.x;
+    r3.x = dot(r5.yzw, float3(0.212599993,0.715200007,0.0722000003));
+    r3.w = -r3.w * 6.33333302 + 6.33333302;
+    r6.xy = (int2)v1.yz * int2(10,10);
+    r12.x = dot(r2.xyzw, g_Frame.m_LocalCubeMaps[v1.y]._m00_m10_m20_m30);
+    r12.y = dot(r2.xyzw, g_Frame.m_LocalCubeMaps[v1.y]._m01_m11_m21_m31);
+    r12.z = dot(r2.xyzw, g_Frame.m_LocalCubeMaps[v1.y]._m02_m12_m22_m32);
+    r13.x = dot(r2.xyzw, g_Frame.m_LocalCubeMaps[v1.z]._m00_m10_m20_m30);
+    r13.y = dot(r2.xyzw, g_Frame.m_LocalCubeMaps[v1.z]._m01_m11_m21_m31);
+    r13.z = dot(r2.xyzw, g_Frame.m_LocalCubeMaps[v1.z]._m02_m12_m22_m32);
+    r14.xyz = -g_Frame.m_LocalCubeMaps[v1.y].xyz + abs(r12.xyz);
+    r15.xyz = g_Frame.m_LocalCubeMaps[v1.y].xyz + -g_Frame.m_LocalCubeMaps[v1.y].xyz;
+    r14.xyz = r14.xyz / r15.xyz;
+    r15.xyz = -g_Frame.m_LocalCubeMaps[v1.z].xyz + abs(r13.xyz);
+    r16.xyz = g_Frame.m_LocalCubeMaps[v1.z].xyz + -g_Frame.m_LocalCubeMaps[v1.z].xyz;
+    r15.xyz = r15.xyz / r16.xyz;
+    r16.xyz = cmp(r14.xyz < float3(0,0,0));
+    r2.w = r16.y ? r16.x : 0;
+    r2.w = r16.z ? r2.w : 0;
+    r16.xyz = cmp(r15.xyz < float3(0,0,0));
+    r6.z = r16.y ? r16.x : 0;
+    r6.z = r16.z ? r6.z : 0;
+    r14.xyz = saturate(r14.xyz);
+    r6.w = max(r14.x, r14.y);
+    r6.w = max(r6.w, r14.z);
+    r7.z = 9.99999975e-005 + r6.w;
+    r14.xy = float2(1,1.00010002) + -r6.ww;
+    r15.xyz = saturate(r15.xyz);
+    r7.w = max(r15.x, r15.y);
+    r7.w = max(r7.w, r15.z);
+    r7.z = r7.z + r7.w;
+    r8.w = 1 + -r7.w;
+    r9.w = r14.y + r8.w;
+    r6.w = r6.w / r7.z;
+    r6.w = 1 + -r6.w;
+    r10.w = r14.x / r9.w;
+    r11.w = r10.w * r6.w;
+    r7.z = r7.w / r7.z;
+    r7.z = 1 + -r7.z;
+    r7.w = r8.w / r9.w;
+    r7.z = r7.z * r7.w;
+    r6.w = r6.w * r10.w + r7.z;
+    r7.w = cmp(r6.w == 0.000000);
+    r6.w = 1 / r6.w;
+    r6.w = r7.w ? 1 : r6.w;
+    r14.y = r11.w * r6.w;
+    r14.z = r7.z * r6.w;
+    r6.w = min(0.899999976, r9.w);
+    r14.x = 1.11111104 * r6.w;
+    r14.xyz = r6.zzz ? float3(1,0,1) : r14.xyz;
+    r14.xyz = r2.www ? float3(1,1,0) : r14.xyz;
+    r15.xyzw = g_GILocalCubeMapsSRV.Load(v1.y).xyzw;
+    r4.w = 1;
+    r2.w = saturate(dot(r15.xyzw, r4.xyzw));
+    r2.w = saturate(r3.z / r2.w);
+    r15.xyzw = g_GILocalCubeMapsSRV.Load(v1.z).xyzw;
+    r4.w = saturate(dot(r15.xyzw, r4.xyzw));
+    r3.z = saturate(r3.z / r4.w);
+    r2.w = r14.y * r2.w;
+    r15.x = dot(r4.xyz, g_Frame.m_LocalCubeMaps[v1.y]._m00_m10_m20);
+    r15.y = dot(r4.xyz, g_Frame.m_LocalCubeMaps[v1.y]._m01_m11_m21);
+    r15.z = dot(r4.xyz, g_Frame.m_LocalCubeMaps[v1.y]._m02_m12_m22);
+    r16.xyz = g_Frame.m_LocalCubeMaps[v1.y].xyz + -r12.xyz;
+    r16.xyz = r16.xyz / r15.xyz;
+    r12.xyz = g_Frame.m_LocalCubeMaps[v1.y].xyz + -r12.xyz;
+    r12.xyz = r12.xyz / r15.xyz;
+    r12.xyz = max(r16.xyz, r12.xyz);
+    r4.w = min(r12.x, r12.y);
+    r4.w = min(r4.w, r12.z);
+    r12.xyz = r4.xyz * r4.www + r2.xyz;
+    r12.xyz = -g_Frame.m_LocalCubeMaps[v1.y].xyz + r12.xyz;
+    r15.x = dot(r12.xyz, g_Frame.m_LocalCubeMaps[v1.y]._m00_m10_m20);
+    r15.y = dot(r12.xyz, g_Frame.m_LocalCubeMaps[v1.y]._m01_m11_m21);
+    r15.z = dot(r12.xyz, g_Frame.m_LocalCubeMaps[v1.y]._m02_m12_m22);
+    r15.w = (uint2)g_Frame.m_LocalCubeMaps[v1.y];
+    r6.xzw = t_LocalCubeMaps.SampleLevel(s_LocalCubeMaps_s_s, r15.xyzw, r3.w).xyz;
+    r3.z = r14.z * r3.z;
+    r12.x = dot(r4.xyz, g_Frame.m_LocalCubeMaps[v1.z]._m00_m10_m20);
+    r12.y = dot(r4.xyz, g_Frame.m_LocalCubeMaps[v1.z]._m01_m11_m21);
+    r12.z = dot(r4.xyz, g_Frame.m_LocalCubeMaps[v1.z]._m02_m12_m22);
+    r14.yzw = g_Frame.m_LocalCubeMaps[v1.z].xyz + -r13.xyz;
+    r14.yzw = r14.yzw / r12.xyz;
+    r13.xyz = g_Frame.m_LocalCubeMaps[v1.z].xyz + -r13.xyz;
+    r12.xyz = r13.xyz / r12.xyz;
+    r12.xyz = max(r14.yzw, r12.xyz);
+    r4.w = min(r12.x, r12.y);
+    r4.w = min(r4.w, r12.z);
+    r2.xyz = r4.xyz * r4.www + r2.xyz;
+    r2.xyz = -g_Frame.m_LocalCubeMaps[v1.z].xyz + r2.xyz;
+    r12.x = dot(r2.xyz, g_Frame.m_LocalCubeMaps[v1.z]._m00_m10_m20);
+    r12.y = dot(r2.xyz, g_Frame.m_LocalCubeMaps[v1.z]._m01_m11_m21);
+    r12.z = dot(r2.xyz, g_Frame.m_LocalCubeMaps[v1.z]._m02_m12_m22);
+    r12.w = (uint2)g_Frame.m_LocalCubeMaps[v1.z];
+    r2.xyz = t_LocalCubeMaps.SampleLevel(s_LocalCubeMaps_s_s, r12.xyzw, r3.w).xyz;
+    r2.xyz = r3.zzz * r2.xyz;
+    r2.xyz = r2.www * r6.xzw + r2.xyz;
+    r4.xyz = t_GlobalEnvMap.SampleLevel(s_LocalCubeMaps_s_s, r4.xyz, r3.w).xyz;
+    r3.yzw = r4.xyz * r3.yyy;
+    r2.w = 1 + -r14.x;
+    r2.xyz = r14.xxx * r2.xyz;
+    r2.xyz = r2.www * r3.yzw + r2.xyz;
+    r2.w = dot(r2.xyz, g_Frame.m_LocalCubeMapParams[1].xyz);
+    r2.xyz = r2.xyz * g_Frame.m_LocalCubeMapParams[0].zzz + r2.www;
+    r2.w = g_Frame.m_LocalCubeMapParams[0].w * g_Frame.m_LocalCubeMapParams[0].y + r2.z;
+    r2.xyz = g_Pass.m_GlobalLightingScale.yyy * r2.xyw;
+    r3.yzw = r7.xyy * float3(0.96875,0.96875,4) + float3(0.015625,0.015625,1);
+    r3.yz = t_BRDFLUT.SampleLevel(s_TrilinearClamp_s_s, r3.yz, 0).xy;
+    r4.xyz = r3.zzz * r10.xyz + r3.yyy;
+    r6.xyz = r4.xyz * r0.xxx;
+    r1.xyz = r6.xyz * r1.xyz;
+    r1.xyz = r0.www ? r1.xyz : r6.xyz;
+    r1.xyz = r2.xyz * r1.xyz;
+    r0.x = cmp(0 < r5.x);
+    r0.w = r7.x * r7.x;
+    r2.x = -r7.x * r7.x + 1.00010002;
+    r2.y = r2.x * r2.x;
+    r0.w = r0.w / r2.x;
+    r0.w = -r0.w / r7.y;
+    r0.w = 1.44269502 * r0.w;
+    r0.w = exp2(r0.w);
+    r0.w = 4 * r0.w;
+    r0.w = r0.w / r2.y;
+    r0.w = 1 + r0.w;
+    r0.w = r0.w / r3.w;
+    r2.xyz = r0.www * r4.xyz;
+    r2.xyz = r2.xyz * r0.zzz;
+    r2.xyz = r2.xyz * r5.yzw;
+    r2.xyz = r2.xyz * r5.xxx + -r1.xyz;
+    r2.xyz = r5.xxx * r2.xyz + r1.xyz;
+    r0.xzw = r0.xxx ? r2.xyz : r1.xyz;
+    r11.xyz = r5.yzw * r1.www + r11.xyz;
+    r1.x = r3.x + r0.y;
+    r0.xzw = g_DeferredLights.m_EnvironmentSpecularScale * r0.xzw + r8.xyz;
+    r8.xyz = r0.xzw + r9.xyz;
+    r0.x = dot(r9.xyz, float3(0.212599993,0.715200007,0.0722000003));
+    r0.y = r1.x + r0.x;
+  }
+  o0.xyz = g_Pass.m_GlobalLightingScale.xxx * r11.xyz;
+  o1.xyz = g_Pass.m_GlobalLightingScale.xxx * r8.xyz;
+  o0.w = g_Pass.m_GlobalLightingScale.x * r0.y;
+  o1.w = 1;
+  return;
+}

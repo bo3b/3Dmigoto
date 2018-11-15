@@ -125,6 +125,28 @@ errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t *filename, const wcha
 	return 0;
 }
 
+void set_file_last_write_time(wchar_t *path, FILETIME *ftWrite, DWORD flags)
+{
+	HANDLE f;
+
+	f = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | flags, NULL);
+	if (f == INVALID_HANDLE_VALUE)
+		return;
+
+	SetFileTime(f, NULL, NULL, ftWrite);
+	CloseHandle(f);
+}
+
+void touch_file(wchar_t *path, DWORD flags)
+{
+	FILETIME ft;
+	SYSTEMTIME st;
+
+	GetSystemTime(&st);
+	SystemTimeToFileTime(&st, &ft);
+	set_file_last_write_time(path, &ft, flags);
+}
+
 
 // -----------------------------------------------------------------------------------------------
 // When logging, it's not very helpful to have long sequences of hex instead of

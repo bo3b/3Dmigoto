@@ -1,0 +1,1004 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:05 2018
+
+cbuffer cbAreaLightInfo : register(b3)
+{
+
+  struct
+  {
+
+    struct
+    {
+      float3 pos;
+      float invSqrAttenuationRadius;
+      float3 color;
+      float attenuationOffset;
+      float3 matrixForward;
+      float diffuseScale;
+      float3 matrixUp;
+      float specularScale;
+      float3 matrixLeft;
+      float shadowDimmer;
+      float angleScale;
+      float angleOffset;
+      float2 unused;
+    } baseLight;
+
+
+    struct
+    {
+      float3 virtualPos;
+      float occluderHeight;
+      float areaLightType;
+      float lightRadius0;
+      float lightRadius1;
+      float unused;
+    } areaLight;
+
+
+    struct
+    {
+      float enable;
+      float volumeShadowMapIndex;
+      float invAttenuationRadius;
+      float tanAngle;
+    } vShadow;
+
+  } g_lightInfoArea[128] : packoffset(c0);
+
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4x4 invViewProjectionMatrix : packoffset(c0);
+  float4 g_exposureMultipliers : packoffset(c4);
+  float localIblMipmapBias : packoffset(c5);
+  float screenAspectRatio : packoffset(c5.y);
+  float2 invResolution : packoffset(c5.z);
+  float4 shadowMapSizeAndInvSize : packoffset(c6);
+  uint forceSplitLighting : packoffset(c7);
+  uint sssScatteringEnables : packoffset(c7.y);
+  float volumetricShadowmapHalfTexelOffset : packoffset(c7.z);
+  float volumetricShadowmapOneMinusHalfTexelOffset : packoffset(c7.w);
+  float volumetricShadowmapInvMaxCount : packoffset(c8);
+  float dynamicAOFactor : packoffset(c8.y);
+  uint tileCountX : packoffset(c8.z);
+  uint pad1 : packoffset(c8.w);
+  float4x3 g_normalBasisTransforms[6] : packoffset(c9);
+}
+
+SamplerState g_linearSampler_s_s : register(s0);
+Texture2D<float4> g_gbufferTexture0 : register(t0);
+Texture2D<float4> g_gbufferTexture1 : register(t1);
+Texture2D<float4> g_gbufferTexture2 : register(t2);
+Texture2D<float> g_depthTexture : register(t6);
+Texture2D<float> g_diffuseOcclusionTexture : register(t10);
+StructuredBuffer<g_lightCullInput> g_lightCullInput : register(t19);
+StructuredBuffer<g_lightIndexInput> g_lightIndexInput : register(t20);
+StructuredBuffer<g_compactTileGridBuffer> g_compactTileGridBuffer : register(t24);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t19, 16 
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t20, 4 
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t24, 4 
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u0
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30,r31,r32;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_tgsm_raw g0, 4
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_tgsm_raw g1, 4
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 16, 16, 1
+// Known bad code for instruction (needs manual fix):
+ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, vThreadGroupID.x, l(0), t24.xxxx
+r0.x = g_linearSampler_s[]..swiz;
+  r1.x = (uint)r0.x >> 16;
+  r1.yzw = (int3)r0.xxx & int3(0,0,0);
+  r0.xyzw = mad((int4)r1.xyzw, int4(16,16,16,16), (int4)vThreadIDInGroup.xyyy);
+  if (vThreadIDInGroupFlattened.x == 0) {
+    r1.x = mad((int)r1.w, tileCountX, (int)r1.x);
+  // Known bad code for instruction (needs manual fix):
+    ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.y, r1.x, l(0), t19.xxxx
+  r1.y = g_linearSampler_s[]..swiz;
+  // Known bad code for instruction (needs manual fix):
+    ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.x, r1.x, l(8), t19.xxxx
+  r1.x = g_linearSampler_s[]..swiz;
+    r1.x = (int)r1.x & 0x0000ffff;
+  // No code for instruction (needs manual fix):
+    store_raw g0.x, l(0), r1.y
+  // No code for instruction (needs manual fix):
+    store_raw g1.x, l(0), r1.x
+  }
+  GroupMemoryBarrierWithGroupSync();
+  r1.xy = (uint2)r0.xw;
+  r1.zw = float2(0.5,0.5) + r1.xy;
+  r1.zw = invResolution.xy * r1.zw;
+  r2.xy = (int2)r1.xy;
+  r2.zw = float2(0,0);
+  r3.xyzw = g_gbufferTexture0.Load(r2.xyw).xyzw;
+  r4.xyzw = g_gbufferTexture1.Load(r2.xyw).xyzw;
+  r1.xy = g_gbufferTexture2.Load(r2.xyw).yz;
+  r2.z = g_depthTexture.Load(r2.xyz).x;
+  r4.w = 6 * r4.w;
+  r4.w = round(r4.w);
+  r4.w = (uint)r4.w;
+  r5.xy = r3.xy * float2(2,2) + float2(-1,-1);
+  r3.x = dot(r5.xy, r5.xy);
+  r3.x = min(1, r3.x);
+  r3.x = 1 + -r3.x;
+  r5.z = sqrt(r3.x);
+  r3.x = (int)r4.w * 3;
+  r6.x = dot(r5.xyz, g_normalBasisTransforms[r4.w]._m00_m10_m20);
+  r6.y = dot(r5.xyz, g_normalBasisTransforms[r4.w]._m01_m11_m21);
+  r6.z = dot(r5.xyz, g_normalBasisTransforms[r4.w]._m02_m12_m22);
+  r3.x = 1 + -r3.z;
+  r3.y = 3 * r3.w;
+  r3.y = round(r3.y);
+  r3.y = (int)r3.y;
+  r3.y = cmp((int)r3.y == 1);
+  r1.x = r3.y ? 0 : r1.x;
+  r3.y = 1 + -r1.x;
+  r3.yzw = r4.xyz * r3.yyy;
+  r1.y = r1.y * r1.y;
+  r4.w = 0.159999996 * r1.y;
+  r4.xyz = -r1.yyy * float3(0.159999996,0.159999996,0.159999996) + r4.xyz;
+  r4.xyz = r1.xxx * r4.xyz + r4.www;
+  r1.x = dot(r4.xyz, float3(0.330000013,0.330000013,0.330000013));
+  r1.x = saturate(50 * r1.x);
+  r1.y = r3.x * r3.x;
+  r5.xy = r1.zw * float2(2,2) + float2(-1,-1);
+  r2.xy = float2(1,-1) * r5.xy;
+  r2.w = 1;
+  r5.x = dot(r2.xyzw, invViewProjectionMatrix._m00_m10_m20_m30);
+  r5.y = dot(r2.xyzw, invViewProjectionMatrix._m01_m11_m21_m31);
+  r5.z = dot(r2.xyzw, invViewProjectionMatrix._m02_m12_m22_m32);
+  r2.x = dot(r2.xyzw, invViewProjectionMatrix._m03_m13_m23_m33);
+  r2.x = 1 / r2.x;
+  r2.yzw = r5.xyz * r2.xxx;
+  r4.w = dot(-r2.yzw, -r2.yzw);
+  r4.w = rsqrt(r4.w);
+  r7.xyz = r4.www * -r2.yzw;
+  r5.w = dot(-r7.xyz, r6.xyz);
+  r5.w = r5.w + r5.w;
+  r8.xyz = r6.xyz * -r5.www + -r7.xyz;
+  r5.w = dot(r6.xyz, r7.xyz);
+  r6.w = saturate(r5.w);
+  r1.z = g_diffuseOcclusionTexture.SampleLevel(g_linearSampler_s_s, r1.zw, 0).x;
+// No code for instruction (needs manual fix):
+ld_raw r1.w, l(0), g0.xxxx
+// No code for instruction (needs manual fix):
+ld_raw r7.x, l(0), g1.xxxx
+  r7.x = (int)r1.w + (int)r7.x;
+  r7.y = max(0.00200000009, r1.y);
+  r5.w = 9.99999975e-006 + abs(r5.w);
+  r9.xyz = r1.xxx + -r4.xyz;
+  r1.x = r7.y * r7.y;
+  r7.z = -r5.w * r1.x + r5.w;
+  r7.z = r7.z * r5.w + r1.x;
+  r7.z = sqrt(r7.z);
+  r7.w = r3.x * -0.337748349 + 1;
+  r8.w = 1 + -r5.w;
+  r9.w = r8.w * r8.w;
+  r9.w = r9.w * r9.w;
+  r8.w = r9.w * r8.w;
+  r9.w = 1.5 * r7.y;
+  r9.w = min(1, r9.w);
+  r9.w = -r9.w * 7 + 8;
+  r10.z = 0;
+  r11.z = 0;
+  r12.zw = float2(1,-1);
+  r13.yz = float2(0,0);
+  r14.yz = float2(0,0);
+  r15.zw = float2(1,-1);
+  r16.xz = float2(0,0);
+  r17.xz = float2(0,0);
+  r18.xyz = float3(0,0,0);
+  r19.xyz = float3(0,0,0);
+  r10.w = r1.w;
+  while (true) {
+    r11.w = cmp((uint)r10.w >= (uint)r7.x);
+    if (r11.w != 0) break;
+  // Known bad code for instruction (needs manual fix):
+    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r11.w, r10.w, l(0), t20.xxxx
+  r11.w = g_linearSampler_s[]..swiz;
+    r11.w = (int)r11.w * 9;
+    r13.w = (uint13)g_lightInfoArea[r11.w].areaLight.areaLightType;
+    r14.w = cmp((int)r13.w == 2);
+    if (r14.w != 0) {
+      r20.xyz = g_lightInfoArea[r11.w].baseLight.matrixLeft.xyz * float3(0.5,0.5,0.5);
+      r21.xyz = -r20.xyz * g_lightInfoArea[r11.w].areaLight.lightRadius1 + g_lightInfoArea[r11.w].baseLight.pos.xyz;
+      r20.xyz = r20.xyz * g_lightInfoArea[r11.w].areaLight.lightRadius1 + g_lightInfoArea[r11.w].baseLight.pos.xyz;
+      r22.xyz = r20.xyz + -r21.xyz;
+      r23.xyz = r5.xyz * r2.xxx + -r21.xyz;
+      r14.w = dot(r23.xyz, r22.xyz);
+      r16.w = dot(r22.xyz, r22.xyz);
+      r14.w = r14.w / r16.w;
+      r23.xyz = r14.www * r22.yzx + r21.yzx;
+      r23.xyz = -r5.yzx * r2.xxx + r23.xyz;
+      r16.w = dot(r23.xyz, r23.xyz);
+      r16.w = rsqrt(r16.w);
+      r23.xyz = r23.xyz * r16.www;
+      r24.xyz = g_lightInfoArea[r11.w].baseLight.matrixLeft.zxy * r23.xyz;
+      r23.xyz = g_lightInfoArea[r11.w].baseLight.matrixLeft.yzx * r23.yzx + -r24.xyz;
+      r16.w = g_lightInfoArea[r11.w].areaLight.lightRadius1 * 0.5;
+      r24.xyz = -g_lightInfoArea[r11.w].baseLight.matrixLeft.xyz * r16.www + g_lightInfoArea[r11.w].baseLight.pos.xyz;
+      r25.xyz = g_lightInfoArea[r11.w].areaLight.lightRadius0 * r23.xyz + r24.xyz;
+      r24.xyz = -g_lightInfoArea[r11.w].areaLight.lightRadius0 * r23.xyz + r24.xyz;
+      r26.xyz = g_lightInfoArea[r11.w].baseLight.matrixLeft.xyz * r16.www + g_lightInfoArea[r11.w].baseLight.pos.xyz;
+      r27.xyz = -g_lightInfoArea[r11.w].areaLight.lightRadius0 * r23.xyz + r26.xyz;
+      r23.xyz = g_lightInfoArea[r11.w].areaLight.lightRadius0 * r23.xyz + r26.xyz;
+      r25.xyz = -r5.xyz * r2.xxx + r25.xyz;
+      r24.xyz = -r5.xyz * r2.xxx + r24.xyz;
+      r26.xyz = -r5.xyz * r2.xxx + r27.xyz;
+      r23.xyz = -r5.xyz * r2.xxx + r23.xyz;
+      r27.xyz = r25.zxy * r24.yzx;
+      r27.xyz = r25.yzx * r24.zxy + -r27.xyz;
+      r16.w = dot(r27.xyz, r27.xyz);
+      r16.w = rsqrt(r16.w);
+      r27.xyz = r27.xyz * r16.www;
+      r28.xyz = r26.yzx * r24.zxy;
+      r28.xyz = r24.yzx * r26.zxy + -r28.xyz;
+      r16.w = dot(r28.xyz, r28.xyz);
+      r16.w = rsqrt(r16.w);
+      r28.xyz = r28.xyz * r16.www;
+      r29.xyz = r26.zxy * r23.yzx;
+      r29.xyz = r26.yzx * r23.zxy + -r29.xyz;
+      r16.w = dot(r29.xyz, r29.xyz);
+      r16.w = rsqrt(r16.w);
+      r29.xyz = r29.xyz * r16.www;
+      r30.xyz = r23.zxy * r25.yzx;
+      r30.xyz = r23.yzx * r25.zxy + -r30.xyz;
+      r16.w = dot(r30.xyz, r30.xyz);
+      r16.w = rsqrt(r16.w);
+      r30.xyz = r30.xyz * r16.www;
+      r16.w = dot(-r27.xyz, r28.xyz);
+      r17.w = abs(r16.w) * abs(r16.w);
+      r18.w = r17.w * abs(r16.w);
+      r19.w = abs(r16.w) * -0.212114394 + 1.57072878;
+      r17.w = r17.w * 0.0742610022 + r19.w;
+      r17.w = r18.w * -0.0187292993 + r17.w;
+      r18.w = 1 + -abs(r16.w);
+      r18.w = sqrt(r18.w);
+      r19.w = r18.w * r17.w;
+      r16.w = cmp(r16.w >= 0);
+      r17.w = -r18.w * r17.w + 3.14159274;
+      r16.w = r16.w ? r19.w : r17.w;
+      r17.w = dot(-r28.xyz, r29.xyz);
+      r18.w = abs(r17.w) * abs(r17.w);
+      r19.w = r18.w * abs(r17.w);
+      r20.w = abs(r17.w) * -0.212114394 + 1.57072878;
+      r18.w = r18.w * 0.0742610022 + r20.w;
+      r18.w = r19.w * -0.0187292993 + r18.w;
+      r19.w = 1 + -abs(r17.w);
+      r19.w = sqrt(r19.w);
+      r20.w = r19.w * r18.w;
+      r17.w = cmp(r17.w >= 0);
+      r18.w = -r19.w * r18.w + 3.14159274;
+      r17.w = r17.w ? r20.w : r18.w;
+      r18.w = dot(-r29.xyz, r30.xyz);
+      r19.w = abs(r18.w) * abs(r18.w);
+      r20.w = r19.w * abs(r18.w);
+      r21.w = abs(r18.w) * -0.212114394 + 1.57072878;
+      r19.w = r19.w * 0.0742610022 + r21.w;
+      r19.w = r20.w * -0.0187292993 + r19.w;
+      r20.w = 1 + -abs(r18.w);
+      r20.w = sqrt(r20.w);
+      r21.w = r20.w * r19.w;
+      r18.w = cmp(r18.w >= 0);
+      r19.w = -r20.w * r19.w + 3.14159274;
+      r18.w = r18.w ? r21.w : r19.w;
+      r19.w = dot(-r30.xyz, r27.xyz);
+      r20.w = abs(r19.w) * abs(r19.w);
+      r21.w = r20.w * abs(r19.w);
+      r22.w = abs(r19.w) * -0.212114394 + 1.57072878;
+      r20.w = r20.w * 0.0742610022 + r22.w;
+      r20.w = r21.w * -0.0187292993 + r20.w;
+      r21.w = 1 + -abs(r19.w);
+      r21.w = sqrt(r21.w);
+      r22.w = r21.w * r20.w;
+      r19.w = cmp(r19.w >= 0);
+      r20.w = -r21.w * r20.w + 3.14159274;
+      r19.w = r19.w ? r22.w : r20.w;
+      r16.w = r17.w + r16.w;
+      r16.w = r16.w + r18.w;
+      r16.w = r16.w + r19.w;
+      r16.w = -6.28318548 + r16.w;
+      r16.w = 0.200000003 * r16.w;
+      r17.w = dot(r25.xyz, r25.xyz);
+      r17.w = rsqrt(r17.w);
+      r25.xyz = r25.xyz * r17.www;
+      r17.w = saturate(dot(r25.xyz, r6.xyz));
+      r18.w = dot(r24.xyz, r24.xyz);
+      r18.w = rsqrt(r18.w);
+      r24.xyz = r24.xyz * r18.www;
+      r18.w = saturate(dot(r24.xyz, r6.xyz));
+      r17.w = r18.w + r17.w;
+      r18.w = dot(r26.xyz, r26.xyz);
+      r18.w = rsqrt(r18.w);
+      r24.xyz = r26.xyz * r18.www;
+      r18.w = saturate(dot(r24.xyz, r6.xyz));
+      r17.w = r18.w + r17.w;
+      r18.w = dot(r23.xyz, r23.xyz);
+      r18.w = rsqrt(r18.w);
+      r23.xyz = r23.xyz * r18.www;
+      r18.w = saturate(dot(r23.xyz, r6.xyz));
+      r17.w = r18.w + r17.w;
+      r23.xyz = -r5.xyz * r2.xxx + g_lightInfoArea[r11.w].baseLight.pos.xyz;
+      r18.w = dot(r23.xyz, r23.xyz);
+      r19.w = rsqrt(r18.w);
+      r23.xyz = r23.xyz * r19.www;
+      r19.w = saturate(dot(r23.xyz, r6.xyz));
+      r17.w = r19.w + r17.w;
+      r14.w = saturate(r14.w);
+      r22.xyz = r14.www * r22.xyz + r21.xyz;
+      r22.xyz = -r5.xyz * r2.xxx + r22.xyz;
+      r14.w = dot(r22.xyz, r22.xyz);
+      r19.w = rsqrt(r14.w);
+      r22.xyz = r22.xyz * r19.www;
+      r19.w = g_lightInfoArea[r11.w].areaLight.lightRadius0 * g_lightInfoArea[r11.w].areaLight.lightRadius0;
+      r20.w = saturate(dot(r22.xyz, r6.xyz));
+      r21.w = 3.14159274 * r20.w;
+      r14.w = max(r19.w, r14.w);
+      r14.w = r19.w / r14.w;
+      r14.w = r21.w * r14.w;
+      r14.w = r16.w * r17.w + r14.w;
+      r16.w = g_lightInfoArea[r11.w].baseLight.invSqrAttenuationRadius * r18.w;
+      r16.w = -r16.w * r16.w + 1;
+      r16.w = max(0, r16.w);
+      r16.w = r16.w * r16.w;
+      r14.w = r16.w * r14.w;
+      r16.w = cmp(0 < r14.w);
+      if (r16.w != 0) {
+        r21.xyz = -r5.xyz * r2.xxx + r21.xyz;
+        r20.xyz = -r5.xyz * r2.xxx + r20.xyz;
+        r20.xyz = r20.xyz + -r21.xyz;
+        r16.w = dot(r20.xyz, r20.xyz);
+        r17.w = dot(r8.xyz, r20.xyz);
+        r18.w = dot(r8.xyz, r21.xyz);
+        r19.w = dot(r21.xyz, r20.xyz);
+        r18.w = r18.w * r17.w + -r19.w;
+        r16.w = -r17.w * r17.w + r16.w;
+        r16.w = saturate(r18.w / r16.w);
+        r20.xyz = r16.www * r20.xyz + r21.xyz;
+        r16.w = dot(r20.xyz, r8.xyz);
+        r21.xyz = r16.www * r8.xyz + -r20.xyz;
+        r16.w = dot(r21.xyz, r21.xyz);
+        r16.w = sqrt(r16.w);
+        r16.w = saturate(g_lightInfoArea[r11.w].areaLight.lightRadius0 / r16.w);
+        r20.xyz = r21.xyz * r16.www + r20.xyz;
+        r16.w = dot(r20.xyz, r20.xyz);
+        r17.w = sqrt(r16.w);
+        r16.w = rsqrt(r16.w);
+        r20.xyz = r20.xyz * r16.www;
+        r16.w = r17.w + r17.w;
+        r16.w = g_lightInfoArea[r11.w].areaLight.lightRadius0 / r16.w;
+        r16.w = saturate(r16.w + r7.y);
+        r16.w = r7.y / r16.w;
+        r21.xyz = -r2.yzw * r4.www + r20.xyz;
+        r17.w = dot(r21.xyz, r21.xyz);
+        r17.w = rsqrt(r17.w);
+        r21.xyz = r21.xyz * r17.www;
+        r23.xyz = -r2.yzw * r4.www + r22.xyz;
+        r17.w = dot(r23.xyz, r23.xyz);
+        r17.w = rsqrt(r17.w);
+        r23.xyz = r23.xyz * r17.www;
+        r17.w = saturate(dot(r20.xyz, r21.xyz));
+        r18.w = saturate(dot(r22.xyz, r23.xyz));
+        r19.w = saturate(dot(r6.xyz, r21.xyz));
+        r20.x = saturate(dot(r6.xyz, r20.xyz));
+        r17.w = 1 + -r17.w;
+        r20.y = r17.w * r17.w;
+        r20.y = r20.y * r20.y;
+        r17.w = r20.y * r17.w;
+        r21.xyz = r9.xyz * r17.www + r4.xyz;
+        r17.w = -r20.x * r1.x + r20.x;
+        r17.w = r17.w * r20.x + r1.x;
+        r17.w = sqrt(r17.w);
+        r17.w = r17.w * r5.w;
+        r17.w = r20.x * r7.z + r17.w;
+        r17.w = 0.5 / r17.w;
+        r20.x = r19.w * r1.x + -r19.w;
+        r19.w = r20.x * r19.w + 1;
+        r19.w = r19.w * r19.w;
+        r19.w = r1.x / r19.w;
+        r17.w = r19.w * r17.w;
+        r16.w = r17.w * r16.w;
+        r20.xyz = r21.xyz * r16.www;
+        r16.w = r18.w * r18.w;
+        r16.w = dot(r16.ww, r3.xx);
+        r16.w = r3.x * 0.5 + r16.w;
+        r17.w = 1 + -r20.w;
+        r18.w = r17.w * r17.w;
+        r18.w = r18.w * r18.w;
+        r17.w = r18.w * r17.w;
+        r16.w = -1 + r16.w;
+        r17.w = r16.w * r17.w + 1;
+        r16.w = r16.w * r8.w + 1;
+        r16.w = r17.w * r16.w;
+        r16.w = r16.w * r7.w;
+        r17.w = g_lightInfoArea[r11.w].baseLight.diffuseScale * r14.w;
+        r21.xyz = g_lightInfoArea[r11.w].baseLight.color.xyz * r17.www;
+        r21.xyz = r21.xyz * r16.www;
+        r14.w = g_lightInfoArea[r11.w].baseLight.specularScale * r14.w;
+        r22.xyz = g_lightInfoArea[r11.w].baseLight.color.xyz * r14.www;
+        r20.xyz = r22.xyz * r20.xyz;
+      } else {
+        r21.xyz = float3(0,0,0);
+        r20.xyz = float3(0,0,0);
+      }
+    } else {
+      r14.w = cmp((int)r13.w == 5);
+      if (r14.w != 0) {
+        r22.xyz = r5.xyz * r2.xxx + -g_lightInfoArea[r11.w].baseLight.pos.xyz;
+        r14.w = dot(r22.xyz, -g_lightInfoArea[r11.w].baseLight.matrixForward.xyz);
+        r14.w = cmp(0 < r14.w);
+        if (r14.w != 0) {
+          r22.xy = g_lightInfoArea[r11.w].areaLight.lightRadius0 * float2(0.5,0.5);
+          r23.xyz = g_lightInfoArea[r11.w].baseLight.matrixLeft.xyz * -r22.xxx + g_lightInfoArea[r11.w].baseLight.pos.xyz;
+          r24.xyz = g_lightInfoArea[r11.w].baseLight.matrixUp.xyz * r22.yyy + r23.xyz;
+          r23.xyz = g_lightInfoArea[r11.w].baseLight.matrixUp.xyz * -r22.yyy + r23.xyz;
+          r25.xyz = g_lightInfoArea[r11.w].baseLight.matrixLeft.xyz * r22.xxx + g_lightInfoArea[r11.w].baseLight.pos.xyz;
+          r26.xyz = g_lightInfoArea[r11.w].baseLight.matrixUp.xyz * -r22.yyy + r25.xyz;
+          r25.xyz = g_lightInfoArea[r11.w].baseLight.matrixUp.xyz * r22.yyy + r25.xyz;
+          r24.xyz = -r5.xyz * r2.xxx + r24.xyz;
+          r23.xyz = -r5.xyz * r2.xxx + r23.xyz;
+          r26.xyz = -r5.xyz * r2.xxx + r26.xyz;
+          r25.xyz = -r5.xyz * r2.xxx + r25.xyz;
+          r27.xyz = r24.zxy * r23.yzx;
+          r27.xyz = r24.yzx * r23.zxy + -r27.xyz;
+          r14.w = dot(r27.xyz, r27.xyz);
+          r14.w = rsqrt(r14.w);
+          r27.xyz = r27.xyz * r14.www;
+          r28.xyz = r26.yzx * r23.zxy;
+          r28.xyz = r23.yzx * r26.zxy + -r28.xyz;
+          r14.w = dot(r28.xyz, r28.xyz);
+          r14.w = rsqrt(r14.w);
+          r28.xyz = r28.xyz * r14.www;
+          r29.xyz = r26.zxy * r25.yzx;
+          r29.xyz = r26.yzx * r25.zxy + -r29.xyz;
+          r14.w = dot(r29.xyz, r29.xyz);
+          r14.w = rsqrt(r14.w);
+          r29.xyz = r29.xyz * r14.www;
+          r30.xyz = r25.zxy * r24.yzx;
+          r30.xyz = r25.yzx * r24.zxy + -r30.xyz;
+          r14.w = dot(r30.xyz, r30.xyz);
+          r14.w = rsqrt(r14.w);
+          r30.xyz = r30.xyz * r14.www;
+          r14.w = dot(-r27.xyz, r28.xyz);
+          r16.w = abs(r14.w) * abs(r14.w);
+          r17.w = r16.w * abs(r14.w);
+          r18.w = abs(r14.w) * -0.212114394 + 1.57072878;
+          r16.w = r16.w * 0.0742610022 + r18.w;
+          r16.w = r17.w * -0.0187292993 + r16.w;
+          r17.w = 1 + -abs(r14.w);
+          r17.w = sqrt(r17.w);
+          r18.w = r17.w * r16.w;
+          r14.w = cmp(r14.w >= 0);
+          r16.w = -r17.w * r16.w + 3.14159274;
+          r14.w = r14.w ? r18.w : r16.w;
+          r16.w = dot(-r28.xyz, r29.xyz);
+          r17.w = abs(r16.w) * abs(r16.w);
+          r18.w = r17.w * abs(r16.w);
+          r19.w = abs(r16.w) * -0.212114394 + 1.57072878;
+          r17.w = r17.w * 0.0742610022 + r19.w;
+          r17.w = r18.w * -0.0187292993 + r17.w;
+          r18.w = 1 + -abs(r16.w);
+          r18.w = sqrt(r18.w);
+          r19.w = r18.w * r17.w;
+          r16.w = cmp(r16.w >= 0);
+          r17.w = -r18.w * r17.w + 3.14159274;
+          r16.w = r16.w ? r19.w : r17.w;
+          r17.w = dot(-r29.xyz, r30.xyz);
+          r18.w = abs(r17.w) * abs(r17.w);
+          r19.w = r18.w * abs(r17.w);
+          r20.w = abs(r17.w) * -0.212114394 + 1.57072878;
+          r18.w = r18.w * 0.0742610022 + r20.w;
+          r18.w = r19.w * -0.0187292993 + r18.w;
+          r19.w = 1 + -abs(r17.w);
+          r19.w = sqrt(r19.w);
+          r20.w = r19.w * r18.w;
+          r17.w = cmp(r17.w >= 0);
+          r18.w = -r19.w * r18.w + 3.14159274;
+          r17.w = r17.w ? r20.w : r18.w;
+          r18.w = dot(-r30.xyz, r27.xyz);
+          r19.w = abs(r18.w) * abs(r18.w);
+          r20.w = r19.w * abs(r18.w);
+          r21.w = abs(r18.w) * -0.212114394 + 1.57072878;
+          r19.w = r19.w * 0.0742610022 + r21.w;
+          r19.w = r20.w * -0.0187292993 + r19.w;
+          r20.w = 1 + -abs(r18.w);
+          r20.w = sqrt(r20.w);
+          r21.w = r20.w * r19.w;
+          r18.w = cmp(r18.w >= 0);
+          r19.w = -r20.w * r19.w + 3.14159274;
+          r18.w = r18.w ? r21.w : r19.w;
+          r14.w = r16.w + r14.w;
+          r14.w = r14.w + r17.w;
+          r14.w = r14.w + r18.w;
+          r14.w = -6.28318548 + r14.w;
+          r14.w = 0.200000003 * r14.w;
+          r16.w = dot(r24.xyz, r24.xyz);
+          r16.w = rsqrt(r16.w);
+          r24.xyz = r24.xyz * r16.www;
+          r16.w = saturate(dot(r24.xyz, r6.xyz));
+          r17.w = dot(r23.xyz, r23.xyz);
+          r17.w = rsqrt(r17.w);
+          r23.xyz = r23.xyz * r17.www;
+          r17.w = saturate(dot(r23.xyz, r6.xyz));
+          r16.w = r17.w + r16.w;
+          r17.w = dot(r26.xyz, r26.xyz);
+          r17.w = rsqrt(r17.w);
+          r23.xyz = r26.xyz * r17.www;
+          r17.w = saturate(dot(r23.xyz, r6.xyz));
+          r16.w = r17.w + r16.w;
+          r17.w = dot(r25.xyz, r25.xyz);
+          r17.w = rsqrt(r17.w);
+          r23.xyz = r25.xyz * r17.www;
+          r17.w = saturate(dot(r23.xyz, r6.xyz));
+          r16.w = r17.w + r16.w;
+          r23.xyz = -r5.xyz * r2.xxx + g_lightInfoArea[r11.w].baseLight.pos.xyz;
+          r17.w = dot(r23.xyz, r23.xyz);
+          r17.w = rsqrt(r17.w);
+          r24.xyz = r23.xyz * r17.www;
+          r17.w = saturate(dot(r24.xyz, r6.xyz));
+          r16.w = r17.w + r16.w;
+          r14.w = r16.w * r14.w;
+          r16.w = saturate(dot(r6.xyz, g_lightInfoArea[r11.w].baseLight.matrixForward.xyz));
+          r16.w = 9.99999975e-006 + r16.w;
+          r24.xyz = r6.xyz * r16.www + g_lightInfoArea[r11.w].baseLight.matrixForward.xyz;
+          r17.w = dot(r24.xyz, r24.xyz);
+          r17.w = rsqrt(r17.w);
+          r25.xyz = g_lightInfoArea[r11.w].baseLight.matrixForward.xyz * r16.www + r6.xyz;
+          r16.w = dot(r25.xyz, r25.xyz);
+          r16.w = rsqrt(r16.w);
+          r25.xyz = r25.xyz * r16.www;
+          r24.xyz = r24.xyz * r17.www + r25.xyz;
+          r24.xyz = float3(0.5,0.5,0.5) * r24.xyz;
+          r16.w = dot(-g_lightInfoArea[r11.w].baseLight.matrixForward.xyz, r23.xyz);
+          r17.w = dot(-g_lightInfoArea[r11.w].baseLight.matrixForward.xyz, r24.xyz);
+          r16.w = r16.w / r17.w;
+          r23.xyz = r24.xyz * r16.www + r2.yzw;
+          r23.xyz = -g_lightInfoArea[r11.w].baseLight.pos.xyz + r23.xyz;
+          r24.x = dot(r23.xyz, g_lightInfoArea[r11.w].baseLight.matrixLeft.xyz);
+          r24.y = dot(r23.xyz, g_lightInfoArea[r11.w].baseLight.matrixUp.xyz);
+          r22.zw = max(r24.xy, -r22.xy);
+          r22.xy = min(r22.zw, r22.xy);
+          r22.xzw = r22.xxx * g_lightInfoArea[r11.w].baseLight.matrixLeft.xyz + g_lightInfoArea[r11.w].baseLight.pos.xyz;
+          r22.xyz = r22.yyy * g_lightInfoArea[r11.w].baseLight.matrixUp.xyz + r22.xzw;
+          r22.xyz = -r5.xyz * r2.xxx + r22.xyz;
+          r16.w = dot(r22.xyz, r22.xyz);
+          r16.w = rsqrt(r16.w);
+          r22.xyz = r22.xyz * r16.www;
+        } else {
+          r22.xyz = float3(1,0,0);
+          r14.w = 0;
+        }
+        r23.xyz = -r5.xyz * r2.xxx + g_lightInfoArea[r11.w].baseLight.pos.xyz;
+        r16.w = dot(r23.xyz, r23.xyz);
+        r16.w = g_lightInfoArea[r11.w].baseLight.invSqrAttenuationRadius * r16.w;
+        r16.w = -r16.w * r16.w + 1;
+        r16.w = max(0, r16.w);
+        r16.w = r16.w * r16.w;
+        r14.w = r16.w * r14.w;
+        r16.w = cmp(0 < r14.w);
+        if (r16.w != 0) {
+          r24.xy = g_lightInfoArea[r11.w].areaLight.lightRadius0 * float2(0.5,0.5);
+          r25.x = dot(r8.xyz, g_lightInfoArea[r11.w].baseLight.matrixLeft.xyz);
+          r25.y = dot(r8.xyz, g_lightInfoArea[r11.w].baseLight.matrixUp.xyz);
+          r25.z = dot(r8.xyz, -g_lightInfoArea[r11.w].baseLight.matrixForward.xyz);
+          r26.x = dot(r23.xyz, g_lightInfoArea[r11.w].baseLight.matrixLeft.xyz);
+          r26.y = dot(r23.xyz, g_lightInfoArea[r11.w].baseLight.matrixUp.xyz);
+          r26.z = dot(r23.xyz, -g_lightInfoArea[r11.w].baseLight.matrixForward.xyz);
+          r16.w = r26.z / r25.z;
+          r27.xyz = r25.xyz * r16.www;
+          r24.zw = r25.xy * r16.ww + -r26.xy;
+          r16.w = cmp(0 < r16.w);
+          r24.yz = cmp(r24.xy >= abs(r24.zw));
+          r16.w = r16.w ? r24.y : 0;
+          r16.w = r24.z ? r16.w : 0;
+          if (r16.w == 0) {
+            r10.xy = g_lightInfoArea[r11.w].areaLight.lightRadius0 * float2(-0.5,-0.5);
+            r28.xyz = r26.xyz + r10.xyz;
+            r11.xy = g_lightInfoArea[r11.w].areaLight.lightRadius0 * float2(0.5,0.5);
+            r29.xyz = r26.xyz + r11.xyz;
+            r28.w = r29.x;
+            r10.xy = r28.xw * r25.xx;
+            r29.w = r28.y;
+            r11.xy = r29.wy * r25.yy;
+            r24.yz = r26.zz * r25.zz;
+            r30.xy = r28.xw * r28.xw;
+            r30.zw = r26.zz * r26.zz;
+            r31.xy = r29.wy * r29.wy + r30.zw;
+            r31.zw = r31.xy * r25.xx;
+            r11.xy = -r11.xy * r28.xw + r31.zw;
+            r11.xy = -r24.yz * r28.xw + r11.xy;
+            r31.zw = r25.yy * r29.wy + r24.yz;
+            r24.xw = r31.zw * r24.xx;
+            r24.xw = r24.xw + r24.xw;
+            r32.xy = r11.xy / r24.xw;
+            r32.z = -r32.y;
+            r12.xy = saturate(r32.xz);
+            r11.xy = g_lightInfoArea[r11.w].areaLight.lightRadius0 * r12.zy;
+            r11.xy = r11.xy * r12.xw + r28.xw;
+            r24.xw = r25.xx * r11.xy + r31.zw;
+            r11.xy = r11.xy * r11.xy + r31.xy;
+            r11.xy = sqrt(r11.xy);
+            r11.xy = r24.xw / r11.xy;
+            r16.w = cmp(r11.x < r11.y);
+            if (r16.w != 0) {
+              r13.x = g_lightInfoArea[r11.w].areaLight.lightRadius0;
+              r27.xyz = -r13.xyz * r12.yyy + r29.xyz;
+              r11.x = r11.y;
+            } else {
+              r14.x = g_lightInfoArea[r11.w].areaLight.lightRadius0;
+              r27.xyz = r14.xyz * r12.xxx + r28.xyz;
+            }
+            r10.xy = r10.xy * r29.wy;
+            r10.xy = r25.yy * r30.xy + -r10.xy;
+            r10.xy = -r24.yz * r29.wy + r10.xy;
+            r10.xy = r25.yy * r30.zw + r10.xy;
+            r12.xy = r25.xx * r28.xw + r24.yz;
+            r24.xy = g_lightInfoArea[r11.w].areaLight.lightRadius1 * r12.xy;
+            r24.xy = r10.xy / r24.xy;
+            r24.z = -r24.y;
+            r15.xy = saturate(r24.xz);
+            r10.xy = g_lightInfoArea[r11.w].areaLight.lightRadius1 * r15.zy;
+            r10.xy = r10.xy * r15.xw + r29.wy;
+            r12.xy = r25.yy * r10.xy + r12.xy;
+            r24.xy = r28.xw * r28.xw + r30.zw;
+            r10.xy = r10.xy * r10.xy + r24.xy;
+            r10.xy = sqrt(r10.xy);
+            r10.xy = r12.xy / r10.xy;
+            r10.x = cmp(r11.x < r10.x);
+            if (r10.x != 0) {
+              r16.y = g_lightInfoArea[r11.w].areaLight.lightRadius1;
+              r27.xyz = r16.xyz * r15.xxx + r28.xyz;
+            } else {
+              r10.x = cmp(r11.x < r10.y);
+              if (r10.x != 0) {
+                r17.y = g_lightInfoArea[r11.w].areaLight.lightRadius1;
+                r27.xyz = -r17.xyz * r15.yyy + r29.xyz;
+              }
+            }
+          }
+          r10.x = dot(r27.xyz, r27.xyz);
+          r10.x = rsqrt(r10.x);
+          r24.xyz = r27.xyz * r10.xxx;
+          r10.x = dot(r25.xyz, r25.xyz);
+          r10.x = rsqrt(r10.x);
+          r25.xyz = r25.xyz * r10.xxx;
+          r10.x = dot(r24.xyz, r25.xyz);
+          r10.x = saturate(r10.x * 1.66600001 + -0.5);
+          r24.xyz = r27.xyz + -r26.xyz;
+          r23.xyz = r24.xxx * g_lightInfoArea[r11.w].baseLight.matrixLeft.xyz + r23.xyz;
+          r23.xyz = r24.yyy * g_lightInfoArea[r11.w].baseLight.matrixUp.xyz + r23.xyz;
+          r23.xyz = r24.zzz * -g_lightInfoArea[r11.w].baseLight.matrixForward.xyz + r23.xyz;
+          r23.xyz = r23.xyz + -r22.xyz;
+          r23.xyz = r10.xxx * r23.xyz + r22.xyz;
+          r10.x = dot(r23.xyz, r23.xyz);
+          r10.y = sqrt(r10.x);
+          r10.y = 1 / r10.y;
+          r10.x = rsqrt(r10.x);
+          r23.xyz = r23.xyz * r10.xxx;
+          r10.x = g_lightInfoArea[r11.w].areaLight.lightRadius0 + g_lightInfoArea[r11.w].areaLight.lightRadius1;
+          r10.x = saturate(r10.x * r10.y + r7.y);
+          r10.x = r7.y / r10.x;
+          r10.x = r10.x * r10.x;
+          r10.x = r10.x * r9.w;
+          r24.xyz = -r2.yzw * r4.www + r23.xyz;
+          r10.y = dot(r24.xyz, r24.xyz);
+          r10.y = rsqrt(r10.y);
+          r24.xyz = r24.xyz * r10.yyy;
+          r25.xyz = -r2.yzw * r4.www + r22.xyz;
+          r10.y = dot(r25.xyz, r25.xyz);
+          r10.y = rsqrt(r10.y);
+          r25.xyz = r25.xyz * r10.yyy;
+          r10.y = saturate(dot(r23.xyz, r24.xyz));
+          r11.x = saturate(dot(r22.xyz, r25.xyz));
+          r11.y = saturate(dot(r6.xyz, r24.xyz));
+          r12.x = saturate(dot(r6.xyz, r23.xyz));
+          r12.y = saturate(dot(r6.xyz, r22.xyz));
+          r10.y = 1 + -r10.y;
+          r13.x = r10.y * r10.y;
+          r13.x = r13.x * r13.x;
+          r10.y = r13.x * r10.y;
+          r22.xyz = r9.xyz * r10.yyy + r4.xyz;
+          r10.y = -r12.x * r1.x + r12.x;
+          r10.y = r10.y * r12.x + r1.x;
+          r10.y = sqrt(r10.y);
+          r10.y = r10.y * r5.w;
+          r10.y = r12.x * r7.z + r10.y;
+          r10.y = 0.5 / r10.y;
+          r12.x = r11.y * r1.x + -r11.y;
+          r11.y = r12.x * r11.y + 1;
+          r11.y = r11.y * r11.y;
+          r11.y = r1.x / r11.y;
+          r10.y = r11.y * r10.y;
+          r10.x = r10.y * r10.x;
+          r22.xyz = r22.xyz * r10.xxx;
+          r10.x = r11.x * r11.x;
+          r10.x = dot(r10.xx, r3.xx);
+          r10.x = r3.x * 0.5 + r10.x;
+          r10.y = 1 + -r12.y;
+          r11.x = r10.y * r10.y;
+          r11.x = r11.x * r11.x;
+          r10.y = r11.x * r10.y;
+          r10.x = -1 + r10.x;
+          r10.y = r10.x * r10.y + 1;
+          r10.x = r10.x * r8.w + 1;
+          r10.x = r10.y * r10.x;
+          r10.x = r10.x * r7.w;
+          r10.y = g_lightInfoArea[r11.w].baseLight.diffuseScale * r14.w;
+          r23.xyz = g_lightInfoArea[r11.w].baseLight.color.xyz * r10.yyy;
+          r21.xyz = r23.xyz * r10.xxx;
+          r10.x = g_lightInfoArea[r11.w].baseLight.specularScale * r14.w;
+          r23.xyz = g_lightInfoArea[r11.w].baseLight.color.xyz * r10.xxx;
+          r20.xyz = r23.xyz * r22.xyz;
+        } else {
+          r21.xyz = float3(0,0,0);
+          r20.xyz = float3(0,0,0);
+        }
+      } else {
+        r10.x = cmp((int)r13.w == 4);
+        if (r10.x != 0) {
+          r22.xyz = -r5.xyz * r2.xxx + g_lightInfoArea[r11.w].baseLight.pos.xyz;
+          r10.x = dot(r22.xyz, r22.xyz);
+          r10.y = rsqrt(r10.x);
+          r23.xyz = r22.xyz * r10.yyy;
+          r10.y = dot(r6.xyz, r23.xyz);
+          r11.x = g_lightInfoArea[r11.w].areaLight.lightRadius0 * g_lightInfoArea[r11.w].areaLight.lightRadius0;
+          r11.y = max(r11.x, r10.x);
+          r11.y = g_lightInfoArea[r11.w].areaLight.lightRadius0 * g_lightInfoArea[r11.w].areaLight.lightRadius0 + r11.y;
+          r11.x = r11.x / r11.y;
+          r12.xy = r11.xx * float2(-0.690576434,-10.4827538) + float2(0.559636116,18.2588902);
+          r11.y = r12.y * r11.x + -11.7109194;
+          r11.y = r11.y * r11.x + 4.99786425;
+          r12.y = r10.y * 0.5 + 0.5;
+          r13.x = log2(r12.y);
+          r11.y = r13.x * r11.y;
+          r11.y = exp2(r11.y);
+          r13.x = saturate(r10.y);
+          r10.y = r12.x * r10.y;
+          r12.x = r12.y + -r11.y;
+          r10.y = r10.y * r12.x + r11.y;
+          r10.y = max(r13.x, r10.y);
+          r10.y = r10.y * r11.x;
+          r10.y = 3.14159274 * r10.y;
+          r11.x = saturate(dot(-g_lightInfoArea[r11.w].baseLight.matrixForward.xyz, -r23.xyz));
+          r10.y = r11.x * r10.y;
+          r24.xyz = -r5.xyz * r2.xxx + g_lightInfoArea[r11.w].areaLight.virtualPos.xyz;
+          r11.x = dot(r24.xyz, r24.xyz);
+          r11.x = rsqrt(r11.x);
+          r24.xyz = r24.xyz * r11.xxx;
+          r11.x = dot(g_lightInfoArea[r11.w].baseLight.matrixForward.xyz, r24.xyz);
+          r11.x = saturate(r11.x * g_lightInfoArea[r11.w].baseLight.angleScale + g_lightInfoArea[r11.w].baseLight.angleOffset);
+          r11.x = r11.x * r11.x;
+          r10.y = r11.x * r10.y;
+          r10.x = g_lightInfoArea[r11.w].baseLight.invSqrAttenuationRadius * r10.x;
+          r10.x = -r10.x * r10.x + 1;
+          r10.x = max(0, r10.x);
+          r10.x = r10.x * r10.x;
+          r10.x = r10.y * r10.x;
+          r10.y = cmp(0 < r10.x);
+          if (r10.y != 0) {
+            r10.y = saturate(dot(r8.xyz, -g_lightInfoArea[r11.w].baseLight.matrixForward.xyz));
+            r10.y = 9.99999975e-006 + r10.y;
+            r24.xyz = g_lightInfoArea[r11.w].baseLight.matrixForward.xyz * r10.yyy + r8.xyz;
+            r10.y = dot(r24.xyz, r24.xyz);
+            r10.y = rsqrt(r10.y);
+            r24.xyz = r24.xyz * r10.yyy;
+            r10.y = dot(-g_lightInfoArea[r11.w].baseLight.matrixForward.xyz, r22.xyz);
+            r11.x = dot(-g_lightInfoArea[r11.w].baseLight.matrixForward.xyz, r24.xyz);
+            r10.y = r10.y / r11.x;
+            r22.xyz = r24.xyz * r10.yyy + r2.yzw;
+            r22.xyz = -g_lightInfoArea[r11.w].baseLight.pos.xyz + r22.xyz;
+            r11.x = dot(r22.xyz, g_lightInfoArea[r11.w].baseLight.matrixLeft.xyz);
+            r11.y = dot(r22.xyz, g_lightInfoArea[r11.w].baseLight.matrixUp.xyz);
+            r10.y = dot(r11.xy, r11.xy);
+            r10.y = sqrt(r10.y);
+            r12.xy = r11.xy / r10.yy;
+            r12.xy = g_lightInfoArea[r11.w].areaLight.lightRadius0 * r12.xy;
+            r10.y = cmp(r10.y < g_lightInfoArea[r11.w].areaLight.lightRadius0);
+            r11.xy = r10.yy ? r11.xy : r12.xy;
+            r22.xyz = r11.xxx * g_lightInfoArea[r11.w].baseLight.matrixLeft.xyz + g_lightInfoArea[r11.w].baseLight.pos.xyz;
+            r22.xyz = r11.yyy * g_lightInfoArea[r11.w].baseLight.matrixUp.xyz + r22.xyz;
+            r22.xyz = -r5.xyz * r2.xxx + r22.xyz;
+            r10.y = dot(r22.xyz, r22.xyz);
+            r10.y = sqrt(r10.y);
+            r22.xyz = r22.xyz / r10.yyy;
+            r10.y = r10.y + r10.y;
+            r10.y = g_lightInfoArea[r11.w].areaLight.lightRadius0 / r10.y;
+            r10.y = saturate(r10.y + r7.y);
+            r10.y = r7.y / r10.y;
+            r10.y = r10.y * r10.y;
+            r24.xyz = -r2.yzw * r4.www + r22.xyz;
+            r11.x = dot(r24.xyz, r24.xyz);
+            r11.x = rsqrt(r11.x);
+            r24.xyz = r24.xyz * r11.xxx;
+            r25.xyz = -r2.yzw * r4.www + r23.xyz;
+            r11.x = dot(r25.xyz, r25.xyz);
+            r11.x = rsqrt(r11.x);
+            r25.xyz = r25.xyz * r11.xxx;
+            r11.x = saturate(dot(r22.xyz, r24.xyz));
+            r11.y = saturate(dot(r23.xyz, r25.xyz));
+            r12.x = saturate(dot(r6.xyz, r24.xyz));
+            r12.y = saturate(dot(r6.xyz, r22.xyz));
+            r11.x = 1 + -r11.x;
+            r13.w = r11.x * r11.x;
+            r13.w = r13.w * r13.w;
+            r11.x = r13.w * r11.x;
+            r22.xyz = r9.xyz * r11.xxx + r4.xyz;
+            r11.x = -r12.y * r1.x + r12.y;
+            r11.x = r11.x * r12.y + r1.x;
+            r11.x = sqrt(r11.x);
+            r11.x = r11.x * r5.w;
+            r11.x = r12.y * r7.z + r11.x;
+            r11.x = 0.5 / r11.x;
+            r12.y = r12.x * r1.x + -r12.x;
+            r12.x = r12.y * r12.x + 1;
+            r12.x = r12.x * r12.x;
+            r12.x = r1.x / r12.x;
+            r11.x = r12.x * r11.x;
+            r10.y = r11.x * r10.y;
+            r22.xyz = r22.xyz * r10.yyy;
+            r10.y = r11.y * r11.y;
+            r10.y = dot(r10.yy, r3.xx);
+            r10.y = r3.x * 0.5 + r10.y;
+            r11.x = 1 + -r13.x;
+            r11.y = r11.x * r11.x;
+            r11.y = r11.y * r11.y;
+            r11.x = r11.y * r11.x;
+            r10.y = -1 + r10.y;
+            r11.x = r10.y * r11.x + 1;
+            r10.y = r10.y * r8.w + 1;
+            r10.y = r11.x * r10.y;
+            r10.y = r10.y * r7.w;
+            r11.x = g_lightInfoArea[r11.w].baseLight.diffuseScale * r10.x;
+            r23.xyz = g_lightInfoArea[r11.w].baseLight.color.xyz * r11.xxx;
+            r21.xyz = r23.xyz * r10.yyy;
+            r10.x = g_lightInfoArea[r11.w].baseLight.specularScale * r10.x;
+            r23.xyz = g_lightInfoArea[r11.w].baseLight.color.xyz * r10.xxx;
+            r20.xyz = r23.xyz * r22.xyz;
+          } else {
+            r21.xyz = float3(0,0,0);
+            r20.xyz = float3(0,0,0);
+          }
+        } else {
+          r22.xyz = -r5.xyz * r2.xxx + g_lightInfoArea[r11.w].baseLight.pos.xyz;
+          r10.x = dot(r22.xyz, r22.xyz);
+          r10.y = rsqrt(r10.x);
+          r23.xyz = r22.xyz * r10.yyy;
+          r10.y = dot(r6.xyz, r23.xyz);
+          r11.x = g_lightInfoArea[r11.w].areaLight.lightRadius0 * g_lightInfoArea[r11.w].areaLight.lightRadius0;
+          r11.y = max(r11.x, r10.x);
+          r11.x = r11.x / r11.y;
+          r12.xy = r11.xx * float2(-0.690576434,-10.4827538) + float2(0.559636116,18.2588902);
+          r11.y = r12.y * r11.x + -11.7109194;
+          r11.y = r11.y * r11.x + 4.99786425;
+          r12.y = r10.y * 0.5 + 0.5;
+          r13.x = log2(r12.y);
+          r11.y = r13.x * r11.y;
+          r11.y = exp2(r11.y);
+          r13.x = saturate(r10.y);
+          r10.y = r12.x * r10.y;
+          r12.x = r12.y + -r11.y;
+          r10.y = r10.y * r12.x + r11.y;
+          r10.y = max(r13.x, r10.y);
+          r10.y = r10.y * r11.x;
+          r10.y = 3.14159274 * r10.y;
+          r10.x = g_lightInfoArea[r11.w].baseLight.invSqrAttenuationRadius * r10.x;
+          r10.x = -r10.x * r10.x + 1;
+          r10.x = max(0, r10.x);
+          r10.x = r10.x * r10.x;
+          r10.x = r10.y * r10.x;
+          r10.y = cmp(0 < r10.x);
+          if (r10.y != 0) {
+            r10.y = dot(r22.xyz, r8.xyz);
+            r24.xyz = r10.yyy * r8.xyz + -r22.xyz;
+            r10.y = dot(r24.xyz, r24.xyz);
+            r10.y = sqrt(r10.y);
+            r10.y = saturate(g_lightInfoArea[r11.w].areaLight.lightRadius0 / r10.y);
+            r22.xyz = r24.xyz * r10.yyy + r22.xyz;
+            r10.y = dot(r22.xyz, r22.xyz);
+            r10.y = sqrt(r10.y);
+            r22.xyz = r22.xyz / r10.yyy;
+            r10.y = r10.y + r10.y;
+            r10.y = g_lightInfoArea[r11.w].areaLight.lightRadius0 / r10.y;
+            r10.y = saturate(r10.y + r7.y);
+            r10.y = r7.y / r10.y;
+            r10.y = r10.y * r10.y;
+            r24.xyz = -r2.yzw * r4.www + r22.xyz;
+            r11.x = dot(r24.xyz, r24.xyz);
+            r11.x = rsqrt(r11.x);
+            r24.xyz = r24.xyz * r11.xxx;
+            r25.xyz = -r2.yzw * r4.www + r23.xyz;
+            r11.x = dot(r25.xyz, r25.xyz);
+            r11.x = rsqrt(r11.x);
+            r25.xyz = r25.xyz * r11.xxx;
+            r11.x = saturate(dot(r22.xyz, r24.xyz));
+            r11.y = saturate(dot(r23.xyz, r25.xyz));
+            r12.x = saturate(dot(r6.xyz, r24.xyz));
+            r12.y = saturate(dot(r6.xyz, r22.xyz));
+            r11.x = 1 + -r11.x;
+            r13.w = r11.x * r11.x;
+            r13.w = r13.w * r13.w;
+            r11.x = r13.w * r11.x;
+            r22.xyz = r9.xyz * r11.xxx + r4.xyz;
+            r11.x = -r12.y * r1.x + r12.y;
+            r11.x = r11.x * r12.y + r1.x;
+            r11.x = sqrt(r11.x);
+            r11.x = r11.x * r5.w;
+            r11.x = r12.y * r7.z + r11.x;
+            r11.x = 0.5 / r11.x;
+            r12.y = r12.x * r1.x + -r12.x;
+            r12.x = r12.y * r12.x + 1;
+            r12.x = r12.x * r12.x;
+            r12.x = r1.x / r12.x;
+            r11.x = r12.x * r11.x;
+            r10.y = r11.x * r10.y;
+            r22.xyz = r22.xyz * r10.yyy;
+            r10.y = r11.y * r11.y;
+            r10.y = dot(r10.yy, r3.xx);
+            r10.y = r3.x * 0.5 + r10.y;
+            r11.x = 1 + -r13.x;
+            r11.y = r11.x * r11.x;
+            r11.y = r11.y * r11.y;
+            r11.x = r11.y * r11.x;
+            r10.y = -1 + r10.y;
+            r11.x = r10.y * r11.x + 1;
+            r10.y = r10.y * r8.w + 1;
+            r10.y = r11.x * r10.y;
+            r10.y = r10.y * r7.w;
+            r11.x = g_lightInfoArea[r11.w].baseLight.diffuseScale * r10.x;
+            r23.xyz = g_lightInfoArea[r11.w].baseLight.color.xyz * r11.xxx;
+            r21.xyz = r23.xyz * r10.yyy;
+            r10.x = g_lightInfoArea[r11.w].baseLight.specularScale * r10.x;
+            r11.xyw = g_lightInfoArea[r11.w].baseLight.color.xyz * r10.xxx;
+            r20.xyz = r22.xyz * r11.xyw;
+          } else {
+            r21.xyz = float3(0,0,0);
+            r20.xyz = float3(0,0,0);
+          }
+        }
+      }
+    }
+    r19.xyz = r21.xyz + r19.xyz;
+    r18.xyz = r20.xyz + r18.xyz;
+    r10.w = (int)r10.w + 1;
+  }
+  r1.x = -1 + r1.z;
+  r1.x = dynamicAOFactor * r1.x + 1;
+  r2.xyz = r19.xyz * r1.xxx;
+  r1.x = r6.w + r1.z;
+  r1.y = r1.y * -16 + -1;
+  r1.y = exp2(r1.y);
+  r1.x = log2(r1.x);
+  r1.x = r1.y * r1.x;
+  r1.x = exp2(r1.x);
+  r1.x = r1.x + r1.z;
+  r1.x = saturate(-1 + r1.x);
+  r1.xyz = r18.xyz * r1.xxx;
+  r2.xyz = r3.yzw * r2.xyz;
+  r1.xyz = float3(0.318309873,0.318309873,0.318309873) * r1.xyz;
+  r1.xyz = r2.xyz * float3(0.318309873,0.318309873,0.318309873) + r1.xyz;
+  r1.xyz = g_exposureMultipliers.zzz * r1.xyz;
+  r1.xyz = min(float3(65504,65504,65504), r1.xyz);
+  r1.w = 0;
+// No code for instruction (needs manual fix):
+store_uav_typed u0.xyzw, r0.xyzw, r1.xyzw
+  return;
+}

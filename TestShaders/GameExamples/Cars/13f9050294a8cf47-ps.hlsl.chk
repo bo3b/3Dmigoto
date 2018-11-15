@@ -1,0 +1,272 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:51 2018
+
+cbuffer _Globals : register(b0)
+{
+  row_major float4x4 cShadowMatrices[4] : packoffset(c0);
+  row_major float4x4 cShadowMatrix : packoffset(c16);
+  float4 cShadowMapDim : packoffset(c20);
+  float4 cShadowTransitions : packoffset(c21);
+  float4 cShadowParamsA : packoffset(c22);
+  row_major float4x4 cShadowViewMatrix : packoffset(c23);
+  float frustumDepth : packoffset(c27);
+  float cloudOpacity : packoffset(c27.y);
+  float4 cloudScaleAndOffset : packoffset(c28);
+}
+
+cbuffer COMMON_BUFFER2 : register(b3)
+{
+  row_major float4x4 view : packoffset(c0);
+  row_major float4x4 viewI : packoffset(c4);
+  row_major float4x4 projMatrix : packoffset(c8);
+  row_major float4x4 viewProj : packoffset(c12);
+  row_major float4x4 viewProjI : packoffset(c16);
+  float4 screenSpaceDimensions : packoffset(c20);
+  float4 frustumDimensions : packoffset(c21);
+  float4 cLightingTransitionValues : packoffset(c22);
+  float4 treeAmbientBoost : packoffset(c23);
+  float4 viewportPixelDimensions : packoffset(c24);
+  float4 globalVector4 : packoffset(c25);
+  float4 globalVector6 : packoffset(c26);
+  float4 globalVector7 : packoffset(c27);
+  float4 globalVector8 : packoffset(c28);
+  float4 fog_colour_towards : packoffset(c29);
+  float4 fog_colour_away : packoffset(c30);
+  float4 fogLightDir : packoffset(c31);
+  float4 keyLightDir : packoffset(c32);
+  float4 fog_min_inv_fog1_fog2 : packoffset(c33);
+  float4 keyLightColour : packoffset(c34);
+  float4 msaaMode : packoffset(c35);
+  float3 keyLightDirVS : packoffset(c36);
+  float3 worldCameraPos : packoffset(c37);
+  float emissiveTextureControl : packoffset(c37.w);
+}
+
+cbuffer COMMON_BUFFER3 : register(b4)
+{
+  float4 windDirectionAndStrength : packoffset(c0);
+  float4 MSAAControlValues : packoffset(c1);
+  float4 globalVector0 : packoffset(c2);
+  float4 globalVector1 : packoffset(c3);
+  float4 globalVector2 : packoffset(c4);
+  float4 globalVector3 : packoffset(c5);
+  float4 globalVector5 : packoffset(c6);
+  float4 globalVector10 : packoffset(c7);
+  float4 globalVector11 : packoffset(c8);
+  row_major float4x4 globalMatrix0 : packoffset(c9);
+  float4 SSAORenderWidthHeight : packoffset(c13);
+  float4 distortionTextureWidthHeight : packoffset(c14);
+  float currentTime : packoffset(c15);
+}
+
+SamplerState shadowRotationMap_s_s : register(s0);
+SamplerState sCloudMap_s_s : register(s2);
+SamplerState SSAOMap_s_s : register(s3);
+SamplerState normalsAndGlossMap_s_s : register(s4);
+SamplerState linearisedDepthMap_s_s : register(s5);
+SamplerComparisonState sShadowMap_f1_0_s_s : register(s1);
+Texture2D<float4> linearisedDepthMap : register(t0);
+Texture2D<float4> normalsAndGlossMap : register(t1);
+Texture2D<float4> shadowRotationMap : register(t2);
+Texture2D<float4> sCloudMap : register(t3);
+Texture2D<float4> SSAOMap : register(t4);
+Texture2D<float4> tShadowTexture_f1_0 : register(t5);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float3 v2 : TEXCOORD1,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = linearisedDepthMap.Sample(linearisedDepthMap_s_s, v1.xy).xyzw;
+  r0.w = 255 * r0.w;
+  r0.w = round(r0.w);
+  r1.xyz = normalsAndGlossMap.Sample(normalsAndGlossMap_s_s, v1.xy).xyz;
+  r1.xyz = r1.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r1.w = dot(r1.xyz, r1.xyz);
+  r1.w = rsqrt(r1.w);
+  r1.xyz = r1.xyz * r1.www;
+  r0.x = dot(r0.xyz, float3(1,0.00392200006,1.49999996e-005));
+  r0.x = frustumDepth * r0.x;
+  r0.xyz = v2.xyz * r0.xxx;
+  r2.xy = float2(1,1) / screenSpaceDimensions.zw;
+  r2.xy = v1.xy * r2.xy;
+  r1.w = 5 * cShadowMapDim.z;
+  r2.z = -cShadowMapDim.z * 5 + 1;
+  r2.w = saturate(dot(r1.xyz, cShadowParamsA.yzw));
+  r2.w = 1 + -r2.w;
+  r2.w = r2.w * r2.w;
+  r2.w = cShadowParamsA.x * r2.w;
+  r1.xyz = r1.xyz * r2.www + r0.xyz;
+  r3.xyz = cShadowMatrices[0]._m10_m11_m12 * r1.yyy;
+  r3.xyz = r1.xxx * cShadowMatrices[0]._m00_m01_m02 + r3.xyz;
+  r3.xyz = r1.zzz * cShadowMatrices[0]._m20_m21_m22 + r3.xyz;
+  r3.xyz = cShadowMatrices[0]._m30_m31_m32 + r3.xyz;
+  r2.w = min(r3.x, r3.y);
+  r2.w = cmp(r1.w < r2.w);
+  r4.x = max(r3.x, r3.y);
+  r4.x = cmp(r4.x < r2.z);
+  r2.w = r2.w ? r4.x : 0;
+  if (r2.w != 0) {
+    r3.w = 0.25 * r3.y;
+    r2.w = 1;
+    r3.xyz = r3.xwz;
+    r4.y = cShadowTransitions.x;
+    r4.z = 0;
+  } else {
+    r5.xyz = cShadowMatrices[1]._m10_m11_m12 * r1.yyy;
+    r5.xyz = r1.xxx * cShadowMatrices[1]._m00_m01_m02 + r5.xyz;
+    r5.xyz = r1.zzz * cShadowMatrices[1]._m20_m21_m22 + r5.xyz;
+    r3.xyz = cShadowMatrices[1]._m30_m31_m32 + r5.xyz;
+    r4.w = min(r3.x, r3.y);
+    r4.w = cmp(r1.w < r4.w);
+    r5.x = max(r3.x, r3.y);
+    r5.x = cmp(r5.x < r2.z);
+    r4.w = r4.w ? r5.x : 0;
+    if (r4.w != 0) {
+      r3.w = r3.y * 0.25 + 0.25;
+      r2.w = 1;
+      r3.xyz = r3.xwz;
+      r4.y = cShadowTransitions.y;
+      r4.z = 0;
+    } else {
+      r5.xyz = cShadowMatrices[2]._m10_m11_m12 * r1.yyy;
+      r5.xyz = r1.xxx * cShadowMatrices[2]._m00_m01_m02 + r5.xyz;
+      r5.xyz = r1.zzz * cShadowMatrices[2]._m20_m21_m22 + r5.xyz;
+      r3.xyz = cShadowMatrices[2]._m30_m31_m32 + r5.xyz;
+      r4.w = min(r3.x, r3.y);
+      r4.w = cmp(r1.w < r4.w);
+      r5.x = max(r3.x, r3.y);
+      r5.x = cmp(r5.x < r2.z);
+      r4.w = r4.w ? r5.x : 0;
+      r5.x = cmp(r3.z < 1);
+      r4.w = r4.w ? r5.x : 0;
+      r5.x = cmp(r3.z >= 0);
+      r4.w = r4.w ? r5.x : 0;
+      if (r4.w != 0) {
+        r3.w = r3.y * 0.25 + 0.5;
+        r2.w = 1;
+        r3.xyz = r3.xwz;
+        r4.y = cShadowTransitions.z;
+        r4.z = 0;
+      } else {
+        r5.xyz = cShadowMatrices[3]._m10_m11_m12 * r1.yyy;
+        r5.xyz = r1.xxx * cShadowMatrices[3]._m00_m01_m02 + r5.xyz;
+        r1.xyz = r1.zzz * cShadowMatrices[3]._m20_m21_m22 + r5.xyz;
+        r3.xyz = cShadowMatrices[3]._m30_m31_m32 + r1.xyz;
+        r1.x = min(r3.x, r3.y);
+        r1.x = cmp(r1.w < r1.x);
+        r1.y = max(r3.x, r3.y);
+        r1.y = cmp(r1.y < r2.z);
+        r1.x = r1.y ? r1.x : 0;
+        r1.y = cmp(r3.z < 1);
+        r1.x = r1.y ? r1.x : 0;
+        r1.y = cmp(r3.z >= 0);
+        r1.x = r1.y ? r1.x : 0;
+        r4.z = ~(int)r1.x;
+        if (r1.x != 0) {
+          r1.x = r3.y * 0.25 + 0.75;
+          r1.yz = float2(1,1) / cLightingTransitionValues.xy;
+          r3.w = r3.y * 0.25 + 0.75;
+          r1.yz = saturate(r3.xw * r1.yz);
+          r5.xy = r1.yz * float2(-2,-2) + float2(3,3);
+          r1.yz = r1.yz * r1.yz;
+          r1.yz = r5.xy * r1.yz;
+          r5.xy = float2(1,1) + -cLightingTransitionValues.zw;
+          r5.zw = -cLightingTransitionValues.zw + r3.xw;
+          r5.xy = float2(1,1) / r5.xy;
+          r5.xy = saturate(r5.zw * r5.xy);
+          r5.zw = r5.xy * float2(-2,-2) + float2(3,3);
+          r5.xy = r5.xy * r5.xy;
+          r5.xy = -r5.zw * r5.xy + float2(1,1);
+          r1.y = min(r1.y, r1.z);
+          r1.z = min(r5.x, r5.y);
+          r2.w = min(r1.y, r1.z);
+          r3.y = r1.x;
+          r4.y = cShadowTransitions.w;
+        } else {
+          r2.w = 1;
+          r4.x = 1;
+        }
+      }
+    }
+  }
+  r1.xy = float2(0.03125,0.03125) * r2.xy;
+  r1.xy = shadowRotationMap.Sample(shadowRotationMap_s_s, r1.xy).xy;
+  if (r4.z == 0) {
+    r1.xyzw = r1.xyyx * float4(2,2,2,2) + float4(-1,-1,-1,-1);
+    r2.x = min(0.999000013, r3.z);
+    r2.yz = cShadowMapDim.zw * r4.yy;
+    r3.z = tShadowTexture_f1_0.SampleCmpLevelZero(sShadowMap_f1_0_s_s, r3.xy, r2.x).x;
+    r5.xyzw = float4(0.527836978,0.527836978,0.085868001,-0.085868001) * r1.wzzw;
+    r4.yz = r5.xy + r5.zw;
+    r4.yz = r4.yz * r2.yz + r3.xy;
+    r3.w = tShadowTexture_f1_0.SampleCmpLevelZero(sShadowMap_f1_0_s_s, r4.yz, r2.x).x;
+    r3.z = r3.z + r3.w;
+    r5.xyzw = float4(-0.0400880016,-0.0400880016,-0.536086977,0.536086977) * r1.wzzw;
+    r4.yz = r5.xy + r5.zw;
+    r4.yz = r4.yz * r2.yz + r3.xy;
+    r3.w = tShadowTexture_f1_0.SampleCmpLevelZero(sShadowMap_f1_0_s_s, r4.yz, r2.x).x;
+    r3.z = r3.z + r3.w;
+    r5.xyzw = float4(-0.670445025,-0.670445025,0.179949,-0.179949) * r1.wzzw;
+    r4.yz = r5.xy + r5.zw;
+    r4.yz = r4.yz * r2.yz + r3.xy;
+    r3.w = tShadowTexture_f1_0.SampleCmpLevelZero(sShadowMap_f1_0_s_s, r4.yz, r2.x).x;
+    r3.z = r3.z + r3.w;
+    r5.xyzw = float4(-0.419418007,-0.419418007,0.616038978,-0.616038978) * r1.wzzw;
+    r4.yz = r5.xy + r5.zw;
+    r4.yz = r4.yz * r2.yz + r3.xy;
+    r3.w = tShadowTexture_f1_0.SampleCmpLevelZero(sShadowMap_f1_0_s_s, r4.yz, r2.x).x;
+    r3.z = r3.z + r3.w;
+    r5.xyzw = float4(0.440452993,0.440452993,0.639398992,-0.639398992) * r1.wzzw;
+    r4.yz = r5.xy + r5.zw;
+    r4.yz = r4.yz * r2.yz + r3.xy;
+    r3.w = tShadowTexture_f1_0.SampleCmpLevelZero(sShadowMap_f1_0_s_s, r4.yz, r2.x).x;
+    r3.z = r3.z + r3.w;
+    r5.xyzw = float4(-0.757088006,-0.757088006,-0.349334002,0.349334002) * r1.wzzw;
+    r4.yz = r5.xy + r5.zw;
+    r4.yz = r4.yz * r2.yz + r3.xy;
+    r3.w = tShadowTexture_f1_0.SampleCmpLevelZero(sShadowMap_f1_0_s_s, r4.yz, r2.x).x;
+    r3.z = r3.z + r3.w;
+    r1.xyzw = float4(0.574618995,0.574618995,-0.685878992,0.685878992) * r1.xyzw;
+    r1.xy = r1.xy + r1.zw;
+    r1.xy = r1.xy * r2.yz + r3.xy;
+    r1.x = tShadowTexture_f1_0.SampleCmpLevelZero(sShadowMap_f1_0_s_s, r1.xy, r2.x).x;
+    r1.x = r3.z + r1.x;
+    r1.x = r1.x * 0.125 + -1;
+    r4.x = r2.w * r1.x + 1;
+  }
+  r1.xy = viewI._m10_m12 * r0.yy;
+  r0.xy = r0.xx * viewI._m00_m02 + r1.xy;
+  r0.xy = r0.zz * viewI._m20_m22 + r0.xy;
+  r0.xy = viewI._m30_m32 + r0.xy;
+  r0.xy = r0.xy * cloudScaleAndOffset.xy + cloudScaleAndOffset.zw;
+  r0.x = sCloudMap.Sample(sCloudMap_s_s, r0.xy).y;
+  r0.y = 1 + -cloudOpacity;
+  r0.x = saturate(r0.x * globalVector11.y + globalVector11.x);
+  r0.x = cloudOpacity * r0.x + r0.y;
+  r0.x = min(r4.x, r0.x);
+  r0.yz = float2(0.03125,0.0625) * r0.ww;
+  r0.yz = frac(r0.yz);
+  r0.yz = cmp(r0.yz >= float2(0.5,0.5));
+  r0.yz = r0.yz ? float2(1,1) : 0;
+  r0.x = saturate(r0.x + r0.y);
+  r0.y = SSAOMap.Sample(SSAOMap_s_s, v1.xy).x;
+  r0.w = 1 + -r0.y;
+  r0.y = r0.z * r0.w + r0.y;
+  r0.y = -1 + r0.y;
+  r0.y = SSAORenderWidthHeight.z * r0.y + 1;
+  o0.w = r0.x * r0.y;
+  o0.xyz = float3(1,1,1);
+  return;
+}

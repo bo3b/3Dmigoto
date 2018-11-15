@@ -142,12 +142,6 @@ public:
 	const char* indent = "  ";
 	int nestCount;
 
-
-	// Suppress all these warnings, as they are an _int64 mismatch for the aging sscanf, which should
-	// accept that in x64, but doesn't.  Requiring int instead.  Not worth altering for a benign warning.
-#pragma warning(push)
-#pragma warning(disable: 6328)
-
 	Decompiler()
 		: mLastStatement(0),
 		uuidVar(0),
@@ -5300,9 +5294,6 @@ public:
 		// This fixes the double injection of "injectedScreenPos : SV_Position"
 		WritePatches();
 	}
-
-// Restore the warning that was disabled outside of the main usage. sscanf_s warning on _int64.
-#pragma warning(pop)
 
 	void ParseCodeOnlyShaderType(Shader *shader, const char *c, size_t size)
 	{

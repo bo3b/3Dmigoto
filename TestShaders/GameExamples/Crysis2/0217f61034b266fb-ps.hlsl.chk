@@ -1,0 +1,67 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:55 2018
+
+cbuffer PER_MATERIAL : register(b4)
+{
+  float4 MatSpecColor : packoffset(c1);
+  float4 __0FresnelScale__1FresnelPower__2FresnelBias__3IrisGlintMul : packoffset(c4);
+  float __0CorneaOpacity__1__2__3 : packoffset(c5);
+  float4 IrisColor : packoffset(c6);
+}
+
+SamplerState bumpMapSampler_s_s : register(s1);
+SamplerState normalsSampler2D_s_s : register(s2);
+Texture2D<float4> normalsSampler2D : register(t0);
+Texture2D<float4> bumpMapSampler : register(t1);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_Position0,
+  linear centroid float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float3 v4 : TEXCOORD3,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  o0.xyzw = v1.xxxx;
+  r0.xyz = v4.yzx * v3.zxy;
+  r0.xyz = v3.yzx * v4.zxy + -r0.xyz;
+  r0.xyz = v3.www * r0.xyz;
+  r1.xy = bumpMapSampler.Sample(bumpMapSampler_s_s, v2.xy).xy;
+  r1.xy = r1.yx * float2(2,2) + float2(-1,-1);
+  r2.xyz = v4.xyz * r1.yyy;
+  r2.xyz = r1.xxx * v3.xyz + r2.xyz;
+  r0.w = dot(r1.xy, -r1.xy);
+  r0.w = saturate(1 + r0.w);
+  r0.w = sqrt(r0.w);
+  r0.xyz = r0.www * r0.xyz + r2.xyz;
+  r0.xyz = r0.xyz * float3(0.5,0.5,0.5) + float3(0.5,0.5,0.5);
+  r0.xyz = r0.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r0.w = max(abs(r0.x), abs(r0.y));
+  r0.w = max(abs(r0.z), r0.w);
+  r1.xy = cmp(abs(r0.zy) < r0.ww);
+  r2.xyz = r0.xyz / r0.www;
+  r0.zw = r1.yy ? abs(r0.zy) : abs(r0.zx);
+  r0.xy = r1.xx ? r0.zw : abs(r0.yx);
+  r0.z = cmp(r0.y < r0.x);
+  r0.xy = r0.zz ? r0.xy : r0.yx;
+  r0.z = r0.y / r0.x;
+  r0.x = normalsSampler2D.SampleLevel(normalsSampler2D_s_s, r0.xz, 0).w;
+  r0.xyz = r2.xyz * r0.xxx;
+  o1.xyz = r0.xyz * float3(0.5,0.5,0.5) + float3(0.5,0.5,0.5);
+  o1.w = MatSpecColor.w * 0.00392200006;
+  return;
+}

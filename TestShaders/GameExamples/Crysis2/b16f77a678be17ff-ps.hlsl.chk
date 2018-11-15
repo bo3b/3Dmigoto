@@ -1,0 +1,102 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:57 2018
+
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[8] : packoffset(c0);
+}
+
+cbuffer cb3 : register(b3)
+{
+  float4 cb3[3] : packoffset(c0);
+}
+
+cbuffer PER_BATCH : register(b0)
+{
+  float4 LSPos : packoffset(c0);
+  float4 fDepthTestBias : packoffset(c1);
+  float4 fOneDivFarDist : packoffset(c2);
+  float4 CameraFrontVector : packoffset(c3);
+  row_major float4x4 g_gridMatrix : packoffset(c4);
+  float4 fDepthShift : packoffset(c8);
+  float4 g_vGIAttenuation : packoffset(c9);
+  float4 g_gridSize : packoffset(c10);
+  float4 vInvShadowMapWH : packoffset(c11);
+  float4 PS_NearFarClipDist : packoffset(c12);
+  float4 g_gridCenter : packoffset(c13);
+  float4 AnimGenParams : packoffset(c14);
+  float4 irreg_kernel_2d[8] : packoffset(c15);
+  row_major float4x4 TexGen0 : packoffset(c23);
+  float4 GlowParams : packoffset(c27);
+  float4 g_invGridSize : packoffset(c28);
+}
+
+cbuffer PER_INSTANCE : register(b1)
+{
+  float4 Ambient : packoffset(c0);
+  float4 AvgFogVolumeContrib : packoffset(c1);
+}
+
+SamplerState diffuseSampler_s_s : register(s0);
+SamplerState customSampler_s_s : register(s2);
+SamplerState diffuseCMSampler_s_s : register(s3);
+Texture2D<float4> diffuseSampler : register(t0);
+Texture2D<float4> customSampler : register(t2);
+TextureCube<float4> diffuseCMSampler : register(t3);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  float4 v6 : COLOR0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = dot(v5.xyz, v5.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = v5.xyz * r0.xxx;
+  r1.xyzw = diffuseCMSampler.Sample(diffuseCMSampler_s_s, r0.xyz).xyzw;
+  r0.x = saturate(dot(CameraFrontVector.xyz, r0.xyz));
+  r0.xyz = Ambient.xyz * r0.xxx;
+  r0.w = 96 * r1.w;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * Ambient.www + r0.xyz;
+  r1.xz = v1.ww;
+  r1.yw = v3.zz;
+  r1.xyzw = float4(-0.5,-0.5,-0.5,-0.5) + r1.xyzw;
+  r1.xyzw = cb4[5].xxxx * r1.xyzw;
+  r0.w = cb4[5].z * AnimGenParams.z;
+  r2.xyzw = r0.wwww * float4(0.899999976,0.899999976,2,2) + float4(0.5,0.5,0.75,1);
+  r1.xyzw = r1.xyzw * float4(1,1,2,2) + r2.xyzw;
+  r1.xy = customSampler.Sample(customSampler_s_s, r1.xy).xy;
+  r1.zw = customSampler.Sample(customSampler_s_s, r1.zw).xy;
+  r1.xy = r1.yx + r1.wz;
+  r1.xy = r1.xy * float2(2,2) + float2(-2,-2);
+  r1.xy = r1.xy * cb4[5].yy + v1.xy;
+  r1.xyzw = diffuseSampler.Sample(diffuseSampler_s_s, r1.xy).xyzw;
+  r2.xyzw = diffuseSampler.Sample(diffuseSampler_s_s, v2.xy).xyzw;
+  r2.xyzw = r2.xyzw + -r1.xyzw;
+  r1.xyzw = r2.xyzw * v2.zzzz + r1.xyzw;
+  r1.xyzw = v6.xyzw * r1.xyzw;
+  r0.xyz = r0.xyz * r1.xyz + -v4.xyz;
+  r0.xyz = v4.www * r0.xyz + v4.xyz;
+  r0.xyz = -AvgFogVolumeContrib.xyz + r0.xyz;
+  r0.xyz = AvgFogVolumeContrib.www * r0.xyz + AvgFogVolumeContrib.xyz;
+  r1.xyz = r1.www * r1.xyz;
+  o0.w = saturate(r1.w * cb4[7].x + r1.w);
+  r0.xyz = r1.xyz * GlowParams.xyz + r0.xyz;
+  o0.xyz = cb3[2].www * r0.xyz;
+  return;
+}

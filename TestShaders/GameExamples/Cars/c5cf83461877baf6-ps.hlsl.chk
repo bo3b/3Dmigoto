@@ -1,0 +1,226 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:53 2018
+
+cbuffer _Globals : register(b0)
+{
+  float minSpecPower : packoffset(c0);
+  float maxSpecPower : packoffset(c0.y);
+  float globalSpecularFactor : packoffset(c0.z);
+  float openTopped : packoffset(c0.w);
+  float maxWetSpecPower : packoffset(c1);
+  float globalWetSpecularFactor : packoffset(c1.y);
+  float darkeningInterval : packoffset(c1.z);
+  float globalEMapFactor : packoffset(c1.w);
+  float fresnelFactor : packoffset(c2);
+  float4 tint_tintR : packoffset(c3);
+  float4 tint_tintG : packoffset(c4);
+  float4 tint_tintB : packoffset(c5);
+}
+
+cbuffer COMMON_BUFFER2 : register(b3)
+{
+  row_major float4x4 view : packoffset(c0);
+  row_major float4x4 viewI : packoffset(c4);
+  row_major float4x4 projMatrix : packoffset(c8);
+  row_major float4x4 viewProj : packoffset(c12);
+  row_major float4x4 viewProjI : packoffset(c16);
+  float4 screenSpaceDimensions : packoffset(c20);
+  float4 frustumDimensions : packoffset(c21);
+  float4 cLightingTransitionValues : packoffset(c22);
+  float4 treeAmbientBoost : packoffset(c23);
+  float4 viewportPixelDimensions : packoffset(c24);
+  float4 globalVector4 : packoffset(c25);
+  float4 globalVector6 : packoffset(c26);
+  float4 globalVector7 : packoffset(c27);
+  float4 globalVector8 : packoffset(c28);
+  float4 fog_colour_towards : packoffset(c29);
+  float4 fog_colour_away : packoffset(c30);
+  float4 fogLightDir : packoffset(c31);
+  float4 keyLightDir : packoffset(c32);
+  float4 fog_min_inv_fog1_fog2 : packoffset(c33);
+  float4 keyLightColour : packoffset(c34);
+  float4 msaaMode : packoffset(c35);
+  float3 keyLightDirVS : packoffset(c36);
+  float3 worldCameraPos : packoffset(c37);
+  float emissiveTextureControl : packoffset(c37.w);
+}
+
+cbuffer COMMON_BUFFER3 : register(b4)
+{
+  float4 windDirectionAndStrength : packoffset(c0);
+  float4 MSAAControlValues : packoffset(c1);
+  float4 globalVector0 : packoffset(c2);
+  float4 globalVector1 : packoffset(c3);
+  float4 globalVector2 : packoffset(c4);
+  float4 globalVector3 : packoffset(c5);
+  float4 globalVector5 : packoffset(c6);
+  float4 globalVector10 : packoffset(c7);
+  float4 globalVector11 : packoffset(c8);
+  row_major float4x4 globalMatrix0 : packoffset(c9);
+  float4 SSAORenderWidthHeight : packoffset(c13);
+  float4 distortionTextureWidthHeight : packoffset(c14);
+  float currentTime : packoffset(c15);
+}
+
+SamplerState ambientAndBakedShadowsMap_s_s : register(s0);
+SamplerState tint_maskMap_s_s : register(s1);
+SamplerState diffuseMap_s_s : register(s2);
+SamplerState specularMap_s_s : register(s3);
+SamplerState normalMap_s_s : register(s4);
+SamplerState environmentMap_s_s : register(s5);
+SamplerState diffuseIrradianceMap_s_s : register(s6);
+SamplerState diffuseIrradianceEnvMap_s_s : register(s7);
+SamplerState specularIrradianceEnvMap_s_s : register(s8);
+Texture2D<float4> diffuseMap : register(t0);
+Texture2D<float4> tint_maskMap : register(t1);
+Texture2D<float4> normalMap : register(t2);
+Texture2D<float4> specularMap : register(t3);
+Texture2D<float4> ambientAndBakedShadowsMap : register(t4);
+Texture2D<float4> diffuseIrradianceMap : register(t5);
+TextureCube<float4> diffuseIrradianceEnvMap : register(t6);
+TextureCube<float4> specularIrradianceEnvMap : register(t7);
+TextureCube<float4> environmentMap : register(t8);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : COLOR0,
+  float4 v2 : COLOR1,
+  linear centroid float4 v3 : TEXCOORD0,
+  linear centroid float4 v4 : TEXCOORD1,
+  float4 v5 : TEXCOORD4,
+  float4 v6 : TEXCOORD5,
+  float4 v7 : TEXCOORD6,
+  float4 v8 : TEXCOORD7,
+  float3 v9 : TEXCOORD8,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyz = diffuseMap.Sample(diffuseMap_s_s, v4.xy).xyz;
+  r1.xyz = tint_maskMap.Sample(tint_maskMap_s_s, v4.xy).xyz;
+  r1.xyz = float3(-0.200000003,-0.200000003,-0.200000003) + r1.xyz;
+  r1.xyz = saturate(float3(1000,1000,1000) * r1.xyz);
+  r0.w = dot(r1.xyz, float3(1,1,1));
+  r1.w = cmp(9.99999975e-005 < r0.w);
+  if (r1.w != 0) {
+    r1.xyz = r1.xyz / r0.www;
+  }
+  r2.xyz = tint_tintR.xyz * r0.xyz;
+  r3.xyz = tint_tintG.xyz * r0.xyz;
+  r4.xyz = tint_tintB.xyz * r0.xyz;
+  r3.xyz = r3.xyz * r1.yyy;
+  r2.xyz = r1.xxx * r2.xyz + r3.xyz;
+  r2.xyz = r1.zzz * r4.xyz + r2.xyz;
+  r0.w = dot(r1.xyz, float3(1,1,1));
+  r0.w = 1 + -r0.w;
+  r0.w = max(0, r0.w);
+  r0.xyz = r0.www * r0.xyz + r2.xyz;
+  r0.xyz = v2.xyz * r0.xyz;
+  r1.xy = v5.xy / v5.zz;
+  r1.zw = v3.xy / v3.ww;
+  r1.zw = r1.zw + -r1.xy;
+  r1.xy = r1.zw * float2(2.0999999,2.0999999) + r1.xy;
+  r0.w = dot(v6.xyz, v6.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = v6.xyz * r0.www;
+  r0.w = globalVector6.x * openTopped;
+  r0.w = saturate(5 * r0.w);
+  r1.z = -darkeningInterval * r0.w + 1;
+  r3.xyz = r1.zzz * r0.xyz;
+  r4.xyz = normalMap.Sample(normalMap_s_s, v4.xy).xyz;
+  r4.xyz = r4.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r1.w = dot(v9.xyz, v9.xyz);
+  r1.w = rsqrt(r1.w);
+  r5.xyz = v9.xyz * r1.www;
+  r1.w = dot(v8.xyz, v8.xyz);
+  r1.w = rsqrt(r1.w);
+  r6.xyz = v8.xyz * r1.www;
+  r6.xyz = r6.xyz * r4.yyy;
+  r4.xyw = r4.xxx * r5.xyz + r6.xyz;
+  r2.xyz = r4.zzz * r2.xyz + r4.xyw;
+  r1.w = dot(r2.xyz, r2.xyz);
+  r1.w = rsqrt(r1.w);
+  r2.xzw = r2.xyz * r1.www;
+  r4.xyzw = specularMap.Sample(specularMap_s_s, v4.xy).wxyz;
+  r5.xy = globalWetSpecularFactor + -globalSpecularFactor;
+  r5.xy = r0.ww * r5.xy + globalSpecularFactor;
+  r0.w = -minSpecPower + r5.y;
+  r0.w = r4.x * r0.w + minSpecPower;
+  r3.w = dot(v7.xyz, v7.xyz);
+  r3.w = rsqrt(r3.w);
+  r5.yzw = v7.xyz * r3.www;
+  r6.x = ambientAndBakedShadowsMap.Sample(ambientAndBakedShadowsMap_s_s, r1.xy).w;
+  r6.y = saturate(dot(r2.xzw, keyLightDir.xyz));
+  r6.yzw = keyLightColour.xyz * r6.yyy;
+  r7.xyz = -v7.xyz * r3.www + keyLightDir.xyz;
+  r3.w = dot(r7.xyz, r7.xyz);
+  r3.w = rsqrt(r3.w);
+  r7.xyz = r7.xyz * r3.www;
+  r3.w = 8 + r0.w;
+  r3.w = 0.0454729982 * r3.w;
+  r7.x = saturate(dot(r2.xzw, r7.xyz));
+  r7.x = max(0, r7.x);
+  r7.x = log2(r7.x);
+  r0.w = r7.x * r0.w;
+  r0.w = exp2(r0.w);
+  r0.w = r3.w * r0.w;
+  r0.w = r0.w * r6.x;
+  r7.xyz = keyLightColour.xyz * r0.www;
+  r0.w = saturate(v4.z);
+  r8.xyz = diffuseIrradianceMap.Sample(diffuseIrradianceMap_s_s, r1.xy).xyz;
+  r6.xyz = r6.yzw * r6.xxx + r8.xyz;
+  r8.xyz = diffuseIrradianceEnvMap.Sample(diffuseIrradianceEnvMap_s_s, r2.xzw).xyz;
+  r9.xyz = globalVector0.xxx * r8.xyz;
+  r7.xyz = float3(0.00100000005,0.00100000005,0.00100000005) * r7.xyz;
+  r1.x = dot(r5.yzw, r2.xzw);
+  r1.x = r1.x + r1.x;
+  r2.xzw = r2.xzw * -r1.xxx + r5.yzw;
+  r4.x = saturate(r4.x);
+  r1.x = r4.x * r4.x;
+  r5.yzw = specularIrradianceEnvMap.Sample(specularIrradianceEnvMap_s_s, r2.xzw).xyz;
+  r1.y = -r4.x * r4.x + 1;
+  r1.y = 6 * r1.y;
+  r2.xzw = environmentMap.SampleLevel(environmentMap_s_s, r2.xzw, r1.y).xyz;
+  r2.xzw = r2.xzw + -r5.yzw;
+  r2.xzw = r1.xxx * r2.xzw + r5.yzw;
+  r2.xzw = r2.xzw * r0.www;
+  r5.yzw = r5.xxx * r4.yzw;
+  r10.xyz = globalEMapFactor * r4.yzw;
+  r11.xyz = float3(1.60000002,1.60000002,1.60000002) * r2.xzw;
+  r0.w = r2.y * r1.w + 1;
+  r1.xy = r0.ww * float2(0.25,0.25) + float2(0.5,-0.5);
+  r1.yw = globalVector1.yz * r1.yy + float2(1,1);
+  r12.xyz = r3.xyz * r1.xxx;
+  r9.xyz = r12.xyz * r9.xyz;
+  r3.xyz = r6.xyz * r3.xyz;
+  r3.xyz = r3.xyz * r1.yyy;
+  r3.xyz = globalVector0.zzz * r3.xyz;
+  r5.yzw = r5.yzw * r7.xyz;
+  r5.yzw = r5.yzw * r1.yyy;
+  r6.xyz = r11.xyz * r10.xyz;
+  r6.xyz = r6.xyz * r1.www;
+  r3.xyz = r9.xyz * globalVector0.yyy + r3.xyz;
+  r3.xyz = r5.yzw * globalVector0.www + r3.xyz;
+  r3.xyz = r6.xyz * globalVector1.xxx + r3.xyz;
+  r5.yzw = globalVector0.xxx * r8.xyz + -r3.xyz;
+  r3.xyz = globalVector1.www * r5.yzw + r3.xyz;
+  r2.xyz = r2.xzw * float3(1.60000002,1.60000002,1.60000002) + -r3.xyz;
+  r2.xyz = globalVector2.xxx * r2.xyz + r3.xyz;
+  r1.xyw = -r2.xyz + r1.xxx;
+  r1.xyw = globalVector2.yyy * r1.xyw + r2.xyz;
+  r0.xyz = r0.xyz * r1.zzz + -r1.xyw;
+  r0.xyz = globalVector2.zzz * r0.xyz + r1.xyw;
+  r1.xyz = r4.yzw * r5.xxx + -r0.xyz;
+  r0.xyz = globalVector2.www * r1.xyz + r0.xyz;
+  o0.xyz = r0.xyz * v1.www + v1.xyz;
+  o0.w = 1;
+  return;
+}

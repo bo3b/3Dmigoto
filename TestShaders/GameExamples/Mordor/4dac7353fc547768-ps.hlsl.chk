@@ -1,0 +1,118 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:07 2018
+
+cbuffer _Globals : register(b0)
+{
+  float DefaultHeight : packoffset(c0) = {100};
+  float DefaultWidth : packoffset(c0.y) = {100};
+
+  struct
+  {
+    float2 m_Position;
+  } MaterialVertexDef_Rigid : packoffset(c1);
+
+
+  struct
+  {
+    float2 m_Position;
+    float4 m_Weights;
+    float4 m_Indices;
+  } MaterialVertexDef_Skeletal : packoffset(c2);
+
+  bool bHalfPrecision : packoffset(c5) = false;
+  bool bUsePS3CompilerArgs : packoffset(c5.y) = true;
+  float k_fSampleScale : packoffset(c5.z) = {1};
+  float4 k_vScreenBufferSize : packoffset(c6) = {0,0,0,0};
+  row_major float4x4 k_mPreviousMotionTransform : packoffset(c7);
+  float3 k_vScene_ZRange : packoffset(c11);
+}
+
+SamplerState sCurFrameMapDiscardSampler_s_s : register(s0);
+SamplerState sDepthMapSampler_s_s : register(s1);
+Texture2D<float4> tCurFrameMapDiscard : register(t0);
+Texture2D<float4> tDepthMap : register(t1);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float2 v1 : TEXCOORD0,
+  float2 w1 : TEXCOORD1,
+  float4 v2 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = tDepthMap.Sample(sDepthMapSampler_s_s, v2.xy).x;
+  r0.x = k_vScene_ZRange.x / r0.x;
+  r0.y = tDepthMap.Sample(sDepthMapSampler_s_s, v2.zw).x;
+  r0.y = k_vScene_ZRange.x / r0.y;
+  r0.x = r0.x + r0.y;
+  r0.y = tDepthMap.Sample(sDepthMapSampler_s_s, w1.xy).x;
+  r0.y = k_vScene_ZRange.x / r0.y;
+  r0.x = -r0.y * 2 + r0.x;
+  r0.z = tDepthMap.Sample(sDepthMapSampler_s_s, v2.zy).x;
+  r0.z = k_vScene_ZRange.x / r0.z;
+  r0.w = tDepthMap.Sample(sDepthMapSampler_s_s, v2.xw).x;
+  r0.w = k_vScene_ZRange.x / r0.w;
+  r0.z = r0.z + r0.w;
+  r0.y = -r0.y * 2 + r0.z;
+  r0.x = abs(r0.x) + abs(r0.y);
+  r0.x = -r0.x * 10000 + 1;
+  r0.x = max(0, r0.x);
+  r0.x = r0.x * 4 + 0.125;
+  r0.yzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s_s, v2.xy).xyz;
+  r1.x = dot(r0.yzw, float3(0.298999995,0.587000012,0.114));
+  r0.yzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s_s, v2.zy).xyz;
+  r1.y = dot(r0.yzw, float3(0.298999995,0.587000012,0.114));
+  r0.yzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s_s, v2.xw).xyz;
+  r1.z = dot(r0.yzw, float3(0.298999995,0.587000012,0.114));
+  r0.yzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s_s, v2.zw).xyz;
+  r1.w = dot(r0.yzw, float3(0.298999995,0.587000012,0.114));
+  r0.y = dot(r1.xyzw, float4(1,1,1,1));
+  r0.x = r0.x * r0.y;
+  r0.x = 0.25 * r0.x;
+  r0.x = max(0.00390599994, r0.x);
+  r2.xyzw = r1.xzxy + r1.ywzw;
+  r0.y = r2.x + -r2.y;
+  r2.yw = r2.zz + -r2.ww;
+  r0.z = min(abs(r2.w), abs(r0.y));
+  r2.xz = -r0.yy;
+  r0.x = r0.z + r0.x;
+  r0.x = 1 / r0.x;
+  r0.xyzw = r2.xyzw * r0.xxxx;
+  r0.xyzw = max(float4(-2,-2,-2,-2), r0.xyzw);
+  r0.xyzw = min(float4(2,2,2,2), r0.xyzw);
+  r0.xyzw = k_vScreenBufferSize.zwzw * r0.xyzw;
+  r2.xyzw = r0.xyzw * float4(-0.5,-0.5,0.5,0.5) + w1.xyzw;
+  r0.xyzw = r0.zwzw * float4(-0.166666999,-0.166666999,0.166666999,0.166666999) + w1.xyzw;
+  r3.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s_s, r2.xy).xyzw;
+  r2.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s_s, r2.zw).xyzw;
+  r2.xyzw = r3.xyzw + r2.xyzw;
+  r2.xyzw = float4(0.25,0.25,0.25,0.25) * r2.xyzw;
+  r3.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s_s, r0.xy).xyzw;
+  r0.xyzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s_s, r0.zw).xyzw;
+  r0.xyzw = r3.xyzw + r0.xyzw;
+  r2.xyzw = r0.xyzw * float4(0.25,0.25,0.25,0.25) + r2.xyzw;
+  r0.xyzw = float4(0.5,0.5,0.5,0.5) * r0.xyzw;
+  r3.x = dot(r2.xyz, float3(0.298999995,0.587000012,0.114));
+  r3.yz = min(r1.xz, r1.yw);
+  r1.xy = max(r1.xz, r1.yw);
+  r1.x = max(r1.x, r1.y);
+  r1.y = min(r3.y, r3.z);
+  r3.yzw = tCurFrameMapDiscard.Sample(sCurFrameMapDiscardSampler_s_s, w1.xy).xyz;
+  r1.z = dot(r3.yzw, float3(0.298999995,0.587000012,0.114));
+  r1.y = min(r1.z, r1.y);
+  r1.x = max(r1.z, r1.x);
+  r1.x = cmp(r1.x < r3.x);
+  r1.y = cmp(r3.x < r1.y);
+  r1.x = (int)r1.x | (int)r1.y;
+  o0.xyzw = r1.xxxx ? r0.xyzw : r2.xyzw;
+  return;
+}

@@ -70,6 +70,7 @@ HackerContext::HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pCon
 	mRealOrigContext1 = pContext1;
 	mHackerDevice = NULL;
 
+	memset(mCurrentVertexBuffers, 0, sizeof(mCurrentVertexBuffers));
 	mCurrentIndexBuffer = 0;
 	mCurrentVertexShader = 0;
 	mCurrentVertexShaderHandle = NULL;
@@ -666,7 +667,10 @@ void HackerContext::BeforeDraw(DrawContext &data)
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
 	if (G->hunting == HUNTING_MODE_ENABLED)
 	{
+		UINT selectedVertexBufferPos;
 		UINT selectedRenderTargetPos;
+		UINT i;
+
 		EnterCriticalSection(&G->mCriticalSection);
 		{
 			// In some cases stat collection can have a significant
@@ -676,14 +680,21 @@ void HackerContext::BeforeDraw(DrawContext &data)
 				RecordGraphicsShaderStats();
 
 			// Selection
-			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos)
-				if (mCurrentRenderTargets[selectedRenderTargetPos] == G->mSelectedRenderTarget) break;
+			for (selectedVertexBufferPos = 0; selectedVertexBufferPos < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; ++selectedVertexBufferPos) {
+				if (mCurrentVertexBuffers[selectedVertexBufferPos] == G->mSelectedVertexBuffer)
+					break;
+			}
+			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
+				if (mCurrentRenderTargets[selectedRenderTargetPos] == G->mSelectedRenderTarget)
+					break;
+			}
 			if (mCurrentIndexBuffer == G->mSelectedIndexBuffer ||
 				mCurrentVertexShader == G->mSelectedVertexShader ||
 				mCurrentPixelShader == G->mSelectedPixelShader ||
 				mCurrentGeometryShader == G->mSelectedGeometryShader ||
 				mCurrentDomainShader == G->mSelectedDomainShader ||
 				mCurrentHullShader == G->mSelectedHullShader ||
+				selectedVertexBufferPos < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT ||
 				selectedRenderTargetPos < mCurrentRenderTargets.size())
 			{
 				LogDebug("  Skipping selected operation. CurrentIndexBuffer = %08lx, CurrentVertexShader = %016I64x, CurrentPixelShader = %016I64x\n",
@@ -697,15 +708,33 @@ void HackerContext::BeforeDraw(DrawContext &data)
 				}
 				G->mSelectedRenderTargetSnapshotList.insert(mCurrentRenderTargets.begin(), mCurrentRenderTargets.end());
 				// Snapshot info.
+				for (i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
+					if (mCurrentVertexBuffers[i] == G->mSelectedVertexBuffer) {
+						G->mSelectedVertexBuffer_VertexShader.insert(mCurrentVertexShader);
+						G->mSelectedVertexBuffer_PixelShader.insert(mCurrentPixelShader);
+					}
+				}
 				if (mCurrentIndexBuffer == G->mSelectedIndexBuffer)
 				{
 					G->mSelectedIndexBuffer_VertexShader.insert(mCurrentVertexShader);
 					G->mSelectedIndexBuffer_PixelShader.insert(mCurrentPixelShader);
 				}
-				if (mCurrentVertexShader == G->mSelectedVertexShader)
-					G->mSelectedVertexShader_IndexBuffer.insert(mCurrentIndexBuffer);
-				if (mCurrentPixelShader == G->mSelectedPixelShader)
-					G->mSelectedPixelShader_IndexBuffer.insert(mCurrentIndexBuffer);
+				if (mCurrentVertexShader == G->mSelectedVertexShader) {
+					for (i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
+						if (mCurrentVertexBuffers[i])
+							G->mSelectedVertexShader_VertexBuffer.insert(mCurrentVertexBuffers[i]);
+					}
+					if (mCurrentIndexBuffer)
+						G->mSelectedVertexShader_IndexBuffer.insert(mCurrentIndexBuffer);
+				}
+				if (mCurrentPixelShader == G->mSelectedPixelShader) {
+					for (i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
+						if (mCurrentVertexBuffers[i])
+							G->mSelectedVertexShader_VertexBuffer.insert(mCurrentVertexBuffers[i]);
+					}
+					if (mCurrentIndexBuffer)
+						G->mSelectedPixelShader_IndexBuffer.insert(mCurrentIndexBuffer);
+				}
 				if (G->marking_mode == MarkingMode::MONO && mHackerDevice->mStereoHandle)
 				{
 					LogDebug("  setting separation=0 for hunting\n");
@@ -1251,6 +1280,18 @@ STDMETHODIMP_(void) HackerContext::IASetVertexBuffers(THIS_
 	__in_ecount(NumBuffers)  const UINT *pOffsets)
 {
 	 mOrigContext1->IASetVertexBuffers(StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
+
+	 if (G->hunting == HUNTING_MODE_ENABLED) {
+		EnterCriticalSection(&G->mCriticalSection);
+		for (UINT i = StartSlot; (i < StartSlot + NumBuffers) && (i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT); i++) {
+			if (ppVertexBuffers && ppVertexBuffers[i]) {
+				mCurrentVertexBuffers[i] = GetResourceHash(ppVertexBuffers[i]);
+				G->mVisitedVertexBuffers.insert(mCurrentVertexBuffers[i]);
+			} else
+				mCurrentVertexBuffers[i] = 0;
+		}
+		LeaveCriticalSection(&G->mCriticalSection);
+	 }
 }
 
 STDMETHODIMP_(void) HackerContext::GSSetConstantBuffers(THIS_

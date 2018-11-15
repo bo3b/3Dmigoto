@@ -1,0 +1,173 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:28:06 2018
+
+cbuffer cbPerFrame : register(b0)
+{
+  row_major float4x4 g_viewProjection : packoffset(c0);
+  row_major float4x4 g_viewMatrix : packoffset(c4);
+  float3 g_EyePosition : packoffset(c8);
+  float g_lodFactor : packoffset(c8.w);
+  float4 g_baseColor : packoffset(c9);
+  float4 g_ambientColor : packoffset(c10);
+  float4 g_diffuseColor : packoffset(c11);
+  float4 g_specColor : packoffset(c12);
+  float g_alpha : packoffset(c13);
+  int g_useTextures : packoffset(c13.y);
+  int g_useShadows : packoffset(c13.z);
+  int g_useShading : packoffset(c13.w);
+  int g_applyGamma : packoffset(c14);
+  int g_width : packoffset(c14.y);
+  int g_height : packoffset(c14.z);
+  int g_debugDensity : packoffset(c14.w);
+  float g_shadowSigma : packoffset(c15);
+  float g_diffuseScale : packoffset(c15.y);
+  int g_colorizeLOD : packoffset(c15.z);
+  int g_shadowLightIndex : packoffset(c15.w);
+  float g_diffuseBlend : packoffset(c16);
+  float g_specularPrimary : packoffset(c16.y);
+  float g_specularSecondary : packoffset(c16.z);
+  float g_specPowerPrimary : packoffset(c16.w);
+  float g_specPowerSecondary : packoffset(c17);
+  float g_secondarySpecularOffset : packoffset(c17.y);
+  int g_useRootColorTexture : packoffset(c17.z);
+  int g_useTipColorTexture : packoffset(c17.w);
+  float4 g_colorizationPowerAndDesaturation : packoffset(c18);
+  float4 g_colorizationScale : packoffset(c19);
+  float4 g_colorizationBias : packoffset(c20);
+  float4 g_colorizationPowerAndDesaturationAlternate : packoffset(c21);
+  float4 g_colorizationScaleAlternate : packoffset(c22);
+  float4 g_colorizationBiasAlternate : packoffset(c23);
+  float4 g_colorizationAlternateDepthScaleAndBias : packoffset(c24);
+  float4 g_lightDirs[4] : packoffset(c25);
+  float4 g_lightColors[4] : packoffset(c29);
+}
+
+SamplerState samLinear_s_s : register(s0);
+Texture2D<float4> g_sceneDepthTexture : register(t0);
+Texture2D<float4> g_colorCorrectionTexture : register(t1);
+Texture2D<float4> g_hairColorTexture : register(t2);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TANGENT_NORMAL0,
+  float4 v2 : POSITION_AND_DEPTH0,
+  nointerpolation float2 v3 : SCENE_COORDS0,
+  nointerpolation float2 w3 : TEXCOORDS0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = cmp(g_shadowLightIndex < 4);
+  if (r0.x != 0) {
+    r0.x = -v1.x * v1.x + 1;
+    r0.x = -v1.y * v1.y + r0.x;
+    r0.x = max(0, r0.x);
+    r0.z = sqrt(r0.x);
+    r1.xyz = g_EyePosition.xyz + -v2.xyz;
+    r0.w = dot(r1.xyz, r1.xyz);
+    r0.w = rsqrt(r0.w);
+    r1.w = g_shadowLightIndex;
+    r2.xyz = g_lightDirs[r1.w].xyz + float3(0,0,0);
+    r1.w = dot(r2.xyz, r2.xyz);
+    r1.w = rsqrt(r1.w);
+    r2.xyz = r2.xyz * r1.www;
+    r1.xyz = r1.xyz * r0.www + r2.xyz;
+    r0.w = dot(r1.xyz, r1.xyz);
+    r0.w = rsqrt(r0.w);
+    r1.xyz = r1.xyz * r0.www;
+    r0.xy = v1.xy;
+    r0.x = dot(r0.xyz, r1.xyz);
+    r0.y = r0.x * r0.x;
+    r0.y = min(1, r0.y);
+    r0.y = 1 + -r0.y;
+    r0.y = sqrt(r0.y);
+    r0.y = log2(r0.y);
+    r0.y = g_specPowerPrimary * r0.y;
+    r1.x = exp2(r0.y);
+    r0.x = g_secondarySpecularOffset + r0.x;
+    r0.x = max(-1, r0.x);
+    r0.x = min(1, r0.x);
+    r0.x = -r0.x * r0.x + 1;
+    r0.x = sqrt(r0.x);
+    r0.x = log2(r0.x);
+    r0.x = g_specPowerSecondary * r0.x;
+    r1.y = exp2(r0.x);
+  } else {
+    r1.xy = float2(0,0);
+  }
+  r0.xyzw = g_sceneDepthTexture.Sample(samLinear_s_s, v3.xy).xyzw;
+  r2.xyzw = g_colorCorrectionTexture.Sample(samLinear_s_s, v3.xy).xyzw;
+  r0.w = -v2.w + r0.w;
+  r0.w = cmp(abs(r0.w) < 2);
+  if (g_useShading != 0) {
+    r1.z = ~(int)r0.w;
+    r1.w = cmp(0 < r2.w);
+    r3.x = ~(int)r1.w;
+    r1.z = (int)r1.z & (int)r3.x;
+    if (r1.z != 0) discard;
+    r3.xyz = g_hairColorTexture.Sample(samLinear_s_s, w3.xy).xyz;
+    r3.xyz = r3.xyz * r3.xyz;
+    r2.xyz = r1.www ? r2.xyz : r0.xyz;
+    r0.xyz = r0.www ? r0.xyz : r2.xyz;
+    r1.z = dot(float3(0.298999995,0.587000012,0.114), r0.xyz);
+    r1.w = dot(float3(0.298999995,0.587000012,0.114), r3.xyz);
+    r2.xy = cmp(r1.zw < float2(0.5,0.100000001));
+    r2.x = (int)r2.y | (int)r2.x;
+    if (r2.x == 0) {
+      r2.x = min(r0.y, r0.z);
+      r2.x = min(r2.x, r0.x);
+      r2.y = max(r0.y, r0.z);
+      r2.y = max(r2.y, r0.x);
+      r2.x = r2.y + -r2.x;
+      r2.x = r2.x / r2.y;
+      r1.z = r1.z / r1.w;
+      r1.z = max(0.100000001, r1.z);
+      r1.z = min(10, r1.z);
+      r4.xyz = r1.zzz * r3.xyz;
+      r1.w = dot(float3(0.298999995,0.587000012,0.114), r4.xyz);
+      r2.y = min(r4.y, r4.z);
+      r2.y = min(r4.x, r2.y);
+      r2.z = max(r4.y, r4.z);
+      r2.z = max(r4.x, r2.z);
+      r2.y = r2.z + -r2.y;
+      r2.y = r2.y / r2.z;
+      r2.x = min(r2.y, r2.x);
+      r2.x = 1 + -r2.x;
+      r3.xyz = -r1.zzz * r3.xyz + r1.www;
+      r0.xyz = r2.xxx * r3.xyz + r4.xyz;
+    }
+  } else {
+    r1.z = cmp(0 < r2.w);
+    r2.xyz = r1.zzz ? float3(1,0,0) : float3(1,1,0);
+    r0.xyz = r0.www ? float3(0,1,0) : r2.xyz;
+  }
+  r0.w = dot(g_specularPrimary, r1.xy);
+  r1.xyz = g_specColor.xyz * r0.www;
+  r1.xyz = max(float3(0,0,0), r1.xyz);
+  r0.w = dot(r1.xyz, float3(0.298999995,0.587000012,0.114));
+  r2.xyz = r0.www + -r1.xyz;
+  r3.xyz = g_colorizationPowerAndDesaturation.www * r2.xyz + r1.xyz;
+  r3.xyz = log2(r3.xyz);
+  r3.xyz = g_colorizationPowerAndDesaturation.xxx * r3.xyz;
+  r3.xyz = exp2(r3.xyz);
+  r3.xyz = r3.xyz * g_colorizationScale.xyz + g_colorizationBias.xyz;
+  r1.xyz = g_colorizationPowerAndDesaturationAlternate.www * r2.xyz + r1.xyz;
+  r1.xyz = log2(r1.xyz);
+  r1.xyz = g_colorizationPowerAndDesaturationAlternate.xxx * r1.xyz;
+  r1.xyz = exp2(r1.xyz);
+  r1.xyz = r1.xyz * g_colorizationScaleAlternate.xyz + g_colorizationBiasAlternate.xyz;
+  r0.w = saturate(v0.w * g_colorizationAlternateDepthScaleAndBias.x + g_colorizationAlternateDepthScaleAndBias.y);
+  r1.xyz = r1.xyz + -r3.xyz;
+  r1.xyz = r0.www * r1.xyz + r3.xyz;
+  o0.xyz = r1.xyz + r0.xyz;
+  o0.w = g_alpha;
+  return;
+}

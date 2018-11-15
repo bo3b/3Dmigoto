@@ -37,6 +37,9 @@ static void PrintHelp(int argc, char *argv[])
 	LogInfo("  -a, --assemble\n");
 	LogInfo("\t\t\tAssemble shaders with Flugan's assembler\n");
 
+	LogInfo("  --copy-reflection FILE\n");
+	LogInfo("\t\t\t\tCopy reflection & signature sections from FILE when assembling");
+
 	// TODO (at the moment we always force):
 	// LogInfo("  -f, --force\n");
 	// LogInfo("\t\t\tOverwrite existing files\n");
@@ -55,12 +58,20 @@ static void PrintHelp(int argc, char *argv[])
 	exit(EXIT_FAILURE);
 }
 
+static void PrintVersion()
+{
+	LogInfo("3DMigoto cmd_Decompiler version %s\n", VER_FILE_VERSION_STR);
+
+	exit(EXIT_SUCCESS);
+}
+
 static struct {
 	std::vector<std::string> files;
 	bool decompile;
 	bool compile;
 	bool disassemble_ms;
 	bool disassemble_flugan;
+	std::string reflection_reference;
 	bool assemble;
 	bool force;
 	bool validate;
@@ -87,6 +98,9 @@ void parse_args(int argc, char *argv[])
 			if (!strcmp(arg, "--help") || !strcmp(arg, "--usage")) {
 				PrintHelp(argc, argv); // Does not return
 			}
+			if (!strcmp(arg, "--version")) {
+				PrintVersion(); // Does not return
+			}
 			if (!strcmp(arg, "--")) {
 				terminated = true;
 				continue;
@@ -101,6 +115,12 @@ void parse_args(int argc, char *argv[])
 			// }
 			if (!strcmp(arg, "-d") || !strcmp(arg, "--disassemble") || !strcmp(arg, "--disassemble-flugan")) {
 				args.disassemble_flugan = true;
+				continue;
+			}
+			if (!strcmp(arg, "--copy-reflection")) {
+				if (++i >= argc)
+					PrintHelp(argc, argv);
+				args.reflection_reference = argv[i];
 				continue;
 			}
 			if (!strcmp(arg, "--disassemble-ms")) {
@@ -330,8 +350,8 @@ static int validate_hlsl(string *hlsl, string *shaderModel)
 	return EXIT_SUCCESS;
 }
 
-
-static int ReadInput(vector<char> *srcData, string const *filename)
+template<typename T>
+static int ReadInput(vector<T> *srcData, string const *filename)
 {
 	DWORD srcDataSize;
 	DWORD readSize;
@@ -431,9 +451,16 @@ static int process(string const *filename)
 	if (args.assemble) {
 		LogInfo("Assembling %s...\n", filename->c_str());
 		vector<byte> new_bytecode;
-		hret = AssembleFluganWithSignatureParsing(&srcData, &new_bytecode);
-		if (FAILED(hret))
-			return EXIT_FAILURE;
+		if (args.reflection_reference.empty()) {
+			hret = AssembleFluganWithSignatureParsing(&srcData, &new_bytecode);
+			if (FAILED(hret))
+				return EXIT_FAILURE;
+		} else {
+			vector<byte> refData;
+			if (ReadInput(&refData, &args.reflection_reference))
+				return EXIT_FAILURE;
+			new_bytecode = AssembleFluganWithOptionalSignatureParsing(&srcData, false, &refData);
+		}
 
 		// TODO:
 		// if (args.validate)

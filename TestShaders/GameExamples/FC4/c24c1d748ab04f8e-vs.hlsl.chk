@@ -1,0 +1,101 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:28:04 2018
+
+cbuffer CViewportShaderParameterProvider : register(b0)
+{
+  float4 _AmbientColorMultiplier : packoffset(c0);
+  float4 _AmbientOcclusionRanges_SunOcclusionFactor : packoffset(c1);
+  float4 _BloomAdaptationFactor : packoffset(c2);
+  float4 _CameraDirection_FOVDeg : packoffset(c3);
+  float4 _CameraDistances : packoffset(c4);
+  float4 _CameraNearPlaneSize : packoffset(c5);
+  float4 _CameraPositionFractions_ZOffsetWS : packoffset(c6);
+  float4 _CameraPositionFractions_ZOffsetWS_Previous : packoffset(c7);
+  float4 _CameraPosition_DistanceScale : packoffset(c8);
+  float4 _CameraPosition_DistanceScale_Previous : packoffset(c9);
+  float4x4 _CullingViewProjectionMatrix : packoffset(c10);
+  float4 _DepthScale : packoffset(c14);
+  float4 _DepthTextureRcpSize : packoffset(c15);
+  float4 _DepthTextureScaleOffset : packoffset(c16);
+  float4 _FogParams : packoffset(c17);
+  float4 _FogSHB : packoffset(c18);
+  float4 _FogSHG : packoffset(c19);
+  float4 _FogSHR : packoffset(c20);
+  float4 _HeightFogParams : packoffset(c21);
+  float4x4 _InvProjectionMatrix : packoffset(c22);
+  float4x4 _InvViewMatrix : packoffset(c26);
+  float4x4 _ProjectionMatrix : packoffset(c30);
+  float4 _TempSunDirection : packoffset(c34);
+  float4x4 _ViewMatrix : packoffset(c35);
+  float4 _ViewPoint_ShadowProjDepthMin : packoffset(c39);
+  float4x4 _ViewProjectionMatrix : packoffset(c40);
+  float4x4 _ViewRotProjectionMatrix : packoffset(c44);
+  float4x4 _ViewRotProjectionMatrix_Previous : packoffset(c48);
+  float4 _ViewportSize : packoffset(c52);
+  float2 _MotionVectorOffsets : packoffset(c53);
+  float3 _CameraRight : packoffset(c54);
+  float3 _CameraUp : packoffset(c55);
+  float3 _EnvironmentMapColorOffset : packoffset(c56);
+  float3 _EnvironmentMapColorScale : packoffset(c57);
+}
+
+cbuffer CVistaParameterProvider : register(b1)
+{
+  float4 _CollectionShadowParams : packoffset(c0);
+  float4 _DetailGlobalConfig : packoffset(c1);
+  float4 _DetailLayerConfig[4] : packoffset(c2);
+  float4 _DetailLayerIDsConfig : packoffset(c6);
+  float4 _NeighborsFactor : packoffset(c7);
+  float4 _VistaPositionAndFactor : packoffset(c8);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  int4 v0 : TEXCOORD0,
+  int2 v1 : TEXCOORD1,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float2 o2 : TEXCOORD1)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = (int2)v0.xy;
+  r1.xy = cmp(-r0.yx < float2(-16383,-16383));
+  r1.zw = cmp(r0.yx < float2(-16383,-16383));
+  r2.xz = r1.xz ? float2(1,1) : 0;
+  r0.zw = r1.yw ? float2(1,1) : 0;
+  r1.x = dot(r2.xz, r2.xz);
+  r1.x = cmp(r1.x != 0.000000);
+  r2.yw = r1.xx ? float2(0,0) : r0.zw;
+  r0.z = dot(r2.xyzw, r2.xyzw);
+  r0.w = dot(r2.xyzw, _NeighborsFactor.xyzw);
+  r0.z = cmp(r0.z != 0.000000);
+  r0.z = r0.z ? r0.w : _VistaPositionAndFactor.w;
+  r1.xy = (int2)v1.xy;
+  r1.zw = float2(0.0312509984,0.0312509984);
+  r1.xy = r1.zw * r1.xy;
+  r0.w = r1.x + -r1.y;
+  r1.z = r0.z * r0.w + r1.y;
+  r0.zw = float2(6.09999988e-005,6.09999988e-005) * _VistaPositionAndFactor.xx;
+  r1.xy = r0.zw * r0.xy + _VistaPositionAndFactor.yz;
+  r0.xy = r0.xy * float2(3.09999996e-005,-3.09999996e-005) + float2(0.5,0.5);
+  o2.xy = float2(0.96875,0.96875) * r0.xy;
+  r0.xyz = -_CameraPosition_DistanceScale.xyz + r1.xyz;
+  o1.xyz = r1.xyz;
+  r0.w = 1;
+  o0.x = dot(r0.xyzw, _ViewRotProjectionMatrix._m00_m10_m20_m30);
+  o0.y = dot(r0.xyzw, _ViewRotProjectionMatrix._m01_m11_m21_m31);
+  o0.z = dot(r0.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32);
+  o0.w = dot(r0.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
+  r0.x = dot(r0.xy, r0.xy);
+  o1.w = sqrt(r0.x);
+  return;
+}

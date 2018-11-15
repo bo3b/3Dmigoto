@@ -1,0 +1,177 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:46 2018
+
+cbuffer cbDefaultPSC : register(b2)
+{
+  float4x4 AlphaLight_WorldtoClipMatrix : packoffset(c0);
+  float4x4 AlphaLight_CliptoWorldMatrix : packoffset(c4);
+  float4x4 ProjectorMatrix : packoffset(c8);
+  float4x4 MotionBlurCurrInvViewProjection : packoffset(c12);
+  float4x4 MotionBlurPrevViewProjection : packoffset(c16);
+  float4x4 MotionBlurPrevSecViewProjection : packoffset(c20);
+  float4x4 Spotlight0_Transform : packoffset(c24);
+  float4 TextureAnimation : packoffset(c28);
+  float4 AmbientDiffuse : packoffset(c29);
+  float4 EnvironmentDebugParams : packoffset(c30);
+  float4 ShadowFilterESMWeights : packoffset(c31);
+  float4 LegacyDofParams : packoffset(c32);
+  float4 OnePixelStepForS0 : packoffset(c33);
+  float4 RenderTargetSize : packoffset(c34);
+  float4 ModelTrackerID : packoffset(c35);
+  float4 Sharpness_Bloom_Controls : packoffset(c36);
+  float4 Blur_Direction : packoffset(c37);
+  float4 LightMeterDebugParams : packoffset(c38);
+  float4 SourceResolution : packoffset(c39);
+  float4 HDR_EncodeScale : packoffset(c40);
+  float4 OutputGamma : packoffset(c41);
+  float4 AlphaLight_ScaleParams : packoffset(c42);
+  float4 WrinkleMapWeights[6] : packoffset(c43);
+  float4 RadiosityCubeMapIdx : packoffset(c49);
+  float4 HairShadingParams[8] : packoffset(c50);
+  float4 SkinShadingParams : packoffset(c58);
+  float4 HDR_EncodeScale3 : packoffset(c59);
+  float4 ScreenResolution[4] : packoffset(c60);
+  float4 VelocityParams : packoffset(c64);
+  float4 DeferredConstColor : packoffset(c65);
+  float4 Spotlight0_Shadow_Params : packoffset(c66);
+  float4 Spotlight0_ShadowMapDimensions : packoffset(c67);
+  float4 ShadowFilterType : packoffset(c68);
+  float4 Spotlight0_ReverseZPerspective : packoffset(c69);
+  float4 SpacesuitVisorParams : packoffset(c70);
+  float4 Directional_Light_Colour : packoffset(c71);
+  float4 Directional_Light_Direction : packoffset(c72);
+  float4 EnvironmentMap_Params : packoffset(c73);
+  float4 Spotlight0_Shadow_Bias_GoboScale : packoffset(c74);
+  float4 ScreenSpaceLightShaftParams1 : packoffset(c75);
+  float4 ScreenSpaceLightShaftParams2 : packoffset(c76);
+  float4 ScreenSpaceLightPosition : packoffset(c77);
+  float4 LensAndScreenCenter : packoffset(c78);
+  float4 ScaleAndScaleIn : packoffset(c79);
+  float4 HmdWarpParam : packoffset(c80);
+  float4 ChromAbParam : packoffset(c81);
+  float4 SMAA_SubsampleIndices : packoffset(c82);
+}
+
+cbuffer cbUbershaderXSC : register(b5)
+{
+  float4 rp_parameter_vs[32] : packoffset(c0);
+  float4 rp_parameter_ps[32] : packoffset(c32);
+}
+
+SamplerState DIFFUSE_MAP_SAMPLER_SMP_s_s : register(s0);
+SamplerState SPECULAR_MAP_SAMPLER_SMP_s_s : register(s1);
+SamplerState ALPHABLEND_NOISE_MAP_SAMPLER_SMP_s_s : register(s2);
+SamplerState DIRT_MAP_SAMPLER_SMP_s_s : register(s3);
+SamplerState g_smp_fresnel_lut_SMP_s_s : register(s11);
+Texture2D<float4> DIFFUSE_MAP_SAMPLER_TEX : register(t0);
+Texture2D<float4> SPECULAR_MAP_SAMPLER_TEX : register(t1);
+Texture2D<float4> ALPHABLEND_NOISE_MAP_SAMPLER_TEX : register(t2);
+Texture2D<float4> DIRT_MAP_SAMPLER_TEX : register(t3);
+Texture3D<float4> g_smp_fresnel_lut_TEX : register(t11);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : TEXCOORD0,
+  float4 v1 : TEXCOORD1,
+  float4 v2 : TEXCOORD2,
+  float4 v3 : TEXCOORD3,
+  float4 v4 : TEXCOORD4,
+  float4 v5 : COLOR0,
+  float4 v6 : SV_Position0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1,
+  out float4 o2 : SV_Target2,
+  out float4 o3 : SV_Target3)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = 0.00392200006 * RadiosityCubeMapIdx.x;
+  r0.yz = float2(255.996094,255.996094) * v1.zw;
+  r0.yz = trunc(r0.yz);
+  r1.xy = v1.zw * float2(255.996094,255.996094) + -r0.yz;
+  r2.zw = float2(0.00392200006,0.00392200006) * r0.yz;
+  r2.xy = float2(1.00392199,1.00392199) * r1.xy;
+  r0.y = cmp(0 < RadiosityCubeMapIdx.y);
+  o0.w = r0.y ? r0.x : r2.x;
+  r0.xyz = r0.yyy ? float3(0,0,0) : r2.yzw;
+  o0.xyz = float3(0,0,0);
+  o1.w = r0.x;
+  r0.x = dot(v0.xyz, v0.xyz);
+  r0.x = rsqrt(r0.x);
+  r1.xyz = v0.xyz * r0.xxx;
+  o1.xyz = r1.xyz * float3(0.5,0.5,0.5) + float3(0.5,0.5,0.5);
+  r0.x = dot(v3.xyz, v3.xyz);
+  r0.x = rsqrt(r0.x);
+  r2.xyz = v3.xyz * r0.xxx;
+  r1.x = dot(r1.xyz, r2.xyz);
+  r0.x = -abs(r1.x) * abs(r1.x) + 1;
+  r1.x = saturate(r1.x);
+  r0.x = max(0, r0.x);
+  r0.x = sqrt(r0.x);
+  r0.x = 0.666666985 * r0.x;
+  r0.x = -r0.x * r0.x + 1;
+  r0.x = sqrt(r0.x);
+  r0.x = 1 / r0.x;
+  r0.x = -1 + r0.x;
+  r0.x = r0.x * 0.5 + 1;
+  r2.xyzw = rp_parameter_ps[0].yyww * v1.xyxy;
+  r3.xyz = DIFFUSE_MAP_SAMPLER_TEX.Sample(DIFFUSE_MAP_SAMPLER_SMP_s_s, r2.xy).xyz;
+  r2.xy = SPECULAR_MAP_SAMPLER_TEX.Sample(SPECULAR_MAP_SAMPLER_SMP_s_s, r2.zw).xy;
+  r3.xyz = r3.xyz * r3.xyz;
+  r3.xyz = rp_parameter_ps[1].xyz * r3.xyz;
+  r3.xyz = v2.xyz * r3.xyz;
+  r3.xyz = v4.xyz * r3.xyz;
+  r3.xyz = log2(r3.xyz);
+  r3.xyz = r3.xyz * r0.xxx;
+  r3.xyz = exp2(r3.xyz);
+  r4.xyzw = rp_parameter_ps[2].yyww * v1.xyxy;
+  r5.xyz = DIRT_MAP_SAMPLER_TEX.Sample(DIRT_MAP_SAMPLER_SMP_s_s, r4.zw).xyz;
+  r0.x = ALPHABLEND_NOISE_MAP_SAMPLER_TEX.Sample(ALPHABLEND_NOISE_MAP_SAMPLER_SMP_s_s, r4.xy).y;
+  r0.x = r0.x * 2 + -1;
+  r0.x = saturate(r0.x * v5.y + v5.x);
+  r4.xyz = r5.xyz * r5.xyz;
+  r0.w = v5.x * r0.x;
+  r0.x = -r0.x * v5.x + 1;
+  r4.xyz = r4.xyz * r0.xxx + r0.www;
+  r0.x = log2(r4.y);
+  r0.x = rp_parameter_ps[2].z * r0.x;
+  r0.x = exp2(r0.x);
+  r0.w = rp_parameter_ps[0].z * r2.x;
+  r1.w = rp_parameter_ps[2].x * r2.y;
+  r1.y = min(0.995999992, r1.w);
+  r1.z = r0.w * r0.x;
+  r0.xw = g_smp_fresnel_lut_TEX.SampleLevel(g_smp_fresnel_lut_SMP_s_s, r1.xyz, 0).xy;
+  o3.x = r1.y;
+  r0.x = r0.x * r0.x;
+  r0.w = r0.w * r0.w + -r0.x;
+  r0.x = saturate(rp_parameter_ps[0].x * r0.w + r0.x);
+  r1.xy = float2(0.00100000005,0.00100000005) * v6.xy;
+  r1.zw = v6.xy * float2(0.00100000005,0.00100000005) + -v1.xx;
+  r0.w = dot(r1.zw, r1.xy);
+  r0.w = exp2(r0.w);
+  r0.w = 10000 * r0.w;
+  r0.w = frac(r0.w);
+  r0.w = 1400 * r0.w;
+  r0.w = frac(r0.w);
+  r0.x = r0.w * 0.00249999994 + r0.x;
+  r0.x = min(1, r0.x);
+  r0.w = -r0.x * v4.y + 1;
+  r0.x = v4.y * r0.x;
+  r0.x = sqrt(r0.x);
+  o3.y = -r0.x * 0.5 + 0.5;
+  r1.xyz = r3.xyz * r0.www;
+  r1.xyz = r1.xyz * r4.xyz + float3(0,0,0);
+  r1.xyz = saturate(float3(0.5,0.5,0.5) * r1.xyz);
+  o2.xyz = sqrt(r1.xyz);
+  o2.w = r0.y;
+  o3.w = r0.z;
+  o3.z = 1;
+  return;
+}

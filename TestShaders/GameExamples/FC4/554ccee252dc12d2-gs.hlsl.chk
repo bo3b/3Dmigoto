@@ -1,0 +1,181 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:28:02 2018
+
+cbuffer cbPerFrame : register(b0)
+{
+  row_major float4x4 g_viewProjection : packoffset(c0);
+  row_major float4x4 g_viewMatrix : packoffset(c4);
+  row_major float4x4 g_modelToWorld : packoffset(c8);
+  float3 g_camPosition : packoffset(c12);
+  int g_cameraLHS : packoffset(c12.w);
+  float g_hairDensity : packoffset(c13);
+  float g_densityPass : packoffset(c13.y);
+  int g_useViewfrustrumCulling : packoffset(c13.z);
+  int g_usePixelDensity : packoffset(c13.w);
+  float g_lengthNoise : packoffset(c14);
+  float g_lengthScale : packoffset(c14.y);
+  float g_useBackfaceCulling : packoffset(c14.z);
+  float g_backfaceCullingThreshold : packoffset(c14.w);
+  float g_baseWidth : packoffset(c15);
+  float g_shadowDensityScale : packoffset(c15.y);
+  float g_baseWidthShadowScale : packoffset(c15.z);
+  float g_rootWidthScale : packoffset(c15.w);
+  float g_tipWidthScale : packoffset(c16);
+  float g_baseWidthNoise : packoffset(c16.y);
+  uint g_shaderMask : packoffset(c16.z);
+  float g_widthDummy3 : packoffset(c16.w);
+  float g_clumpScale : packoffset(c17);
+  float g_clumpNoise : packoffset(c17.y);
+  float g_clumpRoundness : packoffset(c17.z);
+  float g_clumpDummy1 : packoffset(c17.w);
+  float g_volumeSpread : packoffset(c18);
+  float g_otherDummy1 : packoffset(c18.y);
+  float g_otherDummy2 : packoffset(c18.z);
+  float g_otherDummy3 : packoffset(c18.w);
+  float g_waveScale : packoffset(c19);
+  float g_waveFreq : packoffset(c19.y);
+  float g_waveScaleNoise : packoffset(c19.z);
+  float g_waveFreqNoise : packoffset(c19.w);
+  float g_waveCutoff : packoffset(c20);
+  float g_waveDummy1 : packoffset(c20.y);
+  float g_waveDummy2 : packoffset(c20.z);
+  float g_waveDummy3 : packoffset(c20.w);
+  int g_useDensityTexture : packoffset(c21);
+  int g_useRootWidthTexture : packoffset(c21.y);
+  int g_useTipWidthTexture : packoffset(c21.z);
+  int g_useClumpScaleTexture : packoffset(c21.w);
+  int g_useClumpNoiseTexture : packoffset(c22);
+  int g_useWaveScaleTexture : packoffset(c22.y);
+  int g_useWaveFreqTexture : packoffset(c22.z);
+  int g_useLengthTexture : packoffset(c22.w);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+[maxvertexcount(4)]
+void main(
+  inout TriangleStream<float> m0,
+  float3 v0 : Position0,
+  float w0 : TEXALONGLENGTH0,
+  float2 v1 : SCALPTEX0,
+  float w1 : Width0,
+  float3 v2 : Normal0,
+  float3 v3 : Tangent0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : ABCD0,
+  out float4 o2 : EFGH0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_inputprimitive line 
+// Needs manual fix for instruction:  
+//dcl_stream m0
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_outputtopology trianglestrip 
+  r0.x = cmp(v[0][1].z == 0.000000);
+  r0.y = cmp(v[1][1].z == 0.000000);
+  r0.x = r0.y ? r0.x : 0;
+  if (r0.x != 0) {
+    return;
+  }
+  r0.x = dot(v[0][3].xyz, v[0][3].xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = v[0][3].xyz * r0.xxx;
+  r0.w = dot(v[1][3].xyz, v[1][3].xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = v[1][3].xyz * r0.www;
+  r2.z = g_viewMatrix._m12;
+  r2.x = g_viewMatrix._m22;
+  r2.y = g_viewMatrix._m02;
+  r3.xyz = r2.xyz * r0.yzx;
+  r3.xyz = r2.zxy * r0.zxy + -r3.xyz;
+  r0.w = dot(r3.xyz, r3.xyz);
+  r0.w = rsqrt(r0.w);
+  r3.xyz = r3.xyz * r0.www;
+  r4.xyz = r2.xyz * r1.yzx;
+  r2.xyz = r2.zxy * r1.zxy + -r4.xyz;
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r2.xyz * r0.www;
+  r4.xyz = -v[0][1].zzz * r3.xyz + v[0][0].xyz;
+  r3.xyz = v[0][1].zzz * r3.xyz + v[0][0].xyz;
+  r5.xyz = -v[1][1].zzz * r2.xyz + v[1][0].xyz;
+  r2.xyz = v[1][1].zzz * r2.xyz + v[1][0].xyz;
+  r6.xyzw = g_shaderMask & int4(4,2,1,8);
+  r0.w = v[0][1].y * 2048;
+  r0.w = floor(r0.w);
+  r0.w = v[0][1].x + r0.w;
+  r7.xy = max(v[0][2].xy, float2(-1,-1));
+  r7.xy = min(float2(1,1), r7.xy);
+  r7.xy = r7.xy * float2(0.5,0.5) + float2(0.5,0.5);
+  r1.w = 2048 * r7.y;
+  r1.w = floor(r1.w);
+  r7.x = r1.w + r7.x;
+  r7.y = v[0][2].z;
+  r7.z = 0;
+  r7.xyz = r6.yyy ? r7.xyz : float3(0,0,0);
+  r0.xyzw = r6.zzzx ? r0.xyzw : float4(0,0,0,0);
+  r1.w = r6.w ? v[0][0].w : 0;
+  r8.xyzw = g_viewProjection._m10_m11_m12_m13 * r4.yyyy;
+  r8.xyzw = r4.xxxx * g_viewProjection._m00_m01_m02_m03 + r8.xyzw;
+  r4.xyzw = r4.zzzz * g_viewProjection._m20_m21_m22_m23 + r8.xyzw;
+  r4.xyzw = g_viewProjection._m30_m31_m32_m33 + r4.xyzw;
+  o0.xyzw = r4.xyzw;
+  o1.xyz = r0.xyz;
+  o1.w = r1.w;
+  o2.x = r0.w;
+  o2.yzw = r7.xyz;
+// Needs manual fix for instruction, maybe. 
+//emit_stream m0
+m0.Append(0);
+  r4.xyzw = g_viewProjection._m10_m11_m12_m13 * r3.yyyy;
+  r4.xyzw = r3.xxxx * g_viewProjection._m00_m01_m02_m03 + r4.xyzw;
+  r3.xyzw = r3.zzzz * g_viewProjection._m20_m21_m22_m23 + r4.xyzw;
+  r3.xyzw = g_viewProjection._m30_m31_m32_m33 + r3.xyzw;
+  o0.xyzw = r3.xyzw;
+  o1.xyz = r0.xyz;
+  o1.w = r1.w;
+  o2.x = r0.w;
+  o2.yzw = r7.xyz;
+// Needs manual fix for instruction, maybe. 
+//emit_stream m0
+m0.Append(0);
+  r0.xyz = r6.zzz ? r1.xyz : float3(0,0,0);
+  r1.x = r6.w ? v[1][0].w : 0;
+  r3.xyzw = g_viewProjection._m10_m11_m12_m13 * r5.yyyy;
+  r3.xyzw = r5.xxxx * g_viewProjection._m00_m01_m02_m03 + r3.xyzw;
+  r3.xyzw = r5.zzzz * g_viewProjection._m20_m21_m22_m23 + r3.xyzw;
+  r3.xyzw = g_viewProjection._m30_m31_m32_m33 + r3.xyzw;
+  o0.xyzw = r3.xyzw;
+  o1.xyz = r0.xyz;
+  o1.w = r1.x;
+  o2.x = r0.w;
+  o2.yzw = r7.xyz;
+// Needs manual fix for instruction, maybe. 
+//emit_stream m0
+m0.Append(0);
+  r3.xyzw = g_viewProjection._m10_m11_m12_m13 * r2.yyyy;
+  r3.xyzw = r2.xxxx * g_viewProjection._m00_m01_m02_m03 + r3.xyzw;
+  r2.xyzw = r2.zzzz * g_viewProjection._m20_m21_m22_m23 + r3.xyzw;
+  r2.xyzw = g_viewProjection._m30_m31_m32_m33 + r2.xyzw;
+  o0.xyzw = r2.xyzw;
+  o1.xyz = r0.xyz;
+  o1.w = r1.x;
+  o2.x = r0.w;
+  o2.yzw = r7.xyz;
+// Needs manual fix for instruction, maybe. 
+//emit_stream m0
+m0.Append(0);
+// Needs manual fix for instruction, maybe. 
+//cut_stream m0
+m0.RestartStrip();
+  return;
+}

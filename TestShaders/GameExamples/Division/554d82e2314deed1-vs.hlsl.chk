@@ -1,0 +1,81 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:28:00 2018
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[2] : packoffset(c0);
+}
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1 : packoffset(c0);
+}
+
+StructuredBuffer<RawBuffer> RawBuffer : register(t0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : CUSTOM0,
+  float4 v1 : CUSTOM1,
+  float4 v2 : CUSTOM2,
+  float2 v3 : CUSTOM3,
+  float2 v4 : CUSTOM4,
+  float2 v5 : CUSTOM5,
+  float2 v6 : CUSTOM6,
+  out float4 o0 : IO0_unClipPos0,
+  out float4 o1 : IO1_color0,
+  out float4 o2 : IO2_uv1,
+  out float2 o3 : IO3_uv2,
+  out float p3 : IO5_additive0,
+  out float3 o4 : IO4_edgeuv0,
+  out int o5 : IO6_renderType0,
+  out float4 o6 : SV_Position0)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_raw t0
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = float2(255,255) * v2.zw;
+  r0.x = (int)r0.x;
+  o5.x = (int)r0.y;
+  r0.y = (uint)r0.x << 6;
+  bitmask.x = ((~(-1 << 26)) << 6) & 0xffffffff;  r0.x = (((uint)r0.x << 6) & bitmask.x) | ((uint)16 & ~bitmask.x);
+  bitmask.z = ((~(-1 << 26)) << 6) & 0xffffffff;  r0.z = (((uint)r0.x << 6) & bitmask.z) | ((uint)32 & ~bitmask.z);
+  bitmask.w = ((~(-1 << 26)) << 6) & 0xffffffff;  r0.w = (((uint)r0.x << 6) & bitmask.w) | ((uint)48 & ~bitmask.w);
+// No code for instruction (needs manual fix):
+ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r1.xyzw, r0.y, t0.xyzw
+// No code for instruction (needs manual fix):
+ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r2.xyzw, r0.x, t0.xyzw
+  r2.xyzw = v0.yyyy * r2.xyzw;
+  r1.xyzw = r1.xyzw * v0.xxxx + r2.xyzw;
+// No code for instruction (needs manual fix):
+ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r2.xyzw, r0.z, t0.xyzw
+// No code for instruction (needs manual fix):
+ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r0.xyzw, r0.w, t0.xyzw
+  r1.xyzw = r2.xyzw * v0.zzzz + r1.xyzw;
+  r0.xyzw = r1.xyzw + r0.xyzw;
+  o0.xyzw = r0.xyzw;
+  o1.xyzw = v1.xyzw;
+  o2.xy = v3.xy;
+  o2.zw = v4.xy;
+  o3.xy = v5.xy;
+  p3.x = v2.x;
+  r1.x = -1 + r0.w;
+  r1.x = cb1.z * r1.x + 1;
+  o4.xy = v6.xy * r1.xx;
+  o4.z = r1.x;
+  r1.xyzw = cb0[0].xyzw * r0.xyww;
+  r0.xy = r1.xy + r1.zw;
+  r1.xy = cb0[1].xy * cb0[0].xy;
+  r0.xy = r1.xy * r0.ww + r0.xy;
+  o6.zw = r0.zw;
+  o6.xy = float2(1,-1) * r0.xy;
+  return;
+}

@@ -1,0 +1,172 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:08 2018
+
+cbuffer _Globals : register(b0)
+{
+  float3 k_vParticleScale : packoffset(c0) = {1,1,1};
+  float k_fPeakVelocity : packoffset(c0.w) = {500};
+  float k_fFlatVelocity : packoffset(c1) = {25};
+  float k_fStreakLength : packoffset(c1.y) = {25};
+  float k_fFadeTime : packoffset(c1.z) = {0.5};
+  row_major float4x4 k_mObjectToClip : packoffset(c2);
+  row_major float3x4 k_mObjectToView : packoffset(c6);
+  row_major float3x4 k_mObjectToWorld : packoffset(c9);
+  float4 k_vObjectColor : packoffset(c12);
+  float3 k_vObjectSpaceEyePos : packoffset(c13);
+  row_major float4x4 k_mPrevObjectToClip : packoffset(c14);
+  row_major float3x4 k_mPrevObjectToView : packoffset(c18);
+  row_major float3x4 k_mPrevObjectToWorld : packoffset(c21);
+  float3 k_cTintColor : packoffset(c24) = {1,1,1};
+  float k_fAlphaAmount : packoffset(c24.w) = {1};
+}
+
+cbuffer CBuffer_View : register(b12)
+{
+  row_major float4x4 k_mWorldToClip : packoffset(c0);
+  row_major float3x4 k_mViewToWorld : packoffset(c4);
+  row_major float3x4 k_mWorldToView : packoffset(c7);
+  row_major float4x4 k_mDrawPrimToClip : packoffset(c10);
+  float4 k_vFogRayleigh : packoffset(c14);
+  float4 k_vFogMieA : packoffset(c15);
+  float4 k_vFogMieB : packoffset(c16);
+  float4 k_vFogMieC : packoffset(c17);
+  float4 k_vFogSky : packoffset(c18);
+  float4 k_vFogSunColor : packoffset(c19);
+  float3 k_vFogSunDir : packoffset(c20);
+  float4 k_vFullViewPlane : packoffset(c21);
+  float2 k_vPerspOrthoMask : packoffset(c22);
+  float2 k_vScene_ScreenRes : packoffset(c23);
+  float2 k_vScene_TexCoordScale : packoffset(c24);
+  float3 k_vScene_ZRange : packoffset(c25);
+  float3 k_vWorldSpaceCameraDir : packoffset(c26);
+  float4 k_vHDRLuminanceWeights : packoffset(c27);
+  float4 k_vHDRBloomParams : packoffset(c28);
+  float4 k_vHDRBloomParams2 : packoffset(c29);
+  float4 k_vWindDirection : packoffset(c30);
+  float4 k_vVegetationForce1 : packoffset(c31);
+  float4 k_vVegetationForce2 : packoffset(c32);
+  float4 k_vVegetationRadius : packoffset(c33);
+  row_major float4x4 k_mSkyShadowMapMatrix : packoffset(c34);
+  float4 k_vSkyShadowParams : packoffset(c38);
+  float4 k_vParaboloidShadowParams : packoffset(c39);
+  row_major float4x4 k_mPrevWorldToClip : packoffset(c40);
+  row_major float3x4 k_mPrevViewToWorld : packoffset(c44);
+  row_major float3x4 k_mPrevWorldToView : packoffset(c47);
+  float4 k_vMotionBlurParams : packoffset(c50);
+}
+
+StructuredBuffer<BufferSrc> BufferSrc : register(t0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  uint v0 : SV_VertexID0,
+  out float3 o0 : WORLDPOS0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float3 o4 : TEXCOORD3)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t0, 32 
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_input_sgv v0.x, vertex_id
+  float4 r0,r1,r2,r3;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Known bad code for instruction (needs manual fix):
+ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r0.xyzw, v0.x, l(0), t0.wxyz
+r0.x = BufferSrc[]..swiz;
+r0.y = BufferSrc[]..swiz;
+r0.z = BufferSrc[]..swiz;
+r0.w = BufferSrc[]..swiz;
+  r1.xyz = r0.yzw;
+  r1.w = 1;
+  o0.x = dot(k_mObjectToView._m00_m01_m02_m03, r1.xyzw);
+  o0.y = dot(k_mObjectToView._m10_m11_m12_m13, r1.xyzw);
+  r2.x = dot(k_mObjectToView._m20_m21_m22_m23, r1.xyzw);
+  r1.x = dot(k_mObjectToWorld._m10_m11_m12_m13, r1.xyzw);
+  r1.x = k_vFogSky.w + r1.x;
+  o0.z = r2.x;
+  r1.yzw = k_vObjectSpaceEyePos.xyz + -r0.yzw;
+// Known bad code for instruction (needs manual fix):
+ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r3.xyzw, v0.x, l(16), t0.xyzw
+r3.x = BufferSrc[]..swiz;
+r3.y = BufferSrc[]..swiz;
+r3.z = BufferSrc[]..swiz;
+r3.w = BufferSrc[]..swiz;
+  r0.yz = r3.xy;
+  o2.xy = r3.zw;
+  o1.x = dot(k_mObjectToView._m00_m01_m02, r0.xyz);
+  o1.y = dot(k_mObjectToView._m10_m11_m12, r0.xyz);
+  o1.z = dot(k_mObjectToView._m20_m21_m22, r0.xyz);
+  r0.x = dot(k_mObjectToWorld._m00_m01_m02, r1.yzw);
+  r0.z = dot(k_mObjectToWorld._m20_m21_m22, r1.yzw);
+  r0.y = dot(k_mObjectToWorld._m10_m11_m12, r1.yzw);
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.yzw = r0.xyz * r0.www;
+  r0.x = -r0.y * r0.w + -0.150000006;
+  r0.x = saturate(1 + -r0.x);
+  r0.x = r0.x * r0.x;
+  r0.y = dot(-r1.yzw, k_vFogSunDir.xyz);
+  r0.z = -k_vFogMieB.y * r0.y + k_vFogMieB.x;
+  r0.y = r0.y * r0.y + 1;
+  r0.z = log2(abs(r0.z));
+  r0.yz = float2(0.0596829988,-1.5) * r0.yz;
+  r0.z = exp2(r0.z);
+  r0.w = k_vFogMieB.z * r0.z + -k_vFogMieA.z;
+  r0.z = k_vFogMieB.z * r0.z;
+  r0.w = max(0, r0.w);
+  r1.y = 1.99999995e-005 * abs(r2.x);
+  r1.y = min(1, r1.y);
+  r1.y = 1 + -r1.y;
+  r0.z = -r0.w * r1.y + r0.z;
+  r0.z = max(k_vFogSunColor.w, r0.z);
+  r0.w = max(0, r1.x);
+  r1.x = k_vFogSky.z + -r1.x;
+  r1.x = r1.x / k_vFogMieA.y;
+  r1.y = -r0.w / k_vFogMieA.x;
+  r0.w = -r0.w / k_vFogRayleigh.w;
+  r0.w = 1.44269502 * r0.w;
+  r0.w = exp2(r0.w);
+  r1.y = 1.44269502 * r1.y;
+  r1.y = exp2(r1.y);
+  r1.y = k_vFogMieB.w + r1.y;
+  r1.y = k_vFogMieC.y * r1.y;
+  r1.y = 0.5 * r1.y;
+  r0.x = r1.y * r0.x;
+  r0.x = min(k_vFogMieA.w, r0.x);
+  r0.x = max(k_vFogMieC.x, r0.x);
+  r0.z = r0.z * r0.x;
+  r1.yzw = k_vFogRayleigh.xyz * r0.www + r0.xxx;
+  r2.yzw = k_vFogRayleigh.xyz * r0.www;
+  r0.xyz = r2.yzw * r0.yyy + r0.zzz;
+  r0.xyz = r0.xyz / r1.yzw;
+  r2.yzw = -r1.yzw * r1.xxx;
+  r1.xyz = -r1.yzw * abs(r2.xxx);
+  r1.xyz = float3(1.44269502,1.44269502,1.44269502) * r1.xyz;
+  r1.xyz = exp2(r1.xyz);
+  r2.xyz = float3(1.44269502,1.44269502,1.44269502) * r2.yzw;
+  r2.xyz = exp2(r2.xyz);
+  r3.xyz = log2(k_vFogSunColor.xyz);
+  r3.xyz = float3(0.454544991,0.454544991,0.454544991) * r3.xyz;
+  r3.xyz = exp2(r3.xyz);
+  r2.xyz = r3.xyz * r2.xyz;
+  r0.xyz = r2.xyz * r0.xyz;
+  r2.xyz = float3(1,1,1) + -r1.xyz;
+  o4.xyz = r1.xyz;
+  r0.xyz = r0.xyz * r2.xyz + float3(-0.00400000019,-0.00400000019,-0.00400000019);
+  r0.xyz = max(float3(0,0,0), r0.xyz);
+  r1.xyz = r0.xyz * float3(6.19999981,6.19999981,6.19999981) + float3(0.5,0.5,0.5);
+  r1.xyz = r1.xyz * r0.xyz;
+  r2.xyz = r0.xyz * float3(6.19999981,6.19999981,6.19999981) + float3(1.70000005,1.70000005,1.70000005);
+  r0.xyz = r0.xyz * r2.xyz + float3(0.0599999987,0.0599999987,0.0599999987);
+  o3.xyz = r1.xyz / r0.xyz;
+  return;
+}

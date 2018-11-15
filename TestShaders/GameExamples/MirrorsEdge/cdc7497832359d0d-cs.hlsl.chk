@@ -1,0 +1,506 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:06 2018
+
+cbuffer cbPunctualShadowLightInfo : register(b2)
+{
+
+  struct
+  {
+
+    struct
+    {
+      float3 pos;
+      float invSqrAttenuationRadius;
+      float3 color;
+      float attenuationOffset;
+      float3 matrixForward;
+      float diffuseScale;
+      float3 matrixUp;
+      float specularScale;
+      float3 matrixLeft;
+      float shadowDimmer;
+      float angleScale;
+      float angleOffset;
+      float2 unused;
+    } baseLight;
+
+
+    struct
+    {
+      float enable;
+      float textureIndex;
+      float2 unused;
+    } iesShadow;
+
+
+    struct
+    {
+      float4 shadowMatrix1;
+      float4 shadowMatrix2;
+      float4 shadowMatrix3;
+      float4 shadowMatrix4;
+      float4 shadowMapAtlasParam[6];
+      float4 shadowMapIndex[2];
+      float shadowType;
+      float quality;
+      float shadowAngleScale;
+      float shadowAngleOffset;
+    } shadow;
+
+
+    struct
+    {
+      float enable;
+      float volumeShadowMapIndex;
+      float invAttenuationRadius;
+      float tanAngle;
+    } vShadow;
+
+  } g_lightInfoPunctualShadow[128] : packoffset(c0);
+
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4x4 invViewProjectionMatrix : packoffset(c0);
+  float4 g_exposureMultipliers : packoffset(c4);
+  float localIblMipmapBias : packoffset(c5);
+  float screenAspectRatio : packoffset(c5.y);
+  float2 invResolution : packoffset(c5.z);
+  float4 shadowMapSizeAndInvSize : packoffset(c6);
+  uint forceSplitLighting : packoffset(c7);
+  uint sssScatteringEnables : packoffset(c7.y);
+  float volumetricShadowmapHalfTexelOffset : packoffset(c7.z);
+  float volumetricShadowmapOneMinusHalfTexelOffset : packoffset(c7.w);
+  float volumetricShadowmapInvMaxCount : packoffset(c8);
+  float dynamicAOFactor : packoffset(c8.y);
+  uint tileCountX : packoffset(c8.z);
+  uint pad1 : packoffset(c8.w);
+  float4x3 g_normalBasisTransforms[6] : packoffset(c9);
+}
+
+SamplerState g_linearSampler_s_s : register(s0);
+SamplerState g_linearLongitudeWrapSampler_s_s : register(s2);
+SamplerComparisonState g_shadowmapSampler_s_s : register(s3);
+Texture2D<float4> g_gbufferTexture0 : register(t0);
+Texture2D<float4> g_gbufferTexture1 : register(t1);
+Texture2D<float4> g_gbufferTexture2 : register(t2);
+Texture2D<float> g_depthTexture : register(t6);
+Texture2DArray<float> g_iesTextureArray : register(t9);
+Texture2D<float> g_diffuseOcclusionTexture : register(t10);
+StructuredBuffer<g_lightCullInput> g_lightCullInput : register(t19);
+StructuredBuffer<g_lightIndexInput> g_lightIndexInput : register(t20);
+Texture2DArray<float4> g_shadowmapTexture : register(t21);
+StructuredBuffer<g_compactTileGridBuffer> g_compactTileGridBuffer : register(t24);
+Texture2D<float4> StereoParams : register(t125);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main)
+{
+  const float4 icb[] = { { 1.000000, 0, 0, 0},
+                              { 0, 1.000000, 0, 0},
+                              { 0, 0, 1.000000, 0},
+                              { 0, 0, 0, 1.000000} };
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t19, 16 
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t20, 4 
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t24, 4 
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u0
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_tgsm_raw g0, 4
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_tgsm_raw g1, 4
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 16, 16, 1
+// Known bad code for instruction (needs manual fix):
+ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, vThreadGroupID.x, l(0), t24.xxxx
+r0.x = g_linearSampler_s[]..swiz;
+  r1.x = (uint)r0.x >> 16;
+  r1.yzw = (int3)r0.xxx & int3(0,0,0);
+  r0.xyzw = mad((int4)r1.xyzw, int4(16,16,16,16), (int4)vThreadIDInGroup.xyyy);
+  if (vThreadIDInGroupFlattened.x == 0) {
+    r1.x = mad((int)r1.w, tileCountX, (int)r1.x);
+  // Known bad code for instruction (needs manual fix):
+    ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.xy, r1.x, l(0), t19.xyxx
+  r1.x = g_linearSampler_s[]..swiz;
+  r1.y = g_linearSampler_s[]..swiz;
+    r1.y = (uint)r1.y >> 16;
+  // No code for instruction (needs manual fix):
+    store_raw g0.x, l(0), r1.x
+  // No code for instruction (needs manual fix):
+    store_raw g1.x, l(0), r1.y
+  }
+  GroupMemoryBarrierWithGroupSync();
+  r1.xy = (uint2)r0.xw;
+  r1.zw = float2(0.5,0.5) + r1.xy;
+  r1.zw = invResolution.xy * r1.zw;
+  r2.xy = (int2)r1.xy;
+  r2.zw = float2(0,0);
+  r3.xyzw = g_gbufferTexture0.Load(r2.xyw).xyzw;
+  r4.xyzw = g_gbufferTexture1.Load(r2.xyw).xyzw;
+  r1.xy = g_gbufferTexture2.Load(r2.xyw).yz;
+  r2.z = g_depthTexture.Load(r2.xyz).x;
+  r4.w = 6 * r4.w;
+  r4.w = round(r4.w);
+  r4.w = (uint)r4.w;
+  r5.xy = r3.xy * float2(2,2) + float2(-1,-1);
+  r3.x = dot(r5.xy, r5.xy);
+  r3.x = min(1, r3.x);
+  r3.x = 1 + -r3.x;
+  r5.z = sqrt(r3.x);
+  r3.x = (int)r4.w * 3;
+  r6.x = dot(r5.xyz, g_normalBasisTransforms[r4.w]._m00_m10_m20);
+  r6.y = dot(r5.xyz, g_normalBasisTransforms[r4.w]._m01_m11_m21);
+  r6.z = dot(r5.xyz, g_normalBasisTransforms[r4.w]._m02_m12_m22);
+  r3.x = 1 + -r3.z;
+  r3.y = 3 * r3.w;
+  r3.y = round(r3.y);
+  r3.y = (int)r3.y;
+  r3.y = cmp((int)r3.y == 1);
+  r1.x = r3.y ? 0 : r1.x;
+  r3.y = 1 + -r1.x;
+  r3.yzw = r4.xyz * r3.yyy;
+  r1.y = r1.y * r1.y;
+  r4.w = 0.159999996 * r1.y;
+  r4.xyz = -r1.yyy * float3(0.159999996,0.159999996,0.159999996) + r4.xyz;
+  r4.xyz = r1.xxx * r4.xyz + r4.www;
+  r1.x = dot(r4.xyz, float3(0.330000013,0.330000013,0.330000013));
+  r1.x = saturate(50 * r1.x);
+  r1.y = r3.x * r3.x;
+  r5.xy = r1.zw * float2(2,2) + float2(-1,-1);
+  r2.xy = float2(1,-1) * r5.xy;
+  r2.w = 1;
+  r5.x = dot(r2.xyzw, invViewProjectionMatrix._m00_m10_m20_m30);
+  r5.y = dot(r2.xyzw, invViewProjectionMatrix._m01_m11_m21_m31);
+  r5.z = dot(r2.xyzw, invViewProjectionMatrix._m02_m12_m22_m32);
+  r2.x = dot(r2.xyzw, invViewProjectionMatrix._m03_m13_m23_m33);
+  r2.x = 1 / r2.x;
+  r7.xyz = r5.xyz * r2.xxx;
+  r2.y = dot(-r7.xyz, -r7.xyz);
+  r2.y = rsqrt(r2.y);
+  r8.xyz = -r7.xyz * r2.yyy;
+  r2.z = dot(r6.xyz, r8.xyz);
+  r2.w = saturate(r2.z);
+  r1.z = g_diffuseOcclusionTexture.SampleLevel(g_linearSampler_s_s, r1.zw, 0).x;
+// No code for instruction (needs manual fix):
+ld_raw r1.w, l(0), g0.xxxx
+// No code for instruction (needs manual fix):
+ld_raw r4.w, l(0), g1.xxxx
+  r4.w = (int)r1.w + (int)r4.w;
+  r2.z = 9.99999975e-006 + abs(r2.z);
+  r8.xyz = r1.xxx + -r4.xyz;
+  r1.x = max(0.00200000009, r1.y);
+  r1.x = r1.x * r1.x;
+  r5.w = -r2.z * r1.x + r2.z;
+  r5.w = r5.w * r2.z + r1.x;
+  r5.w = sqrt(r5.w);
+  r6.w = r3.x * -0.337748349 + 1;
+  r8.w = 1 + -r2.z;
+  r9.x = r8.w * r8.w;
+  r9.x = r9.x * r9.x;
+  r8.w = r9.x * r8.w;
+  r7.w = 1;
+  r9.xyz = float3(0,0,0);
+  r10.xyz = float3(0,0,0);
+  r9.w = r1.w;
+  while (true) {
+    r10.w = cmp((uint)r9.w >= (uint)r4.w);
+    if (r10.w != 0) break;
+  // Known bad code for instruction (needs manual fix):
+    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r10.w, r9.w, l(0), t20.xxxx
+  r10.w = g_linearSampler_s[]..swiz;
+    r11.x = (int)r10.w * 21;
+    r11.yzw = -r5.xyz * r2.xxx + g_lightInfoPunctualShadow[r11.x].baseLight.pos.xyz;
+    r12.x = dot(r11.yzw, r11.yzw);
+    r12.y = rsqrt(r12.x);
+    r12.yzw = r12.yyy * r11.yzw;
+    r13.x = g_lightInfoPunctualShadow[r11.x].baseLight.attenuationOffset + r12.x;
+    r13.x = max(9.99999975e-005, r13.x);
+    r13.x = 1 / r13.x;
+    r12.x = g_lightInfoPunctualShadow[r11.x].baseLight.invSqrAttenuationRadius * r12.x;
+    r12.x = -r12.x * r12.x + 1;
+    r12.x = max(0, r12.x);
+    r12.x = r12.x * r12.x;
+    r12.x = r13.x * r12.x;
+    r13.x = dot(g_lightInfoPunctualShadow[r11.x].baseLight.matrixForward.xyz, r12.yzw);
+    r13.y = saturate(r13.x * g_lightInfoPunctualShadow[r11.x].baseLight.angleScale + g_lightInfoPunctualShadow[r11.x].baseLight.angleOffset);
+    r13.y = r13.y * r13.y;
+    r12.x = r13.y * r12.x;
+    r13.y = saturate(dot(r6.xyz, r12.yzw));
+    r12.x = r13.y * r12.x;
+    r13.z = cmp(0 < r12.x);
+    if (r13.z != 0) {
+      r14.xyz = -r7.xyz * r2.yyy + r12.yzw;
+      r13.w = dot(r14.xyz, r14.xyz);
+      r13.w = rsqrt(r13.w);
+      r14.xyz = r14.xyz * r13.www;
+      r13.w = saturate(dot(r12.yzw, r14.xyz));
+      r14.x = saturate(dot(r6.xyz, r14.xyz));
+      r14.y = 1 + -r13.w;
+      r14.z = r14.y * r14.y;
+      r14.z = r14.z * r14.z;
+      r14.y = r14.z * r14.y;
+      r14.yzw = r8.xyz * r14.yyy + r4.xyz;
+      r15.x = -r13.y * r1.x + r13.y;
+      r15.x = r15.x * r13.y + r1.x;
+      r15.x = sqrt(r15.x);
+      r15.x = r15.x * r2.z;
+      r15.x = r13.y * r5.w + r15.x;
+      r15.x = 0.5 / r15.x;
+      r15.y = r14.x * r1.x + -r14.x;
+      r14.x = r15.y * r14.x + 1;
+      r14.x = r14.x * r14.x;
+      r14.x = r1.x / r14.x;
+      r14.x = r15.x * r14.x;
+      r14.xyz = r14.yzw * r14.xxx;
+      r13.w = r13.w * r13.w;
+      r13.w = dot(r13.ww, r3.xx);
+      r13.w = r3.x * 0.5 + r13.w;
+      r13.y = 1 + -r13.y;
+      r14.w = r13.y * r13.y;
+      r14.w = r14.w * r14.w;
+      r13.y = r14.w * r13.y;
+      r13.w = -1 + r13.w;
+      r13.y = r13.w * r13.y + 1;
+      r13.w = r13.w * r8.w + 1;
+      r13.y = r13.y * r13.w;
+      r13.y = r13.y * r6.w;
+      r13.w = g_lightInfoPunctualShadow[r11.x].baseLight.diffuseScale * r12.x;
+      r15.xyz = g_lightInfoPunctualShadow[r11.x].baseLight.color.xyz * r13.www;
+      r15.xyz = r15.xyz * r13.yyy;
+      r12.x = g_lightInfoPunctualShadow[r11.x].baseLight.specularScale * r12.x;
+      r16.xyz = g_lightInfoPunctualShadow[r11.x].baseLight.color.xyz * r12.xxx;
+      r14.xyz = r16.xyz * r14.xyz;
+    } else {
+      r15.xyz = float3(0,0,0);
+      r14.xyz = float3(0,0,0);
+    }
+    r12.x = cmp(0 < g_lightInfoPunctualShadow[r11.x].iesShadow.enable);
+    r12.x = r12.x ? r13.z : 0;
+    if (r12.x != 0) {
+      r12.x = dot(g_lightInfoPunctualShadow[r11.x].baseLight.matrixLeft.xyz, -r12.yzw);
+      r13.y = dot(g_lightInfoPunctualShadow[r11.x].baseLight.matrixUp.xyz, -r12.yzw);
+      r12.y = dot(g_lightInfoPunctualShadow[r11.x].baseLight.matrixForward.xyz, -r12.yzw);
+      r16.y = r12.y * 0.5 + 0.5;
+      r12.y = min(abs(r13.y), abs(r12.x));
+      r12.z = max(abs(r13.y), abs(r12.x));
+      r12.z = 1 / r12.z;
+      r12.y = r12.y * r12.z;
+      r12.z = r12.y * r12.y;
+      r12.w = r12.z * 0.0208350997 + -0.0851330012;
+      r12.w = r12.z * r12.w + 0.180141002;
+      r12.w = r12.z * r12.w + -0.330299497;
+      r12.z = r12.z * r12.w + 0.999866009;
+      r12.w = r12.y * r12.z;
+      r13.w = cmp(abs(r12.x) < abs(r13.y));
+      r12.w = r12.w * -2 + 1.57079637;
+      r12.w = r13.w ? r12.w : 0;
+      r12.y = r12.y * r12.z + r12.w;
+      r12.z = cmp(r12.x < -r12.x);
+      r12.z = r12.z ? -3.141593 : 0;
+      r12.y = r12.y + r12.z;
+      r12.z = min(r13.y, r12.x);
+      r12.x = max(r13.y, r12.x);
+      r12.z = cmp(r12.z < -r12.z);
+      r12.x = cmp(r12.x >= -r12.x);
+      r12.x = r12.x ? r12.z : 0;
+      r12.x = r12.x ? -r12.y : r12.y;
+      r16.x = 0.159154937 * r12.x;
+      r16.z = g_lightInfoPunctualShadow[r11.x].iesShadow.textureIndex;
+      r12.x = g_iesTextureArray.SampleLevel(g_linearLongitudeWrapSampler_s_s, r16.xyz, 0).x;
+    } else {
+      r12.x = 1;
+    }
+    r12.y = cmp(0.000000 != g_lightInfoPunctualShadow[r11.x].shadow.shadowType);
+    r12.y = r12.y ? r13.z : 0;
+    if (r12.y != 0) {
+      r12.y = saturate(r13.x * g_lightInfoPunctualShadow[r11.x].shadow.shadowAngleScale + g_lightInfoPunctualShadow[r11.x].shadow.shadowAngleOffset);
+      r12.y = r12.y * r12.y;
+      r12.z = cmp(0 < r12.y);
+      if (r12.z != 0) {
+        r12.z = cmp(2.000000 == g_lightInfoPunctualShadow[r11.x].shadow.shadowType);
+        if (r12.z != 0) {
+          r13.xyz = -r11.yzw;
+          r12.z = max(abs(r11.y), abs(r11.z));
+          r12.z = max(r12.z, abs(r11.w));
+          r16.xy = cmp(abs(r11.zw) < abs(r11.yy));
+          r12.w = r16.y ? r16.x : 0;
+          if (r12.w != 0) {
+            r12.w = cmp(0 < r13.x);
+            r13.x = r12.w ? r13.z : r11.w;
+            r12.w = r12.w ? 1.000000 : 0;
+          } else {
+            r16.xy = cmp(abs(r11.yw) < abs(r11.zz));
+            r11.z = r16.y ? r16.x : 0;
+            if (r11.z != 0) {
+              r11.z = cmp(0 < r13.y);
+              r13.w = r11.z ? r13.z : r11.w;
+              r12.w = r11.z ? 3 : 2;
+              r13.xy = r13.xw;
+            } else {
+              r11.z = cmp(0 < r13.z);
+              r13.x = r11.z ? r11.y : r13.x;
+              r12.w = r11.z ? 5 : 4;
+            }
+          }
+          r11.yz = r13.xy / r12.zz;
+          r13.xy = r11.yz * float2(0.5,-0.5) + float2(0.5,0.5);
+          r11.y = -r12.z * g_lightInfoPunctualShadow[r11.x].shadow.shadowMatrix3.z + g_lightInfoPunctualShadow[r11.x].shadow.shadowMatrix3.w;
+          r11.y = r11.y / r12.z;
+          r11.z = -1;
+        } else {
+          r16.x = dot(r7.xyzw, g_lightInfoPunctualShadow[r11.x].shadow.shadowMatrix1.xyzw);
+          r16.y = dot(r7.xyzw, g_lightInfoPunctualShadow[r11.x].shadow.shadowMatrix2.xyzw);
+          r11.w = dot(r7.xyzw, g_lightInfoPunctualShadow[r11.x].shadow.shadowMatrix3.xyzw);
+          r12.z = dot(r7.xyzw, g_lightInfoPunctualShadow[r11.x].shadow.shadowMatrix4.xyzw);
+          r12.z = 1 / r12.z;
+          r16.xy = r16.xy * r12.zz;
+          r11.y = r12.z * r11.w;
+          r13.xy = r16.xy * float2(0.5,-0.5) + float2(0.5,0.5);
+          r11.w = -r11.w * r12.z + 1;
+          r12.z = max(abs(r16.x), abs(r16.y));
+          r11.w = max(r12.z, r11.w);
+          r11.z = cmp(1 >= r11.w);
+          r12.w = 0;
+        }
+        r11.w = (uint)r12.w;
+        r12.z = (int)r11.w & 3;
+        r11.w = (uint)r11.w >> 2;
+        r10.w = mad((int)r10.w, 21, (int)r11.w);
+        r10.w = dot(g_lightInfoPunctualShadow[r10.w].shadow.shadowMapIndex[0].xyzw, icb[r12.z+0].xyzw);
+        r11.w = cmp(r10.w >= 0);
+        r11.z = r11.z ? r11.w : 0;
+        r10.w = (uint)r10.w;
+        r11.w = (uint7)g_lightInfoPunctualShadow[r11.x].shadow.quality;
+        r11.w = cmp((int)r11.w == 1);
+        if (r11.w != 0) {
+          r16.z = (uint)r10.w;
+          r12.zw = shadowMapSizeAndInvSize.xx * r13.xy + float2(0.5,0.5);
+          r17.xy = floor(r12.zw);
+          r12.zw = -r17.xy + r12.zw;
+          r16.xy = shadowMapSizeAndInvSize.zz * r17.xy;
+          r17.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s_s, r16.xyz, r11.y, int2(-2,-2)).xyzw;
+          r18.xyzw = float4(1,2,3,5) + -r12.zzzz;
+          r19.xyzw = r18.xyxy * r17.wzxy;
+          r17.zw = r19.xz + r19.yw;
+          r19.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s_s, r16.xyz, r11.y, int2(0,-2)).xyzw;
+          r17.zw = r19.zy * float2(2,2) + r17.zw;
+          r17.zw = r19.wx * float2(2,2) + r17.zw;
+          r20.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s_s, r16.xyz, r11.y, int2(2,-2)).xyzw;
+          r21.xyzw = float4(1,4,3,2) + r12.zzzz;
+          r11.w = r20.y * r12.z;
+          r17.zw = r20.zy * r12.zz + r17.zw;
+          r17.zw = r20.wx * r21.xx + r17.zw;
+          r22.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s_s, r16.xyz, r11.y, int2(-2,0)).xyzw;
+          r13.w = -r12.z * 2 + 2;
+          r19.zw = r22.wx * r13.ww;
+          r14.w = r12.z * -2 + 4;
+          r19.zw = r22.zy * r14.ww + r19.zw;
+          r14.w = r17.y * r18.z + r19.z;
+          r14.w = r17.x * r13.w + r14.w;
+          r15.w = r22.z * r18.z + r19.w;
+          r15.w = r22.w * r13.w + r15.w;
+          r23.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s_s, r16.xyz, r11.y).xyzw;
+          r14.w = r23.z * r21.y + r14.w;
+          r14.w = r23.w * r18.w + r14.w;
+          r15.w = r23.y * r21.y + r15.w;
+          r15.w = r23.x * r18.w + r15.w;
+          r17.xy = float2(4,1) + -r12.zw;
+          r14.w = r19.y * r21.z + r14.w;
+          r14.w = r19.x * r17.x + r14.w;
+          r15.w = r23.z * r21.z + r15.w;
+          r15.w = r23.w * r17.x + r15.w;
+          r19.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s_s, r16.xyz, r11.y, int2(2,0)).xyzw;
+          r16.w = r12.z * 2 + 2;
+          r18.w = dot(r19.zz, r12.zz);
+          r14.w = r18.w + r14.w;
+          r14.w = r19.w * r16.w + r14.w;
+          r19.y = dot(r19.yy, r12.zz);
+          r15.w = r19.y + r15.w;
+          r15.w = r19.x * r16.w + r15.w;
+          r11.w = r11.w * 2 + r14.w;
+          r20.x = r20.x * r21.w + r11.w;
+          r11.w = r18.w + r15.w;
+          r20.y = r19.w * r21.w + r11.w;
+          r17.zw = r20.xy + r17.zw;
+          r20.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s_s, r16.xyz, r11.y, int2(-2,2)).xyzw;
+          r24.xyzw = r20.wzxy * r18.xyxy;
+          r18.xy = r24.xz + r24.yw;
+          r11.w = r22.y * r18.z + r18.x;
+          r11.w = r22.x * r13.w + r11.w;
+          r14.w = r20.z * r18.z + r18.y;
+          r13.w = r20.w * r13.w + r14.w;
+          r18.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s_s, r16.xyz, r11.y, int2(0,2)).xyzw;
+          r11.w = r18.z * 2 + r11.w;
+          r11.w = r18.w * 2 + r11.w;
+          r13.w = r18.y * 2 + r13.w;
+          r13.w = r18.x * 2 + r13.w;
+          r11.w = r23.y * r21.z + r11.w;
+          r11.w = r23.x * r17.x + r11.w;
+          r13.w = r18.z * r21.z + r13.w;
+          r13.w = r18.w * r17.x + r13.w;
+          r16.xyzw = g_shadowmapTexture.GatherCmp(g_shadowmapSampler_s_s, r16.xyz, r11.y, int2(2,2)).xyzw;
+          r14.w = r16.z * r12.z;
+          r11.w = r16.z * r12.z + r11.w;
+          r11.w = r16.w * r21.x + r11.w;
+          r12.z = r16.y * r12.z + r13.w;
+          r12.z = r16.x * r21.x + r12.z;
+          r11.w = r19.y + r11.w;
+          r16.x = r19.x * r21.w + r11.w;
+          r11.w = r14.w * 2 + r12.z;
+          r16.y = r16.w * r21.w + r11.w;
+          r16.xy = r17.zw + r16.xy;
+          r11.w = r16.y * r12.w;
+          r11.w = r16.x * r17.y + r11.w;
+          r11.w = saturate(0.0163934417 * r11.w);
+        } else {
+          r13.z = (uint)r10.w;
+          r10.w = g_shadowmapTexture.SampleCmpLevelZero(g_shadowmapSampler_s_s, r13.xyz, r11.y).x;
+          r11.y = cmp(r11.y < 1);
+          r11.w = r11.y ? r10.w : 1;
+        }
+        r10.w = -1 + r11.w;
+        r10.w = g_lightInfoPunctualShadow[r11.x].baseLight.shadowDimmer * r10.w;
+        r10.w = r12.y * r10.w + 1;
+        r10.w = r11.z ? r10.w : 1;
+        r12.x = r12.x * r10.w;
+      }
+    }
+    r10.xyz = r15.xyz * r12.xxx + r10.xyz;
+    r9.xyz = r14.xyz * r12.xxx + r9.xyz;
+    r9.w = (int)r9.w + 1;
+  }
+  r1.x = -1 + r1.z;
+  r1.x = dynamicAOFactor * r1.x + 1;
+  r2.xyz = r10.xyz * r1.xxx;
+  r1.x = r2.w + r1.z;
+  r1.y = r1.y * -16 + -1;
+  r1.y = exp2(r1.y);
+  r1.x = log2(r1.x);
+  r1.x = r1.y * r1.x;
+  r1.x = exp2(r1.x);
+  r1.x = r1.x + r1.z;
+  r1.x = saturate(-1 + r1.x);
+  r1.xyz = r9.xyz * r1.xxx;
+  r2.xyz = r3.yzw * r2.xyz;
+  r1.xyz = float3(0.318309873,0.318309873,0.318309873) * r1.xyz;
+  r1.xyz = r2.xyz * float3(0.318309873,0.318309873,0.318309873) + r1.xyz;
+  r1.xyz = g_exposureMultipliers.zzz * r1.xyz;
+  r1.xyz = min(float3(65504,65504,65504), r1.xyz);
+  r1.w = 0;
+// No code for instruction (needs manual fix):
+store_uav_typed u0.xyzw, r0.xyzw, r1.xyzw
+  return;
+}

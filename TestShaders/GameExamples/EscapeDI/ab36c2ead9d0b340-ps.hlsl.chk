@@ -1,0 +1,192 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:28:02 2018
+
+cbuffer global_viewport : register(b0)
+{
+  float3 camera_unprojection : packoffset(c0);
+  float3 camera_pos : packoffset(c1);
+  float4x4 camera_view : packoffset(c2);
+  float4x4 camera_inv_view : packoffset(c6);
+  float4x4 camera_projection : packoffset(c10);
+  float4x4 camera_inv_projection : packoffset(c14);
+  float4x4 camera_world : packoffset(c18);
+  float time : packoffset(c22);
+  float delta_time : packoffset(c22.y);
+  float2 back_buffer_size : packoffset(c22.z);
+  float g_tessellation : packoffset(c23);
+  float g_tessellation_tri_size : packoffset(c23.y);
+  float g_tessellation_detail : packoffset(c23.z);
+}
+
+cbuffer c0 : register(b1)
+{
+  float4x4 world : packoffset(c0);
+  float4x4 world_view_proj : packoffset(c4);
+}
+
+cbuffer Light : register(b2)
+{
+  float3 light_position : packoffset(c0);
+  float3 light_color : packoffset(c1);
+  float3 light_falloff : packoffset(c2);
+  float3 light_proxy_scale : packoffset(c3);
+  float light_cutoff : packoffset(c3.w);
+  float3 light_spot_falloff : packoffset(c4);
+  float4x4 world_to_shadow_map : packoffset(c5);
+}
+
+SamplerComparisonState shadow_map_sampler_s_s : register(s0);
+Texture2D<float4> albedo : register(t0);
+Texture2D<float4> normal : register(t1);
+Texture2D<float4> depth : register(t2);
+Texture2D<float4> mask : register(t3);
+Texture2D<float> shadow_map : register(t4);
+Texture2D<float> cel_target : register(t5);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float4 v1 : TEXCOORD1,
+  out float4 o0 : SV_TARGET0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = (int2)v0.xy;
+  r0.zw = float2(0,0);
+  r1.xyzw = depth.Load(r0.xyw).xyzw;
+  r1.yzw = v1.xyz / v1.www;
+  r2.x = camera_inv_view._m30;
+  r2.y = camera_inv_view._m31;
+  r2.z = camera_inv_view._m32;
+  r3.xyz = r1.yzw * r1.xxx + r2.xyz;
+  r4.x = world._m10;
+  r4.y = world._m11;
+  r4.z = world._m12;
+  r2.w = dot(r4.xyz, r4.xyz);
+  r2.w = rsqrt(r2.w);
+  r5.xyz = r4.xyz * r2.www;
+  r6.xyz = -light_position.xyz + r3.xyz;
+  r2.w = dot(r5.xyz, r6.xyz);
+  r2.w = -light_cutoff + r2.w;
+  r2.w = cmp(r2.w < 0);
+  if (r2.w != 0) discard;
+  r5.xyz = light_position.xyz + -r3.xyz;
+  r2.w = dot(r5.xyz, r5.xyz);
+  r2.w = sqrt(r2.w);
+  r2.w = 9.99999975e-006 + r2.w;
+  r3.w = cmp(light_falloff.x < r2.w);
+  r4.w = -light_falloff.x + r2.w;
+  r4.w = saturate(light_falloff.y * r4.w);
+  r4.w = 1 + -r4.w;
+  r4.w = log2(r4.w);
+  r4.w = light_falloff.z * r4.w;
+  r4.w = exp2(r4.w);
+  r3.w = r3.w ? r4.w : 1;
+  r4.w = cmp(r3.w == 0.000000);
+  if (r4.w != 0) {
+    o0.xyzw = float4(0,0,0,0);
+    return;
+  }
+  r2.w = 1 / r2.w;
+  r5.xyz = r5.xyz * r2.www;
+  r2.w = dot(r5.xyz, -r4.xyz);
+  r2.w = 1 + -r2.w;
+  r4.x = cmp(light_spot_falloff.x < r2.w);
+  r2.w = -light_spot_falloff.x + r2.w;
+  r2.w = saturate(light_spot_falloff.y * r2.w);
+  r2.w = 1 + -r2.w;
+  r2.w = r4.x ? r2.w : 1;
+  r2.w = r3.w * r2.w;
+  r3.w = cmp(r2.w == 0.000000);
+  if (r3.w != 0) {
+    o0.xyzw = float4(0,0,0,0);
+    return;
+  }
+  r3.w = saturate(0.0199999996 * r1.x);
+  r3.w = r3.w * 0.189999998 + 0.00999999978;
+  r1.x = -r3.w + r1.x;
+  r1.xyz = r1.yzw * r1.xxx + r2.xyz;
+  r1.w = 1;
+  r2.x = dot(r1.xyzw, world_to_shadow_map._m00_m10_m20_m30);
+  r2.y = dot(r1.xyzw, world_to_shadow_map._m01_m11_m21_m31);
+  r2.z = dot(r1.xyzw, world_to_shadow_map._m02_m12_m22_m32);
+  r1.x = dot(r1.xyzw, world_to_shadow_map._m03_m13_m23_m33);
+  r1.xyz = r2.xyz / r1.xxx;
+  shadow_map.GetDimensions(0, fDest.x, fDest.y, fDest.z);
+  r4.xyzw = fDest.xyzw;
+  r4.xyzw = float4(1,1,1,1) / r4.xyxy;
+  r2.xy = r4.zw * float2(-0.5,-0.5) + r1.xy;
+  r1.w = shadow_map.SampleCmpLevelZero(shadow_map_sampler_s_s, r2.xy, r1.z).x;
+  r2.xy = r4.zw * float2(-0.5,0.5) + r1.xy;
+  r2.x = shadow_map.SampleCmpLevelZero(shadow_map_sampler_s_s, r2.xy, r1.z).x;
+  r1.w = r2.x + r1.w;
+  r2.xy = r4.xy * float2(0.5,-0.5) + r1.xy;
+  r2.x = shadow_map.SampleCmpLevelZero(shadow_map_sampler_s_s, r2.xy, r1.z).x;
+  r1.w = r2.x + r1.w;
+  r1.xy = r4.zw * float2(0.5,0.5) + r1.xy;
+  r1.x = shadow_map.SampleCmpLevelZero(shadow_map_sampler_s_s, r1.xy, r1.z).x;
+  r1.x = r1.w + r1.x;
+  r1.x = 0.25 * r1.x;
+  r1.x = max(0.0500000007, r1.x);
+  r1.x = r2.w * r1.x;
+  r1.y = cmp(r1.x == 0.000000);
+  if (r1.y != 0) {
+    o0.xyzw = float4(0,0,0,0);
+    return;
+  }
+  r2.x = camera_world._m30 + -r3.x;
+  r2.y = camera_world._m31 + -r3.y;
+  r2.z = camera_world._m32 + -r3.z;
+  r1.y = dot(r2.xyz, r2.xyz);
+  r1.y = rsqrt(r1.y);
+  r3.xyzw = albedo.Load(r0.xyw).xyzw;
+  r4.xyzw = normal.Load(r0.xyw).xyzw;
+  r0.xyzw = mask.Load(r0.xyz).xyzw;
+  r4.xyz = float3(-0.5,-0.5,-0.5) + r4.xyz;
+  r4.xyz = r4.xyz + r4.xyz;
+  r0.x = dot(r4.xyz, r4.xyz);
+  r0.x = rsqrt(r0.x);
+  r4.xyz = r4.xyz * r0.xxx;
+  r0.x = 500 * r4.w;
+  r0.w = cmp(r0.y == 0.003922);
+  r1.z = r0.z + r0.z;
+  r0.w = r0.w ? r1.z : 1;
+  r1.z = cmp(r0.y >= 0.0235290006);
+  r6.xy = r0.yz * r0.yz;
+  r6.z = r3.w;
+  r6.xyz = r1.zzz ? r6.xyz : r3.www;
+  r0.y = dot(r4.xyz, r5.xyz);
+  r0.z = saturate(r0.y);
+  r0.z = r0.z * r1.x;
+  r0.w = saturate(r0.z * r0.w);
+  r1.xzw = light_color.xyz * r0.www;
+  r2.xyz = r2.xyz * r1.yyy + r5.xyz;
+  r0.w = dot(r2.xyz, r2.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r2.xyz * r0.www;
+  r0.w = r4.w * 500 + 8;
+  r0.yw = float2(1024,0.0397889987) * r0.yw;
+  r1.y = saturate(dot(r2.xyz, r4.xyz));
+  r1.y = log2(r1.y);
+  r0.x = r1.y * r0.x;
+  r0.x = exp2(r0.x);
+  r0.x = r0.w * r0.x;
+  r2.xyz = light_color.xyz * r0.zzz;
+  r0.xzw = r2.xyz * r0.xxx;
+  r0.xzw = r0.xzw * r6.xyz;
+  r0.xzw = r1.xzw * r3.xyz + r0.xzw;
+  r1.x = (int)r0.y;
+  r1.yzw = float3(0,0,0);
+  r1.xyzw = cel_target.Load(r1.xyz).xyzw;
+  r1.x = saturate(r1.x);
+  o0.xyz = r1.xxx * r0.xzw;
+  o0.w = 0;
+  return;
+}

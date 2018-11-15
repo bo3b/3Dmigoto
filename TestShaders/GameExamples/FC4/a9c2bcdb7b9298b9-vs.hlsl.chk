@@ -1,0 +1,154 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:28:03 2018
+
+cbuffer CViewportShaderParameterProvider : register(b0)
+{
+  float4 _AmbientColorMultiplier : packoffset(c0);
+  float4 _AmbientOcclusionRanges_SunOcclusionFactor : packoffset(c1);
+  float4 _BloomAdaptationFactor : packoffset(c2);
+  float4 _CameraDirection_FOVDeg : packoffset(c3);
+  float4 _CameraDistances : packoffset(c4);
+  float4 _CameraNearPlaneSize : packoffset(c5);
+  float4 _CameraPositionFractions_ZOffsetWS : packoffset(c6);
+  float4 _CameraPositionFractions_ZOffsetWS_Previous : packoffset(c7);
+  float4 _CameraPosition_DistanceScale : packoffset(c8);
+  float4 _CameraPosition_DistanceScale_Previous : packoffset(c9);
+  float4x4 _CullingViewProjectionMatrix : packoffset(c10);
+  float4 _DepthScale : packoffset(c14);
+  float4 _DepthTextureRcpSize : packoffset(c15);
+  float4 _DepthTextureScaleOffset : packoffset(c16);
+  float4 _FogParams : packoffset(c17);
+  float4 _FogSHB : packoffset(c18);
+  float4 _FogSHG : packoffset(c19);
+  float4 _FogSHR : packoffset(c20);
+  float4 _HeightFogParams : packoffset(c21);
+  float4x4 _InvProjectionMatrix : packoffset(c22);
+  float4x4 _InvViewMatrix : packoffset(c26);
+  float4x4 _ProjectionMatrix : packoffset(c30);
+  float4 _TempSunDirection : packoffset(c34);
+  float4x4 _ViewMatrix : packoffset(c35);
+  float4 _ViewPoint_ShadowProjDepthMin : packoffset(c39);
+  float4x4 _ViewProjectionMatrix : packoffset(c40);
+  float4x4 _ViewRotProjectionMatrix : packoffset(c44);
+  float4x4 _ViewRotProjectionMatrix_Previous : packoffset(c48);
+  float4 _ViewportSize : packoffset(c52);
+  float2 _MotionVectorOffsets : packoffset(c53);
+  float3 _CameraRight : packoffset(c54);
+  float3 _CameraUp : packoffset(c55);
+  float3 _EnvironmentMapColorOffset : packoffset(c56);
+  float3 _EnvironmentMapColorScale : packoffset(c57);
+}
+
+cbuffer SUserClipPlaneParameterProvider : register(b1)
+{
+  float4 _UserClipPlane : packoffset(c0);
+}
+
+cbuffer CTerrainSectorParameterProvider : register(b2)
+{
+  float4 _CurrentTweening : packoffset(c0);
+  float4 _NeighborTweening[4] : packoffset(c1);
+  float4 _SectorOffset : packoffset(c5);
+  float _NeighborIsAdapting[4] : packoffset(c6);
+  float _WaterLevel : packoffset(c9.y);
+  bool _BlendDetail : packoffset(c9.z);
+}
+
+cbuffer CTerrainSectorStaticParameterProvider : register(b3)
+{
+  float4 _DetailUVScalingSpecularOcclusion[8] : packoffset(c0);
+  float4 _MaskChannelSelectors[4] : packoffset(c8);
+  float4 _NoiseLevels : packoffset(c12);
+  float4 _NoiseUVTransform : packoffset(c13);
+  float4 _SectorUVTransform : packoffset(c14);
+  int _MaterialID : packoffset(c15);
+  int _NbrOfLayers : packoffset(c15.y);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  uint4 v0 : position0,
+  uint4 v1 : psize0,
+  float4 v2 : normal0,
+  out float4 o0 : SV_Position0,
+  out float o1 : SV_ClipDistance0,
+  out float3 o2 : _wsPos0,
+  out float p2 : _depth0,
+  out float4 o3 : IGNORE0,
+  out float2 o4 : _TexCoord0,
+  out float2 p4 : _DistancesToCam0,
+  out float3 o5 : _PositionWS0,
+  out float3 o6 : _NormalWS0,
+  out float3 o7 : _TangentWS_Z0,
+  out float3 o8 : _BinormalWS_Z0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = (uint4)v0.xyzw;
+  r0.z = (int)r0.z;
+  r1.x = cmp((int)r0.z < 4);
+  r0.z = min(3, (int)r0.z);
+  r1.x = r1.x ? 1.000000 : 0;
+  r1.x = _NeighborIsAdapting[r0.z] * r1.x;
+  r2.xyzw = _NeighborTweening[r0.z].xyzw + -_CurrentTweening.xyzw;
+  r1.xyzw = r1.xxxx * r2.xyzw + _CurrentTweening.xyzw;
+  r2.xyzw = (uint4)v1.yxwz;
+  r2.xy = r2.xz * float2(256,256) + r2.yw;
+  r3.xyzw = cmp(float4(0,1,2,3) < r0.wwww);
+  r2.xyzw = r3.xyzw ? r2.xxxx : r2.yyyy;
+  r0.z = dot(r2.xyzw, r1.xyzw);
+  r2.z = 0.015625 * r0.z;
+  r2.xy = _SectorOffset.xy + r0.xy;
+  r0.xy = _SectorUVTransform.xy * r0.yx;
+  o4.xy = r0.xy * float2(0.015625,0.015625) + _SectorUVTransform.zw;
+  r0.xyz = -_CameraPosition_DistanceScale.xyz + r2.xyz;
+  r0.w = 1;
+  o0.x = dot(r0.xyzw, _ViewRotProjectionMatrix._m00_m10_m20_m30);
+  o0.y = dot(r0.xyzw, _ViewRotProjectionMatrix._m01_m11_m21_m31);
+  o0.z = dot(r0.xyzw, _ViewRotProjectionMatrix._m02_m12_m22_m32);
+  o0.w = dot(r0.xyzw, _ViewRotProjectionMatrix._m03_m13_m23_m33);
+  r2.w = 1;
+  o1.x = dot(_UserClipPlane.xyzw, r2.xyzw);
+  o2.xyzw = float4(0,0,0,0);
+  o3.xyzw = float4(0,0,0,0);
+  r0.xyz = _CameraPosition_DistanceScale.xyz + -r2.xyz;
+  o5.xyz = r2.xyz;
+  r0.x = dot(r0.xyz, r0.xyz);
+  p4.x = sqrt(r0.x);
+  p4.y = 0;
+  r0.xyzw = float4(-0.5,-0.5,-0.5,-0.5) + v2.xyzw;
+  r0.xyzw = r0.xyzw + r0.xyzw;
+  r2.xyzw = r3.xyzw ? r0.xxxx : r0.zzzz;
+  r0.xyzw = r3.xyzw ? r0.yyyy : r0.wwww;
+  r0.y = dot(r0.xyzw, r1.xyzw);
+  r0.x = dot(r2.xyzw, r1.xyzw);
+  r0.w = dot(r0.xy, r0.xy);
+  r0.w = min(1, r0.w);
+  r0.w = 1 + -r0.w;
+  r0.z = sqrt(r0.w);
+  o6.xyz = r0.xyz;
+  r0.w = cmp(0 < r0.z);
+  r1.z = (int)-r0.w;
+  r1.xy = float2(0,0);
+  r2.xyz = r1.xyz * r0.zxy;
+  r1.xyz = r0.yzx * r1.yzy + -r2.xyz;
+  r0.w = dot(r1.yz, r1.yz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = r1.xyz * r0.www;
+  r2.xyz = r1.zxy * r0.yzx;
+  r0.xyz = r1.yzx * r0.zxy + -r2.xyz;
+  o8.xyz = r1.xyz;
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  o7.xyz = r0.xyz * r0.www;
+  return;
+}

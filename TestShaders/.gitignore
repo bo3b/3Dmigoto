@@ -2,3 +2,4 @@
 *.msasm
 *.asm
 *.shdr
+output

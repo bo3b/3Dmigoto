@@ -1,0 +1,48 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:58 2018
+
+cbuffer PER_BATCH : register(b0)
+{
+  float4 psWeights[16] : packoffset(c0);
+}
+
+SamplerState _tex0_s_s : register(s0);
+Texture2D<float4> _tex0 : register(t0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = _tex0.Sample(_tex0_s_s, v1.zw).xyzw;
+  r0.xyzw = psWeights[1].xxxx * r0.xyzw;
+  r1.xyzw = _tex0.Sample(_tex0_s_s, v1.xy).xyzw;
+  r0.xyzw = r1.xyzw * psWeights[0].xxxx + r0.xyzw;
+  r1.xyzw = _tex0.Sample(_tex0_s_s, v2.xy).xyzw;
+  r0.xyzw = r1.xyzw * psWeights[2].xxxx + r0.xyzw;
+  r1.xyzw = _tex0.Sample(_tex0_s_s, v2.zw).xyzw;
+  r0.xyzw = r1.xyzw * psWeights[3].xxxx + r0.xyzw;
+  r1.xyzw = _tex0.Sample(_tex0_s_s, v3.xy).xyzw;
+  r0.xyzw = r1.xyzw * psWeights[4].xxxx + r0.xyzw;
+  r1.xyzw = _tex0.Sample(_tex0_s_s, v3.zw).xyzw;
+  r0.xyzw = r1.xyzw * psWeights[5].xxxx + r0.xyzw;
+  r1.xyzw = _tex0.Sample(_tex0_s_s, v4.xy).xyzw;
+  r0.xyzw = r1.xyzw * psWeights[6].xxxx + r0.xyzw;
+  r1.xyzw = _tex0.Sample(_tex0_s_s, v4.zw).xyzw;
+  o0.xyzw = r1.xyzw * psWeights[7].xxxx + r0.xyzw;
+  return;
+}

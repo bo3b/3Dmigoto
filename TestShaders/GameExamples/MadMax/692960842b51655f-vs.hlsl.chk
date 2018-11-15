@@ -1,0 +1,34 @@
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:04 2018
+
+cbuffer cbInstanceConsts : register(b1)
+{
+  float4 InstanceConsts[4] : packoffset(c0);
+}
+
+Texture2D<float4> StereoParams : register(t125);
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : POSITION0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float2 o1 : TEXCOORD0)
+{
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyz = InstanceConsts[1].xyw * v0.yyy;
+  r0.xyz = v0.xxx * InstanceConsts[0].xyw + r0.xyz;
+  r0.xyz = v0.zzz * InstanceConsts[2].xyw + r0.xyz;
+  o0.xyw = InstanceConsts[3].xyw + r0.xyz;
+  o0.z = 0;
+  o1.xy = v1.xy;
+  return;
+}
