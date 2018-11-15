@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:44 2018
+// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:08:51 2018
 Texture2D<uint4> t29 : register(t29);
 
 Texture3D<uint4> t24 : register(t24);
@@ -253,11 +253,11 @@ void main(
   out float4 o1 : SV_Target1)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t26, 64 
+// unknown dcl_: dcl_resource_structured t26, 64
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t28, 52 
+// unknown dcl_: dcl_resource_structured t28, 52
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t56, 144 
+// unknown dcl_: dcl_resource_structured t56, 144
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24;
   uint4 bitmask, uiDest;
   float4 fDest;
@@ -283,7 +283,7 @@ void main(
   r0.z = dot(r3.xyz, r3.xyz);
   r0.z = rsqrt(r0.z);
   r6.xyz = r3.xyz * r0.zzz;
-  r0.z = max(9.99999975e-006, r1.w);
+  r0.z = max(9.99999975e-06, r1.w);
   r0.z = log2(r0.z);
   r0.z = 2.20000005 * r0.z;
   r0.z = exp2(r0.z);
@@ -295,7 +295,7 @@ void main(
   r0.w = (uint)r0.w;
   r0.w = cmp((int)r0.w == 255);
   if (r0.w != 0) {
-    r1.w = cmp(9.99999975e-005 < r4.w);
+    r1.w = cmp(9.99999975e-05 < r4.w);
     r8.xyz = sqrt(r1.xyz);
     r1.xyz = r1.www ? r8.xyz : r1.xyz;
     r8.xyz = r5.xyz * float3(2,2,2) + float3(-1,-1,-1);
@@ -915,7 +915,7 @@ void main(
     r14.xyz = saturate(r14.xyz);
     r6.w = max(r14.x, r14.y);
     r6.w = max(r6.w, r14.z);
-    r7.z = 9.99999975e-005 + r6.w;
+    r7.z = 9.99999975e-05 + r6.w;
     r14.xy = float2(1,1.00010002) + -r6.ww;
     r15.xyz = saturate(r15.xyz);
     r7.w = max(r15.x, r15.y);

@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:28:04 2018
+// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:09:16 2018
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -84,9 +84,9 @@ void main(
   r1.xy = r1.zw * r1.xy;
   r0.w = r1.x + -r1.y;
   r1.z = r0.z * r0.w + r1.y;
-  r0.zw = float2(6.09999988e-005,6.09999988e-005) * _VistaPositionAndFactor.xx;
+  r0.zw = float2(6.09999988e-05,6.09999988e-05) * _VistaPositionAndFactor.xx;
   r1.xy = r0.zw * r0.xy + _VistaPositionAndFactor.yz;
-  r0.xy = r0.xy * float2(3.09999996e-005,-3.09999996e-005) + float2(0.5,0.5);
+  r0.xy = r0.xy * float2(3.09999996e-05,-3.09999996e-05) + float2(0.5,0.5);
   o2.xy = float2(0.96875,0.96875) * r0.xy;
   r0.xyz = -_CameraPosition_DistanceScale.xyz + r1.xyz;
   o1.xyz = r1.xyz;

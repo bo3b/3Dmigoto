@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:14 2018
+// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:09:42 2018
 
 cbuffer vc0 : register(b0)
 {
@@ -74,7 +74,7 @@ void main(
   r0.x = r0.x * 0.5 + 0.5;
   r0.x = 255 * r0.x;
   r0.x = v7.x * 32640 + r0.x;
-  o3.z = 1.49999996e-005 * r0.x;
+  o3.z = 1.49999996e-05 * r0.x;
   r0.xy = (int2)v1.xy;
   o3.xy = float2(0.000976999989,0.000976999989) * r0.xy;
   return;

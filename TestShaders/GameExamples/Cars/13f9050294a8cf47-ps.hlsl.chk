@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:51 2018
+// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:08:58 2018
 
 cbuffer _Globals : register(b0)
 {
@@ -96,7 +96,7 @@ void main(
   r1.w = dot(r1.xyz, r1.xyz);
   r1.w = rsqrt(r1.w);
   r1.xyz = r1.xyz * r1.www;
-  r0.x = dot(r0.xyz, float3(1,0.00392200006,1.49999996e-005));
+  r0.x = dot(r0.xyz, float3(1,0.00392200006,1.49999996e-05));
   r0.x = frustumDepth * r0.x;
   r0.xyz = v2.xyz * r0.xxx;
   r2.xy = float2(1,1) / screenSpaceDimensions.zw;

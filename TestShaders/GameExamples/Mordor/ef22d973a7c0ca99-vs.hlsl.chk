@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:08 2018
+// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:09:36 2018
 
 cbuffer _Globals : register(b0)
 {
@@ -72,7 +72,7 @@ void main(
   out float3 o4 : TEXCOORD3)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t0, 32 
+// unknown dcl_: dcl_resource_structured t0, 32
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v0.x, vertex_id
   float4 r0,r1,r2,r3;
@@ -123,7 +123,7 @@ r3.w = BufferSrc[]..swiz;
   r0.w = k_vFogMieB.z * r0.z + -k_vFogMieA.z;
   r0.z = k_vFogMieB.z * r0.z;
   r0.w = max(0, r0.w);
-  r1.y = 1.99999995e-005 * abs(r2.x);
+  r1.y = 1.99999995e-05 * abs(r2.x);
   r1.y = min(1, r1.y);
   r1.y = 1 + -r1.y;
   r0.z = -r0.w * r1.y + r0.z;

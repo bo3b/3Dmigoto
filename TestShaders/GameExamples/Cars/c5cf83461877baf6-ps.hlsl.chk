@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:53 2018
+// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:09:00 2018
 
 cbuffer _Globals : register(b0)
 {
@@ -109,7 +109,7 @@ void main(
   r1.xyz = float3(-0.200000003,-0.200000003,-0.200000003) + r1.xyz;
   r1.xyz = saturate(float3(1000,1000,1000) * r1.xyz);
   r0.w = dot(r1.xyz, float3(1,1,1));
-  r1.w = cmp(9.99999975e-005 < r0.w);
+  r1.w = cmp(9.99999975e-05 < r0.w);
   if (r1.w != 0) {
     r1.xyz = r1.xyz / r0.www;
   }

@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:50 2018
+// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:08:57 2018
 
 cbuffer _Globals : register(b0)
 {
@@ -60,7 +60,7 @@ void main(
   r0.zw = float2(0,0);
   r1.z = g_msaaClassifyTexture.Load(r0.xyw).x;
   r1.z = cmp(0 < r1.z);
-  r1.zw = r1.zz ? float2(5.60519386e-045,0.25) : float2(1.40129846e-045,0.999998987);
+  r1.zw = r1.zz ? float2(5.60519386e-45,0.25) : float2(1.40129846e-45,0.999998987);
   r2.x = 1 + -g_envmapParams.w;
   r2.yz = trunc(g_envmapsMipmapCount.xy);
   r3.w = 1;
@@ -260,7 +260,7 @@ void main(
           r3.z = r6.z * -0.999934018 + 1;
           r3.z = r3.z * r3.z;
           r3.z = 3.14159298 * r3.z;
-          r3.z = 6.60000005e-005 / r3.z;
+          r3.z = 6.60000005e-05 / r3.z;
           r6.y = r6.y * 0.920000017 + 0.0799999982;
           r6.z = r6.x * 0.993537009 + 0.00646300009;
           r8.w = r8.w * 0.993537009 + 0.00646300009;

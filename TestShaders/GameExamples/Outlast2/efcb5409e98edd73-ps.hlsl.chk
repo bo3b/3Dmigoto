@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:09 2018
+// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:09:36 2018
 
 cbuffer _Globals : register(b0)
 {
@@ -260,7 +260,7 @@ void main(
     r4.w = r4.x * r4.x;
     r6.w = 2 / r4.w;
     r6.w = -2 + r6.w;
-    r6.w = max(9.99999975e-006, r6.w);
+    r6.w = max(9.99999975e-06, r6.w);
     r8.x = 3.14159298 * r4.w;
     r5.xyz = r1.www * -r5.xyz + r5.xyz;
     r5.xyz = r5.xyz * DiffuseOverrideParameter.www + DiffuseOverrideParameter.xyz;
@@ -301,7 +301,7 @@ void main(
           r14.w = r14.w * r14.w;
           r13.z = r14.w * r13.z;
         }
-        r14.w = cmp(9.99999975e-006 < r13.z);
+        r14.w = cmp(9.99999975e-06 < r13.z);
         r15.x = dot(r1.xyz, r14.xyz);
         r15.x = cmp(0 < r15.x);
         r15.x = (int)r0.w | (int)r15.x;
@@ -333,7 +333,7 @@ void main(
               r17.xy = -r14.xz * r10.zw;
               r11.x = (int)r16.z;
               r20.xy = -r14.xy * r11.xy;
-              r19.xyz = r19.xyz ? float3(0,2.80259693e-045,5.60519386e-045) : float3(1,3,5);
+              r19.xyz = r19.xyz ? float3(0,2.80259693e-45,5.60519386e-45) : float3(1,3,5);
               r17.z = r19.y;
               r20.z = r19.z;
               r16.yzw = r16.www ? r17.xyz : r20.xyz;
@@ -466,7 +466,7 @@ void main(
             r10.x = dot(r1.xyz, r15.xyz);
             r10.w = saturate(r10.x);
             r11.x = dot(r1.xyz, r16.xyz);
-            r11.x = max(9.99999997e-007, r11.x);
+            r11.x = max(9.99999997e-07, r11.x);
             r11.x = min(1, r11.x);
             r10.x = saturate(r10.x * 5 + 0.5);
             r10.x = r10.x * r3.w + r5.w;

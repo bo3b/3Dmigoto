@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:41 2018
+// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:08:48 2018
 
 cbuffer _Globals : register(b0)
 {
@@ -340,7 +340,7 @@ void main(
   r11.xyz = -r11.xyz * r12.xyz + r14.xyz;
   r8.xyz = r13.www * r11.xyz + r8.xyw;
   r13.xyz = r8.xyz + r7.xyz;
-  r0.x = cmp(9.99999975e-005 < g_OceanConsts.m_RippleParamsSet1.w);
+  r0.x = cmp(9.99999975e-05 < g_OceanConsts.m_RippleParamsSet1.w);
   if (r0.x != 0) {
     r0.x = sqrt(r1.x);
     r5.zw = g_OceanConsts.m_OceanViewOffset.xy + v9.zw;

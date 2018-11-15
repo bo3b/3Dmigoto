@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:47 2018
+// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:08:54 2018
 
 cbuffer cb13 : register(b13)
 {
@@ -171,7 +171,7 @@ void main(
     case 1 :    r1.w = dot(r8.xyz, r8.xyz);
     r1.w = sqrt(r1.w);
     r2.x = -cb4[14].y + r0.w;
-    r2.y = 9.99999975e-006 + r1.w;
+    r2.y = 9.99999975e-06 + r1.w;
     r2.z = abs(r2.x) / r2.y;
     r2.z = cb1[5].x * r2.z;
     r2.w = cmp(r2.z == 0.000000);
@@ -216,7 +216,7 @@ void main(
     case 2 :    r0.z = dot(r8.xyz, r8.xyz);
     r0.z = sqrt(r0.z);
     r1.w = -cb4[14].y + r0.w;
-    r2.x = 9.99999975e-006 + r0.z;
+    r2.x = 9.99999975e-06 + r0.z;
     r2.y = abs(r1.w) / r2.x;
     r2.y = cb1[5].x * r2.y;
     r2.z = cmp(r2.y == 0.000000);
@@ -263,7 +263,7 @@ void main(
     case 3 :    r0.z = dot(r8.xyz, r8.xyz);
     r0.z = sqrt(r0.z);
     r1.w = -cb4[14].y + r0.w;
-    r2.x = 9.99999975e-006 + r0.z;
+    r2.x = 9.99999975e-06 + r0.z;
     r2.y = abs(r1.w) / r2.x;
     r2.y = cb1[5].x * r2.y;
     r2.z = cmp(r2.y == 0.000000);
@@ -311,7 +311,7 @@ void main(
     case 4 :    r0.z = dot(r8.xyz, r8.xyz);
     r0.z = sqrt(r0.z);
     r1.w = -cb4[14].y + r0.w;
-    r0.z = 9.99999975e-006 + r0.z;
+    r0.z = 9.99999975e-06 + r0.z;
     r2.x = abs(r1.w) / r0.z;
     r2.x = cb1[5].x * r2.x;
     r2.y = cmp(r2.x == 0.000000);
@@ -374,14 +374,14 @@ void main(
     r10.xyz = cb13[r0.w+0].xyz + -r8.xyz;
     r0.w = dot(r10.xyz, r10.xyz);
     r0.w = sqrt(r0.w);
-    r1.w = 9.99999975e-005 + r0.w;
+    r1.w = 9.99999975e-05 + r0.w;
     r10.xyz = r10.xyz / r1.www;
     r13.xyzw = mad((int4)r0.zzzz, int4(6,6,6,6), int4(4,5,2,3));
     r1.w = -cb13[r13.x+0].x + r0.w;
     r1.y = max(0, r1.w);
     r1.z = r1.y * r1.y;
     r1.y = dot(cb13[r13.x+0].yzw, r1.xyz);
-    r1.y = 9.99999975e-005 + r1.y;
+    r1.y = 9.99999975e-05 + r1.y;
     r1.y = 1 / r1.y;
     r1.y = saturate(r1.y);
     r0.w = -cb13[r13.y+0].x + r0.w;
@@ -407,14 +407,14 @@ void main(
     r13.xyz = cb13[r2.w+0].xyz + -r8.xyz;
     r2.w = dot(r13.xyz, r13.xyz);
     r2.w = sqrt(r2.w);
-    r3.w = 9.99999975e-005 + r2.w;
+    r3.w = 9.99999975e-05 + r2.w;
     r13.xyz = r13.xyz / r3.www;
     r14.xyzw = mad((int4)r1.wwww, int4(6,6,6,6), int4(4,5,2,3));
     r3.w = -cb13[r14.x+0].x + r2.w;
     r1.y = max(0, r3.w);
     r1.z = r1.y * r1.y;
     r1.y = dot(cb13[r14.x+0].yzw, r1.xyz);
-    r1.y = 9.99999975e-005 + r1.y;
+    r1.y = 9.99999975e-05 + r1.y;
     r1.y = 1 / r1.y;
     r1.y = saturate(r1.y);
     r1.z = -cb13[r14.y+0].x + r2.w;

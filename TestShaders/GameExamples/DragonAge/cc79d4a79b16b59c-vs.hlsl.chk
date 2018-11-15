@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:28:01 2018
+// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:09:13 2018
 
 StructuredBuffer<g_BokehBuffer> g_BokehBuffer : register(t3);
 
@@ -17,7 +17,7 @@ void main(
   out float2 o2 : TEXCOORD0)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t3, 32 
+// unknown dcl_: dcl_resource_structured t3, 32
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v0.x, vertex_id
 // Needs manual fix for instruction:

@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:49 2018
+// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:08:57 2018
 
 cbuffer CommonConstants : register(b0)
 {
@@ -233,7 +233,7 @@ void main(
     r5.w = rsqrt(r5.w);
     r10.xyz = r10.xyz * r5.www;
     r10.xyz = r4.www ? r10.xyz : r11.xzw;
-    r3.w = 9.99999975e-006 + abs(r3.w);
+    r3.w = 9.99999975e-06 + abs(r3.w);
     r11.xyz = -r6.xzy * r0.zzz + r10.xyz;
     r4.w = dot(r11.xyz, r11.xyz);
     r4.w = rsqrt(r4.w);
@@ -297,7 +297,7 @@ void main(
     r0.z = frac(r2.z);
     r0.w = (int)r4.z & g_sssAutomaticThicknessEnables;
     r2.xyz = g_translucencyCoefficients0[r2.w].xyz * r0.zzz;
-    r0.z = max(9.99999975e-006, r1.y);
+    r0.z = max(9.99999975e-06, r1.y);
     r0.z = log2(r0.z);
     r0.z = r4.y + -r0.z;
     r1.y = g_translucencyCoefficients1[r2.w].x * r4.y;
@@ -321,7 +321,7 @@ void main(
     r1.xyz = exp2(r1.xyz);
     r2.xyz = r3.xyz * r4.xxx + -r1.xyz;
     r1.xyz = g_translucencyCoefficients0[r2.w].www * r2.xyz + r1.xyz;
-    r1.xyz = max(float3(9.99999975e-006,9.99999975e-006,9.99999975e-006), r1.xyz);
+    r1.xyz = max(float3(9.99999975e-06,9.99999975e-06,9.99999975e-06), r1.xyz);
     r0.z = r0.z * r0.z;
     r0.z = 8 * r0.z;
     r1.xyz = log2(r1.xyz);

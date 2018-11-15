@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:47 2018
+// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:08:55 2018
 
 cbuffer cb0 : register(b0)
 {
@@ -76,7 +76,7 @@ void main(
   r0.xyz = r1.xyz * r0.zzz + r0.xyw;
   o1.xyz = r0.xyz * float3(0.5,0.5,0.5) + float3(0.5,0.5,0.5);
   r0.xyz = t1.SampleBias(s1_s_s, v0.xy, 0).xyz;
-  r0.xyz = max(float3(9.99999997e-007,9.99999997e-007,9.99999997e-007), r0.xyz);
+  r0.xyz = max(float3(9.99999997e-07,9.99999997e-07,9.99999997e-07), r0.xyz);
   r0.xyz = log2(r0.xyz);
   r0.xyz = float3(2.20000005,2.20000005,2.20000005) * r0.xyz;
   r0.xyz = exp2(r0.xyz);
@@ -85,7 +85,7 @@ void main(
   r0.x = asint(cb0[25].x);
   o2.w = 0.00392200006 * r0.x;
   r0.xyz = t2.SampleBias(s2_s_s, v0.xy, 0).xyz;
-  r0.xyz = max(float3(9.99999997e-007,9.99999997e-007,9.99999997e-007), r0.yxz);
+  r0.xyz = max(float3(9.99999997e-07,9.99999997e-07,9.99999997e-07), r0.yxz);
   r0.xyz = log2(r0.xyz);
   r0.xyz = float3(2.20000005,2.20000005,2.20000005) * r0.xyz;
   r0.xyz = exp2(r0.xyz);
