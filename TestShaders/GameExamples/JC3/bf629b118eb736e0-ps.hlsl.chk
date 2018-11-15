@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 22:01:27 2018
+// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 22:16:34 2018
 Buffer<mixed4> t32 : register(t32);
 
 Texture2D<float4> t28 : register(t28);
@@ -131,7 +131,7 @@ void main(
   sincos(r7.w, r10.x, r11.x);
   r7.w = -Globals[38].w + r9.y;
   r7.w = saturate(Globals[39].w * r7.w);
-  r10.yz = r9.xz * float2(3.09999996e-005,3.09999996e-005) + float2(0.5,0.5);
+  r10.yz = r9.xz * float2(3.09999996e-05,3.09999996e-05) + float2(0.5,0.5);
   r9.w = HorizonMap0.SampleLevel(LinearSampler_s_s, r10.yz, 0).x;
   r10.y = HorizonMap1.SampleLevel(LinearSampler_s_s, r10.yz, 0).x;
   r10.y = r10.y + -r9.w;
@@ -214,7 +214,7 @@ void main(
     r20.xy = r19.zz * float2(-0.942016006,-0.399062008) + r10.zw;
     r18.x = r19.w * -0.399062008 + r20.x;
     r18.y = -r19.w * -0.942016006 + r20.y;
-    r20.xyzw = float4(-2.09999998e-005,-1.89999992e-005,-1.10000001e-005,-1.29999999e-005) + r10.yyyy;
+    r20.xyzw = float4(-2.09999998e-05,-1.89999992e-05,-1.10000001e-05,-1.29999999e-05) + r10.yyyy;
     r11.y = ShadowMapTexture.SampleCmpLevelZero(ShadowComparisonFilter_s_s, r18.xyz, r20.x).x;
     r21.xy = r19.zz * float2(0.945586026,-0.768907011) + r10.zw;
     r18.x = r19.w * -0.768907011 + r21.x;
@@ -234,7 +234,7 @@ void main(
     r20.xy = r19.zz * float2(-0.915885985,0.457713991) + r10.zw;
     r18.x = r19.w * 0.457713991 + r20.x;
     r18.y = -r19.w * -0.915885985 + r20.y;
-    r20.xyzw = float4(-2.20000002e-005,-1.70000003e-005,-1.10000001e-005,-1.20000004e-005) + r10.yyyy;
+    r20.xyzw = float4(-2.20000002e-05,-1.70000003e-05,-1.10000001e-05,-1.20000004e-05) + r10.yyyy;
     r17.x = ShadowMapTexture.SampleCmpLevelZero(ShadowComparisonFilter_s_s, r18.xyz, r20.x).x;
     r11.y = r17.x + r11.y;
     r21.xy = r19.zz * float2(-0.815442026,-0.879124999) + r10.zw;
@@ -255,7 +255,7 @@ void main(
     r20.xy = r19.zz * float2(0.443233013,-0.975116014) + r10.zw;
     r18.x = r19.w * -0.975116014 + r20.x;
     r18.y = -r19.w * 0.443233013 + r20.y;
-    r20.xyzw = float4(-2.09999998e-005,-9.99999997e-007,-2.09999998e-005,-1.99999995e-005) + r10.yyyy;
+    r20.xyzw = float4(-2.09999998e-05,-9.99999997e-07,-2.09999998e-05,-1.99999995e-05) + r10.yyyy;
     r17.x = ShadowMapTexture.SampleCmpLevelZero(ShadowComparisonFilter_s_s, r18.xyz, r20.x).x;
     r11.y = r17.x + r11.y;
     r21.xy = r19.zz * float2(0.537429988,-0.473733991) + r10.zw;
@@ -276,7 +276,7 @@ void main(
     r20.xy = r19.zz * float2(-0.241888002,0.997065008) + r10.zw;
     r18.x = r19.w * 0.997065008 + r20.x;
     r18.y = -r19.w * -0.241888002 + r20.y;
-    r20.xyzw = float4(-3.99999999e-006,-6.00000021e-006,-2.09999998e-005,-7.0000001e-006) + r10.yyyy;
+    r20.xyzw = float4(-3.99999999e-06,-6.00000021e-06,-2.09999998e-05,-7.0000001e-06) + r10.yyyy;
     r10.y = ShadowMapTexture.SampleCmpLevelZero(ShadowComparisonFilter_s_s, r18.xyz, r20.x).x;
     r10.y = r11.y + r10.y;
     r21.xy = r19.zz * float2(-0.814100027,0.91437602) + r10.zw;
