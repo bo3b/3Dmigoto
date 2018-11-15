@@ -1,16 +1,13 @@
-// manually fixed shader
-// Compiles to same ASM
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:28:01 2018
 
-  struct StoredBokeh
-  {
-      float2 position;               // Offset:    0
-      float2 radius;                 // Offset:    8
-      float4 colorAndWeight;         // Offset:   16
-  };                        // Offset:    0 Size:    32
+StructuredBuffer<g_BokehBuffer> g_BokehBuffer : register(t3);
 
-StructuredBuffer<StoredBokeh> g_BokehBuffer : register(t3);
 
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> StereoParams : register(t125);
+
 
 void main(
   uint v0 : SV_VertexID0,
@@ -19,30 +16,35 @@ void main(
   out float4 o1 : COLOR0,
   out float2 o2 : TEXCOORD0)
 {
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t3, 32 
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_input_sgv v0.x, vertex_id
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_input_sgv v1.x, instance_id
   float4 r0,r1;
-  uint4 bitmask;
-  bitmask.x = ((~(-1 << 1)) << 1) & 0xffffffff;
-  r0.x = (((uint)v0.x << 1) & bitmask.x) | ((uint)0 & ~bitmask.x);
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  bitmask.x = ((~(-1 << 1)) << 1) & 0xffffffff;  r0.x = (((uint)v0.x << 1) & bitmask.x) | ((uint)0 & ~bitmask.x);
   r0.z = (int)v0.x & 2;
-  r0.xy = r0.xz;
-  r0.zw = r0.xy * float2(1.000000e+000,-1.000000e+000) + float2(-1.000000e+000,1.000000e+000);
-  o2.xy = float2(5.000000e-001,5.000000e-001) * r0.xy;
-// ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r1.xyzw, v1.x, l(0), t3.xyzw
-r1.x = g_BokehBuffer[v1.x].position.x;
-r1.y = g_BokehBuffer[v1.x].position.y;
-r1.z = g_BokehBuffer[v1.x].radius.x;
-r1.w = g_BokehBuffer[v1.x].radius.y;
+  r0.xy = (uint2)r0.xz;
+  r0.zw = r0.xy * float2(1,-1) + float2(-1,1);
+  o2.xy = float2(0.5,0.5) * r0.xy;
+// Known bad code for instruction (needs manual fix):
+ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r1.xyzw, v1.x, l(0), t3.xyzw
+r1.x = g_BokehBuffer[]..swiz;
+r1.y = g_BokehBuffer[]..swiz;
+r1.z = g_BokehBuffer[]..swiz;
+r1.w = g_BokehBuffer[]..swiz;
   r0.xy = r1.zw + r1.zw;
   o0.xy = r0.zw * r0.xy + r1.xy;
-  o0.zw = float2(0.000000e+000,1.000000e+000);
-// ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) o1.xyzw, v1.x, l(16), t3.xyzw
-o1.x = g_BokehBuffer[v1.x].colorAndWeight.x;
-o1.y = g_BokehBuffer[v1.x].colorAndWeight.y;
-o1.z = g_BokehBuffer[v1.x].colorAndWeight.z;
-o1.w = g_BokehBuffer[v1.x].colorAndWeight.w;
+  o0.zw = float2(0,1);
+// Known bad code for instruction (needs manual fix):
+ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) o1.xyzw, v1.x, l(16), t3.xyzw
+r1.x = g_BokehBuffer[]..swiz;
+r1.y = g_BokehBuffer[]..swiz;
+r1.z = g_BokehBuffer[]..swiz;
+r1.w = g_BokehBuffer[]..swiz;
   return;
 }
-
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-E:\Program Files (x86)\Origin Games\Dragon Age Inquisition\wrapper1349(1,18-30): error X3000: syntax error: unexpected token 'g_BokehBuffer'
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

@@ -1,22 +1,19 @@
-// Manually fixed shader.
-//	needed to be const to make it icb, and not 4x4, just 4
-//	Also shift left was backwards.
-//	The fxc generates bad code for the bitmask, where it makes a -0 (0x80000000)
-//	which the -1 is then ignored.  It's not handling uint properly.
-//	By inverting the starting mask, I can get exact matching ASM.
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:42 2018
 
-// icb[] fixed
-// bitmask fixed
-// missing - on mad
 
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> StereoParams : register(t125);
+
 
 void main(
   uint v0 : SV_VERTEXID0,
   out float4 o0 : SV_POSITION0,
   out float2 o1 : POSTSYNTHESIS_UV0)
 {
-	const float4 icb[] = { { -1.000000, 0, 0, 0},
+  const float4 icb[] = { { -1.000000, 0, 0, 0},
                               { -1.000000, 0, 0, 0},
                               { -1.000000, 0, 0, 0},
                               { 1.000000, 0, 0, 0},
@@ -24,19 +21,18 @@ void main(
                               { -1.000000, 0, 0, 0},
                               { 1.000000, 0, 0, 0},
                               { 1.000000, 0, 0, 0} };
-  int r0;
-  uint bitmask;
-  
-  o0.zw = float2(0.000000e+000,1.000000e+000);
-	r0.x = v0.x << 1;
-  o0.x = icb[r0.x].x;
-  o1.x = icb[r0.x].x * 5.000000000e-001 + 5.000000000e-001;
-  
-  bitmask = ((~(-1 << 31)) << 1) & 0xffffffff;
-  r0.x = (((uint)v0.x << 1) & bitmask) | ((uint)1 & ~bitmask);
-  
-  o0.y = icb[r0.x].x;
-	// Missing - on icb too.
-	o1.y = -icb[r0.x].x * 5.000000000e-001 + 5.000000000e-001;
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_input_sgv v0.x, vertex_id
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  o0.zw = float2(0,1);
+  r0.x = (uint)v0.x << 1;
+  o0.x = icb[r0.x+0].x;
+  o1.x = icb[r0.x+0].x * 0.5 + 0.5;
+  bitmask.x = ((~(-1 << 31)) << 1) & 0xffffffff;  r0.x = (((uint)v0.x << 1) & bitmask.x) | ((uint)1 & ~bitmask.x);
+  o0.y = icb[r0.x+0].x;
+  o1.y = -icb[r0.x+0].x * 0.5 + 0.5;
   return;
 }

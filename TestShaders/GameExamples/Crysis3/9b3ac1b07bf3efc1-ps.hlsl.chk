@@ -1,11 +1,4 @@
-// Fixed warning for SampleGrad.
-
-// For some reason it did not pick up names out of cb2, cb3, and created defaults.
-// Maybe length of the substruct names like __0DetailNormalsScale__1NormalsScale__2__3
-// Also maybe not packoffset variant.
-//
-// Seems to maybe be that the lines are so long that we had no space separator for name
-// versus the comments on the same line in ASM.
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:59 2018
 
 cbuffer PER_BATCH : register(b0)
 {
@@ -45,21 +38,26 @@ cbuffer PER_MATERIAL : register(b3)
   float4 __0__1__2__3EnvCubeScale : packoffset(c8);
   float4 __0SoftIntersectionFactor__1RainTilling__2DetailTilling__3Tilling : packoffset(c9);
 }
-SamplerState sceneDepthSampler_s : register(s0);
-SamplerState RefractionSampler_s : register(s1);
-SamplerState ReflSampler_s : register(s2);
-SamplerState WaterNormalsSampler_s : register(s3);
-SamplerState volFogShadowSampler_s : register(s4);
+
+SamplerState sceneDepthSampler_s_s : register(s0);
+SamplerState RefractionSampler_s_s : register(s1);
+SamplerState ReflSampler_s_s : register(s2);
+SamplerState WaterNormalsSampler_s_s : register(s3);
+SamplerState volFogShadowSampler_s_s : register(s4);
 Texture2D<float4> WaterNormalsSampler : register(t0);
 Texture2D<float4> RefractionSampler : register(t1);
 Texture2D<float4> sceneDepthSampler : register(t2);
 Texture2D<float4> ReflSampler : register(t3);
 Texture2D<float4> volFogShadowSampler : register(t4);
 
-Texture2D<float4> StereoParams : register(t125);
-Texture1D<float4> IniParams : register(t120);
 
-void main( 
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
   float4 v0 : SV_Position0,
   float4 v1 : TEXCOORD0,
   float4 v2 : TEXCOORD1,
@@ -73,14 +71,14 @@ void main(
   float4 fDest;
 
   r0.xy = float2(0.25,0.25) * v1.xy;
-  r0.xyz = WaterNormalsSampler.Sample(WaterNormalsSampler_s, r0.xy).xyw;
+  r0.xyz = WaterNormalsSampler.Sample(WaterNormalsSampler_s_s, r0.xy).xyw;
   r0.xyz = r0.xyz * float3(0.150000006,0.150000006,0.100000001) + float3(-0.075000003,-0.075000003,-0.0500000007);
   r0.w = dot(v3.xyz, v3.xyz);
   r0.w = rsqrt(r0.w);
   r1.xyz = v3.xyz * r0.www;
   r0.xyzw = r1.xyxy * r0.zzzz + r0.xyxy;
   r2.xy = v1.xy * float2(1,1) + r0.zw;
-  r2.xyz = WaterNormalsSampler.Sample(WaterNormalsSampler_s, r2.xy).xyw;
+  r2.xyz = WaterNormalsSampler.Sample(WaterNormalsSampler_s_s, r2.xy).xyw;
   r2.xyz = r2.xyz * float3(0.150000006,0.150000006,0.100000001) + float3(-0.075000003,-0.075000003,-0.0500000007);
   r2.xyzw = r1.xyxy * r2.zzzz + r2.xyxy;
   r0.xyzw = r2.xyzw + r0.xyzw;
@@ -89,13 +87,13 @@ void main(
   r2.xy = r2.xy / r1.ww;
   r1.w = r1.w + r1.w;
   r2.xy = r2.xy * r1.ww + r0.xy;
-  r2.xy = WaterNormalsSampler.Sample(WaterNormalsSampler_s, r2.xy).xy;
+  r2.xy = WaterNormalsSampler.Sample(WaterNormalsSampler_s_s, r2.xy).xy;
   r2.xy = r2.xy * float2(2,2) + float2(-1,-1);
   r3.xyzw = v1.xyxy / __0SoftIntersectionFactor__1RainTilling__2DetailTilling__3Tilling.wwww;
   r4.xyzw = __0SoftIntersectionFactor__1RainTilling__2DetailTilling__3Tilling.wwww * float4(0.25,0.25,1,1);
   r0.xyzw = r3.xyzw * r4.xyzw + r0.xyzw;
-  r3.xyz = WaterNormalsSampler.Sample(WaterNormalsSampler_s, r0.xy).xyz;
-  r0.xyz = WaterNormalsSampler.Sample(WaterNormalsSampler_s, r0.zw).xyz;
+  r3.xyz = WaterNormalsSampler.Sample(WaterNormalsSampler_s_s, r0.xy).xyz;
+  r0.xyz = WaterNormalsSampler.Sample(WaterNormalsSampler_s_s, r0.zw).xyz;
   r3.xyz = r3.xyz * float3(2,2,2) + float3(-1,-1,-1);
   r0.xyz = r0.xyz * float3(2,2,2) + r3.xyz;
   r0.xy = r2.xy * __0DetailNormalsScale__1NormalsScale__2__3.xx + r0.xy;
@@ -137,7 +135,7 @@ void main(
   r2.xy = PS_ScreenSize.ww * r2.xy;
   r2.xy = float2(64,64) * r2.xy;
   r2.zw = v2.xy / v2.ww;
-  r0.w = sceneDepthSampler.Sample(sceneDepthSampler_s, r2.zw).x;
+  r0.w = sceneDepthSampler.Sample(sceneDepthSampler_s_s, r2.zw).x;
   r1.w = r0.w * PS_NearFarClipDist.y + -v2.w;
   r0.w = PS_NearFarClipDist.y * r0.w;
   r1.w = saturate(__0SoftIntersectionFactor__1RainTilling__2DetailTilling__3Tilling.x * r1.w);
@@ -152,41 +150,41 @@ void main(
   r3.xy = r3.xy * r3.zw + r2.zw;
   r0.z = -r1.y * r3.w + 1;
   r4.z = -r0.z * PS_HPosScale.y + 1;
-  r0.z = sceneDepthSampler.Sample(sceneDepthSampler_s, r3.xy).x;
+  r0.z = sceneDepthSampler.Sample(sceneDepthSampler_s_s, r3.xy).x;
   r0.z = PS_NearFarClipDist.y * r0.z;
-  r0.z = v2.w < r0.z;
+  r0.z = cmp(v2.w < r0.z);
   r0.z = r0.z ? 1.000000 : 0;
   r1.z = 0.150000006 * r1.x;
   r1.xy = PS_HPosScale.xy * r1.xy;
   r4.x = r1.z * r3.z;
   r3.xy = r4.xz * r0.zz + r2.zw;
-  r3.xyzw = ReflSampler.SampleGrad(ReflSampler_s, r3.xy, r2.xy, float2(0,0)).xyzw;
+  r3.xyzw = ReflSampler.SampleGrad(ReflSampler_s_s, r3.xy, r2.xyxx, float4(0,0,0,0)).xyzw;
   r0.z = r3.w * r3.w;
   r0.z = 32 * r0.z;
   r3.xyz = r3.xyz * r0.zzz;
   r3.xyz = r3.xyz / g_PS_SunLightDir.www;
-  r2.xy = r1.xy * float2(0.0985000059,0.0985000059) + r2.zw;
-  r0.z = sceneDepthSampler.Sample(sceneDepthSampler_s, r2.xy).x;
+  r2.xy = r1.xy * float2(0.0984999985,0.0984999985) + r2.zw;
+  r0.z = sceneDepthSampler.Sample(sceneDepthSampler_s_s, r2.xy).x;
   r4.z = PS_NearFarClipDist.y * r0.z;
   r5.xyzw = r1.xyxy * float4(0.102499999,0.102499999,0.100000001,0.100000001) + r2.zwzw;
   r1.xy = float2(0.100000001,0.100000001) * r1.xy;
-  r0.z = sceneDepthSampler.Sample(sceneDepthSampler_s, r5.zw).x;
-  r1.z = sceneDepthSampler.Sample(sceneDepthSampler_s, r5.xy).x;
+  r0.z = sceneDepthSampler.Sample(sceneDepthSampler_s_s, r5.zw).x;
+  r1.z = sceneDepthSampler.Sample(sceneDepthSampler_s_s, r5.xy).x;
   r4.y = PS_NearFarClipDist.y * r0.z;
   r4.x = PS_NearFarClipDist.y * r1.z;
   r0.z = r1.z * PS_NearFarClipDist.y + -r0.w;
-  r4.xyz = v2.www < r4.xyz;
-  r4.xyz = r4.xyz ? 1.000000 : 0;
+  r4.xyz = cmp(v2.www < r4.xyz);
+  r4.xyz = r4.xyz ? float3(1,1,1) : 0;
   r2.xy = r4.xx * r1.xy;
   r2.xy = r2.xy * float2(1.02499998,1.02499998) + r2.zw;
-  r5.x = RefractionSampler.Sample(RefractionSampler_s, r2.xy).x;
+  r5.x = RefractionSampler.Sample(RefractionSampler_s_s, r2.xy).x;
   r2.xy = r4.zz * r1.xy;
   r1.xy = r1.xy * r4.yy + r2.zw;
   r0.z = r4.x * r0.z + r0.w;
-  r5.y = RefractionSampler.Sample(RefractionSampler_s, r1.xy).y;
+  r5.y = RefractionSampler.Sample(RefractionSampler_s_s, r1.xy).y;
   r1.xy = r2.xy * float2(0.985000014,0.985000014) + r2.zw;
-  r0.w = volFogShadowSampler.Sample(volFogShadowSampler_s, r2.zw).w;
-  r5.z = RefractionSampler.Sample(RefractionSampler_s, r1.xy).z;
+  r0.w = volFogShadowSampler.Sample(volFogShadowSampler_s_s, r2.zw).w;
+  r5.z = RefractionSampler.Sample(RefractionSampler_s_s, r1.xy).z;
   r1.xyz = r5.xyz / g_PS_SunLightDir.www;
   r1.xyz = -cFogColorDensity.xyz + r1.xyz;
   r2.x = dot(v3.xyz, CameraFrontVector.xyz);
@@ -237,7 +235,7 @@ void main(
   r2.x = exp2(r2.x);
   r2.x = -1 + r2.x;
   r2.x = r2.x / r1.w;
-  r1.w = 0.00999999978 < abs(r1.w);
+  r1.w = cmp(0.00999999978 < abs(r1.w));
   r1.w = r1.w ? r2.x : 1;
   r2.x = vfParams.y * r0.x;
   r0.x = saturate(r0.x * vfRampParams.x + vfRampParams.y);
@@ -255,8 +253,3 @@ void main(
   o0.w = 1;
   return;
 }
-
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-D:\GAMES\Crysis 3\wrapper1349(165,13-82): warning X3206: 'SampleGrad': implicit truncation of vector type
-D:\GAMES\Crysis 3\wrapper1349(165,13-82): warning X3206: 'SampleGrad': implicit truncation of vector type
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/

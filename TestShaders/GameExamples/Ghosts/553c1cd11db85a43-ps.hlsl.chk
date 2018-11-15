@@ -1,56 +1,55 @@
-// Water under grate.  Seems OK to just disable.
-
-Texture2D<float4> t5 : register(t5);
-
-Texture2D<float4> t4 : register(t4);
-
-Texture2D<float4> t0 : register(t0);
-
-SamplerState s5 : register(s5);
-
-SamplerState s4 : register(s4);
-
-SamplerState s0 : register(s0);
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:28:05 2018
 
 cbuffer cb2 : register(b2)
 {
-  float4 cb2[26];
+  float4 cb2[26] : packoffset(c0);
 }
 
+SamplerState s0_s : register(s0);
+SamplerState s4_s : register(s4);
+SamplerState s5_s : register(s5);
+Texture2D<float4> t0 : register(t0);
+Texture2D<float4> t4 : register(t4);
+Texture2D<float4> t5 : register(t5);
 
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> StereoParams : register(t125);
+
 
 void main(
   float4 v0 : SV_POSITION0,
-  float4 v1 : COLOR0,
-  float2 v2 : TEXCOORD0,
-  float w2 : TEXCOORD4,
-  float4 v3 : TEXCOORD1,
-  float4 v4 : TEXCOORD2,
-  float4 v5 : TEXCOORD3,
+  linear centroid float4 v1 : COLOR0,
+  linear centroid float2 v2 : TEXCOORD0,
+  linear centroid float w2 : TEXCOORD4,
+  linear centroid float4 v3 : TEXCOORD1,
+  linear centroid float4 v4 : TEXCOORD2,
+  linear centroid float4 v5 : TEXCOORD3,
   out float4 o0 : SV_TARGET0)
 {
   float4 r0,r1;
-  uint4 bitmask;
-  r0.xyz = t4.Sample(s4, v2.xyxx).xyw;
-  r0.xy = r0.xy * float2(2.000000e+000,2.000000e+000) + float2(-1.000000e+000,-1.000000e+000);
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyz = t4.Sample(s4_s, v2.xy).xyw;
+  r0.xy = r0.xy * float2(2,2) + float2(-1,-1);
   o0.w = v1.w * r0.z;
   r0.xzw = r0.xxx * v3.xyw + v5.xyw;
   r0.xyz = r0.yyy * v4.xyw + r0.xzw;
   r1.xyzw = cb2[25].xyzw * r0.zzzz;
-  r0.xy = max(r0.xy, r1.xy);
-  r0.xy = min(r1.zw, r0.xy);
+  r0.xy = max(r1.xy, r0.xy);
+  r0.xy = min(r0.xy, r1.zw);
   r0.xy = r0.xy / r0.zz;
-  r0.z = t5.SampleLevel(s5, r0.xyxx, 0.000000000e+000).x;
-  r0.xyw = t0.Sample(s0, r0.xyxx).xyz;
-  r0.z = max(abs(r0.z), 9.999999939e-009);
+  r0.z = t5.SampleLevel(s5_s, r0.xy, 0).x;
+  r0.xyw = t0.Sample(s0_s, r0.xy).xyz;
+  r0.z = max(0, abs(r0.z));
   r0.z = cb2[15].x / r0.z;
-  r0.z = r0.z < w2.x;
+  r0.z = cmp(r0.z < w2.x);
   r1.xy = v5.xy / v5.ww;
-  r1.xyz = t0.Sample(s0, r1.xyxx).xyz;
-  r0.x = r0.z ? r1.x : r0.x;
-  r0.y = r0.z ? r1.y : r0.y;
-  r0.z = r0.z ? r1.z : r0.w;
+  r1.xyz = t0.Sample(s0_s, r1.xy).xyz;
+  r0.xyz = r0.zzz ? r1.xyz : r0.xyw;
   o0.xyz = v1.xyz * r0.xyz;
   return;
 }

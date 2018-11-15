@@ -1,4 +1,4 @@
-// Lights on outside of motel.
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:18 2018
 
 cbuffer Viewport : register(b0)
 {
@@ -39,6 +39,13 @@ cbuffer Viewport : register(b0)
 
 Texture2D<float4> StereoParams : register(t125);
 
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
 void main(
   float4 v0 : position0,
   float4 v1 : color1,
@@ -50,15 +57,9 @@ void main(
   out float4 o2 : SV_Position0)
 {
   o0.xyz = _ViewPoint_ExposureScale.www * v1.xyz;
-  o0.w = 1.000000000e+000;
+  o0.w = 1;
   o1.xy = v3.xy;
   o2.xyz = v0.xyz;
-  o2.w = 1.000000000e+000;
-  
-float4 stereo = StereoParams.Load(0);
-float separation = stereo.x;
-float convergence = stereo.y;
-
-o0.x += separation * (o0.w - convergence);
+  o2.w = 1;
   return;
 }

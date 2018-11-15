@@ -1,4 +1,4 @@
-// Lights on outside of motel, shining down on walls.
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:17 2018
 
 cbuffer Viewport : register(b0)
 {
@@ -71,28 +71,31 @@ cbuffer LightData : register(b1)
 
 Texture2D<float4> StereoParams : register(t125);
 
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
 void main(
   float4 v0 : position0,
   out float4 o0 : SV_Position0)
 {
   float4 r0,r1;
-  uint4 bitmask;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
   r0.x = dot(v0.xyzw, _LightVolumeTransform._m00_m10_m20_m30);
   r0.y = dot(v0.xyzw, _LightVolumeTransform._m01_m11_m21_m31);
   r0.z = dot(v0.xyzw, _LightVolumeTransform._m02_m12_m22_m32);
   r1.x = dot(r0.xyz, _ViewMatrix._m00_m10_m20);
   r1.y = dot(r0.xyz, _ViewMatrix._m01_m11_m21);
   r1.z = dot(r0.xyz, _ViewMatrix._m02_m12_m22);
-  r1.w = 1.000000000e+000;
+  r1.w = 1;
   o0.x = dot(r1.xyzw, _ProjectionMatrix._m00_m10_m20_m30);
   o0.y = dot(r1.xyzw, _ProjectionMatrix._m01_m11_m21_m31);
   o0.z = dot(r1.xyzw, _ProjectionMatrix._m02_m12_m22_m32);
   o0.w = dot(r1.xyzw, _ProjectionMatrix._m03_m13_m23_m33);
-
-float4 stereo = StereoParams.Load(0);
-float separation = stereo.x;
-float convergence = stereo.y;
-
-o0.x += separation * (o0.w - convergence);
   return;
 }

@@ -1,7 +1,4 @@
-// Manually fixed shader.
-// (66,13-88): error X3018: invalid subscript 'xyzw'
-//	making that a float2, as .xy instead works, gives same code as long
-//	as you use ps_4_0 as target.
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:37 2018
 
 cbuffer ScreenSpaceReflectionConstantscb : register(b2)
 {
@@ -27,15 +24,21 @@ cbuffer ScreenSpaceReflectionConstantscb : register(b2)
   } g_ScreenSpaceReflectionConstants : packoffset(c0);
 
 }
-SamplerState pointSampler_s : register(s0);
-SamplerState linearSampler_s : register(s2);
+
+SamplerState pointSampler_s_s : register(s0);
+SamplerState linearSampler_s_s : register(s2);
 Texture2D<float4> InputReflections2D : register(t1);
 Texture2D<float4> InputTextureOriginalGbuffer0 : register(t2);
 Texture2D<float4> InputTextureOriginalGbuffer1 : register(t3);
 Texture2D<float2> InputTextureDepth : register(t6);
 Texture2D<float4> InputTextureOriginalGbuffer2 : register(t7);
 
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> StereoParams : register(t125);
+
 
 void main(
   float4 v0 : SV_Position0,
@@ -43,41 +46,42 @@ void main(
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1,r2,r3,r4;
-  uint4 bitmask;
-  r0.xyzw = InputTextureOriginalGbuffer0.SampleLevel(pointSampler_s, v1.xy, 0.000000000e+000).xyzw;
-  r1.xyzw = InputTextureOriginalGbuffer1.SampleLevel(pointSampler_s, v1.xy, 0.000000000e+000).xyzw;
-  r2.xyzw = InputTextureOriginalGbuffer2.SampleLevel(linearSampler_s, v1.xy, 0.000000000e+000).xyzw;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = InputTextureOriginalGbuffer0.SampleLevel(pointSampler_s_s, v1.xy, 0).xyzw;
+  r1.xyzw = InputTextureOriginalGbuffer1.SampleLevel(pointSampler_s_s, v1.xy, 0).xyzw;
+  r2.xyzw = InputTextureOriginalGbuffer2.SampleLevel(linearSampler_s_s, v1.xy, 0).xyzw;
   r0.x = r0.w * r0.w;
   r0.x = r2.w * r0.x + g_ScreenSpaceReflectionConstants.m_GlossShift;
-  r0.y = saturate(-r1.w * 3.000000000e+000 + 1.000000000e+000);
-  r0.x = saturate(-r0.x * r0.y + 5.000000000e-001);
+  r0.y = saturate(-r1.w * 3 + 1);
+  r0.x = saturate(-r0.x * r0.y + 0.5);
   r0.x = g_ScreenSpaceReflectionConstants.m_GlossContrast * r0.x;
-  r0.y = r1.z * 2.000000000e+000 + -8.000000119e-001;
+  r0.y = r1.z * 2 + -0.800000012;
   r0.y = log2(r0.y);
   r0.y = g_ScreenSpaceReflectionConstants.m_AngleAttenuation * r0.y;
   r0.y = exp2(r0.y);
   r0.z = dot(r1.xyz, r1.xyz);
   r0.z = sqrt(r0.z);
-  r0.y = r0.y < 1.000000e-001;
-  r0.z = r0.z < 5.000000e-001;
+  r0.yz = cmp(r0.yz < float2(0.100000001,0.5));
   r0.y = (int)r0.z | (int)r0.y;
   r0.x = log2(r0.x);
-  r0.x = 8.000000119e-001 * r0.x;
+  r0.x = 0.800000012 * r0.x;
   r0.x = exp2(r0.x);
-  r0.x = r0.y ? 1.000000000e+000 : r0.x;
-  r2.xyzw = InputReflections2D.SampleLevel(linearSampler_s, v1.xy, 0.000000000e+000).xyzw;
-  r3.xy = InputTextureDepth.SampleLevel(linearSampler_s, v1.xy, 0.000000000e+000).xy;
-  r0.y = r0.x >= 7.500000000e-001;
-  r0.z = r3.x >= 1.000000000e+000;
+  r0.x = r0.y ? 1 : r0.x;
+  r2.xyzw = InputReflections2D.SampleLevel(linearSampler_s_s, v1.xy, 0).xyzw;
+  r3.xyzw = InputTextureDepth.SampleLevel(linearSampler_s_s, v1.xy, 0).xyzw;
+  r0.y = cmp(r0.x >= 0.75);
+  r0.z = cmp(r3.x >= 1);
   r0.y = (int)r0.z | (int)r0.y;
-  r0.z = r2.w < 9.999999776e-003;
+  r0.z = cmp(r2.w < 0.00999999978);
   r0.y = (int)r0.z | (int)r0.y;
   if (r0.y != 0) {
-	  o0.xyzw = float4(0.000000e+000,0.000000e+000,0.000000e+000,0.000000e+000);
-	  return;
+    o0.xyzw = float4(0,0,0,0);
+    return;
   }
-  r0.x = 1.000000000e+000 + -r0.x;
-  r1.xyzw = r1.zxyz * float4(2.000000e+000,2.000000e+000,2.000000e+000,2.000000e+000) + float4(-8.000000e-001,-1.000000e+000,-1.000000e+000,-1.000000e+000);
+  r0.x = 1 + -r0.x;
+  r1.xyzw = r1.zxyz * float4(2,2,2,2) + float4(-0.800000012,-1,-1,-1);
   r0.y = g_ScreenSpaceReflectionConstants.m_ProjToWorld._m10 * v1.y;
   r4.x = v1.x * g_ScreenSpaceReflectionConstants.m_ProjToWorld._m00 + g_ScreenSpaceReflectionConstants.m_ProjToWorld._m20;
   r4.y = v1.x * g_ScreenSpaceReflectionConstants.m_ProjToWorld._m01 + g_ScreenSpaceReflectionConstants.m_ProjToWorld._m21;
@@ -88,12 +92,12 @@ void main(
   r3.y = dot(r0.yzw, r1.yzw);
   r3.y = r3.y + r3.y;
   r0.yzw = r3.yyy * r1.yzw + -r0.yzw;
-  r3.yz = float2(-5.000000e-001,-5.000000e-001) + v1.xy;
+  r3.yz = float2(-0.5,-0.5) + v1.xy;
   r3.yz = saturate(g_ScreenSpaceReflectionConstants.m_VignetteSizeScale * abs(r3.yz) + g_ScreenSpaceReflectionConstants.m_VignetteSizeBias);
   r3.y = r3.y * r3.z;
   r0.y = saturate(dot(r1.yzw, r0.yzw));
-  r0.y = 1.000000000e+000 + -r0.y;
-  r0.z = 1.000000000e+000 + -g_ScreenSpaceReflectionConstants.m_FresnelTerm;
+  r0.y = 1 + -r0.y;
+  r0.z = 1 + -g_ScreenSpaceReflectionConstants.m_FresnelTerm;
   r0.w = r0.y * r0.y;
   r0.w = r0.w * r0.w;
   r0.y = r0.y * r0.w;
@@ -102,8 +106,8 @@ void main(
   r0.z = log2(r1.x);
   r0.z = g_ScreenSpaceReflectionConstants.m_AngleAttenuation * r0.z;
   r0.z = exp2(r0.z);
-  r0.w = saturate(-r3.x * 4.000000000e+000 + 4.000000000e+000);
-  r1.x = max(r2.w, 1.000000047e-003);
+  r0.w = saturate(-r3.x * 4 + 4);
+  r1.x = max(0.00100000005, r2.w);
   o0.xyz = r2.xyz / r1.xxx;
   r0.x = saturate(r0.x + r0.x);
   r0.x = r0.y * r0.x;

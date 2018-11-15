@@ -1,5 +1,4 @@
-// Manually fixed shader.
-//  error X3018: invalid subscript 'xyzw'
+// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:39 2018
 
 cbuffer VolumetricFogConstantscb : register(b2)
 {
@@ -39,13 +38,19 @@ cbuffer VolumetricFogConstantscb : register(b2)
   } g_VolumetricFogConstants : packoffset(c0);
 
 }
-SamplerState pointSampler_s : register(s0);
-SamplerState linearSampler_s : register(s1);
+
+SamplerState pointSampler_s_s : register(s0);
+SamplerState linearSampler_s_s : register(s1);
 Texture3D<float4> InputTexture : register(t0);
 Texture2D<float4> InputTexture2D : register(t1);
 Texture2D<float> InputTextureDepth : register(t2);
 
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> StereoParams : register(t125);
+
 
 void main(
   float4 v0 : SV_Position0,
@@ -53,29 +58,30 @@ void main(
   out float4 o0 : SV_Target0)
 {
   float4 r0,r1;
-  uint4 bitmask;
-  
-  r0.xyzw = InputTextureDepth.SampleLevel(pointSampler_s, v1.xy, 0.000000000e+000);
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = InputTextureDepth.SampleLevel(pointSampler_s_s, v1.xy, 0).xyzw;
   r0.x = g_VolumetricFogConstants.m_LinearZConstants.x + r0.x;
   r0.x = g_VolumetricFogConstants.m_LinearZConstants.y / r0.x;
   r0.x = -g_VolumetricFogConstants.m_StartDistance + r0.x;
   r0.x = saturate(r0.x / g_VolumetricFogConstants.m_Distance);
   r0.x = log2(r0.x);
-  r0.x = 8.333333135e-001 * r0.x;
+  r0.x = 0.833333015 * r0.x;
   r0.z = saturate(exp2(r0.x));
   r0.xy = saturate(v1.xy);
-  r0.xyz = r0.xyz * float3(9.937500e-001,9.888889e-001,9.843750e-001) + float3(3.125000e-003,5.555556e-003,7.812500e-003);
-  r0.xyzw = InputTexture.SampleLevel(linearSampler_s, r0.xyz, 0.000000000e+000).xyzw;
+  r0.xyz = r0.xyz * float3(0.993749976,0.988888979,0.984375) + float3(0.00312500005,0.00555599993,0.00781300012);
+  r0.xyzw = InputTexture.SampleLevel(linearSampler_s_s, r0.xyz, 0).xyzw;
   r0.w = saturate(g_VolumetricFogConstants.m_FogValue * r0.w);
-  r1.xyzw = InputTexture2D.SampleLevel(pointSampler_s, v1.xy, 0.000000000e+000).xyzw;
+  r1.xyzw = InputTexture2D.SampleLevel(pointSampler_s_s, v1.xy, 0).xyzw;
   r1.xyz = log2(r1.xyz);
-  r1.xyz = float3(2.200000e+000,2.200000e+000,2.200000e+000) * r1.xyz;
+  r1.xyz = float3(2.20000005,2.20000005,2.20000005) * r1.xyz;
   r1.xyz = exp2(r1.xyz);
   r0.xyz = -r1.xyz + r0.xyz;
   r0.xyz = r0.www * r0.xyz + r1.xyz;
   r0.xyz = log2(r0.xyz);
-  r0.xyz = float3(4.545455e-001,4.545455e-001,4.545455e-001) * r0.xyz;
+  r0.xyz = float3(0.454544991,0.454544991,0.454544991) * r0.xyz;
   o0.xyz = exp2(r0.xyz);
-  o0.w = 1.000000000e+000;
+  o0.w = 1;
   return;
 }
