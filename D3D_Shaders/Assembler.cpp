@@ -974,6 +974,10 @@ static void assembleResourceDeclarationType(string *type, vector<DWORD> *v)
 	// The resource declarations all use the same format strings and
 	// encoding, so do this once, consistently, and handle all confirmed
 	// values. Use resource_types.hlsl to check the values -DarkStarSword
+	//
+	// XXX: Should parse each keyword separately in case we ever run into
+	// more complicated mixed types, which is theoretically possible, but
+	// we've never seen the compiler produce it in practice.
 
 	if (*type == "(float,float,float,float)")
 		v->push_back(0x5555);
@@ -989,6 +993,8 @@ static void assembleResourceDeclarationType(string *type, vector<DWORD> *v)
 		v->push_back(0x9987);
 	if (*type == "(double,<continued>,double,<continued>)")
 		v->push_back(0x8787);
+	if (*type == "(mixed,mixed,mixed,mixed)") // TestShaders/GameExamples/DR3/cc5538d28f8fd45e-vs
+		v->push_back(0x6666);
 	// FIXME: Fail gracefully if we don't recognise the type, since doing
 	// nothing here will cause a hang!
 }
