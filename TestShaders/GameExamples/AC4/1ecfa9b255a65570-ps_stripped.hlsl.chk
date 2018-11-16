@@ -1,0 +1,72 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:09:35 2018
+Texture2D<float4> t2 : register(t2);
+
+Texture2DMS<float4> t1 : register(t1);
+
+Texture2D<float4> t0 : register(t0);
+
+SamplerState s0_s : register(s0);
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[44];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.zw = float2(0,0);
+  r1.x = cb0[41].w;
+  r1.y = cb0[42].w;
+  r1.zw = v1.xy / r1.xy;
+  r2.xy = cb0[43].ww * r1.xy;
+  r0.xy = (int2)r1.zw;
+  r0.x = t1.Load(r0.xy, 0).x;
+  r0.x = 1 / r0.x;
+  r0.yz = v1.xy / r2.xy;
+  r1.xy = trunc(r0.yz);
+  r0.yz = frac(r0.yz);
+  r1.zw = r1.xy * r2.xy;
+  r0.w = t2.SampleLevel(s0_s, r1.zw, 0).x;
+  r1.z = t0.SampleLevel(s0_s, r1.zw, 0).x;
+  r3.x = 1 / r0.w;
+  r4.xy = r1.xy * r2.xy + r2.xy;
+  r0.w = t2.SampleLevel(s0_s, r4.xy, 0).x;
+  r1.w = t0.SampleLevel(s0_s, r4.xy, 0).x;
+  r3.w = 1 / r0.w;
+  r2.z = 0;
+  r2.xyzw = r1.xyxy * r2.xyxy + r2.xzzy;
+  r0.w = t2.SampleLevel(s0_s, r2.xy, 0).x;
+  r3.y = 1 / r0.w;
+  r0.w = t2.SampleLevel(s0_s, r2.zw, 0).x;
+  r3.z = 1 / r0.w;
+  r3.xyzw = r3.xyzw + -r0.xxxx;
+  r3.xyzw = abs(r3.xyzw) * float4(20000,20000,20000,20000) + float4(1,1,1,1);
+  r0.xw = float2(1,1) + -r0.zy;
+  r4.xyzw = r0.wyzy * r0.xxwz;
+  r0.xyzw = r4.xyzw / r3.xyzw;
+  r1.x = dot(r0.xyzw, float4(1,1,1,1));
+  r0.xyzw = r0.xyzw / r1.xxxx;
+  r1.x = t0.SampleLevel(s0_s, r2.xy, 0).x;
+  r1.y = t0.SampleLevel(s0_s, r2.zw, 0).x;
+  r0.y = r1.x * r0.y;
+  r0.x = r1.z * r0.x + r0.y;
+  r0.x = r1.y * r0.z + r0.x;
+  o0.xyzw = r1.wwww * r0.wwww + r0.xxxx;
+  return;
+}

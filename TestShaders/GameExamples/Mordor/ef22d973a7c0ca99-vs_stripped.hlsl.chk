@@ -1,0 +1,129 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:33 2018
+cbuffer cb12 : register(b12)
+{
+  float4 cb12[21];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[14];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  uint v0 : SV_VertexID0,
+  out float3 o0 : WORLDPOS0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float3 o4 : TEXCOORD3)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t0, 32 
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_input_sgv v0.x, vertex_id
+  float4 r0,r1,r2,r3;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Missing reflection info for shader. No names possible.
+// Known bad code for instruction (needs manual fix):
+ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r0.xyzw, v0.x, l(0), t0.wxyz
+r0.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r0.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r0.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r1.xyz = r0.yzw;
+  r1.w = 1;
+  o0.x = dot(cb0[6].xyzw, r1.xyzw);
+  o0.y = dot(cb0[7].xyzw, r1.xyzw);
+  r2.x = dot(cb0[8].xyzw, r1.xyzw);
+  r1.x = dot(cb0[10].xyzw, r1.xyzw);
+  r1.x = cb12[18].w + r1.x;
+  o0.z = r2.x;
+  r1.yzw = cb0[13].xyz + -r0.yzw;
+// Missing reflection info for shader. No names possible.
+// Known bad code for instruction (needs manual fix):
+ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r3.xyzw, v0.x, l(16), t0.xyzw
+r3.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r3.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r3.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r3.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.yz = r3.xy;
+  o2.xy = r3.zw;
+  o1.x = dot(cb0[6].xyz, r0.xyz);
+  o1.y = dot(cb0[7].xyz, r0.xyz);
+  o1.z = dot(cb0[8].xyz, r0.xyz);
+  r0.x = dot(cb0[9].xyz, r1.yzw);
+  r0.z = dot(cb0[11].xyz, r1.yzw);
+  r0.y = dot(cb0[10].xyz, r1.yzw);
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.yzw = r0.xyz * r0.www;
+  r0.x = -r0.y * r0.w + -0.150000006;
+  r0.x = saturate(1 + -r0.x);
+  r0.x = r0.x * r0.x;
+  r0.y = dot(-r1.yzw, cb12[20].xyz);
+  r0.z = -cb12[16].y * r0.y + cb12[16].x;
+  r0.y = r0.y * r0.y + 1;
+  r0.z = log2(abs(r0.z));
+  r0.yz = float2(0.0596829988,-1.5) * r0.yz;
+  r0.z = exp2(r0.z);
+  r0.w = cb12[16].z * r0.z + -cb12[15].z;
+  r0.z = cb12[16].z * r0.z;
+  r0.w = max(0, r0.w);
+  r1.y = 1.99999995e-005 * abs(r2.x);
+  r1.y = min(1, r1.y);
+  r1.y = 1 + -r1.y;
+  r0.z = -r0.w * r1.y + r0.z;
+  r0.z = max(cb12[19].w, r0.z);
+  r0.w = max(0, r1.x);
+  r1.x = cb12[18].z + -r1.x;
+  r1.x = r1.x / cb12[15].y;
+  r1.y = -r0.w / cb12[15].x;
+  r0.w = -r0.w / cb12[14].w;
+  r0.w = 1.44269502 * r0.w;
+  r0.w = exp2(r0.w);
+  r1.y = 1.44269502 * r1.y;
+  r1.y = exp2(r1.y);
+  r1.y = cb12[16].w + r1.y;
+  r1.y = cb12[17].y * r1.y;
+  r1.y = 0.5 * r1.y;
+  r0.x = r1.y * r0.x;
+  r0.x = min(cb12[15].w, r0.x);
+  r0.x = max(cb12[17].x, r0.x);
+  r0.z = r0.z * r0.x;
+  r1.yzw = cb12[14].xyz * r0.www + r0.xxx;
+  r2.yzw = cb12[14].xyz * r0.www;
+  r0.xyz = r2.yzw * r0.yyy + r0.zzz;
+  r0.xyz = r0.xyz / r1.yzw;
+  r2.yzw = -r1.yzw * r1.xxx;
+  r1.xyz = -r1.yzw * abs(r2.xxx);
+  r1.xyz = float3(1.44269502,1.44269502,1.44269502) * r1.xyz;
+  r1.xyz = exp2(r1.xyz);
+  r2.xyz = float3(1.44269502,1.44269502,1.44269502) * r2.yzw;
+  r2.xyz = exp2(r2.xyz);
+  r3.xyz = log2(cb12[19].xyz);
+  r3.xyz = float3(0.454544991,0.454544991,0.454544991) * r3.xyz;
+  r3.xyz = exp2(r3.xyz);
+  r2.xyz = r3.xyz * r2.xyz;
+  r0.xyz = r2.xyz * r0.xyz;
+  r2.xyz = float3(1,1,1) + -r1.xyz;
+  o4.xyz = r1.xyz;
+  r0.xyz = r0.xyz * r2.xyz + float3(-0.00400000019,-0.00400000019,-0.00400000019);
+  r0.xyz = max(float3(0,0,0), r0.xyz);
+  r1.xyz = r0.xyz * float3(6.19999981,6.19999981,6.19999981) + float3(0.5,0.5,0.5);
+  r1.xyz = r1.xyz * r0.xyz;
+  r2.xyz = r0.xyz * float3(6.19999981,6.19999981,6.19999981) + float3(1.70000005,1.70000005,1.70000005);
+  r0.xyz = r0.xyz * r2.xyz + float3(0.0599999987,0.0599999987,0.0599999987);
+  o3.xyz = r1.xyz / r0.xyz;
+  return;
+}

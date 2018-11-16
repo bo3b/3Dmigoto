@@ -1,0 +1,59 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:09:49 2018
+Texture2D<float4> t1 : register(t1);
+
+Texture2D<float4> t0 : register(t0);
+
+SamplerState s1_s : register(s1);
+
+SamplerState s0_s : register(s0);
+
+cbuffer cb9 : register(b9)
+{
+  float4 cb9[5];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[28];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : TEXCOORD0,
+  float4 v1 : SV_Position0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = -cb9[2].zw + v0.xy;
+  r0.xy = float2(256,256) * r0.xy;
+  r0.xy = floor(r0.xy);
+  r0.x = r0.y * cb9[4].z + r0.x;
+  r0.x = (int)r0.x;
+  r0.y = (uint)cb9[4].x;
+  uiDest.x = (uint)r0.x / (uint)r0.y;
+  r1.x = (uint)r0.x % (uint)r0.y;
+  r0.x = uiDest.x;
+  r1.x = (int)r1.x;
+  r1.y = (int)r0.x;
+  r0.xy = float2(0.5,0.5) + r1.xy;
+  r0.xy = cb9[0].xy * r0.xy;
+  r0.xy = r0.xy * float2(0.00390599994,0.00390599994) + cb9[0].zw;
+  r0.xy = t1.Sample(s1_s, r0.xy).yz;
+  r0.xy = r0.yx * float2(0.996093988,0.996093988) + float2(0.00195299997,0.00195299997);
+  r0.xy = r0.xy * cb9[0].xy + cb9[0].zw;
+  r0.xyzw = t0.Sample(s0_s, r0.xy).xyzw;
+  o0.xyz = cb0[27].yyy * r0.xyz;
+  o0.w = r0.w;
+  return;
+}

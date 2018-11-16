@@ -1,0 +1,38 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:33 2018
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[10];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float2 v0 : SV_POSITION0,
+  float4 v1 : BLENDWEIGHT0,
+  float4 v2 : BLENDINDICES0,
+  out float4 o0 : SV_POSITION0,
+  out float2 o1 : TEXCOORD0,
+  out float2 p1 : TEXCOORD1,
+  out float4 o2 : TEXCOORD2,
+  out float4 o3 : TEXCOORD3)
+{
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  o0.xy = v0.xy;
+  o0.zw = float2(0,1);
+  o1.xyzw = v0.xyxy * float4(0.5,-0.5,1,-1) + float4(0.5,0.5,0,0);
+  r0.xyzw = v0.xyxy * float4(0.5,-0.5,0.5,-0.5) + float4(0.5,0.5,0.5,0.5);
+  r1.xyzw = float4(1,1,1,1) / cb0[9].xyxy;
+  o2.xyzw = r1.zwzw * float4(-0.444671988,-1.33924401,1.33924401,-0.444671988) + r0.zwzw;
+  o3.xyzw = r1.xyzw * float4(-1.33924401,0.444671988,0.444671988,1.33924401) + r0.xyzw;
+  return;
+}

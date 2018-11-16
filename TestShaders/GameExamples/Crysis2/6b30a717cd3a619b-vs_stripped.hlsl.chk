@@ -1,0 +1,73 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:07 2018
+cbuffer cb3 : register(b3)
+{
+  float4 cb3[14];
+}
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[3];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : POSITION0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : COLOR0,
+  float4 v3 : TANGENT0,
+  float4 v4 : BINORMAL0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float4 o2 : TEXCOORD1,
+  out float4 o3 : TEXCOORD2,
+  out float3 o4 : TEXCOORD3)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.w = -cb3[6].x + cb1[0].w;
+  r0.xyz = cb1[0].xyz;
+  r1.xyz = v0.xyz;
+  r1.w = 1;
+  r0.x = dot(r0.xyzw, r1.xyzw);
+  r2.w = -cb3[6].y + cb1[1].w;
+  r2.xyz = cb1[1].xyz;
+  r0.y = dot(r2.xyzw, r1.xyzw);
+  r2.w = -cb3[6].z + cb1[2].w;
+  r2.xyz = cb1[2].xyz;
+  r0.z = dot(r2.xyzw, r1.xyzw);
+  r0.w = 1;
+  o0.x = dot(cb3[10].xyzw, r0.xyzw);
+  o0.y = dot(cb3[11].xyzw, r0.xyzw);
+  o0.z = dot(cb3[12].xyzw, r0.xyzw);
+  r0.x = dot(cb3[13].xyzw, r0.xyzw);
+  o0.w = r0.x;
+  o1.x = cb3[9].w * r0.x;
+  o1.yzw = float3(0,0,0);
+  o2.xyzw = v1.xyzw;
+  r0.xyz = float3(9.99999997e-007,0,0) + v3.xyz;
+  r1.x = dot(cb1[0].xyz, r0.xyz);
+  r1.y = dot(cb1[1].xyz, r0.xyz);
+  r1.z = dot(cb1[2].xyz, r0.xyz);
+  r0.x = dot(r1.xyz, r1.xyz);
+  r0.x = rsqrt(r0.x);
+  o3.xyz = r1.xyz * r0.xxx;
+  o3.w = v3.w;
+  r0.xyz = float3(-9.99999997e-007,0,0) + v4.xyz;
+  r1.x = dot(cb1[0].xyz, r0.xyz);
+  r1.y = dot(cb1[1].xyz, r0.xyz);
+  r1.z = dot(cb1[2].xyz, r0.xyz);
+  r0.x = dot(r1.xyz, r1.xyz);
+  r0.x = rsqrt(r0.x);
+  o4.xyz = r1.xyz * r0.xxx;
+  return;
+}

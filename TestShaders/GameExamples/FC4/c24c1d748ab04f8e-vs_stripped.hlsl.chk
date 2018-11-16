@@ -1,0 +1,63 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:18 2018
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[9];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[48];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  int4 v0 : TEXCOORD0,
+  int2 v1 : TEXCOORD1,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : TEXCOORD0,
+  out float2 o2 : TEXCOORD1)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = (int2)v0.xy;
+  r1.xy = cmp(-r0.yx < float2(-16383,-16383));
+  r1.zw = cmp(r0.yx < float2(-16383,-16383));
+  r2.xz = r1.xz ? float2(1,1) : 0;
+  r0.zw = r1.yw ? float2(1,1) : 0;
+  r1.x = dot(r2.xz, r2.xz);
+  r1.x = cmp(r1.x != 0.000000);
+  r2.yw = r1.xx ? float2(0,0) : r0.zw;
+  r0.z = dot(r2.xyzw, r2.xyzw);
+  r0.w = dot(r2.xyzw, cb1[7].xyzw);
+  r0.z = cmp(r0.z != 0.000000);
+  r0.z = r0.z ? r0.w : cb1[8].w;
+  r1.xy = (int2)v1.xy;
+  r1.zw = float2(0.0312509984,0.0312509984);
+  r1.xy = r1.zw * r1.xy;
+  r0.w = r1.x + -r1.y;
+  r1.z = r0.z * r0.w + r1.y;
+  r0.zw = float2(6.09999988e-005,6.09999988e-005) * cb1[8].xx;
+  r1.xy = r0.zw * r0.xy + cb1[8].yz;
+  r0.xy = r0.xy * float2(3.09999996e-005,-3.09999996e-005) + float2(0.5,0.5);
+  o2.xy = float2(0.96875,0.96875) * r0.xy;
+  r0.xyz = -cb0[8].xyz + r1.xyz;
+  o1.xyz = r1.xyz;
+  r0.w = 1;
+  o0.x = dot(r0.xyzw, cb0[44].xyzw);
+  o0.y = dot(r0.xyzw, cb0[45].xyzw);
+  o0.z = dot(r0.xyzw, cb0[46].xyzw);
+  o0.w = dot(r0.xyzw, cb0[47].xyzw);
+  r0.x = dot(r0.xy, r0.xy);
+  o1.w = sqrt(r0.x);
+  return;
+}

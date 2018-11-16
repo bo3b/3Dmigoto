@@ -1,0 +1,30 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:13 2018
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : CUSTOM0,
+  float4 v1 : CUSTOM1,
+  float4 v2 : CUSTOM2,
+  float4 v3 : CUSTOM3,
+  out float2 o0 : IO0_uv0,
+  out float2 p0 : IO1_uv1,
+  out float2 o1 : IO2_uv0Min0,
+  out float2 p1 : IO3_uv0Max0,
+  out float2 o2 : IO4_uv1Min0,
+  out float2 p2 : IO5_uv1Max0,
+  out float4 o3 : SV_Position0)
+{
+  o0.xyzw = v1.xyzw;
+  o1.xyzw = v2.xyzw;
+  o2.xyzw = v3.xyzw;
+  o3.xyz = v0.xyz;
+  o3.w = 1;
+  return;
+}

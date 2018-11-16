@@ -1,0 +1,198 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:00 2018
+TextureCube<float4> t8 : register(t8);
+
+TextureCube<float4> t7 : register(t7);
+
+TextureCube<float4> t6 : register(t6);
+
+Texture2D<float4> t5 : register(t5);
+
+Texture2D<float4> t4 : register(t4);
+
+Texture2D<float4> t3 : register(t3);
+
+Texture2D<float4> t2 : register(t2);
+
+Texture2D<float4> t1 : register(t1);
+
+Texture2D<float4> t0 : register(t0);
+
+SamplerState s8_s : register(s8);
+
+SamplerState s7_s : register(s7);
+
+SamplerState s6_s : register(s6);
+
+SamplerState s5_s : register(s5);
+
+SamplerState s4_s : register(s4);
+
+SamplerState s3_s : register(s3);
+
+SamplerState s2_s : register(s2);
+
+SamplerState s1_s : register(s1);
+
+SamplerState s0_s : register(s0);
+
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[5];
+}
+
+cbuffer cb3 : register(b3)
+{
+  float4 cb3[35];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[6];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : COLOR0,
+  float4 v2 : COLOR1,
+  linear centroid float4 v3 : TEXCOORD0,
+  linear centroid float4 v4 : TEXCOORD1,
+  float4 v5 : TEXCOORD4,
+  float4 v6 : TEXCOORD5,
+  float4 v7 : TEXCOORD6,
+  float4 v8 : TEXCOORD7,
+  float3 v9 : TEXCOORD8,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyz = t0.Sample(s2_s, v4.xy).xyz;
+  r1.xyz = t1.Sample(s1_s, v4.xy).xyz;
+  r1.xyz = float3(-0.200000003,-0.200000003,-0.200000003) + r1.xyz;
+  r1.xyz = saturate(float3(1000,1000,1000) * r1.xyz);
+  r0.w = dot(r1.xyz, float3(1,1,1));
+  r1.w = cmp(9.99999975e-005 < r0.w);
+  if (r1.w != 0) {
+    r1.xyz = r1.xyz / r0.www;
+  }
+  r2.xyz = cb0[3].xyz * r0.xyz;
+  r3.xyz = cb0[4].xyz * r0.xyz;
+  r4.xyz = cb0[5].xyz * r0.xyz;
+  r3.xyz = r3.xyz * r1.yyy;
+  r2.xyz = r1.xxx * r2.xyz + r3.xyz;
+  r2.xyz = r1.zzz * r4.xyz + r2.xyz;
+  r0.w = dot(r1.xyz, float3(1,1,1));
+  r0.w = 1 + -r0.w;
+  r0.w = max(0, r0.w);
+  r0.xyz = r0.www * r0.xyz + r2.xyz;
+  r0.xyz = v2.xyz * r0.xyz;
+  r1.xy = v5.xy / v5.zz;
+  r1.zw = v3.xy / v3.ww;
+  r1.zw = r1.zw + -r1.xy;
+  r1.xy = r1.zw * float2(2.0999999,2.0999999) + r1.xy;
+  r0.w = dot(v6.xyz, v6.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = v6.xyz * r0.www;
+  r0.w = cb3[26].x * cb0[0].w;
+  r0.w = saturate(5 * r0.w);
+  r1.z = -cb0[1].z * r0.w + 1;
+  r3.xyz = r1.zzz * r0.xyz;
+  r4.xyz = t2.Sample(s4_s, v4.xy).xyz;
+  r4.xyz = r4.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r1.w = dot(v9.xyz, v9.xyz);
+  r1.w = rsqrt(r1.w);
+  r5.xyz = v9.xyz * r1.www;
+  r1.w = dot(v8.xyz, v8.xyz);
+  r1.w = rsqrt(r1.w);
+  r6.xyz = v8.xyz * r1.www;
+  r6.xyz = r6.xyz * r4.yyy;
+  r4.xyw = r4.xxx * r5.xyz + r6.xyz;
+  r2.xyz = r4.zzz * r2.xyz + r4.xyw;
+  r1.w = dot(r2.xyz, r2.xyz);
+  r1.w = rsqrt(r1.w);
+  r2.xzw = r2.xyz * r1.www;
+  r4.xyzw = t3.Sample(s3_s, v4.xy).wxyz;
+  r5.xy = cb0[1].yx + -cb0[0].zy;
+  r5.xy = r0.ww * r5.xy + cb0[0].zy;
+  r0.w = -cb0[0].x + r5.y;
+  r0.w = r4.x * r0.w + cb0[0].x;
+  r3.w = dot(v7.xyz, v7.xyz);
+  r3.w = rsqrt(r3.w);
+  r5.yzw = v7.xyz * r3.www;
+  r6.x = t4.Sample(s0_s, r1.xy).w;
+  r6.y = saturate(dot(r2.xzw, cb3[32].xyz));
+  r6.yzw = cb3[34].xyz * r6.yyy;
+  r7.xyz = -v7.xyz * r3.www + cb3[32].xyz;
+  r3.w = dot(r7.xyz, r7.xyz);
+  r3.w = rsqrt(r3.w);
+  r7.xyz = r7.xyz * r3.www;
+  r3.w = 8 + r0.w;
+  r3.w = 0.0454729982 * r3.w;
+  r7.x = saturate(dot(r2.xzw, r7.xyz));
+  r7.x = max(0, r7.x);
+  r7.x = log2(r7.x);
+  r0.w = r7.x * r0.w;
+  r0.w = exp2(r0.w);
+  r0.w = r3.w * r0.w;
+  r0.w = r0.w * r6.x;
+  r7.xyz = cb3[34].xyz * r0.www;
+  r0.w = saturate(v4.z);
+  r8.xyz = t5.Sample(s6_s, r1.xy).xyz;
+  r6.xyz = r6.yzw * r6.xxx + r8.xyz;
+  r8.xyz = t6.Sample(s7_s, r2.xzw).xyz;
+  r9.xyz = cb4[2].xxx * r8.xyz;
+  r7.xyz = float3(0.00100000005,0.00100000005,0.00100000005) * r7.xyz;
+  r1.x = dot(r5.yzw, r2.xzw);
+  r1.x = r1.x + r1.x;
+  r2.xzw = r2.xzw * -r1.xxx + r5.yzw;
+  r4.x = saturate(r4.x);
+  r1.x = r4.x * r4.x;
+  r5.yzw = t7.Sample(s8_s, r2.xzw).xyz;
+  r1.y = -r4.x * r4.x + 1;
+  r1.y = 6 * r1.y;
+  r2.xzw = t8.SampleLevel(s5_s, r2.xzw, r1.y).xyz;
+  r2.xzw = r2.xzw + -r5.yzw;
+  r2.xzw = r1.xxx * r2.xzw + r5.yzw;
+  r2.xzw = r2.xzw * r0.www;
+  r5.yzw = r5.xxx * r4.yzw;
+  r10.xyz = cb0[1].www * r4.yzw;
+  r11.xyz = float3(1.60000002,1.60000002,1.60000002) * r2.xzw;
+  r0.w = r2.y * r1.w + 1;
+  r1.xy = r0.ww * float2(0.25,0.25) + float2(0.5,-0.5);
+  r1.yw = cb4[3].yz * r1.yy + float2(1,1);
+  r12.xyz = r3.xyz * r1.xxx;
+  r9.xyz = r12.xyz * r9.xyz;
+  r3.xyz = r6.xyz * r3.xyz;
+  r3.xyz = r3.xyz * r1.yyy;
+  r3.xyz = cb4[2].zzz * r3.xyz;
+  r5.yzw = r5.yzw * r7.xyz;
+  r5.yzw = r5.yzw * r1.yyy;
+  r6.xyz = r11.xyz * r10.xyz;
+  r6.xyz = r6.xyz * r1.www;
+  r3.xyz = r9.xyz * cb4[2].yyy + r3.xyz;
+  r3.xyz = r5.yzw * cb4[2].www + r3.xyz;
+  r3.xyz = r6.xyz * cb4[3].xxx + r3.xyz;
+  r5.yzw = cb4[2].xxx * r8.xyz + -r3.xyz;
+  r3.xyz = cb4[3].www * r5.yzw + r3.xyz;
+  r2.xyz = r2.xzw * float3(1.60000002,1.60000002,1.60000002) + -r3.xyz;
+  r2.xyz = cb4[4].xxx * r2.xyz + r3.xyz;
+  r1.xyw = -r2.xyz + r1.xxx;
+  r1.xyw = cb4[4].yyy * r1.xyw + r2.xyz;
+  r0.xyz = r0.xyz * r1.zzz + -r1.xyw;
+  r0.xyz = cb4[4].zzz * r0.xyz + r1.xyw;
+  r1.xyz = r4.yzw * r5.xxx + -r0.xyz;
+  r0.xyz = cb4[4].www * r1.xyz + r0.xyz;
+  o0.xyz = r0.xyz * v1.www + v1.xyz;
+  o0.w = 1;
+  return;
+}

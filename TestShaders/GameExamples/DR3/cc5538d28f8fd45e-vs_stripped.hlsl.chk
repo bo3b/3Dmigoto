@@ -1,0 +1,52 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:13 2018
+Buffer<mixed4> t114 : register(t114);
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[4];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[199];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float3 v0 : POSITION0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : COLOR0,
+  out float2 o2 : TEXCOORD0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = t114.Load(float4(0,0,0,0)).xyzw;
+  r1.xyz = v0.xyz;
+  r1.w = 1;
+  r0.x = dot(r0.xyzw, r1.xyzw);
+  r2.xyzw = t114.Load(float4(1,1,1,1)).xyzw;
+  r0.y = dot(r2.xyzw, r1.xyzw);
+  r2.xyzw = t114.Load(float4(2,2,2,2)).xyzw;
+  r0.z = dot(r2.xyzw, r1.xyzw);
+  r0.w = 1;
+  r1.x = dot(cb1[0].xyzw, r0.xyzw);
+  r1.y = dot(cb1[1].xyzw, r0.xyzw);
+  r1.z = dot(cb1[3].xyzw, r0.xyzw);
+  o0.z = dot(cb1[2].xyzw, r0.xyzw);
+  o0.xy = cb0[198].xy * r1.zz + r1.xy;
+  o0.w = r1.z;
+  o1.xyzw = float4(1,1,1,1);
+  o2.xy = v1.xy;
+  return;
+}

@@ -1,0 +1,41 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:05 2018
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[4];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[4];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : POSITION0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Position0)
+{
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = dot(cb0[0].xyzw, v0.xyzw);
+  r0.y = dot(cb0[1].xyzw, v0.xyzw);
+  r0.z = dot(cb0[2].xyzw, v0.xyzw);
+  r0.w = dot(cb0[3].xyzw, v0.xyzw);
+  r0.xyz = r0.xyz / r0.www;
+  r0.w = 1;
+  o0.x = dot(cb1[0].xyzw, r0.xyzw);
+  o0.y = dot(cb1[1].xyzw, r0.xyzw);
+  o0.z = dot(cb1[2].xyzw, r0.xyzw);
+  o0.w = dot(cb1[3].xyzw, r0.xyzw);
+  return;
+}
