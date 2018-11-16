@@ -14,9 +14,10 @@ for arg in "$@"; do
 	esac
 done
 
-find GameExamples -iname '*.hlsl.chk' -print0 |
+find GameExamples -iname '*.hlsl.chk' -a ! -iname '*stripped.hlsl.chk' -print0 |
 	while IFS= read -r -d $'\0' hlsl_chk_filename; do
 		bin_filename="$(echo "$hlsl_chk_filename" | sed 's/.hlsl.chk/.shdr/')"
+		stripped_filename="$(echo "$hlsl_chk_filename" | sed 's/.hlsl.chk/_stripped.shdr/')"
 
 		if [ ! -f "$bin_filename" ]; then
 			asm_filename=$(echo "$hlsl_chk_filename" | sed 's/.hlsl.chk/.txt/')
@@ -31,6 +32,13 @@ find GameExamples -iname '*.hlsl.chk' -print0 |
 			fi
 		fi
 
-		echo -n "....: $bin_filename..."
+		echo -n "....: $bin_filename...         "
 		run_decompiler_test "$bin_filename" "$update_chk"
+
+		if [ ! -f "$stripped_filename" ]; then
+			"$FXC" /nologo /dumpbin "$bin_filename" /Qstrip_reflect /Fo "$stripped_filename" >/dev/null 2>&1
+		fi
+
+		echo -n "....: $stripped_filename..."
+		run_decompiler_test "$stripped_filename" "$update_chk"
 	done
