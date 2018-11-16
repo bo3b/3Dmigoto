@@ -192,15 +192,16 @@ static const uint32_t* ReadConstantBuffer(ShaderInfo* psShaderInfo,
 
     ReadStringFromTokenStream((const uint32_t*)((const char*)pui32FirstConstBufToken+ui32NameOffset), psBuffer->Name);
 
+    psBuffer->asVars.resize(ui32VarCount);
+
     for(i=0; i<ui32VarCount; ++i)
     {
         //D3D11_SHADER_VARIABLE_DESC
-		// DarkStarSword: Changed this to emplace first, then get a pointer.
+		// DarkStarSword: Changed this to resize first, then get a pointer.
 		// The way we originally did this filling out the structure then inserting
 		// it with push_back(), was problematic, as the inserted struct was a copy,
 		// not the original, so the Parent pointers of all members were invalid.
-		psBuffer->asVars.emplace_back();
-        ShaderVar * const psVar = &psBuffer->asVars.back();
+        ShaderVar * const psVar = &psBuffer->asVars[i];
 
         uint32_t ui32Flags;
         uint32_t ui32TypeOffset;
