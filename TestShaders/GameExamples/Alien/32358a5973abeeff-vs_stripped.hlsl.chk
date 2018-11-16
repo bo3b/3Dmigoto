@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:09:47 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 16 07:18:55 2018
 Texture2D<float4> t4 : register(t4);
 
 SamplerState s4_s : register(s4);
@@ -31,7 +31,7 @@ void main(
   out float4 o2 : TEXCOORD1)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t0, 48 
+// unknown dcl_: dcl_resource_structured t0, 48
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v0.x, vertex_id
 // Needs manual fix for instruction:

@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:14 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 16 07:19:25 2018
 
 
 
@@ -16,7 +16,7 @@ void main(
   out float2 o2 : TEXCOORD0)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t3, 32 
+// unknown dcl_: dcl_resource_structured t3, 32
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v0.x, vertex_id
 // Needs manual fix for instruction:

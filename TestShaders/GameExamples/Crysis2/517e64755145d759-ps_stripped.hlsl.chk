@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:06 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 16 07:19:16 2018
 Texture2D<float4> t14 : register(t14);
 
 Texture2D<float4> t13 : register(t13);
@@ -69,7 +69,7 @@ void main(
   float4 fDest;
 
   r0.x = cb4[1].w * 0.159154996 + 0.318309993;
-  r0.y = cb4[1].w + 9.99999997e-007;
+  r0.y = cb4[1].w + 9.99999997e-07;
   r0.z = dot(-v2.xyz, -v2.xyz);
   r0.z = rsqrt(r0.z);
   r1.xyz = -v2.xyz * r0.zzz + cb3[2].xyz;

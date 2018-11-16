@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:47 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 16 07:20:03 2018
 Texture2D<float4> t7 : register(t7);
 
 Texture2D<float4> t6 : register(t6);
@@ -46,13 +46,13 @@ void main(
   out float4 o0 : SV_Target0)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t0, 4 
+// unknown dcl_: dcl_resource_structured t0, 4
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t1, 28 
+// unknown dcl_: dcl_resource_structured t1, 28
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t2, 8 
+// unknown dcl_: dcl_resource_structured t2, 8
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t3, 4 
+// unknown dcl_: dcl_resource_structured t3, 4
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12;
   uint4 bitmask, uiDest;
   float4 fDest;
@@ -157,7 +157,7 @@ r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
     r7.xyz = float3(0,0,0);
     r8.xyz = float3(0,0,0);
     r9.xy = float2(0,1);
-    r2.w = 1e+010;
+    r2.w = 1e+10;
     r3.z = r0.y;
     while (true) {
       r4.w = cmp((int)r0.w == (int)r3.z);
@@ -264,7 +264,7 @@ r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
     r8.xyz = r8.xyz * r0.xxx;
     r0.w = 1 + -r1.w;
     r2.w = dot(r2.xyz, -r6.xyz);
-    r2.w = max(9.99999997e-007, abs(r2.w));
+    r2.w = max(9.99999997e-07, abs(r2.w));
     r5.xyz = r5.xyz * r0.yyy + -r6.xyz;
     r0.y = dot(r5.xyz, r5.xyz);
     r0.y = rsqrt(r0.y);

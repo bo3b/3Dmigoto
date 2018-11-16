@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:42 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 16 07:19:57 2018
 cbuffer cb3 : register(b3)
 {
   float4 cb3[192];
@@ -87,7 +87,7 @@ void main(
   r1.w = r4.w * 0.5 + 0.5;
   r1.w = 255 * r1.w;
   r1.w = cb2[5].x * 32640 + r1.w;
-  o3.w = 1.49999996e-005 * r1.w;
+  o3.w = 1.49999996e-05 * r1.w;
   r1.w = dot(r2.xyz, r2.xyz);
   r1.w = rsqrt(r1.w);
   r2.xyz = r2.xyz * r1.www;

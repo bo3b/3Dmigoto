@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:09:44 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 16 07:18:51 2018
 Texture2D<float4> t14 : register(t14);
 
 Texture2D<float4> t4 : register(t4);
@@ -39,7 +39,7 @@ void main(
   r0.xy = (int2)r0.xy;
   r0.zw = float2(0,0);
   r1.x = t4.Load(r0.xyw).w;
-  r1.y = -9.99999975e-005 + r1.x;
+  r1.y = -9.99999975e-05 + r1.x;
   r1.y = cmp(r1.y < 0);
   if (r1.y != 0) discard;
   t3.GetDimensions(0, fDest.x, fDest.y, fDest.z);

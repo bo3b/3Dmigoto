@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:41 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 16 07:19:56 2018
 cbuffer cb5 : register(b5)
 {
   float4 cb5[8];
@@ -114,9 +114,9 @@ void main(
   r1.yw = cmp(float2(0,0) < cb5[4].zy);
   r1.y = (int)r1.w | (int)r1.y;
   r1.x = r1.y ? r1.x : r1.z;
-  r1.y = cmp(r1.x < 9.99999975e-006);
+  r1.y = cmp(r1.x < 9.99999975e-06);
   o1.w = r1.x;
-  r1.xyz = r1.yyy ? float3(1.00000001e+024,1.00000001e+024,1.00000001e+024) : r0.xyz;
+  r1.xyz = r1.yyy ? float3(1.00000001e+24,1.00000001e+24,1.00000001e+24) : r0.xyz;
   r1.w = 1;
   r2.x = dot(cb2[16].xyzw, r1.xyzw);
   r2.y = dot(cb2[17].xyzw, r1.xyzw);
