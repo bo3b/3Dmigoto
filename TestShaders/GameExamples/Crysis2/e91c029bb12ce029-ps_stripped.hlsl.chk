@@ -1,0 +1,50 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:09 2018
+Texture2D<float4> t0 : register(t0);
+
+SamplerState s0_s : register(s0);
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[8];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = t0.Sample(s0_s, v1.zw).xyzw;
+  r0.xyzw = cb0[1].xxxx * r0.xyzw;
+  r1.xyzw = t0.Sample(s0_s, v1.xy).xyzw;
+  r0.xyzw = r1.xyzw * cb0[0].xxxx + r0.xyzw;
+  r1.xyzw = t0.Sample(s0_s, v2.xy).xyzw;
+  r0.xyzw = r1.xyzw * cb0[2].xxxx + r0.xyzw;
+  r1.xyzw = t0.Sample(s0_s, v2.zw).xyzw;
+  r0.xyzw = r1.xyzw * cb0[3].xxxx + r0.xyzw;
+  r1.xyzw = t0.Sample(s0_s, v3.xy).xyzw;
+  r0.xyzw = r1.xyzw * cb0[4].xxxx + r0.xyzw;
+  r1.xyzw = t0.Sample(s0_s, v3.zw).xyzw;
+  r0.xyzw = r1.xyzw * cb0[5].xxxx + r0.xyzw;
+  r1.xyzw = t0.Sample(s0_s, v4.xy).xyzw;
+  r0.xyzw = r1.xyzw * cb0[6].xxxx + r0.xyzw;
+  r1.xyzw = t0.Sample(s0_s, v4.zw).xyzw;
+  o0.xyzw = r1.xyzw * cb0[7].xxxx + r0.xyzw;
+  return;
+}

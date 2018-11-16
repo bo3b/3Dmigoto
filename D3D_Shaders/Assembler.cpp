@@ -1555,6 +1555,11 @@ static vector<DWORD> assembleIns(string s) {
 			// fixed number of arguments. Added double precision,
 			// minimum precision, skipOptimization and 11.1 shader
 			// extension flags.
+			// FIXME: Missing D3D_SHADER_REQUIRES_UAVS_AT_EVERY_STAGE
+			// FIXME: Missing D3D_SHADER_REQUIRES_64_UAVS
+			// FIXME: Missing D3D_SHADER_REQUIRES_LEVEL_9_COMPARISON_FILTERING
+			// FIXME: Missing D3D_SHADER_REQUIRES_TILED_RESOURCES
+			//   - https://docs.microsoft.com/en-gb/windows/desktop/api/d3d11shader/nf-d3d11shader-id3d11shaderreflection-getrequiresflags
 			//   -DarkStarSword
 			string s = w[i];
 			if (s == "refactoringAllowed")

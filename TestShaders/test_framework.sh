@@ -47,8 +47,13 @@ check_decompiler_result()
 	check="$2"
 	update_chk="$3"
 
-	if [ "$update_chk" != 1 -a ! -f "$check" ]; then
-		echo -n " No .chk file."
+	if [ ! -f "$check" ]; then
+		if [ "$update_chk" = 1 ]; then
+			echo -n " Created .chk file."
+			cp "$decompiled" "$check"
+		else
+			echo -n " No .chk file."
+		fi
 		# Not really a failure, so return true to allow the test case
 		# to pass if the recompilation step succeeds:
 		true

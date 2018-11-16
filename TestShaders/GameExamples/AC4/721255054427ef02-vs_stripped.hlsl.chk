@@ -1,0 +1,38 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:09:43 2018
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  uint v0 : SV_VERTEXID0,
+  out float4 o0 : SV_POSITION0,
+  out float2 o1 : POSTSYNTHESIS_UV0)
+{
+  const float4 icb[] = { { -1.000000, 0, 0, 0},
+                              { -1.000000, 0, 0, 0},
+                              { -1.000000, 0, 0, 0},
+                              { 1.000000, 0, 0, 0},
+                              { 1.000000, 0, 0, 0},
+                              { -1.000000, 0, 0, 0},
+                              { 1.000000, 0, 0, 0},
+                              { 1.000000, 0, 0, 0} };
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_input_sgv v0.x, vertex_id
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  o0.zw = float2(0,1);
+  r0.x = (uint)v0.x << 1;
+  o0.x = icb[r0.x+0].x;
+  o1.x = icb[r0.x+0].x * 0.5 + 0.5;
+  bitmask.x = ((~(-1 << 31)) << 1) & 0xffffffff;  r0.x = (((uint)v0.x << 1) & bitmask.x) | ((uint)1 & ~bitmask.x);
+  o0.y = icb[r0.x+0].x;
+  o1.y = -icb[r0.x+0].x * 0.5 + 0.5;
+  return;
+}

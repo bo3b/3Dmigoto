@@ -1,0 +1,92 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:08 2018
+TextureCube<float4> t3 : register(t3);
+
+Texture2D<float4> t2 : register(t2);
+
+Texture2D<float4> t0 : register(t0);
+
+SamplerState s3_s : register(s3);
+
+SamplerState s2_s : register(s2);
+
+SamplerState s0_s : register(s0);
+
+cbuffer cb4 : register(b4)
+{
+  float4 cb4[8];
+}
+
+cbuffer cb3 : register(b3)
+{
+  float4 cb3[3];
+}
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[2];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[28];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : TEXCOORD0,
+  float4 v2 : TEXCOORD1,
+  float4 v3 : TEXCOORD2,
+  float4 v4 : TEXCOORD3,
+  float4 v5 : TEXCOORD4,
+  float4 v6 : COLOR0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = dot(v5.xyz, v5.xyz);
+  r0.x = rsqrt(r0.x);
+  r0.xyz = v5.xyz * r0.xxx;
+  r1.xyzw = t3.Sample(s3_s, r0.xyz).xyzw;
+  r0.x = saturate(dot(cb0[3].xyz, r0.xyz));
+  r0.xyz = cb1[0].xyz * r0.xxx;
+  r0.w = 96 * r1.w;
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r1.xyz * cb1[0].www + r0.xyz;
+  r1.xz = v1.ww;
+  r1.yw = v3.zz;
+  r1.xyzw = float4(-0.5,-0.5,-0.5,-0.5) + r1.xyzw;
+  r1.xyzw = cb4[5].xxxx * r1.xyzw;
+  r0.w = cb4[5].z * cb0[14].z;
+  r2.xyzw = r0.wwww * float4(0.899999976,0.899999976,2,2) + float4(0.5,0.5,0.75,1);
+  r1.xyzw = r1.xyzw * float4(1,1,2,2) + r2.xyzw;
+  r1.xy = t2.Sample(s2_s, r1.xy).xy;
+  r1.zw = t2.Sample(s2_s, r1.zw).xy;
+  r1.xy = r1.yx + r1.wz;
+  r1.xy = r1.xy * float2(2,2) + float2(-2,-2);
+  r1.xy = r1.xy * cb4[5].yy + v1.xy;
+  r1.xyzw = t0.Sample(s0_s, r1.xy).xyzw;
+  r2.xyzw = t0.Sample(s0_s, v2.xy).xyzw;
+  r2.xyzw = r2.xyzw + -r1.xyzw;
+  r1.xyzw = r2.xyzw * v2.zzzz + r1.xyzw;
+  r1.xyzw = v6.xyzw * r1.xyzw;
+  r0.xyz = r0.xyz * r1.xyz + -v4.xyz;
+  r0.xyz = v4.www * r0.xyz + v4.xyz;
+  r0.xyz = -cb1[1].xyz + r0.xyz;
+  r0.xyz = cb1[1].www * r0.xyz + cb1[1].xyz;
+  r1.xyz = r1.www * r1.xyz;
+  o0.w = saturate(r1.w * cb4[7].x + r1.w);
+  r0.xyz = r1.xyz * cb0[27].xyz + r0.xyz;
+  o0.xyz = cb3[2].www * r0.xyz;
+  return;
+}

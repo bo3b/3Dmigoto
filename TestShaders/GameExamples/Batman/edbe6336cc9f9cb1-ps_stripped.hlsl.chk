@@ -1,0 +1,68 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:09:54 2018
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[57];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : TEXCOORD10,
+  float4 v1 : TEXCOORD11,
+  float4 v2 : TEXCOORD0,
+  float4 v3 : TEXCOORD1,
+  float4 v4 : TEXCOORD6,
+  out float4 o0 : SV_TARGET0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  float4 v[2] = { v0,v1 };
+  r0.xyz = ddx_coarse(v4.zxy);
+  r1.xyz = ddy_coarse(v4.yzx);
+  r2.xyz = r1.xyz * r0.xyz;
+  r0.xyz = r0.zxy * r1.yzx + -r2.xyz;
+  r0.x = dot(r0.xyz, r0.xyz);
+  r0.x = sqrt(r0.x);
+  r0.x = max(0, r0.x);
+  r0.y = (int)cb0[40].x;
+  r0.z = cb0[40].y;
+  r0.w = 0;
+  while (true) {
+    r1.x = cmp((int)r0.w < (int)r0.y);
+    r1.y = cmp((int)r0.w < 16);
+    r1.x = r1.y ? r1.x : 0;
+    if (r1.x == 0) break;
+    r1.x = (int)cb0[r0.w+41].z;
+    r1.xy = cb0[r0.w+41].yx * v[r1.x+2].yx;
+    r1.zw = ddx_coarse(r1.yx);
+    r1.xy = ddy_coarse(r1.xy);
+    r1.y = r1.w * r1.y;
+    r1.x = r1.z * r1.x + -r1.y;
+    r1.x = abs(r1.x) / r0.x;
+    r0.z = max(r1.x, r0.z);
+    r0.w = (int)r0.w + 1;
+  }
+  r0.x = min(cb0[40].w, r0.z);
+  r0.y = cmp(cb0[40].z < r0.x);
+  r0.zw = cb0[40].wz + -cb0[40].zy;
+  r1.xy = -cb0[40].zy + r0.xx;
+  r1.zw = -r1.xy + r0.zw;
+  r1.xy = r1.xy / r0.zw;
+  r2.xz = r1.zw / r0.zw;
+  r3.x = r1.x;
+  r3.y = r2.x;
+  r3.zw = float2(0,1);
+  r2.xw = float2(0,1);
+  r2.y = r1.y;
+  o0.xyzw = r0.yyyy ? r3.xyzw : r2.xyzw;
+  return;
+}

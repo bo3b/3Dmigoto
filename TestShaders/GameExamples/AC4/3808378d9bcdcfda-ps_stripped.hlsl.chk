@@ -1,0 +1,38 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:09:37 2018
+Texture2DArray<float4> t0 : register(t0);
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[4];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_Position0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_TARGET0)
+{
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = (int2)v0.xy;
+  bitmask.z = ((~(-1 << 2)) << 2) & 0xffffffff;  r0.z = (((uint)r0.y << 2) & bitmask.z) | ((uint)0 & ~bitmask.z);
+  bitmask.z = ((~(-1 << 2)) << 0) & 0xffffffff;  r1.z = (((uint)r0.x << 0) & bitmask.z) | ((uint)r0.z & ~bitmask.z);
+  r1.xy = (uint2)r0.xy >> int2(2,2);
+  r1.w = 0;
+  r0.x = t0.Load(r1.xyzw).x;
+  r0.x = saturate(r0.x);
+  r0.x = log2(r0.x);
+  r0.x = cb0[3].w * r0.x;
+  o0.xyzw = exp2(r0.xxxx);
+  return;
+}

@@ -1,0 +1,101 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:32 2018
+Texture2D<float4> t1 : register(t1);
+
+Texture2D<float4> t0 : register(t0);
+
+SamplerState s1_s : register(s1);
+
+SamplerState s0_s : register(s0);
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[12];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float2 v1 : TEXCOORD0,
+  float2 w1 : TEXCOORD1,
+  float4 v2 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = t1.Sample(s1_s, v2.xy).x;
+  r0.x = cb0[11].x / r0.x;
+  r0.y = t1.Sample(s1_s, v2.zw).x;
+  r0.y = cb0[11].x / r0.y;
+  r0.x = r0.x + r0.y;
+  r0.y = t1.Sample(s1_s, w1.xy).x;
+  r0.y = cb0[11].x / r0.y;
+  r0.x = -r0.y * 2 + r0.x;
+  r0.z = t1.Sample(s1_s, v2.zy).x;
+  r0.z = cb0[11].x / r0.z;
+  r0.w = t1.Sample(s1_s, v2.xw).x;
+  r0.w = cb0[11].x / r0.w;
+  r0.z = r0.z + r0.w;
+  r0.y = -r0.y * 2 + r0.z;
+  r0.x = abs(r0.x) + abs(r0.y);
+  r0.x = -r0.x * 10000 + 1;
+  r0.x = max(0, r0.x);
+  r0.x = r0.x * 4 + 0.125;
+  r0.yzw = t0.Sample(s0_s, v2.xy).xyz;
+  r1.x = dot(r0.yzw, float3(0.298999995,0.587000012,0.114));
+  r0.yzw = t0.Sample(s0_s, v2.zy).xyz;
+  r1.y = dot(r0.yzw, float3(0.298999995,0.587000012,0.114));
+  r0.yzw = t0.Sample(s0_s, v2.xw).xyz;
+  r1.z = dot(r0.yzw, float3(0.298999995,0.587000012,0.114));
+  r0.yzw = t0.Sample(s0_s, v2.zw).xyz;
+  r1.w = dot(r0.yzw, float3(0.298999995,0.587000012,0.114));
+  r0.y = dot(r1.xyzw, float4(1,1,1,1));
+  r0.x = r0.x * r0.y;
+  r0.x = 0.25 * r0.x;
+  r0.x = max(0.00390599994, r0.x);
+  r2.xyzw = r1.xzxy + r1.ywzw;
+  r0.y = r2.x + -r2.y;
+  r2.yw = r2.zz + -r2.ww;
+  r0.z = min(abs(r2.w), abs(r0.y));
+  r2.xz = -r0.yy;
+  r0.x = r0.z + r0.x;
+  r0.x = 1 / r0.x;
+  r0.xyzw = r2.xyzw * r0.xxxx;
+  r0.xyzw = max(float4(-2,-2,-2,-2), r0.xyzw);
+  r0.xyzw = min(float4(2,2,2,2), r0.xyzw);
+  r0.xyzw = cb0[6].zwzw * r0.xyzw;
+  r2.xyzw = r0.xyzw * float4(-0.5,-0.5,0.5,0.5) + w1.xyzw;
+  r0.xyzw = r0.zwzw * float4(-0.166666999,-0.166666999,0.166666999,0.166666999) + w1.xyzw;
+  r3.xyzw = t0.Sample(s0_s, r2.xy).xyzw;
+  r2.xyzw = t0.Sample(s0_s, r2.zw).xyzw;
+  r2.xyzw = r3.xyzw + r2.xyzw;
+  r2.xyzw = float4(0.25,0.25,0.25,0.25) * r2.xyzw;
+  r3.xyzw = t0.Sample(s0_s, r0.xy).xyzw;
+  r0.xyzw = t0.Sample(s0_s, r0.zw).xyzw;
+  r0.xyzw = r3.xyzw + r0.xyzw;
+  r2.xyzw = r0.xyzw * float4(0.25,0.25,0.25,0.25) + r2.xyzw;
+  r0.xyzw = float4(0.5,0.5,0.5,0.5) * r0.xyzw;
+  r3.x = dot(r2.xyz, float3(0.298999995,0.587000012,0.114));
+  r3.yz = min(r1.xz, r1.yw);
+  r1.xy = max(r1.xz, r1.yw);
+  r1.x = max(r1.x, r1.y);
+  r1.y = min(r3.y, r3.z);
+  r3.yzw = t0.Sample(s0_s, w1.xy).xyz;
+  r1.z = dot(r3.yzw, float3(0.298999995,0.587000012,0.114));
+  r1.y = min(r1.z, r1.y);
+  r1.x = max(r1.z, r1.x);
+  r1.x = cmp(r1.x < r3.x);
+  r1.y = cmp(r3.x < r1.y);
+  r1.x = (int)r1.x | (int)r1.y;
+  o0.xyzw = r1.xxxx ? r0.xyzw : r2.xyzw;
+  return;
+}

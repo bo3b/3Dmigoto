@@ -1,0 +1,48 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:19 2018
+cbuffer cb2 : register(b2)
+{
+  float4 cb2[2];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+[maxvertexcount(3)]
+void main(
+  inout TriangleStream<float> m0,
+  out float4 o0 : SV_POSITION0,
+  out float2 o1 : TEXCOORD0,
+  out uint o2 : SV_RenderTargetArrayIndex0)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_inputprimitive point 
+// Needs manual fix for instruction:  
+//dcl_stream m0
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_outputtopology trianglestrip 
+  o0.xyzw = float4(-1,1,0,1);
+  o1.xy = float2(0,0);
+  o2.x = cb2[1].w;
+// Needs manual fix for instruction, maybe. 
+//emit_stream m0
+m0.Append(0);
+  o0.xyzw = float4(3,1,0,1);
+  o1.xy = float2(2,0);
+  o2.x = cb2[1].w;
+// Needs manual fix for instruction, maybe. 
+//emit_stream m0
+m0.Append(0);
+  o0.xyzw = float4(-1,-3,0,1);
+  o1.xy = float2(0,2);
+  o2.x = cb2[1].w;
+// Needs manual fix for instruction, maybe. 
+//emit_stream m0
+m0.Append(0);
+  return;
+}

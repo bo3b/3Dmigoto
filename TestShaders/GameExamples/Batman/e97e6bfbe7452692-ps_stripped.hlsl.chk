@@ -1,0 +1,118 @@
+// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:09:53 2018
+Texture2D<float4> t3 : register(t3);
+
+Texture2D<float4> t2 : register(t2);
+
+Texture2D<float4> t1 : register(t1);
+
+Texture2D<float4> t0 : register(t0);
+
+SamplerState s3_s : register(s3);
+
+SamplerState s2_s : register(s2);
+
+SamplerState s1_s : register(s1);
+
+SamplerState s0_s : register(s0);
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[28];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  float2 v0 : TEXCOORD0,
+  float2 w0 : TEXCOORD1,
+  float3 v1 : COLOR3,
+  out float3 o0 : SV_TARGET0,
+  out float3 o1 : SV_TARGET1,
+  out float4 o2 : SV_TARGET2,
+  out float4 o3 : SV_TARGET3)
+{
+  float4 r0,r1,r2,r3,r4,r5;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyz = t1.SampleBias(s1_s, v1.xy, 0).xyz;
+  r0.xyz = max(float3(9.99999997e-007,9.99999997e-007,9.99999997e-007), r0.xyz);
+  r0.xyz = log2(r0.xyz);
+  r0.xyz = float3(2.20000005,2.20000005,2.20000005) * r0.xyz;
+  r0.xyz = exp2(r0.xyz);
+  r0.w = cmp(0 < v1.x);
+  r1.xyz = r0.www ? cb0[24].xyz : 0;
+  r0.w = cmp(v1.x >= 0);
+  r1.xyz = r0.www ? r1.xyz : 0;
+  r0.xyz = r1.xyz * r0.xyz + cb0[23].xyz;
+  o0.xyz = cb0[22].xyz + r0.xyz;
+  r0.xy = t0.SampleBias(s0_s, v0.xy, 0).xy;
+  r0.xy = r0.xy * float2(2,2) + float2(-1,-1);
+  r0.w = dot(r0.xy, r0.xy);
+  r0.w = 1 + -r0.w;
+  r0.z = sqrt(r0.w);
+  r0.w = dot(r0.xyz, r0.xyz);
+  r0.w = rsqrt(r0.w);
+  r0.xyz = r0.xyz * r0.www;
+  r1.xyz = ddx_coarse(v2.zxy);
+  r2.xyz = ddy_coarse(v2.xyz);
+  r3.xyz = r2.yzx * r1.xyz;
+  r3.xyz = r1.zxy * r2.zxy + -r3.xyz;
+  r4.xyz = r3.xyz * r1.xyz;
+  r1.xyz = r3.zxy * r1.yzx + -r4.xyz;
+  r4.xy = ddy_coarse(v0.xy);
+  r4.yzw = r4.yyy * r1.xyz;
+  r1.xyz = r4.xxx * r1.yzx;
+  r5.xyz = r3.zxy * r2.xyz;
+  r2.xyz = r2.zxy * r3.xyz + -r5.xyz;
+  r3.xy = ddx_coarse(v0.xy);
+  r3.yzw = r3.yyy * r2.xyz + r4.yzw;
+  r1.xyz = r3.xxx * r2.yzx + r1.xyz;
+  r0.w = dot(r3.yzw, r3.yzw);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = r3.yzw * r0.www;
+  r3.xyz = cb0[5].xyz * r2.xxx;
+  r3.xyz = cb0[4].xyz * r2.zzz + r3.xyz;
+  r3.xyz = cb0[6].xyz * r2.yyy + r3.xyz;
+  r3.xyz = r3.xyz * r0.yyy;
+  r0.y = dot(r1.xyz, r1.xyz);
+  r0.y = rsqrt(r0.y);
+  r1.xyz = r1.xyz * r0.yyy;
+  r4.xyz = cb0[5].xyz * r1.zzz;
+  r4.xyz = cb0[4].xyz * r1.yyy + r4.xyz;
+  r4.xyz = cb0[6].xyz * r1.xxx + r4.xyz;
+  r0.xyw = r4.xyz * r0.xxx + r3.xyz;
+  r3.xyz = r1.xyz * r2.xyz;
+  r1.xyz = r1.zxy * r2.yzx + -r3.xyz;
+  r2.xyz = cb0[5].xyz * r1.yyy;
+  r1.xyw = cb0[4].xyz * r1.xxx + r2.xyz;
+  r1.xyz = cb0[6].xyz * r1.zzz + r1.xyw;
+  r0.xyz = r1.xyz * r0.zzz + r0.xyw;
+  o1.xyz = r0.xyz * float3(0.5,0.5,0.5) + float3(0.5,0.5,0.5);
+  r0.xyz = t2.SampleBias(s2_s, v0.xy, 0).xyz;
+  r0.xyz = max(float3(9.99999997e-007,9.99999997e-007,9.99999997e-007), r0.xyz);
+  r0.xyz = log2(r0.xyz);
+  r0.xyz = float3(2.20000005,2.20000005,2.20000005) * r0.xyz;
+  r0.xyz = exp2(r0.xyz);
+  r1.xyz = float3(1,1,1) + -cb0[22].xyz;
+  o2.xyz = r1.xyz * r0.xyz;
+  r0.x = asint(cb0[27].x);
+  o2.w = 0.00392200006 * r0.x;
+  r0.xyz = t3.SampleBias(s3_s, v0.xy, 0).xyz;
+  r0.xyz = max(float3(9.99999997e-007,9.99999997e-007,9.99999997e-007), r0.yxz);
+  r0.xyz = log2(r0.xyz);
+  r0.xyz = float3(2.20000005,2.20000005,2.20000005) * r0.xyz;
+  r0.xyz = exp2(r0.xyz);
+  r0.w = r0.y * cb0[21].y + -r0.y;
+  o3.x = cb0[25].x * r0.w + r0.y;
+  o3.yz = r0.xz;
+  o3.w = 0;
+  return;
+}
