@@ -1,6 +1,7 @@
 #include "Hunting.h"
 
 #include <string>
+#include <sstream>
 #include <D3Dcompiler.h>
 #include <codecvt>
 
@@ -810,17 +811,37 @@ err:
 	goto out;
 }
 
-static bool WriteASM(string *asmText, UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device)
+static bool WriteASM(string *asmText, string *hlslText, UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device)
 {
+	std::istringstream tokens(*hlslText);
 	wchar_t fileName[MAX_PATH];
 	wchar_t fullName[MAX_PATH];
-	HRESULT hr;
+	std::string token;
+	FILE *f;
 
 	swprintf_s(fileName, MAX_PATH, L"%016llx-%ls.txt", hash, shader_info.shaderType.c_str());
 	swprintf_s(fullName, MAX_PATH, L"%ls\\%ls", G->SHADER_PATH, fileName);
-	hr = CreateTextFile(fullName, asmText, false);
-	if (FAILED(hr))
+
+	wfopen_ensuring_access(&f, fullName, L"wb");
+	if (!f) {
+		LogInfo("    error storing marked shader to %S\n", fullName);
 		return false;
+	}
+
+	fwrite(asmText->c_str(), 1, asmText->size(), f);
+
+	if (!hlslText->empty()) {
+		fprintf_s(f, "\n/////////////////////////////////////////////////////////////////////////////\n");
+		while (std::getline(tokens, token, '\n')) {
+			if (token.empty())
+				fprintf(f, "//\n");
+			else
+				fprintf(f, "// %s\n", token.c_str());
+		}
+		fprintf_s(f, "/////////////////////////////////////////////////////////////////////////////\n");
+	}
+
+	fclose(f);
 
 	// Lastly, reload the shader generated, to check for decompile errors, set it as the active
 	// shader code, in case there are visual errors, and make it the match the code in the file.
@@ -836,17 +857,16 @@ static bool WriteASM(string *asmText, UINT64 hash, OriginalShaderInfo shader_inf
 // and thus is not different than the file on disk.
 // If a file was already extant in the ShaderFixes, it will be picked up at game launch as the master shaderByteCode.
 
-static bool WriteHLSL(string *asmText, UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device, bool remove_failed)
+static bool WriteHLSL(string *asmText, string *hlslText, UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device, bool remove_failed)
 {
 	wchar_t fileName[MAX_PATH];
 	wchar_t fullName[MAX_PATH];
-	string hlslText;
 	FILE *fw;
 	bool ret;
 
 	// Try to decompile the current byte code into HLSL:
-	hlslText = Decompile(shader_info.byteCode, asmText);
-	if (hlslText.empty())
+	*hlslText = Decompile(shader_info.byteCode, asmText);
+	if (hlslText->empty())
 		return false;
 
 	// We no longer check if the file exists and touch it at this point -
@@ -864,7 +884,7 @@ static bool WriteHLSL(string *asmText, UINT64 hash, OriginalShaderInfo shader_in
 
 	LogInfoW(L"    storing patched shader to %s\n", fullName);
 
-	fwrite(hlslText.c_str(), 1, hlslText.size(), fw);
+	fwrite(hlslText->c_str(), 1, hlslText->size(), fw);
 
 	fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 	fwrite(asmText->c_str(), 1, asmText->size(), fw);
@@ -952,7 +972,7 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 {
 	bool success = false;
 	bool asm_enabled = !!(G->marking_actions & MarkingAction::ASM);
-	string asmText;
+	string asmText, hlslText;
 
 	// The key of the map is the actual shader, we thus need to do a linear search to find our marked hash.
 	for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
@@ -965,7 +985,7 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 
 			if (G->marking_actions & MarkingAction::HLSL) {
 				// Save the decompiled text, and ASM text into the HLSL .txt source file:
-				success = WriteHLSL(&asmText, hash, iter.second, device, asm_enabled);
+				success = WriteHLSL(&asmText, &hlslText, hash, iter.second, device, asm_enabled);
 				if (success)
 					break;
 				else if (asm_enabled)
@@ -973,7 +993,7 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 			}
 
 			if (asm_enabled) {
-				success = WriteASM(&asmText, hash, iter.second, device);
+				success = WriteASM(&asmText, &hlslText, hash, iter.second, device);
 				break;
 			}
 
