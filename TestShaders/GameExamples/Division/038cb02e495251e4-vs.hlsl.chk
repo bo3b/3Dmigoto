@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:16:54 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:40:45 2018
 
 cbuffer cb0 : register(b0)
 {
@@ -10,7 +10,7 @@ cbuffer cb1 : register(b1)
   float4 cb1 : packoffset(c0);
 }
 
-StructuredBuffer<> RawBuffer : register(t0);
+ByteAddressBuffer RawBuffer : register(t0);
 
 
 // 3Dmigoto declarations

@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:17:20 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:40:59 2018
 
 struct SPositionInfo
 {
@@ -51,7 +51,7 @@ StructuredBuffer<SPositionInfo> PositionInfo : register(t0);
 Texture2D<float4> TileMask : register(t1);
 Texture2D<float4> TileMaskFadeIn : register(t2);
 Buffer<uint> IndexBuffer : register(t3);
-StructuredBuffer<> VertexBuffer : register(t4);
+ByteAddressBuffer VertexBuffer : register(t4);
 StructuredBuffer<STriangleOutputBuffer> IndexIntoIndexBuffer : register(t5);
 StructuredBuffer<SPatchOutputBuffer> PatchOutputBuffer : register(t6);
 

@@ -752,10 +752,12 @@ public:
 				// Two new ones for Mordor.
 				else if (!strcmp(dim, "buf"))
 					mTextureType[slot] = "Buffer<" + string(format) + ">";	
-				else if (!strcmp(dim, "r/o"))
+				else if (!strcmp(format, "struct"))
 					mTextureType[slot] = "StructuredBuffer<" + mStructuredBufferTypes[name] + ">";
 				//else if (!strcmp(dim, "r/w"))
 				//	mTextureType[slot] = "RWStructuredBuffer<" + mStructuredBufferTypes[name] + ">"; // Type=UAV
+				else if (!strcmp(format, "byte"))
+					mTextureType[slot] = "ByteAddressBuffer";
 				else
 					logDecompileError("Unknown texture dimension: " + string(dim));
 			}
