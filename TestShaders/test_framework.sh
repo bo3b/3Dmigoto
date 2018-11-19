@@ -31,10 +31,10 @@ if [ -t 1 ]; then
 fi
 
 OUTPUT_DIR=output
-TEST_DIR="$PWD"
 mkdir -p "$OUTPUT_DIR"
 rm -v "$OUTPUT_DIR"/* 2>/dev/null || true
 TESTS_FAILED=0
+UPDATE_CHK=0
 
 # No good way to machine verify the decompiler, so go for the next best thing -
 # verify that the output matches a previous run. This is of course subject to
@@ -44,12 +44,11 @@ TESTS_FAILED=0
 # us a chance to review failures due to such changes.
 check_decompiler_result()
 {
-	decompiled="$1"
-	check="$2"
-	update_chk="$3"
+	local decompiled="$1"
+	local check="$2"
 
 	if [ ! -f "$check" ]; then
-		if [ "$update_chk" = 1 ]; then
+		if [ "$UPDATE_CHK" = 1 ]; then
 			echo -n " Created .chk file."
 			cp "$decompiled" "$check"
 		else
@@ -61,11 +60,11 @@ check_decompiler_result()
 		return
 	fi
 
-	skip1=$(grep "^// ---- Created with" "$decompiled" | wc -c)
-	skip2=$(grep "^// ---- Created with" "$check" | wc -c)
+	local skip1=$(grep "^// ---- Created with" "$decompiled" | wc -c)
+	local skip2=$(grep "^// ---- Created with" "$check" | wc -c)
 
 	if ! cmp "$decompiled" "$check" "$skip1" "$skip2" >/dev/null; then
-		if [ "$update_chk" = 1 ]; then
+		if [ "$UPDATE_CHK" = 1 ]; then
 			echo -n " Updated .chk file."
 			cp "$decompiled" "$check"
 			true
@@ -83,18 +82,18 @@ check_decompiler_result()
 # .hlsl.chk file if present and attempts to recompile the shader with FXC
 run_decompiler_test()
 {
-	compiled="$1"
-	update_chk="$2"
-	dst="$(echo "$compiled" | sed -r 's/\.[^.]+$//')"
+	local compiled="$1"
+	local check="$2"
+	local dst="$(echo "$compiled" | sed -r 's/\.[^.]+$//')"
 
-	decompiled="$dst.hlsl"
-	recompiled="${dst}_recompiled.bin"
-	check="$decompiled.chk"
+	local decompiled="$dst.hlsl"
+	local recompiled="${dst}_recompiled.bin"
+	[ -z "$check" ] && check="$decompiled.chk"
 
-	fail=0
+	local fail=0
 
 	rm "$decompiled" "$recompiled" 2>/dev/null
-	model=$(timeout 5s "$FXC" /nologo /dumpbin "$compiled" | grep -av '^\/\/' | head -n 1 | tr -d '\r')
+	local model=$(timeout 5s "$FXC" /nologo /dumpbin "$compiled" | grep -av '^\/\/' | head -n 1 | tr -d '\r')
 	if [ -z "$model" ]; then
 		echo -n " Unable to get shader model - bad binary?"
 		fail=1
@@ -104,7 +103,7 @@ run_decompiler_test()
 			echo -n " HLSL decompilation failed."
 			fail=1
 		else
-			check_decompiler_result "$decompiled" "$check" "$update_chk" || fail=1
+			check_decompiler_result "$decompiled" "$check" || fail=1
 			if ! "$FXC" /nologo "$decompiled" /T "$model" /Fo "$recompiled" >/dev/null 2>&1; then
 				echo -n " Recompilation failed."
 				fail=1
@@ -122,36 +121,29 @@ run_decompiler_test()
 
 run_hlsl_test()
 {
-	src="$1"
-	dst="$2"
-	model="$3"
-	flags="$4"
+	local src="$1"
+	local dst="$2"
+	local models="$3"
+	local flags="$4"
 
-	compiled="$dst.bin"
-	assembled="$dst.asm"
-	decompiled="$dst.hlsl"
-	recompiled="${dst}_recompiled.bin"
-	check="$decompiled.chk"
-	stripped="${dst}_stripped.bin"
-	stripped_asm="${dst}_stripped.asm"
-	decompiled_stripped="${dst}_stripped.out"
-	recompiled_stripped="${dst}_stripped_recompiled.bin"
-	check_stripped="${dst}_stripped.chk"
+	for model in $models; do
+		local compiled="${dst}_${model}.bin"
+		local assembled="${dst}_${model}.asm"
+		local stripped="${dst}_${model}_stripped.bin"
+		local stripped_asm="${dst}_${model}_stripped.asm"
 
-	"$FXC" /nologo "$src" /T "$model" $flags /Fo "$OUTPUT_DIR\\$compiled" /Fc "$OUTPUT_DIR\\$assembled"
-	cd "$OUTPUT_DIR"
-		# FIXME: Call out to run_decompiler_test()
+		echo -n "....: ${dst}_${model}...         "
+		"$FXC" /nologo "$src" /T "$model" $flags /Fo "$OUTPUT_DIR\\$compiled" /Fc "$OUTPUT_DIR\\$assembled" >/dev/null
 
-		"$CMD_DECOMPILER" -D "$compiled" # produces "$decompiled"
-		"$FXC" /nologo "$decompiled" /T "$model" /Fo "$recompiled"
-		check_decompiler_result "$decompiled" "$TEST_DIR/$check"
+		local test_dir="$PWD"
+		cd "$OUTPUT_DIR"
+			run_decompiler_test "$compiled" "$test_dir/${dst}_${model}.hlsl.chk"
 
-		# "$FXC" /nologo "$src" /T "$model" /Qstrip_reflect /Fo "$stripped" /Fc "$stripped_asm"
-		"$FXC" /nologo /dumpbin "$compiled" /Qstrip_reflect /Fo "$stripped" /Fc "$stripped_asm"
-		"$CMD_DECOMPILER" -D "$stripped" # produces "$decompiled_stripped"
-		"$FXC" /nologo "$decompiled_stripped" /T "$model" /Fo "$recompiled_stripped"
-		check_decompiler_result "$decompiled_stripped" "$TEST_DIR/$check_stripped"
-	cd -
+			echo -n "....: ${dst}_${model}_stripped..."
+			"$FXC" /nologo /dumpbin "$compiled" /Qstrip_reflect /Fo "$stripped" /Fc "$stripped_asm" >/dev/null
+			run_decompiler_test "$stripped" "$test_dir/${dst}_${model}_stripped.hlsl.chk"
+		cd "$test_dir"
+	done
 }
 
 cmd_decompiler_copy_reflection_check()

@@ -40,13 +40,13 @@ run_test()
 	reconstruct_shader "$bin_filename"
 
 	echo -n "....: $bin_filename...$whitespace"
-	run_decompiler_test "$bin_filename" "$update_chk"
+	run_decompiler_test "$bin_filename"
 }
 
 for arg in "$@"; do
 	case "$arg" in
 		"--update-chk")
-			update_chk=1
+			UPDATE_CHK=1
 			;;
 		*)
 
