@@ -1455,11 +1455,20 @@ public:
 					continue;
 				}
 				type_name = type_name_buf;
-			} else {
-				warn_if_line_is_not("//   struct\n", c + pos);
+			} else if (!strncmp(c + pos, "//   struct\n", 12)) {
 				// Shader model 4 lacks a type name after the
 				// struct, so we have to invent one.
 				type_name = bind_name + string("_type");
+			} else {
+				// Primitive type, not a structure
+				n = 0;
+				sscanf_s(c + pos, "//   %s $Element;%n", type_name_buf, UCOUNTOF(type_name_buf), &n);
+				if (!n) {
+					logDecompileError("Error parsing primitive structure type: " + string(c + pos, 80));
+					continue;
+				}
+				mStructuredBufferTypes[bind_name] = type_name_buf;
+				continue;
 			}
 			mStructuredBufferTypes[bind_name] = type_name;
 			NextLine(c, pos, size);
