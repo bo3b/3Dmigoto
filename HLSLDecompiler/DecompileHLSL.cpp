@@ -113,6 +113,7 @@ public:
 	map<int, string> mTextureType;
 
 	map<string, string> mStructuredBufferTypes;
+	set<string> mStructuredBufferUsedNames;
 
 	// Output register tracking.
 	map<string, string> mOutputRegisterValues;
@@ -1418,9 +1419,6 @@ public:
 		// - We will need to note down which member is at each offset
 		//   for use in later load instructions.
 		//
-		// - TBD: What happens if multiple structured buffers have the
-		//        same type name?
-		//
 		// TestShaders\resource_types* include test cases for these.
 
 		size_t pos = 0;
@@ -1471,6 +1469,12 @@ public:
 				continue;
 			}
 			mStructuredBufferTypes[bind_name] = type_name;
+			if (!mStructuredBufferUsedNames.insert(type_name).second) {
+				// The same type name has been used previously.
+				// Assuming the contents is going to be the same
+				// and skipping redefining it.
+				continue;
+			}
 			NextLine(c, pos, size);
 
 			warn_if_line_is_not("//   {\n", c + pos);

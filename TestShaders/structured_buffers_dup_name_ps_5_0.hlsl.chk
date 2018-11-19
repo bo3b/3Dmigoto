@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:19:10 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:39:00 2018
 
 struct foo
 {
@@ -14,14 +14,6 @@ struct bar
     uint foobar;                   // Offset:    4
     float foobaz;                  // Offset:    8
     int foobuz[8];                 // Offset:   12
-};
-
-struct foo
-{
-    float foo;                     // Offset:    0
-    uint bar;                      // Offset:    4
-    float baz;                     // Offset:    8
-    int buz;                       // Offset:   12
 };
 
 StructuredBuffer<foo> struct_buf_1 : register(t110);
