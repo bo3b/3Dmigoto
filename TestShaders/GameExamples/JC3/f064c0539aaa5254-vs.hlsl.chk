@@ -1,4 +1,29 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:04 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:40:59 2018
+
+struct SPositionInfo
+{
+    uint xy_comp;                  // Offset:    0
+    uint zw_comp;                  // Offset:    4
+    uint normal;                   // Offset:    8
+};
+
+struct STriangleOutputBuffer
+{
+    uint m_IndexStart;             // Offset:    0
+};
+
+struct SPatchOutputBuffer
+{
+    int m_PatchX;                  // Offset:    0
+    int m_PatchZ;                  // Offset:    4
+    uint m_PatchIndex;             // Offset:    8
+    uint m_NumOfQuads;             // Offset:   12
+    uint m_TriangleCount;          // Offset:   16
+    uint m_PatchTriangleCount[4];  // Offset:   20
+    uint m_PatchTriangleOffset[4]; // Offset:   36
+    float3 m_LocalCamera;          // Offset:   52
+    float3 m_CameraPos;            // Offset:   64
+};
 
 cbuffer cb1 : register(b1)
 {
@@ -22,13 +47,13 @@ cbuffer cb3 : register(b3)
 }
 
 SamplerState TileMaskSampler_s_s : register(s1);
-StructuredBuffer<PositionInfo> PositionInfo : register(t0);
+StructuredBuffer<SPositionInfo> PositionInfo : register(t0);
 Texture2D<float4> TileMask : register(t1);
 Texture2D<float4> TileMaskFadeIn : register(t2);
 Buffer<uint> IndexBuffer : register(t3);
-StructuredBuffer<VertexBuffer> VertexBuffer : register(t4);
-StructuredBuffer<IndexIntoIndexBuffer> IndexIntoIndexBuffer : register(t5);
-StructuredBuffer<PatchOutputBuffer> PatchOutputBuffer : register(t6);
+ByteAddressBuffer VertexBuffer : register(t4);
+StructuredBuffer<STriangleOutputBuffer> IndexIntoIndexBuffer : register(t5);
+StructuredBuffer<SPatchOutputBuffer> PatchOutputBuffer : register(t6);
 
 
 // 3Dmigoto declarations

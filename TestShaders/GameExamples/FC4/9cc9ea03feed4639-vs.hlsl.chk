@@ -1,4 +1,15 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:28:03 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:27:27 2018
+
+struct SImpostorInstance
+{
+    struct {
+        uint rot[5];               // Offset:    0
+        float3 pos;                // Offset:   20
+    } m_treeToWS;                  // Offset:    0
+    uint m_tint;                   // Offset:   32
+    uint m_packData;               // Offset:   36
+    float2 m_ditherUVOffset;       // Offset:   40
+};
 
 cbuffer CViewportShaderParameterProvider : register(b0)
 {
@@ -71,7 +82,7 @@ cbuffer CImpostorDataProvider : register(b2)
 }
 
 Texture2DArray<float4> DepthLowRes : register(t0);
-StructuredBuffer<instanceData> instanceData : register(t1);
+StructuredBuffer<SImpostorInstance> instanceData : register(t1);
 Texture2D<float4> StereoParams : register(t125);
 
 

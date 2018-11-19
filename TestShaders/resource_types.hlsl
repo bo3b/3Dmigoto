@@ -350,8 +350,10 @@ void main(out float4 output : SV_Target0)
 
 	// ps_4_0 ld_structured
 	// ps_5_0 ld_structured_indexable
-	output += struct_buf.Load(0).foo;
-	output += struct_buf.Load(2).bar;
-	output += struct_buf.Load(1).baz;
-	output += struct_buf.Load(3).buz;
+	// .Load() syntax needs a newer version of fxc than shipped with the
+	// Win 8.0 SDK, so only using [] syntax here:
+	output += struct_buf[0].foo;
+	output += struct_buf[2].bar;
+	output += struct_buf[1].baz;
+	output += struct_buf[3].buz;
 }

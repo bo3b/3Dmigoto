@@ -1,4 +1,12 @@
-// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:08:52 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:52:51 2018
+
+struct GPUParticleRenderComputeData
+{
+    float4 posAndAge;              // Offset:    0
+    float4 velAndLife;             // Offset:   16
+    float3 misc;                   // Offset:   32
+    int type;                      // Offset:   44
+};
 
 cbuffer cbDefaultXSC : register(b0)
 {
@@ -34,7 +42,7 @@ cbuffer cbInstanceXSC : register(b10)
 }
 
 SamplerState SamplerParameters_SMP_s_s : register(s4);
-StructuredBuffer<g_particles> g_particles : register(t0);
+StructuredBuffer<GPUParticleRenderComputeData> g_particles : register(t0);
 Texture2D<float4> SamplerParameters_TEX : register(t4);
 
 

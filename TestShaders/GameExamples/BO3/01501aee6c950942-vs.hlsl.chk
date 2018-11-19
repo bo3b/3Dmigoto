@@ -1,4 +1,20 @@
-// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:08:58 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:53:08 2018
+
+struct ModelInstanceData
+{
+    uint boneArrayIndex;           // Offset:    0
+    uint shaderConstantSet;        // Offset:    4
+    uint flagsAndPrevFrameIndex;   // Offset:    8
+    uint worldMatrix;              // Offset:   12
+    uint siegeAnimStateOffset;     // Offset:   16
+    uint prevFrameSiegeAnimStateOffset;// Offset:   20
+};
+
+struct GpuBoneData
+{
+    float4 mat[3];                 // Offset:    0
+    float4 extra;                  // Offset:   48
+};
 
 cbuffer PerSceneConsts : register(b1)
 {
@@ -79,8 +95,8 @@ cbuffer PerSceneConsts : register(b1)
   uint isDepthHack : packoffset(c92);
 }
 
-StructuredBuffer<modelInstanceBuffer> modelInstanceBuffer : register(t4);
-StructuredBuffer<boneMatrixBuffer> boneMatrixBuffer : register(t5);
+StructuredBuffer<ModelInstanceData> modelInstanceBuffer : register(t4);
+StructuredBuffer<GpuBoneData> boneMatrixBuffer : register(t5);
 
 
 // 3Dmigoto declarations

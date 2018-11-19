@@ -35,6 +35,14 @@
 #include "log.h"
 #include "version.h"
 
+// MSVC insists we use MS's secure version of scanf, which in turn insists we
+// pass the size of each string/char array as an unsigned integer. We want to
+// use something like sizeof/_countof/ARRAYSIZE to make that safe even if we
+// change the size of one of the buffers, but that returns a size_t, which does
+// not match the type scanf is expecting to find on the stack on x64 so we need
+// to cast it. That's a bit ugly, so we use this helper:
+#define UCOUNTOF(...) (unsigned)_countof(__VA_ARGS__)
+
 using namespace std;
 
 enum DataType
@@ -102,6 +110,9 @@ public:
 	map<int, string> mTextureNames;
 	map<int, int>    mTextureNamesArraySize;
 	map<int, string> mTextureType;
+
+	map<string, string> mStructuredBufferTypes;
+	set<string> mStructuredBufferUsedNames;
 
 	// Output register tracking.
 	map<string, string> mOutputRegisterValues;
@@ -182,7 +193,7 @@ public:
 	}
 
 	// Make this bump to new line slightly more clear by making it a convenience routine.
-	void NextLine(const char *c, size_t &pos, size_t max)
+	static void NextLine(const char *c, size_t &pos, size_t max)
 	{
 		while (c[pos] != 0x0a && pos < max) 
 			pos++; 
@@ -236,7 +247,7 @@ public:
 		size_t pos = 0;
 
 		int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
-			name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &reg1, sysvalue, (int)sizeof(sysvalue), format, (int)sizeof(format));
+			name, UCOUNTOF(name), &index, mask, UCOUNTOF(mask), &reg1, sysvalue, UCOUNTOF(sysvalue), format, UCOUNTOF(format));
 		if (numRead != 6)
 			return false;
 		name[sizeof(name) - 1] = '\0'; // Appease the static analysis gods
@@ -254,7 +265,7 @@ public:
 		while (c[pos] != 0x0a && pos < 200) pos++; pos++;
 
 		numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
-			name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &reg2, sysvalue, (int)sizeof(sysvalue), format, (int)sizeof(format));
+			name, UCOUNTOF(name), &index, mask, UCOUNTOF(mask), &reg2, sysvalue, UCOUNTOF(sysvalue), format, UCOUNTOF(format));
 		if (numRead != 6)
 			return false;
 		name[sizeof(name) - 1] = '\0'; // Appease the static analysis gods
@@ -386,7 +397,7 @@ public:
 			if (!strncmp(c + pos, "// no Input", strlen("// no Input")))
 				break;
 			int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
-				name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &slot, format2, (int)sizeof(format2), format, (int)sizeof(format));
+				name, UCOUNTOF(name), &index, mask, UCOUNTOF(mask), &slot, format2, UCOUNTOF(format2), format, UCOUNTOF(format));
 			if (numRead != 6)
 			{
 				logDecompileError("Error parsing input signature: " + string(c + pos, 80));
@@ -481,7 +492,7 @@ public:
 			// -------------------- ----- ------ -------- -------- ------- ------
 			// SV_Target                0   xyzw        0   TARGET   float   xyzw
 			int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
-				name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &slot, format2, (int)sizeof(format2), format, (int)sizeof(format));
+				name, UCOUNTOF(name), &index, mask, UCOUNTOF(mask), &slot, format2, UCOUNTOF(format2), format, UCOUNTOF(format));
 			if (numRead == 6)
 			{
 				// finish type.
@@ -536,7 +547,7 @@ public:
 				// -------------------- ----- ------ -------- -------- ------- ------
 				// SV_Depth                 0    N/A   oDepth    DEPTH   float    YES
 				numRead = sscanf_s(c + pos, "// %s %d %s %s %s %s",
-					name, (int)sizeof(name), &index, mask, (int)sizeof(mask), reg, (int)sizeof(reg), sysValue, (int)sizeof(sysValue), format, (int)sizeof(format));
+					name, UCOUNTOF(name), &index, mask, UCOUNTOF(mask), reg, UCOUNTOF(reg), sysValue, UCOUNTOF(sysValue), format, UCOUNTOF(format));
 				sprintf(buffer, "  out %s %s : %s,\n", format, reg, name);
 				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 			}
@@ -586,7 +597,7 @@ public:
 			if (!strncmp(c + pos, "// no Output", strlen("// no Output")))
 				break;
 			int numRead = sscanf_s(c + pos, "// %s %d %s %d %s %s",
-				name, (int)sizeof(name), &index, mask, (int)sizeof(mask), &slot, format2, (int)sizeof(format2), format, (int)sizeof(format));
+				name, UCOUNTOF(name), &index, mask, UCOUNTOF(mask), &slot, format2, UCOUNTOF(format2), format, UCOUNTOF(format));
 			if (numRead == 6)
 			{
 				// Already used?
@@ -612,7 +623,7 @@ public:
 			{
 				char sysValue[64];
 				int numRead = sscanf_s(c + pos, "// %s %d %s %s %s %s",
-					name, (int)sizeof(name), &index, mask, (int)sizeof(mask), sysValue, (int)sizeof(sysValue), format2, (int)sizeof(format2), format, (int)sizeof(format));
+					name, UCOUNTOF(name), &index, mask, UCOUNTOF(mask), sysValue, UCOUNTOF(sysValue), format2, UCOUNTOF(format2), format, UCOUNTOF(format));
 				// Write.
 				char buffer[256];
 				sprintf(buffer, "  %s = 0;\n", sysValue);
@@ -664,8 +675,8 @@ public:
 			int arraySize;
 			type[0] = 0;
 			int numRead = sscanf_s(c + pos, "// %s %s %s %s %s %d",
-				name, (int)sizeof(name), type, (int)sizeof(type), format, (int)sizeof(format), dim, (int)sizeof(dim), 
-				bind, (int)sizeof(bind), &arraySize);
+				name, UCOUNTOF(name), type, UCOUNTOF(type), format, UCOUNTOF(format), dim, UCOUNTOF(dim),
+				bind, UCOUNTOF(bind), &arraySize);
 
 			if (numRead != 6)
 				logDecompileError("Error parsing resource declaration: " + string(c + pos, 80));
@@ -753,10 +764,12 @@ public:
 				// Two new ones for Mordor.
 				else if (!strcmp(dim, "buf"))
 					mTextureType[slot] = "Buffer<" + string(format) + ">";	
-				else if (!strcmp(dim, "r/o"))
-					mTextureType[slot] = "StructuredBuffer<" + string(name) + ">";
+				else if (!strcmp(format, "struct"))
+					mTextureType[slot] = "StructuredBuffer<" + mStructuredBufferTypes[name] + ">";
 				//else if (!strcmp(dim, "r/w"))
-				//	mTextureType[slot] = "RWStructuredBuffer<" + string(name) + ">";  // probable, not seen yet.
+				//	mTextureType[slot] = "RWStructuredBuffer<" + mStructuredBufferTypes[name] + ">"; // Type=UAV
+				else if (!strcmp(format, "byte"))
+					mTextureType[slot] = "ByteAddressBuffer";
 				else
 					logDecompileError("Unknown texture dimension: " + string(dim));
 			}
@@ -911,7 +924,7 @@ public:
 			}
 			if (pos >= size - strlen(headerid)) return;
 			char name[256];
-			int numRead = sscanf_s(c + pos, "// cbuffer %s", name, (int)sizeof(name));
+			int numRead = sscanf_s(c + pos, "// cbuffer %s", name, UCOUNTOF(name));
 			if (numRead != 1)
 			{
 				logDecompileError("Error parsing buffer name: " + string(c + pos, 80));
@@ -1052,7 +1065,7 @@ public:
 				//   float2 __0RealtimeReflMul__1EnvCubeReflMul__2__3;// Offset:   96 Size:     8
 				// This caused the %s %s to fail, so now looking specifically for required semicolon.
 				char type[16]; type[0] = 0;
-				numRead = sscanf_s(c + pos, "// %s %[^;]", type, (int)sizeof(type), name, (int)sizeof(name));
+				numRead = sscanf_s(c + pos, "// %s %[^;]", type, UCOUNTOF(type), name, UCOUNTOF(name));
 				if (numRead != 2)
 				{
 					logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
@@ -1066,7 +1079,7 @@ public:
 					e.isRowMajor = !strcmp(type, "row_major");
 					modifier = type;
 					modifier.push_back(' ');
-					numRead = sscanf_s(c + pos, "// %s %s %[^;]", buffer, (int)sizeof(buffer), type, (int)sizeof(type), name, (int)sizeof(name));
+					numRead = sscanf_s(c + pos, "// %s %s %[^;]", buffer, UCOUNTOF(buffer), type, UCOUNTOF(type), name, UCOUNTOF(name));
 					if (numRead != 3)
 					{
 						logDecompileError("Error parsing buffer item: " + string(c + pos, 80));
@@ -1378,6 +1391,161 @@ public:
 		}
 	}
 
+	// TODO: Convert other parsers to use this helper
+	static size_t find_next_header(const char *headerid, const char *c, size_t pos, size_t size)
+	{
+		size_t header_len = strlen(headerid);
+
+		while (pos < size - header_len) {
+			if (!strncmp(c + pos, headerid, header_len))
+				return pos;
+			else
+				NextLine(c, pos, size);
+		}
+
+		return 0;
+	}
+
+	bool warn_if_line_is_not(const char *expect, const char *c)
+	{
+		if (strncmp(c, expect, strlen(expect))) {
+			logDecompileError("WARNING: Unexpected string in shader"
+					"\n  Expected: " + string(expect) +
+					"\n     Found: " + string(c, 80));
+			return true;
+		}
+		return false;
+	}
+
+	void ParseStructureDefinitions(Shader *shader, const char *c, size_t size)
+	{
+		// Pulls out struct type declaration for structured buffers.
+		// These will be referenced later when parsing the resource
+		// bindings and any structured load/write instructions.
+		//
+		// - The struct definition in the assembly comment can be
+		//   directly added to HLSL with only minimal changes:
+		//   - We strip the $Element syntax from the end
+		//   - We need to add a struct type name for shader model 4
+		//     (SM5 already includes the type name we will use)
+		//   - We need to strip type names from any embedded structs
+		//
+		// - We will need to note down which member is at each offset
+		//   for use in later load instructions.
+		//
+		// TestShaders\resource_types* include test cases for these.
+
+		size_t pos = 0;
+		size_t spos, fpos;
+		char bind_name[256];
+		char type_name_buf[256];
+		string type_name;
+		int n;
+		string hlsl;
+
+		while (pos = find_next_header("// Resource bind info for ", c, pos, size)) {
+			n = sscanf_s(c + pos, "// Resource bind info for %s", bind_name, UCOUNTOF(bind_name));
+			if (n != 1) {
+				logDecompileError("Error parsing structure bind name: " + string(c + pos, 80));
+				continue;
+			}
+			NextLine(c, pos, size);
+
+			warn_if_line_is_not("// {\n", c + pos);
+			NextLine(c, pos, size);
+			warn_if_line_is_not("//\n", c + pos);
+			NextLine(c, pos, size);
+
+			if (!strncmp(c + pos, "//   struct ", 12)) {
+				// Shader model 5 has a type name after the
+				// struct. We can't do this scanf without first
+				// checking for this case since " " also
+				// matches "\n" in scanf:
+				n = sscanf_s(c + pos + 12, "%s", type_name_buf, UCOUNTOF(type_name_buf));
+				if (n != 1) {
+					logDecompileError("Error parsing structure type name: " + string(c + pos, 80));
+					continue;
+				}
+				type_name = type_name_buf;
+			} else if (!strncmp(c + pos, "//   struct\n", 12)) {
+				// Shader model 4 lacks a type name after the
+				// struct, so we have to invent one.
+				type_name = bind_name + string("_type");
+			} else {
+				// Primitive type, not a structure
+				n = 0;
+				sscanf_s(c + pos, "//   %s $Element;%n", type_name_buf, UCOUNTOF(type_name_buf), &n);
+				if (!n) {
+					logDecompileError("Error parsing primitive structure type: " + string(c + pos, 80));
+					continue;
+				}
+				mStructuredBufferTypes[bind_name] = type_name_buf;
+				continue;
+			}
+			mStructuredBufferTypes[bind_name] = type_name;
+			if (!mStructuredBufferUsedNames.insert(type_name).second) {
+				// The same type name has been used previously.
+				// Assuming the contents is going to be the same
+				// and skipping redefining it.
+				continue;
+			}
+			NextLine(c, pos, size);
+
+			warn_if_line_is_not("//   {\n", c + pos);
+			NextLine(c, pos, size);
+			warn_if_line_is_not("//       \n", c + pos);
+			NextLine(c, pos, size);
+
+			hlsl = "\nstruct " + string(type_name) + "\n{\n";
+
+			while (true) {
+				// Strip comments:
+				if (warn_if_line_is_not("//", c + pos))
+					break;
+				spos = pos + 2;
+
+				// Strip first level of indentation if present:
+				if (!strncmp(c + spos, "   ", 3))
+					spos += 3;
+
+				// Check if done signified by "} $Element;",
+				// but for safety only checking "}"
+				if (!strncmp(c + spos, "}", 1))
+					break;
+
+				// Find first non-blank character (without stripping):
+				fpos = spos + strspn(&c[spos], " ");
+
+				// Strip type names from inline embedded structs.
+				// If these were declared separately in the
+				// original HLSL they will have a valid type
+				// name here, but if they were declared inline
+				// they will have a placeholder name of
+				// "parent_type::<unnamed>" instead. Either way
+				// the HLSL we are generating will have these
+				// inlined where specifying a type name is
+				// illegal, so we have to strip it. We also
+				// clean up the whitespace around these while
+				// we're at it.
+				if (!strncmp(&c[fpos], "struct ", 7) || !strncmp(&c[fpos], "struct\n", 7)) {
+					hlsl += string(c, spos, fpos - spos) + "struct {\n";
+					NextLine(c, pos, size); // struct typename
+					warn_if_line_is_not("{\n", c + pos + strspn(c + pos, "/ "));
+					NextLine(c, pos, size); // {
+					warn_if_line_is_not("\n", c + pos + strspn(c + pos, "/ "));
+					NextLine(c, pos, size); // blank
+				} else {
+					// Add the stripped line to the HLSL output, unless blank:
+					NextLine(c, pos, size);
+					if (c[fpos] != '\n')
+						hlsl += string(c, spos, pos - spos);
+				}
+			}
+			hlsl += "};\n";
+			mOutput.insert(mOutput.end(), hlsl.begin(), hlsl.end());
+		}
+	}
+
 	void applySwizzle(const char *left, char *right, bool useInt = false)
 	{
 		char right2[opcodeSize];
@@ -1509,7 +1677,7 @@ public:
 				// crushed the spaces out of the input.
 
 				// Like: -cb2[r12.w+63].xyzx  as : -cb(bufIndex)[(regAndSwiz)+(bufOffset)]
-				if (sscanf_s(strPos, "cb%d[%[^+]+%d]", &bufIndex, regAndSwiz, (int)sizeof(regAndSwiz), &bufOffset) == 3)
+				if (sscanf_s(strPos, "cb%d[%[^+]+%d]", &bufIndex, regAndSwiz, UCOUNTOF(regAndSwiz), &bufOffset) == 3)
 				{
 					// Some constant buffers no longer have variable names, giving us generic names like cb0[23].
 					// The syntax doesn't work to use those names, so in this scenario, we want to just use the strPos name, unchanged.
@@ -1534,12 +1702,12 @@ public:
 					regAndSwiz[0] = 0;
 				}
 				// Like: cb0[r0.w].xy
-				else if (sscanf_s(strPos, "cb%d[%s]", &bufIndex, regAndSwiz, (int)sizeof(regAndSwiz)) == 2)
+				else if (sscanf_s(strPos, "cb%d[%s]", &bufIndex, regAndSwiz, UCOUNTOF(regAndSwiz)) == 2)
 				{
 					bufOffset = 0;
 				}
 				// Like: icb[r0.w+0].xyzw
-				else if (sscanf_s(strPos, "cb[%[^+]+%d]", regAndSwiz, (int)sizeof(regAndSwiz), &bufOffset) == 2)
+				else if (sscanf_s(strPos, "cb[%[^+]+%d]", regAndSwiz, UCOUNTOF(regAndSwiz), &bufOffset) == 2)
 				{
 					bufIndex = -1;		// -1 is used as 'index' for icb entries.
 				}
@@ -1550,7 +1718,7 @@ public:
 					regAndSwiz[0] = 0;
 				}
 				// Like: icb[r1.z].xy
-				else if (sscanf_s(strPos, "cb[%s]", regAndSwiz, (int)sizeof(regAndSwiz)) == 1)
+				else if (sscanf_s(strPos, "cb[%s]", regAndSwiz, UCOUNTOF(regAndSwiz)) == 1)
 				{
 					bufIndex = -1;		// -1 is used as 'index' for icb entries.
 					bufOffset = 0;
@@ -1760,7 +1928,7 @@ public:
 		op9[0] = 0; op10[0] = 0; op11[0] = 0; op12[0] = 0; op13[0] = 0; op14[0] = 0; op15[0] = 0;
 
 		int numRead = sscanf_s(lineBuffer, "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s",
-			statement, (int)sizeof(statement),
+			statement, UCOUNTOF(statement),
 			op1, opcodeSize, op2, opcodeSize, op3, opcodeSize, op4, opcodeSize, op5, opcodeSize, op6, opcodeSize, op7, opcodeSize, op8, opcodeSize,
 			op9, opcodeSize, op10, opcodeSize, op11, opcodeSize, op12, opcodeSize, op13, opcodeSize, op14, opcodeSize, op15, opcodeSize);
 
@@ -3332,7 +3500,7 @@ public:
 				const char *varDecl = "  float4 ";
 				mOutput.insert(mOutput.end(), varDecl, varDecl + strlen(varDecl));
 				int numTemps;
-				sscanf_s(c + pos, "%s %d", statement, (int)sizeof(statement), &numTemps);
+				sscanf_s(c + pos, "%s %d", statement, UCOUNTOF(statement), &numTemps);
 				for (int i = 0; i < numTemps; ++i)
 				{
 					sprintf(buffer, "r%d,", i);
@@ -5442,6 +5610,7 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 		Shader *shader = DecodeDXBC((uint32_t*)params.bytecode);
 		if (!shader) return string();
 
+		d.ParseStructureDefinitions(shader, params.decompiled, params.decompiledSize);
 		d.ReadResourceBindings(params.decompiled, params.decompiledSize);
 		d.ParseBufferDefinitions(shader, params.decompiled, params.decompiledSize);
 		d.WriteResourceDefinitions();

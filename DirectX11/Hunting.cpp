@@ -1,6 +1,7 @@
 #include "Hunting.h"
 
 #include <string>
+#include <sstream>
 #include <D3Dcompiler.h>
 #include <codecvt>
 
@@ -480,7 +481,7 @@ static string Decompile(ID3DBlob *pShaderByteCode, string *asmText)
 
 static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const char *shaderModel, 
 	UINT64 hash, wstring shaderType, ID3DBlob *origByteCode,
-	__out FILETIME* timeStamp, __out wstring &headerLine, _Outptr_ ID3DBlob** pCode)
+	__out FILETIME* timeStamp, __out wstring &headerLine, _Outptr_ ID3DBlob** pCode, string *errText)
 {
 	*pCode = nullptr;
 	wchar_t fullName[MAX_PATH];
@@ -562,6 +563,8 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 				fwrite(errMsg, 1, errSize - 1, LogFile);
 			}
 			LogInfo("---------------------------------------------- END ----------------------------------------------\n");
+			if (errText)
+				*errText = string((char*)pErrorMsgs->GetBufferPointer(), pErrorMsgs->GetBufferSize() - 1);
 			pErrorMsgs->Release();
 		}
 
@@ -654,7 +657,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 // new version will be used at VSSetShader and PSSetShader.
 // File names are uniform in the form: 3c69e169edc8cd5f-ps_replace.txt
 
-static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *device)
+static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *device, string *errText)
 {
 	UINT64 hash;
 	ShaderOverrideMap::iterator override;
@@ -729,7 +732,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 
 			// Compile anew. If timestamp is unchanged, the code is unchanged, continue to next shader.
 			ID3DBlob *pShaderBytecode = NULL;
-			if (!RegenerateShader(shaderPath, fileName, shaderModel.c_str(), hash, shaderType, shaderCode, &timeStamp, headerLine, &pShaderBytecode))
+			if (!RegenerateShader(shaderPath, fileName, shaderModel.c_str(), hash, shaderType, shaderCode, &timeStamp, headerLine, &pShaderBytecode, errText))
 				continue;
 
 			// If we compiled but got nothing, that's a fatal error we need to report.
@@ -810,21 +813,50 @@ err:
 	goto out;
 }
 
-static bool WriteASM(string *asmText, UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device)
+static bool WriteASM(string *asmText, string *hlslText, string *errText,
+		UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device)
 {
+	std::istringstream hlslTokens(*hlslText);
+	std::istringstream errTokens(*errText);
 	wchar_t fileName[MAX_PATH];
 	wchar_t fullName[MAX_PATH];
-	HRESULT hr;
+	std::string token;
+	FILE *f;
 
 	swprintf_s(fileName, MAX_PATH, L"%016llx-%ls.txt", hash, shader_info.shaderType.c_str());
 	swprintf_s(fullName, MAX_PATH, L"%ls\\%ls", G->SHADER_PATH, fileName);
-	hr = CreateTextFile(fullName, asmText, false);
-	if (FAILED(hr))
+
+	wfopen_ensuring_access(&f, fullName, L"wb");
+	if (!f) {
+		LogInfo("    error storing marked shader to %S\n", fullName);
 		return false;
+	}
+
+	fwrite(asmText->c_str(), 1, asmText->size(), f);
+
+	if (!hlslText->empty()) {
+		fprintf_s(f, "\n///////////////////////////////// HLSL Code /////////////////////////////////\n");
+		while (std::getline(hlslTokens, token, '\n')) {
+			if (token.empty())
+				fprintf(f, "//\n");
+			else
+				fprintf(f, "// %s\n", token.c_str());
+		}
+		fprintf_s(f, "//////////////////////////////// HLSL Errors ////////////////////////////////\n");
+		while (std::getline(errTokens, token, '\n')) {
+			if (token.empty())
+				fprintf(f, "//\n");
+			else
+				fprintf(f, "// %s\n", token.c_str());
+		}
+		fprintf_s(f, "/////////////////////////////////////////////////////////////////////////////\n");
+	}
+
+	fclose(f);
 
 	// Lastly, reload the shader generated, to check for decompile errors, set it as the active
 	// shader code, in case there are visual errors, and make it the match the code in the file.
-	return ReloadShader(G->SHADER_PATH, fileName, device);
+	return ReloadShader(G->SHADER_PATH, fileName, device, NULL);
 }
 
 // Write the decompiled text as HLSL source code to the txt file.
@@ -836,17 +868,17 @@ static bool WriteASM(string *asmText, UINT64 hash, OriginalShaderInfo shader_inf
 // and thus is not different than the file on disk.
 // If a file was already extant in the ShaderFixes, it will be picked up at game launch as the master shaderByteCode.
 
-static bool WriteHLSL(string *asmText, UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device, bool remove_failed)
+static bool WriteHLSL(string *asmText, string *hlslText, string *errText,
+		UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device, bool remove_failed)
 {
 	wchar_t fileName[MAX_PATH];
 	wchar_t fullName[MAX_PATH];
-	string hlslText;
 	FILE *fw;
 	bool ret;
 
 	// Try to decompile the current byte code into HLSL:
-	hlslText = Decompile(shader_info.byteCode, asmText);
-	if (hlslText.empty())
+	*hlslText = Decompile(shader_info.byteCode, asmText);
+	if (hlslText->empty())
 		return false;
 
 	// We no longer check if the file exists and touch it at this point -
@@ -864,7 +896,7 @@ static bool WriteHLSL(string *asmText, UINT64 hash, OriginalShaderInfo shader_in
 
 	LogInfoW(L"    storing patched shader to %s\n", fullName);
 
-	fwrite(hlslText.c_str(), 1, hlslText.size(), fw);
+	fwrite(hlslText->c_str(), 1, hlslText->size(), fw);
 
 	fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 	fwrite(asmText->c_str(), 1, asmText->size(), fw);
@@ -874,7 +906,7 @@ static bool WriteHLSL(string *asmText, UINT64 hash, OriginalShaderInfo shader_in
 
 	// Lastly, reload the shader generated, to check for decompile errors, set it as the active
 	// shader code, in case there are visual errors, and make it the match the code in the file.
-	ret = ReloadShader(G->SHADER_PATH, fileName, device);
+	ret = ReloadShader(G->SHADER_PATH, fileName, device, errText);
 
 	if (!ret && remove_failed) {
 		LogInfo("    removing shader that failed to reload: %S\n", fullName);
@@ -952,7 +984,7 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 {
 	bool success = false;
 	bool asm_enabled = !!(G->marking_actions & MarkingAction::ASM);
-	string asmText;
+	string asmText, hlslText, errText;
 
 	// The key of the map is the actual shader, we thus need to do a linear search to find our marked hash.
 	for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
@@ -965,7 +997,7 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 
 			if (G->marking_actions & MarkingAction::HLSL) {
 				// Save the decompiled text, and ASM text into the HLSL .txt source file:
-				success = WriteHLSL(&asmText, hash, iter.second, device, asm_enabled);
+				success = WriteHLSL(&asmText, &hlslText, &errText, hash, iter.second, device, asm_enabled);
 				if (success)
 					break;
 				else if (asm_enabled)
@@ -973,7 +1005,7 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 			}
 
 			if (asm_enabled) {
-				success = WriteASM(&asmText, hash, iter.second, device);
+				success = WriteASM(&asmText, &hlslText, &errText, hash, iter.second, device);
 				break;
 			}
 
@@ -1089,7 +1121,7 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 		if (hFind != INVALID_HANDLE_VALUE)
 		{
 			do {
-				success = ReloadShader(G->SHADER_PATH, findFileData.cFileName, device) && success;
+				success = ReloadShader(G->SHADER_PATH, findFileData.cFileName, device, NULL) && success;
 			} while (FindNextFile(hFind, &findFileData));
 			FindClose(hFind);
 		}
