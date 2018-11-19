@@ -1,10 +1,8 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:17:01 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:27:27 2018
 
 struct SImpostorInstance
 {
-    struct SImpostorInstance::<unnamed>
-    {
-        
+    struct {
         uint rot[5];               // Offset:    0
         float3 pos;                // Offset:   20
     } m_treeToWS;                  // Offset:    0

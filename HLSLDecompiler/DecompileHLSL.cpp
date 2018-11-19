@@ -1413,6 +1413,7 @@ public:
 		//   - We strip the $Element syntax from the end
 		//   - We need to add a struct type name for shader model 4
 		//     (SM5 already includes the type name we will use)
+		//   - We need to strip type names from any embedded structs
 		//
 		// - We will need to note down which member is at each offset
 		//   for use in later load instructions.
@@ -1420,13 +1421,10 @@ public:
 		// - TBD: What happens if multiple structured buffers have the
 		//        same type name?
 		//
-		// - TBD: Can structs be embedded within other structs? fxc
-		//        rejected my test cases trying this.
-		//
 		// TestShaders\resource_types* include test cases for these.
 
 		size_t pos = 0;
-		size_t spos;
+		size_t spos, fpos;
 		char bind_name[256];
 		char type_name_buf[256];
 		string type_name;
@@ -1479,7 +1477,7 @@ public:
 					break;
 				spos = pos + 2;
 
-				// Strip optional indentation:
+				// Strip first level of indentation if present:
 				if (!strncmp(c + spos, "   ", 3))
 					spos += 3;
 
@@ -1488,10 +1486,33 @@ public:
 				if (!strncmp(c + spos, "}", 1))
 					break;
 
-				// Add the stripped line to the HLSL output, unless blank:
-				NextLine(c, pos, size);
-				if (c[spos] != '\n')
-					hlsl += string(c, spos, pos - spos);
+				// Find first non-blank character (without stripping):
+				fpos = spos + strspn(&c[spos], " ");
+
+				// Strip type names from inline embedded structs.
+				// If these were declared separately in the
+				// original HLSL they will have a valid type
+				// name here, but if they were declared inline
+				// they will have a placeholder name of
+				// "parent_type::<unnamed>" instead. Either way
+				// the HLSL we are generating will have these
+				// inlined where specifying a type name is
+				// illegal, so we have to strip it. We also
+				// clean up the whitespace around these while
+				// we're at it.
+				if (!strncmp(&c[fpos], "struct ", 7) || !strncmp(&c[fpos], "struct\n", 7)) {
+					hlsl += string(c, spos, fpos - spos) + "struct {\n";
+					NextLine(c, pos, size); // struct typename
+					warn_if_line_is_not("{\n", c + pos + strspn(c + pos, "/ "));
+					NextLine(c, pos, size); // {
+					warn_if_line_is_not("\n", c + pos + strspn(c + pos, "/ "));
+					NextLine(c, pos, size); // blank
+				} else {
+					// Add the stripped line to the HLSL output, unless blank:
+					NextLine(c, pos, size);
+					if (c[fpos] != '\n')
+						hlsl += string(c, spos, pos - spos);
+				}
 			}
 			hlsl += "};\n";
 			mOutput.insert(mOutput.end(), hlsl.begin(), hlsl.end());

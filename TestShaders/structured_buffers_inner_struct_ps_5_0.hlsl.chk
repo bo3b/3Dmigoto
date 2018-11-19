@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:19:11 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:28:17 2018
 
 struct foo
 {
@@ -12,23 +12,14 @@ struct bar
 {
     float foofoo;                  // Offset:    0
     uint foobar;                   // Offset:    4
-    
-    struct bar::<unnamed>
-    {
-        
+    struct {
         float foo;                 // Offset:    8
         float bar;                 // Offset:   12
     } inner_struct_1;              // Offset:    8
-    
-    struct bar::<unnamed>
-    {
-        
+    struct {
         float baz;                 // Offset:   16
         float bug;                 // Offset:   20
-        
-        struct foo
-        {
-            
+        struct {
             float foo;             // Offset:   24
             uint bar;              // Offset:   28
             float baz;             // Offset:   32
