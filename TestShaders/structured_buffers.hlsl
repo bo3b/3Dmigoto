@@ -47,10 +47,12 @@ void main(uint idx : TEXCOORD0, float val : TEXCOORD1, out float4 output : SV_Ta
 
 	// ps_4_0 ld_structured
 	// ps_5_0 ld_structured_indexable
-	output += struct_buf_1.Load(0).foo;
-	output += struct_buf_1.Load(2).bar;
-	output += struct_buf_1.Load(1).baz;
-	output += struct_buf_1.Load(3).buz;
+	// .Load() syntax needs a newer version of fxc than shipped with the
+	// Win 8.0 SDK, so only using [] syntax here:
+	output += struct_buf_1[0].foo;
+	output += struct_buf_1[2].bar;
+	output += struct_buf_1[1].baz;
+	output += struct_buf_1[3].buz;
 	output += struct_buf_2[idx].foofoo;
 	output += struct_buf_2[idx].foobar;
 #ifdef USE_INNER_STRUCT
