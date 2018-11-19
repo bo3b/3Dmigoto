@@ -34,6 +34,7 @@ OUTPUT_DIR=output
 TEST_DIR="$PWD"
 mkdir -p "$OUTPUT_DIR"
 rm -v "$OUTPUT_DIR"/* 2>/dev/null || true
+TESTS_FAILED=0
 
 # No good way to machine verify the decompiler, so go for the next best thing -
 # verify that the output matches a previous run. This is of course subject to
@@ -113,6 +114,7 @@ run_decompiler_test()
 
 	if [ "$fail" = 1 ]; then
 		echo -e "\r${ANSI_RED}FAIL${ANSI_NORM}"
+		TESTS_FAILED=1
 	else
 		echo -e "\r${ANSI_GREEN}PASS${ANSI_NORM}"
 	fi
@@ -159,10 +161,10 @@ cmd_decompiler_copy_reflection_check()
 
 reconstruct_shader_binary()
 {
-	hlsl_filename="$1"
-	asm_filename="$2"
-	bin_filename="$3"
-	rm_asm=0
+	local hlsl_filename="$1"
+	local asm_filename="$2"
+	local bin_filename="$3"
+	local rm_asm=0
 
 	if [ ! -f "$asm_filename" ]; then
 		# Extract original assembly from comment, if present:
@@ -174,7 +176,7 @@ reconstruct_shader_binary()
 		rm_asm=1
 	fi
 
-	shader_model=$(grep -av '^\/\/' "$asm_filename" | grep -av '^\s*$'|head -n 1)
+	local shader_model=$(grep -av '^\/\/' "$asm_filename" | grep -av '^\s*$'|head -n 1)
 
 	# We want the reflection information in the reconstructed binary, but
 	# cmd_Decompiler currently does not assemble it, so we can only get it
