@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:26 2018
+// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:33:05 2018
 Buffer<uint4> t3 : register(t3);
 
 Texture2D<float4> t2 : register(t2);
@@ -83,7 +83,7 @@ r0.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   r1.zw = cmp(float2(127,127) < r1.xy);
   r2.xy = float2(-256,-256) + r1.xy;
   r1.yz = r1.zw ? r2.xy : r1.xy;
-  r2.xyz = (int3)r0.xzw & int3(0,0,255);
+  r2.xyz = (int3)r0.xzw & int3(0xffff,0xffff,255);
   r0.x = (uint)r0.x >> 16;
   r0.x = (uint)r0.x;
   r0.x = cb2[4].y * r0.x;

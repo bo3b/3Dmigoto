@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:37 2018
+// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:44:14 2018
 Texture2D<float4> t5 : register(t5);
 
 Texture2D<float4> t4 : register(t4);
@@ -159,8 +159,8 @@ void main(
     r0.yz = min(cb13[32].xy, r0.yz);
     r1.xyz = t4.SampleLevel(s4_s, r0.yz, 0).xyz;
     r0.yzw = min(r1.xyz, r0.www);
-    r1.xyz = (int3)r0.yzw & int3(0,0,0);
-    r1.xyz = cmp((int3)r1.xyz != int3(0,0,0));
+    r1.xyz = (int3)r0.yzw & int3(0x7f800000,0x7f800000,0x7f800000);
+    r1.xyz = cmp((int3)r1.xyz != int3(0x7f800000,0x7f800000,0x7f800000));
     o0.xyz = r1.xyz ? r0.yzw : 0;
     o0.w = r0.x * r3.x;
   } else {

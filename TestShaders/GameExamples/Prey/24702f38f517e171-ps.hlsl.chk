@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:37:09 2018
+// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:44:14 2018
 
 cbuffer PER_BATCH : register(b0)
 {
@@ -177,8 +177,8 @@ void main(
     r0.yz = min(CV_HPosScale.xy, r0.yz);
     r1.xyz = _tex4.SampleLevel(_tex4_s_s, r0.yz, 0).xyz;
     r0.yzw = min(r1.xyz, r0.www);
-    r1.xyz = (int3)r0.yzw & int3(0,0,0);
-    r1.xyz = cmp((int3)r1.xyz != int3(0,0,0));
+    r1.xyz = (int3)r0.yzw & int3(0x7f800000,0x7f800000,0x7f800000);
+    r1.xyz = cmp((int3)r1.xyz != int3(0x7f800000,0x7f800000,0x7f800000));
     o0.xyz = r1.xyz ? r0.yzw : 0;
     o0.w = r0.x * r3.x;
   } else {
