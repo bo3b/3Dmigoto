@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:27:27 2018
+// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:04:48 2018
 
 struct SImpostorInstance
 {
@@ -131,7 +131,7 @@ r2.x = DepthLowRes[]..swiz;
 r2.y = DepthLowRes[]..swiz;
 r2.z = DepthLowRes[]..swiz;
 r2.w = DepthLowRes[]..swiz;
-  r3.xyzw = (int4)r2.xyzw & int4(0,0,0,0);
+  r3.xyzw = (int4)r2.xyzw & int4(0xffff,0xffff,0xffff,0xffff);
   r2.xyzw = (uint4)r2.xyzw >> int4(16,16,16,16);
   r2.xyzw = f16tof32(r2.xywz);
   r3.xyzw = f16tof32(r3.xywz);

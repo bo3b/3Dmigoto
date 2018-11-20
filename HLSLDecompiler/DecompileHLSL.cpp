@@ -1546,11 +1546,14 @@ public:
 
 		char *beginPos = right + 2;
 		float args[4];
+		unsigned hex_args[4];
+		bool is_hex[4];
 		for (int i = 0; i < 4; ++i)
 		{
 			char *endPos = strchr(beginPos, ',');
 			if (endPos) *endPos = 0;
 			sscanf_s(beginPos, "%f", args + i);
+			is_hex[i] = (sscanf_s(beginPos, " 0x%x", hex_args + i) == 1);
 			beginPos = endPos + 1;
 		}
 		if (pos == 1)
@@ -1562,12 +1565,16 @@ public:
 			// Only integer values?
 			bool isInt = true;
 			for (int i = 0; idx[i] >= 0 && i < 4; ++i)
-				isInt = isInt && (floor(args[idx[i]]) == args[idx[i]]);
+				isInt = isInt && (is_hex[idx[i]] || (floor(args[idx[i]]) == args[idx[i]]));
 			if (isInt && useInt)
 			{
 				sprintf_s(right2, opcodeSize, "int%Id(", pos);
-				for (int i = 0; idx[i] >= 0 && i < 4; ++i)
-					sprintf_s(right2 + strlen(right2), opcodeSize - strlen(right2), "%d,", int(args[idx[i]]));
+				for (int i = 0; idx[i] >= 0 && i < 4; ++i) {
+					if (is_hex[idx[i]])
+						sprintf_s(right2 + strlen(right2), opcodeSize - strlen(right2), "0x%x,", hex_args[idx[i]]);
+					else
+						sprintf_s(right2 + strlen(right2), opcodeSize - strlen(right2), "%d,", int(args[idx[i]]));
+				}
 				right2[strlen(right2) - 1] = 0;
 				strcat_s(right2, opcodeSize, ")");
 			}
@@ -3776,8 +3783,8 @@ public:
 						remapTarget(op1);
 						strcpy(op12, op2);
 						strcpy(op13, op3);
-						applySwizzle(op1, op2);
-						applySwizzle(op1, op3);
+						applySwizzle(op1, op2, true);
+						applySwizzle(op1, op3, true);
 						if (isBoolean(op2) || isBoolean(op3))
 						{
 							convertHexToFloat(op12);
@@ -4479,8 +4486,8 @@ public:
 					case OPCODE_INE:
 					{
 						remapTarget(op1);
-						applySwizzle(op1, op2);
-						applySwizzle(op1, op3);
+						applySwizzle(op1, op2, true);
+						applySwizzle(op1, op3, true);
 						sprintf(buffer, "  %s = cmp(%s != %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
@@ -4499,8 +4506,8 @@ public:
 					case OPCODE_IEQ: 
 					{
 						remapTarget(op1);
-						applySwizzle(op1, op2);
-						applySwizzle(op1, op3);
+						applySwizzle(op1, op2, true);
+						applySwizzle(op1, op3, true);
 						sprintf(buffer, "  %s = cmp(%s == %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
