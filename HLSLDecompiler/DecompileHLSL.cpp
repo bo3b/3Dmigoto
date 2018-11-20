@@ -1534,6 +1534,54 @@ public:
 		}
 	}
 
+	static void applySwizzleLiteral(char *right, char *right2, bool useInt, size_t pos, char idx[4])
+	{
+		// Single literal?
+		if (!strchr(right, ','))
+		{
+			strcpy_s(right2, opcodeSize, right + 2);
+			right2[strlen(right2) - 1] = 0;
+			return;
+		}
+
+		char *beginPos = right + 2;
+		float args[4];
+		for (int i = 0; i < 4; ++i)
+		{
+			char *endPos = strchr(beginPos, ',');
+			if (endPos) *endPos = 0;
+			sscanf_s(beginPos, "%f", args + i);
+			beginPos = endPos + 1;
+		}
+		if (pos == 1)
+		{
+			sprintf_s(right2, opcodeSize, "%.9g", args[idx[0]]);
+		}
+		else
+		{
+			// Only integer values?
+			bool isInt = true;
+			for (int i = 0; idx[i] >= 0 && i < 4; ++i)
+				isInt = isInt && (floor(args[idx[i]]) == args[idx[i]]);
+			if (isInt && useInt)
+			{
+				sprintf_s(right2, opcodeSize, "int%Id(", pos);
+				for (int i = 0; idx[i] >= 0 && i < 4; ++i)
+					sprintf_s(right2 + strlen(right2), opcodeSize - strlen(right2), "%d,", int(args[idx[i]]));
+				right2[strlen(right2) - 1] = 0;
+				strcat_s(right2, opcodeSize, ")");
+			}
+			else
+			{
+				sprintf_s(right2, opcodeSize, "float%Id(", pos);
+				for (int i = 0; idx[i] >= 0 && i < 4; ++i)
+					sprintf_s(right2 + strlen(right2), opcodeSize - strlen(right2), "%.9g,", args[idx[i]]);
+				right2[strlen(right2) - 1] = 0;
+				strcat_s(right2, opcodeSize, ")");
+			}
+		}
+	}
+
 	void applySwizzle(const char *left, char *right, bool useInt = false)
 	{
 		char right2[opcodeSize];
@@ -1577,54 +1625,7 @@ public:
 
 		// literal?
 		if (right[0] == 'l')
-		{
-			strPos = strchr(right, ',');
-			// Single literal?
-			if (!strPos)
-			{
-				strcpy(right2, right + 2);
-				right2[strlen(right2) - 1] = 0;
-			}
-			else
-			{
-				char *beginPos = right + 2;
-				float args[4];
-				for (int i = 0; i < 4; ++i)
-				{
-					char *endPos = strchr(beginPos, ',');
-					if (endPos) *endPos = 0;
-					sscanf_s(beginPos, "%f", args + i);
-					beginPos = endPos + 1;
-				}
-				if (pos == 1)
-				{
-					sprintf(right2, "%.9g", args[idx[0]]);
-				}
-				else
-				{
-					// Only integer values?
-					bool isInt = true;
-					for (int i = 0; idx[i] >= 0 && i < 4; ++i)
-						isInt = isInt && (floor(args[idx[i]]) == args[idx[i]]);
-					if (isInt && useInt)
-					{
-						sprintf(right2, "int%Id(", pos);
-						for (int i = 0; idx[i] >= 0 && i < 4; ++i)
-							sprintf_s(right2 + strlen(right2), sizeof(right2) - strlen(right2), "%d,", int(args[idx[i]]));
-						right2[strlen(right2) - 1] = 0;
-						strcat(right2, ")");
-					}
-					else
-					{
-						sprintf(right2, "float%Id(", pos);
-						for (int i = 0; idx[i] >= 0 && i < 4; ++i)
-							sprintf_s(right2 + strlen(right2), sizeof(right2) - strlen(right2), "%.9g,", args[idx[i]]);
-						right2[strlen(right2) - 1] = 0;
-						strcat(right2, ")");
-					}
-				}
-			}
-		}
+			applySwizzleLiteral(right, right2, useInt, pos, idx);
 		else
 		{
 			strPos = strrchr(right, '.') + 1;
