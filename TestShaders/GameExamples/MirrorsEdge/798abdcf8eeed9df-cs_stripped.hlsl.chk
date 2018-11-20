@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:05:03 2018
+// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:51:56 2018
 Texture2DArray<float4> t21 : register(t21);
 
 Texture2D<float4> t10 : register(t10);
@@ -60,11 +60,11 @@ void main)
                               { 0, 0, 1.000000, 0},
                               { 0, 0, 0, 1.000000} };
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t19, 16 
+// unknown dcl_: dcl_resource_structured t19, 16
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t20, 4 
+// unknown dcl_: dcl_resource_structured t20, 4
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t24, 4 
+// unknown dcl_: dcl_resource_structured t24, 4
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u0
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30,r31,r32,r33,r34,r35,r36;
@@ -171,7 +171,7 @@ ld_raw r1.w, l(0), g0.xxxx
 // No code for instruction (needs manual fix):
 ld_raw r4.w, l(0), g1.xxxx
   r5.w = (int)r1.w + (int)r4.w;
-  r2.z = 9.99999975e-006 + abs(r2.z);
+  r2.z = 9.99999975e-06 + abs(r2.z);
   r8.xyz = r1.xxx + -r4.xyz;
   r1.x = max(0.00200000009, r1.y);
   r6.w = r1.x * r1.x;
@@ -199,7 +199,7 @@ ld_raw r4.w, l(0), g1.xxxx
     r13.y = rsqrt(r13.x);
     r12.yzw = r13.yyy * r12.yzw;
     r13.y = cb1[r12.x+1].w + r13.x;
-    r13.y = max(9.99999975e-005, r13.y);
+    r13.y = max(9.99999975e-05, r13.y);
     r13.y = 1 / r13.y;
     r13.x = cb1[r12.x+0].w * r13.x;
     r13.x = -r13.x * r13.x + 1;
@@ -286,7 +286,7 @@ ld_raw r4.w, l(0), g2.xxxx
     r15.x = rsqrt(r14.w);
     r15.xyz = r15.xxx * r14.xyz;
     r15.w = cb2[r13.w+1].w + r14.w;
-    r15.w = max(9.99999975e-005, r15.w);
+    r15.w = max(9.99999975e-05, r15.w);
     r15.w = 1 / r15.w;
     r14.w = cb2[r13.w+0].w * r14.w;
     r14.w = -r14.w * r14.w + 1;
@@ -911,7 +911,7 @@ ld_raw r4.w, l(0), g3.xxxx
           r13.w = r14.w + r13.w;
           r12.w = r13.w * r12.w;
           r13.w = saturate(dot(r6.xyz, cb3[r10.w+2].xyz));
-          r13.w = 9.99999975e-006 + r13.w;
+          r13.w = 9.99999975e-06 + r13.w;
           r27.xyz = r6.xyz * r13.www + cb3[r10.w+2].xyz;
           r14.w = dot(r27.xyz, r27.xyz);
           r14.w = rsqrt(r14.w);
@@ -1149,7 +1149,7 @@ ld_raw r4.w, l(0), g3.xxxx
           r13.w = cmp(0 < r12.w);
           if (r13.w != 0) {
             r13.w = saturate(dot(r9.xyz, -cb3[r10.w+2].xyz));
-            r13.w = 9.99999975e-006 + r13.w;
+            r13.w = 9.99999975e-06 + r13.w;
             r25.xyz = cb3[r10.w+2].xyz * r13.www + r9.xyz;
             r13.w = dot(r25.xyz, r25.xyz);
             r13.w = rsqrt(r13.w);
@@ -1703,7 +1703,7 @@ ld_raw r4.w, l(0), g4.xxxx
           r15.w = r17.w + r15.w;
           r12.w = r15.w * r12.w;
           r15.w = saturate(dot(r6.xyz, cb4[r10.w+2].xyz));
-          r15.w = 9.99999975e-006 + r15.w;
+          r15.w = 9.99999975e-06 + r15.w;
           r29.xyz = r6.xyz * r15.www + cb4[r10.w+2].xyz;
           r17.w = dot(r29.xyz, r29.xyz);
           r17.w = rsqrt(r17.w);
@@ -1941,7 +1941,7 @@ ld_raw r4.w, l(0), g4.xxxx
           r14.w = cmp(0 < r11.x);
           if (r14.w != 0) {
             r11.y = saturate(dot(r9.xyz, -cb4[r10.w+2].xyz));
-            r11.y = 9.99999975e-006 + r11.y;
+            r11.y = 9.99999975e-06 + r11.y;
             r12.xyw = cb4[r10.w+2].xyz * r11.yyy + r9.xyz;
             r11.y = dot(r12.xyw, r12.xyw);
             r11.y = rsqrt(r11.y);

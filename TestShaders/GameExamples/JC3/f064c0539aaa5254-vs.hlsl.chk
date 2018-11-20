@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:33:05 2018
+// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:51:52 2018
 
 struct SPositionInfo
 {
@@ -70,13 +70,13 @@ void main(
   out float4 o2 : TEXCOORD3)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t0, 12 
+// unknown dcl_: dcl_resource_structured t0, 12
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_resource_raw t4
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t5, 4 
+// unknown dcl_: dcl_resource_structured t5, 4
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t6, 76 
+// unknown dcl_: dcl_resource_structured t6, 76
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v0.x, vertex_id
   float4 r0,r1,r2,r3;
@@ -115,12 +115,12 @@ r0.w = TileMaskSampler_s[]..swiz;
   r0.x = (uint)r0.x >> 16;
   r0.x = (uint)r0.x;
   r0.x = m_PatchPackDataY.y * r0.x;
-  r3.y = r0.x * 1.52590219e-005 + m_PatchPackDataY.x;
+  r3.y = r0.x * 1.52590219e-05 + m_PatchPackDataY.x;
   r0.xzw = (uint3)r2.xyz;
   r1.w = cmp(127 < r0.w);
   r2.x = -256 + r0.w;
   r1.x = r1.w ? r2.x : r0.w;
-  r0.xz = float2(1.52590219e-005,1.52590219e-005) * r0.xz;
+  r0.xz = float2(1.52590219e-05,1.52590219e-05) * r0.xz;
   r1.xyz = float3(0.00787401572,0.00787401572,0.00787401572) * r1.xyz;
   r0.w = (uint)m_WorldPos_PatchLod.w;
   r1.w = (uint)r0.w << 2;
@@ -136,7 +136,7 @@ r0.w = TileMaskSampler_s[]..swiz;
   r3.xz = r0.xz * r1.yy + m_PatchPackDataXZ[r1.x].xx;
   r0.xz = m_WorldPos_PatchLod.xz + r3.xz;
   r0.xz = float2(0.5,0.5) + r0.xz;
-  r0.xz = r0.xz * float2(3.05175781e-005,3.05175781e-005) + float2(0.5,0.5);
+  r0.xz = r0.xz * float2(3.05175781e-05,3.05175781e-05) + float2(0.5,0.5);
   r1.x = TileMask.SampleLevel(TileMaskSampler_s_s, r0.xz, 0).x;
   r0.x = TileMaskFadeIn.SampleLevel(TileMaskSampler_s_s, r0.xz, 0).x;
   r0.x = 1 + -r0.x;
@@ -153,7 +153,7 @@ r0.w = TileMaskSampler_s[]..swiz;
   r0.y = (uint)r0.y >> 16;
   r0.xy = (uint2)r0.xy;
   r0.zw = VertexTextureSize.xy * r0.xy;
-  r0.xy = float2(1.52590219e-005,1.52590219e-005) * r0.zw;
+  r0.xy = float2(1.52590219e-05,1.52590219e-05) * r0.zw;
   r0.xy = floor(r0.xy);
   o2.xy = r0.xy / VertexTextureSize.xy;
   o2.zw = r0.xy;

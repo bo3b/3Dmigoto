@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:05:04 2018
+// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:51:57 2018
 Texture2DArray<float4> t21 : register(t21);
 
 Texture2D<float4> t10 : register(t10);
@@ -45,11 +45,11 @@ void main)
                               { 0, 0, 1.000000, 0},
                               { 0, 0, 0, 1.000000} };
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t19, 16 
+// unknown dcl_: dcl_resource_structured t19, 16
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t20, 4 
+// unknown dcl_: dcl_resource_structured t20, 4
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t24, 4 
+// unknown dcl_: dcl_resource_structured t24, 4
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u0
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24;
@@ -139,7 +139,7 @@ ld_raw r1.w, l(0), g0.xxxx
 // No code for instruction (needs manual fix):
 ld_raw r4.w, l(0), g1.xxxx
   r4.w = (int)r1.w + (int)r4.w;
-  r2.z = 9.99999975e-006 + abs(r2.z);
+  r2.z = 9.99999975e-06 + abs(r2.z);
   r8.xyz = r1.xxx + -r4.xyz;
   r1.x = max(0.00200000009, r1.y);
   r1.x = r1.x * r1.x;
@@ -168,7 +168,7 @@ ld_raw r4.w, l(0), g1.xxxx
     r12.y = rsqrt(r12.x);
     r12.yzw = r12.yyy * r11.yzw;
     r13.x = cb2[r11.x+1].w + r12.x;
-    r13.x = max(9.99999975e-005, r13.x);
+    r13.x = max(9.99999975e-05, r13.x);
     r13.x = 1 / r13.x;
     r12.x = cb2[r11.x+0].w * r12.x;
     r12.x = -r12.x * r12.x + 1;

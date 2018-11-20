@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:05:02 2018
+// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:51:55 2018
 Texture2D<float4> t10 : register(t10);
 
 Texture2D<float4> t6 : register(t6);
@@ -33,11 +33,11 @@ Texture2D<float4> StereoParams : register(t125);
 void main)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t19, 16 
+// unknown dcl_: dcl_resource_structured t19, 16
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t20, 4 
+// unknown dcl_: dcl_resource_structured t20, 4
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t24, 4 
+// unknown dcl_: dcl_resource_structured t24, 4
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u0
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30,r31,r32;
@@ -134,7 +134,7 @@ ld_raw r1.w, l(0), g0.xxxx
 ld_raw r7.x, l(0), g1.xxxx
   r7.x = (int)r1.w + (int)r7.x;
   r7.y = max(0.00200000009, r1.y);
-  r5.w = 9.99999975e-006 + abs(r5.w);
+  r5.w = 9.99999975e-06 + abs(r5.w);
   r9.xyz = r1.xxx + -r4.xyz;
   r1.x = r7.y * r7.y;
   r7.z = -r5.w * r1.x + r5.w;
@@ -509,7 +509,7 @@ ld_raw r7.x, l(0), g1.xxxx
           r16.w = r17.w + r16.w;
           r14.w = r16.w * r14.w;
           r16.w = saturate(dot(r6.xyz, cb3[r11.w+2].xyz));
-          r16.w = 9.99999975e-006 + r16.w;
+          r16.w = 9.99999975e-06 + r16.w;
           r24.xyz = r6.xyz * r16.www + cb3[r11.w+2].xyz;
           r17.w = dot(r24.xyz, r24.xyz);
           r17.w = rsqrt(r17.w);
@@ -747,7 +747,7 @@ ld_raw r7.x, l(0), g1.xxxx
           r10.y = cmp(0 < r10.x);
           if (r10.y != 0) {
             r10.y = saturate(dot(r8.xyz, -cb3[r11.w+2].xyz));
-            r10.y = 9.99999975e-006 + r10.y;
+            r10.y = 9.99999975e-06 + r10.y;
             r24.xyz = cb3[r11.w+2].xyz * r10.yyy + r8.xyz;
             r10.y = dot(r24.xyz, r24.xyz);
             r10.y = rsqrt(r10.y);

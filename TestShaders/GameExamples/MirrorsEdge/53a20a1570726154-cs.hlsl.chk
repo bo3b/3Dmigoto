@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:05:02 2018
+// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:51:55 2018
 
 struct g_lightCullInput_res
 {
@@ -81,11 +81,11 @@ Texture2D<float4> StereoParams : register(t125);
 void main)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t19, 16 
+// unknown dcl_: dcl_resource_structured t19, 16
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t20, 4 
+// unknown dcl_: dcl_resource_structured t20, 4
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t24, 4 
+// unknown dcl_: dcl_resource_structured t24, 4
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u0
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17;
@@ -264,7 +264,7 @@ ld_raw r1.y, l(0), g1.xxxx
         r12.x = sqrt(r11.y);
         r12.y = g_lightInfoLocalIBL[r9.w].influenceExpandDistance + g_lightInfoLocalIBL[r9.w].extend.x;
         r12.y = r12.y + -r12.x;
-        r12.z = max(g_lightInfoLocalIBL[r9.w].influenceFadeDistance, 9.99999975e-005);
+        r12.z = max(g_lightInfoLocalIBL[r9.w].influenceFadeDistance, 9.99999975e-05);
         r12.y = saturate(r12.y / r12.z);
         r12.x = -g_lightInfoLocalIBL[r9.w].extend.x + r12.x;
         r12.x = saturate(g_lightInfoLocalIBL[r9.w].influenceFadeNormal.x + r12.x);
@@ -346,7 +346,7 @@ ld_raw r1.y, l(0), g1.xxxx
         r10.w = dot(r16.xyz, float3(1,1,1));
         r10.z = r10.z + r10.w;
         r10.z = sqrt(r10.z);
-        r10.w = max(g_lightInfoLocalIBL[r9.w].influenceFadeDistance, 9.99999975e-005);
+        r10.w = max(g_lightInfoLocalIBL[r9.w].influenceFadeDistance, 9.99999975e-05);
         r10.z = r10.z / r10.w;
         r10.z = min(1, r10.z);
         r10.z = 1 + -r10.z;
