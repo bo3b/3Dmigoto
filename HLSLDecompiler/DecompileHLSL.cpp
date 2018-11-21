@@ -29,6 +29,7 @@
 #include "BinaryDecompiler\include\pstdint.h"
 #include "BinaryDecompiler\internal_includes\structs.h"
 #include "BinaryDecompiler\internal_includes\decode.h"
+#include "BinaryDecompiler\internal_includes\toHLSLInstruction.h"
 
 #include <excpt.h>
 
@@ -5282,41 +5283,16 @@ public:
 
 							if (mStructuredBufferUsedNames.find(struct_type_i->second) != mStructuredBufferUsedNames.end())
 							{
-								string dst0, srcAddress, srcByteOffset, src0;
-								string swiz;
-
-								ResourceBinding* bindings = shader->sInfo->psResourceBindings;
-								src0 = bindings->Name;
-								srcAddress = instr->asOperands[1].specialName;
-								srcByteOffset = instr->asOperands[2].specialName;
-								dst0 = "r" + std::to_string(instr->asOperands[0].ui32RegisterNumber);
-
-								sprintf(buffer, "// Known bad code for instruction (needs manual fix):\n");
-								appendOutput(buffer);
-								ASMLineOut(c, pos, size);
-
-								// ASSERT(instr->asOperands[0].eSelMode == OPERAND_4_COMPONENT_MASK_MODE);
-
-								// Output one line for each swizzle in dst0.xyzw that is active.
-								for (int component = 0; component < 4; component++)
-								{
-									if (instr->asOperands[0].ui32CompMask & (1 << component))
-									{
-										switch (component)
-										{
-											case 3: swiz = "w"; break;
-											case 2: swiz = "z"; break;
-											case 1: swiz = "y"; break;
-											case 0:
-											default: swiz = "x"; break;
-										}
-										//sprintf(buffer, "%s.%s = %s[%s].%s.%s;\n", dst0.c_str(), swiz.c_str(),
-										//	src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str(), swiz.c_str());
-										sprintf(buffer, "%s.%s = %s[%s].%s.swiz;\n",
-											dst0.c_str(), swiz.c_str(), src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str());
-										appendOutput(buffer);
-									}
-								}
+								// Experiment to use the HLSLCrossCompiler to produce the
+								// HLSL translation of the instruction and let it deal
+								// with all the edge cases:
+								HLSLCrossCompilerContext sContext;
+								sContext.glsl = bfromcstralloc(1024, "");
+								sContext.currentGLSLString = &sContext.glsl;
+								sContext.psShader = shader;
+								TranslateInstruction(&sContext, instr, &shader->psInst[iNr+1]);
+								appendOutput((char*)sContext.glsl->data);
+								bdestroy(sContext.glsl);
 							}
 							else
 							{

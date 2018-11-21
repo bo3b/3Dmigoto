@@ -8,7 +8,8 @@
 
 static void AddIndentation(HLSLCrossCompilerContext* psContext)
 {
-	// 3DMigoto: Stubbed out
+	// 3DMigoto: Variable indentation handled in DecompileHLSL::appendOutput
+	bcatcstr(*psContext->currentGLSLString, "  ");
 }
 
 // This function prints out the destination name, possible destination writemask, assignment operator

@@ -210,7 +210,7 @@ struct Shader
 
     ShaderInfo *sInfo;
 
-	std::vector<int> abScalarInput;
+	int abScalarInput[MAX_SHADER_VEC4_INPUT];
 
     std::map<int, int> aIndexedOutput;
 
