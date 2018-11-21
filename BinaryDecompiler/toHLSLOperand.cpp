@@ -612,7 +612,7 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
                     }
                     else
                     {
-                        const char* name = "Input";
+                        const char* name = "v"; // 3DMigoto: Use v for input registers
                         if(ui32TOFlag & TO_FLAG_DECLARATION_NAME)
                         {
                             name = GetDeclaredInputName(psContext, psContext->psShader->eShaderType, psOperand);
@@ -627,15 +627,16 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
                 {
                     if(psOperand->eIndexRep[0] == OPERAND_INDEX_IMMEDIATE32_PLUS_RELATIVE)
                     {
-                        bformata(glsl, "Input%d[", psOperand->ui32RegisterNumber);
+                        // 3DMigoto: Use v for input registers, and not array:
+                        bformata(glsl, "v%d", psOperand->ui32RegisterNumber);
                         TranslateOperand(psContext, psOperand->psSubOperand[0], TO_FLAG_INTEGER);
-                        bcatcstr(glsl, "]");
                     }
                     else
                     {
                         if(psContext->psShader->aIndexedInput[psOperand->ui32RegisterNumber] != 0)
                         {
                             const uint32_t parentIndex = psContext->psShader->aIndexedInputParents[psOperand->ui32RegisterNumber];
+                            // 3DMigoto: FIXME:
                             bformata(glsl, "Input%d[%d]", parentIndex,
                                 psOperand->ui32RegisterNumber - parentIndex);
                         }
@@ -648,7 +649,8 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
                             }
 							else
 							{
-								bformata(glsl, "Input%d", psOperand->ui32RegisterNumber);
+								// 3DMigoto: Use v for input registers, and not array:
+								bformata(glsl, "v%d", psOperand->ui32RegisterNumber);
 							}
                         }
                     }
@@ -659,7 +661,8 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
         }
         case OPERAND_TYPE_OUTPUT:
         {
-            bformata(glsl, "Output%d", psOperand->ui32RegisterNumber);
+            // 3DMigoto: Using o for output register:
+            bformata(glsl, "o%d", psOperand->ui32RegisterNumber);
             if(psOperand->psSubOperand[0])
             {
                 bcatcstr(glsl, "["); 
@@ -678,7 +681,8 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
         case OPERAND_TYPE_TEMP:
         {
 			SHADER_VARIABLE_TYPE eType = GetOperandDataType(psContext, psOperand);
-            bcatcstr(glsl, "Temp");
+            // 3DMigoto: Using rN for temp registers:
+            bcatcstr(glsl, "r");
 
             if(eType == SVT_INT)
             {
@@ -707,7 +711,8 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
                 }*/
             }
 
-			bformata(glsl, "[%d]", psOperand->ui32RegisterNumber);
+			// 3DMigoto: Using separate variables for temp regs:
+			bformata(glsl, "%d", psOperand->ui32RegisterNumber);
 
             break;
         }
@@ -1062,6 +1067,7 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
 			}
             else
             {
+                // 3DMigoto: FIXME:
                 bformata(glsl, "Input%d[%d]", psOperand->aui32ArraySizes[1], psOperand->aui32ArraySizes[0]);
             }
             break;
