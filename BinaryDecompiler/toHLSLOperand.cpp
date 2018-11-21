@@ -524,9 +524,12 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
 			}
 			else
 			{
+#if 0
+				// 3DMigoto: Not using bitcasts (though we may in the future):
 				// Direct cast not possible, need to do bitcast.
 				bformata(glsl, "%s(", GetBitcastOp(eType, requestedType));
 				numParenthesis++;
+#endif
 			}
 		}
 

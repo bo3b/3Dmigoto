@@ -49,7 +49,13 @@ static void AddOpAssignToDestWithMask(HLSLCrossCompilerContext* psContext, const
 	case SVT_INT:
 		if (eSrcType == SVT_FLOAT && psContext->psShader->ui32MajorVersion > 3)
 		{
+#if 1
+			// 3DMigoto: Not using bitcasts at the moment:
+			bformata(glsl, " %s ", szAssignmentOp);
+			(*pNeedsParenthesis)--;
+#else
 			bformata(glsl, " %s floatBitsToInt(", szAssignmentOp);
+#endif
 			// Cover cases where the HLSL language expects the rest of the components to be default-filled
 			if (ui32DestElementCount > ui32SrcElementCount)
 			{
@@ -63,7 +69,13 @@ static void AddOpAssignToDestWithMask(HLSLCrossCompilerContext* psContext, const
 	case SVT_UINT:
 		if (eSrcType == SVT_FLOAT && psContext->psShader->ui32MajorVersion > 3)
 		{
+#if 1
+			// 3DMigoto: Not using bitcasts at the moment:
+			bformata(glsl, " %s ", szAssignmentOp);
+			(*pNeedsParenthesis)--;
+#else
 			bformata(glsl, " %s floatBitsToUint(", szAssignmentOp);
+#endif
 			// Cover cases where the HLSL language expects the rest of the components to be default-filled
 			if (ui32DestElementCount > ui32SrcElementCount)
 			{
@@ -78,10 +90,16 @@ static void AddOpAssignToDestWithMask(HLSLCrossCompilerContext* psContext, const
 	case SVT_FLOAT:
 		if (psContext->psShader->ui32MajorVersion > 3)
 		{
+#if 1
+			// 3DMigoto: Not using bitcasts at the moment:
+			bformata(glsl, " %s ", szAssignmentOp);
+			(*pNeedsParenthesis)--;
+#else
 			if (eSrcType == SVT_INT)
 				bformata(glsl, " %s intBitsToFloat(", szAssignmentOp);
 			else
 				bformata(glsl, " %s uintBitsToFloat(", szAssignmentOp);
+#endif
 			// Cover cases where the HLSL language expects the rest of the components to be default-filled
 			if (ui32DestElementCount > ui32SrcElementCount)
 			{
@@ -429,8 +447,11 @@ static void TranslateShaderStorageLoad(HLSLCrossCompilerContext* psContext, Inst
 
 				if (psVar->Type == SVT_FLOAT)
 				{
+#if 0
+					// 3DMigoto: Not using bitcasts at the moment:
 					bcatcstr(glsl, "floatBitsToUint(");
 					addedBitcast = 1;
+#endif
 				}
 				else if (psVar->Type == SVT_DOUBLE)
 				{
