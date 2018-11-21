@@ -348,6 +348,8 @@ struct ShaderInfo
 		ui32NumInputSignatures(0),
 		psOutputSignatures(0), 
 		ui32NumOutputSignatures(0),
+		psPatchConstantSignatures(0),
+		ui32NumPatchConstantSignatures(0),
 		psResourceBindings(0),
 		ui32NumResourceBindings(0),
 		ui32NumConstantBuffers(0),

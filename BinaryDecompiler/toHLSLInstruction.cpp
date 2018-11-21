@@ -6,7 +6,10 @@
 #include <stdlib.h>
 #include "internal_includes/debug.h"
 
-extern void AddIndentation(HLSLCrossCompilerContext* psContext);
+static void AddIndentation(HLSLCrossCompilerContext* psContext)
+{
+	// 3DMigoto: Stubbed out
+}
 
 // This function prints out the destination name, possible destination writemask, assignment operator
 // and any possible conversions needed based on the eSrcType+ui32SrcElementCount (type and size of data expected to be coming in)
@@ -153,16 +156,16 @@ static ShaderVarType* LookupStructuredVar(HLSLCrossCompilerContext* psContext,
 	switch (psResource->eType)
 	{
 	case OPERAND_TYPE_RESOURCE:
-		GetConstantBufferFromBindingPoint(RGROUP_TEXTURE, psResource->ui32RegisterNumber, &psContext->psShader->sInfo, &psCBuf);
+		GetConstantBufferFromBindingPoint(RGROUP_TEXTURE, psResource->ui32RegisterNumber, psContext->psShader->sInfo, &psCBuf);
 		break;
 	case OPERAND_TYPE_UNORDERED_ACCESS_VIEW:
-		GetConstantBufferFromBindingPoint(RGROUP_UAV, psResource->ui32RegisterNumber, &psContext->psShader->sInfo, &psCBuf);
+		GetConstantBufferFromBindingPoint(RGROUP_UAV, psResource->ui32RegisterNumber, psContext->psShader->sInfo, &psCBuf);
 		break;
 	case OPERAND_TYPE_THREAD_GROUP_SHARED_MEMORY:
 	{
 		//dcl_tgsm_structured defines the amount of memory and a stride.
 		ASSERT(psResource->ui32RegisterNumber < MAX_GROUPSHARED);
-		return &psContext->psShader->sGroupSharedVarType[psResource->ui32RegisterNumber];
+		//return &psContext->psShader->sGroupSharedVarType[psResource->ui32RegisterNumber];
 	}
 	default:
 		ASSERT(0);
@@ -261,9 +264,9 @@ static void TranslateShaderStorageStore(HLSLCrossCompilerContext* psContext, Ins
 
 			if (structured && psDest->eType != OPERAND_TYPE_THREAD_GROUP_SHARED_MEMORY)
 			{
-				if (strcmp(psVarType->Name, "$Element") != 0)
+				if (psVarType->Name.compare("$Element") != 0)
 				{
-					bformata(glsl, ".%s", psVarType->Name);
+					bformata(glsl, ".%s", psVarType->Name.c_str());
 				}
 			}
 
@@ -421,7 +424,7 @@ static void TranslateShaderStorageLoad(HLSLCrossCompilerContext* psContext, Inst
 					eGroup = RGROUP_TEXTURE;
 				}
 				psVar = LookupStructuredVar(psContext, psSrc, psSrcByteOff, psSrc->eSelMode == OPERAND_4_COMPONENT_SWIZZLE_MODE ? psSrc->aui32Swizzle[component] : component);
-				GetConstantBufferFromBindingPoint(eGroup, psSrc->ui32RegisterNumber, &psContext->psShader->sInfo, &psCBuf);
+				GetConstantBufferFromBindingPoint(eGroup, psSrc->ui32RegisterNumber, psContext->psShader->sInfo, &psCBuf);
 
 				if (psVar->Type == SVT_FLOAT)
 				{
@@ -438,10 +441,10 @@ static void TranslateShaderStorageLoad(HLSLCrossCompilerContext* psContext, Inst
 					bformata(glsl, "%s[", psCBuf->Name);
 					TranslateOperand(psContext, psSrcAddr, TO_FLAG_INTEGER);
 					bcatcstr(glsl, "]");
-					if (strcmp(psVar->Name, "$Element") != 0)
+					if (psVar->Name.compare("$Element") != 0)
 					{
 						bcatcstr(glsl, ".");
-						bcatcstr(glsl, psVar->Name);
+						bcatcstr(glsl, psVar->Name.c_str());
 					}
 				}
 				else
@@ -455,13 +458,13 @@ static void TranslateShaderStorageLoad(HLSLCrossCompilerContext* psContext, Inst
 
 					//StructuredBuffer<float4x4> WorldTransformData;
 					//Becomes cbuf = WorldTransformData and var = $Element.
-					if (strcmp(psVar->Name, "$Element") != 0)
+					if (psVar->Name.compare("$Element") != 0)
 					{
-						bcatcstr(glsl, psVar->Name);
+						bcatcstr(glsl, psVar->Name.c_str());
 					}
 					else
 					{
-						bcatcstr(glsl, psCBuf->Name);
+						bcatcstr(glsl, psCBuf->Name.c_str());
 					}
 
 					//Select component of matrix.

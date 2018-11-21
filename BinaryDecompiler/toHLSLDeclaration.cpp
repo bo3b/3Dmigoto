@@ -12,7 +12,7 @@ const char* GetDeclaredInputName(const HLSLCrossCompilerContext* psContext, cons
 	bstring inputName;
 	char* cstr;
 	InOutSignature* psIn;
-	int found = GetInputSignatureFromRegister(psOperand->ui32RegisterNumber, &psContext->psShader->sInfo, &psIn);
+	int found = GetInputSignatureFromRegister(psOperand->ui32RegisterNumber, psContext->psShader->sInfo, &psIn);
 
 	if((psContext->flags & HLSLCC_FLAG_INOUT_SEMANTIC_NAMES) && found)
 	{

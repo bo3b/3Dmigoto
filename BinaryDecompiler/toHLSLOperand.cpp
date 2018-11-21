@@ -4,6 +4,8 @@
 #include "hlslcc.h"
 #include "internal_includes/debug.h"
 
+#include <algorithm>
+
 SHADER_VARIABLE_TYPE TypeFlagsToSVTType(const uint32_t typeflags)
 {
 	if (typeflags & (TO_FLAG_INTEGER | TO_AUTO_BITCAST_TO_INT))
@@ -496,7 +498,7 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
 	else if (ui32TOFlag & TO_AUTO_EXPAND_TO_VEC4)
 		requestedComponents = 4;
 
-	requestedComponents = max(requestedComponents, numComponents);
+	requestedComponents = std::max(requestedComponents, numComponents);
 
     *pui32IgnoreSwizzle = 0;
 
@@ -778,7 +780,7 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
             ConstantBuffer* psCBuf = NULL;
             ShaderVarType* psVarType = NULL;
             int32_t index = -1;
-            GetConstantBufferFromBindingPoint(RGROUP_CBUFFER, psOperand->aui32ArraySizes[0], &psContext->psShader->sInfo, &psCBuf);
+            GetConstantBufferFromBindingPoint(RGROUP_CBUFFER, psOperand->aui32ArraySizes[0], psContext->psShader->sInfo, &psCBuf);
 
             switch(psContext->psShader->eShaderType)
             {
@@ -1022,8 +1024,8 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
             const uint32_t ui32FuncBody = psOperand->ui32RegisterNumber;
             const uint32_t ui32FuncTable = psContext->psShader->aui32FuncBodyToFuncTable[ui32FuncBody];
             //const uint32_t ui32FuncPointer = psContext->psShader->aui32FuncTableToFuncPointer[ui32FuncTable];
-            const uint32_t ui32ClassType = psContext->psShader->sInfo.aui32TableIDToTypeID[ui32FuncTable];
-            const char* ClassTypeName = &psContext->psShader->sInfo.psClassTypes[ui32ClassType].Name[0];
+            const uint32_t ui32ClassType = psContext->psShader->sInfo->aui32TableIDToTypeID[ui32FuncTable];
+            const char* ClassTypeName = &psContext->psShader->sInfo->psClassTypes[ui32ClassType].Name[0];
             const uint32_t ui32UniqueClassFuncIndex = psContext->psShader->ui32NextClassFuncName[ui32ClassType]++;
 
             bformata(glsl, "%s_Func%d", ClassTypeName, ui32UniqueClassFuncIndex);
@@ -1271,7 +1273,7 @@ SHADER_VARIABLE_TYPE GetOperandDataTypeEx(HLSLCrossCompilerContext* psContext, c
 				ui32Register,
 				psOperand->ui32CompMask,
 				0,
-				&psContext->psShader->sInfo,
+				psContext->psShader->sInfo,
 				&psOut))
 			{
 				if( psOut->eComponentType == INOUT_COMPONENT_UINT32)
@@ -1296,7 +1298,7 @@ SHADER_VARIABLE_TYPE GetOperandDataTypeEx(HLSLCrossCompilerContext* psContext, c
 				return SVT_INT;
 			}
 
-			if(GetInputSignatureFromRegister(ui32Register, &psContext->psShader->sInfo, &psIn))
+			if(GetInputSignatureFromRegister(ui32Register, psContext->psShader->sInfo, &psIn))
 			{
 				if( psIn->eComponentType == INOUT_COMPONENT_UINT32)
 				{
@@ -1316,7 +1318,7 @@ SHADER_VARIABLE_TYPE GetOperandDataTypeEx(HLSLCrossCompilerContext* psContext, c
 			int32_t index = -1;
 			int32_t rebase = -1;
 			int foundVar;
-			GetConstantBufferFromBindingPoint(RGROUP_CBUFFER, psOperand->aui32ArraySizes[0], &psContext->psShader->sInfo, &psCBuf);
+			GetConstantBufferFromBindingPoint(RGROUP_CBUFFER, psOperand->aui32ArraySizes[0], psContext->psShader->sInfo, &psCBuf);
 			if(psCBuf)
 			{
 				foundVar = GetShaderVarFromOffset(psOperand->aui32ArraySizes[1], psOperand->aui32Swizzle, psCBuf, &psVarType, &index, &rebase);
@@ -1453,7 +1455,7 @@ void ResourceName(bstring targetStr, HLSLCrossCompilerContext* psContext, Resour
     ResourceBinding* psBinding = 0;
 	int found;
 
-    found = GetResourceFromBindingPoint(group, ui32RegisterNumber, &psContext->psShader->sInfo, &psBinding);
+    found = GetResourceFromBindingPoint(group, ui32RegisterNumber, psContext->psShader->sInfo, &psBinding);
 
     if(bZCompare)
     {
