@@ -3,6 +3,8 @@ struct foo {
 	uint bar;
 	snorm float baz;
 	int buz;
+	float4 f4;
+	float4 g4;
 };
 
 struct bar {
@@ -53,6 +55,7 @@ void main(uint idx : TEXCOORD0, float val : TEXCOORD1, out float4 output : SV_Ta
 	output += struct_buf_1[2].bar;
 	output += struct_buf_1[1].baz;
 	output += struct_buf_1[3].buz;
+	output += dot(struct_buf_1[idx+1].f4, struct_buf_1[idx+2].g4);
 	output += struct_buf_2[idx].foofoo;
 	output += struct_buf_2[idx].foobar;
 #ifdef USE_INNER_STRUCT

@@ -1,30 +1,5 @@
 // ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:29:54 2018
 
-struct foo
-{
-    float foo;                     // Offset:    0
-    uint bar;                      // Offset:    4
-    float baz;                     // Offset:    8
-    int buz;                       // Offset:   12
-    float4 f4;                     // Offset:   16
-    float4 g4;                     // Offset:   32
-};
-
-struct bar
-{
-    float foofoo;                  // Offset:    0
-    uint foobar;                   // Offset:    4
-    float foobaz;                  // Offset:    8
-    int foobuz[8];                 // Offset:   12
-};
-
-StructuredBuffer<float> prim_struct_float : register(t90);
-StructuredBuffer<float2> prim_struct_float2 : register(t91);
-StructuredBuffer<float4> prim_struct_float4 : register(t92);
-StructuredBuffer<float4x4> prim_struct_float4x4 : register(t93);
-StructuredBuffer<float4x4> prim_struct_matrix : register(t94);
-StructuredBuffer<foo> struct_buf_1 : register(t110);
-StructuredBuffer<bar> struct_buf_2 : register(t111);
 
 
 // 3Dmigoto declarations
@@ -56,87 +31,103 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r0.x, l(2), l(4), t110.xxxx
-r0.x = prim_struct_float[]..swiz;
+r0.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   r0.x = (uint)r0.x;
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r0.y, l(0), l(0), t110.xxxx
-r0.y = prim_struct_float[]..swiz;
+r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   r0.x = r0.y + r0.x;
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r0.y, l(1), l(8), t110.xxxx
-r0.y = prim_struct_float[]..swiz;
+r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   r0.x = r0.x + r0.y;
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r0.y, l(3), l(12), t110.xxxx
-r0.y = prim_struct_float[]..swiz;
+r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   r0.y = (int)r0.y;
   r0.x = r0.x + r0.y;
   r0.yz = (int2)v0.xx + int2(1,2);
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r1.xyzw, r0.y, l(16), t110.xyzw
-r1.x = prim_struct_float[]..swiz;
-r1.y = prim_struct_float[]..swiz;
-r1.z = prim_struct_float[]..swiz;
-r1.w = prim_struct_float[]..swiz;
+r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r2.xyzw, r0.z, l(32), t110.xyzw
-r2.x = prim_struct_float[]..swiz;
-r2.y = prim_struct_float[]..swiz;
-r2.z = prim_struct_float[]..swiz;
-r2.w = prim_struct_float[]..swiz;
+r2.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r2.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r2.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r2.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   r0.y = dot(r1.xyzw, r2.xyzw);
   r0.x = r0.x + r0.y;
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=44)(mixed,mixed,mixed,mixed) r0.yzw, v0.x, l(0), t111.xxyz
-r0.y = prim_struct_float[]..swiz;
-r0.z = prim_struct_float[]..swiz;
-r0.w = prim_struct_float[]..swiz;
+r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r0.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r0.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   r0.x = r0.x + r0.y;
   r0.y = (uint)r0.z;
   r0.x = r0.x + r0.y;
   r0.x = r0.x + r0.w;
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=44)(mixed,mixed,mixed,mixed) r0.y, v0.x, l(24), t111.xxxx
-r0.y = prim_struct_float[]..swiz;
+r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   r0.y = (int)r0.y;
   r0.x = r0.x + r0.y;
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.y, v0.x, l(0), t90.xxxx
-r0.y = prim_struct_float[]..swiz;
+r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   r0.zw = r0.xx + r0.yy;
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=8)(mixed,mixed,mixed,mixed) r1.xy, v0.x, l(0), t91.xyxx
-r1.x = prim_struct_float[]..swiz;
-r1.y = prim_struct_float[]..swiz;
+r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   r0.xy = r1.xy + r0.ww;
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.xyzw, v0.x, l(0), t92.xyzw
-r1.x = prim_struct_float[]..swiz;
-r1.y = prim_struct_float[]..swiz;
-r1.z = prim_struct_float[]..swiz;
-r1.w = prim_struct_float[]..swiz;
+r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   r0.xyzw = r1.xyzw + r0.xyzw;
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r1.xyzw, v0.x, l(0), t93.xyzw
-r1.x = prim_struct_float[]..swiz;
-r1.y = prim_struct_float[]..swiz;
-r1.z = prim_struct_float[]..swiz;
-r1.w = prim_struct_float[]..swiz;
+r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   r0.xyzw = r1.xywz + r0.xyzw;
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r1.x, v0.x, l(0), t94.xxxx
-r1.x = prim_struct_float[]..swiz;
+r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r1.y, v0.x, l(20), t94.xxxx
-r1.y = prim_struct_float[]..swiz;
+r1.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r1.z, v0.x, l(40), t94.xxxx
-r1.z = prim_struct_float[]..swiz;
+r1.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+// Missing reflection info for shader. No names possible.
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r1.w, v0.x, l(60), t94.xxxx
-r1.w = prim_struct_float[]..swiz;
+r1.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   o0.xyzw = r1.xyzw + r0.xyzw;
   return;
 }

@@ -1,0 +1,94 @@
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:29:53 2018
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  nointerpolation uint4 v0 : TEXCOORD0,
+  float v1 : TEXCOORD1,
+  out float4 o0 : SV_Target0)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t110, 48 
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t111, 44 
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_structured t112, 48 
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Missing reflection info for shader. No names possible.
+// Known bad code for instruction (needs manual fix):
+ld_structured r0.x, l(2), l(4), t110.xxxx
+r0.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.x = (uint)r0.x;
+// Missing reflection info for shader. No names possible.
+// Known bad code for instruction (needs manual fix):
+ld_structured r1.x, l(0), l(0), t110.xxxx
+r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.x = r1.x + r0.x;
+// Missing reflection info for shader. No names possible.
+// Known bad code for instruction (needs manual fix):
+ld_structured r1.x, l(1), l(8), t110.xxxx
+r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.x = r1.x + r0.x;
+// Missing reflection info for shader. No names possible.
+// Known bad code for instruction (needs manual fix):
+ld_structured r1.x, l(3), l(12), t110.xxxx
+r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.y = (int)r1.x;
+  r0.x = r0.x + r0.y;
+  r0.yz = (int2)v0.xx + int2(1,2);
+// Missing reflection info for shader. No names possible.
+// Known bad code for instruction (needs manual fix):
+ld_structured r1.xyzw, r0.y, l(16), t110.xyzw
+r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+// Missing reflection info for shader. No names possible.
+// Known bad code for instruction (needs manual fix):
+ld_structured r2.xyzw, r0.z, l(32), t110.xyzw
+r2.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r2.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r2.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r2.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.y = dot(r1.xyzw, r2.xyzw);
+  r0.x = r0.x + r0.y;
+// Missing reflection info for shader. No names possible.
+// Known bad code for instruction (needs manual fix):
+ld_structured r1.xyz, v0.x, l(0), t111.xyzx
+r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.x = r1.x + r0.x;
+  r0.y = (uint)r1.y;
+  r0.x = r0.x + r0.y;
+  r0.x = r0.x + r1.z;
+// Missing reflection info for shader. No names possible.
+// Known bad code for instruction (needs manual fix):
+ld_structured r1.x, v0.x, l(24), t111.xxxx
+r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.y = (int)r1.x;
+  r0.x = r0.x + r0.y;
+// Missing reflection info for shader. No names possible.
+// Known bad code for instruction (needs manual fix):
+ld_structured r1.xyzw, v0.x, l(0), t112.xyzw
+r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+r1.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.x = r1.x + r0.x;
+  r0.y = (uint)r1.y;
+  r0.x = r0.x + r0.y;
+  r0.x = r0.x + r1.z;
+  r0.y = (int)r1.w;
+  o0.xyzw = r0.xxxx + r0.yyyy;
+  return;
+}
