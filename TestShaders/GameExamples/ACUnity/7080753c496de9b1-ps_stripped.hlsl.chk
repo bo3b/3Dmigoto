@@ -1,4 +1,9 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:09:46 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:33:29 2018
+struct t56_t {
+  float val[36];
+};
+StructuredBuffer<t56_t> t56 : register(t56);
+
 Texture2D<float4> t55 : register(t55);
 
 Texture3D<float4> t54 : register(t54);
@@ -6,6 +11,16 @@ Texture3D<float4> t54 : register(t54);
 Buffer<float4> t48 : register(t48);
 
 Texture2D<uint4> t29 : register(t29);
+
+struct t28_t {
+  float val[13];
+};
+StructuredBuffer<t28_t> t28 : register(t28);
+
+struct t26_t {
+  float val[16];
+};
+StructuredBuffer<t26_t> t26 : register(t26);
 
 TextureCube<float4> t25 : register(t25);
 
@@ -86,12 +101,6 @@ void main(
   out float4 o0 : SV_Target0,
   out float4 o1 : SV_Target1)
 {
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t26, 64 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t28, 52 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t56, 144 
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17,r18,r19,r20,r21,r22,r23,r24;
   uint4 bitmask, uiDest;
   float4 fDest;

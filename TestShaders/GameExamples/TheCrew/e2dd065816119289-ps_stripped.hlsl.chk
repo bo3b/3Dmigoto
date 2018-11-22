@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:47 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:34:28 2018
 Texture2D<float4> t7 : register(t7);
 
 Texture2D<float4> t6 : register(t6);
@@ -6,6 +6,26 @@ Texture2D<float4> t6 : register(t6);
 Texture2DMS<float4> t5 : register(t5);
 
 Texture2DMS<float4> t4 : register(t4);
+
+struct t3_t {
+  float val[1];
+};
+StructuredBuffer<t3_t> t3 : register(t3);
+
+struct t2_t {
+  float val[2];
+};
+StructuredBuffer<t2_t> t2 : register(t2);
+
+struct t1_t {
+  float val[7];
+};
+StructuredBuffer<t1_t> t1 : register(t1);
+
+struct t0_t {
+  float val[1];
+};
+StructuredBuffer<t0_t> t0 : register(t0);
 
 SamplerState s1_s : register(s1);
 
@@ -45,14 +65,6 @@ void main(
   float2 v1 : TEXCOORD0,
   out float4 o0 : SV_Target0)
 {
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t0, 4 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t1, 28 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t2, 8 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t3, 4 
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12;
   uint4 bitmask, uiDest;
   float4 fDest;

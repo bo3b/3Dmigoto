@@ -1,4 +1,39 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:29:54 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:32:36 2018
+struct t111_t {
+  float val[11];
+};
+StructuredBuffer<t111_t> t111 : register(t111);
+
+struct t110_t {
+  float val[12];
+};
+StructuredBuffer<t110_t> t110 : register(t110);
+
+struct t94_t {
+  float val[16];
+};
+StructuredBuffer<t94_t> t94 : register(t94);
+
+struct t93_t {
+  float val[16];
+};
+StructuredBuffer<t93_t> t93 : register(t93);
+
+struct t92_t {
+  float val[4];
+};
+StructuredBuffer<t92_t> t92 : register(t92);
+
+struct t91_t {
+  float val[2];
+};
+StructuredBuffer<t91_t> t91 : register(t91);
+
+struct t90_t {
+  float val[1];
+};
+StructuredBuffer<t90_t> t90 : register(t90);
+
 
 
 
@@ -13,20 +48,6 @@ void main(
   float v1 : TEXCOORD1,
   out float4 o0 : SV_Target0)
 {
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t90, 4 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t91, 8 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t92, 16 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t93, 64 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t94, 64 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t110, 48 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t111, 44 
   float4 r0,r1,r2;
   uint4 bitmask, uiDest;
   float4 fDest;

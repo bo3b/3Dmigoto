@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:18:16 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:34:13 2018
 
 struct ResourceStruct
 {
@@ -79,8 +79,6 @@ void main(
   out float4 o3 : TEXCOORD2,
   out float3 o4 : TEXCOORD3)
 {
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t0, 32 
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v0.x, vertex_id
   float4 r0,r1,r2,r3;

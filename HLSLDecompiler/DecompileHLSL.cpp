@@ -3248,6 +3248,48 @@ public:
 					}
 				}
 			}
+			else if (!strcmp(statement, "dcl_resource_structured"))
+			{
+				int bufIndex = 0;
+				int bufStride = 0;
+				if (sscanf_s(op1, "t%d", &bufIndex) != 1)
+				{
+					logDecompileError("Error parsing structured buffer register: " + string(op1));
+					return;
+				}
+				if (sscanf_s(op2, "%d", &bufStride) != 1)
+				{
+					logDecompileError("Error parsing structured buffer stride: " + string(op2));
+					return;
+				}
+				// Similar concern to the constant buffers missing reflection info above - if we don't
+				// have the structure definitions we have to manufacture our own. Without type information
+				// we assume everything is a float because we can't do any better. This is worse news than
+				// a constant buffer missing reflection info as structured buffers tend to contain much
+				// more varied data types than constant buffers in practice. Ideally we should move to
+				// a model where we do reinterpret casts whenever we need something other than a float.
+				if (mStructuredBufferTypes.empty())
+				{
+					sprintf(buffer, "struct t%d_t {\n"
+						"  float val[%d];\n"
+						"};\n"
+						"StructuredBuffer<t%d_t> t%d : register(t%d);\n\n",
+						bufIndex, bufStride / 4, bufIndex, bufIndex, bufIndex);
+					vector<char>::iterator ipos = mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+					mCodeStartPos += strlen(buffer); ipos += strlen(buffer);
+
+					if (bufStride % 4) {
+						// I don't think this is ordinarily possible since almost all data types are 32bits
+						// (or a pair of 2x32bit fields in the case of a double). Half types and minimum
+						// precision types can theoretically be 16 bits on embedded implementations,
+						// but in practice are 32bits on PC. If it does happen we need to know about it:
+						sprintf(buffer, "FIXME: StructuredBuffer t%d stride %d is not a multiple of 4\n\n",
+								bufIndex, bufStride);
+						vector<char>::iterator ipos = mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+						mCodeStartPos += strlen(buffer); ipos += strlen(buffer);
+					}
+				}
+			}
 			// Create new map entries if there aren't any for dcl_sampler.  This can happen if
 			// there is no Resource Binding section in the shader.  TODO: probably needs to handle arrays too.
 			else if (!strcmp(statement, "dcl_sampler"))

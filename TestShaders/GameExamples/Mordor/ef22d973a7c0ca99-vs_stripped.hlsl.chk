@@ -1,4 +1,9 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:33 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:34:14 2018
+struct t0_t {
+  float val[8];
+};
+StructuredBuffer<t0_t> t0 : register(t0);
+
 cbuffer cb12 : register(b12)
 {
   float4 cb12[21];
@@ -26,8 +31,6 @@ void main(
   out float4 o3 : TEXCOORD2,
   out float3 o4 : TEXCOORD3)
 {
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t0, 32 
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v0.x, vertex_id
   float4 r0,r1,r2,r3;

@@ -1,4 +1,14 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:09:56 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:33:38 2018
+struct t5_t {
+  float val[16];
+};
+StructuredBuffer<t5_t> t5 : register(t5);
+
+struct t4_t {
+  float val[6];
+};
+StructuredBuffer<t4_t> t4 : register(t4);
+
 cbuffer cb1 : register(b1)
 {
   float4 cb1[25];
@@ -20,10 +30,6 @@ void main(
   uint v3 : TEXCOORD15,
   out float4 o0 : SV_POSITION0)
 {
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t4, 24 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t5, 64 
   float4 r0,r1,r2,r3,r4;
   uint4 bitmask, uiDest;
   float4 fDest;

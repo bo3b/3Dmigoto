@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:18:37 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:34:28 2018
 
 struct t0_struct
 {
@@ -64,14 +64,6 @@ void main(
   float2 v1 : TEXCOORD0,
   out float4 o0 : SV_Target0)
 {
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t0, 4 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t1, 28 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t2, 8 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t3, 4 
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12;
   uint4 bitmask, uiDest;
   float4 fDest;

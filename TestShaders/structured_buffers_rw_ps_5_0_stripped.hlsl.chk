@@ -1,4 +1,14 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:29:55 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:32:38 2018
+struct t111_t {
+  float val[11];
+};
+StructuredBuffer<t111_t> t111 : register(t111);
+
+struct t110_t {
+  float val[12];
+};
+StructuredBuffer<t110_t> t110 : register(t110);
+
 
 
 
@@ -13,10 +23,6 @@ void main(
   float v1 : TEXCOORD1,
   out float4 o0 : SV_Target0)
 {
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t110, 48 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t111, 44 
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_uav_structured u1, 48
   float4 r0,r1,r2;

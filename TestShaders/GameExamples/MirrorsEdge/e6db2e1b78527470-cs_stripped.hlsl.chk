@@ -1,4 +1,19 @@
-// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:05:04 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:34:11 2018
+struct t24_t {
+  float val[1];
+};
+StructuredBuffer<t24_t> t24 : register(t24);
+
+struct t20_t {
+  float val[1];
+};
+StructuredBuffer<t20_t> t20 : register(t20);
+
+struct t19_t {
+  float val[4];
+};
+StructuredBuffer<t19_t> t19 : register(t19);
+
 Texture2D<float4> t10 : register(t10);
 
 Texture2D<float4> t6 : register(t6);
@@ -32,12 +47,6 @@ Texture2D<float4> StereoParams : register(t125);
 
 void main)
 {
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t19, 16 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t20, 4 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t24, 4 
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u0
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13;

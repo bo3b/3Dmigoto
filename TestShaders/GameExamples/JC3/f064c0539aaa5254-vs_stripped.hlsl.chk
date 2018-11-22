@@ -1,9 +1,24 @@
-// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:33:05 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:34:07 2018
+struct t6_t {
+  float val[19];
+};
+StructuredBuffer<t6_t> t6 : register(t6);
+
+struct t5_t {
+  float val[1];
+};
+StructuredBuffer<t5_t> t5 : register(t5);
+
 Buffer<uint4> t3 : register(t3);
 
 Texture2D<float4> t2 : register(t2);
 
 Texture2D<float4> t1 : register(t1);
+
+struct t0_t {
+  float val[3];
+};
+StructuredBuffer<t0_t> t0 : register(t0);
 
 SamplerState s1_s : register(s1);
 
@@ -39,13 +54,7 @@ void main(
   out float4 o2 : TEXCOORD3)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t0, 12 
-// Needs manual fix for instruction:
 // unknown dcl_: dcl_resource_raw t4
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t5, 4 
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t6, 76 
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v0.x, vertex_id
   float4 r0,r1,r2,r3;
