@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:34:10 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:01:18 2018
 struct t24_t {
   float val[1];
 };
@@ -92,21 +92,15 @@ void main)
 // unknown dcl_: dcl_tgsm_raw g4, 4
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_thread_group 16, 16, 1
-// Missing reflection info for shader. No names possible.
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, vThreadGroupID.x, l(0), t24.xxxx
-r0.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.x = t24[vThreadGroupID.x].val[0/4];
   r1.x = (uint)r0.x >> 16;
   r1.yzw = (int3)r0.xxx & int3(0xffff,0xffff,0xffff);
   r0.xyzw = mad((int4)r1.xyzw, int4(16,16,16,16), (int4)vThreadIDInGroup.xyyy);
   if (vThreadIDInGroupFlattened.x == 0) {
     r1.x = mad((int)r1.w, asint(cb0[8].z), (int)r1.x);
-  // Missing reflection info for shader. No names possible.
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.xyz, r1.x, l(0), t19.xyzx
-  r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  r1.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  r1.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+    r1.x = t19[r1.x].val[0/4];
+    r1.y = t19[r1.x].val[0/4+1];
+    r1.z = t19[r1.x].val[0/4+2];
     r2.xy = (uint2)r1.yz >> int2(16,16);
     r1.yz = (int2)r1.yz & int2(0xffff,0xffff);
   // No code for instruction (needs manual fix):
@@ -198,10 +192,7 @@ ld_raw r4.w, l(0), g1.xxxx
   while (true) {
     r12.x = cmp((uint)r11.w >= (uint)r5.w);
     if (r12.x != 0) break;
-  // Missing reflection info for shader. No names possible.
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r12.x, r11.w, l(0), t20.xxxx
-  r12.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+    r12.x = t20[r11.w].val[0/4];
     r12.x = (int)r12.x * 7;
     r12.yzw = -r5.xyz * r2.xxx + cb1[r12.x+0].xyz;
     r13.x = dot(r12.yzw, r12.yzw);
@@ -285,10 +276,7 @@ ld_raw r4.w, l(0), g2.xxxx
   while (true) {
     r12.w = cmp((uint)r11.w >= (uint)r5.w);
     if (r12.w != 0) break;
-  // Missing reflection info for shader. No names possible.
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r12.w, r11.w, l(0), t20.xxxx
-  r12.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+    r12.w = t20[r11.w].val[0/4];
     r13.w = (int)r12.w * 21;
     r14.xyz = -r5.xyz * r2.xxx + cb2[r13.w+0].xyz;
     r14.w = dot(r14.xyz, r14.xyz);
@@ -573,10 +561,7 @@ ld_raw r4.w, l(0), g3.xxxx
   while (true) {
     r10.w = cmp((uint)r10.z >= (uint)r5.w);
     if (r10.w != 0) break;
-  // Missing reflection info for shader. No names possible.
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r10.w, r10.z, l(0), t20.xxxx
-  r10.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+    r10.w = t20[r10.z].val[0/4];
     r10.w = (int)r10.w * 9;
     r11.w = (uint)cb3[r10.w+7].x;
     r12.w = cmp((int)r11.w == 2);
@@ -1363,10 +1348,7 @@ ld_raw r4.w, l(0), g4.xxxx
   while (true) {
     r10.z = cmp((uint)r5.w >= (uint)r4.w);
     if (r10.z != 0) break;
-  // Missing reflection info for shader. No names possible.
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r10.z, r5.w, l(0), t20.xxxx
-  r10.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+    r10.z = t20[r5.w].val[0/4];
     r10.w = (int)r10.z * 23;
     r11.w = (uint)cb4[r10.w+7].x;
     r12.w = cmp((int)r11.w == 2);

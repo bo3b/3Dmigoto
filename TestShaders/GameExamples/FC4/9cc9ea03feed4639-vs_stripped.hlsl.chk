@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:33:58 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:01:06 2018
 struct t1_t {
   float val[12];
 };
@@ -61,26 +61,20 @@ void main(
   r0.xy = (int2)r0.xy;
   r0.w = 0;
   r1.xyw = r0.xyw;
-// Missing reflection info for shader. No names possible.
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r2.xyzw, v1.x, l(0), t1.xyzw
-r2.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r2.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r2.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r2.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r2.x = t1[v1.x].val[0/4];
+  r2.y = t1[v1.x].val[0/4+1];
+  r2.z = t1[v1.x].val[0/4+2];
+  r2.w = t1[v1.x].val[0/4+3];
   r3.xyzw = (int4)r2.xyzw & int4(0xffff,0xffff,0xffff,0xffff);
   r2.xyzw = (uint4)r2.xyzw >> int4(16,16,16,16);
   r2.xyzw = f16tof32(r2.xywz);
   r3.xyzw = f16tof32(r3.xywz);
   r4.x = r3.z;
   r4.y = r2.z;
-// Missing reflection info for shader. No names possible.
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r5.xyzw, v1.x, l(16), t1.xyzw
-r5.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r5.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r5.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r5.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r5.x = t1[v1.x].val[16/4];
+  r5.y = t1[v1.x].val[16/4+1];
+  r5.z = t1[v1.x].val[16/4+2];
+  r5.w = t1[v1.x].val[16/4+3];
   r5.x = (int)r5.x & 0x0000ffff;
   r4.z = f16tof32(r5.x);
   r6.xyz = -cb0[8].xyz + r5.yzw;
@@ -136,10 +130,7 @@ r5.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   r1.x = t0.Load(r1.xyzw).x;
   r1.x = cb2[r6.y+0].w * r1.x;
   r1.y = cb2[r6.y+0].w * 0.5 + -r1.x;
-// Missing reflection info for shader. No names possible.
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r1.z, v1.x, l(36), t1.xxxx
-r1.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r1.z = t1[v1.x].val[36/4];
   r1.z = (uint)r1.z >> 24;
   r1.z = (uint)r1.z;
   r1.w = 0.00392200006 * r1.z;

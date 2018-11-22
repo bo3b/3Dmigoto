@@ -2184,6 +2184,12 @@ public:
 		if (pos) *pos = 0;
 	}
 
+	void stripMask(char *target)
+	{
+		char *pos = strchr(target, '.');
+		if (pos) *pos = 0;
+	}
+
 	char *writeTarget(char *target)
 	{
 		StringStringMap::iterator i = mRemappedOutputRegisters.find(target);
@@ -5119,50 +5125,100 @@ public:
 
 					case OPCODE_LD_STRUCTURED:
 					{
-						string dst0, srcAddress, srcByteOffset, src0;
-						string swiz;
-
 						ResourceBinding* bindings = shader->sInfo->psResourceBindings;
 						if (bindings == NULL)
 						{
-							sprintf(buffer, "// Missing reflection info for shader. No names possible.\n");
-							appendOutput(buffer);
-							src0 = "no_StructuredBufferName";
-							srcAddress = "no_srcAddressRegister";
-							srcByteOffset = "no_srcByteOffsetName";
+							// Missing reflection information - we have to use our fake
+							// type information instead. Our fake type information is
+							// an array of floats for the greatest compatibility with
+							// any possible stride value that StructuredBuffers may posess,
+							// but that means we have to break up instructions to assign
+							// each component in the mask separately, adjusting the offset
+							// based on the swizzle. TODO: We could recombine them using
+							// a floatN(x,y,z,w); construct. We can't fix up types that
+							// aren't floats here, because we won't know what types they
+							// are until they are used - ideally we should switch to a
+							// model that uses asfloat/asint where non-floats are used
+							// to treat HLSL variables closer to typeless DX registers.
+
+							// Shader model 4: ld_structured dst, index, offset, register
+							// Shader model 5: ld_structured_indexable(structured_buffer, stride=N) dst, index, offset, register
+							// That extra space throws out the opN variables, so we need
+							// to check which it is.
+							char *dst = op1, *idx = op2, *off = op3, *reg = op4;
+							if (!strncmp(op1, "stride", 6))
+								dst = op2, idx = op3, off = op4, reg = op5; // Note comma operator
+							remapTarget(dst);
+							stripMask(dst);
+							stripMask(reg);
+							applySwizzle(".x", idx);
+							applySwizzle(".x", off);
+							for (int component = 0; component < 4; component++) {
+								if (!(instr->asOperands[0].ui32CompMask & (1 << component)))
+									continue;
+								// The swizzle is a bit more complicated than the mask here,
+								// because it represents extra 32bit offsets in the structure,
+								// which is one whole index in the "val" array in our fake type.
+								char *swiz_offset = "";
+								if (instr->asOperands[3].ui32Swizzle == NO_SWIZZLE) {
+									// No swizzle, use mask as swizzle
+									switch (component) {
+										case 1: swiz_offset = "+1"; break;
+										case 2: swiz_offset = "+2"; break;
+										case 3: swiz_offset = "+3"; break;
+									}
+								} else {
+									switch (instr->asOperands[3].aui32Swizzle[component]) {
+										case OPERAND_4_COMPONENT_Y: swiz_offset = "+1"; break;
+										case OPERAND_4_COMPONENT_Z: swiz_offset = "+2"; break;
+										case OPERAND_4_COMPONENT_W: swiz_offset = "+3"; break;
+									}
+								}
+								sprintf(buffer, "  %s.%c = %s[%s].val[%s/4%s];\n",
+										writeTarget(dst),
+										component == 3 ? 'w' : 'x' + component,
+										reg,
+										ci(idx).c_str(),
+										ci(off).c_str(),
+										swiz_offset);
+								appendOutput(buffer);
+							}
 						}
 						else
 						{
+							string dst0, srcAddress, srcByteOffset, src0;
+							string swiz;
+
 							src0 = bindings->Name;
 							srcAddress = instr->asOperands[1].specialName;
 							srcByteOffset = instr->asOperands[2].specialName;
-						}
-						dst0 = "r" + std::to_string(instr->asOperands[0].ui32RegisterNumber);
+							dst0 = "r" + std::to_string(instr->asOperands[0].ui32RegisterNumber);
 
-						sprintf(buffer, "// Known bad code for instruction (needs manual fix):\n");
-						appendOutput(buffer);
-						ASMLineOut(c, pos, size);
+							sprintf(buffer, "// Known bad code for instruction (needs manual fix):\n");
+							appendOutput(buffer);
+							ASMLineOut(c, pos, size);
 
-						// ASSERT(instr->asOperands[0].eSelMode == OPERAND_4_COMPONENT_MASK_MODE);
+							// ASSERT(instr->asOperands[0].eSelMode == OPERAND_4_COMPONENT_MASK_MODE);
 
-						// Output one line for each swizzle in dst0.xyzw that is active.
-						for (int component = 0; component < 4; component++)
-						{
-							if (instr->asOperands[0].ui32CompMask & (1 << component))
+							// Output one line for each swizzle in dst0.xyzw that is active.
+							for (int component = 0; component < 4; component++)
 							{
-								switch (component)
+								if (instr->asOperands[0].ui32CompMask & (1 << component))
 								{
-									case 3: swiz = "w"; break;
-									case 2: swiz = "z"; break;
-									case 1: swiz = "y"; break;
-									case 0:
-									default: swiz = "x"; break;
+									switch (component)
+									{
+										case 3: swiz = "w"; break;
+										case 2: swiz = "z"; break;
+										case 1: swiz = "y"; break;
+										case 0:
+										default: swiz = "x"; break;
+									}
+									//sprintf(buffer, "%s.%s = %s[%s].%s.%s;\n", dst0.c_str(), swiz.c_str(),
+									//	src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str(), swiz.c_str());
+									sprintf(buffer, "%s.%s = %s[%s].%s.swiz;\n",
+										dst0.c_str(), swiz.c_str(), src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str());
+									appendOutput(buffer);
 								}
-								//sprintf(buffer, "%s.%s = %s[%s].%s.%s;\n", dst0.c_str(), swiz.c_str(),
-								//	src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str(), swiz.c_str());
-								sprintf(buffer, "%s.%s = %s[%s].%s.swiz;\n",
-									dst0.c_str(), swiz.c_str(), src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str());
-								appendOutput(buffer);
 							}
 						}
 						removeBoolean(op1);
