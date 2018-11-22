@@ -473,8 +473,13 @@ static void TranslateShaderStorageLoad(HLSLCrossCompilerContext* psContext, Inst
 				{
 					int byteOffset = ((int*)psSrcByteOff->afImmediates)[0] + 4 * component;
 					int vec4Offset = byteOffset/16;
+					ResourceBinding *psBinding = NULL;
 
-					bformata(glsl, "StructuredRes%d[", psSrc->ui32RegisterNumber);
+					// 3DMigoto: Use proper structure name
+					if (GetResourceFromBindingPoint(RGROUP_TEXTURE, psSrc->ui32RegisterNumber, psContext->psShader->sInfo, &psBinding))
+						bformata(glsl, "%s[", psBinding->Name.c_str());
+					else
+						bformata(glsl, "StructuredRes%d[", psSrc->ui32RegisterNumber);
 					TranslateOperand(psContext, psSrcAddr, TO_FLAG_INTEGER);
 					bcatcstr(glsl, "].");
 
