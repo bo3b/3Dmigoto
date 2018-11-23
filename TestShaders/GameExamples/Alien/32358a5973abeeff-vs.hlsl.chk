@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:52:51 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:14:44 2018
 
 struct GPUParticleRenderComputeData
 {
@@ -60,8 +60,6 @@ void main(
   out float p1 : TEXCOORD2,
   out float4 o2 : TEXCOORD1)
 {
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t0, 48
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v0.x, vertex_id
 // Needs manual fix for instruction:

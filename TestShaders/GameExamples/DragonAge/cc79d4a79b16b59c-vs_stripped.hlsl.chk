@@ -1,4 +1,9 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 16 07:19:25 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:15:18 2018
+struct t3_t {
+  float val[8];
+};
+StructuredBuffer<t3_t> t3 : register(t3);
+
 
 
 
@@ -16,8 +21,6 @@ void main(
   out float2 o2 : TEXCOORD0)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t3, 32
-// Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v0.x, vertex_id
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v1.x, instance_id
@@ -30,22 +33,16 @@ void main(
   r0.xy = (uint2)r0.xz;
   r0.zw = r0.xy * float2(1,-1) + float2(-1,1);
   o2.xy = float2(0.5,0.5) * r0.xy;
-// Missing reflection info for shader. No names possible.
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r1.xyzw, v1.x, l(0), t3.xyzw
-r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r1.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r1.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r1.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r1.x = t3[v1.x].val[0/4];
+  r1.y = t3[v1.x].val[0/4+1];
+  r1.z = t3[v1.x].val[0/4+2];
+  r1.w = t3[v1.x].val[0/4+3];
   r0.xy = r1.zw + r1.zw;
   o0.xy = r0.zw * r0.xy + r1.xy;
   o0.zw = float2(0,1);
-// Missing reflection info for shader. No names possible.
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) o1.xyzw, v1.x, l(16), t3.xyzw
-r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r1.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r1.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r1.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  o1.x = t3[v1.x].val[16/4];
+  o1.y = t3[v1.x].val[16/4+1];
+  o1.z = t3[v1.x].val[16/4+2];
+  o1.w = t3[v1.x].val[16/4+3];
   return;
 }

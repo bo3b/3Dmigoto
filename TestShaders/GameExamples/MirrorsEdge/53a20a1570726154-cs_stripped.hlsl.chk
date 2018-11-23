@@ -1,4 +1,19 @@
-// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:51:56 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:15:37 2018
+struct t24_t {
+  float val[1];
+};
+StructuredBuffer<t24_t> t24 : register(t24);
+
+struct t20_t {
+  float val[1];
+};
+StructuredBuffer<t20_t> t20 : register(t20);
+
+struct t19_t {
+  float val[4];
+};
+StructuredBuffer<t19_t> t19 : register(t19);
+
 Texture2D<float4> t10 : register(t10);
 
 Texture2D<float4> t8 : register(t8);
@@ -39,12 +54,6 @@ Texture2D<float4> StereoParams : register(t125);
 void main)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t19, 16
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t20, 4
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t24, 4
-// Needs manual fix for instruction:
 // unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u0
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,r17;
   uint4 bitmask, uiDest;
@@ -56,22 +65,16 @@ void main)
 // unknown dcl_: dcl_tgsm_raw g1, 4
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_thread_group 16, 16, 1
-// Missing reflection info for shader. No names possible.
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, vThreadGroupID.x, l(0), t24.xxxx
-r0.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.x = t24[vThreadGroupID.x].val[0/4];
   r1.x = (uint)r0.x >> 16;
   r1.yzw = (int3)r0.xxx & int3(0xffff,0xffff,0xffff);
   r0.xyzw = mad((int4)r1.xyzw, int4(16,16,16,16), (int4)vThreadIDInGroup.xyyy);
   if (vThreadIDInGroupFlattened.x == 0) {
     r1.x = mad((int)r1.w, asint(cb0[8].z), (int)r1.x);
-  // Missing reflection info for shader. No names possible.
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.xyzw, r1.x, l(0), t19.xyzw
-  r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  r1.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  r1.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  r1.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+    r1.x = t19[r1.x].val[0/4];
+    r1.y = t19[r1.x].val[0/4+1];
+    r1.z = t19[r1.x].val[0/4+2];
+    r1.w = t19[r1.x].val[0/4+3];
     r2.xy = (uint2)r1.yz >> int2(16,16);
     r1.yzw = (int3)r1.yzw & int3(0xffff,0xffff,0xffff);
   // No code for instruction (needs manual fix):
@@ -170,10 +173,7 @@ ld_raw r1.y, l(0), g1.xxxx
     r10.x = cmp(r6.w < 1);
     r9.w = r9.w ? r10.x : 0;
     if (r9.w == 0) break;
-  // Missing reflection info for shader. No names possible.
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r9.w, r7.w, l(0), t20.xxxx
-  r9.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+    r9.w = t20[r7.w].val[0/4];
     r9.w = (int)r9.w * 11;
     r10.x = cmp(0.000000 == cb5[r9.w+7].w);
     if (r10.x != 0) {

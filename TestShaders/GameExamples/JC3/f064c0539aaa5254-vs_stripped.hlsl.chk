@@ -1,9 +1,24 @@
-// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:51:53 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:15:34 2018
+struct t6_t {
+  float val[19];
+};
+StructuredBuffer<t6_t> t6 : register(t6);
+
+struct t5_t {
+  float val[1];
+};
+StructuredBuffer<t5_t> t5 : register(t5);
+
 Buffer<uint4> t3 : register(t3);
 
 Texture2D<float4> t2 : register(t2);
 
 Texture2D<float4> t1 : register(t1);
+
+struct t0_t {
+  float val[3];
+};
+StructuredBuffer<t0_t> t0 : register(t0);
 
 SamplerState s1_s : register(s1);
 
@@ -39,13 +54,7 @@ void main(
   out float4 o2 : TEXCOORD3)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t0, 12
-// Needs manual fix for instruction:
 // unknown dcl_: dcl_resource_raw t4
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t5, 4
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t6, 76
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v0.x, vertex_id
   float4 r0,r1,r2,r3;
@@ -54,29 +63,20 @@ void main(
 
   r0.x = asuint(cb3[0].y) << 2;
   r0.x = (int)r0.x + 36;
-// Missing reflection info for shader. No names possible.
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=76)(mixed,mixed,mixed,mixed) r0.x, cb3[0].x, r0.x, t6.xxxx
-r0.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.x = t6[cb3[0].x].val[r0.x/4];
   uiDest.x = (uint)v0.x / 3;
   r2.x = (uint)v0.x % 3;
   r1.x = uiDest.x;
   r0.x = (int)r0.x + (int)r1.x;
-// Missing reflection info for shader. No names possible.
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, r0.x, l(0), t5.xxxx
-r0.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.x = t5[r0.x].val[0/4];
   r0.x = (int)r0.x + (int)r2.x;
   r0.x = t3.Load(r0.x).x;
   r0.x = (uint)r0.x << 3;
 // No code for instruction (needs manual fix):
 ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r0.xy, r0.x, t4.xyxx
-// Missing reflection info for shader. No names possible.
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=12)(mixed,mixed,mixed,mixed) r0.xzw, r0.x, l(0), t0.xxyz
-r0.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r0.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r0.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.x = t0[r0.x].val[0/4];
+  r0.z = t0[r0.x].val[0/4+1];
+  r0.w = t0[r0.x].val[0/4+2];
   if (8 == 0) r1.x = 0; else if (8+8 < 32) {   r1.x = (uint)r0.w << (32-(8 + 8)); r1.x = (uint)r1.x >> (32-8);  } else r1.x = (uint)r0.w >> 8;
   if (8 == 0) r1.y = 0; else if (8+16 < 32) {   r1.y = (uint)r0.w << (32-(8 + 16)); r1.y = (uint)r1.y >> (32-8);  } else r1.y = (uint)r0.w >> 16;
   r1.xy = (uint2)r1.xy;

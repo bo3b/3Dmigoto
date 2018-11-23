@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:53:08 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:14:56 2018
 
 struct ModelInstanceData
 {
@@ -112,10 +112,6 @@ void main(
   uint v3 : TEXCOORD15,
   out float4 o0 : SV_POSITION0)
 {
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t4, 24
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t5, 64
   float4 r0,r1,r2,r3,r4;
   uint4 bitmask, uiDest;
   float4 fDest;

@@ -1,0 +1,76 @@
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:00:03 2018
+struct t112_t {
+  float val[12];
+};
+StructuredBuffer<t112_t> t112 : register(t112);
+
+struct t111_t {
+  float val[11];
+};
+StructuredBuffer<t111_t> t111 : register(t111);
+
+struct t110_t {
+  float val[12];
+};
+StructuredBuffer<t110_t> t110 : register(t110);
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+  nointerpolation uint4 v0 : TEXCOORD0,
+  float v1 : TEXCOORD1,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = t110[2].val[4/4];
+  r0.x = (uint)r0.x;
+  r1.x = t110[0].val[0/4];
+  r0.x = r1.x + r0.x;
+  r1.x = t110[1].val[8/4];
+  r0.x = r1.x + r0.x;
+  r1.x = t110[3].val[12/4];
+  r0.y = (int)r1.x;
+  r0.x = r0.x + r0.y;
+  r0.yz = (int2)v0.xx + int2(1,2);
+  r1.x = t110[r0.y].val[16/4];
+  r1.y = t110[r0.y].val[16/4+1];
+  r1.z = t110[r0.y].val[16/4+2];
+  r1.w = t110[r0.y].val[16/4+3];
+  r2.x = t110[r0.z].val[32/4];
+  r2.y = t110[r0.z].val[32/4+1];
+  r2.z = t110[r0.z].val[32/4+2];
+  r2.w = t110[r0.z].val[32/4+3];
+  r0.y = dot(r1.xyzw, r2.xyzw);
+  r0.x = r0.x + r0.y;
+  r1.x = t111[v0.x].val[0/4];
+  r1.y = t111[v0.x].val[0/4+1];
+  r1.z = t111[v0.x].val[0/4+2];
+  r0.x = r1.x + r0.x;
+  r0.y = (uint)r1.y;
+  r0.x = r0.x + r0.y;
+  r0.x = r0.x + r1.z;
+  r1.x = t111[v0.x].val[24/4];
+  r0.y = (int)r1.x;
+  r0.x = r0.x + r0.y;
+  r1.x = t112[v0.x].val[0/4];
+  r1.y = t112[v0.x].val[0/4+1];
+  r1.z = t112[v0.x].val[0/4+2];
+  r1.w = t112[v0.x].val[0/4+3];
+  r0.x = r1.x + r0.x;
+  r0.y = (uint)r1.y;
+  r0.x = r0.x + r0.y;
+  r0.x = r0.x + r1.z;
+  r0.y = (int)r1.w;
+  o0.xyzw = r0.xxxx + r0.yyyy;
+  return;
+}

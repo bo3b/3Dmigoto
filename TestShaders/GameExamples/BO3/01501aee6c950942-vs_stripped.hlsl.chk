@@ -1,4 +1,14 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 16 07:19:05 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:14:56 2018
+struct t5_t {
+  float val[16];
+};
+StructuredBuffer<t5_t> t5 : register(t5);
+
+struct t4_t {
+  float val[6];
+};
+StructuredBuffer<t4_t> t4 : register(t4);
+
 cbuffer cb1 : register(b1)
 {
   float4 cb1[25];
@@ -20,147 +30,104 @@ void main(
   uint v3 : TEXCOORD15,
   out float4 o0 : SV_POSITION0)
 {
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t4, 24
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t5, 64
   float4 r0,r1,r2,r3,r4;
   uint4 bitmask, uiDest;
   float4 fDest;
 
-// Missing reflection info for shader. No names possible.
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=24)(mixed,mixed,mixed,mixed) r0.x, v3.x, l(0), t4.xxxx
-r0.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.x = t4[v3.x].val[0/4];
   if (r0.x != 0) {
     r0.y = cmp(v1.x != 0.000000);
     if (r0.y != 0) {
       r0.y = (int)r0.x + (int)v2.x;
-    // Missing reflection info for shader. No names possible.
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r1.xyzw, r0.y, l(0), t5.xyzw
-    r1.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-    r1.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-    r1.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-    r1.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      r1.x = t5[r0.y].val[0/4];
+      r1.y = t5[r0.y].val[0/4+1];
+      r1.z = t5[r0.y].val[0/4+2];
+      r1.w = t5[r0.y].val[0/4+3];
       r0.z = dot(r1.xyz, v0.xyz);
       r0.z = r0.z + r1.w;
       r1.x = v1.x * r0.z;
-    // Missing reflection info for shader. No names possible.
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r2.xyzw, r0.y, l(16), t5.xyzw
-    r2.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-    r2.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-    r2.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-    r2.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      r2.x = t5[r0.y].val[16/4];
+      r2.y = t5[r0.y].val[16/4+1];
+      r2.z = t5[r0.y].val[16/4+2];
+      r2.w = t5[r0.y].val[16/4+3];
       r0.z = dot(r2.xyz, v0.xyz);
       r0.z = r0.z + r2.w;
-    // Missing reflection info for shader. No names possible.
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r2.xyzw, r0.y, l(32), t5.xyzw
-    r2.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-    r2.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-    r2.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-    r2.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      r2.x = t5[r0.y].val[32/4];
+      r2.y = t5[r0.y].val[32/4+1];
+      r2.z = t5[r0.y].val[32/4+2];
+      r2.w = t5[r0.y].val[32/4+3];
       r0.y = dot(r2.xyz, v0.xyz);
       r0.y = r0.y + r2.w;
       r1.yz = v1.xx * r0.zy;
       r0.y = cmp(v1.y != 0.000000);
       if (r0.y != 0) {
         r0.y = (int)r0.x + (int)v2.y;
-      // Missing reflection info for shader. No names possible.
-      // Known bad code for instruction (needs manual fix):
-            ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r2.xyzw, r0.y, l(0), t5.xyzw
-      r2.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-      r2.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-      r2.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-      r2.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+        r2.x = t5[r0.y].val[0/4];
+        r2.y = t5[r0.y].val[0/4+1];
+        r2.z = t5[r0.y].val[0/4+2];
+        r2.w = t5[r0.y].val[0/4+3];
         r0.z = dot(r2.xyz, v0.xyz);
         r0.z = r0.z + r2.w;
         r1.x = r0.z * v1.y + r1.x;
-      // Missing reflection info for shader. No names possible.
-      // Known bad code for instruction (needs manual fix):
-            ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r2.xyzw, r0.y, l(16), t5.xyzw
-      r2.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-      r2.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-      r2.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-      r2.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+        r2.x = t5[r0.y].val[16/4];
+        r2.y = t5[r0.y].val[16/4+1];
+        r2.z = t5[r0.y].val[16/4+2];
+        r2.w = t5[r0.y].val[16/4+3];
         r0.z = dot(r2.xyz, v0.xyz);
         r0.z = r0.z + r2.w;
         r1.y = r0.z * v1.y + r1.y;
-      // Missing reflection info for shader. No names possible.
-      // Known bad code for instruction (needs manual fix):
-            ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r2.xyzw, r0.y, l(32), t5.xyzw
-      r2.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-      r2.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-      r2.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-      r2.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+        r2.x = t5[r0.y].val[32/4];
+        r2.y = t5[r0.y].val[32/4+1];
+        r2.z = t5[r0.y].val[32/4+2];
+        r2.w = t5[r0.y].val[32/4+3];
         r0.y = dot(r2.xyz, v0.xyz);
         r0.y = r0.y + r2.w;
         r1.z = r0.y * v1.y + r1.z;
         r0.y = cmp(v1.z != 0.000000);
         if (r0.y != 0) {
           r0.y = (int)r0.x + (int)v2.z;
-        // Missing reflection info for shader. No names possible.
-        // Known bad code for instruction (needs manual fix):
-                ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r2.xyzw, r0.y, l(0), t5.xyzw
-        r2.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-        r2.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-        r2.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-        r2.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+          r2.x = t5[r0.y].val[0/4];
+          r2.y = t5[r0.y].val[0/4+1];
+          r2.z = t5[r0.y].val[0/4+2];
+          r2.w = t5[r0.y].val[0/4+3];
           r0.z = dot(r2.xyz, v0.xyz);
           r0.z = r0.z + r2.w;
           r1.x = r0.z * v1.z + r1.x;
-        // Missing reflection info for shader. No names possible.
-        // Known bad code for instruction (needs manual fix):
-                ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r2.xyzw, r0.y, l(16), t5.xyzw
-        r2.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-        r2.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-        r2.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-        r2.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+          r2.x = t5[r0.y].val[16/4];
+          r2.y = t5[r0.y].val[16/4+1];
+          r2.z = t5[r0.y].val[16/4+2];
+          r2.w = t5[r0.y].val[16/4+3];
           r0.z = dot(r2.xyz, v0.xyz);
           r0.z = r0.z + r2.w;
           r1.y = r0.z * v1.z + r1.y;
-        // Missing reflection info for shader. No names possible.
-        // Known bad code for instruction (needs manual fix):
-                ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r2.xyzw, r0.y, l(32), t5.xyzw
-        r2.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-        r2.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-        r2.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-        r2.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+          r2.x = t5[r0.y].val[32/4];
+          r2.y = t5[r0.y].val[32/4+1];
+          r2.z = t5[r0.y].val[32/4+2];
+          r2.w = t5[r0.y].val[32/4+3];
           r0.y = dot(r2.xyz, v0.xyz);
           r0.y = r0.y + r2.w;
           r1.z = r0.y * v1.z + r1.z;
           r0.y = cmp(v1.w != 0.000000);
           if (r0.y != 0) {
             r0.x = (int)r0.x + (int)v2.w;
-          // Missing reflection info for shader. No names possible.
-          // Known bad code for instruction (needs manual fix):
-                    ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r2.xyzw, r0.x, l(0), t5.xyzw
-          r2.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-          r2.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-          r2.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-          r2.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+            r2.x = t5[r0.x].val[0/4];
+            r2.y = t5[r0.x].val[0/4+1];
+            r2.z = t5[r0.x].val[0/4+2];
+            r2.w = t5[r0.x].val[0/4+3];
             r0.y = dot(r2.xyz, v0.xyz);
             r0.y = r0.y + r2.w;
             r1.x = r0.y * v1.w + r1.x;
-          // Missing reflection info for shader. No names possible.
-          // Known bad code for instruction (needs manual fix):
-                    ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r2.xyzw, r0.x, l(16), t5.xyzw
-          r2.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-          r2.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-          r2.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-          r2.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+            r2.x = t5[r0.x].val[16/4];
+            r2.y = t5[r0.x].val[16/4+1];
+            r2.z = t5[r0.x].val[16/4+2];
+            r2.w = t5[r0.x].val[16/4+3];
             r0.y = dot(r2.xyz, v0.xyz);
             r0.y = r0.y + r2.w;
             r1.y = r0.y * v1.w + r1.y;
-          // Missing reflection info for shader. No names possible.
-          // Known bad code for instruction (needs manual fix):
-                    ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r0.xyzw, r0.x, l(32), t5.xyzw
-          r0.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-          r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-          r0.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-          r0.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+            r0.x = t5[r0.x].val[32/4];
+            r0.y = t5[r0.x].val[32/4+1];
+            r0.z = t5[r0.x].val[32/4+2];
+            r0.w = t5[r0.x].val[32/4+3];
             r0.x = dot(r0.xyz, v0.xyz);
             r0.x = r0.x + r0.w;
             r1.z = r0.x * v1.w + r1.z;
@@ -173,32 +140,20 @@ r0.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   } else {
     r1.xyz = v0.xyz;
   }
-// Missing reflection info for shader. No names possible.
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=24)(mixed,mixed,mixed,mixed) r0.x, v3.x, l(12), t4.xxxx
-r0.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.x = t4[v3.x].val[12/4];
   if (r0.x != 0) {
-  // Missing reflection info for shader. No names possible.
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r2.xyzw, r0.x, l(0), t5.xyzw
-  r2.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  r2.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  r2.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  r2.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  // Missing reflection info for shader. No names possible.
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r3.xyzw, r0.x, l(16), t5.xyzw
-  r3.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  r3.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  r3.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  r3.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  // Missing reflection info for shader. No names possible.
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r0.xyzw, r0.x, l(32), t5.xywz
-  r0.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  r0.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-  r0.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+    r2.x = t5[r0.x].val[0/4];
+    r2.y = t5[r0.x].val[0/4+1];
+    r2.z = t5[r0.x].val[0/4+2];
+    r2.w = t5[r0.x].val[0/4+3];
+    r3.x = t5[r0.x].val[16/4];
+    r3.y = t5[r0.x].val[16/4+1];
+    r3.z = t5[r0.x].val[16/4+2];
+    r3.w = t5[r0.x].val[16/4+3];
+    r0.x = t5[r0.x].val[32/4];
+    r0.y = t5[r0.x].val[32/4+1];
+    r0.z = t5[r0.x].val[32/4+3];
+    r0.w = t5[r0.x].val[32/4+2];
     r4.xyz = r0.xyw;
     r0.x = r2.w;
     r0.y = r3.w;

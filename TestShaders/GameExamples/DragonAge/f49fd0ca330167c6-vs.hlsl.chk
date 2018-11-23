@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Nov 19 14:53:43 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:15:19 2018
 
 struct StoredBokeh
 {
@@ -29,8 +29,6 @@ void main(
                               { 1, 0, 0, 0},
                               { 3, 0, 0, 0},
                               { 2, 0, 0, 0} };
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t3, 32
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v0.x, vertex_id
   float4 r0,r1;

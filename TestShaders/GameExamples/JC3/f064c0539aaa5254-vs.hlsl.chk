@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:51:52 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:15:34 2018
 
 struct SPositionInfo
 {
@@ -70,13 +70,7 @@ void main(
   out float4 o2 : TEXCOORD3)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t0, 12
-// Needs manual fix for instruction:
 // unknown dcl_: dcl_resource_raw t4
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t5, 4
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t6, 76
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v0.x, vertex_id
   float4 r0,r1,r2,r3;

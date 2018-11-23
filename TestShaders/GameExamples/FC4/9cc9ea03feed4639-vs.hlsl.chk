@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 20 08:51:41 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:15:22 2018
 
 struct SImpostorInstance
 {
@@ -109,8 +109,6 @@ void main(
   out uint o9 : _instId0,
   out uint2 p9 : _viewIndex0)
 {
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t1, 48
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v1.x, instance_id
   float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9;

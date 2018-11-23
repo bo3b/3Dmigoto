@@ -1,4 +1,9 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 16 07:19:48 2018
+// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:15:43 2018
+struct t0_t {
+  float val[8];
+};
+StructuredBuffer<t0_t> t0 : register(t0);
+
 cbuffer cb12 : register(b12)
 {
   float4 cb12[21];
@@ -27,20 +32,15 @@ void main(
   out float3 o4 : TEXCOORD3)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_resource_structured t0, 32
-// Needs manual fix for instruction:
 // unknown dcl_: dcl_input_sgv v0.x, vertex_id
   float4 r0,r1,r2,r3;
   uint4 bitmask, uiDest;
   float4 fDest;
 
-// Missing reflection info for shader. No names possible.
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r0.xyzw, v0.x, l(0), t0.wxyz
-r0.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r0.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r0.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r0.x = t0[v0.x].val[0/4+3];
+  r0.y = t0[v0.x].val[0/4];
+  r0.z = t0[v0.x].val[0/4+1];
+  r0.w = t0[v0.x].val[0/4+2];
   r1.xyz = r0.yzw;
   r1.w = 1;
   o0.x = dot(cb0[6].xyzw, r1.xyzw);
@@ -50,13 +50,10 @@ r0.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
   r1.x = cb12[18].w + r1.x;
   o0.z = r2.x;
   r1.yzw = cb0[13].xyz + -r0.yzw;
-// Missing reflection info for shader. No names possible.
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r3.xyzw, v0.x, l(16), t0.xyzw
-r3.x = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r3.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r3.z = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
-r3.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+  r3.x = t0[v0.x].val[16/4];
+  r3.y = t0[v0.x].val[16/4+1];
+  r3.z = t0[v0.x].val[16/4+2];
+  r3.w = t0[v0.x].val[16/4+3];
   r0.yz = r3.xy;
   o2.xy = r3.zw;
   o1.x = dot(cb0[6].xyz, r0.xyz);
