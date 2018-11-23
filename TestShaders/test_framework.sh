@@ -88,6 +88,7 @@ run_decompiler_test()
 
 	local decompiled="$dst.hlsl"
 	local recompiled="${dst}_recompiled.bin"
+	local recompiled_asm="${dst}_recompiled.asm"
 	[ -z "$check" ] && check="$decompiled.chk"
 
 	local fail=0
@@ -104,7 +105,7 @@ run_decompiler_test()
 			fail=1
 		else
 			check_decompiler_result "$decompiled" "$check" || fail=1
-			if ! "$FXC" /nologo "$decompiled" /T "$model" /Fo "$recompiled" >/dev/null 2>&1; then
+			if ! "$FXC" /nologo "$decompiled" /T "$model" /Fo "$recompiled" /Fc "$recompiled_asm" >/dev/null 2>&1; then
 				echo -n " Recompilation failed."
 				fail=1
 			fi
