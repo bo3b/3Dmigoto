@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:32:37 2018
+// ---- Created with 3Dmigoto v1.3.11 on Sat Nov 24 23:54:54 2018
 
 struct struct_buf_1_type
 {
@@ -8,6 +8,9 @@ struct struct_buf_1_type
     int buz;                       // Offset:   12
     float4 f4;                     // Offset:   16
     float4 g4;                     // Offset:   32
+    float oopsie;                  // Offset:   48
+    float4 m4;                     // Offset:   52
+    float4 n4;                     // Offset:   68
 };
 
 struct struct_buf_2_type
@@ -28,10 +31,13 @@ struct struct_buf_2_type
             int buz;               // Offset:   36
             float4 f4;             // Offset:   40
             float4 g4;             // Offset:   56
+            float oopsie;          // Offset:   72
+            float4 m4;             // Offset:   76
+            float4 n4;             // Offset:   92
         } inner_struct_3;          // Offset:   24
     } inner_struct_2[2];           // Offset:   16
-    float foobaz;                  // Offset:  128
-    int foobuz[8];                 // Offset:  132
+    float foobaz;                  // Offset:  200
+    int foobuz[8];                 // Offset:  204
 };
 
 StructuredBuffer<struct_buf_1_type> struct_buf_1 : register(t110);
@@ -83,6 +89,20 @@ r2.x = struct_buf_1[]..swiz;
 r2.y = struct_buf_1[]..swiz;
 r2.z = struct_buf_1[]..swiz;
 r2.w = struct_buf_1[]..swiz;
+  r0.w = dot(r1.xyzw, r2.xyzw);
+  r0.x = r0.x + r0.w;
+// Known bad code for instruction (needs manual fix):
+ld_structured r1.xyzw, r0.y, l(52), t110.xyzw
+r1.x = struct_buf_1[]..swiz;
+r1.y = struct_buf_1[]..swiz;
+r1.z = struct_buf_1[]..swiz;
+r1.w = struct_buf_1[]..swiz;
+// Known bad code for instruction (needs manual fix):
+ld_structured r2.xyzw, r0.z, l(68), t110.xyzw
+r2.x = struct_buf_1[]..swiz;
+r2.y = struct_buf_1[]..swiz;
+r2.z = struct_buf_1[]..swiz;
+r2.w = struct_buf_1[]..swiz;
   r0.y = dot(r1.xyzw, r2.xyzw);
   r0.x = r0.x + r0.y;
 // Known bad code for instruction (needs manual fix):
@@ -101,21 +121,21 @@ ld_structured r1.x, v0.x, l(16), t111.xxxx
 r1.x = struct_buf_1[]..swiz;
   r0.x = r1.x + r0.x;
 // Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(76), t111.xxxx
+ld_structured r1.x, v0.x, l(112), t111.xxxx
 r1.x = struct_buf_1[]..swiz;
   r0.x = r1.x + r0.x;
-  r0.y = mad((int)v0.x, 56, 36);
+  r0.y = mad((int)v0.x, 92, 36);
 // Known bad code for instruction (needs manual fix):
 ld_structured r1.x, v0.x, r0.y, t111.xxxx
 r1.x = struct_buf_1[]..swiz;
   r0.y = (int)r1.x;
   r0.x = r0.x + r0.y;
 // Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(128), t111.xxxx
+ld_structured r1.x, v0.x, l(200), t111.xxxx
 r1.x = struct_buf_1[]..swiz;
   r0.x = r1.x + r0.x;
 // Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(144), t111.xxxx
+ld_structured r1.x, v0.x, l(216), t111.xxxx
 r1.x = struct_buf_1[]..swiz;
   r0.y = (int)r1.x;
   o0.xyzw = r0.xxxx + r0.yyyy;

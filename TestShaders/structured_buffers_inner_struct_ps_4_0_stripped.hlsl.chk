@@ -1,11 +1,11 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:00:05 2018
+// ---- Created with 3Dmigoto v1.3.11 on Sat Nov 24 23:54:54 2018
 struct t111_t {
-  float val[41];
+  float val[59];
 };
 StructuredBuffer<t111_t> t111 : register(t111);
 
 struct t110_t {
-  float val[12];
+  float val[21];
 };
 StructuredBuffer<t110_t> t110 : register(t110);
 
@@ -45,6 +45,16 @@ void main(
   r2.y = t110[r0.z].val[32/4+1];
   r2.z = t110[r0.z].val[32/4+2];
   r2.w = t110[r0.z].val[32/4+3];
+  r0.w = dot(r1.xyzw, r2.xyzw);
+  r0.x = r0.x + r0.w;
+  r1.x = t110[r0.y].val[52/4];
+  r1.y = t110[r0.y].val[52/4+1];
+  r1.z = t110[r0.y].val[52/4+2];
+  r1.w = t110[r0.y].val[52/4+3];
+  r2.x = t110[r0.z].val[68/4];
+  r2.y = t110[r0.z].val[68/4+1];
+  r2.z = t110[r0.z].val[68/4+2];
+  r2.w = t110[r0.z].val[68/4+3];
   r0.y = dot(r1.xyzw, r2.xyzw);
   r0.x = r0.x + r0.y;
   r1.x = t111[v0.x].val[0/4];
@@ -58,15 +68,15 @@ void main(
   r0.x = r0.x + r1.w;
   r1.x = t111[v0.x].val[16/4];
   r0.x = r1.x + r0.x;
-  r1.x = t111[v0.x].val[76/4];
+  r1.x = t111[v0.x].val[112/4];
   r0.x = r1.x + r0.x;
-  r0.y = mad((int)v0.x, 56, 36);
+  r0.y = mad((int)v0.x, 92, 36);
   r1.x = t111[v0.x].val[r0.y/4];
   r0.y = (int)r1.x;
   r0.x = r0.x + r0.y;
-  r1.x = t111[v0.x].val[128/4];
+  r1.x = t111[v0.x].val[200/4];
   r0.x = r1.x + r0.x;
-  r1.x = t111[v0.x].val[144/4];
+  r1.x = t111[v0.x].val[216/4];
   r0.y = (int)r1.x;
   o0.xyzw = r0.xxxx + r0.yyyy;
   return;
