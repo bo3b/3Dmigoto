@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:52 2018
+// ---- Created with 3Dmigoto v1.3.11 on Sun Nov 25 00:00:31 2018
 Texture2D<float4> t1 : register(t1);
 
 Texture2D<float4> t0 : register(t0);
@@ -322,10 +322,7 @@ ld_raw r1.w, l(0), g1.xxxx
     while (true) {
       r1.w = cmp((uint)r1.z >= (uint)r1.y);
       if (r1.w != 0) break;
-    // Missing reflection info for shader. No names possible.
-    // Known bad code for instruction (needs manual fix):
-        ld_structured r1.w, r1.z, l(0), g2.xxxx
-    r1.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      r1.w = g2[r1.z].val[0/4];
       r1.w = (int)r1.w * 5;
       r6.x = dot(r3.xyzw, cb13[r1.w+2363].xyzw);
       r6.y = dot(r3.xyzw, cb13[r1.w+2364].xyzw);
@@ -389,10 +386,7 @@ store_uav_typed u0.xyzw, r0.xyyy, r2.zzxy
     ld_raw r0.y, l(0), g5.xxxx
     r0.y = cmp((uint)r1.x < (uint)r0.y);
     if (r0.y != 0) {
-    // Missing reflection info for shader. No names possible.
-    // Known bad code for instruction (needs manual fix):
-        ld_structured r0.y, r1.x, l(0), g4.xxxx
-    r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      r0.y = g4[r1.x].val[0/4];
     } else {
       r0.y = 192;
     }

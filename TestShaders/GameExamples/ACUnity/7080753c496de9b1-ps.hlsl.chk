@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:33:28 2018
+// ---- Created with 3Dmigoto v1.3.11 on Sat Nov 24 23:59:25 2018
 struct t56_t {
   float val[36];
 };
@@ -691,27 +691,19 @@ void main(
       r13.zw = float2(0,0);
       r3.y = t29.Load(r13.xyz).x;
       r3.z = (int)r3.x + -1;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=52)(mixed,mixed,mixed,mixed) r13.xyzw, r3.z, l(0), t28.xyzw
-    r13.x = s_LocalCubeMaps_s[]..swiz;
-    r13.y = s_LocalCubeMaps_s[]..swiz;
-    r13.z = s_LocalCubeMaps_s[]..swiz;
-    r13.w = s_LocalCubeMaps_s[]..swiz;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=52)(mixed,mixed,mixed,mixed) r14.xyzw, r3.z, l(16), t28.zwxy
-    r14.x = s_LocalCubeMaps_s[]..swiz;
-    r14.y = s_LocalCubeMaps_s[]..swiz;
-    r14.z = s_LocalCubeMaps_s[]..swiz;
-    r14.w = s_LocalCubeMaps_s[]..swiz;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=52)(mixed,mixed,mixed,mixed) r15.xyzw, r3.z, l(32), t28.xyzw
-    r15.x = s_LocalCubeMaps_s[]..swiz;
-    r15.y = s_LocalCubeMaps_s[]..swiz;
-    r15.z = s_LocalCubeMaps_s[]..swiz;
-    r15.w = s_LocalCubeMaps_s[]..swiz;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=52)(mixed,mixed,mixed,mixed) r3.z, r3.z, l(48), t28.xxxx
-    r3.z = s_LocalCubeMaps_s[]..swiz;
+      r13.x = t28[r3.z].val[0/4];
+      r13.y = t28[r3.z].val[0/4+1];
+      r13.z = t28[r3.z].val[0/4+2];
+      r13.w = t28[r3.z].val[0/4+3];
+      r14.x = t28[r3.z].val[16/4+2];
+      r14.y = t28[r3.z].val[16/4+3];
+      r14.z = t28[r3.z].val[16/4];
+      r14.w = t28[r3.z].val[16/4+1];
+      r15.x = t28[r3.z].val[32/4];
+      r15.y = t28[r3.z].val[32/4+1];
+      r15.z = t28[r3.z].val[32/4+2];
+      r15.w = t28[r3.z].val[32/4+3];
+      r3.z = t28[r3.z].val[48/4];
       r16.x = r13.w;
       r16.yz = r14.zw;
       r13.xyz = r12.xyz * r13.xyz + r16.xyz;
@@ -727,24 +719,18 @@ void main(
       if (r3.z != 0) {
         r3.z = (int)r3.y & 255;
         r3.z = (int)r3.z + -1;
-      // Known bad code for instruction (needs manual fix):
-            ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r17.xyzw, r3.z, l(0), t26.xyzw
-      r17.x = s_LocalCubeMaps_s[]..swiz;
-      r17.y = s_LocalCubeMaps_s[]..swiz;
-      r17.z = s_LocalCubeMaps_s[]..swiz;
-      r17.w = s_LocalCubeMaps_s[]..swiz;
-      // Known bad code for instruction (needs manual fix):
-            ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r18.xyzw, r3.z, l(16), t26.xyzw
-      r18.x = s_LocalCubeMaps_s[]..swiz;
-      r18.y = s_LocalCubeMaps_s[]..swiz;
-      r18.z = s_LocalCubeMaps_s[]..swiz;
-      r18.w = s_LocalCubeMaps_s[]..swiz;
-      // Known bad code for instruction (needs manual fix):
-            ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r19.xyzw, r3.z, l(32), t26.xyzw
-      r19.x = s_LocalCubeMaps_s[]..swiz;
-      r19.y = s_LocalCubeMaps_s[]..swiz;
-      r19.z = s_LocalCubeMaps_s[]..swiz;
-      r19.w = s_LocalCubeMaps_s[]..swiz;
+        r17.x = t26[r3.z].val[0/4];
+        r17.y = t26[r3.z].val[0/4+1];
+        r17.z = t26[r3.z].val[0/4+2];
+        r17.w = t26[r3.z].val[0/4+3];
+        r18.x = t26[r3.z].val[16/4];
+        r18.y = t26[r3.z].val[16/4+1];
+        r18.z = t26[r3.z].val[16/4+2];
+        r18.w = t26[r3.z].val[16/4+3];
+        r19.x = t26[r3.z].val[32/4];
+        r19.y = t26[r3.z].val[32/4+1];
+        r19.z = t26[r3.z].val[32/4+2];
+        r19.w = t26[r3.z].val[32/4+3];
         r12.w = 1;
         r17.x = dot(r12.xyzw, r17.xyzw);
         r17.y = dot(r12.xyzw, r18.xyzw);
@@ -771,24 +757,18 @@ void main(
       if (r5.z != 0) {
         if (8 == 0) r3.y = 0; else if (8+16 < 32) {         r3.y = (uint)r3.y << (32-(8 + 16)); r3.y = (uint)r3.y >> (32-8);        } else r3.y = (uint)r3.y >> 16;
         r3.y = (int)r3.y + -1;
-      // Known bad code for instruction (needs manual fix):
-            ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r17.xyzw, r3.y, l(0), t26.xyzw
-      r17.x = s_LocalCubeMaps_s[]..swiz;
-      r17.y = s_LocalCubeMaps_s[]..swiz;
-      r17.z = s_LocalCubeMaps_s[]..swiz;
-      r17.w = s_LocalCubeMaps_s[]..swiz;
-      // Known bad code for instruction (needs manual fix):
-            ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r18.xyzw, r3.y, l(16), t26.xyzw
-      r18.x = s_LocalCubeMaps_s[]..swiz;
-      r18.y = s_LocalCubeMaps_s[]..swiz;
-      r18.z = s_LocalCubeMaps_s[]..swiz;
-      r18.w = s_LocalCubeMaps_s[]..swiz;
-      // Known bad code for instruction (needs manual fix):
-            ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r19.xyzw, r3.y, l(32), t26.xyzw
-      r19.x = s_LocalCubeMaps_s[]..swiz;
-      r19.y = s_LocalCubeMaps_s[]..swiz;
-      r19.z = s_LocalCubeMaps_s[]..swiz;
-      r19.w = s_LocalCubeMaps_s[]..swiz;
+        r17.x = t26[r3.y].val[0/4];
+        r17.y = t26[r3.y].val[0/4+1];
+        r17.z = t26[r3.y].val[0/4+2];
+        r17.w = t26[r3.y].val[0/4+3];
+        r18.x = t26[r3.y].val[16/4];
+        r18.y = t26[r3.y].val[16/4+1];
+        r18.z = t26[r3.y].val[16/4+2];
+        r18.w = t26[r3.y].val[16/4+3];
+        r19.x = t26[r3.y].val[32/4];
+        r19.y = t26[r3.y].val[32/4+1];
+        r19.z = t26[r3.y].val[32/4+2];
+        r19.w = t26[r3.y].val[32/4+3];
         r12.w = 1;
         r17.x = dot(r12.xyzw, r17.xyzw);
         r17.y = dot(r12.xyzw, r18.xyzw);
@@ -819,47 +799,33 @@ void main(
       r16.x = dot(r12.xyzw, r6.xyzw);
       r16.y = dot(r14.xyzw, r6.xyzw);
       r16.z = dot(r15.xyzw, r6.xyzw);
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r17.xyzw, l(0), l(0), t56.xyzw
-    r17.x = s_LocalCubeMaps_s[]..swiz;
-    r17.y = s_LocalCubeMaps_s[]..swiz;
-    r17.z = s_LocalCubeMaps_s[]..swiz;
-    r17.w = s_LocalCubeMaps_s[]..swiz;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r18.xyzw, l(0), l(16), t56.xyzw
-    r18.x = s_LocalCubeMaps_s[]..swiz;
-    r18.y = s_LocalCubeMaps_s[]..swiz;
-    r18.z = s_LocalCubeMaps_s[]..swiz;
-    r18.w = s_LocalCubeMaps_s[]..swiz;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r19.xyzw, l(0), l(32), t56.xyzw
-    r19.x = s_LocalCubeMaps_s[]..swiz;
-    r19.y = s_LocalCubeMaps_s[]..swiz;
-    r19.z = s_LocalCubeMaps_s[]..swiz;
-    r19.w = s_LocalCubeMaps_s[]..swiz;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r20.xyzw, l(0), l(48), t56.xyzw
-    r20.x = s_LocalCubeMaps_s[]..swiz;
-    r20.y = s_LocalCubeMaps_s[]..swiz;
-    r20.z = s_LocalCubeMaps_s[]..swiz;
-    r20.w = s_LocalCubeMaps_s[]..swiz;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r21.xyzw, l(0), l(64), t56.xyzw
-    r21.x = s_LocalCubeMaps_s[]..swiz;
-    r21.y = s_LocalCubeMaps_s[]..swiz;
-    r21.z = s_LocalCubeMaps_s[]..swiz;
-    r21.w = s_LocalCubeMaps_s[]..swiz;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r22.xyzw, l(0), l(80), t56.xyzw
-    r22.x = s_LocalCubeMaps_s[]..swiz;
-    r22.y = s_LocalCubeMaps_s[]..swiz;
-    r22.z = s_LocalCubeMaps_s[]..swiz;
-    r22.w = s_LocalCubeMaps_s[]..swiz;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=144)(mixed,mixed,mixed,mixed) r5.yzw, l(0), l(96), t56.xxyz
-    r5.y = s_LocalCubeMaps_s[]..swiz;
-    r5.z = s_LocalCubeMaps_s[]..swiz;
-    r5.w = s_LocalCubeMaps_s[]..swiz;
+      r17.x = t56[0].val[0/4];
+      r17.y = t56[0].val[0/4+1];
+      r17.z = t56[0].val[0/4+2];
+      r17.w = t56[0].val[0/4+3];
+      r18.x = t56[0].val[16/4];
+      r18.y = t56[0].val[16/4+1];
+      r18.z = t56[0].val[16/4+2];
+      r18.w = t56[0].val[16/4+3];
+      r19.x = t56[0].val[32/4];
+      r19.y = t56[0].val[32/4+1];
+      r19.z = t56[0].val[32/4+2];
+      r19.w = t56[0].val[32/4+3];
+      r20.x = t56[0].val[48/4];
+      r20.y = t56[0].val[48/4+1];
+      r20.z = t56[0].val[48/4+2];
+      r20.w = t56[0].val[48/4+3];
+      r21.x = t56[0].val[64/4];
+      r21.y = t56[0].val[64/4+1];
+      r21.z = t56[0].val[64/4+2];
+      r21.w = t56[0].val[64/4+3];
+      r22.x = t56[0].val[80/4];
+      r22.y = t56[0].val[80/4+1];
+      r22.z = t56[0].val[80/4+2];
+      r22.w = t56[0].val[80/4+3];
+      r5.y = t56[0].val[96/4];
+      r5.z = t56[0].val[96/4+1];
+      r5.w = t56[0].val[96/4+2];
       r23.x = dot(r17.xyzw, r6.xyzw);
       r23.y = dot(r18.xyzw, r6.xyzw);
       r23.z = dot(r19.xyzw, r6.xyzw);
