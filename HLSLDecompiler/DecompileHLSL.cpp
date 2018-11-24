@@ -68,6 +68,31 @@ enum DataType
 	DT_int2,
 	DT_uint,
 	DT_int,
+	// FIXME: Missing types added for primitive type StructuredBuffers, but not yet rest of decompiler:
+	DT_float3x2, DT_float2x3, DT_float2x2,
+	DT_float4x1, DT_float3x1, DT_float2x1,
+	DT_float1x4, DT_float1x3, DT_float1x2, DT_float1x1,
+	DT_float1, DT_uint1, DT_int1, DT_bool1,
+	DT_bool2, DT_bool3,
+	DT_dword, // Same as uint (MS continues spreading the incorrect definition of a word), but has no vector or matrix variants
+	DT_half4x4, DT_half4x3, DT_half4x2, DT_half4x1,
+	DT_half3x4, DT_half3x3, DT_half3x2, DT_half3x1,
+	DT_half2x4, DT_half2x3, DT_half2x2, DT_half2x1,
+	DT_half1x4, DT_half1x3, DT_half1x2, DT_half1x1,
+	DT_uint4x4, DT_uint4x3, DT_uint4x2, DT_uint4x1,
+	DT_uint3x4, DT_uint3x3, DT_uint3x2, DT_uint3x1,
+	DT_uint2x4, DT_uint2x3, DT_uint2x2, DT_uint2x1,
+	DT_uint1x4, DT_uint1x3, DT_uint1x2, DT_uint1x1,
+	DT_int4x4, DT_int4x3, DT_int4x2, DT_int4x1,
+	DT_int3x4, DT_int3x3, DT_int3x2, DT_int3x1,
+	DT_int2x4, DT_int2x3, DT_int2x2, DT_int2x1,
+	DT_int1x4, DT_int1x3, DT_int1x2, DT_int1x1,
+	DT_bool4x4, DT_bool4x3, DT_bool4x2, DT_bool4x1,
+	DT_bool3x4, DT_bool3x3, DT_bool3x2, DT_bool3x1,
+	DT_bool2x4, DT_bool2x3, DT_bool2x2, DT_bool2x1,
+	DT_bool1x4, DT_bool1x3, DT_bool1x2, DT_bool1x1,
+	// FIXME: Add support for double, doubleN, doubleNxM (shader model 5+)
+	// FUTURE: Minimum precision types (Win8+)
 	DT_Unknown
 };
 struct BufferEntry
@@ -189,6 +214,31 @@ public:
 		if (!strcmp(name, "int3")) return DT_int3;
 		if (!strcmp(name, "int2")) return DT_int2;
 		if (!strcmp(name, "int")) return DT_int;
+		// FIXME: Missing types added for primitive type StructuredBuffers, but not yet rest of decompiler:
+#define DT(x) do { if (!strcmp(name, #x)) return DT_##x; } while (0)
+		DT(float3x2); DT(float2x3); DT(float2x2);
+		DT(float4x1); DT(float3x1); DT(float2x1);
+		DT(float1x4); DT(float1x3); DT(float1x2); DT(float1x1);
+		DT(float1); DT(uint1); DT(int1); DT(bool1);
+		DT(bool2); DT(bool3);
+		DT(dword);
+		DT(half4x4); DT(half4x3); DT(half4x2); DT(half4x1);
+		DT(half3x4); DT(half3x3); DT(half3x2); DT(half3x1);
+		DT(half2x4); DT(half2x3); DT(half2x2); DT(half2x1);
+		DT(half1x4); DT(half1x3); DT(half1x2); DT(half1x1);
+		DT(uint4x4); DT(uint4x3); DT(uint4x2); DT(uint4x1);
+		DT(uint3x4); DT(uint3x3); DT(uint3x2); DT(uint3x1);
+		DT(uint2x4); DT(uint2x3); DT(uint2x2); DT(uint2x1);
+		DT(uint1x4); DT(uint1x3); DT(uint1x2); DT(uint1x1);
+		DT(int4x4); DT(int4x3); DT(int4x2); DT(int4x1);
+		DT(int3x4); DT(int3x3); DT(int3x2); DT(int3x1);
+		DT(int2x4); DT(int2x3); DT(int2x2); DT(int2x1);
+		DT(int1x4); DT(int1x3); DT(int1x2); DT(int1x1);
+		DT(bool4x4); DT(bool4x3); DT(bool4x2); DT(bool4x1);
+		DT(bool3x4); DT(bool3x3); DT(bool3x2); DT(bool3x1);
+		DT(bool2x4); DT(bool2x3); DT(bool2x2); DT(bool2x1);
+		DT(bool1x4); DT(bool1x3); DT(bool1x2); DT(bool1x1);
+#undef DT
 		logDecompileError("Unknown data type: " + string(name));
 		return DT_Unknown;
 	}
@@ -3121,6 +3171,69 @@ public:
 		mOutput.insert(mOutput.end(), line, line + strlen(line));
 	}
 
+	static char * offset2swiz(DataType type, int offset)
+	{
+		// For StructuredBuffers, where the swizzle is really an offset modifier
+		switch (type) {
+			case DT_float4x4: case DT_float4x3: case DT_float4x2: case DT_float4x1:
+			case DT_half4x4: case DT_half4x3: case DT_half4x2: case DT_half4x1:
+			case DT_uint4x4: case DT_uint4x3: case DT_uint4x2: case DT_uint4x1:
+			case DT_int4x4: case DT_int4x3: case DT_int4x2: case DT_int4x1:
+			case DT_bool4x4: case DT_bool4x3: case DT_bool4x2: case DT_bool4x1:
+				switch (offset) {
+					case  0: return "_m00"; case  4: return "_m10"; case  8: return "_m20"; case 12: return "_m30";
+					case 16: return "_m01"; case 20: return "_m11"; case 24: return "_m21"; case 28: return "_m31";
+					case 32: return "_m02"; case 36: return "_m12"; case 40: return "_m22"; case 44: return "_m32";
+					case 48: return "_m03"; case 52: return "_m13"; case 56: return "_m23"; case 60: return "_m33";
+					default: return "_m??";
+				}
+			case DT_float3x4: case DT_float3x3: case DT_float3x2: case DT_float3x1:
+			case DT_half3x4: case DT_half3x3: case DT_half3x2: case DT_half3x1:
+			case DT_uint3x4: case DT_uint3x3: case DT_uint3x2: case DT_uint3x1:
+			case DT_int3x4: case DT_int3x3: case DT_int3x2: case DT_int3x1:
+			case DT_bool3x4: case DT_bool3x3: case DT_bool3x2: case DT_bool3x1:
+				switch (offset) {
+					case  0: return "_m00"; case  4: return "_m10"; case  8: return "_m20";
+					case 12: return "_m01"; case 16: return "_m11"; case 20: return "_m21";
+					case 24: return "_m02"; case 28: return "_m12"; case 32: return "_m22";
+					case 36: return "_m03"; case 40: return "_m13"; case 44: return "_m23";
+					default: return "_m??";
+				}
+			case DT_float2x4: case DT_float2x3: case DT_float2x2: case DT_float2x1:
+			case DT_half2x4: case DT_half2x3: case DT_half2x2: case DT_half2x1:
+			case DT_uint2x4: case DT_uint2x3: case DT_uint2x2: case DT_uint2x1:
+			case DT_int2x4: case DT_int2x3: case DT_int2x2: case DT_int2x1:
+			case DT_bool2x4: case DT_bool2x3: case DT_bool2x2: case DT_bool2x1:
+				switch (offset) {
+					case  0: return "_m00"; case  4: return "_m10";
+					case  8: return "_m01"; case 12: return "_m11";
+					case 16: return "_m02"; case 20: return "_m12";
+					case 24: return "_m03"; case 28: return "_m13";
+					default: return "_m??";
+				}
+			case DT_float1x4: case DT_float1x3: case DT_float1x2: case DT_float1x1:
+			case DT_half1x4: case DT_half1x3: case DT_half1x2: case DT_half1x1:
+			case DT_uint1x4: case DT_uint1x3: case DT_uint1x2: case DT_uint1x1:
+			case DT_int1x4: case DT_int1x3: case DT_int1x2: case DT_int1x1:
+			case DT_bool1x4: case DT_bool1x3: case DT_bool1x2: case DT_bool1x1:
+				switch (offset) {
+					case  0: return "_m00";
+					case  4: return "_m01";
+					case  8: return "_m02";
+					case 12: return "_m03";
+					default: return "_m0?";
+				}
+			default:
+				switch (offset) {
+					case  0: return "x";
+					case  4: return "y";
+					case  8: return "z";
+					case 12: return "w";
+					default: return "?";
+				}
+		}
+	}
+
 	void ParseCode(Shader *shader, const char *c, size_t size)
 	{
 		mOutputRegisterValues.clear();
@@ -5132,44 +5245,106 @@ public:
 						char *dst = op1, *idx = op2, *off = op3, *reg = op4;
 						if (!strncmp(op1, "stride", 6))
 							dst = op2, idx = op3, off = op4, reg = op5; // Note comma operator
+						Operand dst0 = instr->asOperands[0];
 						Operand texture = instr->asOperands[3];
 						ResourceGroup group = reg[0] == 'u' ? RGROUP_UAV : RGROUP_TEXTURE;
 						ResourceBinding *bindInfo;
 
+						remapTarget(dst);
+						applySwizzle(".x", idx);
+						applySwizzle(".x", off);
+						applySwizzle(dst, reg);
+
+						// The swizzle represents extra 32bit offsets within the structure:
+						int swiz_offsets[4] = {0, 4, 8, 12};
+						if (texture.ui32Swizzle != NO_SWIZZLE) {
+							for (int component = 0; component < 4; component++) {
+								switch (texture.aui32Swizzle[component]) {
+									case OPERAND_4_COMPONENT_X: swiz_offsets[component] = 0; break;
+									case OPERAND_4_COMPONENT_Y: swiz_offsets[component] = 4; break;
+									case OPERAND_4_COMPONENT_Z: swiz_offsets[component] = 8; break;
+									case OPERAND_4_COMPONENT_W: swiz_offsets[component] = 12; break;
+								}
+							}
+						}
+
 						if (GetResourceFromBindingPoint(group, texture.ui32RegisterNumber, shader->sInfo, &bindInfo))
 						{
-							string dst0, srcAddress, srcByteOffset, src0;
-							string swiz;
+							map<string, string>::iterator struct_type_i;
 
-							ResourceBinding* bindings = shader->sInfo->psResourceBindings;
-							src0 = bindings->Name;
-							srcAddress = instr->asOperands[1].specialName;
-							srcByteOffset = instr->asOperands[2].specialName;
-							dst0 = "r" + std::to_string(instr->asOperands[0].ui32RegisterNumber);
+							struct_type_i = mStructuredBufferTypes.find(bindInfo->Name);
+							if (struct_type_i == mStructuredBufferTypes.end()) {
+								sprintf(buffer, "// BUG: Cannot locate struct type:\n");
+								appendOutput(buffer);
+								ASMLineOut(c, pos, size);
+								break;
+							}
 
-							sprintf(buffer, "// Known bad code for instruction (needs manual fix):\n");
-							appendOutput(buffer);
-							ASMLineOut(c, pos, size);
-
-							// ASSERT(instr->asOperands[0].eSelMode == OPERAND_4_COMPONENT_MASK_MODE);
-
-							// Output one line for each swizzle in dst0.xyzw that is active.
-							for (int component = 0; component < 4; component++)
+							if (mStructuredBufferUsedNames.find(struct_type_i->second) != mStructuredBufferUsedNames.end())
 							{
-								if (instr->asOperands[0].ui32CompMask & (1 << component))
+								string dst0, srcAddress, srcByteOffset, src0;
+								string swiz;
+
+								ResourceBinding* bindings = shader->sInfo->psResourceBindings;
+								src0 = bindings->Name;
+								srcAddress = instr->asOperands[1].specialName;
+								srcByteOffset = instr->asOperands[2].specialName;
+								dst0 = "r" + std::to_string(instr->asOperands[0].ui32RegisterNumber);
+
+								sprintf(buffer, "// Known bad code for instruction (needs manual fix):\n");
+								appendOutput(buffer);
+								ASMLineOut(c, pos, size);
+
+								// ASSERT(instr->asOperands[0].eSelMode == OPERAND_4_COMPONENT_MASK_MODE);
+
+								// Output one line for each swizzle in dst0.xyzw that is active.
+								for (int component = 0; component < 4; component++)
 								{
-									switch (component)
+									if (instr->asOperands[0].ui32CompMask & (1 << component))
 									{
-										case 3: swiz = "w"; break;
-										case 2: swiz = "z"; break;
-										case 1: swiz = "y"; break;
-										case 0:
-										default: swiz = "x"; break;
+										switch (component)
+										{
+											case 3: swiz = "w"; break;
+											case 2: swiz = "z"; break;
+											case 1: swiz = "y"; break;
+											case 0:
+											default: swiz = "x"; break;
+										}
+										//sprintf(buffer, "%s.%s = %s[%s].%s.%s;\n", dst0.c_str(), swiz.c_str(),
+										//	src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str(), swiz.c_str());
+										sprintf(buffer, "%s.%s = %s[%s].%s.swiz;\n",
+											dst0.c_str(), swiz.c_str(), src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str());
+										appendOutput(buffer);
 									}
-									//sprintf(buffer, "%s.%s = %s[%s].%s.%s;\n", dst0.c_str(), swiz.c_str(),
-									//	src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str(), swiz.c_str());
-									sprintf(buffer, "%s.%s = %s[%s].%s.swiz;\n",
-										dst0.c_str(), swiz.c_str(), src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str());
+								}
+							}
+							else
+							{
+								// This StructuredBuffer is using a primitive type rather
+								// than a structure (e.g. StructuredBuffer<float4> foo).
+								DataType struct_type = TranslateType(struct_type_i->second.c_str());
+								int swiz_offset = 0;
+
+								if (sscanf_s(off, "%d", &swiz_offset) == 1) {
+									// Static offset:
+									for (int component = 0; component < 4; component++)
+										swiz_offsets[component] += swiz_offset;
+									sprintf(buffer, "  %s = %s[%s].%s%s%s%s;\n",
+											writeTarget(dst), bindInfo->Name.c_str(), ci(idx).c_str(),
+											(dst0.ui32CompMask & 0x1 ? offset2swiz(struct_type, swiz_offsets[0]) : ""),
+											(dst0.ui32CompMask & 0x2 ? offset2swiz(struct_type, swiz_offsets[1]) : ""),
+											(dst0.ui32CompMask & 0x4 ? offset2swiz(struct_type, swiz_offsets[2]) : ""),
+											(dst0.ui32CompMask & 0x8 ? offset2swiz(struct_type, swiz_offsets[3]) : ""));
+									appendOutput(buffer);
+								} else {
+									// Dynamic offset, use [] syntax:
+									if (strcmp(strchr(reg, '.'), ".x")) {
+										sprintf(buffer, "// Unexpected swizzle used with dynamic offset (needs manual fix):\n");
+										appendOutput(buffer);
+										ASMLineOut(c, pos, size);
+									}
+									sprintf(buffer, "  %s = %s[%s][%s/4];\n",
+											writeTarget(dst), bindInfo->Name.c_str(), ci(idx).c_str(), ci(off).c_str());
 									appendOutput(buffer);
 								}
 							}
@@ -5188,33 +5363,26 @@ public:
 							// are until they are used - ideally we should switch to a
 							// model that uses asfloat/asint where non-floats are used
 							// to treat HLSL variables closer to typeless DX registers.
-
-							remapTarget(dst);
 							stripMask(dst);
 							stripMask(reg);
-							applySwizzle(".x", idx);
-							applySwizzle(".x", off);
 							for (int component = 0; component < 4; component++) {
-								if (!(instr->asOperands[0].ui32CompMask & (1 << component)))
+								if (!(dst0.ui32CompMask & (1 << component)))
 									continue;
 								// The swizzle is a bit more complicated than the mask here,
 								// because it represents extra 32bit offsets in the structure,
 								// which is one whole index in the "val" array in our fake type.
 								char *swiz_offset = "";
-								if (texture.ui32Swizzle == NO_SWIZZLE) {
-									// No swizzle, use mask as swizzle
-									switch (component) {
-										case 1: swiz_offset = "+1"; break;
-										case 2: swiz_offset = "+2"; break;
-										case 3: swiz_offset = "+3"; break;
-									}
-								} else {
-									switch (texture.aui32Swizzle[component]) {
-										case OPERAND_4_COMPONENT_Y: swiz_offset = "+1"; break;
-										case OPERAND_4_COMPONENT_Z: swiz_offset = "+2"; break;
-										case OPERAND_4_COMPONENT_W: swiz_offset = "+3"; break;
-									}
+								switch (swiz_offsets[component]) {
+									case  0: break;
+									case  4: swiz_offset = "+1"; break;
+									case  8: swiz_offset = "+2"; break;
+									case 12: swiz_offset = "+3"; break;
+									default: swiz_offset = "+?"; break;
 								}
+								// Writing it like this should work for both dynamic and static
+								// offsets. We could pre-compute static offsets to clean up the
+								// output, but since we've lost the swizzle by using fake types
+								// it may actually be more informative to use this way:
 								sprintf(buffer, "  %s.%c = %s[%s].val[%s/4%s];\n",
 										writeTarget(dst),
 										component == 3 ? 'w' : 'x' + component,

@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:34:11 2018
+// ---- Created with 3Dmigoto v1.3.11 on Sun Nov 25 00:33:55 2018
 
 cbuffer cbPunctualLightInfo : register(b1)
 {
@@ -86,18 +86,13 @@ void main)
 // unknown dcl_: dcl_tgsm_raw g1, 4
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_thread_group 16, 16, 1
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, vThreadGroupID.x, l(0), t24.xxxx
-r0.x = g_linearSampler_s[]..swiz;
+  r0.x = g_compactTileGridBuffer[vThreadGroupID.x].x;
   r1.x = (uint)r0.x >> 16;
   r1.yzw = (int3)r0.xxx & int3(0xffff,0xffff,0xffff);
   r0.xyzw = mad((int4)r1.xyzw, int4(16,16,16,16), (int4)vThreadIDInGroup.xyyy);
   if (vThreadIDInGroupFlattened.x == 0) {
     r1.x = mad((int)r1.w, tileCountX, (int)r1.x);
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.xy, r1.x, l(0), t19.xyxx
-  r1.x = g_linearSampler_s[]..swiz;
-  r1.y = g_linearSampler_s[]..swiz;
+    r1.xy = g_lightCullInput[r1.x].xy;
     r1.y = (int)r1.y & 0x0000ffff;
   // No code for instruction (needs manual fix):
     store_raw g0.x, l(0), r1.x
@@ -179,9 +174,7 @@ ld_raw r7.x, l(0), g1.xxxx
   while (true) {
     r9.w = cmp((uint)r8.w >= (uint)r7.x);
     if (r9.w != 0) break;
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r9.w, r8.w, l(0), t20.xxxx
-  r9.w = g_linearSampler_s[]..swiz;
+    r9.w = g_lightIndexInput[r8.w].x;
     r9.w = (int)r9.w * 7;
     r11.xyz = -r5.xyz * r2.xxx + g_lightInfoPunctual[r9.w].baseLight.pos.xyz;
     r10.w = dot(r11.xyz, r11.xyz);

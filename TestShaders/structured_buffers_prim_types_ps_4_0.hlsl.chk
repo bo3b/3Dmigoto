@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Sat Nov 24 23:54:53 2018
+// ---- Created with 3Dmigoto v1.3.11 on Sun Nov 25 00:32:38 2018
 
 struct struct_buf_1_type
 {
@@ -187,459 +187,249 @@ r2.z = prim_struct_dword[]..swiz;
   r0.y = r0.y + r0.z;
   r0.y = r0.y + r2.z;
   r0.x = r0.y + r0.x;
-// Known bad code for instruction (needs manual fix):
-ld_structured r2.x, v0.x, l(0), t90.xxxx
-r2.x = prim_struct_dword[]..swiz;
+  r2.x = prim_struct_float[v0.x].x;
   r0.zw = r2.xx + r0.xx;
-// Known bad code for instruction (needs manual fix):
-ld_structured r2.xy, v0.x, l(0), t91.xyxx
-r2.x = prim_struct_dword[]..swiz;
-r2.y = prim_struct_dword[]..swiz;
+  r2.xy = prim_struct_float2[v0.x].xy;
   r0.xy = r2.xy + r0.ww;
-// Known bad code for instruction (needs manual fix):
-ld_structured r2.xyzw, v0.x, l(0), t92.xyzw
-r2.x = prim_struct_dword[]..swiz;
-r2.y = prim_struct_dword[]..swiz;
-r2.z = prim_struct_dword[]..swiz;
-r2.w = prim_struct_dword[]..swiz;
+  r2.xyzw = prim_struct_float4[v0.x].xyzw;
   r0.xyzw = r2.xyzw + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r2.xy, r1.x, l(0), t92.xyxx
-r2.x = prim_struct_dword[]..swiz;
-r2.y = prim_struct_dword[]..swiz;
+  r2.xy = prim_struct_float4[r1.x].xy;
   r2.xy = r2.xy + r0.xy;
-// Known bad code for instruction (needs manual fix):
-ld_structured r3.xy, r1.y, l(8), t92.xyxx
-r3.x = prim_struct_dword[]..swiz;
-r3.y = prim_struct_dword[]..swiz;
+  r3.xy = prim_struct_float4[r1.y].zw;
   r0.xy = r3.xy + r2.xy;
-// Known bad code for instruction (needs manual fix):
-ld_structured r2.x, r1.z, l(4), t92.xxxx
-r2.x = prim_struct_dword[]..swiz;
+  r2.x = prim_struct_float4[r1.z].y;
   r0.xz = r2.xx + r0.xz;
-// Known bad code for instruction (needs manual fix):
-ld_structured r2.xyzw, r1.w, l(0), t92.xyzw
-r2.x = prim_struct_dword[]..swiz;
-r2.y = prim_struct_dword[]..swiz;
-r2.z = prim_struct_dword[]..swiz;
-r2.w = prim_struct_dword[]..swiz;
+  r2.xyzw = prim_struct_float4[r1.w].xyzw;
   r0.xyzw = r2.yzwx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r2.xyzw, v0.x, l(0), t3.xyzw
-r2.x = prim_struct_dword[]..swiz;
-r2.y = prim_struct_dword[]..swiz;
-r2.z = prim_struct_dword[]..swiz;
-r2.w = prim_struct_dword[]..swiz;
+  r2.xyzw = prim_struct_float4x4[v0.x]._m00_m10_m20_m30;
   r0.xyzw = r2.xywz + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r2.x, v0.x, l(0), t94.xxxx
-r2.x = prim_struct_dword[]..swiz;
-// Known bad code for instruction (needs manual fix):
-ld_structured r2.y, v0.x, l(20), t94.xxxx
-r2.y = prim_struct_dword[]..swiz;
-// Known bad code for instruction (needs manual fix):
-ld_structured r2.z, v0.x, l(40), t94.xxxx
-r2.z = prim_struct_dword[]..swiz;
-// Known bad code for instruction (needs manual fix):
-ld_structured r2.w, v0.x, l(60), t94.xxxx
-r2.w = prim_struct_dword[]..swiz;
+  r2.x = prim_struct_matrix[v0.x]._m00;
+  r2.y = prim_struct_matrix[v0.x]._m11;
+  r2.z = prim_struct_matrix[v0.x]._m22;
+  r2.w = prim_struct_matrix[v0.x]._m33;
   r0.xyzw = r2.xyzw + r0.xyzw;
   r1.y = (uint)v0.x << 2;
   r2.xyz = (int3)r1.yyy + int3(16,32,48);
-// Known bad code for instruction (needs manual fix):
-ld_structured r3.x, r1.x, r1.y, t94.xxxx
-r3.x = prim_struct_dword[]..swiz;
-// Known bad code for instruction (needs manual fix):
-ld_structured r3.y, r1.x, r2.x, t94.xxxx
-r3.y = prim_struct_dword[]..swiz;
-// Known bad code for instruction (needs manual fix):
-ld_structured r3.z, r1.x, r2.y, t94.xxxx
-r3.z = prim_struct_dword[]..swiz;
-// Known bad code for instruction (needs manual fix):
-ld_structured r3.w, r1.x, r2.z, t94.xxxx
-r3.w = prim_struct_dword[]..swiz;
+  r3.x = prim_struct_matrix[r1.x][r1.y/4];
+  r3.y = prim_struct_matrix[r1.x][r2.x/4];
+  r3.z = prim_struct_matrix[r1.x][r2.y/4];
+  r3.w = prim_struct_matrix[r1.x][r2.z/4];
   r0.xyzw = r3.xyzw + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(0), t0.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_dword[v0.x].x;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(0), t1.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool1[v0.x].x;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(8), t2.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool3[v0.x].z;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(60), t3.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float4x4[v0.x]._m33;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(44), t4.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float4x3[v0.x]._m32;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(28), t5.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float4x2[v0.x]._m31;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(12), t6.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float4x1[v0.x]._m30;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(44), t7.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float3x4[v0.x]._m23;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(32), t8.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float3x3[v0.x]._m22;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(20), t9.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float3x2[v0.x]._m21;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(8), t10.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float3x1[v0.x]._m20;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(28), t11.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float2x4[v0.x]._m13;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(20), t12.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float2x3[v0.x]._m12;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(12), t13.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float2x2[v0.x]._m11;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(4), t14.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float2x1[v0.x]._m10;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(12), t15.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float1x4[v0.x]._m03;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(8), t16.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float1x3[v0.x]._m02;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(4), t17.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float1x2[v0.x]._m01;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(0), t18.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_float1x1[v0.x]._m00;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(60), t19.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half4x4[v0.x]._m33;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(44), t20.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half4x3[v0.x]._m32;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(28), t21.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half4x2[v0.x]._m31;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(12), t22.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half4x1[v0.x]._m30;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(44), t23.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half3x4[v0.x]._m23;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(32), t24.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half3x3[v0.x]._m22;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(20), t25.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half3x2[v0.x]._m21;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(8), t26.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half3x1[v0.x]._m20;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(28), t27.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half2x4[v0.x]._m13;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(20), t28.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half2x3[v0.x]._m12;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(12), t29.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half2x2[v0.x]._m11;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(4), t30.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half2x1[v0.x]._m10;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(12), t31.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half1x4[v0.x]._m03;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(8), t32.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half1x3[v0.x]._m02;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(4), t33.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half1x2[v0.x]._m01;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(0), t34.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_half1x1[v0.x]._m00;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(60), t35.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint4x4[v0.x]._m33;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(44), t36.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint4x3[v0.x]._m32;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(28), t37.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint4x2[v0.x]._m31;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(12), t38.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint4x1[v0.x]._m30;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(44), t39.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint3x4[v0.x]._m23;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(32), t40.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint3x3[v0.x]._m22;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(20), t41.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint3x2[v0.x]._m21;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(8), t42.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint3x1[v0.x]._m20;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(28), t43.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint2x4[v0.x]._m13;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(20), t44.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint2x3[v0.x]._m12;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(12), t45.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint2x2[v0.x]._m11;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(4), t46.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint2x1[v0.x]._m10;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(12), t47.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint1x4[v0.x]._m03;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(8), t48.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint1x3[v0.x]._m02;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(4), t49.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint1x2[v0.x]._m01;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(0), t50.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_uint1x1[v0.x]._m00;
   r1.x = (uint)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(60), t51.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int4x4[v0.x]._m33;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(44), t52.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int4x3[v0.x]._m32;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(28), t53.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int4x2[v0.x]._m31;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(12), t54.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int4x1[v0.x]._m30;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(44), t55.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int3x4[v0.x]._m23;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(32), t56.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int3x3[v0.x]._m22;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(20), t57.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int3x2[v0.x]._m21;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(8), t58.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int3x1[v0.x]._m20;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(28), t59.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int2x4[v0.x]._m13;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(20), t60.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int2x3[v0.x]._m12;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(12), t61.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int2x2[v0.x]._m11;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(4), t62.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int2x1[v0.x]._m10;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(12), t63.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int1x4[v0.x]._m03;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(8), t64.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int1x3[v0.x]._m02;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(4), t65.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int1x2[v0.x]._m01;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(0), t66.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_int1x1[v0.x]._m00;
   r1.x = (int)r1.x;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(60), t67.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool4x4[v0.x]._m33;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(44), t68.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool4x3[v0.x]._m32;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(28), t69.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool4x2[v0.x]._m31;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(12), t70.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool4x1[v0.x]._m30;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(44), t71.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool3x4[v0.x]._m23;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(32), t72.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool3x3[v0.x]._m22;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(20), t73.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool3x2[v0.x]._m21;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(8), t74.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool3x1[v0.x]._m20;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(28), t75.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool2x4[v0.x]._m13;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(20), t76.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool2x3[v0.x]._m12;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(12), t77.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool2x2[v0.x]._m11;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(4), t78.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool2x1[v0.x]._m10;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(12), t79.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool1x4[v0.x]._m03;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(8), t80.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool1x3[v0.x]._m02;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(4), t81.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool1x2[v0.x]._m01;
   r1.x = (int)r1.x & 0x3f800000;
   r0.xyzw = r1.xxxx + r0.xyzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, v0.x, l(0), t82.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = prim_struct_bool1x1[v0.x]._m00;
   r1.x = (int)r1.x & 0x3f800000;
   o0.xyzw = r1.xxxx + r0.xyzw;
   return;
