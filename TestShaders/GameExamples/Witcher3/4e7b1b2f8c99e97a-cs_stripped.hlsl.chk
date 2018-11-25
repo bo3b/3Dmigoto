@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 16 07:20:09 2018
+// ---- Created with 3Dmigoto v1.3.11 on Sun Nov 25 00:00:31 2018
 Texture2D<float4> t1 : register(t1);
 
 Texture2D<float4> t0 : register(t0);
@@ -76,12 +76,12 @@ atomic_umax g1, l(0), r1.z
 // No code for instruction (needs manual fix):
 ld_raw r1.w, l(0), g0.xxxx
   r1.w = r1.w * cb12[21].x + cb12[21].y;
-  r1.w = max(9.99999975e-05, r1.w);
+  r1.w = max(9.99999975e-005, r1.w);
   r2.z = 1 / r1.w;
 // No code for instruction (needs manual fix):
 ld_raw r1.w, l(0), g1.xxxx
   r1.w = r1.w * cb12[21].x + cb12[21].y;
-  r1.w = max(9.99999975e-05, r1.w);
+  r1.w = max(9.99999975e-005, r1.w);
   r2.x = 1 / r1.w;
   r3.xy = float2(0.015625,0.015625) * cb12[23].xy;
   r3.zw = (uint2)vThreadGroupID.xy;
@@ -294,7 +294,7 @@ ld_raw r1.w, l(0), g1.xxxx
     }
     r0.z = -r2.w * r2.z + 1;
     r2.xy = (int2)r0.xy & int2(1,1);
-    r2.yz = r2.yy ? float2(1.40129846e-45,4.20389539e-45) : float2(2.80259693e-45,0);
+    r2.yz = r2.yy ? float2(1.40129846e-045,4.20389539e-045) : float2(2.80259693e-045,0);
     r0.w = r2.x ? r2.y : r2.z;
     if (1 == 0) r2.x = 0; else if (1+1 < 32) {     r2.x = (uint)r0.x << (32-(1 + 1)); r2.x = (uint)r2.x >> (32-1);    } else r2.x = (uint)r0.x >> 1;
     if (1 == 0) r2.y = 0; else if (1+1 < 32) {     r2.y = (uint)r0.y << (32-(1 + 1)); r2.y = (uint)r2.y >> (32-1);    } else r2.y = (uint)r0.y >> 1;
@@ -322,10 +322,7 @@ ld_raw r1.w, l(0), g1.xxxx
     while (true) {
       r1.w = cmp((uint)r1.z >= (uint)r1.y);
       if (r1.w != 0) break;
-    // Missing reflection info for shader. No names possible.
-    // Known bad code for instruction (needs manual fix):
-        ld_structured r1.w, r1.z, l(0), g2.xxxx
-    r1.w = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      r1.w = g2[r1.z].val[0/4];
       r1.w = (int)r1.w * 5;
       r6.x = dot(r3.xyzw, cb13[r1.w+2363].xyzw);
       r6.y = dot(r3.xyzw, cb13[r1.w+2364].xyzw);
@@ -338,7 +335,7 @@ ld_raw r1.w, l(0), g1.xxxx
         r2.y = (uint)r2.y;
         r2.z = 0x0000ffff & asint(cb13[r1.w+2366].w);
         r2.z = (uint)r2.z;
-        r2.yz = float2(1.49999996e-05,1.49999996e-05) * r2.yz;
+        r2.yz = float2(1.49999996e-005,1.49999996e-005) * r2.yz;
         r2.w = dot(r6.xyz, r6.xyz);
         r2.w = sqrt(r2.w);
         r2.w = 1 + -r2.w;
@@ -389,10 +386,7 @@ store_uav_typed u0.xyzw, r0.xyyy, r2.zzxy
     ld_raw r0.y, l(0), g5.xxxx
     r0.y = cmp((uint)r1.x < (uint)r0.y);
     if (r0.y != 0) {
-    // Missing reflection info for shader. No names possible.
-    // Known bad code for instruction (needs manual fix):
-        ld_structured r0.y, r1.x, l(0), g4.xxxx
-    r0.y = no_StructuredBufferName[no_srcAddressRegister].no_srcByteOffsetName.swiz;
+      r0.y = g4[r1.x].val[0/4];
     } else {
       r0.y = 192;
     }

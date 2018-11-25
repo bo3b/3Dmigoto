@@ -263,6 +263,8 @@ static const uint32_t* ReadConstantBuffer(ShaderInfo* psShaderInfo,
         ui32BufferType = *pui32Tokens++;
     }
 
+	psBuffer->iUnsized = 0;
+
     return pui32Tokens;
 }
 
@@ -274,7 +276,8 @@ static void ReadResources(const uint32_t* pui32Tokens,//in
     const uint32_t* pui32ConstantBuffers;
     const uint32_t* pui32ResourceBindings;
     const uint32_t* pui32FirstToken = pui32Tokens;
-    uint32_t i, k;
+    uint32_t i;
+	uint32_t aui32NextConstBufferIndex[RGROUP_COUNT];
 
     const uint32_t ui32NumConstantBuffers = *pui32Tokens++;
     const uint32_t ui32ConstantBufferOffset = *pui32Tokens++;
@@ -292,35 +295,20 @@ static void ReadResources(const uint32_t* pui32Tokens,//in
     psShaderInfo->ui32NumResourceBindings = ui32NumResourceBindings;
     psShaderInfo->psResourceBindings = psResBindings;
 
-    k=0;
+	for(i=0; i<RGROUP_COUNT; i++)
+	{
+		aui32NextConstBufferIndex[i] = 0;
+	}
     for(i=0; i < ui32NumResourceBindings; ++i)
     {
+		ResourceGroup eRGroup;
         pui32ResourceBindings = ReadResourceBinding(pui32FirstToken, pui32ResourceBindings, psResBindings+i);
 
-        switch(psResBindings[i].eType)
-        {
-            case RTYPE_CBUFFER:
-            {
-                ASSERT(k < MAX_CBUFFERS);
-                psShaderInfo->aui32ConstBufferBindpointRemap[psResBindings[i].ui32BindPoint] = k++;
-                break;
-            }
-            case RTYPE_UAV_RWBYTEADDRESS:
-            case RTYPE_UAV_RWSTRUCTURED:
-			case RTYPE_UAV_RWTYPED:
-			case RTYPE_UAV_APPEND_STRUCTURED:
-			case RTYPE_UAV_CONSUME_STRUCTURED:
-			case RTYPE_UAV_RWSTRUCTURED_WITH_COUNTER:
-            {
-                ASSERT(k < MAX_UAV);
-                psShaderInfo->aui32UAVBindpointRemap[psResBindings[i].ui32BindPoint] = k++;
-            }
-            default:
-            {
-                break;
-            }
-        }
-    }
+		eRGroup = ResourceTypeToResourceGroup(psResBindings[i].eType);
+
+		ASSERT(psResBindings[i].ui32BindPoint < MAX_RESOURCE_BINDINGS);
+		psShaderInfo->aui32ResourceMap[eRGroup][psResBindings[i].ui32BindPoint] = aui32NextConstBufferIndex[eRGroup]++;
+	}
 
     //Constant buffers
     pui32ConstantBuffers = (const uint32_t*)((const char*)pui32FirstToken + ui32ConstantBufferOffset);
@@ -434,34 +422,21 @@ static void ReadInterfaces(const uint32_t* pui32Tokens,
     psShaderInfo->psClassTypes = psClassTypes;
 }
 
-void GetConstantBufferFromBindingPoint(const uint32_t ui32BindPoint, ShaderInfo* psShaderInfo, ConstantBuffer** ppsConstBuf)
+void GetConstantBufferFromBindingPoint(const ResourceGroup eGroup, const uint32_t ui32BindPoint, const ShaderInfo* psShaderInfo, ConstantBuffer** ppsConstBuf)
 {
     uint32_t index;
     
-    ASSERT(ui32BindPoint < MAX_CBUFFERS);
+    ASSERT(ui32BindPoint < MAX_RESOURCE_BINDINGS);
+	ASSERT(eGroup < RGROUP_COUNT);
     
-    index = psShaderInfo->aui32ConstBufferBindpointRemap[ui32BindPoint]; 
+    index = psShaderInfo->aui32ResourceMap[eGroup].at(ui32BindPoint);
     
-    ASSERT(index < psShaderInfo->ui32NumConstantBuffers);
+	ASSERT(index < psShaderInfo->ui32NumConstantBuffers);
     
     *ppsConstBuf = psShaderInfo->psConstantBuffers + index;
 }
 
-void GetUAVBufferFromBindingPoint(const uint32_t ui32BindPoint, ShaderInfo* psShaderInfo, ConstantBuffer** ppsConstBuf)
-{
-    uint32_t index;
-    
-    ASSERT(ui32BindPoint < MAX_UAV);
-    
-    index = psShaderInfo->aui32UAVBindpointRemap[ui32BindPoint]; 
-    
-	// Bo3b: changed to <= from <, as this assert seems to fire often, with no harm.
-    ASSERT(index <= psShaderInfo->ui32NumConstantBuffers);
-    
-    *ppsConstBuf = psShaderInfo->psConstantBuffers + index;
-}
-
-int GetResourceFromBindingPoint(ResourceType eType, uint32_t ui32BindPoint, ShaderInfo* psShaderInfo, ResourceBinding** ppsOutBinding)
+int GetResourceFromBindingPoint(const ResourceGroup eGroup, uint32_t const ui32BindPoint, const ShaderInfo* psShaderInfo, ResourceBinding** ppsOutBinding)
 {
     uint32_t i;
     const uint32_t ui32NumBindings = psShaderInfo->ui32NumResourceBindings;
@@ -469,7 +444,7 @@ int GetResourceFromBindingPoint(ResourceType eType, uint32_t ui32BindPoint, Shad
 
     for(i=0; i<ui32NumBindings; ++i)
     {
-        if(psBindings[i].eType == eType)
+        if(ResourceTypeToResourceGroup(psBindings[i].eType) == eGroup)
         {
 			if(ui32BindPoint >= psBindings[i].ui32BindPoint && ui32BindPoint < (psBindings[i].ui32BindPoint + psBindings[i].ui32BindCount))
 			{
@@ -498,6 +473,194 @@ int GetInterfaceVarFromOffset(uint32_t ui32Offset, ShaderInfo* psShaderInfo, Sha
 	    }
     }
     return 0;
+}
+
+// Manually added from latest James-Jones HLSLCrossCompiler for StructuredBuffer support -DSS
+static int IsOffsetInType(ShaderVarType* psType,
+						  uint32_t parentOffset,
+						  uint32_t offsetToFind,
+						  const uint32_t* pui32Swizzle,
+						  int32_t* pi32Index,
+						  int32_t* pi32Rebase)
+{
+	uint32_t thisOffset = parentOffset + psType->Offset;
+	uint32_t thisSize = psType->Columns * psType->Rows * 4;
+
+	if(psType->Elements)
+	{
+		// Everything smaller than vec4 in an array takes the space of vec4, except for the last one
+		if (thisSize < 4 * 4)
+		{
+			thisSize = (4 * 4 * (psType->Elements - 1)) + thisSize;
+		}
+		else
+		{
+			thisSize *= psType->Elements;
+		}
+	}
+
+    //Swizzle can point to another variable. In the example below
+	//cbUIUpdates.g_uMaxFaces would be cb1[2].z. The scalars are combined
+	//into vectors. psCBuf->ui32NumVars will be 3.
+
+	// cbuffer cbUIUpdates
+	// {
+	//
+	//   float g_fLifeSpan;                 // Offset:    0 Size:     4
+	//   float g_fLifeSpanVar;              // Offset:    4 Size:     4 [unused]
+	//   float g_fRadiusMin;                // Offset:    8 Size:     4 [unused]
+	//   float g_fRadiusMax;                // Offset:   12 Size:     4 [unused]
+	//   float g_fGrowTime;                 // Offset:   16 Size:     4 [unused]
+	//   float g_fStepSize;                 // Offset:   20 Size:     4
+	//   float g_fTurnRate;                 // Offset:   24 Size:     4
+	//   float g_fTurnSpeed;                // Offset:   28 Size:     4 [unused]
+	//   float g_fLeafRate;                 // Offset:   32 Size:     4
+	//   float g_fShrinkTime;               // Offset:   36 Size:     4 [unused]
+	//   uint g_uMaxFaces;                  // Offset:   40 Size:     4
+	//
+	// }
+
+	// Name                                 Type  Format         Dim Slot Elements
+	// ------------------------------ ---------- ------- ----------- ---- --------
+	// cbUIUpdates                       cbuffer      NA          NA    1        1
+
+    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_Y)
+    {
+        offsetToFind += 4;
+    }
+    else
+    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_Z)
+    {
+        offsetToFind += 8;
+    }
+    else
+    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_W)
+    {
+        offsetToFind += 12;
+    }
+
+	if((offsetToFind >= thisOffset) &&
+		offsetToFind < (thisOffset + thisSize))
+	{
+
+        if(psType->Class == SVC_MATRIX_ROWS || 
+            psType->Class == SVC_MATRIX_COLUMNS)
+        {
+			//Matrices are treated as arrays of vectors.
+			pi32Index[0] = (offsetToFind - thisOffset) / 16;
+        }
+		//Check for array of scalars or vectors (both take up 16 bytes per element)
+		else if ((psType->Class == SVC_SCALAR || psType->Class == SVC_VECTOR) && psType->Elements > 1)
+		{
+			pi32Index[0] = (offsetToFind - thisOffset) / 16;
+		}
+		else if(psType->Class == SVC_VECTOR && psType->Columns > 1)
+		{
+			//Check for vector starting at a non-vec4 offset.
+
+			// cbuffer $Globals
+			// {
+			//
+			//   float angle;                       // Offset:    0 Size:     4
+			//   float2 angle2;                     // Offset:    4 Size:     8
+			//
+			// }
+
+			//cb0[0].x = angle
+			//cb0[0].yzyy = angle2.xyxx
+
+			//Rebase angle2 so that .y maps to .x, .z maps to .y
+
+			pi32Rebase[0] = thisOffset % 16;
+		}
+
+		return 1;
+	}
+	return 0;
+}
+
+// Manually added from latest James-Jones HLSLCrossCompiler for StructuredBuffer support -DSS
+int GetShaderVarFromOffset(const uint32_t ui32Vec4Offset,
+						   const uint32_t* pui32Swizzle,
+						   ConstantBuffer* psCBuf,
+						   ShaderVarType** ppsShaderVar,
+						   int32_t* pi32Index,
+						   int32_t* pi32Rebase)
+{
+    uint32_t i;
+    const uint32_t ui32BaseByteOffset = ui32Vec4Offset * 16;
+
+    uint32_t ui32ByteOffset = ui32Vec4Offset * 16;
+
+    const uint32_t ui32NumVars = (uint32_t)psCBuf->asVars.size();
+
+	if(psCBuf->iUnsized && ui32NumVars == 1 && psCBuf->asVars[0].sType.Class != SVC_STRUCT)
+	{
+		ppsShaderVar[0] = &psCBuf->asVars[0].sType;
+		return 1;
+	}
+
+    for(i=0; i<ui32NumVars; ++i)
+    {
+		if(psCBuf->asVars[i].sType.Class == SVC_STRUCT)
+		{
+			uint32_t m = 0;
+
+			for(m=0; m < psCBuf->asVars[i].sType.MemberCount; ++m)
+			{
+				ShaderVarType* psMember = psCBuf->asVars[i].sType.Members + m;
+
+				ASSERT(psMember->Class != SVC_STRUCT);
+
+				if(IsOffsetInType(psMember, psCBuf->asVars[i].ui32StartOffset, ui32ByteOffset, pui32Swizzle, pi32Index, pi32Rebase))
+				{
+					ppsShaderVar[0] = psMember;
+					return 1;
+				}
+			}
+		}
+		else
+		{
+			if(IsOffsetInType(&psCBuf->asVars[i].sType, psCBuf->asVars[i].ui32StartOffset, ui32ByteOffset, pui32Swizzle, pi32Index, pi32Rebase))
+			{
+				ppsShaderVar[0] = &psCBuf->asVars[i].sType;
+				return 1;
+			}
+		}
+    }
+    return 0;
+}
+
+ResourceGroup ResourceTypeToResourceGroup(ResourceType eType)
+{
+	switch(eType)
+	{
+	case RTYPE_CBUFFER:
+		return RGROUP_CBUFFER;
+
+	case RTYPE_SAMPLER:
+		return RGROUP_SAMPLER;
+
+	case RTYPE_TEXTURE:
+	case RTYPE_BYTEADDRESS:
+	case RTYPE_STRUCTURED:
+		return RGROUP_TEXTURE;
+
+	case RTYPE_UAV_RWTYPED:
+	case RTYPE_UAV_RWSTRUCTURED:
+	case RTYPE_UAV_RWBYTEADDRESS:
+	case RTYPE_UAV_APPEND_STRUCTURED:
+	case RTYPE_UAV_CONSUME_STRUCTURED:
+	case RTYPE_UAV_RWSTRUCTURED_WITH_COUNTER:
+		return RGROUP_UAV;
+
+	case RTYPE_TBUFFER:
+		ASSERT(0); // Need to find out which group this belongs to
+		return RGROUP_TEXTURE;
+	}
+
+	ASSERT(0);
+	return RGROUP_CBUFFER;
 }
 
 void LoadShaderInfo(const uint32_t ui32MajorVersion,
@@ -797,4 +960,5 @@ void LoadD3D9ConstantTable(const char* data,
 		}
     }
     psConstantBuffer->ui32TotalSizeInBytes = ui32ConstantBufferSize;
+	psConstantBuffer->iUnsized = 0;
 }

@@ -1,11 +1,11 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:00:04 2018
+// ---- Created with 3Dmigoto v1.3.11 on Sat Nov 24 23:54:54 2018
 struct t111_t {
   float val[11];
 };
 StructuredBuffer<t111_t> t111 : register(t111);
 
 struct t110_t {
-  float val[12];
+  float val[21];
 };
 StructuredBuffer<t110_t> t110 : register(t110);
 
@@ -13,11 +13,6 @@ struct t94_t {
   float val[16];
 };
 StructuredBuffer<t94_t> t94 : register(t94);
-
-struct t93_t {
-  float val[16];
-};
-StructuredBuffer<t93_t> t93 : register(t93);
 
 struct t92_t {
   float val[4];
@@ -34,6 +29,421 @@ struct t90_t {
 };
 StructuredBuffer<t90_t> t90 : register(t90);
 
+struct t82_t {
+  float val[1];
+};
+StructuredBuffer<t82_t> t82 : register(t82);
+
+struct t81_t {
+  float val[2];
+};
+StructuredBuffer<t81_t> t81 : register(t81);
+
+struct t80_t {
+  float val[3];
+};
+StructuredBuffer<t80_t> t80 : register(t80);
+
+struct t79_t {
+  float val[4];
+};
+StructuredBuffer<t79_t> t79 : register(t79);
+
+struct t78_t {
+  float val[2];
+};
+StructuredBuffer<t78_t> t78 : register(t78);
+
+struct t77_t {
+  float val[4];
+};
+StructuredBuffer<t77_t> t77 : register(t77);
+
+struct t76_t {
+  float val[6];
+};
+StructuredBuffer<t76_t> t76 : register(t76);
+
+struct t75_t {
+  float val[8];
+};
+StructuredBuffer<t75_t> t75 : register(t75);
+
+struct t74_t {
+  float val[3];
+};
+StructuredBuffer<t74_t> t74 : register(t74);
+
+struct t73_t {
+  float val[6];
+};
+StructuredBuffer<t73_t> t73 : register(t73);
+
+struct t72_t {
+  float val[9];
+};
+StructuredBuffer<t72_t> t72 : register(t72);
+
+struct t71_t {
+  float val[12];
+};
+StructuredBuffer<t71_t> t71 : register(t71);
+
+struct t70_t {
+  float val[4];
+};
+StructuredBuffer<t70_t> t70 : register(t70);
+
+struct t69_t {
+  float val[8];
+};
+StructuredBuffer<t69_t> t69 : register(t69);
+
+struct t68_t {
+  float val[12];
+};
+StructuredBuffer<t68_t> t68 : register(t68);
+
+struct t67_t {
+  float val[16];
+};
+StructuredBuffer<t67_t> t67 : register(t67);
+
+struct t66_t {
+  float val[1];
+};
+StructuredBuffer<t66_t> t66 : register(t66);
+
+struct t65_t {
+  float val[2];
+};
+StructuredBuffer<t65_t> t65 : register(t65);
+
+struct t64_t {
+  float val[3];
+};
+StructuredBuffer<t64_t> t64 : register(t64);
+
+struct t63_t {
+  float val[4];
+};
+StructuredBuffer<t63_t> t63 : register(t63);
+
+struct t62_t {
+  float val[2];
+};
+StructuredBuffer<t62_t> t62 : register(t62);
+
+struct t61_t {
+  float val[4];
+};
+StructuredBuffer<t61_t> t61 : register(t61);
+
+struct t60_t {
+  float val[6];
+};
+StructuredBuffer<t60_t> t60 : register(t60);
+
+struct t59_t {
+  float val[8];
+};
+StructuredBuffer<t59_t> t59 : register(t59);
+
+struct t58_t {
+  float val[3];
+};
+StructuredBuffer<t58_t> t58 : register(t58);
+
+struct t57_t {
+  float val[6];
+};
+StructuredBuffer<t57_t> t57 : register(t57);
+
+struct t56_t {
+  float val[9];
+};
+StructuredBuffer<t56_t> t56 : register(t56);
+
+struct t55_t {
+  float val[12];
+};
+StructuredBuffer<t55_t> t55 : register(t55);
+
+struct t54_t {
+  float val[4];
+};
+StructuredBuffer<t54_t> t54 : register(t54);
+
+struct t53_t {
+  float val[8];
+};
+StructuredBuffer<t53_t> t53 : register(t53);
+
+struct t52_t {
+  float val[12];
+};
+StructuredBuffer<t52_t> t52 : register(t52);
+
+struct t51_t {
+  float val[16];
+};
+StructuredBuffer<t51_t> t51 : register(t51);
+
+struct t50_t {
+  float val[1];
+};
+StructuredBuffer<t50_t> t50 : register(t50);
+
+struct t49_t {
+  float val[2];
+};
+StructuredBuffer<t49_t> t49 : register(t49);
+
+struct t48_t {
+  float val[3];
+};
+StructuredBuffer<t48_t> t48 : register(t48);
+
+struct t47_t {
+  float val[4];
+};
+StructuredBuffer<t47_t> t47 : register(t47);
+
+struct t46_t {
+  float val[2];
+};
+StructuredBuffer<t46_t> t46 : register(t46);
+
+struct t45_t {
+  float val[4];
+};
+StructuredBuffer<t45_t> t45 : register(t45);
+
+struct t44_t {
+  float val[6];
+};
+StructuredBuffer<t44_t> t44 : register(t44);
+
+struct t43_t {
+  float val[8];
+};
+StructuredBuffer<t43_t> t43 : register(t43);
+
+struct t42_t {
+  float val[3];
+};
+StructuredBuffer<t42_t> t42 : register(t42);
+
+struct t41_t {
+  float val[6];
+};
+StructuredBuffer<t41_t> t41 : register(t41);
+
+struct t40_t {
+  float val[9];
+};
+StructuredBuffer<t40_t> t40 : register(t40);
+
+struct t39_t {
+  float val[12];
+};
+StructuredBuffer<t39_t> t39 : register(t39);
+
+struct t38_t {
+  float val[4];
+};
+StructuredBuffer<t38_t> t38 : register(t38);
+
+struct t37_t {
+  float val[8];
+};
+StructuredBuffer<t37_t> t37 : register(t37);
+
+struct t36_t {
+  float val[12];
+};
+StructuredBuffer<t36_t> t36 : register(t36);
+
+struct t35_t {
+  float val[16];
+};
+StructuredBuffer<t35_t> t35 : register(t35);
+
+struct t34_t {
+  float val[1];
+};
+StructuredBuffer<t34_t> t34 : register(t34);
+
+struct t33_t {
+  float val[2];
+};
+StructuredBuffer<t33_t> t33 : register(t33);
+
+struct t32_t {
+  float val[3];
+};
+StructuredBuffer<t32_t> t32 : register(t32);
+
+struct t31_t {
+  float val[4];
+};
+StructuredBuffer<t31_t> t31 : register(t31);
+
+struct t30_t {
+  float val[2];
+};
+StructuredBuffer<t30_t> t30 : register(t30);
+
+struct t29_t {
+  float val[4];
+};
+StructuredBuffer<t29_t> t29 : register(t29);
+
+struct t28_t {
+  float val[6];
+};
+StructuredBuffer<t28_t> t28 : register(t28);
+
+struct t27_t {
+  float val[8];
+};
+StructuredBuffer<t27_t> t27 : register(t27);
+
+struct t26_t {
+  float val[3];
+};
+StructuredBuffer<t26_t> t26 : register(t26);
+
+struct t25_t {
+  float val[6];
+};
+StructuredBuffer<t25_t> t25 : register(t25);
+
+struct t24_t {
+  float val[9];
+};
+StructuredBuffer<t24_t> t24 : register(t24);
+
+struct t23_t {
+  float val[12];
+};
+StructuredBuffer<t23_t> t23 : register(t23);
+
+struct t22_t {
+  float val[4];
+};
+StructuredBuffer<t22_t> t22 : register(t22);
+
+struct t21_t {
+  float val[8];
+};
+StructuredBuffer<t21_t> t21 : register(t21);
+
+struct t20_t {
+  float val[12];
+};
+StructuredBuffer<t20_t> t20 : register(t20);
+
+struct t19_t {
+  float val[16];
+};
+StructuredBuffer<t19_t> t19 : register(t19);
+
+struct t18_t {
+  float val[1];
+};
+StructuredBuffer<t18_t> t18 : register(t18);
+
+struct t17_t {
+  float val[2];
+};
+StructuredBuffer<t17_t> t17 : register(t17);
+
+struct t16_t {
+  float val[3];
+};
+StructuredBuffer<t16_t> t16 : register(t16);
+
+struct t15_t {
+  float val[4];
+};
+StructuredBuffer<t15_t> t15 : register(t15);
+
+struct t14_t {
+  float val[2];
+};
+StructuredBuffer<t14_t> t14 : register(t14);
+
+struct t13_t {
+  float val[4];
+};
+StructuredBuffer<t13_t> t13 : register(t13);
+
+struct t12_t {
+  float val[6];
+};
+StructuredBuffer<t12_t> t12 : register(t12);
+
+struct t11_t {
+  float val[8];
+};
+StructuredBuffer<t11_t> t11 : register(t11);
+
+struct t10_t {
+  float val[3];
+};
+StructuredBuffer<t10_t> t10 : register(t10);
+
+struct t9_t {
+  float val[6];
+};
+StructuredBuffer<t9_t> t9 : register(t9);
+
+struct t8_t {
+  float val[9];
+};
+StructuredBuffer<t8_t> t8 : register(t8);
+
+struct t7_t {
+  float val[12];
+};
+StructuredBuffer<t7_t> t7 : register(t7);
+
+struct t6_t {
+  float val[4];
+};
+StructuredBuffer<t6_t> t6 : register(t6);
+
+struct t5_t {
+  float val[8];
+};
+StructuredBuffer<t5_t> t5 : register(t5);
+
+struct t4_t {
+  float val[12];
+};
+StructuredBuffer<t4_t> t4 : register(t4);
+
+struct t3_t {
+  float val[16];
+};
+StructuredBuffer<t3_t> t3 : register(t3);
+
+struct t2_t {
+  float val[3];
+};
+StructuredBuffer<t2_t> t2 : register(t2);
+
+struct t1_t {
+  float val[1];
+};
+StructuredBuffer<t1_t> t1 : register(t1);
+
+struct t0_t {
+  float val[1];
+};
+StructuredBuffer<t0_t> t0 : register(t0);
+
 
 
 
@@ -48,59 +458,305 @@ void main(
   float v1 : TEXCOORD1,
   out float4 o0 : SV_Target0)
 {
-  float4 r0,r1,r2;
+  float4 r0,r1,r2,r3;
   uint4 bitmask, uiDest;
   float4 fDest;
 
-  r0.x = t110[2].val[4/4];
-  r0.x = (uint)r0.x;
-  r0.y = t110[0].val[0/4];
+  r0.x = t111[v0.x].val[24/4];
+  r0.y = t110[2].val[4/4];
+  r0.y = (uint)r0.y;
+  r0.z = t110[0].val[0/4];
+  r0.y = r0.z + r0.y;
+  r0.z = t110[1].val[8/4];
+  r0.y = r0.y + r0.z;
+  r0.z = t110[3].val[12/4];
+  r0.xz = (int2)r0.xz;
+  r0.y = r0.y + r0.z;
+  r1.xyzw = (int4)v0.xxxx + int4(1,2,3,4);
+  r2.x = t110[r1.x].val[16/4];
+  r2.y = t110[r1.x].val[16/4+1];
+  r2.z = t110[r1.x].val[16/4+2];
+  r2.w = t110[r1.x].val[16/4+3];
+  r3.x = t110[r1.y].val[32/4];
+  r3.y = t110[r1.y].val[32/4+1];
+  r3.z = t110[r1.y].val[32/4+2];
+  r3.w = t110[r1.y].val[32/4+3];
+  r0.z = dot(r2.xyzw, r3.xyzw);
+  r0.y = r0.y + r0.z;
+  r2.x = t110[r1.x].val[52/4];
+  r2.y = t110[r1.x].val[52/4+1];
+  r2.z = t110[r1.x].val[52/4+2];
+  r2.w = t110[r1.x].val[52/4+3];
+  r3.x = t110[r1.y].val[68/4];
+  r3.y = t110[r1.y].val[68/4+1];
+  r3.z = t110[r1.y].val[68/4+2];
+  r3.w = t110[r1.y].val[68/4+3];
+  r0.z = dot(r2.xyzw, r3.xyzw);
+  r0.y = r0.y + r0.z;
+  r2.x = t111[v0.x].val[0/4];
+  r2.y = t111[v0.x].val[0/4+1];
+  r2.z = t111[v0.x].val[0/4+2];
+  r0.y = r2.x + r0.y;
+  r0.z = (uint)r2.y;
+  r0.y = r0.y + r0.z;
+  r0.y = r0.y + r2.z;
   r0.x = r0.y + r0.x;
-  r0.y = t110[1].val[8/4];
-  r0.x = r0.x + r0.y;
-  r0.y = t110[3].val[12/4];
-  r0.y = (int)r0.y;
-  r0.x = r0.x + r0.y;
-  r0.yz = (int2)v0.xx + int2(1,2);
-  r1.x = t110[r0.y].val[16/4];
-  r1.y = t110[r0.y].val[16/4+1];
-  r1.z = t110[r0.y].val[16/4+2];
-  r1.w = t110[r0.y].val[16/4+3];
-  r2.x = t110[r0.z].val[32/4];
-  r2.y = t110[r0.z].val[32/4+1];
-  r2.z = t110[r0.z].val[32/4+2];
-  r2.w = t110[r0.z].val[32/4+3];
-  r0.y = dot(r1.xyzw, r2.xyzw);
-  r0.x = r0.x + r0.y;
-  r0.y = t111[v0.x].val[0/4];
-  r0.z = t111[v0.x].val[0/4+1];
-  r0.w = t111[v0.x].val[0/4+2];
-  r0.x = r0.x + r0.y;
-  r0.y = (uint)r0.z;
-  r0.x = r0.x + r0.y;
-  r0.x = r0.x + r0.w;
-  r0.y = t111[v0.x].val[24/4];
-  r0.y = (int)r0.y;
-  r0.x = r0.x + r0.y;
   r0.y = t90[v0.x].val[0/4];
   r0.zw = r0.xx + r0.yy;
-  r1.x = t91[v0.x].val[0/4];
-  r1.y = t91[v0.x].val[0/4+1];
-  r0.xy = r1.xy + r0.ww;
-  r1.x = t92[v0.x].val[0/4];
-  r1.y = t92[v0.x].val[0/4+1];
-  r1.z = t92[v0.x].val[0/4+2];
-  r1.w = t92[v0.x].val[0/4+3];
-  r0.xyzw = r1.xyzw + r0.xyzw;
-  r1.x = t93[v0.x].val[0/4];
-  r1.y = t93[v0.x].val[0/4+1];
-  r1.z = t93[v0.x].val[0/4+2];
-  r1.w = t93[v0.x].val[0/4+3];
-  r0.xyzw = r1.xywz + r0.xyzw;
-  r1.x = t94[v0.x].val[0/4];
-  r1.y = t94[v0.x].val[20/4];
-  r1.z = t94[v0.x].val[40/4];
-  r1.w = t94[v0.x].val[60/4];
-  o0.xyzw = r1.xyzw + r0.xyzw;
+  r2.x = t91[v0.x].val[0/4];
+  r2.y = t91[v0.x].val[0/4+1];
+  r0.xy = r2.xy + r0.ww;
+  r2.x = t92[v0.x].val[0/4];
+  r2.y = t92[v0.x].val[0/4+1];
+  r2.z = t92[v0.x].val[0/4+2];
+  r2.w = t92[v0.x].val[0/4+3];
+  r0.xyzw = r2.xyzw + r0.xyzw;
+  r2.x = t92[r1.x].val[0/4];
+  r2.y = t92[r1.x].val[0/4+1];
+  r2.xy = r2.xy + r0.xy;
+  r2.z = t92[r1.y].val[8/4];
+  r2.w = t92[r1.y].val[8/4+1];
+  r0.xy = r2.xy + r2.zw;
+  r1.y = t92[r1.z].val[4/4];
+  r0.xz = r1.yy + r0.xz;
+  r2.x = t92[r1.w].val[0/4];
+  r2.y = t92[r1.w].val[0/4+1];
+  r2.z = t92[r1.w].val[0/4+2];
+  r2.w = t92[r1.w].val[0/4+3];
+  r0.xyzw = r2.yzwx + r0.xyzw;
+  r2.x = t3[v0.x].val[0/4];
+  r2.y = t3[v0.x].val[0/4+1];
+  r2.z = t3[v0.x].val[0/4+2];
+  r2.w = t3[v0.x].val[0/4+3];
+  r0.xyzw = r2.xywz + r0.xyzw;
+  r2.x = t94[v0.x].val[0/4];
+  r2.y = t94[v0.x].val[20/4];
+  r2.z = t94[v0.x].val[40/4];
+  r2.w = t94[v0.x].val[60/4];
+  r0.xyzw = r2.xyzw + r0.xyzw;
+  r1.y = (uint)v0.x << 2;
+  r2.xyz = (int3)r1.yyy + int3(16,32,48);
+  r3.x = t94[r1.x].val[r1.y/4];
+  r3.y = t94[r1.x].val[r2.x/4];
+  r3.z = t94[r1.x].val[r2.y/4];
+  r3.w = t94[r1.x].val[r2.z/4];
+  r0.xyzw = r3.xyzw + r0.xyzw;
+  r1.x = t0[v0.x].val[0/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t1[v0.x].val[0/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t2[v0.x].val[8/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t3[v0.x].val[60/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t4[v0.x].val[44/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t5[v0.x].val[28/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t6[v0.x].val[12/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t7[v0.x].val[44/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t8[v0.x].val[32/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t9[v0.x].val[20/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t10[v0.x].val[8/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t11[v0.x].val[28/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t12[v0.x].val[20/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t13[v0.x].val[12/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t14[v0.x].val[4/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t15[v0.x].val[12/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t16[v0.x].val[8/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t17[v0.x].val[4/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t18[v0.x].val[0/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t19[v0.x].val[60/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t20[v0.x].val[44/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t21[v0.x].val[28/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t22[v0.x].val[12/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t23[v0.x].val[44/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t24[v0.x].val[32/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t25[v0.x].val[20/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t26[v0.x].val[8/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t27[v0.x].val[28/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t28[v0.x].val[20/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t29[v0.x].val[12/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t30[v0.x].val[4/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t31[v0.x].val[12/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t32[v0.x].val[8/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t33[v0.x].val[4/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t34[v0.x].val[0/4];
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t35[v0.x].val[60/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t36[v0.x].val[44/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t37[v0.x].val[28/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t38[v0.x].val[12/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t39[v0.x].val[44/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t40[v0.x].val[32/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t41[v0.x].val[20/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t42[v0.x].val[8/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t43[v0.x].val[28/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t44[v0.x].val[20/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t45[v0.x].val[12/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t46[v0.x].val[4/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t47[v0.x].val[12/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t48[v0.x].val[8/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t49[v0.x].val[4/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t50[v0.x].val[0/4];
+  r1.x = (uint)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t51[v0.x].val[60/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t52[v0.x].val[44/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t53[v0.x].val[28/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t54[v0.x].val[12/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t55[v0.x].val[44/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t56[v0.x].val[32/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t57[v0.x].val[20/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t58[v0.x].val[8/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t59[v0.x].val[28/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t60[v0.x].val[20/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t61[v0.x].val[12/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t62[v0.x].val[4/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t63[v0.x].val[12/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t64[v0.x].val[8/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t65[v0.x].val[4/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t66[v0.x].val[0/4];
+  r1.x = (int)r1.x;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t67[v0.x].val[60/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t68[v0.x].val[44/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t69[v0.x].val[28/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t70[v0.x].val[12/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t71[v0.x].val[44/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t72[v0.x].val[32/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t73[v0.x].val[20/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t74[v0.x].val[8/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t75[v0.x].val[28/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t76[v0.x].val[20/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t77[v0.x].val[12/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t78[v0.x].val[4/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t79[v0.x].val[12/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t80[v0.x].val[8/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t81[v0.x].val[4/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  r0.xyzw = r1.xxxx + r0.xyzw;
+  r1.x = t82[v0.x].val[0/4];
+  r1.x = (int)r1.x & 0x3f800000;
+  o0.xyzw = r1.xxxx + r0.xyzw;
   return;
 }

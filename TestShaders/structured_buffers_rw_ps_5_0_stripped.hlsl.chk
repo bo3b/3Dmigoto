@@ -1,11 +1,11 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:00:06 2018
+// ---- Created with 3Dmigoto v1.3.11 on Sat Nov 24 23:54:55 2018
 struct t111_t {
   float val[11];
 };
 StructuredBuffer<t111_t> t111 : register(t111);
 
 struct t110_t {
-  float val[12];
+  float val[21];
 };
 StructuredBuffer<t110_t> t110 : register(t110);
 
@@ -24,41 +24,53 @@ void main(
   out float4 o0 : SV_Target0)
 {
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_uav_structured u1, 48
+// unknown dcl_: dcl_uav_structured u1, 84
   float4 r0,r1,r2;
   uint4 bitmask, uiDest;
   float4 fDest;
 
+  r0.x = u1[v0.x].val[4/4];
   [v0.x].0 = u1.x;
-  r0.x = t110[2].val[4/4];
-  r0.x = (uint)r0.x;
-  r0.y = t110[0].val[0/4];
-  r0.x = r0.y + r0.x;
-  r0.y = t110[1].val[8/4];
-  r0.x = r0.x + r0.y;
-  r0.y = t110[3].val[12/4];
-  r0.y = (int)r0.y;
-  r0.x = r0.x + r0.y;
-  r0.yz = (int2)v0.xx + int2(1,2);
-  r1.x = t110[r0.y].val[16/4];
-  r1.y = t110[r0.y].val[16/4+1];
-  r1.z = t110[r0.y].val[16/4+2];
-  r1.w = t110[r0.y].val[16/4+3];
-  r2.x = t110[r0.z].val[32/4];
-  r2.y = t110[r0.z].val[32/4+1];
-  r2.z = t110[r0.z].val[32/4+2];
-  r2.w = t110[r0.z].val[32/4+3];
-  r0.y = dot(r1.xyzw, r2.xyzw);
-  r0.x = r0.x + r0.y;
-  r0.y = t111[v0.x].val[0/4];
-  r0.z = t111[v0.x].val[0/4+1];
-  r0.w = t111[v0.x].val[0/4+2];
-  r0.x = r0.x + r0.y;
-  r0.y = (uint)r0.z;
-  r0.x = r0.x + r0.y;
-  r0.x = r0.x + r0.w;
-  r0.y = t111[v0.x].val[24/4];
-  r0.y = (int)r0.y;
-  o0.xyzw = r0.xxxx + r0.yyyy;
+  r0.y = t110[2].val[4/4];
+  r0.xy = (uint2)r0.xy;
+  r0.z = t110[0].val[0/4];
+  r0.y = r0.z + r0.y;
+  r0.z = t110[1].val[8/4];
+  r0.y = r0.y + r0.z;
+  r0.z = t110[3].val[12/4];
+  r0.z = (int)r0.z;
+  r0.y = r0.y + r0.z;
+  r0.zw = (int2)v0.xx + int2(1,2);
+  r1.x = t110[r0.z].val[16/4];
+  r1.y = t110[r0.z].val[16/4+1];
+  r1.z = t110[r0.z].val[16/4+2];
+  r1.w = t110[r0.z].val[16/4+3];
+  r2.x = t110[r0.w].val[32/4];
+  r2.y = t110[r0.w].val[32/4+1];
+  r2.z = t110[r0.w].val[32/4+2];
+  r2.w = t110[r0.w].val[32/4+3];
+  r1.x = dot(r1.xyzw, r2.xyzw);
+  r0.y = r1.x + r0.y;
+  r1.x = t110[r0.z].val[52/4];
+  r1.y = t110[r0.z].val[52/4+1];
+  r1.z = t110[r0.z].val[52/4+2];
+  r1.w = t110[r0.z].val[52/4+3];
+  r2.x = t110[r0.w].val[68/4];
+  r2.y = t110[r0.w].val[68/4+1];
+  r2.z = t110[r0.w].val[68/4+2];
+  r2.w = t110[r0.w].val[68/4+3];
+  r0.z = dot(r1.xyzw, r2.xyzw);
+  r0.y = r0.y + r0.z;
+  r1.x = t111[v0.x].val[0/4];
+  r1.y = t111[v0.x].val[0/4+1];
+  r1.z = t111[v0.x].val[0/4+2];
+  r0.y = r1.x + r0.y;
+  r0.z = (uint)r1.y;
+  r0.y = r0.y + r0.z;
+  r0.y = r0.y + r1.z;
+  r0.z = t111[v0.x].val[24/4];
+  r0.z = (int)r0.z;
+  r0.y = r0.y + r0.z;
+  o0.xyzw = r0.yyyy + r0.xxxx;
   return;
 }

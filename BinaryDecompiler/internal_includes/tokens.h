@@ -52,6 +52,29 @@ static EXTENDED_OPCODE_TYPE DecodeExtendedOpcodeType(uint32_t ui32Token)
     return (EXTENDED_OPCODE_TYPE)(ui32Token & 0x0000003f);
 }
 
+typedef enum RESOURCE_RETURN_TYPE
+{
+    RETURN_TYPE_UNORM = 1,
+    RETURN_TYPE_SNORM = 2,
+    RETURN_TYPE_SINT = 3,
+    RETURN_TYPE_UINT = 4,
+    RETURN_TYPE_FLOAT = 5,
+    RETURN_TYPE_MIXED = 6,
+    RETURN_TYPE_DOUBLE = 7,
+    RETURN_TYPE_CONTINUED = 8,
+    RETURN_TYPE_UNUSED = 9,
+} RESOURCE_RETURN_TYPE;
+
+static RESOURCE_RETURN_TYPE DecodeResourceReturnType(uint32_t ui32Coord, uint32_t ui32Token)
+{
+    return (RESOURCE_RETURN_TYPE)((ui32Token>>(ui32Coord * 4))&0xF);
+}
+
+static RESOURCE_RETURN_TYPE DecodeExtendedResourceReturnType(uint32_t ui32Coord, uint32_t ui32Token)
+{
+    return (RESOURCE_RETURN_TYPE)((ui32Token>>(ui32Coord * 4 + 6))&0xF);
+}
+
 typedef enum
 {
     //For DX9
@@ -508,6 +531,11 @@ typedef enum RESOURCE_DIMENSION
 static RESOURCE_DIMENSION DecodeResourceDimension(uint32_t ui32Token)
 {
 	return (RESOURCE_DIMENSION)((ui32Token & 0x0000f800) >> 11);
+}
+
+static RESOURCE_DIMENSION DecodeExtendedResourceDimension(uint32_t ui32Token)
+{
+	return (RESOURCE_DIMENSION)((ui32Token & 0x000007C0) >> 6);
 }
 
 typedef enum INSTRUCTION_TEST_BOOLEAN
