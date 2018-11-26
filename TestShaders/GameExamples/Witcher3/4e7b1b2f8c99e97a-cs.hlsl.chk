@@ -1,4 +1,6 @@
-// ---- Created with 3Dmigoto v1.3.11 on Sun Nov 25 00:00:31 2018
+// ---- Created with 3Dmigoto v1.3.11 on Tue Nov 27 04:06:34 2018
+groupshared struct { float val[1]; } g4[192];
+groupshared struct { float val[1]; } g2[192];
 
 cbuffer cb12 : register(b12)
 {
@@ -35,11 +37,7 @@ void main)
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_tgsm_raw g1, 4
 // Needs manual fix for instruction:
-// unknown dcl_: dcl_tgsm_structured g2, 4, 192
-// Needs manual fix for instruction:
 // unknown dcl_: dcl_tgsm_raw g3, 4
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_tgsm_structured g4, 4, 192
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_tgsm_raw g5, 4
 // Needs manual fix for instruction:

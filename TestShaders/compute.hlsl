@@ -3,6 +3,10 @@
 
 RWByteAddressBuffer rw_byte_buf : register(u0);
 groupshared uint gt = 0;
+groupshared struct {
+	float foo;
+	uint bar;
+} gstruct[3];
 
   [numthreads(4, 2, 1)]
 void main()
@@ -151,7 +155,7 @@ void main()
 	// TODO: sync_ugroup_g*
 	// TODO: sync_ugroup_g_t*
 
-
+	tally += gstruct[2].bar;
 
 	// Use the tally so the compiler doesn't optimise anything out:
 	rw_byte_buf.InterlockedAdd(1, tally);

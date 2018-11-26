@@ -3409,6 +3409,34 @@ public:
 					}
 				}
 			}
+			else if (!strcmp(statement, "dcl_tgsm_structured"))
+			{
+				int bufIndex = 0;
+				int bufStride = 0;
+				int bufCount = 0;
+				if (sscanf_s(op1, "g%d", &bufIndex) != 1)
+				{
+					logDecompileError("Error parsing tgsm structured buffer register: " + string(op1));
+					return;
+				}
+				if (sscanf_s(op2, "%d", &bufStride) != 1)
+				{
+					logDecompileError("Error parsing tgsm structured buffer stride: " + string(op2));
+					return;
+				}
+				if (sscanf_s(op3, "%d", &bufCount) != 1)
+				{
+					logDecompileError("Error parsing tgsm structured buffer count: " + string(op3));
+					return;
+				}
+				// HLSL accepts the register(gN) syntax, but seems to disregard it, and
+				// doesn't matter anyway since these don't correspond to any externally
+				// bound resources. Use an inline type definition for conciseness:
+				sprintf(buffer, "groupshared struct { float val[%d]; } g%d[%d];\n",
+					bufStride / 4, bufIndex, bufCount);
+				vector<char>::iterator ipos = mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+				mCodeStartPos += strlen(buffer); ipos += strlen(buffer);
+			}
 			// Create new map entries if there aren't any for dcl_sampler.  This can happen if
 			// there is no Resource Binding section in the shader.  TODO: probably needs to handle arrays too.
 			else if (!strcmp(statement, "dcl_sampler"))
@@ -5247,7 +5275,7 @@ public:
 							dst = op2, idx = op3, off = op4, reg = op5; // Note comma operator
 						Operand dst0 = instr->asOperands[0];
 						Operand texture = instr->asOperands[3];
-						ResourceGroup group = reg[0] == 'u' ? RGROUP_UAV : RGROUP_TEXTURE;
+						ResourceGroup group = (ResourceGroup)-1;
 						ResourceBinding *bindInfo;
 
 						remapTarget(dst);
@@ -5268,7 +5296,13 @@ public:
 							}
 						}
 
-						if (GetResourceFromBindingPoint(group, texture.ui32RegisterNumber, shader->sInfo, &bindInfo))
+						if (reg[0] == 't')
+							group = RGROUP_TEXTURE;
+						else if (reg[0] == 'u')
+							group = RGROUP_UAV;
+						// else 'g' = compute shader thread group shared memory, which will never have reflection info
+
+						if (group != (ResourceGroup)-1 && GetResourceFromBindingPoint(group, texture.ui32RegisterNumber, shader->sInfo, &bindInfo))
 						{
 							map<string, string>::iterator struct_type_i;
 
