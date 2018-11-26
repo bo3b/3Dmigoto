@@ -5285,14 +5285,12 @@ public:
 
 						// The swizzle represents extra 32bit offsets within the structure:
 						int swiz_offsets[4] = {0, 4, 8, 12};
-						if (texture.ui32Swizzle != NO_SWIZZLE) {
-							for (int component = 0; component < 4; component++) {
-								switch (texture.aui32Swizzle[component]) {
-									case OPERAND_4_COMPONENT_X: swiz_offsets[component] = 0; break;
-									case OPERAND_4_COMPONENT_Y: swiz_offsets[component] = 4; break;
-									case OPERAND_4_COMPONENT_Z: swiz_offsets[component] = 8; break;
-									case OPERAND_4_COMPONENT_W: swiz_offsets[component] = 12; break;
-								}
+						for (int component = 0; component < 4; component++) {
+							switch (texture.aui32Swizzle[component]) {
+								case OPERAND_4_COMPONENT_X: swiz_offsets[component] = 0; break;
+								case OPERAND_4_COMPONENT_Y: swiz_offsets[component] = 4; break;
+								case OPERAND_4_COMPONENT_Z: swiz_offsets[component] = 8; break;
+								case OPERAND_4_COMPONENT_W: swiz_offsets[component] = 12; break;
 							}
 						}
 
