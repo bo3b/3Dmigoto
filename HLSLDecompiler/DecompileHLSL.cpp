@@ -3356,8 +3356,8 @@ public:
 							"{\n"
 							"  float4 cb%d[%d];\n"
 							"}\n\n", bufIndex, bufIndex, bufIndex, bufSize);
-						vector<char>::iterator ipos = mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
-						mCodeStartPos += strlen(buffer); ipos += strlen(buffer);
+						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+						mCodeStartPos += strlen(buffer);
 						for (int j = 0; j < bufSize; ++j)
 						{
 							sprintf(buffer, "cb%d[%d]", bufIndex, j);
@@ -3394,8 +3394,8 @@ public:
 						"};\n"
 						"StructuredBuffer<t%d_t> t%d : register(t%d);\n\n",
 						bufIndex, bufStride / 4, bufIndex, bufIndex, bufIndex);
-					vector<char>::iterator ipos = mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
-					mCodeStartPos += strlen(buffer); ipos += strlen(buffer);
+					mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+					mCodeStartPos += strlen(buffer);
 
 					if (bufStride % 4) {
 						// I don't think this is ordinarily possible since almost all data types are 32bits
@@ -3404,8 +3404,8 @@ public:
 						// but in practice are 32bits on PC. If it does happen we need to know about it:
 						sprintf(buffer, "FIXME: StructuredBuffer t%d stride %d is not a multiple of 4\n\n",
 								bufIndex, bufStride);
-						vector<char>::iterator ipos = mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
-						mCodeStartPos += strlen(buffer); ipos += strlen(buffer);
+						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+						mCodeStartPos += strlen(buffer);
 					}
 				}
 			}
@@ -3434,8 +3434,8 @@ public:
 				// bound resources. Use an inline type definition for conciseness:
 				sprintf(buffer, "groupshared struct { float val[%d]; } g%d[%d];\n",
 					bufStride / 4, bufIndex, bufCount);
-				vector<char>::iterator ipos = mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
-				mCodeStartPos += strlen(buffer); ipos += strlen(buffer);
+				mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+				mCodeStartPos += strlen(buffer);
 			}
 			// Create new map entries if there aren't any for dcl_sampler.  This can happen if
 			// there is no Resource Binding section in the shader.  TODO: probably needs to handle arrays too.
