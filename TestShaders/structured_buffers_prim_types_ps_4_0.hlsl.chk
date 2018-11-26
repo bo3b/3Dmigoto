@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Sun Nov 25 00:32:38 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:21:20 2018
 
 struct struct_buf_1_type
 {
@@ -127,61 +127,41 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
-// Known bad code for instruction (needs manual fix):
-ld_structured r0.x, v0.x, l(24), t111.xxxx
-r0.x = prim_struct_dword[]..swiz;
+  r0.x = struct_buf_2[v0.x].foobuz;
   r0.x = (int)r0.x;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, l(2), l(4), t110.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = struct_buf_1[2].bar;
   r0.y = (uint)r1.x;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, l(0), l(0), t110.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = struct_buf_1[0].foo;
   r0.y = r1.x + r0.y;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, l(1), l(8), t110.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = struct_buf_1[1].baz;
   r0.y = r1.x + r0.y;
-// Known bad code for instruction (needs manual fix):
-ld_structured r1.x, l(3), l(12), t110.xxxx
-r1.x = prim_struct_dword[]..swiz;
+  r1.x = struct_buf_1[3].buz;
   r0.z = (int)r1.x;
   r0.y = r0.y + r0.z;
   r1.xyzw = (int4)v0.xxxx + int4(1,2,3,4);
-// Known bad code for instruction (needs manual fix):
-ld_structured r2.xyzw, r1.x, l(16), t110.xyzw
-r2.x = prim_struct_dword[]..swiz;
-r2.y = prim_struct_dword[]..swiz;
-r2.z = prim_struct_dword[]..swiz;
-r2.w = prim_struct_dword[]..swiz;
-// Known bad code for instruction (needs manual fix):
-ld_structured r3.xyzw, r1.y, l(32), t110.xyzw
-r3.x = prim_struct_dword[]..swiz;
-r3.y = prim_struct_dword[]..swiz;
-r3.z = prim_struct_dword[]..swiz;
-r3.w = prim_struct_dword[]..swiz;
+  r2.x = struct_buf_1[r1.x].f4;
+  r2.y = struct_buf_1[r1.x].f4;
+  r2.z = struct_buf_1[r1.x].f4;
+  r2.w = struct_buf_1[r1.x].f4;
+  r3.x = struct_buf_1[r1.y].g4;
+  r3.y = struct_buf_1[r1.y].g4;
+  r3.z = struct_buf_1[r1.y].g4;
+  r3.w = struct_buf_1[r1.y].g4;
   r0.z = dot(r2.xyzw, r3.xyzw);
   r0.y = r0.y + r0.z;
-// Known bad code for instruction (needs manual fix):
-ld_structured r2.xyzw, r1.x, l(52), t110.xyzw
-r2.x = prim_struct_dword[]..swiz;
-r2.y = prim_struct_dword[]..swiz;
-r2.z = prim_struct_dword[]..swiz;
-r2.w = prim_struct_dword[]..swiz;
-// Known bad code for instruction (needs manual fix):
-ld_structured r3.xyzw, r1.y, l(68), t110.xyzw
-r3.x = prim_struct_dword[]..swiz;
-r3.y = prim_struct_dword[]..swiz;
-r3.z = prim_struct_dword[]..swiz;
-r3.w = prim_struct_dword[]..swiz;
+  r2.x = struct_buf_1[r1.x].m4;
+  r2.y = struct_buf_1[r1.x].m4;
+  r2.z = struct_buf_1[r1.x].m4;
+  r2.w = struct_buf_1[r1.x].m4;
+  r3.x = struct_buf_1[r1.y].n4;
+  r3.y = struct_buf_1[r1.y].n4;
+  r3.z = struct_buf_1[r1.y].n4;
+  r3.w = struct_buf_1[r1.y].n4;
   r0.z = dot(r2.xyzw, r3.xyzw);
   r0.y = r0.y + r0.z;
-// Known bad code for instruction (needs manual fix):
-ld_structured r2.xyz, v0.x, l(0), t111.xyzx
-r2.x = prim_struct_dword[]..swiz;
-r2.y = prim_struct_dword[]..swiz;
-r2.z = prim_struct_dword[]..swiz;
+  r2.x = struct_buf_2[v0.x].foofoo;
+  r2.y = struct_buf_2[v0.x].foobar;
+  r2.z = struct_buf_2[v0.x].foobaz;
   r0.y = r2.x + r0.y;
   r0.z = (uint)r2.y;
   r0.y = r0.y + r0.z;

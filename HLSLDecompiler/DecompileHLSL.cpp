@@ -5314,40 +5314,55 @@ public:
 
 							if (mStructuredBufferUsedNames.find(struct_type_i->second) != mStructuredBufferUsedNames.end())
 							{
-								string dst0, srcAddress, srcByteOffset, src0;
-								string swiz;
+								int swiz_offset = 0;
+								stripMask(dst);
 
-								ResourceBinding* bindings = shader->sInfo->psResourceBindings;
-								src0 = bindings->Name;
-								srcAddress = instr->asOperands[1].specialName;
-								srcByteOffset = instr->asOperands[2].specialName;
-								dst0 = "r" + std::to_string(instr->asOperands[0].ui32RegisterNumber);
-
-								sprintf(buffer, "// Known bad code for instruction (needs manual fix):\n");
-								appendOutput(buffer);
-								ASMLineOut(c, pos, size);
-
-								// ASSERT(instr->asOperands[0].eSelMode == OPERAND_4_COMPONENT_MASK_MODE);
-
-								// Output one line for each swizzle in dst0.xyzw that is active.
-								for (int component = 0; component < 4; component++)
+								if (sscanf_s(off, "%d", &swiz_offset) == 1)
 								{
-									if (instr->asOperands[0].ui32CompMask & (1 << component))
+									// Static offset:
+									ConstantBuffer *bufInfo = NULL;
+									GetConstantBufferFromBindingPoint(group, texture.ui32RegisterNumber, shader->sInfo, &bufInfo);
+									if (!bufInfo) {
+										sprintf(buffer, "// BUG: Cannot locate struct layout:\n");
+										appendOutput(buffer);
+										ASMLineOut(c, pos, size);
+										break;
+									}
+
+									for (uint32_t component = 0; component < 4; component++)
 									{
-										switch (component)
-										{
-											case 3: swiz = "w"; break;
-											case 2: swiz = "z"; break;
-											case 1: swiz = "y"; break;
-											case 0:
-											default: swiz = "x"; break;
+										ShaderVarType *var = NULL;
+										int32_t byte_offset = swiz_offsets[component] + swiz_offset;
+										uint32_t swiz = byte_offset % 16 / 4;
+										int32_t index = -1;
+										int32_t rebase = -1;
+
+										if (!(dst0.ui32CompMask & (1 << component)))
+											continue;
+
+										GetShaderVarFromOffset(byte_offset / 16, &swiz, bufInfo, &var, &index, &rebase);
+										if (!var) {
+											sprintf(buffer, "// BUG: Cannot locate variable in structure:\n");
+											appendOutput(buffer);
+											ASMLineOut(c, pos, size);
+											break;
 										}
-										//sprintf(buffer, "%s.%s = %s[%s].%s.%s;\n", dst0.c_str(), swiz.c_str(),
-										//	src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str(), swiz.c_str());
-										sprintf(buffer, "%s.%s = %s[%s].%s.swiz;\n",
-											dst0.c_str(), swiz.c_str(), src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str());
+
+										// Using .Name instead of .FullName to avoid "$Element" prefix.
+										// If GetShaderVarFromOffset processed inner structs FullName
+										// would be a better choice to include the parent struct heirachy
+										sprintf(buffer, "  %s.%c = %s[%s].%s;\n",
+												writeTarget(dst),
+												component == 3 ? 'w' : 'x' + component,
+												bindInfo->Name.c_str(),
+												ci(idx).c_str(),
+												var->Name.c_str());
 										appendOutput(buffer);
 									}
+								} else {
+									sprintf(buffer, "// Structured buffer using dynamic offset (needs manual fix):\n");
+									appendOutput(buffer);
+									ASMLineOut(c, pos, size);
 								}
 							}
 							else

@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:34:10 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:22:53 2018
 
 struct g_lightCullInput_res
 {
@@ -291,19 +291,15 @@ void main)
 // unknown dcl_: dcl_tgsm_raw g4, 4
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_thread_group 16, 16, 1
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, vThreadGroupID.x, l(0), t24.xxxx
-r0.x = g_linearSampler_s[]..swiz;
+  r0.x = g_compactTileGridBuffer[vThreadGroupID.x].g_compactTileGridBuffer_uint;
   r1.x = (uint)r0.x >> 16;
   r1.yzw = (int3)r0.xxx & int3(0xffff,0xffff,0xffff);
   r0.xyzw = mad((int4)r1.xyzw, int4(16,16,16,16), (int4)vThreadIDInGroup.xyyy);
   if (vThreadIDInGroupFlattened.x == 0) {
     r1.x = mad((int)r1.w, tileCountX, (int)r1.x);
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.xyz, r1.x, l(0), t19.xyzx
-  r1.x = g_linearSampler_s[]..swiz;
-  r1.y = g_linearSampler_s[]..swiz;
-  r1.z = g_linearSampler_s[]..swiz;
+    r1.x = g_lightCullInput[r1.x].g_lightCullInput_uint4;
+    r1.y = g_lightCullInput[r1.x].g_lightCullInput_uint4;
+    r1.z = g_lightCullInput[r1.x].g_lightCullInput_uint4;
     r2.xy = (uint2)r1.yz >> int2(16,16);
     r1.yz = (int2)r1.yz & int2(0xffff,0xffff);
   // No code for instruction (needs manual fix):
@@ -395,9 +391,7 @@ ld_raw r4.w, l(0), g1.xxxx
   while (true) {
     r12.x = cmp((uint)r11.w >= (uint)r5.w);
     if (r12.x != 0) break;
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r12.x, r11.w, l(0), t20.xxxx
-  r12.x = g_linearSampler_s[]..swiz;
+    r12.x = g_lightIndexInput[r11.w].g_lightIndexInput_uint;
     r12.x = (int)r12.x * 7;
     r12.yzw = -r5.xyz * r2.xxx + g_lightInfoPunctual[r12.x].baseLight.pos.xyz;
     r13.x = dot(r12.yzw, r12.yzw);
@@ -481,9 +475,7 @@ ld_raw r4.w, l(0), g2.xxxx
   while (true) {
     r12.w = cmp((uint)r11.w >= (uint)r5.w);
     if (r12.w != 0) break;
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r12.w, r11.w, l(0), t20.xxxx
-  r12.w = g_linearSampler_s[]..swiz;
+    r12.w = g_lightIndexInput[r11.w].g_lightIndexInput_uint;
     r13.w = (int)r12.w * 21;
     r14.xyz = -r5.xyz * r2.xxx + g_lightInfoPunctualShadow[r13.w].baseLight.pos.xyz;
     r14.w = dot(r14.xyz, r14.xyz);
@@ -768,9 +760,7 @@ ld_raw r4.w, l(0), g3.xxxx
   while (true) {
     r10.w = cmp((uint)r10.z >= (uint)r5.w);
     if (r10.w != 0) break;
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r10.w, r10.z, l(0), t20.xxxx
-  r10.w = g_linearSampler_s[]..swiz;
+    r10.w = g_lightIndexInput[r10.z].g_lightIndexInput_uint;
     r10.w = (int)r10.w * 9;
     r11.w = (uint13)g_lightInfoArea[r10.w].areaLight.areaLightType;
     r12.w = cmp((int)r11.w == 2);
@@ -1557,9 +1547,7 @@ ld_raw r4.w, l(0), g4.xxxx
   while (true) {
     r10.z = cmp((uint)r5.w >= (uint)r4.w);
     if (r10.z != 0) break;
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r10.z, r5.w, l(0), t20.xxxx
-  r10.z = g_linearSampler_s[]..swiz;
+    r10.z = g_lightIndexInput[r5.w].g_lightIndexInput_uint;
     r10.w = (int)r10.z * 23;
     r11.w = (uint13)g_lightInfoAreaShadow[r10.w].areaLight.areaLightType;
     r12.w = cmp((int)r11.w == 2);

@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:34:09 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:22:52 2018
 
 struct g_lightCullInput_res
 {
@@ -112,20 +112,14 @@ void main)
 // unknown dcl_: dcl_tgsm_raw g1, 4
 // Needs manual fix for instruction:
 // unknown dcl_: dcl_thread_group 16, 16, 1
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, vThreadGroupID.x, l(0), t24.xxxx
-r0.x = g_linearSampler_s[]..swiz;
+  r0.x = g_compactTileGridBuffer[vThreadGroupID.x].g_compactTileGridBuffer_uint;
   r1.x = (uint)r0.x >> 16;
   r1.yzw = (int3)r0.xxx & int3(0xffff,0xffff,0xffff);
   r0.xyzw = mad((int4)r1.xyzw, int4(16,16,16,16), (int4)vThreadIDInGroup.xyyy);
   if (vThreadIDInGroupFlattened.x == 0) {
     r1.x = mad((int)r1.w, tileCountX, (int)r1.x);
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.y, r1.x, l(0), t19.xxxx
-  r1.y = g_linearSampler_s[]..swiz;
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r1.x, r1.x, l(8), t19.xxxx
-  r1.x = g_linearSampler_s[]..swiz;
+    r1.y = g_lightCullInput[r1.x].g_lightCullInput_uint4;
+    r1.x = g_lightCullInput[r1.x].g_lightCullInput_uint4;
     r1.x = (int)r1.x & 0x0000ffff;
   // No code for instruction (needs manual fix):
     store_raw g0.x, l(0), r1.y
@@ -221,9 +215,7 @@ ld_raw r7.x, l(0), g1.xxxx
   while (true) {
     r11.w = cmp((uint)r10.w >= (uint)r7.x);
     if (r11.w != 0) break;
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r11.w, r10.w, l(0), t20.xxxx
-  r11.w = g_linearSampler_s[]..swiz;
+    r11.w = g_lightIndexInput[r10.w].g_lightIndexInput_uint;
     r11.w = (int)r11.w * 9;
     r13.w = (uint13)g_lightInfoArea[r11.w].areaLight.areaLightType;
     r14.w = cmp((int)r13.w == 2);

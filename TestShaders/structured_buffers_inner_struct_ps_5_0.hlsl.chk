@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:19:03 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:21:22 2018
 
 struct foo
 {
@@ -59,78 +59,52 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=84)(mixed,mixed,mixed,mixed) r0.x, l(2), l(4), t110.xxxx
-r0.x = struct_buf_1[]..swiz;
+  r0.x = struct_buf_1[2].bar;
   r0.x = (uint)r0.x;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=84)(mixed,mixed,mixed,mixed) r0.y, l(0), l(0), t110.xxxx
-r0.y = struct_buf_1[]..swiz;
+  r0.y = struct_buf_1[0].foo;
   r0.x = r0.y + r0.x;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=84)(mixed,mixed,mixed,mixed) r0.y, l(1), l(8), t110.xxxx
-r0.y = struct_buf_1[]..swiz;
+  r0.y = struct_buf_1[1].baz;
   r0.x = r0.x + r0.y;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=84)(mixed,mixed,mixed,mixed) r0.y, l(3), l(12), t110.xxxx
-r0.y = struct_buf_1[]..swiz;
+  r0.y = struct_buf_1[3].buz;
   r0.y = (int)r0.y;
   r0.x = r0.x + r0.y;
   r0.yz = (int2)v0.xx + int2(1,2);
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=84)(mixed,mixed,mixed,mixed) r1.xyzw, r0.y, l(16), t110.xyzw
-r1.x = struct_buf_1[]..swiz;
-r1.y = struct_buf_1[]..swiz;
-r1.z = struct_buf_1[]..swiz;
-r1.w = struct_buf_1[]..swiz;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=84)(mixed,mixed,mixed,mixed) r2.xyzw, r0.z, l(32), t110.xyzw
-r2.x = struct_buf_1[]..swiz;
-r2.y = struct_buf_1[]..swiz;
-r2.z = struct_buf_1[]..swiz;
-r2.w = struct_buf_1[]..swiz;
+  r1.x = struct_buf_1[r0.y].f4;
+  r1.y = struct_buf_1[r0.y].f4;
+  r1.z = struct_buf_1[r0.y].f4;
+  r1.w = struct_buf_1[r0.y].f4;
+  r2.x = struct_buf_1[r0.z].g4;
+  r2.y = struct_buf_1[r0.z].g4;
+  r2.z = struct_buf_1[r0.z].g4;
+  r2.w = struct_buf_1[r0.z].g4;
   r0.w = dot(r1.xyzw, r2.xyzw);
   r0.x = r0.x + r0.w;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=84)(mixed,mixed,mixed,mixed) r1.xyzw, r0.y, l(52), t110.xyzw
-r1.x = struct_buf_1[]..swiz;
-r1.y = struct_buf_1[]..swiz;
-r1.z = struct_buf_1[]..swiz;
-r1.w = struct_buf_1[]..swiz;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=84)(mixed,mixed,mixed,mixed) r2.xyzw, r0.z, l(68), t110.xyzw
-r2.x = struct_buf_1[]..swiz;
-r2.y = struct_buf_1[]..swiz;
-r2.z = struct_buf_1[]..swiz;
-r2.w = struct_buf_1[]..swiz;
+  r1.x = struct_buf_1[r0.y].m4;
+  r1.y = struct_buf_1[r0.y].m4;
+  r1.z = struct_buf_1[r0.y].m4;
+  r1.w = struct_buf_1[r0.y].m4;
+  r2.x = struct_buf_1[r0.z].n4;
+  r2.y = struct_buf_1[r0.z].n4;
+  r2.z = struct_buf_1[r0.z].n4;
+  r2.w = struct_buf_1[r0.z].n4;
   r0.y = dot(r1.xyzw, r2.xyzw);
   r0.x = r0.x + r0.y;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=236)(mixed,mixed,mixed,mixed) r1.xyzw, v0.x, l(0), t111.xyzw
-r1.x = struct_buf_1[]..swiz;
-r1.y = struct_buf_1[]..swiz;
-r1.z = struct_buf_1[]..swiz;
-r1.w = struct_buf_1[]..swiz;
+  r1.x = struct_buf_2[v0.x].foofoo;
+  r1.y = struct_buf_2[v0.x].foobar;
+  r1.z = struct_buf_2[v0.x].inner_struct_1;
+  r1.w = struct_buf_2[v0.x].inner_struct_1;
   r0.x = r1.x + r0.x;
   r0.y = (uint)r1.y;
   r0.x = r0.x + r0.y;
   r0.x = r0.x + r1.z;
   r0.x = r0.x + r1.w;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=236)(mixed,mixed,mixed,mixed) r0.y, v0.x, l(16), t111.xxxx
-r0.y = struct_buf_1[]..swiz;
+  r0.y = struct_buf_2[v0.x].inner_struct_2;
   r0.x = r0.x + r0.y;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=236)(mixed,mixed,mixed,mixed) r0.y, v0.x, l(112), t111.xxxx
-r0.y = struct_buf_1[]..swiz;
+  r0.y = struct_buf_2[v0.x].inner_struct_2;
   r0.x = r0.x + r0.y;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=236)(mixed,mixed,mixed,mixed) r0.y, v0.x, l(200), t111.xxxx
-r0.y = struct_buf_1[]..swiz;
+  r0.y = struct_buf_2[v0.x].foobaz;
   r0.x = r0.x + r0.y;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=236)(mixed,mixed,mixed,mixed) r0.y, v0.x, l(216), t111.xxxx
-r0.y = struct_buf_1[]..swiz;
+  r0.y = struct_buf_2[v0.x].foobuz;
   r0.y = (int)r0.y;
   o0.xyzw = r0.xxxx + r0.yyyy;
   return;

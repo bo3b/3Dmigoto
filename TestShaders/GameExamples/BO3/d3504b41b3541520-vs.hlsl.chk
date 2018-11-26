@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:33:39 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:22:23 2018
 
 struct ModelInstanceData
 {
@@ -115,28 +115,20 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=24)(mixed,mixed,mixed,mixed) r0.x, l(0), l(12), t4.xxxx
-r0.x = modelInstanceBuffer[]..swiz;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r1.xyzw, r0.x, l(0), t5.xyzw
-r1.x = modelInstanceBuffer[]..swiz;
-r1.y = modelInstanceBuffer[]..swiz;
-r1.z = modelInstanceBuffer[]..swiz;
-r1.w = modelInstanceBuffer[]..swiz;
+  r0.x = modelInstanceBuffer[0].worldMatrix;
+  r1.x = boneMatrixBuffer[r0.x].mat;
+  r1.y = boneMatrixBuffer[r0.x].mat;
+  r1.z = boneMatrixBuffer[r0.x].mat;
+  r1.w = boneMatrixBuffer[r0.x].mat;
   r2.x = r1.w;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r3.xyzw, r0.x, l(16), t5.xyzw
-r3.x = modelInstanceBuffer[]..swiz;
-r3.y = modelInstanceBuffer[]..swiz;
-r3.z = modelInstanceBuffer[]..swiz;
-r3.w = modelInstanceBuffer[]..swiz;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=64)(mixed,mixed,mixed,mixed) r0.xyzw, r0.x, l(32), t5.xyzw
-r0.x = modelInstanceBuffer[]..swiz;
-r0.y = modelInstanceBuffer[]..swiz;
-r0.z = modelInstanceBuffer[]..swiz;
-r0.w = modelInstanceBuffer[]..swiz;
+  r3.x = boneMatrixBuffer[r0.x].mat;
+  r3.y = boneMatrixBuffer[r0.x].mat;
+  r3.z = boneMatrixBuffer[r0.x].mat;
+  r3.w = boneMatrixBuffer[r0.x].mat;
+  r0.x = boneMatrixBuffer[r0.x].mat;
+  r0.y = boneMatrixBuffer[r0.x].mat;
+  r0.z = boneMatrixBuffer[r0.x].mat;
+  r0.w = boneMatrixBuffer[r0.x].mat;
   r2.y = r3.w;
   r2.z = r0.w;
   r2.xyz = -eyeOffset.xyz + r2.xyz;

@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 05:33:55 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:22:40 2018
 
 struct StoredBokeh
 {
@@ -45,18 +45,14 @@ void main(
   r1.y = (uint)r0.y;
   r0.yz = r1.xy * float2(1,-1) + float2(-1,1);
   o2.xy = float2(0.5,0.5) * r1.xy;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r1.xyzw, r0.x, l(0), t3.xyzw
-r1.x = g_BokehBuffer[]..swiz;
-r1.y = g_BokehBuffer[]..swiz;
-r1.z = g_BokehBuffer[]..swiz;
-r1.w = g_BokehBuffer[]..swiz;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) o1.xyzw, r0.x, l(16), t3.xyzw
-r1.x = g_BokehBuffer[]..swiz;
-r1.y = g_BokehBuffer[]..swiz;
-r1.z = g_BokehBuffer[]..swiz;
-r1.w = g_BokehBuffer[]..swiz;
+  r1.x = g_BokehBuffer[r0.x].position;
+  r1.y = g_BokehBuffer[r0.x].position;
+  r1.z = g_BokehBuffer[r0.x].radius;
+  r1.w = g_BokehBuffer[r0.x].radius;
+  o1.x = g_BokehBuffer[r0.x].colorAndWeight;
+  o1.y = g_BokehBuffer[r0.x].colorAndWeight;
+  o1.z = g_BokehBuffer[r0.x].colorAndWeight;
+  o1.w = g_BokehBuffer[r0.x].colorAndWeight;
   r0.xw = r1.zw + r1.zw;
   o0.xy = r0.yz * r0.xw + r1.xy;
   o0.zw = float2(0,1);
