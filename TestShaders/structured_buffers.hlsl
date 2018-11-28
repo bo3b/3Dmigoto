@@ -99,6 +99,9 @@ void main(uint idx : TEXCOORD0, float val : TEXCOORD1, out float4 output : SV_Ta
 #endif
 	output += struct_buf_2[idx].foobaz;
 	output += struct_buf_2[idx].foobuz[3];
+#ifdef USE_DYNAMICALLY_INDEXED_ARRAYS
+	output += struct_buf_2[idx].foobuz[idx];
+#endif
 #ifdef USE_DUP_NAME
 	output += struct_buf_3[idx].foo;
 	output += struct_buf_3[idx].bar;
