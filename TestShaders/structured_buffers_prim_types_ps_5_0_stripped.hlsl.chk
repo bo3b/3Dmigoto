@@ -1,6 +1,6 @@
-// ---- Created with 3Dmigoto v1.3.11 on Sat Nov 24 23:54:54 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:36:35 2018
 struct t111_t {
-  float val[11];
+  float val[64];
 };
 StructuredBuffer<t111_t> t111 : register(t111);
 
@@ -462,16 +462,15 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
-  r0.x = t111[v0.x].val[24/4];
-  r0.y = t110[2].val[4/4];
-  r0.y = (uint)r0.y;
-  r0.z = t110[0].val[0/4];
-  r0.y = r0.z + r0.y;
-  r0.z = t110[1].val[8/4];
-  r0.y = r0.y + r0.z;
-  r0.z = t110[3].val[12/4];
-  r0.xz = (int2)r0.xz;
-  r0.y = r0.y + r0.z;
+  r0.x = t110[2].val[4/4];
+  r0.x = (uint)r0.x;
+  r0.y = t110[0].val[0/4];
+  r0.x = r0.y + r0.x;
+  r0.y = t110[1].val[8/4];
+  r0.x = r0.x + r0.y;
+  r0.y = t110[3].val[12/4];
+  r0.y = (int)r0.y;
+  r0.x = r0.x + r0.y;
   r1.xyzw = (int4)v0.xxxx + int4(1,2,3,4);
   r2.x = t110[r1.x].val[16/4];
   r2.y = t110[r1.x].val[16/4+1];
@@ -481,8 +480,8 @@ void main(
   r3.y = t110[r1.y].val[32/4+1];
   r3.z = t110[r1.y].val[32/4+2];
   r3.w = t110[r1.y].val[32/4+3];
-  r0.z = dot(r2.xyzw, r3.xyzw);
-  r0.y = r0.y + r0.z;
+  r0.y = dot(r2.xyzw, r3.xyzw);
+  r0.x = r0.x + r0.y;
   r2.x = t110[r1.x].val[52/4];
   r2.y = t110[r1.x].val[52/4+1];
   r2.z = t110[r1.x].val[52/4+2];
@@ -491,16 +490,33 @@ void main(
   r3.y = t110[r1.y].val[68/4+1];
   r3.z = t110[r1.y].val[68/4+2];
   r3.w = t110[r1.y].val[68/4+3];
-  r0.z = dot(r2.xyzw, r3.xyzw);
-  r0.y = r0.y + r0.z;
-  r2.x = t111[v0.x].val[0/4];
-  r2.y = t111[v0.x].val[0/4+1];
-  r2.z = t111[v0.x].val[0/4+2];
-  r0.y = r2.x + r0.y;
-  r0.z = (uint)r2.y;
-  r0.y = r0.y + r0.z;
-  r0.y = r0.y + r2.z;
-  r0.x = r0.y + r0.x;
+  r0.y = dot(r2.xyzw, r3.xyzw);
+  r0.x = r0.x + r0.y;
+  r0.y = t111[v0.x].val[0/4];
+  r0.z = t111[v0.x].val[0/4+1];
+  r0.w = t111[v0.x].val[0/4+2];
+  r0.x = r0.x + r0.y;
+  r0.y = (uint)r0.z;
+  r0.x = r0.x + r0.y;
+  r0.x = r0.x + r0.w;
+  r0.y = t111[v0.x].val[40/4];
+  r0.z = t111[v0.x].val[40/4+1];
+  r0.y = (int)r0.y;
+  r0.x = r0.x + r0.y;
+  r0.x = r0.x + r0.z;
+  r0.y = t111[v0.x].val[68/4];
+  r0.z = t111[v0.x].val[68/4+1];
+  r0.y = (int)r0.y;
+  r0.x = r0.x + r0.y;
+  r0.x = r0.x + r0.z;
+  r0.y = t111[v0.x].val[132/4];
+  r0.z = t111[v0.x].val[132/4+1];
+  r0.x = r0.x + r0.y;
+  r0.x = r0.x + r0.z;
+  r0.y = t111[v0.x].val[248/4];
+  r0.z = t111[v0.x].val[248/4+1];
+  r0.x = r0.x + r0.y;
+  r0.x = r0.x + r0.z;
   r0.y = t90[v0.x].val[0/4];
   r0.zw = r0.xx + r0.yy;
   r2.x = t91[v0.x].val[0/4];

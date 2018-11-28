@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:15:22 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:55:14 2018
 
 struct SImpostorInstance
 {
@@ -123,24 +123,20 @@ void main(
   r0.xy = (int2)r0.xy;
   r0.w = 0;
   r1.xyw = r0.xyw;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r2.xyzw, v1.x, l(0), t1.xyzw
-r2.x = DepthLowRes[]..swiz;
-r2.y = DepthLowRes[]..swiz;
-r2.z = DepthLowRes[]..swiz;
-r2.w = DepthLowRes[]..swiz;
+  r2.x = instanceData[v1.x].m_treeToWS;
+  r2.y = instanceData[v1.x].m_treeToWS;
+  r2.z = instanceData[v1.x].m_treeToWS;
+  r2.w = instanceData[v1.x].m_treeToWS;
   r3.xyzw = (int4)r2.xyzw & int4(0xffff,0xffff,0xffff,0xffff);
   r2.xyzw = (uint4)r2.xyzw >> int4(16,16,16,16);
   r2.xyzw = f16tof32(r2.xywz);
   r3.xyzw = f16tof32(r3.xywz);
   r4.x = r3.z;
   r4.y = r2.z;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r5.xyzw, v1.x, l(16), t1.xyzw
-r5.x = DepthLowRes[]..swiz;
-r5.y = DepthLowRes[]..swiz;
-r5.z = DepthLowRes[]..swiz;
-r5.w = DepthLowRes[]..swiz;
+  r5.x = instanceData[v1.x].m_treeToWS;
+  r5.y = instanceData[v1.x].m_treeToWS;
+  r5.z = instanceData[v1.x].m_treeToWS;
+  r5.w = instanceData[v1.x].m_treeToWS;
   r5.x = (int)r5.x & 0x0000ffff;
   r4.z = f16tof32(r5.x);
   r6.xyz = -_CameraPosition_DistanceScale.xyz + r5.yzw;
@@ -196,9 +192,7 @@ r5.w = DepthLowRes[]..swiz;
   r1.x = DepthLowRes.Load(r1.xyzw).x;
   r1.x = _Binormal_DepthRange[r6.y].w * r1.x;
   r1.y = _Binormal_DepthRange[r6.y].w * 0.5 + -r1.x;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r1.z, v1.x, l(36), t1.xxxx
-r1.z = DepthLowRes[]..swiz;
+  r1.z = instanceData[v1.x].m_packData;
   r1.z = (uint)r1.z >> 24;
   r1.z = (uint)r1.z;
   r1.w = 0.00392200006 * r1.z;

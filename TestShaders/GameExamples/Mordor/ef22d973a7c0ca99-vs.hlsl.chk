@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:15:43 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:55:33 2018
 
 struct ResourceStruct
 {
@@ -85,12 +85,10 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r0.xyzw, v0.x, l(0), t0.wxyz
-r0.x = BufferSrc[]..swiz;
-r0.y = BufferSrc[]..swiz;
-r0.z = BufferSrc[]..swiz;
-r0.w = BufferSrc[]..swiz;
+  r0.x = BufferSrc[v0.x].vVelocity.x;
+  r0.y = BufferSrc[v0.x].vPosition.x;
+  r0.z = BufferSrc[v0.x].vPosition.y;
+  r0.w = BufferSrc[v0.x].vPosition.z;
   r1.xyz = r0.yzw;
   r1.w = 1;
   o0.x = dot(k_mObjectToView._m00_m01_m02_m03, r1.xyzw);
@@ -100,12 +98,10 @@ r0.w = BufferSrc[]..swiz;
   r1.x = k_vFogSky.w + r1.x;
   o0.z = r2.x;
   r1.yzw = k_vObjectSpaceEyePos.xyz + -r0.yzw;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=32)(mixed,mixed,mixed,mixed) r3.xyzw, v0.x, l(16), t0.xyzw
-r3.x = BufferSrc[]..swiz;
-r3.y = BufferSrc[]..swiz;
-r3.z = BufferSrc[]..swiz;
-r3.w = BufferSrc[]..swiz;
+  r3.x = BufferSrc[v0.x].vVelocity.y;
+  r3.y = BufferSrc[v0.x].vVelocity.z;
+  r3.z = BufferSrc[v0.x].fTime;
+  r3.w = BufferSrc[v0.x].fUserData;
   r0.yz = r3.xy;
   o2.xy = r3.zw;
   o1.x = dot(k_mObjectToView._m00_m01_m02, r0.xyz);

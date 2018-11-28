@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:14:44 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:54:37 2018
 
 struct GPUParticleRenderComputeData
 {
@@ -75,19 +75,15 @@ void main(
   x0[3].xy = float2(1,1);
   r0.x = v0.x;
   r0.xy = x0[r0.x+0].xy;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r1.xy, v1.x, l(32), t0.xyxx
-r1.x = SamplerParameters_SMP_s[]..swiz;
-r1.y = SamplerParameters_SMP_s[]..swiz;
+  r1.x = g_particles[v1.x].misc.x;
+  r1.y = g_particles[v1.x].misc.y;
   r1.z = -r1.x;
   r0.z = dot(r0.yx, r1.yz);
   r0.w = dot(r0.yx, r1.xy);
   o1.xy = r0.xy * float2(0.5,0.5) + float2(0.5,0.5);
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r1.xyz, v1.x, l(16), t0.xyzx
-r1.x = SamplerParameters_SMP_s[]..swiz;
-r1.y = SamplerParameters_SMP_s[]..swiz;
-r1.z = SamplerParameters_SMP_s[]..swiz;
+  r1.x = g_particles[v1.x].velAndLife.x;
+  r1.y = g_particles[v1.x].velAndLife.y;
+  r1.z = g_particles[v1.x].velAndLife.z;
   r0.x = dot(r1.xyz, r1.xyz);
   r0.y = cmp(0.00100000005 < r0.x);
   r1.w = sqrt(r0.x);
@@ -96,19 +92,15 @@ r1.z = SamplerParameters_SMP_s[]..swiz;
   r0.x = r0.y ? r1.w : 0;
   r0.x = min(5, r0.x);
   r3.w = 1;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r4.xyzw, v1.x, l(0), t0.wxyz
-r4.x = SamplerParameters_SMP_s[]..swiz;
-r4.y = SamplerParameters_SMP_s[]..swiz;
-r4.z = SamplerParameters_SMP_s[]..swiz;
-r4.w = SamplerParameters_SMP_s[]..swiz;
+  r4.x = g_particles[v1.x].posAndAge.w;
+  r4.y = g_particles[v1.x].posAndAge.x;
+  r4.z = g_particles[v1.x].posAndAge.y;
+  r4.w = g_particles[v1.x].posAndAge.z;
   r3.xyz = r1.xyz * RInstConstants[0].www + r4.yzw;
   r4.x = saturate(r4.x);
   r0.y = dot(ViewProj._m03_m13_m23_m33, r3.xyzw);
   r0.y = RInstConstants[1].z * r0.y;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=48)(mixed,mixed,mixed,mixed) r1.x, v1.x, l(44), t0.xxxx
-r1.x = SamplerParameters_SMP_s[]..swiz;
+  r1.x = g_particles[v1.x].type;
   r1.x = (int)r1.x;
   r1.x = r1.x * 4 + 0.5;
   r4.y = RInstConstants[3].w * r1.x;

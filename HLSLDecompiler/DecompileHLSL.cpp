@@ -3183,7 +3183,7 @@ public:
 		mOutput.insert(mOutput.end(), line, line + strlen(line));
 	}
 
-	static char * offset2swiz(DataType type, int offset)
+	static const char * offset2swiz(DataType type, int offset)
 	{
 		// For StructuredBuffers, where the swizzle is really an offset modifier
 		switch (type) {
@@ -3244,6 +3244,80 @@ public:
 					default: return "?";
 				}
 		}
+	}
+
+	static const char * shadervar_offset2swiz(ShaderVarType *var, int offset)
+	{
+		if (!var)
+			return "<NULL>";
+
+		switch (var->Class) {
+			case SVC_SCALAR:
+				return "";
+			case SVC_VECTOR:
+				switch (offset) {
+					case  0: return "x";
+					case  4: return "y";
+					case  8: return "z";
+					case 12: return "w";
+					default: return "?";
+				}
+				break;
+			case SVC_MATRIX_ROWS:
+			case SVC_MATRIX_COLUMNS:
+				switch (var->Rows) {
+					case 4:
+						switch (offset) {
+							case  0: return "_m00"; case  4: return "_m10"; case  8: return "_m20"; case 12: return "_m30";
+							case 16: return "_m01"; case 20: return "_m11"; case 24: return "_m21"; case 28: return "_m31";
+							case 32: return "_m02"; case 36: return "_m12"; case 40: return "_m22"; case 44: return "_m32";
+							case 48: return "_m03"; case 52: return "_m13"; case 56: return "_m23"; case 60: return "_m33";
+						}
+						return "_m??";
+					case 3:
+						switch (offset) {
+							case  0: return "_m00"; case  4: return "_m10"; case  8: return "_m20";
+							case 12: return "_m01"; case 16: return "_m11"; case 20: return "_m21";
+							case 24: return "_m02"; case 28: return "_m12"; case 32: return "_m22";
+							case 36: return "_m03"; case 40: return "_m13"; case 44: return "_m23";
+						}
+						return "_m??";
+					case 2:
+						switch (offset) {
+							case  0: return "_m00"; case  4: return "_m10";
+							case  8: return "_m01"; case 12: return "_m11";
+							case 16: return "_m02"; case 20: return "_m12";
+							case 24: return "_m03"; case 28: return "_m13";
+						}
+						return "_m??";
+					case 1:
+						switch (offset) {
+							case  0: return "_m00";
+							case  4: return "_m01";
+							case  8: return "_m02";
+							case 12: return "_m03";
+						}
+						return "_m0?";
+				}
+			break;
+		}
+
+		return "";
+	}
+
+	static uint32_t shadervar_size(ShaderVarType *var)
+	{
+		uint32_t size = 0;
+
+		if (!var)
+			return 0;
+
+		if (var->Class == SVC_STRUCT) {
+			for (uint32_t i = 0; i < var->MemberCount; i++)
+				size += shadervar_size(&var->Members[i]);
+			return size;
+		} else
+			return var->Columns * var->Rows * 4;
 	}
 
 	void ParseCode(Shader *shader, const char *c, size_t size)
@@ -3368,8 +3442,8 @@ public:
 							"{\n"
 							"  float4 cb%d[%d];\n"
 							"}\n\n", bufIndex, bufIndex, bufIndex, bufSize);
-						vector<char>::iterator ipos = mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
-						mCodeStartPos += strlen(buffer); ipos += strlen(buffer);
+						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+						mCodeStartPos += strlen(buffer);
 						for (int j = 0; j < bufSize; ++j)
 						{
 							sprintf(buffer, "cb%d[%d]", bufIndex, j);
@@ -3406,8 +3480,8 @@ public:
 						"};\n"
 						"StructuredBuffer<t%d_t> t%d : register(t%d);\n\n",
 						bufIndex, bufStride / 4, bufIndex, bufIndex, bufIndex);
-					vector<char>::iterator ipos = mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
-					mCodeStartPos += strlen(buffer); ipos += strlen(buffer);
+					mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+					mCodeStartPos += strlen(buffer);
 
 					if (bufStride % 4) {
 						// I don't think this is ordinarily possible since almost all data types are 32bits
@@ -3416,10 +3490,38 @@ public:
 						// but in practice are 32bits on PC. If it does happen we need to know about it:
 						sprintf(buffer, "FIXME: StructuredBuffer t%d stride %d is not a multiple of 4\n\n",
 								bufIndex, bufStride);
-						vector<char>::iterator ipos = mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
-						mCodeStartPos += strlen(buffer); ipos += strlen(buffer);
+						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+						mCodeStartPos += strlen(buffer);
 					}
 				}
+			}
+			else if (!strcmp(statement, "dcl_tgsm_structured"))
+			{
+				int bufIndex = 0;
+				int bufStride = 0;
+				int bufCount = 0;
+				if (sscanf_s(op1, "g%d", &bufIndex) != 1)
+				{
+					logDecompileError("Error parsing tgsm structured buffer register: " + string(op1));
+					return;
+				}
+				if (sscanf_s(op2, "%d", &bufStride) != 1)
+				{
+					logDecompileError("Error parsing tgsm structured buffer stride: " + string(op2));
+					return;
+				}
+				if (sscanf_s(op3, "%d", &bufCount) != 1)
+				{
+					logDecompileError("Error parsing tgsm structured buffer count: " + string(op3));
+					return;
+				}
+				// HLSL accepts the register(gN) syntax, but seems to disregard it, and
+				// doesn't matter anyway since these don't correspond to any externally
+				// bound resources. Use an inline type definition for conciseness:
+				sprintf(buffer, "groupshared struct { float val[%d]; } g%d[%d];\n",
+					bufStride / 4, bufIndex, bufCount);
+				mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+				mCodeStartPos += strlen(buffer);
 			}
 			// Create new map entries if there aren't any for dcl_sampler.  This can happen if
 			// there is no Resource Binding section in the shader.  TODO: probably needs to handle arrays too.
@@ -5259,7 +5361,7 @@ public:
 							dst = op2, idx = op3, off = op4, reg = op5; // Note comma operator
 						Operand dst0 = instr->asOperands[0];
 						Operand texture = instr->asOperands[3];
-						ResourceGroup group = reg[0] == 'u' ? RGROUP_UAV : RGROUP_TEXTURE;
+						ResourceGroup group = (ResourceGroup)-1;
 						ResourceBinding *bindInfo;
 
 						remapTarget(dst);
@@ -5269,18 +5371,22 @@ public:
 
 						// The swizzle represents extra 32bit offsets within the structure:
 						int swiz_offsets[4] = {0, 4, 8, 12};
-						if (texture.ui32Swizzle != NO_SWIZZLE) {
-							for (int component = 0; component < 4; component++) {
-								switch (texture.aui32Swizzle[component]) {
-									case OPERAND_4_COMPONENT_X: swiz_offsets[component] = 0; break;
-									case OPERAND_4_COMPONENT_Y: swiz_offsets[component] = 4; break;
-									case OPERAND_4_COMPONENT_Z: swiz_offsets[component] = 8; break;
-									case OPERAND_4_COMPONENT_W: swiz_offsets[component] = 12; break;
-								}
+						for (int component = 0; component < 4; component++) {
+							switch (texture.aui32Swizzle[component]) {
+								case OPERAND_4_COMPONENT_X: swiz_offsets[component] = 0; break;
+								case OPERAND_4_COMPONENT_Y: swiz_offsets[component] = 4; break;
+								case OPERAND_4_COMPONENT_Z: swiz_offsets[component] = 8; break;
+								case OPERAND_4_COMPONENT_W: swiz_offsets[component] = 12; break;
 							}
 						}
 
-						if (GetResourceFromBindingPoint(group, texture.ui32RegisterNumber, shader->sInfo, &bindInfo))
+						if (reg[0] == 't')
+							group = RGROUP_TEXTURE;
+						else if (reg[0] == 'u')
+							group = RGROUP_UAV;
+						// else 'g' = compute shader thread group shared memory, which will never have reflection info
+
+						if (group != (ResourceGroup)-1 && GetResourceFromBindingPoint(group, texture.ui32RegisterNumber, shader->sInfo, &bindInfo))
 						{
 							map<string, string>::iterator struct_type_i;
 
@@ -5294,40 +5400,70 @@ public:
 
 							if (mStructuredBufferUsedNames.find(struct_type_i->second) != mStructuredBufferUsedNames.end())
 							{
-								string dst0, srcAddress, srcByteOffset, src0;
-								string swiz;
+								int swiz_offset = 0;
+								stripMask(dst);
 
-								ResourceBinding* bindings = shader->sInfo->psResourceBindings;
-								src0 = bindings->Name;
-								srcAddress = instr->asOperands[1].specialName;
-								srcByteOffset = instr->asOperands[2].specialName;
-								dst0 = "r" + std::to_string(instr->asOperands[0].ui32RegisterNumber);
-
-								sprintf(buffer, "// Known bad code for instruction (needs manual fix):\n");
-								appendOutput(buffer);
-								ASMLineOut(c, pos, size);
-
-								// ASSERT(instr->asOperands[0].eSelMode == OPERAND_4_COMPONENT_MASK_MODE);
-
-								// Output one line for each swizzle in dst0.xyzw that is active.
-								for (int component = 0; component < 4; component++)
+								if (sscanf_s(off, "%d", &swiz_offset) == 1)
 								{
-									if (instr->asOperands[0].ui32CompMask & (1 << component))
+									// Static offset:
+									ConstantBuffer *bufInfo = NULL;
+									GetConstantBufferFromBindingPoint(group, texture.ui32RegisterNumber, shader->sInfo, &bufInfo);
+									if (!bufInfo) {
+										sprintf(buffer, "// BUG: Cannot locate struct layout:\n");
+										appendOutput(buffer);
+										ASMLineOut(c, pos, size);
+										break;
+									}
+
+									for (uint32_t component = 0; component < 4; component++)
 									{
-										switch (component)
-										{
-											case 3: swiz = "w"; break;
-											case 2: swiz = "z"; break;
-											case 1: swiz = "y"; break;
-											case 0:
-											default: swiz = "x"; break;
+										ShaderVarType *var = NULL;
+										int32_t byte_offset = swiz_offsets[component] + swiz_offset;
+										uint32_t swiz = byte_offset % 16 / 4;
+										int32_t index = -1;
+										int32_t rebase = -1;
+										const char *hlsl_swiz;
+										std::string array_txt;
+										uint32_t var_size;
+
+										if (!(dst0.ui32CompMask & (1 << component)))
+											continue;
+
+										GetShaderVarFromOffset(byte_offset / 16, &swiz, bufInfo, &var, &index, &rebase);
+										if (!var) {
+											sprintf(buffer, "// BUG: Cannot locate variable in structure:\n");
+											appendOutput(buffer);
+											ASMLineOut(c, pos, size);
+											break;
 										}
-										//sprintf(buffer, "%s.%s = %s[%s].%s.%s;\n", dst0.c_str(), swiz.c_str(),
-										//	src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str(), swiz.c_str());
-										sprintf(buffer, "%s.%s = %s[%s].%s.swiz;\n",
-											dst0.c_str(), swiz.c_str(), src0.c_str(), srcAddress.c_str(), srcByteOffset.c_str());
+
+										var_size = shadervar_size(var);
+										if (var->Elements) {
+											// The index GetShaderVarFromOffset returns is crap, calculate it ourselves:
+											index = (byte_offset - var->Offset) / var_size;
+											array_txt = "[" + std::to_string(index) + "]";
+										}
+
+										hlsl_swiz = shadervar_offset2swiz(var, (byte_offset - var->Offset) % var_size);
+
+										// Using .Name instead of .FullName to avoid "$Element" prefix.
+										// If GetShaderVarFromOffset processed inner structs FullName
+										// would be a better choice to include the parent struct heirachy
+										sprintf(buffer, "  %s.%c = %s[%s].%s%s%s%s;\n",
+												writeTarget(dst),
+												component == 3 ? 'w' : 'x' + component,
+												bindInfo->Name.c_str(),
+												ci(idx).c_str(),
+												var->Name.c_str(),
+												array_txt.c_str(),
+												strlen(hlsl_swiz) ? "." : "",
+												hlsl_swiz);
 										appendOutput(buffer);
 									}
+								} else {
+									sprintf(buffer, "// Structured buffer using dynamic offset (needs manual fix):\n");
+									appendOutput(buffer);
+									ASMLineOut(c, pos, size);
 								}
 							}
 							else

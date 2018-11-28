@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Fri Nov 23 06:16:00 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:55:49 2018
 
 struct t0_struct
 {
@@ -145,9 +145,7 @@ void main(
   r0.yw = (int2)r0.yw;
   r0.w = mad((int)r0.w, (int)r5.x, (int)r2.w);
   r0.y = (int)r0.y + (int)r0.w;
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.y, r0.y, l(0), t3.xxxx
-r0.y = s0_s[]..swiz;
+  r0.y = t3_buff[r0.y].t3_float;
   r0.w = (uint)r0.y >> 24;
   r0.w = (int)r0.w & 255;
   r2.w = cmp((int)r0.w == 0);
@@ -172,25 +170,19 @@ r0.y = s0_s[]..swiz;
     while (true) {
       r4.w = cmp((int)r0.w == (int)r3.z);
       if (r4.w != 0) break;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=8)(mixed,mixed,mixed,mixed) r9.zw, r3.z, l(0), t2.xxxy
-    r9.z = s0_s[]..swiz;
-    r9.w = s0_s[]..swiz;
+      r9.z = t2_buff[r3.z].t2_float2.x;
+      r9.w = t2_buff[r3.z].t2_float2.y;
       r4.w = (uint)r9.z >> 16;
       r4.w = (int)r4.w & 0x0000ffff;
       r5.w = (int)r9.z & 0x0000ffff;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=28)(mixed,mixed,mixed,mixed) r10.xyzw, r4.w, l(0), t1.xyzw
-    r10.x = s0_s[]..swiz;
-    r10.y = s0_s[]..swiz;
-    r10.z = s0_s[]..swiz;
-    r10.w = s0_s[]..swiz;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=28)(mixed,mixed,mixed,mixed) r11.xyzw, r5.w, l(0), t1.xyzw
-    r11.x = s0_s[]..swiz;
-    r11.y = s0_s[]..swiz;
-    r11.z = s0_s[]..swiz;
-    r11.w = s0_s[]..swiz;
+      r10.x = t1_buff[r4.w].t1_index0.x;
+      r10.y = t1_buff[r4.w].t1_index0.y;
+      r10.z = t1_buff[r4.w].t1_index0.z;
+      r10.w = t1_buff[r4.w].t1_index0.w;
+      r11.x = t1_buff[r5.w].t1_index0.x;
+      r11.y = t1_buff[r5.w].t1_index0.y;
+      r11.z = t1_buff[r5.w].t1_index0.z;
+      r11.w = t1_buff[r5.w].t1_index0.w;
       r12.xyz = r5.xyz * r0.xxx + -r10.xyz;
       r11.xyzw = r11.xyzw + -r10.xyzw;
       r6.w = dot(r12.xyz, r11.xyz);
@@ -198,16 +190,12 @@ r0.y = s0_s[]..swiz;
       r6.w = saturate(r6.w / r7.w);
       r10.xyzw = r6.wwww * r11.xyzw + r10.xyzw;
       r10.xyz = -r5.xyz * r0.xxx + r10.xyz;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=28)(mixed,mixed,mixed,mixed) r11.xyz, r4.w, l(16), t1.xyzx
-    r11.x = s0_s[]..swiz;
-    r11.y = s0_s[]..swiz;
-    r11.z = s0_s[]..swiz;
-    // Known bad code for instruction (needs manual fix):
-        ld_structured_indexable(structured_buffer, stride=28)(mixed,mixed,mixed,mixed) r12.xyz, r5.w, l(16), t1.xyzx
-    r12.x = s0_s[]..swiz;
-    r12.y = s0_s[]..swiz;
-    r12.z = s0_s[]..swiz;
+      r11.x = t1_buff[r4.w].t1_index16.x;
+      r11.y = t1_buff[r4.w].t1_index16.y;
+      r11.z = t1_buff[r4.w].t1_index16.z;
+      r12.x = t1_buff[r5.w].t1_index16.x;
+      r12.y = t1_buff[r5.w].t1_index16.y;
+      r12.z = t1_buff[r5.w].t1_index16.z;
       r12.xyz = r12.xyz + -r11.xyz;
       r11.xyz = r6.www * r12.xyz + r11.xyz;
       r4.w = dot(r10.xyz, r10.xyz);
@@ -445,9 +433,7 @@ r0.y = s0_s[]..swiz;
     r0.xyz = r8.xyz * r4.xyz;
     r0.w = cb1[11].y + cb1[11].y;
     r0.xyz = r0.xyz * r0.www;
-  // Known bad code for instruction (needs manual fix):
-    ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.w, l(0), l(0), t0.xxxx
-  r0.w = s0_s[]..swiz;
+    r0.w = t0_buff[0].t0_float;
     r0.xyz = r0.xyz * r0.www;
     o0.xyz = min(float3(55000,55000,55000), r0.xyz);
     o0.w = 1;

@@ -277,7 +277,6 @@ static void ReadResources(const uint32_t* pui32Tokens,//in
     const uint32_t* pui32ResourceBindings;
     const uint32_t* pui32FirstToken = pui32Tokens;
     uint32_t i;
-	uint32_t aui32NextConstBufferIndex[RGROUP_COUNT];
 
     const uint32_t ui32NumConstantBuffers = *pui32Tokens++;
     const uint32_t ui32ConstantBufferOffset = *pui32Tokens++;
@@ -295,19 +294,10 @@ static void ReadResources(const uint32_t* pui32Tokens,//in
     psShaderInfo->ui32NumResourceBindings = ui32NumResourceBindings;
     psShaderInfo->psResourceBindings = psResBindings;
 
-	for(i=0; i<RGROUP_COUNT; i++)
-	{
-		aui32NextConstBufferIndex[i] = 0;
-	}
     for(i=0; i < ui32NumResourceBindings; ++i)
     {
-		ResourceGroup eRGroup;
         pui32ResourceBindings = ReadResourceBinding(pui32FirstToken, pui32ResourceBindings, psResBindings+i);
-
-		eRGroup = ResourceTypeToResourceGroup(psResBindings[i].eType);
-
 		ASSERT(psResBindings[i].ui32BindPoint < MAX_RESOURCE_BINDINGS);
-		psShaderInfo->aui32ResourceMap[eRGroup][psResBindings[i].ui32BindPoint] = aui32NextConstBufferIndex[eRGroup]++;
 	}
 
     //Constant buffers
@@ -322,6 +312,28 @@ static void ReadResources(const uint32_t* pui32Tokens,//in
     {
         pui32ConstantBuffers = ReadConstantBuffer(psShaderInfo, pui32FirstToken, pui32ConstantBuffers, psConstantBuffers+i);
     }
+
+
+	//Map resource bindings to constant buffers
+	if(psShaderInfo->ui32NumConstantBuffers)
+	{
+		for(i=0; i < ui32NumResourceBindings; ++i)
+		{
+			ResourceGroup eRGroup;
+			uint32_t cbufIndex = 0;
+
+			eRGroup = ResourceTypeToResourceGroup(psResBindings[i].eType);
+
+			//Find the constant buffer whose name matches the resource at the given resource binding point
+			for(cbufIndex=0; cbufIndex < psShaderInfo->ui32NumConstantBuffers; cbufIndex++)
+			{
+				if(psConstantBuffers[cbufIndex].Name == psResBindings[i].Name)
+				{
+					psShaderInfo->aui32ResourceMap[eRGroup][psResBindings[i].ui32BindPoint] = cbufIndex;
+				}
+			}
+		}
+	}
 }
 
 static const uint16_t* ReadClassType(const uint32_t* pui32FirstInterfaceToken, const uint16_t* pui16Tokens, ClassType* psClassType)
@@ -424,16 +436,15 @@ static void ReadInterfaces(const uint32_t* pui32Tokens,
 
 void GetConstantBufferFromBindingPoint(const ResourceGroup eGroup, const uint32_t ui32BindPoint, const ShaderInfo* psShaderInfo, ConstantBuffer** ppsConstBuf)
 {
-    uint32_t index;
-    
-    ASSERT(ui32BindPoint < MAX_RESOURCE_BINDINGS);
-	ASSERT(eGroup < RGROUP_COUNT);
-    
-    index = psShaderInfo->aui32ResourceMap[eGroup].at(ui32BindPoint);
-    
-	ASSERT(index < psShaderInfo->ui32NumConstantBuffers);
-    
-    *ppsConstBuf = psShaderInfo->psConstantBuffers + index;
+	if(psShaderInfo->ui32MajorVersion > 3)
+	{
+		*ppsConstBuf = psShaderInfo->psConstantBuffers + psShaderInfo->aui32ResourceMap[eGroup].at(ui32BindPoint);
+	}
+	else
+	{
+		ASSERT(psShaderInfo->ui32NumConstantBuffers == 1);
+		*ppsConstBuf = psShaderInfo->psConstantBuffers;
+	}
 }
 
 int GetResourceFromBindingPoint(const ResourceGroup eGroup, uint32_t const ui32BindPoint, const ShaderInfo* psShaderInfo, ResourceBinding** ppsOutBinding)
@@ -488,6 +499,17 @@ static int IsOffsetInType(ShaderVarType* psType,
 
 	if(psType->Elements)
 	{
+#if 0
+		// DarkStarSword: This assumption they are making is incorrect for
+		// StructuredBuffers, and this can cause a variable following an array
+		// to be misattributed as being part of the array. This assumption was
+		// based on the alignment constraints enforced on constant buffers, so
+		// upstreaming a patch for this would need to take into account the
+		// kind of buffer being queried (we do not currently use this for
+		// constant buffers). Our structured_buffers.hlsl test case includes a
+		// couple of cases specifically for this issue in StructuredBuffers.
+
+
 		// Everything smaller than vec4 in an array takes the space of vec4, except for the last one
 		if (thisSize < 4 * 4)
 		{
@@ -497,6 +519,9 @@ static int IsOffsetInType(ShaderVarType* psType,
 		{
 			thisSize *= psType->Elements;
 		}
+#else
+		thisSize *= psType->Elements;
+#endif
 	}
 
     //Swizzle can point to another variable. In the example below
