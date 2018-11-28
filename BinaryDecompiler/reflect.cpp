@@ -499,6 +499,17 @@ static int IsOffsetInType(ShaderVarType* psType,
 
 	if(psType->Elements)
 	{
+#if 0
+		// DarkStarSword: This assumption they are making is incorrect for
+		// StructuredBuffers, and this can cause a variable following an array
+		// to be misattributed as being part of the array. This assumption was
+		// based on the alignment constraints enforced on constant buffers, so
+		// upstreaming a patch for this would need to take into account the
+		// kind of buffer being queried (we do not currently use this for
+		// constant buffers). Our structured_buffers.hlsl test case includes a
+		// couple of cases specifically for this issue in StructuredBuffers.
+
+
 		// Everything smaller than vec4 in an array takes the space of vec4, except for the last one
 		if (thisSize < 4 * 4)
 		{
@@ -508,6 +519,9 @@ static int IsOffsetInType(ShaderVarType* psType,
 		{
 			thisSize *= psType->Elements;
 		}
+#else
+		thisSize *= psType->Elements;
+#endif
 	}
 
     //Swizzle can point to another variable. In the example below

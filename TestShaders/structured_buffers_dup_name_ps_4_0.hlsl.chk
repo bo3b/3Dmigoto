@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:36:33 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:38:19 2018
 
 struct struct_buf_1_type
 {
@@ -99,17 +99,17 @@ void main(
   r0.x = r0.x + r0.y;
   r0.x = r0.x + r1.z;
   r1.x = struct_buf_2[v0.x].foobuz[7];
-  r1.y = struct_buf_2[v0.x].foobuz[8];
+  r1.y = struct_buf_2[v0.x].binary_decompiler_array_size_calculation_looks_sketchy;
   r0.y = (int)r1.x;
   r0.x = r0.x + r0.y;
   r0.x = r0.x + r1.y;
-  r1.x = struct_buf_2[v0.x].foobuz[14];
-  r1.y = struct_buf_2[v0.x].foobuz[15];
+  r1.x = struct_buf_2[v0.x].really[2].y;
+  r1.y = struct_buf_2[v0.x].sketchy;
   r0.y = (int)r1.x;
   r0.x = r0.x + r0.y;
   r0.x = r0.x + r1.y;
   r1.x = struct_buf_2[v0.x].did[4].z;
-  r1.y = struct_buf_2[v0.x].did[5].x;
+  r1.y = struct_buf_2[v0.x].i;
   r0.x = r1.x + r0.x;
   r0.x = r0.x + r1.y;
   r1.x = struct_buf_2[v0.x].mention[6].w;
