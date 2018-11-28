@@ -21,7 +21,7 @@ run_hlsl_test structured_buffers.hlsl structured_buffers_inner_struct "ps_4_0 ps
 run_hlsl_test structured_buffers.hlsl structured_buffers_rw ps_5_0 "/D USE_RW_STRUCTURED_BUFFER"
 # Decompiler needs more work generally to support doubles, but we enable the test now anyway:
 run_hlsl_test structured_buffers.hlsl structured_buffers_doubles "ps_5_0" "/D USE_PRIMITIVE_TYPES /D USE_DOUBLES"
-# We don't expect dynamically indexed arrays inside structs to decompile yet:
-run_hlsl_test structured_buffers.hlsl structured_buffers_dynamic_indexing "ps_4_0 ps_5_0" "/D USE_DYNAMICALLY_INDEXED_ARRAYS"
+# We don't expect dynamically indexed arrays inside structs to decompile yet when reflection info is present:
+run_hlsl_test structured_buffers.hlsl structured_buffers_dynamic_indexing "ps_4_0 ps_5_0" "/D USE_DYNAMICALLY_INDEXED_ARRAYS /D USE_INNER_STRUCT"
 
 [ $TESTS_FAILED = 0 ]

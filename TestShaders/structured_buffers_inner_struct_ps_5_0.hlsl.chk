@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Sat Nov 24 23:54:55 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:19:03 2018
 
 struct foo
 {
@@ -123,12 +123,6 @@ r0.y = struct_buf_1[]..swiz;
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=236)(mixed,mixed,mixed,mixed) r0.y, v0.x, l(112), t111.xxxx
 r0.y = struct_buf_1[]..swiz;
-  r0.x = r0.x + r0.y;
-  r0.y = mad((int)v0.x, 92, 36);
-// Known bad code for instruction (needs manual fix):
-ld_structured_indexable(structured_buffer, stride=236)(mixed,mixed,mixed,mixed) r0.y, v0.x, r0.y, t111.xxxx
-r0.y = struct_buf_1[]..swiz;
-  r0.y = (int)r0.y;
   r0.x = r0.x + r0.y;
 // Known bad code for instruction (needs manual fix):
 ld_structured_indexable(structured_buffer, stride=236)(mixed,mixed,mixed,mixed) r0.y, v0.x, l(200), t111.xxxx

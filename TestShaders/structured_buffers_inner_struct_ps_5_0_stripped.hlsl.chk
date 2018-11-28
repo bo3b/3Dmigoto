@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Sat Nov 24 23:54:55 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:19:03 2018
 struct t111_t {
   float val[59];
 };
@@ -69,10 +69,6 @@ void main(
   r0.y = t111[v0.x].val[16/4];
   r0.x = r0.x + r0.y;
   r0.y = t111[v0.x].val[112/4];
-  r0.x = r0.x + r0.y;
-  r0.y = mad((int)v0.x, 92, 36);
-  r0.y = t111[v0.x].val[r0.y/4];
-  r0.y = (int)r0.y;
   r0.x = r0.x + r0.y;
   r0.y = t111[v0.x].val[200/4];
   r0.x = r0.x + r0.y;
