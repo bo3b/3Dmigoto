@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:33:57 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:36:37 2018
 
 struct foo
 {
@@ -19,6 +19,13 @@ struct bar
     uint foobar;                   // Offset:    4
     float foobaz;                  // Offset:    8
     int foobuz[8];                 // Offset:   12
+    float binary_decompiler_array_size_calculation_looks_sketchy;// Offset:   44
+    int2 really[3];                // Offset:   48
+    float sketchy;                 // Offset:   72
+    float3 did[5];                 // Offset:   76
+    float i;                       // Offset:  136
+    float4 mention[7];             // Offset:  140
+    float how_sketchy;             // Offset:  252
 };
 
 StructuredBuffer<foo> struct_buf_1 : register(t110);
@@ -81,9 +88,24 @@ void main(
   r0.z = (uint)r1.y;
   r0.y = r0.y + r0.z;
   r0.y = r0.y + r1.z;
-  r0.z = struct_buf_2[v0.x].foobuz[3];
+  r0.z = struct_buf_2[v0.x].foobuz[7];
+  r0.w = struct_buf_2[v0.x].foobuz[8];
   r0.z = (int)r0.z;
   r0.y = r0.y + r0.z;
+  r0.y = r0.y + r0.w;
+  r0.z = struct_buf_2[v0.x].foobuz[14];
+  r0.w = struct_buf_2[v0.x].foobuz[15];
+  r0.z = (int)r0.z;
+  r0.y = r0.y + r0.z;
+  r0.y = r0.y + r0.w;
+  r0.z = struct_buf_2[v0.x].did[4].z;
+  r0.w = struct_buf_2[v0.x].did[5].x;
+  r0.y = r0.y + r0.z;
+  r0.y = r0.y + r0.w;
+  r0.z = struct_buf_2[v0.x].mention[6].w;
+  r0.w = struct_buf_2[v0.x].how_sketchy;
+  r0.y = r0.y + r0.z;
+  r0.y = r0.y + r0.w;
   o0.xyzw = r0.yyyy + r0.xxxx;
   return;
 }

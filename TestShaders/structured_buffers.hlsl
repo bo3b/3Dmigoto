@@ -26,6 +26,13 @@ struct bar {
 #endif
 	snorm float foobaz;
 	int foobuz[8];
+	float binary_decompiler_array_size_calculation_looks_sketchy;
+	int2 really[3];
+	float sketchy;
+	float3 did[5];
+	float i;
+	float4 mention[7];
+	float how_sketchy;
 };
 
 StructuredBuffer<struct foo> struct_buf_1 : register(t110);
@@ -100,7 +107,14 @@ void main(uint idx : TEXCOORD0, float val : TEXCOORD1, out float4 output : SV_Ta
 #endif
 #endif
 	output += struct_buf_2[idx].foobaz;
-	output += struct_buf_2[idx].foobuz[3];
+	output += struct_buf_2[idx].foobuz[7];
+	output += struct_buf_2[idx].binary_decompiler_array_size_calculation_looks_sketchy;
+	output += struct_buf_2[idx].really[2].y;
+	output += struct_buf_2[idx].sketchy;
+	output += struct_buf_2[idx].did[4].z;
+	output += struct_buf_2[idx].i;
+	output += struct_buf_2[idx].mention[6].w;
+	output += struct_buf_2[idx].how_sketchy;
 #ifdef USE_DYNAMICALLY_INDEXED_ARRAYS
 	output += struct_buf_2[idx].foobuz[idx];
 #endif

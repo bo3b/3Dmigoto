@@ -1,6 +1,6 @@
-// ---- Created with 3Dmigoto v1.3.11 on Sat Nov 24 23:54:51 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:36:33 2018
 struct t111_t {
-  float val[11];
+  float val[64];
 };
 StructuredBuffer<t111_t> t111 : register(t111);
 
@@ -64,8 +64,23 @@ void main(
   r0.y = (uint)r1.y;
   r0.x = r0.x + r0.y;
   r0.x = r0.x + r1.z;
-  r1.x = t111[v0.x].val[24/4];
+  r1.x = t111[v0.x].val[40/4];
+  r1.y = t111[v0.x].val[40/4+1];
   r0.y = (int)r1.x;
-  o0.xyzw = r0.xxxx + r0.yyyy;
+  r0.x = r0.x + r0.y;
+  r0.x = r0.x + r1.y;
+  r1.x = t111[v0.x].val[68/4];
+  r1.y = t111[v0.x].val[68/4+1];
+  r0.y = (int)r1.x;
+  r0.x = r0.x + r0.y;
+  r0.x = r0.x + r1.y;
+  r1.x = t111[v0.x].val[132/4];
+  r1.y = t111[v0.x].val[132/4+1];
+  r0.x = r1.x + r0.x;
+  r0.x = r0.x + r1.y;
+  r1.x = t111[v0.x].val[248/4];
+  r1.y = t111[v0.x].val[248/4+1];
+  r0.x = r1.x + r0.x;
+  o0.xyzw = r0.xxxx + r1.yyyy;
   return;
 }
