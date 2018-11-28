@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:27:58 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:33:58 2018
 
 struct foo
 {
@@ -98,9 +98,9 @@ void main(
   r0.x = r0.x + r0.y;
   r0.x = r0.x + r1.z;
   r0.x = r0.x + r1.w;
-  r0.y = struct_buf_2[v0.x].inner_struct_2;
+  r0.y = struct_buf_2[v0.x].inner_struct_2[0];
   r0.x = r0.x + r0.y;
-  r0.y = struct_buf_2[v0.x].inner_struct_2;
+  r0.y = struct_buf_2[v0.x].inner_struct_2[1];
   r0.x = r0.x + r0.y;
   r0.y = mad((int)v0.x, 92, 36);
 // Structured buffer using dynamic offset (needs manual fix):
@@ -109,7 +109,7 @@ ld_structured_indexable(structured_buffer, stride=236)(mixed,mixed,mixed,mixed) 
   r0.x = r0.x + r0.y;
   r0.y = struct_buf_2[v0.x].foobaz;
   r0.x = r0.x + r0.y;
-  r0.y = struct_buf_2[v0.x].foobuz;
+  r0.y = struct_buf_2[v0.x].foobuz[3];
   r0.y = (int)r0.y;
   r0.x = r0.x + r0.y;
   r0.y = (uint)v0.x << 2;

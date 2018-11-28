@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:27:53 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:33:52 2018
 
 struct struct_buf_1_type
 {
@@ -77,7 +77,7 @@ void main(
   r0.y = (uint)r1.y;
   r0.x = r0.x + r0.y;
   r0.x = r0.x + r1.z;
-  r1.x = struct_buf_2[v0.x].foobuz;
+  r1.x = struct_buf_2[v0.x].foobuz[3];
   r0.y = (int)r1.x;
   o0.xyzw = r0.xxxx + r0.yyyy;
   return;

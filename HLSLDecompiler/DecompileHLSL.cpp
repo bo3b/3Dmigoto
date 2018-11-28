@@ -3293,6 +3293,21 @@ public:
 		return "";
 	}
 
+	static uint32_t shadervar_size(ShaderVarType *var)
+	{
+		uint32_t size = 0;
+
+		if (!var)
+			return 0;
+
+		if (var->Class == SVC_STRUCT) {
+			for (uint32_t i = 0; i < var->MemberCount; i++)
+				size += shadervar_size(&var->Members[i]);
+			return size;
+		} else
+			return var->Columns * var->Rows * 4;
+	}
+
 	void ParseCode(Shader *shader, const char *c, size_t size)
 	{
 		mOutputRegisterValues.clear();
@@ -5396,6 +5411,8 @@ public:
 										int32_t index = -1;
 										int32_t rebase = -1;
 										const char *hlsl_swiz;
+										std::string array_txt;
+										uint32_t var_size;
 
 										if (!(dst0.ui32CompMask & (1 << component)))
 											continue;
@@ -5408,17 +5425,25 @@ public:
 											break;
 										}
 
-										hlsl_swiz = shadervar_offset2swiz(var, byte_offset - var->Offset);
+										var_size = shadervar_size(var);
+										if (var->Elements) {
+											// The index GetShaderVarFromOffset returns is crap, calculate it ourselves:
+											index = (byte_offset - var->Offset) / var_size;
+											array_txt = "[" + std::to_string(index) + "]";
+										}
+
+										hlsl_swiz = shadervar_offset2swiz(var, (byte_offset - var->Offset) % var_size);
 
 										// Using .Name instead of .FullName to avoid "$Element" prefix.
 										// If GetShaderVarFromOffset processed inner structs FullName
 										// would be a better choice to include the parent struct heirachy
-										sprintf(buffer, "  %s.%c = %s[%s].%s%s%s;\n",
+										sprintf(buffer, "  %s.%c = %s[%s].%s%s%s%s;\n",
 												writeTarget(dst),
 												component == 3 ? 'w' : 'x' + component,
 												bindInfo->Name.c_str(),
 												ci(idx).c_str(),
 												var->Name.c_str(),
+												array_txt.c_str(),
 												strlen(hlsl_swiz) ? "." : "",
 												hlsl_swiz);
 										appendOutput(buffer);

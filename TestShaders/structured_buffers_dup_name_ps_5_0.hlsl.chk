@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:27:54 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:33:54 2018
 
 struct foo
 {
@@ -78,7 +78,7 @@ void main(
   r0.y = (uint)r0.z;
   r0.x = r0.x + r0.y;
   r0.x = r0.x + r0.w;
-  r0.y = struct_buf_2[v0.x].foobuz;
+  r0.y = struct_buf_2[v0.x].foobuz[3];
   r0.y = (int)r0.y;
   r0.x = r0.x + r0.y;
   r1.x = struct_buf_3[v0.x].foo;
