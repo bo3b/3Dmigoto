@@ -3171,7 +3171,7 @@ public:
 		mOutput.insert(mOutput.end(), line, line + strlen(line));
 	}
 
-	static char * offset2swiz(DataType type, int offset)
+	static const char * offset2swiz(DataType type, int offset)
 	{
 		// For StructuredBuffers, where the swizzle is really an offset modifier
 		switch (type) {
@@ -3232,6 +3232,65 @@ public:
 					default: return "?";
 				}
 		}
+	}
+
+	static const char * shadervar_offset2swiz(ShaderVarType *var, int offset)
+	{
+		if (!var)
+			return "<NULL>";
+
+		switch (var->Class) {
+			case SVC_SCALAR:
+				return "";
+			case SVC_VECTOR:
+				switch (offset) {
+					case  0: return "x";
+					case  4: return "y";
+					case  8: return "z";
+					case 12: return "w";
+					default: return "?";
+				}
+				break;
+			case SVC_MATRIX_ROWS:
+			case SVC_MATRIX_COLUMNS:
+				switch (var->Rows) {
+					case 4:
+						switch (offset) {
+							case  0: return "_m00"; case  4: return "_m10"; case  8: return "_m20"; case 12: return "_m30";
+							case 16: return "_m01"; case 20: return "_m11"; case 24: return "_m21"; case 28: return "_m31";
+							case 32: return "_m02"; case 36: return "_m12"; case 40: return "_m22"; case 44: return "_m32";
+							case 48: return "_m03"; case 52: return "_m13"; case 56: return "_m23"; case 60: return "_m33";
+						}
+						return "_m??";
+					case 3:
+						switch (offset) {
+							case  0: return "_m00"; case  4: return "_m10"; case  8: return "_m20";
+							case 12: return "_m01"; case 16: return "_m11"; case 20: return "_m21";
+							case 24: return "_m02"; case 28: return "_m12"; case 32: return "_m22";
+							case 36: return "_m03"; case 40: return "_m13"; case 44: return "_m23";
+						}
+						return "_m??";
+					case 2:
+						switch (offset) {
+							case  0: return "_m00"; case  4: return "_m10";
+							case  8: return "_m01"; case 12: return "_m11";
+							case 16: return "_m02"; case 20: return "_m12";
+							case 24: return "_m03"; case 28: return "_m13";
+						}
+						return "_m??";
+					case 1:
+						switch (offset) {
+							case  0: return "_m00";
+							case  4: return "_m01";
+							case  8: return "_m02";
+							case 12: return "_m03";
+						}
+						return "_m0?";
+				}
+			break;
+		}
+
+		return "";
 	}
 
 	void ParseCode(Shader *shader, const char *c, size_t size)
@@ -5336,6 +5395,7 @@ public:
 										uint32_t swiz = byte_offset % 16 / 4;
 										int32_t index = -1;
 										int32_t rebase = -1;
+										const char *hlsl_swiz;
 
 										if (!(dst0.ui32CompMask & (1 << component)))
 											continue;
@@ -5348,15 +5408,19 @@ public:
 											break;
 										}
 
+										hlsl_swiz = shadervar_offset2swiz(var, byte_offset - var->Offset);
+
 										// Using .Name instead of .FullName to avoid "$Element" prefix.
 										// If GetShaderVarFromOffset processed inner structs FullName
 										// would be a better choice to include the parent struct heirachy
-										sprintf(buffer, "  %s.%c = %s[%s].%s;\n",
+										sprintf(buffer, "  %s.%c = %s[%s].%s%s%s;\n",
 												writeTarget(dst),
 												component == 3 ? 'w' : 'x' + component,
 												bindInfo->Name.c_str(),
 												ci(idx).c_str(),
-												var->Name.c_str());
+												var->Name.c_str(),
+												strlen(hlsl_swiz) ? "." : "",
+												hlsl_swiz);
 										appendOutput(buffer);
 									}
 								} else {

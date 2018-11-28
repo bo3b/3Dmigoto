@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:22:23 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:28:51 2018
 
 struct ModelInstanceData
 {
@@ -116,19 +116,19 @@ void main(
   float4 fDest;
 
   r0.x = modelInstanceBuffer[0].worldMatrix;
-  r1.x = boneMatrixBuffer[r0.x].mat;
-  r1.y = boneMatrixBuffer[r0.x].mat;
-  r1.z = boneMatrixBuffer[r0.x].mat;
-  r1.w = boneMatrixBuffer[r0.x].mat;
+  r1.x = boneMatrixBuffer[r0.x].mat.x;
+  r1.y = boneMatrixBuffer[r0.x].mat.y;
+  r1.z = boneMatrixBuffer[r0.x].mat.z;
+  r1.w = boneMatrixBuffer[r0.x].mat.w;
   r2.x = r1.w;
-  r3.x = boneMatrixBuffer[r0.x].mat;
-  r3.y = boneMatrixBuffer[r0.x].mat;
-  r3.z = boneMatrixBuffer[r0.x].mat;
-  r3.w = boneMatrixBuffer[r0.x].mat;
-  r0.x = boneMatrixBuffer[r0.x].mat;
-  r0.y = boneMatrixBuffer[r0.x].mat;
-  r0.z = boneMatrixBuffer[r0.x].mat;
-  r0.w = boneMatrixBuffer[r0.x].mat;
+  r3.x = boneMatrixBuffer[r0.x].mat.?;
+  r3.y = boneMatrixBuffer[r0.x].mat.?;
+  r3.z = boneMatrixBuffer[r0.x].mat.?;
+  r3.w = boneMatrixBuffer[r0.x].mat.?;
+  r0.x = boneMatrixBuffer[r0.x].mat.?;
+  r0.y = boneMatrixBuffer[r0.x].mat.?;
+  r0.z = boneMatrixBuffer[r0.x].mat.?;
+  r0.w = boneMatrixBuffer[r0.x].mat.?;
   r2.y = r3.w;
   r2.z = r0.w;
   r2.xyz = -eyeOffset.xyz + r2.xyz;

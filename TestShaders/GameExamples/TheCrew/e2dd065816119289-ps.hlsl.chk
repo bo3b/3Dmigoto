@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:23:09 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:29:37 2018
 
 struct t0_struct
 {
@@ -170,19 +170,19 @@ void main(
     while (true) {
       r4.w = cmp((int)r0.w == (int)r3.z);
       if (r4.w != 0) break;
-      r9.z = t2_buff[r3.z].t2_float2;
-      r9.w = t2_buff[r3.z].t2_float2;
+      r9.z = t2_buff[r3.z].t2_float2.x;
+      r9.w = t2_buff[r3.z].t2_float2.y;
       r4.w = (uint)r9.z >> 16;
       r4.w = (int)r4.w & 0x0000ffff;
       r5.w = (int)r9.z & 0x0000ffff;
-      r10.x = t1_buff[r4.w].t1_index0;
-      r10.y = t1_buff[r4.w].t1_index0;
-      r10.z = t1_buff[r4.w].t1_index0;
-      r10.w = t1_buff[r4.w].t1_index0;
-      r11.x = t1_buff[r5.w].t1_index0;
-      r11.y = t1_buff[r5.w].t1_index0;
-      r11.z = t1_buff[r5.w].t1_index0;
-      r11.w = t1_buff[r5.w].t1_index0;
+      r10.x = t1_buff[r4.w].t1_index0.x;
+      r10.y = t1_buff[r4.w].t1_index0.y;
+      r10.z = t1_buff[r4.w].t1_index0.z;
+      r10.w = t1_buff[r4.w].t1_index0.w;
+      r11.x = t1_buff[r5.w].t1_index0.x;
+      r11.y = t1_buff[r5.w].t1_index0.y;
+      r11.z = t1_buff[r5.w].t1_index0.z;
+      r11.w = t1_buff[r5.w].t1_index0.w;
       r12.xyz = r5.xyz * r0.xxx + -r10.xyz;
       r11.xyzw = r11.xyzw + -r10.xyzw;
       r6.w = dot(r12.xyz, r11.xyz);
@@ -190,12 +190,12 @@ void main(
       r6.w = saturate(r6.w / r7.w);
       r10.xyzw = r6.wwww * r11.xyzw + r10.xyzw;
       r10.xyz = -r5.xyz * r0.xxx + r10.xyz;
-      r11.x = t1_buff[r4.w].t1_index16;
-      r11.y = t1_buff[r4.w].t1_index16;
-      r11.z = t1_buff[r4.w].t1_index16;
-      r12.x = t1_buff[r5.w].t1_index16;
-      r12.y = t1_buff[r5.w].t1_index16;
-      r12.z = t1_buff[r5.w].t1_index16;
+      r11.x = t1_buff[r4.w].t1_index16.x;
+      r11.y = t1_buff[r4.w].t1_index16.y;
+      r11.z = t1_buff[r4.w].t1_index16.z;
+      r12.x = t1_buff[r5.w].t1_index16.x;
+      r12.y = t1_buff[r5.w].t1_index16.y;
+      r12.z = t1_buff[r5.w].t1_index16.z;
       r12.xyz = r12.xyz + -r11.xyz;
       r11.xyz = r6.www * r12.xyz + r11.xyz;
       r4.w = dot(r10.xyz, r10.xyz);

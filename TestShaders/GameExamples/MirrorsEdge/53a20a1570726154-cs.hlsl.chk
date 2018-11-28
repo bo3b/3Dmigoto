@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:22:53 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:29:20 2018
 
 struct g_lightCullInput_res
 {
@@ -98,10 +98,10 @@ void main)
   r0.xyzw = mad((int4)r1.xyzw, int4(16,16,16,16), (int4)vThreadIDInGroup.xyyy);
   if (vThreadIDInGroupFlattened.x == 0) {
     r1.x = mad((int)r1.w, tileCountX, (int)r1.x);
-    r1.x = g_lightCullInput[r1.x].g_lightCullInput_uint4;
-    r1.y = g_lightCullInput[r1.x].g_lightCullInput_uint4;
-    r1.z = g_lightCullInput[r1.x].g_lightCullInput_uint4;
-    r1.w = g_lightCullInput[r1.x].g_lightCullInput_uint4;
+    r1.x = g_lightCullInput[r1.x].g_lightCullInput_uint4.x;
+    r1.y = g_lightCullInput[r1.x].g_lightCullInput_uint4.y;
+    r1.z = g_lightCullInput[r1.x].g_lightCullInput_uint4.z;
+    r1.w = g_lightCullInput[r1.x].g_lightCullInput_uint4.w;
     r2.xy = (uint2)r1.yz >> int2(16,16);
     r1.yzw = (int3)r1.yzw & int3(0xffff,0xffff,0xffff);
   // No code for instruction (needs manual fix):

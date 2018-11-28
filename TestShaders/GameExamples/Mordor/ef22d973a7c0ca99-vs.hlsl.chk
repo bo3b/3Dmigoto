@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:22:57 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:29:24 2018
 
 struct ResourceStruct
 {
@@ -85,10 +85,10 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
-  r0.x = BufferSrc[v0.x].vVelocity;
-  r0.y = BufferSrc[v0.x].vPosition;
-  r0.z = BufferSrc[v0.x].vPosition;
-  r0.w = BufferSrc[v0.x].vPosition;
+  r0.x = BufferSrc[v0.x].vVelocity.x;
+  r0.y = BufferSrc[v0.x].vPosition.x;
+  r0.z = BufferSrc[v0.x].vPosition.y;
+  r0.w = BufferSrc[v0.x].vPosition.z;
   r1.xyz = r0.yzw;
   r1.w = 1;
   o0.x = dot(k_mObjectToView._m00_m01_m02_m03, r1.xyzw);
@@ -98,8 +98,8 @@ void main(
   r1.x = k_vFogSky.w + r1.x;
   o0.z = r2.x;
   r1.yzw = k_vObjectSpaceEyePos.xyz + -r0.yzw;
-  r3.x = BufferSrc[v0.x].vVelocity;
-  r3.y = BufferSrc[v0.x].vVelocity;
+  r3.x = BufferSrc[v0.x].vVelocity.y;
+  r3.y = BufferSrc[v0.x].vVelocity.z;
   r3.z = BufferSrc[v0.x].fTime;
   r3.w = BufferSrc[v0.x].fUserData;
   r0.yz = r3.xy;

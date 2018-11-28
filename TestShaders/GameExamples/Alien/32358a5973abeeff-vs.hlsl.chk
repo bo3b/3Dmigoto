@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:22:14 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:28:42 2018
 
 struct GPUParticleRenderComputeData
 {
@@ -75,15 +75,15 @@ void main(
   x0[3].xy = float2(1,1);
   r0.x = v0.x;
   r0.xy = x0[r0.x+0].xy;
-  r1.x = g_particles[v1.x].misc;
-  r1.y = g_particles[v1.x].misc;
+  r1.x = g_particles[v1.x].misc.x;
+  r1.y = g_particles[v1.x].misc.y;
   r1.z = -r1.x;
   r0.z = dot(r0.yx, r1.yz);
   r0.w = dot(r0.yx, r1.xy);
   o1.xy = r0.xy * float2(0.5,0.5) + float2(0.5,0.5);
-  r1.x = g_particles[v1.x].velAndLife;
-  r1.y = g_particles[v1.x].velAndLife;
-  r1.z = g_particles[v1.x].velAndLife;
+  r1.x = g_particles[v1.x].velAndLife.x;
+  r1.y = g_particles[v1.x].velAndLife.y;
+  r1.z = g_particles[v1.x].velAndLife.z;
   r0.x = dot(r1.xyz, r1.xyz);
   r0.y = cmp(0.00100000005 < r0.x);
   r1.w = sqrt(r0.x);
@@ -92,10 +92,10 @@ void main(
   r0.x = r0.y ? r1.w : 0;
   r0.x = min(5, r0.x);
   r3.w = 1;
-  r4.x = g_particles[v1.x].posAndAge;
-  r4.y = g_particles[v1.x].posAndAge;
-  r4.z = g_particles[v1.x].posAndAge;
-  r4.w = g_particles[v1.x].posAndAge;
+  r4.x = g_particles[v1.x].posAndAge.w;
+  r4.y = g_particles[v1.x].posAndAge.x;
+  r4.z = g_particles[v1.x].posAndAge.y;
+  r4.w = g_particles[v1.x].posAndAge.z;
   r3.xyz = r1.xyz * RInstConstants[0].www + r4.yzw;
   r4.x = saturate(r4.x);
   r0.y = dot(ViewProj._m03_m13_m23_m33, r3.xyzw);

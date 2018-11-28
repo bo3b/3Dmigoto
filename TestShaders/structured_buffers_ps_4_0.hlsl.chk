@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:21:19 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:27:53 2018
 
 struct struct_buf_1_type
 {
@@ -50,24 +50,24 @@ void main(
   r0.y = (int)r1.x;
   r0.x = r0.x + r0.y;
   r0.yz = (int2)v0.xx + int2(1,2);
-  r1.x = struct_buf_1[r0.y].f4;
-  r1.y = struct_buf_1[r0.y].f4;
-  r1.z = struct_buf_1[r0.y].f4;
-  r1.w = struct_buf_1[r0.y].f4;
-  r2.x = struct_buf_1[r0.z].g4;
-  r2.y = struct_buf_1[r0.z].g4;
-  r2.z = struct_buf_1[r0.z].g4;
-  r2.w = struct_buf_1[r0.z].g4;
+  r1.x = struct_buf_1[r0.y].f4.x;
+  r1.y = struct_buf_1[r0.y].f4.y;
+  r1.z = struct_buf_1[r0.y].f4.z;
+  r1.w = struct_buf_1[r0.y].f4.w;
+  r2.x = struct_buf_1[r0.z].g4.x;
+  r2.y = struct_buf_1[r0.z].g4.y;
+  r2.z = struct_buf_1[r0.z].g4.z;
+  r2.w = struct_buf_1[r0.z].g4.w;
   r0.w = dot(r1.xyzw, r2.xyzw);
   r0.x = r0.x + r0.w;
-  r1.x = struct_buf_1[r0.y].m4;
-  r1.y = struct_buf_1[r0.y].m4;
-  r1.z = struct_buf_1[r0.y].m4;
-  r1.w = struct_buf_1[r0.y].m4;
-  r2.x = struct_buf_1[r0.z].n4;
-  r2.y = struct_buf_1[r0.z].n4;
-  r2.z = struct_buf_1[r0.z].n4;
-  r2.w = struct_buf_1[r0.z].n4;
+  r1.x = struct_buf_1[r0.y].m4.x;
+  r1.y = struct_buf_1[r0.y].m4.y;
+  r1.z = struct_buf_1[r0.y].m4.z;
+  r1.w = struct_buf_1[r0.y].m4.w;
+  r2.x = struct_buf_1[r0.z].n4.x;
+  r2.y = struct_buf_1[r0.z].n4.y;
+  r2.z = struct_buf_1[r0.z].n4.z;
+  r2.w = struct_buf_1[r0.z].n4.w;
   r0.y = dot(r1.xyzw, r2.xyzw);
   r0.x = r0.x + r0.y;
   r1.x = struct_buf_2[v0.x].foofoo;
