@@ -3293,19 +3293,38 @@ public:
 		return "";
 	}
 
-	static uint32_t shadervar_size(ShaderVarType *var)
+	static std::string shadervar_name(ShaderVarType *var, uint32_t offset)
 	{
-		uint32_t size = 0;
+		std::string ret;
+		uint32_t var_size, elem_size;
+		uint32_t index;
+		const char *swiz;
 
-		if (!var)
-			return 0;
+		if (!var || !var->Name.compare("$Element"))
+			return "";
 
-		if (var->Class == SVC_STRUCT) {
-			for (uint32_t i = 0; i < var->MemberCount; i++)
-				size += shadervar_size(&var->Members[i]);
-			return size;
-		} else
-			return var->Columns * var->Rows * 4;
+		if (var->ParentCount) {
+			ret = shadervar_name(var->Parent, offset);
+			if (ret.size())
+				ret += ".";
+		}
+
+		ret += var->Name;
+
+		var_size = ShaderVarSize(var, &elem_size);
+		if (var->Elements) {
+			// The index GetShaderVarFromOffset returns is crap, calculate it ourselves:
+			index = (offset - var->Offset) / elem_size;
+			ret += "[" + std::to_string(index) + "]";
+		}
+
+		if (offset - var->Offset < var_size) {
+			swiz = shadervar_offset2swiz(var, (offset - var->Offset) % elem_size);
+			if (swiz[0])
+				ret += "." + std::string(swiz);
+		}
+
+		return ret;
 	}
 
 	void ParseCode(Shader *shader, const char *c, size_t size)
@@ -5410,9 +5429,7 @@ public:
 										uint32_t swiz = byte_offset % 16 / 4;
 										int32_t index = -1;
 										int32_t rebase = -1;
-										const char *hlsl_swiz;
 										std::string var_txt;
-										uint32_t var_size;
 
 										if (!(dst0.ui32CompMask & (1 << component)))
 											continue;
@@ -5425,20 +5442,7 @@ public:
 											break;
 										}
 
-										var_txt = var->FullName;
-										if (!var_txt.compare(0, 9, "$Element."))
-											var_txt = var_txt.substr(9);
-
-										var_size = shadervar_size(var);
-										if (var->Elements) {
-											// The index GetShaderVarFromOffset returns is crap, calculate it ourselves:
-											index = (byte_offset - var->Offset) / var_size;
-											var_txt += "[" + std::to_string(index) + "]";
-										}
-
-										hlsl_swiz = shadervar_offset2swiz(var, (byte_offset - var->Offset) % var_size);
-										if (hlsl_swiz[0])
-											var_txt += "." + std::string(hlsl_swiz);
+										var_txt = shadervar_name(var, byte_offset);
 
 										sprintf(buffer, "  %s.%c = %s[%s].%s;\n",
 												writeTarget(dst),
