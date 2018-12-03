@@ -78,7 +78,10 @@ StructuredBuffer<bool1x4> prim_struct_bool1x4; StructuredBuffer<bool1x3> prim_st
 #endif
 
 #ifdef USE_RW_STRUCTURED_BUFFER
-RWStructuredBuffer<struct foo> rw_struct_buf : register(u1);
+RWStructuredBuffer<struct foo> rw_struct_buf_1 : register(u1);
+RWStructuredBuffer<struct bar> rw_struct_buf_2 : register(u2);
+RWStructuredBuffer<float3> rw_prim_float3 : register(u3);
+RWStructuredBuffer<float4x4> rw_prim_float4x4;
 #endif
 
 void main(uint idx : TEXCOORD0, float val : TEXCOORD1, out float4 output : SV_Target0)
@@ -168,7 +171,29 @@ void main(uint idx : TEXCOORD0, float val : TEXCOORD1, out float4 output : SV_Ta
 #endif
 
 #ifdef USE_RW_STRUCTURED_BUFFER
-	output += rw_struct_buf[idx].bar;
-	rw_struct_buf[idx].foo = val;
+	output += rw_struct_buf_1[idx].bar;
+	rw_struct_buf_1[idx].foo = val;
+	rw_struct_buf_1[3].buz = val;
+	rw_struct_buf_1[2].f4.yzw = rw_struct_buf_1[3].g4.wxz;
+	rw_struct_buf_1[2].m4.xw = rw_struct_buf_1[3].n4.wz;
+	rw_struct_buf_2[idx].foofoo = val;
+	rw_struct_buf_2[idx].foobar = val;
+#ifdef USE_INNER_STRUCT
+	rw_struct_buf_2[idx].inner_struct_1.foo = val;
+	rw_struct_buf_2[idx].inner_struct_1.bar = val;
+	rw_struct_buf_2[idx].inner_struct_2[0].baz = val;
+	rw_struct_buf_2[idx].inner_struct_2[1].bug = val;
+#ifdef USE_DYNAMICALLY_INDEXED_ARRAYS
+	rw_struct_buf_2[idx].inner_struct_2[idx].inner_struct_3.buz = val;
+#endif
+#endif
+	rw_struct_buf_2[idx].foobaz = val;
+	rw_struct_buf_2[idx].foobuz[7] = val;
+#ifdef USE_DYNAMICALLY_INDEXED_ARRAYS
+	rw_struct_buf_2[idx].foobuz[idx] = val;
+#endif
+	rw_prim_float3[0].yzx = rw_prim_float3[1].xyz;
+	rw_prim_float3[2].zx = rw_prim_float3[3].yx;
+	rw_prim_float4x4[0] = transpose(rw_prim_float4x4[1]);
 #endif
 }

@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:09:47 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 19:07:47 2018
 
 cbuffer cb12 : register(b12)
 {
@@ -19,6 +19,7 @@ Texture2D<float4> t4 : register(t4);
 Texture2D<float4> t6 : register(t6);
 Texture2D<float4> t7 : register(t7);
 Texture2D<float4> t16 : register(t16);
+RWTexture2D<float4> u0 : register(u0);
 
 
 // 3Dmigoto declarations

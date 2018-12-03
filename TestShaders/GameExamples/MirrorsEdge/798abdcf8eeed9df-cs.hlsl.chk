@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:55:28 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 19:07:25 2018
 
 struct g_lightCullInput_res
 {
@@ -259,6 +259,7 @@ StructuredBuffer<g_lightCullInput_res> g_lightCullInput : register(t19);
 StructuredBuffer<g_lightIndexInput_res> g_lightIndexInput : register(t20);
 Texture2DArray<float4> g_shadowmapTexture : register(t21);
 StructuredBuffer<g_compactTileGridBuffer_res> g_compactTileGridBuffer : register(t24);
+RWTexture2D<float4> g_outputTexture0 : register(u0);
 
 
 // 3Dmigoto declarations

@@ -243,6 +243,15 @@ struct ShaderVarType {
   std::string                   FullName;
 
   ShaderVarType *Members;
+
+  ShaderVarType() :
+	  Members(NULL)
+  {}
+
+  ~ShaderVarType()
+  {
+	  delete [] Members;
+  }
 };
 
 struct ShaderVar
