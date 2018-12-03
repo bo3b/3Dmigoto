@@ -1,11 +1,26 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 19:06:18 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 19:08:46 2018
+struct u4_t {
+  float val[16];
+};
+RWStructuredBuffer<u4_t> u4 : register(u4);
+
+struct u3_t {
+  float val[3];
+};
+RWStructuredBuffer<u3_t> u3 : register(u3);
+
+struct u2_t {
+  float val[112];
+};
+RWStructuredBuffer<u2_t> u2 : register(u2);
+
 struct u1_t {
   float val[21];
 };
 RWStructuredBuffer<u1_t> u1 : register(u1);
 
 struct t111_t {
-  float val[64];
+  float val[112];
 };
 StructuredBuffer<t111_t> t111 : register(t111);
 
@@ -28,12 +43,90 @@ void main(
   float v1 : TEXCOORD1,
   out float4 o0 : SV_Target0)
 {
-  float4 r0,r1,r2;
+  float4 r0,r1,r2,r3,r4,r5;
   uint4 bitmask, uiDest;
   float4 fDest;
 
   r0.x = u1[v0.x].val[4/4];
   u1[v0.x].val[0/4] = v1.x;
+  r0.y = (int)v1.x;
+  u1[3].val[12/4] = r0.y;
+  r1.z = u1[3].val[32/4];
+  r1.x = u1[3].val[40/4];
+  r1.y = u1[3].val[40/4+1];
+  u1[2].val[20/4] = r1.y;
+  u1[2].val[20/4+1] = r1.z;
+  u1[2].val[20/4+2] = r1.x;
+  r0.z = u1[3].val[76/4];
+  r0.w = u1[3].val[76/4+1];
+  u1[2].val[52/4] = r0.w;
+  u1[2].val[64/4] = r0.z;
+  r1.y = (uint)v1.x;
+  r1.xzw = v1.xxx;
+  u2[v0.x].val[0/4] = r1.x;
+  u2[v0.x].val[0/4+1] = r1.y;
+  u2[v0.x].val[0/4+2] = r1.z;
+  u2[v0.x].val[0/4+3] = r1.w;
+  u2[v0.x].val[16/4] = v1.x;
+  u2[v0.x].val[112/4] = v1.x;
+  u2[v0.x].val[200/4] = v1.x;
+  u2[v0.x].val[232/4] = r0.y;
+  r0.y = u3[1].val[0/4];
+  r0.z = u3[1].val[0/4+1];
+  r0.w = u3[1].val[0/4+2];
+  u3[0].val[0/4] = r0.w;
+  u3[0].val[0/4+1] = r0.y;
+  u3[0].val[0/4+2] = r0.z;
+  r0.y = u3[3].val[0/4];
+  r0.z = u3[3].val[0/4+1];
+  u3[2].val[8/4] = r0.z;
+  u3[2].val[0/4] = r0.y;
+  r1.x = u4[1].val[0/4];
+  r1.y = u4[1].val[0/4+1];
+  r1.z = u4[1].val[0/4+2];
+  r1.w = u4[1].val[0/4+3];
+  r2.x = u4[1].val[16/4];
+  r2.y = u4[1].val[16/4+2];
+  r2.z = u4[1].val[16/4+1];
+  r2.w = u4[1].val[16/4+3];
+  r3.x = u4[1].val[32/4];
+  r3.y = u4[1].val[32/4+1];
+  r3.z = u4[1].val[32/4+3];
+  r3.w = u4[1].val[32/4+2];
+  r4.x = u4[1].val[48/4];
+  r4.y = u4[1].val[48/4+1];
+  r4.z = u4[1].val[48/4+2];
+  r4.w = u4[1].val[48/4+3];
+  r5.x = r1.x;
+  r5.y = r2.x;
+  r5.z = r3.x;
+  r5.w = r4.x;
+  u4[0].val[0/4] = r5.x;
+  u4[0].val[0/4+1] = r5.y;
+  u4[0].val[0/4+2] = r5.z;
+  u4[0].val[0/4+3] = r5.w;
+  r5.x = r1.y;
+  r5.y = r2.z;
+  r5.z = r3.y;
+  r5.w = r4.y;
+  u4[0].val[16/4] = r5.x;
+  u4[0].val[16/4+1] = r5.y;
+  u4[0].val[16/4+2] = r5.z;
+  u4[0].val[16/4+3] = r5.w;
+  r2.x = r1.z;
+  r3.x = r1.w;
+  r3.y = r2.w;
+  r2.z = r3.w;
+  r2.w = r4.z;
+  r3.w = r4.w;
+  u4[0].val[32/4] = r2.x;
+  u4[0].val[32/4+1] = r2.y;
+  u4[0].val[32/4+2] = r2.z;
+  u4[0].val[32/4+3] = r2.w;
+  u4[0].val[48/4] = r3.x;
+  u4[0].val[48/4+1] = r3.y;
+  u4[0].val[48/4+2] = r3.z;
+  u4[0].val[48/4+3] = r3.w;
   r0.y = t110[2].val[4/4];
   r0.xy = (uint2)r0.xy;
   r0.z = t110[0].val[0/4];
@@ -67,26 +160,34 @@ void main(
   r1.x = t111[v0.x].val[0/4];
   r1.y = t111[v0.x].val[0/4+1];
   r1.z = t111[v0.x].val[0/4+2];
+  r1.w = t111[v0.x].val[0/4+3];
   r0.y = r1.x + r0.y;
   r0.z = (uint)r1.y;
   r0.y = r0.y + r0.z;
   r0.y = r0.y + r1.z;
-  r0.z = t111[v0.x].val[40/4];
-  r0.w = t111[v0.x].val[40/4+1];
+  r0.y = r0.y + r1.w;
+  r0.z = t111[v0.x].val[16/4];
+  r0.y = r0.y + r0.z;
+  r0.z = t111[v0.x].val[112/4];
+  r0.y = r0.y + r0.z;
+  r0.z = t111[v0.x].val[200/4];
+  r0.y = r0.y + r0.z;
+  r0.z = t111[v0.x].val[232/4];
+  r0.w = t111[v0.x].val[232/4+1];
   r0.z = (int)r0.z;
   r0.y = r0.y + r0.z;
   r0.y = r0.y + r0.w;
-  r0.z = t111[v0.x].val[68/4];
-  r0.w = t111[v0.x].val[68/4+1];
+  r0.z = t111[v0.x].val[260/4];
+  r0.w = t111[v0.x].val[260/4+1];
   r0.z = (int)r0.z;
   r0.y = r0.y + r0.z;
   r0.y = r0.y + r0.w;
-  r0.z = t111[v0.x].val[132/4];
-  r0.w = t111[v0.x].val[132/4+1];
+  r0.z = t111[v0.x].val[324/4];
+  r0.w = t111[v0.x].val[324/4+1];
   r0.y = r0.y + r0.z;
   r0.y = r0.y + r0.w;
-  r0.z = t111[v0.x].val[248/4];
-  r0.w = t111[v0.x].val[248/4+1];
+  r0.z = t111[v0.x].val[440/4];
+  r0.w = t111[v0.x].val[440/4+1];
   r0.y = r0.y + r0.z;
   r0.y = r0.y + r0.w;
   o0.xyzw = r0.yyyy + r0.xxxx;

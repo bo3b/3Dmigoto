@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 19:06:18 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 19:08:46 2018
 
 struct foo
 {
@@ -17,20 +17,42 @@ struct bar
 {
     float foofoo;                  // Offset:    0
     uint foobar;                   // Offset:    4
-    float foobaz;                  // Offset:    8
-    int foobuz[8];                 // Offset:   12
-    float binary_decompiler_array_size_calculation_looks_sketchy;// Offset:   44
-    int2 really[3];                // Offset:   48
-    float sketchy;                 // Offset:   72
-    float3 did[5];                 // Offset:   76
-    float i;                       // Offset:  136
-    float4 mention[7];             // Offset:  140
-    float how_sketchy;             // Offset:  252
+    struct {
+        float foo;                 // Offset:    8
+        float bar;                 // Offset:   12
+    } inner_struct_1;              // Offset:    8
+    struct {
+        float baz;                 // Offset:   16
+        float bug;                 // Offset:   20
+        struct {
+            float foo;             // Offset:   24
+            uint bar;              // Offset:   28
+            float baz;             // Offset:   32
+            int buz;               // Offset:   36
+            float4 f4;             // Offset:   40
+            float4 g4;             // Offset:   56
+            float oopsie;          // Offset:   72
+            float4 m4;             // Offset:   76
+            float4 n4;             // Offset:   92
+        } inner_struct_3;          // Offset:   24
+    } inner_struct_2[2];           // Offset:   16
+    float foobaz;                  // Offset:  200
+    int foobuz[8];                 // Offset:  204
+    float binary_decompiler_array_size_calculation_looks_sketchy;// Offset:  236
+    int2 really[3];                // Offset:  240
+    float sketchy;                 // Offset:  264
+    float3 did[5];                 // Offset:  268
+    float i;                       // Offset:  328
+    float4 mention[7];             // Offset:  332
+    float how_sketchy;             // Offset:  444
 };
 
 StructuredBuffer<foo> struct_buf_1 : register(t110);
 StructuredBuffer<bar> struct_buf_2 : register(t111);
-RWStructuredBuffer<foo> rw_struct_buf : register(u1);
+RWStructuredBuffer<foo> rw_struct_buf_1 : register(u1);
+RWStructuredBuffer<bar> rw_struct_buf_2 : register(u2);
+RWStructuredBuffer<float3> rw_prim_float3 : register(u3);
+RWStructuredBuffer<float4x4> rw_prim_float4x4 : register(u4);
 
 
 // 3Dmigoto declarations
@@ -44,12 +66,61 @@ void main(
   float v1 : TEXCOORD1,
   out float4 o0 : SV_Target0)
 {
-  float4 r0,r1,r2;
+  float4 r0,r1,r2,r3,r4,r5;
   uint4 bitmask, uiDest;
   float4 fDest;
 
-  r0.x = rw_struct_buf[v0.x].bar;
-  rw_struct_buf[v0.x].foo = v1.x;
+  r0.x = rw_struct_buf_1[v0.x].bar;
+  rw_struct_buf_1[v0.x].foo = v1.x;
+  r0.y = (int)v1.x;
+  rw_struct_buf_1[3].buz = r0.y;
+  r1.z = rw_struct_buf_1[3].g4.x;
+  r1.x = rw_struct_buf_1[3].g4.z;
+  r1.y = rw_struct_buf_1[3].g4.w;
+  rw_struct_buf_1[2].f4.y = r1.y;
+  rw_struct_buf_1[2].f4.z = r1.z;
+  rw_struct_buf_1[2].f4.w = r1.x;
+  r0.z = rw_struct_buf_1[3].n4.z;
+  r0.w = rw_struct_buf_1[3].n4.w;
+  rw_struct_buf_1[2].m4.x = r0.w;
+  rw_struct_buf_1[2].m4.w = r0.z;
+  r1.y = (uint)v1.x;
+  r1.xzw = v1.xxx;
+  rw_struct_buf_2[v0.x].foofoo = r1.x;
+  rw_struct_buf_2[v0.x].foobar = r1.y;
+  rw_struct_buf_2[v0.x].inner_struct_1.foo = r1.z;
+  rw_struct_buf_2[v0.x].inner_struct_1.bar = r1.w;
+  rw_struct_buf_2[v0.x].inner_struct_2[0].baz = v1.x;
+  rw_struct_buf_2[v0.x].inner_struct_2[1].bug = v1.x;
+  rw_struct_buf_2[v0.x].foobaz = v1.x;
+  rw_struct_buf_2[v0.x].foobuz[7] = r0.y;
+  r0.yzw = rw_prim_float3[1].xyz;
+  rw_prim_float3[0].xyz = r0.wyz;
+  r0.yz = rw_prim_float3[3].xy;
+  rw_prim_float3[2].z = r0.z;
+  rw_prim_float3[2].x = r0.y;
+  r1.xyzw = rw_prim_float4x4[1]._m00_m10_m20_m30;
+  r2.xyzw = rw_prim_float4x4[1]._m01_m21_m11_m31;
+  r3.xyzw = rw_prim_float4x4[1]._m02_m12_m32_m22;
+  r4.xyzw = rw_prim_float4x4[1]._m03_m13_m23_m33;
+  r5.x = r1.x;
+  r5.y = r2.x;
+  r5.z = r3.x;
+  r5.w = r4.x;
+  rw_prim_float4x4[0]._m00_m10_m20_m30 = r5.xyzw;
+  r5.x = r1.y;
+  r5.y = r2.z;
+  r5.z = r3.y;
+  r5.w = r4.y;
+  rw_prim_float4x4[0]._m01_m11_m21_m31 = r5.xyzw;
+  r2.x = r1.z;
+  r3.x = r1.w;
+  r3.y = r2.w;
+  r2.z = r3.w;
+  r2.w = r4.z;
+  r3.w = r4.w;
+  rw_prim_float4x4[0]._m02_m12_m22_m32 = r2.xyzw;
+  rw_prim_float4x4[0]._m03_m13_m23_m33 = r3.xyzw;
   r0.y = struct_buf_1[2].bar;
   r0.xy = (uint2)r0.xy;
   r0.z = struct_buf_1[0].foo;
@@ -82,11 +153,19 @@ void main(
   r0.y = r0.y + r0.z;
   r1.x = struct_buf_2[v0.x].foofoo;
   r1.y = struct_buf_2[v0.x].foobar;
-  r1.z = struct_buf_2[v0.x].foobaz;
+  r1.z = struct_buf_2[v0.x].inner_struct_1.foo;
+  r1.w = struct_buf_2[v0.x].inner_struct_1.bar;
   r0.y = r1.x + r0.y;
   r0.z = (uint)r1.y;
   r0.y = r0.y + r0.z;
   r0.y = r0.y + r1.z;
+  r0.y = r0.y + r1.w;
+  r0.z = struct_buf_2[v0.x].inner_struct_2[0].baz;
+  r0.y = r0.y + r0.z;
+  r0.z = struct_buf_2[v0.x].inner_struct_2[1].bug;
+  r0.y = r0.y + r0.z;
+  r0.z = struct_buf_2[v0.x].foobaz;
+  r0.y = r0.y + r0.z;
   r0.z = struct_buf_2[v0.x].foobuz[7];
   r0.w = struct_buf_2[v0.x].binary_decompiler_array_size_calculation_looks_sketchy;
   r0.z = (int)r0.z;
