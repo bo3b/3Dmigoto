@@ -3327,9 +3327,172 @@ public:
 		return ret;
 	}
 
+	bool translate_structured_var(Shader *shader, const char *c, size_t &pos, size_t &size, Instruction *instr,
+			std::string ret[4], bool *combined, char *idx, char *off, char *reg, Operand *texture, int swiz_offsets[4])
+	{
+		Operand dst0 = instr->asOperands[0];
+		ResourceGroup group = (ResourceGroup)-1;
+		ResourceBinding *bindInfo;
+		char buffer[512];
+
+		applySwizzle(".x", idx);
+		applySwizzle(".x", off);
+
+		*combined = false;
+
+		if (reg[0] == 't')
+			group = RGROUP_TEXTURE;
+		else if (reg[0] == 'u')
+			group = RGROUP_UAV;
+		// else 'g' = compute shader thread group shared memory, which will never have reflection info
+
+		if (group != (ResourceGroup)-1 && GetResourceFromBindingPoint(group, texture->ui32RegisterNumber, shader->sInfo, &bindInfo))
+		{
+			map<string, string>::iterator struct_type_i;
+
+			struct_type_i = mStructuredBufferTypes.find(bindInfo->Name);
+			if (struct_type_i == mStructuredBufferTypes.end()) {
+				sprintf(buffer, "// BUG: Cannot locate struct type:\n");
+				appendOutput(buffer);
+				ASMLineOut(c, pos, size);
+				return false;
+			}
+
+			if (mStructuredBufferUsedNames.find(struct_type_i->second) != mStructuredBufferUsedNames.end())
+			{
+				int swiz_offset = 0;
+
+				if (sscanf_s(off, "%d", &swiz_offset) == 1)
+				{
+					// Static offset:
+					ConstantBuffer *bufInfo = NULL;
+					GetConstantBufferFromBindingPoint(group, texture->ui32RegisterNumber, shader->sInfo, &bufInfo);
+					if (!bufInfo) {
+						sprintf(buffer, "// BUG: Cannot locate struct layout:\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						return false;
+					}
+
+					for (uint32_t component = 0; component < 4; component++)
+					{
+						ShaderVarType *var = NULL;
+						int32_t byte_offset = swiz_offsets[component] + swiz_offset;
+						uint32_t swiz = byte_offset % 16 / 4;
+						int32_t index = -1;
+						int32_t rebase = -1;
+						std::string var_txt;
+
+						if (!(dst0.ui32CompMask & (1 << component)))
+							continue;
+
+						GetShaderVarFromOffset(byte_offset / 16, &swiz, bufInfo, &var, &index, &rebase);
+						if (!var) {
+							sprintf(buffer, "// BUG: Cannot locate variable in structure:\n");
+							appendOutput(buffer);
+							ASMLineOut(c, pos, size);
+							return false;
+						}
+
+						var_txt = shadervar_name(var, byte_offset);
+
+						sprintf(buffer, "%s[%s].%s",
+								bindInfo->Name.c_str(),
+								ci(idx).c_str(),
+								var_txt.c_str());
+						ret[component] = buffer;
+					}
+					return true;
+				} else {
+					sprintf(buffer, "// Structured buffer using dynamic offset (needs manual fix):\n");
+					appendOutput(buffer);
+					ASMLineOut(c, pos, size);
+					return false;
+				}
+			}
+			else
+			{
+				// This StructuredBuffer is using a primitive type rather
+				// than a structure (e.g. StructuredBuffer<float4> foo).
+				DataType struct_type = TranslateType(struct_type_i->second.c_str());
+				int swiz_offset = 0;
+
+				if (sscanf_s(off, "%d", &swiz_offset) == 1) {
+					// Static offset:
+					for (int component = 0; component < 4; component++)
+						swiz_offsets[component] += swiz_offset;
+					sprintf(buffer, "%s[%s].%s%s%s%s",
+							bindInfo->Name.c_str(), ci(idx).c_str(),
+							(dst0.ui32CompMask & 0x1 ? offset2swiz(struct_type, swiz_offsets[0]) : ""),
+							(dst0.ui32CompMask & 0x2 ? offset2swiz(struct_type, swiz_offsets[1]) : ""),
+							(dst0.ui32CompMask & 0x4 ? offset2swiz(struct_type, swiz_offsets[2]) : ""),
+							(dst0.ui32CompMask & 0x8 ? offset2swiz(struct_type, swiz_offsets[3]) : ""));
+				} else {
+					// Dynamic offset, use [] syntax:
+					if (strcmp(strchr(reg, '.'), ".x")) {
+						sprintf(buffer, "// Unexpected swizzle used with dynamic offset (needs manual fix):\n");
+						appendOutput(buffer);
+						ASMLineOut(c, pos, size);
+						return false;
+					}
+					sprintf(buffer, "%s[%s][%s/4]",
+							bindInfo->Name.c_str(), ci(idx).c_str(), ci(off).c_str());
+				}
+				// Returning all components combined together:
+				*combined = true;
+				ret[0] = buffer;
+				return true;
+			}
+		}
+		else
+		{
+			// Missing reflection information - we have to use our fake
+			// type information instead. Our fake type information is
+			// an array of floats for the greatest compatibility with
+			// any possible stride value that StructuredBuffers may posess,
+			// but that means we have to break up instructions to assign
+			// each component in the mask separately, adjusting the offset
+			// based on the swizzle. TODO: We could recombine them using
+			// a floatN(x,y,z,w); construct. We can't fix up types that
+			// aren't floats here, because we won't know what types they
+			// are until they are used - ideally we should switch to a
+			// model that uses asfloat/asint where non-floats are used
+			// to treat HLSL variables closer to typeless DX registers.
+			stripMask(reg);
+			for (int component = 0; component < 4; component++) {
+				if (!(dst0.ui32CompMask & (1 << component)))
+					continue;
+				// The swizzle is a bit more complicated than the mask here,
+				// because it represents extra 32bit offsets in the structure,
+				// which is one whole index in the "val" array in our fake type.
+				char *swiz_offset = "";
+				switch (swiz_offsets[component]) {
+					case  0: break;
+					case  4: swiz_offset = "+1"; break;
+					case  8: swiz_offset = "+2"; break;
+					case 12: swiz_offset = "+3"; break;
+					default: swiz_offset = "+?"; break;
+				}
+				// Writing it like this should work for both dynamic and static
+				// offsets. We could pre-compute static offsets to clean up the
+				// output, but since we've lost the swizzle by using fake types
+				// it may actually be more informative to use this way:
+				sprintf(buffer, "%s[%s].val[%s/4%s]",
+						reg,
+						ci(idx).c_str(),
+						ci(off).c_str(),
+						swiz_offset);
+				ret[component] = buffer;
+			}
+			return true;
+		}
+	}
+
 	void parse_ld_structured(Shader *shader, const char *c, size_t &pos, size_t &size, Instruction *instr)
 	{
+		std::string translated[4];
 		char buffer[512];
+		bool combined;
 
 		// New variant found in Mordor.  Example:
 		//   gInstanceBuffer                   texture  struct         r/o    0        1
@@ -3371,12 +3534,8 @@ public:
 			dst = op2, idx = op3, off = op4, reg = op5; // Note comma operator
 		Operand dst0 = instr->asOperands[0];
 		Operand texture = instr->asOperands[3];
-		ResourceGroup group = (ResourceGroup)-1;
-		ResourceBinding *bindInfo;
 
 		remapTarget(dst);
-		applySwizzle(".x", idx);
-		applySwizzle(".x", off);
 		applySwizzle(dst, reg);
 
 		// The swizzle represents extra 32bit offsets within the structure:
@@ -3390,154 +3549,64 @@ public:
 			}
 		}
 
-		if (reg[0] == 't')
-			group = RGROUP_TEXTURE;
-		else if (reg[0] == 'u')
-			group = RGROUP_UAV;
-		// else 'g' = compute shader thread group shared memory, which will never have reflection info
-
-		if (group != (ResourceGroup)-1 && GetResourceFromBindingPoint(group, texture.ui32RegisterNumber, shader->sInfo, &bindInfo))
-		{
-			map<string, string>::iterator struct_type_i;
-
-			struct_type_i = mStructuredBufferTypes.find(bindInfo->Name);
-			if (struct_type_i == mStructuredBufferTypes.end()) {
-				sprintf(buffer, "// BUG: Cannot locate struct type:\n");
+		if (translate_structured_var(shader, c, pos, size, instr, translated, &combined, idx, off, reg, &texture, swiz_offsets)) {
+			if (combined) {
+				sprintf(buffer, "  %s = %s;\n", writeTarget(dst), translated[0].c_str());
 				appendOutput(buffer);
-				ASMLineOut(c, pos, size);
-				return;
-			}
-
-			if (mStructuredBufferUsedNames.find(struct_type_i->second) != mStructuredBufferUsedNames.end())
-			{
-				int swiz_offset = 0;
+			} else {
 				stripMask(dst);
-
-				if (sscanf_s(off, "%d", &swiz_offset) == 1)
-				{
-					// Static offset:
-					ConstantBuffer *bufInfo = NULL;
-					GetConstantBufferFromBindingPoint(group, texture.ui32RegisterNumber, shader->sInfo, &bufInfo);
-					if (!bufInfo) {
-						sprintf(buffer, "// BUG: Cannot locate struct layout:\n");
-						appendOutput(buffer);
-						ASMLineOut(c, pos, size);
-						return;
-					}
-
-					for (uint32_t component = 0; component < 4; component++)
-					{
-						ShaderVarType *var = NULL;
-						int32_t byte_offset = swiz_offsets[component] + swiz_offset;
-						uint32_t swiz = byte_offset % 16 / 4;
-						int32_t index = -1;
-						int32_t rebase = -1;
-						std::string var_txt;
-
-						if (!(dst0.ui32CompMask & (1 << component)))
-							continue;
-
-						GetShaderVarFromOffset(byte_offset / 16, &swiz, bufInfo, &var, &index, &rebase);
-						if (!var) {
-							sprintf(buffer, "// BUG: Cannot locate variable in structure:\n");
-							appendOutput(buffer);
-							ASMLineOut(c, pos, size);
-							break;
-						}
-
-						var_txt = shadervar_name(var, byte_offset);
-
-						sprintf(buffer, "  %s.%c = %s[%s].%s;\n",
-								writeTarget(dst),
-								component == 3 ? 'w' : 'x' + component,
-								bindInfo->Name.c_str(),
-								ci(idx).c_str(),
-								var_txt.c_str());
-						appendOutput(buffer);
-					}
-				} else {
-					sprintf(buffer, "// Structured buffer using dynamic offset (needs manual fix):\n");
-					appendOutput(buffer);
-					ASMLineOut(c, pos, size);
-				}
-			}
-			else
-			{
-				// This StructuredBuffer is using a primitive type rather
-				// than a structure (e.g. StructuredBuffer<float4> foo).
-				DataType struct_type = TranslateType(struct_type_i->second.c_str());
-				int swiz_offset = 0;
-
-				if (sscanf_s(off, "%d", &swiz_offset) == 1) {
-					// Static offset:
-					for (int component = 0; component < 4; component++)
-						swiz_offsets[component] += swiz_offset;
-					sprintf(buffer, "  %s = %s[%s].%s%s%s%s;\n",
-							writeTarget(dst), bindInfo->Name.c_str(), ci(idx).c_str(),
-							(dst0.ui32CompMask & 0x1 ? offset2swiz(struct_type, swiz_offsets[0]) : ""),
-							(dst0.ui32CompMask & 0x2 ? offset2swiz(struct_type, swiz_offsets[1]) : ""),
-							(dst0.ui32CompMask & 0x4 ? offset2swiz(struct_type, swiz_offsets[2]) : ""),
-							(dst0.ui32CompMask & 0x8 ? offset2swiz(struct_type, swiz_offsets[3]) : ""));
-					appendOutput(buffer);
-				} else {
-					// Dynamic offset, use [] syntax:
-					if (strcmp(strchr(reg, '.'), ".x")) {
-						sprintf(buffer, "// Unexpected swizzle used with dynamic offset (needs manual fix):\n");
-						appendOutput(buffer);
-						ASMLineOut(c, pos, size);
-					}
-					sprintf(buffer, "  %s = %s[%s][%s/4];\n",
-							writeTarget(dst), bindInfo->Name.c_str(), ci(idx).c_str(), ci(off).c_str());
+				for (int component = 0; component < 4; component++) {
+					if (!(dst0.ui32CompMask & (1 << component)))
+						continue;
+					sprintf(buffer, "  %s.%c = %s;\n",
+							writeTarget(dst),
+							component == 3 ? 'w' : 'x' + component,
+							translated[component].c_str());
 					appendOutput(buffer);
 				}
-			}
-		}
-		else
-		{
-			// Missing reflection information - we have to use our fake
-			// type information instead. Our fake type information is
-			// an array of floats for the greatest compatibility with
-			// any possible stride value that StructuredBuffers may posess,
-			// but that means we have to break up instructions to assign
-			// each component in the mask separately, adjusting the offset
-			// based on the swizzle. TODO: We could recombine them using
-			// a floatN(x,y,z,w); construct. We can't fix up types that
-			// aren't floats here, because we won't know what types they
-			// are until they are used - ideally we should switch to a
-			// model that uses asfloat/asint where non-floats are used
-			// to treat HLSL variables closer to typeless DX registers.
-			stripMask(dst);
-			stripMask(reg);
-			for (int component = 0; component < 4; component++) {
-				if (!(dst0.ui32CompMask & (1 << component)))
-					continue;
-				// The swizzle is a bit more complicated than the mask here,
-				// because it represents extra 32bit offsets in the structure,
-				// which is one whole index in the "val" array in our fake type.
-				char *swiz_offset = "";
-				switch (swiz_offsets[component]) {
-					case  0: break;
-					case  4: swiz_offset = "+1"; break;
-					case  8: swiz_offset = "+2"; break;
-					case 12: swiz_offset = "+3"; break;
-					default: swiz_offset = "+?"; break;
-				}
-				// Writing it like this should work for both dynamic and static
-				// offsets. We could pre-compute static offsets to clean up the
-				// output, but since we've lost the swizzle by using fake types
-				// it may actually be more informative to use this way:
-				sprintf(buffer, "  %s.%c = %s[%s].val[%s/4%s];\n",
-						writeTarget(dst),
-						component == 3 ? 'w' : 'x' + component,
-						reg,
-						ci(idx).c_str(),
-						ci(off).c_str(),
-						swiz_offset);
-				appendOutput(buffer);
 			}
 		}
 
 		removeBoolean(op1);
+	}
+
+	void parse_store_structured(Shader *shader, const char *c, size_t &pos, size_t &size, Instruction *instr)
+	{
+		std::string translated[4];
+		char buffer[512];
+		bool combined;
+
+		// store_structured u1.x, v0.x, l(0), v1.x
+		char *dst = op1, *idx = op2, *off = op3, *src = op4;
+		Operand dst0 = instr->asOperands[0];
+		Operand src0 = instr->asOperands[3];
+
+		remapTarget(dst);
+		int swiz_offsets[4] = {0, 4, 8, 12};
+
+		if (translate_structured_var(shader, c, pos, size, instr, translated, &combined, idx, off, dst, &dst0, swiz_offsets)) {
+			if (combined) {
+				applySwizzle(dst, src);
+				sprintf(buffer, "  %s = %s;\n", translated[0].c_str(), ci(src).c_str());
+				appendOutput(buffer);
+			} else {
+				for (int component = 0; component < 4; component++) {
+					if (!(dst0.ui32CompMask & (1 << component)))
+						continue;
+
+					strcpy(op5, src); fixImm(op5, src0);
+					switch (component) {
+						case 0: applySwizzle(".x", op5); break;
+						case 1: applySwizzle(".y", op5); break;
+						case 2: applySwizzle(".z", op5); break;
+						case 3: applySwizzle(".w", op5); break;
+					}
+
+					sprintf(buffer, "  %s = %s;\n", translated[component].c_str(), ci(op5).c_str());
+					appendOutput(buffer);
+				}
+			}
+		}
 	}
 
 	void ParseCode(Shader *shader, const char *c, size_t size)
@@ -5547,13 +5616,7 @@ public:
 						//	  gInstanceBuffer[worldMatrixOffset] = x.y;
 					case OPCODE_STORE_STRUCTURED:
 					{
-						remapTarget(op1);
-						applySwizzle(".xyzw", op2);	// srcAddress structure
-						applySwizzle(op1, op3);		// byteOffset in structure
-						int textureId;
-						sscanf_s(op4, "t%d.", &textureId);
-						sprintf(buffer, "  %s[%s].%s = %s;\n", mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op3).c_str(), writeTarget(op1));
-						appendOutput(buffer);
+						parse_store_structured(shader, c, pos, size, instr);
 						break;
 					}
 

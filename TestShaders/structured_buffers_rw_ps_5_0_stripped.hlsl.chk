@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:36:37 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 19:03:39 2018
 struct t111_t {
   float val[64];
 };
@@ -30,7 +30,7 @@ void main(
   float4 fDest;
 
   r0.x = u1[v0.x].val[4/4];
-  [v0.x].0 = u1.x;
+  u1[v0.x].val[0/4] = v1.x;
   r0.y = t110[2].val[4/4];
   r0.xy = (uint2)r0.xy;
   r0.z = t110[0].val[0/4];
