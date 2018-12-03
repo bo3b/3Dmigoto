@@ -195,7 +195,12 @@ static const uint32_t* ReadConstantBuffer(ShaderInfo* psShaderInfo,
     for(i=0; i<ui32VarCount; ++i)
     {
         //D3D11_SHADER_VARIABLE_DESC
-		ShaderVar sVar;
+		// DarkStarSword: Changed this to emplace first, then get a pointer.
+		// The way we originally did this filling out the structure then inserting
+		// it with push_back(), was problematic, as the inserted struct was a copy,
+		// not the original, so the Parent pointers of all members were invalid.
+		psBuffer->asVars.emplace_back();
+        ShaderVar * const psVar = &psBuffer->asVars.back();
 
         uint32_t ui32Flags;
         uint32_t ui32TypeOffset;
@@ -203,21 +208,21 @@ static const uint32_t* ReadConstantBuffer(ShaderInfo* psShaderInfo,
 
         ui32NameOffset = *pui32VarToken++;
 
-        ReadStringFromTokenStream((const uint32_t*)((const char*)pui32FirstConstBufToken+ui32NameOffset), sVar.Name);
+        ReadStringFromTokenStream((const uint32_t*)((const char*)pui32FirstConstBufToken+ui32NameOffset), psVar->Name);
 
-        sVar.ui32StartOffset = *pui32VarToken++;
-        sVar.ui32Size = *pui32VarToken++;
+        psVar->ui32StartOffset = *pui32VarToken++;
+        psVar->ui32Size = *pui32VarToken++;
         ui32Flags = *pui32VarToken++;
         ui32TypeOffset = *pui32VarToken++;
 
-		sVar.sType.Name = sVar.Name;
-		sVar.sType.FullName = sVar.Name;
-		sVar.sType.Parent = 0;
-		sVar.sType.ParentCount = 0;
-		sVar.sType.Offset = 0;
+		psVar->sType.Name = psVar->Name;
+		psVar->sType.FullName = psVar->Name;
+		psVar->sType.Parent = 0;
+		psVar->sType.ParentCount = 0;
+		psVar->sType.Offset = 0;
 
         ReadShaderVariableType(psShaderInfo->ui32MajorVersion, pui32FirstConstBufToken, 
-			(const uint32_t*)((const char*)pui32FirstConstBufToken+ui32TypeOffset), &sVar.sType);
+			(const uint32_t*)((const char*)pui32FirstConstBufToken+ui32TypeOffset), &psVar->sType);
 
         ui32DefaultValueOffset = *pui32VarToken++;
 
@@ -230,27 +235,25 @@ static const uint32_t* ReadConstantBuffer(ShaderInfo* psShaderInfo,
 			uint32_t SamplerSize = *pui32VarToken++;
 		}
 
-		sVar.haveDefaultValue = false;
+		psVar->haveDefaultValue = false;
 
         if(ui32DefaultValueOffset)
         {
 			uint32_t i = 0;
-			const uint32_t ui32NumDefaultValues = sVar.ui32Size / 4;
+			const uint32_t ui32NumDefaultValues = psVar->ui32Size / 4;
 			const uint32_t* pui32DefaultValToken = (const uint32_t*)((const char*)pui32FirstConstBufToken+ui32DefaultValueOffset);
 
 			//Always a sequence of 4-bytes at the moment.
 			//bool const becomes 0 or 0xFFFFFFFF int, int & float are 4-bytes.
-			ASSERT(sVar.ui32Size%4 == 0);
+			ASSERT(psVar->ui32Size%4 == 0);
 
-			sVar.haveDefaultValue = true;
+			psVar->haveDefaultValue = true;
 
 			for(i=0; i<ui32NumDefaultValues;++i)
 			{
-				sVar.pui32DefaultValues.push_back(pui32DefaultValToken[i]);
+				psVar->pui32DefaultValues.push_back(pui32DefaultValToken[i]);
 			}
         }
-
-		psBuffer->asVars.push_back(sVar);
     }
 
 
@@ -486,16 +489,22 @@ int GetInterfaceVarFromOffset(uint32_t ui32Offset, ShaderInfo* psShaderInfo, Sha
     return 0;
 }
 
-// Manually added from latest James-Jones HLSLCrossCompiler for StructuredBuffer support -DSS
-static int IsOffsetInType(ShaderVarType* psType,
-						  uint32_t parentOffset,
-						  uint32_t offsetToFind,
-						  const uint32_t* pui32Swizzle,
-						  int32_t* pi32Index,
-						  int32_t* pi32Rebase)
+// Added to calculate structure sizes rather than assume 4 bytes -DSS
+uint32_t ShaderVarSize(ShaderVarType* psType, uint32_t* singularSize)
 {
-	uint32_t thisOffset = parentOffset + psType->Offset;
-	uint32_t thisSize = psType->Columns * psType->Rows * 4;
+	uint32_t thisSize = 0;
+	uint32_t m = 0;
+
+	if(psType->Class == SVC_STRUCT)
+	{
+		for(m=0; m < psType->MemberCount; ++m)
+			thisSize += ShaderVarSize(psType->Members + m, NULL);
+	}
+	else
+		thisSize = psType->Columns * psType->Rows * 4;
+
+	if(singularSize)
+		*singularSize = thisSize;
 
 	if(psType->Elements)
 	{
@@ -523,46 +532,19 @@ static int IsOffsetInType(ShaderVarType* psType,
 		thisSize *= psType->Elements;
 #endif
 	}
+	return thisSize;
+}
 
-    //Swizzle can point to another variable. In the example below
-	//cbUIUpdates.g_uMaxFaces would be cb1[2].z. The scalars are combined
-	//into vectors. psCBuf->ui32NumVars will be 3.
-
-	// cbuffer cbUIUpdates
-	// {
-	//
-	//   float g_fLifeSpan;                 // Offset:    0 Size:     4
-	//   float g_fLifeSpanVar;              // Offset:    4 Size:     4 [unused]
-	//   float g_fRadiusMin;                // Offset:    8 Size:     4 [unused]
-	//   float g_fRadiusMax;                // Offset:   12 Size:     4 [unused]
-	//   float g_fGrowTime;                 // Offset:   16 Size:     4 [unused]
-	//   float g_fStepSize;                 // Offset:   20 Size:     4
-	//   float g_fTurnRate;                 // Offset:   24 Size:     4
-	//   float g_fTurnSpeed;                // Offset:   28 Size:     4 [unused]
-	//   float g_fLeafRate;                 // Offset:   32 Size:     4
-	//   float g_fShrinkTime;               // Offset:   36 Size:     4 [unused]
-	//   uint g_uMaxFaces;                  // Offset:   40 Size:     4
-	//
-	// }
-
-	// Name                                 Type  Format         Dim Slot Elements
-	// ------------------------------ ---------- ------- ----------- ---- --------
-	// cbUIUpdates                       cbuffer      NA          NA    1        1
-
-    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_Y)
-    {
-        offsetToFind += 4;
-    }
-    else
-    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_Z)
-    {
-        offsetToFind += 8;
-    }
-    else
-    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_W)
-    {
-        offsetToFind += 12;
-    }
+// Manually added from latest James-Jones HLSLCrossCompiler for StructuredBuffer support -DSS
+static int IsOffsetInType(ShaderVarType* psType,
+						  uint32_t parentOffset,
+						  uint32_t offsetToFind,
+						  int32_t* pi32Index,
+						  int32_t* pi32Rebase)
+{
+	uint32_t thisOffset = parentOffset + psType->Offset;
+	// DarkStarSword: Changed this line to calculate arrays and nested struct sizes properly:
+	uint32_t thisSize = ShaderVarSize(psType, NULL);
 
 	if((offsetToFind >= thisOffset) &&
 		offsetToFind < (thisOffset + thisSize))
@@ -604,6 +586,49 @@ static int IsOffsetInType(ShaderVarType* psType,
 	return 0;
 }
 
+// Moved out of GetShaderVarFromOffset to handle nested structs -DSS
+int GetShaderVarFromNestedStructOffset(ShaderVarType* psType,
+									   const uint32_t parentOffset,
+									   uint32_t ui32ByteOffset,
+									   ShaderVarType** ppsShaderVar,
+									   int32_t* pi32Index,
+									   int32_t* pi32Rebase)
+{
+	uint32_t singularSize = 0;
+	uint32_t thisSize = ShaderVarSize(psType, &singularSize);
+	uint32_t thisOffset = parentOffset + psType->Offset;
+	uint32_t m = 0;
+
+	if(ui32ByteOffset < thisOffset ||
+	   ui32ByteOffset >= thisOffset + thisSize)
+		return 0;
+
+	// We know we are somewhere inside the struct, but if this is an array of
+	// structs and we are looking for an offset in a subsequent struct index we
+	// need to adjust the offset to fit within the first struct index:
+	ui32ByteOffset = (ui32ByteOffset - thisOffset) % singularSize + thisOffset;
+
+	for(m=0; m < psType->MemberCount; ++m)
+	{
+		ShaderVarType* psMember = psType->Members + m;
+
+		if(psMember->Class == SVC_STRUCT)
+		{
+			if(GetShaderVarFromNestedStructOffset(psMember, thisOffset, ui32ByteOffset, ppsShaderVar, pi32Index, pi32Rebase))
+				return 1;
+		}
+		else
+		{
+			if(IsOffsetInType(psMember, thisOffset, ui32ByteOffset, pi32Index, pi32Rebase))
+			{
+				ppsShaderVar[0] = psMember;
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
 // Manually added from latest James-Jones HLSLCrossCompiler for StructuredBuffer support -DSS
 int GetShaderVarFromOffset(const uint32_t ui32Vec4Offset,
 						   const uint32_t* pui32Swizzle,
@@ -613,8 +638,6 @@ int GetShaderVarFromOffset(const uint32_t ui32Vec4Offset,
 						   int32_t* pi32Rebase)
 {
     uint32_t i;
-    const uint32_t ui32BaseByteOffset = ui32Vec4Offset * 16;
-
     uint32_t ui32ByteOffset = ui32Vec4Offset * 16;
 
     const uint32_t ui32NumVars = (uint32_t)psCBuf->asVars.size();
@@ -625,28 +648,56 @@ int GetShaderVarFromOffset(const uint32_t ui32Vec4Offset,
 		return 1;
 	}
 
+    //Swizzle can point to another variable. In the example below
+	//cbUIUpdates.g_uMaxFaces would be cb1[2].z. The scalars are combined
+	//into vectors. psCBuf->ui32NumVars will be 3.
+
+	// cbuffer cbUIUpdates
+	// {
+	//
+	//   float g_fLifeSpan;                 // Offset:    0 Size:     4
+	//   float g_fLifeSpanVar;              // Offset:    4 Size:     4 [unused]
+	//   float g_fRadiusMin;                // Offset:    8 Size:     4 [unused]
+	//   float g_fRadiusMax;                // Offset:   12 Size:     4 [unused]
+	//   float g_fGrowTime;                 // Offset:   16 Size:     4 [unused]
+	//   float g_fStepSize;                 // Offset:   20 Size:     4
+	//   float g_fTurnRate;                 // Offset:   24 Size:     4
+	//   float g_fTurnSpeed;                // Offset:   28 Size:     4 [unused]
+	//   float g_fLeafRate;                 // Offset:   32 Size:     4
+	//   float g_fShrinkTime;               // Offset:   36 Size:     4 [unused]
+	//   uint g_uMaxFaces;                  // Offset:   40 Size:     4
+	//
+	// }
+
+	// Name                                 Type  Format         Dim Slot Elements
+	// ------------------------------ ---------- ------- ----------- ---- --------
+	// cbUIUpdates                       cbuffer      NA          NA    1        1
+
+    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_Y)
+    {
+        ui32ByteOffset += 4;
+    }
+    else
+    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_Z)
+    {
+        ui32ByteOffset += 8;
+    }
+    else
+    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_W)
+    {
+        ui32ByteOffset += 12;
+    }
+
     for(i=0; i<ui32NumVars; ++i)
     {
 		if(psCBuf->asVars[i].sType.Class == SVC_STRUCT)
 		{
-			uint32_t m = 0;
-
-			for(m=0; m < psCBuf->asVars[i].sType.MemberCount; ++m)
-			{
-				ShaderVarType* psMember = psCBuf->asVars[i].sType.Members + m;
-
-				ASSERT(psMember->Class != SVC_STRUCT);
-
-				if(IsOffsetInType(psMember, psCBuf->asVars[i].ui32StartOffset, ui32ByteOffset, pui32Swizzle, pi32Index, pi32Rebase))
-				{
-					ppsShaderVar[0] = psMember;
-					return 1;
-				}
-			}
+			if(GetShaderVarFromNestedStructOffset(&psCBuf->asVars[i].sType, psCBuf->asVars[i].ui32StartOffset, ui32ByteOffset, ppsShaderVar, pi32Index, pi32Rebase))
+				return 1;
 		}
 		else
 		{
-			if(IsOffsetInType(&psCBuf->asVars[i].sType, psCBuf->asVars[i].ui32StartOffset, ui32ByteOffset, pui32Swizzle, pi32Index, pi32Rebase))
+			if(IsOffsetInType(&psCBuf->asVars[i].sType, psCBuf->asVars[i].ui32StartOffset, ui32ByteOffset, pi32Index, pi32Rebase))
 			{
 				ppsShaderVar[0] = &psCBuf->asVars[i].sType;
 				return 1;

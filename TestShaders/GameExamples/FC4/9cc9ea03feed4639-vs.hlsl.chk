@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:55:14 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 08:27:43 2018
 
 struct SImpostorInstance
 {
@@ -123,20 +123,20 @@ void main(
   r0.xy = (int2)r0.xy;
   r0.w = 0;
   r1.xyw = r0.xyw;
-  r2.x = instanceData[v1.x].m_treeToWS;
-  r2.y = instanceData[v1.x].m_treeToWS;
-  r2.z = instanceData[v1.x].m_treeToWS;
-  r2.w = instanceData[v1.x].m_treeToWS;
+  r2.x = instanceData[v1.x].m_treeToWS.rot[0];
+  r2.y = instanceData[v1.x].m_treeToWS.rot[1];
+  r2.z = instanceData[v1.x].m_treeToWS.rot[2];
+  r2.w = instanceData[v1.x].m_treeToWS.rot[3];
   r3.xyzw = (int4)r2.xyzw & int4(0xffff,0xffff,0xffff,0xffff);
   r2.xyzw = (uint4)r2.xyzw >> int4(16,16,16,16);
   r2.xyzw = f16tof32(r2.xywz);
   r3.xyzw = f16tof32(r3.xywz);
   r4.x = r3.z;
   r4.y = r2.z;
-  r5.x = instanceData[v1.x].m_treeToWS;
-  r5.y = instanceData[v1.x].m_treeToWS;
-  r5.z = instanceData[v1.x].m_treeToWS;
-  r5.w = instanceData[v1.x].m_treeToWS;
+  r5.x = instanceData[v1.x].m_treeToWS.rot[4];
+  r5.y = instanceData[v1.x].m_treeToWS.pos.x;
+  r5.z = instanceData[v1.x].m_treeToWS.pos.y;
+  r5.w = instanceData[v1.x].m_treeToWS.pos.z;
   r5.x = (int)r5.x & 0x0000ffff;
   r4.z = f16tof32(r5.x);
   r6.xyz = -_CameraPosition_DistanceScale.xyz + r5.yzw;
