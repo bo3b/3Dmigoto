@@ -195,7 +195,12 @@ static const uint32_t* ReadConstantBuffer(ShaderInfo* psShaderInfo,
     for(i=0; i<ui32VarCount; ++i)
     {
         //D3D11_SHADER_VARIABLE_DESC
-		ShaderVar sVar;
+		// DarkStarSword: Changed this to emplace first, then get a pointer.
+		// The way we originally did this filling out the structure then inserting
+		// it with push_back(), was problematic, as the inserted struct was a copy,
+		// not the original, so the Parent pointers of all members were invalid.
+		psBuffer->asVars.emplace_back();
+        ShaderVar * const psVar = &psBuffer->asVars.back();
 
         uint32_t ui32Flags;
         uint32_t ui32TypeOffset;
@@ -203,21 +208,21 @@ static const uint32_t* ReadConstantBuffer(ShaderInfo* psShaderInfo,
 
         ui32NameOffset = *pui32VarToken++;
 
-        ReadStringFromTokenStream((const uint32_t*)((const char*)pui32FirstConstBufToken+ui32NameOffset), sVar.Name);
+        ReadStringFromTokenStream((const uint32_t*)((const char*)pui32FirstConstBufToken+ui32NameOffset), psVar->Name);
 
-        sVar.ui32StartOffset = *pui32VarToken++;
-        sVar.ui32Size = *pui32VarToken++;
+        psVar->ui32StartOffset = *pui32VarToken++;
+        psVar->ui32Size = *pui32VarToken++;
         ui32Flags = *pui32VarToken++;
         ui32TypeOffset = *pui32VarToken++;
 
-		sVar.sType.Name = sVar.Name;
-		sVar.sType.FullName = sVar.Name;
-		sVar.sType.Parent = 0;
-		sVar.sType.ParentCount = 0;
-		sVar.sType.Offset = 0;
+		psVar->sType.Name = psVar->Name;
+		psVar->sType.FullName = psVar->Name;
+		psVar->sType.Parent = 0;
+		psVar->sType.ParentCount = 0;
+		psVar->sType.Offset = 0;
 
         ReadShaderVariableType(psShaderInfo->ui32MajorVersion, pui32FirstConstBufToken, 
-			(const uint32_t*)((const char*)pui32FirstConstBufToken+ui32TypeOffset), &sVar.sType);
+			(const uint32_t*)((const char*)pui32FirstConstBufToken+ui32TypeOffset), &psVar->sType);
 
         ui32DefaultValueOffset = *pui32VarToken++;
 
@@ -230,27 +235,25 @@ static const uint32_t* ReadConstantBuffer(ShaderInfo* psShaderInfo,
 			uint32_t SamplerSize = *pui32VarToken++;
 		}
 
-		sVar.haveDefaultValue = false;
+		psVar->haveDefaultValue = false;
 
         if(ui32DefaultValueOffset)
         {
 			uint32_t i = 0;
-			const uint32_t ui32NumDefaultValues = sVar.ui32Size / 4;
+			const uint32_t ui32NumDefaultValues = psVar->ui32Size / 4;
 			const uint32_t* pui32DefaultValToken = (const uint32_t*)((const char*)pui32FirstConstBufToken+ui32DefaultValueOffset);
 
 			//Always a sequence of 4-bytes at the moment.
 			//bool const becomes 0 or 0xFFFFFFFF int, int & float are 4-bytes.
-			ASSERT(sVar.ui32Size%4 == 0);
+			ASSERT(psVar->ui32Size%4 == 0);
 
-			sVar.haveDefaultValue = true;
+			psVar->haveDefaultValue = true;
 
 			for(i=0; i<ui32NumDefaultValues;++i)
 			{
-				sVar.pui32DefaultValues.push_back(pui32DefaultValToken[i]);
+				psVar->pui32DefaultValues.push_back(pui32DefaultValToken[i]);
 			}
         }
-
-		psBuffer->asVars.push_back(sVar);
     }
 
 
