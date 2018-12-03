@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 19:01:23 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 19:07:46 2018
 groupshared struct { float val[1]; } g4[192];
 groupshared struct { float val[1]; } g2[192];
 
@@ -14,6 +14,8 @@ cbuffer cb13 : register(b13)
 
 Texture2D<float4> t0 : register(t0);
 Texture2D<float4> t1 : register(t1);
+RWTexture2D<float4> u0 : register(u0);
+RWByteAddressBuffer u1 : register(u1);
 
 
 // 3Dmigoto declarations

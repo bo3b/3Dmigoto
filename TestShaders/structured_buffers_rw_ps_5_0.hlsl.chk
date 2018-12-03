@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 19:03:39 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 19:06:18 2018
 
 struct foo
 {
@@ -30,6 +30,7 @@ struct bar
 
 StructuredBuffer<foo> struct_buf_1 : register(t110);
 StructuredBuffer<bar> struct_buf_2 : register(t111);
+RWStructuredBuffer<foo> rw_struct_buf : register(u1);
 
 
 // 3Dmigoto declarations
@@ -43,8 +44,6 @@ void main(
   float v1 : TEXCOORD1,
   out float4 o0 : SV_Target0)
 {
-// Needs manual fix for instruction:
-// unknown dcl_: dcl_uav_structured u1, 84
   float4 r0,r1,r2;
   uint4 bitmask, uiDest;
   float4 fDest;

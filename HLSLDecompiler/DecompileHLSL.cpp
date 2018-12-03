@@ -137,6 +137,10 @@ public:
 	map<int, int>    mTextureNamesArraySize;
 	map<int, string> mTextureType;
 
+	map<int, string> mUAVNames;
+	map<int, int>    mUAVNamesArraySize;
+	map<int, string> mUAVType;
+
 	map<string, string> mStructuredBufferTypes;
 	set<string> mStructuredBufferUsedNames;
 
@@ -701,6 +705,8 @@ public:
 		mSamplerComparisonNamesArraySize.clear();
 		mTextureNames.clear();
 		mTextureNamesArraySize.clear();
+		mUAVNames.clear();
+		mUAVNamesArraySize.clear();
 		// Read until header.
 		const char *headerid = "// Resource Bindings:";
 		size_t pos = 0;
@@ -757,31 +763,43 @@ public:
 					mSamplerComparisonNames[slot + i] = name;
 					}
 			}
-			else if (!strcmp(type, "texture"))
+			else if (!strcmp(type, "texture") || !strcmp(type, "UAV"))
 			{
 				char *escapePos = strchr(name, '['); if (escapePos) *escapePos = '_';
 				escapePos = strchr(name, ']'); if (escapePos) *escapePos = '_';
 				string baseName = string(name);
-				mTextureNames[slot] = baseName;
-				mTextureNamesArraySize[slot] = arraySize;
+				map<int, string> *mNames = &mTextureNames;
+				map<int, int>    *mNamesArraySize = &mTextureNamesArraySize;
+				map<int, string> *mType = &mTextureType;
+				std::string rw;
+
+				if (!strcmp(type, "UAV")) {
+					mNames = &mUAVNames;
+					mNamesArraySize = &mUAVNamesArraySize;
+					mType = &mUAVType;
+					rw = "RW";
+				}
+
+				(*mNames)[slot] = baseName;
+				(*mNamesArraySize)[slot] = arraySize;
 				if (arraySize > 1)
 					for (int i = 0; i < arraySize; ++i)
 					{
 					sprintf(name, "%s[%d]", baseName.c_str(), i);
-					mTextureNames[slot + i] = name;
+					(*mNames)[slot + i] = name;
 					}
 				if (!strcmp(dim, "1d"))
-					mTextureType[slot] = "Texture1D<" + string(format) + ">";
+					(*mType)[slot] = rw + "Texture1D<" + string(format) + ">";
 				else if(!strcmp(dim, "2d"))
-					mTextureType[slot] = "Texture2D<" + string(format) + ">";
+					(*mType)[slot] = rw + "Texture2D<" + string(format) + ">";
 				else if (!strcmp(dim, "2darray"))
-					mTextureType[slot] = "Texture2DArray<" + string(format) + ">";
+					(*mType)[slot] = rw + "Texture2DArray<" + string(format) + ">";
 				else if (!strcmp(dim, "3d"))
-					mTextureType[slot] = "Texture3D<" + string(format) + ">";
+					(*mType)[slot] = rw + "Texture3D<" + string(format) + ">";
 				else if (!strcmp(dim, "cube"))
-					mTextureType[slot] = "TextureCube<" + string(format) + ">";
+					(*mType)[slot] = rw + "TextureCube<" + string(format) + ">";
 				else if (!strcmp(dim, "cubearray"))
-					mTextureType[slot] = "TextureCubeArray<" + string(format) + ">";
+					(*mType)[slot] = rw + "TextureCubeArray<" + string(format) + ">";
 				else if (!strncmp(dim, "2dMS", 4))
 				{
 					// The documentation says it's not legal, but we see Texture 2DMS with no ending size in WatchDogs. 
@@ -797,19 +815,17 @@ public:
 						sprintf(buffer, "Texture2DMS<%s,%d>", format, msnumber);
 					else
 						sprintf(buffer, "Texture2DMS<%s>", format);
-					mTextureType[slot] = buffer;
+					(*mType)[slot] = rw + buffer;
 				}
 				// Two new ones for Mordor.
 				else if (!strcmp(dim, "buf"))
-					mTextureType[slot] = "Buffer<" + string(format) + ">";	
+					(*mType)[slot] = rw + "Buffer<" + string(format) + ">";
 				else if (!strcmp(format, "struct"))
-					mTextureType[slot] = "StructuredBuffer<" + mStructuredBufferTypes[name] + ">";
-				//else if (!strcmp(dim, "r/w"))
-				//	mTextureType[slot] = "RWStructuredBuffer<" + mStructuredBufferTypes[name] + ">"; // Type=UAV
+					(*mType)[slot] = rw + "StructuredBuffer<" + mStructuredBufferTypes[name] + ">";
 				else if (!strcmp(format, "byte"))
-					mTextureType[slot] = "ByteAddressBuffer";
+					(*mType)[slot] = rw + "ByteAddressBuffer";
 				else
-					logDecompileError("Unknown texture dimension: " + string(dim));
+					logDecompileError("Unknown " + string(type) + " dimension: " + string(dim));
 			}
 			else if (!strcmp(type, "cbuffer"))
 				mCBufferNames[name] = slot;
@@ -889,6 +905,20 @@ public:
 			{
 				string baseName = i->second.substr(0, i->second.find('['));
 				sprintf(buffer, "%s %s[%d] : register(t%d);\n", mTextureType[i->first].c_str(), baseName.c_str(), mTextureNamesArraySize[i->first], i->first);
+				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+			}
+		}
+		for (map<int, string>::iterator i = mUAVNames.begin(); i != mUAVNames.end(); ++i)
+		{
+			if (mUAVNamesArraySize[i->first] == 1)
+			{
+				sprintf(buffer, "%s %s : register(u%d);\n", mUAVType[i->first].c_str(), i->second.c_str(), i->first);
+				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+			}
+			else if (mUAVNamesArraySize[i->first] > 1)
+			{
+				string baseName = i->second.substr(0, i->second.find('['));
+				sprintf(buffer, "%s %s[%d] : register(u%d);\n", mUAVType[i->first].c_str(), baseName.c_str(), mUAVNamesArraySize[i->first], i->first);
 				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 			}
 		}
@@ -3742,11 +3772,13 @@ public:
 					}
 				}
 			}
-			else if (!strcmp(statement, "dcl_resource_structured"))
+			else if (!strcmp(statement, "dcl_resource_structured") || !strcmp(statement, "dcl_uav_structured"))
 			{
+				bool uav = statement[4] == 'u';
+				char prefix = uav ? 'u' : 't';
 				int bufIndex = 0;
 				int bufStride = 0;
-				if (sscanf_s(op1, "t%d", &bufIndex) != 1)
+				if (sscanf_s(&op1[1], "%d", &bufIndex) != 1)
 				{
 					logDecompileError("Error parsing structured buffer register: " + string(op1));
 					return;
@@ -3764,11 +3796,12 @@ public:
 				// a model where we do reinterpret casts whenever we need something other than a float.
 				if (mStructuredBufferTypes.empty())
 				{
-					sprintf(buffer, "struct t%d_t {\n"
+					sprintf(buffer, "struct %c%d_t {\n"
 						"  float val[%d];\n"
 						"};\n"
-						"StructuredBuffer<t%d_t> t%d : register(t%d);\n\n",
-						bufIndex, bufStride / 4, bufIndex, bufIndex, bufIndex);
+						"%sStructuredBuffer<%c%d_t> %c%d : register(%c%d);\n\n",
+						prefix, bufIndex, bufStride / 4, uav ? "RW" : "",
+						prefix, bufIndex, prefix, bufIndex, prefix, bufIndex);
 					mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 					mCodeStartPos += strlen(buffer);
 
