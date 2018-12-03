@@ -11,7 +11,7 @@ void GetConstantBufferFromBindingPoint(const ResourceGroup eGroup, const uint32_
 
 int GetInterfaceVarFromOffset(uint32_t ui32Offset, ShaderInfo* psShaderInfo, ShaderVar** ppsShaderVar);
 
-uint32_t ShaderVarSize(ShaderVarType* psType);
+uint32_t ShaderVarSize(ShaderVarType* psType, uint32_t* singularSize);
 
 int GetShaderVarFromOffset(const uint32_t ui32Vec4Offset,
 						   const uint32_t* pui32Swizzle,

@@ -487,7 +487,7 @@ int GetInterfaceVarFromOffset(uint32_t ui32Offset, ShaderInfo* psShaderInfo, Sha
 }
 
 // Added to calculate structure sizes rather than assume 4 bytes -DSS
-uint32_t ShaderVarSize(ShaderVarType* psType)
+uint32_t ShaderVarSize(ShaderVarType* psType, uint32_t* singularSize)
 {
 	uint32_t thisSize = 0;
 	uint32_t m = 0;
@@ -495,10 +495,13 @@ uint32_t ShaderVarSize(ShaderVarType* psType)
 	if(psType->Class == SVC_STRUCT)
 	{
 		for(m=0; m < psType->MemberCount; ++m)
-			thisSize += ShaderVarSize(psType->Members + m);
+			thisSize += ShaderVarSize(psType->Members + m, NULL);
 	}
 	else
 		thisSize = psType->Columns * psType->Rows * 4;
+
+	if(singularSize)
+		*singularSize = thisSize;
 
 	if(psType->Elements)
 	{
@@ -538,7 +541,7 @@ static int IsOffsetInType(ShaderVarType* psType,
 {
 	uint32_t thisOffset = parentOffset + psType->Offset;
 	// DarkStarSword: Changed this line to calculate arrays and nested struct sizes properly:
-	uint32_t thisSize = ShaderVarSize(psType);
+	uint32_t thisSize = ShaderVarSize(psType, NULL);
 
 	if((offsetToFind >= thisOffset) &&
 		offsetToFind < (thisOffset + thisSize))
@@ -588,13 +591,19 @@ int GetShaderVarFromNestedStructOffset(ShaderVarType* psType,
 									   int32_t* pi32Index,
 									   int32_t* pi32Rebase)
 {
-	uint32_t thisSize = ShaderVarSize(psType);
+	uint32_t singularSize = 0;
+	uint32_t thisSize = ShaderVarSize(psType, &singularSize);
 	uint32_t thisOffset = parentOffset + psType->Offset;
 	uint32_t m = 0;
 
 	if(ui32ByteOffset < thisOffset ||
 	   ui32ByteOffset >= thisOffset + thisSize)
 		return 0;
+
+	// We know we are somewhere inside the struct, but if this is an array of
+	// structs and we are looking for an offset in a subsequent struct index we
+	// need to adjust the offset to fit within the first struct index:
+	ui32ByteOffset = (ui32ByteOffset - thisOffset) % singularSize + thisOffset;
 
 	for(m=0; m < psType->MemberCount; ++m)
 	{
