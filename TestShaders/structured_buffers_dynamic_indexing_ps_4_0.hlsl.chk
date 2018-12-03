@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 08:24:24 2018
+// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 08:27:25 2018
 
 struct struct_buf_1_type
 {
@@ -98,14 +98,14 @@ void main(
   r0.x = r0.x + r0.y;
   r1.x = struct_buf_2[v0.x].foofoo;
   r1.y = struct_buf_2[v0.x].foobar;
-  r1.z = struct_buf_2[v0.x].foo;
-  r1.w = struct_buf_2[v0.x].bar;
+  r1.z = struct_buf_2[v0.x].inner_struct_1.foo;
+  r1.w = struct_buf_2[v0.x].inner_struct_1.bar;
   r0.x = r1.x + r0.x;
   r0.y = (uint)r1.y;
   r0.x = r0.x + r0.y;
   r0.x = r0.x + r1.z;
   r0.x = r0.x + r1.w;
-  r1.x = struct_buf_2[v0.x].baz;
+  r1.x = struct_buf_2[v0.x].inner_struct_2.baz;
   r0.x = r1.x + r0.x;
 // BUG: Cannot locate variable in structure:
 ld_structured r1.x, v0.x, l(112), t111.xxxx

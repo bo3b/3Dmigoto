@@ -5411,7 +5411,7 @@ public:
 										int32_t index = -1;
 										int32_t rebase = -1;
 										const char *hlsl_swiz;
-										std::string array_txt;
+										std::string var_txt;
 										uint32_t var_size;
 
 										if (!(dst0.ui32CompMask & (1 << component)))
@@ -5425,27 +5425,27 @@ public:
 											break;
 										}
 
+										var_txt = var->FullName;
+										if (!var_txt.compare(0, 9, "$Element."))
+											var_txt = var_txt.substr(9);
+
 										var_size = shadervar_size(var);
 										if (var->Elements) {
 											// The index GetShaderVarFromOffset returns is crap, calculate it ourselves:
 											index = (byte_offset - var->Offset) / var_size;
-											array_txt = "[" + std::to_string(index) + "]";
+											var_txt += "[" + std::to_string(index) + "]";
 										}
 
 										hlsl_swiz = shadervar_offset2swiz(var, (byte_offset - var->Offset) % var_size);
+										if (hlsl_swiz[0])
+											var_txt += "." + std::string(hlsl_swiz);
 
-										// Using .Name instead of .FullName to avoid "$Element" prefix.
-										// If GetShaderVarFromOffset processed inner structs FullName
-										// would be a better choice to include the parent struct heirachy
-										sprintf(buffer, "  %s.%c = %s[%s].%s%s%s%s;\n",
+										sprintf(buffer, "  %s.%c = %s[%s].%s;\n",
 												writeTarget(dst),
 												component == 3 ? 'w' : 'x' + component,
 												bindInfo->Name.c_str(),
 												ci(idx).c_str(),
-												var->Name.c_str(),
-												array_txt.c_str(),
-												strlen(hlsl_swiz) ? "." : "",
-												hlsl_swiz);
+												var_txt.c_str());
 										appendOutput(buffer);
 									}
 								} else {
