@@ -486,15 +486,19 @@ int GetInterfaceVarFromOffset(uint32_t ui32Offset, ShaderInfo* psShaderInfo, Sha
     return 0;
 }
 
-// Manually added from latest James-Jones HLSLCrossCompiler for StructuredBuffer support -DSS
-static int IsOffsetInType(ShaderVarType* psType,
-						  uint32_t parentOffset,
-						  uint32_t offsetToFind,
-						  int32_t* pi32Index,
-						  int32_t* pi32Rebase)
+// Added to calculate structure sizes rather than assume 4 bytes -DSS
+uint32_t ShaderVarSize(ShaderVarType* psType)
 {
-	uint32_t thisOffset = parentOffset + psType->Offset;
-	uint32_t thisSize = psType->Columns * psType->Rows * 4;
+	uint32_t thisSize = 0;
+	uint32_t m = 0;
+
+	if(psType->Class == SVC_STRUCT)
+	{
+		for(m=0; m < psType->MemberCount; ++m)
+			thisSize += ShaderVarSize(psType->Members + m);
+	}
+	else
+		thisSize = psType->Columns * psType->Rows * 4;
 
 	if(psType->Elements)
 	{
@@ -522,7 +526,19 @@ static int IsOffsetInType(ShaderVarType* psType,
 		thisSize *= psType->Elements;
 #endif
 	}
+	return thisSize;
+}
 
+// Manually added from latest James-Jones HLSLCrossCompiler for StructuredBuffer support -DSS
+static int IsOffsetInType(ShaderVarType* psType,
+						  uint32_t parentOffset,
+						  uint32_t offsetToFind,
+						  int32_t* pi32Index,
+						  int32_t* pi32Rebase)
+{
+	uint32_t thisOffset = parentOffset + psType->Offset;
+	// DarkStarSword: Changed this line to calculate arrays and nested struct sizes properly:
+	uint32_t thisSize = ShaderVarSize(psType);
 
 	if((offsetToFind >= thisOffset) &&
 		offsetToFind < (thisOffset + thisSize))
