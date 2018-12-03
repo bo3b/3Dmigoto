@@ -580,6 +580,43 @@ static int IsOffsetInType(ShaderVarType* psType,
 	return 0;
 }
 
+// Moved out of GetShaderVarFromOffset to handle nested structs -DSS
+int GetShaderVarFromNestedStructOffset(ShaderVarType* psType,
+									   const uint32_t parentOffset,
+									   uint32_t ui32ByteOffset,
+									   ShaderVarType** ppsShaderVar,
+									   int32_t* pi32Index,
+									   int32_t* pi32Rebase)
+{
+	uint32_t thisSize = ShaderVarSize(psType);
+	uint32_t thisOffset = parentOffset + psType->Offset;
+	uint32_t m = 0;
+
+	if(ui32ByteOffset < thisOffset ||
+	   ui32ByteOffset >= thisOffset + thisSize)
+		return 0;
+
+	for(m=0; m < psType->MemberCount; ++m)
+	{
+		ShaderVarType* psMember = psType->Members + m;
+
+		if(psMember->Class == SVC_STRUCT)
+		{
+			if(GetShaderVarFromNestedStructOffset(psMember, thisOffset, ui32ByteOffset, ppsShaderVar, pi32Index, pi32Rebase))
+				return 1;
+		}
+		else
+		{
+			if(IsOffsetInType(psMember, thisOffset, ui32ByteOffset, pi32Index, pi32Rebase))
+			{
+				ppsShaderVar[0] = psMember;
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
 // Manually added from latest James-Jones HLSLCrossCompiler for StructuredBuffer support -DSS
 int GetShaderVarFromOffset(const uint32_t ui32Vec4Offset,
 						   const uint32_t* pui32Swizzle,
@@ -643,20 +680,8 @@ int GetShaderVarFromOffset(const uint32_t ui32Vec4Offset,
     {
 		if(psCBuf->asVars[i].sType.Class == SVC_STRUCT)
 		{
-			uint32_t m = 0;
-
-			for(m=0; m < psCBuf->asVars[i].sType.MemberCount; ++m)
-			{
-				ShaderVarType* psMember = psCBuf->asVars[i].sType.Members + m;
-
-				ASSERT(psMember->Class != SVC_STRUCT);
-
-				if(IsOffsetInType(psMember, psCBuf->asVars[i].ui32StartOffset, ui32ByteOffset, pi32Index, pi32Rebase))
-				{
-					ppsShaderVar[0] = psMember;
-					return 1;
-				}
-			}
+			if(GetShaderVarFromNestedStructOffset(&psCBuf->asVars[i].sType, psCBuf->asVars[i].ui32StartOffset, ui32ByteOffset, ppsShaderVar, pi32Index, pi32Rebase))
+				return 1;
 		}
 		else
 		{
