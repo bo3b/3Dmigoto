@@ -490,7 +490,6 @@ int GetInterfaceVarFromOffset(uint32_t ui32Offset, ShaderInfo* psShaderInfo, Sha
 static int IsOffsetInType(ShaderVarType* psType,
 						  uint32_t parentOffset,
 						  uint32_t offsetToFind,
-						  const uint32_t* pui32Swizzle,
 						  int32_t* pi32Index,
 						  int32_t* pi32Rebase)
 {
@@ -524,45 +523,6 @@ static int IsOffsetInType(ShaderVarType* psType,
 #endif
 	}
 
-    //Swizzle can point to another variable. In the example below
-	//cbUIUpdates.g_uMaxFaces would be cb1[2].z. The scalars are combined
-	//into vectors. psCBuf->ui32NumVars will be 3.
-
-	// cbuffer cbUIUpdates
-	// {
-	//
-	//   float g_fLifeSpan;                 // Offset:    0 Size:     4
-	//   float g_fLifeSpanVar;              // Offset:    4 Size:     4 [unused]
-	//   float g_fRadiusMin;                // Offset:    8 Size:     4 [unused]
-	//   float g_fRadiusMax;                // Offset:   12 Size:     4 [unused]
-	//   float g_fGrowTime;                 // Offset:   16 Size:     4 [unused]
-	//   float g_fStepSize;                 // Offset:   20 Size:     4
-	//   float g_fTurnRate;                 // Offset:   24 Size:     4
-	//   float g_fTurnSpeed;                // Offset:   28 Size:     4 [unused]
-	//   float g_fLeafRate;                 // Offset:   32 Size:     4
-	//   float g_fShrinkTime;               // Offset:   36 Size:     4 [unused]
-	//   uint g_uMaxFaces;                  // Offset:   40 Size:     4
-	//
-	// }
-
-	// Name                                 Type  Format         Dim Slot Elements
-	// ------------------------------ ---------- ------- ----------- ---- --------
-	// cbUIUpdates                       cbuffer      NA          NA    1        1
-
-    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_Y)
-    {
-        offsetToFind += 4;
-    }
-    else
-    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_Z)
-    {
-        offsetToFind += 8;
-    }
-    else
-    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_W)
-    {
-        offsetToFind += 12;
-    }
 
 	if((offsetToFind >= thisOffset) &&
 		offsetToFind < (thisOffset + thisSize))
@@ -613,8 +573,6 @@ int GetShaderVarFromOffset(const uint32_t ui32Vec4Offset,
 						   int32_t* pi32Rebase)
 {
     uint32_t i;
-    const uint32_t ui32BaseByteOffset = ui32Vec4Offset * 16;
-
     uint32_t ui32ByteOffset = ui32Vec4Offset * 16;
 
     const uint32_t ui32NumVars = (uint32_t)psCBuf->asVars.size();
@@ -624,6 +582,46 @@ int GetShaderVarFromOffset(const uint32_t ui32Vec4Offset,
 		ppsShaderVar[0] = &psCBuf->asVars[0].sType;
 		return 1;
 	}
+
+    //Swizzle can point to another variable. In the example below
+	//cbUIUpdates.g_uMaxFaces would be cb1[2].z. The scalars are combined
+	//into vectors. psCBuf->ui32NumVars will be 3.
+
+	// cbuffer cbUIUpdates
+	// {
+	//
+	//   float g_fLifeSpan;                 // Offset:    0 Size:     4
+	//   float g_fLifeSpanVar;              // Offset:    4 Size:     4 [unused]
+	//   float g_fRadiusMin;                // Offset:    8 Size:     4 [unused]
+	//   float g_fRadiusMax;                // Offset:   12 Size:     4 [unused]
+	//   float g_fGrowTime;                 // Offset:   16 Size:     4 [unused]
+	//   float g_fStepSize;                 // Offset:   20 Size:     4
+	//   float g_fTurnRate;                 // Offset:   24 Size:     4
+	//   float g_fTurnSpeed;                // Offset:   28 Size:     4 [unused]
+	//   float g_fLeafRate;                 // Offset:   32 Size:     4
+	//   float g_fShrinkTime;               // Offset:   36 Size:     4 [unused]
+	//   uint g_uMaxFaces;                  // Offset:   40 Size:     4
+	//
+	// }
+
+	// Name                                 Type  Format         Dim Slot Elements
+	// ------------------------------ ---------- ------- ----------- ---- --------
+	// cbUIUpdates                       cbuffer      NA          NA    1        1
+
+    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_Y)
+    {
+        ui32ByteOffset += 4;
+    }
+    else
+    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_Z)
+    {
+        ui32ByteOffset += 8;
+    }
+    else
+    if(pui32Swizzle[0] == OPERAND_4_COMPONENT_W)
+    {
+        ui32ByteOffset += 12;
+    }
 
     for(i=0; i<ui32NumVars; ++i)
     {
@@ -637,7 +635,7 @@ int GetShaderVarFromOffset(const uint32_t ui32Vec4Offset,
 
 				ASSERT(psMember->Class != SVC_STRUCT);
 
-				if(IsOffsetInType(psMember, psCBuf->asVars[i].ui32StartOffset, ui32ByteOffset, pui32Swizzle, pi32Index, pi32Rebase))
+				if(IsOffsetInType(psMember, psCBuf->asVars[i].ui32StartOffset, ui32ByteOffset, pi32Index, pi32Rebase))
 				{
 					ppsShaderVar[0] = psMember;
 					return 1;
@@ -646,7 +644,7 @@ int GetShaderVarFromOffset(const uint32_t ui32Vec4Offset,
 		}
 		else
 		{
-			if(IsOffsetInType(&psCBuf->asVars[i].sType, psCBuf->asVars[i].ui32StartOffset, ui32ByteOffset, pui32Swizzle, pi32Index, pi32Rebase))
+			if(IsOffsetInType(&psCBuf->asVars[i].sType, psCBuf->asVars[i].ui32StartOffset, ui32ByteOffset, pi32Index, pi32Rebase))
 			{
 				ppsShaderVar[0] = &psCBuf->asVars[i].sType;
 				return 1;
