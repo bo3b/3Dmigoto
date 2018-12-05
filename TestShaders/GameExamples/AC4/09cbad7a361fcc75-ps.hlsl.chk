@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:37 2018
+// ---- Created with 3Dmigoto v1.3.11 on Wed Dec 05 17:23:08 2018
 
 cbuffer ScreenSpaceReflectionConstantscb : register(b2)
 {
@@ -70,7 +70,7 @@ void main(
   r0.x = exp2(r0.x);
   r0.x = r0.y ? 1 : r0.x;
   r2.xyzw = InputReflections2D.SampleLevel(linearSampler_s_s, v1.xy, 0).xyzw;
-  r3.xyzw = InputTextureDepth.SampleLevel(linearSampler_s_s, v1.xy, 0).xyzw;
+  r3.xy = InputTextureDepth.SampleLevel(linearSampler_s_s, v1.xy, 0).xy;
   r0.y = cmp(r0.x >= 0.75);
   r0.z = cmp(r3.x >= 1);
   r0.y = (int)r0.z | (int)r0.y;

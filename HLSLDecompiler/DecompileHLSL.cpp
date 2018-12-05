@@ -2270,6 +2270,28 @@ public:
 		cpos[pos] = 0;
 	}
 
+	// Lops off excess mask/swizzle for textures of float1/2/3 or other vector
+	// types to eliminate invalid subscript errors
+	static void truncateTextureSwiz(char *op, const char *textype)
+	{
+		const char *tpos = strchr(textype, '>');
+		if (!tpos)
+			return;
+
+		int pos = 5;
+		if (tpos[-1] == '4') // float4
+			return;
+		else if (tpos[-1] == '3') // float3
+			pos = 4;
+		else if (tpos[-1] == '2') // float2
+			pos = 3;
+		else // float1, float, etc
+			pos = 2;
+		char *cpos = strrchr(op, '.');
+		if (strlen(cpos) >= pos)
+			cpos[pos] = 0;
+	}
+
 	void remapTarget(char *target)
 	{
 		char *pos = strchr(target, ',');
@@ -5331,6 +5353,8 @@ public:
 						sscanf_s(op3, "t%d.", &textureId);
 						sscanf_s(op4, "s%d", &samplerId);
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op1, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op3, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.Sample(%s, %s)%s;\n", writeTarget(op1),
 								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
@@ -5358,6 +5382,8 @@ public:
 						sscanf_s(op3, "t%d.", &textureId);
 						sscanf_s(op4, "s%d", &samplerId);
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op1, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op3, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.SampleBias(%s, %s, %s)%s;\n", writeTarget(op1),
 								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
@@ -5383,6 +5409,8 @@ public:
 						sscanf_s(op3, "t%d.", &textureId);
 						sscanf_s(op4, "s%d", &samplerId);
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op1, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op3, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.SampleLevel(%s, %s, %s)%s;\n", writeTarget(op1),
 								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
@@ -5409,6 +5437,8 @@ public:
 						sscanf_s(op3, "t%d.", &textureId);
 						sscanf_s(op4, "s%d", &samplerId);
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op1, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op3, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.SampleGrad(%s, %s, %s, %s)%s;\n", writeTarget(op1),
 								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), ci(op6).c_str(), strrchr(op3, '.'));
@@ -5434,6 +5464,8 @@ public:
 						sscanf_s(op3, "t%d.", &textureId);
 						sscanf_s(op4, "s%d", &samplerId);
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op1, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op3, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.SampleCmp(%s, %s, %s)%s;\n", writeTarget(op1),
 								mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
@@ -5460,6 +5492,8 @@ public:
 						sscanf_s(op3, "t%d.", &textureId);
 						sscanf_s(op4, "s%d", &samplerId);
 						truncateTexturePos(op2, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op1, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op3, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.SampleCmpLevelZero(%s, %s, %s)%s;\n", writeTarget(op1),
 								mTextureNames[textureId].c_str(), mSamplerComparisonNames[samplerId].c_str(), ci(op2).c_str(), ci(op5).c_str(), strrchr(op3, '.'));
@@ -5619,6 +5653,8 @@ public:
 						int textureId;
 						sscanf_s(op3, "t%d.", &textureId);
 						truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op1, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op3, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.Load(%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
 						else {
@@ -5640,6 +5676,8 @@ public:
 						int textureId;
 						sscanf_s(op3, "t%d.", &textureId);
 						truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op1, mTextureType[textureId].c_str());
+						truncateTextureSwiz(op3, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
 							sprintf(buffer, "  %s = %s.Load(%s, %s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(), strrchr(op3, '.'));
 						else{

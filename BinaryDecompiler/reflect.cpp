@@ -732,7 +732,9 @@ ResourceGroup ResourceTypeToResourceGroup(ResourceType eType)
 		return RGROUP_UAV;
 
 	case RTYPE_TBUFFER:
-		ASSERT(0); // Need to find out which group this belongs to
+		// DarkStarSword: Removed this assert - tbuffers appear in several of
+		// our game example test cases and do indeed map to 't' registers.
+		//ASSERT(0); // Need to find out which group this belongs to
 		return RGROUP_TEXTURE;
 	}
 
