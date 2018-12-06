@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:27:43 2018
+// ---- Created with 3Dmigoto v1.3.12 on Thu Dec 06 08:30:57 2018
 
 Texture2DMS<float,4> g_DepthBuffer : register(t0);
 
@@ -24,11 +24,11 @@ void main(
   r0.xy = v1.xy * r0.xy;
   r0.xy = (int2)r0.xy;
   r0.zw = float2(0,0);
-  r1.xyzw = g_DepthBuffer.Load(r0.xy, 0).xyzw;
-  r2.xyzw = g_DepthBuffer.Load(r0.xy, 1).xyzw;
+  r1.x = g_DepthBuffer.Load(r0.xy, 0).x;
+  r2.x = g_DepthBuffer.Load(r0.xy, 1).x;
   r1.x = min(r2.x, r1.x);
-  r2.xyzw = g_DepthBuffer.Load(r0.xy, 2).xyzw;
-  r0.xyzw = g_DepthBuffer.Load(r0.xy, 3).xyzw;
+  r2.x = g_DepthBuffer.Load(r0.xy, 2).x;
+  r0.x = g_DepthBuffer.Load(r0.xy, 3).x;
   r0.y = min(r2.x, r1.x);
   o0.x = min(r0.y, r0.x);
   return;

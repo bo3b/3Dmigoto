@@ -2262,7 +2262,11 @@ public:
 	// types to eliminate invalid subscript errors
 	static void truncateTextureSwiz(char *op, const char *textype)
 	{
-		const char *tpos = strchr(textype, '>');
+		// Search for the end of the type, either a comma
+		// (Texture2DMS<float,2>) or the closing >
+		const char *tpos = strchr(textype, ',');
+		if (!tpos)
+			tpos = strchr(textype, '>');
 		if (!tpos)
 			return;
 
