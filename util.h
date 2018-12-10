@@ -22,10 +22,21 @@
 #include "DirectX11\HookedContext.h"
 
 
-// Defines the maximum number of four component ini params we support.
-// Potential trade off on flexibility vs overhead, but unless we increase it
-// above 256 (4k page) it is unlikely to be significant.
-const int INI_PARAMS_SIZE = 8;
+// Sets the threshold for warning about IniParams size. The larger IniParams is
+// the more CPU -> GPU bandwidth we will require to update it, so we want to
+// discourage modders from picking arbitrarily high IniParams.
+//
+// This threshold is somewhat arbitrary and I haven't measured how performance
+// actually goes in practice, so we can tweak it as we encounter real world
+// performance issues. I've chosen the page size of 4K as a starting point as
+// exceeding that will likely add additional performance overheads beyond the
+// bandwidth requirements (ideally we would also ensure the IniParams buffer is
+// aligned to a page boundary).
+//
+// If a shaderhacker wants more than 1024 (256x4) IniParams they should
+// probably think about using a different storage means anyway, since IniParams
+// has other problems such as no meaningful names, no namespacing, etc.
+const int INI_PARAMS_SIZE_WARNING = 256;
 
 
 // -----------------------------------------------------------------------------------------------
@@ -761,14 +772,10 @@ static bool ParseIniParamName(const wchar_t *name, int *idx, float DirectX::XMFL
 
 	// May or may not have matched index. Make sure entire string was
 	// matched either way and check index is valid if it was matched:
-	if (ret == 1 && len1 == length) {
+	if (ret == 1 && len1 == length)
 		*idx = 0;
-	} else if (ret == 2 && len2 == length) {
-		if (*idx >= INI_PARAMS_SIZE)
-			return false;
-	} else {
+	else if (ret != 2 || len2 != length)
 		return false;
-	}
 
 	switch (component_chr) {
 		case L'x':

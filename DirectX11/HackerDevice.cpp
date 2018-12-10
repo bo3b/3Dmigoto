@@ -283,14 +283,37 @@ HRESULT HackerDevice::CreateIniParamResources()
 	D3D11_TEXTURE1D_DESC desc;
 	memset(&desc, 0, sizeof(D3D11_TEXTURE1D_DESC));
 
+	// If we are resizing IniParams we must release the old versions:
+	if (mIniResourceView) {
+		long refcount = mIniResourceView->Release();
+		mIniResourceView = NULL;
+		LogInfo("  releasing ini parameters resource view, refcount = %d\n", refcount);
+	}
+	if (mIniTexture) {
+		long refcount = mIniTexture->Release();
+		mIniTexture = NULL;
+		LogInfo("  releasing iniparams texture, refcount = %d\n", refcount);
+	}
+
+	if (G->iniParamsReserved > INI_PARAMS_SIZE_WARNING) {
+		LogOverlay(LOG_NOTICE, "NOTICE: %d requested IniParams exceeds the recommended %d\n",
+				G->iniParamsReserved, INI_PARAMS_SIZE_WARNING);
+	}
+
+	G->iniParams.resize(G->iniParamsReserved);
+	if (G->iniParams.empty()) {
+		LogInfo("  No IniParams used, skipping texture creation.\n");
+		return S_OK;
+	}
+
 	LogInfo("  creating .ini constant parameter texture.\n");
 
 	// Stuff the constants read from the .ini file into the subresource data structure, so 
 	// we can init the texture with them.
-	initialData.pSysMem = &G->iniParams;
-	initialData.SysMemPitch = sizeof(DirectX::XMFLOAT4) * INI_PARAMS_SIZE;	// Ignored for Texture1D, but still recommended for debugging
+	initialData.pSysMem = G->iniParams.data();
+	initialData.SysMemPitch = sizeof(DirectX::XMFLOAT4) * (UINT)G->iniParams.size(); // Ignored for Texture1D, but still recommended for debugging
 
-	desc.Width = INI_PARAMS_SIZE;						// n texels, .rgba as a float4
+	desc.Width = (UINT)G->iniParams.size();					// n texels, .rgba as a float4
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;				// float4

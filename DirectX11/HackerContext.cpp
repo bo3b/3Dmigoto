@@ -2559,7 +2559,7 @@ void HackerContext::InitIniParams()
 
 	// The command list only changes ini params that are defined, but for
 	// consistency we want all other ini params to be initialised as well:
-	memset(G->iniParams, 0, sizeof(G->iniParams));
+	memset(G->iniParams.data(), 0, sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
 
 	// The command list will take care of the Map/Unmap to update the
 	// resource on the GPU:

@@ -467,7 +467,8 @@ struct Globals
 	bool ENABLE_TUNE;
 	float gTuneValue[4], gTuneStep;
 
-	DirectX::XMFLOAT4 iniParams[INI_PARAMS_SIZE];
+	std::vector<DirectX::XMFLOAT4> iniParams;
+	int iniParamsReserved;
 	int StereoParamsReg;
 	int IniParamsReg;
 
@@ -622,6 +623,7 @@ struct Globals
 
 		StereoParamsReg(125),
 		IniParamsReg(120),
+		iniParamsReserved(0),
 
 		frame_no(0),
 		hWnd(NULL),
@@ -673,8 +675,6 @@ struct Globals
 
 		for (i = 0; i < 11; i++)
 			FILTER_REFRESH[i] = 0;
-
-		memset(iniParams, 0, sizeof(iniParams));
 
 		ticks_at_launch = GetTickCount();
 	}

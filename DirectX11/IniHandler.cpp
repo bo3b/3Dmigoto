@@ -185,35 +185,6 @@ struct WStringInsensitiveEquality {
 	}
 };
 
-struct IniLine {
-	// Same syntax as std::pair, whitespace stripped around each:
-	wstring first;
-	wstring second;
-
-	// For when we don't want whitespace around the equals sign stripped,
-	// or when there is no equals sign (whitespace at the start and end of
-	// the whole line is still stripped):
-	wstring raw_line;
-
-	// Namespaced sections can determine the namespace from the section as
-	// a whole, but global sections like [Present] can have lines from many
-	// different namespaces, so each line stores the namespace it came from
-	// to resolve references within the namespace:
-	const wstring ini_namespace;
-
-	IniLine(wstring &key, wstring &val, wstring &line, const wstring &ini_namespace) :
-		first(key),
-		second(val),
-		raw_line(line),
-		ini_namespace(ini_namespace)
-	{}
-};
-
-// Whereas settings within a section are in the same order they were in the ini
-// file. This will become more important as shader overrides gains more
-// functionality and dependencies between different features form:
-typedef std::vector<IniLine> IniSectionVector;
-
 // Unsorted maps for fast case insensitive key lookups by name
 typedef std::unordered_map<wstring, wstring, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionMap;
 typedef std::unordered_set<wstring, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionSet;
@@ -750,7 +721,7 @@ static void _GetIniSection(IniSections *custom_ini_sections, IniSectionVector **
 	}
 }
 
-static void GetIniSection(IniSectionVector **key_vals, const wchar_t *section)
+void GetIniSection(IniSectionVector **key_vals, const wchar_t *section)
 {
 	return _GetIniSection(&ini_sections, key_vals, section);
 }
@@ -4309,6 +4280,7 @@ void ReloadConfig(HackerDevice *device)
 	LogInfo("Reloading d3dx.ini (EXPERIMENTAL)...\n");
 
 	G->gReloadConfigPending = false;
+	G->iniParamsReserved = 0;
 
 	// Lock the entire config reload as it touches many global structures
 	// that could potentially be accessed from other threads (e.g. deferred
@@ -4349,6 +4321,12 @@ void ReloadConfig(HackerDevice *device)
 	// initialise iniParams and perform any other custom initialisation the
 	// user may have defined:
 	if (mHackerContext) {
+		if (G->iniParams.size() != G->iniParamsReserved) {
+			LogInfo("  Resizing IniParams from %Ii to %d\n", G->iniParams.size(), G->iniParamsReserved);
+			device->CreateIniParamResources();
+			mHackerContext->Bind3DMigotoResources();
+		}
+
 		mHackerContext->InitIniParams();
 	} else {
 		// We used to use GetImmediateContext here, which would ensure

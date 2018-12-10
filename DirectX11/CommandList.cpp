@@ -153,7 +153,7 @@ static void CommandListFlushState(CommandListState *state)
 			LogInfo("CommandListFlushState: Map failed\n");
 			return;
 		}
-		memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
+		memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
 		state->mOrigContext1->Unmap(state->mHackerDevice->mIniTexture, 0);
 		state->update_params = false;
 	}
@@ -3498,6 +3498,8 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 	// Try parsing operand as an ini param:
 	if (ParseIniParamName(operand->c_str(), &param_idx, &param_component)) {
 		type = ParamOverrideType::INI_PARAM;
+		// Reserve space in IniParams for this variable:
+		G->iniParamsReserved = max(G->iniParamsReserved, param_idx + 1);
 		return operand_allowed_in_context(type, command_list_context);
 	}
 
@@ -3550,6 +3552,9 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 
 	if (!param->expression.parse(val, ini_namespace))
 		goto bail;
+
+	// Reserve space in IniParams for this variable:
+	G->iniParamsReserved = max(G->iniParamsReserved, param->param_idx + 1);
 
 	param->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	command_list->commands.push_back(std::shared_ptr<CommandListCommand>(param));

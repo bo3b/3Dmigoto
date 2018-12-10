@@ -15,21 +15,9 @@ OverrideGlobalSave OverrideSave;
 
 Override::Override()
 {
-	int i;
-
 	// It's important for us to know if any are actively in use or not, so setting them
 	// to FloatMax by default allows us to know when they are unused or invalid.
 	// We are using FloatMax now instead of infinity, to avoid compiler warnings.
-	for (i = 0; i < INI_PARAMS_SIZE; i++) {
-		mOverrideParams[i].x = FLT_MAX;
-		mOverrideParams[i].y = FLT_MAX;
-		mOverrideParams[i].z = FLT_MAX;
-		mOverrideParams[i].w = FLT_MAX;
-		mSavedParams[i].x = FLT_MAX;
-		mSavedParams[i].y = FLT_MAX;
-		mSavedParams[i].z = FLT_MAX;
-		mSavedParams[i].w = FLT_MAX;
-	}
 	mOverrideSeparation = FLT_MAX;
 	mOverrideConvergence = FLT_MAX;
 
@@ -43,8 +31,12 @@ Override::Override()
 
 void Override::ParseIniSection(LPCWSTR section)
 {
-	wchar_t buf[MAX_PATH], param_name[8];
-	int i;
+	IniSectionVector *section_vec = NULL;
+	IniSectionVector::iterator entry;
+	float DirectX::XMFLOAT4::*param_component;
+	int param_idx;
+	float val;
+	wchar_t buf[MAX_PATH];
 	wstring ini_namespace;
 
 	get_section_namespace(section, &ini_namespace);
@@ -52,18 +44,18 @@ void Override::ParseIniSection(LPCWSTR section)
 	mOverrideSeparation = GetIniFloat(section, L"separation", FLT_MAX, NULL);
 	mOverrideConvergence = GetIniFloat(section, L"convergence", FLT_MAX, NULL);
 
-	for (i = 0; i < INI_PARAMS_SIZE; i++) {
-		StringCchPrintf(param_name, 8, L"x%.0i", i);
-		mOverrideParams[i].x = GetIniFloat(section, param_name, FLT_MAX, NULL);
+	GetIniSection(&section_vec, section);
+	for (entry = section_vec->begin(); entry < section_vec->end(); entry++) {
+		if (!ParseIniParamName(entry->first.c_str(), &param_idx, &param_component))
+			continue;
 
-		StringCchPrintf(param_name, 8, L"y%.0i", i);
-		mOverrideParams[i].y = GetIniFloat(section, param_name, FLT_MAX, NULL);
+		val = GetIniFloat(section, entry->first.c_str(), FLT_MAX, NULL);
+		if (val != FLT_MAX) {
+			// Reserve space in IniParams for this variable:
+			G->iniParamsReserved = max(G->iniParamsReserved, param_idx + 1);
 
-		StringCchPrintf(param_name, 8, L"z%.0i", i);
-		mOverrideParams[i].z = GetIniFloat(section, param_name, FLT_MAX, NULL);
-
-		StringCchPrintf(param_name, 8, L"w%.0i", i);
-		mOverrideParams[i].w = GetIniFloat(section, param_name, FLT_MAX, NULL);
+			mOverrideParams[OverrideParam(param_idx, param_component)] = val;
+		}
 	}
 
 	transition = GetIniInt(section, L"transition", 0, NULL);
@@ -232,33 +224,39 @@ struct KeyOverrideCycleParam
 
 void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 {
-	struct KeyOverrideCycleParam x[INI_PARAMS_SIZE], y[INI_PARAMS_SIZE];
-	struct KeyOverrideCycleParam z[INI_PARAMS_SIZE], w[INI_PARAMS_SIZE];
+	std::map<OverrideParam, struct KeyOverrideCycleParam> param_bufs;
+	std::map<OverrideParam, struct KeyOverrideCycleParam>::iterator j;
 	struct KeyOverrideCycleParam separation, convergence;
 	struct KeyOverrideCycleParam transition, release_transition;
 	struct KeyOverrideCycleParam transition_type, release_transition_type;
 	struct KeyOverrideCycleParam condition;
 	struct KeyOverrideCycleParam run;
 	bool not_done = true;
-	int i, j;
+	int i;
 	wchar_t buf[8];
-	DirectX::XMFLOAT4 params[INI_PARAMS_SIZE];
+	OverrideParams params;
 	bool is_conditional;
 	CommandListExpression condition_expression;
 	CommandList activate_command_list, deactivate_command_list;
+	IniSectionVector *section_vec = NULL;
+	IniSectionVector::iterator entry;
+	float DirectX::XMFLOAT4::*param_component;
+	int param_idx;
+	float val;
 
 	wrap = GetIniBool(section, L"wrap", true, NULL);
 
-	for (j = 0; j < INI_PARAMS_SIZE; j++) {
-		StringCchPrintf(buf, 8, L"x%.0i", j);
-		GetIniString(section, buf, 0, x[j].buf, MAX_PATH);
-		StringCchPrintf(buf, 8, L"y%.0i", j);
-		GetIniString(section, buf, 0, y[j].buf, MAX_PATH);
-		StringCchPrintf(buf, 8, L"z%.0i", j);
-		GetIniString(section, buf, 0, z[j].buf, MAX_PATH);
-		StringCchPrintf(buf, 8, L"w%.0i", j);
-		GetIniString(section, buf, 0, w[j].buf, MAX_PATH);
+	GetIniSection(&section_vec, section);
+	for (entry = section_vec->begin(); entry < section_vec->end(); entry++) {
+		if (!ParseIniParamName(entry->first.c_str(), &param_idx, &param_component))
+			continue;
+
+		// Reserve space in IniParams for this variable:
+		G->iniParamsReserved = max(G->iniParamsReserved, param_idx + 1);
+
+		GetIniString(section, entry->first.c_str(), 0, param_bufs[OverrideParam(param_idx, param_component)].buf, MAX_PATH);
 	}
+
 	GetIniString(section, L"separation", 0, separation.buf, MAX_PATH);
 	GetIniString(section, L"convergence", 0, convergence.buf, MAX_PATH);
 	GetIniString(section, L"transition", 0, transition.buf, MAX_PATH);
@@ -271,12 +269,9 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 	for (i = 1; not_done; i++) {
 		not_done = false;
 
-		for (j = 0; j < INI_PARAMS_SIZE; j++) {
-			not_done = x[j].next() || not_done;
-			not_done = y[j].next() || not_done;
-			not_done = z[j].next() || not_done;
-			not_done = w[j].next() || not_done;
-		}
+		for (j = param_bufs.begin(); j != param_bufs.end(); j++)
+			not_done = j->second.next() || not_done;
+
 		not_done = separation.next() || not_done;
 		not_done = convergence.next() || not_done;
 		not_done = transition.next() || not_done;
@@ -290,20 +285,14 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 			break;
 
 		LogInfoNoNL("  Cycle %i:", i);
-		for (j = 0; j < INI_PARAMS_SIZE; j++) {
-			StringCchPrintf(buf, 8, L"x%.0i", j);
-			x[j].log(buf);
-			StringCchPrintf(buf, 8, L"y%.0i", j);
-			y[j].log(buf);
-			StringCchPrintf(buf, 8, L"z%.0i", j);
-			z[j].log(buf);
-			StringCchPrintf(buf, 8, L"w%.0i", j);
-			w[j].log(buf);
-
-			params[j].x = x[j].as_float(FLT_MAX);
-			params[j].y = y[j].as_float(FLT_MAX);
-			params[j].z = z[j].as_float(FLT_MAX);
-			params[j].w = w[j].as_float(FLT_MAX);
+		params.clear();
+		for (j = param_bufs.begin(); j != param_bufs.end(); j++) {
+			val = j->second.as_float(FLT_MAX);
+			if (val != FLT_MAX) {
+				StringCchPrintf(buf, 8, L"%c%.0i", j->first.chr(), j->first.idx);
+				j->second.log(buf);
+				params[j->first] = val;
+			}
 		}
 
 		is_conditional = condition.as_ini_param(section, &condition_expression);
@@ -319,7 +308,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 		run.log(L"run");
 		LogInfo("\n");
 
-		presets.push_back(KeyOverride(KeyOverrideType::CYCLE, params,
+		presets.push_back(KeyOverride(KeyOverrideType::CYCLE, &params,
 			separation.as_float(FLT_MAX), convergence.as_float(FLT_MAX),
 			transition.as_int(0), release_transition.as_int(0),
 			transition_type.as_enum<const wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
@@ -372,44 +361,14 @@ void KeyOverrideCycleBack::DownEvent(HackerDevice *device)
 // This map/unmap code also requires that the texture be created with the D3D11_USAGE_DYNAMIC flag set.
 // This map operation can also cause the GPU to stall, so this should be done as rarely as possible.
 
-static void UpdateIniParams(HackerDevice* wrapper,
-		DirectX::XMFLOAT4 *params)
+static void UpdateIniParams(HackerDevice* wrapper)
 {
 	ID3D11DeviceContext1* realContext = wrapper->GetPassThroughOrigContext1();
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	int i;
-	bool updated = false;
-
-	for (i = 0; i < INI_PARAMS_SIZE; i++) {
-		if (params[i].x != FLT_MAX) {
-			G->iniParams[i].x = params[i].x;
-			updated = true;
-		}
-		if (params[i].y != FLT_MAX) {
-			G->iniParams[i].y = params[i].y;
-			updated = true;
-		}
-		if (params[i].z != FLT_MAX) {
-			G->iniParams[i].z = params[i].z;
-			updated = true;
-		}
-		if (params[i].w != FLT_MAX) {
-			G->iniParams[i].w = params[i].w;
-			updated = true;
-		}
-	}
-
-	if (!updated)
-		return;
 
 	realContext->Map(wrapper->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
+	memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
 	realContext->Unmap(wrapper->mIniTexture, 0);
-
-	LogDebugNoNL(" IniParams remapped to ");
-	for (i = 0; i < INI_PARAMS_SIZE; i++)
-		LogDebugNoNL("%#.2g, %#.2g, %#.2g, %#.2g, ", params[i].x, params[i].y, params[i].z, params[i].w);
-	LogDebug("\n");
 }
 
 void Override::Activate(HackerDevice *device, bool override_has_deactivate_condition)
@@ -429,7 +388,7 @@ void Override::Activate(HackerDevice *device, bool override_has_deactivate_condi
 	CurrentTransition.ScheduleTransition(device,
 			mOverrideSeparation,
 			mOverrideConvergence,
-			mOverrideParams,
+			&mOverrideParams,
 			transition,
 			transition_type);
 
@@ -455,7 +414,7 @@ void Override::Deactivate(HackerDevice *device)
 	CurrentTransition.ScheduleTransition(device,
 			mUserSeparation,
 			mUserConvergence,
-			mSavedParams,
+			&mSavedParams,
 			release_transition,
 			release_transition_type);
 
@@ -536,14 +495,14 @@ static void _ScheduleTransition(struct OverrideTransitionParam *transition,
 
 void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
 		float target_separation, float target_convergence,
-		DirectX::XMFLOAT4 *targets,
+		OverrideParams *targets,
 		int time, TransitionType transition_type)
 {
 	ULONGLONG now = GetTickCount64();
 	NvAPI_Status err;
 	float current;
 	char buf[8];
-	int i;
+	OverrideParams::iterator i;
 
 	LogInfoNoNL(" Override");
 	if (time) {
@@ -564,23 +523,10 @@ void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
 			LogDebug("    Stereo_GetConvergence failed: %i\n", err);
 		_ScheduleTransition(&convergence, "convergence", current, target_convergence, now, time, transition_type);
 	}
-	for (i = 0; i < INI_PARAMS_SIZE; i++) {
-		if (targets[i].x != FLT_MAX) {
-			StringCchPrintfA(buf, 8, "x%.0i", i);
-			_ScheduleTransition(&x[i], buf, G->iniParams[i].x, targets[i].x, now, time, transition_type);
-		}
-		if (targets[i].y != FLT_MAX) {
-			StringCchPrintfA(buf, 8, "y%.0i", i);
-			_ScheduleTransition(&y[i], buf, G->iniParams[i].y, targets[i].y, now, time, transition_type);
-		}
-		if (targets[i].z != FLT_MAX) {
-			StringCchPrintfA(buf, 8, "z%.0i", i);
-			_ScheduleTransition(&z[i], buf, G->iniParams[i].z, targets[i].z, now, time, transition_type);
-		}
-		if (targets[i].w != FLT_MAX) {
-			StringCchPrintfA(buf, 8, "w%.0i", i);
-			_ScheduleTransition(&w[i], buf, G->iniParams[i].w, targets[i].w, now, time, transition_type);
-		}
+	for (i = targets->begin(); i != targets->end(); i++) {
+		StringCchPrintfA(buf, 8, "%c%.0i", i->first.chr(), i->first.idx);
+		_ScheduleTransition(&params[i->first], buf, G->iniParams[i->first.idx].*i->first.component,
+				i->second, now, time, transition_type);
 	}
 	LogInfo("\n");
 }
@@ -625,11 +571,10 @@ static float _UpdateTransition(struct OverrideTransitionParam *transition, ULONG
 
 void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
 {
+	std::map<OverrideParam, OverrideTransitionParam>::iterator i;
 	ULONGLONG now = GetTickCount64();
-	DirectX::XMFLOAT4 params[INI_PARAMS_SIZE];
 	NvAPI_Status err;
 	float val;
-	int i;
 
 	val = _UpdateTransition(&separation, now);
 	if (val != FLT_MAX) {
@@ -651,26 +596,25 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
 			LogDebug("    Stereo_SetConvergence failed: %i\n", err);
 	}
 
-	for (i = 0; i < INI_PARAMS_SIZE; i++) {
-		params[i].x = _UpdateTransition(&x[i], now);
-		params[i].y = _UpdateTransition(&y[i], now);
-		params[i].z = _UpdateTransition(&z[i], now);
-		params[i].w = _UpdateTransition(&w[i], now);
-	}
+	if (params.empty())
+		return;
 
-	UpdateIniParams(wrapper, params);
+	LogDebugNoNL(" IniParams remapped to ");
+	for (i = params.begin(); i != params.end(); i++) {
+		float val = _UpdateTransition(&i->second, now);
+		if (val != FLT_MAX) {
+			G->iniParams[i->first.idx].*i->first.component = val;
+			LogDebugNoNL("%c%.0i=%#.2g, ", i->first.chr(), i->first.idx, val);
+		}
+	}
+	LogDebug("\n");
+
+	UpdateIniParams(wrapper);
 }
 
 void OverrideTransition::Stop()
 {
-	int i;
-
-	for (i = 0; i < INI_PARAMS_SIZE; i++) {
-		x[i].time = -1;
-		y[i].time = -1;
-		z[i].time = -1;
-		w[i].time = -1;
-	}
+	params.clear();
 	separation.time = -1;
 	convergence.time = -1;
 }
@@ -695,14 +639,8 @@ void OverrideGlobalSave::Reset(HackerDevice* wrapper)
 {
 	NvAPI_Status err;
 	float val;
-	int i;
 
-	for (i = 0; i < INI_PARAMS_SIZE; i++) {
-		x[i].Reset();
-		y[i].Reset();
-		z[i].Reset();
-		w[i].Reset();
-	}
+	params.clear();
 
 	// Restore any saved separation & convergence settings to prevent a
 	// currently active preset from becoming the default on config reload.
@@ -757,9 +695,9 @@ void OverrideGlobalSaveParam::Save(float val)
 
 void OverrideGlobalSave::Save(HackerDevice *wrapper, Override *preset)
 {
+	OverrideParams::iterator i;
 	NvAPI_Status err;
 	float val;
-	int i;
 
 	if (preset->mOverrideSeparation != FLT_MAX) {
 		if (CurrentTransition.separation.time != -1) {
@@ -789,43 +727,15 @@ void OverrideGlobalSave::Save(HackerDevice *wrapper, Override *preset)
 		convergence.Save(val);
 	}
 
-	for (i = 0; i < INI_PARAMS_SIZE; i++) {
-		if (preset->mOverrideParams[i].x != FLT_MAX) {
-			if (CurrentTransition.x[i].time != -1)
-				val = CurrentTransition.x[i].target;
-			else
-				val = G->iniParams[i].x;
+	for (i = preset->mOverrideParams.begin(); i != preset->mOverrideParams.end(); i++) {
+		std::map<OverrideParam, OverrideTransitionParam>::iterator transition = CurrentTransition.params.find(i->first);
+		if (transition != CurrentTransition.params.end() && transition->second.time != -1)
+			val = transition->second.target;
+		else
+			val = G->iniParams[i->first.idx].*i->first.component;
 
-			preset->mSavedParams[i].x = val;
-			x[i].Save(val);
-		}
-		if (preset->mOverrideParams[i].y != FLT_MAX) {
-			if (CurrentTransition.y[i].time != -1)
-				val = CurrentTransition.y[i].target;
-			else
-				val = G->iniParams[i].y;
-
-			preset->mSavedParams[i].y = val;
-			y[i].Save(val);
-		}
-		if (preset->mOverrideParams[i].z != FLT_MAX) {
-			if (CurrentTransition.z[i].time != -1)
-				val = CurrentTransition.z[i].target;
-			else
-				val = G->iniParams[i].z;
-
-			preset->mSavedParams[i].z = val;
-			z[i].Save(val);
-		}
-		if (preset->mOverrideParams[i].w != FLT_MAX) {
-			if (CurrentTransition.w[i].time != -1)
-				val = CurrentTransition.w[i].target;
-			else
-				val = G->iniParams[i].w;
-
-			preset->mSavedParams[i].w = val;
-			w[i].Save(val);
-		}
+		preset->mSavedParams[i->first] = val;
+		params[i->first].Save(val);
 	}
 }
 
@@ -837,6 +747,7 @@ void OverrideGlobalSaveParam::Restore(float *val)
 		if (val)
 			*val = save;
 		save = FLT_MAX;
+		// TODO: Remove this from the OverrideSave map
 	} else if (refcount < 0) {
 		LogInfo("BUG! OverrideGlobalSaveParam refcount < 0!\n");
 	}
@@ -844,7 +755,8 @@ void OverrideGlobalSaveParam::Restore(float *val)
 
 void OverrideGlobalSave::Restore(Override *preset)
 {
-	int i;
+	std::map<OverrideParam, OverrideGlobalSaveParam>::iterator i;
+	OverrideParams::iterator j;
 
 	// This replaces the local saved values in the override with the global
 	// ones for any parameters where this is the last override being
@@ -856,14 +768,10 @@ void OverrideGlobalSave::Restore(Override *preset)
 		separation.Restore(&preset->mUserSeparation);
 	if (preset->mOverrideConvergence != FLT_MAX)
 		convergence.Restore(&preset->mUserConvergence);
-	for (i = 0; i < INI_PARAMS_SIZE; i++) {
-		if (preset->mOverrideParams[i].x != FLT_MAX)
-			x[i].Restore(&preset->mSavedParams[i].x);
-		if (preset->mOverrideParams[i].y != FLT_MAX)
-			y[i].Restore(&preset->mSavedParams[i].y);
-		if (preset->mOverrideParams[i].z != FLT_MAX)
-			z[i].Restore(&preset->mSavedParams[i].z);
-		if (preset->mOverrideParams[i].w != FLT_MAX)
-			w[i].Restore(&preset->mSavedParams[i].w);
+
+	for (i = params.begin(); i != params.end(); i++) {
+		j = preset->mOverrideParams.find(i->first);
+		if (j != preset->mOverrideParams.end())
+			i->second.Restore(&preset->mSavedParams[i->first]);
 	}
 }
