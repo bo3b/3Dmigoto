@@ -674,6 +674,19 @@ public:
 	void unmap(CommandListState *state);
 };
 
+class CommandListVariable {
+public:
+	// TODO: Additional types, such as hash
+	float fval;
+
+	CommandListVariable(float fval) :
+		fval(fval)
+	{}
+};
+
+typedef std::unordered_map<std::wstring, class CommandListVariable> CommandListVariables;
+extern CommandListVariables command_list_vars;
+
 class CommandListToken {
 public:
 	wstring token;
@@ -816,6 +829,7 @@ enum class ParamOverrideType {
 	INVALID,
 	VALUE,
 	INI_PARAM,
+	VARIABLE,
 	RT_WIDTH,
 	RT_HEIGHT,
 	RES_WIDTH,
@@ -907,6 +921,9 @@ public:
 	float DirectX::XMFLOAT4::*param_component;
 	int param_idx;
 
+	// For VARIABLE type:
+	float *var_ftarget;
+
 	// For texture filters:
 	ResourceCopyTarget texture_filter_target;
 
@@ -919,6 +936,7 @@ public:
 		val(FLT_MAX),
 		param_component(NULL),
 		param_idx(0),
+		var_ftarget(NULL),
 		scissor(0)
 	{}
 
@@ -938,12 +956,17 @@ public:
 	bool optimise(HackerDevice *device);
 };
 
-class ParamOverride : public CommandListCommand {
+class AssignmentCommand : public CommandListCommand {
+public:
+	CommandListExpression expression;
+
+	bool optimise(HackerDevice *device) override;
+};
+
+class ParamOverride : public AssignmentCommand {
 public:
 	int param_idx;
 	float DirectX::XMFLOAT4::*param_component;
-
-	CommandListExpression expression;
 
 	ParamOverride() :
 		param_idx(-1),
@@ -951,7 +974,13 @@ public:
 	{}
 
 	void run(CommandListState*) override;
-	bool optimise(HackerDevice *device) override;
+};
+
+class VariableAssignment : public AssignmentCommand {
+public:
+	float *ftarget;
+
+	void run(CommandListState*) override;
 };
 
 class IfCommand : public CommandListCommand {
@@ -1143,6 +1172,9 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 		CommandList *pre_command_list, CommandList *post_command_list,
 		const wstring *ini_namespace);
 bool ParseCommandListIniParamOverride(const wchar_t *section,
+		const wchar_t *key, wstring *val, CommandList *command_list,
+		const wstring *ini_namespace);
+bool ParseCommandListVariableAssignment(const wchar_t *section,
 		const wchar_t *key, wstring *val, CommandList *command_list,
 		const wstring *ini_namespace);
 bool ParseCommandListResourceCopyDirective(const wchar_t *section,

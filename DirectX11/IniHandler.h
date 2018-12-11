@@ -49,6 +49,7 @@ T GetIniEnumClass(const wchar_t *section, const wchar_t *key, T def, bool *found
 
 bool get_namespaced_section_name_lower(const wstring *section, const wstring *ini_namespace, wstring *ret);
 bool get_section_namespace(const wchar_t *section, wstring *ret);
+wstring get_namespaced_var_name_lower(const wstring var, const wstring *ini_namespace);
 
 // These functions will bypass our hooks *if* the option to do so has been enabled:
 BOOL WINAPI CursorUpscalingBypass_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect);

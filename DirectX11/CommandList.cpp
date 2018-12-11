@@ -16,6 +16,7 @@
 CustomResources customResources;
 CustomShaders customShaders;
 ExplicitCommandListSections explicitCommandListSections;
+CommandListVariables command_list_vars;
 std::vector<CommandList*> registered_command_lists;
 std::unordered_set<CommandList*> command_lists_profiling;
 std::unordered_set<CommandListCommand*> command_lists_cmd_profiling;
@@ -2591,6 +2592,8 @@ float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device
 			return val;
 		case ParamOverrideType::INI_PARAM:
 			return G->iniParams[param_idx].*param_component;
+		case ParamOverrideType::VARIABLE:
+			return *var_ftarget;
 		case ParamOverrideType::RES_WIDTH:
 			return (float)G->mResolutionInfo.width;
 		case ParamOverrideType::RES_HEIGHT:
@@ -2854,8 +2857,10 @@ next_token:
 		//   the start of some other identifier. Only applies to
 		//   vs2015+ as older toolchains lack parsing for these.
 		// - Identifiers cannot start with a number
+		// - Variable identifiers start with a $, and these may be
+		//   namespaced, so we allow backslash and . as well
 		if (remain[0] < '0' || remain[0] > '9') {
-			pos = remain.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_0123456789");
+			pos = remain.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_0123456789$\\.");
 			if (pos) {
 				token = remain.substr(0, pos);
 				operand = make_shared<CommandListOperand>(friendly_pos, token);
@@ -3458,7 +3463,16 @@ void ParamOverride::run(CommandListState *state)
 	state->update_params |= (*dest != orig);
 }
 
-bool ParamOverride::optimise(HackerDevice *device)
+void VariableAssignment::run(CommandListState *state)
+{
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+
+	*ftarget = expression.evaluate(state);
+
+	COMMAND_LIST_LOG(state, "  = %f\n", *ftarget);
+}
+
+bool AssignmentCommand::optimise(HackerDevice *device)
 {
 	return expression.optimise(device);
 }
@@ -3471,6 +3485,7 @@ static bool operand_allowed_in_context(ParamOverrideType type, bool command_list
 	switch (type) {
 		case ParamOverrideType::VALUE:
 		case ParamOverrideType::INI_PARAM:
+		case ParamOverrideType::VARIABLE:
 		case ParamOverrideType::RES_WIDTH:
 		case ParamOverrideType::RES_HEIGHT:
 		case ParamOverrideType::TIME:
@@ -3482,6 +3497,25 @@ static bool operand_allowed_in_context(ParamOverrideType type, bool command_list
 			return true;
 	}
 	return false;
+}
+
+static bool parse_var_name(const wstring &name, const wstring *ini_namespace, float **target)
+{
+	CommandListVariables::iterator var = command_list_vars.end();
+
+	if (name.length() <= 2 || name[0] != L'$')
+		return false;
+
+	var = command_list_vars.end();
+	if (!ini_namespace->empty())
+		var = command_list_vars.find(get_namespaced_var_name_lower(name, ini_namespace));
+	if (var == command_list_vars.end())
+		var = command_list_vars.find(name);
+	if (var == command_list_vars.end())
+		return false;
+
+	*target = &var->second.fval;
+	return true;
 }
 
 bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namespace, bool command_list_context)
@@ -3500,6 +3534,12 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 		type = ParamOverrideType::INI_PARAM;
 		// Reserve space in IniParams for this variable:
 		G->iniParamsReserved = max(G->iniParamsReserved, param_idx + 1);
+		return operand_allowed_in_context(type, command_list_context);
+	}
+
+	// Try parsing operand as a variable:
+	if (parse_var_name(*operand, ini_namespace, &var_ftarget)) {
+		type = ParamOverrideType::VARIABLE;
 		return operand_allowed_in_context(type, command_list_context);
 	}
 
@@ -3561,6 +3601,26 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 	return true;
 bail:
 	delete param;
+	return false;
+}
+
+bool ParseCommandListVariableAssignment(const wchar_t *section,
+		const wchar_t *key, wstring *val, CommandList *command_list,
+		const wstring *ini_namespace)
+{
+	VariableAssignment *command = new VariableAssignment();
+
+	if (!parse_var_name(key, ini_namespace, &command->ftarget))
+		goto bail;
+
+	if (!command->expression.parse(val, ini_namespace))
+		goto bail;
+
+	command->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	command_list->commands.push_back(std::shared_ptr<CommandListCommand>(command));
+	return true;
+bail:
+	delete command;
 	return false;
 }
 

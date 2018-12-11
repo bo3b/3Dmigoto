@@ -66,6 +66,7 @@ static Section RegularSections[] = {
 	{L"Key", true},
 	{L"Preset", true},
 	{L"Include", true}, // Prefix so that it may be namespaced to allow included files to include more files with relative paths
+	{L"Variables", false},
 };
 
 // List of sections that will not trigger a warning if they contain a line
@@ -74,6 +75,7 @@ static Section RegularSections[] = {
 static Section AllowLinesWithoutEquals[] = {
 	{L"Profile", false},
 	{L"ShaderRegex", true},
+	{L"Variables", true},
 };
 
 static bool whitelisted_duplicate_key(const wchar_t *section, const wchar_t *key)
@@ -256,6 +258,13 @@ bool get_namespaced_section_name_lower(const wstring *section, const wstring *in
 	if (rc)
 		std::transform(ret->begin(), ret->end(), ret->begin(), ::towlower);
 	return rc;
+}
+
+wstring get_namespaced_var_name_lower(const wstring var, const wstring *ini_namespace)
+{
+	wstring ret = wstring(L"$\\") + *ini_namespace + wstring(L"\\") + var.substr(1);
+	std::transform(ret.begin(), ret.end(), ret.begin(), ::towlower);
+	return ret;
 }
 
 static bool _get_section_namespace(IniSections *custom_ini_sections, const wchar_t *section, wstring *ret)
@@ -1158,6 +1167,73 @@ static void ParseIncludedIniFiles()
 	free_globbing_vector(exclude);
 }
 
+static bool valid_variable_name(wstring &name)
+{
+	if (name.length() < 2)
+		return false;
+
+	// Variable names begin with a $
+	if (name[0] != L'$')
+		return false;
+
+	// First character must be a letter or underscore ($1, $2, etc reserved for future arguments):
+	if ((name[1] < L'a' || name[1] > L'z') && name[1] != L'_')
+		return false;
+
+	// Subsequent characters must be in this list:
+	return (name.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_0123456789", 2) == wstring::npos);
+}
+
+static void ParseIniVariables()
+{
+	IniSectionVector *section = NULL;
+	IniSectionVector::iterator entry;
+	wstring *key, *val;
+	const wstring *ini_namespace;
+	bool inserted;
+	float fval;
+	int len;
+
+	command_list_vars.clear();
+
+	LogInfo("[Variables]\n");
+	GetIniSection(&section, L"Variables");
+	for (entry = section->begin(); entry < section->end(); entry++) {
+		key = &entry->first;
+		val = &entry->second;
+		ini_namespace = &entry->ini_namespace;
+
+		// Convert variable name to lower case since ini files are
+		// supposed to be case insensitive:
+		std::transform(key->begin(), key->end(), key->begin(), ::towlower);
+
+		if (!valid_variable_name(*key)) {
+			IniWarning("WARNING: Illegal variable name: \"%S\"\n", key->c_str());
+			continue;
+		}
+
+		if (!ini_namespace->empty())
+			*key = get_namespaced_var_name_lower(*key, ini_namespace);
+
+		fval = 0.0f;
+		if (!val->empty()) {
+			swscanf_s(val->c_str(), L"%f%n", &fval, &len);
+			if (len != val->length()) {
+				IniWarning("WARNING: Floating point parse error: %S=%S\n", key->c_str(), val->c_str());
+				continue;
+			}
+		}
+
+		inserted = command_list_vars.emplace(*key, fval).second;
+		if (!inserted) {
+			IniWarning("WARNING: Redefinition of %S\n", key->c_str());
+			continue;
+		}
+
+		LogInfo("  %S=%S\n", key->c_str(), val->c_str());
+	}
+}
+
 static void RegisterPresetKeyBindings()
 {
 	KeyOverrideType type;
@@ -1616,6 +1692,9 @@ static bool ParseCommandListLine(const wchar_t *ini_section,
 		return true;
 
 	if (ParseCommandListIniParamOverride(ini_section, lhs, rhs, command_list, ini_namespace))
+		return true;
+
+	if (ParseCommandListVariableAssignment(ini_section, lhs, rhs, command_list, ini_namespace))
 		return true;
 
 	if (ParseCommandListResourceCopyDirective(ini_section, lhs, rhs, command_list, ini_namespace))
@@ -4151,6 +4230,8 @@ void LoadConfigFile()
 	// parse order to determine if the reference will work or not.
 	EnumerateCustomShaderSections();
 	EnumerateExplicitCommandListSections();
+
+	ParseIniVariables();
 
 	RegisterPresetKeyBindings();
 
