@@ -650,12 +650,14 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
 
 	if (!params.empty()) {
 		LogDebugNoNL(" IniParams remapped to ");
-		for (i = params.begin(); i != params.end(); i++) {
+		for (i = params.begin(); i != params.end();) {
 			float val = _UpdateTransition(&i->second, now);
-			if (val != FLT_MAX) {
-				G->iniParams[i->first.idx].*i->first.component = val;
-				LogDebugNoNL("%c%.0i=%#.2g, ", i->first.chr(), i->first.idx, val);
-			}
+			G->iniParams[i->first.idx].*i->first.component = val;
+			LogDebugNoNL("%c%.0i=%#.2g, ", i->first.chr(), i->first.idx, val);
+			if (i->second.time == -1)
+				i = params.erase(i);
+			else
+				i++;
 		}
 		LogDebug("\n");
 
@@ -664,12 +666,14 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
 
 	if (!vars.empty()) {
 		LogDebugNoNL(" Variables remapped to ");
-		for (j = vars.begin(); j != vars.end(); j++) {
+		for (j = vars.begin(); j != vars.end();) {
 			float val = _UpdateTransition(&j->second, now);
-			if (val != FLT_MAX) {
-				j->first->fval = val;
-				LogDebugNoNL("%S=%#.2g, ", j->first->name.c_str(), val);
-			}
+			j->first->fval = val;
+			LogDebugNoNL("%S=%#.2g, ", j->first->name.c_str(), val);
+			if (j->second.time == -1)
+				j = vars.erase(j);
+			else
+				j++;
 		}
 		LogDebug("\n");
 	}
