@@ -820,7 +820,7 @@ void OverrideGlobalSave::Save(HackerDevice *wrapper, Override *preset)
 	}
 }
 
-void OverrideGlobalSaveParam::Restore(float *val)
+int OverrideGlobalSaveParam::Restore(float *val)
 {
 	refcount--;
 
@@ -828,16 +828,15 @@ void OverrideGlobalSaveParam::Restore(float *val)
 		if (val)
 			*val = save;
 		save = FLT_MAX;
-		// TODO: Remove this from the OverrideSave map
 	} else if (refcount < 0) {
 		LogInfo("BUG! OverrideGlobalSaveParam refcount < 0!\n");
 	}
+
+	return refcount;
 }
 
 void OverrideGlobalSave::Restore(Override *preset)
 {
-	std::map<OverrideParam, OverrideGlobalSaveParam>::iterator i;
-	std::map<CommandListVariable*, OverrideGlobalSaveParam>::iterator k;
 	OverrideParams::iterator j;
 	OverrideVars::iterator l;
 
@@ -852,15 +851,23 @@ void OverrideGlobalSave::Restore(Override *preset)
 	if (preset->mOverrideConvergence != FLT_MAX)
 		convergence.Restore(&preset->mUserConvergence);
 
-	for (i = params.begin(); i != params.end(); i++) {
+	for (auto next = begin(params), i = next++; i != end(params); i = next++) {
 		j = preset->mOverrideParams.find(i->first);
-		if (j != preset->mOverrideParams.end())
-			i->second.Restore(&preset->mSavedParams[i->first]);
+		if (j != preset->mOverrideParams.end()) {
+			if (!i->second.Restore(&preset->mSavedParams[i->first])) {
+				LogDebug("removed ini param %c%.0i save area\n", i->first.chr(), i->first.idx);
+				params.erase(i);
+			}
+		}
 	}
 
-	for (k = vars.begin(); k != vars.end(); k++) {
+	for (auto next = begin(vars), k = next++; k != end(vars); k = next++) {
 		l = preset->mOverrideVars.find(k->first);
-		if (l != preset->mOverrideVars.end())
-			k->second.Restore(&preset->mSavedVars[k->first]);
+		if (l != preset->mOverrideVars.end()) {
+			if (!k->second.Restore(&preset->mSavedVars[k->first])) {
+				LogDebug("removed var %S save area\n", k->first->name.c_str());
+				vars.erase(k);
+			}
+		}
 	}
 }

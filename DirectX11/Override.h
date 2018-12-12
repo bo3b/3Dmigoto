@@ -266,7 +266,7 @@ public:
 
 	float Reset();
 	void Save(float val);
-	void Restore(float *val);
+	int Restore(float *val);
 };
 
 class OverrideGlobalSave
