@@ -66,6 +66,7 @@ static inline bool operator<(const OverrideParam &lhs, const OverrideParam &rhs)
 	        (uintptr_t)&((DirectX::XMFLOAT4*)(NULL)->*(rhs.component)));
 }
 typedef std::map<OverrideParam, float> OverrideParams;
+typedef std::map<CommandListVariable*, float> OverrideVars;
 
 class OverrideBase
 {
@@ -90,15 +91,17 @@ protected:
 
 public:
 	OverrideParams mOverrideParams;
+	OverrideVars mOverrideVars;
 	float mOverrideSeparation;
 	float mOverrideConvergence;
 
 	OverrideParams mSavedParams;
+	OverrideVars mSavedVars;
 	float mUserSeparation;
 	float mUserConvergence;
 
 	Override();
-	Override(OverrideParams *params, float separation,
+	Override(OverrideParams *params, OverrideVars *vars, float separation,
 		 float convergence, int transition, int release_transition,
 		 TransitionType transition_type,
 		 TransitionType release_transition_type,
@@ -116,6 +119,7 @@ public:
 		deactivate_command_list(deactivate_command_list)
 	{
 		mOverrideParams = *params;
+		mOverrideVars = *vars;
 	}
 
 	void ParseIniSection(LPCWSTR section) override;
@@ -139,14 +143,14 @@ public:
 		Override(),
 		type(type)
 	{}
-	KeyOverride(KeyOverrideType type, OverrideParams *params,
+	KeyOverride(KeyOverrideType type, OverrideParams *params, OverrideVars *vars,
 			float separation, float convergence,
 			int transition, int release_transition,
 			TransitionType transition_type,
 			TransitionType release_transition_type,
 			bool is_conditional, CommandListExpression condition,
 			CommandList activate_command_list, CommandList deactivate_command_list) :
-		Override(params, separation, convergence,
+		Override(params, vars, separation, convergence,
 				transition, release_transition,
 				transition_type, release_transition_type,
 				is_conditional, condition,
@@ -235,11 +239,12 @@ class OverrideTransition
 {
 public:
 	std::map<OverrideParam, OverrideTransitionParam> params;
+	std::map<CommandListVariable*, OverrideTransitionParam> vars;
 	OverrideTransitionParam separation, convergence;
 
 	void ScheduleTransition(HackerDevice *wrapper,
 			float target_separation, float target_convergence,
-			OverrideParams *targets,
+			OverrideParams *targets, OverrideVars *vars,
 			int time, TransitionType transition_type);
 	void UpdatePresets(HackerDevice *wrapper);
 	void OverrideTransition::UpdateTransitions(HackerDevice *wrapper);
@@ -268,6 +273,7 @@ class OverrideGlobalSave
 {
 public:
 	std::map<OverrideParam, OverrideGlobalSaveParam> params;
+	std::map<CommandListVariable*, OverrideGlobalSaveParam> vars;
 	OverrideGlobalSaveParam separation, convergence;
 
 	void Reset(HackerDevice* wrapper);

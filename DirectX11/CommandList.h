@@ -676,11 +676,12 @@ public:
 
 class CommandListVariable {
 public:
+	wstring name;
 	// TODO: Additional types, such as hash
 	float fval;
 
-	CommandListVariable(float fval) :
-		fval(fval)
+	CommandListVariable(wstring name, float fval) :
+		name(name), fval(fval)
 	{}
 };
 
@@ -980,6 +981,10 @@ class VariableAssignment : public AssignmentCommand {
 public:
 	float *ftarget;
 
+	VariableAssignment() :
+		ftarget(NULL)
+	{}
+
 	void run(CommandListState*) override;
 };
 
@@ -1185,3 +1190,4 @@ bool ParseCommandListFlowControl(const wchar_t *section, const wstring *line,
 		const wstring *ini_namespace);
 void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line);
 void optimise_command_lists(HackerDevice *device);
+bool parse_command_list_var_name(const wstring &name, const wstring *ini_namespace, CommandListVariable **target);

@@ -1224,7 +1224,7 @@ static void ParseIniVariables()
 			}
 		}
 
-		inserted = command_list_vars.emplace(*key, fval).second;
+		inserted = command_list_vars.emplace(*key, CommandListVariable{*key, fval}).second;
 		if (!inserted) {
 			IniWarning("WARNING: Redefinition of %S\n", key->c_str());
 			continue;
@@ -4234,8 +4234,8 @@ void LoadConfigFile()
 	ParseIniVariables();
 
 	RegisterPresetKeyBindings();
-
 	ParsePresetOverrideSections();
+
 	ParseResourceSections();
 
 	ParseCustomShaderSections();
