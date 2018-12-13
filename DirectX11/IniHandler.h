@@ -20,7 +20,7 @@ struct IniLine {
 	// a whole, but global sections like [Present] can have lines from many
 	// different namespaces, so each line stores the namespace it came from
 	// to resolve references within the namespace:
-	const wstring ini_namespace;
+	wstring ini_namespace;
 
 	IniLine(wstring &key, wstring &val, wstring &line, const wstring &ini_namespace) :
 		first(key),

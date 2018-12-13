@@ -230,6 +230,9 @@ static bool ini_warned = false;
 	ini_warned = true; \
 	LogOverlay(LOG_WARNING, fmt, __VA_ARGS__); \
 } while (0)
+#define IniWarningBeep() do { \
+	ini_warned = true; \
+} while (0)
 
 static void emit_ini_warning_tone()
 {
@@ -1184,56 +1187,6 @@ static bool valid_variable_name(wstring &name)
 	return (name.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_0123456789", 2) == wstring::npos);
 }
 
-static void ParseIniVariables()
-{
-	IniSectionVector *section = NULL;
-	IniSectionVector::iterator entry;
-	wstring *key, *val;
-	const wstring *ini_namespace;
-	bool inserted;
-	float fval;
-	int len;
-
-	command_list_vars.clear();
-
-	LogInfo("[Variables]\n");
-	GetIniSection(&section, L"Variables");
-	for (entry = section->begin(); entry < section->end(); entry++) {
-		key = &entry->first;
-		val = &entry->second;
-		ini_namespace = &entry->ini_namespace;
-
-		// Convert variable name to lower case since ini files are
-		// supposed to be case insensitive:
-		std::transform(key->begin(), key->end(), key->begin(), ::towlower);
-
-		if (!valid_variable_name(*key)) {
-			IniWarning("WARNING: Illegal variable name: \"%S\"\n", key->c_str());
-			continue;
-		}
-
-		if (!ini_namespace->empty())
-			*key = get_namespaced_var_name_lower(*key, ini_namespace);
-
-		fval = 0.0f;
-		if (!val->empty()) {
-			swscanf_s(val->c_str(), L"%f%n", &fval, &len);
-			if (len != val->length()) {
-				IniWarning("WARNING: Floating point parse error: %S=%S\n", key->c_str(), val->c_str());
-				continue;
-			}
-		}
-
-		inserted = command_list_vars.emplace(*key, CommandListVariable{*key, fval}).second;
-		if (!inserted) {
-			IniWarning("WARNING: Redefinition of %S\n", key->c_str());
-			continue;
-		}
-
-		LogInfo("  %S=%S\n", key->c_str(), val->c_str());
-	}
-}
-
 static void RegisterPresetKeyBindings()
 {
 	KeyOverrideType type;
@@ -1835,6 +1788,100 @@ static void ParseDriverProfile()
 
 		parse_ini_profile_line(lhs, rhs);
 	}
+}
+
+static void ParseConstantsSection()
+{
+	IniSectionVector *section = NULL;
+	IniSectionVector::iterator entry, next;
+	wstring *key, *val, name;
+	const wstring *ini_namespace;
+	bool inserted;
+	float fval;
+	int len;
+
+	// The naming on this one is historical - [Constants] used to define
+	// iniParams that couldn't change, then later we allowed them to be
+	// changed by key inputs and this became the initial state, and now
+	// this is implemented as a command list run on immediate context
+	// creation & config reload, which allows it to be used for any one
+	// time initialisation.
+	LogInfo("[Constants]\n");
+
+	// We pass this section in two stages - the first pass is only looking
+	// for global variable declarations, and the second pass is as any
+	// other command list (with one extra flag to tell it not to warn about
+	// the "global" keyword). The reason for this is so that a global
+	// variable defined in an included config file can be set from the
+	// [Constants] section in the main d3dx.ini or potentially another
+	// config file (d3dx_user.ini?). This covers cases such as setting the
+	// 3dvision2sbs mode, but still ensures that setting the variable will
+	// throw an error if 3dvision2sbs.ini was not included.
+
+	command_list_vars.clear();
+	GetIniSection(&section, L"Constants");
+	for (next = section->begin(), entry = next++; entry < section->end(); entry = next++) {
+		key = &entry->first;
+		val = &entry->second;
+		ini_namespace = &entry->ini_namespace;
+
+		// The variable name will either be in the key if this line
+		// also includes an assignment, or in raw_line if it does not:
+		if (!key->empty())
+			name = *key;
+		else
+			name = entry->raw_line;
+
+		// Convert variable name to lower case since ini files are
+		// supposed to be case insensitive:
+		std::transform(name.begin(), name.end(), name.begin(), ::towlower);
+
+		// We can ignore pre/post keywords because [Constants] doesn't
+		// support them as yet
+
+		if (name.compare(0, 7, L"global "))
+			continue;
+		name = name.substr(name.find_first_not_of(L" \t", 7));
+
+		if (!valid_variable_name(name)) {
+			IniWarning("WARNING: Illegal variable name: \"%S\"\n", name.c_str());
+			continue;
+		}
+
+		if (!ini_namespace->empty())
+			name = get_namespaced_var_name_lower(name, ini_namespace);
+
+		// Initialisation is optional and deferred until the command
+		// list is run
+		// If the initialiser is present and simple
+		fval = 0.0f;
+		if (!val->empty()) {
+			swscanf_s(val->c_str(), L"%f%n", &fval, &len);
+			if (len != val->length()) {
+				IniWarning("WARNING: Floating point parse error: %S=%S\n", key->c_str(), val->c_str());
+				continue;
+			}
+		}
+
+		inserted = command_list_vars.emplace(name, CommandListVariable{name, fval}).second;
+		if (!inserted) {
+			IniWarning("WARNING: Redefinition of %S\n", name.c_str());
+			continue;
+		}
+
+		if (val->empty())
+			LogInfo("  global %S\n", name.c_str());
+		else
+			LogInfo("  global %S=%f\n", name.c_str(), fval);
+
+		// Remove this line from the ini section data structures so the
+		// command list won't consider it in the 2nd pass:
+		next = section->erase(entry);
+	}
+
+	// Second pass for the command list:
+	G->constants_command_list.commands.clear();
+	ParseCommandList(L"Constants", &G->constants_command_list, NULL, NULL);
 }
 
 static wchar_t *true_false_overrule[] = {
@@ -3408,7 +3455,7 @@ static void ParseCustomShaderSections()
 	bool failed;
 	wstring namespace_path;
 
-	for (i = customShaders.begin(); i != customShaders.end();) {
+	for (i = customShaders.begin(); i != customShaders.end(); i++) {
 		shader_id = &i->first;
 		custom_shader = &i->second;
 
@@ -3441,6 +3488,18 @@ static void ParseCustomShaderSections()
 		if (GetIniString(shader_id->c_str(), L"cs", 0, setting, MAX_PATH))
 			failed |= custom_shader->compile('c', setting, shader_id, &namespace_path);
 
+		if (failed) {
+			// Don't want to allow a shader to be run if it had an
+			// error since we are likely to call Draw or Dispatch.
+			// We used to erase this from the customShaders map, but
+			// now that the command list in [Constants] is parsed
+			// first there could still be a pointer to the erased
+			// section. Just skip further processing so the command
+			// list in this section is empty, and it will be
+			// removed during the optimise_command_lists() call.
+			IniWarningBeep();
+			continue;
+		}
 
 		ParseBlendState(custom_shader, shader_id->c_str());
 		ParseDepthStencilState(custom_shader, shader_id->c_str());
@@ -3450,14 +3509,6 @@ static void ParseCustomShaderSections()
 
 		custom_shader->max_executions_per_frame =
 			GetIniInt(shader_id->c_str(), L"max_executions_per_frame", 0, NULL);
-
-		if (failed) {
-			// Don't want to allow a shader to be run if it had an
-			// error since we are likely to call Draw or Dispatch
-			i = customShaders.erase(i);
-			continue;
-		} else
-			i++;
 
 		ParseCommandList(shader_id->c_str(), &custom_shader->command_list, &custom_shader->post_command_list, CustomShaderIniKeys);
 	}
@@ -4240,15 +4291,26 @@ void LoadConfigFile()
 	// parse order to determine if the reference will work or not.
 	EnumerateCustomShaderSections();
 	EnumerateExplicitCommandListSections();
+	// Splitting enumeration of presets out, because [Constants] could
+	// theoretically use a preset (however unlikely), but needs to be
+	// parsed before presets to allocate any global variables that
+	// [Preset]s may refer to:
 	EnumeratePresetOverrideSections();
 
-	ParseIniVariables();
+	// Must be done before any command lists that may refer to them:
+	ParseResourceSections();
 
+	// This is the only command list we permit to allocate global variables,
+	// so we parse it before all other command lists, key bindings and
+	// presets that may use those variables.
+	ParseConstantsSection();
+
+	// Must be done after [Constants] has allocated global variables:
 	RegisterPresetKeyBindings();
 	ParsePresetOverrideSections();
 
-	ParseResourceSections();
-
+	// Used to have to do CustomShaders before other command lists in case
+	// any failed and had their sections erased, but no longer matters.
 	ParseCustomShaderSections();
 	ParseExplicitCommandListSections();
 
@@ -4280,16 +4342,6 @@ void LoadConfigFile()
 	G->clear_uav_float_command_list.commands.clear();
 	G->post_clear_uav_float_command_list.commands.clear();
 	ParseCommandList(L"ClearUnorderedAccessViewFloat", &G->clear_uav_float_command_list, &G->post_clear_uav_float_command_list, NULL);
-
-	// The naming on this one is historical - [Constants] used to define
-	// iniParams that couldn't change, then later we allowed them to be
-	// changed by key inputs and this became the initial state, and now
-	// this is implemented as a command list run on immediate context
-	// creation & config reload, which allows it to be used for any one
-	// time initialisation.
-	LogInfo("[Constants]\n");
-	G->constants_command_list.commands.clear();
-	ParseCommandList(L"Constants", &G->constants_command_list, NULL, NULL);
 
 	LogInfo("[Profile]\n");
 	ParseDriverProfile();
