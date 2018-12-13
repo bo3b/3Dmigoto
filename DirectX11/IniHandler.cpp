@@ -1280,10 +1280,9 @@ static void RegisterPresetKeyBindings()
 	}
 }
 
-static void ParsePresetOverrideSections()
+static void EnumeratePresetOverrideSections()
 {
 	wstring preset_id;
-	PresetOverride *preset;
 	IniSections::iterator lower, upper, i;
 
 	presetOverrides.clear();
@@ -1294,17 +1293,28 @@ static void ParsePresetOverrideSections()
 	for (i = lower; i != upper; i++) {
 		const wchar_t *id = i->first.c_str();
 
-		LogInfo("[%S]\n", id);
-
 		// Convert to lower case
 		preset_id = id;
 		std::transform(preset_id.begin(), preset_id.end(), preset_id.begin(), ::towlower);
 
-		// Read parameters from ini
+		// Construct a preset in the global list:
 		presetOverrides[preset_id];
-		preset = &presetOverrides[preset_id];
-		preset->ParseIniSection(id);
+	}
+}
 
+static void ParsePresetOverrideSections()
+{
+	PresetOverrideMap::iterator i;
+	PresetOverride *preset;
+
+	for (i = begin(presetOverrides); i != end(presetOverrides); i++) {
+		const wchar_t *id = i->first.c_str();
+		preset = &i->second;
+
+		LogInfo("[%S]\n", id);
+
+		// Read parameters from ini
+		preset->ParseIniSection(id);
 		preset->unique_triggers_required = GetIniInt(id, L"unique_triggers_required", 0, NULL);
 	}
 }
@@ -4230,6 +4240,7 @@ void LoadConfigFile()
 	// parse order to determine if the reference will work or not.
 	EnumerateCustomShaderSections();
 	EnumerateExplicitCommandListSections();
+	EnumeratePresetOverrideSections();
 
 	ParseIniVariables();
 
