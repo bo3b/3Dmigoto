@@ -856,7 +856,7 @@ void OverrideGlobalSave::Restore(Override *preset)
 		if (j != preset->mOverrideParams.end()) {
 			if (!i->second.Restore(&preset->mSavedParams[i->first])) {
 				LogDebug("removed ini param %c%.0i save area\n", i->first.chr(), i->first.idx);
-				params.erase(i);
+				next = params.erase(i);
 			}
 		}
 	}
@@ -866,7 +866,7 @@ void OverrideGlobalSave::Restore(Override *preset)
 		if (l != preset->mOverrideVars.end()) {
 			if (!k->second.Restore(&preset->mSavedVars[k->first])) {
 				LogDebug("removed var %S save area\n", k->first->name.c_str());
-				vars.erase(k);
+				next = vars.erase(k);
 			}
 		}
 	}
