@@ -2542,6 +2542,9 @@ void HackerContext::Bind3DMigotoResources()
 
 void HackerContext::InitIniParams()
 {
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	HRESULT hr;
+
 	// Only the immediate context is allowed to perform [Constants]
 	// initialisation, as otherwise creating a deferred context could
 	// clobber any changes since then. The only exception I can think of is
@@ -2561,8 +2564,26 @@ void HackerContext::InitIniParams()
 	// consistency we want all other ini params to be initialised as well:
 	memset(G->iniParams.data(), 0, sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
 
-	// The command list will take care of the Map/Unmap to update the
-	// resource on the GPU:
+	// Update the IniParams resource on the GPU before executing the
+	// [Constants] command list. This ensures that it does get updated,
+	// even if the [Constants] command list doesn't initialise any IniParam
+	// (to non-zero), and we do this first in case [Constants] runs any
+	// custom shaders that may check IniParams. This is a bit wasteful
+	// since in most cases we will update the resource twice in a row, and
+	// the alternative is setting a flag to force update_params in the
+	// [Constants] command list, but this is a cold path so a little extra
+	// overhead won't matter and I don't want to forget about this if
+	// further command list optimisations cause [Constants] to bail out
+	// early and not consider update_params at all.
+	hr = mOrigContext1->Map(mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	if (SUCCEEDED(hr)) {
+		memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
+		mOrigContext1->Unmap(mHackerDevice->mIniTexture, 0);
+	} else {
+		LogInfo("InitIniParams: Map failed\n");
+	}
+
+	// The command list will take care of initialising any non-zero values:
 	RunCommandList(mHackerDevice, this, &G->constants_command_list, NULL, false);
 }
 
