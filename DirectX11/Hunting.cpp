@@ -1862,7 +1862,7 @@ void ParseHuntingSection()
 	// marking_mode was actually changed since the last config reload:
 	new_marking_mode = GetIniEnumClass(L"Hunting", L"marking_mode", MarkingMode::INVALID, NULL, MarkingModeNames);
 	if (new_marking_mode != prev_marking_mode)
-		G->marking_mode = new_marking_mode;
+		G->marking_mode = prev_marking_mode = new_marking_mode;
 	RegisterIniKeyBinding(L"Hunting", L"next_marking_mode", NextMarkingMode, NULL, noRepeat, NULL);
 
 	if (GetIniStringAndLog(L"Hunting", L"marking_actions", 0, buf, MAX_PATH)) {
