@@ -113,21 +113,23 @@ static inline void profile_command_list_cmd_end(CommandListCommand *cmd, Command
 	}
 }
 
-static void _RunCommandList(CommandList *command_list, CommandListState *state)
+static void _RunCommandList(CommandList *command_list, CommandListState *state, bool recursive=true)
 {
 	CommandList::Commands::iterator i;
 	command_list_profiling_state profiling_state;
 
 	if (state->recursion > MAX_COMMAND_LIST_RECURSION) {
-		LogInfo("WARNING: Command list recursion limit exceeded! Circular reference?\n");
+		LogOverlay(LOG_WARNING, "WARNING: Command list recursion limit exceeded! Circular reference?\n");
 		return;
 	}
 
 	if (command_list->commands.empty())
 		return;
 
-	COMMAND_LIST_LOG(state, "%s {\n", state->post ? "post" : "pre");
-	state->recursion++;
+	if (recursive) {
+		COMMAND_LIST_LOG(state, "%s {\n", state->post ? "post" : "pre");
+		state->recursion++;
+	}
 
 	profile_command_list_start(command_list, state, &profiling_state);
 
@@ -139,8 +141,10 @@ static void _RunCommandList(CommandList *command_list, CommandListState *state)
 
 	profile_command_list_end(command_list, state, &profiling_state);
 
-	state->recursion--;
-	COMMAND_LIST_LOG(state, "}\n");
+	if (recursive) {
+		state->recursion--;
+		COMMAND_LIST_LOG(state, "}\n");
+	}
 }
 
 static void CommandListFlushState(CommandListState *state)
@@ -2145,7 +2149,7 @@ void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_li
 
 void RunLinkedCommandList::run(CommandListState *state)
 {
-	_RunCommandList(link, state);
+	_RunCommandList(link, state, false);
 }
 
 bool RunLinkedCommandList::noop(bool post, bool ignore_cto)
@@ -4600,15 +4604,15 @@ void IfCommand::run(CommandListState *state)
 	if (expression.evaluate(state)) {
 		COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 		if (state->post)
-			_RunCommandList(true_commands_post.get(), state);
+			_RunCommandList(true_commands_post.get(), state, false);
 		else
-			_RunCommandList(true_commands_pre.get(), state);
+			_RunCommandList(true_commands_pre.get(), state, false);
 	} else {
 		COMMAND_LIST_LOG(state, "%S\n", else_line.c_str());
 		if (state->post)
-			_RunCommandList(false_commands_post.get(), state);
+			_RunCommandList(false_commands_post.get(), state, false);
 		else
-			_RunCommandList(false_commands_pre.get(), state);
+			_RunCommandList(false_commands_pre.get(), state, false);
 	}
 }
 
