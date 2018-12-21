@@ -1011,6 +1011,10 @@ public:
 	bool noop(bool post, bool ignore_cto) override;
 };
 
+class ElseIfCommand : public IfCommand {
+public:
+};
+
 class CommandPlaceholder : public CommandListCommand {
 public:
 	void run(CommandListState*) override;

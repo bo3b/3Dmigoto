@@ -4441,6 +4441,26 @@ bail:
 	return false;
 }
 
+static bool ParseElseIfCommand(const wchar_t *section, const wstring *line, int prefix,
+		CommandList *pre_command_list, CommandList *post_command_list,
+		const wstring *ini_namespace)
+{
+	ElseIfCommand *operation = new ElseIfCommand();
+	wstring expression = line->substr(line->find_first_not_of(L" \t", prefix));
+
+	if (!operation->expression.parse(&expression, ini_namespace))
+		goto bail;
+
+	// "else if" is implemented by nesting another if/endif inside the
+	// parent if command's else clause. We add both an ElsePlaceholder and
+	// an ElseIfCommand here, and will fix up the "endif" balance later.
+	AddCommandToList(new ElsePlaceholder(), NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
+	return AddCommandToList(operation, NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
+bail:
+	delete operation;
+	return false;
+}
+
 static bool ParseElseCommand(const wchar_t *section,
 		CommandList *pre_command_list, CommandList *post_command_list)
 {
@@ -4452,6 +4472,7 @@ static bool _ParseEndIfCommand(const wchar_t *section,
 {
 	CommandList::Commands::reverse_iterator rit;
 	IfCommand *if_command;
+	ElseIfCommand *else_if_command;
 	ElsePlaceholder *else_command = NULL;
 	CommandList::Commands::iterator else_pos = command_list->commands.end();
 
@@ -4464,6 +4485,15 @@ static bool _ParseEndIfCommand(const wchar_t *section,
 
 		if_command = dynamic_cast<IfCommand*>(rit->get());
 		if (if_command) {
+			// "else if" is treated as embedding another "if" block
+			// in the else clause of the first "if" command. The
+			// ElsePlaceholder was already inserted when the
+			// ElseIfCommand was parsed, and this ElseIfCommand acts
+			// as the nested IfCommand so the below code works as
+			// is, but to balance the endifs we will need to repeat
+			// this function until we find the original IfCommand:
+			else_if_command = dynamic_cast<ElseIfCommand*>(rit->get());
+
 			// Transfer the commands since the if command until the
 			// endif into the if command's true/false lists
 			if (post && !if_command->post_finalised) {
@@ -4477,6 +4507,8 @@ static bool _ParseEndIfCommand(const wchar_t *section,
 				}
 				command_list->commands.erase(rit.base(), command_list->commands.end());
 				if_command->post_finalised = true;
+				if (else_if_command)
+					return _ParseEndIfCommand(section, command_list, post);
 				return true;
 			} else if (!post && !if_command->pre_finalised) {
 				// C++ gotcha: reverse_iterator::base() points to the *next* element
@@ -4489,11 +4521,14 @@ static bool _ParseEndIfCommand(const wchar_t *section,
 				}
 				command_list->commands.erase(rit.base(), command_list->commands.end());
 				if_command->pre_finalised = true;
+				if (else_if_command)
+					return _ParseEndIfCommand(section, command_list, post);
 				return true;
 			}
 		}
 	}
 
+	LogOverlay(LOG_WARNING, "WARNING: [%S] endif missing if\n", section);
 	return false;
 }
 
@@ -4514,8 +4549,10 @@ bool ParseCommandListFlowControl(const wchar_t *section, const wstring *line,
 {
 	if (!wcsncmp(line->c_str(), L"if ", 3))
 		return ParseIfCommand(section, line, pre_command_list, post_command_list, ini_namespace);
-	// TODO if (!wcsncmp(line->c_str(), L"elif ", 5))
-	// TODO	return ParseElseIfCommand(section, line->substr(5), pre_command_list, post_command_list, ini_namespace);
+	if (!wcsncmp(line->c_str(), L"elif ", 5))
+		return ParseElseIfCommand(section, line, 5, pre_command_list, post_command_list, ini_namespace);
+	if (!wcsncmp(line->c_str(), L"else if ", 8))
+		return ParseElseIfCommand(section, line, 8, pre_command_list, post_command_list, ini_namespace);
 	if (!wcscmp(line->c_str(), L"else"))
 		return ParseElseCommand(section, pre_command_list, post_command_list);
 	if (!wcscmp(line->c_str(), L"endif"))
