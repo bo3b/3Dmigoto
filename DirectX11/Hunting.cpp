@@ -1284,7 +1284,7 @@ static void NextMarkingMode(HackerDevice *device, void *private_data)
 	if (G->marking_mode == MarkingMode::ZERO)
 		G->marking_mode = (MarkingMode)((int)G->marking_mode + 1);
 
-	if (G->marking_mode == MarkingMode::INVALID)
+	if (G->marking_mode >= MarkingMode::INVALID)
 		G->marking_mode = MarkingMode::SKIP;
 }
 
