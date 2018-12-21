@@ -3507,7 +3507,7 @@ bool parse_command_list_var_name(const wstring &name, const wstring *ini_namespa
 {
 	CommandListVariables::iterator var = command_list_vars.end();
 
-	if (name.length() <= 2 || name[0] != L'$')
+	if (name.length() < 2 || name[0] != L'$')
 		return false;
 
 	var = command_list_vars.end();
