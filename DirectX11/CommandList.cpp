@@ -131,6 +131,14 @@ static void _RunCommandList(CommandList *command_list, CommandListState *state, 
 		state->recursion++;
 	}
 
+	if (command_list->stack_frame_size) {
+		state->sp += command_list->stack_frame_size;
+		if ((size_t)(state->sp - state->stack) > state->stack_size) {
+			if (!state->grow_stack())
+				return;
+		}
+	}
+
 	profile_command_list_start(command_list, state, &profiling_state);
 
 	for (i = command_list->commands.begin(); i < command_list->commands.end() && !state->aborted; i++) {
@@ -140,6 +148,8 @@ static void _RunCommandList(CommandList *command_list, CommandListState *state, 
 	}
 
 	profile_command_list_end(command_list, state, &profiling_state);
+
+	state->sp -= command_list->stack_frame_size;
 
 	if (recursive) {
 		state->recursion--;
@@ -2264,6 +2274,11 @@ float CommandListOperand::process_texture_filter(CommandListState *state)
 	return 1.0;
 }
 
+void CommandList::clear()
+{
+	commands.clear();
+	stack_frame_size = 0;
+}
 
 CommandListState::CommandListState() :
 	mHackerDevice(NULL),
@@ -2284,11 +2299,19 @@ CommandListState::CommandListState() :
 	recursion(0),
 	extra_indent(0),
 	aborted(false),
-	scissor_valid(false)
+	scissor_valid(false),
+	stack(NULL),
+	sp(NULL),
+	stack_size(0)
 {
 	memset(&cursor_info, 0, sizeof(CURSORINFO));
 	memset(&cursor_info_ex, 0, sizeof(ICONINFO));
 	memset(&window_rect, 0, sizeof(RECT));
+
+	// TODO: Consider using TLS for the command list stacks to minimise
+	// memory allocations and resizing in the hot path. For now though I
+	// want to always start with a free stack until I'm confident there
+	// aren't any bugs.
 }
 
 CommandListState::~CommandListState()
@@ -2305,6 +2328,24 @@ CommandListState::~CommandListState()
 		cursor_color_view->Release();
 	if (cursor_color_tex)
 		cursor_color_tex->Release();
+	free(stack);
+}
+
+bool CommandListState::grow_stack()
+{
+	uint8_t *new_stack = (uint8_t*)realloc(stack, sp - stack);
+	if (!new_stack) {
+		LogOverlay(LOG_DIRE, "Out of memory growing command list stack from %Iu to %Iu bytes\n",
+				stack_size, sp - stack);
+		return false;
+	}
+
+	sp = new_stack + (sp - stack);
+	stack = new_stack;
+	LogDebug("Command list stack grew from %Iu to %Iu bytes, stack: %p, sp: %p\n",
+			stack_size, sp - stack, stack, sp);
+	stack_size = sp - stack;
+	return true;
 }
 
 static void UpdateWindowInfo(CommandListState *state)
@@ -2613,8 +2654,10 @@ float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device
 			return val;
 		case ParamOverrideType::INI_PARAM:
 			return G->iniParams[param_idx].*param_component;
-		case ParamOverrideType::VARIABLE:
-			return *var_ftarget;
+		case ParamOverrideType::GLOBAL_VARIABLE:
+			return *global_ftarget;
+		case ParamOverrideType::LOCAL_VARIABLE:
+			return *(float*)(state->sp + local_foffset);
 		case ParamOverrideType::RES_WIDTH:
 			return (float)G->mResolutionInfo.width;
 		case ParamOverrideType::RES_HEIGHT:
@@ -3488,13 +3531,25 @@ void ParamOverride::run(CommandListState *state)
 	state->update_params |= (*dest != orig);
 }
 
-void VariableAssignment::run(CommandListState *state)
+void GlobalVariableAssignment::run(CommandListState *state)
 {
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	*ftarget = expression.evaluate(state);
 
 	COMMAND_LIST_LOG(state, "  = %f\n", *ftarget);
+}
+
+void LocalVariableAssignment::run(CommandListState *state)
+{
+	float val;
+
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+
+	val = expression.evaluate(state);
+	*(float*)(state->sp + foffset) = val;
+
+	COMMAND_LIST_LOG(state, "  = %f\n", val);
 }
 
 bool AssignmentCommand::optimise(HackerDevice *device)
@@ -3512,7 +3567,8 @@ static bool operand_allowed_in_context(ParamOverrideType type, CommandList *comm
 	switch (type) {
 		case ParamOverrideType::VALUE:
 		case ParamOverrideType::INI_PARAM:
-		case ParamOverrideType::VARIABLE:
+		case ParamOverrideType::GLOBAL_VARIABLE:
+		// LOCAL_VARIABLE only valid within a command list
 		case ParamOverrideType::RES_WIDTH:
 		case ParamOverrideType::RES_HEIGHT:
 		case ParamOverrideType::TIME:
@@ -3524,6 +3580,23 @@ static bool operand_allowed_in_context(ParamOverrideType type, CommandList *comm
 			return true;
 	}
 	return false;
+}
+
+bool valid_variable_name(const wstring &name)
+{
+	if (name.length() < 2)
+		return false;
+
+	// Variable names begin with a $
+	if (name[0] != L'$')
+		return false;
+
+	// First character must be a letter or underscore ($1, $2, etc reserved for future arguments):
+	if ((name[1] < L'a' || name[1] > L'z') && name[1] != L'_')
+		return false;
+
+	// Subsequent characters must be in this list:
+	return (name.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_0123456789", 2) == wstring::npos);
 }
 
 bool parse_command_list_var_name(const wstring &name, const wstring *ini_namespace, CommandListVariable **target)
@@ -3545,9 +3618,71 @@ bool parse_command_list_var_name(const wstring &name, const wstring *ini_namespa
 	return true;
 }
 
+int find_local_variable(const wstring &name, CommandList *command_list, int *stack_offset)
+{
+	CommandListScope::reverse_iterator rit;
+
+	for (rit = rbegin(command_list->scope); rit != rend(command_list->scope); rit++) {
+		auto match = rit->find(name);
+		if (match != rit->end()) {
+			*stack_offset = match->second;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool declare_local_variable(const wchar_t *section, wstring &name,
+		CommandList *pre_command_list, CommandList *post_command_list,
+		const wstring *ini_namespace)
+{
+	CommandListVariable *global = NULL;
+	int local;
+
+	if (!valid_variable_name(name)) {
+		LogOverlay(LOG_WARNING, "WARNING: Illegal local variable name: [%S] \"%S\"\n", section, name.c_str());
+		return false;
+	}
+
+	if (find_local_variable(name, pre_command_list, &local) ||
+	   (post_command_list && find_local_variable(name, post_command_list, &local))) {
+		// Could allow this at different scope levels, but... no.
+		// You can declare local variables of the same name in
+		// independent scopes (if {local $tmp} else {local $tmp}), but
+		// we won't allow masking a local variable from a parent scope,
+		// because that's usually a bug. Choose a different name son.
+		LogOverlay(LOG_WARNING, "WARNING: Illegal redeclaration of local variable [%S] %S\n", section, name.c_str());
+		return false;
+	}
+
+	if (parse_command_list_var_name(name, ini_namespace, &global)) {
+		// Not making this fatal since this could clash between say a
+		// global in the d3dx.ini and a local variable in another ini.
+		// Just issue a notice in hunting mode and carry on.
+		LogOverlay(LOG_NOTICE, "WARNING: [%S] local %S masks a global variable with the same name\n", section, name.c_str());
+	}
+
+	// The stack pointer will be incremented when entering a command list,
+	// so our variables will be before the pointer (let's stay away from
+	// the ambiguous and confusing up/down/above/below notation).
+	pre_command_list->stack_frame_size += sizeof(float); // TODO: Different types, arrays, etc
+	pre_command_list->scope.back()[name] = -pre_command_list->stack_frame_size;
+	if (post_command_list) {
+		post_command_list->stack_frame_size += sizeof(float); // TODO: Different types, arrays, etc
+		post_command_list->scope.back()[name] = -post_command_list->stack_frame_size;
+	}
+
+	LogInfo("  Allocated [%S] local %S (scope %Iu) at sp%+i on command list stack. Stack frame now %i bytes\n",
+			section, name.c_str(), pre_command_list->scope.size(), pre_command_list->scope.back()[name], pre_command_list->stack_frame_size);
+
+	return true;
+}
+
 bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namespace, CommandList *command_list)
 {
-	CommandListVariable *var = NULL;
+	CommandListVariable *global = NULL;
+	int local;
 	int ret, len1;
 
 	// Try parsing value as a float
@@ -3566,9 +3701,13 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 	}
 
 	// Try parsing operand as a variable:
-	if (parse_command_list_var_name(*operand, ini_namespace, &var)) {
-		type = ParamOverrideType::VARIABLE;
-		var_ftarget = &var->fval;
+	if (find_local_variable(*operand, command_list, &local)) {
+		type = ParamOverrideType::LOCAL_VARIABLE;
+		local_foffset = local;
+		return operand_allowed_in_context(type, command_list);
+	} else if (parse_command_list_var_name(*operand, ini_namespace, &global)) {
+		type = ParamOverrideType::GLOBAL_VARIABLE;
+		global_ftarget = &global->fval;
 		return operand_allowed_in_context(type, command_list);
 	}
 
@@ -3634,19 +3773,43 @@ bail:
 }
 
 bool ParseCommandListVariableAssignment(const wchar_t *section,
-		const wchar_t *key, wstring *val, CommandList *command_list,
+		const wchar_t *key, wstring *val, const wstring *raw_line,
+		CommandList *command_list, CommandList *pre_command_list, CommandList *post_command_list,
 		const wstring *ini_namespace)
 {
-	VariableAssignment *command = new VariableAssignment();
-	CommandListVariable *var = NULL;
+	AssignmentCommand *command = NULL;
+	CommandListVariable *global = NULL;
+	wstring name = key;
+	int local;
 
-	if (!parse_command_list_var_name(key, ini_namespace, &var))
-		goto bail;
+	// Declaration without assignment?
+	if (name.empty() && raw_line)
+		name = *raw_line;
+
+	if (!name.compare(0, 6, L"local ")) {
+		name = name.substr(name.find_first_not_of(L" \t", 6));
+		// Local variables are shared between pre and post command lists.
+		if (!declare_local_variable(section, name, pre_command_list, post_command_list, ini_namespace))
+			return false;
+
+		// Declaration without assignment?
+		if (val->empty())
+			return true;
+	}
+
+	if (find_local_variable(name, command_list, &local)) {
+		LocalVariableAssignment *lcmd = new LocalVariableAssignment();
+		lcmd->foffset = local;
+		command = lcmd;
+	} else if (parse_command_list_var_name(name, ini_namespace, &global)) {
+		GlobalVariableAssignment *gcmd = new GlobalVariableAssignment();
+		gcmd->ftarget = &global->fval;
+		command = gcmd;
+	} else
+		return false;
 
 	if (!command->expression.parse(val, ini_namespace, command_list))
 		goto bail;
-
-	command->ftarget = &var->fval;
 
 	command->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	command_list->commands.push_back(std::shared_ptr<CommandListCommand>(command));
@@ -4457,6 +4620,9 @@ static bool _ParseIfCommand(const wchar_t *section, const wstring *line,
 	if (!operation->expression.parse(expression, ini_namespace, command_list))
 		goto bail;
 
+	// New scope level to isolate local variables:
+	command_list->scope.emplace_back();
+
 	return AddCommandToList(operation, NULL, command_list, NULL, NULL, section, line->c_str(), NULL);
 bail:
 	delete operation;
@@ -4486,6 +4652,9 @@ static bool _ParseElseIfCommand(const wchar_t *section, const wstring *line, con
 	if (!operation->expression.parse(expression, ini_namespace, command_list))
 		goto bail;
 
+	// Clear deepest scope level to isolate local variables:
+	command_list->scope.back().clear();
+
 	// "else if" is implemented by nesting another if/endif inside the
 	// parent if command's else clause. We add both an ElsePlaceholder and
 	// an ElseIfCommand here, and will fix up the "endif" balance later.
@@ -4514,6 +4683,11 @@ static bool ParseElseIfCommand(const wchar_t *section, const wstring *line, int 
 static bool ParseElseCommand(const wchar_t *section,
 		CommandList *pre_command_list, CommandList *post_command_list)
 {
+	// Clear deepest scope level to isolate local variables:
+	pre_command_list->scope.back().clear();
+	if (post_command_list)
+		post_command_list->scope.back().clear();
+
 	return AddCommandToList(new ElsePlaceholder(), NULL, NULL, pre_command_list, post_command_list, section, L"else", NULL);
 }
 
@@ -4556,6 +4730,7 @@ static bool _ParseEndIfCommand(const wchar_t *section,
 					if_command->false_commands_post->ini_section = if_command->ini_line + L" <else>";
 				}
 				command_list->commands.erase(rit.base(), command_list->commands.end());
+				command_list->scope.pop_back();
 				if_command->post_finalised = true;
 				if_command->has_nested_else_if = has_nested_else_if;
 				if (else_if_command)
@@ -4571,6 +4746,7 @@ static bool _ParseEndIfCommand(const wchar_t *section,
 					if_command->false_commands_pre->ini_section = if_command->ini_line + L" <else>";
 				}
 				command_list->commands.erase(rit.base(), command_list->commands.end());
+				command_list->scope.pop_back();
 				if_command->pre_finalised = true;
 				if_command->has_nested_else_if = has_nested_else_if;
 				if (else_if_command)
@@ -4693,11 +4869,11 @@ bool IfCommand::noop(bool post, bool ignore_cto)
 	is_static = expression.static_evaluate(&static_val);
 	if (is_static) {
 		if (static_val) {
-			false_commands_pre->commands.clear();
-			false_commands_post->commands.clear();
+			false_commands_pre->clear();
+			false_commands_post->clear();
 		} else {
-			true_commands_pre->commands.clear();
-			true_commands_post->commands.clear();
+			true_commands_pre->clear();
+			true_commands_post->clear();
 		}
 	}
 

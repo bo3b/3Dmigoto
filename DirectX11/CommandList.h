@@ -68,6 +68,11 @@ public:
 	// Anything that needs to be updated at the end of the command list:
 	bool update_params;
 
+	// Stack for local variables:
+	uint8_t *stack, *sp;
+	size_t stack_size;
+	bool grow_stack();
+
 	CommandListState();
 	~CommandListState();
 };
@@ -89,12 +94,27 @@ public:
 	virtual bool noop(bool post, bool ignore_cto) { return false; }
 };
 
+// The scope object is used to declare local variables in a command list. The
+// multiple levels are to isolate variables declared inside if blocks from
+// being accessed in a parent or sibling scope, while allowing variables
+// declared in a parent scope to be used in an if block. This scope object is
+// only used during command list parsing - once allocated the commands and
+// operands referencing these variables will point directly to offsets on the
+// command list stack to avoid slow lookups at runtime, and the scope object
+// will be cleared to save memory (with some refactoring we could potentially
+// even remove it from the CommandList class altogether).
+typedef std::vector<std::unordered_map<std::wstring, int>> CommandListScope;
+
 class CommandList {
 public:
 	// Using vector of pointers to allow mixed types, and shared_ptr to handle
 	// destruction of each object:
 	typedef std::vector<std::shared_ptr<CommandListCommand>> Commands;
 	Commands commands;
+
+	// For local variables:
+	CommandListScope scope; // Only used during parsing
+	int stack_frame_size;
 
 	// For performance metrics:
 	wstring ini_section;
@@ -103,8 +123,11 @@ public:
 	LARGE_INTEGER time_spent_exclusive;
 	unsigned executions;
 
+	void clear();
+
 	CommandList() :
-		post(false)
+		post(false),
+		stack_frame_size(0)
 	{}
 };
 
@@ -831,7 +854,8 @@ enum class ParamOverrideType {
 	INVALID,
 	VALUE,
 	INI_PARAM,
-	VARIABLE,
+	GLOBAL_VARIABLE,
+	LOCAL_VARIABLE,
 	RT_WIDTH,
 	RT_HEIGHT,
 	RES_WIDTH,
@@ -924,7 +948,8 @@ public:
 	int param_idx;
 
 	// For VARIABLE type:
-	float *var_ftarget;
+	float *global_ftarget;
+	int local_foffset;
 
 	// For texture filters:
 	ResourceCopyTarget texture_filter_target;
@@ -938,7 +963,8 @@ public:
 		val(FLT_MAX),
 		param_component(NULL),
 		param_idx(0),
-		var_ftarget(NULL),
+		global_ftarget(NULL),
+		local_foffset(0),
 		scissor(0)
 	{}
 
@@ -978,15 +1004,27 @@ public:
 	void run(CommandListState*) override;
 };
 
-class VariableAssignment : public AssignmentCommand {
+class GlobalVariableAssignment : public AssignmentCommand {
 public:
 	float *ftarget;
 
-	VariableAssignment() :
+	GlobalVariableAssignment() :
 		ftarget(NULL)
 	{}
 
 	void run(CommandListState*) override;
+};
+
+class LocalVariableAssignment : public AssignmentCommand {
+public:
+	int foffset;
+
+	LocalVariableAssignment() :
+		foffset(0)
+	{}
+
+	void run(CommandListState*) override;
+	// TODO: Implement noop() to check if variable is ever read (before the next write)
 };
 
 class IfCommand : public CommandListCommand {
@@ -1189,7 +1227,8 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 		const wchar_t *key, wstring *val, CommandList *command_list,
 		const wstring *ini_namespace);
 bool ParseCommandListVariableAssignment(const wchar_t *section,
-		const wchar_t *key, wstring *val, CommandList *command_list,
+		const wchar_t *key, wstring *val, const wstring *raw_line,
+		CommandList *command_list, CommandList *pre_command_list, CommandList *post_command_list,
 		const wstring *ini_namespace);
 bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 		const wchar_t *key, wstring *val, CommandList *command_list,
@@ -1200,3 +1239,4 @@ bool ParseCommandListFlowControl(const wchar_t *section, const wstring *line,
 void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line);
 void optimise_command_lists(HackerDevice *device);
 bool parse_command_list_var_name(const wstring &name, const wstring *ini_namespace, CommandListVariable **target);
+bool valid_variable_name(const wstring &name);
