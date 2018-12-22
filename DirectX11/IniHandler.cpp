@@ -1,6 +1,7 @@
 #include "IniHandler.h"
 
 #include <algorithm>
+#include <iterator>
 #include <string>
 #include <strsafe.h>
 #include <fstream>
@@ -1170,23 +1171,6 @@ static void ParseIncludedIniFiles()
 	free_globbing_vector(exclude);
 }
 
-static bool valid_variable_name(wstring &name)
-{
-	if (name.length() < 2)
-		return false;
-
-	// Variable names begin with a $
-	if (name[0] != L'$')
-		return false;
-
-	// First character must be a letter or underscore ($1, $2, etc reserved for future arguments):
-	if ((name[1] < L'a' || name[1] > L'z') && name[1] != L'_')
-		return false;
-
-	// Subsequent characters must be in this list:
-	return (name.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_0123456789", 2) == wstring::npos);
-}
-
 static void RegisterPresetKeyBindings()
 {
 	KeyOverrideType type;
@@ -1657,7 +1641,7 @@ static bool ParseCommandListLine(const wchar_t *ini_section,
 	if (ParseCommandListIniParamOverride(ini_section, lhs, rhs, command_list, ini_namespace))
 		return true;
 
-	if (ParseCommandListVariableAssignment(ini_section, lhs, rhs, command_list, ini_namespace))
+	if (ParseCommandListVariableAssignment(ini_section, lhs, rhs, raw_line, command_list, pre_command_list, post_command_list, ini_namespace))
 		return true;
 
 	if (ParseCommandListResourceCopyDirective(ini_section, lhs, rhs, command_list, ini_namespace))
@@ -1694,6 +1678,7 @@ static void ParseCommandList(const wchar_t *id,
 	const wchar_t *key_ptr;
 	CommandList *command_list, *explicit_command_list;
 	IniSectionSet whitelisted_keys;
+	CommandListScope scope;
 	int i;
 
 	// Safety check to make sure we are keeping the command list section
@@ -1703,14 +1688,18 @@ static void ParseCommandList(const wchar_t *id,
 		DoubleBeepExit();
 	}
 
+	scope.emplace_front();
+
 	LogDebug("Registering command list: %S\n", id);
 	pre_command_list->ini_section = id;
 	pre_command_list->post = false;
+	pre_command_list->scope = &scope;
 	if (register_command_lists)
 		registered_command_lists.push_back(pre_command_list);
 	if (post_command_list) {
 		post_command_list->ini_section = id;
 		post_command_list->post = true;
+		post_command_list->scope = &scope;
 		if (register_command_lists)
 			registered_command_lists.push_back(post_command_list);
 	}
@@ -1769,6 +1758,16 @@ static void ParseCommandList(const wchar_t *id,
 
 		IniWarning("WARNING: Unrecognised entry: %S\n", raw_line->c_str());
 	}
+
+	// Don't need the scope objects once parsing is complete. If all
+	// if/endifs were balanced correctly we should be back to the initial
+	// scope, so warn if we aren't:
+	if (std::distance(begin(scope), end(scope)) != 1)
+		IniWarning("WARNING: [%S] scope unbalanced\n", id);
+
+	pre_command_list->scope = NULL;
+	if (post_command_list)
+		post_command_list->scope = NULL;
 }
 
 static void ParseDriverProfile()
@@ -1818,7 +1817,7 @@ static void ParseConstantsSection()
 	// 3dvision2sbs mode, but still ensures that setting the variable will
 	// throw an error if 3dvision2sbs.ini was not included.
 
-	command_list_vars.clear();
+	command_list_globals.clear();
 	GetIniSection(&section, L"Constants");
 	for (next = section->begin(), entry = next; entry < section->end(); entry = next) {
 		next++;
@@ -1845,7 +1844,7 @@ static void ParseConstantsSection()
 		name = name.substr(name.find_first_not_of(L" \t", 7));
 
 		if (!valid_variable_name(name)) {
-			IniWarning("WARNING: Illegal variable name: \"%S\"\n", name.c_str());
+			IniWarning("WARNING: Illegal global variable name: \"%S\"\n", name.c_str());
 			continue;
 		}
 
@@ -1864,9 +1863,9 @@ static void ParseConstantsSection()
 			}
 		}
 
-		inserted = command_list_vars.emplace(name, CommandListVariable{name, fval}).second;
+		inserted = command_list_globals.emplace(name, CommandListVariable{name, fval}).second;
 		if (!inserted) {
-			IniWarning("WARNING: Redefinition of %S\n", name.c_str());
+			IniWarning("WARNING: Redeclaration of %S\n", name.c_str());
 			continue;
 		}
 
@@ -1881,7 +1880,7 @@ static void ParseConstantsSection()
 	}
 
 	// Second pass for the command list:
-	G->constants_command_list.commands.clear();
+	G->constants_command_list.clear();
 	ParseCommandList(L"Constants", &G->constants_command_list, NULL, NULL);
 }
 
@@ -4320,28 +4319,28 @@ void LoadConfigFile()
 	ParseTextureOverrideSections();
 
 	LogInfo("[Present]\n");
-	G->present_command_list.commands.clear();
-	G->post_present_command_list.commands.clear();
+	G->present_command_list.clear();
+	G->post_present_command_list.clear();
 	ParseCommandList(L"Present", &G->present_command_list, &G->post_present_command_list, NULL);
 
 	LogInfo("[ClearRenderTargetView]\n");
-	G->clear_rtv_command_list.commands.clear();
-	G->post_clear_rtv_command_list.commands.clear();
+	G->clear_rtv_command_list.clear();
+	G->post_clear_rtv_command_list.clear();
 	ParseCommandList(L"ClearRenderTargetView", &G->clear_rtv_command_list, &G->post_clear_rtv_command_list, NULL);
 
 	LogInfo("[ClearDepthStencilView]\n");
-	G->clear_dsv_command_list.commands.clear();
-	G->post_clear_dsv_command_list.commands.clear();
+	G->clear_dsv_command_list.clear();
+	G->post_clear_dsv_command_list.clear();
 	ParseCommandList(L"ClearDepthStencilView", &G->clear_dsv_command_list, &G->post_clear_dsv_command_list, NULL);
 
 	LogInfo("[ClearUnorderedAccessViewUint]\n");
-	G->clear_uav_uint_command_list.commands.clear();
-	G->post_clear_uav_uint_command_list.commands.clear();
+	G->clear_uav_uint_command_list.clear();
+	G->post_clear_uav_uint_command_list.clear();
 	ParseCommandList(L"ClearUnorderedAccessViewUint", &G->clear_uav_uint_command_list, &G->post_clear_uav_uint_command_list, NULL);
 
 	LogInfo("[ClearUnorderedAccessViewFloat]\n");
-	G->clear_uav_float_command_list.commands.clear();
-	G->post_clear_uav_float_command_list.commands.clear();
+	G->clear_uav_float_command_list.clear();
+	G->post_clear_uav_float_command_list.clear();
 	ParseCommandList(L"ClearUnorderedAccessViewFloat", &G->clear_uav_float_command_list, &G->post_clear_uav_float_command_list, NULL);
 
 	LogInfo("[Profile]\n");

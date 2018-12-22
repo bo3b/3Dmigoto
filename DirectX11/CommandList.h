@@ -3,6 +3,7 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include <forward_list>
 #include <d3d11_1.h>
 #include <DirectXMath.h>
 #include <util.h>
@@ -89,12 +90,47 @@ public:
 	virtual bool noop(bool post, bool ignore_cto) { return false; }
 };
 
+class CommandListVariable {
+public:
+	wstring name;
+	// TODO: Additional types, such as hash
+	float fval;
+
+	CommandListVariable(wstring name, float fval) :
+		name(name), fval(fval)
+	{}
+};
+
+typedef std::unordered_map<std::wstring, class CommandListVariable> CommandListVariables;
+extern CommandListVariables command_list_globals;
+
+// The scope object is used to declare local variables in a command list. The
+// multiple levels are to isolate variables declared inside if blocks from
+// being accessed in a parent or sibling scope, while allowing variables
+// declared in a parent scope to be used in an if block. This scope object is
+// only used during command list parsing - once allocated the commands and
+// operands referencing these variables will point directly to the variable
+// objects to avoid slow lookups at runtime, and the scope object will be
+// cleared to save memory (with some refactoring we could potentially even
+// remove it from the CommandList class altogether).
+typedef std::forward_list<std::unordered_map<std::wstring, CommandListVariable*>> CommandListScope;
+
 class CommandList {
 public:
 	// Using vector of pointers to allow mixed types, and shared_ptr to handle
 	// destruction of each object:
 	typedef std::vector<std::shared_ptr<CommandListCommand>> Commands;
 	Commands commands;
+
+	// For local/static variables. These are only used in the main pre
+	// command list as the post command list and any sub command lists (if
+	// blocks, etc) shares the same local variables and scope object as the
+	// pre list. static_vars used to hold the variables in the pre command
+	// list so they can be freed along with the command list, but at
+	// runtime they are accessed directly by pointer. forward_list is used
+	// because it doesn't invalidate pointers on insertion like vectors do.
+	std::forward_list<CommandListVariable> static_vars;
+	CommandListScope *scope;
 
 	// For performance metrics:
 	wstring ini_section;
@@ -103,8 +139,11 @@ public:
 	LARGE_INTEGER time_spent_exclusive;
 	unsigned executions;
 
+	void clear();
+
 	CommandList() :
-		post(false)
+		post(false),
+		scope(NULL)
 	{}
 };
 
@@ -675,20 +714,6 @@ public:
 	void unmap(CommandListState *state);
 };
 
-class CommandListVariable {
-public:
-	wstring name;
-	// TODO: Additional types, such as hash
-	float fval;
-
-	CommandListVariable(wstring name, float fval) :
-		name(name), fval(fval)
-	{}
-};
-
-typedef std::unordered_map<std::wstring, class CommandListVariable> CommandListVariables;
-extern CommandListVariables command_list_vars;
-
 class CommandListToken {
 public:
 	wstring token;
@@ -942,7 +967,7 @@ public:
 		scissor(0)
 	{}
 
-	bool parse(const wstring *operand, const wstring *ini_namespace, bool command_list_context=true);
+	bool parse(const wstring *operand, const wstring *ini_namespace, CommandListScope *scope);
 	float evaluate(CommandListState *state, HackerDevice *device=NULL) override;
 	bool static_evaluate(float *ret, HackerDevice *device=NULL) override;
 	bool optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement) override;
@@ -952,7 +977,7 @@ class CommandListExpression {
 public:
 	std::shared_ptr<CommandListEvaluatable> evaluatable;
 
-	bool parse(const wstring *expression, const wstring *ini_namespace, bool command_list_context=true);
+	bool parse(const wstring *expression, const wstring *ini_namespace, CommandListScope *scope);
 	float evaluate(CommandListState *state, HackerDevice *device=NULL);
 	bool static_evaluate(float *ret, HackerDevice *device=NULL);
 	bool optimise(HackerDevice *device);
@@ -1189,7 +1214,8 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 		const wchar_t *key, wstring *val, CommandList *command_list,
 		const wstring *ini_namespace);
 bool ParseCommandListVariableAssignment(const wchar_t *section,
-		const wchar_t *key, wstring *val, CommandList *command_list,
+		const wchar_t *key, wstring *val, const wstring *raw_line,
+		CommandList *command_list, CommandList *pre_command_list, CommandList *post_command_list,
 		const wstring *ini_namespace);
 bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 		const wchar_t *key, wstring *val, CommandList *command_list,
@@ -1200,3 +1226,4 @@ bool ParseCommandListFlowControl(const wchar_t *section, const wstring *line,
 void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line);
 void optimise_command_lists(HackerDevice *device);
 bool parse_command_list_var_name(const wstring &name, const wstring *ini_namespace, CommandListVariable **target);
+bool valid_variable_name(const wstring &name);

@@ -77,7 +77,7 @@ void Override::ParseIniSection(LPCWSTR section)
 	if (GetIniStringAndLog(section, L"condition", 0, buf, MAX_PATH)) {
 		wstring sbuf(buf);
 
-		if (!condition.parse(&sbuf, &ini_namespace, false)) {
+		if (!condition.parse(&sbuf, &ini_namespace, NULL)) {
 			LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%S\"\n", buf);
 		} else {
 			is_conditional = true;
@@ -207,7 +207,7 @@ struct KeyOverrideCycleParam
 
 		get_section_namespace(section, &ini_namespace);
 
-		if (!expression->parse(&scur, &ini_namespace, false)) {
+		if (!expression->parse(&scur, &ini_namespace, NULL)) {
 			LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%S\"\n", cur);
 			return false;
 		}

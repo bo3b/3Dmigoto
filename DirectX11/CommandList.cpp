@@ -16,7 +16,7 @@
 CustomResources customResources;
 CustomShaders customShaders;
 ExplicitCommandListSections explicitCommandListSections;
-CommandListVariables command_list_vars;
+CommandListVariables command_list_globals;
 std::vector<CommandList*> registered_command_lists;
 std::unordered_set<CommandList*> command_lists_profiling;
 std::unordered_set<CommandListCommand*> command_lists_cmd_profiling;
@@ -767,7 +767,8 @@ static bool ParsePerDrawStereoOverride(const wchar_t *section,
 		goto success;
 	}
 
-	if (!operation->expression.parse(val, ini_namespace))
+	// The scope is shared between pre & post, we use pre here since it is never NULL
+	if (!operation->expression.parse(val, ini_namespace, pre_command_list->scope))
 		goto bail;
 
 success:
@@ -2248,6 +2249,11 @@ float CommandListOperand::process_texture_filter(CommandListState *state)
 	return 1.0;
 }
 
+void CommandList::clear()
+{
+	commands.clear();
+	static_vars.clear();
+}
 
 CommandListState::CommandListState() :
 	mHackerDevice(NULL),
@@ -2785,7 +2791,7 @@ public:
 	{}
 };
 
-static void tokenise(const wstring *expression, CommandListSyntaxTree *tree, const wstring *ini_namespace, bool command_list_context)
+static void tokenise(const wstring *expression, CommandListSyntaxTree *tree, const wstring *ini_namespace, CommandListScope *scope)
 {
 	wstring remain = *expression;
 	ResourceCopyTarget texture_filter_target;
@@ -2842,7 +2848,7 @@ next_token:
 			ret = texture_filter_target.ParseTarget(token.c_str(), true, ini_namespace);
 			if (ret) {
 				operand = make_shared<CommandListOperand>(friendly_pos, token);
-				if (operand->parse(&token, ini_namespace, command_list_context)) {
+				if (operand->parse(&token, ini_namespace, scope)) {
 					tree->tokens.emplace_back(std::move(operand));
 					LogDebug("      Resource Slot: \"%S\"\n", tree->tokens.back()->token.c_str());
 					if (last_was_operand)
@@ -2873,7 +2879,7 @@ next_token:
 			if (pos) {
 				token = remain.substr(0, pos);
 				operand = make_shared<CommandListOperand>(friendly_pos, token);
-				if (operand->parse(&token, ini_namespace, command_list_context)) {
+				if (operand->parse(&token, ini_namespace, scope)) {
 					tree->tokens.emplace_back(std::move(operand));
 					LogDebug("      Identifier: \"%S\"\n", tree->tokens.back()->token.c_str());
 					if (last_was_operand)
@@ -2899,7 +2905,7 @@ next_token:
 
 			token = remain.substr(0, ipos);
 			operand = make_shared<CommandListOperand>(friendly_pos, token);
-			if (operand->parse(&token, ini_namespace, command_list_context)) {
+			if (operand->parse(&token, ini_namespace, scope)) {
 				tree->tokens.emplace_back(std::move(operand));
 				LogDebug("      Float: \"%S\"\n", tree->tokens.back()->token.c_str());
 				if (last_was_operand)
@@ -3221,12 +3227,12 @@ static void log_syntax_tree(T token, const char *msg)
 	LogInfo("\n");
 }
 
-bool CommandListExpression::parse(const wstring *expression, const wstring *ini_namespace, bool command_list_context)
+bool CommandListExpression::parse(const wstring *expression, const wstring *ini_namespace, CommandListScope *scope)
 {
 	CommandListSyntaxTree tree(0);
 
 	try {
-		tokenise(expression, &tree, ini_namespace, command_list_context);
+		tokenise(expression, &tree, ini_namespace, scope);
 
 		group_parenthesis(&tree);
 
@@ -3486,11 +3492,13 @@ bool AssignmentCommand::optimise(HackerDevice *device)
 	return expression.optimise(device);
 }
 
-static bool operand_allowed_in_context(ParamOverrideType type, bool command_list_context)
+static bool operand_allowed_in_context(ParamOverrideType type, CommandListScope *scope)
 {
-	if (command_list_context)
+	if (scope)
 		return true;
 
+	// List of operand types allowed outside of a command list, e.g. in a
+	// [Key] / [Preset] section
 	switch (type) {
 		case ParamOverrideType::VALUE:
 		case ParamOverrideType::INI_PARAM:
@@ -3508,26 +3516,91 @@ static bool operand_allowed_in_context(ParamOverrideType type, bool command_list
 	return false;
 }
 
+bool valid_variable_name(const wstring &name)
+{
+	if (name.length() < 2)
+		return false;
+
+	// Variable names begin with a $
+	if (name[0] != L'$')
+		return false;
+
+	// First character must be a letter or underscore ($1, $2, etc reserved for future arguments):
+	if ((name[1] < L'a' || name[1] > L'z') && name[1] != L'_')
+		return false;
+
+	// Subsequent characters must be in this list:
+	return (name.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_0123456789", 2) == wstring::npos);
+}
+
 bool parse_command_list_var_name(const wstring &name, const wstring *ini_namespace, CommandListVariable **target)
 {
-	CommandListVariables::iterator var = command_list_vars.end();
+	CommandListVariables::iterator var = command_list_globals.end();
 
 	if (name.length() < 2 || name[0] != L'$')
 		return false;
 
-	var = command_list_vars.end();
+	var = command_list_globals.end();
 	if (!ini_namespace->empty())
-		var = command_list_vars.find(get_namespaced_var_name_lower(name, ini_namespace));
-	if (var == command_list_vars.end())
-		var = command_list_vars.find(name);
-	if (var == command_list_vars.end())
+		var = command_list_globals.find(get_namespaced_var_name_lower(name, ini_namespace));
+	if (var == command_list_globals.end())
+		var = command_list_globals.find(name);
+	if (var == command_list_globals.end())
 		return false;
 
 	*target = &var->second;
 	return true;
 }
 
-bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namespace, bool command_list_context)
+int find_local_variable(const wstring &name, CommandListScope *scope, CommandListVariable **var)
+{
+	CommandListScope::iterator it;
+
+	for (it = scope->begin(); it != scope->end(); it++) {
+		auto match = it->find(name);
+		if (match != it->end()) {
+			*var = match->second;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool declare_local_variable(const wchar_t *section, wstring &name,
+		CommandList *pre_command_list, const wstring *ini_namespace)
+{
+	CommandListVariable *var = NULL;
+
+	if (!valid_variable_name(name)) {
+		LogOverlay(LOG_WARNING, "WARNING: Illegal local variable name: [%S] \"%S\"\n", section, name.c_str());
+		return false;
+	}
+
+	if (find_local_variable(name, pre_command_list->scope, &var)) {
+		// Could allow this at different scope levels, but... no.
+		// You can declare local variables of the same name in
+		// independent scopes (if {local $tmp} else {local $tmp}), but
+		// we won't allow masking a local variable from a parent scope,
+		// because that's usually a bug. Choose a different name son.
+		LogOverlay(LOG_WARNING, "WARNING: Illegal redeclaration of local variable [%S] %S\n", section, name.c_str());
+		return false;
+	}
+
+	if (parse_command_list_var_name(name, ini_namespace, &var)) {
+		// Not making this fatal since this could clash between say a
+		// global in the d3dx.ini and a local variable in another ini.
+		// Just issue a notice in hunting mode and carry on.
+		LogOverlay(LOG_NOTICE, "WARNING: [%S] local %S masks a global variable with the same name\n", section, name.c_str());
+	}
+
+	pre_command_list->static_vars.emplace_front(name, 0.0f);
+	pre_command_list->scope->front()[name] = &pre_command_list->static_vars.front();
+
+	return true;
+}
+
+bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namespace, CommandListScope *scope)
 {
 	CommandListVariable *var = NULL;
 	int ret, len1;
@@ -3536,7 +3609,7 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 	ret = swscanf_s(operand->c_str(), L"%f%n", &val, &len1);
 	if (ret != 0 && ret != EOF && len1 == operand->length()) {
 		type = ParamOverrideType::VALUE;
-		return operand_allowed_in_context(type, command_list_context);
+		return operand_allowed_in_context(type, scope);
 	}
 
 	// Try parsing operand as an ini param:
@@ -3544,21 +3617,22 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 		type = ParamOverrideType::INI_PARAM;
 		// Reserve space in IniParams for this variable:
 		G->iniParamsReserved = max(G->iniParamsReserved, param_idx + 1);
-		return operand_allowed_in_context(type, command_list_context);
+		return operand_allowed_in_context(type, scope);
 	}
 
 	// Try parsing operand as a variable:
-	if (parse_command_list_var_name(*operand, ini_namespace, &var)) {
+	if (find_local_variable(*operand, scope, &var) ||
+	    parse_command_list_var_name(*operand, ini_namespace, &var)) {
 		type = ParamOverrideType::VARIABLE;
 		var_ftarget = &var->fval;
-		return operand_allowed_in_context(type, command_list_context);
+		return operand_allowed_in_context(type, scope);
 	}
 
 	// Try parsing value as a resource target for texture filtering
 	ret = texture_filter_target.ParseTarget(operand->c_str(), true, ini_namespace);
 	if (ret) {
 		type = ParamOverrideType::TEXTURE;
-		return operand_allowed_in_context(type, command_list_context);
+		return operand_allowed_in_context(type, scope);
 	}
 
 	// Try parsing value as a scissor rectangle. scissor_<side> also
@@ -3575,14 +3649,14 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 			type = ParamOverrideType::SCISSOR_BOTTOM;
 		else
 			return false;
-		return operand_allowed_in_context(type, command_list_context);
+		return operand_allowed_in_context(type, scope);
 	}
 
 	// Check special keywords
 	type = lookup_enum_val<const wchar_t *, ParamOverrideType>
 		(ParamOverrideTypeNames, operand->c_str(), ParamOverrideType::INVALID);
 	if (type != ParamOverrideType::INVALID)
-		return operand_allowed_in_context(type, command_list_context);
+		return operand_allowed_in_context(type, scope);
 
 	return false;
 }
@@ -3601,7 +3675,7 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 	if (!ParseIniParamName(key, &param->param_idx, &param->param_component))
 		goto bail;
 
-	if (!param->expression.parse(val, ini_namespace))
+	if (!param->expression.parse(val, ini_namespace, command_list->scope))
 		goto bail;
 
 	// Reserve space in IniParams for this variable:
@@ -3616,19 +3690,38 @@ bail:
 }
 
 bool ParseCommandListVariableAssignment(const wchar_t *section,
-		const wchar_t *key, wstring *val, CommandList *command_list,
+		const wchar_t *key, wstring *val, const wstring *raw_line,
+		CommandList *command_list, CommandList *pre_command_list, CommandList *post_command_list,
 		const wstring *ini_namespace)
 {
-	VariableAssignment *command = new VariableAssignment();
+	VariableAssignment *command = NULL;
 	CommandListVariable *var = NULL;
+	wstring name = key;
 
-	if (!parse_command_list_var_name(key, ini_namespace, &var))
-		goto bail;
+	// Declaration without assignment?
+	if (name.empty() && raw_line)
+		name = *raw_line;
 
-	if (!command->expression.parse(val, ini_namespace))
-		goto bail;
+	if (!name.compare(0, 6, L"local ")) {
+		name = name.substr(name.find_first_not_of(L" \t", 6));
+		// Local variables are shared between pre and post command lists.
+		if (!declare_local_variable(section, name, pre_command_list, ini_namespace))
+			return false;
 
+		// Declaration without assignment?
+		if (val->empty())
+			return true;
+	}
+
+	if (!find_local_variable(name, pre_command_list->scope, &var) &&
+	    !parse_command_list_var_name(name, ini_namespace, &var))
+		return false;
+
+	command = new VariableAssignment();
 	command->ftarget = &var->fval;
+
+	if (!command->expression.parse(val, ini_namespace, command_list->scope))
+		goto bail;
 
 	command->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	command_list->commands.push_back(std::shared_ptr<CommandListCommand>(command));
@@ -4437,8 +4530,11 @@ static bool ParseIfCommand(const wchar_t *section, const wstring *line,
 	IfCommand *operation = new IfCommand(section);
 	wstring expression = line->substr(line->find_first_not_of(L" \t", 3));
 
-	if (!operation->expression.parse(&expression, ini_namespace))
+	if (!operation->expression.parse(&expression, ini_namespace, pre_command_list->scope))
 		goto bail;
+
+	// New scope level to isolate local variables:
+	pre_command_list->scope->emplace_front();
 
 	return AddCommandToList(operation, NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
 bail:
@@ -4453,8 +4549,11 @@ static bool ParseElseIfCommand(const wchar_t *section, const wstring *line, int 
 	ElseIfCommand *operation = new ElseIfCommand(section);
 	wstring expression = line->substr(line->find_first_not_of(L" \t", prefix));
 
-	if (!operation->expression.parse(&expression, ini_namespace))
+	if (!operation->expression.parse(&expression, ini_namespace, pre_command_list->scope))
 		goto bail;
+
+	// Clear deepest scope level to isolate local variables:
+	pre_command_list->scope->front().clear();
 
 	// "else if" is implemented by nesting another if/endif inside the
 	// parent if command's else clause. We add both an ElsePlaceholder and
@@ -4469,6 +4568,9 @@ bail:
 static bool ParseElseCommand(const wchar_t *section,
 		CommandList *pre_command_list, CommandList *post_command_list)
 {
+	// Clear deepest scope level to isolate local variables:
+	pre_command_list->scope->front().clear();
+
 	return AddCommandToList(new ElsePlaceholder(), NULL, NULL, pre_command_list, post_command_list, section, L"else", NULL);
 }
 
@@ -4544,8 +4646,12 @@ static bool ParseEndIfCommand(const wchar_t *section,
 {
 	bool ret;
 
-	return _ParseEndIfCommand(section, pre_command_list, false)
-	    && _ParseEndIfCommand(section, post_command_list, true);
+	ret = _ParseEndIfCommand(section, pre_command_list, false);
+	if (post_command_list)
+	    ret = ret && _ParseEndIfCommand(section, post_command_list, true);
+
+	if (ret)
+		pre_command_list->scope->pop_front();
 
 	return ret;
 }
@@ -4650,11 +4756,11 @@ bool IfCommand::noop(bool post, bool ignore_cto)
 	is_static = expression.static_evaluate(&static_val);
 	if (is_static) {
 		if (static_val) {
-			false_commands_pre->commands.clear();
-			false_commands_post->commands.clear();
+			false_commands_pre->clear();
+			false_commands_post->clear();
 		} else {
-			true_commands_pre->commands.clear();
-			true_commands_post->commands.clear();
+			true_commands_pre->clear();
+			true_commands_post->clear();
 		}
 	}
 
