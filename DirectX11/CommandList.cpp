@@ -767,8 +767,16 @@ static bool ParsePerDrawStereoOverride(const wchar_t *section,
 		goto success;
 	}
 
-	if (!operation->expression.parse(val, ini_namespace))
-		goto bail;
+	// If the expression references a local variable it needs to come from
+	// the same command list that will be used when the expression is
+	// evaluated - either the explicit one, or the pre command list.
+	if (explicit_command_list) {
+		if (!operation->expression.parse(val, ini_namespace, explicit_command_list))
+			goto bail;
+	} else {
+		if (!operation->expression.parse(val, ini_namespace, pre_command_list))
+			goto bail;
+	}
 
 success:
 	// Add to both command lists by default - the pre command list will set
@@ -1220,8 +1228,12 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
 			if (staging_type) {
 				if (!(did_set_value_on_pre = update_val(state)))
 					return;
-			} else
+			} else {
+				// If this references any local variables it
+				// needs to come from the same command list
+				// used while parsing - pre in this case
 				val = expression.evaluate(state);
+			}
 
 			saved = get_stereo_value(state);
 
@@ -1242,8 +1254,12 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
 		if (staging_type) {
 			if (!update_val(state))
 				return;
-		} else
+		} else {
+			// If this references any local variables it needs to
+			// come from the same command list used while parsing -
+			// explicit or pre in this case
 			val = expression.evaluate(state);
+		}
 
 		COMMAND_LIST_LOG(state, "  Setting %s = %f\n", stereo_param_name(), val);
 		set_stereo_value(state, val);
@@ -2785,7 +2801,7 @@ public:
 	{}
 };
 
-static void tokenise(const wstring *expression, CommandListSyntaxTree *tree, const wstring *ini_namespace, bool command_list_context)
+static void tokenise(const wstring *expression, CommandListSyntaxTree *tree, const wstring *ini_namespace, CommandList *command_list)
 {
 	wstring remain = *expression;
 	ResourceCopyTarget texture_filter_target;
@@ -2842,7 +2858,7 @@ next_token:
 			ret = texture_filter_target.ParseTarget(token.c_str(), true, ini_namespace);
 			if (ret) {
 				operand = make_shared<CommandListOperand>(friendly_pos, token);
-				if (operand->parse(&token, ini_namespace, command_list_context)) {
+				if (operand->parse(&token, ini_namespace, command_list)) {
 					tree->tokens.emplace_back(std::move(operand));
 					LogDebug("      Resource Slot: \"%S\"\n", tree->tokens.back()->token.c_str());
 					if (last_was_operand)
@@ -2873,7 +2889,7 @@ next_token:
 			if (pos) {
 				token = remain.substr(0, pos);
 				operand = make_shared<CommandListOperand>(friendly_pos, token);
-				if (operand->parse(&token, ini_namespace, command_list_context)) {
+				if (operand->parse(&token, ini_namespace, command_list)) {
 					tree->tokens.emplace_back(std::move(operand));
 					LogDebug("      Identifier: \"%S\"\n", tree->tokens.back()->token.c_str());
 					if (last_was_operand)
@@ -2899,7 +2915,7 @@ next_token:
 
 			token = remain.substr(0, ipos);
 			operand = make_shared<CommandListOperand>(friendly_pos, token);
-			if (operand->parse(&token, ini_namespace, command_list_context)) {
+			if (operand->parse(&token, ini_namespace, command_list)) {
 				tree->tokens.emplace_back(std::move(operand));
 				LogDebug("      Float: \"%S\"\n", tree->tokens.back()->token.c_str());
 				if (last_was_operand)
@@ -3221,12 +3237,12 @@ static void log_syntax_tree(T token, const char *msg)
 	LogInfo("\n");
 }
 
-bool CommandListExpression::parse(const wstring *expression, const wstring *ini_namespace, bool command_list_context)
+bool CommandListExpression::parse(const wstring *expression, const wstring *ini_namespace, CommandList *command_list)
 {
 	CommandListSyntaxTree tree(0);
 
 	try {
-		tokenise(expression, &tree, ini_namespace, command_list_context);
+		tokenise(expression, &tree, ini_namespace, command_list);
 
 		group_parenthesis(&tree);
 
@@ -3486,11 +3502,13 @@ bool AssignmentCommand::optimise(HackerDevice *device)
 	return expression.optimise(device);
 }
 
-static bool operand_allowed_in_context(ParamOverrideType type, bool command_list_context)
+static bool operand_allowed_in_context(ParamOverrideType type, CommandList *command_list)
 {
-	if (command_list_context)
+	if (command_list)
 		return true;
 
+	// List of operand types allowed outside of a command list, e.g. in a
+	// [Key] / [Preset] section
 	switch (type) {
 		case ParamOverrideType::VALUE:
 		case ParamOverrideType::INI_PARAM:
@@ -3527,7 +3545,7 @@ bool parse_command_list_var_name(const wstring &name, const wstring *ini_namespa
 	return true;
 }
 
-bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namespace, bool command_list_context)
+bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namespace, CommandList *command_list)
 {
 	CommandListVariable *var = NULL;
 	int ret, len1;
@@ -3536,7 +3554,7 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 	ret = swscanf_s(operand->c_str(), L"%f%n", &val, &len1);
 	if (ret != 0 && ret != EOF && len1 == operand->length()) {
 		type = ParamOverrideType::VALUE;
-		return operand_allowed_in_context(type, command_list_context);
+		return operand_allowed_in_context(type, command_list);
 	}
 
 	// Try parsing operand as an ini param:
@@ -3544,21 +3562,21 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 		type = ParamOverrideType::INI_PARAM;
 		// Reserve space in IniParams for this variable:
 		G->iniParamsReserved = max(G->iniParamsReserved, param_idx + 1);
-		return operand_allowed_in_context(type, command_list_context);
+		return operand_allowed_in_context(type, command_list);
 	}
 
 	// Try parsing operand as a variable:
 	if (parse_command_list_var_name(*operand, ini_namespace, &var)) {
 		type = ParamOverrideType::VARIABLE;
 		var_ftarget = &var->fval;
-		return operand_allowed_in_context(type, command_list_context);
+		return operand_allowed_in_context(type, command_list);
 	}
 
 	// Try parsing value as a resource target for texture filtering
 	ret = texture_filter_target.ParseTarget(operand->c_str(), true, ini_namespace);
 	if (ret) {
 		type = ParamOverrideType::TEXTURE;
-		return operand_allowed_in_context(type, command_list_context);
+		return operand_allowed_in_context(type, command_list);
 	}
 
 	// Try parsing value as a scissor rectangle. scissor_<side> also
@@ -3575,14 +3593,14 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 			type = ParamOverrideType::SCISSOR_BOTTOM;
 		else
 			return false;
-		return operand_allowed_in_context(type, command_list_context);
+		return operand_allowed_in_context(type, command_list);
 	}
 
 	// Check special keywords
 	type = lookup_enum_val<const wchar_t *, ParamOverrideType>
 		(ParamOverrideTypeNames, operand->c_str(), ParamOverrideType::INVALID);
 	if (type != ParamOverrideType::INVALID)
-		return operand_allowed_in_context(type, command_list_context);
+		return operand_allowed_in_context(type, command_list);
 
 	return false;
 }
@@ -3601,7 +3619,7 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 	if (!ParseIniParamName(key, &param->param_idx, &param->param_component))
 		goto bail;
 
-	if (!param->expression.parse(val, ini_namespace))
+	if (!param->expression.parse(val, ini_namespace, command_list))
 		goto bail;
 
 	// Reserve space in IniParams for this variable:
@@ -3625,7 +3643,7 @@ bool ParseCommandListVariableAssignment(const wchar_t *section,
 	if (!parse_command_list_var_name(key, ini_namespace, &var))
 		goto bail;
 
-	if (!command->expression.parse(val, ini_namespace))
+	if (!command->expression.parse(val, ini_namespace, command_list))
 		goto bail;
 
 	command->ftarget = &var->fval;
@@ -4430,17 +4448,49 @@ bail:
 	return false;
 }
 
+static bool _ParseIfCommand(const wchar_t *section, const wstring *line,
+		const wstring *expression, CommandList *command_list,
+		const wstring *ini_namespace)
+{
+	IfCommand *operation = new IfCommand(section);
+
+	if (!operation->expression.parse(expression, ini_namespace, command_list))
+		goto bail;
+
+	return AddCommandToList(operation, NULL, command_list, NULL, NULL, section, line->c_str(), NULL);
+bail:
+	delete operation;
+	return false;
+}
+
 static bool ParseIfCommand(const wchar_t *section, const wstring *line,
 		CommandList *pre_command_list, CommandList *post_command_list,
 		const wstring *ini_namespace)
 {
-	IfCommand *operation = new IfCommand(section);
 	wstring expression = line->substr(line->find_first_not_of(L" \t", 3));
+	bool ret;
 
-	if (!operation->expression.parse(&expression, ini_namespace))
+	// Expression is parsed per command list in case of differing local
+	// variables:
+	ret = _ParseIfCommand(section, line, &expression, pre_command_list, ini_namespace);
+	if (post_command_list)
+		ret = ret && _ParseIfCommand(section, line, &expression, post_command_list, ini_namespace);
+	return ret;
+}
+
+static bool _ParseElseIfCommand(const wchar_t *section, const wstring *line, const wstring *expression,
+		CommandList *command_list, const wstring *ini_namespace)
+{
+	ElseIfCommand *operation = new ElseIfCommand(section);
+
+	if (!operation->expression.parse(expression, ini_namespace, command_list))
 		goto bail;
 
-	return AddCommandToList(operation, NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
+	// "else if" is implemented by nesting another if/endif inside the
+	// parent if command's else clause. We add both an ElsePlaceholder and
+	// an ElseIfCommand here, and will fix up the "endif" balance later.
+	AddCommandToList(new ElsePlaceholder(), NULL, command_list, NULL, NULL, section, line->c_str(), NULL);
+	return AddCommandToList(operation, NULL, command_list, NULL, NULL, section, line->c_str(), NULL);
 bail:
 	delete operation;
 	return false;
@@ -4450,20 +4500,15 @@ static bool ParseElseIfCommand(const wchar_t *section, const wstring *line, int 
 		CommandList *pre_command_list, CommandList *post_command_list,
 		const wstring *ini_namespace)
 {
-	ElseIfCommand *operation = new ElseIfCommand(section);
 	wstring expression = line->substr(line->find_first_not_of(L" \t", prefix));
+	bool ret;
 
-	if (!operation->expression.parse(&expression, ini_namespace))
-		goto bail;
-
-	// "else if" is implemented by nesting another if/endif inside the
-	// parent if command's else clause. We add both an ElsePlaceholder and
-	// an ElseIfCommand here, and will fix up the "endif" balance later.
-	AddCommandToList(new ElsePlaceholder(), NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
-	return AddCommandToList(operation, NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
-bail:
-	delete operation;
-	return false;
+	// Expression is parsed per command list in case of differing local
+	// variables:
+	ret = _ParseElseIfCommand(section, line, &expression, pre_command_list, ini_namespace);
+	if (post_command_list)
+		ret = ret && _ParseElseIfCommand(section, line, &expression, post_command_list, ini_namespace);
+	return ret;
 }
 
 static bool ParseElseCommand(const wchar_t *section,
@@ -4542,11 +4587,9 @@ static bool _ParseEndIfCommand(const wchar_t *section,
 static bool ParseEndIfCommand(const wchar_t *section,
 		CommandList *pre_command_list, CommandList *post_command_list)
 {
-	bool ret;
-
-	return _ParseEndIfCommand(section, pre_command_list, false)
-	    && _ParseEndIfCommand(section, post_command_list, true);
-
+	bool ret = _ParseEndIfCommand(section, pre_command_list, false);
+	if (post_command_list)
+	    ret = ret && _ParseEndIfCommand(section, post_command_list, true);
 	return ret;
 }
 

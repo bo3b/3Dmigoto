@@ -942,7 +942,7 @@ public:
 		scissor(0)
 	{}
 
-	bool parse(const wstring *operand, const wstring *ini_namespace, bool command_list_context=true);
+	bool parse(const wstring *operand, const wstring *ini_namespace, CommandList *command_list);
 	float evaluate(CommandListState *state, HackerDevice *device=NULL) override;
 	bool static_evaluate(float *ret, HackerDevice *device=NULL) override;
 	bool optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement) override;
@@ -952,7 +952,7 @@ class CommandListExpression {
 public:
 	std::shared_ptr<CommandListEvaluatable> evaluatable;
 
-	bool parse(const wstring *expression, const wstring *ini_namespace, bool command_list_context=true);
+	bool parse(const wstring *expression, const wstring *ini_namespace, CommandList *command_list);
 	float evaluate(CommandListState *state, HackerDevice *device=NULL);
 	bool static_evaluate(float *ret, HackerDevice *device=NULL);
 	bool optimise(HackerDevice *device);
