@@ -851,7 +851,8 @@ void OverrideGlobalSave::Restore(Override *preset)
 	if (preset->mOverrideConvergence != FLT_MAX)
 		convergence.Restore(&preset->mUserConvergence);
 
-	for (auto next = begin(params), i = next++; i != end(params); i = next++) {
+	for (auto next = begin(params), i = next; i != end(params); i = next) {
+		next++;
 		j = preset->mOverrideParams.find(i->first);
 		if (j != preset->mOverrideParams.end()) {
 			if (!i->second.Restore(&preset->mSavedParams[i->first])) {
@@ -861,7 +862,8 @@ void OverrideGlobalSave::Restore(Override *preset)
 		}
 	}
 
-	for (auto next = begin(vars), k = next++; k != end(vars); k = next++) {
+	for (auto next = begin(vars), k = next; k != end(vars); k = next) {
+		next++;
 		l = preset->mOverrideVars.find(k->first);
 		if (l != preset->mOverrideVars.end()) {
 			if (!k->second.Restore(&preset->mSavedVars[k->first])) {

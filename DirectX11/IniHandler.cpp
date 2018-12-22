@@ -1820,7 +1820,8 @@ static void ParseConstantsSection()
 
 	command_list_vars.clear();
 	GetIniSection(&section, L"Constants");
-	for (next = section->begin(), entry = next++; entry < section->end(); entry = next++) {
+	for (next = section->begin(), entry = next; entry < section->end(); entry = next) {
+		next++;
 		key = &entry->first;
 		val = &entry->second;
 		ini_namespace = &entry->ini_namespace;
