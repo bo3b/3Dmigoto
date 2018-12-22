@@ -28,7 +28,7 @@ std::vector<std::shared_ptr<CommandList>> dynamically_allocated_command_lists;
 // macro instead of a function for this to concatenate static strings:
 #define COMMAND_LIST_LOG(state, fmt, ...) \
 	do { \
-		(state)->mHackerContext->FrameAnalysisLog("3DMigoto%*s " fmt, state->recursion, "", __VA_ARGS__); \
+		(state)->mHackerContext->FrameAnalysisLog("3DMigoto%*s " fmt, state->recursion + state->extra_indent, "", __VA_ARGS__); \
 	} while (0)
 
 struct command_list_profiling_state {
@@ -2266,6 +2266,7 @@ CommandListState::CommandListState() :
 	cursor_color_tex(NULL),
 	cursor_color_view(NULL),
 	recursion(0),
+	extra_indent(0),
 	aborted(false),
 	scissor_valid(false)
 {
@@ -4433,7 +4434,7 @@ static bool ParseIfCommand(const wchar_t *section, const wstring *line,
 		CommandList *pre_command_list, CommandList *post_command_list,
 		const wstring *ini_namespace)
 {
-	IfCommand *operation = new IfCommand();
+	IfCommand *operation = new IfCommand(section);
 	wstring expression = line->substr(line->find_first_not_of(L" \t", 3));
 
 	if (!operation->expression.parse(&expression, ini_namespace))
@@ -4449,7 +4450,7 @@ static bool ParseElseIfCommand(const wchar_t *section, const wstring *line, int 
 		CommandList *pre_command_list, CommandList *post_command_list,
 		const wstring *ini_namespace)
 {
-	ElseIfCommand *operation = new ElseIfCommand();
+	ElseIfCommand *operation = new ElseIfCommand(section);
 	wstring expression = line->substr(line->find_first_not_of(L" \t", prefix));
 
 	if (!operation->expression.parse(&expression, ini_namespace))
@@ -4472,7 +4473,7 @@ static bool ParseElseCommand(const wchar_t *section,
 }
 
 static bool _ParseEndIfCommand(const wchar_t *section,
-		CommandList *command_list, bool post)
+		CommandList *command_list, bool post, bool has_nested_else_if = false)
 {
 	CommandList::Commands::reverse_iterator rit;
 	IfCommand *if_command;
@@ -4511,8 +4512,9 @@ static bool _ParseEndIfCommand(const wchar_t *section,
 				}
 				command_list->commands.erase(rit.base(), command_list->commands.end());
 				if_command->post_finalised = true;
+				if_command->has_nested_else_if = has_nested_else_if;
 				if (else_if_command)
-					return _ParseEndIfCommand(section, command_list, post);
+					return _ParseEndIfCommand(section, command_list, post, true);
 				return true;
 			} else if (!post && !if_command->pre_finalised) {
 				// C++ gotcha: reverse_iterator::base() points to the *next* element
@@ -4525,8 +4527,9 @@ static bool _ParseEndIfCommand(const wchar_t *section,
 				}
 				command_list->commands.erase(rit.base(), command_list->commands.end());
 				if_command->pre_finalised = true;
+				if_command->has_nested_else_if = has_nested_else_if;
 				if (else_if_command)
-					return _ParseEndIfCommand(section, command_list, post);
+					return _ParseEndIfCommand(section, command_list, post, true);
 				return true;
 			}
 		}
@@ -4565,9 +4568,11 @@ bool ParseCommandListFlowControl(const wchar_t *section, const wstring *line,
 	return false;
 }
 
-IfCommand::IfCommand() :
+IfCommand::IfCommand(const wchar_t *section) :
 	pre_finalised(false),
-	post_finalised(false)
+	post_finalised(false),
+	has_nested_else_if(false),
+	section(section)
 {
 	true_commands_pre = std::make_shared<CommandList>();
 	true_commands_post = std::make_shared<CommandList>();
@@ -4602,17 +4607,28 @@ IfCommand::IfCommand() :
 void IfCommand::run(CommandListState *state)
 {
 	if (expression.evaluate(state)) {
-		COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
+		COMMAND_LIST_LOG(state, "%S: true {\n", ini_line.c_str());
+		state->extra_indent++;
 		if (state->post)
 			_RunCommandList(true_commands_post.get(), state, false);
 		else
 			_RunCommandList(true_commands_pre.get(), state, false);
+		state->extra_indent--;
+		COMMAND_LIST_LOG(state, "} endif\n");
 	} else {
-		COMMAND_LIST_LOG(state, "%S\n", else_line.c_str());
+		COMMAND_LIST_LOG(state, "%S: false\n", ini_line.c_str());
+		if (!has_nested_else_if) {
+			COMMAND_LIST_LOG(state, "[%S] else {\n", section.c_str());
+			state->extra_indent++;
+		}
 		if (state->post)
 			_RunCommandList(false_commands_post.get(), state, false);
 		else
 			_RunCommandList(false_commands_pre.get(), state, false);
+		if (!has_nested_else_if) {
+			state->extra_indent--;
+			COMMAND_LIST_LOG(state, "} endif\n");
+		}
 	}
 }
 

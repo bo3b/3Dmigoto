@@ -62,6 +62,7 @@ public:
 	RECT window_rect;
 
 	int recursion;
+	int extra_indent;
 	LARGE_INTEGER profiling_time_recursive;
 
 	// Anything that needs to be updated at the end of the command list:
@@ -992,7 +993,8 @@ class IfCommand : public CommandListCommand {
 public:
 	CommandListExpression expression;
 	bool pre_finalised, post_finalised;
-	wstring else_line;
+	bool has_nested_else_if;
+	wstring section;
 
 	// Commands cannot statically contain command lists, because the
 	// command may be optimised out and the command list freed while we are
@@ -1004,7 +1006,7 @@ public:
 	std::shared_ptr<CommandList> false_commands_pre;
 	std::shared_ptr<CommandList> false_commands_post;
 
-	IfCommand();
+	IfCommand(const wchar_t *section);
 
 	void run(CommandListState*) override;
 	bool optimise(HackerDevice *device) override;
@@ -1013,6 +1015,9 @@ public:
 
 class ElseIfCommand : public IfCommand {
 public:
+	ElseIfCommand(const wchar_t *section) :
+		IfCommand(section)
+	{}
 };
 
 class CommandPlaceholder : public CommandListCommand {
