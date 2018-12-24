@@ -1221,8 +1221,10 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
 			if (staging_type) {
 				if (!(did_set_value_on_pre = update_val(state)))
 					return;
-			} else
+			} else {
 				val = expression.evaluate(state);
+				did_set_value_on_pre = true;
+			}
 
 			saved = get_stereo_value(state);
 
