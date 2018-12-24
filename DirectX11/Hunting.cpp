@@ -18,6 +18,7 @@
 #include "D3D_Shaders\stdafx.h"
 #include "CommandList.h"
 #include "profiling.h"
+#include "FrameAnalysis.h"
 
 // bo3b: For this routine, we have a lot of warnings in x64, from converting a size_t result into the needed
 //  DWORD type for the Write calls.  These are writing 256 byte strings, so there is never a chance that it 
@@ -1174,9 +1175,16 @@ static void _AnalyseFrameStop()
 
 static void AnalyseFrame(HackerDevice *device, void *private_data)
 {
+	FrameAnalysisContext *factx = NULL;
 	wchar_t path[MAX_PATH], subdir[MAX_PATH];
 	time_t ltime;
 	struct tm tm;
+
+	if (FAILED(device->GetHackerContext()->QueryInterface(IID_FrameAnalysisContext, (void**)&factx))) {
+		LogOverlay(LOG_DIRE, "Frame Analysis Context is missing: Restart the game with hunting enabled\n");
+		return;
+	}
+	factx->Release();
 
 	if (G->analyse_frame) {
 		// Frame analysis key has been pressed again while FA was

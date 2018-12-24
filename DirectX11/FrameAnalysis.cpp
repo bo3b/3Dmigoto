@@ -3014,6 +3014,15 @@ HRESULT STDMETHODCALLTYPE FrameAnalysisContext::QueryInterface(
 		/* [in] */ REFIID riid,
 		/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
+	if (ppvObject && IsEqualIID(riid, IID_FrameAnalysisContext)) {
+		// This is a special case - only 3DMigoto itself should know
+		// this IID, so this is us checking if it has a FrameAnalysisContext.
+		// There's no need to call through to DX for this one.
+		AddRef();
+		*ppvObject = this;
+		return S_OK;
+	}
+
 	return HackerContext::QueryInterface(riid, ppvObject);
 }
 
