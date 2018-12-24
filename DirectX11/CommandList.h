@@ -927,6 +927,7 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"scissor_top", ParamOverrideType::SCISSOR_TOP},
 	{L"scissor_right", ParamOverrideType::SCISSOR_RIGHT},
 	{L"scissor_bottom", ParamOverrideType::SCISSOR_BOTTOM},
+	{L"separation", ParamOverrideType::RAW_SEPARATION},
 	{L"raw_separation", ParamOverrideType::RAW_SEPARATION},
 	{L"eye_separation", ParamOverrideType::EYE_SEPARATION},
 	{L"convergence", ParamOverrideType::CONVERGENCE},
