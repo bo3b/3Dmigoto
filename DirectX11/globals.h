@@ -434,6 +434,7 @@ struct Globals
 	bool show_original_enabled;
 	time_t huntTime;
 	bool verbose_overlay;
+	bool suppress_overlay;
 
 	bool deferred_contexts_enabled;
 
@@ -598,6 +599,7 @@ struct Globals
 		show_original_enabled(false),
 		huntTime(0),
 		verbose_overlay(false),
+		suppress_overlay(false),
 
 		deferred_contexts_enabled(true),
 

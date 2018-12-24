@@ -1186,6 +1186,17 @@ public:
 	void run(CommandListState*) override;
 };
 
+class Draw3DMigotoOverlayCommand : public CommandListCommand {
+public:
+	wstring ini_section;
+
+	Draw3DMigotoOverlayCommand(const wchar_t *section) :
+		ini_section(section)
+	{}
+
+	void run(CommandListState*) override;
+};
+
 void RunCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list, DrawCallInfo *call_info,

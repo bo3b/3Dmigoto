@@ -890,6 +890,9 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 	if (!wcscmp(key, L"special")) {
 		if (!wcscmp(val->c_str(), L"upscaling_switch_bb"))
 			return AddCommandToList(new UpscalingFlipBBCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+
+		if (!wcscmp(val->c_str(), L"draw_3dmigoto_overlay"))
+			return AddCommandToList(new Draw3DMigotoOverlayCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 	}
 
 	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
@@ -1535,6 +1538,17 @@ void UpscalingFlipBBCommand::run(CommandListState *state)
 	COMMAND_LIST_LOG(state, "[%S] special = upscaling_switch_bb\n", ini_section.c_str());
 
 	G->bb_is_upscaling_bb = false;
+}
+
+void Draw3DMigotoOverlayCommand::run(CommandListState *state)
+{
+	COMMAND_LIST_LOG(state, "[%S] special = draw_3dmigoto_overlay\n", ini_section.c_str());
+
+	HackerSwapChain *mHackerSwapChain = state->mHackerDevice->GetHackerSwapChain();
+	if (mHackerSwapChain->mOverlay) {
+		mHackerSwapChain->mOverlay->DrawOverlay();
+		G->suppress_overlay = true;
+	}
 }
 
 CustomShader::CustomShader() :
