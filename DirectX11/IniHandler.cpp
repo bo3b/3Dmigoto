@@ -1938,6 +1938,63 @@ static void check_shaderoverride_duplicates(bool duplicate, const wchar_t *id, S
 	override->allow_duplicate_hashes = allow_duplicates;
 }
 
+static void warn_deprecated_shaderoverride_options(const wchar_t *id, ShaderOverride *override)
+{
+	// I've seen several shaderhackers attempt to use the deprecated
+	// partner= in a way that won't work recently. Detect, warn and
+	// suggest an alternative. TODO: Add a way to check ps/vs/etc hashes
+	// directly to simplify this.
+	// TODO: Once we have a good simple alternative to the actual use case
+	// of partner=, issue a non-conditional deprecation warning. This might
+	// be something like if ps == ... ; handling=original ; endif
+	if (override->partner_hash && (!override->command_list.commands.empty() || !override->post_command_list.commands.empty())) {
+	        LogOverlay(LOG_NOTICE, "WARNING: [%S] tried to combine the deprecated partner= option with a command list.\n"
+	                               "This almost certainly won't do what you want. Try something like this instead:\n"
+	                               "\n"
+	                               "[Constants]\n"
+	                               "global $partner\n"
+	                               "\n"
+	                               "[%S_VERTEX_SHADER]\n"
+	                               "hash = <vertex shader hash>\n"
+	                               "pre $partner = 1\n"
+	                               "post $partner = 0\n"
+	                               "\n"
+	                               "[%S_PIXEL_SHADER]\n"
+	                               "hash = <pixel shader hash>\n"
+	                               "if $partner == 1\n"
+	                               "    ...\n"
+	                               "endif\n"
+	                               "\n"
+	                               "To check the partner inside a shader set an IniParam in the partner's ShaderOverride.\n"
+	                               , id, id, id);
+	}
+
+	if (override->depth_filter != DepthBufferFilter::NONE) {
+	        LogOverlay(LOG_NOTICE, "NOTICE: [%S] used deprecated depth_filter option. Consider texture filtering for more flexibility:\n"
+	                               "\n"
+	                               "[%S]\n"
+	                               "x = oD\n"
+	                               "\n"
+	                               "In the shader:\n"
+	                               "if (asint(IniParams[0].x) == asint(-0.0)) {\n"
+	                               "    // No depth buffer bound\n"
+	                               "} else {\n"
+	                               "    // Depth buffer bound\n"
+	                               "}\n"
+	                               "\n"
+	                               "Or in assembly:\n"
+	                               "dcl_resource_texture1d (float,float,float,float) t120\n"
+	                               "ld_indexable(texture1d)(float,float,float,float) r0.x, l(0, 0, 0, 0), t120.xyzw\n"
+	                               "ieq r0.x, r0.x, l(0x80000000)\n"
+	                               "if_nz r0.x\n"
+	                               "    // No depth buffer bound\n"
+	                               "else\n"
+	                               "    // Depth buffer bound\n"
+	                               "endif\n"
+	                        , id, id);
+	}
+}
+
 // List of keys in [ShaderOverride] sections that are processed in this
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *ShaderOverrideIniKeys[] = {
@@ -2012,6 +2069,8 @@ static void ParseShaderOverrideSections()
 			else
 				ParseCommandListLine(id, L"run", L"builtincustomshaderenablescissorclipping", NULL, &override->command_list, &ini_namespace);
 		}
+
+		warn_deprecated_shaderoverride_options(id, override);
 	}
 	LeaveCriticalSection(&G->mCriticalSection);
 }
