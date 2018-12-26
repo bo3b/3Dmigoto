@@ -1098,6 +1098,19 @@ static int GetIniBoolIntOrEnum(const wchar_t *section, const wchar_t *key, int d
 	return GetIniEnum(section, key, def, found, prefix, names, names_len, first);
 }
 
+static void GetUserConfigPath(const wchar_t *migoto_path)
+{
+	std::string tmp;
+	wstring rel_path;
+
+	GetIniString(L"Include", L"user_config", L"d3dx_user.ini", &tmp);
+	rel_path = wstring(tmp.begin(), tmp.end()); // TODO: Sort out wide character mess
+	if (tmp[1] != ':' && tmp[0] != '\\')
+		G->user_config = wstring(migoto_path) + rel_path;
+	else
+		G->user_config = rel_path;
+}
+
 static void ParseIncludedIniFiles()
 {
 	IniSections include_sections;
@@ -1110,9 +1123,14 @@ static void ParseIncludedIniFiles()
 	wstring namespace_path, rel_path, ini_path;
 	wchar_t migoto_path[MAX_PATH];
 	vector<pcre2_code*> exclude;
+	DWORD attrib;
 
 	GetModuleFileName(0, migoto_path, MAX_PATH);
 	wcsrchr(migoto_path, L'\\')[1] = 0;
+
+	// Grab the user_config path before the below code removes it from the
+	// ini_sections data structure:
+	GetUserConfigPath(migoto_path);
 
 	// Do this before removing [Include] from ini_sections. TODO: Allow
 	// recursively included files to modify the exclude mid-recursion:
@@ -1161,6 +1179,8 @@ static void ParseIncludedIniFiles()
 					ParseIniFilesRecursive(migoto_path, rel_path, exclude);
 				} else if (!wcscmp(key->c_str(), L"exclude_recursive")) {
 					// Handled above
+				} else if (!wcscmp(key->c_str(), L"user_config")) {
+					// Handled below
 				} else {
 					IniWarning("WARNING: Unrecognised entry: %S=%S\n", key->c_str(), rel_path.c_str());
 				}
@@ -1169,6 +1189,12 @@ static void ParseIncludedIniFiles()
 	} while (!include_sections.empty());
 
 	free_globbing_vector(exclude);
+
+	// User config is loaded very last to allow it to override all other
+	// ini files.
+	attrib = GetFileAttributes(G->user_config.c_str());
+	if (attrib != INVALID_FILE_ATTRIBUTES)
+		ParseNamespacedIniFile(G->user_config.c_str(), &G->user_config);
 }
 
 static void RegisterPresetKeyBindings()
@@ -1791,11 +1817,13 @@ static void ParseDriverProfile()
 
 static void ParseConstantsSection()
 {
+	VariableFlags flags;
 	IniSectionVector *section = NULL;
 	IniSectionVector::iterator entry, next;
 	wstring *key, *val, name;
+	const wchar_t *name_pos;
 	const wstring *ini_namespace;
-	bool inserted;
+	std::pair<CommandListVariables::iterator, bool> inserted;
 	float fval;
 	int len;
 
@@ -1818,6 +1846,7 @@ static void ParseConstantsSection()
 	// throw an error if 3dvision2sbs.ini was not included.
 
 	command_list_globals.clear();
+	persistent_variables.clear();
 	GetIniSection(&section, L"Constants");
 	for (next = section->begin(), entry = next; entry < section->end(); entry = next) {
 		next++;
@@ -1836,12 +1865,15 @@ static void ParseConstantsSection()
 		// supposed to be case insensitive:
 		std::transform(name.begin(), name.end(), name.begin(), ::towlower);
 
-		// We can ignore pre/post keywords because [Constants] doesn't
-		// support them as yet
+		// Globals do not support pre/post since they are declarations
+		// with static initialisers where pre/post doesn't make sense
+		// (and [Constants] doesn't support them as yet either)
 
-		if (name.compare(0, 7, L"global "))
+		flags = parse_enum_option_string_prefix<const wchar_t *, VariableFlags>
+			(VariableFlagNames, name.c_str(), &name_pos);
+		if (!(flags & VariableFlags::GLOBAL))
 			continue;
-		name = name.substr(name.find_first_not_of(L" \t", 7));
+		name = name_pos;
 
 		if (!valid_variable_name(name)) {
 			IniWarning("WARNING: Illegal global variable name: \"%S\"\n", name.c_str());
@@ -1863,11 +1895,14 @@ static void ParseConstantsSection()
 			}
 		}
 
-		inserted = command_list_globals.emplace(name, CommandListVariable{name, fval}).second;
-		if (!inserted) {
+		inserted = command_list_globals.emplace(name, CommandListVariable{name, fval, flags});
+		if (!inserted.second) {
 			IniWarning("WARNING: Redeclaration of %S\n", name.c_str());
 			continue;
 		}
+
+		if (flags & VariableFlags::PERSIST)
+			persistent_variables.emplace_back(&inserted.first->second);
 
 		if (val->empty())
 			LogInfo("  global %S\n", name.c_str());
@@ -4460,6 +4495,39 @@ void LoadProfileManagerConfig(const wchar_t *exe_path)
 	LogInfo("\n");
 }
 
+void SavePersistentSettings()
+{
+	FILE *f;
+
+	if (!G->user_config_dirty)
+		return;
+	G->user_config_dirty = false;
+
+	// TODO: Ability to update existing file rather than overwriting:
+	//wfopen_ensuring_access(&f, G->user_config.c_str(), L"r+");
+	//if (!f)
+	wfopen_ensuring_access(&f, G->user_config.c_str(), L"w");
+	if (!f) {
+		LogInfo("Unable to save settings in %S\n", G->user_config.c_str());
+		return;
+	}
+
+	LogInfo("Saving user settings to %S\n", G->user_config.c_str());
+
+	fputs("; AUTOMATICALLY GENERATED FILE - DO NOT EDIT\n"
+	      ";\n"
+	      "; 3DMigoto will overwrite this file whenever any persistent settings are\n"
+	      "; altered by hot key or command list. Tag global variables with the \"persist\"\n"
+	      "; keyword to save them in this file.\n"
+	      ";\n"
+	      "[Constants]\n", f);
+
+	for (auto global : persistent_variables)
+		fprintf_s(f, "%S = %.9g\n", global->name.c_str(), global->fval);
+
+	fclose(f);
+}
+
 static void MarkAllShadersDeferredUnprocessed()
 {
 	ShaderReloadMap::iterator i;
@@ -4479,6 +4547,8 @@ static void MarkAllShadersDeferredUnprocessed()
 void ReloadConfig(HackerDevice *device)
 {
 	HackerContext *mHackerContext = device->GetHackerContext();
+
+	SavePersistentSettings();
 
 	LogInfo("Reloading d3dx.ini (EXPERIMENTAL)...\n");
 

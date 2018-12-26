@@ -120,6 +120,7 @@ void DestroyDLL()
 	if (LogFile)
 	{
 		LogInfo("Destroying DLL...\n");
+		SavePersistentSettings();
 		fclose(LogFile);
 	}
 }

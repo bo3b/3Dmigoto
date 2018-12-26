@@ -5,6 +5,7 @@ void FlagConfigReload(HackerDevice *device, void *private_data);
 void LoadConfigFile();
 void ReloadConfig(HackerDevice *device);
 void LoadProfileManagerConfig(const wchar_t *exe_path);
+void SavePersistentSettings();
 
 struct IniLine {
 	// Same syntax as std::pair, whitespace stripped around each:

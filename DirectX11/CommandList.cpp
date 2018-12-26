@@ -17,6 +17,7 @@ CustomResources customResources;
 CustomShaders customShaders;
 ExplicitCommandListSections explicitCommandListSections;
 CommandListVariables command_list_globals;
+std::vector<CommandListVariable*> persistent_variables;
 std::vector<CommandList*> registered_command_lists;
 std::unordered_set<CommandList*> command_lists_profiling;
 std::unordered_set<CommandListCommand*> command_lists_cmd_profiling;
@@ -3496,11 +3497,16 @@ void ParamOverride::run(CommandListState *state)
 
 void VariableAssignment::run(CommandListState *state)
 {
+	float orig = var->fval;
+
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-	*ftarget = expression.evaluate(state);
+	var->fval = expression.evaluate(state);
 
-	COMMAND_LIST_LOG(state, "  = %f\n", *ftarget);
+	COMMAND_LIST_LOG(state, "  = %f\n", var->fval);
+
+	if (var->flags & VariableFlags::PERSIST)
+		G->user_config_dirty |= (var->fval != orig);
 }
 
 bool AssignmentCommand::optimise(HackerDevice *device)
@@ -3610,7 +3616,7 @@ bool declare_local_variable(const wchar_t *section, wstring &name,
 		LogOverlay(LOG_NOTICE, "WARNING: [%S] local %S masks a global variable with the same name\n", section, name.c_str());
 	}
 
-	pre_command_list->static_vars.emplace_front(name, 0.0f);
+	pre_command_list->static_vars.emplace_front(name, 0.0f, VariableFlags::NONE);
 	pre_command_list->scope->front()[name] = &pre_command_list->static_vars.front();
 
 	return true;
@@ -3734,7 +3740,7 @@ bool ParseCommandListVariableAssignment(const wchar_t *section,
 		return false;
 
 	command = new VariableAssignment();
-	command->ftarget = &var->fval;
+	command->var = var;
 
 	if (!command->expression.parse(val, ini_namespace, command_list->scope))
 		goto bail;

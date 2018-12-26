@@ -90,19 +90,35 @@ public:
 	virtual bool noop(bool post, bool ignore_cto) { return false; }
 };
 
+enum class VariableFlags {
+	NONE            = 0,
+	GLOBAL          = 0x00000001,
+	PERSIST         = 0x00000002,
+	INVALID         = (signed)0xffffffff,
+};
+SENSIBLE_ENUM(VariableFlags);
+static EnumName_t<const wchar_t *, VariableFlags> VariableFlagNames[] = {
+	{L"global", VariableFlags::GLOBAL},
+	{L"persist", VariableFlags::PERSIST},
+
+	{NULL, VariableFlags::INVALID} // End of list marker
+};
+
 class CommandListVariable {
 public:
 	wstring name;
 	// TODO: Additional types, such as hash
 	float fval;
+	VariableFlags flags;
 
-	CommandListVariable(wstring name, float fval) :
-		name(name), fval(fval)
+	CommandListVariable(wstring name, float fval, VariableFlags flags) :
+		name(name), fval(fval), flags(flags)
 	{}
 };
 
 typedef std::unordered_map<std::wstring, class CommandListVariable> CommandListVariables;
 extern CommandListVariables command_list_globals;
+extern std::vector<CommandListVariable*> persistent_variables;
 
 // The scope object is used to declare local variables in a command list. The
 // multiple levels are to isolate variables declared inside if blocks from
@@ -1006,10 +1022,10 @@ public:
 
 class VariableAssignment : public AssignmentCommand {
 public:
-	float *ftarget;
+	CommandListVariable *var;
 
 	VariableAssignment() :
-		ftarget(NULL)
+		var(NULL)
 	{}
 
 	void run(CommandListState*) override;

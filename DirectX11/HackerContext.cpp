@@ -2585,6 +2585,10 @@ void HackerContext::InitIniParams()
 
 	// The command list will take care of initialising any non-zero values:
 	RunCommandList(mHackerDevice, this, &G->constants_command_list, NULL, false);
+	// We don't consider persistent globals set in the [Constants] pre
+	// command list as making the user config file dirty, because this
+	// command list includes the user config file's [Constants] itself:
+	G->user_config_dirty = false;
 }
 
 // This function makes sure that the StereoParams and IniParams resources

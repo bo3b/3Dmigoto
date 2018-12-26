@@ -400,6 +400,9 @@ struct Globals
 	wchar_t CHAIN_DLL_PATH[MAX_PATH];
 	int load_library_redirect;
 
+	std::wstring user_config;
+	bool user_config_dirty;
+
 	EnableHooks enable_hooks;
 	
 	bool enable_check_interface;
@@ -660,6 +663,7 @@ struct Globals
 		enable_platform_update(false),
 		gInitialized(false),
 		gReloadConfigPending(false),
+		user_config_dirty(false),
 		gLogInput(false),
 		dump_all_profiles(false)
 
