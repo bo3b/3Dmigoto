@@ -1692,7 +1692,7 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewUint(THIS_
 {
 	RunViewCommandList(mHackerDevice, this, &G->clear_uav_uint_command_list, pUnorderedAccessView, false);
 	mOrigContext1->ClearUnorderedAccessViewUint(pUnorderedAccessView, Values);
-	RunViewCommandList(mHackerDevice, this, &G->clear_uav_uint_command_list, pUnorderedAccessView, true);
+	RunViewCommandList(mHackerDevice, this, &G->post_clear_uav_uint_command_list, pUnorderedAccessView, true);
 }
 
 STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewFloat(THIS_
@@ -1703,7 +1703,7 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewFloat(THIS_
 {
 	RunViewCommandList(mHackerDevice, this, &G->clear_uav_float_command_list, pUnorderedAccessView, false);
 	mOrigContext1->ClearUnorderedAccessViewFloat(pUnorderedAccessView, Values);
-	RunViewCommandList(mHackerDevice, this, &G->clear_uav_float_command_list, pUnorderedAccessView, true);
+	RunViewCommandList(mHackerDevice, this, &G->post_clear_uav_float_command_list, pUnorderedAccessView, true);
 }
 
 STDMETHODIMP_(void) HackerContext::ClearDepthStencilView(THIS_
@@ -1718,7 +1718,7 @@ STDMETHODIMP_(void) HackerContext::ClearDepthStencilView(THIS_
 {
 	RunViewCommandList(mHackerDevice, this, &G->clear_dsv_command_list, pDepthStencilView, false);
 	mOrigContext1->ClearDepthStencilView(pDepthStencilView, ClearFlags, Depth, Stencil);
-	RunViewCommandList(mHackerDevice, this, &G->clear_dsv_command_list, pDepthStencilView, true);
+	RunViewCommandList(mHackerDevice, this, &G->post_clear_dsv_command_list, pDepthStencilView, true);
 }
 
 STDMETHODIMP_(void) HackerContext::GenerateMips(THIS_
@@ -2931,7 +2931,7 @@ STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
 {
 	RunViewCommandList(mHackerDevice, this, &G->clear_rtv_command_list, pRenderTargetView, false);
 	mOrigContext1->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
-	RunViewCommandList(mHackerDevice, this, &G->clear_rtv_command_list, pRenderTargetView, true);
+	RunViewCommandList(mHackerDevice, this, &G->post_clear_rtv_command_list, pRenderTargetView, true);
 }
 
 
