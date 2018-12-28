@@ -127,6 +127,7 @@ public:
 	void Activate(HackerDevice *device, bool override_has_deactivate_condition);
 	void Deactivate(HackerDevice *device);
 	void Toggle(HackerDevice *device);
+	bool MatchesCurrent(HackerDevice *device);
 };
 
 class KeyOverrideBase : public virtual OverrideBase, public InputListener
@@ -169,15 +170,18 @@ private:
 	std::vector<class KeyOverride> presets;
 	int current;
 	bool wrap;
+	bool smart;
 public:
 	KeyOverrideCycle() :
 		current(-1),
-		wrap(true)
+		wrap(true),
+		smart(true)
 	{}
 
 	void ParseIniSection(LPCWSTR section) override;
 	void DownEvent(HackerDevice *device);
 	void BackEvent(HackerDevice *device);
+	void UpdateCurrent(HackerDevice *device);
 };
 
 class KeyOverrideCycleBack : public InputListener

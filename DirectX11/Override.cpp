@@ -259,6 +259,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 	float val;
 
 	wrap = GetIniBool(section, L"wrap", true, NULL);
+	smart = GetIniBool(section, L"smart", true, NULL);
 
 	GetIniSection(&section_vec, section);
 	for (entry = section_vec->begin(); entry < section_vec->end(); entry++) {
@@ -348,10 +349,92 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 	}
 }
 
+bool Override::MatchesCurrent(HackerDevice *device)
+{
+	OverrideParams::iterator i;
+	OverrideVars::iterator j;
+	NvAPI_Status err;
+	float val;
+
+	for (i = begin(mOverrideParams); i != end(mOverrideParams); i++) {
+		std::map<OverrideParam, OverrideTransitionParam>::iterator transition = CurrentTransition.params.find(i->first);
+		if (transition != CurrentTransition.params.end() && transition->second.time != -1)
+			val = transition->second.target;
+		else
+			val = G->iniParams[i->first.idx].*i->first.component;
+
+		if (i->second != val)
+			return false;
+	}
+
+	for (j = begin(mOverrideVars); j != end(mOverrideVars); j++) {
+		std::map<CommandListVariable*, OverrideTransitionParam>::iterator transition = CurrentTransition.vars.find(j->first);
+		if (transition != CurrentTransition.vars.end() && transition->second.time != -1)
+			val = transition->second.target;
+		else
+			val = j->first->fval;
+
+		if (j->second != val)
+			return false;
+	}
+
+	if (mOverrideSeparation != FLT_MAX) {
+		if (CurrentTransition.separation.time != -1) {
+			val = CurrentTransition.separation.target;
+		} else {
+			err = NvAPI_Stereo_GetSeparation(device->mStereoHandle, &val);
+			if (err != NVAPI_OK) {
+				LogDebug("    Stereo_GetSeparation failed: %i\n", err);
+				val = mOverrideSeparation;
+			}
+		}
+
+		if (mOverrideSeparation != val)
+			return false;
+	}
+	if (mOverrideConvergence != FLT_MAX) {
+		if (CurrentTransition.convergence.time != -1) {
+			val = CurrentTransition.convergence.target;
+		} else {
+			err = NvAPI_Stereo_GetConvergence(device->mStereoHandle, &val);
+			if (err != NVAPI_OK) {
+				LogDebug("    Stereo_GetConvergence failed: %i\n", err);
+				val = mOverrideConvergence;
+			}
+		}
+
+		if (mOverrideConvergence != val)
+			return false;
+	}
+
+	return true;
+}
+
+void KeyOverrideCycle::UpdateCurrent(HackerDevice *device)
+{
+	// If everything in the current preset matches reality or the current
+	// transition target we are good:
+	if (current >= 0 && current < presets.size() && presets[current].MatchesCurrent(device))
+		return;
+
+	// The current preset doesn't match reality - we've got out of sync.
+	// Search for any other presets that do match:
+	for (int i = 0; i < presets.size(); i++) {
+		if (i != current && presets[i].MatchesCurrent(device)) {
+			LogInfo("Resynced key cycle: %i -> %i\n", current, i);
+			current = i;
+			return;
+		}
+	}
+}
+
 void KeyOverrideCycle::DownEvent(HackerDevice *device)
 {
 	if (presets.empty())
 		return;
+
+	if (smart)
+		UpdateCurrent(device);
 
 	if (current == -1)
 		current = 0;
@@ -369,6 +452,9 @@ void KeyOverrideCycle::BackEvent(HackerDevice *device)
 {
 	if (presets.empty())
 		return;
+
+	if (smart)
+		UpdateCurrent(device);
 
 	if (current == -1)
 		current = (int)presets.size() - 1;
