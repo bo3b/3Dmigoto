@@ -389,7 +389,15 @@ bool Override::MatchesCurrent(HackerDevice *device)
 			}
 		}
 
-		if (mOverrideSeparation != val)
+		// nvapi calls can alter the value we set (e.g. 4 -> 3.99999952),
+		// and 0 is special cased to 1% (unless StereoFullHKConfig is set,
+		// bizarrely), so compare within a small tollerance, special
+		// casing 0% (TODO: maybe search for closest match):
+		LogDebug("Comparing separation: %.9g nvapi: %.9g\n", mOverrideSeparation, val);
+		if (mOverrideSeparation == 0) {
+			if (abs(mOverrideSeparation - val) > 1.01)
+				return false;
+		} else if (abs(mOverrideSeparation - val) > 0.01)
 			return false;
 	}
 	if (mOverrideConvergence != FLT_MAX) {
@@ -403,7 +411,11 @@ bool Override::MatchesCurrent(HackerDevice *device)
 			}
 		}
 
-		if (mOverrideConvergence != val)
+		// nvapi calls can alter the value we set (e.g. 0 -> 0.00100000005)
+		// and we can't rely on the entire 24 bits of precision, so compare
+		// within a small tollerance (TODO: maybe search for closest match):
+		LogDebug("Comparing convergence: %.9g nvapi: %.9g\n", mOverrideConvergence, val);
+		if (abs(mOverrideConvergence - val) > 0.01)
 			return false;
 	}
 
