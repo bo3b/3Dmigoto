@@ -3562,11 +3562,18 @@ bool parse_command_list_var_name(const wstring &name, const wstring *ini_namespa
 	if (name.length() < 2 || name[0] != L'$')
 		return false;
 
+	// We need value in lower case so our keys will be consistent in the
+	// unordered_map. ParseCommandList will have already done this, but the
+	// Key/Preset parsing code will not have, and rather than require it to
+	// we do it here:
+	wstring low_name(name);
+	std::transform(low_name.begin(), low_name.end(), low_name.begin(), ::towlower);
+
 	var = command_list_globals.end();
 	if (!ini_namespace->empty())
-		var = command_list_globals.find(get_namespaced_var_name_lower(name, ini_namespace));
+		var = command_list_globals.find(get_namespaced_var_name_lower(low_name, ini_namespace));
 	if (var == command_list_globals.end())
-		var = command_list_globals.find(name);
+		var = command_list_globals.find(low_name);
 	if (var == command_list_globals.end())
 		return false;
 

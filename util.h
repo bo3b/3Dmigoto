@@ -835,7 +835,7 @@ static bool ParseIniParamName(const wchar_t *name, int *idx, float DirectX::XMFL
 	else if (ret != 2 || len2 != length)
 		return false;
 
-	switch (component_chr) {
+	switch (towlower(component_chr)) {
 		case L'x':
 			*component = &DirectX::XMFLOAT4::x;
 			return true;
