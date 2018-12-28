@@ -488,6 +488,7 @@ struct Globals
 	CommandList clear_uav_uint_command_list;
 	CommandList post_clear_uav_uint_command_list;
 	CommandList constants_command_list;
+	CommandList post_constants_command_list;
 	unsigned frame_no;
 	HWND hWnd; // To translate mouse coordinates to the window
 	bool hide_cursor;

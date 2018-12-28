@@ -2589,6 +2589,7 @@ void HackerContext::InitIniParams()
 	// command list as making the user config file dirty, because this
 	// command list includes the user config file's [Constants] itself:
 	G->user_config_dirty = false;
+	RunCommandList(mHackerDevice, this, &G->post_constants_command_list, NULL, true);
 }
 
 // This function makes sure that the StereoParams and IniParams resources

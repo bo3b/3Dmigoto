@@ -1916,7 +1916,8 @@ static void ParseConstantsSection()
 
 	// Second pass for the command list:
 	G->constants_command_list.clear();
-	ParseCommandList(L"Constants", &G->constants_command_list, NULL, NULL);
+	G->post_constants_command_list.clear();
+	ParseCommandList(L"Constants", &G->constants_command_list, &G->post_constants_command_list, NULL);
 }
 
 static wchar_t *true_false_overrule[] = {
@@ -4518,7 +4519,8 @@ void SavePersistentSettings()
 	      ";\n"
 	      "; 3DMigoto will overwrite this file whenever any persistent settings are\n"
 	      "; altered by hot key or command list. Tag global variables with the \"persist\"\n"
-	      "; keyword to save them in this file.\n"
+	      "; keyword to save them in this file. Use the post keyword in the [Constants]\n"
+	      "; command list if you need to do any intialisation after this file is loaded.\n"
 	      ";\n"
 	      "[Constants]\n", f);
 
