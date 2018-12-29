@@ -3748,6 +3748,10 @@ void FlagConfigReload(HackerDevice *device, void *private_data)
 	// to do from inside a key binding callback, so we just set a flag and
 	// do this after the input subsystem has finished dispatching calls.
 	G->gReloadConfigPending = true;
+
+	// We defer wiping the user config (if requested) until the reload in
+	// case something marks the user config as dirty between now and then:
+	G->gWipeUserConfig = !!private_data;
 }
 
 static void ToggleFullScreen(HackerDevice *device, void *private_data)
@@ -4566,6 +4570,14 @@ void SavePersistentSettings()
 	fclose(f);
 }
 
+static void WipeUserConfig()
+{
+	G->gWipeUserConfig = false;
+	G->user_config_dirty = false;
+
+	DeleteFile(G->user_config.c_str());
+}
+
 static void MarkAllShadersDeferredUnprocessed()
 {
 	ShaderReloadMap::iterator i;
@@ -4585,6 +4597,9 @@ static void MarkAllShadersDeferredUnprocessed()
 void ReloadConfig(HackerDevice *device)
 {
 	HackerContext *mHackerContext = device->GetHackerContext();
+
+	if (G->gWipeUserConfig)
+		WipeUserConfig();
 
 	SavePersistentSettings();
 

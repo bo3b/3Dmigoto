@@ -391,6 +391,7 @@ struct Globals
 {
 	bool gInitialized;
 	bool gReloadConfigPending;
+	bool gWipeUserConfig;
 	bool gLogInput;
 	bool dump_all_profiles;
 	DWORD ticks_at_launch;
@@ -664,6 +665,7 @@ struct Globals
 		enable_platform_update(false),
 		gInitialized(false),
 		gReloadConfigPending(false),
+		gWipeUserConfig(false),
 		user_config_dirty(false),
 		gLogInput(false),
 		dump_all_profiles(false)
