@@ -1363,6 +1363,9 @@ static std::vector<T> string_to_typed_array(std::istringstream *tokens)
 	unsigned uval;
 
 	while (std::getline(*tokens, token, ' ')) {
+		if (token.empty())
+			continue;
+
 		ret = sscanf_s(token.c_str(), "0x%x%n", &uval, &len);
 		if (ret != 0 && ret != EOF && len == token.length()) {
 			// Reinterpret the 32bit unsigned integer as whatever
