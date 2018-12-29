@@ -312,10 +312,12 @@ static T2 parse_enum_option_string_prefix(struct EnumName_t<T1, T2> *enum_names,
 		// Scan until the next whitespace or end of string:
 		for (; *ptr && *ptr != L' '; ptr++) {}
 
-		if (*ptr) {
-			// Note word length and advance pointer:
-			len = ptr++ - cur;
-		}
+		// Note word length:
+		len = ptr - cur;
+
+		// Advance pointer if not at end of string:
+		if (*ptr)
+			ptr++;
 
 		// Lookup the value of the current entry:
 		tmp = lookup_enum_val<T1, T2> (enum_names, cur, len, T2::INVALID);
