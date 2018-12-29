@@ -499,6 +499,8 @@ static void UpdateIniParams(HackerDevice* wrapper)
 	realContext->Unmap(wrapper->mIniTexture, 0);
 }
 
+std::vector<CommandList*> pending_post_command_lists;
+
 void Override::Activate(HackerDevice *device, bool override_has_deactivate_condition)
 {
 	if (is_conditional && condition.evaluate(NULL, device) == 0) {
@@ -524,7 +526,9 @@ void Override::Activate(HackerDevice *device, bool override_has_deactivate_condi
 	RunCommandList(device, device->GetHackerContext(), &activate_command_list, NULL, false);
 	if (!override_has_deactivate_condition) {
 		// type=activate or type=cycle that don't have an explicit deactivate
-		RunCommandList(device, device->GetHackerContext(), &deactivate_command_list, NULL, true);
+		// We run their post lists after the upcoming UpdateTransitions() so
+		// that they can see the newly set values
+		pending_post_command_lists.emplace_back(&deactivate_command_list);
 	}
 }
 
@@ -778,6 +782,12 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
 		}
 		LogDebug("\n");
 	}
+
+	// Run any post command lists from type=activate / cycle now so that
+	// they can see the first frame of the updated value:
+	for (auto i : pending_post_command_lists)
+		RunCommandList(wrapper, wrapper->GetHackerContext(), i, NULL, true);
+	pending_post_command_lists.clear();
 }
 
 void OverrideTransition::Stop()
