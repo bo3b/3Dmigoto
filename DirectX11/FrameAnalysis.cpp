@@ -1571,6 +1571,9 @@ void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_li
 	if (!command_list)
 		return;
 
+	if (frame_analysis_deferred_buffer_lists.empty() && frame_analysis_deferred_tex2d_lists.empty())
+		return;
+
 	EnterCriticalSection(&G->mCriticalSection);
 
 	try {
