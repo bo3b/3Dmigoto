@@ -197,9 +197,11 @@ extern ExplicitCommandListSections explicitCommandListSections;
 class RunExplicitCommandList : public CommandListCommand {
 public:
 	ExplicitCommandListSection *command_list_section;
+	bool run_pre_and_post_together;
 
 	RunExplicitCommandList() :
-		command_list_section(NULL)
+		command_list_section(NULL),
+		run_pre_and_post_together(false)
 	{}
 
 	void run(CommandListState*) override;

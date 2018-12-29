@@ -568,6 +568,12 @@ bool ParseRunExplicitCommandList(const wchar_t *section,
 	if (shader == explicitCommandListSections.end())
 		goto bail;
 
+	// If the user indicated an explicit command list we will run the pre
+	// and post lists of the target list together. This tends to make
+	// things a little less surprising for "post run = CommandListFoo"
+	if (explicit_command_list)
+		operation->run_pre_and_post_together = true;
+
 	operation->command_list_section = &shader->second;
 	// This function is nearly identical to ParseRunShader, but in case we
 	// later refactor these together note that here we do not specify a
@@ -2143,9 +2149,18 @@ bool RunCustomShaderCommand::noop(bool post, bool ignore_cto)
 
 void RunExplicitCommandList::run(CommandListState *state)
 {
+	bool saved_post;
+
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-	if (state->post)
+	if (run_pre_and_post_together) {
+		saved_post = state->post;
+		state->post = false;
+		_RunCommandList(&command_list_section->command_list, state);
+		state->post = true;
+		_RunCommandList(&command_list_section->post_command_list, state);
+		state->post = saved_post;
+	} else if (state->post)
 		_RunCommandList(&command_list_section->post_command_list, state);
 	else
 		_RunCommandList(&command_list_section->command_list, state);
@@ -2153,6 +2168,9 @@ void RunExplicitCommandList::run(CommandListState *state)
 
 bool RunExplicitCommandList::noop(bool post, bool ignore_cto)
 {
+	if (run_pre_and_post_together)
+		return (command_list_section->command_list.commands.empty() && command_list_section->post_command_list.commands.empty());
+
 	if (post)
 		return command_list_section->post_command_list.commands.empty();
 	return command_list_section->command_list.commands.empty();
