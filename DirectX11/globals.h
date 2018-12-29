@@ -494,6 +494,7 @@ struct Globals
 	HWND hWnd; // To translate mouse coordinates to the window
 	bool hide_cursor;
 	bool cursor_upscaling_bypass;
+	bool check_foreground_window;
 
 	CRITICAL_SECTION mCriticalSection;
 
@@ -636,6 +637,7 @@ struct Globals
 		hWnd(NULL),
 		hide_cursor(false),
 		cursor_upscaling_bypass(true),
+		check_foreground_window(false),
 
 		GAME_INTERNAL_WIDTH(1), // it gonna be used by mouse pos hook in case of softwaremouse is on and it can be called before
 		GAME_INTERNAL_HEIGHT(1),//  the swap chain is created and the proper data set to avoid errors in the hooked winapi functions
