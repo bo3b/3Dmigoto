@@ -102,52 +102,51 @@ void Override::ParseIniSection(LPCWSTR section)
 
 struct KeyOverrideCycleParam
 {
-	wchar_t *cur;
-	wchar_t buf[MAX_PATH];
-	wchar_t *ptr;
-	bool done;
+	std::string cur;
+	std::string buf;
+	const char *ptr;
 
 	KeyOverrideCycleParam() :
-		cur(L""),
-		ptr(buf),
-		done(false)
+		ptr(NULL)
 	{}
 
 	bool next()
 	{
-		wchar_t *tmp;
+		const char *t1, *t2;
 
-		if (done)
+		if (!ptr)
+			ptr = buf.c_str();
+
+		// Done?
+		if (!*ptr)
 			return false;
 
 		// Skip over whitespace:
-		for (; *ptr == L' '; ptr++) {}
+		for (; *ptr == ' '; ptr++) {}
 
 		// Mark start of current entry:
-		cur = ptr;
+		t1 = ptr;
 
 		// Scan until the next comma or end of string:
-		for (; *ptr && *ptr != L','; ptr++) {}
+		for (; *ptr && *ptr != ','; ptr++) {}
 
 		// Scan backwards over any trailing whitespace in this entry:
-		for (tmp = ptr - 1; ptr >= cur && *ptr == L' '; ptr--) {}
+		for (t2 = ptr - 1; t2 >= t1 && *t2 == ' '; t2--) {}
 
-		// If it's a comma advance to the next item, otherwise mark us as done:
-		if (*ptr == L',')
+		// If it's a comma advance to the next item:
+		if (*ptr == ',')
 			ptr++;
-		else
-			done = true;
 
-		// NULL terminate this entry:
-		*(tmp + 1) = L'\0';
+		// Extract this entry:
+		cur = std::string{t1, (uintptr_t)(++t2 - t1)};
 
 		return true;
 	}
 
 	void log(const wchar_t *name)
 	{
-		if (*cur)
-			LogInfoWNoNL(L" %s=%s", name, cur);
+		if (!cur.empty())
+			LogInfoNoNL(" %S=%s", name, cur.c_str());
 	}
 
 	float as_float(float default)
@@ -155,7 +154,7 @@ struct KeyOverrideCycleParam
 		float val;
 		int n;
 
-		n = swscanf_s(cur, L"%f", &val);
+		n = sscanf_s(cur.c_str(), "%f", &val);
 		if (!n || n == EOF) {
 			// Blank entry
 			return default;
@@ -168,7 +167,7 @@ struct KeyOverrideCycleParam
 		int val;
 		int n;
 
-		n = swscanf_s(cur, L"%i", &val);
+		n = sscanf_s(cur.c_str(), "%i", &val);
 		if (!n || n == EOF) {
 			// Blank entry
 			return default;
@@ -181,14 +180,14 @@ struct KeyOverrideCycleParam
 	{
 		T2 val;
 
-		if (*cur == L'\0') {
+		if (cur.empty()) {
 			// Blank entry
 			return default;
 		}
 
-		val = lookup_enum_val<const wchar_t *, TransitionType>(enum_names, cur, (T2)-1);
+		val = lookup_enum_val<T1, T2>(enum_names, cur.c_str(), (T2)-1);
 		if (val == (T2)-1) {
-			LogOverlayW(LOG_WARNING, L"WARNING: Unmatched value \"%s\"\n", cur);
+			LogOverlay(LOG_WARNING, "WARNING: Unmatched value \"%s\"\n", cur.c_str());
 			return default;
 		}
 
@@ -197,10 +196,10 @@ struct KeyOverrideCycleParam
 
 	bool as_ini_param(LPCWSTR section, CommandListExpression *expression)
 	{
-		wstring scur(cur);
+		wstring scur(cur.begin(), cur.end());
 		wstring ini_namespace;
 
-		if (*cur == L'\0') {
+		if (cur.empty()) {
 			// Blank entry
 			return false;
 		}
@@ -208,7 +207,7 @@ struct KeyOverrideCycleParam
 		get_section_namespace(section, &ini_namespace);
 
 		if (!expression->parse(&scur, &ini_namespace, NULL)) {
-			LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%S\"\n", cur);
+			LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%s\"\n", cur.c_str());
 			return false;
 		}
 
@@ -217,10 +216,10 @@ struct KeyOverrideCycleParam
 
 	void as_run_command(LPCWSTR section, CommandList *pre_command_list, CommandList *deactivate_command_list)
 	{
-		wstring scur(cur);
+		wstring scur(cur.begin(), cur.end());
 		wstring ini_namespace;
 
-		if (*cur == L'\0') {
+		if (cur.empty()) {
 			// Blank entry
 			return;
 		}
@@ -228,7 +227,7 @@ struct KeyOverrideCycleParam
 		get_section_namespace(section, &ini_namespace);
 
 		if (!ParseRunExplicitCommandList(section, L"run", &scur, NULL, pre_command_list, deactivate_command_list, &ini_namespace))
-			LogOverlay(LOG_WARNING, "WARNING: Invalid run=\"%S\"\n", scur.c_str());
+			LogOverlay(LOG_WARNING, "WARNING: Invalid run=\"%s\"\n", cur.c_str());
 	}
 };
 
@@ -267,25 +266,25 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 			// Reserve space in IniParams for this variable:
 			G->iniParamsReserved = max(G->iniParamsReserved, param_idx + 1);
 
-			GetIniString(section, entry->first.c_str(), 0, param_bufs[OverrideParam(param_idx, param_component)].buf, MAX_PATH);
+			GetIniString(section, entry->first.c_str(), 0, &param_bufs[OverrideParam(param_idx, param_component)].buf);
 		} else if (entry->first.c_str()[0] == L'$') {
 			if (!parse_command_list_var_name(entry->first.c_str(), &entry->ini_namespace, &var)) {
 				LogOverlay(LOG_WARNING, "WARNING: Undeclared variable %S\n", entry->first.c_str());
 				continue;
 			}
 
-			GetIniString(section, entry->first.c_str(), 0, var_bufs[var].buf, MAX_PATH);
+			GetIniString(section, entry->first.c_str(), 0, &var_bufs[var].buf);
 		}
 	}
 
-	GetIniString(section, L"separation", 0, separation.buf, MAX_PATH);
-	GetIniString(section, L"convergence", 0, convergence.buf, MAX_PATH);
-	GetIniString(section, L"transition", 0, transition.buf, MAX_PATH);
-	GetIniString(section, L"release_transition", 0, release_transition.buf, MAX_PATH);
-	GetIniString(section, L"transition_type", 0, transition_type.buf, MAX_PATH);
-	GetIniString(section, L"release_transition_type", 0, release_transition_type.buf, MAX_PATH);
-	GetIniString(section, L"condition", 0, condition.buf, MAX_PATH);
-	GetIniString(section, L"run", 0, run.buf, MAX_PATH);
+	GetIniString(section, L"separation", 0, &separation.buf);
+	GetIniString(section, L"convergence", 0, &convergence.buf);
+	GetIniString(section, L"transition", 0, &transition.buf);
+	GetIniString(section, L"release_transition", 0, &release_transition.buf);
+	GetIniString(section, L"transition_type", 0, &transition_type.buf);
+	GetIniString(section, L"release_transition_type", 0, &release_transition_type.buf);
+	GetIniString(section, L"condition", 0, &condition.buf);
+	GetIniString(section, L"run", 0, &run.buf);
 
 	for (i = 1; not_done; i++) {
 		not_done = false;
@@ -343,8 +342,8 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 		presets.push_back(KeyOverride(KeyOverrideType::CYCLE, &params, &vars,
 			separation.as_float(FLT_MAX), convergence.as_float(FLT_MAX),
 			transition.as_int(0), release_transition.as_int(0),
-			transition_type.as_enum<const wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
-			release_transition_type.as_enum<const wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
+			transition_type.as_enum<const char *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
+			release_transition_type.as_enum<const char *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
 			is_conditional, condition_expression, activate_command_list, deactivate_command_list));
 	}
 }
@@ -652,8 +651,8 @@ void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
 	LogInfoNoNL(" Override");
 	if (time) {
 		LogInfoNoNL(" transition: %ims", time);
-		LogInfoWNoNL(L" transition_type: %s",
-			lookup_enum_name<const wchar_t *, TransitionType>(TransitionTypeNames, transition_type));
+		LogInfoNoNL(" transition_type: %s",
+			lookup_enum_name<const char *, TransitionType>(TransitionTypeNames, transition_type));
 	}
 
 	if (target_separation != FLT_MAX) {

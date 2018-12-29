@@ -793,7 +793,7 @@ int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 // want to refactor out all our uses of wide characters that came from the ini
 // file courtesy of the old ini parsing API, and adding a new function that
 // returns wide characters would be counter-productive to that goal.
-static bool GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def, std::string *ret)
+bool GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def, std::string *ret)
 {
 	std::wstring wret;
 	bool found = false;
@@ -1028,7 +1028,10 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, bool 
 	return ret;
 }
 
-template <class T>
+// wchar_t* specialisation. Has character limit
+// Want to remove this eventually, though since MarkingMode uses it and
+// the DirectXTK API uses wide characters we might keep it around.
+template <class T1, class T>
 T GetIniEnumClass(const wchar_t *section, const wchar_t *key, T def, bool *found,
 		struct EnumName_t<const wchar_t *, T> *enum_names)
 {
@@ -1053,11 +1056,44 @@ T GetIniEnumClass(const wchar_t *section, const wchar_t *key, T def, bool *found
 	return ret;
 }
 
+template <class T>
+T GetIniEnumClass(const wchar_t *section, const wchar_t *key, T def, bool *found,
+		struct EnumName_t<const wchar_t *, T> *enum_names)
+{
+	return GetIniEnumClass<const wchar_t *, T>(section, key, def, found, enum_names);
+}
+
+// char* specialisation of the above. No character limit
+template <class T1, class T>
+T GetIniEnumClass(const wchar_t *section, const wchar_t *key, T def, bool *found,
+		struct EnumName_t<const char *, T> *enum_names)
+{
+	string val;
+	T ret = def;
+	bool tmp_found;
+
+	if (found)
+		*found = false;
+
+	if (GetIniString(section, key, 0, &val)) {
+		ret = lookup_enum_val<const char *, T>(enum_names, val.c_str(), def, &tmp_found);
+		if (tmp_found) {
+			if (found)
+				*found = tmp_found;
+			LogInfo("  %S=%s\n", key, val.c_str());
+		} else {
+			IniWarning("WARNING: Unknown %S=%s\n", key, val.c_str());
+		}
+	}
+
+	return ret;
+}
+
 // Explicit template expansion is necessary to generate these functions for
 // the compiler to generate them so they can be used from other source files:
-template TransitionType GetIniEnumClass<TransitionType>(const wchar_t *section, const wchar_t *key, TransitionType def, bool *found,
-		struct EnumName_t<const wchar_t *, TransitionType> *enum_names);
-template MarkingMode GetIniEnumClass<MarkingMode>(const wchar_t *section, const wchar_t *key, MarkingMode def, bool *found,
+template TransitionType GetIniEnumClass<const char *, TransitionType>(const wchar_t *section, const wchar_t *key, TransitionType def, bool *found,
+		struct EnumName_t<const char *, TransitionType> *enum_names);
+template MarkingMode GetIniEnumClass<const wchar_t *, MarkingMode>(const wchar_t *section, const wchar_t *key, MarkingMode def, bool *found,
 		struct EnumName_t<const wchar_t *, MarkingMode> *enum_names);
 
 // For options that used to be booleans and are now integers. Boolean values

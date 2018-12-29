@@ -28,9 +28,9 @@ enum class TransitionType {
 	LINEAR,
 	COSINE,
 };
-static EnumName_t<const wchar_t *, TransitionType> TransitionTypeNames[] = {
-	{L"linear", TransitionType::LINEAR},
-	{L"cosine", TransitionType::COSINE},
+static EnumName_t<const char *, TransitionType> TransitionTypeNames[] = {
+	{"linear", TransitionType::LINEAR},
+	{"cosine", TransitionType::COSINE},
 	{NULL, TransitionType::INVALID} // End of list marker
 };
 

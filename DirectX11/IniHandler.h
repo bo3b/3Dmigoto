@@ -42,11 +42,12 @@ bool GetIniBool(const wchar_t *section, const wchar_t *key, bool def, bool *foun
 float GetIniFloat(const wchar_t *section, const wchar_t *key, float def, bool *found);
 int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 		 wchar_t *ret, unsigned size);
+bool GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def, std::string *ret);
 int GetIniStringAndLog(const wchar_t *section, const wchar_t *key, const wchar_t *def,
 		 wchar_t *ret, unsigned size);
-template <class T>
-T GetIniEnumClass(const wchar_t *section, const wchar_t *key, T def, bool *found,
-		struct EnumName_t<const wchar_t *, T> *enum_names);
+template <class T1, class T2>
+T2 GetIniEnumClass(const wchar_t *section, const wchar_t *key, T2 def, bool *found,
+		struct EnumName_t<T1, T2> *enum_names);
 
 bool get_namespaced_section_name_lower(const wstring *section, const wstring *ini_namespace, wstring *ret);
 bool get_section_namespace(const wchar_t *section, wstring *ret);
