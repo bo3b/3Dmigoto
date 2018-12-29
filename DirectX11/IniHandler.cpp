@@ -1464,6 +1464,33 @@ static void ConstructInitialDataNorm(CustomResource *custom_resource, std::istri
 	}
 }
 
+static void ConstructInitialDataString(CustomResource *custom_resource, std::string *data)
+{
+	// Currently this requires a byte array format, though we could
+	// possibly add utf32 (... or the worst-of-all-worlds utf16) in the
+	// future to support text shaders with international character support.
+	// The format cannot currently be specified inline, though we will
+	// allow it to be implied if not specified.
+	switch(custom_resource->override_format) {
+	case (DXGI_FORMAT)-1:
+		custom_resource->format = DXGI_FORMAT_R8_UINT;
+		// Fall through
+	case DXGI_FORMAT_R8_UINT:
+	case DXGI_FORMAT_R8_SINT:
+		custom_resource->initial_data_size = data->length() - 2;
+		custom_resource->initial_data = malloc(custom_resource->initial_data_size);
+		if (!custom_resource->initial_data) {
+			IniWarning("ERROR allocating initial data\n");
+			return;
+		}
+		memcpy(custom_resource->initial_data, data->c_str() + 1, custom_resource->initial_data_size);
+		return;
+	default:
+		IniWarning("WARNING: unsupported format for specifying initial data as text\n");
+		return;
+	}
+}
+
 static void ParseResourceInitialData(CustomResource *custom_resource, const wchar_t *section)
 {
 	std::string setting, token;
@@ -1491,6 +1518,10 @@ static void ParseResourceInitialData(CustomResource *custom_resource, const wcha
 		IniWarning("WARNING: initial data and filename cannot be used together\n");
 		return;
 	}
+
+	// Check for text data:
+	if (setting.length() >= 2 && setting.front() == '"' && setting.back() == '"')
+		return ConstructInitialDataString(custom_resource, &setting);
 
 	// The format can be specified inline as the first entry in the data
 	// line, or separately as its own setting. Specifying it inline is
