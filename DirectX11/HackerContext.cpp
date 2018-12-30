@@ -472,12 +472,12 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 		// Deprecated since the logic can be moved into the shaders with far more flexibility
 		if (use_orig) {
 			if (isPixelShader) {
-				ShaderReplacementMap::iterator i = G->mOriginalShaders.find(mCurrentPixelShaderHandle);
+				ShaderReplacementMap::iterator i = lookup_original_shader(mCurrentPixelShaderHandle);
 				if (i != G->mOriginalShaders.end())
 					data->oldPixelShader = SwitchPSShader((ID3D11PixelShader*)i->second);
 			}
 			else {
-				ShaderReplacementMap::iterator i = G->mOriginalShaders.find(mCurrentVertexShaderHandle);
+				ShaderReplacementMap::iterator i = lookup_original_shader(mCurrentVertexShaderHandle);
 				if (i != G->mOriginalShaders.end())
 					data->oldVertexShader = SwitchVSShader((ID3D11VertexShader*)i->second);
 			}
@@ -517,7 +517,7 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	wstring tagline(L"//");
 
 	// Faster than catching an out_of_range exception from .at():
-	orig_info_i = G->mReloadedShaders.find(shader);
+	orig_info_i = lookup_reloaded_shader(shader);
 	if (orig_info_i == G->mReloadedShaders.end())
 		return;
 	orig_info = &orig_info_i->second;
@@ -776,14 +776,14 @@ void HackerContext::BeforeDraw(DrawContext &data)
 	if (!G->mShaderOverrideMap.empty()) {
 		ShaderOverrideMap::iterator i;
 
-		i = G->mShaderOverrideMap.find(mCurrentVertexShader);
+		i = lookup_shaderoverride(mCurrentVertexShader);
 		if (i != G->mShaderOverrideMap.end()) {
 			data.post_commands[0] = &i->second.post_command_list;
 			ProcessShaderOverride(&i->second, false, &data);
 		}
 
 		if (mCurrentHullShader) {
-			i = G->mShaderOverrideMap.find(mCurrentHullShader);
+			i = lookup_shaderoverride(mCurrentHullShader);
 			if (i != G->mShaderOverrideMap.end()) {
 				data.post_commands[1] = &i->second.post_command_list;
 				ProcessShaderOverride(&i->second, false, &data);
@@ -791,7 +791,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 		}
 
 		if (mCurrentDomainShader) {
-			i = G->mShaderOverrideMap.find(mCurrentDomainShader);
+			i = lookup_shaderoverride(mCurrentDomainShader);
 			if (i != G->mShaderOverrideMap.end()) {
 				data.post_commands[2] = &i->second.post_command_list;
 				ProcessShaderOverride(&i->second, false, &data);
@@ -799,14 +799,14 @@ void HackerContext::BeforeDraw(DrawContext &data)
 		}
 
 		if (mCurrentGeometryShader) {
-			i = G->mShaderOverrideMap.find(mCurrentGeometryShader);
+			i = lookup_shaderoverride(mCurrentGeometryShader);
 			if (i != G->mShaderOverrideMap.end()) {
 				data.post_commands[3] = &i->second.post_command_list;
 				ProcessShaderOverride(&i->second, false, &data);
 			}
 		}
 
-		i = G->mShaderOverrideMap.find(mCurrentPixelShader);
+		i = lookup_shaderoverride(mCurrentPixelShader);
 		if (i != G->mShaderOverrideMap.end()) {
 			data.post_commands[4] = &i->second.post_command_list;
 			ProcessShaderOverride(&i->second, true, &data);
@@ -1065,7 +1065,7 @@ bool HackerContext::MapDenyCPURead(
 		hash = GetResourceHash(pResource);
 	LeaveCriticalSection(&G->mCriticalSection);
 
-	i = G->mTextureOverrideMap.find(hash);
+	i = lookup_textureoverride(hash);
 	if (i == G->mTextureOverrideMap.end())
 		return false;
 
@@ -1459,7 +1459,7 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 	if (!G->mShaderOverrideMap.empty()) {
 		ShaderOverrideMap::iterator i;
 
-		i = G->mShaderOverrideMap.find(mCurrentComputeShader);
+		i = lookup_shaderoverride(mCurrentComputeShader);
 		if (i != G->mShaderOverrideMap.end()) {
 			context->post_commands = &i->second.post_command_list;
 			// XXX: Not using ProcessShaderOverride() as a
@@ -1570,7 +1570,7 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 			srcHash, pSrcBox->left, pSrcBox->right, pSrcBox->top, pSrcBox->bottom, srcDesc.Width, srcDesc.Height, 
 			dstHash, DstX, DstY, dstDesc.Width, dstDesc.Height);
 
-	i = G->mTextureOverrideMap.find(dstHash);
+	i = lookup_textureoverride(dstHash);
 	if (i == G->mTextureOverrideMap.end())
 		return false;
 
@@ -1941,7 +1941,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 		//
 		// grumble grumble this optimisation caught me out *TWICE* grumble grumble -DSS
 		if (!G->mShaderOverrideMap.empty() || !shader_regex_groups.empty() || (G->hunting == HUNTING_MODE_ENABLED)) {
-			ShaderMap::iterator i = G->mShaders.find(pShader);
+			ShaderMap::iterator i = lookup_shader_hash(pShader);
 			if (i != G->mShaders.end()) {
 				*currentShaderHash = i->second;
 				LogDebug("  shader found: handle = %p, hash = %016I64x\n", *currentShaderHandle, *currentShaderHash);
@@ -1963,7 +1963,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 
 		// If the shader has been live reloaded from ShaderFixes, use the new one
 		// No longer conditional on G->hunting now that hunting may be soft enabled via key binding
-		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pShader);
+		ShaderReloadMap::iterator it = lookup_reloaded_shader(pShader);
 		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL) {
 			LogDebug("  shader replaced by: %p\n", it->second.replacement);
 
@@ -1982,7 +1982,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 		if (G->hunting == HUNTING_MODE_ENABLED) {
 			// Replacement map.
 			if (G->marking_mode == MarkingMode::ORIGINAL || !G->fix_enabled) {
-				ShaderReplacementMap::iterator j = G->mOriginalShaders.find(pShader);
+				ShaderReplacementMap::iterator j = lookup_original_shader(pShader);
 				if ((selectedShader == *currentShaderHash || !G->fix_enabled) && j != G->mOriginalShaders.end()) {
 					repl_shader = (ID3D11Shader*)j->second;
 				}

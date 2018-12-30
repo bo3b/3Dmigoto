@@ -13,14 +13,48 @@ namespace Profiling {
 		INVALID, // Must be last
 	};
 
-	class Overhead;
+	class Overhead {
+	public:
+		LARGE_INTEGER cpu;
+		unsigned count, hits;
+
+		void clear();
+	};
 
 	struct State {
 		LARGE_INTEGER start_time;
 	};
 
-	void start(State *state);
-	void end(State *state, Overhead *overhead);
+	static inline void start(State *state)
+	{
+		QueryPerformanceCounter(&state->start_time);
+	}
+
+	static inline void end(State *state, Profiling::Overhead *overhead)
+	{
+		LARGE_INTEGER end_time;
+
+		QueryPerformanceCounter(&end_time);
+		overhead->cpu.QuadPart += end_time.QuadPart - state->start_time.QuadPart;
+	}
+
+	template<class T>
+	static inline typename T::iterator lookup_map(T &map, typename T::key_type key, Profiling::Overhead *overhead)
+	{
+		Profiling::State state;
+
+		if (Profiling::mode == Profiling::Mode::SUMMARY) {
+			overhead->count++;
+			Profiling::start(&state);
+		}
+		auto ret = map.find(key);
+		if (Profiling::mode == Profiling::Mode::SUMMARY) {
+			Profiling::end(&state, overhead);
+			if (ret != end(map))
+				overhead->hits++;
+		}
+		return ret;
+	}
 
 	void update_txt();
 	void clear();
@@ -35,4 +69,11 @@ namespace Profiling {
 	extern std::wstring text;
 	extern INT64 interval;
 	extern bool freeze;
+
+	extern Overhead shader_hash_lookup_overhead;
+	extern Overhead shader_reload_lookup_overhead;
+	extern Overhead shader_original_lookup_overhead;
+	extern Overhead shaderoverride_lookup_overhead;
+	extern Overhead texture_handle_info_lookup_overhead;
+	extern Overhead textureoverride_lookup_overhead;
 }

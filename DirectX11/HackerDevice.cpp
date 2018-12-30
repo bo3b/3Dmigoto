@@ -1329,7 +1329,7 @@ bool HackerDevice::NeedOriginalShader(UINT64 hash)
 	if (G->hunting && (G->marking_mode == MarkingMode::ORIGINAL || G->config_reloadable || G->show_original_enabled))
 		return true;
 
-	i = G->mShaderOverrideMap.find(hash);
+	i = lookup_shaderoverride(hash);
 	if (i == G->mShaderOverrideMap.end())
 		return false;
 	shaderOverride = &i->second;
@@ -1369,7 +1369,7 @@ void CleanupShaderMaps(ID3D11DeviceChild *handle)
 	EnterCriticalSection(&G->mCriticalSection);
 
 	{
-		ShaderMap::iterator i = G->mShaders.find(handle);
+		ShaderMap::iterator i = lookup_shader_hash(handle);
 		if (i != G->mShaders.end()) {
 			LogInfo("Shader handle %p reused, previous hash was: %016llx\n", handle, i->second);
 			G->mShaders.erase(i);
@@ -1377,7 +1377,7 @@ void CleanupShaderMaps(ID3D11DeviceChild *handle)
 	}
 
 	{
-		ShaderReloadMap::iterator i = G->mReloadedShaders.find(handle);
+		ShaderReloadMap::iterator i = lookup_reloaded_shader(handle);
 		if (i != G->mReloadedShaders.end()) {
 			LogInfo("Shader handle %p reused, found in mReloadedShaders\n", handle);
 			if (i->second.replacement)
@@ -1391,7 +1391,7 @@ void CleanupShaderMaps(ID3D11DeviceChild *handle)
 	}
 
 	{
-		ShaderReplacementMap::iterator i = G->mOriginalShaders.find(handle);
+		ShaderReplacementMap::iterator i = lookup_original_shader(handle);
 		if (i != G->mOriginalShaders.end()) {
 			LogInfo("Shader handle %p reused, releasing previous original shader\n", handle);
 			i->second->Release();
@@ -2349,7 +2349,7 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 	if (hr == S_OK && G->ZBufferHashToInject && ppSRView)
 	{
 		EnterCriticalSection(&G->mCriticalSection);
-		unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator i = G->mResources.find(pResource);
+		unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator i = lookup_resource_handle_info(pResource);
 		if (i != G->mResources.end() && i->second.hash == G->ZBufferHashToInject)
 		{
 			LogInfo("  resource view of z buffer found: handle = %p, hash = %08lx\n", *ppSRView, i->second.hash);
@@ -2491,7 +2491,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		hash = hash_shader(pShaderBytecode, BytecodeLength);
 
 		// Check if the user has overridden the shader model:
-		ShaderOverrideMap::iterator override = G->mShaderOverrideMap.find(hash);
+		ShaderOverrideMap::iterator override = lookup_shaderoverride(hash);
 		if (override != G->mShaderOverrideMap.end()) {
 			if (override->second.model[0])
 				overrideShaderModel = override->second.model;
@@ -2589,7 +2589,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 					// Also add the original shader to the original shaders
 					// map so that if it is later replaced marking_mode =
 					// original and depth buffer filtering will work:
-					if (G->mOriginalShaders.count(*ppShader) == 0) {
+					if (lookup_original_shader(*ppShader) == end(G->mOriginalShaders)) {
 						// Since we are both returning *and* storing this we need to
 						// bump the refcount to 2, otherwise it could get freed and we
 						// may get a crash later in RevertMissingShaders, especially

@@ -15,6 +15,7 @@
 
 #include "ResourceHash.h"
 #include "CommandList.h"
+#include "profiling.h"
 
 
 // Resolve circular include dependency between Globals.h ->
@@ -85,6 +86,10 @@ static EnumName_t<const wchar_t *, ShaderHashType> ShaderHashNames[] = {
 };
 
 // Source compiled shaders.
+// NOTE: This map is no longer filled out by anything. Could remove it as dead
+// code, though there are some games (emulators in particular) where it might
+// be useful to get this working again by hooking/wrapping the various
+// D3DCompiler DLLs' D3DCompile routines.
 typedef std::unordered_map<UINT64, std::string> CompiledShaderMap;
 
 // Strategy: This OriginalShaderInfo record and associated map is to allow us to keep track of every
@@ -314,6 +319,8 @@ struct TextureOverride {
 		priority(0)
 	{}
 };
+
+typedef std::unordered_map<ID3D11Resource *, ResourceHandleInfo> ResourceMap;
 
 // The TextureOverrideList will be sorted because we want multiple
 // [TextureOverrides] that share the same hash (differentiated by draw context
@@ -551,7 +558,7 @@ struct Globals
 	FuzzyTextureOverrides mFuzzyTextureOverrides;
 
 	// Statistics
-	std::unordered_map<ID3D11Resource *, ResourceHandleInfo> mResources;
+	ResourceMap mResources;
 	std::unordered_map<ID3D11Asynchronous*, AsyncQueryType> mQueryTypes;
 
 	// These five items work with the *original* resource hash:
@@ -740,3 +747,33 @@ static struct TLS* get_tls()
 }
 
 extern Globals *G;
+
+static inline ShaderMap::iterator lookup_shader_hash(ID3D11DeviceChild *shader)
+{
+	return Profiling::lookup_map(G->mShaders, shader, &Profiling::shader_hash_lookup_overhead);
+}
+
+static inline ShaderReloadMap::iterator lookup_reloaded_shader(ID3D11DeviceChild *shader)
+{
+	return Profiling::lookup_map(G->mReloadedShaders, shader, &Profiling::shader_reload_lookup_overhead);
+}
+
+static inline ShaderReplacementMap::iterator lookup_original_shader(ID3D11DeviceChild *shader)
+{
+	return Profiling::lookup_map(G->mOriginalShaders, shader, &Profiling::shader_original_lookup_overhead);
+}
+
+static inline ShaderOverrideMap::iterator lookup_shaderoverride(UINT64 hash)
+{
+	return Profiling::lookup_map(G->mShaderOverrideMap, hash, &Profiling::shaderoverride_lookup_overhead);
+}
+
+static inline ResourceMap::iterator lookup_resource_handle_info(ID3D11Resource *resource)
+{
+	return Profiling::lookup_map(G->mResources, resource, &Profiling::texture_handle_info_lookup_overhead);
+}
+
+static inline TextureOverrideMap::iterator lookup_textureoverride(uint32_t hash)
+{
+	return Profiling::lookup_map(G->mTextureOverrideMap, hash, &Profiling::textureoverride_lookup_overhead);
+}

@@ -3,16 +3,11 @@
 
 #include <algorithm>
 
-class Profiling::Overhead {
-public:
-	LARGE_INTEGER cpu;
-
-	void clear();
-};
-
 void Profiling::Overhead::clear()
 {
 	cpu.QuadPart = 0;
+	count = 0;
+	hits = 0;
 }
 
 namespace Profiling {
@@ -26,6 +21,13 @@ namespace Profiling {
 	wstring text;
 	INT64 interval;
 	bool freeze;
+
+	Overhead shader_hash_lookup_overhead;
+	Overhead shader_reload_lookup_overhead;
+	Overhead shader_original_lookup_overhead;
+	Overhead shaderoverride_lookup_overhead;
+	Overhead texture_handle_info_lookup_overhead;
+	Overhead textureoverride_lookup_overhead;
 }
 
 static LARGE_INTEGER profiling_start_time;
@@ -36,19 +38,6 @@ static const struct D3D11_QUERY_DESC query_timestamp = {
 	0,
 };
 
-void Profiling::start(State *state)
-{
-	QueryPerformanceCounter(&state->start_time);
-}
-
-void Profiling::end(State *state, Profiling::Overhead *overhead)
-{
-	LARGE_INTEGER end_time;
-
-	QueryPerformanceCounter(&end_time);
-	overhead->cpu.QuadPart += end_time.QuadPart - state->start_time.QuadPart;
-}
-
 static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER freq, unsigned frames)
 {
 	LARGE_INTEGER present_overhead = {0};
@@ -58,6 +47,12 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 	LARGE_INTEGER map_overhead;
 	LARGE_INTEGER hash_tracking_overhead;
 	LARGE_INTEGER stat_overhead;
+	LARGE_INTEGER shader_hash_lookup_overhead;
+	LARGE_INTEGER shader_reload_lookup_overhead;
+	LARGE_INTEGER shader_original_lookup_overhead;
+	LARGE_INTEGER shaderoverride_lookup_overhead;
+	LARGE_INTEGER texture_handle_info_lookup_overhead;
+	LARGE_INTEGER textureoverride_lookup_overhead;
 	wchar_t buf[512];
 
 	// The overlay overhead should be a subset of the present overhead, but
@@ -79,6 +74,13 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 	map_overhead.QuadPart = Profiling::map_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 	hash_tracking_overhead.QuadPart = Profiling::hash_tracking_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 	stat_overhead.QuadPart = Profiling::stat_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+
+	shader_hash_lookup_overhead.QuadPart = Profiling::shader_hash_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+	shader_reload_lookup_overhead.QuadPart = Profiling::shader_reload_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+	shader_original_lookup_overhead.QuadPart = Profiling::shader_original_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+	shaderoverride_lookup_overhead.QuadPart = Profiling::shaderoverride_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+	texture_handle_info_lookup_overhead.QuadPart = Profiling::texture_handle_info_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+	textureoverride_lookup_overhead.QuadPart = Profiling::textureoverride_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 
 	Profiling::text += L" (Summary):\n";
 	_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
@@ -109,6 +111,47 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 
 			    (float)stat_overhead.QuadPart / frames,
 			    60.0 * stat_overhead.QuadPart / collection_duration.QuadPart
+	);
+	Profiling::text += buf;
+
+	_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
+			    L"------------------- Map Lookups -------------------\n"
+			    L"          Shader hash: %7.2fus/frame ~%ffps (%u/%u hits/frame)\n"
+			    L"Live reloaded shaders: %7.2fus/frame ~%ffps (%u/%u hits/frame)\n"
+			    L"     Original shaders: %7.2fus/frame ~%ffps (%u/%u hits/frame)\n"
+			    L"       ShaderOverride: %7.2fus/frame ~%ffps (%u/%u hits/frame)\n"
+			    L"  Texture hash / info: %7.2fus/frame ~%ffps (%u/%u hits/frame)\n"
+			    L"      TextureOverride: %7.2fus/frame ~%ffps (%u/%u hits/frame)\n"
+			    ,
+			    (float)shader_hash_lookup_overhead.QuadPart / frames,
+			    60.0 * shader_hash_lookup_overhead.QuadPart / collection_duration.QuadPart,
+			    Profiling::shader_hash_lookup_overhead.hits / frames,
+			    Profiling::shader_hash_lookup_overhead.count / frames,
+
+			    (float)shader_reload_lookup_overhead.QuadPart / frames,
+			    60.0 * shader_reload_lookup_overhead.QuadPart / collection_duration.QuadPart,
+			    Profiling::shader_reload_lookup_overhead.hits / frames,
+			    Profiling::shader_reload_lookup_overhead.count / frames,
+
+			    (float)shader_original_lookup_overhead.QuadPart / frames,
+			    60.0 * shader_original_lookup_overhead.QuadPart / collection_duration.QuadPart,
+			    Profiling::shader_original_lookup_overhead.hits / frames,
+			    Profiling::shader_original_lookup_overhead.count / frames,
+
+			    (float)shaderoverride_lookup_overhead.QuadPart / frames,
+			    60.0 * shaderoverride_lookup_overhead.QuadPart / collection_duration.QuadPart,
+			    Profiling::shaderoverride_lookup_overhead.hits / frames,
+			    Profiling::shaderoverride_lookup_overhead.count / frames,
+
+			    (float)texture_handle_info_lookup_overhead.QuadPart / frames,
+			    60.0 * texture_handle_info_lookup_overhead.QuadPart / collection_duration.QuadPart,
+			    Profiling::texture_handle_info_lookup_overhead.hits / frames,
+			    Profiling::texture_handle_info_lookup_overhead.count / frames,
+
+			    (float)textureoverride_lookup_overhead.QuadPart / frames,
+			    60.0 * textureoverride_lookup_overhead.QuadPart / collection_duration.QuadPart,
+			    Profiling::textureoverride_lookup_overhead.hits / frames,
+			    Profiling::textureoverride_lookup_overhead.count / frames
 	);
 	Profiling::text += buf;
 }
@@ -257,6 +300,13 @@ void Profiling::clear()
 	hash_tracking_overhead.clear();
 	stat_overhead.clear();
 	freeze = false;
+
+	shader_hash_lookup_overhead.clear();
+	shader_reload_lookup_overhead.clear();
+	shader_original_lookup_overhead.clear();
+	shaderoverride_lookup_overhead.clear();
+	texture_handle_info_lookup_overhead.clear();
+	textureoverride_lookup_overhead.clear();
 
 	start_frame_no = G->frame_no;
 	QueryPerformanceCounter(&profiling_start_time);

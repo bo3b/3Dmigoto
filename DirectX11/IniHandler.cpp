@@ -2860,7 +2860,7 @@ static void warn_if_duplicate_texture_hash(TextureOverride *override, uint32_t h
 	if (override->has_draw_context_match || override->has_match_priority)
 		return;
 
-	i = G->mTextureOverrideMap.find(hash);
+	i = lookup_textureoverride(hash);
 	if (i == G->mTextureOverrideMap.end())
 		return;
 

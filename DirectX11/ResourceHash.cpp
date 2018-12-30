@@ -790,7 +790,7 @@ ResourceHandleInfo* GetResourceHandleInfo(ID3D11Resource *resource)
 {
 	std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
 
-	j = G->mResources.find(resource);
+	j = lookup_resource_handle_info(resource);
 	if (j != G->mResources.end())
 		return &j->second;
 
@@ -1582,7 +1582,7 @@ static void find_texture_override_for_hash(uint32_t hash, TextureOverrideMatches
 	TextureOverrideMap::iterator i;
 	TextureOverrideList::iterator j;
 
-	i = G->mTextureOverrideMap.find(hash);
+	i = lookup_textureoverride(hash);
 	if (i == G->mTextureOverrideMap.end())
 		return;
 

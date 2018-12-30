@@ -122,7 +122,7 @@ static void FrameAnalysisLogSlot(FILE *frame_analysis_log, int slot, char *slot_
 template <class ID3D11Shader>
 void FrameAnalysisContext::FrameAnalysisLogShaderHash(ID3D11Shader *shader)
 {
-	UINT64 hash;
+	ShaderMap::iterator hash;
 
 	// Always complete the line in the debug log:
 	LogDebug("\n");
@@ -137,12 +137,9 @@ void FrameAnalysisContext::FrameAnalysisLogShaderHash(ID3D11Shader *shader)
 
 	EnterCriticalSection(&G->mCriticalSection);
 
-	try {
-		hash = G->mShaders.at(shader);
-		if (hash)
-			fprintf(frame_analysis_log, " hash=%016llx", hash);
-	} catch (std::out_of_range) {
-	}
+	hash = lookup_shader_hash(shader);
+	if (hash != end(G->mShaders))
+		fprintf(frame_analysis_log, " hash=%016llx", hash->second);
 
 	LeaveCriticalSection(&G->mCriticalSection);
 

@@ -715,7 +715,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			G->mReloadedShaders[oldShader].found = true;
 
 			// Check if the user has overridden the shader model:
-			ShaderOverrideMap::iterator override = G->mShaderOverrideMap.find(hash);
+			ShaderOverrideMap::iterator override = lookup_shaderoverride(hash);
 			if (override != G->mShaderOverrideMap.end()) {
 				if (override->second.model[0])
 					shaderModel = override->second.model;
