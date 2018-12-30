@@ -18,6 +18,7 @@ namespace Profiling {
 	Overhead map_overhead;
 	Overhead hash_tracking_overhead;
 	Overhead stat_overhead;
+	Overhead nvapi_overhead;
 	wstring text;
 	INT64 interval;
 	bool freeze;
@@ -47,6 +48,7 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 	LARGE_INTEGER map_overhead;
 	LARGE_INTEGER hash_tracking_overhead;
 	LARGE_INTEGER stat_overhead;
+	LARGE_INTEGER nvapi_overhead;
 	LARGE_INTEGER shader_hash_lookup_overhead;
 	LARGE_INTEGER shader_reload_lookup_overhead;
 	LARGE_INTEGER shader_original_lookup_overhead;
@@ -74,6 +76,7 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 	map_overhead.QuadPart = Profiling::map_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 	hash_tracking_overhead.QuadPart = Profiling::hash_tracking_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 	stat_overhead.QuadPart = Profiling::stat_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+	nvapi_overhead.QuadPart = Profiling::nvapi_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 
 	shader_hash_lookup_overhead.QuadPart = Profiling::shader_hash_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 	shader_reload_lookup_overhead.QuadPart = Profiling::shader_reload_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
@@ -90,7 +93,8 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 			    L"  Command lists total: %7.2fus/frame ~%ffps\n"
 			    L"   Map/Unmap overhead: %7.2fus/frame ~%ffps\n"
 			    L"track_texture_updates: %7.2fus/frame ~%ffps\n"
-			    L"  dump_usage overhead: %7.2fus/frame ~%ffps\n",
+			    L"  dump_usage overhead: %7.2fus/frame ~%ffps\n"
+			    L"       NvAPI overhead: %7.2fus/frame ~%ffps\n",
 			    (float)present_overhead.QuadPart / frames,
 			    60.0 * present_overhead.QuadPart / collection_duration.QuadPart,
 
@@ -110,7 +114,10 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 			    60.0 * hash_tracking_overhead.QuadPart / collection_duration.QuadPart,
 
 			    (float)stat_overhead.QuadPart / frames,
-			    60.0 * stat_overhead.QuadPart / collection_duration.QuadPart
+			    60.0 * stat_overhead.QuadPart / collection_duration.QuadPart,
+
+			    (float)nvapi_overhead.QuadPart / frames,
+			    60.0 * nvapi_overhead.QuadPart / collection_duration.QuadPart
 	);
 	Profiling::text += buf;
 
@@ -299,6 +306,7 @@ void Profiling::clear()
 	map_overhead.clear();
 	hash_tracking_overhead.clear();
 	stat_overhead.clear();
+	nvapi_overhead.clear();
 	freeze = false;
 
 	shader_hash_lookup_overhead.clear();

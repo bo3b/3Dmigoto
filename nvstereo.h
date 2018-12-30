@@ -47,6 +47,7 @@
 #include <d3d11_1.h>
 #include "nvapi.h"
 #include "log.h"
+#include "profiling.h"
 
 namespace nv
 {
@@ -70,7 +71,7 @@ namespace nv
 		NV_DISPLAYCONFIG_PATH_INFO *pathInfo = NULL;
 
 		// Pass 1: Fetch pathCount, # of displays
-		ret = NvAPI_DISP_GetDisplayConfig(&pathCount, NULL);
+		ret = Profiling::NvAPI_DISP_GetDisplayConfig(&pathCount, NULL);
 		if (ret != NVAPI_OK)
 		{
 			LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: %d  ***\n", ret);
@@ -102,7 +103,7 @@ namespace nv
 
 
 		// Pass 2: Retrieve the targetInfo struct count, and the source mode info, which is what we are interested in.
-		ret = NvAPI_DISP_GetDisplayConfig(&pathCount, pathInfo);
+		ret = Profiling::NvAPI_DISP_GetDisplayConfig(&pathCount, pathInfo);
 		if (ret != NVAPI_OK)
 		{
 			LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: %d  ***\n", ret);
@@ -140,7 +141,7 @@ namespace nv
 		//}
 
 		// Memory allocated for return results, retrieve the full path info, filling in those targetModeInfo structs.
-		//ret = NvAPI_DISP_GetDisplayConfig(&pathCount, pathInfo);
+		//ret = Profiling::NvAPI_DISP_GetDisplayConfig(&pathCount, pathInfo);
 		//if (ret != NVAPI_OK)
 		//{
 		//	LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: %d  ***\n", ret);
@@ -221,7 +222,7 @@ namespace nv
 		inline bool IsStereoEnabled()
 		{
 			NvU8 stereoEnabled = 0;
-			if (NVAPI_OK != NvAPI_Stereo_IsEnabled(&stereoEnabled)) {
+			if (NVAPI_OK != Profiling::NvAPI_Stereo_IsEnabled(&stereoEnabled)) {
 				return false;
 			}
 
@@ -333,7 +334,7 @@ namespace nv
 				// mDeviceLost is set to true to initialize the texture with good data at app startup.
 
 				// The call to CreateConfigurationProfileRegistryKey must happen BEFORE device creation.
-				// NvAPI_Stereo_CreateConfigurationProfileRegistryKey(D3DType::RegistryProfileType);
+				// Profiling::NvAPI_Stereo_CreateConfigurationProfileRegistryKey(D3DType::RegistryProfileType);
 			}
 
 			// Not const because we will update the various values if an update is needed.
@@ -348,11 +349,11 @@ namespace nv
 				bool updateRequired;
 				float eyeSep, sep, conv;
 				if (active) {
-					if (NVAPI_OK != NvAPI_Stereo_GetEyeSeparation(mStereoHandle, &eyeSep))
+					if (NVAPI_OK != Profiling::NvAPI_Stereo_GetEyeSeparation(mStereoHandle, &eyeSep))
 						return false;
-					if (NVAPI_OK != NvAPI_Stereo_GetSeparation(mStereoHandle, &sep))
+					if (NVAPI_OK != Profiling::NvAPI_Stereo_GetSeparation(mStereoHandle, &sep))
 						return false;
-					if (NVAPI_OK != NvAPI_Stereo_GetConvergence(mStereoHandle, &conv))
+					if (NVAPI_OK != Profiling::NvAPI_Stereo_GetConvergence(mStereoHandle, &conv))
 						return false;
 
 					updateRequired = (eyeSep != mEyeSeparation)
@@ -386,7 +387,7 @@ namespace nv
 			bool IsStereoActive() const
 			{
 				NvU8 stereoActive = 0;
-				if (NVAPI_OK != NvAPI_Stereo_IsActivated(mStereoHandle, &stereoActive)) {
+				if (NVAPI_OK != Profiling::NvAPI_Stereo_IsActivated(mStereoHandle, &stereoActive)) {
 					return false;
 				}
 

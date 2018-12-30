@@ -327,9 +327,9 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 	NvU8 stereo = false;
 
 	NvAPIOverride();
-	NvAPI_Stereo_IsEnabled(&stereo);
+	Profiling::NvAPI_Stereo_IsEnabled(&stereo);
 	if (stereo)
-		NvAPI_Stereo_IsActivated(pDevice->mStereoHandle, &stereo);
+		Profiling::NvAPI_Stereo_IsActivated(pDevice->mStereoHandle, &stereo);
 
 	if (!stereo) {
 		LogInfo("marking_actions=stereo_snapshot: Stereo disabled, falling back to mono snapshot\n");
@@ -358,7 +358,7 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 		goto out_release_bb;
 	}
 
-	nvret = NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, true);
+	nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, true);
 	if (nvret != NVAPI_OK) {
 		LogInfo("StereoScreenShot failed to enable reverse stereo blit\n");
 		goto out_release_stereo_bb;
@@ -388,7 +388,7 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 
 	LogInfoW(L"  StereoScreenShot on Mark: %s, result: %d\n", fullName, hr);
 
-	NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, false);
+	Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, false);
 out_release_stereo_bb:
 	stereoBackBuffer->Release();
 out_release_bb:

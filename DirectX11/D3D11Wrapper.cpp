@@ -81,7 +81,7 @@ static bool InitializeDLL()
 	if (G->gForceNoNvAPI)
 	{
 		NvAPIOverride();
-		status = NvAPI_Stereo_Enable();
+		status = Profiling::NvAPI_Stereo_Enable();
 		if (status != NVAPI_OK)
 		{
 			NvAPI_GetErrorMessage(status, errorMessage);

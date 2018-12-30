@@ -1275,7 +1275,7 @@ bool PerDrawStereoOverrideCommand::noop(bool post, bool ignore_cto)
 	NvU8 enabled = false;
 
 	NvAPIOverride();
-	NvAPI_Stereo_IsEnabled(&enabled);
+	Profiling::NvAPI_Stereo_IsEnabled(&enabled);
 	return !enabled;
 }
 
@@ -1283,7 +1283,7 @@ void DirectModeSetActiveEyeCommand::run(CommandListState *state)
 {
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-	if (NVAPI_OK != NvAPI_Stereo_SetActiveEye(state->mHackerDevice->mStereoHandle, eye))
+	if (NVAPI_OK != Profiling::NvAPI_Stereo_SetActiveEye(state->mHackerDevice->mStereoHandle, eye))
 		COMMAND_LIST_LOG(state, "  Stereo_SetActiveEye failed\n");
 }
 
@@ -1292,7 +1292,7 @@ bool DirectModeSetActiveEyeCommand::noop(bool post, bool ignore_cto)
 	NvU8 enabled = false;
 
 	NvAPIOverride();
-	NvAPI_Stereo_IsEnabled(&enabled);
+	Profiling::NvAPI_Stereo_IsEnabled(&enabled);
 	return !enabled;
 
 	// FIXME: Should also return false if direct mode is disabled...
@@ -1303,7 +1303,7 @@ float PerDrawSeparationOverrideCommand::get_stereo_value(CommandListState *state
 {
 	float ret = 0.0f;
 
-	if (NVAPI_OK != NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, &ret))
+	if (NVAPI_OK != Profiling::NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, &ret))
 		COMMAND_LIST_LOG(state, "  Stereo_GetSeparation failed\n");
 
 	return ret;
@@ -1312,7 +1312,7 @@ float PerDrawSeparationOverrideCommand::get_stereo_value(CommandListState *state
 void PerDrawSeparationOverrideCommand::set_stereo_value(CommandListState *state, float val)
 {
 	NvAPIOverride();
-	if (NVAPI_OK != NvAPI_Stereo_SetSeparation(state->mHackerDevice->mStereoHandle, val))
+	if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSeparation(state->mHackerDevice->mStereoHandle, val))
 		COMMAND_LIST_LOG(state, "  Stereo_SetSeparation failed\n");
 }
 
@@ -1320,7 +1320,7 @@ float PerDrawConvergenceOverrideCommand::get_stereo_value(CommandListState *stat
 {
 	float ret = 0.0f;
 
-	if (NVAPI_OK != NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, &ret))
+	if (NVAPI_OK != Profiling::NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, &ret))
 		COMMAND_LIST_LOG(state, "  Stereo_GetConvergence failed\n");
 
 	return ret;
@@ -1329,7 +1329,7 @@ float PerDrawConvergenceOverrideCommand::get_stereo_value(CommandListState *stat
 void PerDrawConvergenceOverrideCommand::set_stereo_value(CommandListState *state, float val)
 {
 	NvAPIOverride();
-	if (NVAPI_OK != NvAPI_Stereo_SetConvergence(state->mHackerDevice->mStereoHandle, val))
+	if (NVAPI_OK != Profiling::NvAPI_Stereo_SetConvergence(state->mHackerDevice->mStereoHandle, val))
 		COMMAND_LIST_LOG(state, "  Stereo_SetConvergence failed\n");
 }
 
@@ -2610,7 +2610,7 @@ static bool sli_enabled(HackerDevice *device)
 	sli_state.version = NV_GET_CURRENT_SLI_STATE_VER;
 	NvAPI_Status status;
 
-	status = NvAPI_D3D_GetCurrentSLIState(device->GetPossiblyHookedOrigDevice1(), &sli_state);
+	status = Profiling::NvAPI_D3D_GetCurrentSLIState(device->GetPossiblyHookedOrigDevice1(), &sli_state);
 	if (status != NVAPI_OK) {
 		LogInfo("Unable to retrieve SLI state from nvapi\n");
 		return false;
@@ -2663,16 +2663,16 @@ float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device
 			// this is rarely used, so let's just go with this for
 			// now and worry about optimisations only if it proves
 			// to be a bottleneck in practice:
-			NvAPI_Stereo_GetSeparation(device->mStereoHandle, &fret);
+			Profiling::NvAPI_Stereo_GetSeparation(device->mStereoHandle, &fret);
 			return fret;
 		case ParamOverrideType::CONVERGENCE:
-			NvAPI_Stereo_GetConvergence(device->mStereoHandle, &fret);
+			Profiling::NvAPI_Stereo_GetConvergence(device->mStereoHandle, &fret);
 			return fret;
 		case ParamOverrideType::EYE_SEPARATION:
-			NvAPI_Stereo_GetEyeSeparation(device->mStereoHandle, &fret);
+			Profiling::NvAPI_Stereo_GetEyeSeparation(device->mStereoHandle, &fret);
 			return fret;
 		case ParamOverrideType::STEREO_ACTIVE:
-			NvAPI_Stereo_IsActivated(device->mStereoHandle, &stereo);
+			Profiling::NvAPI_Stereo_IsActivated(device->mStereoHandle, &stereo);
 			return !!stereo;
 		case ParamOverrideType::SLI:
 			return sli_enabled(device);
@@ -2774,7 +2774,7 @@ bool CommandListOperand::static_evaluate(float *ret, HackerDevice *device)
 		case ParamOverrideType::EYE_SEPARATION:
 		case ParamOverrideType::STEREO_ACTIVE:
 			NvAPIOverride();
-			NvAPI_Stereo_IsEnabled(&stereo);
+			Profiling::NvAPI_Stereo_IsEnabled(&stereo);
 			if (!stereo) {
 				*ret = 0.0;
 				return true;
@@ -3907,19 +3907,19 @@ bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVA
 	if (override_mode == CustomResourceMode::DEFAULT)
 		return false;
 
-	NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, orig_mode);
+	Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, orig_mode);
 
 	switch (override_mode) {
 		case CustomResourceMode::STEREO:
-			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
 			return true;
 		case CustomResourceMode::MONO:
-			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
 			return true;
 		case CustomResourceMode::AUTO:
-			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_AUTO);
 			return true;
 	}
@@ -3977,7 +3977,7 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mSter
 	}
 
 	if (restore_create_mode)
-		NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
+		Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
 }
 
 void CustomResource::LoadBufferFromFile(ID3D11Device *mOrigDevice1)
@@ -5795,7 +5795,7 @@ static void RecreateCompatibleResource(
 		bind_flags = dst->BindFlags();
 
 	if (options & ResourceCopyOptions::CREATEMODE_MASK) {
-		NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &orig_mode);
+		Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &orig_mode);
 		restore_create_mode = true;
 
 		// STEREO2MONO will force the final destination to mono since
@@ -5804,10 +5804,10 @@ static void RecreateCompatibleResource(
 		// forced to STEREO.
 
 		if (options & ResourceCopyOptions::STEREO) {
-			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
 		} else {
-			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
 		}
 	} else if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE) {
@@ -5838,7 +5838,7 @@ static void RecreateCompatibleResource(
 	}
 
 	if (restore_create_mode)
-		NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
+		Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
 
 	if (res) {
 		if (*dst_resource)
@@ -6480,7 +6480,7 @@ static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_
 	fallback = state->mHackerDevice->mParamTextureManager.mActive ? 0 : 1;
 
 	if (!fallback) {
-		nvret = NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, true);
+		nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, true);
 		if (nvret != NVAPI_OK) {
 			LogInfo("Resource copying failed to enable reverse stereo blit\n");
 			// Fallback path: Copy 2D resource to both sides of the 2x
@@ -6513,7 +6513,7 @@ static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_
 	}
 
 	if (!fallback)
-		NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, false);
+		Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, false);
 }
 
 static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource *src_resource,

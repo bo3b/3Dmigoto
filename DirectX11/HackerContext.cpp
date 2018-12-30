@@ -739,11 +739,11 @@ void HackerContext::BeforeDraw(DrawContext &data)
 				{
 					LogDebug("  setting separation=0 for hunting\n");
 
-					if (NVAPI_OK != NvAPI_Stereo_GetSeparation(mHackerDevice->mStereoHandle, &data.oldSeparation))
+					if (NVAPI_OK != Profiling::NvAPI_Stereo_GetSeparation(mHackerDevice->mStereoHandle, &data.oldSeparation))
 						LogDebug("    Stereo_GetSeparation failed.\n");
 
 					NvAPIOverride();
-					if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, 0))
+					if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, 0))
 						LogDebug("    Stereo_SetSeparation failed.\n");
 				}
 				else if (G->marking_mode == MarkingMode::SKIP)
@@ -834,7 +834,7 @@ void HackerContext::AfterDraw(DrawContext &data)
 
 	if (mHackerDevice->mStereoHandle && data.oldSeparation != FLT_MAX) {
 		NvAPIOverride();
-		if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, data.oldSeparation))
+		if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, data.oldSeparation))
 			LogDebug("    Stereo_SetSeparation failed.\n");
 	}
 
