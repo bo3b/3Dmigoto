@@ -110,86 +110,86 @@ if (Profiling::mode == Profiling::Mode::SUMMARY) \
 	Profiling::end(&state, &Profiling::nvapi_overhead); \
 return ret;
 
-	static inline auto NvAPI_Stereo_Enable(void)
+	static inline NvAPI_Status NvAPI_Stereo_Enable(void)
 	{
 		NVAPI_PROFILE_PREFIX
 		::NvAPI_Stereo_Enable();
 		NVAPI_PROFILE_SUFFIX
 	}
-	static inline auto NvAPI_Stereo_IsEnabled(NvU8 *pIsStereoEnabled)
+	static inline NvAPI_Status NvAPI_Stereo_IsEnabled(NvU8 *pIsStereoEnabled)
 	{
 		NVAPI_PROFILE_PREFIX
 		::NvAPI_Stereo_IsEnabled(pIsStereoEnabled);
 		NVAPI_PROFILE_SUFFIX
 	}
-	static inline auto NvAPI_Stereo_IsActivated(StereoHandle stereoHandle, NvU8 *pIsStereoOn)
+	static inline NvAPI_Status NvAPI_Stereo_IsActivated(StereoHandle stereoHandle, NvU8 *pIsStereoOn)
 	{
 		NVAPI_PROFILE_PREFIX
 		::NvAPI_Stereo_IsActivated(stereoHandle, pIsStereoOn);
 		NVAPI_PROFILE_SUFFIX
 	}
-	static inline auto NvAPI_Stereo_GetEyeSeparation(StereoHandle hStereoHandle, float *pSeparation)
+	static inline NvAPI_Status NvAPI_Stereo_GetEyeSeparation(StereoHandle hStereoHandle, float *pSeparation)
 	{
 		NVAPI_PROFILE_PREFIX
 		::NvAPI_Stereo_GetEyeSeparation(hStereoHandle, pSeparation);
 		NVAPI_PROFILE_SUFFIX
 	}
-	static inline auto NvAPI_Stereo_GetSeparation(StereoHandle stereoHandle, float *pSeparationPercentage)
+	static inline NvAPI_Status NvAPI_Stereo_GetSeparation(StereoHandle stereoHandle, float *pSeparationPercentage)
 	{
 		NVAPI_PROFILE_PREFIX
 		::NvAPI_Stereo_GetSeparation(stereoHandle, pSeparationPercentage);
 		NVAPI_PROFILE_SUFFIX
 	}
-	static inline auto NvAPI_Stereo_SetSeparation(StereoHandle stereoHandle, float newSeparationPercentage)
+	static inline NvAPI_Status NvAPI_Stereo_SetSeparation(StereoHandle stereoHandle, float newSeparationPercentage)
 	{
 		NVAPI_PROFILE_PREFIX
 		::NvAPI_Stereo_SetSeparation(stereoHandle, newSeparationPercentage);
 		NVAPI_PROFILE_SUFFIX
 	}
-	static inline auto NvAPI_Stereo_GetConvergence(StereoHandle stereoHandle, float *pConvergence)
+	static inline NvAPI_Status NvAPI_Stereo_GetConvergence(StereoHandle stereoHandle, float *pConvergence)
 	{
 		NVAPI_PROFILE_PREFIX
 		::NvAPI_Stereo_GetConvergence(stereoHandle, pConvergence);
 		NVAPI_PROFILE_SUFFIX
 	}
-	static inline auto NvAPI_Stereo_SetConvergence(StereoHandle stereoHandle, float newConvergence)
+	static inline NvAPI_Status NvAPI_Stereo_SetConvergence(StereoHandle stereoHandle, float newConvergence)
 	{
 		NVAPI_PROFILE_PREFIX
 		::NvAPI_Stereo_SetConvergence(stereoHandle, newConvergence);
 		NVAPI_PROFILE_SUFFIX
 	}
-	static inline auto NvAPI_Stereo_SetActiveEye(StereoHandle hStereoHandle, NV_STEREO_ACTIVE_EYE StereoEye)
+	static inline NvAPI_Status NvAPI_Stereo_SetActiveEye(StereoHandle hStereoHandle, NV_STEREO_ACTIVE_EYE StereoEye)
 	{
 		NVAPI_PROFILE_PREFIX
 		::NvAPI_Stereo_SetActiveEye(hStereoHandle, StereoEye);
 		NVAPI_PROFILE_SUFFIX
 	}
-	static inline auto NvAPI_Stereo_ReverseStereoBlitControl(StereoHandle hStereoHandle, NvU8 TurnOn)
+	static inline NvAPI_Status NvAPI_Stereo_ReverseStereoBlitControl(StereoHandle hStereoHandle, NvU8 TurnOn)
 	{
 		NVAPI_PROFILE_PREFIX
 		::NvAPI_Stereo_ReverseStereoBlitControl(hStereoHandle, TurnOn);
 		NVAPI_PROFILE_SUFFIX
 	}
-	static inline auto NvAPI_Stereo_SetSurfaceCreationMode(__in StereoHandle hStereoHandle, __in NVAPI_STEREO_SURFACECREATEMODE creationMode)
+	static inline NvAPI_Status NvAPI_Stereo_SetSurfaceCreationMode(__in StereoHandle hStereoHandle, __in NVAPI_STEREO_SURFACECREATEMODE creationMode)
 	{
 		NVAPI_PROFILE_PREFIX
 		::NvAPI_Stereo_SetSurfaceCreationMode(hStereoHandle, creationMode);
 		NVAPI_PROFILE_SUFFIX
 	}
-	static inline auto NvAPI_Stereo_GetSurfaceCreationMode(__in StereoHandle hStereoHandle, __in NVAPI_STEREO_SURFACECREATEMODE* pCreationMode)
+	static inline NvAPI_Status NvAPI_Stereo_GetSurfaceCreationMode(__in StereoHandle hStereoHandle, __in NVAPI_STEREO_SURFACECREATEMODE* pCreationMode)
 	{
 		NVAPI_PROFILE_PREFIX
 		::NvAPI_Stereo_GetSurfaceCreationMode(hStereoHandle, pCreationMode);
 		NVAPI_PROFILE_SUFFIX
 	}
-	static inline auto NvAPI_DISP_GetDisplayConfig(__inout NvU32 *pathInfoCount, __out_ecount_full_opt(*pathInfoCount) NV_DISPLAYCONFIG_PATH_INFO *pathInfo)
+	static inline NvAPI_Status NvAPI_DISP_GetDisplayConfig(__inout NvU32 *pathInfoCount, __out_ecount_full_opt(*pathInfoCount) NV_DISPLAYCONFIG_PATH_INFO *pathInfo)
 	{
 		NVAPI_PROFILE_PREFIX
 		::NvAPI_DISP_GetDisplayConfig(pathInfoCount, pathInfo);
 		NVAPI_PROFILE_SUFFIX
 	}
 #if defined(_D3D9_H_) || defined(__d3d10_h__) || defined(__d3d11_h__)
-	static inline auto NvAPI_D3D_GetCurrentSLIState(IUnknown *pDevice, NV_GET_CURRENT_SLI_STATE *pSliState)
+	static inline NvAPI_Status NvAPI_D3D_GetCurrentSLIState(IUnknown *pDevice, NV_GET_CURRENT_SLI_STATE *pSliState)
 	{
 		NVAPI_PROFILE_PREFIX
 		::NvAPI_D3D_GetCurrentSLIState(pDevice, pSliState);
