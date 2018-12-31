@@ -2691,6 +2691,10 @@ float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device
 			return !!stereo;
 		case ParamOverrideType::SLI:
 			return sli_enabled(device);
+		case ParamOverrideType::HUNTING:
+			return (float)G->hunting;
+		case ParamOverrideType::FRAME_ANALYSIS:
+			return G->analyse_frame;
 		// XXX: If updating this list, be sure to also update
 		// XXX: operand_allowed_in_context()
 	}
@@ -2798,6 +2802,13 @@ bool CommandListOperand::static_evaluate(float *ret, HackerDevice *device)
 		case ParamOverrideType::SLI:
 			if (device) {
 				*ret = sli_enabled(device);
+				return true;
+			}
+			break;
+		case ParamOverrideType::HUNTING:
+		case ParamOverrideType::FRAME_ANALYSIS:
+			if (G->hunting == HUNTING_MODE_DISABLED) {
+				*ret = 0;
 				return true;
 			}
 			break;
@@ -3566,6 +3577,7 @@ static bool operand_allowed_in_context(ParamOverrideType type, CommandListScope 
 		case ParamOverrideType::EYE_SEPARATION:
 		case ParamOverrideType::STEREO_ACTIVE:
 		case ParamOverrideType::SLI:
+		case ParamOverrideType::HUNTING:
 			return true;
 	}
 	return false;

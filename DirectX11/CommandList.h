@@ -920,6 +920,8 @@ enum class ParamOverrideType {
 			// because if stereo was disabled it would not have run
 			// in both eyes to be able to update its state buffer.
 	SLI,
+	HUNTING,
+	FRAME_ANALYSIS,
 };
 static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
 	{L"rt_width", ParamOverrideType::RT_WIDTH},
@@ -951,6 +953,8 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"convergence", ParamOverrideType::CONVERGENCE},
 	{L"stereo_active", ParamOverrideType::STEREO_ACTIVE},
 	{L"sli", ParamOverrideType::SLI},
+	{L"hunting", ParamOverrideType::HUNTING},
+	{L"frame_analysis", ParamOverrideType::FRAME_ANALYSIS},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
 class CommandListOperand :
