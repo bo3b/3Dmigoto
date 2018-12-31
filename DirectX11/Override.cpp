@@ -194,7 +194,7 @@ struct KeyOverrideCycleParam
 		return val;
 	}
 
-	bool as_ini_param(LPCWSTR section, CommandListExpression *expression)
+	bool as_expression(LPCWSTR section, CommandListExpression *expression)
 	{
 		wstring scur(cur.begin(), cur.end());
 		wstring ini_namespace;
@@ -326,7 +326,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 			}
 		}
 
-		is_conditional = condition.as_ini_param(section, &condition_expression);
+		is_conditional = condition.as_expression(section, &condition_expression);
 		run.as_run_command(section, &activate_command_list, &deactivate_command_list);
 
 		separation.log(L"separation");

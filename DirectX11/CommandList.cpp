@@ -3630,6 +3630,12 @@ int find_local_variable(const wstring &name, CommandListScope *scope, CommandLis
 {
 	CommandListScope::iterator it;
 
+	if (!scope)
+		return false;
+
+	if (name.length() < 2 || name[0] != L'$')
+		return false;
+
 	for (it = scope->begin(); it != scope->end(); it++) {
 		auto match = it->find(name);
 		if (match != it->end()) {
