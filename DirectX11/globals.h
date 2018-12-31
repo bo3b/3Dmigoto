@@ -430,6 +430,7 @@ struct Globals
 	bool upscaling_hooks_armed;
 	bool upscaling_command_list_using_explicit_bb_flip;
 	bool bb_is_upscaling_bb;
+	bool post_checktextureoverride_used;
 
 	MarkingMode marking_mode;
 	MarkingAction marking_actions;
@@ -656,6 +657,7 @@ struct Globals
 		upscaling_hooks_armed(true),
 		upscaling_command_list_using_explicit_bb_flip(false),
 		bb_is_upscaling_bb(false),
+		post_checktextureoverride_used(false),
 
 		marking_mode(MarkingMode::INVALID),
 		marking_actions(MarkingAction::INVALID),

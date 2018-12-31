@@ -298,6 +298,8 @@ void optimise_command_lists(HackerDevice *device)
 		// nice if this sort of thing worked more generally.
 	} while (making_progress);
 
+	Profiling::update_cto_warning(!ignore_cto_post);
+
 	registered_command_lists.clear();
 	dynamically_allocated_command_lists.clear();
 }
@@ -358,6 +360,8 @@ static bool ParseCheckTextureOverride(const wchar_t *section,
 	// Parse value as consistent with texture filtering and resource copying
 	ret = operation->target.ParseTarget(val->c_str(), true, ini_namespace);
 	if (ret) {
+		if (post_command_list && (!explicit_command_list || (explicit_command_list == post_command_list)))
+			G->post_checktextureoverride_used = true;
 		return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
 	}
 

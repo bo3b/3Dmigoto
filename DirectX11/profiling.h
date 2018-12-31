@@ -58,6 +58,7 @@ namespace Profiling {
 	}
 
 	void update_txt();
+	void update_cto_warning(bool warn);
 	void clear();
 
 	extern Mode mode;

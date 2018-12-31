@@ -22,6 +22,7 @@ namespace Profiling {
 	Overhead cursor_overhead;
 	Overhead nvapi_overhead;
 	wstring text;
+	wstring cto_warning;
 	INT64 interval;
 	bool freeze;
 
@@ -55,6 +56,29 @@ static const struct D3D11_QUERY_DESC query_timestamp = {
 	D3D11_QUERY_TIMESTAMP,
 	0,
 };
+
+void Profiling::update_cto_warning(bool warn)
+{
+	Profiling::cto_warning.clear();
+
+	if (!warn)
+		return;
+
+	Profiling::cto_warning = L"\nThe following commands prevented optimising out all post checktextureoverrides:\n";
+
+	for (auto &tolkv : G->mTextureOverrideMap) {
+		for (TextureOverride &to : tolkv.second) {
+			for (auto &command : to.post_command_list.commands)
+				Profiling::cto_warning += command->ini_line + L"\n";
+		}
+	}
+	for (auto &tof : G->mFuzzyTextureOverrides) {
+		for (auto &command : tof->texture_override->post_command_list.commands)
+			Profiling::cto_warning += command->ini_line + L"\n";
+	}
+
+	LogInfoNoNL("%S", Profiling::cto_warning.c_str());
+}
 
 static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER freq, unsigned frames)
 {
@@ -233,6 +257,9 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 			    Profiling::max_executions_per_frame_exceeded / frames
 	);
 	Profiling::text += buf;
+
+	if (G->post_checktextureoverride_used)
+		Profiling::text += Profiling::cto_warning;
 }
 
 static void update_txt_command_lists(LARGE_INTEGER collection_duration, LARGE_INTEGER freq, unsigned frames)
