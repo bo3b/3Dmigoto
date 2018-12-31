@@ -18,6 +18,8 @@ namespace Profiling {
 	Overhead map_overhead;
 	Overhead hash_tracking_overhead;
 	Overhead stat_overhead;
+	Overhead shaderregex_overhead;
+	Overhead cursor_overhead;
 	Overhead nvapi_overhead;
 	wstring text;
 	INT64 interval;
@@ -29,6 +31,21 @@ namespace Profiling {
 	Overhead shaderoverride_lookup_overhead;
 	Overhead texture_handle_info_lookup_overhead;
 	Overhead textureoverride_lookup_overhead;
+	Overhead resource_pool_lookup_overhead;
+
+	unsigned resource_full_copies;
+	unsigned resource_reference_copies;
+	unsigned stereo2mono_copies;
+	unsigned msaa_resolutions;
+	unsigned buffer_region_copies;
+	unsigned views_cleared;
+	unsigned resources_created;
+	unsigned resource_pool_swaps;
+	unsigned max_copies_per_frame_exceeded;
+	unsigned injected_draw_calls;
+	unsigned skipped_draw_calls;
+	unsigned max_executions_per_frame_exceeded;
+	unsigned iniparams_updates;
 }
 
 static LARGE_INTEGER profiling_start_time;
@@ -48,6 +65,8 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 	LARGE_INTEGER map_overhead;
 	LARGE_INTEGER hash_tracking_overhead;
 	LARGE_INTEGER stat_overhead;
+	LARGE_INTEGER shaderregex_overhead;
+	LARGE_INTEGER cursor_overhead;
 	LARGE_INTEGER nvapi_overhead;
 	LARGE_INTEGER shader_hash_lookup_overhead;
 	LARGE_INTEGER shader_reload_lookup_overhead;
@@ -55,7 +74,8 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 	LARGE_INTEGER shaderoverride_lookup_overhead;
 	LARGE_INTEGER texture_handle_info_lookup_overhead;
 	LARGE_INTEGER textureoverride_lookup_overhead;
-	wchar_t buf[512];
+	LARGE_INTEGER resource_pool_lookup_overhead;
+	wchar_t buf[1024];
 
 	// The overlay overhead should be a subset of the present overhead, but
 	// given that it includes the overhead of drawing the profiling HUD we
@@ -76,6 +96,8 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 	map_overhead.QuadPart = Profiling::map_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 	hash_tracking_overhead.QuadPart = Profiling::hash_tracking_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 	stat_overhead.QuadPart = Profiling::stat_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+	shaderregex_overhead.QuadPart = Profiling::shaderregex_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+	cursor_overhead.QuadPart = Profiling::cursor_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 	nvapi_overhead.QuadPart = Profiling::nvapi_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 
 	shader_hash_lookup_overhead.QuadPart = Profiling::shader_hash_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
@@ -84,8 +106,9 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 	shaderoverride_lookup_overhead.QuadPart = Profiling::shaderoverride_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 	texture_handle_info_lookup_overhead.QuadPart = Profiling::texture_handle_info_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 	textureoverride_lookup_overhead.QuadPart = Profiling::textureoverride_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+	resource_pool_lookup_overhead.QuadPart = Profiling::resource_pool_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 
-	Profiling::text += L" (Summary):\n";
+	Profiling::text += L" (CPU Performance Summary):\n";
 	_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
 			    L"     Present overhead: %7.2fus/frame ~%ffps\n"
 			    L"     Overlay overhead: %7.2fus/frame ~%ffps\n"
@@ -94,7 +117,10 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 			    L"   Map/Unmap overhead: %7.2fus/frame ~%ffps\n"
 			    L"track_texture_updates: %7.2fus/frame ~%ffps\n"
 			    L"  dump_usage overhead: %7.2fus/frame ~%ffps\n"
-			    L"       NvAPI overhead: %7.2fus/frame ~%ffps\n",
+			    L" ShaderRegex overhead: %7.2fus/frame ~%ffps\n"
+			    L"Mouse cursor overhead: %7.2fus/frame ~%ffps\n"
+			    L"       NvAPI overhead: %7.2fus/frame ~%ffps\n"
+			    ,
 			    (float)present_overhead.QuadPart / frames,
 			    60.0 * present_overhead.QuadPart / collection_duration.QuadPart,
 
@@ -116,19 +142,27 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 			    (float)stat_overhead.QuadPart / frames,
 			    60.0 * stat_overhead.QuadPart / collection_duration.QuadPart,
 
+			    (float)shaderregex_overhead.QuadPart / frames,
+			    60.0 * shaderregex_overhead.QuadPart / collection_duration.QuadPart,
+
+			    (float)cursor_overhead.QuadPart / frames,
+			    60.0 * cursor_overhead.QuadPart / collection_duration.QuadPart,
+
 			    (float)nvapi_overhead.QuadPart / frames,
 			    60.0 * nvapi_overhead.QuadPart / collection_duration.QuadPart
 	);
 	Profiling::text += buf;
 
 	_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
-			    L"------------------- Map Lookups -------------------\n"
+			    L"\n"
+			    L"Map Lookups (CPU):\n"
 			    L"          Shader hash: %7.2fus/frame ~%ffps (%u/%u hits/frame)\n"
 			    L"Live reloaded shaders: %7.2fus/frame ~%ffps (%u/%u hits/frame)\n"
 			    L"     Original shaders: %7.2fus/frame ~%ffps (%u/%u hits/frame)\n"
 			    L"       ShaderOverride: %7.2fus/frame ~%ffps (%u/%u hits/frame)\n"
 			    L"  Texture hash / info: %7.2fus/frame ~%ffps (%u/%u hits/frame)\n"
 			    L"      TextureOverride: %7.2fus/frame ~%ffps (%u/%u hits/frame)\n"
+			    L"       Resource pools: %7.2fus/frame ~%ffps (%u/%u hits/frame)\n"
 			    ,
 			    (float)shader_hash_lookup_overhead.QuadPart / frames,
 			    60.0 * shader_hash_lookup_overhead.QuadPart / collection_duration.QuadPart,
@@ -158,7 +192,45 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 			    (float)textureoverride_lookup_overhead.QuadPart / frames,
 			    60.0 * textureoverride_lookup_overhead.QuadPart / collection_duration.QuadPart,
 			    Profiling::textureoverride_lookup_overhead.hits / frames,
-			    Profiling::textureoverride_lookup_overhead.count / frames
+			    Profiling::textureoverride_lookup_overhead.count / frames,
+
+			    (float)resource_pool_lookup_overhead.QuadPart / frames,
+			    60.0 * resource_pool_lookup_overhead.QuadPart / collection_duration.QuadPart,
+			    Profiling::resource_pool_lookup_overhead.hits / frames,
+			    Profiling::resource_pool_lookup_overhead.count / frames
+	);
+	Profiling::text += buf;
+
+	_snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
+			    L"\n"
+			    L"GPU Performance Impacting Stats (costs are guidelines only):\n"
+			    L"   IniParams GPU resource updates: %4u/frame (%Iu bytes)\n"
+			    L"             Full resource copies: %4u/frame (High cost)\n"
+			    L"     By-Reference resource copies: %4u/frame (Low cost)\n"
+			    L"      stereo2mono resource copies: %4u/frame (Extremely high cost on SLI)\n"
+			    L"          MSAA resources resolved: %4u/frame (High cost)\n"
+			    L"             Region buffer copies: %4u/frame\n"
+			    L"                Resources cleared: %4u/frame (Cost saving in some circumstances, e.g. SLI)\n"
+			    L"            Resources [re]created: %4u       (High cost)\n"
+			    L"              Resource pool swaps: %4u/frame (Low cost)\n"
+			    L"    max_copies_per_frame exceeded: %4u/frame (Cost saving)\n"
+			    L"     Injected draw/dispatch calls: %4u/frame\n"
+			    L"               Skipped draw calls: %4u/frame (Cost saving)\n"
+			    L"max_executions_per_frame exceeded: %4u/frame (Cost saving)\n"
+			    ,
+			    Profiling::iniparams_updates / frames, G->iniParams.size() * sizeof(DirectX::XMFLOAT4),
+			    Profiling::resource_full_copies / frames,
+			    Profiling::resource_reference_copies / frames,
+			    Profiling::stereo2mono_copies / frames,
+			    Profiling::msaa_resolutions / frames,
+			    Profiling::buffer_region_copies / frames,
+			    Profiling::views_cleared / frames,
+			    Profiling::resources_created,
+			    Profiling::resource_pool_swaps / frames,
+			    Profiling::max_copies_per_frame_exceeded / frames,
+			    Profiling::injected_draw_calls / frames,
+			    Profiling::skipped_draw_calls / frames,
+			    Profiling::max_executions_per_frame_exceeded / frames
 	);
 	Profiling::text += buf;
 }
@@ -306,6 +378,8 @@ void Profiling::clear()
 	map_overhead.clear();
 	hash_tracking_overhead.clear();
 	stat_overhead.clear();
+	shaderregex_overhead.clear();
+	cursor_overhead.clear();
 	nvapi_overhead.clear();
 	freeze = false;
 
@@ -315,6 +389,21 @@ void Profiling::clear()
 	shaderoverride_lookup_overhead.clear();
 	texture_handle_info_lookup_overhead.clear();
 	textureoverride_lookup_overhead.clear();
+	resource_pool_lookup_overhead.clear();
+
+	resource_full_copies = 0;
+	resource_reference_copies = 0;
+	stereo2mono_copies = 0;
+	msaa_resolutions = 0;
+	buffer_region_copies = 0;
+	views_cleared = 0;
+	resources_created = 0;
+	resource_pool_swaps = 0;
+	max_copies_per_frame_exceeded = 0;
+	injected_draw_calls = 0;
+	skipped_draw_calls = 0;
+	max_executions_per_frame_exceeded = 0;
+	iniparams_updates = 0;
 
 	start_frame_no = G->frame_no;
 	QueryPerformanceCounter(&profiling_start_time);

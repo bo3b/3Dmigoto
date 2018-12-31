@@ -593,8 +593,13 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 
 void HackerContext::DeferredShaderReplacementBeforeDraw()
 {
+	Profiling::State profiling_state;
+
 	if (shader_regex_groups.empty())
 		return;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	EnterCriticalSection(&G->mCriticalSection);
 
@@ -635,6 +640,9 @@ void HackerContext::DeferredShaderReplacementBeforeDraw()
 		}
 
 	LeaveCriticalSection(&G->mCriticalSection);
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::shaderregex_overhead);
 }
 
 void HackerContext::DeferredShaderReplacementBeforeDispatch()
@@ -825,6 +833,9 @@ void HackerContext::AfterDraw(DrawContext &data)
 
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
 		Profiling::start(&profiling_state);
+
+	if (data.call_info.skip)
+		Profiling::skipped_draw_calls++;
 
 	for (i = 0; i < 5; i++) {
 		if (data.post_commands[i]) {
@@ -1491,6 +1502,8 @@ STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 
 	if (BeforeDispatch(&context))
 		mOrigContext1->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+	else
+		Profiling::skipped_draw_calls++;
 
 	AfterDispatch(&context);
 }
@@ -1506,6 +1519,8 @@ STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
 
 	if (BeforeDispatch(&context))
 		mOrigContext1->DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
+	else
+		Profiling::skipped_draw_calls++;
 
 	AfterDispatch(&context);
 }
@@ -2579,6 +2594,7 @@ void HackerContext::InitIniParams()
 	if (SUCCEEDED(hr)) {
 		memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
 		mOrigContext1->Unmap(mHackerDevice->mIniTexture, 0);
+		Profiling::iniparams_updates++;
 	} else {
 		LogInfo("InitIniParams: Map failed\n");
 	}

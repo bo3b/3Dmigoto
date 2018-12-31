@@ -162,6 +162,7 @@ static void CommandListFlushState(CommandListState *state)
 		memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
 		state->mOrigContext1->Unmap(state->mHackerDevice->mIniTexture, 0);
 		state->update_params = false;
+		Profiling::iniparams_updates++;
 	}
 }
 
@@ -1058,6 +1059,8 @@ void DrawCommand::run(CommandListState *state)
 
 	// Ensure IniParams are visible:
 	CommandListFlushState(state);
+
+	Profiling::injected_draw_calls++;
 
 	switch (type) {
 		case DrawCommandType::DRAW:
@@ -2010,6 +2013,7 @@ void RunCustomShaderCommand::run(CommandListState *state)
 			custom_shader->executions_this_frame = 1;
 		} else if (custom_shader->executions_this_frame++ >= custom_shader->max_executions_per_frame) {
 			COMMAND_LIST_LOG(state, "  max_executions_per_frame exceeded\n");
+			Profiling::max_executions_per_frame_exceeded++;
 			return;
 		}
 	}
@@ -2551,9 +2555,13 @@ out_delete_mem_dc:
 static void UpdateCursorResources(CommandListState *state)
 {
 	HDC dc;
+	Profiling::State profiling_state;
 
 	if (state->cursor_mask_tex || state->cursor_color_tex)
 		return;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	UpdateCursorInfoEx(state);
 
@@ -2602,6 +2610,9 @@ static void UpdateCursorResources(CommandListState *state)
 	}
 
 	ReleaseDC(NULL, dc);
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::cursor_overhead);
 }
 
 static bool sli_enabled(HackerDevice *device)
@@ -3824,17 +3835,19 @@ static ResourceType* GetResourceFromPool(
 	// doesn't matter what we use - just has to be fast.
 	hash = crc32c_hw(0, desc, sizeof(DescType));
 
-	pool_i = resource_pool->cache.find(hash);
+	pool_i = Profiling::lookup_map(resource_pool->cache, hash, &Profiling::resource_pool_lookup_overhead);
 	if (pool_i != resource_pool->cache.end()) {
 		resource = (ResourceType*)pool_i->second;
 		if (resource == dst_resource)
 			return NULL;
 		if (resource) {
 			LogDebug("Switching cached resource %S\n", ini_line->c_str());
+			Profiling::resource_pool_swaps++;
 			resource->AddRef();
 		}
 	} else {
 		LogInfo("Creating cached resource %S\n", ini_line->c_str());
+		Profiling::resources_created++;
 
 		hr = (state->mOrigDevice1->*CreateResource)(desc, NULL, &resource);
 		if (FAILED(hr)) {
@@ -3944,6 +3957,8 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mSter
 	// won't overwrite it:
 	if (resource || view)
 		return;
+
+	Profiling::resources_created++;
 
 	// If the resource section has enough information to create a resource
 	// we do so the first time it is loaded from. The reason we do it this
@@ -6669,11 +6684,13 @@ void ClearViewCommand::clear_unknown_view(ID3D11View *view, CommandListState *st
 
 	if (rtv) {
 		COMMAND_LIST_LOG(state, "  clearing RTV\n");
+		Profiling::views_cleared++;
 		state->mOrigContext1->ClearRenderTargetView(rtv, fval);
 	}
 	if (dsv) {
 		D3D11_CLEAR_FLAG flags = (D3D11_CLEAR_FLAG)0;
 		COMMAND_LIST_LOG(state, "  clearing DSV\n");
+		Profiling::views_cleared++;
 
 		if (!clear_depth && !clear_stencil)
 			flags = (D3D11_CLEAR_FLAG)(D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL);
@@ -6697,6 +6714,7 @@ void ClearViewCommand::clear_unknown_view(ID3D11View *view, CommandListState *st
 			COMMAND_LIST_LOG(state, "  clearing UAV (float)\n");
 			state->mOrigContext1->ClearUnorderedAccessViewFloat(uav, fval);
 		}
+		Profiling::views_cleared++;
 	}
 
 	if (rtv)
@@ -6820,6 +6838,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 				dst.custom_resource->copies_this_frame = 1;
 			} else if (dst.custom_resource->copies_this_frame++ >= dst.custom_resource->max_copies_per_frame) {
 				COMMAND_LIST_LOG(state, "  max_copies_per_frame exceeded\n");
+				Profiling::max_copies_per_frame_exceeded++;
 				return;
 			}
 		}
@@ -6847,6 +6866,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 			COMMAND_LIST_LOG(state, "  copying resource description\n");
 		} else if (options & ResourceCopyOptions::STEREO2MONO) {
 			COMMAND_LIST_LOG(state, "  performing reverse stereo blit\n");
+			Profiling::stereo2mono_copies++;
 
 			// TODO: Resolve MSAA to an intermediate resource first
 			// if necessary (but keep in mind this may have
@@ -6871,21 +6891,24 @@ void ResourceCopyOperation::run(CommandListState *state)
 			ReverseStereoBlit(stereo2mono_intermediate, src_resource, state);
 
 			mOrigContext1->CopyResource(dst_resource, stereo2mono_intermediate);
-
 		} else if (options & ResourceCopyOptions::RESOLVE_MSAA) {
 			COMMAND_LIST_LOG(state, "  resolving MSAA\n");
+			Profiling::msaa_resolutions++;
 			ResolveMSAA(dst_resource, src_resource, state);
 		} else if (buf_dst_size) {
 			COMMAND_LIST_LOG(state, "  performing region copy\n");
+			Profiling::buffer_region_copies++;
 			SpecialCopyBufferRegion(dst_resource, src_resource,
 					state, stride, &offset,
 					buf_src_size, buf_dst_size);
 		} else {
 			COMMAND_LIST_LOG(state, "  performing full copy\n");
+			Profiling::resource_full_copies++;
 			mOrigContext1->CopyResource(dst_resource, src_resource);
 		}
 	} else {
 		COMMAND_LIST_LOG(state, "  copying by reference\n");
+		Profiling::resource_reference_copies++;
 		dst_resource = src_resource;
 		if (src_view && (EquivTarget(src.type) == EquivTarget(dst.type))) {
 			dst_view = src_view;

@@ -67,6 +67,8 @@ namespace Profiling {
 	extern Overhead map_overhead;
 	extern Overhead hash_tracking_overhead;
 	extern Overhead stat_overhead;
+	extern Overhead shaderregex_overhead;
+	extern Overhead cursor_overhead;
 	extern Overhead nvapi_overhead;
 	extern std::wstring text;
 	extern INT64 interval;
@@ -78,6 +80,21 @@ namespace Profiling {
 	extern Overhead shaderoverride_lookup_overhead;
 	extern Overhead texture_handle_info_lookup_overhead;
 	extern Overhead textureoverride_lookup_overhead;
+	extern Overhead resource_pool_lookup_overhead;
+
+	extern unsigned resource_full_copies;
+	extern unsigned resource_reference_copies;
+	extern unsigned stereo2mono_copies;
+	extern unsigned msaa_resolutions;
+	extern unsigned buffer_region_copies;
+	extern unsigned views_cleared;
+	extern unsigned resources_created;
+	extern unsigned resource_pool_swaps;
+	extern unsigned max_copies_per_frame_exceeded;
+	extern unsigned injected_draw_calls;
+	extern unsigned skipped_draw_calls;
+	extern unsigned max_executions_per_frame_exceeded;
+	extern unsigned iniparams_updates;
 
 	// NvAPI profiling:
 
