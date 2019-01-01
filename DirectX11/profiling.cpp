@@ -57,6 +57,23 @@ static const struct D3D11_QUERY_DESC query_timestamp = {
 	0,
 };
 
+static void cto_warn_post_commands(CommandList *command_list)
+{
+	IfCommand *if_command;
+
+	for (auto &command : command_list->commands) {
+		if_command = dynamic_cast<IfCommand*>(command.get());
+		if (if_command) {
+			// If commands aren't the culprits - it's whatever
+			// stopped their post phases from being optimised out
+			// we should warn about:
+			cto_warn_post_commands(if_command->true_commands_post.get());
+			cto_warn_post_commands(if_command->false_commands_post.get());
+		} else
+			Profiling::cto_warning += command->ini_line + L"\n";
+	}
+}
+
 void Profiling::update_cto_warning(bool warn)
 {
 	Profiling::cto_warning.clear();
@@ -67,15 +84,11 @@ void Profiling::update_cto_warning(bool warn)
 	Profiling::cto_warning = L"\nThe following commands prevented optimising out all post checktextureoverrides:\n";
 
 	for (auto &tolkv : G->mTextureOverrideMap) {
-		for (TextureOverride &to : tolkv.second) {
-			for (auto &command : to.post_command_list.commands)
-				Profiling::cto_warning += command->ini_line + L"\n";
-		}
+		for (TextureOverride &to : tolkv.second)
+			cto_warn_post_commands(&to.post_command_list);
 	}
-	for (auto &tof : G->mFuzzyTextureOverrides) {
-		for (auto &command : tof->texture_override->post_command_list.commands)
-			Profiling::cto_warning += command->ini_line + L"\n";
-	}
+	for (auto &tof : G->mFuzzyTextureOverrides)
+		cto_warn_post_commands(&tof->texture_override->post_command_list);
 
 	LogInfoNoNL("%S", Profiling::cto_warning.c_str());
 }
