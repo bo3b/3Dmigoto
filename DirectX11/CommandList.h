@@ -87,7 +87,7 @@ public:
 
 	virtual void run(CommandListState*) = 0;
 	virtual bool optimise(HackerDevice *device) { return false; }
-	virtual bool noop(bool post, bool ignore_cto) { return false; }
+	virtual bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) { return false; }
 };
 
 enum class VariableFlags {
@@ -205,7 +205,7 @@ public:
 	{}
 
 	void run(CommandListState*) override;
-	bool noop(bool post, bool ignore_cto) override;
+	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class RunLinkedCommandList : public CommandListCommand {
@@ -217,7 +217,7 @@ public:
 	{}
 
 	void run(CommandListState*) override;
-	bool noop(bool post, bool ignore_cto) override;
+	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/gg615083(v=vs.85).aspx
@@ -346,7 +346,7 @@ public:
 	{}
 
 	void run(CommandListState*) override;
-	bool noop(bool post, bool ignore_cto) override;
+	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 enum class DrawCommandType {
@@ -1058,7 +1058,7 @@ public:
 
 	void run(CommandListState*) override;
 	bool optimise(HackerDevice *device) override;
-	bool noop(bool post, bool ignore_cto) override;
+	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class ElseIfCommand : public IfCommand {
@@ -1071,7 +1071,7 @@ public:
 class CommandPlaceholder : public CommandListCommand {
 public:
 	void run(CommandListState*) override;
-	bool noop(bool post, bool ignore_cto) override;
+	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 class ElsePlaceholder : public CommandPlaceholder {
 };
@@ -1080,9 +1080,14 @@ class CheckTextureOverrideCommand : public CommandListCommand {
 public:
 	// For processing command lists in TextureOverride sections:
 	ResourceCopyTarget target;
+	bool run_pre_and_post_together;
+
+	CheckTextureOverrideCommand() :
+		run_pre_and_post_together(false)
+	{}
 
 	void run(CommandListState*) override;
-	bool noop(bool post, bool ignore_cto) override;
+	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class ClearViewCommand : public CommandListCommand {
@@ -1140,7 +1145,7 @@ public:
 
 	void run(CommandListState*) override;
 	bool optimise(HackerDevice *device) override;
-	bool noop(bool post, bool ignore_cto) override;
+	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 	bool update_val(CommandListState *state);
 
 	virtual const char* stereo_param_name() = 0;
@@ -1175,7 +1180,7 @@ public:
 	NV_STEREO_ACTIVE_EYE eye;
 
 	void run(CommandListState*) override;
-	bool noop(bool post, bool ignore_cto) override;
+	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class FrameAnalysisChangeOptionsCommand : public CommandListCommand {
@@ -1185,7 +1190,7 @@ public:
 	FrameAnalysisChangeOptionsCommand(wstring *val);
 
 	void run(CommandListState*) override;
-	bool noop(bool post, bool ignore_cto) override;
+	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class FrameAnalysisDumpCommand : public CommandListCommand {
@@ -1195,7 +1200,7 @@ public:
 	FrameAnalysisOptions analyse_options;
 
 	void run(CommandListState*) override;
-	bool noop(bool post, bool ignore_cto) override;
+	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class UpscalingFlipBBCommand : public CommandListCommand {

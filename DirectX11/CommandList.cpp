@@ -234,7 +234,7 @@ void RunViewCommandList(HackerDevice *mHackerDevice,
 void optimise_command_lists(HackerDevice *device)
 {
 	bool making_progress;
-	bool ignore_cto, ignore_cto_pre, ignore_cto_post;
+	bool ignore_cto_pre, ignore_cto_post;
 	size_t i;
 	CommandList::Commands::iterator new_end;
 
@@ -270,16 +270,12 @@ void optimise_command_lists(HackerDevice *device)
 		// commands that are noops to eliminate the runtime overhead of
 		// processing these
 		for (CommandList *command_list : registered_command_lists) {
-			ignore_cto = ignore_cto_pre;
-			if (command_list->post)
-				ignore_cto = ignore_cto_post;
-
 			for (i = 0; i < command_list->commands.size(); ) {
 				LogDebug("Optimising %S\n", command_list->commands[i]->ini_line.c_str());
 				if (command_list->commands[i]->optimise(device))
 					making_progress = true;
 
-				if (command_list->commands[i]->noop(command_list->post, ignore_cto)) {
+				if (command_list->commands[i]->noop(command_list->post, ignore_cto_pre, ignore_cto_post)) {
 					LogInfo("Optimised out %s %S\n",
 							command_list->post ? "post" : "pre",
 							command_list->commands[i]->ini_line.c_str());
@@ -360,8 +356,13 @@ static bool ParseCheckTextureOverride(const wchar_t *section,
 	// Parse value as consistent with texture filtering and resource copying
 	ret = operation->target.ParseTarget(val->c_str(), true, ini_namespace);
 	if (ret) {
-		if (post_command_list && !explicit_command_list)
+		// If the user indicated an explicit command list we will run the pre
+		// and post lists of the target list together.
+		if (explicit_command_list)
+			operation->run_pre_and_post_together = true;
+		else if (post_command_list)
 			G->implicit_post_checktextureoverride_used = true;
+
 		return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
 	}
 
@@ -913,23 +914,40 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 void CheckTextureOverrideCommand::run(CommandListState *state)
 {
 	TextureOverrideMatches matches;
+	bool saved_post;
 	unsigned i;
 
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	target.FindTextureOverrides(state, NULL, &matches);
 
-	for (i = 0; i < matches.size(); i++) {
-		if (state->post)
-			_RunCommandList(&matches[i]->post_command_list, state);
-		else
+	if (run_pre_and_post_together) {
+		saved_post = state->post;
+		state->post = false;
+		for (i = 0; i < matches.size(); i++)
 			_RunCommandList(&matches[i]->command_list, state);
+		state->post = true;
+		for (i = 0; i < matches.size(); i++)
+			_RunCommandList(&matches[i]->post_command_list, state);
+		state->post = saved_post;
+	} else {
+		for (i = 0; i < matches.size(); i++) {
+			if (state->post)
+				_RunCommandList(&matches[i]->post_command_list, state);
+			else
+				_RunCommandList(&matches[i]->command_list, state);
+		}
 	}
 }
 
-bool CheckTextureOverrideCommand::noop(bool post, bool ignore_cto)
+bool CheckTextureOverrideCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
-	return ignore_cto;
+	if (run_pre_and_post_together)
+		return (ignore_cto_pre && ignore_cto_post);
+
+	if (post)
+		return ignore_cto_post;
+	return ignore_cto_pre;
 }
 
 ClearViewCommand::ClearViewCommand() :
@@ -1277,7 +1295,7 @@ bool PerDrawStereoOverrideCommand::optimise(HackerDevice *device)
 	return expression.optimise(device);
 }
 
-bool PerDrawStereoOverrideCommand::noop(bool post, bool ignore_cto)
+bool PerDrawStereoOverrideCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	NvU8 enabled = false;
 
@@ -1294,7 +1312,7 @@ void DirectModeSetActiveEyeCommand::run(CommandListState *state)
 		COMMAND_LIST_LOG(state, "  Stereo_SetActiveEye failed\n");
 }
 
-bool DirectModeSetActiveEyeCommand::noop(bool post, bool ignore_cto)
+bool DirectModeSetActiveEyeCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	NvU8 enabled = false;
 
@@ -1365,7 +1383,7 @@ void FrameAnalysisChangeOptionsCommand::run(CommandListState *state)
 	state->mHackerContext->FrameAnalysisTrigger(analyse_options);
 }
 
-bool FrameAnalysisChangeOptionsCommand::noop(bool post, bool ignore_cto)
+bool FrameAnalysisChangeOptionsCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	return (G->hunting == HUNTING_MODE_DISABLED || G->frame_analysis_registered == false);
 }
@@ -1531,7 +1549,7 @@ void FrameAnalysisDumpCommand::run(CommandListState *state)
 		view->Release();
 }
 
-bool FrameAnalysisDumpCommand::noop(bool post, bool ignore_cto)
+bool FrameAnalysisDumpCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	return (G->hunting == HUNTING_MODE_DISABLED || G->frame_analysis_registered == false);
 }
@@ -2150,7 +2168,7 @@ void RunCustomShaderCommand::run(CommandListState *state)
 	}
 }
 
-bool RunCustomShaderCommand::noop(bool post, bool ignore_cto)
+bool RunCustomShaderCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	return (custom_shader->command_list.commands.empty() && custom_shader->post_command_list.commands.empty());
 }
@@ -2174,7 +2192,7 @@ void RunExplicitCommandList::run(CommandListState *state)
 		_RunCommandList(&command_list_section->command_list, state);
 }
 
-bool RunExplicitCommandList::noop(bool post, bool ignore_cto)
+bool RunExplicitCommandList::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	if (run_pre_and_post_together)
 		return (command_list_section->command_list.commands.empty() && command_list_section->post_command_list.commands.empty());
@@ -2196,7 +2214,7 @@ void RunLinkedCommandList::run(CommandListState *state)
 	_RunCommandList(link, state, false);
 }
 
-bool RunLinkedCommandList::noop(bool post, bool ignore_cto)
+bool RunLinkedCommandList::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	return link->commands.empty();
 }
@@ -4827,7 +4845,7 @@ bool IfCommand::optimise(HackerDevice *device)
 	return expression.optimise(device);
 }
 
-bool IfCommand::noop(bool post, bool ignore_cto)
+bool IfCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	float static_val;
 	bool is_static;
@@ -4858,7 +4876,7 @@ void CommandPlaceholder::run(CommandListState*)
 	LogOverlay(LOG_DIRE, "BUG: Placeholder command executed: %S\n", ini_line.c_str());
 }
 
-bool CommandPlaceholder::noop(bool post, bool ignore_cto)
+bool CommandPlaceholder::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	LogOverlay(LOG_WARNING, "WARNING: Command not terminated: %S\n", ini_line.c_str());
 	return true;
