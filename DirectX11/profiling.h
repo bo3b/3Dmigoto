@@ -10,6 +10,7 @@ namespace Profiling {
 		SUMMARY,
 		TOP_COMMAND_LISTS,
 		TOP_COMMANDS,
+		CTO_WARNING,
 
 		INVALID, // Must be last
 	};
@@ -72,6 +73,7 @@ namespace Profiling {
 	extern Overhead cursor_overhead;
 	extern Overhead nvapi_overhead;
 	extern std::wstring text;
+	extern std::wstring cto_warning;
 	extern INT64 interval;
 	extern bool freeze;
 

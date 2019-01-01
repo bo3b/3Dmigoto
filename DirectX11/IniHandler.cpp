@@ -4449,7 +4449,7 @@ void LoadConfigFile()
 	// Must be done prior to parsing any command list sections, as every
 	// section registered in this set will be a candidate for optimisation:
 	registered_command_lists.clear();
-	G->post_checktextureoverride_used = false;
+	G->implicit_post_checktextureoverride_used = false;
 
 	// Splitting the enumeration of these sections out from parsing them as
 	// they can be referenced from other command list sections, keys and

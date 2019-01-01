@@ -1245,6 +1245,10 @@ static void AnalyseFrameStop(HackerDevice *device, void *private_data)
 static void AnalysePerf(HackerDevice *device, void *private_data)
 {
 	Profiling::mode = (Profiling::Mode)((int)Profiling::mode + 1);
+
+	if (Profiling::mode == Profiling::Mode::CTO_WARNING && (!G->implicit_post_checktextureoverride_used || Profiling::cto_warning.empty()))
+		Profiling::mode = (Profiling::Mode)((int)Profiling::mode + 1);
+
 	if (Profiling::mode == Profiling::Mode::INVALID)
 		Profiling::mode = Profiling::Mode::NONE;
 
