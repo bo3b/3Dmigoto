@@ -57,9 +57,19 @@ static const struct D3D11_QUERY_DESC query_timestamp = {
 	0,
 };
 
+static std::unordered_set<CommandList*> warned_cto_command_lists;
+
 static void cto_warn_post_commands(CommandList *command_list)
 {
 	IfCommand *if_command;
+	RunExplicitCommandList *run_command;
+
+	// Only visit each command list at most once both to keep the list
+	// shorter and make sure we can't enter an infinite recursion if a list
+	// calls itself:
+	if (warned_cto_command_lists.count(command_list))
+		return;
+	warned_cto_command_lists.insert(command_list);
 
 	for (auto &command : command_list->commands) {
 		if_command = dynamic_cast<IfCommand*>(command.get());
@@ -71,6 +81,16 @@ static void cto_warn_post_commands(CommandList *command_list)
 			cto_warn_post_commands(if_command->false_commands_post.get());
 		} else
 			Profiling::cto_warning += command->ini_line + L"\n";
+
+		run_command = dynamic_cast<RunExplicitCommandList*>(command.get());
+		if (run_command) {
+			// Run commands can be the culprits themselves, or
+			// what they contain, so list the run command and
+			// recurse into the command lists it calls:
+			if (run_command->run_pre_and_post_together)
+				cto_warn_post_commands(&run_command->command_list_section->command_list);
+			cto_warn_post_commands(&run_command->command_list_section->post_command_list);
+		}
 	}
 }
 
@@ -82,6 +102,7 @@ void Profiling::update_cto_warning(bool warn)
 		return;
 
 	Profiling::cto_warning = L"\nThe following commands prevented optimising out all post checktextureoverrides:\n";
+	warned_cto_command_lists.clear();
 
 	for (auto &tolkv : G->mTextureOverrideMap) {
 		for (TextureOverride &to : tolkv.second)
