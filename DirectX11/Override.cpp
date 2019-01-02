@@ -494,10 +494,12 @@ static void UpdateIniParams(HackerDevice* wrapper)
 	ID3D11DeviceContext1* realContext = wrapper->GetPassThroughOrigContext1();
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 
-	realContext->Map(wrapper->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
-	realContext->Unmap(wrapper->mIniTexture, 0);
-	Profiling::iniparams_updates++;
+	if (wrapper->mIniTexture) {
+		realContext->Map(wrapper->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
+		realContext->Unmap(wrapper->mIniTexture, 0);
+		Profiling::iniparams_updates++;
+	}
 }
 
 std::vector<CommandList*> pending_post_command_lists;

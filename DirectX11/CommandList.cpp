@@ -153,7 +153,7 @@ static void CommandListFlushState(CommandListState *state)
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	HRESULT hr;
 
-	if (state->update_params) {
+	if (state->update_params && state->mHackerDevice->mIniTexture) {
 		hr = state->mOrigContext1->Map(state->mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(hr)) {
 			LogInfo("CommandListFlushState: Map failed\n");

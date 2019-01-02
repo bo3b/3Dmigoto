@@ -2590,13 +2590,15 @@ void HackerContext::InitIniParams()
 	// overhead won't matter and I don't want to forget about this if
 	// further command list optimisations cause [Constants] to bail out
 	// early and not consider update_params at all.
-	hr = mOrigContext1->Map(mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	if (SUCCEEDED(hr)) {
-		memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
-		mOrigContext1->Unmap(mHackerDevice->mIniTexture, 0);
-		Profiling::iniparams_updates++;
-	} else {
-		LogInfo("InitIniParams: Map failed\n");
+	if (mHackerDevice->mIniTexture) {
+		hr = mOrigContext1->Map(mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		if (SUCCEEDED(hr)) {
+			memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
+			mOrigContext1->Unmap(mHackerDevice->mIniTexture, 0);
+			Profiling::iniparams_updates++;
+		} else {
+			LogInfo("InitIniParams: Map failed\n");
+		}
 	}
 
 	// The command list will take care of initialising any non-zero values:
