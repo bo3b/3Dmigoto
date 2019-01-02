@@ -3985,7 +3985,7 @@ bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVA
 	return false;
 }
 
-void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mStereoHandle)
+void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mStereoHandle, D3D11_BIND_FLAG bind_flags)
 {
 	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
 	bool restore_create_mode = false;
@@ -4004,6 +4004,15 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mSter
 		return;
 
 	Profiling::resources_created++;
+
+	// Add any extra bind flags necessary for the current assignment. This
+	// covers many (but not all) of the cases 3DMigoto cannot deduce
+	// earlier during parsing - it will cover custom resources copied by
+	// reference to other custom resources when the "this" resource target
+	// is assigned. There are some complicated cases that could still need
+	// bind_flags to be manually specified - where multiple bind flags are
+	// required and cannot be deduced at parse time.
+	this->bind_flags = (D3D11_BIND_FLAG)(this->bind_flags | bind_flags);
 
 	// If the resource section has enough information to create a resource
 	// we do so the first time it is loaded from. The reason we do it this
@@ -4107,13 +4116,13 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 
 	ext = filename.substr(filename.rfind(L"."));
 	if (!_wcsicmp(ext.c_str(), L".dds")) {
-		LogInfoW(L"Loading custom resource %s as DDS\n", filename.c_str());
+		LogInfoW(L"Loading custom resource %s as DDS, bind_flags=0x%03x\n", filename.c_str(), bind_flags);
 		hr = DirectX::CreateDDSTextureFromFileEx(mOrigDevice1,
 				filename.c_str(), 0,
 				D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
 				false, &resource, NULL, NULL);
 	} else {
-		LogInfoW(L"Loading custom resource %s as WIC\n", filename.c_str());
+		LogInfoW(L"Loading custom resource %s as WIC, bind_flags=0x%03x\n", filename.c_str(), bind_flags);
 		hr = DirectX::CreateWICTextureFromFileEx(mOrigDevice1,
 				filename.c_str(), 0,
 				D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
@@ -4181,8 +4190,8 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, 
 
 	hr = mOrigDevice1->CreateBuffer(&desc, pInitialData, &buffer);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S [%S]\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
+		LogInfo("Substantiated custom %S [%S], bind_flags=0x%03x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)buffer;
 		is_null = false;
@@ -4206,8 +4215,8 @@ void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice1)
 
 	hr = mOrigDevice1->CreateTexture1D(&desc, NULL, &tex1d);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S [%S]\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
+		LogInfo("Substantiated custom %S [%S], bind_flags=0x%03x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)tex1d;
 		is_null = false;
@@ -4230,8 +4239,8 @@ void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice1)
 
 	hr = mOrigDevice1->CreateTexture2D(&desc, NULL, &tex2d);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S [%S]\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
+		LogInfo("Substantiated custom %S [%S], bind_flags=0x%03x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)tex2d;
 		is_null = false;
@@ -4254,8 +4263,8 @@ void CustomResource::SubstantiateTexture3D(ID3D11Device *mOrigDevice1)
 
 	hr = mOrigDevice1->CreateTexture3D(&desc, NULL, &tex3d);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S [%S]\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
+		LogInfo("Substantiated custom %S [%S], bind_flags=0x%03x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)tex3d;
 		is_null = false;
@@ -4613,7 +4622,11 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 	// propagate all the bind flags correctly depending on the order
 	// everything is parsed. We'd need to construct a dependency graph
 	// to fix this, but it's not clear that this combination would really
-	// be used in practice, so for now this will do.
+	// be used in practice, so for now this will do. Update: We now
+	// or in the bind flags in use when the custom resource is first
+	// Substantiate()ed, which will cover most of these missing cases - the
+	// remaining exceptions would be where differing bind flags are used at
+	// different times and we still can't deduce it here
 	// FIXME: The constant buffer bind flag can't be combined with others
 	if (operation->src.type == ResourceCopyTargetType::CUSTOM_RESOURCE &&
 			(operation->options & ResourceCopyOptions::REFERENCE)) {
@@ -4893,7 +4906,8 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		UINT *stride,        // Used by vertex buffers
 		UINT *offset,        // Used by vertex & index buffers
 		DXGI_FORMAT *format, // Used by index buffers
-		UINT *buf_size)      // Used when creating a view of the buffer
+		UINT *buf_size,      // Used when creating a view of the buffer
+		ResourceCopyTarget *dst) // Used to get bind flags when substantiating a custom resource
 {
 	HackerDevice *mHackerDevice = state->mHackerDevice;
 	ID3D11Device *mOrigDevice1 = state->mOrigDevice1;
@@ -4905,6 +4919,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 	ID3D11RenderTargetView *render_view[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
 	ID3D11DepthStencilView *depth_view = NULL;
 	ID3D11UnorderedAccessView *unordered_view = NULL;
+	D3D11_BIND_FLAG bind_flags = (D3D11_BIND_FLAG)0;
 	unsigned i;
 
 	switch(type) {
@@ -5072,7 +5087,9 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return res;
 
 	case ResourceCopyTargetType::CUSTOM_RESOURCE:
-		custom_resource->Substantiate(mOrigDevice1, mHackerDevice->mStereoHandle);
+		if (dst)
+			bind_flags = dst->BindFlags(state);
+		custom_resource->Substantiate(mOrigDevice1, mHackerDevice->mStereoHandle, bind_flags);
 
 		if (stride)
 			*stride = custom_resource->stride;
@@ -6872,7 +6889,8 @@ void ResourceCopyOperation::run(CommandListState *state)
 		return;
 	}
 
-	src_resource = src.GetResource(state, &src_view, &stride, &offset, &format, &buf_src_size);
+	src_resource = src.GetResource(state, &src_view, &stride, &offset, &format, &buf_src_size,
+			((options & ResourceCopyOptions::REFERENCE) ? &dst : NULL));
 	if (!src_resource) {
 		COMMAND_LIST_LOG(state, "  Copy source was NULL\n");
 		if (!(options & ResourceCopyOptions::UNLESS_NULL)) {
