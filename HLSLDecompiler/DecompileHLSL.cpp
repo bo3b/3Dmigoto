@@ -2280,7 +2280,7 @@ public:
 		else // float1, float, etc
 			pos = 2;
 		char *cpos = strrchr(op, '.');
-		if (strlen(cpos) >= pos)
+		if (strlen(cpos) >= (size_t)pos)
 			cpos[pos] = 0;
 	}
 

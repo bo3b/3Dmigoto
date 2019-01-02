@@ -425,12 +425,12 @@ void KeyOverrideCycle::UpdateCurrent(HackerDevice *device)
 {
 	// If everything in the current preset matches reality or the current
 	// transition target we are good:
-	if (current >= 0 && current < presets.size() && presets[current].MatchesCurrent(device))
+	if (current >= 0 && (size_t)current < presets.size() && presets[current].MatchesCurrent(device))
 		return;
 
 	// The current preset doesn't match reality - we've got out of sync.
 	// Search for any other presets that do match:
-	for (int i = 0; i < presets.size(); i++) {
+	for (unsigned i = 0; i < presets.size(); i++) {
 		if (i != current && presets[i].MatchesCurrent(device)) {
 			LogInfo("Resynced key cycle: %i -> %i\n", current, i);
 			current = i;
