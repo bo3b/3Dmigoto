@@ -643,7 +643,7 @@ public:
 			CommandListState *state,
 			bool *resource_found,
 			TextureOverrideMatches *matches);
-	D3D11_BIND_FLAG BindFlags();
+	D3D11_BIND_FLAG BindFlags(CommandListState *state);
 };
 
 enum class ResourceCopyOptions {

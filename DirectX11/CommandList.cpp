@@ -4619,7 +4619,7 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 			(operation->options & ResourceCopyOptions::REFERENCE)) {
 		// Fucking C++ making this line 3x longer than it should be:
 		operation->src.custom_resource->bind_flags = (D3D11_BIND_FLAG)
-			(operation->src.custom_resource->bind_flags | operation->dst.BindFlags());
+			(operation->src.custom_resource->bind_flags | operation->dst.BindFlags(NULL));
 	}
 
 	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
@@ -5402,7 +5402,7 @@ void ResourceCopyTarget::SetResource(
 	}
 }
 
-D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
+D3D11_BIND_FLAG ResourceCopyTarget::BindFlags(CommandListState *state)
 {
 	switch(type) {
 		case ResourceCopyTargetType::CONSTANT_BUFFER:
@@ -5424,6 +5424,8 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 		case ResourceCopyTargetType::CUSTOM_RESOURCE:
 			return custom_resource->bind_flags;
 		case ResourceCopyTargetType::THIS_RESOURCE:
+			if (state && state->this_target)
+				return state->this_target->BindFlags(state);
 			// Bind flags are unknown since this cannot be resolved
 			// until runtime:
 			return (D3D11_BIND_FLAG)0;
@@ -5865,7 +5867,7 @@ static void RecreateCompatibleResource(
 	bool restore_create_mode = false;
 
 	if (dst)
-		bind_flags = dst->BindFlags();
+		bind_flags = dst->BindFlags(state);
 
 	if (options & ResourceCopyOptions::CREATEMODE_MASK) {
 		Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &orig_mode);
