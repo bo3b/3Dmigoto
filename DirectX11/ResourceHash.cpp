@@ -5,6 +5,7 @@
 #include "util.h"
 #include "globals.h"
 #include "profiling.h"
+#include "overlay.h"
 
 // DirectXTK headers fail to include their own pre-requisits. We just want
 // GetSurfaceInfo from LoaderHelpers
@@ -1289,7 +1290,8 @@ ULONG STDMETHODCALLTYPE ResourceReleaseTracker::Release(void)
 FuzzyMatch::FuzzyMatch()
 {
 	op = FuzzyMatchOp::ALWAYS;
-	rhs_type = FuzzyMatchOperandType::VALUE;
+	rhs_type1 = FuzzyMatchOperandType::VALUE;
+	rhs_type2 = FuzzyMatchOperandType::VALUE;
 	val = 0;
 	mask = 0xffffffff;
 	numerator = 1;
@@ -1317,37 +1319,43 @@ static UINT get_resource_array(const D3D11_TEXTURE2D_DESC *desc) { return desc->
 static UINT get_resource_array(const D3D11_TEXTURE3D_DESC *desc) { return 0; }
 
 template <typename DescType>
+static UINT eval_field(FuzzyMatchOperandType type, UINT val, const DescType *desc)
+{
+	switch (type) {
+		case FuzzyMatchOperandType::VALUE:
+			return val;
+		case FuzzyMatchOperandType::WIDTH:
+			return get_resource_width(desc);
+		case FuzzyMatchOperandType::HEIGHT:
+			return get_resource_height(desc);
+		case FuzzyMatchOperandType::DEPTH:
+			return get_resource_depth(desc);
+		case FuzzyMatchOperandType::ARRAY:
+			return get_resource_array(desc);
+		case FuzzyMatchOperandType::RES_WIDTH:
+			return G->mResolutionInfo.width;
+		case FuzzyMatchOperandType::RES_HEIGHT:
+			return G->mResolutionInfo.height;
+	};
+
+	LogOverlay(LOG_DIRE, "BUG: Invalid fuzzy field %u\n", type);
+
+	return val;
+}
+
+template <typename DescType>
 bool FuzzyMatch::matches(UINT lhs, const DescType *desc) const
 {
-	UINT effective = val;
+	UINT effective;
 
 	// Common case:
 	if (op == FuzzyMatchOp::ALWAYS)
 		return true;
 
-	switch (rhs_type) {
-		case FuzzyMatchOperandType::VALUE:
-			effective = val;
-			break;
-		case FuzzyMatchOperandType::WIDTH:
-			effective = get_resource_width(desc);
-			break;
-		case FuzzyMatchOperandType::HEIGHT:
-			effective = get_resource_height(desc);
-			break;
-		case FuzzyMatchOperandType::DEPTH:
-			effective = get_resource_depth(desc);
-			break;
-		case FuzzyMatchOperandType::ARRAY:
-			effective = get_resource_array(desc);
-			break;
-		case FuzzyMatchOperandType::RES_WIDTH:
-			effective = G->mResolutionInfo.width;
-			break;
-		case FuzzyMatchOperandType::RES_HEIGHT:
-			effective = G->mResolutionInfo.height;
-			break;
-	};
+	effective = eval_field(rhs_type1, val, desc);
+
+	// Second named field, for match_byte_width = res_width * res_height in RE7
+	effective *= eval_field(rhs_type2, 1, desc);
 
 	return matches_common(lhs, effective);
 }
@@ -1358,7 +1366,7 @@ bool FuzzyMatch::matches_uint(UINT lhs) const
 	if (op == FuzzyMatchOp::ALWAYS)
 		return true;
 
-	if (rhs_type != FuzzyMatchOperandType::VALUE)
+	if (rhs_type1 != FuzzyMatchOperandType::VALUE)
 		return false;
 
 	return matches_common(lhs, val);

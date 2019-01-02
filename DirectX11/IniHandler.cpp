@@ -2498,8 +2498,44 @@ wchar_t *TextureOverrideFuzzyMatchesIniKeys[] = {
 static void parse_fuzzy_numeric_match_expression_error(const wchar_t *text)
 {
 	IniWarning("WARNING: Unable to parse expression - must be in the simple form:\n"
-	           "    [ operator ] value | field_name [ * multiplier ] [ / divider ]\n"
+	           "    [ operator ] value | field_name [ * field_name ] [ * multiplier ] [ / divider ]\n"
 	           "    Parse error on text: \"%S\"\n", text);
+}
+
+static bool parse_fuzzy_field_name(const wchar_t **ptr, FuzzyMatchOperandType *field_type)
+{
+	bool ret;
+
+	// whitespace
+	for (; **ptr == L' '; ++*ptr);
+
+	if (!wcsncmp(*ptr, L"width", 5)) {
+		*field_type = FuzzyMatchOperandType::WIDTH;
+		*ptr += 5;
+	} else if (!wcsncmp(*ptr, L"height", 6)) {
+		*field_type = FuzzyMatchOperandType::HEIGHT;
+		*ptr += 6;
+	} else if (!wcsncmp(*ptr, L"depth", 5)) {
+		*field_type = FuzzyMatchOperandType::DEPTH;
+		*ptr += 5;
+	} else if (!wcsncmp(*ptr, L"array", 5)) {
+		*field_type = FuzzyMatchOperandType::ARRAY;
+		*ptr += 5;
+	} else if (!wcsncmp(*ptr, L"res_width", 9)) {
+		*field_type = FuzzyMatchOperandType::RES_WIDTH;
+		*ptr += 9;
+	} else if (!wcsncmp(*ptr, L"res_height", 10)) {
+		*field_type = FuzzyMatchOperandType::RES_HEIGHT;
+		*ptr += 10;
+	}
+
+	// Check field name terminated by whitespace
+	ret = (**ptr == L'\0' || **ptr == L' ');
+
+	// whitespace
+	for (; **ptr == L' '; ++*ptr);
+
+	return ret;
 }
 
 static void parse_fuzzy_numeric_match_expression(const wchar_t *setting, FuzzyMatch *matcher)
@@ -2551,38 +2587,28 @@ static void parse_fuzzy_numeric_match_expression(const wchar_t *setting, FuzzyMa
 		return;
 
 	// field_name
-	if (!wcsncmp(ptr, L"width", 5)) {
-		matcher->rhs_type = FuzzyMatchOperandType::WIDTH;
-		ptr += 5;
-	} else if (!wcsncmp(ptr, L"height", 6)) {
-		matcher->rhs_type = FuzzyMatchOperandType::HEIGHT;
-		ptr += 6;
-	} else if (!wcsncmp(ptr, L"depth", 5)) {
-		matcher->rhs_type = FuzzyMatchOperandType::DEPTH;
-		ptr += 5;
-	} else if (!wcsncmp(ptr, L"array", 5)) {
-		matcher->rhs_type = FuzzyMatchOperandType::ARRAY;
-		ptr += 5;
-	} else if (!wcsncmp(ptr, L"res_width", 9)) {
-		matcher->rhs_type = FuzzyMatchOperandType::RES_WIDTH;
-		ptr += 9;
-	} else if (!wcsncmp(ptr, L"res_height", 10)) {
-		matcher->rhs_type = FuzzyMatchOperandType::RES_HEIGHT;
-		ptr += 10;
-	}
-	// Check for bad field name
-	if (*ptr && *ptr != L' ')
+	if (!parse_fuzzy_field_name(&ptr, &matcher->rhs_type1))
 		return parse_fuzzy_numeric_match_expression_error(ptr);
-
-	// whitespace
-	for (; *ptr == L' '; ptr++);
 
 	// numerator
 	if (*ptr == L'*') {
 		ret = swscanf_s(++ptr, L"%u%n", &matcher->numerator, &len);
-		if (ret == 0 || ret == EOF)
-			return parse_fuzzy_numeric_match_expression_error(ptr);
-		ptr += len;
+		if (ret != 0 && ret != EOF) {
+			ptr += len;
+		} else {
+			// No numerator (yet?). Check for 2nd named field? In
+			// RE7: 'match_byte_width = res_width * res_height'
+			if (!parse_fuzzy_field_name(&ptr, &matcher->rhs_type2))
+				return parse_fuzzy_numeric_match_expression_error(ptr);
+
+			// numerator?
+			if (*ptr == L'*') {
+				ret = swscanf_s(++ptr, L"%u%n", &matcher->numerator, &len);
+				if (ret == 0 || ret == EOF)
+					return parse_fuzzy_numeric_match_expression_error(ptr);
+				ptr += len;
+			}
+		}
 	}
 
 	// whitespace

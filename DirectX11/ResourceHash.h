@@ -337,7 +337,8 @@ class FuzzyMatch {
 	bool matches_common(UINT lhs, UINT effective) const;
 public:
 	FuzzyMatchOp op;
-	FuzzyMatchOperandType rhs_type;
+	FuzzyMatchOperandType rhs_type1;
+	FuzzyMatchOperandType rhs_type2;
 
 	// TODO: Support more operand types, such as texture/resolution
 	// width/height. Maybe for advanced usage even allow an operand to be
