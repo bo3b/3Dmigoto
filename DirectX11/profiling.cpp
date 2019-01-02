@@ -101,7 +101,7 @@ void Profiling::update_cto_warning(bool warn)
 	if (!warn)
 		return;
 
-	Profiling::cto_warning = L"The following commands prevented optimising out all implicit post checktextureoverrides:\n";
+	Profiling::cto_warning = L"\nThe following commands prevented optimising out all implicit post checktextureoverrides:\n";
 	warned_cto_command_lists.clear();
 
 	for (auto &tolkv : G->mTextureOverrideMap) {
@@ -116,7 +116,7 @@ void Profiling::update_cto_warning(bool warn)
 
 static void update_txt_cto_warning()
 {
-	Profiling::text = Profiling::cto_warning;
+	Profiling::text += L" (post [TextureOverride] commands):\n" + Profiling::cto_warning;
 }
 
 static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER freq, unsigned frames)
