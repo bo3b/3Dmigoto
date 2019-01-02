@@ -24,6 +24,7 @@
 class HackerDevice;
 class HackerContext;
 enum class FrameAnalysisOptions;
+class ResourceCopyTarget;
 
 class CommandListState {
 public:
@@ -46,6 +47,7 @@ public:
 	// If set this resource is in some way related to the command list
 	// invocation - a constant buffer we are analysing, a render target
 	// being cleared, etc.
+	ResourceCopyTarget *this_target;
 	ID3D11Resource *resource;
 	ID3D11View *view;
 

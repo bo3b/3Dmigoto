@@ -914,6 +914,7 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 void CheckTextureOverrideCommand::run(CommandListState *state)
 {
 	TextureOverrideMatches matches;
+	ResourceCopyTarget *saved_this = NULL;
 	bool saved_post;
 	unsigned i;
 
@@ -921,6 +922,8 @@ void CheckTextureOverrideCommand::run(CommandListState *state)
 
 	target.FindTextureOverrides(state, NULL, &matches);
 
+	saved_this = state->this_target;
+	state->this_target = &target;
 	if (run_pre_and_post_together) {
 		saved_post = state->post;
 		state->post = false;
@@ -938,6 +941,7 @@ void CheckTextureOverrideCommand::run(CommandListState *state)
 				_RunCommandList(&matches[i]->command_list, state);
 		}
 	}
+	state->this_target = saved_this;
 }
 
 bool CheckTextureOverrideCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
@@ -2324,6 +2328,7 @@ CommandListState::CommandListState() :
 	rt_width(-1),
 	rt_height(-1),
 	call_info(NULL),
+	this_target(NULL),
 	resource(NULL),
 	view(NULL),
 	post(false),
@@ -4481,7 +4486,7 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target,
 		return true;
 	}
 
-	if (is_source && !wcscmp(target, L"this")) {
+	if (!wcscmp(target, L"this")) {
 		type = ResourceCopyTargetType::THIS_RESOURCE;
 		return true;
 	}
@@ -5128,6 +5133,9 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return state->cursor_color_tex;
 
 	case ResourceCopyTargetType::THIS_RESOURCE:
+		if (state->this_target)
+			return state->this_target->GetResource(state, view, stride, offset, format, buf_size);
+
 		if (state->view)
 			state->view->AddRef();
 		*view = state->view;
@@ -5371,6 +5379,12 @@ void ResourceCopyTarget::SetResource(
 		}
 		break;
 
+	case ResourceCopyTargetType::THIS_RESOURCE:
+		if (state->this_target)
+			return state->this_target->SetResource(state, res, view, stride, offset, format, buf_size);
+		COMMAND_LIST_LOG(state, "  \"this\" target cannot be set outside of a checktextureoverride context\n");
+		break;
+
 	case ResourceCopyTargetType::STEREO_PARAMS:
 	case ResourceCopyTargetType::INI_PARAMS:
 	case ResourceCopyTargetType::SWAP_CHAIN:
@@ -5409,6 +5423,10 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 			return D3D11_BIND_UNORDERED_ACCESS;
 		case ResourceCopyTargetType::CUSTOM_RESOURCE:
 			return custom_resource->bind_flags;
+		case ResourceCopyTargetType::THIS_RESOURCE:
+			// Bind flags are unknown since this cannot be resolved
+			// until runtime:
+			return (D3D11_BIND_FLAG)0;
 		case ResourceCopyTargetType::STEREO_PARAMS:
 		case ResourceCopyTargetType::INI_PARAMS:
 		case ResourceCopyTargetType::SWAP_CHAIN:
@@ -6386,6 +6404,10 @@ static ID3D11View* CreateCompatibleView(
 			       D3D11_UNORDERED_ACCESS_VIEW_DESC,
 			       &ID3D11Device::CreateUnorderedAccessView>
 				       (resource, state, stride, offset, format, buf_src_size, options);
+		case ResourceCopyTargetType::THIS_RESOURCE:
+			if (state->this_target)
+				return CreateCompatibleView(state->this_target, resource, state, stride, offset, format, buf_src_size, options);
+			break;
 	}
 	return NULL;
 }
