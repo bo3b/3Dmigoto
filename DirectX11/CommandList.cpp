@@ -237,6 +237,10 @@ void optimise_command_lists(HackerDevice *device)
 	bool ignore_cto_pre, ignore_cto_post;
 	size_t i;
 	CommandList::Commands::iterator new_end;
+	DWORD start;
+
+	LogInfo("Optimising command lists...\n");
+	start = GetTickCount();
 
 	do {
 		making_progress = false;
@@ -296,6 +300,7 @@ void optimise_command_lists(HackerDevice *device)
 
 	Profiling::update_cto_warning(!ignore_cto_post);
 
+	LogInfo("Command List Optimiser finished after %ums\n", GetTickCount() - start);
 	registered_command_lists.clear();
 	dynamically_allocated_command_lists.clear();
 }
