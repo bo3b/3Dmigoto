@@ -242,6 +242,11 @@ void optimise_command_lists(HackerDevice *device)
 	LogInfo("Optimising command lists...\n");
 	start = GetTickCount();
 
+	for (CommandList *command_list : registered_command_lists) {
+		for (i = 0; i < command_list->commands.size(); i++)
+			command_list->commands[i]->optimise(device);
+	}
+
 	do {
 		making_progress = false;
 		ignore_cto_pre = true;
@@ -275,10 +280,6 @@ void optimise_command_lists(HackerDevice *device)
 		// processing these
 		for (CommandList *command_list : registered_command_lists) {
 			for (i = 0; i < command_list->commands.size(); ) {
-				LogDebug("Optimising %S\n", command_list->commands[i]->ini_line.c_str());
-				if (command_list->commands[i]->optimise(device))
-					making_progress = true;
-
 				if (command_list->commands[i]->noop(command_list->post, ignore_cto_pre, ignore_cto_post)) {
 					LogInfo("Optimised out %s %S\n",
 							command_list->post ? "post" : "pre",
