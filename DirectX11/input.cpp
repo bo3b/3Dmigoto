@@ -490,6 +490,17 @@ void ClearKeyBindings()
 	actions.clear();
 }
 
+static bool CheckForegroundWindow()
+{
+	DWORD pid;
+
+	if (!G->check_foreground_window)
+		return true;
+
+	GetWindowThreadProcessId(GetForegroundWindow(), &pid);
+
+	return (pid == GetCurrentProcessId());
+}
 
 bool DispatchInputEvents(HackerDevice *device)
 {
@@ -499,6 +510,9 @@ bool DispatchInputEvents(HackerDevice *device)
 	static time_t last_time = 0;
 	time_t now = time(NULL);
 	int j;
+
+	if (!CheckForegroundWindow())
+		return false;
 
 	for (j = 0; j < 4; j++) {
 		// Stagger polling controllers that were not connected last

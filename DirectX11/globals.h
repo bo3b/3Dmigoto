@@ -15,6 +15,7 @@
 
 #include "ResourceHash.h"
 #include "CommandList.h"
+#include "profiling.h"
 
 
 // Resolve circular include dependency between Globals.h ->
@@ -85,6 +86,10 @@ static EnumName_t<const wchar_t *, ShaderHashType> ShaderHashNames[] = {
 };
 
 // Source compiled shaders.
+// NOTE: This map is no longer filled out by anything. Could remove it as dead
+// code, though there are some games (emulators in particular) where it might
+// be useful to get this working again by hooking/wrapping the various
+// D3DCompiler DLLs' D3DCompile routines.
 typedef std::unordered_map<UINT64, std::string> CompiledShaderMap;
 
 // Strategy: This OriginalShaderInfo record and associated map is to allow us to keep track of every
@@ -315,6 +320,8 @@ struct TextureOverride {
 	{}
 };
 
+typedef std::unordered_map<ID3D11Resource *, ResourceHandleInfo> ResourceMap;
+
 // The TextureOverrideList will be sorted because we want multiple
 // [TextureOverrides] that share the same hash (differentiated by draw context
 // matching) to always be processed in the same order for consistent results.
@@ -391,6 +398,7 @@ struct Globals
 {
 	bool gInitialized;
 	bool gReloadConfigPending;
+	bool gWipeUserConfig;
 	bool gLogInput;
 	bool dump_all_profiles;
 	DWORD ticks_at_launch;
@@ -399,6 +407,9 @@ struct Globals
 	wchar_t SHADER_CACHE_PATH[MAX_PATH];
 	wchar_t CHAIN_DLL_PATH[MAX_PATH];
 	int load_library_redirect;
+
+	std::wstring user_config;
+	bool user_config_dirty;
 
 	EnableHooks enable_hooks;
 	
@@ -419,6 +430,7 @@ struct Globals
 	bool upscaling_hooks_armed;
 	bool upscaling_command_list_using_explicit_bb_flip;
 	bool bb_is_upscaling_bb;
+	bool implicit_post_checktextureoverride_used;
 
 	MarkingMode marking_mode;
 	MarkingAction marking_actions;
@@ -434,6 +446,7 @@ struct Globals
 	bool show_original_enabled;
 	time_t huntTime;
 	bool verbose_overlay;
+	bool suppress_overlay;
 
 	bool deferred_contexts_enabled;
 
@@ -467,7 +480,8 @@ struct Globals
 	bool ENABLE_TUNE;
 	float gTuneValue[4], gTuneStep;
 
-	DirectX::XMFLOAT4 iniParams[INI_PARAMS_SIZE];
+	std::vector<DirectX::XMFLOAT4> iniParams;
+	int iniParamsReserved;
 	int StereoParamsReg;
 	int IniParamsReg;
 
@@ -483,10 +497,12 @@ struct Globals
 	CommandList clear_uav_uint_command_list;
 	CommandList post_clear_uav_uint_command_list;
 	CommandList constants_command_list;
+	CommandList post_constants_command_list;
 	unsigned frame_no;
 	HWND hWnd; // To translate mouse coordinates to the window
 	bool hide_cursor;
 	bool cursor_upscaling_bypass;
+	bool check_foreground_window;
 
 	CRITICAL_SECTION mCriticalSection;
 
@@ -543,7 +559,7 @@ struct Globals
 	FuzzyTextureOverrides mFuzzyTextureOverrides;
 
 	// Statistics
-	std::unordered_map<ID3D11Resource *, ResourceHandleInfo> mResources;
+	ResourceMap mResources;
 	std::unordered_map<ID3D11Asynchronous*, AsyncQueryType> mQueryTypes;
 
 	// These five items work with the *original* resource hash:
@@ -597,6 +613,7 @@ struct Globals
 		show_original_enabled(false),
 		huntTime(0),
 		verbose_overlay(false),
+		suppress_overlay(false),
 
 		deferred_contexts_enabled(true),
 
@@ -622,11 +639,13 @@ struct Globals
 
 		StereoParamsReg(125),
 		IniParamsReg(120),
+		iniParamsReserved(0),
 
 		frame_no(0),
 		hWnd(NULL),
 		hide_cursor(false),
 		cursor_upscaling_bypass(true),
+		check_foreground_window(false),
 
 		GAME_INTERNAL_WIDTH(1), // it gonna be used by mouse pos hook in case of softwaremouse is on and it can be called before
 		GAME_INTERNAL_HEIGHT(1),//  the swap chain is created and the proper data set to avoid errors in the hooked winapi functions
@@ -638,6 +657,7 @@ struct Globals
 		upscaling_hooks_armed(true),
 		upscaling_command_list_using_explicit_bb_flip(false),
 		bb_is_upscaling_bb(false),
+		implicit_post_checktextureoverride_used(false),
 
 		marking_mode(MarkingMode::INVALID),
 		marking_actions(MarkingAction::INVALID),
@@ -656,6 +676,8 @@ struct Globals
 		enable_platform_update(false),
 		gInitialized(false),
 		gReloadConfigPending(false),
+		gWipeUserConfig(false),
+		user_config_dirty(false),
 		gLogInput(false),
 		dump_all_profiles(false)
 
@@ -673,8 +695,6 @@ struct Globals
 
 		for (i = 0; i < 11; i++)
 			FILTER_REFRESH[i] = 0;
-
-		memset(iniParams, 0, sizeof(iniParams));
 
 		ticks_at_launch = GetTickCount();
 	}
@@ -729,3 +749,33 @@ static struct TLS* get_tls()
 }
 
 extern Globals *G;
+
+static inline ShaderMap::iterator lookup_shader_hash(ID3D11DeviceChild *shader)
+{
+	return Profiling::lookup_map(G->mShaders, shader, &Profiling::shader_hash_lookup_overhead);
+}
+
+static inline ShaderReloadMap::iterator lookup_reloaded_shader(ID3D11DeviceChild *shader)
+{
+	return Profiling::lookup_map(G->mReloadedShaders, shader, &Profiling::shader_reload_lookup_overhead);
+}
+
+static inline ShaderReplacementMap::iterator lookup_original_shader(ID3D11DeviceChild *shader)
+{
+	return Profiling::lookup_map(G->mOriginalShaders, shader, &Profiling::shader_original_lookup_overhead);
+}
+
+static inline ShaderOverrideMap::iterator lookup_shaderoverride(UINT64 hash)
+{
+	return Profiling::lookup_map(G->mShaderOverrideMap, hash, &Profiling::shaderoverride_lookup_overhead);
+}
+
+static inline ResourceMap::iterator lookup_resource_handle_info(ID3D11Resource *resource)
+{
+	return Profiling::lookup_map(G->mResources, resource, &Profiling::texture_handle_info_lookup_overhead);
+}
+
+static inline TextureOverrideMap::iterator lookup_textureoverride(uint32_t hash)
+{
+	return Profiling::lookup_map(G->mTextureOverrideMap, hash, &Profiling::textureoverride_lookup_overhead);
+}

@@ -36,6 +36,11 @@ rm -v "$OUTPUT_DIR"/* 2>/dev/null || true
 TESTS_FAILED=0
 UPDATE_CHK=0
 
+rm_if_empty()
+{
+	[ ! -s "$1" ] && rm "$1" > /dev/null 2>&1
+}
+
 # No good way to machine verify the decompiler, so go for the next best thing -
 # verify that the output matches a previous run. This is of course subject to
 # starting to fail after benign changes in the decompiler that affect output in
@@ -87,28 +92,32 @@ run_decompiler_test()
 	local dst="$(echo "$compiled" | sed -r 's/\.[^.]+$//')"
 
 	local decompiled="$dst.hlsl"
+	local decompiled_log="$dst.log"
 	local recompiled="${dst}_recompiled.bin"
 	local recompiled_asm="${dst}_recompiled.asm"
+	local recompiled_log="${dst}_recompiled.log"
 	[ -z "$check" ] && check="$decompiled.chk"
 
 	local fail=0
 
-	rm "$decompiled" "$recompiled" 2>/dev/null
+	rm "$decompiled" "$decompiled_log" "$recompiled" "$recompiled_asm" "$recompiled_log" 2>/dev/null
 	local model=$(timeout 5s "$FXC" /nologo /dumpbin "$compiled" | grep -av '^\/\/' | head -n 1 | tr -d '\r')
 	if [ -z "$model" ]; then
 		echo -n " Unable to get shader model - bad binary?"
 		fail=1
 	else
-		"$CMD_DECOMPILER" -D "$compiled" >/dev/null 2>&1 # produces "$decompiled"
+		"$CMD_DECOMPILER" -D "$compiled" > "$decompiled_log" 2>&1 # produces "$decompiled"
 		if [ ! -f "$decompiled" ]; then
 			echo -n " HLSL decompilation failed."
 			fail=1
 		else
+			rm "$decompiled_log"
 			check_decompiler_result "$decompiled" "$check" || fail=1
-			if ! "$FXC" /nologo "$decompiled" /T "$model" /Fo "$recompiled" /Fc "$recompiled_asm" >/dev/null 2>&1; then
+			if ! "$FXC" /nologo "$decompiled" /T "$model" /Fo "$recompiled" /Fc "$recompiled_asm" /Fe "$recompiled_log" >/dev/null 2>&1; then
 				echo -n " Recompilation failed."
 				fail=1
 			fi
+			rm_if_empty "$recompiled_log"
 		fi
 	fi
 
@@ -130,11 +139,13 @@ run_hlsl_test()
 	for model in $models; do
 		local compiled="${dst}_${model}.bin"
 		local assembled="${dst}_${model}.asm"
+		local log="${dst}_${model}.log"
 		local stripped="${dst}_${model}_stripped.bin"
 		local stripped_asm="${dst}_${model}_stripped.asm"
 
 		echo -n "....: ${dst}_${model}...         "
-		"$FXC" /nologo "$src" /T "$model" $flags /Fo "$OUTPUT_DIR\\$compiled" /Fc "$OUTPUT_DIR\\$assembled" >/dev/null
+		"$FXC" /nologo "$src" /T "$model" $flags /Fo "$OUTPUT_DIR\\$compiled" /Fc "$OUTPUT_DIR\\$assembled" /Fe "$OUTPUT_DIR\\$log" >/dev/null
+		rm_if_empty "$OUTPUT_DIR\\$log"
 
 		local test_dir="$PWD"
 		cd "$OUTPUT_DIR"

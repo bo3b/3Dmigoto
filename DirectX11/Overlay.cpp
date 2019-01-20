@@ -548,6 +548,8 @@ static void AppendShaderText(wchar_t *fullLine, wchar_t *type, int pos, size_t s
 
 static void CreateShaderCountString(wchar_t *counts)
 {
+	const wchar_t *marking_mode;
+
 	wcscpy_s(counts, maxstring, L"");
 	// The order here more or less follows how important these are for
 	// shaderhacking. VS and PS are the absolute most important, CS is
@@ -566,7 +568,9 @@ static void CreateShaderCountString(wchar_t *counts)
 	if (G->mSelectedRenderTarget != (ID3D11Resource *)-1)
 		AppendShaderText(counts, L"RT", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
 
-	wcscat_s(counts, maxstring, lookup_enum_name(MarkingModeNames, G->marking_mode));
+	marking_mode = lookup_enum_name(MarkingModeNames, G->marking_mode);
+	if (marking_mode)
+		wcscat_s(counts, maxstring, marking_mode);
 }
 
 
@@ -735,14 +739,14 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
 	float separation, convergence;
 	NvU8 stereo = false;
 	NvAPIOverride();
-	NvAPI_Stereo_IsEnabled(&stereo);
+	Profiling::NvAPI_Stereo_IsEnabled(&stereo);
 	if (stereo)
 	{
-		NvAPI_Stereo_IsActivated(stereoHandle, &stereo);
+		Profiling::NvAPI_Stereo_IsActivated(stereoHandle, &stereo);
 		if (stereo)
 		{
-			NvAPI_Stereo_GetSeparation(stereoHandle, &separation);
-			NvAPI_Stereo_GetConvergence(stereoHandle, &convergence);
+			Profiling::NvAPI_Stereo_GetSeparation(stereoHandle, &separation);
+			Profiling::NvAPI_Stereo_GetConvergence(stereoHandle, &convergence);
 		}
 	}
 

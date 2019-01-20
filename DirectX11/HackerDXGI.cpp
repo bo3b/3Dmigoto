@@ -274,8 +274,9 @@ void HackerSwapChain::RunFrameActions()
 	// messages, before final Present. We now do this after the shader and
 	// config reloads, so if they have any notices we will see them this
 	// frame (just in case we crash next frame or something).
-	if (mOverlay)
+	if (mOverlay && !G->suppress_overlay)
 		mOverlay->DrawOverlay();
+	G->suppress_overlay = false;
 
 	// This must happen on the same side of the config and shader reloads
 	// to ensure the config reload can't clear messages from the shader

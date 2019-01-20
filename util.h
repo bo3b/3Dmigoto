@@ -22,10 +22,21 @@
 #include "DirectX11\HookedContext.h"
 
 
-// Defines the maximum number of four component ini params we support.
-// Potential trade off on flexibility vs overhead, but unless we increase it
-// above 256 (4k page) it is unlikely to be significant.
-const int INI_PARAMS_SIZE = 8;
+// Sets the threshold for warning about IniParams size. The larger IniParams is
+// the more CPU -> GPU bandwidth we will require to update it, so we want to
+// discourage modders from picking arbitrarily high IniParams.
+//
+// This threshold is somewhat arbitrary and I haven't measured how performance
+// actually goes in practice, so we can tweak it as we encounter real world
+// performance issues. I've chosen the page size of 4K as a starting point as
+// exceeding that will likely add additional performance overheads beyond the
+// bandwidth requirements (ideally we would also ensure the IniParams buffer is
+// aligned to a page boundary).
+//
+// If a shaderhacker wants more than 1024 (256x4) IniParams they should
+// probably think about using a different storage means anyway, since IniParams
+// has other problems such as no meaningful names, no namespacing, etc.
+const int INI_PARAMS_SIZE_WARNING = 256;
 
 
 // -----------------------------------------------------------------------------------------------
@@ -169,13 +180,38 @@ static DECLSPEC_NORETURN void DoubleBeepExit()
 
 // -----------------------------------------------------------------------------------------------
 
+static int _autoicmp(const wchar_t *s1, const wchar_t *s2)
+{
+	return _wcsicmp(s1, s2);
+}
+static int _autoicmp(const char *s1, const char *s2)
+{
+	return _stricmp(s1, s2);
+}
+
 // To use this function be sure to terminate an EnumName_t list with {NULL, 0}
 // as it cannot use ArraySize on passed in arrays.
 template <class T1, class T2>
 static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, T2 default, bool *found=NULL)
 {
 	for (; enum_names->name; enum_names++) {
-		if (!_wcsicmp(name, enum_names->name)) {
+		if (!_autoicmp(name, enum_names->name)) {
+			if (found)
+				*found = true;
+			return enum_names->val;
+		}
+	}
+
+	if (found)
+		*found = false;
+
+	return default;
+}
+template <class T1, class T2>
+static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, size_t len, T2 default, bool *found=NULL)
+{
+	for (; enum_names->name; enum_names++) {
+		if (!_wcsnicmp(name, enum_names->name, len)) {
 			if (found)
 				*found = true;
 			return enum_names->val;
@@ -259,6 +295,50 @@ template <class T1, class T2>
 static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T1 option_string, T1 *unrecognised)
 {
 	return parse_enum_option_string<T1, T2, T1>(enum_names, option_string, unrecognised);
+}
+
+// This is similar to the above, but stops parsing when it hits an unrecognised
+// keyword and returns the position without throwing any errors. It also
+// doesn't modify the option_string, allowing it to be used with C++ strings.
+template <class T1, class T2>
+static T2 parse_enum_option_string_prefix(struct EnumName_t<T1, T2> *enum_names, T1 option_string, T1 *unrecognised)
+{
+	T1 ptr = option_string, cur;
+	T2 ret = (T2)0;
+	T2 tmp = T2::INVALID;
+	size_t len;
+
+	if (unrecognised)
+		*unrecognised = NULL;
+
+	while (*ptr) {
+		// Skip over whitespace:
+		for (; *ptr == L' '; ptr++) {}
+
+		// Mark start of current entry:
+		cur = ptr;
+
+		// Scan until the next whitespace or end of string:
+		for (; *ptr && *ptr != L' '; ptr++) {}
+
+		// Note word length:
+		len = ptr - cur;
+
+		// Advance pointer if not at end of string:
+		if (*ptr)
+			ptr++;
+
+		// Lookup the value of the current entry:
+		tmp = lookup_enum_val<T1, T2> (enum_names, cur, len, T2::INVALID);
+		if (tmp != T2::INVALID) {
+			ret |= tmp;
+		} else {
+			if (unrecognised)
+				*unrecognised = cur;
+			return ret;
+		}
+	}
+	return ret;
 }
 
 // http://msdn.microsoft.com/en-us/library/windows/desktop/bb173059(v=vs.85).aspx
@@ -761,16 +841,12 @@ static bool ParseIniParamName(const wchar_t *name, int *idx, float DirectX::XMFL
 
 	// May or may not have matched index. Make sure entire string was
 	// matched either way and check index is valid if it was matched:
-	if (ret == 1 && len1 == length) {
+	if (ret == 1 && len1 == length)
 		*idx = 0;
-	} else if (ret == 2 && len2 == length) {
-		if (*idx >= INI_PARAMS_SIZE)
-			return false;
-	} else {
+	else if (ret != 2 || len2 != length)
 		return false;
-	}
 
-	switch (component_chr) {
+	switch (towlower(component_chr)) {
 		case L'x':
 			*component = &DirectX::XMFLOAT4::x;
 			return true;

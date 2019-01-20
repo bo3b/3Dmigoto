@@ -69,7 +69,6 @@ private:
 	void KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11Shader *pShader,
 		const void *pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage *pClassLinkage);
 	HRESULT CreateStereoParamResources();
-	HRESULT CreateIniParamResources();
 	void CreatePinkHuntingResources();
 	HRESULT SetGlobalNVSurfaceCreationMode();
 
@@ -103,6 +102,7 @@ public:
 
 	HackerDevice(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
 
+	HRESULT CreateIniParamResources();
 	void Create3DMigotoResources();
 	void SetHackerContext(HackerContext *pHackerContext);
 	void SetHackerSwapChain(HackerSwapChain *pHackerSwapChain);

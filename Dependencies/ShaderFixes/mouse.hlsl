@@ -1,8 +1,8 @@
-#define cursor_pass     IniParams[5].w
-#define cursor_window   IniParams[6].xy
-#define cursor_hotspot  IniParams[6].zw
-#define cursor_showing  IniParams[7].y
-#define window_size     IniParams[7].zw
+#define cursor_window   IniParams[0].xy
+#define cursor_hotspot  IniParams[0].zw
+#define window_size     IniParams[1].xy
+#define cursor_showing  IniParams[1].z
+#define cursor_pass     IniParams[1].w
 
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
