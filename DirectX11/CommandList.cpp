@@ -1659,6 +1659,46 @@ CustomShader::~CustomShader()
 		sampler_state->Release();
 }
 
+static bool load_cached_shader(FILETIME hlsl_timestamp, wchar_t *cache_path, ID3DBlob **ppBytecode)
+{
+	FILETIME cache_timestamp;
+	HANDLE f_cache;
+	DWORD filesize, readsize;
+
+	f_cache = CreateFile(cache_path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (f_cache == INVALID_HANDLE_VALUE)
+		return false;
+
+	if (!GetFileTime(f_cache, NULL, NULL, &cache_timestamp)
+	 || CompareFileTime(&hlsl_timestamp, &cache_timestamp)) {
+		LogInfo("    Discarding stale cached shader: %S\n", cache_path);
+		goto err_close;
+	}
+
+	filesize = GetFileSize(f_cache, 0);
+	if (FAILED(D3DCreateBlob(filesize, ppBytecode))) {
+		LogInfo("    D3DCreateBlob failed\n");
+		goto err_close;
+	}
+
+	if (!ReadFile(f_cache, (*ppBytecode)->GetBufferPointer(), (DWORD)(*ppBytecode)->GetBufferSize(), &readsize, 0)
+			|| readsize != filesize) {
+		LogInfo("    Error reading cached shader\n");
+		goto err_free;
+	}
+
+	LogInfo("    Loaded cached shader: %S\n", cache_path);
+	CloseHandle(f_cache);
+	return true;
+
+err_free:
+	(*ppBytecode)->Release();
+	*ppBytecode = NULL;
+err_close:
+	CloseHandle(f_cache);
+	return false;
+}
+
 static const D3D_SHADER_MACRO vs_macros[] = { "VERTEX_SHADER", "", NULL, NULL };
 static const D3D_SHADER_MACRO hs_macros[] = { "HULL_SHADER", "", NULL, NULL };
 static const D3D_SHADER_MACRO ds_macros[] = { "DOMAIN_SHADER", "", NULL, NULL };
@@ -1670,7 +1710,7 @@ static const D3D_SHADER_MACRO cs_macros[] = { "COMPUTE_SHADER", "", NULL, NULL }
 // get it's own function for now - TODO: Refactor out the common code
 bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, const wstring *namespace_path)
 {
-	wchar_t wpath[MAX_PATH];
+	wchar_t wpath[MAX_PATH], cache_path[MAX_PATH];
 	char apath[MAX_PATH];
 	HANDLE f;
 	DWORD srcDataSize, readSize;
@@ -1681,6 +1721,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 	ID3DBlob *pErrorMsgs = NULL;
 	const D3D_SHADER_MACRO *macros = NULL;
 	bool found = false;
+	FILETIME timestamp;
 
 	LogInfo("  %cs=%S\n", type, filename);
 
@@ -1752,6 +1793,25 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 		goto err;
 	}
 
+	// Currently always using shader model 5, could allow this to be
+	// overridden in the future:
+	_snprintf_s(shaderModel, 7, 7, "%cs_5_0", type);
+
+	// XXX: If we allow the compilation to be customised further (e.g. with
+	// addition preprocessor defines), make the cache filename unique for
+	// each possible combination
+	wchar_t *ext = wcsrchr(wpath, L'.');
+	if (ext > wcsrchr(wpath, L'\\'))
+		swprintf_s(cache_path, MAX_PATH, L"%.*s.%S.%x.bin", (int)(ext - wpath), wpath, shaderModel, (UINT)compile_flags);
+	else
+		swprintf_s(cache_path, MAX_PATH, L"%s.%S.%x.bin", wpath, shaderModel, (UINT)compile_flags);
+
+	GetFileTime(f, NULL, NULL, &timestamp);
+	if (load_cached_shader(timestamp, cache_path, ppBytecode)) {
+		CloseHandle(f);
+		return false;
+	}
+
 	srcDataSize = GetFileSize(f, 0);
 	srcData.resize(srcDataSize);
 
@@ -1761,10 +1821,6 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 		goto err_close;
 	}
 	CloseHandle(f);
-
-	// Currently always using shader model 5, could allow this to be
-	// overridden in the future:
-	_snprintf_s(shaderModel, 7, 7, "%cs_5_0", type);
 
 	// TODO: Add #defines for StereoParams and IniParams. Define a macro
 	// for the type of shader, and maybe allow more defines to be specified
@@ -1792,7 +1848,19 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 		goto err;
 	}
 
-	// TODO: Cache bytecode
+	if (G->CACHE_SHADERS) {
+		FILE *fw;
+
+		wfopen_ensuring_access(&fw, cache_path, L"wb");
+		if (fw) {
+			LogInfo("    Storing compiled shader to %S\n", cache_path);
+			fwrite((*ppBytecode)->GetBufferPointer(), 1, (*ppBytecode)->GetBufferSize(), fw);
+			fclose(fw);
+
+			set_file_last_write_time(cache_path, &timestamp);
+		} else
+			LogInfo("    Error writing compiled shader to %S\n", cache_path);
+	}
 
 	return false;
 err_close:

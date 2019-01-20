@@ -803,24 +803,17 @@ static void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 				swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, pShaderType);
 				FILE *fw;
 				wfopen_ensuring_access(&fw, path, L"wb");
-				if (LogFile)
-				{
-					char fileName[MAX_PATH];
-					wcstombs(fileName, path, MAX_PATH);
-					if (fw)
-						LogInfo("    storing compiled shader to %s\n", fileName);
-					else
-						LogInfo("    error writing compiled shader to %s\n", fileName);
-				}
 				if (fw)
 				{
+					LogInfo("    storing compiled shader to %S\n", path);
 					fwrite(pCode, 1, pCodeSize, fw);
 					fclose(fw);
 
 					// Set the last modified timestamp on the cached shader to match the
 					// .txt file it is created from, so we can later check its validity:
 					set_file_last_write_time(path, &ftWrite);
-				}
+				} else
+					LogInfo("    error writing compiled shader to %S\n", path);
 			}
 		}
 	}
