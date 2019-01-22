@@ -821,7 +821,7 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	orig_info->deferred_replacement_processed = true;
 
 	// TODO: Compare performance vs doing this in XXSetConstantBuffers
-	(mOrigContext->*GetConstantBuffers)(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, cbuffers);
+	(mOrigContext1->*GetConstantBuffers)(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, cbuffers);
 
 	memset(patch_cbuffers, 0, sizeof(patch_cbuffers));
 	for (i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; i++) {
@@ -914,8 +914,10 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 
 			LogInfo("  %S = %S\n", dest.c_str(), src.c_str());
 			LogInfo("  post %S = %S\n", dest.c_str(), src_null.c_str());
-			ok = ParseCommandListResourceCopyDirective(section_name, dest.c_str(), &src, &shader_override->command_list) && ok;
-			ok = ParseCommandListResourceCopyDirective(section_name, dest.c_str(), &src_null, &shader_override->post_command_list) && ok;
+			// FIXME: Namespace this
+			wstring ns = L"";
+			ok = ParseCommandListResourceCopyDirective(section_name, dest.c_str(), &src, &shader_override->command_list, &ns) && ok;
+			ok = ParseCommandListResourceCopyDirective(section_name, dest.c_str(), &src_null, &shader_override->post_command_list, &ns) && ok;
 			if (!ok) {
 				LogInfo("WARNING: Command List failed to parse auto generated "
 						"resource copy directives - missing resource definitions?\n");
