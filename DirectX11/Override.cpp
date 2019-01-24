@@ -7,6 +7,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <strsafe.h>
+#include <algorithm>
 
 PresetOverrideMap presetOverrides;
 
@@ -76,6 +77,8 @@ void Override::ParseIniSection(LPCWSTR section)
 
 	if (GetIniStringAndLog(section, L"condition", 0, buf, MAX_PATH)) {
 		wstring sbuf(buf);
+		// Expressions are case insensitive:
+		std::transform(sbuf.begin(), sbuf.end(), sbuf.begin(), ::towlower);
 
 		if (!condition.parse(&sbuf, &ini_namespace, NULL)) {
 			LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%S\"\n", buf);
@@ -205,6 +208,9 @@ struct KeyOverrideCycleParam
 		}
 
 		get_section_namespace(section, &ini_namespace);
+
+		// Expressions are case insensitive:
+		std::transform(scur.begin(), scur.end(), scur.begin(), ::towlower);
 
 		if (!expression->parse(&scur, &ini_namespace, NULL)) {
 			LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%s\"\n", cur.c_str());
