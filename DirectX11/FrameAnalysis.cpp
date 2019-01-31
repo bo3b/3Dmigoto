@@ -3510,9 +3510,9 @@ STDMETHODIMP_(void) FrameAnalysisContext::ClearUnorderedAccessViewUint(THIS_
 		/* [annotation] */
 		__in  const UINT Values[4])
 {
-	FrameAnalysisLog("ClearUnorderedAccessViewUint(pUnorderedAccessView:0x%p, Values:0x%p\n)",
+	FrameAnalysisLog("ClearUnorderedAccessViewUint(pUnorderedAccessView:0x%p, Values:0x%p)\n",
 			pUnorderedAccessView, Values);
-	FrameAnalysisLogView(-1, NULL, pUnorderedAccessView);
+	FrameAnalysisLogView(-1, "", pUnorderedAccessView);
 
 	HackerContext::ClearUnorderedAccessViewUint(pUnorderedAccessView, Values);
 }
@@ -3523,9 +3523,9 @@ STDMETHODIMP_(void) FrameAnalysisContext::ClearUnorderedAccessViewFloat(THIS_
 		/* [annotation] */
 		__in  const FLOAT Values[4])
 {
-	FrameAnalysisLog("ClearUnorderedAccessViewFloat(pUnorderedAccessView:0x%p, Values:0x%p\n)",
+	FrameAnalysisLog("ClearUnorderedAccessViewFloat(pUnorderedAccessView:0x%p, Values:0x%p)\n",
 			pUnorderedAccessView, Values);
-	FrameAnalysisLogView(-1, NULL, pUnorderedAccessView);
+	FrameAnalysisLogView(-1, "", pUnorderedAccessView);
 
 	HackerContext::ClearUnorderedAccessViewFloat(pUnorderedAccessView, Values);
 }
@@ -3540,9 +3540,9 @@ STDMETHODIMP_(void) FrameAnalysisContext::ClearDepthStencilView(THIS_
 		/* [annotation] */
 		__in  UINT8 Stencil)
 {
-	FrameAnalysisLog("ClearDepthStencilView(pDepthStencilView:0x%p, ClearFlags:%u, Depth:%f, Stencil:%u\n)",
+	FrameAnalysisLog("ClearDepthStencilView(pDepthStencilView:0x%p, ClearFlags:%u, Depth:%f, Stencil:%u)\n",
 			pDepthStencilView, ClearFlags, Depth, Stencil);
-	FrameAnalysisLogView(-1, NULL, pDepthStencilView);
+	FrameAnalysisLogView(-1, "", pDepthStencilView);
 
 	HackerContext::ClearDepthStencilView(pDepthStencilView, ClearFlags, Depth, Stencil);
 }
@@ -3551,9 +3551,9 @@ STDMETHODIMP_(void) FrameAnalysisContext::GenerateMips(THIS_
 		/* [annotation] */
 		__in  ID3D11ShaderResourceView *pShaderResourceView)
 {
-	FrameAnalysisLog("GenerateMips(pShaderResourceView:0x%p\n)",
+	FrameAnalysisLog("GenerateMips(pShaderResourceView:0x%p)\n",
 			pShaderResourceView);
-	FrameAnalysisLogView(-1, NULL, pShaderResourceView);
+	FrameAnalysisLogView(-1, "", pShaderResourceView);
 
 	HackerContext::GenerateMips(pShaderResourceView);
 }
@@ -4744,7 +4744,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::ClearRenderTargetView(THIS_
 {
 	FrameAnalysisLog("ClearRenderTargetView(pRenderTargetView:0x%p, ColorRGBA:0x%p)\n",
 			pRenderTargetView, ColorRGBA);
-	FrameAnalysisLogView(-1, NULL, pRenderTargetView);
+	FrameAnalysisLogView(-1, "", pRenderTargetView);
 
 	HackerContext::ClearRenderTargetView(pRenderTargetView, ColorRGBA);
 }
@@ -4817,7 +4817,7 @@ void STDMETHODCALLTYPE FrameAnalysisContext::DiscardView(
 {
 	FrameAnalysisLog("DiscardView(pResourceView:0x%p)\n",
 			pResourceView);
-	FrameAnalysisLogView(-1, NULL, pResourceView);
+	FrameAnalysisLogView(-1, "", pResourceView);
 
 	HackerContext::DiscardView(pResourceView);
 }
@@ -5073,7 +5073,7 @@ void STDMETHODCALLTYPE FrameAnalysisContext::ClearView(
 {
 	FrameAnalysisLog("ClearView(pView:0x%p, Color:0x%p, pRect:0x%p)\n",
 			pView, Color, pRect);
-	FrameAnalysisLogView(-1, NULL, pView);
+	FrameAnalysisLogView(-1, "", pView);
 
 	HackerContext::ClearView(pView, Color, pRect, NumRects);
 }
@@ -5087,7 +5087,7 @@ void STDMETHODCALLTYPE FrameAnalysisContext::DiscardView1(
 {
 	FrameAnalysisLog("DiscardView1(pResourceView:0x%p, pRects:0x%p)\n",
 			pResourceView, pRects);
-	FrameAnalysisLogView(-1, NULL, pResourceView);
+	FrameAnalysisLogView(-1, "", pResourceView);
 
 	HackerContext::DiscardView1(pResourceView, pRects, NumRects);
 }
