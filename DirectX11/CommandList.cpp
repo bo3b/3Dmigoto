@@ -4469,6 +4469,46 @@ void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
 		*stride = override_stride;
 }
 
+void CustomResource::expire(ID3D11Device *mOrigDevice1)
+{
+	ID3D11Device *old_device;
+
+	if (!resource)
+		return;
+
+	// Check for device mismatches and handle via expiring cached
+	// resources, flagging for re-substantiation and/or performing
+	// inter-device transfers if necessary.
+
+	resource->GetDevice(&old_device);
+	if (!old_device)
+		return;
+
+	old_device->Release();
+
+	if (old_device == mOrigDevice1)
+		return;
+
+	LogInfo("Device mismatch, discarding [%S]\n", name.c_str());
+
+	// TODO: Perform inter-device resource copy instead of
+	// re-substantiation to ensure that the resource remains current. Only
+	// 2D non-mip-mapped resources created with the appropriate misc flag
+	// can be shared between devices directly, so to support this for any
+	// resource we need to stage to the CPU and back, which is a massive
+	// performance killer, so maybe make this optional.
+
+	// Expire cache:
+	resource->Release();
+	resource = NULL;
+	if (view)
+		view->Release();
+	view = NULL;
+	is_null = true;
+
+	// Flag for re-substantiation (if possible for this resource):
+	substantiated = false;
+}
 
 bool ResourceCopyTarget::ParseTarget(const wchar_t *target,
 		bool is_source, const wstring *ini_namespace)
@@ -5173,6 +5213,8 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return res;
 
 	case ResourceCopyTargetType::CUSTOM_RESOURCE:
+		custom_resource->expire(mOrigDevice1);
+
 		if (dst)
 			bind_flags = dst->BindFlags(state);
 		custom_resource->Substantiate(mOrigDevice1, mHackerDevice->mStereoHandle, bind_flags);
