@@ -569,7 +569,7 @@ public:
 	void OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc);
 	void OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc);
 	void OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride);
-	void expire(ID3D11Device *mOrigDevice);
+	void expire(ID3D11Device *mOrigDevice, ID3D11DeviceContext *mOrigContext);
 
 private:
 	void LoadFromFile(ID3D11Device *mOrigDevice);

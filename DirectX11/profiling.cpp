@@ -36,6 +36,7 @@ namespace Profiling {
 
 	unsigned resource_full_copies;
 	unsigned resource_reference_copies;
+	unsigned inter_device_copies;
 	unsigned stereo2mono_copies;
 	unsigned msaa_resolutions;
 	unsigned buffer_region_copies;
@@ -270,6 +271,7 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 			    L"   IniParams GPU resource updates: %4u/frame (%Iu bytes)\n"
 			    L"             Full resource copies: %4u/frame (High cost)\n"
 			    L"     By-Reference resource copies: %4u/frame (Low cost)\n"
+			    L"     Inter-device resource copies: %4u/frame (Extremely high cost)\n"
 			    L"      stereo2mono resource copies: %4u/frame (Extremely high cost on SLI)\n"
 			    L"          MSAA resources resolved: %4u/frame (High cost)\n"
 			    L"             Region buffer copies: %4u/frame\n"
@@ -284,6 +286,7 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 			    Profiling::iniparams_updates / frames, G->iniParams.size() * sizeof(DirectX::XMFLOAT4),
 			    Profiling::resource_full_copies / frames,
 			    Profiling::resource_reference_copies / frames,
+			    Profiling::inter_device_copies / frames,
 			    Profiling::stereo2mono_copies / frames,
 			    Profiling::msaa_resolutions / frames,
 			    Profiling::buffer_region_copies / frames,
@@ -462,6 +465,7 @@ void Profiling::clear()
 
 	resource_full_copies = 0;
 	resource_reference_copies = 0;
+	inter_device_copies = 0;
 	stereo2mono_copies = 0;
 	msaa_resolutions = 0;
 	buffer_region_copies = 0;

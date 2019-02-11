@@ -4469,9 +4469,308 @@ void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
 		*stride = override_stride;
 }
 
-void CustomResource::expire(ID3D11Device *mOrigDevice1)
+// Returns 1 for definite dsv formats
+// Returns 2 for typeless variants of dsv formats (have a stencil buffer)
+// Returns -1 for possible typecast depth formats, but with no stencil buffer they may not be
+static int is_dsv_format(DXGI_FORMAT fmt)
+{
+	switch(fmt)
+	{
+		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+		case DXGI_FORMAT_D32_FLOAT:
+		case DXGI_FORMAT_D24_UNORM_S8_UINT:
+		case DXGI_FORMAT_D16_UNORM:
+			return 1;
+		case DXGI_FORMAT_R32G8X24_TYPELESS:
+		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+		case DXGI_FORMAT_R24G8_TYPELESS:
+		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+			return 2;
+		case DXGI_FORMAT_R32_TYPELESS:
+		case DXGI_FORMAT_R32_FLOAT:
+		case DXGI_FORMAT_R16_TYPELESS:
+		case DXGI_FORMAT_R16_UNORM:
+			return -1;
+		default:
+			return 0;
+	}
+}
+
+
+// Transfer a resource from one device to another. First came across this
+// possibility in DOAXVV where showing the news creates a new temporary device
+// & context, and due to another bug [Constants] would be re-run, which allowed
+// certain mods to copy one resource to another crashing the game. For that
+// game we want to disallow re-running [Constants], but the possibility of
+// running into more of these issues remains, particularly given that many
+// games tend to create & destroy devices on startup where we would actually
+// prefer the final device to own resources (in contrast to DOAXVV where we
+// want the first device to remain the owner). This attempts to transfer
+// resources between devices on demand so that whichever device is currently in
+// use will own the resources, however this is very slow and if it ever crops
+// up in a fast path we'd need to look for ways to avoid this.
+//
+// This does not handle all edge cases (depth buffers, dynamic destinations and
+// MSAA are not supported by UpdateSubresource), and knowing DirectX there will
+// probably be more undocumented surprise combinations that don't work either.
+//
+// TODO: Refactor this - the four cases are very similar with some differences
+//
+static ID3D11Resource * inter_device_resource_transfer(ID3D11Device *dst_dev, ID3D11DeviceContext *dst_ctx, ID3D11Resource *src_res, wstring *name)
+{
+	ID3D11Device *src_dev = NULL;
+	ID3D11DeviceContext *src_ctx = NULL;
+	ID3D11Resource *stg_res = NULL;
+	ID3D11Resource *dtg_res = NULL;
+	ID3D11Resource *dst_res = NULL;
+	D3D11_RESOURCE_DIMENSION dimension;
+	D3D11_MAPPED_SUBRESOURCE src_map;
+	UINT item, level, index;
+	const char *reason = "";
+
+	Profiling::inter_device_copies++;
+
+	src_res->GetDevice(&src_dev);
+	reason = "Source device unavailable\n";
+	if (!src_dev)
+		goto err;
+
+	src_dev->GetImmediateContext(&src_ctx);
+	reason = "Source context unavailable\n";
+	if (!src_ctx)
+		goto err;
+
+	src_res->GetType(&dimension);
+	switch (dimension) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+		{
+			ID3D11Buffer *buf = (ID3D11Buffer*)src_res;
+			D3D11_BUFFER_DESC buf_desc;
+			buf->GetDesc(&buf_desc);
+
+			reason = "Dynamic Buffers unsupported\n";
+			if (buf_desc.Usage == D3D11_USAGE_DYNAMIC)
+				goto err;
+			if (buf_desc.Usage == D3D11_USAGE_IMMUTABLE)
+				buf_desc.Usage = D3D11_USAGE_DEFAULT;
+
+			dst_dev->CreateBuffer(&buf_desc, NULL, (ID3D11Buffer**)&dst_res);
+			if (!dst_res) {
+				reason = "Error creating final destination Buffer\n";
+				LogResourceDesc(&buf_desc);
+				goto err;
+			}
+
+			buf_desc.Usage = D3D11_USAGE_STAGING;
+			buf_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			buf_desc.BindFlags = 0;
+			src_dev->CreateBuffer(&buf_desc, NULL, (ID3D11Buffer**)&stg_res);
+			if (!stg_res) {
+				reason = "Error creating source staging Buffer\n";
+				LogResourceDesc(&buf_desc);
+				goto err;
+			}
+			src_ctx->CopyResource(stg_res, src_res);
+
+			// Buffers only have a single subresource:
+			index = 0;
+			reason = "Error mapping source staging Buffer\n";
+			if (FAILED(src_ctx->Map(stg_res, index, D3D11_MAP_READ, 0, &src_map)))
+				goto err;
+			dst_ctx->UpdateSubresource(dst_res, index, NULL, src_map.pData, src_map.RowPitch, src_map.DepthPitch);
+			src_ctx->Unmap(stg_res, index);
+			break;
+		}
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+		{
+			ID3D11Texture1D *tex1d = (ID3D11Texture1D*)src_res;
+			D3D11_TEXTURE1D_DESC tex1d_desc;
+			tex1d->GetDesc(&tex1d_desc);
+
+			reason = "Dynamic Texture1Ds unsupported\n";
+			if (tex1d_desc.Usage == D3D11_USAGE_DYNAMIC)
+				goto err;
+			if (tex1d_desc.Usage == D3D11_USAGE_IMMUTABLE)
+				tex1d_desc.Usage = D3D11_USAGE_DEFAULT;
+
+			// It's not clear to me from the UpdateSubresource documentation if the
+			// reason depth/stencil buffers aren't supported is down to the bind flags,
+			// or the format... For now, erring on the side of throwing an error either
+			// way, but trying to continue if it is just the format
+			if ((tex1d_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL)) {
+				reason = "depth/stencil buffers unsupported";
+				goto err;
+			}
+			if (is_dsv_format(tex1d_desc.Format) > 0) {
+				LogOverlay(LOG_NOTICE, "Inter-device transfer of [%S] with depth/stencil format %s may or may not work. Please report success/failure.\n",
+						name->c_str(), TexFormatStr(tex1d_desc.Format));
+			}
+
+			dst_dev->CreateTexture1D(&tex1d_desc, NULL, (ID3D11Texture1D**)&dst_res);
+			if (!dst_res) {
+				reason = "Error creating final destination Texture1D\n";
+				LogResourceDesc(&tex1d_desc);
+				goto err;
+			}
+
+			tex1d_desc.Usage = D3D11_USAGE_STAGING;
+			tex1d_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			tex1d_desc.BindFlags = 0;
+			tex1d_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_GENERATE_MIPS;
+			src_dev->CreateTexture1D(&tex1d_desc, NULL, (ID3D11Texture1D**)&stg_res);
+			if (!stg_res) {
+				reason = "Error creating staging Texture1D\n";
+				LogResourceDesc(&tex1d_desc);
+				goto err;
+			}
+			src_ctx->CopyResource(stg_res, src_res);
+
+			for (item = 0; item < tex1d_desc.ArraySize; item++) {
+				for (level = 0; level < tex1d_desc.MipLevels; level++) {
+					index = D3D11CalcSubresource(level, item, max(tex1d_desc.MipLevels, 1));
+					reason = "Error mapping source staging Texture1D\n";
+					if (FAILED(src_ctx->Map(stg_res, index, D3D11_MAP_READ, 0, &src_map)))
+						goto err;
+					dst_ctx->UpdateSubresource(dst_res, index, NULL, src_map.pData, src_map.RowPitch, src_map.DepthPitch);
+					src_ctx->Unmap(stg_res, index);
+				}
+			}
+			break;
+		}
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+		{
+			ID3D11Texture2D *tex2d = (ID3D11Texture2D*)src_res;
+			D3D11_TEXTURE2D_DESC tex2d_desc;
+			tex2d->GetDesc(&tex2d_desc);
+
+			reason = "Dynamic Texture2Ds unsupported\n";
+			if (tex2d_desc.Usage == D3D11_USAGE_DYNAMIC)
+				goto err;
+			if (tex2d_desc.Usage == D3D11_USAGE_IMMUTABLE)
+				tex2d_desc.Usage = D3D11_USAGE_DEFAULT;
+
+			if (tex2d_desc.SampleDesc.Count > 1) {
+				// Not sure how to handle this one - I'd be surprised if it works for map/unmap
+				// and while we can resolve MSAA (for supported formats) on the source device,
+				// what do we do to restore the lost samples on the destination?
+				reason = "MSAA resources unsupported";
+				goto err;
+			}
+
+			// It's not clear to me from the UpdateSubresource documentation if the
+			// reason depth/stencil buffers aren't supported is down to the bind flags,
+			// or the format... For now, erring on the side of throwing an error either
+			// way, but trying to continue if it is just the format
+			if ((tex2d_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL)) {
+				reason = "depth/stencil buffers unsupported";
+				goto err;
+			}
+			if (is_dsv_format(tex2d_desc.Format) > 0) {
+				LogOverlay(LOG_NOTICE, "Inter-device transfer of [%S] with depth/stencil format %s may or may not work. Please report success/failure.\n",
+						name->c_str(), TexFormatStr(tex2d_desc.Format));
+			}
+
+			dst_dev->CreateTexture2D(&tex2d_desc, NULL, (ID3D11Texture2D**)&dst_res);
+			if (!dst_res) {
+				reason = "Error creating final destination Texture2D\n";
+				LogResourceDesc(&tex2d_desc);
+				goto err;
+			}
+
+			tex2d_desc.Usage = D3D11_USAGE_STAGING;
+			tex2d_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			tex2d_desc.BindFlags = 0;
+			tex2d_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_GENERATE_MIPS;
+			src_dev->CreateTexture2D(&tex2d_desc, NULL, (ID3D11Texture2D**)&stg_res);
+			if (!stg_res) {
+				reason = "Error creating staging Texture2D\n";
+				LogResourceDesc(&tex2d_desc);
+				goto err;
+			}
+			src_ctx->CopyResource(stg_res, src_res);
+
+			for (item = 0; item < tex2d_desc.ArraySize; item++) {
+				for (level = 0; level < tex2d_desc.MipLevels; level++) {
+					index = D3D11CalcSubresource(level, item, max(tex2d_desc.MipLevels, 1));
+					reason = "Error mapping source staging Texture2D\n";
+					if (FAILED(src_ctx->Map(stg_res, index, D3D11_MAP_READ, 0, &src_map)))
+						goto err;
+					dst_ctx->UpdateSubresource(dst_res, index, NULL, src_map.pData, src_map.RowPitch, src_map.DepthPitch);
+					src_ctx->Unmap(stg_res, index);
+				}
+			}
+			break;
+		}
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+		{
+			ID3D11Texture3D *tex3d = (ID3D11Texture3D*)src_res;
+			D3D11_TEXTURE3D_DESC tex3d_desc;
+			tex3d->GetDesc(&tex3d_desc);
+
+			reason = "Dynamic Texture3Ds unsupported\n";
+			if (tex3d_desc.Usage == D3D11_USAGE_DYNAMIC)
+				goto err;
+			if (tex3d_desc.Usage == D3D11_USAGE_IMMUTABLE)
+				tex3d_desc.Usage = D3D11_USAGE_DEFAULT;
+
+			dst_dev->CreateTexture3D(&tex3d_desc, NULL, (ID3D11Texture3D**)&dst_res);
+			if (!dst_res) {
+				reason = "Error creating final destination Texture3D\n";
+				LogResourceDesc(&tex3d_desc);
+				goto err;
+			}
+
+			tex3d_desc.Usage = D3D11_USAGE_STAGING;
+			tex3d_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			tex3d_desc.BindFlags = 0;
+			tex3d_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_GENERATE_MIPS;
+			src_dev->CreateTexture3D(&tex3d_desc, NULL, (ID3D11Texture3D**)&stg_res);
+			if (!stg_res) {
+				reason = "Error creating staging Texture3D\n";
+				LogResourceDesc(&tex3d_desc);
+				goto err;
+			}
+			src_ctx->CopyResource(stg_res, src_res);
+
+			for (level = 0; level < tex3d_desc.MipLevels; level++) {
+				// 3D Textures cannot be arrays, so only mip-map level counts for subresource index:
+				index = level;
+				reason = "Error mapping source staging Texture3D\n";
+				if (FAILED(src_ctx->Map(stg_res, index, D3D11_MAP_READ, 0, &src_map)))
+					goto err;
+				dst_ctx->UpdateSubresource(dst_res, index, NULL, src_map.pData, src_map.RowPitch, src_map.DepthPitch);
+				src_ctx->Unmap(stg_res, index);
+			}
+			break;
+		}
+		default:
+			reason = "Unknown dimension\n";
+			goto err;
+	}
+
+out:
+	if (stg_res)
+		stg_res->Release();
+	if (src_ctx)
+		src_ctx->Release();
+	if (src_dev)
+		src_dev->Release();
+	return dst_res;
+
+err:
+	LogOverlay(LOG_DIRE, "Inter-device transfer of [%S] failed: %s\n", name->c_str(), reason);
+	if (dst_res)
+		dst_res->Release();
+	dst_res = NULL;
+	goto out;
+}
+
+void CustomResource::expire(ID3D11Device *mOrigDevice1, ID3D11DeviceContext *mOrigContext1)
 {
 	ID3D11Device *old_device;
+	ID3D11Resource *new_resource = NULL;
 
 	if (!resource)
 		return;
@@ -4489,25 +4788,39 @@ void CustomResource::expire(ID3D11Device *mOrigDevice1)
 	if (old_device == mOrigDevice1)
 		return;
 
-	LogInfo("Device mismatch, discarding [%S]\n", name.c_str());
-
-	// TODO: Perform inter-device resource copy instead of
-	// re-substantiation to ensure that the resource remains current. Only
-	// 2D non-mip-mapped resources created with the appropriate misc flag
-	// can be shared between devices directly, so to support this for any
-	// resource we need to stage to the CPU and back, which is a massive
-	// performance killer, so maybe make this optional.
+	// Attempt to transfer resource to new device by staging to the CPU and
+	// back. Rather slow, but ensures the contents are up to date.
+	// TODO: Search other custom resources for references to this resource
+	//       and update those. Not urgent as yet, but will be important if
+	//       we allow the === and !== operators to check if one custom
+	//       resource matches another.
+	// TODO: Track if resource is dirty (used as render/depth target/UAV,
+	//       ever assigned or copied to) and re-substantiate if clean.
+	// TODO: Use sharable resources to skip copy back to CPU (limited to 2D
+	//       non-mip-mapped resources)
+	// TODO: Option to skip inter-device copies instead of transfer
+	// TODO: Option to discard individual resources instead of transfer
+	// TODO: Option to discard all custom resources and re-run [Constants]
+	//       on new device (for convoluted startup sequences)
+	LogInfo("Device mismatch, transferring [%S] to new device\n", name.c_str());
+	new_resource = inter_device_resource_transfer(mOrigDevice1, mOrigContext1, resource, &name);
 
 	// Expire cache:
 	resource->Release();
-	resource = NULL;
 	if (view)
 		view->Release();
 	view = NULL;
-	is_null = true;
 
-	// Flag for re-substantiation (if possible for this resource):
-	substantiated = false;
+	if (new_resource) {
+		// Inter-device copy succeeded, switch to the new resource:
+		resource = new_resource;
+	} else {
+		// Inter-device copy failed / skipped. Flag resource for
+		// re-substantiation (if possible for this resource):
+		substantiated = false;
+		resource = NULL;
+		is_null = true;
+	}
 }
 
 bool ResourceCopyTarget::ParseTarget(const wchar_t *target,
@@ -5213,7 +5526,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return res;
 
 	case ResourceCopyTargetType::CUSTOM_RESOURCE:
-		custom_resource->expire(mOrigDevice1);
+		custom_resource->expire(mOrigDevice1, mOrigContext1);
 
 		if (dst)
 			bind_flags = dst->BindFlags(state);

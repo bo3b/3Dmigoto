@@ -87,6 +87,7 @@ namespace Profiling {
 
 	extern unsigned resource_full_copies;
 	extern unsigned resource_reference_copies;
+	extern unsigned inter_device_copies;
 	extern unsigned stereo2mono_copies;
 	extern unsigned msaa_resolutions;
 	extern unsigned buffer_region_copies;
