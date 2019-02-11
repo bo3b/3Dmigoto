@@ -3947,6 +3947,7 @@ static ResourceType* GetResourceFromPool(
 	size_t size;
 	HRESULT hr;
 	ResourcePoolCache::iterator pool_i;
+	ID3D11Device *old_device = NULL;
 
 	// We don't want to use the CalTexture2D/3DDescHash functions because
 	// the resolution override could produce the same hash for distinct
@@ -3957,38 +3958,49 @@ static ResourceType* GetResourceFromPool(
 	pool_i = Profiling::lookup_map(resource_pool->cache, hash, &Profiling::resource_pool_lookup_overhead);
 	if (pool_i != resource_pool->cache.end()) {
 		resource = (ResourceType*)pool_i->second;
-		if (resource == dst_resource)
+		if (!resource)
 			return NULL;
-		if (resource) {
+
+		resource->GetDevice(&old_device);
+		if (old_device)
+			old_device->Release();
+		if (old_device == state->mOrigDevice1) {
+			if (resource == dst_resource)
+				return NULL;
+
 			LogDebug("Switching cached resource %S\n", ini_line->c_str());
 			Profiling::resource_pool_swaps++;
 			resource->AddRef();
+			return resource;
 		}
-	} else {
-		LogInfo("Creating cached resource %S\n", ini_line->c_str());
-		Profiling::resources_created++;
 
-		hr = (state->mOrigDevice1->*CreateResource)(desc, NULL, &resource);
-		if (FAILED(hr)) {
-			LogInfo("Resource copy failed %S: 0x%x\n", ini_line->c_str(), hr);
-			LogResourceDesc(desc);
-			src_resource->GetDesc(&old_desc);
-			LogInfo("Original resource was:\n");
-			LogResourceDesc(&old_desc);
-
-			// Prevent further attempts:
-			resource_pool->emplace(hash, NULL);
-
-			return NULL;
-		}
-		resource_pool->emplace(hash, resource);
-		size = resource_pool->cache.size();
-		if (size > 1)
-			LogInfo("  NOTICE: cache now contains %Ii resources\n", size);
-
-		LogDebugResourceDesc(desc);
+		LogInfo("Device mismatch, discarding %S from resource pool\n", ini_line->c_str());
+		resource_pool->cache.erase(pool_i);
+		resource->Release();
 	}
 
+	LogInfo("Creating cached resource %S\n", ini_line->c_str());
+	Profiling::resources_created++;
+
+	hr = (state->mOrigDevice1->*CreateResource)(desc, NULL, &resource);
+	if (FAILED(hr)) {
+		LogInfo("Resource copy failed %S: 0x%x\n", ini_line->c_str(), hr);
+		LogResourceDesc(desc);
+		src_resource->GetDesc(&old_desc);
+		LogInfo("Original resource was:\n");
+		LogResourceDesc(&old_desc);
+
+		// Prevent further attempts:
+		resource_pool->emplace(hash, NULL);
+
+		return NULL;
+	}
+	resource_pool->emplace(hash, resource);
+	size = resource_pool->cache.size();
+	if (size > 1)
+		LogInfo("  NOTICE: cache now contains %Ii resources\n", size);
+
+	LogDebugResourceDesc(desc);
 	return resource;
 }
 
