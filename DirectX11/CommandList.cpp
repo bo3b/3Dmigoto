@@ -3964,7 +3964,10 @@ static ResourceType* GetResourceFromPool(
 		resource->GetDevice(&old_device);
 		if (old_device)
 			old_device->Release();
-		if (old_device == state->mOrigDevice1) {
+
+		// Since we don't currently wrap ID3D11DeviceChild::GetDevice, we need
+		// to compare against the real DirectX object, not a passthrough object:
+		if (old_device == state->mHackerDevice->GetPossiblyHookedOrigDevice1()) {
 			if (resource == dst_resource)
 				return NULL;
 
@@ -4767,7 +4770,7 @@ err:
 	goto out;
 }
 
-void CustomResource::expire(ID3D11Device *mOrigDevice1, ID3D11DeviceContext *mOrigContext1)
+void CustomResource::expire(HackerDevice *mHackerDevice, ID3D11DeviceContext *mOrigContext1)
 {
 	ID3D11Device *old_device;
 	ID3D11Resource *new_resource = NULL;
@@ -4785,7 +4788,9 @@ void CustomResource::expire(ID3D11Device *mOrigDevice1, ID3D11DeviceContext *mOr
 
 	old_device->Release();
 
-	if (old_device == mOrigDevice1)
+	// Since we don't currently wrap ID3D11DeviceChild::GetDevice, we need
+	// to compare against the real DirectX object, not a passthrough object:
+	if (old_device == mHackerDevice->GetPossiblyHookedOrigDevice1())
 		return;
 
 	// Attempt to transfer resource to new device by staging to the CPU and
@@ -4803,7 +4808,9 @@ void CustomResource::expire(ID3D11Device *mOrigDevice1, ID3D11DeviceContext *mOr
 	// TODO: Option to discard all custom resources and re-run [Constants]
 	//       on new device (for convoluted startup sequences)
 	LogInfo("Device mismatch, transferring [%S] to new device\n", name.c_str());
-	new_resource = inter_device_resource_transfer(mOrigDevice1, mOrigContext1, resource, &name);
+	new_resource = inter_device_resource_transfer(
+			mHackerDevice->GetPassThroughOrigDevice1(),
+			mOrigContext1, resource, &name);
 
 	// Expire cache:
 	resource->Release();
@@ -5526,7 +5533,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return res;
 
 	case ResourceCopyTargetType::CUSTOM_RESOURCE:
-		custom_resource->expire(mOrigDevice1, mOrigContext1);
+		custom_resource->expire(mHackerDevice, mOrigContext1);
 
 		if (dst)
 			bind_flags = dst->BindFlags(state);
