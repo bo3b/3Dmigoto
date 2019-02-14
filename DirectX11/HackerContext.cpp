@@ -2608,6 +2608,25 @@ void HackerContext::InitIniParams()
 	// command list includes the user config file's [Constants] itself:
 	G->user_config_dirty = false;
 	RunCommandList(mHackerDevice, this, &G->post_constants_command_list, NULL, true);
+
+	// Only want to run [Constants] on initial load and config reload. In
+	// some games we see additional DirectX devices & contexts being
+	// created (e.g. this happens in DOAXVV when displaying any news) and
+	// we don't want to re-run Constants at that time since it may reset
+	// variables and resources back to default.
+	//
+	// This may also happen in some game's init paths if they create some
+	// throwaway devices (e.g. to probe the system's capabilities) or
+	// potentially due to some overlays or other 3rd party tools. In most
+	// of those cases running [Constants] once at launch still should be
+	// the preferred option so that variables don't get reset unexpectedly,
+	// though it is conceivable that in some cases we might want to reinit
+	// custom resources, shaders, discard caches and re-run [Constants] at
+	// that time. That could simplify cases where we create a custom
+	// resource on one device and later need it on another (which we now do
+	// through on-demand inter-device transfers - which has some
+	// limitations), but I might wait until we have a proven need for that.
+	G->constants_run = true;
 }
 
 // This function makes sure that the StereoParams and IniParams resources

@@ -498,6 +498,7 @@ struct Globals
 	CommandList post_clear_uav_uint_command_list;
 	CommandList constants_command_list;
 	CommandList post_constants_command_list;
+	bool constants_run;
 	unsigned frame_no;
 	HWND hWnd; // To translate mouse coordinates to the window
 	bool hide_cursor;
@@ -641,6 +642,7 @@ struct Globals
 		IniParamsReg(120),
 		iniParamsReserved(0),
 
+		constants_run(false),
 		frame_no(0),
 		hWnd(NULL),
 		hide_cursor(false),
