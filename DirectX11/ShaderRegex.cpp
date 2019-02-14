@@ -293,7 +293,7 @@ bool ShaderRegexPattern::patch(std::string *asm_text, ShaderRegexTemps *temp_reg
 		LogInfo("  NOTICE: You didn't inject a matrix inverse or two in assembly did you?\n");
 		LogInfo("  NOTICE: Once more, with passion!\n");
 
-		delete buf;
+		delete [] buf;
 		buf = new PCRE2_UCHAR[output_size];
 
 		rc = pcre2_substitute(regex,
@@ -316,7 +316,7 @@ bool ShaderRegexPattern::patch(std::string *asm_text, ShaderRegexTemps *temp_reg
 
 out_free:
 	pcre2_match_data_free(match_data);
-	delete buf;
+	delete [] buf;
 
 	return patch;
 }

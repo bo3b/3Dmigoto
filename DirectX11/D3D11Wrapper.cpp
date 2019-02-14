@@ -81,7 +81,7 @@ static bool InitializeDLL()
 	if (G->gForceNoNvAPI)
 	{
 		NvAPIOverride();
-		status = NvAPI_Stereo_Enable();
+		status = Profiling::NvAPI_Stereo_Enable();
 		if (status != NVAPI_OK)
 		{
 			NvAPI_GetErrorMessage(status, errorMessage);
@@ -120,6 +120,7 @@ void DestroyDLL()
 	if (LogFile)
 	{
 		LogInfo("Destroying DLL...\n");
+		SavePersistentSettings();
 		fclose(LogFile);
 	}
 }
@@ -749,7 +750,8 @@ static void wrap_d3d11_device_and_context(ID3D11Device **ppDevice, ID3D11DeviceC
 		deviceWrap->Create3DMigotoResources();
 	if (contextWrap != nullptr) {
 		contextWrap->Bind3DMigotoResources();
-		contextWrap->InitIniParams();
+		if (!G->constants_run)
+			contextWrap->InitIniParams();
 	}
 
 	LogInfo("-> device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n",

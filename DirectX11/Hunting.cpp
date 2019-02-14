@@ -18,6 +18,7 @@
 #include "D3D_Shaders\stdafx.h"
 #include "CommandList.h"
 #include "profiling.h"
+#include "FrameAnalysis.h"
 
 // bo3b: For this routine, we have a lot of warnings in x64, from converting a size_t result into the needed
 //  DWORD type for the Write calls.  These are writing 256 byte strings, so there is never a chance that it 
@@ -326,9 +327,9 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 	NvU8 stereo = false;
 
 	NvAPIOverride();
-	NvAPI_Stereo_IsEnabled(&stereo);
+	Profiling::NvAPI_Stereo_IsEnabled(&stereo);
 	if (stereo)
-		NvAPI_Stereo_IsActivated(pDevice->mStereoHandle, &stereo);
+		Profiling::NvAPI_Stereo_IsActivated(pDevice->mStereoHandle, &stereo);
 
 	if (!stereo) {
 		LogInfo("marking_actions=stereo_snapshot: Stereo disabled, falling back to mono snapshot\n");
@@ -357,7 +358,7 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 		goto out_release_bb;
 	}
 
-	nvret = NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, true);
+	nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, true);
 	if (nvret != NVAPI_OK) {
 		LogInfo("StereoScreenShot failed to enable reverse stereo blit\n");
 		goto out_release_stereo_bb;
@@ -387,7 +388,7 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 
 	LogInfoW(L"  StereoScreenShot on Mark: %s, result: %d\n", fullName, hr);
 
-	NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, false);
+	Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, false);
 out_release_stereo_bb:
 	stereoBackBuffer->Release();
 out_release_bb:
@@ -714,7 +715,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			G->mReloadedShaders[oldShader].found = true;
 
 			// Check if the user has overridden the shader model:
-			ShaderOverrideMap::iterator override = G->mShaderOverrideMap.find(hash);
+			ShaderOverrideMap::iterator override = lookup_shaderoverride(hash);
 			if (override != G->mShaderOverrideMap.end()) {
 				if (override->second.model[0])
 					shaderModel = override->second.model;
@@ -1174,9 +1175,16 @@ static void _AnalyseFrameStop()
 
 static void AnalyseFrame(HackerDevice *device, void *private_data)
 {
+	FrameAnalysisContext *factx = NULL;
 	wchar_t path[MAX_PATH], subdir[MAX_PATH];
 	time_t ltime;
 	struct tm tm;
+
+	if (FAILED(device->GetHackerContext()->QueryInterface(IID_FrameAnalysisContext, (void**)&factx))) {
+		LogOverlay(LOG_DIRE, "Frame Analysis Context is missing: Restart the game with hunting enabled\n");
+		return;
+	}
+	factx->Release();
 
 	if (G->analyse_frame) {
 		// Frame analysis key has been pressed again while FA was
@@ -1237,6 +1245,10 @@ static void AnalyseFrameStop(HackerDevice *device, void *private_data)
 static void AnalysePerf(HackerDevice *device, void *private_data)
 {
 	Profiling::mode = (Profiling::Mode)((int)Profiling::mode + 1);
+
+	if (Profiling::mode == Profiling::Mode::CTO_WARNING && (!G->implicit_post_checktextureoverride_used || Profiling::cto_warning.empty()))
+		Profiling::mode = (Profiling::Mode)((int)Profiling::mode + 1);
+
 	if (Profiling::mode == Profiling::Mode::INVALID)
 		Profiling::mode = Profiling::Mode::NONE;
 
@@ -1284,7 +1296,7 @@ static void NextMarkingMode(HackerDevice *device, void *private_data)
 	if (G->marking_mode == MarkingMode::ZERO)
 		G->marking_mode = (MarkingMode)((int)G->marking_mode + 1);
 
-	if (G->marking_mode == MarkingMode::INVALID)
+	if (G->marking_mode >= MarkingMode::INVALID)
 		G->marking_mode = MarkingMode::SKIP;
 }
 
@@ -1834,6 +1846,7 @@ void ParseHuntingSection()
 	// discovered while playing normally where it may not be easy/fast to
 	// find the effect again later.
 	G->config_reloadable = RegisterIniKeyBinding(L"Hunting", L"reload_config", FlagConfigReload, NULL, noRepeat, NULL);
+	G->config_reloadable = RegisterIniKeyBinding(L"Hunting", L"wipe_user_config", FlagConfigReload, NULL, noRepeat, (void*)true);
 
 	// We're interested in performance measurements even in release mode
 	// (possibly even especially in release mode), particularly if we want
@@ -1862,7 +1875,7 @@ void ParseHuntingSection()
 	// marking_mode was actually changed since the last config reload:
 	new_marking_mode = GetIniEnumClass(L"Hunting", L"marking_mode", MarkingMode::INVALID, NULL, MarkingModeNames);
 	if (new_marking_mode != prev_marking_mode)
-		G->marking_mode = new_marking_mode;
+		G->marking_mode = prev_marking_mode = new_marking_mode;
 	RegisterIniKeyBinding(L"Hunting", L"next_marking_mode", NextMarkingMode, NULL, noRepeat, NULL);
 
 	if (GetIniStringAndLog(L"Hunting", L"marking_actions", 0, buf, MAX_PATH)) {

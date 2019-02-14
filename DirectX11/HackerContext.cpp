@@ -472,12 +472,12 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 		// Deprecated since the logic can be moved into the shaders with far more flexibility
 		if (use_orig) {
 			if (isPixelShader) {
-				ShaderReplacementMap::iterator i = G->mOriginalShaders.find(mCurrentPixelShaderHandle);
+				ShaderReplacementMap::iterator i = lookup_original_shader(mCurrentPixelShaderHandle);
 				if (i != G->mOriginalShaders.end())
 					data->oldPixelShader = SwitchPSShader((ID3D11PixelShader*)i->second);
 			}
 			else {
-				ShaderReplacementMap::iterator i = G->mOriginalShaders.find(mCurrentVertexShaderHandle);
+				ShaderReplacementMap::iterator i = lookup_original_shader(mCurrentVertexShaderHandle);
 				if (i != G->mOriginalShaders.end())
 					data->oldVertexShader = SwitchVSShader((ID3D11VertexShader*)i->second);
 			}
@@ -517,7 +517,7 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	wstring tagline(L"//");
 
 	// Faster than catching an out_of_range exception from .at():
-	orig_info_i = G->mReloadedShaders.find(shader);
+	orig_info_i = lookup_reloaded_shader(shader);
 	if (orig_info_i == G->mReloadedShaders.end())
 		return;
 	orig_info = &orig_info_i->second;
@@ -593,8 +593,13 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 
 void HackerContext::DeferredShaderReplacementBeforeDraw()
 {
+	Profiling::State profiling_state;
+
 	if (shader_regex_groups.empty())
 		return;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	EnterCriticalSection(&G->mCriticalSection);
 
@@ -635,6 +640,9 @@ void HackerContext::DeferredShaderReplacementBeforeDraw()
 		}
 
 	LeaveCriticalSection(&G->mCriticalSection);
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::shaderregex_overhead);
 }
 
 void HackerContext::DeferredShaderReplacementBeforeDispatch()
@@ -739,11 +747,11 @@ void HackerContext::BeforeDraw(DrawContext &data)
 				{
 					LogDebug("  setting separation=0 for hunting\n");
 
-					if (NVAPI_OK != NvAPI_Stereo_GetSeparation(mHackerDevice->mStereoHandle, &data.oldSeparation))
+					if (NVAPI_OK != Profiling::NvAPI_Stereo_GetSeparation(mHackerDevice->mStereoHandle, &data.oldSeparation))
 						LogDebug("    Stereo_GetSeparation failed.\n");
 
 					NvAPIOverride();
-					if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, 0))
+					if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, 0))
 						LogDebug("    Stereo_SetSeparation failed.\n");
 				}
 				else if (G->marking_mode == MarkingMode::SKIP)
@@ -776,14 +784,14 @@ void HackerContext::BeforeDraw(DrawContext &data)
 	if (!G->mShaderOverrideMap.empty()) {
 		ShaderOverrideMap::iterator i;
 
-		i = G->mShaderOverrideMap.find(mCurrentVertexShader);
+		i = lookup_shaderoverride(mCurrentVertexShader);
 		if (i != G->mShaderOverrideMap.end()) {
 			data.post_commands[0] = &i->second.post_command_list;
 			ProcessShaderOverride(&i->second, false, &data);
 		}
 
 		if (mCurrentHullShader) {
-			i = G->mShaderOverrideMap.find(mCurrentHullShader);
+			i = lookup_shaderoverride(mCurrentHullShader);
 			if (i != G->mShaderOverrideMap.end()) {
 				data.post_commands[1] = &i->second.post_command_list;
 				ProcessShaderOverride(&i->second, false, &data);
@@ -791,7 +799,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 		}
 
 		if (mCurrentDomainShader) {
-			i = G->mShaderOverrideMap.find(mCurrentDomainShader);
+			i = lookup_shaderoverride(mCurrentDomainShader);
 			if (i != G->mShaderOverrideMap.end()) {
 				data.post_commands[2] = &i->second.post_command_list;
 				ProcessShaderOverride(&i->second, false, &data);
@@ -799,14 +807,14 @@ void HackerContext::BeforeDraw(DrawContext &data)
 		}
 
 		if (mCurrentGeometryShader) {
-			i = G->mShaderOverrideMap.find(mCurrentGeometryShader);
+			i = lookup_shaderoverride(mCurrentGeometryShader);
 			if (i != G->mShaderOverrideMap.end()) {
 				data.post_commands[3] = &i->second.post_command_list;
 				ProcessShaderOverride(&i->second, false, &data);
 			}
 		}
 
-		i = G->mShaderOverrideMap.find(mCurrentPixelShader);
+		i = lookup_shaderoverride(mCurrentPixelShader);
 		if (i != G->mShaderOverrideMap.end()) {
 			data.post_commands[4] = &i->second.post_command_list;
 			ProcessShaderOverride(&i->second, true, &data);
@@ -826,6 +834,9 @@ void HackerContext::AfterDraw(DrawContext &data)
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
 		Profiling::start(&profiling_state);
 
+	if (data.call_info.skip)
+		Profiling::skipped_draw_calls++;
+
 	for (i = 0; i < 5; i++) {
 		if (data.post_commands[i]) {
 			RunCommandList(mHackerDevice, this, data.post_commands[i], &data.call_info, true);
@@ -834,7 +845,7 @@ void HackerContext::AfterDraw(DrawContext &data)
 
 	if (mHackerDevice->mStereoHandle && data.oldSeparation != FLT_MAX) {
 		NvAPIOverride();
-		if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, data.oldSeparation))
+		if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, data.oldSeparation))
 			LogDebug("    Stereo_SetSeparation failed.\n");
 	}
 
@@ -1065,7 +1076,7 @@ bool HackerContext::MapDenyCPURead(
 		hash = GetResourceHash(pResource);
 	LeaveCriticalSection(&G->mCriticalSection);
 
-	i = G->mTextureOverrideMap.find(hash);
+	i = lookup_textureoverride(hash);
 	if (i == G->mTextureOverrideMap.end())
 		return false;
 
@@ -1459,7 +1470,7 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 	if (!G->mShaderOverrideMap.empty()) {
 		ShaderOverrideMap::iterator i;
 
-		i = G->mShaderOverrideMap.find(mCurrentComputeShader);
+		i = lookup_shaderoverride(mCurrentComputeShader);
 		if (i != G->mShaderOverrideMap.end()) {
 			context->post_commands = &i->second.post_command_list;
 			// XXX: Not using ProcessShaderOverride() as a
@@ -1491,6 +1502,8 @@ STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 
 	if (BeforeDispatch(&context))
 		mOrigContext1->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+	else
+		Profiling::skipped_draw_calls++;
 
 	AfterDispatch(&context);
 }
@@ -1506,6 +1519,8 @@ STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
 
 	if (BeforeDispatch(&context))
 		mOrigContext1->DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
+	else
+		Profiling::skipped_draw_calls++;
 
 	AfterDispatch(&context);
 }
@@ -1570,7 +1585,7 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 			srcHash, pSrcBox->left, pSrcBox->right, pSrcBox->top, pSrcBox->bottom, srcDesc.Width, srcDesc.Height, 
 			dstHash, DstX, DstY, dstDesc.Width, dstDesc.Height);
 
-	i = G->mTextureOverrideMap.find(dstHash);
+	i = lookup_textureoverride(dstHash);
 	if (i == G->mTextureOverrideMap.end())
 		return false;
 
@@ -1692,7 +1707,7 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewUint(THIS_
 {
 	RunViewCommandList(mHackerDevice, this, &G->clear_uav_uint_command_list, pUnorderedAccessView, false);
 	mOrigContext1->ClearUnorderedAccessViewUint(pUnorderedAccessView, Values);
-	RunViewCommandList(mHackerDevice, this, &G->clear_uav_uint_command_list, pUnorderedAccessView, true);
+	RunViewCommandList(mHackerDevice, this, &G->post_clear_uav_uint_command_list, pUnorderedAccessView, true);
 }
 
 STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewFloat(THIS_
@@ -1703,7 +1718,7 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewFloat(THIS_
 {
 	RunViewCommandList(mHackerDevice, this, &G->clear_uav_float_command_list, pUnorderedAccessView, false);
 	mOrigContext1->ClearUnorderedAccessViewFloat(pUnorderedAccessView, Values);
-	RunViewCommandList(mHackerDevice, this, &G->clear_uav_float_command_list, pUnorderedAccessView, true);
+	RunViewCommandList(mHackerDevice, this, &G->post_clear_uav_float_command_list, pUnorderedAccessView, true);
 }
 
 STDMETHODIMP_(void) HackerContext::ClearDepthStencilView(THIS_
@@ -1718,7 +1733,7 @@ STDMETHODIMP_(void) HackerContext::ClearDepthStencilView(THIS_
 {
 	RunViewCommandList(mHackerDevice, this, &G->clear_dsv_command_list, pDepthStencilView, false);
 	mOrigContext1->ClearDepthStencilView(pDepthStencilView, ClearFlags, Depth, Stencil);
-	RunViewCommandList(mHackerDevice, this, &G->clear_dsv_command_list, pDepthStencilView, true);
+	RunViewCommandList(mHackerDevice, this, &G->post_clear_dsv_command_list, pDepthStencilView, true);
 }
 
 STDMETHODIMP_(void) HackerContext::GenerateMips(THIS_
@@ -1941,7 +1956,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 		//
 		// grumble grumble this optimisation caught me out *TWICE* grumble grumble -DSS
 		if (!G->mShaderOverrideMap.empty() || !shader_regex_groups.empty() || (G->hunting == HUNTING_MODE_ENABLED)) {
-			ShaderMap::iterator i = G->mShaders.find(pShader);
+			ShaderMap::iterator i = lookup_shader_hash(pShader);
 			if (i != G->mShaders.end()) {
 				*currentShaderHash = i->second;
 				LogDebug("  shader found: handle = %p, hash = %016I64x\n", *currentShaderHandle, *currentShaderHash);
@@ -1963,7 +1978,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 
 		// If the shader has been live reloaded from ShaderFixes, use the new one
 		// No longer conditional on G->hunting now that hunting may be soft enabled via key binding
-		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pShader);
+		ShaderReloadMap::iterator it = lookup_reloaded_shader(pShader);
 		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL) {
 			LogDebug("  shader replaced by: %p\n", it->second.replacement);
 
@@ -1982,7 +1997,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 		if (G->hunting == HUNTING_MODE_ENABLED) {
 			// Replacement map.
 			if (G->marking_mode == MarkingMode::ORIGINAL || !G->fix_enabled) {
-				ShaderReplacementMap::iterator j = G->mOriginalShaders.find(pShader);
+				ShaderReplacementMap::iterator j = lookup_original_shader(pShader);
 				if ((selectedShader == *currentShaderHash || !G->fix_enabled) && j != G->mOriginalShaders.end()) {
 					repl_shader = (ID3D11Shader*)j->second;
 				}
@@ -2542,6 +2557,9 @@ void HackerContext::Bind3DMigotoResources()
 
 void HackerContext::InitIniParams()
 {
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	HRESULT hr;
+
 	// Only the immediate context is allowed to perform [Constants]
 	// initialisation, as otherwise creating a deferred context could
 	// clobber any changes since then. The only exception I can think of is
@@ -2559,11 +2577,56 @@ void HackerContext::InitIniParams()
 
 	// The command list only changes ini params that are defined, but for
 	// consistency we want all other ini params to be initialised as well:
-	memset(G->iniParams, 0, sizeof(G->iniParams));
+	memset(G->iniParams.data(), 0, sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
 
-	// The command list will take care of the Map/Unmap to update the
-	// resource on the GPU:
+	// Update the IniParams resource on the GPU before executing the
+	// [Constants] command list. This ensures that it does get updated,
+	// even if the [Constants] command list doesn't initialise any IniParam
+	// (to non-zero), and we do this first in case [Constants] runs any
+	// custom shaders that may check IniParams. This is a bit wasteful
+	// since in most cases we will update the resource twice in a row, and
+	// the alternative is setting a flag to force update_params in the
+	// [Constants] command list, but this is a cold path so a little extra
+	// overhead won't matter and I don't want to forget about this if
+	// further command list optimisations cause [Constants] to bail out
+	// early and not consider update_params at all.
+	if (mHackerDevice->mIniTexture) {
+		hr = mOrigContext1->Map(mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		if (SUCCEEDED(hr)) {
+			memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
+			mOrigContext1->Unmap(mHackerDevice->mIniTexture, 0);
+			Profiling::iniparams_updates++;
+		} else {
+			LogInfo("InitIniParams: Map failed\n");
+		}
+	}
+
+	// The command list will take care of initialising any non-zero values:
 	RunCommandList(mHackerDevice, this, &G->constants_command_list, NULL, false);
+	// We don't consider persistent globals set in the [Constants] pre
+	// command list as making the user config file dirty, because this
+	// command list includes the user config file's [Constants] itself:
+	G->user_config_dirty = false;
+	RunCommandList(mHackerDevice, this, &G->post_constants_command_list, NULL, true);
+
+	// Only want to run [Constants] on initial load and config reload. In
+	// some games we see additional DirectX devices & contexts being
+	// created (e.g. this happens in DOAXVV when displaying any news) and
+	// we don't want to re-run Constants at that time since it may reset
+	// variables and resources back to default.
+	//
+	// This may also happen in some game's init paths if they create some
+	// throwaway devices (e.g. to probe the system's capabilities) or
+	// potentially due to some overlays or other 3rd party tools. In most
+	// of those cases running [Constants] once at launch still should be
+	// the preferred option so that variables don't get reset unexpectedly,
+	// though it is conceivable that in some cases we might want to reinit
+	// custom resources, shaders, discard caches and re-run [Constants] at
+	// that time. That could simplify cases where we create a custom
+	// resource on one device and later need it on another (which we now do
+	// through on-demand inter-device transfers - which has some
+	// limitations), but I might wait until we have a proven need for that.
+	G->constants_run = true;
 }
 
 // This function makes sure that the StereoParams and IniParams resources
@@ -2905,7 +2968,7 @@ STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
 {
 	RunViewCommandList(mHackerDevice, this, &G->clear_rtv_command_list, pRenderTargetView, false);
 	mOrigContext1->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
-	RunViewCommandList(mHackerDevice, this, &G->clear_rtv_command_list, pRenderTargetView, true);
+	RunViewCommandList(mHackerDevice, this, &G->post_clear_rtv_command_list, pRenderTargetView, true);
 }
 
 

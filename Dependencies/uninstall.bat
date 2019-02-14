@@ -91,6 +91,7 @@ del nvapi64.lib
 del courierbold.spritefont
 del XInput9_1_0.dll
 del d3dx.ini
+del d3dx_user.ini
 
 del DirectXTK.lib
 del DirectXTK.pdb

@@ -236,24 +236,33 @@ bool check_interface_supported(IUnknown *unknown, REFIID riid)
 	return !!_check_interface(unknown, riid);
 }
 
-static void check_interface(IUnknown *unknown, REFIID riid, char *iid_name)
+static void check_interface(IUnknown *unknown, REFIID riid, char *iid_name, IUnknown *canonical)
 {
 	IUnknown *test = _check_interface(unknown, riid);
+	IUnknown *canonical_test;
 
-	if (test)
-		LogInfo("  Supports %s: %p\n", iid_name, test);
-	else
+	if (test) {
+		// Check for violations of the COM identity rule, as that may
+		// interfere with our ability to locate our HackerObjects:
+		// https://docs.microsoft.com/en-gb/windows/desktop/com/rules-for-implementing-queryinterface
+		canonical_test = _check_interface(test, IID_IUnknown);
+		if (canonical_test == canonical)
+			LogInfo("  Supports %s: %p\n", iid_name, test);
+		else
+			LogInfo("  Supports %s: %p (COM identity violation: %p)\n", iid_name, test, canonical_test);
+	} else
 		LogDebug("  %s not supported\n", iid_name);
 }
 
 void analyse_iunknown(IUnknown *unknown)
 {
+	IUnknown *canonical = _check_interface(unknown, IID_IUnknown);
 	int i;
 
 	LogInfo("Checking what interfaces %p supports...\n", unknown);
 
 	for (i = 0; i < ARRAYSIZE(known_interfaces); i++)
-		check_interface(unknown, known_interfaces[i].iid, known_interfaces[i].name);
+		check_interface(unknown, known_interfaces[i].iid, known_interfaces[i].name, canonical);
 
 #ifndef NTDDI_WINBLUE
 	LogInfo("  Win 8.1 interfaces not checked (3DMigoto built with old SDK)\n");

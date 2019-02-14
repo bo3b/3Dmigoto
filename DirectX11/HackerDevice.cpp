@@ -283,14 +283,37 @@ HRESULT HackerDevice::CreateIniParamResources()
 	D3D11_TEXTURE1D_DESC desc;
 	memset(&desc, 0, sizeof(D3D11_TEXTURE1D_DESC));
 
+	// If we are resizing IniParams we must release the old versions:
+	if (mIniResourceView) {
+		long refcount = mIniResourceView->Release();
+		mIniResourceView = NULL;
+		LogInfo("  releasing ini parameters resource view, refcount = %d\n", refcount);
+	}
+	if (mIniTexture) {
+		long refcount = mIniTexture->Release();
+		mIniTexture = NULL;
+		LogInfo("  releasing iniparams texture, refcount = %d\n", refcount);
+	}
+
+	if (G->iniParamsReserved > INI_PARAMS_SIZE_WARNING) {
+		LogOverlay(LOG_NOTICE, "NOTICE: %d requested IniParams exceeds the recommended %d\n",
+				G->iniParamsReserved, INI_PARAMS_SIZE_WARNING);
+	}
+
+	G->iniParams.resize(G->iniParamsReserved);
+	if (G->iniParams.empty()) {
+		LogInfo("  No IniParams used, skipping texture creation.\n");
+		return S_OK;
+	}
+
 	LogInfo("  creating .ini constant parameter texture.\n");
 
 	// Stuff the constants read from the .ini file into the subresource data structure, so 
 	// we can init the texture with them.
-	initialData.pSysMem = &G->iniParams;
-	initialData.SysMemPitch = sizeof(DirectX::XMFLOAT4) * INI_PARAMS_SIZE;	// Ignored for Texture1D, but still recommended for debugging
+	initialData.pSysMem = G->iniParams.data();
+	initialData.SysMemPitch = sizeof(DirectX::XMFLOAT4) * (UINT)G->iniParams.size(); // Ignored for Texture1D, but still recommended for debugging
 
-	desc.Width = INI_PARAMS_SIZE;						// n texels, .rgba as a float4
+	desc.Width = (UINT)G->iniParams.size();					// n texels, .rgba as a float4
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;				// float4
@@ -359,7 +382,7 @@ HRESULT HackerDevice::SetGlobalNVSurfaceCreationMode()
 		NvAPIOverride();
 		LogInfo("  setting custom surface creation mode.\n");
 
-		hr = NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,	(NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
+		hr = Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,	(NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
 		if (hr != NVAPI_OK)
 		{
 			LogInfo("    custom surface creation call failed: %d.\n", hr);
@@ -780,24 +803,17 @@ static void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 				swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, pShaderType);
 				FILE *fw;
 				wfopen_ensuring_access(&fw, path, L"wb");
-				if (LogFile)
-				{
-					char fileName[MAX_PATH];
-					wcstombs(fileName, path, MAX_PATH);
-					if (fw)
-						LogInfo("    storing compiled shader to %s\n", fileName);
-					else
-						LogInfo("    error writing compiled shader to %s\n", fileName);
-				}
 				if (fw)
 				{
+					LogInfo("    storing compiled shader to %S\n", path);
 					fwrite(pCode, 1, pCodeSize, fw);
 					fclose(fw);
 
 					// Set the last modified timestamp on the cached shader to match the
 					// .txt file it is created from, so we can later check its validity:
 					set_file_last_write_time(path, &ftWrite);
-				}
+				} else
+					LogInfo("    error writing compiled shader to %S\n", path);
 			}
 		}
 	}
@@ -1306,7 +1322,7 @@ bool HackerDevice::NeedOriginalShader(UINT64 hash)
 	if (G->hunting && (G->marking_mode == MarkingMode::ORIGINAL || G->config_reloadable || G->show_original_enabled))
 		return true;
 
-	i = G->mShaderOverrideMap.find(hash);
+	i = lookup_shaderoverride(hash);
 	if (i == G->mShaderOverrideMap.end())
 		return false;
 	shaderOverride = &i->second;
@@ -1346,7 +1362,7 @@ void CleanupShaderMaps(ID3D11DeviceChild *handle)
 	EnterCriticalSection(&G->mCriticalSection);
 
 	{
-		ShaderMap::iterator i = G->mShaders.find(handle);
+		ShaderMap::iterator i = lookup_shader_hash(handle);
 		if (i != G->mShaders.end()) {
 			LogInfo("Shader handle %p reused, previous hash was: %016llx\n", handle, i->second);
 			G->mShaders.erase(i);
@@ -1354,7 +1370,7 @@ void CleanupShaderMaps(ID3D11DeviceChild *handle)
 	}
 
 	{
-		ShaderReloadMap::iterator i = G->mReloadedShaders.find(handle);
+		ShaderReloadMap::iterator i = lookup_reloaded_shader(handle);
 		if (i != G->mReloadedShaders.end()) {
 			LogInfo("Shader handle %p reused, found in mReloadedShaders\n", handle);
 			if (i->second.replacement)
@@ -1368,7 +1384,7 @@ void CleanupShaderMaps(ID3D11DeviceChild *handle)
 	}
 
 	{
-		ShaderReplacementMap::iterator i = G->mOriginalShaders.find(handle);
+		ShaderReplacementMap::iterator i = lookup_original_shader(handle);
 		if (i != G->mOriginalShaders.end()) {
 			LogInfo("Shader handle %p reused, releasing previous original shader\n", handle);
 			i->second->Release();
@@ -2003,11 +2019,11 @@ static const DescType* process_texture_override(uint32_t hash,
 	}
 
 	if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) -1) {
-		NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
+		Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
 		NvAPIOverride();
 		LogInfo("  setting custom surface creation mode.\n");
 
-		if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
+		if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
 			LogInfo("    call failed.\n");
 	}
 
@@ -2019,7 +2035,7 @@ static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMo
 	if (oldMode == (NVAPI_STEREO_SURFACECREATEMODE) - 1)
 		return;
 
-	if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
+	if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
 		LogInfo("    restore call failed.\n");
 }
 
@@ -2326,7 +2342,7 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 	if (hr == S_OK && G->ZBufferHashToInject && ppSRView)
 	{
 		EnterCriticalSection(&G->mCriticalSection);
-		unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator i = G->mResources.find(pResource);
+		unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator i = lookup_resource_handle_info(pResource);
 		if (i != G->mResources.end() && i->second.hash == G->ZBufferHashToInject)
 		{
 			LogInfo("  resource view of z buffer found: handle = %p, hash = %08lx\n", *ppSRView, i->second.hash);
@@ -2468,7 +2484,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		hash = hash_shader(pShaderBytecode, BytecodeLength);
 
 		// Check if the user has overridden the shader model:
-		ShaderOverrideMap::iterator override = G->mShaderOverrideMap.find(hash);
+		ShaderOverrideMap::iterator override = lookup_shaderoverride(hash);
 		if (override != G->mShaderOverrideMap.end()) {
 			if (override->second.model[0])
 				overrideShaderModel = override->second.model;
@@ -2566,7 +2582,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 					// Also add the original shader to the original shaders
 					// map so that if it is later replaced marking_mode =
 					// original and depth buffer filtering will work:
-					if (G->mOriginalShaders.count(*ppShader) == 0) {
+					if (lookup_original_shader(*ppShader) == end(G->mOriginalShaders)) {
 						// Since we are both returning *and* storing this we need to
 						// bump the refcount to 2, otherwise it could get freed and we
 						// may get a crash later in RevertMissingShaders, especially
@@ -2861,7 +2877,8 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 		mHackerContext = HackerContextFactory(mRealOrigDevice1, origContext1);
 		mHackerContext->SetHackerDevice(this);
 		mHackerContext->Bind3DMigotoResources();
-		mHackerContext->InitIniParams();
+		if (!G->constants_run)
+			mHackerContext->InitIniParams();
 		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
 			mHackerContext->HookContext();
 		LogInfo("  HackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);

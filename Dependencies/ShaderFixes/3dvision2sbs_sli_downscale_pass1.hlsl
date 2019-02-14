@@ -2,10 +2,10 @@ Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 Texture2D<float4> t100 : register(t100);
 
+#define mode IniParams[0].x
+
 void main(float4 pos : SV_Position0, out float4 result : SV_Target0)
 {
-	float mode = IniParams.Load(int2(7, 0)).x;
-
 	int x = pos.x;
 	int y = pos.y;
 
