@@ -79,6 +79,7 @@ HackerDevice* lookup_hacker_device(IUnknown *unknown)
 {
 	HackerDevice *ret = NULL;
 	IUnknown *real_unknown = NULL;
+	IDXGIObject *dxgi_obj = NULL;
 	DeviceMap::iterator i;
 
 	// First, check if this is already a HackerDevice. This is a fast path,
@@ -117,6 +118,45 @@ HackerDevice* lookup_hacker_device(IUnknown *unknown)
 	LeaveCriticalSection(&G->mCriticalSection);
 
 	real_unknown->Release();
+
+	if (!ret) {
+		// Either not a d3d11 device, or something has handed us an
+		// unwrapped device *and also* violated the COM identity rule.
+		// This is known to happen with ReShade in certain games (e.g.
+		// Resident Evil 2), though it appears that DirectX itself
+		// violates the COM identity rule in some cases (Device4/5 +
+		// Multithread interfaces)
+		//
+		// We have a few more tricks up our sleeve to try to find our
+		// HackerDevice - the first would be to look up the
+		// ID3D11Device interface and use it as a key to look up our
+		// device_map. That would work for the ReShade case as it
+		// stands today, but is not foolproof since e.g. that device
+		// may itself be wrapped. We could try other interfaces that
+		// may not be wrapped or use them to find the DirectX COM
+		// identity and look up the map by that, but again if there is
+		// a third party tool messing with us than all bets are off.
+		//
+		// Instead, let's try to do this in a fool proof manner that
+		// will hopefully be impervious to anything that a third party
+		// tool may do. When we created the device we stored a pointer
+		// to our HackerDevice in the device's private data that we
+		// should be able to retrieve. We can access that from either
+		// the D3D11Device interface, or the DXGIObject interface. For
+		// the sake of a possible future DX12 port (or DX10 backport)
+		// I'm using the DXGI interface that's supposed to be version
+		// agnostic. XXX: It might be worthwhile considering dropping
+		// the above device_map lookup which relies on the COM identity
+		// rule in favour of this, since we expect this to always work:
+		if (SUCCEEDED(unknown->QueryInterface(IID_IDXGIObject, (void**)&dxgi_obj))) {
+			UINT size;
+			if (SUCCEEDED(dxgi_obj->GetPrivateData(IID_HackerDevice, &size, &ret))) {
+				LogInfo("Notice: Unwrapped device and COM Identity violation, Found HackerDevice via GetPrivateData strategy\n");
+				ret->AddRef();
+			}
+			dxgi_obj->Release();
+		}
+	}
 
 	LogInfo("lookup_hacker_device(%p) IUnknown: %p HackerDevice: %p\n",
 			unknown, real_unknown, ret);
