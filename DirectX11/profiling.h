@@ -123,43 +123,73 @@ namespace Profiling {
 	}
 	static inline NvAPI_Status NvAPI_Stereo_IsActivated(StereoHandle stereoHandle, NvU8 *pIsStereoOn)
 	{
-		return NVAPI_PROFILE(::NvAPI_Stereo_IsActivated(stereoHandle, pIsStereoOn));
+		if (stereoHandle)
+			return NVAPI_PROFILE(::NvAPI_Stereo_IsActivated(stereoHandle, pIsStereoOn));
+		if (pIsStereoOn)
+			*pIsStereoOn = 0;
+		return NVAPI_ERROR;
 	}
 	static inline NvAPI_Status NvAPI_Stereo_GetEyeSeparation(StereoHandle hStereoHandle, float *pSeparation)
 	{
-		return NVAPI_PROFILE(::NvAPI_Stereo_GetEyeSeparation(hStereoHandle, pSeparation));
+		if (hStereoHandle)
+			return NVAPI_PROFILE(::NvAPI_Stereo_GetEyeSeparation(hStereoHandle, pSeparation));
+		if (pSeparation)
+			*pSeparation = 0;
+		return NVAPI_ERROR;
 	}
 	static inline NvAPI_Status NvAPI_Stereo_GetSeparation(StereoHandle stereoHandle, float *pSeparationPercentage)
 	{
-		return NVAPI_PROFILE(::NvAPI_Stereo_GetSeparation(stereoHandle, pSeparationPercentage));
+		if (stereoHandle)
+			return NVAPI_PROFILE(::NvAPI_Stereo_GetSeparation(stereoHandle, pSeparationPercentage));
+		if (pSeparationPercentage)
+			*pSeparationPercentage = 0;
+		return NVAPI_ERROR;
 	}
 	static inline NvAPI_Status NvAPI_Stereo_SetSeparation(StereoHandle stereoHandle, float newSeparationPercentage)
 	{
-		return NVAPI_PROFILE(::NvAPI_Stereo_SetSeparation(stereoHandle, newSeparationPercentage));
+		if (stereoHandle)
+			return NVAPI_PROFILE(::NvAPI_Stereo_SetSeparation(stereoHandle, newSeparationPercentage));
+		return NVAPI_ERROR;
 	}
 	static inline NvAPI_Status NvAPI_Stereo_GetConvergence(StereoHandle stereoHandle, float *pConvergence)
 	{
-		return NVAPI_PROFILE(::NvAPI_Stereo_GetConvergence(stereoHandle, pConvergence));
+		if (stereoHandle)
+			return NVAPI_PROFILE(::NvAPI_Stereo_GetConvergence(stereoHandle, pConvergence));
+		if (pConvergence)
+			*pConvergence = 0;
+		return NVAPI_ERROR;
 	}
 	static inline NvAPI_Status NvAPI_Stereo_SetConvergence(StereoHandle stereoHandle, float newConvergence)
 	{
-		return NVAPI_PROFILE(::NvAPI_Stereo_SetConvergence(stereoHandle, newConvergence));
+		if (stereoHandle)
+			return NVAPI_PROFILE(::NvAPI_Stereo_SetConvergence(stereoHandle, newConvergence));
+		return NVAPI_ERROR;
 	}
 	static inline NvAPI_Status NvAPI_Stereo_SetActiveEye(StereoHandle hStereoHandle, NV_STEREO_ACTIVE_EYE StereoEye)
 	{
-		return NVAPI_PROFILE(::NvAPI_Stereo_SetActiveEye(hStereoHandle, StereoEye));
+		if (hStereoHandle)
+			return NVAPI_PROFILE(::NvAPI_Stereo_SetActiveEye(hStereoHandle, StereoEye));
+		return NVAPI_ERROR;
 	}
 	static inline NvAPI_Status NvAPI_Stereo_ReverseStereoBlitControl(StereoHandle hStereoHandle, NvU8 TurnOn)
 	{
-		return NVAPI_PROFILE(::NvAPI_Stereo_ReverseStereoBlitControl(hStereoHandle, TurnOn));
+		if (hStereoHandle)
+			return NVAPI_PROFILE(::NvAPI_Stereo_ReverseStereoBlitControl(hStereoHandle, TurnOn));
+		return NVAPI_ERROR;
 	}
 	static inline NvAPI_Status NvAPI_Stereo_SetSurfaceCreationMode(__in StereoHandle hStereoHandle, __in NVAPI_STEREO_SURFACECREATEMODE creationMode)
 	{
-		return NVAPI_PROFILE(::NvAPI_Stereo_SetSurfaceCreationMode(hStereoHandle, creationMode));
+		if (hStereoHandle)
+			return NVAPI_PROFILE(::NvAPI_Stereo_SetSurfaceCreationMode(hStereoHandle, creationMode));
+		return NVAPI_ERROR;
 	}
 	static inline NvAPI_Status NvAPI_Stereo_GetSurfaceCreationMode(__in StereoHandle hStereoHandle, __in NVAPI_STEREO_SURFACECREATEMODE* pCreationMode)
 	{
-		return NVAPI_PROFILE(::NvAPI_Stereo_GetSurfaceCreationMode(hStereoHandle, pCreationMode));
+		if (hStereoHandle)
+			return NVAPI_PROFILE(::NvAPI_Stereo_GetSurfaceCreationMode(hStereoHandle, pCreationMode));
+		if (pCreationMode)
+			*pCreationMode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
+		return NVAPI_ERROR;
 	}
 	static inline NvAPI_Status NvAPI_DISP_GetDisplayConfig(__inout NvU32 *pathInfoCount, __out_ecount_full_opt(*pathInfoCount) NV_DISPLAYCONFIG_PATH_INFO *pathInfo)
 	{
