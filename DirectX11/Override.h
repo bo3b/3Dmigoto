@@ -50,10 +50,10 @@ struct OverrideParam
 		// Oh come on C++, a pointer to member is just an offset you
 		// could test directly... Fine, let's dance:
 		switch ((uintptr_t)&((DirectX::XMFLOAT4*)(NULL)->*component)) {
-			case (uintptr_t)&(((DirectX::XMFLOAT4*)(NULL))->x): return 'x';
-			case (uintptr_t)&(((DirectX::XMFLOAT4*)(NULL))->y): return 'y';
-			case (uintptr_t)&(((DirectX::XMFLOAT4*)(NULL))->z): return 'z';
-			case (uintptr_t)&(((DirectX::XMFLOAT4*)(NULL))->w): return 'w';
+			case (offsetof(DirectX::XMFLOAT4, x)): return 'x';
+			case (offsetof(DirectX::XMFLOAT4, y)): return 'y';
+			case (offsetof(DirectX::XMFLOAT4, z)): return 'z';
+			case (offsetof(DirectX::XMFLOAT4, w)): return 'w';
 		}
 		return '?';
 	};
