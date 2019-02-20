@@ -35,9 +35,15 @@ run_test()
 {
 	local hlsl_chk_filename="$1"
 	local whitespace="$2"
-	local bin_filename="$(echo "$hlsl_chk_filename" | sed 's/.hlsl.chk/.shdr/')"
+	local reconstruct_filename="$(echo "$hlsl_chk_filename" | sed 's/.hlsl.chk/.shdr/')"
+	local source_bin_filename="$(echo "$hlsl_chk_filename" | sed 's/.hlsl.chk/.bin/')"
 
-	reconstruct_shader "$bin_filename"
+	if [ -f "$source_bin_filename" ]; then
+		bin_filename="$source_bin_filename"
+	else
+		reconstruct_shader "$reconstruct_filename"
+		bin_filename="$reconstruct_filename"
+	fi
 
 	echo -n "....: $bin_filename...$whitespace"
 	run_decompiler_test "$bin_filename"
@@ -51,16 +57,21 @@ for arg in "$@"; do
 		*)
 
 			run_all=0
-			run_test "$(echo "$arg" | sed -E 's/.hlsl(.chk)?|.shdr|_replace.txt(.bin)?//').hlsl.chk"
+			run_test "$(echo "$arg" | sed -E 's/.hlsl(.chk)?|.shdr|.bin|_replace.txt(.bin)?//').hlsl.chk"
 			;;
 	esac
 done
 
 if [ "$run_all" = 1 ]; then
-	find GameExamples -iname '*.hlsl.chk' -a ! -iname '*stripped.hlsl.chk' -print0 |
-		while IFS= read -r -d $'\0' hlsl_chk_filename; do
-			run_test "$hlsl_chk_filename" "         "
-			run_test "$(echo "$hlsl_chk_filename" | sed 's/.hlsl.chk/_stripped.shdr/')"
+	find GameExamples \( -iname '*.hlsl.chk' -a ! -iname '*stripped.hlsl.chk' -o -iname '*-?s.bin' \) -print0 |
+		while IFS= read -r -d $'\0' filename; do
+			if echo "$filename" | grep "\.bin$" >/dev/null; then
+				run_test "$filename" "         "
+				run_test "$(echo "$filename" | sed 's/.bin/_stripped.bin/')"
+			elif [ ! -f "$(echo "$filename" | sed 's/.hlsl.chk/.bin/')" ]; then
+				run_test "$filename" "         "
+				run_test "$(echo "$filename" | sed 's/.hlsl.chk/_stripped.shdr/')"
+			fi
 		done
 fi
 
