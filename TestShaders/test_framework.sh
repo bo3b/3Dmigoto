@@ -30,15 +30,28 @@ if [ -t 1 ]; then
 	ANSI_NORM='\033[0m'
 fi
 
-OUTPUT_DIR=output
-mkdir -p "$OUTPUT_DIR"
-rm -v "$OUTPUT_DIR"/* 2>/dev/null || true
+HLSL_OUTPUT_DIR=output/hlsl
+ASM_OUTPUT_DIR=output/asm
+mkdir -p "$HLSL_OUTPUT_DIR" "$ASM_OUTPUT_DIR"
+rm -v "$HLSL_OUTPUT_DIR"/* "$ASM_OUTPUT_DIR"/* 2>/dev/null || true
 TESTS_FAILED=0
 UPDATE_CHK=0
 
 rm_if_empty()
 {
 	[ ! -s "$1" ] && rm "$1" > /dev/null 2>&1
+}
+
+pass_fail()
+{
+	local fail="$1"
+
+	if [ "$fail" = 1 ]; then
+		echo -e "\r${ANSI_RED}FAIL${ANSI_NORM}"
+		TESTS_FAILED=1
+	else
+		echo -e "\r${ANSI_GREEN}PASS${ANSI_NORM}"
+	fi
 }
 
 # No good way to machine verify the decompiler, so go for the next best thing -
@@ -121,12 +134,7 @@ run_decompiler_test()
 		fi
 	fi
 
-	if [ "$fail" = 1 ]; then
-		echo -e "\r${ANSI_RED}FAIL${ANSI_NORM}"
-		TESTS_FAILED=1
-	else
-		echo -e "\r${ANSI_GREEN}PASS${ANSI_NORM}"
-	fi
+	pass_fail $fail
 }
 
 run_hlsl_test()
@@ -144,16 +152,43 @@ run_hlsl_test()
 		local stripped_asm="${dst}_${model}_stripped.asm"
 
 		echo -n "....: ${dst}_${model}...         "
-		"$FXC" /nologo "$src" /T "$model" $flags /Fo "$OUTPUT_DIR\\$compiled" /Fc "$OUTPUT_DIR\\$assembled" /Fe "$OUTPUT_DIR\\$log" >/dev/null
-		rm_if_empty "$OUTPUT_DIR\\$log"
+		"$FXC" /nologo "$src" /T "$model" $flags /Fo "$HLSL_OUTPUT_DIR\\$compiled" /Fc "$HLSL_OUTPUT_DIR\\$assembled" /Fe "$HLSL_OUTPUT_DIR\\$log" >/dev/null
+		rm_if_empty "$HLSL_OUTPUT_DIR\\$log"
 
 		local test_dir="$PWD"
-		cd "$OUTPUT_DIR"
+		cd "$HLSL_OUTPUT_DIR"
 			run_decompiler_test "$compiled" "$test_dir/${dst}_${model}.hlsl.chk"
 
 			echo -n "....: ${dst}_${model}_stripped..."
 			"$FXC" /nologo /dumpbin "$compiled" /Qstrip_reflect /Fo "$stripped" /Fc "$stripped_asm" >/dev/null
 			run_decompiler_test "$stripped" "$test_dir/${dst}_${model}_stripped.hlsl.chk"
+		cd "$test_dir"
+	done
+}
+
+run_asm_test()
+{
+	local src="$1"
+	local dst="$2"
+	local models="$3"
+	local flags="$4"
+
+	for model in $models; do
+		local compiled="${dst}_${model}.bin"
+		local ms_assembled="${dst}_${model}.msasm"
+		local disassembled="${dst}_${model}.asm"
+		local compile_log="${dst}_${model}_fxc.log"
+		local asemble_log="${dst}_${model}_asm.log"
+
+		echo -n "....: ${dst}_${model}...         "
+		"$FXC" /nologo "$src" /T "$model" $flags /Fo "$ASM_OUTPUT_DIR\\$compiled" /Fc "$ASM_OUTPUT_DIR\\$ms_assembled" /Fe "$ASM_OUTPUT_DIR\\$compile_log" >/dev/null
+		rm_if_empty "$ASM_OUTPUT_DIR\\$compile_log"
+
+		rm "$disassembled" "$asemble_log" 2>/dev/null
+		local test_dir="$PWD"
+		cd "$ASM_OUTPUT_DIR"
+			"$CMD_DECOMPILER" -d -V "$compiled" > "$asemble_log" 2>&1 # produces "$disassembled"
+			pass_fail $?
 		cd "$test_dir"
 	done
 }
