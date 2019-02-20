@@ -103,7 +103,7 @@ namespace Profiling {
 	// NvAPI profiling:
 
 #define NVAPI_PROFILE(CODE) \
-[&]() -> auto { \
+[&]() -> NvAPI_Status { \
 	Profiling::State state; \
 	if (Profiling::mode == Profiling::Mode::SUMMARY) { \
 		Profiling::start(&state); \
