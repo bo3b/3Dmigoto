@@ -253,8 +253,20 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 		for (j = 0; j < new_dxbc_header->num_sections; j++, new_section_offset_ptr++) {
 			new_section_header = (struct section_header*)((char*)new_dxbc_header + *new_section_offset_ptr);
 
-			if (memcmp(old_section_header->signature, new_section_header->signature, 4))
-				continue;
+			if (memcmp(old_section_header->signature, new_section_header->signature, 4)) {
+				// If it's a mismatch between SHDR and SHEX
+				// (SHader EXtension) we'll flag a failure and
+				// warn, but still compare since the sections
+				// are identical
+				if ((!strncmp(old_section_header->signature, "SHDR", 4) &&
+				     !strncmp(new_section_header->signature, "SHEX", 4)) ||
+				    (!strncmp(old_section_header->signature, "SHEX", 4) &&
+				     !strncmp(new_section_header->signature, "SHDR", 4))) {
+					LogInfo("\n*** Assembly verification pass failed: SHDR / SHEX mismatch ***\n");
+					rc = 1;
+				} else
+					continue;
+			}
 
 			LogDebugNoNL(" Checking section %.4s...", old_section_header->signature);
 
