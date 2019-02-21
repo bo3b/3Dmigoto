@@ -487,8 +487,10 @@ static void parse_min_precision_tag(string &s, vector<DWORD> &v, token_operand *
 	}
 
 	// Strip min precision tag to ensure it can't interfere with further
-	// parsing:
-	s.resize(tag - 1);
+	// parsing. Remove from the preceding space until the closing brace so
+	// that if there is an absolute value || around the entire operand it
+	// will be in the right position to be processed later:
+	s.erase(tag - 1, s.find('}', tag + 1) - tag + 2);
 }
 
 static vector<DWORD> assembleOp(string s, bool special)
@@ -502,8 +504,6 @@ static vector<DWORD> assembleOp(string s, bool special)
 	token_operand* tOp = (token_operand*)&op;
 	tOp->comps_enum = 2; // 4
 	string bPoint;
-
-	parse_min_precision_tag(s, v, tOp, &ext);
 
 	num = atoi(s.c_str());
 	if (num != 0) {
@@ -521,6 +521,12 @@ static vector<DWORD> assembleOp(string s, bool special)
 		tOp->extended = 1;
 		ext |= 0x81;
 	}
+
+	// Processing this after absolute value so that |var {type}| will be
+	// processed in a natural order, though this function also strips the
+	// tag as a secondary measure (either would be sufficient by itself):
+	parse_min_precision_tag(s, v, tOp, &ext);
+
 	if (tOp->extended) {
 		v.push_back(ext);
 	}
@@ -722,8 +728,13 @@ static vector<string> strToWords(string s)
 		//   -DarkStarSword:
 		if (end != string::npos && (!s.compare(end, 5, " {min")
 		                         || !s.compare(end, 5, " {def"))) {
-			end = s.find('}', end + 5) + 1;
-			if (end < s.size() && s[end] == ',')
+			// We will match to the next comma or end of line. We
+			// can't just match until the closing brace, because of
+			// cases where minimum precision and absolute value are
+			// combined, e.g.
+			// mad r2.xyzw {min16f}, |r2.xyzw {min16f}|, l(-4.000000, -4.000000, -4.000000, -4.000000) {def32 as min16f}, l(1.000000, 1.000000, 1.000000, 1.000000) {def32 as min16f}
+			end = s.find(',', end + 5);
+			if (end != string::npos)
 				end++;
 		}
 
