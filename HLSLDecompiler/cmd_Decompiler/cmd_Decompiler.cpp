@@ -287,8 +287,15 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 
 			break;
 		}
-		if (j == new_dxbc_header->num_sections)
-			LogInfo("Reassembled shader missing %.4s section\n", old_section_header->signature);
+		if (j == new_dxbc_header->num_sections) {
+			// Whitelist sections that are okay to be missed:
+			if ((strncmp(old_section_header->signature, "STAT", 4) &&
+			    (strncmp(old_section_header->signature, "RDEF", 4)))) {
+				LogInfo("*** Assembly verification pass failed: Reassembled shader missing %.4s section (not whitelisted)\n", old_section_header->signature);
+				rc = 1;
+			} else
+				LogInfo("Reassembled shader missing %.4s section\n", old_section_header->signature);
+		}
 	}
 
 	if (!rc)
