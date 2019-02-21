@@ -35,24 +35,57 @@ run_test()
 {
 	local hlsl_chk_filename="$1"
 	local whitespace="$2"
-	local reconstruct_filename="$(echo "$hlsl_chk_filename" | sed 's/.hlsl.chk/.shdr/')"
 	local source_bin_filename="$(echo "$hlsl_chk_filename" | sed 's/.hlsl.chk/.bin/')"
+
+	if [ -z "$ASM" -a -z "$ASM_RECONSTRUCTED" -a -z "$HLSL" ]; then
+		local ASM=1
+		local HLSL=1
+	fi
 
 	if [ -f "$source_bin_filename" ]; then
 		bin_filename="$source_bin_filename"
+		if [ -n "$ASM" ]; then
+			echo -n "....: $bin_filename (asm)... $whitespace"
+			run_assembler_test "$bin_filename"
+		fi
 	else
+		[ -z "$HLSL" -a -z "$ASM_RECONSTRUCTED" ] && return
+
+		local reconstruct_filename="$(echo "$hlsl_chk_filename" | sed 's/.hlsl.chk/.shdr/')"
 		reconstruct_shader "$reconstruct_filename"
 		bin_filename="$reconstruct_filename"
+
+		if [ -n "$ASM_RECONSTRUCTED" ]; then
+			# Note: The idea of doing assembly verification tests of the
+			# reconstructed shaders is inherently flawed since they have already
+			# passed through the assembler and disassembler, which will
+			# likely have already eliminated anything we might have found.
+			# We would be better off running the verification test on the
+			# compiled output directly.
+			echo -n "....: $bin_filename (asm)... $whitespace"
+			run_assembler_test "$bin_filename"
+		fi
 	fi
 
-	echo -n "....: $bin_filename...$whitespace"
-	run_decompiler_test "$bin_filename"
+	if [ -n "$HLSL" ]; then
+		echo -n "....: $bin_filename (hlsl)...$whitespace"
+		run_decompiler_test "$bin_filename"
+	fi
 }
 
 for arg in "$@"; do
 	case "$arg" in
 		"--update-chk")
 			UPDATE_CHK=1
+			;;
+		"--asm")
+			ASM=1
+			;;
+		"--asm-reconstructed")
+			ASM_RECONSTRUCTED=1
+			;;
+		"--hlsl")
+			HLSL=1
 			;;
 		*)
 
@@ -70,7 +103,7 @@ if [ "$run_all" = 1 ]; then
 				run_test "$(echo "$filename" | sed 's/.bin/_stripped.bin/')"
 			elif [ ! -f "$(echo "$filename" | sed 's/.hlsl.chk/.bin/')" ]; then
 				run_test "$filename" "         "
-				run_test "$(echo "$filename" | sed 's/.hlsl.chk/_stripped.shdr/')"
+				run_test "$(echo "$filename" | sed 's/.hlsl.chk/_stripped.hlsl.chk/')"
 			fi
 		done
 fi

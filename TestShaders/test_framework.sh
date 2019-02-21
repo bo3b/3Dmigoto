@@ -166,6 +166,18 @@ run_hlsl_test()
 	done
 }
 
+run_assembler_test()
+{
+	local compiled="$1"
+	local dst="$(echo "$compiled" | sed -r 's/\.[^.]+$//')"
+	local disassembled="${dst}_${model}.asm"
+	local asemble_log="${dst}_${model}_asm.log"
+
+	rm "$disassembled" "$asemble_log" 2>/dev/null
+	"$CMD_DECOMPILER" -d -V "$compiled" > "$asemble_log" 2>&1 # produces "$disassembled"
+	pass_fail $?
+}
+
 run_asm_test()
 {
 	local src="$1"
@@ -176,19 +188,15 @@ run_asm_test()
 	for model in $models; do
 		local compiled="${dst}_${model}.bin"
 		local ms_assembled="${dst}_${model}.msasm"
-		local disassembled="${dst}_${model}.asm"
 		local compile_log="${dst}_${model}_fxc.log"
-		local asemble_log="${dst}_${model}_asm.log"
 
 		echo -n "....: ${dst}_${model}...         "
 		"$FXC" /nologo "$src" /T "$model" $flags /Fo "$ASM_OUTPUT_DIR\\$compiled" /Fc "$ASM_OUTPUT_DIR\\$ms_assembled" /Fe "$ASM_OUTPUT_DIR\\$compile_log" >/dev/null
 		rm_if_empty "$ASM_OUTPUT_DIR\\$compile_log"
 
-		rm "$disassembled" "$asemble_log" 2>/dev/null
 		local test_dir="$PWD"
 		cd "$ASM_OUTPUT_DIR"
-			"$CMD_DECOMPILER" -d -V "$compiled" > "$asemble_log" 2>&1 # produces "$disassembled"
-			pass_fail $?
+			run_assembler_test "$compiled"
 		cd "$test_dir"
 	done
 }
