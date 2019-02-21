@@ -174,7 +174,7 @@ run_assembler_test()
 	local asemble_log="${dst}_asm.log"
 
 	rm "$disassembled" "$asemble_log" 2>/dev/null
-	"$CMD_DECOMPILER" -d -V "$compiled" > "$asemble_log" 2>&1 # produces "$disassembled"
+	"$CMD_DECOMPILER" -d -V $LENIENT "$compiled" > "$asemble_log" 2>&1 # produces "$disassembled"
 	pass_fail $?
 }
 

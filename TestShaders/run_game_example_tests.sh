@@ -91,6 +91,9 @@ for arg in "$@"; do
 		"--hlsl")
 			HLSL=1
 			;;
+		"--lenient")
+			LENIENT=--lenient
+			;;
 		*)
 
 			run_all=0

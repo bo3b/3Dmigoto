@@ -49,6 +49,9 @@ static void PrintHelp(int argc, char *argv[])
 	LogInfo("  -V, --validate\n");
 	LogInfo("\t\t\tRun a validation pass after decompilation / disassembly\n");
 
+	LogInfo("  --lenient\n");
+	LogInfo("\t\t\tDon't fail shader validation for certain types of section mismatches\n");
+
 	LogInfo("  -S, --stop-on-failure\n");
 	LogInfo("\t\t\tStop processing files if an error occurs\n");
 
@@ -75,6 +78,7 @@ static struct {
 	bool assemble;
 	bool force;
 	bool validate;
+	bool lenient;
 	bool stop;
 } args;
 
@@ -137,6 +141,10 @@ void parse_args(int argc, char *argv[])
 			// }
 			if (!strcmp(arg, "-V") || !strcmp(arg, "--validate")) {
 				args.validate = true;
+				continue;
+			}
+			if (!strcmp(arg, "--lenient")) {
+				args.lenient = true;
 				continue;
 			}
 			if (!strcmp(arg, "-S") || !strcmp(arg, "--stop-on-failure")) {
@@ -262,8 +270,12 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 				     !strncmp(new_section_header->signature, "SHEX", 4)) ||
 				    (!strncmp(old_section_header->signature, "SHEX", 4) &&
 				     !strncmp(new_section_header->signature, "SHDR", 4))) {
-					LogInfo("\n*** Assembly verification pass failed: SHDR / SHEX mismatch ***\n");
-					rc = 1;
+					if (args.lenient) {
+						LogInfo("Notice: SHDR / SHEX mismatch\n");
+					} else {
+						LogInfo("\n*** Assembly verification pass failed: SHDR / SHEX mismatch ***\n");
+						rc = 1;
+					}
 				} else
 					continue;
 			}
@@ -289,8 +301,10 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 		}
 		if (j == new_dxbc_header->num_sections) {
 			// Whitelist sections that are okay to be missed:
-			if ((strncmp(old_section_header->signature, "STAT", 4) &&
-			    (strncmp(old_section_header->signature, "RDEF", 4)))) {
+			if (!args.lenient &&
+			    strncmp(old_section_header->signature, "STAT", 4) && // Compiler Statistics
+			    strncmp(old_section_header->signature, "RDEF", 4)) { // Resource Definitions
+			    //strncmp(old_section_header->signature, "SFI0", 4)) { // Subtarget Feature Info (not yet sure if this is critical or not)
 				LogInfo("*** Assembly verification pass failed: Reassembled shader missing %.4s section (not whitelisted)\n", old_section_header->signature);
 				rc = 1;
 			} else

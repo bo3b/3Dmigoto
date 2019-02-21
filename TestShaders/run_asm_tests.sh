@@ -2,6 +2,18 @@
 
 . ./test_framework.sh
 
+for arg in "$@"; do
+	case "$arg" in
+		"--lenient")
+			LENIENT=--lenient
+			;;
+		*)
+			echo Invalid argument: "$arg"
+			exit 1
+			;;
+	esac
+done
+
 # Assembler test cases (Test Driven Development):
 run_asm_test compute.hlsl compute "cs_5_0" "/Od"
 run_asm_test debug.hlsl debug "cs_4_0 cs_5_0" "/Od"
