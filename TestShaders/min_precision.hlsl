@@ -14,7 +14,7 @@ Texture2D<min16int>     min16int_tex   : register(t41);
 Texture2D<min12int>     min12int_tex   : register(t42);
 Texture2D<min16uint>    min16uint_tex  : register(t43);
 
-void main(out float4 output : SV_Target0)
+void main(min16float v1 : TEXCOORD, out float4 output : SV_Target0)
 {
 	output = 0;
 
@@ -27,4 +27,7 @@ void main(out float4 output : SV_Target0)
 	output += min16int_tex.Load(0);
 	output += min12int_tex.Load(0);
 	output += min16uint_tex.Load(0);
+
+	// Forces the literal 0 to be cast to a min16float:
+	output += min16uint_tex.Load(1) ? 0 : v1;
 }

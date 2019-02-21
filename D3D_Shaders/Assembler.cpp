@@ -427,6 +427,70 @@ static vector<DWORD> assemble_literal_operand(string &s, vector<DWORD> &v, token
 	return v;
 }
 
+static DWORD encode_min_precision_type(const char *type)
+{
+	if (!strncmp(type, "min", 3)) {
+		if (!strncmp(type+3, "16", 2)) { // min16*
+			switch(type[5]) {
+				case 'f': return 1 << 14;
+				case 'i': return 4 << 14;
+				case 'u': return 5 << 14;
+			};
+		}
+		if (!strncmp(type+3, "2_8f", 4)) // min10float
+			return 2 << 14;
+	}
+	if (!strncmp(type, "def32", 5))
+		return 0;
+	printf("WARNING: Unrecognised minimum precision type \"%s\"\n", type);
+	return 0;
+}
+
+static void parse_min_precision_tag(string &s, vector<DWORD> &v, token_operand *tOp, DWORD *ext)
+{
+	size_t tag;
+
+	// Windows 8 minimum precision tag can take two forms:
+	// "operand {type1}" for either source or destination where their min precision types match
+	// "operand {type1 as type2}" when a source operand (type1) needs to be cast to match the destination (type2)
+	// However in the second case type2 is not encoded in the source operand, so we only ever need to worry about type1
+	// Mapping between assembly & HLSL types:
+	//    asm   | HLSL
+	//  def32   | *
+	//  min16f  | min16float
+	//  min2_8f | min10float
+	//  min16i  | min16int
+	//  min16i  | min12int  <-- No distinction in assembly from min16int? Maybe the unused 3?
+	//  min16u  | min16uint
+
+	tag = s.find('{');
+	if (tag == string::npos)
+		return;
+
+#if 0 // Debugging
+	size_t as = s.find(" as ", tag + 1);
+	if (as != string::npos) {
+		string stype1 = s.substr(tag+1, as - tag - 1);
+		string stype2 = s.substr(as + 4, s.size() - as - 5);
+		printf("min precision cast from: \"%s\" to: \"%s\"\n", stype1.c_str(), stype2.c_str());
+	} else {
+		string stype1 = s.substr(tag+1, s.length() - tag - 2);
+		printf("min precision type: \"%s\"\n", stype1.c_str());
+	}
+#endif
+
+	DWORD type1 = encode_min_precision_type(s.c_str() + tag + 1);
+	if (type1) {
+		tOp->extended = 1;
+		*ext |= 0x00000001;
+		*ext |= type1;
+	}
+
+	// Strip min precision tag to ensure it can't interfere with further
+	// parsing:
+	s.resize(tag - 1);
+}
+
 static vector<DWORD> assembleOp(string s, bool special)
 {
 	vector<DWORD> v;
@@ -438,6 +502,9 @@ static vector<DWORD> assembleOp(string s, bool special)
 	token_operand* tOp = (token_operand*)&op;
 	tOp->comps_enum = 2; // 4
 	string bPoint;
+
+	parse_min_precision_tag(s, v, tOp, &ext);
+
 	num = atoi(s.c_str());
 	if (num != 0) {
 		v.push_back(num);
@@ -625,6 +692,7 @@ static vector<string> strToWords(string s)
 	while (end < s.size() && s[end] != ' ' && s[end] != '(')
 		end++;
 	words.push_back(s.substr(start, end - start));
+
 	while (s.size() > end) {
 		if (s[end] == ' ') {
 			start = ++end;
@@ -647,6 +715,18 @@ static vector<string> strToWords(string s)
 				}
 			}
 		}
+
+		// Keep min precision tag with the operand. Since the icb
+		// syntax also uses braces we match part of the min precision
+		// type here to avoid grouping something we don't want
+		//   -DarkStarSword:
+		if (end != string::npos && (!s.compare(end, 5, " {min")
+		                         || !s.compare(end, 5, " {def"))) {
+			end = s.find('}', end + 5) + 1;
+			if (end < s.size() && s[end] == ',')
+				end++;
+		}
+
 		if (end == string::npos) {
 			words.push_back(s.substr(start));
 		} else {
