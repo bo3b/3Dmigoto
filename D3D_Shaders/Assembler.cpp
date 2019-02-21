@@ -5,7 +5,8 @@ using namespace std;
 FILE* failFile = NULL;
 static unordered_map<string, vector<DWORD>> codeBin;
 
-static DWORD strToDWORD(string s) {
+static DWORD strToDWORD(string s)
+{
 	// d3dcompiler_46 symbolic NANs (missing +QNAN and +IND?):
 	if (s == "-1.#IND0000")
 		return 0xFFC00000;
@@ -45,7 +46,8 @@ static DWORD strToDWORD(string s) {
 	return atoi(s.c_str());
 }
 
-static string convertF(DWORD original) {
+static string convertF(DWORD original)
+{
 	char buf[80];
 	char scientific[80];
 	char *scientific_exp = NULL;
@@ -126,7 +128,8 @@ static string convertF(DWORD original) {
 	return sLiteral;
 }
 
-void writeLUT() {
+void writeLUT()
+{
 	FILE* f;
 
 	fopen_s(&f, "lut.asm", "wb");
@@ -165,7 +168,8 @@ void writeLUT() {
 	fclose(f);
 }
 
-static void handleSwizzle(string s, token_operand* tOp, bool special = false) {
+static void handleSwizzle(string s, token_operand* tOp, bool special = false)
+{
 	if (special == true){
 		// Mask
 		tOp->mode = 0; // Mask
@@ -235,7 +239,8 @@ static void handleSwizzle(string s, token_operand* tOp, bool special = false) {
 	}
 }
 
-static vector<DWORD> assembleOp(string s, bool special = false) {
+static vector<DWORD> assembleOp(string s, bool special = false)
+{
 	vector<DWORD> v;
 	DWORD op = 0;
 	DWORD ext = 0;
@@ -521,28 +526,28 @@ static vector<DWORD> assembleOp(string s, bool special = false) {
 
 				v.insert(v.begin(), op);
 				return v;
-			} else {
-				DWORD idx = atoi(index.c_str());
-				num = atoi(sNum.c_str());
-				v.push_back(num);
-				v.push_back(idx);
-				if (s.find('.') < s.size()) {
-					handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-				} else {
-					tOp->mode = 1; // Swizzle
-					tOp->sel = 0xE4;
-				}
-				v.insert(v.begin(), op);
-				return v;
 			}
-		} else {
+			DWORD idx = atoi(index.c_str());
 			num = atoi(sNum.c_str());
 			v.push_back(num);
-			handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+			v.push_back(idx);
+			if (s.find('.') < s.size()) {
+				handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+			} else {
+				tOp->mode = 1; // Swizzle
+				tOp->sel = 0xE4;
+			}
 			v.insert(v.begin(), op);
 			return v;
 		}
-	} else if (s[0] == 'l') {
+		num = atoi(sNum.c_str());
+		v.push_back(num);
+		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+		v.insert(v.begin(), op);
+		return v;
+	}
+
+	if (s[0] == 'l') {
 		string sOrig = s;;
 		tOp->file = 4;
 		s.erase(s.begin());
@@ -574,7 +579,9 @@ static vector<DWORD> assembleOp(string s, bool special = false) {
 		}
 		v.insert(v.begin(), op);
 		return v;
-	} else if (s[0] == 'r') {
+	}
+
+	if (s[0] == 'r') {
 		tOp->file = 0;
 	} else if (s[0] == 's') {
 		tOp->file = 6;
@@ -599,7 +606,8 @@ static vector<DWORD> assembleOp(string s, bool special = false) {
 	return v;
 }
 
-static vector<string> strToWords(string s) {
+static vector<string> strToWords(string s)
+{
 	vector<string> words;
 	string::size_type start = 0;
 	while (s[start] == ' ') start++;
@@ -646,7 +654,8 @@ static vector<string> strToWords(string s) {
 	return words;
 }
 
-static DWORD parseAoffimmi(DWORD start, string o) {
+static DWORD parseAoffimmi(DWORD start, string o)
+{
 	string nums = o.substr(1, o.size() - 2);
 	int n1 = atoi(nums.substr(0, nums.find(',')).c_str());
 	nums = nums.substr(nums.find(',') + 1);
@@ -1141,7 +1150,8 @@ static unsigned parseSyncFlags(string *w)
 
 }
 
-static vector<DWORD> assembleIns(string s) {
+static vector<DWORD> assembleIns(string s)
+{
 	unsigned msaa_samples = 0;
 
 	if (hackMap.find(s) != hackMap.end()) {
@@ -1826,7 +1836,8 @@ static vector<DWORD> assembleIns(string s) {
 	return v;
 }
 
-static string assembleAndCompare(string s, vector<DWORD> v) {
+static string assembleAndCompare(string s, vector<DWORD> v)
+{
 	string s2;
 	int numSpaces = 0;
 	while (memcmp(s.c_str(), " ", 1) == 0) {
@@ -2018,7 +2029,8 @@ static string assembleAndCompare(string s, vector<DWORD> v) {
 	return ret;
 }
 
-vector<string> stringToLines(const char* start, size_t size) {
+vector<string> stringToLines(const char* start, size_t size)
+{
 	vector<string> lines;
 	const char* pStart = start;
 	const char* pEnd = pStart;
@@ -2061,7 +2073,8 @@ vector<string> stringToLines(const char* start, size_t size) {
 	return lines;
 }
 
-HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment) {
+HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment)
+{
 	byte fourcc[4];
 	DWORD fHash[4];
 	DWORD one;
@@ -2222,7 +2235,8 @@ static void preprocessLine(string &line)
 // For anyone confused about what this hash function is doing, there is a
 // clearer implementation here, with details of how this differs from MD5:
 // https://github.com/DarkStarSword/3d-fixes/blob/master/dx11shaderanalyse.py
-static vector<DWORD> ComputeHash(byte const* input, DWORD size) {
+static vector<DWORD> ComputeHash(byte const* input, DWORD size)
+{
 	DWORD esi;
 	DWORD ebx;
 	DWORD i = 0;
@@ -2353,7 +2367,8 @@ static vector<DWORD> ComputeHash(byte const* input, DWORD size) {
 
 // origByteCode is modified in this function, so passing it by value!
 // asmFile is not modified, so passing it by pointer -DarkStarSword
-vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode) {
+vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode)
+{
 	byte fourcc[4];
 	DWORD fHash[4];
 	DWORD one;
