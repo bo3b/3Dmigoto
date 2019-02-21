@@ -298,6 +298,21 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 		}
 	}
 
+	// List any sections in the new shader that weren't in the old (e.g. section version mismatches):
+	new_section_offset_ptr = (uint32_t*)((char*)new_dxbc_header + sizeof(struct dxbc_header));
+	for (i = 0; i < new_dxbc_header->num_sections; i++, new_section_offset_ptr++) {
+		new_section_header = (struct section_header*)((char*)new_dxbc_header + *new_section_offset_ptr);
+
+		old_section_offset_ptr = (uint32_t*)((char*)old_dxbc_header + sizeof(struct dxbc_header));
+		for (j = 0; j < old_dxbc_header->num_sections; j++, old_section_offset_ptr++) {
+			old_section_header = (struct section_header*)((char*)old_dxbc_header + *old_section_offset_ptr);
+			if (!memcmp(old_section_header->signature, new_section_header->signature, 4))
+				break;
+		}
+		if (j == old_dxbc_header->num_sections)
+			LogInfo("Reassembled shader contains %.4s section not in original\n", new_section_header->signature);
+	}
+
 	if (!rc)
 		LogInfo("    Assembly verification pass succeeded\n");
 	return rc;
