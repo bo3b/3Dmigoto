@@ -170,8 +170,8 @@ run_assembler_test()
 {
 	local compiled="$1"
 	local dst="$(echo "$compiled" | sed -r 's/\.[^.]+$//')"
-	local disassembled="${dst}_${model}.asm"
-	local asemble_log="${dst}_${model}_asm.log"
+	local disassembled="${dst}.asm"
+	local asemble_log="${dst}_asm.log"
 
 	rm "$disassembled" "$asemble_log" 2>/dev/null
 	"$CMD_DECOMPILER" -d -V "$compiled" > "$asemble_log" 2>&1 # produces "$disassembled"
