@@ -239,7 +239,195 @@ static void handleSwizzle(string s, token_operand* tOp, bool special = false)
 	}
 }
 
-static vector<DWORD> assembleOp(string s, bool special = false)
+static vector<DWORD> assembleOp(string s, bool special = false);
+
+static vector<DWORD> assemble_cbvox_operand(string &s, vector<DWORD> &v, token_operand *tOp, bool special, DWORD num)
+{
+	tOp->num_indices = 2;
+	if (s[0] == 'x') { // Indexable temp array
+		tOp->file = 3;
+		s.erase(s.begin());
+	} else if (s[0] == 'o') { // Output register
+		tOp->file = 2;
+		tOp->num_indices = 1;
+		s.erase(s.begin());
+	} else if (s[0] == 'v') { // Input register
+		tOp->file = 1;
+		if (s.size() > 4 && s[1] == 'i' && s[2] == 'c' && s[3] == 'p')  { // Hull shader vicp
+			tOp->file = 0x19;
+			s.erase(s.begin());
+			s.erase(s.begin());
+			s.erase(s.begin());
+		} else if (s.size() > 4 && s[1] == 'o' && s[2] == 'c' && s[3] == 'p') { // Hull shader vocp
+			tOp->file = 0x1A;
+			s.erase(s.begin());
+			s.erase(s.begin());
+			s.erase(s.begin());
+		} else if (s[1] == 'p' && s[2] == 'c') { // Patch constant
+			tOp->file = 0x1B;
+			s.erase(s.begin());
+			s.erase(s.begin());
+		}
+		s.erase(s.begin());
+		tOp->num_indices = 1;
+		size_t start = s.find("][");
+		if (start != string::npos) {
+			size_t end = s.find("]", start + 1);
+			string index0 = s.substr(s.find("[") + 1, start - 1);
+			string index1 = s.substr(start + 2, end - start - 2);
+			if (index0.find("+") != string::npos) {
+				string sReg = index0.substr(0, index0.find(" + "));
+				string sAdd = index0.substr(index0.find(" + ") + 3);
+				vector<DWORD> reg = assembleOp(sReg);
+				tOp->num_indices = 2;
+				tOp->index0_repr = 2;
+				int iAdd = atoi(sAdd.c_str());
+				if (iAdd) tOp->index0_repr = 3;
+				if (index1.find("+") != string::npos) {
+					string sReg2 = index1.substr(0, index1.find(" + "));
+					string sAdd2 = index1.substr(index1.find(" + ") + 3);
+					vector<DWORD> reg2 = assembleOp(sReg2);
+					tOp->index1_repr = 2;
+					int iAdd2 = atoi(sAdd.c_str());
+					if (iAdd2) tOp->index1_repr = 3;
+					string swizzle = s.substr(s.find("].") + 2);
+					handleSwizzle(swizzle, tOp);
+					v.insert(v.begin(), tOp->op);
+					if (iAdd) v.push_back(iAdd);
+					v.push_back(reg[0]);
+					v.push_back(reg[1]);
+					if (iAdd2) v.push_back(iAdd2);
+					v.push_back(reg2[0]);
+					v.push_back(reg2[1]);
+					return v;
+				}
+				string swizzle = s.substr(s.find("].") + 2);
+				handleSwizzle(swizzle, tOp);
+				v.insert(v.begin(), tOp->op);
+				if (iAdd) v.push_back(iAdd);
+				v.push_back(reg[0]);
+				v.push_back(reg[1]);
+				v.push_back(atoi(index1.c_str()));
+				return v;
+			}
+			tOp->num_indices = 2;
+			string swizzle = s.substr(s.find('.') + 1);
+			handleSwizzle(swizzle, tOp, special);
+			v.insert(v.begin(), tOp->op);
+			v.push_back(atoi(index0.c_str()));
+			v.push_back(atoi(index1.c_str()));
+			return v;
+		}
+	} else if (s[0] == 'i') { // Immediate Constant Buffer
+		tOp->file = 9;
+		s.erase(s.begin());
+		s.erase(s.begin());
+		s.erase(s.begin());
+		tOp->num_indices = 1;
+	} else { // Constant buffer
+		tOp->file = 8;
+		s.erase(s.begin());
+		s.erase(s.begin());
+	}
+	string sNum;
+	bool hasIndex = false;
+	if (s.find("[") < s.size()) {
+		sNum = s.substr(0, s.find('['));
+		hasIndex = true;
+	} else {
+		sNum = s.substr(0, s.find('.'));
+	}
+	string index;
+	if (hasIndex) {
+		size_t start = s.find('[');
+		size_t end = s.find(']', start);
+		index = s.substr(start + 1, end - start - 1);
+	}
+	if (hasIndex) {
+		if (index.find('+') < index.size()) {
+			string s2 = index.substr(index.find('+') + 2);
+			DWORD idx = atoi(s2.c_str());
+			string s3 = index.substr(0, index.find('+') - 1);
+			vector<DWORD> reg = assembleOp(s3);
+			if (sNum.size() > 0) {
+				num = atoi(sNum.c_str());
+				v.push_back(num);
+			}
+			if (idx != 0) {
+				v.push_back(idx);
+				if (sNum.size() > 0)
+					tOp->index1_repr = 3; // Reg + imm
+				else
+					tOp->index0_repr = 3; // Reg + imm
+			} else {
+				if (sNum.size() > 0)
+					tOp->index1_repr = 2; // Reg;
+				else
+					tOp->index0_repr = 2; // Reg;
+			}
+			for (DWORD i = 0; i < reg.size(); i++) {
+				v.push_back(reg[i]);
+			}
+			handleSwizzle(s.substr(s.find("].") + 2), tOp, special);
+
+			v.insert(v.begin(), tOp->op);
+			return v;
+		}
+		DWORD idx = atoi(index.c_str());
+		num = atoi(sNum.c_str());
+		v.push_back(num);
+		v.push_back(idx);
+		if (s.find('.') < s.size()) {
+			handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+		} else {
+			tOp->mode = 1; // Swizzle
+			tOp->sel = 0xE4;
+		}
+		v.insert(v.begin(), tOp->op);
+		return v;
+	}
+	num = atoi(sNum.c_str());
+	v.push_back(num);
+	handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+	v.insert(v.begin(), tOp->op);
+	return v;
+}
+
+static vector<DWORD> assemble_literal_operand(string &s, vector<DWORD> &v, token_operand *tOp)
+{
+	tOp->file = 4;
+	s.erase(s.begin());
+	if (s.find(",") < s.size()) {
+		s.erase(s.begin());
+		string s1 = s.substr(0, s.find(","));
+		s = s.substr(s.find(",") + 1);
+		if (s[0] == ' ')
+			s.erase(s.begin());
+		string s2 = s.substr(0, s.find(","));
+		s = s.substr(s.find(",") + 1);
+		if (s[0] == ' ')
+			s.erase(s.begin());
+		string s3 = s.substr(0, s.find(","));
+		s = s.substr(s.find(",") + 1);
+		if (s[0] == ' ')
+			s.erase(s.begin());
+		string s4 = s.substr(0, s.find(")"));
+
+		v.push_back(strToDWORD(s1));
+		v.push_back(strToDWORD(s2));
+		v.push_back(strToDWORD(s3));
+		v.push_back(strToDWORD(s4));
+	} else {
+		tOp->comps_enum = 1; // 1
+		s.erase(s.begin());
+		s.pop_back();
+		v.push_back(strToDWORD(s));
+	}
+	v.insert(v.begin(), tOp->op);
+	return v;
+}
+
+static vector<DWORD> assembleOp(string s, bool special)
 {
 	vector<DWORD> v;
 	DWORD op = 0;
@@ -397,189 +585,11 @@ static vector<DWORD> assembleOp(string s, bool special = false)
 	 || s[0] == 'x'
 	 || s[0] == 'o'
 	 || s[0] == 'v') {
-		tOp->num_indices = 2;
-		if (s[0] == 'x') {
-			tOp->file = 3;
-			s.erase(s.begin());
-		} else if (s[0] == 'o') {
-			tOp->file = 2;
-			tOp->num_indices = 1;
-			s.erase(s.begin());
-		} else if (s[0] == 'v') {
-			tOp->file = 1;
-			if (s.size() > 4 && s[1] == 'i' && s[2] == 'c' && s[3] == 'p')  { // vicp
-				tOp->file = 0x19;
-				s.erase(s.begin());
-				s.erase(s.begin());
-				s.erase(s.begin());
-			} else if (s.size() > 4 && s[1] == 'o' && s[2] == 'c' && s[3] == 'p') { // vocp
-				tOp->file = 0x1A;
-				s.erase(s.begin());
-				s.erase(s.begin());
-				s.erase(s.begin());
-			} else if (s[1] == 'p' && s[2] == 'c') {
-				tOp->file = 0x1B;
-				s.erase(s.begin());
-				s.erase(s.begin());
-			}
-			s.erase(s.begin());
-			tOp->num_indices = 1;
-			size_t start = s.find("][");
-			if (start != string::npos) {
-				size_t end = s.find("]", start + 1);
-				string index0 = s.substr(s.find("[") + 1, start - 1);
-				string index1 = s.substr(start + 2, end - start - 2);
-				if (index0.find("+") != string::npos) {
-					string sReg = index0.substr(0, index0.find(" + "));
-					string sAdd = index0.substr(index0.find(" + ") + 3);
-					vector<DWORD> reg = assembleOp(sReg);
-					tOp->num_indices = 2;
-					tOp->index0_repr = 2;
-					int iAdd = atoi(sAdd.c_str());
-					if (iAdd) tOp->index0_repr = 3;
-					if (index1.find("+") != string::npos) {
-						string sReg2 = index1.substr(0, index1.find(" + "));
-						string sAdd2 = index1.substr(index1.find(" + ") + 3);
-						vector<DWORD> reg2 = assembleOp(sReg2);
-						tOp->index1_repr = 2;
-						int iAdd2 = atoi(sAdd.c_str());
-						if (iAdd2) tOp->index1_repr = 3;
-						string swizzle = s.substr(s.find("].") + 2);
-						handleSwizzle(swizzle, tOp);
-						v.insert(v.begin(), op);
-						if (iAdd) v.push_back(iAdd);
-						v.push_back(reg[0]);
-						v.push_back(reg[1]);
-						if (iAdd2) v.push_back(iAdd2);
-						v.push_back(reg2[0]);
-						v.push_back(reg2[1]);
-						return v;
-					}
-					string swizzle = s.substr(s.find("].") + 2);
-					handleSwizzle(swizzle, tOp);
-					v.insert(v.begin(), op);
-					if (iAdd) v.push_back(iAdd);
-					v.push_back(reg[0]);
-					v.push_back(reg[1]);
-					v.push_back(atoi(index1.c_str()));
-					return v;
-				}
-				tOp->num_indices = 2;
-				string swizzle = s.substr(s.find('.') + 1);
-				handleSwizzle(swizzle, tOp, special);
-				v.insert(v.begin(), op);
-				v.push_back(atoi(index0.c_str()));
-				v.push_back(atoi(index1.c_str()));
-				return v;
-			}
-		} else if (s[0] == 'i') {
-			tOp->file = 9;
-			s.erase(s.begin());
-			s.erase(s.begin());
-			s.erase(s.begin());
-			tOp->num_indices = 1;
-		} else {
-			tOp->file = 8;
-			s.erase(s.begin());
-			s.erase(s.begin());
-		}
-		string sNum;
-		bool hasIndex = false;
-		if (s.find("[") < s.size()) {
-			sNum = s.substr(0, s.find('['));
-			hasIndex = true;
-		} else {
-			sNum = s.substr(0, s.find('.'));
-		}
-		string index;
-		if (hasIndex) {
-			size_t start = s.find('[');
-			size_t end = s.find(']', start);
-			index = s.substr(start + 1, end - start - 1);
-		}
-		if (hasIndex) {
-			if (index.find('+') < index.size()) {
-				string s2 = index.substr(index.find('+') + 2);
-				DWORD idx = atoi(s2.c_str());
-				string s3 = index.substr(0, index.find('+') - 1);
-				vector<DWORD> reg = assembleOp(s3);
-				if (sNum.size() > 0) {
-					num = atoi(sNum.c_str());
-					v.push_back(num);
-				}
-				if (idx != 0) {
-					v.push_back(idx);
-					if (sNum.size() > 0)
-						tOp->index1_repr = 3; // Reg + imm
-					else
-						tOp->index0_repr = 3; // Reg + imm
-				} else {
-					if (sNum.size() > 0)
-						tOp->index1_repr = 2; // Reg;
-					else
-						tOp->index0_repr = 2; // Reg;
-				}
-				for (DWORD i = 0; i < reg.size(); i++) {
-					v.push_back(reg[i]);
-				}
-				handleSwizzle(s.substr(s.find("].") + 2), tOp, special);
-
-				v.insert(v.begin(), op);
-				return v;
-			}
-			DWORD idx = atoi(index.c_str());
-			num = atoi(sNum.c_str());
-			v.push_back(num);
-			v.push_back(idx);
-			if (s.find('.') < s.size()) {
-				handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-			} else {
-				tOp->mode = 1; // Swizzle
-				tOp->sel = 0xE4;
-			}
-			v.insert(v.begin(), op);
-			return v;
-		}
-		num = atoi(sNum.c_str());
-		v.push_back(num);
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		v.insert(v.begin(), op);
-		return v;
+		return assemble_cbvox_operand(s, v, tOp, special, num);
 	}
 
-	if (s[0] == 'l') {
-		string sOrig = s;;
-		tOp->file = 4;
-		s.erase(s.begin());
-		if (s.find(",") < s.size()) {
-			s.erase(s.begin());
-			string s1 = s.substr(0, s.find(","));
-			s = s.substr(s.find(",") + 1);
-			if (s[0] == ' ')
-				s.erase(s.begin());
-			string s2 = s.substr(0, s.find(","));
-			s = s.substr(s.find(",") + 1);
-			if (s[0] == ' ')
-				s.erase(s.begin());
-			string s3 = s.substr(0, s.find(","));
-			s = s.substr(s.find(",") + 1);
-			if (s[0] == ' ')
-				s.erase(s.begin());
-			string s4 = s.substr(0, s.find(")"));
-
-			v.push_back(strToDWORD(s1));
-			v.push_back(strToDWORD(s2));
-			v.push_back(strToDWORD(s3));
-			v.push_back(strToDWORD(s4));
-		} else {
-			tOp->comps_enum = 1; // 1
-			s.erase(s.begin());
-			s.pop_back();
-			v.push_back(strToDWORD(s));
-		}
-		v.insert(v.begin(), op);
-		return v;
-	}
+	if (s[0] == 'l')
+		return assemble_literal_operand(s, v, tOp);
 
 	if (s[0] == 'r') {
 		tOp->file = 0;
