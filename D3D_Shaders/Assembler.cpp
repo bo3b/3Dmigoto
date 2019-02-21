@@ -1016,8 +1016,8 @@ static unordered_map<string, vector<int>> insMap = {
 	// dcl_hs_join_phase_instance_count 0x9a // TODO
 	{ "dcl_thread_group",          { 3, 0x9b    } },
 	// dcl_uav_typed_*                  0x9c // Implemented elsewhere
-	{ "dcl_uav_raw",               { 1, 0x9d, 0 } },
-	{ "dcl_uav_structured",        { 2, 0x9e, 0 } },
+	{ "dcl_uav_raw",               { 1, 0x9d, 0 } }, // _glc variant handled elsewhere
+	{ "dcl_uav_structured",        { 2, 0x9e, 0 } }, // _glc variant handled elsewhere
 	{ "dcl_tgsm_raw",              { 2, 0x9f, 0 } },
 	{ "dcl_tgsm_structured",       { 3, 0xa0, 0 } },
 	// dcl_resource_raw                 0xa1 // Implemented elsewhere
@@ -1316,6 +1316,8 @@ static vector<DWORD> assembleIns(string s)
 	bool bZ = o.find("_z") < o.size();
 	bool bSat = o.find("_sat") < o.size();
 	if (bSat) o = o.substr(0, o.find("_sat"));
+	bool bGlc = o.find("_glc") < o.size(); // Globally coherent UAV declaration
+	if (bGlc) o = o.substr(0, o.find("_glc"));
 
 	if (o == "hs_decls") {
 		ins->opcode = 0x71;
@@ -1395,11 +1397,13 @@ static vector<DWORD> assembleIns(string s)
 			Os.push_back(assembleOp(w[i + 1], i < numSpecial));
 		ins->opcode = vIns[1];
 		if (bSat)
-			ins->_11_23 |= 4;
+			ins->_11_23 |= 0x04;
 		if (bNZ)
-			ins->_11_23 |= 128;
+			ins->_11_23 |= 0x80;
 		if (bZ)
-			ins->_11_23 |= 0;
+			ins->_11_23 |= 0x00;
+		if (bGlc)
+			ins->_11_23 |= 0x20;
 		ins->length = 1;
 		for (int i = 0; i < numOps; i++)
 			ins->length += (int)Os[i].size();
@@ -1526,6 +1530,18 @@ static vector<DWORD> assembleIns(string s)
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 2;
+		if (bGlc)
+			ins->_11_23 |= 0x20;
+		ins->length = 4;
+		v.push_back(op);
+		v.insert(v.end(), os.begin(), os.end());
+		assembleResourceDeclarationType(&w[1], &v);
+	} else if (o == "dcl_uav_typed_texture1darray") {
+		vector<DWORD> os = assembleOp(w[2]);
+		ins->opcode = 0x9c;
+		ins->_11_23 = 7;
+		if (bGlc)
+			ins->_11_23 |= 0x20;
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
@@ -1542,6 +1558,8 @@ static vector<DWORD> assembleIns(string s)
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 1;
+		if (bGlc)
+			ins->_11_23 |= 0x20;
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
@@ -1558,6 +1576,8 @@ static vector<DWORD> assembleIns(string s)
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 5;
+		if (bGlc)
+			ins->_11_23 |= 0x20;
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
@@ -1590,6 +1610,8 @@ static vector<DWORD> assembleIns(string s)
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 3;
+		if (bGlc)
+			ins->_11_23 |= 0x20;
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
@@ -1598,6 +1620,8 @@ static vector<DWORD> assembleIns(string s)
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 8;
+		if (bGlc)
+			ins->_11_23 |= 0x20;
 		ins->length = 4;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
