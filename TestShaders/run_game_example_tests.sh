@@ -1,4 +1,8 @@
-#!/bin/sh
+#!/bin/bash
+# Bashisms allow us to save 30 seconds over calling external commands like sed
+# in cygwin. Granted cygwin is horribly inefficient since Windows lacks an
+# efficient copy on write fork() or clone() style system call, but never
+# underestimate the cost associated with spawning processes
 
 . ./test_framework.sh
 
@@ -10,7 +14,7 @@ reconstruct_shader()
 	[ -f "$bin_filename" ] && return
 
 	if echo "$bin_filename" | grep _stripped > /dev/null; then
-		local unstripped_filename="$(echo "$bin_filename" | sed 's/_stripped//')"
+		local unstripped_filename="${bin_filename/_stripped/}"
 		reconstruct_shader "$unstripped_filename"
 		echo -n "Reconstructing $bin_filename... "
 		"$FXC" /nologo /dumpbin "$unstripped_filename" /Qstrip_reflect /Fo "$bin_filename" \
@@ -18,8 +22,8 @@ reconstruct_shader()
 		return
 	fi
 
-	local asm_filename=$(echo "$bin_filename" | sed 's/.shdr/.txt/')
-	local hlsl_filename=$(echo "$bin_filename" | sed 's/.shdr/_replace.txt/')
+	local asm_filename="${bin_filename/.shdr/.txt}"
+	local hlsl_filename="${bin_filename/.shdr/_replace.txt}"
 	echo -n "Reconstructing $bin_filename... "
 	if cmd_decompiler_copy_reflection_check; then
 		reconstruct_shader_binary "$hlsl_filename" "$asm_filename" "$bin_filename" \
@@ -35,7 +39,7 @@ run_test()
 {
 	local hlsl_chk_filename="$1"
 	local whitespace="$2"
-	local source_bin_filename="$(echo "$hlsl_chk_filename" | sed 's/.hlsl.chk/.bin/')"
+	local source_bin_filename="${hlsl_chk_filename/.hlsl.chk/.bin}"
 
 	if [ -z "$ASM" -a -z "$ASM_RECONSTRUCTED" -a -z "$HLSL" ]; then
 		local ASM=1
@@ -51,7 +55,7 @@ run_test()
 	else
 		[ -z "$HLSL" -a -z "$ASM_RECONSTRUCTED" ] && return
 
-		local reconstruct_filename="$(echo "$hlsl_chk_filename" | sed 's/.hlsl.chk/.shdr/')"
+		local reconstruct_filename="${hlsl_chk_filename/.hlsl.chk/.shdr}"
 		reconstruct_shader "$reconstruct_filename"
 		bin_filename="$reconstruct_filename"
 
@@ -98,12 +102,12 @@ done
 if [ "$run_all" = 1 ]; then
 	find GameExamples \( -iname '*.hlsl.chk' -a ! -iname '*stripped.hlsl.chk' -o -iname '*-?s.bin' \) -print0 |
 		while IFS= read -r -d $'\0' filename; do
-			if echo "$filename" | grep "\.bin$" >/dev/null; then
+			if [[ "$filename" == *".bin" ]]; then
 				run_test "$filename" "         "
-				run_test "$(echo "$filename" | sed 's/.bin/_stripped.bin/')"
-			elif [ ! -f "$(echo "$filename" | sed 's/.hlsl.chk/.bin/')" ]; then
+				run_test "${filename/.bin/_stripped.bin}"
+			elif [ ! -f "${filename/.hlsl.chk/.bin}" ]; then
 				run_test "$filename" "         "
-				run_test "$(echo "$filename" | sed 's/.hlsl.chk/_stripped.hlsl.chk/')"
+				run_test "${filename/.hlsl.chk/_stripped.hlsl.chk}"
 			fi
 		done
 fi
