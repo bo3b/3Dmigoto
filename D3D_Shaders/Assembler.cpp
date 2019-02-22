@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "float.h"
 
 using namespace std;
 
@@ -61,6 +62,22 @@ static DWORD strToDWORD(string s)
 		return *pF;
 	}
 	return atoi(s.c_str());
+}
+
+static uint64_t str_to_raw_double(string &s)
+{
+	double d;
+
+	// TODO: Parse NAN/INF literals
+
+	if (!s.compare(0, 2, "0x")) {
+		uint64_t q;
+		sscanf_s(s.c_str() + 2, "%llx", &q);
+		return q;
+	}
+
+	d = atof(s.c_str());
+	return *(uint64_t*)&d;
 }
 
 static string convertF(DWORD original)
@@ -143,6 +160,32 @@ static string convertF(DWORD original)
 		}
 	}
 	return sLiteral;
+}
+
+static string convertD(DWORD v1, DWORD v2)
+{
+	char buf[80];
+	uint64_t q = (uint64_t)v1 | ((uint64_t)v2 << 32);
+	double *d = (double*)&q;
+
+	if (isnan(*d) || isinf(*d)) {
+		// As above, if we ever get called on a NAN/INF value just
+		// output the value as hex to ensure we can parse it back
+		sprintf_s(buf, 80, "0x%016llx", q);
+		return string(buf);
+	} else {
+		// %g switches between readable and scientific notation as required, #
+		// ensures there is always a radix character (to match the original
+		// assembly and avoid potential ambiguities if it turns out that d()
+		// could include integers, though unfortunately it has a double meaning
+		// and doesn't strip any trailing 0s at all) and DBL_DECIMAL_DIG
+		// ensures we can make the round trip from binary to decimal and back
+		// without any loss of precision. The trailing 'l' matches the original.
+		//
+		// We could certainly clean this up further, but this is easy
+		sprintf_s(buf, 80, "%#.*gl", DBL_DECIMAL_DIG, *d);
+	}
+	return buf;
 }
 
 void writeLUT()
@@ -479,16 +522,13 @@ static vector<DWORD> assemble_double_operand(string &s, vector<DWORD> &v, token_
 
 	// printf("double: \"%s\" \"%s\" \"%s\"\n", s.c_str(), s1.c_str(), s2.c_str());
 
-	// TODO: Handle NAN/INF literals & hex values if/as necessary
-	double d1 = atof(s1.c_str());
-	double d2 = atof(s2.c_str());
-	uint64_t *q1 = (uint64_t*)&d1;
-	uint64_t *q2 = (uint64_t*)&d2;
+	uint64_t q1 = str_to_raw_double(s1);
+	uint64_t q2 = str_to_raw_double(s2);
 
-	v.push_back(*q1 & 0xffffffff);
-	v.push_back(*q1 >> 32);
-	v.push_back(*q2 & 0xffffffff);
-	v.push_back(*q2 >> 32);
+	v.push_back(q1 & 0xffffffff);
+	v.push_back(q1 >> 32);
+	v.push_back(q2 & 0xffffffff);
+	v.push_back(q2 >> 32);
 	return v;
 }
 
@@ -2107,7 +2147,7 @@ static string assembleAndCompare(string s, vector<DWORD> v)
 						}
 					}
 					i++;
-				} else if (v[i] == 0x4001) {
+				} else if (v[i] == 0x4001) { // One component float literal
 					i++;
 					lastLiteral = sNew.find("l(", lastLiteral + 1);
 					lastEnd = sNew.find(")", lastLiteral);
@@ -2119,7 +2159,7 @@ static string assembleAndCompare(string s, vector<DWORD> v)
 						sBegin.append(sNew.substr(lastEnd));
 						sNew = sBegin;
 					}
-				} else if (v[i] == 0x4002) {
+				} else if (v[i] == 0x4002) { // Four component float literal
 					i++;
 					lastLiteral = sNew.find("l(", lastLiteral);
 					lastEnd = sNew.find(",", lastLiteral);
@@ -2165,6 +2205,31 @@ static string assembleAndCompare(string s, vector<DWORD> v)
 						string sBegin = sNew.substr(0, lastLiteral + 1); // BUG FIXED: Was using +2, but "," is only length 1 -DSS
 						if (sNew[lastLiteral + 1] == ' ')
 							sBegin = sNew.substr(0, lastLiteral + 2); // Keep the space
+						sBegin.append(sLiteral);
+						lastLiteral = sBegin.size();
+						sBegin.append(sNew.substr(lastEnd));
+						sNew = sBegin;
+					}
+				} else if (v[i] == 0x5002) { // Double literal (two doubles x two components/double)
+					i += 2;
+					lastLiteral = sNew.find("d(", lastLiteral);
+					lastEnd = sNew.find(",", lastLiteral);
+					if (v[i-1] != v2[i-1] || v[i] != v2[i]) {
+						string sLiteral = convertD(v[i-1], v[i]);
+						string sBegin = sNew.substr(0, lastLiteral + 2);
+						lastLiteral = sBegin.size();
+						sBegin.append(sLiteral);
+						sBegin.append(sNew.substr(lastEnd));
+						sNew = sBegin;
+					}
+					i += 2;
+					lastLiteral = sNew.find(",", lastLiteral + 1);
+					lastEnd = sNew.find(")", lastLiteral + 1);
+					if (v[i-1] != v2[i-1] || v[i] != v2[i]) {
+						string sLiteral = convertD(v[i-1], v[i]);
+						string sBegin = sNew.substr(0, lastLiteral + 1);
+						if (sNew[lastLiteral + 1] == ' ')
+							sBegin = sNew.substr(0, lastLiteral + 2);
 						sBegin.append(sLiteral);
 						lastLiteral = sBegin.size();
 						sBegin.append(sNew.substr(lastEnd));
