@@ -2,6 +2,23 @@
 
 using namespace std;
 
+// TODO: Add more detail, like line & character number, etc (ideally like the
+// command list exceptions) and sprinkle this liberally around the assembler
+class ParseError: public exception {
+public:
+	string msg;
+
+	ParseError(string context, string desc)
+	{
+		msg = desc + ":\n\t\"" + context + "\"";
+	}
+
+	const char* what() const noexcept
+	{
+		return msg.c_str();
+	}
+};
+
 FILE* failFile = NULL;
 static unordered_map<string, vector<DWORD>> codeBin;
 
@@ -452,6 +469,9 @@ static vector<DWORD> assemble_double_operand(string &s, vector<DWORD> &v, token_
 	v.push_back(tOp->op);
 
 	size_t comma = s.find(",", 2);
+	if (comma == string::npos)
+		throw ParseError(s, "Double literal string missing 2nd value");
+
 	string s1 = s.substr(2, comma - 2);
 	string s2 = s.substr(comma + 1, s.find(")", comma) - comma - 1);
 	if (s2[0] == ' ')
