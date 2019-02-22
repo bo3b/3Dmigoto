@@ -3,6 +3,11 @@
 
 using namespace std;
 
+// This is defined in the Windows 10 SDK, but seems not in the 8.0 SDK:
+#ifndef DBL_DECIMAL_DIG
+#define DBL_DECIMAL_DIG 17
+#endif
+
 // TODO: Add more detail, like line & character number, etc (ideally like the
 // command list exceptions) and sprinkle this liberally around the assembler
 class ParseError: public exception {
@@ -14,7 +19,7 @@ public:
 		msg = desc + ":\n\t\"" + context + "\"";
 	}
 
-	const char* what() const noexcept
+	const char* what() const
 	{
 		return msg.c_str();
 	}
