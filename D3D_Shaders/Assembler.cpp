@@ -427,6 +427,51 @@ static vector<DWORD> assemble_literal_operand(string &s, vector<DWORD> &v, token
 	return v;
 }
 
+static vector<DWORD> assemble_double_operand(string &s, vector<DWORD> &v, token_operand *tOp)
+{
+	// Examples of double literals (from RE2):
+	//   d(0.000000l, 766800.000000l)
+	//   d(0.000000l, 40449600.000000l)
+	//   d(-40449600.000000l, 0.000000l)
+	//   d(0.000000l, -6360.000000l)
+	//   d(0.000000l, 6420.000000l)
+	//
+	// These examples have two doubles each, the first is split over the
+	// .xy components and the second split over the .zw components.
+	// I'm not positive if there is a variant with only a single double -
+	// float literals can only have 1 or 4 (not 2 or 3) and a double by
+	// definition uses at two components for each number, so does that mean
+	// it will have to always use all four components?
+	//
+	// Like floats, there are issues with loss of precision since these
+	// have been formatted with %f, which will mean we need to extend the
+	// disassembler fixup code to include these.
+
+	tOp->file = 5; // Double
+	tOp->comps_enum = 2; // Use 4 components (until proven otherwise)
+	v.push_back(tOp->op);
+
+	size_t comma = s.find(",", 2);
+	string s1 = s.substr(2, comma - 2);
+	string s2 = s.substr(comma + 1, s.find(")", comma) - comma - 1);
+	if (s2[0] == ' ')
+		s2.erase(s2.begin());
+
+	// printf("double: \"%s\" \"%s\" \"%s\"\n", s.c_str(), s1.c_str(), s2.c_str());
+
+	// TODO: Handle NAN/INF literals & hex values if/as necessary
+	double d1 = atof(s1.c_str());
+	double d2 = atof(s2.c_str());
+	uint64_t *q1 = (uint64_t*)&d1;
+	uint64_t *q2 = (uint64_t*)&d2;
+
+	v.push_back(*q1 & 0xffffffff);
+	v.push_back(*q1 >> 32);
+	v.push_back(*q2 & 0xffffffff);
+	v.push_back(*q2 >> 32);
+	return v;
+}
+
 static DWORD encode_min_precision_type(const char *type)
 {
 	if (!strncmp(type, "min", 3)) {
@@ -663,6 +708,9 @@ static vector<DWORD> assembleOp(string s, bool special)
 
 	if (s[0] == 'l')
 		return assemble_literal_operand(s, v, tOp);
+
+	if (s[0] == 'd')
+		return assemble_double_operand(s, v, tOp);
 
 	if (s[0] == 'r') {
 		tOp->file = 0;
