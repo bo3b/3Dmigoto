@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:10:08 2018
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:39:55 2019
 TextureCube<float4> t3 : register(t3);
 
 Texture2D<float4> t2 : register(t2);
@@ -36,8 +36,6 @@ cbuffer cb0 : register(b0)
 
 // 3Dmigoto declarations
 #define cmp -
-Texture1D<float4> IniParams : register(t120);
-Texture2D<float4> StereoParams : register(t125);
 
 
 void main(

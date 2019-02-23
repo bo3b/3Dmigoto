@@ -377,9 +377,17 @@ static HRESULT Decompile(const void *pShaderBytecode, size_t BytecodeLength, str
 	p.bytecode = pShaderBytecode;
 	p.decompiled = disassembly.c_str(); // XXX: Why do we call this "decompiled" when it's actually disassembled?
 	p.decompiledSize = disassembly.size();
-	// FIXME: We would be better off defining a pre-processor macro for these:
-	p.IniParamsReg = 120;
-	p.StereoParamsReg = 125;
+
+	// Disable IniParams and StereoParams registers. This avoids inserting
+	// these in a shader that already has them, such as some of our test
+	// cases. Also, while cmd_Decompiler is part of 3DMigoto, it is NOT
+	// 3DMigoto so it doesn't really make sense that it should add 3DMigoto
+	// registers, and if someone wants these registers there is nothing
+	// stopping them from adding them by hand. May break scripts that use
+	// cmd_Decompiler and expect these to be here, but those scripts can be
+	// updated to add them or they can keep using an old version.
+	p.IniParamsReg = -1;
+	p.StereoParamsReg = -1;
 
 	*hlslText = DecompileBinaryHLSL(p, patched, *shaderModel, errorOccurred);
 	if (!hlslText->size() || errorOccurred) {

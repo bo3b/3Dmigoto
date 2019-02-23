@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 19:01:23 2018
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:42:01 2019
 groupshared struct { float val[1]; } g4[192];
 groupshared struct { float val[1]; } g2[192];
 Texture2D<float4> t1 : register(t1);
@@ -20,8 +20,6 @@ cbuffer cb12 : register(b12)
 
 // 3Dmigoto declarations
 #define cmp -
-Texture1D<float4> IniParams : register(t120);
-Texture2D<float4> StereoParams : register(t125);
 
 
 void main)

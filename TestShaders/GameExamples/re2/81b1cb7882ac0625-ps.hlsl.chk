@@ -1,0 +1,28 @@
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:41:36 2019
+
+RWByteAddressBuffer VisibilityFlag : register(u0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : SV_POSITION0,
+  nointerpolation uint v1 : ID0)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_raw_glc u0
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// No code for instruction (needs manual fix):
+ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r0.x, v1.x, u0.xxxx
+  if (r0.x != 0) {
+    return;
+  }
+// No code for instruction (needs manual fix):
+store_raw u0.x, v1.x, l(1)
+  return;
+}

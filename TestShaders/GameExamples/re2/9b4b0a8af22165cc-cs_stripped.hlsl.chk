@@ -1,0 +1,32 @@
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:41:37 2019
+struct t0_t {
+  float val[1];
+};
+StructuredBuffer<t0_t> t0 : register(t0);
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_typed_texture1darray (float,float,float,float) u0
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 64, 1, 1
+  r0.x = (uint)vThreadIDInGroup.x << 9;
+  r0.x = (int)r0.x + (int)vThreadGroupID.x;
+  r0.x = t0[r0.x].val[0/4];
+  r1.x = vThreadGroupID.x;
+  r1.yzw = vThreadIDInGroup.xxx;
+// No code for instruction (needs manual fix):
+store_uav_typed u0.xyzw, r1.xyzw, r0.xxxx
+  return;
+}

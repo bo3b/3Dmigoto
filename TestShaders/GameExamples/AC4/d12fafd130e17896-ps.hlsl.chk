@@ -1,12 +1,10 @@
-// ---- Created with 3Dmigoto v1.3.12 on Thu Dec 06 08:30:57 2018
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:39:21 2019
 
 Texture2DMS<float,4> g_DepthBuffer : register(t0);
 
 
 // 3Dmigoto declarations
 #define cmp -
-Texture1D<float4> IniParams : register(t120);
-Texture2D<float4> StereoParams : register(t125);
 
 
 void main(
