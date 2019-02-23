@@ -76,9 +76,9 @@ static uint64_t str_to_raw_double(string &s)
 	// TODO: Parse NAN/INF literals
 
 	if (!s.compare(0, 2, "0x")) {
-		uint64_t q;
-		sscanf_s(s.c_str() + 2, "%llx", &q);
-		return q;
+		uint32_t v1, v2;
+		sscanf_s(s.c_str(), "0x%x, 0x%x", &v1, &v2);
+		return (uint64_t)v1 | (uint64_t)v2 << 32;
 	}
 
 	d = atof(s.c_str());
@@ -176,7 +176,9 @@ static string convertD(DWORD v1, DWORD v2)
 	if (isnan(*d) || isinf(*d)) {
 		// As above, if we ever get called on a NAN/INF value just
 		// output the value as hex to ensure we can parse it back
-		sprintf_s(buf, 80, "0x%016llx", q);
+		// Matching the output of the disassembler with /Lx that splits
+		// the hex output into two halves:
+		sprintf_s(buf, 80, "0x%08x, 0x%08x", v1, v2);
 	} else {
 		// %g switches between readable and scientific notation as required, #
 		// ensures there is always a radix character (to match the original
@@ -510,6 +512,16 @@ static vector<DWORD> assemble_double_operand(string &s, vector<DWORD> &v, token_
 	// Like floats, there are issues with loss of precision since these
 	// have been formatted with %f, which will mean we need to extend the
 	// disassembler fixup code to include these.
+	//
+	// If the disassembler ever outputs a hex value (e.g. /Lx flag AKA
+	// D3D_DISASM_PRINT_HEX_LITERALS) these instead look like:
+	//   d(0x00000000, 0x00000000, 0x00000000, 0x412766a0)
+	//   d(0x00000000, 0x00000000, 0x00000000, 0x418349b2)
+	//   d(0x00000000, 0xc18349b2, 0x00000000, 0x00000000)
+	//   d(0x00000000, 0x00000000, 0x00000000, 0xc0b8d800)
+	//   d(0x00000000, 0x00000000, 0x00000000, 0x40b91400)
+	// So we need a special case to handle 64bit hex values split into two
+	// 32bit components.
 
 	tOp->file = 5; // Double
 	tOp->comps_enum = 2; // Use 4 components (until proven otherwise)
@@ -518,6 +530,16 @@ static vector<DWORD> assemble_double_operand(string &s, vector<DWORD> &v, token_
 	size_t comma = s.find(",", 2);
 	if (comma == string::npos)
 		throw ParseError(s, "Double literal string missing 2nd value");
+
+	// If the first value is hex it is only the first 32bits of the value
+	// and we need to include the 2nd component as well. The 2nd number
+	// doesn't need special handling since it scans until the closing
+	// bracket and will therefore naturally include the 4th component:
+	if (!s.compare(2, 2, "0x")) {
+		comma = s.find(",", comma + 1);
+		if (comma == string::npos || s.find(",", comma + 1) == string::npos)
+			throw ParseError(s, "Double literal hex string with less components than expected");
+	}
 
 	string s1 = s.substr(2, comma - 2);
 	string s2 = s.substr(comma + 1, s.find(")", comma) - comma - 1);
@@ -2218,6 +2240,9 @@ static string assembleAndCompare(string s, vector<DWORD> v)
 					i += 2;
 					lastLiteral = sNew.find("d(", lastLiteral);
 					lastEnd = sNew.find(",", lastLiteral);
+					// If it's a hex literal it is split over four components instead of two:
+					if (!sNew.compare(lastLiteral + 2, 2, "0x"))
+						lastEnd = sNew.find(",", lastLiteral + 1);
 					if (v[i-1] != v2[i-1] || v[i] != v2[i]) {
 						string sLiteral = convertD(v[i-1], v[i]);
 						string sBegin = sNew.substr(0, lastLiteral + 2);
@@ -2228,6 +2253,9 @@ static string assembleAndCompare(string s, vector<DWORD> v)
 					}
 					i += 2;
 					lastLiteral = sNew.find(",", lastLiteral + 1);
+					// If it's a hex literal it is split over four components instead of two:
+					if (!sNew.compare(lastLiteral + 2, 2, "0x"))
+						lastLiteral = sNew.find(",", lastLiteral + 1);
 					lastEnd = sNew.find(")", lastLiteral + 1);
 					if (v[i-1] != v2[i-1] || v[i] != v2[i]) {
 						string sLiteral = convertD(v[i-1], v[i]);
