@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:55:24 2018
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:40:25 2019
 
 struct SPositionInfo
 {
@@ -58,8 +58,6 @@ StructuredBuffer<SPatchOutputBuffer> PatchOutputBuffer : register(t6);
 
 // 3Dmigoto declarations
 #define cmp -
-Texture1D<float4> IniParams : register(t120);
-Texture2D<float4> StereoParams : register(t125);
 
 
 void main(

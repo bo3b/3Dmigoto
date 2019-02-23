@@ -113,6 +113,7 @@ struct Declaration
         uint32_t aui32HullPhaseInstanceInfo[2];
         float fMaxTessFactor;
         uint32_t ui32IndexRange;
+		uint32_t ui32GSInstanceCount;
 
         struct Interface_TAG
         {
@@ -142,6 +143,31 @@ struct Declaration
 
 };
 
+static const uint32_t MAIN_PHASE = 0;
+static const uint32_t HS_GLOBAL_DECL = 1;
+static const uint32_t HS_CTRL_POINT_PHASE = 2;
+static const uint32_t HS_FORK_PHASE = 3;
+static const uint32_t HS_JOIN_PHASE = 4;
+enum{ NUM_PHASES = 5};
+
+struct ShaderPhase
+{
+	//How many instances of this phase type are there?
+	uint32_t ui32InstanceCount;
+
+    std::vector<std::vector<Declaration>> ppsDecl;
+
+    std::vector<std::vector<Instruction>> ppsInst;
+
+    ShaderPhase() :
+        ui32InstanceCount(0)
+    {
+	    // 3DMigoto backport: Ensure we always have at least one "instance"
+	    ppsDecl.resize(1);
+	    ppsInst.resize(1);
+    }
+};
+
 struct Shader
 {
     uint32_t ui32MajorVersion;
@@ -154,8 +180,6 @@ struct Shader
 
     //DWORDs in program code, including version and length tokens.
     uint32_t ui32ShaderLength;
-
-    std::vector<Declaration> psDecl;
 
     //Instruction* functions;//non-main subroutines
 
@@ -175,33 +199,9 @@ struct Shader
 
     std::vector<uint32_t> ui32NextClassFuncName;
 
-    std::vector<Instruction> psInst;
-
     const uint32_t* pui32FirstToken;//Reference for calculating current position in token stream.
 
-	//Hull shader declarations and instructions.
-	//psDecl, psInst are null for hull shaders.
-	uint32_t ui32HSDeclCount;
-	Declaration* psHSDecl;
-
-	uint32_t ui32HSControlPointDeclCount;
-	Declaration* psHSControlPointPhaseDecl;
-
-	uint32_t ui32HSControlPointInstrCount;
-	Instruction* psHSControlPointPhaseInstr;
-
-    uint32_t ui32ForkPhaseCount;
-
-	uint32_t aui32HSForkDeclCount[MAX_FORK_PHASES];
-	Declaration* apsHSForkPhaseDecl[MAX_FORK_PHASES];
-
-	uint32_t aui32HSForkInstrCount[MAX_FORK_PHASES];
-	Instruction* apsHSForkPhaseInstr[MAX_FORK_PHASES];
-
-	uint32_t ui32HSJoinDeclCount;
-	Declaration* psHSJoinPhaseDecl;
-
-	std::vector<Instruction> psHSJoinPhaseInstr;
+	ShaderPhase asPhase[NUM_PHASES];
 
     ShaderInfo *sInfo;
 
@@ -223,28 +223,19 @@ struct Shader
 
 	//int aiOpcodeUsed[NUM_OPCODES];
 
+	uint32_t ui32CurrentVertexOutputStream;
+
 	Shader() :
 		ui32MajorVersion(0),
 		ui32MinorVersion(0),
 		ui32ShaderLength(0),
 		pui32FirstToken(0),
-		ui32HSDeclCount(0),
-		psHSDecl(0),
-		ui32HSControlPointDeclCount(0),
-		psHSControlPointPhaseDecl(0),
-		ui32HSControlPointInstrCount(0),
-		psHSControlPointPhaseInstr(0),
-		ui32ForkPhaseCount(0),
-		ui32HSJoinDeclCount(0),
-		psHSJoinPhaseDecl(0),
-		psDecl(),
+		asPhase(),
 		aui32FuncTableToFuncPointer(),
 		aui32FuncBodyToFuncTable(),
 		funcTable(),
 		funcPointer(),
 		ui32NextClassFuncName(),
-		psInst(),
-		psHSJoinPhaseInstr(),
 		abScalarInput(),
 		aIndexedOutput(),
 		aIndexedInput(),
@@ -254,13 +245,6 @@ struct Shader
 		aiOutputDeclared(),
 		abInputReferencedByInstruction()
 	{
-		for (int i = 0; i < MAX_FORK_PHASES; ++i)
-		{
-			aui32HSForkDeclCount[i] = 0;
-			apsHSForkPhaseDecl[i] = 0;
-			aui32HSForkInstrCount[i] = 0;
-			apsHSForkPhaseInstr[i] = 0;
-		}
 		sInfo = new ShaderInfo();
 	}
 
@@ -270,10 +254,4 @@ struct Shader
 		sInfo = 0;
 	}
 };
-
-static const uint32_t MAIN_PHASE = 0;
-static const uint32_t HS_FORK_PHASE = 1;
-static const uint32_t HS_CTRL_POINT_PHASE = 2;
-static const uint32_t HS_JOIN_PHASE = 3;
-enum{ NUM_PHASES = 4};
 

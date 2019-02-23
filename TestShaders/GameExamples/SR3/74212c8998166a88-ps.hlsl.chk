@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:09:39 2018
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:41:42 2019
 
 cbuffer cb8 : register(b8)
 {
@@ -25,8 +25,6 @@ Texture2D<float4> IR_LBufferSampler : register(t12);
 
 // 3Dmigoto declarations
 #define cmp -
-Texture1D<float4> IniParams : register(t120);
-Texture2D<float4> StereoParams : register(t125);
 
 
 void main(

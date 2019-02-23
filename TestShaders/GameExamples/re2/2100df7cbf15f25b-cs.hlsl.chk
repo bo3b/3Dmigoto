@@ -1,0 +1,129 @@
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:41:35 2019
+
+struct GPUVolume
+{
+    float3 mBoundaryMin;           // Offset:    0
+    float mOutputAddress;          // Offset:   12
+    float3 mBoundaryMax;           // Offset:   16
+    float mReserved;               // Offset:   28
+};
+
+cbuffer SceneInfo : register(b0)
+{
+  row_major float4x4 viewProjMat : packoffset(c0);
+  row_major float3x4 transposeViewMat : packoffset(c4);
+  row_major float3x4 transposeViewInvMat : packoffset(c7);
+  float4 projElement[2] : packoffset(c10);
+  float4 projInvElements[2] : packoffset(c12);
+  row_major float4x4 viewProjInvMat : packoffset(c14);
+  row_major float4x4 prevViewProjMat : packoffset(c18);
+  float3 ZToLinear : packoffset(c22);
+  float subdivisionLevel : packoffset(c22.w);
+  float2 screenSize : packoffset(c23);
+  float2 screenInverseSize : packoffset(c23.z);
+  float2 cullingHelper : packoffset(c24);
+  float cameraNearPlane : packoffset(c24.z);
+  float cameraFarPlane : packoffset(c24.w);
+  float4 viewFrustum[6] : packoffset(c25);
+  float4 clipplane : packoffset(c31);
+}
+
+StructuredBuffer<GPUVolume> VolumeList : register(t0);
+RWByteAddressBuffer RWDrawIndirectArguments : register(u0);
+RWByteAddressBuffer VisibilityFlag : register(u1);
+RWByteAddressBuffer RasterizerObjectList : register(u2);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_raw_glc u0
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_raw_glc u1
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_raw_glc u2
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 64, 1, 1
+  r0.x = VolumeList[vThreadID.x].mBoundaryMin.x;
+  r0.y = VolumeList[vThreadID.x].mBoundaryMin.y;
+  r0.z = VolumeList[vThreadID.x].mBoundaryMin.z;
+  r0.w = VolumeList[vThreadID.x].mOutputAddress;
+  r1.x = cmp(r0.w == -1.000000);
+  if (r1.x != 0) {
+    return;
+  }
+  r1.x = VolumeList[vThreadID.x].mBoundaryMax.x;
+  r1.y = VolumeList[vThreadID.x].mBoundaryMax.y;
+  r1.z = VolumeList[vThreadID.x].mBoundaryMax.z;
+  r2.xyz = -cameraNearPlane * float3(2,2,2) + r0.xyz;
+  r3.xyz = cameraNearPlane * float3(2,2,2) + r1.xyz;
+  r4.x = transposeViewInvMat._m03;
+  r4.y = transposeViewInvMat._m13;
+  r4.z = transposeViewInvMat._m23;
+  r3.xyz = -r4.xyz + r3.xyz;
+  r1.w = min(r3.x, r3.y);
+  r1.w = min(r1.w, r3.z);
+  r2.xyz = r4.xyz + -r2.xyz;
+  r2.x = min(r2.x, r2.y);
+  r2.x = min(r2.x, r2.z);
+  r1.w = min(r2.x, r1.w);
+  r1.w = cmp(0 < r1.w);
+  if (r1.w != 0) {
+    r1.w = 4 * r0.w;
+    r1.w = (uint)r1.w;
+  // No code for instruction (needs manual fix):
+    store_raw u1.x, r1.w, l(1)
+  } else {
+    r0.xyz = r1.xyz + r0.xyz;
+    r2.xyz = float3(0.5,0.5,0.5) * r0.xyz;
+    r0.xyz = -r0.xyz * float3(0.5,0.5,0.5) + r1.xyz;
+    r2.w = 1;
+    r1.xy = float2(0,0);
+    while (true) {
+      r1.z = cmp((int)r1.x >= 6);
+      r1.y = 0;
+      if (r1.z != 0) break;
+      r1.z = dot(r0.xyz, abs(viewFrustum[r1.x].xyz));
+      r1.w = dot(viewFrustum[r1.x].xyzw, r2.xyzw);
+      r1.z = r1.w + r1.z;
+      r1.z = cmp(r1.z < 0);
+      if (r1.z != 0) {
+        r1.y = -1;
+        break;
+      }
+      r1.x = (int)r1.x + 1;
+      r1.xy = r1.xz;
+    }
+    if (r1.y == 0) {
+      r0.x = -1;
+    } else {
+      r0.x = 0;
+    }
+    if (r0.x == 0) {
+      r0.x = 4 * r0.w;
+      r0.x = (uint)r0.x;
+    // No code for instruction (needs manual fix):
+        store_raw u1.x, r0.x, l(0)
+    } else {
+      r0.x = 4 * r0.w;
+      r0.x = (uint)r0.x;
+    // No code for instruction (needs manual fix):
+        store_raw u1.x, r0.x, l(0)
+      // Needs manual fix for instruction:
+        imm_atomic_iadd r0.x, u0, l(4), l(1)
+      InterlockedAdd(dest, imm_value, orig_value);
+      r0.x = (uint)r0.x << 2;
+    // No code for instruction (needs manual fix):
+        store_raw u2.x, r0.x, vThreadID.x
+    }
+  }
+  return;
+}

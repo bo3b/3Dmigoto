@@ -1,0 +1,35 @@
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:41:34 2019
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[1];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_raw t0
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_raw_glc u0
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 64, 1, 1
+  r0.x = cmp((uint)vThreadID.x < asuint(cb0[0].x));
+  if (r0.x != 0) {
+    r0.x = (uint)vThreadID.x << 2;
+  // No code for instruction (needs manual fix):
+    ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r0.y, r0.x, t0.xxxx
+  // No code for instruction (needs manual fix):
+    store_raw u0.x, r0.x, r0.y
+  }
+  return;
+}

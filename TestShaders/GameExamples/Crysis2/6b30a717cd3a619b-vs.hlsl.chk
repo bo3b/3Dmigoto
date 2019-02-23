@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Thu Nov 15 07:09:03 2018
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:39:54 2019
 
 cbuffer PER_INSTANCE : register(b1)
 {
@@ -19,8 +19,6 @@ cbuffer PER_FRAME : register(b3)
 
 // 3Dmigoto declarations
 #define cmp -
-Texture1D<float4> IniParams : register(t120);
-Texture2D<float4> StereoParams : register(t125);
 
 
 void main(

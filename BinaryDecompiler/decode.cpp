@@ -15,9 +15,11 @@ enum {FOURCC_RDEF = FOURCC('R', 'D', 'E', 'F')}; //Resource definition (e.g. con
 enum {FOURCC_ISGN = FOURCC('I', 'S', 'G', 'N')}; //Input signature
 enum {FOURCC_IFCE = FOURCC('I', 'F', 'C', 'E')}; //Interface (for dynamic linking)
 enum {FOURCC_OSGN = FOURCC('O', 'S', 'G', 'N')}; //Output signature
+enum {FOURCC_PSGN = FOURCC('P', 'C', 'S', 'G')}; //Patch-constant signature
 
 enum {FOURCC_ISG1 = FOURCC('I', 'S', 'G', '1')}; //Input signature with Stream and MinPrecision
 enum {FOURCC_OSG1 = FOURCC('O', 'S', 'G', '1')}; //Output signature with Stream and MinPrecision
+enum {FOURCC_OSG5 = FOURCC('O', 'S', 'G', '5')}; //Output signature with Stream
 
 typedef struct DXBCContainerHeaderTAG
 {
@@ -595,8 +597,8 @@ const uint32_t* DecodeDeclaration(Shader* psShader, const uint32_t* pui32Token, 
 		}
 		case OPCODE_DCL_HS_FORK_PHASE_INSTANCE_COUNT:
 		{
-            ASSERT(psShader->ui32ForkPhaseCount != 0);//Check for wrapping when we decrement.
-            psDecl->value.aui32HullPhaseInstanceInfo[0] = psShader->ui32ForkPhaseCount-1;
+            ASSERT(psShader->asPhase[HS_FORK_PHASE].ui32InstanceCount != 0);//Check for wrapping when we decrement.
+			psDecl->value.aui32HullPhaseInstanceInfo[0] = psShader->asPhase[HS_FORK_PHASE].ui32InstanceCount-1;
             psDecl->value.aui32HullPhaseInstanceInfo[1] = pui32Token[1];
 			break;
 		}
@@ -741,17 +743,16 @@ const uint32_t* DecodeDeclaration(Shader* psShader, const uint32_t* pui32Token, 
 		case OPCODE_DCL_STREAM:
 		{
 			psDecl->ui32NumOperands = 1;
-			DecodeOperand(pui32Token + ui32OperandOffset, &psDecl->asOperands[0]);
+			DecodeOperand(pui32Token+ui32OperandOffset, &psDecl->asOperands[0]);
 			break;
 		}
-		// Not seen yet, needs mod to structs.h-- REALLY need to update to latest JJ.
-		//case OPCODE_DCL_GS_INSTANCE_COUNT:
-		//{
-		//	psDecl->ui32NumOperands = 0;
-		//	psDecl->value.ui32GSInstanceCount = pui32Token[1];
-		//	break;
-		//}
-		default:
+		case OPCODE_DCL_GS_INSTANCE_COUNT:
+		{
+			psDecl->ui32NumOperands = 0;
+			psDecl->value.ui32GSInstanceCount = pui32Token[1];
+			break;
+		}
+        default:
         {
             //Reached end of declarations
             return 0;
@@ -1049,7 +1050,14 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
             ui32OperandOffset += DecodeOperand(pui32Token+ui32OperandOffset, &psInst->asOperands[3]);
             ui32OperandOffset += DecodeOperand(pui32Token+ui32OperandOffset, &psInst->asOperands[4]);
 
-			MarkTextureAsShadow(psShader->sInfo, psShader->psDecl, &psInst->asOperands[2]);
+			/* sample_b is not a shadow sampler, others need flagging */
+			if (eOpcode != OPCODE_SAMPLE_B)
+			{
+				MarkTextureAsShadow(psShader->sInfo,
+					psShader->asPhase[MAIN_PHASE].ppsDecl[0],
+					&psInst->asOperands[2]);
+			}
+
             break;
 		}
         case OPCODE_GATHER4_PO_C:
@@ -1063,7 +1071,13 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
             ui32OperandOffset += DecodeOperand(pui32Token+ui32OperandOffset, &psInst->asOperands[4]);
             ui32OperandOffset += DecodeOperand(pui32Token+ui32OperandOffset, &psInst->asOperands[5]);
 
-			MarkTextureAsShadow(psShader->sInfo, psShader->psDecl, &psInst->asOperands[2]);
+			/* sample_d is not a shadow sampler, others need flagging */
+			if (eOpcode != OPCODE_SAMPLE_D)
+			{
+				MarkTextureAsShadow(psShader->sInfo,
+					psShader->asPhase[MAIN_PHASE].ppsDecl[0],
+					&psInst->asOperands[2]);
+			}
             break;
         }
         case OPCODE_IF:
@@ -1177,298 +1191,24 @@ void UpdateOperandReferences(Shader* psShader, Instruction* psInst)
     }
 }
 
-const uint32_t* DecodeHullShaderJoinPhase(const uint32_t* pui32Tokens, Shader* psShader)
+const uint32_t* DecodeShaderPhase(const uint32_t* pui32Tokens,
+										  Shader* psShader,
+										  const uint32_t ui32Phase)
 {
 	const uint32_t* pui32CurrentToken = pui32Tokens;
 	const uint32_t ui32ShaderLength = psShader->ui32ShaderLength;
+	const uint32_t ui32InstanceIndex = psShader->asPhase[ui32Phase].ui32InstanceCount;
 
-//Declarations
-	Declaration* psDecl;
-    psDecl = new Declaration[ui32ShaderLength];
-    psShader->psHSJoinPhaseDecl = psDecl;
-    psShader->ui32HSJoinDeclCount = 0;
+	//Declarations
+	std::vector<Declaration> &psDecl = psShader->asPhase[ui32Phase].ppsDecl[ui32InstanceIndex];
 
-    while(1) //Keep going until we reach the first non-declaration token, or the end of the shader.
-    {
-        const uint32_t* pui32Result = DecodeDeclaration(psShader, pui32CurrentToken, psDecl);
-
-        if(pui32Result)
-        {
-            pui32CurrentToken = pui32Result;
-            psShader->ui32HSJoinDeclCount++;
-            psDecl++;
-
-            if(pui32CurrentToken >= (psShader->pui32FirstToken + ui32ShaderLength))
-            {
-                break;
-            }
-        }
-        else
-        {
-            break;
-        }
-    }
-
-
-//Instructions
-	std::vector<Instruction> &psInst = psShader->psHSJoinPhaseInstr;
-	psInst.clear();
-
-    while (pui32CurrentToken < (psShader->pui32FirstToken + ui32ShaderLength))
-    {
-		Instruction instr;
-        const uint32_t* nextInstr = DeocdeInstruction(pui32CurrentToken, &instr, psShader);
-		psInst.push_back(instr);
-
-#ifdef _DEBUG
-        if(nextInstr == pui32CurrentToken)
-        {
-            ASSERT(0);
-            break;
-        }
-#endif
-
-        pui32CurrentToken = nextInstr;
-    }
-
-	return pui32CurrentToken;
-}
-
-const uint32_t* DecodeHullShaderForkPhase(const uint32_t* pui32Tokens, Shader* psShader)
-{
-	const uint32_t* pui32CurrentToken = pui32Tokens;
-	const uint32_t ui32ShaderLength = psShader->ui32ShaderLength;
-    const uint32_t ui32ForkPhaseIndex = psShader->ui32ForkPhaseCount;
-
-	Instruction* psInst;
-
-//Declarations
-	Declaration* psDecl;
-    psDecl = new Declaration[ui32ShaderLength];
-
-    // Hit this in FC4 - changed the assert to an exception to make sure we
-    // don't access past the end of any buffers
-    //ASSERT(ui32ForkPhaseIndex < MAX_FORK_PHASES);
-    if (ui32ForkPhaseIndex >= MAX_FORK_PHASES) {
-            LogInfo("    DecodeHullShaderForkPhase: ui32ForkPhaseIndex too large: %u\n", ui32ForkPhaseIndex);
-            throw decompileError;
-    }
-
-    psShader->ui32ForkPhaseCount++;
-
-    psShader->apsHSForkPhaseDecl[ui32ForkPhaseIndex] = psDecl;
-    psShader->aui32HSForkDeclCount[ui32ForkPhaseIndex] = 0;
-
-    while(1) //Keep going until we reach the first non-declaration token, or the end of the shader.
-    {
-        const uint32_t* pui32Result = DecodeDeclaration(psShader, pui32CurrentToken, psDecl);
-
-        if(pui32Result)
-        {
-            pui32CurrentToken = pui32Result;
-            psShader->aui32HSForkDeclCount[ui32ForkPhaseIndex]++;
-            psDecl++;
-
-            if(pui32CurrentToken >= (psShader->pui32FirstToken + ui32ShaderLength))
-            {
-                break;
-            }
-        }
-        else
-        {
-            break;
-        }
-    }
-
-
-//Instructions
-    psInst = new Instruction[ui32ShaderLength];
-    psShader->apsHSForkPhaseInstr[ui32ForkPhaseIndex] = psInst;
-    psShader->aui32HSForkInstrCount[ui32ForkPhaseIndex] = 0;
-
-    while (pui32CurrentToken < (psShader->pui32FirstToken + ui32ShaderLength))
-    {
-        const uint32_t* nextInstr = DeocdeInstruction(pui32CurrentToken, psInst, psShader);
-
-#ifdef _DEBUG
-        if(nextInstr == pui32CurrentToken)
-        {
-            ASSERT(0);
-            break;
-        }
-#endif
-
-        pui32CurrentToken = nextInstr;
-
-		if(psInst->eOpcode == OPCODE_HS_FORK_PHASE)
-		{
-			pui32CurrentToken = DecodeHullShaderForkPhase(pui32CurrentToken, psShader);
-			return pui32CurrentToken;
-		}
-
-        psShader->aui32HSForkInstrCount[ui32ForkPhaseIndex]++;
-        psInst++;
-    }
-
-	return pui32CurrentToken;
-}
-
-const uint32_t* DecodeHullShaderControlPointPhase(const uint32_t* pui32Tokens, Shader* psShader)
-{
-	const uint32_t* pui32CurrentToken = pui32Tokens;
-	const uint32_t ui32ShaderLength = psShader->ui32ShaderLength;
-
-	Instruction* psInst;
-
-//TODO one block of memory for instructions and declarions to reduce memory usage and number of allocs.
-//malloc max(sizeof(declaration), sizeof(instruction) * shader length; or sizeof(DeclInst) - unifying both structs.
-
-//Declarations
-	Declaration* psDecl;
-    psDecl = new Declaration[ui32ShaderLength];
-    psShader->psHSControlPointPhaseDecl = psDecl;
-    psShader->ui32HSControlPointDeclCount = 0;
-
-    while(1) //Keep going until we reach the first non-declaration token, or the end of the shader.
-    {
-        const uint32_t* pui32Result = DecodeDeclaration(psShader, pui32CurrentToken, psDecl);
-
-        if(pui32Result)
-        {
-            pui32CurrentToken = pui32Result;
-            psShader->ui32HSControlPointDeclCount++;
-            psDecl++;
-
-            if(pui32CurrentToken >= (psShader->pui32FirstToken + ui32ShaderLength))
-            {
-                break;
-            }
-        }
-        else
-        {
-            break;
-        }
-    }
-
-
-//Instructions
-    psInst = new Instruction[ui32ShaderLength];
-    psShader->psHSControlPointPhaseInstr = psInst;
-    psShader->ui32HSControlPointInstrCount = 0;
-
-    while (pui32CurrentToken < (psShader->pui32FirstToken + ui32ShaderLength))
-    {
-        const uint32_t* nextInstr = DeocdeInstruction(pui32CurrentToken, psInst, psShader);
-
-#ifdef _DEBUG
-        if(nextInstr == pui32CurrentToken)
-        {
-            ASSERT(0);
-            break;
-        }
-#endif
-
-        pui32CurrentToken = nextInstr;
-
-		if(psInst->eOpcode == OPCODE_HS_FORK_PHASE)
-		{
-			pui32CurrentToken = DecodeHullShaderForkPhase(pui32CurrentToken, psShader);
-			return pui32CurrentToken;
-		}
-		if(psInst->eOpcode == OPCODE_HS_JOIN_PHASE)
-		{
-			pui32CurrentToken = DecodeHullShaderJoinPhase(pui32CurrentToken, psShader);
-			return pui32CurrentToken;
-		}
-        psInst++;
-        psShader->ui32HSControlPointInstrCount++;
-    }
-
-	return pui32CurrentToken;
-}
-
-const uint32_t* DecodeHullShader(const uint32_t* pui32Tokens, Shader* psShader)
-{
-	const uint32_t* pui32CurrentToken = pui32Tokens;
-	const uint32_t ui32ShaderLength = psShader->ui32ShaderLength;
-	Declaration* psDecl;
-    psDecl = new Declaration[ui32ShaderLength];
-    psShader->psHSDecl = psDecl;
-    psShader->ui32HSDeclCount = 0;
-
-    while(1) //Keep going until we reach the first non-declaration token, or the end of the shader.
-    {
-        const uint32_t* pui32Result = DecodeDeclaration(psShader, pui32CurrentToken, psDecl);
-
-        if(pui32Result)
-        {
-            pui32CurrentToken = pui32Result;
-
-			if(psDecl->eOpcode == OPCODE_HS_CONTROL_POINT_PHASE)
-			{
-				pui32CurrentToken = DecodeHullShaderControlPointPhase(pui32CurrentToken, psShader);
-				return pui32CurrentToken;
-			}
-			if(psDecl->eOpcode == OPCODE_HS_FORK_PHASE)
-			{
-				pui32CurrentToken = DecodeHullShaderForkPhase(pui32CurrentToken, psShader);
-				return pui32CurrentToken;
-			}
-			if(psDecl->eOpcode == OPCODE_HS_JOIN_PHASE)
-			{
-				pui32CurrentToken = DecodeHullShaderJoinPhase(pui32CurrentToken, psShader);
-				return pui32CurrentToken;
-			}
-
-            psDecl++;
-            psShader->ui32HSDeclCount++;
-
-            if(pui32CurrentToken >= (psShader->pui32FirstToken + ui32ShaderLength))
-            {
-                break;
-            }
-        }
-        else
-        {
-            break;
-        }
-    }
-
-	return pui32CurrentToken;
-}
-
-void Decode(const uint32_t* pui32Tokens, Shader* psShader)
-{
-	const uint32_t* pui32CurrentToken = pui32Tokens;
-    const uint32_t ui32ShaderLength = pui32Tokens[1];
-	psShader->ui32MajorVersion = DecodeProgramMajorVersion(*pui32CurrentToken);
-	psShader->ui32MinorVersion = DecodeProgramMinorVersion(*pui32CurrentToken);
-	psShader->eShaderType = DecodeShaderType(*pui32CurrentToken);
-
-	pui32CurrentToken++;//Move to shader length
-	psShader->ui32ShaderLength = ui32ShaderLength;
-    pui32CurrentToken++;//Move to after shader length (usually a declaration)
-
-    psShader->pui32FirstToken = pui32Tokens;
-
-	if(psShader->eShaderType == HULL_SHADER)
-	{
-		pui32CurrentToken = DecodeHullShader(pui32CurrentToken, psShader);
-		return;
-	}
-
-    //Using ui32ShaderLength as the instruction count
-    //will allocate more than enough memory. Avoids having to
-    //traverse the entire shader just to get the real instruction count.
-	std::vector<Instruction> &psInst = psShader->psInst;
-
-	std::vector<Declaration> &psDecl = psShader->psDecl;
+	psShader->asPhase[ui32Phase].ui32InstanceCount++;
 
     while(1) //Keep going until we reach the first non-declaration token, or the end of the shader.
     {
 		Declaration decl;
         const uint32_t* pui32Result = DecodeDeclaration(psShader, pui32CurrentToken, &decl);
-        
+
         if(pui32Result)
         {
             pui32CurrentToken = pui32Result;
@@ -1485,6 +1225,10 @@ void Decode(const uint32_t* pui32Tokens, Shader* psShader)
         }
     }
 
+
+	//Instructions
+	std::vector<Instruction> &psInst = psShader->asPhase[ui32Phase].ppsInst[ui32InstanceIndex];
+
     while (pui32CurrentToken < (psShader->pui32FirstToken + ui32ShaderLength))
     {
 		Instruction inst;
@@ -1498,9 +1242,140 @@ void Decode(const uint32_t* pui32Tokens, Shader* psShader)
         }
 #endif
 
+		if(inst.eOpcode == OPCODE_HS_FORK_PHASE)
+		{
+			return pui32CurrentToken;
+		}
+		else if(inst.eOpcode == OPCODE_HS_JOIN_PHASE)
+		{
+			return pui32CurrentToken;
+		}
         pui32CurrentToken = nextInstr;
-		psInst.push_back(inst);
+
+        psInst.push_back(inst);
     }
+
+	return pui32CurrentToken;
+}
+
+const void AllocateHullPhaseArrays(const uint32_t* pui32Tokens,
+								   Shader* psShader,
+								   uint32_t ui32Phase,
+								   OPCODE_TYPE ePhaseOpcode)
+{
+	const uint32_t* pui32CurrentToken = pui32Tokens;
+	const uint32_t ui32ShaderLength = psShader->ui32ShaderLength;
+	uint32_t ui32InstanceCount = 0;
+
+    while(1) //Keep going until we reach the first non-declaration token, or the end of the shader.
+    {
+		uint32_t ui32TokenLength = DecodeInstructionLength(*pui32CurrentToken);
+		const uint32_t bExtended = DecodeIsOpcodeExtended(*pui32CurrentToken);
+		const OPCODE_TYPE eOpcode = DecodeOpcodeType(*pui32CurrentToken);
+
+		if(eOpcode == OPCODE_CUSTOMDATA)
+		{
+			ui32TokenLength = pui32CurrentToken[1];
+		}
+
+        pui32CurrentToken = pui32CurrentToken + ui32TokenLength;
+
+		if(eOpcode == ePhaseOpcode)
+		{
+			ui32InstanceCount++;
+		}
+
+        if(pui32CurrentToken >= (psShader->pui32FirstToken + ui32ShaderLength))
+        {
+            break;
+        }
+    }
+
+	if(ui32InstanceCount)
+	{
+		psShader->asPhase[ui32Phase].ppsDecl.resize(ui32InstanceCount);
+
+		psShader->asPhase[ui32Phase].ppsInst.resize(ui32InstanceCount);
+	}
+}
+
+const uint32_t* DecodeHullShader(const uint32_t* pui32Tokens, Shader* psShader)
+{
+	const uint32_t* pui32CurrentToken = pui32Tokens;
+	const uint32_t ui32ShaderLength = psShader->ui32ShaderLength;
+
+	std::vector<Declaration> &psDecl = psShader->asPhase[HS_GLOBAL_DECL].ppsDecl[0];
+	psShader->asPhase[HS_GLOBAL_DECL].ui32InstanceCount = 1;
+
+	AllocateHullPhaseArrays(pui32Tokens, psShader, HS_CTRL_POINT_PHASE, OPCODE_HS_CONTROL_POINT_PHASE);
+	AllocateHullPhaseArrays(pui32Tokens, psShader, HS_FORK_PHASE, OPCODE_HS_FORK_PHASE);
+	AllocateHullPhaseArrays(pui32Tokens, psShader, HS_JOIN_PHASE, OPCODE_HS_JOIN_PHASE);
+
+	//Keep going until we have done all phases or the end of the shader.
+    while(1)
+    {
+		Declaration decl;
+        const uint32_t* pui32Result = DecodeDeclaration(psShader, pui32CurrentToken, &decl);
+
+        if(pui32Result)
+        {
+            pui32CurrentToken = pui32Result;
+
+			if(decl.eOpcode == OPCODE_HS_CONTROL_POINT_PHASE)
+			{
+				pui32CurrentToken = DecodeShaderPhase(pui32CurrentToken, psShader, HS_CTRL_POINT_PHASE);
+			}
+			else if(decl.eOpcode == OPCODE_HS_FORK_PHASE)
+			{
+				pui32CurrentToken = DecodeShaderPhase(pui32CurrentToken, psShader, HS_FORK_PHASE);
+			}
+			else if(decl.eOpcode == OPCODE_HS_JOIN_PHASE)
+			{
+				pui32CurrentToken = DecodeShaderPhase(pui32CurrentToken, psShader, HS_JOIN_PHASE);
+			}
+			else
+			{
+				psDecl.push_back(decl);
+			}
+
+			if(pui32CurrentToken >= (psShader->pui32FirstToken + ui32ShaderLength))
+			{
+				break;
+			}
+		}
+        else
+        {
+            break;
+        }
+    }
+
+	return pui32CurrentToken;
+}
+
+void Decode(const uint32_t* pui32Tokens, Shader* psShader)
+{
+	const uint32_t* pui32CurrentToken = pui32Tokens;
+    const uint32_t ui32ShaderLength = pui32Tokens[1];
+
+	psShader->ui32MajorVersion = DecodeProgramMajorVersion(*pui32CurrentToken);
+	psShader->ui32MinorVersion = DecodeProgramMinorVersion(*pui32CurrentToken);
+	psShader->eShaderType = DecodeShaderType(*pui32CurrentToken);
+
+	pui32CurrentToken++;//Move to shader length
+	psShader->ui32ShaderLength = ui32ShaderLength;
+    pui32CurrentToken++;//Move to after shader length (usually a declaration)
+
+    psShader->pui32FirstToken = pui32Tokens;
+
+	if(psShader->eShaderType == HULL_SHADER)
+	{
+		pui32CurrentToken = DecodeHullShader(pui32CurrentToken, psShader);
+		return;
+	}
+
+	psShader->asPhase[MAIN_PHASE].ui32InstanceCount = 0;
+
+	DecodeShaderPhase(pui32CurrentToken, psShader, MAIN_PHASE);
 }
 
 Shader* DecodeDXBC(uint32_t* data)
@@ -1511,6 +1386,7 @@ Shader* DecodeDXBC(uint32_t* data)
 	uint32_t chunkCount;
 	uint32_t* chunkOffsets;
     ReflectionChunks refChunks;
+    uint32_t* shaderChunk = 0;
 
 	if(header->fourcc != FOURCC_DXBC)
 	{
@@ -1528,6 +1404,8 @@ Shader* DecodeDXBC(uint32_t* data)
     refChunks.pui32Resources = NULL;
 	refChunks.pui32Inputs11 = NULL;
 	refChunks.pui32Outputs11 = NULL;
+	refChunks.pui32OutputsWithStreams = NULL;
+	refChunks.pui32PatchConstants = NULL;
 
 	chunkOffsets = (uint32_t*)(header + 1);
 
@@ -1571,30 +1449,49 @@ Shader* DecodeDXBC(uint32_t* data)
                 refChunks.pui32Outputs11 = (uint32_t*)(chunk + 1);
                 break;
             }
+			case FOURCC_OSG5:
+			{
+                refChunks.pui32OutputsWithStreams = (uint32_t*)(chunk + 1);
+				break;
+			}
             case FOURCC_SHDR:
             case FOURCC_SHEX:
             {
-                uint32_t ui32MajorVersion;
-                uint32_t ui32MinorVersion;
-
-                psShader = new Shader();
-
-                ui32MajorVersion = DecodeProgramMajorVersion(*(uint32_t*)(chunk + 1));
-                ui32MinorVersion = DecodeProgramMinorVersion(*(uint32_t*)(chunk + 1));
-
-                LoadShaderInfo(ui32MajorVersion,
-                    ui32MinorVersion,
-                    &refChunks,
-                    psShader->sInfo);
-			    Decode((uint32_t*)(chunk + 1), psShader);
-			    return psShader;
+                shaderChunk = (uint32_t*)(chunk + 1);
+                break;
             }
+			case FOURCC_PSGN:
+			{
+				refChunks.pui32PatchConstants = (uint32_t*)(chunk + 1);
+				break;
+			}
             default:
             {
                 break;
             }
         }
 	}
+
+    if(shaderChunk)
+    {
+        uint32_t ui32MajorVersion;
+        uint32_t ui32MinorVersion;
+
+	psShader = new Shader();
+
+        ui32MajorVersion = DecodeProgramMajorVersion(*shaderChunk);
+        ui32MinorVersion = DecodeProgramMinorVersion(*shaderChunk);
+
+        LoadShaderInfo(ui32MajorVersion,
+            ui32MinorVersion,
+            &refChunks,
+            psShader->sInfo);
+
+        Decode(shaderChunk, psShader);
+
+        return psShader;
+    }
+
     return 0;
 }
 

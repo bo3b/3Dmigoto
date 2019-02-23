@@ -24,9 +24,10 @@ void main()
 	printf("printf 4 values test: %d %d %d", ubuf[0], ubuf[1], ubuf[2], ubuf[3]);
 	printf("printf 5 values test: %d %i %x %d", ubuf[0], ubuf[1], ubuf[2], ubuf[3], ubuf[4]);
 	printf("printf 6 values test: %d %d %i %x %d", ubuf[0], ubuf[1], ubuf[2], ubuf[3], ubuf[4], ubuf[5]);
-	printf("printf 7 values test: %d %d %i %x %d", ubuf[0], ubuf[1], ubuf[2], ubuf[3], ubuf[4], ubuf[5], ubuf[6]);
-	printf("printf 8 values test: %d %d %i %x %d", ubuf[0], ubuf[1], ubuf[2], ubuf[3], ubuf[4], ubuf[5], ubuf[6], ubuf[7]);
-	// 9 parameters including the format string is the limit
+	// 7 parameters including the format string is the limit in older versions of fxc (SDK 8.0)
+	//printf("printf 7 values test: %d %d %i %x %d", ubuf[0], ubuf[1], ubuf[2], ubuf[3], ubuf[4], ubuf[5], ubuf[6]);
+	//printf("printf 8 values test: %d %d %i %x %d", ubuf[0], ubuf[1], ubuf[2], ubuf[3], ubuf[4], ubuf[5], ubuf[6], ubuf[7]);
+	// 9 parameters including the format string is the limit in newer versions of fxc
 
 	// abort
 	if (ubuf[1] > 4)

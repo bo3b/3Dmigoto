@@ -1,0 +1,147 @@
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:41:35 2019
+struct t2_t {
+  float val[24];
+};
+StructuredBuffer<t2_t> t2 : register(t2);
+
+struct t1_t {
+  float val[3];
+};
+StructuredBuffer<t1_t> t1 : register(t1);
+
+Texture2D<float4> t0 : register(t0);
+
+SamplerState s0_s : register(s0);
+
+cbuffer cb1 : register(b1)
+{
+  float4 cb1[1];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[7];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_raw_glc u0
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 64, 1, 1
+  r0.x = asint(cb1[0].x) & 0x0000ffff;
+  r0.x = (int)r0.x + (int)vThreadID.x;
+  r0.x = t1[r0.x].val[0/4];
+  r0.y = t1[r0.x].val[0/4+1];
+  r0.z = t1[r0.x].val[0/4+2];
+  r0.w = cmp(0x0001869f < (uint)r0.z);
+  if (r0.w != 0) {
+    return;
+  }
+  r1.x = t2[r0.z].val[0/4];
+  r1.y = t2[r0.z].val[0/4+1];
+  r1.z = t2[r0.z].val[0/4+2];
+  r1.w = t2[r0.z].val[0/4+3];
+  r2.x = t2[r0.z].val[16/4+2];
+  r2.y = t2[r0.z].val[16/4+3];
+  r2.z = t2[r0.z].val[16/4];
+  r2.w = t2[r0.z].val[16/4+1];
+  r3.x = t2[r0.z].val[32/4];
+  r3.y = t2[r0.z].val[32/4+1];
+  r3.z = t2[r0.z].val[32/4+2];
+  r3.w = t2[r0.z].val[32/4+3];
+  r4.x = t2[r0.z].val[48/4];
+  r4.y = t2[r0.z].val[48/4+1];
+  r4.z = t2[r0.z].val[48/4+2];
+  r4.w = t2[r0.z].val[48/4+3];
+  r5.x = t2[r0.z].val[64/4+2];
+  r5.y = t2[r0.z].val[64/4+3];
+  r5.z = t2[r0.z].val[64/4];
+  r5.w = t2[r0.z].val[64/4+1];
+  r6.x = t2[r0.z].val[80/4];
+  r6.y = t2[r0.z].val[80/4+1];
+  r6.z = t2[r0.z].val[80/4+2];
+  r6.w = t2[r0.z].val[80/4+3];
+  r7.x = r1.w;
+  r7.yz = r2.zw;
+  r2.z = r3.x;
+  r8.x = r4.w;
+  r8.yz = r5.zw;
+  r5.z = r6.x;
+  r9.w = 1;
+  r0.zw = float2(-65536,-65536);
+  r10.xyz = float3(65536,65536,65536);
+  r1.w = 0;
+  while (true) {
+    r2.w = cmp((int)r1.w >= 8);
+    if (r2.w != 0) break;
+    r11.xyz = cmp((int3)r1.www == int3(1,2,3));
+    r12.xyzw = cmp((int4)r1.wwww == int4(4,5,6,7));
+    r2.w = r1.w ? 0 : 1;
+    r11.xyz = r11.xyz ? float3(1,1,1) : 0;
+    r12.xyzw = r12.xyzw ? float4(1,1,1,1) : 0;
+    r13.xyz = r2.www * r1.xyz;
+    r13.xyz = r11.xxx * r7.xyz + r13.xyz;
+    r11.xyw = r11.yyy * r2.xyz + r13.xyz;
+    r11.xyz = r11.zzz * r3.yzw + r11.xyw;
+    r11.xyz = r12.xxx * r4.xyz + r11.xyz;
+    r11.xyz = r12.yyy * r8.xyz + r11.xyz;
+    r11.xyz = r12.zzz * r5.xyz + r11.xyz;
+    r9.xyz = r12.www * r6.yzw + r11.xyz;
+    r11.xyz = cb0[1].xyw * r9.yyy;
+    r11.xyz = r9.xxx * cb0[0].xyw + r11.xyz;
+    r11.xyz = r9.zzz * cb0[2].xyw + r11.xyz;
+    r11.xyz = cb0[3].xyw + r11.xyz;
+    r11.xy = r11.xy / r11.zz;
+    r2.w = dot(r9.xyzw, cb0[6].xyzw);
+    r11.z = -r2.w;
+    r0.zw = max(r11.xy, r0.zw);
+    r10.xyz = min(r10.xyz, r11.xyz);
+    r1.w = (int)r1.w + 1;
+  }
+  r1.xy = r0.zw * float2(0.5,-0.5) + float2(0.5,0.5);
+  r1.zw = r10.xy * float2(0.5,-0.5) + float2(0.5,0.5);
+  r0.zw = r1.xy + -r1.zw;
+  r0.zw = float2(512,256) * abs(r0.zw);
+  r0.z = max(r0.z, r0.w);
+  r0.z = 0.5 * r0.z;
+  r0.z = log2(r0.z);
+  r0.z = ceil(r0.z);
+  r0.z = min(8, r0.z);
+  r0.z = max(0, r0.z);
+  r0.z = (uint)r0.z;
+  r0.z = (uint)r0.z;
+  r0.w = t0.SampleLevel(s0_s, r1.zw, r0.z).x;
+  r1.w = t0.SampleLevel(s0_s, r1.xw, r0.z).x;
+  r1.x = t0.SampleLevel(s0_s, r1.xy, r0.z).x;
+  r0.z = t0.SampleLevel(s0_s, r1.zy, r0.z).x;
+  r0.w = max(r1.w, r0.w);
+  r0.w = max(r0.w, r1.x);
+  r0.z = max(r0.w, r0.z);
+  r0.w = -0.100000001 + r10.z;
+  r0.z = cmp(r0.z < r0.w);
+  if (r0.z != 0) {
+    r0.z = 0;
+    while (true) {
+      r0.w = cmp((uint)r0.z >= (uint)r0.x);
+      if (r0.w != 0) break;
+      r0.w = mad((int)r0.z, 20, (int)r0.y);
+      r0.w = (int)r0.w + 4;
+    // No code for instruction (needs manual fix):
+        store_raw u0.x, r0.w, l(0)
+      r0.z = (int)r0.z + 1;
+    }
+  }
+  return;
+}

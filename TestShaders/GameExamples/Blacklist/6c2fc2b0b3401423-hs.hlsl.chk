@@ -1,0 +1,62 @@
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:39:38 2019
+
+cbuffer CB_PerCamera : register(b11)
+{
+  float4x4 gWorldToProj : packoffset(c0);
+  float4x4 gWorldToView : packoffset(c4);
+  float4x4 gProjection : packoffset(c8);
+  float4 cProjSkinMesh : packoffset(c12);
+  float4 gViewViewPos : packoffset(c13);
+  float4 gHalfRenderTargetSize : packoffset(c14);
+  float4 gVPTexelRes : packoffset(c15);
+  float4 gViewportSB : packoffset(c16);
+  float4 cViewPos_VS : packoffset(c17);
+  float4 cViewPos : packoffset(c18);
+  float2 gViewportOffset : packoffset(c19);
+}
+
+cbuffer CB_TessellationMaterial : register(b0)
+{
+  float4 TessellationParams1 : packoffset(c0);
+  float4 TessellationParams2 : packoffset(c1);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float3 v0 : POSITION_X0,
+  float3 v1 : NORMAL0,
+  uint v2 : VERTEXID0,
+  float4 v3 : TEXCOORD0,
+  float4 v4 : TEXCOORD1,
+  float4 v5 : TEXCOORD2,
+  float4 v6 : TEXCOORD3,
+  float4 v7 : TEXCOORD4,
+  float4 v8 : TEXCOORD5,
+  float4 v9 : TEXCOORD6,
+  float4 v10 : TEXCOORD7,
+  float4 v11 : TEXCOORD8,
+  out float3 o0 : POSITION0,
+  out float3 o1 : POSITION1,
+  out float3 o2 : POSITION2,
+  out float3 o3 : NORMAL0,
+  out float2 o4 : DOMINANT0,
+  out float p4 : LODDATA0,
+  out float4 o5 : DOMINANT1,
+  out float3 o6 : CLIPPED0,
+  out float3 o7 : CLIPPED1,
+  out float4 o8 : TEXCOORD0,
+  out float4 o9 : TEXCOORD1,
+  out float4 o10 : TEXCOORD2,
+  out float4 o11 : TEXCOORD3,
+  out float4 o12 : TEXCOORD4,
+  out float4 o13 : TEXCOORD5,
+  out float4 o14 : TEXCOORD6,
+  out float4 o15 : TEXCOORD7,
+  out float4 o16 : TEXCOORD8)
+{
+}

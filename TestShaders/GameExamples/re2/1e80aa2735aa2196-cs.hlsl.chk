@@ -1,0 +1,138 @@
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:41:35 2019
+
+struct InstanceBounding
+{
+    float3 mBoundaryMin;           // Offset:    0
+    uint mClusterOffset;           // Offset:   12
+    float3 mBoundaryMax;           // Offset:   16
+    uint mShadowClusterOffset;     // Offset:   28
+};
+
+cbuffer SceneInfo : register(b0)
+{
+  row_major float4x4 viewProjMat : packoffset(c0);
+  row_major float3x4 transposeViewMat : packoffset(c4);
+  row_major float3x4 transposeViewInvMat : packoffset(c7);
+  float4 projElement[2] : packoffset(c10);
+  float4 projInvElements[2] : packoffset(c12);
+  row_major float4x4 viewProjInvMat : packoffset(c14);
+  row_major float4x4 prevViewProjMat : packoffset(c18);
+  float3 ZToLinear : packoffset(c22);
+  float subdivisionLevel : packoffset(c22.w);
+  float2 screenSize : packoffset(c23);
+  float2 screenInverseSize : packoffset(c23.z);
+  float2 cullingHelper : packoffset(c24);
+  float cameraNearPlane : packoffset(c24.z);
+  float cameraFarPlane : packoffset(c24.w);
+  float4 viewFrustum[6] : packoffset(c25);
+  float4 clipplane : packoffset(c31);
+}
+
+cbuffer RootConstant : register(b1)
+{
+  uint constant32Bits : packoffset(c0);
+}
+
+StructuredBuffer<InstanceBounding> InstancBoundingBuffer : register(t0);
+RWByteAddressBuffer RWDrawIndirectArguments : register(u0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_raw_glc u0
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 64, 1, 1
+  r0.x = constant32Bits >> 20;
+  r0.x = cmp((uint)vThreadID.x < (uint)r0.x);
+  if (r0.x != 0) {
+    r0.x = constant32Bits & 0x000fffff;
+    r0.x = (int)r0.x + (int)vThreadID.x;
+    r0.y = InstancBoundingBuffer[r0.x].mBoundaryMin.x;
+    r0.z = InstancBoundingBuffer[r0.x].mBoundaryMin.y;
+    r0.w = InstancBoundingBuffer[r0.x].mBoundaryMin.z;
+    r1.x = InstancBoundingBuffer[r0.x].mBoundaryMax.x;
+    r1.y = InstancBoundingBuffer[r0.x].mBoundaryMax.y;
+    r1.z = InstancBoundingBuffer[r0.x].mBoundaryMax.z;
+    r1.w = InstancBoundingBuffer[r0.x].mShadowClusterOffset;
+    r2.xyz = -cameraNearPlane * float3(2,2,2) + r0.yzw;
+    r3.xyz = cameraNearPlane * float3(2,2,2) + r1.xyz;
+    r4.x = transposeViewInvMat._m03;
+    r4.y = transposeViewInvMat._m13;
+    r4.z = transposeViewInvMat._m23;
+    r3.xyz = -r4.xyz + r3.xyz;
+    r0.x = min(r3.x, r3.y);
+    r0.x = min(r0.x, r3.z);
+    r2.xyz = r4.xyz + -r2.xyz;
+    r2.x = min(r2.x, r2.y);
+    r2.x = min(r2.x, r2.z);
+    r0.x = min(r2.x, r0.x);
+    r0.x = cmp(0 < r0.x);
+    r2.x = cmp((int)r0.x == 0);
+    r2.yzw = r1.xyz + r0.yzw;
+    r3.xyz = float3(0.5,0.5,0.5) * r2.yzw;
+    r2.yzw = -r2.yzw * float3(0.5,0.5,0.5) + r1.xyz;
+    r3.w = 1;
+    r4.xy = float2(0,0);
+    while (true) {
+      r4.z = cmp((int)r4.x >= 6);
+      r4.y = 0;
+      if (r4.z != 0) break;
+      r4.z = dot(r2.yzw, abs(viewFrustum[r4.x].xyz));
+      r4.w = dot(viewFrustum[r4.x].xyzw, r3.xyzw);
+      r4.z = r4.w + r4.z;
+      r4.z = cmp(r4.z < 0);
+      if (r4.z != 0) {
+        r4.y = -1;
+        break;
+      }
+      r4.x = (int)r4.x + 1;
+      r4.xy = r4.xz;
+    }
+    if (r4.y == 0) {
+      r2.y = -1;
+    } else {
+      r2.y = 0;
+    }
+    r2.x = r2.x ? r2.y : 0;
+    if (r2.x != 0) {
+      r2.xyzw = float4(100000,100000,-100000,-100000);
+      r3.x = 0;
+      while (true) {
+        r3.y = cmp((uint)r3.x >= 8);
+        if (r3.y != 0) break;
+        r3.yzw = (int3)r3.xxx & int3(1,2,4);
+        r3.yzw = r3.yzw ? r0.yzw : r1.xyz;
+        r4.xyz = viewProjMat._m10_m11_m13 * r3.zzz;
+        r4.xyz = r3.yyy * viewProjMat._m00_m01_m03 + r4.xyz;
+        r3.yzw = r3.www * viewProjMat._m20_m21_m23 + r4.xyz;
+        r3.yzw = viewProjMat._m30_m31_m33 + r3.yzw;
+        r3.yz = r3.yz / r3.ww;
+        r2.xy = min(r3.yz, r2.xy);
+        r2.zw = max(r3.yz, r2.zw);
+        r3.x = (int)r3.x + 1;
+      }
+      r0.yz = float2(0.5,0.5) * screenSize.xy;
+      r1.xy = r2.zw * r0.yz;
+      r1.xy = round(r1.xy);
+      r0.yz = r2.xy * r0.yz;
+      r0.yz = round(r0.yz);
+      r0.yz = cmp(r0.yz == r1.xy);
+      r0.y = (int)r0.z | (int)r0.y;
+      r0.y = r0.y ? 0 : 1;
+    } else {
+      r0.y = r0.x ? 0.000000 : 0;
+    }
+  // No code for instruction (needs manual fix):
+    store_raw u0.x, r1.w, r0.y
+  }
+  return;
+}

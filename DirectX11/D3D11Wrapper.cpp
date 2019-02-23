@@ -723,6 +723,16 @@ static void wrap_d3d11_device_and_context(ID3D11Device **ppDevice, ID3D11DeviceC
 		else
 			*ppDevice = deviceWrap;
 		LogInfo("  HackerDevice %p created to wrap %p\n", deviceWrap, origDevice1);
+
+		// Add the HackerDevice to the DirectX device's private data,
+		// which we can use as a last resort to allow us to always find
+		// our HackerDevice even if we are handed an unwrapped IUnknown
+		// that violates the COM identity rule, as happens with ReShade
+		// in certain games (e.g. Resident Evil 2 remake). Not using
+		// SetPrivateDataInterface for now because I suspect that will
+		// screw up refcounting (though it might be worthwhile using it
+		// to ensure we always get notification of device release):
+		origDevice1->SetPrivateData(IID_HackerDevice, sizeof(HackerDevice*), &deviceWrap);
 	}
 
 	// Create a wrapped version of the original context to return to the game.

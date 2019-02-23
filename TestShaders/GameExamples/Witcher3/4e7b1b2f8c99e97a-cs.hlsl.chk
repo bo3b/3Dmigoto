@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Mon Dec 03 19:07:46 2018
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:42:01 2019
 groupshared struct { float val[1]; } g4[192];
 groupshared struct { float val[1]; } g2[192];
 
@@ -20,8 +20,6 @@ RWByteAddressBuffer u1 : register(u1);
 
 // 3Dmigoto declarations
 #define cmp -
-Texture1D<float4> IniParams : register(t120);
-Texture2D<float4> StereoParams : register(t125);
 
 
 void main)
@@ -59,7 +57,7 @@ void main)
   // No code for instruction (needs manual fix):
     store_raw g5.x, l(0), l(0)
   // No code for instruction (needs manual fix):
-    store_raw g0.x, l(0), l(340282346638528860000000000000000000000.000000)
+    store_raw g0.x, l(0), l(340282346638528859811704183484516925440.000000)
   // No code for instruction (needs manual fix):
     store_raw g1.x, l(0), l(0)
   }
