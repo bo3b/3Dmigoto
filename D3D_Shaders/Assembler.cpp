@@ -2388,17 +2388,17 @@ static void hexdump_instruction(string &s, vector<DWORD> &v,
 	if (hexdump_mode == 2 && v == v2)
 		return;
 
-	snprintf(buf, 16, "// %08x:", line_byte_offset);
+	_snprintf_s(buf, 16, 16, "// %08x:", line_byte_offset);
 	hd += buf;
 	for (auto val : v) {
-		snprintf(buf, 16, " %08x", val);
+		_snprintf_s(buf, 16, 16, " %08x", val);
 		hd += buf;
 	}
 
 	if (v != v2) {
 		hd += "\n// * BUG * :";
 		for (auto val : v2) {
-			snprintf(buf, 16, " %08x", val);
+			_snprintf_s(buf, 16, 16, " %08x", val);
 			hd += buf;
 		}
 	}
