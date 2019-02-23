@@ -77,7 +77,7 @@ static struct {
 	bool compile;
 	bool disassemble_ms;
 	bool disassemble_flugan;
-	bool disassemble_hexdump;
+	int disassemble_hexdump;
 	std::string reflection_reference;
 	bool assemble;
 	bool force;
@@ -126,7 +126,7 @@ void parse_args(int argc, char *argv[])
 				continue;
 			}
 			if (!strcmp(arg, "-x") || !strcmp(arg, "--disassemble-hexdump")) {
-				args.disassemble_hexdump = true;
+				args.disassemble_hexdump = 1;
 				continue;
 			}
 			if (!strcmp(arg, "--copy-reflection")) {
@@ -205,7 +205,7 @@ static HRESULT DisassembleMS(const void *pShaderBytecode, size_t BytecodeLength,
 	return S_OK;
 }
 
-static HRESULT DisassembleFlugan(const void *pShaderBytecode, size_t BytecodeLength, string *asmText, bool hexdump)
+static HRESULT DisassembleFlugan(const void *pShaderBytecode, size_t BytecodeLength, string *asmText, int hexdump)
 {
 	// FIXME: This is a bit of a waste - we convert from a vector<char> to
 	// a void* + size_t to a vector<byte>
@@ -308,7 +308,7 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 				if (!strncmp(old_section_header->signature, "SHDR", 4) ||
 				    !strncmp(old_section_header->signature, "SHEX", 4)) {
 					string disassembly;
-					hret = DisassembleFlugan(old_shader->data(), old_shader->size(), &disassembly, true);
+					hret = DisassembleFlugan(old_shader->data(), old_shader->size(), &disassembly, 2);
 					if (SUCCEEDED(hret))
 						LogInfo("\n%s\n", disassembly.c_str());
 				}

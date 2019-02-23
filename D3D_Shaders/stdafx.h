@@ -51,7 +51,7 @@ struct token_operand
 };
 
 vector<string> stringToLines(const char* start, size_t size);
-HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment, bool hexdump = false);
+HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment, int hexdump = 0);
 vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode);
 void writeLUT();
 HRESULT AssembleFluganWithSignatureParsing(vector<char> *assembly, vector<byte> *result_bytecode);

@@ -669,7 +669,7 @@ static const char* type_name(IUnknown *object)
 // New version using Flugan's wrapper around D3DDisassemble to replace the
 // problematic %f floating point values with %.9e, which is enough that a 32bit
 // floating point value will be reproduced exactly:
-static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength, bool hexdump = false)
+static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength, int hexdump = 0)
 {
 	string comments;
 	vector<byte> byteCode(BytecodeLength);

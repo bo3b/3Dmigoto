@@ -2363,7 +2363,45 @@ vector<string> stringToLines(const char* start, size_t size)
 	return lines;
 }
 
-HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment, bool hexdump)
+static void hexdump_instruction(string &s, vector<DWORD> &v,
+		vector<string> &lines, DWORD *i,
+		int *multiLines, uint32_t line_byte_offset,
+		int hexdump_mode)
+{
+	string hd;
+	char buf[16];
+	vector<DWORD> v2;
+
+	v2 = assembleIns(s.substr(s.find_first_not_of(" ")));
+
+	// In mode 2 we only hexdump bad instructions:
+	if (hexdump_mode == 2 && v == v2)
+		return;
+
+	snprintf(buf, 16, "// %08x:", line_byte_offset);
+	hd += buf;
+	for (auto val : v) {
+		snprintf(buf, 16, " %08x", val);
+		hd += buf;
+	}
+
+	if (v != v2) {
+		hd += "\n// * BUG * :";
+		for (auto val : v2) {
+			snprintf(buf, 16, " %08x", val);
+			hd += buf;
+		}
+	}
+
+	vector<string>::iterator pos = lines.begin() + (*i)++;
+	if (*multiLines)
+		pos -= *multiLines - 1;
+	*multiLines = 0;
+
+	lines.insert(pos, hd);
+}
+
+HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment, int hexdump)
 {
 	byte fourcc[4];
 	DWORD fHash[4];
@@ -2437,8 +2475,8 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 				codeStarted = true;
 				v.push_back(*codeStart);
 				codeStart += 2;
-				string sNew = assembleAndCompare(s, v);
-				lines[i] = sNew;
+				s = assembleAndCompare(s, v);
+				lines[i] = s;
 			}
 		} else if (s.find("{ {") < s.size()) {
 			s2 = s;
@@ -2460,13 +2498,13 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 				v.push_back(*codeStart);
 				codeStart++;
 			}
-			string sNew = assembleAndCompare(s, v);
-			auto sLines = stringToLines(sNew.c_str(), sNew.size());
+			s = assembleAndCompare(s, v);
+			auto sLines = stringToLines(s.c_str(), s.size());
 			size_t startLine = i - sLines.size() + 1;
 			for (size_t j = 0; j < sLines.size(); j++) {
 				lines[startLine + j] = sLines[j];
 			}
-			//lines[i] = sNew;
+			//lines[i] = s;
 		} else if (multiLine) {
 			s2.append("\n");
 			s2.append(s);
@@ -2480,7 +2518,6 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 				v.push_back(*codeStart);
 				codeStart++;
 			}
-			string sNew;
 			if (s == "undecipherable custom data") {
 				string prev = lines[i - 1];
 				if (prev == "ret ")
@@ -2491,30 +2528,15 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 						ins = (shader_ins*)++codeStart;
 					}
 				}
-				sNew = "";
+				s = "";
 			} else {
-				sNew = assembleAndCompare(s, v);
+				s = assembleAndCompare(s, v);
 			}
-			lines[i] = sNew;
+			lines[i] = s;
 		}
 
-		if (hexdump && !multiLine) {
-			string hd;
-			char buf[16];
-			vector<string>::iterator pos = lines.begin() + i++;
-
-			if (multiLines)
-				pos -= multiLines - 1;
-			multiLines = 0;
-
-			snprintf(buf, 30, "// %08x:", line_byte_offset);
-			hd += buf;
-			for (auto val : v) {
-				snprintf(buf, 30, " %08x", val);
-				hd += buf;
-			}
-			lines.insert(pos, hd);
-		}
+		if (hexdump && !multiLine)
+			hexdump_instruction(s, v, lines, &i, &multiLines, line_byte_offset, hexdump);
 	}
 	ret->clear();
 	for (size_t i = 0; i < lines.size(); i++) {
