@@ -429,10 +429,29 @@ static void* serialise_subshader_feature_info_section(uint64_t flags)
 	return section;
 }
 
+struct gf_sfi {
+	uint64_t sfi;
+	int len;
+	char *gf;
+};
+
+static struct gf_sfi global_flag_sfi_map[] = {
+	// "refactoringAllowed" does not map to SFI
+	{ 1LL<<0, 29, "enableDoublePrecisionFloatOps" },
+	// "forceEarlyDepthStencil" does not map to SFI
+	{ 1LL<<1, 29, "enableRawAndStructuredBuffers" }, // Confirmed
+	// "skipOptimization" does not map to SFI
+	{ 1LL<<4, 22, "enableMinimumPrecision" },
+	{ 1LL<<5, 26, "enable11_1DoubleExtensions" },
+	{ 1LL<<6, 26, "enable11_1ShaderExtensions" },
+	// "allResourcesBound" does not map to SFI
+};
+
 static char *subshader_feature_comments[] = {
 	// d3dcompiler_46:
 	"Double-precision floating point",
-	"Early depth-stencil", // XXX: DX12 disassembler has "Raw and Structured buffers" in this position, so which is it?
+	//"Early depth-stencil", // d3dcompiler46/47 produces this output for [force, but it does *NOT* map to an SFI flag
+	"Raw and Structured buffers", // DirectXShaderCompiler lists this in this position instead, which matches the globalFlag mapping
 	"UAVs at every shader stage",
 	"64 UAV slots",
 	"Minimum-precision data types",
@@ -455,13 +474,45 @@ static char *subshader_feature_comments[] = {
 	"Shading Rate"
 };
 
+// Parses the globalFlags in the bytecode to derive Subshader Feature Info.
+// This is incomplete, as some of the SFI flags are not in globalFlags, but
+// must be found from the "shader requires" comment block instead.
+uint64_t parse_global_flags_to_sfi(string *shader)
+{
+	uint64_t sfi = 0LL;
+	string line;
+	size_t pos = 0, gf_pos = 16;
+	int i;
+
+	while (pos != shader->npos) {
+		line = next_line(shader, &pos);
+		if (!strncmp(line.c_str(), "dcl_globalFlags ", 16)) {
+			LogDebug("%s\n", line.c_str());
+			while (gf_pos != string::npos) {
+				for (i = 0; i < ARRAYSIZE(global_flag_sfi_map); i++) {
+					if (!line.compare(gf_pos, global_flag_sfi_map[i].len, global_flag_sfi_map[i].gf)) {
+						LogDebug("Mapped %s to Subshader Feature 0x%llx\n",
+								global_flag_sfi_map[i].gf, 1LL << i);
+						sfi |= global_flag_sfi_map[i].sfi;
+						gf_pos += global_flag_sfi_map[i].len;
+						break;
+					}
+				}
+				gf_pos = line.find_first_of(" |", gf_pos);
+				gf_pos = line.find_first_not_of(" |", gf_pos);
+			}
+			return sfi;
+		}
+	}
+	return 0;
+}
+
 // Parses the SFI comment block. This is not complete, as some of the flags
 // come from globalFlags instead of / as well as this.
-static void* parse_subshader_feature_info_comment(string *shader, size_t *pos)
+static uint64_t parse_subshader_feature_info_comment(string *shader, size_t *pos, uint64_t flags)
 {
 	string line;
 	size_t old_pos = *pos;
-	uint64_t flags = 0;
 	uint32_t i;
 
 	while (*pos != shader->npos) {
@@ -484,7 +535,7 @@ static void* parse_subshader_feature_info_comment(string *shader, size_t *pos)
 	// another section that the caller will need to parse:
 	*pos = old_pos;
 
-	return serialise_subshader_feature_info_section(flags);
+	return flags;
 }
 
 static void* manufacture_empty_section(char *section_name)
@@ -541,7 +592,7 @@ static bool is_geometry_shader_5(string *shader, size_t start_pos) {
 	return false;
 }
 
-static bool parse_section(string *line, string *shader, size_t *pos, void **section)
+static bool parse_section(string *line, string *shader, size_t *pos, void **section, uint64_t *sfi)
 {
 	*section = NULL;
 
@@ -568,7 +619,7 @@ static bool parse_section(string *line, string *shader, size_t *pos, void **sect
 		*section = parse_signature_section(section24, "OSG5", "OSG1", shader, pos, true);
 	} else if (!strncmp(line->c_str(), "// Note: shader requires additional functionality:", 50)) {
 		LogInfo("Parsing Subshader Feature Info section...\n");
-		*section = parse_subshader_feature_info_comment(shader, pos);
+		*sfi = parse_subshader_feature_info_comment(shader, pos, *sfi);
 	}
 
 	return false;
@@ -617,12 +668,15 @@ static HRESULT manufacture_shader_binary(const void *pShaderAsm, size_t AsmLengt
 	uint32_t section_size, all_sections_size = 0;
 	void *section;
 	HRESULT hr = E_FAIL;
+	uint64_t sfi = 0LL;
+
+	sfi = parse_global_flags_to_sfi(&shader_str);
 
 	while (!done && pos != shader_str.npos) {
 		line = next_line(&shader_str, &pos);
 		//LogInfo("%s\n", line.c_str());
 
-		done = parse_section(&line, &shader_str, &pos, &section);
+		done = parse_section(&line, &shader_str, &pos, &section, &sfi);
 		if (section) {
 			sections.push_back(section);
 			section_size = *((uint32_t*)section + 1) + sizeof(section_header);
@@ -643,6 +697,14 @@ static HRESULT manufacture_shader_binary(const void *pShaderAsm, size_t AsmLengt
 	if (!done) {
 		LogInfo("Did not find an assembly text section!\n");
 		goto out_free;
+	}
+
+	if (sfi) {
+		section = serialise_subshader_feature_info_section(sfi);
+		sections.insert(sections.begin(), section);
+		section_size = *((uint32_t*)section + 1) + sizeof(section_header);
+		all_sections_size += section_size;
+		LogInfo("Inserted Subshader Feature Info section: 0x%llx\n", sfi);
 	}
 
 	serialise_shader_binary(&sections, all_sections_size, bytecode);
