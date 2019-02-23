@@ -13,7 +13,7 @@ reconstruct_shader()
 	local bin_filename="$1"
 	[ -f "$bin_filename" ] && return
 
-	if echo "$bin_filename" | grep _stripped > /dev/null; then
+	if [[ "$bin_filename" == *"_stripped"* ]]; then
 		local unstripped_filename="${bin_filename/_stripped/}"
 		reconstruct_shader "$unstripped_filename"
 		echo -n "Reconstructing $bin_filename... "
@@ -53,19 +53,29 @@ run_test()
 			run_assembler_test "$bin_filename"
 		fi
 	else
-		[ -z "$HLSL" -a -z "$ASM_RECONSTRUCTED" ] && return
+		# _stripped shader reconstructions are used for HLSL and
+		# reconstructed asm tests only, not regular asm tests.
+		[[ "$hlsl_chk_filename" == *"_stripped"* ]] && [ -z "$HLSL" -a -z "$ASM_RECONSTRUCTED" ] && return
 
 		local reconstruct_filename="${hlsl_chk_filename/.hlsl.chk/.shdr}"
 		reconstruct_shader "$reconstruct_filename"
 		bin_filename="$reconstruct_filename"
+
+		if [ -n "$ASM" ]; then
+			local compiled_filename="${reconstruct_filename/.shdr/_replace.txt.bin}"
+			if [ -f "$compiled_filename" ]; then
+				echo -n "....: $compiled_filename (asm)... $whitespace"
+				run_assembler_test "$compiled_filename"
+			fi
+		fi
 
 		if [ -n "$ASM_RECONSTRUCTED" ]; then
 			# Note: The idea of doing assembly verification tests of the
 			# reconstructed shaders is inherently flawed since they have already
 			# passed through the assembler and disassembler, which will
 			# likely have already eliminated anything we might have found.
-			# We would be better off running the verification test on the
-			# compiled output directly.
+			# We are generally better off running the verification
+			# test on the compiled output directly (as above).
 			echo -n "....: $bin_filename (asm)... $whitespace"
 			run_assembler_test "$bin_filename"
 		fi
