@@ -25,6 +25,7 @@ public:
 	}
 };
 
+FILE* failFile = NULL;
 static unordered_map<string, vector<DWORD>> codeBin;
 
 static DWORD strToDWORD(string s)
@@ -148,7 +149,22 @@ static string convertF(DWORD original)
 			sprintf_s(buf, 80, "%.8f", fOriginal);
 		break;
 	}
-	return buf;
+	string sLiteral(buf);
+	DWORD newDWORD = strToDWORD(sLiteral);
+	if (newDWORD != original) {
+		if (failFile == NULL)
+			fopen_s(&failFile, "3Dmigoto_disassembly_debug.txt", "wb");
+		if (failFile) {
+			FILE *f = failFile;
+			fprintf(f, "%s\n", sLiteral.c_str());
+			fprintf(f, "s:%s\n", scientific);
+			fprintf(f, "e:%d\n", exp);
+			fprintf(f, "o:%08X\n", original);
+			fprintf(f, "n:%08X\n", newDWORD);
+			fprintf(f, "\n");
+		}
+	}
+	return sLiteral;
 }
 
 static string convertD(DWORD v1, DWORD v2)
