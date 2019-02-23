@@ -177,7 +177,6 @@ static string convertD(DWORD v1, DWORD v2)
 		// As above, if we ever get called on a NAN/INF value just
 		// output the value as hex to ensure we can parse it back
 		sprintf_s(buf, 80, "0x%016llx", q);
-		return string(buf);
 	} else {
 		// %g switches between readable and scientific notation as required, #
 		// ensures there is always a radix character (to match the original
@@ -2393,75 +2392,81 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 	vector<DWORD> o;
 	for (DWORD i = 0; i < lines.size(); i++) {
 		string s = lines[i];
+
+		// Are we supposed to bail if there's debug info? If it causes
+		// us issues maybe we should pass D3D_DISASM_DISABLE_DEBUG_INFO
+		// to the disassembler instead? -DarkStarSword
 		if (s.find("#line") != string::npos)
 			break;
-		if (memcmp(s.c_str(), "//", 2) != 0) {
-			vector<DWORD> v;
-			if (!codeStarted) {
-				if (s.size() > 0 && s[0] != ' ') {
-					codeStarted = true;
-					v.push_back(*codeStart);
-					codeStart += 2;
-					string sNew = assembleAndCompare(s, v);
-					lines[i] = sNew;
-				}
-			} else if (s.find("{ {") < s.size()) {
-				s2 = s;
-				multiLine = true;
-				multiLines = 1;
-			} else if (s.find("} }") < s.size()) {
-				s2.append("\n");
-				s2.append(s);
-				s = s2;
-				multiLine = false;
-				multiLines++;
-				shader_ins* ins = (shader_ins*)codeStart;
-				v.push_back(*codeStart);
-				codeStart++;
-				DWORD length = *codeStart;
-				v.push_back(*codeStart);
-				codeStart++;
-				for (DWORD j = 2; j < length; j++) {
-					v.push_back(*codeStart);
-					codeStart++;
-				}
-				string sNew = assembleAndCompare(s, v);
-				auto sLines = stringToLines(sNew.c_str(), sNew.size());
-				size_t startLine = i - sLines.size() + 1;
-				for (size_t j = 0; j < sLines.size(); j++) {
-					lines[startLine + j] = sLines[j];
-				}
-				//lines[i] = sNew;
-			} else if (multiLine) {
-				s2.append("\n");
-				s2.append(s);
-				multiLines++;
-			} else if (s.size() > 0) {
-				shader_ins* ins = (shader_ins*)codeStart;
-				v.push_back(*codeStart);
-				codeStart++;
 
-				for (DWORD j = 1; j < ins->length; j++) {
-					v.push_back(*codeStart);
-					codeStart++;
-				}
-				string sNew;
-				if (s == "undecipherable custom data") {
-					string prev = lines[i - 1];
-					if (prev == "ret ")
-						v.clear();
-					if (v.size() == 1) {
-						ins = (shader_ins*)++codeStart;
-						while (ins->length == 0) {
-							ins = (shader_ins*)++codeStart;
-						}
-					}
-					sNew = "";
-				} else {
-					sNew = assembleAndCompare(s, v);
-				}
+		if (!memcmp(s.c_str(), "//", 2))
+			continue;
+
+		vector<DWORD> v;
+		if (!codeStarted) {
+			if (s.size() > 0 && s[0] != ' ') {
+				codeStarted = true;
+				v.push_back(*codeStart);
+				codeStart += 2;
+				string sNew = assembleAndCompare(s, v);
 				lines[i] = sNew;
 			}
+		} else if (s.find("{ {") < s.size()) {
+			s2 = s;
+			multiLine = true;
+			multiLines = 1;
+		} else if (s.find("} }") < s.size()) {
+			s2.append("\n");
+			s2.append(s);
+			s = s2;
+			multiLine = false;
+			multiLines++;
+			shader_ins* ins = (shader_ins*)codeStart;
+			v.push_back(*codeStart);
+			codeStart++;
+			DWORD length = *codeStart;
+			v.push_back(*codeStart);
+			codeStart++;
+			for (DWORD j = 2; j < length; j++) {
+				v.push_back(*codeStart);
+				codeStart++;
+			}
+			string sNew = assembleAndCompare(s, v);
+			auto sLines = stringToLines(sNew.c_str(), sNew.size());
+			size_t startLine = i - sLines.size() + 1;
+			for (size_t j = 0; j < sLines.size(); j++) {
+				lines[startLine + j] = sLines[j];
+			}
+			//lines[i] = sNew;
+		} else if (multiLine) {
+			s2.append("\n");
+			s2.append(s);
+			multiLines++;
+		} else if (s.size() > 0) {
+			shader_ins* ins = (shader_ins*)codeStart;
+			v.push_back(*codeStart);
+			codeStart++;
+
+			for (DWORD j = 1; j < ins->length; j++) {
+				v.push_back(*codeStart);
+				codeStart++;
+			}
+			string sNew;
+			if (s == "undecipherable custom data") {
+				string prev = lines[i - 1];
+				if (prev == "ret ")
+					v.clear();
+				if (v.size() == 1) {
+					ins = (shader_ins*)++codeStart;
+					while (ins->length == 0) {
+						ins = (shader_ins*)++codeStart;
+					}
+				}
+				sNew = "";
+			} else {
+				sNew = assembleAndCompare(s, v);
+			}
+			lines[i] = sNew;
 		}
 	}
 	ret->clear();
