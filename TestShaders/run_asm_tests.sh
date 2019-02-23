@@ -24,6 +24,7 @@ run_asm_test min_precision.hlsl min_precision "ps_4_0 ps_5_0"
 run_asm_test resource_types.hlsl resource_types "ps_4_0 ps_5_0"
 run_asm_test resource_types5.hlsl resource_types5 "ps_5_0"
 run_asm_test sv_gsinstanceid.hlsl sv_gsinstanceid "gs_5_0"
+run_asm_test samplepos.hlsl samplepos "ps_5_0"
 
 # Signature parser test cases (Test Driven Development):
 run_asm_test signatures_cs.hlsl signatures_cs "cs_5_0"
