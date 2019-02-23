@@ -327,7 +327,8 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 			// Whitelist sections that are okay to be missed:
 			if (!args.lenient &&
 			    strncmp(old_section_header->signature, "STAT", 4) && // Compiler Statistics
-			    strncmp(old_section_header->signature, "RDEF", 4)) { // Resource Definitions
+			    strncmp(old_section_header->signature, "RDEF", 4) && // Resource Definitions
+			    strncmp(old_section_header->signature, "SDBG", 4)) { // Debug Info
 			    //strncmp(old_section_header->signature, "SFI0", 4)) { // Subtarget Feature Info (not yet sure if this is critical or not)
 				LogInfo("*** Assembly verification pass failed: Reassembled shader missing %.4s section (not whitelisted)\n", old_section_header->signature);
 				rc = 1;

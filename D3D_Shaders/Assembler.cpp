@@ -2459,7 +2459,13 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 	size_t asmSize;
 	vector<byte> asmBuf;
 	ID3DBlob* pDissassembly = NULL;
-	HRESULT ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, comment, &pDissassembly);
+
+	// We disable debug info in the disassembler as it interferes with our
+	// ability to match assembly lines with bytecode below
+	HRESULT ok = D3DDisassemble(buffer->data(), buffer->size(),
+			D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS |
+			D3D_DISASM_DISABLE_DEBUG_INFO,
+			comment, &pDissassembly);
 	if (FAILED(ok))
 		return ok;
 
@@ -2485,12 +2491,6 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 	for (DWORD i = 0; i < lines.size(); i++) {
 		uint32_t line_byte_offset = (uint32_t)((byte*)codeStart - buffer->data());
 		string s = lines[i];
-
-		// Are we supposed to bail if there's debug info? If it causes
-		// us issues maybe we should pass D3D_DISASM_DISABLE_DEBUG_INFO
-		// to the disassembler instead? -DarkStarSword
-		if (s.find("#line") != string::npos)
-			break;
 
 		if (!memcmp(s.c_str(), "//", 2))
 			continue;
