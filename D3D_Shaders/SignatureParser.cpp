@@ -3,6 +3,13 @@
 #include "log.h"
 #include "shader.h"
 
+#define SFI_RAW_STRUCT_BUF (1LL<<1)
+#define SFI_MIN_PRECISION  (1LL<<4)
+
+// Force the use of SHader EXtended bytecode when certain features are in use,
+// such as partial or double precision. This is likely incomplete.
+#define SFI_FORCE_SHEX (SFI_RAW_STRUCT_BUF | SFI_MIN_PRECISION)
+
 class ParseError : public exception {} parseError;
 
 static string next_line(string *shader, size_t *pos)
@@ -270,7 +277,7 @@ static void* serialise_signature_section(char *section24, char *section28, char 
 	return section;
 }
 
-static void* parse_signature_section(char *section24, char *section28, char *section32, string *shader, size_t *pos, bool invert_used)
+static void* parse_signature_section(char *section24, char *section28, char *section32, string *shader, size_t *pos, bool invert_used, uint64_t sfi)
 {
 	string line;
 	size_t old_pos = *pos;
@@ -285,6 +292,10 @@ static void* parse_signature_section(char *section24, char *section28, char *sec
 	char format[16]; // Long enough for even "unknown"
 	vector<struct sgn_entry_unserialised> entries;
 	struct sgn_entry_unserialised entry;
+
+	// If minimum precision formats are in use we bump the section versions:
+	if (sfi & SFI_MIN_PRECISION)
+		entry_size = max(entry_size, 32);
 
 	while (*pos != shader->npos) {
 		line = next_line(shader, pos);
@@ -347,7 +358,8 @@ static void* parse_signature_section(char *section24, char *section28, char *sec
 		}
 
 		// Parse the format. If it is one of the minimum precision
-		// formats, bump the section version:
+		// formats, bump the section version (this is probably
+		// redundant now that we bump the version based on SFI):
 		parse_format(format, &entry.common.format, &entry.min_precision);
 		if (entry.min_precision)
 			entry_size = max(entry_size, 32);
@@ -436,15 +448,17 @@ struct gf_sfi {
 };
 
 static struct gf_sfi global_flag_sfi_map[] = {
-	// "refactoringAllowed" does not map to SFI
 	{ 1LL<<0, 29, "enableDoublePrecisionFloatOps" },
-	// "forceEarlyDepthStencil" does not map to SFI
-	{ 1LL<<1, 29, "enableRawAndStructuredBuffers" }, // Confirmed
-	// "skipOptimization" does not map to SFI
-	{ 1LL<<4, 22, "enableMinimumPrecision" },
+	{ SFI_RAW_STRUCT_BUF, 29, "enableRawAndStructuredBuffers" }, // Confirmed
+	{ SFI_MIN_PRECISION, 22, "enableMinimumPrecision" },
 	{ 1LL<<5, 26, "enable11_1DoubleExtensions" },
 	{ 1LL<<6, 26, "enable11_1ShaderExtensions" },
-	// "allResourcesBound" does not map to SFI
+
+	// Does not map to SFI:
+	// "refactoringAllowed"
+	// "forceEarlyDepthStencil"
+	// "skipOptimization"
+	// "allResourcesBound"
 };
 
 static char *subshader_feature_comments[] = {
@@ -492,7 +506,7 @@ uint64_t parse_global_flags_to_sfi(string *shader)
 				for (i = 0; i < ARRAYSIZE(global_flag_sfi_map); i++) {
 					if (!line.compare(gf_pos, global_flag_sfi_map[i].len, global_flag_sfi_map[i].gf)) {
 						LogDebug("Mapped %s to Subshader Feature 0x%llx\n",
-								global_flag_sfi_map[i].gf, 1LL << i);
+								global_flag_sfi_map[i].gf, global_flag_sfi_map[i].sfi);
 						sfi |= global_flag_sfi_map[i].sfi;
 						gf_pos += global_flag_sfi_map[i].len;
 						break;
@@ -597,7 +611,10 @@ static bool parse_section(string *line, string *shader, size_t *pos, void **sect
 	*section = NULL;
 
 	if (!strncmp(line->c_str() + 1, "s_4_", 4)) {
-		*section = manufacture_empty_section("SHDR");
+		if (!!(*sfi & SFI_FORCE_SHEX))
+			*section = manufacture_empty_section("SHEX");
+		else
+			*section = manufacture_empty_section("SHDR");
 		return true;
 	}
 	if (!strncmp(line->c_str() + 1, "s_5_", 4)) {
@@ -607,16 +624,16 @@ static bool parse_section(string *line, string *shader, size_t *pos, void **sect
 
 	if (!strncmp(line->c_str(), "// Patch Constant signature:", 28)) {
 		LogInfo("Parsing Patch Constant Signature section...\n");
-		*section = parse_signature_section("PCSG", NULL, "PSG1", shader, pos, is_hull_shader(shader, *pos));
+		*section = parse_signature_section("PCSG", NULL, "PSG1", shader, pos, is_hull_shader(shader, *pos), *sfi);
 	} else if (!strncmp(line->c_str(), "// Input signature:", 19)) {
 		LogInfo("Parsing Input Signature section...\n");
-		*section = parse_signature_section("ISGN", NULL, "ISG1", shader, pos, false);
+		*section = parse_signature_section("ISGN", NULL, "ISG1", shader, pos, false, *sfi);
 	} else if (!strncmp(line->c_str(), "// Output signature:", 20)) {
 		LogInfo("Parsing Output Signature section...\n");
 		char *section24 = "OSGN";
 		if (is_geometry_shader_5(shader, *pos))
 			section24 = NULL;
-		*section = parse_signature_section(section24, "OSG5", "OSG1", shader, pos, true);
+		*section = parse_signature_section(section24, "OSG5", "OSG1", shader, pos, true, *sfi);
 	} else if (!strncmp(line->c_str(), "// Note: shader requires additional functionality:", 50)) {
 		LogInfo("Parsing Subshader Feature Info section...\n");
 		*sfi = parse_subshader_feature_info_comment(shader, pos, *sfi);
