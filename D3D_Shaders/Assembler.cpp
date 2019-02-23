@@ -1103,7 +1103,7 @@ static unordered_map<string, vector<int>> insMap = {
 	// RESERVED_10                      0x6b
 	{ "lod",                       { 4, 0x6c    } },
 	{ "gather4",                   { 4, 0x6d    } }, // See also load table
-	{ "samplepos",                 { 3, 0x6e    } },
+	//"samplepos",                 { 3, 0x6e    } }, // Implemented elsewhere
 	{ "sampleinfo",                { 2, 0x6f    } },
 	// RESERVED_10_1                    0x70
 	// hs_decls                         0x71 // Implemented elsewhere
@@ -2090,6 +2090,32 @@ static vector<DWORD> assembleIns(string s)
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
+	} else if (o == "samplepos") {
+		// samplepos can either be used with a texture register, or the
+		// rasterizer. In the former case it has an extra 0 appended.
+		vector<vector<DWORD>> os;
+		ins->opcode = 0x6e;
+		int numOps = 3;
+		for (int i = 0; i < numOps; i++)
+			os.push_back(assembleOp(w[i + 1], i < 1));
+
+		// When the instruction operates on a texture register
+		// (GetSamplerPosition) there is an extra 0 inserted that is
+		// not present when used on the rasterizer register
+		// (GetRenderTargetSamplePosition). It's not clear if there are
+		// any cases where this should be non-zero:
+		if (w[2][0] == 't') {
+			numOps++;
+			os.push_back(vector<DWORD>{0});
+		}
+
+		ins->length = 1;
+		for (int i = 0; i < numOps; i++)
+			ins->length += (int)os[i].size();
+
+		v.push_back(op);
+		for (int i = 0; i < numOps; i++)
+			v.insert(v.end(), os[i].begin(), os[i].end());
 	}
 
 	return v;
