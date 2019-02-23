@@ -400,6 +400,93 @@ name_already_used:
 	return serialise_signature_section(section24, section28, section32, entry_size, &entries, name_off);
 }
 
+static void* serialise_subshader_feature_info_section(uint64_t flags)
+{
+	void *section;
+	struct section_header *section_header = NULL;
+	const uint32_t section_size = 8;
+	const uint32_t alloc_size = sizeof(struct section_header) + section_size;
+	uint64_t *flags_ptr = NULL;
+
+	if (!flags)
+		return NULL;
+
+	// Allocate entire section, including room for section header and padding:
+	section = malloc(alloc_size);
+	if (!section) {
+		LogInfo("Out of memory\n");
+		return NULL;
+	}
+
+	// Pointers to useful data structures and offsets in the buffer:
+	section_header = (struct section_header*)section;
+	memcpy(section_header->signature, "SFI0", 4);
+	section_header->size = section_size;
+
+	flags_ptr = (uint64_t *)((char*)section_header + sizeof(struct section_header));
+	*flags_ptr = flags;
+
+	return section;
+}
+
+static char *subshader_feature_comments[] = {
+	// d3dcompiler_46:
+	"Double-precision floating point",
+	"Early depth-stencil", // XXX: DX12 disassembler has "Raw and Structured buffers" in this position, so which is it?
+	"UAVs at every shader stage",
+	"64 UAV slots",
+	"Minimum-precision data types",
+	"Double-precision extensions for 11.1",
+	"Shader extensions for 11.1",
+	"Comparison filtering for feature level 9",
+	// d3dcompiler_47:
+	"Tiled resources",
+	"PS Output Stencil Ref",
+	"PS Inner Coverage",
+	"Typed UAV Load Additional Formats",
+	"Raster Ordered UAVs",
+	"SV_RenderTargetArrayIndex or SV_ViewportArrayIndex from any shader feeding rasterizer",
+	// DX12 DirectXShaderCompiler (tools/clang/tools/dxcompiler/dxcdisassembler.cpp)
+	"Wave level operations",
+	"64-Bit integer",
+	"View Instancing",
+	"Barycentrics",
+	"Use native low precision",
+	"Shading Rate"
+};
+
+// Parses the SFI comment block. This is not complete, as some of the flags
+// come from globalFlags instead of / as well as this.
+static void* parse_subshader_feature_info_comment(string *shader, size_t *pos)
+{
+	string line;
+	size_t old_pos = *pos;
+	uint64_t flags = 0;
+	uint32_t i;
+
+	while (*pos != shader->npos) {
+		line = next_line(shader, pos);
+
+		LogDebug("%s\n", line.c_str());
+
+		for (i = 0; i < ARRAYSIZE(subshader_feature_comments); i++) {
+			if (!strcmp(line.c_str() + 9, subshader_feature_comments[i])) {
+				LogDebug("Matched Subshader Feature Comment 0x%llx\n", 1LL << i);
+				flags |= 1LL << i;
+				break;
+			}
+		}
+		if (i == ARRAYSIZE(subshader_feature_comments))
+			break;
+	}
+
+	// Wind the pos pointer back to the start of the line in case it is
+	// another section that the caller will need to parse:
+	*pos = old_pos;
+
+	return serialise_subshader_feature_info_section(flags);
+}
+
 static void* manufacture_empty_section(char *section_name)
 {
 	void *section;
@@ -468,17 +555,20 @@ static bool parse_section(string *line, string *shader, size_t *pos, void **sect
 	}
 
 	if (!strncmp(line->c_str(), "// Patch Constant signature:", 28)) {
-		LogInfo("Parsing Patch Constant Signature section...\n",);
+		LogInfo("Parsing Patch Constant Signature section...\n");
 		*section = parse_signature_section("PCSG", NULL, "PSG1", shader, pos, is_hull_shader(shader, *pos));
 	} else if (!strncmp(line->c_str(), "// Input signature:", 19)) {
-		LogInfo("Parsing Input Signature section...\n",);
+		LogInfo("Parsing Input Signature section...\n");
 		*section = parse_signature_section("ISGN", NULL, "ISG1", shader, pos, false);
 	} else if (!strncmp(line->c_str(), "// Output signature:", 20)) {
-		LogInfo("Parsing Output Signature section...\n",);
+		LogInfo("Parsing Output Signature section...\n");
 		char *section24 = "OSGN";
 		if (is_geometry_shader_5(shader, *pos))
 			section24 = NULL;
 		*section = parse_signature_section(section24, "OSG5", "OSG1", shader, pos, true);
+	} else if (!strncmp(line->c_str(), "// Note: shader requires additional functionality:", 50)) {
+		LogInfo("Parsing Subshader Feature Info section...\n");
+		*section = parse_subshader_feature_info_comment(shader, pos);
 	}
 
 	return false;

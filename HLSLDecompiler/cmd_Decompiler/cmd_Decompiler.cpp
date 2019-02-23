@@ -316,8 +316,8 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 				LogDebug(" OK\n");
 
 			if (old_section_header->size != new_section_header->size) {
-				LogInfo("\n*** Assembly verification pass failed: size mismatch in section %.4s\n",
-						old_section_header->signature);
+				LogInfo("\n*** Assembly verification pass failed: size mismatch in section %.4s, expected %i, found %i\n",
+						old_section_header->signature, old_section_header->size, new_section_header->size);
 				rc = 1;
 			}
 
