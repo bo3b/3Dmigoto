@@ -2363,7 +2363,7 @@ vector<string> stringToLines(const char* start, size_t size)
 	return lines;
 }
 
-HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment)
+HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment, bool hexdump)
 {
 	byte fourcc[4];
 	DWORD fHash[4];
@@ -2419,6 +2419,7 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 	string s2;
 	vector<DWORD> o;
 	for (DWORD i = 0; i < lines.size(); i++) {
+		uint32_t line_byte_offset = (uint32_t)((byte*)codeStart - buffer->data());
 		string s = lines[i];
 
 		// Are we supposed to bail if there's debug info? If it causes
@@ -2495,6 +2496,24 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 				sNew = assembleAndCompare(s, v);
 			}
 			lines[i] = sNew;
+		}
+
+		if (hexdump && !multiLine) {
+			string hd;
+			char buf[16];
+			vector<string>::iterator pos = lines.begin() + i++;
+
+			if (multiLines)
+				pos -= multiLines - 1;
+			multiLines = 0;
+
+			snprintf(buf, 30, "// %08x:", line_byte_offset);
+			hd += buf;
+			for (auto val : v) {
+				snprintf(buf, 30, " %08x", val);
+				hd += buf;
+			}
+			lines.insert(pos, hd);
 		}
 	}
 	ret->clear();

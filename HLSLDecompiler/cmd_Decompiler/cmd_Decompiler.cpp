@@ -31,6 +31,9 @@ static void PrintHelp(int argc, char *argv[])
 	LogInfo("  -d, --disassemble, --disassemble-flugan\n");
 	LogInfo("\t\t\tDisassemble binary shaders with Flugan's disassembler\n");
 
+	LogInfo("  -x, --disassemble-hexdump\n");
+	LogInfo("\t\t\tIntermix the disassembly with the raw hex codes (implies --disassemble-flugan)\n");
+
 	LogInfo("  --disassemble-ms\n");
 	LogInfo("\t\t\tDisassemble binary shaders with Microsoft's disassembler\n");
 
@@ -74,6 +77,7 @@ static struct {
 	bool compile;
 	bool disassemble_ms;
 	bool disassemble_flugan;
+	bool disassemble_hexdump;
 	std::string reflection_reference;
 	bool assemble;
 	bool force;
@@ -121,6 +125,10 @@ void parse_args(int argc, char *argv[])
 				args.disassemble_flugan = true;
 				continue;
 			}
+			if (!strcmp(arg, "-x") || !strcmp(arg, "--disassemble-hexdump")) {
+				args.disassemble_hexdump = true;
+				continue;
+			}
 			if (!strcmp(arg, "--copy-reflection")) {
 				if (++i >= argc)
 					PrintHelp(argc, argv);
@@ -161,7 +169,11 @@ void parse_args(int argc, char *argv[])
 		args.files.push_back(arg);
 	}
 
-	if (args.decompile + args.compile + args.disassemble_ms + args.disassemble_flugan + args.assemble < 1) {
+	if (args.decompile + args.compile
+			+ args.disassemble_ms
+			+ args.disassemble_flugan
+			+ args.disassemble_hexdump
+			+ args.assemble < 1) {
 		LogInfo("No action specified\n");
 		PrintHelp(argc, argv); // Does not return
 	}
@@ -193,23 +205,24 @@ static HRESULT DisassembleMS(const void *pShaderBytecode, size_t BytecodeLength,
 	return S_OK;
 }
 
-static HRESULT DisassembleFlugan(const void *pShaderBytecode, size_t BytecodeLength, string *asmText)
+static HRESULT DisassembleFlugan(const void *pShaderBytecode, size_t BytecodeLength, string *asmText, bool hexdump)
 {
 	// FIXME: This is a bit of a waste - we convert from a vector<char> to
 	// a void* + size_t to a vector<byte>
 
-	*asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength);
+	*asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength, hexdump);
 	if (*asmText == "")
 		return E_FAIL;
 
 	return S_OK;
 }
 
-static int validate_section(char section[4], unsigned char *old_section, unsigned char *new_section, size_t size)
+static int validate_section(char section[4], unsigned char *old_section, unsigned char *new_section, size_t size, struct dxbc_header *old_dxbc)
 {
 	unsigned char *p1 = old_section, *p2 = new_section;
 	int rc = 0;
 	size_t pos;
+	size_t off = (size_t)(old_section - (unsigned char*)old_dxbc);
 
 	for (pos = 0; pos < size; pos++, p1++, p2++) {
 		if (*p1 == *p2)
@@ -217,7 +230,8 @@ static int validate_section(char section[4], unsigned char *old_section, unsigne
 
 		if (!rc)
 			LogInfo("\n*** Assembly verification pass failed: mismatch in section %.4s:\n", section);
-		LogInfo("  0x%08Ix: expected 0x%02x, found 0x%02x\n", pos, *p1, *p2);
+		LogInfo("  %.4s+0x%04Ix (0x%08Ix): expected 0x%02x, found 0x%02x\n",
+				section, pos, off+pos, *p1, *p2);
 		rc = 1;
 	}
 
@@ -286,9 +300,19 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 			old_section = (unsigned char*)old_section_header + sizeof(struct section_header);
 			new_section = (unsigned char*)new_section_header + sizeof(struct section_header);
 
-			if (validate_section(old_section_header->signature, old_section, new_section, size))
+			if (validate_section(old_section_header->signature, old_section, new_section, size, old_dxbc_header)) {
 				rc = 1;
-			else
+
+				// If the failure was in a bytecode section,
+				// output the disassembly with hexdump enabled:
+				if (!strncmp(old_section_header->signature, "SHDR", 4) ||
+				    !strncmp(old_section_header->signature, "SHEX", 4)) {
+					string disassembly;
+					hret = DisassembleFlugan(old_shader->data(), old_shader->size(), &disassembly, true);
+					if (SUCCEEDED(hret))
+						LogInfo("\n%s\n", disassembly.c_str());
+				}
+			} else
 				LogDebug(" OK\n");
 
 			if (old_section_header->size != new_section_header->size) {
@@ -479,9 +503,9 @@ static int process(string const *filename)
 			return EXIT_FAILURE;
 	}
 
-	if (args.disassemble_flugan) {
+	if (args.disassemble_flugan || args.disassemble_hexdump) {
 		LogInfo("Disassembling (Flugan) %s...\n", filename->c_str());
-		hret = DisassembleFlugan(srcData.data(), srcData.size(), &output);
+		hret = DisassembleFlugan(srcData.data(), srcData.size(), &output, args.disassemble_hexdump);
 		if (FAILED(hret))
 			return EXIT_FAILURE;
 

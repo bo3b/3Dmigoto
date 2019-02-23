@@ -669,7 +669,7 @@ static const char* type_name(IUnknown *object)
 // New version using Flugan's wrapper around D3DDisassemble to replace the
 // problematic %f floating point values with %.9e, which is enough that a 32bit
 // floating point value will be reproduced exactly:
-static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength)
+static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength, bool hexdump = false)
 {
 	string comments;
 	vector<byte> byteCode(BytecodeLength);
@@ -679,7 +679,7 @@ static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength
 	comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
 	memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
 
-	r = disassembler(&byteCode, &disassembly, comments.c_str());
+	r = disassembler(&byteCode, &disassembly, comments.c_str(), hexdump);
 	if (FAILED(r)) {
 		LogInfo("  disassembly failed. Error: %x\n", r);
 		return "";
