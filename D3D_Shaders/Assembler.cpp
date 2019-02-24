@@ -290,6 +290,136 @@ static void handleSwizzle(string s, token_operand* tOp, bool special = false)
 	}
 }
 
+static bool assemble_special_purpose_register(string &s, vector<DWORD> &v, token_operand *tOp, bool special)
+{
+	string bPoint;
+
+	if (s.find('.') != string::npos)
+		bPoint = s.substr(0, s.find('.'));
+	else
+		bPoint = s;
+
+	if (s == "null") {
+		v.push_back(0xD000);
+		return true;
+	}
+	if (s == "oDepth") {
+		v.push_back(0xC001);
+		return true;
+	}
+	if (s == "oDepthLE") {
+		v.push_back(0x27001);
+		return true;
+	}
+	if (s == "oDepthGE") {
+		v.push_back(0x00026001);
+		return true;
+	}
+	if (s == "vOutputControlPointID") {
+		v.push_back(0x16001);
+		return true;
+	}
+	if (s == "oMask") {
+		v.push_back(0xF001);
+		return true;
+	}
+	if (s == "vPrim") {
+		v.push_back(0xB001);
+		return true;
+	}
+	if (bPoint == "vForkInstanceID") {
+		bool ext = tOp->extended; // Hmmm, isn't this useless...
+		tOp->op = 0x17002;
+		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+		if (bPoint == s)
+			tOp->op = 0x17001;
+		if (ext) tOp->extended = 1; // ...since it is set to the existing value here?
+		v.insert(v.begin(), tOp->op);
+		return true;
+	}
+	if (bPoint == "vGSInstanceID") {
+		// Added by DarkStarSword
+
+		// XXX: MSDN refers to an instanceCount, but this didn't show
+		// up in my test case. My guess is that this is actually the
+		// value in dcl_gsinstances, which is [instance(n)] in HLSL:
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/hh446903(v=vs.85).aspx
+
+		// For when accessed in the code:
+		tOp->op = 0x2500a;
+		// I think this might be pointless as this register must be a
+		// uint and therefore can only have an x component:
+		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+
+		// For when used as a declaration:
+		if (bPoint == s) {
+			// Since op & 0xff0 == 0, dcl_input will subtract 1
+			// (I'm not entirely clear on why), so add one from the
+			// binary 0x25000 that validation found: -DSS
+			tOp->op = 0x25001;
+		}
+
+		v.insert(v.begin(), tOp->op);
+		return true;
+	}
+	// FIXME: Missing vJoinInstanceID
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/hh446905(v=vs.85).aspx
+	if (bPoint == "vCoverage") {
+		tOp->op = 0x23002;
+		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+		v.push_back(tOp->op);
+		return true;
+	}
+	if (bPoint == "vDomain") {
+		bool ext = tOp->extended;
+		tOp->op = 0x1C002;
+		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+		if (ext) tOp->extended = 1;
+		v.insert(v.begin(), tOp->op);
+		return true;
+	}
+	if (bPoint == "rasterizer") {
+		tOp->op = 0xE002;
+		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+		v.push_back(tOp->op);
+		return true;
+	}
+	if (bPoint == "vThreadGroupID") {
+		tOp->op = 0x21002;
+		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+		v.push_back(tOp->op);
+		return true;
+	}
+	if (bPoint == "vThreadIDInGroup") {
+		bool ext = tOp->extended;
+		tOp->op = 0x22002;
+		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+		if (ext) tOp->extended = 1;
+		v.insert(v.begin(), tOp->op);
+		return true;
+	}
+	if (bPoint == "vThreadID") {
+		bool ext = tOp->extended;
+		tOp->op = 0x20002;
+		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+		if (ext) tOp->extended = 1;
+		v.insert(v.begin(), tOp->op);
+		return true;
+	}
+	if (bPoint == "vThreadIDInGroupFlattened") {
+		bool ext = tOp->extended;
+		tOp->op = 0x24002;
+		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+		if (bPoint == s)
+			tOp->op = 0x24001;
+		if (ext) tOp->extended = 1;
+		v.insert(v.begin(), tOp->op);
+		return true;
+	}
+
+	return false;
+}
+
 static vector<DWORD> assembleOp(string s, bool special = false);
 
 static vector<DWORD> assemble_cbvox_operand(string &s, vector<DWORD> &v, token_operand *tOp, bool special, DWORD num)
@@ -619,7 +749,6 @@ static vector<DWORD> assembleOp(string s, bool special)
 	DWORD value = 0;
 	token_operand* tOp = (token_operand*)&op;
 	tOp->comps_enum = 2; // 4
-	string bPoint;
 
 	num = atoi(s.c_str());
 	if (num != 0) {
@@ -646,127 +775,9 @@ static vector<DWORD> assembleOp(string s, bool special)
 	if (tOp->extended) {
 		v.push_back(ext);
 	}
-	if (s.find('.') != string::npos)
-		bPoint = s.substr(0, s.find('.'));
-	else
-		bPoint = s;
-	if (s == "null") {
-		v.push_back(0xD000);
-		return v;
-	}
-	if (s == "oDepth") {
-		v.push_back(0xC001);
-		return v;
-	}
-	if (s == "oDepthLE") {
-		v.push_back(0x27001);
-		return v;
-	}
-	if (s == "oDepthGE") {
-		v.push_back(0x00026001);
-		return v;
-	}
-	if (s == "vOutputControlPointID") {
-		v.push_back(0x16001);
-		return v;
-	}
-	if (s == "oMask") {
-		v.push_back(0xF001);
-		return v;
-	}
-	if (s == "vPrim") {
-		v.push_back(0xB001);
-		return v;
-	}
-	if (bPoint == "vForkInstanceID") {
-		bool ext = tOp->extended; // Hmmm, isn't this useless...
-		op = 0x17002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		if (bPoint == s)
-			op = 0x17001;
-		if (ext) tOp->extended = 1; // ...since it is set to the existing value here?
-		v.insert(v.begin(), op);
-		return v;
-	}
-	if (bPoint == "vGSInstanceID") {
-		// Added by DarkStarSword
 
-		// XXX: MSDN refers to an instanceCount, but this didn't show
-		// up in my test case. My guess is that this is actually the
-		// value in dcl_gsinstances, which is [instance(n)] in HLSL:
-		// https://msdn.microsoft.com/en-us/library/windows/desktop/hh446903(v=vs.85).aspx
-
-		// For when accessed in the code:
-		op = 0x2500a;
-		// I think this might be pointless as this register must be a
-		// uint and therefore can only have an x component:
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-
-		// For when used as a declaration:
-		if (bPoint == s) {
-			// Since op & 0xff0 == 0, dcl_input will subtract 1
-			// (I'm not entirely clear on why), so add one from the
-			// binary 0x25000 that validation found: -DSS
-			op = 0x25001;
-		}
-
-		v.insert(v.begin(), op);
+	if (assemble_special_purpose_register(s, v, tOp, special))
 		return v;
-	}
-	// FIXME: Missing vJoinInstanceID
-	// https://msdn.microsoft.com/en-us/library/windows/desktop/hh446905(v=vs.85).aspx
-	if (bPoint == "vCoverage") {
-		op = 0x23002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		v.push_back(op);
-		return v;
-	}
-	if (bPoint == "vDomain") {
-		bool ext = tOp->extended;
-		op = 0x1C002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		if (ext) tOp->extended = 1;
-		v.insert(v.begin(), op);
-		return v;
-	}
-	if (bPoint == "rasterizer") {
-		op = 0xE002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		v.push_back(op);
-		return v;
-	}
-	if (bPoint == "vThreadGroupID") {
-		op = 0x21002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		v.push_back(op);
-		return v;
-	}
-	if (bPoint == "vThreadIDInGroup") {
-		bool ext = tOp->extended;
-		op = 0x22002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		if (ext) tOp->extended = 1;
-		v.insert(v.begin(), op);
-		return v;
-	}
-	if (bPoint == "vThreadID") {
-		bool ext = tOp->extended;
-		op = 0x20002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		if (ext) tOp->extended = 1;
-		v.insert(v.begin(), op);
-		return v;
-	}
-	if (bPoint == "vThreadIDInGroupFlattened") {
-		bool ext = tOp->extended;
-		op = 0x24002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		if (bPoint == s)
-			op = 0x24001;
-		if (ext) tOp->extended = 1;
-		v.insert(v.begin(), op);
-		return v;
-	}
 
 	if (s[0] == 'i' && s[1] == 'c' && s[2] == 'b'
 	 || s[0] == 'c' && s[1] == 'b'
