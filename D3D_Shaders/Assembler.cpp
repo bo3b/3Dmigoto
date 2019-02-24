@@ -290,129 +290,73 @@ static void handleSwizzle(string s, token_operand* tOp, bool special = false)
 	}
 }
 
-static bool assemble_special_purpose_register(string &s, vector<DWORD> &v, token_operand *tOp, bool special)
+struct special_purpose_register
 {
-	string bPoint;
+	uint32_t file;
 
-	if (s.find('.') != string::npos)
-		bPoint = s.substr(0, s.find('.'));
-	else
-		bPoint = s;
+	// This is the value we will set in the comps_enum field of the encoded
+	// operand if there is no swizzle. The values have been set based on
+	// the code in the original assembler - 2 where the assembler
+	// unconditionally called handleSwizzle (and where a bug would cause it
+	// to process the entire operand as the swizzle if there was none,
+	// hence never hitting the code path that sets comps_enum to 0), 1
+	// where the assembler either didn't call handleSwizzle at all, or
+	// where it did so conditionally, and 0 as a special case for "null".
+	//
+	// I'm not certain that this is the best way to handle this - note that
+	// the abovementioned bug combined with special handling in dcl_input
+	// (that subtracts one from comps_enum when no swizzle is present,
+	// effectively clearing it if it was set to 1, or changing 2s to 1s)
+	// may interact with this, but this is at least passing all test cases.
+	unsigned comps_enum;
 
-	if (s == "null") {
-		v.push_back(0xD000);
-		return true;
-	}
-	if (s == "oDepth") {
-		v.push_back(0xC001);
-		return true;
-	}
-	if (s == "oDepthLE") {
-		v.push_back(0x27001);
-		return true;
-	}
-	if (s == "oDepthGE") {
-		v.push_back(0x00026001);
-		return true;
-	}
-	if (s == "vOutputControlPointID") {
-		v.push_back(0x16001);
-		return true;
-	}
-	if (s == "oMask") {
-		v.push_back(0xF001);
-		return true;
-	}
-	if (s == "vPrim") {
-		v.push_back(0xB001);
-		return true;
-	}
-	if (bPoint == "vForkInstanceID") {
-		bool ext = tOp->extended; // Hmmm, isn't this useless...
-		tOp->op = 0x17002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		if (bPoint == s)
-			tOp->op = 0x17001;
-		if (ext) tOp->extended = 1; // ...since it is set to the existing value here?
-		v.insert(v.begin(), tOp->op);
-		return true;
-	}
-	if (bPoint == "vGSInstanceID") {
-		// Added by DarkStarSword
+	char *name;
+};
 
-		// XXX: MSDN refers to an instanceCount, but this didn't show
-		// up in my test case. My guess is that this is actually the
-		// value in dcl_gsinstances, which is [instance(n)] in HLSL:
-		// https://msdn.microsoft.com/en-us/library/windows/desktop/hh446903(v=vs.85).aspx
+static struct special_purpose_register special_purpose_registers[] = {
+	{ 0x0B, 1, "vPrim" },
+	{ 0x0C, 1, "oDepth" },
+	{ 0x0D, 0, "null" },
+	{ 0x0E, 2, "rasterizer" },
+	{ 0x0F, 1, "oMask" },
+	{ 0x16, 1, "vOutputControlPointID" },
+	{ 0x17, 1, "vForkInstanceID" },
+	{ 0x1C, 2, "vDomain" },
+	{ 0x20, 2, "vThreadID" },
+	{ 0x21, 2, "vThreadGroupID" },
+	{ 0x22, 2, "vThreadIDInGroup" },
+	{ 0x23, 2, "vCoverage" },
+	{ 0x24, 1, "vThreadIDInGroupFlattened" },
+	{ 0x25, 1, "vGSInstanceID" }, // instanceCount parameter? See below
+	{ 0x26, 1, "oDepthGE" },
+	{ 0x27, 1, "oDepthLE" },
 
-		// For when accessed in the code:
-		tOp->op = 0x2500a;
-		// I think this might be pointless as this register must be a
-		// uint and therefore can only have an x component:
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-
-		// For when used as a declaration:
-		if (bPoint == s) {
-			// Since op & 0xff0 == 0, dcl_input will subtract 1
-			// (I'm not entirely clear on why), so add one from the
-			// binary 0x25000 that validation found: -DSS
-			tOp->op = 0x25001;
-		}
-
-		v.insert(v.begin(), tOp->op);
-		return true;
-	}
 	// FIXME: Missing vJoinInstanceID
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/hh446905(v=vs.85).aspx
-	if (bPoint == "vCoverage") {
-		tOp->op = 0x23002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		v.push_back(tOp->op);
-		return true;
-	}
-	if (bPoint == "vDomain") {
-		bool ext = tOp->extended;
-		tOp->op = 0x1C002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		if (ext) tOp->extended = 1;
-		v.insert(v.begin(), tOp->op);
-		return true;
-	}
-	if (bPoint == "rasterizer") {
-		tOp->op = 0xE002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		v.push_back(tOp->op);
-		return true;
-	}
-	if (bPoint == "vThreadGroupID") {
-		tOp->op = 0x21002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		v.push_back(tOp->op);
-		return true;
-	}
-	if (bPoint == "vThreadIDInGroup") {
-		bool ext = tOp->extended;
-		tOp->op = 0x22002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		if (ext) tOp->extended = 1;
-		v.insert(v.begin(), tOp->op);
-		return true;
-	}
-	if (bPoint == "vThreadID") {
-		bool ext = tOp->extended;
-		tOp->op = 0x20002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		if (ext) tOp->extended = 1;
-		v.insert(v.begin(), tOp->op);
-		return true;
-	}
-	if (bPoint == "vThreadIDInGroupFlattened") {
-		bool ext = tOp->extended;
-		tOp->op = 0x24002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		if (bPoint == s)
-			tOp->op = 0x24001;
-		if (ext) tOp->extended = 1;
+
+	// XXX * MSDN refers to an 2nd instanceCount parameter to dcl_input vGSInstanceID,
+	// but this didn't show up in my test case. My guess is that this is actually
+	// the value in dcl_gsinstances, which is [instance(n)] in HLSL:
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/hh446903(v=vs.85).aspx
+};
+
+static bool assemble_special_purpose_register(string &s, vector<DWORD> &v, token_operand *tOp, bool special)
+{
+	size_t swiz_pos = s.find('.');
+	int i;
+
+	for (i = 0; i < ARRAYSIZE(special_purpose_registers); i++) {
+		if (s.compare(0, swiz_pos, special_purpose_registers[i].name))
+			continue;
+
+		tOp->file = special_purpose_registers[i].file;
+
+		// comps_enum was set to 2 as a default at the start of assembleOp
+		if (swiz_pos != string::npos)
+			handleSwizzle(s.substr(swiz_pos + 1), tOp, special);
+		else
+			tOp->comps_enum = special_purpose_registers[i].comps_enum;
+
 		v.insert(v.begin(), tOp->op);
 		return true;
 	}
@@ -772,9 +716,8 @@ static vector<DWORD> assembleOp(string s, bool special)
 	// tag as a secondary measure (either would be sufficient by itself):
 	parse_min_precision_tag(s, v, tOp, &ext);
 
-	if (tOp->extended) {
+	if (tOp->extended)
 		v.push_back(ext);
-	}
 
 	if (assemble_special_purpose_register(s, v, tOp, special))
 		return v;

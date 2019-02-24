@@ -240,11 +240,21 @@ run_asm_asm_test()
 	cp "$src" "$ASM_OUTPUT_DIR/$src"
 	local test_dir="$PWD"
 	cd "$ASM_OUTPUT_DIR"
-		"$CMD_DECOMPILER" -a "$src" > "$asm_log" 2>&1 || fail=1 # produces "$assembled"
-		"$CMD_DECOMPILER" -d -V "$assembled" > "$dsm_log" 2>&1 || fail=1 # produces "$src"
+		"$CMD_DECOMPILER" -a "$src" > "$asm_log" 2>&1 # produces "$assembled"
+		if [ $? -ne 0 ]; then
+			echo -n " Assembly failed."
+			fail=1
+		else
+			rm "$src" 2>/dev/null || true
+			"$CMD_DECOMPILER" -d -V "$assembled" > "$dsm_log" 2>&1 # produces "$src"
+			if [ $? -ne 0 ]; then
+				echo -n " Disassembly failed."
+				fail=1
+			fi
+		fi
 	cd "$test_dir"
 
-	check_assembler_result "$src" "$ASM_OUTPUT_DIR/$src" || fail=1
+	[ $fail -eq 0 ] && check_assembler_result "$src" "$ASM_OUTPUT_DIR/$src" || fail=1
 	pass_fail $fail
 }
 
