@@ -53,6 +53,7 @@ static void SwitchToXinpuGetStateEx()
 	_XInputGetState = XInputGetStateEx;
 }
 
+// VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
 class KeyParseError: public exception {} keyParseError;
 
 void InputListener::UpEvent(HackerDevice *device)

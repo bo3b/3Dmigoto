@@ -10,7 +10,8 @@
 // such as partial or double precision. This is likely incomplete.
 #define SFI_FORCE_SHEX (SFI_RAW_STRUCT_BUF | SFI_MIN_PRECISION)
 
-class ParseError : public exception {} parseError;
+// VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
+class AsmSignatureParseError : public exception {} parseError;
 
 static string next_line(string *shader, size_t *pos)
 {

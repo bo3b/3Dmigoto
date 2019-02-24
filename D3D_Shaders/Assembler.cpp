@@ -10,11 +10,12 @@ using namespace std;
 
 // TODO: Add more detail, like line & character number, etc (ideally like the
 // command list exceptions) and sprinkle this liberally around the assembler
-class ParseError: public exception {
+// VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
+class AssemblerParseError: public exception {
 public:
 	string msg;
 
-	ParseError(string context, string desc)
+	AssemblerParseError(string context, string desc)
 	{
 		msg = desc + ":\n\t\"" + context + "\"";
 	}
@@ -529,7 +530,7 @@ static vector<DWORD> assemble_double_operand(string &s, vector<DWORD> &v, token_
 
 	size_t comma = s.find(",", 2);
 	if (comma == string::npos)
-		throw ParseError(s, "Double literal string missing 2nd value");
+		throw AssemblerParseError(s, "Double literal string missing 2nd value");
 
 	// If the first value is hex it is only the first 32bits of the value
 	// and we need to include the 2nd component as well. The 2nd number
@@ -538,7 +539,7 @@ static vector<DWORD> assemble_double_operand(string &s, vector<DWORD> &v, token_
 	if (!s.compare(2, 2, "0x")) {
 		comma = s.find(",", comma + 1);
 		if (comma == string::npos || s.find(",", comma + 1) == string::npos)
-			throw ParseError(s, "Double literal hex string with less components than expected");
+			throw AssemblerParseError(s, "Double literal hex string with less components than expected");
 	}
 
 	string s1 = s.substr(2, comma - 2);

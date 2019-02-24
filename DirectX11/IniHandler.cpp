@@ -983,6 +983,7 @@ static int GetIniHexString(const wchar_t *section, const wchar_t *key, int def, 
 	return ret;
 }
 
+// VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
 class EnumParseError: public exception {} enumParseError;
 
 static int ParseEnum(wchar_t *str, wchar_t *prefix, wchar_t *names[], int names_len, int first)

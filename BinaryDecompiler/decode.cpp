@@ -47,6 +47,7 @@ static uint64_t instructionID = 0;
 #define osSprintf(dest, size, src) sprintf(dest, src)
 #endif
 
+// VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
 class DecompileError: public std::exception {} decompileError;
 
 void DecodeNameToken(const uint32_t* pui32NameToken, Operand* psOperand)
