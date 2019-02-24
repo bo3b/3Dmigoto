@@ -178,7 +178,7 @@ run_assembler_test()
 	pass_fail $?
 }
 
-run_asm_test()
+run_hlsl_asm_test()
 {
 	local src="$1"
 	local dst="$2"
@@ -199,6 +199,53 @@ run_asm_test()
 			run_assembler_test "$compiled"
 		cd "$test_dir"
 	done
+}
+
+normalise_assembly()
+{
+	# Remove comments, spaces at the end of lines and blank lines to handle
+	# minor differences between disassemblers, and to allow for the RDEF
+	# and STAT sections to have been stripped
+	# TODO: Handle capitalisation differences between d3dcompiler46+47
+	# TODO: Maybe don't strip signature comment blocks
+	sed 's/\/\/.*$//; s/\s\+$//; /^$/ d'
+}
+
+check_assembler_result()
+{
+	local src="$1"
+	local dst="$2"
+	local dst_stripped="${dst}.stripped"
+
+	normalise_assembly < "$dst" > "$dst_stripped"
+	if ! normalise_assembly < "$src" | cmp - "$dst_stripped" > /dev/null; then
+		echo -n " Output disassembly does not match source assembly"
+		false
+		return
+	fi
+
+	true
+}
+
+run_asm_asm_test()
+{
+	local src="$1"
+	local assembled="${src/.asm/.shdr}"
+	local asm_log="${src/.asm/_asm.log}"
+	local dsm_log="${src/.asm/_dsm.log}"
+	local fail=0
+
+	echo -n "....: ${src}..."
+
+	cp "$src" "$ASM_OUTPUT_DIR/$src"
+	local test_dir="$PWD"
+	cd "$ASM_OUTPUT_DIR"
+		"$CMD_DECOMPILER" -a "$src" > "$asm_log" 2>&1 || fail=1 # produces "$assembled"
+		"$CMD_DECOMPILER" -d -V "$assembled" > "$dsm_log" 2>&1 || fail=1 # produces "$src"
+	cd "$test_dir"
+
+	check_assembler_result "$src" "$ASM_OUTPUT_DIR/$src" || fail=1
+	pass_fail $fail
 }
 
 cmd_decompiler_copy_reflection_check()
