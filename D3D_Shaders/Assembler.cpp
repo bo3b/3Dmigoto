@@ -8,36 +8,6 @@ using namespace std;
 #define DBL_DECIMAL_DIG 17
 #endif
 
-// TODO: Add more detail, like line & character number, etc (ideally like the
-// command list exceptions) and sprinkle this liberally around the assembler
-// VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
-class AssemblerParseError: public exception {
-public:
-	string context, desc, msg;
-	int line_no;
-
-	AssemblerParseError(string context, string desc) :
-		context(context),
-		desc(desc),
-		line_no(0)
-	{
-		update_msg();
-	}
-
-	void update_msg()
-	{
-		msg = "Assembly parse error";
-		if (line_no > 0)
-			msg += string(" on line ") + to_string(line_no);
-		msg += ", " + desc + ":\n\"" + context + "\"";
-	}
-
-	const char* what() const
-	{
-		return msg.c_str();
-	}
-};
-
 static unordered_map<string, vector<DWORD>> codeBin;
 
 static DWORD strToDWORD(string s)
@@ -2182,10 +2152,24 @@ static string assembleAndCompare(string s, vector<DWORD> v)
 	}
 	size_t lastLiteral = 0;
 	size_t lastEnd = 0;
-	vector<DWORD> v2 = assembleIns(s);
+	vector<DWORD> v2;
 	string sNew = s;
 	string s3;
 	bool valid = true;
+
+	try {
+		v2 = assembleIns(s);
+	} catch (AssemblerParseError) {
+		// Parse error, but not much we can / should do at this point
+		// since we're acting as a disassembler (maybe we're
+		// disassembling a shader with an instruction, operand, etc. we
+		// don't yet support), so just return the assembly unchanged.
+		// The parse error will be caught elsewhere, either when
+		// attempting to assembling the shader, or when running a
+		// validation pass over it.
+		return s;
+	}
+
 	if (v2.size() > 0) {
 		if (v2.size() == v.size()) {
 			for (DWORD i = 0; i < v.size(); i++) {
@@ -2448,11 +2432,16 @@ static void hexdump_instruction(string &s, vector<DWORD> &v,
 	string hd;
 	char buf[16];
 	vector<DWORD> v2;
+	string parse_error;
 
-	v2 = assembleIns(s.substr(s.find_first_not_of(" ")));
+	try {
+		v2 = assembleIns(s.substr(s.find_first_not_of(" ")));
+	} catch (AssemblerParseError &e) {
+		parse_error = e.desc;
+	}
 
 	// In mode 2 we only hexdump bad instructions:
-	if (hexdump_mode == 2 && v == v2)
+	if (hexdump_mode == 2 && v == v2 && parse_error.empty())
 		return;
 
 	_snprintf_s(buf, 16, 16, "// %08x:", line_byte_offset);
@@ -2462,12 +2451,16 @@ static void hexdump_instruction(string &s, vector<DWORD> &v,
 		hd += buf;
 	}
 
-	if (v != v2) {
-		hd += "\n// * BUG * :";
-		for (auto val : v2) {
-			_snprintf_s(buf, 16, 16, " %08x", val);
-			hd += buf;
+	if (parse_error.empty()) {
+		if (v != v2) {
+			hd += "\n// * BUG * :";
+			for (auto val : v2) {
+				_snprintf_s(buf, 16, 16, " %08x", val);
+				hd += buf;
+			}
 		}
+	} else {
+		hd += "\n// * BUG * : " + parse_error + ":";
 	}
 
 	vector<string>::iterator pos = lines.begin() + (*i)++;

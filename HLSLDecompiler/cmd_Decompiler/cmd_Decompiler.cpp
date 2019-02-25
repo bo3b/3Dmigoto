@@ -256,9 +256,22 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 	// assembly text so that we can check the signature parsing separately
 	// from the assembler. FIXME: We really need to clean up how the
 	// buffers are passed between these functions
-	hret = AssembleFluganWithSignatureParsing(&assembly_vec, &new_shader);
-	if (FAILED(hret)) {
-		LogInfo("\n*** Assembly verification pass failed: Reassembly failed 0x%x\n", hret);
+	try {
+		hret = AssembleFluganWithSignatureParsing(&assembly_vec, &new_shader);
+		if (FAILED(hret)) {
+			LogInfo("\n*** Assembly verification pass failed: Reassembly failed 0x%x\n", hret);
+			return 1;
+		}
+	} catch (AssemblerParseError &e) {
+		string disassembly;
+
+		LogInfo("\n%s\n\n", e.what());
+
+		// Assembler threw a parse error. Switch to disassembly with
+		// hexdump mode 2 enabled to identify bad instructions:
+		hret = DisassembleFlugan(old_shader->data(), old_shader->size(), &disassembly, 2);
+		if (SUCCEEDED(hret))
+			LogInfo("%s\n", disassembly.c_str());
 		return 1;
 	}
 
