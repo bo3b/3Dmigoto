@@ -33,7 +33,7 @@ fi
 HLSL_OUTPUT_DIR=output/hlsl
 ASM_OUTPUT_DIR=output/asm
 mkdir -p "$HLSL_OUTPUT_DIR" "$ASM_OUTPUT_DIR"
-rm -v "$HLSL_OUTPUT_DIR"/* "$ASM_OUTPUT_DIR"/* 2>/dev/null || true
+rm -vfr "$HLSL_OUTPUT_DIR"/* "$ASM_OUTPUT_DIR"/* 2>/dev/null || true
 TESTS_FAILED=0
 UPDATE_CHK=0
 
@@ -176,6 +176,22 @@ run_assembler_test()
 	rm "$disassembled" "$asemble_log" 2>/dev/null
 	"$CMD_DECOMPILER" -d -V $LENIENT "$compiled" > "$asemble_log" 2>&1 # produces "$disassembled"
 	pass_fail $?
+}
+
+run_bin_asm_test()
+{
+	local src="$1"
+	dn=$(dirname "$src")
+
+	echo -n "....: ${src}..."
+
+	mkdir -p "$ASM_OUTPUT_DIR/$dn"
+	cp "$src" "$ASM_OUTPUT_DIR/$src"
+
+	local test_dir="$PWD"
+	cd "$ASM_OUTPUT_DIR"
+		run_assembler_test "$1"
+	cd "$test_dir"
 }
 
 run_hlsl_asm_test()
