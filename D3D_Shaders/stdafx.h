@@ -47,14 +47,19 @@ public:
 
 struct shader_ins
 {
-	// XXX Beware that bitfield packing is not defined in
-	// the C/C++ standards and this is relying on compiler
-	// specific packing. This approach is not recommended.
+	union {
+		struct {
+			// XXX Beware that bitfield packing is not defined in
+			// the C/C++ standards and this is relying on compiler
+			// specific packing. This approach is not recommended.
 
-	unsigned opcode : 11;
-	unsigned _11_23 : 13;
-	unsigned length : 7;
-	unsigned extended : 1;
+			unsigned opcode : 11;
+			unsigned _11_23 : 13;
+			unsigned length : 7;
+			unsigned extended : 1;
+		};
+		DWORD op;
+	};
 };
 struct token_operand
 {

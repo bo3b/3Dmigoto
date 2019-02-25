@@ -607,12 +607,12 @@ static bool is_geometry_shader_5(string *shader, size_t start_pos) {
 	return false;
 }
 
-static bool parse_section(string *line, string *shader, size_t *pos, void **section, uint64_t *sfi)
+static bool parse_section(string *line, string *shader, size_t *pos, void **section, uint64_t *sfi, bool *force_shex)
 {
 	*section = NULL;
 
 	if (!strncmp(line->c_str() + 1, "s_4_", 4)) {
-		if (!!(*sfi & SFI_FORCE_SHEX))
+		if (!!(*sfi & SFI_FORCE_SHEX) || *force_shex)
 			*section = manufacture_empty_section("SHEX");
 		else
 			*section = manufacture_empty_section("SHDR");
@@ -638,6 +638,8 @@ static bool parse_section(string *line, string *shader, size_t *pos, void **sect
 	} else if (!strncmp(line->c_str(), "// Note: shader requires additional functionality:", 50)) {
 		LogInfo("Parsing Subshader Feature Info section...\n");
 		*sfi = parse_subshader_feature_info_comment(shader, pos, *sfi);
+	} else if (!strncmp(line->c_str(), "// Note: SHADER WILL ONLY WORK WITH THE DEBUG SDK LAYER ENABLED.", 64)) {
+		*force_shex = true;
 	}
 
 	return false;
@@ -687,6 +689,7 @@ static HRESULT manufacture_shader_binary(const void *pShaderAsm, size_t AsmLengt
 	void *section;
 	HRESULT hr = E_FAIL;
 	uint64_t sfi = 0LL;
+	bool force_shex = false;
 
 	sfi = parse_global_flags_to_sfi(&shader_str);
 
@@ -694,7 +697,7 @@ static HRESULT manufacture_shader_binary(const void *pShaderAsm, size_t AsmLengt
 		line = next_line(&shader_str, &pos);
 		//LogInfo("%s\n", line.c_str());
 
-		done = parse_section(&line, &shader_str, &pos, &section, &sfi);
+		done = parse_section(&line, &shader_str, &pos, &section, &sfi, &force_shex);
 		if (section) {
 			sections.push_back(section);
 			section_size = *((uint32_t*)section + 1) + sizeof(section_header);

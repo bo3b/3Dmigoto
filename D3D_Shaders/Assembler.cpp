@@ -770,6 +770,14 @@ static vector<string> strToWords(string s)
 			end = s.find(')', start) + 1;
 			if (end < s.size() && s[end] == ',')
 				end++;
+		} else if (s[start] == '"') {
+			// Strings only exist in the printf / errorf debug
+			// instructions, and we need to match until the
+			// right-most quote in case there are extra quotes
+			// inside the string (which are not escaped).
+			end = s.rfind('"') + 1;
+			if (end < s.size() && s[end] == ',')
+				end++;
 		} else {
 			end = s.find(' ', start);
 			if (s[end + 1] == '+') {
@@ -1334,12 +1342,86 @@ static void check_num_ops(string &s, vector<string> &w, int min_expected, int ma
 	if (max_expected == -1)
 		max_expected = min_expected;
 
-	if (num_operands < min_expected || num_operands > max_expected) {
+	if (num_operands < min_expected || (max_expected && num_operands > max_expected)) {
 		_snprintf_s(buf, 80, _TRUNCATE,
 			"Invalid number of operands for instruction. Expected %i-%i, found %Ii",
 			min_expected, max_expected, num_operands);
 		throw AssemblerParseError(s, buf);
 	}
+}
+
+static string translate_string_operand(string &in)
+{
+	// Strip quote characters:
+	string ret = in.substr(1, in.size() - 2);
+
+	// Translate escape sequences:
+	for (size_t pos = ret.find('\\'); pos < ret.size() - 1; pos = ret.find('\\', pos + 1)) {
+		switch(ret[pos+1]) {
+			case 'b':
+				ret.replace(pos, 2, "\b");
+				break;
+			case 'n':
+				ret.replace(pos, 2, "\n");
+				break;
+			case 'r':
+				ret.replace(pos, 2, "\r");
+				break;
+			case 't':
+				ret.replace(pos, 2, "\t");
+				break;
+			case '\\':
+				ret.replace(pos, 2, "\\");
+				break;
+			// The disassembler does not encode all non-printable
+			// characters as escape sequences, so some will show up
+			// as an ambiguous dot "." instead. We could add a
+			// fixup case for this, but it's obscure enough that
+			// it's not worth it. At least \a \f \v are affected.
+		}
+	}
+	return ret;
+}
+
+// Printf/errorf instructions can potentially allow us to extract data from the
+// shader when the debug layer is enabled, potentially making them quite valuable
+static vector<DWORD> assemble_printf(string &s, vector<DWORD> &v, vector<string> &w, bool errorf)
+{
+	shader_ins ins = {0};
+	ins.opcode = 0x35;
+	ins._11_23 = 0x4;
+	v.push_back(ins.op);
+
+	uint32_t insLen = 0;
+	v.push_back(insLen); // placeholder
+	if (errorf)
+		v.push_back(0x00200103);
+	else
+		v.push_back(0x00200102);
+	v.push_back(1); // ?
+
+	check_num_ops(s, w, 1, 0);
+	string msg = translate_string_operand(w[1]);
+	uint32_t msgLen = (uint32_t)msg.size();
+	v.push_back(msgLen);
+
+	uint32_t numOps = (uint32_t)w.size() - 2;
+	v.push_back(numOps);
+	v.push_back(numOps * 2);
+	for (uint32_t i = 0; i < numOps; i++) {
+		vector<DWORD> os = assembleOp(w[i + 2]);
+		v.insert(v.end(), os.begin(), os.end());
+	}
+
+	// Resize large enough to fit the message with a NULL
+	// terminator, rounded up for padding:
+	uintptr_t msgOff = (uintptr_t)v.size() * 4;
+	insLen = (msgLen + 4) / 4 + (uint32_t)v.size();
+	v.resize(insLen);
+	v[1] = insLen;
+	memcpy((char*)v.data() + msgOff, msg.c_str(), msgLen);
+
+	return v;
 }
 
 static vector<DWORD> assembleIns(string s)
@@ -2135,6 +2217,10 @@ static vector<DWORD> assembleIns(string s)
 		v.push_back(op);
 		for (int i = 0; i < numOps; i++)
 			v.insert(v.end(), os[i].begin(), os[i].end());
+	} else if (o == "printf") {
+		return assemble_printf(s, v, w, false);
+	} else if (o == "errorf") {
+		return assemble_printf(s, v, w, true);
 	} else {
 		throw AssemblerParseError(s, "Unrecognised instruction");
 	}
@@ -2593,12 +2679,24 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 				if (prev == "ret ")
 					v.clear();
 				if (v.size() == 1) {
+					// This looks inherently wrong to me - scanning for the next word with a
+					// non-zero length field, but custom data can include arbitrary data. I
+					// suspect that the below code for printf/errorf would work here as well.
+					//  -DarkStarSword
 					ins = (shader_ins*)++codeStart;
 					while (ins->length == 0) {
 						ins = (shader_ins*)++codeStart;
 					}
 				}
 				s = "";
+			} else if (v[0] == 0x00002035) {
+				// Opcode 0x35 is custom data (specifically printf/errorf).
+				// Instruction length is in the next word instead:
+				uint32_t len = *codeStart;
+				v.push_back(*(codeStart)++);
+				for (uint32_t j = 1; j < len - 1; j++)
+					v.push_back(*(codeStart)++);
+				s = assembleAndCompare(s, v);
 			} else {
 				s = assembleAndCompare(s, v);
 			}
@@ -2624,12 +2722,18 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 static void preprocessLine(string &line)
 {
 	const char *p;
-	int i;
+	size_t i;
 
 	for (p = line.c_str(), i = 0; *p; p++, i++) {
 		// Replace tabs with spaces:
 		if (*p == '\t')
 			line[i] = ' ';
+
+		// Skip over strings:
+		if (*p == '"') {
+			p = strrchr(p, '"');
+			i = p - line.c_str();
+		}
 
 		// Strip C style comments:
 		if (!memcmp(p, "//", 2)) {
