@@ -13,11 +13,23 @@ using namespace std;
 // VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
 class AssemblerParseError: public exception {
 public:
-	string msg;
+	string context, desc, msg;
+	int line_no;
 
-	AssemblerParseError(string context, string desc)
+	AssemblerParseError(string context, string desc) :
+		context(context),
+		desc(desc),
+		line_no(0)
 	{
-		msg = desc + ":\n\t\"" + context + "\"";
+		update_msg();
+	}
+
+	void update_msg()
+	{
+		msg = "Assembly parse error";
+		if (line_no > 0)
+			msg += string(" on line ") + to_string(line_no);
+		msg += ", " + desc + ":\n\"" + context + "\"";
 	}
 
 	const char* what() const
@@ -749,6 +761,9 @@ static vector<DWORD> assembleOp(string s, bool special)
 		tOp->file = 0x1E;
 	} else if (s[0] == 'm')
 		tOp->file = 0x10;
+	else
+		throw AssemblerParseError(s, "Unrecognised operand");
+
 	s.erase(s.begin());
 	tOp->num_indices = 1;
 	num = atoi(s.substr(0, s.find('.')).c_str());
@@ -2055,6 +2070,8 @@ static vector<DWORD> assembleIns(string s)
 		v.push_back(op);
 		for (int i = 0; i < numOps; i++)
 			v.insert(v.end(), os[i].begin(), os[i].end());
+	} else {
+		throw AssemblerParseError(s, "Unrecognised instruction");
 	}
 
 	return v;
@@ -2717,32 +2734,38 @@ vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode)
 	string s2;
 	vector<DWORD> o;
 	for (DWORD i = 0; i < lines.size(); i++) {
-		string s = lines[i];
-		preprocessLine(s);
-		vector<DWORD> v;
-		if (!codeStarted) {
-			if (s.size() > 0 && s[0] != ' ') {
-				codeStarted = true;
+		try {
+			string s = lines[i];
+			preprocessLine(s);
+			vector<DWORD> v;
+			if (!codeStarted) {
+				if (s.size() > 0 && s[0] != ' ') {
+					codeStarted = true;
+					vector<DWORD> ins = assembleIns(s);
+					o.insert(o.end(), ins.begin(), ins.end());
+					o.push_back(0);
+				}
+			} else if (s.find("{ {") < s.size()) {
+				s2 = s;
+				multiLine = true;
+			} else if (s.find("} }") < s.size()) {
+				s2.append("\n");
+				s2.append(s);
+				s = s2;
+				multiLine = false;
 				vector<DWORD> ins = assembleIns(s);
 				o.insert(o.end(), ins.begin(), ins.end());
-				o.push_back(0);
+			} else if (multiLine) {
+				s2.append("\n");
+				s2.append(s);
+			} else if (s.size() > 0) {
+				vector<DWORD> ins = assembleIns(s);
+				o.insert(o.end(), ins.begin(), ins.end());
 			}
-		} else if (s.find("{ {") < s.size()) {
-			s2 = s;
-			multiLine = true;
-		} else if (s.find("} }") < s.size()) {
-			s2.append("\n");
-			s2.append(s);
-			s = s2;
-			multiLine = false;
-			vector<DWORD> ins = assembleIns(s);
-			o.insert(o.end(), ins.begin(), ins.end());
-		} else if (multiLine) {
-			s2.append("\n");
-			s2.append(s);
-		} else if (s.size() > 0) {
-			vector<DWORD> ins = assembleIns(s);
-			o.insert(o.end(), ins.begin(), ins.end());
+		} catch (AssemblerParseError &e) {
+			e.line_no = i + 1;
+			e.update_msg();
+			throw;
 		}
 	}
 	codeStart = (DWORD*)(codeByteStart); // Endian bug, not that we care
