@@ -1336,7 +1336,7 @@ static void check_num_ops(string &s, vector<string> &w, int min_expected, int ma
 
 	if (num_operands < min_expected || num_operands > max_expected) {
 		_snprintf_s(buf, 80, _TRUNCATE,
-			"Invalid number of operands for instruction. Expected %i-%i, found %Ii\n",
+			"Invalid number of operands for instruction. Expected %i-%i, found %Ii",
 			min_expected, max_expected, num_operands);
 		throw AssemblerParseError(s, buf);
 	}

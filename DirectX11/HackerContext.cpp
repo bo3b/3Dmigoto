@@ -553,9 +553,15 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	vector<char> asm_vector(asm_text.begin(), asm_text.end());
 	vector<byte> patched_bytecode;
 
-	hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode);
-	if (FAILED(hr)) {
-		LogInfo("    *** Assembling patched shader failed\n");
+	try {
+		hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode);
+		if (FAILED(hr)) {
+			LogInfo("    *** Assembling patched shader failed\n");
+			return;
+		}
+	} catch (const exception &e) {
+		LogOverlay(LOG_NOTICE, "Error assembling ShaderRegex patched %S %016I64x\n%S\n%s\n",
+				shader_type, hash, tagline.c_str(), e.what());
 		return;
 	}
 

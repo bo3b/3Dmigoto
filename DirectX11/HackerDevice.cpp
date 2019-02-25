@@ -925,8 +925,6 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 			{
 				byteCode = AssembleFluganWithOptionalSignatureParsing(&asmTextBytes, G->assemble_signature_comments, &byteCode);
 
-				// ToDo: Any errors to check?  When it fails, throw an exception.
-
 				// Assuming the re-assembly worked, let's make it the active shader code.
 				pCodeSize = byteCode.size();
 				pCode = new char[pCodeSize];
@@ -955,9 +953,10 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 					}
 				}
 			}
-			catch (...)
+			catch (const exception &e)
 			{
-				LogInfo("    reassembly of ASM shader text failed.\n");
+				LogOverlay(LOG_NOTICE, "Error assembling %S: %s\n",
+						path, e.what());
 			}
 		}
 	}
