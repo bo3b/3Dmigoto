@@ -2853,7 +2853,7 @@ vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode)
 			} else if (multiLine) {
 				s2.append("\n");
 				s2.append(s);
-			} else if (s.size() > 0) {
+			} else if (s.find_first_not_of(" ") != string::npos) {
 				vector<DWORD> ins = assembleIns(s);
 				o.insert(o.end(), ins.begin(), ins.end());
 			}
