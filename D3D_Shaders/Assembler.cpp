@@ -1339,6 +1339,39 @@ static unsigned parseSyncFlags(string *w)
 
 }
 
+static void check_num_ops(string &s, vector<string> &w, int min_expected, int max_expected = -1)
+{
+	size_t num_operands = w.size() - 1;
+	char buf[80];
+
+	// We will throw a parse error if there are too few operands. That
+	// should be relatively uncontroversial, since an exception will have
+	// already been thrown when the assembler tries to access w out of
+	// bounds.
+	//
+	// Somewhat more controversial is that we are also going to throw an
+	// exception if there are more operands than expected. Before this
+	// would have assembled the expected operands and silently dropped the
+	// extras, so this may have been masking bugs... or, it could be
+	// masking someone using the wrong comment character that will now
+	// start failing.
+	//
+	// But at the end of the day, the benefits of warning when someone
+	// makes a mistake vastly outweigh the potential for a fix to be broken
+	// by this - and they can always stick to an old version of 3DMigoto...
+	// or fix their bug.
+
+	if (max_expected == -1)
+		max_expected = min_expected;
+
+	if (num_operands < min_expected || num_operands > max_expected) {
+		_snprintf_s(buf, 80, _TRUNCATE,
+			"Invalid number of operands for instruction. Expected %i-%i, found %Ii\n",
+			min_expected, max_expected, num_operands);
+		throw AssemblerParseError(s, buf);
+	}
+}
+
 static vector<DWORD> assembleIns(string s)
 {
 	unsigned msaa_samples = 0;
@@ -1408,62 +1441,74 @@ static vector<DWORD> assembleIns(string s)
 	if (bGlc) o = o.substr(0, o.find("_glc"));
 
 	if (o == "hs_decls") {
+		check_num_ops(s, w, 0);
 		ins->opcode = 0x71;
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o == "hs_fork_phase") {
+		check_num_ops(s, w, 0);
 		ins->opcode = 0x73;
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o == "hs_join_phase") {
+		check_num_ops(s, w, 0);
 		ins->opcode = 0x74;
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o == "hs_control_point_phase") {
+		check_num_ops(s, w, 0);
 		ins->opcode = 0x72;
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o.substr(0, 3) == "ps_") {
+		check_num_ops(s, w, 0);
 		op = 0x00000;
 		op |= 16 * atoi(o.substr(3, 1).c_str());
 		op |= atoi(o.substr(5, 1).c_str());
 		v.push_back(op);
 	} else if (o.substr(0, 3) == "vs_") {
+		check_num_ops(s, w, 0);
 		op = 0x10000;
 		op |= 16 * atoi(o.substr(3, 1).c_str());
 		op |= atoi(o.substr(5, 1).c_str());
 		v.push_back(op);
 	} else if (o.substr(0, 3) == "gs_") {
+		check_num_ops(s, w, 0);
 		op = 0x20000;
 		op |= 16 * atoi(o.substr(3, 1).c_str());
 		op |= atoi(o.substr(5, 1).c_str());
 		v.push_back(op);
 	} else if (o.substr(0, 3) == "hs_") {
+		check_num_ops(s, w, 0);
 		op = 0x30000;
 		op |= 16 * atoi(o.substr(3, 1).c_str());
 		op |= atoi(o.substr(5, 1).c_str());
 		v.push_back(op);
 	} else if (o.substr(0, 3) == "ds_") {
+		check_num_ops(s, w, 0);
 		op = 0x40000;
 		op |= 16 * atoi(o.substr(3, 1).c_str());
 		op |= atoi(o.substr(5, 1).c_str());
 		v.push_back(op);
 	} else if (o.substr(0, 3) == "cs_") {
+		check_num_ops(s, w, 0);
 		op = 0x50000;
 		op |= 16 * atoi(o.substr(3, 1).c_str());
 		op |= atoi(o.substr(5, 1).c_str());
 		v.push_back(op);
 	} else if (w[0].substr(0, 4) == "sync") {
 		ins->opcode = 0xbe;
+		check_num_ops(s, w, 0);
 		ins->_11_23 = parseSyncFlags(&w[0]);
 		ins->length = 1;
 		v.push_back(op);
 	} else if (w[0] == "store_uav_typed") {
 		ins->opcode = 0x86;
+		int numOps = 3;
+		check_num_ops(s, w, numOps);
 		if (w[1][0] == 'u') {
 			ins->opcode = 0xa4;
 		}
-		int numOps = 3;
 		vector<vector<DWORD>> Os;
 		int numSpecial = 1;
 		for (int i = 0; i < numOps; i++)
@@ -1477,6 +1522,7 @@ static vector<DWORD> assembleIns(string s)
 	} else if (insMap.find(o) != insMap.end()) {
 		vector<int> vIns = insMap[o];
 		int numOps = vIns[0];
+		check_num_ops(s, w, numOps);
 		vector<vector<DWORD>> Os;
 		int numSpecial = 1;
 		if (vIns.size() > 2)
@@ -1504,6 +1550,7 @@ static vector<DWORD> assembleIns(string s)
 		vector<vector<DWORD>> Os;
 		int startPos = 1 + (vIns[2] & 3);
 		//startPos = w.size() - numOps;
+		check_num_ops(s, w, startPos + numOps - 1);
 		for (int i = 0; i < numOps; i++)
 			Os.push_back(assembleOp(w[i + startPos], i == 0));
 		ins->opcode = vIns[1];
@@ -1570,6 +1617,7 @@ static vector<DWORD> assembleIns(string s)
 		for (int i = 0; i < numOps; i++)
 			v.insert(v.end(), Os[i].begin(), Os[i].end());
 	} else if (o == "dcl_input") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1], 1);
 		ins->opcode = 0x5f;
 		ins->length = 1 + os.size();
@@ -1579,18 +1627,21 @@ static vector<DWORD> assembleIns(string s)
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_output") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1], 1);
 		ins->opcode = 0x65;
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_resource_raw") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0xa1;
 		ins->length = 3;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_resource_buffer") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 1;
@@ -1599,6 +1650,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture1d") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 2;
@@ -1607,6 +1659,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture1darray") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 7;
@@ -1615,6 +1668,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture1d") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 2;
@@ -1625,6 +1679,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture1darray") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 7;
@@ -1635,6 +1690,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture2d") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 3;
@@ -1643,6 +1699,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_buffer") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 1;
@@ -1653,6 +1710,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture3d") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 5;
@@ -1661,6 +1719,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture3d") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 5;
@@ -1671,6 +1730,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texturecube") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 6;
@@ -1679,6 +1739,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texturecubearray") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 10;
@@ -1687,6 +1748,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture2darray") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 8;
@@ -1695,6 +1757,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture2d") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 3;
@@ -1705,6 +1768,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture2darray") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 8;
@@ -1715,6 +1779,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture2dms") {
+		check_num_ops(s, w, 3);
 		vector<DWORD> os = assembleOp(w[3]);
 		ins->opcode = 0x58;
 		// Changed this to calculate the value rather than hard coding
@@ -1726,6 +1791,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[2], &v);
 	} else if (o == "dcl_resource_texture2dmsarray") {
+		check_num_ops(s, w, 3);
 		vector<DWORD> os = assembleOp(w[3]);
 		ins->opcode = 0x58;
 		// Changed this to calculate the value rather than hard coding
@@ -1737,6 +1803,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[2], &v);
 	} else if (o == "dcl_indexrange") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 0x5b;
 		ins->length = 2 + os.size();
@@ -1747,8 +1814,10 @@ static vector<DWORD> assembleIns(string s)
 		ins->opcode = 0x68;
 		ins->length = 2;
 		v.push_back(op);
+		check_num_ops(s, w, 1);
 		v.push_back(atoi(w[1].c_str()));
 	} else if (o == "dcl_resource_structured") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0xa2;
 		ins->length = 4;
@@ -1756,6 +1825,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		v.push_back(atoi(w[2].c_str()));
 	} else if (o == "dcl_sampler") {
+		check_num_ops(s, w, 1, 2);
 		vector<DWORD> os = assembleOp(w[1]);
 		os[0] = 0x106000;
 		ins->opcode = 0x5a;
@@ -1804,6 +1874,7 @@ static vector<DWORD> assembleIns(string s)
 		}
 		v.push_back(op);
 	} else if (o == "dcl_constantbuffer") {
+		check_num_ops(s, w, 1, 2);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x59;
 		if (w.size() > 2) {
@@ -1818,6 +1889,7 @@ static vector<DWORD> assembleIns(string s)
 	} else if (o == "dcl_output_sgv") {
 		// Added and verified. Used when writing to SV_IsFrontFace in a
 		// geometry shader. -DarkStarSword
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 0x66;
 		assembleSystemValue(&w[2], &os);
@@ -1825,6 +1897,7 @@ static vector<DWORD> assembleIns(string s)
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_output_siv") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 0x67;
 		assembleSystemValue(&w[2], &os);
@@ -1832,6 +1905,7 @@ static vector<DWORD> assembleIns(string s)
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_siv") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 0x61;
 		assembleSystemValue(&w[2], &os);
@@ -1839,6 +1913,7 @@ static vector<DWORD> assembleIns(string s)
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_sgv") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 0x60;
 		assembleSystemValue(&w[2], &os);
@@ -1862,6 +1937,7 @@ static vector<DWORD> assembleIns(string s)
 		// d3dcompiler_46: dcl_input_ps_sgv v6.x, is_front_face
 		// d3dcompiler_47: dcl_input_ps_sgv constant v6.x, is_front_face
 		//   -DarkStarSword
+		check_num_ops(s, w, 2, 5);
 		vector<DWORD> os = assembleOp(w[w.size() - 2], true);
 		ins->opcode = 0x63;
 		ins->_11_23 = interpolationMode(w, 1);
@@ -1877,6 +1953,7 @@ static vector<DWORD> assembleIns(string s)
 		// missing linear noperspective sample case in WATCH_DOGS2) and
 		// system value parsing (fixes missing viewport_array_index)
 		//   -DarkStarSword
+		check_num_ops(s, w, 2, 5);
 		ins->_11_23 = interpolationMode(w, 0); // FIXME: Default?
 		os = assembleOp(w[w.size() - 2], true);
 		assembleSystemValue(&w[w.size() - 1], &os);
@@ -1884,6 +1961,7 @@ static vector<DWORD> assembleIns(string s)
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_indexableTemp") {
+		check_num_ops(s, w, 2);
 		string s1 = w[1].erase(0, 1);
 		string s2 = s1.substr(0, s1.find('['));
 		string s3 = s1.substr(s1.find('[') + 1);
@@ -1899,9 +1977,11 @@ static vector<DWORD> assembleIns(string s)
 		ins->opcode = 0x35;
 		ins->_11_23 = 3;
 		ins->length = 0;
-		w.size();
 		DWORD length = 2;
 		DWORD offset = 3;
+		// The modulus here is by 5, matching the below offset += 5
+		if ((w.size() - offset) % 5 != 0)
+			throw AssemblerParseError(s, "Immediate Constant Buffer must have a multiple of four values");
 		while (offset < w.size()) {
 			string s1 = w[offset + 0];
 			s1 = s1.substr(0, s1.find(','));
@@ -1924,6 +2004,7 @@ static vector<DWORD> assembleIns(string s)
 	} else if (o == "dcl_tessellator_partitioning") {
 		ins->opcode = 0x96;
 		ins->length = 1;
+		check_num_ops(s, w, 1);
 		if (w[1] == "partitioning_integer")
 			ins->_11_23 = 1;
 		else if (w[1] == "partitioning_pow2")
@@ -1938,6 +2019,7 @@ static vector<DWORD> assembleIns(string s)
 	} else if (o == "dcl_tessellator_output_primitive") {
 		ins->opcode = 0x97;
 		ins->length = 1;
+		check_num_ops(s, w, 1);
 		if (w[1] == "output_point")
 			ins->_11_23 = 1;
 		else if (w[1] == "output_line")
@@ -1952,6 +2034,7 @@ static vector<DWORD> assembleIns(string s)
 	} else if (o == "dcl_tessellator_domain") {
 		ins->opcode = 0x95;
 		ins->length = 1;
+		check_num_ops(s, w, 1);
 		if (w[1] == "domain_isoline")
 			ins->_11_23 = 1;
 		else if (w[1] == "domain_tri")
@@ -1960,18 +2043,21 @@ static vector<DWORD> assembleIns(string s)
 			ins->_11_23 = 3;
 		v.push_back(op);
 	} else if (o == "dcl_stream") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x8f;
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "emit_stream") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x75;
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "cut_stream") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x76;
 		ins->length = 1 + os.size();
@@ -1981,6 +2067,7 @@ static vector<DWORD> assembleIns(string s)
 		// Partially verified - assembled & disassembled OK, but did not
 		// check against compiled shader as fxc never generates this
 		//   -DarkStarSword
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x77;
 		ins->length = 1 + os.size();
@@ -1989,6 +2076,7 @@ static vector<DWORD> assembleIns(string s)
 	} else if (o == "dcl_outputtopology") {
 		ins->opcode = 0x5c;
 		ins->length = 1;
+		check_num_ops(s, w, 1);
 		if (w[1] == "pointlist")
 			ins->_11_23 = 1;
 		else if (w[1] == "trianglestrip")
@@ -1999,18 +2087,21 @@ static vector<DWORD> assembleIns(string s)
 		// https://msdn.microsoft.com/en-us/library/windows/desktop/bb509661(v=vs.85).aspx
 		v.push_back(op);
 	} else if (o == "dcl_output_control_point_count") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x94;
 		ins->_11_23 = os[0];
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o == "dcl_input_control_point_count") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x93;
 		ins->_11_23 = os[0];
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o == "dcl_maxout") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x5e;
 		ins->length = 1 + os.size();
@@ -2019,6 +2110,7 @@ static vector<DWORD> assembleIns(string s)
 	} else if (o == "dcl_inputprimitive") {
 		ins->opcode = 0x5d;
 		ins->length = 1;
+		check_num_ops(s, w, 1);
 		if (w[1] == "point")
 			ins->_11_23 = 1;
 		else if (w[1] == "line")
@@ -2033,12 +2125,14 @@ static vector<DWORD> assembleIns(string s)
 		// https://msdn.microsoft.com/en-us/library/windows/desktop/bb509609(v=vs.85).aspx
 		v.push_back(op);
 	} else if (o == "dcl_hs_max_tessfactor") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x98;
 		ins->length = 1 + os.size() - 1;
 		v.push_back(op);
 		v.insert(v.end(), os.begin() + 1, os.end());
 	} else if (o == "dcl_hs_fork_phase_instance_count") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x99;
 		ins->length = 1 + os.size();
@@ -2050,6 +2144,7 @@ static vector<DWORD> assembleIns(string s)
 		vector<vector<DWORD>> os;
 		ins->opcode = 0x6e;
 		int numOps = 3;
+		check_num_ops(s, w, numOps);
 		for (int i = 0; i < numOps; i++)
 			os.push_back(assembleOp(w[i + 1], i < 1));
 
