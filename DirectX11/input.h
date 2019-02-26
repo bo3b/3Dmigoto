@@ -164,6 +164,7 @@ void RegisterKeyBinding(LPCWSTR iniKey, const wchar_t *keyName,
 bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key,
 		InputCallback down_cb, InputCallback up_cb, int auto_repeat,
 		void *private_data);
+wstring user_friendly_ini_key_binding(LPCWSTR app, LPCWSTR iniKey);
 
 // Clears all current key bindings in preparation for reloading the config.
 // Note - this is not safe to call from within an input callback!
