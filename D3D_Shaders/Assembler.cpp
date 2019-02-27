@@ -1319,7 +1319,7 @@ static unsigned parseSyncFlags(string *w)
 
 static void check_num_ops(string &s, vector<string> &w, int min_expected, int max_expected = -1)
 {
-	size_t num_operands = w.size() - 1;
+	int num_operands = (int)w.size() - 1;
 	char buf[80];
 
 	// We will throw a parse error if there are too few operands. That
@@ -1344,7 +1344,7 @@ static void check_num_ops(string &s, vector<string> &w, int min_expected, int ma
 
 	if (num_operands < min_expected || (max_expected && num_operands > max_expected)) {
 		_snprintf_s(buf, 80, _TRUNCATE,
-			"Invalid number of operands for instruction. Expected %i-%i, found %Ii",
+			"Invalid number of operands for instruction. Expected %i-%i, found %i",
 			min_expected, max_expected, num_operands);
 		throw AssemblerParseError(s, buf);
 	}
