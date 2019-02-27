@@ -1063,9 +1063,16 @@ void NvAPIOverride()
 		return;
 
 	if (!nvDLL) {
-		nvDLL = GetModuleHandle(L"nvapi64.dll");
+		// Use GetModuleHandleEx instead of GetModuleHandle to bump the
+		// refcount on our nvapi wrapper since we are storing a
+		// function pointer from the library. This is important, since
+		// if we aren't running on an nvidia system the nvapi static
+		// library will unload the dynamic library, which would lead to
+		// a crash when we later try to call the NvAPI_QueryInterface
+		// function pointer.
+		GetModuleHandleEx(0, L"nvapi64.dll", &nvDLL);
 		if (!nvDLL) {
-			nvDLL = GetModuleHandle(L"nvapi.dll");
+			GetModuleHandleEx(0, L"nvapi.dll", &nvDLL);
 		}
 		if (!nvDLL) {
 			LogInfo("Can't get nvapi handle\n");
