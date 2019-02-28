@@ -274,6 +274,14 @@ void HackerSwapChain::RunFrameActions()
 	// messages, before final Present. We now do this after the shader and
 	// config reloads, so if they have any notices we will see them this
 	// frame (just in case we crash next frame or something).
+	//
+	//  <================================>
+	//  <  AB-BA TYPE DEADLOCK WARNING!  >
+	//  <                                >
+	//  < Never call DrawOverlay() while >
+	//  <  holding g->mCriticalSection!  >
+	//  <================================>
+	//
 	if (mOverlay && !G->suppress_overlay)
 		mOverlay->DrawOverlay();
 	G->suppress_overlay = false;
