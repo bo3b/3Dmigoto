@@ -1275,6 +1275,32 @@ ULONG STDMETHODCALLTYPE ResourceReleaseTracker::Release(void)
 	// LogDebug("ResourceReleaseTracker::Release(%p:%p) -> %lu\n", this, resource, ret);
 	if (ret == 0) {
 		// LogDebug("Removing %p from mResources\n", resource);
+
+		////////////////////////////////////////////////////////////
+		//                                                        //
+		//            <==============================>            //
+		//            < AB-BA TYPE DEADLOCK WARNING! >            //
+		//            <==============================>            //
+		//                                                        //
+		// DirectX has called us with a lock held, and we are now //
+		// taking our critical section to update mResources.      //
+		// If we ever call into DirectX with our critical section //
+		// held and it tries to take it's lock we have a possible //
+		// AB-BA type deadlock scenario!                          //
+		//                                                        //
+		// We should aim to never call into DirectX with this     //
+		// particular lock held. If we ever do need to call into  //
+		// DirectX with this lock held, split the lock into two   //
+		// finer grained locks so that the mResources lock is not //
+		// held while calling DirectX. Be mindful that adding too //
+		// many locks without lockdep is risky in and of itself.  //
+		//                                                        //
+		// Issue uncovered in the Resident Evil 2 remake when the //
+		// overlay called into DirectX to draw notices with this  //
+		// lock held to protect it's notices data structure.      //
+		//                                                        //
+		////////////////////////////////////////////////////////////
+
 		EnterCriticalSection(&G->mCriticalSection);
 		G->mResources.erase(resource);
 		LeaveCriticalSection(&G->mCriticalSection);

@@ -589,15 +589,16 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		vector<byte> byteCode(origByteCode->GetBufferSize());
 		memcpy(byteCode.data(), origByteCode->GetBufferPointer(), origByteCode->GetBufferSize());
 
-		// Not completely clear what error reporting happens from assembler.  
-		// We know it throws at least one exception, let's use that.
 		try
 		{
+			// Treat parse errors on shader reload as fatal since there should
+			// be a shaderhacker at the keyboard ready to fix their bugs.
 			byteCode = AssembleFluganWithOptionalSignatureParsing(&srcData, G->assemble_signature_comments, &byteCode);
 		}
-		catch (...)
-		{ 
-			LogInfo("  *** assembler failed.\n");
+		catch (const exception &e)
+		{
+			LogOverlay(LOG_NOTICE, "Error assembling %S: %s\n",
+					fileName, e.what());
 			return true;
 		}
 

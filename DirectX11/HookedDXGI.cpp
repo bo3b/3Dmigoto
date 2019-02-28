@@ -809,6 +809,10 @@ HRESULT __stdcall UnhookableCreateSwapChain(
 		goto out_release;
 	}
 
+	IDXGISwapChain *retChain = ppSwapChain ? *ppSwapChain : nullptr;
+	LogInfo("  CreateSwapChain returned handle = %p\n", retChain);
+	analyse_iunknown(retChain);
+
 	wrap_swap_chain(hackerDevice, ppSwapChain, pDesc, &origSwapChainDesc, This);
 
 	LogInfo("->UnhookableCreateSwapChain result %#x\n", hr);

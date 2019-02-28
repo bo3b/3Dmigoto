@@ -8,24 +8,6 @@ using namespace std;
 #define DBL_DECIMAL_DIG 17
 #endif
 
-// TODO: Add more detail, like line & character number, etc (ideally like the
-// command list exceptions) and sprinkle this liberally around the assembler
-class ParseError: public exception {
-public:
-	string msg;
-
-	ParseError(string context, string desc)
-	{
-		msg = desc + ":\n\t\"" + context + "\"";
-	}
-
-	const char* what() const
-	{
-		return msg.c_str();
-	}
-};
-
-FILE* failFile = NULL;
 static unordered_map<string, vector<DWORD>> codeBin;
 
 static DWORD strToDWORD(string s)
@@ -149,22 +131,7 @@ static string convertF(DWORD original)
 			sprintf_s(buf, 80, "%.8f", fOriginal);
 		break;
 	}
-	string sLiteral(buf);
-	DWORD newDWORD = strToDWORD(sLiteral);
-	if (newDWORD != original) {
-		if (failFile == NULL)
-			fopen_s(&failFile, "3Dmigoto_disassembly_debug.txt", "wb");
-		if (failFile) {
-			FILE *f = failFile;
-			fprintf(f, "%s\n", sLiteral.c_str());
-			fprintf(f, "s:%s\n", scientific);
-			fprintf(f, "e:%d\n", exp);
-			fprintf(f, "o:%08X\n", original);
-			fprintf(f, "n:%08X\n", newDWORD);
-			fprintf(f, "\n");
-		}
-	}
-	return sLiteral;
+	return buf;
 }
 
 static string convertD(DWORD v1, DWORD v2)
@@ -303,6 +270,80 @@ static void handleSwizzle(string s, token_operand* tOp, bool special = false)
 			s.erase(s.begin());
 		}
 	}
+}
+
+struct special_purpose_register
+{
+	uint32_t file;
+
+	// This is the value we will set in the comps_enum field of the encoded
+	// operand if there is no swizzle. The values have been set based on
+	// the code in the original assembler - 2 where the assembler
+	// unconditionally called handleSwizzle (and where a bug would cause it
+	// to process the entire operand as the swizzle if there was none,
+	// hence never hitting the code path that sets comps_enum to 0), 1
+	// where the assembler either didn't call handleSwizzle at all, or
+	// where it did so conditionally, and 0 as a special case for "null".
+	//
+	// I'm not certain that this is the best way to handle this - note that
+	// the abovementioned bug combined with special handling in dcl_input
+	// (that subtracts one from comps_enum when no swizzle is present,
+	// effectively clearing it if it was set to 1, or changing 2s to 1s)
+	// may interact with this, but this is at least passing all test cases.
+	unsigned comps_enum;
+
+	char *name;
+};
+
+static struct special_purpose_register special_purpose_registers[] = {
+	{ 0x0B, 1, "vPrim" },
+	{ 0x0C, 1, "oDepth" },
+	{ 0x0D, 0, "null" },
+	{ 0x0E, 2, "rasterizer" },
+	{ 0x0F, 1, "oMask" },
+	{ 0x16, 1, "vOutputControlPointID" },
+	{ 0x17, 1, "vForkInstanceID" },
+	{ 0x1C, 2, "vDomain" },
+	{ 0x20, 2, "vThreadID" },
+	{ 0x21, 2, "vThreadGroupID" },
+	{ 0x22, 2, "vThreadIDInGroup" },
+	{ 0x23, 2, "vCoverage" },
+	{ 0x24, 1, "vThreadIDInGroupFlattened" },
+	{ 0x25, 1, "vGSInstanceID" }, // instanceCount parameter? See below
+	{ 0x26, 1, "oDepthGE" },
+	{ 0x27, 1, "oDepthLE" },
+
+	// FIXME: Missing vJoinInstanceID
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/hh446905(v=vs.85).aspx
+
+	// XXX * MSDN refers to an 2nd instanceCount parameter to dcl_input vGSInstanceID,
+	// but this didn't show up in my test case. My guess is that this is actually
+	// the value in dcl_gsinstances, which is [instance(n)] in HLSL:
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/hh446903(v=vs.85).aspx
+};
+
+static bool assemble_special_purpose_register(string &s, vector<DWORD> &v, token_operand *tOp, bool special)
+{
+	size_t swiz_pos = s.find('.');
+	int i;
+
+	for (i = 0; i < ARRAYSIZE(special_purpose_registers); i++) {
+		if (s.compare(0, swiz_pos, special_purpose_registers[i].name))
+			continue;
+
+		tOp->file = special_purpose_registers[i].file;
+
+		// comps_enum was set to 2 as a default at the start of assembleOp
+		if (swiz_pos != string::npos)
+			handleSwizzle(s.substr(swiz_pos + 1), tOp, special);
+		else
+			tOp->comps_enum = special_purpose_registers[i].comps_enum;
+
+		v.insert(v.begin(), tOp->op);
+		return true;
+	}
+
+	return false;
 }
 
 static vector<DWORD> assembleOp(string s, bool special = false);
@@ -529,7 +570,7 @@ static vector<DWORD> assemble_double_operand(string &s, vector<DWORD> &v, token_
 
 	size_t comma = s.find(",", 2);
 	if (comma == string::npos)
-		throw ParseError(s, "Double literal string missing 2nd value");
+		throw AssemblerParseError(s, "Double literal string missing 2nd value");
 
 	// If the first value is hex it is only the first 32bits of the value
 	// and we need to include the 2nd component as well. The 2nd number
@@ -538,7 +579,7 @@ static vector<DWORD> assemble_double_operand(string &s, vector<DWORD> &v, token_
 	if (!s.compare(2, 2, "0x")) {
 		comma = s.find(",", comma + 1);
 		if (comma == string::npos || s.find(",", comma + 1) == string::npos)
-			throw ParseError(s, "Double literal hex string with less components than expected");
+			throw AssemblerParseError(s, "Double literal hex string with less components than expected");
 	}
 
 	string s1 = s.substr(2, comma - 2);
@@ -634,7 +675,6 @@ static vector<DWORD> assembleOp(string s, bool special)
 	DWORD value = 0;
 	token_operand* tOp = (token_operand*)&op;
 	tOp->comps_enum = 2; // 4
-	string bPoint;
 
 	num = atoi(s.c_str());
 	if (num != 0) {
@@ -658,130 +698,11 @@ static vector<DWORD> assembleOp(string s, bool special)
 	// tag as a secondary measure (either would be sufficient by itself):
 	parse_min_precision_tag(s, v, tOp, &ext);
 
-	if (tOp->extended) {
+	if (tOp->extended)
 		v.push_back(ext);
-	}
-	if (s.find('.') != string::npos)
-		bPoint = s.substr(0, s.find('.'));
-	else
-		bPoint = s;
-	if (s == "null") {
-		v.push_back(0xD000);
-		return v;
-	}
-	if (s == "oDepth") {
-		v.push_back(0xC001);
-		return v;
-	}
-	if (s == "oDepthLE") {
-		v.push_back(0x27001);
-		return v;
-	}
-	if (s == "oDepthGE") {
-		v.push_back(0x00026001);
-		return v;
-	}
-	if (s == "vOutputControlPointID") {
-		v.push_back(0x16001);
-		return v;
-	}
-	if (s == "oMask") {
-		v.push_back(0xF001);
-		return v;
-	}
-	if (s == "vPrim") {
-		v.push_back(0xB001);
-		return v;
-	}
-	if (bPoint == "vForkInstanceID") {
-		bool ext = tOp->extended; // Hmmm, isn't this useless...
-		op = 0x17002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		if (bPoint == s)
-			op = 0x17001;
-		if (ext) tOp->extended = 1; // ...since it is set to the existing value here?
-		v.insert(v.begin(), op);
-		return v;
-	}
-	if (bPoint == "vGSInstanceID") {
-		// Added by DarkStarSword
 
-		// XXX: MSDN refers to an instanceCount, but this didn't show
-		// up in my test case. My guess is that this is actually the
-		// value in dcl_gsinstances, which is [instance(n)] in HLSL:
-		// https://msdn.microsoft.com/en-us/library/windows/desktop/hh446903(v=vs.85).aspx
-
-		// For when accessed in the code:
-		op = 0x2500a;
-		// I think this might be pointless as this register must be a
-		// uint and therefore can only have an x component:
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-
-		// For when used as a declaration:
-		if (bPoint == s) {
-			// Since op & 0xff0 == 0, dcl_input will subtract 1
-			// (I'm not entirely clear on why), so add one from the
-			// binary 0x25000 that validation found: -DSS
-			op = 0x25001;
-		}
-
-		v.insert(v.begin(), op);
+	if (assemble_special_purpose_register(s, v, tOp, special))
 		return v;
-	}
-	// FIXME: Missing vJoinInstanceID
-	// https://msdn.microsoft.com/en-us/library/windows/desktop/hh446905(v=vs.85).aspx
-	if (bPoint == "vCoverage") {
-		op = 0x23002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		v.push_back(op);
-		return v;
-	}
-	if (bPoint == "vDomain") {
-		bool ext = tOp->extended;
-		op = 0x1C002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		if (ext) tOp->extended = 1;
-		v.insert(v.begin(), op);
-		return v;
-	}
-	if (bPoint == "rasterizer") {
-		op = 0xE002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		v.push_back(op);
-		return v;
-	}
-	if (bPoint == "vThreadGroupID") {
-		op = 0x21002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		v.push_back(op);
-		return v;
-	}
-	if (bPoint == "vThreadIDInGroup") {
-		bool ext = tOp->extended;
-		op = 0x22002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		if (ext) tOp->extended = 1;
-		v.insert(v.begin(), op);
-		return v;
-	}
-	if (bPoint == "vThreadID") {
-		bool ext = tOp->extended;
-		op = 0x20002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		if (ext) tOp->extended = 1;
-		v.insert(v.begin(), op);
-		return v;
-	}
-	if (bPoint == "vThreadIDInGroupFlattened") {
-		bool ext = tOp->extended;
-		op = 0x24002;
-		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-		if (bPoint == s)
-			op = 0x24001;
-		if (ext) tOp->extended = 1;
-		v.insert(v.begin(), op);
-		return v;
-	}
 
 	if (s[0] == 'i' && s[1] == 'c' && s[2] == 'b'
 	 || s[0] == 'c' && s[1] == 'b'
@@ -810,6 +731,9 @@ static vector<DWORD> assembleOp(string s, bool special)
 		tOp->file = 0x1E;
 	} else if (s[0] == 'm')
 		tOp->file = 0x10;
+	else
+		throw AssemblerParseError(s, "Unrecognised operand");
+
 	s.erase(s.begin());
 	tOp->num_indices = 1;
 	num = atoi(s.substr(0, s.find('.')).c_str());
@@ -844,6 +768,14 @@ static vector<string> strToWords(string s)
 			break;
 		if (s[start] == '(' || s[start + 1] == '(') {
 			end = s.find(')', start) + 1;
+			if (end < s.size() && s[end] == ',')
+				end++;
+		} else if (s[start] == '"') {
+			// Strings only exist in the printf / errorf debug
+			// instructions, and we need to match until the
+			// right-most quote in case there are extra quotes
+			// inside the string (which are not escaped).
+			end = s.rfind('"') + 1;
 			if (end < s.size() && s[end] == ',')
 				end++;
 		} else {
@@ -1385,6 +1317,113 @@ static unsigned parseSyncFlags(string *w)
 
 }
 
+static void check_num_ops(string &s, vector<string> &w, int min_expected, int max_expected = -1)
+{
+	int num_operands = (int)w.size() - 1;
+	char buf[80];
+
+	// We will throw a parse error if there are too few operands. That
+	// should be relatively uncontroversial, since an exception will have
+	// already been thrown when the assembler tries to access w out of
+	// bounds.
+	//
+	// Somewhat more controversial is that we are also going to throw an
+	// exception if there are more operands than expected. Before this
+	// would have assembled the expected operands and silently dropped the
+	// extras, so this may have been masking bugs... or, it could be
+	// masking someone using the wrong comment character that will now
+	// start failing.
+	//
+	// But at the end of the day, the benefits of warning when someone
+	// makes a mistake vastly outweigh the potential for a fix to be broken
+	// by this - and they can always stick to an old version of 3DMigoto...
+	// or fix their bug.
+
+	if (max_expected == -1)
+		max_expected = min_expected;
+
+	if (num_operands < min_expected || (max_expected && num_operands > max_expected)) {
+		_snprintf_s(buf, 80, _TRUNCATE,
+			"Invalid number of operands for instruction. Expected %i-%i, found %i",
+			min_expected, max_expected, num_operands);
+		throw AssemblerParseError(s, buf);
+	}
+}
+
+static string translate_string_operand(string &in)
+{
+	// Strip quote characters:
+	string ret = in.substr(1, in.size() - 2);
+
+	// Translate escape sequences:
+	for (size_t pos = ret.find('\\'); pos < ret.size() - 1; pos = ret.find('\\', pos + 1)) {
+		switch(ret[pos+1]) {
+			case 'b':
+				ret.replace(pos, 2, "\b");
+				break;
+			case 'n':
+				ret.replace(pos, 2, "\n");
+				break;
+			case 'r':
+				ret.replace(pos, 2, "\r");
+				break;
+			case 't':
+				ret.replace(pos, 2, "\t");
+				break;
+			case '\\':
+				ret.replace(pos, 2, "\\");
+				break;
+			// The disassembler does not encode all non-printable
+			// characters as escape sequences, so some will show up
+			// as an ambiguous dot "." instead. We could add a
+			// fixup case for this, but it's obscure enough that
+			// it's not worth it. At least \a \f \v are affected.
+		}
+	}
+	return ret;
+}
+
+// Printf/errorf instructions can potentially allow us to extract data from the
+// shader when the debug layer is enabled, potentially making them quite valuable
+static vector<DWORD> assemble_printf(string &s, vector<DWORD> &v, vector<string> &w, bool errorf)
+{
+	shader_ins ins = {0};
+	ins.opcode = 0x35;
+	ins._11_23 = 0x4;
+	v.push_back(ins.op);
+
+	uint32_t insLen = 0;
+	v.push_back(insLen); // placeholder
+	if (errorf)
+		v.push_back(0x00200103);
+	else
+		v.push_back(0x00200102);
+	v.push_back(1); // ?
+
+	check_num_ops(s, w, 1, 0);
+	string msg = translate_string_operand(w[1]);
+	uint32_t msgLen = (uint32_t)msg.size();
+	v.push_back(msgLen);
+
+	uint32_t numOps = (uint32_t)w.size() - 2;
+	v.push_back(numOps);
+	v.push_back(numOps * 2);
+	for (uint32_t i = 0; i < numOps; i++) {
+		vector<DWORD> os = assembleOp(w[i + 2]);
+		v.insert(v.end(), os.begin(), os.end());
+	}
+
+	// Resize large enough to fit the message with a NULL
+	// terminator, rounded up for padding:
+	uintptr_t msgOff = (uintptr_t)v.size() * 4;
+	insLen = (msgLen + 4) / 4 + (uint32_t)v.size();
+	v.resize(insLen);
+	v[1] = insLen;
+	memcpy((char*)v.data() + msgOff, msg.c_str(), msgLen);
+
+	return v;
+}
+
 static vector<DWORD> assembleIns(string s)
 {
 	unsigned msaa_samples = 0;
@@ -1454,62 +1493,74 @@ static vector<DWORD> assembleIns(string s)
 	if (bGlc) o = o.substr(0, o.find("_glc"));
 
 	if (o == "hs_decls") {
+		check_num_ops(s, w, 0);
 		ins->opcode = 0x71;
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o == "hs_fork_phase") {
+		check_num_ops(s, w, 0);
 		ins->opcode = 0x73;
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o == "hs_join_phase") {
+		check_num_ops(s, w, 0);
 		ins->opcode = 0x74;
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o == "hs_control_point_phase") {
+		check_num_ops(s, w, 0);
 		ins->opcode = 0x72;
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o.substr(0, 3) == "ps_") {
+		check_num_ops(s, w, 0);
 		op = 0x00000;
 		op |= 16 * atoi(o.substr(3, 1).c_str());
 		op |= atoi(o.substr(5, 1).c_str());
 		v.push_back(op);
 	} else if (o.substr(0, 3) == "vs_") {
+		check_num_ops(s, w, 0);
 		op = 0x10000;
 		op |= 16 * atoi(o.substr(3, 1).c_str());
 		op |= atoi(o.substr(5, 1).c_str());
 		v.push_back(op);
 	} else if (o.substr(0, 3) == "gs_") {
+		check_num_ops(s, w, 0);
 		op = 0x20000;
 		op |= 16 * atoi(o.substr(3, 1).c_str());
 		op |= atoi(o.substr(5, 1).c_str());
 		v.push_back(op);
 	} else if (o.substr(0, 3) == "hs_") {
+		check_num_ops(s, w, 0);
 		op = 0x30000;
 		op |= 16 * atoi(o.substr(3, 1).c_str());
 		op |= atoi(o.substr(5, 1).c_str());
 		v.push_back(op);
 	} else if (o.substr(0, 3) == "ds_") {
+		check_num_ops(s, w, 0);
 		op = 0x40000;
 		op |= 16 * atoi(o.substr(3, 1).c_str());
 		op |= atoi(o.substr(5, 1).c_str());
 		v.push_back(op);
 	} else if (o.substr(0, 3) == "cs_") {
+		check_num_ops(s, w, 0);
 		op = 0x50000;
 		op |= 16 * atoi(o.substr(3, 1).c_str());
 		op |= atoi(o.substr(5, 1).c_str());
 		v.push_back(op);
 	} else if (w[0].substr(0, 4) == "sync") {
 		ins->opcode = 0xbe;
+		check_num_ops(s, w, 0);
 		ins->_11_23 = parseSyncFlags(&w[0]);
 		ins->length = 1;
 		v.push_back(op);
 	} else if (w[0] == "store_uav_typed") {
 		ins->opcode = 0x86;
+		int numOps = 3;
+		check_num_ops(s, w, numOps);
 		if (w[1][0] == 'u') {
 			ins->opcode = 0xa4;
 		}
-		int numOps = 3;
 		vector<vector<DWORD>> Os;
 		int numSpecial = 1;
 		for (int i = 0; i < numOps; i++)
@@ -1523,6 +1574,7 @@ static vector<DWORD> assembleIns(string s)
 	} else if (insMap.find(o) != insMap.end()) {
 		vector<int> vIns = insMap[o];
 		int numOps = vIns[0];
+		check_num_ops(s, w, numOps);
 		vector<vector<DWORD>> Os;
 		int numSpecial = 1;
 		if (vIns.size() > 2)
@@ -1550,6 +1602,7 @@ static vector<DWORD> assembleIns(string s)
 		vector<vector<DWORD>> Os;
 		int startPos = 1 + (vIns[2] & 3);
 		//startPos = w.size() - numOps;
+		check_num_ops(s, w, startPos + numOps - 1);
 		for (int i = 0; i < numOps; i++)
 			Os.push_back(assembleOp(w[i + startPos], i == 0));
 		ins->opcode = vIns[1];
@@ -1616,6 +1669,7 @@ static vector<DWORD> assembleIns(string s)
 		for (int i = 0; i < numOps; i++)
 			v.insert(v.end(), Os[i].begin(), Os[i].end());
 	} else if (o == "dcl_input") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1], 1);
 		ins->opcode = 0x5f;
 		ins->length = 1 + os.size();
@@ -1625,18 +1679,21 @@ static vector<DWORD> assembleIns(string s)
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_output") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1], 1);
 		ins->opcode = 0x65;
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_resource_raw") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0xa1;
 		ins->length = 3;
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_resource_buffer") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 1;
@@ -1645,6 +1702,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture1d") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 2;
@@ -1653,6 +1711,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture1darray") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 7;
@@ -1661,6 +1720,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture1d") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 2;
@@ -1671,6 +1731,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture1darray") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 7;
@@ -1681,6 +1742,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture2d") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 3;
@@ -1689,6 +1751,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_buffer") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 1;
@@ -1699,6 +1762,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture3d") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 5;
@@ -1707,6 +1771,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture3d") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 5;
@@ -1717,6 +1782,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texturecube") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 6;
@@ -1725,6 +1791,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texturecubearray") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 10;
@@ -1733,6 +1800,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture2darray") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x58;
 		ins->_11_23 = 8;
@@ -1741,6 +1809,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture2d") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 3;
@@ -1751,6 +1820,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_uav_typed_texture2darray") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[2]);
 		ins->opcode = 0x9c;
 		ins->_11_23 = 8;
@@ -1761,6 +1831,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[1], &v);
 	} else if (o == "dcl_resource_texture2dms") {
+		check_num_ops(s, w, 3);
 		vector<DWORD> os = assembleOp(w[3]);
 		ins->opcode = 0x58;
 		// Changed this to calculate the value rather than hard coding
@@ -1772,6 +1843,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[2], &v);
 	} else if (o == "dcl_resource_texture2dmsarray") {
+		check_num_ops(s, w, 3);
 		vector<DWORD> os = assembleOp(w[3]);
 		ins->opcode = 0x58;
 		// Changed this to calculate the value rather than hard coding
@@ -1783,6 +1855,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		assembleResourceDeclarationType(&w[2], &v);
 	} else if (o == "dcl_indexrange") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 0x5b;
 		ins->length = 2 + os.size();
@@ -1793,8 +1866,10 @@ static vector<DWORD> assembleIns(string s)
 		ins->opcode = 0x68;
 		ins->length = 2;
 		v.push_back(op);
+		check_num_ops(s, w, 1);
 		v.push_back(atoi(w[1].c_str()));
 	} else if (o == "dcl_resource_structured") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0xa2;
 		ins->length = 4;
@@ -1802,6 +1877,7 @@ static vector<DWORD> assembleIns(string s)
 		v.insert(v.end(), os.begin(), os.end());
 		v.push_back(atoi(w[2].c_str()));
 	} else if (o == "dcl_sampler") {
+		check_num_ops(s, w, 1, 2);
 		vector<DWORD> os = assembleOp(w[1]);
 		os[0] = 0x106000;
 		ins->opcode = 0x5a;
@@ -1850,6 +1926,7 @@ static vector<DWORD> assembleIns(string s)
 		}
 		v.push_back(op);
 	} else if (o == "dcl_constantbuffer") {
+		check_num_ops(s, w, 1, 2);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x59;
 		if (w.size() > 2) {
@@ -1864,6 +1941,7 @@ static vector<DWORD> assembleIns(string s)
 	} else if (o == "dcl_output_sgv") {
 		// Added and verified. Used when writing to SV_IsFrontFace in a
 		// geometry shader. -DarkStarSword
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 0x66;
 		assembleSystemValue(&w[2], &os);
@@ -1871,6 +1949,7 @@ static vector<DWORD> assembleIns(string s)
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_output_siv") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 0x67;
 		assembleSystemValue(&w[2], &os);
@@ -1878,6 +1957,7 @@ static vector<DWORD> assembleIns(string s)
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_siv") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 0x61;
 		assembleSystemValue(&w[2], &os);
@@ -1885,6 +1965,7 @@ static vector<DWORD> assembleIns(string s)
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_input_sgv") {
+		check_num_ops(s, w, 2);
 		vector<DWORD> os = assembleOp(w[1], true);
 		ins->opcode = 0x60;
 		assembleSystemValue(&w[2], &os);
@@ -1908,6 +1989,7 @@ static vector<DWORD> assembleIns(string s)
 		// d3dcompiler_46: dcl_input_ps_sgv v6.x, is_front_face
 		// d3dcompiler_47: dcl_input_ps_sgv constant v6.x, is_front_face
 		//   -DarkStarSword
+		check_num_ops(s, w, 2, 5);
 		vector<DWORD> os = assembleOp(w[w.size() - 2], true);
 		ins->opcode = 0x63;
 		ins->_11_23 = interpolationMode(w, 1);
@@ -1923,6 +2005,7 @@ static vector<DWORD> assembleIns(string s)
 		// missing linear noperspective sample case in WATCH_DOGS2) and
 		// system value parsing (fixes missing viewport_array_index)
 		//   -DarkStarSword
+		check_num_ops(s, w, 2, 5);
 		ins->_11_23 = interpolationMode(w, 0); // FIXME: Default?
 		os = assembleOp(w[w.size() - 2], true);
 		assembleSystemValue(&w[w.size() - 1], &os);
@@ -1930,6 +2013,7 @@ static vector<DWORD> assembleIns(string s)
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "dcl_indexableTemp") {
+		check_num_ops(s, w, 2);
 		string s1 = w[1].erase(0, 1);
 		string s2 = s1.substr(0, s1.find('['));
 		string s3 = s1.substr(s1.find('[') + 1);
@@ -1945,9 +2029,11 @@ static vector<DWORD> assembleIns(string s)
 		ins->opcode = 0x35;
 		ins->_11_23 = 3;
 		ins->length = 0;
-		w.size();
 		DWORD length = 2;
 		DWORD offset = 3;
+		// The modulus here is by 5, matching the below offset += 5
+		if ((w.size() - offset) % 5 != 0)
+			throw AssemblerParseError(s, "Immediate Constant Buffer must have a multiple of four values");
 		while (offset < w.size()) {
 			string s1 = w[offset + 0];
 			s1 = s1.substr(0, s1.find(','));
@@ -1970,6 +2056,7 @@ static vector<DWORD> assembleIns(string s)
 	} else if (o == "dcl_tessellator_partitioning") {
 		ins->opcode = 0x96;
 		ins->length = 1;
+		check_num_ops(s, w, 1);
 		if (w[1] == "partitioning_integer")
 			ins->_11_23 = 1;
 		else if (w[1] == "partitioning_pow2")
@@ -1984,6 +2071,7 @@ static vector<DWORD> assembleIns(string s)
 	} else if (o == "dcl_tessellator_output_primitive") {
 		ins->opcode = 0x97;
 		ins->length = 1;
+		check_num_ops(s, w, 1);
 		if (w[1] == "output_point")
 			ins->_11_23 = 1;
 		else if (w[1] == "output_line")
@@ -1998,6 +2086,7 @@ static vector<DWORD> assembleIns(string s)
 	} else if (o == "dcl_tessellator_domain") {
 		ins->opcode = 0x95;
 		ins->length = 1;
+		check_num_ops(s, w, 1);
 		if (w[1] == "domain_isoline")
 			ins->_11_23 = 1;
 		else if (w[1] == "domain_tri")
@@ -2006,18 +2095,21 @@ static vector<DWORD> assembleIns(string s)
 			ins->_11_23 = 3;
 		v.push_back(op);
 	} else if (o == "dcl_stream") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x8f;
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "emit_stream") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x75;
 		ins->length = 1 + os.size();
 		v.push_back(op);
 		v.insert(v.end(), os.begin(), os.end());
 	} else if (o == "cut_stream") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x76;
 		ins->length = 1 + os.size();
@@ -2027,6 +2119,7 @@ static vector<DWORD> assembleIns(string s)
 		// Partially verified - assembled & disassembled OK, but did not
 		// check against compiled shader as fxc never generates this
 		//   -DarkStarSword
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x77;
 		ins->length = 1 + os.size();
@@ -2035,6 +2128,7 @@ static vector<DWORD> assembleIns(string s)
 	} else if (o == "dcl_outputtopology") {
 		ins->opcode = 0x5c;
 		ins->length = 1;
+		check_num_ops(s, w, 1);
 		if (w[1] == "pointlist")
 			ins->_11_23 = 1;
 		else if (w[1] == "trianglestrip")
@@ -2045,18 +2139,21 @@ static vector<DWORD> assembleIns(string s)
 		// https://msdn.microsoft.com/en-us/library/windows/desktop/bb509661(v=vs.85).aspx
 		v.push_back(op);
 	} else if (o == "dcl_output_control_point_count") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x94;
 		ins->_11_23 = os[0];
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o == "dcl_input_control_point_count") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x93;
 		ins->_11_23 = os[0];
 		ins->length = 1;
 		v.push_back(op);
 	} else if (o == "dcl_maxout") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x5e;
 		ins->length = 1 + os.size();
@@ -2065,6 +2162,7 @@ static vector<DWORD> assembleIns(string s)
 	} else if (o == "dcl_inputprimitive") {
 		ins->opcode = 0x5d;
 		ins->length = 1;
+		check_num_ops(s, w, 1);
 		if (w[1] == "point")
 			ins->_11_23 = 1;
 		else if (w[1] == "line")
@@ -2079,12 +2177,14 @@ static vector<DWORD> assembleIns(string s)
 		// https://msdn.microsoft.com/en-us/library/windows/desktop/bb509609(v=vs.85).aspx
 		v.push_back(op);
 	} else if (o == "dcl_hs_max_tessfactor") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x98;
 		ins->length = 1 + os.size() - 1;
 		v.push_back(op);
 		v.insert(v.end(), os.begin() + 1, os.end());
 	} else if (o == "dcl_hs_fork_phase_instance_count") {
+		check_num_ops(s, w, 1);
 		vector<DWORD> os = assembleOp(w[1]);
 		ins->opcode = 0x99;
 		ins->length = 1 + os.size();
@@ -2096,6 +2196,7 @@ static vector<DWORD> assembleIns(string s)
 		vector<vector<DWORD>> os;
 		ins->opcode = 0x6e;
 		int numOps = 3;
+		check_num_ops(s, w, numOps);
 		for (int i = 0; i < numOps; i++)
 			os.push_back(assembleOp(w[i + 1], i < 1));
 
@@ -2116,6 +2217,12 @@ static vector<DWORD> assembleIns(string s)
 		v.push_back(op);
 		for (int i = 0; i < numOps; i++)
 			v.insert(v.end(), os[i].begin(), os[i].end());
+	} else if (o == "printf") {
+		return assemble_printf(s, v, w, false);
+	} else if (o == "errorf") {
+		return assemble_printf(s, v, w, true);
+	} else {
+		throw AssemblerParseError(s, "Unrecognised instruction");
 	}
 
 	return v;
@@ -2131,10 +2238,24 @@ static string assembleAndCompare(string s, vector<DWORD> v)
 	}
 	size_t lastLiteral = 0;
 	size_t lastEnd = 0;
-	vector<DWORD> v2 = assembleIns(s);
+	vector<DWORD> v2;
 	string sNew = s;
 	string s3;
 	bool valid = true;
+
+	try {
+		v2 = assembleIns(s);
+	} catch (AssemblerParseError) {
+		// Parse error, but not much we can / should do at this point
+		// since we're acting as a disassembler (maybe we're
+		// disassembling a shader with an instruction, operand, etc. we
+		// don't yet support), so just return the assembly unchanged.
+		// The parse error will be caught elsewhere, either when
+		// attempting to assembling the shader, or when running a
+		// validation pass over it.
+		return s;
+	}
+
 	if (v2.size() > 0) {
 		if (v2.size() == v.size()) {
 			for (DWORD i = 0; i < v.size(); i++) {
@@ -2397,11 +2518,16 @@ static void hexdump_instruction(string &s, vector<DWORD> &v,
 	string hd;
 	char buf[16];
 	vector<DWORD> v2;
+	string parse_error;
 
-	v2 = assembleIns(s.substr(s.find_first_not_of(" ")));
+	try {
+		v2 = assembleIns(s.substr(s.find_first_not_of(" ")));
+	} catch (AssemblerParseError &e) {
+		parse_error = e.desc;
+	}
 
 	// In mode 2 we only hexdump bad instructions:
-	if (hexdump_mode == 2 && v == v2)
+	if (hexdump_mode == 2 && v == v2 && parse_error.empty())
 		return;
 
 	_snprintf_s(buf, 16, 16, "// %08x:", line_byte_offset);
@@ -2411,12 +2537,16 @@ static void hexdump_instruction(string &s, vector<DWORD> &v,
 		hd += buf;
 	}
 
-	if (v != v2) {
-		hd += "\n// * BUG * :";
-		for (auto val : v2) {
-			_snprintf_s(buf, 16, 16, " %08x", val);
-			hd += buf;
+	if (parse_error.empty()) {
+		if (v != v2) {
+			hd += "\n// * BUG * :";
+			for (auto val : v2) {
+				_snprintf_s(buf, 16, 16, " %08x", val);
+				hd += buf;
+			}
 		}
+	} else {
+		hd += "\n// * BUG * : " + parse_error + ":";
 	}
 
 	vector<string>::iterator pos = lines.begin() + (*i)++;
@@ -2549,12 +2679,24 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 				if (prev == "ret ")
 					v.clear();
 				if (v.size() == 1) {
+					// This looks inherently wrong to me - scanning for the next word with a
+					// non-zero length field, but custom data can include arbitrary data. I
+					// suspect that the below code for printf/errorf would work here as well.
+					//  -DarkStarSword
 					ins = (shader_ins*)++codeStart;
 					while (ins->length == 0) {
 						ins = (shader_ins*)++codeStart;
 					}
 				}
 				s = "";
+			} else if (v[0] == 0x00002035) {
+				// Opcode 0x35 is custom data (specifically printf/errorf).
+				// Instruction length is in the next word instead:
+				uint32_t len = *codeStart;
+				v.push_back(*(codeStart)++);
+				for (uint32_t j = 1; j < len - 1; j++)
+					v.push_back(*(codeStart)++);
+				s = assembleAndCompare(s, v);
 			} else {
 				s = assembleAndCompare(s, v);
 			}
@@ -2580,12 +2722,18 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 static void preprocessLine(string &line)
 {
 	const char *p;
-	int i;
+	size_t i;
 
 	for (p = line.c_str(), i = 0; *p; p++, i++) {
 		// Replace tabs with spaces:
 		if (*p == '\t')
 			line[i] = ' ';
+
+		// Skip over strings:
+		if (*p == '"') {
+			p = strrchr(p, '"');
+			i = p - line.c_str();
+		}
 
 		// Strip C style comments:
 		if (!memcmp(p, "//", 2)) {
@@ -2730,7 +2878,8 @@ static vector<DWORD> ComputeHash(byte const* input, DWORD size)
 
 // origByteCode is modified in this function, so passing it by value!
 // asmFile is not modified, so passing it by pointer -DarkStarSword
-vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode)
+vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode,
+		vector<AssemblerParseError> *parse_errors)
 {
 	byte fourcc[4];
 	DWORD fHash[4];
@@ -2778,32 +2927,53 @@ vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode)
 	string s2;
 	vector<DWORD> o;
 	for (DWORD i = 0; i < lines.size(); i++) {
-		string s = lines[i];
-		preprocessLine(s);
-		vector<DWORD> v;
-		if (!codeStarted) {
-			if (s.size() > 0 && s[0] != ' ') {
-				codeStarted = true;
+		try {
+			string s = lines[i];
+			preprocessLine(s);
+			vector<DWORD> v;
+			if (!codeStarted) {
+				if (s.size() > 0 && s[0] != ' ') {
+					codeStarted = true;
+					vector<DWORD> ins = assembleIns(s);
+					o.insert(o.end(), ins.begin(), ins.end());
+					o.push_back(0);
+				}
+			} else if (s.find("{ {") < s.size()) {
+				s2 = s;
+				multiLine = true;
+			} else if (s.find("} }") < s.size()) {
+				s2.append("\n");
+				s2.append(s);
+				s = s2;
+				multiLine = false;
 				vector<DWORD> ins = assembleIns(s);
 				o.insert(o.end(), ins.begin(), ins.end());
-				o.push_back(0);
+			} else if (multiLine) {
+				s2.append("\n");
+				s2.append(s);
+			} else if (s.find_first_not_of(" ") != string::npos) {
+				vector<DWORD> ins = assembleIns(s);
+				o.insert(o.end(), ins.begin(), ins.end());
 			}
-		} else if (s.find("{ {") < s.size()) {
-			s2 = s;
-			multiLine = true;
-		} else if (s.find("} }") < s.size()) {
-			s2.append("\n");
-			s2.append(s);
-			s = s2;
-			multiLine = false;
-			vector<DWORD> ins = assembleIns(s);
-			o.insert(o.end(), ins.begin(), ins.end());
-		} else if (multiLine) {
-			s2.append("\n");
-			s2.append(s);
-		} else if (s.size() > 0) {
-			vector<DWORD> ins = assembleIns(s);
-			o.insert(o.end(), ins.begin(), ins.end());
+		} catch (AssemblerParseError &e) {
+			e.line_no = i + 1;
+			e.update_msg();
+
+			// Since we never used to warn about parse errors there
+			// may well be shaders with problems in the wild that
+			// happen to pass anyway (e.g. I've seen at least one
+			// example of someone including the ~~~~~~~~/ line from
+			// the HLSL comment in an assembly shader).
+			//
+			// If the caller has passed somewhere to store the
+			// parse errors we will store them there so that they
+			// can display a warning, but we will continue parsing
+			// the rest of the shader as before. Otherwise we will
+			// throw an exception and stop parsing now.
+			if (!parse_errors)
+				throw;
+
+			parse_errors->push_back(e);
 		}
 	}
 	codeStart = (DWORD*)(codeByteStart); // Endian bug, not that we care

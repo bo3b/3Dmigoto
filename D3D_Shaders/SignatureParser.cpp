@@ -3,7 +3,15 @@
 #include "log.h"
 #include "shader.h"
 
-class ParseError : public exception {} parseError;
+#define SFI_RAW_STRUCT_BUF (1LL<<1)
+#define SFI_MIN_PRECISION  (1LL<<4)
+
+// Force the use of SHader EXtended bytecode when certain features are in use,
+// such as partial or double precision. This is likely incomplete.
+#define SFI_FORCE_SHEX (SFI_RAW_STRUCT_BUF | SFI_MIN_PRECISION)
+
+// VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
+class AsmSignatureParseError : public exception {} parseError;
 
 static string next_line(string *shader, size_t *pos)
 {
@@ -270,7 +278,7 @@ static void* serialise_signature_section(char *section24, char *section28, char 
 	return section;
 }
 
-static void* parse_signature_section(char *section24, char *section28, char *section32, string *shader, size_t *pos, bool invert_used)
+static void* parse_signature_section(char *section24, char *section28, char *section32, string *shader, size_t *pos, bool invert_used, uint64_t sfi)
 {
 	string line;
 	size_t old_pos = *pos;
@@ -285,6 +293,10 @@ static void* parse_signature_section(char *section24, char *section28, char *sec
 	char format[16]; // Long enough for even "unknown"
 	vector<struct sgn_entry_unserialised> entries;
 	struct sgn_entry_unserialised entry;
+
+	// If minimum precision formats are in use we bump the section versions:
+	if (sfi & SFI_MIN_PRECISION)
+		entry_size = max(entry_size, 32);
 
 	while (*pos != shader->npos) {
 		line = next_line(shader, pos);
@@ -347,7 +359,8 @@ static void* parse_signature_section(char *section24, char *section28, char *sec
 		}
 
 		// Parse the format. If it is one of the minimum precision
-		// formats, bump the section version:
+		// formats, bump the section version (this is probably
+		// redundant now that we bump the version based on SFI):
 		parse_format(format, &entry.common.format, &entry.min_precision);
 		if (entry.min_precision)
 			entry_size = max(entry_size, 32);
@@ -398,6 +411,146 @@ name_already_used:
 	*pos = old_pos;
 
 	return serialise_signature_section(section24, section28, section32, entry_size, &entries, name_off);
+}
+
+static void* serialise_subshader_feature_info_section(uint64_t flags)
+{
+	void *section;
+	struct section_header *section_header = NULL;
+	const uint32_t section_size = 8;
+	const uint32_t alloc_size = sizeof(struct section_header) + section_size;
+	uint64_t *flags_ptr = NULL;
+
+	if (!flags)
+		return NULL;
+
+	// Allocate entire section, including room for section header and padding:
+	section = malloc(alloc_size);
+	if (!section) {
+		LogInfo("Out of memory\n");
+		return NULL;
+	}
+
+	// Pointers to useful data structures and offsets in the buffer:
+	section_header = (struct section_header*)section;
+	memcpy(section_header->signature, "SFI0", 4);
+	section_header->size = section_size;
+
+	flags_ptr = (uint64_t *)((char*)section_header + sizeof(struct section_header));
+	*flags_ptr = flags;
+
+	return section;
+}
+
+struct gf_sfi {
+	uint64_t sfi;
+	int len;
+	char *gf;
+};
+
+static struct gf_sfi global_flag_sfi_map[] = {
+	{ 1LL<<0, 29, "enableDoublePrecisionFloatOps" },
+	{ SFI_RAW_STRUCT_BUF, 29, "enableRawAndStructuredBuffers" }, // Confirmed
+	{ SFI_MIN_PRECISION, 22, "enableMinimumPrecision" },
+	{ 1LL<<5, 26, "enable11_1DoubleExtensions" },
+	{ 1LL<<6, 26, "enable11_1ShaderExtensions" },
+
+	// Does not map to SFI:
+	// "refactoringAllowed"
+	// "forceEarlyDepthStencil"
+	// "skipOptimization"
+	// "allResourcesBound"
+};
+
+static char *subshader_feature_comments[] = {
+	// d3dcompiler_46:
+	"Double-precision floating point",
+	//"Early depth-stencil", // d3dcompiler46/47 produces this output for [force, but it does *NOT* map to an SFI flag
+	"Raw and Structured buffers", // DirectXShaderCompiler lists this in this position instead, which matches the globalFlag mapping
+	"UAVs at every shader stage",
+	"64 UAV slots",
+	"Minimum-precision data types",
+	"Double-precision extensions for 11.1",
+	"Shader extensions for 11.1",
+	"Comparison filtering for feature level 9",
+	// d3dcompiler_47:
+	"Tiled resources",
+	"PS Output Stencil Ref",
+	"PS Inner Coverage",
+	"Typed UAV Load Additional Formats",
+	"Raster Ordered UAVs",
+	"SV_RenderTargetArrayIndex or SV_ViewportArrayIndex from any shader feeding rasterizer",
+	// DX12 DirectXShaderCompiler (tools/clang/tools/dxcompiler/dxcdisassembler.cpp)
+	"Wave level operations",
+	"64-Bit integer",
+	"View Instancing",
+	"Barycentrics",
+	"Use native low precision",
+	"Shading Rate"
+};
+
+// Parses the globalFlags in the bytecode to derive Subshader Feature Info.
+// This is incomplete, as some of the SFI flags are not in globalFlags, but
+// must be found from the "shader requires" comment block instead.
+uint64_t parse_global_flags_to_sfi(string *shader)
+{
+	uint64_t sfi = 0LL;
+	string line;
+	size_t pos = 0, gf_pos = 16;
+	int i;
+
+	while (pos != shader->npos) {
+		line = next_line(shader, &pos);
+		if (!strncmp(line.c_str(), "dcl_globalFlags ", 16)) {
+			LogDebug("%s\n", line.c_str());
+			while (gf_pos != string::npos) {
+				for (i = 0; i < ARRAYSIZE(global_flag_sfi_map); i++) {
+					if (!line.compare(gf_pos, global_flag_sfi_map[i].len, global_flag_sfi_map[i].gf)) {
+						LogDebug("Mapped %s to Subshader Feature 0x%llx\n",
+								global_flag_sfi_map[i].gf, global_flag_sfi_map[i].sfi);
+						sfi |= global_flag_sfi_map[i].sfi;
+						gf_pos += global_flag_sfi_map[i].len;
+						break;
+					}
+				}
+				gf_pos = line.find_first_of(" |", gf_pos);
+				gf_pos = line.find_first_not_of(" |", gf_pos);
+			}
+			return sfi;
+		}
+	}
+	return 0;
+}
+
+// Parses the SFI comment block. This is not complete, as some of the flags
+// come from globalFlags instead of / as well as this.
+static uint64_t parse_subshader_feature_info_comment(string *shader, size_t *pos, uint64_t flags)
+{
+	string line;
+	size_t old_pos = *pos;
+	uint32_t i;
+
+	while (*pos != shader->npos) {
+		line = next_line(shader, pos);
+
+		LogDebug("%s\n", line.c_str());
+
+		for (i = 0; i < ARRAYSIZE(subshader_feature_comments); i++) {
+			if (!strcmp(line.c_str() + 9, subshader_feature_comments[i])) {
+				LogDebug("Matched Subshader Feature Comment 0x%llx\n", 1LL << i);
+				flags |= 1LL << i;
+				break;
+			}
+		}
+		if (i == ARRAYSIZE(subshader_feature_comments))
+			break;
+	}
+
+	// Wind the pos pointer back to the start of the line in case it is
+	// another section that the caller will need to parse:
+	*pos = old_pos;
+
+	return flags;
 }
 
 static void* manufacture_empty_section(char *section_name)
@@ -454,12 +607,15 @@ static bool is_geometry_shader_5(string *shader, size_t start_pos) {
 	return false;
 }
 
-static bool parse_section(string *line, string *shader, size_t *pos, void **section)
+static bool parse_section(string *line, string *shader, size_t *pos, void **section, uint64_t *sfi, bool *force_shex)
 {
 	*section = NULL;
 
 	if (!strncmp(line->c_str() + 1, "s_4_", 4)) {
-		*section = manufacture_empty_section("SHDR");
+		if (!!(*sfi & SFI_FORCE_SHEX) || *force_shex)
+			*section = manufacture_empty_section("SHEX");
+		else
+			*section = manufacture_empty_section("SHDR");
 		return true;
 	}
 	if (!strncmp(line->c_str() + 1, "s_5_", 4)) {
@@ -468,17 +624,22 @@ static bool parse_section(string *line, string *shader, size_t *pos, void **sect
 	}
 
 	if (!strncmp(line->c_str(), "// Patch Constant signature:", 28)) {
-		LogInfo("Parsing Patch Constant Signature section...\n",);
-		*section = parse_signature_section("PCSG", NULL, "PSG1", shader, pos, is_hull_shader(shader, *pos));
+		LogInfo("Parsing Patch Constant Signature section...\n");
+		*section = parse_signature_section("PCSG", NULL, "PSG1", shader, pos, is_hull_shader(shader, *pos), *sfi);
 	} else if (!strncmp(line->c_str(), "// Input signature:", 19)) {
-		LogInfo("Parsing Input Signature section...\n",);
-		*section = parse_signature_section("ISGN", NULL, "ISG1", shader, pos, false);
+		LogInfo("Parsing Input Signature section...\n");
+		*section = parse_signature_section("ISGN", NULL, "ISG1", shader, pos, false, *sfi);
 	} else if (!strncmp(line->c_str(), "// Output signature:", 20)) {
-		LogInfo("Parsing Output Signature section...\n",);
+		LogInfo("Parsing Output Signature section...\n");
 		char *section24 = "OSGN";
 		if (is_geometry_shader_5(shader, *pos))
 			section24 = NULL;
-		*section = parse_signature_section(section24, "OSG5", "OSG1", shader, pos, true);
+		*section = parse_signature_section(section24, "OSG5", "OSG1", shader, pos, true, *sfi);
+	} else if (!strncmp(line->c_str(), "// Note: shader requires additional functionality:", 50)) {
+		LogInfo("Parsing Subshader Feature Info section...\n");
+		*sfi = parse_subshader_feature_info_comment(shader, pos, *sfi);
+	} else if (!strncmp(line->c_str(), "// Note: SHADER WILL ONLY WORK WITH THE DEBUG SDK LAYER ENABLED.", 64)) {
+		*force_shex = true;
 	}
 
 	return false;
@@ -527,12 +688,16 @@ static HRESULT manufacture_shader_binary(const void *pShaderAsm, size_t AsmLengt
 	uint32_t section_size, all_sections_size = 0;
 	void *section;
 	HRESULT hr = E_FAIL;
+	uint64_t sfi = 0LL;
+	bool force_shex = false;
+
+	sfi = parse_global_flags_to_sfi(&shader_str);
 
 	while (!done && pos != shader_str.npos) {
 		line = next_line(&shader_str, &pos);
 		//LogInfo("%s\n", line.c_str());
 
-		done = parse_section(&line, &shader_str, &pos, &section);
+		done = parse_section(&line, &shader_str, &pos, &section, &sfi, &force_shex);
 		if (section) {
 			sections.push_back(section);
 			section_size = *((uint32_t*)section + 1) + sizeof(section_header);
@@ -555,6 +720,14 @@ static HRESULT manufacture_shader_binary(const void *pShaderAsm, size_t AsmLengt
 		goto out_free;
 	}
 
+	if (sfi) {
+		section = serialise_subshader_feature_info_section(sfi);
+		sections.insert(sections.begin(), section);
+		section_size = *((uint32_t*)section + 1) + sizeof(section_header);
+		all_sections_size += section_size;
+		LogInfo("Inserted Subshader Feature Info section: 0x%llx\n", sfi);
+	}
+
 	serialise_shader_binary(&sections, all_sections_size, bytecode);
 
 	hr = S_OK;
@@ -564,7 +737,8 @@ out_free:
 	return hr;
 }
 
-HRESULT AssembleFluganWithSignatureParsing(vector<char> *assembly, vector<byte> *result_bytecode)
+HRESULT AssembleFluganWithSignatureParsing(vector<char> *assembly, vector<byte> *result_bytecode,
+		vector<AssemblerParseError> *parse_errors)
 {
 	vector<byte> manufactured_bytecode;
 	HRESULT hr;
@@ -581,21 +755,22 @@ HRESULT AssembleFluganWithSignatureParsing(vector<char> *assembly, vector<byte> 
 	if (FAILED(hr))
 		return E_FAIL;
 
-	*result_bytecode = assembler(assembly, manufactured_bytecode);
+	*result_bytecode = assembler(assembly, manufactured_bytecode, parse_errors);
 
 	return S_OK;
 }
 
 vector<byte> AssembleFluganWithOptionalSignatureParsing(vector<char> *assembly,
-		bool assemble_signatures, vector<byte> *orig_bytecode)
+		bool assemble_signatures, vector<byte> *orig_bytecode,
+		vector<AssemblerParseError> *parse_errors)
 {
 	vector<byte> new_bytecode;
 	HRESULT hr;
 
 	if (!assemble_signatures)
-		return assembler(assembly, *orig_bytecode);
+		return assembler(assembly, *orig_bytecode, parse_errors);
 
-	hr = AssembleFluganWithSignatureParsing(assembly, &new_bytecode);
+	hr = AssembleFluganWithSignatureParsing(assembly, &new_bytecode, parse_errors);
 	if (FAILED(hr))
 		throw parseError;
 

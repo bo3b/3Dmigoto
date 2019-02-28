@@ -781,7 +781,7 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
 			if (j->first->fval != val) {
 				j->first->fval = val;
 				if (j->first->flags & VariableFlags::PERSIST)
-					G->user_config_dirty = true;
+					G->user_config_dirty |= 1;
 			}
 			LogDebugNoNL("%S=%#.2g, ", j->first->name.c_str(), val);
 			if (j->second.time == -1)

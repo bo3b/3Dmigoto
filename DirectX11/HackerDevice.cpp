@@ -923,9 +923,8 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 			// Re-assemble the ASM text back to binary
 			try
 			{
-				byteCode = AssembleFluganWithOptionalSignatureParsing(&asmTextBytes, G->assemble_signature_comments, &byteCode);
-
-				// ToDo: Any errors to check?  When it fails, throw an exception.
+				vector<AssemblerParseError> parse_errors;
+				byteCode = AssembleFluganWithOptionalSignatureParsing(&asmTextBytes, G->assemble_signature_comments, &byteCode, &parse_errors);
 
 				// Assuming the re-assembly worked, let's make it the active shader code.
 				pCodeSize = byteCode.size();
@@ -933,31 +932,47 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 				memcpy(pCode, byteCode.data(), pCodeSize);
 
 				// Cache binary replacement.
-				if (G->CACHE_SHADERS && pCode)
-				{
-					// Write reassembled binary output as a cached shader.
-					FILE *fw;
-					swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
-					wfopen_ensuring_access(&fw, path, L"wb");
-					if (fw)
+				if (parse_errors.empty()) {
+					if (G->CACHE_SHADERS && pCode && parse_errors.empty())
 					{
-						LogInfoW(L"    storing reassembled binary to %s\n", path);
-						fwrite(byteCode.data(), 1, byteCode.size(), fw);
-						fclose(fw);
+						// Write reassembled binary output as a cached shader.
+						FILE *fw;
+						swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
+						wfopen_ensuring_access(&fw, path, L"wb");
+						if (fw)
+						{
+							LogInfoW(L"    storing reassembled binary to %s\n", path);
+							fwrite(byteCode.data(), 1, byteCode.size(), fw);
+							fclose(fw);
 
-						// Set the last modified timestamp on the cached shader to match the
-						// .txt file it is created from, so we can later check its validity:
-						set_file_last_write_time(path, &ftWrite);
+							// Set the last modified timestamp on the cached shader to match the
+							// .txt file it is created from, so we can later check its validity:
+							set_file_last_write_time(path, &ftWrite);
+						}
+						else
+						{
+							LogInfoW(L"    error storing reassembled binary to %s\n", path);
+						}
 					}
-					else
-					{
-						LogInfoW(L"    error storing reassembled binary to %s\n", path);
-					}
+				} else {
+					// Parse errors are currently being treated as non-fatal on
+					// creation time replacement and ShaderRegex for backwards
+					// compatibility (live shader reload is fatal).
+					for (auto &parse_error : parse_errors)
+						LogOverlay(LOG_NOTICE, "%S: %s\n", path, parse_error.what());
+
+					// Do not record the timestamp so that F10 will reload the
+					// shader even if not touched in the meantime allowing the
+					// shaderhackers to see their bugs. For much the same
+					// reason we disable caching these shaders above (though
+					// that is not retrospective if a cache already existed).
+					pTimeStamp = {0};
 				}
 			}
-			catch (...)
+			catch (const exception &e)
 			{
-				LogInfo("    reassembly of ASM shader text failed.\n");
+				LogOverlay(LOG_WARNING, "Error assembling %S: %s\n",
+						path, e.what());
 			}
 		}
 	}
@@ -2838,6 +2853,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 
 	if (ppDeferredContext)
 	{
+		analyse_iunknown(*ppDeferredContext);
 		ID3D11DeviceContext1 *origContext1;
 		HRESULT res = (*ppDeferredContext)->QueryInterface(IID_PPV_ARGS(&origContext1));
 		if (FAILED(res))
@@ -2910,6 +2926,8 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 	{
 		LogInfo("*** HackerContext missing at HackerDevice::GetImmediateContext\n");
 
+		analyse_iunknown(*ppImmediateContext);
+
 		ID3D11DeviceContext1 *origContext1;
 		HRESULT res = (*ppImmediateContext)->QueryInterface(IID_PPV_ARGS(&origContext1));
 		if (FAILED(res))
@@ -2973,6 +2991,8 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext1(
 	{
 		LogInfo("*** HackerContext1 missing at HackerDevice::GetImmediateContext1\n");
 
+		analyse_iunknown(*ppImmediateContext);
+
 		mHackerContext = HackerContextFactory(mOrigDevice1, *ppImmediateContext);
 		mHackerContext->SetHackerDevice(this);
 		LogInfo("  mHackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);
@@ -3008,6 +3028,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext1(
 
 	if (ppDeferredContext)
 	{
+		analyse_iunknown(*ppDeferredContext);
 		HackerContext *hackerContext = HackerContextFactory(mRealOrigDevice1, *ppDeferredContext);
 		hackerContext->SetHackerDevice(this);
 		hackerContext->Bind3DMigotoResources();

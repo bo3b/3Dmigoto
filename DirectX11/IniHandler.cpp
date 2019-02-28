@@ -983,6 +983,7 @@ static int GetIniHexString(const wchar_t *section, const wchar_t *key, int def, 
 	return ret;
 }
 
+// VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
 class EnumParseError: public exception {} enumParseError;
 
 static int ParseEnum(wchar_t *str, wchar_t *prefix, wchar_t *names[], int names_len, int first)
@@ -1849,6 +1850,33 @@ static void ParseCommandList(const wchar_t *id,
 
 		if (ParseCommandListLine(id, key_ptr, val, raw_line, command_list, explicit_command_list, pre_command_list, post_command_list, &entry->ini_namespace)) {
 			LogInfo("  %S\n", raw_line->c_str());
+			continue;
+		}
+
+		if (entry->ini_namespace == G->user_config && !G->user_config.empty()) {
+			// Invalid command, but it is in the user config, which may happen
+			// if the user recently uninstalled/upgraded/etc a mod. We will flag
+			// the user config to be updated at the next save, but won't do this
+			// immediately just in case. Inform the user of what is happening.
+			if (!G->user_config_dirty) {
+				LogOverlay(LOG_WARNING,
+					"NOTICE: Unknown user settings will be removed from d3dx_user.ini\n"
+					" This is normal if you recently removed/changed any mods\n"
+					" Press %S to update the config now, or %S to reset all settings to default\n"
+					" The first unrecognised entry was: \"%S\"\n",
+					user_friendly_ini_key_binding(L"Hunting", L"reload_config").c_str(),
+					user_friendly_ini_key_binding(L"Hunting", L"wipe_user_config").c_str(),
+					raw_line->c_str());
+				// Once the [Constants] command list has finished running the
+				// low bit will be cleared to ensure that loading the user config
+				// itself cannot mark the user config as dirty. Set the second
+				// bit to indicate that it should be updated regardless:
+				G->user_config_dirty |= 2;
+			}
+			// There might be a lot of entries if a large mod was just
+			// uninstalled, so we only show the first bad setting on the
+			// overlay and log all other invalid settings to the log file:
+			LogInfo("WARNING: Unrecognised entry in %S: %S\n", G->user_config.c_str(), raw_line->c_str());
 			continue;
 		}
 
@@ -4605,7 +4633,7 @@ void SavePersistentSettings()
 
 	if (!G->user_config_dirty)
 		return;
-	G->user_config_dirty = false;
+	G->user_config_dirty = 0;
 
 	// TODO: Ability to update existing file rather than overwriting:
 	//wfopen_ensuring_access(&f, G->user_config.c_str(), L"r+");
@@ -4636,7 +4664,7 @@ void SavePersistentSettings()
 static void WipeUserConfig()
 {
 	G->gWipeUserConfig = false;
-	G->user_config_dirty = false;
+	G->user_config_dirty = 0;
 
 	DeleteFile(G->user_config.c_str());
 }

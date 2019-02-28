@@ -21,9 +21,46 @@
 
 #define MAX_SIMULTANEOUS_NOTICES 10
 
-static std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
 static bool has_notice = false;
 static unsigned notice_cleared_frame = 0;
+
+//////////////////////////////////////////////////////////////////////////////
+//                                                                          //
+//                     <==============================>                     //
+//                     < AB-BA TYPE DEADLOCK WARNING! >                     //
+//                     <==============================>                     //
+//                                                                          //
+// Never call Overlay::DrawOverlay() while holding g->mCriticalSection (or  //
+// whatever lock currently protects G->mResources). DrawOverlay() will call //
+// into DirectX, which will take a lock of it's own, introducing a locking  //
+// dependency. At other times DirectX can call into our resource release    //
+// tracker with their lock held, and we take the G->mResources lock, which  //
+// is another locking order dependency in the other direction, leading to   //
+// an AB-BA type deadlock.                                                  //
+//                                                                          //
+// We now protect the notices data structure via a dedicated lock to avoid  //
+// a locking dependency between the DirectX lock and G->mCriticalSection.   //
+// The below class is just a simple wrapper so that we can allocate the     //
+// new critical section statically and have it initialised and destroyed    //
+// automatically when the DLL is loaded/unloaded.                           //
+//                                                                          //
+//////////////////////////////////////////////////////////////////////////////
+static class Notices
+{
+public:
+	std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
+	CRITICAL_SECTION lock;
+
+	Notices()
+	{
+		InitializeCriticalSection(&lock);
+	}
+
+	~Notices()
+	{
+		DeleteCriticalSection(&lock);
+	}
+} notices;
 
 struct LogLevelParams {
 	DirectX::XMVECTORF32 colour;
@@ -676,14 +713,14 @@ void Overlay::DrawNotices(float *y)
 	Vector2 strSize;
 	int level, displayed = 0;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&notices.lock);
 
 	has_notice = false;
 	for (level = 0; level < NUM_LOG_LEVELS; level++) {
 		if (log_levels[level].hide_in_release && G->hunting == HUNTING_MODE_DISABLED)
 			continue;
 
-		for (notice = notices[level].begin(); notice != notices[level].end() && displayed < MAX_SIMULTANEOUS_NOTICES; ) {
+		for (notice = notices.notices[level].begin(); notice != notices.notices[level].end() && displayed < MAX_SIMULTANEOUS_NOTICES; ) {
 			if (!notice->timestamp) {
 				// Set the timestamp on the first present call
 				// that we display the message after it was
@@ -695,7 +732,7 @@ void Overlay::DrawNotices(float *y)
 				// issued.
 				notice->timestamp = time;
 			} else if ((time - notice->timestamp) > log_levels[level].duration) {
-				notice = notices[level].erase(notice);
+				notice = notices.notices[level].erase(notice);
 				continue;
 			}
 
@@ -712,7 +749,7 @@ void Overlay::DrawNotices(float *y)
 		}
 	}
 
-	LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&notices.lock);
 }
 
 void Overlay::DrawProfiling(float *y)
@@ -830,15 +867,15 @@ void ClearNotices()
 	if (notice_cleared_frame == G->frame_no)
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&notices.lock);
 
 	for (level = 0; level < NUM_LOG_LEVELS; level++)
-		notices[level].clear();
+		notices.notices[level].clear();
 
 	notice_cleared_frame = G->frame_no;
 	has_notice = false;
 
-	LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&notices.lock);
 }
 
 void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
@@ -855,12 +892,12 @@ void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
 	// cares if it gets cut off somewhere off screen anyway?
 	_vsnwprintf_s(msg, maxstring, _TRUNCATE, fmt, ap);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSection(&notices.lock);
 
-	notices[level].emplace_back(msg);
+	notices.notices[level].emplace_back(msg);
 	has_notice = true;
 
-	LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&notices.lock);
 
 	va_end(ap);
 }
@@ -887,12 +924,12 @@ void LogOverlay(LogLevel level, char *fmt, ...)
 		_vsnprintf_s(amsg, maxstring, _TRUNCATE, fmt, ap);
 		mbstowcs(wmsg, amsg, maxstring);
 
-		EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSection(&notices.lock);
 
-		notices[level].emplace_back(wmsg);
+		notices.notices[level].emplace_back(wmsg);
 		has_notice = true;
 
-		LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&notices.lock);
 	}
 
 	va_end(ap);

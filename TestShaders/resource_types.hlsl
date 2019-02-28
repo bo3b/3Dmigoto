@@ -147,6 +147,7 @@ struct foo {
 };
 StructuredBuffer<struct foo> struct_buf : register(t111);
 
+[earlydepthstencil]
 void main(out float4 output : SV_Target0)
 {
 	output = 0;

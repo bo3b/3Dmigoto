@@ -553,9 +553,22 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	vector<char> asm_vector(asm_text.begin(), asm_text.end());
 	vector<byte> patched_bytecode;
 
-	hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode);
-	if (FAILED(hr)) {
-		LogInfo("    *** Assembling patched shader failed\n");
+	try {
+		vector<AssemblerParseError> parse_errors;
+		hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode, &parse_errors);
+		if (FAILED(hr)) {
+			LogInfo("    *** Assembling patched shader failed\n");
+			return;
+		}
+		// Parse errors are currently being treated as non-fatal on
+		// creation time replacement and ShaderRegex for backwards
+		// compatibility (live shader reload is fatal).
+		for (auto &parse_error : parse_errors)
+			LogOverlay(LOG_NOTICE, "%016I64x-%S %S: %s\n",
+					hash, shader_type, tagline.c_str(), parse_error.what());
+	} catch (const exception &e) {
+		LogOverlay(LOG_WARNING, "Error assembling ShaderRegex patched %016I64x-%S\n%S\n%s\n",
+				hash, shader_type, tagline.c_str(), e.what());
 		return;
 	}
 
@@ -920,7 +933,7 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
 		*ppvObject = this;
 		return S_OK;
 	}
-    
+
 	HRESULT hr = mOrigContext1->QueryInterface(riid, ppvObject);
 	if (FAILED(hr))
 	{
@@ -988,7 +1001,6 @@ STDMETHODIMP_(void) HackerContext::GetDevice(THIS_
 		*ppDevice = mHackerDevice;
 }
 
-
 STDMETHODIMP HackerContext::GetPrivateData(THIS_
 	/* [annotation] */
 	__in  REFGUID guid,
@@ -1000,7 +1012,7 @@ STDMETHODIMP HackerContext::GetPrivateData(THIS_
 	LogDebug("HackerContext::GetPrivateData(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
 
 	HRESULT hr = mOrigContext1->GetPrivateData(guid, pDataSize, pData);
-    LogDebug("  returns result = %x, DataSize = %d\n", hr, *pDataSize);
+	LogDebug("  returns result = %x, DataSize = %d\n", hr, *pDataSize);
 
 	return hr;
 }
@@ -2606,8 +2618,10 @@ void HackerContext::InitIniParams()
 	RunCommandList(mHackerDevice, this, &G->constants_command_list, NULL, false);
 	// We don't consider persistent globals set in the [Constants] pre
 	// command list as making the user config file dirty, because this
-	// command list includes the user config file's [Constants] itself:
-	G->user_config_dirty = false;
+	// command list includes the user config file's [Constants] itself.
+	// We clear only the low bit here, so that this may be overridden if
+	// an invalid value is found that is scheduled to be removed:
+	G->user_config_dirty &= ~1;
 	RunCommandList(mHackerDevice, this, &G->post_constants_command_list, NULL, true);
 
 	// Only want to run [Constants] on initial load and config reload. In
