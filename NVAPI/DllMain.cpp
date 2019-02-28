@@ -119,15 +119,15 @@ extern "C"
 	typedef NvAPI_Status(__cdecl *tNvAPI_D3D_GetCurrentSLIState)(__in IUnknown *pDevice, __in NV_GET_CURRENT_SLI_STATE *pSliState);
 	static tNvAPI_D3D_GetCurrentSLIState _NvAPI_D3D_GetCurrentSLIState;
 
-    typedef NvAPI_Status(__cdecl *tNvAPI_D3D11_MultiDrawIndexedInstancedIndirect)(ID3D11DeviceContext *pDevContext11, unsigned long drawCount,
-        ID3D11Buffer *pBuffer, unsigned long alignedByteOffsetForArgs,
-        unsigned long alignedByteStrideForArgs);
-    static tNvAPI_D3D11_MultiDrawIndexedInstancedIndirect _NvAPI_D3D11_MultiDrawIndexedInstancedIndirect;
+	typedef NvAPI_Status(__cdecl *tNvAPI_D3D11_MultiDrawIndexedInstancedIndirect)(ID3D11DeviceContext *pDevContext11, unsigned long drawCount,
+		ID3D11Buffer *pBuffer, unsigned long alignedByteOffsetForArgs,
+		unsigned long alignedByteStrideForArgs);
+	static tNvAPI_D3D11_MultiDrawIndexedInstancedIndirect _NvAPI_D3D11_MultiDrawIndexedInstancedIndirect;
 
-    typedef NvAPI_Status(__cdecl *tNvAPI_D3D11_MultiDrawInstancedIndirect)(ID3D11DeviceContext *pDevContext11, unsigned long drawCount,
-        ID3D11Buffer *pBuffer, unsigned long alignedByteOffsetForArgs,
-        unsigned long alignedByteStrideForArgs);
-    static tNvAPI_D3D11_MultiDrawInstancedIndirect _NvAPI_D3D11_MultiDrawInstancedIndirect;
+	typedef NvAPI_Status(__cdecl *tNvAPI_D3D11_MultiDrawInstancedIndirect)(ID3D11DeviceContext *pDevContext11, unsigned long drawCount,
+		ID3D11Buffer *pBuffer, unsigned long alignedByteOffsetForArgs,
+		unsigned long alignedByteStrideForArgs);
+	static tNvAPI_D3D11_MultiDrawInstancedIndirect _NvAPI_D3D11_MultiDrawInstancedIndirect;
 }
 
 static HMODULE nvDLL = 0;
@@ -805,49 +805,41 @@ static NvAPI_Status __cdecl NvAPI_D3D_GetCurrentSLIState(__in IUnknown *pDevice,
 // Perform DrawIndexedInstancedIndirect() drawCount times
 // - Used in RE2 when UseVendorExtention=Enable in re2_config.ini
 static NvAPI_Status __cdecl NvAPI_D3D11_MultiDrawIndexedInstancedIndirect(
-    ID3D11DeviceContext *pDevContext11, unsigned long drawCount,
-    ID3D11Buffer *pBuffer, unsigned long alignedByteOffsetForArgs,
-    unsigned long alignedByteStrideForArgs)
+	ID3D11DeviceContext *pDevContext11, unsigned long drawCount,
+	ID3D11Buffer *pBuffer, unsigned long alignedByteOffsetForArgs,
+	unsigned long alignedByteStrideForArgs)
 {
-    // Get whether the device is registered
-    ID3D11Device* pDevice = nullptr;
-    pDevContext11->GetDevice(&pDevice);
+	if (!pDevContext11)
+		return NVAPI_INVALID_POINTER;
 
-    if (pDevice == nullptr)
-        return NVAPI_D3D_DEVICE_NOT_REGISTERED;
+	// Call d3d11.DrawIndexedInstancedIndirect() drawCount times
+	for (unsigned long i = 0; i < drawCount; i++)
+	{
+		pDevContext11->DrawIndexedInstancedIndirect(pBuffer, alignedByteOffsetForArgs);
+		alignedByteOffsetForArgs += alignedByteStrideForArgs;
+	}
 
-    // Call d3d11.DrawIndexedInstancedIndirect() drawCount times
-    for (unsigned long i = 0; i < drawCount; i++)
-    {
-        pDevContext11->DrawIndexedInstancedIndirect(pBuffer, alignedByteOffsetForArgs);
-        alignedByteOffsetForArgs += alignedByteStrideForArgs;
-    }
-
-    return NVAPI_OK;
+	return NVAPI_OK;
 }
 
 // Perform DrawInstancedIndirect() drawCount times
 // * Usage not found in RE2
 static NvAPI_Status __cdecl NvAPI_D3D11_MultiDrawInstancedIndirect(
-    ID3D11DeviceContext *pDevContext11, unsigned long drawCount,
-    ID3D11Buffer *pBuffer, unsigned long alignedByteOffsetForArgs,
-    unsigned long alignedByteStrideForArgs)
+	ID3D11DeviceContext *pDevContext11, unsigned long drawCount,
+	ID3D11Buffer *pBuffer, unsigned long alignedByteOffsetForArgs,
+	unsigned long alignedByteStrideForArgs)
 {
-    // Get whether the device is registered
-    ID3D11Device* pDevice = nullptr;
-    pDevContext11->GetDevice(&pDevice);
+	if (!pDevContext11)
+		return NVAPI_INVALID_POINTER;
 
-    if (pDevice == nullptr)
-        return NVAPI_D3D_DEVICE_NOT_REGISTERED;
+	// Call our d3d11.DrawInstancedIndirect() drawCount times
+	for (unsigned long i = 0; i < drawCount; i++)
+	{
+		pDevContext11->DrawInstancedIndirect(pBuffer, alignedByteOffsetForArgs);
+		alignedByteOffsetForArgs += alignedByteStrideForArgs;
+	}
 
-    // Call our d3d11.DrawInstancedIndirect() drawCount times
-    for (unsigned long i = 0; i < drawCount; i++)
-    {
-        pDevContext11->DrawInstancedIndirect(pBuffer, alignedByteOffsetForArgs);
-        alignedByteOffsetForArgs += alignedByteStrideForArgs;
-    }
-
-    return NVAPI_OK;
+	return NVAPI_OK;
 }
 
 // This seems like it might have a reentrancy hole, where a given call sets up to not
@@ -881,6 +873,7 @@ extern "C" NvAPI_Status * __cdecl nvapi_QueryInterface(unsigned int offset)
 		case 0xb03bb03b:
 			ptr = (NvAPI_Status *)EnableOverride();
 			break;
+
 		case 0x0150E828:
 			_NvAPI_Initialize = (tNvAPI_Initialize)ptr;
 			ptr = (NvAPI_Status *)NvAPI_Initialize;
@@ -1021,22 +1014,22 @@ extern "C" NvAPI_Status * __cdecl nvapi_QueryInterface(unsigned int offset)
 		//	_NvAPI_D3D9_CreateSwapChain = (tNvAPI_D3D9_CreateSwapChain)ptr;
 		//	ptr = (NvAPI_Status *)NvAPI_D3D9_CreateSwapChain;
 		//	break;
-        
-	    // Informational logging
+
+		// Informational logging
 		case 0x4B708B54:
 			_NvAPI_D3D_GetCurrentSLIState = (tNvAPI_D3D_GetCurrentSLIState)ptr;
 			ptr = (NvAPI_Status *)NvAPI_D3D_GetCurrentSLIState;
 			break;
 
-        // NVAPI extension methods
-        case 0x59E890F9:
-            _NvAPI_D3D11_MultiDrawIndexedInstancedIndirect = (tNvAPI_D3D11_MultiDrawIndexedInstancedIndirect)ptr;
-            ptr = (NvAPI_Status *)NvAPI_D3D11_MultiDrawIndexedInstancedIndirect;
-            break;
-        case 0xD4E26BBF:
-            _NvAPI_D3D11_MultiDrawInstancedIndirect = (tNvAPI_D3D11_MultiDrawInstancedIndirect)ptr;
-            ptr = (NvAPI_Status *)NvAPI_D3D11_MultiDrawInstancedIndirect;
-            break;
+		// NVAPI extension methods
+		case 0x59E890F9:
+			_NvAPI_D3D11_MultiDrawIndexedInstancedIndirect = (tNvAPI_D3D11_MultiDrawIndexedInstancedIndirect)ptr;
+			ptr = (NvAPI_Status *)NvAPI_D3D11_MultiDrawIndexedInstancedIndirect;
+			break;
+		case 0xD4E26BBF:
+			_NvAPI_D3D11_MultiDrawInstancedIndirect = (tNvAPI_D3D11_MultiDrawInstancedIndirect)ptr;
+			ptr = (NvAPI_Status *)NvAPI_D3D11_MultiDrawInstancedIndirect;
+			break;
 	}
 	// If it's not on our list of calls to wrap, just pass through.
 	return ptr;

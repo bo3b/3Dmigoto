@@ -926,7 +926,7 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
 		*ppvObject = this;
 		return S_OK;
 	}
-    
+
 	HRESULT hr = mOrigContext1->QueryInterface(riid, ppvObject);
 	if (FAILED(hr))
 	{
@@ -994,7 +994,6 @@ STDMETHODIMP_(void) HackerContext::GetDevice(THIS_
 		*ppDevice = mHackerDevice;
 }
 
-
 STDMETHODIMP HackerContext::GetPrivateData(THIS_
 	/* [annotation] */
 	__in  REFGUID guid,
@@ -1006,7 +1005,7 @@ STDMETHODIMP HackerContext::GetPrivateData(THIS_
 	LogDebug("HackerContext::GetPrivateData(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
 
 	HRESULT hr = mOrigContext1->GetPrivateData(guid, pDataSize, pData);
-    LogDebug("  returns result = %x, DataSize = %d\n", hr, *pDataSize);
+	LogDebug("  returns result = %x, DataSize = %d\n", hr, *pDataSize);
 
 	return hr;
 }
