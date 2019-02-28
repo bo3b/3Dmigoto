@@ -2837,6 +2837,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 
 	if (ppDeferredContext)
 	{
+		analyse_iunknown(*ppDeferredContext);
 		ID3D11DeviceContext1 *origContext1;
 		HRESULT res = (*ppDeferredContext)->QueryInterface(IID_PPV_ARGS(&origContext1));
 		if (FAILED(res))
@@ -2909,6 +2910,8 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 	{
 		LogInfo("*** HackerContext missing at HackerDevice::GetImmediateContext\n");
 
+		analyse_iunknown(*ppImmediateContext);
+
 		ID3D11DeviceContext1 *origContext1;
 		HRESULT res = (*ppImmediateContext)->QueryInterface(IID_PPV_ARGS(&origContext1));
 		if (FAILED(res))
@@ -2972,6 +2975,8 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext1(
 	{
 		LogInfo("*** HackerContext1 missing at HackerDevice::GetImmediateContext1\n");
 
+		analyse_iunknown(*ppImmediateContext);
+
 		mHackerContext = HackerContextFactory(mOrigDevice1, *ppImmediateContext);
 		mHackerContext->SetHackerDevice(this);
 		LogInfo("  mHackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);
@@ -3007,6 +3012,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext1(
 
 	if (ppDeferredContext)
 	{
+		analyse_iunknown(*ppDeferredContext);
 		HackerContext *hackerContext = HackerContextFactory(mRealOrigDevice1, *ppDeferredContext);
 		hackerContext->SetHackerDevice(this);
 		hackerContext->Bind3DMigotoResources();

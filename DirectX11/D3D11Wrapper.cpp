@@ -821,6 +821,8 @@ static HRESULT WINAPI UnhookableCreateDevice(
 
 	LogInfo("  D3D11CreateDevice returned device handle = %p, context handle = %p\n",
 		retDevice, retContext);
+	analyse_iunknown(retDevice);
+	analyse_iunknown(retContext);
 
 #if _DEBUG_LAYER
 	ShowDebugInfo(retDevice);
