@@ -737,7 +737,8 @@ out_free:
 	return hr;
 }
 
-HRESULT AssembleFluganWithSignatureParsing(vector<char> *assembly, vector<byte> *result_bytecode)
+HRESULT AssembleFluganWithSignatureParsing(vector<char> *assembly, vector<byte> *result_bytecode,
+		vector<AssemblerParseError> *parse_errors)
 {
 	vector<byte> manufactured_bytecode;
 	HRESULT hr;
@@ -754,21 +755,22 @@ HRESULT AssembleFluganWithSignatureParsing(vector<char> *assembly, vector<byte> 
 	if (FAILED(hr))
 		return E_FAIL;
 
-	*result_bytecode = assembler(assembly, manufactured_bytecode);
+	*result_bytecode = assembler(assembly, manufactured_bytecode, parse_errors);
 
 	return S_OK;
 }
 
 vector<byte> AssembleFluganWithOptionalSignatureParsing(vector<char> *assembly,
-		bool assemble_signatures, vector<byte> *orig_bytecode)
+		bool assemble_signatures, vector<byte> *orig_bytecode,
+		vector<AssemblerParseError> *parse_errors)
 {
 	vector<byte> new_bytecode;
 	HRESULT hr;
 
 	if (!assemble_signatures)
-		return assembler(assembly, *orig_bytecode);
+		return assembler(assembly, *orig_bytecode, parse_errors);
 
-	hr = AssembleFluganWithSignatureParsing(assembly, &new_bytecode);
+	hr = AssembleFluganWithSignatureParsing(assembly, &new_bytecode, parse_errors);
 	if (FAILED(hr))
 		throw parseError;
 

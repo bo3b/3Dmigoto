@@ -591,6 +591,8 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 
 		try
 		{
+			// Treat parse errors on shader reload as fatal since there should
+			// be a shaderhacker at the keyboard ready to fix their bugs.
 			byteCode = AssembleFluganWithOptionalSignatureParsing(&srcData, G->assemble_signature_comments, &byteCode);
 		}
 		catch (const exception &e)

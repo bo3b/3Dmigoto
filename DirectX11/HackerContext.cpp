@@ -554,14 +554,21 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	vector<byte> patched_bytecode;
 
 	try {
-		hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode);
+		vector<AssemblerParseError> parse_errors;
+		hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode, &parse_errors);
 		if (FAILED(hr)) {
 			LogInfo("    *** Assembling patched shader failed\n");
 			return;
 		}
+		// Parse errors are currently being treated as non-fatal on
+		// creation time replacement and ShaderRegex for backwards
+		// compatibility (live shader reload is fatal).
+		for (auto &parse_error : parse_errors)
+			LogOverlay(LOG_NOTICE, "%016I64x-%S %S: %s\n",
+					hash, shader_type, tagline.c_str(), parse_error.what());
 	} catch (const exception &e) {
-		LogOverlay(LOG_NOTICE, "Error assembling ShaderRegex patched %S %016I64x\n%S\n%s\n",
-				shader_type, hash, tagline.c_str(), e.what());
+		LogOverlay(LOG_WARNING, "Error assembling ShaderRegex patched %016I64x-%S\n%S\n%s\n",
+				hash, shader_type, tagline.c_str(), e.what());
 		return;
 	}
 

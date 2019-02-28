@@ -85,7 +85,7 @@ struct token_operand
 
 vector<string> stringToLines(const char* start, size_t size);
 HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment, int hexdump = 0);
-vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode);
+vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode, vector<AssemblerParseError> *parse_errors = NULL);
 void writeLUT();
-HRESULT AssembleFluganWithSignatureParsing(vector<char> *assembly, vector<byte> *result_bytecode);
-vector<byte> AssembleFluganWithOptionalSignatureParsing(vector<char> *assembly, bool assemble_signatures, vector<byte> *orig_bytecode);
+HRESULT AssembleFluganWithSignatureParsing(vector<char> *assembly, vector<byte> *result_bytecode, vector<AssemblerParseError> *parse_errors = NULL);
+vector<byte> AssembleFluganWithOptionalSignatureParsing(vector<char> *assembly, bool assemble_signatures, vector<byte> *orig_bytecode, vector<AssemblerParseError> *parse_errors = NULL);

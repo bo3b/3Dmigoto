@@ -2878,7 +2878,8 @@ static vector<DWORD> ComputeHash(byte const* input, DWORD size)
 
 // origByteCode is modified in this function, so passing it by value!
 // asmFile is not modified, so passing it by pointer -DarkStarSword
-vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode)
+vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode,
+		vector<AssemblerParseError> *parse_errors)
 {
 	byte fourcc[4];
 	DWORD fHash[4];
@@ -2957,7 +2958,22 @@ vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode)
 		} catch (AssemblerParseError &e) {
 			e.line_no = i + 1;
 			e.update_msg();
-			throw;
+
+			// Since we never used to warn about parse errors there
+			// may well be shaders with problems in the wild that
+			// happen to pass anyway (e.g. I've seen at least one
+			// example of someone including the ~~~~~~~~/ line from
+			// the HLSL comment in an assembly shader).
+			//
+			// If the caller has passed somewhere to store the
+			// parse errors we will store them there so that they
+			// can display a warning, but we will continue parsing
+			// the rest of the shader as before. Otherwise we will
+			// throw an exception and stop parsing now.
+			if (!parse_errors)
+				throw;
+
+			parse_errors->push_back(e);
 		}
 	}
 	codeStart = (DWORD*)(codeByteStart); // Endian bug, not that we care
