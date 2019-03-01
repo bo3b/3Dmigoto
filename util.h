@@ -901,3 +901,6 @@ struct OMState {
 
 void save_om_state(ID3D11DeviceContext *context, struct OMState *state);
 void restore_om_state(ID3D11DeviceContext *context, struct OMState *state);
+
+extern IDXGISwapChain *last_fullscreen_swap_chain;
+void install_crash_handler();
