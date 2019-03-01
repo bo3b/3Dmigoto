@@ -8,6 +8,10 @@
 // ID3D11Device3	Win10			11.3
 // ID3D11Device4					11.4
 
+// Include before util.h (or any header that includes util.h) to get pretty
+// version of LockResourceCreationMode:
+#include "lock.h"
+
 #include "HackerDevice.h"
 #include "HookedDevice.h"
 #include "FrameAnalysis.h"
@@ -448,10 +452,14 @@ void HackerDevice::Create3DMigotoResources()
 	// be considdered non-fatal, as stereo could be disabled in the control
 	// panel, or we could be on an AMD or Intel card.
 
+	LockResourceCreationMode();
+
 	CreateStereoParamResources();
 	CreateIniParamResources();
 	CreatePinkHuntingResources();
 	SetGlobalNVSurfaceCreationMode();
+
+	UnlockResourceCreationMode();
 
 	optimise_command_lists(this);
 }
@@ -2073,6 +2081,8 @@ static const DescType* process_texture_override(uint32_t hash,
 		}
 	}
 
+	LockResourceCreationMode();
+
 	if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) -1) {
 		Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
 		NvAPIOverride();
@@ -2087,11 +2097,12 @@ static const DescType* process_texture_override(uint32_t hash,
 
 static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMode, StereoHandle mStereoHandle)
 {
-	if (oldMode == (NVAPI_STEREO_SURFACECREATEMODE) - 1)
-		return;
+	if (oldMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1) {
+		if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
+			LogInfo("    restore call failed.\n");
+	}
 
-	if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
-		LogInfo("    restore call failed.\n");
+	UnlockResourceCreationMode();
 }
 
 STDMETHODIMP HackerDevice::CreateBuffer(THIS_

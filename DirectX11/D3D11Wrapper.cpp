@@ -36,6 +36,17 @@ FILE *LogFile = 0;		// off by default.
 bool gLogDebug = false;
 
 
+// This critical section must be held to avoid race conditions when creating
+// any resource. The nvapi functions used to set the resource creation mode
+// affect global state, so if multiple threads are creating resources
+// simultaneously it is possible for a StereoMode override or stereo/mono copy
+// on one thread to affect another. This should be taken before setting the
+// surface creation mode and released only after it has been restored. If the
+// creation mode is not being set it should still be taken around the actual
+// CreateXXX call.
+CRITICAL_SECTION resource_creation_mode_lock;
+
+
 // During the initialize, we will also Log every setting that is enabled, so that the log
 // has a complete list of active settings.  This should make it more accurate and clear.
 
@@ -382,6 +393,7 @@ void InitD311()
 
 	InitializeCriticalSectionPretty(&G->mCriticalSection);
 	InitializeCriticalSectionPretty(&G->mResourcesLock);
+	InitializeCriticalSectionPretty(&resource_creation_mode_lock);
 
 	InitializeDLL();
 	

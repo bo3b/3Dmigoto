@@ -38,6 +38,33 @@
 // has other problems such as no meaningful names, no namespacing, etc.
 const int INI_PARAMS_SIZE_WARNING = 256;
 
+// -----------------------------------------------------------------------------------------------
+
+// This critical section must be held to avoid race conditions when creating
+// any resource. The nvapi functions used to set the resource creation mode
+// affect global state, so if multiple threads are creating resources
+// simultaneously it is possible for a StereoMode override or stereo/mono copy
+// on one thread to affect another. This should be taken before setting the
+// surface creation mode and released only after it has been restored. If the
+// creation mode is not being set it should still be taken around the actual
+// CreateXXX call.
+//
+// The actual variable definition is in the DX11 project to remind anyone using
+// this from another project that they need to InitializeCriticalSection[Pretty]
+extern CRITICAL_SECTION resource_creation_mode_lock;
+
+// Use the pretty lock debugging version if lock.h is included first, otherwise
+// use the regular EnterCriticalSection:
+#ifdef EnterCriticalSectionPretty
+#define LockResourceCreationMode() \
+	EnterCriticalSectionPretty(&resource_creation_mode_lock)
+#else
+#define LockResourceCreationMode() \
+	EnterCriticalSection(&resource_creation_mode_lock)
+#endif
+
+#define UnlockResourceCreationMode() \
+	LeaveCriticalSection(&resource_creation_mode_lock)
 
 // -----------------------------------------------------------------------------------------------
 

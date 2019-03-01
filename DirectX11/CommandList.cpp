@@ -1,3 +1,7 @@
+// Include before util.h (or any header that includes util.h) to get pretty
+// version of LockResourceCreationMode:
+#include "lock.h"
+
 #include "CommandList.h"
 
 #include <DDSTextureLoader.h>
@@ -2560,7 +2564,9 @@ static void _CreateTextureFromBitmap(HDC dc, BITMAP *bitmap_obj,
 	desc.CPUAccessFlags = 0;
 	desc.MiscFlags = 0;
 
+	LockResourceCreationMode();
 	hr = state->mOrigDevice1->CreateTexture2D(&desc, &data, tex);
+	UnlockResourceCreationMode();
 	if (FAILED(hr)) {
 		LogInfo("Software Mouse: CreateTexture2D Failed: 0x%x\n", hr);
 		goto err_free;
@@ -4106,6 +4112,8 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mSter
 	// parameters while probing the hardware before it settles on the one
 	// it will actually use.
 
+	LockResourceCreationMode();
+
 	restore_create_mode = OverrideSurfaceCreationMode(mStereoHandle, &orig_mode);
 
 	if (!filename.empty()) {
@@ -4132,6 +4140,8 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mSter
 
 	if (restore_create_mode)
 		Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
+
+	UnlockResourceCreationMode();
 }
 
 void CustomResource::LoadBufferFromFile(ID3D11Device *mOrigDevice1)
@@ -4536,6 +4546,18 @@ static ID3D11Resource * inter_device_resource_transfer(ID3D11Device *dst_dev, ID
 
 	Profiling::inter_device_copies++;
 
+	// Not really anything sensible we can do with the resource creation
+	// mode in the general case here as yet - if we copy via the CPU we
+	// will lose the 2nd perspective, but we have no way to even know if
+	// one even exists. There are some limited situations we could copy a
+	// stereo texture between devices (reverse stereo blit -> stereo
+	// header), but let's wait until we have a proven need before we try
+	// anything heroic that probably won't work anyway. Tbh we might be
+	// better off just trying to avoid getting down this code path - maybe
+	// just discarding resources for re-substantiation and re-running
+	// Contants will be sufficient in most cases
+	LockResourceCreationMode();
+
 	src_res->GetDevice(&src_dev);
 	reason = "Source device unavailable\n";
 	if (!src_dev)
@@ -4761,6 +4783,7 @@ out:
 		src_ctx->Release();
 	if (src_dev)
 		src_dev->Release();
+	UnlockResourceCreationMode();
 	return dst_res;
 
 err:
@@ -6331,6 +6354,8 @@ static void RecreateCompatibleResource(
 	if (dst)
 		bind_flags = dst->BindFlags(state);
 
+	LockResourceCreationMode();
+
 	if (options & ResourceCopyOptions::CREATEMODE_MASK) {
 		Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &orig_mode);
 		restore_create_mode = true;
@@ -6376,6 +6401,8 @@ static void RecreateCompatibleResource(
 
 	if (restore_create_mode)
 		Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
+
+	UnlockResourceCreationMode();
 
 	if (res) {
 		if (*dst_resource)

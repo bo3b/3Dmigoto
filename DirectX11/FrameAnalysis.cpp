@@ -1,3 +1,7 @@
+// Include before util.h (or any header that includes util.h) to get pretty
+// version of LockResourceCreationMode:
+#include "lock.h"
+
 #include "D3D11Wrapper.h"
 #include "FrameAnalysis.h"
 #include "Globals.h"
@@ -544,6 +548,8 @@ HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
 	if (format != DXGI_FORMAT_UNKNOWN)
 		desc.Format = format;
 
+	LockResourceCreationMode();
+
 	if (analyse_options & FrameAnalysisOptions::STEREO) {
 		// If we are dumping stereo at all force surface creation mode
 		// to stereo (regardless of whether we are creating this double
@@ -562,6 +568,8 @@ HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
 
 	if (analyse_options & FrameAnalysisOptions::STEREO)
 		Profiling::NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, orig_mode);
+
+	UnlockResourceCreationMode();
 
 	return hr;
 }
@@ -1815,7 +1823,9 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	desc.MiscFlags = 0;
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
+	LockResourceCreationMode();
 	hr = GetHackerDevice()->GetPassThroughOrigDevice1()->CreateBuffer(&desc, NULL, &staging);
+	UnlockResourceCreationMode();
 	if (FAILED(hr)) {
 		FALogErr("DumpBuffer failed to create staging buffer: 0x%x\n", hr);
 		return;
