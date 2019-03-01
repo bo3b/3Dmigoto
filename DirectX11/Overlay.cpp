@@ -45,21 +45,9 @@ static unsigned notice_cleared_frame = 0;
 // automatically when the DLL is loaded/unloaded.                           //
 //                                                                          //
 //////////////////////////////////////////////////////////////////////////////
-static class Notices
-{
+static class Notices : public CriticalSection {
 public:
 	std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
-	CRITICAL_SECTION lock;
-
-	Notices()
-	{
-		InitializeCriticalSection(&lock);
-	}
-
-	~Notices()
-	{
-		DeleteCriticalSection(&lock);
-	}
 } notices;
 
 struct LogLevelParams {
@@ -713,7 +701,7 @@ void Overlay::DrawNotices(float *y)
 	Vector2 strSize;
 	int level, displayed = 0;
 
-	EnterCriticalSection(&notices.lock);
+	notices.lock();
 
 	has_notice = false;
 	for (level = 0; level < NUM_LOG_LEVELS; level++) {
@@ -749,7 +737,7 @@ void Overlay::DrawNotices(float *y)
 		}
 	}
 
-	LeaveCriticalSection(&notices.lock);
+	notices.unlock();
 }
 
 void Overlay::DrawProfiling(float *y)
@@ -867,7 +855,7 @@ void ClearNotices()
 	if (notice_cleared_frame == G->frame_no)
 		return;
 
-	EnterCriticalSection(&notices.lock);
+	notices.lock();
 
 	for (level = 0; level < NUM_LOG_LEVELS; level++)
 		notices.notices[level].clear();
@@ -875,7 +863,7 @@ void ClearNotices()
 	notice_cleared_frame = G->frame_no;
 	has_notice = false;
 
-	LeaveCriticalSection(&notices.lock);
+	notices.unlock();
 }
 
 void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
@@ -892,12 +880,12 @@ void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
 	// cares if it gets cut off somewhere off screen anyway?
 	_vsnwprintf_s(msg, maxstring, _TRUNCATE, fmt, ap);
 
-	EnterCriticalSection(&notices.lock);
+	notices.lock();
 
 	notices.notices[level].emplace_back(msg);
 	has_notice = true;
 
-	LeaveCriticalSection(&notices.lock);
+	notices.unlock();
 
 	va_end(ap);
 }
@@ -924,12 +912,12 @@ void LogOverlay(LogLevel level, char *fmt, ...)
 		_vsnprintf_s(amsg, maxstring, _TRUNCATE, fmt, ap);
 		mbstowcs(wmsg, amsg, maxstring);
 
-		EnterCriticalSection(&notices.lock);
+		notices.lock();
 
 		notices.notices[level].emplace_back(wmsg);
 		has_notice = true;
 
-		LeaveCriticalSection(&notices.lock);
+		notices.unlock();
 	}
 
 	va_end(ap);

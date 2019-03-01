@@ -38,6 +38,39 @@
 // has other problems such as no meaningful names, no namespacing, etc.
 const int INI_PARAMS_SIZE_WARNING = 256;
 
+// This class wraps a CRITICAL_SECTION and manages initializing and deleting it
+// via a C++ constructor to reduce the boiler plate usually required for these.
+// TODO: Track which thread has this lock held (the CRITICAL_SECTION structure
+// contains this already, but it is opaque and not considered part of the ABI,
+// meaning we cannot rely on it's structure to never change, which has
+// apparently happened in the past), and graph lock dependencies to detect
+// common locking bugs. Assume any calls into DirectX may take a lock of their
+// own to detect AB-BA type deadlocks with the resource release tracker that is
+// called from DirectX.
+class CriticalSection {
+private:
+	CRITICAL_SECTION critical_section;
+public:
+	CriticalSection()
+	{
+		InitializeCriticalSection(&critical_section);
+	}
+
+	~CriticalSection()
+	{
+		DeleteCriticalSection(&critical_section);
+	}
+
+	inline void lock()
+	{
+		EnterCriticalSection(&critical_section);
+	}
+
+	inline void unlock()
+	{
+		LeaveCriticalSection(&critical_section);
+	}
+};
 
 // -----------------------------------------------------------------------------------------------
 
