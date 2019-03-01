@@ -216,7 +216,7 @@ void HackerSwapChain::UpdateStereoParams()
 	}
 }
 
-static void process_present_race_deferred_resource_release(HackerDevice *mHackerDevice)
+static void process_present_race_deferred_device_child_release(HackerDevice *mHackerDevice)
 {
 	// This is a workaround for games that have a race condition between
 	// resources being Release()d in one thread and Present() being called
@@ -238,7 +238,7 @@ static void process_present_race_deferred_resource_release(HackerDevice *mHacker
 	// them now and release any that have a refcount of exactly 1,
 	// indicating that we are the last refcount holder.
 
-	if (mHackerDevice->release_present_race_workaround_resources.empty())
+	if (mHackerDevice->release_present_race_workaround_objects.empty())
 		return;
 
 	// TODO: If this vector gets too long and starts harming performance we
@@ -249,22 +249,22 @@ static void process_present_race_deferred_resource_release(HackerDevice *mHacker
 	// Using a distinct lock from mCriticalSection so that we don't
 	// ourselves call into DirectX with mCriticalSection held, since that
 	// may lead to an AB-BA deadlock with the resource release tracker.
-	mHackerDevice->release_present_race_workaround_resources_lock.lock();
-	for (auto i = begin(mHackerDevice->release_present_race_workaround_resources), next = i;
-			i != end(mHackerDevice->release_present_race_workaround_resources);
+	mHackerDevice->release_present_race_workaround_objects_lock.lock();
+	for (auto i = begin(mHackerDevice->release_present_race_workaround_objects), next = i;
+			i != end(mHackerDevice->release_present_race_workaround_objects);
 			i = next) {
 		next++;
-		ID3D11Resource *resource = *i;
+		ID3D11DeviceChild *obj = *i;
 
-		resource->AddRef();
-		if (resource->Release() == 1) {
+		obj->AddRef();
+		if (obj->Release() == 1) {
 			LogDebug("%04x: Present/Release race workaround: Performing deferred release of %p\n",
-					GetCurrentThreadId(), resource);
-			next = mHackerDevice->release_present_race_workaround_resources.erase(i);
-			resource->Release();
+					GetCurrentThreadId(), obj);
+			next = mHackerDevice->release_present_race_workaround_objects.erase(i);
+			obj->Release();
 		}
 	}
-	mHackerDevice->release_present_race_workaround_resources_lock.unlock();
+	mHackerDevice->release_present_race_workaround_objects_lock.unlock();
 }
 
 // Called at each DXGI::Present() to give us reliable time to execute user
@@ -275,7 +275,7 @@ void HackerSwapChain::RunFrameActions()
 	LogDebug("%04x: Running frame actions.  Device: %p\n", GetCurrentThreadId(), mHackerDevice);
 
 	if (G->workaround_release_present_race)
-		process_present_race_deferred_resource_release(mHackerDevice);
+		process_present_race_deferred_device_child_release(mHackerDevice);
 
 	// Regardless of log settings, since this runs every frame, let's flush the log
 	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy

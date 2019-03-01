@@ -91,7 +91,7 @@ private:
 		__out_opt  ID3D11Shader **ppShader,
 		wchar_t *shaderType);
 
-	void workaround_present_release_race(ID3D11Resource *pResource);
+	void workaround_present_release_race(ID3D11DeviceChild *obj);
 
 public:
 	StereoHandle mStereoHandle;
@@ -101,8 +101,8 @@ public:
 	ID3D11ShaderResourceView *mZBufferResourceView;
 	ID3D11Texture1D *mIniTexture;
 	ID3D11ShaderResourceView *mIniResourceView;
-	vector<ID3D11Resource*> release_present_race_workaround_resources;
-	CriticalSection release_present_race_workaround_resources_lock;
+	vector<ID3D11DeviceChild*> release_present_race_workaround_objects;
+	CriticalSection release_present_race_workaround_objects_lock;
 
 	HackerDevice(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
 

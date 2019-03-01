@@ -1551,7 +1551,7 @@ STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 			mIniTexture = 0;
 			LogInfo("  releasing iniparams texture, result = %d\n", result);
 		}
-		for (ID3D11Resource *res : release_present_race_workaround_resources) {
+		for (ID3D11DeviceChild *res : release_present_race_workaround_objects) {
 			long result = res->Release();
 			LogInfo("  releasing Present/Release race workaround resource %p, result = %d\n", res, result);
 		}
@@ -1657,6 +1657,41 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 	return hr;
 }
 
+void HackerDevice::workaround_present_release_race(ID3D11DeviceChild *obj)
+{
+	// This is a workaround for games that have a race condition between
+	// resources being Release()d in one thread and Present() being called
+	// in another, such as the Resident Evil 2 remake. In this scenario the
+	// Release() blocks trying to obtain the DirectX critical section that
+	// is held by the render thread currently executing Present(), and that
+	// thread is blocked on a WaitForSingleObjectEx call for an unknown
+	// object to be signaled. This issue seems to be either caused or
+	// exacerbated by using StereoMode=2 to force a resource to mono,
+	// suggesting that the 3D Vision driver may also be involved in this
+	// live lock scenario:
+	//
+	//     https://github.com/bo3b/3Dmigoto/issues/104#issuecomment-468334692
+	//
+	// In order to work around this, we are going to add an extra reference
+	// to the affected resources, which will prevent their Release() call
+	// from dropping their refcount to 0 and freeing them, hopefully
+	// resulting in the Release() call in the other thread not trying to
+	// obtain the DirectX lock.
+	//
+	// We can then check these resources' refcount every now and then from
+	// the Present() call, and if we find that one has dropped to exactly
+	// one we will know that we are the only remaining reference holder and
+	// can perform the final Release() then - effectively moving the final
+	// Release() call to the render thread.
+	release_present_race_workaround_objects_lock.lock();
+		LogDebug("%04x: Present/Release race workaround: Bumping refcount on %p\n",
+				GetCurrentThreadId(), obj);
+		obj->AddRef();
+		release_present_race_workaround_objects.push_back(obj);
+	release_present_race_workaround_objects_lock.unlock();
+}
+
+
 // -----------------------------------------------------------------------------------------------
 
 /*** ID3D11Device methods ***/
@@ -1672,7 +1707,14 @@ STDMETHODIMP HackerDevice::CreateUnorderedAccessView(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11UnorderedAccessView **ppUAView)
 {
-	return mOrigDevice1->CreateUnorderedAccessView(pResource, pDesc, ppUAView);
+	HRESULT hr;
+
+	hr = mOrigDevice1->CreateUnorderedAccessView(pResource, pDesc, ppUAView);
+
+	if (G->workaround_release_present_race && SUCCEEDED(hr) && ppUAView && *ppUAView)
+		workaround_present_release_race(*ppUAView);
+
+	return hr;
 }
 
 STDMETHODIMP HackerDevice::CreateRenderTargetView(THIS_
@@ -1683,8 +1725,14 @@ STDMETHODIMP HackerDevice::CreateRenderTargetView(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11RenderTargetView **ppRTView)
 {
-	LogDebug("HackerDevice::CreateRenderTargetView(%s@%p)\n", type_name(this), this);
-	return mOrigDevice1->CreateRenderTargetView(pResource, pDesc, ppRTView);
+	HRESULT hr;
+
+	hr = mOrigDevice1->CreateRenderTargetView(pResource, pDesc, ppRTView);
+
+	if (G->workaround_release_present_race && SUCCEEDED(hr) && ppRTView && *ppRTView)
+		workaround_present_release_race(*ppRTView);
+
+	return hr;
 }
 
 STDMETHODIMP HackerDevice::CreateDepthStencilView(THIS_
@@ -1695,8 +1743,14 @@ STDMETHODIMP HackerDevice::CreateDepthStencilView(THIS_
 	/* [annotation] */
 	__out_opt  ID3D11DepthStencilView **ppDepthStencilView)
 {
-	LogDebug("HackerDevice::CreateDepthStencilView(%s@%p)\n", type_name(this), this);
-	return mOrigDevice1->CreateDepthStencilView(pResource, pDesc, ppDepthStencilView);
+	HRESULT hr;
+
+	hr = mOrigDevice1->CreateDepthStencilView(pResource, pDesc, ppDepthStencilView);
+
+	if (G->workaround_release_present_race && SUCCEEDED(hr) && ppDepthStencilView && *ppDepthStencilView)
+		workaround_present_release_race(*ppDepthStencilView);
+
+	return hr;
 }
 
 STDMETHODIMP HackerDevice::CreateInputLayout(THIS_
@@ -2098,40 +2152,6 @@ static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMo
 		LogInfo("    restore call failed.\n");
 }
 
-void HackerDevice::workaround_present_release_race(ID3D11Resource *pResource)
-{
-	// This is a workaround for games that have a race condition between
-	// resources being Release()d in one thread and Present() being called
-	// in another, such as the Resident Evil 2 remake. In this scenario the
-	// Release() blocks trying to obtain the DirectX critical section that
-	// is held by the render thread currently executing Present(), and that
-	// thread is blocked on a WaitForSingleObjectEx call for an unknown
-	// object to be signaled. This issue seems to be either caused or
-	// exacerbated by using StereoMode=2 to force a resource to mono,
-	// suggesting that the 3D Vision driver may also be involved in this
-	// live lock scenario:
-	//
-	//     https://github.com/bo3b/3Dmigoto/issues/104#issuecomment-468334692
-	//
-	// In order to work around this, we are going to add an extra reference
-	// to the affected resources, which will prevent their Release() call
-	// from dropping their refcount to 0 and freeing them, hopefully
-	// resulting in the Release() call in the other thread not trying to
-	// obtain the DirectX lock.
-	//
-	// We can then check these resources' refcount every now and then from
-	// the Present() call, and if we find that one has dropped to exactly
-	// one we will know that we are the only remaining reference holder and
-	// can perform the final Release() then - effectively moving the final
-	// Release() call to the render thread.
-	release_present_race_workaround_resources_lock.lock();
-		LogDebug("%04x: Present/Release race workaround: Bumping refcount on %p\n",
-				GetCurrentThreadId(), pResource);
-		pResource->AddRef();
-		release_present_race_workaround_resources.push_back(pResource);
-	release_present_race_workaround_resources_lock.unlock();
-}
-
 STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	/* [annotation] */
 	__in  const D3D11_BUFFER_DESC *pDesc,
@@ -2442,6 +2462,9 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 	LogDebug("HackerDevice::CreateShaderResourceView called\n");
 
 	HRESULT hr = mOrigDevice1->CreateShaderResourceView(pResource, pDesc, ppSRView);
+
+	if (G->workaround_release_present_race && SUCCEEDED(hr) && ppSRView && *ppSRView)
+		workaround_present_release_race(*ppSRView);
 
 	// Check for depth buffer view.
 	if (hr == S_OK && G->ZBufferHashToInject && ppSRView)
