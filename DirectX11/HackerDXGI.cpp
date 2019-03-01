@@ -258,7 +258,7 @@ static void process_present_race_deferred_resource_release(HackerDevice *mHacker
 
 		resource->AddRef();
 		if (resource->Release() == 1) {
-			LogInfo("%04x: Present/Release race workaround: Performing deferred release of %p\n",
+			LogDebug("%04x: Present/Release race workaround: Performing deferred release of %p\n",
 					GetCurrentThreadId(), resource);
 			next = mHackerDevice->release_present_race_workaround_resources.erase(i);
 			resource->Release();
@@ -274,7 +274,8 @@ void HackerSwapChain::RunFrameActions()
 {
 	LogDebug("%04x: Running frame actions.  Device: %p\n", GetCurrentThreadId(), mHackerDevice);
 
-	process_present_race_deferred_resource_release(mHackerDevice);
+	if (G->workaround_release_present_race)
+		process_present_race_deferred_resource_release(mHackerDevice);
 
 	// Regardless of log settings, since this runs every frame, let's flush the log
 	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy

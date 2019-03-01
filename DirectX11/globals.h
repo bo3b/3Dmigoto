@@ -289,7 +289,6 @@ struct TextureOverride {
 	std::vector<int> iterations;
 	bool expand_region_copy;
 	bool deny_cpu_read;
-	bool workaround_release_present_race;
 	float filter_index;
 
 	bool has_draw_context_match;
@@ -505,6 +504,7 @@ struct Globals
 	bool hide_cursor;
 	bool cursor_upscaling_bypass;
 	bool check_foreground_window;
+	bool workaround_release_present_race;
 
 	CRITICAL_SECTION mCriticalSection;
 
@@ -649,6 +649,7 @@ struct Globals
 		hide_cursor(false),
 		cursor_upscaling_bypass(true),
 		check_foreground_window(false),
+		workaround_release_present_race(false),
 
 		GAME_INTERNAL_WIDTH(1), // it gonna be used by mouse pos hook in case of softwaremouse is on and it can be called before
 		GAME_INTERNAL_HEIGHT(1),//  the swap chain is created and the proper data set to avoid errors in the hooked winapi functions

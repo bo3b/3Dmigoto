@@ -2031,7 +2031,7 @@ static const DescType* process_texture_override(uint32_t hash,
 		StereoHandle mStereoHandle,
 		const DescType *origDesc,
 		DescType *newDesc,
-		process_texture_override_state *state)
+		NVAPI_STEREO_SURFACECREATEMODE *oldMode)
 {
 	NVAPI_STEREO_SURFACECREATEMODE newMode = (NVAPI_STEREO_SURFACECREATEMODE) -1;
 	TextureOverrideMatches matches;
@@ -2039,8 +2039,7 @@ static const DescType* process_texture_override(uint32_t hash,
 	const DescType* ret = origDesc;
 	unsigned i;
 
-	state->oldMode = (NVAPI_STEREO_SURFACECREATEMODE) -1;
-	state->workaround_release_present_race = false;
+	*oldMode = (NVAPI_STEREO_SURFACECREATEMODE) -1;
 
 	// Check for square surfaces. We used to do this after processing the
 	// StereoMode in TextureOverrides, but realistically we always want the
@@ -2074,15 +2073,12 @@ static const DescType* process_texture_override(uint32_t hash,
 			if (textureOverride->stereoMode != -1)
 				newMode = (NVAPI_STEREO_SURFACECREATEMODE) textureOverride->stereoMode;
 
-			state->workaround_release_present_race =
-				state->workaround_release_present_race || textureOverride->workaround_release_present_race;
-
 			override_resource_desc(newDesc, textureOverride);
 		}
 	}
 
 	if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) -1) {
-		Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &state->oldMode);
+		Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
 		NvAPIOverride();
 		LogInfo("  setting custom surface creation mode.\n");
 
@@ -2093,54 +2089,47 @@ static const DescType* process_texture_override(uint32_t hash,
 	return ret;
 }
 
-// TODO: Refactor this into a template CreateResource wrapper that includes the
-// above routine and any other common code in the various Device::Create* routines
-void HackerDevice::process_texture_override_after_create(
-		HRESULT hr,
-		ID3D11Resource **ppResource,
-		process_texture_override_state *state)
+static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMode, StereoHandle mStereoHandle)
 {
-	if (state->oldMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1) {
-		if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, state->oldMode))
-			LogInfo("    restore call failed.\n");
-	}
-
-	if (FAILED(hr) || !ppResource || !*ppResource)
+	if (oldMode == (NVAPI_STEREO_SURFACECREATEMODE) - 1)
 		return;
 
-	if (state->workaround_release_present_race) {
-		// This is a workaround for games that have a race condition
-		// between resources being Release()d in one thread and
-		// Present() being called in another, such as the Resident Evil
-		// 2 remake. In this scenario the Release() blocks trying to
-		// obtain the DirectX critical section that is held by the
-		// render thread currently executing Present(), and that thread
-		// is blocked on a WaitForSingleObjectEx call for an unknown
-		// object to be signaled. This issue seems to be either caused
-		// or exacerbated by using StereoMode=2 to force a resource to
-		// mono, suggesting that the 3D Vision driver may also be
-		// involved in this live lock scenario:
-		//
-		//     https://github.com/bo3b/3Dmigoto/issues/104#issuecomment-468334692
-		//
-		// In order to work around this, we are going to add an extra
-		// reference to the affected resources, which will prevent
-		// their Release() call from dropping their refcount to 0 and
-		// freeing them, hopefully resulting in the Release() call in
-		// the other thread not trying to obtain the DirectX lock.
-		//
-		// We can then check these resources' refcount every now and
-		// then from the Present() call, and if we find that one has
-		// dropped to exactly one we will know that we are the only
-		// remaining reference holder and can perform the final
-		// Release() then - effectively moving the final Release() call
-		// to the render thread.
-		release_present_race_workaround_resources_lock.lock();
-			LogInfo("  Present/Release race workaround: Bumping refcount on %p\n", *ppResource);
-			(*ppResource)->AddRef();
-			release_present_race_workaround_resources.push_back(*ppResource);
-		release_present_race_workaround_resources_lock.unlock();
-	}
+	if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
+		LogInfo("    restore call failed.\n");
+}
+
+void HackerDevice::workaround_present_release_race(ID3D11Resource *pResource)
+{
+	// This is a workaround for games that have a race condition between
+	// resources being Release()d in one thread and Present() being called
+	// in another, such as the Resident Evil 2 remake. In this scenario the
+	// Release() blocks trying to obtain the DirectX critical section that
+	// is held by the render thread currently executing Present(), and that
+	// thread is blocked on a WaitForSingleObjectEx call for an unknown
+	// object to be signaled. This issue seems to be either caused or
+	// exacerbated by using StereoMode=2 to force a resource to mono,
+	// suggesting that the 3D Vision driver may also be involved in this
+	// live lock scenario:
+	//
+	//     https://github.com/bo3b/3Dmigoto/issues/104#issuecomment-468334692
+	//
+	// In order to work around this, we are going to add an extra reference
+	// to the affected resources, which will prevent their Release() call
+	// from dropping their refcount to 0 and freeing them, hopefully
+	// resulting in the Release() call in the other thread not trying to
+	// obtain the DirectX lock.
+	//
+	// We can then check these resources' refcount every now and then from
+	// the Present() call, and if we find that one has dropped to exactly
+	// one we will know that we are the only remaining reference holder and
+	// can perform the final Release() then - effectively moving the final
+	// Release() call to the render thread.
+	release_present_race_workaround_resources_lock.lock();
+		LogDebug("%04x: Present/Release race workaround: Bumping refcount on %p\n",
+				GetCurrentThreadId(), pResource);
+		pResource->AddRef();
+		release_present_race_workaround_resources.push_back(pResource);
+	release_present_race_workaround_resources_lock.unlock();
 }
 
 STDMETHODIMP HackerDevice::CreateBuffer(THIS_
@@ -2153,7 +2142,7 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 {
 	D3D11_BUFFER_DESC newDesc;
 	const D3D11_BUFFER_DESC *pNewDesc = NULL;
-	process_texture_override_state state;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
 
 	LogDebug("HackerDevice::CreateBuffer called\n");
 	if (pDesc)
@@ -2168,12 +2157,15 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 		hash = crc32c_hw(hash, pDesc, sizeof(D3D11_BUFFER_DESC));
 
 	// Override custom settings?
-	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &state);
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
 
 	HRESULT hr = mOrigDevice1->CreateBuffer(pNewDesc, pInitialData, ppBuffer);
-	process_texture_override_after_create(hr, (ID3D11Resource**)ppBuffer, &state);
+	restore_old_surface_create_mode(oldMode, mStereoHandle);
 	if (hr == S_OK && ppBuffer && *ppBuffer)
 	{
+		if (G->workaround_release_present_race)
+			workaround_present_release_race(*ppBuffer);
+
 		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppBuffer];
 			new ResourceReleaseTracker(*ppBuffer);
@@ -2207,7 +2199,7 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 {
 	D3D11_TEXTURE1D_DESC newDesc;
 	const D3D11_TEXTURE1D_DESC *pNewDesc = NULL;
-	process_texture_override_state state;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
 	uint32_t data_hash, hash;
 
 	LogDebug("HackerDevice::CreateTexture1D called\n");
@@ -2220,14 +2212,17 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 	LogDebug("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
 	// Override custom settings?
-	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &state);
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
 
 	HRESULT hr = mOrigDevice1->CreateTexture1D(pNewDesc, pInitialData, ppTexture1D);
 
-	process_texture_override_after_create(hr, (ID3D11Resource**)ppTexture1D, &state);
+	restore_old_surface_create_mode(oldMode, mStereoHandle);
 
 	if (hr == S_OK && ppTexture1D && *ppTexture1D)
 	{
+		if (G->workaround_release_present_race)
+			workaround_present_release_race(*ppTexture1D);
+
 		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture1D];
 			new ResourceReleaseTracker(*ppTexture1D);
@@ -2279,7 +2274,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 {
 	D3D11_TEXTURE2D_DESC newDesc;
 	const D3D11_TEXTURE2D_DESC *pNewDesc = NULL;
-	process_texture_override_state state;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
 
 	LogDebug("HackerDevice::CreateTexture2D called with parameters\n");
 	if (pDesc)
@@ -2331,16 +2326,19 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	LogDebug("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
 	// Override custom settings?
-	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &state);
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
 
 	// Actual creation:
 	HRESULT hr = mOrigDevice1->CreateTexture2D(pNewDesc, pInitialData, ppTexture2D);
-	process_texture_override_after_create(hr, (ID3D11Resource**)ppTexture2D, &state);
+	restore_old_surface_create_mode(oldMode, mStereoHandle);
 	if (ppTexture2D) LogDebug("  returns result = %x, handle = %p\n", hr, *ppTexture2D);
 
 	// Register texture. Every one seen.
 	if (hr == S_OK && ppTexture2D)
 	{
+		if (G->workaround_release_present_race)
+			workaround_present_release_race(*ppTexture2D);
+
 		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture2D];
 			new ResourceReleaseTracker(*ppTexture2D);
@@ -2370,7 +2368,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 {
 	D3D11_TEXTURE3D_DESC newDesc;
 	const D3D11_TEXTURE3D_DESC *pNewDesc = NULL;
-	process_texture_override_state state;
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
 
 	LogInfo("HackerDevice::CreateTexture3D called with parameters\n");
 	if (pDesc)
@@ -2400,15 +2398,18 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	LogInfo("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
 	// Override custom settings?
-	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &state);
+	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
 
 	HRESULT hr = mOrigDevice1->CreateTexture3D(pNewDesc, pInitialData, ppTexture3D);
 
-	process_texture_override_after_create(hr, (ID3D11Resource**)ppTexture3D, &state);
+	restore_old_surface_create_mode(oldMode, mStereoHandle);
 
 	// Register texture.
 	if (hr == S_OK && ppTexture3D)
 	{
+		if (G->workaround_release_present_race)
+			workaround_present_release_race(*ppTexture3D);
+
 		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture3D];
 			new ResourceReleaseTracker(*ppTexture3D);
