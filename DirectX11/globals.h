@@ -289,6 +289,7 @@ struct TextureOverride {
 	std::vector<int> iterations;
 	bool expand_region_copy;
 	bool deny_cpu_read;
+	bool workaround_release_present_race;
 	float filter_index;
 
 	bool has_draw_context_match;

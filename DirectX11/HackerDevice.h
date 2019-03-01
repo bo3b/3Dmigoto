@@ -19,6 +19,10 @@ DEFINE_GUID(IID_HackerDevice,
 class HackerContext;
 class HackerSwapChain;
 
+struct process_texture_override_state {
+	NVAPI_STEREO_SURFACECREATEMODE oldMode;
+	bool workaround_release_present_race;
+};
 
 // 1-6-18:  Current approach will be to only create one level of wrapping,
 // specifically HackerDevice and HackerContext, based on the ID3D11Device1,
@@ -91,6 +95,10 @@ private:
 		__out_opt  ID3D11Shader **ppShader,
 		wchar_t *shaderType);
 
+	void process_texture_override_after_create(HRESULT hr,
+		ID3D11Resource **ppResource,
+		process_texture_override_state *state);
+
 public:
 	StereoHandle mStereoHandle;
 	nv::stereo::ParamTextureManagerD3D11 mParamTextureManager;
@@ -99,6 +107,8 @@ public:
 	ID3D11ShaderResourceView *mZBufferResourceView;
 	ID3D11Texture1D *mIniTexture;
 	ID3D11ShaderResourceView *mIniResourceView;
+	vector<ID3D11Resource*> release_present_race_workaround_resources;
+	CriticalSection release_present_race_workaround_resources_lock;
 
 	HackerDevice(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
 

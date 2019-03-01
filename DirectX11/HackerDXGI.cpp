@@ -216,12 +216,65 @@ void HackerSwapChain::UpdateStereoParams()
 	}
 }
 
+static void process_present_race_deferred_resource_release(HackerDevice *mHackerDevice)
+{
+	// This is a workaround for games that have a race condition between
+	// resources being Release()d in one thread and Present() being called
+	// in another, such as the Resident Evil 2 remake. In this scenario the
+	// Release() blocks trying to obtain the DirectX critical section that
+	// is held by the render thread currently executing Present(), and that
+	// thread is blocked on a WaitForSingleObjectEx call for an unknown
+	// object to be signaled. This issue seems to be either caused or
+	// exacerbated by using StereoMode=2 to force a resource to mono,
+	// suggesting that the 3D Vision driver may also be involved in this
+	// live lock scenario:
+	//
+	//     https://github.com/bo3b/3Dmigoto/issues/104#issuecomment-468334692
+	//
+	// In order to work around this, we added an extra reference to
+	// potentially affected resources when they were created to prevent
+	// their refcounts from dropping to 0 and being freed from the other
+	// thread. We don't want these resources to leak though, so process
+	// them now and release any that have a refcount of exactly 1,
+	// indicating that we are the last refcount holder.
+
+	if (mHackerDevice->release_present_race_workaround_resources.empty())
+		return;
+
+	// TODO: If this vector gets too long and starts harming performance we
+	// might consider checking just a subset each frame, e.g.
+	// vector[G->frame_no % vector.size()], although the vector erase might
+	// not be great in that situation either.
+
+	// Using a distinct lock from mCriticalSection so that we don't
+	// ourselves call into DirectX with mCriticalSection held, since that
+	// may lead to an AB-BA deadlock with the resource release tracker.
+	mHackerDevice->release_present_race_workaround_resources_lock.lock();
+	for (auto i = begin(mHackerDevice->release_present_race_workaround_resources), next = i;
+			i != end(mHackerDevice->release_present_race_workaround_resources);
+			i = next) {
+		next++;
+		ID3D11Resource *resource = *i;
+
+		resource->AddRef();
+		if (resource->Release() == 1) {
+			LogInfo("%04x: Present/Release race workaround: Performing deferred release of %p\n",
+					GetCurrentThreadId(), resource);
+			next = mHackerDevice->release_present_race_workaround_resources.erase(i);
+			resource->Release();
+		}
+	}
+	mHackerDevice->release_present_race_workaround_resources_lock.unlock();
+}
+
 // Called at each DXGI::Present() to give us reliable time to execute user
 // input and hunting commands.
 
 void HackerSwapChain::RunFrameActions()
 {
-	LogDebug("Running frame actions.  Device: %p\n", mHackerDevice);
+	LogDebug("%04x: Running frame actions.  Device: %p\n", GetCurrentThreadId(), mHackerDevice);
+
+	process_present_race_deferred_resource_release(mHackerDevice);
 
 	// Regardless of log settings, since this runs every frame, let's flush the log
 	// so that the most lost will be one frame worth.  Tradeoff of performance to accuracy

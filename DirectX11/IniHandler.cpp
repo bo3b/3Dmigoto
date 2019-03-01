@@ -2512,6 +2512,7 @@ wchar_t *TextureOverrideIniKeys[] = {
 	L"filter_index",
 	L"expand_region_copy",
 	L"deny_cpu_read",
+	L"workaround_release_present_race",
 	L"match_priority",
 	TEXTURE_OVERRIDE_FUZZY_MATCHES,
 	TEXTURE_OVERRIDE_DRAW_CALL_MATCHES,
@@ -2702,6 +2703,7 @@ static void parse_texture_override_common(const wchar_t *id, TextureOverride *ov
 
 	override->expand_region_copy = GetIniBool(id, L"expand_region_copy", false, NULL);
 	override->deny_cpu_read = GetIniBool(id, L"deny_cpu_read", false, NULL);
+	override->workaround_release_present_race = GetIniBool(id, L"workaround_release_present_race", false, NULL);
 
 	// Draw call context matching:
 	if (GetIniStringAndLog(id, L"match_first_vertex", 0, setting, MAX_PATH)) {

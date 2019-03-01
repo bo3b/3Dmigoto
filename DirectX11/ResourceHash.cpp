@@ -1272,7 +1272,8 @@ ULONG STDMETHODCALLTYPE ResourceReleaseTracker::AddRef(void)
 ULONG STDMETHODCALLTYPE ResourceReleaseTracker::Release(void)
 {
 	ULONG ret = --ref;
-	// LogDebug("ResourceReleaseTracker::Release(%p:%p) -> %lu\n", this, resource, ret);
+	// LogDebug("%04x: ResourceReleaseTracker::Release(%p:%p) -> %lu\n",
+	//		GetCurrentThreadId(), this, resource, ret);
 	if (ret == 0) {
 		// LogDebug("Removing %p from mResources\n", resource);
 
