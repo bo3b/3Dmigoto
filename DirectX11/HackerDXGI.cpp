@@ -241,26 +241,26 @@ static void process_present_race_deferred_resource_release(HackerDevice *mHacker
 	if (mHackerDevice->release_present_race_workaround_resources.empty())
 		return;
 
-	// TODO: If this vector gets too long and starts harming performance we
-	// might consider checking just a subset each frame, e.g.
-	// vector[G->frame_no % vector.size()], although the vector erase might
-	// not be great in that situation either.
-
 	// Using a distinct lock from mCriticalSection so that we don't
 	// ourselves call into DirectX with mCriticalSection held, since that
 	// may lead to an AB-BA deadlock with the resource release tracker.
 	mHackerDevice->release_present_race_workaround_resources_lock.lock();
-	for (auto i = begin(mHackerDevice->release_present_race_workaround_resources), next = i;
-			i != end(mHackerDevice->release_present_race_workaround_resources);
-			i = next) {
-		next++;
-		ID3D11Resource *resource = *i;
+
+	// In order to reduce the impact of iterating over a potentially quite
+	// large list every frame we will limit ourselves to checking a shorter
+	// span that is only 1/60th of the total length:
+	signed size = (signed)mHackerDevice->release_present_race_workaround_resources.size();
+	signed span = size / 60;
+	signed start = span * (G->frame_no % 60);
+	for (signed i = start + span - 1; i >= start; i--) {
+		ID3D11Resource *resource = mHackerDevice->release_present_race_workaround_resources[i];
 
 		resource->AddRef();
 		if (resource->Release() == 1) {
 			LogDebug("%04x: Present/Release race workaround: Performing deferred release of %p\n",
 					GetCurrentThreadId(), resource);
-			next = mHackerDevice->release_present_race_workaround_resources.erase(i);
+			auto it = mHackerDevice->release_present_race_workaround_resources.begin() + i;
+			mHackerDevice->release_present_race_workaround_resources.erase(it);
 			resource->Release();
 		}
 	}
