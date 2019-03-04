@@ -2,6 +2,7 @@
 
 #include "HookedDXGI.h"
 #include "D3D11Wrapper.h"
+#include "util_min.h"
 
 // ----------------------------------------------------------------------------
 // Add in Deviare in-proc for hooking system traps using a Detours approach.  We need access to the
@@ -126,11 +127,166 @@ static HRESULT HookDXGIFactories()
 	return NOERROR;
 }
 
+static HRESULT HookD3D11(HINSTANCE our_dll)
+{
+	HRESULT hr;
+
+	LogHooking("Hooking d3d11.dll...\n");
+
+	// TODO: What if d3d11.dll isn't loaded in the process yet? We can't
+	// use LoadLibrary() from DllMain. Does Nektra handle this somehow, or
+	// should we defer the hook until later (perhaps our LoadLibrary hook)?
+
+	hr = InstallHook(L"d3d11.dll", "D3D11CreateDevice",
+			(LPVOID*)&_D3D11CreateDevice, D3D11CreateDevice);
+	if (FAILED(hr))
+		return E_FAIL;
+
+	// Directly using D3D11CreateDeviceAndSwapChain was giving an
+	// unresolved external - looks like the function signature doesn't
+	// quite match the prototype in the Win 10 SDK. Whatever - it's
+	// compatible, so just use GetProcAddress() rather than fight it.
+	hr = InstallHook(L"d3d11.dll", "D3D11CreateDeviceAndSwapChain",
+			(LPVOID*)&_D3D11CreateDeviceAndSwapChain,
+			GetProcAddress(our_dll, "D3D11CreateDeviceAndSwapChain"));
+	if (FAILED(hr))
+		return E_FAIL;
+
+	return S_OK;
+}
+
 
 // ----------------------------------------------------------------------------
 static void RemoveHooks()
 {
 	cHookMgr.UnhookAll();
+}
+
+// ----------------------------------------------------------------------------
+
+static bool verify_intended_target(HINSTANCE our_dll)
+{
+	wchar_t our_path[MAX_PATH], exe_path[MAX_PATH];
+	wchar_t *our_basename, *exe_basename;
+	DWORD filesize, readsize;
+	bool rc = false;
+	char *buf;
+	const char *section;
+	char target[MAX_PATH];
+	wchar_t target_w[MAX_PATH];
+	size_t target_len, exe_len;
+	HANDLE f;
+
+	if (!GetModuleFileName(our_dll, our_path, MAX_PATH))
+		return false;
+	if (!GetModuleFileName(NULL, exe_path, MAX_PATH))
+		return false;
+
+	our_basename = wcsrchr(our_path, L'\\');
+	exe_basename = wcsrchr(exe_path, L'\\');
+	if (!our_basename || !exe_basename)
+		return false;
+
+	*(our_basename++) = L'\0';
+	*(exe_basename++) = L'\0';
+
+	// If our DLL is located in the same directory as the exe than we are
+	// either in the common case where are being loaded out of the game
+	// directory, or this is the instance of the DLL loaded into the
+	// injector app, and we are okay with being loaded.
+	if (!_wcsicmp(our_path, exe_path))
+		return true;
+
+	LogHooking("3DMigoto loaded from outside game directory\n"
+	           "Exe directory: \"%S\" basename: \"%S\"\n"
+	           "Our directory: \"%S\" basename: \"%S\"\n",
+		   exe_path, exe_basename, our_path, our_basename);
+
+	// Restore the path separator so we can include game directories in the
+	// comparison in the event that the game's executable name is too
+	// generic to match by itself:
+	*(exe_basename-1) = L'\\';
+
+	// Check if we are being loaded as the profile helper. In this case we
+	// are loaded via rundll32, so we are not going to be in the same
+	// directory as the exe and the above check will have failed, but we
+	// also don't want to blanket pass rundll32 since the injector approach
+	// could get us into unrelated rundlls the same as anything else.
+	// For this case we will check if the command line contains our profile
+	// helper entry point. We won't bother with any further checks if it
+	// doesn't match, because the profile helper is the only reason we
+	// would ever want to be running inside rundll.
+	if (!_wcsicmp(exe_basename, L"rundll32.exe"))
+		return !!wcsstr(GetCommandLine(), L",Install3DMigotoDriverProfile ");
+
+	// Otherwise we are being loaded into some random task, and we need to
+	// filter ourselves out of any tasks that are not the intended target
+	// so that we don't cause any unintended side effects, and so that our
+	// DLL doesn't get locked by random tasks making it a pain to update
+	// during development, or for an end user to delete.
+	//
+	// To check if we are the intended task we are going to open the
+	// d3dx.ini in the directory where our DLL is located (i.e. the one
+	// shipped with the injector), find the [Injector] section and locate
+	// the target setting to verify that it matches this executable.
+	//
+	// We need to be careful not to do anything that could trigger a
+	// LoadLibrary since we are still running in DllMain, so rather than
+	// use our main config load function we will use a minimal parser here
+	// that restricts itself to Kernel32.dll API calls and the statically
+	// linked standard library that should be fairly safe, and will be
+	// faster than the main parser since we aren't populating our data
+	// structures as yet, so we can bail out of unwanted targets sooner.
+
+	wcsncat_s(our_path, MAX_PATH, L"\\d3dx.ini", _TRUNCATE);
+	f = CreateFile(our_path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (f == INVALID_HANDLE_VALUE)
+		return false;
+
+	filesize = GetFileSize(f, NULL);
+	buf = new char[filesize + 1];
+	if (!buf)
+		goto out_close;
+
+	if (!ReadFile(f, buf, filesize, &readsize, 0) || filesize != readsize)
+		goto out_free;
+
+	buf[filesize] = '\0';
+
+	section = find_ini_section_lite(buf, "injector");
+	if (!section)
+		goto out_free;
+
+	if (!find_ini_setting_lite(section, "target", target, MAX_PATH))
+		goto out_free;
+
+	// Convert to UTF16 to match the Win32 API in case there are any
+	// non-ASCII characters somewhere in the path:
+	if (!MultiByteToWideChar(CP_UTF8, 0, target, -1, target_w, MAX_PATH))
+		goto out_free;
+
+	// If we are injecting into an application with a generic name like
+	// "game.exe" we may want to check part of the directory structure as
+	// well, so we will do the comparison using the end of the full
+	// executable path.
+	target_len = wcslen(target_w);
+	exe_len = wcslen(exe_path);
+	if (exe_len < target_len)
+		goto out_free;
+
+	// Unless we are matching a full path we do expect the match be
+	// immediately following a directory separator, even if this was
+	// not explicitly stated in the target string:
+	if (target_w[0] != L'\\' && exe_len > target_len && exe_path[exe_len - target_len - 1] != L'\\')
+		goto out_free;
+
+	rc = !_wcsicmp(exe_path + exe_len - target_len, target_w);
+
+out_free:
+	delete [] buf;
+out_close:
+	CloseHandle(f);
+	return rc;
 }
 
 
@@ -153,6 +309,19 @@ BOOL WINAPI DllMain(
 	{
 		case DLL_PROCESS_ATTACH:
 			cHookMgr.SetEnableDebugOutput(bLog);
+
+			// If we are loaded via injection we will end up in
+			// every newly task in the system. We don't want that,
+			// so bail early if this is not the intended target
+			if (!verify_intended_target(hinstDLL))
+				return false;
+
+			// Hook d3d11.dll if we are loaded via injection either
+			// under a different name, or just not as the primary
+			// d3d11.dll. I'm not positive if this is the "best"
+			// way to check for this, but it seems to work:
+			if (hinstDLL != GetModuleHandleA("d3d11.dll"))
+				HookD3D11(hinstDLL);
 
 			if (FAILED(HookLoadLibraryExW()))
 				return false;
