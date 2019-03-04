@@ -67,7 +67,6 @@ static Section RegularSections[] = {
 	{L"Key", true},
 	{L"Preset", true},
 	{L"Include", true}, // Prefix so that it may be namespaced to allow included files to include more files with relative paths
-	{L"Variables", false},
 };
 
 // List of sections that will not trigger a warning if they contain a line
@@ -76,7 +75,6 @@ static Section RegularSections[] = {
 static Section AllowLinesWithoutEquals[] = {
 	{L"Profile", false},
 	{L"ShaderRegex", true},
-	{L"Variables", true},
 };
 
 static bool whitelisted_duplicate_key(const wchar_t *section, const wchar_t *key)
