@@ -7,6 +7,7 @@
 
 #include <windows.h>
 #include <stdio.h>
+#include <tlhelp32.h>
 
 static void wait_keypress(const char *msg)
 {
@@ -113,9 +114,74 @@ static void check_3dmigoto_version(const char *module_path, const char *ini_sect
 	delete [] buf;
 }
 
+static bool check_for_running_target(wchar_t *target)
+{
+	// https://docs.microsoft.com/en-us/windows/desktop/ToolHelp/taking-a-snapshot-and-viewing-processes
+	HANDLE snapshot;
+	PROCESSENTRY32 pe;
+	bool rc = false;
+	wchar_t *basename = wcsrchr(target, '\\');
+
+	if (basename)
+		basename++;
+	else
+		basename = target;
+
+	snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	if (snapshot == INVALID_HANDLE_VALUE)
+		return false;
+
+	pe.dwSize = sizeof(PROCESSENTRY32);
+	if (!Process32First(snapshot, &pe))
+		goto out_close;
+
+	do {
+		// TODO: Also check directory path if that has been specified
+		if (_wcsicmp(pe.szExeFile, basename))
+			continue;
+
+		// TODO: Check the process modules (if we have permission) to
+		// see if 3DMigoto has been injected
+
+		rc = true;
+
+		printf("Target process found (%i): %S\n", pe.th32ProcessID, pe.szExeFile);
+
+		break;
+	} while (Process32Next(snapshot, &pe));
+
+out_close:
+	CloseHandle(snapshot);
+	return rc;
+}
+
+static void wait_for_target(const char *target_a, bool wait, int delay)
+{
+	wchar_t target_w[MAX_PATH];
+
+	if (!MultiByteToWideChar(CP_UTF8, 0, target_a, -1, target_w, MAX_PATH))
+		return;
+
+	while (wait) {
+		if (check_for_running_target(target_w))
+			break;
+		Sleep(1000);
+	}
+
+	if (delay != -1) {
+		for (int i = delay; i > 0; i--) {
+			printf("Shutting down loader in %i...\r", i);
+			Sleep(1000);
+		}
+		printf("\n");
+	} else {
+		wait_keypress("\nPress enter when finished...\n");
+	}
+}
+
 int main()
 {
-	char *buf, setting[MAX_PATH], module_path[MAX_PATH];
+	char *buf, target[MAX_PATH], setting[MAX_PATH], module_path[MAX_PATH];
 	DWORD filesize, readsize;
 	const char *ini_section;
 	wchar_t path[MAX_PATH];
@@ -151,7 +217,7 @@ int main()
 	// injection method we are using cannot single out a specific process.
 	// Once 3DMigoto has been injected it into a process it will check this
 	// value and bail if it is in the wrong one.
-	if (!find_ini_setting_lite(ini_section, "target", setting, MAX_PATH))
+	if (!find_ini_setting_lite(ini_section, "target", target, MAX_PATH))
 		exit_usage("d3dx.ini [Injector] section missing required \"target\" setting\n");
 
 	if (!find_ini_setting_lite(ini_section, "module", module_path, MAX_PATH))
@@ -200,7 +266,9 @@ int main()
 		printf("3DMigoto ready - Now run the game.\n");
 	}
 
-	wait_keypress("\nPress enter when finished...\n");
+	wait_for_target(target,
+			find_ini_bool_lite(ini_section, "wait_for_target", true),
+			find_ini_int_lite(ini_section, "delay", 60));
 
 	UnhookWindowsHookEx(hook);
 	delete [] buf;
