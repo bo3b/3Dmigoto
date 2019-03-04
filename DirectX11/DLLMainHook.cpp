@@ -282,6 +282,14 @@ static bool verify_intended_target(HINSTANCE our_dll)
 
 	rc = !_wcsicmp(exe_path + exe_len - target_len, target_w);
 
+	if (rc) {
+		// Bump our refcount so we don't get unloaded if the injector
+		// application exits before the game has started initialising DirectX
+		HMODULE handle = NULL;
+		GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+				(LPCWSTR)verify_intended_target, &handle);
+	}
+
 out_free:
 	delete [] buf;
 out_close:
