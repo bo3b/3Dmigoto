@@ -190,10 +190,17 @@ int main()
 	if (!hook)
 		wait_exit(EXIT_FAILURE, "Error installing hook\n");
 
-	wait_keypress("3DMigoto ready - Now run the game.\n"
-	              "\n"
-		      "Press enter when finished...\n");
 	rc = EXIT_SUCCESS;
+
+	if (find_ini_setting_lite(ini_section, "launch", setting, MAX_PATH)) {
+		printf("3DMigoto ready, launching \"%s\"...\n", setting);
+		CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+		ShellExecuteA(NULL, NULL, setting, NULL, NULL, SW_SHOWNORMAL);
+	} else {
+		printf("3DMigoto ready - Now run the game.\n");
+	}
+
+	wait_keypress("\nPress enter when finished...\n");
 
 	UnhookWindowsHookEx(hook);
 	delete [] buf;
