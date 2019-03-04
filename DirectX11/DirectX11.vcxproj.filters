@@ -27,6 +27,7 @@
     <ClCompile Include="..\iid.cpp" />
     <ClCompile Include="..\util.cpp" />
     <ClCompile Include="profiling.cpp" />
+    <ClCompile Include="..\ini_parser_lite.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
