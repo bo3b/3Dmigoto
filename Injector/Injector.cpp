@@ -32,6 +32,87 @@ static void exit_usage(const char *msg)
 	wait_exit(EXIT_FAILURE);
 }
 
+static bool check_file_description(const char *buf, const char *module_path)
+{
+	// https://docs.microsoft.com/en-gb/windows/desktop/api/winver/nf-winver-verqueryvaluea
+	struct LANGANDCODEPAGE {
+		WORD wLanguage;
+		WORD wCodePage;
+	} *translate_query;
+	char id[50];
+	char *file_description = "";
+	unsigned int query_size, file_desc_size;
+	HRESULT hr;
+	int i;
+
+	if (!VerQueryValueA(buf, "\\VarFileInfo\\Translation", (void**)&translate_query, &query_size))
+		wait_exit(EXIT_FAILURE, "3DMigoto file information query failed\n");
+
+	// Look for the 3DMigoto file description in all language blocks... We
+	// could likely skip the loop since we know which language it should be
+	// in, but for some reason we included it in the German section which
+	// we might want to change, so this way we won't need to adjust this
+	// code if we do:
+	for (i = 0; i < (query_size / sizeof(struct LANGANDCODEPAGE)); i++) {
+		hr = _snprintf_s(id, 50, 50, "\\StringFileInfo\\%04x%04x\\FileDescription",
+				translate_query[i].wLanguage,
+				translate_query[i].wCodePage);
+		if (FAILED(hr))
+			wait_exit(EXIT_FAILURE, "3DMigoto file description query bugged\n");
+
+		if (!VerQueryValueA(buf, id, (void**)&file_description, &file_desc_size))
+			wait_exit(EXIT_FAILURE, "3DMigoto file description query failed\n");
+
+		// Only look for the 3Dmigoto prefix. We've had a whitespace
+		// error in the description for all this time that we want to
+		// ignore, and we later might want to add other 3DMigoto DLLs
+		// like d3d9 and d3d12 with injection support
+		printf("%s description: \"%s\"\n", module_path, file_description);
+		if (!strncmp(file_description, "3Dmigoto", 8))
+			return true;
+	}
+
+	return false;
+}
+
+static void check_3dmigoto_version(const char *module_path, const char *ini_section)
+{
+	VS_FIXEDFILEINFO *query = NULL;
+	DWORD pointless_handle = 0;
+	unsigned int size;
+	char *buf;
+
+	size = GetFileVersionInfoSizeA(module_path, &pointless_handle);
+	if (!size)
+		wait_exit(EXIT_FAILURE, "3DMigoto version size check failed\n");
+
+	buf = new char[size];
+
+	if (!GetFileVersionInfoA(module_path, pointless_handle, size, buf))
+		wait_exit(EXIT_FAILURE, "3DMigoto version info check failed\n");
+
+	if (!check_file_description(buf, module_path)) {
+		printf("ERROR: The requested module \"%s\" is not 3DMigoto\n"
+		       "Please ensure that [Injector] \"module\" is set correctly and the DLL is in place.", module_path);
+		wait_exit(EXIT_FAILURE);
+	}
+
+	if (!VerQueryValueA(buf, "\\", (void**)&query, &size))
+		wait_exit(EXIT_FAILURE, "3DMigoto version query check failed\n");
+
+	printf("3DMigoto Version %d.%d.%d\n",
+			query->dwProductVersionMS >> 16,
+			query->dwProductVersionMS & 0xffff,
+			query->dwProductVersionLS >> 16);
+
+	if (query->dwProductVersionMS <  0x00010003 ||
+	    query->dwProductVersionMS == 0x00010003 && query->dwProductVersionLS < 0x000f0000) {
+		wait_exit(EXIT_FAILURE, "This version of 3DMigoto is too old to be safely injected - please use 1.3.15 or later\n");
+	}
+
+	delete [] buf;
+}
+
 int main()
 {
 	char *buf, setting[MAX_PATH], module_path[MAX_PATH];
@@ -74,6 +155,16 @@ int main()
 
 	if (!find_ini_setting_lite(ini_section, "module", module_path, MAX_PATH))
 		exit_usage("d3dx.ini [Injector] section missing required \"module\" setting\n");
+
+	// We've had support for this injection method in 3DMigoto since 1.3.5,
+	// however until 1.3.15 it lacked the check in DllMain to bail out of
+	// unwanted processes, so that is the first version we consider safe to
+	// use for injection and by default we will not allow older DLLs.
+	// Disabling this version check can allow the injector to work with
+	// third party DLLs that support the same injection method, such as
+	// Helix Mod.
+	if (find_ini_bool_lite(ini_section, "check_version", true))
+		check_3dmigoto_version(module_path, ini_section);
 
 	module = LoadLibraryA(module_path);
 	if (!module) {

@@ -1,6 +1,7 @@
 #include "util_min.h"
 
 #include <ctype.h>
+#include <string.h>
 
 // Minimalistic ini file parsing routines that are intended to be safe to use
 // from DllMain. Should be fairly fast since they don't update our usual data
@@ -76,4 +77,20 @@ bool find_ini_setting_lite(const char *buf, const char *setting, char *ret, size
 		return false;
 	}
 	return false;
+}
+
+bool find_ini_bool_lite(const char *buf, const char *setting, bool def)
+{
+	char val[8];
+
+	if (!find_ini_setting_lite(buf, setting, val, 8))
+		return def;
+
+	if (!_stricmp(val, "1") || !_stricmp(val, "true") || !_stricmp(val, "yes") || !_stricmp(val, "on"))
+		return true;
+
+	if (!_stricmp(val, "0") || !_stricmp(val, "false") || !_stricmp(val, "no") || !_stricmp(val, "off"))
+		return false;
+
+	return def;
 }
