@@ -122,10 +122,11 @@ int main()
 	int rc = EXIT_FAILURE;
 	HANDLE ini_file;
 	HMODULE module;
+	int hook_proc;
 	FARPROC fn;
 	HHOOK hook;
 
-	printf("\n------------------------------ 3DMigoto Injector -----------------------------\n\n");
+	printf("\n------------------------------- 3DMigoto Loader ------------------------------\n\n");
 
 	ini_file = CreateFile(L"d3dx.ini", GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (ini_file == INVALID_HANDLE_VALUE)
@@ -175,13 +176,17 @@ int main()
 	GetModuleFileName(module, path, MAX_PATH);
 	printf("Loaded %S\n\n", path);
 
-	fn = GetProcAddress(module, "CBTProc");
+	if (find_ini_setting_lite(ini_section, "entry_point", setting, MAX_PATH))
+		fn = GetProcAddress(module, setting);
+	else
+		fn = GetProcAddress(module, "CBTProc");
 	if (!fn) {
 		wait_exit(EXIT_FAILURE, "Module does not support injection method\n"
 			"Make sure this is a recent 3DMigoto d3d11.dll\n");
 	}
 
-	hook = SetWindowsHookEx(WH_CBT, (HOOKPROC)fn, module, 0);
+	hook_proc = find_ini_int_lite(ini_section, "hook_proc", WH_CBT);
+	hook = SetWindowsHookEx(hook_proc, (HOOKPROC)fn, module, 0);
 	if (!hook)
 		wait_exit(EXIT_FAILURE, "Error installing hook\n");
 

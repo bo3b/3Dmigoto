@@ -2,6 +2,7 @@
 
 #include <ctype.h>
 #include <string.h>
+#include <stdlib.h>
 
 // Minimalistic ini file parsing routines that are intended to be safe to use
 // from DllMain. Should be fairly fast since they don't update our usual data
@@ -93,4 +94,14 @@ bool find_ini_bool_lite(const char *buf, const char *setting, bool def)
 		return false;
 
 	return def;
+}
+
+int find_ini_int_lite(const char *buf, const char *setting, int def)
+{
+	char val[16];
+
+	if (!find_ini_setting_lite(buf, setting, val, 16))
+		return def;
+
+	return atoi(val);
 }
