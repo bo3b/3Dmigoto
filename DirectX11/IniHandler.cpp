@@ -4227,6 +4227,27 @@ void InstallMouseHooks(bool hide)
 	LogInfo("Successfully hooked mouse cursor functions for hide_cursor\n");
 }
 
+static void warn_of_conflicting_d3dx(wchar_t *dll_ini_path)
+{
+	wchar_t exe_ini_path[MAX_PATH];
+	DWORD attrib;
+
+	if (!GetModuleFileName(NULL, exe_ini_path, MAX_PATH))
+		return;
+	wcsrchr(exe_ini_path, L'\\')[1] = 0;
+	wcscat(exe_ini_path, L"d3dx.ini");
+
+	if (!wcscmp(dll_ini_path, exe_ini_path))
+		return;
+
+	attrib = GetFileAttributes(exe_ini_path);
+	if (attrib == INVALID_FILE_ATTRIBUTES)
+		return;
+
+	LogOverlay(LOG_WARNING, "Detected a conflicting d3dx.ini in the game directory that is not being used.\n"
+			"Using this configuration: %S\n", dll_ini_path);
+}
+
 void LoadConfigFile()
 {
 	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
@@ -4240,6 +4261,7 @@ void LoadConfigFile()
 	wcscpy(logFilename, iniFile);
 	wcscat(iniFile, L"d3dx.ini");
 	wcscat(logFilename, L"d3d11_log.txt");
+	warn_of_conflicting_d3dx(iniFile);
 
 	// Log all settings that are _enabled_, in order, 
 	// so that there is no question what settings we are using.
@@ -4250,7 +4272,15 @@ void LoadConfigFile()
 	{
 		if (!LogFile)
 			LogFile = _wfsopen(logFilename, L"w", _SH_DENYNO);
-		LogInfo("\nD3D11 DLL starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, LogTime().c_str());
+		LogInfo("\nD3D11 DLL starting init - v %s - %s\n", VER_FILE_VERSION_STR, LogTime().c_str());
+
+		wchar_t our_path[MAX_PATH], exe_path[MAX_PATH];
+		GetModuleFileName(migoto_handle, our_path, MAX_PATH);
+		GetModuleFileName(NULL, exe_path, MAX_PATH);
+		LogInfo("Game path: %S\n"
+			"3DMigoto path: %S\n\n",
+			exe_path, our_path);
+
 		LogInfo("----------- d3dx.ini settings -----------\n");
 	}
 	LogInfo("[Logging]\n");
