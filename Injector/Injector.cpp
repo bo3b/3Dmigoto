@@ -179,6 +179,40 @@ static void wait_for_target(const char *target_a, bool wait, int delay)
 	}
 }
 
+static void elevate_privileges()
+{
+	DWORD size = sizeof(TOKEN_ELEVATION);
+	TOKEN_ELEVATION Elevation;
+	wchar_t path[MAX_PATH];
+	HANDLE token = NULL;
+	int rc;
+
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token))
+		return;
+
+	if (!GetTokenInformation(token, TokenElevation, &Elevation, sizeof(Elevation), &size)) {
+		CloseHandle(token);
+		return;
+	}
+
+	CloseHandle(token);
+
+	if (Elevation.TokenIsElevated)
+		return;
+
+	if (!GetModuleFileName(NULL, path, MAX_PATH))
+		return;
+
+	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+	rc = (int)(uintptr_t)ShellExecute(NULL, L"runas", path, NULL, NULL, SW_SHOWNORMAL);
+	if (rc > 32) // Success
+		exit(0);
+	if (rc == SE_ERR_ACCESSDENIED)
+		wait_exit(EXIT_FAILURE, "Unable to run as admin: Access Denied\n");
+	printf("Unable to run as admin: %d\n", rc);
+	wait_exit(EXIT_FAILURE);
+}
+
 int main()
 {
 	char *buf, target[MAX_PATH], setting[MAX_PATH], module_path[MAX_PATH];
@@ -236,6 +270,9 @@ int main()
 	// Helix Mod.
 	if (find_ini_bool_lite(ini_section, "check_version", true))
 		check_3dmigoto_version(module_path, ini_section);
+
+	if (find_ini_bool_lite(ini_section, "require_admin", false))
+		elevate_privileges();
 
 	module = LoadLibraryA(module_path);
 	if (!module) {
