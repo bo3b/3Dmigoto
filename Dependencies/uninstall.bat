@@ -24,6 +24,8 @@ del d3d11.pdb
 del d3d11.ilk
 del d3d11.lib
 
+del "3DMigoto Loader.exe"
+
 del D3DCompiler_39.dll
 del D3DCompiler_39_org.dll
 del D3DCompiler_39_log.txt
