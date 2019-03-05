@@ -79,7 +79,7 @@ RMDIR ".\Zip Release\" /S /Q
 REM -----------------------------------------------------------------------------
 REM Activate the VsDevCmds so that we can do MSBUILD easily.
 
-CALL "C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\Tools\VsDevCmd.bat"
+CALL "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\VsDevCmd.bat"
 
 REM -----------------------------------------------------------------------------
 echo(
