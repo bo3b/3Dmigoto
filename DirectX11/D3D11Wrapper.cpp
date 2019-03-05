@@ -1153,7 +1153,25 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 
 	if (_wcsicmp(lpLibFileName, fullPath) == 0)
 	{
-		LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
+		// If we are loaded via injection we should load from directory
+		// where the 3DMigoto DLL resides rather than the game directory.
+		// However, if the request is for nvapi and that file is missing
+		// attempting the LoadLibrary by the abolute path will fail. So,
+		// try by the absolute path first, then fall back to just the
+		// library name.
+		if (GetModuleFileName(migoto_handle, fullPath, MAX_PATH)) {
+			wcsrchr(fullPath, L'\\')[1] = '\0';
+			wcscat(fullPath, library);
+
+			LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n",
+					lpLibFileName, fullPath);
+
+			HMODULE ret = fnOrigLoadLibraryExW(fullPath, hFile, dwFlags);
+			if (ret)
+				return ret;
+		}
+
+		LogInfoW(L"Replaced Hooked_LoadLibraryExW fallback for: %s to %s.\n", lpLibFileName, library);
 
 		return fnOrigLoadLibraryExW(library, hFile, dwFlags);
 	}
