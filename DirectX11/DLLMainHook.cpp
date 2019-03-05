@@ -229,7 +229,7 @@ static bool verify_intended_target(HINSTANCE our_dll)
 	//
 	// To check if we are the intended task we are going to open the
 	// d3dx.ini in the directory where our DLL is located (i.e. the one
-	// shipped with the injector), find the [Injector] section and locate
+	// shipped with the injector), find the [Loader] section and locate
 	// the target setting to verify that it matches this executable.
 	//
 	// We need to be careful not to do anything that could trigger a
@@ -255,7 +255,7 @@ static bool verify_intended_target(HINSTANCE our_dll)
 
 	buf[filesize] = '\0';
 
-	section = find_ini_section_lite(buf, "injector");
+	section = find_ini_section_lite(buf, "loader");
 	if (!section)
 		goto out_free;
 

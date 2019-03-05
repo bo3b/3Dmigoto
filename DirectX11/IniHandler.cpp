@@ -67,7 +67,7 @@ static Section RegularSections[] = {
 	{L"Key", true},
 	{L"Preset", true},
 	{L"Include", true}, // Prefix so that it may be namespaced to allow included files to include more files with relative paths
-	{L"Injector", false},
+	{L"Loader", false},
 };
 
 // List of sections that will not trigger a warning if they contain a line

@@ -24,8 +24,8 @@ static void wait_exit(int code=0, char *msg="\nPress enter to close...\n")
 static void exit_usage(const char *msg)
 {
 	//                                                          80 column limit --------> \n
-	printf("The injector is not configured correctly. Please copy the 3DMigoto d3d11.dll\n"
-	       "and d3dx.ini into this directory, then edit the d3dx.ini's [Injector] section\n"
+	printf("The Loader is not configured correctly. Please copy the 3DMigoto d3d11.dll\n"
+	       "and d3dx.ini into this directory, then edit the d3dx.ini's [Loader] section\n"
 	       "to set the target executable and 3DMigoto module name.\n"
 	       "\n"
 	       "%s", msg);
@@ -94,7 +94,7 @@ static void check_3dmigoto_version(const char *module_path, const char *ini_sect
 
 	if (!check_file_description(buf, module_path)) {
 		printf("ERROR: The requested module \"%s\" is not 3DMigoto\n"
-		       "Please ensure that [Injector] \"module\" is set correctly and the DLL is in place.", module_path);
+		       "Please ensure that [Loader] \"module\" is set correctly and the DLL is in place.", module_path);
 		wait_exit(EXIT_FAILURE);
 	}
 
@@ -108,7 +108,7 @@ static void check_3dmigoto_version(const char *module_path, const char *ini_sect
 
 	if (query->dwProductVersionMS <  0x00010003 ||
 	    query->dwProductVersionMS == 0x00010003 && query->dwProductVersionLS < 0x000f0000) {
-		wait_exit(EXIT_FAILURE, "This version of 3DMigoto is too old to be safely injected - please use 1.3.15 or later\n");
+		wait_exit(EXIT_FAILURE, "This version of 3DMigoto is too old to be safely loaded - please use 1.3.15 or later\n");
 	}
 
 	delete [] buf;
@@ -226,7 +226,7 @@ int main()
 	FARPROC fn;
 	HHOOK hook;
 
-	CreateMutexA(0, FALSE, "Local\\3DMigotoInjector");
+	CreateMutexA(0, FALSE, "Local\\3DMigotoLoader");
 	if (GetLastError() == ERROR_ALREADY_EXISTS)
 		wait_exit(EXIT_FAILURE, "ERROR: Another instance of the 3DMigoto Loader is already running. Please close it and try again\n");
 
@@ -246,9 +246,9 @@ int main()
 
 	CloseHandle(ini_file);
 
-	ini_section = find_ini_section_lite(buf, "injector");
+	ini_section = find_ini_section_lite(buf, "loader");
 	if (!ini_section)
-		exit_usage("d3dx.ini missing required [Injector] section\n");
+		exit_usage("d3dx.ini missing required [Loader] section\n");
 
 	// Check that the target is configured. We don't do anything with this
 	// setting from here other than to make sure it is set, because the
@@ -256,10 +256,10 @@ int main()
 	// Once 3DMigoto has been injected it into a process it will check this
 	// value and bail if it is in the wrong one.
 	if (!find_ini_setting_lite(ini_section, "target", target, MAX_PATH))
-		exit_usage("d3dx.ini [Injector] section missing required \"target\" setting\n");
+		exit_usage("d3dx.ini [Loader] section missing required \"target\" setting\n");
 
 	if (!find_ini_setting_lite(ini_section, "module", module_path, MAX_PATH))
-		exit_usage("d3dx.ini [Injector] section missing required \"module\" setting\n");
+		exit_usage("d3dx.ini [Loader] section missing required \"module\" setting\n");
 
 	// We've had support for this injection method in 3DMigoto since 1.3.5,
 	// however until 1.3.15 it lacked the check in DllMain to bail out of
