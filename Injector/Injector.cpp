@@ -115,7 +115,7 @@ static void check_3dmigoto_version(const char *module_path, const char *ini_sect
 	delete [] buf;
 }
 
-static bool verify_injection(DWORD pid, const wchar_t *module)
+static bool verify_injection(PROCESSENTRY32 *pe, const wchar_t *module, bool log_name)
 {
 	HANDLE snapshot;
 	MODULEENTRY32 me;
@@ -129,18 +129,24 @@ static bool verify_injection(DWORD pid, const wchar_t *module)
 		basename = module;
 
 	do {
-		snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, pid);
+		snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, pe->th32ProcessID);
 	} while (snapshot == INVALID_HANDLE_VALUE && GetLastError() == ERROR_BAD_LENGTH);
 	if (snapshot == INVALID_HANDLE_VALUE) {
-		printf("%d: Unable to verify if 3DMigoto was successfully loaded: %d\n", pid, GetLastError());
+		printf("%S (%d): Unable to verify if 3DMigoto was successfully loaded: %d\n",
+				pe->szExeFile, pe->th32ProcessID, GetLastError());
 		return false;
 	}
 
 	me.dwSize = sizeof(MODULEENTRY32);
 	if (!Module32First(snapshot, &me)) {
-		printf("%d: Unable to verify if 3DMigoto was successfully loaded: %d\n", pid, GetLastError());
+		printf("%S (%d): Unable to verify if 3DMigoto was successfully loaded: %d\n",
+				pe->szExeFile, pe->th32ProcessID, GetLastError());
 		goto out_close;
 	}
+
+	// First module is the executable, and this is how we get the full path:
+	if (log_name)
+		printf("Target process found (%i): %S\n", pe->th32ProcessID, me.szExePath);
 
 	rc = false;
 	do {
@@ -148,9 +154,9 @@ static bool verify_injection(DWORD pid, const wchar_t *module)
 			continue;
 
 		if (!_wcsicmp(me.szExePath, module)) {
-			if (!pids.count(pid)) {
-				printf("%d: 3DMigoto loaded :)\n", pid);
-				pids.insert(pid);
+			if (!pids.count(pe->th32ProcessID)) {
+				printf("%d: 3DMigoto loaded :)\n", pe->th32ProcessID);
+				pids.insert(pe->th32ProcessID);
 			}
 			rc = true;
 		}
@@ -191,11 +197,8 @@ static bool check_for_running_target(wchar_t *target, const wchar_t *module)
 		if (_wcsicmp(pe.szExeFile, basename))
 			continue;
 
-		if (!pids.count(pe.th32ProcessID)) {
-			printf("Target process found (%i): %S\n", pe.th32ProcessID, pe.szExeFile);
-			pids.insert(pe.th32ProcessID);
-		}
-		rc = verify_injection(pe.th32ProcessID, module) || rc;
+		rc = verify_injection(&pe, module, !pids.count(pe.th32ProcessID)) || rc;
+		pids.insert(pe.th32ProcessID);
 	} while (Process32Next(snapshot, &pe));
 
 out_close:
