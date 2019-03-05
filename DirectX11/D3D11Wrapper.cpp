@@ -50,11 +50,17 @@ static bool InitializeDLL()
 	// Preload OUR nvapi before we call init because we need some of our calls.
 #if(_WIN64)
 #define NVAPI_DLL L"nvapi64.dll"
-#else 
+#else
 #define NVAPI_DLL L"nvapi.dll"
 #endif
 
-	LoadLibrary(NVAPI_DLL);
+	// Load our nvapi wrapper from the same directory as our DLL, for injection cases
+	wchar_t nvapi_path[MAX_PATH];
+	if (GetModuleFileName(migoto_handle, nvapi_path, MAX_PATH)) {
+		wcsrchr(nvapi_path, L'\\')[1] = '\0';
+		wcscat(nvapi_path, NVAPI_DLL);
+		LoadLibrary(nvapi_path);
+	}
 
 	NvAPI_ShortString errorMessage;
 	NvAPI_Status status;

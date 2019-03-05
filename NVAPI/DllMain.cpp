@@ -173,7 +173,15 @@ FILE *LogFile = 0;
 static void LoadConfigFile()
 {
 	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
-	GetModuleFileName(0, iniFile, MAX_PATH);
+	HMODULE module = NULL;
+
+	// Get a handle to our own DLL for cases were we are not running from
+	// the game directory
+	GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+			| GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+			(LPCWSTR)LoadConfigFile, &module);
+
+	GetModuleFileName(module, iniFile, MAX_PATH);
 	wcsrchr(iniFile, L'\\')[1] = 0;
 	wcscpy(logFilename, iniFile);
 	wcscat(iniFile, L"d3dx.ini");
