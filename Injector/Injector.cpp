@@ -45,7 +45,7 @@ static bool check_file_description(const char *buf, const char *module_path)
 	char *file_description = "";
 	unsigned int query_size, file_desc_size;
 	HRESULT hr;
-	int i;
+	unsigned i;
 
 	if (!VerQueryValueA(buf, "\\VarFileInfo\\Translation", (void**)&translate_query, &query_size))
 		wait_exit(EXIT_FAILURE, "3DMigoto file information query failed\n");
