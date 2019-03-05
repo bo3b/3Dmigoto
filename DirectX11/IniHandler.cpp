@@ -4613,13 +4613,13 @@ void LoadConfigFile()
 // game's executable passed in. It doesn't need to parse most of the config,
 // only the [Profile] section and some of the logging. It uses a separate log
 // file from the main DLL.
-void LoadProfileManagerConfig(const wchar_t *exe_path)
+void LoadProfileManagerConfig(const wchar_t *config_dir)
 {
 	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
 
 	G->gInitialized = true;
 
-	if (wcscpy_s(iniFile, MAX_PATH, exe_path))
+	if (wcscpy_s(iniFile, MAX_PATH, config_dir))
 		DoubleBeepExit();
 	wcsrchr(iniFile, L'\\')[1] = 0;
 	wcscpy(logFilename, iniFile);
