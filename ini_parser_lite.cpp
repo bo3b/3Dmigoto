@@ -19,8 +19,8 @@ static const char* skip_space(const char *buf)
 // Returns a pointer to the next non-whitespace character on a following line
 static const char* next_line(const char *buf)
 {
-	for (; *buf != '\0' && *buf != '\n'; buf++) {}
-	for (; *buf == '\n' || *buf == ' ' || *buf == '\t'; buf++) {}
+	for (; *buf != '\0' && *buf != '\n' && *buf != '\r'; buf++) {}
+	for (; *buf == '\n' || *buf == '\r' || *buf == ' ' || *buf == '\t'; buf++) {}
 	return buf;
 }
 
@@ -67,9 +67,9 @@ bool find_ini_setting_lite(const char *buf, const char *setting, char *ret, size
 		buf = skip_space(buf + 1);
 		for (i = 0, r = ret; i < n; i++, buf++, r++) {
 			*r = *buf;
-			if (*buf == '\n' || *buf == '\0') {
+			if (*buf == '\n' || *buf == '\r' || *buf == '\0') {
 				// Null terminate return buffer and strip any whitespace from EOL:
-				for (; r >= ret && (*r == '\0' || *r == '\n' || *r == ' ' || *r == '\t'); r--)
+				for (; r >= ret && (*r == '\0' || *r == '\n' || *r == '\r' || *r == ' ' || *r == '\t'); r--)
 					*r = '\0';
 				return true;
 			}
