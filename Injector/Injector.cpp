@@ -8,6 +8,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <tlhelp32.h>
+#include <set>
 
 static void wait_keypress(const char *msg)
 {
@@ -114,13 +115,60 @@ static void check_3dmigoto_version(const char *module_path, const char *ini_sect
 	delete [] buf;
 }
 
-static bool check_for_running_target(wchar_t *target)
+static bool verify_injection(DWORD pid, const wchar_t *module)
+{
+	HANDLE snapshot;
+	MODULEENTRY32 me;
+	const wchar_t *basename = wcsrchr(module, '\\');
+	bool rc = false;
+	static std::set<DWORD> pids;
+
+	if (basename)
+		basename++;
+	else
+		basename = module;
+
+	do {
+		snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, pid);
+	} while (snapshot == INVALID_HANDLE_VALUE && GetLastError() == ERROR_BAD_LENGTH);
+	if (snapshot == INVALID_HANDLE_VALUE) {
+		printf("%d: Unable to verify if 3DMigoto was successfully loaded: %d\n", pid, GetLastError());
+		return false;
+	}
+
+	me.dwSize = sizeof(MODULEENTRY32);
+	if (!Module32First(snapshot, &me)) {
+		printf("%d: Unable to verify if 3DMigoto was successfully loaded: %d\n", pid, GetLastError());
+		goto out_close;
+	}
+
+	rc = false;
+	do {
+		if (_wcsicmp(me.szModule, basename))
+			continue;
+
+		if (!_wcsicmp(me.szExePath, module)) {
+			if (!pids.count(pid)) {
+				printf("%d: 3DMigoto loaded :)\n", pid);
+				pids.insert(pid);
+			}
+			rc = true;
+		}
+	} while (Module32Next(snapshot, &me));
+
+out_close:
+	CloseHandle(snapshot);
+	return rc;
+}
+
+static bool check_for_running_target(wchar_t *target, const wchar_t *module)
 {
 	// https://docs.microsoft.com/en-us/windows/desktop/ToolHelp/taking-a-snapshot-and-viewing-processes
 	HANDLE snapshot;
 	PROCESSENTRY32 pe;
 	bool rc = false;
 	wchar_t *basename = wcsrchr(target, '\\');
+	static std::set<DWORD> pids;
 
 	if (basename)
 		basename++;
@@ -128,26 +176,26 @@ static bool check_for_running_target(wchar_t *target)
 		basename = target;
 
 	snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-	if (snapshot == INVALID_HANDLE_VALUE)
+	if (snapshot == INVALID_HANDLE_VALUE) {
+		printf("Unable to verify if 3DMigoto was successfully loaded: %d\n", GetLastError());
 		return false;
+	}
 
 	pe.dwSize = sizeof(PROCESSENTRY32);
-	if (!Process32First(snapshot, &pe))
+	if (!Process32First(snapshot, &pe)) {
+		printf("Unable to verify if 3DMigoto was successfully loaded: %d\n", GetLastError());
 		goto out_close;
+	}
 
 	do {
-		// TODO: Also check directory path if that has been specified
 		if (_wcsicmp(pe.szExeFile, basename))
 			continue;
 
-		// TODO: Check the process modules (if we have permission) to
-		// see if 3DMigoto has been injected
-
-		rc = true;
-
-		printf("Target process found (%i): %S\n", pe.th32ProcessID, pe.szExeFile);
-
-		break;
+		if (!pids.count(pe.th32ProcessID)) {
+			printf("Target process found (%i): %S\n", pe.th32ProcessID, pe.szExeFile);
+			pids.insert(pe.th32ProcessID);
+		}
+		rc = verify_injection(pe.th32ProcessID, module) || rc;
 	} while (Process32Next(snapshot, &pe));
 
 out_close:
@@ -155,28 +203,25 @@ out_close:
 	return rc;
 }
 
-static void wait_for_target(const char *target_a, bool wait, int delay)
+static void wait_for_target(const char *target_a, const wchar_t *module_path, bool wait, int delay)
 {
 	wchar_t target_w[MAX_PATH];
 
 	if (!MultiByteToWideChar(CP_UTF8, 0, target_a, -1, target_w, MAX_PATH))
 		return;
 
-	while (wait) {
-		if (check_for_running_target(target_w))
+	while (wait || delay == -1) {
+		if (check_for_running_target(target_w, module_path) && delay != -1)
 			break;
 		Sleep(1000);
 	}
 
-	if (delay != -1) {
-		for (int i = delay; i > 0; i--) {
-			printf("Shutting down loader in %i...\r", i);
-			Sleep(1000);
-		}
-		printf("\n");
-	} else {
-		wait_keypress("\nPress enter when finished...\n");
+	for (int i = delay; i > 0; i--) {
+		printf("Shutting down loader in %i...\r", i);
+		Sleep(1000);
+		check_for_running_target(target_w, module_path);
 	}
+	printf("\n");
 }
 
 static void elevate_privileges()
@@ -218,7 +263,7 @@ int main()
 	char *buf, target[MAX_PATH], setting[MAX_PATH], module_path[MAX_PATH];
 	DWORD filesize, readsize;
 	const char *ini_section;
-	wchar_t path[MAX_PATH];
+	wchar_t module_full_path[MAX_PATH];
 	int rc = EXIT_FAILURE;
 	HANDLE ini_file;
 	HMODULE module;
@@ -280,8 +325,8 @@ int main()
 		wait_exit(EXIT_FAILURE);
 	}
 
-	GetModuleFileName(module, path, MAX_PATH);
-	printf("Loaded %S\n\n", path);
+	GetModuleFileName(module, module_full_path, MAX_PATH);
+	printf("Loaded %S\n\n", module_full_path);
 
 	if (find_ini_setting_lite(ini_section, "entry_point", setting, MAX_PATH))
 		fn = GetProcAddress(module, setting);
@@ -307,9 +352,9 @@ int main()
 		printf("3DMigoto ready - Now run the game.\n");
 	}
 
-	wait_for_target(target,
+	wait_for_target(target, module_full_path,
 			find_ini_bool_lite(ini_section, "wait_for_target", true),
-			find_ini_int_lite(ini_section, "delay", 60));
+			find_ini_int_lite(ini_section, "delay", 0));
 
 	UnhookWindowsHookEx(hook);
 	delete [] buf;
