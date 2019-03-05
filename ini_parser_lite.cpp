@@ -1,6 +1,8 @@
 #include "util_min.h"
 
 #include <ctype.h>
+#include <string.h>
+#include <stdlib.h>
 
 // Minimalistic ini file parsing routines that are intended to be safe to use
 // from DllMain. Should be fairly fast since they don't update our usual data
@@ -17,8 +19,8 @@ static const char* skip_space(const char *buf)
 // Returns a pointer to the next non-whitespace character on a following line
 static const char* next_line(const char *buf)
 {
-	for (; *buf != '\0' && *buf != '\n'; buf++) {}
-	for (; *buf == '\n' || *buf == ' ' || *buf == '\t'; buf++) {}
+	for (; *buf != '\0' && *buf != '\n' && *buf != '\r'; buf++) {}
+	for (; *buf == '\n' || *buf == '\r' || *buf == ' ' || *buf == '\t'; buf++) {}
 	return buf;
 }
 
@@ -65,9 +67,9 @@ bool find_ini_setting_lite(const char *buf, const char *setting, char *ret, size
 		buf = skip_space(buf + 1);
 		for (i = 0, r = ret; i < n; i++, buf++, r++) {
 			*r = *buf;
-			if (*buf == '\n' || *buf == '\0') {
+			if (*buf == '\n' || *buf == '\r' || *buf == '\0') {
 				// Null terminate return buffer and strip any whitespace from EOL:
-				for (; r >= ret && (*r == '\0' || *r == '\n' || *r == ' ' || *r == '\t'); r--)
+				for (; r >= ret && (*r == '\0' || *r == '\n' || *r == '\r' || *r == ' ' || *r == '\t'); r--)
 					*r = '\0';
 				return true;
 			}
@@ -76,4 +78,30 @@ bool find_ini_setting_lite(const char *buf, const char *setting, char *ret, size
 		return false;
 	}
 	return false;
+}
+
+bool find_ini_bool_lite(const char *buf, const char *setting, bool def)
+{
+	char val[8];
+
+	if (!find_ini_setting_lite(buf, setting, val, 8))
+		return def;
+
+	if (!_stricmp(val, "1") || !_stricmp(val, "true") || !_stricmp(val, "yes") || !_stricmp(val, "on"))
+		return true;
+
+	if (!_stricmp(val, "0") || !_stricmp(val, "false") || !_stricmp(val, "no") || !_stricmp(val, "off"))
+		return false;
+
+	return def;
+}
+
+int find_ini_int_lite(const char *buf, const char *setting, int def)
+{
+	char val[16];
+
+	if (!find_ini_setting_lite(buf, setting, val, 16))
+		return def;
+
+	return atoi(val);
 }

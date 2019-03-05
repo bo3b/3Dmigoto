@@ -4,6 +4,8 @@
 #include "D3D11Wrapper.h"
 #include "util_min.h"
 
+HINSTANCE migoto_handle;
+
 // ----------------------------------------------------------------------------
 // Add in Deviare in-proc for hooking system traps using a Detours approach.  We need access to the
 // LoadLibrary call to fix the problem of nvapi.dll bypassing our local patches to the d3d11, when
@@ -227,7 +229,7 @@ static bool verify_intended_target(HINSTANCE our_dll)
 	//
 	// To check if we are the intended task we are going to open the
 	// d3dx.ini in the directory where our DLL is located (i.e. the one
-	// shipped with the injector), find the [Injector] section and locate
+	// shipped with the injector), find the [Loader] section and locate
 	// the target setting to verify that it matches this executable.
 	//
 	// We need to be careful not to do anything that could trigger a
@@ -253,7 +255,7 @@ static bool verify_intended_target(HINSTANCE our_dll)
 
 	buf[filesize] = '\0';
 
-	section = find_ini_section_lite(buf, "injector");
+	section = find_ini_section_lite(buf, "loader");
 	if (!section)
 		goto out_free;
 
@@ -282,6 +284,14 @@ static bool verify_intended_target(HINSTANCE our_dll)
 
 	rc = !_wcsicmp(exe_path + exe_len - target_len, target_w);
 
+	if (rc) {
+		// Bump our refcount so we don't get unloaded if the injector
+		// application exits before the game has started initialising DirectX
+		HMODULE handle = NULL;
+		GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+				(LPCWSTR)verify_intended_target, &handle);
+	}
+
 out_free:
 	delete [] buf;
 out_close:
@@ -308,6 +318,7 @@ BOOL WINAPI DllMain(
 	switch (fdwReason)
 	{
 		case DLL_PROCESS_ATTACH:
+			migoto_handle = hinstDLL;
 			cHookMgr.SetEnableDebugOutput(bLog);
 
 			// If we are loaded via injection we will end up in

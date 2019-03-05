@@ -50,11 +50,17 @@ static bool InitializeDLL()
 	// Preload OUR nvapi before we call init because we need some of our calls.
 #if(_WIN64)
 #define NVAPI_DLL L"nvapi64.dll"
-#else 
+#else
 #define NVAPI_DLL L"nvapi.dll"
 #endif
 
-	LoadLibrary(NVAPI_DLL);
+	// Load our nvapi wrapper from the same directory as our DLL, for injection cases
+	wchar_t nvapi_path[MAX_PATH];
+	if (GetModuleFileName(migoto_handle, nvapi_path, MAX_PATH)) {
+		wcsrchr(nvapi_path, L'\\')[1] = '\0';
+		wcscat(nvapi_path, NVAPI_DLL);
+		LoadLibrary(nvapi_path);
+	}
 
 	NvAPI_ShortString errorMessage;
 	NvAPI_Status status;
@@ -391,7 +397,7 @@ void InitD311()
 		G->load_library_redirect = 0;
 
 		wchar_t sysDir[MAX_PATH] = {0};
-		if (!GetModuleFileName(0, sysDir, MAX_PATH)) {
+		if (!GetModuleFileName(migoto_handle, sysDir, MAX_PATH)) {
 			LogInfo("GetModuleFileName failed\n");
 			DoubleBeepExit();
 		}
@@ -1147,7 +1153,25 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 
 	if (_wcsicmp(lpLibFileName, fullPath) == 0)
 	{
-		LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
+		// If we are loaded via injection we should load from directory
+		// where the 3DMigoto DLL resides rather than the game directory.
+		// However, if the request is for nvapi and that file is missing
+		// attempting the LoadLibrary by the abolute path will fail. So,
+		// try by the absolute path first, then fall back to just the
+		// library name.
+		if (GetModuleFileName(migoto_handle, fullPath, MAX_PATH)) {
+			wcsrchr(fullPath, L'\\')[1] = '\0';
+			wcscat(fullPath, library);
+
+			LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n",
+					lpLibFileName, fullPath);
+
+			HMODULE ret = fnOrigLoadLibraryExW(fullPath, hFile, dwFlags);
+			if (ret)
+				return ret;
+		}
+
+		LogInfoW(L"Replaced Hooked_LoadLibraryExW fallback for: %s to %s.\n", lpLibFileName, library);
 
 		return fnOrigLoadLibraryExW(library, hFile, dwFlags);
 	}

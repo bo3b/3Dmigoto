@@ -1897,7 +1897,7 @@ static BOOL CreateDeferredFADirectory(LPCWSTR path)
 void FrameAnalysisContext::get_deduped_dir(wchar_t *path, size_t size)
 {
 	if (analyse_options & FrameAnalysisOptions::SHARE_DEDUPED) {
-		if (!GetModuleFileName(0, path, (DWORD)size))
+		if (!GetModuleFileName(migoto_handle, path, (DWORD)size))
 			return;
 		wcsrchr(path, L'\\')[1] = 0;
 		wcscat_s(path, size, L"FrameAnalysisDeduped");

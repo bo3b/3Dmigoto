@@ -245,7 +245,7 @@ void DumpUsage(wchar_t *dir)
 		wcscpy(path, dir);
 		wcscat(path, L"\\");
 	} else {
-		if (!GetModuleFileName(0, path, MAX_PATH))
+		if (!GetModuleFileName(migoto_handle, path, MAX_PATH))
 			return;
 		wcsrchr(path, L'\\')[1] = 0;
 	}
@@ -1202,7 +1202,7 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 	_localtime64_s(&tm, &ltime);
 	wcsftime(subdir, MAX_PATH, L"FrameAnalysis-%Y-%m-%d-%H%M%S", &tm);
 
-	if (!GetModuleFileName(0, path, MAX_PATH))
+	if (!GetModuleFileName(migoto_handle, path, MAX_PATH))
 		return;
 	wcsrchr(path, L'\\')[1] = 0;
 	wcscat_s(path, MAX_PATH, subdir);

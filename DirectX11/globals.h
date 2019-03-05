@@ -17,6 +17,7 @@
 #include "CommandList.h"
 #include "profiling.h"
 
+extern HINSTANCE migoto_handle;
 
 // Resolve circular include dependency between Globals.h ->
 // CommandList.h -> HackerContext.h -> Globals.h

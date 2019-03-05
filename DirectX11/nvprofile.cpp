@@ -1136,9 +1136,10 @@ static void spawn_privileged_profile_helper_task()
 		}
 	}
 
-	// Now we no longer need the long path, turn it into the directory so
-	// that the new process starts in the right directory to find d3dx.ini,
-	// even if the game has changed to a different directory:
+	// Now we no longer need the long path, turn it into the directory that
+	// we can pass to the new process to be able to find the d3dx.ini, even
+	// if we are injected from outside the game directory and/or the helper
+	// is running out of tmp:
 	wcsrchr(migoto_long_path, L'\\')[1] = 0;
 
 	// Since the new process will be rundll, pass in the full path to the
@@ -1150,12 +1151,14 @@ static void spawn_privileged_profile_helper_task()
 	params = migoto_short_path;
 	params += L",Install3DMigotoDriverProfile ";
 	params += game_path;
+	params += L"|";
+	params += migoto_long_path;
 
 	info.cbSize = sizeof(info);
 	info.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC;
 	info.lpVerb = L"runas";
 	info.lpFile = rundll_path;
-	info.lpDirectory = migoto_long_path;
+	info.lpDirectory = migoto_long_path; // rundll seems to ignore this
 	info.lpParameters = params.c_str();
 	info.nShow = SW_HIDE;
 
@@ -1440,10 +1443,13 @@ void CALLBACK Install3DMigotoDriverProfileW(HWND hwnd, HINSTANCE hinst, LPWSTR l
 	NvDRSSessionHandle session = 0;
 	NvDRSProfileHandle profile = 0;
 	NvAPI_Status status = NVAPI_OK;
+	static wchar_t *migoto_dir;
 
+	migoto_dir = wcschr(lpszCmdLine, L'|');
+	*(migoto_dir++) = '\0';
 	exe_path = lpszCmdLine;
 
-	LoadProfileManagerConfig(exe_path);
+	LoadProfileManagerConfig(migoto_dir);
 
 	// Preload OUR nvapi before we call init because we need some of our calls.
 #if(_WIN64)
