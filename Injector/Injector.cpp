@@ -122,6 +122,7 @@ static bool verify_injection(PROCESSENTRY32 *pe, const wchar_t *module, bool log
 	const wchar_t *basename = wcsrchr(module, '\\');
 	bool rc = false;
 	static std::set<DWORD> pids;
+	wchar_t exe_path[MAX_PATH], mod_path[MAX_PATH];
 
 	if (basename)
 		basename++;
@@ -147,9 +148,10 @@ static bool verify_injection(PROCESSENTRY32 *pe, const wchar_t *module, bool log
 	// First module is the executable, and this is how we get the full path:
 	if (log_name)
 		printf("Target process found (%i): %S\n", pe->th32ProcessID, me.szExePath);
+	wcscpy_s(exe_path, MAX_PATH, me.szExePath);
 
 	rc = false;
-	do {
+	while (Module32Next(snapshot, &me)) {
 		if (_wcsicmp(me.szModule, basename))
 			continue;
 
@@ -159,8 +161,20 @@ static bool verify_injection(PROCESSENTRY32 *pe, const wchar_t *module, bool log
 				pids.insert(pe->th32ProcessID);
 			}
 			rc = true;
+		} else {
+			wcscpy_s(mod_path, MAX_PATH, me.szExePath);
+			wcsrchr(exe_path, L'\\')[1] = '\0';
+			wcsrchr(mod_path, L'\\')[1] = '\0';
+			if (!_wcsicmp(exe_path, mod_path)) {
+				printf("\n\n\n"
+				       "WARNING: Found a second copy of 3DMigoto loaded from the game directory:\n"
+				       "%S\n"
+				       "This may crash - please remove the copy in the game directory and try again\n\n\n",
+				       me.szExePath);
+				wait_exit(EXIT_FAILURE);
+			}
 		}
-	} while (Module32Next(snapshot, &me));
+	}
 
 out_close:
 	CloseHandle(snapshot);
