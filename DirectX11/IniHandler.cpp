@@ -1161,7 +1161,7 @@ static void ParseIncludedIniFiles()
 	vector<pcre2_code*> exclude;
 	DWORD attrib;
 
-	GetModuleFileName(0, migoto_path, MAX_PATH);
+	GetModuleFileName(migoto_handle, migoto_path, MAX_PATH);
 	wcsrchr(migoto_path, L'\\')[1] = 0;
 
 	// Grab the user_config path before the below code removes it from the
@@ -1672,7 +1672,7 @@ static void ParseResourceSections()
 			get_namespaced_section_path(i->first.c_str(), &namespace_path);
 			found = false;
 			if (!namespace_path.empty()) {
-				GetModuleFileName(0, path, MAX_PATH);
+				GetModuleFileName(migoto_handle, path, MAX_PATH);
 				wcsrchr(path, L'\\')[1] = 0;
 				wcscat(path, namespace_path.c_str());
 				wcscat(path, setting);
@@ -1680,7 +1680,7 @@ static void ParseResourceSections()
 					found = true;
 			}
 			if (!found) {
-				GetModuleFileName(0, path, MAX_PATH);
+				GetModuleFileName(migoto_handle, path, MAX_PATH);
 				wcsrchr(path, L'\\')[1] = 0;
 				wcscat(path, setting);
 			}
@@ -4234,7 +4234,7 @@ void LoadConfigFile()
 
 	G->gInitialized = true;
 
-	if (!GetModuleFileName(0, iniFile, MAX_PATH))
+	if (!GetModuleFileName(migoto_handle, iniFile, MAX_PATH))
 		DoubleBeepExit();
 	wcsrchr(iniFile, L'\\')[1] = 0;
 	wcscpy(logFilename, iniFile);
@@ -4361,7 +4361,7 @@ void LoadConfigFile()
 			G->SHADER_PATH[wcslen(G->SHADER_PATH) - 1] = 0;
 		if (G->SHADER_PATH[1] != ':' && G->SHADER_PATH[0] != '\\')
 		{
-			GetModuleFileName(0, setting, MAX_PATH);
+			GetModuleFileName(migoto_handle, setting, MAX_PATH);
 			wcsrchr(setting, L'\\')[1] = 0;
 			wcscat(setting, G->SHADER_PATH);
 			wcscpy(G->SHADER_PATH, setting);
@@ -4375,7 +4375,7 @@ void LoadConfigFile()
 			G->SHADER_CACHE_PATH[wcslen(G->SHADER_CACHE_PATH) - 1] = 0;
 		if (G->SHADER_CACHE_PATH[1] != ':' && G->SHADER_CACHE_PATH[0] != '\\')
 		{
-			GetModuleFileName(0, setting, MAX_PATH);
+			GetModuleFileName(migoto_handle, setting, MAX_PATH);
 			wcsrchr(setting, L'\\')[1] = 0;
 			wcscat(setting, G->SHADER_CACHE_PATH);
 			wcscpy(G->SHADER_CACHE_PATH, setting);

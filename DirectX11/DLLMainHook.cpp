@@ -4,6 +4,8 @@
 #include "D3D11Wrapper.h"
 #include "util_min.h"
 
+HINSTANCE migoto_handle;
+
 // ----------------------------------------------------------------------------
 // Add in Deviare in-proc for hooking system traps using a Detours approach.  We need access to the
 // LoadLibrary call to fix the problem of nvapi.dll bypassing our local patches to the d3d11, when
@@ -316,6 +318,7 @@ BOOL WINAPI DllMain(
 	switch (fdwReason)
 	{
 		case DLL_PROCESS_ATTACH:
+			migoto_handle = hinstDLL;
 			cHookMgr.SetEnableDebugOutput(bLog);
 
 			// If we are loaded via injection we will end up in

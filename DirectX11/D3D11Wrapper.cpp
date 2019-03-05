@@ -391,7 +391,7 @@ void InitD311()
 		G->load_library_redirect = 0;
 
 		wchar_t sysDir[MAX_PATH] = {0};
-		if (!GetModuleFileName(0, sysDir, MAX_PATH)) {
+		if (!GetModuleFileName(migoto_handle, sysDir, MAX_PATH)) {
 			LogInfo("GetModuleFileName failed\n");
 			DoubleBeepExit();
 		}

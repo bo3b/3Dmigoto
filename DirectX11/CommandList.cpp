@@ -1779,7 +1779,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 	// first, then try relative to the 3DMigoto directory:
 	found = false;
 	if (!namespace_path->empty()) {
-		GetModuleFileName(0, wpath, MAX_PATH);
+		GetModuleFileName(migoto_handle, wpath, MAX_PATH);
 		wcsrchr(wpath, L'\\')[1] = 0;
 		wcscat(wpath, namespace_path->c_str());
 		wcscat(wpath, filename);
@@ -1787,7 +1787,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 			found = true;
 	}
 	if (!found) {
-		if (!GetModuleFileName(0, wpath, MAX_PATH)) {
+		if (!GetModuleFileName(migoto_handle, wpath, MAX_PATH)) {
 			LogOverlay(LOG_DIRE, "CustomShader::compile: GetModuleFileName failed\n");
 			goto err;
 		}
