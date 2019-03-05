@@ -192,6 +192,10 @@ int main()
 	FARPROC fn;
 	HHOOK hook;
 
+	CreateMutexA(0, FALSE, "Local\\3DMigotoInjector");
+	if (GetLastError() == ERROR_ALREADY_EXISTS)
+		wait_exit(EXIT_FAILURE, "ERROR: Another instance of the 3DMigoto Loader is already running. Please close it and try again\n");
+
 	printf("\n------------------------------- 3DMigoto Loader ------------------------------\n\n");
 
 	ini_file = CreateFile(L"d3dx.ini", GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
