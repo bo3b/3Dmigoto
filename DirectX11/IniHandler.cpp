@@ -4322,6 +4322,9 @@ void LoadConfigFile()
 
 	G->dump_all_profiles = GetIniBool(L"Logging", L"dump_all_profiles", false, NULL);
 
+	if (GetIniBool(L"Logging", L"debug_locks", false, NULL))
+		enable_lock_dependency_checks();
+
 	// [Include]
 	ParseIncludedIniFiles();
 

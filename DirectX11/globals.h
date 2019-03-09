@@ -16,6 +16,7 @@
 #include "ResourceHash.h"
 #include "CommandList.h"
 #include "profiling.h"
+#include "lock.h"
 
 extern HINSTANCE migoto_handle;
 
@@ -731,6 +732,8 @@ struct TLS
 	// third party tool (which we can use other strategies to avoid, such
 	// as the unhookable UnhookableCreateDevice).
 	bool hooking_quirk_protection;
+
+	vector<held_lock_info> locks_held;
 
 	TLS() :
 		hooking_quirk_protection(false)
