@@ -959,7 +959,7 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
 		Profiling::start(&profiling_state);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	dst_handle_info = GetResourceHandleInfo(dest);
 	if (!dst_handle_info)
@@ -1084,7 +1084,7 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
 		Profiling::start(&profiling_state);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	info = GetResourceHandleInfo(resource);
 	if (!info)
@@ -1157,7 +1157,7 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
 		Profiling::start(&profiling_state);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	dst_info = GetResourceHandleInfo(dst);
 	if (!dst_info)
@@ -1301,7 +1301,7 @@ ULONG STDMETHODCALLTYPE ResourceReleaseTracker::Release(void)
 		//                                                        //
 		////////////////////////////////////////////////////////////
 
-		EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSectionPretty(&G->mCriticalSection);
 		G->mResources.erase(resource);
 		LeaveCriticalSection(&G->mCriticalSection);
 		delete this;
@@ -1636,7 +1636,7 @@ static void find_texture_override_for_resource_by_hash(ID3D11Resource *resource,
 	if (G->mTextureOverrideMap.empty())
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 		hash = GetResourceHash(resource);
 	LeaveCriticalSection(&G->mCriticalSection);
 	if (!hash)

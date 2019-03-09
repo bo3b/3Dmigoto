@@ -53,7 +53,7 @@ public:
 
 	Notices()
 	{
-		InitializeCriticalSection(&lock);
+		InitializeCriticalSectionPretty(&lock);
 	}
 
 	~Notices()
@@ -713,7 +713,7 @@ void Overlay::DrawNotices(float *y)
 	Vector2 strSize;
 	int level, displayed = 0;
 
-	EnterCriticalSection(&notices.lock);
+	EnterCriticalSectionPretty(&notices.lock);
 
 	has_notice = false;
 	for (level = 0; level < NUM_LOG_LEVELS; level++) {
@@ -867,7 +867,7 @@ void ClearNotices()
 	if (notice_cleared_frame == G->frame_no)
 		return;
 
-	EnterCriticalSection(&notices.lock);
+	EnterCriticalSectionPretty(&notices.lock);
 
 	for (level = 0; level < NUM_LOG_LEVELS; level++)
 		notices.notices[level].clear();
@@ -892,7 +892,7 @@ void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
 	// cares if it gets cut off somewhere off screen anyway?
 	_vsnwprintf_s(msg, maxstring, _TRUNCATE, fmt, ap);
 
-	EnterCriticalSection(&notices.lock);
+	EnterCriticalSectionPretty(&notices.lock);
 
 	notices.notices[level].emplace_back(msg);
 	has_notice = true;
@@ -924,7 +924,7 @@ void LogOverlay(LogLevel level, char *fmt, ...)
 		_vsnprintf_s(amsg, maxstring, _TRUNCATE, fmt, ap);
 		mbstowcs(wmsg, amsg, maxstring);
 
-		EnterCriticalSection(&notices.lock);
+		EnterCriticalSectionPretty(&notices.lock);
 
 		notices.notices[level].emplace_back(wmsg);
 		has_notice = true;

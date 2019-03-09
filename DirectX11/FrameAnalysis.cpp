@@ -135,7 +135,7 @@ void FrameAnalysisContext::FrameAnalysisLogShaderHash(ID3D11Shader *shader)
 		return;
 	}
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	hash = lookup_shader_hash(shader);
 	if (hash != end(G->mShaders))
@@ -162,7 +162,7 @@ void FrameAnalysisContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource
 		return;
 	}
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	try {
 		hash = G->mResources.at(resource).hash;
@@ -1571,7 +1571,7 @@ void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_li
 	if (frame_analysis_deferred_buffer_lists.empty() && frame_analysis_deferred_tex2d_lists.empty())
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	try {
 		deferred_buffers = std::move(frame_analysis_deferred_buffer_lists.at(command_list));
@@ -1618,7 +1618,7 @@ void FrameAnalysisContext::finish_deferred_resources(ID3D11CommandList *command_
 	if (!command_list || (!deferred_buffers && !deferred_tex2d))
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	if (deferred_buffers) {
 		FALogInfo("Finishing deferred staging Buffer list %p on context %p\n", deferred_buffers.get(), this);
@@ -2861,7 +2861,7 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 
 	// Grab the critical section now as we may need it several times during
 	// dumping for mResources
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_CB)
 		DumpCBs(compute);
@@ -2918,7 +2918,7 @@ void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 
 	set_default_dump_formats(false);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	// We don't have a view at this point to get a fully typed format, so
 	// we leave format as DXGI_FORMAT_UNKNOWN, which will use the format
@@ -2977,7 +2977,7 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 		}
 	}
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, target, resource, false);
 	if (FAILED(hr)) {
