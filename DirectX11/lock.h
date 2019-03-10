@@ -1,6 +1,7 @@
 #pragma once
 
 #include <windows.h>
+#include <vector>
 
 // This version of EnterCriticalSection will use the function and line number
 // in any lock stacks dumped when potential deadlock hazards are detected:
@@ -22,3 +23,4 @@ struct held_lock_info {
 	char *function;
 	int line;
 };
+typedef std::vector<held_lock_info> LockStack;

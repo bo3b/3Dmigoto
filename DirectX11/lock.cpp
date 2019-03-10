@@ -62,7 +62,7 @@ static void(__stdcall *_DeleteCriticalSection)(CRITICAL_SECTION *lock) = DeleteC
 typedef std::unordered_set<CRITICAL_SECTION*> lock_graph_node;
 static std::unordered_map<CRITICAL_SECTION*, lock_graph_node> lock_graph;
 static CRITICAL_SECTION graph_lock;
-static std::unordered_set<size_t> cached_stacks;
+static std::unordered_map<size_t, LockStack> cached_stacks;
 static std::unordered_set<size_t> reported_stacks;
 static std::set<std::pair<CRITICAL_SECTION*,CRITICAL_SECTION*>> overlay_reported;
 
@@ -79,7 +79,7 @@ static const char* lock_name(CRITICAL_SECTION *lock, char buf[20])
 	return i->second.c_str();
 }
 
-static void log_held_locks(vector<held_lock_info> &held_locks)
+static void log_held_locks(LockStack &held_locks, std::vector<LockStack> &other_sides)
 {
 	HMODULE module;
 	wchar_t path[MAX_PATH];
@@ -104,6 +104,40 @@ static void log_held_locks(vector<held_lock_info> &held_locks)
 			}
 		}
 	}
+
+	for (auto &other_stack: other_sides) {
+		LogInfo("----- Previously seen locking pattern that could lead to an AB-BA deadlock:\n");
+		// Bit of a copy & paste job just to remove the thread IDs
+		// since those aren't saved in the stack (yet?)
+		for (auto info = other_stack.rbegin(); info != other_stack.rend(); info++) {
+			if (info->function) {
+				// 3DMigoto internal locking call with decorated function and line number
+				LogInfo("      EnterCriticalSection(%s) %s(%d)\n",
+						lock_name(info->lock, buf), info->function, info->line);
+			} else {
+				if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)info->ret, &module)
+				 && GetModuleFileName(module, path, MAX_PATH)
+				 && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO))) {
+					LogInfo("      EnterCriticalSection(%s) %S+0x%"PRIxPTR"\n",
+							lock_name(info->lock, buf), path, info->ret - (uintptr_t)mod_info.lpBaseOfDll);
+				} else {
+					LogInfo("      EnterCriticalSection(%s) 0x%"PRIxPTR"\n",
+							lock_name(info->lock, buf), info->ret);
+				}
+			}
+		}
+	}
+	if (other_sides.empty()) {
+		LogInfo("----- No previously seen single locking stack could lead to an AB-BA deadlock - this may be a 3+ way deadlock\n");
+		// TODO: Search the graph of cached stacks to find all the
+		// stacks that can lead to this. We could alternatively store
+		// (a second copy of) the locking graph that doesn't have
+		// dependencies merged into each lock as they are found
+		// (i.e. without the lock_graph[lock].insert(new_lock_after),
+		// then recursively searching that graph will reveal the
+		// scenario that led to this.
+	}
+
 	LogInfo("%04x - - - - - - - - - -\n", GetCurrentThreadId());
 
 	// Just in case we are about to deadlock for real, flush the log file
@@ -112,27 +146,46 @@ static void log_held_locks(vector<held_lock_info> &held_locks)
 		fflush(LogFile);
 }
 
-static void validate_lock(vector<held_lock_info> &locks_held, CRITICAL_SECTION *new_lock)
+// Should be called with the graph lock held
+static bool takes_lock_in_order(LockStack &other_stack,
+		CRITICAL_SECTION *first_lock, CRITICAL_SECTION *second_lock)
+{
+	bool first_lock_seen = false;
+
+	for (auto info = other_stack.begin(); info < other_stack.end(); info++) {
+		if (info->lock == first_lock)
+			first_lock_seen = true;
+		else if (info->lock == second_lock)
+			return first_lock_seen;
+	}
+
+	return false;
+}
+
+static void validate_lock(LockStack &locks_held, CRITICAL_SECTION *new_lock)
 {
 	std::vector<std::pair<CRITICAL_SECTION*, bool>> issues;
+	std::vector<LockStack> other_sides;
 	bool reported = false;
+
+	// First lock taken in any thread cannot lead to a deadlock - only
+	// starvation if we are already in deadlock:
+	if (locks_held.size() < 2)
+		return;
 
 	_EnterCriticalSection(&graph_lock);
 
 	// Save time by not re-checking previously checked stacks:
-	if (cached_stacks.count(locks_held.back().stack_hash)) {
-		_LeaveCriticalSection(&graph_lock);
-		return;
-	}
+	if (cached_stacks.count(locks_held.back().stack_hash))
+		goto out_unlock;
 
 	// Critical section type locks are re-entrant, so we are not worried if
 	// we see a currently held lock being taken again. Last locks_held is
 	// the current lock, so check all others leading up to it:
 	for (auto info = locks_held.begin(); info < locks_held.end() - 1; info++) {
 		if (info->lock == new_lock) {
-			cached_stacks.insert(locks_held.back().stack_hash);
-			_LeaveCriticalSection(&graph_lock);
-			return;
+			cached_stacks.insert({locks_held.back().stack_hash, locks_held});
+			goto out_unlock;
 		}
 	}
 
@@ -162,18 +215,28 @@ static void validate_lock(vector<held_lock_info> &locks_held, CRITICAL_SECTION *
 	// Take note of a hash identifying the current lock stack so we can
 	// avoid checking it again, and so we don't report the same bug
 	// multiple times:
-	cached_stacks.insert(locks_held.back().stack_hash);
+	cached_stacks.insert({locks_held.back().stack_hash, locks_held});
 
-	if (issues.empty()) {
-		_LeaveCriticalSection(&graph_lock);
-		return;
-	}
+	if (issues.empty())
+		goto out_unlock;
 
 	reported_stacks.insert(locks_held.back().stack_hash);
-	// We're reporting a new issue. The other side of which might
-	// be in a stack we previously gave the okay. Clear the cached
-	// stacks to recheck everything again:
-	cached_stacks.clear();
+
+	// We're reporting a new issue, but our locking stack is only one side
+	// of this. Search through the other locking stacks we have seen so far
+	// to find the other side of this issue. This will only locate two way
+	// AB-BA deadlocks, while the above code will also have noted three or
+	// more way AB-BC-CA deadlocks as well. For now, if this doesn't find
+	// anything we just log that it might be a 3+ way deadlock.
+	for (auto &other_stack: cached_stacks) {
+		for (auto &issue: issues) {
+			if (takes_lock_in_order(other_stack.second, new_lock, issue.first)) {
+				other_sides.push_back(other_stack.second);
+				break;
+			}
+		}
+
+	}
 
 	// Report issues only after dropping the lock, since the logging code
 	// is going to take its own locks and can easily deadlock with us
@@ -189,16 +252,20 @@ static void validate_lock(vector<held_lock_info> &locks_held, CRITICAL_SECTION *
 					GetCurrentThreadId(), lock_name(new_lock, buf1), lock_name(issue.first, buf2));
 		}
 	}
-	log_held_locks(locks_held);
+	log_held_locks(locks_held, other_sides);
 	// Ideally we would log the other stack(s) that led to the deadlock
 	// condition, but we haven't tracked enough state to know what it was.
 	// We will rely on the other thread repeating the same actions again to
 	// report the deadlock from its side, although if we are actually about
 	// to hit the deadlock for real that won't have a chance to happen - we
 	// might be able to detect that scenario and dump it from here.
+
+	return;
+out_unlock:
+	_LeaveCriticalSection(&graph_lock);
 }
 
-static void push_lock(vector<held_lock_info> &locks_held, CRITICAL_SECTION *new_lock, uintptr_t ret,
+static void push_lock(LockStack &locks_held, CRITICAL_SECTION *new_lock, uintptr_t ret,
 		char *function = NULL, int line = 0)
 {
 	size_t stack_hash = 0;
@@ -224,7 +291,7 @@ static void EnterCriticalSectionHook(CRITICAL_SECTION *lock)
 		return _EnterCriticalSection(lock);
 	get_tls()->hooking_quirk_protection = true;
 
-	vector<held_lock_info> &locks_held = get_tls()->locks_held;
+	LockStack &locks_held = get_tls()->locks_held;
 	push_lock(locks_held, lock, (uintptr_t)_ReturnAddress());
 	validate_lock(locks_held, lock);
 
@@ -243,7 +310,7 @@ void _EnterCriticalSectionPretty(CRITICAL_SECTION *lock, char *function, int lin
 		return _EnterCriticalSection(lock);
 	get_tls()->hooking_quirk_protection = true;
 
-	vector<held_lock_info> &locks_held = get_tls()->locks_held;
+	LockStack &locks_held = get_tls()->locks_held;
 	push_lock(locks_held, lock, (uintptr_t)_ReturnAddress(), function, line);
 	validate_lock(locks_held, lock);
 
@@ -270,7 +337,7 @@ static BOOL TryEnterCriticalSectionHook(CRITICAL_SECTION *lock)
 
 	// Updating the lock stack, but not the dependency list since the try
 	// lock is optional. TODO: Still check for applicable deadlocks
-	vector<held_lock_info> &locks_held = get_tls()->locks_held;
+	LockStack &locks_held = get_tls()->locks_held;
 	push_lock(locks_held, lock, (uintptr_t)_ReturnAddress());
 
 	get_tls()->hooking_quirk_protection = false;
@@ -291,7 +358,7 @@ static void LeaveCriticalSectionHook(CRITICAL_SECTION *lock)
 		return;
 	get_tls()->hooking_quirk_protection = true;
 
-	vector<held_lock_info> *locks_held = &(get_tls()->locks_held);
+	LockStack *locks_held = &(get_tls()->locks_held);
 	for (auto i = locks_held->rbegin(); i != locks_held->rend(); i++) {
 		if (i->lock == lock) {
 			// C++ gotcha: reverse_iterator::base() points to the *next* element
@@ -317,7 +384,19 @@ static void DeleteCriticalSectionHook(CRITICAL_SECTION *lock)
 
 	// Purge the lock from our data structures:
 	_EnterCriticalSection(&graph_lock);
+
 	lock_graph.erase(lock);
+
+	for (auto stack = cached_stacks.begin(), next=stack; stack != cached_stacks.end(); stack = next) {
+		next++;
+		for (auto &info: stack->second) {
+			if (info.lock == lock) {
+				next = cached_stacks.erase(stack);
+				break;
+			}
+		}
+	}
+
 	_LeaveCriticalSection(&graph_lock);
 
 	get_tls()->hooking_quirk_protection = false;

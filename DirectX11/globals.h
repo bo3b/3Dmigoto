@@ -733,7 +733,7 @@ struct TLS
 	// as the unhookable UnhookableCreateDevice).
 	bool hooking_quirk_protection;
 
-	vector<held_lock_info> locks_held;
+	LockStack locks_held;
 
 	TLS() :
 		hooking_quirk_protection(false)
