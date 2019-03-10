@@ -80,6 +80,29 @@ static const char* lock_name(CRITICAL_SECTION *lock, char buf[20])
 	return i->second.c_str();
 }
 
+static void dump_stack_trace()
+{
+	uintptr_t trace[62];
+	USHORT frames;
+	HMODULE module;
+	wchar_t path[MAX_PATH];
+	MODULEINFO mod_info;
+
+	LogInfo("%04x call stack:\n", GetCurrentThreadId());
+	frames = CaptureStackBackTrace(0, 62, (void**)trace, NULL);
+	for (USHORT i = 0; i < frames; i++) {
+		if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)trace[i], &module)
+		 && GetModuleFileName(module, path, MAX_PATH)
+		 && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO))) {
+			LogInfo("%04x: %S+0x%"PRIxPTR"\n",
+					GetCurrentThreadId(), path, trace[i] - (uintptr_t)mod_info.lpBaseOfDll);
+		} else {
+			LogInfo("%04x: 0x%"PRIxPTR"\n",
+					GetCurrentThreadId(), trace[i]);
+		}
+	}
+}
+
 static void log_held_locks(LockStack &held_locks, std::vector<LockStack> &other_sides)
 {
 	HMODULE module;
@@ -138,6 +161,13 @@ static void log_held_locks(LockStack &held_locks, std::vector<LockStack> &other_
 		// then recursively searching that graph will reveal the
 		// scenario that led to this.
 	}
+
+	// Dump the current thread's call stack to help locate the issue if the
+	// lock covers a large amount of code. This won't dump the other
+	// thread's call stack, so it won't be the complete picture, but it
+	// helps. TODO: Consider caching the call stacks along with the lock
+	// stacks so we can dump out the other side.
+	dump_stack_trace();
 
 	LogInfo("%04x - - - - - - - - - -\n", GetCurrentThreadId());
 
@@ -254,12 +284,9 @@ static void validate_lock(LockStack &locks_held, CRITICAL_SECTION *new_lock)
 		}
 	}
 	log_held_locks(locks_held, other_sides);
-	// Ideally we would log the other stack(s) that led to the deadlock
-	// condition, but we haven't tracked enough state to know what it was.
-	// We will rely on the other thread repeating the same actions again to
-	// report the deadlock from its side, although if we are actually about
-	// to hit the deadlock for real that won't have a chance to happen - we
-	// might be able to detect that scenario and dump it from here.
+
+	if (IsDebuggerPresent())
+		__debugbreak();
 
 	return;
 out_unlock:
