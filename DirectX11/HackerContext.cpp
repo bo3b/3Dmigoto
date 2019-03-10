@@ -515,15 +515,19 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	HRESULT hr;
 	unsigned i;
 	wstring tagline(L"//");
+	vector<byte> patched_bytecode;
+	vector<char> asm_vector;
+
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	// Faster than catching an out_of_range exception from .at():
 	orig_info_i = lookup_reloaded_shader(shader);
 	if (orig_info_i == G->mReloadedShaders.end())
-		return;
+		goto out_drop;
 	orig_info = &orig_info_i->second;
 
 	if (!orig_info->deferred_replacement_candidate || orig_info->deferred_replacement_processed)
-		return;
+		goto out_drop;
 
 	LogInfo("Performing deferred shader analysis on %S %016I64x...\n", shader_type, hash);
 
@@ -534,31 +538,30 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	asm_text = BinaryToAsmText(orig_info->byteCode->GetBufferPointer(),
 			orig_info->byteCode->GetBufferSize());
 	if (asm_text.empty())
-		return;
+		goto out_drop;
 
 	try {
 		patch_regex = apply_shader_regex_groups(&asm_text, &orig_info->shaderModel, hash, &tagline);
 	} catch (...) {
 		LogInfo("    *** Exception while patching shader\n");
-		return;
+		goto out_drop;
 	}
 
 	if (!patch_regex) {
 		LogInfo("Patch did not apply\n");
-		return;
+		goto out_drop;
 	}
 
 	LogInfo("Patched Shader:\n%s\n", asm_text.c_str());
 
-	vector<char> asm_vector(asm_text.begin(), asm_text.end());
-	vector<byte> patched_bytecode;
+	asm_vector.assign(asm_text.begin(), asm_text.end());
 
 	try {
 		vector<AssemblerParseError> parse_errors;
 		hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode, &parse_errors);
 		if (FAILED(hr)) {
 			LogInfo("    *** Assembling patched shader failed\n");
-			return;
+			goto out_drop;
 		}
 		// Parse errors are currently being treated as non-fatal on
 		// creation time replacement and ShaderRegex for backwards
@@ -569,7 +572,7 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	} catch (const exception &e) {
 		LogOverlay(LOG_WARNING, "Error assembling ShaderRegex patched %016I64x-%S\n%S\n%s\n",
 				hash, shader_type, tagline.c_str(), e.what());
-		return;
+		goto out_drop;
 	}
 
 	hr = (mOrigDevice1->*CreateShader)(patched_bytecode.data(), patched_bytecode.size(),
@@ -577,7 +580,7 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	CleanupShaderMaps(patched_shader);
 	if (FAILED(hr)) {
 		LogInfo("    *** Creating replacement shader failed\n");
-		return;
+		goto out_drop;
 	}
 
 	// Update replacement map so we don't have to repeat this process.
@@ -588,12 +591,27 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	orig_info->replacement = patched_shader;
 	orig_info->infoText = tagline;
 
+	// Now that we've finished updating our data structures we can drop the
+	// critical section before calling into DirectX to bind the replacement
+	// shader. The below DirectX functions will take the DirectX context
+	// lock and if we still had this one held we would end up with an AB-BA
+	// deadlock between here and the resource release tracker.
+	LeaveCriticalSection(&G->mCriticalSection);
+
 	// And bind the replaced shader in time for this draw call:
 	// VSBUGWORKAROUND: VS2013 toolchain has a bug that mistakes a member
 	// pointer called "SetShader" for the SetShader we have in
 	// HackerContext, even though the member pointer we were passed very
 	// clearly points to a member function of ID3D11DeviceContext. VS2015
 	// toolchain does not suffer from this bug.
+	//
+	//  <============================================>
+	//  <       AB-BA TYPE DEADLOCK WARNING!         >
+	//  <                                            >
+	//  <  GetShader takes the DirectX lock. Never   >
+	//  < call it while holding g->mCriticalSection! >
+	//  <============================================>
+	//
 	(mOrigContext1->*GetShaderVS2013BUGWORKAROUND)(&orig_shader, class_instances, &num_instances);
 	(mOrigContext1->*SetShaderVS2013BUGWORKAROUND)(patched_shader, class_instances, num_instances);
 	if (orig_shader)
@@ -602,6 +620,10 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 		if (class_instances[i])
 			class_instances[i]->Release();
 	}
+	return;
+
+out_drop:
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 void HackerContext::DeferredShaderReplacementBeforeDraw()
@@ -614,45 +636,41 @@ void HackerContext::DeferredShaderReplacementBeforeDraw()
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
 		Profiling::start(&profiling_state);
 
-	EnterCriticalSectionPretty(&G->mCriticalSection);
-
-		if (mCurrentVertexShaderHandle) {
-			DeferredShaderReplacement<ID3D11VertexShader,
-				&ID3D11DeviceContext::VSGetShader,
-				&ID3D11DeviceContext::VSSetShader,
-				&ID3D11Device::CreateVertexShader>
-				(mCurrentVertexShaderHandle, mCurrentVertexShader, L"vs");
-		}
-		if (mCurrentHullShaderHandle) {
-			DeferredShaderReplacement<ID3D11HullShader,
-				&ID3D11DeviceContext::HSGetShader,
-				&ID3D11DeviceContext::HSSetShader,
-				&ID3D11Device::CreateHullShader>
-				(mCurrentHullShaderHandle, mCurrentHullShader, L"hs");
-		}
-		if (mCurrentDomainShaderHandle) {
-			DeferredShaderReplacement<ID3D11DomainShader,
-				&ID3D11DeviceContext::DSGetShader,
-				&ID3D11DeviceContext::DSSetShader,
-				&ID3D11Device::CreateDomainShader>
-				(mCurrentDomainShaderHandle, mCurrentDomainShader, L"ds");
-		}
-		if (mCurrentGeometryShaderHandle) {
-			DeferredShaderReplacement<ID3D11GeometryShader,
-				&ID3D11DeviceContext::GSGetShader,
-				&ID3D11DeviceContext::GSSetShader,
-				&ID3D11Device::CreateGeometryShader>
-				(mCurrentGeometryShaderHandle, mCurrentGeometryShader, L"gs");
-		}
-		if (mCurrentPixelShaderHandle) {
-			DeferredShaderReplacement<ID3D11PixelShader,
-				&ID3D11DeviceContext::PSGetShader,
-				&ID3D11DeviceContext::PSSetShader,
-				&ID3D11Device::CreatePixelShader>
-				(mCurrentPixelShaderHandle, mCurrentPixelShader, L"ps");
-		}
-
-	LeaveCriticalSection(&G->mCriticalSection);
+	if (mCurrentVertexShaderHandle) {
+		DeferredShaderReplacement<ID3D11VertexShader,
+			&ID3D11DeviceContext::VSGetShader,
+			&ID3D11DeviceContext::VSSetShader,
+			&ID3D11Device::CreateVertexShader>
+			(mCurrentVertexShaderHandle, mCurrentVertexShader, L"vs");
+	}
+	if (mCurrentHullShaderHandle) {
+		DeferredShaderReplacement<ID3D11HullShader,
+			&ID3D11DeviceContext::HSGetShader,
+			&ID3D11DeviceContext::HSSetShader,
+			&ID3D11Device::CreateHullShader>
+			(mCurrentHullShaderHandle, mCurrentHullShader, L"hs");
+	}
+	if (mCurrentDomainShaderHandle) {
+		DeferredShaderReplacement<ID3D11DomainShader,
+			&ID3D11DeviceContext::DSGetShader,
+			&ID3D11DeviceContext::DSSetShader,
+			&ID3D11Device::CreateDomainShader>
+			(mCurrentDomainShaderHandle, mCurrentDomainShader, L"ds");
+	}
+	if (mCurrentGeometryShaderHandle) {
+		DeferredShaderReplacement<ID3D11GeometryShader,
+			&ID3D11DeviceContext::GSGetShader,
+			&ID3D11DeviceContext::GSSetShader,
+			&ID3D11Device::CreateGeometryShader>
+			(mCurrentGeometryShaderHandle, mCurrentGeometryShader, L"gs");
+	}
+	if (mCurrentPixelShaderHandle) {
+		DeferredShaderReplacement<ID3D11PixelShader,
+			&ID3D11DeviceContext::PSGetShader,
+			&ID3D11DeviceContext::PSSetShader,
+			&ID3D11Device::CreatePixelShader>
+			(mCurrentPixelShaderHandle, mCurrentPixelShader, L"ps");
+	}
 
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
 		Profiling::end(&profiling_state, &Profiling::shaderregex_overhead);
@@ -666,15 +684,11 @@ void HackerContext::DeferredShaderReplacementBeforeDispatch()
 	if (!mCurrentComputeShaderHandle)
 		return;
 
-	EnterCriticalSectionPretty(&G->mCriticalSection);
-
-		DeferredShaderReplacement<ID3D11ComputeShader,
-			&ID3D11DeviceContext::CSGetShader,
-			&ID3D11DeviceContext::CSSetShader,
-			&ID3D11Device::CreateComputeShader>
-			(mCurrentComputeShaderHandle, mCurrentComputeShader, L"cs");
-
-	LeaveCriticalSection(&G->mCriticalSection);
+	DeferredShaderReplacement<ID3D11ComputeShader,
+		&ID3D11DeviceContext::CSGetShader,
+		&ID3D11DeviceContext::CSSetShader,
+		&ID3D11Device::CreateComputeShader>
+		(mCurrentComputeShaderHandle, mCurrentComputeShader, L"cs");
 }
 
 
