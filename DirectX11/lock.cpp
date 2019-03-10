@@ -437,11 +437,15 @@ static void DeleteCriticalSectionHook(CRITICAL_SECTION *lock)
 
 	lock_graph.erase(lock);
 
+	for (auto &l: lock_graph)
+		l.second.erase(lock);
+
 	for (auto stack = cached_stacks.begin(), next=stack; stack != cached_stacks.end(); stack = next) {
 		next++;
 		for (auto &info: stack->second) {
 			if (info.lock == lock) {
 				next = cached_stacks.erase(stack);
+				reported_stacks.erase(stack->first);
 				break;
 			}
 		}
