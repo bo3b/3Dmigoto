@@ -67,6 +67,7 @@ static std::unordered_set<size_t> reported_stacks;
 static std::set<std::pair<CRITICAL_SECTION*,CRITICAL_SECTION*>> overlay_reported;
 
 static bool lock_dependency_checks_enabled;
+static uintptr_t ntdll_base, ntdll_end;
 
 static std::unordered_map<CRITICAL_SECTION*, std::string> lock_names;
 static const char* lock_name(CRITICAL_SECTION *lock, char buf[20])
@@ -279,8 +280,24 @@ static void push_lock(LockStack &locks_held, CRITICAL_SECTION *new_lock, uintptr
 	locks_held.push_back({new_lock, ret, stack_hash, function, line});
 }
 
+static bool ignore_caller(uintptr_t ret)
+{
+	// ntdll.dll has a lock that seems to be obtained all over the place,
+	// and constantly shows up in as being involved in potential deadlock
+	// scenarios. I don't know for sure what this lock is - the locking
+	// stacks do look concerning when taken at face value, but we have yet
+	// to see an actual deadlock involving this lock and I suspect there
+	// might be something else going on with this lock that we aren't
+	// seeing. For now, consider these (likely) false positives and ignore
+	// them, so that the reports that we do get will be more relevant.
+	return (ret >= ntdll_base && ret < ntdll_end);
+}
+
 static void EnterCriticalSectionHook(CRITICAL_SECTION *lock)
 {
+	if (ignore_caller((uintptr_t)_ReturnAddress()))
+		return _EnterCriticalSection(lock);
+
 	// If a TLS structure hasn't been allocated yet for this thread, we
 	// might be in the TLS allocation itself!
 	if (!TlsGetValue(tls_idx))
@@ -325,6 +342,9 @@ static BOOL TryEnterCriticalSectionHook(CRITICAL_SECTION *lock)
 	if (!ret)
 		return ret;
 
+	if (ignore_caller((uintptr_t)_ReturnAddress()))
+		return ret;
+
 	// If a TLS structure hasn't been allocated yet for this thread, we
 	// might be in the TLS allocation itself!
 	if (!TlsGetValue(tls_idx))
@@ -347,6 +367,9 @@ static BOOL TryEnterCriticalSectionHook(CRITICAL_SECTION *lock)
 static void LeaveCriticalSectionHook(CRITICAL_SECTION *lock)
 {
 	_LeaveCriticalSection(lock);
+
+	if (ignore_caller((uintptr_t)_ReturnAddress()))
+		return;
 
 	// If a TLS structure hasn't been allocated yet for this thread, we
 	// might be in the TLS allocation itself!
@@ -413,12 +436,20 @@ void _InitializeCriticalSectionPretty(CRITICAL_SECTION *lock, char *lock_name)
 void enable_lock_dependency_checks()
 {
 	SIZE_T hook_id;
+	HMODULE ntdll;
+	MODULEINFO mod_info;
 
 	if (lock_dependency_checks_enabled)
 		return;
 	lock_dependency_checks_enabled = true;
 
 	InitializeCriticalSectionPretty(&graph_lock);
+
+	if ((ntdll = GetModuleHandleA("ntdll.dll"))
+	  && GetModuleInformation(GetCurrentProcess(), ntdll, &mod_info, sizeof(MODULEINFO))) {
+		ntdll_base = (uintptr_t)mod_info.lpBaseOfDll;
+		ntdll_end = ntdll_base + mod_info.SizeOfImage;
+	}
 
 	// Deviare will itself take locks while we are hooking, so protect against re-entrancy:
 	get_tls()->hooking_quirk_protection = true;
