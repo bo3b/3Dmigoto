@@ -2125,7 +2125,7 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	restore_old_surface_create_mode(oldMode, mStereoHandle);
 	if (hr == S_OK && ppBuffer && *ppBuffer)
 	{
-		EnterCriticalSectionPretty(&G->mCriticalSection);
+		EnterCriticalSectionPretty(&G->mResourcesLock);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppBuffer];
 			new ResourceReleaseTracker(*ppBuffer);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_BUFFER;
@@ -2138,6 +2138,8 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 			// if (pDesc)
 			//	memcpy(&handle_info->descBuf, pDesc, sizeof(D3D11_BUFFER_DESC));
 
+		LeaveCriticalSection(&G->mResourcesLock);
+		EnterCriticalSectionPretty(&G->mCriticalSection);
 			// For stat collection and hash contamination tracking:
 			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
@@ -2179,7 +2181,7 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 
 	if (hr == S_OK && ppTexture1D && *ppTexture1D)
 	{
-		EnterCriticalSectionPretty(&G->mCriticalSection);
+		EnterCriticalSectionPretty(&G->mResourcesLock);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture1D];
 			new ResourceReleaseTracker(*ppTexture1D);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE1D;
@@ -2190,6 +2192,8 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 			// TODO: For hash tracking if we ever need it for Texture1Ds:
 			// if (pDesc)
 			// 	memcpy(&handle_info->desc1D, pDesc, sizeof(D3D11_TEXTURE1D_DESC));
+		LeaveCriticalSection(&G->mResourcesLock);
+		EnterCriticalSectionPretty(&G->mCriticalSection);
 
 			// For stat collection and hash contamination tracking:
 			if (G->hunting && pDesc) {
@@ -2292,7 +2296,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// Register texture. Every one seen.
 	if (hr == S_OK && ppTexture2D)
 	{
-		EnterCriticalSectionPretty(&G->mCriticalSection);
+		EnterCriticalSectionPretty(&G->mResourcesLock);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture2D];
 			new ResourceReleaseTracker(*ppTexture2D);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
@@ -2301,6 +2305,8 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 			handle_info->data_hash = data_hash;
 			if (pDesc)
 				memcpy(&handle_info->desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
+		LeaveCriticalSection(&G->mResourcesLock);
+		EnterCriticalSectionPretty(&G->mCriticalSection);
 			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
 				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
@@ -2360,7 +2366,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	// Register texture.
 	if (hr == S_OK && ppTexture3D)
 	{
-		EnterCriticalSectionPretty(&G->mCriticalSection);
+		EnterCriticalSectionPretty(&G->mResourcesLock);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture3D];
 			new ResourceReleaseTracker(*ppTexture3D);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE3D;
@@ -2369,6 +2375,8 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 			handle_info->data_hash = data_hash;
 			if (pDesc)
 				memcpy(&handle_info->desc3D, pDesc, sizeof(D3D11_TEXTURE3D_DESC));
+		LeaveCriticalSection(&G->mResourcesLock);
+		EnterCriticalSectionPretty(&G->mCriticalSection);
 			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
 				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
@@ -2396,7 +2404,7 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 	// Check for depth buffer view.
 	if (hr == S_OK && G->ZBufferHashToInject && ppSRView)
 	{
-		EnterCriticalSectionPretty(&G->mCriticalSection);
+		EnterCriticalSectionPretty(&G->mResourcesLock);
 		unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator i = lookup_resource_handle_info(pResource);
 		if (i != G->mResources.end() && i->second.hash == G->ZBufferHashToInject)
 		{
@@ -2404,7 +2412,7 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 
 			mZBufferResourceView = *ppSRView;
 		}
-		LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mResourcesLock);
 	}
 
 	LogDebug("  returns result = %x\n", hr);

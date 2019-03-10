@@ -24,27 +24,6 @@
 static bool has_notice = false;
 static unsigned notice_cleared_frame = 0;
 
-//////////////////////////////////////////////////////////////////////////////
-//                                                                          //
-//                     <==============================>                     //
-//                     < AB-BA TYPE DEADLOCK WARNING! >                     //
-//                     <==============================>                     //
-//                                                                          //
-// Never call Overlay::DrawOverlay() while holding g->mCriticalSection (or  //
-// whatever lock currently protects G->mResources). DrawOverlay() will call //
-// into DirectX, which will take a lock of it's own, introducing a locking  //
-// dependency. At other times DirectX can call into our resource release    //
-// tracker with their lock held, and we take the G->mResources lock, which  //
-// is another locking order dependency in the other direction, leading to   //
-// an AB-BA type deadlock.                                                  //
-//                                                                          //
-// We now protect the notices data structure via a dedicated lock to avoid  //
-// a locking dependency between the DirectX lock and G->mCriticalSection.   //
-// The below class is just a simple wrapper so that we can allocate the     //
-// new critical section statically and have it initialised and destroyed    //
-// automatically when the DLL is loaded/unloaded.                           //
-//                                                                          //
-//////////////////////////////////////////////////////////////////////////////
 static class Notices
 {
 public:

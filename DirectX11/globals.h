@@ -562,7 +562,33 @@ struct Globals
 	FuzzyTextureOverrides mFuzzyTextureOverrides;
 
 	// Statistics
+	///////////////////////////////////////////////////////////////////////
+	//                                                                   //
+	//                  <==============================>                 //
+	//                  < AB-BA TYPE DEADLOCK WARNING! >                 //
+	//                  <==============================>                 //
+	//                                                                   //
+	// mResources is now protected by its own lock.                      //
+	//                                                                   //
+	// Never call into DirectX while holding g->mResourcesLock. DirectX  //
+	// can take a lock of it's own, introducing a locking dependency. At //
+	// other times DirectX can call into our resource release tracker    //
+	// with their lock held, and we take the G->mResourcesLock, which    //
+	// is another locking order dependency in the other direction,       //
+	// leading to an AB-BA type deadlock.                                //
+	//                                                                   //
+	// If you ever need to obtain both mCriticalSection and              //
+	// mResourcesLock simultaneously, be sure to take mCriticalSection   //
+	// first so as not to introduce a three way AB-BC-CA deadlock.       //
+	//                                                                   //
+	// It's recommended to enable debug_locks=1 when working on any code //
+	// dealing with these locks to detect ordering violations that have  //
+	// the potential to lead to a deadlock if the timing is unfortunate. //
+	//                                                                   //
+	///////////////////////////////////////////////////////////////////////
+	CRITICAL_SECTION mResourcesLock;
 	ResourceMap mResources;
+
 	std::unordered_map<ID3D11Asynchronous*, AsyncQueryType> mQueryTypes;
 
 	// These five items work with the *original* resource hash:

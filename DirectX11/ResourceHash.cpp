@@ -790,12 +790,17 @@ uint32_t CalcTexture2DDataHashAccurate(
 ResourceHandleInfo* GetResourceHandleInfo(ID3D11Resource *resource)
 {
 	std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
+	ResourceHandleInfo* ret = NULL;
+
+	EnterCriticalSectionPretty(&G->mResourcesLock);
 
 	j = lookup_resource_handle_info(resource);
 	if (j != G->mResources.end())
-		return &j->second;
+		ret = &j->second;
 
-	return NULL;
+	LeaveCriticalSection(&G->mResourcesLock);
+
+	return ret;
 }
 
 // Must be called with the critical section held to protect mResources against
@@ -1301,9 +1306,9 @@ ULONG STDMETHODCALLTYPE ResourceReleaseTracker::Release(void)
 		//                                                        //
 		////////////////////////////////////////////////////////////
 
-		EnterCriticalSectionPretty(&G->mCriticalSection);
+		EnterCriticalSectionPretty(&G->mResourcesLock);
 		G->mResources.erase(resource);
-		LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mResourcesLock);
 		delete this;
 	}
 	return ret;

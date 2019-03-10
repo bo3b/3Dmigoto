@@ -1703,8 +1703,10 @@ static uint32_t LogRenderTarget(ID3D11Resource *target, char *log_prefix)
 		return 0;
 	}
 
+	EnterCriticalSectionPretty(&G->mResourcesLock);
 	uint32_t hash = G->mResources[target].hash;
 	uint32_t orig_hash = G->mResources[target].orig_hash;
+	LeaveCriticalSection(&G->mResourcesLock);
 	struct ResourceHashInfo &info = G->mResourceInfo[orig_hash];
 	StrResourceDesc(buf, 256, info);
 	LogInfo("%srender target handle = %p, hash = %08lx, orig_hash = %08lx, %s\n",

@@ -381,6 +381,7 @@ void InitD311()
 	if (hD3D11) return;
 
 	InitializeCriticalSectionPretty(&G->mCriticalSection);
+	InitializeCriticalSectionPretty(&G->mResourcesLock);
 
 	InitializeDLL();
 	

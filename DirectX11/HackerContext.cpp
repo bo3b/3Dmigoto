@@ -223,12 +223,6 @@ void HackerContext::RecordShaderResourceUsage(std::map<UINT64, ShaderInfoData> &
 	ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
 	ShaderInfoData *info;
 
-	//  <============================================>
-	//  <       AB-BA TYPE DEADLOCK WARNING!         >
-	//  <                                            >
-	//  <   This API takes the DirectX lock. Never   >
-	//  < call it while holding g->mCriticalSection! >
-	//  <============================================>
 	(mOrigContext1->*GetShaderResources)(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 
 	EnterCriticalSectionPretty(&G->mCriticalSection);
@@ -275,12 +269,6 @@ void HackerContext::RecordGraphicsShaderStats()
 	if (mCurrentPixelShader) {
 		// This API is poorly designed, because we have to know the
 		// current UAV start slot.
-		//  <============================================>
-		//  <       AB-BA TYPE DEADLOCK WARNING!         >
-		//  <                                            >
-		//  <   This API takes the DirectX lock. Never   >
-		//  < call it while holding g->mCriticalSection! >
-		//  <============================================>
 		OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, mCurrentPSUAVStartSlot, mCurrentPSNumUAVs, uavs);
 
 		RecordShaderResourceUsage<&ID3D11DeviceContext::PSGetShaderResources>
@@ -331,12 +319,6 @@ void HackerContext::RecordComputeShaderStats()
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
 		Profiling::start(&profiling_state);
 
-	//  <============================================>
-	//  <       AB-BA TYPE DEADLOCK WARNING!         >
-	//  <                                            >
-	//  <   This API takes the DirectX lock. Never   >
-	//  < call it while holding g->mCriticalSection! >
-	//  <============================================>
 	mOrigContext1->CSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, srvs);
 	mOrigContext1->CSGetUnorderedAccessViews(0, num_uavs, uavs);
 
@@ -634,9 +616,8 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 
 	// Now that we've finished updating our data structures we can drop the
 	// critical section before calling into DirectX to bind the replacement
-	// shader. The below DirectX functions will take the DirectX context
-	// lock and if we still had this one held we would end up with an AB-BA
-	// deadlock between here and the resource release tracker.
+	// shader. This was necessary to avoid a deadlock with the resource
+	// release tracker, but that now uses a different lock.
 	LeaveCriticalSection(&G->mCriticalSection);
 
 	// And bind the replaced shader in time for this draw call:
@@ -645,14 +626,6 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	// HackerContext, even though the member pointer we were passed very
 	// clearly points to a member function of ID3D11DeviceContext. VS2015
 	// toolchain does not suffer from this bug.
-	//
-	//  <============================================>
-	//  <       AB-BA TYPE DEADLOCK WARNING!         >
-	//  <                                            >
-	//  <  GetShader takes the DirectX lock. Never   >
-	//  < call it while holding g->mCriticalSection! >
-	//  <============================================>
-	//
 	(mOrigContext1->*GetShaderVS2013BUGWORKAROUND)(&orig_shader, class_instances, &num_instances);
 	(mOrigContext1->*SetShaderVS2013BUGWORKAROUND)(patched_shader, class_instances, num_instances);
 	if (orig_shader)
@@ -749,10 +722,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 
 		// In some cases stat collection can have a significant
 		// performance impact or may result in a runaway memory leak,
-		// so only do it if dump_usage is enabled. Do this outside of
-		// the mCriticalSection as it needs to call into DirectX, which
-		// can otherwise lead to an AB-BA deadlock with the resource
-		// release tracker:
+		// so only do it if dump_usage is enabled.
 		if (G->DumpUsage)
 			RecordGraphicsShaderStats();
 

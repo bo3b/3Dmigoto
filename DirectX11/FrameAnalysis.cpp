@@ -163,6 +163,7 @@ void FrameAnalysisContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource
 	}
 
 	EnterCriticalSectionPretty(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mResourcesLock);
 
 	try {
 		hash = G->mResources.at(resource).hash;
@@ -187,6 +188,7 @@ void FrameAnalysisContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource
 	} catch (std::out_of_range) {
 	}
 
+	LeaveCriticalSection(&G->mResourcesLock);
 	LeaveCriticalSection(&G->mCriticalSection);
 
 	fprintf(frame_analysis_log, "\n");
@@ -1948,12 +1950,14 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t si
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i", draw_call);
 	}
 
+	EnterCriticalSectionPretty(&G->mResourcesLock);
 	try {
 		hash = G->mResources.at(handle).hash;
 		orig_hash = G->mResources.at(handle).orig_hash;
 	} catch (std::out_of_range) {
 		hash = orig_hash = 0;
 	}
+	LeaveCriticalSection(&G->mResourcesLock);
 
 	if (hash) {
 		try {
@@ -2028,12 +2032,14 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, s
 
 	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%s", type);
 
+	EnterCriticalSectionPretty(&G->mResourcesLock);
 	try {
 		hash = G->mResources.at(handle).hash;
 		orig_hash = G->mResources.at(handle).orig_hash;
 	} catch (std::out_of_range) {
 		hash = orig_hash = 0;
 	}
+	LeaveCriticalSection(&G->mResourcesLock);
 
 	if (hash) {
 		try {
