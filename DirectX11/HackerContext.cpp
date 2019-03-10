@@ -180,17 +180,11 @@ static ResourceSnapshot SnapshotResource(ID3D11Resource *handle)
 	return ResourceSnapshot(handle, hash, orig_hash);
 }
 
-template <void (__stdcall ID3D11DeviceContext::*GetShaderResources)(THIS_
-		UINT StartSlot,
-		UINT NumViews,
-		ID3D11ShaderResourceView **ppShaderResourceViews)>
-void HackerContext::RecordShaderResourceUsage(ShaderInfoData *shader_info)
+void HackerContext::_RecordShaderResourceUsage(ShaderInfoData *shader_info, ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT])
 {
-	ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
 	ID3D11Resource *resource;
 	int i;
 
-	(mOrigContext1->*GetShaderResources)(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 	for (i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
 		if (views[i]) {
 			resource = RecordResourceViewStats(views[i], &G->mShaderResourceInfo);
@@ -219,6 +213,33 @@ void HackerContext::RecordPeerShaders(std::set<UINT64> *PeerShaders, UINT64 this
 		PeerShaders->insert(mCurrentPixelShader);
 }
 
+
+template <void (__stdcall ID3D11DeviceContext::*GetShaderResources)(THIS_
+		UINT StartSlot,
+		UINT NumViews,
+		ID3D11ShaderResourceView **ppShaderResourceViews)>
+void HackerContext::RecordShaderResourceUsage(std::map<UINT64, ShaderInfoData> &ShaderInfo, UINT64 currentShader)
+{
+	ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+	ShaderInfoData *info;
+
+	//  <============================================>
+	//  <       AB-BA TYPE DEADLOCK WARNING!         >
+	//  <                                            >
+	//  <   This API takes the DirectX lock. Never   >
+	//  < call it while holding g->mCriticalSection! >
+	//  <============================================>
+	(mOrigContext1->*GetShaderResources)(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
+
+	EnterCriticalSectionPretty(&G->mCriticalSection);
+
+		info = &ShaderInfo[currentShader];
+		_RecordShaderResourceUsage(info, views);
+		RecordPeerShaders(&info->PeerShaders, currentShader);
+
+	LeaveCriticalSection(&G->mCriticalSection);
+}
+
 void HackerContext::RecordGraphicsShaderStats()
 {
 	ID3D11UnorderedAccessView *uavs[D3D11_1_UAV_SLOT_COUNT]; // DX11: 8, DX11.1: 64
@@ -232,58 +253,64 @@ void HackerContext::RecordGraphicsShaderStats()
 		Profiling::start(&profiling_state);
 
 	if (mCurrentVertexShader) {
-		info = &G->mVertexShaderInfo[mCurrentVertexShader];
-		RecordShaderResourceUsage<&ID3D11DeviceContext::VSGetShaderResources>(info);
-		RecordPeerShaders(&info->PeerShaders, mCurrentVertexShader);
+		RecordShaderResourceUsage<&ID3D11DeviceContext::VSGetShaderResources>
+			(G->mVertexShaderInfo, mCurrentVertexShader);
 	}
 
 	if (mCurrentHullShader) {
-		info = &G->mHullShaderInfo[mCurrentHullShader];
-		RecordShaderResourceUsage<&ID3D11DeviceContext::HSGetShaderResources>(info);
-		RecordPeerShaders(&info->PeerShaders, mCurrentHullShader);
+		RecordShaderResourceUsage<&ID3D11DeviceContext::HSGetShaderResources>
+			(G->mHullShaderInfo, mCurrentHullShader);
 	}
 
 	if (mCurrentDomainShader) {
-		info = &G->mDomainShaderInfo[mCurrentDomainShader];
-		RecordShaderResourceUsage<&ID3D11DeviceContext::DSGetShaderResources>(info);
-		RecordPeerShaders(&info->PeerShaders, mCurrentDomainShader);
+		RecordShaderResourceUsage<&ID3D11DeviceContext::DSGetShaderResources>
+			(G->mDomainShaderInfo, mCurrentDomainShader);
 	}
 
 	if (mCurrentGeometryShader) {
-		info = &G->mGeometryShaderInfo[mCurrentGeometryShader];
-		RecordShaderResourceUsage<&ID3D11DeviceContext::GSGetShaderResources>(info);
-		RecordPeerShaders(&info->PeerShaders, mCurrentGeometryShader);
+		RecordShaderResourceUsage<&ID3D11DeviceContext::GSGetShaderResources>
+			(G->mGeometryShaderInfo, mCurrentGeometryShader);
 	}
 
 	if (mCurrentPixelShader) {
-		info = &G->mPixelShaderInfo[mCurrentPixelShader];
-		RecordShaderResourceUsage<&ID3D11DeviceContext::PSGetShaderResources>(info);
-		RecordPeerShaders(&info->PeerShaders, mCurrentPixelShader);
+		// This API is poorly designed, because we have to know the
+		// current UAV start slot.
+		//  <============================================>
+		//  <       AB-BA TYPE DEADLOCK WARNING!         >
+		//  <                                            >
+		//  <   This API takes the DirectX lock. Never   >
+		//  < call it while holding g->mCriticalSection! >
+		//  <============================================>
+		OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, mCurrentPSUAVStartSlot, mCurrentPSNumUAVs, uavs);
 
-		for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
-			if (selectedRenderTargetPos >= info->RenderTargets.size())
-				info->RenderTargets.push_back(std::set<ResourceSnapshot>());
+		RecordShaderResourceUsage<&ID3D11DeviceContext::PSGetShaderResources>
+			(G->mPixelShaderInfo, mCurrentPixelShader);
 
-			info->RenderTargets[selectedRenderTargetPos].insert(SnapshotResource(mCurrentRenderTargets[selectedRenderTargetPos]));
-		}
+		EnterCriticalSectionPretty(&G->mCriticalSection);
+			info = &G->mPixelShaderInfo[mCurrentPixelShader];
 
-		if (mCurrentDepthTarget)
-			info->DepthTargets.insert(SnapshotResource(mCurrentDepthTarget));
+			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
+				if (selectedRenderTargetPos >= info->RenderTargets.size())
+					info->RenderTargets.push_back(std::set<ResourceSnapshot>());
 
-		if (mCurrentPSNumUAVs) {
-			// This API is poorly designed, because we have to know
-			// the current UAV start slot
-			OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, mCurrentPSUAVStartSlot, mCurrentPSNumUAVs, uavs);
-			for (i = 0; i < mCurrentPSNumUAVs; i++) {
-				if (uavs[i]) {
-					resource = RecordResourceViewStats(uavs[i], &G->mUnorderedAccessInfo);
-					if (resource)
-						info->UAVs[i + mCurrentPSUAVStartSlot].insert(SnapshotResource(resource));
+				info->RenderTargets[selectedRenderTargetPos].insert(SnapshotResource(mCurrentRenderTargets[selectedRenderTargetPos]));
+			}
 
-					uavs[i]->Release();
+			if (mCurrentDepthTarget)
+				info->DepthTargets.insert(SnapshotResource(mCurrentDepthTarget));
+
+			if (mCurrentPSNumUAVs) {
+				for (i = 0; i < mCurrentPSNumUAVs; i++) {
+					if (uavs[i]) {
+						resource = RecordResourceViewStats(uavs[i], &G->mUnorderedAccessInfo);
+						if (resource)
+							info->UAVs[i + mCurrentPSUAVStartSlot].insert(SnapshotResource(resource));
+
+						uavs[i]->Release();
+					}
 				}
 			}
-		}
+		LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
@@ -292,8 +319,9 @@ void HackerContext::RecordGraphicsShaderStats()
 
 void HackerContext::RecordComputeShaderStats()
 {
+	ID3D11ShaderResourceView *srvs[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
 	ID3D11UnorderedAccessView *uavs[D3D11_1_UAV_SLOT_COUNT]; // DX11: 8, DX11.1: 64
-	ShaderInfoData *info = &G->mComputeShaderInfo[mCurrentComputeShader];
+	ShaderInfoData *info;
 	D3D_FEATURE_LEVEL level = mOrigDevice1->GetFeatureLevel();
 	UINT num_uavs = (level >= D3D_FEATURE_LEVEL_11_1 ? D3D11_1_UAV_SLOT_COUNT : D3D11_PS_CS_UAV_REGISTER_COUNT);
 	ID3D11Resource *resource;
@@ -303,21 +331,34 @@ void HackerContext::RecordComputeShaderStats()
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
 		Profiling::start(&profiling_state);
 
-	RecordShaderResourceUsage<&ID3D11DeviceContext::CSGetShaderResources>(info);
+	//  <============================================>
+	//  <       AB-BA TYPE DEADLOCK WARNING!         >
+	//  <                                            >
+	//  <   This API takes the DirectX lock. Never   >
+	//  < call it while holding g->mCriticalSection! >
+	//  <============================================>
+	mOrigContext1->CSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, srvs);
+	mOrigContext1->CSGetUnorderedAccessViews(0, num_uavs, uavs);
 
-	CSGetUnorderedAccessViews(0, num_uavs, uavs);
-	for (i = 0; i < num_uavs; i++) {
-		if (uavs[i]) {
-			resource = RecordResourceViewStats(uavs[i], &G->mUnorderedAccessInfo);
-			if (resource)
-				info->UAVs[i].insert(SnapshotResource(resource));
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
-			uavs[i]->Release();
+		info = &G->mComputeShaderInfo[mCurrentComputeShader];
+		_RecordShaderResourceUsage(info, srvs);
+
+		for (i = 0; i < num_uavs; i++) {
+			if (uavs[i]) {
+				resource = RecordResourceViewStats(uavs[i], &G->mUnorderedAccessInfo);
+				if (resource)
+					info->UAVs[i].insert(SnapshotResource(resource));
+
+				uavs[i]->Release();
+			}
 		}
-	}
 
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::end(&profiling_state, &Profiling::stat_overhead);
+		if (Profiling::mode == Profiling::Mode::SUMMARY)
+			Profiling::end(&profiling_state, &Profiling::stat_overhead);
+
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num)
@@ -706,14 +747,17 @@ void HackerContext::BeforeDraw(DrawContext &data)
 		UINT selectedRenderTargetPos;
 		UINT i;
 
+		// In some cases stat collection can have a significant
+		// performance impact or may result in a runaway memory leak,
+		// so only do it if dump_usage is enabled. Do this outside of
+		// the mCriticalSection as it needs to call into DirectX, which
+		// can otherwise lead to an AB-BA deadlock with the resource
+		// release tracker:
+		if (G->DumpUsage)
+			RecordGraphicsShaderStats();
+
 		EnterCriticalSectionPretty(&G->mCriticalSection);
 		{
-			// In some cases stat collection can have a significant
-			// performance impact or may result in a runaway
-			// memory leak, so only do it if dump_usage is enabled:
-			if (G->DumpUsage)
-				RecordGraphicsShaderStats();
-
 			// Selection
 			for (selectedVertexBufferPos = 0; selectedVertexBufferPos < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; ++selectedVertexBufferPos) {
 				if (mCurrentVertexBuffers[selectedVertexBufferPos] == G->mSelectedVertexBuffer)
