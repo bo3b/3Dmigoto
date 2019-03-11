@@ -4,7 +4,7 @@ NvAPI_Status CheckStereo();
 void FlagConfigReload(HackerDevice *device, void *private_data);
 void LoadConfigFile();
 void ReloadConfig(HackerDevice *device);
-void LoadProfileManagerConfig(const wchar_t *exe_path);
+void LoadProfileManagerConfig(const wchar_t *config_dir);
 void SavePersistentSettings();
 
 struct IniLine {

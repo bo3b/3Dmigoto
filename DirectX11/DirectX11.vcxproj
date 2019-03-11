@@ -43,6 +43,7 @@
     <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
     <ClCompile Include="..\iid.cpp" />
+    <ClCompile Include="..\ini_parser_lite.cpp" />
     <ClCompile Include="..\util.cpp" />
     <ClCompile Include="D3D11Wrapper.cpp" />
     <ClCompile Include="DLLMainHook.cpp" />
@@ -57,6 +58,7 @@
     <ClCompile Include="Hunting.cpp" />
     <ClCompile Include="IniHandler.cpp" />
     <ClCompile Include="Input.cpp" />
+    <ClCompile Include="lock.cpp" />
     <ClCompile Include="nvprofile.cpp" />
     <ClCompile Include="Overlay.cpp" />
     <ClCompile Include="Override.cpp" />
@@ -88,6 +90,7 @@
     <ClInclude Include="Hunting.h" />
     <ClInclude Include="IniHandler.h" />
     <ClInclude Include="Input.h" />
+    <ClInclude Include="lock.h" />
     <ClInclude Include="nvprofile.h" />
     <ClInclude Include="Overlay.h" />
     <ClInclude Include="Override.h" />

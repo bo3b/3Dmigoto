@@ -28,7 +28,7 @@
 
 #define VERSION_MAJOR               1
 #define VERSION_MINOR               3
-#define VERSION_REVISION            14
+#define VERSION_REVISION            15
  
 #define STRINGIZE2(s) #s
 #define STRINGIZE(s) STRINGIZE2(s)
@@ -41,7 +41,7 @@
 #define VER_PRODUCTNAME_STR         "3Dmigoto"
 #define VER_PRODUCT_VERSION         VER_FILE_VERSION
 #define VER_PRODUCT_VERSION_STR     VER_FILE_VERSION_STR
-#define VER_COPYRIGHT_STR           "Copyright (C) 2014-2015"
+#define VER_COPYRIGHT_STR           "Copyright (C) 2014-2019"
  
 #ifdef _DEBUG
   #define VER_VER_DEBUG             VS_FF_DEBUG

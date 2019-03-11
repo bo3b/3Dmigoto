@@ -67,7 +67,7 @@ static Section RegularSections[] = {
 	{L"Key", true},
 	{L"Preset", true},
 	{L"Include", true}, // Prefix so that it may be namespaced to allow included files to include more files with relative paths
-	{L"Variables", false},
+	{L"Loader", false},
 };
 
 // List of sections that will not trigger a warning if they contain a line
@@ -76,7 +76,6 @@ static Section RegularSections[] = {
 static Section AllowLinesWithoutEquals[] = {
 	{L"Profile", false},
 	{L"ShaderRegex", true},
-	{L"Variables", true},
 };
 
 static bool whitelisted_duplicate_key(const wchar_t *section, const wchar_t *key)
@@ -1162,7 +1161,7 @@ static void ParseIncludedIniFiles()
 	vector<pcre2_code*> exclude;
 	DWORD attrib;
 
-	GetModuleFileName(0, migoto_path, MAX_PATH);
+	GetModuleFileName(migoto_handle, migoto_path, MAX_PATH);
 	wcsrchr(migoto_path, L'\\')[1] = 0;
 
 	// Grab the user_config path before the below code removes it from the
@@ -1673,7 +1672,7 @@ static void ParseResourceSections()
 			get_namespaced_section_path(i->first.c_str(), &namespace_path);
 			found = false;
 			if (!namespace_path.empty()) {
-				GetModuleFileName(0, path, MAX_PATH);
+				GetModuleFileName(migoto_handle, path, MAX_PATH);
 				wcsrchr(path, L'\\')[1] = 0;
 				wcscat(path, namespace_path.c_str());
 				wcscat(path, setting);
@@ -1681,7 +1680,7 @@ static void ParseResourceSections()
 					found = true;
 			}
 			if (!found) {
-				GetModuleFileName(0, path, MAX_PATH);
+				GetModuleFileName(migoto_handle, path, MAX_PATH);
 				wcsrchr(path, L'\\')[1] = 0;
 				wcscat(path, setting);
 			}
@@ -2153,7 +2152,7 @@ static void ParseShaderOverrideSections()
 	// Lock entire routine. This can be re-inited live.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
 	//  We actually already lock the entire config reload, so this is redundant -DSS
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	G->mShaderOverrideMap.clear();
 
@@ -2948,7 +2947,7 @@ static void ParseTextureOverrideSections()
 	// Lock entire routine, this can be re-inited.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
 	//  We actually already lock the entire config reload, so this is redundant -DSS
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	G->mTextureOverrideMap.clear();
 	G->mFuzzyTextureOverrides.clear();
@@ -4228,6 +4227,27 @@ void InstallMouseHooks(bool hide)
 	LogInfo("Successfully hooked mouse cursor functions for hide_cursor\n");
 }
 
+static void warn_of_conflicting_d3dx(wchar_t *dll_ini_path)
+{
+	wchar_t exe_ini_path[MAX_PATH];
+	DWORD attrib;
+
+	if (!GetModuleFileName(NULL, exe_ini_path, MAX_PATH))
+		return;
+	wcsrchr(exe_ini_path, L'\\')[1] = 0;
+	wcscat(exe_ini_path, L"d3dx.ini");
+
+	if (!wcscmp(dll_ini_path, exe_ini_path))
+		return;
+
+	attrib = GetFileAttributes(exe_ini_path);
+	if (attrib == INVALID_FILE_ATTRIBUTES)
+		return;
+
+	LogOverlay(LOG_WARNING, "Detected a conflicting d3dx.ini in the game directory that is not being used.\n"
+			"Using this configuration: %S\n", dll_ini_path);
+}
+
 void LoadConfigFile()
 {
 	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
@@ -4235,12 +4255,13 @@ void LoadConfigFile()
 
 	G->gInitialized = true;
 
-	if (!GetModuleFileName(0, iniFile, MAX_PATH))
+	if (!GetModuleFileName(migoto_handle, iniFile, MAX_PATH))
 		DoubleBeepExit();
 	wcsrchr(iniFile, L'\\')[1] = 0;
 	wcscpy(logFilename, iniFile);
 	wcscat(iniFile, L"d3dx.ini");
 	wcscat(logFilename, L"d3d11_log.txt");
+	warn_of_conflicting_d3dx(iniFile);
 
 	// Log all settings that are _enabled_, in order, 
 	// so that there is no question what settings we are using.
@@ -4251,7 +4272,15 @@ void LoadConfigFile()
 	{
 		if (!LogFile)
 			LogFile = _wfsopen(logFilename, L"w", _SH_DENYNO);
-		LogInfo("\nD3D11 DLL starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, LogTime().c_str());
+		LogInfo("\nD3D11 DLL starting init - v %s - %s\n", VER_FILE_VERSION_STR, LogTime().c_str());
+
+		wchar_t our_path[MAX_PATH], exe_path[MAX_PATH];
+		GetModuleFileName(migoto_handle, our_path, MAX_PATH);
+		GetModuleFileName(NULL, exe_path, MAX_PATH);
+		LogInfo("Game path: %S\n"
+			"3DMigoto path: %S\n\n",
+			exe_path, our_path);
+
 		LogInfo("----------- d3dx.ini settings -----------\n");
 	}
 	LogInfo("[Logging]\n");
@@ -4292,6 +4321,9 @@ void LoadConfigFile()
 	}
 
 	G->dump_all_profiles = GetIniBool(L"Logging", L"dump_all_profiles", false, NULL);
+
+	if (GetIniBool(L"Logging", L"debug_locks", false, NULL))
+		enable_lock_dependency_checks();
 
 	// [Include]
 	ParseIncludedIniFiles();
@@ -4365,7 +4397,7 @@ void LoadConfigFile()
 			G->SHADER_PATH[wcslen(G->SHADER_PATH) - 1] = 0;
 		if (G->SHADER_PATH[1] != ':' && G->SHADER_PATH[0] != '\\')
 		{
-			GetModuleFileName(0, setting, MAX_PATH);
+			GetModuleFileName(migoto_handle, setting, MAX_PATH);
 			wcsrchr(setting, L'\\')[1] = 0;
 			wcscat(setting, G->SHADER_PATH);
 			wcscpy(G->SHADER_PATH, setting);
@@ -4379,7 +4411,7 @@ void LoadConfigFile()
 			G->SHADER_CACHE_PATH[wcslen(G->SHADER_CACHE_PATH) - 1] = 0;
 		if (G->SHADER_CACHE_PATH[1] != ':' && G->SHADER_CACHE_PATH[0] != '\\')
 		{
-			GetModuleFileName(0, setting, MAX_PATH);
+			GetModuleFileName(migoto_handle, setting, MAX_PATH);
 			wcsrchr(setting, L'\\')[1] = 0;
 			wcscat(setting, G->SHADER_CACHE_PATH);
 			wcscpy(G->SHADER_CACHE_PATH, setting);
@@ -4587,13 +4619,13 @@ void LoadConfigFile()
 // game's executable passed in. It doesn't need to parse most of the config,
 // only the [Profile] section and some of the logging. It uses a separate log
 // file from the main DLL.
-void LoadProfileManagerConfig(const wchar_t *exe_path)
+void LoadProfileManagerConfig(const wchar_t *config_dir)
 {
 	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
 
 	G->gInitialized = true;
 
-	if (wcscpy_s(iniFile, MAX_PATH, exe_path))
+	if (wcscpy_s(iniFile, MAX_PATH, config_dir))
 		DoubleBeepExit();
 	wcsrchr(iniFile, L'\\')[1] = 0;
 	wcscpy(logFilename, iniFile);
@@ -4705,7 +4737,7 @@ void ReloadConfig(HackerDevice *device)
 	// Lock the entire config reload as it touches many global structures
 	// that could potentially be accessed from other threads (e.g. deferred
 	// contexts) while we do this
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	// Clears any notices currently displayed on the overlay. This ensures
 	// that any notices that haven't timed out yet (e.g. from a previous

@@ -135,7 +135,7 @@ void FrameAnalysisContext::FrameAnalysisLogShaderHash(ID3D11Shader *shader)
 		return;
 	}
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	hash = lookup_shader_hash(shader);
 	if (hash != end(G->mShaders))
@@ -162,7 +162,8 @@ void FrameAnalysisContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource
 		return;
 	}
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mResourcesLock);
 
 	try {
 		hash = G->mResources.at(resource).hash;
@@ -187,6 +188,7 @@ void FrameAnalysisContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource
 	} catch (std::out_of_range) {
 	}
 
+	LeaveCriticalSection(&G->mResourcesLock);
 	LeaveCriticalSection(&G->mCriticalSection);
 
 	fprintf(frame_analysis_log, "\n");
@@ -1571,7 +1573,7 @@ void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_li
 	if (frame_analysis_deferred_buffer_lists.empty() && frame_analysis_deferred_tex2d_lists.empty())
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	try {
 		deferred_buffers = std::move(frame_analysis_deferred_buffer_lists.at(command_list));
@@ -1618,7 +1620,7 @@ void FrameAnalysisContext::finish_deferred_resources(ID3D11CommandList *command_
 	if (!command_list || (!deferred_buffers && !deferred_tex2d))
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	if (deferred_buffers) {
 		FALogInfo("Finishing deferred staging Buffer list %p on context %p\n", deferred_buffers.get(), this);
@@ -1897,7 +1899,7 @@ static BOOL CreateDeferredFADirectory(LPCWSTR path)
 void FrameAnalysisContext::get_deduped_dir(wchar_t *path, size_t size)
 {
 	if (analyse_options & FrameAnalysisOptions::SHARE_DEDUPED) {
-		if (!GetModuleFileName(0, path, (DWORD)size))
+		if (!GetModuleFileName(migoto_handle, path, (DWORD)size))
 			return;
 		wcsrchr(path, L'\\')[1] = 0;
 		wcscat_s(path, size, L"FrameAnalysisDeduped");
@@ -1948,12 +1950,14 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t si
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i", draw_call);
 	}
 
+	EnterCriticalSectionPretty(&G->mResourcesLock);
 	try {
 		hash = G->mResources.at(handle).hash;
 		orig_hash = G->mResources.at(handle).orig_hash;
 	} catch (std::out_of_range) {
 		hash = orig_hash = 0;
 	}
+	LeaveCriticalSection(&G->mResourcesLock);
 
 	if (hash) {
 		try {
@@ -2028,12 +2032,14 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, s
 
 	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%s", type);
 
+	EnterCriticalSectionPretty(&G->mResourcesLock);
 	try {
 		hash = G->mResources.at(handle).hash;
 		orig_hash = G->mResources.at(handle).orig_hash;
 	} catch (std::out_of_range) {
 		hash = orig_hash = 0;
 	}
+	LeaveCriticalSection(&G->mResourcesLock);
 
 	if (hash) {
 		try {
@@ -2861,7 +2867,7 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 
 	// Grab the critical section now as we may need it several times during
 	// dumping for mResources
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_CB)
 		DumpCBs(compute);
@@ -2918,7 +2924,7 @@ void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 
 	set_default_dump_formats(false);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	// We don't have a view at this point to get a fully typed format, so
 	// we leave format as DXGI_FORMAT_UNKNOWN, which will use the format
@@ -2977,7 +2983,7 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 		}
 	}
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, target, resource, false);
 	if (FAILED(hr)) {
