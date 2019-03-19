@@ -1588,14 +1588,6 @@ void Draw3DMigotoOverlayCommand::run(CommandListState *state)
 
 	HackerSwapChain *mHackerSwapChain = state->mHackerDevice->GetHackerSwapChain();
 	if (mHackerSwapChain->mOverlay) {
-		//
-		//  <================================>
-		//  <  AB-BA TYPE DEADLOCK WARNING!  >
-		//  <                                >
-		//  < Never call DrawOverlay() while >
-		//  <  holding g->mCriticalSection!  >
-		//  <================================>
-		//
 		mHackerSwapChain->mOverlay->DrawOverlay();
 		G->suppress_overlay = true;
 	}

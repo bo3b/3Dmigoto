@@ -2152,7 +2152,7 @@ static void ParseShaderOverrideSections()
 	// Lock entire routine. This can be re-inited live.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
 	//  We actually already lock the entire config reload, so this is redundant -DSS
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	G->mShaderOverrideMap.clear();
 
@@ -2947,7 +2947,7 @@ static void ParseTextureOverrideSections()
 	// Lock entire routine, this can be re-inited.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
 	//  We actually already lock the entire config reload, so this is redundant -DSS
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	G->mTextureOverrideMap.clear();
 	G->mFuzzyTextureOverrides.clear();
@@ -4322,6 +4322,9 @@ void LoadConfigFile()
 
 	G->dump_all_profiles = GetIniBool(L"Logging", L"dump_all_profiles", false, NULL);
 
+	if (GetIniBool(L"Logging", L"debug_locks", false, NULL))
+		enable_lock_dependency_checks();
+
 	// [Include]
 	ParseIncludedIniFiles();
 
@@ -4731,7 +4734,7 @@ void ReloadConfig(HackerDevice *device)
 	// Lock the entire config reload as it touches many global structures
 	// that could potentially be accessed from other threads (e.g. deferred
 	// contexts) while we do this
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	// Clears any notices currently displayed on the overlay. This ensures
 	// that any notices that haven't timed out yet (e.g. from a previous

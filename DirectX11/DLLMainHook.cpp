@@ -3,6 +3,7 @@
 #include "HookedDXGI.h"
 #include "D3D11Wrapper.h"
 #include "util_min.h"
+#include "globals.h"
 
 HINSTANCE migoto_handle;
 
