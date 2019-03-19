@@ -37,6 +37,12 @@ static void PrintHelp(int argc, char *argv[])
 	LogInfo("  --disassemble-ms\n");
 	LogInfo("\t\t\tDisassemble binary shaders with Microsoft's disassembler\n");
 
+#if 0
+	// Only applicable to the vs2017 branch / d3dcompiler_47 version:
+	LogInfo("  -6, --disassemble-46\n");
+	LogInfo("\t\t\tApply backwards compatibility formatting patch to disassembler output\n");
+#endif
+
 	LogInfo("  -a, --assemble\n");
 	LogInfo("\t\t\tAssemble shaders with Flugan's assembler\n");
 
@@ -78,6 +84,7 @@ static struct {
 	bool disassemble_ms;
 	bool disassemble_flugan;
 	int disassemble_hexdump;
+	bool disassemble_46;
 	std::string reflection_reference;
 	bool assemble;
 	bool force;
@@ -129,6 +136,12 @@ void parse_args(int argc, char *argv[])
 				args.disassemble_hexdump = 1;
 				continue;
 			}
+#if 0
+			if (!strcmp(arg, "-6") || !strcmp(arg, "--disassemble-46")) {
+				args.disassemble_46 = true;
+				continue;
+			}
+#endif
 			if (!strcmp(arg, "--copy-reflection")) {
 				if (++i >= argc)
 					PrintHelp(argc, argv);
@@ -173,6 +186,7 @@ void parse_args(int argc, char *argv[])
 			+ args.disassemble_ms
 			+ args.disassemble_flugan
 			+ args.disassemble_hexdump
+			+ args.disassemble_46
 			+ args.assemble < 1) {
 		LogInfo("No action specified\n");
 		PrintHelp(argc, argv); // Does not return
@@ -205,12 +219,12 @@ static HRESULT DisassembleMS(const void *pShaderBytecode, size_t BytecodeLength,
 	return S_OK;
 }
 
-static HRESULT DisassembleFlugan(const void *pShaderBytecode, size_t BytecodeLength, string *asmText, int hexdump)
+static HRESULT DisassembleFlugan(const void *pShaderBytecode, size_t BytecodeLength, string *asmText, int hexdump, bool d3dcompiler_46_compat)
 {
 	// FIXME: This is a bit of a waste - we convert from a vector<char> to
 	// a void* + size_t to a vector<byte>
 
-	*asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength, hexdump);
+	*asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength, hexdump, d3dcompiler_46_compat);
 	if (*asmText == "")
 		return E_FAIL;
 
@@ -269,7 +283,7 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 
 		// Assembler threw a parse error. Switch to disassembly with
 		// hexdump mode 2 enabled to identify bad instructions:
-		hret = DisassembleFlugan(old_shader->data(), old_shader->size(), &disassembly, 2);
+		hret = DisassembleFlugan(old_shader->data(), old_shader->size(), &disassembly, 2, false);
 		if (SUCCEEDED(hret))
 			LogInfo("%s\n", disassembly.c_str());
 		return 1;
@@ -321,7 +335,7 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 				if (!strncmp(old_section_header->signature, "SHDR", 4) ||
 				    !strncmp(old_section_header->signature, "SHEX", 4)) {
 					string disassembly;
-					hret = DisassembleFlugan(old_shader->data(), old_shader->size(), &disassembly, 2);
+					hret = DisassembleFlugan(old_shader->data(), old_shader->size(), &disassembly, 2, false);
 					if (SUCCEEDED(hret))
 						LogInfo("\n%s\n", disassembly.c_str());
 				}
@@ -526,9 +540,9 @@ static int process(string const *filename)
 			return EXIT_FAILURE;
 	}
 
-	if (args.disassemble_flugan || args.disassemble_hexdump) {
+	if (args.disassemble_flugan || args.disassemble_hexdump || args.disassemble_46) {
 		LogInfo("Disassembling (Flugan) %s...\n", filename->c_str());
-		hret = DisassembleFlugan(srcData.data(), srcData.size(), &output, args.disassemble_hexdump);
+		hret = DisassembleFlugan(srcData.data(), srcData.size(), &output, args.disassemble_hexdump, args.disassemble_46);
 		if (FAILED(hret))
 			return EXIT_FAILURE;
 
