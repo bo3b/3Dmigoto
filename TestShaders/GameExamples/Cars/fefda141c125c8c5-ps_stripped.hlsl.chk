@@ -1,0 +1,150 @@
+// ---- Created with 3Dmigoto v1.3.15 on Wed Mar 20 02:00:38 2019
+TextureCube<float4> t8 : register(t8);
+
+Texture2D<float4> t7 : register(t7);
+
+Texture2D<float4> t6 : register(t6);
+
+Texture2D<float4> t5 : register(t5);
+
+Texture2D<float4> t4 : register(t4);
+
+Texture2D<float4> t3 : register(t3);
+
+Texture2D<float4> t2 : register(t2);
+
+Texture2D<float4> t1 : register(t1);
+
+Texture2D<float4> t0 : register(t0);
+
+SamplerState s8_s : register(s8);
+
+SamplerState s7_s : register(s7);
+
+SamplerState s6_s : register(s6);
+
+SamplerState s5_s : register(s5);
+
+SamplerState s4_s : register(s4);
+
+SamplerState s3_s : register(s3);
+
+SamplerState s2_s : register(s2);
+
+SamplerState s1_s : register(s1);
+
+SamplerState s0_s : register(s0);
+
+cbuffer cb3 : register(b3)
+{
+  float4 cb3[35];
+}
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[5];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : COLOR1,
+  linear centroid float4 v2 : TEXCOORD0,
+  linear centroid float4 v3 : TEXCOORD1,
+  linear centroid float4 v4 : TEXCOORD2,
+  float4 v5 : TEXCOORD3,
+  float4 v6 : TEXCOORD4,
+  float4 v7 : TEXCOORD5,
+  float4 v8 : TEXCOORD7,
+  float3 v9 : TEXCOORD8,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyz = t2.Sample(s2_s, v3.xy).xyz;
+  r1.xyz = cb0[2].xyz * r0.xyz;
+  r2.xyz = cb0[3].xyz * r0.xyz;
+  r3.xyz = t3.Sample(s1_s, v3.xy).xyz;
+  r2.xyz = r3.yyy * r2.xyz;
+  r1.xyz = r3.xxx * r1.xyz + r2.xyz;
+  r2.xyz = cb0[4].xyz * r0.xyz;
+  r1.xyz = r3.zzz * r2.xyz + r1.xyz;
+  r0.w = dot(r3.xyz, float3(1,1,1));
+  r0.w = saturate(1 + -r0.w);
+  r0.xyz = r0.www * r0.xyz + r1.xyz;
+  r0.xyz = float3(0.450000018,0.450000018,0.450000018) * r0.xyz;
+  r0.w = dot(v9.xyz, v9.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = v9.xyz * r0.www;
+  r0.w = dot(v8.xyz, v8.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = v8.xyz * r0.www;
+  r3.xyz = t0.Sample(s4_s, v3.xy).xyz;
+  r3.xyz = r3.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r2.xyz = r3.yyy * r2.xyz;
+  r1.xyz = r3.xxx * r1.xyz + r2.xyz;
+  r1.xyz = r3.zzz * v6.xyz + r1.xyz;
+  r0.w = dot(r1.xyz, r1.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = r1.xyz * r0.www;
+  r0.w = saturate(dot(r1.xyz, cb3[32].xyz));
+  r2.xyz = cb3[34].xyz * r0.www;
+  r3.xy = v2.xy / v2.ww;
+  r3.zw = v5.xy / v5.zz;
+  r3.xy = r3.xy + -r3.zw;
+  r3.xy = r3.xy * float2(2.0999999,2.0999999) + r3.zw;
+  r4.xyz = t4.Sample(s7_s, r3.xy).xyz;
+  r0.w = t1.Sample(s0_s, r3.xy).w;
+  r2.xyz = r2.xyz * r0.www + r4.xyz;
+  r1.w = dot(v7.xyz, v7.xyz);
+  r1.w = rsqrt(r1.w);
+  r4.xyz = -v7.xyz * r1.www + cb3[32].xyz;
+  r1.w = dot(r4.xyz, r4.xyz);
+  r1.w = rsqrt(r1.w);
+  r4.xyz = r4.xyz * r1.www;
+  r1.x = saturate(dot(r1.xyz, r4.xyz));
+  r1.x = max(9.99999982e-15, r1.x);
+  r1.x = log2(r1.x);
+  r1.x = 16 * r1.x;
+  r1.x = exp2(r1.x);
+  r0.w = r1.x * r0.w;
+  r0.w = 1.09134817 * r0.w;
+  r1.xyz = t6.Sample(s8_s, r3.xy).xyz;
+  r3.xyz = t7.Sample(s6_s, r3.xy).xyz;
+  r3.xyz = r3.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r1.xyz = float3(0.00100000005,0.00100000005,0.00100000005) * r1.xyz;
+  r1.xyz = r0.www * cb3[34].xyz + r1.xyz;
+  r4.xyzw = t5.Sample(s3_s, v3.xy).xyzw;
+  r1.xyz = r4.xyz * r1.xyz;
+  r1.xyz = cb0[0].zzz * r1.xyz;
+  r0.w = saturate(v6.w);
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r0.xyz * r2.xyz + r1.xyz;
+  r1.x = dot(v4.xyz, v4.xyz);
+  r1.x = rsqrt(r1.x);
+  r1.xyz = v4.xyz * r1.xxx;
+  r1.w = dot(r1.xyz, r3.xyz);
+  r1.w = r1.w + r1.w;
+  r1.xyz = r3.xyz * -r1.www + r1.xyz;
+  r2.xyz = cb3[5].xyz * r1.yyy;
+  r1.xyw = r1.xxx * cb3[4].xyz + r2.xyz;
+  r1.xyz = r1.zzz * cb3[6].xyz + r1.xyw;
+  r1.w = 1 + -r4.w;
+  r1.w = 6 * r1.w;
+  r1.xyz = t8.SampleLevel(s5_s, r1.xyz, r1.w).xyz;
+  r1.xyz = r1.xyz * r4.www;
+  r1.xyz = r4.xyz * r1.xyz;
+  r1.xyz = cb0[0].www * r1.xyz;
+  r0.xyz = r1.xyz * r0.www + r0.xyz;
+  o0.xyz = r0.xyz * v1.www + v1.xyz;
+  o0.w = 1;
+  return;
+}

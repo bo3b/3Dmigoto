@@ -559,7 +559,8 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	orig_info->deferred_replacement_processed = true;
 
 	asm_text = BinaryToAsmText(orig_info->byteCode->GetBufferPointer(),
-			orig_info->byteCode->GetBufferSize());
+			orig_info->byteCode->GetBufferSize(),
+			G->disassemble_undecipherable_custom_data);
 	if (asm_text.empty())
 		goto out_drop;
 

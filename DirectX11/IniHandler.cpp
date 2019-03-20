@@ -4421,6 +4421,7 @@ void LoadConfigFile()
 	G->SCISSOR_DISABLE = GetIniBool(L"Rendering", L"rasterizer_disable_scissor", false, NULL);
 	G->track_texture_updates = GetIniBoolOrInt(L"Rendering", L"track_texture_updates", 0, NULL);
 	G->assemble_signature_comments = GetIniBool(L"Rendering", L"assemble_signature_comments", false, NULL);
+	G->disassemble_undecipherable_custom_data = GetIniBool(L"Rendering", L"disassemble_undecipherable_custom_data", false, NULL);
 
 	G->EXPORT_FIXED = GetIniBool(L"Rendering", L"export_fixed", false, NULL);
 	G->EXPORT_SHADERS = GetIniBool(L"Rendering", L"export_shaders", false, NULL);

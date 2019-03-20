@@ -670,6 +670,7 @@ static const char* type_name(IUnknown *object)
 // problematic %f floating point values with %.9e, which is enough that a 32bit
 // floating point value will be reproduced exactly:
 static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength,
+		bool disassemble_undecipherable_data = true,
 		int hexdump = 0, bool d3dcompiler_46_compat = true)
 {
 	string comments;
@@ -680,7 +681,8 @@ static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength
 	comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
 	memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
 
-	r = disassembler(&byteCode, &disassembly, comments.c_str(), hexdump, d3dcompiler_46_compat);
+	r = disassembler(&byteCode, &disassembly, comments.c_str(), hexdump,
+			d3dcompiler_46_compat, disassemble_undecipherable_data);
 	if (FAILED(r)) {
 		LogInfo("  disassembly failed. Error: %x\n", r);
 		return "";

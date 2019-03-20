@@ -1,0 +1,162 @@
+// ---- Created with 3Dmigoto v1.3.15 on Wed Mar 20 02:00:38 2019
+
+cbuffer _Globals : register(b0)
+{
+  float minSpecPower : packoffset(c0);
+  float maxSpecPower : packoffset(c0.y);
+  float globalSpecularFactor : packoffset(c0.z);
+  float globalEMapFactor : packoffset(c0.w);
+  float fresnelFactor : packoffset(c1);
+  float4 tint_tintR : packoffset(c2);
+  float4 tint_tintG : packoffset(c3);
+  float4 tint_tintB : packoffset(c4);
+}
+
+cbuffer COMMON_BUFFER2 : register(b3)
+{
+  row_major float4x4 view : packoffset(c0);
+  row_major float4x4 viewI : packoffset(c4);
+  row_major float4x4 projMatrix : packoffset(c8);
+  row_major float4x4 viewProj : packoffset(c12);
+  row_major float4x4 viewProjI : packoffset(c16);
+  float4 screenSpaceDimensions : packoffset(c20);
+  float4 frustumDimensions : packoffset(c21);
+  float4 cLightingTransitionValues : packoffset(c22);
+  float4 treeAmbientBoost : packoffset(c23);
+  float4 viewportPixelDimensions : packoffset(c24);
+  float4 globalVector4 : packoffset(c25);
+  float4 globalVector6 : packoffset(c26);
+  float4 globalVector7 : packoffset(c27);
+  float4 globalVector8 : packoffset(c28);
+  float4 fog_colour_towards : packoffset(c29);
+  float4 fog_colour_away : packoffset(c30);
+  float4 fogLightDir : packoffset(c31);
+  float4 keyLightDir : packoffset(c32);
+  float4 fog_min_inv_fog1_fog2 : packoffset(c33);
+  float4 keyLightColour : packoffset(c34);
+  float4 msaaMode : packoffset(c35);
+  float3 keyLightDirVS : packoffset(c36);
+  float3 worldCameraPos : packoffset(c37);
+  float emissiveTextureControl : packoffset(c37.w);
+}
+
+SamplerState ambientAndBakedShadowsMap_s : register(s0);
+SamplerState tint_maskMap_s : register(s1);
+SamplerState diffuseMap_s : register(s2);
+SamplerState specularMap_s : register(s3);
+SamplerState normalMap_s : register(s4);
+SamplerState environmentMap_s : register(s5);
+SamplerState normalsAndGlossMap_s : register(s6);
+SamplerState diffuseIrradianceMap_s : register(s7);
+SamplerState specularIrradianceMap_s : register(s8);
+Texture2D<float4> normalMap : register(t0);
+Texture2D<float4> ambientAndBakedShadowsMap : register(t1);
+Texture2D<float4> diffuseMap : register(t2);
+Texture2D<float4> tint_maskMap : register(t3);
+Texture2D<float4> diffuseIrradianceMap : register(t4);
+Texture2D<float4> specularMap : register(t5);
+Texture2D<float4> specularIrradianceMap : register(t6);
+Texture2D<float4> normalsAndGlossMap : register(t7);
+TextureCube<float4> environmentMap : register(t8);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : COLOR1,
+  linear centroid float4 v2 : TEXCOORD0,
+  linear centroid float4 v3 : TEXCOORD1,
+  linear centroid float4 v4 : TEXCOORD2,
+  float4 v5 : TEXCOORD3,
+  float4 v6 : TEXCOORD4,
+  float4 v7 : TEXCOORD5,
+  float4 v8 : TEXCOORD7,
+  float3 v9 : TEXCOORD8,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyz = diffuseMap.Sample(diffuseMap_s, v3.xy).xyz;
+  r1.xyz = tint_tintR.xyz * r0.xyz;
+  r2.xyz = tint_tintG.xyz * r0.xyz;
+  r3.xyz = tint_maskMap.Sample(tint_maskMap_s, v3.xy).xyz;
+  r2.xyz = r3.yyy * r2.xyz;
+  r1.xyz = r3.xxx * r1.xyz + r2.xyz;
+  r2.xyz = tint_tintB.xyz * r0.xyz;
+  r1.xyz = r3.zzz * r2.xyz + r1.xyz;
+  r0.w = dot(r3.xyz, float3(1,1,1));
+  r0.w = saturate(1 + -r0.w);
+  r0.xyz = r0.www * r0.xyz + r1.xyz;
+  r0.xyz = float3(0.450000018,0.450000018,0.450000018) * r0.xyz;
+  r0.w = dot(v9.xyz, v9.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = v9.xyz * r0.www;
+  r0.w = dot(v8.xyz, v8.xyz);
+  r0.w = rsqrt(r0.w);
+  r2.xyz = v8.xyz * r0.www;
+  r3.xyz = normalMap.Sample(normalMap_s, v3.xy).xyz;
+  r3.xyz = r3.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r2.xyz = r3.yyy * r2.xyz;
+  r1.xyz = r3.xxx * r1.xyz + r2.xyz;
+  r1.xyz = r3.zzz * v6.xyz + r1.xyz;
+  r0.w = dot(r1.xyz, r1.xyz);
+  r0.w = rsqrt(r0.w);
+  r1.xyz = r1.xyz * r0.www;
+  r0.w = saturate(dot(r1.xyz, keyLightDir.xyz));
+  r2.xyz = keyLightColour.xyz * r0.www;
+  r3.xy = v2.xy / v2.ww;
+  r3.zw = v5.xy / v5.zz;
+  r3.xy = r3.xy + -r3.zw;
+  r3.xy = r3.xy * float2(2.0999999,2.0999999) + r3.zw;
+  r4.xyz = diffuseIrradianceMap.Sample(diffuseIrradianceMap_s, r3.xy).xyz;
+  r0.w = ambientAndBakedShadowsMap.Sample(ambientAndBakedShadowsMap_s, r3.xy).w;
+  r2.xyz = r2.xyz * r0.www + r4.xyz;
+  r1.w = dot(v7.xyz, v7.xyz);
+  r1.w = rsqrt(r1.w);
+  r4.xyz = -v7.xyz * r1.www + keyLightDir.xyz;
+  r1.w = dot(r4.xyz, r4.xyz);
+  r1.w = rsqrt(r1.w);
+  r4.xyz = r4.xyz * r1.www;
+  r1.x = saturate(dot(r1.xyz, r4.xyz));
+  r1.x = max(9.99999982e-15, r1.x);
+  r1.x = log2(r1.x);
+  r1.x = 16 * r1.x;
+  r1.x = exp2(r1.x);
+  r0.w = r1.x * r0.w;
+  r0.w = 1.09134817 * r0.w;
+  r1.xyz = specularIrradianceMap.Sample(specularIrradianceMap_s, r3.xy).xyz;
+  r3.xyz = normalsAndGlossMap.Sample(normalsAndGlossMap_s, r3.xy).xyz;
+  r3.xyz = r3.xyz * float3(2,2,2) + float3(-1,-1,-1);
+  r1.xyz = float3(0.00100000005,0.00100000005,0.00100000005) * r1.xyz;
+  r1.xyz = r0.www * keyLightColour.xyz + r1.xyz;
+  r4.xyzw = specularMap.Sample(specularMap_s, v3.xy).xyzw;
+  r1.xyz = r4.xyz * r1.xyz;
+  r1.xyz = globalSpecularFactor * r1.xyz;
+  r0.w = saturate(v6.w);
+  r1.xyz = r1.xyz * r0.www;
+  r0.xyz = r0.xyz * r2.xyz + r1.xyz;
+  r1.x = dot(v4.xyz, v4.xyz);
+  r1.x = rsqrt(r1.x);
+  r1.xyz = v4.xyz * r1.xxx;
+  r1.w = dot(r1.xyz, r3.xyz);
+  r1.w = r1.w + r1.w;
+  r1.xyz = r3.xyz * -r1.www + r1.xyz;
+  r2.xyz = viewI._m10_m11_m12 * r1.yyy;
+  r1.xyw = r1.xxx * viewI._m00_m01_m02 + r2.xyz;
+  r1.xyz = r1.zzz * viewI._m20_m21_m22 + r1.xyw;
+  r1.w = 1 + -r4.w;
+  r1.w = 6 * r1.w;
+  r1.xyz = environmentMap.SampleLevel(environmentMap_s, r1.xyz, r1.w).xyz;
+  r1.xyz = r1.xyz * r4.www;
+  r1.xyz = r4.xyz * r1.xyz;
+  r1.xyz = globalEMapFactor * r1.xyz;
+  r0.xyz = r1.xyz * r0.www + r0.xyz;
+  o0.xyz = r0.xyz * v1.www + v1.xyz;
+  o0.w = 1;
+  return;
+}
