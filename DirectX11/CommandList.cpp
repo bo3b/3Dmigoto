@@ -3910,20 +3910,20 @@ bail:
 
 ResourcePool::~ResourcePool()
 {
-	unordered_map<uint32_t, ID3D11Resource*>::iterator i;
+	ResourcePoolCache::iterator i;
 
 	for (i = cache.begin(); i != cache.end(); i++) {
-		if (i->second)
-			i->second->Release();
+		if (i->second.first)
+			i->second.first->Release();
 	}
 	cache.clear();
 }
 
-void ResourcePool::emplace(uint32_t hash, ID3D11Resource *resource)
+void ResourcePool::emplace(uint32_t hash, ID3D11Resource *resource, ID3D11Device *device)
 {
 	if (resource)
 		resource->AddRef();
-	cache.emplace(hash, resource);
+	cache.emplace(hash, pair<ID3D11Resource*, ID3D11Device*>{resource, device});
 }
 
 template <typename ResourceType,
@@ -3957,17 +3957,12 @@ static ResourceType* GetResourceFromPool(
 
 	pool_i = Profiling::lookup_map(resource_pool->cache, hash, &Profiling::resource_pool_lookup_overhead);
 	if (pool_i != resource_pool->cache.end()) {
-		resource = (ResourceType*)pool_i->second;
+		resource = (ResourceType*)pool_i->second.first;
+		old_device = pool_i->second.second;
 		if (!resource)
 			return NULL;
 
-		resource->GetDevice(&old_device);
-		if (old_device)
-			old_device->Release();
-
-		// Since we don't currently wrap ID3D11DeviceChild::GetDevice, we need
-		// to compare against the real DirectX object, not a passthrough object:
-		if (old_device == state->mHackerDevice->GetPossiblyHookedOrigDevice1()) {
+		if (old_device == state->mOrigDevice1) {
 			if (resource == dst_resource)
 				return NULL;
 
@@ -3994,11 +3989,11 @@ static ResourceType* GetResourceFromPool(
 		LogResourceDesc(&old_desc);
 
 		// Prevent further attempts:
-		resource_pool->emplace(hash, NULL);
+		resource_pool->emplace(hash, NULL, NULL);
 
 		return NULL;
 	}
-	resource_pool->emplace(hash, resource);
+	resource_pool->emplace(hash, resource, state->mOrigDevice1);
 	size = resource_pool->cache.size();
 	if (size > 1)
 		LogInfo("  NOTICE: cache now contains %Ii resources\n", size);
@@ -4009,6 +4004,7 @@ static ResourceType* GetResourceFromPool(
 
 CustomResource::CustomResource() :
 	resource(NULL),
+	device(NULL),
 	view(NULL),
 	is_null(true),
 	substantiated(false),
@@ -4218,6 +4214,7 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 				false, &resource, NULL);
 	}
 	if (SUCCEEDED(hr)) {
+		device = mOrigDevice1;
 		is_null = false;
 		// TODO:
 		// format = ...
@@ -4283,6 +4280,7 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, 
 				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)buffer;
+		device = mOrigDevice1;
 		is_null = false;
 		OverrideOutOfBandInfo(&format, &stride);
 	} else {
@@ -4308,6 +4306,7 @@ void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice1)
 				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)tex1d;
+		device = mOrigDevice1;
 		is_null = false;
 	} else {
 		LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
@@ -4332,6 +4331,7 @@ void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice1)
 				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)tex2d;
+		device = mOrigDevice1;
 		is_null = false;
 	} else {
 		LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
@@ -4356,6 +4356,7 @@ void CustomResource::SubstantiateTexture3D(ID3D11Device *mOrigDevice1)
 				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)tex3d;
+		device = mOrigDevice1;
 		is_null = false;
 	} else {
 		LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
@@ -4770,27 +4771,21 @@ err:
 	goto out;
 }
 
-void CustomResource::expire(HackerDevice *mHackerDevice, ID3D11DeviceContext *mOrigContext1)
+void CustomResource::expire(ID3D11Device *mOrigDevice1, ID3D11DeviceContext *mOrigContext1)
 {
-	ID3D11Device *old_device;
 	ID3D11Resource *new_resource = NULL;
 
-	if (!resource)
+	if (!resource || is_null)
 		return;
 
 	// Check for device mismatches and handle via expiring cached
 	// resources, flagging for re-substantiation and/or performing
-	// inter-device transfers if necessary.
-
-	resource->GetDevice(&old_device);
-	if (!old_device)
-		return;
-
-	old_device->Release();
-
-	// Since we don't currently wrap ID3D11DeviceChild::GetDevice, we need
-	// to compare against the real DirectX object, not a passthrough object:
-	if (old_device == mHackerDevice->GetPossiblyHookedOrigDevice1())
+	// inter-device transfers if necessary. We cache the device rather than
+	// querying it from the resource via GetDevice(), because if ReShade is
+	// in use GetDevice() will return the real device, but we will compare
+	// it with the ReShade device and think there has been a device swap
+	// when there has not been.
+	if (device == mOrigDevice1)
 		return;
 
 	// Attempt to transfer resource to new device by staging to the CPU and
@@ -4809,8 +4804,7 @@ void CustomResource::expire(HackerDevice *mHackerDevice, ID3D11DeviceContext *mO
 	//       on new device (for convoluted startup sequences)
 	LogInfo("Device mismatch, transferring [%S] to new device\n", name.c_str());
 	new_resource = inter_device_resource_transfer(
-			mHackerDevice->GetPassThroughOrigDevice1(),
-			mOrigContext1, resource, &name);
+			mOrigDevice1, mOrigContext1, resource, &name);
 
 	// Expire cache:
 	resource->Release();
@@ -4821,11 +4815,13 @@ void CustomResource::expire(HackerDevice *mHackerDevice, ID3D11DeviceContext *mO
 	if (new_resource) {
 		// Inter-device copy succeeded, switch to the new resource:
 		resource = new_resource;
+		device = mOrigDevice1;
 	} else {
 		// Inter-device copy failed / skipped. Flag resource for
 		// re-substantiation (if possible for this resource):
 		substantiated = false;
 		resource = NULL;
+		device = NULL;
 		is_null = true;
 	}
 }
@@ -5533,7 +5529,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return res;
 
 	case ResourceCopyTargetType::CUSTOM_RESOURCE:
-		custom_resource->expire(mHackerDevice, mOrigContext1);
+		custom_resource->expire(mOrigDevice1, mOrigContext1);
 
 		if (dst)
 			bind_flags = dst->BindFlags(state);
@@ -5839,6 +5835,7 @@ void ResourceCopyTarget::SetResource(
 			if (custom_resource->resource)
 				custom_resource->resource->Release();
 			custom_resource->resource = res;
+			custom_resource->device = state->mOrigDevice1;
 			if (custom_resource->resource)
 				custom_resource->resource->AddRef();
 		}
@@ -7321,6 +7318,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 	ID3D11Resource *src_resource = NULL;
 	ID3D11Resource *dst_resource = NULL;
 	ID3D11Resource **pp_cached_resource = &cached_resource;
+	ID3D11Device **pp_cached_device;
 	ResourcePool *p_resource_pool = &resource_pool;
 	ID3D11View *src_view = NULL;
 	ID3D11View *dst_view = NULL;
@@ -7359,6 +7357,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 		// number of extra resources we have floating around if copying
 		// something to a single custom resource from multiple shaders.
 		pp_cached_resource = &dst.custom_resource->resource;
+		pp_cached_device = &dst.custom_resource->device;
 		p_resource_pool = &dst.custom_resource->resource_pool;
 		pp_cached_view = &dst.custom_resource->view;
 
@@ -7389,6 +7388,8 @@ void ResourceCopyOperation::run(CommandListState *state)
 			goto out_release;
 		}
 		dst_resource = *pp_cached_resource;
+		if (pp_cached_device)
+			*pp_cached_device = state->mOrigDevice1;
 		dst_view = *pp_cached_view;
 
 		if (options & ResourceCopyOptions::COPY_DESC) {

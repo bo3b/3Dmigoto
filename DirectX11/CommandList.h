@@ -502,7 +502,7 @@ static EnumName_t<const wchar_t *, CustomResourceBindFlags> CustomResourceBindFl
 // the description size of each resource type is unique - and it would be
 // highly unusual (though not forbidden) to mix different resource types in a
 // single pool anyway.
-typedef unordered_map<uint32_t, ID3D11Resource*> ResourcePoolCache;
+typedef unordered_map<uint32_t, pair<ID3D11Resource*, ID3D11Device*>> ResourcePoolCache;
 class ResourcePool
 {
 public:
@@ -510,7 +510,7 @@ public:
 
 	~ResourcePool();
 
-	void emplace(uint32_t hash, ID3D11Resource *resource);
+	void emplace(uint32_t hash, ID3D11Resource *resource, ID3D11Device *device);
 };
 
 class CustomResource
@@ -520,6 +520,7 @@ public:
 
 	ID3D11Resource *resource;
 	ResourcePool resource_pool;
+	ID3D11Device *device;
 	ID3D11View *view;
 	bool is_null;
 
@@ -569,7 +570,7 @@ public:
 	void OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc);
 	void OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc);
 	void OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride);
-	void expire(HackerDevice *mHackerDevice, ID3D11DeviceContext *mOrigContext1);
+	void expire(ID3D11Device *mOrigDevice1, ID3D11DeviceContext *mOrigContext1);
 
 private:
 	void LoadFromFile(ID3D11Device *mOrigDevice);
