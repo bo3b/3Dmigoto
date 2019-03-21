@@ -7318,7 +7318,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 	ID3D11Resource *src_resource = NULL;
 	ID3D11Resource *dst_resource = NULL;
 	ID3D11Resource **pp_cached_resource = &cached_resource;
-	ID3D11Device **pp_cached_device;
+	ID3D11Device **pp_cached_device = NULL;
 	ResourcePool *p_resource_pool = &resource_pool;
 	ID3D11View *src_view = NULL;
 	ID3D11View *dst_view = NULL;
