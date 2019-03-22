@@ -2982,7 +2982,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	DrawContext c = DrawContext(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
+	DrawContext c = DrawContext(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
 	BeforeDraw(c);
 
 	if (!c.call_info.skip)
@@ -2996,7 +2996,7 @@ STDMETHODIMP_(void) HackerContext::DrawInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	DrawContext c = DrawContext(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
+	DrawContext c = DrawContext(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
 	BeforeDraw(c);
 
 	if (!c.call_info.skip)

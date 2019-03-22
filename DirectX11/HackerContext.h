@@ -41,7 +41,7 @@ struct DrawContext
 	DrawContext(DrawCall type,
 			UINT VertexCount, UINT IndexCount, UINT InstanceCount,
 			UINT FirstVertex, UINT FirstIndex, UINT FirstInstance,
-			ID3D11Buffer *indirect_buffer, UINT args_offset) :
+			ID3D11Buffer **indirect_buffer, UINT args_offset) :
 		oldSeparation(FLT_MAX),
 		oldVertexShader(NULL),
 		oldPixelShader(NULL),

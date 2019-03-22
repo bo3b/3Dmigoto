@@ -20,7 +20,7 @@ struct DrawCallInfo
 	UINT VertexCount, IndexCount, InstanceCount;
 	UINT FirstVertex, FirstIndex, FirstInstance;
 
-	ID3D11Buffer *indirect_buffer;
+	ID3D11Buffer **indirect_buffer;
 	UINT args_offset;
 
 	bool skip, hunting_skip;
@@ -42,7 +42,7 @@ struct DrawCallInfo
 	DrawCallInfo(DrawCall type,
 			UINT VertexCount, UINT IndexCount, UINT InstanceCount,
 			UINT FirstVertex, UINT FirstIndex, UINT FirstInstance,
-			ID3D11Buffer *indirect_buffer, UINT args_offset) :
+			ID3D11Buffer **indirect_buffer, UINT args_offset) :
 		type(type),
 		VertexCount(VertexCount),
 		IndexCount(IndexCount),

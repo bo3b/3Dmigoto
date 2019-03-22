@@ -4728,7 +4728,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstancedIndirect(THIS_
 	HackerContext::DrawIndexedInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 
 	if (G->analyse_frame) {
-		DrawCallInfo call_info(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
+		DrawCallInfo call_info(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
@@ -4748,7 +4748,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawInstancedIndirect(THIS_
 	HackerContext::DrawInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 
 	if (G->analyse_frame) {
-		DrawCallInfo call_info(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
+		DrawCallInfo call_info(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;

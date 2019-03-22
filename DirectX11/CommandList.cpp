@@ -174,7 +174,7 @@ static void RunCommandListComplete(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list,
 		DrawCallInfo *call_info,
-		ID3D11Resource *resource,
+		ID3D11Resource **resource,
 		ID3D11View *view,
 		bool post)
 {
@@ -199,9 +199,9 @@ void RunCommandList(HackerDevice *mHackerDevice,
 		DrawCallInfo *call_info,
 		bool post)
 {
-	ID3D11Resource *resource = NULL;
+	ID3D11Resource **resource = NULL;
 	if (call_info)
-		resource = call_info->indirect_buffer;
+		resource = (ID3D11Resource**)call_info->indirect_buffer;
 
 	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
 			call_info, resource, NULL, post);
@@ -210,7 +210,7 @@ void RunCommandList(HackerDevice *mHackerDevice,
 void RunResourceCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list,
-		ID3D11Resource *resource,
+		ID3D11Resource **resource,
 		bool post)
 {
 	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
@@ -229,7 +229,7 @@ void RunViewCommandList(HackerDevice *mHackerDevice,
 		view->GetResource(&res);
 
 	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
-			NULL, res, view, post);
+			NULL, &res, view, post);
 
 	if (res)
 		res->Release();
@@ -1203,12 +1203,20 @@ void DrawCommand::run(CommandListState *state)
 					mOrigContext1->Draw(info->VertexCount, info->FirstVertex);
 					break;
 				case DrawCall::DrawInstancedIndirect:
-					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
-					mOrigContext1->DrawInstancedIndirect(info->indirect_buffer, info->args_offset);
+					if (!info->indirect_buffer) {
+						LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> DrawInstancedIndirect missing args\n");
+						break;
+					}
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), *info->indirect_buffer, info->args_offset);
+					mOrigContext1->DrawInstancedIndirect(*info->indirect_buffer, info->args_offset);
 					break;
 				case DrawCall::DrawIndexedInstancedIndirect:
-					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
-					mOrigContext1->DrawIndexedInstancedIndirect(info->indirect_buffer, info->args_offset);
+					if (!info->indirect_buffer) {
+						LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> DrawIndexedInstancedIndirect missing args\n");
+						break;
+					}
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), *info->indirect_buffer, info->args_offset);
+					mOrigContext1->DrawIndexedInstancedIndirect(*info->indirect_buffer, info->args_offset);
 					break;
 				case DrawCall::DrawAuto:
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawAuto()\n", ini_section.c_str());
@@ -5674,12 +5682,17 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		if (state->this_target)
 			return state->this_target->GetResource(state, view, stride, offset, format, buf_size);
 
-		if (state->view)
-			state->view->AddRef();
-		*view = state->view;
-		if (state->resource)
-			state->resource->AddRef();
-		return state->resource;
+		if (state->resource) {
+			if (state->view)
+				state->view->AddRef();
+			*view = state->view;
+			if (*state->resource)
+				(*state->resource)->AddRef();
+			return (*state->resource);
+		}
+
+		COMMAND_LIST_LOG(state, "  \"this\"  is not valid in this context\n");
+		return NULL;
 
 	case ResourceCopyTargetType::SWAP_CHAIN:
 		{
@@ -5921,7 +5934,15 @@ void ResourceCopyTarget::SetResource(
 	case ResourceCopyTargetType::THIS_RESOURCE:
 		if (state->this_target)
 			return state->this_target->SetResource(state, res, view, stride, offset, format, buf_size);
-		COMMAND_LIST_LOG(state, "  \"this\" target cannot be set outside of a checktextureoverride context\n");
+
+		if (state->resource) {
+			if (*state->resource)
+				(*state->resource)->Release();
+			*state->resource = res;
+			break;
+		}
+
+		COMMAND_LIST_LOG(state, "  \"this\" target cannot be set outside of a checktextureoverride or indirect draw call context\n");
 		break;
 
 	case ResourceCopyTargetType::STEREO_PARAMS:
