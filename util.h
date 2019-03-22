@@ -53,6 +53,14 @@ const int INI_PARAMS_SIZE_WARNING = 256;
 // this from another project that they need to InitializeCriticalSection[Pretty]
 extern CRITICAL_SECTION resource_creation_mode_lock;
 
+// MSVC insists we use MS's secure version of scanf, which in turn insists we
+// pass the size of each string/char array as an unsigned integer. We want to
+// use something like sizeof/_countof/ARRAYSIZE to make that safe even if we
+// change the size of one of the buffers, but that returns a size_t, which does
+// not match the type scanf is expecting to find on the stack on x64 so we need
+// to cast it. That's a bit ugly, so we use this helper:
+#define UCOUNTOF(...) (unsigned)_countof(__VA_ARGS__)
+
 // Use the pretty lock debugging version if lock.h is included first, otherwise
 // use the regular EnterCriticalSection:
 #ifdef EnterCriticalSectionPretty

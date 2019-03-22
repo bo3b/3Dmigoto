@@ -351,37 +351,6 @@ public:
 	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
-enum class DrawCommandType {
-	INVALID,
-	DRAW,
-	DRAW_AUTO,
-	DRAW_INDEXED,
-	DRAW_INDEXED_INSTANCED,
-	DRAW_INDEXED_INSTANCED_INDIRECT,
-	DRAW_INSTANCED,
-	DRAW_INSTANCED_INDIRECT,
-	DISPATCH,
-	DISPATCH_INDIRECT,
-
-	// 3DMigoto special draw commands:
-	FROM_CALLER,
-	AUTO_INDEX_COUNT,
-};
-
-class DrawCommand : public CommandListCommand {
-public:
-	wstring ini_section;
-	DrawCommandType type;
-
-	UINT args[5];
-
-	DrawCommand::DrawCommand() :
-		type(DrawCommandType::INVALID)
-	{}
-
-	void run(CommandListState*) override;
-};
-
 class SkipCommand : public CommandListCommand {
 public:
 	wstring ini_section;
@@ -735,6 +704,42 @@ public:
 
 	HRESULT map(CommandListState *state, D3D11_MAPPED_SUBRESOURCE *map);
 	void unmap(CommandListState *state);
+};
+
+enum class DrawCommandType {
+	INVALID,
+	DRAW,
+	DRAW_AUTO,
+	DRAW_INDEXED,
+	DRAW_INDEXED_INSTANCED,
+	DRAW_INDEXED_INSTANCED_INDIRECT,
+	DRAW_INSTANCED,
+	DRAW_INSTANCED_INDIRECT,
+	DISPATCH,
+	DISPATCH_INDIRECT,
+
+	// 3DMigoto special draw commands:
+	FROM_CALLER,
+	AUTO_INDEX_COUNT,
+};
+
+class DrawCommand : public CommandListCommand {
+public:
+	wstring ini_section;
+	DrawCommandType type;
+
+	UINT args[5];
+	ResourceCopyTarget indirect_buffer;
+
+	DrawCommand::DrawCommand() :
+		type(DrawCommandType::INVALID)
+	{}
+
+	void do_indirect_draw_call(CommandListState *state, char *name,
+		void (__stdcall ID3D11DeviceContext::*IndirectDrawCall)(THIS_
+		ID3D11Buffer *pBufferForArgs,
+		UINT AlignedByteOffsetForArgs));
+	void run(CommandListState*) override;
 };
 
 class CommandListToken {
