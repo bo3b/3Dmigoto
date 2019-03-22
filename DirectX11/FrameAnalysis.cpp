@@ -3393,8 +3393,9 @@ STDMETHODIMP_(void) FrameAnalysisContext::DispatchIndirect(THIS_
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs)
 {
-	FrameAnalysisLog("DispatchIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
+	FrameAnalysisLogNoNL("DispatchIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)",
 			pBufferForArgs, AlignedByteOffsetForArgs);
+	FrameAnalysisLogResourceHash(pBufferForArgs);
 
 	HackerContext::DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 
@@ -4720,8 +4721,9 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstancedIndirect(THIS_
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs)
 {
-	FrameAnalysisLog("DrawIndexedInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
+	FrameAnalysisLogNoNL("DrawIndexedInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)",
 			pBufferForArgs, AlignedByteOffsetForArgs);
+	FrameAnalysisLogResourceHash(pBufferForArgs);
 
 	HackerContext::DrawIndexedInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 
@@ -4739,8 +4741,9 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawInstancedIndirect(THIS_
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs)
 {
-	FrameAnalysisLog("DrawInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
+	FrameAnalysisLogNoNL("DrawInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)",
 			pBufferForArgs, AlignedByteOffsetForArgs);
+	FrameAnalysisLogResourceHash(pBufferForArgs);
 
 	HackerContext::DrawInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 
