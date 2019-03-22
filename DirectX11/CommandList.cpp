@@ -1218,6 +1218,18 @@ void DrawCommand::run(CommandListState *state)
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), *info->indirect_buffer, info->args_offset);
 					mOrigContext1->DrawIndexedInstancedIndirect(*info->indirect_buffer, info->args_offset);
 					break;
+				case DrawCall::DispatchIndirect:
+					if (!info->indirect_buffer) {
+						LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> DispatchIndirect missing args\n");
+						break;
+					}
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DispatchIndirect(0x%p, %u)\n", ini_section.c_str(), *info->indirect_buffer, info->args_offset);
+					mOrigContext1->DispatchIndirect(*info->indirect_buffer, info->args_offset);
+					break;
+				case DrawCall::Dispatch:
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> Dispatch(%u, %u, %u)\n", ini_section.c_str(), info->ThreadGroupCountX, info->ThreadGroupCountY, info->ThreadGroupCountZ);
+					mOrigContext1->Dispatch(info->ThreadGroupCountX, info->ThreadGroupCountY, info->ThreadGroupCountZ);
+					break;
 				case DrawCall::DrawAuto:
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawAuto()\n", ini_section.c_str());
 					mOrigContext1->DrawAuto();
@@ -1226,7 +1238,6 @@ void DrawCommand::run(CommandListState *state)
 					LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> unknown draw call type\n");
 					break;
 			}
-			// TODO: dispatch = from_caller
 			break;
 		case DrawCommandType::AUTO_INDEX_COUNT:
 			auto_count = get_index_count_from_current_ib(mOrigContext1);

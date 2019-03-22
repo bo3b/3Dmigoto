@@ -55,9 +55,16 @@ struct DrawContext
 struct DispatchContext
 {
 	CommandList *post_commands;
+	DrawCallInfo call_info;
 
-	DispatchContext() :
-		post_commands(NULL)
+	DispatchContext(UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ) :
+		post_commands(NULL),
+		call_info(DrawCall::Dispatch, 0, 0, 0, 0, 0, 0, NULL, 0, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ)
+	{}
+
+	DispatchContext(ID3D11Buffer **indirect_buffer, UINT args_offset) :
+		post_commands(NULL),
+		call_info(DrawCall::DispatchIndirect, 0, 0, 0, 0, 0, 0, indirect_buffer, args_offset)
 	{}
 };
 
