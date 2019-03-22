@@ -2284,11 +2284,14 @@ bool RunExplicitCommandList::noop(bool post, bool ignore_cto_pre, bool ignore_ct
 	return command_list_section->command_list.commands.empty();
 }
 
-void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line)
+std::shared_ptr<RunLinkedCommandList>
+LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line)
 {
 	RunLinkedCommandList *operation = new RunLinkedCommandList(link);
 	operation->ini_line = *ini_line;
-	dst->commands.push_back(std::shared_ptr<CommandListCommand>(operation));
+	std::shared_ptr<RunLinkedCommandList> p(operation);
+	dst->commands.push_back(p);
+	return p;
 }
 
 void RunLinkedCommandList::run(CommandListState *state)
