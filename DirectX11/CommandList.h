@@ -615,7 +615,7 @@ public:
 			CommandListState *state,
 			bool *resource_found,
 			TextureOverrideMatches *matches);
-	D3D11_BIND_FLAG BindFlags(CommandListState *state);
+	D3D11_BIND_FLAG BindFlags(CommandListState *state, D3D11_RESOURCE_MISC_FLAG *misc_flags=NULL);
 };
 
 enum class ResourceCopyOptions {

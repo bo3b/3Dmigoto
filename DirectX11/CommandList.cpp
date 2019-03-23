@@ -6016,7 +6016,7 @@ void ResourceCopyTarget::SetResource(
 	}
 }
 
-D3D11_BIND_FLAG ResourceCopyTarget::BindFlags(CommandListState *state)
+D3D11_BIND_FLAG ResourceCopyTarget::BindFlags(CommandListState *state, D3D11_RESOURCE_MISC_FLAG *misc_flags)
 {
 	switch(type) {
 		case ResourceCopyTargetType::CONSTANT_BUFFER:
@@ -6038,8 +6038,20 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags(CommandListState *state)
 		case ResourceCopyTargetType::CUSTOM_RESOURCE:
 			return custom_resource->bind_flags;
 		case ResourceCopyTargetType::THIS_RESOURCE:
-			if (state && state->this_target)
-				return state->this_target->BindFlags(state);
+			if (state) {
+				if (state->this_target)
+					return state->this_target->BindFlags(state);
+
+				if (state->call_info && state->call_info->indirect_buffer) {
+					if (misc_flags)
+						*misc_flags = D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS;
+					// Not positive what (if any) bind flags are required
+					// to use a resource as an indirect buffer - it seems
+					// like the misc flag may not be the full picture and
+					// further experimentation is required.
+					// maybe: return ResourceCopyTargetType::UNORDERED_ACCESS_VIEW;
+				}
+			}
 			// Bind flags are unknown since this cannot be resolved
 			// until runtime:
 			return (D3D11_BIND_FLAG)0;
@@ -6120,6 +6132,7 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		ResourcePool *resource_pool,
 		ID3D11View *src_view,
 		D3D11_BIND_FLAG bind_flags,
+		D3D11_RESOURCE_MISC_FLAG misc_flags,
 		CommandListState *state,
 		UINT stride,
 		UINT offset,
@@ -6132,6 +6145,7 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 
 	src_resource->GetDesc(&new_desc);
 	new_desc.BindFlags = bind_flags;
+	new_desc.MiscFlags = new_desc.MiscFlags | misc_flags;
 
 	if (dst && dst->type == ResourceCopyTargetType::CPU) {
 		new_desc.Usage = D3D11_USAGE_STAGING;
@@ -6477,11 +6491,12 @@ static void RecreateCompatibleResource(
 	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
 	D3D11_RESOURCE_DIMENSION src_dimension;
 	D3D11_BIND_FLAG bind_flags = (D3D11_BIND_FLAG)0;
+	D3D11_RESOURCE_MISC_FLAG misc_flags = (D3D11_RESOURCE_MISC_FLAG)0;
 	ID3D11Resource *res = NULL;
 	bool restore_create_mode = false;
 
 	if (dst)
-		bind_flags = dst->BindFlags(state);
+		bind_flags = dst->BindFlags(state, &misc_flags);
 
 	LockResourceCreationMode();
 
@@ -6509,7 +6524,7 @@ static void RecreateCompatibleResource(
 	switch (src_dimension) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
 			res = RecreateCompatibleBuffer(ini_line, dst, (ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource,
-				resource_pool, src_view, bind_flags, state, stride, offset, format, buf_dst_size);
+				resource_pool, src_view, bind_flags, misc_flags, state, stride, offset, format, buf_dst_size);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
