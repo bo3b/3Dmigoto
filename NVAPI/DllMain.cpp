@@ -471,7 +471,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetSeparation(StereoHandle stereoHandle
 {
 	if (gDirectXOverride)
 	{
-		if (gLogDebug) LogCall("%s - Stereo_SetSeparation called from DirectX wrapper: ignoring user overrides.\n", LogTime().c_str());
+		LogDebug("%s - Stereo_SetSeparation called from DirectX wrapper: ignoring user overrides.\n", LogTime().c_str());
 		gDirectXOverride = false;
 		return (*_NvAPI_Stereo_SetSeparation)(stereoHandle, newSeparationPercentage);
 	}
@@ -550,19 +550,19 @@ static NvAPI_Status __cdecl NvAPI_Stereo_Enable()
 
 static NvAPI_Status __cdecl NvAPI_Stereo_IsEnabled(NvU8 *pIsStereoEnabled)
 {
-	if (gLogDebug) LogCall("%s - NvAPI_Stereo_IsEnabled called.\n", LogTime().c_str());
+	LogDebug("%s - NvAPI_Stereo_IsEnabled called.\n", LogTime().c_str());
 
 	NvAPI_Status ret = (*_NvAPI_Stereo_IsEnabled)(pIsStereoEnabled);
 
 	if (gDirectXOverride) {
-		if (gLogDebug) LogCall("  Stereo_IsEnabled called from DirectX wrapper.\n");
+		LogDebug("  Stereo_IsEnabled called from DirectX wrapper.\n");
 		gDirectXOverride = false;
 	} else if (ForceAutomaticStereo) {
 		*pIsStereoEnabled = false;
 		LogCall("  NvAPI_Stereo_IsEnabled force return false\n");
 	}
 
-	if (gLogDebug) LogCall("  Returns IsStereoEnabled = %d, Result = %d\n", *pIsStereoEnabled, ret);
+	LogDebug("  Returns IsStereoEnabled = %d, Result = %d\n", *pIsStereoEnabled, ret);
 
 	return ret;
 }
@@ -614,8 +614,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_Deactivate(StereoHandle stereoHandle)
 static NvAPI_Status __cdecl NvAPI_Stereo_IsActivated(StereoHandle stereoHandle, NvU8 *pIsStereoOn)
 {
 	NvAPI_Status ret = (*_NvAPI_Stereo_IsActivated)(stereoHandle, pIsStereoOn);
-	if (gLogDebug)
-		LogCall("%s - Stereo_IsActivated called. Result = %d, IsStereoOn = %d\n", LogTime().c_str(), ret, *pIsStereoOn);
+	LogDebug("%s - Stereo_IsActivated called. Result = %d, IsStereoOn = %d\n", LogTime().c_str(), ret, *pIsStereoOn);
 	return ret;
 }
 static NvAPI_Status __cdecl NvAPI_Stereo_DecreaseSeparation(StereoHandle stereoHandle)
@@ -857,7 +856,7 @@ static NvAPI_Status __cdecl NvAPI_D3D11_MultiDrawInstancedIndirect(
 // the Initialize succeeds.
 static NvAPI_Status __cdecl EnableOverride(void)
 {
-	if (gLogDebug) LogCall("%s - NvAPI EnableOverride called. Next NvAPI call made will not be wrapped.\n", LogTime().c_str());
+	LogDebug("%s - NvAPI EnableOverride called. Next NvAPI call made will not be wrapped.\n", LogTime().c_str());
 
 	gDirectXOverride = true;
 
