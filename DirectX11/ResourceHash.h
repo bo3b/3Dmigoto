@@ -292,6 +292,7 @@ enum class ResourceMiscFlags {
 	TILED                            = 0x00040000,
 	HW_PROTECTED                     = 0x00080000,
 };
+SENSIBLE_ENUM(ResourceMiscFlags);
 static EnumName_t<const wchar_t *, ResourceMiscFlags> ResourceMiscFlagNames[] = {
 	{L"generate_mips", ResourceMiscFlags::GENERATE_MIPS},
 	{L"shared", ResourceMiscFlags::SHARED},

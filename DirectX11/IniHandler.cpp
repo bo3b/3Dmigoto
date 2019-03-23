@@ -1718,8 +1718,8 @@ static void ParseResourceSections()
 		}
 
 		if (GetIniStringAndLog(i->first.c_str(), L"misc_flags", 0, setting, MAX_PATH)) {
-			custom_resource->override_misc_flags = parse_enum_option_string<const wchar_t *, CustomResourceMiscFlags, wchar_t*>
-				(CustomResourceMiscFlagNames, setting, NULL);
+			custom_resource->override_misc_flags = parse_enum_option_string<const wchar_t *, ResourceMiscFlags, wchar_t*>
+				(ResourceMiscFlagNames, setting, NULL);
 		}
 
 		ParseResourceInitialData(custom_resource, i->first.c_str());

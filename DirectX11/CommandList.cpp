@@ -4149,7 +4149,7 @@ CustomResource::CustomResource() :
 	override_type(CustomResourceType::INVALID),
 	override_mode(CustomResourceMode::DEFAULT),
 	override_bind_flags(CustomResourceBindFlags::INVALID),
-	override_misc_flags(CustomResourceMiscFlags::INVALID),
+	override_misc_flags(ResourceMiscFlags::INVALID),
 	override_format((DXGI_FORMAT)-1),
 	override_width(-1),
 	override_height(-1),
@@ -4322,7 +4322,7 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 	// when manipulating driver heuristics:
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		bind_flags = (D3D11_BIND_FLAG)override_bind_flags;
-	if (override_misc_flags != CustomResourceMiscFlags::INVALID)
+	if (override_misc_flags != ResourceMiscFlags::INVALID)
 		misc_flags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 
 	// XXX: We are not creating a view with DirecXTK because
@@ -4531,7 +4531,7 @@ void CustomResource::OverrideBufferDesc(D3D11_BUFFER_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-	if (override_misc_flags != CustomResourceMiscFlags::INVALID)
+	if (override_misc_flags != ResourceMiscFlags::INVALID)
 		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 }
 
@@ -4550,7 +4550,7 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-	if (override_misc_flags != CustomResourceMiscFlags::INVALID)
+	if (override_misc_flags != ResourceMiscFlags::INVALID)
 		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 }
 
@@ -4582,7 +4582,7 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-	if (override_misc_flags != CustomResourceMiscFlags::INVALID)
+	if (override_misc_flags != ResourceMiscFlags::INVALID)
 		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 }
 
@@ -4604,7 +4604,7 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-	if (override_misc_flags != CustomResourceMiscFlags::INVALID)
+	if (override_misc_flags != ResourceMiscFlags::INVALID)
 		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 }
 

@@ -458,48 +458,6 @@ static EnumName_t<const wchar_t *, CustomResourceBindFlags> CustomResourceBindFl
 	{NULL, CustomResourceBindFlags::INVALID} // End of list marker
 };
 
-enum class CustomResourceMiscFlags {
-	INVALID                         = 0x00000000,
-	GENERATE_MIPS                   = 0x00000001,
-	SHARED                          = 0x00000002,
-	TEXTURECUBE                     = 0x00000004,
-	DRAWINDIRECT_ARGS               = 0x00000010,
-	BUFFER_ALLOW_RAW_VIEWS          = 0x00000020,
-	BUFFER_STRUCTURED               = 0x00000040,
-	RESOURCE_CLAMP                  = 0x00000080,
-	SHARED_KEYEDMUTEX               = 0x00000100,
-	GDI_COMPATIBLE                  = 0x00000200,
-	SHARED_NTHANDLE                 = 0x00000800,
-	RESTRICTED_CONTENT              = 0x00001000,
-	RESTRICT_SHARED_RESOURCE        = 0x00002000,
-	RESTRICT_SHARED_RESOURCE_DRIVER = 0x00004000,
-	GUARDED                         = 0x00008000,
-	TILE_POOL                       = 0x00020000,
-	TILED                           = 0x00040000,
-	HW_PROTECTED                    = 0x00080000,
-};
-SENSIBLE_ENUM(CustomResourceMiscFlags);
-static EnumName_t<const wchar_t *, CustomResourceMiscFlags> CustomResourceMiscFlagNames[] = {
-	{L"generate_mips", CustomResourceMiscFlags::GENERATE_MIPS},
-	{L"shared", CustomResourceMiscFlags::SHARED},
-	{L"texturecube", CustomResourceMiscFlags::TEXTURECUBE},
-	{L"drawindirect_args", CustomResourceMiscFlags::DRAWINDIRECT_ARGS},
-	{L"buffer_allow_raw_views", CustomResourceMiscFlags::BUFFER_ALLOW_RAW_VIEWS},
-	{L"buffer_structured", CustomResourceMiscFlags::BUFFER_STRUCTURED},
-	{L"resource_clamp", CustomResourceMiscFlags::RESOURCE_CLAMP},
-	{L"shared_keyedmutex", CustomResourceMiscFlags::SHARED_KEYEDMUTEX},
-	{L"gdi_compatible", CustomResourceMiscFlags::GDI_COMPATIBLE},
-	{L"shared_nthandle", CustomResourceMiscFlags::SHARED_NTHANDLE},
-	{L"restricted_content", CustomResourceMiscFlags::RESTRICTED_CONTENT},
-	{L"restrict_shared_resource", CustomResourceMiscFlags::RESTRICT_SHARED_RESOURCE},
-	{L"restrict_shared_resource_driver", CustomResourceMiscFlags::RESTRICT_SHARED_RESOURCE_DRIVER},
-	{L"guarded", CustomResourceMiscFlags::GUARDED},
-	{L"tile_pool", CustomResourceMiscFlags::TILE_POOL},
-	{L"tiled", CustomResourceMiscFlags::TILED},
-	{L"hw_protected", CustomResourceMiscFlags::HW_PROTECTED},
-	{NULL, CustomResourceMiscFlags::INVALID} // End of list marker
-};
-
 // The ResourcePool holds a pool of cached resources for when a single copy
 // operation or a custom resource may be copied to from multiple distinct
 // incompatible resources (e.g. they may have differing sizes). This saves us
@@ -555,7 +513,7 @@ public:
 	CustomResourceType override_type;
 	CustomResourceMode override_mode;
 	CustomResourceBindFlags override_bind_flags;
-	CustomResourceMiscFlags override_misc_flags;
+	ResourceMiscFlags override_misc_flags;
 	DXGI_FORMAT override_format;
 	int override_width;
 	int override_height;
