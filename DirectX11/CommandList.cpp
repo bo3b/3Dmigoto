@@ -675,6 +675,13 @@ static bool ParseDrawCommandArgs(wstring *val, DrawCommand *operation, bool indi
 		if (!operation->indirect_buffer.ParseTarget(sub.c_str(), true, ini_namespace))
 			return false;
 
+		if (operation->indirect_buffer.type == ResourceCopyTargetType::CUSTOM_RESOURCE) {
+			// Fucking C++ making this line 3x longer than it should be:
+			operation->indirect_buffer.custom_resource->misc_flags = (D3D11_RESOURCE_MISC_FLAG)
+				(operation->indirect_buffer.custom_resource->misc_flags
+				 | D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS);
+		}
+
 		start = end + 1;
 	}
 
@@ -4131,6 +4138,7 @@ CustomResource::CustomResource() :
 	is_null(true),
 	substantiated(false),
 	bind_flags((D3D11_BIND_FLAG)0),
+	misc_flags((D3D11_RESOURCE_MISC_FLAG)0),
 	stride(0),
 	offset(0),
 	buf_size(0),
@@ -4141,6 +4149,7 @@ CustomResource::CustomResource() :
 	override_type(CustomResourceType::INVALID),
 	override_mode(CustomResourceMode::DEFAULT),
 	override_bind_flags(CustomResourceBindFlags::INVALID),
+	override_misc_flags(CustomResourceMiscFlags::INVALID),
 	override_format((DXGI_FORMAT)-1),
 	override_width(-1),
 	override_height(-1),
@@ -4192,7 +4201,8 @@ bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVA
 	return false;
 }
 
-void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mStereoHandle, D3D11_BIND_FLAG bind_flags)
+void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mStereoHandle,
+		D3D11_BIND_FLAG bind_flags, D3D11_RESOURCE_MISC_FLAG misc_flags)
 {
 	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
 	bool restore_create_mode = false;
@@ -4220,6 +4230,7 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mSter
 	// bind_flags to be manually specified - where multiple bind flags are
 	// required and cannot be deduced at parse time.
 	this->bind_flags = (D3D11_BIND_FLAG)(this->bind_flags | bind_flags);
+	this->misc_flags = (D3D11_RESOURCE_MISC_FLAG)(this->misc_flags | misc_flags);
 
 	// If the resource section has enough information to create a resource
 	// we do so the first time it is loaded from. The reason we do it this
@@ -4311,6 +4322,8 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 	// when manipulating driver heuristics:
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		bind_flags = (D3D11_BIND_FLAG)override_bind_flags;
+	if (override_misc_flags != CustomResourceMiscFlags::INVALID)
+		misc_flags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 
 	// XXX: We are not creating a view with DirecXTK because
 	// 1) it assumes we want a shader resource view, which is an
@@ -4330,13 +4343,13 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 		LogInfoW(L"Loading custom resource %s as DDS, bind_flags=0x%03x\n", filename.c_str(), bind_flags);
 		hr = DirectX::CreateDDSTextureFromFileEx(mOrigDevice1,
 				filename.c_str(), 0,
-				D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
+				D3D11_USAGE_DEFAULT, bind_flags, 0, misc_flags,
 				false, &resource, NULL, NULL);
 	} else {
 		LogInfoW(L"Loading custom resource %s as WIC, bind_flags=0x%03x\n", filename.c_str(), bind_flags);
 		hr = DirectX::CreateWICTextureFromFileEx(mOrigDevice1,
 				filename.c_str(), 0,
-				D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
+				D3D11_USAGE_DEFAULT, bind_flags, 0, misc_flags,
 				false, &resource, NULL);
 	}
 	if (SUCCEEDED(hr)) {
@@ -4367,6 +4380,7 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, 
 	memset(&desc, 0, sizeof(desc));
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = bind_flags;
+	desc.MiscFlags = misc_flags;
 
 	// Allow the buffer size to be set from the file / initial data size,
 	// but it can be overridden if specified explicitly. If it's a
@@ -4424,6 +4438,7 @@ void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice1)
 	memset(&desc, 0, sizeof(desc));
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = bind_flags;
+	desc.MiscFlags = misc_flags;
 	OverrideTexDesc(&desc);
 
 	hr = mOrigDevice1->CreateTexture1D(&desc, NULL, &tex1d);
@@ -4449,6 +4464,7 @@ void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice1)
 	memset(&desc, 0, sizeof(desc));
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = bind_flags;
+	desc.MiscFlags = misc_flags;
 	OverrideTexDesc(&desc);
 
 	hr = mOrigDevice1->CreateTexture2D(&desc, NULL, &tex2d);
@@ -4474,6 +4490,7 @@ void CustomResource::SubstantiateTexture3D(ID3D11Device *mOrigDevice1)
 	memset(&desc, 0, sizeof(desc));
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = bind_flags;
+	desc.MiscFlags = misc_flags;
 	OverrideTexDesc(&desc);
 
 	hr = mOrigDevice1->CreateTexture3D(&desc, NULL, &tex3d);
@@ -4514,8 +4531,8 @@ void CustomResource::OverrideBufferDesc(D3D11_BUFFER_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-
-	// TODO: Add more overrides for misc flags
+	if (override_misc_flags != CustomResourceMiscFlags::INVALID)
+		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 }
 
 void CustomResource::OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc)
@@ -4533,8 +4550,8 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-
-	// TODO: Add more overrides for misc flags
+	if (override_misc_flags != CustomResourceMiscFlags::INVALID)
+		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 }
 
 void CustomResource::OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc)
@@ -4565,8 +4582,8 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-
-	// TODO: Add more overrides for misc flags
+	if (override_misc_flags != CustomResourceMiscFlags::INVALID)
+		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 }
 
 void CustomResource::OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc)
@@ -4587,8 +4604,8 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-
-	// TODO: Add more overrides for misc flags
+	if (override_misc_flags != CustomResourceMiscFlags::INVALID)
+		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 }
 
 void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
@@ -5134,6 +5151,7 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 	ResourceCopyOperation *operation = new ResourceCopyOperation();
 	wchar_t buf[MAX_PATH];
 	wchar_t *src_ptr = NULL;
+	D3D11_RESOURCE_MISC_FLAG misc_flags = (D3D11_RESOURCE_MISC_FLAG)0;
 
 	if (!operation->dst.ParseTarget(key, false, ini_namespace))
 		goto bail;
@@ -5213,7 +5231,9 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 			(operation->options & ResourceCopyOptions::REFERENCE)) {
 		// Fucking C++ making this line 3x longer than it should be:
 		operation->src.custom_resource->bind_flags = (D3D11_BIND_FLAG)
-			(operation->src.custom_resource->bind_flags | operation->dst.BindFlags(NULL));
+			(operation->src.custom_resource->bind_flags | operation->dst.BindFlags(NULL, &misc_flags));
+		operation->src.custom_resource->misc_flags = (D3D11_RESOURCE_MISC_FLAG)
+			(operation->src.custom_resource->misc_flags | misc_flags);
 	}
 
 	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
@@ -5501,6 +5521,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 	ID3D11DepthStencilView *depth_view = NULL;
 	ID3D11UnorderedAccessView *unordered_view = NULL;
 	D3D11_BIND_FLAG bind_flags = (D3D11_BIND_FLAG)0;
+	D3D11_RESOURCE_MISC_FLAG misc_flags = (D3D11_RESOURCE_MISC_FLAG)0;
 	unsigned i;
 
 	switch(type) {
@@ -5671,8 +5692,8 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		custom_resource->expire(mOrigDevice1, mOrigContext1);
 
 		if (dst)
-			bind_flags = dst->BindFlags(state);
-		custom_resource->Substantiate(mOrigDevice1, mHackerDevice->mStereoHandle, bind_flags);
+			bind_flags = dst->BindFlags(state, &misc_flags);
+		custom_resource->Substantiate(mOrigDevice1, mHackerDevice->mStereoHandle, bind_flags, misc_flags);
 
 		if (stride)
 			*stride = custom_resource->stride;
@@ -6036,6 +6057,8 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags(CommandListState *state, D3D11_RES
 		case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
 			return D3D11_BIND_UNORDERED_ACCESS;
 		case ResourceCopyTargetType::CUSTOM_RESOURCE:
+			if (misc_flags)
+				*misc_flags = custom_resource->misc_flags;
 			return custom_resource->bind_flags;
 		case ResourceCopyTargetType::THIS_RESOURCE:
 			if (state) {
@@ -6145,6 +6168,9 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 
 	src_resource->GetDesc(&new_desc);
 	new_desc.BindFlags = bind_flags;
+	// We reuse the misc flags from the source, which has worked fairly
+	// well for the most part with maybe one or two exceptions. We can
+	// always clear incompatible flags and allow an override if necessary:
 	new_desc.MiscFlags = new_desc.MiscFlags | misc_flags;
 
 	if (dst && dst->type == ResourceCopyTargetType::CPU) {
