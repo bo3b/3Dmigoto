@@ -266,6 +266,7 @@ enum class ResourceCPUAccessFlags {
 	WRITE   = 0x00010000,
 	READ    = 0x00020000,
 };
+SENSIBLE_ENUM(ResourceCPUAccessFlags);
 static EnumName_t<const wchar_t *, ResourceCPUAccessFlags> ResourceCPUAccessFlagNames[] = {
 	{L"write", ResourceCPUAccessFlags::WRITE},
 	{L"read", ResourceCPUAccessFlags::READ},

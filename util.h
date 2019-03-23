@@ -261,6 +261,33 @@ static T1 lookup_enum_name(struct EnumName_t<T1, T2> *enum_names, T2 val)
 	return NULL;
 }
 
+template <class T2>
+static wstring lookup_enum_bit_names(struct EnumName_t<const wchar_t*, T2> *enum_names, T2 val)
+{
+	wstring ret;
+	T2 remaining = val;
+
+	for (; enum_names->name; enum_names++) {
+		if ((T2)(val & enum_names->val) == enum_names->val) {
+			if (!ret.empty())
+				ret += L' ';
+			ret += enum_names->name;
+			remaining = (T2)(remaining & (T2)~enum_names->val);
+		}
+	}
+
+	if (remaining != (T2)0) {
+		wchar_t buf[20];
+		wsprintf(buf, L"%x", remaining);
+		if (!ret.empty())
+			ret += L' ';
+		ret += L"unknown:0x";
+		ret += buf;
+	}
+
+	return ret;
+}
+
 // Parses an option string of names given by enum_names. The enum used with
 // this function should have an INVALID entry, other flags declared as powers
 // of two, and the SENSIBLE_ENUM macro used to enable the bitwise and logical
