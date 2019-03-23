@@ -6068,11 +6068,11 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags(CommandListState *state, D3D11_RES
 				if (state->call_info && state->call_info->indirect_buffer) {
 					if (misc_flags)
 						*misc_flags = D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS;
-					// Not positive what (if any) bind flags are required
-					// to use a resource as an indirect buffer - it seems
-					// like the misc flag may not be the full picture and
-					// further experimentation is required.
-					// maybe: return ResourceCopyTargetType::UNORDERED_ACCESS_VIEW;
+					// No bind flags required, but a common scenario would be copying
+					// from a resource with D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS
+					// that will need to be cleared out if we have neither SRV or UAV
+					// set, which is handled in RecreateCompatibleBuffer()
+					return (D3D11_BIND_FLAG)0;
 				}
 			}
 			// Bind flags are unknown since this cannot be resolved
@@ -6172,6 +6172,10 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 	// well for the most part with maybe one or two exceptions. We can
 	// always clear incompatible flags and allow an override if necessary:
 	new_desc.MiscFlags = new_desc.MiscFlags | misc_flags;
+
+	// Raw view misc flag can only be used with SRVs or UAVs
+	if (!(new_desc.BindFlags & (D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS)))
+		new_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
 
 	if (dst && dst->type == ResourceCopyTargetType::CPU) {
 		new_desc.Usage = D3D11_USAGE_STAGING;
