@@ -2,17 +2,19 @@
 
 #include <d3d11_1.h>
 
+// These values can now be exposed through draw_type and their values should
+// not be changed. Any additions should be added to the end of the list.
 enum class DrawCall {
-	Draw,
-	DrawIndexed,
-	DrawInstanced,
-	DrawIndexedInstanced,
-	DrawInstancedIndirect,
-	DrawIndexedInstancedIndirect,
-	DrawAuto,
-	Dispatch,
-	DispatchIndirect,
-	Invalid
+	Invalid                      = 0,
+	Draw                         = 1,
+	DrawIndexed                  = 2,
+	DrawInstanced                = 3,
+	DrawIndexedInstanced         = 4,
+	DrawInstancedIndirect        = 5,
+	DrawIndexedInstancedIndirect = 6,
+	DrawAuto                     = 7,
+	Dispatch                     = 8,
+	DispatchIndirect             = 9,
 };
 
 struct DrawCallInfo

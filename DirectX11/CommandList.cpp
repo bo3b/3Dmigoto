@@ -2920,6 +2920,38 @@ float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device
 			if (state->call_info)
 				return (float)state->call_info->InstanceCount;
 			return 0;
+		case ParamOverrideType::FIRST_VERTEX:
+			if (state->call_info)
+				return (float)state->call_info->FirstVertex;
+			return 0;
+		case ParamOverrideType::FIRST_INDEX:
+			if (state->call_info)
+				return (float)state->call_info->FirstIndex;
+			return 0;
+		case ParamOverrideType::FIRST_INSTANCE:
+			if (state->call_info)
+				return (float)state->call_info->FirstInstance;
+			return 0;
+		case ParamOverrideType::THREAD_GROUP_COUNT_X:
+			if (state->call_info)
+				return (float)state->call_info->ThreadGroupCountX;
+			return 0;
+		case ParamOverrideType::THREAD_GROUP_COUNT_Y:
+			if (state->call_info)
+				return (float)state->call_info->ThreadGroupCountY;
+			return 0;
+		case ParamOverrideType::THREAD_GROUP_COUNT_Z:
+			if (state->call_info)
+				return (float)state->call_info->ThreadGroupCountZ;
+			return 0;
+		case ParamOverrideType::INDIRECT_OFFSET:
+			if (state->call_info)
+				return (float)state->call_info->args_offset;
+			return 0;
+		case ParamOverrideType::DRAW_TYPE:
+			if (state->call_info)
+				return (float)state->call_info->type;
+			return 0;
 		case ParamOverrideType::CURSOR_VISIBLE:
 			UpdateCursorInfo(state);
 			return !!(state->cursor_info.flags & CURSOR_SHOWING);
@@ -6537,8 +6569,11 @@ static void FillOutBufferDescCommon(DescType *desc, UINT stride,
 	// here (and the below should work), but we would need to
 	// create a new view every time the offset changes.
 	//
-	// TODO: Handle vertex/index buffers with "first vertex/index" here, or
-	// give shaders a way to access that via ini params.
+	// Possible TODO: Handle vertex/index buffers with "first vertex/index"
+	// here? These can now be accessed via command list expression and
+	// passed through ini params, so a fix can handle them that way, and
+	// any change here would need careful consideration as to backwards
+	// compatibility.
 	if (stride) {
 		desc->FirstElement = offset / stride;
 		desc->NumElements = (buf_src_size - offset) / stride;
