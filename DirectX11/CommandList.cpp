@@ -7543,7 +7543,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 			options, stride, offset, format, &buf_dst_size);
 
 		if (!*pp_cached_resource) {
-			LogDebug("Resource copy error: Could not create/update destination resource\n");
+			COMMAND_LIST_LOG(state, "  error creating/updating destination resource\n");
 			goto out_release;
 		}
 		dst_resource = *pp_cached_resource;
