@@ -660,18 +660,37 @@ bail:
 	return false;
 }
 
-static bool ParseIndirectDrawCommand(wstring *val, DrawCommand *operation, const wstring *ini_namespace)
+static bool ParseDrawCommandArgs(wstring *val, DrawCommand *operation, bool indirect, int nargs, const wstring *ini_namespace, CommandListScope *scope)
 {
-	wchar_t indirect_buf[MAX_PATH];
-	int nargs, end = 0;
+	size_t start = 0, end;
+	wstring sub;
+	int i;
 
-	nargs = swscanf_s(val->c_str(), L"%s, %u%n",
-			indirect_buf, UCOUNTOF(indirect_buf), &operation->args[0], &end);
+	if (indirect) {
+		end = val->find(L',', start);
+		if (end == wstring::npos)
+			return false;
 
-	if (nargs != 2)
-		return false;
+		sub = val->substr(start, end);
+		if (!operation->indirect_buffer.ParseTarget(sub.c_str(), true, ini_namespace))
+			return false;
 
-	return operation->indirect_buffer.ParseTarget(indirect_buf, true, ini_namespace);
+		start = end + 1;
+	}
+
+	for (i = 0; i < nargs; i++) {
+		end = val->find(L',', start);
+
+		sub = val->substr(start, end - start);
+		if (!operation->args[i].parse(&sub, ini_namespace, scope))
+			return false;
+
+		if (end == wstring::npos)
+			return (i+1 == nargs);
+		start = end + 1;
+	}
+
+	return false;
 }
 
 static bool ParseDrawCommand(const wchar_t *section,
@@ -682,66 +701,45 @@ static bool ParseDrawCommand(const wchar_t *section,
 		const wstring *ini_namespace)
 {
 	DrawCommand *operation = new DrawCommand();
-	int nargs, end = 0;
+	bool ok = true;
 
 	if (!wcscmp(key, L"draw")) {
 		if (!wcscmp(val->c_str(), L"from_caller")) {
 			operation->type = DrawCommandType::FROM_CALLER;
-			end = (int)val->length();
 		} else {
 			operation->type = DrawCommandType::DRAW;
-			nargs = swscanf_s(val->c_str(), L"%u, %u%n", &operation->args[0], &operation->args[1], &end);
-			if (nargs != 2)
-				goto bail;
+			ok = ParseDrawCommandArgs(val, operation, false, 2, ini_namespace, pre_command_list->scope);
 		}
 	} else if (!wcscmp(key, L"drawauto")) {
 		operation->type = DrawCommandType::DRAW_AUTO;
 	} else if (!wcscmp(key, L"drawindexed")) {
 		if (!wcscmp(val->c_str(), L"auto")) {
 			operation->type = DrawCommandType::AUTO_INDEX_COUNT;
-			end = (int)val->length();
 		} else {
 			operation->type = DrawCommandType::DRAW_INDEXED;
-			nargs = swscanf_s(val->c_str(), L"%u, %u, %i%n", &operation->args[0], &operation->args[1], (INT*)&operation->args[2], &end);
-			if (nargs != 3)
-				goto bail;
+			ok = ParseDrawCommandArgs(val, operation, false, 3, ini_namespace, pre_command_list->scope);
 		}
 	} else if (!wcscmp(key, L"drawindexedinstanced")) {
 		operation->type = DrawCommandType::DRAW_INDEXED_INSTANCED;
-		nargs = swscanf_s(val->c_str(), L"%u, %u, %u, %i, %u%n",
-				&operation->args[0], &operation->args[1], &operation->args[2], (INT*)&operation->args[3], &operation->args[4], &end);
-		if (nargs != 5)
-			goto bail;
+		ok = ParseDrawCommandArgs(val, operation, false, 5, ini_namespace, pre_command_list->scope);
 	} else if (!wcscmp(key, L"drawinstanced")) {
 		operation->type = DrawCommandType::DRAW_INSTANCED;
-		nargs = swscanf_s(val->c_str(), L"%u, %u, %u, %u%n",
-				&operation->args[0], &operation->args[1], &operation->args[2], &operation->args[3], &end);
-		if (nargs != 5)
-			goto bail;
+		ok = ParseDrawCommandArgs(val, operation, false, 4, ini_namespace, pre_command_list->scope);
 	} else if (!wcscmp(key, L"dispatch")) {
 		operation->type = DrawCommandType::DISPATCH;
-		nargs = swscanf_s(val->c_str(), L"%u, %u, %u%n", &operation->args[0], &operation->args[1], &operation->args[2], &end);
-		if (nargs != 3)
-			goto bail;
+		ok = ParseDrawCommandArgs(val, operation, false, 3, ini_namespace, pre_command_list->scope);
 	} else if (!wcscmp(key, L"drawindexedinstancedindirect")) {
 		operation->type = DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT;
-		if (!ParseIndirectDrawCommand(val, operation, ini_namespace))
-			goto bail;
+		ok = ParseDrawCommandArgs(val, operation, true, 1, ini_namespace, pre_command_list->scope);
 	} else if (!wcscmp(key, L"drawinstancedindirect")) {
 		operation->type = DrawCommandType::DRAW_INSTANCED_INDIRECT;
-		if (!ParseIndirectDrawCommand(val, operation, ini_namespace))
-			goto bail;
+		ok = ParseDrawCommandArgs(val, operation, true, 1, ini_namespace, pre_command_list->scope);
 	} else if (!wcscmp(key, L"dispatchindirect")) {
 		operation->type = DrawCommandType::DISPATCH_INDIRECT;
-		if (!ParseIndirectDrawCommand(val, operation, ini_namespace))
-			goto bail;
+		ok = ParseDrawCommandArgs(val, operation, true, 1, ini_namespace, pre_command_list->scope);
 	}
 
-
-	if (operation->type == DrawCommandType::INVALID)
-		goto bail;
-
-	if (end != val->length())
+	if (operation->type == DrawCommandType::INVALID || !ok)
 		goto bail;
 
 	operation->ini_section = section;
@@ -1107,6 +1105,7 @@ void DrawCommand::do_indirect_draw_call(CommandListState *state, char *name,
 	UINT offset = 0;
 	UINT buf_size = 0;
 	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+	UINT arg = (UINT)args[0].evaluate(state);
 
 	resource = indirect_buffer.GetResource(state, &view, &stride, &offset, &format, NULL);
 	if (view)
@@ -1114,15 +1113,21 @@ void DrawCommand::do_indirect_draw_call(CommandListState *state, char *name,
 
 	if (!resource) {
 		COMMAND_LIST_LOG(state, "[%S] %s(%p, %u) -> INDIRECT BUFFER IS NULL\n",
-				ini_section.c_str(), name, resource, args[0]);
+				ini_section.c_str(), name, resource, arg);
 		return;
 	}
 
-	COMMAND_LIST_LOG(state, "[%S] %s(%p, %u)\n", ini_section.c_str(), name, resource, args[0]);
+	COMMAND_LIST_LOG(state, "[%S] %s(%p, %u)\n", ini_section.c_str(), name, resource, arg);
 
-	(state->mOrigContext1->*IndirectDrawCall)((ID3D11Buffer*)resource, args[0]);
+	(state->mOrigContext1->*IndirectDrawCall)((ID3D11Buffer*)resource, arg);
 
 	resource->Release();
+}
+
+void DrawCommand::eval_args(int nargs, INT result[5], CommandListState *state)
+{
+	for (int i = 0; i < nargs; i++)
+		result[i] = (INT)args[i].evaluate(state);
 }
 
 void DrawCommand::run(CommandListState *state)
@@ -1131,6 +1136,7 @@ void DrawCommand::run(CommandListState *state)
 	ID3D11DeviceContext *mOrigContext1 = state->mOrigContext1;
 	DrawCallInfo *info = state->call_info;
 	UINT auto_count = 0;
+	INT eargs[5];
 
 	// If this command list was triggered from something currently skipped
 	// due to hunting, we also skip any custom draw calls, so that if we
@@ -1148,28 +1154,33 @@ void DrawCommand::run(CommandListState *state)
 
 	switch (type) {
 		case DrawCommandType::DRAW:
-			COMMAND_LIST_LOG(state, "[%S] Draw(%u, %u)\n", ini_section.c_str(), args[0], args[1]);
-			mOrigContext1->Draw(args[0], args[1]);
+			eval_args(2, eargs, state);
+			COMMAND_LIST_LOG(state, "[%S] Draw(%u, %u)\n", ini_section.c_str(), eargs[0], eargs[1]);
+			mOrigContext1->Draw(eargs[0], eargs[1]);
 			break;
 		case DrawCommandType::DRAW_AUTO:
 			COMMAND_LIST_LOG(state, "[%S] DrawAuto()\n", ini_section.c_str());
 			mOrigContext1->DrawAuto();
 			break;
 		case DrawCommandType::DRAW_INDEXED:
-			COMMAND_LIST_LOG(state, "[%S] DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), args[0], args[1], (INT)args[2]);
-			mOrigContext1->DrawIndexed(args[0], args[1], (INT)args[2]);
+			eval_args(3, eargs, state);
+			COMMAND_LIST_LOG(state, "[%S] DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), eargs[0], eargs[1], (INT)eargs[2]);
+			mOrigContext1->DrawIndexed(eargs[0], eargs[1], (INT)eargs[2]);
 			break;
 		case DrawCommandType::DRAW_INDEXED_INSTANCED:
-			COMMAND_LIST_LOG(state, "[%S] DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), args[0], args[1], args[2], (INT)args[3], args[4]);
-			mOrigContext1->DrawIndexedInstanced(args[0], args[1], args[2], (INT)args[3], args[4]);
+			eval_args(5, eargs, state);
+			COMMAND_LIST_LOG(state, "[%S] DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), eargs[0], eargs[1], eargs[2], (INT)eargs[3], eargs[4]);
+			mOrigContext1->DrawIndexedInstanced(eargs[0], eargs[1], eargs[2], (INT)eargs[3], eargs[4]);
 			break;
 		case DrawCommandType::DRAW_INSTANCED:
-			COMMAND_LIST_LOG(state, "[%S] DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), args[0], args[1], args[2], args[3]);
-			mOrigContext1->DrawInstanced(args[0], args[1], args[2], args[3]);
+			eval_args(4, eargs, state);
+			COMMAND_LIST_LOG(state, "[%S] DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), eargs[0], eargs[1], eargs[2], eargs[3]);
+			mOrigContext1->DrawInstanced(eargs[0], eargs[1], eargs[2], eargs[3]);
 			break;
 		case DrawCommandType::DISPATCH:
-			COMMAND_LIST_LOG(state, "[%S] Dispatch(%u, %u, %u)\n", ini_section.c_str(), args[0], args[1], args[2]);
-			mOrigContext1->Dispatch(args[0], args[1], args[2]);
+			eval_args(3, eargs, state);
+			COMMAND_LIST_LOG(state, "[%S] Dispatch(%u, %u, %u)\n", ini_section.c_str(), eargs[0], eargs[1], eargs[2]);
+			mOrigContext1->Dispatch(eargs[0], eargs[1], eargs[2]);
 			break;
 		case DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT:
 			do_indirect_draw_call(state, "DrawIndexedInstancedIndirect", &ID3D11DeviceContext::DrawIndexedInstancedIndirect);
