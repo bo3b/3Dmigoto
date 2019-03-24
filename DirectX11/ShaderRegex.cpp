@@ -361,7 +361,7 @@ void ShaderRegexGroup::apply_regex_patterns(std::string *asm_text, bool *match, 
 		*patch = insert_declarations(asm_text, &declarations) || *patch;
 }
 
-void ShaderRegexGroup::link_command_lists(UINT64 shader_hash)
+void ShaderRegexGroup::link_command_lists_and_filter_index(UINT64 shader_hash)
 {
 	ShaderOverride *shader_override = NULL;
 	wstring ini_section, ini_line;
@@ -371,7 +371,7 @@ void ShaderRegexGroup::link_command_lists(UINT64 shader_hash)
 	// because this will create ShaderOverride sections for shaders that
 	// don't already have one, adding more work in the draw calls.
 
-	if (command_list.commands.empty() && post_command_list.commands.empty())
+	if (command_list.commands.empty() && post_command_list.commands.empty() && filter_index == FLT_MAX)
 		return;
 
 	shader_override = &G->mShaderOverrideMap[shader_hash];
@@ -383,6 +383,10 @@ void ShaderRegexGroup::link_command_lists(UINT64 shader_hash)
 		shader_override->post_command_list.ini_section = ini_section;
 		shader_override->post_command_list.post = true;
 	}
+
+	// Set the filter index for partner filtering:
+	if (shader_override->filter_index == FLT_MAX)
+		shader_override->filter_index = filter_index;
 
 	// If we have previously linked a command list (on any matched shader)
 	// we will reuse the link command here, after checking that this
@@ -452,7 +456,7 @@ bool apply_shader_regex_groups(std::string *asm_text, std::string *shader_model,
 		if (patch && tagline)
 			tagline->append(std::wstring(L"[") + group->ini_section + std::wstring(L"]"));
 
-		group->link_command_lists(hash);
+		group->link_command_lists_and_filter_index(hash);
 	}
 
 	return patched;

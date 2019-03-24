@@ -266,6 +266,7 @@ struct ShaderOverride {
 	UINT64 partner_hash;
 	char model[20]; // More than long enough for even ps_4_0_level_9_0
 	int allow_duplicate_hashes;
+	float filter_index;
 
 	CommandList command_list;
 	CommandList post_command_list;
@@ -273,7 +274,8 @@ struct ShaderOverride {
 	ShaderOverride() :
 		depth_filter(DepthBufferFilter::NONE),
 		partner_hash(0),
-		allow_duplicate_hashes(1)
+		allow_duplicate_hashes(1),
+		filter_index(FLT_MAX)
 	{
 		model[0] = '\0';
 	}

@@ -2174,21 +2174,14 @@ static void warn_deprecated_shaderoverride_options(const wchar_t *id, ShaderOver
 	        LogOverlay(LOG_NOTICE, "WARNING: [%S] tried to combine the deprecated partner= option with a command list.\n"
 	                               "This almost certainly won't do what you want. Try something like this instead:\n"
 	                               "\n"
-	                               "[Constants]\n"
-	                               "global $partner\n"
-	                               "\n"
 	                               "[%S_VERTEX_SHADER]\n"
 	                               "hash = <vertex shader hash>\n"
-	                               "pre $partner = 1\n"
-	                               "post $partner = 0\n"
+	                               "filter_index = 5\n"
 	                               "\n"
 	                               "[%S_PIXEL_SHADER]\n"
 	                               "hash = <pixel shader hash>\n"
-	                               "if $partner == 1\n"
-	                               "    ...\n"
-	                               "endif\n"
+	                               "x = vs\n"
 	                               "\n"
-	                               "To check the partner inside a shader set an IniParam in the partner's ShaderOverride.\n"
 	                               , id, id, id);
 	}
 
@@ -2227,6 +2220,7 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"partner",
 	L"model",
 	L"disable_scissor",
+	L"filter_index",
 	NULL
 };
 static void ParseShaderOverrideSections()
@@ -2270,8 +2264,11 @@ static void ParseShaderOverrideSections()
 
 		// Simple partner shader filtering. Deprecated - more advanced
 		// filtering can be achieved by setting an ini param in the
-		// partner's [ShaderOverride] section.
+		// partner's [ShaderOverride] section, or the below filter_index
 		override->partner_hash = GetIniHash(id, L"partner", 0, NULL);
+
+		// Superior partner shader filtering that also supports a bound/unbound case
+		override->filter_index = GetIniFloat(id, L"filter_index", FLT_MAX, NULL);
 
 		if (GetIniStringAndLog(id, L"model", 0, setting, MAX_PATH)) {
 			wcstombs(override->model, setting, ARRAYSIZE(override->model));
@@ -2333,6 +2330,7 @@ static std::set<T> vec_to_set(std::vector<T> &v)
 wchar_t *ShaderRegexIniKeys[] = {
 	L"shader_model",
 	L"temps",
+	L"filter_index",
 	// L"type" =asm/hlsl? I'd rather not encourage autofixes on HLSL
 	//         shaders, because there is too much potential for trouble
 	NULL
@@ -2352,6 +2350,8 @@ static bool parse_shader_regex_section_main(const std::wstring *section_id, Shad
 		regex_group->temp_regs = vec_to_set(split_string(&setting, ' '));
 
 	regex_group->ini_section = *section_id;
+
+	regex_group->filter_index = GetIniFloat(section_id->c_str(), L"filter_index", FLT_MAX, NULL);
 
 	ParseCommandList(section_id->c_str(), &regex_group->command_list, &regex_group->post_command_list, ShaderRegexIniKeys);
 	return true;

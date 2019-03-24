@@ -119,12 +119,6 @@ private:
 	// These are per-context, moved from globals.h:
 	uint32_t mCurrentVertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 	uint32_t mCurrentIndexBuffer; // Only valid while hunting=1
-	ID3D11VertexShader *mCurrentVertexShaderHandle;
-	ID3D11PixelShader *mCurrentPixelShaderHandle;
-	ID3D11ComputeShader *mCurrentComputeShaderHandle;
-	ID3D11GeometryShader *mCurrentGeometryShaderHandle;
-	ID3D11DomainShader *mCurrentDomainShaderHandle;
-	ID3D11HullShader *mCurrentHullShaderHandle;
 	std::vector<ID3D11Resource *> mCurrentRenderTargets;
 	ID3D11Resource *mCurrentDepthTarget;
 	UINT mCurrentPSUAVStartSlot;
@@ -204,7 +198,9 @@ private:
 
 protected:
 	// Allow FrameAnalysisContext access to these as an interim measure
-	// until it has been further decoupled from HackerContext:
+	// until it has been further decoupled from HackerContext. Be wary of
+	// relying on these - they will be zero in release mode with no
+	// ShaderOverrides / ShaderRegex:
 	UINT64 mCurrentVertexShader;
 	UINT64 mCurrentHullShader;
 	UINT64 mCurrentDomainShader;
@@ -229,6 +225,14 @@ public:
 	virtual void FrameAnalysisDump(ID3D11Resource *resource, FrameAnalysisOptions options,
 		const wchar_t *target, DXGI_FORMAT format, UINT stride, UINT offset) {};
 
+	// These are the shaders the game has set, which may be different from
+	// the ones we have bound to the pipeline:
+	ID3D11VertexShader *mCurrentVertexShaderHandle;
+	ID3D11PixelShader *mCurrentPixelShaderHandle;
+	ID3D11ComputeShader *mCurrentComputeShaderHandle;
+	ID3D11GeometryShader *mCurrentGeometryShaderHandle;
+	ID3D11DomainShader *mCurrentDomainShaderHandle;
+	ID3D11HullShader *mCurrentHullShaderHandle;
 
 	/*** IUnknown methods ***/
 

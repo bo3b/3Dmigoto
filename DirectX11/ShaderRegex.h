@@ -50,6 +50,7 @@ public:
 	ShaderRegexDeclarations declarations;
 	ShaderRegexModels shader_models;
 	ShaderRegexTemps temp_regs;
+	float filter_index;
 
 	CommandList command_list;
 	CommandList post_command_list;
@@ -57,7 +58,11 @@ public:
 	std::shared_ptr<RunLinkedCommandList> post_link;
 
 	void apply_regex_patterns(std::string *asm_text, bool *match, bool *patch);
-	void link_command_lists(UINT64 shader_hash);
+	void link_command_lists_and_filter_index(UINT64 shader_hash);
+
+	ShaderRegexGroup() :
+		filter_index(FLT_MAX)
+	{}
 };
 
 // Sorted to make sure that we always apply the regex patterns in a consistent
