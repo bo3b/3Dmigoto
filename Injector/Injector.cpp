@@ -281,9 +281,31 @@ static void elevate_privileges()
 	wait_exit(EXIT_FAILURE);
 }
 
+wchar_t* deduce_working_directory(wchar_t *setting, wchar_t dir[MAX_PATH])
+{
+	DWORD ret;
+	wchar_t *file_part = NULL;
+
+	ret = GetFullPathName(setting, MAX_PATH, dir, &file_part);
+	if (!ret || ret >= MAX_PATH)
+		return NULL;
+
+	ret = GetFileAttributes(dir);
+	if (ret == INVALID_FILE_ATTRIBUTES)
+		return NULL;
+
+	if (!(ret & FILE_ATTRIBUTE_DIRECTORY) && file_part)
+		*file_part = '\0';
+
+	printf("Using working directory: \"%S\"\n", dir);
+
+	return dir;
+}
+
 int main()
 {
 	char *buf, target[MAX_PATH], setting[MAX_PATH], module_path[MAX_PATH];
+	wchar_t setting_w[MAX_PATH], working_dir[MAX_PATH], *working_dir_p = NULL;
 	DWORD filesize, readsize;
 	const char *ini_section;
 	wchar_t module_full_path[MAX_PATH];
@@ -372,7 +394,13 @@ int main()
 	if (launch) {
 		printf("3DMigoto ready, launching \"%s\"...\n", setting);
 		CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-		ShellExecuteA(NULL, NULL, setting, NULL, NULL, SW_SHOWNORMAL);
+
+		if (!MultiByteToWideChar(CP_UTF8, 0, setting, -1, setting_w, MAX_PATH))
+			wait_exit(EXIT_FAILURE, "Invalid launch setting\n");
+
+		working_dir_p = deduce_working_directory(setting_w, working_dir);
+
+		ShellExecute(NULL, NULL, setting_w, NULL, working_dir_p, SW_SHOWNORMAL);
 	} else {
 		printf("3DMigoto ready - Now run the game.\n");
 	}
