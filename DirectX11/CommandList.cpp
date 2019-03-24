@@ -2883,6 +2883,9 @@ float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device
 		case ParamOverrideType::STEREO_ACTIVE:
 			Profiling::NvAPI_Stereo_IsActivated(device->mStereoHandle, &stereo);
 			return !!stereo;
+		case ParamOverrideType::STEREO_AVAILABLE:
+			Profiling::NvAPI_Stereo_IsEnabled(&stereo);
+			return !!stereo;
 		case ParamOverrideType::SLI:
 			return sli_enabled(device);
 		case ParamOverrideType::HUNTING:
@@ -3025,6 +3028,10 @@ bool CommandListOperand::static_evaluate(float *ret, HackerDevice *device)
 				return true;
 			}
 			break;
+		case ParamOverrideType::STEREO_AVAILABLE:
+			Profiling::NvAPI_Stereo_IsEnabled(&stereo);
+			*ret = stereo;
+			return true;
 		case ParamOverrideType::SLI:
 			if (device) {
 				*ret = sli_enabled(device);
@@ -3802,6 +3809,7 @@ static bool operand_allowed_in_context(ParamOverrideType type, CommandListScope 
 		case ParamOverrideType::CONVERGENCE:
 		case ParamOverrideType::EYE_SEPARATION:
 		case ParamOverrideType::STEREO_ACTIVE:
+		case ParamOverrideType::STEREO_AVAILABLE:
 		case ParamOverrideType::SLI:
 		case ParamOverrideType::HUNTING:
 			return true;

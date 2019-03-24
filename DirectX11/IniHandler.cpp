@@ -404,6 +404,52 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 		*warn_lines_without_equals = false;
 }
 
+bool check_include_condition(wstring *val, const wstring *ini_namespace)
+{
+	float ret;
+
+	CommandListExpression condition;
+	if (!condition.parse(val, ini_namespace, NULL)) {
+		IniWarning("WARNING: Unable to parse include condition: %S\n", val->c_str());
+		return false;
+	}
+
+	if (!condition.static_evaluate(&ret, NULL)) {
+		IniWarning("WARNING: Include condition could not be statically evaluated: %S\n", val->c_str());
+		return false;
+	}
+
+	return !!ret;
+}
+
+static bool ParseIniPreamble(wstring *wline, wstring *ini_namespace)
+{
+	size_t first, last, delim;
+	wstring key, val;
+
+	LogInfo("      %S\n", wline->c_str());
+
+	// Key / Val pair
+	delim = wline->find(L"=");
+	if (delim != wline->npos) {
+		// Strip whitespace around delimiter:
+		last = wline->find_last_not_of(L" \t", delim - 1);
+		key = wline->substr(0, last + 1);
+		first = wline->find_first_not_of(L" \t", delim + 1);
+		if (first != wline->npos)
+			val = wline->substr(first);
+
+		if (!_wcsicmp(key.c_str(), L"condition")) {
+			LogInfo("        condition = false, skipping \"%S\"\n", ini_namespace->c_str());
+			return check_include_condition(&val, ini_namespace);
+		}
+	}
+
+	IniWarning("WARNING: d3dx.ini entry outside of section: %S\n",
+			wline->c_str());
+	return true;
+}
+
 static void ParseIniKeyValLine(wstring *wline, wstring *section,
 		int warn_duplicates, bool warn_lines_without_equals,
 		IniSectionVector *section_vector, const wstring *ini_namespace)
@@ -470,6 +516,7 @@ static void ParseIniStream(istream *stream, const wstring *_ini_namespace)
 	int warn_duplicates = 1;
 	bool warn_lines_without_equals = true;
 	wstring ini_namespace;
+	bool preamble = true;
 
 	// Simplify code further on by translating NULL to "" here:
 	if (_ini_namespace)
@@ -508,9 +555,16 @@ static void ParseIniStream(istream *stream, const wstring *_ini_namespace)
 
 		// Section?
 		if (wline[0] == L'[') {
+			preamble = false;
 			ParseIniSectionLine(&wline, &section, &warn_duplicates,
 					    &warn_lines_without_equals,
 					    &section_vector, &ini_namespace);
+			continue;
+		}
+
+		if (preamble) {
+			if (!ParseIniPreamble(&wline, &ini_namespace))
+				return;
 			continue;
 		}
 
