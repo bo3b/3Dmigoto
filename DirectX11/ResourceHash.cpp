@@ -37,7 +37,7 @@ static wstring TexMiscFlags(UINT misc_flags)
 	return L"misc_flags=0";
 }
 
-int StrResourceDesc(char *buf, size_t size, D3D11_BUFFER_DESC *desc)
+int StrResourceDesc(char *buf, size_t size, const D3D11_BUFFER_DESC *desc)
 {
 	return _snprintf_s(buf, size, size, "type=Buffer byte_width=%u "
 		"usage=\"%S\" %S %S %S stride=%u",
@@ -48,7 +48,7 @@ int StrResourceDesc(char *buf, size_t size, D3D11_BUFFER_DESC *desc)
 		desc->StructureByteStride);
 }
 
-int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE1D_DESC *desc)
+int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE1D_DESC *desc)
 {
 	return _snprintf_s(buf, size, size, "type=Texture1D width=%u mips=%u "
 		"array=%u format=\"%s\" usage=\"%S\" %S %S %S",
@@ -59,7 +59,7 @@ int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE1D_DESC *desc)
 		TexMiscFlags(desc->MiscFlags).c_str());
 }
 
-int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc)
+int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE2D_DESC *desc)
 {
 	return _snprintf_s(buf, size, size, "type=Texture2D width=%u height=%u mips=%u "
 		"array=%u format=\"%s\" msaa=%u "
@@ -72,7 +72,7 @@ int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc)
 		TexMiscFlags(desc->MiscFlags).c_str());
 }
 
-int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE3D_DESC *desc)
+int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE3D_DESC *desc)
 {
 	return _snprintf_s(buf, size, size, "type=Texture3D width=%u height=%u depth=%u "
 		"mips=%u format=\"%s\" usage=\"%S\" %S %S %S",
