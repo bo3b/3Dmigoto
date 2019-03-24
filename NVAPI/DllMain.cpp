@@ -873,14 +873,19 @@ extern "C" NvAPI_Status * __cdecl nvapi_QueryInterface(unsigned int offset)
 	if (!loadDll())
 		return NULL;
 
+	// Special signature for being called from d3d11 dll code.
+	if (offset == 0xb03bb03b)
+		return (NvAPI_Status *)EnableOverride();
+
 	NvAPI_Status *ptr = (*nvapi_QueryInterfacePtr)(offset);
+	// Do not wrap any nvapi functions that nvapi themselves do not
+	// support. This is in anticipation of nvapi potentially dropping
+	// stereo calls some time after R418.
+	if (!ptr)
+		return ptr;
+
 	switch (offset)
 	{
-		// Special signature for being called from d3d11 dll code.
-		case 0xb03bb03b:
-			ptr = (NvAPI_Status *)EnableOverride();
-			break;
-
 		case 0x0150E828:
 			_NvAPI_Initialize = (tNvAPI_Initialize)ptr;
 			ptr = (NvAPI_Status *)NvAPI_Initialize;
