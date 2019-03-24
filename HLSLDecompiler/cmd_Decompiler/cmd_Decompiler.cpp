@@ -43,6 +43,9 @@ static void PrintHelp(int argc, char *argv[])
 	LogInfo("\t\t\tApply backwards compatibility formatting patch to disassembler output\n");
 #endif
 
+	LogInfo("  -16, --patch-cb-offsets\n");
+	LogInfo("\t\t\tReplace constant buffer byte offsets with indices when disassembling\n");
+
 	LogInfo("  -a, --assemble\n");
 	LogInfo("\t\t\tAssemble shaders with Flugan's assembler\n");
 
@@ -85,6 +88,7 @@ static struct {
 	bool disassemble_flugan;
 	int disassemble_hexdump;
 	bool disassemble_46;
+	bool patch_cb_offsets;
 	std::string reflection_reference;
 	bool assemble;
 	bool force;
@@ -142,6 +146,11 @@ void parse_args(int argc, char *argv[])
 				continue;
 			}
 #endif
+			if (!strcmp(arg, "-16") || !strcmp(arg, "--patch-cb-offsets")) {
+				args.patch_cb_offsets = true;
+				continue;
+			}
+
 			if (!strcmp(arg, "--copy-reflection")) {
 				if (++i >= argc)
 					PrintHelp(argc, argv);
@@ -219,12 +228,13 @@ static HRESULT DisassembleMS(const void *pShaderBytecode, size_t BytecodeLength,
 	return S_OK;
 }
 
-static HRESULT DisassembleFlugan(const void *pShaderBytecode, size_t BytecodeLength, string *asmText, int hexdump, bool d3dcompiler_46_compat)
+static HRESULT DisassembleFlugan(const void *pShaderBytecode, size_t BytecodeLength, string *asmText,
+		int hexdump, bool d3dcompiler_46_compat)
 {
 	// FIXME: This is a bit of a waste - we convert from a vector<char> to
 	// a void* + size_t to a vector<byte>
 
-	*asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength, true, hexdump, d3dcompiler_46_compat);
+	*asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength, args.patch_cb_offsets, true, hexdump, d3dcompiler_46_compat);
 	if (*asmText == "")
 		return E_FAIL;
 

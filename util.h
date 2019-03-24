@@ -724,6 +724,7 @@ static const char* type_name(IUnknown *object)
 // problematic %f floating point values with %.9e, which is enough that a 32bit
 // floating point value will be reproduced exactly:
 static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength,
+		bool patch_cb_offsets,
 		bool disassemble_undecipherable_data = true,
 		int hexdump = 0, bool d3dcompiler_46_compat = false)
 {
@@ -736,7 +737,7 @@ static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength
 	memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
 
 	r = disassembler(&byteCode, &disassembly, comments.c_str(), hexdump,
-			d3dcompiler_46_compat, disassemble_undecipherable_data);
+			d3dcompiler_46_compat, disassemble_undecipherable_data, patch_cb_offsets);
 	if (FAILED(r)) {
 		LogInfo("  disassembly failed. Error: %x\n", r);
 		return "";
@@ -798,7 +799,7 @@ static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength
 
 static string GetShaderModel(const void *pShaderBytecode, size_t bytecodeLength)
 {
-	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength);
+	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength, false);
 	if (asmText.empty())
 		return "";
 
@@ -857,9 +858,9 @@ static HRESULT CreateTextFile(wchar_t *fullPath, string *asmText, bool overwrite
 // Specific variant to name files consistently, so we know they are Asm text.
 
 static HRESULT CreateAsmTextFile(wchar_t* fileDirectory, UINT64 hash, const wchar_t* shaderType, 
-	const void *pShaderBytecode, size_t bytecodeLength)
+	const void *pShaderBytecode, size_t bytecodeLength, bool patch_cb_offsets)
 {
-	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength);
+	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength, patch_cb_offsets);
 	if (asmText.empty())
 	{
 		return E_OUTOFMEMORY;
