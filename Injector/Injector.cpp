@@ -220,17 +220,23 @@ out_close:
 	return rc;
 }
 
-static void wait_for_target(const char *target_a, const wchar_t *module_path, bool wait, int delay)
+static void wait_for_target(const char *target_a, const wchar_t *module_path, bool wait, int delay, bool launched)
 {
 	wchar_t target_w[MAX_PATH];
 
 	if (!MultiByteToWideChar(CP_UTF8, 0, target_a, -1, target_w, MAX_PATH))
 		return;
 
-	while (wait || delay == -1) {
+	for (int seconds = 0; wait || delay == -1; seconds++) {
 		if (check_for_running_target(target_w, module_path) && delay != -1)
 			break;
 		Sleep(1000);
+
+		if (launched && seconds == 3) {
+			printf("\nStill waiting for the game to start...\n"
+			       "If the game does not launch automatically, leave this window open and run it manually.\n"
+			       "You can also adjust/remove the [Loader] launch= option in the d3dx.ini as desired.\n\n");
+		}
 	}
 
 	for (int i = delay; i > 0; i--) {
@@ -287,6 +293,7 @@ int main()
 	int hook_proc;
 	FARPROC fn;
 	HHOOK hook;
+	bool launch;
 
 	CreateMutexA(0, FALSE, "Local\\3DMigotoLoader");
 	if (GetLastError() == ERROR_ALREADY_EXISTS)
@@ -361,7 +368,8 @@ int main()
 
 	rc = EXIT_SUCCESS;
 
-	if (find_ini_setting_lite(ini_section, "launch", setting, MAX_PATH)) {
+	launch = find_ini_setting_lite(ini_section, "launch", setting, MAX_PATH);
+	if (launch) {
 		printf("3DMigoto ready, launching \"%s\"...\n", setting);
 		CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 		ShellExecuteA(NULL, NULL, setting, NULL, NULL, SW_SHOWNORMAL);
@@ -371,7 +379,7 @@ int main()
 
 	wait_for_target(target, module_full_path,
 			find_ini_bool_lite(ini_section, "wait_for_target", true),
-			find_ini_int_lite(ini_section, "delay", 0));
+			find_ini_int_lite(ini_section, "delay", 0), launch);
 
 	UnhookWindowsHookEx(hook);
 	delete [] buf;
