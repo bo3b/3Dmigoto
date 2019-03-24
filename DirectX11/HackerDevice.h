@@ -102,7 +102,7 @@ public:
 	ID3D11Texture1D *mIniTexture;
 	ID3D11ShaderResourceView *mIniResourceView;
 	vector<ID3D11Resource*> release_present_race_workaround_resources;
-	CriticalSection release_present_race_workaround_resources_lock;
+	CRITICAL_SECTION release_present_race_workaround_resources_lock;
 
 	HackerDevice(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
 

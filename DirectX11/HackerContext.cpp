@@ -559,7 +559,8 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	orig_info->deferred_replacement_processed = true;
 
 	asm_text = BinaryToAsmText(orig_info->byteCode->GetBufferPointer(),
-			orig_info->byteCode->GetBufferSize());
+			orig_info->byteCode->GetBufferSize(),
+			G->disassemble_undecipherable_custom_data);
 	if (asm_text.empty())
 		goto out_drop;
 
@@ -1518,7 +1519,8 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 			// lot of it's logic doesn't really apply to
 			// compute shaders. The main thing we care
 			// about is the command list, so just run that:
-			RunCommandList(mHackerDevice, this, &i->second.command_list, NULL, false);
+			RunCommandList(mHackerDevice, this, &i->second.command_list, &context->call_info, false);
+			return !context->call_info.skip;
 		}
 	}
 
@@ -1528,7 +1530,7 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 void HackerContext::AfterDispatch(DispatchContext *context)
 {
 	if (context->post_commands)
-		RunCommandList(mHackerDevice, this, context->post_commands, NULL, true);
+		RunCommandList(mHackerDevice, this, context->post_commands, &context->call_info, true);
 }
 
 STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
@@ -1539,7 +1541,7 @@ STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 	/* [annotation] */
 	__in  UINT ThreadGroupCountZ)
 {
-	DispatchContext context;
+	DispatchContext context{ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ};
 
 	if (BeforeDispatch(&context))
 		mOrigContext1->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
@@ -1555,8 +1557,7 @@ STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	DispatchContext context;
-
+	DispatchContext context{&pBufferForArgs, AlignedByteOffsetForArgs};
 
 	if (BeforeDispatch(&context))
 		mOrigContext1->DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
@@ -2981,7 +2982,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	DrawContext c = DrawContext(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
+	DrawContext c = DrawContext(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
 	BeforeDraw(c);
 
 	if (!c.call_info.skip)
@@ -2995,7 +2996,7 @@ STDMETHODIMP_(void) HackerContext::DrawInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	DrawContext c = DrawContext(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
+	DrawContext c = DrawContext(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
 	BeforeDraw(c);
 
 	if (!c.call_info.skip)

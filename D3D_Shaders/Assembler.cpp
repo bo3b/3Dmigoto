@@ -8,6 +8,9 @@ using namespace std;
 #define DBL_DECIMAL_DIG 17
 #endif
 
+// for sscanf_s convinience. Explanation in DecompileHLSL.cpp
+#define UCOUNTOF(...) (unsigned)_countof(__VA_ARGS__)
+
 static unordered_map<string, vector<DWORD>> codeBin;
 
 static DWORD strToDWORD(string s)
@@ -1424,6 +1427,28 @@ static vector<DWORD> assemble_printf(string &s, vector<DWORD> &v, vector<string>
 	return v;
 }
 
+static vector<DWORD> assemble_undecipherable_custom_data(string &s, vector<DWORD> &v, vector<string> &w)
+{
+	uint32_t numOps, word, i;
+
+	check_num_ops(s, w, 2, 0);
+	if (w[1] != "custom" || w[2] != "data")
+		throw AssemblerParseError(s, "Unrecognised instruction");
+
+	// If we only have the words "undecipherable custom data" it's from the
+	// MS disassembler and there is nothing we can really do with it, but
+	// if it went through our disassembler fixup path we appended a hexdump
+	// of the instruction that we can now reassemble:
+
+	numOps = (uint32_t)w.size() - 3;
+	for (i = 0; i < numOps; i++) {
+		sscanf_s(w[i + 3].c_str(), "%x", &word);
+		v.push_back(word);
+	}
+
+	return v;
+}
+
 static vector<DWORD> assembleIns(string s)
 {
 	unsigned msaa_samples = 0;
@@ -2221,6 +2246,8 @@ static vector<DWORD> assembleIns(string s)
 		return assemble_printf(s, v, w, false);
 	} else if (o == "errorf") {
 		return assemble_printf(s, v, w, true);
+	} else if (o == "undecipherable") {
+		return assemble_undecipherable_custom_data(s, v, w);
 	} else {
 		throw AssemblerParseError(s, "Unrecognised instruction");
 	}
@@ -2557,7 +2584,61 @@ static void hexdump_instruction(string &s, vector<DWORD> &v,
 	lines.insert(pos, hd);
 }
 
-HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment, int hexdump)
+static void encode_custom_data(string &s, vector<DWORD> &v)
+{
+	char buf[16];
+
+	for (auto val : v) {
+		_snprintf_s(buf, 16, 16, " %08x", val);
+		s += buf;
+	}
+}
+
+// This function aims to patch the RDEF comment block from d3dcompiler_47 to
+// look like the old d3dcompiler_46 format so that ShaderRegex patterns that
+// match it do not have to be updated for the newer format. There are some
+// other differences ("cb" vs "CB" in dcl_constantbuffer lines, number of
+// digits used in certain number formatting routines), but this is the most
+// likely to interfere with ShaderRegex patterns.
+static inline void patch_d3dcompiler_47_rdef(string *line, int *rdef_state)
+{
+	char name[256], type[16], format[16], dim[16], bind_type[16];
+	int bind_idx, count, numRead;
+
+	switch (*rdef_state) {
+	case 0:
+		if (line->compare("// Name                                 Type  Format         Dim      HLSL Bind  Count"))
+			return;
+		*line = "// Name                                 Type  Format         Dim Slot Elements";
+		++*rdef_state;
+		return;
+	case 1:
+		if (!line->compare("// ------------------------------ ---------- ------- ----------- -------------- ------"))
+			*line = "// ------------------------------ ---------- ------- ----------- ---- --------";
+		++*rdef_state;
+		return;
+	case 2:
+		if (!line->compare("//")) {
+			++*rdef_state;
+			return;
+		}
+		numRead = sscanf_s(line->c_str(), "// %s %s %s %s %[a-z]%d %d",
+			name, UCOUNTOF(name), type, UCOUNTOF(type), format, UCOUNTOF(format), dim, UCOUNTOF(dim),
+			&bind_type, UCOUNTOF(bind_type), &bind_idx, &count);
+		if (numRead == 7) {
+			vector<char> buf(line->length() + 1); // d3dcompiler_47 lines should always be longer
+			_snprintf_s(buf.data(), buf.size(), _TRUNCATE,
+					"// %-30s %10s %7s %11s %4d %8d",
+					name, type, format, dim, bind_idx, count);
+			*line = buf.data();
+		}
+		return;
+	}
+}
+
+HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment,
+		int hexdump, bool d3dcompiler_46_compat,
+		bool disassemble_undecipherable_data)
 {
 	byte fourcc[4];
 	DWORD fHash[4];
@@ -2565,6 +2646,7 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 	DWORD fSize;
 	DWORD numChunks;
 	vector<DWORD> chunkOffsets;
+	int rdef_state = 0;
 
 	// TODO: Add robust error checking here (buffer is at least as large as
 	// the header, etc). I've added a check for numChunks < 1 as that
@@ -2622,8 +2704,11 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 		uint32_t line_byte_offset = (uint32_t)((byte*)codeStart - buffer->data());
 		string s = lines[i];
 
-		if (!memcmp(s.c_str(), "//", 2))
+		if (!memcmp(s.c_str(), "//", 2)) {
+			if (d3dcompiler_46_compat)
+				patch_d3dcompiler_47_rdef(&lines[i], &rdef_state);
 			continue;
+		}
 
 		vector<DWORD> v;
 		if (!codeStarted) {
@@ -2675,20 +2760,20 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 				codeStart++;
 			}
 			if (s == "undecipherable custom data") {
-				string prev = lines[i - 1];
-				if (prev == "ret ")
-					v.clear();
-				if (v.size() == 1) {
-					// This looks inherently wrong to me - scanning for the next word with a
-					// non-zero length field, but custom data can include arbitrary data. I
-					// suspect that the below code for printf/errorf would work here as well.
-					//  -DarkStarSword
-					ins = (shader_ins*)++codeStart;
-					while (ins->length == 0) {
-						ins = (shader_ins*)++codeStart;
-					}
-				}
-				s = "";
+				// Changed this to use the instruction length
+				// in the next word like the below printf
+				// instead of scanning for a word that happened
+				// to have some bits zeroed. Removed the case
+				// to skip processing custom data immediately
+				// following a ret. -DarkStarSword
+				uint32_t len = *codeStart;
+				v.push_back(*codeStart++);
+				for (uint32_t j = 1; j < len - 1; j++)
+					v.push_back(*codeStart++);
+				if (disassemble_undecipherable_data)
+					encode_custom_data(s, v);
+				else
+					s = "";
 			} else if (v[0] == 0x00002035) {
 				// Opcode 0x35 is custom data (specifically printf/errorf).
 				// Instruction length is in the next word instead:

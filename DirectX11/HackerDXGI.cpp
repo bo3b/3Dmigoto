@@ -54,6 +54,10 @@
 // the HackerSwapChain.  The model is the same as that used in HackerDevice
 // and HackerContext.
 
+// Include before util.h (or any header that includes util.h) to get pretty
+// version of LockResourceCreationMode:
+#include "lock.h"
+
 #include "HackerDXGI.h"
 #include "HookedDevice.h"
 #include "HookedDXGI.h"
@@ -244,7 +248,7 @@ static void process_present_race_deferred_resource_release(HackerDevice *mHacker
 	// Using a distinct lock from mCriticalSection so that we don't
 	// ourselves call into DirectX with mCriticalSection held, since that
 	// may lead to an AB-BA deadlock with the resource release tracker.
-	mHackerDevice->release_present_race_workaround_resources_lock.lock();
+	EnterCriticalSectionPretty(&mHackerDevice->release_present_race_workaround_resources_lock);
 
 	// In order to reduce the impact of iterating over a potentially quite
 	// large list every frame we will limit ourselves to checking a shorter
@@ -264,7 +268,7 @@ static void process_present_race_deferred_resource_release(HackerDevice *mHacker
 			resource->Release();
 		}
 	}
-	mHackerDevice->release_present_race_workaround_resources_lock.unlock();
+	LeaveCriticalSection(&mHackerDevice->release_present_race_workaround_resources_lock);
 }
 
 // Called at each DXGI::Present() to give us reliable time to execute user
@@ -1047,7 +1051,9 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 		fake_buffer_desc.Height = pFakeSwapChainDesc->BufferDesc.Height;
 		fake_buffer_desc.CPUAccessFlags = 0;
 
+		LockResourceCreationMode();
 		hr = mHackerDevice->GetPassThroughOrigDevice1()->CreateTexture2D(&fake_buffer_desc, nullptr, &mFakeBackBuffer);
+		UnlockResourceCreationMode();
 	}
 	break;
 	case 1:
@@ -1252,7 +1258,9 @@ STDMETHODIMP HackerUpscalingSwapChain::ResizeBuffers(THIS_
 			fd.Height = Height;
 			fd.Format = NewFormat;
 			// just recreate texture with new width and height
+			LockResourceCreationMode();
 			hr = mHackerDevice->GetPassThroughOrigDevice1()->CreateTexture2D(&fd, nullptr, &mFakeBackBuffer);
+			UnlockResourceCreationMode();
 		}
 		else  // nothing to resize
 			hr = S_OK;

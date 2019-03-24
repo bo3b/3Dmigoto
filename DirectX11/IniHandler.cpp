@@ -1717,9 +1717,12 @@ static void ParseResourceSections()
 				(CustomResourceBindFlagNames, setting, NULL);
 		}
 
-		ParseResourceInitialData(custom_resource, i->first.c_str());
+		if (GetIniStringAndLog(i->first.c_str(), L"misc_flags", 0, setting, MAX_PATH)) {
+			custom_resource->override_misc_flags = parse_enum_option_string<const wchar_t *, ResourceMiscFlags, wchar_t*>
+				(ResourceMiscFlagNames, setting, NULL);
+		}
 
-		// TODO: Overrides for misc flags, etc
+		ParseResourceInitialData(custom_resource, i->first.c_str());
 	}
 }
 
@@ -4424,6 +4427,7 @@ void LoadConfigFile()
 	G->SCISSOR_DISABLE = GetIniBool(L"Rendering", L"rasterizer_disable_scissor", false, NULL);
 	G->track_texture_updates = GetIniBoolOrInt(L"Rendering", L"track_texture_updates", 0, NULL);
 	G->assemble_signature_comments = GetIniBool(L"Rendering", L"assemble_signature_comments", false, NULL);
+	G->disassemble_undecipherable_custom_data = GetIniBool(L"Rendering", L"disassemble_undecipherable_custom_data", false, NULL);
 
 	G->EXPORT_FIXED = GetIniBool(L"Rendering", L"export_fixed", false, NULL);
 	G->EXPORT_SHADERS = GetIniBool(L"Rendering", L"export_shaders", false, NULL);

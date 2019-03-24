@@ -292,7 +292,7 @@ reconstruct_shader_binary()
 			echo "$hlsl_filename does not contain original assembly"
 			continue
 		fi
-		sed -E '0,/\/\*~+( Original ASM )?~+/d; /~+\*\//,$d' "$hlsl_filename" > "$asm_filename"
+		sed -E '0,/\/\*~+( Original ASM )?~+/d; /\*\//,$d' "$hlsl_filename" > "$asm_filename"
 		rm_asm=1
 	fi
 

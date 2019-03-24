@@ -465,6 +465,7 @@ struct Globals
 	bool EXPORT_SHADERS, EXPORT_FIXED, EXPORT_BINARY, CACHE_SHADERS, SCISSOR_DISABLE;
 	int track_texture_updates;
 	bool assemble_signature_comments;
+	bool disassemble_undecipherable_custom_data;
 	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
 	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
 	std::vector<std::string> ZRepair_Dependencies1, ZRepair_Dependencies2;

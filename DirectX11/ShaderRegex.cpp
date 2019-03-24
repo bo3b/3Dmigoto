@@ -364,8 +364,8 @@ void ShaderRegexGroup::apply_regex_patterns(std::string *asm_text, bool *match, 
 void ShaderRegexGroup::link_command_lists(UINT64 shader_hash)
 {
 	ShaderOverride *shader_override = NULL;
-	wchar_t buf[32];
 	wstring ini_section, ini_line;
+	CommandList::Commands::reverse_iterator i;
 
 	// Only link the command lists if we have something in ours to link in,
 	// because this will create ShaderOverride sections for shaders that
@@ -374,23 +374,49 @@ void ShaderRegexGroup::link_command_lists(UINT64 shader_hash)
 	if (command_list.commands.empty() && post_command_list.commands.empty())
 		return;
 
-	swprintf_s(buf, ARRAYSIZE(buf), L".Match=%016llx", shader_hash);
-	ini_section = command_list.ini_section + buf;
-
 	shader_override = &G->mShaderOverrideMap[shader_hash];
+
+	// Initialise the ShaderOverride's command lists if they aren't already:
 	if (shader_override->command_list.ini_section.empty()) {
+		ini_section = command_list.ini_section + L".Match";
 		shader_override->command_list.ini_section = ini_section;
 		shader_override->post_command_list.ini_section = ini_section;
 		shader_override->post_command_list.post = true;
 	}
 
-	ini_line = L"[" + shader_override->command_list.ini_section + L"] run = " + command_list.ini_section;
+	// If we have previously linked a command list (on any matched shader)
+	// we will reuse the link command here, after checking that this
+	// matched shader has not already been linked. Avoids the command lists
+	// growing endlessly and eventually killing performance.
+	if (link) {
+		for (i = shader_override->command_list.commands.rbegin();
+		         i != shader_override->command_list.commands.rend(); i++) {
+			if (*i == link)
+				return;
+		}
+		shader_override->command_list.commands.push_back(link);
+		if (post_link)
+			shader_override->post_command_list.commands.push_back(post_link);
+		return;
+	} else if (post_link) {
+		for (i = shader_override->post_command_list.commands.rbegin();
+		         i != shader_override->post_command_list.commands.rend(); i++) {
+			if (*i == post_link)
+				return;
+		}
+		shader_override->post_command_list.commands.push_back(post_link);
+		return;
+	}
+
+	// This is the first shader this pattern has matched. Create a new
+	// RunLinkedCommandList command and link it up:
+	ini_line = L"[" + command_list.ini_section + L".Match] run = linked command list";
 
 	if (!command_list.commands.empty())
-		LinkCommandLists(&shader_override->command_list, &command_list, &ini_line);
+		link = LinkCommandLists(&shader_override->command_list, &command_list, &ini_line);
 
 	if (!post_command_list.commands.empty())
-		LinkCommandLists(&shader_override->post_command_list, &post_command_list, &ini_line);
+		post_link = LinkCommandLists(&shader_override->post_command_list, &post_command_list, &ini_line);
 }
 
 bool apply_shader_regex_groups(std::string *asm_text, std::string *shader_model, UINT64 hash, std::wstring *tagline)

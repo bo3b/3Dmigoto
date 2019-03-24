@@ -461,6 +461,14 @@ static void DeleteCriticalSectionHook(CRITICAL_SECTION *lock)
 void _InitializeCriticalSectionPretty(CRITICAL_SECTION *lock, char *lock_name)
 {
 	InitializeCriticalSection(lock);
+	// NOTE: If we have been called from a global constructor, this may
+	// crash due to C++'s undefined initialisation order. Do not use this
+	// function from a global constructor, no matter how convenient they
+	// seem like they would be to wrap a CRITICAL_SECTION! Even if we
+	// switched to dynamically allocating this the first time this function
+	// is called we then risk leaking memory in every process whenever
+	// 3DMigoto Loader.exe is in use.
+	// https://yosefk.com/c++fqa/ctors.html#fqa-10.12
 	lock_names[lock] = lock_name;
 }
 

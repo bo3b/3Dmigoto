@@ -8,6 +8,10 @@
 // ID3D11Device3	Win10			11.3
 // ID3D11Device4					11.4
 
+// Include before util.h (or any header that includes util.h) to get pretty
+// version of LockResourceCreationMode:
+#include "lock.h"
+
 #include "HackerDevice.h"
 #include "HookedDevice.h"
 #include "FrameAnalysis.h"
@@ -245,6 +249,7 @@ HackerDevice::HackerDevice(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pConte
 	mOrigContext1 = pContext1;
 	// Must be done after mOrigDevice1 is set:
 	mUnknown = register_hacker_device(this);
+	InitializeCriticalSection(&release_present_race_workaround_resources_lock);
 }
 
 HRESULT HackerDevice::CreateStereoParamResources()
@@ -448,10 +453,14 @@ void HackerDevice::Create3DMigotoResources()
 	// be considdered non-fatal, as stereo could be disabled in the control
 	// panel, or we could be on an AMD or Intel card.
 
+	LockResourceCreationMode();
+
 	CreateStereoParamResources();
 	CreateIniParamResources();
 	CreatePinkHuntingResources();
 	SetGlobalNVSurfaceCreationMode();
+
+	UnlockResourceCreationMode();
 
 	optimise_command_lists(this);
 }
@@ -1555,6 +1564,7 @@ STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 			long result = res->Release();
 			LogInfo("  releasing Present/Release race workaround resource %p, result = %d\n", res, result);
 		}
+		DeleteCriticalSection(&release_present_race_workaround_resources_lock);
 		delete this;
 		return 0L;
 	}
@@ -2077,6 +2087,8 @@ static const DescType* process_texture_override(uint32_t hash,
 		}
 	}
 
+	LockResourceCreationMode();
+
 	if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) -1) {
 		Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
 		NvAPIOverride();
@@ -2091,11 +2103,12 @@ static const DescType* process_texture_override(uint32_t hash,
 
 static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMode, StereoHandle mStereoHandle)
 {
-	if (oldMode == (NVAPI_STEREO_SURFACECREATEMODE) - 1)
-		return;
+	if (oldMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1) {
+		if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
+			LogInfo("    restore call failed.\n");
+	}
 
-	if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
-		LogInfo("    restore call failed.\n");
+	UnlockResourceCreationMode();
 }
 
 void HackerDevice::workaround_present_release_race(ID3D11Resource *pResource)
@@ -2124,12 +2137,12 @@ void HackerDevice::workaround_present_release_race(ID3D11Resource *pResource)
 	// one we will know that we are the only remaining reference holder and
 	// can perform the final Release() then - effectively moving the final
 	// Release() call to the render thread.
-	release_present_race_workaround_resources_lock.lock();
+	EnterCriticalSectionPretty(&release_present_race_workaround_resources_lock);
 		LogDebug("%04x: Present/Release race workaround: Bumping refcount on %p\n",
 				GetCurrentThreadId(), pResource);
 		pResource->AddRef();
 		release_present_race_workaround_resources.push_back(pResource);
-	release_present_race_workaround_resources_lock.unlock();
+	LeaveCriticalSection(&release_present_race_workaround_resources_lock);
 }
 
 STDMETHODIMP HackerDevice::CreateBuffer(THIS_

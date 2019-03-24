@@ -38,39 +38,33 @@
 // has other problems such as no meaningful names, no namespacing, etc.
 const int INI_PARAMS_SIZE_WARNING = 256;
 
-// This class wraps a CRITICAL_SECTION and manages initializing and deleting it
-// via a C++ constructor to reduce the boiler plate usually required for these.
-// TODO: Track which thread has this lock held (the CRITICAL_SECTION structure
-// contains this already, but it is opaque and not considered part of the ABI,
-// meaning we cannot rely on it's structure to never change, which has
-// apparently happened in the past), and graph lock dependencies to detect
-// common locking bugs. Assume any calls into DirectX may take a lock of their
-// own to detect AB-BA type deadlocks with the resource release tracker that is
-// called from DirectX.
-class CriticalSection {
-private:
-	CRITICAL_SECTION critical_section;
-public:
-	CriticalSection()
-	{
-		InitializeCriticalSection(&critical_section);
-	}
+// -----------------------------------------------------------------------------------------------
 
-	~CriticalSection()
-	{
-		DeleteCriticalSection(&critical_section);
-	}
+// This critical section must be held to avoid race conditions when creating
+// any resource. The nvapi functions used to set the resource creation mode
+// affect global state, so if multiple threads are creating resources
+// simultaneously it is possible for a StereoMode override or stereo/mono copy
+// on one thread to affect another. This should be taken before setting the
+// surface creation mode and released only after it has been restored. If the
+// creation mode is not being set it should still be taken around the actual
+// CreateXXX call.
+//
+// The actual variable definition is in the DX11 project to remind anyone using
+// this from another project that they need to InitializeCriticalSection[Pretty]
+extern CRITICAL_SECTION resource_creation_mode_lock;
 
-	inline void lock()
-	{
-		EnterCriticalSection(&critical_section);
-	}
+// Use the pretty lock debugging version if lock.h is included first, otherwise
+// use the regular EnterCriticalSection:
+#ifdef EnterCriticalSectionPretty
+#define LockResourceCreationMode() \
+	EnterCriticalSectionPretty(&resource_creation_mode_lock)
+#else
+#define LockResourceCreationMode() \
+	EnterCriticalSection(&resource_creation_mode_lock)
+#endif
 
-	inline void unlock()
-	{
-		LeaveCriticalSection(&critical_section);
-	}
-};
+#define UnlockResourceCreationMode() \
+	LeaveCriticalSection(&resource_creation_mode_lock)
 
 // -----------------------------------------------------------------------------------------------
 
@@ -265,6 +259,33 @@ static T1 lookup_enum_name(struct EnumName_t<T1, T2> *enum_names, T2 val)
 	}
 
 	return NULL;
+}
+
+template <class T2>
+static wstring lookup_enum_bit_names(struct EnumName_t<const wchar_t*, T2> *enum_names, T2 val)
+{
+	wstring ret;
+	T2 remaining = val;
+
+	for (; enum_names->name; enum_names++) {
+		if ((T2)(val & enum_names->val) == enum_names->val) {
+			if (!ret.empty())
+				ret += L' ';
+			ret += enum_names->name;
+			remaining = (T2)(remaining & (T2)~enum_names->val);
+		}
+	}
+
+	if (remaining != (T2)0) {
+		wchar_t buf[20];
+		wsprintf(buf, L"%x", remaining);
+		if (!ret.empty())
+			ret += L' ';
+		ret += L"unknown:0x";
+		ret += buf;
+	}
+
+	return ret;
 }
 
 // Parses an option string of names given by enum_names. The enum used with
@@ -702,7 +723,9 @@ static const char* type_name(IUnknown *object)
 // New version using Flugan's wrapper around D3DDisassemble to replace the
 // problematic %f floating point values with %.9e, which is enough that a 32bit
 // floating point value will be reproduced exactly:
-static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength, int hexdump = 0)
+static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength,
+		bool disassemble_undecipherable_data = true,
+		int hexdump = 0, bool d3dcompiler_46_compat = false)
 {
 	string comments;
 	vector<byte> byteCode(BytecodeLength);
@@ -712,7 +735,8 @@ static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength
 	comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
 	memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
 
-	r = disassembler(&byteCode, &disassembly, comments.c_str(), hexdump);
+	r = disassembler(&byteCode, &disassembly, comments.c_str(), hexdump,
+			d3dcompiler_46_compat, disassemble_undecipherable_data);
 	if (FAILED(r)) {
 		LogInfo("  disassembly failed. Error: %x\n", r);
 		return "";
