@@ -2075,7 +2075,12 @@ static const DescType* process_texture_override(uint32_t hash,
 		for (i = 0; i < matches.size(); i++) {
 			textureOverride = matches[i];
 
-			LogInfo("  %S matched resource with hash=%08x\n", textureOverride->ini_section.c_str(), hash);
+			if (LogFile) {
+				char buf[256];
+				StrResourceDesc(buf, 256, origDesc);
+				LogInfo("  %S matched resource with hash=%08x %s\n",
+						textureOverride->ini_section.c_str(), hash, buf);
+			}
 
 			if (!check_texture_override_iteration(textureOverride))
 				continue;
@@ -2092,10 +2097,10 @@ static const DescType* process_texture_override(uint32_t hash,
 	if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) -1) {
 		Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
 		NvAPIOverride();
-		LogInfo("  setting custom surface creation mode.\n");
+		LogInfo("    setting custom surface creation mode %d\n", newMode);
 
 		if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
-			LogInfo("    call failed.\n");
+			LogInfo("      call failed.\n");
 	}
 
 	return ret;
