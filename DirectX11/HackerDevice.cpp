@@ -739,25 +739,25 @@ bail_close_handle:
 // Load .bin shaders from the ShaderFixes folder as cached shaders.
 // This will load either *_replace.bin, or *.bin variants.
 
-static void LoadBinaryShaders(__in UINT64 hash, const wchar_t *pShaderType,
+static bool LoadBinaryShaders(__in UINT64 hash, const wchar_t *pShaderType,
 	__out char* &pCode, SIZE_T &pCodeSize, string &pShaderModel, FILETIME &pTimeStamp)
 {
 	wchar_t path[MAX_PATH];
 
 	swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, pShaderType);
 	if (LoadCachedShader(path, pShaderType, pCode, pCodeSize, pShaderModel, pTimeStamp))
-		return;
+		return true;
 
 	// If we can't find an HLSL compiled version, look for ASM assembled one.
 	swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
-	LoadCachedShader(path, pShaderType, pCode, pCodeSize, pShaderModel, pTimeStamp);
+	return LoadCachedShader(path, pShaderType, pCode, pCodeSize, pShaderModel, pTimeStamp);
 }
 
 
 // Load an HLSL text file as the replacement shader.  Recompile it using D3DCompile.
 // If caching is enabled, save a .bin replacement for this new shader.
 
-static void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
+static bool ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 	__in const void *pShaderBytecode, SIZE_T pBytecodeLength, const char *pOverrideShaderModel,
 	__out char* &pCode, SIZE_T &pCodeSize, string &pShaderModel, FILETIME &pTimeStamp, wstring &pHeaderLine)
 {
@@ -865,6 +865,7 @@ static void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 			}
 		}
 	}
+	return !!pCode;
 }
 
 
@@ -886,7 +887,7 @@ static void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 //
 // So it should be clear by name, what type of file they are.  
 
-static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *pShaderBytecode, SIZE_T pBytecodeLength,
+static bool ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *pShaderBytecode, SIZE_T pBytecodeLength,
 	__out char* &pCode, SIZE_T &pCodeSize, string &pShaderModel, FILETIME &pTimeStamp, wstring &pHeaderLine)
 {
 	wchar_t path[MAX_PATH];
@@ -984,6 +985,8 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 			}
 		}
 	}
+
+	return !!pCode;
 }
 
 // Fairly bold new strategy here for ReplaceShader. 
@@ -1024,7 +1027,7 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 // the string read from the first line of the HLSL file.  This the logical place for
 // it because the file is already open and read into memory.
 
-char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
+char* HackerDevice::ReplaceShaderFromShaderFixes(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
 	SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp,
 	wstring &headerLine, const char *overrideShaderModel)
 {
@@ -1034,42 +1037,38 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 	char *pCode = 0;
 	wchar_t val[MAX_PATH];
 
-	if (G->SHADER_PATH[0] && G->SHADER_CACHE_PATH[0])
-	{
-		// Export every original game shader as a .bin file.
-		if (G->EXPORT_BINARY) 
-		{
-			ExportOrigBinary(hash, shaderType, pShaderBytecode, BytecodeLength);
-		}
+	if (!G->SHADER_PATH[0] || !G->SHADER_CACHE_PATH[0])
+		return NULL;
 
-		// Export every shader seen as an ASM text file.
-		if (G->EXPORT_SHADERS)
-		{
-			CreateAsmTextFile(G->SHADER_CACHE_PATH, hash, shaderType, pShaderBytecode, BytecodeLength, G->patch_cb_offsets);
-		}
+	// Export every original game shader as a .bin file.
+	if (G->EXPORT_BINARY)
+		ExportOrigBinary(hash, shaderType, pShaderBytecode, BytecodeLength);
+
+	// Export every shader seen as an ASM text file.
+	if (G->EXPORT_SHADERS)
+		CreateAsmTextFile(G->SHADER_CACHE_PATH, hash, shaderType, pShaderBytecode, BytecodeLength, G->patch_cb_offsets);
 
 
-		// Read the binary compiled shaders, as previously cached shaders.  This is how
-		// fixes normally ship, so that we just load previously compiled/assembled shaders.
-		LoadBinaryShaders(hash, shaderType, pCode, pCodeSize, foundShaderModel, timeStamp);
+	// Read the binary compiled shaders, as previously cached shaders.  This is how
+	// fixes normally ship, so that we just load previously compiled/assembled shaders.
+	if (LoadBinaryShaders(hash, shaderType, pCode, pCodeSize, foundShaderModel, timeStamp))
+		return pCode;
 
-		// Load previously created HLSL shaders, but only from ShaderFixes.
-		if (!pCode)
-		{
-			ReplaceHLSLShader(hash, shaderType, pShaderBytecode, BytecodeLength, overrideShaderModel,
-				pCode, pCodeSize, foundShaderModel, timeStamp, headerLine);
-		}
-
-		// If still not found, look for replacement ASM text shaders.
-		if (!pCode)
-		{
-			ReplaceASMShader(hash, shaderType, pShaderBytecode, BytecodeLength, 
-				pCode, pCodeSize, foundShaderModel, timeStamp, headerLine);
-		}
+	// Load previously created HLSL shaders, but only from ShaderFixes.
+	if (ReplaceHLSLShader(hash, shaderType, pShaderBytecode, BytecodeLength, overrideShaderModel,
+				pCode, pCodeSize, foundShaderModel, timeStamp, headerLine)) {
+		return pCode;
 	}
 
+	// If still not found, look for replacement ASM text shaders.
+	if (ReplaceASMShader(hash, shaderType, pShaderBytecode, BytecodeLength,
+				pCode, pCodeSize, foundShaderModel, timeStamp, headerLine)) {
+		return pCode;
+	}
+
+
 	// Shader hacking?
-	if (G->SHADER_PATH[0] && G->SHADER_CACHE_PATH[0] && ((G->EXPORT_HLSL >= 1) || G->FIX_SV_Position || G->FIX_Light_Position || G->FIX_Recompile_VS) && !pCode)
+	if ((G->EXPORT_HLSL >= 1) || G->FIX_SV_Position || G->FIX_Light_Position || G->FIX_Recompile_VS)
 	{
 		// Skip?
 		swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_bad.txt", G->SHADER_PATH, hash, shaderType);
@@ -2465,17 +2464,19 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	ShaderOverrideMap::iterator override;
 	const char *overrideShaderModel = NULL;
 
-	if (pShaderBytecode && ppShader)
-	{
-		// Calculate hash
-		hash = hash_shader(pShaderBytecode, BytecodeLength);
+	if (!ppShader || !pShaderBytecode) {
+		// Let DX worry about the error code
+		return (mOrigDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
+	}
 
-		// Check if the user has overridden the shader model:
-		ShaderOverrideMap::iterator override = lookup_shaderoverride(hash);
-		if (override != G->mShaderOverrideMap.end()) {
-			if (override->second.model[0])
-				overrideShaderModel = override->second.model;
-		}
+	// Calculate hash
+	hash = hash_shader(pShaderBytecode, BytecodeLength);
+
+	// Check if the user has overridden the shader model:
+	ShaderOverrideMap::iterator override = lookup_shaderoverride(hash);
+	if (override != G->mShaderOverrideMap.end()) {
+		if (override->second.model[0])
+			overrideShaderModel = override->second.model;
 	}
 
 	// This code block handles shaders replaced from ShaderFixes at load
@@ -2488,10 +2489,11 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	//
 	// When hunting is enabled we always save off the original shader
 	// because the answer to "do we need the original?" is "...maybe?"
-	if (hr != S_OK && ppShader && pShaderBytecode)
+	if (hr != S_OK)
 	{
-		char *replaceShader = ReplaceShader(hash, shaderType, pShaderBytecode, BytecodeLength, replaceShaderSize,
-			shaderModel, ftWrite, headerLine, overrideShaderModel);
+		char *replaceShader = ReplaceShaderFromShaderFixes(hash, shaderType,
+				pShaderBytecode, BytecodeLength, replaceShaderSize,
+				shaderModel, ftWrite, headerLine, overrideShaderModel);
 		if (replaceShader)
 		{
 			// Create the new shader.
@@ -2547,11 +2549,9 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	// because the answer to "do we need the original?" is "...maybe?"
 	if (hr != S_OK)
 	{
-		if (ppShader)
-			*ppShader = NULL; // Appease the static analysis gods
+		*ppShader = NULL; // Appease the static analysis gods
 		hr = (mOrigDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
-		if (SUCCEEDED(hr) && ppShader)
-			CleanupShaderMaps(*ppShader);
+		CleanupShaderMaps(*ppShader);
 
 		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
 		// have a copy for every shader seen. If we are performing any sort of deferred shader replacement, such as pipline
@@ -2583,7 +2583,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		}
 	}
 
-	if (hr == S_OK && ppShader && pShaderBytecode)
+	if (hr == S_OK)
 	{
 		EnterCriticalSectionPretty(&G->mCriticalSection);
 			G->mShaders[*ppShader] = hash;

@@ -55,7 +55,7 @@ private:
 	HackerSwapChain *mHackerSwapChain;
 
 	// Utility routines
-	char *ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
+	char *ReplaceShaderFromShaderFixes(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
 		SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, 
 		wstring &headerLine, const char *overrideShaderModel);
 	bool NeedOriginalShader(UINT64 hash);
