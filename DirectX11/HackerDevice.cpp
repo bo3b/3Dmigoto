@@ -989,6 +989,229 @@ static bool ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 	return !!pCode;
 }
 
+static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
+		const wchar_t *pShaderType, const void *pShaderBytecode,
+		SIZE_T BytecodeLength, __out char* &pCode, SIZE_T &pCodeSize,
+		string &pShaderModel, FILETIME &pTimeStamp,
+		wstring &pHeaderLine, const wchar_t *shaderType,
+		string &foundShaderModel, FILETIME &timeStamp,
+		const char *overrideShaderModel)
+{
+	wchar_t val[MAX_PATH];
+	ID3DBlob *disassembly = 0; // FIXME: This can leak
+	FILE *fw = 0;
+	string shaderModel = "";
+
+	if (!G->EXPORT_HLSL && !G->FIX_SV_Position && !G->FIX_Light_Position && !G->FIX_Recompile_VS)
+		return NULL;
+
+	// Skip?
+	swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_bad.txt", G->SHADER_PATH, hash, shaderType);
+	if (GetFileAttributes(val) != INVALID_FILE_ATTRIBUTES) {
+		LogInfo("    skipping shader marked bad. %S\n", val);
+		return NULL;
+	}
+
+	// Store HLSL export files in ShaderCache, auto-Fixed shaders in ShaderFixes
+	if (G->EXPORT_HLSL >= 1)
+		swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_CACHE_PATH, hash, shaderType);
+	else
+		swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shaderType);
+
+	// If we can open the file already, it exists, and thus we should skip doing this slow operation again.
+	if (GetFileAttributes(val) != INVALID_FILE_ATTRIBUTES)
+		return NULL;
+
+	// Disassemble old shader for fixing.
+	// Huh, this code path isn't using Flugan's disassembler, which
+	// differs from the hunting code path. If we change this, remember
+	// not to use the cb offset fixup here since the decompiler can't
+	// parse that as yet. -DarkStarSword
+	HRESULT ret = D3DDisassemble(pShaderBytecode, BytecodeLength,
+		D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, &disassembly);
+	if (ret != S_OK) {
+		LogInfo("    disassembly of original shader failed.\n");
+		return NULL;
+	}
+
+	// Decompile code.
+	LogInfo("    creating HLSL representation.\n");
+
+	bool patched = false;
+	bool errorOccurred = false;
+
+	// TODO: Refactor all parameters we just copy from globals into their
+	// own struct so we don't have to copy all this junk
+	ParseParameters p;
+	p.bytecode = pShaderBytecode;
+	p.decompiled = (const char *)disassembly->GetBufferPointer();
+	p.decompiledSize = disassembly->GetBufferSize();
+	p.StereoParamsReg = G->StereoParamsReg;
+	p.IniParamsReg = G->IniParamsReg;
+	p.recompileVs = G->FIX_Recompile_VS;
+	p.fixSvPosition = G->FIX_SV_Position;
+	p.ZRepair_Dependencies1 = G->ZRepair_Dependencies1;
+	p.ZRepair_Dependencies2 = G->ZRepair_Dependencies2;
+	p.ZRepair_DepthTexture1 = G->ZRepair_DepthTexture1;
+	p.ZRepair_DepthTexture2 = G->ZRepair_DepthTexture2;
+	p.ZRepair_DepthTextureReg1 = G->ZRepair_DepthTextureReg1;
+	p.ZRepair_DepthTextureReg2 = G->ZRepair_DepthTextureReg2;
+	p.ZRepair_ZPosCalc1 = G->ZRepair_ZPosCalc1;
+	p.ZRepair_ZPosCalc2 = G->ZRepair_ZPosCalc2;
+	p.ZRepair_PositionTexture = G->ZRepair_PositionTexture;
+	p.ZRepair_DepthBuffer = (G->ZBufferHashToInject != 0);
+	p.ZRepair_WorldPosCalc = G->ZRepair_WorldPosCalc;
+	p.BackProject_Vector1 = G->BackProject_Vector1;
+	p.BackProject_Vector2 = G->BackProject_Vector2;
+	p.ObjectPos_ID1 = G->ObjectPos_ID1;
+	p.ObjectPos_ID2 = G->ObjectPos_ID2;
+	p.ObjectPos_MUL1 = G->ObjectPos_MUL1;
+	p.ObjectPos_MUL2 = G->ObjectPos_MUL2;
+	p.MatrixPos_ID1 = G->MatrixPos_ID1;
+	p.MatrixPos_MUL1 = G->MatrixPos_MUL1;
+	p.InvTransforms = G->InvTransforms;
+	p.fixLightPosition = G->FIX_Light_Position;
+	p.ZeroOutput = false;
+	const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
+	if (!decompiledCode.size())
+	{
+		LogInfo("    error while decompiling.\n");
+
+		return 0;
+	}
+
+	if (!errorOccurred && ((G->EXPORT_HLSL >= 1) || (G->EXPORT_FIXED && patched)))
+	{
+		errno_t err = wfopen_ensuring_access(&fw, val, L"wb");
+		if (err != 0)
+		{
+			LogInfo("    !!! Fail to open replace.txt file: 0x%x\n", err);
+			return 0;
+		}
+
+		if (LogFile)
+		{
+			char fileName[MAX_PATH];
+			wcstombs(fileName, val, MAX_PATH);
+			if (fw)
+				LogInfo("    storing patched shader to %s\n", fileName);
+			else
+				LogInfo("    error storing patched shader to %s\n", fileName);
+		}
+		if (fw)
+		{
+			// Save decompiled HLSL code to that new file.
+			fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), fw);
+
+			// Now also write the ASM text to the shader file as a set of comments at the bottom.
+			// That will make the ASM code the master reference for fixing shaders, and should be more
+			// convenient, especially in light of the numerous decompiler bugs we see.
+			if (G->EXPORT_HLSL >= 2)
+			{
+				fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+				// Size - 1 to strip NULL terminator
+				fwrite(disassembly->GetBufferPointer(), 1, disassembly->GetBufferSize() - 1, fw);
+				fprintf_s(fw, "\n//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
+
+			}
+
+			if (disassembly) disassembly->Release(); disassembly = 0;
+		}
+	}
+
+	// Let's re-compile every time we create a new one, regardless.  Previously this would only re-compile
+	// after auto-fixing shaders. This makes shader Decompiler errors more obvious.
+	if (!errorOccurred)
+	{
+		// Way too many obscure interractions in this function, using another
+		// temporary variable to not modify anything already here and reduce
+		// the risk of breaking it in some subtle way:
+		const char *tmpShaderModel;
+		char apath[MAX_PATH];
+
+		if (overrideShaderModel)
+			tmpShaderModel = overrideShaderModel;
+		else
+			tmpShaderModel = shaderModel.c_str();
+
+		LogInfo("    compiling fixed HLSL code with shader model %s, size = %Iu\n", tmpShaderModel, decompiledCode.size());
+
+		// TODO: Add #defines for StereoParams and IniParams
+
+		ID3DBlob *pErrorMsgs; // FIXME: This can leak
+		ID3DBlob *pCompiledOutput = 0;
+		// Probably unecessary here since this shader is one we freshly decompiled,
+		// but for consistency pass the path here as well so that the standard
+		// include handler can correctly handle includes with paths relative to the
+		// shader itself:
+		wcstombs(apath, val, MAX_PATH);
+		ret = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+			"main", tmpShaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
+		LogInfo("    compile result of fixed HLSL shader: %x\n", ret);
+
+		if (LogFile && pErrorMsgs)
+		{
+			LPVOID errMsg = pErrorMsgs->GetBufferPointer();
+			SIZE_T errSize = pErrorMsgs->GetBufferSize();
+			LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
+			fwrite(errMsg, 1, errSize - 1, LogFile);
+			LogInfo("------------------------------------------- HLSL code -------------------------------------------\n");
+			fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), LogFile);
+			LogInfo("\n---------------------------------------------- END ----------------------------------------------\n");
+
+			// And write the errors to the HLSL file as comments too, as a more convenient spot to see them.
+			fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+			fwrite(errMsg, 1, errSize - 1, fw);
+			fprintf_s(fw, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
+
+			pErrorMsgs->Release();
+		}
+
+		// If requested by .ini, also write the newly re-compiled assembly code to the file.  This gives a direct
+		// comparison between original ASM, and recompiled ASM.
+		if ((G->EXPORT_HLSL >= 3) && pCompiledOutput)
+		{
+			string asmText = BinaryToAsmText(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize(), G->patch_cb_offsets);
+			if (asmText.empty())
+			{
+				LogInfo("    disassembly of recompiled shader failed.\n");
+			}
+			else
+			{
+				fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Recompiled ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+				fwrite(asmText.c_str(), 1, asmText.size(), fw);
+				fprintf_s(fw, "\n//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
+			}
+		}
+
+		if (pCompiledOutput)
+		{
+			// If the shader has been auto-fixed, return it as the live shader.
+			// For just caching shaders, we return zero so it won't affect game visuals.
+			if (patched)
+			{
+				pCodeSize = pCompiledOutput->GetBufferSize();
+				pCode = new char[pCodeSize];
+				memcpy(pCode, pCompiledOutput->GetBufferPointer(), pCodeSize);
+			}
+			pCompiledOutput->Release(); pCompiledOutput = 0;
+		}
+	}
+
+	if (fw)
+	{
+		// Any HLSL compiled shaders are reloading candidates, if moved to ShaderFixes
+		FILETIME ftWrite;
+		GetFileTime(fw, NULL, NULL, &ftWrite);
+		foundShaderModel = shaderModel;
+		timeStamp = ftWrite;
+
+		fclose(fw);
+	}
+
+	return pCode;
+}
+
 // Fairly bold new strategy here for ReplaceShader. 
 // This is called at launch to replace any shaders that we might want patched to fix problems.
 // It would previously use both ShaderCache, and ShaderFixes both to fix shaders, but this is
@@ -1035,7 +1258,6 @@ char* HackerDevice::_ReplaceShaderFromShaderFixes(UINT64 hash, const wchar_t *sh
 	timeStamp = { 0 };
 
 	char *pCode = 0;
-	wchar_t val[MAX_PATH];
 
 	if (!G->SHADER_PATH[0] || !G->SHADER_CACHE_PATH[0])
 		return NULL;
@@ -1066,232 +1288,13 @@ char* HackerDevice::_ReplaceShaderFromShaderFixes(UINT64 hash, const wchar_t *sh
 		return pCode;
 	}
 
-
-	// Shader hacking?
-	if ((G->EXPORT_HLSL >= 1) || G->FIX_SV_Position || G->FIX_Light_Position || G->FIX_Recompile_VS)
-	{
-		// Skip?
-		swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_bad.txt", G->SHADER_PATH, hash, shaderType);
-		HANDLE hFind = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		if (hFind != INVALID_HANDLE_VALUE)
-		{
-			char fileName[MAX_PATH];
-			wcstombs(fileName, val, MAX_PATH);
-			LogInfo("    skipping shader marked bad. %s\n", fileName);
-			CloseHandle(hFind);
-		}
-		else
-		{
-			ID3DBlob *disassembly = 0; // FIXME: This can leak
-			FILE *fw = 0;
-			string shaderModel = "";
-
-			// Store HLSL export files in ShaderCache, auto-Fixed shaders in ShaderFixes
-			if (G->EXPORT_HLSL >= 1)
-				swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_CACHE_PATH, hash, shaderType);
-			else
-				swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shaderType);
-
-			// If we can open the file already, it exists, and thus we should skip doing this slow operation again.
-			errno_t err = _wfopen_s(&fw, val, L"rb");
-			if (err == 0)
-			{
-				fclose(fw);
-				return 0;
-			}
-
-			// Disassemble old shader for fixing.
-			// Huh, this code path isn't using Flugan's disassembler, which
-			// differs from the hunting code path. If we change this, remember
-			// not to use the cb offset fixup here since the decompiler can't
-			// parse that as yet. -DarkStarSword
-			HRESULT ret = D3DDisassemble(pShaderBytecode, BytecodeLength,
-				D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, &disassembly);
-			if (ret != S_OK)
-			{
-				LogInfo("    disassembly of original shader failed.\n");
-			}
-			else
-			{
-				// Decompile code.
-				LogInfo("    creating HLSL representation.\n");
-
-				bool patched = false;
-				bool errorOccurred = false;
-
-				// TODO: Refactor all parameters we just copy from globals into their
-				// own struct so we don't have to copy all this junk
-				ParseParameters p;
-				p.bytecode = pShaderBytecode;
-				p.decompiled = (const char *)disassembly->GetBufferPointer();
-				p.decompiledSize = disassembly->GetBufferSize();
-				p.StereoParamsReg = G->StereoParamsReg;
-				p.IniParamsReg = G->IniParamsReg;
-				p.recompileVs = G->FIX_Recompile_VS;
-				p.fixSvPosition = G->FIX_SV_Position;
-				p.ZRepair_Dependencies1 = G->ZRepair_Dependencies1;
-				p.ZRepair_Dependencies2 = G->ZRepair_Dependencies2;
-				p.ZRepair_DepthTexture1 = G->ZRepair_DepthTexture1;
-				p.ZRepair_DepthTexture2 = G->ZRepair_DepthTexture2;
-				p.ZRepair_DepthTextureReg1 = G->ZRepair_DepthTextureReg1;
-				p.ZRepair_DepthTextureReg2 = G->ZRepair_DepthTextureReg2;
-				p.ZRepair_ZPosCalc1 = G->ZRepair_ZPosCalc1;
-				p.ZRepair_ZPosCalc2 = G->ZRepair_ZPosCalc2;
-				p.ZRepair_PositionTexture = G->ZRepair_PositionTexture;
-				p.ZRepair_DepthBuffer = (G->ZBufferHashToInject != 0);
-				p.ZRepair_WorldPosCalc = G->ZRepair_WorldPosCalc;
-				p.BackProject_Vector1 = G->BackProject_Vector1;
-				p.BackProject_Vector2 = G->BackProject_Vector2;
-				p.ObjectPos_ID1 = G->ObjectPos_ID1;
-				p.ObjectPos_ID2 = G->ObjectPos_ID2;
-				p.ObjectPos_MUL1 = G->ObjectPos_MUL1;
-				p.ObjectPos_MUL2 = G->ObjectPos_MUL2;
-				p.MatrixPos_ID1 = G->MatrixPos_ID1;
-				p.MatrixPos_MUL1 = G->MatrixPos_MUL1;
-				p.InvTransforms = G->InvTransforms;
-				p.fixLightPosition = G->FIX_Light_Position;
-				p.ZeroOutput = false;
-				const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
-				if (!decompiledCode.size())
-				{
-					LogInfo("    error while decompiling.\n");
-
-					return 0;
-				}
-
-				if (!errorOccurred && ((G->EXPORT_HLSL >= 1) || (G->EXPORT_FIXED && patched)))
-				{
-					errno_t err = wfopen_ensuring_access(&fw, val, L"wb");
-					if (err != 0)
-					{
-						LogInfo("    !!! Fail to open replace.txt file: 0x%x\n", err);
-						return 0;
-					}
-
-					if (LogFile)
-					{
-						char fileName[MAX_PATH];
-						wcstombs(fileName, val, MAX_PATH);
-						if (fw)
-							LogInfo("    storing patched shader to %s\n", fileName);
-						else
-							LogInfo("    error storing patched shader to %s\n", fileName);
-					}
-					if (fw)
-					{
-						// Save decompiled HLSL code to that new file.
-						fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), fw);
-
-						// Now also write the ASM text to the shader file as a set of comments at the bottom.
-						// That will make the ASM code the master reference for fixing shaders, and should be more 
-						// convenient, especially in light of the numerous decompiler bugs we see.
-						if (G->EXPORT_HLSL >= 2)
-						{
-							fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-							// Size - 1 to strip NULL terminator
-							fwrite(disassembly->GetBufferPointer(), 1, disassembly->GetBufferSize() - 1, fw);
-							fprintf_s(fw, "\n//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
-
-						}
-
-						if (disassembly) disassembly->Release(); disassembly = 0;
-					}
-				}
-
-				// Let's re-compile every time we create a new one, regardless.  Previously this would only re-compile
-				// after auto-fixing shaders. This makes shader Decompiler errors more obvious.
-				if (!errorOccurred)
-				{
-					// Way too many obscure interractions in this function, using another
-					// temporary variable to not modify anything already here and reduce
-					// the risk of breaking it in some subtle way:
-					const char *tmpShaderModel;
-					char apath[MAX_PATH];
-
-					if (overrideShaderModel)
-						tmpShaderModel = overrideShaderModel;
-					else
-						tmpShaderModel = shaderModel.c_str();
-
-					LogInfo("    compiling fixed HLSL code with shader model %s, size = %Iu\n", tmpShaderModel, decompiledCode.size());
-
-					// TODO: Add #defines for StereoParams and IniParams
-
-					ID3DBlob *pErrorMsgs; // FIXME: This can leak
-					ID3DBlob *pCompiledOutput = 0;
-					// Probably unecessary here since this shader is one we freshly decompiled,
-					// but for consistency pass the path here as well so that the standard
-					// include handler can correctly handle includes with paths relative to the
-					// shader itself:
-					wcstombs(apath, val, MAX_PATH);
-					ret = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
-						"main", tmpShaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
-					LogInfo("    compile result of fixed HLSL shader: %x\n", ret);
-
-					if (LogFile && pErrorMsgs)
-					{
-						LPVOID errMsg = pErrorMsgs->GetBufferPointer();
-						SIZE_T errSize = pErrorMsgs->GetBufferSize();
-						LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
-						fwrite(errMsg, 1, errSize - 1, LogFile);
-						LogInfo("------------------------------------------- HLSL code -------------------------------------------\n");
-						fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), LogFile);
-						LogInfo("\n---------------------------------------------- END ----------------------------------------------\n");
-
-						// And write the errors to the HLSL file as comments too, as a more convenient spot to see them.
-						fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-						fwrite(errMsg, 1, errSize - 1, fw);
-						fprintf_s(fw, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
-
-						pErrorMsgs->Release();
-					}
-
-					// If requested by .ini, also write the newly re-compiled assembly code to the file.  This gives a direct
-					// comparison between original ASM, and recompiled ASM.
-					if ((G->EXPORT_HLSL >= 3) && pCompiledOutput)
-					{
-						string asmText = BinaryToAsmText(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize(), G->patch_cb_offsets);
-						if (asmText.empty())
-						{
-							LogInfo("    disassembly of recompiled shader failed.\n");
-						}
-						else
-						{
-							fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Recompiled ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-							fwrite(asmText.c_str(), 1, asmText.size(), fw);
-							fprintf_s(fw, "\n//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
-						}
-					}
-
-					if (pCompiledOutput)
-					{
-						// If the shader has been auto-fixed, return it as the live shader.  
-						// For just caching shaders, we return zero so it won't affect game visuals.
-						if (patched)
-						{
-							pCodeSize = pCompiledOutput->GetBufferSize();
-							pCode = new char[pCodeSize];
-							memcpy(pCode, pCompiledOutput->GetBufferPointer(), pCodeSize);
-						}
-						pCompiledOutput->Release(); pCompiledOutput = 0;
-					}
-				}
-			}
-
-			if (fw)
-			{
-				// Any HLSL compiled shaders are reloading candidates, if moved to ShaderFixes
-				FILETIME ftWrite;
-				GetFileTime(fw, NULL, NULL, &ftWrite);
-				foundShaderModel = shaderModel;
-				timeStamp = ftWrite;
-
-				fclose(fw);
-			}
-		}
+	if (DecompileAndPossiblyPatchShader(hash, shaderType, pShaderBytecode, BytecodeLength,
+				pCode, pCodeSize, foundShaderModel, timeStamp, headerLine,
+				shaderType, foundShaderModel, timeStamp, overrideShaderModel)) {
+		return pCode;
 	}
 
-	return pCode;
+	return NULL;
 }
 
 // This function handles shaders replaced from ShaderFixes at load time with or
