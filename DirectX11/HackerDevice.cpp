@@ -1027,7 +1027,7 @@ static bool ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 // the string read from the first line of the HLSL file.  This the logical place for
 // it because the file is already open and read into memory.
 
-char* HackerDevice::ReplaceShaderFromShaderFixes(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
+char* HackerDevice::_ReplaceShaderFromShaderFixes(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
 	SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp,
 	wstring &headerLine, const char *overrideShaderModel)
 {
@@ -1292,6 +1292,87 @@ char* HackerDevice::ReplaceShaderFromShaderFixes(UINT64 hash, const wchar_t *sha
 	}
 
 	return pCode;
+}
+
+// This function handles shaders replaced from ShaderFixes at load time with or
+// without hunting.
+//
+// When hunting is disabled we don't save off the original shader unless we
+// determine that we need it for depth or partner filtering.  These shaders are
+// not candidates for the auto patch engine.
+//
+// When hunting is enabled we always save off the original shader because the
+// answer to "do we need the original?" is "...maybe?"
+template <class ID3D11Shader,
+	 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
+			 __in const void *pShaderBytecode,
+			 __in SIZE_T BytecodeLength,
+			 __in_opt ID3D11ClassLinkage *pClassLinkage,
+			 __out_opt ID3D11Shader **ppShader)
+	 >
+HRESULT HackerDevice::ReplaceShaderFromShaderFixes(UINT64 hash,
+		const void *pShaderBytecode, SIZE_T BytecodeLength,
+		ID3D11ClassLinkage *pClassLinkage, ID3D11Shader **ppShader,
+		wchar_t *shaderType)
+{
+	ShaderOverrideMap::iterator override;
+	const char *overrideShaderModel = NULL;
+	SIZE_T replaceShaderSize;
+	string shaderModel;
+	wstring headerLine;
+	FILETIME ftWrite;
+	HRESULT hr = E_FAIL;
+
+	// Check if the user has overridden the shader model:
+	override = lookup_shaderoverride(hash);
+	if (override != G->mShaderOverrideMap.end()) {
+		if (override->second.model[0])
+			overrideShaderModel = override->second.model;
+	}
+
+	char *replaceShader = _ReplaceShaderFromShaderFixes(hash, shaderType,
+			pShaderBytecode, BytecodeLength, replaceShaderSize,
+			shaderModel, ftWrite, headerLine, overrideShaderModel);
+	if (!replaceShader)
+		return E_FAIL;
+
+	// Create the new shader.
+	LogDebug("    HackerDevice::Create%lsShader.  Device: %p\n", shaderType, this);
+
+	*ppShader = NULL; // Appease the static analysis gods
+	hr = (mOrigDevice1->*OrigCreateShader)(replaceShader, replaceShaderSize, pClassLinkage, ppShader);
+	if (FAILED(hr)) {
+		LogInfo("    error replacing shader.\n");
+		goto out_delete;
+	}
+
+	CleanupShaderMaps(*ppShader);
+
+	LogInfo("    shader successfully replaced.\n");
+
+	if (G->hunting) {
+		// Hunting mode:  keep byteCode around for possible replacement or marking
+		ID3DBlob* blob;
+		hr = D3DCreateBlob(BytecodeLength, &blob);
+		if (SUCCEEDED(hr)) {
+			// We save the *original* shader bytecode, not the replaced shader,
+			// because we will use this in CopyToFixes and ShaderRegex in the
+			// event that the shader is deleted.
+			memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
+			EnterCriticalSectionPretty(&G->mCriticalSection);
+			RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, headerLine, false);
+			LeaveCriticalSection(&G->mCriticalSection);
+		}
+	}
+
+	// FIXME: We have some very similar data structures that we should merge together:
+	// mReloadedShaders and mOriginalShader.
+	KeepOriginalShader<ID3D11Shader, OrigCreateShader>
+		(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
+
+out_delete:
+	delete replaceShader;
+	return hr;
 }
 
 bool HackerDevice::NeedOriginalShader(UINT64 hash)
@@ -2457,12 +2538,6 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 {
 	HRESULT hr = E_FAIL;
 	UINT64 hash;
-	string shaderModel;
-	SIZE_T replaceShaderSize;
-	FILETIME ftWrite;
-	wstring headerLine = L"";
-	ShaderOverrideMap::iterator override;
-	const char *overrideShaderModel = NULL;
 
 	if (!ppShader || !pShaderBytecode) {
 		// Let DX worry about the error code
@@ -2472,67 +2547,9 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	// Calculate hash
 	hash = hash_shader(pShaderBytecode, BytecodeLength);
 
-	// Check if the user has overridden the shader model:
-	ShaderOverrideMap::iterator override = lookup_shaderoverride(hash);
-	if (override != G->mShaderOverrideMap.end()) {
-		if (override->second.model[0])
-			overrideShaderModel = override->second.model;
-	}
-
-	// This code block handles shaders replaced from ShaderFixes at load
-	// time with or without hunting (FIXME: This should be in a separate
-	// function to make the function clearer and this comment unecessary).
-	//
-	// When hunting is disabled we don't save off the original shader
-	// unless we determine that we need it for depth or partner filtering.
-	// These shaders are not candidates for the auto patch engine.
-	//
-	// When hunting is enabled we always save off the original shader
-	// because the answer to "do we need the original?" is "...maybe?"
-	if (hr != S_OK)
-	{
-		char *replaceShader = ReplaceShaderFromShaderFixes(hash, shaderType,
-				pShaderBytecode, BytecodeLength, replaceShaderSize,
-				shaderModel, ftWrite, headerLine, overrideShaderModel);
-		if (replaceShader)
-		{
-			// Create the new shader.
-			LogDebug("    HackerDevice::Create%lsShader.  Device: %p\n", shaderType, this);
-
-			*ppShader = NULL; // Appease the static analysis gods
-			hr = (mOrigDevice1->*OrigCreateShader)(replaceShader, replaceShaderSize, pClassLinkage, ppShader);
-			CleanupShaderMaps(*ppShader);
-			if (SUCCEEDED(hr))
-			{
-				LogInfo("    shader successfully replaced.\n");
-
-				if (G->hunting)
-				{
-					// Hunting mode:  keep byteCode around for possible replacement or marking
-					ID3DBlob* blob;
-					hr = D3DCreateBlob(BytecodeLength, &blob);
-					if (SUCCEEDED(hr)) {
-						// We save the *original* shader bytecode, not the replaced shader,
-						// because we will use this in CopyToFixes and ShaderRegex in the
-						// event that the shader is deleted.
-						memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
-						EnterCriticalSectionPretty(&G->mCriticalSection);
-						RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, headerLine, false);
-						LeaveCriticalSection(&G->mCriticalSection);
-					}
-				}
-				// FIXME: We have some very similar data structures that we should merge together:
-				// mReloadedShaders and mOriginalShader.
-				KeepOriginalShader<ID3D11Shader, OrigCreateShader>
-					(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
-			}
-			else
-			{
-				LogInfo("    error replacing shader.\n");
-			}
-			delete replaceShader; replaceShader = 0;
-		}
-	}
+	hr = ReplaceShaderFromShaderFixes<ID3D11Shader, OrigCreateShader>
+		(hash, pShaderBytecode, BytecodeLength, pClassLinkage,
+		 ppShader, shaderType);
 
 	// This code block handles shaders that were *NOT* replaced from
 	// ShaderFixes (FIXME: Put it in a separate function with a descriptive
@@ -2564,7 +2581,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 				hr = D3DCreateBlob(BytecodeLength, &blob);
 				if (SUCCEEDED(hr)) {
 					memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
-					RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, ftWrite, headerLine, true);
+					RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, {0}, L"", true);
 
 					// Also add the original shader to the original shaders
 					// map so that if it is later replaced marking_mode =
