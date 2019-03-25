@@ -1375,6 +1375,69 @@ out_delete:
 	return hr;
 }
 
+// This function handles shaders that were *NOT* replaced from ShaderFixes
+//
+// When hunting is disabled we don't save off the original shader unless we
+// determine that we need it for for deferred analysis in the auto patch
+// engine. These are not candidates for depth or partner filtering since that
+// would require a ShaderOverride and a manually patched shader (ok,
+// technically we could with an auto patched shader, but those are deprecated
+// features - don't encourage them!)
+//
+// When hunting is enabled we always save off the original shader because the
+// answer to "do we need the original?" is "...maybe?"
+template <class ID3D11Shader,
+	 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
+			 __in const void *pShaderBytecode,
+			 __in SIZE_T BytecodeLength,
+			 __in_opt ID3D11ClassLinkage *pClassLinkage,
+			 __out_opt ID3D11Shader **ppShader)
+	 >
+HRESULT HackerDevice::ProcessShaderNotFoundInShaderFixes(UINT64 hash,
+		const void *pShaderBytecode, SIZE_T BytecodeLength,
+		ID3D11ClassLinkage *pClassLinkage, ID3D11Shader **ppShader,
+		wchar_t *shaderType)
+{
+	HRESULT hr;
+
+	*ppShader = NULL; // Appease the static analysis gods
+	hr = (mOrigDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
+	if (FAILED(hr))
+		return hr;
+
+	CleanupShaderMaps(*ppShader);
+
+	// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
+	// have a copy for every shader seen. If we are performing any sort of deferred shader replacement, such as pipline
+	// state analysis we always need to keep a copy of the original bytecode for later analysis. For now the shader
+	// regex engine counts as deferred, though that may change with optimisations in the future.
+	if (G->hunting || !shader_regex_groups.empty()) {
+		EnterCriticalSectionPretty(&G->mCriticalSection);
+			ID3DBlob* blob;
+			hr = D3DCreateBlob(BytecodeLength, &blob);
+			if (SUCCEEDED(hr)) {
+				memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
+				RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, {0}, L"", true);
+
+				// Also add the original shader to the original shaders
+				// map so that if it is later replaced marking_mode =
+				// original and depth buffer filtering will work:
+				if (lookup_original_shader(*ppShader) == end(G->mOriginalShaders)) {
+					// Since we are both returning *and* storing this we need to
+					// bump the refcount to 2, otherwise it could get freed and we
+					// may get a crash later in RevertMissingShaders, especially
+					// easy to expose with the auto shader patching engine
+					// and reverting shaders:
+					(*ppShader)->AddRef();
+					G->mOriginalShaders[*ppShader] = *ppShader;
+				}
+			}
+		LeaveCriticalSection(&G->mCriticalSection);
+	}
+
+	return hr;
+}
+
 bool HackerDevice::NeedOriginalShader(UINT64 hash)
 {
 	ShaderOverride *shaderOverride;
@@ -2536,7 +2599,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	__out_opt  ID3D11Shader **ppShader,
 	wchar_t *shaderType)
 {
-	HRESULT hr = E_FAIL;
+	HRESULT hr;
 	UINT64 hash;
 
 	if (!ppShader || !pShaderBytecode) {
@@ -2551,57 +2614,13 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		(hash, pShaderBytecode, BytecodeLength, pClassLinkage,
 		 ppShader, shaderType);
 
-	// This code block handles shaders that were *NOT* replaced from
-	// ShaderFixes (FIXME: Put it in a separate function with a descriptive
-	// name):
-	//
-	// When hunting is disabled we don't save off the original shader
-	// unless we determine that we need it for for deferred analysis in the
-	// auto patch engine. These are not candidates for depth or partner
-	// filtering since that would require a ShaderOverride and a manually
-	// patched shader (ok, technically we could with an auto patched
-	// shader, but those are deprecated features - don't encourage them!)
-	//
-	// When hunting is enabled we always save off the original shader
-	// because the answer to "do we need the original?" is "...maybe?"
-	if (hr != S_OK)
-	{
-		*ppShader = NULL; // Appease the static analysis gods
-		hr = (mOrigDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
-		CleanupShaderMaps(*ppShader);
-
-		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
-		// have a copy for every shader seen. If we are performing any sort of deferred shader replacement, such as pipline
-		// state analysis we always need to keep a copy of the original bytecode for later analysis. For now the shader
-		// regex engine counts as deferred, though that may change with optimisations in the future.
-		if (SUCCEEDED(hr) && (G->hunting || !shader_regex_groups.empty()))
-		{
-			EnterCriticalSectionPretty(&G->mCriticalSection);
-				ID3DBlob* blob;
-				hr = D3DCreateBlob(BytecodeLength, &blob);
-				if (SUCCEEDED(hr)) {
-					memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
-					RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, {0}, L"", true);
-
-					// Also add the original shader to the original shaders
-					// map so that if it is later replaced marking_mode =
-					// original and depth buffer filtering will work:
-					if (lookup_original_shader(*ppShader) == end(G->mOriginalShaders)) {
-						// Since we are both returning *and* storing this we need to
-						// bump the refcount to 2, otherwise it could get freed and we
-						// may get a crash later in RevertMissingShaders, especially
-						// easy to expose with the auto shader patching engine
-						// and reverting shaders:
-						(*ppShader)->AddRef();
-						G->mOriginalShaders[*ppShader] = *ppShader;
-					}
-				}
-			LeaveCriticalSection(&G->mCriticalSection);
-		}
+	if (hr != S_OK) {
+		hr = ProcessShaderNotFoundInShaderFixes<ID3D11Shader, OrigCreateShader>
+			(hash, pShaderBytecode, BytecodeLength, pClassLinkage,
+			 ppShader, shaderType);
 	}
 
-	if (hr == S_OK)
-	{
+	if (hr == S_OK) {
 		EnterCriticalSectionPretty(&G->mCriticalSection);
 			G->mShaders[*ppShader] = hash;
 			LogDebugW(L"    %ls: handle = %p, hash = %016I64x\n", shaderType, *ppShader, hash);
