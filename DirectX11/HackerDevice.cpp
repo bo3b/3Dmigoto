@@ -998,9 +998,11 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 		const char *overrideShaderModel)
 {
 	wchar_t val[MAX_PATH];
-	ID3DBlob *disassembly = 0; // FIXME: This can leak
-	FILE *fw = 0;
+	ID3DBlob *disassembly = NULL;
+	FILE *fw = NULL;
 	string shaderModel = "";
+	bool patched = false;
+	bool errorOccurred = false;
 
 	if (!G->EXPORT_HLSL && !G->FIX_SV_Position && !G->FIX_Light_Position && !G->FIX_Recompile_VS)
 		return NULL;
@@ -1036,9 +1038,6 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 
 	// Decompile code.
 	LogInfo("    creating HLSL representation.\n");
-
-	bool patched = false;
-	bool errorOccurred = false;
 
 	// TODO: Refactor all parameters we just copy from globals into their
 	// own struct so we don't have to copy all this junk
@@ -1076,8 +1075,7 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 	if (!decompiledCode.size())
 	{
 		LogInfo("    error while decompiling.\n");
-
-		return 0;
+		goto out_release_disassembly;
 	}
 
 	if (!errorOccurred && ((G->EXPORT_HLSL >= 1) || (G->EXPORT_FIXED && patched)))
@@ -1086,7 +1084,7 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 		if (err != 0)
 		{
 			LogInfo("    !!! Fail to open replace.txt file: 0x%x\n", err);
-			return 0;
+			goto out_release_disassembly;
 		}
 
 		if (LogFile)
@@ -1114,8 +1112,6 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 				fprintf_s(fw, "\n//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
 
 			}
-
-			if (disassembly) disassembly->Release(); disassembly = 0;
 		}
 	}
 
@@ -1209,7 +1205,11 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 		fclose(fw);
 	}
 
-	return pCode;
+out_release_disassembly:
+	if (disassembly)
+		disassembly->Release();
+
+	return !!pCode;
 }
 
 // Fairly bold new strategy here for ReplaceShader. 
