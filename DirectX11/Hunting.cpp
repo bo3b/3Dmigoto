@@ -1299,10 +1299,6 @@ static void NextMarkingMode(HackerDevice *device, void *private_data)
 
 	G->marking_mode = (MarkingMode)((int)G->marking_mode + 1);
 
-	// FIXME: Zero mode can crash and needs some work:
-	if (G->marking_mode == MarkingMode::ZERO)
-		G->marking_mode = (MarkingMode)((int)G->marking_mode + 1);
-
 	if (G->marking_mode >= MarkingMode::INVALID)
 		G->marking_mode = MarkingMode::SKIP;
 }

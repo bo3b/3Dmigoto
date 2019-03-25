@@ -37,7 +37,6 @@ enum class MarkingMode {
 	ORIGINAL,
 	PINK,
 	MONO,
-	ZERO,
 
 	INVALID, // Must be last - used for next_marking_mode
 };
@@ -45,7 +44,6 @@ static EnumName_t<const wchar_t *, MarkingMode> MarkingModeNames[] = {
 	{L"skip", MarkingMode::SKIP},
 	{L"mono", MarkingMode::MONO},
 	{L"original", MarkingMode::ORIGINAL},
-	{L"zero", MarkingMode::ZERO},
 	{L"pink", MarkingMode::PINK},
 	{NULL, MarkingMode::INVALID} // End of list marker
 };
@@ -543,7 +541,6 @@ struct Globals
 	ShaderMap mShaders;										// All shaders ever registered with CreateXXXShader
 	ShaderReloadMap mReloadedShaders;						// Shaders that were reloaded live from ShaderFixes
 	ShaderReplacementMap mOriginalShaders;					// When MarkingMode=Original, switch to original. Also used for show_original and shader reversion
-	ShaderReplacementMap mZeroShaders;						// When MarkingMode=zero.
 
 	std::set<UINT64> mVisitedComputeShaders;
 	UINT64 mSelectedComputeShader;

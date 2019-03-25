@@ -2045,12 +2045,6 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 					repl_shader = (ID3D11Shader*)j->second;
 				}
 			}
-			if (G->marking_mode == MarkingMode::ZERO) {
-				ShaderReplacementMap::iterator j = G->mZeroShaders.find(pShader);
-				if (selectedShader == *currentShaderHash && j != G->mZeroShaders.end()) {
-					repl_shader = (ID3D11Shader*)j->second;
-				}
-			}
 		}
 
 	} else {

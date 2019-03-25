@@ -57,7 +57,7 @@ private:
 	// Utility routines
 	char *ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
 		SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, 
-		void **zeroShader, wstring &headerLine, const char *overrideShaderModel);
+		wstring &headerLine, const char *overrideShaderModel);
 	bool NeedOriginalShader(UINT64 hash);
 	template <class ID3D11Shader,
 		 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_

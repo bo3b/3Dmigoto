@@ -1025,13 +1025,12 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 // it because the file is already open and read into memory.
 
 char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
-	SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, 
-	void **zeroShader, wstring &headerLine, const char *overrideShaderModel)
+	SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp,
+	wstring &headerLine, const char *overrideShaderModel)
 {
 	foundShaderModel = "";
 	timeStamp = { 0 };
 
-	*zeroShader = 0;
 	char *pCode = 0;
 	wchar_t val[MAX_PATH];
 
@@ -1099,7 +1098,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 			if (err == 0)
 			{
 				fclose(fw);
-				return 0;	// Todo: what about zero shader section?
+				return 0;
 			}
 
 			// Disassemble old shader for fixing.
@@ -1293,91 +1292,6 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 		}
 	}
 
-	// Zero shader?
-	if (G->marking_mode == MarkingMode::ZERO)
-	{
-		// Disassemble old shader for fixing.
-		string asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength, false);
-		if (asmText.empty())
-		{
-			LogInfo("    disassembly of original shader failed.\n");
-		}
-		else
-		{
-			// Decompile code.
-			LogInfo("    creating HLSL representation of zero output shader.\n");
-
-			bool patched = false;
-			string shaderModel;
-			bool errorOccurred = false;
-			ParseParameters p;
-			p.bytecode = pShaderBytecode;
-			p.decompiled = asmText.c_str();
-			p.decompiledSize = asmText.size();
-			p.recompileVs = G->FIX_Recompile_VS;
-			p.fixSvPosition = false;
-			p.ZeroOutput = true;
-			const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
-			if (!decompiledCode.size())
-			{
-				LogInfo("    error while decompiling.\n");
-
-				return 0;
-			}
-			if (!errorOccurred)
-			{
-				// Compile replacement.
-				LogInfo("    compiling zero HLSL code with shader model %s, size = %Iu\n", shaderModel.c_str(), decompiledCode.size());
-
-				ID3DBlob *pErrorMsgs; // FIXME: This can leak
-				ID3DBlob *pCompiledOutput = 0;
-				// We don't have a valid value for path at this point in the function, so don't pass one in.
-				// Arguably we should not be using the default include handler here since it requires a valid
-				// path, but I'm not going to touch this without a good reason.
-				HRESULT ret = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
-					"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
-				LogInfo("    compile result of zero HLSL shader: %x\n", ret);
-
-				if (SUCCEEDED(ret) && pCompiledOutput)
-				{
-					SIZE_T codeSize = pCompiledOutput->GetBufferSize();
-					char *code = new char[codeSize];
-					memcpy(code, pCompiledOutput->GetBufferPointer(), codeSize);
-					pCompiledOutput->Release(); pCompiledOutput = 0;
-					if (!wcscmp(shaderType, L"vs"))
-					{
-						ID3D11VertexShader *zeroVertexShader = NULL;
-						HRESULT hr = mOrigDevice1->CreateVertexShader(code, codeSize, 0, &zeroVertexShader);
-						CleanupShaderMaps(zeroVertexShader);
-						if (hr == S_OK)
-							*zeroShader = zeroVertexShader;
-					}
-					else if (!wcscmp(shaderType, L"ps"))
-					{
-						ID3D11PixelShader *zeroPixelShader = NULL;
-						HRESULT hr = mOrigDevice1->CreatePixelShader(code, codeSize, 0, &zeroPixelShader);
-						CleanupShaderMaps(zeroPixelShader);
-						if (hr == S_OK)
-							*zeroShader = zeroPixelShader;
-					}
-					delete [] code;
-				}
-
-				if (LogFile && pErrorMsgs)
-				{
-					LPVOID errMsg = pErrorMsgs->GetBufferPointer();
-					SIZE_T errSize = pErrorMsgs->GetBufferSize();
-					LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
-					fwrite(errMsg, 1, errSize - 1, LogFile);
-					LogInfo("------------------------------------------- HLSL code -------------------------------------------\n");
-					fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), LogFile);
-					LogInfo("\n---------------------------------------------- END ----------------------------------------------\n");
-					pErrorMsgs->Release();
-				}
-			}
-		}
-	}
-
 	return pCode;
 }
 
@@ -1456,15 +1370,6 @@ void CleanupShaderMaps(ID3D11DeviceChild *handle)
 			LogInfo("Shader handle %p reused, releasing previous original shader\n", handle);
 			i->second->Release();
 			G->mOriginalShaders.erase(i);
-		}
-	}
-
-	{
-		ShaderReplacementMap::iterator i = G->mZeroShaders.find(handle);
-		if (i != G->mZeroShaders.end()) {
-			LogInfo("Shader handle %p reused, releasing previous zero shader\n", handle);
-			i->second->Release();
-			G->mZeroShaders.erase(i);
 		}
 	}
 
@@ -2556,7 +2461,6 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	string shaderModel;
 	SIZE_T replaceShaderSize;
 	FILETIME ftWrite;
-	ID3D11Shader *zeroShader = 0;
 	wstring headerLine = L"";
 	ShaderOverrideMap::iterator override;
 	const char *overrideShaderModel = NULL;
@@ -2587,7 +2491,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	if (hr != S_OK && ppShader && pShaderBytecode)
 	{
 		char *replaceShader = ReplaceShader(hash, shaderType, pShaderBytecode, BytecodeLength, replaceShaderSize,
-			shaderModel, ftWrite, (void **)&zeroShader, headerLine, overrideShaderModel);
+			shaderModel, ftWrite, headerLine, overrideShaderModel);
 		if (replaceShader)
 		{
 			// Create the new shader.
@@ -2684,11 +2588,6 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		EnterCriticalSectionPretty(&G->mCriticalSection);
 			G->mShaders[*ppShader] = hash;
 			LogDebugW(L"    %ls: handle = %p, hash = %016I64x\n", shaderType, *ppShader, hash);
-
-			if ((G->marking_mode == MarkingMode::ZERO) && zeroShader)
-			{
-				G->mZeroShaders[*ppShader] = zeroShader;
-			}
 
 			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
 			if (i != G->mCompiledShaderMap.end())
