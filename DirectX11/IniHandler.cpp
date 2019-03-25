@@ -4526,6 +4526,8 @@ void LoadConfigFile()
 
 	G->StereoParamsReg = GetIniInt(L"Rendering", L"stereo_params", 125, NULL);
 	G->IniParamsReg = GetIniInt(L"Rendering", L"ini_params", 120, NULL);
+	G->decompiler_settings.StereoParamsReg = G->StereoParamsReg;
+	G->decompiler_settings.IniParamsReg = G->IniParamsReg;
 	if (G->StereoParamsReg >= D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
 		IniWarning("WARNING: stereo_params=%i out of range\n", G->StereoParamsReg);
 		G->StereoParamsReg = -1;
@@ -4537,35 +4539,34 @@ void LoadConfigFile()
 
 
 	// Automatic section
-	G->FIX_SV_Position = GetIniBool(L"Rendering", L"fix_sv_position", false, NULL);
-	G->FIX_Light_Position = GetIniBool(L"Rendering", L"fix_light_position", false, NULL);
-	G->FIX_Recompile_VS = GetIniBool(L"Rendering", L"recompile_all_vs", false, NULL);
+	G->decompiler_settings.fixSvPosition = GetIniBool(L"Rendering", L"fix_sv_position", false, NULL);
+	G->decompiler_settings.recompileVs = GetIniBool(L"Rendering", L"recompile_all_vs", false, NULL);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_DepthTexture1", 0, setting, MAX_PATH))
 	{
 		char buf[MAX_PATH];
 		wcstombs(buf, setting, MAX_PATH);
 		char *end = RightStripA(buf);
-		G->ZRepair_DepthTextureReg1 = *end; *(end - 1) = 0;
+		G->decompiler_settings.ZRepair_DepthTextureReg1 = *end; *(end - 1) = 0;
 		char *start = buf; while (isspace(*start)) start++;
-		G->ZRepair_DepthTexture1 = start;
+		G->decompiler_settings.ZRepair_DepthTexture1 = start;
 	}
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_DepthTexture2", 0, setting, MAX_PATH))
 	{
 		char buf[MAX_PATH];
 		wcstombs(buf, setting, MAX_PATH);
 		char *end = RightStripA(buf);
-		G->ZRepair_DepthTextureReg2 = *end; *(end - 1) = 0;
+		G->decompiler_settings.ZRepair_DepthTextureReg2 = *end; *(end - 1) = 0;
 		char *start = buf; while (isspace(*start)) start++;
-		G->ZRepair_DepthTexture2 = start;
+		G->decompiler_settings.ZRepair_DepthTexture2 = start;
 	}
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_ZPosCalc1", 0, setting, MAX_PATH))
-		G->ZRepair_ZPosCalc1 = readStringParameter(setting);
+		G->decompiler_settings.ZRepair_ZPosCalc1 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_ZPosCalc2", 0, setting, MAX_PATH))
-		G->ZRepair_ZPosCalc2 = readStringParameter(setting);
+		G->decompiler_settings.ZRepair_ZPosCalc2 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_PositionTexture", 0, setting, MAX_PATH))
-		G->ZRepair_PositionTexture = readStringParameter(setting);
+		G->decompiler_settings.ZRepair_PositionTexture = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_PositionCalc", 0, setting, MAX_PATH))
-		G->ZRepair_WorldPosCalc = readStringParameter(setting);
+		G->decompiler_settings.ZRepair_WorldPosCalc = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_Dependencies1", 0, setting, MAX_PATH))
 	{
 		char buf[MAX_PATH];
@@ -4574,7 +4575,7 @@ void LoadConfigFile()
 		while (*start)
 		{
 			char *end = start; while (*end != ',' && *end && *end != ' ') ++end;
-			G->ZRepair_Dependencies1.push_back(string(start, end));
+			G->decompiler_settings.ZRepair_Dependencies1.push_back(string(start, end));
 			start = end; if (*start == ',') ++start;
 		}
 	}
@@ -4586,7 +4587,7 @@ void LoadConfigFile()
 		while (*start)
 		{
 			char *end = start; while (*end != ',' && *end && *end != ' ') ++end;
-			G->ZRepair_Dependencies2.push_back(string(start, end));
+			G->decompiler_settings.ZRepair_Dependencies2.push_back(string(start, end));
 			start = end; if (*start == ',') ++start;
 		}
 	}
@@ -4598,7 +4599,7 @@ void LoadConfigFile()
 		while (*start)
 		{
 			char *end = start; while (*end != ',' && *end && *end != ' ') ++end;
-			G->InvTransforms.push_back(string(start, end));
+			G->decompiler_settings.InvTransforms.push_back(string(start, end));
 			start = end; if (*start == ',') ++start;
 		}
 	}
@@ -4607,23 +4608,24 @@ void LoadConfigFile()
 		uint32_t hash;
 		swscanf_s(setting, L"%08lx", &hash);
 		G->ZBufferHashToInject = hash;
+		G->decompiler_settings.ZRepair_DepthBuffer = !!G->ZBufferHashToInject;
 	}
 	if (GetIniStringAndLog(L"Rendering", L"fix_BackProjectionTransform1", 0, setting, MAX_PATH))
-		G->BackProject_Vector1 = readStringParameter(setting);
+		G->decompiler_settings.BackProject_Vector1 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_BackProjectionTransform2", 0, setting, MAX_PATH))
-		G->BackProject_Vector2 = readStringParameter(setting);
+		G->decompiler_settings.BackProject_Vector2 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition1", 0, setting, MAX_PATH))
-		G->ObjectPos_ID1 = readStringParameter(setting);
+		G->decompiler_settings.ObjectPos_ID1 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition2", 0, setting, MAX_PATH))
-		G->ObjectPos_ID2 = readStringParameter(setting);
+		G->decompiler_settings.ObjectPos_ID2 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition1Multiplier", 0, setting, MAX_PATH))
-		G->ObjectPos_MUL1 = readStringParameter(setting);
+		G->decompiler_settings.ObjectPos_MUL1 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition2Multiplier", 0, setting, MAX_PATH))
-		G->ObjectPos_MUL2 = readStringParameter(setting);
+		G->decompiler_settings.ObjectPos_MUL2 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_MatrixOperand1", 0, setting, MAX_PATH))
-		G->MatrixPos_ID1 = readStringParameter(setting);
+		G->decompiler_settings.MatrixPos_ID1 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_MatrixOperand1Multiplier", 0, setting, MAX_PATH))
-		G->MatrixPos_MUL1 = readStringParameter(setting);
+		G->decompiler_settings.MatrixPos_MUL1 = readStringParameter(setting);
 
 	// [Hunting]
 	ParseHuntingSection();

@@ -12,6 +12,7 @@
 #include "DLLMainHook.h"
 #include "DirectXMath.h"
 #include "util.h"
+#include "DecompileHLSL.h"
 
 #include "ResourceHash.h"
 #include "CommandList.h"
@@ -460,19 +461,8 @@ struct Globals
 	bool assemble_signature_comments;
 	bool disassemble_undecipherable_custom_data;
 	bool patch_cb_offsets;
-	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
-	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
-	std::vector<std::string> ZRepair_Dependencies1, ZRepair_Dependencies2;
-	std::string ZRepair_ZPosCalc1, ZRepair_ZPosCalc2;
-	std::string ZRepair_PositionTexture, ZRepair_WorldPosCalc;
-	std::vector<std::string> InvTransforms;
-	std::string BackProject_Vector1, BackProject_Vector2;
-	std::string ObjectPos_ID1, ObjectPos_ID2, ObjectPos_MUL1, ObjectPos_MUL2;
-	std::string MatrixPos_ID1, MatrixPos_MUL1;
 	uint32_t ZBufferHashToInject;
-	bool FIX_SV_Position;
-	bool FIX_Light_Position;
-	bool FIX_Recompile_VS;
+	DecompilerSettings decompiler_settings;
 	bool DumpUsage;
 	bool ENABLE_TUNE;
 	float gTuneValue[4], gTuneStep;
@@ -651,15 +641,10 @@ struct Globals
 		EXPORT_FIXED(false),
 		EXPORT_BINARY(false),
 		CACHE_SHADERS(false),
-		FIX_SV_Position(false),
-		FIX_Light_Position(false),
-		FIX_Recompile_VS(false),
 		DumpUsage(false),
 		ENABLE_TUNE(false),
 		gTuneStep(0.001f),
 
-		StereoParamsReg(125),
-		IniParamsReg(120),
 		iniParamsReserved(0),
 
 		constants_run(false),
@@ -701,7 +686,9 @@ struct Globals
 		gWipeUserConfig(false),
 		user_config_dirty(0),
 		gLogInput(false),
-		dump_all_profiles(false)
+		dump_all_profiles(false),
+
+		decompiler_settings({0})
 
 	{
 		int i;

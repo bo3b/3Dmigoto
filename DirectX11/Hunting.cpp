@@ -429,38 +429,12 @@ static string Decompile(ID3DBlob *pShaderByteCode, string *asmText)
 	string shaderModel;
 	bool errorOccurred = false;
 
-	// TODO: Refactor all parameters we just copy from globals into their
-	// own struct so we don't have to copy all this junk
 	ParseParameters p;
 	p.bytecode = pShaderByteCode->GetBufferPointer();
 	p.decompiled = asmText->c_str();
 	p.decompiledSize = asmText->size();
-	p.StereoParamsReg = G->StereoParamsReg;
-	p.IniParamsReg = G->IniParamsReg;
-	p.recompileVs = G->FIX_Recompile_VS;
-	p.fixSvPosition = G->FIX_SV_Position;
-	p.ZRepair_Dependencies1 = G->ZRepair_Dependencies1;
-	p.ZRepair_Dependencies2 = G->ZRepair_Dependencies2;
-	p.ZRepair_DepthTexture1 = G->ZRepair_DepthTexture1;
-	p.ZRepair_DepthTexture2 = G->ZRepair_DepthTexture2;
-	p.ZRepair_DepthTextureReg1 = G->ZRepair_DepthTextureReg1;
-	p.ZRepair_DepthTextureReg2 = G->ZRepair_DepthTextureReg2;
-	p.ZRepair_ZPosCalc1 = G->ZRepair_ZPosCalc1;
-	p.ZRepair_ZPosCalc2 = G->ZRepair_ZPosCalc2;
-	p.ZRepair_PositionTexture = G->ZRepair_PositionTexture;
-	p.ZRepair_DepthBuffer = (G->ZBufferHashToInject != 0);
-	p.ZRepair_WorldPosCalc = G->ZRepair_WorldPosCalc;
-	p.BackProject_Vector1 = G->BackProject_Vector1;
-	p.BackProject_Vector2 = G->BackProject_Vector2;
-	p.ObjectPos_ID1 = G->ObjectPos_ID1;
-	p.ObjectPos_ID2 = G->ObjectPos_ID2;
-	p.ObjectPos_MUL1 = G->ObjectPos_MUL1;
-	p.ObjectPos_MUL2 = G->ObjectPos_MUL2;
-	p.MatrixPos_ID1 = G->MatrixPos_ID1;
-	p.MatrixPos_MUL1 = G->MatrixPos_MUL1;
-	p.InvTransforms = G->InvTransforms;
-	p.fixLightPosition = G->FIX_Light_Position;
 	p.ZeroOutput = false;
+	p.G = &G->decompiler_settings;
 	const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
 
 	if (!decompiledCode.size())
