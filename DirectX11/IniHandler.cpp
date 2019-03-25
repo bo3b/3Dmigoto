@@ -431,10 +431,14 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 
 bool check_include_condition(wstring *val, const wstring *ini_namespace)
 {
+	CommandListExpression condition;
+	wstring sbuf(*val);
 	float ret;
 
-	CommandListExpression condition;
-	if (!condition.parse(val, ini_namespace, NULL)) {
+	// Expressions are case insensitive:
+	std::transform(sbuf.begin(), sbuf.end(), sbuf.begin(), ::towlower);
+
+	if (!condition.parse(&sbuf, ini_namespace, NULL)) {
 		IniWarning("WARNING: Unable to parse include condition: %S\n", val->c_str());
 		return false;
 	}
