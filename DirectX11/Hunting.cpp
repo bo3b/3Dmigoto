@@ -1600,10 +1600,6 @@ static void MarkShaderEnd(HackerDevice *device, char *long_type, char *short_typ
 	// displayed will be relevant to the current dump attempt.
 	ClearNotices();
 
-	CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(selected);
-	if (i != G->mCompiledShaderMap.end())
-		LogInfo("       %s was compiled from source code %s\n", long_type, i->second.c_str());
-
 	if (G->marking_actions & MarkingAction::CLIPBOARD)
 		HashToClipboard(long_type, selected);
 

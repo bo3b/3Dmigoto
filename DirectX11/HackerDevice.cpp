@@ -2605,12 +2605,6 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 		EnterCriticalSectionPretty(&G->mCriticalSection);
 			G->mShaders[*ppShader] = hash;
 			LogDebugW(L"    %ls: handle = %p, hash = %016I64x\n", shaderType, *ppShader, hash);
-
-			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
-			if (i != G->mCompiledShaderMap.end())
-			{
-				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
-			}
 		LeaveCriticalSection(&G->mCriticalSection);
 	}
 

@@ -85,13 +85,6 @@ static EnumName_t<const wchar_t *, ShaderHashType> ShaderHashNames[] = {
 	{NULL, ShaderHashType::INVALID} // End of list marker
 };
 
-// Source compiled shaders.
-// NOTE: This map is no longer filled out by anything. Could remove it as dead
-// code, though there are some games (emulators in particular) where it might
-// be useful to get this working again by hooking/wrapping the various
-// D3DCompiler DLLs' D3DCompile routines.
-typedef std::unordered_map<UINT64, std::string> CompiledShaderMap;
-
 // Strategy: This OriginalShaderInfo record and associated map is to allow us to keep track of every
 //	pixelshader and vertexshader that are compiled from hlsl text from the ShaderFixes
 //	folder.  This keeps track of the original shader information using the ID3D11VertexShader*
@@ -522,8 +515,6 @@ struct Globals
 	int mSelectedVertexBufferPos;
 	std::set<UINT64> mSelectedVertexBuffer_VertexShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
 	std::set<UINT64> mSelectedVertexBuffer_PixelShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
-
-	CompiledShaderMap mCompiledShaderMap;
 
 	std::set<UINT64> mVisitedVertexShaders;					// Only shaders seen since last hunting timeout; std::set for consistent order while hunting
 	UINT64 mSelectedVertexShader;				 			// Hash.  -1 now for unselected state. The shader selected using Input object.
