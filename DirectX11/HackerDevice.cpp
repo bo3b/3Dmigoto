@@ -998,11 +998,12 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 		const char *overrideShaderModel)
 {
 	wchar_t val[MAX_PATH];
-	ID3DBlob *disassembly = NULL;
+	string asmText;
 	FILE *fw = NULL;
 	string shaderModel = "";
 	bool patched = false;
 	bool errorOccurred = false;
+	HRESULT hr;
 
 	if (!G->EXPORT_HLSL && !G->decompiler_settings.fixSvPosition && !G->decompiler_settings.recompileVs)
 		return NULL;
@@ -1025,13 +1026,8 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 		return NULL;
 
 	// Disassemble old shader for fixing.
-	// Huh, this code path isn't using Flugan's disassembler, which
-	// differs from the hunting code path. If we change this, remember
-	// not to use the cb offset fixup here since the decompiler can't
-	// parse that as yet. -DarkStarSword
-	HRESULT ret = D3DDisassemble(pShaderBytecode, BytecodeLength,
-		D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, &disassembly);
-	if (ret != S_OK) {
+	asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength, false);
+	if (asmText.empty()) {
 		LogInfo("    disassembly of original shader failed.\n");
 		return NULL;
 	}
@@ -1041,15 +1037,15 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 
 	ParseParameters p;
 	p.bytecode = pShaderBytecode;
-	p.decompiled = (const char *)disassembly->GetBufferPointer();
-	p.decompiledSize = disassembly->GetBufferSize();
+	p.decompiled = asmText.c_str();
+	p.decompiledSize = asmText.size();
 	p.ZeroOutput = false;
 	p.G = &G->decompiler_settings;
 	const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
 	if (!decompiledCode.size() || errorOccurred)
 	{
 		LogInfo("    error while decompiling.\n");
-		goto out_release_disassembly;
+		return NULL;
 	}
 
 	if ((G->EXPORT_HLSL >= 1) || (G->EXPORT_FIXED && patched))
@@ -1058,7 +1054,7 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 		if (err != 0 || !fw)
 		{
 			LogInfo("    !!! Fail to open replace.txt file: 0x%x\n", err);
-			goto out_release_disassembly;
+			return NULL;
 		}
 
 		LogInfo("    storing patched shader to %S\n", val);
@@ -1071,8 +1067,7 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 		if (G->EXPORT_HLSL >= 2)
 		{
 			fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-			// Size - 1 to strip NULL terminator
-			fwrite(disassembly->GetBufferPointer(), 1, disassembly->GetBufferSize() - 1, fw);
+			fwrite(asmText.c_str(), 1, asmText.size(), fw);
 			fprintf_s(fw, "\n//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
 
 		}
@@ -1103,9 +1098,9 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 	// include handler can correctly handle includes with paths relative to the
 	// shader itself:
 	wcstombs(apath, val, MAX_PATH);
-	ret = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+	hr = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"main", tmpShaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
-	LogInfo("    compile result of fixed HLSL shader: %x\n", ret);
+	LogInfo("    compile result of fixed HLSL shader: %x\n", hr);
 
 	if (LogFile && pErrorMsgs)
 	{
@@ -1129,7 +1124,7 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 	// comparison between original ASM, and recompiled ASM.
 	if ((G->EXPORT_HLSL >= 3) && pCompiledOutput)
 	{
-		string asmText = BinaryToAsmText(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize(), G->patch_cb_offsets);
+		asmText = BinaryToAsmText(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize(), G->patch_cb_offsets);
 		if (asmText.empty())
 		{
 			LogInfo("    disassembly of recompiled shader failed.\n");
@@ -1152,7 +1147,8 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 			pCode = new char[pCodeSize];
 			memcpy(pCode, pCompiledOutput->GetBufferPointer(), pCodeSize);
 		}
-		pCompiledOutput->Release(); pCompiledOutput = 0;
+		pCompiledOutput->Release();
+		pCompiledOutput = NULL;
 	}
 
 	if (fw)
@@ -1165,10 +1161,6 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 
 		fclose(fw);
 	}
-
-out_release_disassembly:
-	if (disassembly)
-		disassembly->Release();
 
 	return !!pCode;
 }
