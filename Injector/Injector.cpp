@@ -220,17 +220,23 @@ out_close:
 	return rc;
 }
 
-static void wait_for_target(const char *target_a, const wchar_t *module_path, bool wait, int delay)
+static void wait_for_target(const char *target_a, const wchar_t *module_path, bool wait, int delay, bool launched)
 {
 	wchar_t target_w[MAX_PATH];
 
 	if (!MultiByteToWideChar(CP_UTF8, 0, target_a, -1, target_w, MAX_PATH))
 		return;
 
-	while (wait || delay == -1) {
+	for (int seconds = 0; wait || delay == -1; seconds++) {
 		if (check_for_running_target(target_w, module_path) && delay != -1)
 			break;
 		Sleep(1000);
+
+		if (launched && seconds == 3) {
+			printf("\nStill waiting for the game to start...\n"
+			       "If the game does not launch automatically, leave this window open and run it manually.\n"
+			       "You can also adjust/remove the [Loader] launch= option in the d3dx.ini as desired.\n\n");
+		}
 	}
 
 	for (int i = delay; i > 0; i--) {
@@ -275,9 +281,31 @@ static void elevate_privileges()
 	wait_exit(EXIT_FAILURE);
 }
 
+wchar_t* deduce_working_directory(wchar_t *setting, wchar_t dir[MAX_PATH])
+{
+	DWORD ret;
+	wchar_t *file_part = NULL;
+
+	ret = GetFullPathName(setting, MAX_PATH, dir, &file_part);
+	if (!ret || ret >= MAX_PATH)
+		return NULL;
+
+	ret = GetFileAttributes(dir);
+	if (ret == INVALID_FILE_ATTRIBUTES)
+		return NULL;
+
+	if (!(ret & FILE_ATTRIBUTE_DIRECTORY) && file_part)
+		*file_part = '\0';
+
+	printf("Using working directory: \"%S\"\n", dir);
+
+	return dir;
+}
+
 int main()
 {
 	char *buf, target[MAX_PATH], setting[MAX_PATH], module_path[MAX_PATH];
+	wchar_t setting_w[MAX_PATH], working_dir[MAX_PATH], *working_dir_p = NULL;
 	DWORD filesize, readsize;
 	const char *ini_section;
 	wchar_t module_full_path[MAX_PATH];
@@ -287,6 +315,7 @@ int main()
 	int hook_proc;
 	FARPROC fn;
 	HHOOK hook;
+	bool launch;
 
 	CreateMutexA(0, FALSE, "Local\\3DMigotoLoader");
 	if (GetLastError() == ERROR_ALREADY_EXISTS)
@@ -361,17 +390,24 @@ int main()
 
 	rc = EXIT_SUCCESS;
 
-	if (find_ini_setting_lite(ini_section, "launch", setting, MAX_PATH)) {
+	launch = find_ini_setting_lite(ini_section, "launch", setting, MAX_PATH);
+	if (launch) {
 		printf("3DMigoto ready, launching \"%s\"...\n", setting);
 		CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-		ShellExecuteA(NULL, NULL, setting, NULL, NULL, SW_SHOWNORMAL);
+
+		if (!MultiByteToWideChar(CP_UTF8, 0, setting, -1, setting_w, MAX_PATH))
+			wait_exit(EXIT_FAILURE, "Invalid launch setting\n");
+
+		working_dir_p = deduce_working_directory(setting_w, working_dir);
+
+		ShellExecute(NULL, NULL, setting_w, NULL, working_dir_p, SW_SHOWNORMAL);
 	} else {
 		printf("3DMigoto ready - Now run the game.\n");
 	}
 
 	wait_for_target(target, module_full_path,
 			find_ini_bool_lite(ini_section, "wait_for_target", true),
-			find_ini_int_lite(ini_section, "delay", 0));
+			find_ini_int_lite(ini_section, "delay", 0), launch);
 
 	UnhookWindowsHookEx(hook);
 	delete [] buf;

@@ -253,6 +253,225 @@ static NVStereoSetting NVStereoSettingNames[] = {
 	{0x7031de06,  true, false, L"StereoCutoffDepthNear (Alternate 2)"},
 	{0x7053569a, false, false, L"StereoCutoff (Alternate 2)"},
 	{0x70f64a32, false, false, L"DX10VSCBNumber (Alternate 2)"},
+
+	// From Nvidia Profile Inspector 2.3.0.2 Reference.xml
+	// (None of these return a settingName from the driver):
+	{0x0005f511, false, false, L"ASYNC10_ENABLE"},
+	{0x0005f512, false, false, L"ASYNC10_PRESENT_MODE"},
+	{0x0007fbb6, false, false, L"LARGE_VA"},
+	{0x001208cb, false, false, L"FORCEENABLEDCCAP"},
+	{0x0013fec2, false, false, L"STAGING_CACHE_SIZE"},
+	{0x00159046, false, false, L"PS_BM_DEFER_DESTROY_FLAGS"},
+	{0x0015f512, false, false, L"ASYNC9_PRESENT_MODE"},
+	{0x00161903, false, false, L"D3D_STEREO_BLACK_LIST"},
+	{0x0017fd6d, false, false, L"DISABLE_Z16"},
+	{0x002c74f1, false, false, L"3DSMax Shim Layer Control"},
+	{0x00313536, false, false, L"PS_ASYNC_SHADER_SCHEDULER_FLAGS"},
+	{0x005f5a32, false, false, L"ASYNC10_NVAPI_MODE"},
+	{0x005f5a33, false, false, L"ASYNC10_OOO_QUERY_LIMIT"},
+	{0x0067345e, false, false, L"D3D9_CONTROL_BITS"},
+	{0x006bdd49, false, false, L"PS_SURFACE_PLACEMENT_HIGHEST_PRIORITY"},
+	{0x007033ab, false, false, L"KEPLER_CLEAR_SM_HALFCTL_CTRL_SCTL_CYA_6"},
+	{0x00837aaf, false, false, L"FERMI_GF110_VOLTAGE_DROP_WAR"},
+	{0x00846411, false, false, L"KEPLER_APPLY_ALD_WAR"},
+	{0x0085f725, false, false, L"COLORCOMPRESSENABLE"},
+	{0x008f7215, false, false, L"READ_ONLY_DSV_EARLYZ_HAZARD_WAR_ENABLE"},
+	{0x0090f680, false, false, L"PS_SURFACE_PLACEMENT_ALLOW"},
+	{0x0092f4de, false, false, L"ASYNC9_ENABLE"},
+	{0x0095def9, false, false, L"SLI Broadcast (DX9)"},
+	{0x009cfec8, false, false, L"SLI Copy Engine"},
+	{0x009e7462, false, false, L"PS_VB_PROMOTION_FLAGS"},
+	{0x00a06746, false, false, L"SLI Specific Hacks (DX1x)"},
+	{0x00a0674a, false, false, L"SLI Specific Hacks (DX9)"},
+	{0x00a0694b, false, false, L"SLI Broadcast (DX1x)"},
+	{0x00a9d3c5, false, false, L"VALIDATE_PARAMS"},
+	{0x00b82343, false, false, L"APP_COMPAT_SHIM"}, // Useful - works around threading bugs in RE2/RE7/DMC5
+	{0x00bc6199, false, false, L"SHADERMAXREGALLOWED"},
+	{0x00c63a79, false, false, L"MAX_PENDING_CMD_BUFFERS"},
+	{0x00db3853, false, false, L"SYSMEMCACHEDCOPYBEHAVIOR"},
+	{0x00db3857, false, false, L"MCLINKINSTANCED_LIMIT"},
+	{0x00db3858, false, false, L"MCFORCEHOSTSTAGINGBUFFERSIZE"},
+	{0x00db834a, false, false, L"PS_REDUCTION_LOAD_BALANCED"},
+	{0x00dc68b0, false, false, L"BM_OFFER_RECLAIM (DX1x)"},
+	{0x00ea83c5, false, false, L"PS_DX10_SURFACE_PLACEMENT_HIGHEST_PRIORITY (DX1x)"},
+	{0x00f63a49, false, false, L"WRITE_TO_HOST_STAGING_BUFFER_SIZE"},
+	{0x00f63a50, false, false, L"AVOID_HOST_REMAPPERS"},
+	{0x00f713bc, false, false, L"SLIMOSAIC_CONTROL"},
+	{0x00f865e3, false, false, L"FERMI_FORCE_1X_TEX"},
+	{0x00fe8cc0, false, false, L"MAX_RENAMING_MEMORY"},
+	{0x00280880, false, false, L"Vertical Sync Indicator"},
+	{0x100b8ede, false, false, L"Antialiasing - Combined (Mode + Setting)"},
+	{0x102e048d, false, false, L"STEREO_MCCOMPAT"},
+	{0x103c2e03, false, false, L"MCSFRLOADBALANCE"},
+	{0x10510e76, false, false, L"CULL_BEFORE_FETCH"},
+	{0x10528ab2, false, false, L"KEPLER_L1_CACHE_WAR_BUG"},
+	{0x106044ce, false, false, L"PS_ALPHABETA"},
+	{0x10842563, false, false, L"PS_ALPHABETA_FRACTION"},
+	{0x10e3293a, false, false, L"PHYSX_APPLICATION"},
+	{0x10f74257, false, false, L"Anisotropic filtering (mode + setting)"},
+	{0x10fadc84, false, false, L"ENABLE_CE_MS_HYBRID"},
+	{0x11d9dc84, false, false, L"WKS_FEATURE_SUPPORT_CONTROL"},
+	{0x2003ff01, false, false, L"OGL_SRV_APP_NON_FSAA_SINGLEBUFFER"},
+	{0x2007b25e, false, false, L"OGL_APP_VBUM_VIRTUAL_ADDRESS (XP only)"},
+	{0x2014cc70, false, false, L"OGL_SLI_WINDOWED_AFR"},
+	{0x201808ac, false, false, L"OGL_SHADER_WARNINGS_AS_ERRORS"},
+	{0x201c3b92, false, false, L"OGL_APP_DST_REDUCE"},
+	{0x201febd1, false, false, L"OGL_PFD_ADJUST"},
+	{0x20219263, false, false, L"OGL_RENDER_QUALITY_FLAGS"},
+	{0x2027f0a8, false, false, L"OGL_LDDM_MT_VSYNC_WAIT_METHOD"},
+	{0x2027f1a8, false, false, L"OGL_FORCE_FLUSH_TEXTURES"},
+	{0x202dc432, false, false, L"OGL_THREAD_OPTIMIZATION_GEFORCE"},
+	{0x202de437, false, false, L"OGL_APP_EXPORT_OPENGL_1_2"},
+	{0x202fd652, false, false, L"OGL_APP_DIRECT_PUSHBUFFER"},
+	{0x202fe114, false, false, L"OGL_APP_RUNTIME_VERTEX_ATTRIB_SOURCING"},
+	{0x20320ce4, false, false, L"OGL_APP_YIELD_AFTER_SWAP"},
+	{0x20324987, false, false, L"OGL_DX_PRESENT_DEBUG"},
+	{0x20334278, false, false, L"OGL_FORCE_NX6PLUSMODE"},
+	{0x20335bca, false, false, L"OGL_APP_NO_SW_FALLBACK"},
+	{0x20359278, false, false, L"OGL_APP_HIDE_GL3_ON_G80_PLUS"},
+	{0x203691bb, false, false, L"OGL_APPLICATION_KEY"},
+	{0x203714a4, false, false, L"OGL_PERF_STRAT_LDDM_ALLOCATIONTABLE_SIZE"},
+	{0x20378242, false, false, L"OGL_PULL_MEM_BUFFER_SHARED_THRESHOLD"},
+	{0x2037f53a, false, false, L"OGL_APP_COPYPIXEL_FRONTBUFFER_FLUSH"},
+	{0x203a0751, false, false, L"OGL_OVERLAY_MERGEBLIT_TIMER_MS"},
+	{0x203c136f, false, false, L"OGL_APP_PROE_2000I2"},
+	{0x203d3fc9, false, false, L"OGL_GLS_COMPATIBILITY"},
+	{0x2040b347, false, false, L"OGL_APP_FORCE_FP_DEFAULT_PRECISION"},
+	{0x20441369, false, false, L"OGL_APP_PROMOTE_SHADERS_FROM_140_TO_150"},
+	{0x2045959a, false, false, L"OGL_CHECK_FOR_IDENTITY_MATRIX_MATH"},
+	{0x204b6cbf, false, false, L"OGL_MULTIMON_BUFFER"},
+	{0x204cff7b, false, false, L"OGL_TEXCLAMP"},
+	{0x20568533, false, false, L"OGL_SRV_APP_NO_PFD_SUPPORT_GDI"},
+	{0x20570fc6, false, false, L"OGL_SRV_APP_MEMORY_MAP_NOT_REQUIRED"},
+	{0x205f7e3b, false, false, L"OGL_APP_CLAW"},
+	{0x205fb5ab, false, false, L"OGL_SRV_APP_FORCE_OGL_GEFORCE"},
+	{0x206194d6, false, false, L"OGL_PULL_MEM_DEFAULT_BUFFER_SIZE"},
+	{0x20630ba7, false, false, L"OGL_APP_SOFTIMAGE"},
+	{0x20696fc3, false, false, L"OGL_APP_LAZY_VBUM_VBOS"},
+	{0x206c7691, false, false, L"OGL_APP_HIDE_FLOAT_COLOR_IF_NO_TWO_SIDED"},
+	{0x206bd8c7, false, false, L"OGL_APP_PROMOTE_SHADERS_FROM_120_TO_130"},
+	{0x20748292, false, false, L"OGL_QUADRO_WORKER_THREAD_CREATION"},
+	{0x20748f92, false, false, L"OGL_TREAT_DEPTH24_AS_DEPTH32"},
+	{0x207a3a90, false, false, L"OGL_FILTER_PIXELFORMAT"},
+	{0x207a8c92, false, false, L"OGL_THREAD_OPTIMIZATION"},
+	{0x207c128b, false, false, L"OGL_APP_CENTROID_SAMPLE"},
+	{0x207df8d1, false, false, L"OGL_APP_USE_DX10_SAT"},
+	{0x2084a0a0, false, false, L"OGL_APP_IGNORE_SWAP_HINTS"},
+	{0x20852142, false, false, L"OGL_APP_NO_GENERIC_ARRAYS_IN_FF"},
+	{0x20873922, false, false, L"OGL_SLI_DL_CONTROL"},
+	{0x208d973f, false, false, L"OGL_SRV_APP_FORCE_SECONDARY_ADAPTER"},
+	{0x208f3f2d, false, false, L"OGL_OCGCONTROL_DIRECT_NVIR"},
+	{0x2096fd59, false, false, L"OGL_APP_OPTIMIZED_IMMEDIATE_MODE"},
+	{0x209746c1, false, false, L"OGL_MULTIGPU_SUPPORT_BITS"}, // Duplicate
+	{0x20992431, false, false, L"Prevent Antialiasing (OGL)"},
+	{0x209a0ee9, false, false, L"OGL_OVERRIDE_2XTEX"},
+	{0x209fd306, false, false, L"OGL_THREAD_CONTROL_2"},
+	{0x20a2de5f, false, false, L"OGL_SET_REDUCE_COLOR_THRESHOLDS_UNORM8"},
+	{0x20a6eebc, false, false, L"OGL_DISABLE_WORKSTATION_OPTIMIZATIONS"},
+	{0x20af671d, false, false, L"OGL_SRV_APP_NOZ16STENCIL"},
+	{0x20af9927, false, false, L"OGL_APP_USE_LOOP_ENHANCE"},
+	{0x20b36b5c, false, false, L"OGL_FORCE_GAMMA_DOWNSAMPLE"},
+	{0x20b3edd5, false, false, L"OGL_APP_CONSTANT_OPTIMIZE"},
+	{0x20b812c1, false, false, L"OGL_APP_SET_WGL_COMPATIBILITY_HWND_THREAD_MISMATCH"},
+	{0x20bac7fa, false, false, L"OGL_APP_USE_SDDR"},
+	{0x20bd755a, false, false, L"OGL_APP_CLAW_THREADS"},
+	{0x20bd755b, false, false, L"OGL_APP_CLAW_STATISTICS"},
+	{0x20bd755c, false, false, L"OGL_APP_CLAW_OPTIMIZE"},
+	{0x20be92cb, false, false, L"OGL_APP_MAXIMIZE_TEXTURE"},
+	{0x20c42a03, false, false, L"OGL_APP_NO_TEX_RGBA4_TO_RGBA8_MAPPING"},
+	{0x20c618f9, false, false, L"OGL_APP_TXL_LOD_WAR"},
+	{0x20cbffc4, false, false, L"OGL_AVOID_VALIDATION_ON_POP_MATRIX_WITHOUT_CHANGE"},
+	{0x20d0db0d, false, false, L"OGL_VID_HEAP_REUSE_RATIO"},
+	{0x20d324c5, false, false, L"OGL_CONSUMER_API_STEREO_MODE"},
+	{0x20d377dc, false, false, L"OGL_APP_VPWW_ALLOW_LATE_ALLOCED"},
+	{0x20d38906, false, false, L"OGL_PERF_STRAT_LDDM_CMDBUFFER_SIZE"},
+	{0x20d489f4, false, false, L"OGL_APP_SHADER_ASSUMES_0"},
+	{0x20d59eda, false, false, L"OGL_APP_VIDMEM_PUSHBUFFER"},
+	{0x20d5fdc4, false, false, L"OGL_MULTISAMPLE_COMPATIBILITY"},
+	{0x20d6ce24, false, false, L"OGL_SKIP_TEXTURE_HOST_COPIES"},
+	{0x20e5c972, false, false, L"OGL_APP_DLIST_SEGMENTING"},
+	{0x20e802af, false, false, L"OGL_PSTATE_BOOST_AT_CLEAR"},
+	{0x20ea260c, false, false, L"OGL_PERF_STRAT_LDDM_PATCHLOCATIONTABLE_SIZE"},
+	{0x20ebd7b8, false, false, L"OGL_APP_SUPPORTBITS2"},
+	{0x20ee02b2, false, false, L"OGL_TEARING_FREE_SWAP_PRESENT"},
+	{0x20f107cc, false, false, L"OGL_CONFORMANT_INCOMPLETE_TEXTURES"},
+	{0x20f2e572, false, false, L"OGL_SYSMEM_TEXTURE_PROMOTION"},
+	{0x20f49ae8, false, false, L"OGL_APP_BROKEN_NV3X_DEMOS"},
+	{0x20fbbc2b, false, false, L"OGL_DISPATCH_CONTROL"},
+	// These are already listed in the secondary stereo name table above
+	// with alternate names, but really without understanding the nuances
+	// of these it is better to use the ones in the primary name table:
+	{0x7031a2e7, false, false, L"STEREO_LASERSIGHT_DX10"},
+	{0x704ef483,  true, false, L"STEREO_STEREOCUTOFFDEPTHNEAR_DX10"},
+	{0x704fcf5c, false, false, L"STEREO_STEREOCUTOFF_DX10"},
+	{0x7053569a, false, false, L"STEREO_STEREOCUTOFF_DX11"},
+	{0x7077bace,  true,  true, L"STEREO_STEREOCONVERGENCE_DX10"},
+	{0x7084807e,  true,  true, L"STEREO_STEREOCONVERGENCE_DX11"},
+	{0x70c0125e, false, false, L"STEREO_STEREOTEXTUREENABLE_DX11"},
+	{0x70e1518c, false, false, L"STEREO_STEREOTEXTUREENABLE_DX10"},
+	{0x70ed1da7, false,  true, L"STEREO_FRUSTUMADJUSTMODE_DX10"},
+	{0x0043ed70, false, false, L"Antialiasing - Transparency Multisampling - Setting"},
+
+	// From Nvidia Profile Inspector 2.3.0.2 CustomSettingNames.xml:
+	{0x00a06948, false, false, L"NVLINK SLI Mode"},
+	{0x00ce2692, false, false, L"Texture filtering - Quality substitution"},            // Driver name: "Texture filtering - Quality Substitution"
+	{0x0098c1ac, false, false, L"Enable Maxwell sample interleaving (MFAA)"},           // Driver name: "Enable sample interleaving (MFAA)"
+	{0x0064b541, false, false, L"Prefered Refreshrate"},                                // Driver name: "Preferred refresh rate"
+	{0x10029538, false, false, L"GSYNC - Indicator Overlay"},
+	{0x1194f158, false, false, L"GSYNC - Application Mode"},                            // Driver name: "Enable G-SYNC globally"
+	{0x1094f1f7, false, false, L"GSYNC - Global Mode"},                                 // Driver name: "VRR requested state"
+	{0x1094f157, false, false, L"GSYNC - Global Feature"},                              // Driver name: "Toggle the VRR global feature"
+	{0x10a879cf, false, false, L"GSYNC - Application State"},                           // Driver name: "G-SYNC"
+	{0x10a879ac, false, false, L"GSYNC - Application Requested State"},                 // Driver name: "G-SYNC"
+	{0x103bccb5, false, false, L"Prevent Anisotropic filtering"},                       // Driver name: "No override of Anisotropic filtering"
+	{0x00198fff, false, false, L"Shadercache"},                                         // Driver name: "Shader Cache"
+	{0x000858f7, false, false, L"Antialiasing fix"},
+	{0x101ae763, false, false, L"Vertical Sync Smooth AFR behavior"},                   // Driver name: "Flag to control smooth AFR behavior"
+	{0x00638e8f, false, false, L"Texture filtering - Driver Controlled LOD Bias"},      // Driver name: "Texture filtering - Driver Controlled LOD Bias"
+	{0x002cf156, false, false, L"Flip Indicator"},
+	{0x10834fff, false, false, L"Frame Rate Limiter Mode"},                             // Driver name: "Frame Rate Limiter 2 Control"
+	{0x10834fee, false, false, L"Frame Rate Limiter"},                                  // Driver name: "Frame Rate Limiter"
+	{0x1074c972, false, false, L"Toggle FXAA on or off"},                               // Driver name: "Enable FXAA"
+	{0x1068fb9c, false, false, L"Toggle FXAA Indicator on or off"},                     // Driver name: "Enable FXAA Indicator"
+	{0x1034cb89, false, false, L"NVIDIA Predefined FXAA Usage"},                        // Driver name: "NVIDIA Predefined FXAA Usage"
+	{0x2089bf6c, false, false, L"Antialiasing - Line gamma"},                           // Driver name: "Antialiasing - Line gamma"
+	{0x00738e8f, false, false, L"Texture filtering - LOD Bias (DX)"},                   // Driver name: "Texture filtering - LOD Bias"
+	{0x20403f79, false, false, L"Texture filtering - LOD Bias (OGL)"},
+	{0x209746c1, false, false, L"SLI compatibility bits (OGL)"},                        // Duplicate
+	{0x00a04746, false, false, L"SLI compatibility bits (DX12)"},
+	{0x00a06946, false, false, L"SLI compatibility bits (DX10 + DX11)"},
+	{0x1095def8, false, false, L"SLI compatibility bits"},
+	{0x00d55f7d, false, false, L"Antialiasing compatibility"},
+	{0x00e32f8a, false, false, L"Antialiasing compatibility (DX1x)"},
+	{0x002c7f45, false, false, L"Ambient Occlusion compatibility"},
+	{0x107d639d, false, false, L"Antialiasing - Gamma correction"},                     // Driver name: "Antialiasing - Gamma correction"
+	{0x10ecdb82, false, false, L"Antialiasing - Behavior Flags"},                       // Driver name: "Antialiasing - Behavior Flags"
+	{0x107efc5b, false, false, L"Antialiasing - Mode"},                                 // Driver name: "Antialiasing - Mode"
+	{0x10d773d2, false, false, L"Antialiasing - Setting"},                              // Driver name: "Antialiasing - Setting"
+	{0x10fc2d9c, false, false, L"Antialiasing - Transparency Multisampling"},           // Driver name: "Antialiasing - Transparency Multisampling"
+	{0x10d48a85, false, false, L"Antialiasing - Transparency Supersampling"},           // Driver name: "Antialiasing - Transparency Supersampling"
+	{0x10d2bb16, false, false, L"Anisotropic filtering mode"},                          // Driver name: "Anisotropic filtering mode"
+	{0x101e61a9, false, false, L"Anisotropic filtering setting"},                       // Driver name: "Anisotropic filtering setting"
+	{0x0084cd70, false, false, L"Texture filtering - Anisotropic filter optimization"}, // Driver name: "Texture filtering - Anisotropic filter optimization"
+	{0x00e73211, false, false, L"Texture filtering - Anisotropic sample optimization"}, // Driver name: "Texture filtering - Anisotropic sample optimization"
+	{0x0019bb68, false, false, L"Texture filtering - Negative LOD bias"},               // Driver name: "Texture filtering - Negative LOD bias"
+	{0x00ce2691, false, false, L"Texture filtering - Quality"},                         // Driver name: "Texture filtering - Quality"
+	{0x002ecaf2, false, false, L"Texture filtering - Trilinear optimization"},          // Driver name: "Texture filtering - Trilinear optimization"
+	{0x00664339, false, false, L"Ambient Occlusion usage"},                             // Driver name: "NVIDIA Predefined Ambient Occlusion Usage"
+	{0x00667329, false, false, L"Ambient Occlusion setting"},                           // Driver name: "Ambient Occlusion"
+	{0x007ba09e, false, false, L"Maximum pre-rendered frames"},                         // Driver name: "Maximum pre-rendered frames"
+	{0x20c1221e, false, false, L"Threaded optimization"},                               // Driver name: "Threaded optimization"
+	{0x20fdd1f9, false, false, L"Triple buffering"},                                    // Driver name: "Triple buffering"
+	{0x00a879cf, false, false, L"Vertical Sync"},                                       // Driver name: "Vertical Sync"
+	{0x005a375c, false, false, L"Vertical Sync Tear Control"},                          // Driver name: "Vertical Sync Tear Control"
+	{0x1094f16f, false, false, L"Show PhysX Visual Indicator"},                         // Driver name: "Display the PhysX indicator"
+	{0x1057eb71, false, false, L"Power management mode"},                               // Driver name: "Power management mode"
+	{0x50166c5e, false, false, L"CUDA - Force P2 State"},
+	{0x10c158ad, false, false, L"Optimize for Compute Performance"},                    // Driver name: " " (sic)
+	{0x20ff7493, false, false, L"Extension limit"},                                     // Driver name: "Extension String version"
+	{0x200aebfc, false, false, L"Multi-display/mixed-GPU acceleration"},
+	{0x2046b3ed, false, false, L"OpenGL - Version Override"},
+	// Omitting duplicate stereo settings I upstreamed to NPI
 };
 
 static wchar_t* lookup_setting_name(unsigned id)

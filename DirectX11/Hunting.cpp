@@ -993,11 +993,13 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 	{
 		if (iter.second.hash == hash)
 		{
-			asmText = BinaryToAsmText(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize());
-			if (asmText.empty())
-				break;
-
 			if (G->marking_actions & MarkingAction::HLSL) {
+				// TODO: Allow the decompiler to parse the patched CB offsets
+				// and move this line back to the common code path:
+				asmText = BinaryToAsmText(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize(), false);
+				if (asmText.empty())
+					break;
+
 				// Save the decompiled text, and ASM text into the HLSL .txt source file:
 				success = WriteHLSL(&asmText, &hlslText, &errText, hash, iter.second, device, asm_enabled);
 				if (success)
@@ -1007,6 +1009,10 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 			}
 
 			if (asm_enabled) {
+				asmText = BinaryToAsmText(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize(), G->patch_cb_offsets);
+				if (asmText.empty())
+					break;
+
 				success = WriteASM(&asmText, &hlslText, &errText, hash, iter.second, device);
 				break;
 			}

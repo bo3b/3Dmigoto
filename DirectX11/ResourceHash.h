@@ -204,10 +204,10 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src);
 
 bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource);
 
-int StrResourceDesc(char *buf, size_t size, D3D11_BUFFER_DESC *desc);
-int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE1D_DESC *desc);
-int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc);
-int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE3D_DESC *desc);
+int StrResourceDesc(char *buf, size_t size, const D3D11_BUFFER_DESC *desc);
+int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE1D_DESC *desc);
+int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE2D_DESC *desc);
+int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE3D_DESC *desc);
 int StrResourceDesc(char *buf, size_t size, struct ResourceHashInfo &info);
 
 void LogResourceDesc(const D3D11_BUFFER_DESC *desc);
@@ -266,6 +266,7 @@ enum class ResourceCPUAccessFlags {
 	WRITE   = 0x00010000,
 	READ    = 0x00020000,
 };
+SENSIBLE_ENUM(ResourceCPUAccessFlags);
 static EnumName_t<const wchar_t *, ResourceCPUAccessFlags> ResourceCPUAccessFlagNames[] = {
 	{L"write", ResourceCPUAccessFlags::WRITE},
 	{L"read", ResourceCPUAccessFlags::READ},
@@ -292,6 +293,7 @@ enum class ResourceMiscFlags {
 	TILED                            = 0x00040000,
 	HW_PROTECTED                     = 0x00080000,
 };
+SENSIBLE_ENUM(ResourceMiscFlags);
 static EnumName_t<const wchar_t *, ResourceMiscFlags> ResourceMiscFlagNames[] = {
 	{L"generate_mips", ResourceMiscFlags::GENERATE_MIPS},
 	{L"shared", ResourceMiscFlags::SHARED},

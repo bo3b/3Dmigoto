@@ -8,6 +8,10 @@
 // ID3D11Device3	Win10			11.3
 // ID3D11Device4					11.4
 
+// Include before util.h (or any header that includes util.h) to get pretty
+// version of LockResourceCreationMode:
+#include "lock.h"
+
 #include "HackerDevice.h"
 #include "HookedDevice.h"
 #include "FrameAnalysis.h"
@@ -448,10 +452,14 @@ void HackerDevice::Create3DMigotoResources()
 	// be considdered non-fatal, as stereo could be disabled in the control
 	// panel, or we could be on an AMD or Intel card.
 
+	LockResourceCreationMode();
+
 	CreateStereoParamResources();
 	CreateIniParamResources();
 	CreatePinkHuntingResources();
 	SetGlobalNVSurfaceCreationMode();
+
+	UnlockResourceCreationMode();
 
 	optimise_command_lists(this);
 }
@@ -1038,7 +1046,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 		// Export every shader seen as an ASM text file.
 		if (G->EXPORT_SHADERS)
 		{
-			CreateAsmTextFile(G->SHADER_CACHE_PATH, hash, shaderType, pShaderBytecode, BytecodeLength);
+			CreateAsmTextFile(G->SHADER_CACHE_PATH, hash, shaderType, pShaderBytecode, BytecodeLength, G->patch_cb_offsets);
 		}
 
 
@@ -1095,6 +1103,10 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 			}
 
 			// Disassemble old shader for fixing.
+			// Huh, this code path isn't using Flugan's disassembler, which
+			// differs from the hunting code path. If we change this, remember
+			// not to use the cb offset fixup here since the decompiler can't
+			// parse that as yet. -DarkStarSword
 			HRESULT ret = D3DDisassemble(pShaderBytecode, BytecodeLength,
 				D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, &disassembly);
 			if (ret != S_OK)
@@ -1240,7 +1252,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 					// comparison between original ASM, and recompiled ASM.
 					if ((G->EXPORT_HLSL >= 3) && pCompiledOutput)
 					{
-						string asmText = BinaryToAsmText(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize());
+						string asmText = BinaryToAsmText(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize(), G->patch_cb_offsets);
 						if (asmText.empty())
 						{
 							LogInfo("    disassembly of recompiled shader failed.\n");
@@ -1285,7 +1297,7 @@ char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const 
 	if (G->marking_mode == MarkingMode::ZERO)
 	{
 		// Disassemble old shader for fixing.
-		string asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength);
+		string asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength, false);
 		if (asmText.empty())
 		{
 			LogInfo("    disassembly of original shader failed.\n");
@@ -2061,7 +2073,12 @@ static const DescType* process_texture_override(uint32_t hash,
 		for (i = 0; i < matches.size(); i++) {
 			textureOverride = matches[i];
 
-			LogInfo("  %S matched resource with hash=%08x\n", textureOverride->ini_section.c_str(), hash);
+			if (LogFile) {
+				char buf[256];
+				StrResourceDesc(buf, 256, origDesc);
+				LogInfo("  %S matched resource with hash=%08x %s\n",
+						textureOverride->ini_section.c_str(), hash, buf);
+			}
 
 			if (!check_texture_override_iteration(textureOverride))
 				continue;
@@ -2073,13 +2090,15 @@ static const DescType* process_texture_override(uint32_t hash,
 		}
 	}
 
+	LockResourceCreationMode();
+
 	if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) -1) {
 		Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
 		NvAPIOverride();
-		LogInfo("  setting custom surface creation mode.\n");
+		LogInfo("    setting custom surface creation mode %d\n", newMode);
 
 		if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
-			LogInfo("    call failed.\n");
+			LogInfo("      call failed.\n");
 	}
 
 	return ret;
@@ -2087,11 +2106,12 @@ static const DescType* process_texture_override(uint32_t hash,
 
 static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMode, StereoHandle mStereoHandle)
 {
-	if (oldMode == (NVAPI_STEREO_SURFACECREATEMODE) - 1)
-		return;
+	if (oldMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1) {
+		if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
+			LogInfo("    restore call failed.\n");
+	}
 
-	if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
-		LogInfo("    restore call failed.\n");
+	UnlockResourceCreationMode();
 }
 
 STDMETHODIMP HackerDevice::CreateBuffer(THIS_

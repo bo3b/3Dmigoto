@@ -53,6 +53,8 @@ public:
 
 	CommandList command_list;
 	CommandList post_command_list;
+	std::shared_ptr<RunLinkedCommandList> link;
+	std::shared_ptr<RunLinkedCommandList> post_link;
 
 	void apply_regex_patterns(std::string *asm_text, bool *match, bool *patch);
 	void link_command_lists(UINT64 shader_hash);

@@ -38,6 +38,33 @@
 // has other problems such as no meaningful names, no namespacing, etc.
 const int INI_PARAMS_SIZE_WARNING = 256;
 
+// -----------------------------------------------------------------------------------------------
+
+// This critical section must be held to avoid race conditions when creating
+// any resource. The nvapi functions used to set the resource creation mode
+// affect global state, so if multiple threads are creating resources
+// simultaneously it is possible for a StereoMode override or stereo/mono copy
+// on one thread to affect another. This should be taken before setting the
+// surface creation mode and released only after it has been restored. If the
+// creation mode is not being set it should still be taken around the actual
+// CreateXXX call.
+//
+// The actual variable definition is in the DX11 project to remind anyone using
+// this from another project that they need to InitializeCriticalSection[Pretty]
+extern CRITICAL_SECTION resource_creation_mode_lock;
+
+// Use the pretty lock debugging version if lock.h is included first, otherwise
+// use the regular EnterCriticalSection:
+#ifdef EnterCriticalSectionPretty
+#define LockResourceCreationMode() \
+	EnterCriticalSectionPretty(&resource_creation_mode_lock)
+#else
+#define LockResourceCreationMode() \
+	EnterCriticalSection(&resource_creation_mode_lock)
+#endif
+
+#define UnlockResourceCreationMode() \
+	LeaveCriticalSection(&resource_creation_mode_lock)
 
 // -----------------------------------------------------------------------------------------------
 
@@ -232,6 +259,33 @@ static T1 lookup_enum_name(struct EnumName_t<T1, T2> *enum_names, T2 val)
 	}
 
 	return NULL;
+}
+
+template <class T2>
+static wstring lookup_enum_bit_names(struct EnumName_t<const wchar_t*, T2> *enum_names, T2 val)
+{
+	wstring ret;
+	T2 remaining = val;
+
+	for (; enum_names->name; enum_names++) {
+		if ((T2)(val & enum_names->val) == enum_names->val) {
+			if (!ret.empty())
+				ret += L' ';
+			ret += enum_names->name;
+			remaining = (T2)(remaining & (T2)~enum_names->val);
+		}
+	}
+
+	if (remaining != (T2)0) {
+		wchar_t buf[20];
+		wsprintf(buf, L"%x", remaining);
+		if (!ret.empty())
+			ret += L' ';
+		ret += L"unknown:0x";
+		ret += buf;
+	}
+
+	return ret;
 }
 
 // Parses an option string of names given by enum_names. The enum used with
@@ -670,6 +724,7 @@ static const char* type_name(IUnknown *object)
 // problematic %f floating point values with %.9e, which is enough that a 32bit
 // floating point value will be reproduced exactly:
 static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength,
+		bool patch_cb_offsets,
 		bool disassemble_undecipherable_data = true,
 		int hexdump = 0, bool d3dcompiler_46_compat = true)
 {
@@ -682,7 +737,7 @@ static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength
 	memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
 
 	r = disassembler(&byteCode, &disassembly, comments.c_str(), hexdump,
-			d3dcompiler_46_compat, disassemble_undecipherable_data);
+			d3dcompiler_46_compat, disassemble_undecipherable_data, patch_cb_offsets);
 	if (FAILED(r)) {
 		LogInfo("  disassembly failed. Error: %x\n", r);
 		return "";
@@ -744,7 +799,7 @@ static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength
 
 static string GetShaderModel(const void *pShaderBytecode, size_t bytecodeLength)
 {
-	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength);
+	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength, false);
 	if (asmText.empty())
 		return "";
 
@@ -803,9 +858,9 @@ static HRESULT CreateTextFile(wchar_t *fullPath, string *asmText, bool overwrite
 // Specific variant to name files consistently, so we know they are Asm text.
 
 static HRESULT CreateAsmTextFile(wchar_t* fileDirectory, UINT64 hash, const wchar_t* shaderType, 
-	const void *pShaderBytecode, size_t bytecodeLength)
+	const void *pShaderBytecode, size_t bytecodeLength, bool patch_cb_offsets)
 {
-	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength);
+	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength, patch_cb_offsets);
 	if (asmText.empty())
 	{
 		return E_OUTOFMEMORY;

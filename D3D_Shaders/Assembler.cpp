@@ -2636,9 +2636,151 @@ static inline void patch_d3dcompiler_47_rdef(string *line, int *rdef_state)
 	}
 }
 
+static char txt_swiz[] = {
+	'x', 'y', 'z', 'w'
+};
+
+// This function replaces the byte offsets in constant buffer and structured
+// buffer declarations with indices, components, and/or ranges to both make it
+// easier to match these up by eye, and to make ShaderRegex easier to grab and
+// use variables with non-fixed offsets.
+//
+// Variables that fit within a single index will have the offset replaced with
+// an index and components, and the Size is replaced with a Component count:
+//
+//   float localIblMipmapBias;          // Offset:   80 Size:     4 [unused]
+//   float screenAspectRatio;           // Offset:   84 Size:     4 [unused]
+//   float2 invResolution;              // Offset:   88 Size:     8
+//   float4 shadowMapSizeAndInvSize;    // Offset:   96 Size:    16 [unused]
+//                                                -- vv --
+//   float localIblMipmapBias;          // Index:    5.x              Components:     1 [unused]
+//   float screenAspectRatio;           // Index:    5.y              Components:     1 [unused]
+//   float2 invResolution;              // Index:    5.zw             Components:     2
+//   float4 shadowMapSizeAndInvSize;    // Index:    6.xyzw           Components:     4 [unused]
+//
+// Matrices or other items occupying up to four indices are expanded like this
+// to allow for ShaderRegex to easily match all indices:
+//
+//   row_major float4x4 g_mViewProj;    // Offset:    0 Size:    64 [unused]
+//                                                -- vv --
+//   row_major float4x4 g_mViewProj;    // Index:    0 1 2 3          Components:    16 [unused]
+//
+// Items occupying more than four indices are expanded into a range as a
+// compromise between clarity and ShaderRegex matches (can still match
+// first/last in the pattern, and patching the shader to use dynamic indexing
+// can allow other indices to be used in code):
+//
+//   row_major float4x4 g_mLightProj[4];// Offset:  128 Size:   256 [unused]
+//                                                -- vv --
+//   row_major float4x4 g_mLightProj[4];// Index:    8-23             Components:    64 [unused]
+//
+// Items occupying multiple indices, but where the last index is only partially
+// occupied are also expanded to ranges, with the final component shown:
+//
+//   float _NeighborIsAdapting[4];      // Offset:   96 Size:    52
+//                                                -- vv --
+//   float _NeighborIsAdapting[4];      // Index:    6-9.x            Components:    13
+//
+// Entries in embedded structures that lack the "Size" field cannot be
+// processed as richly as straight constant buffer entries since we can't
+// (trivially) calculate their end index/component, but their Offset is still
+// turned into an Index with a component shown if it is not aligned to x:
+//
+//       int m_PatchX;                  // Offset:    0
+//       int m_PatchZ;                  // Offset:    4
+//                                                -- vv --
+//       int m_PatchX;                  // Index:    0
+//       int m_PatchZ;                  // Index:    0.y
+//
+static inline void replace_cb_offsets_with_indices(string *line)
+{
+	int numRead, end1 = 0, end2 = 0;
+	unsigned offset = 0, size = 0;
+	unsigned first_swiz, last_swiz;
+	unsigned first_idx, last_idx;
+	size_t comment;
+	string suffix;
+	char buf[32];
+	unsigned n = 0;
+
+	comment = line->find("// Offset:");
+	if (comment == string::npos)
+		return;
+
+	numRead = sscanf_s(line->c_str() + comment, "// Offset: %u%n Size: %u%n",
+		&offset, &end1, &size, &end2);
+	if (numRead < 1)
+		return;
+
+	if (numRead == 1)
+		suffix = line->substr(comment + end1);
+	else
+		suffix = line->substr(comment + end2);
+	line->resize(comment);
+
+	last_idx = first_idx = offset / 16;
+	last_swiz = first_swiz = offset % 16 / 4;
+	if (numRead == 2 && size >= 4) {
+		last_idx = (offset + size - 4) / 16;
+		last_swiz = (offset + size - 4) % 16 / 4;
+	}
+
+	_snprintf_s(buf, 32, _TRUNCATE, "// Index: %4u", first_idx);
+	*line += buf;
+
+	if (first_swiz || (numRead == 2 && size <= 16)) {
+		// Offset is not on a cb boundary, or this entry has 4
+		// or less components (if known). Show the swizzle:
+		for (n = 0; first_swiz + n <= (first_idx == last_idx ? last_swiz : first_swiz); n++)
+			buf[1+n] = txt_swiz[first_swiz + n];
+		buf[n+1] = '\0';
+		buf[0] = '.'; n++;
+		*line += buf;
+	}
+
+	if (last_idx > first_idx) {
+		if ((last_idx - first_idx < 4) && (first_swiz == 0 && last_swiz == 3)) {
+			// 2-4 indices, show each for ShaderRegex matching:
+			for (unsigned i = first_idx+1; i <= last_idx; i++) {
+				n += _snprintf_s(buf, 32, _TRUNCATE, " %u", i);
+				*line += buf;
+			}
+		} else {
+			// More than 4 indices or misaligned.
+			// Unwieldy, so shorten to a range:
+			n += _snprintf_s(buf, 32, _TRUNCATE, "-%u", last_idx);
+			*line += buf;
+
+			if (last_swiz != 3) {
+				// Final component does not end on a cb boundary, show it:
+				n += _snprintf_s(buf, 32, _TRUNCATE, ".%c", txt_swiz[last_swiz]);
+				*line += buf;
+			}
+		}
+	}
+	// Minimum 15 character (3 characters x (room for 4 digits + 1 space))
+	// field length for the above will keep most entries aligned:
+	for (; n < 3*5; n++)
+		*line += ' ';
+
+	if (numRead == 2) {
+		_snprintf_s(buf, 32, _TRUNCATE, " Components: %5u", size / 4);
+		*line += buf;
+		if (size % 4) {
+			_snprintf_s(buf, 32, _TRUNCATE, "+%u", size % 4);
+			*line += buf;
+		}
+	} else {
+		line->resize(line->find_last_not_of(" ") + 1);
+	}
+
+	*line += suffix;
+}
+
 HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment,
 		int hexdump, bool d3dcompiler_46_compat,
-		bool disassemble_undecipherable_data)
+		bool disassemble_undecipherable_data,
+		bool patch_cb_offsets)
 {
 	byte fourcc[4];
 	DWORD fHash[4];
@@ -2707,6 +2849,8 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 		if (!memcmp(s.c_str(), "//", 2)) {
 			if (d3dcompiler_46_compat)
 				patch_d3dcompiler_47_rdef(&lines[i], &rdef_state);
+			if (patch_cb_offsets)
+				replace_cb_offsets_with_indices(&lines[i]);
 			continue;
 		}
 

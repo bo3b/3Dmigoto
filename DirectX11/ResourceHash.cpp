@@ -16,46 +16,71 @@
 // Overloaded functions to log any kind of resource description (useful to call
 // from templates):
 
-int StrResourceDesc(char *buf, size_t size, D3D11_BUFFER_DESC *desc)
+static wstring TexBindFlags(UINT bind_flags)
+{
+	if (bind_flags)
+		return L"bind_flags=\"" + lookup_enum_bit_names(CustomResourceBindFlagNames, (CustomResourceBindFlags)bind_flags) + L"\"";
+	return L"bind_flags=0";
+}
+
+static wstring TexCPUFlags(UINT cpu_flags)
+{
+	if (cpu_flags)
+		return L"cpu_access_flags=\"" + lookup_enum_bit_names(ResourceCPUAccessFlagNames, (ResourceCPUAccessFlags)cpu_flags) + L"\"";
+	return L"cpu_access_flags=0";
+}
+
+static wstring TexMiscFlags(UINT misc_flags)
+{
+	if (misc_flags)
+		return L"misc_flags=\"" + lookup_enum_bit_names(ResourceMiscFlagNames, (ResourceMiscFlags)misc_flags) + L"\"";
+	return L"misc_flags=0";
+}
+
+int StrResourceDesc(char *buf, size_t size, const D3D11_BUFFER_DESC *desc)
 {
 	return _snprintf_s(buf, size, size, "type=Buffer byte_width=%u "
-		"usage=\"%S\" bind_flags=0x%x cpu_access_flags=0x%x misc_flags=0x%x "
-		"stride=%u",
+		"usage=\"%S\" %S %S %S stride=%u",
 		desc->ByteWidth, TexResourceUsage(desc->Usage),
-		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags,
+		TexBindFlags(desc->BindFlags).c_str(),
+		TexCPUFlags(desc->CPUAccessFlags).c_str(),
+		TexMiscFlags(desc->MiscFlags).c_str(),
 		desc->StructureByteStride);
 }
 
-int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE1D_DESC *desc)
+int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE1D_DESC *desc)
 {
 	return _snprintf_s(buf, size, size, "type=Texture1D width=%u mips=%u "
-		"array=%u format=\"%s\" usage=\"%S\" bind_flags=0x%x "
-		"cpu_access_flags=0x%x misc_flags=0x%x",
+		"array=%u format=\"%s\" usage=\"%S\" %S %S %S",
 		desc->Width, desc->MipLevels, desc->ArraySize,
 		TexFormatStr(desc->Format), TexResourceUsage(desc->Usage),
-		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags);
+		TexBindFlags(desc->BindFlags).c_str(),
+		TexCPUFlags(desc->CPUAccessFlags).c_str(),
+		TexMiscFlags(desc->MiscFlags).c_str());
 }
 
-int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc)
+int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE2D_DESC *desc)
 {
 	return _snprintf_s(buf, size, size, "type=Texture2D width=%u height=%u mips=%u "
 		"array=%u format=\"%s\" msaa=%u "
-		"msaa_quality=%u usage=\"%S\" bind_flags=0x%x "
-		"cpu_access_flags=0x%x misc_flags=0x%x",
+		"msaa_quality=%u usage=\"%S\" %S %S %S",
 		desc->Width, desc->Height, desc->MipLevels, desc->ArraySize,
 		TexFormatStr(desc->Format), desc->SampleDesc.Count,
 		desc->SampleDesc.Quality, TexResourceUsage(desc->Usage),
-		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags);
+		TexBindFlags(desc->BindFlags).c_str(),
+		TexCPUFlags(desc->CPUAccessFlags).c_str(),
+		TexMiscFlags(desc->MiscFlags).c_str());
 }
 
-int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE3D_DESC *desc)
+int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE3D_DESC *desc)
 {
 	return _snprintf_s(buf, size, size, "type=Texture3D width=%u height=%u depth=%u "
-		"mips=%u format=\"%s\" usage=\"%S\" bind_flags=0x%x "
-		"cpu_access_flags=0x%x misc_flags=0x%x",
+		"mips=%u format=\"%s\" usage=\"%S\" %S %S %S",
 		desc->Width, desc->Height, desc->Depth, desc->MipLevels,
 		TexFormatStr(desc->Format), TexResourceUsage(desc->Usage),
-		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags);
+		TexBindFlags(desc->BindFlags).c_str(),
+		TexCPUFlags(desc->CPUAccessFlags).c_str(),
+		TexMiscFlags(desc->MiscFlags).c_str());
 }
 
 int StrResourceDesc(char *buf, size_t size, struct ResourceHashInfo &info)

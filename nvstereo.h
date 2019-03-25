@@ -48,6 +48,7 @@
 #include "nvapi.h"
 #include "log.h"
 #include "profiling.h"
+#include "util.h"
 
 namespace nv
 {
@@ -283,7 +284,9 @@ namespace nv
 				desc.CPUAccessFlags = 0;
 				desc.MiscFlags = 0;
 
+				LockResourceCreationMode();
 				HRESULT ret = pDevice->CreateTexture2D(&desc, &sysData, &staging);
+				UnlockResourceCreationMode();
 				delete sysData.pSysMem;
 				if (ret != S_OK)
 				{

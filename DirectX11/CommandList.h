@@ -48,7 +48,7 @@ public:
 	// invocation - a constant buffer we are analysing, a render target
 	// being cleared, etc.
 	ResourceCopyTarget *this_target;
-	ID3D11Resource *resource;
+	ID3D11Resource **resource;
 	ID3D11View *view;
 
 	// TODO: Cursor info and resources would be better off being cached
@@ -351,37 +351,6 @@ public:
 	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
-enum class DrawCommandType {
-	INVALID,
-	DRAW,
-	DRAW_AUTO,
-	DRAW_INDEXED,
-	DRAW_INDEXED_INSTANCED,
-	DRAW_INDEXED_INSTANCED_INDIRECT,
-	DRAW_INSTANCED,
-	DRAW_INSTANCED_INDIRECT,
-	DISPATCH,
-	DISPATCH_INDIRECT,
-
-	// 3DMigoto special draw commands:
-	FROM_CALLER,
-	AUTO_INDEX_COUNT,
-};
-
-class DrawCommand : public CommandListCommand {
-public:
-	wstring ini_section;
-	DrawCommandType type;
-
-	UINT args[5];
-
-	DrawCommand::DrawCommand() :
-		type(DrawCommandType::INVALID)
-	{}
-
-	void run(CommandListState*) override;
-};
-
 class SkipCommand : public CommandListCommand {
 public:
 	wstring ini_section;
@@ -502,7 +471,7 @@ static EnumName_t<const wchar_t *, CustomResourceBindFlags> CustomResourceBindFl
 // the description size of each resource type is unique - and it would be
 // highly unusual (though not forbidden) to mix different resource types in a
 // single pool anyway.
-typedef unordered_map<uint32_t, ID3D11Resource*> ResourcePoolCache;
+typedef unordered_map<uint32_t, pair<ID3D11Resource*, ID3D11Device*>> ResourcePoolCache;
 class ResourcePool
 {
 public:
@@ -510,7 +479,7 @@ public:
 
 	~ResourcePool();
 
-	void emplace(uint32_t hash, ID3D11Resource *resource);
+	void emplace(uint32_t hash, ID3D11Resource *resource, ID3D11Device *device);
 };
 
 class CustomResource
@@ -520,10 +489,12 @@ public:
 
 	ID3D11Resource *resource;
 	ResourcePool resource_pool;
+	ID3D11Device *device;
 	ID3D11View *view;
 	bool is_null;
 
 	D3D11_BIND_FLAG bind_flags;
+	D3D11_RESOURCE_MISC_FLAG misc_flags;
 
 	UINT stride;
 	UINT offset;
@@ -542,6 +513,7 @@ public:
 	CustomResourceType override_type;
 	CustomResourceMode override_mode;
 	CustomResourceBindFlags override_bind_flags;
+	ResourceMiscFlags override_misc_flags;
 	DXGI_FORMAT override_format;
 	int override_width;
 	int override_height;
@@ -562,14 +534,14 @@ public:
 	CustomResource();
 	~CustomResource();
 
-	void Substantiate(ID3D11Device *mOrigDevice, StereoHandle mStereoHandle, D3D11_BIND_FLAG bind_flags);
+	void Substantiate(ID3D11Device *mOrigDevice, StereoHandle mStereoHandle, D3D11_BIND_FLAG bind_flags, D3D11_RESOURCE_MISC_FLAG misc_flags);
 	bool OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE *orig_mode);
 	void OverrideBufferDesc(D3D11_BUFFER_DESC *desc);
 	void OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc);
 	void OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc);
 	void OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc);
 	void OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride);
-	void expire(HackerDevice *mHackerDevice, ID3D11DeviceContext *mOrigContext1);
+	void expire(ID3D11Device *mOrigDevice1, ID3D11DeviceContext *mOrigContext1);
 
 private:
 	void LoadFromFile(ID3D11Device *mOrigDevice);
@@ -645,7 +617,7 @@ public:
 			CommandListState *state,
 			bool *resource_found,
 			TextureOverrideMatches *matches);
-	D3D11_BIND_FLAG BindFlags(CommandListState *state);
+	D3D11_BIND_FLAG BindFlags(CommandListState *state, D3D11_RESOURCE_MISC_FLAG *misc_flags=NULL);
 };
 
 enum class ResourceCopyOptions {
@@ -894,6 +866,14 @@ enum class ParamOverrideType {
 	VERTEX_COUNT,
 	INDEX_COUNT,
 	INSTANCE_COUNT,
+	FIRST_VERTEX,
+	FIRST_INDEX,
+	FIRST_INSTANCE,
+	THREAD_GROUP_COUNT_X,
+	THREAD_GROUP_COUNT_Y,
+	THREAD_GROUP_COUNT_Z,
+	INDIRECT_OFFSET,
+	DRAW_TYPE,
 	CURSOR_VISIBLE,
 	CURSOR_SCREEN_X, // Cursor in screen coordinates in pixels
 	CURSOR_SCREEN_Y,
@@ -912,7 +892,7 @@ enum class ParamOverrideType {
 	EYE_SEPARATION, // StereoParams is only updated at the start of each
 	CONVERGENCE,    // frame. Intended for use if the convergence may have
 	STEREO_ACTIVE,	// been changed during the frame (e.g. if staged from
-			// the GPU and it is unknown whether the operation has
+	STEREO_AVAILABLE,// the GPU and it is unknown whether the operation has
 			// completed). Comparing these immediately before and
 			// after present can be useful to determine if the user
 			// is currently adjusting them, which is used for the
@@ -937,6 +917,14 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"vertex_count", ParamOverrideType::VERTEX_COUNT},
 	{L"index_count", ParamOverrideType::INDEX_COUNT},
 	{L"instance_count", ParamOverrideType::INSTANCE_COUNT},
+	{L"first_vertex", ParamOverrideType::FIRST_VERTEX},
+	{L"first_index", ParamOverrideType::FIRST_INDEX},
+	{L"first_instance", ParamOverrideType::FIRST_INSTANCE},
+	{L"thread_group_count_x", ParamOverrideType::THREAD_GROUP_COUNT_X},
+	{L"thread_group_count_y", ParamOverrideType::THREAD_GROUP_COUNT_Y},
+	{L"thread_group_count_z", ParamOverrideType::THREAD_GROUP_COUNT_Z},
+	{L"indirect_offset", ParamOverrideType::INDIRECT_OFFSET},
+	{L"draw_type", ParamOverrideType::DRAW_TYPE},
 	{L"cursor_showing", ParamOverrideType::CURSOR_VISIBLE},
 	{L"cursor_screen_x", ParamOverrideType::CURSOR_SCREEN_X},
 	{L"cursor_screen_y", ParamOverrideType::CURSOR_SCREEN_Y},
@@ -956,6 +944,7 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"eye_separation", ParamOverrideType::EYE_SEPARATION},
 	{L"convergence", ParamOverrideType::CONVERGENCE},
 	{L"stereo_active", ParamOverrideType::STEREO_ACTIVE},
+	{L"stereo_available", ParamOverrideType::STEREO_AVAILABLE},
 	{L"sli", ParamOverrideType::SLI},
 	{L"hunting", ParamOverrideType::HUNTING},
 	{L"frame_analysis", ParamOverrideType::FRAME_ANALYSIS},
@@ -1092,6 +1081,43 @@ public:
 
 	void run(CommandListState*) override;
 	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+};
+
+enum class DrawCommandType {
+	INVALID,
+	DRAW,
+	DRAW_AUTO,
+	DRAW_INDEXED,
+	DRAW_INDEXED_INSTANCED,
+	DRAW_INDEXED_INSTANCED_INDIRECT,
+	DRAW_INSTANCED,
+	DRAW_INSTANCED_INDIRECT,
+	DISPATCH,
+	DISPATCH_INDIRECT,
+
+	// 3DMigoto special draw commands:
+	FROM_CALLER,
+	AUTO_INDEX_COUNT,
+};
+
+class DrawCommand : public CommandListCommand {
+public:
+	wstring ini_section;
+	DrawCommandType type;
+
+	CommandListExpression args[5];
+	ResourceCopyTarget indirect_buffer;
+
+	DrawCommand::DrawCommand() :
+		type(DrawCommandType::INVALID)
+	{}
+
+	void do_indirect_draw_call(CommandListState *state, char *name,
+		void (__stdcall ID3D11DeviceContext::*IndirectDrawCall)(THIS_
+		ID3D11Buffer *pBufferForArgs,
+		UINT AlignedByteOffsetForArgs));
+	inline void eval_args(int nargs, INT result[5], CommandListState *state);
+	void run(CommandListState*) override;
 };
 
 class ClearViewCommand : public CommandListCommand {
@@ -1234,7 +1260,7 @@ void RunCommandList(HackerDevice *mHackerDevice,
 		bool post);
 void RunResourceCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
-		CommandList *command_list, ID3D11Resource *resource,
+		CommandList *command_list, ID3D11Resource **resource,
 		bool post);
 void RunViewCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
@@ -1266,7 +1292,8 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 bool ParseCommandListFlowControl(const wchar_t *section, const wstring *line,
 		CommandList *pre_command_list, CommandList *post_command_list,
 		const wstring *ini_namespace);
-void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line);
+std::shared_ptr<RunLinkedCommandList>
+		LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line);
 void optimise_command_lists(HackerDevice *device);
 bool parse_command_list_var_name(const wstring &name, const wstring *ini_namespace, CommandListVariable **target);
 bool valid_variable_name(const wstring &name);

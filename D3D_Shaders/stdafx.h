@@ -86,7 +86,8 @@ struct token_operand
 vector<string> stringToLines(const char* start, size_t size);
 HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment,
 		int hexdump = 0, bool d3dcompiler_46_compat = false,
-		bool disassemble_undecipherable_data = false);
+		bool disassemble_undecipherable_data = false,
+		bool patch_cb_offsets = false);
 vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode, vector<AssemblerParseError> *parse_errors = NULL);
 void writeLUT();
 HRESULT AssembleFluganWithSignatureParsing(vector<char> *assembly, vector<byte> *result_bytecode, vector<AssemblerParseError> *parse_errors = NULL);

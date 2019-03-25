@@ -1,3 +1,7 @@
+// Include before util.h (or any header that includes util.h) to get pretty
+// version of LockResourceCreationMode:
+#include "lock.h"
+
 #include "D3D11Wrapper.h"
 #include "FrameAnalysis.h"
 #include "Globals.h"
@@ -544,6 +548,8 @@ HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
 	if (format != DXGI_FORMAT_UNKNOWN)
 		desc.Format = format;
 
+	LockResourceCreationMode();
+
 	if (analyse_options & FrameAnalysisOptions::STEREO) {
 		// If we are dumping stereo at all force surface creation mode
 		// to stereo (regardless of whether we are creating this double
@@ -562,6 +568,8 @@ HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
 
 	if (analyse_options & FrameAnalysisOptions::STEREO)
 		Profiling::NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, orig_mode);
+
+	UnlockResourceCreationMode();
 
 	return hr;
 }
@@ -1815,7 +1823,9 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	desc.MiscFlags = 0;
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
+	LockResourceCreationMode();
 	hr = GetHackerDevice()->GetPassThroughOrigDevice1()->CreateBuffer(&desc, NULL, &staging);
+	UnlockResourceCreationMode();
 	if (FAILED(hr)) {
 		FALogErr("DumpBuffer failed to create staging buffer: 0x%x\n", hr);
 		return;
@@ -3383,8 +3393,9 @@ STDMETHODIMP_(void) FrameAnalysisContext::DispatchIndirect(THIS_
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs)
 {
-	FrameAnalysisLog("DispatchIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
+	FrameAnalysisLogNoNL("DispatchIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)",
 			pBufferForArgs, AlignedByteOffsetForArgs);
+	FrameAnalysisLogResourceHash(pBufferForArgs);
 
 	HackerContext::DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 
@@ -4710,13 +4721,14 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstancedIndirect(THIS_
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs)
 {
-	FrameAnalysisLog("DrawIndexedInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
+	FrameAnalysisLogNoNL("DrawIndexedInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)",
 			pBufferForArgs, AlignedByteOffsetForArgs);
+	FrameAnalysisLogResourceHash(pBufferForArgs);
 
 	HackerContext::DrawIndexedInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 
 	if (G->analyse_frame) {
-		DrawCallInfo call_info(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
+		DrawCallInfo call_info(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
@@ -4729,13 +4741,14 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawInstancedIndirect(THIS_
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs)
 {
-	FrameAnalysisLog("DrawInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
+	FrameAnalysisLogNoNL("DrawInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)",
 			pBufferForArgs, AlignedByteOffsetForArgs);
+	FrameAnalysisLogResourceHash(pBufferForArgs);
 
 	HackerContext::DrawInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 
 	if (G->analyse_frame) {
-		DrawCallInfo call_info(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
+		DrawCallInfo call_info(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;

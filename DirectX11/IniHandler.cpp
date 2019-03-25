@@ -195,10 +195,13 @@ struct IniSection {
 	IniSectionMap kv_map;
 	IniSectionVector kv_vec;
 
-	// Stores the ini namespace/path that this section came from. Note that
+	// Stores the ini namespace/path that this section came from. ini_path
+	// is only set if a shader overrides it's namespace so we can still
+	// find shaders & resources loaded from disk next to the ini. Note that
 	// there is also an ini_namespace in the IniLine structure for global
 	// sections where the namespacing can be per-line:
 	wstring ini_namespace;
+	wstring ini_path;
 };
 
 // std::map is used so this is sorted for iterating over a prefix:
@@ -285,6 +288,24 @@ bool get_section_namespace(const wchar_t *section, wstring *ret)
 	return _get_section_namespace(&ini_sections, section, ret);
 }
 
+static bool _get_section_path(IniSections *custom_ini_sections, const wchar_t *section, wstring *ret)
+{
+	IniSection *entry;
+
+	try {
+		entry = &custom_ini_sections->at(wstring(section));
+	} catch (std::out_of_range) {
+		return false;
+	}
+
+	if (entry->ini_path.empty())
+		*ret = entry->ini_namespace;
+	else
+		*ret = entry->ini_path;
+
+	return (!ret->empty());
+}
+
 static size_t get_section_namespace_endpos(const wchar_t *section)
 {
 	const wchar_t *section_prefix;
@@ -304,7 +325,7 @@ static bool _get_namespaced_section_path(IniSections *custom_ini_sections, const
 {
 	wstring::size_type pos;
 
-	if (!_get_section_namespace(custom_ini_sections, section, ret))
+	if (!_get_section_path(custom_ini_sections, section, ret))
 		return false;
 
 	// Strip the ini name from the end of the namespace leaving the relative path:
@@ -323,7 +344,8 @@ static bool get_namespaced_section_path(const wchar_t *section, wstring *ret)
 
 static void ParseIniSectionLine(wstring *wline, wstring *section,
 		int *warn_duplicates, bool *warn_lines_without_equals,
-		IniSectionVector **section_vector, const wstring *ini_namespace)
+		IniSectionVector **section_vector, const wstring *ini_namespace,
+		const wstring *ini_path)
 {
 	bool allow_duplicate_sections = false;
 	size_t first, last;
@@ -386,8 +408,11 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 	// Record the namespace so we can use it later when looking up any
 	// referenced sections. Only for namespaced sections, not global
 	// sections:
-	if (namespaced_section)
+	if (namespaced_section) {
 		ini_sections[*section].ini_namespace = *ini_namespace;
+		if (*ini_path != *ini_namespace)
+			ini_sections[*section].ini_path = *ini_path;
+	}
 
 	// Sections that utilise a command list are allowed to have duplicate
 	// keys, while other sections are not. The command list parser will
@@ -402,6 +427,58 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 
 	if (DoesSectionAllowLinesWithoutEquals(section->c_str()))
 		*warn_lines_without_equals = false;
+}
+
+bool check_include_condition(wstring *val, const wstring *ini_namespace)
+{
+	float ret;
+
+	CommandListExpression condition;
+	if (!condition.parse(val, ini_namespace, NULL)) {
+		IniWarning("WARNING: Unable to parse include condition: %S\n", val->c_str());
+		return false;
+	}
+
+	if (!condition.static_evaluate(&ret, NULL)) {
+		IniWarning("WARNING: Include condition could not be statically evaluated: %S\n", val->c_str());
+		return false;
+	}
+
+	return !!ret;
+}
+
+static bool ParseIniPreamble(wstring *wline, wstring *ini_namespace)
+{
+	size_t first, last, delim;
+	wstring key, val;
+
+	LogInfo("      %S\n", wline->c_str());
+
+	// Key / Val pair
+	delim = wline->find(L"=");
+	if (delim != wline->npos) {
+		// Strip whitespace around delimiter:
+		last = wline->find_last_not_of(L" \t", delim - 1);
+		key = wline->substr(0, last + 1);
+		first = wline->find_first_not_of(L" \t", delim + 1);
+		if (first != wline->npos)
+			val = wline->substr(first);
+
+		if (!_wcsicmp(key.c_str(), L"condition")) {
+			LogInfo("        condition = false, skipping \"%S\"\n", ini_namespace->c_str());
+			return check_include_condition(&val, ini_namespace);
+		}
+
+		if (!_wcsicmp(key.c_str(), L"namespace")) {
+			LogInfo("        Renaming namespace \"%S\" -> \"%S\"\n", ini_namespace->c_str(), val.c_str());
+			*ini_namespace = val;
+			return true;
+		}
+	}
+
+	IniWarning("WARNING: d3dx.ini entry outside of section: %S\n",
+			wline->c_str());
+	return true;
 }
 
 static void ParseIniKeyValLine(wstring *wline, wstring *section,
@@ -464,18 +541,20 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 static void ParseIniStream(istream *stream, const wstring *_ini_namespace)
 {
 	string aline;
-	wstring wline, section;
+	wstring wline, section, ini_path;
 	size_t first, last;
 	IniSectionVector *section_vector = NULL;
 	int warn_duplicates = 1;
 	bool warn_lines_without_equals = true;
 	wstring ini_namespace;
+	bool preamble = true;
 
 	// Simplify code further on by translating NULL to "" here:
 	if (_ini_namespace)
 		ini_namespace = *_ini_namespace;
 	else
 		ini_namespace = L"";
+	ini_path = ini_namespace;
 
 	while (std::getline(*stream, aline)) {
 		// Convert to wstring for compatibility with GetPrivateProfile*
@@ -508,9 +587,17 @@ static void ParseIniStream(istream *stream, const wstring *_ini_namespace)
 
 		// Section?
 		if (wline[0] == L'[') {
+			preamble = false;
 			ParseIniSectionLine(&wline, &section, &warn_duplicates,
 					    &warn_lines_without_equals,
-					    &section_vector, &ini_namespace);
+					    &section_vector, &ini_namespace,
+					    &ini_path);
+			continue;
+		}
+
+		if (preamble) {
+			if (!ParseIniPreamble(&wline, &ini_namespace))
+				return;
 			continue;
 		}
 
@@ -1717,9 +1804,12 @@ static void ParseResourceSections()
 				(CustomResourceBindFlagNames, setting, NULL);
 		}
 
-		ParseResourceInitialData(custom_resource, i->first.c_str());
+		if (GetIniStringAndLog(i->first.c_str(), L"misc_flags", 0, setting, MAX_PATH)) {
+			custom_resource->override_misc_flags = parse_enum_option_string<const wchar_t *, ResourceMiscFlags, wchar_t*>
+				(ResourceMiscFlagNames, setting, NULL);
+		}
 
-		// TODO: Overrides for misc flags, etc
+		ParseResourceInitialData(custom_resource, i->first.c_str());
 	}
 }
 
@@ -4422,6 +4512,7 @@ void LoadConfigFile()
 	G->track_texture_updates = GetIniBoolOrInt(L"Rendering", L"track_texture_updates", 0, NULL);
 	G->assemble_signature_comments = GetIniBool(L"Rendering", L"assemble_signature_comments", false, NULL);
 	G->disassemble_undecipherable_custom_data = GetIniBool(L"Rendering", L"disassemble_undecipherable_custom_data", false, NULL);
+	G->patch_cb_offsets = GetIniBool(L"Rendering", L"patch_assembly_cb_offsets", false, NULL);
 
 	G->EXPORT_FIXED = GetIniBool(L"Rendering", L"export_fixed", false, NULL);
 	G->EXPORT_SHADERS = GetIniBool(L"Rendering", L"export_shaders", false, NULL);
