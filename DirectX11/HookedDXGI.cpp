@@ -813,6 +813,9 @@ HRESULT __stdcall UnhookableCreateSwapChain(
 	LogInfo("  CreateSwapChain returned handle = %p\n", retChain);
 	analyse_iunknown(retChain);
 
+	if (pDesc && !pDesc->Windowed)
+		last_fullscreen_swap_chain = retChain;
+
 	wrap_swap_chain(hackerDevice, ppSwapChain, pDesc, &origSwapChainDesc, This);
 
 	LogInfo("->UnhookableCreateSwapChain result %#x\n", hr);

@@ -428,6 +428,9 @@ STDMETHODIMP_(ULONG) HackerSwapChain::Release(THIS)
 		if (mOverlay)
 			delete mOverlay;
 
+		if (last_fullscreen_swap_chain == mOrigSwapChain1)
+			last_fullscreen_swap_chain = NULL;
+
 		LogInfo("  counter=%d, this=%p, deleting self.\n", ulRef, this);
 
 		delete this;
@@ -626,6 +629,9 @@ STDMETHODIMP HackerSwapChain::SetFullscreenState(THIS_
 	//	hr = mOrigSwapChain1->SetFullscreenState(Fullscreen, pTarget->m_pOutput);
 	//else
 	//	hr = mOrigSwapChain1->SetFullscreenState(Fullscreen, 0);
+
+	if (Fullscreen)
+		last_fullscreen_swap_chain = mOrigSwapChain1;
 
 	HRESULT hr = mOrigSwapChain1->SetFullscreenState(Fullscreen, pTarget);
 	LogInfo("  returns %x\n", hr);
