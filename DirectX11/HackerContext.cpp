@@ -552,52 +552,63 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	if (!orig_info->deferred_replacement_candidate || orig_info->deferred_replacement_processed)
 		goto out_drop;
 
-	LogInfo("Performing deferred shader analysis on %S %016I64x...\n", shader_type, hash);
-
 	// Remember that we have analysed this one so we don't check it again
 	// (until config reload) regardless of whether we patch it or not:
 	orig_info->deferred_replacement_processed = true;
 
-	asm_text = BinaryToAsmText(orig_info->byteCode->GetBufferPointer(),
-			orig_info->byteCode->GetBufferSize(),
-			G->patch_cb_offsets,
-			G->disassemble_undecipherable_custom_data);
-	if (asm_text.empty())
+	switch (load_shader_regex_cache(hash, shader_type, &patched_bytecode, &tagline)) {
+	case ShaderRegexCache::MATCH:
+		LogInfo("Loaded %S %016I64x command list from ShaderRegex cache\n", shader_type, hash);
 		goto out_drop;
+	case ShaderRegexCache::PATCH:
+		LogInfo("Loaded %S %016I64x bytecode from ShaderRegex cache\n", shader_type, hash);
+		break;
+	case ShaderRegexCache::INVALID:
+		LogInfo("Performing deferred shader analysis on %S %016I64x...\n", shader_type, hash);
 
-	try {
-		patch_regex = apply_shader_regex_groups(&asm_text, &orig_info->shaderModel, hash, &tagline);
-	} catch (...) {
-		LogInfo("    *** Exception while patching shader\n");
-		goto out_drop;
-	}
+		asm_text = BinaryToAsmText(orig_info->byteCode->GetBufferPointer(),
+				orig_info->byteCode->GetBufferSize(),
+				G->patch_cb_offsets,
+				G->disassemble_undecipherable_custom_data);
+		if (asm_text.empty())
+			goto out_drop;
 
-	if (!patch_regex) {
-		LogInfo("Patch did not apply\n");
-		goto out_drop;
-	}
-
-	LogInfo("Patched Shader:\n%s\n", asm_text.c_str());
-
-	asm_vector.assign(asm_text.begin(), asm_text.end());
-
-	try {
-		vector<AssemblerParseError> parse_errors;
-		hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode, &parse_errors);
-		if (FAILED(hr)) {
-			LogInfo("    *** Assembling patched shader failed\n");
+		try {
+			patch_regex = apply_shader_regex_groups(&asm_text, shader_type, &orig_info->shaderModel, hash, &tagline);
+		} catch (...) {
+			LogInfo("    *** Exception while patching shader\n");
 			goto out_drop;
 		}
-		// Parse errors are currently being treated as non-fatal on
-		// creation time replacement and ShaderRegex for backwards
-		// compatibility (live shader reload is fatal).
-		for (auto &parse_error : parse_errors)
-			LogOverlay(LOG_NOTICE, "%016I64x-%S %S: %s\n",
-					hash, shader_type, tagline.c_str(), parse_error.what());
-	} catch (const exception &e) {
-		LogOverlay(LOG_WARNING, "Error assembling ShaderRegex patched %016I64x-%S\n%S\n%s\n",
-				hash, shader_type, tagline.c_str(), e.what());
-		goto out_drop;
+
+		if (!patch_regex) {
+			LogInfo("Patch did not apply\n");
+			goto out_drop;
+		}
+
+		LogInfo("Patched Shader:\n%s\n", asm_text.c_str());
+
+		asm_vector.assign(asm_text.begin(), asm_text.end());
+
+		try {
+			vector<AssemblerParseError> parse_errors;
+			hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode, &parse_errors);
+			if (FAILED(hr)) {
+				LogInfo("    *** Assembling patched shader failed\n");
+				goto out_drop;
+			}
+			// Parse errors are currently being treated as non-fatal on
+			// creation time replacement and ShaderRegex for backwards
+			// compatibility (live shader reload is fatal).
+			for (auto &parse_error : parse_errors)
+				LogOverlay(LOG_NOTICE, "%016I64x-%S %S: %s\n",
+						hash, shader_type, tagline.c_str(), parse_error.what());
+		} catch (const exception &e) {
+			LogOverlay(LOG_WARNING, "Error assembling ShaderRegex patched %016I64x-%S\n%S\n%s\n",
+					hash, shader_type, tagline.c_str(), e.what());
+			goto out_drop;
+		}
+
+		save_shader_regex_cache_bin(hash, shader_type, &patched_bytecode);
 	}
 
 	hr = (mOrigDevice1->*CreateShader)(patched_bytecode.data(), patched_bytecode.size(),

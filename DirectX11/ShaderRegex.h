@@ -9,7 +9,15 @@
 
 #include <pcre2.h>
 
-bool apply_shader_regex_groups(std::string *asm_text, std::string *shader_model, UINT64 hash, std::wstring *tagline);
+enum class ShaderRegexCache {
+	INVALID,
+	MATCH,
+	PATCH
+};
+
+bool apply_shader_regex_groups(std::string *asm_text, wchar_t *shader_type, std::string *shader_model, UINT64 hash, std::wstring *tagline);
+ShaderRegexCache load_shader_regex_cache(UINT64 hash, wchar_t *shader_type, vector<byte> *bytecode, std::wstring *tagline);
+void save_shader_regex_cache_bin(UINT64 hash, wchar_t *shader_type, vector<byte> *bytecode);
 
 typedef std::set<std::string> ShaderRegexTemps;
 typedef std::set<std::string> ShaderRegexModels;
@@ -69,3 +77,8 @@ public:
 // order, in case the user writes multiple patterns that depend on each other:
 typedef std::map<std::wstring, ShaderRegexGroup> ShaderRegexGroups;
 extern ShaderRegexGroups shader_regex_groups;
+extern std::vector<ShaderRegexGroup*> shader_regex_group_index;
+
+// This hash is of all ShaderRegex sections and is used to determine if a
+// cached shader is still valid and to avoid discarding regex patched shaders:
+extern uint32_t shader_regex_hash;

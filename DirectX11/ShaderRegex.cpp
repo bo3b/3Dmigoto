@@ -7,6 +7,8 @@
 #include <iterator>
 
 ShaderRegexGroups shader_regex_groups;
+std::vector<ShaderRegexGroup*> shader_regex_group_index;
+uint32_t shader_regex_hash;
 
 static void log_pcre2_error_nonl(int err, char *fmt, ...)
 {
@@ -423,12 +425,161 @@ void ShaderRegexGroup::link_command_lists_and_filter_index(UINT64 shader_hash)
 		post_link = LinkCommandLists(&shader_override->post_command_list, &post_command_list, &ini_line);
 }
 
-bool apply_shader_regex_groups(std::string *asm_text, std::string *shader_model, UINT64 hash, std::wstring *tagline)
+#define SHADER_REGEX_CACHE_VERSION 1
+struct ShaderRegexCacheHeader {
+	uint32_t version;
+	uint32_t shader_regex_hash;
+	uint32_t patched;
+	uint32_t num_matches;
+};
+
+ShaderRegexCache load_shader_regex_cache(UINT64 hash, wchar_t *shader_type, vector<byte> *bytecode, std::wstring *tagline)
+{
+	ShaderRegexCache ret = ShaderRegexCache::INVALID;
+	HANDLE meta_f = INVALID_HANDLE_VALUE;
+	HANDLE bin_f = INVALID_HANDLE_VALUE;
+	ShaderRegexCacheHeader *header;
+	ShaderRegexGroup *group;
+	wchar_t path[MAX_PATH];
+	uint32_t *match_ids;
+	DWORD size, size2;
+	byte *buf = NULL;
+	size_t suffix;
+	uint32_t i;
+
+	suffix = swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_regex.", G->SHADER_CACHE_PATH, hash, shader_type);
+	wcscpy_s(path+suffix, MAX_PATH-suffix, L"dat");
+	meta_f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (meta_f == INVALID_HANDLE_VALUE)
+		return ShaderRegexCache::INVALID;
+
+	size = GetFileSize(meta_f, 0);
+	if (size < sizeof(ShaderRegexCacheHeader))
+		goto out;
+
+	buf = new byte[size];
+
+	if (!ReadFile(meta_f, buf, size, &size2, NULL) || size != size2)
+		goto out;
+
+	header = (ShaderRegexCacheHeader*)buf;
+	match_ids = (uint32_t*)(buf + sizeof(ShaderRegexCacheHeader));
+
+	if (header->version != SHADER_REGEX_CACHE_VERSION
+	 || header->shader_regex_hash != shader_regex_hash)
+		goto out;
+
+	if (size != sizeof(ShaderRegexCacheHeader) + header->num_matches * sizeof(uint32_t))
+		goto out;
+
+	// num_matches may be 0, which means the ShaderRegex didn't match the
+	// shader, but we cache it anyway to skip processing the shader again.
+	// We don't need any special handling for this case - returning MATCH
+	// will already skip that handling in the caller.
+	for (i = 0; i < header->num_matches; i++) {
+		// The ShaderRegex groups are sorted and since the cached hash
+		// already matched the map should be identical to when the
+		// cache was made, so we can use that to find the matching
+		// groups without having to do an expensive lookup by name:
+		if (match_ids[i] >= shader_regex_group_index.size())
+			goto out;
+		group = shader_regex_group_index[match_ids[i]];
+
+		LogInfo("ShaderRegexCache: %S %016I64x matches [%S]\n", shader_type, hash, group->ini_section.c_str());
+
+		if (header->patched && tagline)
+			tagline->append(std::wstring(L"[") + group->ini_section + std::wstring(L"]"));
+
+		group->link_command_lists_and_filter_index(hash);
+	}
+
+	if (header->patched) {
+		wcscpy_s(path+suffix, MAX_PATH-suffix, L"bin");
+		bin_f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (bin_f == INVALID_HANDLE_VALUE)
+			goto out;
+		size = GetFileSize(bin_f, 0);
+		bytecode->resize(size);
+		if (!size || !ReadFile(bin_f, bytecode->data(), size, &size2, NULL) || size != size2)
+			goto out;
+		ret = ShaderRegexCache::PATCH;
+	} else
+		ret = ShaderRegexCache::MATCH;
+
+out:
+	if (buf)
+		delete [] buf;
+	if (bin_f != INVALID_HANDLE_VALUE)
+		CloseHandle(bin_f);
+	if (meta_f != INVALID_HANDLE_VALUE)
+		CloseHandle(meta_f);
+	return ret;
+}
+
+static void save_shader_regex_cache_meta(UINT64 hash, wchar_t *shader_type, vector<uint32_t> *match_ids, bool patched)
+{
+	ShaderRegexCacheHeader header;
+	wchar_t path[MAX_PATH];
+	FILE *f = NULL;
+	size_t suffix;
+
+	if (!G->CACHE_SHADERS || !G->SHADER_CACHE_PATH[0])
+		return;
+
+	// TODO: When we have a condition field in ShaderRegex: The evaluations
+	// of *all* valid conditions (not just those matched) must qualify the
+	// cache, either by encoding them in the filename or extending the
+	// metadata format.
+
+	suffix = swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_regex.", G->SHADER_CACHE_PATH, hash, shader_type);
+	// Make sure there isn't an old stale .bin file *before* writing the
+	// new metadata to make sure it can't be loaded by mistake. If we can't
+	// remove it (e.g. another thread is currently reading it or permission
+	// issues) it's better not to update the cache at all:
+	wcscpy_s(path+suffix, MAX_PATH-suffix, L"bin");
+	if (!DeleteFile(path) && GetLastError() != ERROR_FILE_NOT_FOUND)
+		return;
+
+	wcscpy_s(path+suffix, MAX_PATH-suffix, L"dat");
+	wfopen_ensuring_access(&f, path, L"wb");
+	if (!f)
+		return;
+
+	header.version = SHADER_REGEX_CACHE_VERSION;
+	header.shader_regex_hash = shader_regex_hash;
+	header.patched = patched;
+	header.num_matches = (uint32_t)match_ids->size();
+	fwrite(&header, 1, sizeof(ShaderRegexCacheHeader), f);
+	fwrite(match_ids->data(), sizeof(uint32_t), match_ids->size(), f);
+
+	fclose(f);
+}
+
+void save_shader_regex_cache_bin(UINT64 hash, wchar_t *shader_type, vector<byte> *bytecode)
+{
+	wchar_t path[MAX_PATH];
+	FILE *f = NULL;
+
+	if (!G->CACHE_SHADERS || !G->SHADER_CACHE_PATH[0])
+		return;
+
+	swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_regex.bin", G->SHADER_CACHE_PATH, hash, shader_type);
+
+	wfopen_ensuring_access(&f, path, L"wb");
+	if (!f)
+		return;
+	fwrite(bytecode->data(), 1, bytecode->size(), f);
+	fclose(f);
+}
+
+bool apply_shader_regex_groups(std::string *asm_text, wchar_t *shader_type, std::string *shader_model, UINT64 hash, std::wstring *tagline)
 {
 	ShaderRegexGroups::iterator i;
 	ShaderRegexGroup *group;
 	bool patched = false;
 	bool match, patch;
+	vector<uint32_t> match_ids;
+	uint32_t j;
 
 	if (*shader_model == std::string("bin")) {
 		// This will update the data structure, because we may as well
@@ -437,7 +588,7 @@ bool apply_shader_regex_groups(std::string *asm_text, std::string *shader_model,
 			return false;
 	}
 
-	for (i = shader_regex_groups.begin(); i != shader_regex_groups.end(); i++) {
+	for (i = shader_regex_groups.begin(), j = 0; i != shader_regex_groups.end(); i++, j++) {
 		group = &i->second;
 
 		// FIXME: Don't even disassemble if the shader model isn't in
@@ -452,12 +603,19 @@ bool apply_shader_regex_groups(std::string *asm_text, std::string *shader_model,
 
 		LogInfo("ShaderRegex: %s %016I64x matches [%S]\n", shader_model->c_str(), hash, group->ini_section.c_str());
 		patched = patched || patch;
+		match_ids.push_back(j);
 
 		if (patch && tagline)
 			tagline->append(std::wstring(L"[") + group->ini_section + std::wstring(L"]"));
 
 		group->link_command_lists_and_filter_index(hash);
 	}
+
+	// We save the cache metadata even if we didn't match anything. That
+	// way we can skip checking for a match next time when we know there
+	// won't be any. This only saves the metadata - the caller will use
+	// save_shader_regex_cache_bin to save the assembled binary.
+	save_shader_regex_cache_meta(hash, shader_type, &match_ids, patched);
 
 	return patched;
 }
