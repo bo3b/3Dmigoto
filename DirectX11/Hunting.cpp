@@ -791,7 +791,7 @@ err:
 }
 
 static bool WriteASM(string *asmText, string *hlslText, string *errText,
-		UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device)
+		UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device, wstring *tagline = NULL)
 {
 	wchar_t fileName[MAX_PATH];
 	wchar_t fullName[MAX_PATH];
@@ -806,6 +806,9 @@ static bool WriteASM(string *asmText, string *hlslText, string *errText,
 		LogInfo("    error storing marked shader to %S\n", fullName);
 		return false;
 	}
+
+	if (tagline)
+		fprintf_s(f, "%S\n", tagline->c_str());
 
 	fwrite(asmText->c_str(), 1, asmText->size(), f);
 
@@ -980,15 +983,16 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 				asmText = BinaryToAsmText(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize(), G->patch_cb_offsets);
 				if (asmText.empty())
 					break;
+				wstring tagline(L"// MANUALLY DUMPED ");
 				bool patched = false;
 				try {
-					patched = apply_shader_regex_groups(&asmText, iter.second.shaderType.c_str(), &iter.second.shaderModel, hash, NULL);
+					patched = apply_shader_regex_groups(&asmText, iter.second.shaderType.c_str(), &iter.second.shaderModel, hash, &tagline);
 				} catch (...) {
 					LogOverlay(LOG_WARNING, "Exception while patching shader\n");
 				}
 
 				if (patched) {
-					success = WriteASM(&asmText, NULL, NULL, hash, iter.second, device);
+					success = WriteASM(&asmText, NULL, NULL, hash, iter.second, device, &tagline);
 					// ShaderRegex may have also altered the ShaderOverride, but now we've dumped it
 					// out this would not be processed on the next config reload, so revert the
 					// changes to the ShaderOverride to ensure things are consistent:
