@@ -380,9 +380,47 @@ void restore_om_state(ID3D11DeviceContext *context, struct OMState *state)
 }
 
 IDXGISwapChain *last_fullscreen_swap_chain;
+static CRITICAL_SECTION crash_handler_lock;
+static int crash_handler_level;
+
+static DWORD WINAPI crash_handler_switch_to_window(_In_ LPVOID lpParameter)
+{
+	// Debugging is a pain in exclusive full screen, especially without a
+	// second monitor attached (and even with one if you don't know about
+	// the win+arrow or alt+space shortcuts you may be stuck - alt+tab to
+	// the debugger, either win+down or alt+space and choose "Restore",
+	// either win+left/right several times to move it to the other monitor
+	// or alt+space again and choose "Move", press any arrow key to start
+	// moving and *then* you can use the mouse to move the window to the
+	// other monitor)... Try to switch to windowed mode to make our lives a
+	// lot easier, but depending on the crash this might just hang (DirectX
+	// might get stuck waiting on a lock or the window message queue might
+	// not be pumping), so we do this in a new thread to allow the main
+	// crash handler to continue responding to other keys:
+	//
+	// TODO: See if we can find a way to make this more reliable
+	//
+	if (last_fullscreen_swap_chain) {
+		LogInfo("Attempting emergency switch to windowed mode on swap chain %p\n",
+				last_fullscreen_swap_chain);
+
+		last_fullscreen_swap_chain->SetFullscreenState(FALSE, NULL);
+		//last_fullscreen_swap_chain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+	}
+
+	if (LogFile)
+		fflush(LogFile);
+
+	return 0;
+}
 
 static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS *ExceptionInfo)
 {
+	wchar_t path[MAX_PATH];
+	tm timestruct;
+	time_t ltime;
+	LONG ret = EXCEPTION_CONTINUE_EXECUTION;
+
 	// SOS
 	Beep(250, 100); Beep(250, 100); Beep(250, 100);
 	Beep(200, 300); Beep(200, 200); Beep(200, 200);
@@ -423,10 +461,18 @@ static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS *Exce
 	// this could fail - if we really want a robust crash handler we could
 	// bring in something like breakpad
 
-	auto fp = CreateFile(L"3dmigoto_crash_handler.dmp", GENERIC_WRITE, FILE_SHARE_READ,
-			0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	ltime = time(NULL);
+	localtime_s(&timestruct, &ltime);
+	wcsftime(path, MAX_PATH, L"3DM-%Y%m%d%H%M%S.dmp", &timestruct);
+
+	// If multiple threads crash only allow one to write the crash dump and
+	// the rest stop here:
+	EnterCriticalSectionPretty(&crash_handler_lock);
+
+	auto fp = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ,
+			0, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (fp != INVALID_HANDLE_VALUE) {
-		LogInfo("Writing minidump...\n");
+		LogInfo("Writing minidump to %S...\n", path);
 
 		MINIDUMP_EXCEPTION_INFORMATION dump_info =
 			{ GetCurrentThreadId(), ExceptionInfo, FALSE };
@@ -439,66 +485,105 @@ static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS *Exce
 
 		CloseHandle(fp);
 	} else
-		LogInfo("Error creating minidump file :(\n");
+		LogInfo("Error creating minidump file \"%S\": %d\n", path, GetLastError());
 
 	if (LogFile)
 		fflush(LogFile);
 
-	// Debugging is a pain in exclusive full screen, especially without a
-	// second monitor attached (and even with one if you don't know about
-	// the alt+space shortcut you may be stuck - alt+tab to the debugger,
-	// alt+space and choose "Restore", alt+space again and choose "Move",
-	// press any arrow key to start moving and *then* you can use the mouse
-	// to move the window to the other monitor)... Try to switch to
-	// windowed mode to make our lives a lot easier:
-	if (last_fullscreen_swap_chain) {
-		LogInfo("Attempting emergency switch to windowed mode on swap chain %p\n",
-				last_fullscreen_swap_chain);
-
-		last_fullscreen_swap_chain->SetFullscreenState(FALSE, NULL);
-		//last_fullscreen_swap_chain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
-	}
-
-	if (LogFile)
-		fflush(LogFile);
-
-	// Finally, we will wait for a debugger to attach, beeping every 5
-	// seconds and bailing if the user presses escape
-	if (LogFile) {
-		LogInfo("Waiting for debugger...\n");
-		fflush(LogFile);
-	}
-	while (!IsDebuggerPresent()) {
-		for (int i = 0; i < 50; i++) {
-			Sleep(100);
-			if (GetAsyncKeyState(VK_ESCAPE) < 0)
-				return EXCEPTION_EXECUTE_HANDLER;
+	// If crash is set to 2 instead of continuing we will stop and start
+	// responding to various key bindings, sounding a reminder tone every
+	// 5 seconds. All key bindings in this mode are prefixed with Ctrl+Alt
+	// to prevent them being accidentally triggered.
+	if (crash_handler_level == 2) {
+		if (LogFile) {
+			LogInfo("3DMigoto interactive crash handler invoked:\n");
+			LogInfo(" Ctrl+Alt+Q: Quit (execute exception handler)\n");
+			LogInfo(" Ctrl+Alt+K: Kill process\n");
+			LogInfo(" Ctrl+Alt+C: Continue execution\n");
+			LogInfo(" Ctrl+Alt+B: Break into the debugger (make sure one is attached)\n");
+			LogInfo(" Ctrl+Alt+W: Attempt to switch to Windowed mode\n");
+			LogInfo("\n");
+			fflush(LogFile);
 		}
+		while (1) {
+			Beep(500, 100);
+			for (int i = 0; i < 50; i++) {
+				Sleep(100);
+				if (GetAsyncKeyState(VK_CONTROL) < 0 &&
+				    GetAsyncKeyState(VK_MENU) < 0) {
+					if (GetAsyncKeyState('C') < 0) {
+						LogInfo("Attempting to continue...\n"); fflush(LogFile); Beep(1000, 100);
+						ret = EXCEPTION_CONTINUE_EXECUTION;
+						goto unlock;
+					}
 
-		Beep(500, 100);
+					if (GetAsyncKeyState('Q') < 0) {
+						LogInfo("Executing exception handler...\n"); fflush(LogFile); Beep(1000, 100);
+						ret = EXCEPTION_EXECUTE_HANDLER;
+						goto unlock;
+					}
+
+					if (GetAsyncKeyState('K') < 0) {
+						LogInfo("Killing process...\n"); fflush(LogFile); Beep(1000, 100);
+						ExitProcess(0x3D819070);
+					}
+
+					// TODO:
+					// S = Suspend all other threads
+					// R = Resume all other threads
+
+					if (GetAsyncKeyState('B') < 0) {
+						LogInfo("Dropping to debugger...\n"); fflush(LogFile); Beep(1000, 100);
+						__debugbreak();
+						goto unlock;
+					}
+
+					if (GetAsyncKeyState('W') < 0) {
+						LogInfo("Attempting to switch to windowed mode...\n"); fflush(LogFile); Beep(1000, 100);
+						CreateThread(NULL, 0, crash_handler_switch_to_window, NULL, 0, NULL);
+						Sleep(1000);
+					}
+				}
+			}
+		}
 	}
-	__debugbreak();
 
-	return EXCEPTION_CONTINUE_EXECUTION;
+unlock:
+	LeaveCriticalSection(&crash_handler_lock);
+
+	return ret;
 }
 
 static DWORD WINAPI exception_keyboard_monitor(_In_ LPVOID lpParameter)
 {
 	while (1) {
-		Sleep(500);
+		Sleep(1000);
 		if (GetAsyncKeyState(VK_CONTROL) < 0 &&
 		    GetAsyncKeyState(VK_MENU) < 0 &&
-		    GetAsyncKeyState(VK_F12) < 0) {
-			RaiseException(0x3D819070, 0, 0, NULL);
+		    GetAsyncKeyState(VK_F11) < 0) {
+			// User must be really committed to this to invoke the
+			// crash handler, and this is a simple measure against
+			// accidentally invoking it multiple times in a row:
+			Sleep(3000);
+			if (GetAsyncKeyState(VK_CONTROL) < 0 &&
+			    GetAsyncKeyState(VK_MENU) < 0 &&
+			    GetAsyncKeyState(VK_F11) < 0) {
+				// Make sure 3DMigoto's exception handler is
+				// still installed and trigger it:
+				SetUnhandledExceptionFilter(migoto_exception_filter);
+				RaiseException(0x3D819070, 0, 0, NULL);
+			}
 		}
 	}
 
 }
 
-void install_crash_handler()
+void install_crash_handler(int level)
 {
 	LPTOP_LEVEL_EXCEPTION_FILTER old_handler;
 	UINT old_mode;
+
+	crash_handler_level = level;
 
 	old_handler = SetUnhandledExceptionFilter(migoto_exception_filter);
 	// TODO: Call set_terminate() on every thread to catch unhandled C++
@@ -508,6 +593,8 @@ void install_crash_handler()
 		LogInfo("  > 3DMigoto crash handler already installed\n");
 		return;
 	}
+
+	InitializeCriticalSectionPretty(&crash_handler_lock);
 
 	old_mode = SetErrorMode(SEM_FAILCRITICALERRORS);
 

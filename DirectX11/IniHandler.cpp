@@ -4291,8 +4291,9 @@ void LoadConfigFile()
 			__debugbreak();
 	}
 
-	if (GetIniBool(L"Logging", L"crash", false, NULL))
-		install_crash_handler();
+	debugger = GetIniInt(L"Logging", L"crash", false, NULL);
+	if (debugger)
+		install_crash_handler(debugger);
 
 	G->dump_all_profiles = GetIniBool(L"Logging", L"dump_all_profiles", false, NULL);
 
