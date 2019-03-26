@@ -4002,14 +4002,29 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 	}
 
 	// Try parsing value as a shader target for partner filtering
+	// WARNING: This test is especially susceptible to an uninitialised
+	//          %n fooling it into thinking it has parsed the entire string
+	//          if the stack garbage happens to contain operand->length().
+	//          This is because the %n does not immediately follow another
+	//          conversion specification and does not alter the return
+	//          value, so the return value will not distinguish between
+	//          early termination and completion, and since %lc will match
+	//          any character this can trigger easily. Seems to only occur
+	//          on vs2013, though I'm not positive if vs2017 zeroes out
+	//          len1 or dumb luck gave different values in the stack.
+	len1 = 0;
 	ret = swscanf_s(operand->c_str(), L"%lcs%n", &shader_filter_target, 1, &len1);
 	if (ret == 1 && len1 == operand->length()) {
-		type = ParamOverrideType::SHADER;
-		return operand_allowed_in_context(type, scope);
+		switch(shader_filter_target) {
+		case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
+			type = ParamOverrideType::SHADER;
+			return operand_allowed_in_context(type, scope);
+		}
 	}
 
 	// Try parsing value as a scissor rectangle. scissor_<side> also
 	// appears in the keywords list for uses of the default rectangle 0.
+	len1 = 0;
 	ret = swscanf_s(operand->c_str(), L"scissor%u_%n", &scissor, &len1);
 	if (ret == 1 && scissor < D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE) {
 		if (!wcscmp(operand->c_str() + len1, L"left"))
