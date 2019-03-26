@@ -54,7 +54,8 @@ enum class MarkingAction {
 	CLIPBOARD  = 0x0000001,
 	HLSL       = 0x0000002,
 	ASM        = 0x0000004,
-	DUMP_MASK  = 0x0000006, // HLSL and/or Assembly is selected
+	REGEX      = 0x0000008,
+	DUMP_MASK  = 0x000000e, // HLSL, Assembly and/or ShaderRegex is selected
 	MONO_SS    = 0x0000010,
 	STEREO_SS  = 0x0000020,
 	SS_IF_PINK = 0x0000040,
@@ -66,6 +67,8 @@ static EnumName_t<const wchar_t *, MarkingAction> MarkingActionNames[] = {
 	{L"hlsl", MarkingAction::HLSL},
 	{L"asm", MarkingAction::ASM},
 	{L"assembly", MarkingAction::ASM},
+	{L"regex", MarkingAction::REGEX},
+	{L"ShaderRegex", MarkingAction::REGEX},
 	{L"clipboard", MarkingAction::CLIPBOARD},
 	{L"mono_snapshot", MarkingAction::MONO_SS},
 	{L"stereo_snapshot", MarkingAction::STEREO_SS},
@@ -258,7 +261,7 @@ struct ShaderOverride {
 	UINT64 partner_hash;
 	char model[20]; // More than long enough for even ps_4_0_level_9_0
 	int allow_duplicate_hashes;
-	float filter_index;
+	float filter_index, backup_filter_index;
 
 	CommandList command_list;
 	CommandList post_command_list;
@@ -267,7 +270,8 @@ struct ShaderOverride {
 		depth_filter(DepthBufferFilter::NONE),
 		partner_hash(0),
 		allow_duplicate_hashes(1),
-		filter_index(FLT_MAX)
+		filter_index(FLT_MAX),
+		backup_filter_index(FLT_MAX)
 	{
 		model[0] = '\0';
 	}
@@ -286,6 +290,7 @@ struct TextureOverride {
 	bool expand_region_copy;
 	bool deny_cpu_read;
 	float filter_index;
+	float backup_filter_index;
 
 	bool has_draw_context_match;
 	bool has_match_priority;

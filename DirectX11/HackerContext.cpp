@@ -585,7 +585,10 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 			goto out_drop;
 		}
 
-		LogInfo("Patched Shader:\n%s\n", asm_text.c_str());
+		// No longer logging this since we can output to ShaderFixes
+		// via hunting if marking_actions = regex, or it could be
+		// disassembled from the regex cache with cmd_Decompiler
+		// LogInfo("Patched Shader:\n%s\n", asm_text.c_str());
 
 		asm_vector.assign(asm_text.begin(), asm_text.end());
 

@@ -19,6 +19,7 @@
 #include "CommandList.h"
 #include "profiling.h"
 #include "FrameAnalysis.h"
+#include "ShaderRegex.h"
 
 // bo3b: For this routine, we have a lot of warnings in x64, from converting a size_t result into the needed
 //  DWORD type for the Write calls.  These are writing 256 byte strings, so there is never a chance that it 
@@ -792,8 +793,6 @@ err:
 static bool WriteASM(string *asmText, string *hlslText, string *errText,
 		UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device)
 {
-	std::istringstream hlslTokens(*hlslText);
-	std::istringstream errTokens(*errText);
 	wchar_t fileName[MAX_PATH];
 	wchar_t fullName[MAX_PATH];
 	std::string token;
@@ -810,20 +809,24 @@ static bool WriteASM(string *asmText, string *hlslText, string *errText,
 
 	fwrite(asmText->c_str(), 1, asmText->size(), f);
 
-	if (!hlslText->empty()) {
+	if (hlslText && !hlslText->empty()) {
 		fprintf_s(f, "\n///////////////////////////////// HLSL Code /////////////////////////////////\n");
+		std::istringstream hlslTokens(*hlslText);
 		while (std::getline(hlslTokens, token, '\n')) {
 			if (token.empty())
 				fprintf(f, "//\n");
 			else
 				fprintf(f, "// %s\n", token.c_str());
 		}
-		fprintf_s(f, "//////////////////////////////// HLSL Errors ////////////////////////////////\n");
-		while (std::getline(errTokens, token, '\n')) {
-			if (token.empty())
-				fprintf(f, "//\n");
-			else
-				fprintf(f, "// %s\n", token.c_str());
+		if (errText && !errText->empty()) {
+			fprintf_s(f, "//////////////////////////////// HLSL Errors ////////////////////////////////\n");
+			std::istringstream errTokens(*errText);
+			while (std::getline(errTokens, token, '\n')) {
+				if (token.empty())
+					fprintf(f, "//\n");
+				else
+					fprintf(f, "// %s\n", token.c_str());
+			}
 		}
 		fprintf_s(f, "/////////////////////////////////////////////////////////////////////////////\n");
 	}
@@ -967,6 +970,34 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 	{
 		if (iter.second.hash == hash)
 		{
+			if (G->marking_actions & MarkingAction::REGEX) {
+				// We don't have the patched assembly saved anywhere, and even if we did save it
+				// off while applying ShaderRegex that would only work when not loading from cache.
+				// We can't really use the ShaderRegex bytecode either because that will be missing
+				// RDEF making it not all that useful to look at. Instead we will disassemble the
+				// original shader now (with RDEF assuming the game didn't strip that), run
+				// ShaderRegex and output that.
+				asmText = BinaryToAsmText(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize(), G->patch_cb_offsets);
+				if (asmText.empty())
+					break;
+				bool patched = false;
+				try {
+					patched = apply_shader_regex_groups(&asmText, iter.second.shaderType.c_str(), &iter.second.shaderModel, hash, NULL);
+				} catch (...) {
+					LogOverlay(LOG_WARNING, "Exception while patching shader\n");
+				}
+
+				if (patched) {
+					success = WriteASM(&asmText, NULL, NULL, hash, iter.second, device);
+					// ShaderRegex may have also altered the ShaderOverride, but now we've dumped it
+					// out this would not be processed on the next config reload, so revert the
+					// changes to the ShaderOverride to ensure things are consistent:
+					if (unlink_shader_regex_command_lists_and_filter_index(hash))
+						LogOverlay(LOG_WARNING, "NOTICE: ShaderRegex command lists were dropped from the ShaderOverride\n");
+					break;
+				}
+			}
+
 			if (G->marking_actions & MarkingAction::HLSL) {
 				// TODO: Allow the decompiler to parse the patched CB offsets
 				// and move this line back to the common code path:

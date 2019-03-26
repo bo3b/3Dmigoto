@@ -2273,6 +2273,8 @@ static void ParseShaderOverrideSections()
 
 		// Superior partner shader filtering that also supports a bound/unbound case
 		override->filter_index = GetIniFloat(id, L"filter_index", FLT_MAX, NULL);
+		// Backup version not affected by ShaderRegex:
+		override->backup_filter_index = override->filter_index;
 
 		if (GetIniStringAndLog(id, L"model", 0, setting, MAX_PATH)) {
 			wcstombs(override->model, setting, ARRAYSIZE(override->model));

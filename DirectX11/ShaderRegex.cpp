@@ -425,6 +425,47 @@ void ShaderRegexGroup::link_command_lists_and_filter_index(UINT64 shader_hash)
 		post_link = LinkCommandLists(&shader_override->post_command_list, &post_command_list, &ini_line);
 }
 
+bool unlink_shader_regex_command_lists_and_filter_index(UINT64 shader_hash)
+{
+	ShaderOverride *shader_override = NULL;
+	CommandList::Commands::iterator i, next;
+	RunLinkedCommandList *link;
+	bool ret = false;
+
+	auto shader_override_i = G->mShaderOverrideMap.find(shader_hash);
+	if (shader_override_i == G->mShaderOverrideMap.end())
+		return false;
+
+	shader_override = &shader_override_i->second;
+
+	for (i = shader_override->command_list.commands.begin(), next = i;
+	    i != shader_override->command_list.commands.end(); i = next) {
+		next++;
+		link = dynamic_cast<RunLinkedCommandList*>(i->get());
+		if (link) {
+			next = shader_override->command_list.commands.erase(i);
+			ret = true;
+		}
+	}
+
+	for (i = shader_override->post_command_list.commands.begin(), next = i;
+	    i != shader_override->post_command_list.commands.end(); i = next) {
+		next++;
+		link = dynamic_cast<RunLinkedCommandList*>(i->get());
+		if (link) {
+			next = shader_override->post_command_list.commands.erase(i);
+			ret = true;
+		}
+	}
+
+	if (shader_override->filter_index != shader_override->backup_filter_index) {
+		shader_override->filter_index = shader_override->backup_filter_index;
+		ret = true;
+	}
+
+	return ret;
+}
+
 #define SHADER_REGEX_CACHE_VERSION 1
 struct ShaderRegexCacheHeader {
 	uint32_t version;
@@ -433,7 +474,7 @@ struct ShaderRegexCacheHeader {
 	uint32_t num_matches;
 };
 
-ShaderRegexCache load_shader_regex_cache(UINT64 hash, wchar_t *shader_type, vector<byte> *bytecode, std::wstring *tagline)
+ShaderRegexCache load_shader_regex_cache(UINT64 hash, const wchar_t *shader_type, vector<byte> *bytecode, std::wstring *tagline)
 {
 	ShaderRegexCache ret = ShaderRegexCache::INVALID;
 	HANDLE meta_f = INVALID_HANDLE_VALUE;
@@ -516,7 +557,7 @@ out:
 	return ret;
 }
 
-static void save_shader_regex_cache_meta(UINT64 hash, wchar_t *shader_type, vector<uint32_t> *match_ids, bool patched)
+static void save_shader_regex_cache_meta(UINT64 hash, const wchar_t *shader_type, vector<uint32_t> *match_ids, bool patched)
 {
 	ShaderRegexCacheHeader header;
 	wchar_t path[MAX_PATH];
@@ -555,7 +596,7 @@ static void save_shader_regex_cache_meta(UINT64 hash, wchar_t *shader_type, vect
 	fclose(f);
 }
 
-void save_shader_regex_cache_bin(UINT64 hash, wchar_t *shader_type, vector<byte> *bytecode)
+void save_shader_regex_cache_bin(UINT64 hash, const wchar_t *shader_type, vector<byte> *bytecode)
 {
 	wchar_t path[MAX_PATH];
 	FILE *f = NULL;
@@ -572,7 +613,7 @@ void save_shader_regex_cache_bin(UINT64 hash, wchar_t *shader_type, vector<byte>
 	fclose(f);
 }
 
-bool apply_shader_regex_groups(std::string *asm_text, wchar_t *shader_type, std::string *shader_model, UINT64 hash, std::wstring *tagline)
+bool apply_shader_regex_groups(std::string *asm_text, const wchar_t *shader_type, std::string *shader_model, UINT64 hash, std::wstring *tagline)
 {
 	ShaderRegexGroups::iterator i;
 	ShaderRegexGroup *group;
