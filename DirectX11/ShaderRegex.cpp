@@ -563,43 +563,67 @@ out:
 	return ret;
 }
 
-static void save_shader_regex_cache_meta(UINT64 hash, const wchar_t *shader_type, vector<uint32_t> *match_ids, bool patched)
+static void save_shader_regex_cache_meta(UINT64 hash, const wchar_t *shader_type, vector<uint32_t> *match_ids,
+		bool patched, std::string *asm_text, std::wstring *tagline)
 {
 	ShaderRegexCacheHeader header;
 	wchar_t path[MAX_PATH];
 	FILE *f = NULL;
 	size_t suffix;
 
-	if (!G->CACHE_SHADERS || !G->SHADER_CACHE_PATH[0])
+	if (!G->SHADER_CACHE_PATH[0] || (!G->CACHE_SHADERS && !G->EXPORT_FIXED))
 		return;
-
-	// TODO: When we have a condition field in ShaderRegex: The evaluations
-	// of *all* valid conditions (not just those matched) must qualify the
-	// cache, either by encoding them in the filename or extending the
-	// metadata format.
 
 	suffix = swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_regex.", G->SHADER_CACHE_PATH, hash, shader_type);
-	// Make sure there isn't an old stale .bin file *before* writing the
-	// new metadata to make sure it can't be loaded by mistake. If we can't
-	// remove it (e.g. another thread is currently reading it or permission
-	// issues) it's better not to update the cache at all:
-	wcscpy_s(path+suffix, MAX_PATH-suffix, L"bin");
-	if (!DeleteFile(path) && GetLastError() != ERROR_FILE_NOT_FOUND)
-		return;
 
-	wcscpy_s(path+suffix, MAX_PATH-suffix, L"dat");
-	wfopen_ensuring_access(&f, path, L"wb");
-	if (!f)
-		return;
+	if (G->CACHE_SHADERS) {
+		// TODO: When we have a condition field in ShaderRegex: The evaluations
+		// of *all* valid conditions (not just those matched) must qualify the
+		// cache, either by encoding them in the filename or extending the
+		// metadata format.
 
-	header.version = SHADER_REGEX_CACHE_VERSION;
-	header.shader_regex_hash = shader_regex_hash;
-	header.patched = patched;
-	header.num_matches = (uint32_t)match_ids->size();
-	fwrite(&header, 1, sizeof(ShaderRegexCacheHeader), f);
-	fwrite(match_ids->data(), sizeof(uint32_t), match_ids->size(), f);
+		// Make sure there isn't an old stale .bin file *before* writing the
+		// new metadata to make sure it can't be loaded by mistake. If we can't
+		// remove it (e.g. another thread is currently reading it or permission
+		// issues) it's better not to update the cache at all:
+		wcscpy_s(path+suffix, MAX_PATH-suffix, L"bin");
+		if (!DeleteFile(path) && GetLastError() != ERROR_FILE_NOT_FOUND)
+			return;
 
-	fclose(f);
+		wcscpy_s(path+suffix, MAX_PATH-suffix, L"dat");
+		wfopen_ensuring_access(&f, path, L"wb");
+		if (!f)
+			return;
+
+		header.version = SHADER_REGEX_CACHE_VERSION;
+		header.shader_regex_hash = shader_regex_hash;
+		header.patched = patched;
+		header.num_matches = (uint32_t)match_ids->size();
+		fwrite(&header, 1, sizeof(ShaderRegexCacheHeader), f);
+		fwrite(match_ids->data(), sizeof(uint32_t), match_ids->size(), f);
+
+		fclose(f);
+	}
+
+	if (G->EXPORT_FIXED) {
+		wcscpy_s(path+suffix, MAX_PATH-suffix, L"txt");
+		if (patched) {
+			wfopen_ensuring_access(&f, path, L"wb");
+			if (!f) {
+				LogInfo("  Error storing ShaderRegex assembly to %S\n", path);
+				return;
+			}
+
+			fprintf_s(f, "%S\n", tagline->c_str());
+			fwrite(asm_text->c_str(), 1, asm_text->size(), f);
+
+			fclose(f);
+			LogInfo("  Storing ShaderRegex assembly to %S\n", path);
+		} else {
+			if (DeleteFile(path))
+				LogInfo("  Removed stale ShaderRegex assembly file %S\n", path);
+		}
+	}
 }
 
 void save_shader_regex_cache_bin(UINT64 hash, const wchar_t *shader_type, vector<byte> *bytecode)
@@ -662,7 +686,7 @@ bool apply_shader_regex_groups(std::string *asm_text, const wchar_t *shader_type
 	// way we can skip checking for a match next time when we know there
 	// won't be any. This only saves the metadata - the caller will use
 	// save_shader_regex_cache_bin to save the assembled binary.
-	save_shader_regex_cache_meta(hash, shader_type, &match_ids, patched);
+	save_shader_regex_cache_meta(hash, shader_type, &match_ids, patched, asm_text, tagline);
 
 	return patched;
 }
