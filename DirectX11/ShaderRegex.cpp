@@ -476,7 +476,7 @@ struct ShaderRegexCacheHeader {
 
 ShaderRegexCache load_shader_regex_cache(UINT64 hash, const wchar_t *shader_type, vector<byte> *bytecode, std::wstring *tagline)
 {
-	ShaderRegexCache ret = ShaderRegexCache::INVALID;
+	ShaderRegexCache ret = ShaderRegexCache::NO_CACHE;
 	HANDLE meta_f = INVALID_HANDLE_VALUE;
 	HANDLE bin_f = INVALID_HANDLE_VALUE;
 	ShaderRegexCacheHeader *header;
@@ -492,7 +492,7 @@ ShaderRegexCache load_shader_regex_cache(UINT64 hash, const wchar_t *shader_type
 	wcscpy_s(path+suffix, MAX_PATH-suffix, L"dat");
 	meta_f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (meta_f == INVALID_HANDLE_VALUE)
-		return ShaderRegexCache::INVALID;
+		return ret;
 
 	size = GetFileSize(meta_f, 0);
 	if (size < sizeof(ShaderRegexCacheHeader))
@@ -515,8 +515,14 @@ ShaderRegexCache load_shader_regex_cache(UINT64 hash, const wchar_t *shader_type
 
 	// num_matches may be 0, which means the ShaderRegex didn't match the
 	// shader, but we cache it anyway to skip processing the shader again.
-	// We don't need any special handling for this case - returning MATCH
-	// will already skip that handling in the caller.
+	// We don't really need any special handling for this case, since
+	// returning MATCH will already skip that handling in the caller, but
+	// we return a special value so the caller can log it appropriately.
+	if (header->num_matches == 0) {
+		ret = ShaderRegexCache::NO_MATCH;
+		goto out;
+	}
+
 	for (i = 0; i < header->num_matches; i++) {
 		// The ShaderRegex groups are sorted and since the cached hash
 		// already matched the map should be identical to when the

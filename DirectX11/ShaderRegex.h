@@ -10,7 +10,8 @@
 #include <pcre2.h>
 
 enum class ShaderRegexCache {
-	INVALID,
+	NO_CACHE,
+	NO_MATCH,
 	MATCH,
 	PATCH
 };

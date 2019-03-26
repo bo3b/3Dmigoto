@@ -557,13 +557,16 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	orig_info->deferred_replacement_processed = true;
 
 	switch (load_shader_regex_cache(hash, shader_type, &patched_bytecode, &tagline)) {
+	case ShaderRegexCache::NO_MATCH:
+		LogInfo("%S %016I64x has cached ShaderRegex miss\n", shader_type, hash);
+		goto out_drop;
 	case ShaderRegexCache::MATCH:
 		LogInfo("Loaded %S %016I64x command list from ShaderRegex cache\n", shader_type, hash);
 		goto out_drop;
 	case ShaderRegexCache::PATCH:
 		LogInfo("Loaded %S %016I64x bytecode from ShaderRegex cache\n", shader_type, hash);
 		break;
-	case ShaderRegexCache::INVALID:
+	case ShaderRegexCache::NO_CACHE:
 		LogInfo("Performing deferred shader analysis on %S %016I64x...\n", shader_type, hash);
 
 		asm_text = BinaryToAsmText(orig_info->byteCode->GetBufferPointer(),
