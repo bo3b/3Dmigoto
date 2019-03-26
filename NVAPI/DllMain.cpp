@@ -857,18 +857,21 @@ static NvAPI_Status __cdecl NvAPI_D3D11_MultiDrawInstancedIndirect(
 static NvAPI_Status __cdecl NvAPI_D3D11_SetDepthBoundsTest(
 	IUnknown *pDeviceOrContext, unsigned long bEnable, float fMinDepth, float fMaxDepth)
 {
-	if (!pDeviceOrContext || !nvapi_QueryInterfacePtr)
-		return NVAPI_INVALID_POINTER;
-
-	tNvAPI_D3D11_SetDepthBoundsTest ptr = (tNvAPI_D3D11_SetDepthBoundsTest)(*nvapi_QueryInterfacePtr)(0x7AAF7A04);
-
-	if (!ptr)
-		return NVAPI_INVALID_POINTER;
+	NvAPI_Status ret;
 
 	// Call the original fn
-	(ptr)(pDeviceOrContext, bEnable, fMinDepth, fMaxDepth);
+	ret = (_NvAPI_D3D11_SetDepthBoundsTest)(pDeviceOrContext, bEnable, fMinDepth, fMaxDepth);
 
-	return NVAPI_OK;
+	LogDebug("%s NvAPI_D3D11_SetDepthBoundsTest(%p, %d, %f, %f) -> %d",
+			LogTime().c_str(), pDeviceOrContext, bEnable, fMinDepth, fMaxDepth, ret);
+
+	// If the game calls this function with fMinDepth == fMaxDepth nvapi
+	// will return NVAPI_INVALID_ARGUMENT, which causes RE2 & DMC5 to stop
+	// rendering (game bug?). Fake the return code to fix this:
+	if (ret == NVAPI_INVALID_ARGUMENT && fMinDepth == fMaxDepth)
+		return NVAPI_OK;
+
+	return ret;
 }
 
 // This seems like it might have a reentrancy hole, where a given call sets up to not
