@@ -993,11 +993,6 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 
 				if (patched) {
 					success = WriteASM(&asmText, NULL, NULL, hash, iter.second, device, &tagline);
-					// ShaderRegex may have also altered the ShaderOverride, but now we've dumped it
-					// out this would not be processed on the next config reload, so revert the
-					// changes to the ShaderOverride to ensure things are consistent:
-					if (unlink_shader_regex_command_lists_and_filter_index(hash))
-						LogOverlay(LOG_WARNING, "NOTICE: ShaderRegex command lists were dropped from the ShaderOverride\n");
 					break;
 				}
 			}
@@ -1024,6 +1019,14 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 
 				success = WriteASM(&asmText, &hlslText, &errText, hash, iter.second, device);
 				break;
+			}
+
+			if (success) {
+				// ShaderRegex may have also altered the ShaderOverride, but now we've dumped it
+				// out this would not be processed on the next config reload, so revert the
+				// changes to the ShaderOverride to ensure things are consistent:
+				if (unlink_shader_regex_command_lists_and_filter_index(hash))
+					LogOverlay(LOG_WARNING, "NOTICE: ShaderRegex command lists were dropped from the ShaderOverride\n");
 			}
 
 			// There can be more than one in the map with the same hash, but we only need a single copy to
