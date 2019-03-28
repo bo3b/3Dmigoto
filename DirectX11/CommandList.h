@@ -210,6 +210,9 @@ public:
 	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
+// XXX: If this is ever used for a purpose other than ShaderRegex in the future
+// make sure the unlink_command_lists_and_filter_index function won't break
+// whatever it is you are using it for.
 class RunLinkedCommandList : public CommandListCommand {
 public:
 	CommandList *link;
@@ -858,7 +861,7 @@ enum class ParamOverrideType {
 	WINDOW_WIDTH,
 	WINDOW_HEIGHT,
 	TEXTURE,	// Needs shader type and slot number specified in
-			// [ShaderOverride]. [TextureOverride] sections can
+	SHADER,		// [ShaderOverride]. [TextureOverride] sections can
 			// specify filter_index=N to define the value passed in
 			// here. Special values for no [TextureOverride]
 			// section = 0.0, or [TextureOverride] with no
@@ -955,6 +958,7 @@ class CommandListOperand :
 	public CommandListOperandBase,
 	public CommandListEvaluatable {
 	float process_texture_filter(CommandListState*);
+	float process_shader_filter(CommandListState*);
 public:
 	// TODO: Break up into separate classes for each operand type
 	ParamOverrideType type;
@@ -969,6 +973,7 @@ public:
 
 	// For texture filters:
 	ResourceCopyTarget texture_filter_target;
+	wchar_t shader_filter_target;
 
 	// For scissor rectangle:
 	unsigned scissor;

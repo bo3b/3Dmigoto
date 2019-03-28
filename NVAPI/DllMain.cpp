@@ -128,6 +128,10 @@ extern "C"
 		ID3D11Buffer *pBuffer, unsigned long alignedByteOffsetForArgs,
 		unsigned long alignedByteStrideForArgs);
 	static tNvAPI_D3D11_MultiDrawInstancedIndirect _NvAPI_D3D11_MultiDrawInstancedIndirect;
+
+	typedef NvAPI_Status(__cdecl *tNvAPI_D3D11_SetDepthBoundsTest)(IUnknown *pDeviceOrContext, unsigned long bEnable,
+		float fMinDepth, float fMaxDepth);
+	static tNvAPI_D3D11_SetDepthBoundsTest _NvAPI_D3D11_SetDepthBoundsTest;
 }
 
 static HMODULE nvDLL = 0;
@@ -849,6 +853,27 @@ static NvAPI_Status __cdecl NvAPI_D3D11_MultiDrawInstancedIndirect(
 	return NVAPI_OK;
 }
 
+// Set whether the depth bounds test will be used
+static NvAPI_Status __cdecl NvAPI_D3D11_SetDepthBoundsTest(
+	IUnknown *pDeviceOrContext, unsigned long bEnable, float fMinDepth, float fMaxDepth)
+{
+	NvAPI_Status ret;
+
+	// Call the original fn
+	ret = (_NvAPI_D3D11_SetDepthBoundsTest)(pDeviceOrContext, bEnable, fMinDepth, fMaxDepth);
+
+	LogDebug("%s NvAPI_D3D11_SetDepthBoundsTest(%p, %d, %f, %f) -> %d",
+			LogTime().c_str(), pDeviceOrContext, bEnable, fMinDepth, fMaxDepth, ret);
+
+	// If the game calls this function with fMinDepth == fMaxDepth nvapi
+	// will return NVAPI_INVALID_ARGUMENT, which causes RE2 & DMC5 to stop
+	// rendering (game bug?). Fake the return code to fix this:
+	if (ret == NVAPI_INVALID_ARGUMENT && fMinDepth == fMaxDepth)
+		return NVAPI_OK;
+
+	return ret;
+}
+
 // This seems like it might have a reentrancy hole, where a given call sets up to not
 // be overridden, but something else sneaks in and steals it.  
 // In fact, I'm exploiting that for force_no_nvapi because I need the Initialize from
@@ -1041,6 +1066,10 @@ extern "C" NvAPI_Status * __cdecl nvapi_QueryInterface(unsigned int offset)
 		case 0xD4E26BBF:
 			_NvAPI_D3D11_MultiDrawInstancedIndirect = (tNvAPI_D3D11_MultiDrawInstancedIndirect)ptr;
 			ptr = (NvAPI_Status *)NvAPI_D3D11_MultiDrawInstancedIndirect;
+			break;
+		case 0x7AAF7A04:
+			_NvAPI_D3D11_SetDepthBoundsTest = (tNvAPI_D3D11_SetDepthBoundsTest)ptr;
+			ptr = (NvAPI_Status *)NvAPI_D3D11_SetDepthBoundsTest;
 			break;
 	}
 	// If it's not on our list of calls to wrap, just pass through.

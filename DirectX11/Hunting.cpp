@@ -19,6 +19,7 @@
 #include "CommandList.h"
 #include "profiling.h"
 #include "FrameAnalysis.h"
+#include "ShaderRegex.h"
 
 // bo3b: For this routine, we have a lot of warnings in x64, from converting a size_t result into the needed
 //  DWORD type for the Write calls.  These are writing 256 byte strings, so there is never a chance that it 
@@ -429,38 +430,12 @@ static string Decompile(ID3DBlob *pShaderByteCode, string *asmText)
 	string shaderModel;
 	bool errorOccurred = false;
 
-	// TODO: Refactor all parameters we just copy from globals into their
-	// own struct so we don't have to copy all this junk
 	ParseParameters p;
 	p.bytecode = pShaderByteCode->GetBufferPointer();
 	p.decompiled = asmText->c_str();
 	p.decompiledSize = asmText->size();
-	p.StereoParamsReg = G->StereoParamsReg;
-	p.IniParamsReg = G->IniParamsReg;
-	p.recompileVs = G->FIX_Recompile_VS;
-	p.fixSvPosition = G->FIX_SV_Position;
-	p.ZRepair_Dependencies1 = G->ZRepair_Dependencies1;
-	p.ZRepair_Dependencies2 = G->ZRepair_Dependencies2;
-	p.ZRepair_DepthTexture1 = G->ZRepair_DepthTexture1;
-	p.ZRepair_DepthTexture2 = G->ZRepair_DepthTexture2;
-	p.ZRepair_DepthTextureReg1 = G->ZRepair_DepthTextureReg1;
-	p.ZRepair_DepthTextureReg2 = G->ZRepair_DepthTextureReg2;
-	p.ZRepair_ZPosCalc1 = G->ZRepair_ZPosCalc1;
-	p.ZRepair_ZPosCalc2 = G->ZRepair_ZPosCalc2;
-	p.ZRepair_PositionTexture = G->ZRepair_PositionTexture;
-	p.ZRepair_DepthBuffer = (G->ZBufferHashToInject != 0);
-	p.ZRepair_WorldPosCalc = G->ZRepair_WorldPosCalc;
-	p.BackProject_Vector1 = G->BackProject_Vector1;
-	p.BackProject_Vector2 = G->BackProject_Vector2;
-	p.ObjectPos_ID1 = G->ObjectPos_ID1;
-	p.ObjectPos_ID2 = G->ObjectPos_ID2;
-	p.ObjectPos_MUL1 = G->ObjectPos_MUL1;
-	p.ObjectPos_MUL2 = G->ObjectPos_MUL2;
-	p.MatrixPos_ID1 = G->MatrixPos_ID1;
-	p.MatrixPos_MUL1 = G->MatrixPos_MUL1;
-	p.InvTransforms = G->InvTransforms;
-	p.fixLightPosition = G->FIX_Light_Position;
 	p.ZeroOutput = false;
+	p.G = &G->decompiler_settings;
 	const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
 
 	if (!decompiledCode.size())
@@ -816,10 +791,8 @@ err:
 }
 
 static bool WriteASM(string *asmText, string *hlslText, string *errText,
-		UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device)
+		UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device, wstring *tagline = NULL)
 {
-	std::istringstream hlslTokens(*hlslText);
-	std::istringstream errTokens(*errText);
 	wchar_t fileName[MAX_PATH];
 	wchar_t fullName[MAX_PATH];
 	std::string token;
@@ -834,22 +807,29 @@ static bool WriteASM(string *asmText, string *hlslText, string *errText,
 		return false;
 	}
 
+	if (tagline)
+		fprintf_s(f, "%S\n", tagline->c_str());
+
 	fwrite(asmText->c_str(), 1, asmText->size(), f);
 
-	if (!hlslText->empty()) {
+	if (hlslText && !hlslText->empty()) {
 		fprintf_s(f, "\n///////////////////////////////// HLSL Code /////////////////////////////////\n");
+		std::istringstream hlslTokens(*hlslText);
 		while (std::getline(hlslTokens, token, '\n')) {
 			if (token.empty())
 				fprintf(f, "//\n");
 			else
 				fprintf(f, "// %s\n", token.c_str());
 		}
-		fprintf_s(f, "//////////////////////////////// HLSL Errors ////////////////////////////////\n");
-		while (std::getline(errTokens, token, '\n')) {
-			if (token.empty())
-				fprintf(f, "//\n");
-			else
-				fprintf(f, "// %s\n", token.c_str());
+		if (errText && !errText->empty()) {
+			fprintf_s(f, "//////////////////////////////// HLSL Errors ////////////////////////////////\n");
+			std::istringstream errTokens(*errText);
+			while (std::getline(errTokens, token, '\n')) {
+				if (token.empty())
+					fprintf(f, "//\n");
+				else
+					fprintf(f, "// %s\n", token.c_str());
+			}
 		}
 		fprintf_s(f, "/////////////////////////////////////////////////////////////////////////////\n");
 	}
@@ -993,6 +973,30 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 	{
 		if (iter.second.hash == hash)
 		{
+			if (G->marking_actions & MarkingAction::REGEX) {
+				// We don't have the patched assembly saved anywhere, and even if we did save it
+				// off while applying ShaderRegex that would only work when not loading from cache.
+				// We can't really use the ShaderRegex bytecode either because that will be missing
+				// RDEF making it not all that useful to look at. Instead we will disassemble the
+				// original shader now (with RDEF assuming the game didn't strip that), run
+				// ShaderRegex and output that.
+				asmText = BinaryToAsmText(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize(), G->patch_cb_offsets);
+				if (asmText.empty())
+					break;
+				wstring tagline(L"// MANUALLY DUMPED ");
+				bool patched = false;
+				try {
+					patched = apply_shader_regex_groups(&asmText, iter.second.shaderType.c_str(), &iter.second.shaderModel, hash, &tagline);
+				} catch (...) {
+					LogOverlay(LOG_WARNING, "Exception while patching shader\n");
+				}
+
+				if (patched) {
+					success = WriteASM(&asmText, NULL, NULL, hash, iter.second, device, &tagline);
+					break;
+				}
+			}
+
 			if (G->marking_actions & MarkingAction::HLSL) {
 				// TODO: Allow the decompiler to parse the patched CB offsets
 				// and move this line back to the common code path:
@@ -1015,6 +1019,14 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 
 				success = WriteASM(&asmText, &hlslText, &errText, hash, iter.second, device);
 				break;
+			}
+
+			if (success) {
+				// ShaderRegex may have also altered the ShaderOverride, but now we've dumped it
+				// out this would not be processed on the next config reload, so revert the
+				// changes to the ShaderOverride to ensure things are consistent:
+				if (unlink_shader_regex_command_lists_and_filter_index(hash))
+					LogOverlay(LOG_WARNING, "NOTICE: ShaderRegex command lists were dropped from the ShaderOverride\n");
 			}
 
 			// There can be more than one in the map with the same hash, but we only need a single copy to
@@ -1298,10 +1310,6 @@ static void NextMarkingMode(HackerDevice *device, void *private_data)
 		return;
 
 	G->marking_mode = (MarkingMode)((int)G->marking_mode + 1);
-
-	// FIXME: Zero mode can crash and needs some work:
-	if (G->marking_mode == MarkingMode::ZERO)
-		G->marking_mode = (MarkingMode)((int)G->marking_mode + 1);
 
 	if (G->marking_mode >= MarkingMode::INVALID)
 		G->marking_mode = MarkingMode::SKIP;
@@ -1603,10 +1611,6 @@ static void MarkShaderEnd(HackerDevice *device, char *long_type, char *short_typ
 	// failed dump attempt) are removed so that the only messages
 	// displayed will be relevant to the current dump attempt.
 	ClearNotices();
-
-	CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(selected);
-	if (i != G->mCompiledShaderMap.end())
-		LogInfo("       %s was compiled from source code %s\n", long_type, i->second.c_str());
 
 	if (G->marking_actions & MarkingAction::CLIPBOARD)
 		HashToClipboard(long_type, selected);

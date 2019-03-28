@@ -12,6 +12,7 @@
 #include "DLLMainHook.h"
 #include "DirectXMath.h"
 #include "util.h"
+#include "DecompileHLSL.h"
 
 #include "ResourceHash.h"
 #include "CommandList.h"
@@ -37,7 +38,6 @@ enum class MarkingMode {
 	ORIGINAL,
 	PINK,
 	MONO,
-	ZERO,
 
 	INVALID, // Must be last - used for next_marking_mode
 };
@@ -45,7 +45,6 @@ static EnumName_t<const wchar_t *, MarkingMode> MarkingModeNames[] = {
 	{L"skip", MarkingMode::SKIP},
 	{L"mono", MarkingMode::MONO},
 	{L"original", MarkingMode::ORIGINAL},
-	{L"zero", MarkingMode::ZERO},
 	{L"pink", MarkingMode::PINK},
 	{NULL, MarkingMode::INVALID} // End of list marker
 };
@@ -55,7 +54,8 @@ enum class MarkingAction {
 	CLIPBOARD  = 0x0000001,
 	HLSL       = 0x0000002,
 	ASM        = 0x0000004,
-	DUMP_MASK  = 0x0000006, // HLSL and/or Assembly is selected
+	REGEX      = 0x0000008,
+	DUMP_MASK  = 0x000000e, // HLSL, Assembly and/or ShaderRegex is selected
 	MONO_SS    = 0x0000010,
 	STEREO_SS  = 0x0000020,
 	SS_IF_PINK = 0x0000040,
@@ -67,6 +67,8 @@ static EnumName_t<const wchar_t *, MarkingAction> MarkingActionNames[] = {
 	{L"hlsl", MarkingAction::HLSL},
 	{L"asm", MarkingAction::ASM},
 	{L"assembly", MarkingAction::ASM},
+	{L"regex", MarkingAction::REGEX},
+	{L"ShaderRegex", MarkingAction::REGEX},
 	{L"clipboard", MarkingAction::CLIPBOARD},
 	{L"mono_snapshot", MarkingAction::MONO_SS},
 	{L"stereo_snapshot", MarkingAction::STEREO_SS},
@@ -86,13 +88,6 @@ static EnumName_t<const wchar_t *, ShaderHashType> ShaderHashNames[] = {
 	{L"bytecode", ShaderHashType::BYTECODE},
 	{NULL, ShaderHashType::INVALID} // End of list marker
 };
-
-// Source compiled shaders.
-// NOTE: This map is no longer filled out by anything. Could remove it as dead
-// code, though there are some games (emulators in particular) where it might
-// be useful to get this working again by hooking/wrapping the various
-// D3DCompiler DLLs' D3DCompile routines.
-typedef std::unordered_map<UINT64, std::string> CompiledShaderMap;
 
 // Strategy: This OriginalShaderInfo record and associated map is to allow us to keep track of every
 //	pixelshader and vertexshader that are compiled from hlsl text from the ShaderFixes
@@ -266,6 +261,7 @@ struct ShaderOverride {
 	UINT64 partner_hash;
 	char model[20]; // More than long enough for even ps_4_0_level_9_0
 	int allow_duplicate_hashes;
+	float filter_index, backup_filter_index;
 
 	CommandList command_list;
 	CommandList post_command_list;
@@ -273,7 +269,9 @@ struct ShaderOverride {
 	ShaderOverride() :
 		depth_filter(DepthBufferFilter::NONE),
 		partner_hash(0),
-		allow_duplicate_hashes(1)
+		allow_duplicate_hashes(1),
+		filter_index(FLT_MAX),
+		backup_filter_index(FLT_MAX)
 	{
 		model[0] = '\0';
 	}
@@ -292,6 +290,7 @@ struct TextureOverride {
 	bool expand_region_copy;
 	bool deny_cpu_read;
 	float filter_index;
+	float backup_filter_index;
 
 	bool has_draw_context_match;
 	bool has_match_priority;
@@ -467,19 +466,8 @@ struct Globals
 	bool assemble_signature_comments;
 	bool disassemble_undecipherable_custom_data;
 	bool patch_cb_offsets;
-	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
-	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
-	std::vector<std::string> ZRepair_Dependencies1, ZRepair_Dependencies2;
-	std::string ZRepair_ZPosCalc1, ZRepair_ZPosCalc2;
-	std::string ZRepair_PositionTexture, ZRepair_WorldPosCalc;
-	std::vector<std::string> InvTransforms;
-	std::string BackProject_Vector1, BackProject_Vector2;
-	std::string ObjectPos_ID1, ObjectPos_ID2, ObjectPos_MUL1, ObjectPos_MUL2;
-	std::string MatrixPos_ID1, MatrixPos_MUL1;
 	uint32_t ZBufferHashToInject;
-	bool FIX_SV_Position;
-	bool FIX_Light_Position;
-	bool FIX_Recompile_VS;
+	DecompilerSettings decompiler_settings;
 	bool DumpUsage;
 	bool ENABLE_TUNE;
 	float gTuneValue[4], gTuneStep;
@@ -523,8 +511,6 @@ struct Globals
 	std::set<UINT64> mSelectedVertexBuffer_VertexShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
 	std::set<UINT64> mSelectedVertexBuffer_PixelShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
 
-	CompiledShaderMap mCompiledShaderMap;
-
 	std::set<UINT64> mVisitedVertexShaders;					// Only shaders seen since last hunting timeout; std::set for consistent order while hunting
 	UINT64 mSelectedVertexShader;				 			// Hash.  -1 now for unselected state. The shader selected using Input object.
 	int mSelectedVertexShaderPos;							// -1 for unselected state.
@@ -541,7 +527,6 @@ struct Globals
 	ShaderMap mShaders;										// All shaders ever registered with CreateXXXShader
 	ShaderReloadMap mReloadedShaders;						// Shaders that were reloaded live from ShaderFixes
 	ShaderReplacementMap mOriginalShaders;					// When MarkingMode=Original, switch to original. Also used for show_original and shader reversion
-	ShaderReplacementMap mZeroShaders;						// When MarkingMode=zero.
 
 	std::set<UINT64> mVisitedComputeShaders;
 	UINT64 mSelectedComputeShader;
@@ -661,15 +646,10 @@ struct Globals
 		EXPORT_FIXED(false),
 		EXPORT_BINARY(false),
 		CACHE_SHADERS(false),
-		FIX_SV_Position(false),
-		FIX_Light_Position(false),
-		FIX_Recompile_VS(false),
 		DumpUsage(false),
 		ENABLE_TUNE(false),
 		gTuneStep(0.001f),
 
-		StereoParamsReg(125),
-		IniParamsReg(120),
 		iniParamsReserved(0),
 
 		constants_run(false),
@@ -711,7 +691,9 @@ struct Globals
 		gWipeUserConfig(false),
 		user_config_dirty(0),
 		gLogInput(false),
-		dump_all_profiles(false)
+		dump_all_profiles(false),
+
+		decompiler_settings({0})
 
 	{
 		int i;

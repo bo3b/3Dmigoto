@@ -396,6 +396,7 @@ static HRESULT Decompile(const void *pShaderBytecode, size_t BytecodeLength, str
 {
 	// Set all to zero, so we only init the ones we are using here:
 	ParseParameters p = {0};
+	DecompilerSettings d = {0};
 	bool patched = false;
 	bool errorOccurred = false;
 	string disassembly;
@@ -410,6 +411,7 @@ static HRESULT Decompile(const void *pShaderBytecode, size_t BytecodeLength, str
 	p.bytecode = pShaderBytecode;
 	p.decompiled = disassembly.c_str(); // XXX: Why do we call this "decompiled" when it's actually disassembled?
 	p.decompiledSize = disassembly.size();
+	p.G = &d;
 
 	// Disable IniParams and StereoParams registers. This avoids inserting
 	// these in a shader that already has them, such as some of our test
@@ -419,8 +421,8 @@ static HRESULT Decompile(const void *pShaderBytecode, size_t BytecodeLength, str
 	// stopping them from adding them by hand. May break scripts that use
 	// cmd_Decompiler and expect these to be here, but those scripts can be
 	// updated to add them or they can keep using an old version.
-	p.IniParamsReg = -1;
-	p.StereoParamsReg = -1;
+	d.IniParamsReg = -1;
+	d.StereoParamsReg = -1;
 
 	*hlslText = DecompileBinaryHLSL(p, patched, *shaderModel, errorOccurred);
 	if (!hlslText->size() || errorOccurred) {

@@ -431,10 +431,14 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 
 bool check_include_condition(wstring *val, const wstring *ini_namespace)
 {
+	CommandListExpression condition;
+	wstring sbuf(*val);
 	float ret;
 
-	CommandListExpression condition;
-	if (!condition.parse(val, ini_namespace, NULL)) {
+	// Expressions are case insensitive:
+	std::transform(sbuf.begin(), sbuf.end(), sbuf.begin(), ::towlower);
+
+	if (!condition.parse(&sbuf, ini_namespace, NULL)) {
 		IniWarning("WARNING: Unable to parse include condition: %S\n", val->c_str());
 		return false;
 	}
@@ -2174,21 +2178,14 @@ static void warn_deprecated_shaderoverride_options(const wchar_t *id, ShaderOver
 	        LogOverlay(LOG_NOTICE, "WARNING: [%S] tried to combine the deprecated partner= option with a command list.\n"
 	                               "This almost certainly won't do what you want. Try something like this instead:\n"
 	                               "\n"
-	                               "[Constants]\n"
-	                               "global $partner\n"
-	                               "\n"
 	                               "[%S_VERTEX_SHADER]\n"
 	                               "hash = <vertex shader hash>\n"
-	                               "pre $partner = 1\n"
-	                               "post $partner = 0\n"
+	                               "filter_index = 5\n"
 	                               "\n"
 	                               "[%S_PIXEL_SHADER]\n"
 	                               "hash = <pixel shader hash>\n"
-	                               "if $partner == 1\n"
-	                               "    ...\n"
-	                               "endif\n"
+	                               "x = vs\n"
 	                               "\n"
-	                               "To check the partner inside a shader set an IniParam in the partner's ShaderOverride.\n"
 	                               , id, id, id);
 	}
 
@@ -2227,6 +2224,7 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"partner",
 	L"model",
 	L"disable_scissor",
+	L"filter_index",
 	NULL
 };
 static void ParseShaderOverrideSections()
@@ -2270,8 +2268,13 @@ static void ParseShaderOverrideSections()
 
 		// Simple partner shader filtering. Deprecated - more advanced
 		// filtering can be achieved by setting an ini param in the
-		// partner's [ShaderOverride] section.
+		// partner's [ShaderOverride] section, or the below filter_index
 		override->partner_hash = GetIniHash(id, L"partner", 0, NULL);
+
+		// Superior partner shader filtering that also supports a bound/unbound case
+		override->filter_index = GetIniFloat(id, L"filter_index", FLT_MAX, NULL);
+		// Backup version not affected by ShaderRegex:
+		override->backup_filter_index = override->filter_index;
 
 		if (GetIniStringAndLog(id, L"model", 0, setting, MAX_PATH)) {
 			wcstombs(override->model, setting, ARRAYSIZE(override->model));
@@ -2328,11 +2331,27 @@ static std::set<T> vec_to_set(std::vector<T> &v)
 	return std::set<T>(v.begin(), v.end());
 }
 
+static uint32_t hash_ini_section(uint32_t hash, const wstring *sname)
+{
+	IniSectionVector *svec = NULL;
+	IniSectionVector::iterator entry;
+
+	hash = crc32c_hw(hash, sname->c_str(), sname->size());
+
+	GetIniSection(&svec, sname->c_str());
+	for (entry = svec->begin(); entry < svec->end(); entry++) {
+		hash = crc32c_hw(hash, entry->raw_line.c_str(), entry->raw_line.size());
+	}
+
+	return hash;
+}
+
 // List of keys in [ShaderRegex] sections that are processed in this
 // function. Used by ParseCommandList to find any unrecognised lines.
 wchar_t *ShaderRegexIniKeys[] = {
 	L"shader_model",
 	L"temps",
+	L"filter_index",
 	// L"type" =asm/hlsl? I'd rather not encourage autofixes on HLSL
 	//         shaders, because there is too much potential for trouble
 	NULL
@@ -2352,6 +2371,8 @@ static bool parse_shader_regex_section_main(const std::wstring *section_id, Shad
 		regex_group->temp_regs = vec_to_set(split_string(&setting, ' '));
 
 	regex_group->ini_section = *section_id;
+
+	regex_group->filter_index = GetIniFloat(section_id->c_str(), L"filter_index", FLT_MAX, NULL);
 
 	ParseCommandList(section_id->c_str(), &regex_group->command_list, &regex_group->post_command_list, ShaderRegexIniKeys);
 	return true;
@@ -2491,15 +2512,26 @@ static void ParseShaderRegexSections()
 	std::wstring section_prefix, section_suffix;
 	std::vector<std::wstring> subsection_names;
 	ShaderRegexGroup *regex_group;
+	ShaderRegexGroups::iterator j;
 	size_t namespace_endpos = 0;
+	uint32_t hash = 0;
 
+	shader_regex_group_index.clear();
 	shader_regex_groups.clear();
+
+	// Hash any settings that may alter assembly or otherwise have an
+	// effect on ShaderRegex to invalidate the cache if these change:
+	hash = crc32c_hw(hash, &G->assemble_signature_comments, sizeof(G->assemble_signature_comments));
+	hash = crc32c_hw(hash, &G->disassemble_undecipherable_custom_data, sizeof(G->disassemble_undecipherable_custom_data));
+	hash = crc32c_hw(hash, &G->patch_cb_offsets, sizeof(G->patch_cb_offsets));
 
 	lower = ini_sections.lower_bound(wstring(L"ShaderRegex"));
 	upper = prefix_upper_bound(ini_sections, wstring(L"ShaderRegex"));
 	for (i = lower; i != upper; i++) {
 		section_id = &i->first;
 		LogInfo("[%S]\n", section_id->c_str());
+
+		hash = hash_ini_section(hash, section_id);
 
 		// namespaced sections may have a dot in the namespace, so we
 		// only split the string after the namespace text
@@ -2553,6 +2585,18 @@ static void ParseShaderRegexSections()
 		IniWarning("WARNING: disabling entire shader regex group [%S]\n", subsection_names[0].c_str());
 		delete_regex_group(&subsection_names[0]);
 	}
+
+	// When we load ShaderRegex metadata from the cache we need to look up
+	// the command lists and filter_index from the data structures. The
+	// shader_regex_hash means we know the data structures should be
+	// identical to when the shader was first cached, and since
+	// shader_regex_groups is sorted the order should be the same too.
+	// Copy pointers to each of the groups to a vector so we can look them
+	// up directly without iterating over the map:
+	shader_regex_hash = hash;
+	LogInfo("ShaderRegex hash: %08x\n", shader_regex_hash);
+	for (j = shader_regex_groups.begin(); j != shader_regex_groups.end(); j++)
+		shader_regex_group_index.push_back(&j->second);
 }
 
 // For fuzzy matching instead of using hash. Using terms consistent
@@ -4410,6 +4454,10 @@ void LoadConfigFile()
 			__debugbreak();
 	}
 
+	debugger = GetIniInt(L"Logging", L"crash", false, NULL);
+	if (debugger)
+		install_crash_handler(debugger);
+
 	G->dump_all_profiles = GetIniBool(L"Logging", L"dump_all_profiles", false, NULL);
 
 	if (GetIniBool(L"Logging", L"debug_locks", false, NULL))
@@ -4522,6 +4570,8 @@ void LoadConfigFile()
 
 	G->StereoParamsReg = GetIniInt(L"Rendering", L"stereo_params", 125, NULL);
 	G->IniParamsReg = GetIniInt(L"Rendering", L"ini_params", 120, NULL);
+	G->decompiler_settings.StereoParamsReg = G->StereoParamsReg;
+	G->decompiler_settings.IniParamsReg = G->IniParamsReg;
 	if (G->StereoParamsReg >= D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
 		IniWarning("WARNING: stereo_params=%i out of range\n", G->StereoParamsReg);
 		G->StereoParamsReg = -1;
@@ -4533,35 +4583,34 @@ void LoadConfigFile()
 
 
 	// Automatic section
-	G->FIX_SV_Position = GetIniBool(L"Rendering", L"fix_sv_position", false, NULL);
-	G->FIX_Light_Position = GetIniBool(L"Rendering", L"fix_light_position", false, NULL);
-	G->FIX_Recompile_VS = GetIniBool(L"Rendering", L"recompile_all_vs", false, NULL);
+	G->decompiler_settings.fixSvPosition = GetIniBool(L"Rendering", L"fix_sv_position", false, NULL);
+	G->decompiler_settings.recompileVs = GetIniBool(L"Rendering", L"recompile_all_vs", false, NULL);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_DepthTexture1", 0, setting, MAX_PATH))
 	{
 		char buf[MAX_PATH];
 		wcstombs(buf, setting, MAX_PATH);
 		char *end = RightStripA(buf);
-		G->ZRepair_DepthTextureReg1 = *end; *(end - 1) = 0;
+		G->decompiler_settings.ZRepair_DepthTextureReg1 = *end; *(end - 1) = 0;
 		char *start = buf; while (isspace(*start)) start++;
-		G->ZRepair_DepthTexture1 = start;
+		G->decompiler_settings.ZRepair_DepthTexture1 = start;
 	}
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_DepthTexture2", 0, setting, MAX_PATH))
 	{
 		char buf[MAX_PATH];
 		wcstombs(buf, setting, MAX_PATH);
 		char *end = RightStripA(buf);
-		G->ZRepair_DepthTextureReg2 = *end; *(end - 1) = 0;
+		G->decompiler_settings.ZRepair_DepthTextureReg2 = *end; *(end - 1) = 0;
 		char *start = buf; while (isspace(*start)) start++;
-		G->ZRepair_DepthTexture2 = start;
+		G->decompiler_settings.ZRepair_DepthTexture2 = start;
 	}
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_ZPosCalc1", 0, setting, MAX_PATH))
-		G->ZRepair_ZPosCalc1 = readStringParameter(setting);
+		G->decompiler_settings.ZRepair_ZPosCalc1 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_ZPosCalc2", 0, setting, MAX_PATH))
-		G->ZRepair_ZPosCalc2 = readStringParameter(setting);
+		G->decompiler_settings.ZRepair_ZPosCalc2 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_PositionTexture", 0, setting, MAX_PATH))
-		G->ZRepair_PositionTexture = readStringParameter(setting);
+		G->decompiler_settings.ZRepair_PositionTexture = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_PositionCalc", 0, setting, MAX_PATH))
-		G->ZRepair_WorldPosCalc = readStringParameter(setting);
+		G->decompiler_settings.ZRepair_WorldPosCalc = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_Dependencies1", 0, setting, MAX_PATH))
 	{
 		char buf[MAX_PATH];
@@ -4570,7 +4619,7 @@ void LoadConfigFile()
 		while (*start)
 		{
 			char *end = start; while (*end != ',' && *end && *end != ' ') ++end;
-			G->ZRepair_Dependencies1.push_back(string(start, end));
+			G->decompiler_settings.ZRepair_Dependencies1.push_back(string(start, end));
 			start = end; if (*start == ',') ++start;
 		}
 	}
@@ -4582,7 +4631,7 @@ void LoadConfigFile()
 		while (*start)
 		{
 			char *end = start; while (*end != ',' && *end && *end != ' ') ++end;
-			G->ZRepair_Dependencies2.push_back(string(start, end));
+			G->decompiler_settings.ZRepair_Dependencies2.push_back(string(start, end));
 			start = end; if (*start == ',') ++start;
 		}
 	}
@@ -4594,7 +4643,7 @@ void LoadConfigFile()
 		while (*start)
 		{
 			char *end = start; while (*end != ',' && *end && *end != ' ') ++end;
-			G->InvTransforms.push_back(string(start, end));
+			G->decompiler_settings.InvTransforms.push_back(string(start, end));
 			start = end; if (*start == ',') ++start;
 		}
 	}
@@ -4603,23 +4652,24 @@ void LoadConfigFile()
 		uint32_t hash;
 		swscanf_s(setting, L"%08lx", &hash);
 		G->ZBufferHashToInject = hash;
+		G->decompiler_settings.ZRepair_DepthBuffer = !!G->ZBufferHashToInject;
 	}
 	if (GetIniStringAndLog(L"Rendering", L"fix_BackProjectionTransform1", 0, setting, MAX_PATH))
-		G->BackProject_Vector1 = readStringParameter(setting);
+		G->decompiler_settings.BackProject_Vector1 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_BackProjectionTransform2", 0, setting, MAX_PATH))
-		G->BackProject_Vector2 = readStringParameter(setting);
+		G->decompiler_settings.BackProject_Vector2 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition1", 0, setting, MAX_PATH))
-		G->ObjectPos_ID1 = readStringParameter(setting);
+		G->decompiler_settings.ObjectPos_ID1 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition2", 0, setting, MAX_PATH))
-		G->ObjectPos_ID2 = readStringParameter(setting);
+		G->decompiler_settings.ObjectPos_ID2 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition1Multiplier", 0, setting, MAX_PATH))
-		G->ObjectPos_MUL1 = readStringParameter(setting);
+		G->decompiler_settings.ObjectPos_MUL1 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition2Multiplier", 0, setting, MAX_PATH))
-		G->ObjectPos_MUL2 = readStringParameter(setting);
+		G->decompiler_settings.ObjectPos_MUL2 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_MatrixOperand1", 0, setting, MAX_PATH))
-		G->MatrixPos_ID1 = readStringParameter(setting);
+		G->decompiler_settings.MatrixPos_ID1 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_MatrixOperand1Multiplier", 0, setting, MAX_PATH))
-		G->MatrixPos_MUL1 = readStringParameter(setting);
+		G->decompiler_settings.MatrixPos_MUL1 = readStringParameter(setting);
 
 	// [Hunting]
 	ParseHuntingSection();
@@ -4807,6 +4857,9 @@ static void MarkAllShadersDeferredUnprocessed()
 		// any that are loaded from disk:
 		i->second.deferred_replacement_processed = false;
 	}
+
+	// TODO: If ShaderRegex hash is unchanged leave these shaders in place
+	// and just update the ShaderOverrides & filter_index
 }
 
 void ReloadConfig(HackerDevice *device)

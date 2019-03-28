@@ -2483,6 +2483,56 @@ float CommandListOperand::process_texture_filter(CommandListState *state)
 	return 1.0;
 }
 
+float CommandListOperand::process_shader_filter(CommandListState *state)
+{
+	HackerContext *mHackerContext = state->mHackerContext;
+	ID3D11DeviceChild *shader = NULL;
+
+	switch (shader_filter_target) {
+		case L'v':
+			shader = mHackerContext->mCurrentVertexShaderHandle;
+			break;
+		case L'h':
+			shader = mHackerContext->mCurrentHullShaderHandle;
+			break;
+		case L'd':
+			shader = mHackerContext->mCurrentDomainShaderHandle;
+			break;
+		case L'g':
+			shader = mHackerContext->mCurrentGeometryShaderHandle;
+			break;
+		case L'p':
+			shader = mHackerContext->mCurrentPixelShaderHandle;
+			break;
+		case L'c':
+			shader = mHackerContext->mCurrentComputeShaderHandle;
+			break;
+		default:
+			LogOverlay(LOG_DIRE, "BUG: Unknown shader filter type: \"%C\"\n", shader_filter_target);
+			break;
+	}
+
+	// Negative zero means no shader bound:
+	if (!shader)
+		return -0.0;
+
+	ShaderMap::iterator shader_it = lookup_shader_hash(shader);
+
+	if (shader_it == G->mShaders.end())
+		return 0.0;
+
+	// Positive zero means shader bound with no ShaderOverride
+	ShaderOverrideMap::iterator override = lookup_shaderoverride(shader_it->second);
+	if (override == G->mShaderOverrideMap.end())
+		return 0.0;
+
+	if (override->second.filter_index != FLT_MAX)
+		return override->second.filter_index;
+
+	// Matched ShaderOverride / ShaderRegex, but no filter_index:
+	return 1.0;
+}
+
 void CommandList::clear()
 {
 	commands.clear();
@@ -2918,6 +2968,8 @@ float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device
 			return (float)state->window_rect.bottom;
 		case ParamOverrideType::TEXTURE:
 			return process_texture_filter(state);
+		case ParamOverrideType::SHADER:
+			return process_shader_filter(state);
 		case ParamOverrideType::VERTEX_COUNT:
 			if (state->call_info)
 				return (float)state->call_info->VertexCount;
@@ -3949,8 +4001,30 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 		return operand_allowed_in_context(type, scope);
 	}
 
+	// Try parsing value as a shader target for partner filtering
+	// WARNING: This test is especially susceptible to an uninitialised
+	//          %n fooling it into thinking it has parsed the entire string
+	//          if the stack garbage happens to contain operand->length().
+	//          This is because the %n does not immediately follow another
+	//          conversion specification and does not alter the return
+	//          value, so the return value will not distinguish between
+	//          early termination and completion, and since %lc will match
+	//          any character this can trigger easily. Seems to only occur
+	//          on vs2013, though I'm not positive if vs2017 zeroes out
+	//          len1 or dumb luck gave different values in the stack.
+	len1 = 0;
+	ret = swscanf_s(operand->c_str(), L"%lcs%n", &shader_filter_target, 1, &len1);
+	if (ret == 1 && len1 == operand->length()) {
+		switch(shader_filter_target) {
+		case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
+			type = ParamOverrideType::SHADER;
+			return operand_allowed_in_context(type, scope);
+		}
+	}
+
 	// Try parsing value as a scissor rectangle. scissor_<side> also
 	// appears in the keywords list for uses of the default rectangle 0.
+	len1 = 0;
 	ret = swscanf_s(operand->c_str(), L"scissor%u_%n", &scissor, &len1);
 	if (ret == 1 && scissor < D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE) {
 		if (!wcscmp(operand->c_str() + len1, L"left"))
