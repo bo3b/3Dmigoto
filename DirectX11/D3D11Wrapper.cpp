@@ -469,19 +469,6 @@ void InitD311()
 		DoubleBeepExit();
 	}
 
-	// Another interesting game code path is for a game to directly call 
-	// CreateDeviceAndSwapChain, without making an IDXGIFactory object.  This seems
-	// to be much older games/engines.  If that happens, our hook for CreateSwapChain
-	// has yet to be created, and thus we will have a nullptr for it.  
-	// Let's call the Hooked_CreateDXGIFactory, just to be certain it is initialized.
-	// If it already has been done, this will simply create a factory we can Release.
-
-	IDXGIFactory* dxgiFactory;
-	HRESULT hr = Hooked_CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
-	if (SUCCEEDED(hr))
-		dxgiFactory->Release();
-
-
 	_D3DKMTQueryAdapterInfo = (tD3DKMTQueryAdapterInfo)GetProcAddress(hD3D11, "D3DKMTQueryAdapterInfo");
 	_OpenAdapter10 = (tOpenAdapter10)GetProcAddress(hD3D11, "OpenAdapter10");
 	_OpenAdapter10_2 = (tOpenAdapter10_2)GetProcAddress(hD3D11, "OpenAdapter10_2");
