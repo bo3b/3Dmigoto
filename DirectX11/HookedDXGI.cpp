@@ -477,6 +477,10 @@ static void wrap_swap_chain(HackerDevice *hackerDevice,
 		}
 	}
 
+	// For 3DMigoto's crash handler emergency switch to windowed mode function:
+	if (overrideSwapChainDesc && !overrideSwapChainDesc->Windowed)
+		last_fullscreen_swap_chain = origSwapChain;
+
 	// When creating a new swapchain, we can assume this is the game creating
 	// the most important object. Return the wrapped swapchain to the game so it
 	// will call our Present.
@@ -811,9 +815,6 @@ HRESULT __stdcall UnhookableCreateSwapChain(
 	IDXGISwapChain *retChain = ppSwapChain ? *ppSwapChain : nullptr;
 	LogInfo("  CreateSwapChain returned handle = %p\n", retChain);
 	analyse_iunknown(retChain);
-
-	if (pDesc && !pDesc->Windowed)
-		last_fullscreen_swap_chain = retChain;
 
 	wrap_swap_chain(hackerDevice, ppSwapChain, pDesc, &origSwapChainDesc);
 
