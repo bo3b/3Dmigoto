@@ -433,8 +433,7 @@ static void override_factory2_swap_chain(
 static void wrap_swap_chain(HackerDevice *hackerDevice,
 		IDXGISwapChain **ppSwapChain,
 		DXGI_SWAP_CHAIN_DESC *overrideSwapChainDesc,
-		DXGI_SWAP_CHAIN_DESC *origSwapChainDesc,
-		IDXGIFactory *factory)
+		DXGI_SWAP_CHAIN_DESC *origSwapChainDesc)
 {
 	HackerContext *hackerContext = NULL;
 	HackerSwapChain *swapchainWrap = NULL;
@@ -466,7 +465,7 @@ static void wrap_swap_chain(HackerDevice *hackerDevice,
 	else								// Upscaling case
 	{
 		swapchainWrap = new HackerUpscalingSwapChain(origSwapChain, hackerDevice, hackerContext,
-			origSwapChainDesc, overrideSwapChainDesc->BufferDesc.Width, overrideSwapChainDesc->BufferDesc.Height, factory);
+			origSwapChainDesc, overrideSwapChainDesc->BufferDesc.Width, overrideSwapChainDesc->BufferDesc.Height);
 		LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, origSwapChain);
 
 		if (G->SCREEN_UPSCALING == 2 || !origSwapChainDesc->Windowed)
@@ -816,7 +815,7 @@ HRESULT __stdcall UnhookableCreateSwapChain(
 	if (pDesc && !pDesc->Windowed)
 		last_fullscreen_swap_chain = retChain;
 
-	wrap_swap_chain(hackerDevice, ppSwapChain, pDesc, &origSwapChainDesc, This);
+	wrap_swap_chain(hackerDevice, ppSwapChain, pDesc, &origSwapChainDesc);
 
 	LogInfo("->UnhookableCreateSwapChain result %#x\n", hr);
 out_release:
