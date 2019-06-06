@@ -775,7 +775,7 @@ static void HookFactory2CreateSwapChainMethods(IDXGIFactory2* dxgiFactory)
 
 // -----------------------------------------------------------------------------
 
-HRESULT(__stdcall *fnOrigCreateSwapChain)(
+static HRESULT(__stdcall *fnOrigCreateSwapChain)(
 	IDXGIFactory * This,
 	/* [annotation][in] */
 	_In_  IUnknown *pDevice,
