@@ -791,6 +791,8 @@ static HackerDevice* wrap_d3d11_device_and_context(ID3D11Device **ppDevice, ID3D
 	return deviceWrap;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 // For creating the device, we need to call the original D3D11CreateDevice in order to initialize
 // Direct3D, and collect the original Device and original Context.  Both of those will be handed
 // off to the wrapped HackerDevice and HackerContext objects, so they can call out to the originals
@@ -803,10 +805,30 @@ static HackerDevice* wrap_d3d11_device_and_context(ID3D11Device **ppDevice, ID3D
 // platform_update required type.  Since it's a superset, we can in general just
 // the reference as a normal ID3D11Device.
 // In the no platform_update case, the mOrigDevice1 will actually be an ID3D11Device.
+//
+// This is the actual routine that is wrapping the d3d11.dll function. Because
+// it's a wrapper, and not a hook, we can have scenarios where another tool
+// will hook this function. In the past we attempted to call this from
+// CreateDeviceAndSwapChain to simplify our init paths, however doing so
+// interacted badly with SpecialK, which has a similar init path simplification
+// where they implement CreateDevice by calling CreateDeviceAndSwapChain,
+// creating an infinite recursive loop between the two. Previously we resolved
+// that via the use of internal-only "unhookable" routines, however our
+// CreateDeviceAndSwapChain change had also inconsistently broken the Steam
+// overlay so we have now reverted all of that and once again implement
+// CreateDeviceAndSwapChain and CreateDevice separately, with utility routines
+// to reduce duplicated code between the two.
+//
+// The takeaway lessons are:
+// 1. Don't reimplement DirectX routines in terms of others as we may break
+//    assumptions other tools rely on.
+// 2. Each routine called from the game should call through to the same routine
+//    in DirectX.
+// 3. Simplify similar routines via utility functions or templates, not by
+//    calling one from the other, if the routines may have been hooked by an
+//    external tool (DLL exports or public COM methods).
 
-// Internal only version of CreateDevice, to avoid other tools that hook this.
-
-static HRESULT WINAPI UnhookableCreateDevice(
+HRESULT WINAPI D3D11CreateDevice(
 	_In_opt_        IDXGIAdapter        *pAdapter,
 	D3D_DRIVER_TYPE     DriverType,
 	HMODULE             Software,
@@ -818,7 +840,25 @@ static HRESULT WINAPI UnhookableCreateDevice(
 	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
 	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
 {
-	LogInfo("-- UnhookableCreateDevice called\n");
+	if (get_tls()->hooking_quirk_protection) {
+		LogInfo("Hooking Quirk: Unexpected call back into D3D11CreateDevice, passing through\n");
+		// No confirmed cases
+		return _D3D11CreateDevice(pAdapter, DriverType, Software,
+				Flags, pFeatureLevels, FeatureLevels,
+				SDKVersion, ppDevice, pFeatureLevel,
+				ppImmediateContext);
+	}
+
+	InitD311();
+
+	LogInfo("\n\n *** D3D11CreateDevice called with\n");
+	LogInfo("    pAdapter = %p\n", pAdapter);
+	LogInfo("    Flags = %#x\n", Flags);
+	LogInfo("    pFeatureLevels = %#x\n", pFeatureLevels ? *pFeatureLevels : 0);
+	LogInfo("    FeatureLevels = %d\n", FeatureLevels);
+	LogInfo("    ppDevice = %p\n", ppDevice);
+	LogInfo("    pFeatureLevel = %#x\n", pFeatureLevel ? *pFeatureLevel : 0);
+	LogInfo("    ppImmediateContext = %p\n", ppImmediateContext);
 
 	if (ForceDX11(const_cast<D3D_FEATURE_LEVEL*>(pFeatureLevels)))
 		return E_INVALIDARG;
@@ -853,58 +893,9 @@ static HRESULT WINAPI UnhookableCreateDevice(
 
 	wrap_d3d11_device_and_context(ppDevice, ppImmediateContext);
 
-	LogInfo("->UnhookableCreateDevice result = %x\n", ret);
+	LogInfo("->D3D11CreateDevice result = %x\n", ret);
 
 	return ret;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// This is the actual routine that is wrapping the d3d11.dll function.
-// Because it's a wrapper, and not a hook, we can have scenarios where another tool will
-// hook this function.  When we call through to this from our CreateDeviceAndSwapChain,
-// that then sets up a recursive loop.  To avoid this, we can just put our work function
-// outside of this wrapper function, where it will not be hooked.  
-//
-// We see this behavior with the SpecialK tool, and this solves a crash with it.
-
-HRESULT WINAPI D3D11CreateDevice(
-	_In_opt_        IDXGIAdapter        *pAdapter,
-	D3D_DRIVER_TYPE     DriverType,
-	HMODULE             Software,
-	UINT                Flags,
-	_In_reads_opt_(FeatureLevels) const D3D_FEATURE_LEVEL   *pFeatureLevels,
-	UINT                FeatureLevels,
-	UINT                SDKVersion,
-	_Out_opt_       ID3D11Device        **ppDevice,
-	_Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
-	_Out_opt_       ID3D11DeviceContext **ppImmediateContext)
-{
-	if (get_tls()->hooking_quirk_protection) {
-		LogInfo("Hooking Quirk: Unexpected call back into D3D11CreateDevice, passing through\n");
-		// No confirmed cases
-		return _D3D11CreateDevice(pAdapter, DriverType, Software,
-				Flags, pFeatureLevels, FeatureLevels,
-				SDKVersion, ppDevice, pFeatureLevel,
-				ppImmediateContext);
-	}
-
-	InitD311();
-
-	LogInfo("\n\n *** D3D11CreateDevice called with\n");
-	LogInfo("    pAdapter = %p\n", pAdapter);
-	LogInfo("    Flags = %#x\n", Flags);
-	LogInfo("    pFeatureLevels = %#x\n", pFeatureLevels ? *pFeatureLevels : 0);
-	LogInfo("    FeatureLevels = %d\n", FeatureLevels);
-	LogInfo("    ppDevice = %p\n", ppDevice);
-	LogInfo("    pFeatureLevel = %#x\n", pFeatureLevel ? *pFeatureLevel : 0);
-	LogInfo("    ppImmediateContext = %p\n", ppImmediateContext);
-
-	HRESULT hr = UnhookableCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels,
-		FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
-
-	LogInfo("->D3D11CreateDevice result = %x\n\n", hr);
-	return hr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -914,27 +905,36 @@ HRESULT WINAPI D3D11CreateDevice(
 // ppSwapChain.  Why you would call CreateDeviceAndSwapChain, then pass null is anyone's
 // guess.  Because of that sort of silliness, these routines are now trying to be fully
 // null safe, and never access anything without checking first.
-// 
+//
 // See notes in CreateDevice.
 //
-// 1-18-18: All new strategy here for creating swapchains, based on the success of
-//	doing single-layer wrapping, and the direct hook for IDXGIFactory->CreateSwapChain.
-//	A fundamental problem for our wrapping is this call- D3D11CreateDeviceAndSwapChain.
-//	Because it creates a swapchain implicitly, that means there has always been two
-//	paths to CreateSwapChain, one with a HackerDevice, wrapped as part of them taking
-//	the secret path through QueryInterface, and one an ID3D11Device from here, where
-//	it's in the guts of this call.  That has caused all sorts of knock-on effects,
-//	because they are too different from our perspective.
+// 2019-06-07:
+// This procedure has now gone through several incarnations and obsolete
+// comments have now been removed. The current code is actually more similar to
+// much older versions of the code than other interim versions, except using
+// utility routines to reduce duplicated code between this and CreateDevice /
+// CreateSwapChain. It is important to understand why some of the interim
+// versions are no longer in use so we don't repeat the same mistakes:
 //
-// New approach: break this call into two, and not call the original.  They are
-// fundamentally two pieces, so we'll just create a Device, then create a SwapChain.
-// This avoids the complexity of using globals, or after the fact fixing object 
-// references.  And simplifies the CreateSwapChain, and removes duplicate code. This
-// one call has been creating enormous problems, so let's just fix it instead of all
-// the problems.  Current Windows MSDN recommendation is to not use this call.
+// At one point we had D3D11CreateDeviceAndSwapChain reimplemented by calling
+// the above D3D11CreateDevice and IDXGIFactory::CreateSwapChain with the goal
+// of reducing our init path complexity. This caused issues with SpecialK and
+// the Steam overlay because it broke assumptions that they had made on how
+// DirectX init works. In the case of SpecialK it reimplemented
+// D3D11CreateDevice by calling D3D11CreateDeviceAndSwapChain, which created an
+// infinite recursion loop between the two. In the case of Steam this
+// reimplemetation was able to bypass their hook on CreateSwapChain (depending
+// on hooking order) by calling the Deviare trampoline to go through to the
+// original function rather than calling the hooked CreateSwapChain.
 //
-// Using this reference for the secret path: 
-//	https://stackoverflow.com/questions/27270504/directx-creating-the-swapchain
+// At some point we had an incarnation of this routine that depended on DirectX
+// internally calling CreateSwapChain and triggering our hook on that routine.
+// This caused all sorts of trouble since it handed our hook a DirectX device
+// while we expected a HackerDevice. It's worth noting that this code path now
+// technically exists once again, but we have since introduced detection for
+// this particular quirk and our CreateSwapChain hook will notice this and pass
+// the call straight through to DirectX without the rest of the processing that
+// call would usually do, and we instead wrap the swap chain from here.
 
 HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	_In_opt_			IDXGIAdapter         *pAdapter,
