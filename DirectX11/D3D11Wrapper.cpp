@@ -703,7 +703,7 @@ static bool ForceDX11(D3D_FEATURE_LEVEL *featureLevels)
 	return false;
 }
 
-static void wrap_d3d11_device_and_context(ID3D11Device **ppDevice, ID3D11DeviceContext **ppImmediateContext)
+static HackerDevice* wrap_d3d11_device_and_context(ID3D11Device **ppDevice, ID3D11DeviceContext **ppImmediateContext)
 {
 	// Optional parameters means these might be null.
 	ID3D11Device *retDevice = ppDevice ? *ppDevice : nullptr;
@@ -787,6 +787,8 @@ static void wrap_d3d11_device_and_context(ID3D11Device **ppDevice, ID3D11DeviceC
 
 	LogInfo("-> device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n",
 		origDevice1, deviceWrap, origContext1, contextWrap);
+
+	return deviceWrap;
 }
 
 // For creating the device, we need to call the original D3D11CreateDevice in order to initialize
@@ -959,7 +961,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 				ppDevice, pFeatureLevel, ppImmediateContext);
 	}
 
-	HRESULT hr;
+	DXGI_SWAP_CHAIN_DESC origSwapChainDesc;
 
 	InitD311();
 
@@ -974,88 +976,47 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	LogInfo("    pFeatureLevel = %#x\n", pFeatureLevel ? *pFeatureLevel: 0);
 	LogInfo("    ppImmediateContext = %p\n", ppImmediateContext);
 
+	if (ForceDX11(const_cast<D3D_FEATURE_LEVEL*>(pFeatureLevels)))
+		return E_INVALIDARG;
 
-	// Create the Device that the caller specified, but using our interal UnhookableCreateDevice
-	// on purpose, so that we get a HackerDevice back in ppDevice.  
-	hr = UnhookableCreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion,
-		ppDevice, pFeatureLevel, ppImmediateContext);
+#if _DEBUG_LAYER
+	Flags = EnableDebugFlags(Flags);
+#endif
 
-	// Can fail with null arguments, so follow the behavior of the original call.	
-	if (FAILED(hr))
+	override_swap_chain(pSwapChainDesc, &origSwapChainDesc);
+
+	get_tls()->hooking_quirk_protection = true;
+	HRESULT ret = (*_D3D11CreateDeviceAndSwapChain)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
+		FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain, ppDevice, pFeatureLevel, ppImmediateContext);
+	get_tls()->hooking_quirk_protection = false;
+
+	if (FAILED(ret))
 	{
-		LogInfo("->failed with HRESULT=%x\n", hr);
-		return hr;
+		LogInfo("->failed with HRESULT=%x\n", ret);
+		return ret;
 	}
 
-	// Optional parameters means these might be null.  If ppSwapChain is null, we 
-	// can't call through to CreateSwapChain and thus get our hook which wraps the
-	// returned swapchain.  But, this is legal, so just exit with what we've got so far.
-	if (!ppSwapChain)
-	{
-		LogInfo("->Return with HRESULT=%x, No swapchain created.\n", hr);
-		return hr;
-	}
+	// Optional parameters means these might be null.
+	ID3D11Device *retDevice = ppDevice ? *ppDevice : nullptr;
+	ID3D11DeviceContext *retContext = ppImmediateContext ? *ppImmediateContext : nullptr;
+	IDXGISwapChain *retSwapChain = ppSwapChain ? *ppSwapChain : nullptr;
 
-	// If we do have a ppSwapChain, but we do not have a ppDevice, we can't handle
-	// this scenario.  It doesn't make sense to do this, but that doesn't mean it
-	// won't happen.  We need the ppDevice in order to find the original factory.
-	// They do too, but maybe there is something tricky we don't know about.  
-	// If this scenario happens, let's do a hard failure with logging, to let us know.
-	if (!ppDevice)
-		goto fatalExit;
+	LogInfo("  D3D11CreateDeviceAndSwapChain returned device handle = %p, context handle = %p, swap chain = %p\n",
+		retDevice, retContext, retSwapChain);
+	analyse_iunknown(retDevice);
+	analyse_iunknown(retContext);
+	analyse_iunknown(retSwapChain);
 
+#if _DEBUG_LAYER
+	ShowDebugInfo(retDevice);
+#endif
 
-	// Now that we successfully created a HackerDevice and maybe a HackerContext, we can
-	// create a SwapChain to match.  We'll use the secret path to get the proper factory
-	// for this Device.  
-	IDXGIDevice* dxgiDevice;
-	hr = (*ppDevice)->QueryInterface(__uuidof(IDXGIDevice), (void **)& dxgiDevice);
-	if (FAILED(hr))
-		goto fatalExit;
-	IDXGIAdapter* dxgiAdapter;
-	hr = dxgiDevice->GetParent(__uuidof(IDXGIAdapter), (void **)& dxgiAdapter);
-	if (FAILED(hr))
-		goto fatalExit;
-	IDXGIFactory* dxgiFactory;
-	hr = dxgiAdapter->GetParent(__uuidof(IDXGIFactory), (void **)& dxgiFactory);
-	if (FAILED(hr))
-		goto fatalExit;
+	HackerDevice *deviceWrap = wrap_d3d11_device_and_context(ppDevice, ppImmediateContext);
+	wrap_swap_chain(deviceWrap, ppSwapChain, pSwapChainDesc, &origSwapChainDesc);
 
-	// Directly call our root function UnhookableCreateSwapChain, to avoid any possible
-	// hooks on the factory function. This will always create and return the HackerSwapChain, 
-	// create the Overlay, and ForceDisplayParams if required.
-	hr = UnhookableCreateSwapChain(dxgiFactory, *ppDevice, pSwapChainDesc, ppSwapChain);
+	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x\n", ret);
 
-	dxgiFactory->Release();
-	dxgiAdapter->Release();
-	dxgiDevice->Release();
-
-	// If the CreateSwapChain fails, we are in the middle of creating Device and
-	// Context.  Let's release those, and mark them null to match the original semantics.
-	if (FAILED(hr))
-	{
-		(*ppDevice)->Release();
-		*ppDevice = nullptr;
-		if (ppImmediateContext)
-		{
-			(*ppImmediateContext)->Release();
-			*ppImmediateContext = nullptr;
-		}
-
-		LogInfo("->D3D11CreateDeviceAndSwapChain failed with HRESULT=%x\n", hr);
-		return hr;
-	}
-
-	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x, swapchain wrapper = %p\n\n", hr, *ppSwapChain);
-	return hr;
-
-
-fatalExit:
-	// Fatal error.  If we can't do these calls, we can't play the game.  
-	// Hard failure is superior to trying to workaround a problem.  We do not
-	// expect to ever see this happen.
-	LogInfo("*** Fatal error in CreateDeviceAndSwapChain with HRESULT=%x\n", hr);
-	DoubleBeepExit();
+	return ret;
 }
 
 // -----------------------------------------------------------------------------------------------

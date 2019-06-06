@@ -360,7 +360,7 @@ static void ForceDisplayParams1(DXGI_SWAP_CHAIN_DESC1 *pDesc, DXGI_SWAP_CHAIN_FU
 // 2 variants - we could likely go further and share more code if we wanted
 // though.
 
-static void override_swap_chain(DXGI_SWAP_CHAIN_DESC *pDesc, DXGI_SWAP_CHAIN_DESC *origSwapChainDesc)
+void override_swap_chain(DXGI_SWAP_CHAIN_DESC *pDesc, DXGI_SWAP_CHAIN_DESC *origSwapChainDesc)
 {
 	if (pDesc == nullptr)
 		return;
@@ -430,7 +430,7 @@ static void override_factory2_swap_chain(
 	// FIXME: Implement upscaling
 }
 
-static void wrap_swap_chain(HackerDevice *hackerDevice,
+void wrap_swap_chain(HackerDevice *hackerDevice,
 		IDXGISwapChain **ppSwapChain,
 		DXGI_SWAP_CHAIN_DESC *overrideSwapChainDesc,
 		DXGI_SWAP_CHAIN_DESC *origSwapChainDesc)
@@ -439,7 +439,7 @@ static void wrap_swap_chain(HackerDevice *hackerDevice,
 	HackerSwapChain *swapchainWrap = NULL;
 	IDXGISwapChain1 *origSwapChain = NULL;
 
-	if (!hackerDevice)
+	if (!hackerDevice || !ppSwapChain || !*ppSwapChain)
 		return;
 
 	// Always upcast to IDXGISwapChain1 whenever possible.

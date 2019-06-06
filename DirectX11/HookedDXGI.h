@@ -3,6 +3,8 @@
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
 
+#include "HackerDevice.h"
+
 // -----------------------------------------------------------------------------
 // This class is 'Hooked', instead of 'Hacker', because it's a hook version, instead
 // of a wrapper version.  The difference is that this will only need a small number
@@ -62,6 +64,11 @@ extern "C" HRESULT __stdcall UnhookableCreateSwapChain(
 	/* [annotation][out] */
 	_Out_  IDXGISwapChain **ppSwapChain);
 
+void override_swap_chain(DXGI_SWAP_CHAIN_DESC *pDesc, DXGI_SWAP_CHAIN_DESC *origSwapChainDesc);
+void wrap_swap_chain(HackerDevice *hackerDevice,
+		IDXGISwapChain **ppSwapChain,
+		DXGI_SWAP_CHAIN_DESC *overrideSwapChainDesc,
+		DXGI_SWAP_CHAIN_DESC *origSwapChainDesc);
 
 // Called from HookedDXGI
 
