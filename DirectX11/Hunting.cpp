@@ -452,43 +452,7 @@ static string Decompile(ID3DBlob *pShaderByteCode, string *asmText)
 //
 //   https://docs.microsoft.com/en-us/windows/desktop/api/d3dcommon/nn-d3dcommon-id3dinclude
 //   https://docs.microsoft.com/en-us/windows/desktop/direct3d11/d3d11-graphics-programming-guide-effects-compile#searching-for-include-files
-//
-// It is not at all clear from the doco how we are supposed to know what file
-// we are including *from*. The doco pretty clearly indicates that pParentData
-// can be NULL and should not be relied upon (it's also not exactly clear on
-// what pParentData actually is at the best of times - I gather it is the
-// pointer to the user allocated buffer of the file that included this one, if
-// that file was itself included from another file). Instead, the doco suggests
-// we track the paths we have seen so far so we can use them in the search
-// space when searching for further files. It gives this example where we would
-// have to remember "somewhereelse":
-//
-//     Main.hlsl:
-//     #include "somewhereelse\foo.h"
-//
-//     Foo.h:
-//     #include "bar.h"
-//
-// Well, that's great, but what about:
-//
-//     Main.hlsl:
-//     #include "somewhereelse\foo.h"
-//     #include "baz.h"
-//
-// When we get to the include for baz.h how do we know that we *aren't*
-// supposed to check somewhereelse? Say there was a baz.h in both?
-//
-// With a bit of experimentation I've determined that Open() and Close() work
-// like a stack. If a includes b and c, and b includes d then we would see
-// Open(b), Open(d), Close(d), Close(b), Open(c), Close(c). That means if we
-// keep track of the directories in a stack pushing entries on the Open calls
-// and popping them on the Close calls we can always ensure that we are
-// including the correct file. We never see an Open or Close call for a - we
-// have to pass the path for a into the handler separately from the D3DCompile
-// call, which we do via the constructor.
-//
-// CHECKME: Does the standard include handler actually remember 'somewhereelse'
-// at all?
+//   https://docs.microsoft.com/en-us/windows/desktop/api/d3dcompiler/nf-d3dcompiler-d3dcompile
 
 MigotoIncludeHandler::MigotoIncludeHandler(const char *path)
 {
@@ -496,6 +460,19 @@ MigotoIncludeHandler::MigotoIncludeHandler(const char *path)
 	push_dir(path);
 }
 
+// This tracks any directories mentioned when including files, so that files in
+// those directories can include other files relative to themselves rather than
+// having to specify the include path relative to the initial source file.
+// However, for backwards compatibility with D3D_COMPILE_STANDARD_FILE_INCLUDE
+// we do not currently make use of this - refer to the comment in Open() for how
+// to enable this if we want it.
+//
+// The Open() and Close() calls work like a stack - if a includes b and c, and
+// b includes d then we would see Open(b), Open(d), Close(d), Close(b),
+// Open(c), Close(c). Therefore, by keeping this directory stack in sync with
+// them we can ensure that we are including the correct file. We never see an
+// Open or Close call for a - we have to pass the path for a into the handler
+// separately from the D3DCompile call, which we do via the above constructor.
 void MigotoIncludeHandler::push_dir(const char *path)
 {
 	// D3DCompile accepts both forward and backslashes as path separators:
@@ -511,12 +488,37 @@ void MigotoIncludeHandler::push_dir(const char *path)
 
 HRESULT MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID *ppData, UINT *pBytes)
 {
-	string path = dir_stack.back() + pFileName;
 	char *buf = NULL;
 	DWORD size, read;
 	HANDLE f;
 
 	LogInfo("      MigotoIncludeHandler::Open(%p, %u, %s, %p)\n", this, IncludeType, pFileName, pParentData);
+
+	// For backwards compatibility with D3D_COMPILE_STANDARD_FILE_INCLUDE
+	// we only search for shaders relative to the *initial* source file.
+	// This is a bit silly, and it would be better to search from the
+	// current source file - we track the necessary info for this and
+	// changing the below line from front() to back() will do this, however
+	// since there are some (perhaps contrived) edge cases where this could
+	// concievably change behaviour we don't do this as yet "just in case".
+	//
+	// One example where the behaviour would change is:
+	// a: #include "b/c"
+	// b/c: #include "d"
+	// Where d exists in both the root and b.
+	//
+	// Sensibly we would want to include "b/d", but for backwards
+	// compatibility we include "d" from the root instead. We could make
+	// "b/d" have lower priority than "d", but TBH that's also very silly
+	// and unexpected behaviour - I'd rather we completely switch to
+	// sensible behaviour, or not change the behaviour at all.
+	//
+	// For now, the goal is to replace the standard include handler without
+	// changing behaviour, but this seems like a worthwhile change so we
+	// might consider adding a config option for it, or if we decide that
+	// the above edge case is not going to happen in the real world we
+	// could just make an executive decision to switch.
+	string path = dir_stack.front() + pFileName;
 
 	f = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE) {
