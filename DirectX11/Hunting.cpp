@@ -487,10 +487,8 @@ static string Decompile(ID3DBlob *pShaderByteCode, string *asmText)
 // have to pass the path for a into the handler separately from the D3DCompile
 // call, which we do via the constructor.
 //
-// CHECKME: #include <> vs #include ""
-// CHECKME: May need to include from the current working directory as well for
-// backwards compatibility with the standard include handler. If so, which
-// takes precedence if the same filename is found in both places?
+// CHECKME: Does the standard include handler actually remember 'somewhereelse'
+// at all?
 
 MigotoIncludeHandler::MigotoIncludeHandler(const char *path)
 {
@@ -502,7 +500,13 @@ void MigotoIncludeHandler::push_dir(const char *path)
 {
 	// D3DCompile accepts both forward and backslashes as path separators:
 	const char *dir_sep = max(strrchr(path, '\\'), strrchr(path, '/'));
-	dir_stack.push_back(string(path, dir_sep - path + 1));
+
+	// May not have a path separator if including from the current working
+	// directory instead of ShaderFixes:
+	if (dir_sep)
+		dir_stack.push_back(string(path, dir_sep - path + 1));
+	else
+		dir_stack.push_back("");
 }
 
 HRESULT MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID *ppData, UINT *pBytes)
@@ -513,13 +517,26 @@ HRESULT MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileNam
 	HANDLE f;
 
 	LogInfo("      MigotoIncludeHandler::Open(%p, %u, %s, %p)\n", this, IncludeType, pFileName, pParentData);
-	LogInfo("      Including \"%s\"\n", path.c_str());
 
 	f = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE) {
-		LogInfo("      Error opening included file: %s\n", path.c_str());
-		return E_FAIL;
+		// If the included file is not found relative to the includer
+		// D3D_COMPILE_STANDARD_FILE_INCLUDE falls back to trying to
+		// open the file from the current working directory. While I
+		// don't like particularly like this behaviour since we do not
+		// control the CWD and some games are known to use different
+		// working directories on different editions (e.g. FC4 /
+		// FCPrimal Steam vs UPlay) we do the same for the sake of
+		// maintaining backwards compatibility:
+		path = pFileName;
+		f = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (f == INVALID_HANDLE_VALUE) {
+			LogInfo("      Error opening included file: %s\n", path.c_str());
+			return E_FAIL;
+		}
 	}
+
+	LogInfo("      Including \"%s\"\n", path.c_str());
 
 	size = GetFileSize(f, 0);
 	buf = new char[size];
