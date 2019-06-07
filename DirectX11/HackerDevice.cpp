@@ -824,7 +824,8 @@ static bool ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 			// that we can make reloading work better when using includes:
 			wcstombs(apath, path, MAX_PATH);
 			MigotoIncludeHandler include_handler(apath);
-			HRESULT ret = D3DCompile(srcData, srcDataSize, apath, 0, &include_handler,
+			HRESULT ret = D3DCompile(srcData, srcDataSize, apath, 0,
+				G->recursive_include == -1 ? D3D_COMPILE_STANDARD_FILE_INCLUDE : &include_handler,
 				"main", tmpShaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &compiledOutput, &errorMsgs);
 			delete[] srcData; srcData = 0;
 			if (compiledOutput)

@@ -463,9 +463,8 @@ MigotoIncludeHandler::MigotoIncludeHandler(const char *path)
 // This tracks any directories mentioned when including files, so that files in
 // those directories can include other files relative to themselves rather than
 // having to specify the include path relative to the initial source file.
-// However, for backwards compatibility with D3D_COMPILE_STANDARD_FILE_INCLUDE
-// we do not currently make use of this - refer to the comment in Open() for how
-// to enable this if we want it.
+// For backwards compatibility with D3D_COMPILE_STANDARD_FILE_INCLUDE this has
+// to be enabled in the d3dx.ini
 //
 // The Open() and Close() calls work like a stack - if a includes b and c, and
 // b includes d then we would see Open(b), Open(d), Close(d), Close(b),
@@ -490,52 +489,49 @@ HRESULT MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileNam
 {
 	char *buf = NULL;
 	DWORD size, read;
+	string path;
 	HANDLE f;
 
 	LogInfo("      MigotoIncludeHandler::Open(%p, %u, %s, %p)\n", this, IncludeType, pFileName, pParentData);
 
 	// For backwards compatibility with D3D_COMPILE_STANDARD_FILE_INCLUDE
-	// we only search for shaders relative to the *initial* source file.
-	// This is a bit silly, and it would be better to search from the
-	// current source file - we track the necessary info for this and
-	// changing the below line from front() to back() will do this, however
-	// since there are some (perhaps contrived) edge cases where this could
-	// concievably change behaviour we don't do this as yet "just in case".
+	// we only search for shaders relative to the *initial* source file by
+	// default. This is a bit silly, so we have a configuration option to
+	// search from the current source file instead. We can't simply default
+	// to the sensible behaviour, because there are some contrived
+	// scenarios where it might change behaviour, e.g.
 	//
-	// One example where the behaviour would change is:
 	// a: #include "b/c"
 	// b/c: #include "d"
 	// Where d exists in both the root and b.
 	//
-	// Sensibly we would want to include "b/d", but for backwards
-	// compatibility we include "d" from the root instead. We could make
-	// "b/d" have lower priority than "d", but TBH that's also very silly
-	// and unexpected behaviour - I'd rather we completely switch to
-	// sensible behaviour, or not change the behaviour at all.
-	//
-	// For now, the goal is to replace the standard include handler without
-	// changing behaviour, but this seems like a worthwhile change so we
-	// might consider adding a config option for it, or if we decide that
-	// the above edge case is not going to happen in the real world we
-	// could just make an executive decision to switch.
-	string path = dir_stack.front() + pFileName;
+	// Sensibly we would want to include "b/d", but the standard include
+	// handler would include "d" from the root instead. This might be
+	// contrived enough to ignore it and drop the option, but its safer to
+	// include the option.
+	if (G->recursive_include)
+		path = dir_stack.back() + pFileName;
+	else
+		path = dir_stack.front() + pFileName;
 
 	f = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (f == INVALID_HANDLE_VALUE) {
+	if (f == INVALID_HANDLE_VALUE && !G->recursive_include) {
 		// If the included file is not found relative to the includer
 		// D3D_COMPILE_STANDARD_FILE_INCLUDE falls back to trying to
-		// open the file from the current working directory. While I
-		// don't like particularly like this behaviour since we do not
-		// control the CWD and some games are known to use different
-		// working directories on different editions (e.g. FC4 /
-		// FCPrimal Steam vs UPlay) we do the same for the sake of
-		// maintaining backwards compatibility:
+		// open the file from the current working directory, so we do
+		// the same for backwards compatibility.
+		//
+		// I'm not a huge fan of this since we do not control the CWD
+		// and some games are known to use different working
+		// directories on different editions (e.g. FC4 / FCPrimal Steam
+		// vs UPlay), so we disallow this if recursive_include is
+		// enabled as that already disables backwards compatibility.
 		path = pFileName;
 		f = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		if (f == INVALID_HANDLE_VALUE) {
-			LogInfo("      Error opening included file: %s\n", path.c_str());
-			return E_FAIL;
-		}
+	}
+	if (f == INVALID_HANDLE_VALUE) {
+		LogInfo("      Error opening included file: %s\n", path.c_str());
+		return E_FAIL;
 	}
 
 	LogInfo("      Including \"%s\"\n", path.c_str());
@@ -639,7 +635,8 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		// that we can make reloading work better when using includes:
 		wcstombs(apath, fullName, MAX_PATH);
 		MigotoIncludeHandler include_handler(apath);
-		HRESULT ret = D3DCompile(srcData.data(), srcDataSize, apath, 0, &include_handler,
+		HRESULT ret = D3DCompile(srcData.data(), srcDataSize, apath, 0,
+				G->recursive_include == -1 ? D3D_COMPILE_STANDARD_FILE_INCLUDE : &include_handler,
 			"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pByteCode, &pErrorMsgs);
 
 		LogInfo("    compile result for replacement HLSL shader: %x\n", ret);

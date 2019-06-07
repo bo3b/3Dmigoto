@@ -466,6 +466,7 @@ struct Globals
 	bool assemble_signature_comments;
 	bool disassemble_undecipherable_custom_data;
 	bool patch_cb_offsets;
+	int recursive_include;
 	uint32_t ZBufferHashToInject;
 	DecompilerSettings decompiler_settings;
 	bool DumpUsage;

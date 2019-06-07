@@ -1926,7 +1926,8 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 	wcstombs(apath, wpath, MAX_PATH);
 	{
 		MigotoIncludeHandler include_handler(apath);
-		hr = D3DCompile(srcData.data(), srcDataSize, apath, macros, &include_handler,
+		hr = D3DCompile(srcData.data(), srcDataSize, apath, macros,
+			G->recursive_include == -1 ? D3D_COMPILE_STANDARD_FILE_INCLUDE : &include_handler,
 			"main", shaderModel, (UINT)compile_flags, 0, ppBytecode, &pErrorMsgs);
 	}
 
