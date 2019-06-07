@@ -487,9 +487,11 @@ void MigotoIncludeHandler::push_dir(const char *path)
 
 HRESULT MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID *ppData, UINT *pBytes)
 {
+	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> codec;
 	char *buf = NULL;
 	DWORD size, read;
-	string path;
+	string apath;
+	wstring wpath;
 	HANDLE f;
 
 	LogInfo("      MigotoIncludeHandler::Open(%p, %u, %s, %p)\n", this, IncludeType, pFileName, pParentData);
@@ -510,11 +512,12 @@ HRESULT MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileNam
 	// contrived enough to ignore it and drop the option, but its safer to
 	// include the option.
 	if (G->recursive_include)
-		path = dir_stack.back() + pFileName;
+		apath = dir_stack.back() + pFileName;
 	else
-		path = dir_stack.front() + pFileName;
+		apath = dir_stack.front() + pFileName;
+	wpath = codec.from_bytes(apath);
 
-	f = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	f = CreateFile(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE && !G->recursive_include) {
 		// If the included file is not found relative to the includer
 		// D3D_COMPILE_STANDARD_FILE_INCLUDE falls back to trying to
@@ -526,15 +529,16 @@ HRESULT MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileNam
 		// directories on different editions (e.g. FC4 / FCPrimal Steam
 		// vs UPlay), so we disallow this if recursive_include is
 		// enabled as that already disables backwards compatibility.
-		path = pFileName;
-		f = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		apath = pFileName;
+		wpath = codec.from_bytes(apath);
+		f = CreateFile(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	}
 	if (f == INVALID_HANDLE_VALUE) {
-		LogInfo("      Error opening included file: %s\n", path.c_str());
+		LogInfo("      Error opening included file: %s\n", apath.c_str());
 		return E_FAIL;
 	}
 
-	LogInfo("      Including \"%s\"\n", path.c_str());
+	LogInfo("      Including \"%s\"\n", apath.c_str());
 
 	size = GetFileSize(f, 0);
 	buf = new char[size];
@@ -547,7 +551,7 @@ HRESULT MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileNam
 
 	*pBytes = size;
 	*ppData = buf;
-	push_dir(path.c_str());
+	push_dir(apath.c_str());
 	LogInfo("       -> %p\n", buf);
 
 	return S_OK;
