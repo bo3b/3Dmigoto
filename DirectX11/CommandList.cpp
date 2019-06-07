@@ -14,6 +14,7 @@
 #include "D3D11Wrapper.h"
 #include "IniHandler.h"
 #include "profiling.h"
+#include "Hunting.h"
 
 #include <D3DCompiler.h>
 
@@ -1923,8 +1924,11 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 	// Later we could add a custom include handler to track dependencies so
 	// that we can make reloading work better when using includes:
 	wcstombs(apath, wpath, MAX_PATH);
-	hr = D3DCompile(srcData.data(), srcDataSize, apath, macros, D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"main", shaderModel, (UINT)compile_flags, 0, ppBytecode, &pErrorMsgs);
+	{
+		MigotoIncludeHandler include_handler(apath);
+		hr = D3DCompile(srcData.data(), srcDataSize, apath, macros, &include_handler,
+			"main", shaderModel, (UINT)compile_flags, 0, ppBytecode, &pErrorMsgs);
+	}
 
 	if (pErrorMsgs) {
 		LPVOID errMsg = pErrorMsgs->GetBufferPointer();

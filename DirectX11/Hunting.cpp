@@ -446,7 +446,110 @@ static string Decompile(ID3DBlob *pShaderByteCode, string *asmText)
 	return decompiledCode;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Custom #include handler used to track which shaders need to be reloaded
+// after an included file is modified. Doco for the ID3DInclude interface:
+//
+//   https://docs.microsoft.com/en-us/windows/desktop/api/d3dcommon/nn-d3dcommon-id3dinclude
+//   https://docs.microsoft.com/en-us/windows/desktop/direct3d11/d3d11-graphics-programming-guide-effects-compile#searching-for-include-files
+//
+// It is not at all clear from the doco how we are supposed to know what file
+// we are including *from*. The doco pretty clearly indicates that pParentData
+// can be NULL and should not be relied upon (it's also not exactly clear on
+// what pParentData actually is at the best of times - I gather it is the
+// pointer to the user allocated buffer of the file that included this one, if
+// that file was itself included from another file). Instead, the doco suggests
+// we track the paths we have seen so far so we can use them in the search
+// space when searching for further files. It gives this example where we would
+// have to remember "somewhereelse":
+//
+//     Main.hlsl:
+//     #include "somewhereelse\foo.h"
+//
+//     Foo.h:
+//     #include "bar.h"
+//
+// Well, that's great, but what about:
+//
+//     Main.hlsl:
+//     #include "somewhereelse\foo.h"
+//     #include "baz.h"
+//
+// When we get to the include for baz.h how do we know that we *aren't*
+// supposed to check somewhereelse? Say there was a baz.h in both?
+//
+// With a bit of experimentation I've determined that Open() and Close() work
+// like a stack. If a includes b and c, and b includes d then we would see
+// Open(b), Open(d), Close(d), Close(b), Open(c), Close(c). That means if we
+// keep track of the directories in a stack pushing entries on the Open calls
+// and popping them on the Close calls we can always ensure that we are
+// including the correct file. We never see an Open or Close call for a - we
+// have to pass the path for a into the handler separately from the D3DCompile
+// call, which we do via the constructor.
+//
+// CHECKME: #include <> vs #include ""
+// CHECKME: May need to include from the current working directory as well for
+// backwards compatibility with the standard include handler. If so, which
+// takes precedence if the same filename is found in both places?
 
+MigotoIncludeHandler::MigotoIncludeHandler(const char *path)
+{
+	LogInfo("      MigotoIncludeHandler %p for \"%s\"\n", this, path);
+	push_dir(path);
+}
+
+void MigotoIncludeHandler::push_dir(const char *path)
+{
+	// D3DCompile accepts both forward and backslashes as path separators:
+	const char *dir_sep = max(strrchr(path, '\\'), strrchr(path, '/'));
+	dir_stack.push_back(string(path, dir_sep - path + 1));
+}
+
+HRESULT MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID *ppData, UINT *pBytes)
+{
+	string path = dir_stack.back() + pFileName;
+	char *buf = NULL;
+	DWORD size, read;
+	HANDLE f;
+
+	LogInfo("      MigotoIncludeHandler::Open(%p, %u, %s, %p)\n", this, IncludeType, pFileName, pParentData);
+	LogInfo("      Including \"%s\"\n", path.c_str());
+
+	f = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (f == INVALID_HANDLE_VALUE) {
+		LogInfo("      Error opening included file: %s\n", path.c_str());
+		return E_FAIL;
+	}
+
+	size = GetFileSize(f, 0);
+	buf = new char[size];
+
+	if (!ReadFile(f, buf, size, &read, 0) || size != read) {
+		LogInfo("      Error reading included file.\n");
+		goto err_free;
+	}
+	CloseHandle(f);
+
+	*pBytes = size;
+	*ppData = buf;
+	push_dir(path.c_str());
+	LogInfo("       -> %p\n", buf);
+
+	return S_OK;
+
+err_free:
+	delete [] buf;
+	CloseHandle(f);
+	return E_FAIL;
+}
+
+HRESULT MigotoIncludeHandler::Close(LPCVOID pData)
+{
+	LogInfo("      MigotoIncludeHandler::Close(%p, %p)\n", this, pData);
+	delete [] pData;
+	dir_stack.pop_back();
+	return S_OK;
+}
 
 // Compile a new shader from  HLSL text input, and report on errors if any.
 // Return the binary blob of pCode to be activated with CreateVertexShader or CreatePixelShader.
@@ -516,7 +619,8 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		// Later we could add a custom include handler to track dependencies so
 		// that we can make reloading work better when using includes:
 		wcstombs(apath, fullName, MAX_PATH);
-		HRESULT ret = D3DCompile(srcData.data(), srcDataSize, apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		MigotoIncludeHandler include_handler(apath);
+		HRESULT ret = D3DCompile(srcData.data(), srcDataSize, apath, 0, &include_handler,
 			"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pByteCode, &pErrorMsgs);
 
 		LogInfo("    compile result for replacement HLSL shader: %x\n", ret);

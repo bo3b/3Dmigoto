@@ -33,6 +33,7 @@
 #include "ResourceHash.h"
 #include "ShaderRegex.h"
 #include "CommandList.h"
+#include "Hunting.h"
 
 // A map to look up the HackerDevice from an IUnknown. The reason for using an
 // IUnknown as the key is that an ID3D11Device and IDXGIDevice are actually two
@@ -822,7 +823,8 @@ static bool ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 			// Later we could add a custom include handler to track dependencies so
 			// that we can make reloading work better when using includes:
 			wcstombs(apath, path, MAX_PATH);
-			HRESULT ret = D3DCompile(srcData, srcDataSize, apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+			MigotoIncludeHandler include_handler(apath);
+			HRESULT ret = D3DCompile(srcData, srcDataSize, apath, 0, &include_handler,
 				"main", tmpShaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &compiledOutput, &errorMsgs);
 			delete[] srcData; srcData = 0;
 			if (compiledOutput)
