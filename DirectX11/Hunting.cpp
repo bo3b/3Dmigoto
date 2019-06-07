@@ -456,7 +456,7 @@ static string Decompile(ID3DBlob *pShaderByteCode, string *asmText)
 
 MigotoIncludeHandler::MigotoIncludeHandler(const char *path)
 {
-	LogInfo("      MigotoIncludeHandler %p for \"%s\"\n", this, path);
+	LogDebug("      MigotoIncludeHandler %p for \"%s\"\n", this, path);
 	push_dir(path);
 }
 
@@ -494,7 +494,7 @@ HRESULT MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileNam
 	wstring wpath;
 	HANDLE f;
 
-	LogInfo("      MigotoIncludeHandler::Open(%p, %u, %s, %p)\n", this, IncludeType, pFileName, pParentData);
+	LogDebug("      MigotoIncludeHandler::Open(%p, %u, %s, %p)\n", this, IncludeType, pFileName, pParentData);
 
 	// For backwards compatibility with D3D_COMPILE_STANDARD_FILE_INCLUDE
 	// we only search for shaders relative to the *initial* source file by
@@ -538,7 +538,19 @@ HRESULT MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileNam
 		return E_FAIL;
 	}
 
-	LogInfo("      Including \"%s\"\n", apath.c_str());
+	// standard include handler doesn't seem to care which are used, so for
+	// compatibility neither do we. If we ever add internal/generated
+	// headers we might consider requiring they use the system form, e.g.
+	// #include <3dmigoto.h>
+	switch (IncludeType) {
+		case D3D_INCLUDE_LOCAL:
+			LogInfo("      #include \"%s\"\n", apath.c_str());
+			break;
+		case D3D_INCLUDE_SYSTEM:
+		default:
+			LogInfo("      #include <%s>\n", apath.c_str());
+			break;
+	}
 
 	size = GetFileSize(f, 0);
 	buf = new char[size];
@@ -552,7 +564,7 @@ HRESULT MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileNam
 	*pBytes = size;
 	*ppData = buf;
 	push_dir(apath.c_str());
-	LogInfo("       -> %p\n", buf);
+	LogDebug("       -> %p\n", buf);
 
 	return S_OK;
 
@@ -564,7 +576,7 @@ err_free:
 
 HRESULT MigotoIncludeHandler::Close(LPCVOID pData)
 {
-	LogInfo("      MigotoIncludeHandler::Close(%p, %p)\n", this, pData);
+	LogDebug("      MigotoIncludeHandler::Close(%p, %p)\n", this, pData);
 	delete [] pData;
 	dir_stack.pop_back();
 	return S_OK;
