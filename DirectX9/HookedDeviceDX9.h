@@ -1,0 +1,20 @@
+#pragma once
+#define CINTERFACE
+#define D3D9_NO_HELPERS
+#define COBJMACROS
+namespace D3D9Base
+{
+
+#include <d3d9.h>
+
+}
+#undef COBJMACROS
+#undef D3D9_NO_HELPERS
+#undef CINTERFACE
+enum class EnableHooksDX9;
+D3D9Base::IDirect3DDevice9* lookup_hooked_device_dx9(D3D9Base::IDirect3DDevice9 *orig_device);
+D3D9Base::IDirect3DDevice9Ex* lookup_hooked_device_dx9(D3D9Base::IDirect3DDevice9Ex *orig_device);
+
+D3D9Base::IDirect3DDevice9Ex* hook_device(D3D9Base::IDirect3DDevice9Ex *orig_device, D3D9Base::IDirect3DDevice9Ex *hacker_device, EnableHooksDX9 enable_hooks);
+D3D9Base::IDirect3DDevice9* hook_device(D3D9Base::IDirect3DDevice9 *orig_device, D3D9Base::IDirect3DDevice9 *hacker_device, EnableHooksDX9 enable_hooks);
+void remove_hooked_device(D3D9Base::IDirect3DDevice9 *orig_device);

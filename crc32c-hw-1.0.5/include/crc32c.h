@@ -25,5 +25,5 @@ extern "C" CRC32C_API uint32_t crc32c_append(
     size_t length);             // length of the data in the input buffer
 
 extern "C" CRC32C_API void crc32c_unittest();
-
+uint32_t crc32_fast(const void* data, size_t length, uint32_t previousCrc32 = 0);
 #endif

@@ -1,11 +1,15 @@
 #include "stdafx.h"
-
+#include <d3dx9shader.h>
 using namespace std;
 
 FILE* failFile = NULL;
 static unordered_map<string, vector<DWORD>> codeBin;
 
 static DWORD strToDWORD(string s) {
+	//dx9
+	if (s == "1.#INF00")
+		return 0x7F800000;
+	//dx9
 	// d3dcompiler_46 symbolic NANs (missing +QNAN and +IND?):
 	if (s == "-1.#IND0000")
 		return 0xFFC00000;
@@ -339,6 +343,13 @@ static vector<DWORD> assembleOp(string s, bool special = false) {
 		v.push_back(op);
 		return v;
 	}
+	//dx9
+	if (s == "vCoverage.x") {
+		v.push_back(0x2300A);
+		return v;
+
+	}
+	//dx9
 	if (bPoint == "vDomain") {
 		bool ext = tOp->extended;
 		op = 0x1C002;
@@ -353,6 +364,13 @@ static vector<DWORD> assembleOp(string s, bool special = false) {
 		v.push_back(op);
 		return v;
 	}
+	//dx9
+	if (s == "rasterizer.x") {
+		v.push_back(0x0000E00A);
+		return v;
+
+	}
+	//dx9
 	if (bPoint == "vThreadGroupID") {
 		op = 0x21002;
 		handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
@@ -2049,7 +2067,90 @@ vector<string> stringToLines(const char* start, size_t size) {
 	}
 	return lines;
 }
+vector<string> stringToLinesDX9(const char* start, size_t size) {
+	vector<string> lines;
+	const char* pStart = start;
+	const char* pEnd = pStart;
+	const char* pRealEnd = pStart + size;
+	while (true) {
+		while (*pEnd != '\n' && pEnd < pRealEnd) {
+			pEnd++;
+		}
+		if (*pStart == 0) {
+			break;
+		}
+		string s(pStart, pEnd++);
+		pStart = pEnd;
+		lines.push_back(s);
+		if (pStart >= pRealEnd) {
+			break;
+		}
+	}
+	for (unsigned int i = 0; i < lines.size(); i++) {
+		string s = lines[i];
+		// Bug fixed: This would not strip carriage returns from DOS
+		// style newlines if they were the only character on the line,
+		// corrupting the resulting shader binary. -DarkStarSword
+		if (s.size() >= 1 && s[s.size() - 1] == '\r')
+			s.erase(--s.end());
 
+		// Strip whitespace from the end of each line. This isn't
+		// strictly necessary, but the MS disassembler inserts an extra
+		// space after "ret ", "else " and "endif ", which has been a
+		// gotcha for trying to match it with ShaderRegex since it's
+		// easy to miss the fact that there is a space there and not
+		// understand why the pattern isn't matching. By removing
+		// excess spaces from the end of each line now we can make this
+		// gotcha go away.
+		while (s.size() >= 1 && s[s.size() - 1] == ' ')
+			s.erase(--s.end());
+
+		while (s.size() >= 1 && s[0] == ' ')
+			s.erase(s.begin());
+
+		lines[i] = s;
+	}
+	return lines;
+}
+
+HRESULT disassemblerDX9(vector<byte> *buffer, vector<byte> *ret, const char *comment)
+{
+	char* asmBuffer;
+	size_t asmSize;
+	vector<byte> asmBuf;
+	ID3DBlob* pDissassembly = NULL;
+	LPD3DXBUFFER pD3DXDissassembly = NULL;
+	HRESULT ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, comment, &pDissassembly);
+	if (FAILED(ok))
+		ok = D3DDisassemble(buffer->data(), buffer->size(), NULL, comment, &pDissassembly);
+	if (FAILED(ok))
+		ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_DISABLE_DEBUG_INFO, comment, &pDissassembly);
+	if (FAILED(ok)){
+		//below sometimes give an access violation for some reason
+		//ok = D3DXDisassembleShader((DWORD*)buffer->data(), false, NULL, &pD3DXDissassembly);
+		//if (FAILED(ok))
+			return ok;
+		//asmBuffer = (char*)pD3DXDissassembly->GetBufferPointer();
+		//asmSize = pD3DXDissassembly->GetBufferSize();
+	}
+	else {
+		asmBuffer = (char*)pDissassembly->GetBufferPointer();
+		asmSize = pDissassembly->GetBufferSize();
+	}
+	vector<string> lines = stringToLinesDX9(asmBuffer, asmSize);
+	ret->clear();
+	for (size_t i = 0; i < lines.size(); i++) {
+		for (size_t j = 0; j < lines[i].size(); j++) {
+			ret->insert(ret->end(), lines[i][j]);
+		}
+		ret->insert(ret->end(), '\n');
+	}
+	if (pDissassembly)
+		pDissassembly->Release();
+	if (pD3DXDissassembly)
+		pD3DXDissassembly->Release();
+	return S_OK;
+}
 HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment) {
 	byte fourcc[4];
 	DWORD fHash[4];
@@ -2439,4 +2540,18 @@ vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode) {
 	dwordBuffer[3] = hash[2];
 	dwordBuffer[4] = hash[3];
 	return origBytecode;
+}
+vector<byte> assemblerDX9(vector<char> *asmFile, vector<byte> origBytecode)
+{
+	vector<byte> ret;
+	LPD3DXBUFFER pAssembly;
+	HRESULT hr = D3DXAssembleShader(asmFile->data(), asmFile->size(), NULL, NULL, 0, &pAssembly, NULL);
+	if (!FAILED(hr)) {
+		size_t size = pAssembly->GetBufferSize();
+		LPVOID buffer = pAssembly->GetBufferPointer();
+		ret.resize(size);
+		std::memcpy(ret.data(), buffer, size);
+		pAssembly->Release();
+	}
+	return ret;
 }

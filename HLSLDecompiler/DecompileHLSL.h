@@ -21,6 +21,11 @@ struct ParseParameters
 	int StereoParamsReg;
 	int IniParamsReg;
 
+	//dx9
+	int StereoParamsVertexReg;
+	int StereoParamsPixelReg;
+	//dx9
+
 	bool fixSvPosition;
 	bool fixLightPosition;
 	bool recompileVs;

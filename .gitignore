@@ -171,3 +171,12 @@ $RECYCLE.BIN/
 # Vim swap files
 .*.swp
 *.nvuser
+/StereovisionHacks.VC.VC.opendb
+/StereovisionHacks.VC.db
+/.vs/3DMigoto/v15/Browse.VC.db
+*.db
+*.opendb
+*.db-shm
+*.db-wal
+/.vs
+/enc_temp_folder

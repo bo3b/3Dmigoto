@@ -43,10 +43,27 @@
  *      "NVIDIA 3D Vision Automatic Best Practices Guide."
  *
  **/
+//#define NO_STEREO_D3D9
+#define NO_STEREO_D3D10
+#define NO_STEREO_D3D11
 
-#include <d3d11_1.h>
+#ifndef NO_STEREO_D3D11
+#include <D3D11.h>
 #include "nvapi.h"
+
+#endif
 #include "log.h"
+#ifndef NO_STEREO_D3D9
+namespace D3D9Base {
+#include <D3D9.h>
+}
+#include "nvapi.h"
+//using namespace D3D9Base;
+#endif
+
+#define D3D9MAP_WIDTH 8
+#define D3D9MAP_FORMAT D3D9Base::D3DFMT_R32F
+#define D3D9MAP_PIXELSIZE 4
 
 namespace nv
 {
@@ -88,7 +105,11 @@ namespace nv
 		memset(pathInfo, 0, pathCount * sizeof(NV_DISPLAYCONFIG_PATH_INFO));
 		for (NvU32 i = 0; i < pathCount; i++)
 		{
-			pathInfo[i].version = NV_DISPLAYCONFIG_PATH_INFO_VER;
+			{
+				using namespace D3D9Base;
+				pathInfo[i].version = NV_DISPLAYCONFIG_PATH_INFO_VER;
+			}
+
 
 			// Allocation for the source mode info.
 			pathInfo[i].sourceModeInfo = (NV_DISPLAYCONFIG_SOURCE_MODE_INFO*)malloc(sizeof(NV_DISPLAYCONFIG_SOURCE_MODE_INFO));
@@ -227,7 +248,7 @@ namespace nv
 
 			return stereoEnabled != 0;
 		}
-
+#ifndef NO_STEREO_D3D11
 		struct D3D11Type
 		{
 			typedef ID3D11Device Device;
@@ -305,7 +326,77 @@ namespace nv
 				context->CopySubresourceRegion(tex, 0, 0, 0, 0, staging, 0, &stereoSrcBox);
 			}
 		};
+#endif // NO_STEREO_D3D11
 
+		// The D3D9 "Driver" for stereo updates, encapsulates the logic that is Direct3D9 specific.
+		struct D3D9Type
+		{
+			typedef D3D9Base::IDirect3DDevice9 Device;
+			typedef D3D9Base::IDirect3DTexture9 Texture;
+			typedef D3D9Base::IDirect3DSurface9 StagingResource;
+
+			static const NV_STEREO_REGISTRY_PROFILE_TYPE RegistryProfileType = NVAPI_STEREO_DX9_REGISTRY_PROFILE;
+
+			// Note that the texture must be at least 20 bytes wide to handle the stereo header.
+			static const int StereoTexWidth = 8;
+			static const int StereoTexHeight = 1;
+			static const D3D9Base::D3DFORMAT StereoTexFormat = D3D9MAP_FORMAT;
+			static const int StereoBytesPerPixel = D3D9MAP_PIXELSIZE;
+
+			static StagingResource* CreateStagingResource(Device* pDevice, float eyeSep, float sep, float conv,
+				float tuneValue1, float tuneValue2, float tuneValue3, float tuneValue4)
+			{
+				float screenWidth, screenHeight;
+
+				// Get screen resolution here, since it becomes part of the stereo texture structure.
+				// This was previously fetched from the swap chain.
+				GetPrimaryDisplayResolution(screenWidth, screenHeight);
+
+				StagingResource* staging = 0;
+				unsigned int stagingWidth = StereoTexWidth * 2;
+				unsigned int stagingHeight = StereoTexHeight + 1;
+
+				pDevice->CreateOffscreenPlainSurface(stagingWidth, stagingHeight, StereoTexFormat, D3D9Base::D3DPOOL_SYSTEMMEM, &staging, NULL);
+
+				if (!staging) {
+					return 0;
+				}
+
+				D3D9Base::D3DLOCKED_RECT lr;
+				staging->LockRect(&lr, NULL, 0);
+				unsigned char* sysData = (unsigned char *)lr.pBits;
+				unsigned int sysMemPitch = stagingWidth * StereoBytesPerPixel;
+
+				float* leftEyePtr = (float*)sysData;
+				float* rightEyePtr = leftEyePtr + StereoTexWidth * StereoBytesPerPixel / sizeof(float);
+				LPNVSTEREOIMAGEHEADER header = (LPNVSTEREOIMAGEHEADER)(sysData + (sysMemPitch * StereoTexHeight));
+				PopulateTextureData(leftEyePtr, rightEyePtr, header, stagingWidth, stagingHeight, StereoBytesPerPixel * 8, eyeSep, sep, conv,
+					tuneValue1, tuneValue2, tuneValue3, tuneValue4,
+					screenWidth, screenHeight);
+				staging->UnlockRect();
+
+				return staging;
+			}
+
+			static void UpdateTextureFromStaging(Device* pDevice, Texture* tex, StagingResource* staging)
+			{
+				RECT stereoSrcRect;
+				stereoSrcRect.top = 0;
+				stereoSrcRect.bottom = StereoTexHeight;
+				stereoSrcRect.left = 0;
+				stereoSrcRect.right = StereoTexWidth;
+
+				POINT stereoDstPoint;
+				stereoDstPoint.x = 0;
+				stereoDstPoint.y = 0;
+
+				D3D9Base::IDirect3DSurface9* texSurface;
+				tex->GetSurfaceLevel(0, &texSurface);
+
+				pDevice->UpdateSurface(staging, &stereoSrcRect, texSurface, &stereoDstPoint);
+				texSurface->Release();
+			}
+		};
 		// The NV Stereo class, which can work for either D3D9 or D3D10, depending on which type it's specialized for
 		// Note that both types can live side-by-side in two separate instances as well.
 		// Also note that there are convenient typedefs below the class definition.
@@ -317,7 +408,9 @@ namespace nv
 			typedef typename D3DType::Device Device;
 			typedef typename D3DType::Texture Texture;
 			typedef typename D3DType::StagingResource StagingResource;
+#ifndef NO_STEREO_D3D11
 			typedef typename D3DType::Context Context;
+#endif
 
 			ParamTextureManager() :
 				mEyeSeparation(0),
@@ -335,7 +428,30 @@ namespace nv
 				// The call to CreateConfigurationProfileRegistryKey must happen BEFORE device creation.
 				// NvAPI_Stereo_CreateConfigurationProfileRegistryKey(D3DType::RegistryProfileType);
 			}
-
+			NvAPI_Status GetConvergence(StereoHandle stereoHandle, float *convergence) {
+				if (mKnownConvergence != -1) {
+					*convergence = mKnownConvergence;
+					return NVAPI_OK;
+				}
+				else
+					return NvAPI_Stereo_GetConvergence(stereoHandle, convergence);
+			}
+			NvAPI_Status GetSeparation(StereoHandle stereoHandle, float *separation) {
+				if (mKnownSeparation != -1) {
+					*separation = mKnownSeparation;
+					return NVAPI_OK;
+				}
+				else
+					return NvAPI_Stereo_GetSeparation(stereoHandle, separation);
+			}
+			NvAPI_Status GetEyeSeparation(StereoHandle stereoHandle, float *eyesep) {
+				if (mKnownEyeSeparation != -1) {
+					*eyesep = mKnownEyeSeparation;
+					return NVAPI_OK;
+				}
+				else
+					return NvAPI_Stereo_GetEyeSeparation(stereoHandle, eyesep);
+			}
 			// Not const because we will update the various values if an update is needed.
 			bool RequiresUpdate(bool deviceLost)
 			{
@@ -348,11 +464,11 @@ namespace nv
 				bool updateRequired;
 				float eyeSep, sep, conv;
 				if (active) {
-					if (NVAPI_OK != NvAPI_Stereo_GetEyeSeparation(mStereoHandle, &eyeSep))
+					if (NVAPI_OK != GetEyeSeparation(mStereoHandle, &eyeSep))
 						return false;
-					if (NVAPI_OK != NvAPI_Stereo_GetSeparation(mStereoHandle, &sep))
+					if (NVAPI_OK != GetSeparation(mStereoHandle, &sep))
 						return false;
-					if (NVAPI_OK != NvAPI_Stereo_GetConvergence(mStereoHandle, &conv))
+					if (NVAPI_OK != GetConvergence(mStereoHandle, &conv))
 						return false;
 
 					updateRequired = (eyeSep != mEyeSeparation)
@@ -385,18 +501,22 @@ namespace nv
 
 			bool IsStereoActive() const
 			{
+				if (mStereoActiveIsKnown)
+					return mKnownStereoActive;
 				NvU8 stereoActive = 0;
 				if (NVAPI_OK != NvAPI_Stereo_IsActivated(mStereoHandle, &stereoActive)) {
 					return false;
 				}
-
 				return stereoActive != 0;
 			}
 
 			float GetConvergenceDepth() const { return mActive ? mConvergence : 1.0f; }
 
-
+#ifndef NO_STEREO_D3D11
 			bool UpdateStereoTexture(Device* dev, Context* context, Texture* tex, bool deviceLost)
+#else
+			bool UpdateStereoTexture(Device* dev, Texture* tex, bool deviceLost)
+#endif
 			{
 				if (!RequiresUpdate(deviceLost)) {
 					return false;
@@ -406,7 +526,11 @@ namespace nv
 					mTuneVariable1, mTuneVariable2, mTuneVariable3, mTuneVariable4);
 				if (staging)
 				{
+#ifndef NO_STEREO_D3D11
 					D3DType::UpdateTextureFromStaging(context, tex, staging);
+#else
+					D3DType::UpdateTextureFromStaging(dev, tex, staging);
+#endif
 					staging->Release();
 					return true;
 				}
@@ -423,9 +547,19 @@ namespace nv
 			StereoHandle mStereoHandle;
 			bool mActive;
 			bool mDeviceLost;
-		};
 
+			float mKnownConvergence = -1.0f;
+			float mKnownSeparation = -1.0f;
+			float mKnownEyeSeparation = -1.0f;
+			bool mStereoActiveIsKnown = false;
+			bool mKnownStereoActive = false;
+		};
+#ifndef NO_STEREO_D3D11
 		typedef ParamTextureManager<D3D11Type> ParamTextureManagerD3D11;
+#endif
+#ifndef NO_STEREO_D3D9
+		typedef ParamTextureManager<D3D9Type> ParamTextureManagerD3D9;
+#endif
 
 	};
 };
