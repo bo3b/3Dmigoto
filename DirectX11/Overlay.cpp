@@ -14,46 +14,27 @@
 #include "D3D11Wrapper.h"
 //#include "nvapi.h"
 #include "Globals.h"
-#include "profiling.h"
 
 #include "HackerDevice.h"
 #include "HackerContext.h"
 
 #define MAX_SIMULTANEOUS_NOTICES 10
 
+static std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
 static bool has_notice = false;
 static unsigned notice_cleared_frame = 0;
-
-static class Notices
-{
-public:
-	std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
-	CRITICAL_SECTION lock;
-
-	Notices()
-	{
-		InitializeCriticalSectionPretty(&lock);
-	}
-
-	~Notices()
-	{
-		DeleteCriticalSection(&lock);
-	}
-} notices;
 
 struct LogLevelParams {
 	DirectX::XMVECTORF32 colour;
 	DWORD duration;
 	bool hide_in_release;
-	std::unique_ptr<DirectX::SpriteFont> Overlay::*font;
 };
 
 struct LogLevelParams log_levels[] = {
-	{ DirectX::Colors::Red,       20000, false, &Overlay::mFontNotifications }, // DIRE
-	{ DirectX::Colors::OrangeRed, 10000, false, &Overlay::mFontNotifications }, // WARNING
-	{ DirectX::Colors::OrangeRed, 10000, false, &Overlay::mFontProfiling     }, // WARNING_MONOSPACE
-	{ DirectX::Colors::Orange,     5000,  true, &Overlay::mFontNotifications }, // NOTICE
-	{ DirectX::Colors::LimeGreen,  2000,  true, &Overlay::mFontNotifications }, // INFO
+	{ DirectX::Colors::Red,       20000, false }, // DIRE
+	{ DirectX::Colors::OrangeRed, 10000, false }, // WARNING
+	{ DirectX::Colors::Orange,     5000,  true }, // NOTICE
+	{ DirectX::Colors::LimeGreen,  2000,  true }, // INFO
 };
 
 // Side note: Not really stoked with C++ string handling.  There are like 4 or
@@ -148,14 +129,6 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
 	fontBlob = static_cast<const uint8_t*>(LockResource(rcData));
 	mFontNotifications.reset(new DirectX::SpriteFont(mOrigDevice, fontBlob, fontSize));
 	mFontNotifications->SetDefaultCharacter(L'?');
-
-	// Smaller monospaced font for profiling text
-	rc = FindResource(handle, MAKEINTRESOURCE(IDR_COURIERSMALL), MAKEINTRESOURCE(SPRITEFONT));
-	rcData = LoadResource(handle, rc);
-	fontSize = SizeofResource(handle, rc);
-	fontBlob = static_cast<const uint8_t*>(LockResource(rcData));
-	mFontProfiling.reset(new DirectX::SpriteFont(mOrigDevice, fontBlob, fontSize));
-	mFontProfiling->SetDefaultCharacter(L'?');
 
 	mSpriteBatch.reset(new DirectX::SpriteBatch(mOrigContext));
 
@@ -564,8 +537,6 @@ static void AppendShaderText(wchar_t *fullLine, wchar_t *type, int pos, size_t s
 
 static void CreateShaderCountString(wchar_t *counts)
 {
-	const wchar_t *marking_mode;
-
 	wcscpy_s(counts, maxstring, L"");
 	// The order here more or less follows how important these are for
 	// shaderhacking. VS and PS are the absolute most important, CS is
@@ -577,16 +548,12 @@ static void CreateShaderCountString(wchar_t *counts)
 	AppendShaderText(counts, L"GS", G->mSelectedGeometryShaderPos, G->mVisitedGeometryShaders.size());
 	AppendShaderText(counts, L"DS", G->mSelectedDomainShaderPos, G->mVisitedDomainShaders.size());
 	AppendShaderText(counts, L"HS", G->mSelectedHullShaderPos, G->mVisitedHullShaders.size());
-	if (G->mSelectedVertexBuffer != -1)
-		AppendShaderText(counts, L"VB", G->mSelectedVertexBufferPos, G->mVisitedVertexBuffers.size());
 	if (G->mSelectedIndexBuffer != -1)
 		AppendShaderText(counts, L"IB", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
 	if (G->mSelectedRenderTarget != (ID3D11Resource *)-1)
 		AppendShaderText(counts, L"RT", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
 
-	marking_mode = lookup_enum_name(MarkingModeNames, G->marking_mode);
-	if (marking_mode)
-		wcscat_s(counts, maxstring, marking_mode);
+	wcscat_s(counts, maxstring, lookup_enum_name(MarkingModeNames, G->marking_mode));
 }
 
 
@@ -671,7 +638,6 @@ void Overlay::DrawShaderInfoLines(float *y)
 	// purposes). Since these only show up while hunting, it is better to
 	// have them reflect the actual order that they are run in. The summary
 	// line can stay in order of importance since it is always shown.
-	DrawShaderInfoLine("VB", G->mSelectedVertexBuffer, y, false);
 	DrawShaderInfoLine("IB", G->mSelectedIndexBuffer, y, false);
 	DrawShaderInfoLine("VS", G->mSelectedVertexShader, y, true);
 	DrawShaderInfoLine("HS", G->mSelectedHullShader, y, true);
@@ -684,7 +650,7 @@ void Overlay::DrawShaderInfoLines(float *y)
 		DrawShaderInfoLine("RT", GetOrigResourceHash(G->mSelectedRenderTarget), y, false);
 }
 
-void Overlay::DrawNotices(float *y)
+void Overlay::DrawNotices(float y)
 {
 	std::vector<OverlayNotice>::iterator notice;
 	DWORD time = GetTickCount();
@@ -692,14 +658,14 @@ void Overlay::DrawNotices(float *y)
 	Vector2 strSize;
 	int level, displayed = 0;
 
-	EnterCriticalSectionPretty(&notices.lock);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	has_notice = false;
 	for (level = 0; level < NUM_LOG_LEVELS; level++) {
 		if (log_levels[level].hide_in_release && G->hunting == HUNTING_MODE_DISABLED)
 			continue;
 
-		for (notice = notices.notices[level].begin(); notice != notices.notices[level].end() && displayed < MAX_SIMULTANEOUS_NOTICES; ) {
+		for (notice = notices[level].begin(); notice != notices[level].end() && displayed < MAX_SIMULTANEOUS_NOTICES; ) {
 			if (!notice->timestamp) {
 				// Set the timestamp on the first present call
 				// that we display the message after it was
@@ -711,16 +677,16 @@ void Overlay::DrawNotices(float *y)
 				// issued.
 				notice->timestamp = time;
 			} else if ((time - notice->timestamp) > log_levels[level].duration) {
-				notice = notices.notices[level].erase(notice);
+				notice = notices[level].erase(notice);
 				continue;
 			}
 
-			strSize = (this->*log_levels[level].font)->MeasureString(notice->message.c_str());
+			strSize = mFontNotifications->MeasureString(notice->message.c_str());
 
-			DrawRectangle(0, *y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
+			DrawRectangle(0, y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
 
-			(this->*log_levels[level].font)->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, *y), log_levels[level].colour);
-			*y += strSize.y + 5;
+			mFontNotifications->DrawString(mSpriteBatch.get(), notice->message.c_str(), Vector2(0, y), log_levels[level].colour);
+			y += strSize.y + 5;
 
 			has_notice = true;
 			notice++;
@@ -728,20 +694,9 @@ void Overlay::DrawNotices(float *y)
 		}
 	}
 
-	LeaveCriticalSection(&notices.lock);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
-void Overlay::DrawProfiling(float *y)
-{
-	Vector2 strSize;
-
-	Profiling::update_txt();
-
-	strSize = mFontProfiling->MeasureString(Profiling::text.c_str());
-	DrawRectangle(0, *y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
-
-	mFontProfiling->DrawString(mSpriteBatch.get(), Profiling::text.c_str(), Vector2(0, *y), DirectX::Colors::Goldenrod);
-}
 
 // Create a string for display on the bottom edge of the screen, that contains the current
 // stereo info of separation and convergence. 
@@ -755,14 +710,14 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
 	float separation, convergence;
 	NvU8 stereo = false;
 	NvAPIOverride();
-	Profiling::NvAPI_Stereo_IsEnabled(&stereo);
+	NvAPI_Stereo_IsEnabled(&stereo);
 	if (stereo)
 	{
-		Profiling::NvAPI_Stereo_IsActivated(stereoHandle, &stereo);
+		NvAPI_Stereo_IsActivated(stereoHandle, &stereo);
 		if (stereo)
 		{
-			Profiling::NvAPI_Stereo_GetSeparation(stereoHandle, &separation);
-			Profiling::NvAPI_Stereo_GetConvergence(stereoHandle, &convergence);
+			NvAPI_Stereo_GetSeparation(stereoHandle, &separation);
+			NvAPI_Stereo_GetConvergence(stereoHandle, &convergence);
 		}
 	}
 
@@ -774,14 +729,10 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
 
 void Overlay::DrawOverlay(void)
 {
-	Profiling::State profiling_state;
 	HRESULT hr;
 
-	if (G->hunting != HUNTING_MODE_ENABLED && !has_notice && Profiling::mode == Profiling::Mode::NONE)
+	if (G->hunting != HUNTING_MODE_ENABLED && !has_notice)
 		return;
-
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::start(&profiling_state);
 
 	// Since some games did not like having us change their drawing state from
 	// SpriteBatch, we now save and restore all state information for the GPU
@@ -817,10 +768,7 @@ void Overlay::DrawOverlay(void)
 			}
 
 			if (has_notice)
-				DrawNotices(&y);
-
-			if (Profiling::mode != Profiling::Mode::NONE)
-				DrawProfiling(&y);
+				DrawNotices(y);
 		}
 		mSpriteBatch->End();
 	}
@@ -828,9 +776,6 @@ fail_restore:
 	RestoreState();
 
 	flush_d3d11on12(mOrigDevice, mOrigContext);
-
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::end(&profiling_state, &Profiling::overlay_overhead);
 }
 
 OverlayNotice::OverlayNotice(std::wstring message) :
@@ -846,15 +791,15 @@ void ClearNotices()
 	if (notice_cleared_frame == G->frame_no)
 		return;
 
-	EnterCriticalSectionPretty(&notices.lock);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	for (level = 0; level < NUM_LOG_LEVELS; level++)
-		notices.notices[level].clear();
+		notices[level].clear();
 
 	notice_cleared_frame = G->frame_no;
 	has_notice = false;
 
-	LeaveCriticalSection(&notices.lock);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
@@ -871,12 +816,12 @@ void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
 	// cares if it gets cut off somewhere off screen anyway?
 	_vsnwprintf_s(msg, maxstring, _TRUNCATE, fmt, ap);
 
-	EnterCriticalSectionPretty(&notices.lock);
+	EnterCriticalSection(&G->mCriticalSection);
 
-	notices.notices[level].emplace_back(msg);
+	notices[level].emplace_back(msg);
 	has_notice = true;
 
-	LeaveCriticalSection(&notices.lock);
+	LeaveCriticalSection(&G->mCriticalSection);
 
 	va_end(ap);
 }
@@ -903,12 +848,12 @@ void LogOverlay(LogLevel level, char *fmt, ...)
 		_vsnprintf_s(amsg, maxstring, _TRUNCATE, fmt, ap);
 		mbstowcs(wmsg, amsg, maxstring);
 
-		EnterCriticalSectionPretty(&notices.lock);
+		EnterCriticalSection(&G->mCriticalSection);
 
-		notices.notices[level].emplace_back(wmsg);
+		notices[level].emplace_back(wmsg);
 		has_notice = true;
 
-		LeaveCriticalSection(&notices.lock);
+		LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	va_end(ap);

@@ -44,7 +44,6 @@
 #include "HookedContext.h"
 #include "DLLMainHook.h"
 #include "log.h"
-#include "lock.h"
 
 
 // Change this to 1 to enable debug logging of hooks and the trampolines back
@@ -77,7 +76,7 @@ ID3D11DeviceContext1* lookup_hooked_context(ID3D11DeviceContext1 *orig_context)
 	if (!hooks_installed)
 		return NULL;
 
-	EnterCriticalSectionPretty(&context_map_lock);
+	EnterCriticalSection(&context_map_lock);
 	i = context_map.find(orig_context);
 	if (i == context_map.end()) {
 		LeaveCriticalSection(&context_map_lock);
@@ -121,7 +120,7 @@ static ULONG STDMETHODCALLTYPE Release(ID3D11DeviceContext1 *This)
 
 	HookDebug("HookedContext::Release()\n");
 
-	EnterCriticalSectionPretty(&context_map_lock);
+	EnterCriticalSection(&context_map_lock);
 	i = context_map.find(This);
 	if (i != context_map.end()) {
 		ref = ID3D11DeviceContext1_Release(i->second);
@@ -2090,7 +2089,7 @@ static void install_hooks(ID3D11DeviceContext1 *context)
 	// Hooks should only be installed once as they will affect all contexts
 	if (hooks_installed)
 		return;
-	InitializeCriticalSectionPretty(&context_map_lock);
+	InitializeCriticalSection(&context_map_lock);
 	hooks_installed = true;
 
 	// Make sure that everything in the orig_vtable is filled in just in
@@ -3542,7 +3541,7 @@ ID3D11DeviceContext1* hook_context(ID3D11DeviceContext1 *orig_context, ID3D11Dev
 	trampoline_context->orig_this = orig_context;
 
 	install_hooks(orig_context);
-	EnterCriticalSectionPretty(&context_map_lock);
+	EnterCriticalSection(&context_map_lock);
 	context_map[orig_context] = hacker_context;
 	LeaveCriticalSection(&context_map_lock);
 

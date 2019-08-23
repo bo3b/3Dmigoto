@@ -1,26 +1,73 @@
+#include "HookedVertexBuffer.h"
+#include "d3d9Wrapper.h"
+inline void D3D9Wrapper::IDirect3DVertexBuffer9::Delete()
+{
+	LogInfo("IDirect3DVertexBuffer9::Delete\n");
+	LogInfo("  deleting self\n");
 
-D3D9Wrapper::IDirect3DVertexBuffer9::IDirect3DVertexBuffer9(D3D9Base::LPDIRECT3DVERTEXBUFFER9 pVertexBuffer)
-    : D3D9Wrapper::IDirect3DUnknown((IUnknown*) pVertexBuffer),
+	D3D9Wrapper::IDirect3DResource9::Delete();
+
+	if (m_pRealUnk) m_List.DeleteMember(m_pRealUnk);
+	m_pUnk = 0;
+	m_pRealUnk = 0;
+	delete this;
+}
+inline void D3D9Wrapper::IDirect3DVertexBuffer9::HookVertexBuffer()
+{
+
+	m_pUnk = hook_vertex_buffer(GetD3DVertexBuffer9(), (D3D9Base::IDirect3DVertexBuffer9*)this);
+}
+D3D9Wrapper::IDirect3DVertexBuffer9::IDirect3DVertexBuffer9(D3D9Base::LPDIRECT3DVERTEXBUFFER9 pVertexBuffer, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
+    : D3D9Wrapper::IDirect3DResource9((D3D9Base::LPDIRECT3DRESOURCE9)pVertexBuffer, hackerDevice),
 	pendingCreateVertexBuffer(false),
 	pendingLockUnlock(false),
-	magic(0x7da43feb)
+	magic(0x7da43feb),
+	bound(false),
+	zero_d3d_ref_count(false)
 {
+	if ((G->enable_hooks >= EnableHooksDX9::ALL) && pVertexBuffer) {
+		this->HookVertexBuffer();
+	}
 }
 
-D3D9Wrapper::IDirect3DVertexBuffer9* D3D9Wrapper::IDirect3DVertexBuffer9::GetDirect3DVertexBuffer9(D3D9Base::LPDIRECT3DVERTEXBUFFER9 pVertexBuffer)
+D3D9Wrapper::IDirect3DVertexBuffer9* D3D9Wrapper::IDirect3DVertexBuffer9::GetDirect3DVertexBuffer9(D3D9Base::LPDIRECT3DVERTEXBUFFER9 pVertexBuffer, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
 {
-    D3D9Wrapper::IDirect3DVertexBuffer9* p = (D3D9Wrapper::IDirect3DVertexBuffer9*) m_List.GetDataPtr(pVertexBuffer);
-    if (!p)
-    {
-        p = new D3D9Wrapper::IDirect3DVertexBuffer9(pVertexBuffer);
-        if (pVertexBuffer) m_List.AddMember(pVertexBuffer, p);
-    }
+	D3D9Wrapper::IDirect3DVertexBuffer9* p = new D3D9Wrapper::IDirect3DVertexBuffer9(pVertexBuffer, hackerDevice);
+    if (pVertexBuffer) m_List.AddMember(pVertexBuffer, p);
     return p;
+}
+STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::QueryInterface(THIS_ REFIID riid, void ** ppvObj)
+{
+	LogDebug("D3D9Wrapper::IDirect3DVertexBuffer9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
+	HRESULT hr = NULL;
+	if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
+		return hr;
+	LogInfo("QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %x\n",
+		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
+	hr = m_pUnk->QueryInterface(riid, ppvObj);
+	if (hr == S_OK) {
+		if ((*ppvObj) == GetRealOrig()) {
+			if (!(G->enable_hooks >= EnableHooksDX9::ALL)) {
+				*ppvObj = this;
+				zero_d3d_ref_count = false;
+				++m_ulRef;
+				LogInfo("  interface replaced with IDirect3DVertexBuffer9 wrapper.\n");
+				LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+				return hr;
+			}
+		}
+		D3D9Wrapper::IDirect3DUnknown *unk = QueryInterface_Find_Wrapper(*ppvObj);
+		if (unk)
+			*ppvObj = unk;
+	}
+	LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+	return hr;
 }
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVertexBuffer9::AddRef(THIS)
 {
 	++m_ulRef;
+	zero_d3d_ref_count = false;
 	return m_pUnk->AddRef();
 }
 
@@ -35,41 +82,33 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVertexBuffer9::Release(THIS)
 
     if (ulRef == 0)
     {
-		if (!LogDebug) LogInfo("IDirect3DVertexBuffer9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
-		LogInfo("  deleting self\n");
-		
-        if (m_pUnk) m_List.DeleteMember(m_pUnk); 
-		m_pUnk = 0;
-        delete this;
-        return 0L;
+		if (!gLogDebug) LogInfo("IDirect3DVertexBuffer9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+		zero_d3d_ref_count = true;
+		if (!bound)
+			Delete();
     }
     return ulRef;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::GetDevice(THIS_ IDirect3DDevice9** ppDevice)
+STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::GetDevice(THIS_ D3D9Wrapper::IDirect3DDevice9** ppDevice)
 {
 	LogDebug("IDirect3DVertexBuffer9::GetDevice called\n");
 	
 	CheckVertexBuffer9(this);
-	D3D9Base::IDirect3DDevice9 *origDevice;
-	HRESULT hr = GetD3DVertexBuffer9()->GetDevice(&origDevice);
-	if (hr != S_OK)
-	{
-		LogInfo("  failed with hr = %x\n", hr);
-		
-		return hr;
+	HRESULT hr;
+	if (hackerDevice) {
+		hackerDevice->AddRef();
+		hr = S_OK;
 	}
-	D3D9Base::IDirect3DDevice9Ex *origDeviceEx;
-	const IID IID_IDirect3DDevice9Ex = { 0xb18b10ce, 0x2649, 0x405a, { 0x87, 0xf, 0x95, 0xf7, 0x77, 0xd4, 0x31, 0x3a } };
-	hr = origDevice->QueryInterface(IID_IDirect3DDevice9Ex, (void **) &origDeviceEx);
-	origDevice->Release();
-	if (hr != S_OK)
-	{
-		LogInfo("  failed IID_IDirect3DDevice9Ex cast with hr = %x\n", hr);
-		
-		return hr;
+	else {
+		return D3DERR_NOTFOUND;
 	}
-	*ppDevice = D3D9Wrapper::IDirect3DDevice9::GetDirect3DDevice(origDeviceEx);
+	if (!(G->enable_hooks & EnableHooksDX9::DEVICE)) {
+		*ppDevice = hackerDevice;
+	}
+	else {
+		*ppDevice = reinterpret_cast<D3D9Wrapper::IDirect3DDevice9*>(hackerDevice->GetRealOrig());
+	}
 	return hr;
 }
 
@@ -136,10 +175,11 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::Lock(THIS_ UINT OffsetToLock,U
 {
 	LogDebug("IDirect3DVertexBuffer9::Lock called with OffsetToLock=%d, SizeToLock=%d, Flags=%x\n", OffsetToLock, SizeToLock, Flags);
 	
+	D3D9Base::IDirect3DVertexBuffer9 *baseVertexBuffer = GetD3DVertexBuffer9();
 
-	if (!GetD3DVertexBuffer9())
+	if (!baseVertexBuffer)
 	{
-		if (!LogDebug) LogInfo("IDirect3DVertexBuffer9::Lock called\n");
+		if (!gLogDebug) LogInfo("IDirect3DVertexBuffer9::Lock called\n");
 		LogInfo("  postponing call because vertex buffer was not created yet.\n");
 		
 		if (!pendingLockUnlock)
@@ -151,8 +191,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::Lock(THIS_ UINT OffsetToLock,U
 		if (ppbData) *ppbData = _Buffer+OffsetToLock;
 		return S_OK;
 	}
-
+	hackerDevice->FrameAnalysisLog("Lock(pResource:0x%p, OffsetToLock:%u, SizeToLock:%u, ppbData:0x%p, LockFlags:%u)",
+		baseVertexBuffer, OffsetToLock, SizeToLock, ppbData, Flags);
+	hackerDevice->FrameAnalysisLogResourceHash(baseVertexBuffer);
 	HRESULT hr = GetD3DVertexBuffer9()->Lock(OffsetToLock, SizeToLock, ppbData, Flags);
+	hackerDevice->TrackAndDivertLock<D3D9Wrapper::IDirect3DVertexBuffer9, D3D9Base::D3DVERTEXBUFFER_DESC>(hr, this, SizeToLock, ppbData, Flags);
+
 	LogDebug("  returns result=%x\n", hr);
 	
 	return hr;
@@ -162,18 +206,25 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexBuffer9::Unlock(THIS)
 {
 	LogDebug("IDirect3DVertexBuffer9::Unlock called\n");
 	
+	D3D9Base::IDirect3DVertexBuffer9 *baseVertexBuffer = GetD3DVertexBuffer9();
 
-	if (!GetD3DVertexBuffer9())
+	if (!baseVertexBuffer)
 	{
-		if (!LogDebug) LogInfo("IDirect3DVertexBuffer9::Unlock called\n");
+		if (!gLogDebug) LogInfo("IDirect3DVertexBuffer9::Unlock called\n");
 		LogInfo("  postponing call because vertex buffer was not created yet.\n");
 		
 		return S_OK;
 	}
-
 	CheckVertexBuffer9(this);
+	hackerDevice->FrameAnalysisLog("Unlock(pResource:0x%p)",
+		baseVertexBuffer);
+	hackerDevice->FrameAnalysisLogResourceHash(baseVertexBuffer);
+	hackerDevice->TrackAndDivertUnlock(this);
 	HRESULT hr = GetD3DVertexBuffer9()->Unlock();
 	LogDebug("  returns result=%x\n", hr);
+
+	if (G->analyse_frame)
+		hackerDevice->FrameAnalysisAfterUnlock(baseVertexBuffer);
 	
 	return hr;
 }

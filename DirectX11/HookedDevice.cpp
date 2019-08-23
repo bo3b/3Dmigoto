@@ -39,7 +39,6 @@
 #include "HookedDevice.h"
 #include "DLLMainHook.h"
 #include "log.h"
-#include "lock.h"
 
 
 // Change this to 1 to enable debug logging of hooks and the trampolines back
@@ -72,7 +71,7 @@ ID3D11Device1* lookup_hooked_device(ID3D11Device1 *orig_device)
 	if (!hooks_installed)
 		return NULL;
 
-	EnterCriticalSectionPretty(&device_map_lock);
+	EnterCriticalSection(&device_map_lock);
 	i = device_map.find(orig_device);
 	if (i == device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
@@ -122,7 +121,7 @@ static ULONG STDMETHODCALLTYPE Release(
 
 	HookDebug("HookedDevice::Release()\n");
 
-	EnterCriticalSectionPretty(&device_map_lock);
+	EnterCriticalSection(&device_map_lock);
 	i = device_map.find(This);
 	if (i != device_map.end()) {
 		ref = ID3D11Device1_Release(i->second);
@@ -921,7 +920,7 @@ static void install_hooks(ID3D11Device1 *device)
 	// Hooks should only be installed once as they will affect all contexts
 	if (hooks_installed)
 		return;
-	InitializeCriticalSectionPretty(&device_map_lock);
+	InitializeCriticalSection(&device_map_lock);
 	hooks_installed = true;
 
 	// Make sure that everything in the orig_vtable is filled in just in
@@ -1525,7 +1524,7 @@ ID3D11Device1* hook_device(ID3D11Device1 *orig_device, ID3D11Device1 *hacker_dev
 	trampoline_device->orig_this = orig_device;
 
 	install_hooks(orig_device);
-	EnterCriticalSectionPretty(&device_map_lock);
+	EnterCriticalSection(&device_map_lock);
 	device_map[orig_device] = hacker_device;
 	LeaveCriticalSection(&device_map_lock);
 

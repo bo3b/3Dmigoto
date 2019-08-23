@@ -55,32 +55,10 @@ private:
 	HackerSwapChain *mHackerSwapChain;
 
 	// Utility routines
-	char *_ReplaceShaderFromShaderFixes(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
-		SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp,
-		wstring &headerLine, const char *overrideShaderModel);
-
-	template <class ID3D11Shader,
-		 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
-				 __in const void *pShaderBytecode,
-				 __in SIZE_T BytecodeLength,
-				 __in_opt ID3D11ClassLinkage *pClassLinkage,
-				 __out_opt ID3D11Shader **ppShader)
-		 >
-	HRESULT ReplaceShaderFromShaderFixes(UINT64 hash, const void *pShaderBytecode, SIZE_T BytecodeLength,
-		ID3D11ClassLinkage *pClassLinkage, ID3D11Shader **ppShader, wchar_t *shaderType);
-
-	template <class ID3D11Shader,
-		 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
-				 __in const void *pShaderBytecode,
-				 __in SIZE_T BytecodeLength,
-				 __in_opt ID3D11ClassLinkage *pClassLinkage,
-				 __out_opt ID3D11Shader **ppShader)
-		 >
-	HRESULT ProcessShaderNotFoundInShaderFixes(UINT64 hash, const void *pShaderBytecode, SIZE_T BytecodeLength,
-			ID3D11ClassLinkage *pClassLinkage, ID3D11Shader **ppShader, wchar_t *shaderType);
-
+	char *ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
+		SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, 
+		void **zeroShader, wstring &headerLine, const char *overrideShaderModel);
 	bool NeedOriginalShader(UINT64 hash);
-
 	template <class ID3D11Shader,
 		 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
 				 __in const void *pShaderBytecode,
@@ -90,8 +68,8 @@ private:
 			 >
 	void KeepOriginalShader(UINT64 hash, wchar_t *shaderType, ID3D11Shader *pShader,
 		const void *pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage *pClassLinkage);
-
 	HRESULT CreateStereoParamResources();
+	HRESULT CreateIniParamResources();
 	void CreatePinkHuntingResources();
 	HRESULT SetGlobalNVSurfaceCreationMode();
 
@@ -125,7 +103,6 @@ public:
 
 	HackerDevice(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
 
-	HRESULT CreateIniParamResources();
 	void Create3DMigotoResources();
 	void SetHackerContext(HackerContext *pHackerContext);
 	void SetHackerSwapChain(HackerSwapChain *pHackerSwapChain);

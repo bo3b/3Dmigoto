@@ -32,11 +32,6 @@
 
 #include "log.h"
 
-// For 3DMigoto IIDs:
-#include "DirectX11/HackerDevice.h"
-#include "DirectX11/HackerContext.h"
-#include "DirectX11/FrameAnalysis.h"
-
 struct IID_name {
 	IID iid;
 	char *name;
@@ -44,30 +39,8 @@ struct IID_name {
 
 #define IID(name) { IID_##name, #name }
 
-// IIDs used to identify if a known third party tool is sitting between us and
-// DirectX (for informational / debugging purposes only):
-DEFINE_GUID(IID_ReShadeD3D10Device,         0x88399375, 0x734F, 0x4892, 0xA9, 0x5F, 0x70, 0xDD, 0x42, 0xCE, 0x7C, 0xDD);
-DEFINE_GUID(IID_ReShadeD3D11Device,         0x72299288, 0x2C68, 0x4AD8, 0x94, 0x5D, 0x2B, 0xFB, 0x5A, 0xA9, 0xC6, 0x09);
-DEFINE_GUID(IID_ReShadeD3D11DeviceContext,  0x27B0246B, 0x2152, 0x4D42, 0xAD, 0x11, 0x32, 0x48, 0x94, 0x72, 0x23, 0x8F);
-DEFINE_GUID(IID_ReShadeDXGIDevice,          0xCB285C3B, 0x3677, 0x4332, 0x98, 0xC7, 0xD6, 0x33, 0x9B, 0x97, 0x82, 0xB1);
-DEFINE_GUID(IID_ReShadeDXGISwapChain,       0x1F445F9F, 0x9887, 0x4C4C, 0x90, 0x55, 0x4E, 0x3B, 0xAD, 0xAF, 0xCC, 0xA8);
-DEFINE_GUID(IID_SpecialKD3D11DeviceContext, 0xe8a22a3f, 0x1405, 0x424c, 0xae, 0x99, 0x0d, 0x3e, 0x9d, 0x54, 0x7c, 0x32); // Returns the unwrapped device
-
 static const struct IID_name known_interfaces[] = {
 	IID(IUnknown),
-
-	// 3DMigoto interfaces:
-	IID(HackerDevice),
-	IID(HackerContext),
-	IID(FrameAnalysisContext),
-
-	// Third party tools:
-	IID(ReShadeD3D10Device),
-	IID(ReShadeD3D11Device),
-	IID(ReShadeD3D11DeviceContext),
-	IID(ReShadeDXGIDevice),
-	IID(ReShadeDXGISwapChain),
-	IID(SpecialKD3D11DeviceContext),
 
 	// DXGI Interfaces https://msdn.microsoft.com/en-us/library/windows/desktop/ff471322(v=vs.85).aspx
 	IID(IDXGIAdapter),
@@ -263,38 +236,24 @@ bool check_interface_supported(IUnknown *unknown, REFIID riid)
 	return !!_check_interface(unknown, riid);
 }
 
-static void check_interface(IUnknown *unknown, REFIID riid, char *iid_name, IUnknown *canonical)
+static void check_interface(IUnknown *unknown, REFIID riid, char *iid_name)
 {
 	IUnknown *test = _check_interface(unknown, riid);
-	IUnknown *canonical_test;
 
-	if (test) {
-		// Check for violations of the COM identity rule, as that may
-		// interfere with our ability to locate our HackerObjects:
-		// https://docs.microsoft.com/en-gb/windows/desktop/com/rules-for-implementing-queryinterface
-		canonical_test = _check_interface(test, IID_IUnknown);
-		if (canonical_test == canonical)
-			LogInfo("  Supports %s: %p\n", iid_name, test);
-		else
-			LogInfo("  Supports %s: %p (COM identity violation: %p)\n", iid_name, test, canonical_test);
-	} else
+	if (test)
+		LogInfo("  Supports %s: %p\n", iid_name, test);
+	else
 		LogDebug("  %s not supported\n", iid_name);
 }
 
 void analyse_iunknown(IUnknown *unknown)
 {
-	IUnknown *canonical;
 	int i;
-
-	if (!unknown)
-		return;
 
 	LogInfo("Checking what interfaces %p supports...\n", unknown);
 
-	canonical = _check_interface(unknown, IID_IUnknown);
-
 	for (i = 0; i < ARRAYSIZE(known_interfaces); i++)
-		check_interface(unknown, known_interfaces[i].iid, known_interfaces[i].name, canonical);
+		check_interface(unknown, known_interfaces[i].iid, known_interfaces[i].name);
 
 #ifndef NTDDI_WINBLUE
 	LogInfo("  Win 8.1 interfaces not checked (3DMigoto built with old SDK)\n");

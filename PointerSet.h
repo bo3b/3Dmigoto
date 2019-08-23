@@ -38,4 +38,8 @@ public:
 		mMap.erase(pKey);
 		LeaveCriticalSection(&m_CritSec);
 	}
+
+	size_t size() {
+		return mMap.size();
+	}
 };

@@ -53,7 +53,6 @@ END
 // CourierBold.SprintFont as an embedded resource, instead of the file.
 
 IDR_COURIERBOLD		SPRITEFONT		"..\\courierbold.spritefont"
-IDR_COURIERSMALL	SPRITEFONT		"..\\couriersmall.spritefont"
 IDR_ARIAL		SPRITEFONT		"..\\arial.spritefont"
 
 
@@ -80,14 +79,14 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "FileDescription",  "3Dmigoto - d3d11.dll\0"
+            VALUE "FileDescription",  "3Dmigoto - d3d11.dll \0"
             VALUE "FileVersion",      VER_FILE_VERSION_STR "\0"
-            VALUE "InternalName",     "d3d11.dll\0"
+            VALUE "InternalName",     "d3d11.dll \0"
             VALUE "LegalCopyright",   VER_COPYRIGHT_STR "\0"
-            VALUE "OriginalFilename", "d3d11.dll\0"
+            VALUE "OriginalFilename", "d3d11.dll \0"
             VALUE "ProductName",      VER_PRODUCTNAME_STR "\0"
             VALUE "ProductVersion",   VER_PRODUCT_VERSION_STR "\0"
-            VALUE "Comments",         "http://github.com/bo3b/3Dmigoto\0"
+            VALUE "Comments",         "http://github.com/bo3b/3Dmigoto \0"
         END
     END
     BLOCK "VarFileInfo"

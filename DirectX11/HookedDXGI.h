@@ -3,8 +3,6 @@
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
 
-#include "HackerDevice.h"
-
 // -----------------------------------------------------------------------------
 // This class is 'Hooked', instead of 'Hacker', because it's a hook version, instead
 // of a wrapper version.  The difference is that this will only need a small number
@@ -41,14 +39,29 @@ extern "C" HRESULT(__stdcall *fnOrigCreateDXGIFactory2)(
 	_Out_ void   **ppFactory
 	);
 
+// Called from HackerDXGI
+
+extern "C" HRESULT(__stdcall *fnOrigCreateSwapChain)(
+	IDXGIFactory * This,
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][in] */
+	_In_  DXGI_SWAP_CHAIN_DESC *pDesc,
+	/* [annotation][out] */
+	_Out_  IDXGISwapChain **ppSwapChain);
+
 
 // Called from d3d11Wrapper for CreateDeviceAndSwapChain
 
-void override_swap_chain(DXGI_SWAP_CHAIN_DESC *pDesc, DXGI_SWAP_CHAIN_DESC *origSwapChainDesc);
-void wrap_swap_chain(HackerDevice *hackerDevice,
-		IDXGISwapChain **ppSwapChain,
-		DXGI_SWAP_CHAIN_DESC *overrideSwapChainDesc,
-		DXGI_SWAP_CHAIN_DESC *origSwapChainDesc);
+extern "C" HRESULT __stdcall UnhookableCreateSwapChain(
+	IDXGIFactory * This,
+	/* [annotation][in] */
+	_In_  IUnknown *pDevice,
+	/* [annotation][in] */
+	_In_  DXGI_SWAP_CHAIN_DESC *pDesc,
+	/* [annotation][out] */
+	_Out_  IDXGISwapChain **ppSwapChain);
+
 
 // Called from HookedDXGI
 

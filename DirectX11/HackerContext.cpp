@@ -23,7 +23,6 @@
 //#include "Override.h"
 #include "ShaderRegex.h"
 #include "FrameAnalysis.h"
-#include "profiling.h"
 
 // -----------------------------------------------------------------------------------------------
 
@@ -70,7 +69,6 @@ HackerContext::HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pCon
 	mRealOrigContext1 = pContext1;
 	mHackerDevice = NULL;
 
-	memset(mCurrentVertexBuffers, 0, sizeof(mCurrentVertexBuffers));
 	mCurrentIndexBuffer = 0;
 	mCurrentVertexShader = 0;
 	mCurrentVertexShaderHandle = NULL;
@@ -151,7 +149,7 @@ ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11View *view, std::se
 	if (!resource)
 		return NULL;
 
-	EnterCriticalSectionPretty(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 		// We are using the original resource hash for stat collection - things
 		// get tricky otherwise
@@ -180,11 +178,17 @@ static ResourceSnapshot SnapshotResource(ID3D11Resource *handle)
 	return ResourceSnapshot(handle, hash, orig_hash);
 }
 
-void HackerContext::_RecordShaderResourceUsage(ShaderInfoData *shader_info, ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT])
+template <void (__stdcall ID3D11DeviceContext::*GetShaderResources)(THIS_
+		UINT StartSlot,
+		UINT NumViews,
+		ID3D11ShaderResourceView **ppShaderResourceViews)>
+void HackerContext::RecordShaderResourceUsage(ShaderInfoData *shader_info)
 {
+	ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
 	ID3D11Resource *resource;
 	int i;
 
+	(mOrigContext1->*GetShaderResources)(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 	for (i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
 		if (views[i]) {
 			resource = RecordResourceViewStats(views[i], &G->mShaderResourceInfo);
@@ -213,27 +217,6 @@ void HackerContext::RecordPeerShaders(std::set<UINT64> *PeerShaders, UINT64 this
 		PeerShaders->insert(mCurrentPixelShader);
 }
 
-
-template <void (__stdcall ID3D11DeviceContext::*GetShaderResources)(THIS_
-		UINT StartSlot,
-		UINT NumViews,
-		ID3D11ShaderResourceView **ppShaderResourceViews)>
-void HackerContext::RecordShaderResourceUsage(std::map<UINT64, ShaderInfoData> &ShaderInfo, UINT64 currentShader)
-{
-	ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
-	ShaderInfoData *info;
-
-	(mOrigContext1->*GetShaderResources)(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
-
-	EnterCriticalSectionPretty(&G->mCriticalSection);
-
-		info = &ShaderInfo[currentShader];
-		_RecordShaderResourceUsage(info, views);
-		RecordPeerShaders(&info->PeerShaders, currentShader);
-
-	LeaveCriticalSection(&G->mCriticalSection);
-}
-
 void HackerContext::RecordGraphicsShaderStats()
 {
 	ID3D11UnorderedAccessView *uavs[D3D11_1_UAV_SLOT_COUNT]; // DX11: 8, DX11.1: 64
@@ -241,106 +224,84 @@ void HackerContext::RecordGraphicsShaderStats()
 	ShaderInfoData *info;
 	ID3D11Resource *resource;
 	UINT i;
-	Profiling::State profiling_state;
-
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::start(&profiling_state);
 
 	if (mCurrentVertexShader) {
-		RecordShaderResourceUsage<&ID3D11DeviceContext::VSGetShaderResources>
-			(G->mVertexShaderInfo, mCurrentVertexShader);
+		info = &G->mVertexShaderInfo[mCurrentVertexShader];
+		RecordShaderResourceUsage<&ID3D11DeviceContext::VSGetShaderResources>(info);
+		RecordPeerShaders(&info->PeerShaders, mCurrentVertexShader);
 	}
 
 	if (mCurrentHullShader) {
-		RecordShaderResourceUsage<&ID3D11DeviceContext::HSGetShaderResources>
-			(G->mHullShaderInfo, mCurrentHullShader);
+		info = &G->mHullShaderInfo[mCurrentHullShader];
+		RecordShaderResourceUsage<&ID3D11DeviceContext::HSGetShaderResources>(info);
+		RecordPeerShaders(&info->PeerShaders, mCurrentHullShader);
 	}
 
 	if (mCurrentDomainShader) {
-		RecordShaderResourceUsage<&ID3D11DeviceContext::DSGetShaderResources>
-			(G->mDomainShaderInfo, mCurrentDomainShader);
+		info = &G->mDomainShaderInfo[mCurrentDomainShader];
+		RecordShaderResourceUsage<&ID3D11DeviceContext::DSGetShaderResources>(info);
+		RecordPeerShaders(&info->PeerShaders, mCurrentDomainShader);
 	}
 
 	if (mCurrentGeometryShader) {
-		RecordShaderResourceUsage<&ID3D11DeviceContext::GSGetShaderResources>
-			(G->mGeometryShaderInfo, mCurrentGeometryShader);
+		info = &G->mGeometryShaderInfo[mCurrentGeometryShader];
+		RecordShaderResourceUsage<&ID3D11DeviceContext::GSGetShaderResources>(info);
+		RecordPeerShaders(&info->PeerShaders, mCurrentGeometryShader);
 	}
 
 	if (mCurrentPixelShader) {
-		// This API is poorly designed, because we have to know the
-		// current UAV start slot.
-		OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, mCurrentPSUAVStartSlot, mCurrentPSNumUAVs, uavs);
+		info = &G->mPixelShaderInfo[mCurrentPixelShader];
+		RecordShaderResourceUsage<&ID3D11DeviceContext::PSGetShaderResources>(info);
+		RecordPeerShaders(&info->PeerShaders, mCurrentPixelShader);
 
-		RecordShaderResourceUsage<&ID3D11DeviceContext::PSGetShaderResources>
-			(G->mPixelShaderInfo, mCurrentPixelShader);
+		for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
+			if (selectedRenderTargetPos >= info->RenderTargets.size())
+				info->RenderTargets.push_back(std::set<ResourceSnapshot>());
 
-		EnterCriticalSectionPretty(&G->mCriticalSection);
-			info = &G->mPixelShaderInfo[mCurrentPixelShader];
+			info->RenderTargets[selectedRenderTargetPos].insert(SnapshotResource(mCurrentRenderTargets[selectedRenderTargetPos]));
+		}
 
-			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
-				if (selectedRenderTargetPos >= info->RenderTargets.size())
-					info->RenderTargets.push_back(std::set<ResourceSnapshot>());
+		if (mCurrentDepthTarget)
+			info->DepthTargets.insert(SnapshotResource(mCurrentDepthTarget));
 
-				info->RenderTargets[selectedRenderTargetPos].insert(SnapshotResource(mCurrentRenderTargets[selectedRenderTargetPos]));
-			}
+		if (mCurrentPSNumUAVs) {
+			// This API is poorly designed, because we have to know
+			// the current UAV start slot
+			OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, mCurrentPSUAVStartSlot, mCurrentPSNumUAVs, uavs);
+			for (i = 0; i < mCurrentPSNumUAVs; i++) {
+				if (uavs[i]) {
+					resource = RecordResourceViewStats(uavs[i], &G->mUnorderedAccessInfo);
+					if (resource)
+						info->UAVs[i + mCurrentPSUAVStartSlot].insert(SnapshotResource(resource));
 
-			if (mCurrentDepthTarget)
-				info->DepthTargets.insert(SnapshotResource(mCurrentDepthTarget));
-
-			if (mCurrentPSNumUAVs) {
-				for (i = 0; i < mCurrentPSNumUAVs; i++) {
-					if (uavs[i]) {
-						resource = RecordResourceViewStats(uavs[i], &G->mUnorderedAccessInfo);
-						if (resource)
-							info->UAVs[i + mCurrentPSUAVStartSlot].insert(SnapshotResource(resource));
-
-						uavs[i]->Release();
-					}
+					uavs[i]->Release();
 				}
 			}
-		LeaveCriticalSection(&G->mCriticalSection);
+		}
 	}
-
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::end(&profiling_state, &Profiling::stat_overhead);
 }
 
 void HackerContext::RecordComputeShaderStats()
 {
-	ID3D11ShaderResourceView *srvs[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
 	ID3D11UnorderedAccessView *uavs[D3D11_1_UAV_SLOT_COUNT]; // DX11: 8, DX11.1: 64
-	ShaderInfoData *info;
+	ShaderInfoData *info = &G->mComputeShaderInfo[mCurrentComputeShader];
 	D3D_FEATURE_LEVEL level = mOrigDevice1->GetFeatureLevel();
 	UINT num_uavs = (level >= D3D_FEATURE_LEVEL_11_1 ? D3D11_1_UAV_SLOT_COUNT : D3D11_PS_CS_UAV_REGISTER_COUNT);
 	ID3D11Resource *resource;
 	UINT i;
-	Profiling::State profiling_state;
 
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::start(&profiling_state);
+	RecordShaderResourceUsage<&ID3D11DeviceContext::CSGetShaderResources>(info);
 
-	mOrigContext1->CSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, srvs);
-	mOrigContext1->CSGetUnorderedAccessViews(0, num_uavs, uavs);
+	CSGetUnorderedAccessViews(0, num_uavs, uavs);
+	for (i = 0; i < num_uavs; i++) {
+		if (uavs[i]) {
+			resource = RecordResourceViewStats(uavs[i], &G->mUnorderedAccessInfo);
+			if (resource)
+				info->UAVs[i].insert(SnapshotResource(resource));
 
-	EnterCriticalSectionPretty(&G->mCriticalSection);
-
-		info = &G->mComputeShaderInfo[mCurrentComputeShader];
-		_RecordShaderResourceUsage(info, srvs);
-
-		for (i = 0; i < num_uavs; i++) {
-			if (uavs[i]) {
-				resource = RecordResourceViewStats(uavs[i], &G->mUnorderedAccessInfo);
-				if (resource)
-					info->UAVs[i].insert(SnapshotResource(resource));
-
-				uavs[i]->Release();
-			}
+			uavs[i]->Release();
 		}
-
-		if (Profiling::mode == Profiling::Mode::SUMMARY)
-			Profiling::end(&profiling_state, &Profiling::stat_overhead);
-
-	LeaveCriticalSection(&G->mCriticalSection);
+	}
 }
 
 void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num)
@@ -358,7 +319,7 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 	if (!resource)
 		return;
 
-	EnterCriticalSectionPretty(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 		// We are using the original resource hash for stat collection - things
 		// get tricky otherwise
@@ -392,7 +353,7 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 
 	target->GetDesc(&desc);
 
-	EnterCriticalSectionPretty(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 		// We are using the original resource hash for stat collection - things
 		// get tricky otherwise
@@ -495,12 +456,12 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 		// Deprecated since the logic can be moved into the shaders with far more flexibility
 		if (use_orig) {
 			if (isPixelShader) {
-				ShaderReplacementMap::iterator i = lookup_original_shader(mCurrentPixelShaderHandle);
+				ShaderReplacementMap::iterator i = G->mOriginalShaders.find(mCurrentPixelShaderHandle);
 				if (i != G->mOriginalShaders.end())
 					data->oldPixelShader = SwitchPSShader((ID3D11PixelShader*)i->second);
 			}
 			else {
-				ShaderReplacementMap::iterator i = lookup_original_shader(mCurrentVertexShaderHandle);
+				ShaderReplacementMap::iterator i = G->mOriginalShaders.find(mCurrentVertexShaderHandle);
 				if (i != G->mOriginalShaders.end())
 					data->oldVertexShader = SwitchVSShader((ID3D11VertexShader*)i->second);
 			}
@@ -538,83 +499,48 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	HRESULT hr;
 	unsigned i;
 	wstring tagline(L"//");
-	vector<byte> patched_bytecode;
-	vector<char> asm_vector;
-
-	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	// Faster than catching an out_of_range exception from .at():
-	orig_info_i = lookup_reloaded_shader(shader);
+	orig_info_i = G->mReloadedShaders.find(shader);
 	if (orig_info_i == G->mReloadedShaders.end())
-		goto out_drop;
+		return;
 	orig_info = &orig_info_i->second;
 
 	if (!orig_info->deferred_replacement_candidate || orig_info->deferred_replacement_processed)
-		goto out_drop;
+		return;
+
+	LogInfo("Performing deferred shader analysis on %S %016I64x...\n", shader_type, hash);
 
 	// Remember that we have analysed this one so we don't check it again
 	// (until config reload) regardless of whether we patch it or not:
 	orig_info->deferred_replacement_processed = true;
 
-	switch (load_shader_regex_cache(hash, shader_type, &patched_bytecode, &tagline)) {
-	case ShaderRegexCache::NO_MATCH:
-		LogInfo("%S %016I64x has cached ShaderRegex miss\n", shader_type, hash);
-		goto out_drop;
-	case ShaderRegexCache::MATCH:
-		LogInfo("Loaded %S %016I64x command list from ShaderRegex cache\n", shader_type, hash);
-		goto out_drop;
-	case ShaderRegexCache::PATCH:
-		LogInfo("Loaded %S %016I64x bytecode from ShaderRegex cache\n", shader_type, hash);
-		break;
-	case ShaderRegexCache::NO_CACHE:
-		LogInfo("Performing deferred shader analysis on %S %016I64x...\n", shader_type, hash);
+	asm_text = BinaryToAsmText(orig_info->byteCode->GetBufferPointer(),
+			orig_info->byteCode->GetBufferSize());
+	if (asm_text.empty())
+		return;
 
-		asm_text = BinaryToAsmText(orig_info->byteCode->GetBufferPointer(),
-				orig_info->byteCode->GetBufferSize(),
-				G->patch_cb_offsets,
-				G->disassemble_undecipherable_custom_data);
-		if (asm_text.empty())
-			goto out_drop;
+	try {
+		patch_regex = apply_shader_regex_groups(&asm_text, &orig_info->shaderModel, hash, &tagline);
+	} catch (...) {
+		LogInfo("    *** Exception while patching shader\n");
+		return;
+	}
 
-		try {
-			patch_regex = apply_shader_regex_groups(&asm_text, shader_type, &orig_info->shaderModel, hash, &tagline);
-		} catch (...) {
-			LogInfo("    *** Exception while patching shader\n");
-			goto out_drop;
-		}
+	if (!patch_regex) {
+		LogInfo("Patch did not apply\n");
+		return;
+	}
 
-		if (!patch_regex) {
-			LogInfo("Patch did not apply\n");
-			goto out_drop;
-		}
+	LogInfo("Patched Shader:\n%s\n", asm_text.c_str());
 
-		// No longer logging this since we can output to ShaderFixes
-		// via hunting if marking_actions = regex, or it could be
-		// disassembled from the regex cache with cmd_Decompiler
-		// LogInfo("Patched Shader:\n%s\n", asm_text.c_str());
+	vector<char> asm_vector(asm_text.begin(), asm_text.end());
+	vector<byte> patched_bytecode;
 
-		asm_vector.assign(asm_text.begin(), asm_text.end());
-
-		try {
-			vector<AssemblerParseError> parse_errors;
-			hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode, &parse_errors);
-			if (FAILED(hr)) {
-				LogInfo("    *** Assembling patched shader failed\n");
-				goto out_drop;
-			}
-			// Parse errors are currently being treated as non-fatal on
-			// creation time replacement and ShaderRegex for backwards
-			// compatibility (live shader reload is fatal).
-			for (auto &parse_error : parse_errors)
-				LogOverlay(LOG_NOTICE, "%016I64x-%S %S: %s\n",
-						hash, shader_type, tagline.c_str(), parse_error.what());
-		} catch (const exception &e) {
-			LogOverlay(LOG_WARNING, "Error assembling ShaderRegex patched %016I64x-%S\n%S\n%s\n",
-					hash, shader_type, tagline.c_str(), e.what());
-			goto out_drop;
-		}
-
-		save_shader_regex_cache_bin(hash, shader_type, &patched_bytecode);
+	hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode);
+	if (FAILED(hr)) {
+		LogInfo("    *** Assembling patched shader failed\n");
+		return;
 	}
 
 	hr = (mOrigDevice1->*CreateShader)(patched_bytecode.data(), patched_bytecode.size(),
@@ -622,7 +548,7 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	CleanupShaderMaps(patched_shader);
 	if (FAILED(hr)) {
 		LogInfo("    *** Creating replacement shader failed\n");
-		goto out_drop;
+		return;
 	}
 
 	// Update replacement map so we don't have to repeat this process.
@@ -632,12 +558,6 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 		orig_info->replacement->Release();
 	orig_info->replacement = patched_shader;
 	orig_info->infoText = tagline;
-
-	// Now that we've finished updating our data structures we can drop the
-	// critical section before calling into DirectX to bind the replacement
-	// shader. This was necessary to avoid a deadlock with the resource
-	// release tracker, but that now uses a different lock.
-	LeaveCriticalSection(&G->mCriticalSection);
 
 	// And bind the replaced shader in time for this draw call:
 	// VSBUGWORKAROUND: VS2013 toolchain has a bug that mistakes a member
@@ -653,60 +573,52 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 		if (class_instances[i])
 			class_instances[i]->Release();
 	}
-	return;
-
-out_drop:
-	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 void HackerContext::DeferredShaderReplacementBeforeDraw()
 {
-	Profiling::State profiling_state;
-
 	if (shader_regex_groups.empty())
 		return;
 
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::start(&profiling_state);
+	EnterCriticalSection(&G->mCriticalSection);
 
-	if (mCurrentVertexShaderHandle) {
-		DeferredShaderReplacement<ID3D11VertexShader,
-			&ID3D11DeviceContext::VSGetShader,
-			&ID3D11DeviceContext::VSSetShader,
-			&ID3D11Device::CreateVertexShader>
-			(mCurrentVertexShaderHandle, mCurrentVertexShader, L"vs");
-	}
-	if (mCurrentHullShaderHandle) {
-		DeferredShaderReplacement<ID3D11HullShader,
-			&ID3D11DeviceContext::HSGetShader,
-			&ID3D11DeviceContext::HSSetShader,
-			&ID3D11Device::CreateHullShader>
-			(mCurrentHullShaderHandle, mCurrentHullShader, L"hs");
-	}
-	if (mCurrentDomainShaderHandle) {
-		DeferredShaderReplacement<ID3D11DomainShader,
-			&ID3D11DeviceContext::DSGetShader,
-			&ID3D11DeviceContext::DSSetShader,
-			&ID3D11Device::CreateDomainShader>
-			(mCurrentDomainShaderHandle, mCurrentDomainShader, L"ds");
-	}
-	if (mCurrentGeometryShaderHandle) {
-		DeferredShaderReplacement<ID3D11GeometryShader,
-			&ID3D11DeviceContext::GSGetShader,
-			&ID3D11DeviceContext::GSSetShader,
-			&ID3D11Device::CreateGeometryShader>
-			(mCurrentGeometryShaderHandle, mCurrentGeometryShader, L"gs");
-	}
-	if (mCurrentPixelShaderHandle) {
-		DeferredShaderReplacement<ID3D11PixelShader,
-			&ID3D11DeviceContext::PSGetShader,
-			&ID3D11DeviceContext::PSSetShader,
-			&ID3D11Device::CreatePixelShader>
-			(mCurrentPixelShaderHandle, mCurrentPixelShader, L"ps");
-	}
+		if (mCurrentVertexShaderHandle) {
+			DeferredShaderReplacement<ID3D11VertexShader,
+				&ID3D11DeviceContext::VSGetShader,
+				&ID3D11DeviceContext::VSSetShader,
+				&ID3D11Device::CreateVertexShader>
+				(mCurrentVertexShaderHandle, mCurrentVertexShader, L"vs");
+		}
+		if (mCurrentHullShaderHandle) {
+			DeferredShaderReplacement<ID3D11HullShader,
+				&ID3D11DeviceContext::HSGetShader,
+				&ID3D11DeviceContext::HSSetShader,
+				&ID3D11Device::CreateHullShader>
+				(mCurrentHullShaderHandle, mCurrentHullShader, L"hs");
+		}
+		if (mCurrentDomainShaderHandle) {
+			DeferredShaderReplacement<ID3D11DomainShader,
+				&ID3D11DeviceContext::DSGetShader,
+				&ID3D11DeviceContext::DSSetShader,
+				&ID3D11Device::CreateDomainShader>
+				(mCurrentDomainShaderHandle, mCurrentDomainShader, L"ds");
+		}
+		if (mCurrentGeometryShaderHandle) {
+			DeferredShaderReplacement<ID3D11GeometryShader,
+				&ID3D11DeviceContext::GSGetShader,
+				&ID3D11DeviceContext::GSSetShader,
+				&ID3D11Device::CreateGeometryShader>
+				(mCurrentGeometryShaderHandle, mCurrentGeometryShader, L"gs");
+		}
+		if (mCurrentPixelShaderHandle) {
+			DeferredShaderReplacement<ID3D11PixelShader,
+				&ID3D11DeviceContext::PSGetShader,
+				&ID3D11DeviceContext::PSSetShader,
+				&ID3D11Device::CreatePixelShader>
+				(mCurrentPixelShaderHandle, mCurrentPixelShader, L"ps");
+		}
 
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::end(&profiling_state, &Profiling::shaderregex_overhead);
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 void HackerContext::DeferredShaderReplacementBeforeDispatch()
@@ -717,52 +629,41 @@ void HackerContext::DeferredShaderReplacementBeforeDispatch()
 	if (!mCurrentComputeShaderHandle)
 		return;
 
-	DeferredShaderReplacement<ID3D11ComputeShader,
-		&ID3D11DeviceContext::CSGetShader,
-		&ID3D11DeviceContext::CSSetShader,
-		&ID3D11Device::CreateComputeShader>
-		(mCurrentComputeShaderHandle, mCurrentComputeShader, L"cs");
+	EnterCriticalSection(&G->mCriticalSection);
+
+		DeferredShaderReplacement<ID3D11ComputeShader,
+			&ID3D11DeviceContext::CSGetShader,
+			&ID3D11DeviceContext::CSSetShader,
+			&ID3D11Device::CreateComputeShader>
+			(mCurrentComputeShaderHandle, mCurrentComputeShader, L"cs");
+
+	LeaveCriticalSection(&G->mCriticalSection);
 }
 
 
 void HackerContext::BeforeDraw(DrawContext &data)
 {
-	Profiling::State profiling_state;
-
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::start(&profiling_state);
-
 	// If we are not hunting shaders, we should skip all of this shader management for a performance bump.
 	if (G->hunting == HUNTING_MODE_ENABLED)
 	{
-		UINT selectedVertexBufferPos;
 		UINT selectedRenderTargetPos;
-		UINT i;
-
-		// In some cases stat collection can have a significant
-		// performance impact or may result in a runaway memory leak,
-		// so only do it if dump_usage is enabled.
-		if (G->DumpUsage)
-			RecordGraphicsShaderStats();
-
-		EnterCriticalSectionPretty(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 		{
+			// In some cases stat collection can have a significant
+			// performance impact or may result in a runaway
+			// memory leak, so only do it if dump_usage is enabled:
+			if (G->DumpUsage)
+				RecordGraphicsShaderStats();
+
 			// Selection
-			for (selectedVertexBufferPos = 0; selectedVertexBufferPos < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; ++selectedVertexBufferPos) {
-				if (mCurrentVertexBuffers[selectedVertexBufferPos] == G->mSelectedVertexBuffer)
-					break;
-			}
-			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
-				if (mCurrentRenderTargets[selectedRenderTargetPos] == G->mSelectedRenderTarget)
-					break;
-			}
+			for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos)
+				if (mCurrentRenderTargets[selectedRenderTargetPos] == G->mSelectedRenderTarget) break;
 			if (mCurrentIndexBuffer == G->mSelectedIndexBuffer ||
 				mCurrentVertexShader == G->mSelectedVertexShader ||
 				mCurrentPixelShader == G->mSelectedPixelShader ||
 				mCurrentGeometryShader == G->mSelectedGeometryShader ||
 				mCurrentDomainShader == G->mSelectedDomainShader ||
 				mCurrentHullShader == G->mSelectedHullShader ||
-				selectedVertexBufferPos < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT ||
 				selectedRenderTargetPos < mCurrentRenderTargets.size())
 			{
 				LogDebug("  Skipping selected operation. CurrentIndexBuffer = %08lx, CurrentVertexShader = %016I64x, CurrentPixelShader = %016I64x\n",
@@ -776,42 +677,24 @@ void HackerContext::BeforeDraw(DrawContext &data)
 				}
 				G->mSelectedRenderTargetSnapshotList.insert(mCurrentRenderTargets.begin(), mCurrentRenderTargets.end());
 				// Snapshot info.
-				for (i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
-					if (mCurrentVertexBuffers[i] == G->mSelectedVertexBuffer) {
-						G->mSelectedVertexBuffer_VertexShader.insert(mCurrentVertexShader);
-						G->mSelectedVertexBuffer_PixelShader.insert(mCurrentPixelShader);
-					}
-				}
 				if (mCurrentIndexBuffer == G->mSelectedIndexBuffer)
 				{
 					G->mSelectedIndexBuffer_VertexShader.insert(mCurrentVertexShader);
 					G->mSelectedIndexBuffer_PixelShader.insert(mCurrentPixelShader);
 				}
-				if (mCurrentVertexShader == G->mSelectedVertexShader) {
-					for (i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
-						if (mCurrentVertexBuffers[i])
-							G->mSelectedVertexShader_VertexBuffer.insert(mCurrentVertexBuffers[i]);
-					}
-					if (mCurrentIndexBuffer)
-						G->mSelectedVertexShader_IndexBuffer.insert(mCurrentIndexBuffer);
-				}
-				if (mCurrentPixelShader == G->mSelectedPixelShader) {
-					for (i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
-						if (mCurrentVertexBuffers[i])
-							G->mSelectedVertexShader_VertexBuffer.insert(mCurrentVertexBuffers[i]);
-					}
-					if (mCurrentIndexBuffer)
-						G->mSelectedPixelShader_IndexBuffer.insert(mCurrentIndexBuffer);
-				}
+				if (mCurrentVertexShader == G->mSelectedVertexShader)
+					G->mSelectedVertexShader_IndexBuffer.insert(mCurrentIndexBuffer);
+				if (mCurrentPixelShader == G->mSelectedPixelShader)
+					G->mSelectedPixelShader_IndexBuffer.insert(mCurrentIndexBuffer);
 				if (G->marking_mode == MarkingMode::MONO && mHackerDevice->mStereoHandle)
 				{
 					LogDebug("  setting separation=0 for hunting\n");
 
-					if (NVAPI_OK != Profiling::NvAPI_Stereo_GetSeparation(mHackerDevice->mStereoHandle, &data.oldSeparation))
+					if (NVAPI_OK != NvAPI_Stereo_GetSeparation(mHackerDevice->mStereoHandle, &data.oldSeparation))
 						LogDebug("    Stereo_GetSeparation failed.\n");
 
 					NvAPIOverride();
-					if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, 0))
+					if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, 0))
 						LogDebug("    Stereo_SetSeparation failed.\n");
 				}
 				else if (G->marking_mode == MarkingMode::SKIP)
@@ -836,7 +719,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 	}
 
 	if (!G->fix_enabled)
-		goto out_profile;
+		return;
 
 	DeferredShaderReplacementBeforeDraw();
 
@@ -844,14 +727,14 @@ void HackerContext::BeforeDraw(DrawContext &data)
 	if (!G->mShaderOverrideMap.empty()) {
 		ShaderOverrideMap::iterator i;
 
-		i = lookup_shaderoverride(mCurrentVertexShader);
+		i = G->mShaderOverrideMap.find(mCurrentVertexShader);
 		if (i != G->mShaderOverrideMap.end()) {
 			data.post_commands[0] = &i->second.post_command_list;
 			ProcessShaderOverride(&i->second, false, &data);
 		}
 
 		if (mCurrentHullShader) {
-			i = lookup_shaderoverride(mCurrentHullShader);
+			i = G->mShaderOverrideMap.find(mCurrentHullShader);
 			if (i != G->mShaderOverrideMap.end()) {
 				data.post_commands[1] = &i->second.post_command_list;
 				ProcessShaderOverride(&i->second, false, &data);
@@ -859,7 +742,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
 		}
 
 		if (mCurrentDomainShader) {
-			i = lookup_shaderoverride(mCurrentDomainShader);
+			i = G->mShaderOverrideMap.find(mCurrentDomainShader);
 			if (i != G->mShaderOverrideMap.end()) {
 				data.post_commands[2] = &i->second.post_command_list;
 				ProcessShaderOverride(&i->second, false, &data);
@@ -867,35 +750,24 @@ void HackerContext::BeforeDraw(DrawContext &data)
 		}
 
 		if (mCurrentGeometryShader) {
-			i = lookup_shaderoverride(mCurrentGeometryShader);
+			i = G->mShaderOverrideMap.find(mCurrentGeometryShader);
 			if (i != G->mShaderOverrideMap.end()) {
 				data.post_commands[3] = &i->second.post_command_list;
 				ProcessShaderOverride(&i->second, false, &data);
 			}
 		}
 
-		i = lookup_shaderoverride(mCurrentPixelShader);
+		i = G->mShaderOverrideMap.find(mCurrentPixelShader);
 		if (i != G->mShaderOverrideMap.end()) {
 			data.post_commands[4] = &i->second.post_command_list;
 			ProcessShaderOverride(&i->second, true, &data);
 		}
 	}
-
-out_profile:
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::end(&profiling_state, &Profiling::draw_overhead);
 }
 
 void HackerContext::AfterDraw(DrawContext &data)
 {
 	int i;
-	Profiling::State profiling_state;
-
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::start(&profiling_state);
-
-	if (data.call_info.skip)
-		Profiling::skipped_draw_calls++;
 
 	for (i = 0; i < 5; i++) {
 		if (data.post_commands[i]) {
@@ -905,7 +777,7 @@ void HackerContext::AfterDraw(DrawContext &data)
 
 	if (mHackerDevice->mStereoHandle && data.oldSeparation != FLT_MAX) {
 		NvAPIOverride();
-		if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, data.oldSeparation))
+		if (NVAPI_OK != NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, data.oldSeparation))
 			LogDebug("    Stereo_SetSeparation failed.\n");
 	}
 
@@ -923,9 +795,6 @@ void HackerContext::AfterDraw(DrawContext &data)
 		if (ret)
 			ret->Release();
 	}
-
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::end(&profiling_state, &Profiling::draw_overhead);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -984,7 +853,7 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
 	HRESULT hr = mOrigContext1->QueryInterface(riid, ppvObject);
 	if (FAILED(hr))
 	{
-		LogDebug("  failed result = %x for %p\n", hr, ppvObject);
+		LogInfo("  failed result = %x for %p\n", hr, ppvObject);
 		return hr;
 	}
 
@@ -1056,10 +925,10 @@ STDMETHODIMP HackerContext::GetPrivateData(THIS_
 	/* [annotation] */
 	__out_bcount_opt(*pDataSize)  void *pData)
 {
-	LogDebug("HackerContext::GetPrivateData(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
+	LogInfo("HackerContext::GetPrivateData(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
 
 	HRESULT hr = mOrigContext1->GetPrivateData(guid, pDataSize, pData);
-	LogDebug("  returns result = %x, DataSize = %d\n", hr, *pDataSize);
+	LogInfo("  returns result = %x, DataSize = %d\n", hr, *pDataSize);
 
 	return hr;
 }
@@ -1132,11 +1001,11 @@ bool HackerContext::MapDenyCPURead(
 	if (G->mTextureOverrideMap.empty())
 		return false;
 
-	EnterCriticalSectionPretty(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 		hash = GetResourceHash(pResource);
 	LeaveCriticalSection(&G->mCriticalSection);
 
-	i = lookup_textureoverride(hash);
+	i = G->mTextureOverrideMap.find(hash);
 	if (i == G->mTextureOverrideMap.end())
 		return false;
 
@@ -1160,13 +1029,9 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 	void *replace = NULL;
 	bool divertable = false, divert = false, track = false;
 	bool write = false, read = false, deny = false;
-	Profiling::State profiling_state;
-
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::start(&profiling_state);
 
 	if (FAILED(map_hr) || !pResource || !pMappedResource || !pMappedResource->pData)
-		goto out_profile;
+		return;
 
 	switch (MapType) {
 		case D3D11_MAP_READ_WRITE:
@@ -1199,14 +1064,14 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 	}
 
 	if (!track && !divert)
-		goto out_profile;
+		return;
 
 	map_info = &mMappedResources[pResource];
 	map_info->mapped_writable = write;
 	memcpy(&map_info->map, pMappedResource, sizeof(D3D11_MAPPED_SUBRESOURCE));
 
 	if (!divertable || !divert)
-		goto out_profile;
+		return;
 
 	pResource->GetType(&dim);
 	switch (dim) {
@@ -1231,13 +1096,13 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 			map_info->size = pMappedResource->DepthPitch * tex3d_desc.Depth;
 			break;
 		default:
-			goto out_profile;
+			return;
 	}
 
 	replace = malloc(map_info->size);
 	if (!replace) {
 		LogInfo("TrackAndDivertMap out of memory\n");
-		goto out_profile;
+		return;
 	}
 
 	if (read && !deny)
@@ -1248,30 +1113,22 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 	map_info->orig_pData = pMappedResource->pData;
 	map_info->map.pData = replace;
 	pMappedResource->pData = replace;
-
-out_profile:
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::end(&profiling_state, &Profiling::map_overhead);
 }
 
 void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresource)
 {
 	MappedResources::iterator i;
 	MappedResourceInfo *map_info = NULL;
-	Profiling::State profiling_state;
-
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::start(&profiling_state);
 
 	if (mMappedResources.empty())
-		goto out_profile;
+		return;
 
 	i = mMappedResources.find(pResource);
 	if (i == mMappedResources.end())
-		goto out_profile;
+		return;
 	map_info = &i->second;
 
-	if (G->track_texture_updates == 1 && Subresource == 0 && map_info->mapped_writable)
+	if (G->track_texture_updates && Subresource == 0 && map_info->mapped_writable)
 		UpdateResourceHashFromCPU(pResource, map_info->map.pData, map_info->map.RowPitch, map_info->map.DepthPitch);
 
 	if (map_info->orig_pData) {
@@ -1283,10 +1140,6 @@ void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresou
 	}
 
 	mMappedResources.erase(i);
-
-out_profile:
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::end(&profiling_state, &Profiling::map_overhead);
 }
 
 STDMETHODIMP HackerContext::Map(THIS_
@@ -1351,18 +1204,6 @@ STDMETHODIMP_(void) HackerContext::IASetVertexBuffers(THIS_
 	__in_ecount(NumBuffers)  const UINT *pOffsets)
 {
 	 mOrigContext1->IASetVertexBuffers(StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
-
-	 if (G->hunting == HUNTING_MODE_ENABLED) {
-		EnterCriticalSectionPretty(&G->mCriticalSection);
-		for (UINT i = StartSlot; (i < StartSlot + NumBuffers) && (i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT); i++) {
-			if (ppVertexBuffers && ppVertexBuffers[i]) {
-				mCurrentVertexBuffers[i] = GetResourceHash(ppVertexBuffers[i]);
-				G->mVisitedVertexBuffers.insert(mCurrentVertexBuffers[i]);
-			} else
-				mCurrentVertexBuffers[i] = 0;
-		}
-		LeaveCriticalSection(&G->mCriticalSection);
-	 }
 }
 
 STDMETHODIMP_(void) HackerContext::GSSetConstantBuffers(THIS_
@@ -1512,8 +1353,7 @@ STDMETHODIMP_(void) HackerContext::SOSetTargets(THIS_
 bool HackerContext::BeforeDispatch(DispatchContext *context)
 {
 	if (G->hunting == HUNTING_MODE_ENABLED) {
-		if (G->DumpUsage)
-			RecordComputeShaderStats();
+		RecordComputeShaderStats();
 
 		if (mCurrentComputeShader == G->mSelectedComputeShader) {
 			if (G->marking_mode == MarkingMode::SKIP)
@@ -1530,15 +1370,14 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 	if (!G->mShaderOverrideMap.empty()) {
 		ShaderOverrideMap::iterator i;
 
-		i = lookup_shaderoverride(mCurrentComputeShader);
+		i = G->mShaderOverrideMap.find(mCurrentComputeShader);
 		if (i != G->mShaderOverrideMap.end()) {
 			context->post_commands = &i->second.post_command_list;
 			// XXX: Not using ProcessShaderOverride() as a
 			// lot of it's logic doesn't really apply to
 			// compute shaders. The main thing we care
 			// about is the command list, so just run that:
-			RunCommandList(mHackerDevice, this, &i->second.command_list, &context->call_info, false);
-			return !context->call_info.skip;
+			RunCommandList(mHackerDevice, this, &i->second.command_list, NULL, false);
 		}
 	}
 
@@ -1548,7 +1387,7 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 void HackerContext::AfterDispatch(DispatchContext *context)
 {
 	if (context->post_commands)
-		RunCommandList(mHackerDevice, this, context->post_commands, &context->call_info, true);
+		RunCommandList(mHackerDevice, this, context->post_commands, NULL, true);
 }
 
 STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
@@ -1559,12 +1398,10 @@ STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
 	/* [annotation] */
 	__in  UINT ThreadGroupCountZ)
 {
-	DispatchContext context{ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ};
+	DispatchContext context;
 
 	if (BeforeDispatch(&context))
 		mOrigContext1->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
-	else
-		Profiling::skipped_draw_calls++;
 
 	AfterDispatch(&context);
 }
@@ -1575,12 +1412,11 @@ STDMETHODIMP_(void) HackerContext::DispatchIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	DispatchContext context{&pBufferForArgs, AlignedByteOffsetForArgs};
+	DispatchContext context;
+
 
 	if (BeforeDispatch(&context))
 		mOrigContext1->DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
-	else
-		Profiling::skipped_draw_calls++;
 
 	AfterDispatch(&context);
 }
@@ -1636,7 +1472,7 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 
 	srcTex->GetDesc(&srcDesc);
 	dstTex->GetDesc(&dstDesc);
-	EnterCriticalSectionPretty(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 		srcHash = GetResourceHash(srcTex);
 		dstHash = GetResourceHash(dstTex);
 	LeaveCriticalSection(&G->mCriticalSection);
@@ -1645,7 +1481,7 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
 			srcHash, pSrcBox->left, pSrcBox->right, pSrcBox->top, pSrcBox->bottom, srcDesc.Width, srcDesc.Height, 
 			dstHash, DstX, DstY, dstDesc.Width, dstDesc.Height);
 
-	i = lookup_textureoverride(dstHash);
+	i = G->mTextureOverrideMap.find(dstHash);
 	if (i == G->mTextureOverrideMap.end())
 		return false;
 
@@ -1681,7 +1517,7 @@ STDMETHODIMP_(void) HackerContext::CopySubresourceRegion(THIS_
 	D3D11_BOX replaceSrcBox;
 	UINT replaceDstX = DstX;
 
-	if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
+	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, DstSubresource, pSrcResource, SrcSubresource, 'S', DstX, DstY, DstZ, pSrcBox);
 	}
 
@@ -1697,7 +1533,7 @@ STDMETHODIMP_(void) HackerContext::CopySubresourceRegion(THIS_
 	// it stands to reason that it won't always fill the entire resource
 	// and the hashes might be less predictable. Possibly something to
 	// enable as an option in the future if there is a proven need.
-	if (G->track_texture_updates == 1 && DstSubresource == 0 && DstX == 0 && DstY == 0 && DstZ == 0 && pSrcBox == NULL)
+	if (G->track_texture_updates && DstSubresource == 0 && DstX == 0 && DstY == 0 && DstZ == 0 && pSrcBox == NULL)
 		PropagateResourceHash(pDstResource, pSrcResource);
 }
 
@@ -1707,13 +1543,13 @@ STDMETHODIMP_(void) HackerContext::CopyResource(THIS_
 	/* [annotation] */
 	__in  ID3D11Resource *pSrcResource)
 {
-	if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
+	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, 0, pSrcResource, 0, 'C', 0, 0, 0, NULL);
 	}
 
 	 mOrigContext1->CopyResource(pDstResource, pSrcResource);
 
-	if (G->track_texture_updates == 1)
+	if (G->track_texture_updates)
 		PropagateResourceHash(pDstResource, pSrcResource);
 }
 
@@ -1731,7 +1567,7 @@ STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
 	/* [annotation] */
 	__in  UINT SrcDepthPitch)
 {
-	if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
+	if (G->hunting) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		MarkResourceHashContaminated(pDstResource, DstSubresource, NULL, 0, 'U', 0, 0, 0, NULL);
 	}
 
@@ -1744,7 +1580,7 @@ STDMETHODIMP_(void) HackerContext::UpdateSubresource(THIS_
 	// it stands to reason that it won't always fill the entire resource
 	// and the hashes might be less predictable. Possibly something to
 	// enable as an option in the future if there is a proven need.
-	if (G->track_texture_updates == 1 && DstSubresource == 0 && pDstBox == NULL)
+	if (G->track_texture_updates && DstSubresource == 0 && pDstBox == NULL)
 		UpdateResourceHashFromCPU(pDstResource, pSrcData, SrcRowPitch, SrcDepthPitch);
 }
 
@@ -1767,7 +1603,7 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewUint(THIS_
 {
 	RunViewCommandList(mHackerDevice, this, &G->clear_uav_uint_command_list, pUnorderedAccessView, false);
 	mOrigContext1->ClearUnorderedAccessViewUint(pUnorderedAccessView, Values);
-	RunViewCommandList(mHackerDevice, this, &G->post_clear_uav_uint_command_list, pUnorderedAccessView, true);
+	RunViewCommandList(mHackerDevice, this, &G->clear_uav_uint_command_list, pUnorderedAccessView, true);
 }
 
 STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewFloat(THIS_
@@ -1778,7 +1614,7 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewFloat(THIS_
 {
 	RunViewCommandList(mHackerDevice, this, &G->clear_uav_float_command_list, pUnorderedAccessView, false);
 	mOrigContext1->ClearUnorderedAccessViewFloat(pUnorderedAccessView, Values);
-	RunViewCommandList(mHackerDevice, this, &G->post_clear_uav_float_command_list, pUnorderedAccessView, true);
+	RunViewCommandList(mHackerDevice, this, &G->clear_uav_float_command_list, pUnorderedAccessView, true);
 }
 
 STDMETHODIMP_(void) HackerContext::ClearDepthStencilView(THIS_
@@ -1793,7 +1629,7 @@ STDMETHODIMP_(void) HackerContext::ClearDepthStencilView(THIS_
 {
 	RunViewCommandList(mHackerDevice, this, &G->clear_dsv_command_list, pDepthStencilView, false);
 	mOrigContext1->ClearDepthStencilView(pDepthStencilView, ClearFlags, Depth, Stencil);
-	RunViewCommandList(mHackerDevice, this, &G->post_clear_dsv_command_list, pDepthStencilView, true);
+	RunViewCommandList(mHackerDevice, this, &G->clear_dsv_command_list, pDepthStencilView, true);
 }
 
 STDMETHODIMP_(void) HackerContext::GenerateMips(THIS_
@@ -2016,13 +1852,13 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 		//
 		// grumble grumble this optimisation caught me out *TWICE* grumble grumble -DSS
 		if (!G->mShaderOverrideMap.empty() || !shader_regex_groups.empty() || (G->hunting == HUNTING_MODE_ENABLED)) {
-			ShaderMap::iterator i = lookup_shader_hash(pShader);
+			ShaderMap::iterator i = G->mShaders.find(pShader);
 			if (i != G->mShaders.end()) {
 				*currentShaderHash = i->second;
 				LogDebug("  shader found: handle = %p, hash = %016I64x\n", *currentShaderHandle, *currentShaderHash);
 
 				if ((G->hunting == HUNTING_MODE_ENABLED) && visitedShaders) {
-					EnterCriticalSectionPretty(&G->mCriticalSection);
+					EnterCriticalSection(&G->mCriticalSection);
 					visitedShaders->insert(i->second);
 					LeaveCriticalSection(&G->mCriticalSection);
 				}
@@ -2038,7 +1874,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 
 		// If the shader has been live reloaded from ShaderFixes, use the new one
 		// No longer conditional on G->hunting now that hunting may be soft enabled via key binding
-		ShaderReloadMap::iterator it = lookup_reloaded_shader(pShader);
+		ShaderReloadMap::iterator it = G->mReloadedShaders.find(pShader);
 		if (it != G->mReloadedShaders.end() && it->second.replacement != NULL) {
 			LogDebug("  shader replaced by: %p\n", it->second.replacement);
 
@@ -2057,8 +1893,14 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
 		if (G->hunting == HUNTING_MODE_ENABLED) {
 			// Replacement map.
 			if (G->marking_mode == MarkingMode::ORIGINAL || !G->fix_enabled) {
-				ShaderReplacementMap::iterator j = lookup_original_shader(pShader);
+				ShaderReplacementMap::iterator j = G->mOriginalShaders.find(pShader);
 				if ((selectedShader == *currentShaderHash || !G->fix_enabled) && j != G->mOriginalShaders.end()) {
+					repl_shader = (ID3D11Shader*)j->second;
+				}
+			}
+			if (G->marking_mode == MarkingMode::ZERO) {
+				ShaderReplacementMap::iterator j = G->mZeroShaders.find(pShader);
+				if (selectedShader == *currentShaderHash && j != G->mZeroShaders.end()) {
 					repl_shader = (ID3D11Shader*)j->second;
 				}
 			}
@@ -2611,9 +2453,6 @@ void HackerContext::Bind3DMigotoResources()
 
 void HackerContext::InitIniParams()
 {
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	HRESULT hr;
-
 	// Only the immediate context is allowed to perform [Constants]
 	// initialisation, as otherwise creating a deferred context could
 	// clobber any changes since then. The only exception I can think of is
@@ -2631,58 +2470,11 @@ void HackerContext::InitIniParams()
 
 	// The command list only changes ini params that are defined, but for
 	// consistency we want all other ini params to be initialised as well:
-	memset(G->iniParams.data(), 0, sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
+	memset(G->iniParams, 0, sizeof(G->iniParams));
 
-	// Update the IniParams resource on the GPU before executing the
-	// [Constants] command list. This ensures that it does get updated,
-	// even if the [Constants] command list doesn't initialise any IniParam
-	// (to non-zero), and we do this first in case [Constants] runs any
-	// custom shaders that may check IniParams. This is a bit wasteful
-	// since in most cases we will update the resource twice in a row, and
-	// the alternative is setting a flag to force update_params in the
-	// [Constants] command list, but this is a cold path so a little extra
-	// overhead won't matter and I don't want to forget about this if
-	// further command list optimisations cause [Constants] to bail out
-	// early and not consider update_params at all.
-	if (mHackerDevice->mIniTexture) {
-		hr = mOrigContext1->Map(mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-		if (SUCCEEDED(hr)) {
-			memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
-			mOrigContext1->Unmap(mHackerDevice->mIniTexture, 0);
-			Profiling::iniparams_updates++;
-		} else {
-			LogInfo("InitIniParams: Map failed\n");
-		}
-	}
-
-	// The command list will take care of initialising any non-zero values:
+	// The command list will take care of the Map/Unmap to update the
+	// resource on the GPU:
 	RunCommandList(mHackerDevice, this, &G->constants_command_list, NULL, false);
-	// We don't consider persistent globals set in the [Constants] pre
-	// command list as making the user config file dirty, because this
-	// command list includes the user config file's [Constants] itself.
-	// We clear only the low bit here, so that this may be overridden if
-	// an invalid value is found that is scheduled to be removed:
-	G->user_config_dirty &= ~1;
-	RunCommandList(mHackerDevice, this, &G->post_constants_command_list, NULL, true);
-
-	// Only want to run [Constants] on initial load and config reload. In
-	// some games we see additional DirectX devices & contexts being
-	// created (e.g. this happens in DOAXVV when displaying any news) and
-	// we don't want to re-run Constants at that time since it may reset
-	// variables and resources back to default.
-	//
-	// This may also happen in some game's init paths if they create some
-	// throwaway devices (e.g. to probe the system's capabilities) or
-	// potentially due to some overlays or other 3rd party tools. In most
-	// of those cases running [Constants] once at launch still should be
-	// the preferred option so that variables don't get reset unexpectedly,
-	// though it is conceivable that in some cases we might want to reinit
-	// custom resources, shaders, discard caches and re-run [Constants] at
-	// that time. That could simplify cases where we create a custom
-	// resource on one device and later need it on another (which we now do
-	// through on-demand inter-device transfers - which has some
-	// limitations), but I might wait until we have a proven need for that.
-	G->constants_run = true;
 }
 
 // This function makes sure that the StereoParams and IniParams resources
@@ -2828,7 +2620,7 @@ STDMETHODIMP_(void) HackerContext::IASetIndexBuffer(THIS_
 		mCurrentIndexBuffer = GetResourceHash(pIndexBuffer);
 		if (mCurrentIndexBuffer) {
 			// When hunting, save this as a visited index buffer to cycle through.
-			EnterCriticalSectionPretty(&G->mCriticalSection);
+			EnterCriticalSection(&G->mCriticalSection);
 			G->mVisitedIndexBuffers.insert(mCurrentIndexBuffer);
 			LeaveCriticalSection(&G->mCriticalSection);
 		}
@@ -2893,32 +2685,24 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargets(THIS_
 	/* [annotation] */
 	__in_opt ID3D11DepthStencilView *pDepthStencilView)
 {
-	Profiling::State profiling_state;
-
 	if (G->hunting == HUNTING_MODE_ENABLED) {
-		EnterCriticalSectionPretty(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 			mCurrentRenderTargets.clear();
 			mCurrentDepthTarget = NULL;
 			mCurrentPSNumUAVs = 0;
 		LeaveCriticalSection(&G->mCriticalSection);
 
-		if (G->DumpUsage) {
-			if (Profiling::mode == Profiling::Mode::SUMMARY)
-				Profiling::start(&profiling_state);
-
-			if (ppRenderTargetViews) {
-				for (UINT i = 0; i < NumViews; ++i) {
-					if (!ppRenderTargetViews[i])
-						continue;
+		if (ppRenderTargetViews) {
+			for (UINT i = 0; i < NumViews; ++i) {
+				if (!ppRenderTargetViews[i])
+					continue;
+				if (G->DumpUsage)
 					RecordRenderTargetInfo(ppRenderTargetViews[i], i);
-				}
 			}
-
-			RecordDepthStencil(pDepthStencilView);
-
-			if (Profiling::mode == Profiling::Mode::SUMMARY)
-				Profiling::end(&profiling_state, &Profiling::stat_overhead);
 		}
+
+		if (G->DumpUsage)
+			RecordDepthStencil(pDepthStencilView);
 	}
 
 	mOrigContext1->OMSetRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView);
@@ -2940,18 +2724,13 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 	/* [annotation] */
 	__in_ecount_opt(NumUAVs)  const UINT *pUAVInitialCounts)
 {
-	Profiling::State profiling_state;
-
 	if (G->hunting == HUNTING_MODE_ENABLED) {
-		EnterCriticalSectionPretty(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 
 		if (NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) {
 			mCurrentRenderTargets.clear();
 			mCurrentDepthTarget = NULL;
 			if (G->DumpUsage) {
-				if (Profiling::mode == Profiling::Mode::SUMMARY)
-					Profiling::start(&profiling_state);
-
 				if (ppRenderTargetViews) {
 					for (UINT i = 0; i < NumRTVs; ++i) {
 						if (ppRenderTargetViews[i])
@@ -2959,9 +2738,6 @@ STDMETHODIMP_(void) HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(THI
 					}
 				}
 				RecordDepthStencil(pDepthStencilView);
-
-				if (Profiling::mode == Profiling::Mode::SUMMARY)
-					Profiling::end(&profiling_state, &Profiling::stat_overhead);
 			}
 		}
 
@@ -2994,7 +2770,7 @@ STDMETHODIMP_(void) HackerContext::DrawIndexedInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	DrawContext c = DrawContext(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
+	DrawContext c = DrawContext(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
 	BeforeDraw(c);
 
 	if (!c.call_info.skip)
@@ -3008,7 +2784,7 @@ STDMETHODIMP_(void) HackerContext::DrawInstancedIndirect(THIS_
 	/* [annotation] */
 	__in  UINT AlignedByteOffsetForArgs)
 {
-	DrawContext c = DrawContext(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
+	DrawContext c = DrawContext(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
 	BeforeDraw(c);
 
 	if (!c.call_info.skip)
@@ -3024,7 +2800,7 @@ STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
 {
 	RunViewCommandList(mHackerDevice, this, &G->clear_rtv_command_list, pRenderTargetView, false);
 	mOrigContext1->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
-	RunViewCommandList(mHackerDevice, this, &G->post_clear_rtv_command_list, pRenderTargetView, true);
+	RunViewCommandList(mHackerDevice, this, &G->clear_rtv_command_list, pRenderTargetView, true);
 }
 
 

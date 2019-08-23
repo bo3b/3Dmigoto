@@ -1,14 +1,17 @@
 Texture2D<float4> StereoParams : register(t125);
 Texture1D<float4> IniParams : register(t120);
 
-#define mode IniParams[0].x
-
 #ifdef VERTEX_SHADER
 void main(
 		out float4 pos : SV_Position0,
 		uint vertex : SV_VertexID)
 {
 	float4 stereo = StereoParams.Load(0);
+	float mode = IniParams.Load(int2(7, 0)).x;
+	if (stereo.x == 0 || mode == 0) {
+		pos = 0;
+		return;
+	}
 
 	// Not using vertex buffers so manufacture our own coordinates.
 	switch(vertex) {
@@ -38,6 +41,7 @@ Texture2D<float4> t100 : register(t100);
 void main(float4 pos : SV_Position0, out float4 result : SV_Target0)
 {
 	float4 stereo = StereoParams.Load(0);
+	float mode = IniParams.Load(int2(7, 0)).x;
 
 	float x = pos.x;
 	float y = pos.y;
@@ -53,14 +57,12 @@ void main(float4 pos : SV_Position0, out float4 result : SV_Target0)
 		if (stereo.z == -1)
 			x += width / 2;
 	} else if (mode == 2 || mode == 3) { // Side by side
-		x = int(x);
 		x *= 2;
 		x1 = 1;
 		if (mode == 3) { // Swap eyes
 			x += width / 2 * (x >= width / 2 ? -1 : 1);
 		}
 	} else if (mode == 4 || mode == 5) { // Top and bottom
-		y = int(y);
 		y *= 2;
 		y1 = 1;
 		if (y >= height) {

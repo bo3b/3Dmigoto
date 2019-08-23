@@ -4,19 +4,6 @@
 
 #include "HackerDevice.h"
 
-// Custom #include handler used to track which shaders need to be reloaded after an included file is modified
-class MigotoIncludeHandler : public ID3DInclude
-{
-	std::vector<std::string> dir_stack;
-
-	void push_dir(const char *path);
-public:
-	MigotoIncludeHandler(const char *path);
-
-	HRESULT Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID *ppData, UINT *pBytes);
-	HRESULT Close(LPCVOID pData);
-};
-
 void TimeoutHuntingBuffers();
 void ParseHuntingSection();
 void DumpUsage(wchar_t *dir);

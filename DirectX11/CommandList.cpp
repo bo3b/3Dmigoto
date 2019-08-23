@@ -1,7 +1,3 @@
-// Include before util.h (or any header that includes util.h) to get pretty
-// version of LockResourceCreationMode:
-#include "lock.h"
-
 #include "CommandList.h"
 
 #include <DDSTextureLoader.h>
@@ -13,20 +9,13 @@
 #include "Override.h"
 #include "D3D11Wrapper.h"
 #include "IniHandler.h"
-#include "profiling.h"
-#include "Hunting.h"
 
 #include <D3DCompiler.h>
 
 CustomResources customResources;
 CustomShaders customShaders;
 ExplicitCommandListSections explicitCommandListSections;
-CommandListVariables command_list_globals;
-std::vector<CommandListVariable*> persistent_variables;
-std::vector<CommandList*> registered_command_lists;
-std::unordered_set<CommandList*> command_lists_profiling;
-std::unordered_set<CommandListCommand*> command_lists_cmd_profiling;
-std::vector<std::shared_ptr<CommandList>> dynamically_allocated_command_lists;
+std::unordered_set<CommandList*> command_lists_perf;
 
 
 // Adds consistent "3DMigoto" prefix to frame analysis log with appropriate
@@ -34,123 +23,55 @@ std::vector<std::shared_ptr<CommandList>> dynamically_allocated_command_lists;
 // macro instead of a function for this to concatenate static strings:
 #define COMMAND_LIST_LOG(state, fmt, ...) \
 	do { \
-		(state)->mHackerContext->FrameAnalysisLog("3DMigoto%*s " fmt, state->recursion + state->extra_indent, "", __VA_ARGS__); \
+		(state)->mHackerContext->FrameAnalysisLog("3DMigoto%*s " fmt, state->recursion, "", __VA_ARGS__); \
 	} while (0)
 
-struct command_list_profiling_state {
-	LARGE_INTEGER list_start_time;
-	LARGE_INTEGER cmd_start_time;
-	LARGE_INTEGER saved_recursive_time;
-};
-
-static inline void profile_command_list_start(CommandList *command_list, CommandListState *state,
-		command_list_profiling_state *profiling_state)
-{
-	bool inserted;
-
-	if ((Profiling::mode != Profiling::Mode::SUMMARY)
-	 && (Profiling::mode != Profiling::Mode::TOP_COMMAND_LISTS))
-		return;
-
-	inserted = command_lists_profiling.insert(command_list).second;
-	if (inserted) {
-		command_list->time_spent_inclusive.QuadPart = 0;
-		command_list->time_spent_exclusive.QuadPart = 0;
-		command_list->executions = 0;
-	}
-
-	profiling_state->saved_recursive_time = state->profiling_time_recursive;
-	state->profiling_time_recursive.QuadPart = 0;
-
-	QueryPerformanceCounter(&profiling_state->list_start_time);
-}
-
-static inline void profile_command_list_end(CommandList *command_list, CommandListState *state,
-		command_list_profiling_state *profiling_state)
-{
-	LARGE_INTEGER list_end_time, duration;
-
-	if ((Profiling::mode != Profiling::Mode::SUMMARY)
-	 && (Profiling::mode != Profiling::Mode::TOP_COMMAND_LISTS))
-		return;
-
-	QueryPerformanceCounter(&list_end_time);
-	duration.QuadPart = list_end_time.QuadPart - profiling_state->list_start_time.QuadPart;
-	command_list->time_spent_inclusive.QuadPart += duration.QuadPart;
-	command_list->time_spent_exclusive.QuadPart += duration.QuadPart - state->profiling_time_recursive.QuadPart;
-	command_list->executions++;
-	state->profiling_time_recursive.QuadPart = profiling_state->saved_recursive_time.QuadPart + duration.QuadPart;
-}
-
-static inline void profile_command_list_cmd_start(CommandListCommand *cmd,
-		command_list_profiling_state *profiling_state)
-{
-	bool inserted;
-
-	if (Profiling::mode != Profiling::Mode::TOP_COMMANDS)
-		return;
-
-	inserted = command_lists_cmd_profiling.insert(cmd).second;
-	if (inserted) {
-		cmd->pre_time_spent.QuadPart = 0;
-		cmd->post_time_spent.QuadPart = 0;
-		cmd->pre_executions = 0;
-		cmd->post_executions = 0;
-	}
-
-	QueryPerformanceCounter(&profiling_state->cmd_start_time);
-}
-
-static inline void profile_command_list_cmd_end(CommandListCommand *cmd, CommandListState *state,
-		command_list_profiling_state *profiling_state)
-{
-	LARGE_INTEGER end_time;
-
-	if (Profiling::mode != Profiling::Mode::TOP_COMMANDS)
-		return;
-
-	QueryPerformanceCounter(&end_time);
-	if (state->post) {
-		cmd->post_time_spent.QuadPart += end_time.QuadPart - profiling_state->cmd_start_time.QuadPart;
-		cmd->post_executions++;
-	} else {
-		cmd->pre_time_spent.QuadPart += end_time.QuadPart - profiling_state->cmd_start_time.QuadPart;
-		cmd->pre_executions++;
-	}
-}
-
-static void _RunCommandList(CommandList *command_list, CommandListState *state, bool recursive=true)
+static void _RunCommandList(CommandList *command_list, CommandListState *state)
 {
 	CommandList::Commands::iterator i;
-	command_list_profiling_state profiling_state;
+	LARGE_INTEGER list_start_time, list_end_time, saved_recursive_time, duration;
+	bool inserted;
 
 	if (state->recursion > MAX_COMMAND_LIST_RECURSION) {
-		LogOverlay(LOG_WARNING, "WARNING: Command list recursion limit exceeded! Circular reference?\n");
+		LogInfo("WARNING: Command list recursion limit exceeded! Circular reference?\n");
 		return;
 	}
 
 	if (command_list->commands.empty())
 		return;
 
-	if (recursive) {
-		COMMAND_LIST_LOG(state, "%s {\n", state->post ? "post" : "pre");
-		state->recursion++;
-	}
+	COMMAND_LIST_LOG(state, "%s {\n", state->post ? "post" : "pre");
+	state->recursion++;
 
-	profile_command_list_start(command_list, state, &profiling_state);
+	if (G->profiling) {
+		inserted = command_lists_perf.insert(command_list).second;
+		if (inserted) {
+			command_list->time_spent_inclusive.QuadPart = 0;
+			command_list->time_spent_exclusive.QuadPart = 0;
+			command_list->executions = 0;
+		}
+
+		saved_recursive_time = state->profiling_time_recursive;
+		state->profiling_time_recursive.QuadPart = 0;
+
+		QueryPerformanceCounter(&list_start_time);
+	}
 
 	for (i = command_list->commands.begin(); i < command_list->commands.end() && !state->aborted; i++) {
-		profile_command_list_cmd_start(i->get(), &profiling_state);
 		(*i)->run(state);
-		profile_command_list_cmd_end(i->get(), state, &profiling_state);
 	}
 
-	profile_command_list_end(command_list, state, &profiling_state);
-
-	if (recursive) {
-		state->recursion--;
-		COMMAND_LIST_LOG(state, "}\n");
+	if (G->profiling) {
+		QueryPerformanceCounter(&list_end_time);
+		duration.QuadPart = list_end_time.QuadPart - list_start_time.QuadPart;
+		command_list->time_spent_inclusive.QuadPart += duration.QuadPart;
+		command_list->time_spent_exclusive.QuadPart += duration.QuadPart - state->profiling_time_recursive.QuadPart;
+		command_list->executions++;
+		state->profiling_time_recursive.QuadPart = saved_recursive_time.QuadPart + duration.QuadPart;
 	}
+
+	state->recursion--;
+	COMMAND_LIST_LOG(state, "}\n");
 }
 
 static void CommandListFlushState(CommandListState *state)
@@ -158,16 +79,15 @@ static void CommandListFlushState(CommandListState *state)
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	HRESULT hr;
 
-	if (state->update_params && state->mHackerDevice->mIniTexture) {
+	if (state->update_params) {
 		hr = state->mOrigContext1->Map(state->mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(hr)) {
 			LogInfo("CommandListFlushState: Map failed\n");
 			return;
 		}
-		memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
+		memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
 		state->mOrigContext1->Unmap(state->mHackerDevice->mIniTexture, 0);
 		state->update_params = false;
-		Profiling::iniparams_updates++;
 	}
 }
 
@@ -175,7 +95,7 @@ static void RunCommandListComplete(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list,
 		DrawCallInfo *call_info,
-		ID3D11Resource **resource,
+		ID3D11Resource *resource,
 		ID3D11View *view,
 		bool post)
 {
@@ -200,9 +120,9 @@ void RunCommandList(HackerDevice *mHackerDevice,
 		DrawCallInfo *call_info,
 		bool post)
 {
-	ID3D11Resource **resource = NULL;
+	ID3D11Resource *resource = NULL;
 	if (call_info)
-		resource = (ID3D11Resource**)call_info->indirect_buffer;
+		resource = call_info->indirect_buffer;
 
 	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
 			call_info, resource, NULL, post);
@@ -211,7 +131,7 @@ void RunCommandList(HackerDevice *mHackerDevice,
 void RunResourceCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list,
-		ID3D11Resource **resource,
+		ID3D11Resource *resource,
 		bool post)
 {
 	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
@@ -230,101 +150,18 @@ void RunViewCommandList(HackerDevice *mHackerDevice,
 		view->GetResource(&res);
 
 	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
-			NULL, &res, view, post);
+			NULL, res, view, post);
 
 	if (res)
 		res->Release();
-}
-
-void optimise_command_lists(HackerDevice *device)
-{
-	bool making_progress;
-	bool ignore_cto_pre, ignore_cto_post;
-	size_t i;
-	CommandList::Commands::iterator new_end;
-	DWORD start;
-
-	LogInfo("Optimising command lists...\n");
-	start = GetTickCount();
-
-	for (CommandList *command_list : registered_command_lists) {
-		for (i = 0; i < command_list->commands.size(); i++)
-			command_list->commands[i]->optimise(device);
-	}
-
-	do {
-		making_progress = false;
-		ignore_cto_pre = true;
-		ignore_cto_post = true;
-
-		// If all TextureOverride sections have empty command lists of
-		// either pre or post, we can treat checktextureoverride as a
-		// noop. This is intended to catch the case where we only have
-		// "pre" commands in the TextureOverride sections to optimise
-		// out the implicit "post checktextureoverride" commands, as
-		// these can add up if they are used on very common shaders
-		// (e.g. in DOAXVV this can easily save 0.2fps on a 4GHz CPU,
-		// more on a slower CPU since this command is used in the
-		// shadow map shaders)
-		//
-		// FIXME: This should itself ignore any checktextureoverrides
-		// inside these command lists
-		for (auto &tolkv : G->mTextureOverrideMap) {
-			for (TextureOverride &to : tolkv.second) {
-				ignore_cto_pre = ignore_cto_pre && to.command_list.commands.empty();
-				ignore_cto_post = ignore_cto_post && to.post_command_list.commands.empty();
-			}
-		}
-		for (auto &tof : G->mFuzzyTextureOverrides) {
-			ignore_cto_pre = ignore_cto_pre && tof->texture_override->command_list.commands.empty();
-			ignore_cto_post = ignore_cto_post && tof->texture_override->post_command_list.commands.empty();
-		}
-
-		// Go through each registered command list and remove any
-		// commands that are noops to eliminate the runtime overhead of
-		// processing these
-		for (CommandList *command_list : registered_command_lists) {
-			for (i = 0; i < command_list->commands.size(); ) {
-				if (command_list->commands[i]->noop(command_list->post, ignore_cto_pre, ignore_cto_post)) {
-					LogInfo("Optimised out %s %S\n",
-							command_list->post ? "post" : "pre",
-							command_list->commands[i]->ini_line.c_str());
-					command_list->commands.erase(command_list->commands.begin() + i);
-					making_progress = true;
-					continue;
-				}
-				i++;
-			}
-		}
-
-		// TODO: Merge adjacent commands if possible, e.g. all the
-		// commands in BuiltInCommandListUnbindAllRenderTargets would
-		// be good candidates to merge into a single command. We could
-		// add a special command for that particular case, but would be
-		// nice if this sort of thing worked more generally.
-	} while (making_progress);
-
-	Profiling::update_cto_warning(!ignore_cto_post);
-
-	LogInfo("Command List Optimiser finished after %ums\n", GetTickCount() - start);
-	registered_command_lists.clear();
-	dynamically_allocated_command_lists.clear();
 }
 
 static bool AddCommandToList(CommandListCommand *command,
 		CommandList *explicit_command_list,
 		CommandList *sensible_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list,
-		const wchar_t *section,
-		const wchar_t *key, wstring *val)
+		CommandList *post_command_list)
 {
-	if (section && key) {
-		command->ini_line = L"[" + wstring(section) + L"] " + wstring(key);
-		if (val)
-			command->ini_line += L" = " + *val;
-	}
-
 	if (explicit_command_list) {
 		// User explicitly specified "pre" or "post", so only add the
 		// command to that list
@@ -365,16 +202,10 @@ static bool ParseCheckTextureOverride(const wchar_t *section,
 	CheckTextureOverrideCommand *operation = new CheckTextureOverrideCommand();
 
 	// Parse value as consistent with texture filtering and resource copying
-	ret = operation->target.ParseTarget(val->c_str(), true, ini_namespace);
+	ret = operation->target.ParseTarget(section, val->c_str(), true, ini_namespace);
 	if (ret) {
-		// If the user indicated an explicit command list we will run the pre
-		// and post lists of the target list together.
-		if (explicit_command_list)
-			operation->run_pre_and_post_together = true;
-		else if (post_command_list)
-			G->implicit_post_checktextureoverride_used = true;
-
-		return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
+		operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+		return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
 	}
 
 	delete operation;
@@ -385,23 +216,17 @@ static bool ParseResetPerFrameLimits(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list,
-		const wstring *ini_namespace)
+		CommandList *post_command_list)
 {
 	CustomResources::iterator res;
 	CustomShaders::iterator shader;
-	wstring namespaced_section;
 
 	ResetPerFrameLimitsCommand *operation = new ResetPerFrameLimitsCommand();
 
 	if (!wcsncmp(val->c_str(), L"resource", 8)) {
 		wstring resource_id(val->c_str());
 
-		res = customResources.end();
-		if (get_namespaced_section_name_lower(&resource_id, ini_namespace, &namespaced_section))
-			res = customResources.find(namespaced_section);
-		if (res == customResources.end())
-			res = customResources.find(resource_id);
+		res = customResources.find(resource_id);
 		if (res == customResources.end())
 			goto bail;
 
@@ -411,18 +236,15 @@ static bool ParseResetPerFrameLimits(const wchar_t *section,
 	if (!wcsncmp(val->c_str(), L"customshader", 12) || !wcsncmp(val->c_str(), L"builtincustomshader", 19)) {
 		wstring shader_id(val->c_str());
 
-		shader = customShaders.end();
-		if (get_namespaced_section_name_lower(&shader_id, ini_namespace, &namespaced_section))
-			shader = customShaders.find(namespaced_section);
-		if (shader == customShaders.end())
-			shader = customShaders.find(shader_id);
+		shader = customShaders.find(shader_id);
 		if (shader == customShaders.end())
 			goto bail;
 
 		operation->shader = &shader->second;
 	}
 
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 
 bail:
 	delete operation;
@@ -449,7 +271,7 @@ static bool ParseClearView(const wchar_t *section,
 
 	while (getline(token_stream, token, L' ')) {
 		if (operation->target.type == ResourceCopyTargetType::INVALID) {
-			ret = operation->target.ParseTarget(token.c_str(), true, ini_namespace);
+			ret = operation->target.ParseTarget(section, token.c_str(), true, ini_namespace);
 			if (ret)
 				continue;
 		}
@@ -514,12 +336,13 @@ static bool ParseClearView(const wchar_t *section,
 	// allows a single value to be specified to clear all channels in RTVs
 	// and UAVs. Note that this is done after noting the DSV values because
 	// we never want to propagate the depth value to the stencil value:
-	for (idx = max(1, idx); idx < 4; idx++) {
+	for (idx++; idx < 4; idx++) {
 		operation->uval[idx] = operation->uval[idx - 1];
 		operation->fval[idx] = operation->fval[idx - 1];
 	}
 
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 
 bail:
 	delete operation;
@@ -551,8 +374,9 @@ static bool ParseRunShader(const wchar_t *section,
 	if (shader == customShaders.end())
 		goto bail;
 
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->custom_shader = &shader->second;
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 
 bail:
 	delete operation;
@@ -585,18 +409,13 @@ bool ParseRunExplicitCommandList(const wchar_t *section,
 	if (shader == explicitCommandListSections.end())
 		goto bail;
 
-	// If the user indicated an explicit command list we will run the pre
-	// and post lists of the target list together. This tends to make
-	// things a little less surprising for "post run = CommandListFoo"
-	if (explicit_command_list)
-		operation->run_pre_and_post_together = true;
-
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->command_list_section = &shader->second;
 	// This function is nearly identical to ParseRunShader, but in case we
 	// later refactor these together note that here we do not specify a
 	// sensible command list, so it will be added to both pre and post
 	// command lists:
-	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
+	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
 
 bail:
 	delete operation;
@@ -651,53 +470,14 @@ static bool ParsePreset(const wchar_t *section,
 	if (i == presetOverrides.end())
 		goto bail;
 
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	operation->preset = &i->second;
 	operation->exclude = exclude;
 
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 
 bail:
 	delete operation;
-	return false;
-}
-
-static bool ParseDrawCommandArgs(wstring *val, DrawCommand *operation, bool indirect, int nargs, const wstring *ini_namespace, CommandListScope *scope)
-{
-	size_t start = 0, end;
-	wstring sub;
-	int i;
-
-	if (indirect) {
-		end = val->find(L',', start);
-		if (end == wstring::npos)
-			return false;
-
-		sub = val->substr(start, end);
-		if (!operation->indirect_buffer.ParseTarget(sub.c_str(), true, ini_namespace))
-			return false;
-
-		if (operation->indirect_buffer.type == ResourceCopyTargetType::CUSTOM_RESOURCE) {
-			// Fucking C++ making this line 3x longer than it should be:
-			operation->indirect_buffer.custom_resource->misc_flags = (D3D11_RESOURCE_MISC_FLAG)
-				(operation->indirect_buffer.custom_resource->misc_flags
-				 | D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS);
-		}
-
-		start = end + 1;
-	}
-
-	for (i = 0; i < nargs; i++) {
-		end = val->find(L',', start);
-
-		sub = val->substr(start, end - start);
-		if (!operation->args[i].parse(&sub, ini_namespace, scope))
-			return false;
-
-		if (end == wstring::npos)
-			return (i+1 == nargs);
-		start = end + 1;
-	}
-
 	return false;
 }
 
@@ -705,53 +485,69 @@ static bool ParseDrawCommand(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list,
-		const wstring *ini_namespace)
+		CommandList *post_command_list)
 {
 	DrawCommand *operation = new DrawCommand();
-	bool ok = true;
+	int nargs, end = 0;
 
 	if (!wcscmp(key, L"draw")) {
 		if (!wcscmp(val->c_str(), L"from_caller")) {
 			operation->type = DrawCommandType::FROM_CALLER;
+			end = (int)val->length();
 		} else {
 			operation->type = DrawCommandType::DRAW;
-			ok = ParseDrawCommandArgs(val, operation, false, 2, ini_namespace, pre_command_list->scope);
+			nargs = swscanf_s(val->c_str(), L"%u, %u%n", &operation->args[0], &operation->args[1], &end);
+			if (nargs != 2)
+				goto bail;
 		}
 	} else if (!wcscmp(key, L"drawauto")) {
 		operation->type = DrawCommandType::DRAW_AUTO;
 	} else if (!wcscmp(key, L"drawindexed")) {
 		if (!wcscmp(val->c_str(), L"auto")) {
 			operation->type = DrawCommandType::AUTO_INDEX_COUNT;
+			end = (int)val->length();
 		} else {
 			operation->type = DrawCommandType::DRAW_INDEXED;
-			ok = ParseDrawCommandArgs(val, operation, false, 3, ini_namespace, pre_command_list->scope);
+			nargs = swscanf_s(val->c_str(), L"%u, %u, %i%n", &operation->args[0], &operation->args[1], (INT*)&operation->args[2], &end);
+			if (nargs != 3)
+				goto bail;
 		}
 	} else if (!wcscmp(key, L"drawindexedinstanced")) {
 		operation->type = DrawCommandType::DRAW_INDEXED_INSTANCED;
-		ok = ParseDrawCommandArgs(val, operation, false, 5, ini_namespace, pre_command_list->scope);
+		nargs = swscanf_s(val->c_str(), L"%u, %u, %u, %i, %u%n",
+				&operation->args[0], &operation->args[1], &operation->args[2], (INT*)&operation->args[3], &operation->args[4], &end);
+		if (nargs != 5)
+			goto bail;
 	} else if (!wcscmp(key, L"drawinstanced")) {
 		operation->type = DrawCommandType::DRAW_INSTANCED;
-		ok = ParseDrawCommandArgs(val, operation, false, 4, ini_namespace, pre_command_list->scope);
+		nargs = swscanf_s(val->c_str(), L"%u, %u, %u, %u%n",
+				&operation->args[0], &operation->args[1], &operation->args[2], &operation->args[3], &end);
+		if (nargs != 5)
+			goto bail;
 	} else if (!wcscmp(key, L"dispatch")) {
 		operation->type = DrawCommandType::DISPATCH;
-		ok = ParseDrawCommandArgs(val, operation, false, 3, ini_namespace, pre_command_list->scope);
-	} else if (!wcscmp(key, L"drawindexedinstancedindirect")) {
-		operation->type = DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT;
-		ok = ParseDrawCommandArgs(val, operation, true, 1, ini_namespace, pre_command_list->scope);
-	} else if (!wcscmp(key, L"drawinstancedindirect")) {
-		operation->type = DrawCommandType::DRAW_INSTANCED_INDIRECT;
-		ok = ParseDrawCommandArgs(val, operation, true, 1, ini_namespace, pre_command_list->scope);
-	} else if (!wcscmp(key, L"dispatchindirect")) {
-		operation->type = DrawCommandType::DISPATCH_INDIRECT;
-		ok = ParseDrawCommandArgs(val, operation, true, 1, ini_namespace, pre_command_list->scope);
+		nargs = swscanf_s(val->c_str(), L"%u, %u, %u%n", &operation->args[0], &operation->args[1], &operation->args[2], &end);
+		if (nargs != 3)
+			goto bail;
 	}
 
-	if (operation->type == DrawCommandType::INVALID || !ok)
+	// TODO: } else if (!wcscmp(key, L"drawindexedinstancedindirect")) {
+	// TODO: 	operation->type = DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT;
+	// TODO: } else if (!wcscmp(key, L"drawinstancedindirect")) {
+	// TODO: 	operation->type = DrawCommandType::DRAW_INSTANCED_INDIRECT;
+	// TODO: } else if (!wcscmp(key, L"dispatchindirect")) {
+	// TODO: 	operation->type = DrawCommandType::DISPATCH_INDIRECT;
+	// TODO: }
+
+
+	if (operation->type == DrawCommandType::INVALID)
+		goto bail;
+
+	if (end != val->length())
 		goto bail;
 
 	operation->ini_section = section;
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 
 bail:
 	delete operation;
@@ -784,7 +580,8 @@ static bool ParseDirectModeSetActiveEyeCommand(const wchar_t *section,
 	goto bail;
 
 success:
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 
 bail:
 	delete operation;
@@ -801,30 +598,33 @@ static bool ParsePerDrawStereoOverride(const wchar_t *section,
 {
 	bool restore_on_post = !explicit_command_list && pre_command_list && post_command_list;
 	PerDrawStereoOverrideCommand *operation = NULL;
+	int ret, len1;
 
 	if (is_separation)
 		operation = new PerDrawSeparationOverrideCommand(restore_on_post);
 	else
 		operation = new PerDrawConvergenceOverrideCommand(restore_on_post);
 
+	// Try parsing value as a float
+	ret = swscanf_s(val->c_str(), L"%f%n", &operation->val, &len1);
+	if (ret != 0 && ret != EOF && len1 == val->length())
+		goto success;
+
 	// Try parsing value as a resource target for staging auto-convergence
-	// Do this first, because the operand parsing would treat these as for
-	// texture filtering
-	if (operation->staging_op.src.ParseTarget(val->c_str(), true, ini_namespace)) {
+	if (operation->staging_op.src.ParseTarget(section, val->c_str(), true, ini_namespace)) {
 		operation->staging_type = true;
 		goto success;
 	}
 
-	// The scope is shared between pre & post, we use pre here since it is never NULL
-	if (!operation->expression.parse(val, ini_namespace, pre_command_list->scope))
-		goto bail;
+	goto bail;
 
 success:
 	// Add to both command lists by default - the pre command list will set
 	// the value, and the post command list will restore the original. If
 	// an explicit command list is specified then the value will only be
 	// set, not restored (regardless of whether that is pre or post)
-	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list);
 
 bail:
 	delete operation;
@@ -856,7 +656,7 @@ static bool ParseFrameAnalysisDump(const wchar_t *section,
 	if (!target)
 		goto bail;
 
-	if (!operation->target.ParseTarget(target, true, ini_namespace))
+	if (!operation->target.ParseTarget(section, target, true, ini_namespace))
 		goto bail;
 
 	operation->target_name = L"[" + wstring(section) + L"]-" + wstring(target);
@@ -872,7 +672,8 @@ static bool ParseFrameAnalysisDump(const wchar_t *section,
 	std::replace(operation->target_name.begin(), operation->target_name.end(), L'*', L'_');
 
 	delete [] buf;
-	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
+	return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL);
 
 bail:
 	delete [] buf;
@@ -906,16 +707,16 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 		// skip only makes sense in pre command lists, since it needs
 		// to run before the original draw call:
 		if (!wcscmp(val->c_str(), L"skip"))
-			return AddCommandToList(new SkipCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+			return AddCommandToList(new SkipCommand(section), explicit_command_list, pre_command_list, NULL, NULL);
 
 		// abort defaults to both command lists, to abort command list
 		// execution both before and after the draw call:
 		if (!wcscmp(val->c_str(), L"abort"))
-			return AddCommandToList(new AbortCommand(section), explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
+			return AddCommandToList(new AbortCommand(section), explicit_command_list, NULL, pre_command_list, post_command_list);
 	}
 
 	if (!wcscmp(key, L"reset_per_frame_limits"))
-		return ParseResetPerFrameLimits(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
+		return ParseResetPerFrameLimits(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	if (!wcscmp(key, L"clear"))
 		return ParseClearView(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
@@ -930,63 +731,34 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 		return ParseDirectModeSetActiveEyeCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
 	if (!wcscmp(key, L"analyse_options"))
-		return AddCommandToList(new FrameAnalysisChangeOptionsCommand(val), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+		return AddCommandToList(new FrameAnalysisChangeOptionsCommand(section, key, val), explicit_command_list, pre_command_list, NULL, NULL);
 
 	if (!wcscmp(key, L"dump"))
 		return ParseFrameAnalysisDump(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
 	if (!wcscmp(key, L"special")) {
 		if (!wcscmp(val->c_str(), L"upscaling_switch_bb"))
-			return AddCommandToList(new UpscalingFlipBBCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
-
-		if (!wcscmp(val->c_str(), L"draw_3dmigoto_overlay"))
-			return AddCommandToList(new Draw3DMigotoOverlayCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+			return AddCommandToList(new UpscalingFlipBBCommand(section), explicit_command_list, pre_command_list, NULL, NULL);
 	}
 
-	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
+	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
 
 void CheckTextureOverrideCommand::run(CommandListState *state)
 {
 	TextureOverrideMatches matches;
-	ResourceCopyTarget *saved_this = NULL;
-	bool saved_post;
 	unsigned i;
 
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	target.FindTextureOverrides(state, NULL, &matches);
 
-	saved_this = state->this_target;
-	state->this_target = &target;
-	if (run_pre_and_post_together) {
-		saved_post = state->post;
-		state->post = false;
-		for (i = 0; i < matches.size(); i++)
-			_RunCommandList(&matches[i]->command_list, state);
-		state->post = true;
-		for (i = 0; i < matches.size(); i++)
+	for (i = 0; i < matches.size(); i++) {
+		if (state->post)
 			_RunCommandList(&matches[i]->post_command_list, state);
-		state->post = saved_post;
-	} else {
-		for (i = 0; i < matches.size(); i++) {
-			if (state->post)
-				_RunCommandList(&matches[i]->post_command_list, state);
-			else
-				_RunCommandList(&matches[i]->command_list, state);
-		}
+		else
+			_RunCommandList(&matches[i]->command_list, state);
 	}
-	state->this_target = saved_this;
-}
-
-bool CheckTextureOverrideCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
-{
-	if (run_pre_and_post_together)
-		return (ignore_cto_pre && ignore_cto_post);
-
-	if (post)
-		return ignore_cto_post;
-	return ignore_cto_pre;
 }
 
 ClearViewCommand::ClearViewCommand() :
@@ -1102,49 +874,12 @@ static UINT get_index_count_from_current_ib(ID3D11DeviceContext *mOrigContext1)
 	return 0;
 }
 
-void DrawCommand::do_indirect_draw_call(CommandListState *state, char *name,
-		void (__stdcall ID3D11DeviceContext::*IndirectDrawCall)(THIS_
-		ID3D11Buffer *pBufferForArgs,
-		UINT AlignedByteOffsetForArgs))
-{
-	ID3D11Resource *resource = NULL;
-	ID3D11View *view = NULL;
-	UINT stride = 0;
-	UINT offset = 0;
-	UINT buf_size = 0;
-	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
-	UINT arg = (UINT)args[0].evaluate(state);
-
-	resource = indirect_buffer.GetResource(state, &view, &stride, &offset, &format, NULL);
-	if (view)
-		view->Release();
-
-	if (!resource) {
-		COMMAND_LIST_LOG(state, "[%S] %s(%p, %u) -> INDIRECT BUFFER IS NULL\n",
-				ini_section.c_str(), name, resource, arg);
-		return;
-	}
-
-	COMMAND_LIST_LOG(state, "[%S] %s(%p, %u)\n", ini_section.c_str(), name, resource, arg);
-
-	(state->mOrigContext1->*IndirectDrawCall)((ID3D11Buffer*)resource, arg);
-
-	resource->Release();
-}
-
-void DrawCommand::eval_args(int nargs, INT result[5], CommandListState *state)
-{
-	for (int i = 0; i < nargs; i++)
-		result[i] = (INT)args[i].evaluate(state);
-}
-
 void DrawCommand::run(CommandListState *state)
 {
 	HackerContext *mHackerContext = state->mHackerContext;
 	ID3D11DeviceContext *mOrigContext1 = state->mOrigContext1;
 	DrawCallInfo *info = state->call_info;
 	UINT auto_count = 0;
-	INT eargs[5];
 
 	// If this command list was triggered from something currently skipped
 	// due to hunting, we also skip any custom draw calls, so that if we
@@ -1158,47 +893,37 @@ void DrawCommand::run(CommandListState *state)
 	// Ensure IniParams are visible:
 	CommandListFlushState(state);
 
-	Profiling::injected_draw_calls++;
-
 	switch (type) {
 		case DrawCommandType::DRAW:
-			eval_args(2, eargs, state);
-			COMMAND_LIST_LOG(state, "[%S] Draw(%u, %u)\n", ini_section.c_str(), eargs[0], eargs[1]);
-			mOrigContext1->Draw(eargs[0], eargs[1]);
+			COMMAND_LIST_LOG(state, "[%S] Draw(%u, %u)\n", ini_section.c_str(), args[0], args[1]);
+			mOrigContext1->Draw(args[0], args[1]);
 			break;
 		case DrawCommandType::DRAW_AUTO:
 			COMMAND_LIST_LOG(state, "[%S] DrawAuto()\n", ini_section.c_str());
 			mOrigContext1->DrawAuto();
 			break;
 		case DrawCommandType::DRAW_INDEXED:
-			eval_args(3, eargs, state);
-			COMMAND_LIST_LOG(state, "[%S] DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), eargs[0], eargs[1], (INT)eargs[2]);
-			mOrigContext1->DrawIndexed(eargs[0], eargs[1], (INT)eargs[2]);
+			COMMAND_LIST_LOG(state, "[%S] DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), args[0], args[1], (INT)args[2]);
+			mOrigContext1->DrawIndexed(args[0], args[1], (INT)args[2]);
 			break;
 		case DrawCommandType::DRAW_INDEXED_INSTANCED:
-			eval_args(5, eargs, state);
-			COMMAND_LIST_LOG(state, "[%S] DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), eargs[0], eargs[1], eargs[2], (INT)eargs[3], eargs[4]);
-			mOrigContext1->DrawIndexedInstanced(eargs[0], eargs[1], eargs[2], (INT)eargs[3], eargs[4]);
+			COMMAND_LIST_LOG(state, "[%S] DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), args[0], args[1], args[2], (INT)args[3], args[4]);
+			mOrigContext1->DrawIndexedInstanced(args[0], args[1], args[2], (INT)args[3], args[4]);
 			break;
+		// TODO: case DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT:
+		// TODO: 	break;
 		case DrawCommandType::DRAW_INSTANCED:
-			eval_args(4, eargs, state);
-			COMMAND_LIST_LOG(state, "[%S] DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), eargs[0], eargs[1], eargs[2], eargs[3]);
-			mOrigContext1->DrawInstanced(eargs[0], eargs[1], eargs[2], eargs[3]);
+			COMMAND_LIST_LOG(state, "[%S] DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), args[0], args[1], args[2], args[3]);
+			mOrigContext1->DrawInstanced(args[0], args[1], args[2], args[3]);
 			break;
+		// TODO: case DrawCommandType::DRAW_INSTANCED_INDIRECT:
+		// TODO: 	break;
 		case DrawCommandType::DISPATCH:
-			eval_args(3, eargs, state);
-			COMMAND_LIST_LOG(state, "[%S] Dispatch(%u, %u, %u)\n", ini_section.c_str(), eargs[0], eargs[1], eargs[2]);
-			mOrigContext1->Dispatch(eargs[0], eargs[1], eargs[2]);
+			COMMAND_LIST_LOG(state, "[%S] Dispatch(%u, %u, %u)\n", ini_section.c_str(), args[0], args[1], args[2]);
+			mOrigContext1->Dispatch(args[0], args[1], args[2]);
 			break;
-		case DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT:
-			do_indirect_draw_call(state, "DrawIndexedInstancedIndirect", &ID3D11DeviceContext::DrawIndexedInstancedIndirect);
-			break;
-		case DrawCommandType::DRAW_INSTANCED_INDIRECT:
-			do_indirect_draw_call(state, "DrawInstancedIndirect", &ID3D11DeviceContext::DrawInstancedIndirect);
-			break;
-		case DrawCommandType::DISPATCH_INDIRECT:
-			do_indirect_draw_call(state, "DispatchIndirect", &ID3D11DeviceContext::DispatchIndirect);
-			break;
+		// TODO: case DrawCommandType::DISPATCH_INDIRECT:
+		// TODO: 	break;
 		case DrawCommandType::FROM_CALLER:
 			if (!info) {
 				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> NO ACTIVE DRAW CALL\n", ini_section.c_str());
@@ -1222,41 +947,22 @@ void DrawCommand::run(CommandListState *state)
 					mOrigContext1->Draw(info->VertexCount, info->FirstVertex);
 					break;
 				case DrawCall::DrawInstancedIndirect:
-					if (!info->indirect_buffer) {
-						LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> DrawInstancedIndirect missing args\n");
-						break;
-					}
-					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), *info->indirect_buffer, info->args_offset);
-					mOrigContext1->DrawInstancedIndirect(*info->indirect_buffer, info->args_offset);
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
+					mOrigContext1->DrawInstancedIndirect(info->indirect_buffer, info->args_offset);
 					break;
 				case DrawCall::DrawIndexedInstancedIndirect:
-					if (!info->indirect_buffer) {
-						LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> DrawIndexedInstancedIndirect missing args\n");
-						break;
-					}
-					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), *info->indirect_buffer, info->args_offset);
-					mOrigContext1->DrawIndexedInstancedIndirect(*info->indirect_buffer, info->args_offset);
-					break;
-				case DrawCall::DispatchIndirect:
-					if (!info->indirect_buffer) {
-						LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> DispatchIndirect missing args\n");
-						break;
-					}
-					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DispatchIndirect(0x%p, %u)\n", ini_section.c_str(), *info->indirect_buffer, info->args_offset);
-					mOrigContext1->DispatchIndirect(*info->indirect_buffer, info->args_offset);
-					break;
-				case DrawCall::Dispatch:
-					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> Dispatch(%u, %u, %u)\n", ini_section.c_str(), info->ThreadGroupCountX, info->ThreadGroupCountY, info->ThreadGroupCountZ);
-					mOrigContext1->Dispatch(info->ThreadGroupCountX, info->ThreadGroupCountY, info->ThreadGroupCountZ);
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
+					mOrigContext1->DrawIndexedInstancedIndirect(info->indirect_buffer, info->args_offset);
 					break;
 				case DrawCall::DrawAuto:
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawAuto()\n", ini_section.c_str());
 					mOrigContext1->DrawAuto();
 					break;
 				default:
-					LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> unknown draw call type\n");
-					break;
+					LogInfo("BUG: draw = from_caller -> unknown draw call type\n");
+					DoubleBeepExit();
 			}
+			// TODO: dispatch = from_caller
 			break;
 		case DrawCommandType::AUTO_INDEX_COUNT:
 			auto_count = get_index_count_from_current_ib(mOrigContext1);
@@ -1356,13 +1062,8 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
 			COMMAND_LIST_LOG(state, "  Restoring %s = %f\n", stereo_param_name(), saved);
 			set_stereo_value(state, saved);
 		} else {
-			if (staging_type) {
-				if (!(did_set_value_on_pre = update_val(state)))
-					return;
-			} else {
-				val = expression.evaluate(state);
-				did_set_value_on_pre = true;
-			}
+			if (!(did_set_value_on_pre = update_val(state)))
+				return;
 
 			saved = get_stereo_value(state);
 
@@ -1380,58 +1081,27 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
 			set_stereo_value(state, val * saved);
 		}
 	} else {
-		if (staging_type) {
-			if (!update_val(state))
-				return;
-		} else
-			val = expression.evaluate(state);
+		if (!update_val(state))
+			return;
 
 		COMMAND_LIST_LOG(state, "  Setting %s = %f\n", stereo_param_name(), val);
 		set_stereo_value(state, val);
 	}
 }
 
-bool PerDrawStereoOverrideCommand::optimise(HackerDevice *device)
-{
-	if (staging_type)
-		return false;
-	return expression.optimise(device);
-}
-
-bool PerDrawStereoOverrideCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
-{
-	NvU8 enabled = false;
-
-	NvAPIOverride();
-	Profiling::NvAPI_Stereo_IsEnabled(&enabled);
-	return !enabled;
-}
-
 void DirectModeSetActiveEyeCommand::run(CommandListState *state)
 {
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-	if (NVAPI_OK != Profiling::NvAPI_Stereo_SetActiveEye(state->mHackerDevice->mStereoHandle, eye))
+	if (NVAPI_OK != NvAPI_Stereo_SetActiveEye(state->mHackerDevice->mStereoHandle, eye))
 		COMMAND_LIST_LOG(state, "  Stereo_SetActiveEye failed\n");
-}
-
-bool DirectModeSetActiveEyeCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
-{
-	NvU8 enabled = false;
-
-	NvAPIOverride();
-	Profiling::NvAPI_Stereo_IsEnabled(&enabled);
-	return !enabled;
-
-	// FIXME: Should also return false if direct mode is disabled...
-	// if only nvapi provided a GetDriverMode() API to determine that
 }
 
 float PerDrawSeparationOverrideCommand::get_stereo_value(CommandListState *state)
 {
 	float ret = 0.0f;
 
-	if (NVAPI_OK != Profiling::NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, &ret))
+	if (NVAPI_OK != NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, &ret))
 		COMMAND_LIST_LOG(state, "  Stereo_GetSeparation failed\n");
 
 	return ret;
@@ -1440,7 +1110,7 @@ float PerDrawSeparationOverrideCommand::get_stereo_value(CommandListState *state
 void PerDrawSeparationOverrideCommand::set_stereo_value(CommandListState *state, float val)
 {
 	NvAPIOverride();
-	if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSeparation(state->mHackerDevice->mStereoHandle, val))
+	if (NVAPI_OK != NvAPI_Stereo_SetSeparation(state->mHackerDevice->mStereoHandle, val))
 		COMMAND_LIST_LOG(state, "  Stereo_SetSeparation failed\n");
 }
 
@@ -1448,7 +1118,7 @@ float PerDrawConvergenceOverrideCommand::get_stereo_value(CommandListState *stat
 {
 	float ret = 0.0f;
 
-	if (NVAPI_OK != Profiling::NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, &ret))
+	if (NVAPI_OK != NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, &ret))
 		COMMAND_LIST_LOG(state, "  Stereo_GetConvergence failed\n");
 
 	return ret;
@@ -1457,11 +1127,11 @@ float PerDrawConvergenceOverrideCommand::get_stereo_value(CommandListState *stat
 void PerDrawConvergenceOverrideCommand::set_stereo_value(CommandListState *state, float val)
 {
 	NvAPIOverride();
-	if (NVAPI_OK != Profiling::NvAPI_Stereo_SetConvergence(state->mHackerDevice->mStereoHandle, val))
+	if (NVAPI_OK != NvAPI_Stereo_SetConvergence(state->mHackerDevice->mStereoHandle, val))
 		COMMAND_LIST_LOG(state, "  Stereo_SetConvergence failed\n");
 }
 
-FrameAnalysisChangeOptionsCommand::FrameAnalysisChangeOptionsCommand(wstring *val)
+FrameAnalysisChangeOptionsCommand::FrameAnalysisChangeOptionsCommand(wstring section, wstring key, wstring *val)
 {
 	wchar_t *buf;
 	size_t size = val->size() + 1;
@@ -1477,6 +1147,8 @@ FrameAnalysisChangeOptionsCommand::FrameAnalysisChangeOptionsCommand(wstring *va
 		(FrameAnalysisOptionNames, buf, NULL);
 
 	delete [] buf;
+
+	ini_line = L"[" + wstring(section) + L"] " + key + L" = " + *val;
 }
 
 void FrameAnalysisChangeOptionsCommand::run(CommandListState *state)
@@ -1484,11 +1156,6 @@ void FrameAnalysisChangeOptionsCommand::run(CommandListState *state)
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	state->mHackerContext->FrameAnalysisTrigger(analyse_options);
-}
-
-bool FrameAnalysisChangeOptionsCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
-{
-	return (G->hunting == HUNTING_MODE_DISABLED || G->frame_analysis_registered == false);
 }
 
 static void FillInMissingInfo(ResourceCopyTargetType type, ID3D11Resource *resource, ID3D11View *view,
@@ -1652,11 +1319,6 @@ void FrameAnalysisDumpCommand::run(CommandListState *state)
 		view->Release();
 }
 
-bool FrameAnalysisDumpCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
-{
-	return (G->hunting == HUNTING_MODE_DISABLED || G->frame_analysis_registered == false);
-}
-
 UpscalingFlipBBCommand::UpscalingFlipBBCommand(wstring section) :
 	ini_section(section)
 {
@@ -1673,17 +1335,6 @@ void UpscalingFlipBBCommand::run(CommandListState *state)
 	COMMAND_LIST_LOG(state, "[%S] special = upscaling_switch_bb\n", ini_section.c_str());
 
 	G->bb_is_upscaling_bb = false;
-}
-
-void Draw3DMigotoOverlayCommand::run(CommandListState *state)
-{
-	COMMAND_LIST_LOG(state, "[%S] special = draw_3dmigoto_overlay\n", ini_section.c_str());
-
-	HackerSwapChain *mHackerSwapChain = state->mHackerDevice->GetHackerSwapChain();
-	if (mHackerSwapChain->mOverlay) {
-		mHackerSwapChain->mOverlay->DrawOverlay();
-		G->suppress_overlay = true;
-	}
 }
 
 CustomShader::CustomShader() :
@@ -1752,46 +1403,6 @@ CustomShader::~CustomShader()
 		sampler_state->Release();
 }
 
-static bool load_cached_shader(FILETIME hlsl_timestamp, wchar_t *cache_path, ID3DBlob **ppBytecode)
-{
-	FILETIME cache_timestamp;
-	HANDLE f_cache;
-	DWORD filesize, readsize;
-
-	f_cache = CreateFile(cache_path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (f_cache == INVALID_HANDLE_VALUE)
-		return false;
-
-	if (!GetFileTime(f_cache, NULL, NULL, &cache_timestamp)
-	 || CompareFileTime(&hlsl_timestamp, &cache_timestamp)) {
-		LogInfo("    Discarding stale cached shader: %S\n", cache_path);
-		goto err_close;
-	}
-
-	filesize = GetFileSize(f_cache, 0);
-	if (FAILED(D3DCreateBlob(filesize, ppBytecode))) {
-		LogInfo("    D3DCreateBlob failed\n");
-		goto err_close;
-	}
-
-	if (!ReadFile(f_cache, (*ppBytecode)->GetBufferPointer(), (DWORD)(*ppBytecode)->GetBufferSize(), &readsize, 0)
-			|| readsize != filesize) {
-		LogInfo("    Error reading cached shader\n");
-		goto err_free;
-	}
-
-	LogInfo("    Loaded cached shader: %S\n", cache_path);
-	CloseHandle(f_cache);
-	return true;
-
-err_free:
-	(*ppBytecode)->Release();
-	*ppBytecode = NULL;
-err_close:
-	CloseHandle(f_cache);
-	return false;
-}
-
 static const D3D_SHADER_MACRO vs_macros[] = { "VERTEX_SHADER", "", NULL, NULL };
 static const D3D_SHADER_MACRO hs_macros[] = { "HULL_SHADER", "", NULL, NULL };
 static const D3D_SHADER_MACRO ds_macros[] = { "DOMAIN_SHADER", "", NULL, NULL };
@@ -1803,7 +1414,7 @@ static const D3D_SHADER_MACRO cs_macros[] = { "COMPUTE_SHADER", "", NULL, NULL }
 // get it's own function for now - TODO: Refactor out the common code
 bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, const wstring *namespace_path)
 {
-	wchar_t wpath[MAX_PATH], cache_path[MAX_PATH];
+	wchar_t wpath[MAX_PATH];
 	char apath[MAX_PATH];
 	HANDLE f;
 	DWORD srcDataSize, readSize;
@@ -1814,7 +1425,6 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 	ID3DBlob *pErrorMsgs = NULL;
 	const D3D_SHADER_MACRO *macros = NULL;
 	bool found = false;
-	FILETIME timestamp;
 
 	LogInfo("  %cs=%S\n", type, filename);
 
@@ -1864,7 +1474,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 	// first, then try relative to the 3DMigoto directory:
 	found = false;
 	if (!namespace_path->empty()) {
-		GetModuleFileName(migoto_handle, wpath, MAX_PATH);
+		GetModuleFileName(0, wpath, MAX_PATH);
 		wcsrchr(wpath, L'\\')[1] = 0;
 		wcscat(wpath, namespace_path->c_str());
 		wcscat(wpath, filename);
@@ -1872,7 +1482,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 			found = true;
 	}
 	if (!found) {
-		if (!GetModuleFileName(migoto_handle, wpath, MAX_PATH)) {
+		if (!GetModuleFileName(0, wpath, MAX_PATH)) {
 			LogOverlay(LOG_DIRE, "CustomShader::compile: GetModuleFileName failed\n");
 			goto err;
 		}
@@ -1886,25 +1496,6 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 		goto err;
 	}
 
-	// Currently always using shader model 5, could allow this to be
-	// overridden in the future:
-	_snprintf_s(shaderModel, 7, 7, "%cs_5_0", type);
-
-	// XXX: If we allow the compilation to be customised further (e.g. with
-	// addition preprocessor defines), make the cache filename unique for
-	// each possible combination
-	wchar_t *ext = wcsrchr(wpath, L'.');
-	if (ext > wcsrchr(wpath, L'\\'))
-		swprintf_s(cache_path, MAX_PATH, L"%.*s.%S.%x.bin", (int)(ext - wpath), wpath, shaderModel, (UINT)compile_flags);
-	else
-		swprintf_s(cache_path, MAX_PATH, L"%s.%S.%x.bin", wpath, shaderModel, (UINT)compile_flags);
-
-	GetFileTime(f, NULL, NULL, &timestamp);
-	if (load_cached_shader(timestamp, cache_path, ppBytecode)) {
-		CloseHandle(f);
-		return false;
-	}
-
 	srcDataSize = GetFileSize(f, 0);
 	srcData.resize(srcDataSize);
 
@@ -1915,6 +1506,10 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 	}
 	CloseHandle(f);
 
+	// Currently always using shader model 5, could allow this to be
+	// overridden in the future:
+	_snprintf_s(shaderModel, 7, 7, "%cs_5_0", type);
+
 	// TODO: Add #defines for StereoParams and IniParams. Define a macro
 	// for the type of shader, and maybe allow more defines to be specified
 	// in the ini
@@ -1924,12 +1519,8 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 	// Later we could add a custom include handler to track dependencies so
 	// that we can make reloading work better when using includes:
 	wcstombs(apath, wpath, MAX_PATH);
-	{
-		MigotoIncludeHandler include_handler(apath);
-		hr = D3DCompile(srcData.data(), srcDataSize, apath, macros,
-			G->recursive_include == -1 ? D3D_COMPILE_STANDARD_FILE_INCLUDE : &include_handler,
-			"main", shaderModel, (UINT)compile_flags, 0, ppBytecode, &pErrorMsgs);
-	}
+	hr = D3DCompile(srcData.data(), srcDataSize, apath, macros, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"main", shaderModel, (UINT)compile_flags, 0, ppBytecode, &pErrorMsgs);
 
 	if (pErrorMsgs) {
 		LPVOID errMsg = pErrorMsgs->GetBufferPointer();
@@ -1945,19 +1536,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 		goto err;
 	}
 
-	if (G->CACHE_SHADERS) {
-		FILE *fw;
-
-		wfopen_ensuring_access(&fw, cache_path, L"wb");
-		if (fw) {
-			LogInfo("    Storing compiled shader to %S\n", cache_path);
-			fwrite((*ppBytecode)->GetBufferPointer(), 1, (*ppBytecode)->GetBufferSize(), fw);
-			fclose(fw);
-
-			set_file_last_write_time(cache_path, &timestamp);
-		} else
-			LogInfo("    Error writing compiled shader to %S\n", cache_path);
-	}
+	// TODO: Cache bytecode
 
 	return false;
 err_close:
@@ -2210,7 +1789,6 @@ void RunCustomShaderCommand::run(CommandListState *state)
 			custom_shader->executions_this_frame = 1;
 		} else if (custom_shader->executions_this_frame++ >= custom_shader->max_executions_per_frame) {
 			COMMAND_LIST_LOG(state, "  max_executions_per_frame exceeded\n");
-			Profiling::max_executions_per_frame_exceeded++;
 			return;
 		}
 	}
@@ -2343,58 +1921,25 @@ void RunCustomShaderCommand::run(CommandListState *state)
 	}
 }
 
-bool RunCustomShaderCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
-{
-	return (custom_shader->command_list.commands.empty() && custom_shader->post_command_list.commands.empty());
-}
-
 void RunExplicitCommandList::run(CommandListState *state)
 {
-	bool saved_post;
-
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-	if (run_pre_and_post_together) {
-		saved_post = state->post;
-		state->post = false;
-		_RunCommandList(&command_list_section->command_list, state);
-		state->post = true;
-		_RunCommandList(&command_list_section->post_command_list, state);
-		state->post = saved_post;
-	} else if (state->post)
+	if (state->post)
 		_RunCommandList(&command_list_section->post_command_list, state);
 	else
 		_RunCommandList(&command_list_section->command_list, state);
 }
 
-bool RunExplicitCommandList::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
-{
-	if (run_pre_and_post_together)
-		return (command_list_section->command_list.commands.empty() && command_list_section->post_command_list.commands.empty());
-
-	if (post)
-		return command_list_section->post_command_list.commands.empty();
-	return command_list_section->command_list.commands.empty();
-}
-
-std::shared_ptr<RunLinkedCommandList>
-LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line)
+void LinkCommandLists(CommandList *dst, CommandList *link)
 {
 	RunLinkedCommandList *operation = new RunLinkedCommandList(link);
-	operation->ini_line = *ini_line;
-	std::shared_ptr<RunLinkedCommandList> p(operation);
-	dst->commands.push_back(p);
-	return p;
+	dst->commands.push_back(std::shared_ptr<CommandListCommand>(operation));
 }
 
 void RunLinkedCommandList::run(CommandListState *state)
 {
-	_RunCommandList(link, state, false);
-}
-
-bool RunLinkedCommandList::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
-{
-	return link->commands.empty();
+	_RunCommandList(link, state);
 }
 
 static void ProcessParamRTSize(CommandListState *state)
@@ -2445,7 +1990,7 @@ static void UpdateScissorInfo(CommandListState *state)
 	state->scissor_valid = true;
 }
 
-float CommandListOperand::process_texture_filter(CommandListState *state)
+float ParamOverride::process_texture_filter(CommandListState *state)
 {
 	TextureOverrideMatches matches;
 	TextureOverrideMatches::reverse_iterator rit;
@@ -2488,61 +2033,6 @@ float CommandListOperand::process_texture_filter(CommandListState *state)
 	return 1.0;
 }
 
-float CommandListOperand::process_shader_filter(CommandListState *state)
-{
-	HackerContext *mHackerContext = state->mHackerContext;
-	ID3D11DeviceChild *shader = NULL;
-
-	switch (shader_filter_target) {
-		case L'v':
-			shader = mHackerContext->mCurrentVertexShaderHandle;
-			break;
-		case L'h':
-			shader = mHackerContext->mCurrentHullShaderHandle;
-			break;
-		case L'd':
-			shader = mHackerContext->mCurrentDomainShaderHandle;
-			break;
-		case L'g':
-			shader = mHackerContext->mCurrentGeometryShaderHandle;
-			break;
-		case L'p':
-			shader = mHackerContext->mCurrentPixelShaderHandle;
-			break;
-		case L'c':
-			shader = mHackerContext->mCurrentComputeShaderHandle;
-			break;
-		default:
-			LogOverlay(LOG_DIRE, "BUG: Unknown shader filter type: \"%C\"\n", shader_filter_target);
-			break;
-	}
-
-	// Negative zero means no shader bound:
-	if (!shader)
-		return -0.0;
-
-	ShaderMap::iterator shader_it = lookup_shader_hash(shader);
-
-	if (shader_it == G->mShaders.end())
-		return 0.0;
-
-	// Positive zero means shader bound with no ShaderOverride
-	ShaderOverrideMap::iterator override = lookup_shaderoverride(shader_it->second);
-	if (override == G->mShaderOverrideMap.end())
-		return 0.0;
-
-	if (override->second.filter_index != FLT_MAX)
-		return override->second.filter_index;
-
-	// Matched ShaderOverride / ShaderRegex, but no filter_index:
-	return 1.0;
-}
-
-void CommandList::clear()
-{
-	commands.clear();
-	static_vars.clear();
-}
 
 CommandListState::CommandListState() :
 	mHackerDevice(NULL),
@@ -2552,7 +2042,6 @@ CommandListState::CommandListState() :
 	rt_width(-1),
 	rt_height(-1),
 	call_info(NULL),
-	this_target(NULL),
 	resource(NULL),
 	view(NULL),
 	post(false),
@@ -2562,7 +2051,6 @@ CommandListState::CommandListState() :
 	cursor_color_tex(NULL),
 	cursor_color_view(NULL),
 	recursion(0),
-	extra_indent(0),
 	aborted(false),
 	scissor_valid(false)
 {
@@ -2710,9 +2198,7 @@ static void _CreateTextureFromBitmap(HDC dc, BITMAP *bitmap_obj,
 	desc.CPUAccessFlags = 0;
 	desc.MiscFlags = 0;
 
-	LockResourceCreationMode();
 	hr = state->mOrigDevice1->CreateTexture2D(&desc, &data, tex);
-	UnlockResourceCreationMode();
 	if (FAILED(hr)) {
 		LogInfo("Software Mouse: CreateTexture2D Failed: 0x%x\n", hr);
 		goto err_free;
@@ -2808,13 +2294,9 @@ out_delete_mem_dc:
 static void UpdateCursorResources(CommandListState *state)
 {
 	HDC dc;
-	Profiling::State profiling_state;
 
 	if (state->cursor_mask_tex || state->cursor_color_tex)
 		return;
-
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::start(&profiling_state);
 
 	UpdateCursorInfoEx(state);
 
@@ -2863,53 +2345,119 @@ static void UpdateCursorResources(CommandListState *state)
 	}
 
 	ReleaseDC(NULL, dc);
-
-	if (Profiling::mode == Profiling::Mode::SUMMARY)
-		Profiling::end(&profiling_state, &Profiling::cursor_overhead);
 }
 
-static bool sli_enabled(HackerDevice *device)
+void ParamOverride::run(CommandListState *state)
 {
-	NV_GET_CURRENT_SLI_STATE sli_state;
-	sli_state.version = NV_GET_CURRENT_SLI_STATE_VER;
-	NvAPI_Status status;
+	float *dest = &(G->iniParams[param_idx].*param_component);
+	float orig = *dest;
 
-	status = Profiling::NvAPI_D3D_GetCurrentSLIState(device->GetPossiblyHookedOrigDevice1(), &sli_state);
-	if (status != NVAPI_OK) {
-		LogInfo("Unable to retrieve SLI state from nvapi\n");
-		return false;
-	}
+	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-	return sli_state.maxNumAFRGroups > 1;
-}
-
-float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device)
-{
-	NvU8 stereo = false;
-	float fret;
-
-	if (state)
-		device = state->mHackerDevice;
-	else if (!device) {
-		LogOverlay(LOG_DIRE, "BUG: CommandListOperand::evaluate called with neither state nor device\n");
-		return 0;
-	}
-
-	// XXX: If updating this list, be sure to also update
-	// XXX: operand_allowed_in_context()
 	switch (type) {
 		case ParamOverrideType::VALUE:
-			return val;
-		case ParamOverrideType::INI_PARAM:
-			return G->iniParams[param_idx].*param_component;
-		case ParamOverrideType::VARIABLE:
-			return *var_ftarget;
+			*dest = val;
+			break;
+		case ParamOverrideType::RT_WIDTH:
+			ProcessParamRTSize(state);
+			*dest = state->rt_width;
+			break;
+		case ParamOverrideType::RT_HEIGHT:
+			ProcessParamRTSize(state);
+			*dest = state->rt_height;
+			break;
 		case ParamOverrideType::RES_WIDTH:
-			return (float)G->mResolutionInfo.width;
+			*dest = (float)G->mResolutionInfo.width;
+			break;
 		case ParamOverrideType::RES_HEIGHT:
-			return (float)G->mResolutionInfo.height;
+			*dest = (float)G->mResolutionInfo.height;
+			break;
+		case ParamOverrideType::WINDOW_WIDTH:
+			UpdateWindowInfo(state);
+			*dest = (float)state->window_rect.right;
+			break;
+		case ParamOverrideType::WINDOW_HEIGHT:
+			UpdateWindowInfo(state);
+			*dest = (float)state->window_rect.bottom;
+			break;
+		case ParamOverrideType::TEXTURE:
+			*dest = process_texture_filter(state);
+			break;
+		case ParamOverrideType::VERTEX_COUNT:
+			if (state->call_info)
+				*dest = (float)state->call_info->VertexCount;
+			else
+				*dest = 0;
+			break;
+		case ParamOverrideType::INDEX_COUNT:
+			if (state->call_info)
+				*dest = (float)state->call_info->IndexCount;
+			else
+				*dest = 0;
+			break;
+		case ParamOverrideType::INSTANCE_COUNT:
+			if (state->call_info)
+				*dest = (float)state->call_info->InstanceCount;
+			else
+				*dest = 0;
+			break;
+		case ParamOverrideType::CURSOR_VISIBLE:
+			UpdateCursorInfo(state);
+			*dest = !!(state->cursor_info.flags & CURSOR_SHOWING);
+			break;
+		case ParamOverrideType::CURSOR_SCREEN_X:
+			UpdateCursorInfo(state);
+			*dest = (float)state->cursor_info.ptScreenPos.x;
+			break;
+		case ParamOverrideType::CURSOR_SCREEN_Y:
+			UpdateCursorInfo(state);
+			*dest = (float)state->cursor_info.ptScreenPos.y;
+			break;
+		case ParamOverrideType::CURSOR_WINDOW_X:
+			UpdateCursorInfo(state);
+			*dest = (float)state->cursor_window_coords.x;
+			break;
+		case ParamOverrideType::CURSOR_WINDOW_Y:
+			UpdateCursorInfo(state);
+			*dest = (float)state->cursor_window_coords.y;
+			break;
+		case ParamOverrideType::CURSOR_X:
+			UpdateCursorInfo(state);
+			UpdateWindowInfo(state);
+			*dest = (float)state->cursor_window_coords.x / (float)state->window_rect.right;
+			break;
+		case ParamOverrideType::CURSOR_Y:
+			UpdateCursorInfo(state);
+			UpdateWindowInfo(state);
+			*dest = (float)state->cursor_window_coords.y / (float)state->window_rect.bottom;
+			break;
+		case ParamOverrideType::CURSOR_HOTSPOT_X:
+			UpdateCursorInfoEx(state);
+			*dest = (float)state->cursor_info_ex.xHotspot;
+			break;
+		case ParamOverrideType::CURSOR_HOTSPOT_Y:
+			UpdateCursorInfoEx(state);
+			*dest = (float)state->cursor_info_ex.yHotspot;
+			break;
 		case ParamOverrideType::TIME:
-			return (float)(GetTickCount() - G->ticks_at_launch) / 1000.0f;
+			*dest = (float)(GetTickCount() - G->ticks_at_launch) / 1000.0f;
+			break;
+		case ParamOverrideType::SCISSOR_LEFT:
+			UpdateScissorInfo(state);
+			*dest = (float)state->scissor_rects[scissor].left;
+			break;
+		case ParamOverrideType::SCISSOR_TOP:
+			UpdateScissorInfo(state);
+			*dest = (float)state->scissor_rects[scissor].top;
+			break;
+		case ParamOverrideType::SCISSOR_RIGHT:
+			UpdateScissorInfo(state);
+			*dest = (float)state->scissor_rects[scissor].right;
+			break;
+		case ParamOverrideType::SCISSOR_BOTTOM:
+			UpdateScissorInfo(state);
+			*dest = (float)state->scissor_rects[scissor].bottom;
+			break;
 		case ParamOverrideType::RAW_SEPARATION:
 			// We could use cached values of these (nvapi is known
 			// to become a bottleneck with too many calls / frame),
@@ -2927,1131 +2475,28 @@ float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device
 			// this is rarely used, so let's just go with this for
 			// now and worry about optimisations only if it proves
 			// to be a bottleneck in practice:
-			Profiling::NvAPI_Stereo_GetSeparation(device->mStereoHandle, &fret);
-			return fret;
+			NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, dest);
+			break;
 		case ParamOverrideType::CONVERGENCE:
-			Profiling::NvAPI_Stereo_GetConvergence(device->mStereoHandle, &fret);
-			return fret;
+			NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, dest);
+			break;
 		case ParamOverrideType::EYE_SEPARATION:
-			Profiling::NvAPI_Stereo_GetEyeSeparation(device->mStereoHandle, &fret);
-			return fret;
+			NvAPI_Stereo_GetEyeSeparation(state->mHackerDevice->mStereoHandle, dest);
+			break;
 		case ParamOverrideType::STEREO_ACTIVE:
-			Profiling::NvAPI_Stereo_IsActivated(device->mStereoHandle, &stereo);
-			return !!stereo;
-		case ParamOverrideType::STEREO_AVAILABLE:
-			Profiling::NvAPI_Stereo_IsEnabled(&stereo);
-			return !!stereo;
-		case ParamOverrideType::SLI:
-			return sli_enabled(device);
-		case ParamOverrideType::HUNTING:
-			return (float)G->hunting;
-		case ParamOverrideType::FRAME_ANALYSIS:
-			return G->analyse_frame;
-		// XXX: If updating this list, be sure to also update
-		// XXX: operand_allowed_in_context()
-	}
-
-	if (!state) {
-		// FIXME: Some of these only use the state object for cache,
-		// and could still be evaluated if we forgo the cache
-		LogOverlay(LOG_WARNING, "BUG: Operand type %i cannot be evaluated outside of a command list\n", type);
-		return 0;
-	}
-
-	switch (type) {
-		case ParamOverrideType::RT_WIDTH:
-			ProcessParamRTSize(state);
-			return state->rt_width;
-		case ParamOverrideType::RT_HEIGHT:
-			ProcessParamRTSize(state);
-			return state->rt_height;
-		case ParamOverrideType::WINDOW_WIDTH:
-			UpdateWindowInfo(state);
-			return (float)state->window_rect.right;
-		case ParamOverrideType::WINDOW_HEIGHT:
-			UpdateWindowInfo(state);
-			return (float)state->window_rect.bottom;
-		case ParamOverrideType::TEXTURE:
-			return process_texture_filter(state);
-		case ParamOverrideType::SHADER:
-			return process_shader_filter(state);
-		case ParamOverrideType::VERTEX_COUNT:
-			if (state->call_info)
-				return (float)state->call_info->VertexCount;
-			return 0;
-		case ParamOverrideType::INDEX_COUNT:
-			if (state->call_info)
-				return (float)state->call_info->IndexCount;
-			return 0;
-		case ParamOverrideType::INSTANCE_COUNT:
-			if (state->call_info)
-				return (float)state->call_info->InstanceCount;
-			return 0;
-		case ParamOverrideType::FIRST_VERTEX:
-			if (state->call_info)
-				return (float)state->call_info->FirstVertex;
-			return 0;
-		case ParamOverrideType::FIRST_INDEX:
-			if (state->call_info)
-				return (float)state->call_info->FirstIndex;
-			return 0;
-		case ParamOverrideType::FIRST_INSTANCE:
-			if (state->call_info)
-				return (float)state->call_info->FirstInstance;
-			return 0;
-		case ParamOverrideType::THREAD_GROUP_COUNT_X:
-			if (state->call_info)
-				return (float)state->call_info->ThreadGroupCountX;
-			return 0;
-		case ParamOverrideType::THREAD_GROUP_COUNT_Y:
-			if (state->call_info)
-				return (float)state->call_info->ThreadGroupCountY;
-			return 0;
-		case ParamOverrideType::THREAD_GROUP_COUNT_Z:
-			if (state->call_info)
-				return (float)state->call_info->ThreadGroupCountZ;
-			return 0;
-		case ParamOverrideType::INDIRECT_OFFSET:
-			if (state->call_info)
-				return (float)state->call_info->args_offset;
-			return 0;
-		case ParamOverrideType::DRAW_TYPE:
-			if (state->call_info)
-				return (float)state->call_info->type;
-			return 0;
-		case ParamOverrideType::CURSOR_VISIBLE:
-			UpdateCursorInfo(state);
-			return !!(state->cursor_info.flags & CURSOR_SHOWING);
-		case ParamOverrideType::CURSOR_SCREEN_X:
-			UpdateCursorInfo(state);
-			return (float)state->cursor_info.ptScreenPos.x;
-		case ParamOverrideType::CURSOR_SCREEN_Y:
-			UpdateCursorInfo(state);
-			return (float)state->cursor_info.ptScreenPos.y;
-		case ParamOverrideType::CURSOR_WINDOW_X:
-			UpdateCursorInfo(state);
-			return (float)state->cursor_window_coords.x;
-		case ParamOverrideType::CURSOR_WINDOW_Y:
-			UpdateCursorInfo(state);
-			return (float)state->cursor_window_coords.y;
-		case ParamOverrideType::CURSOR_X:
-			UpdateCursorInfo(state);
-			UpdateWindowInfo(state);
-			return (float)state->cursor_window_coords.x / (float)state->window_rect.right;
-		case ParamOverrideType::CURSOR_Y:
-			UpdateCursorInfo(state);
-			UpdateWindowInfo(state);
-			return (float)state->cursor_window_coords.y / (float)state->window_rect.bottom;
-		case ParamOverrideType::CURSOR_HOTSPOT_X:
-			UpdateCursorInfoEx(state);
-			return (float)state->cursor_info_ex.xHotspot;
-		case ParamOverrideType::CURSOR_HOTSPOT_Y:
-			UpdateCursorInfoEx(state);
-			return (float)state->cursor_info_ex.yHotspot;
-		case ParamOverrideType::SCISSOR_LEFT:
-			UpdateScissorInfo(state);
-			return (float)state->scissor_rects[scissor].left;
-		case ParamOverrideType::SCISSOR_TOP:
-			UpdateScissorInfo(state);
-			return (float)state->scissor_rects[scissor].top;
-		case ParamOverrideType::SCISSOR_RIGHT:
-			UpdateScissorInfo(state);
-			return (float)state->scissor_rects[scissor].right;
-		case ParamOverrideType::SCISSOR_BOTTOM:
-			UpdateScissorInfo(state);
-			return (float)state->scissor_rects[scissor].bottom;
-	}
-
-	LogOverlay(LOG_DIRE, "BUG: Unhandled operand type %i\n", type);
-	return 0;
-}
-
-bool CommandListOperand::static_evaluate(float *ret, HackerDevice *device)
-{
-	NvU8 stereo = false;
-
-	switch (type) {
-		case ParamOverrideType::VALUE:
-			*ret = val;
-			return true;
-		case ParamOverrideType::RAW_SEPARATION:
-		case ParamOverrideType::CONVERGENCE:
-		case ParamOverrideType::EYE_SEPARATION:
-		case ParamOverrideType::STEREO_ACTIVE:
-			NvAPIOverride();
-			Profiling::NvAPI_Stereo_IsEnabled(&stereo);
-			if (!stereo) {
-				*ret = 0.0;
-				return true;
+			{
+				NvU8 stereo = false;
+				NvAPI_Stereo_IsActivated(state->mHackerDevice->mStereoHandle, &stereo);
+				*dest = !!stereo;
 			}
 			break;
-		case ParamOverrideType::STEREO_AVAILABLE:
-			Profiling::NvAPI_Stereo_IsEnabled(&stereo);
-			*ret = stereo;
-			return true;
-		case ParamOverrideType::SLI:
-			if (device) {
-				*ret = sli_enabled(device);
-				return true;
-			}
-			break;
-		case ParamOverrideType::HUNTING:
-		case ParamOverrideType::FRAME_ANALYSIS:
-			if (G->hunting == HUNTING_MODE_DISABLED) {
-				*ret = 0;
-				return true;
-			}
-			break;
-	}
-
-	return false;
-}
-
-bool CommandListOperand::optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement)
-{
-	if (type == ParamOverrideType::VALUE)
-		return false;
-
-	if (!static_evaluate(&val, device))
-		return false;
-
-	LogInfo("Statically evaluated %S as %f\n",
-		lookup_enum_name(ParamOverrideTypeNames, type), val);
-
-	type = ParamOverrideType::VALUE;
-	return true;
-}
-
-static const wchar_t *operator_tokens[] = {
-	// Three character tokens first:
-	L"===", L"!==",
-	// Two character tokens next:
-	L"==", L"!=", L"//", L"<=", L">=", L"&&", L"||", L"**",
-	// Single character tokens last:
-	L"(", L")", L"!", L"*", L"/", L"%", L"+", L"-", L"<", L">",
-};
-
-class CommandListSyntaxError: public exception
-{
-public:
-	wstring msg;
-	size_t pos;
-
-	CommandListSyntaxError(wstring msg, size_t pos) :
-		msg(msg), pos(pos)
-	{}
-};
-
-static void tokenise(const wstring *expression, CommandListSyntaxTree *tree, const wstring *ini_namespace, CommandListScope *scope)
-{
-	wstring remain = *expression;
-	ResourceCopyTarget texture_filter_target;
-	shared_ptr<CommandListOperand> operand;
-	wstring token;
-	size_t pos = 0;
-	int ipos = 0;
-	size_t friendly_pos = 0;
-	float fval;
-	int ret;
-	int i;
-	bool last_was_operand = false;
-
-	LogDebug("    Tokenising \"%S\"\n", expression->c_str());
-
-	while (true) {
-next_token:
-		// Skip whitespace:
-		pos = remain.find_first_not_of(L" \t", pos);
-		if (pos == wstring::npos)
+		default:
 			return;
-		remain = remain.substr(pos);
-		friendly_pos += pos;
-
-		// Operators:
-		for (i = 0; i < ARRAYSIZE(operator_tokens); i++) {
-			if (!remain.compare(0, wcslen(operator_tokens[i]), operator_tokens[i])) {
-				pos = wcslen(operator_tokens[i]);
-				tree->tokens.emplace_back(make_shared<CommandListOperatorToken>(friendly_pos, remain.substr(0, pos)));
-				LogDebug("      Operator: \"%S\"\n", tree->tokens.back()->token.c_str());
-				last_was_operand = false;
-				goto next_token; // continue would continue wrong loop
-			}
-		}
-
-		// Texture Filtering / Resource Slots:
-		// - Many of these slots include a hyphen character, which
-		//   conflicts with the subtraction/negation operators,
-		//   potentially making something like "x = ps-t0" ambiguous as
-		//   to whether it is referring to pixel shader texture slot 0,
-		//   or subtracting "t0" from "ps", but in practice this should
-		//   be generally be fine since we don't have anything called
-		//   "ps", "t0" or similar, and if we did simply adding
-		//   whitespace around the subtraction would disambiguate it.
-		// - The characters we check for here preclude some arbitrary
-		//   custom Resource names, including namespaced resources, but
-		//   that's ok since this is only for texture filtering, which
-		//   doesn't work if custom resources are checked. If we need
-		//   to match these for some other reason, we could add \ and .
-		//   to this list, which will cover most namespaced resources.
-		pos = remain.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_-0123456789");
-		if (pos) {
-			token = remain.substr(0, pos);
-			ret = texture_filter_target.ParseTarget(token.c_str(), true, ini_namespace);
-			if (ret) {
-				operand = make_shared<CommandListOperand>(friendly_pos, token);
-				if (operand->parse(&token, ini_namespace, scope)) {
-					tree->tokens.emplace_back(std::move(operand));
-					LogDebug("      Resource Slot: \"%S\"\n", tree->tokens.back()->token.c_str());
-					if (last_was_operand)
-						throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
-					last_was_operand = true;
-					continue;
-				} else {
-					LogOverlay(LOG_DIRE, "BUG: Token parsed as resource slot, but not as operand: \"%S\"\n", token.c_str());
-					throw CommandListSyntaxError(L"BUG", friendly_pos);
-				}
-			}
-		}
-
-		// Identifiers:
-		// - Parse this before floats to make sure that the special
-		//   cases "inf" and "nan" are identifiers by themselves, not
-		//   the start of some other identifier. Only applies to
-		//   vs2015+ as older toolchains lack parsing for these.
-		// - Identifiers cannot start with a number
-		// - Variable identifiers start with a $, and these may be
-		//   namespaced, so we allow backslash and . as well
-		//   TODO: Be more specific with namespaces to allow exactly
-		//   the set of actual namespaces. Would allow for namespaces
-		//   to have spaces or other unusual characters while freeing
-		//   up . \ and $ for potential use as operators in the future.
-		if (remain[0] < '0' || remain[0] > '9') {
-			pos = remain.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_0123456789$\\.");
-			if (pos) {
-				token = remain.substr(0, pos);
-				operand = make_shared<CommandListOperand>(friendly_pos, token);
-				if (operand->parse(&token, ini_namespace, scope)) {
-					tree->tokens.emplace_back(std::move(operand));
-					LogDebug("      Identifier: \"%S\"\n", tree->tokens.back()->token.c_str());
-					if (last_was_operand)
-						throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
-					last_was_operand = true;
-					continue;
-				}
-				throw CommandListSyntaxError(L"Unrecognised identifier: " + token, friendly_pos);
-			}
-		}
-
-		// Floats:
-		// - Must tokenise subtraction operation first
-		//   - Static optimisation will merge unary negation
-		// - Identifier match will catch "nan" and "inf" special cases
-		//   if the toolchain supports them
-		ret = swscanf_s(remain.c_str(), L"%f%n", &fval, &ipos);
-		if (ret != 0 && ret != EOF) {
-			// VS2013 Issue: size_t z/I modifiers do not work with %n
-			// We could make pos an int and cast it everywhere it is used
-			// as a size_t, but this way highlights the toolchain issue.
-			pos = ipos;
-
-			token = remain.substr(0, ipos);
-			operand = make_shared<CommandListOperand>(friendly_pos, token);
-			if (operand->parse(&token, ini_namespace, scope)) {
-				tree->tokens.emplace_back(std::move(operand));
-				LogDebug("      Float: \"%S\"\n", tree->tokens.back()->token.c_str());
-				if (last_was_operand)
-					throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
-				last_was_operand = true;
-				continue;
-			} else {
-				LogOverlay(LOG_DIRE, "BUG: Token parsed as float, but not as operand: \"%S\"\n", token.c_str());
-				throw CommandListSyntaxError(L"BUG", friendly_pos);
-			}
-		}
-
-		throw CommandListSyntaxError(L"Parse error", friendly_pos);
 	}
-}
-
-static void group_parenthesis(CommandListSyntaxTree *tree)
-{
-	CommandListSyntaxTree::Tokens::iterator i;
-	CommandListSyntaxTree::Tokens::reverse_iterator rit;
-	CommandListOperatorToken *rbracket, *lbracket;
-	std::shared_ptr<CommandListSyntaxTree> inner;
-
-	for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
-		rbracket = dynamic_cast<CommandListOperatorToken*>(i->get());
-		if (rbracket && !rbracket->token.compare(L")")) {
-			for (rit = std::reverse_iterator<CommandListSyntaxTree::Tokens::iterator>(i); rit != tree->tokens.rend(); rit++) {
-				lbracket = dynamic_cast<CommandListOperatorToken*>(rit->get());
-				if (lbracket && !lbracket->token.compare(L"(")) {
-					inner = std::make_shared<CommandListSyntaxTree>(lbracket->token_pos);
-					// XXX: Double check bounds are right:
-					inner->tokens.assign(rit.base(), i);
-					i = tree->tokens.erase(rit.base() - 1, i + 1);
-					i = tree->tokens.insert(i, std::move(inner));
-					goto continue_rbracket_search; // continue would continue wrong loop
-				}
-			}
-			throw CommandListSyntaxError(L"Unmatched )", rbracket->token_pos);
-		}
-	continue_rbracket_search: false;
-	}
-
-	for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
-		lbracket = dynamic_cast<CommandListOperatorToken*>(i->get());
-		if (lbracket && !lbracket->token.compare(L"("))
-			throw CommandListSyntaxError(L"Unmatched (", lbracket->token_pos);
-	}
-}
-
-// Expression operator definitions:
-#define DEFINE_OPERATOR(name, operator_pattern, fn) \
-class name##T : public CommandListOperator { \
-public: \
-	name##T( \
-			std::shared_ptr<CommandListToken> lhs, \
-			CommandListOperatorToken &t, \
-			std::shared_ptr<CommandListToken> rhs \
-		) : CommandListOperator(lhs, t, rhs) \
-	{} \
-	static const wchar_t* pattern() { return L##operator_pattern; } \
-	float evaluate(float lhs, float rhs) override { return (fn); } \
-}; \
-static CommandListOperatorFactory<name##T> name;
-
-// Highest level of precedence, allows for negative numbers
-DEFINE_OPERATOR(unary_not_operator,     "!",  (!rhs));
-DEFINE_OPERATOR(unary_plus_operator,    "+",  (+rhs));
-DEFINE_OPERATOR(unary_negate_operator,  "-",  (-rhs));
-
-// High level of precedence, right-associative. Lower than unary operators, so
-// that 4**-2 works for square root
-DEFINE_OPERATOR(exponent_operator,      "**", (pow(lhs, rhs)));
-
-DEFINE_OPERATOR(multiplication_operator,"*",  (lhs * rhs));
-DEFINE_OPERATOR(division_operator,      "/",  (lhs / rhs));
-DEFINE_OPERATOR(floor_division_operator,"//", (floor(lhs / rhs)));
-DEFINE_OPERATOR(modulus_operator,       "%",  (fmod(lhs, rhs)));
-
-DEFINE_OPERATOR(addition_operator,      "+",  (lhs + rhs));
-DEFINE_OPERATOR(subtraction_operator,   "-",  (lhs - rhs));
-
-DEFINE_OPERATOR(less_operator,          "<",  (lhs < rhs));
-DEFINE_OPERATOR(less_equal_operator,    "<=", (lhs <= rhs));
-DEFINE_OPERATOR(greater_operator,       ">",  (lhs > rhs));
-DEFINE_OPERATOR(greater_equal_operator, ">=", (lhs >= rhs));
-
-// The triple equals operator tests for binary equivalence - in particular,
-// this allows us to test for negative zero, used in texture filtering to
-// signify that nothing is bound to a given slot. Negative zero cannot be
-// tested for using the regular equals operator, since -0.0 == +0.0. This
-// operator could also test for specific cases of NAN (though, without the
-// vs2015 toolchain "nan" won't parse as such).
-DEFINE_OPERATOR(equality_operator,      "==", (lhs == rhs));
-DEFINE_OPERATOR(inequality_operator,    "!=", (lhs != rhs));
-DEFINE_OPERATOR(identical_operator,     "===",(*(uint32_t*)&lhs == *(uint32_t*)&rhs));
-DEFINE_OPERATOR(not_identical_operator, "!==",(*(uint32_t*)&lhs != *(uint32_t*)&rhs));
-
-DEFINE_OPERATOR(and_operator,           "&&", (lhs && rhs));
-
-DEFINE_OPERATOR(or_operator,            "||", (lhs || rhs));
-
-// TODO: Ternary if operator
-
-static CommandListOperatorFactoryBase *unary_operators[] = {
-	&unary_not_operator,
-	&unary_negate_operator,
-	&unary_plus_operator,
-};
-static CommandListOperatorFactoryBase *exponent_operators[] = {
-	&exponent_operator,
-};
-static CommandListOperatorFactoryBase *multi_division_operators[] = {
-	&multiplication_operator,
-	&division_operator,
-	&floor_division_operator,
-	&modulus_operator,
-};
-static CommandListOperatorFactoryBase *add_subtract_operators[] = {
-	&addition_operator,
-	&subtraction_operator,
-};
-static CommandListOperatorFactoryBase *relational_operators[] = {
-	&less_operator,
-	&less_equal_operator,
-	&greater_operator,
-	&greater_equal_operator,
-};
-static CommandListOperatorFactoryBase *equality_operators[] = {
-	&equality_operator,
-	&inequality_operator,
-	&identical_operator,
-	&not_identical_operator,
-};
-static CommandListOperatorFactoryBase *and_operators[] = {
-	&and_operator,
-};
-static CommandListOperatorFactoryBase *or_operators[] = {
-	&or_operator,
-};
-
-static CommandListSyntaxTree::Tokens::iterator transform_operators_token(
-		CommandListSyntaxTree *tree,
-		CommandListSyntaxTree::Tokens::iterator i,
-		CommandListOperatorFactoryBase *factories[], int num_factories,
-		bool unary)
-{
-	std::shared_ptr<CommandListOperatorToken> token;
-	std::shared_ptr<CommandListOperator> op;
-	std::shared_ptr<CommandListOperandBase> lhs;
-	std::shared_ptr<CommandListOperandBase> rhs;
-	int f;
-
-	token = dynamic_pointer_cast<CommandListOperatorToken>(*i);
-	if (!token)
-		return i;
-
-	for (f = 0; f < num_factories; f++) {
-		if (token->token.compare(factories[f]->pattern()))
-			continue;
-
-		lhs = nullptr;
-		rhs = nullptr;
-		if (i > tree->tokens.begin())
-			lhs = dynamic_pointer_cast<CommandListOperandBase>(*(i-1));
-		if (i < tree->tokens.end() - 1)
-			rhs = dynamic_pointer_cast<CommandListOperandBase>(*(i+1));
-
-		if (unary) {
-			// It is particularly important that we check that the
-			// LHS is *not* an operand so the unary +/- operators
-			// don't trump the binary addition/subtraction operators:
-			if (rhs && !lhs) {
-				op = factories[f]->create(nullptr, *token, *(i+1));
-				i = tree->tokens.erase(i, i+2);
-				i = tree->tokens.insert(i, std::move(op));
-				break;
-			}
-		} else {
-			if (lhs && rhs) {
-				op = factories[f]->create(*(i-1), *token, *(i+1));
-				i = tree->tokens.erase(i-1, i+2);
-				i = tree->tokens.insert(i, std::move(op));
-				break;
-			}
-		}
-	}
-
-	return i;
-}
-
-// Transforms operator tokens in the syntax tree into actual operators
-static void transform_operators_visit(CommandListSyntaxTree *tree,
-		CommandListOperatorFactoryBase *factories[], int num_factories,
-		bool right_associative, bool unary)
-{
-	CommandListSyntaxTree::Tokens::iterator i;
-	CommandListSyntaxTree::Tokens::reverse_iterator rit;
-
-	if (!tree)
-		return;
-
-	if (right_associative) {
-		if (unary) {
-			// Start at the second from the right
-			for (rit = tree->tokens.rbegin() + 1; rit != tree->tokens.rend(); rit++) {
-				// C++ gotcha: reverse_iterator::base() points to the *next* element
-				i = transform_operators_token(tree, rit.base() - 1, factories, num_factories, unary);
-				rit = std::reverse_iterator<CommandListSyntaxTree::Tokens::iterator>(i + 1);
-			}
-		} else {
-			for (rit = tree->tokens.rbegin() + 1; rit < tree->tokens.rend() - 1; rit++) {
-				// C++ gotcha: reverse_iterator::base() points to the *next* element
-				i = transform_operators_token(tree, rit.base() - 1, factories, num_factories, unary);
-				rit = std::reverse_iterator<CommandListSyntaxTree::Tokens::iterator>(i + 1);
-			}
-		}
-	} else {
-		if (unary) {
-			throw CommandListSyntaxError(L"FIXME: Implement left-associative unary operators", 0);
-		} else {
-			// Since this is binary operators, skip the first and last
-			// nodes as they must be operands, and this way I don't have to
-			// worry about bounds checks.
-			for (i = tree->tokens.begin() + 1; i < tree->tokens.end() - 1; i++)
-				i = transform_operators_token(tree, i, factories, num_factories, unary);
-		}
-	}
-}
-
-static void transform_operators_recursive(CommandListWalkable *tree,
-		CommandListOperatorFactoryBase *factories[], int num_factories,
-		bool right_associative, bool unary)
-{
-	// Depth first to ensure that we have visited all sub-trees before
-	// transforming operators in this level, since that may add new
-	// sub-trees
-	for (auto &inner: tree->walk()) {
-		transform_operators_recursive(dynamic_cast<CommandListWalkable*>(inner.get()),
-				factories, num_factories, right_associative, unary);
-	}
-
-	transform_operators_visit(dynamic_cast<CommandListSyntaxTree*>(tree),
-			factories, num_factories, right_associative, unary);
-}
-
-// Using raw pointers here so that ::optimise() can call it with "this"
-static void _log_syntax_tree(CommandListSyntaxTree *tree);
-static void _log_token(CommandListToken *token)
-{
-	CommandListSyntaxTree *inner;
-	CommandListOperator *op;
-	CommandListOperatorToken *op_tok;
-	CommandListOperand *operand;
-
-	if (!token)
-		return;
-
-	// Can't use CommandListWalkable here, because it only walks over inner
-	// syntax trees and this debug dumper needs to walk over everything
-
-	inner = dynamic_cast<CommandListSyntaxTree*>(token);
-	op = dynamic_cast<CommandListOperator*>(token);
-	op_tok = dynamic_cast<CommandListOperatorToken*>(token);
-	operand = dynamic_cast<CommandListOperand*>(token);
-	if (inner) {
-		_log_syntax_tree(inner);
-	} else if (op) {
-		LogInfoNoNL("Operator \"%S\"[ ", token->token.c_str());
-		if (op->lhs_tree)
-			_log_token(op->lhs_tree.get());
-		else if (op->lhs)
-			_log_token(dynamic_cast<CommandListToken*>(op->lhs.get()));
-		if ((op->lhs_tree || op->lhs) && (op->rhs_tree || op->rhs))
-			LogInfoNoNL(", ");
-		if (op->rhs_tree)
-			_log_token(op->rhs_tree.get());
-		else if (op->rhs)
-			_log_token(dynamic_cast<CommandListToken*>(op->rhs.get()));
-		LogInfoNoNL(" ]");
-	} else if (op_tok) {
-		LogInfoNoNL("OperatorToken \"%S\"", token->token.c_str());
-	} else if (operand) {
-		LogInfoNoNL("Operand \"%S\"", token->token.c_str());
-	} else {
-		LogInfoNoNL("Token \"%S\"", token->token.c_str());
-	}
-}
-static void _log_syntax_tree(CommandListSyntaxTree *tree)
-{
-	CommandListSyntaxTree::Tokens::iterator i;
-
-	LogInfoNoNL("SyntaxTree[ ");
-	for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
-		_log_token((*i).get());
-		if (i != tree->tokens.end()-1)
-			LogInfoNoNL(", ");
-	}
-	LogInfoNoNL(" ]");
-}
-
-static void log_syntax_tree(CommandListSyntaxTree *tree, const char *msg)
-{
-	if (!gLogDebug)
-		return;
-
-	LogInfo(msg);
-	_log_syntax_tree(tree);
-	LogInfo("\n");
-}
-
-template<class T>
-static void log_syntax_tree(T token, const char *msg)
-{
-	if (!gLogDebug)
-		return;
-
-	LogInfo(msg);
-	_log_token(dynamic_cast<CommandListToken*>(token.get()));
-	LogInfo("\n");
-}
-
-bool CommandListExpression::parse(const wstring *expression, const wstring *ini_namespace, CommandListScope *scope)
-{
-	CommandListSyntaxTree tree(0);
-
-	try {
-		tokenise(expression, &tree, ini_namespace, scope);
-
-		group_parenthesis(&tree);
-
-		transform_operators_recursive(&tree, unary_operators, ARRAYSIZE(unary_operators), true, true);
-		transform_operators_recursive(&tree, exponent_operators, ARRAYSIZE(exponent_operators), true, false);
-		transform_operators_recursive(&tree, multi_division_operators, ARRAYSIZE(multi_division_operators), false, false);
-		transform_operators_recursive(&tree, add_subtract_operators, ARRAYSIZE(add_subtract_operators), false, false);
-		transform_operators_recursive(&tree, relational_operators, ARRAYSIZE(relational_operators), false, false);
-		transform_operators_recursive(&tree, equality_operators, ARRAYSIZE(equality_operators), false, false);
-		transform_operators_recursive(&tree, and_operators, ARRAYSIZE(and_operators), false, false);
-		transform_operators_recursive(&tree, or_operators, ARRAYSIZE(or_operators), false, false);
-
-		evaluatable = tree.finalise();
-		log_syntax_tree(evaluatable, "Final syntax tree:\n");
-		return true;
-	} catch (const CommandListSyntaxError &e) {
-		LogOverlay(LOG_WARNING_MONOSPACE,
-				"Syntax Error: %S\n"
-				"              %*s: %S\n",
-				expression->c_str(), (int)e.pos+1, "^", e.msg.c_str());
-		return false;
-	}
-}
-
-float CommandListExpression::evaluate(CommandListState *state, HackerDevice *device)
-{
-	return evaluatable->evaluate(state, device);
-}
-
-bool CommandListExpression::static_evaluate(float *ret, HackerDevice *device)
-{
-	return evaluatable->static_evaluate(ret, device);
-}
-
-bool CommandListExpression::optimise(HackerDevice *device)
-{
-	std::shared_ptr<CommandListEvaluatable> replacement;
-	bool ret;
-
-	if (!evaluatable) {
-		LogOverlay(LOG_DIRE, "BUG: Non-evaluatable expression, please report this and provide your d3dx.ini\n");
-		evaluatable = std::make_shared<CommandListOperand>(0, L"<BUG>");
-		return false;
-	}
-
-	ret = evaluatable->optimise(device, &replacement);
-
-	if (replacement)
-		evaluatable = replacement;
-
-	return ret;
-}
-
-// Finalises the syntax trees in the operator into evaluatable operands,
-// thereby making this operator also evaluatable.
-std::shared_ptr<CommandListEvaluatable> CommandListOperator::finalise()
-{
-	auto lhs_finalisable = dynamic_pointer_cast<CommandListFinalisable>(lhs_tree);
-	auto rhs_finalisable = dynamic_pointer_cast<CommandListFinalisable>(rhs_tree);
-	auto lhs_evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(lhs_tree);
-	auto rhs_evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(rhs_tree);
-
-	if (lhs || rhs) {
-		LogInfo("BUG: Attempted to finalise already final operator\n");
-		throw CommandListSyntaxError(L"BUG", token_pos);
-	}
-
-	if (lhs_tree) { // Binary operators only
-		if (!lhs && lhs_finalisable)
-			lhs = lhs_finalisable->finalise();
-		if (!lhs && lhs_evaluatable)
-			lhs = lhs_evaluatable;
-		if (!lhs)
-			throw CommandListSyntaxError(L"BUG: LHS operand invalid", token_pos);
-		lhs_tree = nullptr;
-	}
-
-	if (!rhs && rhs_finalisable)
-		rhs = rhs_finalisable->finalise();
-	if (!rhs && rhs_evaluatable)
-		rhs = rhs_evaluatable;
-	if (!rhs)
-		throw CommandListSyntaxError(L"BUG: RHS operand invalid", token_pos);
-	rhs_tree = nullptr;
-
-	// Can't return "this", because that is an unmanaged version of the
-	// pointer which is already managed elsewhere - if we were to create a
-	// new managed pointer from that, we would have undefined behaviour.
-	// Instead we just return nullptr to signify that this node does not
-	// need to be replaced.
-	return nullptr;
-}
-
-// Recursively finalises every node in the syntax tree. If the expression is
-// valid the tree should be left with a single evaluatable node, which will be
-// returned to the caller so that it can replace this tree with just the node.
-// Throws a syntax error if the finalised nodes are not right.
-std::shared_ptr<CommandListEvaluatable> CommandListSyntaxTree::finalise()
-{
-	std::shared_ptr<CommandListFinalisable> finalisable;
-	std::shared_ptr<CommandListEvaluatable> evaluatable;
-	std::shared_ptr<CommandListToken> token;
-	Tokens::iterator i;
-
-	for (i = tokens.begin(); i != tokens.end(); i++) {
-		finalisable = dynamic_pointer_cast<CommandListFinalisable>(*i);
-		if (finalisable) {
-			evaluatable = finalisable->finalise();
-			if (evaluatable) {
-				// A recursive syntax tree has been finalised
-				// and we replace it with its sole evaluatable
-				// contents:
-				token = dynamic_pointer_cast<CommandListToken>(evaluatable);
-				if (!token) {
-					LogInfo("BUG: finalised token did not cast back\n");
-					throw CommandListSyntaxError(L"BUG", token_pos);
-				}
-				i = tokens.erase(i);
-				i = tokens.insert(i, std::move(token));
-			}
-		}
-	}
-
-	// A finalised syntax tree should be reduced to a single evaluatable
-	// operator/operand, which we pass back up the stack to replace this
-	// tree
-	if (tokens.empty())
-		throw CommandListSyntaxError(L"Empty expression", 0);
-
-	if (tokens.size() > 1)
-		throw CommandListSyntaxError(L"Unexpected", tokens[1]->token_pos);
-
-	evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(tokens[0]);
-	if (!evaluatable)
-		throw CommandListSyntaxError(L"Non-evaluatable", tokens[0]->token_pos);
-
-	return evaluatable;
-}
-
-CommandListSyntaxTree::Walk CommandListSyntaxTree::walk()
-{
-	Walk ret;
-	std::shared_ptr<CommandListWalkable> inner;
-	Tokens::iterator i;
-
-	for (i = tokens.begin(); i != tokens.end(); i++) {
-		inner = dynamic_pointer_cast<CommandListWalkable>(*i);
-		if (inner)
-			ret.push_back(std::move(inner));
-	}
-
-	return ret;
-}
-
-float CommandListOperator::evaluate(CommandListState *state, HackerDevice *device)
-{
-	if (lhs) // Binary operator
-		return evaluate(lhs->evaluate(state, device), rhs->evaluate(state, device));
-	return evaluate(std::numeric_limits<float>::quiet_NaN(), rhs->evaluate(state, device));
-}
-
-bool CommandListOperator::static_evaluate(float *ret, HackerDevice *device)
-{
-	float lhs_static = std::numeric_limits<float>::quiet_NaN(), rhs_static;
-	bool is_static;
-
-	is_static = rhs->static_evaluate(&rhs_static, device);
-	if (lhs) // Binary operator
-		is_static = lhs->static_evaluate(&lhs_static, device) && is_static;
-
-	if (is_static) {
-		if (ret)
-			*ret = evaluate(lhs_static, rhs_static);
-		return true;
-	}
-
-	return false;
-}
-
-bool CommandListOperator::optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement)
-{
-	std::shared_ptr<CommandListEvaluatable> lhs_replacement;
-	std::shared_ptr<CommandListEvaluatable> rhs_replacement;
-	shared_ptr<CommandListOperand> operand;
-	bool making_progress = false;
-	float static_val;
-	wstring static_val_str;
-
-	if (lhs)
-		making_progress = lhs->optimise(device, &lhs_replacement) || making_progress;
-	if (rhs)
-		making_progress = rhs->optimise(device, &rhs_replacement) || making_progress;
-
-	if (lhs_replacement)
-		lhs = lhs_replacement;
-	if (rhs_replacement)
-		rhs = rhs_replacement;
-
-	if (!static_evaluate(&static_val, device))
-		return making_progress;
-
-	// FIXME: Pretty print rather than dumping syntax tree
-	LogInfoNoNL("Statically evaluated \"");
-	_log_token(dynamic_cast<CommandListToken*>(this));
-	LogInfo("\" as %f\n", static_val);
-	static_val_str = std::to_wstring(static_val);
-
-	operand = make_shared<CommandListOperand>(token_pos, static_val_str.c_str());
-	operand->type = ParamOverrideType::VALUE;
-	operand->val = static_val;
-	*replacement = dynamic_pointer_cast<CommandListEvaluatable>(operand);
-	return true;
-}
-
-CommandListSyntaxTree::Walk CommandListOperator::walk()
-{
-	Walk ret;
-	std::shared_ptr<CommandListWalkable> lhs;
-	std::shared_ptr<CommandListWalkable> rhs;
-
-	lhs = dynamic_pointer_cast<CommandListWalkable>(lhs_tree);
-	rhs = dynamic_pointer_cast<CommandListWalkable>(rhs_tree);
-
-	if (lhs)
-		ret.push_back(std::move(lhs));
-	if (rhs)
-		ret.push_back(std::move(rhs));
-
-	return ret;
-}
-
-void ParamOverride::run(CommandListState *state)
-{
-	float *dest = &(G->iniParams[param_idx].*param_component);
-	float orig = *dest;
-
-	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
-
-	*dest = expression.evaluate(state);
 
 	COMMAND_LIST_LOG(state, "  ini param override = %f\n", *dest);
 
 	state->update_params |= (*dest != orig);
-}
-
-void VariableAssignment::run(CommandListState *state)
-{
-	float orig = var->fval;
-
-	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
-
-	var->fval = expression.evaluate(state);
-
-	COMMAND_LIST_LOG(state, "  = %f\n", var->fval);
-
-	if (var->flags & VariableFlags::PERSIST)
-		G->user_config_dirty |= (var->fval != orig);
-}
-
-bool AssignmentCommand::optimise(HackerDevice *device)
-{
-	return expression.optimise(device);
-}
-
-static bool operand_allowed_in_context(ParamOverrideType type, CommandListScope *scope)
-{
-	if (scope)
-		return true;
-
-	// List of operand types allowed outside of a command list, e.g. in a
-	// [Key] / [Preset] section
-	switch (type) {
-		case ParamOverrideType::VALUE:
-		case ParamOverrideType::INI_PARAM:
-		case ParamOverrideType::VARIABLE:
-		case ParamOverrideType::RES_WIDTH:
-		case ParamOverrideType::RES_HEIGHT:
-		case ParamOverrideType::TIME:
-		case ParamOverrideType::RAW_SEPARATION:
-		case ParamOverrideType::CONVERGENCE:
-		case ParamOverrideType::EYE_SEPARATION:
-		case ParamOverrideType::STEREO_ACTIVE:
-		case ParamOverrideType::STEREO_AVAILABLE:
-		case ParamOverrideType::SLI:
-		case ParamOverrideType::HUNTING:
-			return true;
-	}
-	return false;
-}
-
-bool valid_variable_name(const wstring &name)
-{
-	if (name.length() < 2)
-		return false;
-
-	// Variable names begin with a $
-	if (name[0] != L'$')
-		return false;
-
-	// First character must be a letter or underscore ($1, $2, etc reserved for future arguments):
-	if ((name[1] < L'a' || name[1] > L'z') && name[1] != L'_')
-		return false;
-
-	// Subsequent characters must be in this list:
-	return (name.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_0123456789", 2) == wstring::npos);
-}
-
-bool parse_command_list_var_name(const wstring &name, const wstring *ini_namespace, CommandListVariable **target)
-{
-	CommandListVariables::iterator var = command_list_globals.end();
-
-	if (name.length() < 2 || name[0] != L'$')
-		return false;
-
-	// We need value in lower case so our keys will be consistent in the
-	// unordered_map. ParseCommandList will have already done this, but the
-	// Key/Preset parsing code will not have, and rather than require it to
-	// we do it here:
-	wstring low_name(name);
-	std::transform(low_name.begin(), low_name.end(), low_name.begin(), ::towlower);
-
-	var = command_list_globals.end();
-	if (!ini_namespace->empty())
-		var = command_list_globals.find(get_namespaced_var_name_lower(low_name, ini_namespace));
-	if (var == command_list_globals.end())
-		var = command_list_globals.find(low_name);
-	if (var == command_list_globals.end())
-		return false;
-
-	*target = &var->second;
-	return true;
-}
-
-int find_local_variable(const wstring &name, CommandListScope *scope, CommandListVariable **var)
-{
-	CommandListScope::iterator it;
-
-	if (!scope)
-		return false;
-
-	if (name.length() < 2 || name[0] != L'$')
-		return false;
-
-	for (it = scope->begin(); it != scope->end(); it++) {
-		auto match = it->find(name);
-		if (match != it->end()) {
-			*var = match->second;
-			return true;
-		}
-	}
-
-	return false;
-}
-
-bool declare_local_variable(const wchar_t *section, wstring &name,
-		CommandList *pre_command_list, const wstring *ini_namespace)
-{
-	CommandListVariable *var = NULL;
-
-	if (!valid_variable_name(name)) {
-		LogOverlay(LOG_WARNING, "WARNING: Illegal local variable name: [%S] \"%S\"\n", section, name.c_str());
-		return false;
-	}
-
-	if (find_local_variable(name, pre_command_list->scope, &var)) {
-		// Could allow this at different scope levels, but... no.
-		// You can declare local variables of the same name in
-		// independent scopes (if {local $tmp} else {local $tmp}), but
-		// we won't allow masking a local variable from a parent scope,
-		// because that's usually a bug. Choose a different name son.
-		LogOverlay(LOG_WARNING, "WARNING: Illegal redeclaration of local variable [%S] %S\n", section, name.c_str());
-		return false;
-	}
-
-	if (parse_command_list_var_name(name, ini_namespace, &var)) {
-		// Not making this fatal since this could clash between say a
-		// global in the d3dx.ini and a local variable in another ini.
-		// Just issue a notice in hunting mode and carry on.
-		LogOverlay(LOG_NOTICE, "WARNING: [%S] local %S masks a global variable with the same name\n", section, name.c_str());
-	}
-
-	pre_command_list->static_vars.emplace_front(name, 0.0f, VariableFlags::NONE);
-	pre_command_list->scope->front()[name] = &pre_command_list->static_vars.front();
-
-	return true;
-}
-
-bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namespace, CommandListScope *scope)
-{
-	CommandListVariable *var = NULL;
-	int ret, len1;
-
-	// Try parsing value as a float
-	ret = swscanf_s(operand->c_str(), L"%f%n", &val, &len1);
-	if (ret != 0 && ret != EOF && len1 == operand->length()) {
-		type = ParamOverrideType::VALUE;
-		return operand_allowed_in_context(type, scope);
-	}
-
-	// Try parsing operand as an ini param:
-	if (ParseIniParamName(operand->c_str(), &param_idx, &param_component)) {
-		type = ParamOverrideType::INI_PARAM;
-		// Reserve space in IniParams for this variable:
-		G->iniParamsReserved = max(G->iniParamsReserved, param_idx + 1);
-		return operand_allowed_in_context(type, scope);
-	}
-
-	// Try parsing operand as a variable:
-	if (find_local_variable(*operand, scope, &var) ||
-	    parse_command_list_var_name(*operand, ini_namespace, &var)) {
-		type = ParamOverrideType::VARIABLE;
-		var_ftarget = &var->fval;
-		return operand_allowed_in_context(type, scope);
-	}
-
-	// Try parsing value as a resource target for texture filtering
-	ret = texture_filter_target.ParseTarget(operand->c_str(), true, ini_namespace);
-	if (ret) {
-		type = ParamOverrideType::TEXTURE;
-		return operand_allowed_in_context(type, scope);
-	}
-
-	// Try parsing value as a shader target for partner filtering
-	// WARNING: This test is especially susceptible to an uninitialised
-	//          %n fooling it into thinking it has parsed the entire string
-	//          if the stack garbage happens to contain operand->length().
-	//          This is because the %n does not immediately follow another
-	//          conversion specification and does not alter the return
-	//          value, so the return value will not distinguish between
-	//          early termination and completion, and since %lc will match
-	//          any character this can trigger easily. Seems to only occur
-	//          on vs2013, though I'm not positive if vs2017 zeroes out
-	//          len1 or dumb luck gave different values in the stack.
-	len1 = 0;
-	ret = swscanf_s(operand->c_str(), L"%lcs%n", &shader_filter_target, 1, &len1);
-	if (ret == 1 && len1 == operand->length()) {
-		switch(shader_filter_target) {
-		case L'v': case L'h': case L'd': case L'g': case L'p': case L'c':
-			type = ParamOverrideType::SHADER;
-			return operand_allowed_in_context(type, scope);
-		}
-	}
-
-	// Try parsing value as a scissor rectangle. scissor_<side> also
-	// appears in the keywords list for uses of the default rectangle 0.
-	len1 = 0;
-	ret = swscanf_s(operand->c_str(), L"scissor%u_%n", &scissor, &len1);
-	if (ret == 1 && scissor < D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE) {
-		if (!wcscmp(operand->c_str() + len1, L"left"))
-			type = ParamOverrideType::SCISSOR_LEFT;
-		else if (!wcscmp(operand->c_str() + len1, L"top"))
-			type = ParamOverrideType::SCISSOR_TOP;
-		else if (!wcscmp(operand->c_str() + len1, L"right"))
-			type = ParamOverrideType::SCISSOR_RIGHT;
-		else if (!wcscmp(operand->c_str() + len1, L"bottom"))
-			type = ParamOverrideType::SCISSOR_BOTTOM;
-		else
-			return false;
-		return operand_allowed_in_context(type, scope);
-	}
-
-	// Check special keywords
-	type = lookup_enum_val<const wchar_t *, ParamOverrideType>
-		(ParamOverrideTypeNames, operand->c_str(), ParamOverrideType::INVALID);
-	if (type != ParamOverrideType::INVALID)
-		return operand_allowed_in_context(type, scope);
-
-	return false;
 }
 
 // Parse IniParams overrides, in forms such as
@@ -4063,17 +2508,50 @@ bool ParseCommandListIniParamOverride(const wchar_t *section,
 		const wchar_t *key, wstring *val, CommandList *command_list,
 		const wstring *ini_namespace)
 {
+	int ret, len1;
 	ParamOverride *param = new ParamOverride();
 
 	if (!ParseIniParamName(key, &param->param_idx, &param->param_component))
 		goto bail;
 
-	if (!param->expression.parse(val, ini_namespace, command_list->scope))
+	// Try parsing value as a float
+	ret = swscanf_s(val->c_str(), L"%f%n", &param->val, &len1);
+	if (ret != 0 && ret != EOF && len1 == val->length()) {
+		param->type = ParamOverrideType::VALUE;
+		goto success;
+	}
+
+	// Try parsing value as a resource target for texture filtering
+	ret = param->texture_filter_target.ParseTarget(section, val->c_str(), true, ini_namespace);
+	if (ret) {
+		param->type = ParamOverrideType::TEXTURE;
+		goto success;
+	}
+
+	// Try parsing value as a scissor rectangle. scissor_<side> also
+	// appears in the keywords list for uses of the default rectangle 0.
+	ret = swscanf_s(val->c_str(), L"scissor%u_%n", &param->scissor, &len1);
+	if (ret == 1 && param->scissor < D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE) {
+		if (!wcscmp(val->c_str() + len1, L"left"))
+			param->type = ParamOverrideType::SCISSOR_LEFT;
+		else if (!wcscmp(val->c_str() + len1, L"top"))
+			param->type = ParamOverrideType::SCISSOR_TOP;
+		else if (!wcscmp(val->c_str() + len1, L"right"))
+			param->type = ParamOverrideType::SCISSOR_RIGHT;
+		else if (!wcscmp(val->c_str() + len1, L"bottom"))
+			param->type = ParamOverrideType::SCISSOR_BOTTOM;
+		else
+			goto bail;
+		goto success;
+	}
+
+	// Check special keywords
+	param->type = lookup_enum_val<const wchar_t *, ParamOverrideType>
+		(ParamOverrideTypeNames, val->c_str(), ParamOverrideType::INVALID);
+	if (param->type == ParamOverrideType::INVALID)
 		goto bail;
 
-	// Reserve space in IniParams for this variable:
-	G->iniParamsReserved = max(G->iniParamsReserved, param->param_idx + 1);
-
+success:
 	param->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
 	command_list->commands.push_back(std::shared_ptr<CommandListCommand>(param));
 	return true;
@@ -4082,64 +2560,22 @@ bail:
 	return false;
 }
 
-bool ParseCommandListVariableAssignment(const wchar_t *section,
-		const wchar_t *key, wstring *val, const wstring *raw_line,
-		CommandList *command_list, CommandList *pre_command_list, CommandList *post_command_list,
-		const wstring *ini_namespace)
-{
-	VariableAssignment *command = NULL;
-	CommandListVariable *var = NULL;
-	wstring name = key;
-
-	// Declaration without assignment?
-	if (name.empty() && raw_line)
-		name = *raw_line;
-
-	if (!name.compare(0, 6, L"local ")) {
-		name = name.substr(name.find_first_not_of(L" \t", 6));
-		// Local variables are shared between pre and post command lists.
-		if (!declare_local_variable(section, name, pre_command_list, ini_namespace))
-			return false;
-
-		// Declaration without assignment?
-		if (val->empty())
-			return true;
-	}
-
-	if (!find_local_variable(name, pre_command_list->scope, &var) &&
-	    !parse_command_list_var_name(name, ini_namespace, &var))
-		return false;
-
-	command = new VariableAssignment();
-	command->var = var;
-
-	if (!command->expression.parse(val, ini_namespace, command_list->scope))
-		goto bail;
-
-	command->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-	command_list->commands.push_back(std::shared_ptr<CommandListCommand>(command));
-	return true;
-bail:
-	delete command;
-	return false;
-}
-
 ResourcePool::~ResourcePool()
 {
-	ResourcePoolCache::iterator i;
+	unordered_map<uint32_t, ID3D11Resource*>::iterator i;
 
 	for (i = cache.begin(); i != cache.end(); i++) {
-		if (i->second.first)
-			i->second.first->Release();
+		if (i->second)
+			i->second->Release();
 	}
 	cache.clear();
 }
 
-void ResourcePool::emplace(uint32_t hash, ID3D11Resource *resource, ID3D11Device *device)
+void ResourcePool::emplace(uint32_t hash, ID3D11Resource *resource)
 {
 	if (resource)
 		resource->AddRef();
-	cache.emplace(hash, pair<ID3D11Resource*, ID3D11Device*>{resource, device});
+	cache.emplace(hash, resource);
 }
 
 template <typename ResourceType,
@@ -4163,7 +2599,6 @@ static ResourceType* GetResourceFromPool(
 	size_t size;
 	HRESULT hr;
 	ResourcePoolCache::iterator pool_i;
-	ID3D11Device *old_device = NULL;
 
 	// We don't want to use the CalTexture2D/3DDescHash functions because
 	// the resolution override could produce the same hash for distinct
@@ -4171,61 +2606,48 @@ static ResourceType* GetResourceFromPool(
 	// doesn't matter what we use - just has to be fast.
 	hash = crc32c_hw(0, desc, sizeof(DescType));
 
-	pool_i = Profiling::lookup_map(resource_pool->cache, hash, &Profiling::resource_pool_lookup_overhead);
+	pool_i = resource_pool->cache.find(hash);
 	if (pool_i != resource_pool->cache.end()) {
-		resource = (ResourceType*)pool_i->second.first;
-		old_device = pool_i->second.second;
-		if (!resource)
+		resource = (ResourceType*)pool_i->second;
+		if (resource == dst_resource)
 			return NULL;
-
-		if (old_device == state->mOrigDevice1) {
-			if (resource == dst_resource)
-				return NULL;
-
+		if (resource) {
 			LogDebug("Switching cached resource %S\n", ini_line->c_str());
-			Profiling::resource_pool_swaps++;
 			resource->AddRef();
-			return resource;
 		}
+	} else {
+		LogInfo("Creating cached resource %S\n", ini_line->c_str());
 
-		LogInfo("Device mismatch, discarding %S from resource pool\n", ini_line->c_str());
-		resource_pool->cache.erase(pool_i);
-		resource->Release();
+		hr = (state->mOrigDevice1->*CreateResource)(desc, NULL, &resource);
+		if (FAILED(hr)) {
+			LogInfo("Resource copy failed %S: 0x%x\n", ini_line->c_str(), hr);
+			LogResourceDesc(desc);
+			src_resource->GetDesc(&old_desc);
+			LogInfo("Original resource was:\n");
+			LogResourceDesc(&old_desc);
+
+			// Prevent further attempts:
+			resource_pool->emplace(hash, NULL);
+
+			return NULL;
+		}
+		resource_pool->emplace(hash, resource);
+		size = resource_pool->cache.size();
+		if (size > 1)
+			LogInfo("  NOTICE: cache now contains %Ii resources\n", size);
+
+		LogDebugResourceDesc(desc);
 	}
 
-	LogInfo("Creating cached resource %S\n", ini_line->c_str());
-	Profiling::resources_created++;
-
-	hr = (state->mOrigDevice1->*CreateResource)(desc, NULL, &resource);
-	if (FAILED(hr)) {
-		LogInfo("Resource copy failed %S: 0x%x\n", ini_line->c_str(), hr);
-		LogResourceDesc(desc);
-		src_resource->GetDesc(&old_desc);
-		LogInfo("Original resource was:\n");
-		LogResourceDesc(&old_desc);
-
-		// Prevent further attempts:
-		resource_pool->emplace(hash, NULL, NULL);
-
-		return NULL;
-	}
-	resource_pool->emplace(hash, resource, state->mOrigDevice1);
-	size = resource_pool->cache.size();
-	if (size > 1)
-		LogInfo("  NOTICE: cache now contains %Ii resources\n", size);
-
-	LogDebugResourceDesc(desc);
 	return resource;
 }
 
 CustomResource::CustomResource() :
 	resource(NULL),
-	device(NULL),
 	view(NULL),
 	is_null(true),
 	substantiated(false),
 	bind_flags((D3D11_BIND_FLAG)0),
-	misc_flags((D3D11_RESOURCE_MISC_FLAG)0),
 	stride(0),
 	offset(0),
 	buf_size(0),
@@ -4236,7 +2658,6 @@ CustomResource::CustomResource() :
 	override_type(CustomResourceType::INVALID),
 	override_mode(CustomResourceMode::DEFAULT),
 	override_bind_flags(CustomResourceBindFlags::INVALID),
-	override_misc_flags(ResourceMiscFlags::INVALID),
 	override_format((DXGI_FORMAT)-1),
 	override_width(-1),
 	override_height(-1),
@@ -4268,19 +2689,19 @@ bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVA
 	if (override_mode == CustomResourceMode::DEFAULT)
 		return false;
 
-	Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, orig_mode);
+	NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, orig_mode);
 
 	switch (override_mode) {
 		case CustomResourceMode::STEREO:
-			Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
 			return true;
 		case CustomResourceMode::MONO:
-			Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
 			return true;
 		case CustomResourceMode::AUTO:
-			Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_AUTO);
 			return true;
 	}
@@ -4288,8 +2709,7 @@ bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVA
 	return false;
 }
 
-void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mStereoHandle,
-		D3D11_BIND_FLAG bind_flags, D3D11_RESOURCE_MISC_FLAG misc_flags)
+void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mStereoHandle)
 {
 	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
 	bool restore_create_mode = false;
@@ -4307,26 +2727,12 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mSter
 	if (resource || view)
 		return;
 
-	Profiling::resources_created++;
-
-	// Add any extra bind flags necessary for the current assignment. This
-	// covers many (but not all) of the cases 3DMigoto cannot deduce
-	// earlier during parsing - it will cover custom resources copied by
-	// reference to other custom resources when the "this" resource target
-	// is assigned. There are some complicated cases that could still need
-	// bind_flags to be manually specified - where multiple bind flags are
-	// required and cannot be deduced at parse time.
-	this->bind_flags = (D3D11_BIND_FLAG)(this->bind_flags | bind_flags);
-	this->misc_flags = (D3D11_RESOURCE_MISC_FLAG)(this->misc_flags | misc_flags);
-
 	// If the resource section has enough information to create a resource
 	// we do so the first time it is loaded from. The reason we do it this
 	// late is to make sure we know which device is actually being used to
 	// render the game - FC4 creates about a dozen devices with different
 	// parameters while probing the hardware before it settles on the one
 	// it will actually use.
-
-	LockResourceCreationMode();
 
 	restore_create_mode = OverrideSurfaceCreationMode(mStereoHandle, &orig_mode);
 
@@ -4353,9 +2759,7 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mSter
 	}
 
 	if (restore_create_mode)
-		Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
-
-	UnlockResourceCreationMode();
+		NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
 }
 
 void CustomResource::LoadBufferFromFile(ID3D11Device *mOrigDevice1)
@@ -4409,8 +2813,6 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 	// when manipulating driver heuristics:
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		bind_flags = (D3D11_BIND_FLAG)override_bind_flags;
-	if (override_misc_flags != ResourceMiscFlags::INVALID)
-		misc_flags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 
 	// XXX: We are not creating a view with DirecXTK because
 	// 1) it assumes we want a shader resource view, which is an
@@ -4427,20 +2829,19 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 
 	ext = filename.substr(filename.rfind(L"."));
 	if (!_wcsicmp(ext.c_str(), L".dds")) {
-		LogInfoW(L"Loading custom resource %s as DDS, bind_flags=0x%03x\n", filename.c_str(), bind_flags);
+		LogInfoW(L"Loading custom resource %s as DDS\n", filename.c_str());
 		hr = DirectX::CreateDDSTextureFromFileEx(mOrigDevice1,
 				filename.c_str(), 0,
-				D3D11_USAGE_DEFAULT, bind_flags, 0, misc_flags,
+				D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
 				false, &resource, NULL, NULL);
 	} else {
-		LogInfoW(L"Loading custom resource %s as WIC, bind_flags=0x%03x\n", filename.c_str(), bind_flags);
+		LogInfoW(L"Loading custom resource %s as WIC\n", filename.c_str());
 		hr = DirectX::CreateWICTextureFromFileEx(mOrigDevice1,
 				filename.c_str(), 0,
-				D3D11_USAGE_DEFAULT, bind_flags, 0, misc_flags,
+				D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
 				false, &resource, NULL);
 	}
 	if (SUCCEEDED(hr)) {
-		device = mOrigDevice1;
 		is_null = false;
 		// TODO:
 		// format = ...
@@ -4467,7 +2868,6 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, 
 	memset(&desc, 0, sizeof(desc));
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = bind_flags;
-	desc.MiscFlags = misc_flags;
 
 	// Allow the buffer size to be set from the file / initial data size,
 	// but it can be overridden if specified explicitly. If it's a
@@ -4503,11 +2903,10 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, 
 
 	hr = mOrigDevice1->CreateBuffer(&desc, pInitialData, &buffer);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S [%S], bind_flags=0x%03x\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
+		LogInfo("Substantiated custom %S [%S]\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)buffer;
-		device = mOrigDevice1;
 		is_null = false;
 		OverrideOutOfBandInfo(&format, &stride);
 	} else {
@@ -4525,16 +2924,14 @@ void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice1)
 	memset(&desc, 0, sizeof(desc));
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = bind_flags;
-	desc.MiscFlags = misc_flags;
 	OverrideTexDesc(&desc);
 
 	hr = mOrigDevice1->CreateTexture1D(&desc, NULL, &tex1d);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S [%S], bind_flags=0x%03x\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
+		LogInfo("Substantiated custom %S [%S]\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)tex1d;
-		device = mOrigDevice1;
 		is_null = false;
 	} else {
 		LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
@@ -4551,16 +2948,14 @@ void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice1)
 	memset(&desc, 0, sizeof(desc));
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = bind_flags;
-	desc.MiscFlags = misc_flags;
 	OverrideTexDesc(&desc);
 
 	hr = mOrigDevice1->CreateTexture2D(&desc, NULL, &tex2d);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S [%S], bind_flags=0x%03x\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
+		LogInfo("Substantiated custom %S [%S]\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)tex2d;
-		device = mOrigDevice1;
 		is_null = false;
 	} else {
 		LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
@@ -4577,16 +2972,14 @@ void CustomResource::SubstantiateTexture3D(ID3D11Device *mOrigDevice1)
 	memset(&desc, 0, sizeof(desc));
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = bind_flags;
-	desc.MiscFlags = misc_flags;
 	OverrideTexDesc(&desc);
 
 	hr = mOrigDevice1->CreateTexture3D(&desc, NULL, &tex3d);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S [%S], bind_flags=0x%03x\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
+		LogInfo("Substantiated custom %S [%S]\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)tex3d;
-		device = mOrigDevice1;
 		is_null = false;
 	} else {
 		LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
@@ -4618,8 +3011,8 @@ void CustomResource::OverrideBufferDesc(D3D11_BUFFER_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-	if (override_misc_flags != ResourceMiscFlags::INVALID)
-		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
+
+	// TODO: Add more overrides for misc flags
 }
 
 void CustomResource::OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc)
@@ -4637,8 +3030,8 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-	if (override_misc_flags != ResourceMiscFlags::INVALID)
-		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
+
+	// TODO: Add more overrides for misc flags
 }
 
 void CustomResource::OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc)
@@ -4669,8 +3062,8 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-	if (override_misc_flags != ResourceMiscFlags::INVALID)
-		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
+
+	// TODO: Add more overrides for misc flags
 }
 
 void CustomResource::OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc)
@@ -4691,8 +3084,8 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-	if (override_misc_flags != ResourceMiscFlags::INVALID)
-		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
+
+	// TODO: Add more overrides for misc flags
 }
 
 void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
@@ -4703,373 +3096,8 @@ void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
 		*stride = override_stride;
 }
 
-// Returns 1 for definite dsv formats
-// Returns 2 for typeless variants of dsv formats (have a stencil buffer)
-// Returns -1 for possible typecast depth formats, but with no stencil buffer they may not be
-static int is_dsv_format(DXGI_FORMAT fmt)
-{
-	switch(fmt)
-	{
-		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
-		case DXGI_FORMAT_D32_FLOAT:
-		case DXGI_FORMAT_D24_UNORM_S8_UINT:
-		case DXGI_FORMAT_D16_UNORM:
-			return 1;
-		case DXGI_FORMAT_R32G8X24_TYPELESS:
-		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
-		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
-		case DXGI_FORMAT_R24G8_TYPELESS:
-		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
-		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
-			return 2;
-		case DXGI_FORMAT_R32_TYPELESS:
-		case DXGI_FORMAT_R32_FLOAT:
-		case DXGI_FORMAT_R16_TYPELESS:
-		case DXGI_FORMAT_R16_UNORM:
-			return -1;
-		default:
-			return 0;
-	}
-}
 
-
-// Transfer a resource from one device to another. First came across this
-// possibility in DOAXVV where showing the news creates a new temporary device
-// & context, and due to another bug [Constants] would be re-run, which allowed
-// certain mods to copy one resource to another crashing the game. For that
-// game we want to disallow re-running [Constants], but the possibility of
-// running into more of these issues remains, particularly given that many
-// games tend to create & destroy devices on startup where we would actually
-// prefer the final device to own resources (in contrast to DOAXVV where we
-// want the first device to remain the owner). This attempts to transfer
-// resources between devices on demand so that whichever device is currently in
-// use will own the resources, however this is very slow and if it ever crops
-// up in a fast path we'd need to look for ways to avoid this.
-//
-// This does not handle all edge cases (depth buffers, dynamic destinations and
-// MSAA are not supported by UpdateSubresource), and knowing DirectX there will
-// probably be more undocumented surprise combinations that don't work either.
-//
-// TODO: Refactor this - the four cases are very similar with some differences
-//
-static ID3D11Resource * inter_device_resource_transfer(ID3D11Device *dst_dev, ID3D11DeviceContext *dst_ctx, ID3D11Resource *src_res, wstring *name)
-{
-	ID3D11Device *src_dev = NULL;
-	ID3D11DeviceContext *src_ctx = NULL;
-	ID3D11Resource *stg_res = NULL;
-	ID3D11Resource *dtg_res = NULL;
-	ID3D11Resource *dst_res = NULL;
-	D3D11_RESOURCE_DIMENSION dimension;
-	D3D11_MAPPED_SUBRESOURCE src_map;
-	UINT item, level, index;
-	const char *reason = "";
-
-	Profiling::inter_device_copies++;
-
-	// Not really anything sensible we can do with the resource creation
-	// mode in the general case here as yet - if we copy via the CPU we
-	// will lose the 2nd perspective, but we have no way to even know if
-	// one even exists. There are some limited situations we could copy a
-	// stereo texture between devices (reverse stereo blit -> stereo
-	// header), but let's wait until we have a proven need before we try
-	// anything heroic that probably won't work anyway. Tbh we might be
-	// better off just trying to avoid getting down this code path - maybe
-	// just discarding resources for re-substantiation and re-running
-	// Contants will be sufficient in most cases
-	LockResourceCreationMode();
-
-	src_res->GetDevice(&src_dev);
-	reason = "Source device unavailable\n";
-	if (!src_dev)
-		goto err;
-
-	src_dev->GetImmediateContext(&src_ctx);
-	reason = "Source context unavailable\n";
-	if (!src_ctx)
-		goto err;
-
-	src_res->GetType(&dimension);
-	switch (dimension) {
-		case D3D11_RESOURCE_DIMENSION_BUFFER:
-		{
-			ID3D11Buffer *buf = (ID3D11Buffer*)src_res;
-			D3D11_BUFFER_DESC buf_desc;
-			buf->GetDesc(&buf_desc);
-
-			reason = "Dynamic Buffers unsupported\n";
-			if (buf_desc.Usage == D3D11_USAGE_DYNAMIC)
-				goto err;
-			if (buf_desc.Usage == D3D11_USAGE_IMMUTABLE)
-				buf_desc.Usage = D3D11_USAGE_DEFAULT;
-
-			dst_dev->CreateBuffer(&buf_desc, NULL, (ID3D11Buffer**)&dst_res);
-			if (!dst_res) {
-				reason = "Error creating final destination Buffer\n";
-				LogResourceDesc(&buf_desc);
-				goto err;
-			}
-
-			buf_desc.Usage = D3D11_USAGE_STAGING;
-			buf_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-			buf_desc.BindFlags = 0;
-			src_dev->CreateBuffer(&buf_desc, NULL, (ID3D11Buffer**)&stg_res);
-			if (!stg_res) {
-				reason = "Error creating source staging Buffer\n";
-				LogResourceDesc(&buf_desc);
-				goto err;
-			}
-			src_ctx->CopyResource(stg_res, src_res);
-
-			// Buffers only have a single subresource:
-			index = 0;
-			reason = "Error mapping source staging Buffer\n";
-			if (FAILED(src_ctx->Map(stg_res, index, D3D11_MAP_READ, 0, &src_map)))
-				goto err;
-			dst_ctx->UpdateSubresource(dst_res, index, NULL, src_map.pData, src_map.RowPitch, src_map.DepthPitch);
-			src_ctx->Unmap(stg_res, index);
-			break;
-		}
-		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
-		{
-			ID3D11Texture1D *tex1d = (ID3D11Texture1D*)src_res;
-			D3D11_TEXTURE1D_DESC tex1d_desc;
-			tex1d->GetDesc(&tex1d_desc);
-
-			reason = "Dynamic Texture1Ds unsupported\n";
-			if (tex1d_desc.Usage == D3D11_USAGE_DYNAMIC)
-				goto err;
-			if (tex1d_desc.Usage == D3D11_USAGE_IMMUTABLE)
-				tex1d_desc.Usage = D3D11_USAGE_DEFAULT;
-
-			// It's not clear to me from the UpdateSubresource documentation if the
-			// reason depth/stencil buffers aren't supported is down to the bind flags,
-			// or the format... For now, erring on the side of throwing an error either
-			// way, but trying to continue if it is just the format
-			if ((tex1d_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL)) {
-				reason = "depth/stencil buffers unsupported";
-				goto err;
-			}
-			if (is_dsv_format(tex1d_desc.Format) > 0) {
-				LogOverlay(LOG_NOTICE, "Inter-device transfer of [%S] with depth/stencil format %s may or may not work. Please report success/failure.\n",
-						name->c_str(), TexFormatStr(tex1d_desc.Format));
-			}
-
-			dst_dev->CreateTexture1D(&tex1d_desc, NULL, (ID3D11Texture1D**)&dst_res);
-			if (!dst_res) {
-				reason = "Error creating final destination Texture1D\n";
-				LogResourceDesc(&tex1d_desc);
-				goto err;
-			}
-
-			tex1d_desc.Usage = D3D11_USAGE_STAGING;
-			tex1d_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-			tex1d_desc.BindFlags = 0;
-			tex1d_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_GENERATE_MIPS;
-			src_dev->CreateTexture1D(&tex1d_desc, NULL, (ID3D11Texture1D**)&stg_res);
-			if (!stg_res) {
-				reason = "Error creating staging Texture1D\n";
-				LogResourceDesc(&tex1d_desc);
-				goto err;
-			}
-			src_ctx->CopyResource(stg_res, src_res);
-
-			for (item = 0; item < tex1d_desc.ArraySize; item++) {
-				for (level = 0; level < tex1d_desc.MipLevels; level++) {
-					index = D3D11CalcSubresource(level, item, max(tex1d_desc.MipLevels, 1));
-					reason = "Error mapping source staging Texture1D\n";
-					if (FAILED(src_ctx->Map(stg_res, index, D3D11_MAP_READ, 0, &src_map)))
-						goto err;
-					dst_ctx->UpdateSubresource(dst_res, index, NULL, src_map.pData, src_map.RowPitch, src_map.DepthPitch);
-					src_ctx->Unmap(stg_res, index);
-				}
-			}
-			break;
-		}
-		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-		{
-			ID3D11Texture2D *tex2d = (ID3D11Texture2D*)src_res;
-			D3D11_TEXTURE2D_DESC tex2d_desc;
-			tex2d->GetDesc(&tex2d_desc);
-
-			reason = "Dynamic Texture2Ds unsupported\n";
-			if (tex2d_desc.Usage == D3D11_USAGE_DYNAMIC)
-				goto err;
-			if (tex2d_desc.Usage == D3D11_USAGE_IMMUTABLE)
-				tex2d_desc.Usage = D3D11_USAGE_DEFAULT;
-
-			if (tex2d_desc.SampleDesc.Count > 1) {
-				// Not sure how to handle this one - I'd be surprised if it works for map/unmap
-				// and while we can resolve MSAA (for supported formats) on the source device,
-				// what do we do to restore the lost samples on the destination?
-				reason = "MSAA resources unsupported";
-				goto err;
-			}
-
-			// It's not clear to me from the UpdateSubresource documentation if the
-			// reason depth/stencil buffers aren't supported is down to the bind flags,
-			// or the format... For now, erring on the side of throwing an error either
-			// way, but trying to continue if it is just the format
-			if ((tex2d_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL)) {
-				reason = "depth/stencil buffers unsupported";
-				goto err;
-			}
-			if (is_dsv_format(tex2d_desc.Format) > 0) {
-				LogOverlay(LOG_NOTICE, "Inter-device transfer of [%S] with depth/stencil format %s may or may not work. Please report success/failure.\n",
-						name->c_str(), TexFormatStr(tex2d_desc.Format));
-			}
-
-			dst_dev->CreateTexture2D(&tex2d_desc, NULL, (ID3D11Texture2D**)&dst_res);
-			if (!dst_res) {
-				reason = "Error creating final destination Texture2D\n";
-				LogResourceDesc(&tex2d_desc);
-				goto err;
-			}
-
-			tex2d_desc.Usage = D3D11_USAGE_STAGING;
-			tex2d_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-			tex2d_desc.BindFlags = 0;
-			tex2d_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_GENERATE_MIPS;
-			src_dev->CreateTexture2D(&tex2d_desc, NULL, (ID3D11Texture2D**)&stg_res);
-			if (!stg_res) {
-				reason = "Error creating staging Texture2D\n";
-				LogResourceDesc(&tex2d_desc);
-				goto err;
-			}
-			src_ctx->CopyResource(stg_res, src_res);
-
-			for (item = 0; item < tex2d_desc.ArraySize; item++) {
-				for (level = 0; level < tex2d_desc.MipLevels; level++) {
-					index = D3D11CalcSubresource(level, item, max(tex2d_desc.MipLevels, 1));
-					reason = "Error mapping source staging Texture2D\n";
-					if (FAILED(src_ctx->Map(stg_res, index, D3D11_MAP_READ, 0, &src_map)))
-						goto err;
-					dst_ctx->UpdateSubresource(dst_res, index, NULL, src_map.pData, src_map.RowPitch, src_map.DepthPitch);
-					src_ctx->Unmap(stg_res, index);
-				}
-			}
-			break;
-		}
-		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-		{
-			ID3D11Texture3D *tex3d = (ID3D11Texture3D*)src_res;
-			D3D11_TEXTURE3D_DESC tex3d_desc;
-			tex3d->GetDesc(&tex3d_desc);
-
-			reason = "Dynamic Texture3Ds unsupported\n";
-			if (tex3d_desc.Usage == D3D11_USAGE_DYNAMIC)
-				goto err;
-			if (tex3d_desc.Usage == D3D11_USAGE_IMMUTABLE)
-				tex3d_desc.Usage = D3D11_USAGE_DEFAULT;
-
-			dst_dev->CreateTexture3D(&tex3d_desc, NULL, (ID3D11Texture3D**)&dst_res);
-			if (!dst_res) {
-				reason = "Error creating final destination Texture3D\n";
-				LogResourceDesc(&tex3d_desc);
-				goto err;
-			}
-
-			tex3d_desc.Usage = D3D11_USAGE_STAGING;
-			tex3d_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-			tex3d_desc.BindFlags = 0;
-			tex3d_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_GENERATE_MIPS;
-			src_dev->CreateTexture3D(&tex3d_desc, NULL, (ID3D11Texture3D**)&stg_res);
-			if (!stg_res) {
-				reason = "Error creating staging Texture3D\n";
-				LogResourceDesc(&tex3d_desc);
-				goto err;
-			}
-			src_ctx->CopyResource(stg_res, src_res);
-
-			for (level = 0; level < tex3d_desc.MipLevels; level++) {
-				// 3D Textures cannot be arrays, so only mip-map level counts for subresource index:
-				index = level;
-				reason = "Error mapping source staging Texture3D\n";
-				if (FAILED(src_ctx->Map(stg_res, index, D3D11_MAP_READ, 0, &src_map)))
-					goto err;
-				dst_ctx->UpdateSubresource(dst_res, index, NULL, src_map.pData, src_map.RowPitch, src_map.DepthPitch);
-				src_ctx->Unmap(stg_res, index);
-			}
-			break;
-		}
-		default:
-			reason = "Unknown dimension\n";
-			goto err;
-	}
-
-out:
-	if (stg_res)
-		stg_res->Release();
-	if (src_ctx)
-		src_ctx->Release();
-	if (src_dev)
-		src_dev->Release();
-	UnlockResourceCreationMode();
-	return dst_res;
-
-err:
-	LogOverlay(LOG_DIRE, "Inter-device transfer of [%S] failed: %s\n", name->c_str(), reason);
-	if (dst_res)
-		dst_res->Release();
-	dst_res = NULL;
-	goto out;
-}
-
-void CustomResource::expire(ID3D11Device *mOrigDevice1, ID3D11DeviceContext *mOrigContext1)
-{
-	ID3D11Resource *new_resource = NULL;
-
-	if (!resource || is_null)
-		return;
-
-	// Check for device mismatches and handle via expiring cached
-	// resources, flagging for re-substantiation and/or performing
-	// inter-device transfers if necessary. We cache the device rather than
-	// querying it from the resource via GetDevice(), because if ReShade is
-	// in use GetDevice() will return the real device, but we will compare
-	// it with the ReShade device and think there has been a device swap
-	// when there has not been.
-	if (device == mOrigDevice1)
-		return;
-
-	// Attempt to transfer resource to new device by staging to the CPU and
-	// back. Rather slow, but ensures the contents are up to date.
-	// TODO: Search other custom resources for references to this resource
-	//       and update those. Not urgent as yet, but will be important if
-	//       we allow the === and !== operators to check if one custom
-	//       resource matches another.
-	// TODO: Track if resource is dirty (used as render/depth target/UAV,
-	//       ever assigned or copied to) and re-substantiate if clean.
-	// TODO: Use sharable resources to skip copy back to CPU (limited to 2D
-	//       non-mip-mapped resources)
-	// TODO: Option to skip inter-device copies instead of transfer
-	// TODO: Option to discard individual resources instead of transfer
-	// TODO: Option to discard all custom resources and re-run [Constants]
-	//       on new device (for convoluted startup sequences)
-	LogInfo("Device mismatch, transferring [%S] to new device\n", name.c_str());
-	new_resource = inter_device_resource_transfer(
-			mOrigDevice1, mOrigContext1, resource, &name);
-
-	// Expire cache:
-	resource->Release();
-	if (view)
-		view->Release();
-	view = NULL;
-
-	if (new_resource) {
-		// Inter-device copy succeeded, switch to the new resource:
-		resource = new_resource;
-		device = mOrigDevice1;
-	} else {
-		// Inter-device copy failed / skipped. Flag resource for
-		// re-substantiation (if possible for this resource):
-		substantiated = false;
-		resource = NULL;
-		device = NULL;
-		is_null = true;
-	}
-}
-
-bool ResourceCopyTarget::ParseTarget(const wchar_t *target,
+bool ResourceCopyTarget::ParseTarget(const wchar_t *section, const wchar_t *target,
 		bool is_source, const wstring *ini_namespace)
 {
 	int ret, len;
@@ -5180,7 +3208,7 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target,
 		return true;
 	}
 
-	if (!wcscmp(target, L"this")) {
+	if (is_source && !wcscmp(target, L"this")) {
 		type = ResourceCopyTargetType::THIS_RESOURCE;
 		return true;
 	}
@@ -5238,9 +3266,8 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 	ResourceCopyOperation *operation = new ResourceCopyOperation();
 	wchar_t buf[MAX_PATH];
 	wchar_t *src_ptr = NULL;
-	D3D11_RESOURCE_MISC_FLAG misc_flags = (D3D11_RESOURCE_MISC_FLAG)0;
 
-	if (!operation->dst.ParseTarget(key, false, ini_namespace))
+	if (!operation->dst.ParseTarget(section, key, false, ini_namespace))
 		goto bail;
 
 	// parse_enum_option_string replaces spaces with NULLs, so it can't
@@ -5257,7 +3284,7 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 	if (!src_ptr)
 		goto bail;
 
-	if (!operation->src.ParseTarget(src_ptr, true, ini_namespace))
+	if (!operation->src.ParseTarget(section, src_ptr, true, ini_namespace))
 		goto bail;
 
 	if (!(operation->options & ResourceCopyOptions::COPY_TYPE_MASK)) {
@@ -5308,19 +3335,13 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 	// propagate all the bind flags correctly depending on the order
 	// everything is parsed. We'd need to construct a dependency graph
 	// to fix this, but it's not clear that this combination would really
-	// be used in practice, so for now this will do. Update: We now
-	// or in the bind flags in use when the custom resource is first
-	// Substantiate()ed, which will cover most of these missing cases - the
-	// remaining exceptions would be where differing bind flags are used at
-	// different times and we still can't deduce it here
+	// be used in practice, so for now this will do.
 	// FIXME: The constant buffer bind flag can't be combined with others
 	if (operation->src.type == ResourceCopyTargetType::CUSTOM_RESOURCE &&
 			(operation->options & ResourceCopyOptions::REFERENCE)) {
 		// Fucking C++ making this line 3x longer than it should be:
 		operation->src.custom_resource->bind_flags = (D3D11_BIND_FLAG)
-			(operation->src.custom_resource->bind_flags | operation->dst.BindFlags(NULL, &misc_flags));
-		operation->src.custom_resource->misc_flags = (D3D11_RESOURCE_MISC_FLAG)
-			(operation->src.custom_resource->misc_flags | misc_flags);
+			(operation->src.custom_resource->bind_flags | operation->dst.BindFlags());
 	}
 
 	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
@@ -5331,271 +3352,13 @@ bail:
 	return false;
 }
 
-static bool ParseIfCommand(const wchar_t *section, const wstring *line,
-		CommandList *pre_command_list, CommandList *post_command_list,
-		const wstring *ini_namespace)
-{
-	IfCommand *operation = new IfCommand(section);
-	wstring expression = line->substr(line->find_first_not_of(L" \t", 3));
-
-	if (!operation->expression.parse(&expression, ini_namespace, pre_command_list->scope))
-		goto bail;
-
-	// New scope level to isolate local variables:
-	pre_command_list->scope->emplace_front();
-
-	return AddCommandToList(operation, NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
-bail:
-	delete operation;
-	return false;
-}
-
-static bool ParseElseIfCommand(const wchar_t *section, const wstring *line, int prefix,
-		CommandList *pre_command_list, CommandList *post_command_list,
-		const wstring *ini_namespace)
-{
-	ElseIfCommand *operation = new ElseIfCommand(section);
-	wstring expression = line->substr(line->find_first_not_of(L" \t", prefix));
-
-	if (!operation->expression.parse(&expression, ini_namespace, pre_command_list->scope))
-		goto bail;
-
-	// Clear deepest scope level to isolate local variables:
-	pre_command_list->scope->front().clear();
-
-	// "else if" is implemented by nesting another if/endif inside the
-	// parent if command's else clause. We add both an ElsePlaceholder and
-	// an ElseIfCommand here, and will fix up the "endif" balance later.
-	AddCommandToList(new ElsePlaceholder(), NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
-	return AddCommandToList(operation, NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
-bail:
-	delete operation;
-	return false;
-}
-
-static bool ParseElseCommand(const wchar_t *section,
-		CommandList *pre_command_list, CommandList *post_command_list)
-{
-	// Clear deepest scope level to isolate local variables:
-	pre_command_list->scope->front().clear();
-
-	return AddCommandToList(new ElsePlaceholder(), NULL, NULL, pre_command_list, post_command_list, section, L"else", NULL);
-}
-
-static bool _ParseEndIfCommand(const wchar_t *section,
-		CommandList *command_list, bool post, bool has_nested_else_if = false)
-{
-	CommandList::Commands::reverse_iterator rit;
-	IfCommand *if_command;
-	ElseIfCommand *else_if_command;
-	ElsePlaceholder *else_command = NULL;
-	CommandList::Commands::iterator else_pos = command_list->commands.end();
-
-	for (rit = command_list->commands.rbegin(); rit != command_list->commands.rend(); rit++) {
-		else_command = dynamic_cast<ElsePlaceholder*>(rit->get());
-		if (else_command) {
-			// C++ gotcha: reverse_iterator::base() points to the *next* element
-			else_pos = rit.base() - 1;
-		}
-
-		if_command = dynamic_cast<IfCommand*>(rit->get());
-		if (if_command) {
-			// "else if" is treated as embedding another "if" block
-			// in the else clause of the first "if" command. The
-			// ElsePlaceholder was already inserted when the
-			// ElseIfCommand was parsed, and this ElseIfCommand acts
-			// as the nested IfCommand so the below code works as
-			// is, but to balance the endifs we will need to repeat
-			// this function until we find the original IfCommand:
-			else_if_command = dynamic_cast<ElseIfCommand*>(rit->get());
-
-			// Transfer the commands since the if command until the
-			// endif into the if command's true/false lists
-			if (post && !if_command->post_finalised) {
-				// C++ gotcha: reverse_iterator::base() points to the *next* element
-				if_command->true_commands_post->commands.assign(rit.base(), else_pos);
-				if_command->true_commands_post->ini_section = if_command->ini_line;
-				if (else_pos != command_list->commands.end()) {
-					// Discard the else placeholder command:
-					if_command->false_commands_post->commands.assign(else_pos + 1, command_list->commands.end());
-					if_command->false_commands_post->ini_section = if_command->ini_line + L" <else>";
-				}
-				command_list->commands.erase(rit.base(), command_list->commands.end());
-				if_command->post_finalised = true;
-				if_command->has_nested_else_if = has_nested_else_if;
-				if (else_if_command)
-					return _ParseEndIfCommand(section, command_list, post, true);
-				return true;
-			} else if (!post && !if_command->pre_finalised) {
-				// C++ gotcha: reverse_iterator::base() points to the *next* element
-				if_command->true_commands_pre->commands.assign(rit.base(), else_pos);
-				if_command->true_commands_pre->ini_section = if_command->ini_line;
-				if (else_pos != command_list->commands.end()) {
-					// Discard the else placeholder command:
-					if_command->false_commands_pre->commands.assign(else_pos + 1, command_list->commands.end());
-					if_command->false_commands_pre->ini_section = if_command->ini_line + L" <else>";
-				}
-				command_list->commands.erase(rit.base(), command_list->commands.end());
-				if_command->pre_finalised = true;
-				if_command->has_nested_else_if = has_nested_else_if;
-				if (else_if_command)
-					return _ParseEndIfCommand(section, command_list, post, true);
-				return true;
-			}
-		}
-	}
-
-	LogOverlay(LOG_WARNING, "WARNING: [%S] endif missing if\n", section);
-	return false;
-}
-
-static bool ParseEndIfCommand(const wchar_t *section,
-		CommandList *pre_command_list, CommandList *post_command_list)
-{
-	bool ret;
-
-	ret = _ParseEndIfCommand(section, pre_command_list, false);
-	if (post_command_list)
-	    ret = ret && _ParseEndIfCommand(section, post_command_list, true);
-
-	if (ret)
-		pre_command_list->scope->pop_front();
-
-	return ret;
-}
-
-bool ParseCommandListFlowControl(const wchar_t *section, const wstring *line,
-		CommandList *pre_command_list, CommandList *post_command_list,
-		const wstring *ini_namespace)
-{
-	if (!wcsncmp(line->c_str(), L"if ", 3))
-		return ParseIfCommand(section, line, pre_command_list, post_command_list, ini_namespace);
-	if (!wcsncmp(line->c_str(), L"elif ", 5))
-		return ParseElseIfCommand(section, line, 5, pre_command_list, post_command_list, ini_namespace);
-	if (!wcsncmp(line->c_str(), L"else if ", 8))
-		return ParseElseIfCommand(section, line, 8, pre_command_list, post_command_list, ini_namespace);
-	if (!wcscmp(line->c_str(), L"else"))
-		return ParseElseCommand(section, pre_command_list, post_command_list);
-	if (!wcscmp(line->c_str(), L"endif"))
-		return ParseEndIfCommand(section, pre_command_list, post_command_list);
-
-	return false;
-}
-
-IfCommand::IfCommand(const wchar_t *section) :
-	pre_finalised(false),
-	post_finalised(false),
-	has_nested_else_if(false),
-	section(section)
-{
-	true_commands_pre = std::make_shared<CommandList>();
-	true_commands_post = std::make_shared<CommandList>();
-	false_commands_pre = std::make_shared<CommandList>();
-	false_commands_post = std::make_shared<CommandList>();
-	true_commands_post->post = true;
-	false_commands_post->post = true;
-
-	// Placeholder names to be replaced by endif processing - we should
-	// never see these, but in case they do show up somewhere these will
-	// provide a clue as to what they are:
-	true_commands_pre->ini_section = L"if placeholder";
-	true_commands_post->ini_section = L"if placeholder";
-	false_commands_pre->ini_section = L"else placeholder";
-	false_commands_post->ini_section = L"else placeholder";
-
-	// Place the dynamically allocated command lists in this data structure
-	// to ensure they stay alive until after the optimisation stage, even
-	// if the IfCommand is freed, e.g. by being optimised out:
-	dynamically_allocated_command_lists.push_back(true_commands_pre);
-	dynamically_allocated_command_lists.push_back(true_commands_post);
-	dynamically_allocated_command_lists.push_back(false_commands_pre);
-	dynamically_allocated_command_lists.push_back(false_commands_post);
-
-	// And register these command lists for later optimisation:
-	registered_command_lists.push_back(true_commands_pre.get());
-	registered_command_lists.push_back(true_commands_post.get());
-	registered_command_lists.push_back(false_commands_pre.get());
-	registered_command_lists.push_back(false_commands_post.get());
-}
-
-void IfCommand::run(CommandListState *state)
-{
-	if (expression.evaluate(state)) {
-		COMMAND_LIST_LOG(state, "%S: true {\n", ini_line.c_str());
-		state->extra_indent++;
-		if (state->post)
-			_RunCommandList(true_commands_post.get(), state, false);
-		else
-			_RunCommandList(true_commands_pre.get(), state, false);
-		state->extra_indent--;
-		COMMAND_LIST_LOG(state, "} endif\n");
-	} else {
-		COMMAND_LIST_LOG(state, "%S: false\n", ini_line.c_str());
-		if (!has_nested_else_if) {
-			COMMAND_LIST_LOG(state, "[%S] else {\n", section.c_str());
-			state->extra_indent++;
-		}
-		if (state->post)
-			_RunCommandList(false_commands_post.get(), state, false);
-		else
-			_RunCommandList(false_commands_pre.get(), state, false);
-		if (!has_nested_else_if) {
-			state->extra_indent--;
-			COMMAND_LIST_LOG(state, "} endif\n");
-		}
-	}
-}
-
-bool IfCommand::optimise(HackerDevice *device)
-{
-	return expression.optimise(device);
-}
-
-bool IfCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
-{
-	float static_val;
-	bool is_static;
-
-	if ((post && !post_finalised) || (!post && !pre_finalised)) {
-		LogOverlay(LOG_WARNING, "WARNING: If missing endif: %S\n", ini_line.c_str());
-		return true;
-	}
-
-	is_static = expression.static_evaluate(&static_val);
-	if (is_static) {
-		if (static_val) {
-			false_commands_pre->clear();
-			false_commands_post->clear();
-		} else {
-			true_commands_pre->clear();
-			true_commands_post->clear();
-		}
-	}
-
-	if (post)
-		return true_commands_post->commands.empty() && false_commands_post->commands.empty();
-	return true_commands_pre->commands.empty() && false_commands_pre->commands.empty();
-}
-
-void CommandPlaceholder::run(CommandListState*)
-{
-	LogOverlay(LOG_DIRE, "BUG: Placeholder command executed: %S\n", ini_line.c_str());
-}
-
-bool CommandPlaceholder::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
-{
-	LogOverlay(LOG_WARNING, "WARNING: Command not terminated: %S\n", ini_line.c_str());
-	return true;
-}
-
 ID3D11Resource *ResourceCopyTarget::GetResource(
 		CommandListState *state,
 		ID3D11View **view,   // Used by textures, render targets, depth/stencil buffers & UAVs
 		UINT *stride,        // Used by vertex buffers
 		UINT *offset,        // Used by vertex & index buffers
 		DXGI_FORMAT *format, // Used by index buffers
-		UINT *buf_size,      // Used when creating a view of the buffer
-		ResourceCopyTarget *dst) // Used to get bind flags when substantiating a custom resource
+		UINT *buf_size)      // Used when creating a view of the buffer
 {
 	HackerDevice *mHackerDevice = state->mHackerDevice;
 	ID3D11Device *mOrigDevice1 = state->mOrigDevice1;
@@ -5607,8 +3370,6 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 	ID3D11RenderTargetView *render_view[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
 	ID3D11DepthStencilView *depth_view = NULL;
 	ID3D11UnorderedAccessView *unordered_view = NULL;
-	D3D11_BIND_FLAG bind_flags = (D3D11_BIND_FLAG)0;
-	D3D11_RESOURCE_MISC_FLAG misc_flags = (D3D11_RESOURCE_MISC_FLAG)0;
 	unsigned i;
 
 	switch(type) {
@@ -5685,6 +3446,15 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		// means to get the strides + offsets from within the shader.
 		// Perhaps as an IniParam, or in another constant buffer?
 		mOrigContext1->IAGetVertexBuffers(slot, 1, &buf, stride, offset);
+
+		// To simplify things we just copy the part of the buffer
+		// referred to by this call, so adjust the offset with the
+		// call-specific first vertex. Do NOT set the buffer size here
+		// as if it's too small it will disable the region copy later.
+		// TODO: Add a keyword to ignore offsets in case we want the
+		// whole buffer regardless
+		if (state->call_info && stride && offset)
+			*offset += state->call_info->FirstVertex * *stride;
 		return buf;
 
 	case ResourceCopyTargetType::INDEX_BUFFER:
@@ -5693,6 +3463,15 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		mOrigContext1->IAGetIndexBuffer(&buf, format, offset);
 		if (stride && format)
 			*stride = dxgi_format_size(*format);
+
+		// To simplify things we just copy the part of the buffer
+		// referred to by this call, so adjust the offset with the
+		// call-specific first index. Do NOT set the buffer size here
+		// as if it's too small it will disable the region copy later.
+		// TODO: Add a keyword to ignore offsets in case we want the
+		// whole buffer regardless
+		if (state->call_info && stride && offset)
+			*offset += state->call_info->FirstIndex * *stride;
 		return buf;
 
 	case ResourceCopyTargetType::STREAM_OUTPUT:
@@ -5776,11 +3555,7 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return res;
 
 	case ResourceCopyTargetType::CUSTOM_RESOURCE:
-		custom_resource->expire(mOrigDevice1, mOrigContext1);
-
-		if (dst)
-			bind_flags = dst->BindFlags(state, &misc_flags);
-		custom_resource->Substantiate(mOrigDevice1, mHackerDevice->mStereoHandle, bind_flags, misc_flags);
+		custom_resource->Substantiate(mOrigDevice1, mHackerDevice->mStereoHandle);
 
 		if (stride)
 			*stride = custom_resource->stride;
@@ -5841,20 +3616,12 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return state->cursor_color_tex;
 
 	case ResourceCopyTargetType::THIS_RESOURCE:
-		if (state->this_target)
-			return state->this_target->GetResource(state, view, stride, offset, format, buf_size);
-
-		if (state->resource) {
-			if (state->view)
-				state->view->AddRef();
-			*view = state->view;
-			if (*state->resource)
-				(*state->resource)->AddRef();
-			return (*state->resource);
-		}
-
-		COMMAND_LIST_LOG(state, "  \"this\"  is not valid in this context\n");
-		return NULL;
+		if (state->view)
+			state->view->AddRef();
+		*view = state->view;
+		if (state->resource)
+			state->resource->AddRef();
+		return state->resource;
 
 	case ResourceCopyTargetType::SWAP_CHAIN:
 		{
@@ -6087,24 +3854,9 @@ void ResourceCopyTarget::SetResource(
 			if (custom_resource->resource)
 				custom_resource->resource->Release();
 			custom_resource->resource = res;
-			custom_resource->device = state->mOrigDevice1;
 			if (custom_resource->resource)
 				custom_resource->resource->AddRef();
 		}
-		break;
-
-	case ResourceCopyTargetType::THIS_RESOURCE:
-		if (state->this_target)
-			return state->this_target->SetResource(state, res, view, stride, offset, format, buf_size);
-
-		if (state->resource) {
-			if (*state->resource)
-				(*state->resource)->Release();
-			*state->resource = res;
-			break;
-		}
-
-		COMMAND_LIST_LOG(state, "  \"this\" target cannot be set outside of a checktextureoverride or indirect draw call context\n");
 		break;
 
 	case ResourceCopyTargetType::STEREO_PARAMS:
@@ -6124,7 +3876,7 @@ void ResourceCopyTarget::SetResource(
 	}
 }
 
-D3D11_BIND_FLAG ResourceCopyTarget::BindFlags(CommandListState *state, D3D11_RESOURCE_MISC_FLAG *misc_flags)
+D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 {
 	switch(type) {
 		case ResourceCopyTargetType::CONSTANT_BUFFER:
@@ -6144,27 +3896,7 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags(CommandListState *state, D3D11_RES
 		case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
 			return D3D11_BIND_UNORDERED_ACCESS;
 		case ResourceCopyTargetType::CUSTOM_RESOURCE:
-			if (misc_flags)
-				*misc_flags = custom_resource->misc_flags;
 			return custom_resource->bind_flags;
-		case ResourceCopyTargetType::THIS_RESOURCE:
-			if (state) {
-				if (state->this_target)
-					return state->this_target->BindFlags(state);
-
-				if (state->call_info && state->call_info->indirect_buffer) {
-					if (misc_flags)
-						*misc_flags = D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS;
-					// No bind flags required, but a common scenario would be copying
-					// from a resource with D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS
-					// that will need to be cleared out if we have neither SRV or UAV
-					// set, which is handled in RecreateCompatibleBuffer()
-					return (D3D11_BIND_FLAG)0;
-				}
-			}
-			// Bind flags are unknown since this cannot be resolved
-			// until runtime:
-			return (D3D11_BIND_FLAG)0;
 		case ResourceCopyTargetType::STEREO_PARAMS:
 		case ResourceCopyTargetType::INI_PARAMS:
 		case ResourceCopyTargetType::SWAP_CHAIN:
@@ -6242,7 +3974,6 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		ResourcePool *resource_pool,
 		ID3D11View *src_view,
 		D3D11_BIND_FLAG bind_flags,
-		D3D11_RESOURCE_MISC_FLAG misc_flags,
 		CommandListState *state,
 		UINT stride,
 		UINT offset,
@@ -6255,14 +3986,6 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 
 	src_resource->GetDesc(&new_desc);
 	new_desc.BindFlags = bind_flags;
-	// We reuse the misc flags from the source, which has worked fairly
-	// well for the most part with maybe one or two exceptions. We can
-	// always clear incompatible flags and allow an override if necessary:
-	new_desc.MiscFlags = new_desc.MiscFlags | misc_flags;
-
-	// Raw view misc flag can only be used with SRVs or UAVs
-	if (!(new_desc.BindFlags & (D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS)))
-		new_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
 
 	if (dst && dst->type == ResourceCopyTargetType::CPU) {
 		new_desc.Usage = D3D11_USAGE_STAGING;
@@ -6271,6 +3994,9 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		new_desc.Usage = D3D11_USAGE_DEFAULT;
 		new_desc.CPUAccessFlags = 0;
 	}
+
+	// TODO: Add a keyword to allow raw views:
+	// D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS
 
 	if (bind_flags & D3D11_BIND_CONSTANT_BUFFER) {
 		// Constant buffers have additional limitations. The size must
@@ -6607,18 +4333,32 @@ static void RecreateCompatibleResource(
 {
 	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
 	D3D11_RESOURCE_DIMENSION src_dimension;
+	D3D11_RESOURCE_DIMENSION dst_dimension;
 	D3D11_BIND_FLAG bind_flags = (D3D11_BIND_FLAG)0;
-	D3D11_RESOURCE_MISC_FLAG misc_flags = (D3D11_RESOURCE_MISC_FLAG)0;
 	ID3D11Resource *res = NULL;
 	bool restore_create_mode = false;
 
 	if (dst)
-		bind_flags = dst->BindFlags(state, &misc_flags);
+		bind_flags = dst->BindFlags();
 
-	LockResourceCreationMode();
+	src_resource->GetType(&src_dimension);
+	if (*dst_resource) {
+		(*dst_resource)->GetType(&dst_dimension);
+		if (src_dimension != dst_dimension) {
+			LogInfo("Resource type changed %S\n", ini_line->c_str());
+
+			(*dst_resource)->Release();
+			if (dst_view && *dst_view)
+				(*dst_view)->Release();
+
+			*dst_resource = NULL;
+			if (dst_view)
+				*dst_view = NULL;
+		}
+	}
 
 	if (options & ResourceCopyOptions::CREATEMODE_MASK) {
-		Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &orig_mode);
+		NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &orig_mode);
 		restore_create_mode = true;
 
 		// STEREO2MONO will force the final destination to mono since
@@ -6627,21 +4367,20 @@ static void RecreateCompatibleResource(
 		// forced to STEREO.
 
 		if (options & ResourceCopyOptions::STEREO) {
-			Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
 		} else {
-			Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
 		}
 	} else if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE) {
 		restore_create_mode = dst->custom_resource->OverrideSurfaceCreationMode(mStereoHandle, &orig_mode);
 	}
 
-	src_resource->GetType(&src_dimension);
 	switch (src_dimension) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
 			res = RecreateCompatibleBuffer(ini_line, dst, (ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource,
-				resource_pool, src_view, bind_flags, misc_flags, state, stride, offset, format, buf_dst_size);
+				resource_pool, src_view, bind_flags, state, stride, offset, format, buf_dst_size);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
@@ -6661,9 +4400,7 @@ static void RecreateCompatibleResource(
 	}
 
 	if (restore_create_mode)
-		Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
-
-	UnlockResourceCreationMode();
+		NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
 
 	if (res) {
 		if (*dst_resource)
@@ -6700,94 +4437,48 @@ static void FillOutBufferDescCommon(DescType *desc, UINT stride,
 	// knocked out the offset for us. We could alternatively do it
 	// here (and the below should work), but we would need to
 	// create a new view every time the offset changes.
-	//
-	// Possible TODO: Handle vertex/index buffers with "first vertex/index"
-	// here? These can now be accessed via command list expression and
-	// passed through ini params, so a fix can handle them that way, and
-	// any change here would need careful consideration as to backwards
-	// compatibility.
 	if (stride) {
-		desc->FirstElement = offset / stride;
-		desc->NumElements = (buf_src_size - offset) / stride;
+		desc->Buffer.FirstElement = offset / stride;
+		desc->Buffer.NumElements = (buf_src_size - offset) / stride;
 	} else {
-		desc->FirstElement = 0;
-		desc->NumElements = 1;
+		desc->Buffer.FirstElement = 0;
+		desc->Buffer.NumElements = 1;
 	}
 }
 
-static bool requires_raw_view(ID3D11Buffer *buf, DXGI_FORMAT format)
-{
-	D3D11_BUFFER_DESC buf_desc;
-
-	buf->GetDesc(&buf_desc);
-	if (!(buf_desc.MiscFlags & D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS))
-		return false;
-
-	// The buffer allows raw views, but that doesn't forbid other access.
-	// However, other non-structured access (structured cannot have the
-	// above flag) requires us to know the data format, so if we don't know
-	// the data type than raw access is the only remaining option:
-	switch (format) {
-		case DXGI_FORMAT_UNKNOWN:
-		case DXGI_FORMAT_R32_TYPELESS:
-			return true;
-	}
-
-	return false;
-}
-
-static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutBufferDesc(ID3D11Buffer *buf,
+static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutBufferDesc(
 		D3D11_SHADER_RESOURCE_VIEW_DESC *desc, UINT stride,
-		UINT offset, UINT buf_src_size, ResourceCopyOptions options)
+		UINT offset, UINT buf_src_size)
 {
-	if (options & ResourceCopyOptions::RAW_VIEW || requires_raw_view(buf, desc->Format)) {
-               desc->ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
-               desc->BufferEx.Flags = D3D11_BUFFEREX_SRV_FLAG_RAW;
-	       // Although not specified in MSDN, raw views in SRVs appear to
-	       // require the R32_TYPELESS format (MSDN does specify this
-	       // requirement for raw UAVs) and fail if any other format is
-	       // specified. The only curiosity here is that they are described
-	       // as being accessible in 1-4 channels, seeming to imply that
-	       // formats like R32G32B32A32_TYPELESS should also work, but they
-	       // don't:
-	       desc->Format = DXGI_FORMAT_R32_TYPELESS;
-	       stride = 4;
-	       FillOutBufferDescCommon<D3D11_BUFFEREX_SRV>(&desc->BufferEx, stride, offset, buf_src_size);
-	} else {
-		desc->ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-		FillOutBufferDescCommon<D3D11_BUFFER_SRV>(&desc->Buffer, stride, offset, buf_src_size);
-	}
+	// TODO: Also handle BUFFEREX for raw buffers
+	desc->ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+
+	FillOutBufferDescCommon<D3D11_SHADER_RESOURCE_VIEW_DESC>(desc, stride, offset, buf_src_size);
 	return desc;
 }
-static D3D11_RENDER_TARGET_VIEW_DESC* FillOutBufferDesc(ID3D11Buffer *buf,
+static D3D11_RENDER_TARGET_VIEW_DESC* FillOutBufferDesc(
 		D3D11_RENDER_TARGET_VIEW_DESC *desc, UINT stride,
-		UINT offset, UINT buf_src_size, ResourceCopyOptions options)
+		UINT offset, UINT buf_src_size)
 {
 	desc->ViewDimension = D3D11_RTV_DIMENSION_BUFFER;
 
-	FillOutBufferDescCommon<D3D11_BUFFER_RTV>(&desc->Buffer, stride, offset, buf_src_size);
+	FillOutBufferDescCommon<D3D11_RENDER_TARGET_VIEW_DESC>(desc, stride, offset, buf_src_size);
 	return desc;
 }
-static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutBufferDesc(ID3D11Buffer *buf,
+static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutBufferDesc(
 		D3D11_UNORDERED_ACCESS_VIEW_DESC *desc, UINT stride,
-		UINT offset, UINT buf_src_size, ResourceCopyOptions options)
+		UINT offset, UINT buf_src_size)
 {
 	desc->ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+	// TODO Support buffer UAV flags for append, counter and raw buffers.
 	desc->Buffer.Flags = 0;
 
-	if (options & ResourceCopyOptions::RAW_VIEW || requires_raw_view(buf, desc->Format)) {
-		desc->Buffer.Flags |= D3D11_BUFFER_UAV_FLAG_RAW;
-		desc->Format = DXGI_FORMAT_R32_TYPELESS;
-		stride = 4;
-	}
-	// TODO Support buffer UAV flags for append and counter buffers.
-
-	FillOutBufferDescCommon<D3D11_BUFFER_UAV>(&desc->Buffer, stride, offset, buf_src_size);
+	FillOutBufferDescCommon<D3D11_UNORDERED_ACCESS_VIEW_DESC>(desc, stride, offset, buf_src_size);
 	return desc;
 }
-static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutBufferDesc(ID3D11Buffer *buf,
+static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutBufferDesc(
 		D3D11_DEPTH_STENCIL_VIEW_DESC *desc, UINT stride,
-		UINT offset, UINT buf_src_size, ResourceCopyOptions options)
+		UINT offset, UINT buf_src_size)
 {
 	// Depth views don't support buffers:
 	return NULL;
@@ -6993,7 +4684,7 @@ static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutTex2DDesc(
 }
 static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutTex3DDesc(
 		D3D11_SHADER_RESOURCE_VIEW_DESC *view_desc,
-		DXGI_FORMAT format)
+		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
 {
 	view_desc->Format = MakeNonDSVFormat(format);
 
@@ -7005,7 +4696,7 @@ static D3D11_SHADER_RESOURCE_VIEW_DESC* FillOutTex3DDesc(
 }
 static D3D11_RENDER_TARGET_VIEW_DESC* FillOutTex3DDesc(
 		D3D11_RENDER_TARGET_VIEW_DESC *view_desc,
-		DXGI_FORMAT format)
+		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
 {
 	view_desc->Format = MakeNonDSVFormat(format);
 
@@ -7018,7 +4709,7 @@ static D3D11_RENDER_TARGET_VIEW_DESC* FillOutTex3DDesc(
 }
 static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutTex3DDesc(
 		D3D11_DEPTH_STENCIL_VIEW_DESC *view_desc,
-		DXGI_FORMAT format)
+		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
 {
 	// DSV cannot be a Texture3D
 
@@ -7026,7 +4717,7 @@ static D3D11_DEPTH_STENCIL_VIEW_DESC* FillOutTex3DDesc(
 }
 static D3D11_UNORDERED_ACCESS_VIEW_DESC* FillOutTex3DDesc(
 		D3D11_UNORDERED_ACCESS_VIEW_DESC *view_desc,
-		DXGI_FORMAT format)
+		D3D11_TEXTURE3D_DESC *resource_desc, DXGI_FORMAT format)
 {
 	view_desc->Format = MakeNonDSVFormat(format);
 
@@ -7052,15 +4743,15 @@ static ID3D11View* _CreateCompatibleView(
 		UINT stride,
 		UINT offset,
 		DXGI_FORMAT format,
-		UINT buf_src_size,
-		ResourceCopyOptions options)
+		UINT buf_src_size)
 {
 	D3D11_RESOURCE_DIMENSION dimension;
-	ID3D11Buffer *buf;
 	ID3D11Texture1D *tex1d;
 	ID3D11Texture2D *tex2d;
+	ID3D11Texture3D *tex3d;
 	D3D11_TEXTURE1D_DESC tex1d_desc;
 	D3D11_TEXTURE2D_DESC tex2d_desc;
+	D3D11_TEXTURE3D_DESC tex3d_desc;
 	ViewType *view = NULL;
 	DescType view_desc, *pDesc = NULL;
 	HRESULT hr;
@@ -7074,8 +4765,7 @@ static ID3D11View* _CreateCompatibleView(
 
 			view_desc.Format = format;
 
-			buf = (ID3D11Buffer*)resource;
-			pDesc = FillOutBufferDesc(buf, &view_desc, stride, offset, buf_src_size, options);
+			pDesc = FillOutBufferDesc(&view_desc, stride, offset, buf_src_size);
 
 			// This should already handle things like:
 			// - Copying a vertex buffer to a SRV or constant buffer
@@ -7109,7 +4799,9 @@ static ID3D11View* _CreateCompatibleView(
 			pDesc = FillOutTex2DDesc(&view_desc, &tex2d_desc, format);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-			pDesc = FillOutTex3DDesc(&view_desc, format);
+			tex3d = (ID3D11Texture3D*)resource;
+			tex3d->GetDesc(&tex3d_desc);
+			pDesc = FillOutTex3DDesc(&view_desc, &tex3d_desc, format);
 			break;
 	}
 
@@ -7135,34 +4827,29 @@ static ID3D11View* CreateCompatibleView(
 		UINT stride,
 		UINT offset,
 		DXGI_FORMAT format,
-		UINT buf_src_size,
-		ResourceCopyOptions options)
+		UINT buf_src_size)
 {
 	switch (dst->type) {
 		case ResourceCopyTargetType::SHADER_RESOURCE:
 			return _CreateCompatibleView<ID3D11ShaderResourceView,
 			       D3D11_SHADER_RESOURCE_VIEW_DESC,
 			       &ID3D11Device::CreateShaderResourceView>
-				       (resource, state, stride, offset, format, buf_src_size, options);
+				       (resource, state, stride, offset, format, buf_src_size);
 		case ResourceCopyTargetType::RENDER_TARGET:
 			return _CreateCompatibleView<ID3D11RenderTargetView,
 			       D3D11_RENDER_TARGET_VIEW_DESC,
 			       &ID3D11Device::CreateRenderTargetView>
-				       (resource, state, stride, offset, format, buf_src_size, options);
+				       (resource, state, stride, offset, format, buf_src_size);
 		case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
 			return _CreateCompatibleView<ID3D11DepthStencilView,
 			       D3D11_DEPTH_STENCIL_VIEW_DESC,
 			       &ID3D11Device::CreateDepthStencilView>
-				       (resource, state, stride, offset, format, buf_src_size, options);
+				       (resource, state, stride, offset, format, buf_src_size);
 		case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
 			return _CreateCompatibleView<ID3D11UnorderedAccessView,
 			       D3D11_UNORDERED_ACCESS_VIEW_DESC,
 			       &ID3D11Device::CreateUnorderedAccessView>
-				       (resource, state, stride, offset, format, buf_src_size, options);
-		case ResourceCopyTargetType::THIS_RESOURCE:
-			if (state->this_target)
-				return CreateCompatibleView(state->this_target, resource, state, stride, offset, format, buf_src_size, options);
-			break;
+				       (resource, state, stride, offset, format, buf_src_size);
 	}
 	return NULL;
 }
@@ -7312,7 +4999,7 @@ static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_
 	fallback = state->mHackerDevice->mParamTextureManager.mActive ? 0 : 1;
 
 	if (!fallback) {
-		nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, true);
+		nvret = NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, true);
 		if (nvret != NVAPI_OK) {
 			LogInfo("Resource copying failed to enable reverse stereo blit\n");
 			// Fallback path: Copy 2D resource to both sides of the 2x
@@ -7345,7 +5032,7 @@ static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_
 	}
 
 	if (!fallback)
-		Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, false);
+		NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, false);
 }
 
 static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource *src_resource,
@@ -7425,10 +5112,6 @@ ID3D11View* ClearViewCommand::create_best_view(
 {
 	UINT bind_flags;
 
-	// FIXME: If a buffer can only be accessed via a raw view we may need
-	// to handle that case here:
-	ResourceCopyOptions options = ResourceCopyOptions::INVALID;
-
 	// We didn't get a view, so we will have to create one, but
 	// which type? We will guess based on what the user specified
 	// and what bind flags the resource has.
@@ -7442,7 +5125,7 @@ ID3D11View* ClearViewCommand::create_best_view(
 		return _CreateCompatibleView<ID3D11DepthStencilView,
 		       D3D11_DEPTH_STENCIL_VIEW_DESC,
 		       &ID3D11Device::CreateDepthStencilView>
-			       (resource, state, stride, offset, format, buf_src_size, options);
+			       (resource, state, stride, offset, format, buf_src_size);
 	}
 
 	// If the user specified "int" or used a hex string then it
@@ -7451,7 +5134,7 @@ ID3D11View* ClearViewCommand::create_best_view(
 		return _CreateCompatibleView<ID3D11UnorderedAccessView,
 		       D3D11_UNORDERED_ACCESS_VIEW_DESC,
 		       &ID3D11Device::CreateUnorderedAccessView>
-			       (resource, state, stride, offset, format, buf_src_size, options);
+			       (resource, state, stride, offset, format, buf_src_size);
 	}
 
 	// Otherwise just make whatever view is compatible with the bind flags.
@@ -7464,19 +5147,19 @@ ID3D11View* ClearViewCommand::create_best_view(
 		return _CreateCompatibleView<ID3D11DepthStencilView,
 		       D3D11_DEPTH_STENCIL_VIEW_DESC,
 		       &ID3D11Device::CreateDepthStencilView>
-			       (resource, state, stride, offset, format, buf_src_size, options);
+			       (resource, state, stride, offset, format, buf_src_size);
 	}
 	if (bind_flags & D3D11_BIND_UNORDERED_ACCESS) {
 		return _CreateCompatibleView<ID3D11UnorderedAccessView,
 		       D3D11_UNORDERED_ACCESS_VIEW_DESC,
 		       &ID3D11Device::CreateUnorderedAccessView>
-			       (resource, state, stride, offset, format, buf_src_size, options);
+			       (resource, state, stride, offset, format, buf_src_size);
 	}
 	if (bind_flags & D3D11_BIND_RENDER_TARGET) {
 		return _CreateCompatibleView<ID3D11RenderTargetView,
 		       D3D11_RENDER_TARGET_VIEW_DESC,
 		       &ID3D11Device::CreateRenderTargetView>
-			       (resource, state, stride, offset, format, buf_src_size, options);
+			       (resource, state, stride, offset, format, buf_src_size);
 	}
 	// TODO: In DX 11.1 there is a generic clear routine, so SRVs might work?
 	return NULL;
@@ -7501,13 +5184,11 @@ void ClearViewCommand::clear_unknown_view(ID3D11View *view, CommandListState *st
 
 	if (rtv) {
 		COMMAND_LIST_LOG(state, "  clearing RTV\n");
-		Profiling::views_cleared++;
 		state->mOrigContext1->ClearRenderTargetView(rtv, fval);
 	}
 	if (dsv) {
 		D3D11_CLEAR_FLAG flags = (D3D11_CLEAR_FLAG)0;
 		COMMAND_LIST_LOG(state, "  clearing DSV\n");
-		Profiling::views_cleared++;
 
 		if (!clear_depth && !clear_stencil)
 			flags = (D3D11_CLEAR_FLAG)(D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL);
@@ -7531,7 +5212,6 @@ void ClearViewCommand::clear_unknown_view(ID3D11View *view, CommandListState *st
 			COMMAND_LIST_LOG(state, "  clearing UAV (float)\n");
 			state->mOrigContext1->ClearUnorderedAccessViewFloat(uav, fval);
 		}
-		Profiling::views_cleared++;
 	}
 
 	if (rtv)
@@ -7609,7 +5289,6 @@ void ResourceCopyOperation::run(CommandListState *state)
 	ID3D11Resource *src_resource = NULL;
 	ID3D11Resource *dst_resource = NULL;
 	ID3D11Resource **pp_cached_resource = &cached_resource;
-	ID3D11Device **pp_cached_device = NULL;
 	ResourcePool *p_resource_pool = &resource_pool;
 	ID3D11View *src_view = NULL;
 	ID3D11View *dst_view = NULL;
@@ -7626,8 +5305,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 		return;
 	}
 
-	src_resource = src.GetResource(state, &src_view, &stride, &offset, &format, &buf_src_size,
-			((options & ResourceCopyOptions::REFERENCE) ? &dst : NULL));
+	src_resource = src.GetResource(state, &src_view, &stride, &offset, &format, &buf_src_size);
 	if (!src_resource) {
 		COMMAND_LIST_LOG(state, "  Copy source was NULL\n");
 		if (!(options & ResourceCopyOptions::UNLESS_NULL)) {
@@ -7648,7 +5326,6 @@ void ResourceCopyOperation::run(CommandListState *state)
 		// number of extra resources we have floating around if copying
 		// something to a single custom resource from multiple shaders.
 		pp_cached_resource = &dst.custom_resource->resource;
-		pp_cached_device = &dst.custom_resource->device;
 		p_resource_pool = &dst.custom_resource->resource_pool;
 		pp_cached_view = &dst.custom_resource->view;
 
@@ -7658,7 +5335,6 @@ void ResourceCopyOperation::run(CommandListState *state)
 				dst.custom_resource->copies_this_frame = 1;
 			} else if (dst.custom_resource->copies_this_frame++ >= dst.custom_resource->max_copies_per_frame) {
 				COMMAND_LIST_LOG(state, "  max_copies_per_frame exceeded\n");
-				Profiling::max_copies_per_frame_exceeded++;
 				return;
 			}
 		}
@@ -7675,12 +5351,10 @@ void ResourceCopyOperation::run(CommandListState *state)
 			options, stride, offset, format, &buf_dst_size);
 
 		if (!*pp_cached_resource) {
-			COMMAND_LIST_LOG(state, "  error creating/updating destination resource\n");
+			LogDebug("Resource copy error: Could not create/update destination resource\n");
 			goto out_release;
 		}
 		dst_resource = *pp_cached_resource;
-		if (pp_cached_device)
-			*pp_cached_device = state->mOrigDevice1;
 		dst_view = *pp_cached_view;
 
 		if (options & ResourceCopyOptions::COPY_DESC) {
@@ -7688,7 +5362,6 @@ void ResourceCopyOperation::run(CommandListState *state)
 			COMMAND_LIST_LOG(state, "  copying resource description\n");
 		} else if (options & ResourceCopyOptions::STEREO2MONO) {
 			COMMAND_LIST_LOG(state, "  performing reverse stereo blit\n");
-			Profiling::stereo2mono_copies++;
 
 			// TODO: Resolve MSAA to an intermediate resource first
 			// if necessary (but keep in mind this may have
@@ -7713,24 +5386,21 @@ void ResourceCopyOperation::run(CommandListState *state)
 			ReverseStereoBlit(stereo2mono_intermediate, src_resource, state);
 
 			mOrigContext1->CopyResource(dst_resource, stereo2mono_intermediate);
+
 		} else if (options & ResourceCopyOptions::RESOLVE_MSAA) {
 			COMMAND_LIST_LOG(state, "  resolving MSAA\n");
-			Profiling::msaa_resolutions++;
 			ResolveMSAA(dst_resource, src_resource, state);
 		} else if (buf_dst_size) {
 			COMMAND_LIST_LOG(state, "  performing region copy\n");
-			Profiling::buffer_region_copies++;
 			SpecialCopyBufferRegion(dst_resource, src_resource,
 					state, stride, &offset,
 					buf_src_size, buf_dst_size);
 		} else {
 			COMMAND_LIST_LOG(state, "  performing full copy\n");
-			Profiling::resource_full_copies++;
 			mOrigContext1->CopyResource(dst_resource, src_resource);
 		}
 	} else {
 		COMMAND_LIST_LOG(state, "  copying by reference\n");
-		Profiling::resource_reference_copies++;
 		dst_resource = src_resource;
 		if (src_view && (EquivTarget(src.type) == EquivTarget(dst.type))) {
 			dst_view = src_view;
@@ -7752,7 +5422,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 
 	if (!dst_view) {
 		dst_view = CreateCompatibleView(&dst, dst_resource, state,
-				stride, offset, format, buf_src_size, options);
+				stride, offset, format, buf_src_size);
 		// Not checking for NULL return as view's are not applicable to
 		// all types. Legitimate failures are logged.
 		*pp_cached_view = dst_view;

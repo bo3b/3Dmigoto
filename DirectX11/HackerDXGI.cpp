@@ -54,9 +54,6 @@
 // the HackerSwapChain.  The model is the same as that used in HackerDevice
 // and HackerContext.
 
-// Include before util.h (or any header that includes util.h) to get pretty
-// version of LockResourceCreationMode:
-#include "lock.h"
 
 #include "HackerDXGI.h"
 #include "HookedDevice.h"
@@ -68,8 +65,6 @@
 #include "Hunting.h"
 #include "Override.h"
 #include "IniHandler.h"
-#include "CommandList.h"
-#include "profiling.h"
 
 
 // -----------------------------------------------------------------------------
@@ -278,9 +273,8 @@ void HackerSwapChain::RunFrameActions()
 	// messages, before final Present. We now do this after the shader and
 	// config reloads, so if they have any notices we will see them this
 	// frame (just in case we crash next frame or something).
-	if (mOverlay && !G->suppress_overlay)
+	if (mOverlay)
 		mOverlay->DrawOverlay();
-	G->suppress_overlay = false;
 
 	// This must happen on the same side of the config and shader reloads
 	// to ensure the config reload can't clear messages from the shader
@@ -309,7 +303,7 @@ void HackerSwapChain::RunFrameActions()
 	// rapidly converge upon all active shaders.
 
 	if (difftime(time(NULL), G->huntTime) > 60) {
-		EnterCriticalSectionPretty(&G->mCriticalSection);
+		EnterCriticalSection(&G->mCriticalSection);
 		TimeoutHuntingBuffers();
 		LeaveCriticalSection(&G->mCriticalSection);
 	}
@@ -428,9 +422,6 @@ STDMETHODIMP_(ULONG) HackerSwapChain::Release(THIS)
 		if (mOverlay)
 			delete mOverlay;
 
-		if (last_fullscreen_swap_chain == mOrigSwapChain1)
-			last_fullscreen_swap_chain = NULL;
-
 		LogInfo("  counter=%d, this=%p, deleting self.\n", ulRef, this);
 
 		delete this;
@@ -542,33 +533,19 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
 	/* [in] */ UINT SyncInterval,
 	/* [in] */ UINT Flags)
 {
-	Profiling::State profiling_state = {0};
-	bool profiling = false;
-
 	LogDebug("HackerSwapChain::Present(%s@%p) called with\n", type_name(this), this);
 	LogDebug("  SyncInterval = %d\n", SyncInterval);
 	LogDebug("  Flags = %d\n", Flags);
 
 	if (!(Flags & DXGI_PRESENT_TEST)) {
-		// Profiling::mode may change below, so make a copy
-		profiling = Profiling::mode == Profiling::Mode::SUMMARY;
-		if (profiling)
-			Profiling::start(&profiling_state);
-
 		// Every presented frame, we want to take some CPU time to run our actions,
 		// which enables hunting, and snapshots, and aiming overrides and other inputs
 		RunFrameActions();
-
-		if (profiling)
-			Profiling::end(&profiling_state, &Profiling::present_overhead);
 	}
 
 	HRESULT hr = mOrigSwapChain1->Present(SyncInterval, Flags);
 
 	if (!(Flags & DXGI_PRESENT_TEST)) {
-		if (profiling)
-			Profiling::start(&profiling_state);
-
 		// Update the stereo params texture just after the present so that 
 		// shaders get the new values for the current frame:
 		UpdateStereoParams();
@@ -579,9 +556,6 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
 		// state changed in the pre-present command list, or to perform some
 		// action at the start of a frame:
 		RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
-
-		if (profiling)
-			Profiling::end(&profiling_state, &Profiling::present_overhead);
 	}
 
 	LogDebug("  returns %x\n", hr);
@@ -629,9 +603,6 @@ STDMETHODIMP HackerSwapChain::SetFullscreenState(THIS_
 	//	hr = mOrigSwapChain1->SetFullscreenState(Fullscreen, pTarget->m_pOutput);
 	//else
 	//	hr = mOrigSwapChain1->SetFullscreenState(Fullscreen, 0);
-
-	if (Fullscreen)
-		last_fullscreen_swap_chain = mOrigSwapChain1;
 
 	HRESULT hr = mOrigSwapChain1->SetFullscreenState(Fullscreen, pTarget);
 	LogInfo("  returns %x\n", hr);
@@ -846,47 +817,29 @@ STDMETHODIMP HackerSwapChain::Present1(THIS_
 	/* [annotation][in] */
 	_In_  const DXGI_PRESENT_PARAMETERS *pPresentParameters)
 {
-	Profiling::State profiling_state = {0};
 	gLogDebug = true;
-	bool profiling = false;
 
 	LogDebug("HackerSwapChain::Present1(%s@%p) called\n", type_name(this), this);
 	LogDebug("  SyncInterval = %d\n", SyncInterval);
 	LogDebug("  Flags = %d\n", PresentFlags);
 
 	if (!(PresentFlags & DXGI_PRESENT_TEST)) {
-		// Profiling::mode may change below, so make a copy
-		profiling = Profiling::mode == Profiling::Mode::SUMMARY;
-		if (profiling)
-			Profiling::start(&profiling_state);
-
 		// Every presented frame, we want to take some CPU time to run our actions,
 		// which enables hunting, and snapshots, and aiming overrides and other inputs
 		RunFrameActions();
-
-		if (profiling)
-			Profiling::end(&profiling_state, &Profiling::present_overhead);
 	}
 
 	HRESULT hr = mOrigSwapChain1->Present1(SyncInterval, PresentFlags, pPresentParameters);
 
 	if (!(PresentFlags & DXGI_PRESENT_TEST)) {
-		if (profiling)
-			Profiling::start(&profiling_state);
-
 		// Update the stereo params texture just after the present so that we
 		// get the new values for the current frame:
 		UpdateStereoParams();
-
-		G->bb_is_upscaling_bb = !!G->SCREEN_UPSCALING && G->upscaling_command_list_using_explicit_bb_flip;
 
 		// Run the post present command list now, which can be used to restore
 		// state changed in the pre-present command list, or to perform some
 		// action at the start of a frame:
 		RunCommandList(mHackerDevice, mHackerContext, &G->post_present_command_list, NULL, true);
-
-		if (profiling)
-			Profiling::end(&profiling_state, &Profiling::present_overhead);
 	}
 
 	LogDebug("  returns %x\n", hr);
@@ -960,11 +913,11 @@ STDMETHODIMP HackerSwapChain::GetRotation(THIS_
 // resolutions.  Particularly good for 4K passive 3D.
 
 HackerUpscalingSwapChain::HackerUpscalingSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pHackerDevice, HackerContext *pHackerContext,
-	DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc, UINT newWidth, UINT newHeight)
+	DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc, UINT newWidth, UINT newHeight, IDXGIFactory* pFactory)
 	: HackerSwapChain(pSwapChain, pHackerDevice, pHackerContext),
 	mFakeBackBuffer(nullptr), mFakeSwapChain1(nullptr), mWidth(0), mHeight(0)
 {
-	CreateRenderTarget(pFakeSwapChainDesc);
+	CreateRenderTarget(pFakeSwapChainDesc, pFactory);
 
 	mWidth = newWidth;
 	mHeight = newHeight;
@@ -979,7 +932,7 @@ HackerUpscalingSwapChain::~HackerUpscalingSwapChain()
 		mFakeBackBuffer->Release();
 }
 
-void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc)
+void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc, IDXGIFactory* pFactory)
 {
 	HRESULT hr;
 
@@ -1003,23 +956,17 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 		fake_buffer_desc.Height = pFakeSwapChainDesc->BufferDesc.Height;
 		fake_buffer_desc.CPUAccessFlags = 0;
 
-		LockResourceCreationMode();
 		hr = mHackerDevice->GetPassThroughOrigDevice1()->CreateTexture2D(&fake_buffer_desc, nullptr, &mFakeBackBuffer);
-		UnlockResourceCreationMode();
 	}
 	break;
 	case 1:
 	{
-		IDXGIFactory *pFactory = nullptr;
-
-		hr = mOrigSwapChain1->GetParent(IID_PPV_ARGS(&pFactory));
-		if (FAILED(hr))
+		if (pFactory == nullptr)
 		{
-			LogOverlay(LOG_DIRE, "HackerUpscalingSwapChain::createRenderTarget failed to get DXGIFactory\n");
+			LogOverlay(LOG_DIRE, "HackerUpscalingSwapChain::createRenderTarget failed provided factory pointer is invalid.\n");
 			// Not positive if we will be able to get an overlay to
 			// display the error, so also issue an audible warning:
 			BeepFailure2();
-			return;
 		}
 		const UINT flagBackup = pFakeSwapChainDesc->Flags;
 
@@ -1027,10 +974,8 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 		pFakeSwapChainDesc->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 		IDXGISwapChain* swapChain;
 		get_tls()->hooking_quirk_protection = true;
-		pFactory->CreateSwapChain(mHackerDevice->GetPossiblyHookedOrigDevice1(), pFakeSwapChainDesc, &swapChain);
+		hr = fnOrigCreateSwapChain(pFactory, mHackerDevice->GetPossiblyHookedOrigDevice1(), pFakeSwapChainDesc, &swapChain);
 		get_tls()->hooking_quirk_protection = false;
-
-		pFactory->Release();
 
 		HRESULT res = swapChain->QueryInterface(IID_PPV_ARGS(&mFakeSwapChain1));
 		if (SUCCEEDED(res))
@@ -1047,7 +992,6 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 		// Not positive if we will be able to get an overlay to
 		// display the error, so also issue an audible warning:
 		BeepFailure2();
-		return;
 	}
 
 	LogInfo("HackerUpscalingSwapChain::HackerUpscalingSwapChain(): result %d\n", hr);
@@ -1217,9 +1161,7 @@ STDMETHODIMP HackerUpscalingSwapChain::ResizeBuffers(THIS_
 			fd.Height = Height;
 			fd.Format = NewFormat;
 			// just recreate texture with new width and height
-			LockResourceCreationMode();
 			hr = mHackerDevice->GetPassThroughOrigDevice1()->CreateTexture2D(&fd, nullptr, &mFakeBackBuffer);
-			UnlockResourceCreationMode();
 		}
 		else  // nothing to resize
 			hr = S_OK;

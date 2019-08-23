@@ -12,13 +12,24 @@
 const int opcodeSize = 128;
 const int stringSize = 256;
 
-struct DecompilerSettings
+struct ParseParameters
 {
+	const void *bytecode;
+	const char *decompiled;
+	size_t decompiledSize;
+
 	int StereoParamsReg;
 	int IniParamsReg;
 
+	//dx9
+	int StereoParamsVertexReg;
+	int StereoParamsPixelReg;
+	//dx9
+
 	bool fixSvPosition;
+	bool fixLightPosition;
 	bool recompileVs;
+	bool ZeroOutput;
 	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
 	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
 	std::vector<std::string> ZRepair_Dependencies1, ZRepair_Dependencies2;
@@ -30,16 +41,6 @@ struct DecompilerSettings
 	std::string BackProject_Vector1, BackProject_Vector2;
 	std::string ObjectPos_ID1, ObjectPos_ID2, ObjectPos_MUL1, ObjectPos_MUL2;
 	std::string MatrixPos_ID1, MatrixPos_MUL1;
-};
-
-struct ParseParameters
-{
-	const void *bytecode;
-	const char *decompiled;
-	size_t decompiledSize;
-	bool ZeroOutput;
-
-	DecompilerSettings *G;
 };
 
 const std::string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::string &shaderModel, bool &errorOccurred);

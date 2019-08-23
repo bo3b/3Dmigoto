@@ -8,10 +8,6 @@
 // ID3D11Device3	Win10			11.3
 // ID3D11Device4					11.4
 
-// Include before util.h (or any header that includes util.h) to get pretty
-// version of LockResourceCreationMode:
-#include "lock.h"
-
 #include "HackerDevice.h"
 #include "HookedDevice.h"
 #include "FrameAnalysis.h"
@@ -32,8 +28,6 @@
 #include "D3D_Shaders\stdafx.h"
 #include "ResourceHash.h"
 #include "ShaderRegex.h"
-#include "CommandList.h"
-#include "Hunting.h"
 
 // A map to look up the HackerDevice from an IUnknown. The reason for using an
 // IUnknown as the key is that an ID3D11Device and IDXGIDevice are actually two
@@ -84,7 +78,6 @@ HackerDevice* lookup_hacker_device(IUnknown *unknown)
 {
 	HackerDevice *ret = NULL;
 	IUnknown *real_unknown = NULL;
-	IDXGIObject *dxgi_obj = NULL;
 	DeviceMap::iterator i;
 
 	// First, check if this is already a HackerDevice. This is a fast path,
@@ -114,7 +107,7 @@ HackerDevice* lookup_hacker_device(IUnknown *unknown)
 		DoubleBeepExit();
 	}
 
-	EnterCriticalSectionPretty(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 	i = device_map.find(real_unknown);
 	if (i != device_map.end()) {
 		ret = i->second;
@@ -123,45 +116,6 @@ HackerDevice* lookup_hacker_device(IUnknown *unknown)
 	LeaveCriticalSection(&G->mCriticalSection);
 
 	real_unknown->Release();
-
-	if (!ret) {
-		// Either not a d3d11 device, or something has handed us an
-		// unwrapped device *and also* violated the COM identity rule.
-		// This is known to happen with ReShade in certain games (e.g.
-		// Resident Evil 2), though it appears that DirectX itself
-		// violates the COM identity rule in some cases (Device4/5 +
-		// Multithread interfaces)
-		//
-		// We have a few more tricks up our sleeve to try to find our
-		// HackerDevice - the first would be to look up the
-		// ID3D11Device interface and use it as a key to look up our
-		// device_map. That would work for the ReShade case as it
-		// stands today, but is not foolproof since e.g. that device
-		// may itself be wrapped. We could try other interfaces that
-		// may not be wrapped or use them to find the DirectX COM
-		// identity and look up the map by that, but again if there is
-		// a third party tool messing with us than all bets are off.
-		//
-		// Instead, let's try to do this in a fool proof manner that
-		// will hopefully be impervious to anything that a third party
-		// tool may do. When we created the device we stored a pointer
-		// to our HackerDevice in the device's private data that we
-		// should be able to retrieve. We can access that from either
-		// the D3D11Device interface, or the DXGIObject interface. For
-		// the sake of a possible future DX12 port (or DX10 backport)
-		// I'm using the DXGI interface that's supposed to be version
-		// agnostic. XXX: It might be worthwhile considering dropping
-		// the above device_map lookup which relies on the COM identity
-		// rule in favour of this, since we expect this to always work:
-		if (SUCCEEDED(unknown->QueryInterface(IID_IDXGIObject, (void**)&dxgi_obj))) {
-			UINT size;
-			if (SUCCEEDED(dxgi_obj->GetPrivateData(IID_HackerDevice, &size, &ret))) {
-				LogInfo("Notice: Unwrapped device and COM Identity violation, Found HackerDevice via GetPrivateData strategy\n");
-				ret->AddRef();
-			}
-			dxgi_obj->Release();
-		}
-	}
 
 	LogInfo("lookup_hacker_device(%p) IUnknown: %p HackerDevice: %p\n",
 			unknown, real_unknown, ret);
@@ -182,7 +136,7 @@ static IUnknown* register_hacker_device(HackerDevice *hacker_device)
 	LogInfo("register_hacker_device: Registering IUnknown: %p -> HackerDevice: %p\n",
 			real_unknown, hacker_device);
 
-	EnterCriticalSectionPretty(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 	device_map[real_unknown] = hacker_device;
 	LeaveCriticalSection(&G->mCriticalSection);
 
@@ -222,7 +176,7 @@ static void unregister_hacker_device(HackerDevice *hacker_device)
 	// don't need to. Just detect if the handle has been reused and print
 	// out a message - we know that the HackerDevice won't have been reused
 	// yet, so this is safe.
-	EnterCriticalSectionPretty(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 	i = device_map.find(real_unknown);
 	if (i != device_map.end()) {
 		if (i->second == hacker_device) {
@@ -328,37 +282,14 @@ HRESULT HackerDevice::CreateIniParamResources()
 	D3D11_TEXTURE1D_DESC desc;
 	memset(&desc, 0, sizeof(D3D11_TEXTURE1D_DESC));
 
-	// If we are resizing IniParams we must release the old versions:
-	if (mIniResourceView) {
-		long refcount = mIniResourceView->Release();
-		mIniResourceView = NULL;
-		LogInfo("  releasing ini parameters resource view, refcount = %d\n", refcount);
-	}
-	if (mIniTexture) {
-		long refcount = mIniTexture->Release();
-		mIniTexture = NULL;
-		LogInfo("  releasing iniparams texture, refcount = %d\n", refcount);
-	}
-
-	if (G->iniParamsReserved > INI_PARAMS_SIZE_WARNING) {
-		LogOverlay(LOG_NOTICE, "NOTICE: %d requested IniParams exceeds the recommended %d\n",
-				G->iniParamsReserved, INI_PARAMS_SIZE_WARNING);
-	}
-
-	G->iniParams.resize(G->iniParamsReserved);
-	if (G->iniParams.empty()) {
-		LogInfo("  No IniParams used, skipping texture creation.\n");
-		return S_OK;
-	}
-
 	LogInfo("  creating .ini constant parameter texture.\n");
 
 	// Stuff the constants read from the .ini file into the subresource data structure, so 
 	// we can init the texture with them.
-	initialData.pSysMem = G->iniParams.data();
-	initialData.SysMemPitch = sizeof(DirectX::XMFLOAT4) * (UINT)G->iniParams.size(); // Ignored for Texture1D, but still recommended for debugging
+	initialData.pSysMem = &G->iniParams;
+	initialData.SysMemPitch = sizeof(DirectX::XMFLOAT4) * INI_PARAMS_SIZE;	// Ignored for Texture1D, but still recommended for debugging
 
-	desc.Width = (UINT)G->iniParams.size();					// n texels, .rgba as a float4
+	desc.Width = INI_PARAMS_SIZE;						// n texels, .rgba as a float4
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;				// float4
@@ -427,7 +358,7 @@ HRESULT HackerDevice::SetGlobalNVSurfaceCreationMode()
 		NvAPIOverride();
 		LogInfo("  setting custom surface creation mode.\n");
 
-		hr = Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,	(NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
+		hr = NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,	(NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
 		if (hr != NVAPI_OK)
 		{
 			LogInfo("    custom surface creation call failed: %d.\n", hr);
@@ -453,16 +384,10 @@ void HackerDevice::Create3DMigotoResources()
 	// be considdered non-fatal, as stereo could be disabled in the control
 	// panel, or we could be on an AMD or Intel card.
 
-	LockResourceCreationMode();
-
 	CreateStereoParamResources();
 	CreateIniParamResources();
 	CreatePinkHuntingResources();
 	SetGlobalNVSurfaceCreationMode();
-
-	UnlockResourceCreationMode();
-
-	optimise_command_lists(this);
 }
 
 
@@ -647,6 +572,18 @@ static bool GetFileLastWriteTime(wchar_t *path, FILETIME *ftWrite)
 	return true;
 }
 
+static void SetFileLastWriteTime(wchar_t *path, FILETIME *ftWrite)
+{
+	HANDLE f;
+
+	f = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (f == INVALID_HANDLE_VALUE)
+		return;
+
+	SetFileTime(f, NULL, NULL, ftWrite);
+	CloseHandle(f);
+}
+
 static bool CheckCacheTimestamp(HANDLE binHandle, wchar_t *binPath, FILETIME &pTimeStamp)
 {
 	FILETIME txtTime, binTime;
@@ -740,25 +677,25 @@ bail_close_handle:
 // Load .bin shaders from the ShaderFixes folder as cached shaders.
 // This will load either *_replace.bin, or *.bin variants.
 
-static bool LoadBinaryShaders(__in UINT64 hash, const wchar_t *pShaderType,
+static void LoadBinaryShaders(__in UINT64 hash, const wchar_t *pShaderType,
 	__out char* &pCode, SIZE_T &pCodeSize, string &pShaderModel, FILETIME &pTimeStamp)
 {
 	wchar_t path[MAX_PATH];
 
 	swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, pShaderType);
 	if (LoadCachedShader(path, pShaderType, pCode, pCodeSize, pShaderModel, pTimeStamp))
-		return true;
+		return;
 
 	// If we can't find an HLSL compiled version, look for ASM assembled one.
 	swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
-	return LoadCachedShader(path, pShaderType, pCode, pCodeSize, pShaderModel, pTimeStamp);
+	LoadCachedShader(path, pShaderType, pCode, pCodeSize, pShaderModel, pTimeStamp);
 }
 
 
 // Load an HLSL text file as the replacement shader.  Recompile it using D3DCompile.
 // If caching is enabled, save a .bin replacement for this new shader.
 
-static bool ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
+static void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 	__in const void *pShaderBytecode, SIZE_T pBytecodeLength, const char *pOverrideShaderModel,
 	__out char* &pCode, SIZE_T &pCodeSize, string &pShaderModel, FILETIME &pTimeStamp, wstring &pHeaderLine)
 {
@@ -823,9 +760,7 @@ static bool ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 			// Later we could add a custom include handler to track dependencies so
 			// that we can make reloading work better when using includes:
 			wcstombs(apath, path, MAX_PATH);
-			MigotoIncludeHandler include_handler(apath);
-			HRESULT ret = D3DCompile(srcData, srcDataSize, apath, 0,
-				G->recursive_include == -1 ? D3D_COMPILE_STANDARD_FILE_INCLUDE : &include_handler,
+			HRESULT ret = D3DCompile(srcData, srcDataSize, apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
 				"main", tmpShaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &compiledOutput, &errorMsgs);
 			delete[] srcData; srcData = 0;
 			if (compiledOutput)
@@ -854,21 +789,27 @@ static bool ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 				swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, pShaderType);
 				FILE *fw;
 				wfopen_ensuring_access(&fw, path, L"wb");
+				if (LogFile)
+				{
+					char fileName[MAX_PATH];
+					wcstombs(fileName, path, MAX_PATH);
+					if (fw)
+						LogInfo("    storing compiled shader to %s\n", fileName);
+					else
+						LogInfo("    error writing compiled shader to %s\n", fileName);
+				}
 				if (fw)
 				{
-					LogInfo("    storing compiled shader to %S\n", path);
 					fwrite(pCode, 1, pCodeSize, fw);
 					fclose(fw);
 
 					// Set the last modified timestamp on the cached shader to match the
 					// .txt file it is created from, so we can later check its validity:
-					set_file_last_write_time(path, &ftWrite);
-				} else
-					LogInfo("    error writing compiled shader to %S\n", path);
+					SetFileLastWriteTime(path, &ftWrite);
+				}
 			}
 		}
 	}
-	return !!pCode;
 }
 
 
@@ -890,7 +831,7 @@ static bool ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
 //
 // So it should be clear by name, what type of file they are.  
 
-static bool ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *pShaderBytecode, SIZE_T pBytecodeLength,
+static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const void *pShaderBytecode, SIZE_T pBytecodeLength,
 	__out char* &pCode, SIZE_T &pCodeSize, string &pShaderModel, FILETIME &pTimeStamp, wstring &pHeaderLine)
 {
 	wchar_t path[MAX_PATH];
@@ -935,8 +876,9 @@ static bool ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 			// Re-assemble the ASM text back to binary
 			try
 			{
-				vector<AssemblerParseError> parse_errors;
-				byteCode = AssembleFluganWithOptionalSignatureParsing(&asmTextBytes, G->assemble_signature_comments, &byteCode, &parse_errors);
+				byteCode = AssembleFluganWithOptionalSignatureParsing(&asmTextBytes, G->assemble_signature_comments, &byteCode);
+
+				// ToDo: Any errors to check?  When it fails, throw an exception.
 
 				// Assuming the re-assembly worked, let's make it the active shader code.
 				pCodeSize = byteCode.size();
@@ -944,228 +886,34 @@ static bool ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 				memcpy(pCode, byteCode.data(), pCodeSize);
 
 				// Cache binary replacement.
-				if (parse_errors.empty()) {
-					if (G->CACHE_SHADERS && pCode && parse_errors.empty())
+				if (G->CACHE_SHADERS && pCode)
+				{
+					// Write reassembled binary output as a cached shader.
+					FILE *fw;
+					swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
+					wfopen_ensuring_access(&fw, path, L"wb");
+					if (fw)
 					{
-						// Write reassembled binary output as a cached shader.
-						FILE *fw;
-						swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
-						wfopen_ensuring_access(&fw, path, L"wb");
-						if (fw)
-						{
-							LogInfoW(L"    storing reassembled binary to %s\n", path);
-							fwrite(byteCode.data(), 1, byteCode.size(), fw);
-							fclose(fw);
+						LogInfoW(L"    storing reassembled binary to %s\n", path);
+						fwrite(byteCode.data(), 1, byteCode.size(), fw);
+						fclose(fw);
 
-							// Set the last modified timestamp on the cached shader to match the
-							// .txt file it is created from, so we can later check its validity:
-							set_file_last_write_time(path, &ftWrite);
-						}
-						else
-						{
-							LogInfoW(L"    error storing reassembled binary to %s\n", path);
-						}
+						// Set the last modified timestamp on the cached shader to match the
+						// .txt file it is created from, so we can later check its validity:
+						SetFileLastWriteTime(path, &ftWrite);
 					}
-				} else {
-					// Parse errors are currently being treated as non-fatal on
-					// creation time replacement and ShaderRegex for backwards
-					// compatibility (live shader reload is fatal).
-					for (auto &parse_error : parse_errors)
-						LogOverlay(LOG_NOTICE, "%S: %s\n", path, parse_error.what());
-
-					// Do not record the timestamp so that F10 will reload the
-					// shader even if not touched in the meantime allowing the
-					// shaderhackers to see their bugs. For much the same
-					// reason we disable caching these shaders above (though
-					// that is not retrospective if a cache already existed).
-					pTimeStamp = {0};
+					else
+					{
+						LogInfoW(L"    error storing reassembled binary to %s\n", path);
+					}
 				}
 			}
-			catch (const exception &e)
+			catch (...)
 			{
-				LogOverlay(LOG_WARNING, "Error assembling %S: %s\n",
-						path, e.what());
+				LogInfo("    reassembly of ASM shader text failed.\n");
 			}
 		}
 	}
-
-	return !!pCode;
-}
-
-static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
-		const wchar_t *pShaderType, const void *pShaderBytecode,
-		SIZE_T BytecodeLength, __out char* &pCode, SIZE_T &pCodeSize,
-		string &pShaderModel, FILETIME &pTimeStamp,
-		wstring &pHeaderLine, const wchar_t *shaderType,
-		string &foundShaderModel, FILETIME &timeStamp,
-		const char *overrideShaderModel)
-{
-	wchar_t val[MAX_PATH];
-	string asmText;
-	FILE *fw = NULL;
-	string shaderModel = "";
-	bool patched = false;
-	bool errorOccurred = false;
-	HRESULT hr;
-
-	if (!G->EXPORT_HLSL && !G->decompiler_settings.fixSvPosition && !G->decompiler_settings.recompileVs)
-		return NULL;
-
-	// Skip?
-	swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_bad.txt", G->SHADER_PATH, hash, shaderType);
-	if (GetFileAttributes(val) != INVALID_FILE_ATTRIBUTES) {
-		LogInfo("    skipping shader marked bad. %S\n", val);
-		return NULL;
-	}
-
-	// Store HLSL export files in ShaderCache, auto-Fixed shaders in ShaderFixes
-	if (G->EXPORT_HLSL >= 1)
-		swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_CACHE_PATH, hash, shaderType);
-	else
-		swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shaderType);
-
-	// If we can open the file already, it exists, and thus we should skip doing this slow operation again.
-	if (GetFileAttributes(val) != INVALID_FILE_ATTRIBUTES)
-		return NULL;
-
-	// Disassemble old shader for fixing.
-	asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength, false);
-	if (asmText.empty()) {
-		LogInfo("    disassembly of original shader failed.\n");
-		return NULL;
-	}
-
-	// Decompile code.
-	LogInfo("    creating HLSL representation.\n");
-
-	ParseParameters p;
-	p.bytecode = pShaderBytecode;
-	p.decompiled = asmText.c_str();
-	p.decompiledSize = asmText.size();
-	p.ZeroOutput = false;
-	p.G = &G->decompiler_settings;
-	const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
-	if (!decompiledCode.size() || errorOccurred)
-	{
-		LogInfo("    error while decompiling.\n");
-		return NULL;
-	}
-
-	if ((G->EXPORT_HLSL >= 1) || (G->EXPORT_FIXED && patched))
-	{
-		errno_t err = wfopen_ensuring_access(&fw, val, L"wb");
-		if (err != 0 || !fw)
-		{
-			LogInfo("    !!! Fail to open replace.txt file: 0x%x\n", err);
-			return NULL;
-		}
-
-		LogInfo("    storing patched shader to %S\n", val);
-		// Save decompiled HLSL code to that new file.
-		fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), fw);
-
-		// Now also write the ASM text to the shader file as a set of comments at the bottom.
-		// That will make the ASM code the master reference for fixing shaders, and should be more
-		// convenient, especially in light of the numerous decompiler bugs we see.
-		if (G->EXPORT_HLSL >= 2)
-		{
-			fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-			fwrite(asmText.c_str(), 1, asmText.size(), fw);
-			fprintf_s(fw, "\n//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
-
-		}
-	}
-
-	// Let's re-compile every time we create a new one, regardless.  Previously this would only re-compile
-	// after auto-fixing shaders. This makes shader Decompiler errors more obvious.
-
-	// Way too many obscure interractions in this function, using another
-	// temporary variable to not modify anything already here and reduce
-	// the risk of breaking it in some subtle way:
-	const char *tmpShaderModel;
-	char apath[MAX_PATH];
-
-	if (overrideShaderModel)
-		tmpShaderModel = overrideShaderModel;
-	else
-		tmpShaderModel = shaderModel.c_str();
-
-	LogInfo("    compiling fixed HLSL code with shader model %s, size = %Iu\n", tmpShaderModel, decompiledCode.size());
-
-	// TODO: Add #defines for StereoParams and IniParams
-
-	ID3DBlob *pErrorMsgs;
-	ID3DBlob *pCompiledOutput = NULL;
-	// Probably unecessary here since this shader is one we freshly decompiled,
-	// but for consistency pass the path here as well so that the standard
-	// include handler can correctly handle includes with paths relative to the
-	// shader itself:
-	wcstombs(apath, val, MAX_PATH);
-	hr = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"main", tmpShaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
-	LogInfo("    compile result of fixed HLSL shader: %x\n", hr);
-
-	if (LogFile && pErrorMsgs)
-	{
-		LPVOID errMsg = pErrorMsgs->GetBufferPointer();
-		SIZE_T errSize = pErrorMsgs->GetBufferSize();
-		LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
-		fwrite(errMsg, 1, errSize - 1, LogFile);
-		LogInfo("------------------------------------------- HLSL code -------------------------------------------\n");
-		fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), LogFile);
-		LogInfo("\n---------------------------------------------- END ----------------------------------------------\n");
-
-		// And write the errors to the HLSL file as comments too, as a more convenient spot to see them.
-		fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-		fwrite(errMsg, 1, errSize - 1, fw);
-		fprintf_s(fw, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
-	}
-	if (pErrorMsgs)
-		pErrorMsgs->Release();
-
-	// If requested by .ini, also write the newly re-compiled assembly code to the file.  This gives a direct
-	// comparison between original ASM, and recompiled ASM.
-	if ((G->EXPORT_HLSL >= 3) && pCompiledOutput)
-	{
-		asmText = BinaryToAsmText(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize(), G->patch_cb_offsets);
-		if (asmText.empty())
-		{
-			LogInfo("    disassembly of recompiled shader failed.\n");
-		}
-		else
-		{
-			fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Recompiled ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-			fwrite(asmText.c_str(), 1, asmText.size(), fw);
-			fprintf_s(fw, "\n//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
-		}
-	}
-
-	if (pCompiledOutput)
-	{
-		// If the shader has been auto-fixed, return it as the live shader.
-		// For just caching shaders, we return zero so it won't affect game visuals.
-		if (patched)
-		{
-			pCodeSize = pCompiledOutput->GetBufferSize();
-			pCode = new char[pCodeSize];
-			memcpy(pCode, pCompiledOutput->GetBufferPointer(), pCodeSize);
-		}
-		pCompiledOutput->Release();
-		pCompiledOutput = NULL;
-	}
-
-	if (fw)
-	{
-		// Any HLSL compiled shaders are reloading candidates, if moved to ShaderFixes
-		FILETIME ftWrite;
-		GetFileTime(fw, NULL, NULL, &ftWrite);
-		foundShaderModel = shaderModel;
-		timeStamp = ftWrite;
-
-		fclose(fw);
-	}
-
-	return !!pCode;
 }
 
 // Fairly bold new strategy here for ReplaceShader. 
@@ -1206,195 +954,357 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
 // the string read from the first line of the HLSL file.  This the logical place for
 // it because the file is already open and read into memory.
 
-char* HackerDevice::_ReplaceShaderFromShaderFixes(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
-	SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp,
-	wstring &headerLine, const char *overrideShaderModel)
+char* HackerDevice::ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
+	SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp, 
+	void **zeroShader, wstring &headerLine, const char *overrideShaderModel)
 {
 	foundShaderModel = "";
 	timeStamp = { 0 };
 
+	*zeroShader = 0;
 	char *pCode = 0;
+	wchar_t val[MAX_PATH];
 
-	if (!G->SHADER_PATH[0] || !G->SHADER_CACHE_PATH[0])
-		return NULL;
+	if (G->SHADER_PATH[0] && G->SHADER_CACHE_PATH[0])
+	{
+		// Export every original game shader as a .bin file.
+		if (G->EXPORT_BINARY) 
+		{
+			ExportOrigBinary(hash, shaderType, pShaderBytecode, BytecodeLength);
+		}
 
-	// Export every original game shader as a .bin file.
-	if (G->EXPORT_BINARY)
-		ExportOrigBinary(hash, shaderType, pShaderBytecode, BytecodeLength);
-
-	// Export every shader seen as an ASM text file.
-	if (G->EXPORT_SHADERS)
-		CreateAsmTextFile(G->SHADER_CACHE_PATH, hash, shaderType, pShaderBytecode, BytecodeLength, G->patch_cb_offsets);
+		// Export every shader seen as an ASM text file.
+		if (G->EXPORT_SHADERS)
+		{
+			CreateAsmTextFile(G->SHADER_CACHE_PATH, hash, shaderType, pShaderBytecode, BytecodeLength);
+		}
 
 
-	// Read the binary compiled shaders, as previously cached shaders.  This is how
-	// fixes normally ship, so that we just load previously compiled/assembled shaders.
-	if (LoadBinaryShaders(hash, shaderType, pCode, pCodeSize, foundShaderModel, timeStamp))
-		return pCode;
+		// Read the binary compiled shaders, as previously cached shaders.  This is how
+		// fixes normally ship, so that we just load previously compiled/assembled shaders.
+		LoadBinaryShaders(hash, shaderType, pCode, pCodeSize, foundShaderModel, timeStamp);
 
-	// Load previously created HLSL shaders, but only from ShaderFixes.
-	if (ReplaceHLSLShader(hash, shaderType, pShaderBytecode, BytecodeLength, overrideShaderModel,
-				pCode, pCodeSize, foundShaderModel, timeStamp, headerLine)) {
-		return pCode;
-	}
+		// Load previously created HLSL shaders, but only from ShaderFixes.
+		if (!pCode)
+		{
+			ReplaceHLSLShader(hash, shaderType, pShaderBytecode, BytecodeLength, overrideShaderModel,
+				pCode, pCodeSize, foundShaderModel, timeStamp, headerLine);
+		}
 
-	// If still not found, look for replacement ASM text shaders.
-	if (ReplaceASMShader(hash, shaderType, pShaderBytecode, BytecodeLength,
-				pCode, pCodeSize, foundShaderModel, timeStamp, headerLine)) {
-		return pCode;
-	}
-
-	if (DecompileAndPossiblyPatchShader(hash, shaderType, pShaderBytecode, BytecodeLength,
-				pCode, pCodeSize, foundShaderModel, timeStamp, headerLine,
-				shaderType, foundShaderModel, timeStamp, overrideShaderModel)) {
-		return pCode;
-	}
-
-	return NULL;
-}
-
-// This function handles shaders replaced from ShaderFixes at load time with or
-// without hunting.
-//
-// When hunting is disabled we don't save off the original shader unless we
-// determine that we need it for depth or partner filtering.  These shaders are
-// not candidates for the auto patch engine.
-//
-// When hunting is enabled we always save off the original shader because the
-// answer to "do we need the original?" is "...maybe?"
-template <class ID3D11Shader,
-	 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
-			 __in const void *pShaderBytecode,
-			 __in SIZE_T BytecodeLength,
-			 __in_opt ID3D11ClassLinkage *pClassLinkage,
-			 __out_opt ID3D11Shader **ppShader)
-	 >
-HRESULT HackerDevice::ReplaceShaderFromShaderFixes(UINT64 hash,
-		const void *pShaderBytecode, SIZE_T BytecodeLength,
-		ID3D11ClassLinkage *pClassLinkage, ID3D11Shader **ppShader,
-		wchar_t *shaderType)
-{
-	ShaderOverrideMap::iterator override;
-	const char *overrideShaderModel = NULL;
-	SIZE_T replaceShaderSize;
-	string shaderModel;
-	wstring headerLine;
-	FILETIME ftWrite;
-	HRESULT hr = E_FAIL;
-
-	// Check if the user has overridden the shader model:
-	override = lookup_shaderoverride(hash);
-	if (override != G->mShaderOverrideMap.end()) {
-		if (override->second.model[0])
-			overrideShaderModel = override->second.model;
-	}
-
-	char *replaceShader = _ReplaceShaderFromShaderFixes(hash, shaderType,
-			pShaderBytecode, BytecodeLength, replaceShaderSize,
-			shaderModel, ftWrite, headerLine, overrideShaderModel);
-	if (!replaceShader)
-		return E_FAIL;
-
-	// Create the new shader.
-	LogDebug("    HackerDevice::Create%lsShader.  Device: %p\n", shaderType, this);
-
-	*ppShader = NULL; // Appease the static analysis gods
-	hr = (mOrigDevice1->*OrigCreateShader)(replaceShader, replaceShaderSize, pClassLinkage, ppShader);
-	if (FAILED(hr)) {
-		LogInfo("    error replacing shader.\n");
-		goto out_delete;
-	}
-
-	CleanupShaderMaps(*ppShader);
-
-	LogInfo("    shader successfully replaced.\n");
-
-	if (G->hunting) {
-		// Hunting mode:  keep byteCode around for possible replacement or marking
-		ID3DBlob* blob;
-		hr = D3DCreateBlob(BytecodeLength, &blob);
-		if (SUCCEEDED(hr)) {
-			// We save the *original* shader bytecode, not the replaced shader,
-			// because we will use this in CopyToFixes and ShaderRegex in the
-			// event that the shader is deleted.
-			memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
-			EnterCriticalSectionPretty(&G->mCriticalSection);
-			RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, headerLine, false);
-			LeaveCriticalSection(&G->mCriticalSection);
+		// If still not found, look for replacement ASM text shaders.
+		if (!pCode)
+		{
+			ReplaceASMShader(hash, shaderType, pShaderBytecode, BytecodeLength, 
+				pCode, pCodeSize, foundShaderModel, timeStamp, headerLine);
 		}
 	}
 
-	// FIXME: We have some very similar data structures that we should merge together:
-	// mReloadedShaders and mOriginalShader.
-	KeepOriginalShader<ID3D11Shader, OrigCreateShader>
-		(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
+	// Shader hacking?
+	if (G->SHADER_PATH[0] && G->SHADER_CACHE_PATH[0] && ((G->EXPORT_HLSL >= 1) || G->FIX_SV_Position || G->FIX_Light_Position || G->FIX_Recompile_VS) && !pCode)
+	{
+		// Skip?
+		swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_bad.txt", G->SHADER_PATH, hash, shaderType);
+		HANDLE hFind = CreateFile(val, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (hFind != INVALID_HANDLE_VALUE)
+		{
+			char fileName[MAX_PATH];
+			wcstombs(fileName, val, MAX_PATH);
+			LogInfo("    skipping shader marked bad. %s\n", fileName);
+			CloseHandle(hFind);
+		}
+		else
+		{
+			ID3DBlob *disassembly = 0; // FIXME: This can leak
+			FILE *fw = 0;
+			string shaderModel = "";
 
-out_delete:
-	delete replaceShader;
-	return hr;
-}
+			// Store HLSL export files in ShaderCache, auto-Fixed shaders in ShaderFixes
+			if (G->EXPORT_HLSL >= 1)
+				swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_CACHE_PATH, hash, shaderType);
+			else
+				swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shaderType);
 
-// This function handles shaders that were *NOT* replaced from ShaderFixes
-//
-// When hunting is disabled we don't save off the original shader unless we
-// determine that we need it for for deferred analysis in the auto patch
-// engine. These are not candidates for depth or partner filtering since that
-// would require a ShaderOverride and a manually patched shader (ok,
-// technically we could with an auto patched shader, but those are deprecated
-// features - don't encourage them!)
-//
-// When hunting is enabled we always save off the original shader because the
-// answer to "do we need the original?" is "...maybe?"
-template <class ID3D11Shader,
-	 HRESULT (__stdcall ID3D11Device::*OrigCreateShader)(THIS_
-			 __in const void *pShaderBytecode,
-			 __in SIZE_T BytecodeLength,
-			 __in_opt ID3D11ClassLinkage *pClassLinkage,
-			 __out_opt ID3D11Shader **ppShader)
-	 >
-HRESULT HackerDevice::ProcessShaderNotFoundInShaderFixes(UINT64 hash,
-		const void *pShaderBytecode, SIZE_T BytecodeLength,
-		ID3D11ClassLinkage *pClassLinkage, ID3D11Shader **ppShader,
-		wchar_t *shaderType)
-{
-	HRESULT hr;
+			// If we can open the file already, it exists, and thus we should skip doing this slow operation again.
+			errno_t err = _wfopen_s(&fw, val, L"rb");
+			if (err == 0)
+			{
+				fclose(fw);
+				return 0;	// Todo: what about zero shader section?
+			}
 
-	*ppShader = NULL; // Appease the static analysis gods
-	hr = (mOrigDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
-	if (FAILED(hr))
-		return hr;
+			// Disassemble old shader for fixing.
+			HRESULT ret = D3DDisassemble(pShaderBytecode, BytecodeLength,
+				D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, 0, &disassembly);
+			if (ret != S_OK)
+			{
+				LogInfo("    disassembly of original shader failed.\n");
+			}
+			else
+			{
+				// Decompile code.
+				LogInfo("    creating HLSL representation.\n");
 
-	CleanupShaderMaps(*ppShader);
+				bool patched = false;
+				bool errorOccurred = false;
 
-	// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
-	// have a copy for every shader seen. If we are performing any sort of deferred shader replacement, such as pipline
-	// state analysis we always need to keep a copy of the original bytecode for later analysis. For now the shader
-	// regex engine counts as deferred, though that may change with optimisations in the future.
-	if (G->hunting || !shader_regex_groups.empty()) {
-		EnterCriticalSectionPretty(&G->mCriticalSection);
-			ID3DBlob* blob;
-			hr = D3DCreateBlob(BytecodeLength, &blob);
-			if (SUCCEEDED(hr)) {
-				memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
-				RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, {0}, L"", true);
+				// TODO: Refactor all parameters we just copy from globals into their
+				// own struct so we don't have to copy all this junk
+				ParseParameters p;
+				p.bytecode = pShaderBytecode;
+				p.decompiled = (const char *)disassembly->GetBufferPointer();
+				p.decompiledSize = disassembly->GetBufferSize();
+				p.StereoParamsReg = G->StereoParamsReg;
+				p.IniParamsReg = G->IniParamsReg;
+				p.recompileVs = G->FIX_Recompile_VS;
+				p.fixSvPosition = G->FIX_SV_Position;
+				p.ZRepair_Dependencies1 = G->ZRepair_Dependencies1;
+				p.ZRepair_Dependencies2 = G->ZRepair_Dependencies2;
+				p.ZRepair_DepthTexture1 = G->ZRepair_DepthTexture1;
+				p.ZRepair_DepthTexture2 = G->ZRepair_DepthTexture2;
+				p.ZRepair_DepthTextureReg1 = G->ZRepair_DepthTextureReg1;
+				p.ZRepair_DepthTextureReg2 = G->ZRepair_DepthTextureReg2;
+				p.ZRepair_ZPosCalc1 = G->ZRepair_ZPosCalc1;
+				p.ZRepair_ZPosCalc2 = G->ZRepair_ZPosCalc2;
+				p.ZRepair_PositionTexture = G->ZRepair_PositionTexture;
+				p.ZRepair_DepthBuffer = (G->ZBufferHashToInject != 0);
+				p.ZRepair_WorldPosCalc = G->ZRepair_WorldPosCalc;
+				p.BackProject_Vector1 = G->BackProject_Vector1;
+				p.BackProject_Vector2 = G->BackProject_Vector2;
+				p.ObjectPos_ID1 = G->ObjectPos_ID1;
+				p.ObjectPos_ID2 = G->ObjectPos_ID2;
+				p.ObjectPos_MUL1 = G->ObjectPos_MUL1;
+				p.ObjectPos_MUL2 = G->ObjectPos_MUL2;
+				p.MatrixPos_ID1 = G->MatrixPos_ID1;
+				p.MatrixPos_MUL1 = G->MatrixPos_MUL1;
+				p.InvTransforms = G->InvTransforms;
+				p.fixLightPosition = G->FIX_Light_Position;
+				p.ZeroOutput = false;
+				const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
+				if (!decompiledCode.size())
+				{
+					LogInfo("    error while decompiling.\n");
 
-				// Also add the original shader to the original shaders
-				// map so that if it is later replaced marking_mode =
-				// original and depth buffer filtering will work:
-				if (lookup_original_shader(*ppShader) == end(G->mOriginalShaders)) {
-					// Since we are both returning *and* storing this we need to
-					// bump the refcount to 2, otherwise it could get freed and we
-					// may get a crash later in RevertMissingShaders, especially
-					// easy to expose with the auto shader patching engine
-					// and reverting shaders:
-					(*ppShader)->AddRef();
-					G->mOriginalShaders[*ppShader] = *ppShader;
+					return 0;
+				}
+
+				if (!errorOccurred && ((G->EXPORT_HLSL >= 1) || (G->EXPORT_FIXED && patched)))
+				{
+					errno_t err = wfopen_ensuring_access(&fw, val, L"wb");
+					if (err != 0)
+					{
+						LogInfo("    !!! Fail to open replace.txt file: 0x%x\n", err);
+						return 0;
+					}
+
+					if (LogFile)
+					{
+						char fileName[MAX_PATH];
+						wcstombs(fileName, val, MAX_PATH);
+						if (fw)
+							LogInfo("    storing patched shader to %s\n", fileName);
+						else
+							LogInfo("    error storing patched shader to %s\n", fileName);
+					}
+					if (fw)
+					{
+						// Save decompiled HLSL code to that new file.
+						fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), fw);
+
+						// Now also write the ASM text to the shader file as a set of comments at the bottom.
+						// That will make the ASM code the master reference for fixing shaders, and should be more 
+						// convenient, especially in light of the numerous decompiler bugs we see.
+						if (G->EXPORT_HLSL >= 2)
+						{
+							fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+							// Size - 1 to strip NULL terminator
+							fwrite(disassembly->GetBufferPointer(), 1, disassembly->GetBufferSize() - 1, fw);
+							fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
+
+						}
+
+						if (disassembly) disassembly->Release(); disassembly = 0;
+					}
+				}
+
+				// Let's re-compile every time we create a new one, regardless.  Previously this would only re-compile
+				// after auto-fixing shaders. This makes shader Decompiler errors more obvious.
+				if (!errorOccurred)
+				{
+					// Way too many obscure interractions in this function, using another
+					// temporary variable to not modify anything already here and reduce
+					// the risk of breaking it in some subtle way:
+					const char *tmpShaderModel;
+					char apath[MAX_PATH];
+
+					if (overrideShaderModel)
+						tmpShaderModel = overrideShaderModel;
+					else
+						tmpShaderModel = shaderModel.c_str();
+
+					LogInfo("    compiling fixed HLSL code with shader model %s, size = %Iu\n", tmpShaderModel, decompiledCode.size());
+
+					// TODO: Add #defines for StereoParams and IniParams
+
+					ID3DBlob *pErrorMsgs; // FIXME: This can leak
+					ID3DBlob *pCompiledOutput = 0;
+					// Probably unecessary here since this shader is one we freshly decompiled,
+					// but for consistency pass the path here as well so that the standard
+					// include handler can correctly handle includes with paths relative to the
+					// shader itself:
+					wcstombs(apath, val, MAX_PATH);
+					ret = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+						"main", tmpShaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
+					LogInfo("    compile result of fixed HLSL shader: %x\n", ret);
+
+					if (LogFile && pErrorMsgs)
+					{
+						LPVOID errMsg = pErrorMsgs->GetBufferPointer();
+						SIZE_T errSize = pErrorMsgs->GetBufferSize();
+						LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
+						fwrite(errMsg, 1, errSize - 1, LogFile);
+						LogInfo("------------------------------------------- HLSL code -------------------------------------------\n");
+						fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), LogFile);
+						LogInfo("\n---------------------------------------------- END ----------------------------------------------\n");
+
+						// And write the errors to the HLSL file as comments too, as a more convenient spot to see them.
+						fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+						fwrite(errMsg, 1, errSize - 1, fw);
+						fprintf_s(fw, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
+
+						pErrorMsgs->Release();
+					}
+
+					// If requested by .ini, also write the newly re-compiled assembly code to the file.  This gives a direct
+					// comparison between original ASM, and recompiled ASM.
+					if ((G->EXPORT_HLSL >= 3) && pCompiledOutput)
+					{
+						string asmText = BinaryToAsmText(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize());
+						if (asmText.empty())
+						{
+							LogInfo("    disassembly of recompiled shader failed.\n");
+						}
+						else
+						{
+							fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Recompiled ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+							fwrite(asmText.c_str(), 1, asmText.size(), fw);
+							fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
+						}
+					}
+
+					if (pCompiledOutput)
+					{
+						// If the shader has been auto-fixed, return it as the live shader.  
+						// For just caching shaders, we return zero so it won't affect game visuals.
+						if (patched)
+						{
+							pCodeSize = pCompiledOutput->GetBufferSize();
+							pCode = new char[pCodeSize];
+							memcpy(pCode, pCompiledOutput->GetBufferPointer(), pCodeSize);
+						}
+						pCompiledOutput->Release(); pCompiledOutput = 0;
+					}
 				}
 			}
-		LeaveCriticalSection(&G->mCriticalSection);
+
+			if (fw)
+			{
+				// Any HLSL compiled shaders are reloading candidates, if moved to ShaderFixes
+				FILETIME ftWrite;
+				GetFileTime(fw, NULL, NULL, &ftWrite);
+				foundShaderModel = shaderModel;
+				timeStamp = ftWrite;
+
+				fclose(fw);
+			}
+		}
 	}
 
-	return hr;
+	// Zero shader?
+	if (G->marking_mode == MarkingMode::ZERO)
+	{
+		// Disassemble old shader for fixing.
+		string asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength);
+		if (asmText.empty())
+		{
+			LogInfo("    disassembly of original shader failed.\n");
+		}
+		else
+		{
+			// Decompile code.
+			LogInfo("    creating HLSL representation of zero output shader.\n");
+
+			bool patched = false;
+			string shaderModel;
+			bool errorOccurred = false;
+			ParseParameters p;
+			p.bytecode = pShaderBytecode;
+			p.decompiled = asmText.c_str();
+			p.decompiledSize = asmText.size();
+			p.recompileVs = G->FIX_Recompile_VS;
+			p.fixSvPosition = false;
+			p.ZeroOutput = true;
+			const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
+			if (!decompiledCode.size())
+			{
+				LogInfo("    error while decompiling.\n");
+
+				return 0;
+			}
+			if (!errorOccurred)
+			{
+				// Compile replacement.
+				LogInfo("    compiling zero HLSL code with shader model %s, size = %Iu\n", shaderModel.c_str(), decompiledCode.size());
+
+				ID3DBlob *pErrorMsgs; // FIXME: This can leak
+				ID3DBlob *pCompiledOutput = 0;
+				// We don't have a valid value for path at this point in the function, so don't pass one in.
+				// Arguably we should not be using the default include handler here since it requires a valid
+				// path, but I'm not going to touch this without a good reason.
+				HRESULT ret = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
+					"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
+				LogInfo("    compile result of zero HLSL shader: %x\n", ret);
+
+				if (SUCCEEDED(ret) && pCompiledOutput)
+				{
+					SIZE_T codeSize = pCompiledOutput->GetBufferSize();
+					char *code = new char[codeSize];
+					memcpy(code, pCompiledOutput->GetBufferPointer(), codeSize);
+					pCompiledOutput->Release(); pCompiledOutput = 0;
+					if (!wcscmp(shaderType, L"vs"))
+					{
+						ID3D11VertexShader *zeroVertexShader = NULL;
+						HRESULT hr = mOrigDevice1->CreateVertexShader(code, codeSize, 0, &zeroVertexShader);
+						CleanupShaderMaps(zeroVertexShader);
+						if (hr == S_OK)
+							*zeroShader = zeroVertexShader;
+					}
+					else if (!wcscmp(shaderType, L"ps"))
+					{
+						ID3D11PixelShader *zeroPixelShader = NULL;
+						HRESULT hr = mOrigDevice1->CreatePixelShader(code, codeSize, 0, &zeroPixelShader);
+						CleanupShaderMaps(zeroPixelShader);
+						if (hr == S_OK)
+							*zeroShader = zeroPixelShader;
+					}
+					delete [] code;
+				}
+
+				if (LogFile && pErrorMsgs)
+				{
+					LPVOID errMsg = pErrorMsgs->GetBufferPointer();
+					SIZE_T errSize = pErrorMsgs->GetBufferSize();
+					LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
+					fwrite(errMsg, 1, errSize - 1, LogFile);
+					LogInfo("------------------------------------------- HLSL code -------------------------------------------\n");
+					fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), LogFile);
+					LogInfo("\n---------------------------------------------- END ----------------------------------------------\n");
+					pErrorMsgs->Release();
+				}
+			}
+		}
+	}
+
+	return pCode;
 }
 
 bool HackerDevice::NeedOriginalShader(UINT64 hash)
@@ -1405,7 +1315,7 @@ bool HackerDevice::NeedOriginalShader(UINT64 hash)
 	if (G->hunting && (G->marking_mode == MarkingMode::ORIGINAL || G->config_reloadable || G->show_original_enabled))
 		return true;
 
-	i = lookup_shaderoverride(hash);
+	i = G->mShaderOverrideMap.find(hash);
 	if (i == G->mShaderOverrideMap.end())
 		return false;
 	shaderOverride = &i->second;
@@ -1442,10 +1352,10 @@ void CleanupShaderMaps(ID3D11DeviceChild *handle)
 	if (!handle)
 		return;
 
-	EnterCriticalSectionPretty(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 	{
-		ShaderMap::iterator i = lookup_shader_hash(handle);
+		ShaderMap::iterator i = G->mShaders.find(handle);
 		if (i != G->mShaders.end()) {
 			LogInfo("Shader handle %p reused, previous hash was: %016llx\n", handle, i->second);
 			G->mShaders.erase(i);
@@ -1453,7 +1363,7 @@ void CleanupShaderMaps(ID3D11DeviceChild *handle)
 	}
 
 	{
-		ShaderReloadMap::iterator i = lookup_reloaded_shader(handle);
+		ShaderReloadMap::iterator i = G->mReloadedShaders.find(handle);
 		if (i != G->mReloadedShaders.end()) {
 			LogInfo("Shader handle %p reused, found in mReloadedShaders\n", handle);
 			if (i->second.replacement)
@@ -1467,11 +1377,20 @@ void CleanupShaderMaps(ID3D11DeviceChild *handle)
 	}
 
 	{
-		ShaderReplacementMap::iterator i = lookup_original_shader(handle);
+		ShaderReplacementMap::iterator i = G->mOriginalShaders.find(handle);
 		if (i != G->mOriginalShaders.end()) {
 			LogInfo("Shader handle %p reused, releasing previous original shader\n", handle);
 			i->second->Release();
 			G->mOriginalShaders.erase(i);
+		}
+	}
+
+	{
+		ShaderReplacementMap::iterator i = G->mZeroShaders.find(handle);
+		if (i != G->mZeroShaders.end()) {
+			LogInfo("Shader handle %p reused, releasing previous zero shader\n", handle);
+			i->second->Release();
+			G->mZeroShaders.erase(i);
 		}
 	}
 
@@ -1502,7 +1421,7 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType,
 
 	LogInfoW(L"    keeping original shader for filtering: %016llx-%ls\n", hash, shaderType);
 
-	EnterCriticalSectionPretty(&G->mCriticalSection);
+	EnterCriticalSection(&G->mCriticalSection);
 
 		hr = (mOrigDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
 		CleanupShaderMaps(originalShader);
@@ -2080,12 +1999,7 @@ static const DescType* process_texture_override(uint32_t hash,
 		for (i = 0; i < matches.size(); i++) {
 			textureOverride = matches[i];
 
-			if (LogFile) {
-				char buf[256];
-				StrResourceDesc(buf, 256, origDesc);
-				LogInfo("  %S matched resource with hash=%08x %s\n",
-						textureOverride->ini_section.c_str(), hash, buf);
-			}
+			LogInfo("  %S matched resource with hash=%08x\n", textureOverride->ini_section.c_str(), hash);
 
 			if (!check_texture_override_iteration(textureOverride))
 				continue;
@@ -2097,15 +2011,13 @@ static const DescType* process_texture_override(uint32_t hash,
 		}
 	}
 
-	LockResourceCreationMode();
-
 	if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) -1) {
-		Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
+		NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
 		NvAPIOverride();
-		LogInfo("    setting custom surface creation mode %d\n", newMode);
+		LogInfo("  setting custom surface creation mode.\n");
 
-		if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
-			LogInfo("      call failed.\n");
+		if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
+			LogInfo("    call failed.\n");
 	}
 
 	return ret;
@@ -2113,12 +2025,11 @@ static const DescType* process_texture_override(uint32_t hash,
 
 static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMode, StereoHandle mStereoHandle)
 {
-	if (oldMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1) {
-		if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
-			LogInfo("    restore call failed.\n");
-	}
+	if (oldMode == (NVAPI_STEREO_SURFACECREATEMODE) - 1)
+		return;
 
-	UnlockResourceCreationMode();
+	if (NVAPI_OK != NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
+		LogInfo("    restore call failed.\n");
 }
 
 STDMETHODIMP HackerDevice::CreateBuffer(THIS_
@@ -2152,7 +2063,7 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 	restore_old_surface_create_mode(oldMode, mStereoHandle);
 	if (hr == S_OK && ppBuffer && *ppBuffer)
 	{
-		EnterCriticalSectionPretty(&G->mResourcesLock);
+		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppBuffer];
 			new ResourceReleaseTracker(*ppBuffer);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_BUFFER;
@@ -2165,8 +2076,6 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 			// if (pDesc)
 			//	memcpy(&handle_info->descBuf, pDesc, sizeof(D3D11_BUFFER_DESC));
 
-		LeaveCriticalSection(&G->mResourcesLock);
-		EnterCriticalSectionPretty(&G->mCriticalSection);
 			// For stat collection and hash contamination tracking:
 			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
@@ -2208,7 +2117,7 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 
 	if (hr == S_OK && ppTexture1D && *ppTexture1D)
 	{
-		EnterCriticalSectionPretty(&G->mResourcesLock);
+		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture1D];
 			new ResourceReleaseTracker(*ppTexture1D);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE1D;
@@ -2219,8 +2128,6 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
 			// TODO: For hash tracking if we ever need it for Texture1Ds:
 			// if (pDesc)
 			// 	memcpy(&handle_info->desc1D, pDesc, sizeof(D3D11_TEXTURE1D_DESC));
-		LeaveCriticalSection(&G->mResourcesLock);
-		EnterCriticalSectionPretty(&G->mCriticalSection);
 
 			// For stat collection and hash contamination tracking:
 			if (G->hunting && pDesc) {
@@ -2323,7 +2230,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 	// Register texture. Every one seen.
 	if (hr == S_OK && ppTexture2D)
 	{
-		EnterCriticalSectionPretty(&G->mResourcesLock);
+		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture2D];
 			new ResourceReleaseTracker(*ppTexture2D);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
@@ -2332,8 +2239,6 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
 			handle_info->data_hash = data_hash;
 			if (pDesc)
 				memcpy(&handle_info->desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
-		LeaveCriticalSection(&G->mResourcesLock);
-		EnterCriticalSectionPretty(&G->mCriticalSection);
 			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
 				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
@@ -2393,7 +2298,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 	// Register texture.
 	if (hr == S_OK && ppTexture3D)
 	{
-		EnterCriticalSectionPretty(&G->mResourcesLock);
+		EnterCriticalSection(&G->mCriticalSection);
 			ResourceHandleInfo *handle_info = &G->mResources[*ppTexture3D];
 			new ResourceReleaseTracker(*ppTexture3D);
 			handle_info->type = D3D11_RESOURCE_DIMENSION_TEXTURE3D;
@@ -2402,8 +2307,6 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
 			handle_info->data_hash = data_hash;
 			if (pDesc)
 				memcpy(&handle_info->desc3D, pDesc, sizeof(D3D11_TEXTURE3D_DESC));
-		LeaveCriticalSection(&G->mResourcesLock);
-		EnterCriticalSectionPretty(&G->mCriticalSection);
 			if (G->hunting && pDesc) {
 				G->mResourceInfo[hash] = *pDesc;
 				G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
@@ -2431,15 +2334,15 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 	// Check for depth buffer view.
 	if (hr == S_OK && G->ZBufferHashToInject && ppSRView)
 	{
-		EnterCriticalSectionPretty(&G->mResourcesLock);
-		unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator i = lookup_resource_handle_info(pResource);
+		EnterCriticalSection(&G->mCriticalSection);
+		unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator i = G->mResources.find(pResource);
 		if (i != G->mResources.end() && i->second.hash == G->ZBufferHashToInject)
 		{
 			LogInfo("  resource view of z buffer found: handle = %p, hash = %08lx\n", *ppSRView, i->second.hash);
 
 			mZBufferResourceView = *ppSRView;
 		}
-		LeaveCriticalSection(&G->mResourcesLock);
+		LeaveCriticalSection(&G->mCriticalSection);
 	}
 
 	LogDebug("  returns result = %x\n", hr);
@@ -2558,31 +2461,150 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 	__out_opt  ID3D11Shader **ppShader,
 	wchar_t *shaderType)
 {
-	HRESULT hr;
+	HRESULT hr = E_FAIL;
 	UINT64 hash;
+	string shaderModel;
+	SIZE_T replaceShaderSize;
+	FILETIME ftWrite;
+	ID3D11Shader *zeroShader = 0;
+	wstring headerLine = L"";
+	ShaderOverrideMap::iterator override;
+	const char *overrideShaderModel = NULL;
 
-	if (!ppShader || !pShaderBytecode) {
-		// Let DX worry about the error code
-		return (mOrigDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
+	if (pShaderBytecode && ppShader)
+	{
+		// Calculate hash
+		hash = hash_shader(pShaderBytecode, BytecodeLength);
+
+		// Check if the user has overridden the shader model:
+		ShaderOverrideMap::iterator override = G->mShaderOverrideMap.find(hash);
+		if (override != G->mShaderOverrideMap.end()) {
+			if (override->second.model[0])
+				overrideShaderModel = override->second.model;
+		}
 	}
 
-	// Calculate hash
-	hash = hash_shader(pShaderBytecode, BytecodeLength);
+	// This code block handles shaders replaced from ShaderFixes at load
+	// time with or without hunting (FIXME: This should be in a separate
+	// function to make the function clearer and this comment unecessary).
+	//
+	// When hunting is disabled we don't save off the original shader
+	// unless we determine that we need it for depth or partner filtering.
+	// These shaders are not candidates for the auto patch engine.
+	//
+	// When hunting is enabled we always save off the original shader
+	// because the answer to "do we need the original?" is "...maybe?"
+	if (hr != S_OK && ppShader && pShaderBytecode)
+	{
+		char *replaceShader = ReplaceShader(hash, shaderType, pShaderBytecode, BytecodeLength, replaceShaderSize,
+			shaderModel, ftWrite, (void **)&zeroShader, headerLine, overrideShaderModel);
+		if (replaceShader)
+		{
+			// Create the new shader.
+			LogDebug("    HackerDevice::Create%lsShader.  Device: %p\n", shaderType, this);
 
-	hr = ReplaceShaderFromShaderFixes<ID3D11Shader, OrigCreateShader>
-		(hash, pShaderBytecode, BytecodeLength, pClassLinkage,
-		 ppShader, shaderType);
+			*ppShader = NULL; // Appease the static analysis gods
+			hr = (mOrigDevice1->*OrigCreateShader)(replaceShader, replaceShaderSize, pClassLinkage, ppShader);
+			CleanupShaderMaps(*ppShader);
+			if (SUCCEEDED(hr))
+			{
+				LogInfo("    shader successfully replaced.\n");
 
-	if (hr != S_OK) {
-		hr = ProcessShaderNotFoundInShaderFixes<ID3D11Shader, OrigCreateShader>
-			(hash, pShaderBytecode, BytecodeLength, pClassLinkage,
-			 ppShader, shaderType);
+				if (G->hunting)
+				{
+					// Hunting mode:  keep byteCode around for possible replacement or marking
+					ID3DBlob* blob;
+					hr = D3DCreateBlob(BytecodeLength, &blob);
+					if (SUCCEEDED(hr)) {
+						// We save the *original* shader bytecode, not the replaced shader,
+						// because we will use this in CopyToFixes and ShaderRegex in the
+						// event that the shader is deleted.
+						memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
+						EnterCriticalSection(&G->mCriticalSection);
+						RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, headerLine, false);
+						LeaveCriticalSection(&G->mCriticalSection);
+					}
+				}
+				// FIXME: We have some very similar data structures that we should merge together:
+				// mReloadedShaders and mOriginalShader.
+				KeepOriginalShader<ID3D11Shader, OrigCreateShader>
+					(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
+			}
+			else
+			{
+				LogInfo("    error replacing shader.\n");
+			}
+			delete replaceShader; replaceShader = 0;
+		}
 	}
 
-	if (hr == S_OK) {
-		EnterCriticalSectionPretty(&G->mCriticalSection);
+	// This code block handles shaders that were *NOT* replaced from
+	// ShaderFixes (FIXME: Put it in a separate function with a descriptive
+	// name):
+	//
+	// When hunting is disabled we don't save off the original shader
+	// unless we determine that we need it for for deferred analysis in the
+	// auto patch engine. These are not candidates for depth or partner
+	// filtering since that would require a ShaderOverride and a manually
+	// patched shader (ok, technically we could with an auto patched
+	// shader, but those are deprecated features - don't encourage them!)
+	//
+	// When hunting is enabled we always save off the original shader
+	// because the answer to "do we need the original?" is "...maybe?"
+	if (hr != S_OK)
+	{
+		if (ppShader)
+			*ppShader = NULL; // Appease the static analysis gods
+		hr = (mOrigDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
+		if (SUCCEEDED(hr) && ppShader)
+			CleanupShaderMaps(*ppShader);
+
+		// When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
+		// have a copy for every shader seen. If we are performing any sort of deferred shader replacement, such as pipline
+		// state analysis we always need to keep a copy of the original bytecode for later analysis. For now the shader
+		// regex engine counts as deferred, though that may change with optimisations in the future.
+		if (SUCCEEDED(hr) && (G->hunting || !shader_regex_groups.empty()))
+		{
+			EnterCriticalSection(&G->mCriticalSection);
+				ID3DBlob* blob;
+				hr = D3DCreateBlob(BytecodeLength, &blob);
+				if (SUCCEEDED(hr)) {
+					memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
+					RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, ftWrite, headerLine, true);
+
+					// Also add the original shader to the original shaders
+					// map so that if it is later replaced marking_mode =
+					// original and depth buffer filtering will work:
+					if (G->mOriginalShaders.count(*ppShader) == 0) {
+						// Since we are both returning *and* storing this we need to
+						// bump the refcount to 2, otherwise it could get freed and we
+						// may get a crash later in RevertMissingShaders, especially
+						// easy to expose with the auto shader patching engine
+						// and reverting shaders:
+						(*ppShader)->AddRef();
+						G->mOriginalShaders[*ppShader] = *ppShader;
+					}
+				}
+			LeaveCriticalSection(&G->mCriticalSection);
+		}
+	}
+
+	if (hr == S_OK && ppShader && pShaderBytecode)
+	{
+		EnterCriticalSection(&G->mCriticalSection);
 			G->mShaders[*ppShader] = hash;
 			LogDebugW(L"    %ls: handle = %p, hash = %016I64x\n", shaderType, *ppShader, hash);
+
+			if ((G->marking_mode == MarkingMode::ZERO) && zeroShader)
+			{
+				G->mZeroShaders[*ppShader] = zeroShader;
+			}
+
+			CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
+			if (i != G->mCompiledShaderMap.end())
+			{
+				LogInfo("  shader was compiled from source code %s\n", i->second.c_str());
+			}
 		LeaveCriticalSection(&G->mCriticalSection);
 	}
 
@@ -2769,7 +2791,6 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
 
 	if (ppDeferredContext)
 	{
-		analyse_iunknown(*ppDeferredContext);
 		ID3D11DeviceContext1 *origContext1;
 		HRESULT res = (*ppDeferredContext)->QueryInterface(IID_PPV_ARGS(&origContext1));
 		if (FAILED(res))
@@ -2842,8 +2863,6 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 	{
 		LogInfo("*** HackerContext missing at HackerDevice::GetImmediateContext\n");
 
-		analyse_iunknown(*ppImmediateContext);
-
 		ID3D11DeviceContext1 *origContext1;
 		HRESULT res = (*ppImmediateContext)->QueryInterface(IID_PPV_ARGS(&origContext1));
 		if (FAILED(res))
@@ -2851,8 +2870,7 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
 		mHackerContext = HackerContextFactory(mRealOrigDevice1, origContext1);
 		mHackerContext->SetHackerDevice(this);
 		mHackerContext->Bind3DMigotoResources();
-		if (!G->constants_run)
-			mHackerContext->InitIniParams();
+		mHackerContext->InitIniParams();
 		if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
 			mHackerContext->HookContext();
 		LogInfo("  HackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);
@@ -2907,8 +2925,6 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext1(
 	{
 		LogInfo("*** HackerContext1 missing at HackerDevice::GetImmediateContext1\n");
 
-		analyse_iunknown(*ppImmediateContext);
-
 		mHackerContext = HackerContextFactory(mOrigDevice1, *ppImmediateContext);
 		mHackerContext->SetHackerDevice(this);
 		LogInfo("  mHackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);
@@ -2944,7 +2960,6 @@ STDMETHODIMP HackerDevice::CreateDeferredContext1(
 
 	if (ppDeferredContext)
 	{
-		analyse_iunknown(*ppDeferredContext);
 		HackerContext *hackerContext = HackerContextFactory(mRealOrigDevice1, *ppDeferredContext);
 		hackerContext->SetHackerDevice(this);
 		hackerContext->Bind3DMigotoResources();

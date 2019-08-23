@@ -1,26 +1,8 @@
 // Compile with fxc /T cs_5_0 /Od /Fo compute.bin
 // Disable optimisations to make sure all 6 sync instructions are used
 
-struct buf {
-	float foo;
-	float bar;
-};
-
 RWByteAddressBuffer rw_byte_buf : register(u0);
-globallycoherent RWByteAddressBuffer rw_byte_buf_glc;
-globallycoherent RWStructuredBuffer<struct buf> rw_structured_glc;
-globallycoherent RWBuffer<float> rw_buf_glc;
-globallycoherent RWTexture1D<float> rw_tex1d_glc;
-globallycoherent RWTexture1DArray<float> rw_tex1d_array_glc;
-globallycoherent RWTexture2D<float> rw_tex2d_glc;
-globallycoherent RWTexture2DArray<float> rw_tex2d_array_glc;
-globallycoherent RWTexture3D<float> rw_tex3d_glc;
-
 groupshared uint gt = 0;
-groupshared struct {
-	float foo;
-	uint bar;
-} gstruct[3];
 
   [numthreads(4, 2, 1)]
 void main()
@@ -106,15 +88,6 @@ void main()
 	rw_byte_buf.Store(5, 8);
 
 
-	// Access globally coherent UAVs:
-	tally += rw_byte_buf_glc.Load(0);
-	tally += rw_structured_glc[0].foo;
-	tally += rw_buf_glc[0];
-	tally += rw_tex1d_glc[0];
-	tally += rw_tex1d_array_glc[uint2(0, 0)];
-	tally += rw_tex2d_glc[uint2(0, 0)];
-	tally += rw_tex2d_array_glc[uint3(0, 0, 0)];
-	tally += rw_tex3d_glc[uint3(0, 0, 0)];
 
 
 	// Misc functions
@@ -178,7 +151,7 @@ void main()
 	// TODO: sync_ugroup_g*
 	// TODO: sync_ugroup_g_t*
 
-	tally += gstruct[2].bar;
+
 
 	// Use the tally so the compiler doesn't optimise anything out:
 	rw_byte_buf.InterlockedAdd(1, tally);

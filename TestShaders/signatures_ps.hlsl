@@ -1,5 +1,5 @@
 // Set to 0, 1 or 2 to test different depth semantics:
-//#define TEST_DEPTH 0
+#define TEST_DEPTH 0
 
 void main(
 	nointerpolation float texcoord0 : TEXCOORD0,

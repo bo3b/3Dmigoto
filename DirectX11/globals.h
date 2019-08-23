@@ -12,14 +12,10 @@
 #include "DLLMainHook.h"
 #include "DirectXMath.h"
 #include "util.h"
-#include "DecompileHLSL.h"
 
 #include "ResourceHash.h"
 #include "CommandList.h"
-#include "profiling.h"
-#include "lock.h"
 
-extern HINSTANCE migoto_handle;
 
 // Resolve circular include dependency between Globals.h ->
 // CommandList.h -> HackerContext.h -> Globals.h
@@ -38,6 +34,7 @@ enum class MarkingMode {
 	ORIGINAL,
 	PINK,
 	MONO,
+	ZERO,
 
 	INVALID, // Must be last - used for next_marking_mode
 };
@@ -45,35 +42,9 @@ static EnumName_t<const wchar_t *, MarkingMode> MarkingModeNames[] = {
 	{L"skip", MarkingMode::SKIP},
 	{L"mono", MarkingMode::MONO},
 	{L"original", MarkingMode::ORIGINAL},
+	{L"zero", MarkingMode::ZERO},
 	{L"pink", MarkingMode::PINK},
 	{NULL, MarkingMode::INVALID} // End of list marker
-};
-
-enum class MarkingAction {
-	INVALID    = 0,
-	CLIPBOARD  = 0x0000001,
-	HLSL       = 0x0000002,
-	ASM        = 0x0000004,
-	REGEX      = 0x0000008,
-	DUMP_MASK  = 0x000000e, // HLSL, Assembly and/or ShaderRegex is selected
-	MONO_SS    = 0x0000010,
-	STEREO_SS  = 0x0000020,
-	SS_IF_PINK = 0x0000040,
-
-	DEFAULT    = 0x0000003,
-};
-SENSIBLE_ENUM(MarkingAction);
-static EnumName_t<const wchar_t *, MarkingAction> MarkingActionNames[] = {
-	{L"hlsl", MarkingAction::HLSL},
-	{L"asm", MarkingAction::ASM},
-	{L"assembly", MarkingAction::ASM},
-	{L"regex", MarkingAction::REGEX},
-	{L"ShaderRegex", MarkingAction::REGEX},
-	{L"clipboard", MarkingAction::CLIPBOARD},
-	{L"mono_snapshot", MarkingAction::MONO_SS},
-	{L"stereo_snapshot", MarkingAction::STEREO_SS},
-	{L"snapshot_if_pink", MarkingAction::SS_IF_PINK},
-	{NULL, MarkingAction::INVALID} // End of list marker
 };
 
 enum class ShaderHashType {
@@ -88,6 +59,10 @@ static EnumName_t<const wchar_t *, ShaderHashType> ShaderHashNames[] = {
 	{L"bytecode", ShaderHashType::BYTECODE},
 	{NULL, ShaderHashType::INVALID} // End of list marker
 };
+
+
+// Source compiled shaders.
+typedef std::unordered_map<UINT64, std::string> CompiledShaderMap;
 
 // Strategy: This OriginalShaderInfo record and associated map is to allow us to keep track of every
 //	pixelshader and vertexshader that are compiled from hlsl text from the ShaderFixes
@@ -261,7 +236,6 @@ struct ShaderOverride {
 	UINT64 partner_hash;
 	char model[20]; // More than long enough for even ps_4_0_level_9_0
 	int allow_duplicate_hashes;
-	float filter_index, backup_filter_index;
 
 	CommandList command_list;
 	CommandList post_command_list;
@@ -269,9 +243,7 @@ struct ShaderOverride {
 	ShaderOverride() :
 		depth_filter(DepthBufferFilter::NONE),
 		partner_hash(0),
-		allow_duplicate_hashes(1),
-		filter_index(FLT_MAX),
-		backup_filter_index(FLT_MAX)
+		allow_duplicate_hashes(1)
 	{
 		model[0] = '\0';
 	}
@@ -290,7 +262,6 @@ struct TextureOverride {
 	bool expand_region_copy;
 	bool deny_cpu_read;
 	float filter_index;
-	float backup_filter_index;
 
 	bool has_draw_context_match;
 	bool has_match_priority;
@@ -320,8 +291,6 @@ struct TextureOverride {
 		priority(0)
 	{}
 };
-
-typedef std::unordered_map<ID3D11Resource *, ResourceHandleInfo> ResourceMap;
 
 // The TextureOverrideList will be sorted because we want multiple
 // [TextureOverrides] that share the same hash (differentiated by draw context
@@ -399,7 +368,6 @@ struct Globals
 {
 	bool gInitialized;
 	bool gReloadConfigPending;
-	bool gWipeUserConfig;
 	bool gLogInput;
 	bool dump_all_profiles;
 	DWORD ticks_at_launch;
@@ -408,9 +376,6 @@ struct Globals
 	wchar_t SHADER_CACHE_PATH[MAX_PATH];
 	wchar_t CHAIN_DLL_PATH[MAX_PATH];
 	int load_library_redirect;
-
-	std::wstring user_config;
-	int user_config_dirty;
 
 	EnableHooks enable_hooks;
 	
@@ -431,10 +396,9 @@ struct Globals
 	bool upscaling_hooks_armed;
 	bool upscaling_command_list_using_explicit_bb_flip;
 	bool bb_is_upscaling_bb;
-	bool implicit_post_checktextureoverride_used;
 
 	MarkingMode marking_mode;
-	MarkingAction marking_actions;
+	int mark_snapshot;
 	int gForceStereo;
 	bool gCreateStereoProfile;
 	int gSurfaceCreateMode;
@@ -447,34 +411,42 @@ struct Globals
 	bool show_original_enabled;
 	time_t huntTime;
 	bool verbose_overlay;
-	bool suppress_overlay;
 
 	bool deferred_contexts_enabled;
 
-	bool frame_analysis_registered;
 	bool analyse_frame;
 	unsigned analyse_frame_no;
 	wchar_t ANALYSIS_PATH[MAX_PATH];
 	FrameAnalysisOptions def_analyse_options, cur_analyse_options;
 	std::unordered_set<void*> frame_analysis_seen_rts;
+	bool profiling;
+	unsigned profiling_start_frame_no;
+	LARGE_INTEGER profiling_start_time;
 
 	ShaderHashType shader_hash_type;
 	int texture_hash_version;
 	int EXPORT_HLSL;		// 0=off, 1=HLSL only, 2=HLSL+OriginalASM, 3= HLSL+OriginalASM+recompiledASM
 	bool EXPORT_SHADERS, EXPORT_FIXED, EXPORT_BINARY, CACHE_SHADERS, SCISSOR_DISABLE;
-	int track_texture_updates;
+	bool track_texture_updates;
 	bool assemble_signature_comments;
-	bool disassemble_undecipherable_custom_data;
-	bool patch_cb_offsets;
-	int recursive_include;
+	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
+	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
+	std::vector<std::string> ZRepair_Dependencies1, ZRepair_Dependencies2;
+	std::string ZRepair_ZPosCalc1, ZRepair_ZPosCalc2;
+	std::string ZRepair_PositionTexture, ZRepair_WorldPosCalc;
+	std::vector<std::string> InvTransforms;
+	std::string BackProject_Vector1, BackProject_Vector2;
+	std::string ObjectPos_ID1, ObjectPos_ID2, ObjectPos_MUL1, ObjectPos_MUL2;
+	std::string MatrixPos_ID1, MatrixPos_MUL1;
 	uint32_t ZBufferHashToInject;
-	DecompilerSettings decompiler_settings;
+	bool FIX_SV_Position;
+	bool FIX_Light_Position;
+	bool FIX_Recompile_VS;
 	bool DumpUsage;
 	bool ENABLE_TUNE;
 	float gTuneValue[4], gTuneStep;
 
-	std::vector<DirectX::XMFLOAT4> iniParams;
-	int iniParamsReserved;
+	DirectX::XMFLOAT4 iniParams[INI_PARAMS_SIZE];
 	int StereoParamsReg;
 	int IniParamsReg;
 
@@ -490,13 +462,10 @@ struct Globals
 	CommandList clear_uav_uint_command_list;
 	CommandList post_clear_uav_uint_command_list;
 	CommandList constants_command_list;
-	CommandList post_constants_command_list;
-	bool constants_run;
 	unsigned frame_no;
 	HWND hWnd; // To translate mouse coordinates to the window
 	bool hide_cursor;
 	bool cursor_upscaling_bypass;
-	bool check_foreground_window;
 
 	CRITICAL_SECTION mCriticalSection;
 
@@ -506,28 +475,23 @@ struct Globals
 	std::set<UINT64> mSelectedIndexBuffer_VertexShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
 	std::set<UINT64> mSelectedIndexBuffer_PixelShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
 
-	std::set<uint32_t> mVisitedVertexBuffers;				// std::set is sorted for consistent order while hunting
-	uint32_t mSelectedVertexBuffer;
-	int mSelectedVertexBufferPos;
-	std::set<UINT64> mSelectedVertexBuffer_VertexShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
-	std::set<UINT64> mSelectedVertexBuffer_PixelShader;		// std::set so that shaders used with an index buffer will be sorted in log when marked
+	CompiledShaderMap mCompiledShaderMap;
 
 	std::set<UINT64> mVisitedVertexShaders;					// Only shaders seen since last hunting timeout; std::set for consistent order while hunting
 	UINT64 mSelectedVertexShader;				 			// Hash.  -1 now for unselected state. The shader selected using Input object.
 	int mSelectedVertexShaderPos;							// -1 for unselected state.
 	std::set<uint32_t> mSelectedVertexShader_IndexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
-	std::set<uint32_t> mSelectedVertexShader_VertexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
 
 	std::set<UINT64> mVisitedPixelShaders;					// std::set is sorted for consistent order while hunting
 	UINT64 mSelectedPixelShader;							// Hash.  -1 now for unselected state.
 	int mSelectedPixelShaderPos;							// -1 for unselected state.
 	std::set<uint32_t> mSelectedPixelShader_IndexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
-	std::set<uint32_t> mSelectedPixelShader_VertexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
 	ID3D11PixelShader* mPinkingShader;						// Special pixels shader to mark a selection with hot pink.
 
 	ShaderMap mShaders;										// All shaders ever registered with CreateXXXShader
 	ShaderReloadMap mReloadedShaders;						// Shaders that were reloaded live from ShaderFixes
 	ShaderReplacementMap mOriginalShaders;					// When MarkingMode=Original, switch to original. Also used for show_original and shader reversion
+	ShaderReplacementMap mZeroShaders;						// When MarkingMode=zero.
 
 	std::set<UINT64> mVisitedComputeShaders;
 	UINT64 mSelectedComputeShader;
@@ -550,33 +514,7 @@ struct Globals
 	FuzzyTextureOverrides mFuzzyTextureOverrides;
 
 	// Statistics
-	///////////////////////////////////////////////////////////////////////
-	//                                                                   //
-	//                  <==============================>                 //
-	//                  < AB-BA TYPE DEADLOCK WARNING! >                 //
-	//                  <==============================>                 //
-	//                                                                   //
-	// mResources is now protected by its own lock.                      //
-	//                                                                   //
-	// Never call into DirectX while holding g->mResourcesLock. DirectX  //
-	// can take a lock of it's own, introducing a locking dependency. At //
-	// other times DirectX can call into our resource release tracker    //
-	// with their lock held, and we take the G->mResourcesLock, which    //
-	// is another locking order dependency in the other direction,       //
-	// leading to an AB-BA type deadlock.                                //
-	//                                                                   //
-	// If you ever need to obtain both mCriticalSection and              //
-	// mResourcesLock simultaneously, be sure to take mCriticalSection   //
-	// first so as not to introduce a three way AB-BC-CA deadlock.       //
-	//                                                                   //
-	// It's recommended to enable debug_locks=1 when working on any code //
-	// dealing with these locks to detect ordering violations that have  //
-	// the potential to lead to a deadlock if the timing is unfortunate. //
-	//                                                                   //
-	///////////////////////////////////////////////////////////////////////
-	CRITICAL_SECTION mResourcesLock;
-	ResourceMap mResources;
-
+	std::unordered_map<ID3D11Resource *, ResourceHandleInfo> mResources;
 	std::unordered_map<ID3D11Asynchronous*, AsyncQueryType> mQueryTypes;
 
 	// These five items work with the *original* resource hash:
@@ -612,8 +550,6 @@ struct Globals
 		mSelectedVertexShaderPos(-1),
 		mSelectedIndexBuffer(-1),
 		mSelectedIndexBufferPos(-1),
-		mSelectedVertexBuffer(-1),
-		mSelectedVertexBufferPos(-1),
 		mSelectedComputeShader(-1),
 		mSelectedComputeShaderPos(-1),
 		mSelectedGeometryShader(-1),
@@ -630,15 +566,15 @@ struct Globals
 		show_original_enabled(false),
 		huntTime(0),
 		verbose_overlay(false),
-		suppress_overlay(false),
 
 		deferred_contexts_enabled(true),
 
-		frame_analysis_registered(false),
 		analyse_frame(false),
 		analyse_frame_no(0),
 		def_analyse_options(FrameAnalysisOptions::INVALID),
 		cur_analyse_options(FrameAnalysisOptions::INVALID),
+		profiling(false),
+		profiling_start_frame_no(0),
 
 		shader_hash_type(ShaderHashType::FNV),
 		texture_hash_version(0),
@@ -647,18 +583,20 @@ struct Globals
 		EXPORT_FIXED(false),
 		EXPORT_BINARY(false),
 		CACHE_SHADERS(false),
+		FIX_SV_Position(false),
+		FIX_Light_Position(false),
+		FIX_Recompile_VS(false),
 		DumpUsage(false),
 		ENABLE_TUNE(false),
 		gTuneStep(0.001f),
 
-		iniParamsReserved(0),
+		StereoParamsReg(125),
+		IniParamsReg(120),
 
-		constants_run(false),
 		frame_no(0),
 		hWnd(NULL),
 		hide_cursor(false),
 		cursor_upscaling_bypass(true),
-		check_foreground_window(false),
 
 		GAME_INTERNAL_WIDTH(1), // it gonna be used by mouse pos hook in case of softwaremouse is on and it can be called before
 		GAME_INTERNAL_HEIGHT(1),//  the swap chain is created and the proper data set to avoid errors in the hooked winapi functions
@@ -670,10 +608,9 @@ struct Globals
 		upscaling_hooks_armed(true),
 		upscaling_command_list_using_explicit_bb_flip(false),
 		bb_is_upscaling_bb(false),
-		implicit_post_checktextureoverride_used(false),
 
 		marking_mode(MarkingMode::INVALID),
-		marking_actions(MarkingAction::INVALID),
+		mark_snapshot(2),
 		gForceStereo(0),
 		gCreateStereoProfile(false),
 		gSurfaceCreateMode(-1),
@@ -689,12 +626,8 @@ struct Globals
 		enable_platform_update(false),
 		gInitialized(false),
 		gReloadConfigPending(false),
-		gWipeUserConfig(false),
-		user_config_dirty(0),
 		gLogInput(false),
-		dump_all_profiles(false),
-
-		decompiler_settings({0})
+		dump_all_profiles(false)
 
 	{
 		int i;
@@ -710,6 +643,8 @@ struct Globals
 
 		for (i = 0; i < 11; i++)
 			FILTER_REFRESH[i] = 0;
+
+		memset(iniParams, 0, sizeof(iniParams));
 
 		ticks_at_launch = GetTickCount();
 	}
@@ -744,8 +679,6 @@ struct TLS
 	// as the unhookable UnhookableCreateDevice).
 	bool hooking_quirk_protection;
 
-	LockStack locks_held;
-
 	TLS() :
 		hooking_quirk_protection(false)
 	{}
@@ -766,33 +699,3 @@ static struct TLS* get_tls()
 }
 
 extern Globals *G;
-
-static inline ShaderMap::iterator lookup_shader_hash(ID3D11DeviceChild *shader)
-{
-	return Profiling::lookup_map(G->mShaders, shader, &Profiling::shader_hash_lookup_overhead);
-}
-
-static inline ShaderReloadMap::iterator lookup_reloaded_shader(ID3D11DeviceChild *shader)
-{
-	return Profiling::lookup_map(G->mReloadedShaders, shader, &Profiling::shader_reload_lookup_overhead);
-}
-
-static inline ShaderReplacementMap::iterator lookup_original_shader(ID3D11DeviceChild *shader)
-{
-	return Profiling::lookup_map(G->mOriginalShaders, shader, &Profiling::shader_original_lookup_overhead);
-}
-
-static inline ShaderOverrideMap::iterator lookup_shaderoverride(UINT64 hash)
-{
-	return Profiling::lookup_map(G->mShaderOverrideMap, hash, &Profiling::shaderoverride_lookup_overhead);
-}
-
-static inline ResourceMap::iterator lookup_resource_handle_info(ID3D11Resource *resource)
-{
-	return Profiling::lookup_map(G->mResources, resource, &Profiling::texture_handle_info_lookup_overhead);
-}
-
-static inline TextureOverrideMap::iterator lookup_textureoverride(uint32_t hash)
-{
-	return Profiling::lookup_map(G->mTextureOverrideMap, hash, &Profiling::textureoverride_lookup_overhead);
-}

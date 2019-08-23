@@ -7,7 +7,6 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <strsafe.h>
-#include <algorithm>
 
 PresetOverrideMap presetOverrides;
 
@@ -16,9 +15,21 @@ OverrideGlobalSave OverrideSave;
 
 Override::Override()
 {
+	int i;
+
 	// It's important for us to know if any are actively in use or not, so setting them
 	// to FloatMax by default allows us to know when they are unused or invalid.
 	// We are using FloatMax now instead of infinity, to avoid compiler warnings.
+	for (i = 0; i < INI_PARAMS_SIZE; i++) {
+		mOverrideParams[i].x = FLT_MAX;
+		mOverrideParams[i].y = FLT_MAX;
+		mOverrideParams[i].z = FLT_MAX;
+		mOverrideParams[i].w = FLT_MAX;
+		mSavedParams[i].x = FLT_MAX;
+		mSavedParams[i].y = FLT_MAX;
+		mSavedParams[i].z = FLT_MAX;
+		mSavedParams[i].w = FLT_MAX;
+	}
 	mOverrideSeparation = FLT_MAX;
 	mOverrideConvergence = FLT_MAX;
 
@@ -26,47 +37,32 @@ Override::Override()
 	mUserConvergence = FLT_MAX;
 
 	is_conditional = false;
+	condition_param_idx = 0;
+	condition_param_component = NULL;
 
 	active = false;
 }
 
 void Override::ParseIniSection(LPCWSTR section)
 {
-	IniSectionVector *section_vec = NULL;
-	IniSectionVector::iterator entry;
-	CommandListVariable *var = NULL;
-	float DirectX::XMFLOAT4::*param_component;
-	int param_idx;
-	float val;
-	wchar_t buf[MAX_PATH];
-	wstring ini_namespace;
-
-	get_section_namespace(section, &ini_namespace);
+	wchar_t buf[MAX_PATH], param_name[8];
+	int i;
 
 	mOverrideSeparation = GetIniFloat(section, L"separation", FLT_MAX, NULL);
 	mOverrideConvergence = GetIniFloat(section, L"convergence", FLT_MAX, NULL);
 
-	GetIniSection(&section_vec, section);
-	for (entry = section_vec->begin(); entry < section_vec->end(); entry++) {
-		if (ParseIniParamName(entry->first.c_str(), &param_idx, &param_component)) {
-			val = GetIniFloat(section, entry->first.c_str(), FLT_MAX, NULL);
-			if (val != FLT_MAX) {
-				// Reserve space in IniParams for this variable:
-				G->iniParamsReserved = max(G->iniParamsReserved, param_idx + 1);
+	for (i = 0; i < INI_PARAMS_SIZE; i++) {
+		StringCchPrintf(param_name, 8, L"x%.0i", i);
+		mOverrideParams[i].x = GetIniFloat(section, param_name, FLT_MAX, NULL);
 
-				mOverrideParams[OverrideParam(param_idx, param_component)] = val;
-			}
-		} else if (entry->first.c_str()[0] == L'$') {
-			if (!parse_command_list_var_name(entry->first.c_str(), &entry->ini_namespace, &var)) {
-				LogOverlay(LOG_WARNING, "WARNING: Undeclared variable %S\n", entry->first.c_str());
-				continue;
-			}
+		StringCchPrintf(param_name, 8, L"y%.0i", i);
+		mOverrideParams[i].y = GetIniFloat(section, param_name, FLT_MAX, NULL);
 
-			val = GetIniFloat(section, entry->first.c_str(), FLT_MAX, NULL);
-			if (val != FLT_MAX) {
-				mOverrideVars[var] = val;
-			}
-		}
+		StringCchPrintf(param_name, 8, L"z%.0i", i);
+		mOverrideParams[i].z = GetIniFloat(section, param_name, FLT_MAX, NULL);
+
+		StringCchPrintf(param_name, 8, L"w%.0i", i);
+		mOverrideParams[i].w = GetIniFloat(section, param_name, FLT_MAX, NULL);
 	}
 
 	transition = GetIniInt(section, L"transition", 0, NULL);
@@ -76,12 +72,15 @@ void Override::ParseIniSection(LPCWSTR section)
 	release_transition_type = GetIniEnumClass(section, L"release_transition_type", TransitionType::LINEAR, NULL, TransitionTypeNames);
 
 	if (GetIniStringAndLog(section, L"condition", 0, buf, MAX_PATH)) {
-		wstring sbuf(buf);
-		// Expressions are case insensitive:
-		std::transform(sbuf.begin(), sbuf.end(), sbuf.begin(), ::towlower);
+		// For now these conditions are just an IniParam being
+		// non-zero. In the future we could implement more complicated
+		// conditionals, perhaps even all the way up to a full logic
+		// expression parser... but for now that's overkill, and
+		// potentially something that might prove more useful to
+		// implement in the command list along with flow control.
 
-		if (!condition.parse(&sbuf, &ini_namespace, NULL)) {
-			LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%S\"\n", buf);
+		if (!ParseIniParamName(buf, &condition_param_idx, &condition_param_component)) {
+			LogOverlayW(LOG_WARNING, L"WARNING: Invalid condition=\"%s\"\n", buf);
 		} else {
 			is_conditional = true;
 		}
@@ -97,6 +96,8 @@ void Override::ParseIniSection(LPCWSTR section)
 	// to in the future, provided we can deal with the other problems.
 	if (GetIniStringAndLog(section, L"run", NULL, buf, MAX_PATH)) {
 		wstring sbuf(buf);
+		wstring ini_namespace;
+		get_section_namespace(section, &ini_namespace);
 
 		if (!ParseRunExplicitCommandList(section, L"run", &sbuf, NULL, &activate_command_list, &deactivate_command_list, &ini_namespace))
 			LogOverlay(LOG_WARNING, "WARNING: Invalid run=\"%S\"\n", sbuf.c_str());
@@ -105,51 +106,52 @@ void Override::ParseIniSection(LPCWSTR section)
 
 struct KeyOverrideCycleParam
 {
-	std::string cur;
-	std::string buf;
-	const char *ptr;
+	wchar_t *cur;
+	wchar_t buf[MAX_PATH];
+	wchar_t *ptr;
+	bool done;
 
 	KeyOverrideCycleParam() :
-		ptr(NULL)
+		cur(L""),
+		ptr(buf),
+		done(false)
 	{}
 
 	bool next()
 	{
-		const char *t1, *t2;
+		wchar_t *tmp;
 
-		if (!ptr)
-			ptr = buf.c_str();
-
-		// Done?
-		if (!*ptr)
+		if (done)
 			return false;
 
 		// Skip over whitespace:
-		for (; *ptr == ' '; ptr++) {}
+		for (; *ptr == L' '; ptr++) {}
 
 		// Mark start of current entry:
-		t1 = ptr;
+		cur = ptr;
 
 		// Scan until the next comma or end of string:
-		for (; *ptr && *ptr != ','; ptr++) {}
+		for (; *ptr && *ptr != L','; ptr++) {}
 
 		// Scan backwards over any trailing whitespace in this entry:
-		for (t2 = ptr - 1; t2 >= t1 && *t2 == ' '; t2--) {}
+		for (tmp = ptr - 1; ptr >= cur && *ptr == L' '; ptr--) {}
 
-		// If it's a comma advance to the next item:
-		if (*ptr == ',')
+		// If it's a comma advance to the next item, otherwise mark us as done:
+		if (*ptr == L',')
 			ptr++;
+		else
+			done = true;
 
-		// Extract this entry:
-		cur = std::string{t1, (uintptr_t)(++t2 - t1)};
+		// NULL terminate this entry:
+		*(tmp + 1) = L'\0';
 
 		return true;
 	}
 
-	void log(const wchar_t *name)
+	void log(wchar_t *name)
 	{
-		if (!cur.empty())
-			LogInfoNoNL(" %S=%s", name, cur.c_str());
+		if (*cur)
+			LogInfoWNoNL(L" %s=%s", name, cur);
 	}
 
 	float as_float(float default)
@@ -157,7 +159,7 @@ struct KeyOverrideCycleParam
 		float val;
 		int n;
 
-		n = sscanf_s(cur.c_str(), "%f", &val);
+		n = swscanf_s(cur, L"%f", &val);
 		if (!n || n == EOF) {
 			// Blank entry
 			return default;
@@ -170,7 +172,7 @@ struct KeyOverrideCycleParam
 		int val;
 		int n;
 
-		n = sscanf_s(cur.c_str(), "%i", &val);
+		n = swscanf_s(cur, L"%i", &val);
 		if (!n || n == EOF) {
 			// Blank entry
 			return default;
@@ -183,37 +185,29 @@ struct KeyOverrideCycleParam
 	{
 		T2 val;
 
-		if (cur.empty()) {
+		if (*cur == L'\0') {
 			// Blank entry
 			return default;
 		}
 
-		val = lookup_enum_val<T1, T2>(enum_names, cur.c_str(), (T2)-1);
+		val = lookup_enum_val<const wchar_t *, TransitionType>(enum_names, cur, (T2)-1);
 		if (val == (T2)-1) {
-			LogOverlay(LOG_WARNING, "WARNING: Unmatched value \"%s\"\n", cur.c_str());
+			LogOverlayW(LOG_WARNING, L"WARNING: Unmatched value \"%s\"\n", cur);
 			return default;
 		}
 
 		return val;
 	}
 
-	bool as_expression(LPCWSTR section, CommandListExpression *expression)
+	bool as_ini_param(int *idx, float DirectX::XMFLOAT4::**component)
 	{
-		wstring scur(cur.begin(), cur.end());
-		wstring ini_namespace;
-
-		if (cur.empty()) {
+		if (*cur == L'\0') {
 			// Blank entry
 			return false;
 		}
 
-		get_section_namespace(section, &ini_namespace);
-
-		// Expressions are case insensitive:
-		std::transform(scur.begin(), scur.end(), scur.begin(), ::towlower);
-
-		if (!expression->parse(&scur, &ini_namespace, NULL)) {
-			LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%s\"\n", cur.c_str());
+		if (!ParseIniParamName(cur, idx, component)) {
+			LogOverlayW(LOG_WARNING, L"WARNING: Invalid condition=\"%s\"\n", cur);
 			return false;
 		}
 
@@ -222,10 +216,10 @@ struct KeyOverrideCycleParam
 
 	void as_run_command(LPCWSTR section, CommandList *pre_command_list, CommandList *deactivate_command_list)
 	{
-		wstring scur(cur.begin(), cur.end());
+		wstring scur(cur);
 		wstring ini_namespace;
 
-		if (cur.empty()) {
+		if (*cur == L'\0') {
 			// Blank entry
 			return;
 		}
@@ -233,74 +227,58 @@ struct KeyOverrideCycleParam
 		get_section_namespace(section, &ini_namespace);
 
 		if (!ParseRunExplicitCommandList(section, L"run", &scur, NULL, pre_command_list, deactivate_command_list, &ini_namespace))
-			LogOverlay(LOG_WARNING, "WARNING: Invalid run=\"%s\"\n", cur.c_str());
+			LogOverlay(LOG_WARNING, "WARNING: Invalid run=\"%S\"\n", scur.c_str());
 	}
 };
 
 void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 {
-	std::map<OverrideParam, struct KeyOverrideCycleParam> param_bufs;
-	std::map<OverrideParam, struct KeyOverrideCycleParam>::iterator j;
-	std::map<CommandListVariable*, struct KeyOverrideCycleParam> var_bufs;
-	std::map<CommandListVariable*, struct KeyOverrideCycleParam>::iterator k;
+	struct KeyOverrideCycleParam x[INI_PARAMS_SIZE], y[INI_PARAMS_SIZE];
+	struct KeyOverrideCycleParam z[INI_PARAMS_SIZE], w[INI_PARAMS_SIZE];
 	struct KeyOverrideCycleParam separation, convergence;
 	struct KeyOverrideCycleParam transition, release_transition;
 	struct KeyOverrideCycleParam transition_type, release_transition_type;
 	struct KeyOverrideCycleParam condition;
 	struct KeyOverrideCycleParam run;
 	bool not_done = true;
-	int i;
+	int i, j;
 	wchar_t buf[8];
-	OverrideParams params;
-	OverrideVars vars;
+	DirectX::XMFLOAT4 params[INI_PARAMS_SIZE];
 	bool is_conditional;
-	CommandListExpression condition_expression;
+	int condition_param_idx = 0;
+	float DirectX::XMFLOAT4::*condition_param_component = NULL;
 	CommandList activate_command_list, deactivate_command_list;
-	IniSectionVector *section_vec = NULL;
-	IniSectionVector::iterator entry;
-	CommandListVariable *var = NULL;
-	float DirectX::XMFLOAT4::*param_component;
-	int param_idx;
-	float val;
 
 	wrap = GetIniBool(section, L"wrap", true, NULL);
-	smart = GetIniBool(section, L"smart", true, NULL);
 
-	GetIniSection(&section_vec, section);
-	for (entry = section_vec->begin(); entry < section_vec->end(); entry++) {
-		if (ParseIniParamName(entry->first.c_str(), &param_idx, &param_component)) {
-			// Reserve space in IniParams for this variable:
-			G->iniParamsReserved = max(G->iniParamsReserved, param_idx + 1);
-
-			GetIniString(section, entry->first.c_str(), 0, &param_bufs[OverrideParam(param_idx, param_component)].buf);
-		} else if (entry->first.c_str()[0] == L'$') {
-			if (!parse_command_list_var_name(entry->first.c_str(), &entry->ini_namespace, &var)) {
-				LogOverlay(LOG_WARNING, "WARNING: Undeclared variable %S\n", entry->first.c_str());
-				continue;
-			}
-
-			GetIniString(section, entry->first.c_str(), 0, &var_bufs[var].buf);
-		}
+	for (j = 0; j < INI_PARAMS_SIZE; j++) {
+		StringCchPrintf(buf, 8, L"x%.0i", j);
+		GetIniString(section, buf, 0, x[j].buf, MAX_PATH);
+		StringCchPrintf(buf, 8, L"y%.0i", j);
+		GetIniString(section, buf, 0, y[j].buf, MAX_PATH);
+		StringCchPrintf(buf, 8, L"z%.0i", j);
+		GetIniString(section, buf, 0, z[j].buf, MAX_PATH);
+		StringCchPrintf(buf, 8, L"w%.0i", j);
+		GetIniString(section, buf, 0, w[j].buf, MAX_PATH);
 	}
-
-	GetIniString(section, L"separation", 0, &separation.buf);
-	GetIniString(section, L"convergence", 0, &convergence.buf);
-	GetIniString(section, L"transition", 0, &transition.buf);
-	GetIniString(section, L"release_transition", 0, &release_transition.buf);
-	GetIniString(section, L"transition_type", 0, &transition_type.buf);
-	GetIniString(section, L"release_transition_type", 0, &release_transition_type.buf);
-	GetIniString(section, L"condition", 0, &condition.buf);
-	GetIniString(section, L"run", 0, &run.buf);
+	GetIniString(section, L"separation", 0, separation.buf, MAX_PATH);
+	GetIniString(section, L"convergence", 0, convergence.buf, MAX_PATH);
+	GetIniString(section, L"transition", 0, transition.buf, MAX_PATH);
+	GetIniString(section, L"release_transition", 0, release_transition.buf, MAX_PATH);
+	GetIniString(section, L"transition_type", 0, transition_type.buf, MAX_PATH);
+	GetIniString(section, L"release_transition_type", 0, release_transition_type.buf, MAX_PATH);
+	GetIniString(section, L"condition", 0, condition.buf, MAX_PATH);
+	GetIniString(section, L"run", 0, run.buf, MAX_PATH);
 
 	for (i = 1; not_done; i++) {
 		not_done = false;
 
-		for (j = param_bufs.begin(); j != param_bufs.end(); j++)
-			not_done = j->second.next() || not_done;
-
-		for (k = var_bufs.begin(); k != var_bufs.end(); k++)
-			not_done = k->second.next() || not_done;
-
+		for (j = 0; j < INI_PARAMS_SIZE; j++) {
+			not_done = x[j].next() || not_done;
+			not_done = y[j].next() || not_done;
+			not_done = z[j].next() || not_done;
+			not_done = w[j].next() || not_done;
+		}
 		not_done = separation.next() || not_done;
 		not_done = convergence.next() || not_done;
 		not_done = transition.next() || not_done;
@@ -314,25 +292,23 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 			break;
 
 		LogInfoNoNL("  Cycle %i:", i);
-		params.clear();
-		for (j = param_bufs.begin(); j != param_bufs.end(); j++) {
-			val = j->second.as_float(FLT_MAX);
-			if (val != FLT_MAX) {
-				StringCchPrintf(buf, 8, L"%c%.0i", j->first.chr(), j->first.idx);
-				j->second.log(buf);
-				params[j->first] = val;
-			}
-		}
-		vars.clear();
-		for (k = var_bufs.begin(); k != var_bufs.end(); k++) {
-			val = k->second.as_float(FLT_MAX);
-			if (val != FLT_MAX) {
-				k->second.log(k->first->name.c_str());
-				vars[k->first] = val;
-			}
+		for (j = 0; j < INI_PARAMS_SIZE; j++) {
+			StringCchPrintf(buf, 8, L"x%.0i", j);
+			x[j].log(buf);
+			StringCchPrintf(buf, 8, L"y%.0i", j);
+			y[j].log(buf);
+			StringCchPrintf(buf, 8, L"z%.0i", j);
+			z[j].log(buf);
+			StringCchPrintf(buf, 8, L"w%.0i", j);
+			w[j].log(buf);
+
+			params[j].x = x[j].as_float(FLT_MAX);
+			params[j].y = y[j].as_float(FLT_MAX);
+			params[j].z = z[j].as_float(FLT_MAX);
+			params[j].w = w[j].as_float(FLT_MAX);
 		}
 
-		is_conditional = condition.as_expression(section, &condition_expression);
+		is_conditional = condition.as_ini_param(&condition_param_idx, &condition_param_component);
 		run.as_run_command(section, &activate_command_list, &deactivate_command_list);
 
 		separation.log(L"separation");
@@ -345,103 +321,12 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 		run.log(L"run");
 		LogInfo("\n");
 
-		presets.push_back(KeyOverride(KeyOverrideType::CYCLE, &params, &vars,
+		presets.push_back(KeyOverride(KeyOverrideType::CYCLE, params,
 			separation.as_float(FLT_MAX), convergence.as_float(FLT_MAX),
 			transition.as_int(0), release_transition.as_int(0),
-			transition_type.as_enum<const char *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
-			release_transition_type.as_enum<const char *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
-			is_conditional, condition_expression, activate_command_list, deactivate_command_list));
-	}
-}
-
-bool Override::MatchesCurrent(HackerDevice *device)
-{
-	OverrideParams::iterator i;
-	OverrideVars::iterator j;
-	NvAPI_Status err;
-	float val;
-
-	for (i = begin(mOverrideParams); i != end(mOverrideParams); i++) {
-		std::map<OverrideParam, OverrideTransitionParam>::iterator transition = CurrentTransition.params.find(i->first);
-		if (transition != CurrentTransition.params.end() && transition->second.time != -1)
-			val = transition->second.target;
-		else
-			val = G->iniParams[i->first.idx].*i->first.component;
-
-		if (i->second != val)
-			return false;
-	}
-
-	for (j = begin(mOverrideVars); j != end(mOverrideVars); j++) {
-		std::map<CommandListVariable*, OverrideTransitionParam>::iterator transition = CurrentTransition.vars.find(j->first);
-		if (transition != CurrentTransition.vars.end() && transition->second.time != -1)
-			val = transition->second.target;
-		else
-			val = j->first->fval;
-
-		if (j->second != val)
-			return false;
-	}
-
-	if (mOverrideSeparation != FLT_MAX) {
-		if (CurrentTransition.separation.time != -1) {
-			val = CurrentTransition.separation.target;
-		} else {
-			err = Profiling::NvAPI_Stereo_GetSeparation(device->mStereoHandle, &val);
-			if (err != NVAPI_OK) {
-				LogDebug("    Stereo_GetSeparation failed: %i\n", err);
-				val = mOverrideSeparation;
-			}
-		}
-
-		// nvapi calls can alter the value we set (e.g. 4 -> 3.99999952),
-		// and 0 is special cased to 1% (unless StereoFullHKConfig is set,
-		// bizarrely), so compare within a small tollerance, special
-		// casing 0% (TODO: maybe search for closest match):
-		LogDebug("Comparing separation: %.9g nvapi: %.9g\n", mOverrideSeparation, val);
-		if (mOverrideSeparation == 0) {
-			if (abs(mOverrideSeparation - val) > 1.01)
-				return false;
-		} else if (abs(mOverrideSeparation - val) > 0.01)
-			return false;
-	}
-	if (mOverrideConvergence != FLT_MAX) {
-		if (CurrentTransition.convergence.time != -1) {
-			val = CurrentTransition.convergence.target;
-		} else {
-			err = Profiling::NvAPI_Stereo_GetConvergence(device->mStereoHandle, &val);
-			if (err != NVAPI_OK) {
-				LogDebug("    Stereo_GetConvergence failed: %i\n", err);
-				val = mOverrideConvergence;
-			}
-		}
-
-		// nvapi calls can alter the value we set (e.g. 0 -> 0.00100000005)
-		// and we can't rely on the entire 24 bits of precision, so compare
-		// within a small tollerance (TODO: maybe search for closest match):
-		LogDebug("Comparing convergence: %.9g nvapi: %.9g\n", mOverrideConvergence, val);
-		if (abs(mOverrideConvergence - val) > 0.01)
-			return false;
-	}
-
-	return true;
-}
-
-void KeyOverrideCycle::UpdateCurrent(HackerDevice *device)
-{
-	// If everything in the current preset matches reality or the current
-	// transition target we are good:
-	if (current >= 0 && (size_t)current < presets.size() && presets[current].MatchesCurrent(device))
-		return;
-
-	// The current preset doesn't match reality - we've got out of sync.
-	// Search for any other presets that do match:
-	for (unsigned i = 0; i < presets.size(); i++) {
-		if (i != current && presets[i].MatchesCurrent(device)) {
-			LogInfo("Resynced key cycle: %i -> %i\n", current, i);
-			current = i;
-			return;
-		}
+			transition_type.as_enum<const wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
+			release_transition_type.as_enum<const wchar_t *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
+			is_conditional, condition_param_idx, condition_param_component, activate_command_list, deactivate_command_list));
 	}
 }
 
@@ -449,9 +334,6 @@ void KeyOverrideCycle::DownEvent(HackerDevice *device)
 {
 	if (presets.empty())
 		return;
-
-	if (smart)
-		UpdateCurrent(device);
 
 	if (current == -1)
 		current = 0;
@@ -469,9 +351,6 @@ void KeyOverrideCycle::BackEvent(HackerDevice *device)
 {
 	if (presets.empty())
 		return;
-
-	if (smart)
-		UpdateCurrent(device);
 
 	if (current == -1)
 		current = (int)presets.size() - 1;
@@ -495,24 +374,49 @@ void KeyOverrideCycleBack::DownEvent(HackerDevice *device)
 // This map/unmap code also requires that the texture be created with the D3D11_USAGE_DYNAMIC flag set.
 // This map operation can also cause the GPU to stall, so this should be done as rarely as possible.
 
-static void UpdateIniParams(HackerDevice* wrapper)
+static void UpdateIniParams(HackerDevice* wrapper,
+		DirectX::XMFLOAT4 *params)
 {
 	ID3D11DeviceContext1* realContext = wrapper->GetPassThroughOrigContext1();
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	int i;
+	bool updated = false;
 
-	if (wrapper->mIniTexture) {
-		realContext->Map(wrapper->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-		memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
-		realContext->Unmap(wrapper->mIniTexture, 0);
-		Profiling::iniparams_updates++;
+	for (i = 0; i < INI_PARAMS_SIZE; i++) {
+		if (params[i].x != FLT_MAX) {
+			G->iniParams[i].x = params[i].x;
+			updated = true;
+		}
+		if (params[i].y != FLT_MAX) {
+			G->iniParams[i].y = params[i].y;
+			updated = true;
+		}
+		if (params[i].z != FLT_MAX) {
+			G->iniParams[i].z = params[i].z;
+			updated = true;
+		}
+		if (params[i].w != FLT_MAX) {
+			G->iniParams[i].w = params[i].w;
+			updated = true;
+		}
 	}
-}
 
-std::vector<CommandList*> pending_post_command_lists;
+	if (!updated)
+		return;
+
+	realContext->Map(wrapper->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
+	realContext->Unmap(wrapper->mIniTexture, 0);
+
+	LogDebugNoNL(" IniParams remapped to ");
+	for (i = 0; i < INI_PARAMS_SIZE; i++)
+		LogDebugNoNL("%#.2g, %#.2g, %#.2g, %#.2g, ", params[i].x, params[i].y, params[i].z, params[i].w);
+	LogDebug("\n");
+}
 
 void Override::Activate(HackerDevice *device, bool override_has_deactivate_condition)
 {
-	if (is_conditional && condition.evaluate(NULL, device) == 0) {
+	if (is_conditional && G->iniParams[condition_param_idx].*condition_param_component == 0) {
 		LogInfo("Skipping override activation: condition not met\n");
 		return;
 	}
@@ -527,17 +431,14 @@ void Override::Activate(HackerDevice *device, bool override_has_deactivate_condi
 	CurrentTransition.ScheduleTransition(device,
 			mOverrideSeparation,
 			mOverrideConvergence,
-			&mOverrideParams,
-			&mOverrideVars,
+			mOverrideParams,
 			transition,
 			transition_type);
 
 	RunCommandList(device, device->GetHackerContext(), &activate_command_list, NULL, false);
 	if (!override_has_deactivate_condition) {
 		// type=activate or type=cycle that don't have an explicit deactivate
-		// We run their post lists after the upcoming UpdateTransitions() so
-		// that they can see the newly set values
-		pending_post_command_lists.emplace_back(&deactivate_command_list);
+		RunCommandList(device, device->GetHackerContext(), &deactivate_command_list, NULL, true);
 	}
 }
 
@@ -556,8 +457,7 @@ void Override::Deactivate(HackerDevice *device)
 	CurrentTransition.ScheduleTransition(device,
 			mUserSeparation,
 			mUserConvergence,
-			&mSavedParams,
-			&mSavedVars,
+			mSavedParams,
 			release_transition,
 			release_transition_type);
 
@@ -566,7 +466,7 @@ void Override::Deactivate(HackerDevice *device)
 
 void Override::Toggle(HackerDevice *device)
 {
-	if (is_conditional && condition.evaluate(NULL, device) == 0) {
+	if (is_conditional && G->iniParams[condition_param_idx].*condition_param_component == 0) {
 		LogInfo("Skipping toggle override: condition not met\n");
 		return;
 	}
@@ -635,59 +535,54 @@ static void _ScheduleTransition(struct OverrideTransitionParam *transition,
 	transition->time = time;
 	transition->transition_type = transition_type;
 }
-// FIXME: Clean up the wide vs sensible string mess and remove this duplicate function:
-static void _ScheduleTransition(struct OverrideTransitionParam *transition,
-		const wchar_t *name, float current, float val, ULONGLONG now, int time,
-		TransitionType transition_type)
-{
-	LogInfoNoNL(" %S: %#.2g -> %#.2g", name, current, val);
-	transition->start = current;
-	transition->target = val;
-	transition->activation_time = now;
-	transition->time = time;
-	transition->transition_type = transition_type;
-}
 
 void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
 		float target_separation, float target_convergence,
-		OverrideParams *targets,
-		OverrideVars *var_targets,
+		DirectX::XMFLOAT4 *targets,
 		int time, TransitionType transition_type)
 {
 	ULONGLONG now = GetTickCount64();
 	NvAPI_Status err;
 	float current;
 	char buf[8];
-	OverrideParams::iterator i;
-	OverrideVars::iterator j;
+	int i;
 
 	LogInfoNoNL(" Override");
 	if (time) {
 		LogInfoNoNL(" transition: %ims", time);
-		LogInfoNoNL(" transition_type: %s",
-			lookup_enum_name<const char *, TransitionType>(TransitionTypeNames, transition_type));
+		LogInfoWNoNL(L" transition_type: %s",
+			lookup_enum_name<const wchar_t *, TransitionType>(TransitionTypeNames, transition_type));
 	}
 
 	if (target_separation != FLT_MAX) {
-		err = Profiling::NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &current);
+		err = NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &current);
 		if (err != NVAPI_OK)
 			LogDebug("    Stereo_GetSeparation failed: %i\n", err);
 		_ScheduleTransition(&separation, "separation", current, target_separation, now, time, transition_type);
 	}
 	if (target_convergence != FLT_MAX) {
-		err = Profiling::NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &current);
+		err = NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &current);
 		if (err != NVAPI_OK)
 			LogDebug("    Stereo_GetConvergence failed: %i\n", err);
 		_ScheduleTransition(&convergence, "convergence", current, target_convergence, now, time, transition_type);
 	}
-	for (i = targets->begin(); i != targets->end(); i++) {
-		StringCchPrintfA(buf, 8, "%c%.0i", i->first.chr(), i->first.idx);
-		_ScheduleTransition(&params[i->first], buf, G->iniParams[i->first.idx].*i->first.component,
-				i->second, now, time, transition_type);
-	}
-	for (j = var_targets->begin(); j != var_targets->end(); j++) {
-		_ScheduleTransition(&vars[j->first], j->first->name.c_str(), j->first->fval,
-				j->second, now, time, transition_type);
+	for (i = 0; i < INI_PARAMS_SIZE; i++) {
+		if (targets[i].x != FLT_MAX) {
+			StringCchPrintfA(buf, 8, "x%.0i", i);
+			_ScheduleTransition(&x[i], buf, G->iniParams[i].x, targets[i].x, now, time, transition_type);
+		}
+		if (targets[i].y != FLT_MAX) {
+			StringCchPrintfA(buf, 8, "y%.0i", i);
+			_ScheduleTransition(&y[i], buf, G->iniParams[i].y, targets[i].y, now, time, transition_type);
+		}
+		if (targets[i].z != FLT_MAX) {
+			StringCchPrintfA(buf, 8, "z%.0i", i);
+			_ScheduleTransition(&z[i], buf, G->iniParams[i].z, targets[i].z, now, time, transition_type);
+		}
+		if (targets[i].w != FLT_MAX) {
+			StringCchPrintfA(buf, 8, "w%.0i", i);
+			_ScheduleTransition(&w[i], buf, G->iniParams[i].w, targets[i].w, now, time, transition_type);
+		}
 	}
 	LogInfo("\n");
 }
@@ -732,18 +627,18 @@ static float _UpdateTransition(struct OverrideTransitionParam *transition, ULONG
 
 void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
 {
-	std::map<OverrideParam, OverrideTransitionParam>::iterator i;
-	std::map<CommandListVariable*, OverrideTransitionParam>::iterator j;
 	ULONGLONG now = GetTickCount64();
+	DirectX::XMFLOAT4 params[INI_PARAMS_SIZE];
 	NvAPI_Status err;
 	float val;
+	int i;
 
 	val = _UpdateTransition(&separation, now);
 	if (val != FLT_MAX) {
 		LogInfo(" Transitioning separation to %#.2f\n", val);
 
 		NvAPIOverride();
-		err = Profiling::NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
+		err = NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
 		if (err != NVAPI_OK)
 			LogDebug("    Stereo_SetSeparation failed: %i\n", err);
 	}
@@ -753,56 +648,31 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
 		LogInfo(" Transitioning convergence to %#.2f\n", val);
 
 		NvAPIOverride();
-		err = Profiling::NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
+		err = NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
 		if (err != NVAPI_OK)
 			LogDebug("    Stereo_SetConvergence failed: %i\n", err);
 	}
 
-	if (!params.empty()) {
-		LogDebugNoNL(" IniParams remapped to ");
-		for (i = params.begin(); i != params.end();) {
-			float val = _UpdateTransition(&i->second, now);
-			G->iniParams[i->first.idx].*i->first.component = val;
-			LogDebugNoNL("%c%.0i=%#.2g, ", i->first.chr(), i->first.idx, val);
-			if (i->second.time == -1)
-				i = params.erase(i);
-			else
-				i++;
-		}
-		LogDebug("\n");
-
-		UpdateIniParams(wrapper);
+	for (i = 0; i < INI_PARAMS_SIZE; i++) {
+		params[i].x = _UpdateTransition(&x[i], now);
+		params[i].y = _UpdateTransition(&y[i], now);
+		params[i].z = _UpdateTransition(&z[i], now);
+		params[i].w = _UpdateTransition(&w[i], now);
 	}
 
-	if (!vars.empty()) {
-		LogDebugNoNL(" Variables remapped to ");
-		for (j = vars.begin(); j != vars.end();) {
-			float val = _UpdateTransition(&j->second, now);
-			if (j->first->fval != val) {
-				j->first->fval = val;
-				if (j->first->flags & VariableFlags::PERSIST)
-					G->user_config_dirty |= 1;
-			}
-			LogDebugNoNL("%S=%#.2g, ", j->first->name.c_str(), val);
-			if (j->second.time == -1)
-				j = vars.erase(j);
-			else
-				j++;
-		}
-		LogDebug("\n");
-	}
-
-	// Run any post command lists from type=activate / cycle now so that
-	// they can see the first frame of the updated value:
-	for (auto i : pending_post_command_lists)
-		RunCommandList(wrapper, wrapper->GetHackerContext(), i, NULL, true);
-	pending_post_command_lists.clear();
+	UpdateIniParams(wrapper, params);
 }
 
 void OverrideTransition::Stop()
 {
-	params.clear();
-	vars.clear();
+	int i;
+
+	for (i = 0; i < INI_PARAMS_SIZE; i++) {
+		x[i].time = -1;
+		y[i].time = -1;
+		z[i].time = -1;
+		w[i].time = -1;
+	}
 	separation.time = -1;
 	convergence.time = -1;
 }
@@ -827,9 +697,14 @@ void OverrideGlobalSave::Reset(HackerDevice* wrapper)
 {
 	NvAPI_Status err;
 	float val;
+	int i;
 
-	params.clear();
-	vars.clear();
+	for (i = 0; i < INI_PARAMS_SIZE; i++) {
+		x[i].Reset();
+		y[i].Reset();
+		z[i].Reset();
+		w[i].Reset();
+	}
 
 	// Restore any saved separation & convergence settings to prevent a
 	// currently active preset from becoming the default on config reload.
@@ -846,7 +721,7 @@ void OverrideGlobalSave::Reset(HackerDevice* wrapper)
 		LogInfo(" Restoring separation to %#.2f\n", val);
 
 		NvAPIOverride();
-		err = Profiling::NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
+		err = NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
 		if (err != NVAPI_OK)
 			LogDebug("    Stereo_SetSeparation failed: %i\n", err);
 	}
@@ -858,7 +733,7 @@ void OverrideGlobalSave::Reset(HackerDevice* wrapper)
 		LogInfo(" Restoring convergence to %#.2f\n", val);
 
 		NvAPIOverride();
-		err = Profiling::NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
+		err = NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
 		if (err != NVAPI_OK)
 			LogDebug("    Stereo_SetConvergence failed: %i\n", err);
 	}
@@ -884,16 +759,15 @@ void OverrideGlobalSaveParam::Save(float val)
 
 void OverrideGlobalSave::Save(HackerDevice *wrapper, Override *preset)
 {
-	OverrideParams::iterator i;
-	OverrideVars::iterator j;
 	NvAPI_Status err;
 	float val;
+	int i;
 
 	if (preset->mOverrideSeparation != FLT_MAX) {
 		if (CurrentTransition.separation.time != -1) {
 			val = CurrentTransition.separation.target;
 		} else {
-			err = Profiling::NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &val);
+			err = NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &val);
 			if (err != NVAPI_OK) {
 				LogDebug("    Stereo_GetSeparation failed: %i\n", err);
 			}
@@ -907,7 +781,7 @@ void OverrideGlobalSave::Save(HackerDevice *wrapper, Override *preset)
 		if (CurrentTransition.convergence.time != -1) {
 			val = CurrentTransition.convergence.target;
 		} else {
-			err = Profiling::NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &val);
+			err = NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &val);
 			if (err != NVAPI_OK) {
 				LogDebug("    Stereo_GetConvergence failed: %i\n", err);
 			}
@@ -917,30 +791,47 @@ void OverrideGlobalSave::Save(HackerDevice *wrapper, Override *preset)
 		convergence.Save(val);
 	}
 
-	for (i = preset->mOverrideParams.begin(); i != preset->mOverrideParams.end(); i++) {
-		std::map<OverrideParam, OverrideTransitionParam>::iterator transition = CurrentTransition.params.find(i->first);
-		if (transition != CurrentTransition.params.end() && transition->second.time != -1)
-			val = transition->second.target;
-		else
-			val = G->iniParams[i->first.idx].*i->first.component;
+	for (i = 0; i < INI_PARAMS_SIZE; i++) {
+		if (preset->mOverrideParams[i].x != FLT_MAX) {
+			if (CurrentTransition.x[i].time != -1)
+				val = CurrentTransition.x[i].target;
+			else
+				val = G->iniParams[i].x;
 
-		preset->mSavedParams[i->first] = val;
-		params[i->first].Save(val);
-	}
+			preset->mSavedParams[i].x = val;
+			x[i].Save(val);
+		}
+		if (preset->mOverrideParams[i].y != FLT_MAX) {
+			if (CurrentTransition.y[i].time != -1)
+				val = CurrentTransition.y[i].target;
+			else
+				val = G->iniParams[i].y;
 
-	for (j = preset->mOverrideVars.begin(); j != preset->mOverrideVars.end(); j++) {
-		std::map<CommandListVariable*, OverrideTransitionParam>::iterator transition = CurrentTransition.vars.find(j->first);
-		if (transition != CurrentTransition.vars.end() && transition->second.time != -1)
-			val = transition->second.target;
-		else
-			val = j->first->fval;
+			preset->mSavedParams[i].y = val;
+			y[i].Save(val);
+		}
+		if (preset->mOverrideParams[i].z != FLT_MAX) {
+			if (CurrentTransition.z[i].time != -1)
+				val = CurrentTransition.z[i].target;
+			else
+				val = G->iniParams[i].z;
 
-		preset->mSavedVars[j->first] = val;
-		vars[j->first].Save(val);
+			preset->mSavedParams[i].z = val;
+			z[i].Save(val);
+		}
+		if (preset->mOverrideParams[i].w != FLT_MAX) {
+			if (CurrentTransition.w[i].time != -1)
+				val = CurrentTransition.w[i].target;
+			else
+				val = G->iniParams[i].w;
+
+			preset->mSavedParams[i].w = val;
+			w[i].Save(val);
+		}
 	}
 }
 
-int OverrideGlobalSaveParam::Restore(float *val)
+void OverrideGlobalSaveParam::Restore(float *val)
 {
 	refcount--;
 
@@ -951,14 +842,11 @@ int OverrideGlobalSaveParam::Restore(float *val)
 	} else if (refcount < 0) {
 		LogInfo("BUG! OverrideGlobalSaveParam refcount < 0!\n");
 	}
-
-	return refcount;
 }
 
 void OverrideGlobalSave::Restore(Override *preset)
 {
-	OverrideParams::iterator j;
-	OverrideVars::iterator l;
+	int i;
 
 	// This replaces the local saved values in the override with the global
 	// ones for any parameters where this is the last override being
@@ -970,26 +858,14 @@ void OverrideGlobalSave::Restore(Override *preset)
 		separation.Restore(&preset->mUserSeparation);
 	if (preset->mOverrideConvergence != FLT_MAX)
 		convergence.Restore(&preset->mUserConvergence);
-
-	for (auto next = begin(params), i = next; i != end(params); i = next) {
-		next++;
-		j = preset->mOverrideParams.find(i->first);
-		if (j != preset->mOverrideParams.end()) {
-			if (!i->second.Restore(&preset->mSavedParams[i->first])) {
-				LogDebug("removed ini param %c%.0i save area\n", i->first.chr(), i->first.idx);
-				next = params.erase(i);
-			}
-		}
-	}
-
-	for (auto next = begin(vars), k = next; k != end(vars); k = next) {
-		next++;
-		l = preset->mOverrideVars.find(k->first);
-		if (l != preset->mOverrideVars.end()) {
-			if (!k->second.Restore(&preset->mSavedVars[k->first])) {
-				LogDebug("removed var %S save area\n", k->first->name.c_str());
-				next = vars.erase(k);
-			}
-		}
+	for (i = 0; i < INI_PARAMS_SIZE; i++) {
+		if (preset->mOverrideParams[i].x != FLT_MAX)
+			x[i].Restore(&preset->mSavedParams[i].x);
+		if (preset->mOverrideParams[i].y != FLT_MAX)
+			y[i].Restore(&preset->mSavedParams[i].y);
+		if (preset->mOverrideParams[i].z != FLT_MAX)
+			z[i].Restore(&preset->mSavedParams[i].z);
+		if (preset->mOverrideParams[i].w != FLT_MAX)
+			w[i].Restore(&preset->mSavedParams[i].w);
 	}
 }
