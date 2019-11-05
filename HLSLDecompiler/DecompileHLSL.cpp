@@ -5063,17 +5063,16 @@ public:
 								// XXX NOTE Duplicated code below!!!
 							}
 						} else {
-						// Temporarily stripping indentation to ease forward port -DSS
-						// XXX NOTE Duplicated code above!!!
-						remapTarget(op1);
-						applySwizzle(op1, op2);
-						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = log2(%s);\n", writeTarget(op1), ci(op2).c_str());
-						else
-							sprintf(buffer, "  %s = saturate(log2(%s));\n", writeTarget(op1), ci(op2).c_str());
-						appendOutput(buffer);
-						removeBoolean(op1);
-						// XXX NOTE Duplicated code above!!!
+							// XXX NOTE Duplicated code above!!!
+							remapTarget(op1);
+							applySwizzle(op1, op2);
+							if (!instr->bSaturate)
+								sprintf(buffer, "  %s = log2(%s);\n", writeTarget(op1), ci(op2).c_str());
+							else
+								sprintf(buffer, "  %s = saturate(log2(%s));\n", writeTarget(op1), ci(op2).c_str());
+							appendOutput(buffer);
+							removeBoolean(op1);
+							// XXX NOTE Duplicated code above!!!
 						}
 						break;
 
@@ -5361,16 +5360,15 @@ public:
 								continue;
 							}
 						} else {
-						// Temporarily stripping indentation to ease forward port -DSS
-						remapTarget(op1);
-						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
-						else
-							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
-						appendOutput(buffer);
-						removeBoolean(op1);
+							remapTarget(op1);
+							applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+							applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
+							if (!instr->bSaturate)
+								sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+							else
+								sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+							appendOutput(buffer);
+							removeBoolean(op1);
 						}
 						break;
 					case OPCODE_IMIN:
@@ -5492,16 +5490,15 @@ public:
 								continue;
 							}
 						} else {
-						// Temporarily stripping indentation to ease forward port -DSS
-						remapTarget(op1);
-						applySwizzle(".xyz", fixImm(op2, instr->asOperands[1]));
-						applySwizzle(".xyz", fixImm(op3, instr->asOperands[2]));
-						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						else
-							sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						appendOutput(buffer);
-						removeBoolean(op1);
+							remapTarget(op1);
+							applySwizzle(".xyz", fixImm(op2, instr->asOperands[1]));
+							applySwizzle(".xyz", fixImm(op3, instr->asOperands[2]));
+							if (!instr->bSaturate)
+								sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							else
+								sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							appendOutput(buffer);
+							removeBoolean(op1);
 						}
 						break;
 					}
@@ -5540,18 +5537,17 @@ public:
 						}
 						else
 						{
-						// Temporarily stripping indentation to ease forward port -DSS
-						// XXX NOTE Duplicated code above!!!
-						remapTarget(op1);
-						applySwizzle(".xyzw", fixImm(op2, instr->asOperands[1]));
-						applySwizzle(".xyzw", fixImm(op3, instr->asOperands[2]));
-						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						else
-							sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						appendOutput(buffer);
-						removeBoolean(op1);
-						// XXX NOTE Duplicated code above!!!
+							// XXX NOTE Duplicated code above!!!
+							remapTarget(op1);
+							applySwizzle(".xyzw", fixImm(op2, instr->asOperands[1]));
+							applySwizzle(".xyzw", fixImm(op3, instr->asOperands[2]));
+							if (!instr->bSaturate)
+								sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							else
+								sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							appendOutput(buffer);
+							removeBoolean(op1);
+							// XXX NOTE Duplicated code above!!!
 						}
 						break;
 					case OPCODE_DP2ADD:
@@ -5994,30 +5990,29 @@ public:
 						}
 						else
 						{
-						// Temporarily stripping indentation to ease forward port -DSS
-						//	else if (!strncmp(statement, "sample_indexable", strlen("sample_indexable")))
-						remapTarget(op1);
-						applySwizzle(".xyzw", op2);
-						applySwizzle(op1, op3);
-						int textureId, samplerId;
-						sscanf_s(op3, "t%d.", &textureId);
-						sscanf_s(op4, "s%d", &samplerId);
-						truncateTexturePos(op2, mTextureType[textureId].c_str());
-						truncateTextureSwiz(op1, mTextureType[textureId].c_str());
-						truncateTextureSwiz(op3, mTextureType[textureId].c_str());
-						if (!instr->bAddressOffset)
-							sprintf(buffer, "  %s = %s.Sample(%s, %s)%s;\n", writeTarget(op1),
-								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
-						else
-						{
-							int offsetx = 0, offsety = 0, offsetz = 0;
-							sscanf_s(statement, "sample_aoffimmi(%d,%d,%d", &offsetx, &offsety, &offsetz);
-							sprintf(buffer, "  %s = %s.Sample(%s, %s, int2(%d, %d))%s;\n", writeTarget(op1),
-								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(),
-								offsetx, offsety, strrchr(op3, '.'));
-						}
-						appendOutput(buffer);
-						removeBoolean(op1);
+							//	else if (!strncmp(statement, "sample_indexable", strlen("sample_indexable")))
+							remapTarget(op1);
+							applySwizzle(".xyzw", op2);
+							applySwizzle(op1, op3);
+							int textureId, samplerId;
+							sscanf_s(op3, "t%d.", &textureId);
+							sscanf_s(op4, "s%d", &samplerId);
+							truncateTexturePos(op2, mTextureType[textureId].c_str());
+							truncateTextureSwiz(op1, mTextureType[textureId].c_str());
+							truncateTextureSwiz(op3, mTextureType[textureId].c_str());
+							if (!instr->bAddressOffset)
+								sprintf(buffer, "  %s = %s.Sample(%s, %s)%s;\n", writeTarget(op1),
+									mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
+							else
+							{
+								int offsetx = 0, offsety = 0, offsetz = 0;
+								sscanf_s(statement, "sample_aoffimmi(%d,%d,%d", &offsetx, &offsety, &offsetz);
+								sprintf(buffer, "  %s = %s.Sample(%s, %s, int2(%d, %d))%s;\n", writeTarget(op1),
+									mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(),
+									offsetx, offsety, strrchr(op3, '.'));
+							}
+							appendOutput(buffer);
+							removeBoolean(op1);
 						}
 
 						break;
