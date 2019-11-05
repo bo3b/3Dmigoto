@@ -3,6 +3,7 @@
 #include <sddl.h>
 #include <io.h>
 #include <fcntl.h>
+#include <Dbghelp.h>
 
 #include "DirectX11\HackerDevice.h"
 #include "DirectX11\HackerContext.h"
@@ -376,4 +377,144 @@ void restore_om_state(ID3D11DeviceContext *context, struct OMState *state)
 		if (state->uavs[i])
 			state->uavs[i]->Release();
 	}
+}
+
+IDXGISwapChain *last_fullscreen_swap_chain;
+
+static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS *ExceptionInfo)
+{
+	// SOS
+	Beep(250, 100); Beep(250, 100); Beep(250, 100);
+	Beep(200, 300); Beep(200, 200); Beep(200, 200);
+	Beep(250, 100); Beep(250, 100); Beep(250, 100);
+
+	// Before anything else, flush the log file and log exception info
+
+	if (LogFile) {
+		fflush(LogFile);
+
+		LogInfo("\n\n ######################################\n"
+		            " ### 3DMigoto Crash Handler Invoked ###\n");
+
+		int i = 0;
+		for (auto record = ExceptionInfo->ExceptionRecord; record; record = record->ExceptionRecord, i++) {
+			LogInfo(" ######################################\n"
+			        " ### Exception Record %i\n"
+				" ###    ExceptionCode: 0x%08x\n"
+				" ###   ExceptionFlags: 0x%08x\n"
+				" ### ExceptionAddress: 0x%p\n"
+				" ### NumberParameters: 0x%u\n"
+				" ###",
+				i,
+				record->ExceptionCode,
+				record->ExceptionFlags,
+				record->ExceptionAddress,
+				record->NumberParameters);
+			for (unsigned j = 0; j < record->NumberParameters; j++)
+				LogInfo(" %08Ix", record->ExceptionInformation[j]);
+			LogInfo("\n");
+		}
+
+		fflush(LogFile);
+	}
+
+	// Next, write a minidump file so we can examine this in a debugger
+	// later. Note that if the stack is corrupt there is some possibility
+	// this could fail - if we really want a robust crash handler we could
+	// bring in something like breakpad
+
+	auto fp = CreateFile(L"3dmigoto_crash_handler.dmp", GENERIC_WRITE, FILE_SHARE_READ,
+			0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (fp != INVALID_HANDLE_VALUE) {
+		LogInfo("Writing minidump...\n");
+
+		MINIDUMP_EXCEPTION_INFORMATION dump_info =
+			{ GetCurrentThreadId(), ExceptionInfo, FALSE };
+
+		if (MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(),
+				fp, MiniDumpWithHandleData, &dump_info, NULL, NULL))
+			LogInfo("Succeeded\n");
+		else
+			LogInfo("Failed :(\n");
+
+		CloseHandle(fp);
+	} else
+		LogInfo("Error creating minidump file :(\n");
+
+	if (LogFile)
+		fflush(LogFile);
+
+	// Debugging is a pain in exclusive full screen, especially without a
+	// second monitor attached (and even with one if you don't know about
+	// the alt+space shortcut you may be stuck - alt+tab to the debugger,
+	// alt+space and choose "Restore", alt+space again and choose "Move",
+	// press any arrow key to start moving and *then* you can use the mouse
+	// to move the window to the other monitor)... Try to switch to
+	// windowed mode to make our lives a lot easier:
+	if (last_fullscreen_swap_chain) {
+		LogInfo("Attempting emergency switch to windowed mode on swap chain %p\n",
+				last_fullscreen_swap_chain);
+
+		last_fullscreen_swap_chain->SetFullscreenState(FALSE, NULL);
+		//last_fullscreen_swap_chain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+	}
+
+	if (LogFile)
+		fflush(LogFile);
+
+	// Finally, we will wait for a debugger to attach, beeping every 5
+	// seconds and bailing if the user presses escape
+	if (LogFile) {
+		LogInfo("Waiting for debugger...\n");
+		fflush(LogFile);
+	}
+	while (!IsDebuggerPresent()) {
+		for (int i = 0; i < 50; i++) {
+			Sleep(100);
+			if (GetAsyncKeyState(VK_ESCAPE) < 0)
+				return EXCEPTION_EXECUTE_HANDLER;
+		}
+
+		Beep(500, 100);
+	}
+	__debugbreak();
+
+	return EXCEPTION_CONTINUE_EXECUTION;
+}
+
+static DWORD WINAPI exception_keyboard_monitor(_In_ LPVOID lpParameter)
+{
+	while (1) {
+		Sleep(500);
+		if (GetAsyncKeyState(VK_CONTROL) < 0 &&
+		    GetAsyncKeyState(VK_MENU) < 0 &&
+		    GetAsyncKeyState(VK_F12) < 0) {
+			RaiseException(0x3D819070, 0, 0, NULL);
+		}
+	}
+
+}
+
+void install_crash_handler()
+{
+	LPTOP_LEVEL_EXCEPTION_FILTER old_handler;
+	UINT old_mode;
+
+	old_handler = SetUnhandledExceptionFilter(migoto_exception_filter);
+	// TODO: Call set_terminate() on every thread to catch unhandled C++
+	// exceptions as well
+
+	if (old_handler == migoto_exception_filter) {
+		LogInfo("  > 3DMigoto crash handler already installed\n");
+		return;
+	}
+
+	old_mode = SetErrorMode(SEM_FAILCRITICALERRORS);
+
+	LogInfo("  > Installed 3DMigoto crash handler, previous exception filter: %p, previous error mode: %x\n",
+			old_handler, old_mode);
+
+	// Spawn a thread to monitor for a keyboard salute to trigger the
+	// exception handler in the event of a hang/deadlock:
+	CreateThread(NULL, 0, exception_keyboard_monitor, NULL, 0, NULL);
 }

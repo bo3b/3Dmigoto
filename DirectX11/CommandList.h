@@ -210,6 +210,9 @@ public:
 	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
+// XXX: If this is ever used for a purpose other than ShaderRegex in the future
+// make sure the unlink_command_lists_and_filter_index function won't break
+// whatever it is you are using it for.
 class RunLinkedCommandList : public CommandListCommand {
 public:
 	CommandList *link;

@@ -8053,7 +8053,34 @@ NVAPI_INTERFACE NvAPI_D3D11_MultiDrawIndexedInstancedIndirect(__in ID3D11DeviceC
 
 #endif //defined (__cplusplus) && (defined(__d3d11_h__) || defined(__d3d11_1_h__))
 
+#if defined(__cplusplus) && defined(__d3d11_h__)
 
+///////////////////////////////////////////////////////////////////////////////
+//
+// FUNCTION NAME: NvAPI_D3D11_SetDepthBoundsTest
+//
+//!   DESCRIPTION: This function enables/disables the depth bounds test
+//!
+//! SUPPORTED OS:  Windows Vista and higher
+//!
+//!
+//! \param [in]        pDeviceOrContext   The device or device context to set depth bounds test
+//! \param [in]        bEnable            Enable(non-zero)/disable(zero) the depth bounds test
+//! \param [in]        fMinDepth          The minimum depth for depth bounds test
+//! \param [in]        fMaxDepth          The maximum depth for depth bounds test
+//!                                       The valid values for fMinDepth and fMaxDepth
+//!                                       are such that 0 <= fMinDepth <= fMaxDepth <= 1
+//!
+//! \return  ::NVAPI_OK if the depth bounds test was correcly enabled or disabled
+//!
+//! \ingroup dx
+///////////////////////////////////////////////////////////////////////////////
+NVAPI_INTERFACE NvAPI_D3D11_SetDepthBoundsTest(__in IUnknown* pDeviceOrContext,
+	__in NvU32 bEnable,
+	__in float fMinDepth,
+	__in float fMaxDepth);
+
+#endif //defined(__cplusplus) && defined(__d3d11_h__)
 
 
 //! \ingroup vidio

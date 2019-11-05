@@ -2273,6 +2273,8 @@ static void ParseShaderOverrideSections()
 
 		// Superior partner shader filtering that also supports a bound/unbound case
 		override->filter_index = GetIniFloat(id, L"filter_index", FLT_MAX, NULL);
+		// Backup version not affected by ShaderRegex:
+		override->backup_filter_index = override->filter_index;
 
 		if (GetIniStringAndLog(id, L"model", 0, setting, MAX_PATH)) {
 			wcstombs(override->model, setting, ARRAYSIZE(override->model));
@@ -2327,6 +2329,21 @@ template <typename T>
 static std::set<T> vec_to_set(std::vector<T> &v)
 {
 	return std::set<T>(v.begin(), v.end());
+}
+
+static uint32_t hash_ini_section(uint32_t hash, const wstring *sname)
+{
+	IniSectionVector *svec = NULL;
+	IniSectionVector::iterator entry;
+
+	hash = crc32c_hw(hash, sname->c_str(), sname->size());
+
+	GetIniSection(&svec, sname->c_str());
+	for (entry = svec->begin(); entry < svec->end(); entry++) {
+		hash = crc32c_hw(hash, entry->raw_line.c_str(), entry->raw_line.size());
+	}
+
+	return hash;
 }
 
 // List of keys in [ShaderRegex] sections that are processed in this
@@ -2495,15 +2512,26 @@ static void ParseShaderRegexSections()
 	std::wstring section_prefix, section_suffix;
 	std::vector<std::wstring> subsection_names;
 	ShaderRegexGroup *regex_group;
+	ShaderRegexGroups::iterator j;
 	size_t namespace_endpos = 0;
+	uint32_t hash = 0;
 
+	shader_regex_group_index.clear();
 	shader_regex_groups.clear();
+
+	// Hash any settings that may alter assembly or otherwise have an
+	// effect on ShaderRegex to invalidate the cache if these change:
+	hash = crc32c_hw(hash, &G->assemble_signature_comments, sizeof(G->assemble_signature_comments));
+	hash = crc32c_hw(hash, &G->disassemble_undecipherable_custom_data, sizeof(G->disassemble_undecipherable_custom_data));
+	hash = crc32c_hw(hash, &G->patch_cb_offsets, sizeof(G->patch_cb_offsets));
 
 	lower = ini_sections.lower_bound(wstring(L"ShaderRegex"));
 	upper = prefix_upper_bound(ini_sections, wstring(L"ShaderRegex"));
 	for (i = lower; i != upper; i++) {
 		section_id = &i->first;
 		LogInfo("[%S]\n", section_id->c_str());
+
+		hash = hash_ini_section(hash, section_id);
 
 		// namespaced sections may have a dot in the namespace, so we
 		// only split the string after the namespace text
@@ -2557,6 +2585,18 @@ static void ParseShaderRegexSections()
 		IniWarning("WARNING: disabling entire shader regex group [%S]\n", subsection_names[0].c_str());
 		delete_regex_group(&subsection_names[0]);
 	}
+
+	// When we load ShaderRegex metadata from the cache we need to look up
+	// the command lists and filter_index from the data structures. The
+	// shader_regex_hash means we know the data structures should be
+	// identical to when the shader was first cached, and since
+	// shader_regex_groups is sorted the order should be the same too.
+	// Copy pointers to each of the groups to a vector so we can look them
+	// up directly without iterating over the map:
+	shader_regex_hash = hash;
+	LogInfo("ShaderRegex hash: %08x\n", shader_regex_hash);
+	for (j = shader_regex_groups.begin(); j != shader_regex_groups.end(); j++)
+		shader_regex_group_index.push_back(&j->second);
 }
 
 // For fuzzy matching instead of using hash. Using terms consistent
@@ -4414,6 +4454,9 @@ void LoadConfigFile()
 			__debugbreak();
 	}
 
+	if (GetIniBool(L"Logging", L"crash", false, NULL))
+		install_crash_handler();
+
 	G->dump_all_profiles = GetIniBool(L"Logging", L"dump_all_profiles", false, NULL);
 
 	if (GetIniBool(L"Logging", L"debug_locks", false, NULL))
@@ -4813,6 +4856,9 @@ static void MarkAllShadersDeferredUnprocessed()
 		// any that are loaded from disk:
 		i->second.deferred_replacement_processed = false;
 	}
+
+	// TODO: If ShaderRegex hash is unchanged leave these shaders in place
+	// and just update the ShaderOverrides & filter_index
 }
 
 void ReloadConfig(HackerDevice *device)
