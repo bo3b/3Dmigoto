@@ -72,6 +72,7 @@ struct BufferEntry
 // Key is register << 16 + offset
 typedef map<int, BufferEntry> CBufferData;
 typedef map<string, string> StringStringMap;
+
 //dx9
 struct ConstantValue
 {
@@ -81,11 +82,8 @@ struct ConstantValue
 	float z;
 	float w;
 };
-
-extern FILE *LogFile;
-extern bool LogInfo;
-extern bool LogDebug;
 //dx9
+
 // Convenience routine to calculate just the number of swizzle components.
 // Used for ibfe.  Inputs like 'o1.xy', return 2.
 
@@ -788,7 +786,6 @@ public:
 			}
 		}
 	}
-
 	//dx9
 
 	void ReadResourceBindings(const char *c, size_t size)
@@ -1123,7 +1120,7 @@ public:
 					}
 					const char *structHeader2 = "{\n";
 					mOutput.insert(mOutput.end(), structHeader2, structHeader2 + strlen(structHeader2));
-					//skip struct's next line"//   {\r\n" //dx9
+					//skip struct's next line"//   {\r\n" //dx9 (Was there a point to this commented out line? -DSS)
 					NextLine(c, pos, size);
 					continue;
 				}
@@ -1556,6 +1553,7 @@ public:
 			strncpy_s(right2, sizeof(right2), &right[1], strlen(right) - 2);
 			strcpy_s(right, opcodeSize, right2);
 		}
+
 		//dx9
 		string absTemp = right;
 
@@ -1632,8 +1630,8 @@ public:
 			}
 		}
 		else if (right[0] == 'c' && right[1] != 'b')
-			//dx9 const register, start with c
 		{
+			//dx9 const register, start with c
 
 			char * result = strrchr(right, '.');
 			if (result == NULL)		//if don't have swizzle info，add .xyzw
@@ -1716,16 +1714,13 @@ public:
 				}
 			}
 
-
 			strcpy_s(right2, opcodeSize, buff);
-		}
 		/*else if (right[0] == 'v')
 		+		{
 		+			strcpy_s(right2, opcodeSize, right);
 		+		}*/
-
 		//dx9
-
+		}
 		else
 		{
 			//dx9
@@ -1734,8 +1729,8 @@ public:
 			{
 				strcat_s(right, strlen(right),".xyzw");
 			}
-
 			//dx9
+
 			strPos = strrchr(right, '.') + 1;
 			if (strPos == (const char *)1) {
 				// If there's no '.' in the string, strrchr
@@ -3324,6 +3319,7 @@ public:
 		return 0;
 	}
 	//dx9
+
 	void ParseCode(Shader *shader, const char *c, size_t size)
 	{
 		mOutputRegisterValues.clear();
@@ -3335,19 +3331,18 @@ public:
 		unsigned int iNr = 0;
 		bool skip_shader = false;
 
-		//dx9
 		vector<Instruction> * inst = NULL;
 		if (shader->dx9Shader)
 		{
+			// XXX: Double check MAIN_PHASE against BinaryDecompiler DX11 hull shaders -DSS
 			inst = &shader->asPhase[MAIN_PHASE].psInst;
-
 		}
 		else
 		{
+			// Doesn't look like this is ever used in the non-DX9 case? I
+			// assume this is here 'just in case'? -DSS
 			inst = &shader->psInst;
 		}
-
-		//dx9
 
 		while (pos < size && iNr < shader->psInst.size())
 		{
@@ -3788,6 +3783,9 @@ public:
 			}
 			else if (!strcmp(statement, "dcl"))		//dx9 dcl vFace
 			{
+				// Ummm... why is this empty block here? Is this here
+				// intentionally to avoid the next else block, or was it
+				// forgotten about? -DSS
 			}//dx9
 			else
 			{
@@ -3983,12 +3981,18 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-						if (!instr->bSaturate)
-							//sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
-							sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str()); //dx9
-						else
-							//sprintf(buffer, "  %s = saturate(%s + %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
-							sprintf(buffer, "  %s = saturate(%s + %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str()); //dx9
+						if (!instr->bSaturate) {
+							// Reverting the DX9 port changes and going back to
+							// the original opcode order here, since they
+							// should be mathematically equivelent, but I seem
+							// to recall Bo3b noticing that this order tends to
+							// produce assembly closer to the original. -DSS
+							sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+							//sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str()); //dx9
+						} else {
+							sprintf(buffer, "  %s = saturate(%s + %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+							//sprintf(buffer, "  %s = saturate(%s + %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str()); //dx9
+						}
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -4204,16 +4208,6 @@ public:
 						break;
 
 					case OPCODE_LOG:
-
-						//dx9
-						//remapTarget(op1);
-						//applySwizzle(op1, op2);
-						//if (!instr->bSaturate)
-						//	sprintf(buffer, "  %s = log2(%s);\n", writeTarget(op1), ci(op2).c_str());
-						//else
-						//	sprintf(buffer, "  %s = saturate(log2(%s));\n", writeTarget(op1), ci(op2).c_str());
-						//appendOutput(buffer);
-						//removeBoolean(op1);
 						if (shader->dx9Shader)
 						{
 							Instruction * nextIns[6];
@@ -4263,6 +4257,7 @@ public:
 							}
 							else
 							{
+								// XXX NOTE Duplicated code below!!!
 								remapTarget(op1);
 								applySwizzle(op1, op2);
 								if (!instr->bSaturate)
@@ -4271,20 +4266,21 @@ public:
 									sprintf(buffer, "  %s = saturate(log2(%s));\n", writeTarget(op1), ci(op2).c_str());
 								appendOutput(buffer);
 								removeBoolean(op1);
+								// XXX NOTE Duplicated code below!!!
 							}
+						} else {
+						// Temporarily stripping indentation to ease forward port -DSS
+						// XXX NOTE Duplicated code above!!!
+						remapTarget(op1);
+						applySwizzle(op1, op2);
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = log2(%s);\n", writeTarget(op1), ci(op2).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(log2(%s));\n", writeTarget(op1), ci(op2).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						// XXX NOTE Duplicated code above!!!
 						}
-						else {
-							remapTarget(op1);
-							applySwizzle(op1, op2);
-							if (!instr->bSaturate)
-								sprintf(buffer, "  %s = log2(%s);\n", writeTarget(op1), ci(op2).c_str());
-							else
-								sprintf(buffer, "  %s = saturate(log2(%s));\n", writeTarget(op1), ci(op2).c_str());
-							appendOutput(buffer);
-							removeBoolean(op1);
-						}
-
-						//dx9
 						break;
 
 						// Opcodes for Sqrt, Min, Max, IMin, IMax all were using a 'statement' that is parsed
@@ -4534,7 +4530,6 @@ public:
 
 
 					case OPCODE_MAX:
-						//dx9
 						if (shader->dx9Shader)
 						{
 							Instruction * nextIns = &(*inst)[iNr + 1];
@@ -4571,22 +4566,18 @@ public:
 								iNr += 2;
 								continue;
 							}
-						}
-
-						//dx9
-
-
-
-
+						} else {
+						// Temporarily stripping indentation to ease forward port -DSS
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-						//if (!instr->bSaturate)
-						//	sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
-						//else
-						//	sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
-						//appendOutput(buffer);
-						//removeBoolean(op1);
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						}
 						break;
 					case OPCODE_IMIN:
 						remapTarget(op1);
@@ -4663,7 +4654,6 @@ public:
 						break;
 
 					case OPCODE_DP3:
-						//dx9
 					{
 						if (shader->dx9Shader)
 						{
@@ -4707,8 +4697,8 @@ public:
 								iNr += 3;
 								continue;
 							}
-						}
-
+						} else {
+						// Temporarily stripping indentation to ease forward port -DSS
 						remapTarget(op1);
 						applySwizzle(".xyz", fixImm(op2, instr->asOperands[1]));
 						applySwizzle(".xyz", fixImm(op3, instr->asOperands[2]));
@@ -4718,22 +4708,9 @@ public:
 							sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
+						}
+						break;
 					}
-					break;
-					//dx9
-
-
-
-					//remapTarget(op1);
-					//applySwizzle(".xyz", fixImm(op2, instr->asOperands[1]));
-					//applySwizzle(".xyz", fixImm(op3, instr->asOperands[2]));
-					//if (!instr->bSaturate)
-					//	sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-					//else
-					//	sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-					//appendOutput(buffer);
-					//removeBoolean(op1);
-					//break;
 
 					case OPCODE_DP4:
 						//dx9
@@ -4756,6 +4733,7 @@ public:
 							}
 							else
 							{
+								// XXX NOTE Duplicated code below!!!
 								applySwizzle(".xyzw", fixImm(op2, instr->asOperands[1]));
 								applySwizzle(".xyzw", fixImm(op3, instr->asOperands[2]));
 								if (!instr->bSaturate)
@@ -4763,33 +4741,25 @@ public:
 								else
 									sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 								appendOutput(buffer);
+								// XXX NOTE Duplicated code below!!!
 							}
 						}
 						else
 						{
-							remapTarget(op1);
-							applySwizzle(".xyzw", fixImm(op2, instr->asOperands[1]));
-							applySwizzle(".xyzw", fixImm(op3, instr->asOperands[2]));
-							if (!instr->bSaturate)
-								sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-							else
-								sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-							appendOutput(buffer);
-							removeBoolean(op1);
+						// Temporarily stripping indentation to ease forward port -DSS
+						// XXX NOTE Duplicated code above!!!
+						remapTarget(op1);
+						applySwizzle(".xyzw", fixImm(op2, instr->asOperands[1]));
+						applySwizzle(".xyzw", fixImm(op3, instr->asOperands[2]));
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
+						// XXX NOTE Duplicated code above!!!
 						}
 						break;
-						//dx9
-						//remapTarget(op1);
-						//applySwizzle(".xyzw", fixImm(op2, instr->asOperands[1]));
-						//applySwizzle(".xyzw", fixImm(op3, instr->asOperands[2]));
-						//if (!instr->bSaturate)
-						//	sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						//else
-						//	sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-						//appendOutput(buffer);
-						//removeBoolean(op1);
-						//break;
-						//dx9
 					case OPCODE_DP2ADD:
 						remapTarget(op1);
 						applySwizzle(".xy", op2);
@@ -4809,6 +4779,7 @@ public:
 						applySwizzle(op1, op4);
 						sprintf(buffer, "  %s = lerp(%s, %s, %s);\n", writeTarget(op1), ci(op4).c_str(), ci(op3).c_str(), ci(op2).c_str());
 						appendOutput(buffer);
+						removeBoolean(op1);
 						break;
 
 					case OPCODE_POW:
@@ -4823,11 +4794,20 @@ public:
 					{
 						remapTarget(op1);
 						applySwizzle(op1, op2);
-						if (!instr->bSaturate)
+						if (!instr->bSaturate) {
+							// rsqrt should work in everything since shader
+							// model 2 - if shader model 1 on DX9 is the
+							// problem can't we just force shader model 3 and
+							// be done with it? Leaving this for now since
+							// 1/sqrt() should be mathematically equivelent,
+							// though may miss out on the fast inverse square
+							// root optimisation if the hardware employs it
+							// (look it up to have your mind blown) -DSS
 							//sprintf(buffer, "  %s = rsqrt(%s);\n", writeTarget(op1), ci(op2).c_str());
 							sprintf(buffer, "  %s = 1.0 / sqrt(%s);\n", writeTarget(op1), ci(op2).c_str()); //dx9
-						else
+						} else {
 							sprintf(buffer, "  %s = saturate(rsqrt(%s));\n", writeTarget(op1), ci(op2).c_str());
+						}
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -5206,9 +5186,7 @@ public:
 
 					// Was missing the sample_aoffimmi variant. Added as matching sample_b type. Used in FC4.
 					case OPCODE_SAMPLE:
-						//dx9
 					{
-
 						if (shader->dx9Shader)
 						{
 							remapTarget(op1);
@@ -5222,55 +5200,32 @@ public:
 						}
 						else
 						{
-							remapTarget(op1);
-							applySwizzle(".xyzw", op2);
-							applySwizzle(op1, op3);
-							int textureId, samplerId;
-							sscanf_s(op3, "t%d.", &textureId);
-							sscanf_s(op4, "s%d", &samplerId);
-							truncateTexturePos(op2, mTextureType[textureId].c_str());
-							if (!instr->bAddressOffset)
-								sprintf(buffer, "  %s = %s.Sample(%s, %s)%s;\n", writeTarget(op1),
-									mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
-							else
-							{
-								int offsetx = 0, offsety = 0, offsetz = 0;
-								sscanf_s(statement, "sample_aoffimmi(%d,%d,%d", &offsetx, &offsety, &offsetz);
-								sprintf(buffer, "  %s = %s.Sample(%s, %s, int2(%d, %d))%s;\n", writeTarget(op1),
-									mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(),
-									offsetx, offsety, strrchr(op3, '.'));
-							}
-							appendOutput(buffer);
-							removeBoolean(op1);
+						// Temporarily stripping indentation to ease forward port -DSS
+						//	else if (!strncmp(statement, "sample_indexable", strlen("sample_indexable")))
+						remapTarget(op1);
+						applySwizzle(".xyzw", op2);
+						applySwizzle(op1, op3);
+						int textureId, samplerId;
+						sscanf_s(op3, "t%d.", &textureId);
+						sscanf_s(op4, "s%d", &samplerId);
+						truncateTexturePos(op2, mTextureType[textureId].c_str());
+						if (!instr->bAddressOffset)
+							sprintf(buffer, "  %s = %s.Sample(%s, %s)%s;\n", writeTarget(op1),
+								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
+						else
+						{
+							int offsetx = 0, offsety = 0, offsetz = 0;
+							sscanf_s(statement, "sample_aoffimmi(%d,%d,%d", &offsetx, &offsety, &offsetz);
+							sprintf(buffer, "  %s = %s.Sample(%s, %s, int2(%d, %d))%s;\n", writeTarget(op1),
+								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(),
+								offsetx, offsety, strrchr(op3, '.'));
+						}
+						appendOutput(buffer);
+						removeBoolean(op1);
 						}
 
 						break;
 					}
-					//dx9
-					//{
-					//	//	else if (!strncmp(statement, "sample_indexable", strlen("sample_indexable")))
-					//	remapTarget(op1);
-					//	applySwizzle(".xyzw", op2);
-					//	applySwizzle(op1, op3);
-					//	int textureId, samplerId;
-					//	sscanf_s(op3, "t%d.", &textureId);
-					//	sscanf_s(op4, "s%d", &samplerId);
-					//	truncateTexturePos(op2, mTextureType[textureId].c_str());
-					//	if (!instr->bAddressOffset)
-					//		sprintf(buffer, "  %s = %s.Sample(%s, %s)%s;\n", writeTarget(op1),
-					//			mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
-					//	else
-					//	{
-					//		int offsetx = 0, offsety = 0, offsetz = 0;
-					//		sscanf_s(statement, "sample_aoffimmi(%d,%d,%d", &offsetx, &offsety, &offsetz);
-					//		sprintf(buffer, "  %s = %s.Sample(%s, %s, int2(%d, %d))%s;\n", writeTarget(op1),
-					//			mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(),
-					//			offsetx, offsety, strrchr(op3, '.'));
-					//	}
-					//	appendOutput(buffer);
-					//	removeBoolean(op1);
-					//	break;
-					//}
 
 					// Missing opcode for WatchDogs.  Very similar to SAMPLE_L, so copied from there.
 					case OPCODE_SAMPLE_B:
@@ -6143,8 +6098,6 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 		Shader *shader = DecodeDXBC((uint32_t*)params.bytecode);
 		if (!shader) return string();
 
-		//d.ReadResourceBindings(params.decompiled, params.decompiledSize);
-		//dx9
 		if (shader->dx9Shader)
 		{
 			d.ReadResourceBindingsDX9(params.decompiled, params.decompiledSize);
@@ -6153,7 +6106,6 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 		{
 			d.ReadResourceBindings(params.decompiled, params.decompiledSize);
 		}
-		//dx9
 		d.ParseBufferDefinitions(shader, params.decompiled, params.decompiledSize);
 		d.WriteResourceDefinitions();
 		d.WriteAddOnDeclarations();
