@@ -1596,4 +1596,4 @@ static UINT DrawPrimitiveCountToVerticesCount(UINT pCount, D3D9Base::D3DPRIMITIV
 #endif
 
 extern IDXGISwapChain *last_fullscreen_swap_chain;
-void install_crash_handler();
+void install_crash_handler(int level);

@@ -360,7 +360,7 @@ static void ForceDisplayParams1(DXGI_SWAP_CHAIN_DESC1 *pDesc, DXGI_SWAP_CHAIN_FU
 // 2 variants - we could likely go further and share more code if we wanted
 // though.
 
-static void override_swap_chain(DXGI_SWAP_CHAIN_DESC *pDesc, DXGI_SWAP_CHAIN_DESC *origSwapChainDesc)
+void override_swap_chain(DXGI_SWAP_CHAIN_DESC *pDesc, DXGI_SWAP_CHAIN_DESC *origSwapChainDesc)
 {
 	if (pDesc == nullptr)
 		return;
@@ -430,17 +430,16 @@ static void override_factory2_swap_chain(
 	// FIXME: Implement upscaling
 }
 
-static void wrap_swap_chain(HackerDevice *hackerDevice,
+void wrap_swap_chain(HackerDevice *hackerDevice,
 		IDXGISwapChain **ppSwapChain,
 		DXGI_SWAP_CHAIN_DESC *overrideSwapChainDesc,
-		DXGI_SWAP_CHAIN_DESC *origSwapChainDesc,
-		IDXGIFactory *factory)
+		DXGI_SWAP_CHAIN_DESC *origSwapChainDesc)
 {
 	HackerContext *hackerContext = NULL;
 	HackerSwapChain *swapchainWrap = NULL;
 	IDXGISwapChain1 *origSwapChain = NULL;
 
-	if (!hackerDevice)
+	if (!hackerDevice || !ppSwapChain || !*ppSwapChain)
 		return;
 
 	// Always upcast to IDXGISwapChain1 whenever possible.
@@ -466,7 +465,7 @@ static void wrap_swap_chain(HackerDevice *hackerDevice,
 	else								// Upscaling case
 	{
 		swapchainWrap = new HackerUpscalingSwapChain(origSwapChain, hackerDevice, hackerContext,
-			origSwapChainDesc, overrideSwapChainDesc->BufferDesc.Width, overrideSwapChainDesc->BufferDesc.Height, factory);
+			origSwapChainDesc, overrideSwapChainDesc->BufferDesc.Width, overrideSwapChainDesc->BufferDesc.Height);
 		LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, origSwapChain);
 
 		if (G->SCREEN_UPSCALING == 2 || !origSwapChainDesc->Windowed)
@@ -477,6 +476,10 @@ static void wrap_swap_chain(HackerDevice *hackerDevice,
 			origSwapChain->SetFullscreenState(TRUE, nullptr);
 		}
 	}
+
+	// For 3DMigoto's crash handler emergency switch to windowed mode function:
+	if (overrideSwapChainDesc && !overrideSwapChainDesc->Windowed)
+		last_fullscreen_swap_chain = origSwapChain;
 
 	// When creating a new swapchain, we can assume this is the game creating
 	// the most important object. Return the wrapped swapchain to the game so it
@@ -772,7 +775,7 @@ static void HookFactory2CreateSwapChainMethods(IDXGIFactory2* dxgiFactory)
 
 // -----------------------------------------------------------------------------
 
-HRESULT(__stdcall *fnOrigCreateSwapChain)(
+static HRESULT(__stdcall *fnOrigCreateSwapChain)(
 	IDXGIFactory * This,
 	/* [annotation][in] */
 	_In_  IUnknown *pDevice,
@@ -782,7 +785,44 @@ HRESULT(__stdcall *fnOrigCreateSwapChain)(
 	_Out_  IDXGISwapChain **ppSwapChain) = nullptr;
 
 
-HRESULT __stdcall UnhookableCreateSwapChain(
+// Actual hook for any IDXGICreateSwapChain calls the game makes.
+//
+// There are two primary paths that can arrive here.
+//
+// ---1. d3d11->CreateDeviceAndSwapChain
+//	This path arrives here with a normal ID3D11Device1 device, not a HackerDevice.
+//	This is called implictly from the middle of CreateDeviceAndSwapChain by
+//	merit of the fact that we have hooked that call. This is really an
+//	implementation detail of DirectX and (nowadays) we explicitly want to
+//	ignore this call, which we do via the reentrant hooking quirk
+//	detection. Our CreateDeviceAndSwapChain wrapper will handle wrapping
+//	the swap chain in this case.
+//
+//	Note that the Steam overlay is known to rely on this same DirectX
+//	implementation detail and in the past we inadvertently bypassed them by
+//	redirecting the swap chain creation in CreateDeviceAndSwapChain
+//	ourselves in such a way that their hook may never have been called,
+//	depending on which tool managed to hook in first (3DMigoto getting in
+//	first was the fail case as we could then call the original
+//	CreateSwapChain without going through Steam's hook).
+//
+// 2. IDXGIFactory->CreateSwapChain after CreateDevice
+//	This path requires a pDevice passed in, which is a HackerDevice.  This is the
+//	secret path, where they take the Device and QueryInterface to get IDXGIDevice
+//	up to getting Factory, where they call CreateSwapChain. In this path, we can
+//	expect the input pDevice to have already been setup as a HackerDevice.
+//
+//	It's not really secret, given the procedure is readily documented on MSDN:
+//	https://docs.microsoft.com/en-gb/windows/desktop/api/dxgi/nn-dxgi-idxgifactory#remarks
+//	  -DSS
+//
+//
+// In prior code, we were looking for possible IDXGIDevice's as the pDevice input.
+// That should not be a problem now, because we are specifically trying to cast
+// that input into an ID3D11Device1 using QueryInterface.  Leaving the original
+// code commented out at the bottom of the file, for reference.
+
+HRESULT __stdcall Hooked_CreateSwapChain(
 	IDXGIFactory * This,
 	/* [annotation][in] */
 	_In_  IUnknown *pDevice,
@@ -791,10 +831,23 @@ HRESULT __stdcall UnhookableCreateSwapChain(
 	/* [annotation][out] */
 	_Out_  IDXGISwapChain **ppSwapChain)
 {
+	if (get_tls()->hooking_quirk_protection) {
+		LogInfo("Hooking Quirk: Unexpected call back into IDXGIFactory::CreateSwapChain, passing through\n");
+		// Known case: DirectX implements D3D11CreateDeviceAndSwapChain
+		//             by calling DXGIFactory::CreateSwapChain (if
+		//             ppSwapChain is not NULL), triggering this if we
+		//             call the former and have hooked the later.
+		//             Note that the Steam overlay depends on this.
+		return fnOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
+	}
+
+	LogInfo("\n*** Hooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
+	LogInfo("  Device = %p\n", pDevice);
+	LogInfo("  SwapChain = %p\n", ppSwapChain);
+	LogInfo("  Description = %p\n", pDesc);
+
 	HackerDevice *hackerDevice = NULL;
 	DXGI_SWAP_CHAIN_DESC origSwapChainDesc;
-
-	LogInfo("-- UnhookableCreateSwapChain called\n");
 
 	hackerDevice = sort_out_swap_chain_device_mess(&pDevice);
 
@@ -813,71 +866,12 @@ HRESULT __stdcall UnhookableCreateSwapChain(
 	LogInfo("  CreateSwapChain returned handle = %p\n", retChain);
 	analyse_iunknown(retChain);
 
-	if (pDesc && !pDesc->Windowed)
-		last_fullscreen_swap_chain = retChain;
+	wrap_swap_chain(hackerDevice, ppSwapChain, pDesc, &origSwapChainDesc);
 
-	wrap_swap_chain(hackerDevice, ppSwapChain, pDesc, &origSwapChainDesc, This);
-
-	LogInfo("->UnhookableCreateSwapChain result %#x\n", hr);
+	LogInfo("->IDXGIFactory::CreateSwapChain return result %#x\n\n", hr);
 out_release:
 	if (hackerDevice)
 		hackerDevice->Release();
-	return hr;
-}
-
-// Actual hook for any IDXGICreateSwapChain calls the game makes.
-//
-// There are two primary paths that can arrive here.
-// ---1. d3d11->CreateDeviceAndSwapChain
-//	This path arrives here with a normal ID3D11Device1 device, not a HackerDevice.
-//	This is called implictly from the middle of CreateDeviceAndSwapChain.---
-//	No longer necessary, with CreateDeviceAndSwapChain broken into two direct calls.
-// 2. IDXGIFactory->CreateSwapChain after CreateDevice
-//	This path requires a pDevice passed in, which is a HackerDevice.  This is the
-//	secret path, where they take the Device and QueryInterface to get IDXGIDevice
-//	up to getting Factory, where they call CreateSwapChain. In this path, we can
-//	expect the input pDevice to have already been setup as a HackerDevice.
-//
-//
-// In prior code, we were looking for possible IDXGIDevice's as the pDevice input.
-// That should not be a problem now, because we are specifically trying to cast
-// that input into an ID3D11Device1 using QueryInterface.  Leaving the original
-// code commented out at the bottom of the file, for reference.
-//
-// It's also probable that other tools will hook this same call.  Overlays of any
-// form want access to the SwapChain and Present, just like us.  To avoid our code
-// from interacting with theirs, we make this shim routine, that will call into 
-// our actual functionality.  That way any outside hook will see this call, and
-// our internal use in CreateDeviceAndSwapChain will use UnhookableCreateSwapChain
-// to avoid outside hooks.  We have no known scenario where this causes a problem,
-// but this is safer and makes it match our handling of CreateDevice.
-
-HRESULT __stdcall Hooked_CreateSwapChain(
-	IDXGIFactory * This,
-	/* [annotation][in] */
-	_In_  IUnknown *pDevice,
-	/* [annotation][in] */
-	_In_  DXGI_SWAP_CHAIN_DESC *pDesc,
-	/* [annotation][out] */
-	_Out_  IDXGISwapChain **ppSwapChain)
-{
-	if (get_tls()->hooking_quirk_protection) {
-		LogInfo("Hooking Quirk: Unexpected call back into IDXGIFactory::CreateSwapChain, passing through\n");
-		// Known case: DirectX implements D3D11CreateDeviceAndSwapChain
-		//             by calling DXGIFactory::CreateSwapChain (if
-		//             ppSwapChain is not NULL), triggering this if we
-		//             call the former and have hooked the later.
-		return fnOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
-	}
-
-	LogInfo("\n*** Hooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
-	LogInfo("  Device = %p\n", pDevice);
-	LogInfo("  SwapChain = %p\n", ppSwapChain);
-	LogInfo("  Description = %p\n", pDesc);
-
-	HRESULT hr = UnhookableCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
-
-	LogInfo("->IDXGIFactory::CreateSwapChain return result %#x\n\n", hr);
 	return hr;
 }
 

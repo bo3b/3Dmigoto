@@ -960,11 +960,11 @@ STDMETHODIMP HackerSwapChain::GetRotation(THIS_
 // resolutions.  Particularly good for 4K passive 3D.
 
 HackerUpscalingSwapChain::HackerUpscalingSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pHackerDevice, HackerContext *pHackerContext,
-	DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc, UINT newWidth, UINT newHeight, IDXGIFactory* pFactory)
+	DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc, UINT newWidth, UINT newHeight)
 	: HackerSwapChain(pSwapChain, pHackerDevice, pHackerContext),
 	mFakeBackBuffer(nullptr), mFakeSwapChain1(nullptr), mWidth(0), mHeight(0)
 {
-	CreateRenderTarget(pFakeSwapChainDesc, pFactory);
+	CreateRenderTarget(pFakeSwapChainDesc);
 
 	mWidth = newWidth;
 	mHeight = newHeight;
@@ -979,7 +979,7 @@ HackerUpscalingSwapChain::~HackerUpscalingSwapChain()
 		mFakeBackBuffer->Release();
 }
 
-void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc, IDXGIFactory* pFactory)
+void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc)
 {
 	HRESULT hr;
 
@@ -1010,12 +1010,16 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 	break;
 	case 1:
 	{
-		if (pFactory == nullptr)
+		IDXGIFactory *pFactory = nullptr;
+
+		hr = mOrigSwapChain1->GetParent(IID_PPV_ARGS(&pFactory));
+		if (FAILED(hr))
 		{
-			LogOverlay(LOG_DIRE, "HackerUpscalingSwapChain::createRenderTarget failed provided factory pointer is invalid.\n");
+			LogOverlay(LOG_DIRE, "HackerUpscalingSwapChain::createRenderTarget failed to get DXGIFactory\n");
 			// Not positive if we will be able to get an overlay to
 			// display the error, so also issue an audible warning:
 			BeepFailure2();
+			return;
 		}
 		const UINT flagBackup = pFakeSwapChainDesc->Flags;
 
@@ -1023,8 +1027,10 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 		pFakeSwapChainDesc->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 		IDXGISwapChain* swapChain;
 		get_tls()->hooking_quirk_protection = true;
-		hr = fnOrigCreateSwapChain(pFactory, mHackerDevice->GetPossiblyHookedOrigDevice1(), pFakeSwapChainDesc, &swapChain);
+		pFactory->CreateSwapChain(mHackerDevice->GetPossiblyHookedOrigDevice1(), pFakeSwapChainDesc, &swapChain);
 		get_tls()->hooking_quirk_protection = false;
+
+		pFactory->Release();
 
 		HRESULT res = swapChain->QueryInterface(IID_PPV_ARGS(&mFakeSwapChain1));
 		if (SUCCEEDED(res))
@@ -1041,6 +1047,7 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
 		// Not positive if we will be able to get an overlay to
 		// display the error, so also issue an audible warning:
 		BeepFailure2();
+		return;
 	}
 
 	LogInfo("HackerUpscalingSwapChain::HackerUpscalingSwapChain(): result %d\n", hr);

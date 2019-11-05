@@ -446,7 +446,141 @@ static string Decompile(ID3DBlob *pShaderByteCode, string *asmText)
 	return decompiledCode;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Custom #include handler used to track which shaders need to be reloaded
+// after an included file is modified. Doco for the ID3DInclude interface:
+//
+//   https://docs.microsoft.com/en-us/windows/desktop/api/d3dcommon/nn-d3dcommon-id3dinclude
+//   https://docs.microsoft.com/en-us/windows/desktop/direct3d11/d3d11-graphics-programming-guide-effects-compile#searching-for-include-files
+//   https://docs.microsoft.com/en-us/windows/desktop/api/d3dcompiler/nf-d3dcompiler-d3dcompile
 
+MigotoIncludeHandler::MigotoIncludeHandler(const char *path)
+{
+	LogDebug("      MigotoIncludeHandler %p for \"%s\"\n", this, path);
+	push_dir(path);
+}
+
+// This tracks any directories mentioned when including files, so that files in
+// those directories can include other files relative to themselves rather than
+// having to specify the include path relative to the initial source file.
+// For backwards compatibility with D3D_COMPILE_STANDARD_FILE_INCLUDE this has
+// to be enabled in the d3dx.ini
+//
+// The Open() and Close() calls work like a stack - if a includes b and c, and
+// b includes d then we would see Open(b), Open(d), Close(d), Close(b),
+// Open(c), Close(c). Therefore, by keeping this directory stack in sync with
+// them we can ensure that we are including the correct file. We never see an
+// Open or Close call for a - we have to pass the path for a into the handler
+// separately from the D3DCompile call, which we do via the above constructor.
+void MigotoIncludeHandler::push_dir(const char *path)
+{
+	// D3DCompile accepts both forward and backslashes as path separators:
+	const char *dir_sep = max(strrchr(path, '\\'), strrchr(path, '/'));
+
+	// May not have a path separator if including from the current working
+	// directory instead of ShaderFixes:
+	if (dir_sep)
+		dir_stack.push_back(string(path, dir_sep - path + 1));
+	else
+		dir_stack.push_back("");
+}
+
+HRESULT MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID *ppData, UINT *pBytes)
+{
+	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> codec;
+	char *buf = NULL;
+	DWORD size, read;
+	string apath;
+	wstring wpath;
+	HANDLE f;
+
+	LogDebug("      MigotoIncludeHandler::Open(%p, %u, %s, %p)\n", this, IncludeType, pFileName, pParentData);
+
+	// For backwards compatibility with D3D_COMPILE_STANDARD_FILE_INCLUDE
+	// we only search for shaders relative to the *initial* source file by
+	// default. This is a bit silly, so we have a configuration option to
+	// search from the current source file instead. We can't simply default
+	// to the sensible behaviour, because there are some contrived
+	// scenarios where it might change behaviour, e.g.
+	//
+	// a: #include "b/c"
+	// b/c: #include "d"
+	// Where d exists in both the root and b.
+	//
+	// Sensibly we would want to include "b/d", but the standard include
+	// handler would include "d" from the root instead. This might be
+	// contrived enough to ignore it and drop the option, but its safer to
+	// include the option.
+	if (G->recursive_include)
+		apath = dir_stack.back() + pFileName;
+	else
+		apath = dir_stack.front() + pFileName;
+	wpath = codec.from_bytes(apath);
+
+	f = CreateFile(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (f == INVALID_HANDLE_VALUE && !G->recursive_include) {
+		// If the included file is not found relative to the includer
+		// D3D_COMPILE_STANDARD_FILE_INCLUDE falls back to trying to
+		// open the file from the current working directory, so we do
+		// the same for backwards compatibility.
+		//
+		// I'm not a huge fan of this since we do not control the CWD
+		// and some games are known to use different working
+		// directories on different editions (e.g. FC4 / FCPrimal Steam
+		// vs UPlay), so we disallow this if recursive_include is
+		// enabled as that already disables backwards compatibility.
+		apath = pFileName;
+		wpath = codec.from_bytes(apath);
+		f = CreateFile(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	}
+	if (f == INVALID_HANDLE_VALUE) {
+		LogInfo("      Error opening included file: %s\n", apath.c_str());
+		return E_FAIL;
+	}
+
+	// standard include handler doesn't seem to care which are used, so for
+	// compatibility neither do we. If we ever add internal/generated
+	// headers we might consider requiring they use the system form, e.g.
+	// #include <3dmigoto.h>
+	switch (IncludeType) {
+		case D3D_INCLUDE_LOCAL:
+			LogInfo("      #include \"%s\"\n", apath.c_str());
+			break;
+		case D3D_INCLUDE_SYSTEM:
+		default:
+			LogInfo("      #include <%s>\n", apath.c_str());
+			break;
+	}
+
+	size = GetFileSize(f, 0);
+	buf = new char[size];
+
+	if (!ReadFile(f, buf, size, &read, 0) || size != read) {
+		LogInfo("      Error reading included file.\n");
+		goto err_free;
+	}
+	CloseHandle(f);
+
+	*pBytes = size;
+	*ppData = buf;
+	push_dir(apath.c_str());
+	LogDebug("       -> %p\n", buf);
+
+	return S_OK;
+
+err_free:
+	delete [] buf;
+	CloseHandle(f);
+	return E_FAIL;
+}
+
+HRESULT MigotoIncludeHandler::Close(LPCVOID pData)
+{
+	LogDebug("      MigotoIncludeHandler::Close(%p, %p)\n", this, pData);
+	delete [] pData;
+	dir_stack.pop_back();
+	return S_OK;
+}
 
 // Compile a new shader from  HLSL text input, and report on errors if any.
 // Return the binary blob of pCode to be activated with CreateVertexShader or CreatePixelShader.
@@ -516,7 +650,9 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		// Later we could add a custom include handler to track dependencies so
 		// that we can make reloading work better when using includes:
 		wcstombs(apath, fullName, MAX_PATH);
-		HRESULT ret = D3DCompile(srcData.data(), srcDataSize, apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		MigotoIncludeHandler include_handler(apath);
+		HRESULT ret = D3DCompile(srcData.data(), srcDataSize, apath, 0,
+				G->recursive_include == -1 ? D3D_COMPILE_STANDARD_FILE_INCLUDE : &include_handler,
 			"main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pByteCode, &pErrorMsgs);
 
 		LogInfo("    compile result for replacement HLSL shader: %x\n", ret);
@@ -993,11 +1129,6 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 
 				if (patched) {
 					success = WriteASM(&asmText, NULL, NULL, hash, iter.second, device, &tagline);
-					// ShaderRegex may have also altered the ShaderOverride, but now we've dumped it
-					// out this would not be processed on the next config reload, so revert the
-					// changes to the ShaderOverride to ensure things are consistent:
-					if (unlink_shader_regex_command_lists_and_filter_index(hash))
-						LogOverlay(LOG_WARNING, "NOTICE: ShaderRegex command lists were dropped from the ShaderOverride\n");
 					break;
 				}
 			}
@@ -1024,6 +1155,14 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 
 				success = WriteASM(&asmText, &hlslText, &errText, hash, iter.second, device);
 				break;
+			}
+
+			if (success) {
+				// ShaderRegex may have also altered the ShaderOverride, but now we've dumped it
+				// out this would not be processed on the next config reload, so revert the
+				// changes to the ShaderOverride to ensure things are consistent:
+				if (unlink_shader_regex_command_lists_and_filter_index(hash))
+					LogOverlay(LOG_WARNING, "NOTICE: ShaderRegex command lists were dropped from the ShaderOverride\n");
 			}
 
 			// There can be more than one in the map with the same hash, but we only need a single copy to
