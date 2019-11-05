@@ -1519,6 +1519,11 @@ Shader* DecodeDXBC(uint32_t* data)
         uint32_t type = DecodeShaderTypeDX9(data[0]);
 
 		// :todo: run standard DX9 decompiler from microsoft
+
+		if (type != INVALID_SHADER)
+		{
+			return DecodeDX9BC(data);
+		}
 		return 0;
 	}
 

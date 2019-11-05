@@ -8,6 +8,9 @@
 #include "internal_includes/tokens.h"
 #include "internal_includes/reflect.h"
 
+#include "tokens.h" //dx9
+#include "reflect.h" //dx9
+
 enum{ MAX_SUB_OPERANDS = 3};
 
 struct Operand
@@ -59,6 +62,7 @@ struct Instruction
 	COMPARISON_DX9 eDX9TestType;
     uint32_t ui32SyncFlags;
     uint32_t ui32NumOperands;
+	uint32_t ui32FirstSrc; //dx9
     Operand asOperands[6];
     uint32_t bSaturate;
     uint32_t ui32FuncIndexWithinInterface;
@@ -141,6 +145,27 @@ struct Declaration
 	uint32_t ui32IsShadowTex;
 
 };
+//dx9
+static const uint32_t MAIN_PHASE = 0;
+static const uint32_t HS_GLOBAL_DECL = 1;
+static const uint32_t HS_CTRL_POINT_PHASE = 2;
+static const uint32_t HS_FORK_PHASE = 3;
+static const uint32_t HS_JOIN_PHASE = 4;
+static enum { NUM_PHASES = 5 };
+
+typedef struct ShaderPhase_TAG
+ {
+		//How many instances of this phase type are there?
+		uint32_t ui32InstanceCount;
+
+		uint32_t ui32DeclCount;
+	std::vector<Declaration> psDecl;
+
+		uint32_t ui32InstCount;
+	std::vector<Instruction> psInst;
+} ShaderPhase;
+// dx9
+
 
 struct Shader
 {
@@ -205,6 +230,8 @@ struct Shader
 
     ShaderInfo *sInfo;
 
+	ShaderPhase asPhase[NUM_PHASES]; //dx9
+
 	std::vector<int> abScalarInput;
 
     std::map<int, int> aIndexedOutput;
@@ -222,6 +249,8 @@ struct Shader
     std::map<int, int> abInputReferencedByInstruction;
 
 	//int aiOpcodeUsed[NUM_OPCODES];
+
+	bool dx9Shader; //dx9
 
 	Shader() :
 		ui32MajorVersion(0),
@@ -252,7 +281,8 @@ struct Shader
 		aeResourceDims(),
 		aiInputDeclaredSize(),
 		aiOutputDeclared(),
-		abInputReferencedByInstruction()
+		abInputReferencedByInstruction(),
+		dx9Shader(false) //dx9
 	{
 		for (int i = 0; i < MAX_FORK_PHASES; ++i)
 		{
@@ -270,10 +300,10 @@ struct Shader
 		sInfo = 0;
 	}
 };
-
-static const uint32_t MAIN_PHASE = 0;
-static const uint32_t HS_FORK_PHASE = 1;
-static const uint32_t HS_CTRL_POINT_PHASE = 2;
-static const uint32_t HS_JOIN_PHASE = 3;
-enum{ NUM_PHASES = 4};
-
+//dx9
+//static const uint32_t MAIN_PHASE = 0;
+//static const uint32_t HS_FORK_PHASE = 1;
+//static const uint32_t HS_CTRL_POINT_PHASE = 2;
+//static const uint32_t HS_JOIN_PHASE = 3;
+//enum{ NUM_PHASES = 4};
+//dx9

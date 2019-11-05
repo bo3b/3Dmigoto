@@ -17,3 +17,6 @@ EXPORTS
 	Direct3DShaderValidatorCreate9	@1
 	PSGPError					@2
 	PSGPSampleTexture			@3
+
+SECTIONS
+ multi_process_shared_globals READ WRITE SHARED

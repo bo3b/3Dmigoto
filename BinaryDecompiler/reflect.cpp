@@ -905,7 +905,7 @@ void LoadD3D9ConstantTable(const char* data,
     //Only 1 Constant Table in d3d9
     ASSERT(psInfo->ui32NumConstantBuffers==1);
 
-    psConstantBuffer = new ConstantBuffer();
+    psConstantBuffer = new ConstantBuffer[1];
 
     psInfo->psConstantBuffers = psConstantBuffer;
 

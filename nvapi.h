@@ -43,6 +43,9 @@
 //  Target Platform: windows
 //
 ///////////////////////////////////////////////////////////////////////////////
+#ifndef NO_STEREO_D3D9
+//using namespace D3D9Base;
+#endif
 #ifndef _NVAPI_H
 #define _NVAPI_H
 
@@ -1153,6 +1156,9 @@ typedef enum _NvAPI_Status
 #define NVAPI_INVALID_USER_PRIVILEDGE   NVAPI_INVALID_USER_PRIVILEGE    //!< Fix typo in error code
 
 
+//NVAPI_INTERFACE NvAPI_ResetTrackedValues();
+//NVAPI_INTERFACE NvAPI_TrackValues(bool track);
+//NVAPI_INTERFACE NvAPI_UseTrackedValues(bool use);
 ///////////////////////////////////////////////////////////////////////////////
 //
 // FUNCTION NAME: NvAPI_Initialize
@@ -7691,7 +7697,7 @@ NVAPI_INTERFACE NvAPI_D3D_GetCurrentSLIState(IUnknown *pDevice, NV_GET_CURRENT_S
 //!
 //! \ingroup dx
 ///////////////////////////////////////////////////////////////////////////////
-NVAPI_INTERFACE NvAPI_D3D9_RegisterResource(IDirect3DResource9* pResource);
+NVAPI_INTERFACE NvAPI_D3D9_RegisterResource(D3D9Base::IDirect3DResource9* pResource);
 #endif //defined(_D3D9_H_)
 #if defined(_D3D9_H_)
 ///////////////////////////////////////////////////////////////////////////////
@@ -7709,7 +7715,7 @@ NVAPI_INTERFACE NvAPI_D3D9_RegisterResource(IDirect3DResource9* pResource);
 //!
 //! \ingroup dx
 ///////////////////////////////////////////////////////////////////////////////
-NVAPI_INTERFACE NvAPI_D3D9_UnregisterResource(IDirect3DResource9* pResource);
+NVAPI_INTERFACE NvAPI_D3D9_UnregisterResource(D3D9Base::IDirect3DResource9* pResource);
 
 #endif //defined(_D3D9_H_)
 
@@ -7759,9 +7765,9 @@ typedef enum {
 
 
 //! \ingroup dx
-NVAPI_INTERFACE NvAPI_D3D9_AliasSurfaceAsTexture(IDirect3DDevice9* pDev,
-                                                 IDirect3DSurface9* pSurface,
-                                                 IDirect3DTexture9 **ppTexture,
+NVAPI_INTERFACE NvAPI_D3D9_AliasSurfaceAsTexture(D3D9Base::IDirect3DDevice9* pDev,
+                                                 D3D9Base::IDirect3DSurface9* pSurface,
+												D3D9Base::IDirect3DTexture9 **ppTexture,
                                                  DWORD dwFlag);
 #endif //defined(_D3D9_H_)
 #if defined(_D3D9_H_)
@@ -7796,12 +7802,12 @@ NVAPI_INTERFACE NvAPI_D3D9_AliasSurfaceAsTexture(IDirect3DDevice9* pDev,
 //!
 //! \ingroup dx
 ///////////////////////////////////////////////////////////////////////////////
-NVAPI_INTERFACE NvAPI_D3D9_StretchRectEx(IDirect3DDevice9 * pDevice,
-                                         IDirect3DResource9 * pSourceResource,
-                                         CONST RECT * pSourceRect,
-                                         IDirect3DResource9 * pDestResource,
-                                         CONST RECT * pDestRect,
-                                         D3DTEXTUREFILTERTYPE Filter);
+NVAPI_INTERFACE NvAPI_D3D9_StretchRectEx(D3D9Base::IDirect3DDevice9 * pDevice,
+										D3D9Base::IDirect3DResource9 * pSourceResource,
+                                        CONST RECT * pSourceRect,
+										D3D9Base::IDirect3DResource9 * pDestResource,
+                                        CONST RECT * pDestRect,
+										D3D9Base::D3DTEXTUREFILTERTYPE Filter);
 
 #endif //defined(_D3D9_H_)
 #if defined(_D3D9_H_)
@@ -7828,7 +7834,7 @@ NVAPI_INTERFACE NvAPI_D3D9_StretchRectEx(IDirect3DDevice9 * pDevice,
 //!
 //! \ingroup dx
 ///////////////////////////////////////////////////////////////////////////////
-NVAPI_INTERFACE NvAPI_D3D9_ClearRT(IDirect3DDevice9 * pDevice,
+NVAPI_INTERFACE NvAPI_D3D9_ClearRT(D3D9Base::IDirect3DDevice9 * pDevice,
                                    NvU32 dwNumRects,
                                    CONST RECT * pRects,
                                    float r, float g, float b, float a);
@@ -7856,7 +7862,7 @@ NVAPI_INTERFACE NvAPI_D3D9_ClearRT(IDirect3DDevice9 * pDevice,
 //! \return An int which could be an NvAPI status or DX HRESULT code
 //! \ingroup dx
 ///////////////////////////////////////////////////////////////////////////////
-NVAPI_INTERFACE NvAPI_D3D9_GetSurfaceHandle(IDirect3DSurface9 *pSurface, 
+NVAPI_INTERFACE NvAPI_D3D9_GetSurfaceHandle(D3D9Base::IDirect3DSurface9 *pSurface,
                                         NVDX_ObjectHandle *pHandle);
 
 #endif //defined(_D3D9_H_) && defined(__cplusplus)
@@ -7923,7 +7929,7 @@ typedef struct _NV_DX_VIDEO_STEREO_INFO {
 //! Macro for constructing the version field of ::NV_DX_VIDEO_STEREO_INFO
 #define NV_DX_VIDEO_STEREO_INFO_VER  MAKE_NVAPI_VERSION(NV_DX_VIDEO_STEREO_INFO,1)
 
-NVAPI_INTERFACE NvAPI_D3D9_VideoSetStereoInfo(IDirect3DDevice9 *pDev,
+NVAPI_INTERFACE NvAPI_D3D9_VideoSetStereoInfo(D3D9Base::IDirect3DDevice9 *pDev,
                                               NV_DX_VIDEO_STEREO_INFO *pStereoInfo);
 
 //! @}
@@ -10629,9 +10635,9 @@ NVAPI_INTERFACE NvAPI_D3D1x_CreateSwapChain(StereoHandle hStereoHandle,
 //!\ingroup stereoapi
 ///////////////////////////////////////////////////////////////////////////////
 NVAPI_INTERFACE NvAPI_D3D9_CreateSwapChain(StereoHandle hStereoHandle,
-                                           D3DPRESENT_PARAMETERS *pPresentationParameters,
-                                           IDirect3DSwapChain9 **ppSwapChain,
-                                           NV_STEREO_SWAPCHAIN_MODE mode);
+											D3D9Base::D3DPRESENT_PARAMETERS *pPresentationParameters,
+											D3D9Base::IDirect3DSwapChain9 **ppSwapChain,
+											NV_STEREO_SWAPCHAIN_MODE mode);
 #endif //if defined(_D3D9_H_)
 
 
