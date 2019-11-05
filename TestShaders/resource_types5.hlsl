@@ -56,5 +56,8 @@ void main(out float4 output : SV_Target0)
 	output += float_tex.GatherCmp(samp_c, float2(0.5, 0.3), 0.2, offset);
 
 	// ld_uav_typed_indexable
-	output += rwfloat4_tex.Load(0);
+	// .Load() is not supported for RWTexture2D on the version of fxc
+	// shipped with the Windows 8.0 SDK:
+	//output += rwfloat4_tex.Load(0);
+	output += rwfloat4_tex[uint2(0, 0)];
 }

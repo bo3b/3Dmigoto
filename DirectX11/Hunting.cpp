@@ -245,7 +245,7 @@ void DumpUsage(wchar_t *dir)
 		wcscpy(path, dir);
 		wcscat(path, L"\\");
 	} else {
-		if (!GetModuleFileName(0, path, MAX_PATH))
+		if (!GetModuleFileName(migoto_handle, path, MAX_PATH))
 			return;
 		wcsrchr(path, L'\\')[1] = 0;
 	}
@@ -327,9 +327,9 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 	NvU8 stereo = false;
 
 	NvAPIOverride();
-	NvAPI_Stereo_IsEnabled(&stereo);
+	Profiling::NvAPI_Stereo_IsEnabled(&stereo);
 	if (stereo)
-		NvAPI_Stereo_IsActivated(pDevice->mStereoHandle, &stereo);
+		Profiling::NvAPI_Stereo_IsActivated(pDevice->mStereoHandle, &stereo);
 
 	if (!stereo) {
 		LogInfo("marking_actions=stereo_snapshot: Stereo disabled, falling back to mono snapshot\n");
@@ -358,7 +358,7 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 		goto out_release_bb;
 	}
 
-	nvret = NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, true);
+	nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, true);
 	if (nvret != NVAPI_OK) {
 		LogInfo("StereoScreenShot failed to enable reverse stereo blit\n");
 		goto out_release_stereo_bb;
@@ -388,7 +388,7 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 
 	LogInfoW(L"  StereoScreenShot on Mark: %s, result: %d\n", fullName, hr);
 
-	NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, false);
+	Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, false);
 out_release_stereo_bb:
 	stereoBackBuffer->Release();
 out_release_bb:
@@ -429,38 +429,12 @@ static string Decompile(ID3DBlob *pShaderByteCode, string *asmText)
 	string shaderModel;
 	bool errorOccurred = false;
 
-	// TODO: Refactor all parameters we just copy from globals into their
-	// own struct so we don't have to copy all this junk
 	ParseParameters p;
 	p.bytecode = pShaderByteCode->GetBufferPointer();
 	p.decompiled = asmText->c_str();
 	p.decompiledSize = asmText->size();
-	p.StereoParamsReg = G->StereoParamsReg;
-	p.IniParamsReg = G->IniParamsReg;
-	p.recompileVs = G->FIX_Recompile_VS;
-	p.fixSvPosition = G->FIX_SV_Position;
-	p.ZRepair_Dependencies1 = G->ZRepair_Dependencies1;
-	p.ZRepair_Dependencies2 = G->ZRepair_Dependencies2;
-	p.ZRepair_DepthTexture1 = G->ZRepair_DepthTexture1;
-	p.ZRepair_DepthTexture2 = G->ZRepair_DepthTexture2;
-	p.ZRepair_DepthTextureReg1 = G->ZRepair_DepthTextureReg1;
-	p.ZRepair_DepthTextureReg2 = G->ZRepair_DepthTextureReg2;
-	p.ZRepair_ZPosCalc1 = G->ZRepair_ZPosCalc1;
-	p.ZRepair_ZPosCalc2 = G->ZRepair_ZPosCalc2;
-	p.ZRepair_PositionTexture = G->ZRepair_PositionTexture;
-	p.ZRepair_DepthBuffer = (G->ZBufferHashToInject != 0);
-	p.ZRepair_WorldPosCalc = G->ZRepair_WorldPosCalc;
-	p.BackProject_Vector1 = G->BackProject_Vector1;
-	p.BackProject_Vector2 = G->BackProject_Vector2;
-	p.ObjectPos_ID1 = G->ObjectPos_ID1;
-	p.ObjectPos_ID2 = G->ObjectPos_ID2;
-	p.ObjectPos_MUL1 = G->ObjectPos_MUL1;
-	p.ObjectPos_MUL2 = G->ObjectPos_MUL2;
-	p.MatrixPos_ID1 = G->MatrixPos_ID1;
-	p.MatrixPos_MUL1 = G->MatrixPos_MUL1;
-	p.InvTransforms = G->InvTransforms;
-	p.fixLightPosition = G->FIX_Light_Position;
 	p.ZeroOutput = false;
+	p.G = &G->decompiler_settings;
 	const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
 
 	if (!decompiledCode.size())
@@ -589,15 +563,16 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		vector<byte> byteCode(origByteCode->GetBufferSize());
 		memcpy(byteCode.data(), origByteCode->GetBufferPointer(), origByteCode->GetBufferSize());
 
-		// Not completely clear what error reporting happens from assembler.  
-		// We know it throws at least one exception, let's use that.
 		try
 		{
+			// Treat parse errors on shader reload as fatal since there should
+			// be a shaderhacker at the keyboard ready to fix their bugs.
 			byteCode = AssembleFluganWithOptionalSignatureParsing(&srcData, G->assemble_signature_comments, &byteCode);
 		}
-		catch (...)
-		{ 
-			LogInfo("  *** assembler failed.\n");
+		catch (const exception &e)
+		{
+			LogOverlay(LOG_NOTICE, "Error assembling %S: %s\n",
+					fileName, e.what());
 			return true;
 		}
 
@@ -679,7 +654,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 
 	// This is probably unnecessary, because we modify already existing map entries, but
 	// for consistency, we'll wrap this.
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	// Find the original shader bytecode in the mReloadedShaders Map. This map contains entries for all
 	// shaders from the ShaderFixes and ShaderCache folder, and can also include .bin files that were loaded directly.
@@ -715,7 +690,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 			G->mReloadedShaders[oldShader].found = true;
 
 			// Check if the user has overridden the shader model:
-			ShaderOverrideMap::iterator override = G->mShaderOverrideMap.find(hash);
+			ShaderOverrideMap::iterator override = lookup_shaderoverride(hash);
 			if (override != G->mShaderOverrideMap.end()) {
 				if (override->second.model[0])
 					shaderModel = override->second.model;
@@ -901,7 +876,7 @@ static bool WriteHLSL(string *asmText, string *hlslText, string *errText,
 
 	fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 	fwrite(asmText->c_str(), 1, asmText->size(), fw);
-	fprintf_s(fw, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
+	fprintf_s(fw, "\n//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
 
 	fclose(fw);
 
@@ -992,11 +967,13 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 	{
 		if (iter.second.hash == hash)
 		{
-			asmText = BinaryToAsmText(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize());
-			if (asmText.empty())
-				break;
-
 			if (G->marking_actions & MarkingAction::HLSL) {
+				// TODO: Allow the decompiler to parse the patched CB offsets
+				// and move this line back to the common code path:
+				asmText = BinaryToAsmText(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize(), false);
+				if (asmText.empty())
+					break;
+
 				// Save the decompiled text, and ASM text into the HLSL .txt source file:
 				success = WriteHLSL(&asmText, &hlslText, &errText, hash, iter.second, device, asm_enabled);
 				if (success)
@@ -1006,6 +983,10 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 			}
 
 			if (asm_enabled) {
+				asmText = BinaryToAsmText(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize(), G->patch_cb_offsets);
+				if (asmText.empty())
+					break;
+
 				success = WriteASM(&asmText, &hlslText, &errText, hash, iter.second, device);
 				break;
 			}
@@ -1166,7 +1147,7 @@ static void _AnalyseFrameStop()
 {
 	G->analyse_frame = false;
 	if (G->DumpUsage) {
-		EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSectionPretty(&G->mCriticalSection);
 			DumpUsage(G->ANALYSIS_PATH);
 		LeaveCriticalSection(&G->mCriticalSection);
 	}
@@ -1201,7 +1182,7 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
 	_localtime64_s(&tm, &ltime);
 	wcsftime(subdir, MAX_PATH, L"FrameAnalysis-%Y-%m-%d-%H%M%S", &tm);
 
-	if (!GetModuleFileName(0, path, MAX_PATH))
+	if (!GetModuleFileName(migoto_handle, path, MAX_PATH))
 		return;
 	wcsrchr(path, L'\\')[1] = 0;
 	wcscat_s(path, MAX_PATH, subdir);
@@ -1245,6 +1226,10 @@ static void AnalyseFrameStop(HackerDevice *device, void *private_data)
 static void AnalysePerf(HackerDevice *device, void *private_data)
 {
 	Profiling::mode = (Profiling::Mode)((int)Profiling::mode + 1);
+
+	if (Profiling::mode == Profiling::Mode::CTO_WARNING && (!G->implicit_post_checktextureoverride_used || Profiling::cto_warning.empty()))
+		Profiling::mode = (Profiling::Mode)((int)Profiling::mode + 1);
+
 	if (Profiling::mode == Profiling::Mode::INVALID)
 		Profiling::mode = Profiling::Mode::NONE;
 
@@ -1288,10 +1273,6 @@ static void NextMarkingMode(HackerDevice *device, void *private_data)
 
 	G->marking_mode = (MarkingMode)((int)G->marking_mode + 1);
 
-	// FIXME: Zero mode can crash and needs some work:
-	if (G->marking_mode == MarkingMode::ZERO)
-		G->marking_mode = (MarkingMode)((int)G->marking_mode + 1);
-
 	if (G->marking_mode >= MarkingMode::INVALID)
 		G->marking_mode = MarkingMode::SKIP;
 }
@@ -1303,7 +1284,7 @@ static void HuntNext(char *type, std::set<ItemType> *visited,
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 	{
 		std::set<ItemType>::iterator loc = visited->find(*selected);
 		std::set<ItemType>::iterator end = visited->end();
@@ -1339,7 +1320,7 @@ static void NextVertexBuffer(HackerDevice *device, void *private_data)
 {
 	HuntNext<uint32_t>("vertex buffer", &G->mVisitedVertexBuffers, &G->mSelectedVertexBuffer, &G->mSelectedVertexBufferPos);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 	G->mSelectedVertexBuffer_PixelShader.clear();
 	G->mSelectedVertexBuffer_VertexShader.clear();
 	LeaveCriticalSection(&G->mCriticalSection);
@@ -1348,7 +1329,7 @@ static void NextIndexBuffer(HackerDevice *device, void *private_data)
 {
 	HuntNext<uint32_t>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 	G->mSelectedIndexBuffer_PixelShader.clear();
 	G->mSelectedIndexBuffer_VertexShader.clear();
 	LeaveCriticalSection(&G->mCriticalSection);
@@ -1357,7 +1338,7 @@ static void NextPixelShader(HackerDevice *device, void *private_data)
 {
 	HuntNext<UINT64>("pixel shader", &G->mVisitedPixelShaders, &G->mSelectedPixelShader, &G->mSelectedPixelShaderPos);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 	G->mSelectedPixelShader_VertexBuffer.clear();
 	G->mSelectedPixelShader_IndexBuffer.clear();
 	LeaveCriticalSection(&G->mCriticalSection);
@@ -1366,7 +1347,7 @@ static void NextVertexShader(HackerDevice *device, void *private_data)
 {
 	HuntNext<UINT64>("vertex shader", &G->mVisitedVertexShaders, &G->mSelectedVertexShader, &G->mSelectedVertexShaderPos);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 	G->mSelectedVertexShader_VertexBuffer.clear();
 	G->mSelectedVertexShader_IndexBuffer.clear();
 	LeaveCriticalSection(&G->mCriticalSection);
@@ -1399,7 +1380,7 @@ static void HuntPrev(char *type, std::set<ItemType> *visited,
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 	{
 		std::set<ItemType>::iterator loc = visited->find(*selected);
 		std::set<ItemType>::iterator end = visited->end();
@@ -1436,7 +1417,7 @@ static void PrevVertexBuffer(HackerDevice *device, void *private_data)
 {
 	HuntPrev<uint32_t>("vertex buffer", &G->mVisitedVertexBuffers, &G->mSelectedVertexBuffer, &G->mSelectedVertexBufferPos);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 	G->mSelectedVertexBuffer_PixelShader.clear();
 	G->mSelectedVertexBuffer_VertexShader.clear();
 	LeaveCriticalSection(&G->mCriticalSection);
@@ -1445,7 +1426,7 @@ static void PrevIndexBuffer(HackerDevice *device, void *private_data)
 {
 	HuntPrev<uint32_t>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 	G->mSelectedIndexBuffer_PixelShader.clear();
 	G->mSelectedIndexBuffer_VertexShader.clear();
 	LeaveCriticalSection(&G->mCriticalSection);
@@ -1454,7 +1435,7 @@ static void PrevPixelShader(HackerDevice *device, void *private_data)
 {
 	HuntPrev<UINT64>("pixel shader", &G->mVisitedPixelShaders, &G->mSelectedPixelShader, &G->mSelectedPixelShaderPos);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 	G->mSelectedPixelShader_VertexBuffer.clear();
 	G->mSelectedPixelShader_IndexBuffer.clear();
 	LeaveCriticalSection(&G->mCriticalSection);
@@ -1463,7 +1444,7 @@ static void PrevVertexShader(HackerDevice *device, void *private_data)
 {
 	HuntPrev<UINT64>("vertex shader", &G->mVisitedVertexShaders, &G->mSelectedVertexShader, &G->mSelectedVertexShaderPos);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 	G->mSelectedVertexShader_VertexBuffer.clear();
 	G->mSelectedVertexShader_IndexBuffer.clear();
 	LeaveCriticalSection(&G->mCriticalSection);
@@ -1531,7 +1512,7 @@ static void MarkVertexBuffer(HackerDevice *device, void *private_data)
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	if (G->marking_actions & MarkingAction::CLIPBOARD)
 		HashToClipboard("vertex buffer", G->mSelectedVertexBuffer);
@@ -1555,7 +1536,7 @@ static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	if (G->marking_actions & MarkingAction::CLIPBOARD)
 		HashToClipboard("index buffer", G->mSelectedIndexBuffer);
@@ -1579,7 +1560,7 @@ static bool MarkShaderBegin(char *type, UINT64 selected)
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return false;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	LogInfo(">>>> %s marked: %s hash = %016I64x\n", type, type, selected);
 
@@ -1592,10 +1573,6 @@ static void MarkShaderEnd(HackerDevice *device, char *long_type, char *short_typ
 	// failed dump attempt) are removed so that the only messages
 	// displayed will be relevant to the current dump attempt.
 	ClearNotices();
-
-	CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(selected);
-	if (i != G->mCompiledShaderMap.end())
-		LogInfo("       %s was compiled from source code %s\n", long_type, i->second.c_str());
 
 	if (G->marking_actions & MarkingAction::CLIPBOARD)
 		HashToClipboard(long_type, selected);
@@ -1698,8 +1675,10 @@ static uint32_t LogRenderTarget(ID3D11Resource *target, char *log_prefix)
 		return 0;
 	}
 
+	EnterCriticalSectionPretty(&G->mResourcesLock);
 	uint32_t hash = G->mResources[target].hash;
 	uint32_t orig_hash = G->mResources[target].orig_hash;
+	LeaveCriticalSection(&G->mResourcesLock);
 	struct ResourceHashInfo &info = G->mResourceInfo[orig_hash];
 	StrResourceDesc(buf, 256, info);
 	LogInfo("%srender target handle = %p, hash = %08lx, orig_hash = %08lx, %s\n",
@@ -1715,7 +1694,7 @@ static void MarkRenderTarget(HackerDevice *device, void *private_data)
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	hash = LogRenderTarget(G->mSelectedRenderTarget, ">>>> Render target marked: ");
 	for (std::set<ID3D11Resource *>::iterator i = G->mSelectedRenderTargetSnapshotList.begin(); i != G->mSelectedRenderTargetSnapshotList.end(); ++i)
@@ -1778,7 +1757,7 @@ static void DoneHunting(HackerDevice *device, void *private_data)
 	if (G->hunting != HUNTING_MODE_ENABLED)
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	TimeoutHuntingBuffers();
 
@@ -1842,6 +1821,7 @@ void ParseHuntingSection()
 	// discovered while playing normally where it may not be easy/fast to
 	// find the effect again later.
 	G->config_reloadable = RegisterIniKeyBinding(L"Hunting", L"reload_config", FlagConfigReload, NULL, noRepeat, NULL);
+	G->config_reloadable = RegisterIniKeyBinding(L"Hunting", L"wipe_user_config", FlagConfigReload, NULL, noRepeat, (void*)true);
 
 	// We're interested in performance measurements even in release mode
 	// (possibly even especially in release mode), particularly if we want

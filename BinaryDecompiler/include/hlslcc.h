@@ -88,14 +88,14 @@ typedef enum {
 } INOUT_COMPONENT_TYPE;
 
 typedef enum MIN_PRECISION { 
-  D3D_MIN_PRECISION_DEFAULT    = 0,
-  D3D_MIN_PRECISION_FLOAT_16   = 1,
-  D3D_MIN_PRECISION_FLOAT_2_8  = 2,
-  D3D_MIN_PRECISION_RESERVED   = 3,
-  D3D_MIN_PRECISION_SINT_16    = 4,
-  D3D_MIN_PRECISION_UINT_16    = 5,
-  D3D_MIN_PRECISION_ANY_16     = 0xf0,
-  D3D_MIN_PRECISION_ANY_10     = 0xf1
+  MIN_PRECISION_DEFAULT    = 0,
+  MIN_PRECISION_FLOAT_16   = 1,
+  MIN_PRECISION_FLOAT_2_8  = 2,
+  MIN_PRECISION_RESERVED   = 3,
+  MIN_PRECISION_SINT_16    = 4,
+  MIN_PRECISION_UINT_16    = 5,
+  MIN_PRECISION_ANY_16     = 0xf0,
+  MIN_PRECISION_ANY_10     = 0xf1
 } MIN_PRECISION;
 
 struct InOutSignature
@@ -325,6 +325,9 @@ struct ShaderInfo
     uint32_t ui32NumOutputSignatures;
     InOutSignature* psOutputSignatures;
 
+	uint32_t ui32NumPatchConstantSignatures;
+    InOutSignature* psPatchConstantSignatures;
+
     uint32_t ui32NumResourceBindings;
     ResourceBinding* psResourceBindings;
 
@@ -353,6 +356,8 @@ struct ShaderInfo
 		ui32NumInputSignatures(0),
 		psOutputSignatures(0), 
 		ui32NumOutputSignatures(0),
+		psPatchConstantSignatures(0),
+		ui32NumPatchConstantSignatures(0),
 		psResourceBindings(0),
 		ui32NumResourceBindings(0),
 		ui32NumConstantBuffers(0),

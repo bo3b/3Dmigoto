@@ -21,9 +21,25 @@
 
 #define MAX_SIMULTANEOUS_NOTICES 10
 
-static std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
 static bool has_notice = false;
 static unsigned notice_cleared_frame = 0;
+
+static class Notices
+{
+public:
+	std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
+	CRITICAL_SECTION lock;
+
+	Notices()
+	{
+		InitializeCriticalSectionPretty(&lock);
+	}
+
+	~Notices()
+	{
+		DeleteCriticalSection(&lock);
+	}
+} notices;
 
 struct LogLevelParams {
 	DirectX::XMVECTORF32 colour;
@@ -676,14 +692,14 @@ void Overlay::DrawNotices(float *y)
 	Vector2 strSize;
 	int level, displayed = 0;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&notices.lock);
 
 	has_notice = false;
 	for (level = 0; level < NUM_LOG_LEVELS; level++) {
 		if (log_levels[level].hide_in_release && G->hunting == HUNTING_MODE_DISABLED)
 			continue;
 
-		for (notice = notices[level].begin(); notice != notices[level].end() && displayed < MAX_SIMULTANEOUS_NOTICES; ) {
+		for (notice = notices.notices[level].begin(); notice != notices.notices[level].end() && displayed < MAX_SIMULTANEOUS_NOTICES; ) {
 			if (!notice->timestamp) {
 				// Set the timestamp on the first present call
 				// that we display the message after it was
@@ -695,7 +711,7 @@ void Overlay::DrawNotices(float *y)
 				// issued.
 				notice->timestamp = time;
 			} else if ((time - notice->timestamp) > log_levels[level].duration) {
-				notice = notices[level].erase(notice);
+				notice = notices.notices[level].erase(notice);
 				continue;
 			}
 
@@ -712,7 +728,7 @@ void Overlay::DrawNotices(float *y)
 		}
 	}
 
-	LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&notices.lock);
 }
 
 void Overlay::DrawProfiling(float *y)
@@ -739,14 +755,14 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
 	float separation, convergence;
 	NvU8 stereo = false;
 	NvAPIOverride();
-	NvAPI_Stereo_IsEnabled(&stereo);
+	Profiling::NvAPI_Stereo_IsEnabled(&stereo);
 	if (stereo)
 	{
-		NvAPI_Stereo_IsActivated(stereoHandle, &stereo);
+		Profiling::NvAPI_Stereo_IsActivated(stereoHandle, &stereo);
 		if (stereo)
 		{
-			NvAPI_Stereo_GetSeparation(stereoHandle, &separation);
-			NvAPI_Stereo_GetConvergence(stereoHandle, &convergence);
+			Profiling::NvAPI_Stereo_GetSeparation(stereoHandle, &separation);
+			Profiling::NvAPI_Stereo_GetConvergence(stereoHandle, &convergence);
 		}
 	}
 
@@ -830,15 +846,15 @@ void ClearNotices()
 	if (notice_cleared_frame == G->frame_no)
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&notices.lock);
 
 	for (level = 0; level < NUM_LOG_LEVELS; level++)
-		notices[level].clear();
+		notices.notices[level].clear();
 
 	notice_cleared_frame = G->frame_no;
 	has_notice = false;
 
-	LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&notices.lock);
 }
 
 void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
@@ -855,12 +871,12 @@ void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
 	// cares if it gets cut off somewhere off screen anyway?
 	_vsnwprintf_s(msg, maxstring, _TRUNCATE, fmt, ap);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&notices.lock);
 
-	notices[level].emplace_back(msg);
+	notices.notices[level].emplace_back(msg);
 	has_notice = true;
 
-	LeaveCriticalSection(&G->mCriticalSection);
+	LeaveCriticalSection(&notices.lock);
 
 	va_end(ap);
 }
@@ -887,12 +903,12 @@ void LogOverlay(LogLevel level, char *fmt, ...)
 		_vsnprintf_s(amsg, maxstring, _TRUNCATE, fmt, ap);
 		mbstowcs(wmsg, amsg, maxstring);
 
-		EnterCriticalSection(&G->mCriticalSection);
+		EnterCriticalSectionPretty(&notices.lock);
 
-		notices[level].emplace_back(wmsg);
+		notices.notices[level].emplace_back(wmsg);
 		has_notice = true;
 
-		LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&notices.lock);
 	}
 
 	va_end(ap);

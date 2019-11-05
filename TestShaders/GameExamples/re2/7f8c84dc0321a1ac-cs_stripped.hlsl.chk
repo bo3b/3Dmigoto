@@ -1,0 +1,47 @@
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:41:36 2019
+struct t0_t {
+  float val[3];
+};
+StructuredBuffer<t0_t> t0 : register(t0);
+
+cbuffer cb0 : register(b0)
+{
+  float4 cb0[1];
+}
+
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_raw_glc u0
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 64, 1, 1
+  r0.x = asuint(cb0[0].x) >> 16;
+  r0.y = asint(cb0[0].x) & 0x0000ffff;
+  r0.x = (int)r0.x + (int)r0.y;
+  r0.x = (int)r0.x + (int)vThreadID.x;
+  r0.x = t0[r0.x].val[0/4];
+  r0.y = t0[r0.x].val[0/4+1];
+  r0.z = t0[r0.x].val[0/4+2];
+  r0.w = 0;
+  while (true) {
+    r1.x = cmp((uint)r0.w >= (uint)r0.y);
+    if (r1.x != 0) break;
+    r1.x = mad(20, (int)r0.w, (int)r0.x);
+    r1.x = (int)r1.x + 4;
+  // No code for instruction (needs manual fix):
+    store_raw u0.x, r1.x, r0.z
+    r0.w = (int)r0.w + 1;
+  }
+  return;
+}

@@ -175,26 +175,12 @@ public:
 	vector<pair<string, string> > mRemappedInputRegisters;
 	set<string> mBooleanRegisters;
 
-	int StereoParamsReg;
-	int IniParamsReg;
+	DecompilerSettings *G;
 
 	vector<char> mOutput;
 	size_t mCodeStartPos;		// Used as index into buffer, name misleadingly suggests pointer usage.
 	bool mErrorOccurred;
-	bool mFixSvPosition;
-	bool mRecompileVs;
 	bool mPatched;
-	string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
-	string BackProject_Vector1, BackProject_Vector2;
-	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
-	vector<string> ZRepair_Dependencies1, ZRepair_Dependencies2;
-	bool mZRepair_DepthBuffer;
-	vector<string> InvTransforms;
-	string ZRepair_ZPosCalc1, ZRepair_ZPosCalc2;
-	string ZRepair_PositionTexture;
-	string ZRepair_WorldPosCalc;
-	string ObjectPos_ID1, ObjectPos_ID2, ObjectPos_MUL1, ObjectPos_MUL2;
-	string MatrixPos_ID1, MatrixPos_MUL1;
 	int uuidVar;
 
 	// Auto-indent of generated code
@@ -379,7 +365,7 @@ public:
 	{
 		string interpolation = "";
 
-		for each(Declaration declaration in shader->psDecl)
+		for each(Declaration declaration in shader->asPhase[MAIN_PHASE].ppsDecl[0])
 		{
 			if (declaration.eOpcode == OPCODE_DCL_INPUT_PS)
 			{
@@ -879,13 +865,26 @@ public:
 		// Read list.
 		while (pos < size)
 		{
-			char name[256], type[16], format[16], dim[16];
-			int slot, arraySize;
+			char name[256], type[16], format[16], dim[16], bind[16];
+			int arraySize;
 			type[0] = 0;
-			int numRead = sscanf_s(c + pos, "// %s %s %s %s %d %d",
-				name, UCOUNTOF(name), type, UCOUNTOF(type), format, UCOUNTOF(format), dim, UCOUNTOF(dim), &slot, &arraySize);
+			int numRead = sscanf_s(c + pos, "// %s %s %s %s %s %d",
+				name, UCOUNTOF(name), type, UCOUNTOF(type), format, UCOUNTOF(format), dim, UCOUNTOF(dim),
+				bind, UCOUNTOF(bind), &arraySize);
+
 			if (numRead != 6)
 				logDecompileError("Error parsing resource declaration: " + string(c + pos, 80));
+
+			int slot = 0;
+			for (int i = 0; i < sizeof(bind) && bind[i]; ++i)
+			{
+				if (bind[i] >= '0' && bind[i] <= '9')
+				{
+					slot = atoi(&bind[i]);
+					break;
+				}
+			}
+
 			if (!strcmp(type, "sampler"))
 			{
 				char *escapePos = strchr(name, '['); if (escapePos) *escapePos = '_';
@@ -2547,7 +2546,7 @@ public:
 		else // float1, float, etc
 			pos = 2;
 		char *cpos = strrchr(op, '.');
-		if (strlen(cpos) >= pos)
+		if (strlen(cpos) >= (size_t)pos)
 			cpos[pos] = 0;
 	}
 
@@ -2856,10 +2855,10 @@ public:
 			bool isMono = false;
 			bool screenToWorldMatrix1 = false, screenToWorldMatrix2 = false;
 			string backProjectVector1, backProjectVector2;
-			if (!BackProject_Vector1.empty())
-				backProjectVector1 = BackProject_Vector1.substr(0, BackProject_Vector1.find_first_of(".,"));
-			if (!BackProject_Vector2.empty())
-				backProjectVector2 = BackProject_Vector2.substr(0, BackProject_Vector2.find_first_of(".,"));
+			if (!G->BackProject_Vector1.empty())
+				backProjectVector1 = G->BackProject_Vector1.substr(0, G->BackProject_Vector1.find_first_of(".,"));
+			if (!G->BackProject_Vector2.empty())
+				backProjectVector2 = G->BackProject_Vector2.substr(0, G->BackProject_Vector2.find_first_of(".,"));
 			for (CBufferData::iterator i = mCBufferData.begin(); i != mCBufferData.end(); ++i)
 			{
 				if (!screenToWorldMatrix1 && i->second.Name == backProjectVector1)
@@ -2904,9 +2903,9 @@ public:
 					// Add view direction calculation.
 					char buf[512];
 					if (screenToWorldMatrix1)
-						sprintf(buf, "  viewDirection = float3(%s);\n", BackProject_Vector1.c_str());
+						sprintf(buf, "  viewDirection = float3(%s);\n", G->BackProject_Vector1.c_str());
 					else
-						sprintf(buf, "  viewDirection = float3(%s);\n", BackProject_Vector2.c_str());
+						sprintf(buf, "  viewDirection = float3(%s);\n", G->BackProject_Vector2.c_str());
 					mOutput.insert(mOutput.end() - 1, buf, buf + strlen(buf));
 					mPatched = true;
 
@@ -2926,7 +2925,7 @@ public:
 			}
 
 			// Process copies of SV_Position.
-			if (!isMono && mFixSvPosition && mUsesProjection && !mSV_Position.empty())
+			if (!isMono && G->fixSvPosition && mUsesProjection && !mSV_Position.empty())
 			{
 				map<string, string>::iterator positionValue = mOutputRegisterValues.find(mSV_Position);
 				if (positionValue != mOutputRegisterValues.end())
@@ -2978,7 +2977,7 @@ public:
 					}
 				}
 			}
-			if (mRecompileVs) mPatched = true;
+			if (G->recompileVs) mPatched = true;
 		}
 
 		// Pixel shader patches.
@@ -2989,21 +2988,21 @@ public:
 			map<int, string>::iterator depthTexture;
 			for (depthTexture = mTextureNames.begin(); depthTexture != mTextureNames.end(); ++depthTexture)
 			{
-				if (depthTexture->second == ZRepair_DepthTexture1)
+				if (depthTexture->second == G->ZRepair_DepthTexture1)
 					break;
 			}
 			if (depthTexture != mTextureNames.end())
 			{
 				long found = 0;
 				for (CBufferData::iterator i = mCBufferData.begin(); i != mCBufferData.end(); ++i)
-					for (unsigned int j = 0; j < ZRepair_Dependencies1.size(); ++j)
-						if (i->second.Name == ZRepair_Dependencies1[j])
+					for (unsigned int j = 0; j < G->ZRepair_Dependencies1.size(); ++j)
+						if (i->second.Name == G->ZRepair_Dependencies1[j])
 							found |= 1 << j;
-				if (!ZRepair_Dependencies1.size() || found == (1 << ZRepair_Dependencies1.size()) - 1)
+				if (!G->ZRepair_Dependencies1.size() || found == (1 << G->ZRepair_Dependencies1.size()) - 1)
 				{
 					mOutput.push_back(0);
 					// Search depth texture usage.
-					sprintf(op1, " = %s.Sample", ZRepair_DepthTexture1.c_str());
+					sprintf(op1, " = %s.Sample", G->ZRepair_DepthTexture1.c_str());
 					char *pos = strstr(mOutput.data(), op1);
 					ptrdiff_t searchPos = 0;					// used as difference between pointers.
 					while (pos)
@@ -3024,14 +3023,14 @@ public:
 							sprintf(buf, "float4 zpos4 = %s;\n"
 								"float zTex = zpos4.%c;\n"
 								"float zpos = %s;\n"
-								"float wpos = 1.0 / zpos;\n", depthBufferStatement.c_str(), ZRepair_DepthTextureReg1, ZRepair_ZPosCalc1.c_str());
+								"float wpos = 1.0 / zpos;\n", depthBufferStatement.c_str(), G->ZRepair_DepthTextureReg1, G->ZRepair_ZPosCalc1.c_str());
 						}
 						else
 						{
 							sprintf(buf, "zpos4 = %s;\n"
 								"zTex = zpos4.%c;\n"
 								"zpos = %s;\n"
-								"wpos = 1.0 / zpos;\n", depthBufferStatement.c_str(), ZRepair_DepthTextureReg1, ZRepair_ZPosCalc1.c_str());
+								"wpos = 1.0 / zpos;\n", depthBufferStatement.c_str(), G->ZRepair_DepthTextureReg1, G->ZRepair_ZPosCalc1.c_str());
 						}
 						if (constantDeclaration && !wposAvailable)
 						{
@@ -3066,21 +3065,21 @@ public:
 			{
 				for (depthTexture = mTextureNames.begin(); depthTexture != mTextureNames.end(); ++depthTexture)
 				{
-					if (depthTexture->second == ZRepair_DepthTexture2)
+					if (depthTexture->second == G->ZRepair_DepthTexture2)
 						break;
 				}
 				if (depthTexture != mTextureNames.end())
 				{
 					long found = 0;
 					for (CBufferData::iterator i = mCBufferData.begin(); i != mCBufferData.end(); ++i)
-						for (unsigned int j = 0; j < ZRepair_Dependencies2.size(); ++j)
-							if (i->second.Name == ZRepair_Dependencies2[j])
+						for (unsigned int j = 0; j < G->ZRepair_Dependencies2.size(); ++j)
+							if (i->second.Name == G->ZRepair_Dependencies2[j])
 								found |= 1 << j;
-					if (!ZRepair_Dependencies2.size() || found == (1 << ZRepair_Dependencies2.size()) - 1)
+					if (!G->ZRepair_Dependencies2.size() || found == (1 << G->ZRepair_Dependencies2.size()) - 1)
 					{
 						mOutput.push_back(0);
 						// Search depth texture usage.
-						sprintf(op1, " = %s.Sample", ZRepair_DepthTexture2.c_str());
+						sprintf(op1, " = %s.Sample", G->ZRepair_DepthTexture2.c_str());
 						char *pos = strstr(mOutput.data(), op1);
 						if (pos)
 						{
@@ -3101,7 +3100,7 @@ public:
 							sprintf(buf, "float4 zpos4 = %s;\n"
 								"float zTex = zpos4.%c;\n"
 								"float zpos = %s;\n"
-								"float wpos = 1.0 / zpos;\n", depthBufferStatement.c_str(), ZRepair_DepthTextureReg2, ZRepair_ZPosCalc2.c_str());
+								"float wpos = 1.0 / zpos;\n", depthBufferStatement.c_str(), G->ZRepair_DepthTextureReg2, G->ZRepair_ZPosCalc2.c_str());
 
 							// There are a whole series of fixes to the statements that are doing mOutput.insert() - mOutput.begin();
 							// We would get a series of Asserts (vector mismatch), but only rarely, usually at starting a new game in AC3.  
@@ -3145,14 +3144,14 @@ public:
 				map<int, string>::iterator positionTexture;
 				for (positionTexture = mTextureNames.begin(); positionTexture != mTextureNames.end(); ++positionTexture)
 				{
-					if (positionTexture->second == ZRepair_PositionTexture)
+					if (positionTexture->second == G->ZRepair_PositionTexture)
 						break;
 				}
 				if (positionTexture != mTextureNames.end())
 				{
 					mOutput.push_back(0);
 					// Search position texture usage.
-					sprintf(op1, " = %s.Sample", ZRepair_PositionTexture.c_str());
+					sprintf(op1, " = %s.Sample", G->ZRepair_PositionTexture.c_str());
 					char *pos = strstr(mOutput.data(), op1);
 					if (pos)
 					{
@@ -3163,7 +3162,7 @@ public:
 						buf[pos - (bpos + 1)] = 0;
 						applySwizzle(".xyz", buf);
 						char calcStatement[256];
-						sprintf(calcStatement, ZRepair_WorldPosCalc.c_str(), buf);
+						sprintf(calcStatement, G->ZRepair_WorldPosCalc.c_str(), buf);
 						sprintf(buf, "\nfloat3 worldPos = %s;"
 							"\nfloat zpos = worldPos.z;"
 							"\nfloat wpos = 1.0 / zpos;", calcStatement);
@@ -3180,7 +3179,7 @@ public:
 			}
 
 			// Add depth texture, as a last resort, but only if it's specified in d3dx.ini
-			if (!wposAvailable && mZRepair_DepthBuffer)
+			if (!wposAvailable && G->ZRepair_DepthBuffer)
 			{
 				const char *INJECT_HEADER = "float4 zpos4 = InjectedDepthTexture.Load((int3) injectedScreenPos.xyz);\n"
 					"float zpos = zpos4.x - 1;\n"
@@ -3216,21 +3215,21 @@ public:
 				wposAvailable = true;
 			}
 
-			if (wposAvailable && InvTransforms.size())
+			if (wposAvailable && G->InvTransforms.size())
 			{
 				CBufferData::iterator keyFind;
 				for (keyFind = mCBufferData.begin(); keyFind != mCBufferData.end(); ++keyFind)
 				{
 					bool found = false;
-					for (vector<string>::iterator j = InvTransforms.begin(); j != InvTransforms.end(); ++j)
+					for (vector<string>::iterator j = G->InvTransforms.begin(); j != G->InvTransforms.end(); ++j)
 						if (keyFind->second.Name == *j)
 							found = true;
 					if (found) break;
-					if (!ObjectPos_ID1.empty() && keyFind->second.Name.find(ObjectPos_ID1) != string::npos)
+					if (!G->ObjectPos_ID1.empty() && keyFind->second.Name.find(G->ObjectPos_ID1) != string::npos)
 						break;
-					if (!ObjectPos_ID2.empty() && keyFind->second.Name.find(ObjectPos_ID2) != string::npos)
+					if (!G->ObjectPos_ID2.empty() && keyFind->second.Name.find(G->ObjectPos_ID2) != string::npos)
 						break;
-					if (!MatrixPos_ID1.empty() && keyFind->second.Name == MatrixPos_ID1)
+					if (!G->MatrixPos_ID1.empty() && keyFind->second.Name == G->MatrixPos_ID1)
 						break;
 				}
 				if (keyFind != mCBufferData.end())
@@ -3246,7 +3245,7 @@ public:
 						stereoParamsWritten = true;
 					}
 
-					for (vector<string>::iterator invT = InvTransforms.begin(); invT != InvTransforms.end(); ++invT)
+					for (vector<string>::iterator invT = G->InvTransforms.begin(); invT != G->InvTransforms.end(); ++invT)
 					{
 						char buf[128];
 						sprintf(buf, " %s._m00", invT->c_str());
@@ -3292,14 +3291,14 @@ public:
 					const char *ParamPos2 = "\n  out ";
 					const char *NewParam = "\nfloat3 viewDirection : TEXCOORD31,";
 
-					if (!ObjectPos_ID1.empty())
+					if (!G->ObjectPos_ID1.empty())
 					{
 						size_t offset = strstr(mOutput.data(), "void main(") - mOutput.data();	// pointer difference, but only used as offset.
 						while (offset < mOutput.size())
 						{
-							char *pos = strstr(mOutput.data() + offset, ObjectPos_ID1.c_str());
+							char *pos = strstr(mOutput.data() + offset, G->ObjectPos_ID1.c_str());
 							if (!pos) break;
-							pos += ObjectPos_ID1.length();
+							pos += G->ObjectPos_ID1.length();
 							offset = pos - mOutput.data();
 							if (*pos == '[') pos = strchr(pos, ']') + 1;
 							if ((pos[1] == 'x' || pos[1] == 'y' || pos[1] == 'z') &&
@@ -3318,13 +3317,13 @@ public:
 								strcpy(op3, op1); applySwizzle(".y", op3);
 								strcpy(op4, op1); applySwizzle(".z", op4);
 								char buf[512];
-								if (ObjectPos_MUL1.empty())
-									ObjectPos_MUL1 = string("1,1,1");
+								if (G->ObjectPos_MUL1.empty())
+									G->ObjectPos_MUL1 = string("1,1,1");
 								sprintf(buf, "\nfloat3 stereoPos%dMul = float3(%s);"
 									"\n%s += viewDirection.%c * separation * (wpos - convergence) * stereoPos%dMul.x;"
 									"\n%s += viewDirection.%c * separation * (wpos - convergence) * stereoPos%dMul.y;"
 									"\n%s += viewDirection.%c * separation * (wpos - convergence) * stereoPos%dMul.z;",
-									uuidVar, ObjectPos_MUL1.c_str(),
+									uuidVar, G->ObjectPos_MUL1.c_str(),
 									op2, lightPosDecl[0], uuidVar,
 									op3, lightPosDecl[1], uuidVar,
 									op4, lightPosDecl[2], uuidVar);
@@ -3347,14 +3346,14 @@ public:
 						}
 					}
 
-					if (!ObjectPos_ID2.empty())
+					if (!G->ObjectPos_ID2.empty())
 					{
 						size_t offset = strstr(mOutput.data(), "void main(") - mOutput.data();	// pointer difference, but only used as offset.
 						while (offset < mOutput.size())
 						{
-							char *pos = strstr(mOutput.data() + offset, ObjectPos_ID2.c_str());
+							char *pos = strstr(mOutput.data() + offset, G->ObjectPos_ID2.c_str());
 							if (!pos) break;
-							pos += ObjectPos_ID2.length();
+							pos += G->ObjectPos_ID2.length();
 							offset = pos - mOutput.data();
 							if (*pos == '[') pos = strchr(pos, ']') + 1;
 							if ((pos[1] == 'x' || pos[1] == 'y' || pos[1] == 'z') &&
@@ -3373,13 +3372,13 @@ public:
 								strcpy(op3, op1); applySwizzle(".y", op3);
 								strcpy(op4, op1); applySwizzle(".z", op4);
 								char buf[512];
-								if (ObjectPos_MUL2.empty())
-									ObjectPos_MUL2 = string("1,1,1");
+								if (G->ObjectPos_MUL2.empty())
+									G->ObjectPos_MUL2 = string("1,1,1");
 								sprintf(buf, "\nfloat3 stereoPos%dMul = float3(%s);"
 									"\n%s += viewDirection.%c * separation * (wpos - convergence) * stereoPos%dMul.x;"
 									"\n%s += viewDirection.%c * separation * (wpos - convergence) * stereoPos%dMul.y;"
 									"\n%s += viewDirection.%c * separation * (wpos - convergence) * stereoPos%dMul.z;",
-									uuidVar, ObjectPos_MUL2.c_str(),
+									uuidVar, G->ObjectPos_MUL2.c_str(),
 									op2, spotPosDecl[0], uuidVar,
 									op3, spotPosDecl[1], uuidVar,
 									op4, spotPosDecl[2], uuidVar);
@@ -3402,11 +3401,11 @@ public:
 						}
 					}
 
-					if (!MatrixPos_ID1.empty())
+					if (!G->MatrixPos_ID1.empty())
 					{
-						string ShadowPos1 = MatrixPos_ID1 + "._m00_m10_m20_m30 * ";
-						string ShadowPos2 = MatrixPos_ID1 + "._m01_m11_m21_m31 * ";
-						string ShadowPos3 = MatrixPos_ID1 + "._m02_m12_m22_m32 * ";
+						string ShadowPos1 = G->MatrixPos_ID1 + "._m00_m10_m20_m30 * ";
+						string ShadowPos2 = G->MatrixPos_ID1 + "._m01_m11_m21_m31 * ";
+						string ShadowPos3 = G->MatrixPos_ID1 + "._m02_m12_m22_m32 * ";
 						char *pos1 = strstr(mOutput.data(), ShadowPos1.c_str());
 						char *pos2 = strstr(mOutput.data(), ShadowPos2.c_str());
 						char *pos3 = strstr(mOutput.data(), ShadowPos3.c_str());
@@ -3418,13 +3417,13 @@ public:
 							char *pos = std::min(std::min(pos1, pos2), pos3);
 							while (*--pos != '\n');
 							char buf[512];
-							if (MatrixPos_MUL1.empty())
-								MatrixPos_MUL1 = string("1,1,1");
+							if (G->MatrixPos_MUL1.empty())
+								G->MatrixPos_MUL1 = string("1,1,1");
 							_snprintf_s(buf, 512, 512, "\nfloat3 stereoMat%dMul = float3(%s);"
 								"\n%s -= viewDirection.x * separation * (wpos - convergence) * stereoMat%dMul.x;"
 								"\n%s -= viewDirection.y * separation * (wpos - convergence) * stereoMat%dMul.y;"
 								"\n%s -= viewDirection.z * separation * (wpos - convergence) * stereoMat%dMul.z;",
-								uuidVar, MatrixPos_MUL1.c_str(),
+								uuidVar, G->MatrixPos_MUL1.c_str(),
 								regName1.c_str(), uuidVar,
 								regName2.c_str(), uuidVar,
 								regName3.c_str(), uuidVar);
@@ -4052,22 +4051,16 @@ public:
 		unsigned int iNr = 0;
 		bool skip_shader = false;
 
+		//dx9
+		// This addition looks a bit suspect, but is only used in the DX9 code
+		// paths -DSS
 		vector<Instruction> * inst = NULL;
-		if (shader->dx9Shader)
-		{
-			// XXX: Double check MAIN_PHASE against BinaryDecompiler DX11 hull shaders -DSS
-			inst = &shader->asPhase[MAIN_PHASE].psInst;
-		}
-		else
-		{
-			// Doesn't look like this is ever used in the non-DX9 case? I
-			// assume this is here 'just in case'? -DSS
-			inst = &shader->psInst;
-		}
+		inst = &shader->asPhase[MAIN_PHASE].psInst;
+		//dx9
 
-		while (pos < size && iNr < shader->psInst.size())
+		while (pos < size && iNr < shader->asPhase[MAIN_PHASE].ppsInst[0].size())
 		{
-			Instruction *instr = &shader->psInst[iNr];
+			Instruction *instr = &shader->asPhase[MAIN_PHASE].ppsInst[0][iNr];
 
 			// Now ignore '#line' or 'undecipherable' debug info (DefenseGrid2)
 			if (!strncmp(c + pos, "#line", 5) ||
@@ -6728,17 +6721,17 @@ public:
 		declaration +=
 			"#define cmp -\n";
 
-		if (IniParamsReg >= 0) {
+		if (G->IniParamsReg >= 0) {
 			declaration +=
-				"Texture1D<float4> IniParams : register(t" + std::to_string(IniParamsReg) + ");\n";
+				"Texture1D<float4> IniParams : register(t" + std::to_string(G->IniParamsReg) + ");\n";
 		}
 
-		if (StereoParamsReg >= 0) {
+		if (G->StereoParamsReg >= 0) {
 			declaration +=
-				"Texture2D<float4> StereoParams : register(t" + std::to_string(StereoParamsReg) + ");\n";
+				"Texture2D<float4> StereoParams : register(t" + std::to_string(G->StereoParamsReg) + ");\n";
 		}
 
-		if (mZRepair_DepthBuffer)
+		if (G->ZRepair_DepthBuffer)
 		{
 			declaration +=
 				"Texture2D<float4> InjectedDepthTexture : register(t126);\n";
@@ -6773,34 +6766,8 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 	d.mOutput.reserve(16 * 1024);
 	d.mErrorOccurred = false;
 	d.mShaderType = "unknown";
-
-	// TODO: We should be able do better than copying all this by just
-	// including params in d:
-	d.StereoParamsReg = params.StereoParamsReg;
-	d.IniParamsReg = params.IniParamsReg;
-	d.mFixSvPosition = params.fixSvPosition;
-	d.mRecompileVs = params.recompileVs;
 	d.mPatched = false;
-	d.ZRepair_DepthTexture1 = params.ZRepair_DepthTexture1;
-	d.ZRepair_DepthTexture2 = params.ZRepair_DepthTexture2;
-	d.ZRepair_DepthTextureReg1 = params.ZRepair_DepthTextureReg1;
-	d.ZRepair_DepthTextureReg2 = params.ZRepair_DepthTextureReg2;
-	d.ZRepair_Dependencies1 = params.ZRepair_Dependencies1;
-	d.ZRepair_Dependencies2 = params.ZRepair_Dependencies2;
-	d.ZRepair_ZPosCalc1 = params.ZRepair_ZPosCalc1;
-	d.ZRepair_ZPosCalc2 = params.ZRepair_ZPosCalc2;
-	d.ZRepair_PositionTexture = params.ZRepair_PositionTexture;
-	d.ZRepair_WorldPosCalc = params.ZRepair_WorldPosCalc;
-	d.mZRepair_DepthBuffer = params.ZRepair_DepthBuffer;
-	d.BackProject_Vector1 = params.BackProject_Vector1;
-	d.BackProject_Vector2 = params.BackProject_Vector2;
-	d.InvTransforms = params.InvTransforms;
-	d.ObjectPos_ID1 = params.ObjectPos_ID1;
-	d.ObjectPos_ID2 = params.ObjectPos_ID2;
-	d.ObjectPos_MUL1 = params.ObjectPos_MUL1;
-	d.ObjectPos_MUL2 = params.ObjectPos_MUL2;
-	d.MatrixPos_ID1 = params.MatrixPos_ID1;
-	d.MatrixPos_MUL1 = params.MatrixPos_MUL1;
+	d.G = params.G;
 
 	// Decompile binary.
 

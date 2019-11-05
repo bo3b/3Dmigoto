@@ -9,6 +9,7 @@
 #include <ctime>
 #include <exception>
 
+// VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
 class KeyParseError: public exception {} keyParseError;
 
 void InputListener::UpEvent(D3D10Base::ID3D10Device *device)

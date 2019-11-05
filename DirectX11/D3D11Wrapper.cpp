@@ -36,6 +36,17 @@ FILE *LogFile = 0;		// off by default.
 bool gLogDebug = false;
 
 
+// This critical section must be held to avoid race conditions when creating
+// any resource. The nvapi functions used to set the resource creation mode
+// affect global state, so if multiple threads are creating resources
+// simultaneously it is possible for a StereoMode override or stereo/mono copy
+// on one thread to affect another. This should be taken before setting the
+// surface creation mode and released only after it has been restored. If the
+// creation mode is not being set it should still be taken around the actual
+// CreateXXX call.
+CRITICAL_SECTION resource_creation_mode_lock;
+
+
 // During the initialize, we will also Log every setting that is enabled, so that the log
 // has a complete list of active settings.  This should make it more accurate and clear.
 
@@ -50,11 +61,17 @@ static bool InitializeDLL()
 	// Preload OUR nvapi before we call init because we need some of our calls.
 #if(_WIN64)
 #define NVAPI_DLL L"nvapi64.dll"
-#else 
+#else
 #define NVAPI_DLL L"nvapi.dll"
 #endif
 
-	LoadLibrary(NVAPI_DLL);
+	// Load our nvapi wrapper from the same directory as our DLL, for injection cases
+	wchar_t nvapi_path[MAX_PATH];
+	if (GetModuleFileName(migoto_handle, nvapi_path, MAX_PATH)) {
+		wcsrchr(nvapi_path, L'\\')[1] = '\0';
+		wcscat(nvapi_path, NVAPI_DLL);
+		LoadLibrary(nvapi_path);
+	}
 
 	NvAPI_ShortString errorMessage;
 	NvAPI_Status status;
@@ -81,7 +98,7 @@ static bool InitializeDLL()
 	if (G->gForceNoNvAPI)
 	{
 		NvAPIOverride();
-		status = NvAPI_Stereo_Enable();
+		status = Profiling::NvAPI_Stereo_Enable();
 		if (status != NVAPI_OK)
 		{
 			NvAPI_GetErrorMessage(status, errorMessage);
@@ -374,7 +391,9 @@ void InitD311()
 
 	if (hD3D11) return;
 
-	InitializeCriticalSection(&G->mCriticalSection);
+	InitializeCriticalSectionPretty(&G->mCriticalSection);
+	InitializeCriticalSectionPretty(&G->mResourcesLock);
+	InitializeCriticalSectionPretty(&resource_creation_mode_lock);
 
 	InitializeDLL();
 	
@@ -391,7 +410,7 @@ void InitD311()
 		G->load_library_redirect = 0;
 
 		wchar_t sysDir[MAX_PATH] = {0};
-		if (!GetModuleFileName(0, sysDir, MAX_PATH)) {
+		if (!GetModuleFileName(migoto_handle, sysDir, MAX_PATH)) {
 			LogInfo("GetModuleFileName failed\n");
 			DoubleBeepExit();
 		}
@@ -470,8 +489,10 @@ void InitD311()
 	_D3D11CoreCreateLayeredDevice = (tD3D11CoreCreateLayeredDevice)GetProcAddress(hD3D11, "D3D11CoreCreateLayeredDevice");
 	_D3D11CoreGetLayeredDeviceSize = (tD3D11CoreGetLayeredDeviceSize)GetProcAddress(hD3D11, "D3D11CoreGetLayeredDeviceSize");
 	_D3D11CoreRegisterLayers = (tD3D11CoreRegisterLayers)GetProcAddress(hD3D11, "D3D11CoreRegisterLayers");
-	_D3D11CreateDevice = (PFN_D3D11_CREATE_DEVICE)GetProcAddress(hD3D11, "D3D11CreateDevice");
-	_D3D11CreateDeviceAndSwapChain = (PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN)GetProcAddress(hD3D11, "D3D11CreateDeviceAndSwapChain");
+	if (!_D3D11CreateDevice)
+		_D3D11CreateDevice = (PFN_D3D11_CREATE_DEVICE)GetProcAddress(hD3D11, "D3D11CreateDevice");
+	if (!_D3D11CreateDeviceAndSwapChain)
+		_D3D11CreateDeviceAndSwapChain = (PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN)GetProcAddress(hD3D11, "D3D11CreateDeviceAndSwapChain");
 	_D3DKMTGetDeviceState = (tD3DKMTGetDeviceState)GetProcAddress(hD3D11, "D3DKMTGetDeviceState");
 	_D3DKMTOpenAdapterFromHdc = (tD3DKMTOpenAdapterFromHdc)GetProcAddress(hD3D11, "D3DKMTOpenAdapterFromHdc");
 	_D3DKMTOpenResource = (tD3DKMTOpenResource)GetProcAddress(hD3D11, "D3DKMTOpenResource");
@@ -723,6 +744,16 @@ static void wrap_d3d11_device_and_context(ID3D11Device **ppDevice, ID3D11DeviceC
 		else
 			*ppDevice = deviceWrap;
 		LogInfo("  HackerDevice %p created to wrap %p\n", deviceWrap, origDevice1);
+
+		// Add the HackerDevice to the DirectX device's private data,
+		// which we can use as a last resort to allow us to always find
+		// our HackerDevice even if we are handed an unwrapped IUnknown
+		// that violates the COM identity rule, as happens with ReShade
+		// in certain games (e.g. Resident Evil 2 remake). Not using
+		// SetPrivateDataInterface for now because I suspect that will
+		// screw up refcounting (though it might be worthwhile using it
+		// to ensure we always get notification of device release):
+		origDevice1->SetPrivateData(IID_HackerDevice, sizeof(HackerDevice*), &deviceWrap);
 	}
 
 	// Create a wrapped version of the original context to return to the game.
@@ -750,7 +781,8 @@ static void wrap_d3d11_device_and_context(ID3D11Device **ppDevice, ID3D11DeviceC
 		deviceWrap->Create3DMigotoResources();
 	if (contextWrap != nullptr) {
 		contextWrap->Bind3DMigotoResources();
-		contextWrap->InitIniParams();
+		if (!G->constants_run)
+			contextWrap->InitIniParams();
 	}
 
 	LogInfo("-> device handle = %p, device wrapper = %p, context handle = %p, context wrapper = %p\n",
@@ -810,6 +842,8 @@ static HRESULT WINAPI UnhookableCreateDevice(
 
 	LogInfo("  D3D11CreateDevice returned device handle = %p, context handle = %p\n",
 		retDevice, retContext);
+	analyse_iunknown(retDevice);
+	analyse_iunknown(retContext);
 
 #if _DEBUG_LAYER
 	ShowDebugInfo(retDevice);
@@ -1052,9 +1086,16 @@ void NvAPIOverride()
 		return;
 
 	if (!nvDLL) {
-		nvDLL = GetModuleHandle(L"nvapi64.dll");
+		// Use GetModuleHandleEx instead of GetModuleHandle to bump the
+		// refcount on our nvapi wrapper since we are storing a
+		// function pointer from the library. This is important, since
+		// if we aren't running on an nvidia system the nvapi static
+		// library will unload the dynamic library, which would lead to
+		// a crash when we later try to call the NvAPI_QueryInterface
+		// function pointer.
+		GetModuleHandleEx(0, L"nvapi64.dll", &nvDLL);
 		if (!nvDLL) {
-			nvDLL = GetModuleHandle(L"nvapi.dll");
+			GetModuleHandleEx(0, L"nvapi.dll", &nvDLL);
 		}
 		if (!nvDLL) {
 			LogInfo("Can't get nvapi handle\n");
@@ -1125,7 +1166,25 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 
 	if (_wcsicmp(lpLibFileName, fullPath) == 0)
 	{
-		LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
+		// If we are loaded via injection we should load from directory
+		// where the 3DMigoto DLL resides rather than the game directory.
+		// However, if the request is for nvapi and that file is missing
+		// attempting the LoadLibrary by the abolute path will fail. So,
+		// try by the absolute path first, then fall back to just the
+		// library name.
+		if (GetModuleFileName(migoto_handle, fullPath, MAX_PATH)) {
+			wcsrchr(fullPath, L'\\')[1] = '\0';
+			wcscat(fullPath, library);
+
+			LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n",
+					lpLibFileName, fullPath);
+
+			HMODULE ret = fnOrigLoadLibraryExW(fullPath, hFile, dwFlags);
+			if (ret)
+				return ret;
+		}
+
+		LogInfoW(L"Replaced Hooked_LoadLibraryExW fallback for: %s to %s.\n", lpLibFileName, library);
 
 		return fnOrigLoadLibraryExW(library, hFile, dwFlags);
 	}

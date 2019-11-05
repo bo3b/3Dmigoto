@@ -7,6 +7,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <strsafe.h>
+#include <algorithm>
 
 PresetOverrideMap presetOverrides;
 
@@ -76,6 +77,8 @@ void Override::ParseIniSection(LPCWSTR section)
 
 	if (GetIniStringAndLog(section, L"condition", 0, buf, MAX_PATH)) {
 		wstring sbuf(buf);
+		// Expressions are case insensitive:
+		std::transform(sbuf.begin(), sbuf.end(), sbuf.begin(), ::towlower);
 
 		if (!condition.parse(&sbuf, &ini_namespace, NULL)) {
 			LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%S\"\n", buf);
@@ -194,7 +197,7 @@ struct KeyOverrideCycleParam
 		return val;
 	}
 
-	bool as_ini_param(LPCWSTR section, CommandListExpression *expression)
+	bool as_expression(LPCWSTR section, CommandListExpression *expression)
 	{
 		wstring scur(cur.begin(), cur.end());
 		wstring ini_namespace;
@@ -205,6 +208,9 @@ struct KeyOverrideCycleParam
 		}
 
 		get_section_namespace(section, &ini_namespace);
+
+		// Expressions are case insensitive:
+		std::transform(scur.begin(), scur.end(), scur.begin(), ::towlower);
 
 		if (!expression->parse(&scur, &ini_namespace, NULL)) {
 			LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%s\"\n", cur.c_str());
@@ -326,7 +332,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 			}
 		}
 
-		is_conditional = condition.as_ini_param(section, &condition_expression);
+		is_conditional = condition.as_expression(section, &condition_expression);
 		run.as_run_command(section, &activate_command_list, &deactivate_command_list);
 
 		separation.log(L"separation");
@@ -381,7 +387,7 @@ bool Override::MatchesCurrent(HackerDevice *device)
 		if (CurrentTransition.separation.time != -1) {
 			val = CurrentTransition.separation.target;
 		} else {
-			err = NvAPI_Stereo_GetSeparation(device->mStereoHandle, &val);
+			err = Profiling::NvAPI_Stereo_GetSeparation(device->mStereoHandle, &val);
 			if (err != NVAPI_OK) {
 				LogDebug("    Stereo_GetSeparation failed: %i\n", err);
 				val = mOverrideSeparation;
@@ -403,7 +409,7 @@ bool Override::MatchesCurrent(HackerDevice *device)
 		if (CurrentTransition.convergence.time != -1) {
 			val = CurrentTransition.convergence.target;
 		} else {
-			err = NvAPI_Stereo_GetConvergence(device->mStereoHandle, &val);
+			err = Profiling::NvAPI_Stereo_GetConvergence(device->mStereoHandle, &val);
 			if (err != NVAPI_OK) {
 				LogDebug("    Stereo_GetConvergence failed: %i\n", err);
 				val = mOverrideConvergence;
@@ -425,12 +431,12 @@ void KeyOverrideCycle::UpdateCurrent(HackerDevice *device)
 {
 	// If everything in the current preset matches reality or the current
 	// transition target we are good:
-	if (current >= 0 && current < presets.size() && presets[current].MatchesCurrent(device))
+	if (current >= 0 && (size_t)current < presets.size() && presets[current].MatchesCurrent(device))
 		return;
 
 	// The current preset doesn't match reality - we've got out of sync.
 	// Search for any other presets that do match:
-	for (int i = 0; i < presets.size(); i++) {
+	for (unsigned i = 0; i < presets.size(); i++) {
 		if (i != current && presets[i].MatchesCurrent(device)) {
 			LogInfo("Resynced key cycle: %i -> %i\n", current, i);
 			current = i;
@@ -494,10 +500,15 @@ static void UpdateIniParams(HackerDevice* wrapper)
 	ID3D11DeviceContext1* realContext = wrapper->GetPassThroughOrigContext1();
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 
-	realContext->Map(wrapper->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
-	realContext->Unmap(wrapper->mIniTexture, 0);
+	if (wrapper->mIniTexture) {
+		realContext->Map(wrapper->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
+		realContext->Unmap(wrapper->mIniTexture, 0);
+		Profiling::iniparams_updates++;
+	}
 }
+
+std::vector<CommandList*> pending_post_command_lists;
 
 void Override::Activate(HackerDevice *device, bool override_has_deactivate_condition)
 {
@@ -524,7 +535,9 @@ void Override::Activate(HackerDevice *device, bool override_has_deactivate_condi
 	RunCommandList(device, device->GetHackerContext(), &activate_command_list, NULL, false);
 	if (!override_has_deactivate_condition) {
 		// type=activate or type=cycle that don't have an explicit deactivate
-		RunCommandList(device, device->GetHackerContext(), &deactivate_command_list, NULL, true);
+		// We run their post lists after the upcoming UpdateTransitions() so
+		// that they can see the newly set values
+		pending_post_command_lists.emplace_back(&deactivate_command_list);
 	}
 }
 
@@ -656,13 +669,13 @@ void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
 	}
 
 	if (target_separation != FLT_MAX) {
-		err = NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &current);
+		err = Profiling::NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &current);
 		if (err != NVAPI_OK)
 			LogDebug("    Stereo_GetSeparation failed: %i\n", err);
 		_ScheduleTransition(&separation, "separation", current, target_separation, now, time, transition_type);
 	}
 	if (target_convergence != FLT_MAX) {
-		err = NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &current);
+		err = Profiling::NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &current);
 		if (err != NVAPI_OK)
 			LogDebug("    Stereo_GetConvergence failed: %i\n", err);
 		_ScheduleTransition(&convergence, "convergence", current, target_convergence, now, time, transition_type);
@@ -730,7 +743,7 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
 		LogInfo(" Transitioning separation to %#.2f\n", val);
 
 		NvAPIOverride();
-		err = NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
+		err = Profiling::NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
 		if (err != NVAPI_OK)
 			LogDebug("    Stereo_SetSeparation failed: %i\n", err);
 	}
@@ -740,7 +753,7 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
 		LogInfo(" Transitioning convergence to %#.2f\n", val);
 
 		NvAPIOverride();
-		err = NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
+		err = Profiling::NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
 		if (err != NVAPI_OK)
 			LogDebug("    Stereo_SetConvergence failed: %i\n", err);
 	}
@@ -768,7 +781,7 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
 			if (j->first->fval != val) {
 				j->first->fval = val;
 				if (j->first->flags & VariableFlags::PERSIST)
-					G->user_config_dirty = true;
+					G->user_config_dirty |= 1;
 			}
 			LogDebugNoNL("%S=%#.2g, ", j->first->name.c_str(), val);
 			if (j->second.time == -1)
@@ -778,6 +791,12 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
 		}
 		LogDebug("\n");
 	}
+
+	// Run any post command lists from type=activate / cycle now so that
+	// they can see the first frame of the updated value:
+	for (auto i : pending_post_command_lists)
+		RunCommandList(wrapper, wrapper->GetHackerContext(), i, NULL, true);
+	pending_post_command_lists.clear();
 }
 
 void OverrideTransition::Stop()
@@ -827,7 +846,7 @@ void OverrideGlobalSave::Reset(HackerDevice* wrapper)
 		LogInfo(" Restoring separation to %#.2f\n", val);
 
 		NvAPIOverride();
-		err = NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
+		err = Profiling::NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
 		if (err != NVAPI_OK)
 			LogDebug("    Stereo_SetSeparation failed: %i\n", err);
 	}
@@ -839,7 +858,7 @@ void OverrideGlobalSave::Reset(HackerDevice* wrapper)
 		LogInfo(" Restoring convergence to %#.2f\n", val);
 
 		NvAPIOverride();
-		err = NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
+		err = Profiling::NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
 		if (err != NVAPI_OK)
 			LogDebug("    Stereo_SetConvergence failed: %i\n", err);
 	}
@@ -874,7 +893,7 @@ void OverrideGlobalSave::Save(HackerDevice *wrapper, Override *preset)
 		if (CurrentTransition.separation.time != -1) {
 			val = CurrentTransition.separation.target;
 		} else {
-			err = NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &val);
+			err = Profiling::NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &val);
 			if (err != NVAPI_OK) {
 				LogDebug("    Stereo_GetSeparation failed: %i\n", err);
 			}
@@ -888,7 +907,7 @@ void OverrideGlobalSave::Save(HackerDevice *wrapper, Override *preset)
 		if (CurrentTransition.convergence.time != -1) {
 			val = CurrentTransition.convergence.target;
 		} else {
-			err = NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &val);
+			err = Profiling::NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &val);
 			if (err != NVAPI_OK) {
 				LogDebug("    Stereo_GetConvergence failed: %i\n", err);
 			}

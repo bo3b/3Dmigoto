@@ -3,6 +3,7 @@
 #include <Xinput.h>
 #include <vector>
 #include <algorithm>
+#include <sstream>
 
 #include "log.h"
 #include "util.h"
@@ -53,6 +54,7 @@ static void SwitchToXinpuGetStateEx()
 	_XInputGetState = XInputGetStateEx;
 }
 
+// VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
 class KeyParseError: public exception {} keyParseError;
 
 void InputListener::UpEvent(HackerDevice *device)
@@ -480,6 +482,43 @@ bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR iniKey,
 	return true;
 }
 
+// Format a key binding from the ini file into a user friendly manner, intended
+// for cases where we might want to show a key binding on the overlay.
+// "no_modifiers VK_F10" -> "F10"
+// "ctrl alt no_shift VK_F10" -> "Ctrl+Alt+F10"
+wstring user_friendly_ini_key_binding(LPCWSTR app, LPCWSTR iniKey)
+{
+	wchar_t keyName[MAX_PATH];
+	wstring ret;
+
+	if (!GetIniString(app, iniKey, 0, keyName, MAX_PATH))
+		return L"<None>";
+
+	std::wistringstream tokens(keyName);
+	std::wstring token;
+
+	while (std::getline(tokens, token, L' ')) {
+		if (!_wcsnicmp(token.c_str(), L"no_", 3))
+			continue;
+
+		if (!_wcsnicmp(token.c_str(), L"VK_", 3))
+			token.erase(0, 3);
+
+		if (token.empty())
+			continue;
+
+		if (!ret.empty())
+			ret += L'+';
+
+		token[0] = towupper(token[0]);
+		std::transform(token.begin() + 1, token.end(), token.begin() + 1, ::towlower);
+
+		ret += token;
+	}
+
+	return ret;
+}
+
 void ClearKeyBindings()
 {
 	std::vector<class InputAction *>::iterator i;
@@ -490,6 +529,17 @@ void ClearKeyBindings()
 	actions.clear();
 }
 
+static bool CheckForegroundWindow()
+{
+	DWORD pid;
+
+	if (!G->check_foreground_window)
+		return true;
+
+	GetWindowThreadProcessId(GetForegroundWindow(), &pid);
+
+	return (pid == GetCurrentProcessId());
+}
 
 bool DispatchInputEvents(HackerDevice *device)
 {
@@ -499,6 +549,9 @@ bool DispatchInputEvents(HackerDevice *device)
 	static time_t last_time = 0;
 	time_t now = time(NULL);
 	int j;
+
+	if (!CheckForegroundWindow())
+		return false;
 
 	for (j = 0; j < 4; j++) {
 		// Stagger polling controllers that were not connected last

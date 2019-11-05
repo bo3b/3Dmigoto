@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Thu Nov 15 06:28:05 2018
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:40:09 2019
 
 cbuffer CPostFxHDRBloomEffectsParameterProvider : register(b0)
 {
@@ -40,8 +40,6 @@ Texture2D<float4> DistortionTexture : register(t6);
 
 // 3Dmigoto declarations
 #define cmp -
-Texture1D<float4> IniParams : register(t120);
-Texture2D<float4> StereoParams : register(t125);
 
 
 void main(

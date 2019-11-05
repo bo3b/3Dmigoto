@@ -67,7 +67,7 @@ static Section RegularSections[] = {
 	{L"Key", true},
 	{L"Preset", true},
 	{L"Include", true}, // Prefix so that it may be namespaced to allow included files to include more files with relative paths
-	{L"Variables", false},
+	{L"Loader", false},
 };
 
 // List of sections that will not trigger a warning if they contain a line
@@ -76,7 +76,6 @@ static Section RegularSections[] = {
 static Section AllowLinesWithoutEquals[] = {
 	{L"Profile", false},
 	{L"ShaderRegex", true},
-	{L"Variables", true},
 };
 
 static bool whitelisted_duplicate_key(const wchar_t *section, const wchar_t *key)
@@ -196,10 +195,13 @@ struct IniSection {
 	IniSectionMap kv_map;
 	IniSectionVector kv_vec;
 
-	// Stores the ini namespace/path that this section came from. Note that
+	// Stores the ini namespace/path that this section came from. ini_path
+	// is only set if a shader overrides it's namespace so we can still
+	// find shaders & resources loaded from disk next to the ini. Note that
 	// there is also an ini_namespace in the IniLine structure for global
 	// sections where the namespacing can be per-line:
 	wstring ini_namespace;
+	wstring ini_path;
 };
 
 // std::map is used so this is sorted for iterating over a prefix:
@@ -286,6 +288,24 @@ bool get_section_namespace(const wchar_t *section, wstring *ret)
 	return _get_section_namespace(&ini_sections, section, ret);
 }
 
+static bool _get_section_path(IniSections *custom_ini_sections, const wchar_t *section, wstring *ret)
+{
+	IniSection *entry;
+
+	try {
+		entry = &custom_ini_sections->at(wstring(section));
+	} catch (std::out_of_range) {
+		return false;
+	}
+
+	if (entry->ini_path.empty())
+		*ret = entry->ini_namespace;
+	else
+		*ret = entry->ini_path;
+
+	return (!ret->empty());
+}
+
 static size_t get_section_namespace_endpos(const wchar_t *section)
 {
 	const wchar_t *section_prefix;
@@ -305,7 +325,7 @@ static bool _get_namespaced_section_path(IniSections *custom_ini_sections, const
 {
 	wstring::size_type pos;
 
-	if (!_get_section_namespace(custom_ini_sections, section, ret))
+	if (!_get_section_path(custom_ini_sections, section, ret))
 		return false;
 
 	// Strip the ini name from the end of the namespace leaving the relative path:
@@ -324,7 +344,8 @@ static bool get_namespaced_section_path(const wchar_t *section, wstring *ret)
 
 static void ParseIniSectionLine(wstring *wline, wstring *section,
 		int *warn_duplicates, bool *warn_lines_without_equals,
-		IniSectionVector **section_vector, const wstring *ini_namespace)
+		IniSectionVector **section_vector, const wstring *ini_namespace,
+		const wstring *ini_path)
 {
 	bool allow_duplicate_sections = false;
 	size_t first, last;
@@ -387,8 +408,11 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 	// Record the namespace so we can use it later when looking up any
 	// referenced sections. Only for namespaced sections, not global
 	// sections:
-	if (namespaced_section)
+	if (namespaced_section) {
 		ini_sections[*section].ini_namespace = *ini_namespace;
+		if (*ini_path != *ini_namespace)
+			ini_sections[*section].ini_path = *ini_path;
+	}
 
 	// Sections that utilise a command list are allowed to have duplicate
 	// keys, while other sections are not. The command list parser will
@@ -403,6 +427,62 @@ static void ParseIniSectionLine(wstring *wline, wstring *section,
 
 	if (DoesSectionAllowLinesWithoutEquals(section->c_str()))
 		*warn_lines_without_equals = false;
+}
+
+bool check_include_condition(wstring *val, const wstring *ini_namespace)
+{
+	CommandListExpression condition;
+	wstring sbuf(*val);
+	float ret;
+
+	// Expressions are case insensitive:
+	std::transform(sbuf.begin(), sbuf.end(), sbuf.begin(), ::towlower);
+
+	if (!condition.parse(&sbuf, ini_namespace, NULL)) {
+		IniWarning("WARNING: Unable to parse include condition: %S\n", val->c_str());
+		return false;
+	}
+
+	if (!condition.static_evaluate(&ret, NULL)) {
+		IniWarning("WARNING: Include condition could not be statically evaluated: %S\n", val->c_str());
+		return false;
+	}
+
+	return !!ret;
+}
+
+static bool ParseIniPreamble(wstring *wline, wstring *ini_namespace)
+{
+	size_t first, last, delim;
+	wstring key, val;
+
+	LogInfo("      %S\n", wline->c_str());
+
+	// Key / Val pair
+	delim = wline->find(L"=");
+	if (delim != wline->npos) {
+		// Strip whitespace around delimiter:
+		last = wline->find_last_not_of(L" \t", delim - 1);
+		key = wline->substr(0, last + 1);
+		first = wline->find_first_not_of(L" \t", delim + 1);
+		if (first != wline->npos)
+			val = wline->substr(first);
+
+		if (!_wcsicmp(key.c_str(), L"condition")) {
+			LogInfo("        condition = false, skipping \"%S\"\n", ini_namespace->c_str());
+			return check_include_condition(&val, ini_namespace);
+		}
+
+		if (!_wcsicmp(key.c_str(), L"namespace")) {
+			LogInfo("        Renaming namespace \"%S\" -> \"%S\"\n", ini_namespace->c_str(), val.c_str());
+			*ini_namespace = val;
+			return true;
+		}
+	}
+
+	IniWarning("WARNING: d3dx.ini entry outside of section: %S\n",
+			wline->c_str());
+	return true;
 }
 
 static void ParseIniKeyValLine(wstring *wline, wstring *section,
@@ -465,18 +545,20 @@ static void ParseIniKeyValLine(wstring *wline, wstring *section,
 static void ParseIniStream(istream *stream, const wstring *_ini_namespace)
 {
 	string aline;
-	wstring wline, section;
+	wstring wline, section, ini_path;
 	size_t first, last;
 	IniSectionVector *section_vector = NULL;
 	int warn_duplicates = 1;
 	bool warn_lines_without_equals = true;
 	wstring ini_namespace;
+	bool preamble = true;
 
 	// Simplify code further on by translating NULL to "" here:
 	if (_ini_namespace)
 		ini_namespace = *_ini_namespace;
 	else
 		ini_namespace = L"";
+	ini_path = ini_namespace;
 
 	while (std::getline(*stream, aline)) {
 		// Convert to wstring for compatibility with GetPrivateProfile*
@@ -509,9 +591,17 @@ static void ParseIniStream(istream *stream, const wstring *_ini_namespace)
 
 		// Section?
 		if (wline[0] == L'[') {
+			preamble = false;
 			ParseIniSectionLine(&wline, &section, &warn_duplicates,
 					    &warn_lines_without_equals,
-					    &section_vector, &ini_namespace);
+					    &section_vector, &ini_namespace,
+					    &ini_path);
+			continue;
+		}
+
+		if (preamble) {
+			if (!ParseIniPreamble(&wline, &ini_namespace))
+				return;
 			continue;
 		}
 
@@ -983,6 +1073,7 @@ static int GetIniHexString(const wchar_t *section, const wchar_t *key, int def, 
 	return ret;
 }
 
+// VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
 class EnumParseError: public exception {} enumParseError;
 
 static int ParseEnum(wchar_t *str, wchar_t *prefix, wchar_t *names[], int names_len, int first)
@@ -1161,7 +1252,7 @@ static void ParseIncludedIniFiles()
 	vector<pcre2_code*> exclude;
 	DWORD attrib;
 
-	GetModuleFileName(0, migoto_path, MAX_PATH);
+	GetModuleFileName(migoto_handle, migoto_path, MAX_PATH);
 	wcsrchr(migoto_path, L'\\')[1] = 0;
 
 	// Grab the user_config path before the below code removes it from the
@@ -1363,6 +1454,9 @@ static std::vector<T> string_to_typed_array(std::istringstream *tokens)
 	unsigned uval;
 
 	while (std::getline(*tokens, token, ' ')) {
+		if (token.empty())
+			continue;
+
 		ret = sscanf_s(token.c_str(), "0x%x%n", &uval, &len);
 		if (ret != 0 && ret != EOF && len == token.length()) {
 			// Reinterpret the 32bit unsigned integer as whatever
@@ -1461,6 +1555,33 @@ static void ConstructInitialDataNorm(CustomResource *custom_resource, std::istri
 	}
 }
 
+static void ConstructInitialDataString(CustomResource *custom_resource, std::string *data)
+{
+	// Currently this requires a byte array format, though we could
+	// possibly add utf32 (... or the worst-of-all-worlds utf16) in the
+	// future to support text shaders with international character support.
+	// The format cannot currently be specified inline, though we will
+	// allow it to be implied if not specified.
+	switch(custom_resource->override_format) {
+	case (DXGI_FORMAT)-1:
+		custom_resource->format = DXGI_FORMAT_R8_UINT;
+		// Fall through
+	case DXGI_FORMAT_R8_UINT:
+	case DXGI_FORMAT_R8_SINT:
+		custom_resource->initial_data_size = data->length() - 2;
+		custom_resource->initial_data = malloc(custom_resource->initial_data_size);
+		if (!custom_resource->initial_data) {
+			IniWarning("ERROR allocating initial data\n");
+			return;
+		}
+		memcpy(custom_resource->initial_data, data->c_str() + 1, custom_resource->initial_data_size);
+		return;
+	default:
+		IniWarning("WARNING: unsupported format for specifying initial data as text\n");
+		return;
+	}
+}
+
 static void ParseResourceInitialData(CustomResource *custom_resource, const wchar_t *section)
 {
 	std::string setting, token;
@@ -1488,6 +1609,10 @@ static void ParseResourceInitialData(CustomResource *custom_resource, const wcha
 		IniWarning("WARNING: initial data and filename cannot be used together\n");
 		return;
 	}
+
+	// Check for text data:
+	if (setting.length() >= 2 && setting.front() == '"' && setting.back() == '"')
+		return ConstructInitialDataString(custom_resource, &setting);
 
 	// The format can be specified inline as the first entry in the data
 	// line, or separately as its own setting. Specifying it inline is
@@ -1638,7 +1763,7 @@ static void ParseResourceSections()
 			get_namespaced_section_path(i->first.c_str(), &namespace_path);
 			found = false;
 			if (!namespace_path.empty()) {
-				GetModuleFileName(0, path, MAX_PATH);
+				GetModuleFileName(migoto_handle, path, MAX_PATH);
 				wcsrchr(path, L'\\')[1] = 0;
 				wcscat(path, namespace_path.c_str());
 				wcscat(path, setting);
@@ -1646,7 +1771,7 @@ static void ParseResourceSections()
 					found = true;
 			}
 			if (!found) {
-				GetModuleFileName(0, path, MAX_PATH);
+				GetModuleFileName(migoto_handle, path, MAX_PATH);
 				wcsrchr(path, L'\\')[1] = 0;
 				wcscat(path, setting);
 			}
@@ -1683,9 +1808,12 @@ static void ParseResourceSections()
 				(CustomResourceBindFlagNames, setting, NULL);
 		}
 
-		ParseResourceInitialData(custom_resource, i->first.c_str());
+		if (GetIniStringAndLog(i->first.c_str(), L"misc_flags", 0, setting, MAX_PATH)) {
+			custom_resource->override_misc_flags = parse_enum_option_string<const wchar_t *, ResourceMiscFlags, wchar_t*>
+				(ResourceMiscFlagNames, setting, NULL);
+		}
 
-		// TODO: Overrides for misc flags, etc
+		ParseResourceInitialData(custom_resource, i->first.c_str());
 	}
 }
 
@@ -1815,6 +1943,33 @@ static void ParseCommandList(const wchar_t *id,
 
 		if (ParseCommandListLine(id, key_ptr, val, raw_line, command_list, explicit_command_list, pre_command_list, post_command_list, &entry->ini_namespace)) {
 			LogInfo("  %S\n", raw_line->c_str());
+			continue;
+		}
+
+		if (entry->ini_namespace == G->user_config && !G->user_config.empty()) {
+			// Invalid command, but it is in the user config, which may happen
+			// if the user recently uninstalled/upgraded/etc a mod. We will flag
+			// the user config to be updated at the next save, but won't do this
+			// immediately just in case. Inform the user of what is happening.
+			if (!G->user_config_dirty) {
+				LogOverlay(LOG_WARNING,
+					"NOTICE: Unknown user settings will be removed from d3dx_user.ini\n"
+					" This is normal if you recently removed/changed any mods\n"
+					" Press %S to update the config now, or %S to reset all settings to default\n"
+					" The first unrecognised entry was: \"%S\"\n",
+					user_friendly_ini_key_binding(L"Hunting", L"reload_config").c_str(),
+					user_friendly_ini_key_binding(L"Hunting", L"wipe_user_config").c_str(),
+					raw_line->c_str());
+				// Once the [Constants] command list has finished running the
+				// low bit will be cleared to ensure that loading the user config
+				// itself cannot mark the user config as dirty. Set the second
+				// bit to indicate that it should be updated regardless:
+				G->user_config_dirty |= 2;
+			}
+			// There might be a lot of entries if a large mod was just
+			// uninstalled, so we only show the first bad setting on the
+			// overlay and log all other invalid settings to the log file:
+			LogInfo("WARNING: Unrecognised entry in %S: %S\n", G->user_config.c_str(), raw_line->c_str());
 			continue;
 		}
 
@@ -2023,21 +2178,14 @@ static void warn_deprecated_shaderoverride_options(const wchar_t *id, ShaderOver
 	        LogOverlay(LOG_NOTICE, "WARNING: [%S] tried to combine the deprecated partner= option with a command list.\n"
 	                               "This almost certainly won't do what you want. Try something like this instead:\n"
 	                               "\n"
-	                               "[Constants]\n"
-	                               "global $partner\n"
-	                               "\n"
 	                               "[%S_VERTEX_SHADER]\n"
 	                               "hash = <vertex shader hash>\n"
-	                               "pre $partner = 1\n"
-	                               "post $partner = 0\n"
+	                               "filter_index = 5\n"
 	                               "\n"
 	                               "[%S_PIXEL_SHADER]\n"
 	                               "hash = <pixel shader hash>\n"
-	                               "if $partner == 1\n"
-	                               "    ...\n"
-	                               "endif\n"
+	                               "x = vs\n"
 	                               "\n"
-	                               "To check the partner inside a shader set an IniParam in the partner's ShaderOverride.\n"
 	                               , id, id, id);
 	}
 
@@ -2076,6 +2224,7 @@ wchar_t *ShaderOverrideIniKeys[] = {
 	L"partner",
 	L"model",
 	L"disable_scissor",
+	L"filter_index",
 	NULL
 };
 static void ParseShaderOverrideSections()
@@ -2091,7 +2240,7 @@ static void ParseShaderOverrideSections()
 	// Lock entire routine. This can be re-inited live.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
 	//  We actually already lock the entire config reload, so this is redundant -DSS
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	G->mShaderOverrideMap.clear();
 
@@ -2119,8 +2268,11 @@ static void ParseShaderOverrideSections()
 
 		// Simple partner shader filtering. Deprecated - more advanced
 		// filtering can be achieved by setting an ini param in the
-		// partner's [ShaderOverride] section.
+		// partner's [ShaderOverride] section, or the below filter_index
 		override->partner_hash = GetIniHash(id, L"partner", 0, NULL);
+
+		// Superior partner shader filtering that also supports a bound/unbound case
+		override->filter_index = GetIniFloat(id, L"filter_index", FLT_MAX, NULL);
 
 		if (GetIniStringAndLog(id, L"model", 0, setting, MAX_PATH)) {
 			wcstombs(override->model, setting, ARRAYSIZE(override->model));
@@ -2182,6 +2334,7 @@ static std::set<T> vec_to_set(std::vector<T> &v)
 wchar_t *ShaderRegexIniKeys[] = {
 	L"shader_model",
 	L"temps",
+	L"filter_index",
 	// L"type" =asm/hlsl? I'd rather not encourage autofixes on HLSL
 	//         shaders, because there is too much potential for trouble
 	NULL
@@ -2201,6 +2354,8 @@ static bool parse_shader_regex_section_main(const std::wstring *section_id, Shad
 		regex_group->temp_regs = vec_to_set(split_string(&setting, ' '));
 
 	regex_group->ini_section = *section_id;
+
+	regex_group->filter_index = GetIniFloat(section_id->c_str(), L"filter_index", FLT_MAX, NULL);
 
 	ParseCommandList(section_id->c_str(), &regex_group->command_list, &regex_group->post_command_list, ShaderRegexIniKeys);
 	return true;
@@ -2464,8 +2619,44 @@ wchar_t *TextureOverrideFuzzyMatchesIniKeys[] = {
 static void parse_fuzzy_numeric_match_expression_error(const wchar_t *text)
 {
 	IniWarning("WARNING: Unable to parse expression - must be in the simple form:\n"
-	           "    [ operator ] value | field_name [ * multiplier ] [ / divider ]\n"
+	           "    [ operator ] value | field_name [ * field_name ] [ * multiplier ] [ / divider ]\n"
 	           "    Parse error on text: \"%S\"\n", text);
+}
+
+static bool parse_fuzzy_field_name(const wchar_t **ptr, FuzzyMatchOperandType *field_type)
+{
+	bool ret;
+
+	// whitespace
+	for (; **ptr == L' '; ++*ptr);
+
+	if (!wcsncmp(*ptr, L"width", 5)) {
+		*field_type = FuzzyMatchOperandType::WIDTH;
+		*ptr += 5;
+	} else if (!wcsncmp(*ptr, L"height", 6)) {
+		*field_type = FuzzyMatchOperandType::HEIGHT;
+		*ptr += 6;
+	} else if (!wcsncmp(*ptr, L"depth", 5)) {
+		*field_type = FuzzyMatchOperandType::DEPTH;
+		*ptr += 5;
+	} else if (!wcsncmp(*ptr, L"array", 5)) {
+		*field_type = FuzzyMatchOperandType::ARRAY;
+		*ptr += 5;
+	} else if (!wcsncmp(*ptr, L"res_width", 9)) {
+		*field_type = FuzzyMatchOperandType::RES_WIDTH;
+		*ptr += 9;
+	} else if (!wcsncmp(*ptr, L"res_height", 10)) {
+		*field_type = FuzzyMatchOperandType::RES_HEIGHT;
+		*ptr += 10;
+	}
+
+	// Check field name terminated by whitespace
+	ret = (**ptr == L'\0' || **ptr == L' ');
+
+	// whitespace
+	for (; **ptr == L' '; ++*ptr);
+
+	return ret;
 }
 
 static void parse_fuzzy_numeric_match_expression(const wchar_t *setting, FuzzyMatch *matcher)
@@ -2517,38 +2708,28 @@ static void parse_fuzzy_numeric_match_expression(const wchar_t *setting, FuzzyMa
 		return;
 
 	// field_name
-	if (!wcsncmp(ptr, L"width", 5)) {
-		matcher->rhs_type = FuzzyMatchOperandType::WIDTH;
-		ptr += 5;
-	} else if (!wcsncmp(ptr, L"height", 6)) {
-		matcher->rhs_type = FuzzyMatchOperandType::HEIGHT;
-		ptr += 6;
-	} else if (!wcsncmp(ptr, L"depth", 5)) {
-		matcher->rhs_type = FuzzyMatchOperandType::DEPTH;
-		ptr += 5;
-	} else if (!wcsncmp(ptr, L"array", 5)) {
-		matcher->rhs_type = FuzzyMatchOperandType::ARRAY;
-		ptr += 5;
-	} else if (!wcsncmp(ptr, L"res_width", 9)) {
-		matcher->rhs_type = FuzzyMatchOperandType::RES_WIDTH;
-		ptr += 9;
-	} else if (!wcsncmp(ptr, L"res_height", 10)) {
-		matcher->rhs_type = FuzzyMatchOperandType::RES_HEIGHT;
-		ptr += 10;
-	}
-	// Check for bad field name
-	if (*ptr && *ptr != L' ')
+	if (!parse_fuzzy_field_name(&ptr, &matcher->rhs_type1))
 		return parse_fuzzy_numeric_match_expression_error(ptr);
-
-	// whitespace
-	for (; *ptr == L' '; ptr++);
 
 	// numerator
 	if (*ptr == L'*') {
 		ret = swscanf_s(++ptr, L"%u%n", &matcher->numerator, &len);
-		if (ret == 0 || ret == EOF)
-			return parse_fuzzy_numeric_match_expression_error(ptr);
-		ptr += len;
+		if (ret != 0 && ret != EOF) {
+			ptr += len;
+		} else {
+			// No numerator (yet?). Check for 2nd named field? In
+			// RE7: 'match_byte_width = res_width * res_height'
+			if (!parse_fuzzy_field_name(&ptr, &matcher->rhs_type2))
+				return parse_fuzzy_numeric_match_expression_error(ptr);
+
+			// numerator?
+			if (*ptr == L'*') {
+				ret = swscanf_s(++ptr, L"%u%n", &matcher->numerator, &len);
+				if (ret == 0 || ret == EOF)
+					return parse_fuzzy_numeric_match_expression_error(ptr);
+				ptr += len;
+			}
+		}
 	}
 
 	// whitespace
@@ -2826,7 +3007,7 @@ static void warn_if_duplicate_texture_hash(TextureOverride *override, uint32_t h
 	if (override->has_draw_context_match || override->has_match_priority)
 		return;
 
-	i = G->mTextureOverrideMap.find(hash);
+	i = lookup_textureoverride(hash);
 	if (i == G->mTextureOverrideMap.end())
 		return;
 
@@ -2860,7 +3041,7 @@ static void ParseTextureOverrideSections()
 	// Lock entire routine, this can be re-inited.  These shaderoverrides
 	// are unlikely to be changing much, but for consistency.
 	//  We actually already lock the entire config reload, so this is redundant -DSS
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	G->mTextureOverrideMap.clear();
 	G->mFuzzyTextureOverrides.clear();
@@ -3748,6 +3929,10 @@ void FlagConfigReload(HackerDevice *device, void *private_data)
 	// to do from inside a key binding callback, so we just set a flag and
 	// do this after the input subsystem has finished dispatching calls.
 	G->gReloadConfigPending = true;
+
+	// We defer wiping the user config (if requested) until the reload in
+	// case something marks the user config as dirty between now and then:
+	G->gWipeUserConfig = !!private_data;
 }
 
 static void ToggleFullScreen(HackerDevice *device, void *private_data)
@@ -4136,6 +4321,27 @@ void InstallMouseHooks(bool hide)
 	LogInfo("Successfully hooked mouse cursor functions for hide_cursor\n");
 }
 
+static void warn_of_conflicting_d3dx(wchar_t *dll_ini_path)
+{
+	wchar_t exe_ini_path[MAX_PATH];
+	DWORD attrib;
+
+	if (!GetModuleFileName(NULL, exe_ini_path, MAX_PATH))
+		return;
+	wcsrchr(exe_ini_path, L'\\')[1] = 0;
+	wcscat(exe_ini_path, L"d3dx.ini");
+
+	if (!wcscmp(dll_ini_path, exe_ini_path))
+		return;
+
+	attrib = GetFileAttributes(exe_ini_path);
+	if (attrib == INVALID_FILE_ATTRIBUTES)
+		return;
+
+	LogOverlay(LOG_WARNING, "Detected a conflicting d3dx.ini in the game directory that is not being used.\n"
+			"Using this configuration: %S\n", dll_ini_path);
+}
+
 void LoadConfigFile()
 {
 	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
@@ -4143,12 +4349,13 @@ void LoadConfigFile()
 
 	G->gInitialized = true;
 
-	if (!GetModuleFileName(0, iniFile, MAX_PATH))
+	if (!GetModuleFileName(migoto_handle, iniFile, MAX_PATH))
 		DoubleBeepExit();
 	wcsrchr(iniFile, L'\\')[1] = 0;
 	wcscpy(logFilename, iniFile);
 	wcscat(iniFile, L"d3dx.ini");
 	wcscat(logFilename, L"d3d11_log.txt");
+	warn_of_conflicting_d3dx(iniFile);
 
 	// Log all settings that are _enabled_, in order, 
 	// so that there is no question what settings we are using.
@@ -4159,7 +4366,15 @@ void LoadConfigFile()
 	{
 		if (!LogFile)
 			LogFile = _wfsopen(logFilename, L"w", _SH_DENYNO);
-		LogInfo("\nD3D11 DLL starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, LogTime().c_str());
+		LogInfo("\nD3D11 DLL starting init - v %s - %s\n", VER_FILE_VERSION_STR, LogTime().c_str());
+
+		wchar_t our_path[MAX_PATH], exe_path[MAX_PATH];
+		GetModuleFileName(migoto_handle, our_path, MAX_PATH);
+		GetModuleFileName(NULL, exe_path, MAX_PATH);
+		LogInfo("Game path: %S\n"
+			"3DMigoto path: %S\n\n",
+			exe_path, our_path);
+
 		LogInfo("----------- d3dx.ini settings -----------\n");
 	}
 	LogInfo("[Logging]\n");
@@ -4201,6 +4416,9 @@ void LoadConfigFile()
 
 	G->dump_all_profiles = GetIniBool(L"Logging", L"dump_all_profiles", false, NULL);
 
+	if (GetIniBool(L"Logging", L"debug_locks", false, NULL))
+		enable_lock_dependency_checks();
+
 	// [Include]
 	ParseIncludedIniFiles();
 
@@ -4220,6 +4438,8 @@ void LoadConfigFile()
 	G->enable_check_interface = GetIniBool(L"System", L"allow_check_interface", false, NULL);
 	G->enable_create_device = GetIniInt(L"System", L"allow_create_device", 0, NULL);
 	G->enable_platform_update = GetIniBool(L"System", L"allow_platform_update", false, NULL);
+	// TODO: Enable this by default if wider testing goes well:
+	G->check_foreground_window = GetIniBool(L"System", L"check_foreground_window", false, NULL);
 
 	// [Device] (DXGI parameters)
 	LogInfo("[Device]\n");
@@ -4268,7 +4488,7 @@ void LoadConfigFile()
 			G->SHADER_PATH[wcslen(G->SHADER_PATH) - 1] = 0;
 		if (G->SHADER_PATH[1] != ':' && G->SHADER_PATH[0] != '\\')
 		{
-			GetModuleFileName(0, setting, MAX_PATH);
+			GetModuleFileName(migoto_handle, setting, MAX_PATH);
 			wcsrchr(setting, L'\\')[1] = 0;
 			wcscat(setting, G->SHADER_PATH);
 			wcscpy(G->SHADER_PATH, setting);
@@ -4282,7 +4502,7 @@ void LoadConfigFile()
 			G->SHADER_CACHE_PATH[wcslen(G->SHADER_CACHE_PATH) - 1] = 0;
 		if (G->SHADER_CACHE_PATH[1] != ':' && G->SHADER_CACHE_PATH[0] != '\\')
 		{
-			GetModuleFileName(0, setting, MAX_PATH);
+			GetModuleFileName(migoto_handle, setting, MAX_PATH);
 			wcsrchr(setting, L'\\')[1] = 0;
 			wcscat(setting, G->SHADER_CACHE_PATH);
 			wcscpy(G->SHADER_CACHE_PATH, setting);
@@ -4295,6 +4515,8 @@ void LoadConfigFile()
 	G->SCISSOR_DISABLE = GetIniBool(L"Rendering", L"rasterizer_disable_scissor", false, NULL);
 	G->track_texture_updates = GetIniBoolOrInt(L"Rendering", L"track_texture_updates", 0, NULL);
 	G->assemble_signature_comments = GetIniBool(L"Rendering", L"assemble_signature_comments", false, NULL);
+	G->disassemble_undecipherable_custom_data = GetIniBool(L"Rendering", L"disassemble_undecipherable_custom_data", false, NULL);
+	G->patch_cb_offsets = GetIniBool(L"Rendering", L"patch_assembly_cb_offsets", false, NULL);
 
 	G->EXPORT_FIXED = GetIniBool(L"Rendering", L"export_fixed", false, NULL);
 	G->EXPORT_SHADERS = GetIniBool(L"Rendering", L"export_shaders", false, NULL);
@@ -4304,6 +4526,8 @@ void LoadConfigFile()
 
 	G->StereoParamsReg = GetIniInt(L"Rendering", L"stereo_params", 125, NULL);
 	G->IniParamsReg = GetIniInt(L"Rendering", L"ini_params", 120, NULL);
+	G->decompiler_settings.StereoParamsReg = G->StereoParamsReg;
+	G->decompiler_settings.IniParamsReg = G->IniParamsReg;
 	if (G->StereoParamsReg >= D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT) {
 		IniWarning("WARNING: stereo_params=%i out of range\n", G->StereoParamsReg);
 		G->StereoParamsReg = -1;
@@ -4315,35 +4539,34 @@ void LoadConfigFile()
 
 
 	// Automatic section
-	G->FIX_SV_Position = GetIniBool(L"Rendering", L"fix_sv_position", false, NULL);
-	G->FIX_Light_Position = GetIniBool(L"Rendering", L"fix_light_position", false, NULL);
-	G->FIX_Recompile_VS = GetIniBool(L"Rendering", L"recompile_all_vs", false, NULL);
+	G->decompiler_settings.fixSvPosition = GetIniBool(L"Rendering", L"fix_sv_position", false, NULL);
+	G->decompiler_settings.recompileVs = GetIniBool(L"Rendering", L"recompile_all_vs", false, NULL);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_DepthTexture1", 0, setting, MAX_PATH))
 	{
 		char buf[MAX_PATH];
 		wcstombs(buf, setting, MAX_PATH);
 		char *end = RightStripA(buf);
-		G->ZRepair_DepthTextureReg1 = *end; *(end - 1) = 0;
+		G->decompiler_settings.ZRepair_DepthTextureReg1 = *end; *(end - 1) = 0;
 		char *start = buf; while (isspace(*start)) start++;
-		G->ZRepair_DepthTexture1 = start;
+		G->decompiler_settings.ZRepair_DepthTexture1 = start;
 	}
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_DepthTexture2", 0, setting, MAX_PATH))
 	{
 		char buf[MAX_PATH];
 		wcstombs(buf, setting, MAX_PATH);
 		char *end = RightStripA(buf);
-		G->ZRepair_DepthTextureReg2 = *end; *(end - 1) = 0;
+		G->decompiler_settings.ZRepair_DepthTextureReg2 = *end; *(end - 1) = 0;
 		char *start = buf; while (isspace(*start)) start++;
-		G->ZRepair_DepthTexture2 = start;
+		G->decompiler_settings.ZRepair_DepthTexture2 = start;
 	}
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_ZPosCalc1", 0, setting, MAX_PATH))
-		G->ZRepair_ZPosCalc1 = readStringParameter(setting);
+		G->decompiler_settings.ZRepair_ZPosCalc1 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_ZPosCalc2", 0, setting, MAX_PATH))
-		G->ZRepair_ZPosCalc2 = readStringParameter(setting);
+		G->decompiler_settings.ZRepair_ZPosCalc2 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_PositionTexture", 0, setting, MAX_PATH))
-		G->ZRepair_PositionTexture = readStringParameter(setting);
+		G->decompiler_settings.ZRepair_PositionTexture = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_PositionCalc", 0, setting, MAX_PATH))
-		G->ZRepair_WorldPosCalc = readStringParameter(setting);
+		G->decompiler_settings.ZRepair_WorldPosCalc = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_Dependencies1", 0, setting, MAX_PATH))
 	{
 		char buf[MAX_PATH];
@@ -4352,7 +4575,7 @@ void LoadConfigFile()
 		while (*start)
 		{
 			char *end = start; while (*end != ',' && *end && *end != ' ') ++end;
-			G->ZRepair_Dependencies1.push_back(string(start, end));
+			G->decompiler_settings.ZRepair_Dependencies1.push_back(string(start, end));
 			start = end; if (*start == ',') ++start;
 		}
 	}
@@ -4364,7 +4587,7 @@ void LoadConfigFile()
 		while (*start)
 		{
 			char *end = start; while (*end != ',' && *end && *end != ' ') ++end;
-			G->ZRepair_Dependencies2.push_back(string(start, end));
+			G->decompiler_settings.ZRepair_Dependencies2.push_back(string(start, end));
 			start = end; if (*start == ',') ++start;
 		}
 	}
@@ -4376,7 +4599,7 @@ void LoadConfigFile()
 		while (*start)
 		{
 			char *end = start; while (*end != ',' && *end && *end != ' ') ++end;
-			G->InvTransforms.push_back(string(start, end));
+			G->decompiler_settings.InvTransforms.push_back(string(start, end));
 			start = end; if (*start == ',') ++start;
 		}
 	}
@@ -4385,23 +4608,24 @@ void LoadConfigFile()
 		uint32_t hash;
 		swscanf_s(setting, L"%08lx", &hash);
 		G->ZBufferHashToInject = hash;
+		G->decompiler_settings.ZRepair_DepthBuffer = !!G->ZBufferHashToInject;
 	}
 	if (GetIniStringAndLog(L"Rendering", L"fix_BackProjectionTransform1", 0, setting, MAX_PATH))
-		G->BackProject_Vector1 = readStringParameter(setting);
+		G->decompiler_settings.BackProject_Vector1 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_BackProjectionTransform2", 0, setting, MAX_PATH))
-		G->BackProject_Vector2 = readStringParameter(setting);
+		G->decompiler_settings.BackProject_Vector2 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition1", 0, setting, MAX_PATH))
-		G->ObjectPos_ID1 = readStringParameter(setting);
+		G->decompiler_settings.ObjectPos_ID1 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition2", 0, setting, MAX_PATH))
-		G->ObjectPos_ID2 = readStringParameter(setting);
+		G->decompiler_settings.ObjectPos_ID2 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition1Multiplier", 0, setting, MAX_PATH))
-		G->ObjectPos_MUL1 = readStringParameter(setting);
+		G->decompiler_settings.ObjectPos_MUL1 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition2Multiplier", 0, setting, MAX_PATH))
-		G->ObjectPos_MUL2 = readStringParameter(setting);
+		G->decompiler_settings.ObjectPos_MUL2 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_MatrixOperand1", 0, setting, MAX_PATH))
-		G->MatrixPos_ID1 = readStringParameter(setting);
+		G->decompiler_settings.MatrixPos_ID1 = readStringParameter(setting);
 	if (GetIniStringAndLog(L"Rendering", L"fix_MatrixOperand1Multiplier", 0, setting, MAX_PATH))
-		G->MatrixPos_MUL1 = readStringParameter(setting);
+		G->decompiler_settings.MatrixPos_MUL1 = readStringParameter(setting);
 
 	// [Hunting]
 	ParseHuntingSection();
@@ -4409,6 +4633,7 @@ void LoadConfigFile()
 	// Must be done prior to parsing any command list sections, as every
 	// section registered in this set will be a candidate for optimisation:
 	registered_command_lists.clear();
+	G->implicit_post_checktextureoverride_used = false;
 
 	// Splitting the enumeration of these sections out from parsing them as
 	// they can be referenced from other command list sections, keys and
@@ -4489,13 +4714,13 @@ void LoadConfigFile()
 // game's executable passed in. It doesn't need to parse most of the config,
 // only the [Profile] section and some of the logging. It uses a separate log
 // file from the main DLL.
-void LoadProfileManagerConfig(const wchar_t *exe_path)
+void LoadProfileManagerConfig(const wchar_t *config_dir)
 {
 	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
 
 	G->gInitialized = true;
 
-	if (wcscpy_s(iniFile, MAX_PATH, exe_path))
+	if (wcscpy_s(iniFile, MAX_PATH, config_dir))
 		DoubleBeepExit();
 	wcsrchr(iniFile, L'\\')[1] = 0;
 	wcscpy(logFilename, iniFile);
@@ -4538,7 +4763,7 @@ void SavePersistentSettings()
 
 	if (!G->user_config_dirty)
 		return;
-	G->user_config_dirty = false;
+	G->user_config_dirty = 0;
 
 	// TODO: Ability to update existing file rather than overwriting:
 	//wfopen_ensuring_access(&f, G->user_config.c_str(), L"r+");
@@ -4566,6 +4791,14 @@ void SavePersistentSettings()
 	fclose(f);
 }
 
+static void WipeUserConfig()
+{
+	G->gWipeUserConfig = false;
+	G->user_config_dirty = 0;
+
+	DeleteFile(G->user_config.c_str());
+}
+
 static void MarkAllShadersDeferredUnprocessed()
 {
 	ShaderReloadMap::iterator i;
@@ -4586,6 +4819,9 @@ void ReloadConfig(HackerDevice *device)
 {
 	HackerContext *mHackerContext = device->GetHackerContext();
 
+	if (G->gWipeUserConfig)
+		WipeUserConfig();
+
 	SavePersistentSettings();
 
 	LogInfo("Reloading d3dx.ini (EXPERIMENTAL)...\n");
@@ -4596,7 +4832,7 @@ void ReloadConfig(HackerDevice *device)
 	// Lock the entire config reload as it touches many global structures
 	// that could potentially be accessed from other threads (e.g. deferred
 	// contexts) while we do this
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	// Clears any notices currently displayed on the overlay. This ensures
 	// that any notices that haven't timed out yet (e.g. from a previous

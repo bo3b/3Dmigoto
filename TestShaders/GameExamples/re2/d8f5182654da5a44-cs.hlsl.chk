@@ -1,0 +1,24 @@
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:41:37 2019
+
+RWByteAddressBuffer RWDrawIndirectArguments : register(u0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_raw_glc u0
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 64, 1, 1
+  r0.x = mad(20, (int)vThreadID.x, 4);
+// No code for instruction (needs manual fix):
+store_raw u0.x, r0.x, l(0)
+  return;
+}

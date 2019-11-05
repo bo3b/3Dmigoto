@@ -1,0 +1,51 @@
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:41:36 2019
+
+struct IndirectArgumentsInstanceCount
+{
+    uint mOffset;                  // Offset:    0
+    uint mClusterCount;            // Offset:    4
+    uint mInstanceCount;           // Offset:    8
+};
+
+cbuffer RootConstant : register(b0)
+{
+  uint constant32Bits : packoffset(c0);
+}
+
+StructuredBuffer<IndirectArgumentsInstanceCount> IndirectArgumentsInstanceCountSRV : register(t0);
+RWByteAddressBuffer RWDrawIndirectArguments : register(u0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_raw_glc u0
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 64, 1, 1
+  r0.x = constant32Bits >> 16;
+  r0.y = constant32Bits & 0x0000ffff;
+  r0.x = (int)r0.x + (int)r0.y;
+  r0.x = (int)r0.x + (int)vThreadID.x;
+  r0.x = IndirectArgumentsInstanceCountSRV[r0.x].mOffset;
+  r0.y = IndirectArgumentsInstanceCountSRV[r0.x].mClusterCount;
+  r0.z = IndirectArgumentsInstanceCountSRV[r0.x].mInstanceCount;
+  r0.w = 0;
+  while (true) {
+    r1.x = cmp((uint)r0.w >= (uint)r0.y);
+    if (r1.x != 0) break;
+    r1.x = mad(20, (int)r0.w, (int)r0.x);
+    r1.x = (int)r1.x + 4;
+  // No code for instruction (needs manual fix):
+    store_raw u0.x, r1.x, r0.z
+    r0.w = (int)r0.w + 1;
+  }
+  return;
+}

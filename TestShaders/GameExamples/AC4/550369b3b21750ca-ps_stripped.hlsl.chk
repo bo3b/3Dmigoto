@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.2 on Fri Nov 16 07:09:40 2018
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:39:16 2019
 Texture2D<float4> t1 : register(t1);
 
 Texture2DArray<float4> t0 : register(t0);
@@ -10,8 +10,6 @@ SamplerState s0_s : register(s0);
 
 // 3Dmigoto declarations
 #define cmp -
-Texture1D<float4> IniParams : register(t120);
-Texture2D<float4> StereoParams : register(t125);
 
 
 void main(

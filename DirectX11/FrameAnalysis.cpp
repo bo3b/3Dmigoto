@@ -1,3 +1,7 @@
+// Include before util.h (or any header that includes util.h) to get pretty
+// version of LockResourceCreationMode:
+#include "lock.h"
+
 #include "D3D11Wrapper.h"
 #include "FrameAnalysis.h"
 #include "Globals.h"
@@ -122,7 +126,7 @@ static void FrameAnalysisLogSlot(FILE *frame_analysis_log, int slot, char *slot_
 template <class ID3D11Shader>
 void FrameAnalysisContext::FrameAnalysisLogShaderHash(ID3D11Shader *shader)
 {
-	UINT64 hash;
+	ShaderMap::iterator hash;
 
 	// Always complete the line in the debug log:
 	LogDebug("\n");
@@ -135,14 +139,11 @@ void FrameAnalysisContext::FrameAnalysisLogShaderHash(ID3D11Shader *shader)
 		return;
 	}
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
-	try {
-		hash = G->mShaders.at(shader);
-		if (hash)
-			fprintf(frame_analysis_log, " hash=%016llx", hash);
-	} catch (std::out_of_range) {
-	}
+	hash = lookup_shader_hash(shader);
+	if (hash != end(G->mShaders))
+		fprintf(frame_analysis_log, " hash=%016llx", hash->second);
 
 	LeaveCriticalSection(&G->mCriticalSection);
 
@@ -165,7 +166,8 @@ void FrameAnalysisContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource
 		return;
 	}
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mResourcesLock);
 
 	try {
 		hash = G->mResources.at(resource).hash;
@@ -190,6 +192,7 @@ void FrameAnalysisContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource
 	} catch (std::out_of_range) {
 	}
 
+	LeaveCriticalSection(&G->mResourcesLock);
 	LeaveCriticalSection(&G->mCriticalSection);
 
 	fprintf(frame_analysis_log, "\n");
@@ -545,6 +548,8 @@ HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
 	if (format != DXGI_FORMAT_UNKNOWN)
 		desc.Format = format;
 
+	LockResourceCreationMode();
+
 	if (analyse_options & FrameAnalysisOptions::STEREO) {
 		// If we are dumping stereo at all force surface creation mode
 		// to stereo (regardless of whether we are creating this double
@@ -555,14 +560,16 @@ HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
 		// arguably better since it will be immediately obvious, but
 		// risks missing the second perspective if the original
 		// resource was actually stereo)
-		NvAPI_Stereo_GetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, &orig_mode);
-		NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
+		Profiling::NvAPI_Stereo_GetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, &orig_mode);
+		Profiling::NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
 	}
 
 	hr = GetHackerDevice()->GetPassThroughOrigDevice1()->CreateTexture2D(&desc, NULL, resource);
 
 	if (analyse_options & FrameAnalysisOptions::STEREO)
-		NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, orig_mode);
+		Profiling::NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, orig_mode);
+
+	UnlockResourceCreationMode();
 
 	return hr;
 }
@@ -1574,7 +1581,7 @@ void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_li
 	if (frame_analysis_deferred_buffer_lists.empty() && frame_analysis_deferred_tex2d_lists.empty())
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	try {
 		deferred_buffers = std::move(frame_analysis_deferred_buffer_lists.at(command_list));
@@ -1621,7 +1628,7 @@ void FrameAnalysisContext::finish_deferred_resources(ID3D11CommandList *command_
 	if (!command_list || (!deferred_buffers && !deferred_tex2d))
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	if (deferred_buffers) {
 		FALogInfo("Finishing deferred staging Buffer list %p on context %p\n", deferred_buffers.get(), this);
@@ -1816,7 +1823,9 @@ void FrameAnalysisContext::DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
 	desc.MiscFlags = 0;
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
+	LockResourceCreationMode();
 	hr = GetHackerDevice()->GetPassThroughOrigDevice1()->CreateBuffer(&desc, NULL, &staging);
+	UnlockResourceCreationMode();
 	if (FAILED(hr)) {
 		FALogErr("DumpBuffer failed to create staging buffer: 0x%x\n", hr);
 		return;
@@ -1900,7 +1909,7 @@ static BOOL CreateDeferredFADirectory(LPCWSTR path)
 void FrameAnalysisContext::get_deduped_dir(wchar_t *path, size_t size)
 {
 	if (analyse_options & FrameAnalysisOptions::SHARE_DEDUPED) {
-		if (!GetModuleFileName(0, path, (DWORD)size))
+		if (!GetModuleFileName(migoto_handle, path, (DWORD)size))
 			return;
 		wcsrchr(path, L'\\')[1] = 0;
 		wcscat_s(path, size, L"FrameAnalysisDeduped");
@@ -1951,12 +1960,14 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t si
 		StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i", draw_call);
 	}
 
+	EnterCriticalSectionPretty(&G->mResourcesLock);
 	try {
 		hash = G->mResources.at(handle).hash;
 		orig_hash = G->mResources.at(handle).orig_hash;
 	} catch (std::out_of_range) {
 		hash = orig_hash = 0;
 	}
+	LeaveCriticalSection(&G->mResourcesLock);
 
 	if (hash) {
 		try {
@@ -2031,12 +2042,14 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, s
 
 	StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%s", type);
 
+	EnterCriticalSectionPretty(&G->mResourcesLock);
 	try {
 		hash = G->mResources.at(handle).hash;
 		orig_hash = G->mResources.at(handle).orig_hash;
 	} catch (std::out_of_range) {
 		hash = orig_hash = 0;
 	}
+	LeaveCriticalSection(&G->mResourcesLock);
 
 	if (hash) {
 		try {
@@ -2777,9 +2790,9 @@ void FrameAnalysisContext::update_stereo_dumping_mode()
 	NvU8 stereo = false;
 
 	NvAPIOverride();
-	NvAPI_Stereo_IsEnabled(&stereo);
+	Profiling::NvAPI_Stereo_IsEnabled(&stereo);
 	if (stereo)
-		NvAPI_Stereo_IsActivated(GetHackerDevice()->mStereoHandle, &stereo);
+		Profiling::NvAPI_Stereo_IsActivated(GetHackerDevice()->mStereoHandle, &stereo);
 
 	if (!stereo) {
 		// 3D Vision is disabled, force mono dumping mode:
@@ -2855,7 +2868,7 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 	    (analyse_options & FrameAnalysisOptions::STEREO) &&
 	    (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
 		// Enable reverse stereo blit for all resources we are about to dump:
-		nvret = NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
+		nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
 		if (nvret != NVAPI_OK) {
 			FALogErr("DumpStereoResource failed to enable reverse stereo blit\n");
 			// Continue anyway, we should still be able to dump in 2D...
@@ -2864,7 +2877,7 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 
 	// Grab the critical section now as we may need it several times during
 	// dumping for mResources
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_CB)
 		DumpCBs(compute);
@@ -2891,7 +2904,7 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 	if ((analyse_options & FrameAnalysisOptions::FMT_2D_MASK) &&
 	    (analyse_options & FrameAnalysisOptions::STEREO) &&
 	    (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
-		NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
+		Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
 	}
 
 	draw_call++;
@@ -2921,7 +2934,7 @@ void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 
 	set_default_dump_formats(false);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	// We don't have a view at this point to get a fully typed format, so
 	// we leave format as DXGI_FORMAT_UNKNOWN, which will use the format
@@ -2973,14 +2986,14 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 	if ((analyse_options & FrameAnalysisOptions::STEREO) &&
 	    (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
 		// Enable reverse stereo blit for all resources we are about to dump:
-		nvret = NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
+		nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
 		if (nvret != NVAPI_OK) {
 			FALogErr("FrameAnalyisDump failed to enable reverse stereo blit\n");
 			// Continue anyway, we should still be able to dump in 2D...
 		}
 	}
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, target, resource, false);
 	if (FAILED(hr)) {
@@ -2995,7 +3008,7 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 
 	if ((analyse_options & FrameAnalysisOptions::STEREO) &&
 	    (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
-		NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
+		Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
 	}
 
 	non_draw_call_dump_counter++;
@@ -3380,8 +3393,9 @@ STDMETHODIMP_(void) FrameAnalysisContext::DispatchIndirect(THIS_
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs)
 {
-	FrameAnalysisLog("DispatchIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
+	FrameAnalysisLogNoNL("DispatchIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)",
 			pBufferForArgs, AlignedByteOffsetForArgs);
+	FrameAnalysisLogResourceHash(pBufferForArgs);
 
 	HackerContext::DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 
@@ -3513,9 +3527,9 @@ STDMETHODIMP_(void) FrameAnalysisContext::ClearUnorderedAccessViewUint(THIS_
 		/* [annotation] */
 		__in  const UINT Values[4])
 {
-	FrameAnalysisLog("ClearUnorderedAccessViewUint(pUnorderedAccessView:0x%p, Values:0x%p\n)",
+	FrameAnalysisLog("ClearUnorderedAccessViewUint(pUnorderedAccessView:0x%p, Values:0x%p)\n",
 			pUnorderedAccessView, Values);
-	FrameAnalysisLogView(-1, NULL, pUnorderedAccessView);
+	FrameAnalysisLogView(-1, "", pUnorderedAccessView);
 
 	HackerContext::ClearUnorderedAccessViewUint(pUnorderedAccessView, Values);
 }
@@ -3526,9 +3540,9 @@ STDMETHODIMP_(void) FrameAnalysisContext::ClearUnorderedAccessViewFloat(THIS_
 		/* [annotation] */
 		__in  const FLOAT Values[4])
 {
-	FrameAnalysisLog("ClearUnorderedAccessViewFloat(pUnorderedAccessView:0x%p, Values:0x%p\n)",
+	FrameAnalysisLog("ClearUnorderedAccessViewFloat(pUnorderedAccessView:0x%p, Values:0x%p)\n",
 			pUnorderedAccessView, Values);
-	FrameAnalysisLogView(-1, NULL, pUnorderedAccessView);
+	FrameAnalysisLogView(-1, "", pUnorderedAccessView);
 
 	HackerContext::ClearUnorderedAccessViewFloat(pUnorderedAccessView, Values);
 }
@@ -3543,9 +3557,9 @@ STDMETHODIMP_(void) FrameAnalysisContext::ClearDepthStencilView(THIS_
 		/* [annotation] */
 		__in  UINT8 Stencil)
 {
-	FrameAnalysisLog("ClearDepthStencilView(pDepthStencilView:0x%p, ClearFlags:%u, Depth:%f, Stencil:%u\n)",
+	FrameAnalysisLog("ClearDepthStencilView(pDepthStencilView:0x%p, ClearFlags:%u, Depth:%f, Stencil:%u)\n",
 			pDepthStencilView, ClearFlags, Depth, Stencil);
-	FrameAnalysisLogView(-1, NULL, pDepthStencilView);
+	FrameAnalysisLogView(-1, "", pDepthStencilView);
 
 	HackerContext::ClearDepthStencilView(pDepthStencilView, ClearFlags, Depth, Stencil);
 }
@@ -3554,9 +3568,9 @@ STDMETHODIMP_(void) FrameAnalysisContext::GenerateMips(THIS_
 		/* [annotation] */
 		__in  ID3D11ShaderResourceView *pShaderResourceView)
 {
-	FrameAnalysisLog("GenerateMips(pShaderResourceView:0x%p\n)",
+	FrameAnalysisLog("GenerateMips(pShaderResourceView:0x%p)\n",
 			pShaderResourceView);
-	FrameAnalysisLogView(-1, NULL, pShaderResourceView);
+	FrameAnalysisLogView(-1, "", pShaderResourceView);
 
 	HackerContext::GenerateMips(pShaderResourceView);
 }
@@ -3620,7 +3634,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::ExecuteCommandList(THIS_
 		// on a deferred context it must be enabled on the immediate context
 		// when the command list is executed. We don't know what options may
 		// have been used during the dump, so enable it unconditionally.
-		nvret = NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
+		nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
 		if (nvret != NVAPI_OK) {
 			FALogErr("FrameAnalyisDump failed to enable reverse stereo blit\n");
 			// Continue anyway, we should still be able to dump in 2D...
@@ -3630,7 +3644,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::ExecuteCommandList(THIS_
 	HackerContext::ExecuteCommandList(pCommandList, RestoreContextState);
 
 	if (G->analyse_frame)
-		NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
+		Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
 
 	dump_deferred_resources(pCommandList);
 }
@@ -4707,13 +4721,14 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstancedIndirect(THIS_
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs)
 {
-	FrameAnalysisLog("DrawIndexedInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
+	FrameAnalysisLogNoNL("DrawIndexedInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)",
 			pBufferForArgs, AlignedByteOffsetForArgs);
+	FrameAnalysisLogResourceHash(pBufferForArgs);
 
 	HackerContext::DrawIndexedInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 
 	if (G->analyse_frame) {
-		DrawCallInfo call_info(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
+		DrawCallInfo call_info(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
@@ -4726,13 +4741,14 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawInstancedIndirect(THIS_
 		/* [annotation] */
 		__in  UINT AlignedByteOffsetForArgs)
 {
-	FrameAnalysisLog("DrawInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)\n",
+	FrameAnalysisLogNoNL("DrawInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)",
 			pBufferForArgs, AlignedByteOffsetForArgs);
+	FrameAnalysisLogResourceHash(pBufferForArgs);
 
 	HackerContext::DrawInstancedIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
 
 	if (G->analyse_frame) {
-		DrawCallInfo call_info(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, pBufferForArgs, AlignedByteOffsetForArgs);
+		DrawCallInfo call_info(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
 		FrameAnalysisAfterDraw(false, &call_info);
 	}
 	oneshot_valid = false;
@@ -4747,7 +4763,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::ClearRenderTargetView(THIS_
 {
 	FrameAnalysisLog("ClearRenderTargetView(pRenderTargetView:0x%p, ColorRGBA:0x%p)\n",
 			pRenderTargetView, ColorRGBA);
-	FrameAnalysisLogView(-1, NULL, pRenderTargetView);
+	FrameAnalysisLogView(-1, "", pRenderTargetView);
 
 	HackerContext::ClearRenderTargetView(pRenderTargetView, ColorRGBA);
 }
@@ -4820,7 +4836,7 @@ void STDMETHODCALLTYPE FrameAnalysisContext::DiscardView(
 {
 	FrameAnalysisLog("DiscardView(pResourceView:0x%p)\n",
 			pResourceView);
-	FrameAnalysisLogView(-1, NULL, pResourceView);
+	FrameAnalysisLogView(-1, "", pResourceView);
 
 	HackerContext::DiscardView(pResourceView);
 }
@@ -5076,7 +5092,7 @@ void STDMETHODCALLTYPE FrameAnalysisContext::ClearView(
 {
 	FrameAnalysisLog("ClearView(pView:0x%p, Color:0x%p, pRect:0x%p)\n",
 			pView, Color, pRect);
-	FrameAnalysisLogView(-1, NULL, pView);
+	FrameAnalysisLogView(-1, "", pView);
 
 	HackerContext::ClearView(pView, Color, pRect, NumRects);
 }
@@ -5090,7 +5106,7 @@ void STDMETHODCALLTYPE FrameAnalysisContext::DiscardView1(
 {
 	FrameAnalysisLog("DiscardView1(pResourceView:0x%p, pRects:0x%p)\n",
 			pResourceView, pRects);
-	FrameAnalysisLogView(-1, NULL, pResourceView);
+	FrameAnalysisLogView(-1, "", pResourceView);
 
 	HackerContext::DiscardView1(pResourceView, pRects, NumRects);
 }

@@ -1,0 +1,108 @@
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:41:34 2019
+
+struct InstanceDrawInfo
+{
+    uint instanceCountMultiCount;  // Offset:    0
+    uint instanceDataByteOffset;   // Offset:    4
+    uint indirectIndicesBufferByteOffset;// Offset:    8
+};
+
+cbuffer RootConstant : register(b0)
+{
+  uint constant32Bits : packoffset(c0);
+}
+
+ByteAddressBuffer DrawIndirectArguments : register(t0);
+ByteAddressBuffer CountBuffer : register(t1);
+StructuredBuffer<InstanceDrawInfo> IDI : register(t2);
+RWByteAddressBuffer IndirectIndicesBufferRW : register(u0);
+RWByteAddressBuffer RWDrawIndirectArguments2 : register(u1);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_raw t0
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_raw t1
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_raw_glc u0
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_raw u1
+  float4 r0,r1,r2,r3;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_tgsm_raw g0, 4
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 32, 1, 1
+  r0.x = (int)vThreadGroupID.x + constant32Bits;
+  r0.x = IDI[r0.x].instanceCountMultiCount;
+  r0.y = IDI[r0.x].instanceDataByteOffset;
+  r0.z = IDI[r0.x].indirectIndicesBufferByteOffset;
+  r0.w = (int)r0.x & 0x0000ffff;
+  r1.y = 0;
+  r2.x = vThreadIDInGroup.x;
+  while (true) {
+  // No code for instruction (needs manual fix):
+    store_raw g0.x, l(0), l(0)
+    r2.y = cmp((uint)r2.x < (uint)r0.w);
+    if (r2.y != 0) {
+      r2.y = (uint)r2.x << 2;
+      r2.y = (int)r0.y + (int)r2.y;
+    // No code for instruction (needs manual fix):
+        ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r2.y, r2.y, u0.xxxx
+      r2.z = (uint)r2.y << 2;
+    // No code for instruction (needs manual fix):
+        ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r2.z, r2.z, t1.xxxx
+    } else {
+      r2.z = 0;
+    }
+    r2.w = r2.z ? 1 : 0;
+    r2.w = (uint)r2.w << (int)vThreadIDInGroup.x;
+    // Needs manual fix for instruction:
+    atomic_or g0, l(0), r2.w
+    InterlockedOr(dest, value, orig_value);
+  // No code for instruction (needs manual fix):
+    ld_raw r2.w, l(0), g0.xxxx
+    r3.x = countbits((uint)r2.w);
+    if (r2.z != 0) {
+      if (vThreadIDInGroup.x == 0) r2.z = 0; else if (vThreadIDInGroup.x+0 < 32) {       r2.z = (uint)r2.w << (32-(vThreadIDInGroup.x + 0)); r2.z = (uint)r2.z >> (32-vThreadIDInGroup.x);      } else r2.z = (uint)r2.w >> 0;
+      r2.z = countbits((uint)r2.z);
+      r2.z = (int)r1.y + (int)r2.z;
+      r2.z = (uint)r2.z << 2;
+      r2.z = (int)r0.y + (int)r2.z;
+    // No code for instruction (needs manual fix):
+        store_raw u0.x, r2.z, r2.y
+    }
+    r2.y = (int)r1.y + (int)r3.x;
+    r2.z = cmp((uint)r2.x >= (uint)r0.w);
+    if (r2.z != 0) {
+      r1.y = r2.y;
+      break;
+    }
+    r2.x = (int)r2.x + 32;
+    r1.y = r2.y;
+  }
+  r0.x = (uint)r0.x >> 16;
+  r0.y = vThreadIDInGroup.x;
+  while (true) {
+    r0.w = cmp((uint)r0.y >= (uint)r0.x);
+    if (r0.w != 0) break;
+    r0.w = mad((int)r0.y, 20, (int)r0.z);
+  // No code for instruction (needs manual fix):
+    ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r1.x, r0.w, t0.xxxx
+    r2.x = (int)r0.w + 8;
+  // No code for instruction (needs manual fix):
+    ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r1.zw, r2.x, t0.xxxy
+  // No code for instruction (needs manual fix):
+    store_raw u1.xyzw, r0.w, r1.xyzw
+    r0.y = (int)r0.y + 32;
+  }
+  return;
+}

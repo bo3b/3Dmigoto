@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.11 on Wed Nov 28 17:36:34 2018
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:49:50 2019
 struct t112_t {
   float val[21];
 };
@@ -19,8 +19,6 @@ StructuredBuffer<t110_t> t110 : register(t110);
 
 // 3Dmigoto declarations
 #define cmp -
-Texture1D<float4> IniParams : register(t120);
-Texture2D<float4> StereoParams : register(t125);
 
 
 void main(

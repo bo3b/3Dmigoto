@@ -53,6 +53,7 @@
 
 #endif
 #include "log.h"
+
 #ifndef NO_STEREO_D3D9
 namespace D3D9Base {
 #include <D3D9.h>
@@ -64,6 +65,9 @@ namespace D3D9Base {
 #define D3D9MAP_WIDTH 8
 #define D3D9MAP_FORMAT D3D9Base::D3DFMT_R32F
 #define D3D9MAP_PIXELSIZE 4
+
+#include "profiling.h"
+#include "util.h"
 
 namespace nv
 {
@@ -87,7 +91,7 @@ namespace nv
 		NV_DISPLAYCONFIG_PATH_INFO *pathInfo = NULL;
 
 		// Pass 1: Fetch pathCount, # of displays
-		ret = NvAPI_DISP_GetDisplayConfig(&pathCount, NULL);
+		ret = Profiling::NvAPI_DISP_GetDisplayConfig(&pathCount, NULL);
 		if (ret != NVAPI_OK)
 		{
 			LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: %d  ***\n", ret);
@@ -123,7 +127,7 @@ namespace nv
 
 
 		// Pass 2: Retrieve the targetInfo struct count, and the source mode info, which is what we are interested in.
-		ret = NvAPI_DISP_GetDisplayConfig(&pathCount, pathInfo);
+		ret = Profiling::NvAPI_DISP_GetDisplayConfig(&pathCount, pathInfo);
 		if (ret != NVAPI_OK)
 		{
 			LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: %d  ***\n", ret);
@@ -161,7 +165,7 @@ namespace nv
 		//}
 
 		// Memory allocated for return results, retrieve the full path info, filling in those targetModeInfo structs.
-		//ret = NvAPI_DISP_GetDisplayConfig(&pathCount, pathInfo);
+		//ret = Profiling::NvAPI_DISP_GetDisplayConfig(&pathCount, pathInfo);
 		//if (ret != NVAPI_OK)
 		//{
 		//	LogInfo(" *** NvAPI_DISP_GetDisplayConfig failed: %d  ***\n", ret);
@@ -242,7 +246,7 @@ namespace nv
 		inline bool IsStereoEnabled()
 		{
 			NvU8 stereoEnabled = 0;
-			if (NVAPI_OK != NvAPI_Stereo_IsEnabled(&stereoEnabled)) {
+			if (NVAPI_OK != Profiling::NvAPI_Stereo_IsEnabled(&stereoEnabled)) {
 				return false;
 			}
 
@@ -303,7 +307,9 @@ namespace nv
 				desc.CPUAccessFlags = 0;
 				desc.MiscFlags = 0;
 
+				LockResourceCreationMode();
 				HRESULT ret = pDevice->CreateTexture2D(&desc, &sysData, &staging);
+				UnlockResourceCreationMode();
 				delete sysData.pSysMem;
 				if (ret != S_OK)
 				{
@@ -426,7 +432,7 @@ namespace nv
 				// mDeviceLost is set to true to initialize the texture with good data at app startup.
 
 				// The call to CreateConfigurationProfileRegistryKey must happen BEFORE device creation.
-				// NvAPI_Stereo_CreateConfigurationProfileRegistryKey(D3DType::RegistryProfileType);
+				// Profiling::NvAPI_Stereo_CreateConfigurationProfileRegistryKey(D3DType::RegistryProfileType);
 			}
 			NvAPI_Status GetConvergence(StereoHandle stereoHandle, float *convergence) {
 				if (mKnownConvergence != -1) {
@@ -434,7 +440,7 @@ namespace nv
 					return NVAPI_OK;
 				}
 				else
-					return NvAPI_Stereo_GetConvergence(stereoHandle, convergence);
+					return Profiling::NvAPI_Stereo_GetConvergence(stereoHandle, convergence);
 			}
 			NvAPI_Status GetSeparation(StereoHandle stereoHandle, float *separation) {
 				if (mKnownSeparation != -1) {
@@ -442,7 +448,7 @@ namespace nv
 					return NVAPI_OK;
 				}
 				else
-					return NvAPI_Stereo_GetSeparation(stereoHandle, separation);
+					return Profiling::NvAPI_Stereo_GetSeparation(stereoHandle, separation);
 			}
 			NvAPI_Status GetEyeSeparation(StereoHandle stereoHandle, float *eyesep) {
 				if (mKnownEyeSeparation != -1) {
@@ -450,7 +456,7 @@ namespace nv
 					return NVAPI_OK;
 				}
 				else
-					return NvAPI_Stereo_GetEyeSeparation(stereoHandle, eyesep);
+					return Profiling::NvAPI_Stereo_GetEyeSeparation(stereoHandle, eyesep);
 			}
 			// Not const because we will update the various values if an update is needed.
 			bool RequiresUpdate(bool deviceLost)
@@ -504,7 +510,7 @@ namespace nv
 				if (mStereoActiveIsKnown)
 					return mKnownStereoActive;
 				NvU8 stereoActive = 0;
-				if (NVAPI_OK != NvAPI_Stereo_IsActivated(mStereoHandle, &stereoActive)) {
+				if (NVAPI_OK != Profiling::NvAPI_Stereo_IsActivated(mStereoHandle, &stereoActive)) {
 					return false;
 				}
 				return stereoActive != 0;

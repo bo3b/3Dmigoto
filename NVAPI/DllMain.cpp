@@ -1,6 +1,6 @@
 #include "Main.h"
-//#define NO_STEREO_D3D9
-#define NO_STEREO_D3D11
+//#define NO_STEREO_D3D9 // FIXME: There is no reason this project should be DX version specific
+#define NO_STEREO_D3D11 // FIXME: There is no reason this project should be DX version specific
 #ifndef NO_STEREO_D3D11
 #include <dxgi1_2.h>
 #include <d3d11_1.h>
@@ -135,6 +135,7 @@ extern "C"
 
 	typedef NvAPI_Status(__cdecl *tNvAPI_D3D_GetCurrentSLIState)(__in IUnknown *pDevice, __in NV_GET_CURRENT_SLI_STATE *pSliState);
 	static tNvAPI_D3D_GetCurrentSLIState _NvAPI_D3D_GetCurrentSLIState;
+
 #ifndef NO_STEREO_D3D9
 	typedef NvAPI_Status(__cdecl *tNvAPI_D3D9_StretchRectEx)(IDirect3DDevice9 *pDevice,
 		IDirect3DResource9 *pSourceResource,
@@ -161,6 +162,16 @@ extern "C"
 		NVDX_ObjectHandle *pHandle);
 	static tNvAPI_D3D9_GetSurfaceHandle _NvAPI_D3D9_GetSurfaceHandle;
 #endif
+
+	typedef NvAPI_Status(__cdecl *tNvAPI_D3D11_MultiDrawIndexedInstancedIndirect)(ID3D11DeviceContext *pDevContext11, unsigned long drawCount,
+		ID3D11Buffer *pBuffer, unsigned long alignedByteOffsetForArgs,
+		unsigned long alignedByteStrideForArgs);
+	static tNvAPI_D3D11_MultiDrawIndexedInstancedIndirect _NvAPI_D3D11_MultiDrawIndexedInstancedIndirect;
+
+	typedef NvAPI_Status(__cdecl *tNvAPI_D3D11_MultiDrawInstancedIndirect)(ID3D11DeviceContext *pDevContext11, unsigned long drawCount,
+		ID3D11Buffer *pBuffer, unsigned long alignedByteOffsetForArgs,
+		unsigned long alignedByteStrideForArgs);
+	static tNvAPI_D3D11_MultiDrawInstancedIndirect _NvAPI_D3D11_MultiDrawInstancedIndirect;
 }
 
 static HMODULE nvDLL = 0;
@@ -210,7 +221,15 @@ FILE *LogFile = 0;
 static void LoadConfigFile()
 {
 	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
-	GetModuleFileName(0, iniFile, MAX_PATH);
+	HMODULE module = NULL;
+
+	// Get a handle to our own DLL for cases were we are not running from
+	// the game directory
+	GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+			| GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+			(LPCWSTR)LoadConfigFile, &module);
+
+	GetModuleFileName(module, iniFile, MAX_PATH);
 	wcsrchr(iniFile, L'\\')[1] = 0;
 	wcscpy(logFilename, iniFile);
 	wcscat(iniFile, L"d3dx.ini");
@@ -567,7 +586,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetSeparation(StereoHandle stereoHandle
 	NvAPI_Status ret;
 	if (gDirectXOverride)
 	{
-		if (gLogDebug) LogCall("%s - Stereo_SetSeparation called from DirectX wrapper: ignoring user overrides.\n", LogTime().c_str());
+		LogDebug("%s - Stereo_SetSeparation called from DirectX wrapper: ignoring user overrides.\n", LogTime().c_str());
 		gDirectXOverride = false;
 		ret = (*_NvAPI_Stereo_SetSeparation)(stereoHandle, newSeparationPercentage);
 		if (ret == NVAPI_OK && TrackSeparation)
@@ -653,19 +672,19 @@ static NvAPI_Status __cdecl NvAPI_Stereo_Enable()
 
 static NvAPI_Status __cdecl NvAPI_Stereo_IsEnabled(NvU8 *pIsStereoEnabled)
 {
-	if (gLogDebug) LogCall("%s - NvAPI_Stereo_IsEnabled called.\n", LogTime().c_str());
+	LogDebug("%s - NvAPI_Stereo_IsEnabled called.\n", LogTime().c_str());
 
 	NvAPI_Status ret = (*_NvAPI_Stereo_IsEnabled)(pIsStereoEnabled);
 
 	if (gDirectXOverride) {
-		if (gLogDebug) LogCall("  Stereo_IsEnabled called from DirectX wrapper.\n");
+		LogDebug("  Stereo_IsEnabled called from DirectX wrapper.\n");
 		gDirectXOverride = false;
 	} else if (ForceAutomaticStereo) {
 		*pIsStereoEnabled = false;
 		LogCall("  NvAPI_Stereo_IsEnabled force return false\n");
 	}
 
-	if (gLogDebug) LogCall("  Returns IsStereoEnabled = %d, Result = %d\n", *pIsStereoEnabled, ret);
+	LogDebug("  Returns IsStereoEnabled = %d, Result = %d\n", *pIsStereoEnabled, ret);
 
 	return ret;
 }
@@ -735,8 +754,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_IsActivated(StereoHandle stereoHandle, 
 	else {
 		ret = (*_NvAPI_Stereo_IsActivated)(stereoHandle, pIsStereoOn);
 	}
-	if (gLogDebug)
-		LogCall("%s - Stereo_IsActivated called. Result = %d, IsStereoOn = %d\n", LogTime().c_str(), ret, *pIsStereoOn);
+	LogDebug("%s - Stereo_IsActivated called. Result = %d, IsStereoOn = %d\n", LogTime().c_str(), ret, *pIsStereoOn);
 	return ret;
 }
 static NvAPI_Status __cdecl NvAPI_Stereo_DecreaseSeparation(StereoHandle stereoHandle)
@@ -944,6 +962,7 @@ static NvAPI_Status __cdecl NvAPI_D3D_GetCurrentSLIState(__in IUnknown *pDevice,
 	LogCall("%s - NvAPI_D3D_GetCurrentSLIState called with device = %p. Result = %d\n", LogTime().c_str(), pDevice, ret);
 	return ret;
 }
+
 #ifndef NO_STEREO_D3D9
 static NvAPI_Status __cdecl NvAPI_D3D9_StretchRectEx(D3D9Base::IDirect3DDevice9 *pDevice,
 	D3D9Base::IDirect3DResource9 *pSourceResource,
@@ -993,16 +1012,58 @@ static NvAPI_Status __cdecl NvAPI_D3D9_GetSurfaceHandle(D3D9Base::IDirect3DSurfa
 	LogCall("%s - NvAPI_D3D9_GetSurfaceHandle called with surface= %p. Result = %d\n", LogTime().c_str(), pSurface, ret);
 	return ret;
 }
-#endif
+#endif // NO_STEREO_D3D9
+
+// NVAPI extension methods
+
+// Perform DrawIndexedInstancedIndirect() drawCount times
+// - Used in RE2 when UseVendorExtention=Enable in re2_config.ini
+static NvAPI_Status __cdecl NvAPI_D3D11_MultiDrawIndexedInstancedIndirect(
+	ID3D11DeviceContext *pDevContext11, unsigned long drawCount,
+	ID3D11Buffer *pBuffer, unsigned long alignedByteOffsetForArgs,
+	unsigned long alignedByteStrideForArgs)
+{
+	if (!pDevContext11)
+		return NVAPI_INVALID_POINTER;
+
+	// Call d3d11.DrawIndexedInstancedIndirect() drawCount times
+	for (unsigned long i = 0; i < drawCount; i++)
+	{
+		pDevContext11->DrawIndexedInstancedIndirect(pBuffer, alignedByteOffsetForArgs);
+		alignedByteOffsetForArgs += alignedByteStrideForArgs;
+	}
+
+	return NVAPI_OK;
+}
+
+// Perform DrawInstancedIndirect() drawCount times
+// * Usage not found in RE2
+static NvAPI_Status __cdecl NvAPI_D3D11_MultiDrawInstancedIndirect(
+	ID3D11DeviceContext *pDevContext11, unsigned long drawCount,
+	ID3D11Buffer *pBuffer, unsigned long alignedByteOffsetForArgs,
+	unsigned long alignedByteStrideForArgs)
+{
+	if (!pDevContext11)
+		return NVAPI_INVALID_POINTER;
+
+	// Call our d3d11.DrawInstancedIndirect() drawCount times
+	for (unsigned long i = 0; i < drawCount; i++)
+	{
+		pDevContext11->DrawInstancedIndirect(pBuffer, alignedByteOffsetForArgs);
+		alignedByteOffsetForArgs += alignedByteStrideForArgs;
+	}
+
+	return NVAPI_OK;
+}
+
 // This seems like it might have a reentrancy hole, where a given call sets up to not
 // be overridden, but something else sneaks in and steals it.  
 // In fact, I'm exploiting that for force_no_nvapi because I need the Initialize from
 // the stereo driver to succeed, and call enable_stereo after an EnableOverride, so that
 // the Initialize succeeds.
-
 static NvAPI_Status __cdecl EnableOverride(void)
 {
-	if (gLogDebug) LogCall("%s - NvAPI EnableOverride called. Next NvAPI call made will not be wrapped.\n", LogTime().c_str());
+	LogDebug("%s - NvAPI EnableOverride called. Next NvAPI call made will not be wrapped.\n", LogTime().c_str());
 
 	gDirectXOverride = true;
 
@@ -1096,40 +1157,51 @@ extern "C" NvAPI_Status * __cdecl nvapi_QueryInterface(unsigned int offset)
 	if (!loadDll())
 		return NULL;
 
+	// Special signature for being called from d3d11 dll code.
+	if (offset == 0xb03bb03b)
+		return (NvAPI_Status *)EnableOverride();
+
+	// Special signature for being called from d3d9 dll code.
+	// Ok, this is getting a little rediculous. Nvidia's API is a horrible mess
+	// designed purely to obscure their NDA APIs and if we keep adding more and
+	// more to it we risk inadvertently overriding one of their legit APIs.
+	// There is literally no reason we can't just add a new exported function
+	// to the DLL for our own functionality that is about a million times
+	// cleaner than this, so let's do that in future. -DSS
+	case 0xa03aa03a:
+		ptr = (NvAPI_Status *)EnableStereoActiveTracking();
+		break;
+	case 0xc03cc03c:
+		ptr = (NvAPI_Status *)EnableConvergenceTracking();
+		break;
+	case 0xd03dd03d:
+		ptr = (NvAPI_Status *)EnableSeparationTracking();
+		break;
+	case 0xe03ee03e:
+		ptr = (NvAPI_Status *)EnableEyeSeparationTracking();
+		break;
+	case 0xf03ff03f:
+		ptr = (NvAPI_Status *)ResetStereoActiveTracking();
+		break;
+	case 0xa03dd03d:
+		ptr = (NvAPI_Status *)ResetConvergenceTracking();
+		break;
+	case 0xb03dd03d:
+		ptr = (NvAPI_Status *)ResetEyeSeparationTracking();
+		break;
+	case 0xc03dd03d:
+		ptr = (NvAPI_Status *)ResetSeparationTracking();
+		break;
+
 	NvAPI_Status *ptr = (*nvapi_QueryInterfacePtr)(offset);
+	// Do not wrap any nvapi functions that nvapi themselves do not
+	// support. This is in anticipation of nvapi potentially dropping
+	// stereo calls some time after R418.
+	if (!ptr)
+		return ptr;
+
 	switch (offset)
 	{
-		// Special signature for being called from d3d11 dll code.
-		case 0xb03bb03b:
-			ptr = (NvAPI_Status *)EnableOverride();
-			break;
-
-		// Special signature for being called from d3d9 dll code.
-		case 0xa03aa03a:
-			ptr = (NvAPI_Status *)EnableStereoActiveTracking();
-			break;
-		case 0xc03cc03c:
-			ptr = (NvAPI_Status *)EnableConvergenceTracking();
-			break;
-		case 0xd03dd03d:
-			ptr = (NvAPI_Status *)EnableSeparationTracking();
-			break;
-		case 0xe03ee03e:
-			ptr = (NvAPI_Status *)EnableEyeSeparationTracking();
-			break;
-		case 0xf03ff03f:
-			ptr = (NvAPI_Status *)ResetStereoActiveTracking();
-			break;
-		case 0xa03dd03d:
-			ptr = (NvAPI_Status *)ResetConvergenceTracking();
-			break;
-		case 0xb03dd03d:
-			ptr = (NvAPI_Status *)ResetEyeSeparationTracking();
-			break;
-		case 0xc03dd03d:
-			ptr = (NvAPI_Status *)ResetSeparationTracking();
-			break;
-	
 		case 0x0150E828:
 			_NvAPI_Initialize = (tNvAPI_Initialize)ptr;
 			ptr = (NvAPI_Status *)NvAPI_Initialize;
@@ -1277,7 +1349,7 @@ extern "C" NvAPI_Status * __cdecl nvapi_QueryInterface(unsigned int offset)
 			break;
 #endif
 
-			// Informational logging
+		// Informational logging
 		case 0x4B708B54:
 			_NvAPI_D3D_GetCurrentSLIState = (tNvAPI_D3D_GetCurrentSLIState)ptr;
 			ptr = (NvAPI_Status *)NvAPI_D3D_GetCurrentSLIState;
@@ -1309,10 +1381,20 @@ extern "C" NvAPI_Status * __cdecl nvapi_QueryInterface(unsigned int offset)
 			break;
 #endif
 
+		// NVAPI extension methods
+		case 0x59E890F9:
+			_NvAPI_D3D11_MultiDrawIndexedInstancedIndirect = (tNvAPI_D3D11_MultiDrawIndexedInstancedIndirect)ptr;
+			ptr = (NvAPI_Status *)NvAPI_D3D11_MultiDrawIndexedInstancedIndirect;
+			break;
+		case 0xD4E26BBF:
+			_NvAPI_D3D11_MultiDrawInstancedIndirect = (tNvAPI_D3D11_MultiDrawInstancedIndirect)ptr;
+			ptr = (NvAPI_Status *)NvAPI_D3D11_MultiDrawInstancedIndirect;
+			break;
 	}
 	// If it's not on our list of calls to wrap, just pass through.
 	return ptr;
 }
+
 
 /*  List of all hex API constants from:
 http://stackoverflow.com/questions/13291783/how-to-get-the-id-memory-address-of-dll-function

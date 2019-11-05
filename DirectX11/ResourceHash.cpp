@@ -5,6 +5,7 @@
 #include "util.h"
 #include "globals.h"
 #include "profiling.h"
+#include "overlay.h"
 
 // DirectXTK headers fail to include their own pre-requisits. We just want
 // GetSurfaceInfo from LoaderHelpers
@@ -15,46 +16,71 @@
 // Overloaded functions to log any kind of resource description (useful to call
 // from templates):
 
-int StrResourceDesc(char *buf, size_t size, D3D11_BUFFER_DESC *desc)
+static wstring TexBindFlags(UINT bind_flags)
+{
+	if (bind_flags)
+		return L"bind_flags=\"" + lookup_enum_bit_names(CustomResourceBindFlagNames, (CustomResourceBindFlags)bind_flags) + L"\"";
+	return L"bind_flags=0";
+}
+
+static wstring TexCPUFlags(UINT cpu_flags)
+{
+	if (cpu_flags)
+		return L"cpu_access_flags=\"" + lookup_enum_bit_names(ResourceCPUAccessFlagNames, (ResourceCPUAccessFlags)cpu_flags) + L"\"";
+	return L"cpu_access_flags=0";
+}
+
+static wstring TexMiscFlags(UINT misc_flags)
+{
+	if (misc_flags)
+		return L"misc_flags=\"" + lookup_enum_bit_names(ResourceMiscFlagNames, (ResourceMiscFlags)misc_flags) + L"\"";
+	return L"misc_flags=0";
+}
+
+int StrResourceDesc(char *buf, size_t size, const D3D11_BUFFER_DESC *desc)
 {
 	return _snprintf_s(buf, size, size, "type=Buffer byte_width=%u "
-		"usage=\"%S\" bind_flags=0x%x cpu_access_flags=0x%x misc_flags=0x%x "
-		"stride=%u",
+		"usage=\"%S\" %S %S %S stride=%u",
 		desc->ByteWidth, TexResourceUsage(desc->Usage),
-		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags,
+		TexBindFlags(desc->BindFlags).c_str(),
+		TexCPUFlags(desc->CPUAccessFlags).c_str(),
+		TexMiscFlags(desc->MiscFlags).c_str(),
 		desc->StructureByteStride);
 }
 
-int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE1D_DESC *desc)
+int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE1D_DESC *desc)
 {
 	return _snprintf_s(buf, size, size, "type=Texture1D width=%u mips=%u "
-		"array=%u format=\"%s\" usage=\"%S\" bind_flags=0x%x "
-		"cpu_access_flags=0x%x misc_flags=0x%x",
+		"array=%u format=\"%s\" usage=\"%S\" %S %S %S",
 		desc->Width, desc->MipLevels, desc->ArraySize,
 		TexFormatStr(desc->Format), TexResourceUsage(desc->Usage),
-		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags);
+		TexBindFlags(desc->BindFlags).c_str(),
+		TexCPUFlags(desc->CPUAccessFlags).c_str(),
+		TexMiscFlags(desc->MiscFlags).c_str());
 }
 
-int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE2D_DESC *desc)
+int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE2D_DESC *desc)
 {
 	return _snprintf_s(buf, size, size, "type=Texture2D width=%u height=%u mips=%u "
 		"array=%u format=\"%s\" msaa=%u "
-		"msaa_quality=%u usage=\"%S\" bind_flags=0x%x "
-		"cpu_access_flags=0x%x misc_flags=0x%x",
+		"msaa_quality=%u usage=\"%S\" %S %S %S",
 		desc->Width, desc->Height, desc->MipLevels, desc->ArraySize,
 		TexFormatStr(desc->Format), desc->SampleDesc.Count,
 		desc->SampleDesc.Quality, TexResourceUsage(desc->Usage),
-		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags);
+		TexBindFlags(desc->BindFlags).c_str(),
+		TexCPUFlags(desc->CPUAccessFlags).c_str(),
+		TexMiscFlags(desc->MiscFlags).c_str());
 }
 
-int StrResourceDesc(char *buf, size_t size, D3D11_TEXTURE3D_DESC *desc)
+int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE3D_DESC *desc)
 {
 	return _snprintf_s(buf, size, size, "type=Texture3D width=%u height=%u depth=%u "
-		"mips=%u format=\"%s\" usage=\"%S\" bind_flags=0x%x "
-		"cpu_access_flags=0x%x misc_flags=0x%x",
+		"mips=%u format=\"%s\" usage=\"%S\" %S %S %S",
 		desc->Width, desc->Height, desc->Depth, desc->MipLevels,
 		TexFormatStr(desc->Format), TexResourceUsage(desc->Usage),
-		desc->BindFlags, desc->CPUAccessFlags, desc->MiscFlags);
+		TexBindFlags(desc->BindFlags).c_str(),
+		TexCPUFlags(desc->CPUAccessFlags).c_str(),
+		TexMiscFlags(desc->MiscFlags).c_str());
 }
 
 int StrResourceDesc(char *buf, size_t size, struct ResourceHashInfo &info)
@@ -789,12 +815,17 @@ uint32_t CalcTexture2DDataHashAccurate(
 ResourceHandleInfo* GetResourceHandleInfo(ID3D11Resource *resource)
 {
 	std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
+	ResourceHandleInfo* ret = NULL;
 
-	j = G->mResources.find(resource);
+	EnterCriticalSectionPretty(&G->mResourcesLock);
+
+	j = lookup_resource_handle_info(resource);
 	if (j != G->mResources.end())
-		return &j->second;
+		ret = &j->second;
 
-	return NULL;
+	LeaveCriticalSection(&G->mResourcesLock);
+
+	return ret;
 }
 
 // Must be called with the critical section held to protect mResources against
@@ -958,7 +989,7 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
 		Profiling::start(&profiling_state);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	dst_handle_info = GetResourceHandleInfo(dest);
 	if (!dst_handle_info)
@@ -1083,7 +1114,7 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
 		Profiling::start(&profiling_state);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	info = GetResourceHandleInfo(resource);
 	if (!info)
@@ -1156,7 +1187,7 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
 		Profiling::start(&profiling_state);
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 
 	dst_info = GetResourceHandleInfo(dst);
 	if (!dst_info)
@@ -1274,9 +1305,35 @@ ULONG STDMETHODCALLTYPE ResourceReleaseTracker::Release(void)
 	// LogDebug("ResourceReleaseTracker::Release(%p:%p) -> %lu\n", this, resource, ret);
 	if (ret == 0) {
 		// LogDebug("Removing %p from mResources\n", resource);
-		EnterCriticalSection(&G->mCriticalSection);
+
+		////////////////////////////////////////////////////////////
+		//                                                        //
+		//            <==============================>            //
+		//            < AB-BA TYPE DEADLOCK WARNING! >            //
+		//            <==============================>            //
+		//                                                        //
+		// DirectX has called us with a lock held, and we are now //
+		// taking our critical section to update mResources.      //
+		// If we ever call into DirectX with our critical section //
+		// held and it tries to take it's lock we have a possible //
+		// AB-BA type deadlock scenario!                          //
+		//                                                        //
+		// We should aim to never call into DirectX with this     //
+		// particular lock held. If we ever do need to call into  //
+		// DirectX with this lock held, split the lock into two   //
+		// finer grained locks so that the mResources lock is not //
+		// held while calling DirectX. Be mindful that adding too //
+		// many locks without lockdep is risky in and of itself.  //
+		//                                                        //
+		// Issue uncovered in the Resident Evil 2 remake when the //
+		// overlay called into DirectX to draw notices with this  //
+		// lock held to protect it's notices data structure.      //
+		//                                                        //
+		////////////////////////////////////////////////////////////
+
+		EnterCriticalSectionPretty(&G->mResourcesLock);
 		G->mResources.erase(resource);
-		LeaveCriticalSection(&G->mCriticalSection);
+		LeaveCriticalSection(&G->mResourcesLock);
 		delete this;
 	}
 	return ret;
@@ -1289,7 +1346,8 @@ ULONG STDMETHODCALLTYPE ResourceReleaseTracker::Release(void)
 FuzzyMatch::FuzzyMatch()
 {
 	op = FuzzyMatchOp::ALWAYS;
-	rhs_type = FuzzyMatchOperandType::VALUE;
+	rhs_type1 = FuzzyMatchOperandType::VALUE;
+	rhs_type2 = FuzzyMatchOperandType::VALUE;
 	val = 0;
 	mask = 0xffffffff;
 	numerator = 1;
@@ -1317,37 +1375,43 @@ static UINT get_resource_array(const D3D11_TEXTURE2D_DESC *desc) { return desc->
 static UINT get_resource_array(const D3D11_TEXTURE3D_DESC *desc) { return 0; }
 
 template <typename DescType>
+static UINT eval_field(FuzzyMatchOperandType type, UINT val, const DescType *desc)
+{
+	switch (type) {
+		case FuzzyMatchOperandType::VALUE:
+			return val;
+		case FuzzyMatchOperandType::WIDTH:
+			return get_resource_width(desc);
+		case FuzzyMatchOperandType::HEIGHT:
+			return get_resource_height(desc);
+		case FuzzyMatchOperandType::DEPTH:
+			return get_resource_depth(desc);
+		case FuzzyMatchOperandType::ARRAY:
+			return get_resource_array(desc);
+		case FuzzyMatchOperandType::RES_WIDTH:
+			return G->mResolutionInfo.width;
+		case FuzzyMatchOperandType::RES_HEIGHT:
+			return G->mResolutionInfo.height;
+	};
+
+	LogOverlay(LOG_DIRE, "BUG: Invalid fuzzy field %u\n", type);
+
+	return val;
+}
+
+template <typename DescType>
 bool FuzzyMatch::matches(UINT lhs, const DescType *desc) const
 {
-	UINT effective = val;
+	UINT effective;
 
 	// Common case:
 	if (op == FuzzyMatchOp::ALWAYS)
 		return true;
 
-	switch (rhs_type) {
-		case FuzzyMatchOperandType::VALUE:
-			effective = val;
-			break;
-		case FuzzyMatchOperandType::WIDTH:
-			effective = get_resource_width(desc);
-			break;
-		case FuzzyMatchOperandType::HEIGHT:
-			effective = get_resource_height(desc);
-			break;
-		case FuzzyMatchOperandType::DEPTH:
-			effective = get_resource_depth(desc);
-			break;
-		case FuzzyMatchOperandType::ARRAY:
-			effective = get_resource_array(desc);
-			break;
-		case FuzzyMatchOperandType::RES_WIDTH:
-			effective = G->mResolutionInfo.width;
-			break;
-		case FuzzyMatchOperandType::RES_HEIGHT:
-			effective = G->mResolutionInfo.height;
-			break;
-	};
+	effective = eval_field(rhs_type1, val, desc);
+
+	// Second named field, for match_byte_width = res_width * res_height in RE7
+	effective *= eval_field(rhs_type2, 1, desc);
 
 	return matches_common(lhs, effective);
 }
@@ -1358,7 +1422,7 @@ bool FuzzyMatch::matches_uint(UINT lhs) const
 	if (op == FuzzyMatchOp::ALWAYS)
 		return true;
 
-	if (rhs_type != FuzzyMatchOperandType::VALUE)
+	if (rhs_type1 != FuzzyMatchOperandType::VALUE)
 		return false;
 
 	return matches_common(lhs, val);
@@ -1582,7 +1646,7 @@ static void find_texture_override_for_hash(uint32_t hash, TextureOverrideMatches
 	TextureOverrideMap::iterator i;
 	TextureOverrideList::iterator j;
 
-	i = G->mTextureOverrideMap.find(hash);
+	i = lookup_textureoverride(hash);
 	if (i == G->mTextureOverrideMap.end())
 		return;
 
@@ -1602,7 +1666,7 @@ static void find_texture_override_for_resource_by_hash(ID3D11Resource *resource,
 	if (G->mTextureOverrideMap.empty())
 		return;
 
-	EnterCriticalSection(&G->mCriticalSection);
+	EnterCriticalSectionPretty(&G->mCriticalSection);
 		hash = GetResourceHash(resource);
 	LeaveCriticalSection(&G->mCriticalSection);
 	if (!hash)

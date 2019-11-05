@@ -1,0 +1,165 @@
+// ---- Created with 3Dmigoto v1.3.14 on Sat Feb 23 16:41:34 2019
+
+struct OcclusionCullingInfo
+{
+    uint mDrawCallCount;           // Offset:    0
+    uint mDrawIndirectArgsOffset;  // Offset:    4
+    uint mMeshUniqueIndex;         // Offset:    8
+};
+
+struct MeshInstanceBounding
+{
+    float3 mVertices[8];           // Offset:    0
+};
+
+cbuffer SceneInfo : register(b0)
+{
+  row_major float4x4 viewProjMat : packoffset(c0);
+  row_major float3x4 transposeViewMat : packoffset(c4);
+  row_major float3x4 transposeViewInvMat : packoffset(c7);
+  float4 projElement[2] : packoffset(c10);
+  float4 projInvElements[2] : packoffset(c12);
+  row_major float4x4 viewProjInvMat : packoffset(c14);
+  row_major float4x4 prevViewProjMat : packoffset(c18);
+  float3 ZToLinear : packoffset(c22);
+  float subdivisionLevel : packoffset(c22.w);
+  float2 screenSize : packoffset(c23);
+  float2 screenInverseSize : packoffset(c23.z);
+  float2 cullingHelper : packoffset(c24);
+  float cameraNearPlane : packoffset(c24.z);
+  float cameraFarPlane : packoffset(c24.w);
+  float4 viewFrustum[6] : packoffset(c25);
+  float4 clipplane : packoffset(c31);
+}
+
+cbuffer RootConstant : register(b1)
+{
+  uint constant32Bits : packoffset(c0);
+}
+
+SamplerState PointClamp_s : register(s0);
+Texture2D<float> HiZDepth : register(t0);
+StructuredBuffer<OcclusionCullingInfo> gOcclusionCullingInfo : register(t1);
+StructuredBuffer<MeshInstanceBounding> gMeshInstanceBoundings : register(t2);
+RWByteAddressBuffer RWDrawIndirectArguments : register(u0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_raw_glc u0
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 64, 1, 1
+  r0.x = constant32Bits & 0x0000ffff;
+  r0.x = (int)r0.x + (int)vThreadID.x;
+  r0.x = gOcclusionCullingInfo[r0.x].mDrawCallCount;
+  r0.y = gOcclusionCullingInfo[r0.x].mDrawIndirectArgsOffset;
+  r0.z = gOcclusionCullingInfo[r0.x].mMeshUniqueIndex;
+  r0.w = cmp(0x0001869f < (uint)r0.z);
+  if (r0.w != 0) {
+    return;
+  }
+  r1.x = gMeshInstanceBoundings[r0.z].mVertices[0].x;
+  r1.y = gMeshInstanceBoundings[r0.z].mVertices[0].y;
+  r1.z = gMeshInstanceBoundings[r0.z].mVertices[0].z;
+  r1.w = gMeshInstanceBoundings[r0.z].mVertices[1].x;
+  r2.x = gMeshInstanceBoundings[r0.z].mVertices[2].x;
+  r2.y = gMeshInstanceBoundings[r0.z].mVertices[2].y;
+  r2.z = gMeshInstanceBoundings[r0.z].mVertices[1].y;
+  r2.w = gMeshInstanceBoundings[r0.z].mVertices[1].z;
+  r3.x = gMeshInstanceBoundings[r0.z].mVertices[2].z;
+  r3.y = gMeshInstanceBoundings[r0.z].mVertices[3].x;
+  r3.z = gMeshInstanceBoundings[r0.z].mVertices[3].y;
+  r3.w = gMeshInstanceBoundings[r0.z].mVertices[3].z;
+  r4.x = gMeshInstanceBoundings[r0.z].mVertices[4].x;
+  r4.y = gMeshInstanceBoundings[r0.z].mVertices[4].y;
+  r4.z = gMeshInstanceBoundings[r0.z].mVertices[4].z;
+  r4.w = gMeshInstanceBoundings[r0.z].mVertices[5].x;
+  r5.x = gMeshInstanceBoundings[r0.z].mVertices[6].x;
+  r5.y = gMeshInstanceBoundings[r0.z].mVertices[6].y;
+  r5.z = gMeshInstanceBoundings[r0.z].mVertices[5].y;
+  r5.w = gMeshInstanceBoundings[r0.z].mVertices[5].z;
+  r6.x = gMeshInstanceBoundings[r0.z].mVertices[6].z;
+  r6.y = gMeshInstanceBoundings[r0.z].mVertices[7].x;
+  r6.z = gMeshInstanceBoundings[r0.z].mVertices[7].y;
+  r6.w = gMeshInstanceBoundings[r0.z].mVertices[7].z;
+  r7.x = r1.w;
+  r7.yz = r2.zw;
+  r2.z = r3.x;
+  r8.x = r4.w;
+  r8.yz = r5.zw;
+  r5.z = r6.x;
+  r9.w = 1;
+  r0.zw = float2(-65536,-65536);
+  r10.xyz = float3(65536,65536,65536);
+  r1.w = 0;
+  while (true) {
+    r2.w = cmp((int)r1.w >= 8);
+    if (r2.w != 0) break;
+    r11.xyz = cmp((int3)r1.www == int3(1,2,3));
+    r12.xyzw = cmp((int4)r1.wwww == int4(4,5,6,7));
+    r2.w = r1.w ? 0 : 1;
+    r11.xyz = r11.xyz ? float3(1,1,1) : 0;
+    r12.xyzw = r12.xyzw ? float4(1,1,1,1) : 0;
+    r13.xyz = r2.www * r1.xyz;
+    r13.xyz = r11.xxx * r7.xyz + r13.xyz;
+    r11.xyw = r11.yyy * r2.xyz + r13.xyz;
+    r11.xyz = r11.zzz * r3.yzw + r11.xyw;
+    r11.xyz = r12.xxx * r4.xyz + r11.xyz;
+    r11.xyz = r12.yyy * r8.xyz + r11.xyz;
+    r11.xyz = r12.zzz * r5.xyz + r11.xyz;
+    r9.xyz = r12.www * r6.yzw + r11.xyz;
+    r11.xyz = viewProjMat._m10_m11_m13 * r9.yyy;
+    r11.xyz = r9.xxx * viewProjMat._m00_m01_m03 + r11.xyz;
+    r11.xyz = r9.zzz * viewProjMat._m20_m21_m23 + r11.xyz;
+    r11.xyz = viewProjMat._m30_m31_m33 + r11.xyz;
+    r11.xy = r11.xy / r11.zz;
+    r2.w = dot(r9.xyzw, transposeViewMat._m20_m21_m22_m23);
+    r11.z = -r2.w;
+    r0.zw = max(r11.xy, r0.zw);
+    r10.xyz = min(r10.xyz, r11.xyz);
+    r1.w = (int)r1.w + 1;
+  }
+  r1.xy = r0.zw * float2(0.5,-0.5) + float2(0.5,0.5);
+  r1.zw = r10.xy * float2(0.5,-0.5) + float2(0.5,0.5);
+  r0.zw = r1.xy + -r1.zw;
+  r0.zw = float2(512,256) * abs(r0.zw);
+  r0.z = max(r0.z, r0.w);
+  r0.z = 0.5 * r0.z;
+  r0.z = log2(r0.z);
+  r0.z = ceil(r0.z);
+  r0.z = min(8, r0.z);
+  r0.z = max(0, r0.z);
+  r0.z = (uint)r0.z;
+  r0.z = (uint)r0.z;
+  r0.w = HiZDepth.SampleLevel(PointClamp_s, r1.zw, r0.z).x;
+  r1.w = HiZDepth.SampleLevel(PointClamp_s, r1.xw, r0.z).x;
+  r1.x = HiZDepth.SampleLevel(PointClamp_s, r1.xy, r0.z).x;
+  r0.z = HiZDepth.SampleLevel(PointClamp_s, r1.zy, r0.z).x;
+  r0.w = max(r1.w, r0.w);
+  r0.w = max(r0.w, r1.x);
+  r0.z = max(r0.w, r0.z);
+  r0.w = -0.100000001 + r10.z;
+  r0.z = cmp(r0.z < r0.w);
+  if (r0.z != 0) {
+    r0.z = 0;
+    while (true) {
+      r0.w = cmp((uint)r0.z >= (uint)r0.x);
+      if (r0.w != 0) break;
+      r0.w = mad((int)r0.z, 20, (int)r0.y);
+      r0.w = (int)r0.w + 4;
+    // No code for instruction (needs manual fix):
+        store_raw u0.x, r0.w, l(0)
+      r0.z = (int)r0.z + 1;
+    }
+  }
+  return;
+}

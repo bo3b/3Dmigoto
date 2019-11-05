@@ -1,3 +1,7 @@
+// Include before util.h (or any header that includes util.h) to get pretty
+// version of LockResourceCreationMode:
+#include "lock.h"
+
 #include "CommandList.h"
 
 #include <DDSTextureLoader.h>
@@ -153,7 +157,7 @@ static void CommandListFlushState(CommandListState *state)
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	HRESULT hr;
 
-	if (state->update_params) {
+	if (state->update_params && state->mHackerDevice->mIniTexture) {
 		hr = state->mOrigContext1->Map(state->mHackerDevice->mIniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(hr)) {
 			LogInfo("CommandListFlushState: Map failed\n");
@@ -162,6 +166,7 @@ static void CommandListFlushState(CommandListState *state)
 		memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
 		state->mOrigContext1->Unmap(state->mHackerDevice->mIniTexture, 0);
 		state->update_params = false;
+		Profiling::iniparams_updates++;
 	}
 }
 
@@ -169,7 +174,7 @@ static void RunCommandListComplete(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list,
 		DrawCallInfo *call_info,
-		ID3D11Resource *resource,
+		ID3D11Resource **resource,
 		ID3D11View *view,
 		bool post)
 {
@@ -194,9 +199,9 @@ void RunCommandList(HackerDevice *mHackerDevice,
 		DrawCallInfo *call_info,
 		bool post)
 {
-	ID3D11Resource *resource = NULL;
+	ID3D11Resource **resource = NULL;
 	if (call_info)
-		resource = call_info->indirect_buffer;
+		resource = (ID3D11Resource**)call_info->indirect_buffer;
 
 	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
 			call_info, resource, NULL, post);
@@ -205,7 +210,7 @@ void RunCommandList(HackerDevice *mHackerDevice,
 void RunResourceCommandList(HackerDevice *mHackerDevice,
 		HackerContext *mHackerContext,
 		CommandList *command_list,
-		ID3D11Resource *resource,
+		ID3D11Resource **resource,
 		bool post)
 {
 	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
@@ -224,7 +229,7 @@ void RunViewCommandList(HackerDevice *mHackerDevice,
 		view->GetResource(&res);
 
 	RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
-			NULL, res, view, post);
+			NULL, &res, view, post);
 
 	if (res)
 		res->Release();
@@ -233,9 +238,18 @@ void RunViewCommandList(HackerDevice *mHackerDevice,
 void optimise_command_lists(HackerDevice *device)
 {
 	bool making_progress;
-	bool ignore_cto, ignore_cto_pre, ignore_cto_post;
+	bool ignore_cto_pre, ignore_cto_post;
 	size_t i;
 	CommandList::Commands::iterator new_end;
+	DWORD start;
+
+	LogInfo("Optimising command lists...\n");
+	start = GetTickCount();
+
+	for (CommandList *command_list : registered_command_lists) {
+		for (i = 0; i < command_list->commands.size(); i++)
+			command_list->commands[i]->optimise(device);
+	}
 
 	do {
 		making_progress = false;
@@ -269,16 +283,8 @@ void optimise_command_lists(HackerDevice *device)
 		// commands that are noops to eliminate the runtime overhead of
 		// processing these
 		for (CommandList *command_list : registered_command_lists) {
-			ignore_cto = ignore_cto_pre;
-			if (command_list->post)
-				ignore_cto = ignore_cto_post;
-
 			for (i = 0; i < command_list->commands.size(); ) {
-				LogDebug("Optimising %S\n", command_list->commands[i]->ini_line.c_str());
-				if (command_list->commands[i]->optimise(device))
-					making_progress = true;
-
-				if (command_list->commands[i]->noop(command_list->post, ignore_cto)) {
+				if (command_list->commands[i]->noop(command_list->post, ignore_cto_pre, ignore_cto_post)) {
 					LogInfo("Optimised out %s %S\n",
 							command_list->post ? "post" : "pre",
 							command_list->commands[i]->ini_line.c_str());
@@ -297,6 +303,9 @@ void optimise_command_lists(HackerDevice *device)
 		// nice if this sort of thing worked more generally.
 	} while (making_progress);
 
+	Profiling::update_cto_warning(!ignore_cto_post);
+
+	LogInfo("Command List Optimiser finished after %ums\n", GetTickCount() - start);
 	registered_command_lists.clear();
 	dynamically_allocated_command_lists.clear();
 }
@@ -357,6 +366,13 @@ static bool ParseCheckTextureOverride(const wchar_t *section,
 	// Parse value as consistent with texture filtering and resource copying
 	ret = operation->target.ParseTarget(val->c_str(), true, ini_namespace);
 	if (ret) {
+		// If the user indicated an explicit command list we will run the pre
+		// and post lists of the target list together.
+		if (explicit_command_list)
+			operation->run_pre_and_post_together = true;
+		else if (post_command_list)
+			G->implicit_post_checktextureoverride_used = true;
+
 		return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
 	}
 
@@ -644,69 +660,93 @@ bail:
 	return false;
 }
 
+static bool ParseDrawCommandArgs(wstring *val, DrawCommand *operation, bool indirect, int nargs, const wstring *ini_namespace, CommandListScope *scope)
+{
+	size_t start = 0, end;
+	wstring sub;
+	int i;
+
+	if (indirect) {
+		end = val->find(L',', start);
+		if (end == wstring::npos)
+			return false;
+
+		sub = val->substr(start, end);
+		if (!operation->indirect_buffer.ParseTarget(sub.c_str(), true, ini_namespace))
+			return false;
+
+		if (operation->indirect_buffer.type == ResourceCopyTargetType::CUSTOM_RESOURCE) {
+			// Fucking C++ making this line 3x longer than it should be:
+			operation->indirect_buffer.custom_resource->misc_flags = (D3D11_RESOURCE_MISC_FLAG)
+				(operation->indirect_buffer.custom_resource->misc_flags
+				 | D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS);
+		}
+
+		start = end + 1;
+	}
+
+	for (i = 0; i < nargs; i++) {
+		end = val->find(L',', start);
+
+		sub = val->substr(start, end - start);
+		if (!operation->args[i].parse(&sub, ini_namespace, scope))
+			return false;
+
+		if (end == wstring::npos)
+			return (i+1 == nargs);
+		start = end + 1;
+	}
+
+	return false;
+}
+
 static bool ParseDrawCommand(const wchar_t *section,
 		const wchar_t *key, wstring *val,
 		CommandList *explicit_command_list,
 		CommandList *pre_command_list,
-		CommandList *post_command_list)
+		CommandList *post_command_list,
+		const wstring *ini_namespace)
 {
 	DrawCommand *operation = new DrawCommand();
-	int nargs, end = 0;
+	bool ok = true;
 
 	if (!wcscmp(key, L"draw")) {
 		if (!wcscmp(val->c_str(), L"from_caller")) {
 			operation->type = DrawCommandType::FROM_CALLER;
-			end = (int)val->length();
 		} else {
 			operation->type = DrawCommandType::DRAW;
-			nargs = swscanf_s(val->c_str(), L"%u, %u%n", &operation->args[0], &operation->args[1], &end);
-			if (nargs != 2)
-				goto bail;
+			ok = ParseDrawCommandArgs(val, operation, false, 2, ini_namespace, pre_command_list->scope);
 		}
 	} else if (!wcscmp(key, L"drawauto")) {
 		operation->type = DrawCommandType::DRAW_AUTO;
 	} else if (!wcscmp(key, L"drawindexed")) {
 		if (!wcscmp(val->c_str(), L"auto")) {
 			operation->type = DrawCommandType::AUTO_INDEX_COUNT;
-			end = (int)val->length();
 		} else {
 			operation->type = DrawCommandType::DRAW_INDEXED;
-			nargs = swscanf_s(val->c_str(), L"%u, %u, %i%n", &operation->args[0], &operation->args[1], (INT*)&operation->args[2], &end);
-			if (nargs != 3)
-				goto bail;
+			ok = ParseDrawCommandArgs(val, operation, false, 3, ini_namespace, pre_command_list->scope);
 		}
 	} else if (!wcscmp(key, L"drawindexedinstanced")) {
 		operation->type = DrawCommandType::DRAW_INDEXED_INSTANCED;
-		nargs = swscanf_s(val->c_str(), L"%u, %u, %u, %i, %u%n",
-				&operation->args[0], &operation->args[1], &operation->args[2], (INT*)&operation->args[3], &operation->args[4], &end);
-		if (nargs != 5)
-			goto bail;
+		ok = ParseDrawCommandArgs(val, operation, false, 5, ini_namespace, pre_command_list->scope);
 	} else if (!wcscmp(key, L"drawinstanced")) {
 		operation->type = DrawCommandType::DRAW_INSTANCED;
-		nargs = swscanf_s(val->c_str(), L"%u, %u, %u, %u%n",
-				&operation->args[0], &operation->args[1], &operation->args[2], &operation->args[3], &end);
-		if (nargs != 5)
-			goto bail;
+		ok = ParseDrawCommandArgs(val, operation, false, 4, ini_namespace, pre_command_list->scope);
 	} else if (!wcscmp(key, L"dispatch")) {
 		operation->type = DrawCommandType::DISPATCH;
-		nargs = swscanf_s(val->c_str(), L"%u, %u, %u%n", &operation->args[0], &operation->args[1], &operation->args[2], &end);
-		if (nargs != 3)
-			goto bail;
+		ok = ParseDrawCommandArgs(val, operation, false, 3, ini_namespace, pre_command_list->scope);
+	} else if (!wcscmp(key, L"drawindexedinstancedindirect")) {
+		operation->type = DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT;
+		ok = ParseDrawCommandArgs(val, operation, true, 1, ini_namespace, pre_command_list->scope);
+	} else if (!wcscmp(key, L"drawinstancedindirect")) {
+		operation->type = DrawCommandType::DRAW_INSTANCED_INDIRECT;
+		ok = ParseDrawCommandArgs(val, operation, true, 1, ini_namespace, pre_command_list->scope);
+	} else if (!wcscmp(key, L"dispatchindirect")) {
+		operation->type = DrawCommandType::DISPATCH_INDIRECT;
+		ok = ParseDrawCommandArgs(val, operation, true, 1, ini_namespace, pre_command_list->scope);
 	}
 
-	// TODO: } else if (!wcscmp(key, L"drawindexedinstancedindirect")) {
-	// TODO: 	operation->type = DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT;
-	// TODO: } else if (!wcscmp(key, L"drawinstancedindirect")) {
-	// TODO: 	operation->type = DrawCommandType::DRAW_INSTANCED_INDIRECT;
-	// TODO: } else if (!wcscmp(key, L"dispatchindirect")) {
-	// TODO: 	operation->type = DrawCommandType::DISPATCH_INDIRECT;
-	// TODO: }
-
-
-	if (operation->type == DrawCommandType::INVALID)
-		goto bail;
-
-	if (end != val->length())
+	if (operation->type == DrawCommandType::INVALID || !ok)
 		goto bail;
 
 	operation->ini_section = section;
@@ -902,29 +942,50 @@ bool ParseCommandListGeneralCommands(const wchar_t *section,
 			return AddCommandToList(new Draw3DMigotoOverlayCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 	}
 
-	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+	return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 }
 
 void CheckTextureOverrideCommand::run(CommandListState *state)
 {
 	TextureOverrideMatches matches;
+	ResourceCopyTarget *saved_this = NULL;
+	bool saved_post;
 	unsigned i;
 
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
 	target.FindTextureOverrides(state, NULL, &matches);
 
-	for (i = 0; i < matches.size(); i++) {
-		if (state->post)
-			_RunCommandList(&matches[i]->post_command_list, state);
-		else
+	saved_this = state->this_target;
+	state->this_target = &target;
+	if (run_pre_and_post_together) {
+		saved_post = state->post;
+		state->post = false;
+		for (i = 0; i < matches.size(); i++)
 			_RunCommandList(&matches[i]->command_list, state);
+		state->post = true;
+		for (i = 0; i < matches.size(); i++)
+			_RunCommandList(&matches[i]->post_command_list, state);
+		state->post = saved_post;
+	} else {
+		for (i = 0; i < matches.size(); i++) {
+			if (state->post)
+				_RunCommandList(&matches[i]->post_command_list, state);
+			else
+				_RunCommandList(&matches[i]->command_list, state);
+		}
 	}
+	state->this_target = saved_this;
 }
 
-bool CheckTextureOverrideCommand::noop(bool post, bool ignore_cto)
+bool CheckTextureOverrideCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
-	return ignore_cto;
+	if (run_pre_and_post_together)
+		return (ignore_cto_pre && ignore_cto_post);
+
+	if (post)
+		return ignore_cto_post;
+	return ignore_cto_pre;
 }
 
 ClearViewCommand::ClearViewCommand() :
@@ -1040,12 +1101,49 @@ static UINT get_index_count_from_current_ib(ID3D11DeviceContext *mOrigContext1)
 	return 0;
 }
 
+void DrawCommand::do_indirect_draw_call(CommandListState *state, char *name,
+		void (__stdcall ID3D11DeviceContext::*IndirectDrawCall)(THIS_
+		ID3D11Buffer *pBufferForArgs,
+		UINT AlignedByteOffsetForArgs))
+{
+	ID3D11Resource *resource = NULL;
+	ID3D11View *view = NULL;
+	UINT stride = 0;
+	UINT offset = 0;
+	UINT buf_size = 0;
+	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+	UINT arg = (UINT)args[0].evaluate(state);
+
+	resource = indirect_buffer.GetResource(state, &view, &stride, &offset, &format, NULL);
+	if (view)
+		view->Release();
+
+	if (!resource) {
+		COMMAND_LIST_LOG(state, "[%S] %s(%p, %u) -> INDIRECT BUFFER IS NULL\n",
+				ini_section.c_str(), name, resource, arg);
+		return;
+	}
+
+	COMMAND_LIST_LOG(state, "[%S] %s(%p, %u)\n", ini_section.c_str(), name, resource, arg);
+
+	(state->mOrigContext1->*IndirectDrawCall)((ID3D11Buffer*)resource, arg);
+
+	resource->Release();
+}
+
+void DrawCommand::eval_args(int nargs, INT result[5], CommandListState *state)
+{
+	for (int i = 0; i < nargs; i++)
+		result[i] = (INT)args[i].evaluate(state);
+}
+
 void DrawCommand::run(CommandListState *state)
 {
 	HackerContext *mHackerContext = state->mHackerContext;
 	ID3D11DeviceContext *mOrigContext1 = state->mOrigContext1;
 	DrawCallInfo *info = state->call_info;
 	UINT auto_count = 0;
+	INT eargs[5];
 
 	// If this command list was triggered from something currently skipped
 	// due to hunting, we also skip any custom draw calls, so that if we
@@ -1059,37 +1157,47 @@ void DrawCommand::run(CommandListState *state)
 	// Ensure IniParams are visible:
 	CommandListFlushState(state);
 
+	Profiling::injected_draw_calls++;
+
 	switch (type) {
 		case DrawCommandType::DRAW:
-			COMMAND_LIST_LOG(state, "[%S] Draw(%u, %u)\n", ini_section.c_str(), args[0], args[1]);
-			mOrigContext1->Draw(args[0], args[1]);
+			eval_args(2, eargs, state);
+			COMMAND_LIST_LOG(state, "[%S] Draw(%u, %u)\n", ini_section.c_str(), eargs[0], eargs[1]);
+			mOrigContext1->Draw(eargs[0], eargs[1]);
 			break;
 		case DrawCommandType::DRAW_AUTO:
 			COMMAND_LIST_LOG(state, "[%S] DrawAuto()\n", ini_section.c_str());
 			mOrigContext1->DrawAuto();
 			break;
 		case DrawCommandType::DRAW_INDEXED:
-			COMMAND_LIST_LOG(state, "[%S] DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), args[0], args[1], (INT)args[2]);
-			mOrigContext1->DrawIndexed(args[0], args[1], (INT)args[2]);
+			eval_args(3, eargs, state);
+			COMMAND_LIST_LOG(state, "[%S] DrawIndexed(%u, %u, %i)\n", ini_section.c_str(), eargs[0], eargs[1], (INT)eargs[2]);
+			mOrigContext1->DrawIndexed(eargs[0], eargs[1], (INT)eargs[2]);
 			break;
 		case DrawCommandType::DRAW_INDEXED_INSTANCED:
-			COMMAND_LIST_LOG(state, "[%S] DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), args[0], args[1], args[2], (INT)args[3], args[4]);
-			mOrigContext1->DrawIndexedInstanced(args[0], args[1], args[2], (INT)args[3], args[4]);
+			eval_args(5, eargs, state);
+			COMMAND_LIST_LOG(state, "[%S] DrawIndexedInstanced(%u, %u, %u, %i, %u)\n", ini_section.c_str(), eargs[0], eargs[1], eargs[2], (INT)eargs[3], eargs[4]);
+			mOrigContext1->DrawIndexedInstanced(eargs[0], eargs[1], eargs[2], (INT)eargs[3], eargs[4]);
 			break;
-		// TODO: case DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT:
-		// TODO: 	break;
 		case DrawCommandType::DRAW_INSTANCED:
-			COMMAND_LIST_LOG(state, "[%S] DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), args[0], args[1], args[2], args[3]);
-			mOrigContext1->DrawInstanced(args[0], args[1], args[2], args[3]);
+			eval_args(4, eargs, state);
+			COMMAND_LIST_LOG(state, "[%S] DrawInstanced(%u, %u, %u, %u)\n", ini_section.c_str(), eargs[0], eargs[1], eargs[2], eargs[3]);
+			mOrigContext1->DrawInstanced(eargs[0], eargs[1], eargs[2], eargs[3]);
 			break;
-		// TODO: case DrawCommandType::DRAW_INSTANCED_INDIRECT:
-		// TODO: 	break;
 		case DrawCommandType::DISPATCH:
-			COMMAND_LIST_LOG(state, "[%S] Dispatch(%u, %u, %u)\n", ini_section.c_str(), args[0], args[1], args[2]);
-			mOrigContext1->Dispatch(args[0], args[1], args[2]);
+			eval_args(3, eargs, state);
+			COMMAND_LIST_LOG(state, "[%S] Dispatch(%u, %u, %u)\n", ini_section.c_str(), eargs[0], eargs[1], eargs[2]);
+			mOrigContext1->Dispatch(eargs[0], eargs[1], eargs[2]);
 			break;
-		// TODO: case DrawCommandType::DISPATCH_INDIRECT:
-		// TODO: 	break;
+		case DrawCommandType::DRAW_INDEXED_INSTANCED_INDIRECT:
+			do_indirect_draw_call(state, "DrawIndexedInstancedIndirect", &ID3D11DeviceContext::DrawIndexedInstancedIndirect);
+			break;
+		case DrawCommandType::DRAW_INSTANCED_INDIRECT:
+			do_indirect_draw_call(state, "DrawInstancedIndirect", &ID3D11DeviceContext::DrawInstancedIndirect);
+			break;
+		case DrawCommandType::DISPATCH_INDIRECT:
+			do_indirect_draw_call(state, "DispatchIndirect", &ID3D11DeviceContext::DispatchIndirect);
+			break;
 		case DrawCommandType::FROM_CALLER:
 			if (!info) {
 				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> NO ACTIVE DRAW CALL\n", ini_section.c_str());
@@ -1113,12 +1221,32 @@ void DrawCommand::run(CommandListState *state)
 					mOrigContext1->Draw(info->VertexCount, info->FirstVertex);
 					break;
 				case DrawCall::DrawInstancedIndirect:
-					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
-					mOrigContext1->DrawInstancedIndirect(info->indirect_buffer, info->args_offset);
+					if (!info->indirect_buffer) {
+						LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> DrawInstancedIndirect missing args\n");
+						break;
+					}
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), *info->indirect_buffer, info->args_offset);
+					mOrigContext1->DrawInstancedIndirect(*info->indirect_buffer, info->args_offset);
 					break;
 				case DrawCall::DrawIndexedInstancedIndirect:
-					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), info->indirect_buffer, info->args_offset);
-					mOrigContext1->DrawIndexedInstancedIndirect(info->indirect_buffer, info->args_offset);
+					if (!info->indirect_buffer) {
+						LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> DrawIndexedInstancedIndirect missing args\n");
+						break;
+					}
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstancedIndirect(0x%p, %u)\n", ini_section.c_str(), *info->indirect_buffer, info->args_offset);
+					mOrigContext1->DrawIndexedInstancedIndirect(*info->indirect_buffer, info->args_offset);
+					break;
+				case DrawCall::DispatchIndirect:
+					if (!info->indirect_buffer) {
+						LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> DispatchIndirect missing args\n");
+						break;
+					}
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DispatchIndirect(0x%p, %u)\n", ini_section.c_str(), *info->indirect_buffer, info->args_offset);
+					mOrigContext1->DispatchIndirect(*info->indirect_buffer, info->args_offset);
+					break;
+				case DrawCall::Dispatch:
+					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> Dispatch(%u, %u, %u)\n", ini_section.c_str(), info->ThreadGroupCountX, info->ThreadGroupCountY, info->ThreadGroupCountZ);
+					mOrigContext1->Dispatch(info->ThreadGroupCountX, info->ThreadGroupCountY, info->ThreadGroupCountZ);
 					break;
 				case DrawCall::DrawAuto:
 					COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawAuto()\n", ini_section.c_str());
@@ -1128,7 +1256,6 @@ void DrawCommand::run(CommandListState *state)
 					LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> unknown draw call type\n");
 					break;
 			}
-			// TODO: dispatch = from_caller
 			break;
 		case DrawCommandType::AUTO_INDEX_COUNT:
 			auto_count = get_index_count_from_current_ib(mOrigContext1);
@@ -1270,12 +1397,12 @@ bool PerDrawStereoOverrideCommand::optimise(HackerDevice *device)
 	return expression.optimise(device);
 }
 
-bool PerDrawStereoOverrideCommand::noop(bool post, bool ignore_cto)
+bool PerDrawStereoOverrideCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	NvU8 enabled = false;
 
 	NvAPIOverride();
-	NvAPI_Stereo_IsEnabled(&enabled);
+	Profiling::NvAPI_Stereo_IsEnabled(&enabled);
 	return !enabled;
 }
 
@@ -1283,16 +1410,16 @@ void DirectModeSetActiveEyeCommand::run(CommandListState *state)
 {
 	COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-	if (NVAPI_OK != NvAPI_Stereo_SetActiveEye(state->mHackerDevice->mStereoHandle, eye))
+	if (NVAPI_OK != Profiling::NvAPI_Stereo_SetActiveEye(state->mHackerDevice->mStereoHandle, eye))
 		COMMAND_LIST_LOG(state, "  Stereo_SetActiveEye failed\n");
 }
 
-bool DirectModeSetActiveEyeCommand::noop(bool post, bool ignore_cto)
+bool DirectModeSetActiveEyeCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	NvU8 enabled = false;
 
 	NvAPIOverride();
-	NvAPI_Stereo_IsEnabled(&enabled);
+	Profiling::NvAPI_Stereo_IsEnabled(&enabled);
 	return !enabled;
 
 	// FIXME: Should also return false if direct mode is disabled...
@@ -1303,7 +1430,7 @@ float PerDrawSeparationOverrideCommand::get_stereo_value(CommandListState *state
 {
 	float ret = 0.0f;
 
-	if (NVAPI_OK != NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, &ret))
+	if (NVAPI_OK != Profiling::NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, &ret))
 		COMMAND_LIST_LOG(state, "  Stereo_GetSeparation failed\n");
 
 	return ret;
@@ -1312,7 +1439,7 @@ float PerDrawSeparationOverrideCommand::get_stereo_value(CommandListState *state
 void PerDrawSeparationOverrideCommand::set_stereo_value(CommandListState *state, float val)
 {
 	NvAPIOverride();
-	if (NVAPI_OK != NvAPI_Stereo_SetSeparation(state->mHackerDevice->mStereoHandle, val))
+	if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSeparation(state->mHackerDevice->mStereoHandle, val))
 		COMMAND_LIST_LOG(state, "  Stereo_SetSeparation failed\n");
 }
 
@@ -1320,7 +1447,7 @@ float PerDrawConvergenceOverrideCommand::get_stereo_value(CommandListState *stat
 {
 	float ret = 0.0f;
 
-	if (NVAPI_OK != NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, &ret))
+	if (NVAPI_OK != Profiling::NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, &ret))
 		COMMAND_LIST_LOG(state, "  Stereo_GetConvergence failed\n");
 
 	return ret;
@@ -1329,7 +1456,7 @@ float PerDrawConvergenceOverrideCommand::get_stereo_value(CommandListState *stat
 void PerDrawConvergenceOverrideCommand::set_stereo_value(CommandListState *state, float val)
 {
 	NvAPIOverride();
-	if (NVAPI_OK != NvAPI_Stereo_SetConvergence(state->mHackerDevice->mStereoHandle, val))
+	if (NVAPI_OK != Profiling::NvAPI_Stereo_SetConvergence(state->mHackerDevice->mStereoHandle, val))
 		COMMAND_LIST_LOG(state, "  Stereo_SetConvergence failed\n");
 }
 
@@ -1358,7 +1485,7 @@ void FrameAnalysisChangeOptionsCommand::run(CommandListState *state)
 	state->mHackerContext->FrameAnalysisTrigger(analyse_options);
 }
 
-bool FrameAnalysisChangeOptionsCommand::noop(bool post, bool ignore_cto)
+bool FrameAnalysisChangeOptionsCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	return (G->hunting == HUNTING_MODE_DISABLED || G->frame_analysis_registered == false);
 }
@@ -1524,7 +1651,7 @@ void FrameAnalysisDumpCommand::run(CommandListState *state)
 		view->Release();
 }
 
-bool FrameAnalysisDumpCommand::noop(bool post, bool ignore_cto)
+bool FrameAnalysisDumpCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	return (G->hunting == HUNTING_MODE_DISABLED || G->frame_analysis_registered == false);
 }
@@ -1624,6 +1751,46 @@ CustomShader::~CustomShader()
 		sampler_state->Release();
 }
 
+static bool load_cached_shader(FILETIME hlsl_timestamp, wchar_t *cache_path, ID3DBlob **ppBytecode)
+{
+	FILETIME cache_timestamp;
+	HANDLE f_cache;
+	DWORD filesize, readsize;
+
+	f_cache = CreateFile(cache_path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (f_cache == INVALID_HANDLE_VALUE)
+		return false;
+
+	if (!GetFileTime(f_cache, NULL, NULL, &cache_timestamp)
+	 || CompareFileTime(&hlsl_timestamp, &cache_timestamp)) {
+		LogInfo("    Discarding stale cached shader: %S\n", cache_path);
+		goto err_close;
+	}
+
+	filesize = GetFileSize(f_cache, 0);
+	if (FAILED(D3DCreateBlob(filesize, ppBytecode))) {
+		LogInfo("    D3DCreateBlob failed\n");
+		goto err_close;
+	}
+
+	if (!ReadFile(f_cache, (*ppBytecode)->GetBufferPointer(), (DWORD)(*ppBytecode)->GetBufferSize(), &readsize, 0)
+			|| readsize != filesize) {
+		LogInfo("    Error reading cached shader\n");
+		goto err_free;
+	}
+
+	LogInfo("    Loaded cached shader: %S\n", cache_path);
+	CloseHandle(f_cache);
+	return true;
+
+err_free:
+	(*ppBytecode)->Release();
+	*ppBytecode = NULL;
+err_close:
+	CloseHandle(f_cache);
+	return false;
+}
+
 static const D3D_SHADER_MACRO vs_macros[] = { "VERTEX_SHADER", "", NULL, NULL };
 static const D3D_SHADER_MACRO hs_macros[] = { "HULL_SHADER", "", NULL, NULL };
 static const D3D_SHADER_MACRO ds_macros[] = { "DOMAIN_SHADER", "", NULL, NULL };
@@ -1635,7 +1802,7 @@ static const D3D_SHADER_MACRO cs_macros[] = { "COMPUTE_SHADER", "", NULL, NULL }
 // get it's own function for now - TODO: Refactor out the common code
 bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, const wstring *namespace_path)
 {
-	wchar_t wpath[MAX_PATH];
+	wchar_t wpath[MAX_PATH], cache_path[MAX_PATH];
 	char apath[MAX_PATH];
 	HANDLE f;
 	DWORD srcDataSize, readSize;
@@ -1646,6 +1813,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 	ID3DBlob *pErrorMsgs = NULL;
 	const D3D_SHADER_MACRO *macros = NULL;
 	bool found = false;
+	FILETIME timestamp;
 
 	LogInfo("  %cs=%S\n", type, filename);
 
@@ -1695,7 +1863,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 	// first, then try relative to the 3DMigoto directory:
 	found = false;
 	if (!namespace_path->empty()) {
-		GetModuleFileName(0, wpath, MAX_PATH);
+		GetModuleFileName(migoto_handle, wpath, MAX_PATH);
 		wcsrchr(wpath, L'\\')[1] = 0;
 		wcscat(wpath, namespace_path->c_str());
 		wcscat(wpath, filename);
@@ -1703,7 +1871,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 			found = true;
 	}
 	if (!found) {
-		if (!GetModuleFileName(0, wpath, MAX_PATH)) {
+		if (!GetModuleFileName(migoto_handle, wpath, MAX_PATH)) {
 			LogOverlay(LOG_DIRE, "CustomShader::compile: GetModuleFileName failed\n");
 			goto err;
 		}
@@ -1717,6 +1885,25 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 		goto err;
 	}
 
+	// Currently always using shader model 5, could allow this to be
+	// overridden in the future:
+	_snprintf_s(shaderModel, 7, 7, "%cs_5_0", type);
+
+	// XXX: If we allow the compilation to be customised further (e.g. with
+	// addition preprocessor defines), make the cache filename unique for
+	// each possible combination
+	wchar_t *ext = wcsrchr(wpath, L'.');
+	if (ext > wcsrchr(wpath, L'\\'))
+		swprintf_s(cache_path, MAX_PATH, L"%.*s.%S.%x.bin", (int)(ext - wpath), wpath, shaderModel, (UINT)compile_flags);
+	else
+		swprintf_s(cache_path, MAX_PATH, L"%s.%S.%x.bin", wpath, shaderModel, (UINT)compile_flags);
+
+	GetFileTime(f, NULL, NULL, &timestamp);
+	if (load_cached_shader(timestamp, cache_path, ppBytecode)) {
+		CloseHandle(f);
+		return false;
+	}
+
 	srcDataSize = GetFileSize(f, 0);
 	srcData.resize(srcDataSize);
 
@@ -1726,10 +1913,6 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 		goto err_close;
 	}
 	CloseHandle(f);
-
-	// Currently always using shader model 5, could allow this to be
-	// overridden in the future:
-	_snprintf_s(shaderModel, 7, 7, "%cs_5_0", type);
 
 	// TODO: Add #defines for StereoParams and IniParams. Define a macro
 	// for the type of shader, and maybe allow more defines to be specified
@@ -1757,7 +1940,19 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 		goto err;
 	}
 
-	// TODO: Cache bytecode
+	if (G->CACHE_SHADERS) {
+		FILE *fw;
+
+		wfopen_ensuring_access(&fw, cache_path, L"wb");
+		if (fw) {
+			LogInfo("    Storing compiled shader to %S\n", cache_path);
+			fwrite((*ppBytecode)->GetBufferPointer(), 1, (*ppBytecode)->GetBufferSize(), fw);
+			fclose(fw);
+
+			set_file_last_write_time(cache_path, &timestamp);
+		} else
+			LogInfo("    Error writing compiled shader to %S\n", cache_path);
+	}
 
 	return false;
 err_close:
@@ -2010,6 +2205,7 @@ void RunCustomShaderCommand::run(CommandListState *state)
 			custom_shader->executions_this_frame = 1;
 		} else if (custom_shader->executions_this_frame++ >= custom_shader->max_executions_per_frame) {
 			COMMAND_LIST_LOG(state, "  max_executions_per_frame exceeded\n");
+			Profiling::max_executions_per_frame_exceeded++;
 			return;
 		}
 	}
@@ -2142,7 +2338,7 @@ void RunCustomShaderCommand::run(CommandListState *state)
 	}
 }
 
-bool RunCustomShaderCommand::noop(bool post, bool ignore_cto)
+bool RunCustomShaderCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	return (custom_shader->command_list.commands.empty() && custom_shader->post_command_list.commands.empty());
 }
@@ -2166,7 +2362,7 @@ void RunExplicitCommandList::run(CommandListState *state)
 		_RunCommandList(&command_list_section->command_list, state);
 }
 
-bool RunExplicitCommandList::noop(bool post, bool ignore_cto)
+bool RunExplicitCommandList::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	if (run_pre_and_post_together)
 		return (command_list_section->command_list.commands.empty() && command_list_section->post_command_list.commands.empty());
@@ -2176,11 +2372,14 @@ bool RunExplicitCommandList::noop(bool post, bool ignore_cto)
 	return command_list_section->command_list.commands.empty();
 }
 
-void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line)
+std::shared_ptr<RunLinkedCommandList>
+LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line)
 {
 	RunLinkedCommandList *operation = new RunLinkedCommandList(link);
 	operation->ini_line = *ini_line;
-	dst->commands.push_back(std::shared_ptr<CommandListCommand>(operation));
+	std::shared_ptr<RunLinkedCommandList> p(operation);
+	dst->commands.push_back(p);
+	return p;
 }
 
 void RunLinkedCommandList::run(CommandListState *state)
@@ -2188,7 +2387,7 @@ void RunLinkedCommandList::run(CommandListState *state)
 	_RunCommandList(link, state, false);
 }
 
-bool RunLinkedCommandList::noop(bool post, bool ignore_cto)
+bool RunLinkedCommandList::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	return link->commands.empty();
 }
@@ -2284,6 +2483,56 @@ float CommandListOperand::process_texture_filter(CommandListState *state)
 	return 1.0;
 }
 
+float CommandListOperand::process_shader_filter(CommandListState *state)
+{
+	HackerContext *mHackerContext = state->mHackerContext;
+	ID3D11DeviceChild *shader = NULL;
+
+	switch (shader_filter_target) {
+		case L'v':
+			shader = mHackerContext->mCurrentVertexShaderHandle;
+			break;
+		case L'h':
+			shader = mHackerContext->mCurrentHullShaderHandle;
+			break;
+		case L'd':
+			shader = mHackerContext->mCurrentDomainShaderHandle;
+			break;
+		case L'g':
+			shader = mHackerContext->mCurrentGeometryShaderHandle;
+			break;
+		case L'p':
+			shader = mHackerContext->mCurrentPixelShaderHandle;
+			break;
+		case L'c':
+			shader = mHackerContext->mCurrentComputeShaderHandle;
+			break;
+		default:
+			LogOverlay(LOG_DIRE, "BUG: Unknown shader filter type: \"%C\"\n", shader_filter_target);
+			break;
+	}
+
+	// Negative zero means no shader bound:
+	if (!shader)
+		return -0.0;
+
+	ShaderMap::iterator shader_it = lookup_shader_hash(shader);
+
+	if (shader_it == G->mShaders.end())
+		return 0.0;
+
+	// Positive zero means shader bound with no ShaderOverride
+	ShaderOverrideMap::iterator override = lookup_shaderoverride(shader_it->second);
+	if (override == G->mShaderOverrideMap.end())
+		return 0.0;
+
+	if (override->second.filter_index != FLT_MAX)
+		return override->second.filter_index;
+
+	// Matched ShaderOverride / ShaderRegex, but no filter_index:
+	return 1.0;
+}
+
 void CommandList::clear()
 {
 	commands.clear();
@@ -2298,6 +2547,7 @@ CommandListState::CommandListState() :
 	rt_width(-1),
 	rt_height(-1),
 	call_info(NULL),
+	this_target(NULL),
 	resource(NULL),
 	view(NULL),
 	post(false),
@@ -2455,7 +2705,9 @@ static void _CreateTextureFromBitmap(HDC dc, BITMAP *bitmap_obj,
 	desc.CPUAccessFlags = 0;
 	desc.MiscFlags = 0;
 
+	LockResourceCreationMode();
 	hr = state->mOrigDevice1->CreateTexture2D(&desc, &data, tex);
+	UnlockResourceCreationMode();
 	if (FAILED(hr)) {
 		LogInfo("Software Mouse: CreateTexture2D Failed: 0x%x\n", hr);
 		goto err_free;
@@ -2551,9 +2803,13 @@ out_delete_mem_dc:
 static void UpdateCursorResources(CommandListState *state)
 {
 	HDC dc;
+	Profiling::State profiling_state;
 
 	if (state->cursor_mask_tex || state->cursor_color_tex)
 		return;
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::start(&profiling_state);
 
 	UpdateCursorInfoEx(state);
 
@@ -2602,6 +2858,9 @@ static void UpdateCursorResources(CommandListState *state)
 	}
 
 	ReleaseDC(NULL, dc);
+
+	if (Profiling::mode == Profiling::Mode::SUMMARY)
+		Profiling::end(&profiling_state, &Profiling::cursor_overhead);
 }
 
 static bool sli_enabled(HackerDevice *device)
@@ -2610,7 +2869,7 @@ static bool sli_enabled(HackerDevice *device)
 	sli_state.version = NV_GET_CURRENT_SLI_STATE_VER;
 	NvAPI_Status status;
 
-	status = NvAPI_D3D_GetCurrentSLIState(device->GetPossiblyHookedOrigDevice1(), &sli_state);
+	status = Profiling::NvAPI_D3D_GetCurrentSLIState(device->GetPossiblyHookedOrigDevice1(), &sli_state);
 	if (status != NVAPI_OK) {
 		LogInfo("Unable to retrieve SLI state from nvapi\n");
 		return false;
@@ -2663,19 +2922,26 @@ float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device
 			// this is rarely used, so let's just go with this for
 			// now and worry about optimisations only if it proves
 			// to be a bottleneck in practice:
-			NvAPI_Stereo_GetSeparation(device->mStereoHandle, &fret);
+			Profiling::NvAPI_Stereo_GetSeparation(device->mStereoHandle, &fret);
 			return fret;
 		case ParamOverrideType::CONVERGENCE:
-			NvAPI_Stereo_GetConvergence(device->mStereoHandle, &fret);
+			Profiling::NvAPI_Stereo_GetConvergence(device->mStereoHandle, &fret);
 			return fret;
 		case ParamOverrideType::EYE_SEPARATION:
-			NvAPI_Stereo_GetEyeSeparation(device->mStereoHandle, &fret);
+			Profiling::NvAPI_Stereo_GetEyeSeparation(device->mStereoHandle, &fret);
 			return fret;
 		case ParamOverrideType::STEREO_ACTIVE:
-			NvAPI_Stereo_IsActivated(device->mStereoHandle, &stereo);
+			Profiling::NvAPI_Stereo_IsActivated(device->mStereoHandle, &stereo);
+			return !!stereo;
+		case ParamOverrideType::STEREO_AVAILABLE:
+			Profiling::NvAPI_Stereo_IsEnabled(&stereo);
 			return !!stereo;
 		case ParamOverrideType::SLI:
 			return sli_enabled(device);
+		case ParamOverrideType::HUNTING:
+			return (float)G->hunting;
+		case ParamOverrideType::FRAME_ANALYSIS:
+			return G->analyse_frame;
 		// XXX: If updating this list, be sure to also update
 		// XXX: operand_allowed_in_context()
 	}
@@ -2702,6 +2968,8 @@ float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device
 			return (float)state->window_rect.bottom;
 		case ParamOverrideType::TEXTURE:
 			return process_texture_filter(state);
+		case ParamOverrideType::SHADER:
+			return process_shader_filter(state);
 		case ParamOverrideType::VERTEX_COUNT:
 			if (state->call_info)
 				return (float)state->call_info->VertexCount;
@@ -2713,6 +2981,38 @@ float CommandListOperand::evaluate(CommandListState *state, HackerDevice *device
 		case ParamOverrideType::INSTANCE_COUNT:
 			if (state->call_info)
 				return (float)state->call_info->InstanceCount;
+			return 0;
+		case ParamOverrideType::FIRST_VERTEX:
+			if (state->call_info)
+				return (float)state->call_info->FirstVertex;
+			return 0;
+		case ParamOverrideType::FIRST_INDEX:
+			if (state->call_info)
+				return (float)state->call_info->FirstIndex;
+			return 0;
+		case ParamOverrideType::FIRST_INSTANCE:
+			if (state->call_info)
+				return (float)state->call_info->FirstInstance;
+			return 0;
+		case ParamOverrideType::THREAD_GROUP_COUNT_X:
+			if (state->call_info)
+				return (float)state->call_info->ThreadGroupCountX;
+			return 0;
+		case ParamOverrideType::THREAD_GROUP_COUNT_Y:
+			if (state->call_info)
+				return (float)state->call_info->ThreadGroupCountY;
+			return 0;
+		case ParamOverrideType::THREAD_GROUP_COUNT_Z:
+			if (state->call_info)
+				return (float)state->call_info->ThreadGroupCountZ;
+			return 0;
+		case ParamOverrideType::INDIRECT_OFFSET:
+			if (state->call_info)
+				return (float)state->call_info->args_offset;
+			return 0;
+		case ParamOverrideType::DRAW_TYPE:
+			if (state->call_info)
+				return (float)state->call_info->type;
 			return 0;
 		case ParamOverrideType::CURSOR_VISIBLE:
 			UpdateCursorInfo(state);
@@ -2774,15 +3074,26 @@ bool CommandListOperand::static_evaluate(float *ret, HackerDevice *device)
 		case ParamOverrideType::EYE_SEPARATION:
 		case ParamOverrideType::STEREO_ACTIVE:
 			NvAPIOverride();
-			NvAPI_Stereo_IsEnabled(&stereo);
+			Profiling::NvAPI_Stereo_IsEnabled(&stereo);
 			if (!stereo) {
 				*ret = 0.0;
 				return true;
 			}
 			break;
+		case ParamOverrideType::STEREO_AVAILABLE:
+			Profiling::NvAPI_Stereo_IsEnabled(&stereo);
+			*ret = stereo;
+			return true;
 		case ParamOverrideType::SLI:
 			if (device) {
 				*ret = sli_enabled(device);
+				return true;
+			}
+			break;
+		case ParamOverrideType::HUNTING:
+		case ParamOverrideType::FRAME_ANALYSIS:
+			if (G->hunting == HUNTING_MODE_DISABLED) {
+				*ret = 0;
 				return true;
 			}
 			break;
@@ -3550,7 +3861,9 @@ static bool operand_allowed_in_context(ParamOverrideType type, CommandListScope 
 		case ParamOverrideType::CONVERGENCE:
 		case ParamOverrideType::EYE_SEPARATION:
 		case ParamOverrideType::STEREO_ACTIVE:
+		case ParamOverrideType::STEREO_AVAILABLE:
 		case ParamOverrideType::SLI:
+		case ParamOverrideType::HUNTING:
 			return true;
 	}
 	return false;
@@ -3602,6 +3915,12 @@ bool parse_command_list_var_name(const wstring &name, const wstring *ini_namespa
 int find_local_variable(const wstring &name, CommandListScope *scope, CommandListVariable **var)
 {
 	CommandListScope::iterator it;
+
+	if (!scope)
+		return false;
+
+	if (name.length() < 2 || name[0] != L'$')
+		return false;
 
 	for (it = scope->begin(); it != scope->end(); it++) {
 		auto match = it->find(name);
@@ -3679,6 +3998,13 @@ bool CommandListOperand::parse(const wstring *operand, const wstring *ini_namesp
 	ret = texture_filter_target.ParseTarget(operand->c_str(), true, ini_namespace);
 	if (ret) {
 		type = ParamOverrideType::TEXTURE;
+		return operand_allowed_in_context(type, scope);
+	}
+
+	// Try parsing value as a shader target for partner filtering
+	ret = swscanf_s(operand->c_str(), L"%lcs%n", &shader_filter_target, 1, &len1);
+	if (ret == 1 && len1 == operand->length()) {
+		type = ParamOverrideType::SHADER;
 		return operand_allowed_in_context(type, scope);
 	}
 
@@ -3780,20 +4106,20 @@ bail:
 
 ResourcePool::~ResourcePool()
 {
-	unordered_map<uint32_t, ID3D11Resource*>::iterator i;
+	ResourcePoolCache::iterator i;
 
 	for (i = cache.begin(); i != cache.end(); i++) {
-		if (i->second)
-			i->second->Release();
+		if (i->second.first)
+			i->second.first->Release();
 	}
 	cache.clear();
 }
 
-void ResourcePool::emplace(uint32_t hash, ID3D11Resource *resource)
+void ResourcePool::emplace(uint32_t hash, ID3D11Resource *resource, ID3D11Device *device)
 {
 	if (resource)
 		resource->AddRef();
-	cache.emplace(hash, resource);
+	cache.emplace(hash, pair<ID3D11Resource*, ID3D11Device*>{resource, device});
 }
 
 template <typename ResourceType,
@@ -3817,6 +4143,7 @@ static ResourceType* GetResourceFromPool(
 	size_t size;
 	HRESULT hr;
 	ResourcePoolCache::iterator pool_i;
+	ID3D11Device *old_device = NULL;
 
 	// We don't want to use the CalTexture2D/3DDescHash functions because
 	// the resolution override could produce the same hash for distinct
@@ -3824,48 +4151,61 @@ static ResourceType* GetResourceFromPool(
 	// doesn't matter what we use - just has to be fast.
 	hash = crc32c_hw(0, desc, sizeof(DescType));
 
-	pool_i = resource_pool->cache.find(hash);
+	pool_i = Profiling::lookup_map(resource_pool->cache, hash, &Profiling::resource_pool_lookup_overhead);
 	if (pool_i != resource_pool->cache.end()) {
-		resource = (ResourceType*)pool_i->second;
-		if (resource == dst_resource)
+		resource = (ResourceType*)pool_i->second.first;
+		old_device = pool_i->second.second;
+		if (!resource)
 			return NULL;
-		if (resource) {
+
+		if (old_device == state->mOrigDevice1) {
+			if (resource == dst_resource)
+				return NULL;
+
 			LogDebug("Switching cached resource %S\n", ini_line->c_str());
+			Profiling::resource_pool_swaps++;
 			resource->AddRef();
+			return resource;
 		}
-	} else {
-		LogInfo("Creating cached resource %S\n", ini_line->c_str());
 
-		hr = (state->mOrigDevice1->*CreateResource)(desc, NULL, &resource);
-		if (FAILED(hr)) {
-			LogInfo("Resource copy failed %S: 0x%x\n", ini_line->c_str(), hr);
-			LogResourceDesc(desc);
-			src_resource->GetDesc(&old_desc);
-			LogInfo("Original resource was:\n");
-			LogResourceDesc(&old_desc);
-
-			// Prevent further attempts:
-			resource_pool->emplace(hash, NULL);
-
-			return NULL;
-		}
-		resource_pool->emplace(hash, resource);
-		size = resource_pool->cache.size();
-		if (size > 1)
-			LogInfo("  NOTICE: cache now contains %Ii resources\n", size);
-
-		LogDebugResourceDesc(desc);
+		LogInfo("Device mismatch, discarding %S from resource pool\n", ini_line->c_str());
+		resource_pool->cache.erase(pool_i);
+		resource->Release();
 	}
 
+	LogInfo("Creating cached resource %S\n", ini_line->c_str());
+	Profiling::resources_created++;
+
+	hr = (state->mOrigDevice1->*CreateResource)(desc, NULL, &resource);
+	if (FAILED(hr)) {
+		LogInfo("Resource copy failed %S: 0x%x\n", ini_line->c_str(), hr);
+		LogResourceDesc(desc);
+		src_resource->GetDesc(&old_desc);
+		LogInfo("Original resource was:\n");
+		LogResourceDesc(&old_desc);
+
+		// Prevent further attempts:
+		resource_pool->emplace(hash, NULL, NULL);
+
+		return NULL;
+	}
+	resource_pool->emplace(hash, resource, state->mOrigDevice1);
+	size = resource_pool->cache.size();
+	if (size > 1)
+		LogInfo("  NOTICE: cache now contains %Ii resources\n", size);
+
+	LogDebugResourceDesc(desc);
 	return resource;
 }
 
 CustomResource::CustomResource() :
 	resource(NULL),
+	device(NULL),
 	view(NULL),
 	is_null(true),
 	substantiated(false),
 	bind_flags((D3D11_BIND_FLAG)0),
+	misc_flags((D3D11_RESOURCE_MISC_FLAG)0),
 	stride(0),
 	offset(0),
 	buf_size(0),
@@ -3876,6 +4216,7 @@ CustomResource::CustomResource() :
 	override_type(CustomResourceType::INVALID),
 	override_mode(CustomResourceMode::DEFAULT),
 	override_bind_flags(CustomResourceBindFlags::INVALID),
+	override_misc_flags(ResourceMiscFlags::INVALID),
 	override_format((DXGI_FORMAT)-1),
 	override_width(-1),
 	override_height(-1),
@@ -3907,19 +4248,19 @@ bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVA
 	if (override_mode == CustomResourceMode::DEFAULT)
 		return false;
 
-	NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, orig_mode);
+	Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, orig_mode);
 
 	switch (override_mode) {
 		case CustomResourceMode::STEREO:
-			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
 			return true;
 		case CustomResourceMode::MONO:
-			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
 			return true;
 		case CustomResourceMode::AUTO:
-			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_AUTO);
 			return true;
 	}
@@ -3927,7 +4268,8 @@ bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVA
 	return false;
 }
 
-void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mStereoHandle)
+void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mStereoHandle,
+		D3D11_BIND_FLAG bind_flags, D3D11_RESOURCE_MISC_FLAG misc_flags)
 {
 	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
 	bool restore_create_mode = false;
@@ -3945,12 +4287,26 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mSter
 	if (resource || view)
 		return;
 
+	Profiling::resources_created++;
+
+	// Add any extra bind flags necessary for the current assignment. This
+	// covers many (but not all) of the cases 3DMigoto cannot deduce
+	// earlier during parsing - it will cover custom resources copied by
+	// reference to other custom resources when the "this" resource target
+	// is assigned. There are some complicated cases that could still need
+	// bind_flags to be manually specified - where multiple bind flags are
+	// required and cannot be deduced at parse time.
+	this->bind_flags = (D3D11_BIND_FLAG)(this->bind_flags | bind_flags);
+	this->misc_flags = (D3D11_RESOURCE_MISC_FLAG)(this->misc_flags | misc_flags);
+
 	// If the resource section has enough information to create a resource
 	// we do so the first time it is loaded from. The reason we do it this
 	// late is to make sure we know which device is actually being used to
 	// render the game - FC4 creates about a dozen devices with different
 	// parameters while probing the hardware before it settles on the one
 	// it will actually use.
+
+	LockResourceCreationMode();
 
 	restore_create_mode = OverrideSurfaceCreationMode(mStereoHandle, &orig_mode);
 
@@ -3977,7 +4333,9 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mSter
 	}
 
 	if (restore_create_mode)
-		NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
+		Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
+
+	UnlockResourceCreationMode();
 }
 
 void CustomResource::LoadBufferFromFile(ID3D11Device *mOrigDevice1)
@@ -4031,6 +4389,8 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 	// when manipulating driver heuristics:
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		bind_flags = (D3D11_BIND_FLAG)override_bind_flags;
+	if (override_misc_flags != ResourceMiscFlags::INVALID)
+		misc_flags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 
 	// XXX: We are not creating a view with DirecXTK because
 	// 1) it assumes we want a shader resource view, which is an
@@ -4047,19 +4407,20 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 
 	ext = filename.substr(filename.rfind(L"."));
 	if (!_wcsicmp(ext.c_str(), L".dds")) {
-		LogInfoW(L"Loading custom resource %s as DDS\n", filename.c_str());
+		LogInfoW(L"Loading custom resource %s as DDS, bind_flags=0x%03x\n", filename.c_str(), bind_flags);
 		hr = DirectX::CreateDDSTextureFromFileEx(mOrigDevice1,
 				filename.c_str(), 0,
-				D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
+				D3D11_USAGE_DEFAULT, bind_flags, 0, misc_flags,
 				false, &resource, NULL, NULL);
 	} else {
-		LogInfoW(L"Loading custom resource %s as WIC\n", filename.c_str());
+		LogInfoW(L"Loading custom resource %s as WIC, bind_flags=0x%03x\n", filename.c_str(), bind_flags);
 		hr = DirectX::CreateWICTextureFromFileEx(mOrigDevice1,
 				filename.c_str(), 0,
-				D3D11_USAGE_DEFAULT, bind_flags, 0, 0,
+				D3D11_USAGE_DEFAULT, bind_flags, 0, misc_flags,
 				false, &resource, NULL);
 	}
 	if (SUCCEEDED(hr)) {
+		device = mOrigDevice1;
 		is_null = false;
 		// TODO:
 		// format = ...
@@ -4086,6 +4447,7 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, 
 	memset(&desc, 0, sizeof(desc));
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = bind_flags;
+	desc.MiscFlags = misc_flags;
 
 	// Allow the buffer size to be set from the file / initial data size,
 	// but it can be overridden if specified explicitly. If it's a
@@ -4121,10 +4483,11 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, 
 
 	hr = mOrigDevice1->CreateBuffer(&desc, pInitialData, &buffer);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S [%S]\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
+		LogInfo("Substantiated custom %S [%S], bind_flags=0x%03x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)buffer;
+		device = mOrigDevice1;
 		is_null = false;
 		OverrideOutOfBandInfo(&format, &stride);
 	} else {
@@ -4142,14 +4505,16 @@ void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice1)
 	memset(&desc, 0, sizeof(desc));
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = bind_flags;
+	desc.MiscFlags = misc_flags;
 	OverrideTexDesc(&desc);
 
 	hr = mOrigDevice1->CreateTexture1D(&desc, NULL, &tex1d);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S [%S]\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
+		LogInfo("Substantiated custom %S [%S], bind_flags=0x%03x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)tex1d;
+		device = mOrigDevice1;
 		is_null = false;
 	} else {
 		LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
@@ -4166,14 +4531,16 @@ void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice1)
 	memset(&desc, 0, sizeof(desc));
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = bind_flags;
+	desc.MiscFlags = misc_flags;
 	OverrideTexDesc(&desc);
 
 	hr = mOrigDevice1->CreateTexture2D(&desc, NULL, &tex2d);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S [%S]\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
+		LogInfo("Substantiated custom %S [%S], bind_flags=0x%03x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)tex2d;
+		device = mOrigDevice1;
 		is_null = false;
 	} else {
 		LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
@@ -4190,14 +4557,16 @@ void CustomResource::SubstantiateTexture3D(ID3D11Device *mOrigDevice1)
 	memset(&desc, 0, sizeof(desc));
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = bind_flags;
+	desc.MiscFlags = misc_flags;
 	OverrideTexDesc(&desc);
 
 	hr = mOrigDevice1->CreateTexture3D(&desc, NULL, &tex3d);
 	if (SUCCEEDED(hr)) {
-		LogInfo("Substantiated custom %S [%S]\n",
-				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str());
+		LogInfo("Substantiated custom %S [%S], bind_flags=0x%03x\n",
+				lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
 		LogDebugResourceDesc(&desc);
 		resource = (ID3D11Resource*)tex3d;
+		device = mOrigDevice1;
 		is_null = false;
 	} else {
 		LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
@@ -4229,8 +4598,8 @@ void CustomResource::OverrideBufferDesc(D3D11_BUFFER_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-
-	// TODO: Add more overrides for misc flags
+	if (override_misc_flags != ResourceMiscFlags::INVALID)
+		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 }
 
 void CustomResource::OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc)
@@ -4248,8 +4617,8 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-
-	// TODO: Add more overrides for misc flags
+	if (override_misc_flags != ResourceMiscFlags::INVALID)
+		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 }
 
 void CustomResource::OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc)
@@ -4280,8 +4649,8 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-
-	// TODO: Add more overrides for misc flags
+	if (override_misc_flags != ResourceMiscFlags::INVALID)
+		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 }
 
 void CustomResource::OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc)
@@ -4302,8 +4671,8 @@ void CustomResource::OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc)
 
 	if (override_bind_flags != CustomResourceBindFlags::INVALID)
 		desc->BindFlags = (D3D11_BIND_FLAG)override_bind_flags;
-
-	// TODO: Add more overrides for misc flags
+	if (override_misc_flags != ResourceMiscFlags::INVALID)
+		desc->MiscFlags = (D3D11_RESOURCE_MISC_FLAG)override_misc_flags;
 }
 
 void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
@@ -4314,6 +4683,371 @@ void CustomResource::OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride)
 		*stride = override_stride;
 }
 
+// Returns 1 for definite dsv formats
+// Returns 2 for typeless variants of dsv formats (have a stencil buffer)
+// Returns -1 for possible typecast depth formats, but with no stencil buffer they may not be
+static int is_dsv_format(DXGI_FORMAT fmt)
+{
+	switch(fmt)
+	{
+		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+		case DXGI_FORMAT_D32_FLOAT:
+		case DXGI_FORMAT_D24_UNORM_S8_UINT:
+		case DXGI_FORMAT_D16_UNORM:
+			return 1;
+		case DXGI_FORMAT_R32G8X24_TYPELESS:
+		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+		case DXGI_FORMAT_R24G8_TYPELESS:
+		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+			return 2;
+		case DXGI_FORMAT_R32_TYPELESS:
+		case DXGI_FORMAT_R32_FLOAT:
+		case DXGI_FORMAT_R16_TYPELESS:
+		case DXGI_FORMAT_R16_UNORM:
+			return -1;
+		default:
+			return 0;
+	}
+}
+
+
+// Transfer a resource from one device to another. First came across this
+// possibility in DOAXVV where showing the news creates a new temporary device
+// & context, and due to another bug [Constants] would be re-run, which allowed
+// certain mods to copy one resource to another crashing the game. For that
+// game we want to disallow re-running [Constants], but the possibility of
+// running into more of these issues remains, particularly given that many
+// games tend to create & destroy devices on startup where we would actually
+// prefer the final device to own resources (in contrast to DOAXVV where we
+// want the first device to remain the owner). This attempts to transfer
+// resources between devices on demand so that whichever device is currently in
+// use will own the resources, however this is very slow and if it ever crops
+// up in a fast path we'd need to look for ways to avoid this.
+//
+// This does not handle all edge cases (depth buffers, dynamic destinations and
+// MSAA are not supported by UpdateSubresource), and knowing DirectX there will
+// probably be more undocumented surprise combinations that don't work either.
+//
+// TODO: Refactor this - the four cases are very similar with some differences
+//
+static ID3D11Resource * inter_device_resource_transfer(ID3D11Device *dst_dev, ID3D11DeviceContext *dst_ctx, ID3D11Resource *src_res, wstring *name)
+{
+	ID3D11Device *src_dev = NULL;
+	ID3D11DeviceContext *src_ctx = NULL;
+	ID3D11Resource *stg_res = NULL;
+	ID3D11Resource *dtg_res = NULL;
+	ID3D11Resource *dst_res = NULL;
+	D3D11_RESOURCE_DIMENSION dimension;
+	D3D11_MAPPED_SUBRESOURCE src_map;
+	UINT item, level, index;
+	const char *reason = "";
+
+	Profiling::inter_device_copies++;
+
+	// Not really anything sensible we can do with the resource creation
+	// mode in the general case here as yet - if we copy via the CPU we
+	// will lose the 2nd perspective, but we have no way to even know if
+	// one even exists. There are some limited situations we could copy a
+	// stereo texture between devices (reverse stereo blit -> stereo
+	// header), but let's wait until we have a proven need before we try
+	// anything heroic that probably won't work anyway. Tbh we might be
+	// better off just trying to avoid getting down this code path - maybe
+	// just discarding resources for re-substantiation and re-running
+	// Contants will be sufficient in most cases
+	LockResourceCreationMode();
+
+	src_res->GetDevice(&src_dev);
+	reason = "Source device unavailable\n";
+	if (!src_dev)
+		goto err;
+
+	src_dev->GetImmediateContext(&src_ctx);
+	reason = "Source context unavailable\n";
+	if (!src_ctx)
+		goto err;
+
+	src_res->GetType(&dimension);
+	switch (dimension) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+		{
+			ID3D11Buffer *buf = (ID3D11Buffer*)src_res;
+			D3D11_BUFFER_DESC buf_desc;
+			buf->GetDesc(&buf_desc);
+
+			reason = "Dynamic Buffers unsupported\n";
+			if (buf_desc.Usage == D3D11_USAGE_DYNAMIC)
+				goto err;
+			if (buf_desc.Usage == D3D11_USAGE_IMMUTABLE)
+				buf_desc.Usage = D3D11_USAGE_DEFAULT;
+
+			dst_dev->CreateBuffer(&buf_desc, NULL, (ID3D11Buffer**)&dst_res);
+			if (!dst_res) {
+				reason = "Error creating final destination Buffer\n";
+				LogResourceDesc(&buf_desc);
+				goto err;
+			}
+
+			buf_desc.Usage = D3D11_USAGE_STAGING;
+			buf_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			buf_desc.BindFlags = 0;
+			src_dev->CreateBuffer(&buf_desc, NULL, (ID3D11Buffer**)&stg_res);
+			if (!stg_res) {
+				reason = "Error creating source staging Buffer\n";
+				LogResourceDesc(&buf_desc);
+				goto err;
+			}
+			src_ctx->CopyResource(stg_res, src_res);
+
+			// Buffers only have a single subresource:
+			index = 0;
+			reason = "Error mapping source staging Buffer\n";
+			if (FAILED(src_ctx->Map(stg_res, index, D3D11_MAP_READ, 0, &src_map)))
+				goto err;
+			dst_ctx->UpdateSubresource(dst_res, index, NULL, src_map.pData, src_map.RowPitch, src_map.DepthPitch);
+			src_ctx->Unmap(stg_res, index);
+			break;
+		}
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+		{
+			ID3D11Texture1D *tex1d = (ID3D11Texture1D*)src_res;
+			D3D11_TEXTURE1D_DESC tex1d_desc;
+			tex1d->GetDesc(&tex1d_desc);
+
+			reason = "Dynamic Texture1Ds unsupported\n";
+			if (tex1d_desc.Usage == D3D11_USAGE_DYNAMIC)
+				goto err;
+			if (tex1d_desc.Usage == D3D11_USAGE_IMMUTABLE)
+				tex1d_desc.Usage = D3D11_USAGE_DEFAULT;
+
+			// It's not clear to me from the UpdateSubresource documentation if the
+			// reason depth/stencil buffers aren't supported is down to the bind flags,
+			// or the format... For now, erring on the side of throwing an error either
+			// way, but trying to continue if it is just the format
+			if ((tex1d_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL)) {
+				reason = "depth/stencil buffers unsupported";
+				goto err;
+			}
+			if (is_dsv_format(tex1d_desc.Format) > 0) {
+				LogOverlay(LOG_NOTICE, "Inter-device transfer of [%S] with depth/stencil format %s may or may not work. Please report success/failure.\n",
+						name->c_str(), TexFormatStr(tex1d_desc.Format));
+			}
+
+			dst_dev->CreateTexture1D(&tex1d_desc, NULL, (ID3D11Texture1D**)&dst_res);
+			if (!dst_res) {
+				reason = "Error creating final destination Texture1D\n";
+				LogResourceDesc(&tex1d_desc);
+				goto err;
+			}
+
+			tex1d_desc.Usage = D3D11_USAGE_STAGING;
+			tex1d_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			tex1d_desc.BindFlags = 0;
+			tex1d_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_GENERATE_MIPS;
+			src_dev->CreateTexture1D(&tex1d_desc, NULL, (ID3D11Texture1D**)&stg_res);
+			if (!stg_res) {
+				reason = "Error creating staging Texture1D\n";
+				LogResourceDesc(&tex1d_desc);
+				goto err;
+			}
+			src_ctx->CopyResource(stg_res, src_res);
+
+			for (item = 0; item < tex1d_desc.ArraySize; item++) {
+				for (level = 0; level < tex1d_desc.MipLevels; level++) {
+					index = D3D11CalcSubresource(level, item, max(tex1d_desc.MipLevels, 1));
+					reason = "Error mapping source staging Texture1D\n";
+					if (FAILED(src_ctx->Map(stg_res, index, D3D11_MAP_READ, 0, &src_map)))
+						goto err;
+					dst_ctx->UpdateSubresource(dst_res, index, NULL, src_map.pData, src_map.RowPitch, src_map.DepthPitch);
+					src_ctx->Unmap(stg_res, index);
+				}
+			}
+			break;
+		}
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+		{
+			ID3D11Texture2D *tex2d = (ID3D11Texture2D*)src_res;
+			D3D11_TEXTURE2D_DESC tex2d_desc;
+			tex2d->GetDesc(&tex2d_desc);
+
+			reason = "Dynamic Texture2Ds unsupported\n";
+			if (tex2d_desc.Usage == D3D11_USAGE_DYNAMIC)
+				goto err;
+			if (tex2d_desc.Usage == D3D11_USAGE_IMMUTABLE)
+				tex2d_desc.Usage = D3D11_USAGE_DEFAULT;
+
+			if (tex2d_desc.SampleDesc.Count > 1) {
+				// Not sure how to handle this one - I'd be surprised if it works for map/unmap
+				// and while we can resolve MSAA (for supported formats) on the source device,
+				// what do we do to restore the lost samples on the destination?
+				reason = "MSAA resources unsupported";
+				goto err;
+			}
+
+			// It's not clear to me from the UpdateSubresource documentation if the
+			// reason depth/stencil buffers aren't supported is down to the bind flags,
+			// or the format... For now, erring on the side of throwing an error either
+			// way, but trying to continue if it is just the format
+			if ((tex2d_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL)) {
+				reason = "depth/stencil buffers unsupported";
+				goto err;
+			}
+			if (is_dsv_format(tex2d_desc.Format) > 0) {
+				LogOverlay(LOG_NOTICE, "Inter-device transfer of [%S] with depth/stencil format %s may or may not work. Please report success/failure.\n",
+						name->c_str(), TexFormatStr(tex2d_desc.Format));
+			}
+
+			dst_dev->CreateTexture2D(&tex2d_desc, NULL, (ID3D11Texture2D**)&dst_res);
+			if (!dst_res) {
+				reason = "Error creating final destination Texture2D\n";
+				LogResourceDesc(&tex2d_desc);
+				goto err;
+			}
+
+			tex2d_desc.Usage = D3D11_USAGE_STAGING;
+			tex2d_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			tex2d_desc.BindFlags = 0;
+			tex2d_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_GENERATE_MIPS;
+			src_dev->CreateTexture2D(&tex2d_desc, NULL, (ID3D11Texture2D**)&stg_res);
+			if (!stg_res) {
+				reason = "Error creating staging Texture2D\n";
+				LogResourceDesc(&tex2d_desc);
+				goto err;
+			}
+			src_ctx->CopyResource(stg_res, src_res);
+
+			for (item = 0; item < tex2d_desc.ArraySize; item++) {
+				for (level = 0; level < tex2d_desc.MipLevels; level++) {
+					index = D3D11CalcSubresource(level, item, max(tex2d_desc.MipLevels, 1));
+					reason = "Error mapping source staging Texture2D\n";
+					if (FAILED(src_ctx->Map(stg_res, index, D3D11_MAP_READ, 0, &src_map)))
+						goto err;
+					dst_ctx->UpdateSubresource(dst_res, index, NULL, src_map.pData, src_map.RowPitch, src_map.DepthPitch);
+					src_ctx->Unmap(stg_res, index);
+				}
+			}
+			break;
+		}
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+		{
+			ID3D11Texture3D *tex3d = (ID3D11Texture3D*)src_res;
+			D3D11_TEXTURE3D_DESC tex3d_desc;
+			tex3d->GetDesc(&tex3d_desc);
+
+			reason = "Dynamic Texture3Ds unsupported\n";
+			if (tex3d_desc.Usage == D3D11_USAGE_DYNAMIC)
+				goto err;
+			if (tex3d_desc.Usage == D3D11_USAGE_IMMUTABLE)
+				tex3d_desc.Usage = D3D11_USAGE_DEFAULT;
+
+			dst_dev->CreateTexture3D(&tex3d_desc, NULL, (ID3D11Texture3D**)&dst_res);
+			if (!dst_res) {
+				reason = "Error creating final destination Texture3D\n";
+				LogResourceDesc(&tex3d_desc);
+				goto err;
+			}
+
+			tex3d_desc.Usage = D3D11_USAGE_STAGING;
+			tex3d_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			tex3d_desc.BindFlags = 0;
+			tex3d_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_GENERATE_MIPS;
+			src_dev->CreateTexture3D(&tex3d_desc, NULL, (ID3D11Texture3D**)&stg_res);
+			if (!stg_res) {
+				reason = "Error creating staging Texture3D\n";
+				LogResourceDesc(&tex3d_desc);
+				goto err;
+			}
+			src_ctx->CopyResource(stg_res, src_res);
+
+			for (level = 0; level < tex3d_desc.MipLevels; level++) {
+				// 3D Textures cannot be arrays, so only mip-map level counts for subresource index:
+				index = level;
+				reason = "Error mapping source staging Texture3D\n";
+				if (FAILED(src_ctx->Map(stg_res, index, D3D11_MAP_READ, 0, &src_map)))
+					goto err;
+				dst_ctx->UpdateSubresource(dst_res, index, NULL, src_map.pData, src_map.RowPitch, src_map.DepthPitch);
+				src_ctx->Unmap(stg_res, index);
+			}
+			break;
+		}
+		default:
+			reason = "Unknown dimension\n";
+			goto err;
+	}
+
+out:
+	if (stg_res)
+		stg_res->Release();
+	if (src_ctx)
+		src_ctx->Release();
+	if (src_dev)
+		src_dev->Release();
+	UnlockResourceCreationMode();
+	return dst_res;
+
+err:
+	LogOverlay(LOG_DIRE, "Inter-device transfer of [%S] failed: %s\n", name->c_str(), reason);
+	if (dst_res)
+		dst_res->Release();
+	dst_res = NULL;
+	goto out;
+}
+
+void CustomResource::expire(ID3D11Device *mOrigDevice1, ID3D11DeviceContext *mOrigContext1)
+{
+	ID3D11Resource *new_resource = NULL;
+
+	if (!resource || is_null)
+		return;
+
+	// Check for device mismatches and handle via expiring cached
+	// resources, flagging for re-substantiation and/or performing
+	// inter-device transfers if necessary. We cache the device rather than
+	// querying it from the resource via GetDevice(), because if ReShade is
+	// in use GetDevice() will return the real device, but we will compare
+	// it with the ReShade device and think there has been a device swap
+	// when there has not been.
+	if (device == mOrigDevice1)
+		return;
+
+	// Attempt to transfer resource to new device by staging to the CPU and
+	// back. Rather slow, but ensures the contents are up to date.
+	// TODO: Search other custom resources for references to this resource
+	//       and update those. Not urgent as yet, but will be important if
+	//       we allow the === and !== operators to check if one custom
+	//       resource matches another.
+	// TODO: Track if resource is dirty (used as render/depth target/UAV,
+	//       ever assigned or copied to) and re-substantiate if clean.
+	// TODO: Use sharable resources to skip copy back to CPU (limited to 2D
+	//       non-mip-mapped resources)
+	// TODO: Option to skip inter-device copies instead of transfer
+	// TODO: Option to discard individual resources instead of transfer
+	// TODO: Option to discard all custom resources and re-run [Constants]
+	//       on new device (for convoluted startup sequences)
+	LogInfo("Device mismatch, transferring [%S] to new device\n", name.c_str());
+	new_resource = inter_device_resource_transfer(
+			mOrigDevice1, mOrigContext1, resource, &name);
+
+	// Expire cache:
+	resource->Release();
+	if (view)
+		view->Release();
+	view = NULL;
+
+	if (new_resource) {
+		// Inter-device copy succeeded, switch to the new resource:
+		resource = new_resource;
+		device = mOrigDevice1;
+	} else {
+		// Inter-device copy failed / skipped. Flag resource for
+		// re-substantiation (if possible for this resource):
+		substantiated = false;
+		resource = NULL;
+		device = NULL;
+		is_null = true;
+	}
+}
 
 bool ResourceCopyTarget::ParseTarget(const wchar_t *target,
 		bool is_source, const wstring *ini_namespace)
@@ -4426,7 +5160,7 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target,
 		return true;
 	}
 
-	if (is_source && !wcscmp(target, L"this")) {
+	if (!wcscmp(target, L"this")) {
 		type = ResourceCopyTargetType::THIS_RESOURCE;
 		return true;
 	}
@@ -4484,6 +5218,7 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 	ResourceCopyOperation *operation = new ResourceCopyOperation();
 	wchar_t buf[MAX_PATH];
 	wchar_t *src_ptr = NULL;
+	D3D11_RESOURCE_MISC_FLAG misc_flags = (D3D11_RESOURCE_MISC_FLAG)0;
 
 	if (!operation->dst.ParseTarget(key, false, ini_namespace))
 		goto bail;
@@ -4553,13 +5288,19 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
 	// propagate all the bind flags correctly depending on the order
 	// everything is parsed. We'd need to construct a dependency graph
 	// to fix this, but it's not clear that this combination would really
-	// be used in practice, so for now this will do.
+	// be used in practice, so for now this will do. Update: We now
+	// or in the bind flags in use when the custom resource is first
+	// Substantiate()ed, which will cover most of these missing cases - the
+	// remaining exceptions would be where differing bind flags are used at
+	// different times and we still can't deduce it here
 	// FIXME: The constant buffer bind flag can't be combined with others
 	if (operation->src.type == ResourceCopyTargetType::CUSTOM_RESOURCE &&
 			(operation->options & ResourceCopyOptions::REFERENCE)) {
 		// Fucking C++ making this line 3x longer than it should be:
 		operation->src.custom_resource->bind_flags = (D3D11_BIND_FLAG)
-			(operation->src.custom_resource->bind_flags | operation->dst.BindFlags());
+			(operation->src.custom_resource->bind_flags | operation->dst.BindFlags(NULL, &misc_flags));
+		operation->src.custom_resource->misc_flags = (D3D11_RESOURCE_MISC_FLAG)
+			(operation->src.custom_resource->misc_flags | misc_flags);
 	}
 
 	operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
@@ -4790,7 +5531,7 @@ bool IfCommand::optimise(HackerDevice *device)
 	return expression.optimise(device);
 }
 
-bool IfCommand::noop(bool post, bool ignore_cto)
+bool IfCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	float static_val;
 	bool is_static;
@@ -4821,7 +5562,7 @@ void CommandPlaceholder::run(CommandListState*)
 	LogOverlay(LOG_DIRE, "BUG: Placeholder command executed: %S\n", ini_line.c_str());
 }
 
-bool CommandPlaceholder::noop(bool post, bool ignore_cto)
+bool CommandPlaceholder::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
 	LogOverlay(LOG_WARNING, "WARNING: Command not terminated: %S\n", ini_line.c_str());
 	return true;
@@ -4833,7 +5574,8 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		UINT *stride,        // Used by vertex buffers
 		UINT *offset,        // Used by vertex & index buffers
 		DXGI_FORMAT *format, // Used by index buffers
-		UINT *buf_size)      // Used when creating a view of the buffer
+		UINT *buf_size,      // Used when creating a view of the buffer
+		ResourceCopyTarget *dst) // Used to get bind flags when substantiating a custom resource
 {
 	HackerDevice *mHackerDevice = state->mHackerDevice;
 	ID3D11Device *mOrigDevice1 = state->mOrigDevice1;
@@ -4845,6 +5587,8 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 	ID3D11RenderTargetView *render_view[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
 	ID3D11DepthStencilView *depth_view = NULL;
 	ID3D11UnorderedAccessView *unordered_view = NULL;
+	D3D11_BIND_FLAG bind_flags = (D3D11_BIND_FLAG)0;
+	D3D11_RESOURCE_MISC_FLAG misc_flags = (D3D11_RESOURCE_MISC_FLAG)0;
 	unsigned i;
 
 	switch(type) {
@@ -5012,7 +5756,11 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return res;
 
 	case ResourceCopyTargetType::CUSTOM_RESOURCE:
-		custom_resource->Substantiate(mOrigDevice1, mHackerDevice->mStereoHandle);
+		custom_resource->expire(mOrigDevice1, mOrigContext1);
+
+		if (dst)
+			bind_flags = dst->BindFlags(state, &misc_flags);
+		custom_resource->Substantiate(mOrigDevice1, mHackerDevice->mStereoHandle, bind_flags, misc_flags);
 
 		if (stride)
 			*stride = custom_resource->stride;
@@ -5073,12 +5821,20 @@ ID3D11Resource *ResourceCopyTarget::GetResource(
 		return state->cursor_color_tex;
 
 	case ResourceCopyTargetType::THIS_RESOURCE:
-		if (state->view)
-			state->view->AddRef();
-		*view = state->view;
-		if (state->resource)
-			state->resource->AddRef();
-		return state->resource;
+		if (state->this_target)
+			return state->this_target->GetResource(state, view, stride, offset, format, buf_size);
+
+		if (state->resource) {
+			if (state->view)
+				state->view->AddRef();
+			*view = state->view;
+			if (*state->resource)
+				(*state->resource)->AddRef();
+			return (*state->resource);
+		}
+
+		COMMAND_LIST_LOG(state, "  \"this\"  is not valid in this context\n");
+		return NULL;
 
 	case ResourceCopyTargetType::SWAP_CHAIN:
 		{
@@ -5311,9 +6067,24 @@ void ResourceCopyTarget::SetResource(
 			if (custom_resource->resource)
 				custom_resource->resource->Release();
 			custom_resource->resource = res;
+			custom_resource->device = state->mOrigDevice1;
 			if (custom_resource->resource)
 				custom_resource->resource->AddRef();
 		}
+		break;
+
+	case ResourceCopyTargetType::THIS_RESOURCE:
+		if (state->this_target)
+			return state->this_target->SetResource(state, res, view, stride, offset, format, buf_size);
+
+		if (state->resource) {
+			if (*state->resource)
+				(*state->resource)->Release();
+			*state->resource = res;
+			break;
+		}
+
+		COMMAND_LIST_LOG(state, "  \"this\" target cannot be set outside of a checktextureoverride or indirect draw call context\n");
 		break;
 
 	case ResourceCopyTargetType::STEREO_PARAMS:
@@ -5333,7 +6104,7 @@ void ResourceCopyTarget::SetResource(
 	}
 }
 
-D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
+D3D11_BIND_FLAG ResourceCopyTarget::BindFlags(CommandListState *state, D3D11_RESOURCE_MISC_FLAG *misc_flags)
 {
 	switch(type) {
 		case ResourceCopyTargetType::CONSTANT_BUFFER:
@@ -5353,7 +6124,27 @@ D3D11_BIND_FLAG ResourceCopyTarget::BindFlags()
 		case ResourceCopyTargetType::UNORDERED_ACCESS_VIEW:
 			return D3D11_BIND_UNORDERED_ACCESS;
 		case ResourceCopyTargetType::CUSTOM_RESOURCE:
+			if (misc_flags)
+				*misc_flags = custom_resource->misc_flags;
 			return custom_resource->bind_flags;
+		case ResourceCopyTargetType::THIS_RESOURCE:
+			if (state) {
+				if (state->this_target)
+					return state->this_target->BindFlags(state);
+
+				if (state->call_info && state->call_info->indirect_buffer) {
+					if (misc_flags)
+						*misc_flags = D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS;
+					// No bind flags required, but a common scenario would be copying
+					// from a resource with D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS
+					// that will need to be cleared out if we have neither SRV or UAV
+					// set, which is handled in RecreateCompatibleBuffer()
+					return (D3D11_BIND_FLAG)0;
+				}
+			}
+			// Bind flags are unknown since this cannot be resolved
+			// until runtime:
+			return (D3D11_BIND_FLAG)0;
 		case ResourceCopyTargetType::STEREO_PARAMS:
 		case ResourceCopyTargetType::INI_PARAMS:
 		case ResourceCopyTargetType::SWAP_CHAIN:
@@ -5431,6 +6222,7 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 		ResourcePool *resource_pool,
 		ID3D11View *src_view,
 		D3D11_BIND_FLAG bind_flags,
+		D3D11_RESOURCE_MISC_FLAG misc_flags,
 		CommandListState *state,
 		UINT stride,
 		UINT offset,
@@ -5443,6 +6235,14 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 
 	src_resource->GetDesc(&new_desc);
 	new_desc.BindFlags = bind_flags;
+	// We reuse the misc flags from the source, which has worked fairly
+	// well for the most part with maybe one or two exceptions. We can
+	// always clear incompatible flags and allow an override if necessary:
+	new_desc.MiscFlags = new_desc.MiscFlags | misc_flags;
+
+	// Raw view misc flag can only be used with SRVs or UAVs
+	if (!(new_desc.BindFlags & (D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS)))
+		new_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
 
 	if (dst && dst->type == ResourceCopyTargetType::CPU) {
 		new_desc.Usage = D3D11_USAGE_STAGING;
@@ -5788,14 +6588,17 @@ static void RecreateCompatibleResource(
 	NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
 	D3D11_RESOURCE_DIMENSION src_dimension;
 	D3D11_BIND_FLAG bind_flags = (D3D11_BIND_FLAG)0;
+	D3D11_RESOURCE_MISC_FLAG misc_flags = (D3D11_RESOURCE_MISC_FLAG)0;
 	ID3D11Resource *res = NULL;
 	bool restore_create_mode = false;
 
 	if (dst)
-		bind_flags = dst->BindFlags();
+		bind_flags = dst->BindFlags(state, &misc_flags);
+
+	LockResourceCreationMode();
 
 	if (options & ResourceCopyOptions::CREATEMODE_MASK) {
-		NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &orig_mode);
+		Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &orig_mode);
 		restore_create_mode = true;
 
 		// STEREO2MONO will force the final destination to mono since
@@ -5804,10 +6607,10 @@ static void RecreateCompatibleResource(
 		// forced to STEREO.
 
 		if (options & ResourceCopyOptions::STEREO) {
-			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
 		} else {
-			NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+			Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
 					NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
 		}
 	} else if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE) {
@@ -5818,7 +6621,7 @@ static void RecreateCompatibleResource(
 	switch (src_dimension) {
 		case D3D11_RESOURCE_DIMENSION_BUFFER:
 			res = RecreateCompatibleBuffer(ini_line, dst, (ID3D11Buffer*)src_resource, (ID3D11Buffer*)*dst_resource,
-				resource_pool, src_view, bind_flags, state, stride, offset, format, buf_dst_size);
+				resource_pool, src_view, bind_flags, misc_flags, state, stride, offset, format, buf_dst_size);
 			break;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
 			res = RecreateCompatibleTexture<ID3D11Texture1D, D3D11_TEXTURE1D_DESC, &ID3D11Device::CreateTexture1D>
@@ -5838,7 +6641,9 @@ static void RecreateCompatibleResource(
 	}
 
 	if (restore_create_mode)
-		NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
+		Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
+
+	UnlockResourceCreationMode();
 
 	if (res) {
 		if (*dst_resource)
@@ -5876,8 +6681,11 @@ static void FillOutBufferDescCommon(DescType *desc, UINT stride,
 	// here (and the below should work), but we would need to
 	// create a new view every time the offset changes.
 	//
-	// TODO: Handle vertex/index buffers with "first vertex/index" here, or
-	// give shaders a way to access that via ini params.
+	// Possible TODO: Handle vertex/index buffers with "first vertex/index"
+	// here? These can now be accessed via command list expression and
+	// passed through ini params, so a fix can handle them that way, and
+	// any change here would need careful consideration as to backwards
+	// compatibility.
 	if (stride) {
 		desc->FirstElement = offset / stride;
 		desc->NumElements = (buf_src_size - offset) / stride;
@@ -6331,6 +7139,10 @@ static ID3D11View* CreateCompatibleView(
 			       D3D11_UNORDERED_ACCESS_VIEW_DESC,
 			       &ID3D11Device::CreateUnorderedAccessView>
 				       (resource, state, stride, offset, format, buf_src_size, options);
+		case ResourceCopyTargetType::THIS_RESOURCE:
+			if (state->this_target)
+				return CreateCompatibleView(state->this_target, resource, state, stride, offset, format, buf_src_size, options);
+			break;
 	}
 	return NULL;
 }
@@ -6480,7 +7292,7 @@ static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_
 	fallback = state->mHackerDevice->mParamTextureManager.mActive ? 0 : 1;
 
 	if (!fallback) {
-		nvret = NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, true);
+		nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, true);
 		if (nvret != NVAPI_OK) {
 			LogInfo("Resource copying failed to enable reverse stereo blit\n");
 			// Fallback path: Copy 2D resource to both sides of the 2x
@@ -6513,7 +7325,7 @@ static void ReverseStereoBlit(ID3D11Resource *dst_resource, ID3D11Resource *src_
 	}
 
 	if (!fallback)
-		NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, false);
+		Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, false);
 }
 
 static void SpecialCopyBufferRegion(ID3D11Resource *dst_resource,ID3D11Resource *src_resource,
@@ -6669,11 +7481,13 @@ void ClearViewCommand::clear_unknown_view(ID3D11View *view, CommandListState *st
 
 	if (rtv) {
 		COMMAND_LIST_LOG(state, "  clearing RTV\n");
+		Profiling::views_cleared++;
 		state->mOrigContext1->ClearRenderTargetView(rtv, fval);
 	}
 	if (dsv) {
 		D3D11_CLEAR_FLAG flags = (D3D11_CLEAR_FLAG)0;
 		COMMAND_LIST_LOG(state, "  clearing DSV\n");
+		Profiling::views_cleared++;
 
 		if (!clear_depth && !clear_stencil)
 			flags = (D3D11_CLEAR_FLAG)(D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL);
@@ -6697,6 +7511,7 @@ void ClearViewCommand::clear_unknown_view(ID3D11View *view, CommandListState *st
 			COMMAND_LIST_LOG(state, "  clearing UAV (float)\n");
 			state->mOrigContext1->ClearUnorderedAccessViewFloat(uav, fval);
 		}
+		Profiling::views_cleared++;
 	}
 
 	if (rtv)
@@ -6774,6 +7589,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 	ID3D11Resource *src_resource = NULL;
 	ID3D11Resource *dst_resource = NULL;
 	ID3D11Resource **pp_cached_resource = &cached_resource;
+	ID3D11Device **pp_cached_device = NULL;
 	ResourcePool *p_resource_pool = &resource_pool;
 	ID3D11View *src_view = NULL;
 	ID3D11View *dst_view = NULL;
@@ -6790,7 +7606,8 @@ void ResourceCopyOperation::run(CommandListState *state)
 		return;
 	}
 
-	src_resource = src.GetResource(state, &src_view, &stride, &offset, &format, &buf_src_size);
+	src_resource = src.GetResource(state, &src_view, &stride, &offset, &format, &buf_src_size,
+			((options & ResourceCopyOptions::REFERENCE) ? &dst : NULL));
 	if (!src_resource) {
 		COMMAND_LIST_LOG(state, "  Copy source was NULL\n");
 		if (!(options & ResourceCopyOptions::UNLESS_NULL)) {
@@ -6811,6 +7628,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 		// number of extra resources we have floating around if copying
 		// something to a single custom resource from multiple shaders.
 		pp_cached_resource = &dst.custom_resource->resource;
+		pp_cached_device = &dst.custom_resource->device;
 		p_resource_pool = &dst.custom_resource->resource_pool;
 		pp_cached_view = &dst.custom_resource->view;
 
@@ -6820,6 +7638,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 				dst.custom_resource->copies_this_frame = 1;
 			} else if (dst.custom_resource->copies_this_frame++ >= dst.custom_resource->max_copies_per_frame) {
 				COMMAND_LIST_LOG(state, "  max_copies_per_frame exceeded\n");
+				Profiling::max_copies_per_frame_exceeded++;
 				return;
 			}
 		}
@@ -6836,10 +7655,12 @@ void ResourceCopyOperation::run(CommandListState *state)
 			options, stride, offset, format, &buf_dst_size);
 
 		if (!*pp_cached_resource) {
-			LogDebug("Resource copy error: Could not create/update destination resource\n");
+			COMMAND_LIST_LOG(state, "  error creating/updating destination resource\n");
 			goto out_release;
 		}
 		dst_resource = *pp_cached_resource;
+		if (pp_cached_device)
+			*pp_cached_device = state->mOrigDevice1;
 		dst_view = *pp_cached_view;
 
 		if (options & ResourceCopyOptions::COPY_DESC) {
@@ -6847,6 +7668,7 @@ void ResourceCopyOperation::run(CommandListState *state)
 			COMMAND_LIST_LOG(state, "  copying resource description\n");
 		} else if (options & ResourceCopyOptions::STEREO2MONO) {
 			COMMAND_LIST_LOG(state, "  performing reverse stereo blit\n");
+			Profiling::stereo2mono_copies++;
 
 			// TODO: Resolve MSAA to an intermediate resource first
 			// if necessary (but keep in mind this may have
@@ -6871,21 +7693,24 @@ void ResourceCopyOperation::run(CommandListState *state)
 			ReverseStereoBlit(stereo2mono_intermediate, src_resource, state);
 
 			mOrigContext1->CopyResource(dst_resource, stereo2mono_intermediate);
-
 		} else if (options & ResourceCopyOptions::RESOLVE_MSAA) {
 			COMMAND_LIST_LOG(state, "  resolving MSAA\n");
+			Profiling::msaa_resolutions++;
 			ResolveMSAA(dst_resource, src_resource, state);
 		} else if (buf_dst_size) {
 			COMMAND_LIST_LOG(state, "  performing region copy\n");
+			Profiling::buffer_region_copies++;
 			SpecialCopyBufferRegion(dst_resource, src_resource,
 					state, stride, &offset,
 					buf_src_size, buf_dst_size);
 		} else {
 			COMMAND_LIST_LOG(state, "  performing full copy\n");
+			Profiling::resource_full_copies++;
 			mOrigContext1->CopyResource(dst_resource, src_resource);
 		}
 	} else {
 		COMMAND_LIST_LOG(state, "  copying by reference\n");
+		Profiling::resource_reference_copies++;
 		dst_resource = src_resource;
 		if (src_view && (EquivTarget(src.type) == EquivTarget(dst.type))) {
 			dst_view = src_view;
