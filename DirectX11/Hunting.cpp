@@ -485,7 +485,7 @@ void MigotoIncludeHandler::push_dir(const char *path)
 		dir_stack.push_back("");
 }
 
-HRESULT MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID *ppData, UINT *pBytes)
+STDMETHODIMP MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID *ppData, UINT *pBytes)
 {
 	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> codec;
 	char *buf = NULL;
@@ -574,7 +574,7 @@ err_free:
 	return E_FAIL;
 }
 
-HRESULT MigotoIncludeHandler::Close(LPCVOID pData)
+STDMETHODIMP MigotoIncludeHandler::Close(LPCVOID pData)
 {
 	LogDebug("      MigotoIncludeHandler::Close(%p, %p)\n", this, pData);
 	delete [] pData;
