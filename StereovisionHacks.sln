@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectX9", "DirectX9\DirectX9.vcxproj", "{4265C0D8-8671-49C0-8EB5-EB940FD08482}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -177,17 +177,11 @@ Global
 		{258D0AD2-B762-41E3-A0C1-CF831D859DA4}.Zip Release|x64.ActiveCfg = Zip Release|x64
 		{258D0AD2-B762-41E3-A0C1-CF831D859DA4}.Zip Release|x64.Build.0 = Zip Release|x64
 		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Debug|Win32.ActiveCfg = Debug|Win32
-		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Debug|Win32.Build.0 = Debug|Win32
 		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Debug|x64.ActiveCfg = Debug|x64
-		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Debug|x64.Build.0 = Debug|x64
 		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Release|Win32.ActiveCfg = Release|Win32
-		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Release|Win32.Build.0 = Release|Win32
 		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Release|x64.ActiveCfg = Release|x64
-		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Release|x64.Build.0 = Release|x64
 		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Zip Release|Win32.ActiveCfg = Release|Win32
-		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Zip Release|Win32.Build.0 = Release|Win32
 		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Zip Release|x64.ActiveCfg = Release|x64
-		{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}.Zip Release|x64.Build.0 = Release|x64
 		{25E1F732-DCF5-428E-928D-D39C499CC95F}.Debug|Win32.ActiveCfg = Debug|Win32
 		{25E1F732-DCF5-428E-928D-D39C499CC95F}.Debug|Win32.Build.0 = Debug|Win32
 		{25E1F732-DCF5-428E-928D-D39C499CC95F}.Debug|x64.ActiveCfg = Debug|x64
