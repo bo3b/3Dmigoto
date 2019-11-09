@@ -13,8 +13,8 @@ class MigotoIncludeHandler : public ID3DInclude
 public:
 	MigotoIncludeHandler(const char *path);
 
-	HRESULT Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID *ppData, UINT *pBytes);
-	HRESULT Close(LPCVOID pData);
+	STDMETHOD(Open)(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID *ppData, UINT *pBytes);
+	STDMETHOD(Close)(LPCVOID pData);
 };
 
 void TimeoutHuntingBuffers();
