@@ -311,7 +311,7 @@ public:
 
 	char *ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
 		SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp,
-		void **zeroShader, wstring &headerLine, const char *overrideShaderModel);
+		wstring &headerLine, const char *overrideShaderModel);
 	bool NeedOriginalShader(D3D9Wrapper::IDirect3DShader9 *wrapper);
 
 	template <class ID3D9ShaderWrapper, class ID3D9Shader,

@@ -17,11 +17,6 @@ struct DecompilerSettings
 	int StereoParamsReg;
 	int IniParamsReg;
 
-	//dx9
-	int StereoParamsVertexReg;
-	int StereoParamsPixelReg;
-	//dx9
-
 	bool fixSvPosition;
 	bool recompileVs;
 	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
@@ -43,6 +38,11 @@ struct ParseParameters
 	const char *decompiled;
 	size_t decompiledSize;
 	bool ZeroOutput;
+
+	//dx9
+	int StereoParamsVertexReg;
+	int StereoParamsPixelReg;
+	//dx9
 
 	DecompilerSettings *G;
 };

@@ -16,6 +16,7 @@ namespace D3D9Base
 #include "ResourceHash.h"
 #include "DLLMainHookDX9.h"
 #include <DirectXMath.h>
+#include "DecompileHLSL.h"
 
 
 
@@ -53,7 +54,6 @@ enum class MarkingMode {
 	ORIGINAL,
 	PINK,
 	MONO,
-	ZERO,
 
 	INVALID, // Must be last - used for next_marking_mode
 };
@@ -61,7 +61,6 @@ static EnumName_t<const wchar_t *, MarkingMode> MarkingModeNames[] = {
 	{ L"skip", MarkingMode::SKIP },
 	{ L"mono", MarkingMode::MONO },
 	{ L"original", MarkingMode::ORIGINAL },
-	{ L"zero", MarkingMode::ZERO },
 	{ L"pink", MarkingMode::PINK },
 	{ NULL, MarkingMode::INVALID } // End of list marker
 };
@@ -611,19 +610,8 @@ public:
 	bool EXPORT_SHADERS, EXPORT_FIXED, EXPORT_BINARY, CACHE_SHADERS, SCISSOR_DISABLE;
 	int track_texture_updates;
 	bool assemble_signature_comments;
-	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
-	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
-	std::vector<std::string> ZRepair_Dependencies1, ZRepair_Dependencies2;
-	std::string ZRepair_ZPosCalc1, ZRepair_ZPosCalc2;
-	std::string ZRepair_PositionTexture, ZRepair_WorldPosCalc;
-	std::vector<std::string> InvTransforms;
-	std::string BackProject_Vector1, BackProject_Vector2;
-	std::string ObjectPos_ID1, ObjectPos_ID2, ObjectPos_MUL1, ObjectPos_MUL2;
-	std::string MatrixPos_ID1, MatrixPos_MUL1;
 	uint32_t ZBufferHashToInject;
-	bool FIX_SV_Position;
-	bool FIX_Light_Position;
-	bool FIX_Recompile_VS;
+	DecompilerSettings decompiler_settings;
 	bool DumpUsage;
 	bool ENABLE_TUNE;
 	float gTuneValue[4], gTuneStep;
@@ -742,9 +730,6 @@ public:
 		EXPORT_FIXED(false),
 		EXPORT_BINARY(false),
 		CACHE_SHADERS(false),
-		FIX_SV_Position(false),
-		FIX_Light_Position(false),
-		FIX_Recompile_VS(false),
 		DumpUsage(false),
 		ENABLE_TUNE(false),
 		gTuneStep(0.001f),

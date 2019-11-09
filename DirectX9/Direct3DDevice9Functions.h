@@ -565,12 +565,11 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 		}
 	}
 }
-inline char * D3D9Wrapper::IDirect3DDevice9::ReplaceShader(UINT64 hash, const wchar_t * shaderType, const void * pShaderBytecode, SIZE_T BytecodeLength, SIZE_T & pCodeSize, string & foundShaderModel, FILETIME & timeStamp, void **zeroShader, wstring & headerLine, const char * overrideShaderModel)
+inline char * D3D9Wrapper::IDirect3DDevice9::ReplaceShader(UINT64 hash, const wchar_t * shaderType, const void * pShaderBytecode, SIZE_T BytecodeLength, SIZE_T & pCodeSize, string & foundShaderModel, FILETIME & timeStamp, wstring & headerLine, const char * overrideShaderModel)
 {
 	foundShaderModel = "";
 	timeStamp = { 0 };
 
-	*zeroShader = 0;
 	char *pCode = 0;
 	wchar_t val[MAX_PATH];
 
@@ -585,7 +584,7 @@ inline char * D3D9Wrapper::IDirect3DDevice9::ReplaceShader(UINT64 hash, const wc
 		// Export every shader seen as an ASM text file.
 		if (G->EXPORT_SHADERS)
 		{
-			CreateAsmTextFile(G->SHADER_CACHE_PATH, hash, shaderType, pShaderBytecode, BytecodeLength);
+			CreateAsmTextFile(G->SHADER_CACHE_PATH, hash, shaderType, pShaderBytecode, BytecodeLength, false);
 		}
 
 
@@ -618,7 +617,7 @@ inline char * D3D9Wrapper::IDirect3DDevice9::ReplaceShader(UINT64 hash, const wc
 	}
 
 	// Shader hacking?
-	if (G->SHADER_PATH[0] && G->SHADER_CACHE_PATH[0] && ((G->EXPORT_HLSL >= 1) || G->FIX_SV_Position || G->FIX_Light_Position || G->FIX_Recompile_VS) && !pCode)
+	if (G->SHADER_PATH[0] && G->SHADER_CACHE_PATH[0] && ((G->EXPORT_HLSL >= 1) || G->decompiler_settings.fixSvPosition || G->decompiler_settings.recompileVs) && !pCode)
 	{
 		// Skip?
 		swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_bad.txt", G->SHADER_PATH, hash, shaderType);
@@ -665,39 +664,14 @@ inline char * D3D9Wrapper::IDirect3DDevice9::ReplaceShader(UINT64 hash, const wc
 				bool patched = false;
 				bool errorOccurred = false;
 
-				// TODO: Refactor all parameters we just copy from globals into their
-				// own struct so we don't have to copy all this junk
 				ParseParameters p;
 				p.bytecode = pShaderBytecode;
 				p.decompiled = (const char *)disassembly->GetBufferPointer();
 				p.decompiledSize = disassembly->GetBufferSize();
 				p.StereoParamsVertexReg = G->StereoParamsVertexReg;
 				p.StereoParamsPixelReg = G->StereoParamsPixelReg;
-				//p.IniParamsReg = G->IniParamsReg;
-				p.recompileVs = G->FIX_Recompile_VS;
-				p.fixSvPosition = G->FIX_SV_Position;
-				p.ZRepair_Dependencies1 = G->ZRepair_Dependencies1;
-				p.ZRepair_Dependencies2 = G->ZRepair_Dependencies2;
-				p.ZRepair_DepthTexture1 = G->ZRepair_DepthTexture1;
-				p.ZRepair_DepthTexture2 = G->ZRepair_DepthTexture2;
-				p.ZRepair_DepthTextureReg1 = G->ZRepair_DepthTextureReg1;
-				p.ZRepair_DepthTextureReg2 = G->ZRepair_DepthTextureReg2;
-				p.ZRepair_ZPosCalc1 = G->ZRepair_ZPosCalc1;
-				p.ZRepair_ZPosCalc2 = G->ZRepair_ZPosCalc2;
-				p.ZRepair_PositionTexture = G->ZRepair_PositionTexture;
-				p.ZRepair_DepthBuffer = (G->ZBufferHashToInject != 0);
-				p.ZRepair_WorldPosCalc = G->ZRepair_WorldPosCalc;
-				p.BackProject_Vector1 = G->BackProject_Vector1;
-				p.BackProject_Vector2 = G->BackProject_Vector2;
-				p.ObjectPos_ID1 = G->ObjectPos_ID1;
-				p.ObjectPos_ID2 = G->ObjectPos_ID2;
-				p.ObjectPos_MUL1 = G->ObjectPos_MUL1;
-				p.ObjectPos_MUL2 = G->ObjectPos_MUL2;
-				p.MatrixPos_ID1 = G->MatrixPos_ID1;
-				p.MatrixPos_MUL1 = G->MatrixPos_MUL1;
-				p.InvTransforms = G->InvTransforms;
-				p.fixLightPosition = G->FIX_Light_Position;
 				p.ZeroOutput = false;
+				p.G = &G->decompiler_settings;
 				const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
 				if (!decompiledCode.size())
 				{
@@ -797,7 +771,7 @@ inline char * D3D9Wrapper::IDirect3DDevice9::ReplaceShader(UINT64 hash, const wc
 					// comparison between original ASM, and recompiled ASM.
 					if ((G->EXPORT_HLSL >= 3) && pCompiledOutput)
 					{
-						string asmText = BinaryToAsmText(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize());
+						string asmText = BinaryToAsmText(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize(), false);
 						if (asmText.empty())
 						{
 							LogInfo("    disassembly of recompiled shader failed.\n");
@@ -834,93 +808,6 @@ inline char * D3D9Wrapper::IDirect3DDevice9::ReplaceShader(UINT64 hash, const wc
 				timeStamp = ftWrite;
 
 				fclose(fw);
-			}
-		}
-	}
-
-	// Zero shader?
-	if (G->marking_mode == MarkingMode::ZERO)
-	{
-		// Disassemble old shader for fixing.
-		string asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength);
-		if (asmText.empty())
-		{
-			LogInfo("    disassembly of original shader failed.\n");
-		}
-		else
-		{
-			// Decompile code.
-			LogInfo("    creating HLSL representation of zero output shader.\n");
-
-			bool patched = false;
-			string shaderModel;
-			bool errorOccurred = false;
-			ParseParameters p;
-			p.bytecode = pShaderBytecode;
-			p.decompiled = asmText.c_str();
-			p.decompiledSize = asmText.size();
-			p.recompileVs = G->FIX_Recompile_VS;
-			p.fixSvPosition = false;
-			p.ZeroOutput = true;
-			const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
-			if (!decompiledCode.size())
-			{
-				LogInfo("    error while decompiling.\n");
-
-				return 0;
-			}
-			if (!errorOccurred)
-			{
-				// Compile replacement.
-				LogInfo("    compiling zero HLSL code with shader model %s, size = %Iu\n", shaderModel.c_str(), decompiledCode.size());
-
-				ID3DBlob *pErrorMsgs; // FIXME: This can leak
-				ID3DBlob *pCompiledOutput = 0;
-				// We don't have a valid value for path at this point in the function, so don't pass one in.
-				// Arguably we should not be using the default include handler here since it requires a valid
-				// path, but I'm not going to touch this without a good reason.
-				HRESULT ret = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), "wrapper1349", 0, ((ID3DInclude*)(UINT_PTR)1),
-					"main", shaderModel.c_str(), D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
-				LogInfo("    compile result of zero HLSL shader: %x\n", ret);
-
-				if (SUCCEEDED(ret) && pCompiledOutput)
-				{
-					SIZE_T codeSize = pCompiledOutput->GetBufferSize();
-					char *code = new char[codeSize];
-					memcpy(code, pCompiledOutput->GetBufferPointer(), codeSize);
-					pCompiledOutput->Release(); pCompiledOutput = 0;
-					if (!wcscmp(shaderType, L"vs"))
-					{
-						D3D9Base::IDirect3DVertexShader9 *zeroVertexShader = NULL;
-						HRESULT hr = GetD3D9Device()->CreateVertexShader((DWORD*)code, &zeroVertexShader);
-						if (hr == S_OK) {
-							*zeroShader = zeroVertexShader;
-							++migotoResourceCount;
-						}
-					}
-					else if (!wcscmp(shaderType, L"ps"))
-					{
-						D3D9Base::IDirect3DPixelShader9 *zeroPixelShader = NULL;
-						HRESULT hr = GetD3D9Device()->CreatePixelShader((DWORD*)code, &zeroPixelShader);
-						if (hr == S_OK) {
-							*zeroShader = zeroPixelShader;
-							++migotoResourceCount;
-						}
-					}
-					delete[] code;
-				}
-
-				if (LogFile && pErrorMsgs)
-				{
-					LPVOID errMsg = pErrorMsgs->GetBufferPointer();
-					SIZE_T errSize = pErrorMsgs->GetBufferSize();
-					LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
-					fwrite(errMsg, 1, errSize - 1, LogFile);
-					LogInfo("------------------------------------------- HLSL code -------------------------------------------\n");
-					fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), LogFile);
-					LogInfo("\n---------------------------------------------- END ----------------------------------------------\n");
-					pErrorMsgs->Release();
-				}
 			}
 		}
 	}
@@ -982,7 +869,6 @@ HRESULT D3D9Wrapper::IDirect3DDevice9::CreateShader(const DWORD *pFunction, ID3D
 	string shaderModel;
 	SIZE_T replaceShaderSize;
 	FILETIME ftWrite;
-	ID3D9Shader *zeroShader = 0;
 	wstring headerLine = L"";
 	ShaderOverrideMap::iterator override;
 	const char *overrideShaderModel = NULL;
@@ -1008,7 +894,7 @@ HRESULT D3D9Wrapper::IDirect3DDevice9::CreateShader(const DWORD *pFunction, ID3D
 	if (hr != S_OK && ppShader && pFunction)
 	{
 		replaceShader = ReplaceShader(hash, shaderType, pFunction, BytecodeLength, replaceShaderSize,
-			shaderModel, ftWrite, (void**)&zeroShader, headerLine, overrideShaderModel);
+			shaderModel, ftWrite, headerLine, overrideShaderModel);
 		if (replaceShader)
 		{
 			LogDebug("    HackerDevice::Create%lsShader.  Device: %p\n", shaderType, this);
@@ -1076,10 +962,6 @@ HRESULT D3D9Wrapper::IDirect3DDevice9::CreateShader(const DWORD *pFunction, ID3D
 	{
 		LogDebugW(L"    %ls: handle = %p, hash = %016I64x\n", shaderType, *ppShader, hash);
 
-		if ((G->marking_mode == MarkingMode::ZERO) && zeroShader)
-		{
-			(*ppShaderWrapper)->zeroShader = zeroShader;
-		}
 		EnterCriticalSection(&G->mCriticalSection);
 		CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(hash);
 		if (i != G->mCompiledShaderMap.end())
@@ -1915,7 +1797,7 @@ void D3D9Wrapper::IDirect3DDevice9::DeferredShaderReplacement(D3D9Wrapper::IDire
 	orig_info->deferred_replacement_processed = true;
 
 	asm_text = BinaryToAsmText(orig_info->byteCode->GetBufferPointer(),
-		orig_info->byteCode->GetBufferSize());
+		orig_info->byteCode->GetBufferSize(), false);
 	if (asm_text.empty())
 		return;
 
@@ -2130,10 +2012,6 @@ HRESULT D3D9Wrapper::IDirect3DDevice9::SetShader(ID3D9ShaderWrapper *pShader,
 				if ((selectedShader == pShader->hash || !G->fix_enabled) && pShader->originalShader) {
 					repl_shader = reinterpret_cast<ID3D9Shader*>(pShader->originalShader);
 				}
-			}
-			if (G->marking_mode == MarkingMode::ZERO) {
-				if (selectedShader == pShader->hash && pShader->zeroShader)
-					repl_shader = reinterpret_cast<ID3D9Shader*>(pShader->zeroShader);
 			}
 		}
 
