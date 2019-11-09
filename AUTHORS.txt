@@ -10,3 +10,7 @@ With additional contributions by:
 Ulf Jälmgrant (AKA Flugan)
 Vic Lee
 ColAngel
+
+
+And the DX9 port by:
+David Lockwood (AKA davegl1234)
