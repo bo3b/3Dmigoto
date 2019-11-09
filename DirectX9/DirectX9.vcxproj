@@ -26,6 +26,119 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BinaryDecompiler\BinaryDecompiler.vcxproj">
+      <Project>{258d0ad2-b762-41e3-a0c1-cf831d859da4}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\D3D_Shaders\D3D_Shaders.vcxproj">
+      <Project>{59a9b0c6-8302-48a9-96e0-126fb32fb9ed}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\crc32c-hw-1.0.5\src\crc32c.cpp" />
+    <ClCompile Include="..\D3D_Shaders\Assembler.cpp" />
+    <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
+    <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
+    <ClCompile Include="CommandList.cpp" />
+    <ClCompile Include="ConstantsTable.cpp" />
+    <ClCompile Include="d3d9Wrapper.cpp" />
+    <ClCompile Include="D3DFont.cpp" />
+    <ClCompile Include="DLLMainHookDX9.cpp" />
+    <ClCompile Include="util.cpp" />
+    <ClCompile Include="HookedCubeTexture.cpp" />
+    <ClCompile Include="HookedD9.cpp" />
+    <ClCompile Include="HookedDeviceDX9.cpp" />
+    <ClCompile Include="HookedIndexBuffer.cpp" />
+    <ClCompile Include="HookedPixelShader.cpp" />
+    <ClCompile Include="HookedQuery.cpp" />
+    <ClCompile Include="HookedStateBlock.cpp" />
+    <ClCompile Include="HookedSurface.cpp" />
+    <ClCompile Include="HookedSwapChain.cpp" />
+    <ClCompile Include="HookedTexture.cpp" />
+    <ClCompile Include="HookedVertexBuffer.cpp" />
+    <ClCompile Include="HookedVertexDeclaration.cpp" />
+    <ClCompile Include="HookedVertexShader.cpp" />
+    <ClCompile Include="HookedVolume.cpp" />
+    <ClCompile Include="HookedVolumeTexture.cpp" />
+    <ClCompile Include="Hunting.cpp" />
+    <ClCompile Include="IniHandler.cpp" />
+    <ClCompile Include="Input.cpp" />
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="nvprofile.cpp" />
+    <ClCompile Include="Overlay.cpp" />
+    <ClCompile Include="Override.cpp" />
+    <ClCompile Include="profiling.cpp" />
+    <ClCompile Include="ResourceHash.cpp" />
+    <ClCompile Include="ShaderRegex.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="d3d9Wrapper.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\crc32c-hw-1.0.5\include\crc32c.h" />
+    <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
+    <ClInclude Include="..\log.h" />
+    <ClInclude Include="..\util.h" />
+    <ClInclude Include="CommandList.h" />
+    <ClInclude Include="ConstantsTable.h" />
+    <ClInclude Include="d3d9Wrapper.h" />
+    <ClInclude Include="D3DFont.h" />
+    <ClInclude Include="Direct3DResource9Functions.h" />
+    <ClInclude Include="Direct3DShader9Functions.h" />
+    <ClInclude Include="Direct3DStateBlock9Functions.h" />
+    <ClInclude Include="FrameAnalysis.h" />
+    <ClInclude Include="FrameAnalysisFunctions.h" />
+    <ClInclude Include="HookedD3DX.h" />
+    <ClInclude Include="Direct3D9Functions.h" />
+    <ClInclude Include="Direct3DBaseTexture9Functions.h" />
+    <ClInclude Include="Direct3DCubeTexture9Functions.h" />
+    <ClInclude Include="Direct3DDevice9Functions.h" />
+    <ClInclude Include="Direct3DIndexBuffer9Functions.h" />
+    <ClInclude Include="Direct3DPixelShader9Functions.h" />
+    <ClInclude Include="Direct3DQuery9Functions.h" />
+    <ClInclude Include="Direct3DSurface9Functions.h" />
+    <ClInclude Include="Direct3DSwapChain9Functions.h" />
+    <ClInclude Include="Direct3DTexture9Functions.h" />
+    <ClInclude Include="Direct3DVertexBuffer9Functions.h" />
+    <ClInclude Include="Direct3DVertexDeclaration9Functions.h" />
+    <ClInclude Include="Direct3DVertexShader9Functions.h" />
+    <ClInclude Include="Direct3DVolume9Functions.h" />
+    <ClInclude Include="Direct3DVolumeTexture9Functions.h" />
+    <ClInclude Include="DLLMainHookDX9.h" />
+    <ClInclude Include="DrawCallInfo.h" />
+    <ClInclude Include="Globals.h" />
+    <ClInclude Include="HookedCubeTexture.h" />
+    <ClInclude Include="HookedD3DXFunctions.h" />
+    <ClInclude Include="HookedD9.h" />
+    <ClInclude Include="HookedDeviceDX9.h" />
+    <ClInclude Include="HookedIndexBuffer.h" />
+    <ClInclude Include="HookedPixelShader.h" />
+    <ClInclude Include="HookedQuery.h" />
+    <ClInclude Include="HookedStateBlock.h" />
+    <ClInclude Include="HookedSurface.h" />
+    <ClInclude Include="HookedSwapChain.h" />
+    <ClInclude Include="HookedTexture.h" />
+    <ClInclude Include="HookedVertexBuffer.h" />
+    <ClInclude Include="HookedVertexDeclaration.h" />
+    <ClInclude Include="HookedVertexShader.h" />
+    <ClInclude Include="HookedVolume.h" />
+    <ClInclude Include="HookedVolumeTexture.h" />
+    <ClInclude Include="Hunting.h" />
+    <ClInclude Include="IniHandler.h" />
+    <ClInclude Include="Input.h" />
+    <ClInclude Include="Main.h" />
+    <ClInclude Include="nvprofile.h" />
+    <ClInclude Include="Overlay.h" />
+    <ClInclude Include="Override.h" />
+    <ClInclude Include="profiling.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="ResourceHash.h" />
+    <ClInclude Include="ShaderRegex.h" />
+    <ClInclude Include="vkeys.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{4265C0D8-8671-49C0-8EB5-EB940FD08482}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
@@ -99,8 +212,8 @@
     <TargetName>d3d9</TargetName>
     <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt;$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
-    <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -110,28 +223,28 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt;$(VC_IncludePath)</IncludePath>
     <TargetName>d3d9</TargetName>
+    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt;$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
-    <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt;$(VC_IncludePath)</IncludePath>
-    <TargetName>d3d9</TargetName>
-    <LibraryPath>$(LibraryPath)</LibraryPath>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt;$(VC_IncludePath)</IncludePath>
     <TargetName>d3d9</TargetName>
+    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt;$(VC_IncludePath)</IncludePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <TargetName>d3d9</TargetName>
+    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt;$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt;$(VC_IncludePath)</IncludePath>
     <TargetName>d3d9</TargetName>
+    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSdkDir_80)Include\um;$(WindowsSdkDir_80)Include\shared;$(WindowsSdkDir_80)Include\winrt;$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -141,9 +254,9 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)pcre2;$(DXSDK_DIR)Include</AdditionalIncludeDirectories>
-      <ExceptionHandling>Async</ExceptionHandling>
       <BufferSecurityCheck>true</BufferSecurityCheck>
     </ClCompile>
     <Link>
@@ -178,10 +291,10 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)pcre2;$(DXSDK_DIR)Include</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <ExceptionHandling>Async</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <Link>
@@ -253,119 +366,6 @@
       <AdditionalDependencies>..\Nektra\NktHookLib64.lib;..\pcre2\pcre2-8-64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;Shlwapi.lib;$(DXSDK_DIR)Lib\x64\d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="..\crc32c-hw-1.0.5\src\crc32c.cpp" />
-    <ClCompile Include="..\D3D_Shaders\Assembler.cpp" />
-    <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
-    <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
-    <ClCompile Include="CommandList.cpp" />
-    <ClCompile Include="ConstantsTable.cpp" />
-    <ClCompile Include="d3d9Wrapper.cpp" />
-    <ClCompile Include="D3DFont.cpp" />
-    <ClCompile Include="DLLMainHookDX9.cpp" />
-    <ClCompile Include="util.cpp" />
-    <ClCompile Include="HookedCubeTexture.cpp" />
-    <ClCompile Include="HookedD9.cpp" />
-    <ClCompile Include="HookedDeviceDX9.cpp" />
-    <ClCompile Include="HookedIndexBuffer.cpp" />
-    <ClCompile Include="HookedPixelShader.cpp" />
-    <ClCompile Include="HookedQuery.cpp" />
-    <ClCompile Include="HookedStateBlock.cpp" />
-    <ClCompile Include="HookedSurface.cpp" />
-    <ClCompile Include="HookedSwapChain.cpp" />
-    <ClCompile Include="HookedTexture.cpp" />
-    <ClCompile Include="HookedVertexBuffer.cpp" />
-    <ClCompile Include="HookedVertexDeclaration.cpp" />
-    <ClCompile Include="HookedVertexShader.cpp" />
-    <ClCompile Include="HookedVolume.cpp" />
-    <ClCompile Include="HookedVolumeTexture.cpp" />
-    <ClCompile Include="Hunting.cpp" />
-    <ClCompile Include="IniHandler.cpp" />
-    <ClCompile Include="Input.cpp" />
-    <ClCompile Include="Main.cpp" />
-    <ClCompile Include="nvprofile.cpp" />
-    <ClCompile Include="Overlay.cpp" />
-    <ClCompile Include="Override.cpp" />
-    <ClCompile Include="profiling.cpp" />
-    <ClCompile Include="ResourceHash.cpp" />
-    <ClCompile Include="ShaderRegex.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\crc32c-hw-1.0.5\include\crc32c.h" />
-    <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
-    <ClInclude Include="..\log.h" />
-    <ClInclude Include="..\util.h" />
-    <ClInclude Include="CommandList.h" />
-    <ClInclude Include="ConstantsTable.h" />
-    <ClInclude Include="d3d9Wrapper.h" />
-    <ClInclude Include="D3DFont.h" />
-    <ClInclude Include="Direct3DResource9Functions.h" />
-    <ClInclude Include="Direct3DShader9Functions.h" />
-    <ClInclude Include="Direct3DStateBlock9Functions.h" />
-    <ClInclude Include="FrameAnalysis.h" />
-    <ClInclude Include="FrameAnalysisFunctions.h" />
-    <ClInclude Include="HookedD3DX.h" />
-    <ClInclude Include="Direct3D9Functions.h" />
-    <ClInclude Include="Direct3DBaseTexture9Functions.h" />
-    <ClInclude Include="Direct3DCubeTexture9Functions.h" />
-    <ClInclude Include="Direct3DDevice9Functions.h" />
-    <ClInclude Include="Direct3DIndexBuffer9Functions.h" />
-    <ClInclude Include="Direct3DPixelShader9Functions.h" />
-    <ClInclude Include="Direct3DQuery9Functions.h" />
-    <ClInclude Include="Direct3DSurface9Functions.h" />
-    <ClInclude Include="Direct3DSwapChain9Functions.h" />
-    <ClInclude Include="Direct3DTexture9Functions.h" />
-    <ClInclude Include="Direct3DVertexBuffer9Functions.h" />
-    <ClInclude Include="Direct3DVertexDeclaration9Functions.h" />
-    <ClInclude Include="Direct3DVertexShader9Functions.h" />
-    <ClInclude Include="Direct3DVolume9Functions.h" />
-    <ClInclude Include="Direct3DVolumeTexture9Functions.h" />
-    <ClInclude Include="DLLMainHookDX9.h" />
-    <ClInclude Include="DrawCallInfo.h" />
-    <ClInclude Include="Globals.h" />
-    <ClInclude Include="HookedCubeTexture.h" />
-    <ClInclude Include="HookedD3DXFunctions.h" />
-    <ClInclude Include="HookedD9.h" />
-    <ClInclude Include="HookedDeviceDX9.h" />
-    <ClInclude Include="HookedIndexBuffer.h" />
-    <ClInclude Include="HookedPixelShader.h" />
-    <ClInclude Include="HookedQuery.h" />
-    <ClInclude Include="HookedStateBlock.h" />
-    <ClInclude Include="HookedSurface.h" />
-    <ClInclude Include="HookedSwapChain.h" />
-    <ClInclude Include="HookedTexture.h" />
-    <ClInclude Include="HookedVertexBuffer.h" />
-    <ClInclude Include="HookedVertexDeclaration.h" />
-    <ClInclude Include="HookedVertexShader.h" />
-    <ClInclude Include="HookedVolume.h" />
-    <ClInclude Include="HookedVolumeTexture.h" />
-    <ClInclude Include="Hunting.h" />
-    <ClInclude Include="IniHandler.h" />
-    <ClInclude Include="Input.h" />
-    <ClInclude Include="Main.h" />
-    <ClInclude Include="nvprofile.h" />
-    <ClInclude Include="Overlay.h" />
-    <ClInclude Include="Override.h" />
-    <ClInclude Include="profiling.h" />
-    <ClInclude Include="resource.h" />
-    <ClInclude Include="ResourceHash.h" />
-    <ClInclude Include="ShaderRegex.h" />
-    <ClInclude Include="vkeys.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="d3d9Wrapper.def" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="Resource.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\BinaryDecompiler\BinaryDecompiler.vcxproj">
-      <Project>{258d0ad2-b762-41e3-a0c1-cf831d859da4}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\D3D_Shaders\D3D_Shaders.vcxproj">
-      <Project>{59a9b0c6-8302-48a9-96e0-126fb32fb9ed}</Project>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
