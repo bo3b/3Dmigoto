@@ -346,9 +346,6 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::CreateDeviceEx(THIS_ UINT Adapter,D3D9Base
 		fullScreenDisplayMode.ScanLineOrdering = D3D9Base::D3DSCANLINEORDERING_PROGRESSIVE;
 		pFullscreenDisplayMode = &fullScreenDisplayMode;
 	}
-#if _DEBUG_LAYER
-	Flags = EnableDebugFlags(Flags);
-#endif
 	LogDebug("Overridden Presentation Params\n");
 	if (pPresentationParameters)
 	{
@@ -507,9 +504,6 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::CreateDevice(THIS_ UINT Adapter,D3D9Base::
 		SetWindowPos(G->hWnd(), NULL, NULL, NULL, G->SCREEN_WIDTH, G->SCREEN_HEIGHT, SWP_ASYNCWINDOWPOS | SWP_NOMOVE | SWP_NOZORDER);
 	}
 	ForceDisplayParams(pPresentationParameters);
-#if _DEBUG_LAYER
-	Flags = EnableDebugFlags(Flags);
-#endif
 	LogDebug("Overridden Presentation Params\n");
 	if (pPresentationParameters)
 	{
