@@ -142,7 +142,7 @@
       <PreprocessorDefinitions>DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;WIN32;_DEBUG;_WINDOWS;_USRDLL;DIRECTX9_EXPORTS;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)pcre2;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;$(SolutionDir)HLSLDecompiler</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)pcre2;$(DXSDK_DIR)Include;$(SolutionDir)HLSLDecompiler</AdditionalIncludeDirectories>
       <ExceptionHandling>Async</ExceptionHandling>
       <BufferSecurityCheck>true</BufferSecurityCheck>
     </ClCompile>
@@ -150,7 +150,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>d3d9Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\pcre2\pcre2-8-32d.lib;..\Nektra\NktHookLib_Debug.lib;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86\d3dx9.lib;$(OutDir)nvapi.lib;..\nvapi.lib;d3dcompiler.lib;XINPUT9_1_0.lib;Shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\pcre2\pcre2-8-32d.lib;..\Nektra\NktHookLib_Debug.lib;$(DXSDK_DIR)Lib\x86\d3dx9.lib;$(OutDir)nvapi.lib;..\nvapi.lib;d3dcompiler.lib;XINPUT9_1_0.lib;Shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -161,13 +161,13 @@
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;DIRECTX9_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)DirectXTK\Inc;$(SolutionDir)pcre2;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;C:\Program Files\Microsoft DirectX SDK (June 2010)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)DirectXTK\Inc;$(SolutionDir)pcre2;$(DXSDK_DIR)Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>d3d9Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\pcre2\pcre2-8-64d.lib;..\Nektra\NktHookLib64_Debug.lib;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x64\d3dx9.lib;C:\Program Files\Microsoft DirectX SDK (June 2010)\Lib\x64\d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\pcre2\pcre2-8-64d.lib;..\Nektra\NktHookLib64_Debug.lib;$(DXSDK_DIR)Lib\x64\d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -179,7 +179,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;WIN32;NDEBUG;_WINDOWS;_USRDLL;DIRECTX9_EXPORTS;PCRE2_CODE_UNIT_WIDTH=8;CRC32C_STATIC=1;PCRE2_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir);C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;$(SolutionDir)pcre2;$(SolutionDir)HLSLDecompiler</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(DXSDK_DIR)Include;$(SolutionDir)pcre2;$(SolutionDir)HLSLDecompiler</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <ExceptionHandling>Async</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -190,7 +190,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d9Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>$(OutDir)nvapi.lib;..\nvapi.lib;d3dcompiler.lib;..\pcre2\pcre2-8-32.lib;..\Nektra\NktHookLib.lib;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86\d3dx9.lib;XINPUT9_1_0.lib;Shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(OutDir)nvapi.lib;..\nvapi.lib;d3dcompiler.lib;..\pcre2\pcre2-8-32.lib;..\Nektra\NktHookLib.lib;$(DXSDK_DIR)Lib\x86\d3dx9.lib;XINPUT9_1_0.lib;Shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
