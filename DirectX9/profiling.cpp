@@ -2,6 +2,7 @@
 #include "globals.h"
 
 #include <algorithm>
+#include <DirectXMath.h>
 
 void Profiling::Overhead::clear()
 {
@@ -289,7 +290,7 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
 			    L"               Skipped draw calls: %4u/frame (Cost saving)\n"
 			    L"max_executions_per_frame exceeded: %4u/frame (Cost saving)\n"
 			    ,
-			    Profiling::iniparams_updates / frames, G->IniConstants.size() * sizeof(float4),
+			    Profiling::iniparams_updates / frames, G->IniConstants.size() * sizeof(DirectX::XMFLOAT4),
 			    Profiling::resource_full_copies / frames,
 			    Profiling::resource_reference_copies / frames,
 			    Profiling::stereo2mono_copies / frames,

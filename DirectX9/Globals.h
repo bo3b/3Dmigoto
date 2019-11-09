@@ -15,6 +15,7 @@ namespace D3D9Base
 #include "CommandList.h"
 #include "ResourceHash.h"
 #include "DLLMainHookDX9.h"
+#include <DirectXMath.h>
 
 
 
@@ -630,7 +631,7 @@ public:
 	int StereoParamsVertexReg;
 	int StereoParamsPixelReg;
 
-	std::map<int, float4> IniConstants;
+	std::map<int, DirectX::XMFLOAT4> IniConstants;
 
 	ResolutionInfo mResolutionInfo;
 	CommandList present_command_list;

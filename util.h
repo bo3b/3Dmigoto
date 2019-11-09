@@ -931,24 +931,6 @@ static HRESULT CreateHLSLTextFile(UINT64 hash, string hlslText)
 
 // -----------------------------------------------------------------------------------------------
 
-#if 0
-// Reverted this from the DX9 port. Should not be necessary if we are able to
-// use DirectXMath.h. Leaving this commented out here until that is confirmed
-// in case we need to reinstate it. -DSS
-struct float4 {
-
-	float x, y, z, w;
-	float4() {
-		x = y = z = w = 0;
-	};
-	float4(float flts[4]) {
-		x = flts[0];
-		y = flts[1];
-		z = flts[2];
-		w = flts[3];
-	}
-};
-#endif
 // Parses the name of one of the IniParam constants: x, y, z, w, x1, y1, ..., z7, w7
 static bool ParseIniParamName(const wchar_t *name, int *idx, float DirectX::XMFLOAT4::**component)
 {

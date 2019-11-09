@@ -1,4 +1,5 @@
 #pragma once
+
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -1339,7 +1340,7 @@ public:
 	// TODO: Break up into separate classes for each operand type
 	ParamOverrideType type;
 	float val;
-	float float4::*component;
+	float DirectX::XMFLOAT4::*component;
 	int idx;
 	float *var_ftarget;
 
@@ -1408,7 +1409,7 @@ public:
 class ParamOverride : public AssignmentCommand {
 public:
 	int param_idx;
-	float float4::*param_component;
+	float DirectX::XMFLOAT4::*param_component;
 
 	ParamOverride() :
 		param_idx(-1),
@@ -1446,7 +1447,7 @@ public:
 	wchar_t shader_type;
 	ConstantType constant_type;
 	int slot;
-	float float4::*component;
+	float DirectX::XMFLOAT4::*component;
 	vector<float> vars;
 	VariableArrayAssignment *assign;
 	SetShaderConstant() :

@@ -1,4 +1,7 @@
 #pragma once
+
+#include <DirectXMath.h>
+
 #include "Input.h"
 enum class KeyOverrideType {
 	INVALID = -1,
@@ -28,9 +31,9 @@ static EnumName_t<const char *, TransitionType> TransitionTypeNames[] = {
 struct OverrideParam
 {
 	int idx;
-	float float4::*component;
+	float DirectX::XMFLOAT4::*component;
 
-	OverrideParam(int idx, float float4::*condition)
+	OverrideParam(int idx, float DirectX::XMFLOAT4::*condition)
 	{
 		this->idx = idx;
 		this->component = component;
@@ -40,11 +43,11 @@ struct OverrideParam
 	{
 		// Oh come on C++, a pointer to member is just an offset you
 		// could test directly... Fine, let's dance:
-		switch ((uintptr_t)&((float4*)(NULL)->*component)) {
-			case (uintptr_t)&(((float4*)(NULL))->x): return 'x';
-			case (uintptr_t)&(((float4*)(NULL))->y): return 'y';
-			case (uintptr_t)&(((float4*)(NULL))->z): return 'z';
-			case (uintptr_t)&(((float4*)(NULL))->w): return 'w';
+		switch ((uintptr_t)&((DirectX::XMFLOAT4*)(NULL)->*component)) {
+			case (uintptr_t)&(((DirectX::XMFLOAT4*)(NULL))->x): return 'x';
+			case (uintptr_t)&(((DirectX::XMFLOAT4*)(NULL))->y): return 'y';
+			case (uintptr_t)&(((DirectX::XMFLOAT4*)(NULL))->z): return 'z';
+			case (uintptr_t)&(((DirectX::XMFLOAT4*)(NULL))->w): return 'w';
 		}
 		return '?';
 	};
@@ -53,8 +56,8 @@ static inline bool operator<(const OverrideParam &lhs, const OverrideParam &rhs)
 {
 	if (lhs.idx != rhs.idx)
 		return (lhs.idx < rhs.idx);
-	return ((uintptr_t)&((float4*)(NULL)->*(lhs.component)) <
-	        (uintptr_t)&((float4*)(NULL)->*(rhs.component)));
+	return ((uintptr_t)&((DirectX::XMFLOAT4*)(NULL)->*(lhs.component)) <
+	        (uintptr_t)&((DirectX::XMFLOAT4*)(NULL)->*(rhs.component)));
 }
 typedef std::map<OverrideParam, float> OverrideParams;
 typedef std::map<CommandListVariableFloat*, float> OverrideVars;

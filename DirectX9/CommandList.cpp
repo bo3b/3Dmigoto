@@ -259,7 +259,7 @@ static void CommandListFlushState(CommandListState *state)
 {
 	if (state->update_params && G->IniConstants.size() > 0) {
 
-		for (std::map<int, float4>::iterator it = G->IniConstants.begin(); it != G->IniConstants.end(); ++it) {
+		for (std::map<int, DirectX::XMFLOAT4>::iterator it = G->IniConstants.begin(); it != G->IniConstants.end(); ++it) {
 			float pConstants[4] = { it->second.x, it->second.y, it->second.z, it->second.w };
 			state->mOrigDevice->SetVertexShaderConstantF(it->first, pConstants, 1);
 			state->mOrigDevice->SetPixelShaderConstantF(it->first, pConstants, 1);
@@ -3359,7 +3359,7 @@ static void UpdateCursorResources(CommandListState *state)
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
 		Profiling::end(&profiling_state, &Profiling::cursor_overhead);
 }
-static float ShaderFloat(D3D9Wrapper::IDirect3DDevice9 *device, wchar_t shader_type, int idx, float float4::*component) {
+static float ShaderFloat(D3D9Wrapper::IDirect3DDevice9 *device, wchar_t shader_type, int idx, float DirectX::XMFLOAT4::*component) {
 	float pConstantsF[4];
 	switch (shader_type) {
 	case L'v':
@@ -3368,21 +3368,21 @@ static float ShaderFloat(D3D9Wrapper::IDirect3DDevice9 *device, wchar_t shader_t
 	case L'p':
 		device->GetD3D9Device()->GetPixelShaderConstantF(idx, pConstantsF, 1);
 	}
-	if (component == &float4::x) {
+	if (component == &DirectX::XMFLOAT4::x) {
 		return pConstantsF[0];
 	}
-	else if (component == &float4::y) {
+	else if (component == &DirectX::XMFLOAT4::y) {
 		return pConstantsF[1];
 	}
-	else if (component == &float4::z) {
+	else if (component == &DirectX::XMFLOAT4::z) {
 		return pConstantsF[2];
 	}
-	else if (component == &float4::w) {
+	else if (component == &DirectX::XMFLOAT4::w) {
 		return pConstantsF[3];
 	}
 	return 0.0f;
 }
-static int ShaderInt(D3D9Wrapper::IDirect3DDevice9 *device, wchar_t shader_type, int idx, float float4::*component) {
+static int ShaderInt(D3D9Wrapper::IDirect3DDevice9 *device, wchar_t shader_type, int idx, float DirectX::XMFLOAT4::*component) {
 	int pConstantsI[4];
 	switch (shader_type) {
 	case L'v':
@@ -3390,21 +3390,21 @@ static int ShaderInt(D3D9Wrapper::IDirect3DDevice9 *device, wchar_t shader_type,
 	case L'p':
 		device->GetD3D9Device()->GetPixelShaderConstantI(idx, pConstantsI, 1);
 	}
-	if (component == &float4::x) {
+	if (component == &DirectX::XMFLOAT4::x) {
 		return pConstantsI[0];
 	}
-	else if (component == &float4::y) {
+	else if (component == &DirectX::XMFLOAT4::y) {
 		return pConstantsI[1];
 	}
-	else if (component == &float4::z) {
+	else if (component == &DirectX::XMFLOAT4::z) {
 		return pConstantsI[2];
 	}
-	else if (component == &float4::w) {
+	else if (component == &DirectX::XMFLOAT4::w) {
 		return pConstantsI[3];
 	}
 	return 0;
 }
-static BOOL ShaderBool(D3D9Wrapper::IDirect3DDevice9 *device, wchar_t shader_type, int idx, float float4::*component) {
+static BOOL ShaderBool(D3D9Wrapper::IDirect3DDevice9 *device, wchar_t shader_type, int idx, float DirectX::XMFLOAT4::*component) {
 	BOOL pConstantsB[4];
 	switch (shader_type) {
 	case L'v':
@@ -3412,16 +3412,16 @@ static BOOL ShaderBool(D3D9Wrapper::IDirect3DDevice9 *device, wchar_t shader_typ
 	case L'p':
 		device->GetD3D9Device()->GetPixelShaderConstantB(idx, pConstantsB, 1);
 	}
-	if (component == &float4::x) {
+	if (component == &DirectX::XMFLOAT4::x) {
 		return pConstantsB[0];
 	}
-	else if (component == &float4::y) {
+	else if (component == &DirectX::XMFLOAT4::y) {
 		return pConstantsB[1];
 	}
-	else if (component == &float4::z) {
+	else if (component == &DirectX::XMFLOAT4::z) {
 		return pConstantsB[2];
 	}
-	else if (component == &float4::w) {
+	else if (component == &DirectX::XMFLOAT4::w) {
 		return pConstantsB[3];
 	}
 	return false;
@@ -5173,7 +5173,7 @@ bool declare_local_variable(const wchar_t *section, wstring &name,
 	return valid_local_variable(section, name, pre_command_list, ini_namespace);
 
 }
-static bool ParseShaderConstant(const wchar_t * target, wchar_t *shader_type, ConstantType *constant_type, int *idx, float float4::**component)
+static bool ParseShaderConstant(const wchar_t * target, wchar_t *shader_type, ConstantType *constant_type, int *idx, float DirectX::XMFLOAT4::**component)
 {
 	int ret, len;
 	wchar_t component_chr;
@@ -5206,16 +5206,16 @@ static bool ParseShaderConstant(const wchar_t * target, wchar_t *shader_type, Co
 		}
 		switch (component_chr) {
 		case L'x':
-			*component = &float4::x;
+			*component = &DirectX::XMFLOAT4::x;
 			return true;
 		case L'y':
-			*component = &float4::y;
+			*component = &DirectX::XMFLOAT4::y;
 			return true;
 		case L'z':
-			*component = &float4::z;
+			*component = &DirectX::XMFLOAT4::z;
 			return true;
 		case L'w':
-			*component = &float4::w;
+			*component = &DirectX::XMFLOAT4::w;
 			return true;
 		}
 	}
@@ -10999,16 +10999,16 @@ void SetShaderConstant::run(CommandListState *state)
 		default:
 			return;
 		}
-		if (component == &float4::x) {
+		if (component == &DirectX::XMFLOAT4::x) {
 			pConstantsF[0] = expression.evaluate(state);
 		}
-		else if (component == &float4::y) {
+		else if (component == &DirectX::XMFLOAT4::y) {
 			pConstantsF[1] = expression.evaluate(state);
 		}
-		else if (component == &float4::z) {
+		else if (component == &DirectX::XMFLOAT4::z) {
 			pConstantsF[2] = expression.evaluate(state);
 		}
-		else if (component == &float4::w) {
+		else if (component == &DirectX::XMFLOAT4::w) {
 			pConstantsF[3] = expression.evaluate(state);
 		}
 		switch (shader_type) {
@@ -11031,16 +11031,16 @@ void SetShaderConstant::run(CommandListState *state)
 		default:
 			return;
 		}
-		if (component == &float4::x) {
+		if (component == &DirectX::XMFLOAT4::x) {
 			pConstantsI[0] = (int)expression.evaluate(state);
 		}
-		else if (component == &float4::y) {
+		else if (component == &DirectX::XMFLOAT4::y) {
 			pConstantsI[1] = (int)expression.evaluate(state);
 		}
-		else if (component == &float4::z) {
+		else if (component == &DirectX::XMFLOAT4::z) {
 			pConstantsI[2] = (int)expression.evaluate(state);
 		}
-		else if (component == &float4::w) {
+		else if (component == &DirectX::XMFLOAT4::w) {
 			pConstantsI[3] = (int)expression.evaluate(state);
 		}
 		switch (shader_type) {
@@ -11063,16 +11063,16 @@ void SetShaderConstant::run(CommandListState *state)
 		default:
 			return;
 		}
-		if (component == &float4::x) {
+		if (component == &DirectX::XMFLOAT4::x) {
 			pConstantsB[0] = (BOOL)expression.evaluate(state);
 		}
-		else if (component == &float4::y) {
+		else if (component == &DirectX::XMFLOAT4::y) {
 			pConstantsB[1] = (BOOL)expression.evaluate(state);
 		}
-		else if (component == &float4::z) {
+		else if (component == &DirectX::XMFLOAT4::z) {
 			pConstantsB[2] = (BOOL)expression.evaluate(state);
 		}
-		else if (component == &float4::w) {
+		else if (component == &DirectX::XMFLOAT4::w) {
 			pConstantsB[3] = (BOOL)expression.evaluate(state);
 		}
 		switch (shader_type) {

@@ -5,6 +5,7 @@
 #include "ShaderRegex.h"
 #include "HookedDeviceDX9.h"
 #include "d3d9Wrapper.h"
+#include <DirectXMath.h>
 
 #define D3D_COMPILE_STANDARD_FILE_INCLUDE ((ID3DInclude*)(UINT_PTR)1)
 inline void D3D9Wrapper::IDirect3DDevice9::Delete()
@@ -1262,7 +1263,7 @@ inline void D3D9Wrapper::IDirect3DDevice9::Bind3DMigotoResources()
 				LogInfo("  failed to add NVidia stereo parameter texture to pixel shader resources in slot %i.\n", G->StereoParamsPixelReg);
 		}
 	}
-	for (map<int, float4>::iterator it = G->IniConstants.begin(); it != G->IniConstants.end(); ++it) {
+	for (map<int, DirectX::XMFLOAT4>::iterator it = G->IniConstants.begin(); it != G->IniConstants.end(); ++it) {
 		LogDebug("  setting ini constants in vertex and pixel registers.\n");
 		float pConstants[4] = { it->second.x, it->second.y, it->second.z, it->second.w };
 		hr = GetD3D9Device()->SetVertexShaderConstantF(it->first, pConstants, 1);
@@ -5542,8 +5543,8 @@ void D3D9Wrapper::IDirect3DDevice9::InitIniParams()
 	// The command list only changes ini params that are defined, but for
 	// consistency we want all other ini params to be initialised as well:
 	//memset(G->IniConstants.data(), 0, sizeof(float4) * G->IniConstants.size());
-	for (map<int, float4>::iterator it = G->IniConstants.begin(); it != G->IniConstants.end(); ++it) {
-		it->second = float4();
+	for (map<int, DirectX::XMFLOAT4>::iterator it = G->IniConstants.begin(); it != G->IniConstants.end(); ++it) {
+		it->second = DirectX::XMFLOAT4();
 	}
 
 	// The command list will take care of initialising any non-zero values:
@@ -5881,7 +5882,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetVertexShaderConstantF(THIS_ UINT 
 {
 	LogDebug("IDirect3DDevice9::SetVertexShaderConstantF called.\n");
 	CheckDevice(this);
-	map<int, float4>::iterator it;
+	map<int, DirectX::XMFLOAT4>::iterator it;
 	for (it = G->IniConstants.begin(); it != G->IniConstants.end(); it++)
 	{
 		if ((UINT)it->first >= StartRegister && (UINT)it->first < (StartRegister + Vector4fCount)) {
@@ -6184,7 +6185,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetPixelShaderConstantF(THIS_ UINT S
 {
 	LogDebug("IDirect3DDevice9::SetPixelShaderConstantF called.\n");
 	CheckDevice(this);
-	map<int, float4>::iterator it;
+	map<int, DirectX::XMFLOAT4>::iterator it;
 
 	for (it = G->IniConstants.begin(); it != G->IniConstants.end(); it++)
 	{

@@ -28,7 +28,7 @@ void Override::ParseIniSection(LPCWSTR section)
 	IniSectionVector *section_vec = NULL;
 	IniSectionVector::iterator entry;
 	CommandListVariableFloat *var = NULL;
-	float float4::*param_component;
+	float DirectX::XMFLOAT4::*param_component;
 	int param_idx;
 	float val;
 	wchar_t buf[MAX_PATH];
@@ -249,7 +249,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 	IniSectionVector *section_vec = NULL;
 	IniSectionVector::iterator entry;
 	CommandListVariableFloat *var = NULL;
-	float float4::*param_component;
+	float DirectX::XMFLOAT4::*param_component;
 	int param_idx;
 	float val;
 
@@ -486,7 +486,7 @@ void KeyOverrideCycleBack::DownEvent(D3D9Wrapper::IDirect3DDevice9 *device)
 static void UpdateIniParams(D3D9Wrapper::IDirect3DDevice9* wrapper)
 {
 	if (wrapper) {
-		for (map<int, float4>::iterator it = G->IniConstants.begin(); it != G->IniConstants.end(); ++it) {
+		for (map<int, DirectX::XMFLOAT4>::iterator it = G->IniConstants.begin(); it != G->IniConstants.end(); ++it) {
 			float pConstants[4] = { it->second.x, it->second.y, it->second.z, it->second.w };
 			wrapper->GetD3D9Device()->SetVertexShaderConstantF(it->first, pConstants, 1);
 			wrapper->GetD3D9Device()->SetPixelShaderConstantF(it->first, pConstants, 1);
