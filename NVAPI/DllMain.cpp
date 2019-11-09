@@ -1,25 +1,17 @@
 #include "Main.h"
-//#define NO_STEREO_D3D9 // FIXME: There is no reason this project should be DX version specific
-#define NO_STEREO_D3D11 // FIXME: There is no reason this project should be DX version specific
-#ifndef NO_STEREO_D3D11
 #include <dxgi1_2.h>
 #include <d3d11_1.h>
 
-#endif
-#ifndef NO_STEREO_D3D9
 namespace D3D9Base {
 #include <d3d9.h>
 }
-#endif
 
 #include "../util.h"
 #include "../nvapi.h"
 #include "../log.h"
 
 using namespace std;
-#ifndef NO_STEREO_D3D9
-using namespace D3D9Base;
-#endif
+using namespace D3D9Base; // FIXME: Get rid of this
 
 extern "C"
 {
@@ -47,11 +39,9 @@ extern "C"
 	static tNvAPI_Stereo_SetSeparation _NvAPI_Stereo_SetSeparation;
 	typedef NvAPI_Status(__cdecl *tNvAPI_Stereo_Disable)();
 	static tNvAPI_Stereo_Disable _NvAPI_Stereo_Disable;
-#ifndef NO_STEREO_D3D9
 	typedef NvAPI_Status(__cdecl *tNvAPI_D3D9_VideoSetStereoInfo)(IDirect3DDevice9 *pDev,
 		NV_DX_VIDEO_STEREO_INFO *pStereoInfo);
 	static tNvAPI_D3D9_VideoSetStereoInfo _NvAPI_D3D9_VideoSetStereoInfo;
-#endif
 	typedef NvAPI_Status(__cdecl *tNvAPI_Stereo_CreateConfigurationProfileRegistryKey)(
 		NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType);
 	static tNvAPI_Stereo_CreateConfigurationProfileRegistryKey _NvAPI_Stereo_CreateConfigurationProfileRegistryKey;
@@ -118,25 +108,20 @@ extern "C"
 	typedef NvAPI_Status(__cdecl *tNvAPI_Stereo_GetSurfaceCreationMode)(__in StereoHandle hStereoHandle,
 		__in NVAPI_STEREO_SURFACECREATEMODE* pCreationMode);
 	static tNvAPI_Stereo_GetSurfaceCreationMode _NvAPI_Stereo_GetSurfaceCreationMode;
-#ifndef NO_STEREO_D3D11
 	typedef NvAPI_Status(__cdecl *tNvAPI_D3D1x_CreateSwapChain)(StereoHandle hStereoHandle,
 		DXGI_SWAP_CHAIN_DESC* pDesc,
 		IDXGISwapChain** ppSwapChain,
 		NV_STEREO_SWAPCHAIN_MODE mode);
 	static tNvAPI_D3D1x_CreateSwapChain _NvAPI_D3D1x_CreateSwapChain;
-#endif
-#ifndef NO_STEREO_D3D9
 	typedef NvAPI_Status(__cdecl *tNvAPI_D3D9_CreateSwapChain)(StereoHandle hStereoHandle,
 		D3DPRESENT_PARAMETERS *pPresentationParameters,
 		IDirect3DSwapChain9 **ppSwapChain,
 		NV_STEREO_SWAPCHAIN_MODE mode);
 	static tNvAPI_D3D9_CreateSwapChain _NvAPI_D3D9_CreateSwapChain;
-#endif
 
 	typedef NvAPI_Status(__cdecl *tNvAPI_D3D_GetCurrentSLIState)(__in IUnknown *pDevice, __in NV_GET_CURRENT_SLI_STATE *pSliState);
 	static tNvAPI_D3D_GetCurrentSLIState _NvAPI_D3D_GetCurrentSLIState;
 
-#ifndef NO_STEREO_D3D9
 	typedef NvAPI_Status(__cdecl *tNvAPI_D3D9_StretchRectEx)(IDirect3DDevice9 *pDevice,
 		IDirect3DResource9 *pSourceResource,
 		CONST RECT *pSourceRect,
@@ -161,8 +146,6 @@ extern "C"
 	typedef NvAPI_Status(__cdecl *tNvAPI_D3D9_GetSurfaceHandle)(__in IDirect3DSurface9 *pSurface,
 		NVDX_ObjectHandle *pHandle);
 	static tNvAPI_D3D9_GetSurfaceHandle _NvAPI_D3D9_GetSurfaceHandle;
-#endif
-
 	typedef NvAPI_Status(__cdecl *tNvAPI_D3D11_MultiDrawIndexedInstancedIndirect)(ID3D11DeviceContext *pDevContext11, unsigned long drawCount,
 		ID3D11Buffer *pBuffer, unsigned long alignedByteOffsetForArgs,
 		unsigned long alignedByteStrideForArgs);
@@ -331,16 +314,13 @@ static bool loadDll()
 
 	LoadConfigFile();
 
-#ifndef NO_STEREO_D3D11
 	// Make sure our d3d11.dll is loaded, so that we get the benefit of the DLLMainHook
 	// In general this is not necessary, but if a game calls nvapi before d3d11 loads
 	// we'll crash.  This makes sure that won't happen.  In the normal case, the
 	// 3Dmigoto d3d11 is already loaded, and this does nothing.
+	// FIXME: Only load one 3DMigoto DLL
 	LoadLibrary(L"d3d11.dll");
-#endif
-#ifndef NO_STEREO_D3D9
 	LoadLibrary(L"d3d9.dll");
-#endif
 
 	// We need to load the real version of nvapi, in order to get the addresses
 	// of the original routines.  This will be fixed up in DLLMainHook to give us the
@@ -620,7 +600,6 @@ static NvAPI_Status __cdecl NvAPI_Stereo_Disable()
 	}
 	return (*_NvAPI_Stereo_Disable)();
 }
-#ifndef NO_STEREO_D3D9
 static NvAPI_Status __cdecl NvAPI_D3D9_VideoSetStereoInfo(D3D9Base::IDirect3DDevice9 *pDev,
 	NV_DX_VIDEO_STEREO_INFO *pStereoInfo)
 {
@@ -631,7 +610,6 @@ static NvAPI_Status __cdecl NvAPI_D3D9_VideoSetStereoInfo(D3D9Base::IDirect3DDev
 	LogCall("  StereoEnable = %d\n", pStereoInfo->bStereoEnable);
 	return (*_NvAPI_D3D9_VideoSetStereoInfo)(pDev, pStereoInfo);
 }
-#endif
 static NvAPI_Status __cdecl NvAPI_Stereo_CreateConfigurationProfileRegistryKey(
 	NV_STEREO_REGISTRY_PROFILE_TYPE registryProfileType)
 {
@@ -897,7 +875,6 @@ static NvAPI_Status __cdecl NvAPI_Stereo_GetSurfaceCreationMode(__in StereoHandl
 		ret, *pCreationMode);
 	return ret;
 }
-#ifndef NO_STEREO_D3D11
 static NvAPI_Status __cdecl NvAPI_D3D1x_CreateSwapChain(StereoHandle hStereoHandle,
 	DXGI_SWAP_CHAIN_DESC* pDesc,
 	IDXGISwapChain** ppSwapChain,
@@ -923,8 +900,6 @@ static NvAPI_Status __cdecl NvAPI_D3D1x_CreateSwapChain(StereoHandle hStereoHand
 	LogCall("  returned %d\n", ret);
 	return ret;
 }
-#endif
-#ifndef NO_STEREO_D3D9
 static NvAPI_Status __cdecl NvAPI_D3D9_CreateSwapChain(StereoHandle hStereoHandle,
 	D3DPRESENT_PARAMETERS *pPresentationParameters,
 	IDirect3DSwapChain9 **ppSwapChain,
@@ -959,7 +934,6 @@ static NvAPI_Status __cdecl NvAPI_D3D9_CreateSwapChain(StereoHandle hStereoHandl
 	LogCall("  returned %d\n", ret);
 	return ret;
 }
-#endif
 static NvAPI_Status __cdecl NvAPI_D3D_GetCurrentSLIState(__in IUnknown *pDevice, __in NV_GET_CURRENT_SLI_STATE *pSliState)
 {
 	NvAPI_Status ret = (*_NvAPI_D3D_GetCurrentSLIState)(pDevice, pSliState);
@@ -967,7 +941,6 @@ static NvAPI_Status __cdecl NvAPI_D3D_GetCurrentSLIState(__in IUnknown *pDevice,
 	return ret;
 }
 
-#ifndef NO_STEREO_D3D9
 static NvAPI_Status __cdecl NvAPI_D3D9_StretchRectEx(D3D9Base::IDirect3DDevice9 *pDevice,
 	D3D9Base::IDirect3DResource9 *pSourceResource,
 	CONST RECT *pSourceRect,
@@ -1016,7 +989,6 @@ static NvAPI_Status __cdecl NvAPI_D3D9_GetSurfaceHandle(D3D9Base::IDirect3DSurfa
 	LogCall("%s - NvAPI_D3D9_GetSurfaceHandle called with surface= %p. Result = %d\n", LogTime().c_str(), pSurface, ret);
 	return ret;
 }
-#endif // NO_STEREO_D3D9
 
 // NVAPI extension methods
 
@@ -1187,36 +1159,31 @@ extern "C" NvAPI_Status * __cdecl nvapi_QueryInterface(unsigned int offset)
 		return (NvAPI_Status *)EnableOverride();
 
 	// Special signature for being called from d3d9 dll code.
-	// Ok, this is getting a little rediculous. Nvidia's API is a horrible mess
+	// Ok, this is getting a little ridiculous. Nvidia's API is a horrible mess
 	// designed purely to obscure their NDA APIs and if we keep adding more and
 	// more to it we risk inadvertently overriding one of their legit APIs.
 	// There is literally no reason we can't just add a new exported function
 	// to the DLL for our own functionality that is about a million times
 	// cleaner than this, so let's do that in future. -DSS
-	case 0xa03aa03a:
-		ptr = (NvAPI_Status *)EnableStereoActiveTracking();
-		break;
-	case 0xc03cc03c:
-		ptr = (NvAPI_Status *)EnableConvergenceTracking();
-		break;
-	case 0xd03dd03d:
-		ptr = (NvAPI_Status *)EnableSeparationTracking();
-		break;
-	case 0xe03ee03e:
-		ptr = (NvAPI_Status *)EnableEyeSeparationTracking();
-		break;
-	case 0xf03ff03f:
-		ptr = (NvAPI_Status *)ResetStereoActiveTracking();
-		break;
-	case 0xa03dd03d:
-		ptr = (NvAPI_Status *)ResetConvergenceTracking();
-		break;
-	case 0xb03dd03d:
-		ptr = (NvAPI_Status *)ResetEyeSeparationTracking();
-		break;
-	case 0xc03dd03d:
-		ptr = (NvAPI_Status *)ResetSeparationTracking();
-		break;
+	switch (offset)
+	{
+		case 0xa03aa03a:
+			return (NvAPI_Status *)EnableStereoActiveTracking();
+		case 0xc03cc03c:
+			return (NvAPI_Status *)EnableConvergenceTracking();
+		case 0xd03dd03d:
+			return (NvAPI_Status *)EnableSeparationTracking();
+		case 0xe03ee03e:
+			return (NvAPI_Status *)EnableEyeSeparationTracking();
+		case 0xf03ff03f:
+			return (NvAPI_Status *)ResetStereoActiveTracking();
+		case 0xa03dd03d:
+			return (NvAPI_Status *)ResetConvergenceTracking();
+		case 0xb03dd03d:
+			return (NvAPI_Status *)ResetEyeSeparationTracking();
+		case 0xc03dd03d:
+			return (NvAPI_Status *)ResetSeparationTracking();
+	}
 
 	NvAPI_Status *ptr = (*nvapi_QueryInterfacePtr)(offset);
 	// Do not wrap any nvapi functions that nvapi themselves do not
@@ -1251,12 +1218,10 @@ extern "C" NvAPI_Status * __cdecl nvapi_QueryInterface(unsigned int offset)
 			_NvAPI_Stereo_Disable = (tNvAPI_Stereo_Disable)ptr;
 			ptr = (NvAPI_Status *)NvAPI_Stereo_Disable;
 			break;
-#ifndef NO_STEREO_D3D9
 		case 0xB852F4DB:
 			_NvAPI_D3D9_VideoSetStereoInfo = (tNvAPI_D3D9_VideoSetStereoInfo)ptr;
 			ptr = (NvAPI_Status *)NvAPI_D3D9_VideoSetStereoInfo;
 			break;
-#endif
 		case 0xBE7692EC:
 			_NvAPI_Stereo_CreateConfigurationProfileRegistryKey = (tNvAPI_Stereo_CreateConfigurationProfileRegistryKey)ptr;
 			ptr = (NvAPI_Status *)NvAPI_Stereo_CreateConfigurationProfileRegistryKey;
@@ -1361,25 +1326,20 @@ extern "C" NvAPI_Status * __cdecl nvapi_QueryInterface(unsigned int offset)
 			_NvAPI_Stereo_GetSurfaceCreationMode = (tNvAPI_Stereo_GetSurfaceCreationMode)ptr;
 			ptr = (NvAPI_Status *)NvAPI_Stereo_GetSurfaceCreationMode;
 			break;
-#ifndef NO_STEREO_D3D11
 		case 0x1BC21B66:
 			_NvAPI_D3D1x_CreateSwapChain = (tNvAPI_D3D1x_CreateSwapChain)ptr;
 			ptr = (NvAPI_Status *)NvAPI_D3D1x_CreateSwapChain;
 			break;
-#endif
-#ifndef NO_STEREO_D3D9
 		case 0x1A131E09:
 			_NvAPI_D3D9_CreateSwapChain = (tNvAPI_D3D9_CreateSwapChain)ptr;
 			ptr = (NvAPI_Status *)NvAPI_D3D9_CreateSwapChain;
 			break;
-#endif
 
 		// Informational logging
 		case 0x4B708B54:
 			_NvAPI_D3D_GetCurrentSLIState = (tNvAPI_D3D_GetCurrentSLIState)ptr;
 			ptr = (NvAPI_Status *)NvAPI_D3D_GetCurrentSLIState;
 			break;
-#ifndef NO_STEREO_D3D9
 		case 0x22DE03AA:
 			_NvAPI_D3D9_StretchRectEx = (tNvAPI_D3D9_StretchRectEx)ptr;
 			ptr = (NvAPI_Status *)NvAPI_D3D9_StretchRectEx;
@@ -1404,7 +1364,6 @@ extern "C" NvAPI_Status * __cdecl nvapi_QueryInterface(unsigned int offset)
 			_NvAPI_D3D9_GetSurfaceHandle = (tNvAPI_D3D9_GetSurfaceHandle)ptr;
 			ptr = (NvAPI_Status *)NvAPI_D3D9_GetSurfaceHandle;
 			break;
-#endif
 
 		// NVAPI extension methods
 		case 0x59E890F9:
