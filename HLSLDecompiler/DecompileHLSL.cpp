@@ -4055,7 +4055,7 @@ public:
 		// This addition looks a bit suspect, but is only used in the DX9 code
 		// paths -DSS
 		vector<Instruction> * inst = NULL;
-		inst = &shader->asPhase[MAIN_PHASE].psInst;
+		inst = &shader->asPhase[MAIN_PHASE].ppsInst[0];
 		//dx9
 
 		while (pos < size && iNr < shader->asPhase[MAIN_PHASE].ppsInst[0].size())

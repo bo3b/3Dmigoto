@@ -14,7 +14,7 @@
 #endif
 
 #include <D3Dcompiler.h>
-#include <d3d9.h>
+//#include <d3d9.h> FIXME: DX9 port has namespaced this so it can overload the names, but that creates problems for third party code and I'd rather not namespace it
 #include <DirectXMath.h>
 
 #include "version.h"
@@ -1577,5 +1577,7 @@ static UINT DrawPrimitiveCountToVerticesCount(UINT pCount, D3D9Base::D3DPRIMITIV
 }
 #endif
 
+#ifndef NO_UTIL_D3D11
 extern IDXGISwapChain *last_fullscreen_swap_chain;
+#endif
 void install_crash_handler(int level);
