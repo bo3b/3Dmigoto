@@ -7,10 +7,10 @@
 #include "internal_includes/reflect.h"
 #include "internal_includes/debug.h"
 #include "log.h"
-class DecompileErrorDX9 : public std::exception {} decompileErrorDX9;
+class DecompileErrorDX9 : public std::exception {} decompileErrorDX9; // 3DMigoto specific
 
 #define FOURCC(a, b, c, d) ((uint32_t)(uint8_t)(a) | ((uint32_t)(uint8_t)(b) << 8) | ((uint32_t)(uint8_t)(c) << 16) | ((uint32_t)(uint8_t)(d) << 24 ))
-static enum {FOURCC_CTAB = FOURCC('C', 'T', 'A', 'B')}; //Constant table
+enum {FOURCC_CTAB = FOURCC('C', 'T', 'A', 'B')}; //Constant table
 
 #ifdef _DEBUG
 static uint64_t operandID = 0;
@@ -64,9 +64,13 @@ static void DecodeOperandDX9(const Shader* psShader,
     psOperand->psSubOperand[2] = 0;
 
     psOperand->iIndexDims = INDEX_0D;
-
+ 
     psOperand->iIntegerImmediate = 0;
 
+	// Initialising eSpecialName isn't upstream, and I'm assuming they are
+	// reliant on a memset to zero it. Does this fix a real bug? Do we have a
+	// test case? Does this need to be pushed upstream (kinda pointless given
+	// upstream has no maintainer)? Or was this merely a misunderstanding? -DSS
 	psOperand->eSpecialName = NAME_UNDEFINED;
     //psOperand->pszSpecialName[0] ='\0';
 
@@ -201,7 +205,7 @@ static void DecodeOperandDX9(const Shader* psShader,
             DecodeOperandDX9(psShader, ui32Token1, 0, ui32Flags, psOperand->psSubOperand[0]);
 
             psOperand->iIndexDims = INDEX_1D;
-
+        
             psOperand->eIndexRep[0] = OPERAND_INDEX_RELATIVE;
 
             psOperand->aui32ArraySizes[0] = 0;
@@ -319,7 +323,7 @@ static void DecodeOperandDX9(const Shader* psShader,
                 ASSERT(ui32RegNum == 1);
                 psOperand->eType = OPERAND_TYPE_SPECIAL_OUTOFFSETCOLOUR;
             }
-
+            
             break;
         }
 		case OPERAND_TYPE_DX9_COLOROUT:
@@ -379,7 +383,7 @@ static void DecodeOperandDX9(const Shader* psShader,
             psOperand->eType = OPERAND_TYPE_SPECIAL_LOOPCOUNTER;
             break;
         }
-		case OPERAND_TYPE_DX9_MISCTYPE:
+		case OPERAND_TYPE_DX9_MISCTYPE: // Added in 3DMigoto, not upstream
 		{
 			psOperand->eType = OPERAND_TYPE_SPECIAL_FRONTFACE;
 			break;
@@ -427,6 +431,7 @@ static void DeclareConstantBuffer(const Shader* psShader,
     uint32_t ui32UsageIndex = 0;
 	//Pick any constant register in the table. Might not start at c0 (e.g. when register(cX) is used).
 
+	// This code differs from upstream. Is this a bug fix? -DSS
 	if (psShader->sInfo->psConstantBuffers->asVars.size() > 0) {
 		uint32_t ui32RegNum = psShader->sInfo->psConstantBuffers->asVars[0].ui32StartOffset / 16;
 		OPERAND_TYPE_DX9 ui32RegType = OPERAND_TYPE_DX9_CONST;
@@ -435,12 +440,12 @@ static void DeclareConstantBuffer(const Shader* psShader,
 		{
 			ui32RegType = OPERAND_TYPE_DX9_CONSTINT;
 		}
-		else if (psShader->sInfo->psConstantBuffers->asVars[0].sType.Type == SVT_BOOL)
+		else if(psShader->sInfo->psConstantBuffers->asVars[0].sType.Type == SVT_BOOL)
 		{
 			ui32RegType = OPERAND_TYPE_DX9_CONSTBOOL;
 		}
 
-		if (psShader->eShaderType == VERTEX_SHADER)
+		if(psShader->eShaderType == VERTEX_SHADER)
 		{
 			psDecl->eOpcode = OPCODE_DCL_INPUT;
 		}
@@ -453,7 +458,7 @@ static void DeclareConstantBuffer(const Shader* psShader,
 		DecodeOperandDX9(psShader, CreateOperandTokenDX9(ui32RegNum, ui32RegType), 0, DX9_DECODE_OPERAND_IS_DECL, &psDecl->asOperands[0]);
 
 		//ASSERT(psDecl->asOperands[0].eType == OPERAND_TYPE_CONSTANT_BUFFER);
-
+    
 		psDecl->eOpcode = OPCODE_DCL_CONSTANT_BUFFER;
 
 		//ASSERT(psShader->sInfo->ui32NumConstantBuffers);
@@ -613,7 +618,7 @@ Shader* DecodeDX9BC(const uint32_t* pui32Tokens)
 
     memset(aui32ImmediateConst, 0, 256);
 
-	psShader->dx9Shader = true;
+	psShader->dx9Shader = true; // 3DMigoto specific
 	psShader->ui32MajorVersion = DecodeProgramMajorVersionDX9(*pui32CurrentToken);
 	psShader->ui32MinorVersion = DecodeProgramMinorVersionDX9(*pui32CurrentToken);
 	psShader->eShaderType = DecodeShaderTypeDX9(*pui32CurrentToken);
@@ -690,11 +695,9 @@ Shader* DecodeDX9BC(const uint32_t* pui32Tokens)
         pui32CurrentToken += ui32InstLen + 1;
     }
 
-    //psInst = new Instruction[ui32NumInstructions];
 	psShader->asPhase[MAIN_PHASE].ui32InstanceCount = 1;
-	psShader->asPhase[MAIN_PHASE].psInst.resize(ui32NumInstructions);
-	psShader->asPhase[MAIN_PHASE].ui32InstCount = ui32NumInstructions;
-	psInst = &psShader->asPhase[MAIN_PHASE].psInst[0];
+	psShader->asPhase[MAIN_PHASE].ppsInst[0].resize(ui32NumInstructions);
+	psInst = &psShader->asPhase[MAIN_PHASE].ppsInst[0][0];
 
     if(psShader->eShaderType == VERTEX_SHADER)
     {
@@ -705,11 +708,8 @@ Shader* DecodeDX9BC(const uint32_t* pui32Tokens)
     //For declaring temps.
     ui32NumDeclarations++;
 
-    //psDecl = new Declaration[ui32NumDeclarations];
-	//psShader->asPhase[MAIN_PHASE].ppsDecl = new (Declaration*);
-	psShader->asPhase[MAIN_PHASE].psDecl.resize(ui32NumDeclarations);
-	psShader->asPhase[MAIN_PHASE].ui32DeclCount = ui32NumDeclarations;
-	psDecl = &psShader->asPhase[MAIN_PHASE].psDecl[0];
+	psShader->asPhase[MAIN_PHASE].ppsDecl[0].resize(ui32NumDeclarations);
+	psDecl = &psShader->asPhase[MAIN_PHASE].ppsDecl[0][0];
 
     pui32CurrentToken = pui32Tokens + 1;
 
@@ -957,7 +957,7 @@ Shader* DecodeDX9BC(const uint32_t* pui32Tokens)
 					CreateD3D10Instruction(psShader, &psInst[inst], OPCODE_SAMPLE, 1, 2, pui32CurrentToken);
 					psInst[inst].asOperands[2].ui32RegisterNumber = 0;
 
-
+					
 					break;
 				}
 				case OPCODE_DX9_TEXLDL:
@@ -971,7 +971,7 @@ Shader* DecodeDX9BC(const uint32_t* pui32Tokens)
 					memcpy(&psInst[inst].asOperands[4], &psInst[inst].asOperands[1], sizeof(Operand));
 
 					psInst[inst].ui32NumOperands = 5;
-
+					
 					break;
 				}
 
@@ -1072,7 +1072,7 @@ Shader* DecodeDX9BC(const uint32_t* pui32Tokens)
                 case OPCODE_DX9_CALL:
                 case OPCODE_DX9_CALLNZ:
                 case OPCODE_DX9_LABEL:
-
+                
                 case OPCODE_DX9_CRS:
                 case OPCODE_DX9_SGN:
                 case OPCODE_DX9_ABS:
