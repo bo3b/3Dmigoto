@@ -1051,13 +1051,13 @@ GENERATE_INTERCEPT_HEADER(GetMessagePos, DWORD, WINAPI) {
 
 const char* WindowLongOffsetToString(int nIndex) {
 	switch (nIndex) {
-	case GWL_WNDPROC: return "GWL_WNDPROC";
-	case GWL_HINSTANCE: return "GWL_HINSTANCE";
-	case GWL_HWNDPARENT: return "GWL_HWNDPARENT";
+	case GWLP_WNDPROC: return "GWL_WNDPROC";
+	case GWLP_HINSTANCE: return "GWL_HINSTANCE";
+	case GWLP_HWNDPARENT: return "GWL_HWNDPARENT";
 	case GWL_STYLE: return "GWL_STYLE";
 	case GWL_EXSTYLE: return "GWL_EXSTYLE";
-	case GWL_USERDATA: return "GWL_USERDATA";
-	case GWL_ID: return "GWL_ID";
+	case GWLP_USERDATA: return "GWL_USERDATA";
+	case GWLP_ID: return "GWL_ID";
 	}
 	return "Unknown Offset!";
 }
@@ -1118,7 +1118,7 @@ GENERATE_INTERCEPT_HEADER(SetWindowLongW, LONG, WINAPI, _In_ HWND hWnd, _In_ int
 #else
 GENERATE_INTERCEPT_HEADER(GetWindowLongPtrA, LONG_PTR, WINAPI, _In_ HWND hWnd, _In_ int nIndex) {
 	LogDebug("DetouredGetWindowLongA hwnd: %p -- index: %s\n", hWnd, WindowLongOffsetToString(nIndex));
-	if (nIndex == GWL_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0) {
+	if (nIndex == GWLP_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0) {
 		LogDebug(" -> return from table\n");
 		if (prevWndProcs.count(hWnd)>0) return (LONG_PTR)prevWndProcs[hWnd];
 	}
@@ -1126,7 +1126,7 @@ GENERATE_INTERCEPT_HEADER(GetWindowLongPtrA, LONG_PTR, WINAPI, _In_ HWND hWnd, _
 }
 GENERATE_INTERCEPT_HEADER(GetWindowLongPtrW, LONG_PTR, WINAPI, _In_ HWND hWnd, _In_ int nIndex) {
 	LogDebug("DetouredGetWindowLongW hwnd: %p -- index: %s\n", hWnd, WindowLongOffsetToString(nIndex));
-	if (nIndex == GWL_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0) {
+	if (nIndex == GWLP_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0) {
 		LogDebug(" -> return from table\n");
 		if (prevWndProcs.count(hWnd)>0) return (LONG_PTR)prevWndProcs[hWnd];
 	}
@@ -1136,20 +1136,20 @@ GENERATE_INTERCEPT_HEADER(GetWindowLongPtrW, LONG_PTR, WINAPI, _In_ HWND hWnd, _
 GENERATE_INTERCEPT_HEADER(SetWindowLongPtrA, LONG_PTR, WINAPI, _In_ HWND hWnd, _In_ int nIndex, _In_ LONG_PTR dwNewLong) {
 	LogDebug("DetouredSetWindowLongA hwnd: %p -- index: %s -- value: %d\n", hWnd, WindowLongOffsetToString(nIndex), dwNewLong);
 	LONG_PTR ret = TrueSetWindowLongPtrA(hWnd, nIndex, dwNewLong);
-	if (nIndex == GWL_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0 && G->GAME_INTERNAL_WIDTH() > 1 && G->GAME_INTERNAL_HEIGHT() > 1) {
+	if (nIndex == GWLP_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0 && G->GAME_INTERNAL_WIDTH() > 1 && G->GAME_INTERNAL_HEIGHT() > 1) {
 		prevWndProcs[hWnd] = (WNDPROC)dwNewLong;
 		if (prevWndProcs.size() > 10) LogDebug("More than 10 prevWndProcs!\n");
-		TrueSetWindowLongPtrA(hWnd, GWL_WNDPROC, (LONG_PTR)&InterceptWindowProc);
+		TrueSetWindowLongPtrA(hWnd, GWLP_WNDPROC, (LONG_PTR)&InterceptWindowProc);
 	}
 	return ret;
 }
 GENERATE_INTERCEPT_HEADER(SetWindowLongPtrW, LONG_PTR, WINAPI, _In_ HWND hWnd, _In_ int nIndex, _In_ LONG_PTR dwNewLong) {
 	LogDebug("DetouredSetWindowLongW hwnd: %p -- index: %s -- value: %d\n", hWnd, WindowLongOffsetToString(nIndex), dwNewLong);
 	LONG_PTR ret = TrueSetWindowLongPtrW(hWnd, nIndex, dwNewLong);
-	if (nIndex == GWL_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0 && G->GAME_INTERNAL_WIDTH() > 1 && G->GAME_INTERNAL_HEIGHT() > 1) {
+	if (nIndex == GWLP_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0 && G->GAME_INTERNAL_WIDTH() > 1 && G->GAME_INTERNAL_HEIGHT() > 1) {
 		prevWndProcs[hWnd] = (WNDPROC)dwNewLong;
 		if (prevWndProcs.size() > 10) LogDebug("More than 10 prevWndProcs!\n");
-		TrueSetWindowLongPtrW(hWnd, GWL_WNDPROC, (LONG_PTR)&InterceptWindowProc);
+		TrueSetWindowLongPtrW(hWnd, GWLP_WNDPROC, (LONG_PTR)&InterceptWindowProc);
 	}
 	return ret;
 }
