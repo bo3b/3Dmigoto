@@ -425,7 +425,7 @@ namespace nv
 				mTuneVariable1(1), mTuneVariable2(1), mTuneVariable3(1), mTuneVariable4(1),
 				mForceUpdate(false),
 				mConvergence(0),
-				//mStereoHandle(0),
+				mStereoHandle(0),
 				mActive(false),
 				mDeviceLost(true)
 			{

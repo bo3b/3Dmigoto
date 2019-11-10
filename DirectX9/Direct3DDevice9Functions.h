@@ -5225,8 +5225,9 @@ inline void D3D9Wrapper::IDirect3DDevice9::UpdateStereoParams(bool forceUpdate, 
 	}
 
 	// Update stereo parameter texture. It's possible to arrive here with no texture available though,
-	// so we need to check first.
-	if (mStereoTexture)
+	// so we need to check first. Added check on mStereoHandle to fix crash when stereo disabled in
+	// DX9 port since mStereoTexture is created unconditionally.
+	if (mStereoTexture && mStereoHandle)
 	{
 		LogDebug("  updating stereo parameter texture.\n");
 		if (allValuesKnown) {
