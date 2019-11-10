@@ -321,14 +321,13 @@ void WINAPI PSGPSampleTexture(void *D3DFE_PROCESSVERTICES, unsigned int a, float
 }
 bool D3D9Wrapper::IDirect3DUnknown::QueryInterface_DXGI_Callback(REFIID riid, void ** ppvObj, HRESULT * result)
 {
+	// FIXME: These should be defined in a header somewhere
 	IID m1 = { 0x017b2e72ul, 0xbcde, 0x9f15,{ 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
 	IID m2 = { 0x017b2e72ul, 0xbcde, 0x9f15,{ 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x02 } };
 	IID m3 = { 0x017b2e72ul, 0xbcde, 0x9f15,{ 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x03 } };
-	if (riid.Data1 == m1.Data1 && riid.Data2 == m1.Data2 && riid.Data3 == m1.Data3 &&
-		riid.Data4[0] == m1.Data4[0] && riid.Data4[1] == m1.Data4[1] && riid.Data4[2] == m1.Data4[2] && riid.Data4[3] == m1.Data4[3] &&
-		riid.Data4[4] == m1.Data4[4] && riid.Data4[5] == m1.Data4[5] && riid.Data4[6] == m1.Data4[6] && riid.Data4[7] == m1.Data4[7])
+	if (IsEqualIID(riid, m1))
 	{
-		LogInfo("Callback from dxgi.dll wrapper: requesting real IDirect3DDevice9 handle from %x\n", *ppvObj);
+		LogInfo("Callback from dxgi.dll wrapper: requesting real IDirect3DDevice9 handle from %p\n", *ppvObj);
 
 		D3D9Wrapper::IDirect3DDevice9 *p = (D3D9Wrapper::IDirect3DDevice9*) D3D9Wrapper::IDirect3DDevice9::m_List.GetDataPtr(*ppvObj);
 		if (p)
@@ -344,9 +343,7 @@ bool D3D9Wrapper::IDirect3DUnknown::QueryInterface_DXGI_Callback(REFIID riid, vo
 		*result = 0x13bc7e31;
 		return true;
 	}
-	else if (riid.Data1 == m2.Data1 && riid.Data2 == m2.Data2 && riid.Data3 == m2.Data3 &&
-		riid.Data4[0] == m2.Data4[0] && riid.Data4[1] == m2.Data4[1] && riid.Data4[2] == m2.Data4[2] && riid.Data4[3] == m2.Data4[3] &&
-		riid.Data4[4] == m2.Data4[4] && riid.Data4[5] == m2.Data4[5] && riid.Data4[6] == m2.Data4[6] && riid.Data4[7] == m2.Data4[7])
+	else if (IsEqualIID(riid, m2))
 	{
 		LogDebug("Callback from dxgi.dll wrapper: notification #%d received\n", (int)*ppvObj);
 
@@ -364,9 +361,7 @@ bool D3D9Wrapper::IDirect3DUnknown::QueryInterface_DXGI_Callback(REFIID riid, vo
 		*result = 0x13bc7e31;
 		return true;
 	}
-	else if (riid.Data1 == m3.Data1 && riid.Data2 == m3.Data2 && riid.Data3 == m3.Data3 &&
-		riid.Data4[0] == m3.Data4[0] && riid.Data4[1] == m3.Data4[1] && riid.Data4[2] == m3.Data4[2] && riid.Data4[3] == m3.Data4[3] &&
-		riid.Data4[4] == m3.Data4[4] && riid.Data4[5] == m3.Data4[5] && riid.Data4[6] == m3.Data4[6] && riid.Data4[7] == m3.Data4[7])
+	else if (IsEqualIID(riid, m3))
 	{
 		SwapChainInfo *info = (SwapChainInfo *)*ppvObj;
 		LogInfo("Callback from dxgi.dll wrapper: screen resolution width=%d, height=%d received\n",
