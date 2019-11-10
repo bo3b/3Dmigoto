@@ -10384,7 +10384,6 @@ void ResourceCopyOperation::run(CommandListState *state)
 				// ordinary copy to the final mono resource.
 				IDirect3DSurface9 *src_surface;
 				IDirect3DSurface9 *dst_surface;
-				IDirect3DSurface9 *intermediate_surface;
 				switch (src_type) {
 				case D3DRTYPE_SURFACE:
 					src_surface = (IDirect3DSurface9*)src_resource;
@@ -10947,7 +10946,7 @@ void SetShaderConstant::run(CommandListState *state)
 					return;
 				}
 			}
-			copy(vars.begin(), vars.end(), pConstantsI.begin());
+			std::transform(vars.begin(), vars.end(), pConstantsI.begin(), [](float v) -> int { return (int)v; });
 			switch (shader_type) {
 			case L'v':
 				state->mOrigDevice->SetVertexShaderConstantI(slot, &pConstantsI[0], count);
@@ -10971,7 +10970,7 @@ void SetShaderConstant::run(CommandListState *state)
 					return;
 				}
 			}
-			copy(vars.begin(), vars.end(), pConstantsB.begin());
+			std::transform(vars.begin(), vars.end(), pConstantsB.begin(), [](float v) -> BOOL { return !!v; });
 			switch (shader_type) {
 			case L'v':
 				state->mOrigDevice->SetVertexShaderConstantB(slot, &pConstantsB[0], count);
