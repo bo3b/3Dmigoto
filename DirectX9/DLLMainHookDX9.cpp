@@ -1072,7 +1072,7 @@ namespace {
 			p.y = p.y * (SHORT)G->GAME_INTERNAL_HEIGHT() / G->SCREEN_HEIGHT;
 			return CallWindowProc(prevWndProcs[hwnd], hwnd, uMsg, wParam, MAKELPARAM(p.x, p.y));
 		}
-		LogDebug(" -> calling original: %d\n", prevWndProcs[hwnd]);
+		LogDebug(" -> calling original: %p\n", prevWndProcs[hwnd]);
 		LRESULT res = CallWindowProc(prevWndProcs[hwnd], hwnd, uMsg, wParam, lParam);
 		return res;
 	}

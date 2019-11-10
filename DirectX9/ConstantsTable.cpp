@@ -93,7 +93,7 @@ std::string ConstantTable::ToString()
 			const_line += "      ";
 		else
 		{
-			int i = lineSize;
+			size_t i = lineSize;
 			while (i < 69) {
 				const_line += ' ';
 				i++;
@@ -117,7 +117,7 @@ std::string ConstantTable::ToString()
 		std::size_t regIndexSize = reg.size();
 		std::string regCount = std::to_string(_const.RegisterCount);
 		std::size_t regCountSize = regCount.size();
-		uint16_t i = regIndexSize;
+		std::size_t i = regIndexSize;
 		while (i < (13 - regCountSize)) {
 			reg += ' ';
 			i++;

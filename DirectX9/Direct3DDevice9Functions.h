@@ -2157,8 +2157,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::QueryInterface(THIS_ REFIID riid, vo
 	HRESULT hr = NULL;
 	if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
 		return hr;
-	LogInfo("QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %x\n",
-		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
+	LogInfo("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
 	hr = m_pUnk->QueryInterface(riid, ppvObj);
 	if (hr == S_OK) {
 		if ((*ppvObj) == GetRealOrig()) {
@@ -2166,7 +2165,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::QueryInterface(THIS_ REFIID riid, vo
 				*ppvObj = this;
 				++m_ulRef;
 				LogInfo("  interface replaced with IDirect3DDevice9 wrapper.\n");
-				LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+				LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
 				return hr;
 			}
 		}
@@ -2174,7 +2173,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::QueryInterface(THIS_ REFIID riid, vo
 		if (unk)
 			*ppvObj = unk;
 	}
-	LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+	LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
 	return hr;
 }
 
@@ -2363,7 +2362,7 @@ void D3D9Wrapper::IDirect3DDevice9::ReleaseDeviceResources()
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DDevice9::Release(THIS)
 {
 
-	LogDebug("IDirect3DDevice9::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
+	LogDebug("IDirect3DDevice9::Release handle=%p, counter=%lu, this=%p\n", m_pUnk, m_ulRef, this);
 
 	ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
 	LogDebug("  internal counter = %d\n", ulRef);
@@ -2371,7 +2370,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DDevice9::Release(THIS)
 	ulRef -= mOverlay->ReferenceCount();
 	if (ulRef == 0)
     {
-		if (!gLogDebug) LogInfo("IDirect3DDevice9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+		if (!gLogDebug) LogInfo("IDirect3DDevice9::Release handle=%p, counter=%lu, internal counter = %lu\n", m_pUnk, m_ulRef, ulRef);
 		LogInfo("  deleting self\n");
 		Delete();
     }
@@ -2433,7 +2432,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetDirect3D(THIS_ D3D9Wrapper::IDire
 	else {
 		*ppD3D9 = reinterpret_cast<D3D9Wrapper::IDirect3D9*>(m_pD3D->GetRealOrig());
 	}
-	LogInfo("  returns result=%x, handle=%x, wrapper=%x\n", D3D_OK, m_pD3D->GetDirect3D9(), m_pD3D);
+	LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", D3D_OK, m_pD3D->GetDirect3D9(), m_pD3D);
     return D3D_OK;
 }
 
@@ -2498,7 +2497,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetCreationParameters(THIS_ D3D9Base
 	CheckDevice(this);
 	HRESULT hr = GetD3D9Device()->GetCreationParameters(pParameters);
 	if (!pParameters) LogInfo("  returns result=%x\n", hr);
-	if (pParameters) LogInfo("  returns result=%x, AdapterOrdinal=%d, DeviceType=%d, FocusWindow=%x, BehaviorFlags=%x\n", hr,
+	if (pParameters) LogInfo("  returns result=%x, AdapterOrdinal=%d, DeviceType=%d, FocusWindow=%p, BehaviorFlags=%x\n", hr,
 		pParameters->AdapterOrdinal, pParameters->DeviceType, pParameters->hFocusWindow, pParameters->BehaviorFlags);
 
 	return hr;
@@ -2585,7 +2584,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateAdditionalSwapChain(THIS_ D3D9
         return E_OUTOFMEMORY;
     }
 	NewSwapChain->origPresentationParameters = originalPresentParams;
-	NewSwapChain->_SwapChain = mWrappedSwapChains.size();
+	NewSwapChain->_SwapChain = (UINT)mWrappedSwapChains.size();
 	mWrappedSwapChains.push_back(NewSwapChain);
 
 	if (G->SCREEN_UPSCALING > 0) {
@@ -2619,7 +2618,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateAdditionalSwapChain(THIS_ D3D9
 			*pSwapChain = (D3D9Wrapper::IDirect3DSwapChain9*)baseSwapChain;
 		}
 	}
-	LogInfo("  returns result=%x, handle=%x\n", hr, NewSwapChain);
+	LogInfo("  returns result=%x, handle=%p\n", hr, NewSwapChain);
 
     return hr;
 }
@@ -2637,7 +2636,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetSwapChain(THIS_ UINT iSwapChain, 
 		wrapper->pendingGetSwapChain = true;
 		wrapper->pendingDevice = this;
 		*pSwapChain = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -2660,7 +2659,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetSwapChain(THIS_ UINT iSwapChain, 
 			}
 		}
 	}
-	LogInfo("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseSwapChain, wrappedSwapChain);
+	LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSwapChain, wrappedSwapChain);
     return hr;
 }
 
@@ -2684,7 +2683,7 @@ STDMETHODIMP_(UINT) D3D9Wrapper::IDirect3DDevice9::GetNumberOfSwapChains(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Reset(THIS_ D3D9Base::D3DPRESENT_PARAMETERS* pPresentationParameters)
 {
-	LogInfo("IDirect3DDevice9::Reset called on handle=%x\n", GetD3D9Device());
+	LogInfo("IDirect3DDevice9::Reset called on handle=%p\n", GetD3D9Device());
 	if (G->gForwardToEx) {
 		LogInfo("  forwarding to ResetEx.\n");
 
@@ -2772,7 +2771,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Reset(THIS_ D3D9Base::D3DPRESENT_PAR
 }
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::ResetEx(THIS_ D3D9Base::D3DPRESENT_PARAMETERS* pPresentationParameters, D3D9Base::D3DDISPLAYMODEEX *pFullscreenDisplayMode)
 {
-	LogInfo("IDirect3DDevice9Ex::ResetEx called on handle=%x\n", GetD3D9Device());
+	LogInfo("IDirect3DDevice9Ex::ResetEx called on handle=%p\n", GetD3D9Device());
 
 	CheckDevice(this);
 	LogInfo("  BackBufferWidth %d\n", pPresentationParameters->BackBufferWidth);
@@ -3007,7 +3006,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetBackBuffer(THIS_ UINT iSwapChain,
 		}
 	}
 
-	if (ppBackBuffer) LogInfo("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseSurface, *ppBackBuffer);
+	if (ppBackBuffer) LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurface, *ppBackBuffer);
     return hr;
 }
 
@@ -3348,7 +3347,7 @@ bool D3D9Wrapper::IDirect3DDevice9::HackerDeviceShouldDuplicateSurface(D3D2DTEXT
 }
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateTexture(THIS_ UINT Width,UINT Height,UINT Levels,DWORD Usage,D3D9Base::D3DFORMAT Format,D3D9Base::D3DPOOL Pool, D3D9Wrapper::IDirect3DTexture9 **ppTexture,HANDLE* pSharedHandle)
 {
-	LogDebug("IDirect3DDevice9::CreateTexture called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d, SharedHandle=%x\n",
+	LogDebug("IDirect3DDevice9::CreateTexture called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d, SharedHandle=%p\n",
 		Width, Height, Levels, Usage, Format, Pool, pSharedHandle);
 
 	if (!GetD3D9Device())
@@ -3364,7 +3363,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateTexture(THIS_ UINT Width,UINT 
 		wrapper->_Device = this;
 		wrapper->pendingCreateTexture = true;
 		*ppTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -3424,7 +3423,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateTexture(THIS_ UINT Width,UINT 
 			*ppTexture = reinterpret_cast<D3D9Wrapper::IDirect3DTexture9*>(baseTexture);
 		}
 	}
-	if (ppTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppTexture);
+	if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 
 	return hr;
 }
@@ -3447,7 +3446,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVolumeTexture(THIS_ UINT Width
 		wrapper->_Device = this;
 		wrapper->pendingCreateTexture = true;
 		*ppVolumeTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -3488,7 +3487,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVolumeTexture(THIS_ UINT Width
 
 	}
 
-	if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppVolumeTexture);
+	if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
 	LogInfo("  returns result=%x\n", hr);
 
 	return hr;
@@ -3510,7 +3509,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateCubeTexture(THIS_ UINT EdgeLen
 		wrapper->_Device = this;
 		wrapper->pendingCreateTexture = true;
 		*ppCubeTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -3577,7 +3576,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateCubeTexture(THIS_ UINT EdgeLen
 		}
 	}
 
-	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppCubeTexture);
+	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
 	LogInfo("  returns result=%x\n", hr);
 
 	return hr;
@@ -3654,7 +3653,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexBuffer(THIS_ UINT Length
 		wrapper->_Device = this;
 		wrapper->pendingCreateVertexBuffer = true;
 		if (ppVertexBuffer) *ppVertexBuffer = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -3680,7 +3679,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexBuffer(THIS_ UINT Length
 
 	}
 
-	if (ppVertexBuffer) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseVB, *ppVertexBuffer);
+	if (ppVertexBuffer) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseVB, *ppVertexBuffer);
 
     return hr;
 }
@@ -3688,7 +3687,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexBuffer(THIS_ UINT Length
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateIndexBuffer(THIS_ UINT Length,DWORD Usage,D3D9Base::D3DFORMAT Format,D3D9Base::D3DPOOL Pool,
 	D3D9Wrapper::IDirect3DIndexBuffer9 **ppIndexBuffer,HANDLE* pSharedHandle)
 {
-	LogDebug("IDirect3DDevice9::CreateIndexBuffer called with Length=%d, Usage=%x, Format=%d, Pool=%d, SharedHandle=%x, IndexBufferPtr=%x\n",
+	LogDebug("IDirect3DDevice9::CreateIndexBuffer called with Length=%d, Usage=%x, Format=%d, Pool=%d, Sharedhandle=%p, IndexBufferPtr=%p\n",
 		Length, Usage, Format, Pool, pSharedHandle, ppIndexBuffer);
 
 	if (!GetD3D9Device())
@@ -3702,7 +3701,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateIndexBuffer(THIS_ UINT Length,
 		wrapper->_Device = this;
 		wrapper->pendingCreateIndexBuffer = true;
 		if (ppIndexBuffer) *ppIndexBuffer = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -3727,7 +3726,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateIndexBuffer(THIS_ UINT Length,
 		}
 	}
 
-	if (ppIndexBuffer) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseIB, *ppIndexBuffer);
+	if (ppIndexBuffer) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseIB, *ppIndexBuffer);
 
     return hr;
 }
@@ -3792,7 +3791,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateRenderTarget(THIS_ UINT Width,
 			*ppSurface = reinterpret_cast<D3D9Wrapper::IDirect3DSurface9*>(baseSurface);
 		}
 	}
-	if (ppSurface) LogInfo("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseSurface, *ppSurface);
+	if (ppSurface) LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurface, *ppSurface);
 
     return hr;
 }
@@ -3815,7 +3814,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurface(THIS_ UINT
 		wrapper->_Device = this;
 		pendingCreateDepthStencilSurface = wrapper;
 		*ppSurface = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -3875,7 +3874,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurface(THIS_ UINT
 			*ppSurface = reinterpret_cast<D3D9Wrapper::IDirect3DSurface9*>(baseSurface);
 		}
 	}
-	if (ppSurface) LogInfo("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseSurface, *ppSurface);
+	if (ppSurface) LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurface, *ppSurface);
     return hr;
 }
 HRESULT DirectModeUpdateSurfaceRight(D3D9Base::IDirect3DDevice9 *origDevice, D3D9Base::IDirect3DSurface9 *pSourceSurfaceLeft, D3D9Base::IDirect3DSurface9 *pSourceSurfaceRight, D3D9Base::IDirect3DSurface9 *pDestSurfaceRight, CONST RECT *pSourceRect, CONST POINT* pDestPoint) {
@@ -3900,7 +3899,7 @@ HRESULT DirectModeUpdateSurfaceRight(D3D9Base::IDirect3DDevice9 *origDevice, D3D
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::UpdateSurface(THIS_ D3D9Wrapper::IDirect3DSurface9 *pSourceSurface,CONST RECT* pSourceRect,
 														  D3D9Wrapper::IDirect3DSurface9 *pDestinationSurface,CONST POINT* pDestPoint)
 {
-	LogDebug("IDirect3DDevice9::UpdateSurface called with SourceSurface=%x, DestinationSurface=%x\n", pSourceSurface, pDestinationSurface);
+	LogDebug("IDirect3DDevice9::UpdateSurface called with SourceSurface=%p, DestinationSurface=%p\n", pSourceSurface, pDestinationSurface);
 	CheckDevice(this);
 	D3D9Base::LPDIRECT3DSURFACE9 baseSourceSurface = baseSurface9(pSourceSurface);
 	D3D9Base::LPDIRECT3DSURFACE9 baseDestinationSurface = baseSurface9(pDestinationSurface);
@@ -3991,7 +3990,7 @@ HRESULT DirectModeUpdateTextureRight(D3D9Base::IDirect3DDevice9 *origDevice, D3D
 }
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::UpdateTexture(THIS_ D3D9Wrapper::IDirect3DBaseTexture9 *pSourceTexture, D3D9Wrapper::IDirect3DBaseTexture9 *pDestinationTexture)
 {
-    LogInfo("IDirect3DDevice9::UpdateTexture called with SourceTexture=%x, DestinationTexture=%x\n", pSourceTexture, pDestinationTexture);
+    LogInfo("IDirect3DDevice9::UpdateTexture called with SourceTexture=%p, DestinationTexture=%p\n", pSourceTexture, pDestinationTexture);
 
 	if (simulateTextureUpdate(pSourceTexture, pDestinationTexture))
 		return S_OK;
@@ -4046,7 +4045,7 @@ HRESULT DirectModeGetRenderTargetDataRight(D3D9Base::IDirect3DDevice9 *origDevic
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetRenderTargetData(THIS_ D3D9Wrapper::IDirect3DSurface9 *pRenderTarget,
 																D3D9Wrapper::IDirect3DSurface9 *pDestSurface)
 {
-	LogInfo("IDirect3DDevice9::GetRenderTargetData called with RenderTarget=%x, DestSurface=%x\n", pRenderTarget, pDestSurface);
+	LogInfo("IDirect3DDevice9::GetRenderTargetData called with RenderTarget=%p, DestSurface=%p\n", pRenderTarget, pDestSurface);
 	CheckDevice(this);
 	D3D9Base::LPDIRECT3DSURFACE9 baseRenderTarget = baseSurface9(pRenderTarget);
 	D3D9Base::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
@@ -4082,7 +4081,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetRenderTargetData(THIS_ D3D9Wrappe
 
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetFrontBufferData(THIS_ UINT iSwapChain, D3D9Wrapper::IDirect3DSurface9 *pDestSurface)
 {
-	LogInfo("IDirect3DDevice9::GetFrontBufferData called with SwapChain=%d, DestSurface=%x\n", iSwapChain, pDestSurface);
+	LogInfo("IDirect3DDevice9::GetFrontBufferData called with SwapChain=%d, DestSurface=%p\n", iSwapChain, pDestSurface);
 	CheckDevice(this);
 
 	D3D9Base::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
@@ -4112,7 +4111,7 @@ HRESULT DirectModeStretchRectRight(D3D9Base::IDirect3DDevice9 *origDevice, D3D9B
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::StretchRect(THIS_ D3D9Wrapper::IDirect3DSurface9 *pSourceSurface,CONST RECT* pSourceRect,
 														D3D9Wrapper::IDirect3DSurface9 *pDestSurface,CONST RECT* pDestRect,D3D9Base::D3DTEXTUREFILTERTYPE Filter)
 {
-	LogDebug("IDirect3DDevice9::StretchRect called using SourceSurface=%x, DestSurface=%x\n", pSourceSurface, pDestSurface);
+	LogDebug("IDirect3DDevice9::StretchRect called using SourceSurface=%p, DestSurface=%p\n", pSourceSurface, pDestSurface);
 
 	CheckDevice(this);
 	D3D9Base::LPDIRECT3DSURFACE9 baseSourceSurface = baseSurface9(pSourceSurface);
@@ -4219,7 +4218,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::StretchRect(THIS_ D3D9Wrapper::IDire
 
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::ColorFill(THIS_ D3D9Wrapper::IDirect3DSurface9 *pSurface,CONST RECT* pRect,D3D9Base::D3DCOLOR color)
 {
-	LogDebug("IDirect3DDevice9::ColorFill called with Surface=%x\n", pSurface);
+	LogDebug("IDirect3DDevice9::ColorFill called with Surface=%p\n", pSurface);
 	CheckDevice(this);
 	D3D9Base::LPDIRECT3DSURFACE9 baseSurface = baseSurface9(pSurface);
 	HRESULT hr;
@@ -4272,7 +4271,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateOffscreenPlainSurface(THIS_ UI
 			}
 		}
 	}
-	if (ppSurface) LogInfo("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseSurface, *ppSurface);
+	if (ppSurface) LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurface, *ppSurface);
     return hr;
 }
 #define SMALL_FLOAT 0.001f
@@ -4289,7 +4288,7 @@ inline bool D3D9Wrapper::IDirect3DDevice9::isViewportDefaultForMainRT(CONST D3D9
 }
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetRenderTarget(THIS_ DWORD RenderTargetIndex, D3D9Wrapper::IDirect3DSurface9 *pRenderTarget)
 {
-	LogDebug("IDirect3DDevice9::SetRenderTarget called with RenderTargetIndex=%d, pRenderTarget=%x.\n", RenderTargetIndex, pRenderTarget);
+	LogDebug("IDirect3DDevice9::SetRenderTarget called with RenderTargetIndex=%d, pRenderTarget=%p.\n", RenderTargetIndex, pRenderTarget);
 	CheckDevice(this);
 	D3D9Base::LPDIRECT3DSURFACE9 baseRenderTarget = baseSurface9(pRenderTarget);
 	D3D9Wrapper::IDirect3DSurface9* newRenderTarget = wrappedSurface9(pRenderTarget);
@@ -4384,13 +4383,13 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetRenderTarget(THIS_ DWORD RenderTa
 		if (ppRenderTarget) *ppRenderTarget = 0;
 		return hr;
 	}
-	if (ppRenderTarget) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseSurface, *ppRenderTarget);
+	if (ppRenderTarget) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurface, *ppRenderTarget);
     return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetDepthStencilSurface(THIS_ D3D9Wrapper::IDirect3DSurface9 *pNewZStencil)
 {
-	LogDebug("IDirect3DDevice9::SetDepthStencilSurface called with NewZStencil=%x\n", pNewZStencil);
+	LogDebug("IDirect3DDevice9::SetDepthStencilSurface called with NewZStencil=%p\n", pNewZStencil);
 
 	if (!GetD3D9Device())
 	{
@@ -4503,7 +4502,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetDepthStencilSurface(THIS_ D3D9Wra
 		if (ppZStencilSurface) *ppZStencilSurface = 0;
 		return hr;
 	}
-	if (ppZStencilSurface) LogDebug("  returns hr=%x, handle=%x, wrapper=%x\n", hr, baseSurface, *ppZStencilSurface);
+	if (ppZStencilSurface) LogDebug("  returns hr=%x, handle=%p, wrapper=%p\n", hr, baseSurface, *ppZStencilSurface);
     return hr;
 }
 
@@ -5587,7 +5586,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexDeclaration(THIS_ CONST 
 		if (pVertexElements)
 			wrapper->_VertexElements = *pVertexElements;
 		wrapper->pendingDevice = this;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -5606,7 +5605,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexDeclaration(THIS_ CONST 
 			}
 		}
 	}
-	if (ppDecl) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseVertexDeclaration, *ppDecl);
+	if (ppDecl) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseVertexDeclaration, *ppDecl);
 
 	return hr;
 }
@@ -5659,7 +5658,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetVertexDeclaration(THIS_ D3D9Wrapp
 			hr = S_OK;
 		}
 	}
-	if (ppDecl) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseVertexDeclaration, *ppDecl);
+	if (ppDecl) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseVertexDeclaration, *ppDecl);
 	return hr;
 }
 
@@ -5698,7 +5697,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexShader(THIS_ CONST DWORD
 			*ppShader = reinterpret_cast<D3D9Wrapper::IDirect3DVertexShader9*>(baseShader);
 		}
 	}
-	if (ppShader) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseShader, *ppShader);
+	if (ppShader) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseShader, *ppShader);
 
 	return hr;
 }
@@ -5747,7 +5746,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetVertexShader(THIS_ D3D9Wrapper::I
 			hr = S_OK;
 		}
 	}
-	if (ppShader) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseShader, *ppShader);
+	if (ppShader) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseShader, *ppShader);
 
 	return hr;
 }
@@ -5896,7 +5895,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetStreamSource(THIS_ UINT StreamNum
 			}
 		}
 	}
-	if (ppStreamData) LogDebug("  returns hr=%x, handle=%x, wrapper=%x\n", hr, baseVB, *ppStreamData);
+	if (ppStreamData) LogDebug("  returns hr=%x, handle=%p, wrapper=%p\n", hr, baseVB, *ppStreamData);
     return hr;
 }
 
@@ -5979,7 +5978,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetIndices(THIS_ D3D9Wrapper::IDirec
 			}
 		}
 	}
-	if (ppIndexData) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseIB, *ppIndexData);
+	if (ppIndexData) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseIB, *ppIndexData);
 	return hr;
 }
 
@@ -6003,7 +6002,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreatePixelShader(THIS_ CONST DWORD*
 		}
 
 	}
-	if (ppShader) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseShader, *ppShader);
+	if (ppShader) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseShader, *ppShader);
 	return hr;
 }
 
@@ -6051,7 +6050,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetPixelShader(THIS_ D3D9Wrapper::ID
 			hr = S_OK;
 		}
 	}
-	if (ppShader) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseShader, *ppShader);
+	if (ppShader) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseShader, *ppShader);
 	return hr;
 }
 
@@ -6173,7 +6172,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DeletePatch(THIS_ UINT Handle)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateQuery(THIS_ D3D9Base::D3DQUERYTYPE Type, D3D9Base::IDirect3DQuery9** ppQuery)
 {
-	LogDebug("IDirect3DDevice9::CreateQuery called with Type=%d, ppQuery=%x\n", Type, ppQuery);
+	LogDebug("IDirect3DDevice9::CreateQuery called with Type=%d, ppQuery=%p\n", Type, ppQuery);
 
 	CheckDevice(this);
 
@@ -6199,8 +6198,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateQuery(THIS_ D3D9Base::D3DQUERY
 			}
 		}
 	}
-	if (ppQuery) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseQuery, *ppQuery);
-	if (!ppQuery) LogDebug("  returns result=%x, handle=%x\n", hr, baseQuery);
+	if (ppQuery) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseQuery, *ppQuery);
+	if (!ppQuery) LogDebug("  returns result=%x, handle=%p\n", hr, baseQuery);
 
 	if (G->hunting && SUCCEEDED(hr) && wrappedQuery)
 		G->mQueries.push_back(wrappedQuery);
@@ -6325,7 +6324,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurfaceEx(UINT Wid
 
 		pendingCreateDepthStencilSurfaceEx = wrapper;
 		*ppSurface = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -6386,7 +6385,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurfaceEx(UINT Wid
 			*ppSurface = reinterpret_cast<D3D9Wrapper::IDirect3DSurface9*>(baseSurface);
 		}
 	}
-	if (ppSurface) LogInfo("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseSurface, *ppSurface);
+	if (ppSurface) LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurface, *ppSurface);
 
 	return hr;
 }
@@ -6427,7 +6426,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateOffscreenPlainSurfaceEx(UINT W
 		}
 	}
 
-	if (ppSurface) LogInfo("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseSurface, *ppSurface);
+	if (ppSurface) LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurface, *ppSurface);
 	return hr;
 
 }
@@ -6494,7 +6493,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateRenderTargetEx(UINT Width, UIN
 			*ppSurface = reinterpret_cast<D3D9Wrapper::IDirect3DSurface9*>(baseSurface);
 		}
 	}
-	if (ppSurface) LogInfo("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseSurface, *ppSurface);
+	if (ppSurface) LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurface, *ppSurface);
 
 	return hr;
 }

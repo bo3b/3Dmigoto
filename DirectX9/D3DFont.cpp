@@ -674,7 +674,7 @@ HRESULT CD3DFont::DrawText(float fXPos, float fYPos, DWORD dwColor, const char* 
 		m_pD3DDevice->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
 		m_pD3DDevice->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
 	}
-	int len = strlen(strText);
+	size_t len = strlen(strText);
 	DWORD strStart = (DWORD)strText;
 	float fStartX = fXPos;
 	DWORD dwCustomColor = 0xFFFFFFFF;
@@ -937,7 +937,7 @@ HRESULT CD3DFont::AddStaticText(float fXPos, float fYPos, DWORD dwColor, const c
 		GetTextExtent(strText, &sz);
 		fXPos -= (FLOAT)sz.cx / 2.0f;
 	}
-	int len = strlen(strText);
+	size_t len = strlen(strText);
 	DWORD strStart = (DWORD)strText;
 	// Set filter states
 	if (dwFlags & D3DFONT_FILTERED)

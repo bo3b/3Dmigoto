@@ -41,8 +41,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::QueryInterface(THIS_ REFIID r
 	HRESULT hr = NULL;
 	if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
 		return hr;
-	LogInfo("QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %x\n",
-		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
+	LogInfo("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
 	hr = m_pUnk->QueryInterface(riid, ppvObj);
 	if (hr == S_OK) {
 		if ((*ppvObj) == GetRealOrig()) {
@@ -52,7 +51,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::QueryInterface(THIS_ REFIID r
 				zero_d3d_ref_count = false;
 				++shared_ref_count;
 				LogInfo("  interface replaced with IDirect3DVolumeTexture9 wrapper.\n");
-				LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+				LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
 				return hr;
 			}
 		}
@@ -69,7 +68,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::QueryInterface(THIS_ REFIID r
 					wrapper->zero_d3d_ref_count = false;
 					++shared_ref_count;
 					LogInfo("  interface replaced with IDirect3DVolume9 wrapper.\n");
-					LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+					LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
 					return hr;
 				}
 				else {
@@ -79,7 +78,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::QueryInterface(THIS_ REFIID r
 					wrapper->zero_d3d_ref_count = false;
 					++shared_ref_count;
 					LogInfo("  interface replaced with IDirect3DVolume9 wrapper.\n");
-					LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+					LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
 					return hr;
 				}
 			}
@@ -88,7 +87,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::QueryInterface(THIS_ REFIID r
 		if (unk)
 			*ppvObj = unk;
 	}
-	LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+	LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
 	return hr;
 }
 
@@ -102,7 +101,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVolumeTexture9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVolumeTexture9::Release(THIS)
 {
-	LogDebug("IDirect3DVolumeTexture9::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
+	LogDebug("IDirect3DVolumeTexture9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 
 	ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
 	LogDebug("  internal counter = %d\n", ulRef);
@@ -111,7 +110,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVolumeTexture9::Release(THIS)
 	bool prev_non_zero = !zero_d3d_ref_count;
 	if (ulRef == 0)
 	{
-		if (!gLogDebug) LogInfo("IDirect3DVolumeTexture9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+		if (!gLogDebug) LogInfo("IDirect3DVolumeTexture9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
 		zero_d3d_ref_count = true;
 	}
 	if (prev_non_zero) {
@@ -284,7 +283,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::GetVolumeLevel(THIS_ UINT Lev
 		wrapper->_VolumeTexture = this;
 		wrapper->pendingGetVolumeLevel = true;
 		*ppVolumeLevel = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -327,7 +326,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::GetVolumeLevel(THIS_ UINT Lev
 			}
 		}
 	}
-	if (ppVolumeLevel) LogInfo("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseVolumeLevel, *ppVolumeLevel);
+	if (ppVolumeLevel) LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseVolumeLevel, *ppVolumeLevel);
 
 	return hr;
 }

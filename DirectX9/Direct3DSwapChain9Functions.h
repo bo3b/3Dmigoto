@@ -51,8 +51,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::QueryInterface(THIS_ REFIID riid,
 	HRESULT hr = NULL;
 	if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
 		return hr;
-	LogInfo("QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %x\n",
-		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
+	LogInfo("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
 	hr = m_pUnk->QueryInterface(riid, ppvObj);
 	if (hr == S_OK) {
 		if ((*ppvObj) == GetRealOrig()) {
@@ -62,7 +61,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::QueryInterface(THIS_ REFIID riid,
 				++shared_ref_count;
 				zero_d3d_ref_count = false;
 				LogInfo("  interface replaced with IDirect3DSwapChain9 wrapper.\n");
-				LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+				LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
 				return hr;
 			}
 		}
@@ -70,7 +69,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::QueryInterface(THIS_ REFIID riid,
 		if (unk)
 			*ppvObj = unk;
 	}
-	LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+	LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
 	return hr;
 }
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DSwapChain9::AddRef(THIS)
@@ -83,7 +82,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DSwapChain9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DSwapChain9::Release(THIS)
 {
-	LogDebug("IDirect3DSwapChain9::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
+	LogDebug("IDirect3DSwapChain9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
 	LogDebug("  internal counter = %d\n", ulRef);
@@ -92,7 +91,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DSwapChain9::Release(THIS)
 	bool prev_non_zero = !zero_d3d_ref_count;
     if (ulRef == 0)
     {
-		if (!gLogDebug) LogInfo("IDirect3DSwapChain9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+		if (!gLogDebug) LogInfo("IDirect3DSwapChain9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
 		zero_d3d_ref_count = true;
     }
 	if (prev_non_zero) {
@@ -254,7 +253,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetBackBuffer(THIS_ UINT iBackBuf
 			}
 		}
 	}
-	if (ppBackBuffer) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseSurface, *ppBackBuffer);
+	if (ppBackBuffer) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurface, *ppBackBuffer);
 
     return hr;
 }

@@ -3340,7 +3340,7 @@ vector<byte> assemblerDX9(vector<char> *asmFile, vector<byte> origBytecode)
 {
 	vector<byte> ret;
 	LPD3DXBUFFER pAssembly;
-	HRESULT hr = D3DXAssembleShader(asmFile->data(), asmFile->size(), NULL, NULL, 0, &pAssembly, NULL);
+	HRESULT hr = D3DXAssembleShader(asmFile->data(), (UINT)asmFile->size(), NULL, NULL, 0, &pAssembly, NULL);
 	if (!FAILED(hr)) {
 		size_t size = pAssembly->GetBufferSize();
 		LPVOID buffer = pAssembly->GetBufferPointer();

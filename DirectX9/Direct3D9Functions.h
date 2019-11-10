@@ -52,8 +52,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::QueryInterface(THIS_ REFIID riid, void ** 
 	HRESULT hr = NULL;
 	if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
 		return hr;
-	LogInfo("QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %x\n",
-		riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
+	LogInfo("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
 	hr = m_pUnk->QueryInterface(riid, ppvObj);
 	if (hr == S_OK) {
 		if ((*ppvObj) == GetRealOrig()) {
@@ -61,7 +60,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::QueryInterface(THIS_ REFIID riid, void ** 
 				*ppvObj = this;
 				++m_ulRef;
 				LogInfo("  interface replaced with IDirect3D9 wrapper.\n");
-				LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+				LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
 				return hr;
 			}
 		}
@@ -69,7 +68,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::QueryInterface(THIS_ REFIID riid, void ** 
 		if (unk)
 			*ppvObj = unk;
 	}
-	LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+	LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
 	return hr;
 }
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3D9::AddRef(THIS)
@@ -80,7 +79,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3D9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3D9::Release(THIS)
 {
-	LogDebug("IDirect3D9::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
+	LogDebug("IDirect3D9::Release handle=%p, counter=%lu, this=%p\n", m_pUnk, m_ulRef, this);
 
 	ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
 	LogDebug("  internal counter = %d\n", ulRef);
@@ -89,7 +88,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3D9::Release(THIS)
 
     if (ulRef == 0)
     {
-		if (!gLogDebug) LogInfo("IDirect3D9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+		if (!gLogDebug) LogInfo("IDirect3D9::Release handle=%p, counter=%lu, internal counter = %lu\n", m_pUnk, m_ulRef, ulRef);
 		LogInfo("  deleting self\n");
 
 		Delete();
@@ -279,7 +278,7 @@ DWORD WINAPI DeviceCreateThread(LPVOID lpParam)
 
 STDMETHODIMP D3D9Wrapper::IDirect3D9::CreateDeviceEx(THIS_ UINT Adapter,D3D9Base::D3DDEVTYPE DeviceType,HWND hFocusWindow,DWORD BehaviorFlags,D3D9Base::D3DPRESENT_PARAMETERS* pPresentationParameters,D3D9Base::D3DDISPLAYMODEEX* pFullscreenDisplayMode,D3D9Wrapper::IDirect3DDevice9** ppReturnedDeviceInterface)
 {
-	LogInfo("IDirect3D9::CreateDeviceEx called with parameters FocusWindow = %x\n", hFocusWindow);
+	LogInfo("IDirect3D9::CreateDeviceEx called with parameters FocusWindow = %p\n", hFocusWindow);
 
 	if (pPresentationParameters)
 	{
@@ -420,7 +419,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::CreateDeviceEx(THIS_ UINT Adapter,D3D9Base
 	newDevice->_pOrigPresentationParameters = originalPresentParams;
 	newDevice->_pPresentationParameters = *pPresentationParameters;
 
-	LogInfo("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseDevice, newDevice);
+	LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseDevice, newDevice);
 	if (ppReturnedDeviceInterface) {
 		if ((!(G->enable_hooks & EnableHooksDX9::DEVICE) && newDevice) || !baseDevice) {
 			*ppReturnedDeviceInterface = newDevice;
@@ -567,7 +566,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3D9::CreateDevice(THIS_ UINT Adapter,D3D9Base::
 	newDevice->_pOrigPresentationParameters = originalPresentParams;
 	newDevice->_pPresentationParameters = *pPresentationParameters;
 
-	LogInfo("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseDevice, newDevice);
+	LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseDevice, newDevice);
 	if (ppReturnedDeviceInterface) {
 		if ((!(G->enable_hooks & EnableHooksDX9::DEVICE) && newDevice) || !baseDevice) {
 			*ppReturnedDeviceInterface = newDevice;

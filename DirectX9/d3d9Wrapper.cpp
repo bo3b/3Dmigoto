@@ -338,7 +338,7 @@ bool D3D9Wrapper::IDirect3DUnknown::QueryInterface_DXGI_Callback(REFIID riid, vo
 		{
 			*ppvObj = ((D3D9Wrapper::IDirect3DDevice9 *)*ppvObj)->GetRealOrig();
 		}
-		LogInfo("  returning handle = %x\n", *ppvObj);
+		LogInfo("  returning handle = %p\n", *ppvObj);
 
 		*result = 0x13bc7e31;
 		return true;
@@ -538,7 +538,7 @@ HRESULT _Direct3DCreate9Ex(UINT Version, D3D9Base::IDirect3D9Ex **ppD3D) {
 	}
 
 	D3D9Wrapper::IDirect3D9 *wrapper = D3D9Wrapper::IDirect3D9::GetDirect3D(pD3D, true);
-	LogInfo("  returns handle=%x, wrapper=%x\n", pD3D, wrapper);
+	LogInfo("  returns handle=%p, wrapper=%p\n", pD3D, wrapper);
 
 	if (!(G->enable_hooks >= EnableHooksDX9::ALL) && wrapper) {
 		*ppD3D = (D3D9Base::IDirect3D9Ex*)wrapper;
@@ -577,7 +577,7 @@ D3D9Base::IDirect3D9* WINAPI Direct3DCreate9(UINT Version)
     }
 
     D3D9Wrapper::IDirect3D9 *wrapper = D3D9Wrapper::IDirect3D9::GetDirect3D(pD3D, false);
-    LogInfo("  returns handle=%x, wrapper=%x\n", pD3D, wrapper);
+    LogInfo("  returns handle=%p, wrapper=%p\n", pD3D, wrapper);
 
 	if (!(G->enable_hooks >= EnableHooksDX9::ALL) && wrapper) {
 		return (D3D9Base::IDirect3D9*)wrapper;
@@ -680,7 +680,7 @@ HRESULT CreateFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *me, D3D9Wrapper::Fake
 	if (me->getOverlay())
 		me->getOverlay()->Resize(pParams->BackBufferWidth, pParams->BackBufferHeight);
 	D3D9Wrapper::FakeSwapChain newChain;
-	newChain.swapChainIndex = me->mFakeSwapChains.size();
+	newChain.swapChainIndex = (UINT)me->mFakeSwapChains.size();
 	hr = createFakeSwapChain(me, &newChain, pOrigParams, pParams->BackBufferWidth, pParams->BackBufferHeight);
 	if (FAILED(hr)) {
 		LogOverlay(LOG_DIRE, "  HackerFakeSwapChain failed to create fake swap chain.\n");

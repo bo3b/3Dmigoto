@@ -72,8 +72,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::QueryInterface(THIS_ REFIID rii
 	HRESULT hr = NULL;
 	if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
 		return hr;
-	LogInfo("QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %x\n",
-			riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
+	LogInfo("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
 	hr = m_pUnk->QueryInterface(riid, ppvObj);
 	if (hr == S_OK) {
 		if ((*ppvObj) == GetRealOrig()) {
@@ -83,7 +82,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::QueryInterface(THIS_ REFIID rii
 				++shared_ref_count;
 				zero_d3d_ref_count = false;
 				LogInfo("  interface replaced with IDirect3DCubeTexture9 wrapper.\n");
-				LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+				LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
 				return hr;
 			}
 		}
@@ -99,7 +98,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::QueryInterface(THIS_ REFIID rii
 					++shared_ref_count;
 					wrapper->zero_d3d_ref_count = false;
 					LogInfo("  interface replaced with IDirect3DSurface9 wrapper.\n");
-					LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+					LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
 					return hr;
 				}
 				else {
@@ -109,7 +108,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::QueryInterface(THIS_ REFIID rii
 					++shared_ref_count;
 					wrapper->zero_d3d_ref_count = false;
 					LogInfo("  interface replaced with IDirect3DSurface9 wrapper.\n");
-					LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+					LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
 					return hr;
 				}
 			}
@@ -118,7 +117,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::QueryInterface(THIS_ REFIID rii
 		if (unk)
 			*ppvObj = unk;
 	}
-	LogInfo("  result = %x, handle = %x\n", hr, *ppvObj);
+	LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
 	return hr;
 }
 
@@ -132,7 +131,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DCubeTexture9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DCubeTexture9::Release(THIS)
 {
-	LogDebug("IDirect3DCubeTexture9::Release handle=%x, counter=%d, this=%x\n", m_pUnk, m_ulRef, this);
+	LogDebug("IDirect3DCubeTexture9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 
 	ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
 	LogDebug("  internal counter = %d\n", ulRef);
@@ -141,7 +140,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DCubeTexture9::Release(THIS)
 	bool prev_non_zero = !zero_d3d_ref_count;
 	if (ulRef == 0)
 	{
-		if (!gLogDebug) LogInfo("IDirect3DCubeTexture9::Release handle=%x, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+		if (!gLogDebug) LogInfo("IDirect3DCubeTexture9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
 		zero_d3d_ref_count = true;
 	}
 
@@ -381,7 +380,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::GetCubeMapSurface(D3D9Base::D3D
 		wrapper->_CubeTexture = this;
 		wrapper->pendingGetCubeMapSurface = true;
 		*ppCubeMapSurface = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -434,7 +433,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::GetCubeMapSurface(D3D9Base::D3D
 			}
 		}
 	}
-	if (ppCubeMapSurface) LogInfo("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseSurfaceLevel, *ppCubeMapSurface);
+	if (ppCubeMapSurface) LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurfaceLevel, *ppCubeMapSurface);
 
 	return hr;
 }

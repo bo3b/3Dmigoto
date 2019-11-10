@@ -8,7 +8,7 @@ HRESULT WINAPI Hooked_D3DXComputeNormalMap(
 	_In_        DWORD              Channel,
 	_In_        FLOAT              Amplitude) {
 
-	LogInfo("Hooked_D3DXComputeNormalMap called with SourceTexture=%x, DestinationTexture=%x\n", pSrcTexture, pTexture);
+	LogInfo("Hooked_D3DXComputeNormalMap called with SourceTexture=%p, DestinationTexture=%p\n", pSrcTexture, pTexture);
 
 	D3D9Base::IDirect3DTexture9 *baseSourceTexture = baseTexture9(pSrcTexture);
 	D3D9Base::IDirect3DTexture9 *baseDestTexture = baseTexture9(pTexture);
@@ -84,7 +84,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTexture(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppCubeTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 		return S_OK;
 	}
 
@@ -141,7 +141,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTexture(
 		}
 	}
 
-	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppCubeTexture);
+	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
 
 	LogInfo("  returns result=%x\n", hr);
 
@@ -169,7 +169,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFile(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppCubeTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 		return S_OK;
 	}
 	D3D2DTEXTURE_DESC pDesc;
@@ -216,7 +216,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFile(
 		}
 	}
 
-	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppCubeTexture);
+	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
 
 	LogInfo("  returns result=%x\n", hr);
 
@@ -254,7 +254,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileEx(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppCubeTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 		return S_OK;
 	}
 
@@ -311,7 +311,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileEx(
 		}
 	}
 
-	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppCubeTexture);
+	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
 
 	LogInfo("  returns result=%x\n", hr);
 
@@ -340,7 +340,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemory(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppCubeTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 		return S_OK;
 	}
 	D3D2DTEXTURE_DESC pDesc;
@@ -387,7 +387,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemory(
 		}
 	}
 
-	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppCubeTexture);
+	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
 
 	LogInfo("  returns result=%x\n", hr);
 
@@ -426,7 +426,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemoryEx(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppCubeTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 		return S_OK;
 	}
 
@@ -483,7 +483,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemoryEx(
 		}
 	}
 
-	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppCubeTexture);
+	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
 
 	LogInfo("  returns result=%x\n", hr);
 
@@ -512,7 +512,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResource(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppCubeTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 		return S_OK;
 	}
 	D3D2DTEXTURE_DESC pDesc;
@@ -559,7 +559,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResource(
 		}
 	}
 
-	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppCubeTexture);
+	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
 
 	LogInfo("  returns result=%x\n", hr);
 
@@ -598,7 +598,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResourceEx(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppCubeTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 		return S_OK;
 	}
 
@@ -655,7 +655,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResourceEx(
 		}
 	}
 
-	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppCubeTexture);
+	if (ppCubeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
 
 	LogInfo("  returns result=%x\n", hr);
 
@@ -691,7 +691,7 @@ HRESULT WINAPI Hooked_D3DXCreateTexture(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -747,7 +747,7 @@ HRESULT WINAPI Hooked_D3DXCreateTexture(
 		}
 	}
 
-	if (ppTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppTexture);
+	if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 
 	return hr;
 }
@@ -776,7 +776,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFile(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 		return S_OK;
 	}
 
@@ -823,7 +823,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFile(
 		}
 	}
 
-	if (ppTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppTexture);
+	if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 
 	return hr;
 }
@@ -862,7 +862,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileEx(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -918,7 +918,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileEx(
 		}
 	}
 
-	if (ppTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppTexture);
+	if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 
 	return hr;
 }
@@ -947,7 +947,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemory(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 		return S_OK;
 	}
 
@@ -994,7 +994,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemory(
 		}
 	}
 
-	if (ppTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppTexture);
+	if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 
 	return hr;
 }
@@ -1034,7 +1034,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemoryEx(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -1090,7 +1090,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemoryEx(
 		}
 	}
 
-	if (ppTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppTexture);
+	if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 
 	return hr;
 }
@@ -1119,7 +1119,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResource(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 		return S_OK;
 	}
 
@@ -1166,7 +1166,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResource(
 		}
 	}
 
-	if (ppTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppTexture);
+	if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 
 	return hr;
 }
@@ -1206,7 +1206,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResourceEx(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -1262,7 +1262,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResourceEx(
 		}
 	}
 
-	if (ppTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppTexture);
+	if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 
 	return hr;
 }
@@ -1296,7 +1296,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTexture(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppVolumeTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -1332,7 +1332,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTexture(
 		}
 
 	}
-	if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppVolumeTexture);
+	if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
 	LogInfo("  returns result=%x\n", hr);
 
 	return hr;
@@ -1361,7 +1361,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFile(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppVolumeTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -1388,7 +1388,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFile(
 			}
 		}
 	}
-	if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppVolumeTexture);
+	if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
 	LogInfo("  returns result=%x\n", hr);
 
 	return hr;
@@ -1429,7 +1429,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileEx(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -1465,7 +1465,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileEx(
 		}
 	}
 
-	if (ppTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppTexture);
+	if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 	LogInfo("  returns result=%x\n", hr);
 
 	return hr;
@@ -1495,7 +1495,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemory(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppVolumeTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -1522,7 +1522,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemory(
 			}
 		}
 	}
-	if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppVolumeTexture);
+	if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
 	LogInfo("  returns result=%x\n", hr);
 
 	return hr;
@@ -1564,7 +1564,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemoryEx(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppVolumeTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -1600,7 +1600,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemoryEx(
 		}
 	}
 
-	if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppVolumeTexture);
+	if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
 	LogInfo("  returns result=%x\n", hr);
 
 	return hr;
@@ -1630,7 +1630,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResource(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppVolumeTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -1657,7 +1657,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResource(
 			}
 		}
 	}
-	if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppVolumeTexture);
+	if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
 	LogInfo("  returns result=%x\n", hr);
 
 	return hr;
@@ -1699,7 +1699,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResourceEx(
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppVolumeTexture = wrapper;
-		LogInfo("  returns handle=%x\n", wrapper);
+		LogInfo("  returns handle=%p\n", wrapper);
 
 		return S_OK;
 	}
@@ -1735,7 +1735,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResourceEx(
 		}
 	}
 
-	if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%x, wrapper=%x\n", hr, baseTexture, *ppVolumeTexture);
+	if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
 	LogInfo("  returns result=%x\n", hr);
 
 	return hr;
@@ -1745,7 +1745,7 @@ HRESULT WINAPI Hooked_D3DXFillCubeTexture(
 	_Out_ D3D9Wrapper::IDirect3DCubeTexture9* pTexture,
 	_In_  D3D9Base::LPD3DXFILL3D           pFunction,
 	_In_  LPVOID                 pData) {
-	LogInfo("Hooked_D3DXFillCubeTexture called with DestinationTexture=%x\n", pTexture);
+	LogInfo("Hooked_D3DXFillCubeTexture called with DestinationTexture=%p\n", pTexture);
 
 	D3D9Base::IDirect3DCubeTexture9 *baseDestTexture = baseTexture9(pTexture);
 
@@ -1780,7 +1780,7 @@ HRESULT WINAPI Hooked_D3DXFillCubeTexture(
 HRESULT WINAPI Hooked_D3DXFillCubeTextureTX(
 	_In_ D3D9Wrapper::IDirect3DCubeTexture9* pTexture,
 	_In_ D3D9Base::LPD3DXTEXTURESHADER    pTextureShader) {
-	LogInfo("Hooked_D3DXFillCubeTextureTX called with DestinationTexture=%x\n", pTexture);
+	LogInfo("Hooked_D3DXFillCubeTextureTX called with DestinationTexture=%p\n", pTexture);
 
 	D3D9Base::IDirect3DCubeTexture9 *baseDestTexture = baseTexture9(pTexture);
 
@@ -1816,7 +1816,7 @@ HRESULT WINAPI Hooked_D3DXFillTexture(
 	_Out_ D3D9Wrapper::IDirect3DTexture9* pTexture,
 	_In_  D3D9Base::LPD3DXFILL2D       pFunction,
 	_In_  LPVOID             pData) {
-	LogInfo("Hooked_D3DXFillCubeTexture called with DestinationTexture=%x\n", pTexture);
+	LogInfo("Hooked_D3DXFillCubeTexture called with DestinationTexture=%p\n", pTexture);
 
 	D3D9Base::IDirect3DTexture9 *baseDestTexture = baseTexture9(pTexture);
 
@@ -1850,7 +1850,7 @@ HRESULT WINAPI Hooked_D3DXFillTexture(
 HRESULT WINAPI Hooked_D3DXFillTextureTX(
 	_Inout_ D3D9Wrapper::IDirect3DTexture9*  pTexture,
 	_In_    D3D9Base::LPD3DXTEXTURESHADER pTextureShader) {
-	LogInfo("Hooked_D3DXFillTextureTX called with DestinationTexture=%x\n", pTexture);
+	LogInfo("Hooked_D3DXFillTextureTX called with DestinationTexture=%p\n", pTexture);
 
 	D3D9Base::IDirect3DTexture9 *baseDestTexture = baseTexture9(pTexture);
 
@@ -1886,7 +1886,7 @@ HRESULT WINAPI Hooked_D3DXFillVolumeTexture(
 	_Out_ D3D9Wrapper::IDirect3DVolumeTexture9* pTexture,
 	_In_  D3D9Base::LPD3DXFILL3D             pFunction,
 	_In_  LPVOID                   pData) {
-	LogInfo("Hooked_D3DXFillVolumeTexture called with DestinationTexture=%x\n", pTexture);
+	LogInfo("Hooked_D3DXFillVolumeTexture called with DestinationTexture=%p\n", pTexture);
 
 	D3D9Base::IDirect3DVolumeTexture9 *baseDestTexture = baseTexture9(pTexture);
 
@@ -1899,7 +1899,7 @@ HRESULT WINAPI Hooked_D3DXFillVolumeTexture(
 HRESULT WINAPI Hooked_D3DXFillVolumeTextureTX(
 	_In_ D3D9Wrapper::IDirect3DVolumeTexture9* pTexture,
 	_In_ D3D9Base::LPD3DXTEXTURESHADER      pTextureShader) {
-	LogInfo("Hooked_D3DXFillVolumeTextureTX called with DestinationTexture=%x\n", pTexture);
+	LogInfo("Hooked_D3DXFillVolumeTextureTX called with DestinationTexture=%p\n", pTexture);
 
 	D3D9Base::IDirect3DVolumeTexture9 *baseDestTexture = baseTexture9(pTexture);
 
@@ -1914,7 +1914,7 @@ HRESULT WINAPI Hooked_D3DXFilterTexture(
 	_Out_ const PALETTEENTRY           *pPalette,
 	_In_        UINT                   SrcLevel,
 	_In_        DWORD                  MipFilter) {
-	LogInfo("Hooked_D3DXFilterTexture called with DestinationTexture=%x\n", pBaseTexture);
+	LogInfo("Hooked_D3DXFilterTexture called with DestinationTexture=%p\n", pBaseTexture);
 
 	D3D9Base::IDirect3DBaseTexture9 *baseDestTexture = baseTexture9(pBaseTexture);
 
@@ -1955,7 +1955,7 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromFile(
 	_In_          DWORD              Filter,
 	_In_          D3D9Base::D3DCOLOR           ColorKey,
 	_Inout_       D3D9Base::D3DXIMAGE_INFO     *pSrcInfo) {
-	LogDebug("Hooked_D3DXLoadSurfaceFromFile called using DestSurface=%x\n", pDestSurface);
+	LogDebug("Hooked_D3DXLoadSurfaceFromFile called using DestSurface=%p\n", pDestSurface);
 	D3D9Base::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
@@ -1992,7 +1992,7 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromFileInMemory(
 	_In_          DWORD              Filter,
 	_In_          D3D9Base::D3DCOLOR           ColorKey,
 	_Inout_       D3D9Base::D3DXIMAGE_INFO     *pSrcInfo) {
-	LogDebug("Hooked_D3DXLoadSurfaceFromFileInMemory called using DestSurface=%x\n", pDestSurface);
+	LogDebug("Hooked_D3DXLoadSurfaceFromFileInMemory called using DestSurface=%p\n", pDestSurface);
 	D3D9Base::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
@@ -2030,7 +2030,7 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromMemory(
 	_In_ const RECT               *pSrcRect,
 	_In_       DWORD              Filter,
 	_In_       D3D9Base::D3DCOLOR           ColorKey) {
-	LogDebug("Hooked_D3DXLoadSurfaceFromMemory called using DestSurface=%x\n", pDestSurface);
+	LogDebug("Hooked_D3DXLoadSurfaceFromMemory called using DestSurface=%p\n", pDestSurface);
 	D3D9Base::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
@@ -2067,7 +2067,7 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromResource(
 	_In_          DWORD              Filter,
 	_In_          D3D9Base::D3DCOLOR           ColorKey,
 	_Inout_       D3D9Base::D3DXIMAGE_INFO     *pSrcInfo) {
-	LogDebug("Hooked_D3DXLoadSurfaceFromResource called using DestSurface=%x\n", pDestSurface);
+	LogDebug("Hooked_D3DXLoadSurfaceFromResource called using DestSurface=%p\n", pDestSurface);
 	D3D9Base::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
@@ -2102,7 +2102,7 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromSurface(
 	_In_ const RECT               *pSrcRect,
 	_In_       DWORD              Filter,
 	_In_       D3D9Base::D3DCOLOR           ColorKey) {
-	LogDebug("Hooked_D3DXLoadSurfaceFromSurface called using SourceSurface=%x, DestSurface=%x\n", pSrcSurface, pDestSurface);
+	LogDebug("Hooked_D3DXLoadSurfaceFromSurface called using SourceSurface=%p, DestSurface=%p\n", pSrcSurface, pDestSurface);
 	D3D9Base::LPDIRECT3DSURFACE9 baseSourceSurface = baseSurface9(pSrcSurface);
 	D3D9Base::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
 	HRESULT hr;
@@ -2149,7 +2149,7 @@ HRESULT WINAPI Hooked_D3DXLoadVolumeFromFile(
 	_In_       DWORD             Filter,
 	_In_       D3D9Base::D3DCOLOR          ColorKey,
 	_In_       D3D9Base::D3DXIMAGE_INFO    *pSrcInfo) {
-	LogDebug("Hooked_D3DXLoadVolumeFromFile called using DestSurface=%x\n", pDestVolume);
+	LogDebug("Hooked_D3DXLoadVolumeFromFile called using DestSurface=%p\n", pDestVolume);
 	D3D9Base::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
 	HRESULT hr = trampoline_D3DXLoadVolumeFromFile(baseDestVolume, pDestPalette, pDestBox, pSrcFile, pSrcBox, Filter, ColorKey, pSrcInfo);
 	LogInfo("  returns result=%x\n", hr);
@@ -2167,7 +2167,7 @@ HRESULT WINAPI Hooked_D3DXLoadVolumeFromFileInMemory(
 	_In_       DWORD             Filter,
 	_In_       D3D9Base::D3DCOLOR          ColorKey,
 	_In_       D3D9Base::D3DXIMAGE_INFO    *pSrcInfo) {
-	LogDebug("Hooked_D3DXLoadVolumeFromFileInMemory called using DestSurface=%x\n", pDestVolume);
+	LogDebug("Hooked_D3DXLoadVolumeFromFileInMemory called using DestSurface=%p\n", pDestVolume);
 	D3D9Base::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
 	HRESULT hr = trampoline_D3DXLoadVolumeFromFileInMemory(baseDestVolume, pDestPalette, pDestBox, pSrcData, SrcDataSize, pSrcBox, Filter, ColorKey, pSrcInfo);
 	LogInfo("  returns result=%x\n", hr);
@@ -2187,7 +2187,7 @@ HRESULT WINAPI Hooked_D3DXLoadVolumeFromMemory(
 	_In_ const D3D9Base::D3DBOX            *pSrcBox,
 	_In_       DWORD             Filter,
 	_In_       D3D9Base::D3DCOLOR          ColorKey) {
-	LogDebug("Hooked_D3DXLoadVolumeFromMemory called using DestSurface=%x\n", pDestVolume);
+	LogDebug("Hooked_D3DXLoadVolumeFromMemory called using DestSurface=%p\n", pDestVolume);
 	D3D9Base::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
 	HRESULT hr = trampoline_D3DXLoadVolumeFromMemory(baseDestVolume, pDestPalette, pDestBox, pSrcMemory, SrcFormat, SrcRowPitch, SrcSlicePitch, pSrcPalette, pSrcBox, Filter, ColorKey);
 	LogInfo("  returns result=%x\n", hr);
@@ -2205,7 +2205,7 @@ HRESULT WINAPI Hooked_D3DXLoadVolumeFromResource(
 	DWORD                     Filter,
 	D3D9Base::D3DCOLOR                  ColorKey,
 	D3D9Base::D3DXIMAGE_INFO*           pSrcInfo) {
-	LogDebug("Hooked_D3DXLoadVolumeFromResource called using DestSurface=%x\n", pDestVolume);
+	LogDebug("Hooked_D3DXLoadVolumeFromResource called using DestSurface=%p\n", pDestVolume);
 	D3D9Base::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
 	HRESULT hr = trampoline_D3DXLoadVolumeFromResource(baseDestVolume, pDestPalette, pDestBox, hSrcModule, pSrcResource, pSrcBox, Filter, ColorKey, pSrcInfo);
 	LogInfo("  returns result=%x\n", hr);
@@ -2222,7 +2222,7 @@ HRESULT WINAPI Hooked_D3DXLoadVolumeFromVolume(
 	_In_ const D3D9Base::D3DBOX            *pSrcBox,
 	_In_       DWORD             Filter,
 	_In_       D3D9Base::D3DCOLOR          ColorKey) {
-	LogDebug("Hooked_D3DXLoadVolumeFromVolume called using DestSurface=%x\n", pDestVolume);
+	LogDebug("Hooked_D3DXLoadVolumeFromVolume called using DestSurface=%p\n", pDestVolume);
 	D3D9Base::LPDIRECT3DVOLUME9 baseSourceVolume = baseVolume9(pSrcVolume);
 	D3D9Base::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
 	HRESULT hr = trampoline_D3DXLoadVolumeFromVolume(baseDestVolume, pDestPalette, pDestBox, baseSourceVolume, pSrcPalette, pSrcBox, Filter, ColorKey);

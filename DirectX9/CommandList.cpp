@@ -4956,13 +4956,13 @@ bool parse_command_list_array_name(const wstring &name, const wstring *ini_names
 		}
 		if (numSlots) {
 			if (num == 0)
-				*numSlots = (*target)->fvals.size();
+				*numSlots = (UINT)(*target)->fvals.size();
 			else
 			{
 				if ((*startSlot + num) < (*target)->fvals.size())
 					*numSlots = num;
 				else
-					*numSlots = (*target)->fvals.size() - *startSlot;
+					*numSlots = (UINT)(*target)->fvals.size() - *startSlot;
 			}
 		}
 		return true;
@@ -5040,13 +5040,13 @@ int find_local_variable_array(const wstring &name, CommandListScopeArrays *scope
 				}
 				if (numSlots) {
 					if (num == 0)
-						*numSlots = (*arr)->fvals.size();
+						*numSlots = (UINT)(*arr)->fvals.size();
 					else
 					{
 						if ((*startSlot + num) < (*arr)->fvals.size())
 							*numSlots = num;
 						else
-							*numSlots = (*arr)->fvals.size() - *startSlot;
+							*numSlots = (UINT)(*arr)->fvals.size() - *startSlot;
 
 					}
 				}
@@ -5517,7 +5517,7 @@ bool val_to_variable_array_assignment(wstring * val, vector<float> *fvals, UINT 
 			auto first = (*fvals).begin() + start_slot + i;
 			int end;
 			if (start_slot + i + num_slots > (*fvals).size()) {
-				end = (*fvals).size();
+				end = (UINT)(*fvals).size();
 			}
 			else {
 				end = start_slot + i + num_slots;
@@ -5559,7 +5559,7 @@ bool val_to_variable_array_assignment(wstring * val, vector<float> *fvals, UINT 
 			auto first = (*fvals).begin() + start_slot + i;
 			int end;
 			if (start_slot + i + (vector4Count * 4) > (*fvals).size()) {
-				end = (*fvals).size();
+				end = (UINT)(*fvals).size();
 			}
 			else {
 				end = start_slot + i + (vector4Count * 4);
