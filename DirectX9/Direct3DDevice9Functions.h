@@ -135,7 +135,7 @@ inline HRESULT D3D9Wrapper::IDirect3DDevice9::CreateStereoHandle() {
 	return InitStereoHandle();
 }
 inline HRESULT D3D9Wrapper::IDirect3DDevice9::InitStereoHandle() {
-	NvAPI_Status nvret;
+	NvAPI_Status nvret = NVAPI_OK;
 	retreivedInitial3DSettings = false;
 	if (G->stereoblit_control_set_once && G->gForceStereo != 2) {
 		nvret = NvAPI_Stereo_ReverseStereoBlitControl(this->mStereoHandle, true);
