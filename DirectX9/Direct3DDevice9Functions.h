@@ -483,12 +483,8 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 	string shaderModel;
 	if (helix)
 		swprintf_s(path, MAX_PATH, L"%ls\\%08X.txt", shader_path, hash);
-	else {
-		if (G->helix_fix)
-			swprintf_s(path, MAX_PATH, L"%ls\\%08X-%ls.txt", shader_path, hash, pShaderType);
-		else
-			swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.txt", shader_path, hash, pShaderType);
-	}
+	else
+		swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.txt", shader_path, hash, pShaderType);
 	f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f != INVALID_HANDLE_VALUE)
 	{

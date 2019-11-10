@@ -314,7 +314,7 @@ void Overlay::DrawShaderInfoLine(wchar_t *type, D3D9Wrapper::IDirect3DShader9 *s
 		return;
 
 	if (G->verbose_overlay)
-		swprintf_s(osdString, maxstring, L"%S %016llx:", type, selectedShader);
+		swprintf_s(osdString, maxstring, L"%S %016llx:", type, selectedShader->hash);
 	else
 		swprintf_s(osdString, maxstring, L"%S:", type);
 

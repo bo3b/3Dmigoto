@@ -743,11 +743,18 @@ static bool WriteConstantTable(UINT64 hash, OriginalShaderInfo shader_info, D3D9
 		return false;
 	}
 
-	if (G->helix_fix)
-		swprintf_s(fileName, MAX_PATH, L"%ls\\%08X-%ls-consts.txt", hash, shader_info.shaderType.c_str());
-	else
+	if (G->helix_fix) {
+		swprintf_s(fileName, MAX_PATH, L"%08X-%ls-consts.txt", hash, shader_info.shaderType.c_str());
+		if (!shader_info.shaderType.compare(L"vs") && (G->HELIX_SHADER_PATH_VERTEX[0]))
+			swprintf_s(fullName, MAX_PATH, L"%ls\\%ls", G->HELIX_SHADER_PATH_VERTEX, fileName);
+		else if (!shader_info.shaderType.compare(L"ps") && (G->HELIX_SHADER_PATH_PIXEL[0]))
+			swprintf_s(fullName, MAX_PATH, L"%ls\\%ls", G->HELIX_SHADER_PATH_PIXEL, fileName);
+		else
+			swprintf_s(fullName, MAX_PATH, L"%ls\\%ls", G->SHADER_PATH, fileName);
+	} else {
 		swprintf_s(fileName, MAX_PATH, L"%016llx-%ls-consts.txt", hash, shader_info.shaderType.c_str());
-	swprintf_s(fullName, MAX_PATH, L"%ls\\%ls", G->SHADER_PATH, fileName);
+		swprintf_s(fullName, MAX_PATH, L"%ls\\%ls", G->SHADER_PATH, fileName);
+	}
 
 	wfopen_ensuring_access(&f, fullName, L"wb");
 	if (!f) {
@@ -771,11 +778,18 @@ static bool WriteASM(string *asmText, string *hlslText, string *errText,
 	wchar_t fullName[MAX_PATH];
 	std::string token;
 	FILE *f;
-	if (G->helix_fix)
-		swprintf_s(fileName, MAX_PATH, L"%ls\\%08X-%ls.txt", hash, shader_info.shaderType.c_str());
-	else
+	if (G->helix_fix) {
+		swprintf_s(fileName, MAX_PATH, L"%08X.txt", hash);
+		if (!shader_info.shaderType.compare(L"vs") && (G->HELIX_SHADER_PATH_VERTEX[0]))
+			swprintf_s(fullName, MAX_PATH, L"%ls\\%ls", G->HELIX_SHADER_PATH_VERTEX, fileName);
+		else if (!shader_info.shaderType.compare(L"ps") && (G->HELIX_SHADER_PATH_PIXEL[0]))
+			swprintf_s(fullName, MAX_PATH, L"%ls\\%ls", G->HELIX_SHADER_PATH_PIXEL, fileName);
+		else
+			swprintf_s(fullName, MAX_PATH, L"%ls\\%ls", G->SHADER_PATH, fileName);
+	} else {
 		swprintf_s(fileName, MAX_PATH, L"%016llx-%ls.txt", hash, shader_info.shaderType.c_str());
-	swprintf_s(fullName, MAX_PATH, L"%ls\\%ls", G->SHADER_PATH, fileName);
+		swprintf_s(fullName, MAX_PATH, L"%ls\\%ls", G->SHADER_PATH, fileName);
+	}
 
 	wfopen_ensuring_access(&f, fullName, L"wb");
 	if (!f) {
