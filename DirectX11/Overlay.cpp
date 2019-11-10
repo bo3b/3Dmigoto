@@ -753,16 +753,19 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
 	// convergence is essentially an arbitrary number.
 
 	float separation, convergence;
-	NvU8 stereo = false;
-	NvAPIOverride();
-	Profiling::NvAPI_Stereo_IsEnabled(&stereo);
+	NvU8 stereo = !!stereoHandle;
 	if (stereo)
 	{
-		Profiling::NvAPI_Stereo_IsActivated(stereoHandle, &stereo);
+		NvAPIOverride();
+		Profiling::NvAPI_Stereo_IsEnabled(&stereo);
 		if (stereo)
 		{
-			Profiling::NvAPI_Stereo_GetSeparation(stereoHandle, &separation);
-			Profiling::NvAPI_Stereo_GetConvergence(stereoHandle, &convergence);
+			Profiling::NvAPI_Stereo_IsActivated(stereoHandle, &stereo);
+			if (stereo)
+			{
+				Profiling::NvAPI_Stereo_GetSeparation(stereoHandle, &separation);
+				Profiling::NvAPI_Stereo_GetConvergence(stereoHandle, &convergence);
+			}
 		}
 	}
 

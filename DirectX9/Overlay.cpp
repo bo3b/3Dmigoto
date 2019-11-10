@@ -412,16 +412,19 @@ static void CreateStereoInfoString(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, 
 	// Rather than draw graphic bars, this will just be numeric.  Because
 	// convergence is essentially an arbitrary number.
 	float separation, convergence;
-	bool stereo = false;
-	NvAPIOverride();
-	GetStereoEnabled(cachedStereoValues, &stereo);
+	bool stereo = !!hackerDevice->mStereoHandle;
 	if (stereo)
 	{
-		GetStereoActive(hackerDevice, cachedStereoValues, &stereo);
+		NvAPIOverride();
+		GetStereoEnabled(cachedStereoValues, &stereo);
 		if (stereo)
 		{
-			GetSeparation(hackerDevice, cachedStereoValues, &separation);
-			GetConvergence(hackerDevice, cachedStereoValues, &convergence);
+			GetStereoActive(hackerDevice, cachedStereoValues, &stereo);
+			if (stereo)
+			{
+				GetSeparation(hackerDevice, cachedStereoValues, &separation);
+				GetConvergence(hackerDevice, cachedStereoValues, &convergence);
+			}
 		}
 	}
 
