@@ -4403,7 +4403,6 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetDepthStencilSurface(THIS_ D3D9Wra
 	D3D9Wrapper::IDirect3DSurface9* pNewDepthStencil = wrappedSurface9(pNewZStencil);
 	Profiling::State profiling_state;
 	if (G->hunting == HUNTING_MODE_ENABLED) {
-		LeaveCriticalSection(&G->mCriticalSection);
 		if (G->DumpUsage) {
 			if (Profiling::mode == Profiling::Mode::SUMMARY)
 				Profiling::start(&profiling_state);
