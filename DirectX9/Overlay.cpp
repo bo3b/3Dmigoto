@@ -86,11 +86,6 @@ Overlay::~Overlay()
 		migotoResourceCount -= 3;
 	if (mFontProfiling.get())
 		migotoResourceCount -= 3;
-
-
-	mFont->~CD3DFont();
-	mFontNotifications->~CD3DFont();
-	mFontProfiling->~CD3DFont();
 }
 
 void Overlay::SaveState()
