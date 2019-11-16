@@ -12,6 +12,15 @@
 #include "Hunting.h"
 #include "nvprofile.h"
 #include "ShaderRegex.h"
+
+// We don't want to use the same ini file as DX11 since there are some small
+// but significant differences between them that could cause problems if both
+// versions of 3DMigoto are installed to the same game folder for one reason or
+// another. d3dx.ini was never a good name anyway since it doesn't indicate
+// what tool it belongs to, but we're stuck with that in DX11 for historical
+// reasons. Let's not make the same mistake a second time:
+#define INI_FILENAME L"3dmigoto9.ini"
+
 // List all the section prefixes which may contain a command list here and
 // whether they are a prefix or an exact match. Listing a section here will not
 // automatically treat it as a command list (call ParseCommandList on it to do
@@ -189,6 +198,10 @@ static bool ini_warned = false;
 #define IniWarning(fmt, ...) do { \
 	ini_warned = true; \
 	LogOverlay(LOG_WARNING, fmt, __VA_ARGS__); \
+} while (0)
+#define IniWarningW(fmt, ...) do { \
+	ini_warned = true; \
+	LogOverlayW(LOG_WARNING, fmt, __VA_ARGS__); \
 } while (0)
 #define IniWarningBeep() do { \
 	ini_warned = true; \
@@ -1849,7 +1862,7 @@ static void ParseCommandList(const wchar_t *id,
 				// whitelisted entries*, so check for
 				// duplicates here:
 				if (whitelisted_keys.count(key->c_str())) {
-					IniWarning("WARNING: Duplicate non-command list key found in d3dx.ini: [%S] %S\n", id, key->c_str());
+					IniWarningW(L"WARNING: Duplicate non-command list key found in " INI_FILENAME L": [%ls] %ls\n", id, key->c_str());
 				}
 				whitelisted_keys.insert(key->c_str());
 
@@ -4063,7 +4076,7 @@ void LoadConfigFile()
 		DoubleBeepExit();
 	wcsrchr(iniFile, L'\\')[1] = 0;
 	wcscpy(logFilename, iniFile);
-	wcscat(iniFile, L"d3dx.ini");
+	wcscat(iniFile, INI_FILENAME);
 	if (G->process_index > 0)
 		swprintf_s(logFilename, ARRAYSIZE(logFilename), L"d3d9_log_%i.txt", G->process_index);
 	else
@@ -4079,7 +4092,7 @@ void LoadConfigFile()
 		if (!LogFile)
 			LogFile = _wfsopen(logFilename, L"w", _SH_DENYNO);
 		LogInfo("\nD3D9 DLL starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, LogTime().c_str());
-		LogInfo("----------- d3dx.ini settings -----------\n");
+		LogInfoW(L"----------- " INI_FILENAME L" settings -----------\n");
 	}
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
@@ -4481,7 +4494,7 @@ void LoadProfileManagerConfig(const wchar_t *exe_path)
 		DoubleBeepExit();
 	wcsrchr(iniFile, L'\\')[1] = 0;
 	wcscpy(logFilename, iniFile);
-	wcscat(iniFile, L"d3dx.ini");
+	wcscat(iniFile, INI_FILENAME);
 	wcscat(logFilename, L"d3d9_profile_log.txt");
 
 	// [Logging]
@@ -4491,7 +4504,7 @@ void LoadProfileManagerConfig(const wchar_t *exe_path)
 		if (!LogFile)
 			LogFile = _wfsopen(logFilename, L"w", _SH_DENYNO);
 		LogInfo("\n3DMigoto profile helper starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, LogTime().c_str());
-		LogInfo("----------- d3dx.ini settings -----------\n");
+		LogInfoW(L"----------- " INI_FILENAME L" settings -----------\n");
 	}
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
@@ -4576,7 +4589,7 @@ void ReloadConfig(D3D9Wrapper::IDirect3DDevice9 *device)
 
 	SavePersistentSettings();
 
-	LogInfo("Reloading d3dx.ini (EXPERIMENTAL)...\n");
+	LogInfoW(L"Reloading " INI_FILENAME L" (EXPERIMENTAL)...\n");
 
 	G->gReloadConfigPending = false;
 
@@ -4632,5 +4645,5 @@ void ReloadConfig(D3D9Wrapper::IDirect3DDevice9 *device)
 		LogOverlay(LOG_DIRE, "BUG: No HackerDevice at ReloadConfig - please report this\n");
 	}
 
-	LogOverlay(LOG_INFO, "> d3dx.ini reloaded\n");
+	LogOverlayW(LOG_INFO, L"> " INI_FILENAME L" reloaded\n");
 }

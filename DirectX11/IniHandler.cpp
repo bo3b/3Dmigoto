@@ -17,6 +17,8 @@
 #include "nvprofile.h"
 #include "ShaderRegex.h"
 
+#define INI_FILENAME L"d3dx.ini"
+
 // List all the section prefixes which may contain a command list here and
 // whether they are a prefix or an exact match. Listing a section here will not
 // automatically treat it as a command list (call ParseCommandList on it to do
@@ -232,6 +234,10 @@ static bool ini_warned = false;
 #define IniWarning(fmt, ...) do { \
 	ini_warned = true; \
 	LogOverlay(LOG_WARNING, fmt, __VA_ARGS__); \
+} while (0)
+#define IniWarningW(fmt, ...) do { \
+	ini_warned = true; \
+	LogOverlayW(LOG_WARNING, fmt, __VA_ARGS__); \
 } while (0)
 #define IniWarningBeep() do { \
 	ini_warned = true; \
@@ -1919,7 +1925,7 @@ static void ParseCommandList(const wchar_t *id,
 				// whitelisted entries*, so check for
 				// duplicates here:
 				if (whitelisted_keys.count(key->c_str())) {
-					IniWarning("WARNING: Duplicate non-command list key found in d3dx.ini: [%S] %S\n", id, key->c_str());
+					IniWarningW(L"WARNING: Duplicate non-command list key found in " INI_FILENAME L": [%ls] %ls\n", id, key->c_str());
 				}
 				whitelisted_keys.insert(key->c_str());
 
@@ -4393,7 +4399,7 @@ void LoadConfigFile()
 		DoubleBeepExit();
 	wcsrchr(iniFile, L'\\')[1] = 0;
 	wcscpy(logFilename, iniFile);
-	wcscat(iniFile, L"d3dx.ini");
+	wcscat(iniFile, INI_FILENAME);
 	wcscat(logFilename, L"d3d11_log.txt");
 	warn_of_conflicting_d3dx(iniFile);
 
@@ -4415,7 +4421,7 @@ void LoadConfigFile()
 			"3DMigoto path: %S\n\n",
 			exe_path, our_path);
 
-		LogInfo("----------- d3dx.ini settings -----------\n");
+		LogInfoW(L"----------- " INI_FILENAME L" settings -----------\n");
 	}
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
@@ -4769,7 +4775,7 @@ void LoadProfileManagerConfig(const wchar_t *config_dir)
 		DoubleBeepExit();
 	wcsrchr(iniFile, L'\\')[1] = 0;
 	wcscpy(logFilename, iniFile);
-	wcscat(iniFile, L"d3dx.ini");
+	wcscat(iniFile, INI_FILENAME);
 	wcscat(logFilename, L"d3d11_profile_log.txt");
 
 	// [Logging]
@@ -4779,7 +4785,7 @@ void LoadProfileManagerConfig(const wchar_t *config_dir)
 		if (!LogFile)
 			LogFile = _wfsopen(logFilename, L"w", _SH_DENYNO);
 		LogInfo("\n3DMigoto profile helper starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, LogTime().c_str());
-		LogInfo("----------- d3dx.ini settings -----------\n");
+		LogInfoW(L"----------- " INI_FILENAME L" settings -----------\n");
 	}
 	LogInfo("[Logging]\n");
 	LogInfo("  calls=1\n");
@@ -4872,7 +4878,7 @@ void ReloadConfig(HackerDevice *device)
 
 	SavePersistentSettings();
 
-	LogInfo("Reloading d3dx.ini (EXPERIMENTAL)...\n");
+	LogInfoW(L"Reloading " INI_FILENAME L" (EXPERIMENTAL)...\n");
 
 	G->gReloadConfigPending = false;
 	G->iniParamsReserved = 0;
@@ -4934,5 +4940,5 @@ void ReloadConfig(HackerDevice *device)
 		LogOverlay(LOG_DIRE, "BUG: No HackerContext at ReloadConfig - please report this\n");
 	}
 
-	LogOverlay(LOG_INFO, "> d3dx.ini reloaded\n");
+	LogOverlayW(LOG_INFO, L"> " INI_FILENAME L" reloaded\n");
 }
