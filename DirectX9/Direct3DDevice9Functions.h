@@ -97,10 +97,12 @@ inline HRESULT D3D9Wrapper::IDirect3DDevice9::ReleaseStereoTexture()
 {
 	// Release stereo parameter texture.
 	LogInfo("  release stereo parameter texture.\n");
-	ULONG ret = this->mStereoTexture->Release();
-	LogInfo("    stereo texture release, handle = %p\n", this->mStereoTexture);
-	this->mStereoTexture = NULL;
-	--migotoResourceCount;
+	if (this->mStereoTexture) {
+		ULONG ret = this->mStereoTexture->Release();
+		LogInfo("    stereo texture release, handle = %p\n", this->mStereoTexture);
+		this->mStereoTexture = NULL;
+		--migotoResourceCount;
+	}
 	return S_OK;
 }
 inline HRESULT D3D9Wrapper::IDirect3DDevice9::CreateStereoTexture()
@@ -175,10 +177,12 @@ inline void D3D9Wrapper::IDirect3DDevice9::CreatePinkHuntingResources()
 }
 inline void D3D9Wrapper::IDirect3DDevice9::ReleasePinkHuntingResources()
 {
-	if (G->hunting && (G->marking_mode == MarkingMode::PINK || G->config_reloadable))
+	if (G->mPinkingShader)
 	{
+		LogInfo("  Releasing pinking shader\n");
 		G->mPinkingShader->Release();
 		G->mPinkingShader = NULL;
+		--migotoResourceCount;
 	}
 }
 inline HRESULT D3D9Wrapper::IDirect3DDevice9::SetGlobalNVSurfaceCreationMode()
