@@ -5259,7 +5259,7 @@ inline void D3D9Wrapper::IDirect3DDevice9::UpdateStereoParams(bool forceUpdate, 
 		}
 		if (forceUpdate)
 			mParamTextureManager.mForceUpdate = true;
-		bool updated = mParamTextureManager.UpdateStereoTexture((nv::stereo::D3D9Type::Device*)GetD3D9Device(), mStereoTexture, false);
+		bool updated = mParamTextureManager.UpdateStereoTexture(GetD3D9Device(), GetD3D9Device(), mStereoTexture, false);
 		if (updated) {
 
 		}
