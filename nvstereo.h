@@ -252,6 +252,76 @@ namespace nv
 
 			return stereoEnabled != 0;
 		}
+
+		// The D3D9 "Driver" for stereo updates, encapsulates the logic that is Direct3D9 specific.
+		struct D3D9Type
+		{
+			typedef D3D9Base::IDirect3DDevice9 Device;
+			typedef D3D9Base::IDirect3DTexture9 Texture;
+			typedef D3D9Base::IDirect3DSurface9 StagingResource;
+
+			static const NV_STEREO_REGISTRY_PROFILE_TYPE RegistryProfileType = NVAPI_STEREO_DX9_REGISTRY_PROFILE;
+
+			// Note that the texture must be at least 20 bytes wide to handle the stereo header.
+			static const int StereoTexWidth = 8;
+			static const int StereoTexHeight = 1;
+			static const D3D9Base::D3DFORMAT StereoTexFormat = D3D9MAP_FORMAT;
+			static const int StereoBytesPerPixel = D3D9MAP_PIXELSIZE;
+
+			static StagingResource* CreateStagingResource(Device* pDevice, float eyeSep, float sep, float conv,
+				float tuneValue1, float tuneValue2, float tuneValue3, float tuneValue4)
+			{
+				float screenWidth, screenHeight;
+
+				// Get screen resolution here, since it becomes part of the stereo texture structure.
+				// This was previously fetched from the swap chain.
+				GetPrimaryDisplayResolution(screenWidth, screenHeight);
+
+				StagingResource* staging = 0;
+				unsigned int stagingWidth = StereoTexWidth * 2;
+				unsigned int stagingHeight = StereoTexHeight + 1;
+
+				pDevice->CreateOffscreenPlainSurface(stagingWidth, stagingHeight, StereoTexFormat, D3D9Base::D3DPOOL_SYSTEMMEM, &staging, NULL);
+
+				if (!staging) {
+					return 0;
+				}
+
+				D3D9Base::D3DLOCKED_RECT lr;
+				staging->LockRect(&lr, NULL, 0);
+				unsigned char* sysData = (unsigned char *)lr.pBits;
+				unsigned int sysMemPitch = stagingWidth * StereoBytesPerPixel;
+
+				float* leftEyePtr = (float*)sysData;
+				float* rightEyePtr = leftEyePtr + StereoTexWidth * StereoBytesPerPixel / sizeof(float);
+				LPNVSTEREOIMAGEHEADER header = (LPNVSTEREOIMAGEHEADER)(sysData + (sysMemPitch * StereoTexHeight));
+				PopulateTextureData(leftEyePtr, rightEyePtr, header, stagingWidth, stagingHeight, StereoBytesPerPixel * 8, eyeSep, sep, conv,
+					tuneValue1, tuneValue2, tuneValue3, tuneValue4,
+					screenWidth, screenHeight);
+				staging->UnlockRect();
+
+				return staging;
+			}
+
+			static void UpdateTextureFromStaging(Device* pDevice, Texture* tex, StagingResource* staging)
+			{
+				RECT stereoSrcRect;
+				stereoSrcRect.top = 0;
+				stereoSrcRect.bottom = StereoTexHeight;
+				stereoSrcRect.left = 0;
+				stereoSrcRect.right = StereoTexWidth;
+
+				POINT stereoDstPoint;
+				stereoDstPoint.x = 0;
+				stereoDstPoint.y = 0;
+
+				D3D9Base::IDirect3DSurface9* texSurface;
+				tex->GetSurfaceLevel(0, &texSurface);
+
+				pDevice->UpdateSurface(staging, &stereoSrcRect, texSurface, &stereoDstPoint);
+				texSurface->Release();
+			}
+		};
 #ifndef NO_STEREO_D3D11
 		struct D3D11Type
 		{
@@ -334,75 +404,6 @@ namespace nv
 		};
 #endif // NO_STEREO_D3D11
 
-		// The D3D9 "Driver" for stereo updates, encapsulates the logic that is Direct3D9 specific.
-		struct D3D9Type
-		{
-			typedef D3D9Base::IDirect3DDevice9 Device;
-			typedef D3D9Base::IDirect3DTexture9 Texture;
-			typedef D3D9Base::IDirect3DSurface9 StagingResource;
-
-			static const NV_STEREO_REGISTRY_PROFILE_TYPE RegistryProfileType = NVAPI_STEREO_DX9_REGISTRY_PROFILE;
-
-			// Note that the texture must be at least 20 bytes wide to handle the stereo header.
-			static const int StereoTexWidth = 8;
-			static const int StereoTexHeight = 1;
-			static const D3D9Base::D3DFORMAT StereoTexFormat = D3D9MAP_FORMAT;
-			static const int StereoBytesPerPixel = D3D9MAP_PIXELSIZE;
-
-			static StagingResource* CreateStagingResource(Device* pDevice, float eyeSep, float sep, float conv,
-				float tuneValue1, float tuneValue2, float tuneValue3, float tuneValue4)
-			{
-				float screenWidth, screenHeight;
-
-				// Get screen resolution here, since it becomes part of the stereo texture structure.
-				// This was previously fetched from the swap chain.
-				GetPrimaryDisplayResolution(screenWidth, screenHeight);
-
-				StagingResource* staging = 0;
-				unsigned int stagingWidth = StereoTexWidth * 2;
-				unsigned int stagingHeight = StereoTexHeight + 1;
-
-				pDevice->CreateOffscreenPlainSurface(stagingWidth, stagingHeight, StereoTexFormat, D3D9Base::D3DPOOL_SYSTEMMEM, &staging, NULL);
-
-				if (!staging) {
-					return 0;
-				}
-
-				D3D9Base::D3DLOCKED_RECT lr;
-				staging->LockRect(&lr, NULL, 0);
-				unsigned char* sysData = (unsigned char *)lr.pBits;
-				unsigned int sysMemPitch = stagingWidth * StereoBytesPerPixel;
-
-				float* leftEyePtr = (float*)sysData;
-				float* rightEyePtr = leftEyePtr + StereoTexWidth * StereoBytesPerPixel / sizeof(float);
-				LPNVSTEREOIMAGEHEADER header = (LPNVSTEREOIMAGEHEADER)(sysData + (sysMemPitch * StereoTexHeight));
-				PopulateTextureData(leftEyePtr, rightEyePtr, header, stagingWidth, stagingHeight, StereoBytesPerPixel * 8, eyeSep, sep, conv,
-					tuneValue1, tuneValue2, tuneValue3, tuneValue4,
-					screenWidth, screenHeight);
-				staging->UnlockRect();
-
-				return staging;
-			}
-
-			static void UpdateTextureFromStaging(Device* pDevice, Texture* tex, StagingResource* staging)
-			{
-				RECT stereoSrcRect;
-				stereoSrcRect.top = 0;
-				stereoSrcRect.bottom = StereoTexHeight;
-				stereoSrcRect.left = 0;
-				stereoSrcRect.right = StereoTexWidth;
-
-				POINT stereoDstPoint;
-				stereoDstPoint.x = 0;
-				stereoDstPoint.y = 0;
-
-				D3D9Base::IDirect3DSurface9* texSurface;
-				tex->GetSurfaceLevel(0, &texSurface);
-
-				pDevice->UpdateSurface(staging, &stereoSrcRect, texSurface, &stereoDstPoint);
-				texSurface->Release();
-			}
-		};
 		// The NV Stereo class, which can work for either D3D9 or D3D10, depending on which type it's specialized for
 		// Note that both types can live side-by-side in two separate instances as well.
 		// Also note that there are convenient typedefs below the class definition.
@@ -560,11 +561,13 @@ namespace nv
 			bool mStereoActiveIsKnown = false;
 			bool mKnownStereoActive = false;
 		};
-#ifndef NO_STEREO_D3D11
-		typedef ParamTextureManager<D3D11Type> ParamTextureManagerD3D11;
-#endif
+
 #ifndef NO_STEREO_D3D9
 		typedef ParamTextureManager<D3D9Type> ParamTextureManagerD3D9;
+#endif
+
+#ifndef NO_STEREO_D3D11
+		typedef ParamTextureManager<D3D11Type> ParamTextureManagerD3D11;
 #endif
 
 	};
