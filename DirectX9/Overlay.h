@@ -7,9 +7,7 @@
 
 // Forward references required because of circular references from the
 // other 'Hacker' objects.
-namespace D3D9Base {
-	#include <d3d9.h>
-}
+#include <d3d9.h>
 namespace D3D9Wrapper {
 	class IDirect3DDevice9;
 	class IDirect3DShader9;
@@ -38,10 +36,10 @@ class Overlay
 private:
 	D3D9Wrapper::IDirect3DDevice9 *mHackerDevice;
 	DirectX::XMUINT2 mResolution;
-	D3D9Base::IDirect3DStateBlock9 *saved_state_block;
+	::IDirect3DStateBlock9 *saved_state_block;
 	void SaveState();
 	void RestoreState();
-	HRESULT InitDrawState(D3D9Base::IDirect3DSwapChain9 *pSwapChain = NULL);
+	HRESULT InitDrawState(::IDirect3DSwapChain9 *pSwapChain = NULL);
 	void DrawShaderInfoLine(wchar_t *type, UINT64 selectedShader, float *y);
 	void DrawShaderInfoLine(wchar_t *type, D3D9Wrapper::IDirect3DShader9 *selectedShader, float *y);
 	void DrawShaderInfoLine(wchar_t *osdString, float *y);
@@ -49,14 +47,14 @@ private:
 	void DrawNotices(float *y);
 	void DrawProfiling(float *y);
 	void DrawRectangle(float x, float y, float w, float h, float r, float g, float b, float opacity);
-	void DrawOutlinedString(CD3DFont *font, wchar_t const *text, D3D9Base::D3DXVECTOR2 const &position, DWORD color);
+	void DrawOutlinedString(CD3DFont *font, wchar_t const *text, ::D3DXVECTOR2 const &position, DWORD color);
 
 	ULONG migotoResourceCount;
 
 public:
 	Overlay(D3D9Wrapper::IDirect3DDevice9 *pDevice);
 	~Overlay();
-	void DrawOverlay(CachedStereoValues *cachedStereoValues = NULL, D3D9Base::IDirect3DSwapChain9 *pSwapChain = NULL);
+	void DrawOverlay(CachedStereoValues *cachedStereoValues = NULL, ::IDirect3DSwapChain9 *pSwapChain = NULL);
 	void Resize(UINT Width, UINT Height);
 	ULONG ReferenceCount();
 

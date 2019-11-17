@@ -12,9 +12,9 @@ inline void D3D9Wrapper::IDirect3DPixelShader9::Delete()
 }
 inline void D3D9Wrapper::IDirect3DPixelShader9::HookPixelShader()
 {
-	m_pUnk = hook_pixel_shader(GetD3DPixelShader9(), (D3D9Base::IDirect3DPixelShader9*)this);
+	m_pUnk = hook_pixel_shader(GetD3DPixelShader9(), (::IDirect3DPixelShader9*)this);
 }
-D3D9Wrapper::IDirect3DPixelShader9::IDirect3DPixelShader9(D3D9Base::LPDIRECT3DPIXELSHADER9 pPS, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
+D3D9Wrapper::IDirect3DPixelShader9::IDirect3DPixelShader9(::LPDIRECT3DPIXELSHADER9 pPS, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
     : D3D9Wrapper::IDirect3DShader9((IUnknown*)pPS, hackerDevice, Pixel),
 	bound(false),
 	zero_d3d_ref_count(false)
@@ -24,7 +24,7 @@ D3D9Wrapper::IDirect3DPixelShader9::IDirect3DPixelShader9(D3D9Base::LPDIRECT3DPI
 	}
 }
 
-D3D9Wrapper::IDirect3DPixelShader9* D3D9Wrapper::IDirect3DPixelShader9::GetDirect3DPixelShader9(D3D9Base::LPDIRECT3DPIXELSHADER9 pPS, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
+D3D9Wrapper::IDirect3DPixelShader9* D3D9Wrapper::IDirect3DPixelShader9::GetDirect3DPixelShader9(::LPDIRECT3DPIXELSHADER9 pPS, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
 {
 	D3D9Wrapper::IDirect3DPixelShader9* p = new D3D9Wrapper::IDirect3DPixelShader9(pPS, hackerDevice);
     if (pPS) m_List.AddMember(pPS, p);

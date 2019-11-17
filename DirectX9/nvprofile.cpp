@@ -3,7 +3,7 @@
 #include "IniHandler.h"
 #include <unordered_set>
 #include <fstream>
-using namespace D3D9Base;
+
 
 ProfileSettings profile_settings;
 

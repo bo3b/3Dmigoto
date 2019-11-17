@@ -1498,7 +1498,7 @@ static void ParseResourceInitialData(CustomResource *custom_resource, const wcha
 	std::string setting, token;
 	int format_size = 0;
 	int format_type = 0;
-	D3D9Base::D3DFORMAT format;
+	::D3DFORMAT format;
 
 	if (!GetIniStringAndLog(section, L"data", NULL, &setting, &migoto_ini))
 		return;
@@ -1530,41 +1530,41 @@ static void ParseResourceInitialData(CustomResource *custom_resource, const wcha
 	// e.g. data = R32_FLOAT 1 2 3 4
 	std::getline(tokens, token, ' ');
 	format = ParseFormatStringDX9(token.c_str(), false);
-	if (format == (D3D9Base::D3DFORMAT)-1) {
+	if (format == (::D3DFORMAT)-1) {
 		format = custom_resource->override_format;
 		tokens.seekg(0);
 	}
 
 	switch (format) {
-	case D3D9Base::D3DFMT_A32B32G32R32F:
-	case D3D9Base::D3DFMT_G32R32F:
-	case D3D9Base::D3DFMT_R32F:
+	case ::D3DFMT_A32B32G32R32F:
+	case ::D3DFMT_G32R32F:
+	case ::D3DFMT_R32F:
 		ConstructInitialData<float>(custom_resource, &tokens);
 		break;
-	case D3D9Base::D3DFMT_A16B16G16R16:
-	case D3D9Base::D3DFMT_L16:
-	case D3D9Base::D3DFMT_G16R16:
+	case ::D3DFMT_A16B16G16R16:
+	case ::D3DFMT_L16:
+	case ::D3DFMT_G16R16:
 		ConstructInitialData<unsigned short>(custom_resource, &tokens);
 		break;
-	case D3D9Base::D3DFMT_Q16W16V16U16:
-	case D3D9Base::D3DFMT_V16U16:
+	case ::D3DFMT_Q16W16V16U16:
+	case ::D3DFMT_V16U16:
 		ConstructInitialData<signed short>(custom_resource, &tokens);
 		break;
-	case D3D9Base::D3DFMT_R8G8B8:
-	case D3D9Base::D3DFMT_A8R8G8B8:
-	case D3D9Base::D3DFMT_X8R8G8B8:
-	case D3D9Base::D3DFMT_A8B8G8R8:
-	case D3D9Base::D3DFMT_X8B8G8R8:
-	case D3D9Base::D3DFMT_A8L8:
-	case D3D9Base::D3DFMT_A8P8:
-	case D3D9Base::D3DFMT_L8:
-	case D3D9Base::D3DFMT_P8:
-	case D3D9Base::D3DFMT_A8:
+	case ::D3DFMT_R8G8B8:
+	case ::D3DFMT_A8R8G8B8:
+	case ::D3DFMT_X8R8G8B8:
+	case ::D3DFMT_A8B8G8R8:
+	case ::D3DFMT_X8B8G8R8:
+	case ::D3DFMT_A8L8:
+	case ::D3DFMT_A8P8:
+	case ::D3DFMT_L8:
+	case ::D3DFMT_P8:
+	case ::D3DFMT_A8:
 		ConstructInitialData<unsigned char>(custom_resource, &tokens);
 		break;
-	case D3D9Base::D3DFMT_V8U8:
-	case D3D9Base::D3DFMT_Q8W8V8U8:
-	case D3D9Base::D3DFMT_CxV8U8:
+	case ::D3DFMT_V8U8:
+	case ::D3DFMT_Q8W8V8U8:
+	case ::D3DFMT_CxV8U8:
 		ConstructInitialData<signed char>(custom_resource, &tokens);
 		break;
 
@@ -1578,13 +1578,13 @@ struct Pool {
 	int val;
 };
 static struct Pool Pools[] = {
-	{ L"DEFAULT", D3D9Base::D3DPOOL_DEFAULT },
-	{ L"MANAGED", D3D9Base::D3DPOOL_MANAGED },
-	{ L"SYSTEMMEM", D3D9Base::D3DPOOL_SYSTEMMEM },
-	{ L"SCRATCH", D3D9Base::D3DPOOL_SCRATCH },
-	{ L"FORCE_DWORD", D3D9Base::D3DPOOL_FORCE_DWORD }
+	{ L"DEFAULT", ::D3DPOOL_DEFAULT },
+	{ L"MANAGED", ::D3DPOOL_MANAGED },
+	{ L"SYSTEMMEM", ::D3DPOOL_SYSTEMMEM },
+	{ L"SCRATCH", ::D3DPOOL_SCRATCH },
+	{ L"FORCE_DWORD", ::D3DPOOL_FORCE_DWORD }
 };
-static D3D9Base::D3DPOOL ParsePool(const wchar_t *section)
+static ::D3DPOOL ParsePool(const wchar_t *section)
 {
 	wchar_t *prefix = L"D3DPOOL_";
 	size_t prefix_len;
@@ -1592,7 +1592,7 @@ static D3D9Base::D3DPOOL ParsePool(const wchar_t *section)
 	wchar_t *ptr;
 	int i;
 
-	D3D9Base::D3DPOOL pool = D3D9Base::D3DPOOL(0);
+	::D3DPOOL pool = ::D3DPOOL(0);
 
 	if (!GetIniStringAndLog(section, L"pool", 0, val, MAX_PATH, &migoto_ini))
 		return pool;
@@ -1605,7 +1605,7 @@ static D3D9Base::D3DPOOL ParsePool(const wchar_t *section)
 
 	for (i = 1; i < ARRAYSIZE(Pools); i++) {
 		if (!_wcsicmp(ptr, Pools[i].name)) {
-			pool = (D3D9Base::D3DPOOL)Pools[i].val;
+			pool = (::D3DPOOL)Pools[i].val;
 			return pool;
 		}
 
@@ -1667,7 +1667,7 @@ static void ParseResourceSections()
 
 		if (GetIniString(i->first.c_str(), L"format", 0, setting, MAX_PATH, &migoto_ini)) {
 			custom_resource->override_format = ParseFormatStringDX9(setting, true);
-			if (custom_resource->override_format == (D3D9Base::D3DFORMAT)-1) {
+			if (custom_resource->override_format == (::D3DFORMAT)-1) {
 				IniWarning("  WARNING: Unknown format \"%S\"\n", setting);
 			}
 			else {
@@ -2039,8 +2039,8 @@ static void ParseConstantsSection()
 			if (!ini_namespace->empty())
 				_name = get_namespaced_var_name_lower(_name, ini_namespace);
 			wcs = const_cast<wchar_t*>(val->c_str());
-			D3D9Base::D3DXMATRIX matrix;
-			D3D9Base::D3DXMatrixIdentity(&matrix);
+			::D3DXMATRIX matrix;
+			::D3DXMatrixIdentity(&matrix);
 			i = 0;
 			pwc = wcstok_s(wcs, L",", &buffer);
 			while (pwc != NULL)
@@ -3022,7 +3022,7 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
 		-1, &found,
 		L" D3DRTYPE_", ResourceType,
 		ARRAYSIZE(ResourceType), 1, &migoto_ini);
-	fuzzy->set_resource_type((D3D9Base::D3DRESOURCETYPE)ival);
+	fuzzy->set_resource_type((::D3DRESOURCETYPE)ival);
 
 	// We always use match_usage=default if it is not explicitly specified,
 	// since forcing the stereo mode doesn't make much sense for other
@@ -3040,7 +3040,7 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
 	fuzzy->Pool.val = ival;
 
 	ival = GetIniEnum(section, L"match_msaa",
-		D3D9Base::D3DMULTISAMPLE_NONE, &found, L"D3DMULTISAMPLE_",
+		::D3DMULTISAMPLE_NONE, &found, L"D3DMULTISAMPLE_",
 		MultisampleType, ARRAYSIZE(MultisampleType), 0, &migoto_ini);
 	fuzzy->MultiSampleType.op = FuzzyMatchOp::EQUAL;
 	fuzzy->MultiSampleType.val = ival;
@@ -3058,7 +3058,7 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
 	// Format string
 	if (GetIniStringAndLog(section, L"match_format", 0, setting, MAX_PATH, &migoto_ini)) {
 		fuzzy->Format.val = ParseFormatStringDX9(setting, true);
-		if (fuzzy->Format.val == (D3D9Base::D3DFORMAT)-1)
+		if (fuzzy->Format.val == (::D3DFORMAT)-1)
 			IniWarning("  WARNING: Unknown format \"%S\"\n", setting);
 		else
 			fuzzy->Format.op = FuzzyMatchOp::EQUAL;
@@ -3233,7 +3233,7 @@ static wchar_t *BlendFactors[] = {
 	L"INVSRCCOLOR2"
 };
 
-static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D9Base::D3DBLENDOP *op, D3D9Base::D3DBLEND *src, D3D9Base::D3DBLEND *dst)
+static void ParseBlendOp(wchar_t *key, wchar_t *val, ::D3DBLENDOP *op, ::D3DBLEND *src, ::D3DBLEND *dst)
 {
 	wchar_t op_buf[32], src_buf[32], dst_buf[32];
 	int i;
@@ -3248,21 +3248,21 @@ static void ParseBlendOp(wchar_t *key, wchar_t *val, D3D9Base::D3DBLENDOP *op, D
 	}
 
 	try {
-		*op = (D3D9Base::D3DBLENDOP)ParseEnum(op_buf, L"D3DBLENDOP_", BlendOPs, ARRAYSIZE(BlendOPs), 1);
+		*op = (::D3DBLENDOP)ParseEnum(op_buf, L"D3DBLENDOP_", BlendOPs, ARRAYSIZE(BlendOPs), 1);
 	}
 	catch (EnumParseError) {
 		IniWarning("  WARNING: Unrecognised blend operation %S\n", op_buf);
 	}
 
 	try {
-		*src = (D3D9Base::D3DBLEND)ParseEnum(src_buf, L"D3DBLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
+		*src = (::D3DBLEND)ParseEnum(src_buf, L"D3DBLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
 	}
 	catch (EnumParseError) {
 		IniWarning("  WARNING: Unrecognised blend source factor %S\n", src_buf);
 	}
 
 	try {
-		*dst = (D3D9Base::D3DBLEND)ParseEnum(dst_buf, L"D3DBLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
+		*dst = (::D3DBLEND)ParseEnum(dst_buf, L"D3DBLEND_", BlendFactors, ARRAYSIZE(BlendFactors), 1);
 	}
 	catch (EnumParseError) {
 		IniWarning("  WARNING: Unrecognised blend destination factor %S\n", dst_buf);
@@ -3298,9 +3298,9 @@ static bool ParseBlendRenderTarget(
 			&desc->blend_op,
 			&desc->src_blend,
 			&desc->dest_blend);
-		mask->blend_op = (D3D9Base::D3DBLENDOP)0;
-		mask->src_blend = (D3D9Base::D3DBLEND)0;
-		mask->dest_blend = (D3D9Base::D3DBLEND)0;
+		mask->blend_op = (::D3DBLENDOP)0;
+		mask->src_blend = (::D3DBLEND)0;
+		mask->dest_blend = (::D3DBLEND)0;
 	}
 
 	wcscpy(key, L"alpha");
@@ -3312,9 +3312,9 @@ static bool ParseBlendRenderTarget(
 			&desc->blend_op,
 			&desc->src_blend,
 			&desc->dest_blend);
-		mask->blend_op = (D3D9Base::D3DBLENDOP)0;
-		mask->src_blend = (D3D9Base::D3DBLEND)0;
-		mask->dest_blend = (D3D9Base::D3DBLEND)0;
+		mask->blend_op = (::D3DBLENDOP)0;
+		mask->src_blend = (::D3DBLEND)0;
+		mask->dest_blend = (::D3DBLEND)0;
 	}
 
 	wcscpy(key, L"mask");
@@ -3341,7 +3341,7 @@ static void ParseAlphaTestState(CustomShader *shader, const wchar_t *section)
 	D3D9_ALPHATEST_DESC *desc = &shader->alpha_test_desc;
 	memset(desc, 0, sizeof(D3D9_ALPHATEST_DESC));
 
-	desc->alpha_func = D3D9Base::D3DCMP_ALWAYS;
+	desc->alpha_func = ::D3DCMP_ALWAYS;
 	desc->alpha_ref = 0;
 	desc->alpha_test_enable = FALSE;
 
@@ -3371,13 +3371,13 @@ static void ParseBlendState(CustomShader *shader, const wchar_t *section)
 
 	// Set a default blend state for any missing values:
 	desc->alpha_blend_enable = false;
-	desc->src_blend = D3D9Base::D3DBLEND_ONE;
-	desc->dest_blend = D3D9Base::D3DBLEND_ZERO;
-	desc->blend_op = D3D9Base::D3DBLENDOP_ADD;
+	desc->src_blend = ::D3DBLEND_ONE;
+	desc->dest_blend = ::D3DBLEND_ZERO;
+	desc->blend_op = ::D3DBLENDOP_ADD;
 	desc->seperate_alpha_blend_enable = false;
-	desc->src_blend_alpha = D3D9Base::D3DBLEND_ONE;
-	desc->dest_blend_alpha = D3D9Base::D3DBLEND_ZERO;
-	desc->blend_op_alpha = D3D9Base::D3DBLENDOP_ADD;
+	desc->src_blend_alpha = ::D3DBLEND_ONE;
+	desc->dest_blend_alpha = ::D3DBLEND_ZERO;
+	desc->blend_op_alpha = ::D3DBLENDOP_ADD;
 	desc->color_write_enable = 0x0000000F;
 	desc->blend_factor = 0xffffffff;
 	desc->texture_factor = 0xFFFFFFFF;
@@ -3461,21 +3461,21 @@ static void ParseStencilOp(wchar_t *key, wchar_t *val, D3D9_DEPTH_STENCIL_DESC *
 	}
 
 	try {
-		desc->stencil_func = (D3D9Base::D3DCMPFUNC)ParseEnum(func_buf, L"D3DCMP_", ComparisonFuncs, ARRAYSIZE(ComparisonFuncs), 1);
+		desc->stencil_func = (::D3DCMPFUNC)ParseEnum(func_buf, L"D3DCMP_", ComparisonFuncs, ARRAYSIZE(ComparisonFuncs), 1);
 	}
 	catch (EnumParseError) {
 		IniWarning("  WARNING: Unrecognised stencil function %S\n", func_buf);
 	}
 
 	try {
-		desc->stencil_pass = (D3D9Base::D3DSTENCILOP)ParseEnum(both_pass_buf, L"D3DSTENCILOP_", StencilOps, ARRAYSIZE(StencilOps), 1);
+		desc->stencil_pass = (::D3DSTENCILOP)ParseEnum(both_pass_buf, L"D3DSTENCILOP_", StencilOps, ARRAYSIZE(StencilOps), 1);
 	}
 	catch (EnumParseError) {
 		IniWarning("  WARNING: Unrecognised stencil + depth pass operation %S\n", both_pass_buf);
 	}
 
 	try {
-		desc->stencil_z_fail = (D3D9Base::D3DSTENCILOP)ParseEnum(depth_fail_buf, L"D3DSTENCILOP_", StencilOps, ARRAYSIZE(StencilOps), 1);
+		desc->stencil_z_fail = (::D3DSTENCILOP)ParseEnum(depth_fail_buf, L"D3DSTENCILOP_", StencilOps, ARRAYSIZE(StencilOps), 1);
 	}
 	catch (EnumParseError) {
 		IniWarning("  WARNING: Unrecognised stencil pass / depth fail operation %S\n", depth_fail_buf);
@@ -3483,7 +3483,7 @@ static void ParseStencilOp(wchar_t *key, wchar_t *val, D3D9_DEPTH_STENCIL_DESC *
 
 
 	try {
-		desc->stencil_fail = (D3D9Base::D3DSTENCILOP)ParseEnum(stencil_fail_buf, L"D3DSTENCILOP_", StencilOps, ARRAYSIZE(StencilOps), 1);
+		desc->stencil_fail = (::D3DSTENCILOP)ParseEnum(stencil_fail_buf, L"D3DSTENCILOP_", StencilOps, ARRAYSIZE(StencilOps), 1);
 	}
 	catch (EnumParseError) {
 		IniWarning("  WARNING: Unrecognised stencil fail operation %S\n", stencil_fail_buf);
@@ -3505,28 +3505,28 @@ static void ParseDepthStencilState(CustomShader *shader, const wchar_t *section)
 	desc->stencil_write_mask = 0xFFFFFFFF;
 	desc->stencil_mask = 0;
 	desc->stencil_ref = 0;
-	desc->stencil_func = D3D9Base::D3DCMP_ALWAYS;
-	desc->stencil_fail = D3D9Base::D3DSTENCILOP_KEEP;
-	desc->stencil_pass = D3D9Base::D3DSTENCILOP_KEEP;
-	desc->stencil_z_fail = D3D9Base::D3DSTENCILOP_KEEP;
+	desc->stencil_func = ::D3DCMP_ALWAYS;
+	desc->stencil_fail = ::D3DSTENCILOP_KEEP;
+	desc->stencil_pass = ::D3DSTENCILOP_KEEP;
+	desc->stencil_z_fail = ::D3DSTENCILOP_KEEP;
 	desc->z_enable = TRUE;
-	desc->z_func = D3D9Base::D3DCMP_LESSEQUAL;
+	desc->z_func = ::D3DCMP_LESSEQUAL;
 	desc->two_sided_stencil_mode = FALSE;
-	desc->ccw_stencil_fail = D3D9Base::D3DSTENCILOP_KEEP;
-	desc->ccw_stencil_z_fail = D3D9Base::D3DSTENCILOP_KEEP;
-	desc->ccw_stencil_pass = D3D9Base::D3DSTENCILOP_KEEP;
-	desc->ccw_stencil_func = D3D9Base::D3DCMP_ALWAYS;
+	desc->ccw_stencil_fail = ::D3DSTENCILOP_KEEP;
+	desc->ccw_stencil_z_fail = ::D3DSTENCILOP_KEEP;
+	desc->ccw_stencil_pass = ::D3DSTENCILOP_KEEP;
+	desc->ccw_stencil_func = ::D3DCMP_ALWAYS;
 	desc->depth_bias = 0;
 	desc->z_enable = GetIniBool(section, L"depth_enable", true, &found, &migoto_ini);
 	if (found) {
 		shader->depth_stencil_override = 1;
 		mask->z_enable = 0;
 	}
-	desc->z_func = (D3D9Base::D3DCMPFUNC)GetIniEnum(section, L"depth_func", D3D9Base::D3DCMP_LESSEQUAL, &found,
+	desc->z_func = (::D3DCMPFUNC)GetIniEnum(section, L"depth_func", ::D3DCMP_LESSEQUAL, &found,
 		L"D3DCMP_", ComparisonFuncs, ARRAYSIZE(ComparisonFuncs), 1, &migoto_ini);
 	if (found) {
 		shader->depth_stencil_override = 1;
-		mask->z_func = (D3D9Base::D3DCMPFUNC)0;
+		mask->z_func = (::D3DCMPFUNC)0;
 	}
 	desc->stencil_enable = GetIniBool(section, L"stencil_enable", false, &found, &migoto_ini);
 	if (found) {
@@ -3547,10 +3547,10 @@ static void ParseDepthStencilState(CustomShader *shader, const wchar_t *section)
 	if (GetIniStringAndLog(section, L"stencil_front", 0, setting, MAX_PATH, &migoto_ini)) {
 		shader->depth_stencil_override = 1;
 		ParseStencilOp(key, setting, desc);
-		memset(&mask->stencil_func, 0, sizeof(D3D9Base::D3DCMPFUNC));
-		memset(&mask->stencil_fail, 0, sizeof(D3D9Base::D3DSTENCILOP));
-		memset(&mask->stencil_z_fail, 0, sizeof(D3D9Base::D3DSTENCILOP));
-		memset(&mask->stencil_pass, 0, sizeof(D3D9Base::D3DSTENCILOP));
+		memset(&mask->stencil_func, 0, sizeof(::D3DCMPFUNC));
+		memset(&mask->stencil_fail, 0, sizeof(::D3DSTENCILOP));
+		memset(&mask->stencil_z_fail, 0, sizeof(::D3DSTENCILOP));
+		memset(&mask->stencil_pass, 0, sizeof(::D3DSTENCILOP));
 	}
 	desc->stencil_ref = GetIniInt(section, L"stencil_ref", 0, &found, &migoto_ini);
 	if (found) {
@@ -3596,25 +3596,25 @@ static void ParseRSState(CustomShader *shader, const wchar_t *section)
 	desc->anti_aliased_line_enable = FALSE;
 	desc->clipping = TRUE;
 	desc->clip_plane_enable = 0;
-	desc->cull_mode = D3D9Base::D3DCULL_CCW;
+	desc->cull_mode = ::D3DCULL_CCW;
 	desc->depth_bias = 0;
-	desc->fill_mode = D3D9Base::D3DFILL_SOLID;
+	desc->fill_mode = ::D3DFILL_SOLID;
 	desc->multisample_antialias = TRUE;
 	desc->scissor_test_enable = FALSE;
 	desc->slope_scale_depth_bias = 0;
 
-	desc->fill_mode = (D3D9Base::D3DFILLMODE)GetIniEnum(section, L"fill", D3D9Base::D3DFILL_SOLID, &found,
+	desc->fill_mode = (::D3DFILLMODE)GetIniEnum(section, L"fill", ::D3DFILL_SOLID, &found,
 		L"D3DFILL_", FillModes, ARRAYSIZE(FillModes), 2, &migoto_ini);
 	if (found) {
 		shader->rs_override = 1;
-		mask->fill_mode = (D3D9Base::D3DFILLMODE)0;
+		mask->fill_mode = (::D3DFILLMODE)0;
 	}
 
-	desc->cull_mode = (D3D9Base::D3DCULL)GetIniEnum(section, L"cull", D3D9Base::D3DCULL_CCW, &found,
+	desc->cull_mode = (::D3DCULL)GetIniEnum(section, L"cull", ::D3DCULL_CCW, &found,
 		L"D3DCULL_", CullModes, ARRAYSIZE(CullModes), 1, &migoto_ini);
 	if (found) {
 		shader->rs_override = 1;
-		mask->cull_mode = (D3D9Base::D3DCULL)0;
+		mask->cull_mode = (::D3DCULL)0;
 	}
 	desc->depth_bias = GetIniInt(section, L"depth_bias", 0, &found, &migoto_ini);
 	if (found) {
@@ -3677,7 +3677,7 @@ static void ParseTopology(CustomShader *shader, const wchar_t *section)
 	wchar_t *ptr;
 	int i;
 
-	shader->primitive_type = D3D9Base::D3DPRIMITIVETYPE(-1);
+	shader->primitive_type = ::D3DPRIMITIVETYPE(-1);
 	if (!GetIniStringAndLog(section, L"topology", 0, val, MAX_PATH, &migoto_ini))
 		return;
 
@@ -3689,7 +3689,7 @@ static void ParseTopology(CustomShader *shader, const wchar_t *section)
 
 	for (i = 1; i < ARRAYSIZE(PrimitiveTopologies); i++) {
 		if (!_wcsicmp(ptr, PrimitiveTopologies[i].name)) {
-			shader->primitive_type = (D3D9Base::D3DPRIMITIVETYPE)PrimitiveTopologies[i].val;
+			shader->primitive_type = (::D3DPRIMITIVETYPE)PrimitiveTopologies[i].val;
 			return;
 		}
 
@@ -3699,14 +3699,14 @@ static void ParseTopology(CustomShader *shader, const wchar_t *section)
 }
 static void _ParseSamplerState(CustomShader *shader, const wchar_t *section, wchar_t *setting, UINT reg) {
 	D3D9_SAMPLER_DESC desc;
-	desc.mag_filter = D3D9Base::D3DTEXF_POINT;
+	desc.mag_filter = ::D3DTEXF_POINT;
 	desc.max_anisotropy = 1;
-	desc.min_filter = D3D9Base::D3DTEXF_POINT;
-	desc.mip_filter = D3D9Base::D3DTEXF_NONE;
+	desc.min_filter = ::D3DTEXF_POINT;
+	desc.mip_filter = ::D3DTEXF_NONE;
 
-	desc.address_u = D3D9Base::D3DTADDRESS_WRAP;
-	desc.address_v = D3D9Base::D3DTADDRESS_WRAP;
-	desc.address_w = D3D9Base::D3DTADDRESS_WRAP;
+	desc.address_u = ::D3DTADDRESS_WRAP;
+	desc.address_v = ::D3DTADDRESS_WRAP;
+	desc.address_w = ::D3DTADDRESS_WRAP;
 	desc.mip_map_lod_bias = 0;
 	desc.border_colour = 0x00000000;
 	desc.max_mip_level = 0;
@@ -3719,9 +3719,9 @@ static void _ParseSamplerState(CustomShader *shader, const wchar_t *section, wch
 
 	if (!_wcsicmp(setting, L"point_filter"))
 	{
-		desc.min_filter = D3D9Base::D3DTEXF_POINT;
-		desc.mag_filter = D3D9Base::D3DTEXF_POINT;
-		desc.mip_filter = D3D9Base::D3DTEXF_POINT;
+		desc.min_filter = ::D3DTEXF_POINT;
+		desc.mag_filter = ::D3DTEXF_POINT;
+		desc.mip_filter = ::D3DTEXF_POINT;
 		shader->sampler_override = 1;
 		shader->sampler_states.insert(std::pair<UINT, ID3D9SamplerState*>(reg, new ID3D9SamplerState(desc)));
 		return;
@@ -3729,9 +3729,9 @@ static void _ParseSamplerState(CustomShader *shader, const wchar_t *section, wch
 
 	if (!_wcsicmp(setting, L"linear_filter"))
 	{
-		desc.min_filter = D3D9Base::D3DTEXF_LINEAR;
-		desc.mag_filter = D3D9Base::D3DTEXF_LINEAR;
-		desc.mip_filter = D3D9Base::D3DTEXF_LINEAR;
+		desc.min_filter = ::D3DTEXF_LINEAR;
+		desc.mag_filter = ::D3DTEXF_LINEAR;
+		desc.mip_filter = ::D3DTEXF_LINEAR;
 		shader->sampler_override = 1;
 		shader->sampler_states.insert(std::pair<UINT, ID3D9SamplerState*>(reg, new ID3D9SamplerState(desc)));
 		return;
@@ -3739,9 +3739,9 @@ static void _ParseSamplerState(CustomShader *shader, const wchar_t *section, wch
 
 	if (!_wcsicmp(setting, L"anisotropic_filter"))
 	{
-		desc.min_filter = D3D9Base::D3DTEXF_ANISOTROPIC;
-		desc.mag_filter = D3D9Base::D3DTEXF_ANISOTROPIC;
-		desc.mip_filter = D3D9Base::D3DTEXF_LINEAR;
+		desc.min_filter = ::D3DTEXF_ANISOTROPIC;
+		desc.mag_filter = ::D3DTEXF_ANISOTROPIC;
+		desc.mip_filter = ::D3DTEXF_LINEAR;
 		desc.max_anisotropy = 16;
 		shader->sampler_override = 1;
 		shader->sampler_states.insert(std::pair<UINT, ID3D9SamplerState*>(reg, new ID3D9SamplerState(desc)));
@@ -3749,9 +3749,9 @@ static void _ParseSamplerState(CustomShader *shader, const wchar_t *section, wch
 	}
 	if (!_wcsicmp(setting, L"pyramidalquad_filter"))
 	{
-		desc.min_filter = D3D9Base::D3DTEXF_PYRAMIDALQUAD;
-		desc.mag_filter = D3D9Base::D3DTEXF_PYRAMIDALQUAD;
-		desc.mip_filter = D3D9Base::D3DTEXF_LINEAR;
+		desc.min_filter = ::D3DTEXF_PYRAMIDALQUAD;
+		desc.mag_filter = ::D3DTEXF_PYRAMIDALQUAD;
+		desc.mip_filter = ::D3DTEXF_LINEAR;
 		desc.max_anisotropy = 16;
 		shader->sampler_override = 1;
 		shader->sampler_states.insert(std::pair<UINT, ID3D9SamplerState*>(reg, new ID3D9SamplerState(desc)));
@@ -3759,9 +3759,9 @@ static void _ParseSamplerState(CustomShader *shader, const wchar_t *section, wch
 	}
 	if (!_wcsicmp(setting, L"gaussianquad_filter"))
 	{
-		desc.min_filter = D3D9Base::D3DTEXF_GAUSSIANQUAD;
-		desc.mag_filter = D3D9Base::D3DTEXF_GAUSSIANQUAD;
-		desc.mip_filter = D3D9Base::D3DTEXF_LINEAR;
+		desc.min_filter = ::D3DTEXF_GAUSSIANQUAD;
+		desc.mag_filter = ::D3DTEXF_GAUSSIANQUAD;
+		desc.mip_filter = ::D3DTEXF_LINEAR;
 		desc.max_anisotropy = 16;
 		shader->sampler_override = 1;
 		shader->sampler_states.insert(std::pair<UINT, ID3D9SamplerState*>(reg, new ID3D9SamplerState(desc)));

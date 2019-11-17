@@ -18,9 +18,9 @@ inline void D3D9Wrapper::IDirect3DVolumeTexture9::Delete()
 }
 inline void D3D9Wrapper::IDirect3DVolumeTexture9::HookVolumeTexture()
 {
-	m_pUnk = hook_volume_texture(GetD3DVolumeTexture9(), (D3D9Base::IDirect3DVolumeTexture9*)this);
+	m_pUnk = hook_volume_texture(GetD3DVolumeTexture9(), (::IDirect3DVolumeTexture9*)this);
 }
-D3D9Wrapper::IDirect3DVolumeTexture9::IDirect3DVolumeTexture9(D3D9Base::LPDIRECT3DVOLUMETEXTURE9 pTexture, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
+D3D9Wrapper::IDirect3DVolumeTexture9::IDirect3DVolumeTexture9(::LPDIRECT3DVOLUMETEXTURE9 pTexture, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
 	: D3D9Wrapper::IDirect3DBaseTexture9(pTexture, hackerDevice, TextureType::Volume)
 {
 	if ((G->enable_hooks >= EnableHooksDX9::ALL) && pTexture) {
@@ -28,7 +28,7 @@ D3D9Wrapper::IDirect3DVolumeTexture9::IDirect3DVolumeTexture9(D3D9Base::LPDIRECT
 	}
 }
 
-D3D9Wrapper::IDirect3DVolumeTexture9* D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9(D3D9Base::LPDIRECT3DVOLUMETEXTURE9 pTexture, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
+D3D9Wrapper::IDirect3DVolumeTexture9* D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9(::LPDIRECT3DVOLUMETEXTURE9 pTexture, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
 {
 	D3D9Wrapper::IDirect3DVolumeTexture9* p = new D3D9Wrapper::IDirect3DVolumeTexture9(pTexture, hackerDevice);
 	if (pTexture) m_List.AddMember(pTexture, p);
@@ -72,7 +72,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::QueryInterface(THIS_ REFIID r
 					return hr;
 				}
 				else {
-					D3D9Wrapper::IDirect3DVolume9 *wrapper = IDirect3DVolume9::GetDirect3DVolume9((D3D9Base::IDirect3DVolume9*)(*ppvObj), hackerDevice, this);
+					D3D9Wrapper::IDirect3DVolume9 *wrapper = IDirect3DVolume9::GetDirect3DVolume9((::IDirect3DVolume9*)(*ppvObj), hackerDevice, this);
 					m_wrappedVolumeLevels.emplace(0, wrapper);
 					wrapper->m_ulRef++;
 					wrapper->zero_d3d_ref_count = false;
@@ -194,7 +194,7 @@ STDMETHODIMP_(void) D3D9Wrapper::IDirect3DVolumeTexture9::PreLoad(THIS)
 	return GetD3DVolumeTexture9()->PreLoad();
 }
 
-STDMETHODIMP_(D3D9Base::D3DRESOURCETYPE) D3D9Wrapper::IDirect3DVolumeTexture9::GetType(THIS)
+STDMETHODIMP_(::D3DRESOURCETYPE) D3D9Wrapper::IDirect3DVolumeTexture9::GetType(THIS)
 {
 	LogDebug("IDirect3DVolumeTexture9::GetType called\n");
 
@@ -234,7 +234,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DVolumeTexture9::GetLevelCount(THIS)
 	return GetD3DVolumeTexture9()->GetLevelCount();
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::SetAutoGenFilterType(THIS_ D3D9Base::D3DTEXTUREFILTERTYPE FilterType)
+STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::SetAutoGenFilterType(THIS_ ::D3DTEXTUREFILTERTYPE FilterType)
 {
 	LogDebug("IDirect3DVolumeTexture9::SetAutoGenFilterType called\n");
 
@@ -242,7 +242,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::SetAutoGenFilterType(THIS_ D3
 	return GetD3DVolumeTexture9()->SetAutoGenFilterType(FilterType);
 }
 
-STDMETHODIMP_(D3D9Base::D3DTEXTUREFILTERTYPE) D3D9Wrapper::IDirect3DVolumeTexture9::GetAutoGenFilterType(THIS)
+STDMETHODIMP_(::D3DTEXTUREFILTERTYPE) D3D9Wrapper::IDirect3DVolumeTexture9::GetAutoGenFilterType(THIS)
 {
 	LogDebug("IDirect3DVolumeTexture9::GetAutoGenFilterType called\n");
 
@@ -261,7 +261,7 @@ STDMETHODIMP_(void) D3D9Wrapper::IDirect3DVolumeTexture9::GenerateMipSubLevels(T
 	return GetD3DVolumeTexture9()->GenerateMipSubLevels();
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::GetLevelDesc(THIS_ UINT Level, D3D9Base::D3DVOLUME_DESC *pDesc)
+STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::GetLevelDesc(THIS_ UINT Level, ::D3DVOLUME_DESC *pDesc)
 {
 	LogDebug("IDirect3DVolumeTexture9::GetLevelDesc called\n");
 
@@ -278,7 +278,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::GetVolumeLevel(THIS_ UINT Lev
 	{
 		LogInfo("  postponing call because volume texture was not created yet.\n");
 
-		D3D9Wrapper::IDirect3DVolume9 *wrapper = D3D9Wrapper::IDirect3DVolume9::GetDirect3DVolume9((D3D9Base::LPDIRECT3DVOLUME9) 0, hackerDevice, this);
+		D3D9Wrapper::IDirect3DVolume9 *wrapper = D3D9Wrapper::IDirect3DVolume9::GetDirect3DVolume9((::LPDIRECT3DVOLUME9) 0, hackerDevice, this);
 		wrapper->_Level = Level;
 		wrapper->_VolumeTexture = this;
 		wrapper->pendingGetVolumeLevel = true;
@@ -288,7 +288,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::GetVolumeLevel(THIS_ UINT Lev
 		return S_OK;
 	}
 
-	D3D9Base::IDirect3DVolume9 *baseVolumeLevel = 0;
+	::IDirect3DVolume9 *baseVolumeLevel = 0;
 	HRESULT hr = NULL;
 	auto it = m_wrappedVolumeLevels.find(Level);
 	if (it != m_wrappedVolumeLevels.end()) {
@@ -331,12 +331,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::GetVolumeLevel(THIS_ UINT Lev
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::LockBox(THIS_ UINT Level, D3D9Base::D3DLOCKED_BOX *pLockedVolume, CONST D3D9Base::D3DBOX *pBox, DWORD Flags)
+STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::LockBox(THIS_ UINT Level, ::D3DLOCKED_BOX *pLockedVolume, CONST ::D3DBOX *pBox, DWORD Flags)
 {
 	LogDebug("IDirect3DVolumeTexture9::LockBox called with Level=%d, Rect=l:%d,u:%d,r:%d,b:%d, f:%d, bk:%d\n", Level,
 		pBox ? pBox->Left : 0, pBox ? pBox->Top : 0, pBox ? pBox->Right : 0, pBox ? pBox->Bottom : 0, pBox ? pBox->Front : 0, pBox ? pBox->Back : 0);
 
-	D3D9Base::IDirect3DVolumeTexture9 *pBaseVolumeTexture = GetD3DVolumeTexture9();
+	::IDirect3DVolumeTexture9 *pBaseVolumeTexture = GetD3DVolumeTexture9();
 
 	if (!pBaseVolumeTexture)
 	{
@@ -370,7 +370,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::LockBox(THIS_ UINT Level, D3D
 STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::UnlockBox(THIS_ UINT Level)
 {
 	LogDebug("IDirect3DVolumeTexture9::UnlockBox called\n");
-	D3D9Base::IDirect3DVolumeTexture9 *pBaseVolumeTexture;
+	::IDirect3DVolumeTexture9 *pBaseVolumeTexture;
 	pBaseVolumeTexture = GetD3DVolumeTexture9();
 
 	if (!pBaseVolumeTexture)
@@ -391,7 +391,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::UnlockBox(THIS_ UINT Level)
 }
 
 
-STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::AddDirtyBox(THIS_ CONST D3D9Base::D3DBOX *pDirtyBox)
+STDMETHODIMP D3D9Wrapper::IDirect3DVolumeTexture9::AddDirtyBox(THIS_ CONST ::D3DBOX *pDirtyBox)
 {
 	LogDebug("IDirect3DVolumeTexture9::AddDirtyBox called\n");
 

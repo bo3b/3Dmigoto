@@ -10,8 +10,8 @@ HRESULT WINAPI Hooked_D3DXComputeNormalMap(
 
 	LogInfo("Hooked_D3DXComputeNormalMap called with SourceTexture=%p, DestinationTexture=%p\n", pSrcTexture, pTexture);
 
-	D3D9Base::IDirect3DTexture9 *baseSourceTexture = baseTexture9(pSrcTexture);
-	D3D9Base::IDirect3DTexture9 *baseDestTexture = baseTexture9(pTexture);
+	::IDirect3DTexture9 *baseSourceTexture = baseTexture9(pSrcTexture);
+	::IDirect3DTexture9 *baseDestTexture = baseTexture9(pTexture);
 	D3D9Wrapper::IDirect3DTexture9 *wrappedSource = wrappedTexture9(pSrcTexture);
 	D3D9Wrapper::IDirect3DTexture9 *wrappedDest = wrappedTexture9(pTexture);
 
@@ -22,10 +22,10 @@ HRESULT WINAPI Hooked_D3DXComputeNormalMap(
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
 
-		D3D9Base::IDirect3DTexture9* pSourceTextureLeft = wrappedSource->DirectModeGetLeft();
-		D3D9Base::IDirect3DTexture9* pSourceTextureRight = wrappedSource->DirectModeGetRight();
-		D3D9Base::IDirect3DTexture9* pDestTextureLeft = wrappedDest->DirectModeGetLeft();
-		D3D9Base::IDirect3DTexture9* pDestTextureRight = wrappedDest->DirectModeGetRight();
+		::IDirect3DTexture9* pSourceTextureLeft = wrappedSource->DirectModeGetLeft();
+		::IDirect3DTexture9* pSourceTextureRight = wrappedSource->DirectModeGetRight();
+		::IDirect3DTexture9* pDestTextureLeft = wrappedDest->DirectModeGetLeft();
+		::IDirect3DTexture9* pDestTextureRight = wrappedDest->DirectModeGetRight();
 
 		hr = trampoline_D3DXComputeNormalMap(pDestTextureLeft, pSourceTextureLeft, pSrcPalette, Flags, Channel, Amplitude);
 		if (SUCCEEDED(hr)) {
@@ -62,8 +62,8 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTexture(
 	_In_  UINT                   Size,
 	_In_  UINT                   MipLevels,
 	_In_  DWORD                  Usage,
-	_In_  D3D9Base::D3DFORMAT              Format,
-	_In_  D3D9Base::D3DPOOL                Pool,
+	_In_  ::D3DFORMAT              Format,
+	_In_  ::D3DPOOL                Pool,
 	_Out_ D3D9Wrapper::IDirect3DCubeTexture9* *ppCubeTexture)
 {
 
@@ -75,7 +75,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTexture(
 		LogInfo("  postponing call because device was not created yet.\n");
 
 		D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((D3D9Base::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
+		wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
 		wrapper->_EdgeLength = Size;
 		wrapper->_Levels = MipLevels;
 		wrapper->_Usage = Usage;
@@ -88,11 +88,11 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTexture(
 		return S_OK;
 	}
 
-	if (Pool == D3D9Base::D3DPOOL_MANAGED)
+	if (Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 		if (!(Usage & D3DUSAGE_DYNAMIC))
 			Usage = Usage | D3DUSAGE_DYNAMIC;
 	}
@@ -105,11 +105,11 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTexture(
 	pDesc.Format = Format;
 	pDesc.Pool = Pool;
 
-	D3D9Base::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
 	HRESULT hr;
 	D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DCubeTexture9* pRightTexture = NULL;
+		::IDirect3DCubeTexture9* pRightTexture = NULL;
 		hr = trampoline_D3DXCreateCubeTexture(wrappedDevice->GetD3D9Device(), Size, MipLevels, Usage, Format, Pool, &baseTexture);
 		if (!FAILED(hr) && (ShouldDuplicate(&pDesc))) {
 			hr = trampoline_D3DXCreateCubeTexture(wrappedDevice->GetD3D9Device(), Size, MipLevels, Usage, Format, Pool, &pRightTexture);
@@ -152,7 +152,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFile(
 	_In_  D3D9Wrapper::IDirect3DDevice9*      pDevice,
 	_In_  LPCTSTR                pSrcFile,
 	_Out_ D3D9Wrapper::IDirect3DCubeTexture9* *ppCubeTexture) {
-	LogInfo("Hooked_D3DXCreateCubeTextureFromFile EdgeLength=%d Format=%d\n", D3DX_DEFAULT, D3D9Base::D3DFMT_UNKNOWN);
+	LogInfo("Hooked_D3DXCreateCubeTextureFromFile EdgeLength=%d Format=%d\n", D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
 	D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
 	if (!wrappedDevice->GetD3D9Device())
@@ -160,12 +160,12 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFile(
 		LogInfo("  postponing call because device was not created yet.\n");
 
 		D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((D3D9Base::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
+		wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
 		wrapper->_EdgeLength = D3DX_DEFAULT;
 		wrapper->_Levels = D3DX_DEFAULT;
 		wrapper->_Usage = 0;
-		wrapper->_Format = D3D9Base::D3DFMT_UNKNOWN;
-		wrapper->_Pool = D3D9Base::D3DPOOL_DEFAULT;
+		wrapper->_Format = ::D3DFMT_UNKNOWN;
+		wrapper->_Pool = ::D3DPOOL_DEFAULT;
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppCubeTexture = wrapper;
@@ -177,14 +177,14 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFile(
 	pDesc.Height = D3DX_DEFAULT;
 	pDesc.Levels = D3DX_DEFAULT;
 	pDesc.Usage = 0;
-	pDesc.Format = D3D9Base::D3DFMT_UNKNOWN;
-	pDesc.Pool = D3D9Base::D3DPOOL_DEFAULT;
+	pDesc.Format = ::D3DFMT_UNKNOWN;
+	pDesc.Pool = ::D3DPOOL_DEFAULT;
 
-	D3D9Base::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
 	HRESULT hr;
 	D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DCubeTexture9* pRightTexture = NULL;
+		::IDirect3DCubeTexture9* pRightTexture = NULL;
 		hr = trampoline_D3DXCreateCubeTextureFromFile(wrappedDevice->GetD3D9Device(), pSrcFile, &baseTexture);
 		if (!FAILED(hr) && (ShouldDuplicate(&pDesc))) {
 			hr = trampoline_D3DXCreateCubeTextureFromFile(wrappedDevice->GetD3D9Device(), pSrcFile, &pRightTexture);
@@ -229,12 +229,12 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileEx(
 	_In_  UINT                   Size,
 	_In_  UINT                   MipLevels,
 	_In_  DWORD                  Usage,
-	_In_  D3D9Base::D3DFORMAT              Format,
-	_In_  D3D9Base::D3DPOOL                Pool,
+	_In_  ::D3DFORMAT              Format,
+	_In_  ::D3DPOOL                Pool,
 	_In_  DWORD                  Filter,
 	_In_  DWORD                  MipFilter,
-	_In_  D3D9Base::D3DCOLOR               ColorKey,
-	_Out_ D3D9Base::D3DXIMAGE_INFO         *pSrcInfo,
+	_In_  ::D3DCOLOR               ColorKey,
+	_Out_ ::D3DXIMAGE_INFO         *pSrcInfo,
 	_Out_ PALETTEENTRY           *pPalette,
 	_Out_ D3D9Wrapper::IDirect3DCubeTexture9* *ppCubeTexture) {
 	LogInfo("Hooked_D3DXCreateCubeTextureFromFileEx EdgeLength=%d Format=%d\n", Size, Format);
@@ -245,7 +245,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileEx(
 		LogInfo("  postponing call because device was not created yet.\n");
 
 		D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((D3D9Base::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
+		wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
 		wrapper->_EdgeLength = Size;
 		wrapper->_Levels = MipLevels;
 		wrapper->_Usage = Usage;
@@ -258,11 +258,11 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileEx(
 		return S_OK;
 	}
 
-	if (Pool == D3D9Base::D3DPOOL_MANAGED)
+	if (Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 		if (!(Usage & D3DUSAGE_DYNAMIC))
 			Usage = Usage | D3DUSAGE_DYNAMIC;
 	}
@@ -273,13 +273,13 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileEx(
 	pDesc.Levels = MipLevels;
 	pDesc.Usage = Usage;
 	pDesc.Format = Format;
-	pDesc.Pool = D3D9Base::D3DPOOL_DEFAULT;
+	pDesc.Pool = ::D3DPOOL_DEFAULT;
 
-	D3D9Base::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
 	HRESULT hr;
 	D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DCubeTexture9* pRightTexture = NULL;
+		::IDirect3DCubeTexture9* pRightTexture = NULL;
 		hr = trampoline_D3DXCreateCubeTextureFromFileEx(wrappedDevice->GetD3D9Device(), pSrcFile, Size, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &baseTexture);
 		if (!FAILED(hr) && (ShouldDuplicate(&pDesc))) {
 			hr = trampoline_D3DXCreateCubeTextureFromFileEx(wrappedDevice->GetD3D9Device(), pSrcFile, Size, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &pRightTexture);
@@ -323,7 +323,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemory(
 	_In_  LPCVOID                pSrcData,
 	_In_  UINT                   SrcDataSize,
 	_Out_ D3D9Wrapper::IDirect3DCubeTexture9* *ppCubeTexture) {
-	LogInfo("Hooked_D3DXCreateCubeTextureFromFileInMemory EdgeLength=%d Format=%d\n", D3DX_DEFAULT, D3D9Base::D3DFMT_UNKNOWN);
+	LogInfo("Hooked_D3DXCreateCubeTextureFromFileInMemory EdgeLength=%d Format=%d\n", D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
 	D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
 	if (!wrappedDevice->GetD3D9Device())
@@ -331,12 +331,12 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemory(
 		LogInfo("  postponing call because device was not created yet.\n");
 
 		D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((D3D9Base::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
+		wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
 		wrapper->_EdgeLength = D3DX_DEFAULT;
 		wrapper->_Levels = D3DX_DEFAULT;
 		wrapper->_Usage = 0;
-		wrapper->_Format = D3D9Base::D3DFMT_UNKNOWN;
-		wrapper->_Pool = D3D9Base::D3DPOOL_DEFAULT;
+		wrapper->_Format = ::D3DFMT_UNKNOWN;
+		wrapper->_Pool = ::D3DPOOL_DEFAULT;
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppCubeTexture = wrapper;
@@ -348,14 +348,14 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemory(
 	pDesc.Height = D3DX_DEFAULT;
 	pDesc.Levels = D3DX_DEFAULT;
 	pDesc.Usage = 0;
-	pDesc.Format = D3D9Base::D3DFMT_UNKNOWN;
-	pDesc.Pool = D3D9Base::D3DPOOL_DEFAULT;
+	pDesc.Format = ::D3DFMT_UNKNOWN;
+	pDesc.Pool = ::D3DPOOL_DEFAULT;
 
-	D3D9Base::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
 	HRESULT hr;
 	D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DCubeTexture9* pRightTexture = NULL;
+		::IDirect3DCubeTexture9* pRightTexture = NULL;
 		hr = trampoline_D3DXCreateCubeTextureFromFileInMemory(wrappedDevice->GetD3D9Device(), pSrcData, SrcDataSize, &baseTexture);
 		if (!FAILED(hr) && (ShouldDuplicate(&pDesc))) {
 			hr = trampoline_D3DXCreateCubeTextureFromFileInMemory(wrappedDevice->GetD3D9Device(), pSrcData, SrcDataSize, &pRightTexture);
@@ -401,12 +401,12 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemoryEx(
 	_In_    UINT                   Size,
 	_In_    UINT                   MipLevels,
 	_In_    DWORD                  Usage,
-	_In_    D3D9Base::D3DFORMAT              Format,
-	_In_    D3D9Base::D3DPOOL                Pool,
+	_In_    ::D3DFORMAT              Format,
+	_In_    ::D3DPOOL                Pool,
 	_In_    DWORD                  Filter,
 	_In_    DWORD                  MipFilter,
-	_In_    D3D9Base::D3DCOLOR               ColorKey,
-	_Inout_ D3D9Base::D3DXIMAGE_INFO         *pSrcInfo,
+	_In_    ::D3DCOLOR               ColorKey,
+	_Inout_ ::D3DXIMAGE_INFO         *pSrcInfo,
 	_Out_   PALETTEENTRY           *pPalette,
 	_Out_   D3D9Wrapper::IDirect3DCubeTexture9* *ppCubeTexture) {
 	LogInfo("Hooked_D3DXCreateCubeTextureFromFileInMemoryEx EdgeLength=%d Format=%d\n", Size, Format);
@@ -417,7 +417,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemoryEx(
 		LogInfo("  postponing call because device was not created yet.\n");
 
 		D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((D3D9Base::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
+		wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
 		wrapper->_EdgeLength = Size;
 		wrapper->_Levels = MipLevels;
 		wrapper->_Usage = Usage;
@@ -430,11 +430,11 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemoryEx(
 		return S_OK;
 	}
 
-	if (Pool == D3D9Base::D3DPOOL_MANAGED)
+	if (Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 		if (!(Usage & D3DUSAGE_DYNAMIC))
 			Usage = Usage | D3DUSAGE_DYNAMIC;
 	}
@@ -445,13 +445,13 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemoryEx(
 	pDesc.Levels = MipLevels;
 	pDesc.Usage = Usage;
 	pDesc.Format = Format;
-	pDesc.Pool = D3D9Base::D3DPOOL_DEFAULT;
+	pDesc.Pool = ::D3DPOOL_DEFAULT;
 
-	D3D9Base::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
 	HRESULT hr;
 	D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DCubeTexture9* pRightTexture = NULL;
+		::IDirect3DCubeTexture9* pRightTexture = NULL;
 		hr = trampoline_D3DXCreateCubeTextureFromFileInMemoryEx(wrappedDevice->GetD3D9Device(), pSrcData, SrcDataSize, Size, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &baseTexture);
 		if (!FAILED(hr) && (ShouldDuplicate(&pDesc))) {
 			hr = trampoline_D3DXCreateCubeTextureFromFileInMemoryEx(wrappedDevice->GetD3D9Device(), pSrcData, SrcDataSize, Size, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &pRightTexture);
@@ -495,7 +495,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResource(
 	_In_  HMODULE                hSrcModule,
 	_In_  LPCTSTR                pSrcResource,
 	_Out_ D3D9Wrapper::IDirect3DCubeTexture9* *ppCubeTexture) {
-	LogInfo("Hooked_D3DXCreateCubeTextureFromResource EdgeLength=%d Format=%d\n", D3DX_DEFAULT, D3D9Base::D3DFMT_UNKNOWN);
+	LogInfo("Hooked_D3DXCreateCubeTextureFromResource EdgeLength=%d Format=%d\n", D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
 	D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
 	if (!wrappedDevice->GetD3D9Device())
@@ -503,12 +503,12 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResource(
 		LogInfo("  postponing call because device was not created yet.\n");
 
 		D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((D3D9Base::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
+		wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
 		wrapper->_EdgeLength = D3DX_DEFAULT;
 		wrapper->_Levels = D3DX_DEFAULT;
 		wrapper->_Usage = 0;
-		wrapper->_Format = D3D9Base::D3DFMT_UNKNOWN;
-		wrapper->_Pool = D3D9Base::D3DPOOL_DEFAULT;
+		wrapper->_Format = ::D3DFMT_UNKNOWN;
+		wrapper->_Pool = ::D3DPOOL_DEFAULT;
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppCubeTexture = wrapper;
@@ -520,14 +520,14 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResource(
 	pDesc.Height = D3DX_DEFAULT;
 	pDesc.Levels = D3DX_DEFAULT;
 	pDesc.Usage = 0;
-	pDesc.Format = D3D9Base::D3DFMT_UNKNOWN;
-	pDesc.Pool = D3D9Base::D3DPOOL_DEFAULT;
+	pDesc.Format = ::D3DFMT_UNKNOWN;
+	pDesc.Pool = ::D3DPOOL_DEFAULT;
 
-	D3D9Base::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
 	HRESULT hr;
 	D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DCubeTexture9* pRightTexture = NULL;
+		::IDirect3DCubeTexture9* pRightTexture = NULL;
 		hr = trampoline_D3DXCreateCubeTextureFromResource(wrappedDevice->GetD3D9Device(), hSrcModule, pSrcResource, &baseTexture);
 		if (!FAILED(hr) && (ShouldDuplicate(&pDesc))) {
 			hr = trampoline_D3DXCreateCubeTextureFromResource(wrappedDevice->GetD3D9Device(), hSrcModule, pSrcResource, &pRightTexture);
@@ -573,12 +573,12 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResourceEx(
 	_In_    UINT                   Size,
 	_In_    UINT                   MipLevels,
 	_In_    DWORD                  Usage,
-	_In_    D3D9Base::D3DFORMAT              Format,
-	_In_    D3D9Base::D3DPOOL                Pool,
+	_In_    ::D3DFORMAT              Format,
+	_In_    ::D3DPOOL                Pool,
 	_In_    DWORD                  Filter,
 	_In_    DWORD                  MipFilter,
-	_In_    D3D9Base::D3DCOLOR               ColorKey,
-	_Inout_ D3D9Base::D3DXIMAGE_INFO         *pSrcInfo,
+	_In_    ::D3DCOLOR               ColorKey,
+	_Inout_ ::D3DXIMAGE_INFO         *pSrcInfo,
 	_Out_   PALETTEENTRY           *pPalette,
 	_Out_   D3D9Wrapper::IDirect3DCubeTexture9* *ppCubeTexture) {
 	LogInfo("Hooked_D3DXCreateCubeTextureFromResourceEx EdgeLength=%d Format=%d\n", Size, Format);
@@ -589,7 +589,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResourceEx(
 		LogInfo("  postponing call because device was not created yet.\n");
 
 		D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((D3D9Base::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
+		wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
 		wrapper->_EdgeLength = Size;
 		wrapper->_Levels = MipLevels;
 		wrapper->_Usage = Usage;
@@ -602,11 +602,11 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResourceEx(
 		return S_OK;
 	}
 
-	if (Pool == D3D9Base::D3DPOOL_MANAGED)
+	if (Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 		if (!(Usage & D3DUSAGE_DYNAMIC))
 			Usage = Usage | D3DUSAGE_DYNAMIC;
 	}
@@ -617,13 +617,13 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResourceEx(
 	pDesc.Levels = MipLevels;
 	pDesc.Usage = Usage;
 	pDesc.Format = Format;
-	pDesc.Pool = D3D9Base::D3DPOOL_DEFAULT;
+	pDesc.Pool = ::D3DPOOL_DEFAULT;
 
-	D3D9Base::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
 	HRESULT hr;
 	D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DCubeTexture9* pRightTexture = NULL;
+		::IDirect3DCubeTexture9* pRightTexture = NULL;
 		hr = trampoline_D3DXCreateCubeTextureFromResourceEx(wrappedDevice->GetD3D9Device(), hSrcModule, pSrcResource, Size, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &baseTexture);
 		if (!FAILED(hr) && (ShouldDuplicate(&pDesc))) {
 			hr = trampoline_D3DXCreateCubeTextureFromResourceEx(wrappedDevice->GetD3D9Device(), hSrcModule, pSrcResource, Size, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &pRightTexture);
@@ -668,8 +668,8 @@ HRESULT WINAPI Hooked_D3DXCreateTexture(
 	_In_  UINT               Height,
 	_In_  UINT               MipLevels,
 	_In_  DWORD              Usage,
-	_In_  D3D9Base::D3DFORMAT          Format,
-	_In_  D3D9Base::D3DPOOL            Pool,
+	_In_  ::D3DFORMAT          Format,
+	_In_  ::D3DPOOL            Pool,
 	_Out_ D3D9Wrapper::IDirect3DTexture9* *ppTexture)
 {
 	LogDebug("Hooked_D3DXCreateTexture called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
@@ -681,7 +681,7 @@ HRESULT WINAPI Hooked_D3DXCreateTexture(
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
 		D3D9Wrapper::IDirect3DTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((D3D9Base::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
+		wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
 		wrapper->_Width = Width;
 		wrapper->_Height = Height;
 		wrapper->_Levels = MipLevels;
@@ -696,12 +696,12 @@ HRESULT WINAPI Hooked_D3DXCreateTexture(
 		return S_OK;
 	}
 
-	D3D9Base::LPDIRECT3DTEXTURE9 baseTexture = 0;
-	if (Pool == D3D9Base::D3DPOOL_MANAGED)
+	::LPDIRECT3DTEXTURE9 baseTexture = 0;
+	if (Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 		if (!(Usage & D3DUSAGE_DYNAMIC))
 			Usage = Usage | D3DUSAGE_DYNAMIC;
 	}
@@ -715,7 +715,7 @@ HRESULT WINAPI Hooked_D3DXCreateTexture(
 	HRESULT hr;
 	D3D9Wrapper::IDirect3DTexture9 *wrapper;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DTexture9* pRightTexture = NULL;
+		::IDirect3DTexture9* pRightTexture = NULL;
 		hr = trampoline_D3DXCreateTexture(wrappedDevice->GetD3D9Device(), Width, Height, MipLevels, Usage, Format, Pool, &baseTexture);
 		if (!FAILED(hr) && (ShouldDuplicate(&pDesc))) {
 			hr = trampoline_D3DXCreateTexture(wrappedDevice->GetD3D9Device(), Width, Height, MipLevels, Usage, Format, Pool, &pRightTexture);
@@ -758,7 +758,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFile(
 	_Out_ D3D9Wrapper::IDirect3DTexture9* *ppTexture) {
 
 	LogDebug("Hooked_D3DXCreateTextureFromFile called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
-		D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, D3D9Base::D3DFMT_UNKNOWN, D3D9Base::D3DPOOL_DEFAULT);
+		D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, ::D3DFMT_UNKNOWN, ::D3DPOOL_DEFAULT);
 
 	D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
@@ -766,13 +766,13 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFile(
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
 		D3D9Wrapper::IDirect3DTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((D3D9Base::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
+		wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
 		wrapper->_Width = D3DX_DEFAULT;
 		wrapper->_Height = D3DX_DEFAULT;
 		wrapper->_Levels = D3DX_DEFAULT;
 		wrapper->_Usage = 0;
-		wrapper->_Format = D3D9Base::D3DFMT_UNKNOWN;
-		wrapper->_Pool = D3D9Base::D3DPOOL_DEFAULT;
+		wrapper->_Format = ::D3DFMT_UNKNOWN;
+		wrapper->_Pool = ::D3DPOOL_DEFAULT;
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppTexture = wrapper;
@@ -780,18 +780,18 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFile(
 		return S_OK;
 	}
 
-	D3D9Base::LPDIRECT3DTEXTURE9 baseTexture = 0;
+	::LPDIRECT3DTEXTURE9 baseTexture = 0;
 	D3D2DTEXTURE_DESC pDesc;
 	pDesc.Width = D3DX_DEFAULT;
 	pDesc.Height = D3DX_DEFAULT;
 	pDesc.Levels = D3DX_DEFAULT;
 	pDesc.Usage = 0;
-	pDesc.Format = D3D9Base::D3DFMT_UNKNOWN;
-	pDesc.Pool = D3D9Base::D3DPOOL_DEFAULT;
+	pDesc.Format = ::D3DFMT_UNKNOWN;
+	pDesc.Pool = ::D3DPOOL_DEFAULT;
 	HRESULT hr;
 	D3D9Wrapper::IDirect3DTexture9 *wrapper;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DTexture9* pRightTexture = NULL;
+		::IDirect3DTexture9* pRightTexture = NULL;
 		hr = trampoline_D3DXCreateTextureFromFile(wrappedDevice->GetD3D9Device(), pSrcFile, &baseTexture);
 		if (!FAILED(hr) && (ShouldDuplicate(&pDesc))) {
 			hr = trampoline_D3DXCreateTextureFromFile(wrappedDevice->GetD3D9Device(), pSrcFile, &pRightTexture);
@@ -835,12 +835,12 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileEx(
 	_In_    UINT               Height,
 	_In_    UINT               MipLevels,
 	_In_    DWORD              Usage,
-	_In_    D3D9Base::D3DFORMAT          Format,
-	_In_    D3D9Base::D3DPOOL            Pool,
+	_In_    ::D3DFORMAT          Format,
+	_In_    ::D3DPOOL            Pool,
 	_In_    DWORD              Filter,
 	_In_    DWORD              MipFilter,
-	_In_    D3D9Base::D3DCOLOR           ColorKey,
-	_Inout_ D3D9Base::D3DXIMAGE_INFO     *pSrcInfo,
+	_In_    ::D3DCOLOR           ColorKey,
+	_Inout_ ::D3DXIMAGE_INFO     *pSrcInfo,
 	_Out_   PALETTEENTRY       *pPalette,
 	_Out_   D3D9Wrapper::IDirect3DTexture9* *ppTexture) {
 	LogDebug("Hooked_D3DXCreateTextureFromFileEx called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
@@ -852,7 +852,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileEx(
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
 		D3D9Wrapper::IDirect3DTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((D3D9Base::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
+		wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
 		wrapper->_Width = Width;
 		wrapper->_Height = Height;
 		wrapper->_Levels = MipLevels;
@@ -867,12 +867,12 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileEx(
 		return S_OK;
 	}
 
-	D3D9Base::LPDIRECT3DTEXTURE9 baseTexture = 0;
-	if (Pool == D3D9Base::D3DPOOL_MANAGED)
+	::LPDIRECT3DTEXTURE9 baseTexture = 0;
+	if (Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 		if (!(Usage & D3DUSAGE_DYNAMIC))
 			Usage = Usage | D3DUSAGE_DYNAMIC;
 	}
@@ -886,7 +886,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileEx(
 	HRESULT hr;
 	D3D9Wrapper::IDirect3DTexture9 *wrapper;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DTexture9* pRightTexture = NULL;
+		::IDirect3DTexture9* pRightTexture = NULL;
 		hr = trampoline_D3DXCreateTextureFromFileEx(wrappedDevice->GetD3D9Device(), pSrcFile, Width, Height, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &baseTexture);
 		if (!FAILED(hr) && (ShouldDuplicate(&pDesc))) {
 			hr = trampoline_D3DXCreateTextureFromFileEx(wrappedDevice->GetD3D9Device(), pSrcFile, Width, Height, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette,  &pRightTexture);
@@ -929,7 +929,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemory(
 	_In_  UINT               SrcDataSize,
 	_Out_ D3D9Wrapper::IDirect3DTexture9* *ppTexture) {
 	LogDebug("Hooked_D3DXCreateTextureFromFileInMemory called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
-		D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, D3D9Base::D3DFMT_UNKNOWN, D3D9Base::D3DPOOL_DEFAULT);
+		D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, ::D3DFMT_UNKNOWN, ::D3DPOOL_DEFAULT);
 
 	D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
@@ -937,13 +937,13 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemory(
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
 		D3D9Wrapper::IDirect3DTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((D3D9Base::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
+		wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
 		wrapper->_Width = D3DX_DEFAULT;
 		wrapper->_Height = D3DX_DEFAULT;
 		wrapper->_Levels = D3DX_DEFAULT;
 		wrapper->_Usage = 0;
-		wrapper->_Format = D3D9Base::D3DFMT_UNKNOWN;
-		wrapper->_Pool = D3D9Base::D3DPOOL_DEFAULT;
+		wrapper->_Format = ::D3DFMT_UNKNOWN;
+		wrapper->_Pool = ::D3DPOOL_DEFAULT;
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppTexture = wrapper;
@@ -951,18 +951,18 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemory(
 		return S_OK;
 	}
 
-	D3D9Base::LPDIRECT3DTEXTURE9 baseTexture = 0;
+	::LPDIRECT3DTEXTURE9 baseTexture = 0;
 	D3D2DTEXTURE_DESC pDesc;
 	pDesc.Width = D3DX_DEFAULT;
 	pDesc.Height = D3DX_DEFAULT;
 	pDesc.Levels = D3DX_DEFAULT;
 	pDesc.Usage = 0;
-	pDesc.Format = D3D9Base::D3DFMT_UNKNOWN;
-	pDesc.Pool = D3D9Base::D3DPOOL_DEFAULT;
+	pDesc.Format = ::D3DFMT_UNKNOWN;
+	pDesc.Pool = ::D3DPOOL_DEFAULT;
 	HRESULT hr;
 	D3D9Wrapper::IDirect3DTexture9 *wrapper;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DTexture9* pRightTexture = NULL;
+		::IDirect3DTexture9* pRightTexture = NULL;
 		hr = trampoline_D3DXCreateTextureFromFileInMemory(wrappedDevice->GetD3D9Device(), pSrcData, SrcDataSize, &baseTexture);
 		if (!FAILED(hr) && (ShouldDuplicate(&pDesc))) {
 			hr = trampoline_D3DXCreateTextureFromFileInMemory(wrappedDevice->GetD3D9Device(), pSrcData, SrcDataSize, &pRightTexture);
@@ -1007,12 +1007,12 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemoryEx(
 	_In_    UINT               Height,
 	_In_    UINT               MipLevels,
 	_In_    DWORD              Usage,
-	_In_    D3D9Base::D3DFORMAT          Format,
-	_In_    D3D9Base::D3DPOOL            Pool,
+	_In_    ::D3DFORMAT          Format,
+	_In_    ::D3DPOOL            Pool,
 	_In_    DWORD              Filter,
 	_In_    DWORD              MipFilter,
-	_In_    D3D9Base::D3DCOLOR           ColorKey,
-	_Inout_ D3D9Base::D3DXIMAGE_INFO     *pSrcInfo,
+	_In_    ::D3DCOLOR           ColorKey,
+	_Inout_ ::D3DXIMAGE_INFO     *pSrcInfo,
 	_Out_   PALETTEENTRY       *pPalette,
 	_Out_   D3D9Wrapper::IDirect3DTexture9* *ppTexture) {
 	LogDebug("Hooked_D3DXCreateTextureFromFileInMemoryEx called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
@@ -1024,7 +1024,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemoryEx(
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
 		D3D9Wrapper::IDirect3DTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((D3D9Base::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
+		wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
 		wrapper->_Width = Width;
 		wrapper->_Height = Height;
 		wrapper->_Levels = MipLevels;
@@ -1039,12 +1039,12 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemoryEx(
 		return S_OK;
 	}
 
-	D3D9Base::LPDIRECT3DTEXTURE9 baseTexture = 0;
-	if (Pool == D3D9Base::D3DPOOL_MANAGED)
+	::LPDIRECT3DTEXTURE9 baseTexture = 0;
+	if (Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 		if (!(Usage & D3DUSAGE_DYNAMIC))
 			Usage = Usage | D3DUSAGE_DYNAMIC;
 	}
@@ -1058,7 +1058,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemoryEx(
 	HRESULT hr;
 	D3D9Wrapper::IDirect3DTexture9 *wrapper;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DTexture9* pRightTexture = NULL;
+		::IDirect3DTexture9* pRightTexture = NULL;
 		hr = trampoline_D3DXCreateTextureFromFileInMemoryEx(wrappedDevice->GetD3D9Device(), pSrcData, SrcDataSize, Width, Height, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &baseTexture);
 		if (!FAILED(hr) && (ShouldDuplicate(&pDesc))) {
 			hr = trampoline_D3DXCreateTextureFromFileInMemoryEx(wrappedDevice->GetD3D9Device(), pSrcData, SrcDataSize, Width, Height, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &pRightTexture);
@@ -1101,7 +1101,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResource(
 	_In_  LPCTSTR            pSrcResource,
 	_Out_ D3D9Wrapper::IDirect3DTexture9* *ppTexture) {
 	LogDebug("Hooked_D3DXCreateTextureFromResource called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
-		D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, D3D9Base::D3DFMT_UNKNOWN, D3D9Base::D3DPOOL_DEFAULT);
+		D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, ::D3DFMT_UNKNOWN, ::D3DPOOL_DEFAULT);
 
 	D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
@@ -1109,13 +1109,13 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResource(
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
 		D3D9Wrapper::IDirect3DTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((D3D9Base::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
+		wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
 		wrapper->_Width = D3DX_DEFAULT;
 		wrapper->_Height = D3DX_DEFAULT;
 		wrapper->_Levels = D3DX_DEFAULT;
 		wrapper->_Usage = 0;
-		wrapper->_Format = D3D9Base::D3DFMT_UNKNOWN;
-		wrapper->_Pool = D3D9Base::D3DPOOL_DEFAULT;
+		wrapper->_Format = ::D3DFMT_UNKNOWN;
+		wrapper->_Pool = ::D3DPOOL_DEFAULT;
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppTexture = wrapper;
@@ -1123,18 +1123,18 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResource(
 		return S_OK;
 	}
 
-	D3D9Base::LPDIRECT3DTEXTURE9 baseTexture = 0;
+	::LPDIRECT3DTEXTURE9 baseTexture = 0;
 	D3D2DTEXTURE_DESC pDesc;
 	pDesc.Width = D3DX_DEFAULT;
 	pDesc.Height = D3DX_DEFAULT;
 	pDesc.Levels = D3DX_DEFAULT;
 	pDesc.Usage = 0;
-	pDesc.Format = D3D9Base::D3DFMT_UNKNOWN;
-	pDesc.Pool = D3D9Base::D3DPOOL_DEFAULT;
+	pDesc.Format = ::D3DFMT_UNKNOWN;
+	pDesc.Pool = ::D3DPOOL_DEFAULT;
 	HRESULT hr;
 	D3D9Wrapper::IDirect3DTexture9 *wrapper;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DTexture9* pRightTexture = NULL;
+		::IDirect3DTexture9* pRightTexture = NULL;
 		hr = trampoline_D3DXCreateTextureFromResource(wrappedDevice->GetD3D9Device(), hSrcModule, pSrcResource, &baseTexture);
 		if (!FAILED(hr) && (ShouldDuplicate(&pDesc))) {
 			hr = trampoline_D3DXCreateTextureFromResource(wrappedDevice->GetD3D9Device(), hSrcModule, pSrcResource, &pRightTexture);
@@ -1179,12 +1179,12 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResourceEx(
 	_In_    UINT               Height,
 	_In_    UINT               MipLevels,
 	_In_    DWORD              Usage,
-	_In_    D3D9Base::D3DFORMAT          Format,
-	_In_    D3D9Base::D3DPOOL            Pool,
+	_In_    ::D3DFORMAT          Format,
+	_In_    ::D3DPOOL            Pool,
 	_In_    DWORD              Filter,
 	_In_    DWORD              MipFilter,
-	_In_    D3D9Base::D3DCOLOR           ColorKey,
-	_Inout_ D3D9Base::D3DXIMAGE_INFO     *pSrcInfo,
+	_In_    ::D3DCOLOR           ColorKey,
+	_Inout_ ::D3DXIMAGE_INFO     *pSrcInfo,
 	_Out_   PALETTEENTRY       *pPalette,
 	_Out_   D3D9Wrapper::IDirect3DTexture9* *ppTexture) {
 	LogDebug("Hooked_D3DXCreateTextureFromResourceEx called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
@@ -1196,7 +1196,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResourceEx(
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
 		D3D9Wrapper::IDirect3DTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((D3D9Base::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
+		wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
 		wrapper->_Width = Width;
 		wrapper->_Height = Height;
 		wrapper->_Levels = MipLevels;
@@ -1211,12 +1211,12 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResourceEx(
 		return S_OK;
 	}
 
-	D3D9Base::LPDIRECT3DTEXTURE9 baseTexture = 0;
-	if (Pool == D3D9Base::D3DPOOL_MANAGED)
+	::LPDIRECT3DTEXTURE9 baseTexture = 0;
+	if (Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 		if (!(Usage & D3DUSAGE_DYNAMIC))
 			Usage = Usage | D3DUSAGE_DYNAMIC;
 	}
@@ -1230,7 +1230,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResourceEx(
 	HRESULT hr;
 	D3D9Wrapper::IDirect3DTexture9 *wrapper;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DTexture9* pRightTexture = NULL;
+		::IDirect3DTexture9* pRightTexture = NULL;
 		hr = trampoline_D3DXCreateTextureFromResourceEx(wrappedDevice->GetD3D9Device(), hSrcModule, pSrcResource, Width, Height, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &baseTexture);
 		if (!FAILED(hr) && (ShouldDuplicate(&pDesc))) {
 			hr = trampoline_D3DXCreateTextureFromResourceEx(wrappedDevice->GetD3D9Device(), hSrcModule, pSrcResource, Width, Height, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &pRightTexture);
@@ -1274,8 +1274,8 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTexture(
 	_In_  UINT                     Depth,
 	_In_  UINT                     MipLevels,
 	_In_  DWORD                    Usage,
-	_In_  D3D9Base::D3DFORMAT                Format,
-	_In_  D3D9Base::D3DPOOL                  Pool,
+	_In_  ::D3DFORMAT                Format,
+	_In_  ::D3DPOOL                  Pool,
 	_Out_ D3D9Wrapper::IDirect3DVolumeTexture9* *ppVolumeTexture) {
 	LogInfo("Hooked_D3DXCreateVolumeTexture Width=%d Height=%d Format=%d\n", Width, Height, Format);
 	D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
@@ -1285,7 +1285,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTexture(
 		LogInfo("  postponing call because device was not created yet.\n");
 
 		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((D3D9Base::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
+		wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
 		wrapper->_Height = Height;
 		wrapper->_Width = Width;
 		wrapper->_Depth = Depth;
@@ -1301,10 +1301,10 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTexture(
 		return S_OK;
 	}
 
-	if (Pool == D3D9Base::D3DPOOL_MANAGED)
+	if (Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 		if (!(Usage & D3DUSAGE_DYNAMIC))
 			Usage = Usage | D3DUSAGE_DYNAMIC;
 	}
@@ -1318,7 +1318,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTexture(
 	pDesc.Format = Format;
 	pDesc.Pool = Pool;
 
-	D3D9Base::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
 	HRESULT hr = trampoline_D3DXCreateVolumeTexture(wrappedDevice->GetD3D9Device(), Width, Height, Depth, MipLevels, Usage, Format, Pool, &baseTexture);
 	if (baseTexture) {
 		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9(baseTexture, wrappedDevice);
@@ -1342,7 +1342,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFile(
 	_In_  D3D9Wrapper::IDirect3DDevice9*        pDevice,
 	_In_  LPCTSTR                  pSrcFile,
 	_Out_ D3D9Wrapper::IDirect3DVolumeTexture9* *ppVolumeTexture) {
-	LogInfo("Hooked_D3DXCreateVolumeTextureFromFile Width=%d Height=%d Format=%d\n", D3DX_DEFAULT, D3DX_DEFAULT, D3D9Base::D3DFMT_UNKNOWN);
+	LogInfo("Hooked_D3DXCreateVolumeTextureFromFile Width=%d Height=%d Format=%d\n", D3DX_DEFAULT, D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
 	D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
 	if (!wrappedDevice->GetD3D9Device())
@@ -1350,14 +1350,14 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFile(
 		LogInfo("  postponing call because device was not created yet.\n");
 
 		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((D3D9Base::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
+		wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
 		wrapper->_Height = D3DX_DEFAULT;
 		wrapper->_Width = D3DX_DEFAULT;
 		wrapper->_Depth = D3DX_DEFAULT;
 		wrapper->_Levels = D3DX_DEFAULT;
 		wrapper->_Usage = 0;
-		wrapper->_Format = D3D9Base::D3DFMT_UNKNOWN;
-		wrapper->_Pool = D3D9Base::D3DPOOL_DEFAULT;
+		wrapper->_Format = ::D3DFMT_UNKNOWN;
+		wrapper->_Pool = ::D3DPOOL_DEFAULT;
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppVolumeTexture = wrapper;
@@ -1372,10 +1372,10 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFile(
 	pDesc.Depth = D3DX_DEFAULT;
 	pDesc.Levels = D3DX_DEFAULT;
 	pDesc.Usage = 0;
-	pDesc.Format = D3D9Base::D3DFMT_UNKNOWN;
-	pDesc.Pool = D3D9Base::D3DPOOL_DEFAULT;
+	pDesc.Format = ::D3DFMT_UNKNOWN;
+	pDesc.Pool = ::D3DPOOL_DEFAULT;
 
-	D3D9Base::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
 	HRESULT hr = trampoline_D3DXCreateVolumeTextureFromFile(wrappedDevice->GetD3D9Device(), pSrcFile, &baseTexture);
 	if (baseTexture) {
 		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9(baseTexture, wrappedDevice);
@@ -1402,12 +1402,12 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileEx(
 	_In_    UINT                     Depth,
 	_In_    UINT                     MipLevels,
 	_In_    DWORD                    Usage,
-	D3D9Base::D3DFORMAT                Format,
-	_In_    D3D9Base::D3DPOOL                  Pool,
+	::D3DFORMAT                Format,
+	_In_    ::D3DPOOL                  Pool,
 	_In_    DWORD                    Filter,
 	_In_    DWORD                    MipFilter,
-	_In_    D3D9Base::D3DCOLOR                 ColorKey,
-	_Inout_ D3D9Base::D3DXIMAGE_INFO           *pSrcInfo,
+	_In_    ::D3DCOLOR                 ColorKey,
+	_Inout_ ::D3DXIMAGE_INFO           *pSrcInfo,
 	_Out_   PALETTEENTRY             *pPalette,
 	_Out_   D3D9Wrapper::IDirect3DVolumeTexture9* *ppTexture) {
 	LogInfo("Hooked_D3DXCreateVolumeTextureFromFileEx Width=%d Height=%d Format=%d\n", Width, Height, Format);
@@ -1418,7 +1418,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileEx(
 		LogInfo("  postponing call because device was not created yet.\n");
 
 		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((D3D9Base::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
+		wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
 		wrapper->_Height = Height;
 		wrapper->_Width = Width;
 		wrapper->_Depth = Depth;
@@ -1434,10 +1434,10 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileEx(
 		return S_OK;
 	}
 
-	if (Pool == D3D9Base::D3DPOOL_MANAGED)
+	if (Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 		if (!(Usage & D3DUSAGE_DYNAMIC))
 			Usage = Usage | D3DUSAGE_DYNAMIC;
 	}
@@ -1451,7 +1451,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileEx(
 	pDesc.Format = Format;
 	pDesc.Pool = Pool;
 
-	D3D9Base::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
 	HRESULT hr = trampoline_D3DXCreateVolumeTexture(wrappedDevice->GetD3D9Device(), Width, Height, Depth, MipLevels, Usage, Format, Pool, &baseTexture);
 	if (baseTexture) {
 		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9(baseTexture, wrappedDevice);
@@ -1476,7 +1476,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemory(
 	LPCVOID                   pSrcData,
 	UINT                      SrcDataSize,
 	D3D9Wrapper::IDirect3DVolumeTexture9** ppVolumeTexture) {
-	LogInfo("Hooked_D3DXCreateVolumeTextureFromFileInMemory Width=%d Height=%d Format=%d\n", D3DX_DEFAULT, D3DX_DEFAULT, D3D9Base::D3DFMT_UNKNOWN);
+	LogInfo("Hooked_D3DXCreateVolumeTextureFromFileInMemory Width=%d Height=%d Format=%d\n", D3DX_DEFAULT, D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
 	D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
 	if (!wrappedDevice->GetD3D9Device())
@@ -1484,14 +1484,14 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemory(
 		LogInfo("  postponing call because device was not created yet.\n");
 
 		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((D3D9Base::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
+		wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
 		wrapper->_Height = D3DX_DEFAULT;
 		wrapper->_Width = D3DX_DEFAULT;
 		wrapper->_Depth = D3DX_DEFAULT;
 		wrapper->_Levels = D3DX_DEFAULT;
 		wrapper->_Usage = 0;
-		wrapper->_Format = D3D9Base::D3DFMT_UNKNOWN;
-		wrapper->_Pool = D3D9Base::D3DPOOL_DEFAULT;
+		wrapper->_Format = ::D3DFMT_UNKNOWN;
+		wrapper->_Pool = ::D3DPOOL_DEFAULT;
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppVolumeTexture = wrapper;
@@ -1506,10 +1506,10 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemory(
 	pDesc.Depth = D3DX_DEFAULT;
 	pDesc.Levels = D3DX_DEFAULT;
 	pDesc.Usage = 0;
-	pDesc.Format = D3D9Base::D3DFMT_UNKNOWN;
-	pDesc.Pool = D3D9Base::D3DPOOL_DEFAULT;
+	pDesc.Format = ::D3DFMT_UNKNOWN;
+	pDesc.Pool = ::D3DPOOL_DEFAULT;
 
-	D3D9Base::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
 	HRESULT hr = D3DXCreateVolumeTextureFromFileInMemory(wrappedDevice->GetD3D9Device(), pSrcData, SrcDataSize, &baseTexture);
 	if (baseTexture) {
 		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9(baseTexture, wrappedDevice);
@@ -1537,12 +1537,12 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemoryEx(
 	_In_    UINT                     Depth,
 	_In_    UINT                     MipLevels,
 	_In_    DWORD                    Usage,
-	_In_    D3D9Base::D3DFORMAT                Format,
-	_In_    D3D9Base::D3DPOOL                  Pool,
+	_In_    ::D3DFORMAT                Format,
+	_In_    ::D3DPOOL                  Pool,
 	_In_    DWORD                    Filter,
 	_In_    DWORD                    MipFilter,
-	_In_    D3D9Base::D3DCOLOR                 ColorKey,
-	_Inout_ D3D9Base::D3DXIMAGE_INFO           *pSrcInfo,
+	_In_    ::D3DCOLOR                 ColorKey,
+	_Inout_ ::D3DXIMAGE_INFO           *pSrcInfo,
 	_Out_   PALETTEENTRY             *pPalette,
 	_Out_   D3D9Wrapper::IDirect3DVolumeTexture9* *ppVolumeTexture) {
 	LogInfo("Hooked_D3DXCreateVolumeTextureFromFileInMemoryEx Width=%d Height=%d Format=%d\n", Width, Height, Format);
@@ -1553,7 +1553,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemoryEx(
 		LogInfo("  postponing call because device was not created yet.\n");
 
 		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((D3D9Base::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
+		wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
 		wrapper->_Height = Height;
 		wrapper->_Width = Width;
 		wrapper->_Depth = Depth;
@@ -1569,10 +1569,10 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemoryEx(
 		return S_OK;
 	}
 
-	if (Pool == D3D9Base::D3DPOOL_MANAGED)
+	if (Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 		if (!(Usage & D3DUSAGE_DYNAMIC))
 			Usage = Usage | D3DUSAGE_DYNAMIC;
 	}
@@ -1586,7 +1586,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemoryEx(
 	pDesc.Format = Format;
 	pDesc.Pool = Pool;
 
-	D3D9Base::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
 	HRESULT hr = trampoline_D3DXCreateVolumeTextureFromFileInMemoryEx(wrappedDevice->GetD3D9Device(), pSrcData, SrcDataSize, Width, Height, Depth, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &baseTexture);
 	if (baseTexture) {
 		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9(baseTexture, wrappedDevice);
@@ -1611,7 +1611,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResource(
 	_In_  HMODULE                  hSrcModule,
 	_In_  LPCTSTR                  pSrcResource,
 	_Out_ D3D9Wrapper::IDirect3DVolumeTexture9* *ppVolumeTexture) {
-	LogInfo("Hooked_D3DXCreateVolumeTextureFromResource Width=%d Height=%d Format=%d\n", D3DX_DEFAULT, D3DX_DEFAULT, D3D9Base::D3DFMT_UNKNOWN);
+	LogInfo("Hooked_D3DXCreateVolumeTextureFromResource Width=%d Height=%d Format=%d\n", D3DX_DEFAULT, D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
 	D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
 	if (!wrappedDevice->GetD3D9Device())
@@ -1619,14 +1619,14 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResource(
 		LogInfo("  postponing call because device was not created yet.\n");
 
 		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((D3D9Base::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
+		wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
 		wrapper->_Height = D3DX_DEFAULT;
 		wrapper->_Width = D3DX_DEFAULT;
 		wrapper->_Depth = D3DX_DEFAULT;
 		wrapper->_Levels = D3DX_DEFAULT;
 		wrapper->_Usage = 0;
-		wrapper->_Format = D3D9Base::D3DFMT_UNKNOWN;
-		wrapper->_Pool = D3D9Base::D3DPOOL_DEFAULT;
+		wrapper->_Format = ::D3DFMT_UNKNOWN;
+		wrapper->_Pool = ::D3DPOOL_DEFAULT;
 		wrapper->_Device = wrappedDevice;
 		wrapper->pendingCreateTexture = true;
 		*ppVolumeTexture = wrapper;
@@ -1641,10 +1641,10 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResource(
 	pDesc.Depth = D3DX_DEFAULT;
 	pDesc.Levels = D3DX_DEFAULT;
 	pDesc.Usage = 0;
-	pDesc.Format = D3D9Base::D3DFMT_UNKNOWN;
-	pDesc.Pool = D3D9Base::D3DPOOL_DEFAULT;
+	pDesc.Format = ::D3DFMT_UNKNOWN;
+	pDesc.Pool = ::D3DPOOL_DEFAULT;
 
-	D3D9Base::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
 	HRESULT hr = trampoline_D3DXCreateVolumeTextureFromResource(wrappedDevice->GetD3D9Device(), hSrcModule, pSrcResource, &baseTexture);
 	if (baseTexture) {
 		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9(baseTexture, wrappedDevice);
@@ -1672,12 +1672,12 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResourceEx(
 	_In_    UINT                     Depth,
 	_In_    UINT                     MipLevels,
 	_In_    DWORD                    Usage,
-	_In_    D3D9Base::D3DFORMAT                Format,
-	_In_    D3D9Base::D3DPOOL                  Pool,
+	_In_    ::D3DFORMAT                Format,
+	_In_    ::D3DPOOL                  Pool,
 	_In_    DWORD                    Filter,
 	_In_    DWORD                    MipFilter,
-	_In_    D3D9Base::D3DCOLOR                 ColorKey,
-	_Inout_ D3D9Base::D3DXIMAGE_INFO           *pSrcInfo,
+	_In_    ::D3DCOLOR                 ColorKey,
+	_Inout_ ::D3DXIMAGE_INFO           *pSrcInfo,
 	_Out_   PALETTEENTRY             *pPalette,
 	_Out_   D3D9Wrapper::IDirect3DVolumeTexture9* *ppVolumeTexture) {
 	LogInfo("Hooked_D3DXCreateVolumeTextureFromResourceEx Width=%d Height=%d Format=%d\n", Width, Height, Format);
@@ -1688,7 +1688,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResourceEx(
 		LogInfo("  postponing call because device was not created yet.\n");
 
 		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper;
-		wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((D3D9Base::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
+		wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
 		wrapper->_Height = Height;
 		wrapper->_Width = Width;
 		wrapper->_Depth = Depth;
@@ -1704,10 +1704,10 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResourceEx(
 		return S_OK;
 	}
 
-	if (Pool == D3D9Base::D3DPOOL_MANAGED)
+	if (Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 		if (!(Usage & D3DUSAGE_DYNAMIC))
 			Usage = Usage | D3DUSAGE_DYNAMIC;
 	}
@@ -1721,7 +1721,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResourceEx(
 	pDesc.Format = Format;
 	pDesc.Pool = Pool;
 
-	D3D9Base::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
 	HRESULT hr = trampoline_D3DXCreateVolumeTextureFromResourceEx(wrappedDevice->GetD3D9Device(), hSrcModule, pSrcResource, Width, Height, Depth, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &baseTexture);
 	if (baseTexture) {
 		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9(baseTexture, wrappedDevice);
@@ -1743,18 +1743,18 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResourceEx(
 
 HRESULT WINAPI Hooked_D3DXFillCubeTexture(
 	_Out_ D3D9Wrapper::IDirect3DCubeTexture9* pTexture,
-	_In_  D3D9Base::LPD3DXFILL3D           pFunction,
+	_In_  ::LPD3DXFILL3D           pFunction,
 	_In_  LPVOID                 pData) {
 	LogInfo("Hooked_D3DXFillCubeTexture called with DestinationTexture=%p\n", pTexture);
 
-	D3D9Base::IDirect3DCubeTexture9 *baseDestTexture = baseTexture9(pTexture);
+	::IDirect3DCubeTexture9 *baseDestTexture = baseTexture9(pTexture);
 
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
 		D3D9Wrapper::IDirect3DCubeTexture9 *wrappedDest = wrappedTexture9(pTexture);
 
-		D3D9Base::IDirect3DCubeTexture9* pDestTextureLeft = wrappedDest->DirectModeGetLeft();
-		D3D9Base::IDirect3DCubeTexture9* pDestTextureRight = wrappedDest->DirectModeGetRight();
+		::IDirect3DCubeTexture9* pDestTextureLeft = wrappedDest->DirectModeGetLeft();
+		::IDirect3DCubeTexture9* pDestTextureRight = wrappedDest->DirectModeGetRight();
 
 		hr = trampoline_D3DXFillCubeTexture(pDestTextureLeft, pFunction, pData);
 		if (SUCCEEDED(hr)) {
@@ -1779,17 +1779,17 @@ HRESULT WINAPI Hooked_D3DXFillCubeTexture(
 
 HRESULT WINAPI Hooked_D3DXFillCubeTextureTX(
 	_In_ D3D9Wrapper::IDirect3DCubeTexture9* pTexture,
-	_In_ D3D9Base::LPD3DXTEXTURESHADER    pTextureShader) {
+	_In_ ::LPD3DXTEXTURESHADER    pTextureShader) {
 	LogInfo("Hooked_D3DXFillCubeTextureTX called with DestinationTexture=%p\n", pTexture);
 
-	D3D9Base::IDirect3DCubeTexture9 *baseDestTexture = baseTexture9(pTexture);
+	::IDirect3DCubeTexture9 *baseDestTexture = baseTexture9(pTexture);
 
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
 		D3D9Wrapper::IDirect3DCubeTexture9 *wrappedDest = wrappedTexture9(pTexture);
 
-		D3D9Base::IDirect3DCubeTexture9* pDestTextureLeft = wrappedDest->DirectModeGetLeft();
-		D3D9Base::IDirect3DCubeTexture9* pDestTextureRight = wrappedDest->DirectModeGetRight();
+		::IDirect3DCubeTexture9* pDestTextureLeft = wrappedDest->DirectModeGetLeft();
+		::IDirect3DCubeTexture9* pDestTextureRight = wrappedDest->DirectModeGetRight();
 
 		hr = trampoline_D3DXFillCubeTextureTX(pDestTextureLeft, pTextureShader);
 		if (SUCCEEDED(hr)) {
@@ -1814,18 +1814,18 @@ HRESULT WINAPI Hooked_D3DXFillCubeTextureTX(
 
 HRESULT WINAPI Hooked_D3DXFillTexture(
 	_Out_ D3D9Wrapper::IDirect3DTexture9* pTexture,
-	_In_  D3D9Base::LPD3DXFILL2D       pFunction,
+	_In_  ::LPD3DXFILL2D       pFunction,
 	_In_  LPVOID             pData) {
 	LogInfo("Hooked_D3DXFillCubeTexture called with DestinationTexture=%p\n", pTexture);
 
-	D3D9Base::IDirect3DTexture9 *baseDestTexture = baseTexture9(pTexture);
+	::IDirect3DTexture9 *baseDestTexture = baseTexture9(pTexture);
 
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
 		D3D9Wrapper::IDirect3DTexture9 *wrappedDest = wrappedTexture9(pTexture);
 
-		D3D9Base::IDirect3DTexture9* pDestTextureLeft = wrappedDest->DirectModeGetLeft();
-		D3D9Base::IDirect3DTexture9* pDestTextureRight = wrappedDest->DirectModeGetRight();
+		::IDirect3DTexture9* pDestTextureLeft = wrappedDest->DirectModeGetLeft();
+		::IDirect3DTexture9* pDestTextureRight = wrappedDest->DirectModeGetRight();
 
 		hr = trampoline_D3DXFillTexture(pDestTextureLeft, pFunction, pData);
 		if (SUCCEEDED(hr)) {
@@ -1849,17 +1849,17 @@ HRESULT WINAPI Hooked_D3DXFillTexture(
 
 HRESULT WINAPI Hooked_D3DXFillTextureTX(
 	_Inout_ D3D9Wrapper::IDirect3DTexture9*  pTexture,
-	_In_    D3D9Base::LPD3DXTEXTURESHADER pTextureShader) {
+	_In_    ::LPD3DXTEXTURESHADER pTextureShader) {
 	LogInfo("Hooked_D3DXFillTextureTX called with DestinationTexture=%p\n", pTexture);
 
-	D3D9Base::IDirect3DTexture9 *baseDestTexture = baseTexture9(pTexture);
+	::IDirect3DTexture9 *baseDestTexture = baseTexture9(pTexture);
 
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
 		D3D9Wrapper::IDirect3DTexture9 *wrappedDest = wrappedTexture9(pTexture);
 
-		D3D9Base::IDirect3DTexture9* pDestTextureLeft = wrappedDest->DirectModeGetLeft();
-		D3D9Base::IDirect3DTexture9* pDestTextureRight = wrappedDest->DirectModeGetRight();
+		::IDirect3DTexture9* pDestTextureLeft = wrappedDest->DirectModeGetLeft();
+		::IDirect3DTexture9* pDestTextureRight = wrappedDest->DirectModeGetRight();
 
 		hr = trampoline_D3DXFillTextureTX(pDestTextureLeft, pTextureShader);
 		if (SUCCEEDED(hr)) {
@@ -1884,11 +1884,11 @@ HRESULT WINAPI Hooked_D3DXFillTextureTX(
 
 HRESULT WINAPI Hooked_D3DXFillVolumeTexture(
 	_Out_ D3D9Wrapper::IDirect3DVolumeTexture9* pTexture,
-	_In_  D3D9Base::LPD3DXFILL3D             pFunction,
+	_In_  ::LPD3DXFILL3D             pFunction,
 	_In_  LPVOID                   pData) {
 	LogInfo("Hooked_D3DXFillVolumeTexture called with DestinationTexture=%p\n", pTexture);
 
-	D3D9Base::IDirect3DVolumeTexture9 *baseDestTexture = baseTexture9(pTexture);
+	::IDirect3DVolumeTexture9 *baseDestTexture = baseTexture9(pTexture);
 
 	HRESULT hr = trampoline_D3DXFillVolumeTexture(baseDestTexture, pFunction, pData);
 	LogInfo("  returns result=%x\n", hr);
@@ -1898,10 +1898,10 @@ HRESULT WINAPI Hooked_D3DXFillVolumeTexture(
 
 HRESULT WINAPI Hooked_D3DXFillVolumeTextureTX(
 	_In_ D3D9Wrapper::IDirect3DVolumeTexture9* pTexture,
-	_In_ D3D9Base::LPD3DXTEXTURESHADER      pTextureShader) {
+	_In_ ::LPD3DXTEXTURESHADER      pTextureShader) {
 	LogInfo("Hooked_D3DXFillVolumeTextureTX called with DestinationTexture=%p\n", pTexture);
 
-	D3D9Base::IDirect3DVolumeTexture9 *baseDestTexture = baseTexture9(pTexture);
+	::IDirect3DVolumeTexture9 *baseDestTexture = baseTexture9(pTexture);
 
 	HRESULT hr = trampoline_D3DXFillVolumeTextureTX(baseDestTexture, pTextureShader);
 	LogInfo("  returns result=%x\n", hr);
@@ -1916,13 +1916,13 @@ HRESULT WINAPI Hooked_D3DXFilterTexture(
 	_In_        DWORD                  MipFilter) {
 	LogInfo("Hooked_D3DXFilterTexture called with DestinationTexture=%p\n", pBaseTexture);
 
-	D3D9Base::IDirect3DBaseTexture9 *baseDestTexture = baseTexture9(pBaseTexture);
+	::IDirect3DBaseTexture9 *baseDestTexture = baseTexture9(pBaseTexture);
 
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
 		D3D9Wrapper::IDirect3DBaseTexture9 *wrappedDest = wrappedTexture9(pBaseTexture);
-		D3D9Base::IDirect3DBaseTexture9* pDestTextureLeft = NULL;
-		D3D9Base::IDirect3DBaseTexture9* pDestTextureRight = NULL;
+		::IDirect3DBaseTexture9* pDestTextureLeft = NULL;
+		::IDirect3DBaseTexture9* pDestTextureRight = NULL;
 
 		UnWrapTexture(wrappedDest, &pDestTextureLeft, &pDestTextureRight);
 
@@ -1953,15 +1953,15 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromFile(
 	_In_          LPCTSTR            pSrcFile,
 	_In_    const RECT               *pSrcRect,
 	_In_          DWORD              Filter,
-	_In_          D3D9Base::D3DCOLOR           ColorKey,
-	_Inout_       D3D9Base::D3DXIMAGE_INFO     *pSrcInfo) {
+	_In_          ::D3DCOLOR           ColorKey,
+	_Inout_       ::D3DXIMAGE_INFO     *pSrcInfo) {
 	LogDebug("Hooked_D3DXLoadSurfaceFromFile called using DestSurface=%p\n", pDestSurface);
-	D3D9Base::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
+	::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
 		D3D9Wrapper::IDirect3DSurface9* pWrappedDest = wrappedSurface9(pDestSurface);
-		D3D9Base::IDirect3DSurface9* pDestSurfaceLeft = pWrappedDest->DirectModeGetLeft();
-		D3D9Base::IDirect3DSurface9* pDestSurfaceRight = pWrappedDest->DirectModeGetRight();
+		::IDirect3DSurface9* pDestSurfaceLeft = pWrappedDest->DirectModeGetLeft();
+		::IDirect3DSurface9* pDestSurfaceRight = pWrappedDest->DirectModeGetRight();
 		hr = trampoline_D3DXLoadSurfaceFromFile(pDestSurfaceLeft, pDestPalette, pDestRect, pSrcFile, pSrcRect, Filter, ColorKey, pSrcInfo);
 		if (SUCCEEDED(hr)) {
 			if (!pDestSurfaceRight) {
@@ -1990,15 +1990,15 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromFileInMemory(
 	_In_          UINT               SrcData,
 	_In_    const RECT               *pSrcRect,
 	_In_          DWORD              Filter,
-	_In_          D3D9Base::D3DCOLOR           ColorKey,
-	_Inout_       D3D9Base::D3DXIMAGE_INFO     *pSrcInfo) {
+	_In_          ::D3DCOLOR           ColorKey,
+	_Inout_       ::D3DXIMAGE_INFO     *pSrcInfo) {
 	LogDebug("Hooked_D3DXLoadSurfaceFromFileInMemory called using DestSurface=%p\n", pDestSurface);
-	D3D9Base::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
+	::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
 		D3D9Wrapper::IDirect3DSurface9* pWrappedDest = wrappedSurface9(pDestSurface);
-		D3D9Base::IDirect3DSurface9* pDestSurfaceLeft = pWrappedDest->DirectModeGetLeft();
-		D3D9Base::IDirect3DSurface9* pDestSurfaceRight = pWrappedDest->DirectModeGetRight();
+		::IDirect3DSurface9* pDestSurfaceLeft = pWrappedDest->DirectModeGetLeft();
+		::IDirect3DSurface9* pDestSurfaceRight = pWrappedDest->DirectModeGetRight();
 		hr = trampoline_D3DXLoadSurfaceFromFileInMemory(pDestSurfaceLeft, pDestPalette, pDestRect, pSrcData, SrcData, pSrcRect, Filter, ColorKey, pSrcInfo);
 		if (SUCCEEDED(hr)) {
 			if (!pDestSurfaceRight) {
@@ -2024,19 +2024,19 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromMemory(
 	_In_ const PALETTEENTRY       *pDestPalette,
 	_In_ const RECT               *pDestRect,
 	_In_       LPCVOID            pSrcMemory,
-	_In_       D3D9Base::D3DFORMAT          SrcFormat,
+	_In_       ::D3DFORMAT          SrcFormat,
 	_In_       UINT               SrcPitch,
 	_In_ const PALETTEENTRY       *pSrcPalette,
 	_In_ const RECT               *pSrcRect,
 	_In_       DWORD              Filter,
-	_In_       D3D9Base::D3DCOLOR           ColorKey) {
+	_In_       ::D3DCOLOR           ColorKey) {
 	LogDebug("Hooked_D3DXLoadSurfaceFromMemory called using DestSurface=%p\n", pDestSurface);
-	D3D9Base::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
+	::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
 		D3D9Wrapper::IDirect3DSurface9* pWrappedDest = wrappedSurface9(pDestSurface);
-		D3D9Base::IDirect3DSurface9* pDestSurfaceLeft = pWrappedDest->DirectModeGetLeft();
-		D3D9Base::IDirect3DSurface9* pDestSurfaceRight = pWrappedDest->DirectModeGetRight();
+		::IDirect3DSurface9* pDestSurfaceLeft = pWrappedDest->DirectModeGetLeft();
+		::IDirect3DSurface9* pDestSurfaceRight = pWrappedDest->DirectModeGetRight();
 		hr = trampoline_D3DXLoadSurfaceFromMemory(pDestSurfaceLeft, pDestPalette, pDestRect, pSrcMemory, SrcFormat, SrcPitch, pSrcPalette, pSrcRect, Filter, ColorKey);
 		if (SUCCEEDED(hr)) {
 			if (!pDestSurfaceRight) {
@@ -2065,15 +2065,15 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromResource(
 	_In_          LPCTSTR            pSrcResource,
 	_In_    const RECT               *pSrcRect,
 	_In_          DWORD              Filter,
-	_In_          D3D9Base::D3DCOLOR           ColorKey,
-	_Inout_       D3D9Base::D3DXIMAGE_INFO     *pSrcInfo) {
+	_In_          ::D3DCOLOR           ColorKey,
+	_Inout_       ::D3DXIMAGE_INFO     *pSrcInfo) {
 	LogDebug("Hooked_D3DXLoadSurfaceFromResource called using DestSurface=%p\n", pDestSurface);
-	D3D9Base::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
+	::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
 		D3D9Wrapper::IDirect3DSurface9* pWrappedDest = wrappedSurface9(pDestSurface);
-		D3D9Base::IDirect3DSurface9* pDestSurfaceLeft = pWrappedDest->DirectModeGetLeft();
-		D3D9Base::IDirect3DSurface9* pDestSurfaceRight = pWrappedDest->DirectModeGetRight();
+		::IDirect3DSurface9* pDestSurfaceLeft = pWrappedDest->DirectModeGetLeft();
+		::IDirect3DSurface9* pDestSurfaceRight = pWrappedDest->DirectModeGetRight();
 		hr = trampoline_D3DXLoadSurfaceFromResource(pDestSurfaceLeft, pDestPalette, pDestRect, hSrcModule, pSrcResource, pSrcRect, Filter, ColorKey, pSrcInfo);
 		if (SUCCEEDED(hr)) {
 			if (!pDestSurfaceRight) {
@@ -2101,18 +2101,18 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromSurface(
 	_In_ const PALETTEENTRY       *pSrcPalette,
 	_In_ const RECT               *pSrcRect,
 	_In_       DWORD              Filter,
-	_In_       D3D9Base::D3DCOLOR           ColorKey) {
+	_In_       ::D3DCOLOR           ColorKey) {
 	LogDebug("Hooked_D3DXLoadSurfaceFromSurface called using SourceSurface=%p, DestSurface=%p\n", pSrcSurface, pDestSurface);
-	D3D9Base::LPDIRECT3DSURFACE9 baseSourceSurface = baseSurface9(pSrcSurface);
-	D3D9Base::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
+	::LPDIRECT3DSURFACE9 baseSourceSurface = baseSurface9(pSrcSurface);
+	::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
 		D3D9Wrapper::IDirect3DSurface9* pWrappedSource = wrappedSurface9(pSrcSurface);
 		D3D9Wrapper::IDirect3DSurface9* pWrappedDest = wrappedSurface9(pDestSurface);
-		D3D9Base::IDirect3DSurface9* pSourceSurfaceLeft = pWrappedSource->DirectModeGetLeft();
-		D3D9Base::IDirect3DSurface9* pSourceSurfaceRight = pWrappedSource->DirectModeGetRight();
-		D3D9Base::IDirect3DSurface9* pDestSurfaceLeft = pWrappedDest->DirectModeGetLeft();
-		D3D9Base::IDirect3DSurface9* pDestSurfaceRight = pWrappedDest->DirectModeGetRight();
+		::IDirect3DSurface9* pSourceSurfaceLeft = pWrappedSource->DirectModeGetLeft();
+		::IDirect3DSurface9* pSourceSurfaceRight = pWrappedSource->DirectModeGetRight();
+		::IDirect3DSurface9* pDestSurfaceLeft = pWrappedDest->DirectModeGetLeft();
+		::IDirect3DSurface9* pDestSurfaceRight = pWrappedDest->DirectModeGetRight();
 
 		hr = trampoline_D3DXLoadSurfaceFromSurface(pDestSurfaceLeft, pDestPalette, pDestRect, pSourceSurfaceLeft, pSrcPalette, pSrcRect, Filter, ColorKey);
 		if (SUCCEEDED(hr)) {
@@ -2143,14 +2143,14 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromSurface(
 HRESULT WINAPI Hooked_D3DXLoadVolumeFromFile(
 	_In_       D3D9Wrapper::IDirect3DVolume9* pDestVolume,
 	_In_ const PALETTEENTRY      *pDestPalette,
-	_In_ const D3D9Base::D3DBOX            *pDestBox,
+	_In_ const ::D3DBOX            *pDestBox,
 	_In_       LPCTSTR           pSrcFile,
-	_In_ const D3D9Base::D3DBOX            *pSrcBox,
+	_In_ const ::D3DBOX            *pSrcBox,
 	_In_       DWORD             Filter,
-	_In_       D3D9Base::D3DCOLOR          ColorKey,
-	_In_       D3D9Base::D3DXIMAGE_INFO    *pSrcInfo) {
+	_In_       ::D3DCOLOR          ColorKey,
+	_In_       ::D3DXIMAGE_INFO    *pSrcInfo) {
 	LogDebug("Hooked_D3DXLoadVolumeFromFile called using DestSurface=%p\n", pDestVolume);
-	D3D9Base::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
+	::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
 	HRESULT hr = trampoline_D3DXLoadVolumeFromFile(baseDestVolume, pDestPalette, pDestBox, pSrcFile, pSrcBox, Filter, ColorKey, pSrcInfo);
 	LogInfo("  returns result=%x\n", hr);
 
@@ -2160,15 +2160,15 @@ HRESULT WINAPI Hooked_D3DXLoadVolumeFromFile(
 HRESULT WINAPI Hooked_D3DXLoadVolumeFromFileInMemory(
 	_In_       D3D9Wrapper::IDirect3DVolume9* pDestVolume,
 	_In_ const PALETTEENTRY      *pDestPalette,
-	_In_ const D3D9Base::D3DBOX            *pDestBox,
+	_In_ const ::D3DBOX            *pDestBox,
 	_In_       LPCVOID           pSrcData,
 	_In_       UINT              SrcDataSize,
-	_In_ const D3D9Base::D3DBOX            *pSrcBox,
+	_In_ const ::D3DBOX            *pSrcBox,
 	_In_       DWORD             Filter,
-	_In_       D3D9Base::D3DCOLOR          ColorKey,
-	_In_       D3D9Base::D3DXIMAGE_INFO    *pSrcInfo) {
+	_In_       ::D3DCOLOR          ColorKey,
+	_In_       ::D3DXIMAGE_INFO    *pSrcInfo) {
 	LogDebug("Hooked_D3DXLoadVolumeFromFileInMemory called using DestSurface=%p\n", pDestVolume);
-	D3D9Base::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
+	::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
 	HRESULT hr = trampoline_D3DXLoadVolumeFromFileInMemory(baseDestVolume, pDestPalette, pDestBox, pSrcData, SrcDataSize, pSrcBox, Filter, ColorKey, pSrcInfo);
 	LogInfo("  returns result=%x\n", hr);
 
@@ -2178,17 +2178,17 @@ HRESULT WINAPI Hooked_D3DXLoadVolumeFromFileInMemory(
 HRESULT WINAPI Hooked_D3DXLoadVolumeFromMemory(
 	_In_       D3D9Wrapper::IDirect3DVolume9* pDestVolume,
 	_In_ const PALETTEENTRY      *pDestPalette,
-	_In_ const D3D9Base::D3DBOX            *pDestBox,
+	_In_ const ::D3DBOX            *pDestBox,
 	_In_       LPCVOID           pSrcMemory,
-	_In_       D3D9Base::D3DFORMAT         SrcFormat,
+	_In_       ::D3DFORMAT         SrcFormat,
 	_In_       UINT              SrcRowPitch,
 	_In_       UINT              SrcSlicePitch,
 	_In_ const PALETTEENTRY      *pSrcPalette,
-	_In_ const D3D9Base::D3DBOX            *pSrcBox,
+	_In_ const ::D3DBOX            *pSrcBox,
 	_In_       DWORD             Filter,
-	_In_       D3D9Base::D3DCOLOR          ColorKey) {
+	_In_       ::D3DCOLOR          ColorKey) {
 	LogDebug("Hooked_D3DXLoadVolumeFromMemory called using DestSurface=%p\n", pDestVolume);
-	D3D9Base::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
+	::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
 	HRESULT hr = trampoline_D3DXLoadVolumeFromMemory(baseDestVolume, pDestPalette, pDestBox, pSrcMemory, SrcFormat, SrcRowPitch, SrcSlicePitch, pSrcPalette, pSrcBox, Filter, ColorKey);
 	LogInfo("  returns result=%x\n", hr);
 
@@ -2198,15 +2198,15 @@ HRESULT WINAPI Hooked_D3DXLoadVolumeFromMemory(
 HRESULT WINAPI Hooked_D3DXLoadVolumeFromResource(
 	D3D9Wrapper::IDirect3DVolume9*         pDestVolume,
 	CONST PALETTEENTRY*       pDestPalette,
-	CONST D3D9Base::D3DBOX*             pDestBox,
+	CONST ::D3DBOX*             pDestBox,
 	HMODULE                   hSrcModule,
 	LPCWSTR                   pSrcResource,
-	CONST D3D9Base::D3DBOX*             pSrcBox,
+	CONST ::D3DBOX*             pSrcBox,
 	DWORD                     Filter,
-	D3D9Base::D3DCOLOR                  ColorKey,
-	D3D9Base::D3DXIMAGE_INFO*           pSrcInfo) {
+	::D3DCOLOR                  ColorKey,
+	::D3DXIMAGE_INFO*           pSrcInfo) {
 	LogDebug("Hooked_D3DXLoadVolumeFromResource called using DestSurface=%p\n", pDestVolume);
-	D3D9Base::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
+	::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
 	HRESULT hr = trampoline_D3DXLoadVolumeFromResource(baseDestVolume, pDestPalette, pDestBox, hSrcModule, pSrcResource, pSrcBox, Filter, ColorKey, pSrcInfo);
 	LogInfo("  returns result=%x\n", hr);
 
@@ -2216,15 +2216,15 @@ HRESULT WINAPI Hooked_D3DXLoadVolumeFromResource(
 HRESULT WINAPI Hooked_D3DXLoadVolumeFromVolume(
 	_In_       D3D9Wrapper::IDirect3DVolume9* pDestVolume,
 	_In_ const PALETTEENTRY      *pDestPalette,
-	_In_ const D3D9Base::D3DBOX            *pDestBox,
+	_In_ const ::D3DBOX            *pDestBox,
 	_In_       D3D9Wrapper::IDirect3DVolume9* pSrcVolume,
 	_In_ const PALETTEENTRY      *pSrcPalette,
-	_In_ const D3D9Base::D3DBOX            *pSrcBox,
+	_In_ const ::D3DBOX            *pSrcBox,
 	_In_       DWORD             Filter,
-	_In_       D3D9Base::D3DCOLOR          ColorKey) {
+	_In_       ::D3DCOLOR          ColorKey) {
 	LogDebug("Hooked_D3DXLoadVolumeFromVolume called using DestSurface=%p\n", pDestVolume);
-	D3D9Base::LPDIRECT3DVOLUME9 baseSourceVolume = baseVolume9(pSrcVolume);
-	D3D9Base::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
+	::LPDIRECT3DVOLUME9 baseSourceVolume = baseVolume9(pSrcVolume);
+	::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
 	HRESULT hr = trampoline_D3DXLoadVolumeFromVolume(baseDestVolume, pDestPalette, pDestBox, baseSourceVolume, pSrcPalette, pSrcBox, Filter, ColorKey);
 	LogInfo("  returns result=%x\n", hr);
 

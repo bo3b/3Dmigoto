@@ -9,7 +9,7 @@
 #define getG(c) (((c)&0x0000ff00)>>8)
 #define getB(c) ((c)&0x000000ff)
 #define D3D_COMPILE_STANDARD_FILE_INCLUDE ((ID3DInclude*)(UINT_PTR)1)
-using namespace D3D9Base;
+
 CustomResources customResources;
 CustomShaders customShaders;
 ExplicitCommandListSections explicitCommandListSections;
@@ -1145,8 +1145,8 @@ void PresetCommand::run(CommandListState *state)
 
 static UINT get_index_count_from_current_ib(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice)
 {
-	D3D9Base::IDirect3DIndexBuffer9 *ib;
-	D3D9Base::D3DINDEXBUFFER_DESC desc;
+	::IDirect3DIndexBuffer9 *ib;
+	::D3DINDEXBUFFER_DESC desc;
 
 	mHackerDevice->GetD3D9Device()->GetIndices(&ib);
 	if (!ib)
@@ -1154,9 +1154,9 @@ static UINT get_index_count_from_current_ib(D3D9Wrapper::IDirect3DDevice9 *mHack
 	ib->GetDesc(&desc);
 	ib->Release();
 	switch (desc.Format) {
-	case D3D9Base::D3DFORMAT::D3DFMT_INDEX16:
+	case ::D3DFORMAT::D3DFMT_INDEX16:
 		return desc.Size / 2;
-	case D3D9Base::D3DFORMAT::D3DFMT_INDEX32:
+	case ::D3DFORMAT::D3DFMT_INDEX32:
 		return desc.Size / 4;
 	}
 
@@ -1288,8 +1288,8 @@ inline bool SetDrawingSide(CommandListState *state, D3D9Wrapper::RenderPosition 
 			result = state->mOrigDevice->SetDepthStencilSurface(state->mHackerDevice->m_pActiveDepthStencil->DirectModeGetRight());
 	}
 	// switch textures to new side
-	D3D9Base::IDirect3DBaseTexture9* pActualLeftTexture = NULL;
-	D3D9Base::IDirect3DBaseTexture9* pActualRightTexture = NULL;
+	::IDirect3DBaseTexture9* pActualLeftTexture = NULL;
+	::IDirect3DBaseTexture9* pActualRightTexture = NULL;
 
 	for (auto it = state->m_activeStereoTextureStages.begin(); it != state->m_activeStereoTextureStages.end(); ++it)
 	{
@@ -1306,9 +1306,9 @@ inline bool SetDrawingSide(CommandListState *state, D3D9Wrapper::RenderPosition 
 	}
 	if (state->mHackerDevice->DirectModeGameProjectionIsSet) {
 		if (side == D3D9Wrapper::RenderPosition::Left)
-			state->mOrigDevice->SetTransform(D3D9Base::D3DTS_PROJECTION, &state->mHackerDevice->m_leftProjection);
+			state->mOrigDevice->SetTransform(::D3DTS_PROJECTION, &state->mHackerDevice->m_leftProjection);
 		else
-			state->mOrigDevice->SetTransform(D3D9Base::D3DTS_PROJECTION, &state->mHackerDevice->m_rightProjection);
+			state->mOrigDevice->SetTransform(::D3DTS_PROJECTION, &state->mHackerDevice->m_rightProjection);
 	}
 	return true;
 }
@@ -2475,7 +2475,7 @@ void _SetSamplerStates(IDirect3DDevice9 * mOrigDevice, D3D9_SAMPLER_DESC pDesc, 
 	mOrigDevice->SetSamplerState(slot, D3DSAMP_ELEMENTINDEX, pDesc.element_index);
 	mOrigDevice->SetSamplerState(slot, D3DSAMP_DMAPOFFSET, pDesc.dmap_offset);
 }
-void RunCustomShaderCommand::SetSamplerStates(D3D9Base::IDirect3DDevice9 * mOrigDevice, std::map<UINT, ID3D9SamplerState*> ss)
+void RunCustomShaderCommand::SetSamplerStates(::IDirect3DDevice9 * mOrigDevice, std::map<UINT, ID3D9SamplerState*> ss)
 {
 	map<UINT, ID3D9SamplerState*>::iterator it;
 	for (it = ss.begin(); it != ss.end(); it++)
@@ -2515,7 +2515,7 @@ void _GetSamplerStates(IDirect3DDevice9 * mOrigDevice, D3D9_SAMPLER_DESC *pDesc,
 	pDesc->dmap_offset = pValue;
 
 }
-void RunCustomShaderCommand::GetSamplerStates(D3D9Base::IDirect3DDevice9 * mOrigDevice, std::map<UINT, ID3D9SamplerState*> *saved_sampler_states) {
+void RunCustomShaderCommand::GetSamplerStates(::IDirect3DDevice9 * mOrigDevice, std::map<UINT, ID3D9SamplerState*> *saved_sampler_states) {
 
 	map<UINT, ID3D9SamplerState*>::iterator it;
 
@@ -3426,7 +3426,7 @@ static BOOL ShaderBool(D3D9Wrapper::IDirect3DDevice9 *device, wchar_t shader_typ
 	}
 	return false;
 }
-void GetSurfaceWidth(CommandListState * state, D3D9Base::IDirect3DSurface9 *pSurface, float *val)
+void GetSurfaceWidth(CommandListState * state, ::IDirect3DSurface9 *pSurface, float *val)
 {
 	if (pSurface == nullptr)
 		return;
@@ -3436,7 +3436,7 @@ void GetSurfaceWidth(CommandListState * state, D3D9Base::IDirect3DSurface9 *pSur
 	*val = (float)desc.Width;
 }
 
-void GetSurfaceHeight(CommandListState * state, D3D9Base::IDirect3DSurface9 *pSurface, float *val)
+void GetSurfaceHeight(CommandListState * state, ::IDirect3DSurface9 *pSurface, float *val)
 {
 	if (pSurface == nullptr)
 		return;
@@ -3446,7 +3446,7 @@ void GetSurfaceHeight(CommandListState * state, D3D9Base::IDirect3DSurface9 *pSu
 	*val = (float)desc.Height;
 
 }
-void GetTextureWidth(D3D9Base::IDirect3DBaseTexture9 *pTexture, float *val)
+void GetTextureWidth(::IDirect3DBaseTexture9 *pTexture, float *val)
 {
 	if (pTexture == nullptr)
 		return;
@@ -3472,7 +3472,7 @@ void GetTextureWidth(D3D9Base::IDirect3DBaseTexture9 *pTexture, float *val)
 
 }
 
-void GetTextureHeight(D3D9Base::IDirect3DBaseTexture9 *pTexture, float *val)
+void GetTextureHeight(::IDirect3DBaseTexture9 *pTexture, float *val)
 {
 	if (pTexture == nullptr)
 		return;
@@ -3627,7 +3627,7 @@ float CommandListOperandFloat::evaluate(CommandListState *state, D3D9Wrapper::ID
 		if (!device->depthstencil_replacement)
 			return 0.0f;
 		else
-			if (device->depthstencil_replacement->depthSourceInfo.last_cmp_func == D3D9Base::D3DCMP_GREATER)
+			if (device->depthstencil_replacement->depthSourceInfo.last_cmp_func == ::D3DCMP_GREATER)
 				return 1.0f;
 			else
 				return 0.0f;
@@ -3635,7 +3635,7 @@ float CommandListOperandFloat::evaluate(CommandListState *state, D3D9Wrapper::ID
 		if (!device->depthstencil_replacement)
 			return 0.0f;
 		else
-			if (device->depthstencil_replacement->depthSourceInfo.last_cmp_func == D3D9Base::D3DCMP_GREATEREQUAL)
+			if (device->depthstencil_replacement->depthSourceInfo.last_cmp_func == ::D3DCMP_GREATEREQUAL)
 				return 1.0f;
 			else
 				return 0.0f;
@@ -4187,11 +4187,11 @@ public: \
 		) : CommandListMatrixOperator(lhs, t, rhs) \
 	{} \
 	static const wchar_t* pattern() { return L##operator_pattern; } \
-	D3D9Base::D3DXMATRIX evaluate(D3D9Base::D3DXMATRIX lhs, D3D9Base::D3DXMATRIX rhs) override{D3DXMATRIX ret; return (fn); } \
+	::D3DXMATRIX evaluate(::D3DXMATRIX lhs, ::D3DXMATRIX rhs) override{D3DXMATRIX ret; return (fn); } \
 }; \
 static CommandListOperatorFactory<matrix_operator_name##T, CommandListMatrixEvaluatable> matrix_operator_name;
-DEFINE_MATRIX_OPERATOR(matrix_transpose_operator, "t", (*(D3D9Base::D3DXMatrixTranspose(&D3DXMATRIX(), &rhs))));
-DEFINE_MATRIX_OPERATOR(matrix_inverse_operator, "i", (D3D9Base::D3DXMatrixInverse(&ret, NULL, &rhs) ? (ret) : *(D3DXMatrixIdentity(&D3DXMATRIX()))));
+DEFINE_MATRIX_OPERATOR(matrix_transpose_operator, "t", (*(::D3DXMatrixTranspose(&D3DXMATRIX(), &rhs))));
+DEFINE_MATRIX_OPERATOR(matrix_inverse_operator, "i", (::D3DXMatrixInverse(&ret, NULL, &rhs) ? (ret) : *(D3DXMatrixIdentity(&D3DXMATRIX()))));
 DEFINE_MATRIX_OPERATOR(matrix_multiplication_operator, "*", (lhs * rhs));
 DEFINE_MATRIX_OPERATOR(matrix_addition_operator, "+", (lhs + rhs));
 DEFINE_MATRIX_OPERATOR(matrix_subtraction_operator, "-", (lhs - rhs));
@@ -4527,7 +4527,7 @@ bool CommandListMatrixExpression::parse(const wstring * expression, const wstrin
 		return false;
 	}
 }
-D3D9Base::D3DXMATRIX CommandListMatrixExpression::evaluate(CommandListState * state, D3D9Wrapper::IDirect3DDevice9 * device)
+::D3DXMATRIX CommandListMatrixExpression::evaluate(CommandListState * state, D3D9Wrapper::IDirect3DDevice9 * device)
 {
 	return evaluatable->evaluate(state, device);
 }
@@ -5125,7 +5125,7 @@ bool declare_local_matrix(const wchar_t *section, wstring &decl,
 			// Just issue a notice in hunting mode and carry on.
 			LogOverlay(LOG_NOTICE, "WARNING: [%S] local %S masks a global variable with the same name\n", section, _name.c_str());
 		}
-		pre_command_list->static_matrices.emplace_front(_name, (*D3D9Base::D3DXMatrixIdentity(&D3D9Base::D3DXMATRIX())), VariableFlags::NONE);
+		pre_command_list->static_matrices.emplace_front(_name, (*::D3DXMatrixIdentity(&::D3DXMATRIX())), VariableFlags::NONE);
 		pre_command_list->scope_matrices->front()[_name] = &pre_command_list->static_matrices.front();
 
 		return true;
@@ -5605,7 +5605,7 @@ bail:
 	delete command;
 	return false;
 }
-bool val_to_matrix_assignment(wstring * val, D3D9Base::D3DXMATRIX *matrix, UINT start_slot, UINT num_slots, CommandList * command_list, const wstring * ini_namespace, MatrixAssignment **assignment_command)
+bool val_to_matrix_assignment(wstring * val, ::D3DXMATRIX *matrix, UINT start_slot, UINT num_slots, CommandList * command_list, const wstring * ini_namespace, MatrixAssignment **assignment_command)
 {
 	vector<wstring> vals;
 	wchar_t * wcs = const_cast<wchar_t*>(val->c_str());
@@ -7475,10 +7475,10 @@ IDirect3DResource9 *ResourceCopyTarget::GetResource(
 	D3D9Wrapper::IDirect3DDevice9 *mHackerDevice = state->mHackerDevice;
 	IDirect3DDevice9 *mOrigDevice = state->mOrigDevice;
 
-	D3D9Base::IDirect3DBaseTexture9 *tex = NULL;
-	D3D9Base::IDirect3DSurface9 *sur = NULL;
-	D3D9Base::IDirect3DVertexBuffer9 *vbuf = NULL;
-	D3D9Base::IDirect3DIndexBuffer9 *ibuf = NULL;
+	::IDirect3DBaseTexture9 *tex = NULL;
+	::IDirect3DSurface9 *sur = NULL;
+	::IDirect3DVertexBuffer9 *vbuf = NULL;
+	::IDirect3DIndexBuffer9 *ibuf = NULL;
 
 	if (wrapper)
 		*wrapper = NULL;
@@ -7640,7 +7640,7 @@ IDirect3DResource9 *ResourceCopyTarget::GetResource(
 			}
 			else {
 				if (G->SCREEN_UPSCALING > 0) {
-					D3D9Base::IDirect3DSurface9 *realBB;
+					::IDirect3DSurface9 *realBB;
 					mOrigDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, (IDirect3DSurface9**)&realBB);
 					return realBB;
 				}
@@ -7666,7 +7666,7 @@ IDirect3DResource9 *ResourceCopyTarget::GetResource(
 		else
 		{
 			if (G->SCREEN_UPSCALING > 0) {
-				D3D9Base::IDirect3DSurface9 *realBB;
+				::IDirect3DSurface9 *realBB;
 				mOrigDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, (IDirect3DSurface9**)&realBB);
 				return realBB;
 			}
@@ -10176,7 +10176,7 @@ void ClearSurfaceCommand::run(CommandListState *state)
 		resource->Release();
 }
 
-void ResourceCopyOperation::DirectModeCopyResource(CommandListState *state, D3D9Base::IDirect3DResource9 *src_resource, D3D9Base::IDirect3DResource9 *dst_resource, bool direct_mode_wrapped_resource_source, bool direct_mode_wrapped_resource_dest) {
+void ResourceCopyOperation::DirectModeCopyResource(CommandListState *state, ::IDirect3DResource9 *src_resource, ::IDirect3DResource9 *dst_resource, bool direct_mode_wrapped_resource_source, bool direct_mode_wrapped_resource_dest) {
 	if (!direct_mode_wrapped_resource_source && !direct_mode_wrapped_resource_dest) {
 		HRESULT hr = CopyResource(state, src_resource, dst_resource, NULL, NULL);
 		if (FAILED(hr))
@@ -10185,10 +10185,10 @@ void ResourceCopyOperation::DirectModeCopyResource(CommandListState *state, D3D9
 	else {
 		D3DRESOURCETYPE src_type;
 		src_type = src_resource->GetType();
-		D3D9Base::IDirect3DResource9* pSourceResourceLeft = NULL;
-		D3D9Base::IDirect3DResource9* pSourceResourceRight = NULL;
-		D3D9Base::IDirect3DResource9* pDestResourceLeft = NULL;
-		D3D9Base::IDirect3DResource9* pDestResourceRight = NULL;
+		::IDirect3DResource9* pSourceResourceLeft = NULL;
+		::IDirect3DResource9* pSourceResourceRight = NULL;
+		::IDirect3DResource9* pDestResourceLeft = NULL;
+		::IDirect3DResource9* pDestResourceRight = NULL;
 		D3DRESOURCETYPE dst_type;
 		dst_type = dst_resource->GetType();
 		D3D9Wrapper::IDirect3DSurface9 *src_sur = NULL;
@@ -11199,14 +11199,14 @@ void VariableArrayFromExpressionAssignment::run(CommandListState *state)
 	*fval = expression.evaluate(state);
 }
 
-D3D9Base::D3DXMATRIX CommandListMatrixOperator::evaluate(CommandListState * state, D3D9Wrapper::IDirect3DDevice9 * device)
+::D3DXMATRIX CommandListMatrixOperator::evaluate(CommandListState * state, D3D9Wrapper::IDirect3DDevice9 * device)
 {
 	if (lhs) // Binary operator
 		return evaluate(lhs->evaluate(state, device), rhs->evaluate(state, device));
-	return evaluate((*D3D9Base::D3DXMatrixIdentity(&D3D9Base::D3DXMATRIX())), rhs->evaluate(state, device));
+	return evaluate((*::D3DXMatrixIdentity(&::D3DXMATRIX())), rhs->evaluate(state, device));
 }
 
-D3D9Base::D3DXMATRIX CommandListMatrixOperand::evaluate(CommandListState * state, D3D9Wrapper::IDirect3DDevice9 * device)
+::D3DXMATRIX CommandListMatrixOperand::evaluate(CommandListState * state, D3D9Wrapper::IDirect3DDevice9 * device)
 {
 	return m_pMatrix->fmatrix;
 }
@@ -11223,7 +11223,7 @@ void VariableArrayFromMatrixAssignment::run(CommandListState *)
 
 void VariableArrayFromMatrixExpressionAssignment::run(CommandListState *state)
 {
-	D3D9Base::D3DXMATRIX matrix = expression.evaluate(state);
+	::D3DXMATRIX matrix = expression.evaluate(state);
 	UINT m = start_slot;
 	for (UINT i = 0; i < vars.size() && m < 16; ++i)
 	{
@@ -11337,7 +11337,7 @@ void MatrixFromMatrixAssignment::run(CommandListState *)
 
 void MatrixFromMatrixExpressionAssignment::run(CommandListState *state)
 {
-	D3D9Base::D3DXMATRIX src_matrix = expression.evaluate(state);
+	::D3DXMATRIX src_matrix = expression.evaluate(state);
 	for (UINT i = 0; i < num_slots; ++i)
 	{
 		(*pMatrix)[dst_start + i] = src_matrix[src_start + i];

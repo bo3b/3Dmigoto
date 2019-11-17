@@ -726,7 +726,7 @@ static const char* type_name(IUnknown *object)
 #if MIGOTO_DX == 9
 static const char* type_name_dx9(IUnknown *object)
 {
-	D3D9Base::IDirect3DDevice9 *device;
+	IDirect3DDevice9 *device;
 
 	// Seems that not even try / catch is safe in all cases of this
 	// (grumble grumble poorly designed grumble...). The only cases where
@@ -734,7 +734,7 @@ static const char* type_name_dx9(IUnknown *object)
 	// hooking the device and/or context, so check if it is one of those
 	// cases:
 
-	device = lookup_hooked_device_dx9((D3D9Base::IDirect3DDevice9Ex*)object);
+	device = lookup_hooked_device_dx9((IDirect3DDevice9Ex*)object);
 	if (device)
 		return "Hooked_IDirect3DDevice9";
 
@@ -998,8 +998,8 @@ static const char *end_user_conflicting_shader_msg =
 struct OMState {
 	UINT NumRTVs;
 #if MIGOTO_DX == 9
-	vector<D3D9Base::IDirect3DSurface9*> rtvs;
-	D3D9Base::IDirect3DSurface9 *dsv;
+	vector<IDirect3DSurface9*> rtvs;
+	IDirect3DSurface9 *dsv;
 #elif MIGOTO_DX == 11
 	ID3D11RenderTargetView *rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
 	ID3D11DepthStencilView *dsv;
@@ -1011,8 +1011,8 @@ struct OMState {
 
 // TODO: Could use DX version specific typedefs for these differences
 #if MIGOTO_DX == 9
-void save_om_state(D3D9Base::IDirect3DDevice9 *device, struct OMState *state);
-void restore_om_state(D3D9Base::IDirect3DDevice9 *device, struct OMState *state);
+void save_om_state(IDirect3DDevice9 *device, struct OMState *state);
+void restore_om_state(IDirect3DDevice9 *device, struct OMState *state);
 #elif MIGOTO_DX == 11
 void save_om_state(ID3D11DeviceContext *context, struct OMState *state);
 void restore_om_state(ID3D11DeviceContext *context, struct OMState *state);
@@ -1078,7 +1078,7 @@ static std::map<int, char*> D3DFORMATS = {
 	{ 199, "BINARYBUFFER " }
 };
 
-static char *TexFormatStrDX9(D3D9Base::D3DFORMAT format)
+static char *TexFormatStrDX9(D3DFORMAT format)
 {
 	switch (format) {
 	case MAKEFOURCC('U', 'Y', 'V', 'Y'):
@@ -1111,7 +1111,7 @@ static char *TexFormatStrDX9(D3D9Base::D3DFORMAT format)
 	}
 }
 
-static D3D9Base::D3DFORMAT ParseFormatStringDX9(const char *fmt, bool allow_numeric_format)
+static D3DFORMAT ParseFormatStringDX9(const char *fmt, bool allow_numeric_format)
 {
 	size_t num_formats = D3DFORMATS.size();
 	unsigned format;
@@ -1121,7 +1121,7 @@ static D3D9Base::D3DFORMAT ParseFormatStringDX9(const char *fmt, bool allow_nume
 		// Try parsing format string as decimal:
 		nargs = sscanf_s(fmt, "%u%n", &format, &end);
 		if (nargs == 1 && end == strlen(fmt))
-			return (D3D9Base::D3DFORMAT)format;
+			return (D3DFORMAT)format;
 	}
 
 	if (!_strnicmp(fmt, "D3DFMT_", 7))
@@ -1132,14 +1132,14 @@ static D3D9Base::D3DFORMAT ParseFormatStringDX9(const char *fmt, bool allow_nume
 	for (it = D3DFORMATS.begin(); it != D3DFORMATS.end(); it++)
 	{
 		if (!_strnicmp(fmt, it->second, 30))
-			return (D3D9Base::D3DFORMAT)it->first;
+			return (D3DFORMAT)it->first;
 	}
 	// UNKNOWN/0 is a valid format (e.g. for structured buffers), so return
 	// -1 cast to a DXGI_FORMAT to signify an error:
-	return (D3D9Base::D3DFORMAT) - 1;
+	return (D3DFORMAT) - 1;
 }
 
-static D3D9Base::D3DFORMAT ParseFormatStringDX9(const wchar_t *wfmt, bool allow_numeric_format)
+static D3DFORMAT ParseFormatStringDX9(const wchar_t *wfmt, bool allow_numeric_format)
 {
 	char afmt[42];
 
@@ -1148,205 +1148,205 @@ static D3D9Base::D3DFORMAT ParseFormatStringDX9(const wchar_t *wfmt, bool allow_
 
 	return ParseFormatStringDX9(afmt, allow_numeric_format);
 }
-inline size_t BitsPerPixel(_In_ D3D9Base::D3DFORMAT fmt)
+inline size_t BitsPerPixel(_In_ D3DFORMAT fmt)
 {
 	switch (fmt)
 	{
-	case D3D9Base::D3DFMT_A32B32G32R32F:
-	case D3D9Base::D3DFMT_DXT2:
-	case D3D9Base::D3DFMT_DXT3:
-	case D3D9Base::D3DFMT_DXT4:
-	case D3D9Base::D3DFMT_DXT5:
+	case D3DFMT_A32B32G32R32F:
+	case D3DFMT_DXT2:
+	case D3DFMT_DXT3:
+	case D3DFMT_DXT4:
+	case D3DFMT_DXT5:
 		128;
-	case D3D9Base::D3DFMT_A16B16G16R16:
-	case D3D9Base::D3DFMT_Q16W16V16U16:
-	case D3D9Base::D3DFMT_A16B16G16R16F:
-	case D3D9Base::D3DFMT_G32R32F:
-	case D3D9Base::D3DFMT_DXT1:
+	case D3DFMT_A16B16G16R16:
+	case D3DFMT_Q16W16V16U16:
+	case D3DFMT_A16B16G16R16F:
+	case D3DFMT_G32R32F:
+	case D3DFMT_DXT1:
 		64;
-	case D3D9Base::D3DFMT_A2B10G10R10:
-	case D3D9Base::D3DFMT_A8B8G8R8:
-	case D3D9Base::D3DFMT_X8B8G8R8:
-	case D3D9Base::D3DFMT_G16R16:
-	case D3D9Base::D3DFMT_A2R10G10B10:
-	case D3D9Base::D3DFMT_V16U16:
-	case D3D9Base::D3DFMT_A2W10V10U10:
-	case D3D9Base::D3DFMT_A8R8G8B8:
-	case D3D9Base::D3DFMT_X8R8G8B8:
-	case D3D9Base::D3DFMT_X8L8V8U8:
-	case D3D9Base::D3DFMT_Q8W8V8U8:
-	case D3D9Base::D3DFMT_D32:
-	case D3D9Base::D3DFMT_D24S8:
-	case D3D9Base::D3DFMT_D24X8:
-	case D3D9Base::D3DFMT_D24X4S4:
-	case D3D9Base::D3DFMT_D32F_LOCKABLE:
-	case D3D9Base::D3DFMT_D24FS8:
-	case D3D9Base::D3DFMT_D32_LOCKABLE:
-	case D3D9Base::D3DFMT_INDEX32:
-	case D3D9Base::D3DFMT_G16R16F:
-	case D3D9Base::D3DFMT_R32F:
-	case D3D9Base::D3DFMT_A2B10G10R10_XR_BIAS:
-	case D3D9Base::D3DFMT_UYVY:
-	case D3D9Base::D3DFMT_YUY2:
+	case D3DFMT_A2B10G10R10:
+	case D3DFMT_A8B8G8R8:
+	case D3DFMT_X8B8G8R8:
+	case D3DFMT_G16R16:
+	case D3DFMT_A2R10G10B10:
+	case D3DFMT_V16U16:
+	case D3DFMT_A2W10V10U10:
+	case D3DFMT_A8R8G8B8:
+	case D3DFMT_X8R8G8B8:
+	case D3DFMT_X8L8V8U8:
+	case D3DFMT_Q8W8V8U8:
+	case D3DFMT_D32:
+	case D3DFMT_D24S8:
+	case D3DFMT_D24X8:
+	case D3DFMT_D24X4S4:
+	case D3DFMT_D32F_LOCKABLE:
+	case D3DFMT_D24FS8:
+	case D3DFMT_D32_LOCKABLE:
+	case D3DFMT_INDEX32:
+	case D3DFMT_G16R16F:
+	case D3DFMT_R32F:
+	case D3DFMT_A2B10G10R10_XR_BIAS:
+	case D3DFMT_UYVY:
+	case D3DFMT_YUY2:
 		32;
-	case D3D9Base::D3DFMT_R8G8B8:
+	case D3DFMT_R8G8B8:
 		24;
-	case D3D9Base::D3DFMT_R5G6B5:
-	case D3D9Base::D3DFMT_X1R5G5B5:
-	case D3D9Base::D3DFMT_A1R5G5B5:
-	case D3D9Base::D3DFMT_A4R4G4B4:
-	case D3D9Base::D3DFMT_A8R3G3B2:
-	case D3D9Base::D3DFMT_X4R4G4B4:
-	case D3D9Base::D3DFMT_A8P8:
-	case D3D9Base::D3DFMT_A8L8:
-	case D3D9Base::D3DFMT_V8U8:
-	case D3D9Base::D3DFMT_L6V5U5:
-	case D3D9Base::D3DFMT_D16_LOCKABLE:
-	case D3D9Base::D3DFMT_D15S1:
-	case D3D9Base::D3DFMT_D16:
-	case D3D9Base::D3DFMT_L16:
-	case D3D9Base::D3DFMT_INDEX16:
-	case D3D9Base::D3DFMT_R16F:
-	case D3D9Base::D3DFMT_CxV8U8:
-	case D3D9Base::D3DFMT_R8G8_B8G8:
-	case D3D9Base::D3DFMT_G8R8_G8B8:
+	case D3DFMT_R5G6B5:
+	case D3DFMT_X1R5G5B5:
+	case D3DFMT_A1R5G5B5:
+	case D3DFMT_A4R4G4B4:
+	case D3DFMT_A8R3G3B2:
+	case D3DFMT_X4R4G4B4:
+	case D3DFMT_A8P8:
+	case D3DFMT_A8L8:
+	case D3DFMT_V8U8:
+	case D3DFMT_L6V5U5:
+	case D3DFMT_D16_LOCKABLE:
+	case D3DFMT_D15S1:
+	case D3DFMT_D16:
+	case D3DFMT_L16:
+	case D3DFMT_INDEX16:
+	case D3DFMT_R16F:
+	case D3DFMT_CxV8U8:
+	case D3DFMT_R8G8_B8G8:
+	case D3DFMT_G8R8_G8B8:
 		16;
-	case D3D9Base::D3DFMT_R3G3B2:
-	case D3D9Base::D3DFMT_A8:
-	case D3D9Base::D3DFMT_P8:
-	case D3D9Base::D3DFMT_L8:
-	case D3D9Base::D3DFMT_A4L4:
-	case D3D9Base::D3DFMT_S8_LOCKABLE:
+	case D3DFMT_R3G3B2:
+	case D3DFMT_A8:
+	case D3DFMT_P8:
+	case D3DFMT_L8:
+	case D3DFMT_A4L4:
+	case D3DFMT_S8_LOCKABLE:
 		8;
 	default:
 		return 0;
 	}
 }
-static UINT d3d_format_bytes(D3D9Base::D3DFORMAT format) {
+static UINT d3d_format_bytes(D3DFORMAT format) {
 
 	switch (format) {
-	case D3D9Base::D3DFMT_A32B32G32R32F:
-	case D3D9Base::D3DFMT_DXT2:
-	case D3D9Base::D3DFMT_DXT3:
-	case D3D9Base::D3DFMT_DXT4:
-	case D3D9Base::D3DFMT_DXT5:
+	case D3DFMT_A32B32G32R32F:
+	case D3DFMT_DXT2:
+	case D3DFMT_DXT3:
+	case D3DFMT_DXT4:
+	case D3DFMT_DXT5:
 		16;
-	case D3D9Base::D3DFMT_A16B16G16R16:
-	case D3D9Base::D3DFMT_Q16W16V16U16:
-	case D3D9Base::D3DFMT_A16B16G16R16F:
-	case D3D9Base::D3DFMT_G32R32F:
-	case D3D9Base::D3DFMT_DXT1:
+	case D3DFMT_A16B16G16R16:
+	case D3DFMT_Q16W16V16U16:
+	case D3DFMT_A16B16G16R16F:
+	case D3DFMT_G32R32F:
+	case D3DFMT_DXT1:
 		8;
-	case D3D9Base::D3DFMT_A2B10G10R10:
-	case D3D9Base::D3DFMT_A8B8G8R8:
-	case D3D9Base::D3DFMT_X8B8G8R8:
-	case D3D9Base::D3DFMT_G16R16:
-	case D3D9Base::D3DFMT_A2R10G10B10:
-	case D3D9Base::D3DFMT_V16U16:
-	case D3D9Base::D3DFMT_A2W10V10U10:
-	case D3D9Base::D3DFMT_A8R8G8B8:
-	case D3D9Base::D3DFMT_X8R8G8B8:
-	case D3D9Base::D3DFMT_X8L8V8U8:
-	case D3D9Base::D3DFMT_Q8W8V8U8:
-	case D3D9Base::D3DFMT_D32:
-	case D3D9Base::D3DFMT_D24S8:
-	case D3D9Base::D3DFMT_D24X8:
-	case D3D9Base::D3DFMT_D24X4S4:
-	case D3D9Base::D3DFMT_D32F_LOCKABLE:
-	case D3D9Base::D3DFMT_D24FS8:
-	case D3D9Base::D3DFMT_D32_LOCKABLE:
-	case D3D9Base::D3DFMT_INDEX32:
-	case D3D9Base::D3DFMT_G16R16F:
-	case D3D9Base::D3DFMT_R32F:
-	case D3D9Base::D3DFMT_A2B10G10R10_XR_BIAS:
-	case D3D9Base::D3DFMT_UYVY:
-	case D3D9Base::D3DFMT_YUY2:
+	case D3DFMT_A2B10G10R10:
+	case D3DFMT_A8B8G8R8:
+	case D3DFMT_X8B8G8R8:
+	case D3DFMT_G16R16:
+	case D3DFMT_A2R10G10B10:
+	case D3DFMT_V16U16:
+	case D3DFMT_A2W10V10U10:
+	case D3DFMT_A8R8G8B8:
+	case D3DFMT_X8R8G8B8:
+	case D3DFMT_X8L8V8U8:
+	case D3DFMT_Q8W8V8U8:
+	case D3DFMT_D32:
+	case D3DFMT_D24S8:
+	case D3DFMT_D24X8:
+	case D3DFMT_D24X4S4:
+	case D3DFMT_D32F_LOCKABLE:
+	case D3DFMT_D24FS8:
+	case D3DFMT_D32_LOCKABLE:
+	case D3DFMT_INDEX32:
+	case D3DFMT_G16R16F:
+	case D3DFMT_R32F:
+	case D3DFMT_A2B10G10R10_XR_BIAS:
+	case D3DFMT_UYVY:
+	case D3DFMT_YUY2:
 		4;
-	case D3D9Base::D3DFMT_R8G8B8:
+	case D3DFMT_R8G8B8:
 		3;
-	case D3D9Base::D3DFMT_R5G6B5:
-	case D3D9Base::D3DFMT_X1R5G5B5:
-	case D3D9Base::D3DFMT_A1R5G5B5:
-	case D3D9Base::D3DFMT_A4R4G4B4:
-	case D3D9Base::D3DFMT_A8R3G3B2:
-	case D3D9Base::D3DFMT_X4R4G4B4:
-	case D3D9Base::D3DFMT_A8P8:
-	case D3D9Base::D3DFMT_A8L8:
-	case D3D9Base::D3DFMT_V8U8:
-	case D3D9Base::D3DFMT_L6V5U5:
-	case D3D9Base::D3DFMT_D16_LOCKABLE:
-	case D3D9Base::D3DFMT_D15S1:
-	case D3D9Base::D3DFMT_D16:
-	case D3D9Base::D3DFMT_L16:
-	case D3D9Base::D3DFMT_INDEX16:
-	case D3D9Base::D3DFMT_R16F:
-	case D3D9Base::D3DFMT_CxV8U8:
-	case D3D9Base::D3DFMT_R8G8_B8G8:
-	case D3D9Base::D3DFMT_G8R8_G8B8:
+	case D3DFMT_R5G6B5:
+	case D3DFMT_X1R5G5B5:
+	case D3DFMT_A1R5G5B5:
+	case D3DFMT_A4R4G4B4:
+	case D3DFMT_A8R3G3B2:
+	case D3DFMT_X4R4G4B4:
+	case D3DFMT_A8P8:
+	case D3DFMT_A8L8:
+	case D3DFMT_V8U8:
+	case D3DFMT_L6V5U5:
+	case D3DFMT_D16_LOCKABLE:
+	case D3DFMT_D15S1:
+	case D3DFMT_D16:
+	case D3DFMT_L16:
+	case D3DFMT_INDEX16:
+	case D3DFMT_R16F:
+	case D3DFMT_CxV8U8:
+	case D3DFMT_R8G8_B8G8:
+	case D3DFMT_G8R8_G8B8:
 		2;
-	case D3D9Base::D3DFMT_R3G3B2:
-	case D3D9Base::D3DFMT_A8:
-	case D3D9Base::D3DFMT_P8:
-	case D3D9Base::D3DFMT_L8:
-	case D3D9Base::D3DFMT_A4L4:
-	case D3D9Base::D3DFMT_S8_LOCKABLE:
+	case D3DFMT_R3G3B2:
+	case D3DFMT_A8:
+	case D3DFMT_P8:
+	case D3DFMT_L8:
+	case D3DFMT_A4L4:
+	case D3DFMT_S8_LOCKABLE:
 		1;
 	default:
 		return 0;
 	}
 
 }
-static UINT byteSizeFromD3DType(D3D9Base::D3DDECLTYPE type) {
+static UINT byteSizeFromD3DType(D3DDECLTYPE type) {
 	switch (type) {
-	case D3D9Base::D3DDECLTYPE_FLOAT1:
+	case D3DDECLTYPE_FLOAT1:
 		return sizeof(float);
-	case D3D9Base::D3DDECLTYPE_FLOAT2:
+	case D3DDECLTYPE_FLOAT2:
 		return 2 * sizeof(float);
-	case D3D9Base::D3DDECLTYPE_FLOAT3:
+	case D3DDECLTYPE_FLOAT3:
 		return 3 * sizeof(float);
-	case D3D9Base::D3DDECLTYPE_FLOAT4:
+	case D3DDECLTYPE_FLOAT4:
 		return 4 * sizeof(float);
-	case D3D9Base::D3DDECLTYPE_D3DCOLOR:
-	case D3D9Base::D3DDECLTYPE_UBYTE4:
-	case D3D9Base::D3DDECLTYPE_UBYTE4N:
+	case D3DDECLTYPE_D3DCOLOR:
+	case D3DDECLTYPE_UBYTE4:
+	case D3DDECLTYPE_UBYTE4N:
 		return 4 * sizeof(BYTE);
-	case D3D9Base::D3DDECLTYPE_SHORT2:
-	case D3D9Base::D3DDECLTYPE_SHORT2N:
-	case D3D9Base::D3DDECLTYPE_USHORT2N:
-	case D3D9Base::D3DDECLTYPE_FLOAT16_2:
+	case D3DDECLTYPE_SHORT2:
+	case D3DDECLTYPE_SHORT2N:
+	case D3DDECLTYPE_USHORT2N:
+	case D3DDECLTYPE_FLOAT16_2:
 		return 2 * sizeof(short int);
-	case D3D9Base::D3DDECLTYPE_SHORT4:
-	case D3D9Base::D3DDECLTYPE_SHORT4N:
-	case D3D9Base::D3DDECLTYPE_USHORT4N:
-	case D3D9Base::D3DDECLTYPE_FLOAT16_4:
+	case D3DDECLTYPE_SHORT4:
+	case D3DDECLTYPE_SHORT4N:
+	case D3DDECLTYPE_USHORT4N:
+	case D3DDECLTYPE_FLOAT16_4:
 		return 4 * sizeof(short int);
-	case D3D9Base::D3DDECLTYPE_UDEC3:
-	case D3D9Base::D3DDECLTYPE_DEC3N:
+	case D3DDECLTYPE_UDEC3:
+	case D3DDECLTYPE_DEC3N:
 		return 3 * sizeof(short int);
-	case D3D9Base::D3DDECLTYPE_UNUSED:
+	case D3DDECLTYPE_UNUSED:
 		return 0;
 	default:
 		return NULL;
 	}
 }
 
-static DWORD decl_type_to_FVF(D3D9Base::D3DDECLTYPE type, D3D9Base::D3DDECLUSAGE usage, BYTE usageIndex, int nWeights) {
+static DWORD decl_type_to_FVF(D3DDECLTYPE type, D3DDECLUSAGE usage, BYTE usageIndex, int nWeights) {
 	switch (type) {
-	case D3D9Base::D3DDECLTYPE_FLOAT3:
+	case D3DDECLTYPE_FLOAT3:
 		switch (usage) {
-		case D3D9Base::D3DDECLUSAGE_POSITION:
+		case D3DDECLUSAGE_POSITION:
 			return D3DFVF_XYZ;
-		case D3D9Base::D3DDECLUSAGE_NORMAL:
+		case D3DDECLUSAGE_NORMAL:
 			return D3DFVF_NORMAL;
 		default:
 			return NULL;
 		}
-	case D3D9Base::D3DDECLTYPE_FLOAT4:
-		if (usage == D3D9Base::D3DDECLUSAGE_POSITIONT)
+	case D3DDECLTYPE_FLOAT4:
+		if (usage == D3DDECLUSAGE_POSITIONT)
 			return D3DFVF_XYZRHW;
 		return NULL;
-	case D3D9Base::D3DDECLTYPE_UBYTE4:
-		if (usage == D3D9Base::D3DDECLUSAGE_BLENDINDICES)
+	case D3DDECLTYPE_UBYTE4:
+		if (usage == D3DDECLUSAGE_BLENDINDICES)
 			switch (nWeights) {
 			case 0:
 				return D3DFVF_XYZB1;
@@ -1361,12 +1361,12 @@ static DWORD decl_type_to_FVF(D3D9Base::D3DDECLTYPE type, D3D9Base::D3DDECLUSAGE
 			default:
 				return D3DFVF_XYZB1;
 			}
-	case D3D9Base::D3DDECLTYPE_FLOAT1:
-		if (usage == D3D9Base::D3DDECLUSAGE_PSIZE)
+	case D3DDECLTYPE_FLOAT1:
+		if (usage == D3DDECLUSAGE_PSIZE)
 			return D3DFVF_PSIZE;
 		return NULL;
-	case D3D9Base::D3DDECLTYPE_D3DCOLOR:
-		if (usage == D3D9Base::D3DDECLUSAGE_COLOR) {
+	case D3DDECLTYPE_D3DCOLOR:
+		if (usage == D3DDECLUSAGE_COLOR) {
 			switch (usageIndex) {
 			case 0:
 				return D3DFVF_DIFFUSE;
@@ -1386,81 +1386,81 @@ static DWORD decl_type_to_FVF(D3D9Base::D3DDECLTYPE type, D3D9Base::D3DDECLUSAGE
 
 }
 
-static D3D9Base::D3DDECLTYPE d3d_format_to_decl_type(D3D9Base::D3DFORMAT format)
+static D3DDECLTYPE d3d_format_to_decl_type(D3DFORMAT format)
 {
 	switch (format) {
-	case D3D9Base::D3DFMT_A32B32G32R32F:
-		return D3D9Base::D3DDECLTYPE_FLOAT4;
-	case D3D9Base::D3DFMT_A16B16G16R16:
-		return D3D9Base::D3DDECLTYPE_SHORT4;
-	case D3D9Base::D3DFMT_Q16W16V16U16:
-		return D3D9Base::D3DDECLTYPE_SHORT4;
-	case D3D9Base::D3DFMT_A16B16G16R16F:
-		return D3D9Base::D3DDECLTYPE_FLOAT16_4;
-	case D3D9Base::D3DFMT_G32R32F:
-		return D3D9Base::D3DDECLTYPE_FLOAT2;
-	case D3D9Base::D3DFMT_A2B10G10R10:
-		return D3D9Base::D3DDECLTYPE_UDEC3;
-	case D3D9Base::D3DFMT_A8B8G8R8:
-		return 	D3D9Base::D3DDECLTYPE_UBYTE4;
-	case D3D9Base::D3DFMT_X8B8G8R8:
-		return 	D3D9Base::D3DDECLTYPE_UBYTE4;
-	case D3D9Base::D3DFMT_G16R16:
-		return D3D9Base::D3DDECLTYPE_USHORT2N;
-	case D3D9Base::D3DFMT_A2R10G10B10:
-		return D3D9Base::D3DDECLTYPE_UDEC3;
-	case D3D9Base::D3DFMT_V16U16:
-		return D3D9Base::D3DDECLTYPE_SHORT2;
-	case D3D9Base::D3DFMT_A2W10V10U10:
-	case D3D9Base::D3DFMT_A8R8G8B8:
-		return D3D9Base::D3DDECLTYPE_D3DCOLOR;
-	case D3D9Base::D3DFMT_X8R8G8B8:
-		return D3D9Base::D3DDECLTYPE_UBYTE4;
-	case D3D9Base::D3DFMT_X8L8V8U8:
-		return D3D9Base::D3DDECLTYPE_UBYTE4;
-	case D3D9Base::D3DFMT_Q8W8V8U8:
-		return D3D9Base::D3DDECLTYPE_UBYTE4;
-	case D3D9Base::D3DFMT_D32:
-	case D3D9Base::D3DFMT_D24S8:
-	case D3D9Base::D3DFMT_D24X8:
-	case D3D9Base::D3DFMT_D24X4S4:
-	case D3D9Base::D3DFMT_D32F_LOCKABLE:
-	case D3D9Base::D3DFMT_D24FS8:
-	case D3D9Base::D3DFMT_D32_LOCKABLE:
-	case D3D9Base::D3DFMT_INDEX32:
-	case D3D9Base::D3DFMT_G16R16F:
-		return D3D9Base::D3DDECLTYPE_FLOAT16_2;
-	case D3D9Base::D3DFMT_R32F:
-	case D3D9Base::D3DFMT_A2B10G10R10_XR_BIAS:
-		return D3D9Base::D3DDECLTYPE_UDEC3;
-	case D3D9Base::D3DFMT_R8G8B8:
-	case D3D9Base::D3DFMT_R5G6B5:
-	case D3D9Base::D3DFMT_X1R5G5B5:
-	case D3D9Base::D3DFMT_A1R5G5B5:
-	case D3D9Base::D3DFMT_A4R4G4B4:
-	case D3D9Base::D3DFMT_A8R3G3B2:
-	case D3D9Base::D3DFMT_X4R4G4B4:
-	case D3D9Base::D3DFMT_A8P8:
-	case D3D9Base::D3DFMT_A8L8:
-	case D3D9Base::D3DFMT_V8U8:
-	case D3D9Base::D3DFMT_L6V5U5:
-	case D3D9Base::D3DFMT_D16_LOCKABLE:
-	case D3D9Base::D3DFMT_D15S1:
-	case D3D9Base::D3DFMT_D16:
-	case D3D9Base::D3DFMT_L16:
-	case D3D9Base::D3DFMT_INDEX16:
-	case D3D9Base::D3DFMT_R16F:
-	case D3D9Base::D3DFMT_CxV8U8:
-	case D3D9Base::D3DFMT_R8G8_B8G8:
-	case D3D9Base::D3DFMT_G8R8_G8B8:
-	case D3D9Base::D3DFMT_R3G3B2:
-	case D3D9Base::D3DFMT_A8:
-	case D3D9Base::D3DFMT_P8:
-	case D3D9Base::D3DFMT_L8:
-	case D3D9Base::D3DFMT_A4L4:
-	case D3D9Base::D3DFMT_S8_LOCKABLE:
+	case D3DFMT_A32B32G32R32F:
+		return D3DDECLTYPE_FLOAT4;
+	case D3DFMT_A16B16G16R16:
+		return D3DDECLTYPE_SHORT4;
+	case D3DFMT_Q16W16V16U16:
+		return D3DDECLTYPE_SHORT4;
+	case D3DFMT_A16B16G16R16F:
+		return D3DDECLTYPE_FLOAT16_4;
+	case D3DFMT_G32R32F:
+		return D3DDECLTYPE_FLOAT2;
+	case D3DFMT_A2B10G10R10:
+		return D3DDECLTYPE_UDEC3;
+	case D3DFMT_A8B8G8R8:
+		return 	D3DDECLTYPE_UBYTE4;
+	case D3DFMT_X8B8G8R8:
+		return 	D3DDECLTYPE_UBYTE4;
+	case D3DFMT_G16R16:
+		return D3DDECLTYPE_USHORT2N;
+	case D3DFMT_A2R10G10B10:
+		return D3DDECLTYPE_UDEC3;
+	case D3DFMT_V16U16:
+		return D3DDECLTYPE_SHORT2;
+	case D3DFMT_A2W10V10U10:
+	case D3DFMT_A8R8G8B8:
+		return D3DDECLTYPE_D3DCOLOR;
+	case D3DFMT_X8R8G8B8:
+		return D3DDECLTYPE_UBYTE4;
+	case D3DFMT_X8L8V8U8:
+		return D3DDECLTYPE_UBYTE4;
+	case D3DFMT_Q8W8V8U8:
+		return D3DDECLTYPE_UBYTE4;
+	case D3DFMT_D32:
+	case D3DFMT_D24S8:
+	case D3DFMT_D24X8:
+	case D3DFMT_D24X4S4:
+	case D3DFMT_D32F_LOCKABLE:
+	case D3DFMT_D24FS8:
+	case D3DFMT_D32_LOCKABLE:
+	case D3DFMT_INDEX32:
+	case D3DFMT_G16R16F:
+		return D3DDECLTYPE_FLOAT16_2;
+	case D3DFMT_R32F:
+	case D3DFMT_A2B10G10R10_XR_BIAS:
+		return D3DDECLTYPE_UDEC3;
+	case D3DFMT_R8G8B8:
+	case D3DFMT_R5G6B5:
+	case D3DFMT_X1R5G5B5:
+	case D3DFMT_A1R5G5B5:
+	case D3DFMT_A4R4G4B4:
+	case D3DFMT_A8R3G3B2:
+	case D3DFMT_X4R4G4B4:
+	case D3DFMT_A8P8:
+	case D3DFMT_A8L8:
+	case D3DFMT_V8U8:
+	case D3DFMT_L6V5U5:
+	case D3DFMT_D16_LOCKABLE:
+	case D3DFMT_D15S1:
+	case D3DFMT_D16:
+	case D3DFMT_L16:
+	case D3DFMT_INDEX16:
+	case D3DFMT_R16F:
+	case D3DFMT_CxV8U8:
+	case D3DFMT_R8G8_B8G8:
+	case D3DFMT_G8R8_G8B8:
+	case D3DFMT_R3G3B2:
+	case D3DFMT_A8:
+	case D3DFMT_P8:
+	case D3DFMT_L8:
+	case D3DFMT_A4L4:
+	case D3DFMT_S8_LOCKABLE:
 	default:
-		return (D3D9Base::D3DDECLTYPE) - 1;
+		return (D3DDECLTYPE) - 1;
 	}
 }
 
@@ -1526,22 +1526,22 @@ static UINT strideForFVF(DWORD FVF) {
 	return totalBytes;
 
 }
-static UINT DrawVerticesCountToPrimitiveCount(UINT vCount, D3D9Base::D3DPRIMITIVETYPE pType) {
+static UINT DrawVerticesCountToPrimitiveCount(UINT vCount, D3DPRIMITIVETYPE pType) {
 
 	switch (pType) {
-	case D3D9Base::D3DPT_POINTLIST:
+	case D3DPT_POINTLIST:
 		return vCount;
-	case D3D9Base::D3DPT_LINELIST:
+	case D3DPT_LINELIST:
 		return vCount / 2;
-	case D3D9Base::D3DPT_LINESTRIP:
+	case D3DPT_LINESTRIP:
 		return vCount - 1;
-	case D3D9Base::D3DPT_TRIANGLELIST:
+	case D3DPT_TRIANGLELIST:
 		return vCount / 3;
-	case D3D9Base::D3DPT_TRIANGLESTRIP:
+	case D3DPT_TRIANGLESTRIP:
 		return vCount - 2;
-	case D3D9Base::D3DPT_TRIANGLEFAN:
+	case D3DPT_TRIANGLEFAN:
 		return vCount - 2;
-	case D3D9Base::D3DPT_FORCE_DWORD:
+	case D3DPT_FORCE_DWORD:
 		return vCount - 2;
 	default:
 		return vCount - 2;
@@ -1549,22 +1549,22 @@ static UINT DrawVerticesCountToPrimitiveCount(UINT vCount, D3D9Base::D3DPRIMITIV
 
 
 }
-static UINT DrawPrimitiveCountToVerticesCount(UINT pCount, D3D9Base::D3DPRIMITIVETYPE pType) {
+static UINT DrawPrimitiveCountToVerticesCount(UINT pCount, D3DPRIMITIVETYPE pType) {
 
 	switch (pType) {
-	case D3D9Base::D3DPT_POINTLIST:
+	case D3DPT_POINTLIST:
 		return pCount;
-	case D3D9Base::D3DPT_LINELIST:
+	case D3DPT_LINELIST:
 		return pCount * 2;
-	case D3D9Base::D3DPT_LINESTRIP:
+	case D3DPT_LINESTRIP:
 		return pCount + 1;
-	case D3D9Base::D3DPT_TRIANGLELIST:
+	case D3DPT_TRIANGLELIST:
 		return pCount * 3;
-	case D3D9Base::D3DPT_TRIANGLESTRIP:
+	case D3DPT_TRIANGLESTRIP:
 		return pCount + 2;
-	case D3D9Base::D3DPT_TRIANGLEFAN:
+	case D3DPT_TRIANGLEFAN:
 		return pCount + 2;
-	case D3D9Base::D3DPT_FORCE_DWORD:
+	case D3DPT_FORCE_DWORD:
 		return pCount + 2;
 	default:
 		return pCount + 2;

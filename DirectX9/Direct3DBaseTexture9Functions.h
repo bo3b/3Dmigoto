@@ -1,7 +1,7 @@
 #include "d3d9Wrapper.h"
 #pragma once
-D3D9Wrapper::IDirect3DBaseTexture9::IDirect3DBaseTexture9(D3D9Base::LPDIRECT3DBASETEXTURE9 pTexture, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, TextureType type)
-	: D3D9Wrapper::IDirect3DResource9((D3D9Base::LPDIRECT3DRESOURCE9)pTexture, hackerDevice),
+D3D9Wrapper::IDirect3DBaseTexture9::IDirect3DBaseTexture9(::LPDIRECT3DBASETEXTURE9 pTexture, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, TextureType type)
+	: D3D9Wrapper::IDirect3DResource9((::LPDIRECT3DRESOURCE9)pTexture, hackerDevice),
 	pendingCreateTexture(false),
 	pendingLockUnlock(false),
 	magic(0x7da43feb),

@@ -9,9 +9,9 @@ inline void D3D9Wrapper::IDirect3DQuery9::Delete()
 }
 inline void D3D9Wrapper::IDirect3DQuery9::HookQuery()
 {
-	m_pUnk = hook_query(GetD3DQuery9(), (D3D9Base::IDirect3DQuery9*)this);
+	m_pUnk = hook_query(GetD3DQuery9(), (::IDirect3DQuery9*)this);
 }
-D3D9Wrapper::IDirect3DQuery9::IDirect3DQuery9(D3D9Base::LPDIRECT3DQUERY9 pQuery, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
+D3D9Wrapper::IDirect3DQuery9::IDirect3DQuery9(::LPDIRECT3DQUERY9 pQuery, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
     : D3D9Wrapper::IDirect3DUnknown((IUnknown*) pQuery),
 	magic(0x7da43feb),
 	hackerDevice(hackerDevice)
@@ -21,7 +21,7 @@ D3D9Wrapper::IDirect3DQuery9::IDirect3DQuery9(D3D9Base::LPDIRECT3DQUERY9 pQuery,
 	}
 }
 
-D3D9Wrapper::IDirect3DQuery9* D3D9Wrapper::IDirect3DQuery9::GetDirect3DQuery9(D3D9Base::LPDIRECT3DQUERY9 pQuery, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
+D3D9Wrapper::IDirect3DQuery9* D3D9Wrapper::IDirect3DQuery9::GetDirect3DQuery9(::LPDIRECT3DQUERY9 pQuery, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
 {
 	D3D9Wrapper::IDirect3DQuery9* p = new D3D9Wrapper::IDirect3DQuery9(pQuery, hackerDevice);
 	if (pQuery) m_List.AddMember(pQuery, p);
@@ -99,11 +99,11 @@ STDMETHODIMP D3D9Wrapper::IDirect3DQuery9::GetDevice(THIS_ D3D9Wrapper::IDirect3
 	return hr;
 }
 
-STDMETHODIMP_(D3D9Base::D3DQUERYTYPE) D3D9Wrapper::IDirect3DQuery9::GetType(THIS)
+STDMETHODIMP_(::D3DQUERYTYPE) D3D9Wrapper::IDirect3DQuery9::GetType(THIS)
 {
 	LogDebug("IDirect3DQuery9::GetType called\n");
 
-	D3D9Base::D3DQUERYTYPE hr = GetD3DQuery9()->GetType();
+	::D3DQUERYTYPE hr = GetD3DQuery9()->GetType();
 	LogDebug("  returns QueryType=%x\n", hr);
 
 	return hr;

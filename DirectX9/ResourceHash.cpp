@@ -4,20 +4,20 @@
 #include "Globals.h"
 #include "Overlay.h"
 #include "Main.h"
-int StrResourceDesc(char *buf, size_t size, D3D9Base::D3DVERTEXBUFFER_DESC *desc) {
+int StrResourceDesc(char *buf, size_t size, ::D3DVERTEXBUFFER_DESC *desc) {
 	return _snprintf_s(buf, size, size, "type=Vertex Buffer byte_width=%u "
 		"usage=\"%S\" FVF=0x%x format=\"%S\" "
 		"pool=%u",
 		desc->Size, TexResourceUsage(desc->Usage),
 		desc->FVF, TexFormatStrDX9(desc->Format), desc->Pool);
 }
-int StrResourceDesc(char *buf, size_t size, D3D9Base::D3DINDEXBUFFER_DESC *desc) {
+int StrResourceDesc(char *buf, size_t size, ::D3DINDEXBUFFER_DESC *desc) {
 	return _snprintf_s(buf, size, size, "type=Index Buffer byte_width=%u "
 		"usage=\"%S\" format=\"%S\" "
 		"pool=%u",
 		desc->Size, TexResourceUsage(desc->Usage),TexFormatStrDX9(desc->Format), desc->Pool);
 }
-int StrResourceDesc(char *buf, size_t size, D3D9Base::D3DSURFACE_DESC *desc) {
+int StrResourceDesc(char *buf, size_t size, ::D3DSURFACE_DESC *desc) {
 	return _snprintf_s(buf, size, size, "type=Surface resource_type=0x%x width=%u height=%u"
 		"usage=\"%S\" format=\"%S\" "
 		"pool=%u multisampling_type=%u multisampling_quality=%u", desc->Type,
@@ -40,15 +40,15 @@ int StrResourceDesc(char *buf, size_t size, D3D3DTEXTURE_DESC *desc) {
 }
 int StrResourceDesc(char *buf, size_t size, struct ResourceHashInfo &info) {
 	switch (info.type) {
-	case D3D9Base::D3DRESOURCETYPE::D3DRTYPE_VERTEXBUFFER:
+	case ::D3DRESOURCETYPE::D3DRTYPE_VERTEXBUFFER:
 		return StrResourceDesc(buf, size, &info.vbuf_desc);
-	case D3D9Base::D3DRESOURCETYPE::D3DRTYPE_INDEXBUFFER:
+	case ::D3DRESOURCETYPE::D3DRTYPE_INDEXBUFFER:
 		return StrResourceDesc(buf, size, &info.ibuf_desc);
-	case D3D9Base::D3DRESOURCETYPE::D3DRTYPE_CUBETEXTURE:
-	case D3D9Base::D3DRESOURCETYPE::D3DRTYPE_TEXTURE:
-	case D3D9Base::D3DRESOURCETYPE::D3DRTYPE_SURFACE:
+	case ::D3DRESOURCETYPE::D3DRTYPE_CUBETEXTURE:
+	case ::D3DRESOURCETYPE::D3DRTYPE_TEXTURE:
+	case ::D3DRESOURCETYPE::D3DRTYPE_SURFACE:
 		return StrResourceDesc(buf, size, &info.desc2D);
-	case D3D9Base::D3DRESOURCETYPE::D3DRTYPE_VOLUMETEXTURE:
+	case ::D3DRESOURCETYPE::D3DRTYPE_VOLUMETEXTURE:
 		return StrResourceDesc(buf, size, &info.desc3D);
 	default:
 		return _snprintf_s(buf, size, size, "type=%i", info.type);
@@ -64,14 +64,14 @@ static void LogResourceDescCommon(DescType *desc)
 	LogInfo("    Usage = %d\n", desc->Usage);
 	LogInfo("    Pool = 0x%x\n", desc->Pool);
 }
-void LogResourceDesc(const D3D9Base::D3DVERTEXBUFFER_DESC *desc)
+void LogResourceDesc(const ::D3DVERTEXBUFFER_DESC *desc)
 {
 	LogInfo("  Resource Type = Vertex Buffer\n");
 	LogInfo("    ByteWidth = %d\n", desc->Size);
 	LogInfo("    FVFStructureByteStride = %d\n", strideForFVF(desc->FVF));
 	LogResourceDescCommon(desc);
 }
-void LogResourceDesc(const D3D9Base::D3DINDEXBUFFER_DESC *desc)
+void LogResourceDesc(const ::D3DINDEXBUFFER_DESC *desc)
 {
 	LogInfo("  Resource Type = Index Buffer\n");
 	LogInfo("    ByteWidth = %d\n", desc->Size);
@@ -95,38 +95,38 @@ void LogResourceDesc(const D3D2DTEXTURE_DESC *desc)
 	LogInfo("    SampleDesc.Quality = %d\n", desc->MultiSampleQuality);
 	LogResourceDescCommon(desc);
 }
-void LogResourceDesc(D3D9Base::IDirect3DResource9 *resource)
+void LogResourceDesc(::IDirect3DResource9 *resource)
 {
-	D3D9Base::D3DRESOURCETYPE type;
-	D3D9Base::IDirect3DVertexBuffer9 *vBuffer;
-	D3D9Base::IDirect3DIndexBuffer9 *iBuffer;
-	D3D9Base::IDirect3DTexture9 *tex;
-	D3D9Base::IDirect3DVolumeTexture9 *volTex;
-	D3D9Base::IDirect3DCubeTexture9 *cubeTex;
-	D3D9Base::IDirect3DSurface9 *sur;
-	D3D9Base::D3DVERTEXBUFFER_DESC vBufferDesc;
-	D3D9Base::D3DINDEXBUFFER_DESC iBufferDesc;
+	::D3DRESOURCETYPE type;
+	::IDirect3DVertexBuffer9 *vBuffer;
+	::IDirect3DIndexBuffer9 *iBuffer;
+	::IDirect3DTexture9 *tex;
+	::IDirect3DVolumeTexture9 *volTex;
+	::IDirect3DCubeTexture9 *cubeTex;
+	::IDirect3DSurface9 *sur;
+	::D3DVERTEXBUFFER_DESC vBufferDesc;
+	::D3DINDEXBUFFER_DESC iBufferDesc;
 	type = resource->GetType();
 	switch (type) {
-	case D3D9Base::D3DRTYPE_VERTEXBUFFER:
-		vBuffer = (D3D9Base::IDirect3DVertexBuffer9*)resource;
+	case ::D3DRTYPE_VERTEXBUFFER:
+		vBuffer = (::IDirect3DVertexBuffer9*)resource;
 		vBuffer->GetDesc(&vBufferDesc);
 		return LogResourceDesc(&vBufferDesc);
-	case D3D9Base::D3DRTYPE_INDEXBUFFER:
-		iBuffer = (D3D9Base::IDirect3DIndexBuffer9*)resource;
+	case ::D3DRTYPE_INDEXBUFFER:
+		iBuffer = (::IDirect3DIndexBuffer9*)resource;
 		iBuffer->GetDesc(&iBufferDesc);
 		return LogResourceDesc(&iBufferDesc);
-	case D3D9Base::D3DRTYPE_TEXTURE:
-		tex = (D3D9Base::IDirect3DTexture9*)resource;
+	case ::D3DRTYPE_TEXTURE:
+		tex = (::IDirect3DTexture9*)resource;
 		return LogResourceDesc(&D3D2DTEXTURE_DESC(tex));
-	case D3D9Base::D3DRTYPE_CUBETEXTURE:
-		cubeTex = (D3D9Base::IDirect3DCubeTexture9*)resource;
+	case ::D3DRTYPE_CUBETEXTURE:
+		cubeTex = (::IDirect3DCubeTexture9*)resource;
 		return LogResourceDesc(&D3D2DTEXTURE_DESC(cubeTex));
-	case D3D9Base::D3DRTYPE_VOLUMETEXTURE:
-		volTex = (D3D9Base::IDirect3DVolumeTexture9*)resource;
+	case ::D3DRTYPE_VOLUMETEXTURE:
+		volTex = (::IDirect3DVolumeTexture9*)resource;
 		return LogResourceDesc(&D3D3DTEXTURE_DESC(volTex));
-	case D3D9Base::D3DRTYPE_SURFACE:
-		sur = (D3D9Base::IDirect3DSurface9*)resource;
+	case ::D3DRTYPE_SURFACE:
+		sur = (::IDirect3DSurface9*)resource;
 		return LogResourceDesc(&D3D2DTEXTURE_DESC(sur));
 	}
 }
@@ -232,21 +232,21 @@ uint32_t CalcDescHash(uint32_t initial_hash, const D3D3DTEXTURE_DESC *const_desc
 
 	return hash;
 }
-static UINT CompressedFormatBlockSize(D3D9Base::D3DFORMAT Format)
+static UINT CompressedFormatBlockSize(::D3DFORMAT Format)
 {
 	switch (Format) {
-	case D3D9Base::D3DFMT_DXT1:
+	case ::D3DFMT_DXT1:
 		return 8;
-	case D3D9Base::D3DFMT_DXT2:
-	case D3D9Base::D3DFMT_DXT3:
-	case D3D9Base::D3DFMT_DXT4:
-	case D3D9Base::D3DFMT_DXT5:
+	case ::D3DFMT_DXT2:
+	case ::D3DFMT_DXT3:
+	case ::D3DFMT_DXT4:
+	case ::D3DFMT_DXT5:
 		return 16;
-	case D3D9Base::D3DFMT_UYVY:
-	case D3D9Base::D3DFMT_YUY2:
+	case ::D3DFMT_UYVY:
+	case ::D3DFMT_YUY2:
 		return 4;
-	case D3D9Base::D3DFMT_G8R8_G8B8:
-	case D3D9Base::D3DFMT_R8G8_B8G8:
+	case ::D3DFMT_G8R8_G8B8:
+	case ::D3DFMT_R8G8_B8G8:
 		return 2;
 	}
 
@@ -255,7 +255,7 @@ static UINT CompressedFormatBlockSize(D3D9Base::D3DFORMAT Format)
 // -----------------------------------------------------------------------------------------------
 static size_t Texture2DLength(
 	const D3D2DTEXTURE_DESC *pDesc,
-	const D3D9Base::D3DLOCKED_BOX *pData,
+	const ::D3DLOCKED_BOX *pData,
 	UINT level)
 {
 	UINT block_size, padded_width, padded_height;
@@ -293,7 +293,7 @@ static size_t Texture2DLength(
 
 static size_t Texture3DLength(
 	const D3D3DTEXTURE_DESC *pDesc,
-	const D3D9Base::D3DLOCKED_BOX *pData,
+	const ::D3DLOCKED_BOX *pData,
 	UINT level)
 {
 	UINT block_size, padded_width, padded_height;
@@ -323,7 +323,7 @@ static size_t Texture3DLength(
 }
 inline void GetSurfaceInfo(_In_ size_t width,
 	_In_ size_t height,
-	_In_ D3D9Base::D3DFORMAT fmt,
+	_In_ ::D3DFORMAT fmt,
 	_Out_opt_ size_t* outNumBytes,
 	_Out_opt_ size_t* outRowBytes,
 	_Out_opt_ size_t* outNumRows)
@@ -338,21 +338,21 @@ inline void GetSurfaceInfo(_In_ size_t width,
 	size_t bpe = 0;
 	switch (fmt)
 	{
-	case D3D9Base::D3DFMT_DXT1:
+	case ::D3DFMT_DXT1:
 		bc = true;
 		bpe = 8;
 		break;
-	case D3D9Base::D3DFMT_DXT2:
-	case D3D9Base::D3DFMT_DXT3:
-	case D3D9Base::D3DFMT_DXT4:
-	case D3D9Base::D3DFMT_DXT5:
-	case D3D9Base::D3DFMT_G8R8_G8B8:
-	case D3D9Base::D3DFMT_R8G8_B8G8:
+	case ::D3DFMT_DXT2:
+	case ::D3DFMT_DXT3:
+	case ::D3DFMT_DXT4:
+	case ::D3DFMT_DXT5:
+	case ::D3DFMT_G8R8_G8B8:
+	case ::D3DFMT_R8G8_B8G8:
 		bc = true;
 		bpe = 16;
 		break;
-	case D3D9Base::D3DFMT_UYVY:
-	case D3D9Base::D3DFMT_YUY2:
+	case ::D3DFMT_UYVY:
+	case ::D3DFMT_YUY2:
 		packed = true;
 		bpe = 4;
 		break;
@@ -477,7 +477,7 @@ static uint32_t hash_tex2d_data(uint32_t hash, const void *data, size_t length,
 	return hash;
 }
 
-uint32_t Calc2DDataHash(const D3D2DTEXTURE_DESC *pDesc, const D3D9Base::D3DLOCKED_BOX *pLockedBox)
+uint32_t Calc2DDataHash(const D3D2DTEXTURE_DESC *pDesc, const ::D3DLOCKED_BOX *pLockedBox)
 {
 	uint32_t hash = 0;
 	size_t length;
@@ -495,7 +495,7 @@ uint32_t Calc2DDataHash(const D3D2DTEXTURE_DESC *pDesc, const D3D9Base::D3DLOCKE
 
 	return hash;
 }
-uint32_t Calc2DDataHashAccurate(const D3D2DTEXTURE_DESC *pDesc, const D3D9Base::D3DLOCKED_BOX *pLockedBox)
+uint32_t Calc2DDataHashAccurate(const D3D2DTEXTURE_DESC *pDesc, const ::D3DLOCKED_BOX *pLockedBox)
 {
 	uint32_t hash = 0;
 
@@ -535,7 +535,7 @@ uint32_t GetResourceHash(D3D9Wrapper::IDirect3DResource9 *resource)
 {
 	return resource->resourceHandleInfo.hash;
 }
-uint32_t Calc3DDataHash(const D3D3DTEXTURE_DESC * pDesc, const D3D9Base::D3DLOCKED_BOX * pLockedBox)
+uint32_t Calc3DDataHash(const D3D3DTEXTURE_DESC * pDesc, const ::D3DLOCKED_BOX * pLockedBox)
 {
 	uint32_t hash = 0;
 	size_t length;
@@ -558,10 +558,10 @@ static bool supports_hash_tracking(ResourceHandleInfo *handle_info)
 	// are updated, so we're skipping them for now. If we do want to add
 	// support for them later, we should add a means to turn off the
 	// contamination detection on a per-resource type basis:
-	return (handle_info->type == D3D9Base::D3DRTYPE_TEXTURE ||
-		handle_info->type == D3D9Base::D3DRTYPE_VOLUMETEXTURE ||
-		handle_info->type == D3D9Base::D3DRTYPE_CUBETEXTURE ||
-		handle_info->type == D3D9Base::D3DRTYPE_SURFACE
+	return (handle_info->type == ::D3DRTYPE_TEXTURE ||
+		handle_info->type == ::D3DRTYPE_VOLUMETEXTURE ||
+		handle_info->type == ::D3DRTYPE_CUBETEXTURE ||
+		handle_info->type == ::D3DRTYPE_SURFACE
 		);
 }
 
@@ -569,14 +569,14 @@ static bool GetResourceInfoFields(struct ResourceHashInfo *info,
 	UINT *width, UINT *height, UINT *depth)
 {
 	switch (info->type) {
-	case D3D9Base::D3DRTYPE_SURFACE:
-	case D3D9Base::D3DRTYPE_TEXTURE:
-	case D3D9Base::D3DRTYPE_CUBETEXTURE:
+	case ::D3DRTYPE_SURFACE:
+	case ::D3DRTYPE_TEXTURE:
+	case ::D3DRTYPE_CUBETEXTURE:
 		*width = info->desc2D.Width;
 		*height = info->desc2D.Height;
 		*depth = 1;
 		return true;
-	case D3D9Base::D3DRTYPE_VOLUMETEXTURE:
+	case ::D3DRTYPE_VOLUMETEXTURE:
 		*width = info->desc3D.Width;
 		*height = info->desc3D.Height;
 		*depth = info->desc3D.Depth;
@@ -588,7 +588,7 @@ static bool GetResourceInfoFields(struct ResourceHashInfo *info,
 
 void MarkResourceHashContaminated(D3D9Wrapper::IDirect3DResource9 *dest, UINT dstLevel,
 	D3D9Wrapper::IDirect3DResource9 *src, UINT srcLevel, char type,
-	D3D9Base::D3DBOX *DstBox, const D3D9Base::D3DBOX *SrcBox)
+	::D3DBOX *DstBox, const ::D3DBOX *SrcBox)
 {
 	ResourceHandleInfo *dst_handle_info;
 	struct ResourceHashInfo *dstInfo, *srcInfo = NULL;
@@ -701,9 +701,9 @@ out:
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
 		Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
 }
-void UpdateResourceHashFromCPU(D3D9Wrapper::IDirect3DResource9 * resource, D3D9Base::D3DLOCKED_BOX * pLockedBox)
+void UpdateResourceHashFromCPU(D3D9Wrapper::IDirect3DResource9 * resource, ::D3DLOCKED_BOX * pLockedBox)
 {
-	D3D9Base::D3DRESOURCETYPE type;
+	::D3DRESOURCETYPE type;
 	D3D2DTEXTURE_DESC *desc2D;
 	D3D3DTEXTURE_DESC *desc3D;
 	uint32_t old_data_hash, old_hash;
@@ -738,14 +738,14 @@ void UpdateResourceHashFromCPU(D3D9Wrapper::IDirect3DResource9 * resource, D3D9B
 
 	type = resource->GetD3DResource9()->GetType();
 	switch (type) {
-	case D3D9Base::D3DRTYPE_SURFACE:
-	case D3D9Base::D3DRTYPE_TEXTURE:
-	case D3D9Base::D3DRTYPE_CUBETEXTURE:
+	case ::D3DRTYPE_SURFACE:
+	case ::D3DRTYPE_TEXTURE:
+	case ::D3DRTYPE_CUBETEXTURE:
 		desc2D = &info->desc2D;
 		info->data_hash = Calc2DDataHash(desc2D, pLockedBox);
 		info->hash = CalcDescHash(info->data_hash, desc2D);
 		break;
-	case D3D9Base::D3DRTYPE_VOLUMETEXTURE:
+	case ::D3DRTYPE_VOLUMETEXTURE:
 		desc3D = &info->desc3D;
 		info->data_hash = Calc3DDataHash(desc3D, pLockedBox);
 		info->hash = CalcDescHash(info->data_hash, desc3D);
@@ -762,7 +762,7 @@ out:
 void PropagateResourceHash(D3D9Wrapper::IDirect3DResource9 *dst, D3D9Wrapper::IDirect3DResource9 *src)
 {
 	ResourceHandleInfo *dst_info, *src_info;
-	D3D9Base::D3DRESOURCETYPE type;
+	::D3DRESOURCETYPE type;
 	D3D2DTEXTURE_DESC *desc2D;
 	D3D3DTEXTURE_DESC *desc3D;
 	uint32_t old_data_hash, old_hash;
@@ -805,13 +805,13 @@ void PropagateResourceHash(D3D9Wrapper::IDirect3DResource9 *dst, D3D9Wrapper::ID
 
 	type = dst->GetD3DResource9()->GetType();
 	switch (type) {
-	case D3D9Base::D3DRTYPE_SURFACE:
-	case D3D9Base::D3DRTYPE_TEXTURE:
-	case D3D9Base::D3DRTYPE_CUBETEXTURE:
+	case ::D3DRTYPE_SURFACE:
+	case ::D3DRTYPE_TEXTURE:
+	case ::D3DRTYPE_CUBETEXTURE:
 		desc2D = &dst_info->desc2D;
 		dst_info->hash = CalcDescHash(dst_info->data_hash, desc2D);
 		break;
-	case D3D9Base::D3DRTYPE_VOLUMETEXTURE:
+	case ::D3DRTYPE_VOLUMETEXTURE:
 		desc3D = &dst_info->desc3D;
 		dst_info->hash = CalcDescHash(dst_info->data_hash, desc3D);
 		break;
@@ -854,19 +854,19 @@ FuzzyMatch::FuzzyMatch()
 	denominator = 1;
 }
 
-static UINT get_resource_width(const D3D9Base::D3DVERTEXBUFFER_DESC *desc) { return 0; }
-static UINT get_resource_width(const D3D9Base::D3DINDEXBUFFER_DESC *desc) { return 0; }
-static UINT get_resource_width(const D3D9Base::D3DSURFACE_DESC *desc) { return desc->Width; }
+static UINT get_resource_width(const ::D3DVERTEXBUFFER_DESC *desc) { return 0; }
+static UINT get_resource_width(const ::D3DINDEXBUFFER_DESC *desc) { return 0; }
+static UINT get_resource_width(const ::D3DSURFACE_DESC *desc) { return desc->Width; }
 static UINT get_resource_width(const D3D2DTEXTURE_DESC *desc) { return desc->Width; }
 static UINT get_resource_width(const D3D3DTEXTURE_DESC *desc) { return desc->Width; }
-static UINT get_resource_height(const D3D9Base::D3DVERTEXBUFFER_DESC *desc) { return 0; }
-static UINT get_resource_height(const D3D9Base::D3DINDEXBUFFER_DESC *desc) { return 0; }
-static UINT get_resource_height(const D3D9Base::D3DSURFACE_DESC *desc) { return desc->Height; }
+static UINT get_resource_height(const ::D3DVERTEXBUFFER_DESC *desc) { return 0; }
+static UINT get_resource_height(const ::D3DINDEXBUFFER_DESC *desc) { return 0; }
+static UINT get_resource_height(const ::D3DSURFACE_DESC *desc) { return desc->Height; }
 static UINT get_resource_height(const D3D2DTEXTURE_DESC *desc) { return desc->Height; }
 static UINT get_resource_height(const D3D3DTEXTURE_DESC *desc) { return desc->Height; }
-static UINT get_resource_depth(const D3D9Base::D3DVERTEXBUFFER_DESC *desc) { return 0; }
-static UINT get_resource_depth(const D3D9Base::D3DINDEXBUFFER_DESC *desc) { return 0; }
-static UINT get_resource_depth(const D3D9Base::D3DSURFACE_DESC *desc) { return 0; }
+static UINT get_resource_depth(const ::D3DVERTEXBUFFER_DESC *desc) { return 0; }
+static UINT get_resource_depth(const ::D3DINDEXBUFFER_DESC *desc) { return 0; }
+static UINT get_resource_depth(const ::D3DSURFACE_DESC *desc) { return 0; }
 static UINT get_resource_depth(const D3D2DTEXTURE_DESC *desc) { return 0; }
 static UINT get_resource_depth(const D3D3DTEXTURE_DESC *desc) { return desc->Depth; }
 template <typename DescType>
@@ -989,7 +989,7 @@ bool FuzzyMatchResourceDesc::check_common_buffer_fields(const DescType *desc) co
 		return false;
 	return true;
 }
-bool FuzzyMatchResourceDesc::matches(const D3D9Base::D3DVERTEXBUFFER_DESC *desc) const
+bool FuzzyMatchResourceDesc::matches(const ::D3DVERTEXBUFFER_DESC *desc) const
 {
 	if (!matches_vbuffer)
 		return false;
@@ -1003,7 +1003,7 @@ bool FuzzyMatchResourceDesc::matches(const D3D9Base::D3DVERTEXBUFFER_DESC *desc)
 	return true;
 }
 
-bool FuzzyMatchResourceDesc::matches(const D3D9Base::D3DINDEXBUFFER_DESC *desc) const
+bool FuzzyMatchResourceDesc::matches(const ::D3DINDEXBUFFER_DESC *desc) const
 {
 	if (!matches_ibuffer)
 		return false;
@@ -1042,25 +1042,25 @@ bool FuzzyMatchResourceDesc::matches(const D3D3DTEXTURE_DESC *desc) const
 		return false;
 	return true;
 }
-void FuzzyMatchResourceDesc::set_resource_type(D3D9Base::D3DRESOURCETYPE type)
+void FuzzyMatchResourceDesc::set_resource_type(::D3DRESOURCETYPE type)
 {
 	switch (type) {
-	case D3D9Base::D3DRTYPE_VERTEXBUFFER:
+	case ::D3DRTYPE_VERTEXBUFFER:
 		matches_tex = matches_volumetex = matches_cubetex = matches_ibuffer = matches_surface = false;
 		return;
-	case D3D9Base::D3DRTYPE_INDEXBUFFER:
+	case ::D3DRTYPE_INDEXBUFFER:
 		matches_tex = matches_volumetex = matches_cubetex = matches_vbuffer = matches_surface = false;
 		return;
-	case D3D9Base::D3DRTYPE_TEXTURE:
+	case ::D3DRTYPE_TEXTURE:
 		matches_ibuffer = matches_volumetex = matches_cubetex = matches_vbuffer = matches_surface = false;
 		return;
-	case D3D9Base::D3DRTYPE_VOLUMETEXTURE:
+	case ::D3DRTYPE_VOLUMETEXTURE:
 		matches_ibuffer = matches_tex = matches_cubetex = matches_vbuffer = matches_surface = false;
 		return;
-	case D3D9Base::D3DRTYPE_CUBETEXTURE:
+	case ::D3DRTYPE_CUBETEXTURE:
 		matches_ibuffer = matches_tex = matches_volumetex = matches_vbuffer = matches_surface = false;
 		return;
-	case D3D9Base::D3DRTYPE_SURFACE:
+	case ::D3DRTYPE_SURFACE:
 		matches_ibuffer = matches_tex = matches_volumetex = matches_vbuffer = matches_cubetex = false;
 		return;
 	}
@@ -1166,22 +1166,22 @@ void find_texture_overrides(uint32_t hash, const DescType *desc, TextureOverride
 }
 // Explicit template expansion is necessary to generate these functions for
 // the compiler to generate them so they can be used from other source files:
-template void find_texture_overrides<D3D9Base::D3DVERTEXBUFFER_DESC>(uint32_t hash, const D3D9Base::D3DVERTEXBUFFER_DESC *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
-template void find_texture_overrides<D3D9Base::D3DINDEXBUFFER_DESC>(uint32_t hash, const D3D9Base::D3DINDEXBUFFER_DESC *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
+template void find_texture_overrides<::D3DVERTEXBUFFER_DESC>(uint32_t hash, const ::D3DVERTEXBUFFER_DESC *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
+template void find_texture_overrides<::D3DINDEXBUFFER_DESC>(uint32_t hash, const ::D3DINDEXBUFFER_DESC *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
 template void find_texture_overrides<D3D2DTEXTURE_DESC>(uint32_t hash, const D3D2DTEXTURE_DESC *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
 template void find_texture_overrides<D3D3DTEXTURE_DESC>(uint32_t hash, const D3D3DTEXTURE_DESC *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
-void find_texture_overrides_for_resource(D3D9Base::IDirect3DResource9 *resource, ResourceHandleInfo *info, TextureOverrideMatches *matches, DrawCallInfo *call_info)
+void find_texture_overrides_for_resource(::IDirect3DResource9 *resource, ResourceHandleInfo *info, TextureOverrideMatches *matches, DrawCallInfo *call_info)
 {
-	D3D9Base::D3DRESOURCETYPE type;
-	D3D9Base::IDirect3DVertexBuffer9 *vbuf = NULL;
-	D3D9Base::IDirect3DIndexBuffer9 *ibuf = NULL;
-	D3D9Base::IDirect3DSurface9 *sur = NULL;
-	D3D9Base::IDirect3DVolume9 *vol = NULL;
-	D3D9Base::IDirect3DTexture9 *tex2d = NULL;
-	D3D9Base::IDirect3DCubeTexture9 *texCube = NULL;
-	D3D9Base::IDirect3DVolumeTexture9 *tex3d = NULL;
-	D3D9Base::D3DVERTEXBUFFER_DESC vbuf_desc;
-	D3D9Base::D3DINDEXBUFFER_DESC ibuf_desc;
+	::D3DRESOURCETYPE type;
+	::IDirect3DVertexBuffer9 *vbuf = NULL;
+	::IDirect3DIndexBuffer9 *ibuf = NULL;
+	::IDirect3DSurface9 *sur = NULL;
+	::IDirect3DVolume9 *vol = NULL;
+	::IDirect3DTexture9 *tex2d = NULL;
+	::IDirect3DCubeTexture9 *texCube = NULL;
+	::IDirect3DVolumeTexture9 *tex3d = NULL;
+	::D3DVERTEXBUFFER_DESC vbuf_desc;
+	::D3DINDEXBUFFER_DESC ibuf_desc;
 	find_texture_override_for_resource_by_hash(info, matches, call_info);
 	if (!matches->empty()) {
 		// If we got a result it was matched by hash - that's an exact
@@ -1191,25 +1191,25 @@ void find_texture_overrides_for_resource(D3D9Base::IDirect3DResource9 *resource,
 
 	type = resource->GetType();
 	switch (type) {
-	case D3D9Base::D3DRTYPE_VERTEXBUFFER:
-		vbuf = (D3D9Base::IDirect3DVertexBuffer9*)resource;
+	case ::D3DRTYPE_VERTEXBUFFER:
+		vbuf = (::IDirect3DVertexBuffer9*)resource;
 		vbuf->GetDesc(&vbuf_desc);
 		return find_texture_overrides_for_desc(&vbuf_desc, matches, call_info);
-	case D3D9Base::D3DRTYPE_INDEXBUFFER:
-		ibuf = (D3D9Base::IDirect3DIndexBuffer9*)resource;
+	case ::D3DRTYPE_INDEXBUFFER:
+		ibuf = (::IDirect3DIndexBuffer9*)resource;
 		ibuf->GetDesc(&ibuf_desc);
 		return find_texture_overrides_for_desc(&ibuf_desc, matches, call_info);
-	case D3D9Base::D3DRTYPE_SURFACE:
-		sur = (D3D9Base::IDirect3DSurface9*)resource;
+	case ::D3DRTYPE_SURFACE:
+		sur = (::IDirect3DSurface9*)resource;
 		return find_texture_overrides_for_desc(&D3D2DTEXTURE_DESC(sur), matches, call_info);
-	case D3D9Base::D3DRTYPE_TEXTURE:
-		tex2d = (D3D9Base::IDirect3DTexture9*)resource;
+	case ::D3DRTYPE_TEXTURE:
+		tex2d = (::IDirect3DTexture9*)resource;
 		return find_texture_overrides_for_desc(&D3D2DTEXTURE_DESC(tex2d), matches, call_info);
-	case D3D9Base::D3DRTYPE_CUBETEXTURE:
-		texCube = (D3D9Base::IDirect3DCubeTexture9*)resource;
+	case ::D3DRTYPE_CUBETEXTURE:
+		texCube = (::IDirect3DCubeTexture9*)resource;
 		return find_texture_overrides_for_desc(&D3D2DTEXTURE_DESC(texCube), matches, call_info);
-	case D3D9Base::D3DRTYPE_VOLUMETEXTURE:
-		tex3d = (D3D9Base::IDirect3DVolumeTexture9*)resource;
+	case ::D3DRTYPE_VOLUMETEXTURE:
+		tex3d = (::IDirect3DVolumeTexture9*)resource;
 		return find_texture_overrides_for_desc(&D3D3DTEXTURE_DESC(tex3d), matches, call_info);
 	}
 }

@@ -18,10 +18,7 @@
 
 using namespace std;
 
-namespace D3D9Base
-{
 #include <d3d9.h>
-}
 #include <nvapi.h>
 #include "../PointerSet.h"
 #include "DrawCallInfo.h"

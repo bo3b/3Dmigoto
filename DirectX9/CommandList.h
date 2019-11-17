@@ -10,10 +10,8 @@
 #include <chrono>
 #include <nvapi.h>
 
-namespace D3D9Base {
 #include <d3d9.h>
 #include <D3dx9math.h>
-}
 namespace D3D9Wrapper{
 	class IDirect3DDevice9;
 	class IDirect3DBaseTexture9;
@@ -43,23 +41,23 @@ enum class FrameAnalysisOptions;
 // legitimate need to exceed this:
 #define MAX_COMMAND_LIST_RECURSION 64
 
-typedef HRESULT(*CopyLevelSur)(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, D3D9Base::IDirect3DSurface9 *srcLev, D3D9Base::IDirect3DSurface9 *dstLev, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect);
-typedef HRESULT(*CopyLevelVol)(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, D3D9Base::IDirect3DVolume9 *srcLev, D3D9Base::IDirect3DVolume9 *dstLev, D3D3DTEXTURE_DESC *srcDesc, D3D3DTEXTURE_DESC *dstDesc, D3D9Base::D3DBOX *srcRect, D3D9Base::D3DBOX *dstRect);
+typedef HRESULT(*CopyLevelSur)(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, ::IDirect3DSurface9 *srcLev, ::IDirect3DSurface9 *dstLev, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect);
+typedef HRESULT(*CopyLevelVol)(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, ::IDirect3DVolume9 *srcLev, ::IDirect3DVolume9 *dstLev, D3D3DTEXTURE_DESC *srcDesc, D3D3DTEXTURE_DESC *dstDesc, ::D3DBOX *srcRect, ::D3DBOX *dstRect);
 
 template <CopyLevelSur c>
-struct CopyLevelSurface { static HRESULT copyLevel(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, D3D9Base::IDirect3DSurface9 *srcLev, D3D9Base::IDirect3DSurface9 *dstLev, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect); };
+struct CopyLevelSurface { static HRESULT copyLevel(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, ::IDirect3DSurface9 *srcLev, ::IDirect3DSurface9 *dstLev, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect); };
 template <CopyLevelVol c>
-struct CopyLevelVolume { static HRESULT copyLevel(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, D3D9Base::IDirect3DVolume9 *srcLev, D3D9Base::IDirect3DVolume9 *dstLev, D3D3DTEXTURE_DESC *srcDesc, D3D3DTEXTURE_DESC *dstDesc, D3D9Base::D3DBOX *srcRect, D3D9Base::D3DBOX *dstRect); };
+struct CopyLevelVolume { static HRESULT copyLevel(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, ::IDirect3DVolume9 *srcLev, ::IDirect3DVolume9 *dstLev, D3D3DTEXTURE_DESC *srcDesc, D3D3DTEXTURE_DESC *dstDesc, ::D3DBOX *srcRect, ::D3DBOX *dstRect); };
 
 typedef struct D3D9_ALPHATEST_DESC {
 	DWORD alpha_ref;
 	BOOL alpha_test_enable;
-	D3D9Base::D3DCMPFUNC alpha_func;
+	::D3DCMPFUNC alpha_func;
 }D3D9_ALPHATEST_DESC;
 
 typedef struct D3D9_RASTERIZER_DESC {
-	D3D9Base::D3DFILLMODE fill_mode;
-	D3D9Base::D3DCULL cull_mode;
+	::D3DFILLMODE fill_mode;
+	::D3DCULL cull_mode;
 	DWORD depth_bias;
 	DWORD slope_scale_depth_bias;
 	DWORD clipping;
@@ -71,37 +69,37 @@ typedef struct D3D9_RASTERIZER_DESC {
 
 typedef struct D3D9_DEPTH_STENCIL_DESC {
 	BOOL stencil_enable;
-	D3D9Base::D3DSTENCILOP stencil_fail;
-	D3D9Base::D3DSTENCILOP stencil_z_fail;
-	D3D9Base::D3DSTENCILOP stencil_pass;
-	D3D9Base::D3DCMPFUNC stencil_func;
+	::D3DSTENCILOP stencil_fail;
+	::D3DSTENCILOP stencil_z_fail;
+	::D3DSTENCILOP stencil_pass;
+	::D3DCMPFUNC stencil_func;
 	UINT stencil_mask;
 	UINT stencil_write_mask;
 	UINT stencil_ref;
 	BOOL z_enable;
 	BOOL z_write_enable;
-	D3D9Base::D3DCMPFUNC z_func;
+	::D3DCMPFUNC z_func;
 	BOOL two_sided_stencil_mode;
-	D3D9Base::D3DSTENCILOP ccw_stencil_fail;
-	D3D9Base::D3DSTENCILOP ccw_stencil_z_fail;
-	D3D9Base::D3DSTENCILOP ccw_stencil_pass;
-	D3D9Base::D3DCMPFUNC ccw_stencil_func;
+	::D3DSTENCILOP ccw_stencil_fail;
+	::D3DSTENCILOP ccw_stencil_z_fail;
+	::D3DSTENCILOP ccw_stencil_pass;
+	::D3DCMPFUNC ccw_stencil_func;
 	UINT depth_bias;
 
 }D3D9_DEPTH_STENCIL_DESC;
 
 typedef struct D3D9_BLEND_DESC {
 	DWORD alpha_blend_enable;
-	D3D9Base::D3DBLEND src_blend;
-	D3D9Base::D3DBLEND dest_blend;
-	D3D9Base::D3DBLENDOP blend_op;
+	::D3DBLEND src_blend;
+	::D3DBLEND dest_blend;
+	::D3DBLENDOP blend_op;
 	DWORD seperate_alpha_blend_enable;
-	D3D9Base::D3DBLEND src_blend_alpha;
-	D3D9Base::D3DBLEND dest_blend_alpha;
-	D3D9Base::D3DBLENDOP blend_op_alpha;
+	::D3DBLEND src_blend_alpha;
+	::D3DBLEND dest_blend_alpha;
+	::D3DBLENDOP blend_op_alpha;
 	DWORD color_write_enable;
-	D3D9Base::D3DCOLOR blend_factor;
-	D3D9Base::D3DCOLOR texture_factor;
+	::D3DCOLOR blend_factor;
+	::D3DCOLOR texture_factor;
 	DWORD color_write_enable1;
 	DWORD color_write_enable2;
 	DWORD color_write_enable3;
@@ -109,16 +107,16 @@ typedef struct D3D9_BLEND_DESC {
 }D3D9_BLEND_DESC;
 
 typedef struct D3D9_SAMPLER_DESC {
-	D3D9Base::D3DTEXTUREADDRESS address_u;
-	D3D9Base::D3DTEXTUREADDRESS address_v;
-	D3D9Base::D3DTEXTUREADDRESS address_w;
+	::D3DTEXTUREADDRESS address_u;
+	::D3DTEXTUREADDRESS address_v;
+	::D3DTEXTUREADDRESS address_w;
 	DWORD mip_map_lod_bias;
 	UINT max_anisotropy;
-	D3D9Base::D3DCOLOR border_colour;
+	::D3DCOLOR border_colour;
 	DWORD max_mip_level;
-	D3D9Base::D3DTEXTUREFILTERTYPE mag_filter;
-	D3D9Base::D3DTEXTUREFILTERTYPE min_filter;
-	D3D9Base::D3DTEXTUREFILTERTYPE mip_filter;
+	::D3DTEXTUREFILTERTYPE mag_filter;
+	::D3DTEXTUREFILTERTYPE min_filter;
+	::D3DTEXTUREFILTERTYPE mip_filter;
 	DWORD srgb_texture;
 	DWORD element_index;
 	DWORD dmap_offset;
@@ -216,7 +214,7 @@ class ResourceCopyTarget;
 class CommandListState {
 public:
 	D3D9Wrapper::IDirect3DDevice9 *mHackerDevice;
-	D3D9Base::IDirect3DDevice9 *mOrigDevice;
+	::IDirect3DDevice9 *mOrigDevice;
 	// Used to avoid querying the render target dimensions twice in the
 	// common case we are going to store both width & height in separate
 	// ini params:
@@ -232,7 +230,7 @@ public:
 	// invocation - a constant buffer we are analysing, a render target
 	// being cleared, etc.
 	ResourceCopyTarget *this_target;
-	D3D9Base::IDirect3DResource9 *resource;
+	::IDirect3DResource9 *resource;
 	// TODO: Cursor info and resources would be better off being cached
 	// somewhere that is updated at most once per frame rather than once
 	// per command list execution, and we would ideally skip the resource
@@ -319,8 +317,8 @@ public:
 class CommandListMatrix : public CommandListVariable
 {
 public:
-	D3D9Base::D3DXMATRIX fmatrix;
-	CommandListMatrix(wstring name, D3D9Base::D3DXMATRIX matrix, VariableFlags flags) :
+	::D3DXMATRIX fmatrix;
+	CommandListMatrix(wstring name, ::D3DXMATRIX matrix, VariableFlags flags) :
 		CommandListVariable(name, flags), fmatrix(matrix)
 	{}
 };
@@ -504,8 +502,8 @@ public:
 	D3DCompileFlags compile_flags;
 	D3D9Wrapper::IDirect3DDevice9 *mHackerDevice;
 	bool vs_override, ps_override;
-	D3D9Base::IDirect3DVertexShader9 *vs;
-	D3D9Base::IDirect3DPixelShader9 *ps;
+	::IDirect3DVertexShader9 *vs;
+	::IDirect3DPixelShader9 *ps;
 	bool enable_timer;
 	chrono::high_resolution_clock::duration run_interval;
 	chrono::high_resolution_clock::time_point last_time_run;
@@ -541,7 +539,7 @@ public:
 	int sampler_override;
 	map<UINT, ID3D9SamplerState*> sampler_states;
 
-	D3D9Base::D3DPRIMITIVETYPE primitive_type;
+	::D3DPRIMITIVETYPE primitive_type;
 	CommandList command_list;
 	CommandList post_command_list;
 
@@ -555,11 +553,11 @@ public:
 	~CustomShader();
 
 	bool compile(char type, wchar_t *filename, const wstring *wname, const wstring *namespace_path);
-	void substantiate(D3D9Base::IDirect3DDevice9 *mOrigDevice, D3D9Wrapper::IDirect3DDevice9 *mDevice);
+	void substantiate(::IDirect3DDevice9 *mOrigDevice, D3D9Wrapper::IDirect3DDevice9 *mDevice);
 
-	void merge_blend_states(ID3D9BlendState *src_state, D3D9Base::IDirect3DDevice9 *mOrigDevice);
+	void merge_blend_states(ID3D9BlendState *src_state, ::IDirect3DDevice9 *mOrigDevice);
 	void merge_depth_stencil_states(ID3D9DepthStencilState *state);
-	void merge_rasterizer_states(ID3D9RasterizerState *state, D3D9Base::IDirect3DDevice9 *mOrigDevice);
+	void merge_rasterizer_states(ID3D9RasterizerState *state, ::IDirect3DDevice9 *mOrigDevice);
 };
 
 typedef std::unordered_map<std::wstring, class CustomShader> CustomShaders;
@@ -572,8 +570,8 @@ public:
 	RunCustomShaderCommand() :
 		custom_shader(NULL)
 	{}
-	void GetSamplerStates(D3D9Base::IDirect3DDevice9 * mOrigDevice, std::map<UINT, ID3D9SamplerState*> *saved_sampler_states);
-	void SetSamplerStates(D3D9Base::IDirect3DDevice9 * mOrigDevice, std::map<UINT, ID3D9SamplerState*> ss);
+	void GetSamplerStates(::IDirect3DDevice9 * mOrigDevice, std::map<UINT, ID3D9SamplerState*> *saved_sampler_states);
+	void SetSamplerStates(::IDirect3DDevice9 * mOrigDevice, std::map<UINT, ID3D9SamplerState*> ss);
 	void run(CommandListState*) override;
 	bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
@@ -744,7 +742,7 @@ struct ResourceCreationInfo {
 	ResourceCreationInfo() : mode(NVAPI_STEREO_SURFACECREATEMODE::NVAPI_STEREO_SURFACECREATEMODE_AUTO) {}//, stereo2mono_index(0) {}
 };
 struct HashedResource {
-	D3D9Base::IDirect3DResource9 *resource = NULL;
+	::IDirect3DResource9 *resource = NULL;
 };
 
 // The ResourcePool holds a pool of cached resources for when a single copy
@@ -777,7 +775,7 @@ class CustomResource
 public:
 	wstring name;
 
-	D3D9Base::IDirect3DResource9 *resource;
+	::IDirect3DResource9 *resource;
 	ResourcePool resource_pool;
 	bool is_null;
 	DWORD resource_use;
@@ -785,7 +783,7 @@ public:
 	UINT stride;
 	UINT offset;
 	UINT buf_size;
-	D3D9Base::D3DFORMAT format;
+	::D3DFORMAT format;
 
 	int max_copies_per_frame;
 	unsigned frame_no;
@@ -799,8 +797,8 @@ public:
 	CustomResourceType override_type;
 	CustomResourceMode override_mode;
 	CustomResourceUsageFlags override_usage_flags;
-	D3D9Base::D3DPOOL override_pool;
-	D3D9Base::D3DFORMAT override_format;
+	::D3DPOOL override_pool;
+	::D3DFORMAT override_format;
 	int override_width;
 	int override_height;
 
@@ -827,18 +825,18 @@ public:
 	void Substantiate (CommandListState *state, StereoHandle mStereoHandle, DWORD usage_flags);
 	bool OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE *new_mode);
 
-	void OverrideBufferDesc(D3D9Base::D3DVERTEXBUFFER_DESC *desc);
-	void OverrideBufferDesc(D3D9Base::D3DINDEXBUFFER_DESC * desc);
+	void OverrideBufferDesc(::D3DVERTEXBUFFER_DESC *desc);
+	void OverrideBufferDesc(::D3DINDEXBUFFER_DESC * desc);
 	void OverrideSurfacesDesc(D3D2DTEXTURE_DESC *desc, CommandListState *state);
 	void OverrideSurfacesDesc(D3D3DTEXTURE_DESC *desc, CommandListState *state);
-	void OverrideOutOfBandInfo(D3D9Base::D3DFORMAT *format, UINT *stride);
+	void OverrideOutOfBandInfo(::D3DFORMAT *format, UINT *stride);
 
 private:
-	void LoadFromFile(D3D9Base::IDirect3DDevice9 *mOrigDevice);
+	void LoadFromFile(::IDirect3DDevice9 *mOrigDevice);
 	template<typename ID3D9Buffer, typename ID3D9BufferDesc>
-	void LoadBufferFromFile(D3D9Base::IDirect3DDevice9 *mOrigDevice);
+	void LoadBufferFromFile(::IDirect3DDevice9 *mOrigDevice);
 	template<typename ID3D9Buffer, typename ID3D9BufferDesc>
-	void SubstantiateBuffer(D3D9Base::IDirect3DDevice9 *mOrigDevice, void **buf, DWORD size);
+	void SubstantiateBuffer(::IDirect3DDevice9 *mOrigDevice, void **buf, DWORD size);
 	void SubstantiateTexture2D(CommandListState *state);
 	void SubstantiateTexture3D(CommandListState *state);
 	void SubstantiateTextureCube(CommandListState *state);
@@ -939,18 +937,18 @@ public:
 	{}
 
 	bool ParseTarget(const wchar_t *target, bool is_source, const wstring *ini_namespace);
-	D3D9Base::IDirect3DResource9 *GetResource(CommandListState *state,
+	::IDirect3DResource9 *GetResource(CommandListState *state,
 		UINT *stride,
 		UINT *offset,
-		D3D9Base::D3DFORMAT *format,
+		::D3DFORMAT *format,
 		UINT *buf_size,
 		ResourceCopyTarget *dst = NULL,
 		D3D9Wrapper::IDirect3DResource9 **wrapper = NULL);
 	void SetResource(CommandListState *state,
-		D3D9Base::IDirect3DResource9 *res,
+		::IDirect3DResource9 *res,
 		UINT stride,
 		UINT offset,
-		D3D9Base::D3DFORMAT format,
+		::D3DFORMAT format,
 		UINT buf_size,
 		D3D9Wrapper::IDirect3DResource9 **wrapper = NULL);
 	void FindTextureOverrides(
@@ -967,16 +965,16 @@ public:
 	ResourceCopyTarget src;
 	ResourceCopyTarget dst;
 	ResourceCopyOptions options;
-	D3D9Base::IDirect3DResource9 *cached_resource;
+	::IDirect3DResource9 *cached_resource;
 	ResourcePool resource_pool;
 	// Additional intermediate resources required for certain operations
 	// (TODO: add alternate cache in CustomResource to cut down on extra
 	// copies when copying to a single resource from many sources)
-	D3D9Base::IDirect3DTexture9 *stereo2mono_intermediate;
+	::IDirect3DTexture9 *stereo2mono_intermediate;
 
 	ResourceCopyOperation();
 	~ResourceCopyOperation();
-	void DirectModeCopyResource(CommandListState *state, D3D9Base::IDirect3DResource9 *src_resource, D3D9Base::IDirect3DResource9 *dst_resource, bool direct_mode_wrapped_resource_source, bool direct_mode_wrapped_resource_dest);
+	void DirectModeCopyResource(CommandListState *state, ::IDirect3DResource9 *src_resource, ::IDirect3DResource9 *dst_resource, bool direct_mode_wrapped_resource_source, bool direct_mode_wrapped_resource_dest);
 	void run(CommandListState*) override;
 };
 
@@ -987,7 +985,7 @@ class ResourceStagingOperation : public ResourceCopyOperation {
 public:
 	bool staging;
 	IUnknown *mapped_resource;
-	D3D9Base::D3DRESOURCETYPE mapped_resource_type;
+	::D3DRESOURCETYPE mapped_resource_type;
 
 	ResourceStagingOperation();
 
@@ -1023,7 +1021,7 @@ public:
 class CommandListMatrixEvaluatable {
 public:
 	virtual ~CommandListMatrixEvaluatable() {}; // Because C++
-	virtual D3D9Base::D3DXMATRIX evaluate(CommandListState *state, D3D9Wrapper::IDirect3DDevice9 *device = NULL) = 0;
+	virtual ::D3DXMATRIX evaluate(CommandListState *state, D3D9Wrapper::IDirect3DDevice9 *device = NULL) = 0;
 };
 // Indicates that this node can be used as an operand, checked when
 // transforming operators to bind adjacent operands. Includes groups of syntax
@@ -1138,8 +1136,8 @@ public:
 	) : CommandListOperator(lhs, t, rhs)
 	{}
 
-	D3D9Base::D3DXMATRIX evaluate(CommandListState *state, D3D9Wrapper::IDirect3DDevice9 *device = NULL) override;
-	virtual D3D9Base::D3DXMATRIX evaluate(D3D9Base::D3DXMATRIX lhs, D3D9Base::D3DXMATRIX rhs) = 0;
+	::D3DXMATRIX evaluate(CommandListState *state, D3D9Wrapper::IDirect3DDevice9 *device = NULL) override;
+	virtual ::D3DXMATRIX evaluate(::D3DXMATRIX lhs, ::D3DXMATRIX rhs) = 0;
 };
 // Abstract base factory class for defining operators. Statically instantiate
 // the template below for each implemented operator.
@@ -1381,7 +1379,7 @@ public:
 		m_pMatrix(pMatrix)
 	{}
 	CommandListMatrix *m_pMatrix;
-	D3D9Base::D3DXMATRIX evaluate(CommandListState *state, D3D9Wrapper::IDirect3DDevice9 *device = NULL) override;
+	::D3DXMATRIX evaluate(CommandListState *state, D3D9Wrapper::IDirect3DDevice9 *device = NULL) override;
 };
 class CommandListExpression {
 public:
@@ -1397,7 +1395,7 @@ public:
 	std::shared_ptr<CommandListMatrixEvaluatable> evaluatable;
 
 	bool parse(const wstring *expression, const wstring *ini_namespace, CommandListScopeMatrices *scope);
-	D3D9Base::D3DXMATRIX evaluate(CommandListState *state, D3D9Wrapper::IDirect3DDevice9 *device = NULL);
+	::D3DXMATRIX evaluate(CommandListState *state, D3D9Wrapper::IDirect3DDevice9 *device = NULL);
 };
 class AssignmentCommand : public CommandListCommand {
 public:
@@ -1489,7 +1487,7 @@ public:
 class VariableArrayFromMatrixAssignment : public CommandListCommand {
 public:
 	vector<float*> vars;
-	D3D9Base::D3DXMATRIX *matrix;
+	::D3DXMATRIX *matrix;
 	UINT start_slot;
 
 	VariableArrayFromMatrixAssignment() : matrix(NULL), start_slot(0) {};
@@ -1518,7 +1516,7 @@ public:
 
 class MatrixFromShaderConstantAssignment : public CommandListCommand {
 public:
-	D3D9Base::D3DXMATRIX *pMatrix;
+	::D3DXMATRIX *pMatrix;
 	UINT dst_start;
 	UINT num_slots;
 
@@ -1540,7 +1538,7 @@ public:
 };
 class MatrixFromArrayAssignment : public CommandListCommand {
 public:
-	D3D9Base::D3DXMATRIX *pMatrix;
+	::D3DXMATRIX *pMatrix;
 	UINT dst_start;
 	vector<float*> arr;
 
@@ -1550,8 +1548,8 @@ public:
 };
 class MatrixFromMatrixAssignment : public CommandListCommand {
 public:
-	D3D9Base::D3DXMATRIX *src_matrix;
-	D3D9Base::D3DXMATRIX *dst_matrix;
+	::D3DXMATRIX *src_matrix;
+	::D3DXMATRIX *dst_matrix;
 	UINT src_start;
 	UINT dst_start;
 	UINT num_slots;
@@ -1562,7 +1560,7 @@ public:
 };
 class MatrixFromMatrixExpressionAssignment : public CommandListCommand {
 public:
-	D3D9Base::D3DXMATRIX* pMatrix;
+	::D3DXMATRIX* pMatrix;
 	CommandListMatrixExpression expression;
 	UINT src_start;
 	UINT dst_start;
@@ -1574,7 +1572,7 @@ public:
 };
 class MatrixFromExpressionAssignment : public CommandListCommand {
 public:
-	D3D9Base::D3DXMATRIX* pMatrix;
+	::D3DXMATRIX* pMatrix;
 	UINT dst_start;
 	CommandListExpression expression;
 
@@ -1674,7 +1672,7 @@ public:
 	FLOAT fval[4];
 	UINT uval[4];
 	ClearSurfaceCommand();
-	void clear_surface(D3D9Base::IDirect3DResource9 *resource, CommandListState *state);
+	void clear_surface(::IDirect3DResource9 *resource, CommandListState *state);
 
 	void run(CommandListState*) override;
 };
@@ -1849,7 +1847,7 @@ void RunCommandList(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,
 	CommandList *command_list, DrawCallInfo *call_info,
 	bool post, CachedStereoValues *cachedStereoValues = NULL);
 void RunResourceCommandList(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,
-	CommandList *command_list, D3D9Base::IDirect3DResource9 *resource,
+	CommandList *command_list, ::IDirect3DResource9 *resource,
 	bool post, CachedStereoValues *cachedStereoValues = NULL);
 bool ParseRunExplicitCommandList(const wchar_t *section,
 	const wchar_t *key, wstring *val,

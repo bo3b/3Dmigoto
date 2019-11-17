@@ -2,7 +2,7 @@
 
 #include "HookedVertexShader.h"
 
-using namespace D3D9Base;
+
 #include "DLLMainHookDX9.h"
 
 

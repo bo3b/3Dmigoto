@@ -1,15 +1,15 @@
 #include "HookedSurface.h"
 #include "d3d9Wrapper.h"
-inline D3D9Base::IDirect3DSurface9 * D3D9Wrapper::IDirect3DSurface9::DirectModeGetMono()
+inline ::IDirect3DSurface9 * D3D9Wrapper::IDirect3DSurface9::DirectModeGetMono()
 {
 	return DirectModeGetLeft();
 }
 
-inline D3D9Base::IDirect3DSurface9 * D3D9Wrapper::IDirect3DSurface9::DirectModeGetLeft()
+inline ::IDirect3DSurface9 * D3D9Wrapper::IDirect3DSurface9::DirectModeGetLeft()
 {
 	return GetD3DSurface9();
 }
-inline D3D9Base::IDirect3DSurface9 * D3D9Wrapper::IDirect3DSurface9::DirectModeGetRight()
+inline ::IDirect3DSurface9 * D3D9Wrapper::IDirect3DSurface9::DirectModeGetRight()
 {
 	return m_pDirectSurfaceRight;
 }
@@ -28,26 +28,26 @@ HRESULT D3D9Wrapper::IDirect3DSurface9::resolveDepthReplacement()
 		return S_OK;
 
 	if (hackerDevice->m_pD3D->m_isRESZ) {
-		D3D9Base::IDirect3DVertexShader9 *initVertexShader;
+		::IDirect3DVertexShader9 *initVertexShader;
 		hackerDevice->GetD3D9Device()->GetVertexShader(&initVertexShader);
-		D3D9Base::IDirect3DPixelShader9 *initPixelShader;
+		::IDirect3DPixelShader9 *initPixelShader;
 		hackerDevice->GetD3D9Device()->GetPixelShader(&initPixelShader);
 		DWORD initFVF;
 		hackerDevice->GetD3D9Device()->GetFVF(&initFVF);
-		D3D9Base::IDirect3DBaseTexture9 *initTexture;
+		::IDirect3DBaseTexture9 *initTexture;
 		hackerDevice->GetD3D9Device()->GetTexture(0, &initTexture);
-		D3D9Base::IDirect3DSurface9 *initDSS;
+		::IDirect3DSurface9 *initDSS;
 		hackerDevice->GetD3D9Device()->GetDepthStencilSurface(&initDSS);
-		D3D9Base::IDirect3DSurface9 *initRT;
+		::IDirect3DSurface9 *initRT;
 		hackerDevice->GetD3D9Device()->GetDepthStencilSurface(&initRT);
 		DWORD initZEnable;
-		hackerDevice->GetD3D9Device()->GetRenderState(D3D9Base::D3DRS_ZENABLE, &initZEnable);
+		hackerDevice->GetD3D9Device()->GetRenderState(::D3DRS_ZENABLE, &initZEnable);
 		DWORD initZWriteEnable;
-		hackerDevice->GetD3D9Device()->GetRenderState(D3D9Base::D3DRS_ZWRITEENABLE, &initZWriteEnable);
+		hackerDevice->GetD3D9Device()->GetRenderState(::D3DRS_ZWRITEENABLE, &initZWriteEnable);
 		DWORD initColorWriteEnable;
-		hackerDevice->GetD3D9Device()->GetRenderState(D3D9Base::D3DRS_COLORWRITEENABLE, &initColorWriteEnable);
+		hackerDevice->GetD3D9Device()->GetRenderState(::D3DRS_COLORWRITEENABLE, &initColorWriteEnable);
 		DWORD initPointSize;
-		hackerDevice->GetD3D9Device()->GetRenderState(D3D9Base::D3DRS_POINTSIZE, &initPointSize);
+		hackerDevice->GetD3D9Device()->GetRenderState(::D3DRS_POINTSIZE, &initPointSize);
 
 		if (initDSS != depthstencil_replacement_surface)
 			hackerDevice->GetD3D9Device()->SetDepthStencilSurface(depthstencil_replacement_surface);
@@ -64,22 +64,22 @@ HRESULT D3D9Wrapper::IDirect3DSurface9::resolveDepthReplacement()
 		// Perform a dummy draw call to ensure texture sampler 0 is set before the // resolve is triggered
 		// Vertex declaration and shaders may need to me adjusted to ensure no debug
 		// error message is produced
-		D3D9Base::D3DXVECTOR3 vDummyPoint(0.0f, 0.0f, 0.0f);
-		hackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_ZENABLE, FALSE);
-		hackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_ZWRITEENABLE, FALSE);
-		hackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_COLORWRITEENABLE, 0);
-		hackerDevice->GetD3D9Device()->DrawPrimitiveUP(D3D9Base::D3DPT_POINTLIST, 1, vDummyPoint, sizeof(D3D9Base::D3DXVECTOR3));
-		hackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_ZWRITEENABLE, TRUE);
-		hackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_ZENABLE, TRUE);
-		hackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_COLORWRITEENABLE, 0x0F);
+		::D3DXVECTOR3 vDummyPoint(0.0f, 0.0f, 0.0f);
+		hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_ZENABLE, FALSE);
+		hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_ZWRITEENABLE, FALSE);
+		hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_COLORWRITEENABLE, 0);
+		hackerDevice->GetD3D9Device()->DrawPrimitiveUP(::D3DPT_POINTLIST, 1, vDummyPoint, sizeof(::D3DXVECTOR3));
+		hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_ZWRITEENABLE, TRUE);
+		hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_ZENABLE, TRUE);
+		hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_COLORWRITEENABLE, 0x0F);
 
 		// Trigger the depth buffer resolve; after this call texture sampler 0
 		// will contain the contents of the resolve operation
-		hr = hackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_POINTSIZE, RESZ_CODE);
+		hr = hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_POINTSIZE, RESZ_CODE);
 
 		// This hack to fix resz hack, has been found by Maksym Bezus!!!
 		// Without this line resz will be resolved only for first frame
-		hackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_POINTSIZE, 0); // TROLOLO!!!
+		hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_POINTSIZE, 0); // TROLOLO!!!
 
 		//restore
 		if (initVertexShader)
@@ -103,10 +103,10 @@ HRESULT D3D9Wrapper::IDirect3DSurface9::resolveDepthReplacement()
 			initRT->Release();
 		if (initDSS)
 			initDSS->Release();
-		hackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_ZENABLE, initZEnable);
-		hackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_ZWRITEENABLE, initZWriteEnable);
-		hackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_COLORWRITEENABLE, initColorWriteEnable);
-		hackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_POINTSIZE, initPointSize);
+		hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_ZENABLE, initZEnable);
+		hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_ZWRITEENABLE, initZWriteEnable);
+		hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_COLORWRITEENABLE, initColorWriteEnable);
+		hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_POINTSIZE, initPointSize);
 	}
 	else {
 		hr = copyDepthSurfaceToTexture();
@@ -189,10 +189,10 @@ inline bool D3D9Wrapper::IDirect3DSurface9::IsDirectStereoSurface()
 }
 inline void D3D9Wrapper::IDirect3DSurface9::HookSurface()
 {
-	m_pUnk = hook_surface(GetD3DSurface9(), (D3D9Base::IDirect3DSurface9*)this);
+	m_pUnk = hook_surface(GetD3DSurface9(), (::IDirect3DSurface9*)this);
 }
-D3D9Wrapper::IDirect3DSurface9::IDirect3DSurface9(D3D9Base::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, D3D9Base::LPDIRECT3DSURFACE9 pDirectModeRightSurface)
-    : D3D9Wrapper::IDirect3DResource9((D3D9Base::LPDIRECT3DRESOURCE9) pSurface, hackerDevice),
+D3D9Wrapper::IDirect3DSurface9::IDirect3DSurface9(::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, ::LPDIRECT3DSURFACE9 pDirectModeRightSurface)
+    : D3D9Wrapper::IDirect3DResource9((::LPDIRECT3DRESOURCE9) pSurface, hackerDevice),
 	pendingGetSurfaceLevel(false),
 	magic(0x7da43feb),
 	m_OwningSwapChain(NULL),
@@ -218,8 +218,8 @@ D3D9Wrapper::IDirect3DSurface9::IDirect3DSurface9(D3D9Base::LPDIRECT3DSURFACE9 p
 	}
 }
 
-D3D9Wrapper::IDirect3DSurface9::IDirect3DSurface9(D3D9Base::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, D3D9Base::LPDIRECT3DSURFACE9 pDirectModeRightSurface, D3D9Wrapper::IDirect3DSwapChain9 *owningContainer)
-	: D3D9Wrapper::IDirect3DResource9((D3D9Base::LPDIRECT3DRESOURCE9) pSurface, hackerDevice),
+D3D9Wrapper::IDirect3DSurface9::IDirect3DSurface9(::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, ::LPDIRECT3DSURFACE9 pDirectModeRightSurface, D3D9Wrapper::IDirect3DSwapChain9 *owningContainer)
+	: D3D9Wrapper::IDirect3DResource9((::LPDIRECT3DRESOURCE9) pSurface, hackerDevice),
 	pendingGetSurfaceLevel(false),
 	magic(0x7da43feb),
 	m_OwningSwapChain(owningContainer),
@@ -244,8 +244,8 @@ D3D9Wrapper::IDirect3DSurface9::IDirect3DSurface9(D3D9Base::LPDIRECT3DSURFACE9 p
 		this->HookSurface();
 	}
 }
-D3D9Wrapper::IDirect3DSurface9::IDirect3DSurface9(D3D9Base::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, D3D9Base::LPDIRECT3DSURFACE9 pDirectModeRightSurface, D3D9Wrapper::IDirect3DTexture9 *owningContainer)
-	: D3D9Wrapper::IDirect3DResource9((D3D9Base::LPDIRECT3DRESOURCE9) pSurface, hackerDevice),
+D3D9Wrapper::IDirect3DSurface9::IDirect3DSurface9(::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, ::LPDIRECT3DSURFACE9 pDirectModeRightSurface, D3D9Wrapper::IDirect3DTexture9 *owningContainer)
+	: D3D9Wrapper::IDirect3DResource9((::LPDIRECT3DRESOURCE9) pSurface, hackerDevice),
 	pendingGetSurfaceLevel(false),
 	magic(0x7da43feb),
 	m_OwningSwapChain(NULL),
@@ -271,8 +271,8 @@ D3D9Wrapper::IDirect3DSurface9::IDirect3DSurface9(D3D9Base::LPDIRECT3DSURFACE9 p
 	}
 }
 
-D3D9Wrapper::IDirect3DSurface9::IDirect3DSurface9(D3D9Base::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, D3D9Base::LPDIRECT3DSURFACE9 pDirectModeRightSurface, D3D9Wrapper::IDirect3DCubeTexture9 *owningContainer)
-	: D3D9Wrapper::IDirect3DResource9((D3D9Base::LPDIRECT3DRESOURCE9) pSurface, hackerDevice),
+D3D9Wrapper::IDirect3DSurface9::IDirect3DSurface9(::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, ::LPDIRECT3DSURFACE9 pDirectModeRightSurface, D3D9Wrapper::IDirect3DCubeTexture9 *owningContainer)
+	: D3D9Wrapper::IDirect3DResource9((::LPDIRECT3DRESOURCE9) pSurface, hackerDevice),
 	pendingGetSurfaceLevel(false),
 	magic(0x7da43feb),
 	m_OwningSwapChain(NULL),
@@ -297,25 +297,25 @@ D3D9Wrapper::IDirect3DSurface9::IDirect3DSurface9(D3D9Base::LPDIRECT3DSURFACE9 p
 		this->HookSurface();
 	}
 }
-D3D9Wrapper::IDirect3DSurface9* D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(D3D9Base::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, D3D9Base::LPDIRECT3DSURFACE9 pDirectModeRightSurface)
+D3D9Wrapper::IDirect3DSurface9* D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, ::LPDIRECT3DSURFACE9 pDirectModeRightSurface)
 {
 	D3D9Wrapper::IDirect3DSurface9 *p = new D3D9Wrapper::IDirect3DSurface9(pSurface, hackerDevice, pDirectModeRightSurface);
     if (pSurface) m_List.AddMember(pSurface, p);
 	return p;
 }
-D3D9Wrapper::IDirect3DSurface9* D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(D3D9Base::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, D3D9Base::LPDIRECT3DSURFACE9 pDirectModeRightSurface, D3D9Wrapper::IDirect3DSwapChain9 *owningContainer)
+D3D9Wrapper::IDirect3DSurface9* D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, ::LPDIRECT3DSURFACE9 pDirectModeRightSurface, D3D9Wrapper::IDirect3DSwapChain9 *owningContainer)
 {
 	D3D9Wrapper::IDirect3DSurface9 *p = new D3D9Wrapper::IDirect3DSurface9(pSurface, hackerDevice, pDirectModeRightSurface, owningContainer);
 	if (pSurface) m_List.AddMember(pSurface, p);
 	return p;
 }
-D3D9Wrapper::IDirect3DSurface9* D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(D3D9Base::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, D3D9Base::LPDIRECT3DSURFACE9 pDirectModeRightSurface, D3D9Wrapper::IDirect3DTexture9 *owningContainer)
+D3D9Wrapper::IDirect3DSurface9* D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, ::LPDIRECT3DSURFACE9 pDirectModeRightSurface, D3D9Wrapper::IDirect3DTexture9 *owningContainer)
 {
 	D3D9Wrapper::IDirect3DSurface9 *p = new D3D9Wrapper::IDirect3DSurface9(pSurface, hackerDevice, pDirectModeRightSurface, owningContainer);
 	if (pSurface) m_List.AddMember(pSurface, p);
 	return p;
 }
-D3D9Wrapper::IDirect3DSurface9* D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(D3D9Base::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, D3D9Base::LPDIRECT3DSURFACE9 pDirectModeRightSurface, D3D9Wrapper::IDirect3DCubeTexture9 *owningContainer)
+D3D9Wrapper::IDirect3DSurface9* D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(::LPDIRECT3DSURFACE9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, ::LPDIRECT3DSURFACE9 pDirectModeRightSurface, D3D9Wrapper::IDirect3DCubeTexture9 *owningContainer)
 {
 	D3D9Wrapper::IDirect3DSurface9 *p = new D3D9Wrapper::IDirect3DSurface9(pSurface, hackerDevice, pDirectModeRightSurface, owningContainer);
 	if (pSurface) m_List.AddMember(pSurface, p);
@@ -511,7 +511,7 @@ STDMETHODIMP_(void) D3D9Wrapper::IDirect3DSurface9::PreLoad(THIS)
 
 }
 
-STDMETHODIMP_(D3D9Base::D3DRESOURCETYPE) D3D9Wrapper::IDirect3DSurface9::GetType(THIS)
+STDMETHODIMP_(::D3DRESOURCETYPE) D3D9Wrapper::IDirect3DSurface9::GetType(THIS)
 {
 	LogDebug("IDirect3DSurface9::GetType called\n");
 	CheckSurface9(this);
@@ -597,7 +597,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetContainer(THIS_ REFIID riid,void
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetDesc(THIS_ D3D9Base::D3DSURFACE_DESC *pDesc)
+STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetDesc(THIS_ ::D3DSURFACE_DESC *pDesc)
 {
 	LogDebug("IDirect3DSurface9::GetDesc called\n");
 
@@ -606,13 +606,13 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetDesc(THIS_ D3D9Base::D3DSURFACE_
 	return GetD3DSurface9()->GetDesc(pDesc);
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::LockRect(THIS_ D3D9Base::D3DLOCKED_RECT* pLockedRect,CONST RECT* pRect,DWORD Flags)
+STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::LockRect(THIS_ ::D3DLOCKED_RECT* pLockedRect,CONST RECT* pRect,DWORD Flags)
 {
 	LogDebug("IDirect3DSurface9::LockRect called\n");
 
 	CheckSurface9(this);
 
-	D3D9Base::IDirect3DSurface9 *pBaseSurface = GetD3DSurface9();
+	::IDirect3DSurface9 *pBaseSurface = GetD3DSurface9();
 	hackerDevice->FrameAnalysisLog("LockRect(pResource:0x%p, pRect:0x%p, LockFlags:%u)",
 		pBaseSurface, pRect, Flags);
 	hackerDevice->FrameAnalysisLogResourceHash(pBaseSurface);
@@ -621,19 +621,19 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::LockRect(THIS_ D3D9Base::D3DLOCKED_
 	if (G->gForceStereo == 2){
 		if (IsDirectStereoSurface()) {
 			if (!(Flags & D3DLOCK_READONLY)) {
-				D3D9Base::D3DSURFACE_DESC desc;
+				::D3DSURFACE_DESC desc;
 				GetD3DSurface9()->GetDesc(&desc);
 				//Guard against multithreaded access as this could be causing us problems
 				std::lock_guard<std::mutex> lck(m_mtx);
-				if (desc.Pool == D3D9Base::D3DPOOL_DEFAULT && !DirectLockRectNoMemTex) {
+				if (desc.Pool == ::D3DPOOL_DEFAULT && !DirectLockRectNoMemTex) {
 					//Create lockable system memory surfaces
-					D3D9Base::IDirect3DSurface9 *pSurface = NULL;
+					::IDirect3DSurface9 *pSurface = NULL;
 					bool createTexture = false;
 					if (!m_pDirectLockableSysMemTexture)
 					{
 						if (hackerDevice) {
 							hr = hackerDevice->GetD3D9Device()->CreateTexture(desc.Width, desc.Height, 1, 0,
-								desc.Format, D3D9Base::D3DPOOL_SYSTEMMEM, &m_pDirectLockableSysMemTexture, NULL);
+								desc.Format, ::D3DPOOL_SYSTEMMEM, &m_pDirectLockableSysMemTexture, NULL);
 							if (FAILED(hr)) {
 								LogDebug("IDirect3DSurface9::LockRect Direct Mode, failed to create system memory texture, hr = 0x%0.8x\n", hr);
 								DirectLockRectNoMemTex = true;
@@ -665,7 +665,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::LockRect(THIS_ D3D9Base::D3DLOCKED_
 					}
 				}
 
-				if (desc.Pool != D3D9Base::D3DPOOL_DEFAULT || DirectLockRectNoMemTex)
+				if (desc.Pool != ::D3DPOOL_DEFAULT || DirectLockRectNoMemTex)
 				{
 					//lock the memory surface
 					hr = pBaseSurface->LockRect(pLockedRect, pRect, Flags);
@@ -728,7 +728,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::UnlockRect(THIS)
 {
 	LogDebug("IDirect3DSurface9::UnlockRect called\n");
 	CheckSurface9(this);
-	D3D9Base::IDirect3DSurface9 *pBaseSurface = GetD3DSurface9();
+	::IDirect3DSurface9 *pBaseSurface = GetD3DSurface9();
 	hackerDevice->FrameAnalysisLog("Unlock(pResource:0x%p)",
 		pBaseSurface);
 	hackerDevice->FrameAnalysisLogResourceHash(pBaseSurface);
@@ -736,7 +736,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::UnlockRect(THIS)
 	HRESULT hr;
 	if (G->gForceStereo == 2 && IsDirectStereoSurface()) {
 		if (DirectFullSurface || DirectLockedRects.size() > 0) {
-			D3D9Base::D3DSURFACE_DESC desc;
+			::D3DSURFACE_DESC desc;
 			GetD3DSurface9()->GetDesc(&desc);
 			//Guard against multithreaded access as this could be causing us problems
 			std::lock_guard<std::mutex> lck(m_mtx);
@@ -745,8 +745,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::UnlockRect(THIS)
 				hr = S_OK;
 				goto postUnlock;
 			}
-			if (desc.Pool == D3D9Base::D3DPOOL_DEFAULT && !DirectLockRectNoMemTex) {
-				D3D9Base::IDirect3DSurface9 *pSurface = NULL;
+			if (desc.Pool == ::D3DPOOL_DEFAULT && !DirectLockRectNoMemTex) {
+				::IDirect3DSurface9 *pSurface = NULL;
 				HRESULT hr = m_pDirectLockableSysMemTexture ? m_pDirectLockableSysMemTexture->GetSurfaceLevel(0, &pSurface) : D3DERR_INVALIDCALL;
 				if (FAILED(hr))
 					goto postUnlock;
@@ -797,7 +797,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::UnlockRect(THIS)
 				pSurface->Release();
 			}
 			else {
-				D3D9Base::D3DLOCKED_RECT lRect;
+				::D3DLOCKED_RECT lRect;
 				if (DirectFullSurface) {
 					hr = m_pDirectSurfaceRight->LockRect(&lRect, NULL, DirectLockedFlags);
 					if (FAILED(hr))

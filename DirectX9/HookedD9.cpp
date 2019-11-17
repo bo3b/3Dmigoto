@@ -1,7 +1,7 @@
 
 #include <unordered_map>
 #include "HookedD9.h"
-using namespace D3D9Base;
+
 #include "DLLMainHookDX9.h"
 
 #if 0
@@ -24,22 +24,22 @@ DECLARE_INTERFACE_(IDirect3D9Ex2, IDirect3D9Ex)
 	/*** IDirect3D9 methods ***/
 	STDMETHOD (RegisterSoftwareDevice)(THIS_ void* pInitializeFunction) PURE;
 	STDMETHOD_(UINT, GetAdapterCount)(THIS) PURE;
-	STDMETHOD(GetAdapterIdentifier)(THIS_ UINT Adapter, DWORD Flags, D3D9Base::D3DADAPTER_IDENTIFIER9* pIdentifier) PURE;
-	STDMETHOD_(UINT, GetAdapterModeCount)(THIS_ UINT Adapter, D3D9Base::D3DFORMAT Format) PURE;
-	STDMETHOD(EnumAdapterModes)(THIS_ UINT Adapter, D3D9Base::D3DFORMAT Format, UINT Mode, D3D9Base::D3DDISPLAYMODE* pMode) PURE;
-	STDMETHOD(GetAdapterDisplayMode)(THIS_ UINT Adapter, D3D9Base::D3DDISPLAYMODE* pMode) PURE;
-	STDMETHOD(CheckDeviceType)(THIS_ UINT Adapter, D3D9Base::D3DDEVTYPE DevType, D3D9Base::D3DFORMAT AdapterFormat, D3D9Base::D3DFORMAT BackBufferFormat, BOOL bWindowed) PURE;
-	STDMETHOD(CheckDeviceFormat)(THIS_ UINT Adapter, D3D9Base::D3DDEVTYPE DeviceType, D3D9Base::D3DFORMAT AdapterFormat, DWORD Usage, D3D9Base::D3DRESOURCETYPE RType, D3D9Base::D3DFORMAT CheckFormat) PURE;
-	STDMETHOD(CheckDeviceMultiSampleType)(THIS_ UINT Adapter, D3D9Base::D3DDEVTYPE DeviceType, D3D9Base::D3DFORMAT SurfaceFormat, BOOL Windowed, D3D9Base::D3DMULTISAMPLE_TYPE MultiSampleType, DWORD* pQualityLevels) PURE;
-	STDMETHOD(CheckDepthStencilMatch)(THIS_ UINT Adapter, D3D9Base::D3DDEVTYPE DeviceType, D3D9Base::D3DFORMAT AdapterFormat, D3D9Base::D3DFORMAT RenderTargetFormat, D3D9Base::D3DFORMAT DepthStencilFormat) PURE;
-	STDMETHOD(CheckDeviceFormatConversion)(THIS_ UINT Adapter, D3D9Base::D3DDEVTYPE DeviceType, D3D9Base::D3DFORMAT SourceFormat, D3D9Base::D3DFORMAT TargetFormat) PURE;
-	STDMETHOD(GetDeviceCaps)(THIS_ UINT Adapter, D3D9Base::D3DDEVTYPE DeviceType, D3D9Base::D3DCAPS9* pCaps) PURE;
+	STDMETHOD(GetAdapterIdentifier)(THIS_ UINT Adapter, DWORD Flags, ::D3DADAPTER_IDENTIFIER9* pIdentifier) PURE;
+	STDMETHOD_(UINT, GetAdapterModeCount)(THIS_ UINT Adapter, ::D3DFORMAT Format) PURE;
+	STDMETHOD(EnumAdapterModes)(THIS_ UINT Adapter, ::D3DFORMAT Format, UINT Mode, ::D3DDISPLAYMODE* pMode) PURE;
+	STDMETHOD(GetAdapterDisplayMode)(THIS_ UINT Adapter, ::D3DDISPLAYMODE* pMode) PURE;
+	STDMETHOD(CheckDeviceType)(THIS_ UINT Adapter, ::D3DDEVTYPE DevType, ::D3DFORMAT AdapterFormat, ::D3DFORMAT BackBufferFormat, BOOL bWindowed) PURE;
+	STDMETHOD(CheckDeviceFormat)(THIS_ UINT Adapter, ::D3DDEVTYPE DeviceType, ::D3DFORMAT AdapterFormat, DWORD Usage, ::D3DRESOURCETYPE RType, ::D3DFORMAT CheckFormat) PURE;
+	STDMETHOD(CheckDeviceMultiSampleType)(THIS_ UINT Adapter, ::D3DDEVTYPE DeviceType, ::D3DFORMAT SurfaceFormat, BOOL Windowed, ::D3DMULTISAMPLE_TYPE MultiSampleType, DWORD* pQualityLevels) PURE;
+	STDMETHOD(CheckDepthStencilMatch)(THIS_ UINT Adapter, ::D3DDEVTYPE DeviceType, ::D3DFORMAT AdapterFormat, ::D3DFORMAT RenderTargetFormat, ::D3DFORMAT DepthStencilFormat) PURE;
+	STDMETHOD(CheckDeviceFormatConversion)(THIS_ UINT Adapter, ::D3DDEVTYPE DeviceType, ::D3DFORMAT SourceFormat, ::D3DFORMAT TargetFormat) PURE;
+	STDMETHOD(GetDeviceCaps)(THIS_ UINT Adapter, ::D3DDEVTYPE DeviceType, ::D3DCAPS9* pCaps) PURE;
 	STDMETHOD_(HMONITOR, GetAdapterMonitor)(THIS_ UINT Adapter) PURE;
-	STDMETHOD(CreateDevice)(THIS_ UINT Adapter, D3D9Base::D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3D9Base::D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface) PURE;
-	STDMETHOD_(UINT, GetAdapterModeCountEx)(THIS_ UINT Adapter, CONST D3D9Base::D3DDISPLAYMODEFILTER* pFilter) PURE;
-	STDMETHOD(EnumAdapterModesEx)(THIS_ UINT Adapter, CONST D3D9Base::D3DDISPLAYMODEFILTER* pFilter, UINT Mode, D3D9Base::D3DDISPLAYMODEEX* pMode) PURE;
-	STDMETHOD(GetAdapterDisplayModeEx)(THIS_ UINT Adapter, D3D9Base::D3DDISPLAYMODEEX* pMode, D3D9Base::D3DDISPLAYROTATION* pRotation) PURE;
-	STDMETHOD(CreateDeviceEx)(THIS_ UINT Adapter, D3D9Base::D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3D9Base::D3DPRESENT_PARAMETERS* pPresentationParameters, D3D9Base::D3DDISPLAYMODEEX* pFullscreenDisplayMode, IDirect3DDevice9Ex** ppReturnedDeviceInterface) PURE;
+	STDMETHOD(CreateDevice)(THIS_ UINT Adapter, ::D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, ::D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface) PURE;
+	STDMETHOD_(UINT, GetAdapterModeCountEx)(THIS_ UINT Adapter, CONST ::D3DDISPLAYMODEFILTER* pFilter) PURE;
+	STDMETHOD(EnumAdapterModesEx)(THIS_ UINT Adapter, CONST ::D3DDISPLAYMODEFILTER* pFilter, UINT Mode, ::D3DDISPLAYMODEEX* pMode) PURE;
+	STDMETHOD(GetAdapterDisplayModeEx)(THIS_ UINT Adapter, ::D3DDISPLAYMODEEX* pMode, ::D3DDISPLAYROTATION* pRotation) PURE;
+	STDMETHOD(CreateDeviceEx)(THIS_ UINT Adapter, ::D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, ::D3DPRESENT_PARAMETERS* pPresentationParameters, ::D3DDISPLAYMODEEX* pFullscreenDisplayMode, IDirect3DDevice9Ex** ppReturnedDeviceInterface) PURE;
 	STDMETHOD(GetAdapterLUID)(THIS_ UINT Adapter, LUID * pLUID) PURE;
 	END_INTERFACE
 };
@@ -295,7 +295,7 @@ static HMONITOR STDMETHODCALLTYPE GetAdapterMonitor(IDirect3D9 * This, UINT Adap
 
 }
 
-static HRESULT STDMETHODCALLTYPE CreateDevice(IDirect3D9 * This, UINT Adapter, D3D9Base::D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface){
+static HRESULT STDMETHODCALLTYPE CreateDevice(IDirect3D9 * This, UINT Adapter, ::D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface){
 	IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
 	HookDebug("HookedD9::CreateDevice()\n");

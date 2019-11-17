@@ -2,7 +2,7 @@
 #include "d3d9Wrapper.h"
 void D3D9Wrapper::IDirect3DVertexShader9::HookVertexShader()
 {
-	m_pUnk = hook_vertex_shader(GetD3DVertexShader9(), (D3D9Base::IDirect3DVertexShader9*)this);
+	m_pUnk = hook_vertex_shader(GetD3DVertexShader9(), (::IDirect3DVertexShader9*)this);
 }
 inline void D3D9Wrapper::IDirect3DVertexShader9::Delete()
 {
@@ -14,7 +14,7 @@ inline void D3D9Wrapper::IDirect3DVertexShader9::Delete()
 	m_pRealUnk = 0;
 	delete this;
 }
-D3D9Wrapper::IDirect3DVertexShader9::IDirect3DVertexShader9(D3D9Base::LPDIRECT3DVERTEXSHADER9 pVS, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
+D3D9Wrapper::IDirect3DVertexShader9::IDirect3DVertexShader9(::LPDIRECT3DVERTEXSHADER9 pVS, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
     : D3D9Wrapper::IDirect3DShader9((IUnknown*) pVS, hackerDevice, Vertex),
 	bound(false),
 	zero_d3d_ref_count(false)
@@ -24,7 +24,7 @@ D3D9Wrapper::IDirect3DVertexShader9::IDirect3DVertexShader9(D3D9Base::LPDIRECT3D
 	}
 }
 
-D3D9Wrapper::IDirect3DVertexShader9* D3D9Wrapper::IDirect3DVertexShader9::GetDirect3DVertexShader9(D3D9Base::LPDIRECT3DVERTEXSHADER9 pVS, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
+D3D9Wrapper::IDirect3DVertexShader9* D3D9Wrapper::IDirect3DVertexShader9::GetDirect3DVertexShader9(::LPDIRECT3DVERTEXSHADER9 pVS, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
 {
 	D3D9Wrapper::IDirect3DVertexShader9* p = new D3D9Wrapper::IDirect3DVertexShader9(pVS, hackerDevice);
 	if (pVS) m_List.AddMember(pVS, p);

@@ -92,7 +92,7 @@ void Overlay::SaveState()
 {
 
 	if (saved_state_block == NULL) {
-		mHackerDevice->GetD3D9Device()->CreateStateBlock(D3D9Base::D3DSBT_ALL, &saved_state_block);
+		mHackerDevice->GetD3D9Device()->CreateStateBlock(::D3DSBT_ALL, &saved_state_block);
 		++migotoResourceCount;
 	}
 	saved_state_block->Capture();
@@ -112,33 +112,33 @@ void Overlay::RestoreState()
 // getting an overlay, because apparently the rendertarget was left in an odd
 // state.  This adds an init to be certain that the rendertarget is the backbuffer
 // so that the overlay is drawn.
-HRESULT Overlay::InitDrawState(D3D9Base::IDirect3DSwapChain9 *pSwapChain)
+HRESULT Overlay::InitDrawState(::IDirect3DSwapChain9 *pSwapChain)
 {
 
 	HRESULT hr;
 
 	// Get back buffer
-	D3D9Base::IDirect3DSurface9 *back_buffer = NULL;
+	::IDirect3DSurface9 *back_buffer = NULL;
 	if (pSwapChain) {
-		hr = pSwapChain->GetBackBuffer(0, D3D9Base::D3DBACKBUFFER_TYPE_MONO, &back_buffer);
+		hr = pSwapChain->GetBackBuffer(0, ::D3DBACKBUFFER_TYPE_MONO, &back_buffer);
 		if (FAILED(hr))
 			return hr;
 	}
 	else {
-		hr = mHackerDevice->GetD3D9Device()->GetBackBuffer(0, 0, D3D9Base::D3DBACKBUFFER_TYPE_MONO, &back_buffer);
+		hr = mHackerDevice->GetD3D9Device()->GetBackBuffer(0, 0, ::D3DBACKBUFFER_TYPE_MONO, &back_buffer);
 		if (FAILED(hr))
 			return hr;
 	}
 
 	// By doing this every frame, we are always up to date with correct size,
 	// and we need the address of the BackBuffer anyway, so this is low cost.
-	D3D9Base::D3DSURFACE_DESC description;
+	::D3DSURFACE_DESC description;
 	back_buffer->GetDesc(&description);
 	mResolution = DirectX::XMUINT2(description.Width, description.Height);
 	hr = mHackerDevice->GetD3D9Device()->SetRenderTarget(0, back_buffer);
 	if (FAILED(hr))
 		return hr;
-	D3D9Base::D3DVIEWPORT9 viewport;
+	::D3DVIEWPORT9 viewport;
 	hr = mHackerDevice->GetD3D9Device()->GetViewport(&viewport);
 	if (FAILED(hr))
 		return hr;
@@ -164,7 +164,6 @@ struct CUSTOMVERTEX
 };
 void Overlay::DrawRectangle(float x, float y, float w, float h, float r, float g, float b, float opacity)
 {
-	using namespace D3D9Base;
 	int iopacity, ir, ig, ib;
 	iopacity = (int)(opacity * 255.0f);
 	ir = (int)(r * 255.0f);
@@ -177,15 +176,15 @@ void Overlay::DrawRectangle(float x, float y, float w, float h, float r, float g
 	{ x, y + h, 1.0f, 1.0f,  colour },
 	{ x + w, y + h, 1.0f, 1.0f, colour },
 	};
-	mHackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_ALPHABLENDENABLE, TRUE);
-	mHackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_BLENDOP, D3D9Base::D3DBLENDOP_ADD);
-	mHackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_SRCBLEND, D3D9Base::D3DBLEND_SRCALPHA);
-	mHackerDevice->GetD3D9Device()->SetRenderState(D3D9Base::D3DRS_DESTBLEND, D3D9Base::D3DBLEND_INVSRCALPHA);
+	mHackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_ALPHABLENDENABLE, TRUE);
+	mHackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_BLENDOP, ::D3DBLENDOP_ADD);
+	mHackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_SRCBLEND, ::D3DBLEND_SRCALPHA);
+	mHackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_DESTBLEND, ::D3DBLEND_INVSRCALPHA);
 	mHackerDevice->GetD3D9Device()->SetFVF(CUSTOMFVF);
-	mHackerDevice->GetD3D9Device()->DrawPrimitiveUP(D3D9Base::D3DPT_TRIANGLESTRIP, 2, quad, sizeof(CUSTOMVERTEX));
+	mHackerDevice->GetD3D9Device()->DrawPrimitiveUP(::D3DPT_TRIANGLESTRIP, 2, quad, sizeof(CUSTOMVERTEX));
 }
 
-void Overlay::DrawOutlinedString(CD3DFont *font, wchar_t const *text, D3D9Base::D3DXVECTOR2 const &position, DWORD color)
+void Overlay::DrawOutlinedString(CD3DFont *font, wchar_t const *text, ::D3DXVECTOR2 const &position, DWORD color)
 {
 	char c[MAX_PATH];
 	wcstombs(c, text, MAX_PATH);
@@ -278,7 +277,7 @@ static bool FindInfoText(wchar_t *info, D3D9Wrapper::IDirect3DShader9 *selectedS
 
 void Overlay::DrawShaderInfoLine(wchar_t *osdString, float *y) {
 	SIZE strSize;
-	D3D9Base::D3DXVECTOR2 textPosition;
+	::D3DXVECTOR2 textPosition;
 	float x = 0;
 	char c[MAX_PATH];
 	wcstombs(c, osdString, MAX_PATH);
@@ -288,7 +287,7 @@ void Overlay::DrawShaderInfoLine(wchar_t *osdString, float *y) {
 	if (!G->verbose_overlay)
 		x = max(float(mResolution.x - strSize.cx) / 2, float(0));
 
-	textPosition = D3D9Base::D3DXVECTOR2(x, 10 + ((*y)++ * (float)strSize.cy));
+	textPosition = ::D3DXVECTOR2(x, 10 + ((*y)++ * (float)strSize.cy));
 	mFont->DrawTextW(textPosition.x, textPosition.y, Gdiplus::Color::LimeGreen, c, 0, 0);
 }
 
@@ -341,7 +340,7 @@ void Overlay::DrawNotices(float *y)
 {
 	std::vector<OverlayNotice>::iterator notice;
 	DWORD time = GetTickCount();
-	D3D9Base::D3DXVECTOR2 textPosition;
+	::D3DXVECTOR2 textPosition;
 	SIZE strSize;
 	int level, displayed = 0;
 
@@ -460,7 +459,7 @@ ULONG Overlay::ReferenceCount()
 	return ref;
 }
 
-void Overlay::DrawOverlay(CachedStereoValues *cachedStereoValues, D3D9Base::IDirect3DSwapChain9 *pSwapChain)
+void Overlay::DrawOverlay(CachedStereoValues *cachedStereoValues, ::IDirect3DSwapChain9 *pSwapChain)
 {
 	Profiling::State profiling_state;
 	HRESULT hr;
@@ -481,7 +480,7 @@ void Overlay::DrawOverlay(CachedStereoValues *cachedStereoValues, D3D9Base::IDir
 		{
 			wchar_t osdString[maxstring];
 			SIZE strSize;
-			D3D9Base::D3DXVECTOR2 textPosition;
+			::D3DXVECTOR2 textPosition;
 			float y = 10.0f;
 
 			if (G->hunting == HUNTING_MODE_ENABLED) {
@@ -496,7 +495,7 @@ void Overlay::DrawOverlay(CachedStereoValues *cachedStereoValues, D3D9Base::IDir
 				hr = mFont->GetTextExtent(c, &strSize);
 				if (FAILED(hr))
 					goto drawing_end;
-				textPosition = D3D9Base::D3DXVECTOR2(float(mResolution.x - strSize.cx) / 2, y);
+				textPosition = ::D3DXVECTOR2(float(mResolution.x - strSize.cx) / 2, y);
 				DrawOutlinedString(mFont.get(), osdString, textPosition, Gdiplus::Color::LimeGreen);
 				y += strSize.cy;
 
@@ -508,7 +507,7 @@ void Overlay::DrawOverlay(CachedStereoValues *cachedStereoValues, D3D9Base::IDir
 				hr = mFont->GetTextExtent(c, &strSize);
 				if (FAILED(hr))
 					goto drawing_end;
-				textPosition = D3D9Base::D3DXVECTOR2(float(mResolution.x - strSize.cx) / 2, float(mResolution.y - strSize.cy - 10));
+				textPosition = ::D3DXVECTOR2(float(mResolution.x - strSize.cx) / 2, float(mResolution.y - strSize.cy - 10));
 				DrawOutlinedString(mFont.get(), osdString, textPosition, Gdiplus::Color::LimeGreen);
 			drawing_end:
 				mFont->EndDrawing();

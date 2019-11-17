@@ -250,7 +250,7 @@ BOOL WINAPI D3DPERF_QueryRepeatFrame()
 	return (*call)();
 }
 
-void WINAPI D3DPERF_SetMarker(D3D9Base::D3DCOLOR color, LPCWSTR name)
+void WINAPI D3DPERF_SetMarker(::D3DCOLOR color, LPCWSTR name)
 {
 	LogInfo("D3DPERF_SetMarker called\n");
 
@@ -266,7 +266,7 @@ void WINAPI D3DPERF_SetOptions(DWORD options)
 	(*call)(options);
 }
 
-void WINAPI D3DPERF_SetRegion(D3D9Base::D3DCOLOR color, LPCWSTR name)
+void WINAPI D3DPERF_SetRegion(::D3DCOLOR color, LPCWSTR name)
 {
 	LogInfo("D3DPERF_SetRegion called\n");
 
@@ -519,7 +519,7 @@ D3D9Wrapper::IDirect3DUnknown * D3D9Wrapper::IDirect3DUnknown::QueryInterface_Fi
 	return nullptr;
 }
 
-HRESULT _Direct3DCreate9Ex(UINT Version, D3D9Base::IDirect3D9Ex **ppD3D) {
+HRESULT _Direct3DCreate9Ex(UINT Version, ::IDirect3D9Ex **ppD3D) {
 	LogInfo("Direct3DCreate9Ex called with Version=%d\n", Version);
 	D3D9Wrapper::D3DCREATEEX pCreate = (D3D9Wrapper::D3DCREATEEX)GetProcAddress(hD3D, "Direct3DCreate9Ex");
 	if (!pCreate)
@@ -528,7 +528,7 @@ HRESULT _Direct3DCreate9Ex(UINT Version, D3D9Base::IDirect3D9Ex **ppD3D) {
 
 		return NULL;
 	}
-	D3D9Base::LPDIRECT3D9EX pD3D = NULL;
+	::LPDIRECT3D9EX pD3D = NULL;
 	HRESULT hr = pCreate(Version, &pD3D);
 	if (FAILED(hr) || pD3D == NULL)
 	{
@@ -541,7 +541,7 @@ HRESULT _Direct3DCreate9Ex(UINT Version, D3D9Base::IDirect3D9Ex **ppD3D) {
 	LogInfo("  returns handle=%p, wrapper=%p\n", pD3D, wrapper);
 
 	if (!(G->enable_hooks >= EnableHooksDX9::ALL) && wrapper) {
-		*ppD3D = (D3D9Base::IDirect3D9Ex*)wrapper;
+		*ppD3D = (::IDirect3D9Ex*)wrapper;
 	}
 	else {
 		*ppD3D = pD3D;
@@ -549,14 +549,14 @@ HRESULT _Direct3DCreate9Ex(UINT Version, D3D9Base::IDirect3D9Ex **ppD3D) {
 
 	return hr;
 }
-D3D9Base::IDirect3D9* WINAPI Direct3DCreate9(UINT Version)
+::IDirect3D9* WINAPI Direct3DCreate9(UINT Version)
 {
 	InitD39();
 	LogInfo("Direct3DCreate9 called with Version=%d\n", Version);
 
 	if (G->gForwardToEx) {
 		LogInfo("forwarding to Direct3DCreate9Ex\n");
-		D3D9Base::IDirect3D9Ex *pD3D;
+		::IDirect3D9Ex *pD3D;
 		_Direct3DCreate9Ex(Version, &pD3D);
 		return pD3D;
 	}
@@ -567,7 +567,7 @@ D3D9Base::IDirect3D9* WINAPI Direct3DCreate9(UINT Version)
 
         return NULL;
     }
-	D3D9Base::LPDIRECT3D9 pD3D = NULL;
+	::LPDIRECT3D9 pD3D = NULL;
 	pD3D = pCreate(Version);
     if (pD3D == NULL)
     {
@@ -580,22 +580,22 @@ D3D9Base::IDirect3D9* WINAPI Direct3DCreate9(UINT Version)
     LogInfo("  returns handle=%p, wrapper=%p\n", pD3D, wrapper);
 
 	if (!(G->enable_hooks >= EnableHooksDX9::ALL) && wrapper) {
-		return (D3D9Base::IDirect3D9*)wrapper;
+		return (::IDirect3D9*)wrapper;
 	}
 	else {
 		return pD3D;
 	}
 }
 
-HRESULT WINAPI Direct3DCreate9Ex(UINT Version, D3D9Base::IDirect3D9Ex **ppD3D)
+HRESULT WINAPI Direct3DCreate9Ex(UINT Version, ::IDirect3D9Ex **ppD3D)
 {
 	InitD39();
 	HRESULT hr = _Direct3DCreate9Ex(Version, ppD3D);
 	return hr;
 }
-static D3D9Base::LPDIRECT3DSURFACE9 baseSurface9(D3D9Wrapper::IDirect3DSurface9 *pSurface);
+static ::LPDIRECT3DSURFACE9 baseSurface9(D3D9Wrapper::IDirect3DSurface9 *pSurface);
 
-static HRESULT createFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *HackerDevice, D3D9Wrapper::FakeSwapChain *FakeSwapChain, D3D9Base::D3DPRESENT_PARAMETERS *PresentParams, UINT NewWidth, UINT NewHeight) {
+static HRESULT createFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *HackerDevice, D3D9Wrapper::FakeSwapChain *FakeSwapChain, ::D3DPRESENT_PARAMETERS *PresentParams, UINT NewWidth, UINT NewHeight) {
 
 	HRESULT hr;
 	if (PresentParams->Windowed && (PresentParams->BackBufferHeight == 0 || PresentParams->BackBufferWidth == 0)) {
@@ -617,8 +617,8 @@ static HRESULT createFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *HackerDevice, 
 	for (UINT x = 0; x < PresentParams->BackBufferCount; x++) {
 		D3D9Wrapper::IDirect3DSurface9 *wrappedFakeBackBuffer;
 		if (G->gForceStereo == 2) {
-			D3D9Base::IDirect3DSurface9* pLeftRenderTargetFake = NULL;
-			D3D9Base::IDirect3DSurface9* pRightRenderTargetFake = NULL;
+			::IDirect3DSurface9* pLeftRenderTargetFake = NULL;
+			::IDirect3DSurface9* pRightRenderTargetFake = NULL;
 			// create left/mono
 			hr = HackerDevice->GetD3D9Device()->CreateRenderTarget(PresentParams->BackBufferWidth, PresentParams->BackBufferHeight, PresentParams->BackBufferFormat, PresentParams->MultiSampleType, PresentParams->MultiSampleQuality, (PresentParams->Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER), &pLeftRenderTargetFake, NULL);
 			++HackerDevice->migotoResourceCount;
@@ -634,8 +634,8 @@ static HRESULT createFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *HackerDevice, 
 			}
 			wrappedFakeBackBuffer = D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(pLeftRenderTargetFake, HackerDevice, pRightRenderTargetFake, HackerDevice->mWrappedSwapChains[FakeSwapChain->swapChainIndex]);
 			if (G->SCREEN_UPSCALING > 0) {
-				D3D9Base::IDirect3DSurface9* pLeftRenderTargetUpscaling = NULL;
-				D3D9Base::IDirect3DSurface9* pRightRenderTargetUpscaling = NULL;
+				::IDirect3DSurface9* pLeftRenderTargetUpscaling = NULL;
+				::IDirect3DSurface9* pRightRenderTargetUpscaling = NULL;
 				// create left/mono
 				hr = HackerDevice->GetD3D9Device()->CreateRenderTarget(NewWidth, NewHeight, PresentParams->BackBufferFormat, PresentParams->MultiSampleType, PresentParams->MultiSampleQuality, (PresentParams->Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER), &pLeftRenderTargetUpscaling, NULL);
 				if (FAILED(hr)) {
@@ -652,7 +652,7 @@ static HRESULT createFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *HackerDevice, 
 			}
 		}
 		else {
-			D3D9Base::IDirect3DSurface9 *pFakeBackBuffer;
+			::IDirect3DSurface9 *pFakeBackBuffer;
 			hr = HackerDevice->GetD3D9Device()->CreateRenderTarget(PresentParams->BackBufferWidth, PresentParams->BackBufferHeight, PresentParams->BackBufferFormat, PresentParams->MultiSampleType, PresentParams->MultiSampleQuality, (PresentParams->Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER), &pFakeBackBuffer, NULL);
 			if (FAILED(hr)) {
 				LogInfo("  Fake Render Target, failed to create surface : %d \n", hr);
@@ -672,7 +672,7 @@ static HRESULT createFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *HackerDevice, 
 	return hr;
 
 }
-HRESULT CreateFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *me, D3D9Wrapper::FakeSwapChain **upSwapChain, D3D9Base::D3DPRESENT_PARAMETERS *pOrigParams, D3D9Base::D3DPRESENT_PARAMETERS *pParams, string *error) {
+HRESULT CreateFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *me, D3D9Wrapper::FakeSwapChain **upSwapChain, ::D3DPRESENT_PARAMETERS *pOrigParams, ::D3DPRESENT_PARAMETERS *pParams, string *error) {
 	HRESULT hr;
 	if (pOrigParams == NULL || pParams == NULL) {
 		return E_FAIL;
@@ -708,7 +708,7 @@ HRESULT CreateFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *me, D3D9Wrapper::Fake
 				me->mFakeDepthSurface->Release();
 				me->mFakeDepthSurface = NULL;
 			}
-			D3D9Base::IDirect3DSurface9 *pRealFakeDepthStencil;
+			::IDirect3DSurface9 *pRealFakeDepthStencil;
 			hr = me->GetD3D9Device()->CreateDepthStencilSurface(pOrigParams->BackBufferWidth, pOrigParams->BackBufferHeight, pOrigParams->AutoDepthStencilFormat, pOrigParams->MultiSampleType, pOrigParams->MultiSampleQuality, (pOrigParams->Flags & D3DPRESENTFLAG_DISCARD_DEPTHSTENCIL), &pRealFakeDepthStencil, NULL);
 			if (FAILED(hr)) {
 				LogOverlay(LOG_DIRE, " HackerFakeSwapChain failed to create fake depth surface.\n");
@@ -717,7 +717,7 @@ HRESULT CreateFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *me, D3D9Wrapper::Fake
 			else {
 				++me->migotoResourceCount;
 				if (G->gForceStereo == 2) {
-					D3D9Base::IDirect3DSurface9* pRightDepthStencil = NULL;
+					::IDirect3DSurface9* pRightDepthStencil = NULL;
 					hr = me->GetD3D9Device()->CreateDepthStencilSurface(pOrigParams->BackBufferWidth, pOrigParams->BackBufferHeight, pOrigParams->AutoDepthStencilFormat, pOrigParams->MultiSampleType, pOrigParams->MultiSampleQuality, (pOrigParams->Flags & D3DPRESENTFLAG_DISCARD_DEPTHSTENCIL), &pRightDepthStencil, NULL);
 					if (FAILED(hr)) {
 						LogOverlay(LOG_DIRE, " HackerFakeSwapChain Direct Mode failed to create right fake depth surface.\n");
@@ -773,7 +773,7 @@ static void CheckDevice(D3D9Wrapper::IDirect3DDevice9 *me)
 				me->_BehaviorFlags,
 				&me->_pPresentationParameters,
 				me->_pFullscreenDisplayMode,
-				(D3D9Base::IDirect3DDevice9Ex**) &me->m_pRealUnk);
+				(::IDirect3DDevice9Ex**) &me->m_pRealUnk);
 		}
 		else {
 			hr = me->m_pD3D->GetDirect3D9()->CreateDevice(
@@ -782,7 +782,7 @@ static void CheckDevice(D3D9Wrapper::IDirect3DDevice9 *me)
 				me->_hFocusWindow,
 				me->_BehaviorFlags,
 				&me->_pPresentationParameters,
-				(D3D9Base::IDirect3DDevice9**) &me->m_pRealUnk);
+				(::IDirect3DDevice9**) &me->m_pRealUnk);
 		}
 
 		if (FAILED(hr))
@@ -811,7 +811,7 @@ static void CheckDevice(D3D9Wrapper::IDirect3DDevice9 *me)
 				me->pendingCreateDepthStencilSurface->_MultiSample,
 				me->pendingCreateDepthStencilSurface->_MultisampleQuality,
 				me->pendingCreateDepthStencilSurface->_Discard,
-				(D3D9Base::IDirect3DSurface9**) &me->pendingCreateDepthStencilSurface->m_pRealUnk,
+				(::IDirect3DSurface9**) &me->pendingCreateDepthStencilSurface->m_pRealUnk,
 				0);
 			if (FAILED(hr))
 			{
@@ -828,7 +828,7 @@ static void CheckDevice(D3D9Wrapper::IDirect3DDevice9 *me)
 		{
 			LogInfo("  calling postponed SetDepthStencilSurface.\n");
 
-			D3D9Base::LPDIRECT3DSURFACE9 baseStencil = baseSurface9(me->pendingSetDepthStencilSurface);
+			::LPDIRECT3DSURFACE9 baseStencil = baseSurface9(me->pendingSetDepthStencilSurface);
 			hr = me->GetD3D9Device()->SetDepthStencilSurface(baseStencil);
 			if (FAILED(hr))
 			{
@@ -849,7 +849,7 @@ static void CheckDevice(D3D9Wrapper::IDirect3DDevice9 *me)
 				me->pendingCreateDepthStencilSurfaceEx->_MultiSample,
 				me->pendingCreateDepthStencilSurfaceEx->_MultisampleQuality,
 				me->pendingCreateDepthStencilSurfaceEx->_Discard,
-				(D3D9Base::IDirect3DSurface9**) &me->pendingCreateDepthStencilSurface->m_pRealUnk,
+				(::IDirect3DSurface9**) &me->pendingCreateDepthStencilSurface->m_pRealUnk,
 				0,
 				me->pendingCreateDepthStencilSurfaceEx->_Usage);
 			if (FAILED(hr))
@@ -874,7 +874,7 @@ static void CheckVertexDeclaration9(D3D9Wrapper::IDirect3DVertexDeclaration9 *me
 	CheckDevice(me->pendingDevice);
 
 	LogInfo("  calling postponed CreateVertexDeclaration.\n");
-	HRESULT hr = me->pendingDevice->GetD3D9Device()->CreateVertexDeclaration(&me->_VertexElements, (D3D9Base::IDirect3DVertexDeclaration9**) &me->m_pRealUnk);
+	HRESULT hr = me->pendingDevice->GetD3D9Device()->CreateVertexDeclaration(&me->_VertexElements, (::IDirect3DVertexDeclaration9**) &me->m_pRealUnk);
 	if (FAILED(hr))
 	{
 		LogInfo("    failed creating vertex declaration with result = %x\n", hr);
@@ -894,7 +894,7 @@ static void CheckTexture9(D3D9Wrapper::IDirect3DTexture9 *me)
 		me->pendingCreateTexture = false;
 		CheckDevice(me->_Device);
 		LogInfo("  calling postponed CreateTexture.\n");
-		HRESULT hr = me->_Device->GetD3D9Device()->CreateTexture(me->_Width, me->_Height, me->_Levels, me->_Usage, me->_Format, me->_Pool, (D3D9Base::IDirect3DTexture9**) &me->m_pRealUnk, 0);
+		HRESULT hr = me->_Device->GetD3D9Device()->CreateTexture(me->_Width, me->_Height, me->_Levels, me->_Usage, me->_Format, me->_Pool, (::IDirect3DTexture9**) &me->m_pRealUnk, 0);
 		if (FAILED(hr))
 		{
 			LogInfo("    failed creating texture with result = %x\n", hr);
@@ -910,7 +910,7 @@ static void CheckTexture9(D3D9Wrapper::IDirect3DTexture9 *me)
 		me->pendingLockUnlock = false;
 		LogInfo("  calling postponed Lock.\n");
 
-		D3D9Base::D3DLOCKED_RECT rect;
+		::D3DLOCKED_RECT rect;
 		HRESULT hr = me->LockRect(me->_Level, &rect, 0, me->_Flags);
 		if (FAILED(hr))
 		{
@@ -938,7 +938,7 @@ static void CheckVolumeTexture9(D3D9Wrapper::IDirect3DVolumeTexture9 *me)
 		me->pendingCreateTexture = false;
 		CheckDevice(me->_Device);
 		LogInfo("  calling postponed CreateVolumeTexture.\n");
-		HRESULT hr = me->_Device->GetD3D9Device()->CreateVolumeTexture(me->_Width, me->_Height, me->_Depth, me->_Levels, me->_Usage, me->_Format, me->_Pool, (D3D9Base::IDirect3DVolumeTexture9**) &me->m_pRealUnk, 0);
+		HRESULT hr = me->_Device->GetD3D9Device()->CreateVolumeTexture(me->_Width, me->_Height, me->_Depth, me->_Levels, me->_Usage, me->_Format, me->_Pool, (::IDirect3DVolumeTexture9**) &me->m_pRealUnk, 0);
 		if (FAILED(hr))
 		{
 			LogInfo("    failed creating volume texture with result = %x\n", hr);
@@ -955,7 +955,7 @@ static void CheckVolumeTexture9(D3D9Wrapper::IDirect3DVolumeTexture9 *me)
 		me->pendingLockUnlock = false;
 		LogInfo("  calling postponed Lock.\n");
 
-		D3D9Base::D3DLOCKED_BOX box;
+		::D3DLOCKED_BOX box;
 		HRESULT hr = me->LockBox(me->_Level, &box, 0, me->_Flags);
 		if (FAILED(hr))
 		{
@@ -983,7 +983,7 @@ static void CheckCubeTexture9(D3D9Wrapper::IDirect3DCubeTexture9 *me)
 		me->pendingCreateTexture = false;
 		CheckDevice(me->_Device);
 		LogInfo("  calling postponed CreateCubeTexture.\n");
-		HRESULT hr = me->_Device->GetD3D9Device()->CreateCubeTexture(me->_EdgeLength, me->_Levels, me->_Usage, me->_Format, me->_Pool, (D3D9Base::IDirect3DCubeTexture9**) &me->m_pRealUnk, 0);
+		HRESULT hr = me->_Device->GetD3D9Device()->CreateCubeTexture(me->_EdgeLength, me->_Levels, me->_Usage, me->_Format, me->_Pool, (::IDirect3DCubeTexture9**) &me->m_pRealUnk, 0);
 		if (FAILED(hr))
 		{
 			LogInfo("    failed creating cube texture with result = %x\n", hr);
@@ -999,7 +999,7 @@ static void CheckCubeTexture9(D3D9Wrapper::IDirect3DCubeTexture9 *me)
 		me->pendingLockUnlock = false;
 		LogInfo("  calling postponed Lock.\n");
 
-		D3D9Base::D3DLOCKED_RECT rect;
+		::D3DLOCKED_RECT rect;
 		HRESULT hr = me->LockRect(me->_FaceType, me->_Level, &rect, 0, me->_Flags);
 		if (FAILED(hr))
 		{
@@ -1022,13 +1022,13 @@ static void CheckCubeTexture9(D3D9Wrapper::IDirect3DCubeTexture9 *me)
 }
 static void CheckTexture9(D3D9Wrapper::IDirect3DBaseTexture9 *me)
 {
-	D3D9Base::D3DRESOURCETYPE type = me->GetD3DBaseTexture9()->GetType();
+	::D3DRESOURCETYPE type = me->GetD3DBaseTexture9()->GetType();
 	switch (type) {
-	case D3D9Base::D3DRTYPE_TEXTURE:
+	case ::D3DRTYPE_TEXTURE:
 		CheckTexture9(((D3D9Wrapper::IDirect3DTexture9*)me));
-	case D3D9Base::D3DRTYPE_CUBETEXTURE:
+	case ::D3DRTYPE_CUBETEXTURE:
 		CheckCubeTexture9(((D3D9Wrapper::IDirect3DCubeTexture9*)me));
-	case D3D9Base::D3DRTYPE_VOLUMETEXTURE:
+	case ::D3DRTYPE_VOLUMETEXTURE:
 		CheckVolumeTexture9(((D3D9Wrapper::IDirect3DVolumeTexture9*)me));
 	}
 }
@@ -1042,7 +1042,7 @@ static void CheckSurface9(D3D9Wrapper::IDirect3DSurface9 *me)
 		CheckTexture9(me->_Texture);
 
 		LogInfo("  calling postponed GetSurfaceLevel.\n");
-		HRESULT hr = me->_Texture->GetD3DTexture9()->GetSurfaceLevel(me->_Level, (D3D9Base::IDirect3DSurface9**) &me->m_pRealUnk);
+		HRESULT hr = me->_Texture->GetD3DTexture9()->GetSurfaceLevel(me->_Level, (::IDirect3DSurface9**) &me->m_pRealUnk);
 		if (FAILED(hr))
 		{
 			LogInfo("    failed getting surface with result = %x\n", hr);
@@ -1059,7 +1059,7 @@ static void CheckSurface9(D3D9Wrapper::IDirect3DSurface9 *me)
 		CheckCubeTexture9(me->_CubeTexture);
 
 		LogInfo("  calling postponed GetCubeMapSurface.\n");
-		HRESULT hr = me->_CubeTexture->GetD3DCubeTexture9()->GetCubeMapSurface(me->_FaceType, me->_Level, (D3D9Base::IDirect3DSurface9**) &me->m_pRealUnk);
+		HRESULT hr = me->_CubeTexture->GetD3DCubeTexture9()->GetCubeMapSurface(me->_FaceType, me->_Level, (::IDirect3DSurface9**) &me->m_pRealUnk);
 		if (FAILED(hr))
 		{
 			LogInfo("    failed getting surface with result = %x\n", hr);
@@ -1078,7 +1078,7 @@ static void CheckVolume9(D3D9Wrapper::IDirect3DVolume9 *me)
 	CheckVolumeTexture9(me->_VolumeTexture);
 
 	LogInfo("  calling postponed GetVolumeLevel.\n");
-	HRESULT hr = me->_VolumeTexture->GetD3DVolumeTexture9()->GetVolumeLevel(me->_Level, (D3D9Base::IDirect3DVolume9**) &me->m_pRealUnk);
+	HRESULT hr = me->_VolumeTexture->GetD3DVolumeTexture9()->GetVolumeLevel(me->_Level, (::IDirect3DVolume9**) &me->m_pRealUnk);
 	if (FAILED(hr))
 	{
 		LogInfo("    failed getting volume with result = %x\n", hr);
@@ -1098,7 +1098,7 @@ static void CheckVertexBuffer9(D3D9Wrapper::IDirect3DVertexBuffer9 *me)
 		me->pendingCreateVertexBuffer = false;
 		CheckDevice(me->_Device);
 		LogInfo("  calling postponed CreateVertexBuffer.\n");
-		HRESULT hr = me->_Device->GetD3D9Device()->CreateVertexBuffer(me->_Length, me->_Usage, me->_FVF, me->_Pool, (D3D9Base::IDirect3DVertexBuffer9**) &me->m_pRealUnk, 0);
+		HRESULT hr = me->_Device->GetD3D9Device()->CreateVertexBuffer(me->_Length, me->_Usage, me->_FVF, me->_Pool, (::IDirect3DVertexBuffer9**) &me->m_pRealUnk, 0);
 		if (FAILED(hr))
 		{
 			LogInfo("    failed creating vertex buffer with result = %x\n", hr);
@@ -1141,7 +1141,7 @@ static void CheckIndexBuffer9(D3D9Wrapper::IDirect3DIndexBuffer9 *me)
 		me->pendingCreateIndexBuffer = false;
 		CheckDevice(me->_Device);
 		LogInfo("  calling postponed CreateIndexBuffer.\n");
-		HRESULT hr = me->_Device->GetD3D9Device()->CreateIndexBuffer(me->_Length, me->_Usage, me->_Format, me->_Pool, (D3D9Base::IDirect3DIndexBuffer9**) &me->m_pRealUnk, 0);
+		HRESULT hr = me->_Device->GetD3D9Device()->CreateIndexBuffer(me->_Length, me->_Usage, me->_Format, me->_Pool, (::IDirect3DIndexBuffer9**) &me->m_pRealUnk, 0);
 		if (FAILED(hr))
 		{
 			LogInfo("    failed creating index buffer with result = %x\n", hr);
@@ -1186,7 +1186,7 @@ bool _simulateTextureUpdate(D3D9Wrapper::IDirect3DTexture9 * sourceTexture, D3D9
 
 		if (!destinationTexture->pendingLockUnlock)
 		{
-			D3D9Base::D3DLOCKED_RECT rect;
+			::D3DLOCKED_RECT rect;
 			destinationTexture->LockRect(0, &rect, 0, 0);
 		}
 		memcpy(destinationTexture->_Buffer, sourceTexture->_Buffer, sourceTexture->_Width*sourceTexture->_Height * 4);
@@ -1203,8 +1203,8 @@ bool _simulateTextureUpdate(D3D9Wrapper::IDirect3DCubeTexture9 *sourceTexture, D
 
 		if (!destinationTexture->pendingLockUnlock)
 		{
-			D3D9Base::D3DLOCKED_RECT rect;
-			destinationTexture->LockRect(D3D9Base::D3DCUBEMAP_FACE_POSITIVE_X, 0, &rect, 0, 0);
+			::D3DLOCKED_RECT rect;
+			destinationTexture->LockRect(::D3DCUBEMAP_FACE_POSITIVE_X, 0, &rect, 0, 0);
 		}
 		memcpy(destinationTexture->_Buffer, sourceTexture->_Buffer, sourceTexture->_EdgeLength*sourceTexture->_EdgeLength * 4);
 		return true;
@@ -1222,7 +1222,7 @@ bool _simulateTextureUpdate(D3D9Wrapper::IDirect3DVolumeTexture9 *sourceTexture,
 
 		if (!destinationTexture->pendingLockUnlock)
 		{
-			D3D9Base::D3DLOCKED_BOX box;
+			::D3DLOCKED_BOX box;
 			destinationTexture->LockBox(0, &box, 0, 0);
 		}
 		memcpy(destinationTexture->_Buffer, sourceTexture->_Buffer, sourceTexture->_Height*sourceTexture->_Width*sourceTexture->_Depth * 4);
@@ -1245,7 +1245,7 @@ bool simulateTextureUpdate(D3D9Wrapper::IDirect3DBaseTexture9 * pSourceTexture, 
 	return false;
 }
 
-static D3D9Base::IDirect3DSurface9* baseSurface9(D3D9Wrapper::IDirect3DSurface9 *pSurface) {
+static ::IDirect3DSurface9* baseSurface9(D3D9Wrapper::IDirect3DSurface9 *pSurface) {
 
 	if (!pSurface) return NULL;
 	if (G->gDelayDeviceCreation && pSurface->pendingGetSurfaceLevel && !pSurface->GetD3DSurface9()) {
@@ -1255,7 +1255,7 @@ static D3D9Base::IDirect3DSurface9* baseSurface9(D3D9Wrapper::IDirect3DSurface9 
 		return pSurface->GetD3DSurface9();
 	}
 	else {
-		return (D3D9Base::IDirect3DSurface9*)pSurface;
+		return (::IDirect3DSurface9*)pSurface;
 	}
 }
 static D3D9Wrapper::IDirect3DSurface9* wrappedSurface9(D3D9Wrapper::IDirect3DSurface9 *pSurface) {
@@ -1272,7 +1272,7 @@ static D3D9Wrapper::IDirect3DSurface9* wrappedSurface9(D3D9Wrapper::IDirect3DSur
 		return pWrapper;
 	}
 }
-static D3D9Base::IDirect3DVolume9* baseVolume9(D3D9Wrapper::IDirect3DVolume9 *pVolume) {
+static ::IDirect3DVolume9* baseVolume9(D3D9Wrapper::IDirect3DVolume9 *pVolume) {
 
 	if (!pVolume) return NULL;
 	if (G->gDelayDeviceCreation && pVolume->pendingGetVolumeLevel && !pVolume->GetD3DVolume9()) {
@@ -1283,7 +1283,7 @@ static D3D9Base::IDirect3DVolume9* baseVolume9(D3D9Wrapper::IDirect3DVolume9 *pV
 		return pVolume->GetD3DVolume9();
 	}
 	else {
-		return reinterpret_cast<D3D9Base::IDirect3DVolume9*>(pVolume);
+		return reinterpret_cast<::IDirect3DVolume9*>(pVolume);
 	}
 }
 static D3D9Wrapper::IDirect3DVolume9* wrappedVolume9(D3D9Wrapper::IDirect3DVolume9 *pVolume) {
@@ -1301,7 +1301,7 @@ static D3D9Wrapper::IDirect3DVolume9* wrappedVolume9(D3D9Wrapper::IDirect3DVolum
 		return pWrapper;
 	}
 }
-static D3D9Base::IDirect3DVertexDeclaration9* baseVertexDeclaration9(D3D9Wrapper::IDirect3DVertexDeclaration9 *pVertexDeclaration) {
+static ::IDirect3DVertexDeclaration9* baseVertexDeclaration9(D3D9Wrapper::IDirect3DVertexDeclaration9 *pVertexDeclaration) {
 
 	if (!pVertexDeclaration) return NULL;
 	if (G->gDelayDeviceCreation && pVertexDeclaration->pendingCreateVertexDeclaration && !pVertexDeclaration->GetD3DVertexDeclaration9()) {
@@ -1311,7 +1311,7 @@ static D3D9Base::IDirect3DVertexDeclaration9* baseVertexDeclaration9(D3D9Wrapper
 		return pVertexDeclaration->GetD3DVertexDeclaration9();
 	}
 	else {
-		return (D3D9Base::IDirect3DVertexDeclaration9*)pVertexDeclaration;
+		return (::IDirect3DVertexDeclaration9*)pVertexDeclaration;
 	}
 }
 static D3D9Wrapper::IDirect3DVertexDeclaration9* wrappedVertexDeclaration9(D3D9Wrapper::IDirect3DVertexDeclaration9 *pVertexDeclaration) {
@@ -1329,7 +1329,7 @@ static D3D9Wrapper::IDirect3DVertexDeclaration9* wrappedVertexDeclaration9(D3D9W
 
 	}
 }
-static D3D9Base::IDirect3DVertexBuffer9* baseVertexBuffer9(D3D9Wrapper::IDirect3DVertexBuffer9 *pVertexBuffer) {
+static ::IDirect3DVertexBuffer9* baseVertexBuffer9(D3D9Wrapper::IDirect3DVertexBuffer9 *pVertexBuffer) {
 
 	if (!pVertexBuffer) return NULL;
 	if (G->gDelayDeviceCreation && pVertexBuffer->pendingCreateVertexBuffer && !pVertexBuffer->GetD3DVertexBuffer9()) {
@@ -1339,7 +1339,7 @@ static D3D9Base::IDirect3DVertexBuffer9* baseVertexBuffer9(D3D9Wrapper::IDirect3
 		return pVertexBuffer->GetD3DVertexBuffer9();
 	}
 	else {
-		return (D3D9Base::IDirect3DVertexBuffer9*)pVertexBuffer;
+		return (::IDirect3DVertexBuffer9*)pVertexBuffer;
 	}
 }
 static D3D9Wrapper::IDirect3DVertexBuffer9* wrappedVertexBuffer9(D3D9Wrapper::IDirect3DVertexBuffer9 *pVertexBuffer) {
@@ -1357,7 +1357,7 @@ static D3D9Wrapper::IDirect3DVertexBuffer9* wrappedVertexBuffer9(D3D9Wrapper::ID
 		return pWrapper;
 	}
 }
-static D3D9Base::IDirect3DIndexBuffer9* baseIndexBuffer9(D3D9Wrapper::IDirect3DIndexBuffer9 *pIndexBuffer) {
+static ::IDirect3DIndexBuffer9* baseIndexBuffer9(D3D9Wrapper::IDirect3DIndexBuffer9 *pIndexBuffer) {
 
 	if (!pIndexBuffer) return NULL;
 	if (G->gDelayDeviceCreation && pIndexBuffer->pendingCreateIndexBuffer && !pIndexBuffer->GetD3DIndexBuffer9()) {
@@ -1367,7 +1367,7 @@ static D3D9Base::IDirect3DIndexBuffer9* baseIndexBuffer9(D3D9Wrapper::IDirect3DI
 		return pIndexBuffer->GetD3DIndexBuffer9();
 	}
 	else {
-		return (D3D9Base::IDirect3DIndexBuffer9*)pIndexBuffer;
+		return (::IDirect3DIndexBuffer9*)pIndexBuffer;
 	}
 }
 static D3D9Wrapper::IDirect3DIndexBuffer9* wrappedIndexBuffer9(D3D9Wrapper::IDirect3DIndexBuffer9 *pIndexBuffer) {
@@ -1385,7 +1385,7 @@ static D3D9Wrapper::IDirect3DIndexBuffer9* wrappedIndexBuffer9(D3D9Wrapper::IDir
 
 	}
 }
-static D3D9Base::IDirect3DTexture9* baseTexture9(D3D9Wrapper::IDirect3DTexture9 *pTexture) {
+static ::IDirect3DTexture9* baseTexture9(D3D9Wrapper::IDirect3DTexture9 *pTexture) {
 
 	if (!pTexture) return NULL;
 	if (G->gDelayDeviceCreation && pTexture->pendingCreateTexture && !pTexture->GetD3DTexture9()) {
@@ -1395,7 +1395,7 @@ static D3D9Base::IDirect3DTexture9* baseTexture9(D3D9Wrapper::IDirect3DTexture9 
 		return pTexture->GetD3DTexture9();
 	}
 	else {
-		return (D3D9Base::IDirect3DTexture9*)pTexture;
+		return (::IDirect3DTexture9*)pTexture;
 	}
 }
 static D3D9Wrapper::IDirect3DTexture9* wrappedTexture9(D3D9Wrapper::IDirect3DTexture9 *pTexture) {
@@ -1414,7 +1414,7 @@ static D3D9Wrapper::IDirect3DTexture9* wrappedTexture9(D3D9Wrapper::IDirect3DTex
 	}
 }
 
-static D3D9Base::IDirect3DCubeTexture9* baseTexture9(D3D9Wrapper::IDirect3DCubeTexture9 *pCubeTexture) {
+static ::IDirect3DCubeTexture9* baseTexture9(D3D9Wrapper::IDirect3DCubeTexture9 *pCubeTexture) {
 
 	if (!pCubeTexture) return NULL;
 	if (G->gDelayDeviceCreation && pCubeTexture->pendingCreateTexture && !pCubeTexture->GetD3DCubeTexture9()) {
@@ -1424,7 +1424,7 @@ static D3D9Base::IDirect3DCubeTexture9* baseTexture9(D3D9Wrapper::IDirect3DCubeT
 		return pCubeTexture->GetD3DCubeTexture9();
 	}
 	else {
-		return (D3D9Base::IDirect3DCubeTexture9*)pCubeTexture;
+		return (::IDirect3DCubeTexture9*)pCubeTexture;
 	}
 }
 static D3D9Wrapper::IDirect3DCubeTexture9* wrappedTexture9(D3D9Wrapper::IDirect3DCubeTexture9 *pCubeTexture) {
@@ -1442,7 +1442,7 @@ static D3D9Wrapper::IDirect3DCubeTexture9* wrappedTexture9(D3D9Wrapper::IDirect3
 
 	}
 }
-static D3D9Base::IDirect3DVolumeTexture9* baseTexture9(D3D9Wrapper::IDirect3DVolumeTexture9 *pVolumeTexture) {
+static ::IDirect3DVolumeTexture9* baseTexture9(D3D9Wrapper::IDirect3DVolumeTexture9 *pVolumeTexture) {
 
 	if (!pVolumeTexture) return NULL;
 	if (G->gDelayDeviceCreation && pVolumeTexture->pendingCreateTexture && !pVolumeTexture->GetD3DVolumeTexture9()) {
@@ -1452,7 +1452,7 @@ static D3D9Base::IDirect3DVolumeTexture9* baseTexture9(D3D9Wrapper::IDirect3DVol
 		return pVolumeTexture->GetD3DVolumeTexture9();
 	}
 	else {
-		return (D3D9Base::IDirect3DVolumeTexture9*)pVolumeTexture;
+		return (::IDirect3DVolumeTexture9*)pVolumeTexture;
 	}
 }
 static D3D9Wrapper::IDirect3DVolumeTexture9* wrappedTexture9(D3D9Wrapper::IDirect3DVolumeTexture9 *pVolumeTexture) {
@@ -1469,7 +1469,7 @@ static D3D9Wrapper::IDirect3DVolumeTexture9* wrappedTexture9(D3D9Wrapper::IDirec
 		return pWrapper;
 	}
 }
-static D3D9Base::LPDIRECT3DBASETEXTURE9 baseTexture9(D3D9Wrapper::IDirect3DBaseTexture9 *pTexture)
+static ::LPDIRECT3DBASETEXTURE9 baseTexture9(D3D9Wrapper::IDirect3DBaseTexture9 *pTexture)
 {
 	if (!pTexture) return 0;
 	if (G->gDelayDeviceCreation && pTexture->pendingCreateTexture && !pTexture->GetD3DBaseTexture9()) {
@@ -1479,7 +1479,7 @@ static D3D9Base::LPDIRECT3DBASETEXTURE9 baseTexture9(D3D9Wrapper::IDirect3DBaseT
 		return pTexture->GetD3DBaseTexture9();
 	}
 	else{
-		return (D3D9Base::IDirect3DBaseTexture9*)pTexture;
+		return (::IDirect3DBaseTexture9*)pTexture;
 	}
 	return NULL;
 }
@@ -1494,23 +1494,23 @@ static D3D9Wrapper::IDirect3DBaseTexture9* wrappedTexture9(D3D9Wrapper::IDirect3
 		return pTexture;
 	}
 	else {
-		D3D9Base::D3DRESOURCETYPE type = ((D3D9Base::IDirect3DBaseTexture9*)pTexture)->GetType();
+		::D3DRESOURCETYPE type = ((::IDirect3DBaseTexture9*)pTexture)->GetType();
 		D3D9Wrapper::IDirect3DBaseTexture9 *p = NULL;
 		switch (type) {
-		case D3D9Base::D3DRTYPE_TEXTURE:
+		case ::D3DRTYPE_TEXTURE:
 			p = (D3D9Wrapper::IDirect3DTexture9*) D3D9Wrapper::IDirect3DTexture9::m_List.GetDataPtr(pTexture);
 			break;
-		case D3D9Base::D3DRTYPE_CUBETEXTURE:
+		case ::D3DRTYPE_CUBETEXTURE:
 			p = (D3D9Wrapper::IDirect3DCubeTexture9*) D3D9Wrapper::IDirect3DCubeTexture9::m_List.GetDataPtr(pTexture);
 			break;
-		case D3D9Base::D3DRTYPE_VOLUMETEXTURE:
+		case ::D3DRTYPE_VOLUMETEXTURE:
 			p = (D3D9Wrapper::IDirect3DVolumeTexture9*) D3D9Wrapper::IDirect3DVolumeTexture9::m_List.GetDataPtr(pTexture);
 			break;
 		}
 		return p;
 	}
 }
-static D3D9Base::IDirect3DVertexShader9* baseVertexShader9(D3D9Wrapper::IDirect3DVertexShader9 *pVertexShader) {
+static ::IDirect3DVertexShader9* baseVertexShader9(D3D9Wrapper::IDirect3DVertexShader9 *pVertexShader) {
 
 	if (!pVertexShader) return NULL;
 	if (!(G->enable_hooks >= EnableHooksDX9::ALL)) {
@@ -1518,7 +1518,7 @@ static D3D9Base::IDirect3DVertexShader9* baseVertexShader9(D3D9Wrapper::IDirect3
 
 	}
 	else {
-		return (D3D9Base::IDirect3DVertexShader9*)pVertexShader;
+		return (::IDirect3DVertexShader9*)pVertexShader;
 	}
 }
 static D3D9Wrapper::IDirect3DVertexShader9* wrappedVertexShader9(D3D9Wrapper::IDirect3DVertexShader9 *pVertexShader) {
@@ -1534,7 +1534,7 @@ static D3D9Wrapper::IDirect3DVertexShader9* wrappedVertexShader9(D3D9Wrapper::ID
 
 	}
 }
-static D3D9Base::IDirect3DPixelShader9* basePixelShader9(D3D9Wrapper::IDirect3DPixelShader9 *pPixelShader) {
+static ::IDirect3DPixelShader9* basePixelShader9(D3D9Wrapper::IDirect3DPixelShader9 *pPixelShader) {
 
 	if (!pPixelShader) return NULL;
 	if (!(G->enable_hooks >= EnableHooksDX9::ALL)) {
@@ -1542,7 +1542,7 @@ static D3D9Base::IDirect3DPixelShader9* basePixelShader9(D3D9Wrapper::IDirect3DP
 
 	}
 	else {
-		return (D3D9Base::IDirect3DPixelShader9*)pPixelShader;
+		return (::IDirect3DPixelShader9*)pPixelShader;
 	}
 }
 static D3D9Wrapper::IDirect3DPixelShader9* wrappedPixelShader9(D3D9Wrapper::IDirect3DPixelShader9 *pPixelShader) {
@@ -1573,14 +1573,14 @@ static D3D9Wrapper::IDirect3DDevice9* wrappedDevice9(D3D9Wrapper::IDirect3DDevic
 
 	}
 }
-static D3D9Base::IDirect3DStateBlock9* baseStateBlock9(D3D9Wrapper::IDirect3DStateBlock9 *pStateBlock) {
+static ::IDirect3DStateBlock9* baseStateBlock9(D3D9Wrapper::IDirect3DStateBlock9 *pStateBlock) {
 
 	if (!pStateBlock) return NULL;
 	if (!(G->enable_hooks >= EnableHooksDX9::ALL)) {
 		return pStateBlock->GetD3DStateBlock9();
 	}
 	else {
-		return (D3D9Base::IDirect3DStateBlock9*)pStateBlock;
+		return (::IDirect3DStateBlock9*)pStateBlock;
 	}
 }
 static D3D9Wrapper::IDirect3DStateBlock9* wrappedStateBlock9(D3D9Wrapper::IDirect3DStateBlock9 *pStateBlock) {
@@ -1595,7 +1595,7 @@ static D3D9Wrapper::IDirect3DStateBlock9* wrappedStateBlock9(D3D9Wrapper::IDirec
 
 	}
 }
-static void ForceDisplayMode(D3D9Base::D3DPRESENT_PARAMETERS *PresentParams, D3D9Base::D3DDISPLAYMODEEX* FullscreenDisplayMode = NULL)
+static void ForceDisplayMode(::D3DPRESENT_PARAMETERS *PresentParams, ::D3DDISPLAYMODEEX* FullscreenDisplayMode = NULL)
 {
 	// Historically we have only forced the refresh rate when full-screen.
 	// Not positive if it would hurt to do otherwise, but for now assuming
@@ -1652,7 +1652,7 @@ static void ForceDisplayMode(D3D9Base::D3DPRESENT_PARAMETERS *PresentParams, D3D
 
 	//}
 }
-void ForceDisplayParams(D3D9Base::D3DPRESENT_PARAMETERS *PresentParams, D3D9Base::D3DDISPLAYMODEEX* FullscreenDisplayMode = NULL)
+void ForceDisplayParams(::D3DPRESENT_PARAMETERS *PresentParams, ::D3DDISPLAYMODEEX* FullscreenDisplayMode = NULL)
 {
 	if (PresentParams == NULL)
 		return;
@@ -1696,18 +1696,18 @@ void DirectModePostCommandList(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, D3D9
 	if (G->gForceStereo != 2)
 		return;
 	D3D9Wrapper::FakeSwapChain *fakeSwapChain;
-	D3D9Base::IDirect3DSurface9 *pRealBackBuffer;
-	D3D9Base::IDirect3DSurface9 *pLeftSurface;
-	D3D9Base::IDirect3DSurface9 *pRightSurface;
+	::IDirect3DSurface9 *pRealBackBuffer;
+	::IDirect3DSurface9 *pLeftSurface;
+	::IDirect3DSurface9 *pRightSurface;
 	if (swapChain == NULL) {
-		hackerDevice->GetD3D9Device()->GetBackBuffer(0, 0, D3D9Base::D3DBACKBUFFER_TYPE_MONO, &pRealBackBuffer);
+		hackerDevice->GetD3D9Device()->GetBackBuffer(0, 0, ::D3DBACKBUFFER_TYPE_MONO, &pRealBackBuffer);
 		fakeSwapChain = &hackerDevice->mFakeSwapChains[0];
 	}
 	else {
-		swapChain->GetSwapChain9()->GetBackBuffer(0, D3D9Base::D3DBACKBUFFER_TYPE_MONO, &pRealBackBuffer);
+		swapChain->GetSwapChain9()->GetBackBuffer(0, ::D3DBACKBUFFER_TYPE_MONO, &pRealBackBuffer);
 		fakeSwapChain = swapChain->mFakeSwapChain;
 	}
-	D3D9Base::D3DSURFACE_DESC desc;
+	::D3DSURFACE_DESC desc;
 	pRealBackBuffer->GetDesc(&desc);
 	if (G->SCREEN_UPSCALING > 0) {
 		pLeftSurface = fakeSwapChain->mDirectModeUpscalingBackBuffers.at(0)->DirectModeGetLeft();
@@ -1717,7 +1717,7 @@ void DirectModePostCommandList(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, D3D9
 		pLeftSurface = fakeSwapChain->mFakeBackBuffers.at(0)->DirectModeGetLeft();
 		pRightSurface = fakeSwapChain->mFakeBackBuffers.at(0)->DirectModeGetRight();
 	}
-	hackerDevice->GetD3D9Device()->StretchRect(pLeftSurface, NULL, pRealBackBuffer, NULL, D3D9Base::D3DTEXF_POINT);
+	hackerDevice->GetD3D9Device()->StretchRect(pLeftSurface, NULL, pRealBackBuffer, NULL, ::D3DTEXF_POINT);
 	pRealBackBuffer->Release();
 }
 void RunFrameActions(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, CachedStereoValues *cachedStereoValues = NULL)
@@ -1880,18 +1880,18 @@ static bool ShouldDuplicate(D3D2DTEXTURE_DESC * pDesc)
 	}
 	return false;
 }
-static void UnWrapTexture(D3D9Wrapper::IDirect3DBaseTexture9* pWrappedTexture, D3D9Base::IDirect3DBaseTexture9** ppActualLeftTexture, D3D9Base::IDirect3DBaseTexture9** ppActualRightTexture) {
+static void UnWrapTexture(D3D9Wrapper::IDirect3DBaseTexture9* pWrappedTexture, ::IDirect3DBaseTexture9** ppActualLeftTexture, ::IDirect3DBaseTexture9** ppActualRightTexture) {
 	if (!pWrappedTexture)
 		return;
 
-	D3D9Base::D3DRESOURCETYPE type = pWrappedTexture->GetD3DBaseTexture9()->GetType();
+	::D3DRESOURCETYPE type = pWrappedTexture->GetD3DBaseTexture9()->GetType();
 
 	*ppActualLeftTexture = NULL;
 	*ppActualRightTexture = NULL;
 
 	switch (type)
 	{
-	case D3D9Base::D3DRTYPE_TEXTURE:
+	case ::D3DRTYPE_TEXTURE:
 	{
 		D3D9Wrapper::IDirect3DTexture9* pDerivedTexture = reinterpret_cast<D3D9Wrapper::IDirect3DTexture9*> (pWrappedTexture);
 		*ppActualLeftTexture = pDerivedTexture->DirectModeGetLeft();
@@ -1899,14 +1899,14 @@ static void UnWrapTexture(D3D9Wrapper::IDirect3DBaseTexture9* pWrappedTexture, D
 
 		break;
 	}
-	case D3D9Base::D3DRTYPE_CUBETEXTURE:
+	case ::D3DRTYPE_CUBETEXTURE:
 	{
 		D3D9Wrapper::IDirect3DCubeTexture9* pDerivedTexture = reinterpret_cast<D3D9Wrapper::IDirect3DCubeTexture9*> (pWrappedTexture);
 		*ppActualLeftTexture = pDerivedTexture->DirectModeGetLeft();
 		*ppActualRightTexture = pDerivedTexture->DirectModeGetRight();
 		break;
 	}
-	case D3D9Base::D3DRTYPE_VOLUMETEXTURE:
+	case ::D3DRTYPE_VOLUMETEXTURE:
 	{
 		D3D9Wrapper::IDirect3DVolumeTexture9* pDerivedTexture = reinterpret_cast<D3D9Wrapper::IDirect3DVolumeTexture9*> (pWrappedTexture);
 		*ppActualLeftTexture = pDerivedTexture->GetD3DVolumeTexture9();

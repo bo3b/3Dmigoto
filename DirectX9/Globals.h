@@ -1,8 +1,5 @@
 #pragma once
-namespace D3D9Base
-{
 #include <d3d9.h>
-}
 #include <mutex>
 #include <ctime>
 #include <vector>
@@ -325,7 +322,7 @@ struct TextureOverride {
 		priority(0)
 	{}
 };
-//typedef std::unordered_map<D3D9Base::IDirect3DResource9*, ResourceHandleInfo> ResourceMap;
+//typedef std::unordered_map<::IDirect3DResource9*, ResourceHandleInfo> ResourceMap;
 // The TextureOverrideList will be sorted because we want multiple
 // [TextureOverrides] that share the same hash (differentiated by draw context
 // matching) to always be processed in the same order for consistent results.
@@ -664,7 +661,7 @@ public:
 	int mSelectedPixelShaderPos;							// -1 for unselected state.
 	set<uint32_t> mSelectedPixelShader_IndexBuffer;	// std::set so that index buffers used with a shader will be sorted in log when marked
 	set<uint32_t> mSelectedPixelShader_VertexBuffer;
-	D3D9Base::IDirect3DPixelShader9* mPinkingShader;						// Special pixels shader to mark a selection with hot pink.
+	::IDirect3DPixelShader9* mPinkingShader;						// Special pixels shader to mark a selection with hot pink.
 
 	ShaderSet mReloadedShaders;						// Shaders that were reloaded live from ShaderFixes
 

@@ -63,9 +63,7 @@
 #endif // MIGOTO_DX
 
 #ifndef NO_STEREO_D3D9
-namespace D3D9Base { // FIXME: DROP THIS NAMESPACE!
 #include <D3D9.h>
-}
 #endif
 #ifndef NO_STEREO_D3D11 // FIXME: THIS GATING SHOULD NOT BE NECESSARY, BUT IS. MAYBE BECAUSE OF THE ABOVE NAMESPACE?
 #include <d3d11_1.h>
@@ -281,10 +279,10 @@ namespace nv {
 		// The D3D9 "Driver" for stereo updates, encapsulates the logic that is Direct3D9 specific.
 		struct D3D9Type
 		{
-			typedef D3D9Base::IDirect3DDevice9 Device;
-			typedef D3D9Base::IDirect3DDevice9 Context; // 3DMIGOTO ADDITION - Use device as context in DX < 11
-			typedef D3D9Base::IDirect3DTexture9 Texture;
-			typedef D3D9Base::IDirect3DSurface9 StagingResource;
+			typedef IDirect3DDevice9 Device;
+			typedef IDirect3DDevice9 Context; // 3DMIGOTO ADDITION - Use device as context in DX < 11
+			typedef IDirect3DTexture9 Texture;
+			typedef IDirect3DSurface9 StagingResource;
 
 			static const NV_STEREO_REGISTRY_PROFILE_TYPE RegistryProfileType = NVAPI_STEREO_DX9_REGISTRY_PROFILE;
 
@@ -294,7 +292,7 @@ namespace nv {
 			// DSS MERGE NOTES: These values (and the StereoBytesPerPixel*8 below) were changed from upstream for some reason:
 			// UPSTREAM VERSION: static const D3DFORMAT StereoTexFormat = D3DFMT_A32B32G32R32F;
 			// UPSTREAM VERSION: static const int StereoBytesPerPixel = 16;
-			static const D3D9Base::D3DFORMAT StereoTexFormat = D3D9Base::D3DFMT_R32F;
+			static const D3DFORMAT StereoTexFormat = D3DFMT_R32F;
 			static const int StereoBytesPerPixel = 4;
 
 			static StagingResource* CreateStagingResource(Device* pDevice, float eyeSep, float sep, float conv,
@@ -304,13 +302,13 @@ namespace nv {
 				unsigned int stagingWidth = StereoTexWidth * 2;
 				unsigned int stagingHeight = StereoTexHeight + 1;
 
-				pDevice->CreateOffscreenPlainSurface(stagingWidth, stagingHeight, StereoTexFormat, D3D9Base::D3DPOOL_SYSTEMMEM, &staging, NULL);
+				pDevice->CreateOffscreenPlainSurface(stagingWidth, stagingHeight, StereoTexFormat, D3DPOOL_SYSTEMMEM, &staging, NULL);
 
 				if (!staging) {
 					return 0;
 				}
 
-				D3D9Base::D3DLOCKED_RECT lr;
+				D3DLOCKED_RECT lr;
 				staging->LockRect(&lr, NULL, 0);
 				unsigned char* sysData = (unsigned char *) lr.pBits;
 				unsigned int sysMemPitch = stagingWidth * StereoBytesPerPixel;
@@ -336,7 +334,7 @@ namespace nv {
 				stereoDstPoint.x = 0;
 				stereoDstPoint.y = 0;
 
-				D3D9Base::IDirect3DSurface9* texSurface;
+				IDirect3DSurface9* texSurface;
 				tex->GetSurfaceLevel( 0, &texSurface );
 
 				pDevice->UpdateSurface(staging, &stereoSrcRect, texSurface, &stereoDstPoint);

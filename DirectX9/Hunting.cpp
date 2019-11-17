@@ -254,7 +254,7 @@ template <typename HashType>
 static void SimpleScreenShot(D3D9Wrapper::IDirect3DDevice9 *pDevice, HashType hash, char *shaderType)
 {
 	wchar_t fullName[MAX_PATH];
-	D3D9Base::IDirect3DSurface9 *backBuffer;
+	::IDirect3DSurface9 *backBuffer;
 
 	int hash_len = sizeof(HashType) * 2;
 
@@ -267,11 +267,11 @@ static void SimpleScreenShot(D3D9Wrapper::IDirect3DDevice9 *pDevice, HashType ha
 	if (FAILED(hr))
 		LogInfo("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
-	hr = pDevice->GetD3D9Device()->GetBackBuffer(0, 0, D3D9Base::D3DBACKBUFFER_TYPE::D3DBACKBUFFER_TYPE_MONO, &backBuffer);
+	hr = pDevice->GetD3D9Device()->GetBackBuffer(0, 0, ::D3DBACKBUFFER_TYPE::D3DBACKBUFFER_TYPE_MONO, &backBuffer);
 	if (SUCCEEDED(hr))
 	{
 		swprintf_s(fullName, MAX_PATH, L"%ls\\%0*llx-%S.jpg", G->SHADER_PATH, hash_len, (UINT64)hash, shaderType);
-		hr = D3DXSaveSurfaceToFile(fullName, D3D9Base::D3DXIFF_JPG, backBuffer, NULL, NULL);
+		hr = D3DXSaveSurfaceToFile(fullName, ::D3DXIFF_JPG, backBuffer, NULL, NULL);
 		backBuffer->Release();
 	}
 
@@ -286,9 +286,9 @@ template <typename HashType>
 static void StereoScreenShot(D3D9Wrapper::IDirect3DDevice9 *pDevice, HashType hash, char *shaderType)
 {
 	wchar_t fullName[MAX_PATH];
-	D3D9Base::IDirect3DSurface9 *backBuffer = NULL;
-	D3D9Base::IDirect3DSurface9 *stereoBackBuffer = NULL;
-	D3D9Base::D3DSURFACE_DESC desc;
+	::IDirect3DSurface9 *backBuffer = NULL;
+	::IDirect3DSurface9 *stereoBackBuffer = NULL;
+	::D3DSURFACE_DESC desc;
 	RECT srcRect;
 	UINT srcWidth;
 	HRESULT hr;
@@ -311,7 +311,7 @@ static void StereoScreenShot(D3D9Wrapper::IDirect3DDevice9 *pDevice, HashType ha
 		return;
 	}
 
-	hr = pDevice->GetD3D9Device()->GetBackBuffer(0, 0, D3D9Base::D3DBACKBUFFER_TYPE::D3DBACKBUFFER_TYPE_MONO, &backBuffer);
+	hr = pDevice->GetD3D9Device()->GetBackBuffer(0, 0, ::D3DBACKBUFFER_TYPE::D3DBACKBUFFER_TYPE_MONO, &backBuffer);
 	if (FAILED(hr))
 		return;
 
@@ -342,14 +342,14 @@ static void StereoScreenShot(D3D9Wrapper::IDirect3DDevice9 *pDevice, HashType ha
 	// NVAPI documentation hasn't been updated to indicate which is the
 	// correct function to use for the reverse stereo blit in DX11...
 	// Fortunately there was really only one possibility, which is:
-	pDevice->GetD3D9Device()->StretchRect(backBuffer, &srcRect, stereoBackBuffer, NULL, D3D9Base::D3DTEXF_POINT);
+	pDevice->GetD3D9Device()->StretchRect(backBuffer, &srcRect, stereoBackBuffer, NULL, ::D3DTEXF_POINT);
 
 	hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	if (FAILED(hr))
 		LogInfo("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
 	swprintf_s(fullName, MAX_PATH, L"%ls\\%0*llx-%S.jps", G->SHADER_PATH, hash_len, (UINT64)hash, shaderType);
-	hr = D3DXSaveSurfaceToFile(fullName, D3D9Base::D3DXIFF_JPG, stereoBackBuffer, NULL, NULL);
+	hr = D3DXSaveSurfaceToFile(fullName, ::D3DXIFF_JPG, stereoBackBuffer, NULL, NULL);
 
 	CoUninitialize();
 
@@ -684,11 +684,11 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D9Wrapper::ID
 			// This needs to call the real CreateVertexShader, not our wrapped version
 			if (shaderType.compare(L"vs") == 0)
 			{
-				hr = device->GetD3D9Device()->CreateVertexShader((DWORD*)pShaderBytecode->GetBufferPointer(), (D3D9Base::IDirect3DVertexShader9**)&replacement);
+				hr = device->GetD3D9Device()->CreateVertexShader((DWORD*)pShaderBytecode->GetBufferPointer(), (::IDirect3DVertexShader9**)&replacement);
 			}
 			else if (shaderType.compare(L"ps") == 0)
 			{
-				hr = device->GetD3D9Device()->CreatePixelShader((DWORD*)pShaderBytecode->GetBufferPointer(), (D3D9Base::IDirect3DPixelShader9**)&replacement);
+				hr = device->GetD3D9Device()->CreatePixelShader((DWORD*)pShaderBytecode->GetBufferPointer(), (::IDirect3DPixelShader9**)&replacement);
 			}
 			if (FAILED(hr))
 				goto err;

@@ -45,11 +45,9 @@
 #include <windows.h>
 #include <string>
 #include <stdio.h>
-namespace D3D9Base {
-	#include <d3d9.h>
-	#include <d3dx9.h>
-}
-using namespace D3D9Base;
+#include <d3d9.h>
+#include <d3dx9.h>
+
 //-----------------------------------------------------------------------------
 // Custom vertex types for rendering text
 //-----------------------------------------------------------------------------

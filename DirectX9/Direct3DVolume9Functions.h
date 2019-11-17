@@ -13,10 +13,10 @@ inline void D3D9Wrapper::IDirect3DVolume9::Delete()
 }
 inline void D3D9Wrapper::IDirect3DVolume9::HookVolume()
 {
-	m_pUnk = hook_volume(GetD3DVolume9(), (D3D9Base::IDirect3DVolume9*)this);
+	m_pUnk = hook_volume(GetD3DVolume9(), (::IDirect3DVolume9*)this);
 
 }
-D3D9Wrapper::IDirect3DVolume9::IDirect3DVolume9(D3D9Base::LPDIRECT3DVOLUME9 pVolume, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, D3D9Wrapper::IDirect3DVolumeTexture9 *owningContainer)
+D3D9Wrapper::IDirect3DVolume9::IDirect3DVolume9(::LPDIRECT3DVOLUME9 pVolume, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, D3D9Wrapper::IDirect3DVolumeTexture9 *owningContainer)
 	: D3D9Wrapper::IDirect3DUnknown((IUnknown*)pVolume),
 	pendingGetVolumeLevel(false),
 	magic(0x7da43feb),
@@ -30,7 +30,7 @@ D3D9Wrapper::IDirect3DVolume9::IDirect3DVolume9(D3D9Base::LPDIRECT3DVOLUME9 pVol
 
 }
 
-D3D9Wrapper::IDirect3DVolume9* D3D9Wrapper::IDirect3DVolume9::GetDirect3DVolume9(D3D9Base::LPDIRECT3DVOLUME9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, D3D9Wrapper::IDirect3DVolumeTexture9 *owningContainer)
+D3D9Wrapper::IDirect3DVolume9* D3D9Wrapper::IDirect3DVolume9::GetDirect3DVolume9(::LPDIRECT3DVOLUME9 pSurface, D3D9Wrapper::IDirect3DDevice9 *hackerDevice, D3D9Wrapper::IDirect3DVolumeTexture9 *owningContainer)
 {
 	D3D9Wrapper::IDirect3DVolume9* p = new D3D9Wrapper::IDirect3DVolume9(pSurface, hackerDevice, owningContainer);
 	if (pSurface) m_List.AddMember(pSurface, p);
@@ -172,7 +172,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::GetContainer(THIS_ REFIID riid, void
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::GetDesc(THIS_ D3D9Base::D3DVOLUME_DESC *pDesc)
+STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::GetDesc(THIS_ ::D3DVOLUME_DESC *pDesc)
 {
 	LogDebug("IDirect3DVolume9::GetDesc called\n");
 
@@ -180,7 +180,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::GetDesc(THIS_ D3D9Base::D3DVOLUME_DE
 	return GetD3DVolume9()->GetDesc(pDesc);
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::LockBox(THIS_ D3D9Base::D3DLOCKED_BOX *pLockedVolume, CONST D3D9Base::D3DBOX *pBox, DWORD Flags)
+STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::LockBox(THIS_ ::D3DLOCKED_BOX *pLockedVolume, CONST ::D3DBOX *pBox, DWORD Flags)
 {
 	LogDebug("IDirect3DVolume9::LockBox called\n");
 

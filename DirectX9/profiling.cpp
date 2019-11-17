@@ -59,11 +59,11 @@ static unsigned start_frame_no;
 //};
 typedef struct D3D9_QUERY_DESC
 {
-	D3D9Base::D3DQUERYTYPE Query;
+	::D3DQUERYTYPE Query;
 	UINT MiscFlags;
 } 	D3D9_QUERY_DESC;
 static const struct D3D9_QUERY_DESC query_timestamp = {
-	D3D9Base::D3DQUERYTYPE::D3DQUERYTYPE_TIMESTAMP,
+	::D3DQUERYTYPE::D3DQUERYTYPE_TIMESTAMP,
 	0,
 };
 static std::unordered_set<CommandList*> warned_cto_command_lists;

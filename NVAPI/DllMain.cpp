@@ -2,16 +2,13 @@
 #include <dxgi1_2.h>
 #include <d3d11_1.h>
 
-namespace D3D9Base {
 #include <d3d9.h>
-}
 
 #include "../util.h"
 #include "../nvapi.h"
 #include "../log.h"
 
 using namespace std;
-using namespace D3D9Base; // FIXME: Get rid of this
 
 extern "C"
 {
@@ -600,7 +597,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_Disable()
 	}
 	return (*_NvAPI_Stereo_Disable)();
 }
-static NvAPI_Status __cdecl NvAPI_D3D9_VideoSetStereoInfo(D3D9Base::IDirect3DDevice9 *pDev,
+static NvAPI_Status __cdecl NvAPI_D3D9_VideoSetStereoInfo(IDirect3DDevice9 *pDev,
 	NV_DX_VIDEO_STEREO_INFO *pStereoInfo)
 {
 	LogCall("%s - D3D9_VideoSetStereoInfo called width\n", LogTime().c_str());
@@ -941,39 +938,39 @@ static NvAPI_Status __cdecl NvAPI_D3D_GetCurrentSLIState(__in IUnknown *pDevice,
 	return ret;
 }
 
-static NvAPI_Status __cdecl NvAPI_D3D9_StretchRectEx(D3D9Base::IDirect3DDevice9 *pDevice,
-	D3D9Base::IDirect3DResource9 *pSourceResource,
+static NvAPI_Status __cdecl NvAPI_D3D9_StretchRectEx(IDirect3DDevice9 *pDevice,
+	IDirect3DResource9 *pSourceResource,
 	CONST RECT *pSourceRect,
-	D3D9Base::IDirect3DResource9 *pDestResource,
+	IDirect3DResource9 *pDestResource,
 	CONST RECT *pDestRect,
-	D3D9Base::D3DTEXTUREFILTERTYPE 	Filter)
+	D3DTEXTUREFILTERTYPE 	Filter)
 {
 	NvAPI_Status ret = (*_NvAPI_D3D9_StretchRectEx)(pDevice, pSourceResource, pSourceRect, pDestResource, pDestRect, Filter);
 	LogCall("%s - NvAPI_D3D9_StretchRectEx called with device = %p. Result = %d\n", LogTime().c_str(), pDevice, ret);
 	return ret;
 }
-static NvAPI_Status __cdecl NvAPI_D3D9_RegisterResource(D3D9Base::IDirect3DResource9* pResource)
+static NvAPI_Status __cdecl NvAPI_D3D9_RegisterResource(IDirect3DResource9* pResource)
 {
 	NvAPI_Status ret = (*_NvAPI_D3D9_RegisterResource)(pResource);
 	LogCall("%s - NvAPI_D3D9_RegisterResource called with resource = %p. Result = %d\n", LogTime().c_str(), pResource, ret);
 	return ret;
 }
-static NvAPI_Status __cdecl NvAPI_D3D9_UnregisterResource(D3D9Base::IDirect3DResource9* pResource)
+static NvAPI_Status __cdecl NvAPI_D3D9_UnregisterResource(IDirect3DResource9* pResource)
 {
 	NvAPI_Status ret = (*_NvAPI_D3D9_UnregisterResource)(pResource);
 	LogCall("%s - NvAPI_D3D9_UnregisterResource called with resource = %p. Result = %d\n", LogTime().c_str(), pResource, ret);
 	return ret;
 }
-static NvAPI_Status __cdecl NvAPI_D3D9_AliasSurfaceAsTexture(D3D9Base::IDirect3DDevice9* pDev,
-	D3D9Base::IDirect3DSurface9* pSurface,
-	D3D9Base::IDirect3DTexture9 **ppTexture,
+static NvAPI_Status __cdecl NvAPI_D3D9_AliasSurfaceAsTexture(IDirect3DDevice9* pDev,
+	IDirect3DSurface9* pSurface,
+	IDirect3DTexture9 **ppTexture,
 	DWORD dwFlag)
 {
 	NvAPI_Status ret = (*_NvAPI_D3D9_AliasSurfaceAsTexture)(pDev, pSurface, ppTexture, dwFlag);
 	LogCall("%s - NvAPI_D3D9_AliasSurfaceAsTexture called with device = %p. Result = %d\n", LogTime().c_str(), pDev, ret);
 	return ret;
 }
-static NvAPI_Status __cdecl NvAPI_D3D9_ClearRT(D3D9Base::IDirect3DDevice9 * pDevice,
+static NvAPI_Status __cdecl NvAPI_D3D9_ClearRT(IDirect3DDevice9 * pDevice,
 	NvU32 dwNumRects,
 	CONST RECT * pRects,
 	float r, float g, float b, float a)
@@ -982,7 +979,7 @@ static NvAPI_Status __cdecl NvAPI_D3D9_ClearRT(D3D9Base::IDirect3DDevice9 * pDev
 	LogCall("%s - NvAPI_D3D9_ClearRT called with device = %p. Result = %d\n", LogTime().c_str(), pDevice, ret);
 	return ret;
 }
-static NvAPI_Status __cdecl NvAPI_D3D9_GetSurfaceHandle(D3D9Base::IDirect3DSurface9 *pSurface,
+static NvAPI_Status __cdecl NvAPI_D3D9_GetSurfaceHandle(IDirect3DSurface9 *pSurface,
 	NVDX_ObjectHandle *pHandle)
 {
 	NvAPI_Status ret = (*_NvAPI_D3D9_GetSurfaceHandle)(pSurface, pHandle);

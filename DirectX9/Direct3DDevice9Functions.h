@@ -11,7 +11,7 @@
 inline void D3D9Wrapper::IDirect3DDevice9::Delete()
 {
 	if (G->enable_hooks & EnableHooksDX9::DEVICE)
-		remove_hooked_device((D3D9Base::IDirect3DDevice9*)m_pRealUnk);
+		remove_hooked_device((::IDirect3DDevice9*)m_pRealUnk);
 
 	if (mStereoHandle)
 	{
@@ -31,7 +31,7 @@ inline void D3D9Wrapper::IDirect3DDevice9::Delete()
 	m_pRealUnk = 0;
 	delete this;
 }
-HRESULT D3D9Wrapper::IDirect3DDevice9::NVAPIStretchRect(D3D9Base::IDirect3DResource9 *src, D3D9Base::IDirect3DResource9 *dst, RECT *srcRect, RECT *dstRect)
+HRESULT D3D9Wrapper::IDirect3DDevice9::NVAPIStretchRect(::IDirect3DResource9 *src, ::IDirect3DResource9 *dst, RECT *srcRect, RECT *dstRect)
 {
 	if (find(nvapi_registered_resources.begin(), nvapi_registered_resources.end(), src) == nvapi_registered_resources.end()) {
 		if (!(NVAPI_OK == NvAPI_D3D9_RegisterResource(src)))
@@ -45,7 +45,7 @@ HRESULT D3D9Wrapper::IDirect3DDevice9::NVAPIStretchRect(D3D9Base::IDirect3DResou
 		else
 			nvapi_registered_resources.emplace_back(dst);
 	}
-	if (NVAPI_OK == NvAPI_D3D9_StretchRectEx(GetD3D9Device(), src, srcRect, dst, dstRect, D3D9Base::D3DTEXF_POINT)) {
+	if (NVAPI_OK == NvAPI_D3D9_StretchRectEx(GetD3D9Device(), src, srcRect, dst, dstRect, ::D3DTEXF_POINT)) {
 		return S_OK;
 	}
 	else {
@@ -110,7 +110,7 @@ inline HRESULT D3D9Wrapper::IDirect3DDevice9::CreateStereoTexture()
 	HRESULT hr;
 	// Create stereo parameter texture.
 	LogInfo("  creating stereo parameter texture.\n");
-	hr = GetD3D9Device()->CreateTexture(nv::stereo::ParamTextureManagerD3D9::Parms::StereoTexWidth, nv::stereo::ParamTextureManagerD3D9::Parms::StereoTexHeight, 1, 0, nv::stereo::ParamTextureManagerD3D9::Parms::StereoTexFormat, D3D9Base::D3DPOOL_DEFAULT, &this->mStereoTexture, NULL);
+	hr = GetD3D9Device()->CreateTexture(nv::stereo::ParamTextureManagerD3D9::Parms::StereoTexWidth, nv::stereo::ParamTextureManagerD3D9::Parms::StereoTexHeight, 1, 0, nv::stereo::ParamTextureManagerD3D9::Parms::StereoTexFormat, ::D3DPOOL_DEFAULT, &this->mStereoTexture, NULL);
 
 	if (FAILED(hr))
 	{
@@ -837,7 +837,7 @@ inline bool D3D9Wrapper::IDirect3DDevice9::NeedOriginalShader(D3D9Wrapper::IDire
 }
 
 template <class ID3D9ShaderWrapper, class ID3D9Shader,
-	HRESULT(__stdcall D3D9Base::IDirect3DDevice9::*OrigCreateShader)(THIS_
+	HRESULT(__stdcall ::IDirect3DDevice9::*OrigCreateShader)(THIS_
 		__in const DWORD *pFunction,
 		__out_opt ID3D9Shader **ppShader)>
 void D3D9Wrapper::IDirect3DDevice9::KeepOriginalShader(wchar_t * shaderType, ID3D9ShaderWrapper * pShader, const DWORD * pFunction)
@@ -859,7 +859,7 @@ void D3D9Wrapper::IDirect3DDevice9::KeepOriginalShader(wchar_t * shaderType, ID3
 
 template <class ID3D9ShaderWrapper, class ID3D9Shader,
 	ID3D9ShaderWrapper* (*GetDirect3DShader9)(ID3D9Shader *pS, D3D9Wrapper::IDirect3DDevice9 *hackerDevice),
-		HRESULT(__stdcall D3D9Base::IDirect3DDevice9::*OrigCreateShader)(THIS_
+		HRESULT(__stdcall ::IDirect3DDevice9::*OrigCreateShader)(THIS_
 			__in const DWORD *pFunction,
 			__out_opt ID3D9Shader **ppShader)>
 HRESULT D3D9Wrapper::IDirect3DDevice9::CreateShader(const DWORD *pFunction, ID3D9Shader **ppShader, wchar_t * shaderType, ID3D9ShaderWrapper **ppShaderWrapper)
@@ -1093,7 +1093,7 @@ inline void D3D9Wrapper::IDirect3DDevice9::Create3DMigotoResources()
 
 	optimise_command_lists(this);
 }
-inline D3D9Base::IDirect3DDevice9 * D3D9Wrapper::IDirect3DDevice9::GetPassThroughOrigDevice()
+inline ::IDirect3DDevice9 * D3D9Wrapper::IDirect3DDevice9::GetPassThroughOrigDevice()
 {
 	return GetD3D9Device();
 }
@@ -1108,9 +1108,9 @@ inline void D3D9Wrapper::IDirect3DDevice9::HookDevice()
 	// original device, thereby side stepping the problem that calling the
 	// old GetD3D9Device() would be hooked and call back into us endlessly:
 	if (_ex)
-		m_pUnk = hook_device(GetD3D9DeviceEx(), reinterpret_cast<D3D9Base::IDirect3DDevice9Ex*>(this), G->enable_hooks);
+		m_pUnk = hook_device(GetD3D9DeviceEx(), reinterpret_cast<::IDirect3DDevice9Ex*>(this), G->enable_hooks);
 	else
-		m_pUnk = hook_device(GetD3D9Device(), reinterpret_cast<D3D9Base::IDirect3DDevice9*>(this), G->enable_hooks);
+		m_pUnk = hook_device(GetD3D9Device(), reinterpret_cast<::IDirect3DDevice9*>(this), G->enable_hooks);
 }
 
 inline void D3D9Wrapper::IDirect3DDevice9::Bind3DMigotoResources()
@@ -1157,7 +1157,7 @@ inline void D3D9Wrapper::IDirect3DDevice9::Bind3DMigotoResources()
 	}
 }
 
-HRESULT D3D9Wrapper::IDirect3DDevice9::_SetTexture(DWORD Sampler, D3D9Base::IDirect3DBaseTexture9 * pTexture)
+HRESULT D3D9Wrapper::IDirect3DDevice9::_SetTexture(DWORD Sampler, ::IDirect3DBaseTexture9 * pTexture)
 {
 	bool overrideStereo = false;
 	if (this->mStereoTexture){
@@ -1213,12 +1213,12 @@ bool LockDenyCPURead(
 }
 template <typename Surface>
 void D3D9Wrapper::IDirect3DDevice9::TrackAndDivertLock(HRESULT lock_hr, Surface *pResource,
-	 D3D9Base::D3DLOCKED_RECT *pLockedRect, DWORD MapFlags, UINT Level)
+	 ::D3DLOCKED_RECT *pLockedRect, DWORD MapFlags, UINT Level)
 {
-	D3D9Base::D3DSURFACE_DESC sur_desc;
+	::D3DSURFACE_DESC sur_desc;
 	LockedResourceInfo *locked_info = NULL;
 
-	D3D9Base::D3DRESOURCETYPE type = pResource->GetD3DResource9()->GetType();
+	::D3DRESOURCETYPE type = pResource->GetD3DResource9()->GetType();
 
 	void *replace = NULL;
 	bool divertable = false, divert = false, track = false;
@@ -1245,25 +1245,25 @@ void D3D9Wrapper::IDirect3DDevice9::TrackAndDivertLock(HRESULT lock_hr, Surface 
 	locked_info = &pResource->lockedResourceInfo;
 	locked_info->locked_writable = write;
 
-	D3D9Base::D3DLOCKED_BOX lockedBox;
+	::D3DLOCKED_BOX lockedBox;
 	lockedBox.pBits = pLockedRect->pBits;
 	lockedBox.RowPitch = pLockedRect->Pitch;
 	lockedBox.SlicePitch = 0;
 
-	memcpy(&locked_info->lockedBox, &lockedBox, sizeof(D3D9Base::D3DLOCKED_BOX));
+	memcpy(&locked_info->lockedBox, &lockedBox, sizeof(::D3DLOCKED_BOX));
 
 	if (!divertable || !divert)
 		goto out_profile;
 
 	switch (type) {
-		case D3D9Base::D3DRTYPE_SURFACE:
-			((D3D9Base::IDirect3DSurface9*)pResource->GetD3DResource9())->GetDesc(&sur_desc);
+		case ::D3DRTYPE_SURFACE:
+			((::IDirect3DSurface9*)pResource->GetD3DResource9())->GetDesc(&sur_desc);
 			break;
-		case D3D9Base::D3DRTYPE_TEXTURE:
-			((D3D9Base::IDirect3DTexture9*)pResource->GetD3DResource9())->GetLevelDesc(0, &sur_desc);
+		case ::D3DRTYPE_TEXTURE:
+			((::IDirect3DTexture9*)pResource->GetD3DResource9())->GetLevelDesc(0, &sur_desc);
 			break;
-		case D3D9Base::D3DRTYPE_CUBETEXTURE:
-			((D3D9Base::IDirect3DCubeTexture9*)pResource->GetD3DResource9())->GetLevelDesc(0, &sur_desc);
+		case ::D3DRTYPE_CUBETEXTURE:
+			((::IDirect3DCubeTexture9*)pResource->GetD3DResource9())->GetLevelDesc(0, &sur_desc);
 			break;
 	}
 
@@ -1288,9 +1288,9 @@ out_profile:
 		Profiling::end(&profiling_state, &Profiling::map_overhead);
 }
 void D3D9Wrapper::IDirect3DDevice9::TrackAndDivertLock(HRESULT lock_hr, D3D9Wrapper::IDirect3DVolumeTexture9 *pResource,
-	 D3D9Base::D3DLOCKED_BOX *pLockedBox, DWORD MapFlags, UINT Level)
+	 ::D3DLOCKED_BOX *pLockedBox, DWORD MapFlags, UINT Level)
 {
-	D3D9Base::D3DVOLUME_DESC vol_desc;
+	::D3DVOLUME_DESC vol_desc;
 	LockedResourceInfo *locked_info = NULL;
 
 	void *replace = NULL;
@@ -1317,7 +1317,7 @@ void D3D9Wrapper::IDirect3DDevice9::TrackAndDivertLock(HRESULT lock_hr, D3D9Wrap
 
 	locked_info = &pResource->lockedResourceInfo;
 	locked_info->locked_writable = write;
-	memcpy(&locked_info->lockedBox, pLockedBox, sizeof(D3D9Base::D3DLOCKED_BOX));
+	memcpy(&locked_info->lockedBox, pLockedBox, sizeof(::D3DLOCKED_BOX));
 
 	if (!divertable || !divert)
 		goto out_profile;
@@ -1372,12 +1372,12 @@ void D3D9Wrapper::IDirect3DDevice9::TrackAndDivertLock(HRESULT lock_hr, Buffer *
 	locked_info = &pResource->lockedResourceInfo;
 	locked_info->locked_writable = write;
 
-	D3D9Base::D3DLOCKED_BOX lockedBox;
+	::D3DLOCKED_BOX lockedBox;
 	lockedBox.pBits = ppbData;
 	lockedBox.RowPitch = 0;
 	lockedBox.SlicePitch = 0;
 
-	memcpy(&locked_info->lockedBox, &lockedBox, sizeof(D3D9Base::D3DLOCKED_BOX));
+	memcpy(&locked_info->lockedBox, &lockedBox, sizeof(::D3DLOCKED_BOX));
 
 	if (!divertable || !divert)
 		goto out_profile;
@@ -1721,7 +1721,7 @@ void D3D9Wrapper::IDirect3DDevice9::ProcessShaderOverride(ShaderOverride *shader
 		// list can match oD for the depth buffer, which will return
 		// negative zero -0.0 if no depth buffer is assigned.
 		if (shaderOverride->depth_filter != DepthBufferFilter::NONE) {
-			D3D9Base::IDirect3DSurface9 *pDepthStencilSurface = NULL;
+			::IDirect3DSurface9 *pDepthStencilSurface = NULL;
 			GetD3D9Device()->GetDepthStencilSurface(&pDepthStencilSurface);
 			// Remember - we are NOT switching to the original shader when the condition is true
 			if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_ACTIVE && !pDepthStencilSurface) {
@@ -1760,20 +1760,20 @@ void D3D9Wrapper::IDirect3DDevice9::ProcessShaderOverride(ShaderOverride *shader
 			if (isPixelShader) {
 				if (mCurrentPixelShaderHandle->originalShader) {
 					data->oldPixelShader = mCurrentPixelShaderHandle;
-					SwitchPSShader((D3D9Base::IDirect3DPixelShader9*)mCurrentPixelShaderHandle->originalShader);
+					SwitchPSShader((::IDirect3DPixelShader9*)mCurrentPixelShaderHandle->originalShader);
 				}
 			}
 			else {
 				if (mCurrentVertexShaderHandle->originalShader) {
 					data->oldVertexShader = mCurrentVertexShaderHandle;
-					SwitchVSShader((D3D9Base::IDirect3DVertexShader9*)mCurrentVertexShaderHandle->originalShader);
+					SwitchVSShader((::IDirect3DVertexShader9*)mCurrentVertexShaderHandle->originalShader);
 				}
 			}
 		}
 	}
 }
 
-template<typename ID3D9Shader, HRESULT (__stdcall D3D9Base::IDirect3DDevice9::*_CreateShader)(const DWORD*, ID3D9Shader**)>
+template<typename ID3D9Shader, HRESULT (__stdcall ::IDirect3DDevice9::*_CreateShader)(const DWORD*, ID3D9Shader**)>
 void D3D9Wrapper::IDirect3DDevice9::DeferredShaderReplacement(D3D9Wrapper::IDirect3DShader9 *shader, wchar_t *shader_type)
 {
 	ID3D9Shader	*patched_shader = NULL;
@@ -1863,11 +1863,11 @@ void D3D9Wrapper::IDirect3DDevice9::DeferredShaderReplacementBeforeDraw()
 	EnterCriticalSection(&G->mCriticalSection);
 
 	if (mCurrentVertexShaderHandle) {
-		DeferredShaderReplacement<D3D9Base::IDirect3DVertexShader9, &D3D9Base::IDirect3DDevice9::CreateVertexShader>
+		DeferredShaderReplacement<::IDirect3DVertexShader9, &::IDirect3DDevice9::CreateVertexShader>
 			(mCurrentVertexShaderHandle, L"vs");
 	}
 	if (mCurrentPixelShaderHandle) {
-		DeferredShaderReplacement<D3D9Base::IDirect3DPixelShader9, &D3D9Base::IDirect3DDevice9::CreatePixelShader>
+		DeferredShaderReplacement<::IDirect3DPixelShader9, &::IDirect3DDevice9::CreatePixelShader>
 			(mCurrentPixelShaderHandle, L"ps");
 	}
 
@@ -1877,13 +1877,13 @@ void D3D9Wrapper::IDirect3DDevice9::DeferredShaderReplacementBeforeDraw()
 		Profiling::end(&profiling_state, &Profiling::shaderregex_overhead);
 }
 
-void D3D9Wrapper::IDirect3DDevice9::SwitchVSShader(D3D9Base::IDirect3DVertexShader9 *shader)
+void D3D9Wrapper::IDirect3DDevice9::SwitchVSShader(::IDirect3DVertexShader9 *shader)
 {
 	GetD3D9Device()->SetVertexShader(shader);
 }
 
 
-void D3D9Wrapper::IDirect3DDevice9::SwitchPSShader(D3D9Base::IDirect3DPixelShader9 *shader)
+void D3D9Wrapper::IDirect3DDevice9::SwitchPSShader(::IDirect3DPixelShader9 *shader)
 {
 	GetD3D9Device()->SetPixelShader(shader);
 }
@@ -1921,7 +1921,7 @@ void D3D9Wrapper::IDirect3DDevice9::AfterDraw(DrawContext & data)
 
 void D3D9Wrapper::IDirect3DDevice9::RecordRenderTargetInfo(D3D9Wrapper::IDirect3DSurface9 *target, DWORD RenderTargetIndex)
 {
-	D3D9Base::D3DSURFACE_DESC desc;
+	::D3DSURFACE_DESC desc;
 	uint32_t orig_hash = 0;
 
 	if (!target)
@@ -1943,7 +1943,7 @@ void D3D9Wrapper::IDirect3DDevice9::RecordRenderTargetInfo(D3D9Wrapper::IDirect3
 
 void D3D9Wrapper::IDirect3DDevice9::RecordDepthStencil(D3D9Wrapper::IDirect3DSurface9 *target)
 {
-	D3D9Base::D3DSURFACE_DESC desc;
+	::D3DSURFACE_DESC desc;
 	uint32_t orig_hash = 0;
 
 	if (!target)
@@ -1959,7 +1959,7 @@ void D3D9Wrapper::IDirect3DDevice9::RecordDepthStencil(D3D9Wrapper::IDirect3DSur
 
 // C++ function template of common code shared by all XXSetShader functions:
 template <class ID3D9ShaderWrapper, class ID3D9Shader,
-	HRESULT(__stdcall D3D9Base::IDirect3DDevice9::*OrigSetShader)(THIS_
+	HRESULT(__stdcall ::IDirect3DDevice9::*OrigSetShader)(THIS_
 		ID3D9Shader *pShader)
 >
 HRESULT D3D9Wrapper::IDirect3DDevice9::SetShader(ID3D9ShaderWrapper *pShader,
@@ -2029,7 +2029,7 @@ HRESULT D3D9Wrapper::IDirect3DDevice9::SetShader(ID3D9ShaderWrapper *pShader,
 	}
 	return hr;
 }
-inline void D3D9Wrapper::IDirect3DDevice9::OnCreateOrRestore(D3D9Base::D3DPRESENT_PARAMETERS* pOrigParams, D3D9Base::D3DPRESENT_PARAMETERS* pNewParams)
+inline void D3D9Wrapper::IDirect3DDevice9::OnCreateOrRestore(::D3DPRESENT_PARAMETERS* pOrigParams, ::D3DPRESENT_PARAMETERS* pNewParams)
 {
 	deviceSwapChain->origPresentationParameters = *pOrigParams;
 	if (G->SCREEN_UPSCALING > 0 || G->gForceStereo == 2) {
@@ -2045,8 +2045,8 @@ inline void D3D9Wrapper::IDirect3DDevice9::OnCreateOrRestore(D3D9Base::D3DPRESEN
 	}
 	else {
 		for (UINT i = 0; i < pOrigParams->BackBufferCount; i++) {
-			D3D9Base::IDirect3DSurface9 *realBackBuffer = NULL;
-			deviceSwapChain->GetSwapChain9()->GetBackBuffer(i, D3D9Base::D3DBACKBUFFER_TYPE_MONO, &realBackBuffer);
+			::IDirect3DSurface9 *realBackBuffer = NULL;
+			deviceSwapChain->GetSwapChain9()->GetBackBuffer(i, ::D3DBACKBUFFER_TYPE_MONO, &realBackBuffer);
 			D3D9Wrapper::IDirect3DSurface9 *wrappedBackBuffer = IDirect3DSurface9::GetDirect3DSurface9(realBackBuffer, this, NULL, deviceSwapChain);
 			deviceSwapChain->m_backBuffers.push_back(wrappedBackBuffer);
 			if (i == 0) {
@@ -2055,7 +2055,7 @@ inline void D3D9Wrapper::IDirect3DDevice9::OnCreateOrRestore(D3D9Base::D3DPRESEN
 			wrappedBackBuffer->Release();
 		}
 		if (pOrigParams->EnableAutoDepthStencil) {
-			D3D9Base::IDirect3DSurface9 *realDepthStencil;
+			::IDirect3DSurface9 *realDepthStencil;
 			HRESULT hr = GetD3D9Device()->GetDepthStencilSurface(&realDepthStencil);
 			if (!FAILED(hr)) {
 				m_pActiveDepthStencil = D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(realDepthStencil, this, NULL);
@@ -2066,7 +2066,7 @@ inline void D3D9Wrapper::IDirect3DDevice9::OnCreateOrRestore(D3D9Base::D3DPRESEN
 					{
 						depth_sources.emplace(m_pActiveDepthStencil);
 					}
-					D3D9Base::D3DSURFACE_DESC desc;
+					::D3DSURFACE_DESC desc;
 					m_pActiveDepthStencil->GetD3DSurface9()->GetDesc(&desc);
 					m_pActiveDepthStencil->possibleDepthBuffer = true;
 					// Begin tracking
@@ -2077,14 +2077,14 @@ inline void D3D9Wrapper::IDirect3DDevice9::OnCreateOrRestore(D3D9Base::D3DPRESEN
 		}
 	}
 	if (G->gForceStereo == 2) {
-		D3D9Base::D3DXMatrixIdentity(&m_currentProjection);
-		D3D9Base::D3DXMatrixIdentity(&m_gameProjection);
-		D3D9Base::D3DXMatrixIdentity(&m_leftProjection);
-		D3D9Base::D3DXMatrixIdentity(&m_rightProjection);
+		::D3DXMatrixIdentity(&m_currentProjection);
+		::D3DXMatrixIdentity(&m_gameProjection);
+		::D3DXMatrixIdentity(&m_leftProjection);
+		::D3DXMatrixIdentity(&m_rightProjection);
 		GetD3D9Device()->GetViewport(&m_LastViewportSet);
 	}
 }
-D3D9Wrapper::IDirect3DDevice9::IDirect3DDevice9(D3D9Base::LPDIRECT3DDEVICE9 pDevice, D3D9Wrapper::IDirect3D9 *pD3D, bool ex)
+D3D9Wrapper::IDirect3DDevice9::IDirect3DDevice9(::LPDIRECT3DDEVICE9 pDevice, D3D9Wrapper::IDirect3D9 *pD3D, bool ex)
     : IDirect3DUnknown((IUnknown*) pDevice),
 	m_pD3D(pD3D),
 	pendingCreateDepthStencilSurface(0),
@@ -2113,7 +2113,7 @@ D3D9Wrapper::IDirect3DDevice9::IDirect3DDevice9(D3D9Base::LPDIRECT3DDEVICE9 pDev
 	cursor_color_tex(NULL),
 	m_pActiveVertexDeclaration(NULL),
 	depthstencil_replacement(NULL),
-	current_zfunc(D3D9Base::D3DCMP_LESSEQUAL),
+	current_zfunc(::D3DCMP_LESSEQUAL),
 	update_stereo_params_interval(chrono::milliseconds(0)),
 	update_stereo_params_last_run(chrono::high_resolution_clock::now()),
 	_ex(ex),
@@ -2133,12 +2133,12 @@ D3D9Wrapper::IDirect3DDevice9::IDirect3DDevice9(D3D9Base::LPDIRECT3DDEVICE9 pDev
 	if (pDevice) {
 		createOverlay();
 	}
-	D3D9Base::D3DCAPS9 pCaps;
+	::D3DCAPS9 pCaps;
 	GetD3D9Device()->GetDeviceCaps(&pCaps);
 	DWORD maxRenderTargets = pCaps.NumSimultaneousRTs;
 	m_activeRenderTargets.resize(maxRenderTargets, NULL);
 
-	D3D9Base::IDirect3DSwapChain9 *realDeviceSwapChain = NULL;
+	::IDirect3DSwapChain9 *realDeviceSwapChain = NULL;
 	HRESULT hr = GetD3D9Device()->GetSwapChain(0, &realDeviceSwapChain);
 	deviceSwapChain = D3D9Wrapper::IDirect3DSwapChain9::GetSwapChain(realDeviceSwapChain, this);
 	deviceSwapChain->_SwapChain = 0;
@@ -2147,7 +2147,7 @@ D3D9Wrapper::IDirect3DDevice9::IDirect3DDevice9(D3D9Base::LPDIRECT3DDEVICE9 pDev
 	deviceSwapChain->Release();
 
 }
-D3D9Wrapper::IDirect3DDevice9* D3D9Wrapper::IDirect3DDevice9::GetDirect3DDevice(D3D9Base::LPDIRECT3DDEVICE9 pDevice, D3D9Wrapper::IDirect3D9 *pD3D, bool ex)
+D3D9Wrapper::IDirect3DDevice9* D3D9Wrapper::IDirect3DDevice9::GetDirect3DDevice(::LPDIRECT3DDEVICE9 pDevice, D3D9Wrapper::IDirect3D9 *pD3D, bool ex)
 {
 	D3D9Wrapper::IDirect3DDevice9* p = new D3D9Wrapper::IDirect3DDevice9(pDevice, pD3D, ex);
 	if (pDevice) m_List.AddMember(pDevice, p);
@@ -2440,7 +2440,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetDirect3D(THIS_ D3D9Wrapper::IDire
     return D3D_OK;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetDeviceCaps(THIS_ D3D9Base::D3DCAPS9* pCaps)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetDeviceCaps(THIS_ ::D3DCAPS9* pCaps)
 {
 	LogInfo("IDirect3DDevice9::GetDeviceCaps called\n");
 
@@ -2451,7 +2451,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetDeviceCaps(THIS_ D3D9Base::D3DCAP
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetDisplayMode(THIS_ UINT iSwapChain,D3D9Base::D3DDISPLAYMODE* pMode)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetDisplayMode(THIS_ UINT iSwapChain,::D3DDISPLAYMODE* pMode)
 {
 	LogInfo("IDirect3DDevice9::GetDisplayMode called\n");
 
@@ -2494,7 +2494,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetDisplayMode(THIS_ UINT iSwapChain
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetCreationParameters(THIS_ D3D9Base::D3DDEVICE_CREATION_PARAMETERS *pParameters)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetCreationParameters(THIS_ ::D3DDEVICE_CREATION_PARAMETERS *pParameters)
 {
 	LogInfo("IDirect3DDevice9::GetCreationParameters called\n");
 
@@ -2541,12 +2541,12 @@ STDMETHODIMP_(BOOL) D3D9Wrapper::IDirect3DDevice9::ShowCursor(THIS_ BOOL bShow)
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateAdditionalSwapChain(THIS_ D3D9Base::D3DPRESENT_PARAMETERS* pPresentationParameters, D3D9Wrapper::IDirect3DSwapChain9** pSwapChain)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateAdditionalSwapChain(THIS_ ::D3DPRESENT_PARAMETERS* pPresentationParameters, D3D9Wrapper::IDirect3DSwapChain9** pSwapChain)
 {
 	LogInfo("IDirect3DDevice9::CreateAdditionalSwapChain called\n");
 
 	CheckDevice(this);
-	D3D9Base::D3DPRESENT_PARAMETERS originalPresentParams;
+	::D3DPRESENT_PARAMETERS originalPresentParams;
 
 	if (pPresentationParameters != nullptr) {
 		// Save off the window handle so we can translate mouse cursor
@@ -2554,7 +2554,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateAdditionalSwapChain(THIS_ D3D9
 		if (pPresentationParameters->hDeviceWindow != NULL)
 			G->sethWnd(pPresentationParameters->hDeviceWindow);
 
-		memcpy(&originalPresentParams, pPresentationParameters, sizeof(D3D9Base::D3DPRESENT_PARAMETERS));
+		memcpy(&originalPresentParams, pPresentationParameters, sizeof(::D3DPRESENT_PARAMETERS));
 		// Require in case the software mouse and upscaling are on at the same time
 		// TODO: Use a helper class to track *all* different resolutions
 		G->SET_GAME_INTERNAL_WIDTH(pPresentationParameters->BackBufferWidth);
@@ -2571,7 +2571,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateAdditionalSwapChain(THIS_ D3D9
 
 	ForceDisplayParams(pPresentationParameters);
 
-	D3D9Base::IDirect3DSwapChain9 *baseSwapChain;
+	::IDirect3DSwapChain9 *baseSwapChain;
 	HRESULT hr = GetD3D9Device()->CreateAdditionalSwapChain(pPresentationParameters, &baseSwapChain);
     if (FAILED(hr) || baseSwapChain == NULL)
     {
@@ -2608,8 +2608,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateAdditionalSwapChain(THIS_ D3D9
 	}
 	else {
 		for (UINT i = 0; i < originalPresentParams.BackBufferCount; i++) {
-			D3D9Base::IDirect3DSurface9 *realBackBuffer = NULL;
-			baseSwapChain->GetBackBuffer(i, D3D9Base::D3DBACKBUFFER_TYPE_MONO, &realBackBuffer);
+			::IDirect3DSurface9 *realBackBuffer = NULL;
+			baseSwapChain->GetBackBuffer(i, ::D3DBACKBUFFER_TYPE_MONO, &realBackBuffer);
 			D3D9Wrapper::IDirect3DSurface9 *wrappedBackBuffer = IDirect3DSurface9::GetDirect3DSurface9(realBackBuffer, this, NULL, NewSwapChain);
 			NewSwapChain->m_backBuffers.push_back(wrappedBackBuffer);
 			wrappedBackBuffer->Release();
@@ -2635,7 +2635,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetSwapChain(THIS_ UINT iSwapChain, 
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
 
-		D3D9Wrapper::IDirect3DSwapChain9 *wrapper = D3D9Wrapper::IDirect3DSwapChain9::GetSwapChain((D3D9Base::LPDIRECT3DSWAPCHAIN9) 0, this);
+		D3D9Wrapper::IDirect3DSwapChain9 *wrapper = D3D9Wrapper::IDirect3DSwapChain9::GetSwapChain((::LPDIRECT3DSWAPCHAIN9) 0, this);
 		wrapper->_SwapChain = iSwapChain;
 		wrapper->pendingGetSwapChain = true;
 		wrapper->pendingDevice = this;
@@ -2645,7 +2645,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetSwapChain(THIS_ UINT iSwapChain, 
 		return S_OK;
 	}
 	D3D9Wrapper::IDirect3DSwapChain9* wrappedSwapChain = NULL;
-	D3D9Base::LPDIRECT3DSWAPCHAIN9 baseSwapChain = NULL;
+	::LPDIRECT3DSWAPCHAIN9 baseSwapChain = NULL;
     *pSwapChain = NULL;
 	if (iSwapChain >= mWrappedSwapChains.size())
 		hr = D3DERR_INVALIDCALL;
@@ -2685,23 +2685,23 @@ STDMETHODIMP_(UINT) D3D9Wrapper::IDirect3DDevice9::GetNumberOfSwapChains(THIS)
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Reset(THIS_ D3D9Base::D3DPRESENT_PARAMETERS* pPresentationParameters)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Reset(THIS_ ::D3DPRESENT_PARAMETERS* pPresentationParameters)
 {
 	LogInfo("IDirect3DDevice9::Reset called on handle=%p\n", GetD3D9Device());
 	if (G->gForwardToEx) {
 		LogInfo("  forwarding to ResetEx.\n");
 
-		D3D9Base::D3DDISPLAYMODEEX fullScreenDisplayMode;
-		fullScreenDisplayMode.Size = sizeof(D3D9Base::D3DDISPLAYMODEEX);
+		::D3DDISPLAYMODEEX fullScreenDisplayMode;
+		fullScreenDisplayMode.Size = sizeof(::D3DDISPLAYMODEEX);
 		if (pPresentationParameters)
 		{
 			fullScreenDisplayMode.Format = pPresentationParameters->BackBufferFormat;
 			fullScreenDisplayMode.Height = pPresentationParameters->BackBufferHeight;
 			fullScreenDisplayMode.Width = pPresentationParameters->BackBufferWidth;
 			fullScreenDisplayMode.RefreshRate = pPresentationParameters->FullScreen_RefreshRateInHz;
-			fullScreenDisplayMode.ScanLineOrdering = D3D9Base::D3DSCANLINEORDERING_PROGRESSIVE;
+			fullScreenDisplayMode.ScanLineOrdering = ::D3DSCANLINEORDERING_PROGRESSIVE;
 		}
-		D3D9Base::D3DDISPLAYMODEEX *pFullScreenDisplayMode = &fullScreenDisplayMode;
+		::D3DDISPLAYMODEEX *pFullScreenDisplayMode = &fullScreenDisplayMode;
 		if (pPresentationParameters && pPresentationParameters->Windowed)
 			pFullScreenDisplayMode = 0;
 		return ResetEx(pPresentationParameters, pFullScreenDisplayMode);
@@ -2720,13 +2720,13 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Reset(THIS_ D3D9Base::D3DPRESENT_PAR
 	LogInfo("  AutoDepthStencilFormat %d\n", pPresentationParameters->AutoDepthStencilFormat);
 	LogInfo("  MultiSampleType %d\n", pPresentationParameters->MultiSampleType);
 	LogInfo("  MultiSampleQuality %d\n", pPresentationParameters->MultiSampleQuality);
-	D3D9Base::D3DPRESENT_PARAMETERS originalPresentParams;
+	::D3DPRESENT_PARAMETERS originalPresentParams;
 	if (pPresentationParameters != nullptr) {
 		// Save off the window handle so we can translate mouse cursor
 		// coordinates to the window:
 		if (pPresentationParameters->hDeviceWindow != NULL)
 			G->sethWnd(pPresentationParameters->hDeviceWindow);
-		memcpy(&originalPresentParams, pPresentationParameters, sizeof(D3D9Base::D3DPRESENT_PARAMETERS));
+		memcpy(&originalPresentParams, pPresentationParameters, sizeof(::D3DPRESENT_PARAMETERS));
 		// Require in case the software mouse and upscaling are on at the same time
 		// TODO: Use a helper class to track *all* different resolutions
 		G->SET_GAME_INTERNAL_WIDTH(pPresentationParameters->BackBufferWidth);
@@ -2773,7 +2773,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Reset(THIS_ D3D9Base::D3DPRESENT_PAR
 
 	return hr;
 }
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::ResetEx(THIS_ D3D9Base::D3DPRESENT_PARAMETERS* pPresentationParameters, D3D9Base::D3DDISPLAYMODEEX *pFullscreenDisplayMode)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::ResetEx(THIS_ ::D3DPRESENT_PARAMETERS* pPresentationParameters, ::D3DDISPLAYMODEEX *pFullscreenDisplayMode)
 {
 	LogInfo("IDirect3DDevice9Ex::ResetEx called on handle=%p\n", GetD3D9Device());
 
@@ -2799,13 +2799,13 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::ResetEx(THIS_ D3D9Base::D3DPRESENT_P
 		LogInfo("  FullscreenRefreshRate = %d\n", pFullscreenDisplayMode->RefreshRate);
 		LogInfo("  ScanLineOrdering = %d\n", pFullscreenDisplayMode->ScanLineOrdering);
 	}
-	D3D9Base::D3DPRESENT_PARAMETERS originalPresentParams;
+	::D3DPRESENT_PARAMETERS originalPresentParams;
 	if (pPresentationParameters != nullptr) {
 		// Save off the window handle so we can translate mouse cursor
 		// coordinates to the window:
 		if (pPresentationParameters->hDeviceWindow != NULL)
 			G->sethWnd(pPresentationParameters->hDeviceWindow);
-		memcpy(&originalPresentParams, pPresentationParameters, sizeof(D3D9Base::D3DPRESENT_PARAMETERS));
+		memcpy(&originalPresentParams, pPresentationParameters, sizeof(::D3DPRESENT_PARAMETERS));
 		// Require in case the software mouse and upscaling are on at the same time
 		// TODO: Use a helper class to track *all* different resolutions
 		G->SET_GAME_INTERNAL_WIDTH(pPresentationParameters->BackBufferWidth);
@@ -2817,16 +2817,16 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::ResetEx(THIS_ D3D9Base::D3DPRESENT_P
 			G->mResolutionInfo.width, G->mResolutionInfo.height);
 	}
 	ForceDisplayParams(pPresentationParameters, pFullscreenDisplayMode);
-	D3D9Base::D3DDISPLAYMODEEX fullScreenDisplayMode;
+	::D3DDISPLAYMODEEX fullScreenDisplayMode;
 	if (pPresentationParameters && !(pPresentationParameters->Windowed) && !pFullscreenDisplayMode)
 	{
 		LogInfo("    creating full screen parameter structure.\n");
-		fullScreenDisplayMode.Size = sizeof(D3D9Base::D3DDISPLAYMODEEX);
+		fullScreenDisplayMode.Size = sizeof(::D3DDISPLAYMODEEX);
 		fullScreenDisplayMode.Format = pPresentationParameters->BackBufferFormat;
 		fullScreenDisplayMode.Height = pPresentationParameters->BackBufferHeight;
 		fullScreenDisplayMode.Width = pPresentationParameters->BackBufferWidth;
 		fullScreenDisplayMode.RefreshRate = pPresentationParameters->FullScreen_RefreshRateInHz;
-		fullScreenDisplayMode.ScanLineOrdering = D3D9Base::D3DSCANLINEORDERING_PROGRESSIVE;
+		fullScreenDisplayMode.ScanLineOrdering = ::D3DSCANLINEORDERING_PROGRESSIVE;
 		pFullscreenDisplayMode = &fullScreenDisplayMode;
 	}
 	LogDebug("Overridden Presentation Params\n");
@@ -2946,14 +2946,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Present(THIS_ CONST RECT* pSourceRec
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetBackBuffer(THIS_ UINT iSwapChain,UINT iBackBuffer,D3D9Base::D3DBACKBUFFER_TYPE Type, D3D9Wrapper::IDirect3DSurface9 **ppBackBuffer)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetBackBuffer(THIS_ UINT iSwapChain,UINT iBackBuffer,::D3DBACKBUFFER_TYPE Type, D3D9Wrapper::IDirect3DSurface9 **ppBackBuffer)
 {
 	LogInfo("IDirect3DDevice9::GetBackBuffer called\n");
 
 	CheckDevice(this);
 	HRESULT hr;
 
-	D3D9Base::LPDIRECT3DSURFACE9 baseSurface = 0;
+	::LPDIRECT3DSURFACE9 baseSurface = 0;
 	FakeSwapChain *fakeSwapChain = NULL;
 	D3D9Wrapper::IDirect3DSurface9 * wrappedSurface = NULL;
 	if (G->SCREEN_UPSCALING > 0 || G->gForceStereo == 2) {
@@ -3014,7 +3014,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetBackBuffer(THIS_ UINT iSwapChain,
     return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetRasterStatus(THIS_ UINT iSwapChain,D3D9Base::D3DRASTER_STATUS* pRasterStatus)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetRasterStatus(THIS_ UINT iSwapChain,::D3DRASTER_STATUS* pRasterStatus)
 {
 	LogDebug("IDirect3DDevice9::GetRasterStatus called.\n");
 
@@ -3036,7 +3036,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetDialogBoxMode(THIS_ BOOL bEnableD
 	return hr;
 }
 
-STDMETHODIMP_(void) D3D9Wrapper::IDirect3DDevice9::SetGammaRamp(THIS_ UINT iSwapChain,DWORD Flags,CONST D3D9Base::D3DGAMMARAMP* pRamp)
+STDMETHODIMP_(void) D3D9Wrapper::IDirect3DDevice9::SetGammaRamp(THIS_ UINT iSwapChain,DWORD Flags,CONST ::D3DGAMMARAMP* pRamp)
 {
 	LogDebug("IDirect3DDevice9::SetGammaRamp called.\n");
 
@@ -3044,7 +3044,7 @@ STDMETHODIMP_(void) D3D9Wrapper::IDirect3DDevice9::SetGammaRamp(THIS_ UINT iSwap
 	GetD3D9Device()->SetGammaRamp(iSwapChain, Flags, pRamp);
 }
 
-STDMETHODIMP_(void) D3D9Wrapper::IDirect3DDevice9::GetGammaRamp(THIS_ UINT iSwapChain,D3D9Base::D3DGAMMARAMP* pRamp)
+STDMETHODIMP_(void) D3D9Wrapper::IDirect3DDevice9::GetGammaRamp(THIS_ UINT iSwapChain,::D3DGAMMARAMP* pRamp)
 {
 	LogDebug("IDirect3DDevice9::GetGammaRamp called.\n");
 
@@ -3064,19 +3064,19 @@ enum SurfaceCreation {
 	OffscreenPlainEx
 };
 
-static HRESULT _CreateSurface(D3D9Base::IDirect3DTexture9 **baseSurface, const D3D2DTEXTURE_DESC *pDesc, D3D9Wrapper::IDirect3DDevice9 *me, HANDLE *pSharedHandle, SurfaceCreation type) {
+static HRESULT _CreateSurface(::IDirect3DTexture9 **baseSurface, const D3D2DTEXTURE_DESC *pDesc, D3D9Wrapper::IDirect3DDevice9 *me, HANDLE *pSharedHandle, SurfaceCreation type) {
 	return me->GetD3D9Device()->CreateTexture(pDesc->Width, pDesc->Height, pDesc->Levels, pDesc->Usage, pDesc->Format, pDesc->Pool, baseSurface, pSharedHandle);
 }
 
-static HRESULT _CreateSurface(D3D9Base::IDirect3DVolumeTexture9 **baseSurface, const D3D3DTEXTURE_DESC *pDesc, D3D9Wrapper::IDirect3DDevice9 *me, HANDLE *pSharedHandle, SurfaceCreation type) {
+static HRESULT _CreateSurface(::IDirect3DVolumeTexture9 **baseSurface, const D3D3DTEXTURE_DESC *pDesc, D3D9Wrapper::IDirect3DDevice9 *me, HANDLE *pSharedHandle, SurfaceCreation type) {
 	return me->GetD3D9Device()->CreateVolumeTexture(pDesc->Width, pDesc->Height, pDesc->Depth, pDesc->Levels, pDesc->Usage, pDesc->Format, pDesc->Pool, baseSurface, pSharedHandle);
 }
 
-static HRESULT _CreateSurface(D3D9Base::IDirect3DCubeTexture9 **baseSurface, const D3D2DTEXTURE_DESC *pDesc, D3D9Wrapper::IDirect3DDevice9 *me, HANDLE *pSharedHandle, SurfaceCreation type) {
+static HRESULT _CreateSurface(::IDirect3DCubeTexture9 **baseSurface, const D3D2DTEXTURE_DESC *pDesc, D3D9Wrapper::IDirect3DDevice9 *me, HANDLE *pSharedHandle, SurfaceCreation type) {
 	return me->GetD3D9Device()->CreateCubeTexture(pDesc->Width, pDesc->Levels, pDesc->Usage, pDesc->Format, pDesc->Pool, baseSurface, pSharedHandle);
 }
 
-static HRESULT _CreateSurface(D3D9Base::IDirect3DSurface9 **baseSurface, const D3D2DTEXTURE_DESC *pDesc, D3D9Wrapper::IDirect3DDevice9 *me, HANDLE *pSharedHandle, SurfaceCreation type) {
+static HRESULT _CreateSurface(::IDirect3DSurface9 **baseSurface, const D3D2DTEXTURE_DESC *pDesc, D3D9Wrapper::IDirect3DDevice9 *me, HANDLE *pSharedHandle, SurfaceCreation type) {
 	switch (type) {
 	case SurfaceCreation::RenderTarget:
 		return me->GetD3D9Device()->CreateRenderTarget(pDesc->Width, pDesc->Height, pDesc->Format, pDesc->MultiSampleType, pDesc->MultiSampleQuality, (pDesc->Usage & D3DUSAGE_DYNAMIC), baseSurface, pSharedHandle);
@@ -3311,7 +3311,7 @@ static void override_resource_desc_common_2d_3d(DescType *desc, TextureOverride 
 {
 	if (textureOverride->format != -1) {
 		LogInfo("  setting custom format to %d\n", textureOverride->format);
-		desc->Format = (D3D9Base::D3DFORMAT)textureOverride->format;
+		desc->Format = (::D3DFORMAT)textureOverride->format;
 	}
 
 	if (textureOverride->width != -1) {
@@ -3335,8 +3335,8 @@ static void override_resource_desc_common_2d_3d(DescType *desc, TextureOverride 
 	}
 }
 
-static void override_resource_desc(D3D9Base::D3DVERTEXBUFFER_DESC *desc, TextureOverride *textureOverride) {}
-static void override_resource_desc(D3D9Base::D3DINDEXBUFFER_DESC *desc, TextureOverride *textureOverride) {}
+static void override_resource_desc(::D3DVERTEXBUFFER_DESC *desc, TextureOverride *textureOverride) {}
+static void override_resource_desc(::D3DINDEXBUFFER_DESC *desc, TextureOverride *textureOverride) {}
 static void override_resource_desc(D3D2DTEXTURE_DESC *desc, TextureOverride *textureOverride)
 {
 	override_resource_desc_common_2d_3d(desc, textureOverride);
@@ -3349,7 +3349,7 @@ bool D3D9Wrapper::IDirect3DDevice9::HackerDeviceShouldDuplicateSurface(D3D2DTEXT
 {
 	return ShouldDuplicate(pDesc);
 }
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateTexture(THIS_ UINT Width,UINT Height,UINT Levels,DWORD Usage,D3D9Base::D3DFORMAT Format,D3D9Base::D3DPOOL Pool, D3D9Wrapper::IDirect3DTexture9 **ppTexture,HANDLE* pSharedHandle)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateTexture(THIS_ UINT Width,UINT Height,UINT Levels,DWORD Usage,::D3DFORMAT Format,::D3DPOOL Pool, D3D9Wrapper::IDirect3DTexture9 **ppTexture,HANDLE* pSharedHandle)
 {
 	LogDebug("IDirect3DDevice9::CreateTexture called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d, SharedHandle=%p\n",
 		Width, Height, Levels, Usage, Format, Pool, pSharedHandle);
@@ -3357,7 +3357,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateTexture(THIS_ UINT Width,UINT 
 	if (!GetD3D9Device())
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
-		D3D9Wrapper::IDirect3DTexture9 *wrapper = IDirect3DTexture9::GetDirect3DTexture9((D3D9Base::LPDIRECT3DTEXTURE9) 0, this, NULL);
+		D3D9Wrapper::IDirect3DTexture9 *wrapper = IDirect3DTexture9::GetDirect3DTexture9((::LPDIRECT3DTEXTURE9) 0, this, NULL);
 		wrapper->_Width = Width;
 		wrapper->_Height = Height;
 		wrapper->_Levels = Levels;
@@ -3372,12 +3372,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateTexture(THIS_ UINT Width,UINT 
 		return S_OK;
 	}
 
-	D3D9Base::LPDIRECT3DTEXTURE9 baseTexture = 0;
-	if (G->gForwardToEx && Pool == D3D9Base::D3DPOOL_MANAGED)
+	::LPDIRECT3DTEXTURE9 baseTexture = 0;
+	if (G->gForwardToEx && Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 		if (!(Usage & D3DUSAGE_DYNAMIC))
 			Usage = Usage | D3DUSAGE_DYNAMIC;
 	}
@@ -3392,11 +3392,11 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateTexture(THIS_ UINT Width,UINT 
 	D3D9Wrapper::IDirect3DTexture9 *wrapper;
 	ResourceHandleInfo info;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DTexture9* pRightTexture = NULL;
-		hr = CreateSurface<D3D9Base::IDirect3DTexture9, D3D2DTEXTURE_DESC>(&baseTexture, &info, &pDesc, this, pSharedHandle, SurfaceCreation::Texture);
+		::IDirect3DTexture9* pRightTexture = NULL;
+		hr = CreateSurface<::IDirect3DTexture9, D3D2DTEXTURE_DESC>(&baseTexture, &info, &pDesc, this, pSharedHandle, SurfaceCreation::Texture);
 		if (!FAILED(hr)){
 			if (ShouldDuplicate(&pDesc)) {
-				hr = CreateSurface<D3D9Base::IDirect3DTexture9, D3D2DTEXTURE_DESC>(&pRightTexture, &info, &pDesc, this, pSharedHandle, SurfaceCreation::Texture);
+				hr = CreateSurface<::IDirect3DTexture9, D3D2DTEXTURE_DESC>(&pRightTexture, &info, &pDesc, this, pSharedHandle, SurfaceCreation::Texture);
 				if (!FAILED(hr)) {
 					wrapper = IDirect3DTexture9::GetDirect3DTexture9(baseTexture, this, pRightTexture);
 				}
@@ -3415,7 +3415,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateTexture(THIS_ UINT Width,UINT 
 	}
 	else {
 		check_surface_resolution(&pDesc);
-		hr = CreateSurface<D3D9Base::IDirect3DTexture9, D3D2DTEXTURE_DESC>(&baseTexture, &info, &pDesc, this, pSharedHandle, SurfaceCreation::Texture);
+		hr = CreateSurface<::IDirect3DTexture9, D3D2DTEXTURE_DESC>(&baseTexture, &info, &pDesc, this, pSharedHandle, SurfaceCreation::Texture);
 		wrapper = IDirect3DTexture9::GetDirect3DTexture9(baseTexture, this, NULL);
 	}
 
@@ -3432,14 +3432,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateTexture(THIS_ UINT Width,UINT 
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVolumeTexture(THIS_ UINT Width,UINT Height,UINT Depth,UINT Levels,DWORD Usage,D3D9Base::D3DFORMAT Format,D3D9Base::D3DPOOL Pool, D3D9Wrapper::IDirect3DVolumeTexture9** ppVolumeTexture,HANDLE* pSharedHandle)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVolumeTexture(THIS_ UINT Width,UINT Height,UINT Depth,UINT Levels,DWORD Usage,::D3DFORMAT Format,::D3DPOOL Pool, D3D9Wrapper::IDirect3DVolumeTexture9** ppVolumeTexture,HANDLE* pSharedHandle)
 {
 	LogInfo("IDirect3DDevice9::CreateVolumeTexture Width=%d Height=%d Format=%d\n", Width, Height, Format);
 	if (!GetD3D9Device())
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
 
-		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper = IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((D3D9Base::LPDIRECT3DVOLUMETEXTURE9) 0, this);
+		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper = IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((::LPDIRECT3DVOLUMETEXTURE9) 0, this);
 		wrapper->_Height = Height;
 		wrapper->_Width = Width;
 		wrapper->_Depth = Depth;
@@ -3455,11 +3455,11 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVolumeTexture(THIS_ UINT Width
 		return S_OK;
 	}
 
-	if (G->gForwardToEx && Pool == D3D9Base::D3DPOOL_MANAGED)
+	if (G->gForwardToEx && Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 		if (!(Usage & D3DUSAGE_DYNAMIC))
 			Usage = Usage | D3DUSAGE_DYNAMIC;
 	}
@@ -3473,9 +3473,9 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVolumeTexture(THIS_ UINT Width
 	pDesc.Format = Format;
 	pDesc.Pool = Pool;
 	check_surface_resolution(&pDesc);
-	D3D9Base::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DVOLUMETEXTURE9 baseTexture = 0;
 	ResourceHandleInfo info;
-	HRESULT hr = CreateSurface<D3D9Base::IDirect3DVolumeTexture9, D3D3DTEXTURE_DESC>(&baseTexture, &info, &pDesc, this, pSharedHandle, SurfaceCreation::VolumeTexture);
+	HRESULT hr = CreateSurface<::IDirect3DVolumeTexture9, D3D3DTEXTURE_DESC>(&baseTexture, &info, &pDesc, this, pSharedHandle, SurfaceCreation::VolumeTexture);
 	if (baseTexture) {
 		D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper;
 		wrapper = IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9(baseTexture, this);
@@ -3497,14 +3497,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVolumeTexture(THIS_ UINT Width
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateCubeTexture(THIS_ UINT EdgeLength,UINT Levels,DWORD Usage,D3D9Base::D3DFORMAT Format,D3D9Base::D3DPOOL Pool, D3D9Wrapper::IDirect3DCubeTexture9** ppCubeTexture,HANDLE* pSharedHandle)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateCubeTexture(THIS_ UINT EdgeLength,UINT Levels,DWORD Usage,::D3DFORMAT Format,::D3DPOOL Pool, D3D9Wrapper::IDirect3DCubeTexture9** ppCubeTexture,HANDLE* pSharedHandle)
 {
 	LogInfo("IDirect3DDevice9::CreateCubeTexture EdgeLength=%d Format=%d\n", EdgeLength, Format);
 	if (!GetD3D9Device())
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
 
-		D3D9Wrapper::IDirect3DCubeTexture9 *wrapper = IDirect3DCubeTexture9::GetDirect3DCubeTexture9((D3D9Base::LPDIRECT3DCUBETEXTURE9) 0, this, NULL);
+		D3D9Wrapper::IDirect3DCubeTexture9 *wrapper = IDirect3DCubeTexture9::GetDirect3DCubeTexture9((::LPDIRECT3DCUBETEXTURE9) 0, this, NULL);
 		wrapper->_EdgeLength = EdgeLength;
 		wrapper->_Levels = Levels;
 		wrapper->_Usage = Usage;
@@ -3518,11 +3518,11 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateCubeTexture(THIS_ UINT EdgeLen
 		return S_OK;
 	}
 
-	if (G->gForwardToEx && Pool == D3D9Base::D3DPOOL_MANAGED)
+	if (G->gForwardToEx && Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 		if (!(Usage & D3DUSAGE_DYNAMIC))
 			Usage = Usage | D3DUSAGE_DYNAMIC;
 	}
@@ -3534,16 +3534,16 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateCubeTexture(THIS_ UINT EdgeLen
 	pDesc.Usage = Usage;
 	pDesc.Format = Format;
 	pDesc.Pool = Pool;
-	D3D9Base::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DCUBETEXTURE9 baseTexture = 0;
 	HRESULT hr;
 	D3D9Wrapper::IDirect3DCubeTexture9 *wrapper = NULL;
 	ResourceHandleInfo info;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DCubeTexture9* pRightTexture = NULL;
-		hr = CreateSurface<D3D9Base::IDirect3DCubeTexture9, D3D2DTEXTURE_DESC>(&baseTexture, &info, &pDesc, this, pSharedHandle, SurfaceCreation::CubeTexture);
+		::IDirect3DCubeTexture9* pRightTexture = NULL;
+		hr = CreateSurface<::IDirect3DCubeTexture9, D3D2DTEXTURE_DESC>(&baseTexture, &info, &pDesc, this, pSharedHandle, SurfaceCreation::CubeTexture);
 		if (!FAILED(hr)){
 			if (ShouldDuplicate(&pDesc)) {
-				hr = CreateSurface<D3D9Base::IDirect3DCubeTexture9, D3D2DTEXTURE_DESC>(&pRightTexture, &info, &pDesc, this, pSharedHandle, SurfaceCreation::CubeTexture);
+				hr = CreateSurface<::IDirect3DCubeTexture9, D3D2DTEXTURE_DESC>(&pRightTexture, &info, &pDesc, this, pSharedHandle, SurfaceCreation::CubeTexture);
 				if (!FAILED(hr)) {
 					wrapper = IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, this, pRightTexture);
 					wrapper->resourceHandleInfo = info;
@@ -3566,7 +3566,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateCubeTexture(THIS_ UINT EdgeLen
 	}
 	else {
 		check_surface_resolution(&pDesc);
-		hr = CreateSurface<D3D9Base::IDirect3DCubeTexture9, D3D2DTEXTURE_DESC>(&baseTexture, &info, &pDesc, this, pSharedHandle, SurfaceCreation::CubeTexture);
+		hr = CreateSurface<::IDirect3DCubeTexture9, D3D2DTEXTURE_DESC>(&baseTexture, &info, &pDesc, this, pSharedHandle, SurfaceCreation::CubeTexture);
 		wrapper = IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, this, NULL);
 		wrapper->resourceHandleInfo = info;
 	}
@@ -3587,12 +3587,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateCubeTexture(THIS_ UINT EdgeLen
 }
 
 
-static HRESULT _CreateBuffer(D3D9Base::IDirect3DVertexBuffer9 **baseBuffer, const D3D9Base::D3DVERTEXBUFFER_DESC *pDesc, D3D9Wrapper::IDirect3DDevice9* me, HANDLE *pSharedHandle) {
+static HRESULT _CreateBuffer(::IDirect3DVertexBuffer9 **baseBuffer, const ::D3DVERTEXBUFFER_DESC *pDesc, D3D9Wrapper::IDirect3DDevice9* me, HANDLE *pSharedHandle) {
 
 	return me->GetD3D9Device()->CreateVertexBuffer(pDesc->Size, pDesc->Usage, pDesc->FVF, pDesc->Pool, baseBuffer, pSharedHandle);
 }
 
-static HRESULT _CreateBuffer(D3D9Base::IDirect3DIndexBuffer9 **baseBuffer, const D3D9Base::D3DINDEXBUFFER_DESC *pDesc, D3D9Wrapper::IDirect3DDevice9* me, HANDLE *pSharedHandle) {
+static HRESULT _CreateBuffer(::IDirect3DIndexBuffer9 **baseBuffer, const ::D3DINDEXBUFFER_DESC *pDesc, D3D9Wrapper::IDirect3DDevice9* me, HANDLE *pSharedHandle) {
 
 	return me->GetD3D9Device()->CreateIndexBuffer(pDesc->Size, pDesc->Usage, pDesc->Format, pDesc->Pool, baseBuffer, pSharedHandle);
 }
@@ -3602,7 +3602,7 @@ static HRESULT CreateBuffer(BufferType** baseBuffer, ResourceHandleInfo *info, c
 
 	DescType  newDesc;
 	const DescType *pNewDesc = NULL;
-	D3D9Base::NVAPI_STEREO_SURFACECREATEMODE oldMode;
+	::NVAPI_STEREO_SURFACECREATEMODE oldMode;
 
 	LogDebug("HackerDevice::CreateBuffer called\n");
 	if (pDesc)
@@ -3641,7 +3641,7 @@ static HRESULT CreateBuffer(BufferType** baseBuffer, ResourceHandleInfo *info, c
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexBuffer(THIS_ UINT Length,DWORD Usage,DWORD FVF,D3D9Base::D3DPOOL Pool, D3D9Wrapper::IDirect3DVertexBuffer9 **ppVertexBuffer, HANDLE* pSharedHandle)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexBuffer(THIS_ UINT Length,DWORD Usage,DWORD FVF,::D3DPOOL Pool, D3D9Wrapper::IDirect3DVertexBuffer9 **ppVertexBuffer, HANDLE* pSharedHandle)
 {
 	LogDebug("IDirect3DDevice9::CreateVertexBuffer called with Length=%d\n", Length);
 
@@ -3649,7 +3649,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexBuffer(THIS_ UINT Length
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
 
-		D3D9Wrapper::IDirect3DVertexBuffer9 *wrapper = D3D9Wrapper::IDirect3DVertexBuffer9::GetDirect3DVertexBuffer9((D3D9Base::LPDIRECT3DVERTEXBUFFER9) 0, this);
+		D3D9Wrapper::IDirect3DVertexBuffer9 *wrapper = D3D9Wrapper::IDirect3DVertexBuffer9::GetDirect3DVertexBuffer9((::LPDIRECT3DVERTEXBUFFER9) 0, this);
 		wrapper->_Length = Length;
 		wrapper->_Usage = Usage;
 		wrapper->_FVF = FVF;
@@ -3662,12 +3662,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexBuffer(THIS_ UINT Length
 		return S_OK;
 	}
 
-	D3D9Base::LPDIRECT3DVERTEXBUFFER9 baseVB = 0;
-	if (G->gForwardToEx && Pool == D3D9Base::D3DPOOL_MANAGED)
+	::LPDIRECT3DVERTEXBUFFER9 baseVB = 0;
+	if (G->gForwardToEx && Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 	}
     HRESULT hr = GetD3D9Device()->CreateVertexBuffer(Length, Usage, FVF, Pool, &baseVB, pSharedHandle);
 	if (baseVB) {
@@ -3688,7 +3688,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexBuffer(THIS_ UINT Length
     return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateIndexBuffer(THIS_ UINT Length,DWORD Usage,D3D9Base::D3DFORMAT Format,D3D9Base::D3DPOOL Pool,
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateIndexBuffer(THIS_ UINT Length,DWORD Usage,::D3DFORMAT Format,::D3DPOOL Pool,
 	D3D9Wrapper::IDirect3DIndexBuffer9 **ppIndexBuffer,HANDLE* pSharedHandle)
 {
 	LogDebug("IDirect3DDevice9::CreateIndexBuffer called with Length=%d, Usage=%x, Format=%d, Pool=%d, Sharedhandle=%p, IndexBufferPtr=%p\n",
@@ -3697,7 +3697,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateIndexBuffer(THIS_ UINT Length,
 	if (!GetD3D9Device())
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
-		D3D9Wrapper::IDirect3DIndexBuffer9 *wrapper = D3D9Wrapper::IDirect3DIndexBuffer9::GetDirect3DIndexBuffer9((D3D9Base::LPDIRECT3DINDEXBUFFER9) 0, this);
+		D3D9Wrapper::IDirect3DIndexBuffer9 *wrapper = D3D9Wrapper::IDirect3DIndexBuffer9::GetDirect3DIndexBuffer9((::LPDIRECT3DINDEXBUFFER9) 0, this);
 		wrapper->_Length = Length;
 		wrapper->_Usage = Usage;
 		wrapper->_Format = Format;
@@ -3710,12 +3710,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateIndexBuffer(THIS_ UINT Length,
 		return S_OK;
 	}
 
-	D3D9Base::LPDIRECT3DINDEXBUFFER9 baseIB = 0;
-	if (G->gForwardToEx && Pool == D3D9Base::D3DPOOL_MANAGED)
+	::LPDIRECT3DINDEXBUFFER9 baseIB = 0;
+	if (G->gForwardToEx && Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 	}
     HRESULT hr = GetD3D9Device()->CreateIndexBuffer(Length, Usage, Format, Pool, &baseIB, pSharedHandle);
 	if (baseIB) {
@@ -3735,12 +3735,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateIndexBuffer(THIS_ UINT Length,
     return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateRenderTarget(THIS_ UINT Width,UINT Height,D3D9Base::D3DFORMAT Format,D3D9Base::D3DMULTISAMPLE_TYPE MultiSample,DWORD MultisampleQuality,BOOL Lockable, D3D9Wrapper::IDirect3DSurface9 **ppSurface,HANDLE* pSharedHandle)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateRenderTarget(THIS_ UINT Width,UINT Height,::D3DFORMAT Format,::D3DMULTISAMPLE_TYPE MultiSample,DWORD MultisampleQuality,BOOL Lockable, D3D9Wrapper::IDirect3DSurface9 **ppSurface,HANDLE* pSharedHandle)
 {
 	LogInfo("IDirect3DDevice9::CreateRenderTarget called with Width=%d Height=%d Format=%d\n", Width, Height, Format);
 
 	CheckDevice(this);
-	D3D9Base::LPDIRECT3DSURFACE9 baseSurface = NULL;
+	::LPDIRECT3DSURFACE9 baseSurface = NULL;
 
 	D3D2DTEXTURE_DESC pDesc;
 	pDesc.Usage = D3DUSAGE_RENDERTARGET;
@@ -3756,12 +3756,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateRenderTarget(THIS_ UINT Width,
 	D3D9Wrapper::IDirect3DSurface9 *wrapper;
 	ResourceHandleInfo info;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DSurface9* pRightRenderTarget = NULL;
+		::IDirect3DSurface9* pRightRenderTarget = NULL;
 		// create left/mono
-		hr = CreateSurface<D3D9Base::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::RenderTarget);
+		hr = CreateSurface<::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::RenderTarget);
 		if (!FAILED(hr)){
 			if (ShouldDuplicate(&pDesc)) {
-				hr = CreateSurface<D3D9Base::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&pRightRenderTarget, &info, &pDesc, this, pSharedHandle, SurfaceCreation::RenderTarget);
+				hr = CreateSurface<::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&pRightRenderTarget, &info, &pDesc, this, pSharedHandle, SurfaceCreation::RenderTarget);
 				if (!FAILED(hr)) {
 					wrapper = IDirect3DSurface9::GetDirect3DSurface9(baseSurface, this, pRightRenderTarget);
 					wrapper->resourceHandleInfo = info;
@@ -3783,7 +3783,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateRenderTarget(THIS_ UINT Width,
 		}
 	}
 	else {
-		hr = CreateSurface<D3D9Base::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::RenderTarget);
+		hr = CreateSurface<::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::RenderTarget);
 		wrapper = IDirect3DSurface9::GetDirect3DSurface9(baseSurface, this, NULL);
 		wrapper->resourceHandleInfo = info;
 	}
@@ -3800,7 +3800,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateRenderTarget(THIS_ UINT Width,
     return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurface(THIS_ UINT Width,UINT Height,D3D9Base::D3DFORMAT Format,D3D9Base::D3DMULTISAMPLE_TYPE MultiSample,DWORD MultisampleQuality,BOOL Discard,
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurface(THIS_ UINT Width,UINT Height,::D3DFORMAT Format,::D3DMULTISAMPLE_TYPE MultiSample,DWORD MultisampleQuality,BOOL Discard,
 																	  D3D9Wrapper::IDirect3DSurface9** ppSurface,HANDLE* pSharedHandle)
 {
 	LogInfo("IDirect3DDevice9::CreateDepthStencilSurface Width=%d Height=%d Format=%d\n", Width, Height, Format);
@@ -3808,7 +3808,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurface(THIS_ UINT
 	if (!GetD3D9Device())
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
-		wrapper = IDirect3DSurface9::GetDirect3DSurface9((D3D9Base::LPDIRECT3DSURFACE9) 0, this, NULL);
+		wrapper = IDirect3DSurface9::GetDirect3DSurface9((::LPDIRECT3DSURFACE9) 0, this, NULL);
 		wrapper->_Width = Width;
 		wrapper->_Height = Height;
 		wrapper->_Format = Format;
@@ -3823,7 +3823,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurface(THIS_ UINT
 		return S_OK;
 	}
 
-	D3D9Base::LPDIRECT3DSURFACE9 baseSurface = NULL;
+	::LPDIRECT3DSURFACE9 baseSurface = NULL;
 
 	D3D2DTEXTURE_DESC pDesc;
 	pDesc.Usage = D3DUSAGE_DEPTHSTENCIL;
@@ -3838,12 +3838,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurface(THIS_ UINT
 	HRESULT hr;
 	ResourceHandleInfo info;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DSurface9* pRightDepthStencil = NULL;
+		::IDirect3DSurface9* pRightDepthStencil = NULL;
 		// create left/mono
-		hr = CreateSurface<D3D9Base::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::DepthStencil);
+		hr = CreateSurface<::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::DepthStencil);
 		if (!FAILED(hr)){
 			if (ShouldDuplicate(&pDesc)) {
-				hr = CreateSurface<D3D9Base::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&pRightDepthStencil, &info, &pDesc, this, pSharedHandle, SurfaceCreation::DepthStencil);
+				hr = CreateSurface<::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&pRightDepthStencil, &info, &pDesc, this, pSharedHandle, SurfaceCreation::DepthStencil);
 				if (!FAILED(hr)) {
 					wrapper = IDirect3DSurface9::GetDirect3DSurface9(baseSurface, this, pRightDepthStencil);
 					wrapper->resourceHandleInfo = info;
@@ -3866,7 +3866,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurface(THIS_ UINT
 	}
 	else {
 		check_surface_resolution(&pDesc);
-		hr = CreateSurface<D3D9Base::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::DepthStencil);
+		hr = CreateSurface<::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::DepthStencil);
 		wrapper = IDirect3DSurface9::GetDirect3DSurface9(baseSurface, this, NULL);
 		wrapper->resourceHandleInfo = info;
 	}
@@ -3881,7 +3881,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurface(THIS_ UINT
 	if (ppSurface) LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurface, *ppSurface);
     return hr;
 }
-HRESULT DirectModeUpdateSurfaceRight(D3D9Base::IDirect3DDevice9 *origDevice, D3D9Base::IDirect3DSurface9 *pSourceSurfaceLeft, D3D9Base::IDirect3DSurface9 *pSourceSurfaceRight, D3D9Base::IDirect3DSurface9 *pDestSurfaceRight, CONST RECT *pSourceRect, CONST POINT* pDestPoint) {
+HRESULT DirectModeUpdateSurfaceRight(::IDirect3DDevice9 *origDevice, ::IDirect3DSurface9 *pSourceSurfaceLeft, ::IDirect3DSurface9 *pSourceSurfaceRight, ::IDirect3DSurface9 *pDestSurfaceRight, CONST RECT *pSourceRect, CONST POINT* pDestPoint) {
 	HRESULT hr = D3D_OK;
 	if (!pSourceSurfaceRight && pDestSurfaceRight) {
 		LogDebug("IDirect3DDevice9::UpdateSurface Direct Mode, INFO: UpdateSurface - Source is not stereo, destination is stereo. Copying source to both sides of destination.\n");
@@ -3905,15 +3905,15 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::UpdateSurface(THIS_ D3D9Wrapper::IDi
 {
 	LogDebug("IDirect3DDevice9::UpdateSurface called with SourceSurface=%p, DestinationSurface=%p\n", pSourceSurface, pDestinationSurface);
 	CheckDevice(this);
-	D3D9Base::LPDIRECT3DSURFACE9 baseSourceSurface = baseSurface9(pSourceSurface);
-	D3D9Base::LPDIRECT3DSURFACE9 baseDestinationSurface = baseSurface9(pDestinationSurface);
+	::LPDIRECT3DSURFACE9 baseSourceSurface = baseSurface9(pSourceSurface);
+	::LPDIRECT3DSURFACE9 baseDestinationSurface = baseSurface9(pDestinationSurface);
 	D3D9Wrapper::IDirect3DSurface9 *wrappedSource = wrappedSurface9(pSourceSurface);
 	D3D9Wrapper::IDirect3DSurface9 *wrappedDest = wrappedSurface9(pDestinationSurface);
 	if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
 		if (pSourceRect || pDestPoint) {
-			D3D9Base::D3DBOX srcBox;
-			D3D9Base::D3DBOX dstBox;
-			D3D9Base::D3DSURFACE_DESC srcDesc;
+			::D3DBOX srcBox;
+			::D3DBOX dstBox;
+			::D3DSURFACE_DESC srcDesc;
 			RECT srcRect;
 			if (pSourceRect != NULL) {
 				srcBox.Top = pSourceRect->top;
@@ -3952,10 +3952,10 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::UpdateSurface(THIS_ D3D9Wrapper::IDi
 	}
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DSurface9* pSourceSurfaceLeft = wrappedSource->DirectModeGetLeft();
-		D3D9Base::IDirect3DSurface9* pSourceSurfaceRight = wrappedSource->DirectModeGetRight();
-		D3D9Base::IDirect3DSurface9* pDestSurfaceLeft = wrappedDest->DirectModeGetLeft();
-		D3D9Base::IDirect3DSurface9* pDestSurfaceRight = wrappedDest->DirectModeGetRight();
+		::IDirect3DSurface9* pSourceSurfaceLeft = wrappedSource->DirectModeGetLeft();
+		::IDirect3DSurface9* pSourceSurfaceRight = wrappedSource->DirectModeGetRight();
+		::IDirect3DSurface9* pDestSurfaceLeft = wrappedDest->DirectModeGetLeft();
+		::IDirect3DSurface9* pDestSurfaceRight = wrappedDest->DirectModeGetRight();
 		hr = GetD3D9Device()->UpdateSurface(pSourceSurfaceLeft, pSourceRect, pDestSurfaceLeft, pDestPoint);
 		if (SUCCEEDED(hr))
 			hr = DirectModeUpdateSurfaceRight(GetD3D9Device(), pSourceSurfaceLeft, pSourceSurfaceRight, pDestSurfaceRight, pSourceRect, pDestPoint);
@@ -3969,11 +3969,11 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::UpdateSurface(THIS_ D3D9Wrapper::IDi
 
 	return hr;
 }
-void D3D9Wrapper::IDirect3DDevice9::HackerDeviceUnWrapTexture(D3D9Wrapper::IDirect3DBaseTexture9 * pWrappedTexture, D3D9Base::IDirect3DBaseTexture9 ** ppActualLeftTexture, D3D9Base::IDirect3DBaseTexture9 ** ppActualRightTexture)
+void D3D9Wrapper::IDirect3DDevice9::HackerDeviceUnWrapTexture(D3D9Wrapper::IDirect3DBaseTexture9 * pWrappedTexture, ::IDirect3DBaseTexture9 ** ppActualLeftTexture, ::IDirect3DBaseTexture9 ** ppActualRightTexture)
 {
 	UnWrapTexture(pWrappedTexture, ppActualLeftTexture, ppActualRightTexture);
 }
-HRESULT DirectModeUpdateTextureRight(D3D9Base::IDirect3DDevice9 *origDevice, D3D9Base::IDirect3DBaseTexture9 *pSourceTextureLeft, D3D9Base::IDirect3DBaseTexture9 *pSourceTextureRight, D3D9Base::IDirect3DBaseTexture9 *pDestTextureRight) {
+HRESULT DirectModeUpdateTextureRight(::IDirect3DDevice9 *origDevice, ::IDirect3DBaseTexture9 *pSourceTextureLeft, ::IDirect3DBaseTexture9 *pSourceTextureRight, ::IDirect3DBaseTexture9 *pDestTextureRight) {
 
 	HRESULT hr = D3D_OK;
 	if (!pSourceTextureRight && pDestTextureRight) {
@@ -3999,8 +3999,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::UpdateTexture(THIS_ D3D9Wrapper::IDi
 	if (simulateTextureUpdate(pSourceTexture, pDestinationTexture))
 		return S_OK;
 	CheckDevice(this);
-	D3D9Base::IDirect3DBaseTexture9 *baseSourceTexture = baseTexture9(pSourceTexture);
-	D3D9Base::IDirect3DBaseTexture9 *baseDestTexture = baseTexture9(pDestinationTexture);
+	::IDirect3DBaseTexture9 *baseSourceTexture = baseTexture9(pSourceTexture);
+	::IDirect3DBaseTexture9 *baseDestTexture = baseTexture9(pDestinationTexture);
 	D3D9Wrapper::IDirect3DBaseTexture9 *wrappedSource = wrappedTexture9(pSourceTexture);
 	D3D9Wrapper::IDirect3DBaseTexture9 *wrappedDest = wrappedTexture9(pDestinationTexture);
 	if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
@@ -4008,10 +4008,10 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::UpdateTexture(THIS_ D3D9Wrapper::IDi
 	}
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DBaseTexture9* pSourceTextureLeft = NULL;
-		D3D9Base::IDirect3DBaseTexture9* pSourceTextureRight = NULL;
-		D3D9Base::IDirect3DBaseTexture9* pDestTextureLeft = NULL;
-		D3D9Base::IDirect3DBaseTexture9* pDestTextureRight = NULL;
+		::IDirect3DBaseTexture9* pSourceTextureLeft = NULL;
+		::IDirect3DBaseTexture9* pSourceTextureRight = NULL;
+		::IDirect3DBaseTexture9* pDestTextureLeft = NULL;
+		::IDirect3DBaseTexture9* pDestTextureRight = NULL;
 		UnWrapTexture(wrappedSource, &pSourceTextureLeft, &pSourceTextureRight);
 		UnWrapTexture(wrappedDest, &pDestTextureLeft, &pDestTextureRight);
 		hr = GetD3D9Device()->UpdateTexture(pSourceTextureLeft, pDestTextureLeft);
@@ -4027,7 +4027,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::UpdateTexture(THIS_ D3D9Wrapper::IDi
 
 	return hr;
 }
-HRESULT DirectModeGetRenderTargetDataRight(D3D9Base::IDirect3DDevice9 *origDevice, D3D9Base::IDirect3DSurface9 *pRenderTargetLeft, D3D9Base::IDirect3DSurface9 *pRenderTargetRight, D3D9Base::IDirect3DSurface9 *pDestSurfaceRight) {
+HRESULT DirectModeGetRenderTargetDataRight(::IDirect3DDevice9 *origDevice, ::IDirect3DSurface9 *pRenderTargetLeft, ::IDirect3DSurface9 *pRenderTargetRight, ::IDirect3DSurface9 *pDestSurfaceRight) {
 	HRESULT hr = D3D_OK;
 	if (!pRenderTargetRight && pDestSurfaceRight) {
 		LogDebug("IDirect3DDevice9::GetRenderTargetData Direct Mode, INFO: GetRenderTargetData - Source is not stereo, destination is stereo. Copying source to both sides of destination.\n");
@@ -4051,8 +4051,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetRenderTargetData(THIS_ D3D9Wrappe
 {
 	LogInfo("IDirect3DDevice9::GetRenderTargetData called with RenderTarget=%p, DestSurface=%p\n", pRenderTarget, pDestSurface);
 	CheckDevice(this);
-	D3D9Base::LPDIRECT3DSURFACE9 baseRenderTarget = baseSurface9(pRenderTarget);
-	D3D9Base::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
+	::LPDIRECT3DSURFACE9 baseRenderTarget = baseSurface9(pRenderTarget);
+	::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
 	D3D9Wrapper::IDirect3DSurface9* pWrappedRenderTarget = wrappedSurface9(pRenderTarget);
 	D3D9Wrapper::IDirect3DSurface9* pWrappedDest = wrappedSurface9(pDestSurface);
 	if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
@@ -4063,10 +4063,10 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetRenderTargetData(THIS_ D3D9Wrappe
 	if (G->gForceStereo == 2) {
 		D3D9Wrapper::IDirect3DSurface9* pWrappedRenderTarget = wrappedSurface9(pRenderTarget);
 		D3D9Wrapper::IDirect3DSurface9* pWrappedDest = wrappedSurface9(pDestSurface);
-		D3D9Base::IDirect3DSurface9* pRenderTargetLeft = pWrappedRenderTarget->DirectModeGetLeft();
-		D3D9Base::IDirect3DSurface9* pRenderTargetRight = pWrappedRenderTarget->DirectModeGetRight();
-		D3D9Base::IDirect3DSurface9* pDestSurfaceLeft = pWrappedDest->DirectModeGetLeft();
-		D3D9Base::IDirect3DSurface9* pDestSurfaceRight = pWrappedDest->DirectModeGetRight();
+		::IDirect3DSurface9* pRenderTargetLeft = pWrappedRenderTarget->DirectModeGetLeft();
+		::IDirect3DSurface9* pRenderTargetRight = pWrappedRenderTarget->DirectModeGetRight();
+		::IDirect3DSurface9* pDestSurfaceLeft = pWrappedDest->DirectModeGetLeft();
+		::IDirect3DSurface9* pDestSurfaceRight = pWrappedDest->DirectModeGetRight();
 		hr = GetD3D9Device()->GetRenderTargetData(pRenderTargetLeft, pDestSurfaceLeft);
 		if (SUCCEEDED(hr))
 			hr = DirectModeGetRenderTargetDataRight(GetD3D9Device(), pRenderTargetLeft, pRenderTargetRight, pDestSurfaceRight);
@@ -4088,13 +4088,13 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetFrontBufferData(THIS_ UINT iSwapC
 	LogInfo("IDirect3DDevice9::GetFrontBufferData called with SwapChain=%d, DestSurface=%p\n", iSwapChain, pDestSurface);
 	CheckDevice(this);
 
-	D3D9Base::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
+	::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
 	HRESULT hr = GetD3D9Device()->GetFrontBufferData(iSwapChain, baseDestSurface);
 	LogInfo("  returns result=%x\n", hr);
 
 	return hr;
 }
-HRESULT DirectModeStretchRectRight(D3D9Base::IDirect3DDevice9 *origDevice, D3D9Base::IDirect3DSurface9 *pSourceSurfaceLeft, D3D9Base::IDirect3DSurface9 *pSourceSurfaceRight, D3D9Base::IDirect3DSurface9 *pDestSurfaceRight, CONST RECT* pSourceRect, CONST RECT* pDestRect, D3D9Base::D3DTEXTUREFILTERTYPE Filter) {
+HRESULT DirectModeStretchRectRight(::IDirect3DDevice9 *origDevice, ::IDirect3DSurface9 *pSourceSurfaceLeft, ::IDirect3DSurface9 *pSourceSurfaceRight, ::IDirect3DSurface9 *pDestSurfaceRight, CONST RECT* pSourceRect, CONST RECT* pDestRect, ::D3DTEXTUREFILTERTYPE Filter) {
 	HRESULT hr = D3D_OK;
 	if (!pSourceSurfaceRight && pDestSurfaceRight) {
 		LogDebug("IDirect3DDevice9::StretchRect, Direct Mode, - Source is not stereo, destination is stereo. Copying source to both sides of destination.\n");
@@ -4113,21 +4113,21 @@ HRESULT DirectModeStretchRectRight(D3D9Base::IDirect3DDevice9 *origDevice, D3D9B
 	return hr;
 }
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::StretchRect(THIS_ D3D9Wrapper::IDirect3DSurface9 *pSourceSurface,CONST RECT* pSourceRect,
-														D3D9Wrapper::IDirect3DSurface9 *pDestSurface,CONST RECT* pDestRect,D3D9Base::D3DTEXTUREFILTERTYPE Filter)
+														D3D9Wrapper::IDirect3DSurface9 *pDestSurface,CONST RECT* pDestRect,::D3DTEXTUREFILTERTYPE Filter)
 {
 	LogDebug("IDirect3DDevice9::StretchRect called using SourceSurface=%p, DestSurface=%p\n", pSourceSurface, pDestSurface);
 
 	CheckDevice(this);
-	D3D9Base::LPDIRECT3DSURFACE9 baseSourceSurface = baseSurface9(pSourceSurface);
-	D3D9Base::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
+	::LPDIRECT3DSURFACE9 baseSourceSurface = baseSurface9(pSourceSurface);
+	::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
 	D3D9Wrapper::IDirect3DSurface9* pWrappedSource = wrappedSurface9(pSourceSurface);
 	D3D9Wrapper::IDirect3DSurface9* pWrappedDest = wrappedSurface9(pDestSurface);
 	if (G->gAutoDetectDepthBuffer && pWrappedSource && pWrappedDest && pWrappedSource->possibleDepthBuffer && pWrappedDest->possibleDepthBuffer) {
-		D3D9Base::D3DSURFACE_DESC src_desc;
+		::D3DSURFACE_DESC src_desc;
 		pWrappedSource->GetD3DSurface9()->GetDesc(&src_desc);
-		D3D9Base::D3DSURFACE_DESC dst_desc;
+		::D3DSURFACE_DESC dst_desc;
 		pWrappedDest->GetD3DSurface9()->GetDesc(&dst_desc);
-		if (src_desc.MultiSampleType != D3D9Base::D3DMULTISAMPLE_NONE && dst_desc.MultiSampleType == D3D9Base::D3DMULTISAMPLE_NONE)
+		if (src_desc.MultiSampleType != ::D3DMULTISAMPLE_NONE && dst_desc.MultiSampleType == ::D3DMULTISAMPLE_NONE)
 		{
 			pWrappedSource->depthSourceInfo.resolvedAA_dest = pWrappedDest;
 			pWrappedDest->depthSourceInfo.resolvedAA_source = pWrappedSource;
@@ -4138,7 +4138,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::StretchRect(THIS_ D3D9Wrapper::IDire
 				else {
 					if (pWrappedDest->depthstencil_replacement_surface != pWrappedDest->GetRealOrig()) {
 						pWrappedDest->depthstencil_replacement_resolvedAA = true;
-						pWrappedDest->depthstencil_replacement_surface = reinterpret_cast<D3D9Base::IDirect3DSurface9*>(pWrappedDest->GetRealOrig());
+						pWrappedDest->depthstencil_replacement_surface = reinterpret_cast<::IDirect3DSurface9*>(pWrappedDest->GetRealOrig());
 						if (!pWrappedDest->depthstencil_replacement_nvapi_registered) {
 							NvAPI_D3D9_RegisterResource(pWrappedDest->depthstencil_replacement_surface);
 							NvAPI_D3D9_RegisterResource(pWrappedDest->depthstencil_replacement_texture);
@@ -4149,7 +4149,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::StretchRect(THIS_ D3D9Wrapper::IDire
 			}else if (pWrappedDest == depthstencil_replacement){
 				if (pWrappedDest->depthstencil_replacement_surface != pWrappedDest->GetRealOrig()) {
 					pWrappedDest->depthstencil_replacement_resolvedAA = true;
-					pWrappedDest->depthstencil_replacement_surface = reinterpret_cast<D3D9Base::IDirect3DSurface9*>(pWrappedDest->GetRealOrig());
+					pWrappedDest->depthstencil_replacement_surface = reinterpret_cast<::IDirect3DSurface9*>(pWrappedDest->GetRealOrig());
 					if (!pWrappedDest->depthstencil_replacement_nvapi_registered) {
 						NvAPI_D3D9_RegisterResource(pWrappedDest->depthstencil_replacement_surface);
 						NvAPI_D3D9_RegisterResource(pWrappedDest->depthstencil_replacement_texture);
@@ -4165,8 +4165,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::StretchRect(THIS_ D3D9Wrapper::IDire
 	}
 	if (G->hunting && G->track_texture_updates != 2){ // Any hunting mode - want to catch hash contamination even while soft disabled
 		if (pSourceRect || pDestRect) {
-			D3D9Base::D3DBOX srcBox;
-			D3D9Base::D3DBOX dstBox;
+			::D3DBOX srcBox;
+			::D3DBOX dstBox;
 			if (pSourceRect != NULL) {
 				srcBox.Top = pSourceRect->top;
 				srcBox.Left = pSourceRect->left;
@@ -4195,10 +4195,10 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::StretchRect(THIS_ D3D9Wrapper::IDire
 	}
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DSurface9* pSourceSurfaceLeft = pWrappedSource->DirectModeGetLeft();
-		D3D9Base::IDirect3DSurface9* pSourceSurfaceRight = pWrappedSource->DirectModeGetRight();
-		D3D9Base::IDirect3DSurface9* pDestSurfaceLeft = pWrappedDest->DirectModeGetLeft();
-		D3D9Base::IDirect3DSurface9* pDestSurfaceRight = pWrappedDest->DirectModeGetRight();
+		::IDirect3DSurface9* pSourceSurfaceLeft = pWrappedSource->DirectModeGetLeft();
+		::IDirect3DSurface9* pSourceSurfaceRight = pWrappedSource->DirectModeGetRight();
+		::IDirect3DSurface9* pDestSurfaceLeft = pWrappedDest->DirectModeGetLeft();
+		::IDirect3DSurface9* pDestSurfaceRight = pWrappedDest->DirectModeGetRight();
 		hr = GetD3D9Device()->StretchRect(pSourceSurfaceLeft, pSourceRect, pDestSurfaceLeft, pDestRect, Filter);
 		if (SUCCEEDED(hr))
 			hr = DirectModeStretchRectRight(GetD3D9Device(), pSourceSurfaceLeft, pSourceSurfaceRight, pDestSurfaceRight, pSourceRect, pDestRect, Filter);
@@ -4220,11 +4220,11 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::StretchRect(THIS_ D3D9Wrapper::IDire
 }
 
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::ColorFill(THIS_ D3D9Wrapper::IDirect3DSurface9 *pSurface,CONST RECT* pRect,D3D9Base::D3DCOLOR color)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::ColorFill(THIS_ D3D9Wrapper::IDirect3DSurface9 *pSurface,CONST RECT* pRect,::D3DCOLOR color)
 {
 	LogDebug("IDirect3DDevice9::ColorFill called with Surface=%p\n", pSurface);
 	CheckDevice(this);
-	D3D9Base::LPDIRECT3DSURFACE9 baseSurface = baseSurface9(pSurface);
+	::LPDIRECT3DSURFACE9 baseSurface = baseSurface9(pSurface);
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
 		D3D9Wrapper::IDirect3DSurface9 *pDerivedSurface = wrappedSurface9(pSurface);
@@ -4243,15 +4243,15 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::ColorFill(THIS_ D3D9Wrapper::IDirect
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateOffscreenPlainSurface(THIS_ UINT Width,UINT Height,D3D9Base::D3DFORMAT Format,D3D9Base::D3DPOOL Pool, D3D9Wrapper::IDirect3DSurface9 **ppSurface,HANDLE* pSharedHandle)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateOffscreenPlainSurface(THIS_ UINT Width,UINT Height,::D3DFORMAT Format,::D3DPOOL Pool, D3D9Wrapper::IDirect3DSurface9 **ppSurface,HANDLE* pSharedHandle)
 {
 	LogInfo("IDirect3DDevice9::CreateOffscreenPlainSurface called with Width=%d Height=%d\n", Width, Height);
 	CheckDevice(this);
-	D3D9Base::LPDIRECT3DSURFACE9 baseSurface = NULL;
-	if (G->gForwardToEx && Pool == D3D9Base::D3DPOOL_MANAGED)
+	::LPDIRECT3DSURFACE9 baseSurface = NULL;
+	if (G->gForwardToEx && Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 	}
 	D3D2DTEXTURE_DESC pDesc;
 	pDesc.Usage = 0;
@@ -4261,7 +4261,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateOffscreenPlainSurface(THIS_ UI
 	pDesc.Pool = Pool;
 	pDesc.Levels = 1;
 	ResourceHandleInfo info;
-	HRESULT hr = CreateSurface<D3D9Base::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::OffscreenPlain);
+	HRESULT hr = CreateSurface<::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::OffscreenPlain);
 	if (baseSurface) {
 		D3D9Wrapper::IDirect3DSurface9 * wrapper;
 		wrapper = IDirect3DSurface9::GetDirect3DSurface9(baseSurface, this, NULL);
@@ -4280,11 +4280,11 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateOffscreenPlainSurface(THIS_ UI
 }
 #define SMALL_FLOAT 0.001f
 #define	SLIGHTLY_LESS_THAN_ONE 0.999f
-inline bool D3D9Wrapper::IDirect3DDevice9::isViewportDefaultForMainRT(CONST D3D9Base::D3DVIEWPORT9* pViewport)
+inline bool D3D9Wrapper::IDirect3DDevice9::isViewportDefaultForMainRT(CONST ::D3DVIEWPORT9* pViewport)
 {
 	LogDebug("isViewportDefaultForMainRT\n");
 	D3D9Wrapper::IDirect3DSurface9* pPrimaryRenderTarget = m_activeRenderTargets[0];
-	D3D9Base::D3DSURFACE_DESC pRTDesc;
+	::D3DSURFACE_DESC pRTDesc;
 	pPrimaryRenderTarget->GetDesc(&pRTDesc);
 
 	return  ((pViewport->Height == pRTDesc.Height) && (pViewport->Width == pRTDesc.Width) &&
@@ -4294,7 +4294,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetRenderTarget(THIS_ DWORD RenderTa
 {
 	LogDebug("IDirect3DDevice9::SetRenderTarget called with RenderTargetIndex=%d, pRenderTarget=%p.\n", RenderTargetIndex, pRenderTarget);
 	CheckDevice(this);
-	D3D9Base::LPDIRECT3DSURFACE9 baseRenderTarget = baseSurface9(pRenderTarget);
+	::LPDIRECT3DSURFACE9 baseRenderTarget = baseSurface9(pRenderTarget);
 	D3D9Wrapper::IDirect3DSurface9* newRenderTarget = wrappedSurface9(pRenderTarget);
 	Profiling::State profiling_state;
 	HRESULT hr;
@@ -4357,7 +4357,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetRenderTarget(THIS_ DWORD RenderTa
 	LogDebug("IDirect3DDevice9::GetRenderTarget called with RenderTargetIndex=%d\n", RenderTargetIndex);
 
 	CheckDevice(this);
-	D3D9Base::LPDIRECT3DSURFACE9 baseSurface = 0;
+	::LPDIRECT3DSURFACE9 baseSurface = 0;
 	HRESULT hr;
 	if ((RenderTargetIndex >= m_activeRenderTargets.size()) || (RenderTargetIndex < 0) || !ppRenderTarget) {
 		hr = D3DERR_INVALIDCALL;
@@ -4403,7 +4403,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetDepthStencilSurface(THIS_ D3D9Wra
 		return S_OK;
 	}
 
-	D3D9Base::LPDIRECT3DSURFACE9 baseStencil = baseSurface9(pNewZStencil);
+	::LPDIRECT3DSURFACE9 baseStencil = baseSurface9(pNewZStencil);
 	D3D9Wrapper::IDirect3DSurface9* pNewDepthStencil = wrappedSurface9(pNewZStencil);
 	Profiling::State profiling_state;
 	if (G->hunting == HUNTING_MODE_ENABLED) {
@@ -4418,7 +4418,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetDepthStencilSurface(THIS_ D3D9Wra
 	if (G->gAutoDetectDepthBuffer && pNewDepthStencil) {
 		if (depth_sources.find(pNewDepthStencil) == depth_sources.end())
 		{
-			D3D9Base::D3DSURFACE_DESC desc;
+			::D3DSURFACE_DESC desc;
 			pNewDepthStencil->GetD3DSurface9()->GetDesc(&desc);
 
 			// Early rejection
@@ -4436,7 +4436,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetDepthStencilSurface(THIS_ D3D9Wra
 	}
 	HRESULT hr;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DSurface9* pActualStencilForCurrentSide = NULL;
+		::IDirect3DSurface9* pActualStencilForCurrentSide = NULL;
 		if (pNewDepthStencil) {
 			if (currentRenderingSide == RenderPosition::Left){
 				pActualStencilForCurrentSide = pNewDepthStencil->DirectModeGetLeft();
@@ -4475,7 +4475,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetDepthStencilSurface(THIS_ D3D9Wra
 
 	CheckDevice(this);
 
-	D3D9Base::LPDIRECT3DSURFACE9 baseSurface = 0;
+	::LPDIRECT3DSURFACE9 baseSurface = 0;
 	HRESULT hr;
 	if (!ppZStencilSurface) {
 		hr = D3DERR_INVALIDCALL;
@@ -4529,23 +4529,23 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::EndScene(THIS)
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Clear(THIS_ DWORD Count,CONST D3D9Base::D3DRECT* pRects,DWORD Flags,D3D9Base::D3DCOLOR Color, float Z,DWORD Stencil)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Clear(THIS_ DWORD Count,CONST ::D3DRECT* pRects,DWORD Flags,::D3DCOLOR Color, float Z,DWORD Stencil)
 {
 	LogDebug("IDirect3DDevice9::Clear called.\n");
 
 	CheckDevice(this);
 
-	D3D9Base::IDirect3DSurface9 *dss = NULL;
+	::IDirect3DSurface9 *dss = NULL;
 	if ((G->clear_dsv_command_list.commands.size() > 0) && ((Flags & D3DCLEAR_STENCIL) || (Flags & D3DCLEAR_ZBUFFER))) {
 		GetD3D9Device()->GetDepthStencilSurface(&dss);
 		RunResourceCommandList(this, &G->clear_dsv_command_list, dss, false);
 	}
-	vector<D3D9Base::IDirect3DSurface9*> renderTargets;
+	vector<::IDirect3DSurface9*> renderTargets;
 	if ((G->clear_rtv_command_list.commands.size() > 0) && (Flags & D3DCLEAR_TARGET)) {
-		D3D9Base::D3DCAPS9 pCaps;// = NULL;
+		::D3DCAPS9 pCaps;// = NULL;
 		GetD3D9Device()->GetDeviceCaps(&pCaps);
 		for (UINT x = 0; x < pCaps.NumSimultaneousRTs; x++) {
-			D3D9Base::IDirect3DSurface9 *rts;
+			::IDirect3DSurface9 *rts;
 			GetD3D9Device()->GetRenderTarget(x, &rts);
 			if (rts)
 				renderTargets.push_back(rts);
@@ -4569,7 +4569,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Clear(THIS_ DWORD Count,CONST D3D9Ba
 	}
 	if (renderTargets.size() > 0) {
 		for (UINT x = 0; x < renderTargets.size(); x++) {
-			D3D9Base::IDirect3DSurface9 *rts = renderTargets.at(x);
+			::IDirect3DSurface9 *rts = renderTargets.at(x);
 			RunResourceCommandList(this, &G->clear_rtv_command_list, rts, true);
 			rts->Release();
 		}
@@ -4580,7 +4580,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Clear(THIS_ DWORD Count,CONST D3D9Ba
 
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetTransform(THIS_ D3D9Base::D3DTRANSFORMSTATETYPE State,CONST D3D9Base::D3DMATRIX* pMatrix)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetTransform(THIS_ ::D3DTRANSFORMSTATETYPE State,CONST ::D3DMATRIX* pMatrix)
 {
 	LogDebug("IDirect3DDevice9::SetTransform called.\n");
 	CheckDevice(this);
@@ -4590,7 +4590,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetTransform(THIS_ D3D9Base::D3DTRAN
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetTransform(THIS_ D3D9Base::D3DTRANSFORMSTATETYPE State,D3D9Base::D3DMATRIX* pMatrix)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetTransform(THIS_ ::D3DTRANSFORMSTATETYPE State,::D3DMATRIX* pMatrix)
 {
 	LogDebug("IDirect3DDevice9::GetTransform called.\n");
 
@@ -4601,7 +4601,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetTransform(THIS_ D3D9Base::D3DTRAN
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::MultiplyTransform(THIS_ D3D9Base::D3DTRANSFORMSTATETYPE a,CONST D3D9Base::D3DMATRIX *b)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::MultiplyTransform(THIS_ ::D3DTRANSFORMSTATETYPE a,CONST ::D3DMATRIX *b)
 {
 	LogDebug("IDirect3DDevice9::MultiplyTransform called.\n");
 
@@ -4612,7 +4612,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::MultiplyTransform(THIS_ D3D9Base::D3
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetViewport(THIS_ CONST D3D9Base::D3DVIEWPORT9* pViewport)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetViewport(THIS_ CONST ::D3DVIEWPORT9* pViewport)
 {
 	LogDebug("IDirect3DDevice9::SetViewport called.\n");
 	LogDebug("  width = %d, height = %d\n", pViewport->Width, pViewport->Height);
@@ -4633,7 +4633,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetViewport(THIS_ CONST D3D9Base::D3
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetViewport(THIS_ D3D9Base::D3DVIEWPORT9* pViewport)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetViewport(THIS_ ::D3DVIEWPORT9* pViewport)
 {
 	LogDebug("IDirect3DDevice9::GetViewport called.\n");
 
@@ -4644,7 +4644,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetViewport(THIS_ D3D9Base::D3DVIEWP
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetMaterial(THIS_ CONST D3D9Base::D3DMATERIAL9* pMaterial)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetMaterial(THIS_ CONST ::D3DMATERIAL9* pMaterial)
 {
 	LogDebug("IDirect3DDevice9::SetMaterial called.\n");
 
@@ -4655,7 +4655,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetMaterial(THIS_ CONST D3D9Base::D3
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetMaterial(THIS_ D3D9Base::D3DMATERIAL9* pMaterial)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetMaterial(THIS_ ::D3DMATERIAL9* pMaterial)
 {
 	LogDebug("IDirect3DDevice9::GetMaterial called.\n");
 
@@ -4666,7 +4666,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetMaterial(THIS_ D3D9Base::D3DMATER
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetLight(THIS_ DWORD Index,CONST D3D9Base::D3DLIGHT9 *Light)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetLight(THIS_ DWORD Index,CONST ::D3DLIGHT9 *Light)
 {
 	LogDebug("IDirect3DDevice9::SetLight called.\n");
 
@@ -4677,7 +4677,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetLight(THIS_ DWORD Index,CONST D3D
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetLight(THIS_ DWORD Index,D3D9Base::D3DLIGHT9* Light)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetLight(THIS_ DWORD Index,::D3DLIGHT9* Light)
 {
 	LogDebug("IDirect3DDevice9::GetLight called.\n");
 
@@ -4732,7 +4732,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetClipPlane(THIS_ DWORD Index,float
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetRenderState(THIS_ D3D9Base::D3DRENDERSTATETYPE State,DWORD Value)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetRenderState(THIS_ ::D3DRENDERSTATETYPE State,DWORD Value)
 {
 	LogDebug("IDirect3DDevice9::SetRenderState called with State=%d, Value=%d\n", State, Value);
 
@@ -4743,7 +4743,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetRenderState(THIS_ D3D9Base::D3DRE
 		return S_OK;
 	}
 	HRESULT hr;
-	if ((G->SCISSOR_DISABLE || (G->helix_fix && G->helix_skip_set_scissor_rect)) && State == D3D9Base::D3DRS_SCISSORTESTENABLE && Value == TRUE)
+	if ((G->SCISSOR_DISABLE || (G->helix_fix && G->helix_skip_set_scissor_rect)) && State == ::D3DRS_SCISSORTESTENABLE && Value == TRUE)
 	{
 		LogDebug("  disabling scissor mode.\n");
 		hr = D3D_OK;
@@ -4751,8 +4751,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetRenderState(THIS_ D3D9Base::D3DRE
 	else {
 		hr = GetD3D9Device()->SetRenderState(State, Value);
 		if (!FAILED(hr)){
-			if (G->gAutoDetectDepthBuffer && State == D3D9Base::D3DRS_ZFUNC) {
-				current_zfunc = (D3D9Base::D3DCMPFUNC)Value;
+			if (G->gAutoDetectDepthBuffer && State == ::D3DRS_ZFUNC) {
+				current_zfunc = (::D3DCMPFUNC)Value;
 			}
 		}
 	}
@@ -4761,7 +4761,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetRenderState(THIS_ D3D9Base::D3DRE
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetRenderState(THIS_ D3D9Base::D3DRENDERSTATETYPE State,DWORD* pValue)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetRenderState(THIS_ ::D3DRENDERSTATETYPE State,DWORD* pValue)
 {
 	LogDebug("IDirect3DDevice9::GetRenderState called.\n");
 
@@ -4772,10 +4772,10 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetRenderState(THIS_ D3D9Base::D3DRE
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateStateBlock(THIS_ D3D9Base::D3DSTATEBLOCKTYPE Type, D3D9Wrapper::IDirect3DStateBlock9** ppSB)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateStateBlock(THIS_ ::D3DSTATEBLOCKTYPE Type, D3D9Wrapper::IDirect3DStateBlock9** ppSB)
 {
 	LogDebug("IDirect3DDevice9::CreateStateBlock called.\n");
-	D3D9Base::LPDIRECT3DSTATEBLOCK9 baseStateBlock = NULL;
+	::LPDIRECT3DSTATEBLOCK9 baseStateBlock = NULL;
 	CheckDevice(this);
 	HRESULT hr = GetD3D9Device()->CreateStateBlock(Type, &baseStateBlock);
 	if (baseStateBlock) {
@@ -4806,7 +4806,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::BeginStateBlock(THIS)
 STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::EndStateBlock(THIS_ D3D9Wrapper::IDirect3DStateBlock9** ppSB)
 {
 	LogDebug("IDirect3DDevice9::EndStateBlock called.\n");
-	D3D9Base::LPDIRECT3DSTATEBLOCK9 baseStateBlock = NULL;
+	::LPDIRECT3DSTATEBLOCK9 baseStateBlock = NULL;
 	CheckDevice(this);
 	HRESULT hr = GetD3D9Device()->EndStateBlock(&baseStateBlock);
 	if (baseStateBlock) {
@@ -4823,7 +4823,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::EndStateBlock(THIS_ D3D9Wrapper::IDi
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetClipStatus(THIS_ CONST D3D9Base::D3DCLIPSTATUS9* pClipStatus)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetClipStatus(THIS_ CONST ::D3DCLIPSTATUS9* pClipStatus)
 {
 	LogDebug("IDirect3DDevice9::SetClipStatus called.\n");
 
@@ -4834,7 +4834,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetClipStatus(THIS_ CONST D3D9Base::
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetClipStatus(THIS_ D3D9Base::D3DCLIPSTATUS9* pClipStatus)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetClipStatus(THIS_ ::D3DCLIPSTATUS9* pClipStatus)
 {
 	LogDebug("IDirect3DDevice9::GetClipStatus called.\n");
 
@@ -4851,7 +4851,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetTexture(THIS_ DWORD Stage, D3D9Wr
 
 	CheckDevice(this);
 	HRESULT hr;
-	D3D9Base::LPDIRECT3DBASETEXTURE9 baseTexture = 0;
+	::LPDIRECT3DBASETEXTURE9 baseTexture = 0;
 	if (!ppTexture) {
 		hr = D3DERR_INVALIDCALL;
 	}else{
@@ -4882,7 +4882,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetTexture(THIS_ DWORD Stage,D3D9Wra
 	LogDebug("IDirect3DDevice9::SetTexture called.\n");
 
 	CheckDevice(this);
-	D3D9Base::IDirect3DBaseTexture9 *baseTexture = baseTexture9(pTexture);
+	::IDirect3DBaseTexture9 *baseTexture = baseTexture9(pTexture);
 	D3D9Wrapper::IDirect3DBaseTexture9 *wrappedTexture = wrappedTexture9(pTexture);
 	HRESULT hr;
 	if (!pTexture) {
@@ -4899,8 +4899,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetTexture(THIS_ DWORD Stage,D3D9Wra
 	}
 	else {
 		if (G->gForceStereo == 2) {
-			D3D9Base::IDirect3DBaseTexture9* pActualLeftTexture = NULL;
-			D3D9Base::IDirect3DBaseTexture9* pActualRightTexture = NULL;
+			::IDirect3DBaseTexture9* pActualLeftTexture = NULL;
+			::IDirect3DBaseTexture9* pActualRightTexture = NULL;
 			UnWrapTexture(wrappedTexture, &pActualLeftTexture, &pActualRightTexture);
 			if ((pActualRightTexture == NULL) || (currentRenderingSide == RenderPosition::Left)) { // use left (mono) if not stereo or one left side
 				hr = _SetTexture(Stage, pActualLeftTexture);
@@ -4938,7 +4938,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetTexture(THIS_ DWORD Stage,D3D9Wra
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetTextureStageState(THIS_ DWORD Stage,D3D9Base::D3DTEXTURESTAGESTATETYPE Type,DWORD* pValue)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetTextureStageState(THIS_ DWORD Stage,::D3DTEXTURESTAGESTATETYPE Type,DWORD* pValue)
 {
 	LogDebug("IDirect3DDevice9::GetTextureStageState called.\n");
 
@@ -4949,7 +4949,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetTextureStageState(THIS_ DWORD Sta
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetTextureStageState(THIS_ DWORD Stage,D3D9Base::D3DTEXTURESTAGESTATETYPE Type, DWORD Value)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetTextureStageState(THIS_ DWORD Stage,::D3DTEXTURESTAGESTATETYPE Type, DWORD Value)
 {
 	LogDebug("IDirect3DDevice9::SetTextureStageState called.\n");
 
@@ -4960,7 +4960,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetTextureStageState(THIS_ DWORD Sta
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetSamplerState(THIS_ DWORD Sampler,D3D9Base::D3DSAMPLERSTATETYPE Type,DWORD* pValue)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetSamplerState(THIS_ DWORD Sampler,::D3DSAMPLERSTATETYPE Type,DWORD* pValue)
 {
 	LogDebug("IDirect3DDevice9::GetSamplerState called.\n");
 
@@ -4971,7 +4971,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetSamplerState(THIS_ DWORD Sampler,
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetSamplerState(THIS_ DWORD Sampler,D3D9Base::D3DSAMPLERSTATETYPE Type,DWORD Value)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetSamplerState(THIS_ DWORD Sampler,::D3DSAMPLERSTATETYPE Type,DWORD Value)
 {
 	LogDebug("IDirect3DDevice9::SetSamplerState called with Sampler=%d, StateType=%d, Value=%d\n", Sampler, Type, Value);
 
@@ -5093,7 +5093,7 @@ inline bool D3D9Wrapper::IDirect3DDevice9::DirectModeUpdateTransforms()
 {
 	if (!DirectModeProjectionNeedsUpdate)
 		return false;
-	if (D3D9Base::D3DXMatrixIsIdentity(&m_gameProjection)) {
+	if (::D3DXMatrixIsIdentity(&m_gameProjection)) {
 		DirectModeGameProjectionIsSet = false;
 		m_leftProjection = m_gameProjection;
 		m_rightProjection = m_gameProjection;
@@ -5108,15 +5108,15 @@ inline bool D3D9Wrapper::IDirect3DDevice9::DirectModeUpdateTransforms()
 		pEyeSeparation = mParamTextureManager.mEyeSeparation;
 		float separation = pEyeSeparation * pSeparationPercentage / 100;
 		float convergence = pEyeSeparation * pSeparationPercentage / 100 * pConvergence;
-		D3D9Base::D3DXMATRIX leftprojection = D3D9Base::D3DXMATRIX(m_gameProjection);
-		D3D9Base::D3DXMATRIX rightprojection = D3D9Base::D3DXMATRIX(m_gameProjection);
+		::D3DXMATRIX leftprojection = ::D3DXMATRIX(m_gameProjection);
+		::D3DXMATRIX rightprojection = ::D3DXMATRIX(m_gameProjection);
 
 		leftprojection._31 -= separation;
 		leftprojection._41 = convergence;
-		D3D9Base::D3DXMatrixTranspose(&m_leftProjection, &leftprojection);
+		::D3DXMatrixTranspose(&m_leftProjection, &leftprojection);
 		rightprojection._31 += separation;
 		rightprojection._41 = -convergence;
-		D3D9Base::D3DXMatrixTranspose(&m_rightProjection, &rightprojection);
+		::D3DXMatrixTranspose(&m_rightProjection, &rightprojection);
 	}
 	DirectModeProjectionNeedsUpdate = false;
 	return true;
@@ -5168,8 +5168,8 @@ inline bool D3D9Wrapper::IDirect3DDevice9::SetDrawingSide(RenderPosition side)
 			result = GetD3D9Device()->SetDepthStencilSurface(m_pActiveDepthStencil->DirectModeGetRight());
 	}
 	// switch textures to new side
-	D3D9Base::IDirect3DBaseTexture9* pActualLeftTexture = NULL;
-	D3D9Base::IDirect3DBaseTexture9* pActualRightTexture = NULL;
+	::IDirect3DBaseTexture9* pActualLeftTexture = NULL;
+	::IDirect3DBaseTexture9* pActualRightTexture = NULL;
 
 	for (auto it = m_activeStereoTextureStages.begin(); it != m_activeStereoTextureStages.end(); ++it)
 	{
@@ -5187,9 +5187,9 @@ inline bool D3D9Wrapper::IDirect3DDevice9::SetDrawingSide(RenderPosition side)
 
 	if (DirectModeGameProjectionIsSet) {
 		if (side == RenderPosition::Left)
-			GetD3D9Device()->SetTransform(D3D9Base::D3DTS_PROJECTION, &m_leftProjection);
+			GetD3D9Device()->SetTransform(::D3DTS_PROJECTION, &m_leftProjection);
 		else
-			GetD3D9Device()->SetTransform(D3D9Base::D3DTS_PROJECTION, &m_rightProjection);
+			GetD3D9Device()->SetTransform(::D3DTS_PROJECTION, &m_rightProjection);
 	}
 	return true;
 }
@@ -5343,22 +5343,22 @@ inline bool D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilReplacement(D3D9Wra
 {
 	if (depthStencil != nullptr)
 	{
-		D3D9Base::D3DSURFACE_DESC desc;
+		::D3DSURFACE_DESC desc;
 		depthStencil->GetD3DSurface9()->GetDesc(&desc);
 
 		depthstencil_replacement = depthStencil;
 		if (desc.Format == D3DFMT_INTZ){
 			depthstencil_replacement->depthstencil_replacement_direct_sample = true;
-			depthstencil_replacement->depthstencil_replacement_surface = reinterpret_cast<D3D9Base::IDirect3DSurface9*>(depthStencil->GetRealOrig());
+			depthstencil_replacement->depthstencil_replacement_surface = reinterpret_cast<::IDirect3DSurface9*>(depthStencil->GetRealOrig());
 			return true;
 		}
-		HRESULT hr = GetD3D9Device()->CreateTexture(desc.Width, desc.Height, 1, D3DUSAGE_DEPTHSTENCIL, D3DFMT_INTZ, D3D9Base::D3DPOOL_DEFAULT, &depthstencil_replacement->depthstencil_replacement_texture, nullptr);
+		HRESULT hr = GetD3D9Device()->CreateTexture(desc.Width, desc.Height, 1, D3DUSAGE_DEPTHSTENCIL, D3DFMT_INTZ, ::D3DPOOL_DEFAULT, &depthstencil_replacement->depthstencil_replacement_texture, nullptr);
 		if (SUCCEEDED(hr))
 		{
 			++migotoResourceCount;
-			if (desc.MultiSampleType != D3D9Base::D3DMULTISAMPLE_NONE) {
+			if (desc.MultiSampleType != ::D3DMULTISAMPLE_NONE) {
 				depthstencil_replacement->depthstencil_replacement_multisampled = true;
-				depthstencil_replacement->depthstencil_replacement_surface = reinterpret_cast<D3D9Base::IDirect3DSurface9*>(depthstencil_replacement->GetRealOrig());
+				depthstencil_replacement->depthstencil_replacement_surface = reinterpret_cast<::IDirect3DSurface9*>(depthstencil_replacement->GetRealOrig());
 				if (m_pD3D->m_isRESZ) {
 					hr = GetD3D9Device()->CreateRenderTarget(desc.Width, desc.Height, NULL_CODE, desc.MultiSampleType, desc.MultiSampleQuality, false, &depthstencil_replacement->depthstencil_multisampled_rt_surface, nullptr);
 					if (!FAILED(hr))
@@ -5375,7 +5375,7 @@ inline bool D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilReplacement(D3D9Wra
 			}
 			else if (resolvedAA) {
 				depthstencil_replacement->depthstencil_replacement_resolvedAA = true;
-				depthstencil_replacement->depthstencil_replacement_surface = reinterpret_cast<D3D9Base::IDirect3DSurface9*>(depthstencil_replacement->GetRealOrig());
+				depthstencil_replacement->depthstencil_replacement_surface = reinterpret_cast<::IDirect3DSurface9*>(depthstencil_replacement->GetRealOrig());
 				if (!(NVAPI_OK == NvAPI_D3D9_RegisterResource(depthstencil_replacement->depthstencil_replacement_surface)))
 					hr = E_FAIL;
 				if (!(NVAPI_OK == NvAPI_D3D9_RegisterResource(depthstencil_replacement->depthstencil_replacement_texture)))
@@ -5447,13 +5447,13 @@ inline bool D3D9Wrapper::IDirect3DDevice9::SwitchDrawingSide()
 	return switched;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawPrimitive(THIS_ D3D9Base::D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawPrimitive(THIS_ ::D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount)
 {
 	LogDebug("IDirect3DDevice9::DrawPrimitive called with PrimitiveType=%d, StartVertex=%d, PrimitiveCount=%d\n",
 		PrimitiveType, StartVertex, PrimitiveCount);
 
 	CheckDevice(this);
-	DrawContext c = DrawContext(DrawCall::Draw, PrimitiveType, PrimitiveCount, StartVertex, 0, 0, 0, 0, NULL, 0, NULL, D3D9Base::D3DFORMAT(-1), 0, NULL, NULL, NULL);
+	DrawContext c = DrawContext(DrawCall::Draw, PrimitiveType, PrimitiveCount, StartVertex, 0, 0, 0, 0, NULL, 0, NULL, ::D3DFORMAT(-1), 0, NULL, NULL, NULL);
 	BeforeDraw(c);
 
 	HRESULT hr;
@@ -5478,14 +5478,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawPrimitive(THIS_ D3D9Base::D3DPRI
 
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawIndexedPrimitive(THIS_ D3D9Base::D3DPRIMITIVETYPE Type,INT BaseVertexIndex,UINT MinVertexIndex,UINT NumVertices,UINT startIndex,UINT primCount)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawIndexedPrimitive(THIS_ ::D3DPRIMITIVETYPE Type,INT BaseVertexIndex,UINT MinVertexIndex,UINT NumVertices,UINT startIndex,UINT primCount)
 {
 	LogDebug("IDirect3DDevice9::DrawIndexedPrimitive called with Type=%d, BaseVertexIndex=%d, MinVertexIndex=%d, NumVertices=%d, startIndex=%d, primCount=%d\n",
 		Type, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
 
 	CheckDevice(this);
 
-	DrawContext c = DrawContext(DrawCall::DrawIndexed, Type, primCount, 0, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, NULL, 0, NULL, D3D9Base::D3DFORMAT(-1), 0, NULL, NULL, NULL);
+	DrawContext c = DrawContext(DrawCall::DrawIndexed, Type, primCount, 0, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, NULL, 0, NULL, ::D3DFORMAT(-1), 0, NULL, NULL, NULL);
 	BeforeDraw(c);
 	HRESULT hr;
 	if (!c.call_info.skip) {
@@ -5509,12 +5509,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawIndexedPrimitive(THIS_ D3D9Base:
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawPrimitiveUP(THIS_ D3D9Base::D3DPRIMITIVETYPE PrimitiveType,UINT PrimitiveCount,CONST void* pVertexStreamZeroData,UINT VertexStreamZeroStride)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawPrimitiveUP(THIS_ ::D3DPRIMITIVETYPE PrimitiveType,UINT PrimitiveCount,CONST void* pVertexStreamZeroData,UINT VertexStreamZeroStride)
 {
 	LogDebug("IDirect3DDevice9::DrawPrimitiveUP called.\n");
 
 	CheckDevice(this);
-	DrawContext c = DrawContext(DrawCall::DrawUP, PrimitiveType, PrimitiveCount, 0, 0, 0, 0, 0, pVertexStreamZeroData, VertexStreamZeroStride, NULL, D3D9Base::D3DFORMAT(-1), 0, NULL, NULL, NULL);
+	DrawContext c = DrawContext(DrawCall::DrawUP, PrimitiveType, PrimitiveCount, 0, 0, 0, 0, 0, pVertexStreamZeroData, VertexStreamZeroStride, NULL, ::D3DFORMAT(-1), 0, NULL, NULL, NULL);
 	BeforeDraw(c);
 
 	HRESULT hr;
@@ -5537,7 +5537,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawPrimitiveUP(THIS_ D3D9Base::D3DP
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawIndexedPrimitiveUP(THIS_ D3D9Base::D3DPRIMITIVETYPE PrimitiveType,UINT MinVertexIndex,UINT NumVertices,UINT PrimitiveCount,CONST void* pIndexData,D3D9Base::D3DFORMAT IndexDataFormat,CONST void* pVertexStreamZeroData,UINT VertexStreamZeroStride)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawIndexedPrimitiveUP(THIS_ ::D3DPRIMITIVETYPE PrimitiveType,UINT MinVertexIndex,UINT NumVertices,UINT PrimitiveCount,CONST void* pIndexData,::D3DFORMAT IndexDataFormat,CONST void* pVertexStreamZeroData,UINT VertexStreamZeroStride)
 {
 	LogDebug("IDirect3DDevice9::DrawIndexedPrimitiveUP called with PrimitiveType=%d, MinVertexIndex=%d, NumVertices=%d, PrimitiveCount=%d, IndexDataFormat=%d\n",
 		PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, IndexDataFormat);
@@ -5578,7 +5578,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::ProcessVertices(THIS_ UINT SrcStartI
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexDeclaration(THIS_ CONST D3D9Base::D3DVERTEXELEMENT9* pVertexElements, D3D9Wrapper::IDirect3DVertexDeclaration9** ppDecl)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexDeclaration(THIS_ CONST ::D3DVERTEXELEMENT9* pVertexElements, D3D9Wrapper::IDirect3DVertexDeclaration9** ppDecl)
 {
 	LogDebug("IDirect3DDevice9::CreateVertexDeclaration called.\n");
 
@@ -5586,7 +5586,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexDeclaration(THIS_ CONST 
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
 
-		D3D9Wrapper::IDirect3DVertexDeclaration9 *wrapper = D3D9Wrapper::IDirect3DVertexDeclaration9::GetDirect3DVertexDeclaration9((D3D9Base::LPDIRECT3DVERTEXDECLARATION9) 0, this);
+		D3D9Wrapper::IDirect3DVertexDeclaration9 *wrapper = D3D9Wrapper::IDirect3DVertexDeclaration9::GetDirect3DVertexDeclaration9((::LPDIRECT3DVERTEXDECLARATION9) 0, this);
 		if (pVertexElements)
 			wrapper->_VertexElements = *pVertexElements;
 		wrapper->pendingDevice = this;
@@ -5595,7 +5595,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexDeclaration(THIS_ CONST 
 		return S_OK;
 	}
 
-	D3D9Base::LPDIRECT3DVERTEXDECLARATION9 baseVertexDeclaration = 0;
+	::LPDIRECT3DVERTEXDECLARATION9 baseVertexDeclaration = 0;
 	HRESULT hr = GetD3D9Device()->CreateVertexDeclaration(pVertexElements, &baseVertexDeclaration);
 
 	if (baseVertexDeclaration) {
@@ -5620,7 +5620,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetVertexDeclaration(THIS_ D3D9Wrapp
 
 	CheckDevice(this);
 	HRESULT hr;
-	D3D9Base::IDirect3DVertexDeclaration9 *baseVDeclaration = baseVertexDeclaration9(pDecl);
+	::IDirect3DVertexDeclaration9 *baseVDeclaration = baseVertexDeclaration9(pDecl);
 	D3D9Wrapper::IDirect3DVertexDeclaration9 *wrappedVDeclaration = wrappedVertexDeclaration9(pDecl);
 	hr = GetD3D9Device()->SetVertexDeclaration(baseVDeclaration);
 	if (!FAILED(hr)) {
@@ -5641,7 +5641,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetVertexDeclaration(THIS_ D3D9Wrapp
 
 	CheckDevice(this);
 	HRESULT hr;
-	D3D9Base::LPDIRECT3DVERTEXDECLARATION9 baseVertexDeclaration = 0;
+	::LPDIRECT3DVERTEXDECLARATION9 baseVertexDeclaration = 0;
 	if (!ppDecl) {
 		hr = D3DERR_INVALIDCALL;
 	}
@@ -5689,9 +5689,9 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateVertexShader(THIS_ CONST DWORD
 
 	CheckDevice(this);
 
-	D3D9Base::IDirect3DVertexShader9 *baseShader = 0;
+	::IDirect3DVertexShader9 *baseShader = 0;
 	D3D9Wrapper::IDirect3DVertexShader9 * wrappedVertexShader = 0;
-	HRESULT hr = CreateShader<D3D9Wrapper::IDirect3DVertexShader9, D3D9Base::IDirect3DVertexShader9, &IDirect3DVertexShader9::GetDirect3DVertexShader9, &D3D9Base::IDirect3DDevice9::CreateVertexShader>
+	HRESULT hr = CreateShader<D3D9Wrapper::IDirect3DVertexShader9, ::IDirect3DVertexShader9, &IDirect3DVertexShader9::GetDirect3DVertexShader9, &::IDirect3DDevice9::CreateVertexShader>
 		(pFunction, &baseShader, L"vs", &wrappedVertexShader);
 	if (ppShader) {
 		if (!(G->enable_hooks >= EnableHooksDX9::ALL)) {
@@ -5711,9 +5711,9 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetVertexShader(THIS_ D3D9Wrapper::I
 	LogDebug("IDirect3DDevice9::SetVertexShader called.\n");
 
 	CheckDevice(this);
-	D3D9Base::IDirect3DVertexShader9 *baseShader = baseVertexShader9(pShader);
+	::IDirect3DVertexShader9 *baseShader = baseVertexShader9(pShader);
 	D3D9Wrapper::IDirect3DVertexShader9 *wrappedShader = wrappedVertexShader9(pShader);
-	HRESULT hr = SetShader<D3D9Wrapper::IDirect3DVertexShader9, D3D9Base::IDirect3DVertexShader9, &D3D9Base::IDirect3DDevice9::SetVertexShader>
+	HRESULT hr = SetShader<D3D9Wrapper::IDirect3DVertexShader9, ::IDirect3DVertexShader9, &::IDirect3DDevice9::SetVertexShader>
 		(wrappedShader,
 			&G->mVisitedVertexShaders,
 			G->mSelectedVertexShader,
@@ -5728,7 +5728,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetVertexShader(THIS_ D3D9Wrapper::I
 	LogDebug("IDirect3DDevice9::GetVertexShader called.\n");
 
 	CheckDevice(this);
-	D3D9Base::IDirect3DVertexShader9 *baseShader = 0;
+	::IDirect3DVertexShader9 *baseShader = 0;
 	HRESULT hr;
 	if (!ppShader) {
 		hr = D3DERR_INVALIDCALL;
@@ -5813,7 +5813,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetStreamSource(THIS_ UINT StreamNum
 
 	CheckDevice(this);
 
-	D3D9Base::IDirect3DVertexBuffer9 *baseVertexBuffer = baseVertexBuffer9(pStreamData);
+	::IDirect3DVertexBuffer9 *baseVertexBuffer = baseVertexBuffer9(pStreamData);
 	D3D9Wrapper::IDirect3DVertexBuffer9 *wrappedVertexBuffer = wrappedVertexBuffer9(pStreamData);
 	HRESULT hr = GetD3D9Device()->SetStreamSource(StreamNumber, baseVertexBuffer, OffsetInBytes, Stride);
 	if (SUCCEEDED(hr)) {
@@ -5871,7 +5871,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetStreamSource(THIS_ UINT StreamNum
 	LogDebug("IDirect3DDevice9::GetStreamSource called.\n");
 
 	CheckDevice(this);
-	D3D9Base::LPDIRECT3DVERTEXBUFFER9 baseVB = 0;
+	::LPDIRECT3DVERTEXBUFFER9 baseVB = 0;
 	HRESULT hr;
 	if (!ppStreamData || !pOffsetInBytes || !pStride) {
 		hr = D3DERR_INVALIDCALL;
@@ -5924,7 +5924,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetIndices(THIS_ IDirect3DIndexBuffe
 {
 	LogDebug("IDirect3DDevice9::SetIndices called.\n");
 
-	D3D9Base::IDirect3DIndexBuffer9 *baseIndexBuffer = baseIndexBuffer9(pIndexData);
+	::IDirect3DIndexBuffer9 *baseIndexBuffer = baseIndexBuffer9(pIndexData);
 	D3D9Wrapper::IDirect3DIndexBuffer9 *pIndexBuffer = wrappedIndexBuffer9(pIndexData);
 	CheckDevice(this);
 	HRESULT hr = GetD3D9Device()->SetIndices(baseIndexBuffer);
@@ -5959,7 +5959,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetIndices(THIS_ D3D9Wrapper::IDirec
 	LogDebug("IDirect3DDevice9::GetIndices called.\n");
 
 	CheckDevice(this);
-	D3D9Base::LPDIRECT3DINDEXBUFFER9 baseIB = 0;
+	::LPDIRECT3DINDEXBUFFER9 baseIB = 0;
 	HRESULT hr;
 	if (!ppIndexData) {
 		hr = D3DERR_INVALIDCALL;
@@ -5992,10 +5992,10 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreatePixelShader(THIS_ CONST DWORD*
 
 	CheckDevice(this);
 
-	D3D9Base::IDirect3DPixelShader9 *baseShader = 0;
+	::IDirect3DPixelShader9 *baseShader = 0;
 	D3D9Wrapper::IDirect3DPixelShader9 *wrappedShader = 0;
 
-	HRESULT hr = CreateShader<D3D9Wrapper::IDirect3DPixelShader9, D3D9Base::IDirect3DPixelShader9, &IDirect3DPixelShader9::GetDirect3DPixelShader9, &D3D9Base::IDirect3DDevice9::CreatePixelShader>
+	HRESULT hr = CreateShader<D3D9Wrapper::IDirect3DPixelShader9, ::IDirect3DPixelShader9, &IDirect3DPixelShader9::GetDirect3DPixelShader9, &::IDirect3DDevice9::CreatePixelShader>
 		(pFunction, &baseShader, L"ps", &wrappedShader);
 	if (ppShader) {
 		if (!(G->enable_hooks >= EnableHooksDX9::ALL)) {
@@ -6015,9 +6015,9 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetPixelShader(THIS_ IDirect3DPixelS
 	LogDebug("IDirect3DDevice9::SetPixelShader called.\n");
 
 	CheckDevice(this);
-	D3D9Base::IDirect3DPixelShader9 *baseShader = basePixelShader9(pShader);
+	::IDirect3DPixelShader9 *baseShader = basePixelShader9(pShader);
 	D3D9Wrapper::IDirect3DPixelShader9 *wrappedShader = wrappedPixelShader9(pShader);
-	HRESULT hr = SetShader<D3D9Wrapper::IDirect3DPixelShader9, D3D9Base::IDirect3DPixelShader9, &D3D9Base::IDirect3DDevice9::SetPixelShader>
+	HRESULT hr = SetShader<D3D9Wrapper::IDirect3DPixelShader9, ::IDirect3DPixelShader9, &::IDirect3DDevice9::SetPixelShader>
 		(wrappedShader,
 			&G->mVisitedPixelShaders,
 			G->mSelectedPixelShader,
@@ -6031,7 +6031,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetPixelShader(THIS_ D3D9Wrapper::ID
 	LogDebug("IDirect3DDevice9::GetPixelShader called.\n");
 
 	CheckDevice(this);
-	D3D9Base::IDirect3DPixelShader9 *baseShader = 0;
+	::IDirect3DPixelShader9 *baseShader = 0;
 	HRESULT hr;
 
 	if (!ppShader) {
@@ -6112,12 +6112,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetPixelShaderConstantB(THIS_ UINT S
 	return GetD3D9Device()->GetPixelShaderConstantB(StartRegister, pConstantData, BoolCount);
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawRectPatch(THIS_ UINT Handle,CONST float* pNumSegs,CONST D3D9Base::D3DRECTPATCH_INFO* pRectPatchInfo)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawRectPatch(THIS_ UINT Handle,CONST float* pNumSegs,CONST ::D3DRECTPATCH_INFO* pRectPatchInfo)
 {
 	LogDebug("IDirect3DDevice9::DrawRectPatch called.\n");
 
 	CheckDevice(this);
-	DrawContext c = DrawContext(DrawCall::DrawRectPatch, D3D9Base::D3DPRIMITIVETYPE(-1), 0, 0, 0, 0, 0, 0, NULL, 0, NULL, D3D9Base::D3DFORMAT(-1), Handle, pNumSegs, pRectPatchInfo, NULL);
+	DrawContext c = DrawContext(DrawCall::DrawRectPatch, ::D3DPRIMITIVETYPE(-1), 0, 0, 0, 0, 0, 0, NULL, 0, NULL, ::D3DFORMAT(-1), Handle, pNumSegs, pRectPatchInfo, NULL);
 	BeforeDraw(c);
 	HRESULT hr;
 	if (!c.call_info.skip) {
@@ -6139,12 +6139,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawRectPatch(THIS_ UINT Handle,CONS
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawTriPatch(THIS_ UINT Handle,CONST float* pNumSegs,CONST D3D9Base::D3DTRIPATCH_INFO* pTriPatchInfo)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DrawTriPatch(THIS_ UINT Handle,CONST float* pNumSegs,CONST ::D3DTRIPATCH_INFO* pTriPatchInfo)
 {
 	LogDebug("IDirect3DDevice9::DrawTriPatch called.\n");
 
 	CheckDevice(this);
-	DrawContext c = DrawContext(DrawCall::DrawTriPatch, D3D9Base::D3DPRIMITIVETYPE(-1), 0, 0, 0, 0, 0, 0, NULL, 0, NULL, D3D9Base::D3DFORMAT(-1), Handle, pNumSegs, NULL, pTriPatchInfo);
+	DrawContext c = DrawContext(DrawCall::DrawTriPatch, ::D3DPRIMITIVETYPE(-1), 0, 0, 0, 0, 0, 0, NULL, 0, NULL, ::D3DFORMAT(-1), Handle, pNumSegs, NULL, pTriPatchInfo);
 	BeforeDraw(c);
 	HRESULT hr;
 	if (!c.call_info.skip) {
@@ -6174,13 +6174,13 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::DeletePatch(THIS_ UINT Handle)
 	return GetD3D9Device()->DeletePatch(Handle);
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateQuery(THIS_ D3D9Base::D3DQUERYTYPE Type, D3D9Base::IDirect3DQuery9** ppQuery)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateQuery(THIS_ ::D3DQUERYTYPE Type, ::IDirect3DQuery9** ppQuery)
 {
 	LogDebug("IDirect3DDevice9::CreateQuery called with Type=%d, ppQuery=%p\n", Type, ppQuery);
 
 	CheckDevice(this);
 
-	D3D9Base::LPDIRECT3DQUERY9 baseQuery = 0;
+	::LPDIRECT3DQUERY9 baseQuery = 0;
 	HRESULT hr = GetD3D9Device()->CreateQuery(Type, &baseQuery);
     if (FAILED(hr) || !baseQuery)
     {
@@ -6195,7 +6195,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateQuery(THIS_ D3D9Base::D3DQUERY
 		wrappedQuery = IDirect3DQuery9::GetDirect3DQuery9(baseQuery, this);
 		if (ppQuery) {
 			if (!(G->enable_hooks >= EnableHooksDX9::ALL) && wrappedQuery) {
-				*ppQuery = (D3D9Base::IDirect3DQuery9*)wrappedQuery;
+				*ppQuery = (::IDirect3DQuery9*)wrappedQuery;
 			}
 			else {
 				*ppQuery = baseQuery;
@@ -6211,7 +6211,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateQuery(THIS_ D3D9Base::D3DQUERY
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetDisplayModeEx(THIS_ UINT iSwapChain,D3D9Base::D3DDISPLAYMODEEX* pMode,D3D9Base::D3DDISPLAYROTATION* pRotation)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetDisplayModeEx(THIS_ UINT iSwapChain,::D3DDISPLAYMODEEX* pMode,::D3DDISPLAYROTATION* pRotation)
 {
 	LogDebug("IDirect3DDevice9::GetDisplayModeEx called.\n");
 
@@ -6262,14 +6262,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CheckDeviceState(HWND hWindow)
 	return GetD3D9DeviceEx()->CheckDeviceState(hWindow);
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CheckResourceResidency(D3D9Base::IDirect3DResource9 ** pResourceArray, UINT32 NumResources)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CheckResourceResidency(::IDirect3DResource9 ** pResourceArray, UINT32 NumResources)
 {
 	LogDebug("IDirect3DDevice9::CheckResourceResidency called.\n");
 
 	CheckDevice(this);
 	return GetD3D9DeviceEx()->CheckResourceResidency(pResourceArray, NumResources);
 }
-HRESULT DirectModeComposeRectsRight(D3D9Base::IDirect3DDevice9Ex *origDevice, D3D9Wrapper::IDirect3DSurface9* wrappedSrcSur, D3D9Wrapper::IDirect3DSurface9* wrappedDstSur, D3D9Base::IDirect3DVertexBuffer9 *SrcVB, D3D9Base::IDirect3DVertexBuffer9 *DstVB, UINT NumRects, D3D9Base::D3DCOMPOSERECTSOP Operation, INT XOffset, INT YOffset) {
+HRESULT DirectModeComposeRectsRight(::IDirect3DDevice9Ex *origDevice, D3D9Wrapper::IDirect3DSurface9* wrappedSrcSur, D3D9Wrapper::IDirect3DSurface9* wrappedDstSur, ::IDirect3DVertexBuffer9 *SrcVB, ::IDirect3DVertexBuffer9 *DstVB, UINT NumRects, ::D3DCOMPOSERECTSOP Operation, INT XOffset, INT YOffset) {
 	HRESULT hr = D3D_OK;
 	if (!wrappedSrcSur->DirectModeGetRight() && wrappedDstSur->DirectModeGetRight()) {
 		LogDebug("IDirect3DDevice9::ComposeRects, Direct Mode, - Source is not stereo, destination is stereo. Copying source to both sides of destination.\n");
@@ -6287,13 +6287,13 @@ HRESULT DirectModeComposeRectsRight(D3D9Base::IDirect3DDevice9Ex *origDevice, D3
 	}
 	return hr;
 }
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::ComposeRects(D3D9Wrapper::IDirect3DSurface9 * pSource, D3D9Wrapper::IDirect3DSurface9 * pDestination, D3D9Wrapper::IDirect3DVertexBuffer9 * pSrcRectDescriptors, UINT NumRects, D3D9Wrapper::IDirect3DVertexBuffer9 * pDstRectDescriptors, D3D9Base::D3DCOMPOSERECTSOP Operation, INT XOffset, INT YOffset)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::ComposeRects(D3D9Wrapper::IDirect3DSurface9 * pSource, D3D9Wrapper::IDirect3DSurface9 * pDestination, D3D9Wrapper::IDirect3DVertexBuffer9 * pSrcRectDescriptors, UINT NumRects, D3D9Wrapper::IDirect3DVertexBuffer9 * pDstRectDescriptors, ::D3DCOMPOSERECTSOP Operation, INT XOffset, INT YOffset)
 {
 	LogDebug("IDirect3DDevice9::ComposeRects called.\n");
-	D3D9Base::LPDIRECT3DSURFACE9 baseSourceSurface = baseSurface9(pSource);
-	D3D9Base::LPDIRECT3DSURFACE9 baseDestinationSurface = baseSurface9(pDestination);
-	D3D9Base::LPDIRECT3DVERTEXBUFFER9 baseSourceVertexBuffer = baseVertexBuffer9(pSrcRectDescriptors);
-	D3D9Base::LPDIRECT3DVERTEXBUFFER9 baseDestinationVertexBuffer = baseVertexBuffer9(pDstRectDescriptors);
+	::LPDIRECT3DSURFACE9 baseSourceSurface = baseSurface9(pSource);
+	::LPDIRECT3DSURFACE9 baseDestinationSurface = baseSurface9(pDestination);
+	::LPDIRECT3DVERTEXBUFFER9 baseSourceVertexBuffer = baseVertexBuffer9(pSrcRectDescriptors);
+	::LPDIRECT3DVERTEXBUFFER9 baseDestinationVertexBuffer = baseVertexBuffer9(pDstRectDescriptors);
 	CheckDevice(this);
 	HRESULT hr;
 	if (G->gForceStereo == 2){
@@ -6308,14 +6308,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::ComposeRects(D3D9Wrapper::IDirect3DS
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurfaceEx(UINT Width, UINT Height, D3D9Base::D3DFORMAT Format, D3D9Base::D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, D3D9Wrapper::IDirect3DSurface9 ** ppSurface, HANDLE * pSharedHandle, DWORD Usage)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurfaceEx(UINT Width, UINT Height, ::D3DFORMAT Format, ::D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, D3D9Wrapper::IDirect3DSurface9 ** ppSurface, HANDLE * pSharedHandle, DWORD Usage)
 {
 	LogInfo("IDirect3DDevice9::CreateDepthStencilSurfaceEx Width=%d Height=%d Format=%d Usage=%d\n", Width, Height, Format, Usage);
 	D3D9Wrapper::IDirect3DSurface9 * wrapper;
 	if (!GetD3D9Device())
 	{
 		LogInfo("  postponing call because device was not created yet.\n");
-		wrapper = IDirect3DSurface9::GetDirect3DSurface9((D3D9Base::LPDIRECT3DSURFACE9) 0, this, NULL);
+		wrapper = IDirect3DSurface9::GetDirect3DSurface9((::LPDIRECT3DSURFACE9) 0, this, NULL);
 		wrapper->_Width = Width;
 		wrapper->_Height = Height;
 		wrapper->_Format = Format;
@@ -6333,7 +6333,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurfaceEx(UINT Wid
 		return S_OK;
 	}
 
-	D3D9Base::LPDIRECT3DSURFACE9 baseSurface = NULL;
+	::LPDIRECT3DSURFACE9 baseSurface = NULL;
 
 	D3D2DTEXTURE_DESC pDesc;
 	pDesc.Usage = Usage;
@@ -6350,12 +6350,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurfaceEx(UINT Wid
 	HRESULT hr;
 	ResourceHandleInfo info;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DSurface9* pRightDepthStencil = NULL;
+		::IDirect3DSurface9* pRightDepthStencil = NULL;
 		// create left/mono
-		hr = CreateSurface<D3D9Base::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::DepthStencilEx);
+		hr = CreateSurface<::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::DepthStencilEx);
 		if (!FAILED(hr)) {
 			if (ShouldDuplicate(&pDesc)) {
-				hr = CreateSurface<D3D9Base::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&pRightDepthStencil, &info, &pDesc, this, pSharedHandle, SurfaceCreation::DepthStencilEx);
+				hr = CreateSurface<::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&pRightDepthStencil, &info, &pDesc, this, pSharedHandle, SurfaceCreation::DepthStencilEx);
 				if (!FAILED(hr)) {
 					wrapper = IDirect3DSurface9::GetDirect3DSurface9(baseSurface, this, pRightDepthStencil);
 					wrapper->resourceHandleInfo = info;
@@ -6377,7 +6377,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurfaceEx(UINT Wid
 		}
 	}
 	else {
-		hr = CreateSurface<D3D9Base::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::DepthStencilEx);
+		hr = CreateSurface<::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::DepthStencilEx);
 		wrapper = IDirect3DSurface9::GetDirect3DSurface9(baseSurface, this, NULL);
 		wrapper->resourceHandleInfo = info;
 	}
@@ -6393,18 +6393,18 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateDepthStencilSurfaceEx(UINT Wid
 
 	return hr;
 }
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateOffscreenPlainSurfaceEx(UINT Width, UINT Height, D3D9Base::D3DFORMAT Format, D3D9Base::D3DPOOL Pool, D3D9Wrapper::IDirect3DSurface9 ** ppSurface, HANDLE * pSharedHandle, DWORD Usage)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateOffscreenPlainSurfaceEx(UINT Width, UINT Height, ::D3DFORMAT Format, ::D3DPOOL Pool, D3D9Wrapper::IDirect3DSurface9 ** ppSurface, HANDLE * pSharedHandle, DWORD Usage)
 {
 	LogInfo("IDirect3DDevice9::CreateOffscreenPlainSurfaceEx called with Width=%d Height=%d Usage=%d\n", Width, Height, Usage);
 
 	CheckDevice(this);
 
-	D3D9Base::LPDIRECT3DSURFACE9 baseSurface = NULL;
-	if (G->gForwardToEx && Pool == D3D9Base::D3DPOOL_MANAGED)
+	::LPDIRECT3DSURFACE9 baseSurface = NULL;
+	if (G->gForwardToEx && Pool == ::D3DPOOL_MANAGED)
 	{
 		LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
-		Pool = D3D9Base::D3DPOOL_DEFAULT;
+		Pool = ::D3DPOOL_DEFAULT;
 	}
 
 	D3D2DTEXTURE_DESC pDesc;
@@ -6415,7 +6415,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateOffscreenPlainSurfaceEx(UINT W
 	pDesc.Pool = Pool;
 	pDesc.Levels = 1;
 	ResourceHandleInfo info;
-	HRESULT hr = CreateSurface<D3D9Base::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::OffscreenPlainEx);
+	HRESULT hr = CreateSurface<::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::OffscreenPlainEx);
 	if (baseSurface) {
 		D3D9Wrapper::IDirect3DSurface9 * wrapper;
 		wrapper = IDirect3DSurface9::GetDirect3DSurface9(baseSurface, this, NULL);
@@ -6434,13 +6434,13 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateOffscreenPlainSurfaceEx(UINT W
 	return hr;
 
 }
-STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateRenderTargetEx(UINT Width, UINT Height, D3D9Base::D3DFORMAT Format, D3D9Base::D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, D3D9Wrapper::IDirect3DSurface9 ** ppSurface, HANDLE * pSharedHandle, DWORD Usage)
+STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateRenderTargetEx(UINT Width, UINT Height, ::D3DFORMAT Format, ::D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, D3D9Wrapper::IDirect3DSurface9 ** ppSurface, HANDLE * pSharedHandle, DWORD Usage)
 {
 	LogInfo("IDirect3DDevice9::CreateRenderTargetEx called with Width=%d Height=%d Format=%d Usage=%d\n", Width, Height, Format, Usage);
 
 	CheckDevice(this);
 
-	D3D9Base::LPDIRECT3DSURFACE9 baseSurface = NULL;
+	::LPDIRECT3DSURFACE9 baseSurface = NULL;
 
 	D3D2DTEXTURE_DESC pDesc;
 	pDesc.Usage = Usage;
@@ -6458,12 +6458,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateRenderTargetEx(UINT Width, UIN
 	D3D9Wrapper::IDirect3DSurface9 *wrapper;
 	ResourceHandleInfo info;
 	if (G->gForceStereo == 2) {
-		D3D9Base::IDirect3DSurface9* pRightRenderTarget = NULL;
+		::IDirect3DSurface9* pRightRenderTarget = NULL;
 		// create left/mono
-		hr = CreateSurface<D3D9Base::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::RenderTargetEx);
+		hr = CreateSurface<::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::RenderTargetEx);
 		if (!FAILED(hr)) {
 			if (ShouldDuplicate(&pDesc)) {
-				hr = CreateSurface<D3D9Base::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&pRightRenderTarget, &info, &pDesc, this, pSharedHandle, SurfaceCreation::RenderTargetEx);
+				hr = CreateSurface<::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&pRightRenderTarget, &info, &pDesc, this, pSharedHandle, SurfaceCreation::RenderTargetEx);
 				if (!FAILED(hr)) {
 					wrapper = IDirect3DSurface9::GetDirect3DSurface9(baseSurface, this, pRightRenderTarget);
 					wrapper->resourceHandleInfo = info;
@@ -6485,7 +6485,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateRenderTargetEx(UINT Width, UIN
 		}
 	}
 	else {
-		hr = CreateSurface<D3D9Base::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::RenderTargetEx);
+		hr = CreateSurface<::IDirect3DSurface9, D3D2DTEXTURE_DESC>(&baseSurface, &info, &pDesc, this, pSharedHandle, SurfaceCreation::RenderTargetEx);
 		wrapper = IDirect3DSurface9::GetDirect3DSurface9(baseSurface, this, NULL);
 		wrapper->resourceHandleInfo = info;
 	}

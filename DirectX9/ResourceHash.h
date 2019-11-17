@@ -10,29 +10,27 @@
 #include <atomic>
 #include <nvapi.h>
 #include "DrawCallInfo.h"
-namespace D3D9Base {
-	#include <d3d9.h>
-}
+#include <d3d9.h>
 namespace D3D9Wrapper {
 	class IDirect3DResource9;
 }
 struct D3D2DTEXTURE_DESC {
-	D3D9Base::D3DFORMAT				Format;
-	D3D9Base::D3DRESOURCETYPE		Type;
+	::D3DFORMAT				Format;
+	::D3DRESOURCETYPE		Type;
 	DWORD							Usage;
-	D3D9Base::D3DPOOL				Pool;
-	D3D9Base::D3DMULTISAMPLE_TYPE	MultiSampleType;
+	::D3DPOOL				Pool;
+	::D3DMULTISAMPLE_TYPE	MultiSampleType;
 	DWORD							MultiSampleQuality;
 	UINT							Width;
 	UINT							Height;
 	//additional
 	UINT							Levels;
 	D3D2DTEXTURE_DESC() {};
-	D3D2DTEXTURE_DESC(D3D9Base::IDirect3DSurface9 *sur) {
-		D3D9Base::D3DSURFACE_DESC desc;
+	D3D2DTEXTURE_DESC(::IDirect3DSurface9 *sur) {
+		::D3DSURFACE_DESC desc;
 		sur->GetDesc(&desc);
 		Format = desc.Format;
-		Type = D3D9Base::D3DRESOURCETYPE::D3DRTYPE_SURFACE;
+		Type = ::D3DRESOURCETYPE::D3DRTYPE_SURFACE;
 		Usage = desc.Usage;
 		Pool = desc.Pool;
 		MultiSampleType = desc.MultiSampleType;
@@ -41,11 +39,11 @@ struct D3D2DTEXTURE_DESC {
 		Height = desc.Height;
 		Levels = 1;
 	};
-	D3D2DTEXTURE_DESC(D3D9Base::IDirect3DTexture9 *tex) {
-		D3D9Base::D3DSURFACE_DESC desc;
+	D3D2DTEXTURE_DESC(::IDirect3DTexture9 *tex) {
+		::D3DSURFACE_DESC desc;
 		tex->GetLevelDesc(0, &desc);
 		Format = desc.Format;
-		Type = D3D9Base::D3DRESOURCETYPE::D3DRTYPE_TEXTURE;
+		Type = ::D3DRESOURCETYPE::D3DRTYPE_TEXTURE;
 		Usage = desc.Usage;
 		Pool = desc.Pool;
 		MultiSampleType = desc.MultiSampleType;
@@ -54,11 +52,11 @@ struct D3D2DTEXTURE_DESC {
 		Height = desc.Height;
 		Levels = tex->GetLevelCount();
 	};
-	D3D2DTEXTURE_DESC(D3D9Base::IDirect3DCubeTexture9 *tex) {
-		D3D9Base::D3DSURFACE_DESC desc;
+	D3D2DTEXTURE_DESC(::IDirect3DCubeTexture9 *tex) {
+		::D3DSURFACE_DESC desc;
 		tex->GetLevelDesc(0, &desc);
 		Format = desc.Format;
-		Type = D3D9Base::D3DRESOURCETYPE::D3DRTYPE_CUBETEXTURE;
+		Type = ::D3DRESOURCETYPE::D3DRTYPE_CUBETEXTURE;
 		Usage = desc.Usage;
 		Pool = desc.Pool;
 		MultiSampleType = desc.MultiSampleType;
@@ -69,21 +67,21 @@ struct D3D2DTEXTURE_DESC {
 	};
 };
 struct D3D3DTEXTURE_DESC {
-	D3D9Base::D3DFORMAT				Format;
-	D3D9Base::D3DRESOURCETYPE		Type;
+	::D3DFORMAT				Format;
+	::D3DRESOURCETYPE		Type;
 	DWORD							Usage;
-	D3D9Base::D3DPOOL				Pool;
+	::D3DPOOL				Pool;
 	UINT							Width;
 	UINT							Height;
 	UINT							Depth;
 	//additional
 	UINT							Levels;
 	D3D3DTEXTURE_DESC() {};
-	D3D3DTEXTURE_DESC(D3D9Base::IDirect3DVolumeTexture9 *tex) {
-		D3D9Base::D3DVOLUME_DESC desc;
+	D3D3DTEXTURE_DESC(::IDirect3DVolumeTexture9 *tex) {
+		::D3DVOLUME_DESC desc;
 		tex->GetLevelDesc(0, &desc);
 		Format = desc.Format;
-		Type = D3D9Base::D3DRESOURCETYPE::D3DRTYPE_VOLUMETEXTURE;
+		Type = ::D3DRESOURCETYPE::D3DRTYPE_VOLUMETEXTURE;
 		Usage = desc.Usage;
 		Pool = desc.Pool;
 		Width = desc.Width;
@@ -95,7 +93,7 @@ struct D3D3DTEXTURE_DESC {
 // Tracks info about specific resource instances:
 struct ResourceHandleInfo
 {
-	D3D9Base::D3DRESOURCETYPE type;
+	::D3DRESOURCETYPE type;
 	uint32_t hash;
 	uint32_t orig_hash;	// Original hash at the time of creation
 	uint32_t data_hash;	// Just the data hash for track_texture_updates
@@ -112,7 +110,7 @@ struct ResourceHandleInfo
 	D3D3DTEXTURE_DESC desc3D;
 
 	ResourceHandleInfo() :
-		type(D3D9Base::D3DRESOURCETYPE(-1)),
+		type(::D3DRESOURCETYPE(-1)),
 		hash(0),
 		orig_hash(0),
 		data_hash(0)
@@ -122,8 +120,8 @@ struct ResourceHandleInfo
 struct CopySubresourceRegionContamination
 {
 	bool partial;
-	D3D9Base::D3DBOX DstBox;
-	D3D9Base::D3DBOX SrcBox;
+	::D3DBOX DstBox;
+	::D3DBOX SrcBox;
 
 	CopySubresourceRegionContamination() :
 		partial(false),
@@ -131,7 +129,7 @@ struct CopySubresourceRegionContamination
 		SrcBox({ 0, 0, UINT_MAX, UINT_MAX, 0, UINT_MAX })
 	{}
 
-	void Update(bool partial, const D3D9Base::D3DBOX *DstBox, const D3D9Base::D3DBOX *SrcBox)
+	void Update(bool partial, const ::D3DBOX *DstBox, const ::D3DBOX *SrcBox)
 	{
 		this->partial = this->partial || partial;
 		if (DstBox) {
@@ -176,9 +174,9 @@ CopySubresourceRegionContaminationMap;
 // Tracks info about resources by their *original* hash. Primarily for stat collection:
 struct ResourceHashInfo
 {
-	D3D9Base::D3DRESOURCETYPE type;
-	D3D9Base::D3DVERTEXBUFFER_DESC vbuf_desc;
-	D3D9Base::D3DINDEXBUFFER_DESC ibuf_desc;
+	::D3DRESOURCETYPE type;
+	::D3DVERTEXBUFFER_DESC vbuf_desc;
+	::D3DINDEXBUFFER_DESC ibuf_desc;
 	D3D2DTEXTURE_DESC desc2D;
 	D3D3DTEXTURE_DESC desc3D;
 
@@ -189,20 +187,20 @@ struct ResourceHashInfo
 	CopySubresourceRegionContaminationMap region_contamination;
 
 	ResourceHashInfo() :
-		type((D3D9Base::D3DRESOURCETYPE)-1),
+		type((::D3DRESOURCETYPE)-1),
 		initial_data_used_in_hash(false),
 		hash_contaminated(false)
 	{}
 
-	struct ResourceHashInfo & operator= (D3D9Base::D3DVERTEXBUFFER_DESC desc)
+	struct ResourceHashInfo & operator= (::D3DVERTEXBUFFER_DESC desc)
 	{
-		type = D3D9Base::D3DRTYPE_VERTEXBUFFER;
+		type = ::D3DRTYPE_VERTEXBUFFER;
 		vbuf_desc = desc;
 		return *this;
 	}
-	struct ResourceHashInfo & operator= (D3D9Base::D3DINDEXBUFFER_DESC desc)
+	struct ResourceHashInfo & operator= (::D3DINDEXBUFFER_DESC desc)
 	{
-		type = D3D9Base::D3DRTYPE_INDEXBUFFER;
+		type = ::D3DRTYPE_INDEXBUFFER;
 		ibuf_desc = desc;
 		return *this;
 	}
@@ -216,7 +214,7 @@ struct ResourceHashInfo
 
 	struct ResourceHashInfo & operator= (D3D3DTEXTURE_DESC desc)
 	{
-		type = D3D9Base::D3DRTYPE_VOLUMETEXTURE;
+		type = ::D3DRTYPE_VOLUMETEXTURE;
 		desc3D = desc;
 		return *this;
 	}
@@ -225,9 +223,9 @@ typedef std::unordered_map<uint32_t, struct ResourceHashInfo> ResourceInfoMap;
 uint32_t CalcDescHash(uint32_t initial_hash, const D3D2DTEXTURE_DESC *const_desc);
 uint32_t CalcDescHash(uint32_t initial_hash, const D3D3DTEXTURE_DESC *const_desc);
 
-uint32_t Calc2DDataHash(const D3D2DTEXTURE_DESC *pDesc, const D3D9Base::D3DLOCKED_BOX *pLockedRect);
-uint32_t Calc3DDataHash(const D3D3DTEXTURE_DESC *pDesc, const D3D9Base::D3DLOCKED_BOX *pLockedBox);
-uint32_t Calc2DDataHashAccurate(const D3D2DTEXTURE_DESC *pDesc, const D3D9Base::D3DLOCKED_BOX *pLockedRect);
+uint32_t Calc2DDataHash(const D3D2DTEXTURE_DESC *pDesc, const ::D3DLOCKED_BOX *pLockedRect);
+uint32_t Calc3DDataHash(const D3D3DTEXTURE_DESC *pDesc, const ::D3DLOCKED_BOX *pLockedBox);
+uint32_t Calc2DDataHashAccurate(const D3D2DTEXTURE_DESC *pDesc, const ::D3DLOCKED_BOX *pLockedRect);
 
 ResourceHandleInfo* GetResourceHandleInfo(D3D9Wrapper::IDirect3DResource9 *resource);
 uint32_t GetOrigResourceHash(D3D9Wrapper::IDirect3DResource9  *resource);
@@ -235,23 +233,23 @@ uint32_t GetResourceHash(D3D9Wrapper::IDirect3DResource9  *resource);
 
 void MarkResourceHashContaminated(D3D9Wrapper::IDirect3DResource9 *dest, UINT dstLevel,
 	D3D9Wrapper::IDirect3DResource9 *src, UINT srcLevel, char type,
-	D3D9Base::D3DBOX *DstBox, const D3D9Base::D3DBOX *SrcBox);
+	::D3DBOX *DstBox, const ::D3DBOX *SrcBox);
 
 void UpdateResourceHashFromCPU(D3D9Wrapper::IDirect3DResource9 *resource,
-	D3D9Base::D3DLOCKED_BOX *pLockedRect);
+	::D3DLOCKED_BOX *pLockedRect);
 
 void PropagateResourceHash(D3D9Wrapper::IDirect3DResource9 *dst, D3D9Wrapper::IDirect3DResource9 *src);
 
 bool LockTrackResourceHashUpdate(D3D9Wrapper::IDirect3DResource9 *pResource, UINT Level = 0);
 
-int StrResourceDesc(char *buf, size_t size, D3D9Base::D3DVERTEXBUFFER_DESC *desc);
-int StrResourceDesc(char *buf, size_t size, D3D9Base::D3DINDEXBUFFER_DESC *desc);
+int StrResourceDesc(char *buf, size_t size, ::D3DVERTEXBUFFER_DESC *desc);
+int StrResourceDesc(char *buf, size_t size, ::D3DINDEXBUFFER_DESC *desc);
 int StrResourceDesc(char *buf, size_t size, D3D3DTEXTURE_DESC *desc);
 int StrResourceDesc(char *buf, size_t size, D3D2DTEXTURE_DESC *desc);
 int StrResourceDesc(char *buf, size_t size, struct ResourceHashInfo &info);
 
-void LogResourceDesc(const D3D9Base::D3DVERTEXBUFFER_DESC *desc);
-void LogResourceDesc(const D3D9Base::D3DINDEXBUFFER_DESC *desc);
+void LogResourceDesc(const ::D3DVERTEXBUFFER_DESC *desc);
+void LogResourceDesc(const ::D3DINDEXBUFFER_DESC *desc);
 void LogResourceDesc(const D3D2DTEXTURE_DESC *desc);
 void LogResourceDesc(const D3D3DTEXTURE_DESC *desc);
 template <typename DescType>
@@ -533,11 +531,11 @@ public:
 
 	FuzzyMatchResourceDesc(std::wstring section);
 	~FuzzyMatchResourceDesc();
-	bool matches(const D3D9Base::D3DVERTEXBUFFER_DESC *desc) const;
-	bool matches(const D3D9Base::D3DINDEXBUFFER_DESC *desc) const;
+	bool matches(const ::D3DVERTEXBUFFER_DESC *desc) const;
+	bool matches(const ::D3DINDEXBUFFER_DESC *desc) const;
 	bool matches(const D3D3DTEXTURE_DESC *desc) const;
 	bool matches(const D3D2DTEXTURE_DESC *desc) const;
-	void set_resource_type(D3D9Base::D3DRESOURCETYPE type);
+	void set_resource_type(::D3DRESOURCETYPE type);
 	bool update_types_matched();
 };
 bool TextureOverrideLess(const struct TextureOverride &lhs, const struct TextureOverride &rhs);
@@ -551,4 +549,4 @@ typedef std::set<std::shared_ptr<FuzzyMatchResourceDesc>, FuzzyMatchResourceDesc
 typedef std::vector<TextureOverride*> TextureOverrideMatches;
 template <typename DescType>
 void find_texture_overrides(uint32_t hash, const DescType *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
-void find_texture_overrides_for_resource(D3D9Base::IDirect3DResource9 *resource, ResourceHandleInfo *info, TextureOverrideMatches *matches, DrawCallInfo *call_info);
+void find_texture_overrides_for_resource(::IDirect3DResource9 *resource, ResourceHandleInfo *info, TextureOverrideMatches *matches, DrawCallInfo *call_info);

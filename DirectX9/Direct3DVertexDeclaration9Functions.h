@@ -2,7 +2,7 @@
 #include "d3d9Wrapper.h"
 inline void D3D9Wrapper::IDirect3DVertexDeclaration9::HookVertexDeclaration()
 {
-	m_pUnk = hook_vertex_declaration(GetD3DVertexDeclaration9(), (D3D9Base::IDirect3DVertexDeclaration9*)this);
+	m_pUnk = hook_vertex_declaration(GetD3DVertexDeclaration9(), (::IDirect3DVertexDeclaration9*)this);
 }
 
 inline void D3D9Wrapper::IDirect3DVertexDeclaration9::Delete()
@@ -15,7 +15,7 @@ inline void D3D9Wrapper::IDirect3DVertexDeclaration9::Delete()
 	delete this;
 }
 
-D3D9Wrapper::IDirect3DVertexDeclaration9::IDirect3DVertexDeclaration9(D3D9Base::LPDIRECT3DVERTEXDECLARATION9 pVertexDeclaration, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
+D3D9Wrapper::IDirect3DVertexDeclaration9::IDirect3DVertexDeclaration9(::LPDIRECT3DVERTEXDECLARATION9 pVertexDeclaration, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
     : D3D9Wrapper::IDirect3DUnknown((IUnknown*) pVertexDeclaration),
 	pendingCreateVertexDeclaration(false),
 	magic(0x7da43feb),
@@ -28,7 +28,7 @@ D3D9Wrapper::IDirect3DVertexDeclaration9::IDirect3DVertexDeclaration9(D3D9Base::
 	}
 }
 
-D3D9Wrapper::IDirect3DVertexDeclaration9* D3D9Wrapper::IDirect3DVertexDeclaration9::GetDirect3DVertexDeclaration9(D3D9Base::LPDIRECT3DVERTEXDECLARATION9 pVertexDeclaration, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
+D3D9Wrapper::IDirect3DVertexDeclaration9* D3D9Wrapper::IDirect3DVertexDeclaration9::GetDirect3DVertexDeclaration9(::LPDIRECT3DVERTEXDECLARATION9 pVertexDeclaration, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
 {
 	D3D9Wrapper::IDirect3DVertexDeclaration9* p = new D3D9Wrapper::IDirect3DVertexDeclaration9(pVertexDeclaration, hackerDevice);
 	if (pVertexDeclaration) m_List.AddMember(pVertexDeclaration, p);
@@ -109,7 +109,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexDeclaration9::GetDevice(THIS_ D3D9Wrapp
 	return hr;
 }
 
-STDMETHODIMP D3D9Wrapper::IDirect3DVertexDeclaration9::GetDeclaration(THIS_ D3D9Base::D3DVERTEXELEMENT9* pElement,UINT* pNumElements)
+STDMETHODIMP D3D9Wrapper::IDirect3DVertexDeclaration9::GetDeclaration(THIS_ ::D3DVERTEXELEMENT9* pElement,UINT* pNumElements)
 {
 	LogDebug("IDirect3DVertexDeclaration9::GetDeclaration called\n");
 

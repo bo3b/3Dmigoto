@@ -185,7 +185,7 @@ std::string NameFromIID(IID id)
 
 #ifdef _D3D9_H_
 #if MIGOTO_DX == 9 // FIXME: DROP THIS NAMESPACE AND ENABLE FOR ALL
-	if (__uuidof(D3D9Base::IDirect3DDevice9) == id)
+	if (__uuidof(IDirect3DDevice9) == id)
 		return "IDirect3DDevice9";
 #endif
 #endif // _D3D9_H_
@@ -357,7 +357,7 @@ void WarnIfConflictingShaderExists(wchar_t *orig_path, const char *message)
 }
 
 #if MIGOTO_DX == 9
-void save_om_state(D3D9Base::IDirect3DDevice9 *device, struct OMState *state)
+void save_om_state(IDirect3DDevice9 *device, struct OMState *state)
 {
 	DWORD i;
 
@@ -365,13 +365,13 @@ void save_om_state(D3D9Base::IDirect3DDevice9 *device, struct OMState *state)
 	// to use it properly to get all RTVs and UAVs we need to pass it some
 	// information that we don't know. So, we have to do a few extra steps
 	// to find that info.
-	D3D9Base::D3DCAPS9 caps;
+	D3DCAPS9 caps;
 	device->GetDeviceCaps(&caps);
 	if (state->rtvs.size() != caps.NumSimultaneousRTs)
 		state->rtvs.resize(caps.NumSimultaneousRTs);
 	state->NumRTVs = 0;
 	for (i = 0; i < caps.NumSimultaneousRTs; i++) {
-		D3D9Base::IDirect3DSurface9 *rt = NULL;
+		IDirect3DSurface9 *rt = NULL;
 		device->GetRenderTarget(i, &rt);
 		state->rtvs[i] = rt;
 		if (rt) {
@@ -381,7 +381,7 @@ void save_om_state(D3D9Base::IDirect3DDevice9 *device, struct OMState *state)
 	device->GetDepthStencilSurface(&state->dsv);
 }
 
-void restore_om_state(D3D9Base::IDirect3DDevice9 *device, struct OMState *state)
+void restore_om_state(IDirect3DDevice9 *device, struct OMState *state)
 {
 	UINT i;
 	for (i = 0; i < state->NumRTVs; i++) {

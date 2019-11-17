@@ -16,10 +16,10 @@ inline void D3D9Wrapper::IDirect3DStateBlock9::Delete()
 
 void D3D9Wrapper::IDirect3DStateBlock9::HookStateBlock()
 {
-	m_pUnk = hook_stateblock(GetD3DStateBlock9(), (D3D9Base::IDirect3DStateBlock9*)this);
+	m_pUnk = hook_stateblock(GetD3DStateBlock9(), (::IDirect3DStateBlock9*)this);
 }
 
-inline D3D9Wrapper::IDirect3DStateBlock9::IDirect3DStateBlock9(D3D9Base::LPDIRECT3DSTATEBLOCK9 pStateBlock, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
+inline D3D9Wrapper::IDirect3DStateBlock9::IDirect3DStateBlock9(::LPDIRECT3DSTATEBLOCK9 pStateBlock, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
 	: D3D9Wrapper::IDirect3DUnknown((IUnknown*)pStateBlock),
 	mDirectModeStateBlockDuplication(NULL),
 	hackerDevice(hackerDevice)
@@ -29,7 +29,7 @@ inline D3D9Wrapper::IDirect3DStateBlock9::IDirect3DStateBlock9(D3D9Base::LPDIREC
 	}
 }
 
-inline D3D9Wrapper::IDirect3DStateBlock9 * D3D9Wrapper::IDirect3DStateBlock9::GetDirect3DStateBlock9(D3D9Base::LPDIRECT3DSTATEBLOCK9 pStateBlock, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
+inline D3D9Wrapper::IDirect3DStateBlock9 * D3D9Wrapper::IDirect3DStateBlock9::GetDirect3DStateBlock9(::LPDIRECT3DSTATEBLOCK9 pStateBlock, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
 {
 	D3D9Wrapper::IDirect3DStateBlock9* p = new D3D9Wrapper::IDirect3DStateBlock9(pStateBlock, hackerDevice);
 	if (pStateBlock) m_List.AddMember(pStateBlock, p);

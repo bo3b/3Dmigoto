@@ -1,7 +1,5 @@
 #pragma once
-namespace D3D9Base {
 #include <d3d9.h>
-}
 enum class DrawCall {
 	Draw,
 	DrawIndexed,
@@ -14,7 +12,7 @@ enum class DrawCall {
 struct DrawCallInfo
 {
 	DrawCall type;
-	D3D9Base::D3DPRIMITIVETYPE primitive_type;
+	::D3DPRIMITIVETYPE primitive_type;
 	UINT PrimitiveCount;
 	UINT StartVertex;
 	INT BaseVertexIndex;
@@ -24,15 +22,15 @@ struct DrawCallInfo
 	const void *pVertexStreamZeroData;
 	UINT VertexStreamZeroStride;
 	const void *pIndexData;
-	D3D9Base::D3DFORMAT IndexDataFormat;
+	::D3DFORMAT IndexDataFormat;
 	UINT Handle;
 	const float *pNumSegs;
-	const D3D9Base::D3DRECTPATCH_INFO *pRectPatchInfo;
-	const D3D9Base::D3DTRIPATCH_INFO *pTriPatchInfo;
+	const ::D3DRECTPATCH_INFO *pRectPatchInfo;
+	const ::D3DTRIPATCH_INFO *pTriPatchInfo;
 	bool skip, hunting_skip;
 	DrawCallInfo() :
 		type(DrawCall::Invalid),
-		primitive_type(D3D9Base::D3DPRIMITIVETYPE(-1)),
+		primitive_type(::D3DPRIMITIVETYPE(-1)),
 		PrimitiveCount(0),
 		StartVertex(0),
 		BaseVertexIndex(0),
@@ -42,7 +40,7 @@ struct DrawCallInfo
 		pVertexStreamZeroData(NULL),
 		VertexStreamZeroStride(0),
 		pIndexData(NULL),
-		IndexDataFormat(D3D9Base::D3DFORMAT(-1)),
+		IndexDataFormat(::D3DFORMAT(-1)),
 		Handle(0),
 		pNumSegs(NULL),
 		pRectPatchInfo(NULL),
@@ -50,13 +48,13 @@ struct DrawCallInfo
 		skip(false),
 		hunting_skip(false)
 	{}
-	DrawCallInfo(DrawCall type, D3D9Base::D3DPRIMITIVETYPE primitive_type, UINT PrimitiveCount,
+	DrawCallInfo(DrawCall type, ::D3DPRIMITIVETYPE primitive_type, UINT PrimitiveCount,
 		UINT StartVertex, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT StartIndex,
 		const void *pVertexStreamZeroData, UINT VertexStreamZeroStride,
-		const void *pIndexData, D3D9Base::D3DFORMAT IndexDataFormat,
+		const void *pIndexData, ::D3DFORMAT IndexDataFormat,
 		UINT Handle, const float *pNumSegs,
-		const D3D9Base::D3DRECTPATCH_INFO *pRectPatchInfo,
-		const D3D9Base::D3DTRIPATCH_INFO *pTriPatchInfo
+		const ::D3DRECTPATCH_INFO *pRectPatchInfo,
+		const ::D3DTRIPATCH_INFO *pTriPatchInfo
 		) :
 		type(type),
 		primitive_type(primitive_type),

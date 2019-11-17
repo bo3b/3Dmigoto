@@ -1,6 +1,6 @@
 #include <unordered_map>
 #include "HookedDeviceDX9.h"
-using namespace D3D9Base;
+
 #include "DLLMainHookDX9.h"
 
 #if 0
@@ -38,7 +38,7 @@ IDirect3DDevice9* lookup_hooked_device_dx9(IDirect3DDevice9 *orig_device)
 	return i->second;
 }
 
-D3D9Base::IDirect3DDevice9Ex * lookup_hooked_device_dx9(D3D9Base::IDirect3DDevice9Ex * orig_device)
+::IDirect3DDevice9Ex * lookup_hooked_device_dx9(::IDirect3DDevice9Ex * orig_device)
 {
 	DeviceMap::iterator i;
 
@@ -46,14 +46,14 @@ D3D9Base::IDirect3DDevice9Ex * lookup_hooked_device_dx9(D3D9Base::IDirect3DDevic
 		return NULL;
 
 	EnterCriticalSection(&device_map_lock);
-	i = device_map.find((D3D9Base::IDirect3DDevice9*)orig_device);
+	i = device_map.find((::IDirect3DDevice9*)orig_device);
 	if (i == device_map.end()) {
 		LeaveCriticalSection(&device_map_lock);
 		return NULL;
 	}
 	LeaveCriticalSection(&device_map_lock);
 
-	return(D3D9Base::IDirect3DDevice9Ex*)i->second;
+	return(::IDirect3DDevice9Ex*)i->second;
 }
 
 // IUnknown
@@ -3159,7 +3159,7 @@ IDirect3DDevice9* hook_device(IDirect3DDevice9 *orig_device, IDirect3DDevice9 *h
 
 	return (IDirect3DDevice9*)trampoline_device;
 }
-void remove_hooked_device(D3D9Base::IDirect3DDevice9 * orig_device)
+void remove_hooked_device(::IDirect3DDevice9 * orig_device)
 {
 	HookDebug("HookedDevice:: Remove Device()\n");
 	DeviceMap::iterator i;
