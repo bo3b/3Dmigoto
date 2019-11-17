@@ -6,13 +6,11 @@
 #include <vector>
 #include <map>
 
-#if MIGOTO_DX == 11 // FIXME: These includes should not be dependent on the 3DMigoto target
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
-#endif // MIGOTO_DX == 11
 
 #include <D3Dcompiler.h>
-//#include <d3d9.h> FIXME: DX9 port has namespaced this so it can overload the names, but that creates problems for third party code and I'd rather not namespace it
+#include <d3d9.h>
 #include <DirectXMath.h>
 
 #include "version.h"

@@ -62,12 +62,8 @@
 #endif
 #endif // MIGOTO_DX
 
-#ifndef NO_STEREO_D3D9
 #include <D3D9.h>
-#endif
-#ifndef NO_STEREO_D3D11 // FIXME: THIS GATING SHOULD NOT BE NECESSARY, BUT IS. MAYBE BECAUSE OF THE ABOVE NAMESPACE?
 #include <d3d11_1.h>
-#endif
 // ^^^^^ 3DMIGOTO ADDITION ^^^^^
 
 #include "nvapi.h"

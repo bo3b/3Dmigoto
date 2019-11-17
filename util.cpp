@@ -184,10 +184,8 @@ std::string NameFromIID(IID id)
 #endif
 
 #ifdef _D3D9_H_
-#if MIGOTO_DX == 9 // FIXME: DROP THIS NAMESPACE AND ENABLE FOR ALL
 	if (__uuidof(IDirect3DDevice9) == id)
 		return "IDirect3DDevice9";
-#endif
 #endif // _D3D9_H_
 
 #ifdef __d3d10_h__
