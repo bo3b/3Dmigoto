@@ -536,7 +536,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		// We know it throws at least one exception, let's use that.
 		try
 		{
-			byteCode = AssembleFluganWithOptionalSignatureParsingDX9(&srcData, G->assemble_signature_comments, &byteCode);
+			byteCode = assemblerDX9(&srcData);
 		}
 		catch (...)
 		{

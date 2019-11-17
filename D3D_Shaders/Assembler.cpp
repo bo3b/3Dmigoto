@@ -1,6 +1,9 @@
 #include "stdafx.h"
-#include <d3dx9shader.h>
 #include "float.h"
+
+#if MIGOTO_DX == 9
+#include <d3dx9shader.h>
+#endif
 
 using namespace std;
 
@@ -2560,7 +2563,7 @@ vector<string> stringToLines(const char* start, size_t size)
 	}
 	return lines;
 }
-vector<string> stringToLinesDX9(const char* start, size_t size) {
+static vector<string> stringToLinesDX9(const char* start, size_t size) {
 	vector<string> lines;
 	const char* pStart = start;
 	const char* pEnd = pStart;
@@ -2846,6 +2849,7 @@ static inline void replace_cb_offsets_with_indices(string *line)
 	*line += suffix;
 }
 
+#if MIGOTO_DX == 9
 HRESULT disassemblerDX9(vector<byte> *buffer, vector<byte> *ret, const char *comment)
 {
 	char* asmBuffer;
@@ -2884,6 +2888,7 @@ HRESULT disassemblerDX9(vector<byte> *buffer, vector<byte> *ret, const char *com
 		pD3DXDissassembly->Release();
 	return S_OK;
 }
+#endif
 
 HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment,
 		int hexdump, bool d3dcompiler_46_compat,
@@ -3336,7 +3341,8 @@ vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode,
 	dwordBuffer[4] = hash[3];
 	return origBytecode;
 }
-vector<byte> assemblerDX9(vector<char> *asmFile, vector<byte> origBytecode)
+#if MIGOTO_DX == 9
+vector<byte> assemblerDX9(vector<char> *asmFile)
 {
 	vector<byte> ret;
 	LPD3DXBUFFER pAssembly;
@@ -3347,6 +3353,11 @@ vector<byte> assemblerDX9(vector<char> *asmFile, vector<byte> origBytecode)
 		ret.resize(size);
 		std::memcpy(ret.data(), buffer, size);
 		pAssembly->Release();
+		// FIXME: Pass warnings back to the caller
+	} else {
+		// FIXME: Pass error messages back to the caller
+		throw std::invalid_argument("assembler: Bad shader assembly (FIXME: RETURN ERROR MESSAGES)");
 	}
 	return ret;
 }
+#endif

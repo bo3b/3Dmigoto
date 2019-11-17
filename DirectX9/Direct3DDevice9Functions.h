@@ -526,7 +526,7 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 			// Re-assemble the ASM text back to binary
 			try
 			{
-				byteCode = AssembleFluganWithOptionalSignatureParsingDX9(&asmTextBytes, G->assemble_signature_comments, &byteCode);
+				byteCode = assemblerDX9(&asmTextBytes);
 
 				// ToDo: Any errors to check?  When it fails, throw an exception.
 
@@ -1819,8 +1819,9 @@ void D3D9Wrapper::IDirect3DDevice9::DeferredShaderReplacement(D3D9Wrapper::IDire
 	vector<char> asm_vector(asm_text.begin(), asm_text.end());
 	vector<byte> patched_bytecode;
 
-	hr = AssembleFluganWithSignatureParsingDX9(&asm_vector, &patched_bytecode);
-	if (FAILED(hr)) {
+	try {
+		patched_bytecode = assemblerDX9(&asm_vector);
+	} catch (...) {
 		LogInfo("    *** Assembling patched shader failed\n");
 		return;
 	}

@@ -759,27 +759,6 @@ HRESULT AssembleFluganWithSignatureParsing(vector<char> *assembly, vector<byte> 
 
 	return S_OK;
 }
-HRESULT AssembleFluganWithSignatureParsingDX9(vector<char> *assembly, vector<byte> *result_bytecode)
-{
-	vector<byte> manufactured_bytecode;
-	HRESULT hr;
-
-	// Flugan's assembler normally cheats and reuses sections from the
-	// original binary when replacing a shader from the game, but that
-	// restricts what modifications we can do and is not an option when
-	// assembling a stand-alone shader. Let's parse the missing sections
-	// ourselved and manufacture a binary shader with those section to pass
-	// to Flugan's assembler. Later we should refactor this into the
-	// assembler itself.
-
-	hr = manufacture_shader_binary(assembly->data(), assembly->size(), &manufactured_bytecode);
-	if (FAILED(hr))
-		return E_FAIL;
-
-	*result_bytecode = assemblerDX9(assembly, manufactured_bytecode);
-
-	return S_OK;
-}
 vector<byte> AssembleFluganWithOptionalSignatureParsing(vector<char> *assembly,
 		bool assemble_signatures, vector<byte> *orig_bytecode,
 		vector<AssemblerParseError> *parse_errors)
@@ -791,21 +770,6 @@ vector<byte> AssembleFluganWithOptionalSignatureParsing(vector<char> *assembly,
 		return assembler(assembly, *orig_bytecode, parse_errors);
 
 	hr = AssembleFluganWithSignatureParsing(assembly, &new_bytecode, parse_errors);
-	if (FAILED(hr))
-		throw parseError;
-
-	return new_bytecode;
-}
-vector<byte> AssembleFluganWithOptionalSignatureParsingDX9(vector<char> *assembly,
-	bool assemble_signatures, vector<byte> *orig_bytecode)
-{
-	vector<byte> new_bytecode;
-	HRESULT hr;
-
-	if (!assemble_signatures)
-		return assemblerDX9(assembly, *orig_bytecode);
-
-	hr = AssembleFluganWithSignatureParsingDX9(assembly, &new_bytecode);
 	if (FAILED(hr))
 		throw parseError;
 
