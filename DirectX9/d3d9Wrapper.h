@@ -34,7 +34,8 @@ typedef void (WINAPI *PSGPError)(void *D3DFE_PROCESSVERTICES, int PSGPERRORID, u
 typedef void (WINAPI *PSGPSampleTexture)(void *D3DFE_PROCESSVERTICES, unsigned int a, float (* const b)[4], unsigned int c, float (* const d)[4]);
 
 //DEFINE_GUID(IID_D3D9Wrapper_IDirect3DDevice9,
-//	0xa3046b1e, 0x336b, 0x4d90, 0x9f, 0xd6, 0x23, 0x4b, 0xc0, 0x9b, 0x86, 0x87);
+//	FIXME: Change entire DX9 project to use the correct GUID definition and comparison macros
+//	- Removed the commented out GUID here as it was copy + pasted from DX11's HackerDevice, and didn't match any uses of IF_GUID
 #define IF_GUID(riid,a,b,c,d,e,f,g) if ((riid.Data1==a)&&(riid.Data2==b)&&(riid.Data3==c)&&(riid.Data4[0]==d)&&(riid.Data4[1]==e)&&(riid.Data4[2]==f)&&(riid.Data4[3]==g))
 class IDirect3DUnknown
 {

@@ -1,17 +1,15 @@
 #pragma once
 
-#define NO_UTIL_D3D11 // FIXME Breaks DX11, this should be a project setting -DSS
-
 #include <ctype.h>
 #include <wchar.h>
 #include <string>
 #include <vector>
 #include <map>
 
-#ifndef NO_UTIL_D3D11
+#if MIGOTO_DX == 11 // FIXME: These includes should not be dependent on the 3DMigoto target
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
-#endif
+#endif // MIGOTO_DX == 11
 
 #include <D3Dcompiler.h>
 //#include <d3d9.h> FIXME: DX9 port has namespaced this so it can overload the names, but that creates problems for third party code and I'd rather not namespace it
@@ -24,13 +22,12 @@
 
 #include "D3D_Shaders\stdafx.h"
 
-#ifndef NO_UTIL_D3D11
+#if MIGOTO_DX == 11
 #include "DirectX11\HookedDevice.h"
 #include "DirectX11\HookedContext.h"
-#endif
-#ifndef NO_UTIL_D3D9
+#elif MIGOTO_DX == 9
 #include "DirectX9\HookedDeviceDX9.h"
-#endif
+#endif // MIGOTO_DX
 
 
 // Sets the threshold for warning about IniParams size. The larger IniParams is
@@ -406,7 +403,7 @@ static T2 parse_enum_option_string_prefix(struct EnumName_t<T1, T2> *enum_names,
 	return ret;
 }
 
-#ifndef NO_UTIL_D3D11
+#if MIGOTO_DX == 11
 // http://msdn.microsoft.com/en-us/library/windows/desktop/bb173059(v=vs.85).aspx
 static char *DXGIFormats[] = {
 	"UNKNOWN",
@@ -724,9 +721,9 @@ static const char* type_name(IUnknown *object)
 		return "<NULL>";
 	}
 }
-#endif
+#endif // MIGOTO_DX == 11
 
-#ifndef NO_UTIL_D3D9
+#if MIGOTO_DX == 9
 static const char* type_name_dx9(IUnknown *object)
 {
 	D3D9Base::IDirect3DDevice9 *device;
@@ -751,7 +748,7 @@ static const char* type_name_dx9(IUnknown *object)
 		return "<NULL>";
 	}
 }
-#endif
+#endif // MIGOTO_DX == 9
 // -----------------------------------------------------------------------------------------------
 
 // Common routine to handle disassembling binary shaders to asm text.
@@ -774,13 +771,12 @@ static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength
 	comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
 	memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
 
-#ifndef NO_UTIL_D3D9
+#if MIGOTO_DX == 9
 	r = disassemblerDX9(&byteCode, &disassembly, comments.c_str());
-#endif
-#ifndef NO_UTIL_D3D11
+#elif MIGOTO_DX == 11
 	r = disassembler(&byteCode, &disassembly, comments.c_str(), hexdump,
 			d3dcompiler_46_compat, disassemble_undecipherable_data, patch_cb_offsets);
-#endif
+#endif // MIGOTO_DX
 	if (FAILED(r)) {
 		LogInfo("  disassembly failed. Error: %x\n", r);
 		return "";
@@ -945,12 +941,12 @@ static bool ParseIniParamName(const wchar_t *name, int *idx, float DirectX::XMFL
 	if (ret == 1 && len1 == length) {
 		*idx = 0;
 	} else if (ret == 2 && len2 == length) {
-#ifndef NO_UTIL_D3D9
+#if MIGOTO_DX == 9
 		// Added gating for this DX9 specific limitation that we definitely do
 		// not want to enforce in DX11 as that would break a bunch of mods -DSS
 		if (*idx >= 225)
 			return false;
-#endif
+#endif // MIGOTO_DX == 9
 	} else {
 		return false;
 	}
@@ -1001,30 +997,29 @@ static const char *end_user_conflicting_shader_msg =
 
 struct OMState {
 	UINT NumRTVs;
-#ifndef NO_UTIL_D3D9
+#if MIGOTO_DX == 9
 	vector<D3D9Base::IDirect3DSurface9*> rtvs;
 	D3D9Base::IDirect3DSurface9 *dsv;
-#endif // NO_UTIL_D3D9
-#ifndef NO_UTIL_D3D11
+#elif MIGOTO_DX == 11
 	ID3D11RenderTargetView *rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
 	ID3D11DepthStencilView *dsv;
 	UINT UAVStartSlot;
 	UINT NumUAVs;
 	ID3D11UnorderedAccessView *uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
-#endif // NO_UTIL_D3D11
+#endif // MIGOTO_DX
 };
 
-#ifndef NO_UTIL_D3D9
+// TODO: Could use DX version specific typedefs for these differences
+#if MIGOTO_DX == 9
 void save_om_state(D3D9Base::IDirect3DDevice9 *device, struct OMState *state);
 void restore_om_state(D3D9Base::IDirect3DDevice9 *device, struct OMState *state);
-#endif
-#ifndef NO_UTIL_D3D11
+#elif MIGOTO_DX == 11
 void save_om_state(ID3D11DeviceContext *context, struct OMState *state);
 void restore_om_state(ID3D11DeviceContext *context, struct OMState *state);
-#endif
+#endif // MIGOTO_DX
 
 // -----------------------------------------------------------------------------------------------
-#ifndef NO_UTIL_D3D9
+#if MIGOTO_DX == 9
 static std::map<int, char*> D3DFORMATS = {
 	{ 0, "UNKNOWN" },
 	{ 20, "R8G8B8" },
@@ -1575,9 +1570,9 @@ static UINT DrawPrimitiveCountToVerticesCount(UINT pCount, D3D9Base::D3DPRIMITIV
 		return pCount + 2;
 	}
 }
-#endif
+#endif // MIGOTO_DX == 9
 
-#ifndef NO_UTIL_D3D11
+#if MIGOTO_DX == 11
 extern IDXGISwapChain *last_fullscreen_swap_chain;
-#endif
+#endif // MIGOTO_DX == 11
 void install_crash_handler(int level);

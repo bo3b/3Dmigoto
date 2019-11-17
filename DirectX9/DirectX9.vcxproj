@@ -44,7 +44,7 @@
     <ClCompile Include="d3d9Wrapper.cpp" />
     <ClCompile Include="D3DFont.cpp" />
     <ClCompile Include="DLLMainHookDX9.cpp" />
-    <ClCompile Include="util.cpp" />
+    <ClCompile Include="..\util.cpp" />
     <ClCompile Include="HookedCubeTexture.cpp" />
     <ClCompile Include="HookedD9.cpp" />
     <ClCompile Include="HookedDeviceDX9.cpp" />

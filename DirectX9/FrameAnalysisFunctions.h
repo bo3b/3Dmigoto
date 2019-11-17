@@ -2463,7 +2463,7 @@ inline STDMETHODIMP_(ULONG) D3D9Wrapper::FrameAnalysisDevice::Release(void)
 
 inline STDMETHODIMP D3D9Wrapper::FrameAnalysisDevice::QueryInterface(REFIID riid, void ** ppvObj)
 {
-	if (ppvObj && IsEqualIID(riid, IID_FrameAnalysisDevice)) {
+	if (ppvObj && IsEqualIID(riid, IID_FrameAnalysisDevice9)) {
 		// This is a special case - only 3DMigoto itself should know
 		// this IID, so this is us checking if it has a FrameAnalysisContext.
 		// There's no need to call through to DX for this one.

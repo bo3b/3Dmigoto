@@ -5,9 +5,13 @@
 #include <fcntl.h>
 #include <Dbghelp.h>
 
+// FIXME: Move any dependencies from these headers into common:
+#if MIGOTO_DX == 9
+#include "DirectX9\Overlay.h"
+#elif MIGOTO_DX == 11
 #include "DirectX11\HackerDevice.h"
 #include "DirectX11\HackerContext.h"
-
+#endif // MIGOTO_DX
 
 // Sometimes game directories get funny permissions that cause us problems. I
 // have no clue how or why this happens, and the usual way to deal with it is
@@ -154,7 +158,7 @@ void touch_file(wchar_t *path, DWORD flags)
 // the actual names of the objects in question.
 // e.g.
 // DEFINE_GUID(IID_IDXGIFactory,0x7b7166ec,0x21c7,0x44ae,0xb2,0x1a,0xc9,0xae,0x32,0x1a,0xe3,0x69);
-// 
+//
 
 std::string NameFromIID(IID id)
 {
@@ -164,113 +168,136 @@ std::string NameFromIID(IID id)
 	if (__uuidof(IUnknown) == id)
 		return "IUnknown";
 
-	if (__uuidof(ID3D10Multithread) == id)
-		return "ID3D10Multithread";
-
-	if (__uuidof(ID3D11DeviceChild) == id)
-		return "ID3D11DeviceChild";
-	if (__uuidof(ID3DDeviceContextState) == id)
-		return "ID3DDeviceContextState";
-
-	if (__uuidof(IDirect3DDevice9) == id)
-		return "IDirect3DDevice9";
-	if (__uuidof(ID3D10Device) == id)
-		return "ID3D10Device";
-	if (__uuidof(ID3D11Device) == id)
-		return "ID3D11Device";
-	if (__uuidof(ID3D11Device1) == id)
-		return "ID3D11Device1";
-	if (__uuidof(ID3D11Device2) == id)  // d3d11_2.h when the time comes
-		return "ID3D11Device2";
+	// FIXME: We should probably have these IIDs defined regardless of target
+	// to catch potential cases where multiple versions of 3DMigoto are
+	// coexisting and the devices get mixed up
+#if MIGOTO_DX == 11
 	if (IID_HackerDevice == id)
 		return "HackerDevice";
-
-	if (__uuidof(ID3D11DeviceContext) == id)
-		return "ID3D11DeviceContext";
-	if (__uuidof(ID3D11DeviceContext1) == id)
-		return "ID3D11DeviceContext1";
-	if (__uuidof(ID3D11DeviceContext2) == id) // d3d11_2.h when the time comes
-		return "ID3D11DeviceContext2";
 	if (IID_HackerContext == id)
 		return "HackerContext";
+#elif MIGOTO_DX == 9
+	// FIXME: DX9 GUIDs are not using the correct macros, and need verification
+	// that they haven't been copy + pasted
+	//if (IID_D3D9Wrapper_IDirect3DDevice9 == id)
+	//	return "3DMigotoDevice9";
+#endif
 
-	if (__uuidof(ID3D11InfoQueue) == id)
-		return "ID3D11InfoQueue";
-	if (__uuidof(ID3DUserDefinedAnnotation) == id)
-		return "ID3DUserDefinedAnnotation";
+#ifdef _D3D9_H_
+#if MIGOTO_DX == 9 // FIXME: DROP THIS NAMESPACE AND ENABLE FOR ALL
+	if (__uuidof(D3D9Base::IDirect3DDevice9) == id)
+		return "IDirect3DDevice9";
+#endif
+#endif // _D3D9_H_
 
+#ifdef __d3d10_h__
+	if (__uuidof(ID3D10Multithread) == id)
+		return "ID3D10Multithread";
+	if (__uuidof(ID3D10Device) == id)
+		return "ID3D10Device";
+#endif // __d3d10_h__
+
+#ifdef __d3d11_h__
+	if (__uuidof(ID3D11Device) == id)
+		return "ID3D11Device";
+	if (__uuidof(ID3D11DeviceContext) == id)
+		return "ID3D11DeviceContext";
+	if (__uuidof(ID3D11DeviceChild) == id)
+		return "ID3D11DeviceChild";
 	if (__uuidof(ID3D11BlendState) == id)
 		return "ID3D11BlendState";
-	if (__uuidof(ID3D11BlendState1) == id)
-		return "ID3D11BlendState1";
 	if (__uuidof(ID3D11RasterizerState) == id)
 		return "ID3D11RasterizerState";
-	if (__uuidof(ID3D11RasterizerState1) == id)
-		return "ID3D11RasterizerState1";
-
 	if (__uuidof(ID3D11Texture2D) == id)	// Used to fetch backbuffer
 		return "ID3D11Texture2D";
+#endif // __d3d11_h__
+
+#ifdef __d3d11_1_h__
+	if (__uuidof(ID3D11BlendState1) == id)
+		return "ID3D11BlendState1";
+	if (__uuidof(ID3D11Device1) == id)
+		return "ID3D11Device1";
+	if (__uuidof(ID3D11DeviceContext1) == id)
+		return "ID3D11DeviceContext1";
+	if (__uuidof(ID3D11RasterizerState1) == id)
+		return "ID3D11RasterizerState1";
+	if (__uuidof(ID3DDeviceContextState) == id)
+		return "ID3DDeviceContextState";
+	if (__uuidof(ID3DUserDefinedAnnotation) == id)
+		return "ID3DUserDefinedAnnotation";
+#endif // __d3d11_1_h__
+
+	// XXX: From newer Windows SDK than we are using. Defined in util.h for now
+	if (__uuidof(ID3D11Device2) == id)  // d3d11_2.h when the time comes
+		return "ID3D11Device2";
+	if (__uuidof(ID3D11DeviceContext2) == id) // d3d11_2.h when the time comes
+		return "ID3D11DeviceContext2";
+
+#ifdef __d3d11sdklayers_h__
+	if (__uuidof(ID3D11InfoQueue) == id)
+		return "ID3D11InfoQueue";
+#endif
 
 	// All the DXGI interfaces from dxgi.h, and dxgi1_2.h
-
-	if (__uuidof(IDXGIObject) == id)
-		return "IDXGIObject";
-	if (__uuidof(IDXGIDeviceSubObject) == id)
-		return "IDXGIDeviceSubObject";
-
-	if (__uuidof(IDXGIFactory) == id)
-		return "IDXGIFactory";
-	if (__uuidof(IDXGIFactory1) == id)
-		return "IDXGIFactory1";
-	if (__uuidof(IDXGIFactory2) == id)
-		return "IDXGIFactory2";
-
+#ifdef __dxgi_h__
+	if (__uuidof(IDXGIAdapter) == id)
+		return "IDXGIAdapter";
+	if (__uuidof(IDXGIAdapter1) == id)
+		return "IDXGIAdapter1";
 	if (__uuidof(IDXGIDevice) == id)
 		return "IDXGIDevice";
 	if (__uuidof(IDXGIDevice1) == id)
 		return "IDXGIDevice1";
-	if (__uuidof(IDXGIDevice2) == id)
-		return "IDXGIDevice2";
-
+	if (__uuidof(IDXGIDeviceSubObject) == id)
+		return "IDXGIDeviceSubObject";
+	if (__uuidof(IDXGIFactory) == id)
+		return "IDXGIFactory";
+	if (__uuidof(IDXGIFactory1) == id)
+		return "IDXGIFactory1";
+	if (__uuidof(IDXGIKeyedMutex) == id)
+		return "IDXGIKeyedMutex";
+	if (__uuidof(IDXGIObject) == id)
+		return "IDXGIObject";
+	if (__uuidof(IDXGIOutput) == id)
+		return "IDXGIOutput";
+	if (__uuidof(IDXGIResource) == id)
+		return "IDXGIResource";
+	if (__uuidof(IDXGISurface) == id)
+		return "IDXGISurface";
+	if (__uuidof(IDXGISurface1) == id)
+		return "IDXGISurface1";
 	if (__uuidof(IDXGISwapChain) == id)
 		return "IDXGISwapChain";
+#endif // __dxgi_h__
+
+#ifdef __dxgi1_2_h__
+	if (__uuidof(IDXGIAdapter2) == id)
+		return "IDXGIAdapter2";
+	if (__uuidof(IDXGIDevice2) == id)
+		return "IDXGIDevice2";
+	if (__uuidof(IDXGIDisplayControl) == id)
+		return "IDXGIDisplayControl";
+	if (__uuidof(IDXGIFactory2) == id)
+		return "IDXGIFactory2";
+	if (__uuidof(IDXGIOutput1) == id)
+		return "IDXGIOutput1";
+	if (__uuidof(IDXGIOutputDuplication) == id)
+		return "IDXGIOutputDuplication";
+	if (__uuidof(IDXGIResource1) == id)
+		return "IDXGIResource1";
+	if (__uuidof(IDXGISurface2) == id)
+		return "IDXGISurface2";
 	if (__uuidof(IDXGISwapChain1) == id)
 		return "IDXGISwapChain1";
+#endif // __dxgi1_2_h__
+
+	// XXX: From newer Windows SDK than we are using. Defined in util.h for now
 	if (__uuidof(IDXGISwapChain2) == id)		// dxgi1_3 A8BE2AC4-199F-4946-B331-79599FB98DE7
 		return "IDXGISwapChain2";
 	if (__uuidof(IDXGISwapChain3) == id)		// dxgi1_4 94D99BDB-F1F8-4AB0-B236-7DA0170EDAB1
 		return "IDXGISwapChain3";
 	if (__uuidof(IDXGISwapChain4) == id)		// dxgi1_5 3D585D5A-BD4A-489E-B1F4-3DBCB6452FFB
 		return "IDXGISwapChain4";
-
-	if (__uuidof(IDXGIAdapter) == id)
-		return "IDXGIAdapter";
-	if (__uuidof(IDXGIAdapter1) == id)
-		return "IDXGIAdapter1";
-	if (__uuidof(IDXGIAdapter2) == id)
-		return "IDXGIAdapter2";
-
-	if (__uuidof(IDXGIOutputDuplication) == id)
-		return "IDXGIOutputDuplication";
-	if (__uuidof(IDXGIDisplayControl) == id)
-		return "IDXGIDisplayControl";
-
-	if (__uuidof(IDXGIOutput) == id)
-		return "IDXGIOutput";
-	if (__uuidof(IDXGIOutput1) == id)
-		return "IDXGIOutput1";
-	if (__uuidof(IDXGIResource) == id)
-		return "IDXGIResource";
-	if (__uuidof(IDXGIResource1) == id)
-		return "IDXGIResource1";
-	if (__uuidof(IDXGISurface) == id)
-		return "IDXGISurface";
-	if (__uuidof(IDXGISurface1) == id)
-		return "IDXGIResource";
-	if (__uuidof(IDXGISurface2) == id)
-		return "IDXGISurface2";
-	if (__uuidof(IDXGIKeyedMutex) == id)
-		return "IDXGIKeyedMutex";
 
 	// For unknown IIDs lets return the hex string.
 	// Converting from wchar_t to string using stackoverflow suggestion.
@@ -329,6 +356,44 @@ void WarnIfConflictingShaderExists(wchar_t *orig_path, const char *message)
 	}
 }
 
+#if MIGOTO_DX == 9
+void save_om_state(D3D9Base::IDirect3DDevice9 *device, struct OMState *state)
+{
+	DWORD i;
+
+	// OMGetRenderTargetAndUnorderedAccessViews is a poorly designed API as
+	// to use it properly to get all RTVs and UAVs we need to pass it some
+	// information that we don't know. So, we have to do a few extra steps
+	// to find that info.
+	D3D9Base::D3DCAPS9 caps;
+	device->GetDeviceCaps(&caps);
+	if (state->rtvs.size() != caps.NumSimultaneousRTs)
+		state->rtvs.resize(caps.NumSimultaneousRTs);
+	state->NumRTVs = 0;
+	for (i = 0; i < caps.NumSimultaneousRTs; i++) {
+		D3D9Base::IDirect3DSurface9 *rt = NULL;
+		device->GetRenderTarget(i, &rt);
+		state->rtvs[i] = rt;
+		if (rt) {
+			state->NumRTVs = i + 1;
+		}
+	}
+	device->GetDepthStencilSurface(&state->dsv);
+}
+
+void restore_om_state(D3D9Base::IDirect3DDevice9 *device, struct OMState *state)
+{
+	UINT i;
+	for (i = 0; i < state->NumRTVs; i++) {
+		device->SetRenderTarget(i, state->rtvs[i]);
+		if (state->rtvs[i])
+			state->rtvs[i]->Release();
+	}
+	device->SetDepthStencilSurface(state->dsv);
+	if (state->dsv)
+		state->dsv->Release();
+}
+#elif MIGOTO_DX == 11
 void save_om_state(ID3D11DeviceContext *context, struct OMState *state)
 {
 	int i;
@@ -605,3 +670,4 @@ void install_crash_handler(int level)
 	// exception handler in the event of a hang/deadlock:
 	CreateThread(NULL, 0, exception_keyboard_monitor, NULL, 0, NULL);
 }
+#endif

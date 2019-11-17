@@ -1153,7 +1153,7 @@ static void AnalyseFrame(D3D9Wrapper::IDirect3DDevice9 *device, void *private_da
 	time_t ltime;
 	struct tm tm;
 
-	if (FAILED(device->QueryInterface(D3D9Wrapper::IID_FrameAnalysisDevice, (void**)&factx))) {
+	if (FAILED(device->QueryInterface(D3D9Wrapper::IID_FrameAnalysisDevice9, (void**)&factx))) {
 		LogOverlay(LOG_DIRE, "Frame Analysis Device is missing: Restart the game with hunting enabled\n");
 		return;
 	}
