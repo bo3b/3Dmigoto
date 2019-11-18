@@ -78,14 +78,12 @@ static RESOURCE_RETURN_TYPE DecodeExtendedResourceReturnType(uint32_t ui32Coord,
 typedef enum
 {
     //For DX9
-    OPCODE_SPECIAL_DCL_IMMCONST = -1,
-	//dx9
 	OPCODE_POW = -6,
 	OPCODE_DP2ADD = -5,
 	OPCODE_LRP = -4,
 	OPCODE_ENDREP = -3,
 	OPCODE_REP = -2,
-	//dx9
+    OPCODE_SPECIAL_DCL_IMMCONST = -1,
 
     OPCODE_ADD,
     OPCODE_AND,
