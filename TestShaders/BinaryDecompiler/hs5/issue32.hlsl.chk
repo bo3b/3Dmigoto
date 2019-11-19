@@ -1,0 +1,81 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:47 2019
+
+cbuffer _Globals : register(b0)
+{
+  float4 _Time : packoffset(c0);
+  float4 _SinTime : packoffset(c1);
+  float4 _CosTime : packoffset(c2);
+  float4 var_DeltaTime : packoffset(c3);
+  float3 _WorldSpaceCameraPos : packoffset(c4);
+  float4 _ProjectionParams : packoffset(c5);
+  float4 _ScreenParams : packoffset(c6);
+  float4 _ZBufferParams : packoffset(c7);
+  float4 var_OrthoParams : packoffset(c8);
+  float4 var_CameraWorldClipPlanes[6] : packoffset(c9);
+  float4x4 var_CameraProjection : packoffset(c15);
+  float4x4 var_CameraInvProjection : packoffset(c19);
+  float4 _WorldSpaceLightPos0 : packoffset(c23);
+  float4 _LightPositionRange : packoffset(c24);
+  float4 var_4LightPosX0 : packoffset(c25);
+  float4 var_4LightPosY0 : packoffset(c26);
+  float4 var_4LightPosZ0 : packoffset(c27);
+  float4 var_4LightAtten0 : packoffset(c28);
+  float4 var_LightColor[8] : packoffset(c29);
+  float4 var_LightPosition[8] : packoffset(c37);
+  float4 var_LightAtten[8] : packoffset(c45);
+  float4 var_SpotDirection[8] : packoffset(c53);
+  float4 var_SHAr : packoffset(c61);
+  float4 var_SHAg : packoffset(c62);
+  float4 var_SHAb : packoffset(c63);
+  float4 var_SHBr : packoffset(c64);
+  float4 var_SHBg : packoffset(c65);
+  float4 var_SHBb : packoffset(c66);
+  float4 var_SHC : packoffset(c67);
+  float3 var_LightColor0 : packoffset(c68);
+  float3 var_LightColor1 : packoffset(c69);
+  float3 var_LightColor2 : packoffset(c70);
+  float3 var_LightColor3 : packoffset(c71);
+  float4 var_ShadowSplitSpheres[4] : packoffset(c72);
+  float4 var_ShadowSplitSqRadii : packoffset(c76);
+  float4 var_LightShadowBias : packoffset(c77);
+  float4 _LightSplitsNear : packoffset(c78);
+  float4 _LightSplitsFar : packoffset(c79);
+  float4x4 var_World2Shadow[4] : packoffset(c80);
+  float4 _LightShadowData : packoffset(c96);
+  float4 var_ShadowFadeCenterAndType : packoffset(c97);
+  float4x4 glstate_matrix_mvp : packoffset(c98);
+  float4x4 glstate_matrix_modelview0 : packoffset(c102);
+  float4x4 glstate_matrix_invtrans_modelview0 : packoffset(c106);
+  float4x4 _Object2World : packoffset(c110);
+  float4x4 _World2Object : packoffset(c114);
+  float4 var_LODFade : packoffset(c118);
+  float4x4 glstate_matrix_transpose_modelview0 : packoffset(c119);
+  float4x4 glstate_matrix_projection : packoffset(c123);
+  float4 glstate_lightmodel_ambient : packoffset(c127);
+  float4x4 var_MatrixV : packoffset(c128);
+  float4x4 var_MatrixVP : packoffset(c132);
+  float4 var_AmbientSky : packoffset(c136);
+  float4 var_AmbientGround : packoffset(c137);
+  float4 var_FogColor : packoffset(c138);
+  float4 var_FogParams : packoffset(c139);
+  float4 var_ColorSpaceGrey : packoffset(c140);
+  float4 var_ColorSpaceDouble : packoffset(c141);
+  float _TessEdge : packoffset(c142);
+  float _Displacement : packoffset(c142.y);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : POS0,
+  float3 v1 : NORMAL0,
+  float2 v2 : TEXCOORD0,
+  out float3 o0 : POS0,
+  out float3 o1 : NORMAL0,
+  out float2 o2 : TEXCOORD0)
+{
+}

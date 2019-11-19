@@ -1,0 +1,43 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:58 2019
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : POSITION0,
+  float v1 : INA0,
+  float v2 : INB0,
+  float v3 : INC0,
+  float v4 : IND0,
+  float v5 : INE0,
+  out float4 o0 : SV_Position0,
+  out float o1 : OUTA0,
+  out float p1 : OUTB0,
+  out float p1 : OUTC0,
+  out float p1 : OUTD0,
+  out uint o2 : OUTE0)
+{
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  o0.xyzw = v0.xyzw;
+  r0.x = (int)v1.x & 0x7f800000;
+  r0.x = (int)r0.x + 0xc1000000;
+  r0.y = cmp(v1.x != 0.000000);
+  r0.x = r0.y ? r0.x : 0;
+  r0.x = (uint)r0.x >> 23;
+  p1.x = (int)r0.x;
+  r0.x = 1.44269502 * v4.x;
+  p1.x = exp2(r0.x);
+  bitmask.x = ((~(-1 << 23)) << 0) & 0xffffffff;  r0.x = (((uint)v1.x << 0) & bitmask.x) | ((uint)0x3f000000 & ~bitmask.x);
+  o1.x = r0.y ? r0.x : 0;
+  p1.x = exp2(v5.x);
+  r0.x = exp2(v3.x);
+  r0.x = v2.x * r0.x;
+  o2.x = (uint)r0.x;
+  return;
+}

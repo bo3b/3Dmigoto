@@ -1,0 +1,28 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:52 2019
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : SV_POSITION0,
+  linear centroid float4 v1 : TEXCOORD0,
+  linear sample float4 v2 : TEXCOORD1,
+  nointerpolation float4 v3 : TEXCOORD2,
+  linear noperspective float4 v4 : TEXCOORD3,
+  linear noperspective centroid float4 v5 : TEXCOORD4,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1,
+  out float4 o2 : SV_Target2,
+  out float4 o3 : SV_Target3,
+  out float4 o4 : SV_Target4)
+{
+  o0.xyzw = v1.xyzw;
+  o1.xyzw = v2.xyzw;
+  o2.xyzw = v3.xyzw;
+  o3.xyzw = v4.xyzw;
+  o4.xyzw = v5.xyzw;
+  return;
+}

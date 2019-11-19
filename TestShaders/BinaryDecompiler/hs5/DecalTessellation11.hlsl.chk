@@ -1,0 +1,45 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:47 2019
+
+cbuffer cbInit : register(b0)
+{
+  float4 g_vMaterialColor : packoffset(c0);
+  float4 g_vAmbientColor : packoffset(c1);
+  float4 g_vSpecularColor : packoffset(c2);
+  float4 g_vScreenSize : packoffset(c3);
+  float4 g_vFlags : packoffset(c4);
+}
+
+cbuffer cbUpdate : register(b1)
+{
+  float4x4 g_mWorld : packoffset(c0);
+  float4x4 g_mViewProjection : packoffset(c4);
+  float4x4 g_mWorldViewProjection : packoffset(c8);
+  float4 g_vTessellationFactor : packoffset(c12);
+  float4 g_vDisplacementScaleBias : packoffset(c13);
+  float4 g_vLightPosition : packoffset(c14);
+  float4 g_vEyePosition : packoffset(c15);
+}
+
+cbuffer cbDamage : register(b2)
+{
+  float4 g_vNormal[50] : packoffset(c0);
+  float4 g_vBinormal[50] : packoffset(c50);
+  float4 g_vTangent[50] : packoffset(c100);
+  float4 g_vDecalPositionSize[50] : packoffset(c150);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float3 v0 : POSITION0,
+  float2 v1 : TEXCOORD0,
+  float3 v2 : NORMAL0,
+  out float3 o0 : WORLDPOS0,
+  out float2 o1 : TEXCOORD0,
+  out float3 o2 : NORMAL0)
+{
+}

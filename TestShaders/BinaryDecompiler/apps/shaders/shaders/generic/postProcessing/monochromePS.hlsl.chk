@@ -1,0 +1,23 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:41 2019
+
+SamplerState samLinear_s : register(s0);
+Texture2D<float4> g_txColourBuffer : register(t0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = g_txColourBuffer.Sample(samLinear_s, v1.xy).xyzw;
+  o0.xyzw = dot(r0.xyz, float3(0.212500006,0.715399981,0.0720999986));
+  return;
+}

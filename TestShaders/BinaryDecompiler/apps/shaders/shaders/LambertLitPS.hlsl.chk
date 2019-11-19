@@ -1,0 +1,35 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:43 2019
+
+cbuffer SharedConsts : register(b0)
+{
+  float4x4 World : packoffset(c0);
+  float4x4 View : packoffset(c4);
+  float4x4 Projection : packoffset(c8);
+  float4 vLightDir[2] : packoffset(c12);
+  float4 vLightColor[2] : packoffset(c14);
+  float4 vOutputColor : packoffset(c16);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float3 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = dot(vLightDir[0].xyz, v1.xyz);
+  r0.xyz = saturate(vLightColor[0].xyz * r0.xxx);
+  r0.w = dot(vLightDir[1].xyz, v1.xyz);
+  r1.xyz = saturate(vLightColor[1].xyz * r0.www);
+  o0.xyz = r1.xyz + r0.xyz;
+  o0.w = 1;
+  return;
+}

@@ -1,0 +1,38 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:58 2019
+
+cbuffer _Globals : register(b0)
+{
+  float4x4 ViewProjection : packoffset(c0);
+}
+
+StructuredBuffer<float4x4> WorldTransformData : register(t0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : POSITION0,
+  out float4 o0 : SV_Position0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = WorldTransformData[0]._m00_m10_m20_m30;
+  r1.xyz = v0.xyz;
+  r1.w = 1;
+  r0.x = dot(r1.xyzw, r0.xyzw);
+  r2.xyzw = WorldTransformData[0]._m01_m11_m21_m31;
+  r0.y = dot(r1.xyzw, r2.xyzw);
+  r2.xyzw = WorldTransformData[0]._m02_m12_m22_m32;
+  r0.z = dot(r1.xyzw, r2.xyzw);
+  r2.xyzw = WorldTransformData[0]._m03_m13_m23_m33;
+  r0.w = dot(r1.xyzw, r2.xyzw);
+  o0.x = dot(r0.xyzw, ViewProjection._m00_m10_m20_m30);
+  o0.y = dot(r0.xyzw, ViewProjection._m01_m11_m21_m31);
+  o0.z = dot(r0.xyzw, ViewProjection._m02_m12_m22_m32);
+  o0.w = dot(r0.xyzw, ViewProjection._m03_m13_m23_m33);
+  return;
+}

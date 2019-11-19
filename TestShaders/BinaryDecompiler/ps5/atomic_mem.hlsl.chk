@@ -1,0 +1,64 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:50 2019
+
+struct MyStruct
+{
+    uint pixDiff;                  // Offset:    0
+    uint pixDiff2;                 // Offset:    4
+};
+
+SamplerState TextureSampler_s : register(s0);
+Texture2D<float4> TextureA : register(t0);
+Texture2D<float4> TextureB : register(t1);
+RWStructuredBuffer<MyStruct> BufferOut : register(u1);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = TextureA.Sample(TextureSampler_s, v0.xy).xyzw;
+  r1.xyzw = TextureB.Sample(TextureSampler_s, v0.xy).xyzw;
+  r0.xyzw = -r1.xyzw + r0.xyzw;
+  r0.x = dot(r0.xyzw, r0.xyzw);
+  r0.x = cmp(r0.x != 0.000000);
+  if (r0.x != 0) {
+    // Needs manual fix for instruction:
+    atomic_iadd u1, l(0, 0, 0, 0), l(1)
+    InterlockedAdd(dest, value, orig_value);
+    // Needs manual fix for instruction:
+    imm_atomic_iadd r0.x, u1, l(0, 4, 0, 0), l(3)
+    InterlockedAdd(dest, imm_value, orig_value);
+  } else {
+    // Needs manual fix for instruction:
+    imm_atomic_and r0.x, u1, l(0, 4, 0, 0), l(3)
+    InterlockedAnd(dest, imm_value, orig_value);
+  }
+  // Needs manual fix for instruction:
+imm_atomic_umin r1.x, u1, l(0, 0, 0, 0), l(6)
+  InterlockedMin(dest, imm_value, orig_value);
+  // Needs manual fix for instruction:
+imm_atomic_umax r2.x, u1, l(0, 4, 0, 0), l(6)
+  InterlockedMax(dest, imm_value, orig_value);
+  // Needs manual fix for instruction:
+atomic_cmp_store u1, l(0, 4, 0, 0), l(2), r1.x
+  InterlockedCompareStore(dest, value, orig_value);
+  // Needs manual fix for instruction:
+imm_atomic_xor r3.x, u1, l(0, 0, 0, 0), l(15)
+  InterlockedXor(dest, imm_value, orig_value);
+  // Needs manual fix for instruction:
+atomic_or u1, l(0, 4, 0, 0), r3.x
+  InterlockedOr(dest, value, orig_value);
+  o0.y = (uint)r0.x;
+  o0.z = (uint)r1.x;
+  o0.w = (uint)r2.x;
+  o0.x = 1;
+  return;
+}

@@ -1,0 +1,45 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:48 2019
+
+cbuffer _Globals : register(b0)
+{
+  float2 uvOrig : packoffset(c0);
+  float4 _CenterRadius : packoffset(c1);
+  float _Angle : packoffset(c2);
+  float4 _LightData[4] : packoffset(c3);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = uvOrig.xy / _CenterRadius.zw;
+  r0.x = dot(r0.xy, r0.xy);
+  r0.x = sqrt(r0.x);
+  r0.x = 1 + -r0.x;
+  r0.yz = uvOrig.xy;
+  r0.w = r0.x;
+  r1.x = 0;
+  while (true) {
+    r1.y = cmp((int)r1.x >= 4);
+    if (r1.y != 0) break;
+    r1.y = max(0, r0.w);
+    r1.y = _LightData[1].x + r1.y;
+    r1.y = r1.y * r1.y;
+    r0.w = _Angle * r1.y;
+    sincos(r0.w, r2.x, r3.x);
+    r2.y = r3.x;
+    r0.yz = r2.xy + r0.yz;
+    r1.x = (int)r1.x + 1;
+  }
+  o0.xyzw = r0.yyyy * r0.zzzz + _CenterRadius.xyxy;
+  return;
+}

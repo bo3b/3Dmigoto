@@ -1,0 +1,29 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:56 2019
+
+cbuffer _Globals : register(b0)
+{
+  float4x4 transforms[2] : packoffset(c0);
+  int transformsIndex : packoffset(c8);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : POSITION0,
+  out float4 o0 : SV_Position0)
+{
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = transformsIndex << 2;
+  o0.x = dot(v0.xyzw, transforms[r0.x/4]._m00_m10_m20_m30);
+  o0.y = dot(v0.xyzw, transforms[r0.x/4]._m01_m11_m21_m31);
+  o0.z = dot(v0.xyzw, transforms[r0.x/4]._m02_m12_m22_m32);
+  o0.w = dot(v0.xyzw, transforms[r0.x/4]._m03_m13_m23_m33);
+  return;
+}

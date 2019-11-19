@@ -1,0 +1,23 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:42 2019
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float3 v0 : POSITION0,
+  out float4 o0 : SV_POSITION0,
+  out float2 o1 : TEXCOORD0)
+{
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  o0.xyz = v0.xyz;
+  o0.w = 1;
+  r0.xy = float2(1,1) + v0.xy;
+  o1.xy = float2(0.5,0.5) * r0.xy;
+  return;
+}

@@ -24,4 +24,9 @@ run_hlsl_test structured_buffers.hlsl structured_buffers_doubles "ps_5_0" "/D US
 # We don't expect dynamically indexed arrays inside structs to decompile yet when reflection info is present:
 run_hlsl_test structured_buffers.hlsl structured_buffers_dynamic_indexing "ps_4_0 ps_5_0" "/D USE_DYNAMICALLY_INDEXED_ARRAYS /D USE_INNER_STRUCT"
 
+for test in $(find BinaryDecompiler -name '*.o'); do
+	echo -n "....: $test (hlsl)..."
+	run_decompiler_test "$test"
+done
+
 [ $TESTS_FAILED = 0 ]

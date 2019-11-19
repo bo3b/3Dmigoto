@@ -1,0 +1,138 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:45 2019
+groupshared struct { float val[4]; } g0[64];
+
+Texture2D<float4> Input : register(t0);
+RWTexture2D<float4> Result : register(u0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u0
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 8, 8, 1
+  r0.xy = vThreadID.xy;
+  r0.zw = float2(0,0);
+  r0.xyzw = Input.Load(r0.xyz).xyzw;
+  g0[vThreadIDInGroupFlattened.x].val[0/4] = r0.x;
+  g0[vThreadIDInGroupFlattened.x].val[0/4+1] = r0.y;
+  g0[vThreadIDInGroupFlattened.x].val[0/4+2] = r0.z;
+  g0[vThreadIDInGroupFlattened.x].val[0/4+3] = r0.w;
+  GroupMemoryBarrierWithGroupSync();
+  r1.xyzw = cmp((uint4)vThreadIDInGroupFlattened.xxxx < int4(32,16,8,4));
+  if (r1.x != 0) {
+    r1.x = (int)vThreadIDInGroupFlattened.x + 32;
+    r2.x = g0[r1.x].val[0/4];
+    r2.y = g0[r1.x].val[0/4+1];
+    r2.z = g0[r1.x].val[0/4+2];
+    r2.w = g0[r1.x].val[0/4+3];
+    r0.xyzw = r2.xyzw + r0.xyzw;
+    g0[vThreadIDInGroupFlattened.x].val[0/4] = r0.x;
+    g0[vThreadIDInGroupFlattened.x].val[0/4+1] = r0.y;
+    g0[vThreadIDInGroupFlattened.x].val[0/4+2] = r0.z;
+    g0[vThreadIDInGroupFlattened.x].val[0/4+3] = r0.w;
+  }
+  GroupMemoryBarrierWithGroupSync();
+  if (r1.y != 0) {
+    r0.x = (int)vThreadIDInGroupFlattened.x + 16;
+    r0.x = g0[r0.x].val[0/4];
+    r0.y = g0[r0.x].val[0/4+1];
+    r0.z = g0[r0.x].val[0/4+2];
+    r0.w = g0[r0.x].val[0/4+3];
+    r2.x = g0[vThreadIDInGroupFlattened.x].val[0/4];
+    r2.y = g0[vThreadIDInGroupFlattened.x].val[0/4+1];
+    r2.z = g0[vThreadIDInGroupFlattened.x].val[0/4+2];
+    r2.w = g0[vThreadIDInGroupFlattened.x].val[0/4+3];
+    r0.xyzw = r2.xyzw + r0.xyzw;
+    g0[vThreadIDInGroupFlattened.x].val[0/4] = r0.x;
+    g0[vThreadIDInGroupFlattened.x].val[0/4+1] = r0.y;
+    g0[vThreadIDInGroupFlattened.x].val[0/4+2] = r0.z;
+    g0[vThreadIDInGroupFlattened.x].val[0/4+3] = r0.w;
+  }
+  GroupMemoryBarrierWithGroupSync();
+  if (r1.z != 0) {
+    r0.x = (int)vThreadIDInGroupFlattened.x + 8;
+    r0.x = g0[r0.x].val[0/4];
+    r0.y = g0[r0.x].val[0/4+1];
+    r0.z = g0[r0.x].val[0/4+2];
+    r0.w = g0[r0.x].val[0/4+3];
+    r2.x = g0[vThreadIDInGroupFlattened.x].val[0/4];
+    r2.y = g0[vThreadIDInGroupFlattened.x].val[0/4+1];
+    r2.z = g0[vThreadIDInGroupFlattened.x].val[0/4+2];
+    r2.w = g0[vThreadIDInGroupFlattened.x].val[0/4+3];
+    r0.xyzw = r2.xyzw + r0.xyzw;
+    g0[vThreadIDInGroupFlattened.x].val[0/4] = r0.x;
+    g0[vThreadIDInGroupFlattened.x].val[0/4+1] = r0.y;
+    g0[vThreadIDInGroupFlattened.x].val[0/4+2] = r0.z;
+    g0[vThreadIDInGroupFlattened.x].val[0/4+3] = r0.w;
+  }
+  GroupMemoryBarrierWithGroupSync();
+  if (r1.w != 0) {
+    r0.x = (int)vThreadIDInGroupFlattened.x + 4;
+    r0.x = g0[r0.x].val[0/4];
+    r0.y = g0[r0.x].val[0/4+1];
+    r0.z = g0[r0.x].val[0/4+2];
+    r0.w = g0[r0.x].val[0/4+3];
+    r1.x = g0[vThreadIDInGroupFlattened.x].val[0/4];
+    r1.y = g0[vThreadIDInGroupFlattened.x].val[0/4+1];
+    r1.z = g0[vThreadIDInGroupFlattened.x].val[0/4+2];
+    r1.w = g0[vThreadIDInGroupFlattened.x].val[0/4+3];
+    r0.xyzw = r1.xyzw + r0.xyzw;
+    g0[vThreadIDInGroupFlattened.x].val[0/4] = r0.x;
+    g0[vThreadIDInGroupFlattened.x].val[0/4+1] = r0.y;
+    g0[vThreadIDInGroupFlattened.x].val[0/4+2] = r0.z;
+    g0[vThreadIDInGroupFlattened.x].val[0/4+3] = r0.w;
+  }
+  GroupMemoryBarrierWithGroupSync();
+  r0.xy = cmp((uint2)vThreadIDInGroupFlattened.xx < int2(2,1));
+  if (r0.x != 0) {
+    r0.x = (int)vThreadIDInGroupFlattened.x + 2;
+    r1.x = g0[r0.x].val[0/4];
+    r1.y = g0[r0.x].val[0/4+1];
+    r1.z = g0[r0.x].val[0/4+2];
+    r1.w = g0[r0.x].val[0/4+3];
+    r2.x = g0[vThreadIDInGroupFlattened.x].val[0/4];
+    r2.y = g0[vThreadIDInGroupFlattened.x].val[0/4+1];
+    r2.z = g0[vThreadIDInGroupFlattened.x].val[0/4+2];
+    r2.w = g0[vThreadIDInGroupFlattened.x].val[0/4+3];
+    r1.xyzw = r2.xyzw + r1.xyzw;
+    g0[vThreadIDInGroupFlattened.x].val[0/4] = r1.x;
+    g0[vThreadIDInGroupFlattened.x].val[0/4+1] = r1.y;
+    g0[vThreadIDInGroupFlattened.x].val[0/4+2] = r1.z;
+    g0[vThreadIDInGroupFlattened.x].val[0/4+3] = r1.w;
+  }
+  GroupMemoryBarrierWithGroupSync();
+  if (r0.y != 0) {
+    r0.x = g0[1].val[0/4];
+    r0.y = g0[1].val[0/4+1];
+    r0.z = g0[1].val[0/4+2];
+    r0.w = g0[1].val[0/4+3];
+    r1.x = g0[0].val[0/4];
+    r1.y = g0[0].val[0/4+1];
+    r1.z = g0[0].val[0/4+2];
+    r1.w = g0[0].val[0/4+3];
+    r0.xyzw = r1.xyzw + r0.xyzw;
+    g0[0].val[0/4] = r0.x;
+    g0[0].val[0/4+1] = r0.y;
+    g0[0].val[0/4+2] = r0.z;
+    g0[0].val[0/4+3] = r0.w;
+  }
+  if (vThreadIDInGroupFlattened.x == 0) {
+    r0.x = g0[0].val[0/4];
+    r0.y = g0[0].val[0/4+1];
+    r0.z = g0[0].val[0/4+2];
+    r0.w = g0[0].val[0/4+3];
+    r0.xyzw = float4(0.015625,0.015625,0.015625,0.015625) * r0.xyzw;
+  // No code for instruction (needs manual fix):
+    store_uav_typed u0.xyzw, vThreadGroupID.xyyy, r0.xyzw
+  }
+  return;
+}

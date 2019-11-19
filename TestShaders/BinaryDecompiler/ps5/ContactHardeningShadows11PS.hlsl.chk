@@ -1,0 +1,554 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:51 2019
+
+cbuffer cbConstants : register(b0)
+{
+  float4x4 g_f4x4WorldViewProjection : packoffset(c0);
+  float4x4 g_f4x4WorldViewProjLight : packoffset(c4);
+  float4 g_vShadowMapDimensions : packoffset(c8);
+  float4 g_f4LightDir : packoffset(c9);
+  float g_fSunWidth : packoffset(c10);
+  float3 g_f3Padding : packoffset(c10.y);
+}
+
+SamplerState g_SamplePoint_s : register(s0);
+SamplerState g_SampleLinear_s : register(s1);
+SamplerComparisonState g_SamplePointCmp_s : register(s2);
+Texture2D<float4> g_txScene : register(t0);
+Texture2D<float> g_txShadowMap : register(t1);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : SV_Position0,
+  float4 v1 : COLOR0,
+  float2 v2 : TEXTURE0,
+  float4 v3 : TEXTURE1,
+  out float4 o0 : SV_Target0)
+{
+  const float4 icb[] = { { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 1.000000, 0.800000, 0},
+                              { 1.000000, 1.000000, 0.800000, 0},
+                              { 1.000000, 1.000000, 0.800000, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 1.000000, 0.800000, 0},
+                              { 1.000000, 1.000000, 1.000000, 0},
+                              { 1.000000, 1.000000, 0.800000, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 1.000000, 0.800000, 0},
+                              { 1.000000, 1.000000, 0.800000, 0},
+                              { 1.000000, 1.000000, 0.800000, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 1.000000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 1.000000, 0.200000, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0.200000, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0},
+                              { 0, 0, 0, 0} };
+  float4 r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyz = v3.xyz / v3.www;
+  r1.xy = r0.xy * float2(0.5,0.5) + float2(0.5,0.5);
+  r0.x = -0.00499999989 + r0.z;
+  r1.z = 1 + -r1.y;
+  r0.yz = g_vShadowMapDimensions.xy * r1.xz + float2(0.5,0.5);
+  r1.yw = floor(r0.yz);
+  r0.yz = -r1.yw + r0.yz;
+  r1.xy = -r0.yz * g_vShadowMapDimensions.zw + r1.xz;
+  r1.zw = float2(0,0);
+  r2.y = -5;
+  while (true) {
+    r0.w = cmp(5 < (int)r2.y);
+    if (r0.w != 0) break;
+    r2.zw = r1.zw;
+    r2.x = -5;
+    while (true) {
+      r0.w = cmp(5 < (int)r2.x);
+      if (r0.w != 0) break;
+      r3.xyzw = g_txShadowMap.Gather(g_SamplePoint_s, r1.xy, r2.xyxx).xyzw;
+      r4.xyzw = cmp(r3.xyzw >= r0.xxxx);
+      r4.xyzw = r4.xyzw ? float4(0,0,0,0) : float4(1,1,1,1);
+      r0.w = dot(r4.xyzw, float4(1,1,1,1));
+      r2.w = r2.w + r0.w;
+      r0.w = dot(r3.xyzw, r4.xyzw);
+      r2.z = r2.z + r0.w;
+      r2.x = (int)r2.x + 2;
+    }
+    r1.zw = r2.zw;
+    r2.y = (int)r2.y + 2;
+  }
+  r0.w = cmp(0 < r1.w);
+  r1.z = r1.z / r1.w;
+  r1.w = -r1.z + r0.x;
+  r1.w = g_fSunWidth * r1.w;
+  r1.z = saturate(r1.w / r1.z);
+  r1.z = r1.z * r1.z;
+  r0.w = r0.w ? r1.z : 0;
+  r1.z = r0.w * r0.w;
+  r1.w = r1.z * r0.w;
+  r2.x = 3 * r1.z;
+  r2.y = 1 + -r0.w;
+  r2.zw = r2.xy * r2.yy;
+  r3.x = r2.w * r0.w;
+  r3.yz = float2(3,0.600000024) * r3.xx;
+  r3.w = r2.w * r2.y;
+  r4.xy = float2(0,0);
+  while (true) {
+    r4.z = cmp((int)r4.x >= 11);
+    if (r4.z != 0) break;
+    r4.z = r1.z * r0.w + r4.y;
+    r4.w = (int)r4.x * 11;
+    r5.x = r2.z * icb[r4.w+1].x + r1.w;
+    r4.z = r5.x + r4.z;
+    r5.x = r3.y * icb[r4.w+2].y + r1.w;
+    r5.x = r2.z * icb[r4.w+2].x + r5.x;
+    r4.z = r5.x + r4.z;
+    r5.x = r3.y * icb[r4.w+3].y + r1.w;
+    r5.x = r2.z * icb[r4.w+3].x + r5.x;
+    r4.z = r5.x + r4.z;
+    r5.x = r3.w * icb[r4.w+4].z + r1.w;
+    r5.x = r3.y * icb[r4.w+4].y + r5.x;
+    r5.x = r2.z * icb[r4.w+4].x + r5.x;
+    r4.z = r5.x + r4.z;
+    r5.x = r3.w * icb[r4.w+5].z + r1.w;
+    r5.x = r3.y * icb[r4.w+5].y + r5.x;
+    r5.x = r2.z * icb[r4.w+5].x + r5.x;
+    r4.z = r5.x + r4.z;
+    r5.x = r3.w * icb[r4.w+6].z + r1.w;
+    r5.x = r3.y * icb[r4.w+6].y + r5.x;
+    r5.x = r2.z * icb[r4.w+6].x + r5.x;
+    r4.z = r5.x + r4.z;
+    r5.x = r3.y * icb[r4.w+7].y + r1.w;
+    r5.x = r2.z * icb[r4.w+7].x + r5.x;
+    r4.z = r5.x + r4.z;
+    r5.x = r3.y * icb[r4.w+8].y + r1.w;
+    r5.x = r2.z * icb[r4.w+8].x + r5.x;
+    r4.z = r5.x + r4.z;
+    r4.w = r2.z * icb[r4.w+9].x + r1.w;
+    r4.z = r4.z + r4.w;
+    r4.y = r1.z * r0.w + r4.z;
+    r4.x = (int)r4.x + 1;
+  }
+  r5.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-5,-5)).xyzw;
+  r4.x = 1 + -r0.z;
+  r4.z = -r1.w * r0.y + r1.w;
+  r5.xw = r5.wx * r4.zz;
+  r5.xz = r5.zy * r1.ww + r5.xw;
+  r4.w = r5.z * r0.z;
+  r4.w = r4.x * r5.x + r4.w;
+  r6.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-3,-5)).xyzw;
+  r5.x = dot(r6.wz, r1.ww);
+  r4.w = r4.x * r5.x + r4.w;
+  r5.x = dot(r6.xy, r1.ww);
+  r4.w = r0.z * r5.x + r4.w;
+  r7.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-1,-5)).xyzw;
+  r5.x = dot(r7.wz, r1.ww);
+  r4.w = r4.x * r5.x + r4.w;
+  r5.x = dot(r7.xy, r1.ww);
+  r4.w = r0.z * r5.x + r4.w;
+  r8.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(1,-5)).xyzw;
+  r5.x = dot(r8.wz, r1.ww);
+  r4.w = r4.x * r5.x + r4.w;
+  r5.x = dot(r8.xy, r1.ww);
+  r4.w = r0.z * r5.x + r4.w;
+  r9.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(3,-5)).xyzw;
+  r5.x = dot(r9.wz, r1.ww);
+  r4.w = r4.x * r5.x + r4.w;
+  r5.x = dot(r9.xy, r1.ww);
+  r4.w = r0.z * r5.x + r4.w;
+  r10.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(5,-5)).xyzw;
+  r5.xz = r10.zy * r0.yy;
+  r5.xz = r5.xz * r1.ww;
+  r6.zw = r10.wx * r1.ww + r5.xz;
+  r4.w = r4.x * r6.z + r4.w;
+  r4.w = r0.z * r6.w + r4.w;
+  r11.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-5,-3)).xyzw;
+  r2.z = 0.200000003 * r2.z;
+  r5.x = r1.z * r0.w + r2.z;
+  r6.z = r1.z * r0.w + -r5.x;
+  r6.z = r0.y * r6.z + r5.x;
+  r7.zw = r11.yz * r6.zz;
+  r7.zw = r11.xw * r4.zz + r7.zw;
+  r4.w = r4.x * r7.w + r4.w;
+  r4.w = r0.z * r7.z + r4.w;
+  r5.y = r5.y * r6.z + r5.w;
+  r4.w = r4.x * r5.y + r4.w;
+  r4.w = r0.z * r7.w + r4.w;
+  r11.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-3,-3)).xyzw;
+  r3.yz = r1.zz * r0.ww + r3.yz;
+  r3.yz = r2.xx * r2.yy + r3.yz;
+  r0.w = r5.x + -r3.z;
+  r0.w = r0.y * r0.w + r3.z;
+  r5.yw = r11.wx * r0.ww;
+  r8.zw = r11.zy * r3.zz + r5.yw;
+  r1.z = r4.x * r8.z + r4.w;
+  r1.z = r0.z * r8.w + r1.z;
+  r4.w = dot(r6.xy, r5.xx);
+  r1.z = r4.x * r4.w + r1.z;
+  r4.w = dot(r11.wz, r5.xx);
+  r1.z = r0.z * r4.w + r1.z;
+  r12.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-1,-3)).xyzw;
+  r4.w = dot(r12.wz, r3.zz);
+  r1.z = r4.x * r4.w + r1.z;
+  r4.w = dot(r12.xy, r3.zz);
+  r1.z = r0.z * r4.w + r1.z;
+  r4.w = dot(r7.xy, r5.xx);
+  r1.z = r4.x * r4.w + r1.z;
+  r4.w = dot(r12.wz, r5.xx);
+  r1.z = r0.z * r4.w + r1.z;
+  r13.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(1,-3)).xyzw;
+  r4.w = dot(r13.wz, r3.zz);
+  r1.z = r4.x * r4.w + r1.z;
+  r4.w = dot(r13.xy, r3.zz);
+  r1.z = r0.z * r4.w + r1.z;
+  r4.w = dot(r8.xy, r5.xx);
+  r1.z = r4.x * r4.w + r1.z;
+  r4.w = dot(r13.wz, r5.xx);
+  r1.z = r0.z * r4.w + r1.z;
+  r8.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(3,-3)).xyzw;
+  r4.w = r3.z + -r5.x;
+  r4.w = r0.y * r4.w + r5.x;
+  r6.xy = r8.zy * r4.ww;
+  r6.xw = r8.wx * r3.zz + r6.xy;
+  r1.z = r4.x * r6.x + r1.z;
+  r1.z = r0.z * r6.w + r1.z;
+  r5.y = dot(r9.xy, r5.xx);
+  r1.z = r4.x * r5.y + r1.z;
+  r5.y = dot(r8.wz, r5.xx);
+  r1.z = r0.z * r5.y + r1.z;
+  r9.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(5,-3)).xyzw;
+  r2.z = r0.y * r2.z + r1.w;
+  r6.xw = r9.yz * r0.yy;
+  r6.xw = r6.xw * r1.ww;
+  r6.xw = r9.xw * r2.zz + r6.xw;
+  r1.z = r4.x * r6.w + r1.z;
+  r1.z = r0.z * r6.x + r1.z;
+  r5.y = r10.x * r2.z + r5.z;
+  r1.z = r4.x * r5.y + r1.z;
+  r1.z = r0.z * r6.w + r1.z;
+  r9.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-5,-1)).xyzw;
+  r5.yz = r9.yz * r6.zz;
+  r5.yz = r9.xw * r4.zz + r5.yz;
+  r1.z = r4.x * r5.z + r1.z;
+  r1.z = r0.z * r5.y + r1.z;
+  r1.z = r4.x * r7.z + r1.z;
+  r1.z = r0.z * r5.z + r1.z;
+  r7.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-3,-1)).xyzw;
+  r8.yz = r3.zy + -r3.yz;
+  r8.yz = r0.yy * r8.yz + r3.yz;
+  r7.yz = r8.yy * r7.yz;
+  r7.xy = r7.xw * r0.ww + r7.yz;
+  r1.z = r4.x * r7.y + r1.z;
+  r1.z = r0.z * r7.x + r1.z;
+  r5.z = r11.y * r8.y + r5.w;
+  r1.z = r4.x * r5.z + r1.z;
+  r1.z = r0.z * r7.y + r1.z;
+  r9.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-1,-1)).xyzw;
+  r3.w = r3.w * 0.800000012 + r1.w;
+  r3.w = r3.x * 3 + r3.w;
+  r3.w = r2.x * r2.y + r3.w;
+  r5.z = r3.y + -r3.w;
+  r5.z = r0.y * r5.z + r3.w;
+  r7.yz = r9.wx * r5.zz;
+  r7.yw = r9.zy * r3.ww + r7.yz;
+  r1.z = r4.x * r7.y + r1.z;
+  r1.z = r0.z * r7.w + r1.z;
+  r5.w = dot(r12.xy, r3.yy);
+  r1.z = r4.x * r5.w + r1.z;
+  r5.w = dot(r9.wz, r3.yy);
+  r1.z = r0.z * r5.w + r1.z;
+  r10.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(1,-1)).xyzw;
+  r5.w = r3.w + -r3.y;
+  r5.w = r0.y * r5.w + r3.y;
+  r7.yw = r10.zy * r5.ww;
+  r9.xz = r10.wx * r3.ww + r7.yw;
+  r1.z = r4.x * r9.x + r1.z;
+  r1.z = r0.z * r9.z + r1.z;
+  r6.w = dot(r13.xy, r3.yy);
+  r1.z = r4.x * r6.w + r1.z;
+  r6.w = dot(r10.wz, r3.yy);
+  r1.z = r0.z * r6.w + r1.z;
+  r11.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(3,-1)).xyzw;
+  r9.xz = r11.yz * r4.ww;
+  r9.xz = r11.xw * r8.zz + r9.xz;
+  r1.z = r4.x * r9.z + r1.z;
+  r1.z = r0.z * r9.x + r1.z;
+  r6.y = r8.x * r8.z + r6.y;
+  r1.z = r4.x * r6.y + r1.z;
+  r1.z = r0.z * r9.z + r1.z;
+  r11.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(5,-1)).xyzw;
+  r6.yw = r11.yz * r0.yy;
+  r6.yw = r6.yw * r1.ww;
+  r6.yw = r11.xw * r2.zz + r6.yw;
+  r1.z = r4.x * r6.w + r1.z;
+  r1.z = r0.z * r6.y + r1.z;
+  r1.z = r4.x * r6.x + r1.z;
+  r1.z = r0.z * r6.w + r1.z;
+  r11.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-5,1)).xyzw;
+  r6.xw = r11.yz * r6.zz;
+  r6.xw = r11.xw * r4.zz + r6.xw;
+  r1.z = r4.x * r6.w + r1.z;
+  r1.z = r0.z * r6.x + r1.z;
+  r1.z = r4.x * r5.y + r1.z;
+  r1.z = r0.z * r6.w + r1.z;
+  r11.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-3,1)).xyzw;
+  r8.xw = r11.yz * r8.yy;
+  r8.xw = r11.xw * r0.ww + r8.xw;
+  r1.z = r4.x * r8.w + r1.z;
+  r1.z = r0.z * r8.x + r1.z;
+  r1.z = r4.x * r7.x + r1.z;
+  r1.z = r0.z * r8.w + r1.z;
+  r11.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-1,1)).xyzw;
+  r5.yz = r11.wx * r5.zz;
+  r7.xy = r11.zy * r3.ww + r5.yz;
+  r1.z = r4.x * r7.x + r1.z;
+  r1.z = r0.z * r7.y + r1.z;
+  r2.w = r2.w * r2.y + r1.w;
+  r2.w = r3.x * 3 + r2.w;
+  r2.x = r2.x * r2.y + r2.w;
+  r2.y = r3.w + -r2.x;
+  r2.y = r0.y * r2.y + r2.x;
+  r2.w = r9.y * r2.y + r7.z;
+  r1.z = r4.x * r2.w + r1.z;
+  r2.y = r11.z * r2.y + r5.y;
+  r1.z = r0.z * r2.y + r1.z;
+  r12.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(1,1)).xyzw;
+  r2.yw = r12.zy * r5.ww;
+  r5.yz = r12.wx * r3.ww + r2.yw;
+  r1.z = r4.x * r5.y + r1.z;
+  r1.z = r0.z * r5.z + r1.z;
+  r2.x = r2.x + -r3.w;
+  r2.x = r0.y * r2.x + r3.w;
+  r2.w = r10.x * r2.x + r7.w;
+  r1.z = r4.x * r2.w + r1.z;
+  r2.x = r12.w * r2.x + r2.y;
+  r1.z = r0.z * r2.x + r1.z;
+  r7.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(3,1)).xyzw;
+  r2.xy = r7.yz * r4.ww;
+  r2.xy = r7.xw * r8.zz + r2.xy;
+  r1.z = r4.x * r2.y + r1.z;
+  r1.z = r0.z * r2.x + r1.z;
+  r1.z = r4.x * r9.x + r1.z;
+  r1.z = r0.z * r2.y + r1.z;
+  r7.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(5,1)).xyzw;
+  r2.yw = r7.yz * r0.yy;
+  r2.yw = r2.yw * r1.ww;
+  r2.yw = r7.xw * r2.zz + r2.yw;
+  r1.z = r4.x * r2.w + r1.z;
+  r1.z = r0.z * r2.y + r1.z;
+  r1.z = r4.x * r6.y + r1.z;
+  r1.z = r0.z * r2.w + r1.z;
+  r7.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-5,3)).xyzw;
+  r3.xw = r7.yz * r6.zz;
+  r3.xw = r7.xw * r4.zz + r3.xw;
+  r1.z = r4.x * r3.w + r1.z;
+  r1.z = r0.z * r3.x + r1.z;
+  r1.z = r4.x * r6.x + r1.z;
+  r1.z = r0.z * r3.w + r1.z;
+  r7.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-3,3)).xyzw;
+  r5.yz = r7.wx * r0.ww;
+  r5.zw = r7.zy * r3.zz + r5.yz;
+  r0.w = r4.x * r5.z + r1.z;
+  r0.w = r0.z * r5.w + r0.w;
+  r0.w = r4.x * r8.x + r0.w;
+  r1.z = r7.z * r8.y + r5.y;
+  r0.w = r0.z * r1.z + r0.w;
+  r9.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-1,3)).xyzw;
+  r1.z = dot(r9.wz, r3.zz);
+  r0.w = r4.x * r1.z + r0.w;
+  r1.z = dot(r9.xy, r3.zz);
+  r0.w = r0.z * r1.z + r0.w;
+  r1.z = dot(r11.xy, r3.yy);
+  r0.w = r4.x * r1.z + r0.w;
+  r1.z = dot(r9.wz, r3.yy);
+  r0.w = r0.z * r1.z + r0.w;
+  r10.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(1,3)).xyzw;
+  r1.z = dot(r10.wz, r3.zz);
+  r0.w = r4.x * r1.z + r0.w;
+  r1.z = dot(r10.xy, r3.zz);
+  r0.w = r0.z * r1.z + r0.w;
+  r1.z = dot(r12.xy, r3.yy);
+  r0.w = r4.x * r1.z + r0.w;
+  r1.z = dot(r10.wz, r3.yy);
+  r0.w = r0.z * r1.z + r0.w;
+  r11.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(3,3)).xyzw;
+  r3.yw = r11.zy * r4.ww;
+  r3.zw = r11.wx * r3.zz + r3.yw;
+  r0.w = r4.x * r3.z + r0.w;
+  r0.w = r0.z * r3.w + r0.w;
+  r0.w = r4.x * r2.x + r0.w;
+  r1.z = r11.w * r8.z + r3.y;
+  r0.w = r0.z * r1.z + r0.w;
+  r8.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(5,3)).xyzw;
+  r2.xw = r8.yz * r0.yy;
+  r2.xw = r2.xw * r1.ww;
+  r2.xw = r8.xw * r2.zz + r2.xw;
+  r0.w = r4.x * r2.w + r0.w;
+  r0.w = r0.z * r2.x + r0.w;
+  r0.w = r4.x * r2.y + r0.w;
+  r0.w = r0.z * r2.w + r0.w;
+  r8.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-5,5)).xyzw;
+  r2.yw = r8.wx * r4.zz;
+  r3.yz = r8.zy * r1.ww + r2.yw;
+  r0.w = r4.x * r3.y + r0.w;
+  r0.w = r0.z * r3.z + r0.w;
+  r0.w = r4.x * r3.x + r0.w;
+  r1.z = r8.z * r6.z + r2.y;
+  r0.w = r0.z * r1.z + r0.w;
+  r3.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-3,5)).xyzw;
+  r1.z = dot(r3.wz, r1.ww);
+  r0.w = r4.x * r1.z + r0.w;
+  r1.z = dot(r3.xy, r1.ww);
+  r0.w = r0.z * r1.z + r0.w;
+  r1.z = dot(r7.xy, r5.xx);
+  r0.w = r4.x * r1.z + r0.w;
+  r1.z = dot(r3.wz, r5.xx);
+  r0.w = r0.z * r1.z + r0.w;
+  r3.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(-1,5)).xyzw;
+  r1.z = dot(r3.wz, r1.ww);
+  r0.w = r4.x * r1.z + r0.w;
+  r1.z = dot(r3.xy, r1.ww);
+  r0.w = r0.z * r1.z + r0.w;
+  r1.z = dot(r9.xy, r5.xx);
+  r0.w = r4.x * r1.z + r0.w;
+  r1.z = dot(r3.wz, r5.xx);
+  r0.w = r0.z * r1.z + r0.w;
+  r3.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(1,5)).xyzw;
+  r1.z = dot(r3.wz, r1.ww);
+  r0.w = r4.x * r1.z + r0.w;
+  r1.z = dot(r3.xy, r1.ww);
+  r0.w = r0.z * r1.z + r0.w;
+  r1.z = dot(r10.xy, r5.xx);
+  r0.w = r4.x * r1.z + r0.w;
+  r1.z = dot(r3.wz, r5.xx);
+  r0.w = r0.z * r1.z + r0.w;
+  r3.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(3,5)).xyzw;
+  r1.z = dot(r3.wz, r1.ww);
+  r0.w = r4.x * r1.z + r0.w;
+  r1.z = dot(r3.xy, r1.ww);
+  r0.w = r0.z * r1.z + r0.w;
+  r1.z = dot(r11.xy, r5.xx);
+  r0.w = r4.x * r1.z + r0.w;
+  r1.z = dot(r3.wz, r5.xx);
+  r0.w = r0.z * r1.z + r0.w;
+  r3.xyzw = g_txShadowMap.GatherCmp(g_SamplePointCmp_s, r1.xy, r0.x, int2(5,5)).xyzw;
+  r0.xy = r3.zy * r0.yy;
+  r0.xy = r0.xy * r1.ww;
+  r1.xy = r3.wx * r1.ww + r0.xy;
+  r0.y = r4.x * r1.x + r0.w;
+  r0.y = r0.z * r1.y + r0.y;
+  r0.y = r4.x * r2.x + r0.y;
+  r0.x = r3.w * r2.z + r0.x;
+  r0.x = r0.z * r0.x + r0.y;
+  r0.x = r0.x / r4.y;
+  r0.xyzw = saturate(r0.xxxx * v1.xyzw + float4(0.300000012,0.300000012,0.300000012,0));
+  r1.xyzw = g_txScene.Sample(g_SampleLinear_s, v2.xy).xyzw;
+  o0.xyzw = r1.xyzw * r0.xyzw;
+  return;
+}
