@@ -1,0 +1,42 @@
+
+struct PS_INPUT
+{
+    float4 TexC : TEXCOORD0;
+    bool frontFace : SV_IsFrontFace;
+};
+SamplerState TextureSampler
+{
+    Filter = MIN_MAG_MIP_LINEAR;
+    AddressU = Wrap;
+    AddressV = Wrap;
+};
+
+struct PS_OUTPUT
+{
+    float4 Colour : SV_Target0;
+    float Depth : SV_Depth;
+};
+
+Texture2D TextureBase;
+
+float FrontDepth;
+float BackDepth;
+
+PS_OUTPUT main( PS_INPUT input )
+{
+    PS_OUTPUT outPixel;
+    if(input.frontFace)
+    {
+        outPixel.Colour = TextureBase.Sample(TextureSampler, input.TexC.rg);
+        outPixel.Depth = FrontDepth;
+    }
+    else
+    {
+        outPixel.Colour = TextureBase.Sample(TextureSampler, input.TexC.rg);
+        outPixel.Depth = BackDepth;
+    }
+
+    return outPixel;
+}
+
+

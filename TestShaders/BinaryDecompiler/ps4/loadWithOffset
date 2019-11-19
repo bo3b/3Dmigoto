@@ -1,0 +1,34 @@
+
+Texture1D Tex1;
+Texture2D Tex2;
+Texture3D Tex3;
+Texture1DArray Tex4;
+Texture2DArray Tex5;
+
+
+struct PSOutput
+{
+    float4 c0 : SV_Target0;
+	float4 c1 : SV_Target1;
+	float4 c2 : SV_Target2;
+};
+
+PSOutput main(float4 pos : SV_Position)
+{
+	PSOutput pso;
+
+	int4 texCoord = int4(int2(pos.xy), 0, 1);
+	
+	//Texture1D
+	pso.c0.xy = Tex1.Load(texCoord.x, int(-8)).xy;
+	//Texture2D
+	pso.c0.zw = Tex2.Load(texCoord, int2(-8, 7)).xy;
+	//Texture3D
+	pso.c1.xy = Tex3.Load(texCoord, int3(-8, 7, 2)).xy;
+	//Texture1DArray
+	pso.c1.zw = Tex4.Load(texCoord, int2(-8, 7)).xy;
+	//Texture2DArray
+	pso.c2 = Tex5.Load(texCoord, int2(-8, 7));
+
+	return pso;
+}

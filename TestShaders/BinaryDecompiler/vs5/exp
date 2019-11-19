@@ -1,0 +1,35 @@
+
+struct VS_INPUT
+{
+    float4 Position   : POSITION;
+    float forFrexp : INA;
+    float forLdexpM : INB;
+    float forLdexpE : INC;
+    float EXP : IND;
+    float EXP2 : INE;
+};
+
+struct VS_OUTPUT
+{
+    float4 Position : SV_Position;
+    float Mantissa : OUTA;
+    float Exponent : OUTB;
+    float EXP : OUTC;
+    float EXP2 : OUTD;
+    uint Combined : OUTE;
+};
+
+VS_OUTPUT main( VS_INPUT Input )
+{
+    VS_OUTPUT Output;
+
+    Output.Position = Input.Position;
+    Output.Mantissa = frexp(Input.forFrexp, Output.Exponent);
+    Output.Combined = ldexp(Input.forLdexpM, Input.forLdexpE);
+    Output.EXP = exp(Input.EXP);
+    Output.EXP2 = exp2(Input.EXP2);
+
+    return Output;
+}
+
+

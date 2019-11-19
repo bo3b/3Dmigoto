@@ -1,0 +1,45 @@
+struct PS_INPUT
+{
+    float4 TexC : TEXCOORD0;
+};
+
+struct MyStruct
+{
+	uint unused;
+	struct {
+		uint unused2;
+	} s3;
+};
+
+struct MyStruct2
+{
+	uint unused;
+};
+
+RWStructuredBuffer<MyStruct> BufferIncr;
+RWStructuredBuffer<MyStruct2> BufferDecr;
+
+//Append and Consume structured buffers have compiler-managed counters.
+AppendStructuredBuffer<uint> app;
+ConsumeStructuredBuffer<uint> cons;
+
+struct PS_OUTPUT
+{
+    float4 Colour0 : SV_Target0;
+};
+
+PS_OUTPUT main( PS_INPUT input )
+{
+    PS_OUTPUT outPix;
+	
+	uint counterI = BufferIncr.IncrementCounter();
+	
+	uint counterD = BufferDecr.DecrementCounter();
+	
+	app.Append(1);
+	cons.Consume();
+	
+	outPix.Colour0 = float4(0.001 * counterI, 0.001 * counterD, 1, 1);
+	
+	return outPix;
+}

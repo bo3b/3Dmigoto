@@ -1,0 +1,29 @@
+
+struct VS_INPUT
+{
+    float4 Position   : POSITION;
+    float2 TexCoord : TEXCOORD;
+    float Offset : OFFSET;
+};
+
+struct VS_OUTPUT
+{
+    float4 Position : SV_Position;
+    float4 RcpPosition : RCPPOS;
+    float2 RcpTexCoord : RCPTC;
+    float RcpOffset : RCPOFF;
+};
+
+VS_OUTPUT main( VS_INPUT Input )
+{
+    VS_OUTPUT Output;
+
+    Output.Position = Input.Position;
+    Output.RcpPosition = rcp(Input.Position);
+    Output.RcpTexCoord = rcp(Input.TexCoord);
+    Output.RcpOffset = rcp(Input.Offset);
+
+    return Output;
+}
+
+

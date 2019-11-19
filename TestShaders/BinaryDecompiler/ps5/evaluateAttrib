@@ -1,0 +1,33 @@
+
+struct PS_INPUT
+{
+   float4 Color0 : COLOR0;
+};
+struct PS_OUTPUT
+{
+   float4 ColorCentroid : SV_Target;
+   float4 ColorSample : SV_Target1;
+   float4 ColorSnapped : SV_Target2;
+};
+SamplerState TextureSampler
+{
+   Filter = MIN_MAG_MIP_LINEAR;
+   AddressU = Wrap;
+   AddressV = Wrap;
+};
+
+Texture2D TextureBase;
+Texture2D TextureDetail;
+
+PS_OUTPUT main( PS_INPUT input )
+{
+   PS_OUTPUT pixOut;
+
+   pixOut.ColorCentroid = EvaluateAttributeCentroid(input.Color0);
+   pixOut.ColorSample = EvaluateAttributeAtSample(input.Color0, 2);
+   pixOut.ColorSnapped = EvaluateAttributeSnapped(input.Color0, int2(4, 7));
+
+   return pixOut;
+}
+
+

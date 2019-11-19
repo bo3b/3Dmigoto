@@ -1,0 +1,6 @@
+Texture2D Tex;
+float4 main(float4 pos : SV_Position) : SV_Target
+{
+	int3 texCoord = int3(int2(pos.xy), 0);
+	return Tex.Load(texCoord);
+}

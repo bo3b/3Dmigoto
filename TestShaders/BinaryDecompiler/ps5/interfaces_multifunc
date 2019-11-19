@@ -1,0 +1,43 @@
+
+interface iChangeColour
+{
+    float3 ChangeColour(float3 colour);
+    float3 ChangeColourB(float3 colour);
+};
+
+class cDoubleColour : iChangeColour
+{
+    float3 ChangeColour(float3 colour) {
+        return colour * float3(2, 2, 2);
+    }
+    float3 ChangeColourB(float3 colour) {
+        return colour * float3(2, 1, 1);
+    }
+};
+
+
+class cUnchangedColour : iChangeColour
+{
+    float3 ChangeColour(float3 colour) {
+       return colour;
+    }
+    float3 ChangeColourB(float3 colour) {
+       return colour;
+    }
+};
+
+struct PS_INPUT
+{
+    float3 Colour : COLOR0;
+};
+
+iChangeColour gAbstractColourChanger;
+
+float4 main( PS_INPUT Input ) : SV_TARGET
+{
+    float3 ModifiedColour = gAbstractColourChanger.ChangeColour(Input.Colour);
+    ModifiedColour = gAbstractColourChanger.ChangeColourB(ModifiedColour);
+
+    return float4(ModifiedColour,1); 
+}
+

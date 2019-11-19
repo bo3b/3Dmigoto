@@ -1,0 +1,63 @@
+struct PS_INPUT
+{
+    float4 TexC : TEXCOORD0;
+};
+SamplerState TextureSampler
+{
+    Filter = MIN_MAG_MIP_LINEAR;
+    AddressU = Wrap;
+    AddressV = Wrap;
+};
+
+Texture2D TextureA;
+Texture2D TextureB;
+
+struct MyStruct
+{
+	uint pixDiff;
+	uint pixDiff2;
+};
+
+RWStructuredBuffer<MyStruct> BufferOut;
+//groupshared MyStruct BufferOut;
+
+struct PS_OUTPUT
+{
+    float4 Colour0 : SV_Target0;
+};
+
+PS_OUTPUT main( PS_INPUT input )
+{
+    PS_OUTPUT outPix;
+	uint originalValue = 0;
+
+    float4 A = TextureA.Sample(TextureSampler, input.TexC.xy);
+    float4 B = TextureB.Sample(TextureSampler, input.TexC.xy);
+	
+	if(any(A - B))
+	{
+		InterlockedAdd(BufferOut[0].pixDiff, 1);
+		InterlockedAdd(BufferOut[0].pixDiff2, 3, originalValue);
+	}
+	else
+	{
+		InterlockedAnd(BufferOut[0].pixDiff, 1);
+		InterlockedAnd(BufferOut[0].pixDiff2, 3, originalValue);
+	}
+
+	uint atomicMin;
+	InterlockedMin(BufferOut[0].pixDiff, 6, atomicMin);
+	uint atomicMax;
+	InterlockedMax(BufferOut[0].pixDiff2, 6, atomicMax);
+
+	uint unused;
+	InterlockedCompareExchange(BufferOut[0].pixDiff2, 2, atomicMin, unused);
+
+	uint ored;
+	InterlockedXor(BufferOut[0].pixDiff, 0xF, ored);
+	InterlockedOr(BufferOut[0].pixDiff2, ored);
+	
+	outPix.Colour0 = float4(1, originalValue, atomicMin, atomicMax);
+	
+	return outPix;
+}

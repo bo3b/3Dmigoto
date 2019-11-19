@@ -1,0 +1,27 @@
+
+struct PS_INPUT
+{
+    float4 TexC : TEXCOORD0;
+};
+SamplerState TextureSampler
+{
+    Filter = MIN_MAG_MIP_LINEAR;
+    AddressU = Wrap;
+    AddressV = Wrap;
+};
+
+Texture2D TextureBase;
+
+float4 main( PS_INPUT input ) : SV_Target
+{
+    float4 colour = TextureBase.Sample(TextureSampler, input.TexC.xy);
+
+    float lod = TextureBase.CalculateLevelOfDetail(TextureSampler, input.TexC.xy);
+    float lodUnclamped = TextureBase.CalculateLevelOfDetailUnclamped(TextureSampler, input.TexC.xy);
+
+    colour.r += lodUnclamped-lod;
+
+    return colour;
+}
+
+

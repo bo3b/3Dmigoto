@@ -1,0 +1,12 @@
+
+struct PS_INPUT
+{
+    float4 vTex0 : TEXCOORD;
+};
+
+float4 main( PS_INPUT input ) : SV_Target
+{
+    return ddx(input.vTex0) * ddy(input.vTex0);
+}
+
+

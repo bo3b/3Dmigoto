@@ -1,0 +1,13 @@
+cbuffer SecondCBuffer : register(b1)
+{
+	float4x4 world_view_proj;
+};
+cbuffer FirstCBuffer : register(b0)
+{
+	float4 vars;
+};
+void main( in float4 in_pos : POSITION0, out float4 out_pos : POSITION )
+{
+	float4 pos = in_pos + vars;
+	out_pos = mul(pos, world_view_proj);
+}

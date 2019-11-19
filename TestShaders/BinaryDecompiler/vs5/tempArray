@@ -1,0 +1,30 @@
+
+struct VS_OUTPUT
+{
+    float4 Position   : SV_Position;
+	int4 IntPosition   : IntPos;
+};
+
+int AConstantInt;
+
+VS_OUTPUT main( in float4 vPosition : POSITION, in int coord: TEXCOORD,
+in int coord2 : TEXCOORD1 )
+{
+    VS_OUTPUT Output;
+	float4 tempArray[2] = {float4(0, 0, 0, 0), float4(0, 0, 0, 0)};
+	int4 tempArray2[2] = {int4(0, 0, 0, 0), int4(0, 0, 0, 0)};
+
+    tempArray[coord] = 1;
+	tempArray[coord + 1] = 0;
+	
+	tempArray2[coord2] = AConstantInt;
+	tempArray2[coord2+2] = 0;
+
+    Output.Position.xyzw = tempArray[coord & 1].xxyy;
+
+    Output.IntPosition.xyzw = tempArray2[coord2 & 1].xxyy;
+    
+    return Output;
+}
+
+
