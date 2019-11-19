@@ -1,0 +1,12 @@
+// ---- Created with 3Dmigoto v1.2.72 on Tue Nov 19 20:46:04 2019
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+Texture1D<float4> IniParams : register(t120);
+Texture2D<float4> StereoParams : register(t125);
+
+
+void main(
+}
