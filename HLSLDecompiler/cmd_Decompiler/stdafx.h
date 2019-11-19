@@ -38,9 +38,9 @@ using namespace std;
 //	unsigned extended : 1;
 //};
 
-vector<DWORD> assembleIns(string s);
-vector<byte> readFile(string fileName);
-vector<DWORD> ComputeHash(byte const* input, DWORD size);
-vector<string> stringToLines(char* start, int size);
+//vector<DWORD> assembleIns(string s);
+//vector<byte> readFile(string fileName);
+//vector<DWORD> ComputeHash(byte const* input, DWORD size);
+//vector<string> stringToLines(char* start, int size);
 
-void assembler(string asmFile, vector<byte> & bc);
+//void assembler(string asmFile, vector<byte> & bc);
