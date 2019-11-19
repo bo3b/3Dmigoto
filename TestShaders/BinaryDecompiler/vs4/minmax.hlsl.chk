@@ -1,0 +1,31 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:56 2019
+
+cbuffer _Globals : register(b0)
+{
+  int iValue : packoffset(c0);
+  float fValue : packoffset(c0.y);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : POSITION0,
+  out float4 o0 : SV_Position0,
+  out int o1 : INTCLAMP0,
+  out float o2 : FLOATCLAMP0)
+{
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  o0.xyzw = v0.xyzw;
+  r0.x = min(7, iValue);
+  o1.x = max(1, (int)r0.x);
+  r0.x = min(8.10000038, fValue);
+  o2.x = max(0.100000001, r0.x);
+  return;
+}

@@ -1,0 +1,43 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:55 2019
+
+cbuffer _Globals : register(b0)
+{
+  uint arrayIndex : packoffset(c0);
+  uint arrayIndexB : packoffset(c0.y);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : POSITION0,
+  float4 v1 : INCOLOR0,
+  float4 v2 : INCOLOR1,
+  float4 v3 : INCOLOR2,
+  float4 v4 : INCOLOR3,
+  float4 v5 : INCOLOR4,
+  float4 v6 : INCOLOR5,
+  float4 v7 : DUALARRAY0,
+  float4 v8 : DUALARRAY1,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : COLOR0,
+  out float4 o2 : COLOR2,
+  out float4 o3 : TRICOLOR0)
+{
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  float4 v[6] = { v0,v1,v2,v3,v4,v5 };
+  float4 v[2] = { v0,v1 };
+  o0.xyzw = v0.xyzw;
+  r0.x = arrayIndex;
+  o1.xyzw = v[r0.x+1].xyzw;
+  o2.xyzw = v2.xyzw;
+  r0.x = arrayIndexB;
+  o3.xyzw = v[r0.x+7].xyzw;
+  return;
+}

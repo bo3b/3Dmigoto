@@ -1,0 +1,31 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:49 2019
+
+SamplerState smpLinClamp_s : register(s0);
+Texture2D<float4> ITex0 : register(t0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float2 v0 : inUV0,
+  float4 v1 : inCOLOR0,
+  out float4 o0 : SV_TARGET0)
+{
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xy = cmp(float2(0,0) < v0.xy);
+  r0.zw = ~(int2)r0.xy;
+  r0.z = cmp((int)r0.z == (int)r0.w);
+  r1.xy = float2(7,12) + v0.xx;
+  r0.z = r0.z ? r1.y : v0.x;
+  r0.y = r0.y ? v0.x : r1.x;
+  r0.x = r0.x ? r0.z : r0.y;
+  r0.y = v0.y;
+  r0.xyzw = ITex0.Sample(smpLinClamp_s, r0.xy).xyzw;
+  o0.xyzw = v1.xyzw * r0.xyzw;
+  return;
+}

@@ -1,0 +1,35 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:49 2019
+
+SamplerState Texture_s : register(s0);
+Texture2D<float4> Texture : register(t0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : TEXCOORD0,
+  float2 v1 : TEXCOORD1,
+  float2 w1 : TEXCOORD2,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = Texture.Sample(Texture_s, v0.yz).xyzw;
+  r1.x = v1.x * r0.w;
+  r1.x = cmp(0.250980377 < r1.x);
+  r0.xyzw = r1.xxxx ? r0.xyzw : 0;
+  r1.x = 1 + -v1.x;
+  r2.xyzw = Texture.Sample(Texture_s, v0.xz).xyzw;
+  r1.x = r2.w * r1.x;
+  r1.x = cmp(0.250980377 < r1.x);
+  r0.xyzw = r1.xxxx ? r2.xyzw : r0.xyzw;
+  r1.xyzw = Texture.Sample(Texture_s, w1.xy).xyzw;
+  r2.x = v1.y * r1.w;
+  r2.x = cmp(0.250980377 < r2.x);
+  o0.xyzw = r2.xxxx ? r1.xyzw : r0.xyzw;
+  return;
+}

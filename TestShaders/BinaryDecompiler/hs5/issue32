@@ -1,0 +1,2553 @@
+#line 10 ""
+#ifdef DUMMY_PREPROCESSOR_TO_WORK_AROUND_HLSL_COMPILER_LINE_HANDLING
+#endif
+
+#line 1 "HLSLSupport.cginc"
+#ifndef HLSL_SUPPORT_INCLUDED
+#define HLSL_SUPPORT_INCLUDED
+
+
+#if defined(SHADER_API_D3D11) || defined(SHADER_API_XBOX360) || defined(SHADER_API_D3D11_9X) || defined(VAR_COMPILER_HLSLCC) || defined(SHADER_API_D3D9)
+#define VAR_COMPILER_HLSL
+#elif defined(SHADER_TARGET_GLSL)
+#define VAR_COMPILER_HLSL2GLSL
+#else
+#define VAR_COMPILER_CG
+#endif
+
+#if !defined(SV_Target)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Target S_TARGET_OUTPUT
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Target COLOR
+#   endif
+#endif
+
+
+#if !defined(SV_Target0)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Target0 S_TARGET_OUTPUT0
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Target0 COLOR0
+#   endif
+#endif
+
+
+#if !defined(SV_Target1)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Target1 S_TARGET_OUTPUT1
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Target1 COLOR1
+#   endif
+#endif
+
+#if !defined(SV_Target2)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Target2 S_TARGET_OUTPUT2
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Target2 COLOR2
+#   endif
+#endif
+
+#if !defined(SV_Target3)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Target3 S_TARGET_OUTPUT3
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Target3 COLOR3
+#   endif
+#endif
+
+
+
+#if !defined(SV_Depth)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Depth S_DEPTH_OUTPUT
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Depth DEPTH
+#   endif
+#endif
+
+#if defined(SHADER_API_PSSL)
+// compute shader defines
+#define StructuredBuffer RegularBuffer
+#define SV_VertexID S_VERTEX_ID
+
+#endif 
+
+#if defined(VAR_COMPILER_HLSL)
+#pragma warning (disable : 3205) // conversion of larger type to smaller
+#pragma warning (disable : 3568) // unknown pragma ignored
+#endif
+
+#if !defined(SHADER_TARGET_GLSL) && !defined(SHADER_API_PSSL)
+#define fixed half
+#define fixed2 half2
+#define fixed3 half3
+#define fixed4 half4
+#define fixed4x4 half4x4
+#define fixed3x3 half3x3
+#define fixed2x2 half2x2
+#define sampler2D_half sampler2D
+#define sampler2D_float sampler2D
+#define samplerCUBE_half samplerCUBE
+#define samplerCUBE_float samplerCUBE
+#endif
+
+#if defined(SHADER_API_PSSL)
+#define uniform
+#define half float
+#define half2 float2
+#define half3 float3
+#define half4 float4
+#define half2x2 float2x2
+#define half3x3 float3x3
+#define half4x4 float4x4
+#define fixed float
+#define fixed2 float2
+#define fixed3 float3
+#define fixed4 float4
+#define fixed4x4 half4x4
+#define fixed3x3 half3x3
+#define fixed2x2 half2x2
+#define samplerCUBE_half samplerCUBE
+#define samplerCUBE_float samplerCUBE
+
+#define CBUFFER_START(name) ConstantBuffer name {
+#define CBUFFER_END };
+#elif !defined(VAR_COMPILER_HLSLCC) && (defined(SHADER_API_D3D11) || defined(SHADER_API_D3D11_9X))
+#define CBUFFER_START(name) cbuffer name {
+#define CBUFFER_END };
+#else
+#define CBUFFER_START(name)
+#define CBUFFER_END
+#endif
+
+#if defined(SHADOWS_NATIVE) && defined(SHADER_API_PSSL)
+    // PSSL
+    #define VAR_DECLARE_SHADOWMAP(tex)      Texture2D tex; SamplerComparisonState sampler##tex
+    #define VAR_SAMPLE_SHADOW(tex,coord)        tex.SampleCmpLOD0(sampler##tex,(coord).xy,(coord).z)
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord)   tex.SampleCmpLOD0(sampler##tex,(coord).xy/(coord).w,(coord).z/(coord).w)
+#elif defined(SHADOWS_NATIVE) && (defined(SHADER_API_D3D11) || defined(SHADER_API_D3D11_9X) || defined(VAR_COMPILER_HLSLCC))
+    // DX11 syntax for shadow maps
+    #define VAR_DECLARE_SHADOWMAP(tex) Texture2D tex; SamplerComparisonState sampler##tex
+    #define VAR_SAMPLE_SHADOW(tex,coord) tex.SampleCmpLevelZero (sampler##tex,(coord).xy,(coord).z)
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord) tex.SampleCmpLevelZero (sampler##tex,(coord).xy/(coord).w,(coord).z/(coord).w)
+#elif defined(SHADOWS_NATIVE) && defined(SHADER_TARGET_GLSL)
+    // hlsl2glsl syntax for shadow maps
+    #define VAR_DECLARE_SHADOWMAP(tex) sampler2DShadow tex
+    #define VAR_SAMPLE_SHADOW(tex,coord) shadow2D (tex,(coord).xyz)
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord) shadow2Dproj (tex,coord)
+#elif defined(SHADOWS_NATIVE) && defined(SHADER_API_PSP2) && !defined(SHADER_API_PSM)
+    #define VAR_DECLARE_SHADOWMAP(tex) sampler2D tex
+    #define VAR_SAMPLE_SHADOW(tex,coord) f1tex2D<float>(tex, (coord).xyz)
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord) f1tex2Dproj<float>(tex, coord)
+#elif defined(SHADOWS_NATIVE) && defined(SHADER_API_D3D9)
+    // Native shadow maps hack on D3D9: look just like regular
+    // texture sample. Have to always do a projected sample
+    // so that HLSL compiler doesn't try to be too smart and mess up swizzles
+    // (thinking that Z is unused).
+    #define VAR_DECLARE_SHADOWMAP(tex) sampler2D tex
+    #define VAR_SAMPLE_SHADOW(tex,coord) tex2Dproj (tex,float4((coord).xyz,1)).r
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord) tex2Dproj (tex,coord).r
+#else
+    // Fallback for other platforms: look just like a regular texture sample.
+    #define VAR_DECLARE_SHADOWMAP(tex) sampler2D tex
+    #define VAR_SAMPLE_SHADOW(tex,coord) tex2D (tex,(coord).xyz).r
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord) tex2Dproj (tex,coord).r
+#endif
+
+
+
+// Macros to declare textures and samplers, possibly separately. For platforms
+// that have separate samplers & textures (like DX11), and we'd want to conserve
+// the samplers.
+//  - VAR_DECLARE_TEX2D_NOSAMPLER declares a texture, without a sampler.
+//  - VAR_SAMPLE_TEX2D_SAMPLER samples a texture, using sampler from another texture.
+//      That another texture must also be actually used in the current shader, otherwise
+//      the correct sampler will not be set.
+#if defined(SHADER_API_D3D11) || defined(SHADER_API_XBOXONE) || defined(VAR_COMPILER_HLSLCC)
+#define VAR_DECLARE_TEX2D(tex) Texture2D tex; SamplerState sampler##tex
+#define VAR_DECLARE_TEX2D_NOSAMPLER(tex) Texture2D tex
+#define VAR_SAMPLE_TEX2D(tex,coord) tex.Sample (sampler##tex,coord)
+#define VAR_SAMPLE_TEX2D_SAMPLER(tex,samplertex,coord) tex.Sample (sampler##samplertex,coord)
+#else
+#define VAR_DECLARE_TEX2D(tex) sampler2D tex
+#define VAR_DECLARE_TEX2D_NOSAMPLER(tex) sampler2D tex
+#define VAR_SAMPLE_TEX2D(tex,coord) tex2D (tex,coord)
+#define VAR_SAMPLE_TEX2D_SAMPLER(tex,samplertex,coord) tex2D (tex,coord)
+#endif
+
+
+
+#define samplerRECT sampler2D
+#define texRECT tex2D
+#define texRECTlod tex2Dlod
+#define texRECTbias tex2Dbias
+#define texRECTproj tex2Dproj
+
+#if defined(SHADER_API_PSSL)
+#define VPOS            S_POSITION
+#elif defined(VAR_COMPILER_CG)
+// Cg seems to use WPOS instead of VPOS semantic?
+#define VPOS WPOS
+// Cg does not have tex2Dgrad and friends, but has tex2D overload that
+// can take the derivatives
+#define tex2Dgrad tex2D
+#define texCUBEgrad texCUBE
+#define tex3Dgrad tex3D
+#endif
+
+
+#if defined(SHADER_API_PSSL)
+
+struct sampler1D {
+    Texture1D       t;
+    SamplerState    s;
+};
+struct sampler2D {
+    Texture2D       t;
+    SamplerState    s;
+};
+struct sampler2D_float {
+    Texture2D       t;
+    SamplerState    s;
+};
+struct sampler3D {
+    Texture3D       t;
+    SamplerState    s;
+};
+struct samplerCUBE {
+    TextureCube     t;
+    SamplerState    s;
+};
+
+float4 tex1D(sampler1D x, float v)              { return x.t.Sample(x.s, v); }
+float4 tex2D(sampler2D x, float2 v)             { return x.t.Sample(x.s, v); }
+float4 tex2D(sampler2D_float x, float2 v)       { return x.t.Sample(x.s, v); }
+float4 tex3D(sampler3D x, float3 v)             { return x.t.Sample(x.s, v); }
+float4 texCUBE(samplerCUBE x, float3 v)         { return x.t.Sample(x.s, v); }
+
+float4 tex1Dbias(sampler1D x, in float4 t)      { return x.t.SampleBias(x.s, t.x, t.w); }
+float4 tex2Dbias(sampler2D x, in float4 t)      { return x.t.SampleBias(x.s, t.xy, t.w); }
+float4 tex2Dbias(sampler2D_float x, in float4 t)        { return x.t.SampleBias(x.s, t.xy, t.w); }
+float4 tex3Dbias(sampler3D x, in float4 t)      { return x.t.SampleBias(x.s, t.xyz, t.w); }
+float4 texCUBEbias(samplerCUBE x, in float4 t)  { return x.t.SampleBias(x.s, t.xyz, t.w); }
+
+float4 tex1Dlod(sampler1D x, in float4 t)       { return x.t.SampleLOD(x.s, t.x, t.w); }
+float4 tex2Dlod(sampler2D x, in float4 t)       { return x.t.SampleLOD(x.s, t.xy, t.w); }
+float4 tex2Dlod(sampler2D_float x, in float4 t)     { return x.t.SampleLOD(x.s, t.xy, t.w); }
+float4 tex3Dlod(sampler3D x, in float4 t)       { return x.t.SampleLOD(x.s, t.xyz, t.w); }
+float4 texCUBElod(samplerCUBE x, in float4 t)   { return x.t.SampleLOD(x.s, t.xyz, t.w); }
+
+float4 tex1Dgrad(sampler1D x, float t, float dx, float dy)          { return x.t.SampleGradient(x.s, t, dx, dy); }
+float4 tex2Dgrad(sampler2D x, float2 t, float2 dx, float2 dy)       { return x.t.SampleGradient(x.s, t, dx, dy); }
+float4 tex2Dgrad(sampler2D_float x, float2 t, float2 dx, float2 dy)     { return x.t.SampleGradient(x.s, t, dx, dy); }
+float4 tex3Dgrad(sampler3D x, float3 t, float3 dx, float3 dy)       { return x.t.SampleGradient(x.s, t, dx, dy); }
+float4 texCUBEgrad(samplerCUBE x, float3 t, float3 dx, float3 dy)   { return x.t.SampleGradient(x.s, t, dx, dy); }
+
+float4 tex1Dproj(sampler1D s, in float2 t)      { return tex1D(s, t.x / t.y); }
+float4 tex1Dproj(sampler1D s, in float4 t)      { return tex1D(s, t.x / t.w); }
+float4 tex2Dproj(sampler2D s, in float3 t)      { return tex2D(s, t.xy / t.z); }
+float4 tex2Dproj(sampler2D_float s, in float3 t)        { return tex2D(s, t.xy / t.z); }
+float4 tex2Dproj(sampler2D s, in float4 t)      { return tex2D(s, t.xy / t.w); }
+float4 tex3Dproj(sampler3D s, in float4 t)      { return tex3D(s, t.xyz / t.w); }
+float4 texCUBEproj(samplerCUBE s, in float4 t)  { return texCUBE(s, t.xyz / t.w); }
+
+#elif defined(SHADER_API_XBOX360)
+
+float4 tex2Dproj(in sampler2D s, in float4 t) 
+{ 
+    float2 ti=t.xy / t.w;
+    return tex2D( s, ti);
+}
+
+float4 tex2Dproj(in sampler2D s, in float3 t) 
+{ 
+    float2 ti=t.xy / t.z;
+    return tex2D( s, ti);
+}
+
+
+#endif
+
+#if defined(VAR_COMPILER_HLSL) || defined (SHADER_TARGET_GLSL)
+#define FOGC FOG
+#endif
+
+// Use VFACE pixel shader input semantic in your shaders to get front-facing scalar value.
+#if defined(VAR_COMPILER_CG)
+#define VFACE FACE
+#endif
+#if defined(VAR_COMPILER_HLSL2GLSL)
+#define FACE VFACE
+#endif
+
+#if defined(SHADER_API_PSSL)
+#define SV_POSITION S_POSITION
+#elif !defined(SHADER_API_D3D11) && !defined(SHADER_API_D3D11_9X)
+#define SV_POSITION POSITION
+#endif
+
+
+#if (defined(SHADER_API_D3D9) || defined(SHADER_API_XBOX360) || defined(SHADER_API_PS3) || defined(SHADER_API_D3D11) || defined(SHADER_API_D3D11_9X) || defined(SHADER_API_PSP2) || defined(SHADER_API_PSSL)) && !defined(VAR_COMPILER_HLSLCC)
+#define VAR_ATTEN_CHANNEL r
+#else
+#define VAR_ATTEN_CHANNEL a
+#endif
+
+#if defined(SHADER_API_D3D9) || defined(SHADER_API_XBOX360) || defined(SHADER_API_PSP2)
+#define VAR_HALF_TEXEL_OFFSET
+#endif
+
+#if (defined(SHADER_API_D3D9) || defined(SHADER_API_XBOX360) || defined(SHADER_API_PS3) || defined(SHADER_API_D3D11) || defined(SHADER_API_D3D11_9X) || defined(SHADER_API_PSP2) || defined(SHADER_API_PSSL)) && !defined(VAR_COMPILER_HLSLCC)
+#define VAR_UV_STARTS_AT_TOP 1
+#endif
+
+#if (defined(SHADER_API_D3D9) || defined(SHADER_API_XBOX360) || defined(SHADER_API_PS3) || defined(SHADER_API_D3D11) || defined(SHADER_API_D3D11_9X)) && !defined(VAR_COMPILER_HLSLCC)
+#define VAR_NEAR_CLIP_VALUE (0.0)
+#else
+#define VAR_NEAR_CLIP_VALUE (-1.0)
+#endif
+
+
+#if defined(SHADER_API_D3D9)
+#define VAR_MIGHT_NOT_HAVE_DEPTH_TEXTURE
+#endif
+
+
+#if (defined(SHADER_API_OPENGL) && !defined(SHADER_TARGET_GLSL)) || defined(SHADER_API_PSP2)
+#define VAR_BUGGY_TEX2DPROJ4
+#define VAR_PROJ_COORD(a) (a).xyw
+#else
+#define VAR_PROJ_COORD(a) a
+#endif
+
+
+// Platforms which do not use cascaded/screenspace shadow maps: more or less "mobile" platforms
+#if defined(SHADER_API_GLES) || defined(SHADER_API_GLES3) || defined(SHADER_API_GLES31) || defined(SHADER_API_METAL) || defined(SHADER_API_D3D11_9X)
+#define VAR_NO_SCREENSPACE_SHADOWS
+#endif
+
+// Platforms which do not use RGBM lightmap compression, or DXT5nm normal map compression
+#if defined(SHADER_API_GLES) || defined(SHADER_API_GLES3) || defined(SHADER_API_GLES31) || defined(SHADER_API_METAL)
+#define VAR_NO_RGBM
+#define VAR_NO_DXT5nm
+#endif
+
+// Platforms which can support "framebuffer fetch" on some devices
+#if defined(SHADER_API_GLES) || defined(SHADER_API_GLES3) || defined(SHADER_API_GLES31)
+#define VAR_FRAMEBUFFER_FETCH_AVAILABLE
+#endif
+
+
+// On most platforms, use floating point render targets to store depth of point
+// light shadowmaps. However, on some others they either have issues, or aren't widely
+// supported; in which case fallback to encoding depth into RGBA channels.
+// Make sure this define matches GraphicsCaps.useRGBAForPointShadows.
+#if defined(SHADER_API_GLES) || defined(SHADER_API_PSP2) || defined(SHADER_API_XBOX360) || defined(SHADER_API_PS3)
+#define VAR_USE_RGBA_FOR_POINT_SHADOWS
+#endif
+
+
+#if defined(VAR_COMPILER_HLSL) || defined(VAR_COMPILER_HLSLCC)
+#define VAR_INITIALIZE_OUTPUT(type,name) name = (type)0;
+#else
+#define VAR_INITIALIZE_OUTPUT(type,name)
+#endif
+
+#if defined(SHADER_API_D3D11) || defined(VAR_COMPILER_HLSLCC)
+#define VAR_CAN_COMPILE_TESSELLATION 1
+#   define VAR_domain                   domain
+#   define VAR_partitioning         partitioning
+#   define VAR_outputtopology           outputtopology
+#   define VAR_patchconstantfunc        patchconstantfunc
+#   define VAR_outputcontrolpoints  outputcontrolpoints
+#elif defined(SHADER_API_PSSL)
+#   define VAR_CAN_COMPILE_TESSELLATION 1
+
+#   define SV_OutputControlPointID      S_OUTPUT_CONTROL_POINT_ID
+#   define SV_TessFactor                S_EDGE_TESS_FACTOR
+#   define SV_InsideTessFactor          S_INSIDE_TESS_FACTOR
+#   define SV_DomainLocation            S_DOMAIN_LOCATION
+
+#   define VAR_domain                   DOMAIN_PATCH_TYPE
+#   define VAR_partitioning         PARTITIONING_TYPE
+#   define VAR_outputtopology           OUTPUT_TOPOLOGY_TYPE
+#   define VAR_patchconstantfunc        PATCH_CONSTANT_FUNC
+#   define VAR_outputcontrolpoints  OUTPUT_CONTROL_POINTS
+
+#   define  domain                      DOMAIN_PATCH_TYPE
+#   define  partitioning                PARTITIONING_TYPE
+#   define  outputtopology              OUTPUT_TOPOLOGY_TYPE
+#   define  patchconstantfunc           PATCH_CONSTANT_FUNC
+#   define  outputcontrolpoints         OUTPUT_CONTROL_POINTS
+
+#   define  maxtessfactor               MAX_TESS_FACTOR
+#   define  instance                    INSTANCE
+#   define  numthreads                  NUM_THREADS
+#   define  patchsize                   PATCH_SIZE
+#   define  maxvertexcount              MAX_VERTEX_COUNT            
+#   define  earlydepthstencil           FORCE_EARLY_DEPTH_STENCIL
+
+#   define  GroupMemoryBarrierWithGroupSync ThreadGroupMemoryBarrierSync
+
+// geometry shader
+#   define TriangleStream               TriangleBuffer              
+#   define PointStream                  PointBuffer                 
+#   define LineStream                   LineBuffer                  
+#   define triangle                 Triangle                    
+#   define point                        Point                       
+#   define line                     Line                        
+#   define triangleadj                  AdjacentTriangle            
+#   define lineadj                      AdjacentLine
+
+// multimedia operations
+#define msad4                       msad
+
+#endif
+
+// Not really needed anymore, but did ship in My 4.0; with D3D11_9X remapping them to .r channel.
+// Now that's not used.
+#define VAR_SAMPLE_1CHANNEL(x,y) tex2D(x,y).a
+#define VAR_ALPHA_CHANNEL a
+
+
+#endif
+
+#line 13 ""
+
+#line 1 "MyShaderVariables.cginc"
+#ifndef VAR_SHADER_VARIABLES_INCLUDED
+#define VAR_SHADER_VARIABLES_INCLUDED
+
+#line 1 "HLSLSupport.cginc"
+#ifndef HLSL_SUPPORT_INCLUDED
+#define HLSL_SUPPORT_INCLUDED
+
+
+#if defined(SHADER_API_D3D11) || defined(SHADER_API_XBOX360) || defined(SHADER_API_D3D11_9X) || defined(VAR_COMPILER_HLSLCC) || defined(SHADER_API_D3D9)
+#define VAR_COMPILER_HLSL
+#elif defined(SHADER_TARGET_GLSL)
+#define VAR_COMPILER_HLSL2GLSL
+#else
+#define VAR_COMPILER_CG
+#endif
+
+#if !defined(SV_Target)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Target S_TARGET_OUTPUT
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Target COLOR
+#   endif
+#endif
+
+
+#if !defined(SV_Target0)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Target0 S_TARGET_OUTPUT0
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Target0 COLOR0
+#   endif
+#endif
+
+
+#if !defined(SV_Target1)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Target1 S_TARGET_OUTPUT1
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Target1 COLOR1
+#   endif
+#endif
+
+#if !defined(SV_Target2)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Target2 S_TARGET_OUTPUT2
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Target2 COLOR2
+#   endif
+#endif
+
+#if !defined(SV_Target3)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Target3 S_TARGET_OUTPUT3
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Target3 COLOR3
+#   endif
+#endif
+
+
+
+#if !defined(SV_Depth)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Depth S_DEPTH_OUTPUT
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Depth DEPTH
+#   endif
+#endif
+
+#if defined(SHADER_API_PSSL)
+// compute shader defines
+#define StructuredBuffer RegularBuffer
+#define SV_VertexID S_VERTEX_ID
+
+#endif 
+
+#if defined(VAR_COMPILER_HLSL)
+#pragma warning (disable : 3205) // conversion of larger type to smaller
+#pragma warning (disable : 3568) // unknown pragma ignored
+#endif
+
+#if !defined(SHADER_TARGET_GLSL) && !defined(SHADER_API_PSSL)
+#define fixed half
+#define fixed2 half2
+#define fixed3 half3
+#define fixed4 half4
+#define fixed4x4 half4x4
+#define fixed3x3 half3x3
+#define fixed2x2 half2x2
+#define sampler2D_half sampler2D
+#define sampler2D_float sampler2D
+#define samplerCUBE_half samplerCUBE
+#define samplerCUBE_float samplerCUBE
+#endif
+
+#if defined(SHADER_API_PSSL)
+#define uniform
+#define half float
+#define half2 float2
+#define half3 float3
+#define half4 float4
+#define half2x2 float2x2
+#define half3x3 float3x3
+#define half4x4 float4x4
+#define fixed float
+#define fixed2 float2
+#define fixed3 float3
+#define fixed4 float4
+#define fixed4x4 half4x4
+#define fixed3x3 half3x3
+#define fixed2x2 half2x2
+#define samplerCUBE_half samplerCUBE
+#define samplerCUBE_float samplerCUBE
+
+#define CBUFFER_START(name) ConstantBuffer name {
+#define CBUFFER_END };
+#elif !defined(VAR_COMPILER_HLSLCC) && (defined(SHADER_API_D3D11) || defined(SHADER_API_D3D11_9X))
+#define CBUFFER_START(name) cbuffer name {
+#define CBUFFER_END };
+#else
+#define CBUFFER_START(name)
+#define CBUFFER_END
+#endif
+
+#if defined(SHADOWS_NATIVE) && defined(SHADER_API_PSSL)
+    // PSSL
+    #define VAR_DECLARE_SHADOWMAP(tex)      Texture2D tex; SamplerComparisonState sampler##tex
+    #define VAR_SAMPLE_SHADOW(tex,coord)        tex.SampleCmpLOD0(sampler##tex,(coord).xy,(coord).z)
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord)   tex.SampleCmpLOD0(sampler##tex,(coord).xy/(coord).w,(coord).z/(coord).w)
+#elif defined(SHADOWS_NATIVE) && (defined(SHADER_API_D3D11) || defined(SHADER_API_D3D11_9X) || defined(VAR_COMPILER_HLSLCC))
+    // DX11 syntax for shadow maps
+    #define VAR_DECLARE_SHADOWMAP(tex) Texture2D tex; SamplerComparisonState sampler##tex
+    #define VAR_SAMPLE_SHADOW(tex,coord) tex.SampleCmpLevelZero (sampler##tex,(coord).xy,(coord).z)
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord) tex.SampleCmpLevelZero (sampler##tex,(coord).xy/(coord).w,(coord).z/(coord).w)
+#elif defined(SHADOWS_NATIVE) && defined(SHADER_TARGET_GLSL)
+    // hlsl2glsl syntax for shadow maps
+    #define VAR_DECLARE_SHADOWMAP(tex) sampler2DShadow tex
+    #define VAR_SAMPLE_SHADOW(tex,coord) shadow2D (tex,(coord).xyz)
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord) shadow2Dproj (tex,coord)
+#elif defined(SHADOWS_NATIVE) && defined(SHADER_API_PSP2) && !defined(SHADER_API_PSM)
+    #define VAR_DECLARE_SHADOWMAP(tex) sampler2D tex
+    #define VAR_SAMPLE_SHADOW(tex,coord) f1tex2D<float>(tex, (coord).xyz)
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord) f1tex2Dproj<float>(tex, coord)
+#elif defined(SHADOWS_NATIVE) && defined(SHADER_API_D3D9)
+    // Native shadow maps hack on D3D9: look just like regular
+    // texture sample. Have to always do a projected sample
+    // so that HLSL compiler doesn't try to be too smart and mess up swizzles
+    // (thinking that Z is unused).
+    #define VAR_DECLARE_SHADOWMAP(tex) sampler2D tex
+    #define VAR_SAMPLE_SHADOW(tex,coord) tex2Dproj (tex,float4((coord).xyz,1)).r
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord) tex2Dproj (tex,coord).r
+#else
+    // Fallback for other platforms: look just like a regular texture sample.
+    #define VAR_DECLARE_SHADOWMAP(tex) sampler2D tex
+    #define VAR_SAMPLE_SHADOW(tex,coord) tex2D (tex,(coord).xyz).r
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord) tex2Dproj (tex,coord).r
+#endif
+
+
+
+// Macros to declare textures and samplers, possibly separately. For platforms
+// that have separate samplers & textures (like DX11), and we'd want to conserve
+// the samplers.
+//  - VAR_DECLARE_TEX2D_NOSAMPLER declares a texture, without a sampler.
+//  - VAR_SAMPLE_TEX2D_SAMPLER samples a texture, using sampler from another texture.
+//      That another texture must also be actually used in the current shader, otherwise
+//      the correct sampler will not be set.
+#if defined(SHADER_API_D3D11) || defined(SHADER_API_XBOXONE) || defined(VAR_COMPILER_HLSLCC)
+#define VAR_DECLARE_TEX2D(tex) Texture2D tex; SamplerState sampler##tex
+#define VAR_DECLARE_TEX2D_NOSAMPLER(tex) Texture2D tex
+#define VAR_SAMPLE_TEX2D(tex,coord) tex.Sample (sampler##tex,coord)
+#define VAR_SAMPLE_TEX2D_SAMPLER(tex,samplertex,coord) tex.Sample (sampler##samplertex,coord)
+#else
+#define VAR_DECLARE_TEX2D(tex) sampler2D tex
+#define VAR_DECLARE_TEX2D_NOSAMPLER(tex) sampler2D tex
+#define VAR_SAMPLE_TEX2D(tex,coord) tex2D (tex,coord)
+#define VAR_SAMPLE_TEX2D_SAMPLER(tex,samplertex,coord) tex2D (tex,coord)
+#endif
+
+
+
+#define samplerRECT sampler2D
+#define texRECT tex2D
+#define texRECTlod tex2Dlod
+#define texRECTbias tex2Dbias
+#define texRECTproj tex2Dproj
+
+#if defined(SHADER_API_PSSL)
+#define VPOS            S_POSITION
+#elif defined(VAR_COMPILER_CG)
+// Cg seems to use WPOS instead of VPOS semantic?
+#define VPOS WPOS
+// Cg does not have tex2Dgrad and friends, but has tex2D overload that
+// can take the derivatives
+#define tex2Dgrad tex2D
+#define texCUBEgrad texCUBE
+#define tex3Dgrad tex3D
+#endif
+
+
+#if defined(SHADER_API_PSSL)
+
+struct sampler1D {
+    Texture1D       t;
+    SamplerState    s;
+};
+struct sampler2D {
+    Texture2D       t;
+    SamplerState    s;
+};
+struct sampler2D_float {
+    Texture2D       t;
+    SamplerState    s;
+};
+struct sampler3D {
+    Texture3D       t;
+    SamplerState    s;
+};
+struct samplerCUBE {
+    TextureCube     t;
+    SamplerState    s;
+};
+
+float4 tex1D(sampler1D x, float v)              { return x.t.Sample(x.s, v); }
+float4 tex2D(sampler2D x, float2 v)             { return x.t.Sample(x.s, v); }
+float4 tex2D(sampler2D_float x, float2 v)       { return x.t.Sample(x.s, v); }
+float4 tex3D(sampler3D x, float3 v)             { return x.t.Sample(x.s, v); }
+float4 texCUBE(samplerCUBE x, float3 v)         { return x.t.Sample(x.s, v); }
+
+float4 tex1Dbias(sampler1D x, in float4 t)      { return x.t.SampleBias(x.s, t.x, t.w); }
+float4 tex2Dbias(sampler2D x, in float4 t)      { return x.t.SampleBias(x.s, t.xy, t.w); }
+float4 tex2Dbias(sampler2D_float x, in float4 t)        { return x.t.SampleBias(x.s, t.xy, t.w); }
+float4 tex3Dbias(sampler3D x, in float4 t)      { return x.t.SampleBias(x.s, t.xyz, t.w); }
+float4 texCUBEbias(samplerCUBE x, in float4 t)  { return x.t.SampleBias(x.s, t.xyz, t.w); }
+
+float4 tex1Dlod(sampler1D x, in float4 t)       { return x.t.SampleLOD(x.s, t.x, t.w); }
+float4 tex2Dlod(sampler2D x, in float4 t)       { return x.t.SampleLOD(x.s, t.xy, t.w); }
+float4 tex2Dlod(sampler2D_float x, in float4 t)     { return x.t.SampleLOD(x.s, t.xy, t.w); }
+float4 tex3Dlod(sampler3D x, in float4 t)       { return x.t.SampleLOD(x.s, t.xyz, t.w); }
+float4 texCUBElod(samplerCUBE x, in float4 t)   { return x.t.SampleLOD(x.s, t.xyz, t.w); }
+
+float4 tex1Dgrad(sampler1D x, float t, float dx, float dy)          { return x.t.SampleGradient(x.s, t, dx, dy); }
+float4 tex2Dgrad(sampler2D x, float2 t, float2 dx, float2 dy)       { return x.t.SampleGradient(x.s, t, dx, dy); }
+float4 tex2Dgrad(sampler2D_float x, float2 t, float2 dx, float2 dy)     { return x.t.SampleGradient(x.s, t, dx, dy); }
+float4 tex3Dgrad(sampler3D x, float3 t, float3 dx, float3 dy)       { return x.t.SampleGradient(x.s, t, dx, dy); }
+float4 texCUBEgrad(samplerCUBE x, float3 t, float3 dx, float3 dy)   { return x.t.SampleGradient(x.s, t, dx, dy); }
+
+float4 tex1Dproj(sampler1D s, in float2 t)      { return tex1D(s, t.x / t.y); }
+float4 tex1Dproj(sampler1D s, in float4 t)      { return tex1D(s, t.x / t.w); }
+float4 tex2Dproj(sampler2D s, in float3 t)      { return tex2D(s, t.xy / t.z); }
+float4 tex2Dproj(sampler2D_float s, in float3 t)        { return tex2D(s, t.xy / t.z); }
+float4 tex2Dproj(sampler2D s, in float4 t)      { return tex2D(s, t.xy / t.w); }
+float4 tex3Dproj(sampler3D s, in float4 t)      { return tex3D(s, t.xyz / t.w); }
+float4 texCUBEproj(samplerCUBE s, in float4 t)  { return texCUBE(s, t.xyz / t.w); }
+
+#elif defined(SHADER_API_XBOX360)
+
+float4 tex2Dproj(in sampler2D s, in float4 t) 
+{ 
+    float2 ti=t.xy / t.w;
+    return tex2D( s, ti);
+}
+
+float4 tex2Dproj(in sampler2D s, in float3 t) 
+{ 
+    float2 ti=t.xy / t.z;
+    return tex2D( s, ti);
+}
+
+
+#endif
+
+#if defined(VAR_COMPILER_HLSL) || defined (SHADER_TARGET_GLSL)
+#define FOGC FOG
+#endif
+
+// Use VFACE pixel shader input semantic in your shaders to get front-facing scalar value.
+#if defined(VAR_COMPILER_CG)
+#define VFACE FACE
+#endif
+#if defined(VAR_COMPILER_HLSL2GLSL)
+#define FACE VFACE
+#endif
+
+#if defined(SHADER_API_PSSL)
+#define SV_POSITION S_POSITION
+#elif !defined(SHADER_API_D3D11) && !defined(SHADER_API_D3D11_9X)
+#define SV_POSITION POSITION
+#endif
+
+
+#if (defined(SHADER_API_D3D9) || defined(SHADER_API_XBOX360) || defined(SHADER_API_PS3) || defined(SHADER_API_D3D11) || defined(SHADER_API_D3D11_9X) || defined(SHADER_API_PSP2) || defined(SHADER_API_PSSL)) && !defined(VAR_COMPILER_HLSLCC)
+#define VAR_ATTEN_CHANNEL r
+#else
+#define VAR_ATTEN_CHANNEL a
+#endif
+
+#if defined(SHADER_API_D3D9) || defined(SHADER_API_XBOX360) || defined(SHADER_API_PSP2)
+#define VAR_HALF_TEXEL_OFFSET
+#endif
+
+#if (defined(SHADER_API_D3D9) || defined(SHADER_API_XBOX360) || defined(SHADER_API_PS3) || defined(SHADER_API_D3D11) || defined(SHADER_API_D3D11_9X) || defined(SHADER_API_PSP2) || defined(SHADER_API_PSSL)) && !defined(VAR_COMPILER_HLSLCC)
+#define VAR_UV_STARTS_AT_TOP 1
+#endif
+
+#if (defined(SHADER_API_D3D9) || defined(SHADER_API_XBOX360) || defined(SHADER_API_PS3) || defined(SHADER_API_D3D11) || defined(SHADER_API_D3D11_9X)) && !defined(VAR_COMPILER_HLSLCC)
+#define VAR_NEAR_CLIP_VALUE (0.0)
+#else
+#define VAR_NEAR_CLIP_VALUE (-1.0)
+#endif
+
+
+#if defined(SHADER_API_D3D9)
+#define VAR_MIGHT_NOT_HAVE_DEPTH_TEXTURE
+#endif
+
+
+#if (defined(SHADER_API_OPENGL) && !defined(SHADER_TARGET_GLSL)) || defined(SHADER_API_PSP2)
+#define VAR_BUGGY_TEX2DPROJ4
+#define VAR_PROJ_COORD(a) (a).xyw
+#else
+#define VAR_PROJ_COORD(a) a
+#endif
+
+
+// Platforms which do not use cascaded/screenspace shadow maps: more or less "mobile" platforms
+#if defined(SHADER_API_GLES) || defined(SHADER_API_GLES3) || defined(SHADER_API_GLES31) || defined(SHADER_API_METAL) || defined(SHADER_API_D3D11_9X)
+#define VAR_NO_SCREENSPACE_SHADOWS
+#endif
+
+// Platforms which do not use RGBM lightmap compression, or DXT5nm normal map compression
+#if defined(SHADER_API_GLES) || defined(SHADER_API_GLES3) || defined(SHADER_API_GLES31) || defined(SHADER_API_METAL)
+#define VAR_NO_RGBM
+#define VAR_NO_DXT5nm
+#endif
+
+// Platforms which can support "framebuffer fetch" on some devices
+#if defined(SHADER_API_GLES) || defined(SHADER_API_GLES3) || defined(SHADER_API_GLES31)
+#define VAR_FRAMEBUFFER_FETCH_AVAILABLE
+#endif
+
+
+// On most platforms, use floating point render targets to store depth of point
+// light shadowmaps. However, on some others they either have issues, or aren't widely
+// supported; in which case fallback to encoding depth into RGBA channels.
+// Make sure this define matches GraphicsCaps.useRGBAForPointShadows.
+#if defined(SHADER_API_GLES) || defined(SHADER_API_PSP2) || defined(SHADER_API_XBOX360) || defined(SHADER_API_PS3)
+#define VAR_USE_RGBA_FOR_POINT_SHADOWS
+#endif
+
+
+#if defined(VAR_COMPILER_HLSL) || defined(VAR_COMPILER_HLSLCC)
+#define VAR_INITIALIZE_OUTPUT(type,name) name = (type)0;
+#else
+#define VAR_INITIALIZE_OUTPUT(type,name)
+#endif
+
+#if defined(SHADER_API_D3D11) || defined(VAR_COMPILER_HLSLCC)
+#define VAR_CAN_COMPILE_TESSELLATION 1
+#   define VAR_domain                   domain
+#   define VAR_partitioning         partitioning
+#   define VAR_outputtopology           outputtopology
+#   define VAR_patchconstantfunc        patchconstantfunc
+#   define VAR_outputcontrolpoints  outputcontrolpoints
+#elif defined(SHADER_API_PSSL)
+#   define VAR_CAN_COMPILE_TESSELLATION 1
+
+#   define SV_OutputControlPointID      S_OUTPUT_CONTROL_POINT_ID
+#   define SV_TessFactor                S_EDGE_TESS_FACTOR
+#   define SV_InsideTessFactor          S_INSIDE_TESS_FACTOR
+#   define SV_DomainLocation            S_DOMAIN_LOCATION
+
+#   define VAR_domain                   DOMAIN_PATCH_TYPE
+#   define VAR_partitioning         PARTITIONING_TYPE
+#   define VAR_outputtopology           OUTPUT_TOPOLOGY_TYPE
+#   define VAR_patchconstantfunc        PATCH_CONSTANT_FUNC
+#   define VAR_outputcontrolpoints  OUTPUT_CONTROL_POINTS
+
+#   define  domain                      DOMAIN_PATCH_TYPE
+#   define  partitioning                PARTITIONING_TYPE
+#   define  outputtopology              OUTPUT_TOPOLOGY_TYPE
+#   define  patchconstantfunc           PATCH_CONSTANT_FUNC
+#   define  outputcontrolpoints         OUTPUT_CONTROL_POINTS
+
+#   define  maxtessfactor               MAX_TESS_FACTOR
+#   define  instance                    INSTANCE
+#   define  numthreads                  NUM_THREADS
+#   define  patchsize                   PATCH_SIZE
+#   define  maxvertexcount              MAX_VERTEX_COUNT            
+#   define  earlydepthstencil           FORCE_EARLY_DEPTH_STENCIL
+
+#   define  GroupMemoryBarrierWithGroupSync ThreadGroupMemoryBarrierSync
+
+// geometry shader
+#   define TriangleStream               TriangleBuffer              
+#   define PointStream                  PointBuffer                 
+#   define LineStream                   LineBuffer                  
+#   define triangle                 Triangle                    
+#   define point                        Point                       
+#   define line                     Line                        
+#   define triangleadj                  AdjacentTriangle            
+#   define lineadj                      AdjacentLine
+
+// multimedia operations
+#define msad4                       msad
+
+#endif
+
+// Not really needed anymore, but did ship in My 4.0; with D3D11_9X remapping them to .r channel.
+// Now that's not used.
+#define VAR_SAMPLE_1CHANNEL(x,y) tex2D(x,y).a
+#define VAR_ALPHA_CHANNEL a
+
+
+#endif
+
+#line 4 "MyShaderVariables.cginc"
+
+
+#if defined (DIRECTIONAL_COOKIE) || defined (DIRECTIONAL)
+#define USING_DIRECTIONAL_LIGHT
+#endif
+
+
+
+// ----------------------------------------------------------------------------
+
+CBUFFER_START(MyPerCamera)
+    // Time values from My
+    uniform float4 _Time;
+    uniform float4 _SinTime;
+    uniform float4 _CosTime;
+    uniform float4 var_DeltaTime; // dt, 1/dt, smoothdt, 1/smoothdt
+
+    uniform float3 _WorldSpaceCameraPos;
+
+    // x = 1 or -1 (-1 if projection is flipped)
+    // y = near plane
+    // z = far plane
+    // w = 1/far plane
+    uniform float4 _ProjectionParams;
+
+    // x = width
+    // y = height
+    // z = 1 + 1.0/width
+    // w = 1 + 1.0/height
+    uniform float4 _ScreenParams;
+
+    uniform float4 _ZBufferParams;
+
+    // x = orthographic camera's width
+    // y = orthographic camera's height
+    // z = unused
+    // w = 1.0 if camera is ortho, 0.0 if perspective
+    uniform float4 var_OrthoParams;
+CBUFFER_END
+
+
+CBUFFER_START(MyPerCameraRare)
+    uniform float4 var_CameraWorldClipPlanes[6];
+
+    // Projection matrices of the camera. Note that this might be different from projection matrix
+    // that is set right now, e.g. while rendering shadows the matrices below are still the projection
+    // of original camera.
+    uniform float4x4 var_CameraProjection;
+    uniform float4x4 var_CameraInvProjection;
+CBUFFER_END
+
+
+
+// ----------------------------------------------------------------------------
+
+CBUFFER_START(MyLighting)
+
+    #ifdef USING_DIRECTIONAL_LIGHT
+    uniform half4 _WorldSpaceLightPos0;
+    #else
+    uniform float4 _WorldSpaceLightPos0;
+    #endif
+
+    uniform float4 _LightPositionRange; // xyz = pos, w = 1/range
+
+    float4 var_4LightPosX0;
+    float4 var_4LightPosY0;
+    float4 var_4LightPosZ0;
+    half4 var_4LightAtten0;
+
+    half4 var_LightColor[8];
+    float4 var_LightPosition[8];
+    // x = -1
+    // y = 1
+    // z = quadratic attenuation
+    // w = range^2
+    half4 var_LightAtten[8];
+    float4 var_SpotDirection[8];
+
+    // SH lighting environment
+    half4 var_SHAr;
+    half4 var_SHAg;
+    half4 var_SHAb;
+    half4 var_SHBr;
+    half4 var_SHBg;
+    half4 var_SHBb;
+    half4 var_SHC;
+CBUFFER_END
+
+CBUFFER_START(MyLightingOld)
+    half3 var_LightColor0, var_LightColor1, var_LightColor2, var_LightColor3; // keeping those only for any existing shaders; remove in 4.0
+CBUFFER_END
+
+
+// ----------------------------------------------------------------------------
+
+CBUFFER_START(MyShadows)
+    float4 var_ShadowSplitSpheres[4];
+    float4 var_ShadowSplitSqRadii;
+    float4 var_LightShadowBias;
+    float4 _LightSplitsNear;
+    float4 _LightSplitsFar;
+    float4x4 var_World2Shadow[4];
+    half4 _LightShadowData;
+    float4 var_ShadowFadeCenterAndType;
+CBUFFER_END
+
+#define _World2Shadow var_World2Shadow[0]
+#define _World2Shadow1 var_World2Shadow[1]
+#define _World2Shadow2 var_World2Shadow[2]
+#define _World2Shadow3 var_World2Shadow[3]
+
+
+// ----------------------------------------------------------------------------
+
+CBUFFER_START(MyPerDraw)
+    float4x4 glstate_matrix_mvp;
+    float4x4 glstate_matrix_modelview0;
+    float4x4 glstate_matrix_invtrans_modelview0;
+    #define VAR_MATRIX_MVP glstate_matrix_mvp
+    #define VAR_MATRIX_MV glstate_matrix_modelview0
+    #define VAR_MATRIX_IT_MV glstate_matrix_invtrans_modelview0
+
+    uniform float4x4 _Object2World;
+    uniform float4x4 _World2Object;
+    uniform float4 var_LODFade; // x is the fade value ranging within [0,1]. y is x quantized into 16 levels
+CBUFFER_END
+
+
+
+
+CBUFFER_START(MyPerDrawRare)
+    float4x4 glstate_matrix_transpose_modelview0;
+    #define VAR_MATRIX_T_MV glstate_matrix_transpose_modelview0
+CBUFFER_END
+
+
+
+// ----------------------------------------------------------------------------
+
+CBUFFER_START(MyPerFrame)
+
+    float4x4 glstate_matrix_projection;
+    float4   glstate_lightmodel_ambient;
+    #define VAR_MATRIX_P glstate_matrix_projection
+    #define VAR_LIGHTMODEL_AMBIENT glstate_lightmodel_ambient
+
+    float4x4 var_MatrixV;
+    float4x4 var_MatrixVP;
+    #define VAR_MATRIX_V var_MatrixV
+    #define VAR_MATRIX_VP var_MatrixVP
+
+    fixed4 var_AmbientSky;
+    fixed4 var_AmbientGround;
+
+CBUFFER_END
+
+
+// ----------------------------------------------------------------------------
+
+CBUFFER_START(MyFog)
+    uniform fixed4 var_FogColor;
+    // x = density / sqrt(ln(2)), useful for Exp2 mode
+    // y = density / ln(2), useful for Exp mode
+    // z = -1/(end-start), useful for Linear mode
+    // w = end/(end-start), useful for Linear mode
+    uniform float4 var_FogParams;
+CBUFFER_END
+
+
+// ----------------------------------------------------------------------------
+//  Deprecated
+
+// There used to be fixed function-like texture matrices, defined as VAR_MATRIX_TEXTUREn. These are gone now; and are just defined to identity.
+#define VAR_MATRIX_TEXTURE0 float4x4(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1)
+#define VAR_MATRIX_TEXTURE1 float4x4(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1)
+#define VAR_MATRIX_TEXTURE2 float4x4(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1)
+#define VAR_MATRIX_TEXTURE3 float4x4(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1)
+
+
+#endif
+
+#line 14 ""
+
+#line 10 ""
+#ifdef DUMMY_PREPROCESSOR_TO_WORK_AROUND_HLSL_COMPILER_LINE_HANDLING
+#endif
+
+// #pragma target 5.0
+
+//// #pragma vertex VS_RenderScene
+//// #pragma fragment PS_RenderSceneTextured
+
+// #pragma vertex VS_RenderSceneWithTessellation
+// #pragma fragment PS_RenderSceneTextured
+// #pragma hull HS_PNTriangles
+// #pragma domain DS_PNTriangles
+
+#line 1 "MyCG.cginc"
+#ifndef VAR_CG_INCLUDED
+#define VAR_CG_INCLUDED
+
+#line 1 "MyShaderVariables.cginc"
+#ifndef VAR_SHADER_VARIABLES_INCLUDED
+#define VAR_SHADER_VARIABLES_INCLUDED
+
+#line 1 "HLSLSupport.cginc"
+#ifndef HLSL_SUPPORT_INCLUDED
+#define HLSL_SUPPORT_INCLUDED
+
+
+#if defined(SHADER_API_D3D11) || defined(SHADER_API_XBOX360) || defined(SHADER_API_D3D11_9X) || defined(VAR_COMPILER_HLSLCC) || defined(SHADER_API_D3D9)
+#define VAR_COMPILER_HLSL
+#elif defined(SHADER_TARGET_GLSL)
+#define VAR_COMPILER_HLSL2GLSL
+#else
+#define VAR_COMPILER_CG
+#endif
+
+#if !defined(SV_Target)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Target S_TARGET_OUTPUT
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Target COLOR
+#   endif
+#endif
+
+
+#if !defined(SV_Target0)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Target0 S_TARGET_OUTPUT0
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Target0 COLOR0
+#   endif
+#endif
+
+
+#if !defined(SV_Target1)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Target1 S_TARGET_OUTPUT1
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Target1 COLOR1
+#   endif
+#endif
+
+#if !defined(SV_Target2)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Target2 S_TARGET_OUTPUT2
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Target2 COLOR2
+#   endif
+#endif
+
+#if !defined(SV_Target3)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Target3 S_TARGET_OUTPUT3
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Target3 COLOR3
+#   endif
+#endif
+
+
+
+#if !defined(SV_Depth)
+#   if defined(SHADER_API_PSSL)
+#       define SV_Depth S_DEPTH_OUTPUT
+#   elif !defined(SHADER_API_XBOXONE)
+#       define SV_Depth DEPTH
+#   endif
+#endif
+
+#if defined(SHADER_API_PSSL)
+// compute shader defines
+#define StructuredBuffer RegularBuffer
+#define SV_VertexID S_VERTEX_ID
+
+#endif 
+
+#if defined(VAR_COMPILER_HLSL)
+#pragma warning (disable : 3205) // conversion of larger type to smaller
+#pragma warning (disable : 3568) // unknown pragma ignored
+#endif
+
+#if !defined(SHADER_TARGET_GLSL) && !defined(SHADER_API_PSSL)
+#define fixed half
+#define fixed2 half2
+#define fixed3 half3
+#define fixed4 half4
+#define fixed4x4 half4x4
+#define fixed3x3 half3x3
+#define fixed2x2 half2x2
+#define sampler2D_half sampler2D
+#define sampler2D_float sampler2D
+#define samplerCUBE_half samplerCUBE
+#define samplerCUBE_float samplerCUBE
+#endif
+
+#if defined(SHADER_API_PSSL)
+#define uniform
+#define half float
+#define half2 float2
+#define half3 float3
+#define half4 float4
+#define half2x2 float2x2
+#define half3x3 float3x3
+#define half4x4 float4x4
+#define fixed float
+#define fixed2 float2
+#define fixed3 float3
+#define fixed4 float4
+#define fixed4x4 half4x4
+#define fixed3x3 half3x3
+#define fixed2x2 half2x2
+#define samplerCUBE_half samplerCUBE
+#define samplerCUBE_float samplerCUBE
+
+#define CBUFFER_START(name) ConstantBuffer name {
+#define CBUFFER_END };
+#elif !defined(VAR_COMPILER_HLSLCC) && (defined(SHADER_API_D3D11) || defined(SHADER_API_D3D11_9X))
+#define CBUFFER_START(name) cbuffer name {
+#define CBUFFER_END };
+#else
+#define CBUFFER_START(name)
+#define CBUFFER_END
+#endif
+
+#if defined(SHADOWS_NATIVE) && defined(SHADER_API_PSSL)
+    // PSSL
+    #define VAR_DECLARE_SHADOWMAP(tex)      Texture2D tex; SamplerComparisonState sampler##tex
+    #define VAR_SAMPLE_SHADOW(tex,coord)        tex.SampleCmpLOD0(sampler##tex,(coord).xy,(coord).z)
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord)   tex.SampleCmpLOD0(sampler##tex,(coord).xy/(coord).w,(coord).z/(coord).w)
+#elif defined(SHADOWS_NATIVE) && (defined(SHADER_API_D3D11) || defined(SHADER_API_D3D11_9X) || defined(VAR_COMPILER_HLSLCC))
+    // DX11 syntax for shadow maps
+    #define VAR_DECLARE_SHADOWMAP(tex) Texture2D tex; SamplerComparisonState sampler##tex
+    #define VAR_SAMPLE_SHADOW(tex,coord) tex.SampleCmpLevelZero (sampler##tex,(coord).xy,(coord).z)
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord) tex.SampleCmpLevelZero (sampler##tex,(coord).xy/(coord).w,(coord).z/(coord).w)
+#elif defined(SHADOWS_NATIVE) && defined(SHADER_TARGET_GLSL)
+    // hlsl2glsl syntax for shadow maps
+    #define VAR_DECLARE_SHADOWMAP(tex) sampler2DShadow tex
+    #define VAR_SAMPLE_SHADOW(tex,coord) shadow2D (tex,(coord).xyz)
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord) shadow2Dproj (tex,coord)
+#elif defined(SHADOWS_NATIVE) && defined(SHADER_API_PSP2) && !defined(SHADER_API_PSM)
+    #define VAR_DECLARE_SHADOWMAP(tex) sampler2D tex
+    #define VAR_SAMPLE_SHADOW(tex,coord) f1tex2D<float>(tex, (coord).xyz)
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord) f1tex2Dproj<float>(tex, coord)
+#elif defined(SHADOWS_NATIVE) && defined(SHADER_API_D3D9)
+    // Native shadow maps hack on D3D9: look just like regular
+    // texture sample. Have to always do a projected sample
+    // so that HLSL compiler doesn't try to be too smart and mess up swizzles
+    // (thinking that Z is unused).
+    #define VAR_DECLARE_SHADOWMAP(tex) sampler2D tex
+    #define VAR_SAMPLE_SHADOW(tex,coord) tex2Dproj (tex,float4((coord).xyz,1)).r
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord) tex2Dproj (tex,coord).r
+#else
+    // Fallback for other platforms: look just like a regular texture sample.
+    #define VAR_DECLARE_SHADOWMAP(tex) sampler2D tex
+    #define VAR_SAMPLE_SHADOW(tex,coord) tex2D (tex,(coord).xyz).r
+    #define VAR_SAMPLE_SHADOW_PROJ(tex,coord) tex2Dproj (tex,coord).r
+#endif
+
+
+
+// Macros to declare textures and samplers, possibly separately. For platforms
+// that have separate samplers & textures (like DX11), and we'd want to conserve
+// the samplers.
+//  - VAR_DECLARE_TEX2D_NOSAMPLER declares a texture, without a sampler.
+//  - VAR_SAMPLE_TEX2D_SAMPLER samples a texture, using sampler from another texture.
+//      That another texture must also be actually used in the current shader, otherwise
+//      the correct sampler will not be set.
+#if defined(SHADER_API_D3D11) || defined(SHADER_API_XBOXONE) || defined(VAR_COMPILER_HLSLCC)
+#define VAR_DECLARE_TEX2D(tex) Texture2D tex; SamplerState sampler##tex
+#define VAR_DECLARE_TEX2D_NOSAMPLER(tex) Texture2D tex
+#define VAR_SAMPLE_TEX2D(tex,coord) tex.Sample (sampler##tex,coord)
+#define VAR_SAMPLE_TEX2D_SAMPLER(tex,samplertex,coord) tex.Sample (sampler##samplertex,coord)
+#else
+#define VAR_DECLARE_TEX2D(tex) sampler2D tex
+#define VAR_DECLARE_TEX2D_NOSAMPLER(tex) sampler2D tex
+#define VAR_SAMPLE_TEX2D(tex,coord) tex2D (tex,coord)
+#define VAR_SAMPLE_TEX2D_SAMPLER(tex,samplertex,coord) tex2D (tex,coord)
+#endif
+
+
+
+#define samplerRECT sampler2D
+#define texRECT tex2D
+#define texRECTlod tex2Dlod
+#define texRECTbias tex2Dbias
+#define texRECTproj tex2Dproj
+
+#if defined(SHADER_API_PSSL)
+#define VPOS            S_POSITION
+#elif defined(VAR_COMPILER_CG)
+// Cg seems to use WPOS instead of VPOS semantic?
+#define VPOS WPOS
+// Cg does not have tex2Dgrad and friends, but has tex2D overload that
+// can take the derivatives
+#define tex2Dgrad tex2D
+#define texCUBEgrad texCUBE
+#define tex3Dgrad tex3D
+#endif
+
+
+#if defined(SHADER_API_PSSL)
+
+struct sampler1D {
+    Texture1D       t;
+    SamplerState    s;
+};
+struct sampler2D {
+    Texture2D       t;
+    SamplerState    s;
+};
+struct sampler2D_float {
+    Texture2D       t;
+    SamplerState    s;
+};
+struct sampler3D {
+    Texture3D       t;
+    SamplerState    s;
+};
+struct samplerCUBE {
+    TextureCube     t;
+    SamplerState    s;
+};
+
+float4 tex1D(sampler1D x, float v)              { return x.t.Sample(x.s, v); }
+float4 tex2D(sampler2D x, float2 v)             { return x.t.Sample(x.s, v); }
+float4 tex2D(sampler2D_float x, float2 v)       { return x.t.Sample(x.s, v); }
+float4 tex3D(sampler3D x, float3 v)             { return x.t.Sample(x.s, v); }
+float4 texCUBE(samplerCUBE x, float3 v)         { return x.t.Sample(x.s, v); }
+
+float4 tex1Dbias(sampler1D x, in float4 t)      { return x.t.SampleBias(x.s, t.x, t.w); }
+float4 tex2Dbias(sampler2D x, in float4 t)      { return x.t.SampleBias(x.s, t.xy, t.w); }
+float4 tex2Dbias(sampler2D_float x, in float4 t)        { return x.t.SampleBias(x.s, t.xy, t.w); }
+float4 tex3Dbias(sampler3D x, in float4 t)      { return x.t.SampleBias(x.s, t.xyz, t.w); }
+float4 texCUBEbias(samplerCUBE x, in float4 t)  { return x.t.SampleBias(x.s, t.xyz, t.w); }
+
+float4 tex1Dlod(sampler1D x, in float4 t)       { return x.t.SampleLOD(x.s, t.x, t.w); }
+float4 tex2Dlod(sampler2D x, in float4 t)       { return x.t.SampleLOD(x.s, t.xy, t.w); }
+float4 tex2Dlod(sampler2D_float x, in float4 t)     { return x.t.SampleLOD(x.s, t.xy, t.w); }
+float4 tex3Dlod(sampler3D x, in float4 t)       { return x.t.SampleLOD(x.s, t.xyz, t.w); }
+float4 texCUBElod(samplerCUBE x, in float4 t)   { return x.t.SampleLOD(x.s, t.xyz, t.w); }
+
+float4 tex1Dgrad(sampler1D x, float t, float dx, float dy)          { return x.t.SampleGradient(x.s, t, dx, dy); }
+float4 tex2Dgrad(sampler2D x, float2 t, float2 dx, float2 dy)       { return x.t.SampleGradient(x.s, t, dx, dy); }
+float4 tex2Dgrad(sampler2D_float x, float2 t, float2 dx, float2 dy)     { return x.t.SampleGradient(x.s, t, dx, dy); }
+float4 tex3Dgrad(sampler3D x, float3 t, float3 dx, float3 dy)       { return x.t.SampleGradient(x.s, t, dx, dy); }
+float4 texCUBEgrad(samplerCUBE x, float3 t, float3 dx, float3 dy)   { return x.t.SampleGradient(x.s, t, dx, dy); }
+
+float4 tex1Dproj(sampler1D s, in float2 t)      { return tex1D(s, t.x / t.y); }
+float4 tex1Dproj(sampler1D s, in float4 t)      { return tex1D(s, t.x / t.w); }
+float4 tex2Dproj(sampler2D s, in float3 t)      { return tex2D(s, t.xy / t.z); }
+float4 tex2Dproj(sampler2D_float s, in float3 t)        { return tex2D(s, t.xy / t.z); }
+float4 tex2Dproj(sampler2D s, in float4 t)      { return tex2D(s, t.xy / t.w); }
+float4 tex3Dproj(sampler3D s, in float4 t)      { return tex3D(s, t.xyz / t.w); }
+float4 texCUBEproj(samplerCUBE s, in float4 t)  { return texCUBE(s, t.xyz / t.w); }
+
+#elif defined(SHADER_API_XBOX360)
+
+float4 tex2Dproj(in sampler2D s, in float4 t) 
+{ 
+    float2 ti=t.xy / t.w;
+    return tex2D( s, ti);
+}
+
+float4 tex2Dproj(in sampler2D s, in float3 t) 
+{ 
+    float2 ti=t.xy / t.z;
+    return tex2D( s, ti);
+}
+
+
+#endif
+
+#if defined(VAR_COMPILER_HLSL) || defined (SHADER_TARGET_GLSL)
+#define FOGC FOG
+#endif
+
+// Use VFACE pixel shader input semantic in your shaders to get front-facing scalar value.
+#if defined(VAR_COMPILER_CG)
+#define VFACE FACE
+#endif
+#if defined(VAR_COMPILER_HLSL2GLSL)
+#define FACE VFACE
+#endif
+
+#if defined(SHADER_API_PSSL)
+#define SV_POSITION S_POSITION
+#elif !defined(SHADER_API_D3D11) && !defined(SHADER_API_D3D11_9X)
+#define SV_POSITION POSITION
+#endif
+
+
+#if (defined(SHADER_API_D3D9) || defined(SHADER_API_XBOX360) || defined(SHADER_API_PS3) || defined(SHADER_API_D3D11) || defined(SHADER_API_D3D11_9X) || defined(SHADER_API_PSP2) || defined(SHADER_API_PSSL)) && !defined(VAR_COMPILER_HLSLCC)
+#define VAR_ATTEN_CHANNEL r
+#else
+#define VAR_ATTEN_CHANNEL a
+#endif
+
+#if defined(SHADER_API_D3D9) || defined(SHADER_API_XBOX360) || defined(SHADER_API_PSP2)
+#define VAR_HALF_TEXEL_OFFSET
+#endif
+
+#if (defined(SHADER_API_D3D9) || defined(SHADER_API_XBOX360) || defined(SHADER_API_PS3) || defined(SHADER_API_D3D11) || defined(SHADER_API_D3D11_9X) || defined(SHADER_API_PSP2) || defined(SHADER_API_PSSL)) && !defined(VAR_COMPILER_HLSLCC)
+#define VAR_UV_STARTS_AT_TOP 1
+#endif
+
+#if (defined(SHADER_API_D3D9) || defined(SHADER_API_XBOX360) || defined(SHADER_API_PS3) || defined(SHADER_API_D3D11) || defined(SHADER_API_D3D11_9X)) && !defined(VAR_COMPILER_HLSLCC)
+#define VAR_NEAR_CLIP_VALUE (0.0)
+#else
+#define VAR_NEAR_CLIP_VALUE (-1.0)
+#endif
+
+
+#if defined(SHADER_API_D3D9)
+#define VAR_MIGHT_NOT_HAVE_DEPTH_TEXTURE
+#endif
+
+
+#if (defined(SHADER_API_OPENGL) && !defined(SHADER_TARGET_GLSL)) || defined(SHADER_API_PSP2)
+#define VAR_BUGGY_TEX2DPROJ4
+#define VAR_PROJ_COORD(a) (a).xyw
+#else
+#define VAR_PROJ_COORD(a) a
+#endif
+
+
+// Platforms which do not use cascaded/screenspace shadow maps: more or less "mobile" platforms
+#if defined(SHADER_API_GLES) || defined(SHADER_API_GLES3) || defined(SHADER_API_GLES31) || defined(SHADER_API_METAL) || defined(SHADER_API_D3D11_9X)
+#define VAR_NO_SCREENSPACE_SHADOWS
+#endif
+
+// Platforms which do not use RGBM lightmap compression, or DXT5nm normal map compression
+#if defined(SHADER_API_GLES) || defined(SHADER_API_GLES3) || defined(SHADER_API_GLES31) || defined(SHADER_API_METAL)
+#define VAR_NO_RGBM
+#define VAR_NO_DXT5nm
+#endif
+
+// Platforms which can support "framebuffer fetch" on some devices
+#if defined(SHADER_API_GLES) || defined(SHADER_API_GLES3) || defined(SHADER_API_GLES31)
+#define VAR_FRAMEBUFFER_FETCH_AVAILABLE
+#endif
+
+
+// On most platforms, use floating point render targets to store depth of point
+// light shadowmaps. However, on some others they either have issues, or aren't widely
+// supported; in which case fallback to encoding depth into RGBA channels.
+// Make sure this define matches GraphicsCaps.useRGBAForPointShadows.
+#if defined(SHADER_API_GLES) || defined(SHADER_API_PSP2) || defined(SHADER_API_XBOX360) || defined(SHADER_API_PS3)
+#define VAR_USE_RGBA_FOR_POINT_SHADOWS
+#endif
+
+
+#if defined(VAR_COMPILER_HLSL) || defined(VAR_COMPILER_HLSLCC)
+#define VAR_INITIALIZE_OUTPUT(type,name) name = (type)0;
+#else
+#define VAR_INITIALIZE_OUTPUT(type,name)
+#endif
+
+#if defined(SHADER_API_D3D11) || defined(VAR_COMPILER_HLSLCC)
+#define VAR_CAN_COMPILE_TESSELLATION 1
+#   define VAR_domain                   domain
+#   define VAR_partitioning         partitioning
+#   define VAR_outputtopology           outputtopology
+#   define VAR_patchconstantfunc        patchconstantfunc
+#   define VAR_outputcontrolpoints  outputcontrolpoints
+#elif defined(SHADER_API_PSSL)
+#   define VAR_CAN_COMPILE_TESSELLATION 1
+
+#   define SV_OutputControlPointID      S_OUTPUT_CONTROL_POINT_ID
+#   define SV_TessFactor                S_EDGE_TESS_FACTOR
+#   define SV_InsideTessFactor          S_INSIDE_TESS_FACTOR
+#   define SV_DomainLocation            S_DOMAIN_LOCATION
+
+#   define VAR_domain                   DOMAIN_PATCH_TYPE
+#   define VAR_partitioning         PARTITIONING_TYPE
+#   define VAR_outputtopology           OUTPUT_TOPOLOGY_TYPE
+#   define VAR_patchconstantfunc        PATCH_CONSTANT_FUNC
+#   define VAR_outputcontrolpoints  OUTPUT_CONTROL_POINTS
+
+#   define  domain                      DOMAIN_PATCH_TYPE
+#   define  partitioning                PARTITIONING_TYPE
+#   define  outputtopology              OUTPUT_TOPOLOGY_TYPE
+#   define  patchconstantfunc           PATCH_CONSTANT_FUNC
+#   define  outputcontrolpoints         OUTPUT_CONTROL_POINTS
+
+#   define  maxtessfactor               MAX_TESS_FACTOR
+#   define  instance                    INSTANCE
+#   define  numthreads                  NUM_THREADS
+#   define  patchsize                   PATCH_SIZE
+#   define  maxvertexcount              MAX_VERTEX_COUNT            
+#   define  earlydepthstencil           FORCE_EARLY_DEPTH_STENCIL
+
+#   define  GroupMemoryBarrierWithGroupSync ThreadGroupMemoryBarrierSync
+
+// geometry shader
+#   define TriangleStream               TriangleBuffer              
+#   define PointStream                  PointBuffer                 
+#   define LineStream                   LineBuffer                  
+#   define triangle                 Triangle                    
+#   define point                        Point                       
+#   define line                     Line                        
+#   define triangleadj                  AdjacentTriangle            
+#   define lineadj                      AdjacentLine
+
+// multimedia operations
+#define msad4                       msad
+
+#endif
+
+#define VAR_SAMPLE_1CHANNEL(x,y) tex2D(x,y).a
+#define VAR_ALPHA_CHANNEL a
+
+
+#endif
+
+#line 4 "MyShaderVariables.cginc"
+
+
+#if defined (DIRECTIONAL_COOKIE) || defined (DIRECTIONAL)
+#define USING_DIRECTIONAL_LIGHT
+#endif
+
+
+
+// ----------------------------------------------------------------------------
+
+CBUFFER_START(MyPerCamera)
+    uniform float4 _Time;
+    uniform float4 _SinTime;
+    uniform float4 _CosTime;
+    uniform float4 var_DeltaTime; // dt, 1/dt, smoothdt, 1/smoothdt
+
+    uniform float3 _WorldSpaceCameraPos;
+
+    // x = 1 or -1 (-1 if projection is flipped)
+    // y = near plane
+    // z = far plane
+    // w = 1/far plane
+    uniform float4 _ProjectionParams;
+
+    // x = width
+    // y = height
+    // z = 1 + 1.0/width
+    // w = 1 + 1.0/height
+    uniform float4 _ScreenParams;
+
+    uniform float4 _ZBufferParams;
+
+    // x = orthographic camera's width
+    // y = orthographic camera's height
+    // z = unused
+    // w = 1.0 if camera is ortho, 0.0 if perspective
+    uniform float4 var_OrthoParams;
+CBUFFER_END
+
+
+CBUFFER_START(MyPerCameraRare)
+    uniform float4 var_CameraWorldClipPlanes[6];
+
+    // Projection matrices of the camera. Note that this might be different from projection matrix
+    // that is set right now, e.g. while rendering shadows the matrices below are still the projection
+    // of original camera.
+    uniform float4x4 var_CameraProjection;
+    uniform float4x4 var_CameraInvProjection;
+CBUFFER_END
+
+
+
+// ----------------------------------------------------------------------------
+
+CBUFFER_START(MyLighting)
+
+    #ifdef USING_DIRECTIONAL_LIGHT
+    uniform half4 _WorldSpaceLightPos0;
+    #else
+    uniform float4 _WorldSpaceLightPos0;
+    #endif
+
+    uniform float4 _LightPositionRange; // xyz = pos, w = 1/range
+
+    float4 var_4LightPosX0;
+    float4 var_4LightPosY0;
+    float4 var_4LightPosZ0;
+    half4 var_4LightAtten0;
+
+    half4 var_LightColor[8];
+    float4 var_LightPosition[8];
+    // x = -1
+    // y = 1
+    // z = quadratic attenuation
+    // w = range^2
+    half4 var_LightAtten[8];
+    float4 var_SpotDirection[8];
+
+    // SH lighting environment
+    half4 var_SHAr;
+    half4 var_SHAg;
+    half4 var_SHAb;
+    half4 var_SHBr;
+    half4 var_SHBg;
+    half4 var_SHBb;
+    half4 var_SHC;
+CBUFFER_END
+
+CBUFFER_START(MyLightingOld)
+    half3 var_LightColor0, var_LightColor1, var_LightColor2, var_LightColor3; // keeping those only for any existing shaders; remove in 4.0
+CBUFFER_END
+
+
+// ----------------------------------------------------------------------------
+
+CBUFFER_START(MyShadows)
+    float4 var_ShadowSplitSpheres[4];
+    float4 var_ShadowSplitSqRadii;
+    float4 var_LightShadowBias;
+    float4 _LightSplitsNear;
+    float4 _LightSplitsFar;
+    float4x4 var_World2Shadow[4];
+    half4 _LightShadowData;
+    float4 var_ShadowFadeCenterAndType;
+CBUFFER_END
+
+#define _World2Shadow var_World2Shadow[0]
+#define _World2Shadow1 var_World2Shadow[1]
+#define _World2Shadow2 var_World2Shadow[2]
+#define _World2Shadow3 var_World2Shadow[3]
+
+
+// ----------------------------------------------------------------------------
+
+CBUFFER_START(MyPerDraw)
+    float4x4 glstate_matrix_mvp;
+    float4x4 glstate_matrix_modelview0;
+    float4x4 glstate_matrix_invtrans_modelview0;
+    #define VAR_MATRIX_MVP glstate_matrix_mvp
+    #define VAR_MATRIX_MV glstate_matrix_modelview0
+    #define VAR_MATRIX_IT_MV glstate_matrix_invtrans_modelview0
+
+    uniform float4x4 _Object2World;
+    uniform float4x4 _World2Object;
+    uniform float4 var_LODFade; // x is the fade value ranging within [0,1]. y is x quantized into 16 levels
+CBUFFER_END
+
+
+
+
+CBUFFER_START(MyPerDrawRare)
+    float4x4 glstate_matrix_transpose_modelview0;
+    #define VAR_MATRIX_T_MV glstate_matrix_transpose_modelview0
+CBUFFER_END
+
+
+
+// ----------------------------------------------------------------------------
+
+CBUFFER_START(MyPerFrame)
+
+    float4x4 glstate_matrix_projection;
+    float4   glstate_lightmodel_ambient;
+    #define VAR_MATRIX_P glstate_matrix_projection
+    #define VAR_LIGHTMODEL_AMBIENT glstate_lightmodel_ambient
+
+    float4x4 var_MatrixV;
+    float4x4 var_MatrixVP;
+    #define VAR_MATRIX_V var_MatrixV
+    #define VAR_MATRIX_VP var_MatrixVP
+
+    fixed4 var_AmbientSky;
+    fixed4 var_AmbientGround;
+
+CBUFFER_END
+
+
+// ----------------------------------------------------------------------------
+
+CBUFFER_START(MyFog)
+    uniform fixed4 var_FogColor;
+    // x = density / sqrt(ln(2)), useful for Exp2 mode
+    // y = density / ln(2), useful for Exp mode
+    // z = -1/(end-start), useful for Linear mode
+    // w = end/(end-start), useful for Linear mode
+    uniform float4 var_FogParams;
+CBUFFER_END
+
+
+// ----------------------------------------------------------------------------
+//  Deprecated
+
+// There used to be fixed function-like texture matrices, defined as VAR_MATRIX_TEXTUREn. These are gone now; and are just defined to identity.
+#define VAR_MATRIX_TEXTURE0 float4x4(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1)
+#define VAR_MATRIX_TEXTURE1 float4x4(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1)
+#define VAR_MATRIX_TEXTURE2 float4x4(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1)
+#define VAR_MATRIX_TEXTURE3 float4x4(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1)
+
+
+#endif
+
+#line 4 "MyCG.cginc"
+
+
+
+// Deprecated! Use SAMPLE_DEPTH_TEXTURE & SAMPLE_DEPTH_TEXTURE_PROJ instead!
+#if defined(SHADER_API_PS3)
+#   define VAR_SAMPLE_DEPTH(value) (dot((value).wxy, float3(0.996093809371817670572857294849, 0.0038909914428586627756752238080039, 1.5199185323666651467481343000015e-5)))
+#elif defined(SHADER_API_PSP2)
+#   define VAR_SAMPLE_DEPTH(value) (value).r
+#else
+#   define VAR_SAMPLE_DEPTH(value) (value).r
+#endif
+
+
+#if defined(SHADER_API_PS3)
+#   define SAMPLE_DEPTH_TEXTURE(sampler, uv) (dot((tex2D(sampler, uv)).wxy, float3(0.996093809371817670572857294849, 0.0038909914428586627756752238080039, 1.5199185323666651467481343000015e-5)))
+#elif defined(SHADER_API_PSP2) && !defined(SHADER_API_PSM)
+#   define SAMPLE_DEPTH_TEXTURE(sampler, uv) (f1tex2D<float>(sampler, uv))
+#else
+#   define SAMPLE_DEPTH_TEXTURE(sampler, uv) (tex2D(sampler, uv).r)
+#endif
+
+#if defined(SHADER_API_PS3)
+#   define SAMPLE_DEPTH_TEXTURE_PROJ(sampler, uv) (dot((tex2Dproj(sampler, uv)).wxy, float3(0.996093809371817670572857294849, 0.0038909914428586627756752238080039, 1.5199185323666651467481343000015e-5)))
+#elif defined(SHADER_API_PSP2) && !defined(SHADER_API_PSM)
+#   define SAMPLE_DEPTH_TEXTURE_PROJ(sampler, uv) (f1tex2Dproj<float>(sampler, uv))
+#else
+#   define SAMPLE_DEPTH_TEXTURE_PROJ(sampler, uv) (tex2Dproj(sampler, uv).r)
+#endif
+
+#if defined(SHADER_API_PSP2) && !defined(SHADER_API_PSM)
+#define SAMPLE_DEPTH_TEXTURE_LOD(sampler, uv) (tex2Dlod<float>(sampler, uv))
+#else
+#define SAMPLE_DEPTH_TEXTURE_LOD(sampler, uv) (tex2Dlod(sampler, uv).r)
+#endif
+
+uniform fixed4 var_ColorSpaceGrey;
+uniform fixed4 var_ColorSpaceDouble;
+
+// -------------------------------------------------------------------
+//  helper functions and macros used in many standard shaders
+
+
+#if defined (DIRECTIONAL) || defined (DIRECTIONAL_COOKIE) || defined (POINT) || defined (SPOT) || defined (POINT_NOATT) || defined (POINT_COOKIE)
+#define USING_LIGHT_MULTI_COMPILE
+#endif
+
+#define SCALED_NORMAL v.normal
+
+struct appdata_base {
+    float4 vertex : POSITION;
+    float3 normal : NORMAL;
+    float4 texcoord : TEXCOORD0;
+};
+
+struct appdata_tan {
+    float4 vertex : POSITION;
+    float4 tangent : TANGENT;
+    float3 normal : NORMAL;
+    float4 texcoord : TEXCOORD0;
+};
+
+struct appdata_full {
+    float4 vertex : POSITION;
+    float4 tangent : TANGENT;
+    float3 normal : NORMAL;
+    float4 texcoord : TEXCOORD0;
+    float4 texcoord1 : TEXCOORD1;
+    float4 texcoord2 : TEXCOORD2;
+    float4 texcoord3 : TEXCOORD3;
+#if defined(SHADER_API_XBOX360)
+    half4 texcoord4 : TEXCOORD4;
+    half4 texcoord5 : TEXCOORD5;
+#endif
+    fixed4 color : COLOR;
+};
+
+// Transforms direction from object to world space
+inline float3 MyObjectToWorldDir( in float3 dir )
+{
+    return normalize(mul((float3x3)_Object2World, dir));
+}
+
+// Transforms direction from world to object space
+inline float3 MyWorldToObjectDir( in float3 dir )
+{
+    return normalize(mul((float3x3)_World2Object, dir));
+}
+
+// Transforms normal from object to world space
+inline float3 MyObjectToWorldNorm( in float3 norm )
+{
+    // Multiply by transposed inverse matrix, actually using transpose() generates badly optimized code
+    return normalize(_World2Object[0].xyz * norm.x + _World2Object[1].xyz * norm.y + _World2Object[2].xyz * norm.z);
+}
+
+// Computes world space light direction, from world space position
+inline float3 MyWorldSpaceLightDir( in float3 worldPos )
+{
+    #ifndef USING_LIGHT_MULTI_COMPILE
+        return _WorldSpaceLightPos0.xyz - worldPos * _WorldSpaceLightPos0.w;
+    #else
+        #ifndef USING_DIRECTIONAL_LIGHT
+        return _WorldSpaceLightPos0.xyz - worldPos;
+        #else
+        return _WorldSpaceLightPos0.xyz;
+        #endif
+    #endif
+}
+
+// Computes world space light direction, from object space position
+// *Legacy* Please use MyWorldSpaceLightDir instead
+inline float3 WorldSpaceLightDir( in float4 localPos )
+{
+    float3 worldPos = mul(_Object2World, localPos).xyz;
+    return MyWorldSpaceLightDir(worldPos);
+}
+
+// Computes object space light direction
+inline float3 ObjSpaceLightDir( in float4 v )
+{
+    float3 objSpaceLightPos = mul(_World2Object, _WorldSpaceLightPos0).xyz;
+    #ifndef USING_LIGHT_MULTI_COMPILE
+        return objSpaceLightPos.xyz - v.xyz * _WorldSpaceLightPos0.w;
+    #else
+        #ifndef USING_DIRECTIONAL_LIGHT
+        return objSpaceLightPos.xyz - v.xyz;
+        #else
+        return objSpaceLightPos.xyz;
+        #endif
+    #endif
+}
+
+// Computes world space view direction, from object space position
+inline float3 MyWorldSpaceViewDir( in float3 worldPos )
+{
+    return _WorldSpaceCameraPos.xyz - worldPos;
+}
+
+// Computes world space view direction, from object space position
+// *Legacy* Please use MyWorldSpaceViewDir instead
+inline float3 WorldSpaceViewDir( in float4 localPos )
+{
+    float3 worldPos = mul(_Object2World, localPos).xyz;
+    return MyWorldSpaceViewDir(worldPos);
+}
+
+// Computes object space view direction
+inline float3 ObjSpaceViewDir( in float4 v )
+{
+    float3 objSpaceCameraPos = mul(_World2Object, float4(_WorldSpaceCameraPos.xyz, 1)).xyz;
+    return objSpaceCameraPos - v.xyz;
+}
+
+// Declares 3x3 matrix 'rotation', filled with tangent space basis
+#define TANGENT_SPACE_ROTATION \
+    float3 binormal = cross( normalize(v.normal), normalize(v.tangent.xyz) ) * v.tangent.w; \
+    float3x3 rotation = float3x3( v.tangent.xyz, binormal, v.normal )
+
+
+
+
+float3 Shade4PointLights (
+    float4 lightPosX, float4 lightPosY, float4 lightPosZ,
+    float3 lightColor0, float3 lightColor1, float3 lightColor2, float3 lightColor3,
+    float4 lightAttenSq,
+    float3 pos, float3 normal)
+{
+    // to light vectors
+    float4 toLightX = lightPosX - pos.x;
+    float4 toLightY = lightPosY - pos.y;
+    float4 toLightZ = lightPosZ - pos.z;
+    // squared lengths
+    float4 lengthSq = 0;
+    lengthSq += toLightX * toLightX;
+    lengthSq += toLightY * toLightY;
+    lengthSq += toLightZ * toLightZ;
+    // NdotL
+    float4 ndotl = 0;
+    ndotl += toLightX * normal.x;
+    ndotl += toLightY * normal.y;
+    ndotl += toLightZ * normal.z;
+    // correct NdotL
+    float4 corr = rsqrt(lengthSq);
+    ndotl = max (float4(0,0,0,0), ndotl * corr);
+    // attenuation
+    float4 atten = 1.0 / (1.0 + lengthSq * lightAttenSq);
+    float4 diff = ndotl * atten;
+    // final color
+    float3 col = 0;
+    col += lightColor0 * diff.x;
+    col += lightColor1 * diff.y;
+    col += lightColor2 * diff.z;
+    col += lightColor3 * diff.w;
+    return col;
+}
+
+
+float3 ShadeVertexLights (float4 vertex, float3 normal)
+{
+    float3 viewpos = mul (VAR_MATRIX_MV, vertex).xyz;
+    float3 viewN = normalize (mul ((float3x3)VAR_MATRIX_IT_MV, normal));
+    float3 lightColor = VAR_LIGHTMODEL_AMBIENT.xyz;
+    for (int i = 0; i < 4; i++) {
+        float3 toLight = var_LightPosition[i].xyz - viewpos.xyz * var_LightPosition[i].w;
+        float lengthSq = dot(toLight, toLight);
+        float atten = 1.0 / (1.0 + lengthSq * var_LightAtten[i].z);
+        float diff = max (0, dot (viewN, normalize(toLight)));
+        lightColor += var_LightColor[i].rgb * (diff * atten);
+    }
+    return lightColor;
+}
+
+
+// normal should be normalized, w=1.0
+half3 ShadeSH9 (half4 normal)
+{
+    half3 x1, x2, x3;
+
+    // Linear + constant polynomial terms
+    x1.r = dot(var_SHAr,normal);
+    x1.g = dot(var_SHAg,normal);
+    x1.b = dot(var_SHAb,normal);
+
+    // 4 of the quadratic polynomials
+    half4 vB = normal.xyzz * normal.yzzx;
+    x2.r = dot(var_SHBr,vB);
+    x2.g = dot(var_SHBg,vB);
+    x2.b = dot(var_SHBb,vB);
+
+    // Final quadratic polynomial
+    float vC = normal.x*normal.x - normal.y*normal.y;
+    x3 = var_SHC.rgb * vC;
+    return x1 + x2 + x3;
+} 
+
+
+// Transforms 2D UV by scale/bias property
+#define TRANSFORM_TEX(tex,name) (tex.xy * name##_ST.xy + name##_ST.zw)
+
+// Deprecated. Used to transform 4D UV by a fixed function texture matrix. Now just returns the passed UV.
+#define TRANSFORM_UV(idx) v.texcoord.xy
+
+
+
+struct v2f_vertex_lit {
+    float2 uv   : TEXCOORD0;
+    fixed4 diff : COLOR0;
+    fixed4 spec : COLOR1;
+};  
+
+inline fixed4 VertexLight( v2f_vertex_lit i, sampler2D mainTex )
+{
+    fixed4 texcol = tex2D( mainTex, i.uv );
+    fixed4 c;
+    c.xyz = ( texcol.xyz * i.diff.xyz + i.spec.xyz * texcol.a ) * 2;
+    c.w = texcol.w * i.diff.w;
+    return c;
+}
+
+
+// Calculates UV offset for parallax bump mapping
+inline float2 ParallaxOffset( half h, half height, half3 viewDir )
+{
+    h = h * height - height/2.0;
+    float3 v = normalize(viewDir);
+    v.z += 0.42;
+    return h * (v.xy / v.z);
+}
+
+
+// Converts color to luminance (grayscale)
+inline fixed Luminance( fixed3 c )
+{
+    return dot( c, fixed3(0.22, 0.707, 0.071) );
+}
+
+// Decodes HDR textures
+// handles dLDR, RGBM formats
+inline half3 DecodeHDR (half4 data, half4 decodeInstructions)
+{
+    // GLES2.0 support only Gamma mode, we can skip exponent
+    // SM2.0 might be used in combination with SM3.0, so we can NOT skip exponent
+    #if (defined(SHADER_API_GLES) && defined(SHADER_API_MOBILE))
+        return (decodeInstructions.x * data.a) * data.rgb;
+    #else
+        return (decodeInstructions.x * pow(data.a, decodeInstructions.y)) * data.rgb;
+    #endif
+}
+
+// Decodes lightmaps:
+// - doubleLDR encoded on GLES
+// - RGBM encoded with range [0;8] on other platforms using surface shaders
+inline fixed3 DecodeLightmap( fixed4 color )
+{
+#if defined(VAR_NO_RGBM)
+    return 2.0 * color.rgb;
+#else
+    // potentially faster to do the scalar multiplication
+    // in parenthesis for scalar GPUs
+    return (8.0 * color.a) * color.rgb;
+#endif
+}
+
+// Decode LRB lightmaps, range [0;16]:
+// - alpha: the low 8 bits of the 16-bit luminance value
+// - red:   the high 8 bits of the 16-bit luminance value
+// - green: scaled red
+// - blue:  scaled blue
+inline half3 DecodeLightmapLRB( fixed4 value )
+{   
+    half3 color         = half3 (value.g, 1.0f - value.g - value.b, value.b);
+    half intensity      = (value.r + value.a / 256.0f) * 16.0f;
+    half3 irradiance    = color * intensity;
+
+    return irradiance;
+}
+
+
+// Helpers used in image effects. Most image effects use the same
+// minimal vertex shader (vert_img).
+
+struct appdata_img {
+    float4 vertex : POSITION;
+    half2 texcoord : TEXCOORD0;
+};
+struct v2f_img {
+    float4 pos : SV_POSITION;
+    half2 uv : TEXCOORD0;
+};
+
+float2 MultiplyUV (float4x4 mat, float2 inUV) {
+    float4 temp = float4 (inUV.x, inUV.y, 0, 0);
+    temp = mul (mat, temp);
+    return temp.xy;
+}
+
+v2f_img vert_img( appdata_img v )
+{
+    v2f_img o;
+    o.pos = mul (VAR_MATRIX_MVP, v.vertex);
+    o.uv = v.texcoord;
+    return o;
+}
+
+
+// Encoding/decoding [0..1) floats into 8 bit/channel RGBA. Note that 1.0 will not be encoded properly.
+inline float4 EncodeFloatRGBA( float v )
+{
+    float4 kEncodeMul = float4(1.0, 255.0, 65025.0, 16581375.0);
+    float kEncodeBit = 1.0/255.0;
+    float4 enc = kEncodeMul * v;
+    enc = frac (enc);
+    enc -= enc.yzww * kEncodeBit;
+    return enc;
+}
+inline float DecodeFloatRGBA( float4 enc )
+{
+    float4 kDecodeDot = float4(1.0, 1/255.0, 1/65025.0, 1/16581375.0);
+    return dot( enc, kDecodeDot );
+}
+
+// Encoding/decoding [0..1) floats into 8 bit/channel RG. Note that 1.0 will not be encoded properly.
+inline float2 EncodeFloatRG( float v )
+{
+    float2 kEncodeMul = float2(1.0, 255.0);
+    float kEncodeBit = 1.0/255.0;
+    float2 enc = kEncodeMul * v;
+    enc = frac (enc);
+    enc.x -= enc.y * kEncodeBit;
+    return enc;
+}
+inline float DecodeFloatRG( float2 enc )
+{
+    float2 kDecodeDot = float2(1.0, 1/255.0);
+    return dot( enc, kDecodeDot );
+}
+
+
+// Encoding/decoding view space normals into 2D 0..1 vector
+inline float2 EncodeViewNormalStereo( float3 n )
+{
+    float kScale = 1.7777;
+    float2 enc;
+    enc = n.xy / (n.z+1);
+    enc /= kScale;
+    enc = enc*0.5+0.5;
+    return enc;
+}
+inline float3 DecodeViewNormalStereo( float4 enc4 )
+{
+    float kScale = 1.7777;
+    float3 nn = enc4.xyz*float3(2*kScale,2*kScale,0) + float3(-kScale,-kScale,1);
+    float g = 2.0 / dot(nn.xyz,nn.xyz);
+    float3 n;
+    n.xy = g*nn.xy;
+    n.z = g-1;
+    return n;
+}
+
+inline float4 EncodeDepthNormal( float depth, float3 normal )
+{
+    float4 enc;
+    enc.xy = EncodeViewNormalStereo (normal);
+    enc.zw = EncodeFloatRG (depth);
+    return enc;
+}
+
+inline void DecodeDepthNormal( float4 enc, out float depth, out float3 normal )
+{
+    depth = DecodeFloatRG (enc.zw);
+    normal = DecodeViewNormalStereo (enc);
+}
+
+inline fixed3 UnpackNormalDXT5nm (fixed4 packednormal)
+{
+    fixed3 normal;
+    normal.xy = packednormal.wy * 2 - 1;
+    normal.z = sqrt(1 - saturate(dot(normal.xy, normal.xy)));
+    return normal;
+}
+
+inline fixed3 UnpackNormal(fixed4 packednormal)
+{
+#if defined(VAR_NO_DXT5nm)
+    return packednormal.xyz * 2 - 1;
+#else
+    return UnpackNormalDXT5nm(packednormal);
+#endif
+}
+
+
+// Z buffer to linear 0..1 depth (0 at eye, 1 at far plane)
+inline float Linear01Depth( float z )
+{
+    return 1.0 / (_ZBufferParams.x * z + _ZBufferParams.y);
+}
+// Z buffer to linear depth
+inline float LinearEyeDepth( float z )
+{
+    return 1.0 / (_ZBufferParams.z * z + _ZBufferParams.w);
+}
+
+
+// Depth render texture helpers
+#if defined(VAR_MIGHT_NOT_HAVE_DEPTH_TEXTURE)
+    #define VAR_TRANSFER_DEPTH(oo) oo = o.pos.zw
+    #define VAR_OUTPUT_DEPTH(i) return i.x/i.y
+#else
+    #define VAR_TRANSFER_DEPTH(oo) 
+    #define VAR_OUTPUT_DEPTH(i) return 0
+#endif
+#define DECODE_EYEDEPTH(i) LinearEyeDepth(i)
+#define COMPUTE_EYEDEPTH(o) o = -mul( VAR_MATRIX_MV, v.vertex ).z
+#define COMPUTE_DEPTH_01 -(mul( VAR_MATRIX_MV, v.vertex ).z * _ProjectionParams.w)
+#define COMPUTE_VIEW_NORMAL normalize(mul((float3x3)VAR_MATRIX_IT_MV, v.normal))
+
+
+// Projected screen position helpers
+#define V2F_SCREEN_TYPE float4
+inline float4 ComputeScreenPos (float4 pos) {
+    float4 o = pos * 0.5f;
+    #if defined(VAR_HALF_TEXEL_OFFSET)
+    o.xy = float2(o.x, o.y*_ProjectionParams.x) + o.w * _ScreenParams.zw;
+    #else
+    o.xy = float2(o.x, o.y*_ProjectionParams.x) + o.w;
+    #endif
+
+    o.zw = pos.zw;
+    return o;
+}
+
+inline float4 ComputeGrabScreenPos (float4 pos) {
+    #if VAR_UV_STARTS_AT_TOP
+    float scale = -1.0;
+    #else
+    float scale = 1.0;
+    #endif
+    float4 o = pos * 0.5f;
+    o.xy = float2(o.x, o.y*scale) + o.w;
+    o.zw = pos.zw;
+    return o;
+}
+
+// snaps post-transformed position to screen pixels
+inline float4 MyPixelSnap (float4 pos)
+{
+    float2 hpc = _ScreenParams.xy * 0.5f;
+    #ifdef VAR_HALF_TEXEL_OFFSET
+    float2 hpcO = float2(-0.5f, 0.5f);
+    #else
+    float2 hpcO = float2(0,0);
+    #endif  
+    float2 pixelPos = round ((pos.xy / pos.w) * hpc);
+    pos.xy = (pixelPos + hpcO) / hpc * pos.w;
+    return pos;
+}
+
+inline float2 TransformViewToProjection (float2 v) {
+    return mul((float2x2)VAR_MATRIX_P, v);
+}
+
+inline float3 TransformViewToProjection (float3 v) {
+    return mul((float3x3)VAR_MATRIX_P, v);
+}
+
+// Shadow caster pass helpers
+
+float4 MyEncodeCubeShadowDepth (float z)
+{
+    #ifdef VAR_USE_RGBA_FOR_POINT_SHADOWS
+    return EncodeFloatRGBA (min(z, 0.999));
+    #else
+    return z;
+    #endif
+}
+
+float MyDecodeCubeShadowDepth (float4 vals)
+{
+    #ifdef VAR_USE_RGBA_FOR_POINT_SHADOWS
+    return DecodeFloatRGBA (vals);
+    #else
+    return vals.r;
+    #endif
+}
+
+
+#ifdef SHADOWS_CUBE
+    #define V2F_SHADOW_CASTER float4 pos : SV_POSITION; float3 vec : TEXCOORD0
+    #define TRANSFER_SHADOW_CASTER(o) o.vec = mul( _Object2World, v.vertex ).xyz - _LightPositionRange.xyz; o.pos = mul(VAR_MATRIX_MVP, v.vertex);
+    #define SHADOW_CASTER_FRAGMENT(i) return MyEncodeCubeShadowDepth (length(i.vec) * _LightPositionRange.w);
+#else
+    #if defined(VAR_MIGHT_NOT_HAVE_DEPTH_TEXTURE)
+    #define V2F_SHADOW_CASTER float4 pos : SV_POSITION; float4 hpos : TEXCOORD0
+    #define TRANSFER_SHADOW_CASTER(o) \
+        o.pos = mul(VAR_MATRIX_MVP, v.vertex); \
+        o.pos.z += saturate(var_LightShadowBias.x/o.pos.w); \
+        float clamped = max(o.pos.z, o.pos.w*VAR_NEAR_CLIP_VALUE); \
+        o.pos.z = lerp(o.pos.z, clamped, var_LightShadowBias.y); \
+        o.hpos = o.pos;
+    #else
+    #define V2F_SHADOW_CASTER float4 pos : SV_POSITION
+    #define TRANSFER_SHADOW_CASTER(o) \
+        o.pos = mul(VAR_MATRIX_MVP, v.vertex); \
+        o.pos.z += saturate(var_LightShadowBias.x/o.pos.w); \
+        float clamped = max(o.pos.z, o.pos.w*VAR_NEAR_CLIP_VALUE); \
+        o.pos.z = lerp(o.pos.z, clamped, var_LightShadowBias.y);
+    #endif
+    #define SHADOW_CASTER_FRAGMENT(i) VAR_OUTPUT_DEPTH(i.hpos.zw);
+#endif
+
+
+// ------------------------------------------------------------------
+//  Fog helpers
+//
+//  multi_compile_fog Will compile fog variants.
+//  VAR_FOG_COORDS(texcoordindex) Declares the fog data interpolator.
+//  VAR_TRANSFER_FOG(outputStruct,clipspacePos) Outputs fog data from the vertex shader.
+//  VAR_APPLY_FOG(fogData,col) Applies fog to color "col". Automatically applies black fog when in forward-additive pass.
+//  Can also use VAR_APPLY_FOG_COLOR to supply your own fog color.
+
+// In case someone by accident tries to compile fog code in one of the g-buffer or shadow passes:
+// treat it as fog is off.
+#if defined(VAR_PASS_PREPASSBASE) || defined(VAR_PASS_DEFERRED) || defined(VAR_PASS_SHADOWCASTER)
+#undef FOG_LINEAR
+#undef FOG_EXP
+#undef FOG_EXP2
+#endif
+
+#if defined(FOG_LINEAR) || defined(FOG_EXP) || defined(FOG_EXP2)
+#define VAR_FOG_COORDS(idx) float fogCoord : TEXCOORD##idx;
+#define VAR_TRANSFER_FOG(o,outpos) o.fogCoord = (outpos).z
+#else
+#define VAR_FOG_COORDS(idx)
+#define VAR_TRANSFER_FOG(o,outpos)
+#endif
+
+#define VAR_FOG_LERP_COLOR(col,fogCol,fogFac) col.rgb = lerp((fogCol).rgb, (col).rgb, saturate(fogFac))
+
+
+#if defined(FOG_LINEAR)
+    // factor = (end-z)/(end-start) = z * (-1/(end-start)) + (end/(end-start))
+    #define VAR_APPLY_FOG_COLOR(coord,col,fogCol) float fogFac = (coord) * var_FogParams.z + var_FogParams.w; VAR_FOG_LERP_COLOR(col,fogCol,fogFac)
+#elif defined(FOG_EXP)
+    // factor = exp(-density*z)
+    #define VAR_APPLY_FOG_COLOR(coord,col,fogCol) float fogFac = var_FogParams.y * (coord); fogFac = exp2(-fogFac); VAR_FOG_LERP_COLOR(col,fogCol,fogFac)
+#elif defined(FOG_EXP2)
+    // factor = exp(-(density*z)^2)
+    #define VAR_APPLY_FOG_COLOR(coord,col,fogCol) float fogFac = var_FogParams.x * (coord); fogFac = exp2(-fogFac*fogFac); VAR_FOG_LERP_COLOR(col,fogCol,fogFac)
+#else
+    #define VAR_APPLY_FOG_COLOR(coord,col,fogCol)
+#endif
+
+#ifdef VAR_PASS_FORWARDADD
+    #define VAR_APPLY_FOG(coord,col) VAR_APPLY_FOG_COLOR(coord,col,fixed4(0,0,0,0))
+#else
+    #define VAR_APPLY_FOG(coord,col) VAR_APPLY_FOG_COLOR(coord,col,var_FogColor)
+#endif
+
+
+// ------------------------------------------------------------------
+//  Deprecated things: these aren't used; kept here
+//  just so that various existing shaders still compile, more or less.
+
+
+// Note: deprecated shadow collector pass helpers
+#ifdef SHADOW_COLLECTOR_PASS
+
+#if !defined(SHADOWMAPSAMPLER_DEFINED)
+VAR_DECLARE_SHADOWMAP(_ShadowMapTexture);
+#endif
+
+// Note: deprecated
+#define V2F_SHADOW_COLLECTOR float4 pos : SV_POSITION; float3 _ShadowCoord0 : TEXCOORD0; float3 _ShadowCoord1 : TEXCOORD1; float3 _ShadowCoord2 : TEXCOORD2; float3 _ShadowCoord3 : TEXCOORD3; float4 _WorldPosViewZ : TEXCOORD4
+#define TRANSFER_SHADOW_COLLECTOR(o)    \
+    o.pos = mul(VAR_MATRIX_MVP, v.vertex); \
+    float4 wpos = mul(_Object2World, v.vertex); \
+    o._WorldPosViewZ.xyz = wpos; \
+    o._WorldPosViewZ.w = -mul( VAR_MATRIX_MV, v.vertex ).z; \
+    o._ShadowCoord0 = mul(var_World2Shadow[0], wpos).xyz; \
+    o._ShadowCoord1 = mul(var_World2Shadow[1], wpos).xyz; \
+    o._ShadowCoord2 = mul(var_World2Shadow[2], wpos).xyz; \
+    o._ShadowCoord3 = mul(var_World2Shadow[3], wpos).xyz;
+
+// Note: deprecated
+#if defined (SHADOWS_NATIVE)
+    #define SAMPLE_SHADOW_COLLECTOR_SHADOW(coord) \
+    half shadow = VAR_SAMPLE_SHADOW(_ShadowMapTexture,coord); \
+    shadow = _LightShadowData.r + shadow * (1-_LightShadowData.r);
+#else
+    #define SAMPLE_SHADOW_COLLECTOR_SHADOW(coord) \
+    float shadow = SAMPLE_DEPTH_TEXTURE(_ShadowMapTexture, coord.xy ) < coord.z ? _LightShadowData.r : 1.0;
+#endif
+
+// Note: deprecated
+#define COMPUTE_SHADOW_COLLECTOR_SHADOW(i, weights, shadowFade) \
+    float4 coord = float4(i._ShadowCoord0 * weights[0] + i._ShadowCoord1 * weights[1] + i._ShadowCoord2 * weights[2] + i._ShadowCoord3 * weights[3], 1); \
+    SAMPLE_SHADOW_COLLECTOR_SHADOW(coord) \
+    float4 res; \
+    res.x = saturate(shadow + shadowFade); \
+    res.y = 1.0; \
+    res.zw = EncodeFloatRG (1 - i._WorldPosViewZ.w * _ProjectionParams.w); \
+    return res; 
+
+// Note: deprecated
+#if defined (SHADOWS_SPLIT_SPHERES)
+#define SHADOW_COLLECTOR_FRAGMENT(i) \
+    float3 fromCenter0 = i._WorldPosViewZ.xyz - var_ShadowSplitSpheres[0].xyz; \
+    float3 fromCenter1 = i._WorldPosViewZ.xyz - var_ShadowSplitSpheres[1].xyz; \
+    float3 fromCenter2 = i._WorldPosViewZ.xyz - var_ShadowSplitSpheres[2].xyz; \
+    float3 fromCenter3 = i._WorldPosViewZ.xyz - var_ShadowSplitSpheres[3].xyz; \
+    float4 distances2 = float4(dot(fromCenter0,fromCenter0), dot(fromCenter1,fromCenter1), dot(fromCenter2,fromCenter2), dot(fromCenter3,fromCenter3)); \
+    float4 cascadeWeights = float4(distances2 < var_ShadowSplitSqRadii); \
+    cascadeWeights.yzw = saturate(cascadeWeights.yzw - cascadeWeights.xyz); \
+    float sphereDist = distance(i._WorldPosViewZ.xyz, var_ShadowFadeCenterAndType.xyz); \
+    float shadowFade = saturate(sphereDist * _LightShadowData.z + _LightShadowData.w); \
+    COMPUTE_SHADOW_COLLECTOR_SHADOW(i, cascadeWeights, shadowFade)
+#else
+#define SHADOW_COLLECTOR_FRAGMENT(i) \
+    float4 viewZ = i._WorldPosViewZ.w; \
+    float4 zNear = float4( viewZ >= _LightSplitsNear ); \
+    float4 zFar = float4( viewZ < _LightSplitsFar ); \
+    float4 cascadeWeights = zNear * zFar; \
+    float shadowFade = saturate(i._WorldPosViewZ.w * _LightShadowData.z + _LightShadowData.w); \
+    COMPUTE_SHADOW_COLLECTOR_SHADOW(i, cascadeWeights, shadowFade)
+#endif
+
+#endif // #ifdef SHADOW_COLLECTOR_PASS
+
+
+#endif // VAR_CG_INCLUDED
+
+#line 23 ""
+
+
+float _TessEdge;
+float _Displacement;
+
+
+//=================================================================================================================================
+// Buffers, Textures and Samplers
+//=================================================================================================================================
+
+Texture2D _MainTex;
+SamplerState    sampler_MainTex;
+Texture2D _DispTex;
+SamplerState    sampler_DispTex;
+
+//=================================================================================================================================
+// Shader structures
+//=================================================================================================================================
+
+
+struct VS_RenderSceneInput
+{
+    float3 vertex : POSITION;
+    float3 normal : NORMAL;
+    float2 texcoord : TEXCOORD0;
+};
+
+struct HS_Input
+{
+    float4 f4Position   : POS;
+    float3 f3Normal     : NORMAL;
+    float2 f2TexCoord   : TEXCOORD;
+};
+
+struct HS_ConstantOutput
+{
+    // Tess factor for the FF HW block
+    float fTessFactor[3]    : SV_TessFactor;
+    float fInsideTessFactor : SV_InsideTessFactor;
+
+    // Geometry cubic generated control points
+    float3 f3B210    : POS3;
+    float3 f3B120    : POS4;
+    float3 f3B021    : POS5;
+    float3 f3B012    : POS6;
+    float3 f3B102    : POS7;
+    float3 f3B201    : POS8;
+    float3 f3B111    : CENTER;
+
+    // Normal quadratic generated control points
+    float3 f3N110    : NORMAL3;
+    float3 f3N011    : NORMAL4;
+    float3 f3N101    : NORMAL5;
+};
+
+struct HS_ControlPointOutput
+{
+    float3    f3Position    : POS;
+    float3    f3Normal      : NORMAL;
+    float2    f2TexCoord    : TEXCOORD;
+};
+
+struct DS_Output
+{
+    float4 f4Position   : SV_Position;
+    float2 f2TexCoord   : TEXCOORD0;
+    float4 f4Diffuse    : COLOR0;
+};
+
+struct PS_RenderSceneInput
+{
+    float4 f4Position   : SV_Position;
+    float2 f2TexCoord   : TEXCOORD0;
+    float4 f4Diffuse    : COLOR0;
+};
+
+struct PS_RenderOutput
+{
+    float4 f4Color      : SV_Target0;
+};
+
+PS_RenderSceneInput VS_RenderScene( VS_RenderSceneInput I )
+{
+    PS_RenderSceneInput O;
+
+    O.f4Position = mul (VAR_MATRIX_MVP, float4(I.vertex, 1.0f));
+    float3 viewN = mul ((float3x3)VAR_MATRIX_IT_MV, I.normal);
+
+    // Calc diffuse color
+    O.f4Diffuse.rgb = var_LightColor[0].rgb * max(0, dot(viewN, var_LightPosition[0].xyz)) + VAR_LIGHTMODEL_AMBIENT.rgb;
+    O.f4Diffuse.a = 1.0f;
+
+    // Pass through texture coords
+    O.f2TexCoord = I.texcoord;
+
+    return O;
+}
+
+
+HS_Input VS_RenderSceneWithTessellation( VS_RenderSceneInput I )
+{
+    HS_Input O;
+
+    // To view space
+    O.f4Position = mul(VAR_MATRIX_MV, float4(I.vertex,1.0f));
+    O.f3Normal = mul ((float3x3)VAR_MATRIX_IT_MV, I.normal);
+
+    O.f2TexCoord = I.texcoord;
+
+    return O;
+}
+
+
+//=================================================================================================================================
+// This hull shader passes the tessellation factors through to the HW tessellator,
+// and the 10 (geometry), 6 (normal) control points of the PN-triangular patch to the domain shader
+//=================================================================================================================================
+HS_ConstantOutput HS_PNTrianglesConstant( InputPatch<HS_Input, 3> I )
+{
+    HS_ConstantOutput O = (HS_ConstantOutput)0;
+
+    // Simply output the tessellation factors from constant space
+    // for use by the FF tessellation unit
+    O.fTessFactor[0] = O.fTessFactor[1] = O.fTessFactor[2] = _TessEdge;
+    O.fInsideTessFactor = _TessEdge;
+
+    // Assign Positions
+    float3 f3B003 = I[0].f4Position.xyz;
+    float3 f3B030 = I[1].f4Position.xyz;
+    float3 f3B300 = I[2].f4Position.xyz;
+    // And Normals
+    float3 f3N002 = I[0].f3Normal;
+    float3 f3N020 = I[1].f3Normal;
+    float3 f3N200 = I[2].f3Normal;
+
+    // Compute the cubic geometry control points
+    // Edge control points
+    O.f3B210 = ( ( 2.0f * f3B003 ) + f3B030 - ( dot( ( f3B030 - f3B003 ), f3N002 ) * f3N002 ) ) / 3.0f;
+    O.f3B120 = ( ( 2.0f * f3B030 ) + f3B003 - ( dot( ( f3B003 - f3B030 ), f3N020 ) * f3N020 ) ) / 3.0f;
+    O.f3B021 = ( ( 2.0f * f3B030 ) + f3B300 - ( dot( ( f3B300 - f3B030 ), f3N020 ) * f3N020 ) ) / 3.0f;
+    O.f3B012 = ( ( 2.0f * f3B300 ) + f3B030 - ( dot( ( f3B030 - f3B300 ), f3N200 ) * f3N200 ) ) / 3.0f;
+    O.f3B102 = ( ( 2.0f * f3B300 ) + f3B003 - ( dot( ( f3B003 - f3B300 ), f3N200 ) * f3N200 ) ) / 3.0f;
+    O.f3B201 = ( ( 2.0f * f3B003 ) + f3B300 - ( dot( ( f3B300 - f3B003 ), f3N002 ) * f3N002 ) ) / 3.0f;
+    // Center control point
+    float3 f3E = ( O.f3B210 + O.f3B120 + O.f3B021 + O.f3B012 + O.f3B102 + O.f3B201 ) / 6.0f;
+    float3 f3V = ( f3B003 + f3B030 + f3B300 ) / 3.0f;
+    O.f3B111 = f3E + ( ( f3E - f3V ) / 2.0f );
+
+    // Compute the quadratic normal control points
+    float fV12 = 2.0f * dot( f3B030 - f3B003, f3N002 + f3N020 ) / dot( f3B030 - f3B003, f3B030 - f3B003 );
+    O.f3N110 = normalize( f3N002 + f3N020 - fV12 * ( f3B030 - f3B003 ) );
+    float fV23 = 2.0f * dot( f3B300 - f3B030, f3N020 + f3N200 ) / dot( f3B300 - f3B030, f3B300 - f3B030 );
+    O.f3N011 = normalize( f3N020 + f3N200 - fV23 * ( f3B300 - f3B030 ) );
+    float fV31 = 2.0f * dot( f3B003 - f3B300, f3N200 + f3N002 ) / dot( f3B003 - f3B300, f3B003 - f3B300 );
+    O.f3N101 = normalize( f3N200 + f3N002 - fV31 * ( f3B003 - f3B300 ) );
+
+    return O;
+}
+
+[domain("tri")]
+[partitioning("fractional_odd")]
+[outputtopology("triangle_cw")]
+[patchconstantfunc("HS_PNTrianglesConstant")]
+[outputcontrolpoints(3)]
+HS_ControlPointOutput HS_PNTriangles( InputPatch<HS_Input, 3> I, uint uCPID : SV_OutputControlPointID )
+{
+    HS_ControlPointOutput O = (HS_ControlPointOutput)0;
+
+    // Just pass through inputs = fast pass through mode triggered
+    O.f3Position = I[uCPID].f4Position.xyz;
+    O.f3Normal = I[uCPID].f3Normal;
+    O.f2TexCoord = I[uCPID].f2TexCoord;
+
+    return O;
+}
+
+
+//=================================================================================================================================
+// This domain shader applies contol point weighting to the barycentric coords produced by the FF tessellator
+//=================================================================================================================================
+[domain("tri")]
+DS_Output DS_PNTriangles( HS_ConstantOutput HSConstantData, const OutputPatch<HS_ControlPointOutput, 3> I, float3 f3BarycentricCoords : SV_DomainLocation )
+{
+    DS_Output O = (DS_Output)0;
+
+    // The barycentric coordinates
+    float fU = f3BarycentricCoords.x;
+    float fV = f3BarycentricCoords.y;
+    float fW = f3BarycentricCoords.z;
+
+    // Precompute squares and squares * 3
+    float fUU = fU * fU;
+    float fVV = fV * fV;
+    float fWW = fW * fW;
+    float fUU3 = fUU * 3.0f;
+    float fVV3 = fVV * 3.0f;
+    float fWW3 = fWW * 3.0f;
+
+    // Compute position from cubic control points and barycentric coords
+    float3 f3Position = I[0].f3Position * fWW * fW +
+                        I[1].f3Position * fUU * fU +
+                        I[2].f3Position * fVV * fV +
+                        HSConstantData.f3B210 * fWW3 * fU +
+                        HSConstantData.f3B120 * fW * fUU3 +
+                        HSConstantData.f3B201 * fWW3 * fV +
+                        HSConstantData.f3B021 * fUU3 * fV +
+                        HSConstantData.f3B102 * fW * fVV3 +
+                        HSConstantData.f3B012 * fU * fVV3 +
+                        HSConstantData.f3B111 * 6.0f * fW * fU * fV;
+
+    // Compute normal from quadratic control points and barycentric coords
+    float3 f3Normal =   I[0].f3Normal * fWW +
+                        I[1].f3Normal * fUU +
+                        I[2].f3Normal * fVV +
+                        HSConstantData.f3N110 * fW * fU +
+                        HSConstantData.f3N011 * fU * fV +
+                        HSConstantData.f3N101 * fW * fV;
+
+    // Normalize the interpolated normal
+    f3Normal = normalize( f3Normal );
+
+    // Linearly interpolate the texture coords
+    O.f2TexCoord = I[0].f2TexCoord * fW + I[1].f2TexCoord * fU + I[2].f2TexCoord * fV;
+
+    // Displacement map!
+    float disp = _DispTex.SampleLevel (sampler_DispTex, O.f2TexCoord, 0).r * _Displacement;
+    f3Position += f3Normal * disp;
+
+    // Calc diffuse color
+    O.f4Diffuse.rgb = var_LightColor[0].rgb * max( 0, dot( f3Normal, var_LightPosition[0].xyz ) ) + VAR_LIGHTMODEL_AMBIENT.rgb;
+    O.f4Diffuse.a = 1.0f;
+
+    // Transform position with projection matrix
+    O.f4Position = mul (VAR_MATRIX_P, float4(f3Position.xyz,1.0));
+
+    return O;
+}
+
+
+PS_RenderOutput PS_RenderSceneTextured( PS_RenderSceneInput I )
+{
+    PS_RenderOutput O;
+
+    O.f4Color = _MainTex.Sample( sampler_MainTex, I.f2TexCoord ).r * I.f4Diffuse;
+
+    return O;
+}

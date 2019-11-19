@@ -114,7 +114,7 @@ run_decompiler_test()
 	local fail=0
 
 	rm "$decompiled" "$decompiled_log" "$recompiled" "$recompiled_asm" "$recompiled_log" 2>/dev/null
-	local model=$(timeout 5s "$FXC" /nologo /dumpbin "$compiled" | grep -av '^\/\/' | head -n 1 | tr -d '\r')
+	local model=$(timeout 5s "$FXC" /nologo /dumpbin "$compiled" | grep -avE '^(\/\/|$)' | head -n 1 | tr -d '\r')
 	if [ -z "$model" ]; then
 		echo -n " Unable to get shader model - bad binary?"
 		fail=1

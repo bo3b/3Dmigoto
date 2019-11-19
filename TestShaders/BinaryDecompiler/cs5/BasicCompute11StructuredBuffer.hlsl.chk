@@ -1,0 +1,35 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:45 2019
+
+struct BufType
+{
+    int i;                         // Offset:    0
+    float f;                       // Offset:    4
+};
+
+StructuredBuffer<BufType> Buffer0 : register(t0);
+StructuredBuffer<BufType> Buffer1 : register(t1);
+RWStructuredBuffer<BufType> BufferOut : register(u0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 1, 1, 1
+  r0.x = Buffer0[vThreadID.x].i;
+  r0.y = Buffer0[vThreadID.x].f;
+  r0.z = Buffer1[vThreadID.x].i;
+  r0.w = Buffer1[vThreadID.x].f;
+  r1.x = (int)r0.x + (int)r0.z;
+  r1.y = r0.y + r0.w;
+  BufferOut[vThreadID.x].i = r1.x;
+  BufferOut[vThreadID.x].f = r1.y;
+  return;
+}

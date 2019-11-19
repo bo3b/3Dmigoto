@@ -1,0 +1,40 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:55 2019
+
+cbuffer _Globals : register(b0)
+{
+  int p0 : packoffset(c0);
+  int p1 : packoffset(c0.y);
+  int p2 : packoffset(c0.z);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : POSITION0,
+  out float4 o0 : SV_Position0)
+{
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r1.xy = p1;
+  r0.xyzw = v0.xyzw;
+  while (true) {
+    r1.z = cmp(100 < r0.x);
+    if (r1.z != 0) break;
+    if (r1.x == 0) continue;
+    r2.xyzw = r0.xyzw + r0.xyzw;
+    r1.z = cmp((int)r1.y != 0);
+    r1.w = r1.y ? r1.y : 0;
+    r0.xyzw = r2.xyzw;
+    r1.y = r1.w;
+    if (r1.z != 0) continue;
+    r0.xyzw = r2.xyzw;
+  }
+  o0.xyzw = r0.xyzw;
+  return;
+}

@@ -1,0 +1,45 @@
+
+// Compile with /Gfa (avoid flow control constructs) to use retc instructions.
+
+interface iChangeColour
+{
+    float3 ChangeColour(float3 colour);
+};
+
+class cDoubleColour : iChangeColour
+{
+    float3 ChangeColour(float3 colour) {
+        return colour * float3(2, 2, 2);
+    }
+};
+
+class cUnchangedColour : iChangeColour
+{
+    float3 ChangeColour(float3 colour) {
+       return colour;
+    }
+};
+
+
+struct PS_INPUT
+{
+    float3 Colour : COLOR0;
+};
+
+iChangeColour gAbstractColourChanger;
+iChangeColour gAbstractColourChangerB;
+
+int predicate;
+
+float4 main( PS_INPUT Input ) : SV_TARGET
+{
+    float3 ModifiedColour = gAbstractColourChanger.ChangeColour(Input.Colour);
+
+	if(predicate)
+	{
+		ModifiedColour = gAbstractColourChangerB.ChangeColour(ModifiedColour);
+	}
+
+    return float4(ModifiedColour, 1.0); 
+}
+

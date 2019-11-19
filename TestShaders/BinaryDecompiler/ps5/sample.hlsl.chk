@@ -1,0 +1,32 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:53 2019
+
+SamplerState TextureSampler_s : register(s0);
+Texture2D<float4> TextureBase : register(t0);
+Texture2D<float4> TextureDetail : register(t1);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : TEXCOORD0,
+  out float4 o0 : SV_Target0,
+  out float4 o1 : SV_Target1,
+  out float4 o2 : SV_Target2)
+{
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = TextureBase.Sample(TextureSampler_s, v0.xy).xyzw;
+  r1.xyzw = TextureDetail.Sample(TextureSampler_s, v0.xy, int2(0, 0)).xyzw;
+  o0.xyzw = r1.xyzw * r0.xyzw;
+  r0.xyzw = TextureBase.SampleGrad(TextureSampler_s, v0.xy, float4(0.300000012,0.300000012,0,0), float4(0.400000006,0.400000006,0,0)).xyzw;
+  r1.xyzw = TextureDetail.SampleGrad(TextureSampler_s, v0.xy, float4(0.300000012,0.300000012,0,0), float4(0.400000006,0.400000006,0,0), int2(4, 4)).xyzw;
+  o1.xyzw = r1.xyzw * r0.xyzw;
+  r0.xyzw = TextureBase.SampleBias(TextureSampler_s, v0.xy, 0.200000003).xyzw;
+  r1.xyzw = TextureDetail.SampleBias(TextureSampler_s, v0.xy, 0.200000003, int2(7, 2)).xyzw;
+  o2.xyzw = r1.xyzw * r0.xyzw;
+  return;
+}

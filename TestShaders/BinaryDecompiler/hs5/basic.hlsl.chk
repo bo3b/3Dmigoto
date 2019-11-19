@@ -1,0 +1,13 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:46 2019
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : CPOINT0,
+  out float4 o0 : CPOINT0)
+{
+}

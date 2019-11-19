@@ -1,0 +1,22 @@
+
+struct VS_OUTPUT
+{
+    float4 Position   : SV_Position;
+    float4 Colour : COLOR0;
+};
+
+int RedChannel;
+
+VS_OUTPUT main( in float4 vPosition : POSITION )
+{
+    VS_OUTPUT Output;
+    
+
+    Output.Position = vPosition;
+
+	Output.Colour = float4(RedChannel ^ 0x3, 0, 0, 1);
+    
+    return Output;
+}
+
+

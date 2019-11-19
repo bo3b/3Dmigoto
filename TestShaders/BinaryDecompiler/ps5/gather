@@ -1,0 +1,23 @@
+Texture2D<int1> Tex2d;
+Texture2DArray<int2> Tex2dArray;
+TextureCube<int3> TexCube;
+TextureCubeArray<float2> TexCubeArray;
+
+SamplerState s;
+
+int4 main (float4 f : SV_Position) : SV_Target
+{
+	int2 iOffset = int2(2,3);
+
+	int4 i1 = Tex2d.Gather(s, f.xy);
+	int4 i2 = Tex2d.Gather(s, f.xy, iOffset);
+
+	int4 i3 = Tex2dArray.Gather(s, f.xyz);
+	int4 i4 = Tex2dArray.Gather(s, f.xyz, iOffset);
+
+	int4 i5 = TexCube.Gather(s, f.xyzw);
+
+	float4 f6 = TexCubeArray.Gather(s, f.xyzw);
+
+	return i1+i2+i3+i4+i5+int4(f6);
+}

@@ -1,0 +1,11 @@
+Texture2D Texture0;
+SamplerState TextureSampler
+{
+    Filter = MIN_MAG_MIP_LINEAR;
+    AddressU = Wrap;
+    AddressV = Wrap;
+};
+float4 main(void) : SV_Target
+{
+    return Texture0.Sample(TextureSampler, float2(0.5f, 0.5f) ).rrrr;
+}

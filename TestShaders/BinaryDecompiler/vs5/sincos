@@ -1,0 +1,29 @@
+
+struct VS_OUTPUT
+{
+    float4 Position   : SV_Position;
+	float2 sin2 : SIN2;
+	float2 cos2 : COS2;
+};
+
+float angle;
+float2 angle2;
+
+VS_OUTPUT main( in float4 vPosition : POSITION )
+{
+    VS_OUTPUT Output;
+    float cosAngle;
+    
+    vPosition.x = sin(angle*2);
+    sincos(angle, vPosition.w, cosAngle);
+    
+    vPosition.z += cosAngle;
+
+    Output.Position = vPosition;
+	Output.sin2 = sin(angle2);
+	Output.cos2 = cos(angle2);
+    
+    return Output;
+}
+
+

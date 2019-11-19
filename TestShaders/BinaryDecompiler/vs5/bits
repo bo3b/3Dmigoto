@@ -1,0 +1,33 @@
+
+struct VS_INPUT
+{
+    float4 Position   : POSITION;
+    uint toBeCounted : INTA;
+    uint toBeMSB : INTB;
+    uint toBeLSB : INTC;
+    uint toBeRev : INTD;
+};
+
+struct VS_OUTPUT
+{
+    float4 Position : SV_Position;
+    uint counted : INTA;
+    uint msb : INTB;
+    uint lsb : INTC;
+    uint rev : INTD;
+};
+
+VS_OUTPUT main( VS_INPUT Input )
+{
+    VS_OUTPUT Output;
+
+    Output.Position = Input.Position;
+    Output.counted = countbits(Input.toBeCounted);
+    Output.msb = firstbithigh(Input.toBeMSB);
+    Output.lsb = firstbitlow(Input.toBeLSB);
+    Output.rev = reversebits(Input.toBeRev);
+    
+    return Output;
+}
+
+

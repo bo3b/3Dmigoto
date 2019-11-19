@@ -1,0 +1,36 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:45 2019
+
+ByteAddressBuffer Buffer0 : register(t0);
+ByteAddressBuffer Buffer1 : register(t1);
+RWByteAddressBuffer BufferOut : register(u0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_raw t0
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_raw t1
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_raw u0
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 1, 1, 1
+  r0.x = (uint)vThreadID.x << 3;
+// No code for instruction (needs manual fix):
+ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r0.yz, r0.x, t0.xxyx
+// No code for instruction (needs manual fix):
+ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r1.xy, r0.x, t1.xyxx
+  r2.x = (int)r0.y + (int)r1.x;
+  r2.y = r1.y + r0.z;
+// No code for instruction (needs manual fix):
+store_raw u0.xy, r0.x, r2.xyxx
+  return;
+}

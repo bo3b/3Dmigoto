@@ -1,0 +1,26 @@
+cbuffer RenderTargetParams {
+int Width;
+int Height;
+float AspectRatio;
+}
+
+struct VS_model0_ZNORMAL_Input {
+float4 ObjectPosition : POSITION;
+float3 Normal : NORMAL;
+
+};
+
+struct VS_model0_GATHER_Output {
+float4 PixelPosition : SV_Position;
+};
+
+VS_model0_GATHER_Output main(VS_model0_ZNORMAL_Input input)
+{
+VS_model0_GATHER_Output output = (VS_model0_GATHER_Output)0;
+float2 _screenuvnormalized;
+
+_screenuvnormalized.xy = 1.0f - saturate(dot(input.ObjectPosition.xy,input.ObjectPosition.xy));
+output.PixelPosition.xy = _screenuvnormalized;
+output.PixelPosition.zw = float2(Width *2, Height *2);
+return output;
+}

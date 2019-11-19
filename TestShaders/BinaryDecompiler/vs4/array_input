@@ -1,0 +1,33 @@
+
+
+struct VS_INPUT
+{
+    float4 vPosition : POSITION;
+    float4 ColorArray[6] : INCOLOR;
+    float4 AnotherColorArray[2] : DUALARRAY;
+};
+
+struct VS_OUTPUT
+{
+    float4 Position   : SV_Position;
+    float4 Color : COLOR;
+    float4 SecColor : COLOR2;
+    float4 TriColor : TRICOLOR;
+};
+
+uint arrayIndex;
+uint arrayIndexB;
+
+VS_OUTPUT main( in VS_INPUT input )
+{
+    VS_OUTPUT Output;
+
+    Output.Position = input.vPosition;
+    Output.Color = input.ColorArray[arrayIndex];
+    Output.SecColor = input.ColorArray[1];
+    Output.TriColor = input.AnotherColorArray[arrayIndexB];
+
+    return Output;
+}
+
+

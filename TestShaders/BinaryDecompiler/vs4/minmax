@@ -1,0 +1,25 @@
+
+struct VS_OUTPUT
+{
+    float4 Position   : SV_Position;
+	int iClamped : INTCLAMP;
+	float fClamped : FLOATCLAMP;
+};
+
+int iValue;
+float fValue; 
+
+VS_OUTPUT main( in float4 vPosition : POSITION )
+{
+    VS_OUTPUT Output;
+    
+
+    Output.Position = vPosition;
+
+	Output.iClamped = max(min(iValue, 7), 1);
+	Output.fClamped = max(min(fValue, 8.1), 0.1);
+    
+    return Output;
+}
+
+

@@ -1,0 +1,33 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:55 2019
+
+cbuffer SecondCBuffer : register(b1)
+{
+  float4x4 world_view_proj : packoffset(c0);
+}
+
+cbuffer FirstCBuffer : register(b0)
+{
+  float4 vars : packoffset(c0);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : POSITION0,
+  out float4 o0 : POSITION0)
+{
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = vars.xyzw + v0.xyzw;
+  o0.x = dot(r0.xyzw, world_view_proj._m00_m10_m20_m30);
+  o0.y = dot(r0.xyzw, world_view_proj._m01_m11_m21_m31);
+  o0.z = dot(r0.xyzw, world_view_proj._m02_m12_m22_m32);
+  o0.w = dot(r0.xyzw, world_view_proj._m03_m13_m23_m33);
+  return;
+}

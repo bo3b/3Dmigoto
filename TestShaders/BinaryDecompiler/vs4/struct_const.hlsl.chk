@@ -1,0 +1,51 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:57 2019
+
+cbuffer _Globals : register(b0)
+{
+  float4 diffuse : packoffset(c0);
+}
+
+cbuffer transforms : register(b1)
+{
+
+  struct
+  {
+    float4x4 modelview;
+    int unusedTestA;
+  } A : packoffset(c0);
+
+
+  struct
+  {
+    int unusedTestB;
+    float4x4 projection;
+  } B : packoffset(c5);
+
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : POSITION0,
+  out float4 o0 : SV_Position0,
+  out float4 o1 : COLOR0)
+{
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = B.projection._m00_m10_m20_m30 * A.modelview._m00_m10_m20_m30;
+  o0.x = dot(v0.xyzw, r0.xyzw);
+  r0.xyzw = B.projection._m01_m11_m21_m31 * A.modelview._m01_m11_m21_m31;
+  o0.y = dot(v0.xyzw, r0.xyzw);
+  r0.xyzw = B.projection._m02_m12_m22_m32 * A.modelview._m02_m12_m22_m32;
+  o0.z = dot(v0.xyzw, r0.xyzw);
+  r0.xyzw = B.projection._m03_m13_m23_m33 * A.modelview._m03_m13_m23_m33;
+  o0.w = dot(v0.xyzw, r0.xyzw);
+  o1.xyzw = diffuse.xyzw;
+  return;
+}

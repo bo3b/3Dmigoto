@@ -1,0 +1,57 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:50 2019
+
+struct MyStruct
+{
+    uint unused;                   // Offset:    0
+    struct {
+        uint unused2;              // Offset:    4
+    } s3;                          // Offset:    4
+};
+
+struct MyStruct2
+{
+    uint unused;                   // Offset:    0
+};
+
+RWStructuredBuffer<MyStruct> BufferIncr : register(u1);
+RWStructuredBuffer<MyStruct2> BufferDecr : register(u2);
+RWStructuredBuffer<uint> app : register(u3);
+RWStructuredBuffer<uint> cons : register(u4);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_structured_opc u1, 8
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_structured_opc u2, 4
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  // Needs manual fix for instruction:
+imm_atomic_alloc r0.x, u1
+  InterlockedExchange ?(dest, value, orig_value);
+  // Needs manual fix for instruction:
+imm_atomic_consume r1.x, u2
+  Interlocked... ?(dest, value, orig_value);
+  // Needs manual fix for instruction:
+imm_atomic_alloc r2.x, u3
+  InterlockedExchange ?(dest, value, orig_value);
+  app[r2.x].x = 1;
+  // Needs manual fix for instruction:
+imm_atomic_consume r2.x, u4
+  Interlocked... ?(dest, value, orig_value);
+  r0.x = (uint)r0.x;
+  o0.x = 0.00100000005 * r0.x;
+  r0.x = (uint)r1.x;
+  o0.y = 0.00100000005 * r0.x;
+  o0.zw = float2(1,1);
+  return;
+}
