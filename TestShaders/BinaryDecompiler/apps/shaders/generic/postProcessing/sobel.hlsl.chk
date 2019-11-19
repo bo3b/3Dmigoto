@@ -1,0 +1,71 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:41 2019
+
+Texture2D<float4> g_txColourBuffer : register(t0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : SV_POSITION0,
+  float2 v1 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1,r2,r3,r4;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.zw = float2(0,0);
+  g_txColourBuffer.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z);
+  r1.xyzw = uiDest.xyzw;
+  r1.xyzw = (uint4)r1.xyxy;
+  r1.xyzw = v1.xyxy * r1.xyzw;
+  r1.xyzw = (int4)r1.xyzw;
+  r2.xyzw = (int4)r1.zwzw + int4(-1,-1,0,-1);
+  r0.xy = r2.zw;
+  r0.xyzw = g_txColourBuffer.Load(r0.xyz).xyzw;
+  r0.x = dot(r0.xyz, float3(0.212500006,0.715399981,0.0720999986));
+  r2.zw = float2(0,0);
+  r2.xyzw = g_txColourBuffer.Load(r2.xyz).xyzw;
+  r0.y = dot(r2.xyz, float3(0.212500006,0.715399981,0.0720999986));
+  r0.x = r0.x * 2 + r0.y;
+  r2.xyzw = (int4)r1.zwzw + int4(-1,0,1,-1);
+  r3.xy = r2.zw;
+  r3.zw = float2(0,0);
+  r3.xyzw = g_txColourBuffer.Load(r3.xyz).xyzw;
+  r0.z = dot(r3.xyz, float3(0.212500006,0.715399981,0.0720999986));
+  r0.x = r0.x + r0.z;
+  r3.xyzw = (int4)r1.zwzw + int4(1,0,-1,1);
+  r1.xyzw = (int4)r1.zwxy + int4(1,1,0,1);
+  r4.xy = r3.zw;
+  r4.zw = float2(0,0);
+  r4.xyzw = g_txColourBuffer.Load(r4.xyz).xyzw;
+  r0.w = dot(r4.xyz, float3(0.212500006,0.715399981,0.0720999986));
+  r0.x = r0.x + -r0.w;
+  r4.xy = r1.zw;
+  r4.zw = float2(0,0);
+  r4.xyzw = g_txColourBuffer.Load(r4.xyz).xyzw;
+  r4.x = dot(r4.xyz, float3(0.212500006,0.715399981,0.0720999986));
+  r0.x = -r4.x * 2 + r0.x;
+  r1.zw = float2(0,0);
+  r1.xyzw = g_txColourBuffer.Load(r1.xyz).xyzw;
+  r1.x = dot(r1.xyz, float3(0.212500006,0.715399981,0.0720999986));
+  r0.x = -r1.x + r0.x;
+  r0.x = r0.x * r0.x;
+  r2.zw = float2(0,0);
+  r2.xyzw = g_txColourBuffer.Load(r2.xyz).xyzw;
+  r1.y = dot(r2.xyz, float3(0.212500006,0.715399981,0.0720999986));
+  r0.y = r1.y * 2 + r0.y;
+  r0.y = r0.y + r0.w;
+  r0.y = r0.y + -r0.z;
+  r3.zw = float2(0,0);
+  r2.xyzw = g_txColourBuffer.Load(r3.xyz).xyzw;
+  r0.z = dot(r2.xyz, float3(0.212500006,0.715399981,0.0720999986));
+  r0.y = -r0.z * 2 + r0.y;
+  r0.y = r0.y + -r1.x;
+  r0.x = r0.y * r0.y + r0.x;
+  o0.xyz = sqrt(r0.xxx);
+  o0.w = 1;
+  return;
+}

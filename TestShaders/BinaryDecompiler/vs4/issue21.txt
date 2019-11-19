@@ -1,0 +1,10 @@
+
+void main(float4 vPos : POSITION, out float4 oPosition : POSITION)
+{
+    float4 value;
+    if (vPos.x == 1 && vPos.y == 1)
+        value = 0;
+    else
+        value = 1;
+    oPosition = value;
+}

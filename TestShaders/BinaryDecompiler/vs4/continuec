@@ -1,0 +1,37 @@
+
+// Compile with /Gfa (avoid flow control constructs) to use continuec instructions.
+
+struct VS_INPUT
+{
+    float4 vPosition : POSITION;
+};
+
+struct VS_OUTPUT
+{
+    float4 Position   : SV_Position;
+};
+
+int p0, p1, p2;
+
+VS_OUTPUT main( in VS_INPUT input )
+{
+    VS_OUTPUT Output;
+
+    Output.Position = input.vPosition;
+
+	while(1)
+	{
+		if(Output.Position.x > 100.0f)
+			break;
+
+		if(p1 == 0 )
+			continue;
+		
+		Output.Position *=2;
+
+		if(p2 != 0 )
+			continue;
+	}
+
+    return Output;
+}

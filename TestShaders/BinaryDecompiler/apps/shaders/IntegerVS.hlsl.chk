@@ -1,0 +1,57 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:43 2019
+
+cbuffer SharedConsts : register(b0)
+{
+  float4x4 World : packoffset(c0);
+  float4x4 View : packoffset(c4);
+  float4x4 Projection : packoffset(c8);
+  float4 vOutputColor : packoffset(c12);
+  int ColorFactor : packoffset(c13);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : POSITION0,
+  float3 v1 : NORMAL0,
+  out float4 o0 : SV_POSITION0,
+  out float3 o1 : TEXCOORD0,
+  out float4 o2 : COLOR0,
+  out int o3 : FACTOR0,
+  out int p3 : MAX0,
+  out int4 o4 : INTCOLOR0)
+{
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = dot(v0.xyzw, World._m00_m10_m20_m30);
+  r0.y = dot(v0.xyzw, World._m01_m11_m21_m31);
+  r0.z = dot(v0.xyzw, World._m02_m12_m22_m32);
+  r0.w = dot(v0.xyzw, World._m03_m13_m23_m33);
+  r1.x = dot(r0.xyzw, View._m00_m10_m20_m30);
+  r1.y = dot(r0.xyzw, View._m01_m11_m21_m31);
+  r1.z = dot(r0.xyzw, View._m02_m12_m22_m32);
+  r1.w = dot(r0.xyzw, View._m03_m13_m23_m33);
+  o0.x = dot(r1.xyzw, Projection._m00_m10_m20_m30);
+  o0.y = dot(r1.xyzw, Projection._m01_m11_m21_m31);
+  o0.z = dot(r1.xyzw, Projection._m02_m12_m22_m32);
+  o0.w = dot(r1.xyzw, Projection._m03_m13_m23_m33);
+  o1.x = dot(v1.xyz, World._m00_m10_m20);
+  o1.y = dot(v1.xyz, World._m01_m11_m21);
+  o1.z = dot(v1.xyz, World._m02_m12_m22);
+  r0.x = ColorFactor;
+  r0.xyzw = vOutputColor.xyzw * r0.xxxx;
+  o2.xyzw = r0.xyzw;
+  r0.xyzw = float4(10,10,10,10) * r0.xyzw;
+  r0.xyzw = ceil(r0.xyzw);
+  r0.xyzw = (int4)r0.xyzw;
+  p3.x = max(10, (int)r0.x);
+  o4.xyzw = (uint4)r0.xyzw << 1;
+  o3.x = ColorFactor;
+  return;
+}

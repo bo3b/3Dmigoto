@@ -1,0 +1,44 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:53 2019
+
+Texture1D<float4> T1D : register(t0);
+Texture2D<float4> T2D : register(t1);
+TextureCubeArray<float4> TCubeArray : register(t2);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : SV_Position0,
+  out float4 o0 : SV_Target0)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_resource_texture1d (float,float,float,float) t0
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = fDest.x;
+// Unknown use of GetDimensions for resinfo_ from missing reflection info, need manual fix.
+// resinfo_indexable(texture1d)(float,float,float,float) r0.x, l(0), t0.xyzw
+// Example for texture2d type, uint return:
+tx.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z);
+rx = uiDest;
+ state=1, constZero.eType=4, returnType=0, texture.eType=7, afImmediates[0]=0.000000
+  r0.x = (uint)r0.x;
+  o0.x = (uint)r0.x;
+  T2D.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z);
+  r0.x = uiDest.y;
+  o0.y = (uint)r0.x;
+  r0.x = uiDest.w;
+// Unknown use of GetDimensions for resinfo_ from missing reflection info, need manual fix.
+// resinfo_indexable(texturecubearray)(float,float,float,float)_uint r0.x, l(0), t2.wxyz
+// Example for texture2d type, uint return:
+tx.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z);
+rx = uiDest;
+ state=1, constZero.eType=4, returnType=2, texture.eType=7, afImmediates[0]=0.000000
+  o0.z = (uint)r0.x;
+  o0.w = 1;
+  return;
+}

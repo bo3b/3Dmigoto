@@ -1,0 +1,19 @@
+
+struct VS_OUTPUT
+{
+    float4 Position   : SV_Position;
+};
+
+float constWithDefaultVal = 7;
+
+VS_OUTPUT main( in float4 vPosition : POSITION )
+{
+    VS_OUTPUT Output;
+
+    Output.Position = vPosition;
+    Output.Position.z = constWithDefaultVal;
+    
+    return Output;
+}
+
+

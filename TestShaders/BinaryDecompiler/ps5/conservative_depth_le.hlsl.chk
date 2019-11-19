@@ -1,0 +1,18 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:51 2019
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : COLOR0,
+  float v1 : DEPTH0,
+  out float o0 : SV_Target0,
+  out float oDepthLE : SV_DepthLessEqual)
+{
+  o0.x = v0.x;
+  oDepthLE = v1.x;
+  return;
+}

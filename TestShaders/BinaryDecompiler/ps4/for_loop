@@ -1,0 +1,25 @@
+
+uniform float2 uvOrig;
+uniform float4 _CenterRadius;
+uniform float _Angle;
+uniform float4 _LightData[4];
+
+float4 main() : SV_Target
+{
+	float2 offset = uvOrig;
+	float angle = 1.0 - length(offset / _CenterRadius.zw);
+	for(int i = 0; i < 4; i++)
+	{
+		angle = max(0, angle) + _LightData[1].x;
+		angle = angle * angle * _Angle;
+		float cosLength, sinLength;
+		sincos(angle, sinLength, cosLength);
+		offset += float2(sinLength, cosLength);
+	}
+	float2 uv;
+	uv.x = offset[0] * offset[1];
+	uv.y = offset[0] * offset[1];
+	uv += _CenterRadius.xy;
+
+	return float4(uv.xyxy);
+};

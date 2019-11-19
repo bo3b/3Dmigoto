@@ -1,0 +1,36 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:46 2019
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+[maxvertexcount(18)]
+void main(
+  inout TriangleStream<float> m0,
+  float3 v0 : POSITION0,
+  float3 v1 : NORMAL0,
+  out float3 o0 : OUT_POSITION0)
+{
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_gsinstances 24
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_inputprimitive point 
+// Needs manual fix for instruction:  
+//dcl_stream m0
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_outputtopology pointlist 
+  r0.xyz = v[0][1].xyz * v[0][0].xyz;
+  r0.w = (uint)vGSInstanceID.x;
+  r0.xyz = r0.xyz * r0.www;
+  o0.xyz = r0.xyz;
+// Needs manual fix for instruction, maybe. 
+//emit_stream m0
+m0.Append(0);
+  return;
+}

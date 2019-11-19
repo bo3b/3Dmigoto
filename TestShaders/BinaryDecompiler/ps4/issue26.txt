@@ -1,0 +1,32 @@
+struct VS_OUT_Immediate
+{
+	float2 texUV : inUV;
+	float4 color : inCOLOR;
+};
+
+Texture2D ITex0;
+
+SamplerState smpLinClamp
+{
+    Filter = MIN_MAG_MIP_LINEAR;
+    AddressU = Clamp;
+    AddressV = Clamp;
+};
+
+
+float4 main(VS_OUT_Immediate input) : SV_TARGET
+{
+	bool4 bools = bool4(input.texUV.x > 0, input.texUV.y > 0, input.texUV.x > 0, input.texUV.y > 0);
+	bool2 twobools = !bools.xy;
+	if (twobools.x) {
+		if (twobools.y) {
+			input.texUV.x += 7;
+		}
+	}
+	else if (twobools.y == twobools.x)
+	{
+		input.texUV.x += 12;
+	}
+
+	return ITex0.Sample(smpLinClamp, input.texUV) * input.color;
+}

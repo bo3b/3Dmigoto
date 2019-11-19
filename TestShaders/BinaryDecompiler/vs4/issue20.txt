@@ -1,0 +1,13 @@
+bool g_bBoolParam;
+int  g_IntParam;
+
+void main(int4 vPos : POSITION, out float4 oPosition : POSITION)
+{
+    int4 value;
+    if (g_bBoolParam)
+        value = vPos;
+    else
+        value = 0;
+    value += g_IntParam;
+    oPosition = value;
+}

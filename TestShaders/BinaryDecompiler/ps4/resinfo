@@ -1,0 +1,24 @@
+Texture1D T1D;
+Texture2D T2D;
+Texture2DArray T2DArray;
+float4 main(float4 pos : SV_Position) : SV_Target
+{
+	float4 result;
+
+	int3 texCoord = int3(pos.x, 1, 2);
+
+	uint width, height, depth, levels;
+
+	T1D.GetDimensions(width);
+	result.x = width;
+
+	T2D.GetDimensions(0, width, height, levels);
+	result.y = height;
+
+	T2DArray.GetDimensions(0, width, height, depth, levels);
+	result.z = levels;
+
+	result.w = 1;
+
+	return result;
+}

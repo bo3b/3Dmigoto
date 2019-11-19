@@ -1,0 +1,19 @@
+
+struct VS_OUTPUT
+{
+    float4 Position   : SV_Position;
+};
+
+float4x4  transforms[2];
+int transformsIndex;
+
+VS_OUTPUT main( in float4 vPosition : POSITION )
+{
+    VS_OUTPUT Output;
+
+	Output.Position = mul( vPosition, transforms[transformsIndex] );
+    
+    return Output;
+}
+
+

@@ -1,0 +1,24 @@
+
+struct PS_INPUT
+{
+    int4 TexC : TEXCOORD0;
+};
+
+Texture2D<int4> TextureBase;
+
+struct PS_OUTPUT
+{
+    int4 Colour0 : SV_Target0;
+};
+
+PS_OUTPUT main( PS_INPUT input )
+{
+    PS_OUTPUT outPix;
+    int4 base = TextureBase.Load(input.TexC.xyz);
+
+    outPix.Colour0 =  base;
+
+    return outPix;
+}
+
+

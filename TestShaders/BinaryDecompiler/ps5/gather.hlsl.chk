@@ -1,0 +1,35 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:52 2019
+
+SamplerState s_s : register(s0);
+Texture2D<sint> Tex2d : register(t0);
+Texture2DArray<sint2> Tex2dArray : register(t1);
+TextureCube<sint3> TexCube : register(t2);
+TextureCubeArray<float2> TexCubeArray : register(t3);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : SV_Position0,
+  out int4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.xyzw = Tex2d.Gather(s_s, v0.xy).xyzw;
+  r1.xyzw = Tex2d.Gather(s_s, v0.xy, int2(2, 3)).xyzw;
+  r0.xyzw = (int4)r0.xyzw + (int4)r1.xyzw;
+  r1.xyzw = Tex2dArray.Gather(s_s, v0.xyz).xyzw;
+  r0.xyzw = (int4)r0.xyzw + (int4)r1.xyzw;
+  r1.xyzw = Tex2dArray.Gather(s_s, v0.xyz, int2(2, 3)).xyzw;
+  r0.xyzw = (int4)r0.xyzw + (int4)r1.xyzw;
+  r1.xyzw = TexCube.Gather(s_s, v0.xyz).xyzw;
+  r0.xyzw = (int4)r0.xyzw + (int4)r1.xyzw;
+  r1.xyzw = TexCubeArray.Gather(s_s, v0.xyzw).xyzw;
+  r1.xyzw = (int4)r1.xyzw;
+  o0.xyzw = (int4)r0.xyzw + (int4)r1.xyzw;
+  return;
+}

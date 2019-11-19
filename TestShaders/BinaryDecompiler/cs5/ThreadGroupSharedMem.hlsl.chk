@@ -1,0 +1,44 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:46 2019
+groupshared struct { float val[1]; } g0[128];
+
+RWStructuredBuffer<float> g_data : register(u0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 128, 1, 1
+  r0.x = mad((int)vThreadGroupID.x, 128, (int)vThreadIDInGroup.x);
+  r0.x = g_data[r0.x].x;
+  g0[vThreadIDInGroup.x].val[0/4] = r0.x;
+  GroupMemoryBarrierWithGroupSync();
+  r0.x = 1;
+  while (true) {
+    r0.y = cmp((uint)r0.x >= 128);
+    if (r0.y != 0) break;
+    r0.y = (uint)r0.x << 1;
+    r0.z = (uint)vThreadIDInGroup.x % (uint)r0.y;
+    if (r0.z == 0) {
+      r0.z = (int)r0.x + (int)vThreadIDInGroup.x;
+      r0.z = g0[r0.z].val[0/4];
+      r0.w = g0[vThreadIDInGroup.x].val[0/4];
+      r0.z = r0.w + r0.z;
+      g0[vThreadIDInGroup.x].val[0/4] = r0.z;
+    }
+    GroupMemoryBarrierWithGroupSync();
+    r0.x = r0.y;
+  }
+  if (vThreadIDInGroup.x == 0) {
+    r0.x = g0[0].val[0/4];
+    g_data[vThreadGroupID.x].x = r0.x;
+  }
+  return;
+}

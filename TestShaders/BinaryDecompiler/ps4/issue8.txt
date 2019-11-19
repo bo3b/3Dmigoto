@@ -1,0 +1,19 @@
+
+struct v2p 
+{
+float3 Tex0 : TEXCOORD0;
+float2 BlendWeights : TEXCOORD1;
+float2 Tex1 : TEXCOORD2;
+};
+sampler2D Texture : register(s0) : register(t0);
+void main( in v2p In, out float4 Out : COLOR0 )
+{
+float4 TopLeftTex = tex2D( Texture, In.Tex0.xz );
+float4 TopRightTex = tex2D( Texture, In.Tex0.yz );
+float4 BottomTex = tex2D( Texture, In.Tex1 );
+float alphaBlendLeft = TopLeftTex.a * ( 1.h - In.BlendWeights.x );
+float alphaBlendRight = TopRightTex.a * In.BlendWeights.x;
+float bottom_alpha = BottomTex.a * In.BlendWeights.y;
+const float blendThreshold = 0.250980392h;
+Out = bottom_alpha > blendThreshold ? BottomTex : ( alphaBlendLeft > blendThreshold ) ? TopLeftTex : ( alphaBlendRight > blendThreshold ) ? TopRightTex : 0.h;
+}

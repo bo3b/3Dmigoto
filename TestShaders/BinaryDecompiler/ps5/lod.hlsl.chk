@@ -1,0 +1,26 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:53 2019
+
+SamplerState TextureSampler_s : register(s0);
+Texture2D<float4> TextureBase : register(t0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : TEXCOORD0,
+  out float4 o0 : SV_Target0)
+{
+  float4 r0,r1;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = TextureBase.CalculateLevelOfDetail(TextureSampler_s, v0.xy);
+  r0.y = TextureBase.CalculateLevelOfDetailUnclamped(TextureSampler_s, v0.xy);
+  r0.x = r0.y + -r0.x;
+  r1.xyzw = TextureBase.Sample(TextureSampler_s, v0.xy).xyzw;
+  o0.x = r1.x + r0.x;
+  o0.yzw = r1.yzw;
+  return;
+}

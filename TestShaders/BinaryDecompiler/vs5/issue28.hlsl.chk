@@ -1,0 +1,31 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:58 2019
+
+cbuffer RenderTargetParams : register(b0)
+{
+  int Width : packoffset(c0);
+  int Height : packoffset(c0.y);
+  float AspectRatio : packoffset(c0.z);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : POSITION0,
+  float3 v1 : NORMAL0,
+  out float4 o0 : SV_Position0)
+{
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  r0.x = dot(v0.xy, v0.xy);
+  r0.x = min(1, r0.x);
+  o0.xy = float2(1,1) + -r0.xx;
+  r0.xy = Width << int2(1,1);
+  o0.zw = (int2)r0.xy;
+  return;
+}

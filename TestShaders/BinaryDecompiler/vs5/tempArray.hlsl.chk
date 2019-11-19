@@ -1,0 +1,46 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:59 2019
+
+cbuffer _Globals : register(b0)
+{
+  int AConstantInt : packoffset(c0);
+}
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  float4 v0 : POSITION0,
+  int4 v1 : TEXCOORD0,
+  int v2 : TEXCOORD1,
+  out float4 o0 : SV_Position0,
+  out int4 o1 : IntPos0)
+{
+  float4 r0;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+  float4 x0[2];
+  float4 x1[2];
+  x0[0].xy = float2(0,0);
+  x0[1].xy = float2(0,0);
+  x1[0].xy = float2(0,0);
+  x1[1].xy = float2(0,0);
+  r0.x = v1.x;
+  x0[r0.x+0].xy = float2(1,1);
+  r0.x = (int)v1.x + 1;
+  x0[r0.x+0].xy = float2(0,0);
+  r0.x = v2.x;
+  x1[r0.x+0].xy = AConstantInt;
+  r0.x = (int)v2.x + 2;
+  x1[r0.x+0].xy = float2(0,0);
+  r0.x = (int)v1.x & 1;
+  r0.xy = x0[r0.x+0].xy;
+  o0.xyzw = r0.xxyy;
+  r0.x = (int)v2.x & 1;
+  r0.xy = x1[r0.x+0].xy;
+  o1.xyzw = r0.xxyy;
+  return;
+}

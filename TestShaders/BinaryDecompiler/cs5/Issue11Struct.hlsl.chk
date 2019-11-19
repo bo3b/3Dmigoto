@@ -1,0 +1,92 @@
+// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:45 2019
+groupshared struct { float val[7]; } g0[64];
+
+Texture2D<float4> Input : register(t0);
+RWTexture2D<float4> Result : register(u0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u0
+  float4 r0,r1,r2;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 8, 8, 1
+  r0.xy = vThreadID.xy;
+  r0.zw = float2(0,0);
+  r0.x = Input.Load(r0.xyz).x;
+  g0[vThreadIDInGroupFlattened.x].val[0/4] = r0.x;
+  r0.yz = float2(1,0.5) + -r0.xx;
+  g0[vThreadIDInGroupFlattened.x].val[20/4] = r0.y;
+  g0[vThreadIDInGroupFlattened.x].val[20/4+1] = r0.z;
+  GroupMemoryBarrierWithGroupSync();
+  r1.xyzw = cmp((uint4)vThreadIDInGroupFlattened.xxxx < int4(32,16,8,4));
+  if (r1.x != 0) {
+    r0.w = (int)vThreadIDInGroupFlattened.x + 32;
+    r1.x = g0[r0.w].val[0/4];
+    r2.x = g0[r0.w].val[20/4];
+    r2.y = g0[r0.w].val[20/4+1];
+    r0.x = r1.x + r0.x;
+    g0[vThreadIDInGroupFlattened.x].val[0/4] = r0.x;
+    r0.xy = r2.xy + r0.yz;
+    g0[vThreadIDInGroupFlattened.x].val[20/4] = r0.x;
+    g0[vThreadIDInGroupFlattened.x].val[20/4+1] = r0.y;
+  }
+  GroupMemoryBarrierWithGroupSync();
+  if (r1.y != 0) {
+    r0.x = (int)vThreadIDInGroupFlattened.x + 16;
+    r0.x = g0[r0.x].val[0/4];
+    r0.y = g0[vThreadIDInGroupFlattened.x].val[0/4];
+    r0.x = r0.y + r0.x;
+    g0[vThreadIDInGroupFlattened.x].val[0/4] = r0.x;
+  }
+  GroupMemoryBarrierWithGroupSync();
+  if (r1.z != 0) {
+    r0.x = (int)vThreadIDInGroupFlattened.x + 8;
+    r0.x = g0[r0.x].val[0/4];
+    r0.y = g0[vThreadIDInGroupFlattened.x].val[0/4];
+    r0.x = r0.y + r0.x;
+    g0[vThreadIDInGroupFlattened.x].val[0/4] = r0.x;
+  }
+  GroupMemoryBarrierWithGroupSync();
+  if (r1.w != 0) {
+    r0.x = (int)vThreadIDInGroupFlattened.x + 4;
+    r0.x = g0[r0.x].val[0/4];
+    r0.y = g0[vThreadIDInGroupFlattened.x].val[0/4];
+    r0.x = r0.y + r0.x;
+    g0[vThreadIDInGroupFlattened.x].val[0/4] = r0.x;
+  }
+  GroupMemoryBarrierWithGroupSync();
+  r0.xy = cmp((uint2)vThreadIDInGroupFlattened.xx < int2(2,1));
+  if (r0.x != 0) {
+    r0.x = (int)vThreadIDInGroupFlattened.x + 2;
+    r0.x = g0[r0.x].val[0/4];
+    r0.z = g0[vThreadIDInGroupFlattened.x].val[0/4];
+    r0.x = r0.z + r0.x;
+    g0[vThreadIDInGroupFlattened.x].val[0/4] = r0.x;
+  }
+  GroupMemoryBarrierWithGroupSync();
+  if (r0.y != 0) {
+    r0.x = g0[1].val[0/4];
+    r0.y = g0[0].val[0/4];
+    r0.x = r0.y + r0.x;
+    g0[0].val[0/4] = r0.x;
+  }
+  if (vThreadIDInGroupFlattened.x == 0) {
+    r0.x = g0[0].val[0/4];
+    r0.y = g0[0].val[20/4];
+    r0.z = g0[0].val[20/4+1];
+    r0.x = r0.y * r0.z + r0.x;
+    r0.x = 0.015625 * r0.x;
+  // No code for instruction (needs manual fix):
+    store_uav_typed u0.xyzw, vThreadGroupID.xyyy, r0.xxxx
+  }
+  return;
+}

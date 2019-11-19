@@ -1,0 +1,31 @@
+StructuredBuffer<float4x4> WorldTransformData;
+
+float4x4 ViewProjection;
+
+struct VS_OUTPUT
+{
+    float4 Position   : SV_Position;
+};
+
+struct VS_INPUT
+{
+    float4 PositionIn   : POSITION;
+};
+
+
+VS_OUTPUT main( VS_INPUT IN )
+{
+    VS_OUTPUT OUT;
+
+    float4 positionOS = float4( IN.PositionIn.xyz, 1.0f );
+
+    float4x4 worldMatrix = WorldTransformData[0];
+
+    float4 positionWS = mul( positionOS, worldMatrix );
+
+    float4 positionCS = mul( positionWS, ViewProjection );
+
+    OUT.Position = positionCS;
+
+    return OUT;
+}

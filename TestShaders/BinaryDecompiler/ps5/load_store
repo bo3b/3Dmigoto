@@ -1,0 +1,63 @@
+
+struct PS_INPUT
+{
+    int index : INDEX;
+};
+
+struct PS_OUTPUT
+{
+    float4 Colour0 : SV_Target0;
+};
+
+struct BufType
+{
+   float r;
+   float g;
+   float b;
+   float a;
+};
+
+StructuredBuffer<BufType> sbuffer;
+RWStructuredBuffer<BufType> sbufferOut;
+
+ByteAddressBuffer bbuffer;
+RWByteAddressBuffer bufferOut;
+
+globallycoherent RWTexture1D<float> texture1;
+RWTexture2D<float> texture2;
+RWTexture3D<float> texture3;
+
+RWTexture1DArray<float> texture1a;
+globallycoherent RWTexture2DArray<float> texture2a;
+
+globallycoherent RWTexture1D<uint4> textureStoreUint4;
+
+PS_OUTPUT main( PS_INPUT input )
+{
+    PS_OUTPUT outPix;
+
+    float A = sbuffer[input.index].r;
+    float B = asfloat( texture1[input.index]);
+    float C = asfloat( texture2[float2(input.index, input.index)] );
+    float D = asfloat( texture3[float3(input.index, input.index, input.index)] );
+    float E = asfloat( texture1a[float2(input.index, input.index)] );
+    float F = asfloat( texture2a[float3(input.index, input.index, input.index)] );
+    float G = asfloat(bbuffer.Load(input.index));
+
+	texture1[input.index] = 0.2;
+	textureStoreUint4[input.index] = uint4(1, 2, 3, 4);
+    
+    bufferOut.Store( input.index*3, asuint(A) );
+    bufferOut.Store( input.index*3+1, asuint(B) );
+    bufferOut.Store( input.index*3+2, asuint(C) );
+
+    sbufferOut[ input.index*3 ].r = asuint(D);
+    sbufferOut[ input.index*3+1].g = asuint(E);
+    sbufferOut[ input.index*3+2].b = asuint(F);
+
+    outPix.Colour0 = float4(G, G, G, G);
+
+    return outPix;
+}
+
+
