@@ -8,9 +8,6 @@
 #include "internal_includes/tokens.h"
 #include "internal_includes/reflect.h"
 
-#include "tokens.h" //dx9
-#include "reflect.h" //dx9
-
 enum{ MAX_SUB_OPERANDS = 3};
 
 struct Operand
@@ -62,12 +59,11 @@ struct Instruction
 	COMPARISON_DX9 eDX9TestType;
     uint32_t ui32SyncFlags;
     uint32_t ui32NumOperands;
-	uint32_t ui32FirstSrc; //dx9
+	uint32_t ui32FirstSrc;
     Operand asOperands[6];
     uint32_t bSaturate;
     uint32_t ui32FuncIndexWithinInterface;
-
-	RESINFO_RETURN_TYPE eResInfoReturnType;		// added for ResInfo parse
+	RESINFO_RETURN_TYPE eResInfoReturnType;
 
     int bAddressOffset;
     int iUAddrOffset;
@@ -227,7 +223,7 @@ struct Shader
 
 	//int aiOpcodeUsed[NUM_OPCODES];
 
-	bool dx9Shader; //dx9
+	bool dx9Shader; // 3DMIGOTO ADDITION
 	uint32_t ui32CurrentVertexOutputStream;
 
 	Shader() :
@@ -249,7 +245,7 @@ struct Shader
 		aiInputDeclaredSize(),
 		aiOutputDeclared(),
 		abInputReferencedByInstruction(),
-		dx9Shader(false) //dx9
+		dx9Shader(false)
 	{
 		sInfo = new ShaderInfo();
 	}

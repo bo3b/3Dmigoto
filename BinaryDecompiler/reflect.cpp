@@ -335,7 +335,7 @@ static void ReadResources(const uint32_t* pui32Tokens,//in
     const uint32_t* pui32FirstToken = pui32Tokens;
     uint32_t i;
 
-    const uint32_t ui32NumConstantBuffers = *pui32Tokens++;
+	const uint32_t ui32NumConstantBuffers = *pui32Tokens++;
     const uint32_t ui32ConstantBufferOffset = *pui32Tokens++;
 
     uint32_t ui32NumResourceBindings = *pui32Tokens++;

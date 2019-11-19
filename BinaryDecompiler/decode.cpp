@@ -480,11 +480,11 @@ const uint32_t* DecodeDeclaration(Shader* psShader, const uint32_t* pui32Token, 
             DecodeNameToken(pui32Token + 3, &psDecl->asOperands[0]);
             break;
         }
-        case OPCODE_DCL_INPUT_PS_SIV:
-        {
+		case OPCODE_DCL_INPUT_PS_SIV:
+		{
             psDecl->value.eInterpolation = DecodeInterpolationMode(*pui32Token);
             break;
-        }
+		}
         case OPCODE_DCL_OUTPUT:
         {
             psDecl->ui32NumOperands = 1;
@@ -658,8 +658,8 @@ const uint32_t* DecodeDeclaration(Shader* psShader, const uint32_t* pui32Token, 
 			psDecl->sUAV.bCounter = 0;
 			psDecl->sUAV.ui32BufferSize = 0;
             DecodeOperand(pui32Token+ui32OperandOffset, &psDecl->asOperands[0]);
-			// This should be a RTYPE_UAV_RWBYTEADDRESS buffer. It is memory backed by
-			// a shader storage buffer whose is unknown at compile time.
+			//This should be a RTYPE_UAV_RWBYTEADDRESS buffer. It is memory backed by
+			//a shader storage buffer whose is unknown at compile time.
 			psDecl->sUAV.ui32BufferSize = 0;
             break;
         }
@@ -739,8 +739,6 @@ const uint32_t* DecodeDeclaration(Shader* psShader, const uint32_t* pui32Token, 
             psDecl->sTGSM.ui32Count = pui32Token[ui32OperandOffset++];
             break;
         }
-
-		// Two manually added from newer version of HLSLCrossCompiler.
 		case OPCODE_DCL_STREAM:
 		{
 			psDecl->ui32NumOperands = 1;
@@ -919,16 +917,16 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
         case OPCODE_FIRSTBIT_LO:
         case OPCODE_FIRSTBIT_SHI:
         case OPCODE_BFREV:
-		case OPCODE_F32TOF16:
-		case OPCODE_F16TOF32:
-		case OPCODE_RCP:
-		case OPCODE_NOT:
-		case OPCODE_DERIV_RTX_COARSE:
-		case OPCODE_DERIV_RTY_COARSE:
-		case OPCODE_DERIV_RTX_FINE:
-		case OPCODE_DERIV_RTY_FINE:
+        case OPCODE_F32TOF16:
+        case OPCODE_F16TOF32:
+        case OPCODE_RCP:
 		case OPCODE_DERIV_RTX:
 		case OPCODE_DERIV_RTY:
+		case OPCODE_DERIV_RTX_COARSE:
+		case OPCODE_DERIV_RTX_FINE:
+		case OPCODE_DERIV_RTY_COARSE:
+		case OPCODE_DERIV_RTY_FINE:
+        case OPCODE_NOT:
         {
             psInst->ui32NumOperands = 2;
             ui32OperandOffset += DecodeOperand(pui32Token+ui32OperandOffset, &psInst->asOperands[0]);
@@ -938,11 +936,11 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
 
         //Instructions with three operands go here
         case OPCODE_SINCOS:
+        case OPCODE_IMIN:
+		case OPCODE_UMIN:
 		case OPCODE_MIN:
-		case OPCODE_UMIN:		// missing opcode
-		case OPCODE_UMAX:		// missing opcode
 		case OPCODE_IMAX:
-		case OPCODE_IMIN:
+		case OPCODE_UMAX:
 		case OPCODE_MAX:
 		case OPCODE_MUL:
 		case OPCODE_DIV:
@@ -952,6 +950,7 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
 		case OPCODE_DP4:
         case OPCODE_NE:
         case OPCODE_OR:
+        case OPCODE_XOR:
         case OPCODE_LT:
         case OPCODE_IEQ:
         case OPCODE_IADD:
@@ -985,7 +984,6 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
         case OPCODE_DLT:
         case OPCODE_DNE:
         case OPCODE_DDIV:
-		case OPCODE_XOR:
 		case OPCODE_SAMPLE_POS:		// bo3b: added for WatchDogs
         {
             psInst->ui32NumOperands = 3;
@@ -1137,20 +1135,18 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
             ui32OperandOffset += DecodeOperand(pui32Token+ui32OperandOffset, &psInst->asOperands[3]);
             break;
         }
-		// Added to decode ResInfo variants. 
-		// TODO: update to newest version of CrossCompiler.
 		case OPCODE_RESINFO:
-		{
-			psInst->ui32NumOperands = 3;
+        {
+            psInst->ui32NumOperands = 3;
 
 			psInst->eResInfoReturnType = DecodeResInfoReturnType(pui32Token[0]);
 
-			ui32OperandOffset += DecodeOperand(pui32Token + ui32OperandOffset, &psInst->asOperands[0]);
-			ui32OperandOffset += DecodeOperand(pui32Token + ui32OperandOffset, &psInst->asOperands[1]);
-			ui32OperandOffset += DecodeOperand(pui32Token + ui32OperandOffset, &psInst->asOperands[2]);
-			break;
-		}
-		case OPCODE_MSAD:
+            ui32OperandOffset += DecodeOperand(pui32Token+ui32OperandOffset, &psInst->asOperands[0]);
+            ui32OperandOffset += DecodeOperand(pui32Token+ui32OperandOffset, &psInst->asOperands[1]);
+            ui32OperandOffset += DecodeOperand(pui32Token+ui32OperandOffset, &psInst->asOperands[2]);
+            break;
+        }
+        case OPCODE_MSAD:
         default:
         {
             // We can hit this in practice in shaders with unsupported
@@ -1395,12 +1391,10 @@ Shader* DecodeDXBC(uint32_t* data)
         //looks valid then we continue
         uint32_t type = DecodeShaderTypeDX9(data[0]);
 
-		// :todo: run standard DX9 decompiler from microsoft
-
-		if (type != INVALID_SHADER)
-		{
-			return DecodeDX9BC(data);
-		}
+        if(type != INVALID_SHADER)
+        {
+            return DecodeDX9BC(data);
+        }
 		return 0;
 	}
 
