@@ -4102,8 +4102,9 @@ public:
 			// Some shaders seen in World of Diving contain multiple shader programs.
 			// Ignore any instructions from old shader models that we do not handle to
 			// avoid crashes.
-			if (!strncmp(statement, "vs_1", 4) || !strncmp(statement, "vs_2", 4) ||
-			    !strncmp(statement, "ps_1", 4) || !strncmp(statement, "ps_2", 4)) {
+			if (!shader->dx9Shader && (
+			    !strncmp(statement, "vs_1", 4) || !strncmp(statement, "vs_2", 4) ||
+			    !strncmp(statement, "ps_1", 4) || !strncmp(statement, "ps_2", 4))) {
 				skip_shader = true;
 				NextLine(c, pos, size);
 				continue;

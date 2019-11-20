@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.16 on Wed Nov 20 20:51:36 2019
+// ---- Created with 3Dmigoto v1.3.16 on Wed Nov 20 20:59:16 2019
 
 
 
@@ -7,4 +7,10 @@
 
 
 void main(
+// Needs manual fix for instruction:
+// unknown dcl_:     dcl_position v0
+  r0.x = cmp(-c0 < c0);
+  r0.y = cmp(c0 < -c0);
+  r0.x = r0.x + -r0.y;
+  oPos = v0.x * r0.x;
 }
