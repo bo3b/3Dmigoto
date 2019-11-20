@@ -1732,7 +1732,7 @@ public:
 			char * result = strrchr(right, '.');
 			if (result == NULL)		//if don't have swizzle info，add .xyzw
 			{
-				strcat_s(right, strlen(right),".xyzw");
+				strcat_s(right, opcodeSize, ".xyzw");
 			}
 
 			//dx9
@@ -1743,6 +1743,11 @@ public:
 				// were to continue we would write a 0 to a
 				// random location since right2[1-right] will
 				// run off the start of the buffer.
+				//
+				// XXX With the addition of the above default
+				// swizzle, this should no longer be possible.
+				// Leaving this error path in anyway just in
+				// case since memory corruption is not fun.
 				logDecompileError("applySwizzle 2nd parameter missing '.': " + string(right));
 				return;
 			}

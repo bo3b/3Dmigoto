@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.2.72 on Tue Nov 19 20:46:08 2019
+// ---- Created with 3Dmigoto v1.2.72 on Sat Nov 23 04:43:28 2019
 
 
 
@@ -9,4 +9,9 @@ Texture2D<float4> StereoParams : register(t125);
 
 
 void main(
+// Needs manual fix for instruction:
+// unknown dcl_:     dcl_texcoord v0
+  r0 = ddx(v0.x);
+  r1 = ddy(v0.x);
+  oC0 = r1.x * r0.x;
 }
