@@ -692,10 +692,7 @@ struct Globals
 		gWipeUserConfig(false),
 		user_config_dirty(0),
 		gLogInput(false),
-		dump_all_profiles(false),
-
-		decompiler_settings({0})
-
+		dump_all_profiles(false)
 	{
 		int i;
 

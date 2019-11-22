@@ -403,7 +403,7 @@ static HRESULT Decompile(const void *pShaderBytecode, size_t BytecodeLength, str
 {
 	// Set all to zero, so we only init the ones we are using here:
 	ParseParameters p = {0};
-	DecompilerSettings d = {0};
+	DecompilerSettings d;
 	bool patched = false;
 	bool errorOccurred = false;
 	string disassembly;

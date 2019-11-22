@@ -6666,7 +6666,8 @@ public:
 		// Moved this out of Opcode_ret, because it's possible to have more than one ret
 		// in a shader.  This is the last of a given shader, which seems more correct.
 		// This fixes the double injection of "injectedScreenPos : SV_Position"
-		WritePatches();
+		if (!shader->dx9Shader)
+			WritePatches();
 	}
 
 	void ParseCodeOnlyShaderType(Shader *shader, const char *c, size_t size)

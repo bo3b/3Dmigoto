@@ -617,7 +617,7 @@ inline char * D3D9Wrapper::IDirect3DDevice9::ReplaceShader(UINT64 hash, const wc
 	}
 
 	// Shader hacking?
-	if (G->SHADER_PATH[0] && G->SHADER_CACHE_PATH[0] && ((G->EXPORT_HLSL >= 1) || G->decompiler_settings.fixSvPosition || G->decompiler_settings.recompileVs) && !pCode)
+	if (G->SHADER_PATH[0] && G->SHADER_CACHE_PATH[0] && ((G->EXPORT_HLSL >= 1)) && !pCode)
 	{
 		// Skip?
 		swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_bad.txt", G->SHADER_PATH, hash, shaderType);
