@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.2.72 on Tue Nov 19 20:46:07 2019
+// ---- Created with 3Dmigoto v1.2.72 on Sun Nov 24 06:19:41 2019
 
 
 
@@ -9,4 +9,9 @@ Texture2D<float4> StereoParams : register(t125);
 
 
 void main(
+// Needs manual fix for instruction:
+// unknown dcl_:     dcl_2d s0
+  r0 = .Sample(t0.xyzw);
+  r0 = r0.x * v0.x + c0;
+  oC0 = r0.x;
 }
