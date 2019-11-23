@@ -3335,23 +3335,11 @@ public:
 		unsigned int iNr = 0;
 		bool skip_shader = false;
 
-		//dx9
-		vector<Instruction> * inst = NULL;
-		if (shader->dx9Shader)
-		{
-			inst = &shader->asPhase[MAIN_PHASE].psInst;
+		vector<Instruction> *instructions = &shader->asPhase[MAIN_PHASE].psInst;
 
-		}
-		else
+		while (pos < size && iNr < instructions->size())
 		{
-			inst = &shader->psInst;
-		}
-
-		//dx9
-
-		while (pos < size && iNr < shader->psInst.size())
-		{
-			Instruction *instr = &shader->psInst[iNr];
+			Instruction *instr = &(*instructions)[iNr];
 
 			// Now ignore '#line' or 'undecipherable' debug info (DefenseGrid2)
 			if (!strncmp(c + pos, "#line", 5) ||
@@ -4219,7 +4207,7 @@ public:
 						Instruction * nextIns[6];
 						for (int i = 0; i < 6; i++)
 						{
-							nextIns[i] = &(*inst)[iNr + i + 1];
+							nextIns[i] = &(*instructions)[iNr + i + 1];
 						}
 
 						if (nextIns[0]->eOpcode == OPCODE_LOG && nextIns[1]->eOpcode == OPCODE_LOG && nextIns[2]->eOpcode == OPCODE_MUL &&
@@ -4537,7 +4525,7 @@ public:
 					//dx9
 					if (shader->dx9Shader)
 					{
-						Instruction * nextIns = &(*inst)[iNr + 1];
+						Instruction * nextIns = &(*instructions)[iNr + 1];
 						if (nextIns->eOpcode == OPCODE_MAD &&
 							IsInstructionOperandSame(instr, 3, nextIns, 3, GetComponentStrFromInstruction(instr, 0).c_str(), GetComponentStrFromInstruction(nextIns, 0).c_str()) == 2 &&
 							IsInstructionOperandSame(instr, 0, nextIns, 2, NULL, GetComponentStrFromInstruction(nextIns, 0).c_str()) == 1)
@@ -4670,7 +4658,7 @@ public:
 						Instruction * nextIns[2];
 						for (int i = 0; i < 2; i++)
 						{
-							nextIns[i] = &(*inst)[iNr + i + 1];
+							nextIns[i] = &(*instructions)[iNr + i + 1];
 						}
 
 						string outputOp1 = GetComponentStrFromInstruction(nextIns[1], 0);
@@ -4740,7 +4728,7 @@ public:
 					if (shader->dx9Shader)
 					{
 						remapTarget(op1);
-						Instruction * nextInstr = &(*inst)[iNr + 1];
+						Instruction * nextInstr = &(*instructions)[iNr + 1];
 						string outputOp0 = GetComponentStrFromInstruction(instr, 0);
 
 						//nrm generate two instructions，dp4 and rsq
