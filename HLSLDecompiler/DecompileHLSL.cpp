@@ -4996,7 +4996,7 @@ public:
 						break;
 
 					case OPCODE_LOG:
-						if (shader->dx9Shader)
+						if (shader->dx9Shader) // FIXME: This is actually a lookahead code path and may not be DX9 specific
 						{
 							Instruction * nextIns[6];
 							for (int i = 0; i < 6; i++)
@@ -5043,31 +5043,16 @@ public:
 								iNr += 7;
 								continue;
 							}
-							else
-							{
-								// XXX NOTE Duplicated code below!!!
-								remapTarget(op1);
-								applySwizzle(op1, op2);
-								if (!instr->bSaturate)
-									sprintf(buffer, "  %s = log2(%s);\n", writeTarget(op1), ci(op2).c_str());
-								else
-									sprintf(buffer, "  %s = saturate(log2(%s));\n", writeTarget(op1), ci(op2).c_str());
-								appendOutput(buffer);
-								removeBoolean(op1);
-								// XXX NOTE Duplicated code below!!!
-							}
-						} else {
-							// XXX NOTE Duplicated code above!!!
-							remapTarget(op1);
-							applySwizzle(op1, op2);
-							if (!instr->bSaturate)
-								sprintf(buffer, "  %s = log2(%s);\n", writeTarget(op1), ci(op2).c_str());
-							else
-								sprintf(buffer, "  %s = saturate(log2(%s));\n", writeTarget(op1), ci(op2).c_str());
-							appendOutput(buffer);
-							removeBoolean(op1);
-							// XXX NOTE Duplicated code above!!!
 						}
+
+						remapTarget(op1);
+						applySwizzle(op1, op2);
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = log2(%s);\n", writeTarget(op1), ci(op2).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(log2(%s));\n", writeTarget(op1), ci(op2).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
 						break;
 
 						// Opcodes for Sqrt, Min, Max, IMin, IMax all were using a 'statement' that is parsed
@@ -5317,7 +5302,7 @@ public:
 
 
 					case OPCODE_MAX:
-						if (shader->dx9Shader)
+						if (shader->dx9Shader) // FIXME: This is actually a lookahead code path and may not be DX9 specific
 						{
 							Instruction * nextIns = &(*instructions)[iNr + 1];
 							if (nextIns->eOpcode == OPCODE_MAD &&
@@ -5353,17 +5338,17 @@ public:
 								iNr += 2;
 								continue;
 							}
-						} else {
-							remapTarget(op1);
-							applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-							applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-							if (!instr->bSaturate)
-								sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
-							else
-								sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
-							appendOutput(buffer);
-							removeBoolean(op1);
 						}
+
+						remapTarget(op1);
+						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
+						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
 						break;
 					case OPCODE_IMIN:
 						remapTarget(op1);
@@ -5441,7 +5426,7 @@ public:
 
 					case OPCODE_DP3:
 					{
-						if (shader->dx9Shader)
+						if (shader->dx9Shader) // FIXME: This is actually a lookahead code path and may not be DX9 specific
 						{
 							Instruction * nextIns[2];
 							for (int i = 0; i < 2; i++)
@@ -5498,8 +5483,7 @@ public:
 					}
 
 					case OPCODE_DP4:
-						//dx9
-						if (shader->dx9Shader)
+						if (shader->dx9Shader) // FIXME: This is actually a lookahead code path and may not be DX9 specific
 						{
 							remapTarget(op1);
 							Instruction * nextInstr = &(*instructions)[iNr + 1];
@@ -5515,6 +5499,9 @@ public:
 								//asm just one line，don't need call ReadStatement
 								//have two instructions
 								iNr++;
+
+								// NOTE: NO CONTINUE HERE - NEED ONE BEFORE ELIMINATING DUPLICATE CODE BELOW
+								// AND NEED A REGRESSION TEST BEFORE DOING THAT.
 							}
 							else
 							{
