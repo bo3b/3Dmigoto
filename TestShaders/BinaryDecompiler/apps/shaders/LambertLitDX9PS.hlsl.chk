@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.16 on Sun Nov 24 05:34:46 2019
+// ---- Created with 3Dmigoto v1.3.16 on Sun Nov 24 06:49:16 2019
 
 
 
@@ -7,7 +7,9 @@
 
 
 void main(
+  r0.w = dot(c12, t0.xyz);
   r0.xyz = saturate(c14 * r0.w);
+  r0.w = dot(c13, t0.xyz);
   r1.xyz = saturate(c15 * r0.w);
   r0.xyz = r1.xyz + r0.xyz;
   r0.w = c0.x 1.000000;

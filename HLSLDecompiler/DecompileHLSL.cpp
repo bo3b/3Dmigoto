@@ -5483,17 +5483,17 @@ public:
 								iNr += 3;
 								continue;
 							}
-						} else {
-							remapTarget(op1);
-							applySwizzle(".xyz", fixImm(op2, instr->asOperands[1]));
-							applySwizzle(".xyz", fixImm(op3, instr->asOperands[2]));
-							if (!instr->bSaturate)
-								sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-							else
-								sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
-							appendOutput(buffer);
-							removeBoolean(op1);
 						}
+
+						remapTarget(op1);
+						applySwizzle(".xyz", fixImm(op2, instr->asOperands[1]));
+						applySwizzle(".xyz", fixImm(op3, instr->asOperands[2]));
+						if (!instr->bSaturate)
+							sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						else
+							sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						appendOutput(buffer);
+						removeBoolean(op1);
 						break;
 					}
 

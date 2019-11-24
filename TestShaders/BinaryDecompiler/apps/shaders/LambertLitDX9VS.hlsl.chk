@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.16 on Sun Nov 24 05:34:46 2019
+// ---- Created with 3Dmigoto v1.3.16 on Sun Nov 24 06:49:17 2019
 
 
 
@@ -23,4 +23,7 @@ void main(
   oPos.y = dot(r1.xyzw, c9);
   oPos.z = dot(r1.xyzw, c10);
   oPos.w = dot(r1.xyzw, c11);
+  oT0.x = dot(v1.xyz, c0);
+  oT0.y = dot(v1.xyz, c1);
+  oT0.z = dot(v1.xyz, c2);
 }
