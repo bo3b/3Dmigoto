@@ -4057,8 +4057,9 @@ public:
 		bool skip_shader = false;
 
 		vector<Instruction> *instructions = &shader->asPhase[MAIN_PHASE].ppsInst[0];
+		size_t inst_count = instructions->size();
 
-		while (pos < size && iNr < instructions->size())
+		while (pos < size && iNr < inst_count)
 		{
 			Instruction *instr = &(*instructions)[iNr];
 
@@ -4996,10 +4997,12 @@ public:
 						break;
 
 					case OPCODE_LOG:
-						if (shader->dx9Shader) // FIXME: This is actually a lookahead code path and may not be DX9 specific
+					{
+						const int lookahead = 6;
+						if (shader->dx9Shader && (iNr + lookahead < inst_count)) // FIXME: This is actually a lookahead code path and may not be DX9 specific
 						{
-							Instruction * nextIns[6];
-							for (int i = 0; i < 6; i++)
+							Instruction * nextIns[lookahead];
+							for (int i = 0; i < lookahead; i++)
 							{
 								nextIns[i] = &(*instructions)[iNr + i + 1];
 							}
@@ -5013,7 +5016,7 @@ public:
 								string op3Str;
 
 								//read next instruction
-								for (int i = 0; i < 6; i++)
+								for (int i = 0; i < lookahead; i++)
 								{
 									while (c[pos] != 0x0a && pos < size) pos++; pos++;
 
@@ -5040,7 +5043,7 @@ public:
 
 								while (c[pos] != 0x0a && pos < size) pos++; pos++;
 								mLastStatement = nextIns[5];
-								iNr += 7;
+								iNr += lookahead + 1;
 								continue;
 							}
 						}
@@ -5054,6 +5057,7 @@ public:
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
+					}
 
 						// Opcodes for Sqrt, Min, Max, IMin, IMax all were using a 'statement' that is parsed
 						// from the text ASM.  This did not match the Mov, or Add or other opcodes, and was
@@ -5302,7 +5306,9 @@ public:
 
 
 					case OPCODE_MAX:
-						if (shader->dx9Shader) // FIXME: This is actually a lookahead code path and may not be DX9 specific
+					{
+						const int lookahead = 1;
+						if (shader->dx9Shader && (iNr + lookahead < inst_count)) // FIXME: This is actually a lookahead code path and may not be DX9 specific
 						{
 							Instruction * nextIns = &(*instructions)[iNr + 1];
 							if (nextIns->eOpcode == OPCODE_MAD &&
@@ -5316,7 +5322,7 @@ public:
 								sprintf_s(y, opcodeSize, "%s * %s", op2, op3);
 
 								//read next instruction
-								for (int i = 0; i < 1; i++)
+								for (int i = 0; i < lookahead; i++)
 								{
 									while (c[pos] != 0x0a && pos < size) pos++; pos++;
 
@@ -5335,7 +5341,7 @@ public:
 
 								while (c[pos] != 0x0a && pos < size) pos++; pos++;
 								mLastStatement = nextIns;
-								iNr += 2;
+								iNr += lookahead + 1;
 								continue;
 							}
 						}
@@ -5350,6 +5356,7 @@ public:
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
+					}
 					case OPCODE_IMIN:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
@@ -5426,10 +5433,11 @@ public:
 
 					case OPCODE_DP3:
 					{
-						if (shader->dx9Shader) // FIXME: This is actually a lookahead code path and may not be DX9 specific
+						const int lookahead = 2;
+						if (shader->dx9Shader && (iNr + lookahead < inst_count)) // FIXME: This is actually a lookahead code path and may not be DX9 specific
 						{
-							Instruction * nextIns[2];
-							for (int i = 0; i < 2; i++)
+							Instruction * nextIns[lookahead];
+							for (int i = 0; i < lookahead; i++)
 							{
 								nextIns[i] = &(*instructions)[iNr + i + 1];
 							}
@@ -5442,7 +5450,7 @@ public:
 								IsInstructionOperandSame(instr, 1, nextIns[1], 3, NULL, outputOp1.c_str()) == 1 && IsInstructionOperandSame(instr, 2, nextIns[1], 1, NULL, outputOp1.c_str()) == 1)
 							{
 								//read next instruction
-								for (int i = 0; i < 2; i++)
+								for (int i = 0; i < lookahead; i++)
 								{
 									while (c[pos] != 0x0a && pos < size) pos++; pos++;
 
@@ -5465,7 +5473,7 @@ public:
 
 								while (c[pos] != 0x0a && pos < size) pos++; pos++;
 								mLastStatement = nextIns[1];
-								iNr += 3;
+								iNr += lookahead + 1;
 								continue;
 							}
 						}
@@ -5483,7 +5491,9 @@ public:
 					}
 
 					case OPCODE_DP4:
-						if (shader->dx9Shader) // FIXME: This is actually a lookahead code path and may not be DX9 specific
+					{
+						const int lookahead = 1;
+						if (shader->dx9Shader && (iNr + lookahead < inst_count)) // FIXME: This is actually a lookahead code path and may not be DX9 specific
 						{
 							remapTarget(op1);
 							Instruction * nextInstr = &(*instructions)[iNr + 1];
@@ -5531,6 +5541,7 @@ public:
 							// XXX NOTE Duplicated code above!!!
 						}
 						break;
+					}
 					case OPCODE_DP2ADD:
 						remapTarget(op1);
 						applySwizzle(".xy", op2);
