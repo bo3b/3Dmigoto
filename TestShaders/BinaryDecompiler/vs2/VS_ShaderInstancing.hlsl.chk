@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.2.72 on Tue Nov 19 20:46:14 2019
+// ---- Created with 3Dmigoto v1.2.72 on Sun Nov 24 06:06:47 2019
 
 
 
@@ -9,4 +9,39 @@ Texture2D<float4> StereoParams : register(t125);
 
 
 void main(
+// Needs manual fix for instruction:
+// unknown dcl_:     dcl_position v0
+// Needs manual fix for instruction:
+// unknown dcl_:     dcl_texcoord v1
+// Needs manual fix for instruction:
+// unknown dcl_:     dcl_texcoord1 v2
+  r0.x = frac(v2.x);
+  r0.x = -r0.x + v2.x;
+  a0.x = floor(r0.x);
+  r0 = c16[a0;
+  r0.w = r0.w * c12.x 0.999970 + c12.y 0.500000;
+  r0.w = frac(r0.w);
+  r0.w = r0.w * c12.z 6.283185 + c12.w -3.141593;
+  sincos(c14.xy -0.000002 -0.000022, r1.xy, r0.w);
+  r1.yzw = v0.xzx * r1.xyy;
+  r2.z = v0.z * r1.x + -r1.w;
+  r2.x = r1.z + r1.y;
+  r2.y = v0.y;
+  r0.xyz = r0.xyz * c13.x 32.000000 + r2.xyz;
+  oD0 = c136[a0;
+  r0.w = v0.w;
+  r0 = r0.x + c13.y -16.000000;
+  r1.x = dot(r0.xyzw, c0);
+  r1.y = dot(r0.xyzw, c1);
+  r1.z = dot(r0.xyzw, c2);
+  r1.w = dot(r0.xyzw, c3);
+  r0.x = dot(r1.xyzw, c4);
+  r0.y = dot(r1.xyzw, c5);
+  r0.z = dot(r1.xyzw, c6);
+  r0.w = dot(r1.xyzw, c7);
+  oPos.x = dot(r0.xyzw, c8);
+  oPos.y = dot(r0.xyzw, c9);
+  oPos.z = dot(r0.xyzw, c10);
+  oPos.w = dot(r0.xyzw, c11);
+  oT0.xy = v1.xy;
 }

@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.2.72 on Tue Nov 19 20:46:04 2019
+// ---- Created with 3Dmigoto v1.2.72 on Sun Nov 24 06:06:35 2019
 
 
 
@@ -9,4 +9,5 @@ Texture2D<float4> StereoParams : register(t125);
 
 
 void main(
+  oC0 = c16;
 }

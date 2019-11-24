@@ -1638,7 +1638,7 @@ public:
 			char * result = strrchr(right, '.');
 			if (result == NULL)		//if don't have swizzle info，add .xyzw
 			{
-				strcat_s(right, strlen(right),".xyzw");
+				strcat_s(right, opcodeSize, ".xyzw");
 			}
 
 			strPos = strrchr(right, '.') + 1;
