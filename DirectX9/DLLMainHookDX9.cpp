@@ -82,6 +82,8 @@ static HRESULT InstallHookDLLMain(HINSTANCE module, char *func, void **trampolin
 
 
 // ----------------------------------------------------------------------------
+// Only ExW version for now, used by nvapi.
+// Safe: Kernel32.dll known to be linked directly to our d3d11.dll
 
 static bool HookLoadLibraryExW()
 {
@@ -97,13 +99,7 @@ static bool HookLoadLibraryExW()
 		return false;
 	}
 
-#ifdef UNICODE
 	fail |= InstallHookDLLMain(hKernel32, "LoadLibraryExW", (LPVOID*)&fnOrigLoadLibraryExW, Hooked_LoadLibraryExW);
-	fail |= InstallHookDLLMain(hKernel32, "LoadLibraryW", (LPVOID*)&fnOrigLoadLibraryW, Hooked_LoadLibraryW);
-#else // FIXME: This path will never be used, because 3DMigoto is always built with UNICODE support
-	fail |= InstallHookDLLMain(hKernel32, "LoadLibraryExA", (LPVOID*)&fnOrigLoadLibraryExW, Hooked_LoadLibraryExA);
-	fail |= InstallHookDLLMain(hKernel32, "LoadLibraryA", (LPVOID*)&fnOrigLoadLibraryW, Hooked_LoadLibraryA);
-#endif // UNICODE
 
 	if (fail)
 	{

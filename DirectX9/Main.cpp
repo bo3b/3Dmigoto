@@ -415,29 +415,13 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 
 // The storage for the original routine so we can call through.
 
-// FIXME: This ifdef UNICODE looks wrong. What we are compiled with has
-// absolutely diddly squat to do with what the game was compiled with or which
-// version it calls. Plus, why is the ANSI version using wide string types? -DSS
-#ifdef UNICODE
-	HMODULE(WINAPI *fnOrigLoadLibraryExW)( _In_ LPCWSTR lpLibFileName,
-			_Reserved_ HANDLE hFile, _In_ DWORD dwFlags) = LoadLibraryExW;
-	HMODULE(WINAPI *fnOrigLoadLibraryW)(_In_ LPCWSTR lpLibFileName) = LoadLibraryW;
-#else
-	HMODULE(WINAPI *fnOrigLoadLibraryExA)(_In_ LPCWSTR lpLibFileName,
-		_Reserved_ HANDLE hFile, _In_ DWORD dwFlags) = LoadLibraryExA;
-	HMODULE(WINAPI *fnOrigLoadLibraryA)(_In_ LPCWSTR lpLibFileName) = LoadLibraryA;
-#endif
+HMODULE(__stdcall *fnOrigLoadLibraryExW)(
+	_In_       LPCWSTR lpLibFileName,
+	_Reserved_ HANDLE  hFile,
+	_In_       DWORD   dwFlags
+	) = LoadLibraryExW;
 
-#ifdef UNICODE
-HMODULE WINAPI Hooked_LoadLibraryW(_In_ LPCWSTR lpLibFileName)
-{
-	LogDebugW(L"   Hooked_LoadLibraryW load: %s.\n", lpLibFileName);
-	// Normal unchanged case.
-	return fnOrigLoadLibraryW(lpLibFileName);
-
-}
-
-HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
+HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
 {
 	HMODULE module;
 	static bool hook_enabled = true;
@@ -485,65 +469,3 @@ HMODULE WINAPI Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HAND
 	// Normal unchanged case.
 	return fnOrigLoadLibraryExW(lpLibFileName, hFile, dwFlags);
 }
-
-#else // FIXME: This path will never be used, because 3DMigoto is always built with UNICODE support
-
-HMODULE WINAPI Hooked_LoadLibraryA(_In_ LPCWSTR lpLibFileName)
-{
-	// This is late enough that we can look for standard logging.
-	LogDebugW(L"   Hooked_LoadLibraryW load: %s.\n", lpLibFileName);
-	// Normal unchanged case.
-	return fnOrigLoadLibraryA(lpLibFileName);
-
-}
-
-HMODULE WINAPI Hooked_LoadLibraryExA(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
-{
-	HMODULE module;
-	static bool hook_enabled = true;
-
-	// This is late enough that we can look for standard logging.
-	LogDebugW(L"   Hooked_LoadLibraryExW load: %s.\n", lpLibFileName);
-
-	if (_wcsicmp(lpLibFileName, L"SUPPRESS_3DMIGOTO_REDIRECT") == 0) {
-		// Something (like Origin's IGO32.dll hook in ntdll.dll
-		// LdrLoadDll) is interfering with our hook and the caller is
-		// about to attempt the load again using the full path. Disable
-		// our redirect for the next call to make sure we don't give
-		// them a reference to themselves. Subsequent calls will be
-		// armed again in case we still need the redirect.
-		hook_enabled = false;
-		return NULL;
-	}
-
-	// Only do these overrides if they are specified in the d3dx.ini file.
-	//  load_library_redirect=0 for off, allowing all through unchanged.
-	//  load_library_redirect=1 for nvapi.dll override only, forced to game folder.
-	//  load_library_redirect=2 for both d3d11.dll and nvapi.dll forced to game folder.
-	// This flag can be set by the proxy loading, because it must be off in that case.
-	if (hook_enabled) {
-
-		if (G->load_library_redirect > 1)
-		{
-			module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_d3d9.dll", L"d3d9.dll");
-			if (module)
-				return module;
-		}
-
-		if (G->load_library_redirect > 0)
-		{
-			module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi64.dll", L"nvapi64.dll");
-			if (module)
-				return module;
-
-			module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi.dll", L"nvapi.dll");
-			if (module)
-				return module;
-		}
-	}
-	else
-		hook_enabled = true;
-	// Normal unchanged case.
-	return fnOrigLoadLibraryExA(lpLibFileName, hFile, dwFlags);
-}
-#endif // UNICODE
