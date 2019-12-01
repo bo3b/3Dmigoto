@@ -2,7 +2,7 @@
 #include "d3d9Wrapper.h"
 inline void D3D9Wrapper::IDirect3DTexture9::Delete()
 {
-	LogInfo("IDirect3DTexture9::Delete\n");
+	LogInfo("IDirect3DTexture9::Delete handle=%p counter=%d this=%p\n", m_pUnk, m_ulRef, this);
 	LogInfo("  deleting self\n");
 
 	D3D9Wrapper::IDirect3DResource9::Delete();
@@ -143,7 +143,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DTexture9::Release(THIS)
 	if (prev_non_zero) {
 		--shared_ref_count;
 		if (shared_ref_count == 0) {
-			if (!bound)
+			if (bound.empty())
 				Delete();
 		}
 	}

@@ -116,7 +116,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVolumeTexture9::Release(THIS)
 	if (prev_non_zero) {
 		--shared_ref_count;
 		if (shared_ref_count == 0) {
-			if (!bound)
+			if (bound.empty())
 				Delete();
 		}
 	}

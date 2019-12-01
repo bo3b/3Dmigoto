@@ -89,7 +89,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVolume9::Release(THIS)
 	}
 	if (prev_non_zero) {
 		--m_OwningContainer->shared_ref_count;
-		if (m_OwningContainer->shared_ref_count == 0 && !m_OwningContainer->bound)
+		if (m_OwningContainer->shared_ref_count == 0 && m_OwningContainer->bound.empty())
 			m_OwningContainer->Delete();
 	}
 	return ulRef;

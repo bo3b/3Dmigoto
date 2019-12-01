@@ -7,7 +7,6 @@ D3D9Wrapper::IDirect3DBaseTexture9::IDirect3DBaseTexture9(::LPDIRECT3DBASETEXTUR
 	magic(0x7da43feb),
 	texType(type),
 	shared_ref_count(1),
-	bound(false),
 	zero_d3d_ref_count(false)
 {
 
@@ -26,13 +25,17 @@ void D3D9Wrapper::IDirect3DBaseTexture9::Delete()
 		break;
 	}
 }
-void D3D9Wrapper::IDirect3DBaseTexture9::Bound()
+void D3D9Wrapper::IDirect3DBaseTexture9::Bound(DWORD Stage)
 {
-	bound = true;
+	LogInfo("IDirect3DSurface9::Bound stage=%u handle=%p counter=%d this=%p\n", Stage, m_pUnk, m_ulRef, this);
+
+	bound.insert(Stage);
 }
-void D3D9Wrapper::IDirect3DBaseTexture9::Unbound()
+void D3D9Wrapper::IDirect3DBaseTexture9::Unbound(DWORD Stage)
 {
-	bound = false;
+	LogInfo("IDirect3DSurface9::Unbound stage=%u handle=%p counter=%d this=%p\n", Stage, m_pUnk, m_ulRef, this);
+
+	bound.erase(Stage);
 	if (shared_ref_count == 0)
 	{
 		switch (texType) {

@@ -115,7 +115,7 @@ HRESULT D3D9Wrapper::IDirect3DSurface9::resolveDepthReplacement()
 }
 inline void D3D9Wrapper::IDirect3DSurface9::Delete()
 {
-	LogInfo("IDirect3DSurface9::Delete\n");
+	LogInfo("IDirect3DSurface9::Delete handle=%p counter=%d this=%p\n", m_pUnk, m_ulRef, this);
 	LogInfo("  deleting self\n");
 
 	D3D9Wrapper::IDirect3DResource9::Delete();
@@ -154,10 +154,12 @@ inline void D3D9Wrapper::IDirect3DSurface9::Bound()
 		m_OwningSwapChain->Bound();
 		break;
 	case SurfaceContainerOwnerType::Texture:
-		m_OwningTexture->Bound();
+		//m_OwningTexture->Bound(); // Unclear what slot to indicate it is bound to
+		m_OwningTexture->AddRef(); // So just bump the refcount instead. -DSS
 		break;
 	case SurfaceContainerOwnerType::CubeTexture:
-		m_OwningCubeTexture->Bound();
+		// m_OwningCubeTexture->Bound(); // Unclear what slot to indicate it is bound to
+		m_OwningCubeTexture->AddRef(); // So just bump the refcount instead. -DSS
 		break;
 	default:
 		bound = true;
@@ -172,10 +174,12 @@ inline void D3D9Wrapper::IDirect3DSurface9::Unbound()
 			m_OwningSwapChain->Unbound();
 		break;
 	case SurfaceContainerOwnerType::Texture:
-		m_OwningTexture->Unbound();
+		// m_OwningTexture->Unbound();
+		m_OwningTexture->Release();
 		break;
 	case SurfaceContainerOwnerType::CubeTexture:
-		m_OwningCubeTexture->Unbound();
+		// m_OwningCubeTexture->Unbound();
+		m_OwningCubeTexture->Release();
 		break;
 	default:
 		bound = false;
@@ -408,12 +412,12 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DSurface9::Release(THIS)
 			break;
 		case SurfaceContainerOwnerType::Texture:
 			--m_OwningTexture->shared_ref_count;
-			if (m_OwningTexture->shared_ref_count == 0 && !m_OwningTexture->bound)
+			if (m_OwningTexture->shared_ref_count == 0 && m_OwningTexture->bound.empty())
 				m_OwningTexture->Delete();
 			break;
 		case SurfaceContainerOwnerType::CubeTexture:
 			--m_OwningCubeTexture->shared_ref_count;
-			if (m_OwningCubeTexture->shared_ref_count == 0 && !m_OwningCubeTexture->bound)
+			if (m_OwningCubeTexture->shared_ref_count == 0 && m_OwningCubeTexture->bound.empty())
 				m_OwningCubeTexture->Delete();
 			break;
 		}

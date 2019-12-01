@@ -7753,7 +7753,7 @@ void ResourceCopyTarget::SetResource(
 				if (wrapper) {
 					auto it = mHackerDevice->m_activeTextureStages.find((D3DDMAPSAMPLER + 1 + slot));
 					if (it != mHackerDevice->m_activeTextureStages.end()) {
-						it->second->Unbound();
+						it->second->Unbound(it->first);
 						mHackerDevice->m_activeTextureStages.erase(it);
 					}
 				}
@@ -7767,20 +7767,20 @@ void ResourceCopyTarget::SetResource(
 					auto it = mHackerDevice->m_activeTextureStages.find((D3DDMAPSAMPLER + 1 + slot));
 					if (it != mHackerDevice->m_activeTextureStages.end()) {
 						if (wrappedTexture != it->second) {
-							wrappedTexture->Bound();
-							it->second->Unbound();
+							wrappedTexture->Bound(it->first);
+							it->second->Unbound(it->first);
 							it->second = wrappedTexture;
 						}
 					}
 					else {
-						wrappedTexture->Bound();
+						wrappedTexture->Bound(D3DDMAPSAMPLER + 1 + slot);
 						mHackerDevice->m_activeTextureStages.emplace((D3DDMAPSAMPLER + 1 + slot), wrappedTexture);
 					}
 				}
 				else {
 					auto it = mHackerDevice->m_activeTextureStages.find((D3DDMAPSAMPLER + 1 + slot));
 					if (it != mHackerDevice->m_activeTextureStages.end()) {
-						it->second->Unbound();
+						it->second->Unbound(it->first);
 						mHackerDevice->m_activeTextureStages.erase(it);
 					}
 				}
@@ -7794,7 +7794,7 @@ void ResourceCopyTarget::SetResource(
 				if (wrapper) {
 					auto it = mHackerDevice->m_activeTextureStages.find(slot);
 					if (it != mHackerDevice->m_activeTextureStages.end()) {
-						it->second->Unbound();
+						it->second->Unbound(it->first);
 						mHackerDevice->m_activeTextureStages.erase(it);
 					}
 				}
@@ -7808,20 +7808,20 @@ void ResourceCopyTarget::SetResource(
 					auto it = mHackerDevice->m_activeTextureStages.find(slot);
 					if (it != mHackerDevice->m_activeTextureStages.end()) {
 						if (wrappedTexture != it->second) {
-							wrappedTexture->Bound();
-							it->second->Unbound();
+							wrappedTexture->Bound(slot);
+							it->second->Unbound(slot);
 							it->second = wrappedTexture;
 						}
 					}
 					else {
-						wrappedTexture->Bound();
+						wrappedTexture->Bound(slot);
 						mHackerDevice->m_activeTextureStages.emplace(slot, wrappedTexture);
 					}
 				}
 				else {
 					auto it = mHackerDevice->m_activeTextureStages.find(slot);
 					if (it != mHackerDevice->m_activeTextureStages.end()) {
-						it->second->Unbound();
+						it->second->Unbound(it->first);
 						mHackerDevice->m_activeTextureStages.erase(it);
 					}
 				}

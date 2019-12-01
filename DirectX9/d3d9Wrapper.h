@@ -792,10 +792,10 @@ class IDirect3DBaseTexture9 : public D3D9Wrapper::IDirect3DResource9
 public:
 	void Delete();
 	ULONG shared_ref_count;
-	bool bound;
+	set<DWORD> bound;
 	bool zero_d3d_ref_count;
-	void Bound();
-	void Unbound();
+	void Bound(DWORD Stage);
+	void Unbound(DWORD Stage);
 
 	TextureType texType;
 	// Delayed creation parameters.

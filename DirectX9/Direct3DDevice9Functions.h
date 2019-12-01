@@ -2211,7 +2211,7 @@ void D3D9Wrapper::IDirect3DDevice9::UnbindResources()
 	}
 	for (auto it = m_activeTextureStages.cbegin(); it != m_activeTextureStages.cend();)
 	{
-		it->second->Unbound();
+		it->second->Unbound(it->first);
 		m_activeTextureStages.erase(it++);
 	}
 	for (auto it = m_activeVertexBuffers.cbegin(); it != m_activeVertexBuffers.cend();)
@@ -4891,7 +4891,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetTexture(THIS_ DWORD Stage,D3D9Wra
 		if (!FAILED(hr)) {
 			auto it = m_activeTextureStages.find(Stage);
 			if (it != m_activeTextureStages.end()) {
-				it->second->Unbound();
+				it->second->Unbound(Stage);
 				m_activeTextureStages.erase(it);
 			}
 			if (G->gForceStereo == 2)
@@ -4923,13 +4923,13 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetTexture(THIS_ DWORD Stage,D3D9Wra
 			auto it = m_activeTextureStages.find(Stage);
 			if (it != m_activeTextureStages.end()) {
 				if (wrappedTexture != it->second) {
-					wrappedTexture->Bound();
-					it->second->Unbound();
+					wrappedTexture->Bound(Stage);
+					it->second->Unbound(Stage);
 					it->second = wrappedTexture;
 				}
 			}
 			else {
-				wrappedTexture->Bound();
+				wrappedTexture->Bound(Stage);
 				m_activeTextureStages.emplace(Stage, wrappedTexture);
 			}
 		}
