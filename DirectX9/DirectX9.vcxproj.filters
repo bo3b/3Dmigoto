@@ -61,7 +61,7 @@
     <ClInclude Include="ResourceHash.h" />
     <ClInclude Include="Override.h" />
     <ClInclude Include="Input.h" />
-    <ClInclude Include="vkeys.h" />
+    <ClInclude Include="..\vkeys.h" />
     <ClInclude Include="Hunting.h" />
     <ClInclude Include="nvprofile.h" />
     <ClInclude Include="ShaderRegex.h" />

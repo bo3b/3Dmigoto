@@ -136,7 +136,7 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="ResourceHash.h" />
     <ClInclude Include="ShaderRegex.h" />
-    <ClInclude Include="vkeys.h" />
+	<ClInclude Include="..\vkeys.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX9.rc" />
