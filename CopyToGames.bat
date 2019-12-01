@@ -1,5 +1,13 @@
 @echo off
+
+SET script_path=%~dp0
+if exist %script_path%\CopyToGamesLocal.bat (
+	CALL %script_path%\CopyToGamesLocal.bat %1 %2
+	exit
+)
+
 if "%username%" NEQ "bo3b" exit
+REM The below is Bo3b's setup, but can serve as a template for CopyToGamesLocal.bat
 
 if %2=="amd64" GOTO Copyx64
 

@@ -10,6 +10,7 @@
 *.lastbuildstate
 *.res
 *.vsps
+CopyToGamesLocal.bat
 
 # Project specific ignores
 /7zip/7-zip.chm
