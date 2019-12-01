@@ -1,5 +1,6 @@
-// ---- Created with 3Dmigoto v1.3.16 on Fri Nov 22 21:14:36 2019
+// ---- Created with 3Dmigoto v1.3.16 on Sun Dec 01 00:09:15 2019
 
+Texture2D<float4> Texture0 : register(t0);
 
 
 // 3Dmigoto declarations
@@ -9,6 +10,6 @@
 void main(
 // Needs manual fix for instruction:
 // unknown dcl_:     dcl_2d s0
-  r0 = .Sample(c0.x 0.500000);
+  r0 = Texture0.Sample(c0.x 0.500000);
   oC0 = r0.x;
 }
