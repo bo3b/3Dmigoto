@@ -56,7 +56,7 @@ static void LogHooking(char *fmt, ...)
 
 
 // ----------------------------------------------------------------------------
-static HRESULT InstallHook(LPCWSTR moduleName, char *func, void **trampoline, void *hook)
+static HRESULT InstallHookDLLMain(LPCWSTR moduleName, char *func, void **trampoline, void *hook)
 {
 	HINSTANCE module;
 	SIZE_T hook_id;
@@ -92,7 +92,7 @@ static HRESULT InstallHook(LPCWSTR moduleName, char *func, void **trampoline, vo
 
 static HRESULT HookLoadLibraryExW()
 {
-	HRESULT hr = InstallHook(L"Kernel32.dll", "LoadLibraryExW", (LPVOID*)&fnOrigLoadLibraryExW, Hooked_LoadLibraryExW);
+	HRESULT hr = InstallHookDLLMain(L"Kernel32.dll", "LoadLibraryExW", (LPVOID*)&fnOrigLoadLibraryExW, Hooked_LoadLibraryExW);
 	if (FAILED(hr))
 		return E_FAIL;
 
@@ -116,16 +116,16 @@ static HRESULT HookDXGIFactories()
 {
 	HRESULT hr;
 
-	hr = InstallHook(L"dxgi.dll", "CreateDXGIFactory", (LPVOID*)&fnOrigCreateDXGIFactory, Hooked_CreateDXGIFactory);
+	hr = InstallHookDLLMain(L"dxgi.dll", "CreateDXGIFactory", (LPVOID*)&fnOrigCreateDXGIFactory, Hooked_CreateDXGIFactory);
 	if (FAILED(hr))
 		return E_FAIL;
 
-	hr = InstallHook(L"dxgi.dll", "CreateDXGIFactory1", (LPVOID*)&fnOrigCreateDXGIFactory1, Hooked_CreateDXGIFactory1);
+	hr = InstallHookDLLMain(L"dxgi.dll", "CreateDXGIFactory1", (LPVOID*)&fnOrigCreateDXGIFactory1, Hooked_CreateDXGIFactory1);
 	if (FAILED(hr))
 		return E_FAIL;
 
 	// We do not care if this fails - this function does not exist on Win7
-	InstallHook(L"dxgi.dll", "CreateDXGIFactory2", (LPVOID*)&fnOrigCreateDXGIFactory2, Hooked_CreateDXGIFactory2);
+	InstallHookDLLMain(L"dxgi.dll", "CreateDXGIFactory2", (LPVOID*)&fnOrigCreateDXGIFactory2, Hooked_CreateDXGIFactory2);
 
 	return NOERROR;
 }
@@ -140,7 +140,7 @@ static HRESULT HookD3D11(HINSTANCE our_dll)
 	// use LoadLibrary() from DllMain. Does Nektra handle this somehow, or
 	// should we defer the hook until later (perhaps our LoadLibrary hook)?
 
-	hr = InstallHook(L"d3d11.dll", "D3D11CreateDevice",
+	hr = InstallHookDLLMain(L"d3d11.dll", "D3D11CreateDevice",
 			(LPVOID*)&_D3D11CreateDevice, D3D11CreateDevice);
 	if (FAILED(hr))
 		return E_FAIL;
@@ -149,7 +149,7 @@ static HRESULT HookD3D11(HINSTANCE our_dll)
 	// unresolved external - looks like the function signature doesn't
 	// quite match the prototype in the Win 10 SDK. Whatever - it's
 	// compatible, so just use GetProcAddress() rather than fight it.
-	hr = InstallHook(L"d3d11.dll", "D3D11CreateDeviceAndSwapChain",
+	hr = InstallHookDLLMain(L"d3d11.dll", "D3D11CreateDeviceAndSwapChain",
 			(LPVOID*)&_D3D11CreateDeviceAndSwapChain,
 			GetProcAddress(our_dll, "D3D11CreateDeviceAndSwapChain"));
 	if (FAILED(hr))

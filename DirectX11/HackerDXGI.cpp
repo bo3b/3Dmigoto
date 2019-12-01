@@ -70,6 +70,7 @@
 #include "IniHandler.h"
 #include "CommandList.h"
 #include "profiling.h"
+#include "cursor.h" // For InstallHookLate
 
 
 // -----------------------------------------------------------------------------
@@ -116,7 +117,7 @@ void InstallSetWindowPosHook()
 		return;
 
 	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
-	fail |= InstallHook(hUser32, "SetWindowPos", (void**)&fnOrigSetWindowPos, Hooked_SetWindowPos, true);
+	fail |= InstallHookLate(hUser32, "SetWindowPos", (void**)&fnOrigSetWindowPos, Hooked_SetWindowPos);
 
 	if (fail) {
 		LogOverlay(LOG_DIRE, "Failed to hook SetWindowPos for full_screen=2\n");

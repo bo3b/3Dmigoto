@@ -29,6 +29,7 @@
     <ClCompile Include="profiling.cpp" />
     <ClCompile Include="..\ini_parser_lite.cpp" />
     <ClCompile Include="lock.cpp" />
+    <ClCompile Include="cursor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -62,6 +63,7 @@
     <ClInclude Include="HackerDXGI.h" />
     <ClInclude Include="profiling.h" />
     <ClInclude Include="lock.h" />
+    <ClInclude Include="cursor.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

@@ -15,6 +15,7 @@
 #include "IniHandler.h"
 #include "profiling.h"
 #include "Hunting.h"
+#include "cursor.h"
 
 #include <D3DCompiler.h>
 
