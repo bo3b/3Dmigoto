@@ -667,9 +667,19 @@ public:
 			{
 				if (c[pos] == 0x0d && c[pos + 1] == 0x0a)
 				{
+					// This code path doesn't trigger for me (DarkStarSword).
+					// Does this mean that the newline style output from the
+					// disassembler can vary? If so, dependent on what?
 					foundLineEnd = true;
 					pos += 2;
 					return pos - lineStart - 2;
+					break;
+				}
+				else if (c[pos] == 0x0a)
+				{
+					foundLineEnd = true;
+					pos += 1;
+					return pos - lineStart - 1;
 					break;
 				}
 			}

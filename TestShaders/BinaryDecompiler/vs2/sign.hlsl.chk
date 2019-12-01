@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.2.72 on Sun Nov 24 06:03:26 2019
+// ---- Created with 3Dmigoto v1.2.72 on Sun Dec 01 03:00:31 2019
 
 
 
@@ -11,8 +11,8 @@ Texture2D<float4> StereoParams : register(t125);
 void main(
 // Needs manual fix for instruction:
 // unknown dcl_:     dcl_position v0
-  r0.x = cmp(-c0 < c0);
-  r0.y = cmp(c0 < -c0);
+  r0.x = cmp(-factor.x < factor.x);
+  r0.y = cmp(factor.x < -factor.x);
   r0.x = -r0.y + r0.x;
   oPos = v0.x * r0.x;
 }

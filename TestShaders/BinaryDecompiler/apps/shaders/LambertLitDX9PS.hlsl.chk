@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.2.72 on Sun Nov 24 06:06:35 2019
+// ---- Created with 3Dmigoto v1.2.72 on Sun Dec 01 03:00:18 2019
 
 
 
@@ -9,8 +9,8 @@ Texture2D<float4> StereoParams : register(t125);
 
 
 void main(
-  r0.w = dot(c12, t0.xyz);
-  r0.xyz = saturate(c14 * r0.w);
+  r0.w = dot(vLightDir.xyzw, t0.xyz);
+  r0.xyz = saturate(vLightColor.xyzw * r0.w);
   r0.w = dot(c13, t0.xyz);
   r1.xyz = saturate(c15 * r0.w);
   r0.xyz = r0.xyz + r1.xyz;
