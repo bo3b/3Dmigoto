@@ -326,6 +326,107 @@ void NvAPIResetEyeSeparationTracking()
 	}
 }
 
+// Based on the same function in the 3DMigoto loader
+static bool check_file_description(const char *buf, const wchar_t *module_path)
+{
+	// https://docs.microsoft.com/en-gb/windows/desktop/api/winver/nf-winver-verqueryvaluea
+	struct LANGANDCODEPAGE {
+		WORD wLanguage;
+		WORD wCodePage;
+	} *translate_query;
+	char id[50];
+	char *file_description = "";
+	unsigned int query_size, file_desc_size;
+	HRESULT hr;
+	unsigned i;
+
+	if (!VerQueryValueA(buf, "\\VarFileInfo\\Translation", (void**)&translate_query, &query_size)) {
+		LogInfo("3DMigoto file information query failed\n");
+		return false;
+	}
+
+	// Look for the 3DMigoto file description in all language blocks... We
+	// could likely skip the loop since we know which language it should be
+	// in, but for some reason we included it in the German section which
+	// we might want to change, so this way we won't need to adjust this
+	// code if we do:
+	for (i = 0; i < (query_size / sizeof(struct LANGANDCODEPAGE)); i++) {
+		hr = _snprintf_s(id, 50, 50, "\\StringFileInfo\\%04x%04x\\FileDescription",
+				translate_query[i].wLanguage,
+				translate_query[i].wCodePage);
+		if (FAILED(hr)) {
+			LogInfo("3DMigoto file description query bugged\n");
+			return false;
+		}
+
+		if (!VerQueryValueA(buf, id, (void**)&file_description, &file_desc_size)) {
+			LogInfo("3DMigoto file description query failed\n");
+			return false;
+		}
+
+		// Only look for the 3Dmigoto prefix. We've had a whitespace
+		// error in the description for all this time that we want to
+		// ignore, and we later might want to add other 3DMigoto DLLs
+		printf("%s description: \"%s\"\n", module_path, file_description);
+		if (!strncmp(file_description, "3Dmigoto", 8))
+			return true;
+	}
+
+	return false;
+}
+
+static bool dx11_3dmigoto_present()
+{
+	// If both 3DMigoto's d3d9.dll and d3d11.dll are loaded into the same
+	// process they will have both hooked into LoadLibrary to redirect nvapi,
+	// which will result in our wrapper getting a reference to itself when it
+	// tries to load the real nvapi. We need to detect this situation and avoid
+	// both DLLs handling it. Since there are versions of d3d11.dll in the wild
+	// without this detection and we can't rely on our users removing old
+	// versions we need to handle this from the d3d9.dll, independently of
+	// which DLL has been loaded first.
+
+	static bool present = false;
+	if (present)
+		return true;
+
+	HMODULE d3d11_handle = GetModuleHandleA("d3d11.dll");
+	if (!d3d11_handle)
+		return false;
+
+	wchar_t module_path[MAX_PATH];
+	GetModuleFileName(d3d11_handle, module_path, MAX_PATH);
+
+	VS_FIXEDFILEINFO *query = NULL;
+	DWORD pointless_handle = 0;
+	unsigned int size;
+	char *buf;
+
+	size = GetFileVersionInfoSize(module_path, &pointless_handle);
+	if (!size) {
+		LogInfo("3DMigoto version size check failed\n");
+		return false;
+	}
+
+	buf = new char[size];
+
+	if (!GetFileVersionInfo(module_path, pointless_handle, size, buf)) {
+		LogInfo("3DMigoto version info check failed\n");
+		goto out_free;
+	}
+
+	if (!check_file_description(buf, module_path)) {
+		LogInfo("Loaded module \"%ls\" is not 3DMigoto\n", module_path);
+		goto out_free;
+	}
+
+	LogInfo("Loaded module \"%ls\" is 3DMigoto - disabling nvapi redirect in this DLL\n", module_path);
+	present = true;
+
+out_free:
+	delete [] buf;
+	return present;
+}
 
 // -----------------------------------------------------------------------------------------------
 // This is our hook for LoadLibraryExW, handling the loading of our original_* libraries.
@@ -337,7 +438,7 @@ void NvAPIResetEyeSeparationTracking()
 
 
 static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags,
-	LPCWSTR our_name, LPCWSTR library)
+	LPCWSTR our_name, LPCWSTR library, bool check_3dmigoto_dx11)
 {
 	WCHAR fullPath[MAX_PATH];
 	UINT ret;
@@ -358,6 +459,9 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 
 	if (_wcsicmp(lpLibFileName, our_name) == 0)
 	{
+		if (check_3dmigoto_dx11 && dx11_3dmigoto_present())
+			return NULL;
+
 		LogInfoW(L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n",
 			lpLibFileName, fullPath);
 
@@ -371,6 +475,9 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 
 	if (_wcsicmp(lpLibFileName, fullPath) == 0)
 	{
+		if (check_3dmigoto_dx11 && dx11_3dmigoto_present())
+			return NULL;
+
 		LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
 
 		return fnOrigLoadLibraryExW(library, hFile, dwFlags);
@@ -448,18 +555,18 @@ HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ H
 
 		if (G->load_library_redirect > 1)
 		{
-			module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_d3d9.dll", L"d3d9.dll");
+			module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_d3d9.dll", L"d3d9.dll", false);
 			if (module)
 				return module;
 		}
 
 		if (G->load_library_redirect > 0)
 		{
-			module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi64.dll", L"nvapi64.dll");
+			module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi64.dll", L"nvapi64.dll", true);
 			if (module)
 				return module;
 
-			module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi.dll", L"nvapi.dll");
+			module = ReplaceOnMatch(lpLibFileName, hFile, dwFlags, L"original_nvapi.dll", L"nvapi.dll", true);
 			if (module)
 				return module;
 		}
