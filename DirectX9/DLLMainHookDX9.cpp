@@ -224,12 +224,10 @@ BOOL WINAPI DllMain(
 	switch (fdwReason)
 	{
 		case DLL_PROCESS_ATTACH:
-#if(_WIN64)
-#define NVAPI_DLL L"nvapi64.dll"
-#else
-#define NVAPI_DLL L"nvapi.dll"
-#endif
-			LoadLibrary(NVAPI_DLL);
+			// Calling LoadLibrary is explicilty illegal from DLLMain. If this
+			// was required to solve a real problem we will need to find an
+			// alternative solution. -DSS
+			// LoadLibrary(NVAPI_DLL);
 
 			cHookMgr.SetEnableDebugOutput(bLog);
 
