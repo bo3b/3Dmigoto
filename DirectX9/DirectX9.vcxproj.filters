@@ -103,6 +103,6 @@
     <None Include="d3d9Wrapper.def" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="Resource.rc" />
+    <ResourceCompile Include="DirectX9.rc" />
   </ItemGroup>
 </Project>

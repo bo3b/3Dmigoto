@@ -137,7 +137,7 @@
     <ClInclude Include="vkeys.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="Resource.rc" />
+    <ResourceCompile Include="DirectX9.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{4265C0D8-8671-49C0-8EB5-EB940FD08482}</ProjectGuid>
