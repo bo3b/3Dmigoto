@@ -12,6 +12,7 @@
 #include "Hunting.h"
 #include "nvprofile.h"
 #include "ShaderRegex.h"
+#include "cursor.h"
 
 // We don't want to use the same ini file as DX11 since there are some small
 // but significant differences between them that could cause problems if both

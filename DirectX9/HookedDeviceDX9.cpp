@@ -1757,22 +1757,17 @@ static void install_hooks(IDirect3DDevice9 *device, EnableHooksDX9 enable_hooks)
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetRenderState, device->lpVtbl->SetRenderState, SetRenderState);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetRenderTarget, device->lpVtbl->SetRenderTarget, SetRenderTarget);
 
-	if (!(enable_hooks & EnableHooksDX9::EXCEPT_SET_SAMPLERS)) {
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetSamplerState, device->lpVtbl->SetSamplerState, SetSamplerState);
-	}
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetSamplerState, device->lpVtbl->SetSamplerState, SetSamplerState);
 
-	if (!(enable_hooks & EnableHooksDX9::EXCEPT_SET_SHADER_RESOURCES)) {
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetPixelShaderConstantB, device->lpVtbl->SetPixelShaderConstantB, SetPixelShaderConstantB);
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetPixelShaderConstantF, device->lpVtbl->SetPixelShaderConstantF, SetPixelShaderConstantF);
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetPixelShaderConstantI, device->lpVtbl->SetPixelShaderConstantI, SetPixelShaderConstantI);
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetPixelShaderConstantB, device->lpVtbl->SetPixelShaderConstantB, SetPixelShaderConstantB);
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetPixelShaderConstantF, device->lpVtbl->SetPixelShaderConstantF, SetPixelShaderConstantF);
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetPixelShaderConstantI, device->lpVtbl->SetPixelShaderConstantI, SetPixelShaderConstantI);
 
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetVertexShaderConstantB, device->lpVtbl->SetVertexShaderConstantB, SetVertexShaderConstantB);
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetVertexShaderConstantF, device->lpVtbl->SetVertexShaderConstantF, SetVertexShaderConstantF);
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetVertexShaderConstantI, device->lpVtbl->SetVertexShaderConstantI, SetVertexShaderConstantI);
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetVertexShaderConstantB, device->lpVtbl->SetVertexShaderConstantB, SetVertexShaderConstantB);
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetVertexShaderConstantF, device->lpVtbl->SetVertexShaderConstantF, SetVertexShaderConstantF);
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetVertexShaderConstantI, device->lpVtbl->SetVertexShaderConstantI, SetVertexShaderConstantI);
 
-		cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetTexture, device->lpVtbl->SetTexture, SetTexture);
-	}
-
+	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetTexture, device->lpVtbl->SetTexture, SetTexture);
 
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetScissorRect, device->lpVtbl->SetScissorRect, SetScissorRect);
 	cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetSoftwareVertexProcessing, device->lpVtbl->SetSoftwareVertexProcessing, SetSoftwareVertexProcessing);

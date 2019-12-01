@@ -16,7 +16,7 @@ HINSTANCE migoto_handle;
 // Pretty sure this is safe at DLLMain, because we are only accessing kernel32 stuff which is sure
 // to be loaded.
 //
-// It's important to note this will be called from DLLMain, where there are a 
+// It's important to note this will be called from DLLMain, where there are a
 // lot of restrictions on what can be called here.  Avoid everything possible.
 // Anything that might change the load order of the dlls will make it crash or hang.
 //

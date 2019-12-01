@@ -41,6 +41,7 @@
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
     <ClCompile Include="CommandList.cpp" />
     <ClCompile Include="ConstantsTable.cpp" />
+    <ClCompile Include="cursor.cpp" />
     <ClCompile Include="d3d9Wrapper.cpp" />
     <ClCompile Include="D3DFont.cpp" />
     <ClCompile Include="DLLMainHookDX9.cpp" />
@@ -81,6 +82,7 @@
     <ClInclude Include="..\util.h" />
     <ClInclude Include="CommandList.h" />
     <ClInclude Include="ConstantsTable.h" />
+    <ClInclude Include="cursor.h" />
     <ClInclude Include="d3d9Wrapper.h" />
     <ClInclude Include="D3DFont.h" />
     <ClInclude Include="Direct3DResource9Functions.h" />

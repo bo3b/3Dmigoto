@@ -35,7 +35,8 @@
     <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
     <ClCompile Include="HookedStateBlock.cpp" />
     <ClCompile Include="profiling.cpp" />
-    <ClCompile Include="util.cpp" />
+    <ClCompile Include="..\util.cpp" />
+    <ClCompile Include="cursor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="d3d9Wrapper.h" />
@@ -98,6 +99,7 @@
     <ClInclude Include="profiling.h" />
     <ClInclude Include="FrameAnalysis.h" />
     <ClInclude Include="FrameAnalysisFunctions.h" />
+    <ClInclude Include="cursor.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d9Wrapper.def" />

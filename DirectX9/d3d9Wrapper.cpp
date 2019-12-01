@@ -6,6 +6,7 @@
 #include "Override.h"
 #include "IniHandler.h"
 #include "nvprofile.h"
+#include "cursor.h" // For InstallSetWindowPosHook
 
 ThreadSafePointerSet D3D9Wrapper::IDirect3DSwapChain9::m_List;
 ThreadSafePointerSet D3D9Wrapper::IDirect3DDevice9::m_List;
