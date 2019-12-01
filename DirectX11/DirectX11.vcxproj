@@ -46,6 +46,7 @@
     <ClCompile Include="..\iid.cpp" />
     <ClCompile Include="..\ini_parser_lite.cpp" />
     <ClCompile Include="..\util.cpp" />
+    <ClCompile Include="cursor.cpp" />
     <ClCompile Include="D3D11Wrapper.cpp" />
     <ClCompile Include="DLLMainHook.cpp" />
     <ClCompile Include="FrameAnalysis.cpp" />
@@ -77,6 +78,7 @@
     <ClInclude Include="..\shader.h" />
     <ClInclude Include="..\util.h" />
     <ClInclude Include="..\version.h" />
+    <ClInclude Include="cursor.h" />
     <ClInclude Include="D3D11Wrapper.h" />
     <ClInclude Include="DLLMainHook.h" />
     <ClInclude Include="FrameAnalysis.h" />

@@ -52,10 +52,3 @@ T2 GetIniEnumClass(const wchar_t *section, const wchar_t *key, T2 def, bool *fou
 bool get_namespaced_section_name_lower(const wstring *section, const wstring *ini_namespace, wstring *ret);
 bool get_section_namespace(const wchar_t *section, wstring *ret);
 wstring get_namespaced_var_name_lower(const wstring var, const wstring *ini_namespace);
-
-// These functions will bypass our hooks *if* the option to do so has been enabled:
-BOOL WINAPI CursorUpscalingBypass_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect);
-BOOL WINAPI CursorUpscalingBypass_GetCursorInfo(_Inout_ PCURSORINFO pci);
-BOOL WINAPI CursorUpscalingBypass_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint);
-
-int InstallHook(HINSTANCE module, char *func, void **trampoline, void *hook, bool LogInfo_is_safe);
