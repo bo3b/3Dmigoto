@@ -5587,16 +5587,19 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						if (!instr->bSaturate) {
-							// rsqrt should work in everything since shader
-							// model 2 - if shader model 1 on DX9 is the
-							// problem can't we just force shader model 3 and
-							// be done with it? Leaving this for now since
-							// 1/sqrt() should be mathematically equivelent,
-							// though may miss out on the fast inverse square
-							// root optimisation if the hardware employs it
-							// (look it up to have your mind blown) -DSS
-							//sprintf(buffer, "  %s = rsqrt(%s);\n", writeTarget(op1), ci(op2).c_str());
-							sprintf(buffer, "  %s = 1.0 / sqrt(%s);\n", writeTarget(op1), ci(op2).c_str()); //dx9
+							// The DX9 port switched this to 1/sqrt(), however
+							// it is unclear why that was necessary - rsqrt
+							// should work in everything since vs_1_1 and
+							// ps_2_0 (and in fact the regular sqrt didn't
+							// exist until shader model 4). Look up "fast
+							// inverse square root" to have your mind blown and
+							// get an idea of why this matters.
+							//
+							// Reverting this to rsqrt since the DX9 decompiler
+							// support is clearly unfinished and no explanation
+							// for this change was provided.
+							//
+							sprintf(buffer, "  %s = rsqrt(%s);\n", writeTarget(op1), ci(op2).c_str());
 						} else {
 							sprintf(buffer, "  %s = saturate(rsqrt(%s));\n", writeTarget(op1), ci(op2).c_str());
 						}
