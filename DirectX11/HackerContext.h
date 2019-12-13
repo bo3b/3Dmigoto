@@ -116,6 +116,9 @@ private:
 	ID3D11DeviceContext1 *mRealOrigContext1;
 	HackerDevice *mHackerDevice;
 
+	// Experimental mutex around Begin/End
+	HANDLE mContextMutex = NULL;
+
 	// These are per-context, moved from globals.h:
 	uint32_t mCurrentVertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 	uint32_t mCurrentIndexBuffer; // Only valid while hunting=1

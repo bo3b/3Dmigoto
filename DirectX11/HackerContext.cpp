@@ -65,6 +65,22 @@ HackerContext* HackerContextFactory(ID3D11Device1 *pDevice1, ID3D11DeviceContext
 
 HackerContext::HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1)
 {
+	LogInfo("\nHackerContext::HackerContext CreateMutex\n");
+
+	if (mContextMutex != NULL)
+		DoubleBeepExit();
+	 
+	wchar_t numb[100];
+	wsprintfW(numb, L"3DmigotoContextMutex_%p", pContext1);
+
+	mContextMutex = CreateMutex(NULL, false, numb);
+	if (mContextMutex == NULL)
+	{
+		DWORD hr = GetLastError();
+		LogInfo("HackerContext::HackerContext CreatepMutex failed. err: 0x%x\n", hr);
+		DoubleBeepExit();
+	}
+
 	mOrigDevice1 = pDevice1;
 	mOrigContext1 = pContext1;
 	mRealOrigContext1 = pContext1;
@@ -956,6 +972,9 @@ STDMETHODIMP_(ULONG) HackerContext::Release(THIS)
 		} else
 			LogInfo("HackerContext::Release - mHackerDevice is NULL\n");
 
+		if (mContextMutex)
+			ReleaseMutex(mContextMutex);
+
 		delete this;
 		return 0L;
 	}
@@ -1424,6 +1443,18 @@ STDMETHODIMP_(void) HackerContext::Begin(THIS_
 	/* [annotation] */
 	__in  ID3D11Asynchronous *pAsync)
 {
+	LogDebug("HackerContext::Begin GrabMutex\n");
+
+	if (mContextMutex == NULL)
+		DoubleBeepExit();
+
+	DWORD wait = WaitForSingleObject(mContextMutex, 1000);
+	if (wait != WAIT_OBJECT_0)
+	{
+		DWORD hr = GetLastError();
+		LogInfo("HackerContext::Begin: WaitForSingleObject failed. wait: 0x%x, err: 0x%x\n", wait, hr);
+	}
+
 	mOrigContext1->Begin(pAsync);
 }
 
@@ -1432,6 +1463,18 @@ STDMETHODIMP_(void) HackerContext::End(THIS_
 	__in  ID3D11Asynchronous *pAsync)
 {
 	 mOrigContext1->End(pAsync);
+
+	 LogDebug("HackerContext::End ReleaseMutex\n");
+
+	 if (mContextMutex == NULL)
+		 DoubleBeepExit();
+
+	 bool ok = ReleaseMutex(mContextMutex);
+	 if (!ok)
+	 {
+		 DWORD hr = GetLastError();
+		 LogInfo("RenderAPI_D3D11::ReleaseSetupMutex: ReleaseMutex failed, err: 0x%x\n", hr);
+	 }
 }
 
 STDMETHODIMP HackerContext::GetData(THIS_

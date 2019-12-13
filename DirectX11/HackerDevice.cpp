@@ -2104,8 +2104,9 @@ static const DescType* process_texture_override(uint32_t hash,
 		NvAPIOverride();
 		LogInfo("    setting custom surface creation mode %d\n", newMode);
 
-		if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
-			LogInfo("      call failed.\n");
+		NvAPI_Status err = Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode);
+		if (NVAPI_OK != err)
+			LogInfo("      call failed. err: %d\n", err);
 	}
 
 	return ret;
@@ -2114,8 +2115,9 @@ static const DescType* process_texture_override(uint32_t hash,
 static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMode, StereoHandle mStereoHandle)
 {
 	if (oldMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1) {
-		if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
-			LogInfo("    restore call failed.\n");
+		NvAPI_Status err = Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode);
+		if (NVAPI_OK != err)
+			LogInfo("    restore call failed. err: %d\n", err);
 	}
 
 	UnlockResourceCreationMode();
