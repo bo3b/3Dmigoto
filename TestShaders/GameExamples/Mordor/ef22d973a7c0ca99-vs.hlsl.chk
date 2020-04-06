@@ -123,7 +123,7 @@ void main(
   r0.w = k_vFogMieB.z * r0.z + -k_vFogMieA.z;
   r0.z = k_vFogMieB.z * r0.z;
   r0.w = max(0, r0.w);
-  r1.y = 1.99999995e-005 * abs(r2.x);
+  r1.y = 1.99999995e-05 * abs(r2.x);
   r1.y = min(1, r1.y);
   r1.y = 1 + -r1.y;
   r0.z = -r0.w * r1.y + r0.z;

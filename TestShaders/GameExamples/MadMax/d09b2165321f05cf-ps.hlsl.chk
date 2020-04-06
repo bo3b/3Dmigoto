@@ -140,7 +140,7 @@ void main(
     r21.x = 0.800000012 * r7.w;
     r21.y = min(0.400000006, r21.x);
     r17.xz = r6.ww ? r21.xy : 0;
-    r6.w = r19.y * 4 + 9.99999975e-005;
+    r6.w = r19.y * 4 + 9.99999975e-05;
     r21.xyz = -v2.xyz * r0.yyy + -Globals[3].xyz;
     r7.w = dot(r21.xyz, r21.xyz);
     r7.w = rsqrt(r7.w);
@@ -229,7 +229,7 @@ void main(
     r3.y = -1 + r3.x;
     r3.y = r17.x * r3.y + 1;
     r3.x = r3.x * r3.y;
-    r3.y = r3.x * r8.w + 9.99999975e-005;
+    r3.y = r3.x * r8.w + 9.99999975e-05;
     r3.y = log2(r3.y);
     r3.y = r6.w * r3.y;
     r3.y = exp2(r3.y);

@@ -28,6 +28,7 @@
 #include <windows.h>
 
 #include <nmmintrin.h>
+#include <intrin.h> // For __cpuid() under VS2017 -DarkStarSword
 #include <stdio.h>
 
 #include <random>

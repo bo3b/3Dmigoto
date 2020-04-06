@@ -85,12 +85,12 @@ ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r0.xy, r0.x, t4.xyxx
   r0.x = (uint)r0.x >> 16;
   r0.x = (uint)r0.x;
   r0.x = cb2[4].y * r0.x;
-  r3.y = r0.x * 1.52590219e-005 + cb2[4].x;
+  r3.y = r0.x * 1.52590219e-05 + cb2[4].x;
   r0.xzw = (uint3)r2.xyz;
   r1.w = cmp(127 < r0.w);
   r2.x = -256 + r0.w;
   r1.x = r1.w ? r2.x : r0.w;
-  r0.xz = float2(1.52590219e-005,1.52590219e-005) * r0.xz;
+  r0.xz = float2(1.52590219e-05,1.52590219e-05) * r0.xz;
   r1.xyz = float3(0.00787401572,0.00787401572,0.00787401572) * r1.xyz;
   r0.w = (uint)cb1[0].w;
   r1.w = (uint)r0.w << 2;
@@ -106,7 +106,7 @@ ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r0.xy, r0.x, t4.xyxx
   r3.xz = r0.xz * r1.yy + cb2[r1.x+0].xx;
   r0.xz = cb1[0].xz + r3.xz;
   r0.xz = float2(0.5,0.5) + r0.xz;
-  r0.xz = r0.xz * float2(3.05175781e-005,3.05175781e-005) + float2(0.5,0.5);
+  r0.xz = r0.xz * float2(3.05175781e-05,3.05175781e-05) + float2(0.5,0.5);
   r1.x = t1.SampleLevel(s1_s, r0.xz, 0).x;
   r0.x = t2.SampleLevel(s1_s, r0.xz, 0).x;
   r0.x = 1 + -r0.x;
@@ -123,7 +123,7 @@ ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r0.xy, r0.x, t4.xyxx
   r0.y = (uint)r0.y >> 16;
   r0.xy = (uint2)r0.xy;
   r0.zw = cb1[1].xy * r0.xy;
-  r0.xy = float2(1.52590219e-005,1.52590219e-005) * r0.zw;
+  r0.xy = float2(1.52590219e-05,1.52590219e-05) * r0.zw;
   r0.xy = floor(r0.xy);
   o2.xy = r0.xy / cb1[1].xy;
   o2.zw = r0.xy;

@@ -726,7 +726,7 @@ static const char* type_name(IUnknown *object)
 static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength,
 		bool patch_cb_offsets,
 		bool disassemble_undecipherable_data = true,
-		int hexdump = 0, bool d3dcompiler_46_compat = false)
+		int hexdump = 0, bool d3dcompiler_46_compat = true)
 {
 	string comments;
 	vector<byte> byteCode(BytecodeLength);

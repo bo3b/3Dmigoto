@@ -111,7 +111,7 @@ void main(
   r4.xyzw = -v3.wwww + r3.xyzw;
   r3.xyzw = cmp(float4(0.5,0.5,0.5,0.5) >= r3.xyzw);
   r3.xyzw = r3.xyzw ? float4(1,1,1,1) : 0;
-  r4.xyzw = cmp(float4(1.20000004e-005,1.20000004e-005,1.20000004e-005,1.20000004e-005) >= abs(r4.xyzw));
+  r4.xyzw = cmp(float4(1.20000004e-05,1.20000004e-05,1.20000004e-05,1.20000004e-05) >= abs(r4.xyzw));
   r4.xyzw = r4.xyzw ? float4(1,1,1,1) : 0;
   r3.xyzw = r4.xyzw + r3.xyzw;
   r1.zw = r3.xy + r3.zw;

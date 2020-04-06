@@ -66,7 +66,7 @@ void main(
   r5.xyz = cb2[0].xyz + -r3.xyz;
   r2.w = dot(r5.xyz, r5.xyz);
   r2.w = sqrt(r2.w);
-  r2.w = 9.99999975e-006 + r2.w;
+  r2.w = 9.99999975e-06 + r2.w;
   r3.w = cmp(cb2[2].x < r2.w);
   r4.w = -cb2[2].x + r2.w;
   r4.w = saturate(cb2[2].y * r4.w);

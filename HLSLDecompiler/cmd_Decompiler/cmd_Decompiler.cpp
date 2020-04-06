@@ -37,11 +37,9 @@ static void PrintHelp(int argc, char *argv[])
 	LogInfo("  --disassemble-ms\n");
 	LogInfo("\t\t\tDisassemble binary shaders with Microsoft's disassembler\n");
 
-#if 0
 	// Only applicable to the vs2017 branch / d3dcompiler_47 version:
 	LogInfo("  -6, --disassemble-46\n");
 	LogInfo("\t\t\tApply backwards compatibility formatting patch to disassembler output\n");
-#endif
 
 	LogInfo("  -16, --patch-cb-offsets\n");
 	LogInfo("\t\t\tReplace constant buffer byte offsets with indices when disassembling\n");
@@ -140,12 +138,10 @@ void parse_args(int argc, char *argv[])
 				args.disassemble_hexdump = 1;
 				continue;
 			}
-#if 0
 			if (!strcmp(arg, "-6") || !strcmp(arg, "--disassemble-46")) {
 				args.disassemble_46 = true;
 				continue;
 			}
-#endif
 			if (!strcmp(arg, "-16") || !strcmp(arg, "--patch-cb-offsets")) {
 				args.patch_cb_offsets = true;
 				continue;

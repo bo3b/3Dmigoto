@@ -223,7 +223,7 @@ ld_raw r1.y, l(0), g1.xxxx
         r12.x = sqrt(r11.y);
         r12.y = cb5[r9.w+8].w + cb5[r9.w+5].x;
         r12.y = r12.y + -r12.x;
-        r12.z = max(cb5[r9.w+6].w, 9.99999975e-005);
+        r12.z = max(cb5[r9.w+6].w, 9.99999975e-05);
         r12.y = saturate(r12.y / r12.z);
         r12.x = -cb5[r9.w+5].x + r12.x;
         r12.x = saturate(cb5[r9.w+9].x + r12.x);
@@ -305,7 +305,7 @@ ld_raw r1.y, l(0), g1.xxxx
         r10.w = dot(r16.xyz, float3(1,1,1));
         r10.z = r10.z + r10.w;
         r10.z = sqrt(r10.z);
-        r10.w = max(cb5[r9.w+6].w, 9.99999975e-005);
+        r10.w = max(cb5[r9.w+6].w, 9.99999975e-05);
         r10.z = r10.z / r10.w;
         r10.z = min(1, r10.z);
         r10.z = 1 + -r10.z;

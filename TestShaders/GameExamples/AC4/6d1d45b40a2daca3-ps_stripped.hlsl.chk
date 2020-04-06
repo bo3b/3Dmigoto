@@ -212,7 +212,7 @@ void main(
   r11.xyz = -r11.xyz * r12.xyz + r14.xyz;
   r8.xyz = r13.www * r11.xyz + r8.xyw;
   r13.xyz = r8.xyz + r7.xyz;
-  r0.x = cmp(9.99999975e-005 < cb5[27].w);
+  r0.x = cmp(9.99999975e-05 < cb5[27].w);
   if (r0.x != 0) {
     r0.x = sqrt(r1.x);
     r5.zw = cb5[21].xy + v9.zw;

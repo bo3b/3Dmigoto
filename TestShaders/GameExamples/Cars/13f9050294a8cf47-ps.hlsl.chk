@@ -94,7 +94,7 @@ void main(
   r1.w = dot(r1.xyz, r1.xyz);
   r1.w = rsqrt(r1.w);
   r1.xyz = r1.xyz * r1.www;
-  r0.x = dot(r0.xyz, float3(1,0.00392200006,1.49999996e-005));
+  r0.x = dot(r0.xyz, float3(1,0.00392200006,1.49999996e-05));
   r0.x = frustumDepth * r0.x;
   r0.xyz = v2.xyz * r0.xxx;
   r2.xy = float2(1,1) / screenSpaceDimensions.zw;

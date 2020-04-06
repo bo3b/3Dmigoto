@@ -87,19 +87,6 @@
 #endif
 
 #include <DirectXMath.h>
-
-// Since we are using SDK 8.0, we need to use the adapter code.
-// This allows us to use the latest version of DirectXTK with our
-// old SDK. https://github.com/Microsoft/DirectXMath/wiki
-namespace DirectX
-{
-#if (DIRECTX_MATH_VERSION < 305) && !defined(XM_CALLCONV)
-#define XM_CALLCONV __fastcall
-	typedef const XMVECTOR& HXMVECTOR;
-	typedef const XMMATRIX& FXMMATRIX;
-#endif
-}
-
 #include <DirectXPackedVector.h>
 #include <DirectXCollision.h>
 
