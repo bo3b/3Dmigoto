@@ -4283,7 +4283,7 @@ static CommandListOperatorFactoryBase<CommandListEvaluatable> *or_operators[] = 
 template <class Evaluatable>
 static CommandListSyntaxTree<Evaluatable>::Tokens::iterator transform_operators_token(
 	CommandListSyntaxTree<Evaluatable> *tree,
-	CommandListSyntaxTree<Evaluatable>::Tokens::iterator i,
+	std::vector<std::shared_ptr<CommandListToken>>::iterator i, // VS2017 could not evaluate "CommandListSyntaxTree<Evaluatable>::Tokens::iterator" here
 	CommandListOperatorFactoryBase<Evaluatable> *factories[], int num_factories,
 	bool unary)
 {
