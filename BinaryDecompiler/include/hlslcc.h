@@ -16,7 +16,7 @@
     #define HLSLCC_API
 #endif
 
-#include "pstdint.h"
+#include <stdint.h>
 
 typedef enum
 {

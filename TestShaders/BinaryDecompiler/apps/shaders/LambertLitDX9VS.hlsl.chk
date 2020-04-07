@@ -1,0 +1,29 @@
+// ---- Created with 3Dmigoto v1.3.16 on Sun Dec 01 00:09:04 2019
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+// Needs manual fix for instruction:
+// unknown dcl_:     dcl_position v0
+// Needs manual fix for instruction:
+// unknown dcl_:     dcl_normal v1
+  r0.x = dot(v0.xyzw, World.xyzw);
+  r0.y = dot(v0.xyzw, c1);
+  r0.z = dot(v0.xyzw, c2);
+  r0.w = dot(v0.xyzw, c3);
+  r1.x = dot(r0.xyzw, View.xyzw);
+  r1.y = dot(r0.xyzw, c5);
+  r1.z = dot(r0.xyzw, c6);
+  r1.w = dot(r0.xyzw, c7);
+  oPos.x = dot(r1.xyzw, Projection.xyzw);
+  oPos.y = dot(r1.xyzw, c9);
+  oPos.z = dot(r1.xyzw, c10);
+  oPos.w = dot(r1.xyzw, c11);
+  oT0.x = dot(v1.xyz, World.xyzw);
+  oT0.y = dot(v1.xyz, c1);
+  oT0.z = dot(v1.xyz, c2);
+}

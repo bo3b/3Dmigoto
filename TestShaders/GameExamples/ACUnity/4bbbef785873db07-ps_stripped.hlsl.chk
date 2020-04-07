@@ -68,7 +68,7 @@ void main(
   r0.z = dot(r3.xyz, r3.xyz);
   r0.z = rsqrt(r0.z);
   r3.xyz = r3.xyz * r0.zzz;
-  r0.z = max(9.99999975e-006, r1.w);
+  r0.z = max(9.99999975e-06, r1.w);
   r0.z = log2(r0.z);
   r0.z = 2.20000005 * r0.z;
   r0.z = exp2(r0.z);
@@ -78,7 +78,7 @@ void main(
   r0.w = (uint)r0.w;
   r0.w = cmp((int)r0.w == 255);
   if (r0.w != 0) {
-    r1.w = cmp(9.99999975e-005 < r4.w);
+    r1.w = cmp(9.99999975e-05 < r4.w);
     r7.xyz = sqrt(r1.xyz);
     r1.xyz = r1.www ? r7.xyz : r1.xyz;
     r7.xyz = r5.xyz * float3(2,2,2) + float3(-1,-1,-1);

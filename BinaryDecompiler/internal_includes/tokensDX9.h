@@ -290,7 +290,7 @@ typedef enum
 	D3DSPC_LT = 4,
 	D3DSPC_NE = 5,
 	D3DSPC_LE = 6,
-	D3DSPC_RESERVED1 = 7
+	D3DSPC_BOOLEAN = 7, //Make use of the RESERVED1 bit to indicate if-bool opcode.
 } COMPARISON_DX9;
 
 static COMPARISON_DX9 DecodeComparisonDX9(const uint32_t ui32Token)

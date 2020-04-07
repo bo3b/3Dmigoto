@@ -1,0 +1,16 @@
+// ---- Created with 3Dmigoto v1.3.16 on Sun Dec 01 00:09:15 2019
+
+Texture2D<float4> $diffuseMap : register(t0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+// Needs manual fix for instruction:
+// unknown dcl_:     dcl_2d s0
+  r0 = $diffuseMap.Sample(t0.xyzw);
+  r0 = $diffuseMaterialColor.xyzw * r0.x;
+  oC0 = r0.x;
+}

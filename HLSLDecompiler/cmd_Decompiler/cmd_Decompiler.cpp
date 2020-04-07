@@ -9,6 +9,9 @@
 #include "DecompileHLSL.h"
 #include "version.h"
 #include "log.h"
+#define MIGOTO_DX 11 // Selects the DX11 disassembler in util.h - the DX9 dis/assembler is not very
+                     // interesting since it is just Microsoft's - we can add it later, but low priority.
+                     // The DX9 decompiler is more interesting, which is unrelated to this flag.
 #include "util.h"
 #include "shader.h"
 
@@ -37,11 +40,9 @@ static void PrintHelp(int argc, char *argv[])
 	LogInfo("  --disassemble-ms\n");
 	LogInfo("\t\t\tDisassemble binary shaders with Microsoft's disassembler\n");
 
-#if 0
 	// Only applicable to the vs2017 branch / d3dcompiler_47 version:
 	LogInfo("  -6, --disassemble-46\n");
 	LogInfo("\t\t\tApply backwards compatibility formatting patch to disassembler output\n");
-#endif
 
 	LogInfo("  -16, --patch-cb-offsets\n");
 	LogInfo("\t\t\tReplace constant buffer byte offsets with indices when disassembling\n");
@@ -140,12 +141,10 @@ void parse_args(int argc, char *argv[])
 				args.disassemble_hexdump = 1;
 				continue;
 			}
-#if 0
 			if (!strcmp(arg, "-6") || !strcmp(arg, "--disassemble-46")) {
 				args.disassemble_46 = true;
 				continue;
 			}
-#endif
 			if (!strcmp(arg, "-16") || !strcmp(arg, "--patch-cb-offsets")) {
 				args.patch_cb_offsets = true;
 				continue;
@@ -400,7 +399,7 @@ static HRESULT Decompile(const void *pShaderBytecode, size_t BytecodeLength, str
 {
 	// Set all to zero, so we only init the ones we are using here:
 	ParseParameters p = {0};
-	DecompilerSettings d = {0};
+	DecompilerSettings d;
 	bool patched = false;
 	bool errorOccurred = false;
 	string disassembly;

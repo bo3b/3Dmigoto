@@ -57,7 +57,7 @@ void main(
   o1.x = g_VS_NearFarClipDist.w * r0.x;
   o1.yzw = float3(0,0,0);
   o2.xyzw = v1.xyzw;
-  r0.xyz = float3(9.99999997e-007,0,0) + v3.xyz;
+  r0.xyz = float3(9.99999997e-07,0,0) + v3.xyz;
   r1.x = dot(ObjWorldMatrix._m00_m01_m02, r0.xyz);
   r1.y = dot(ObjWorldMatrix._m10_m11_m12, r0.xyz);
   r1.z = dot(ObjWorldMatrix._m20_m21_m22, r0.xyz);
@@ -65,7 +65,7 @@ void main(
   r0.x = rsqrt(r0.x);
   o3.xyz = r1.xyz * r0.xxx;
   o3.w = v3.w;
-  r0.xyz = float3(-9.99999997e-007,0,0) + v4.xyz;
+  r0.xyz = float3(-9.99999997e-07,0,0) + v4.xyz;
   r1.x = dot(ObjWorldMatrix._m00_m01_m02, r0.xyz);
   r1.y = dot(ObjWorldMatrix._m10_m11_m12, r0.xyz);
   r1.z = dot(ObjWorldMatrix._m20_m21_m22, r0.xyz);

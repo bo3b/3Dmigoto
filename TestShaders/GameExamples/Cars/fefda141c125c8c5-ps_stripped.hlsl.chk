@@ -111,7 +111,7 @@ void main(
   r1.w = rsqrt(r1.w);
   r4.xyz = r4.xyz * r1.www;
   r1.x = saturate(dot(r1.xyz, r4.xyz));
-  r1.x = max(9.99999982e-015, r1.x);
+  r1.x = max(9.99999982e-15, r1.x);
   r1.x = log2(r1.x);
   r1.x = 16 * r1.x;
   r1.x = exp2(r1.x);

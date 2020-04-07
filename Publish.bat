@@ -79,7 +79,7 @@ RMDIR ".\Zip Release\" /S /Q
 REM -----------------------------------------------------------------------------
 REM Activate the VsDevCmds so that we can do MSBUILD easily.
 
-CALL "C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\Tools\VsDevCmd.bat"
+CALL "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\VsDevCmd.bat"
 
 REM -----------------------------------------------------------------------------
 echo(
@@ -148,7 +148,7 @@ MOVE ".\x64\Zip Release\3DMigoto Loader.exe"  ".\Zip Release\loader\x64\"
 echo(
 MKDIR ".\Zip Release\cmd_Decompiler\"
 MOVE ".\x32\Zip Release\cmd_Decompiler.exe"  ".\Zip Release\cmd_Decompiler\"
-COPY ".\Zip Release\x32\d3dcompiler_46.dll"  ".\Zip Release\cmd_Decompiler\"
+COPY ".\Zip Release\x32\d3dcompiler_47.dll"  ".\Zip Release\cmd_Decompiler\"
 
 echo(
 echo(

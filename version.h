@@ -1,5 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
+// Used by DirectX9.rc
 // Used by DirectX11.rc
 // Used by NVAPI.rc
 

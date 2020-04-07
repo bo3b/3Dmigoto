@@ -1,0 +1,16 @@
+// ---- Created with 3Dmigoto v1.3.16 on Wed Nov 20 20:51:25 2019
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+// Needs manual fix for instruction:
+// unknown dcl_:     dcl_texcoord v0.w
+  r0.x = v0.w + c0.x -1.000000;
+  r0 = -abs(r0.x) ? c0.x -1.000000 : c0.y -0.000000;
+  if (r0.x == 0) discard;
+  oC0 = c0.z 1.000000;
+}

@@ -62,6 +62,7 @@
 #endif
 #endif // MIGOTO_DX
 
+#include <D3D9.h>
 #include <d3d11_1.h>
 // ^^^^^ 3DMIGOTO ADDITION ^^^^^
 
@@ -213,7 +214,7 @@ namespace nv {
 #define     NVSTEREO_SWAP_EYES 0x00000001
 
 		inline void PopulateTextureData(float* leftEye, float* rightEye, LPNVSTEREOIMAGEHEADER header, unsigned int width, unsigned int height, unsigned int pixelBytes, float eyeSep, float sep, float conv,
-			float tuneValue1, float tuneValue2, float tuneValue3, float tuneValue4, float screenWidth, float screenHeight)
+			float tuneValue1 = 0.0f, float tuneValue2 = 0.0f, float tuneValue3 = 0.0f, float tuneValue4 = 0.0f, float screenWidth = 0.0f, float screenHeight = 0.0f)
 		{
 			// Separation is the separation value and eyeSeparation a magic system value.
 			// Normally sep is in [0, 100], and we want the fractional part of 1.
@@ -284,10 +285,14 @@ namespace nv {
 			// Note that the texture must be at least 20 bytes wide to handle the stereo header.
 			static const int StereoTexWidth = 8;
 			static const int StereoTexHeight = 1;
-			static const D3DFORMAT StereoTexFormat = D3DFMT_A32B32G32R32F;
-			static const int StereoBytesPerPixel = 16;
+			// DSS MERGE NOTES: These values (and the StereoBytesPerPixel*8 below) were changed from upstream for some reason:
+			// UPSTREAM VERSION: static const D3DFORMAT StereoTexFormat = D3DFMT_A32B32G32R32F;
+			// UPSTREAM VERSION: static const int StereoBytesPerPixel = 16;
+			static const D3DFORMAT StereoTexFormat = D3DFMT_R32F;
+			static const int StereoBytesPerPixel = 4;
 
-			static StagingResource* CreateStagingResource(Device* pDevice, float eyeSep, float sep, float conv)
+			static StagingResource* CreateStagingResource(Device* pDevice, float eyeSep, float sep, float conv,
+				float tuneValue1, float tuneValue2, float tuneValue3, float tuneValue4)
 			{
 				StagingResource* staging = 0;
 				unsigned int stagingWidth = StereoTexWidth * 2;
@@ -307,7 +312,7 @@ namespace nv {
 				float* leftEyePtr = (float*)sysData;
 				float* rightEyePtr = leftEyePtr + StereoTexWidth * StereoBytesPerPixel / sizeof(float);
 				LPNVSTEREOIMAGEHEADER header = (LPNVSTEREOIMAGEHEADER)(sysData + sysMemPitch * StereoTexHeight);
-				PopulateTextureData(leftEyePtr, rightEyePtr, header, stagingWidth, stagingHeight, StereoBytesPerPixel, eyeSep, sep, conv);
+				PopulateTextureData(leftEyePtr, rightEyePtr, header, stagingWidth, stagingHeight, StereoBytesPerPixel * 8, eyeSep, sep, conv);
 				staging->UnlockRect();
 
 				return staging;
@@ -531,6 +536,33 @@ namespace nv {
 			// 3DMIGOTO REMOVAL 	mInitialized = true;
 			// 3DMIGOTO REMOVAL }
 
+			// vvvvv 3DMIGOTO ADDITION vvvvv
+			NvAPI_Status GetConvergence(StereoHandle stereoHandle, float *convergence) {
+				if (mKnownConvergence != -1) {
+					*convergence = mKnownConvergence;
+					return NVAPI_OK;
+				}
+				else
+					return Profiling::NvAPI_Stereo_GetConvergence(stereoHandle, convergence);
+			}
+			NvAPI_Status GetSeparation(StereoHandle stereoHandle, float *separation) {
+				if (mKnownSeparation != -1) {
+					*separation = mKnownSeparation;
+					return NVAPI_OK;
+				}
+				else
+					return Profiling::NvAPI_Stereo_GetSeparation(stereoHandle, separation);
+			}
+			NvAPI_Status GetEyeSeparation(StereoHandle stereoHandle, float *eyesep) {
+				if (mKnownEyeSeparation != -1) {
+					*eyesep = mKnownEyeSeparation;
+					return NVAPI_OK;
+				}
+				else
+					return Profiling::NvAPI_Stereo_GetEyeSeparation(stereoHandle, eyesep);
+			}
+			// ^^^^^ 3DMIGOTO ADDITION ^^^^^
+
 			// Not const because we will update the various values if an update is needed.
 			bool RequiresUpdate(bool deviceLost)
 			{
@@ -545,11 +577,11 @@ namespace nv {
 				bool updateRequired;
 				float eyeSep, sep, conv;
 				if (active) {
-					if (NVAPI_OK != Profiling::NvAPI_Stereo_GetEyeSeparation(mStereoHandle, &eyeSep))
+					if (NVAPI_OK != GetEyeSeparation(mStereoHandle, &eyeSep))
 						return false;
-					if (NVAPI_OK != Profiling::NvAPI_Stereo_GetSeparation(mStereoHandle, &sep))
+					if (NVAPI_OK != GetSeparation(mStereoHandle, &sep))
 						return false;
-					if (NVAPI_OK != Profiling::NvAPI_Stereo_GetConvergence(mStereoHandle, &conv))
+					if (NVAPI_OK != GetConvergence(mStereoHandle, &conv))
 						return false;
 
 					updateRequired = (eyeSep != mEyeSeparation)
@@ -583,6 +615,10 @@ namespace nv {
 
 			bool IsStereoActive() const
 			{
+				// vvvvv 3DMIGOTO ADDITION vvvvv
+				if (mStereoActiveIsKnown)
+					return mKnownStereoActive;
+				// ^^^^^ 3DMIGOTO ADDITION ^^^^^
 				NvU8 stereoActive = 0;
 				if (NVAPI_OK != Profiling::NvAPI_Stereo_IsActivated(mStereoHandle, &stereoActive)) {
 					return false;
@@ -623,6 +659,14 @@ namespace nv {
 			float mSeparationModifier;
 			float mTuneVariable1, mTuneVariable2, mTuneVariable3, mTuneVariable4;
 			bool mForceUpdate;
+			// These are optimisation cases where we have already fetched these
+			// values from nvapi elsewhere this frame. nvapi can become a
+			// bottleneck if these values are fetched multiple times/frame.
+			float mKnownConvergence = -1.0f;
+			float mKnownSeparation = -1.0f;
+			float mKnownEyeSeparation = -1.0f;
+			bool mStereoActiveIsKnown = false;
+			bool mKnownStereoActive = false;
 			// ^^^^^ 3DMIGOTO ADDITION ^^^^^
 
 			StereoHandle mStereoHandle;

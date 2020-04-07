@@ -1,6 +1,10 @@
 #include "stdafx.h"
 #include "float.h"
 
+#if MIGOTO_DX == 9
+#include <d3dx9shader.h>
+#endif
+
 using namespace std;
 
 // This is defined in the Windows 10 SDK, but seems not in the 8.0 SDK:
@@ -24,6 +28,14 @@ static DWORD strToDWORD(string s)
 		return 0xFF800000;
 	if (s == "-1.#QNAN000")
 		return 0xFFC10000;
+
+	// dx9
+	// (I suspect this is *NOT* DX9 specific - more likely this was due to
+	// using a newer d3dcompiler/SDK/toolchain, and as per below there are
+	// other cases to consider that still require verification -DSS)
+	if (s == "1.#INF00")
+		return 0x7F800000;
+	//dx9
 
 	// FIXME: Write test case to verify and add variants for
 	// d3dcompiler_47, which use less zeroes:
@@ -695,6 +707,21 @@ static vector<DWORD> assembleOp(string s, bool special)
 		tOp->extended = 1;
 		ext |= 0x81;
 	}
+
+#if 0
+	// These ones were special cased in the DX9 port, but I don't think we need
+	// them since we aren't using Flugan's assembler for DX9? Disabling -DSS
+	if (s == "vCoverage.x") {
+		v.push_back(0x2300A);
+		return v;
+
+	}
+	if (s == "rasterizer.x") {
+		v.push_back(0x0000E00A);
+		return v;
+
+	}
+#endif
 
 	// Processing this after absolute value so that |var {type}| will be
 	// processed in a natural order, though this function also strips the
@@ -2536,6 +2563,51 @@ vector<string> stringToLines(const char* start, size_t size)
 	}
 	return lines;
 }
+static vector<string> stringToLinesDX9(const char* start, size_t size) {
+	vector<string> lines;
+	const char* pStart = start;
+	const char* pEnd = pStart;
+	const char* pRealEnd = pStart + size;
+	while (true) {
+		while (*pEnd != '\n' && pEnd < pRealEnd) {
+			pEnd++;
+		}
+		if (*pStart == 0) {
+			break;
+		}
+		string s(pStart, pEnd++);
+		pStart = pEnd;
+		lines.push_back(s);
+		if (pStart >= pRealEnd) {
+			break;
+		}
+	}
+	for (unsigned int i = 0; i < lines.size(); i++) {
+		string s = lines[i];
+		// Bug fixed: This would not strip carriage returns from DOS
+		// style newlines if they were the only character on the line,
+		// corrupting the resulting shader binary. -DarkStarSword
+		if (s.size() >= 1 && s[s.size() - 1] == '\r')
+			s.erase(--s.end());
+
+		// Strip whitespace from the end of each line. This isn't
+		// strictly necessary, but the MS disassembler inserts an extra
+		// space after "ret ", "else " and "endif ", which has been a
+		// gotcha for trying to match it with ShaderRegex since it's
+		// easy to miss the fact that there is a space there and not
+		// understand why the pattern isn't matching. By removing
+		// excess spaces from the end of each line now we can make this
+		// gotcha go away.
+		while (s.size() >= 1 && s[s.size() - 1] == ' ')
+			s.erase(--s.end());
+
+		while (s.size() >= 1 && s[0] == ' ')
+			s.erase(s.begin());
+
+		lines[i] = s;
+	}
+	return lines;
+}
 
 static void hexdump_instruction(string &s, vector<DWORD> &v,
 		vector<string> &lines, DWORD *i,
@@ -2776,6 +2848,47 @@ static inline void replace_cb_offsets_with_indices(string *line)
 
 	*line += suffix;
 }
+
+#if MIGOTO_DX == 9
+HRESULT disassemblerDX9(vector<byte> *buffer, vector<byte> *ret, const char *comment)
+{
+	char* asmBuffer;
+	size_t asmSize;
+	vector<byte> asmBuf;
+	ID3DBlob* pDissassembly = NULL;
+	LPD3DXBUFFER pD3DXDissassembly = NULL;
+	HRESULT ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, comment, &pDissassembly);
+	if (FAILED(ok))
+		ok = D3DDisassemble(buffer->data(), buffer->size(), NULL, comment, &pDissassembly);
+	if (FAILED(ok))
+		ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_DISABLE_DEBUG_INFO, comment, &pDissassembly);
+	if (FAILED(ok)){
+		//below sometimes give an access violation for some reason
+		//ok = D3DXDisassembleShader((DWORD*)buffer->data(), false, NULL, &pD3DXDissassembly);
+		//if (FAILED(ok))
+			return ok;
+		//asmBuffer = (char*)pD3DXDissassembly->GetBufferPointer();
+		//asmSize = pD3DXDissassembly->GetBufferSize();
+	}
+	else {
+		asmBuffer = (char*)pDissassembly->GetBufferPointer();
+		asmSize = pDissassembly->GetBufferSize();
+	}
+	vector<string> lines = stringToLinesDX9(asmBuffer, asmSize);
+	ret->clear();
+	for (size_t i = 0; i < lines.size(); i++) {
+		for (size_t j = 0; j < lines[i].size(); j++) {
+			ret->insert(ret->end(), lines[i][j]);
+		}
+		ret->insert(ret->end(), '\n');
+	}
+	if (pDissassembly)
+		pDissassembly->Release();
+	if (pD3DXDissassembly)
+		pD3DXDissassembly->Release();
+	return S_OK;
+}
+#endif
 
 HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment,
 		int hexdump, bool d3dcompiler_46_compat,
@@ -3228,3 +3341,23 @@ vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode,
 	dwordBuffer[4] = hash[3];
 	return origBytecode;
 }
+#if MIGOTO_DX == 9
+vector<byte> assemblerDX9(vector<char> *asmFile)
+{
+	vector<byte> ret;
+	LPD3DXBUFFER pAssembly;
+	HRESULT hr = D3DXAssembleShader(asmFile->data(), (UINT)asmFile->size(), NULL, NULL, 0, &pAssembly, NULL);
+	if (!FAILED(hr)) {
+		size_t size = pAssembly->GetBufferSize();
+		LPVOID buffer = pAssembly->GetBufferPointer();
+		ret.resize(size);
+		std::memcpy(ret.data(), buffer, size);
+		pAssembly->Release();
+		// FIXME: Pass warnings back to the caller
+	} else {
+		// FIXME: Pass error messages back to the caller
+		throw std::invalid_argument("assembler: Bad shader assembly (FIXME: RETURN ERROR MESSAGES)");
+	}
+	return ret;
+}
+#endif

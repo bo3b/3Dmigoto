@@ -1,0 +1,131 @@
+// ---- Created with 3Dmigoto v1.3.16 on Sun Dec 01 01:36:39 2019
+
+cbuffer SceneInfo : register(b0)
+{
+  row_major float4x4 viewProjMat : packoffset(c0);
+  row_major float3x4 transposeViewMat : packoffset(c4);
+  row_major float3x4 transposeViewInvMat : packoffset(c7);
+  float4 projElement[2] : packoffset(c10);
+  float4 projInvElements[2] : packoffset(c12);
+  row_major float4x4 viewProjInvMat : packoffset(c14);
+  row_major float4x4 prevViewProjMat : packoffset(c18);
+  float3 ZToLinear : packoffset(c22);
+  float subdivisionLevel : packoffset(c22.w);
+  float2 screenSize : packoffset(c23);
+  float2 screenInverseSize : packoffset(c23.z);
+  float2 cullingHelper : packoffset(c24);
+  float cameraNearPlane : packoffset(c24.z);
+  float cameraFarPlane : packoffset(c24.w);
+  float4 viewFrustum[6] : packoffset(c25);
+  float4 clipplane : packoffset(c31);
+}
+
+SamplerState PointClamp_s : register(s0);
+Texture2D<float> ReadonlyDepth : register(t0);
+Texture2D<float4> OcclusionVelocityXVelocityYSubSurfaceSRV : register(t1);
+Texture2D<uint> AOImage : register(t2);
+Texture2D<float> InGAOResult : register(t3);
+RWTexture2D<float> RWAOFinal : register(u0);
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main)
+{
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_uav_typed_texture2d (float,float,float,float) u0
+  float4 r0,r1,r2,r3,r4,r5,r6;
+  uint4 bitmask, uiDest;
+  float4 fDest;
+
+// Needs manual fix for instruction:
+// unknown dcl_: dcl_thread_group 256, 1, 1
+  if (1 == 0) r0.x = 0; else if (1+1 < 32) {   r0.x = (uint)vThreadIDInGroup.x << (32-(1 + 1)); r0.x = (uint)r0.x >> (32-1);  } else r0.x = (uint)vThreadIDInGroup.x >> 1;
+  if (1 == 0) r0.y = 0; else if (1+2 < 32) {   r0.y = (uint)vThreadIDInGroup.x << (32-(1 + 2)); r0.y = (uint)r0.y >> (32-1);  } else r0.y = (uint)vThreadIDInGroup.x >> 2;
+  if (1 == 0) r0.z = 0; else if (1+3 < 32) {   r0.z = (uint)vThreadIDInGroup.x << (32-(1 + 3)); r0.z = (uint)r0.z >> (32-1);  } else r0.z = (uint)vThreadIDInGroup.x >> 3;
+  if (1 == 0) r0.w = 0; else if (1+4 < 32) {   r0.w = (uint)vThreadIDInGroup.x << (32-(1 + 4)); r0.w = (uint)r0.w >> (32-1);  } else r0.w = (uint)vThreadIDInGroup.x >> 4;
+  bitmask.y = ((~(-1 << 31)) << 1) & 0xffffffff;  r0.y = (((uint)r0.y << 1) & bitmask.y) | ((uint)vThreadIDInGroup.x & ~bitmask.y);
+  r0.x = mad((int)r0.z, 2, (int)r0.x);
+  if (1 == 0) r1.x = 0; else if (1+5 < 32) {   r1.x = (uint)vThreadIDInGroup.x << (32-(1 + 5)); r1.x = (uint)r1.x >> (32-1);  } else r1.x = (uint)vThreadIDInGroup.x >> 5;
+  if (1 == 0) r1.y = 0; else if (1+6 < 32) {   r1.y = (uint)vThreadIDInGroup.x << (32-(1 + 6)); r1.y = (uint)r1.y >> (32-1);  } else r1.y = (uint)vThreadIDInGroup.x >> 6;
+  r0.y = mad((int)r0.w, 4, (int)r0.y);
+  r0.x = mad((int)r1.x, 4, (int)r0.x);
+  r0.z = (uint)vThreadIDInGroup.x >> 7;
+  r0.y = mad((int)r1.y, 8, (int)r0.y);
+  r0.x = mad((int)r0.z, 8, (int)r0.x);
+  r1.x = mad((int)vThreadGroupID.x, 16, (int)r0.y);
+  r1.y = mad((int)vThreadGroupID.y, 16, (int)r0.x);
+  r0.xy = (uint2)r1.xy;
+  r0.xy = cmp(r0.xy < screenSize.xy);
+  r0.x = r0.y ? r0.x : 0;
+  if (r0.x != 0) {
+    r1.zw = float2(0,0);
+    r0.x = ReadonlyDepth.Load(r1.xyw).x;
+    r0.x = -r0.x * ZToLinear.y + ZToLinear.x;
+    r0.x = ZToLinear.z / r0.x;
+  r2.xy = (int2){min16f}.xy;
+    r0.yz = {min16f.yz * r2.xy;
+      r2.xyzw = AOImage.Gather(PointClamp_s, r0.yz, int2(-1, -1)).xyzw;
+      r3.xyzw = (uint4)r2.xyzw >> int4(16,16,16,16);
+      r3.xyzw = f16tof32(r3.xyzw);
+      r2.xyzw = f16tof32(r2.xyzw);
+    r2.xyzw = -r0.xxxx + {min16f}.xyzw;
+    r2.xyzw = {min16f}.xyzw * abs(r2.xyz) + {min16f}|.xyzw;
+    r2.xyzw = max(float4(9.99999975e-005,9.99999975e-005,9.99999975e-005,9.99999975e-005), {min16f}.xyzw);
+    r3.xyzw = r3.xyzw * {min16f}.xyzw;
+    r4.xy = r3.xy + {min16f}.xy;
+    r4.zw = r2.xy + {min16f}.zw;
+      r2.xyzw = AOImage.Gather(PointClamp_s, r0.yz, int2(1, -1)).xyzw;
+      r3.xyzw = (uint4)r2.xyzw >> int4(16,16,16,16);
+      r3.xyzw = f16tof32(r3.xyzw);
+      r2.xyzw = f16tof32(r2.xyzw);
+    r2.xyzw = -r0.xxxx + {min16f}.xyzw;
+    r2.xyzw = {min16f}.xyzw * abs(r2.xyz) + {min16f}|.xyzw;
+    r2.xyzw = max(float4(9.99999975e-005,9.99999975e-005,9.99999975e-005,9.99999975e-005), {min16f}.xyzw);
+    r4.xy = {min16f}.xy * r2.xy + {min16f}.xy;
+    r4.zw = r4.zw + {min16f}.zw;
+    r4.xy = {min16f}.xy * r2.zw + {min16f}.xy;
+    r4.zw = r2.zw + {min16f}.zw;
+      r2.xyzw = AOImage.Gather(PointClamp_s, r0.yz, int2(-1, 1)).xyzw;
+      r3.xyzw = (uint4)r2.xyzw >> int4(16,16,16,16);
+      r3.xyzw = f16tof32(r3.xyzw);
+      r2.xyzw = f16tof32(r2.xyzw);
+    r2.xyzw = -r0.xxxx + {min16f}.xyzw;
+    r2.xyzw = {min16f}.xyzw * abs(r2.xyz) + {min16f}|.xyzw;
+    r2.xyzw = max(float4(9.99999975e-005,9.99999975e-005,9.99999975e-005,9.99999975e-005), {min16f}.xyzw);
+    r4.xy = {min16f}.xy * r2.xy + {min16f}.xy;
+    r4.zw = r4.zw + {min16f}.zw;
+    r4.xy = {min16f}.xy * r2.zw + {min16f}.xy;
+    r4.zw = r2.zw + {min16f}.zw;
+      r2.xyzw = AOImage.Gather(PointClamp_s, r0.yz, int2(1, 1)).xyzw;
+      r3.xyzw = (uint4)r2.xyzw >> int4(16,16,16,16);
+      r3.xyzw = f16tof32(r3.xyzw);
+      r2.xyzw = f16tof32(r2.xyzw);
+    r0.xyzw = -r0.xxxx + {min16f}.xyzw;
+    r0.xyzw = {min16f}.xyzw * abs(r0.xyz) + {min16f}|.xyzw;
+    r0.xyzw = max(float4(9.99999975e-005,9.99999975e-005,9.99999975e-005,9.99999975e-005), {min16f}.xyzw);
+    r4.xy = {min16f}.xy * r0.xy + {min16f}.xy;
+    r4.zw = r4.zw + {min16f}.zw;
+    r4.xy = {min16f}.xy * r0.zw + {min16f}.xy;
+    r4.zw = r0.zw + {min16f}.zw;
+    r4.x = r4.y + {min16f}.x;
+    r4.y = r4.w + {min16f}.y;
+      r4.y = r4.y;
+      r5.x = (int)-r4.y + 0x7ef311c2;
+      r5.x = {min16f.x * r4.x;
+        r1.z = OcclusionVelocityXVelocityYSubSurfaceSRV.Load(r1.xyz).x;
+        r0.xy = (uint2)r1.xy >> int2(1,1);
+        r0.zw = float2(0,0);
+        r1.w = InGAOResult.Load(r0.xyz).x;
+      r6.x = min(r1.z, {min16f}.x);
+      r6.x = min(r1.w, {min16f}.x);
+        r1.z = {min16f.z * r6.x;
+          r1.z = floor(r1.z);
+          r1.z = 0.00782013685 * r1.z;
+        // No code for instruction (needs manual fix):
+          store_uav_typed u0.xyzw, r1.xyyy, r1.zzzz
+        }
+        return;
+}

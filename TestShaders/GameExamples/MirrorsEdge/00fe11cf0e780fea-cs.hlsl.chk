@@ -186,7 +186,7 @@ ld_raw r1.w, l(0), g0.xxxx
 ld_raw r7.x, l(0), g1.xxxx
   r7.x = (int)r1.w + (int)r7.x;
   r7.y = max(0.00200000009, r1.y);
-  r5.w = 9.99999975e-006 + abs(r5.w);
+  r5.w = 9.99999975e-06 + abs(r5.w);
   r9.xyz = r1.xxx + -r4.xyz;
   r1.x = r7.y * r7.y;
   r7.z = -r5.w * r1.x + r5.w;
@@ -558,7 +558,7 @@ ld_raw r7.x, l(0), g1.xxxx
           r16.w = r17.w + r16.w;
           r14.w = r16.w * r14.w;
           r16.w = saturate(dot(r6.xyz, g_lightInfoArea[r11.w].baseLight.matrixForward.xyz));
-          r16.w = 9.99999975e-006 + r16.w;
+          r16.w = 9.99999975e-06 + r16.w;
           r24.xyz = r6.xyz * r16.www + g_lightInfoArea[r11.w].baseLight.matrixForward.xyz;
           r17.w = dot(r24.xyz, r24.xyz);
           r17.w = rsqrt(r17.w);
@@ -796,7 +796,7 @@ ld_raw r7.x, l(0), g1.xxxx
           r10.y = cmp(0 < r10.x);
           if (r10.y != 0) {
             r10.y = saturate(dot(r8.xyz, -g_lightInfoArea[r11.w].baseLight.matrixForward.xyz));
-            r10.y = 9.99999975e-006 + r10.y;
+            r10.y = 9.99999975e-06 + r10.y;
             r24.xyz = g_lightInfoArea[r11.w].baseLight.matrixForward.xyz * r10.yyy + r8.xyz;
             r10.y = dot(r24.xyz, r24.xyz);
             r10.y = rsqrt(r10.y);

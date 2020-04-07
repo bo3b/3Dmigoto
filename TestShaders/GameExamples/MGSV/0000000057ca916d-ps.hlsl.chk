@@ -142,7 +142,7 @@ void main(
   r1.x = r2.w + r1.x;
   r1.x = max(0, r1.x);
   r1.x = min(1, r1.x);
-  r1.x = 9.99999975e-005 + r1.x;
+  r1.x = 9.99999975e-05 + r1.x;
   r2.w = rsqrt(r1.x);
   r4.z = r2.w * r1.x;
   r4.xy = r4.xy;
@@ -164,7 +164,7 @@ void main(
   r1.x = r1.x + r1.y;
   r1.x = max(0, r1.x);
   r1.x = min(1, r1.x);
-  r1.x = 9.99999975e-005 + r1.x;
+  r1.x = 9.99999975e-05 + r1.x;
   r1.y = rsqrt(r1.x);
   r3.z = r1.x * r1.y;
   r3.xy = r3.xy;
@@ -410,7 +410,7 @@ void main(
   r8.xyzw = r11.xyzw + r8.xyzw;
   r11.xyzw = r17.xyzw * r13.xyzw;
   r8.xyzw = r11.wxyz + r8.wxyz;
-  r8.w = max(9.99999997e-007, r8.w);
+  r8.w = max(9.99999997e-07, r8.w);
   r8.xyz = r8.xyz;
   r8.w = r8.w;
   r8.xyzw = r8.xyzw;
@@ -930,7 +930,7 @@ void main(
   r2.xyz = r2.xyz * r1.xyz;
   r1.xyz = -r1.xyz;
   r1.xyz = float3(1,1,1) + r1.xyz;
-  r0.xyz = max(float3(9.99999975e-006,9.99999975e-006,9.99999975e-006), r0.xyz);
+  r0.xyz = max(float3(9.99999975e-06,9.99999975e-06,9.99999975e-06), r0.xyz);
   r0.xyz = log2(r0.xyz);
   r0.xyz = float3(0.416666657,0.416666657,0.416666657) * r0.xyz;
   r0.xyz = exp2(r0.xyz);

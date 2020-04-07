@@ -163,7 +163,7 @@ void main(
     r7.xyz = float3(0,0,0);
     r8.xyz = float3(0,0,0);
     r9.xy = float2(0,1);
-    r2.w = 1e+010;
+    r2.w = 1e+10;
     r3.z = r0.y;
     while (true) {
       r4.w = cmp((int)r0.w == (int)r3.z);
@@ -255,7 +255,7 @@ void main(
     r8.xyz = r8.xyz * r0.xxx;
     r0.w = 1 + -r1.w;
     r2.w = dot(r2.xyz, -r6.xyz);
-    r2.w = max(9.99999997e-007, abs(r2.w));
+    r2.w = max(9.99999997e-07, abs(r2.w));
     r5.xyz = r5.xyz * r0.yyy + -r6.xyz;
     r0.y = dot(r5.xyz, r5.xyz);
     r0.y = rsqrt(r0.y);

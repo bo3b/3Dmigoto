@@ -11,7 +11,7 @@ void DestroyDLL();
 void NvAPIOverride();
 
 extern "C" HMODULE (__stdcall *fnOrigLoadLibraryExW)(
-	_In_       LPCTSTR lpFileName,
+	_In_       LPCWSTR lpLibFileName,
 	_Reserved_ HANDLE  hFile,
 	_In_       DWORD   dwFlags
 	);

@@ -78,6 +78,11 @@ static RESOURCE_RETURN_TYPE DecodeExtendedResourceReturnType(uint32_t ui32Coord,
 typedef enum
 {
     //For DX9
+	OPCODE_POW = -6,
+	OPCODE_DP2ADD = -5,
+	OPCODE_LRP = -4,
+	OPCODE_ENDREP = -3,
+	OPCODE_REP = -2,
     OPCODE_SPECIAL_DCL_IMMCONST = -1,
 
     OPCODE_ADD,
@@ -356,6 +361,8 @@ static OPERAND_INDEX_DIMENSION DecodeOperandIndexDimension(uint32_t ui32Token)
 
 typedef enum OPERAND_TYPE
 {
+	OPERAND_TYPE_SPECIAL_FRONTFACE = -11, // 3DMIGOTO ADDITION (should this be upstreamed?)
+    OPERAND_TYPE_SPECIAL_LOOPCOUNTER = -10,
 	OPERAND_TYPE_SPECIAL_IMMCONSTINT = -9,
 	OPERAND_TYPE_SPECIAL_TEXCOORD = -8,
     OPERAND_TYPE_SPECIAL_POSITION = -7,
@@ -775,18 +782,16 @@ static uint32_t DecodeAccessCoherencyFlags(uint32_t ui32Token)
 }
 
 
-// From newer version of James-Jones CrossCompiler- needed to decode ResInfo.
-
 typedef enum RESINFO_RETURN_TYPE
 {
-	RESINFO_INSTRUCTION_RETURN_FLOAT = 0,
-	RESINFO_INSTRUCTION_RETURN_RCPFLOAT = 1,
-	RESINFO_INSTRUCTION_RETURN_UINT = 2
+    RESINFO_INSTRUCTION_RETURN_FLOAT      = 0,
+    RESINFO_INSTRUCTION_RETURN_RCPFLOAT   = 1,
+    RESINFO_INSTRUCTION_RETURN_UINT       = 2
 } RESINFO_RETURN_TYPE;
 
 static RESINFO_RETURN_TYPE DecodeResInfoReturnType(uint32_t ui32Token)
 {
-	return (RESINFO_RETURN_TYPE)((ui32Token & 0x00001800) >> 11);
+    return (RESINFO_RETURN_TYPE)((ui32Token & 0x00001800) >> 11);
 }
 
 #include "tokensDX9.h"

@@ -50,7 +50,7 @@ void main(
   r3.xyzw = IR_GBuffer_DSF_DataSampler.Sample(IR_GBuffer_DSF_DataSampler_s_s_s, r1.zw).xyzw;
   r2.x = r3.y;
   r0.zw = -v3.zz + r2.xy;
-  r0.zw = cmp(float2(1.20000004e-005,1.20000004e-005) >= abs(r0.zw));
+  r0.zw = cmp(float2(1.20000004e-05,1.20000004e-05) >= abs(r0.zw));
   r0.zw = r0.zw ? float2(1,1) : 0;
   r1.y = dot(r0.zw, float2(1,1));
   r1.y = min(1, r1.y);

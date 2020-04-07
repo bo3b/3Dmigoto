@@ -44,7 +44,7 @@
     <ClInclude Include="Input.h" />
     <ClInclude Include="Overlay.h" />
     <ClInclude Include="Override.h" />
-    <ClInclude Include="vkeys.h" />
+    <ClInclude Include="..\vkeys.h" />
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
     <ClInclude Include="HookedDXGI.h" />
     <ClInclude Include="DLLMainHook.h" />

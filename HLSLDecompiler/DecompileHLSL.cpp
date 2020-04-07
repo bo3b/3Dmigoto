@@ -26,7 +26,6 @@
 
 #include "DecompileHLSL.h"
 
-#include "BinaryDecompiler\include\pstdint.h"
 #include "BinaryDecompiler\internal_includes\structs.h"
 #include "BinaryDecompiler\internal_includes\decode.h"
 
@@ -106,6 +105,17 @@ struct BufferEntry
 typedef map<int, BufferEntry> CBufferData;
 typedef map<string, string> StringStringMap;
 
+//dx9
+struct ConstantValue
+{
+	string name;
+	float x;
+	float y;
+	float z;
+	float w;
+};
+//dx9
+
 // Convenience routine to calculate just the number of swizzle components.
 // Used for ibfe.  Inputs like 'o1.xy', return 2.
 
@@ -143,6 +153,13 @@ public:
 
 	map<string, string> mStructuredBufferTypes;
 	set<string> mStructuredBufferUsedNames;
+
+	//dx9
+	map<int, string> mUniformNames;
+	map<int, string> mBoolUniformNames;
+	map<int, ConstantValue> mConstantValues;
+	map<int, string> mInputNames;
+	//dx9
 
 	// Output register tracking.
 	map<string, string> mOutputRegisterValues;
@@ -682,6 +699,149 @@ public:
 		}
 	}
 
+	//dx9
+	size_t getLineEnd(const char * c, size_t size, size_t & pos, bool & foundLineEnd)
+	{
+		size_t lineStart = pos;
+		while (pos < size)
+		{
+			if (pos < size - 1)
+			{
+				if (c[pos] == 0x0d && c[pos + 1] == 0x0a)
+				{
+					// This code path doesn't trigger for me (DarkStarSword).
+					// Does this mean that the newline style output from the
+					// disassembler can vary? If so, dependent on what?
+					foundLineEnd = true;
+					pos += 2;
+					return pos - lineStart - 2;
+					break;
+				}
+				else if (c[pos] == 0x0a)
+				{
+					foundLineEnd = true;
+					pos += 1;
+					return pos - lineStart - 1;
+					break;
+				}
+			}
+			pos++;
+		}
+
+		return pos;
+	}
+
+	void SplitString(const std::string& s, std::vector<std::string>& v, const std::string& c)
+	{
+		std::string::size_type pos1, pos2;
+		pos2 = s.find(c);
+		pos1 = 0;
+		while (std::string::npos != pos2)
+		{
+			if (pos2 > pos1) //remove c
+			{
+				v.push_back(s.substr(pos1, pos2 - pos1));
+			}
+
+			pos1 = pos2 + c.size();
+			pos2 = s.find(c, pos1);
+		}
+		if (pos1 != s.length())
+			v.push_back(s.substr(pos1));
+	}
+
+	void ReadResourceBindingsDX9(const char *c, size_t size)
+	{
+		mCBufferNames.clear();
+		mSamplerNames.clear();
+		mSamplerNamesArraySize.clear();
+		mSamplerComparisonNames.clear();
+		mSamplerComparisonNamesArraySize.clear();
+		mTextureNames.clear();
+		mTextureNamesArraySize.clear();
+
+		size_t pos = 0;
+		bool parseParameters = false;
+		bool parseRegisters = false;
+
+		while (pos < size)
+		{
+
+			const char * lineStart = c + pos;
+			bool foundLineEnd = false;
+			size_t lineSize = getLineEnd(c, size, pos, foundLineEnd);
+
+
+			if (lineSize < 2)
+			{
+				break;
+			}
+
+			//code start
+			if (lineStart[0] != '/' || lineStart[1] != '/')
+			{
+				break;
+			}
+
+			const char * headerid = "// Parameters:";
+			if (!strncmp(lineStart, headerid, strlen(headerid)))
+			{
+				parseParameters = true;
+				parseRegisters = false;
+			}
+
+			headerid = "// Registers:";
+			if (!strncmp(lineStart, headerid, strlen(headerid)))
+			{
+				parseParameters = false;
+				parseRegisters = true;
+				continue;
+			}
+
+
+			if (parseRegisters)
+			{
+				char * lineStr = new char[lineSize + 1];
+				memcpy(lineStr, lineStart, lineSize);
+				lineStr[lineSize] = 0;
+
+				vector<string> result;
+				SplitString(lineStr, result, " ");
+
+				if (result.size() != 4)
+				{
+					delete[] lineStr;
+					continue;
+				}
+
+				if (result[1] == "Name" || result[3] == "----")
+				{
+					delete[] lineStr;
+					continue;
+				}
+
+				if (result[2].c_str()[0] == 's')
+				{
+					int slot = atoi(&result[2].c_str()[1]);
+					mTextureNames[slot] = result[1];
+					mTextureNamesArraySize[slot] = 1;
+					mTextureType[slot] = "Texture2D<float4>";
+				}
+				else if (result[2].c_str()[0] == 'c')
+				{
+					int index = atoi(&result[2].c_str()[1]);
+					mUniformNames[index] = result[1];
+				}
+				if (result[2].c_str()[0] == 'b')
+				{
+					int index = atoi(&result[2].c_str()[1]);
+					mBoolUniformNames[index] = result[2];
+				}
+			}
+		}
+	}
+	//dx9
+
 	void ReadResourceBindings(const char *c, size_t size)
 	{
 		mCBufferNames.clear();
@@ -1035,7 +1195,8 @@ public:
 					}
 				}
 				// Struct definition?
-				if (strstr(buffer, " struct\n") || strstr(buffer, " struct "))
+				//if (strstr(buffer, " struct\n") || strstr(buffer, " struct "))
+				if (strstr(buffer, " struct\n") || strstr(buffer, " struct ") || strstr(buffer, "//   struct\r\n")) //dx9
 				{
 					++structLevel;
 					mOutput.insert(mOutput.end(), '\n');
@@ -1054,6 +1215,7 @@ public:
 					}
 					const char *structHeader2 = "{\n";
 					mOutput.insert(mOutput.end(), structHeader2, structHeader2 + strlen(structHeader2));
+					//skip struct's next line"//   {\r\n" //dx9 (Was there a point to this commented out line? -DSS)
 					NextLine(c, pos, size);
 					continue;
 				}
@@ -1697,6 +1859,19 @@ public:
 			strcpy_s(right, opcodeSize, right2);
 		}
 
+		//dx9
+		string absTemp = right;
+
+		size_t absPos = absTemp.find("_abs");
+		if (absPos != -1)
+		{
+			absTemp.replace(absPos, 4, "");
+			strcpy_s(right, opcodeSize, absTemp.c_str());
+			absolute = true;
+		}
+		//dx9
+
+
 		// Fairly bold change here- this fetches the source swizzle from 'left', and it previously would
 		// find the first dot in the string.  That's not right for left side array indices, so I changed it
 		// to look for the far right dot instead.  Should be correct, but this is used everywhere.
@@ -1712,8 +1887,109 @@ public:
 		// literal?
 		if (right[0] == 'l')
 			applySwizzleLiteral(right, right2, useInt, pos, idx);
+		else if (right[0] == 'c' && right[1] != 'b')
+		{
+			//dx9 const register, start with c
+			// FIXME: Refactor this into a dedicated function
+
+			char * result = strrchr(right, '.');
+			if (result == NULL)		//if don't have swizzle info，add .xyzw
+			{
+				strcat_s(right, opcodeSize, ".xyzw");
+			}
+
+			strPos = strrchr(right, '.') + 1;
+			strncpy(right2, right, strPos - right);
+			right2[strPos - right] = 0;
+			pos = strlen(right2);
+			// Single value?
+			if (strlen(right) - strlen(right2) == 1)
+				strcpy(right2, right);
+			else
+			{
+				for (int i = 0; idx[i] >= 0 && i < 4; ++i)
+					right2[pos++] = strPos[idx[i]];
+				right2[pos] = 0;
+			}
+
+			const char *strPos1 = strrchr(right2, '.') + 1;
+			char idx1[4] = { -1, -1, -1, -1 };
+			size_t pos1 = 0;
+			while (*strPos1 && pos1 < 4)
+				idx1[pos1++] = map[*strPos1++ - 'w'];
+
+			char buff[opcodeSize];
+			char suffix[opcodeSize];
+			char * pos = strchr(right2, '.');
+			if (pos != NULL)
+			{
+				strncpy(buff, right2, pos - right2);
+				buff[pos - right2] = 0;
+				size_t len = strlen(right2) - (right2 - pos) - 1;
+				strncpy(suffix, pos + 1, len);
+				suffix[len] = 0;
+			}
+			else
+			{
+				strcpy_s(buff, opcodeSize, right2);
+				suffix[0] = 0;
+			}
+
+			int index = atoi(&buff[1]);
+
+			std::map<int, string>::iterator it = mUniformNames.find(index);
+			if (it != mUniformNames.end())
+			{
+				string temp = right;
+				temp.replace(0, strlen(buff), it->second);
+				strcpy_s(buff, opcodeSize, temp.c_str());
+			}
+
+			std::map<int, ConstantValue>::iterator cit = mConstantValues.find(index);
+			if (cit != mConstantValues.end())
+			{
+
+				sprintf_s(buff, opcodeSize, "%s", right2);
+
+
+				for (int i = 0; idx1[i] >= 0 && i < 4; ++i)
+				{
+					if (idx1[i] == 0)
+					{
+						sprintf_s(buff, opcodeSize, "%s %f", buff, cit->second.x);
+					}
+					else if (idx1[i] == 1)
+					{
+						sprintf_s(buff, opcodeSize, "%s %f", buff, cit->second.y);
+					}
+					else if (idx1[i] == 2)
+					{
+						sprintf_s(buff, opcodeSize, "%s %f", buff, cit->second.z);
+					}
+					else if (idx1[i] == 3)
+					{
+						sprintf_s(buff, opcodeSize, "%s %f", buff, cit->second.w);
+					}
+				}
+			}
+
+			strcpy_s(right2, opcodeSize, buff);
+		/*else if (right[0] == 'v')
+		+		{
+		+			strcpy_s(right2, opcodeSize, right);
+		+		}*/
+		//dx9
+		}
 		else
 		{
+			//dx9
+			char * result = strrchr(right, '.');
+			if (result == NULL)		//if don't have swizzle info，add .xyzw
+			{
+				strcat_s(right, opcodeSize, ".xyzw");
+			}
+			//dx9
+
 			strPos = strrchr(right, '.') + 1;
 			if (strPos == (const char *)1) {
 				// If there's no '.' in the string, strrchr
@@ -1721,6 +1997,11 @@ public:
 				// were to continue we would write a 0 to a
 				// random location since right2[1-right] will
 				// run off the start of the buffer.
+				//
+				// XXX With the addition of the above default
+				// swizzle, this should no longer be possible.
+				// Leaving this error path in anyway just in
+				// case since memory corruption is not fun.
 				logDecompileError("applySwizzle 2nd parameter missing '.': " + string(right));
 				return;
 			}
@@ -3664,6 +3945,115 @@ public:
 		}
 	}
 
+	//dx9
+	//get component from Instruction
+	string GetComponentStrFromInstruction(Instruction * instr, int opIndex)
+	{
+		assert(instr != NULL);
+		char * componentX = "x";
+		char * componentY = "y";
+		char * componentZ = "z";
+		char * componentW = "w";
+		char * component[] = { componentX, componentY, componentZ, componentW };
+
+
+		char buff[opcodeSize];
+		buff[0] = 0;
+
+		if (instr->asOperands[opIndex].eSelMode == OPERAND_4_COMPONENT_MASK_MODE)
+		{
+			if (instr->asOperands[opIndex].ui32CompMask & OPERAND_4_COMPONENT_MASK_X)
+			{
+				sprintf_s(buff, opcodeSize, "%s", componentX);
+			}
+
+			if (instr->asOperands[opIndex].ui32CompMask & OPERAND_4_COMPONENT_MASK_Y)
+			{
+				sprintf_s(buff, opcodeSize, "%s%s", buff, componentY);
+			}
+
+			if (instr->asOperands[opIndex].ui32CompMask & OPERAND_4_COMPONENT_MASK_Z)
+			{
+				sprintf_s(buff, opcodeSize, "%s%s", buff, componentZ);
+			}
+
+			if (instr->asOperands[opIndex].ui32CompMask & OPERAND_4_COMPONENT_MASK_W)
+			{
+				sprintf_s(buff, opcodeSize, "%s%s", buff, componentW);
+			}
+
+		}
+		else if (instr->asOperands[opIndex].eSelMode == OPERAND_4_COMPONENT_SWIZZLE_MODE)
+		{
+			for (int i = 0; i < 4; i++)
+			{
+				sprintf_s(buff, opcodeSize, "%s%s", buff, component[instr->asOperands[opIndex].aui32Swizzle[i]]);
+			}
+		}
+		else if ((instr->asOperands[opIndex].eSelMode == OPERAND_4_COMPONENT_SELECT_1_MODE))
+		{
+			sprintf_s(buff, opcodeSize, "%s", component[instr->asOperands[opIndex].aui32Swizzle[0]]);
+		}
+
+		return string(buff);
+	}
+
+	//0 different, 1 same, 2 same but sign different
+	int IsInstructionOperandSame(Instruction * instr1, int opIndex1, Instruction * instr2, int opIndex2, const char * instr1Op1 = NULL, const char * instr2Op1 = NULL)
+	{
+		Operand & op1 = instr1->asOperands[opIndex1];
+		Operand & op2 = instr2->asOperands[opIndex2];
+
+		string component1 = GetComponentStrFromInstruction(instr1, opIndex1);
+		string component2 = GetComponentStrFromInstruction(instr2, opIndex2);
+
+		char buff1[opcodeSize];
+		char buff2[opcodeSize];
+		sprintf_s(buff1, opcodeSize, "r%d.%s", op1.ui32RegisterNumber, component1.c_str());
+		sprintf_s(buff2, opcodeSize, "r%d.%s", op2.ui32RegisterNumber, component2.c_str());
+
+
+		if (instr1Op1 != NULL)
+		{
+			char buff3[opcodeSize];
+			sprintf_s(buff3, opcodeSize, ".%s", instr1Op1);
+			applySwizzle(buff3, buff1);
+		}
+
+		if (instr2Op1 != NULL)
+		{
+			if (instr1Op1 == NULL)
+			{
+				applySwizzle(".xyz", buff1);
+			}
+
+			char buff4[opcodeSize];
+			sprintf_s(buff4, opcodeSize, ".%s", instr2Op1);
+			applySwizzle(buff4, buff2);
+		}
+
+		bool same = false;
+
+		if (strcmp(buff1, buff2) == 0)
+		{
+			same = true;
+		}
+
+		if (same)
+		{
+			if (((op1.eModifier == OPERAND_MODIFIER_NEG || op1.eModifier == OPERAND_MODIFIER_ABSNEG) && (op2.eModifier == OPERAND_MODIFIER_NONE || op2.eModifier == OPERAND_MODIFIER_ABS)) ||
+				((op2.eModifier == OPERAND_MODIFIER_NEG || op2.eModifier == OPERAND_MODIFIER_ABSNEG) && (op1.eModifier == OPERAND_MODIFIER_NONE || op1.eModifier == OPERAND_MODIFIER_ABS)))
+			{
+				return 2;
+			}
+
+			return 1;
+		}
+
+		return 0;
+	}
+	//dx9
+
 	void ParseCode(Shader *shader, const char *c, size_t size)
 	{
 		mOutputRegisterValues.clear();
@@ -3675,9 +4065,12 @@ public:
 		unsigned int iNr = 0;
 		bool skip_shader = false;
 
-		while (pos < size && iNr < shader->asPhase[MAIN_PHASE].ppsInst[0].size())
+		vector<Instruction> *instructions = &shader->asPhase[MAIN_PHASE].ppsInst[0];
+		size_t inst_count = instructions->size();
+
+		while (pos < size && iNr < inst_count)
 		{
-			Instruction *instr = &shader->asPhase[MAIN_PHASE].ppsInst[0][iNr];
+			Instruction *instr = &(*instructions)[iNr];
 
 			// Now ignore '#line' or 'undecipherable' debug info (DefenseGrid2)
 			if (!strncmp(c + pos, "#line", 5) ||
@@ -3714,8 +4107,9 @@ public:
 			// Some shaders seen in World of Diving contain multiple shader programs.
 			// Ignore any instructions from old shader models that we do not handle to
 			// avoid crashes.
-			if (!strncmp(statement, "vs_1", 4) || !strncmp(statement, "vs_2", 4) ||
-			    !strncmp(statement, "ps_1", 4) || !strncmp(statement, "ps_2", 4)) {
+			if (!shader->dx9Shader && (
+			    !strncmp(statement, "vs_1", 4) || !strncmp(statement, "vs_2", 4) ||
+			    !strncmp(statement, "ps_1", 4) || !strncmp(statement, "ps_2", 4))) {
 				skip_shader = true;
 				NextLine(c, pos, size);
 				continue;
@@ -3736,6 +4130,20 @@ public:
 				NextLine(c, pos, size);
 				continue;
 			}
+			else if (!strcmp(statement, "def"))		//dx9 const
+			{
+				int registerIndex = atoi(&op1[1]);
+
+
+				ConstantValue value;
+				value.name = op1;
+				value.x = (float)atof(op2);
+				value.y = (float)atof(op3);
+				value.z = (float)atof(op4);
+				value.w = (float)atof(op5);
+
+				mConstantValues[registerIndex] = value;
+			} //dx9
 			else if (!strcmp(statement, "dcl_immediateConstantBuffer"))
 			{
 				sprintf(buffer, "  const float4 icb[] =");
@@ -4171,6 +4579,12 @@ public:
 					ASMLineOut(c, pos, size);
 				}
 			}
+			else if (!strcmp(statement, "dcl"))		//dx9 dcl vFace
+			{
+				// Ummm... why is this empty block here? Is this here
+				// intentionally to avoid the next else block, or was it
+				// forgotten about? -DSS
+			}//dx9
 			else
 			{
 				switch (instr->eOpcode)
@@ -4365,10 +4779,18 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-						if (!instr->bSaturate)
+						if (!instr->bSaturate) {
+							// Reverting the DX9 port changes and going back to
+							// the original opcode order here, since they
+							// should be mathematically equivelent, but I seem
+							// to recall Bo3b noticing that this order tends to
+							// produce assembly closer to the original. -DSS
 							sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
-						else
+							//sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str()); //dx9
+						} else {
 							sprintf(buffer, "  %s = saturate(%s + %s);\n", writeTarget(op1), ci(op3).c_str(), ci(op2).c_str());
+							//sprintf(buffer, "  %s = saturate(%s + %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str()); //dx9
+						}
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -4584,6 +5006,57 @@ public:
 						break;
 
 					case OPCODE_LOG:
+					{
+						const int lookahead = 6;
+						if (shader->dx9Shader && (iNr + lookahead < inst_count)) // FIXME: This is actually a lookahead code path and may not be DX9 specific
+						{
+							Instruction * nextIns[lookahead];
+							for (int i = 0; i < lookahead; i++)
+							{
+								nextIns[i] = &(*instructions)[iNr + i + 1];
+							}
+
+							if (nextIns[0]->eOpcode == OPCODE_LOG && nextIns[1]->eOpcode == OPCODE_LOG && nextIns[2]->eOpcode == OPCODE_MUL &&
+								nextIns[3]->eOpcode == OPCODE_EXP && nextIns[4]->eOpcode == OPCODE_EXP && nextIns[5]->eOpcode == OPCODE_EXP &&
+								instr->asOperands[1].ui32RegisterNumber == nextIns[0]->asOperands[1].ui32RegisterNumber &&
+								nextIns[0]->asOperands[1].ui32RegisterNumber == nextIns[1]->asOperands[1].ui32RegisterNumber)
+							{
+								string op1Str;
+								string op3Str;
+
+								//read next instruction
+								for (int i = 0; i < lookahead; i++)
+								{
+									while (c[pos] != 0x0a && pos < size) pos++; pos++;
+
+									if (ReadStatement(c + pos) < 1)
+									{
+										logDecompileError("Error parsing statement: " + string(c + pos, 80));
+										return;
+									}
+
+									if (i == 2)
+									{
+										op1Str = op1;
+										applySwizzle(op1, op3);
+										op3Str = op3;
+									}
+								}
+
+								sprintf(buffer, "  r%d.%s%s%s = pow(r%d.%s%s%s, %s);\n", nextIns[3]->asOperands[0].ui32RegisterNumber, GetComponentStrFromInstruction(nextIns[3], 0).c_str(),
+									GetComponentStrFromInstruction(nextIns[4], 0).c_str(), GetComponentStrFromInstruction(nextIns[5], 0).c_str(),
+									instr->asOperands[1].ui32RegisterNumber, GetComponentStrFromInstruction(instr, 1).c_str(), GetComponentStrFromInstruction(nextIns[0], 1).c_str(),
+									GetComponentStrFromInstruction(nextIns[1], 1).c_str(), op3Str.c_str());
+
+								appendOutput(buffer);
+
+								while (c[pos] != 0x0a && pos < size) pos++; pos++;
+								mLastStatement = nextIns[5];
+								iNr += lookahead + 1;
+								continue;
+							}
+						}
+
 						remapTarget(op1);
 						applySwizzle(op1, op2);
 						if (!instr->bSaturate)
@@ -4593,6 +5066,7 @@ public:
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
+					}
 
 						// Opcodes for Sqrt, Min, Max, IMin, IMax all were using a 'statement' that is parsed
 						// from the text ASM.  This did not match the Mov, or Add or other opcodes, and was
@@ -4841,6 +5315,46 @@ public:
 
 
 					case OPCODE_MAX:
+					{
+						const int lookahead = 1;
+						if (shader->dx9Shader && (iNr + lookahead < inst_count)) // FIXME: This is actually a lookahead code path and may not be DX9 specific
+						{
+							Instruction * nextIns = &(*instructions)[iNr + 1];
+							if (nextIns->eOpcode == OPCODE_MAD &&
+								IsInstructionOperandSame(instr, 3, nextIns, 3, GetComponentStrFromInstruction(instr, 0).c_str(), GetComponentStrFromInstruction(nextIns, 0).c_str()) == 2 &&
+								IsInstructionOperandSame(instr, 0, nextIns, 2, NULL, GetComponentStrFromInstruction(nextIns, 0).c_str()) == 1)
+							{
+								applySwizzle(op1, op2);
+								applySwizzle(op1, op3);
+
+								char y[opcodeSize];
+								sprintf_s(y, opcodeSize, "%s * %s", op2, op3);
+
+								//read next instruction
+								for (int i = 0; i < lookahead; i++)
+								{
+									while (c[pos] != 0x0a && pos < size) pos++; pos++;
+
+									if (ReadStatement(c + pos) < 1)
+									{
+										logDecompileError("Error parsing statement: " + string(c + pos, 80));
+										return;
+									}
+								}
+
+								remapTarget(op1);
+								applySwizzle(op1, op2);
+								applySwizzle(op1, op4);
+								sprintf_s(buffer, opcodeSize, "  %s = lerp(%s, %s, %s);\n", op1, op4, y, op2);
+								appendOutput(buffer);
+
+								while (c[pos] != 0x0a && pos < size) pos++; pos++;
+								mLastStatement = nextIns;
+								iNr += lookahead + 1;
+								continue;
+							}
+						}
+
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
@@ -4851,6 +5365,7 @@ public:
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
+					}
 					case OPCODE_IMIN:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
@@ -4926,6 +5441,52 @@ public:
 						break;
 
 					case OPCODE_DP3:
+					{
+						const int lookahead = 2;
+						if (shader->dx9Shader && (iNr + lookahead < inst_count)) // FIXME: This is actually a lookahead code path and may not be DX9 specific
+						{
+							Instruction * nextIns[lookahead];
+							for (int i = 0; i < lookahead; i++)
+							{
+								nextIns[i] = &(*instructions)[iNr + i + 1];
+							}
+
+							string outputOp1 = GetComponentStrFromInstruction(nextIns[1], 0);
+
+							if (nextIns[0]->eOpcode == OPCODE_ADD && nextIns[1]->eOpcode == OPCODE_MAD &&
+								IsInstructionOperandSame(instr, 0, nextIns[0], 1) == 1 && IsInstructionOperandSame(instr, 0, nextIns[0], 2) == 1 &&
+								IsInstructionOperandSame(nextIns[0], 0, nextIns[1], 2) == 2 &&
+								IsInstructionOperandSame(instr, 1, nextIns[1], 3, NULL, outputOp1.c_str()) == 1 && IsInstructionOperandSame(instr, 2, nextIns[1], 1, NULL, outputOp1.c_str()) == 1)
+							{
+								//read next instruction
+								for (int i = 0; i < lookahead; i++)
+								{
+									while (c[pos] != 0x0a && pos < size) pos++; pos++;
+
+									if (ReadStatement(c + pos) < 1)
+									{
+										logDecompileError("Error parsing statement: " + string(c + pos, 80));
+										return;
+									}
+								}
+
+								remapTarget(op1);
+								sprintf_s(op2, opcodeSize, "r%d.%s", nextIns[1]->asOperands[3].ui32RegisterNumber, GetComponentStrFromInstruction(nextIns[1], 3).c_str());
+								sprintf_s(op3, opcodeSize, "r%d.%s", nextIns[1]->asOperands[1].ui32RegisterNumber, GetComponentStrFromInstruction(nextIns[1], 1).c_str());
+								applySwizzle(op1, op2);
+								applySwizzle(op1, op3);
+
+								sprintf(buffer, "  %s = reflect(%s, %s);\n", writeTarget(op1), op2, op3);
+
+								appendOutput(buffer);
+
+								while (c[pos] != 0x0a && pos < size) pos++; pos++;
+								mLastStatement = nextIns[1];
+								iNr += lookahead + 1;
+								continue;
+							}
+						}
+
 						remapTarget(op1);
 						applySwizzle(".xyz", fixImm(op2, instr->asOperands[1]));
 						applySwizzle(".xyz", fixImm(op3, instr->asOperands[2]));
@@ -4936,27 +5497,111 @@ public:
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
+					}
 
 					case OPCODE_DP4:
-						remapTarget(op1);
-						applySwizzle(".xyzw", fixImm(op2, instr->asOperands[1]));
-						applySwizzle(".xyzw", fixImm(op3, instr->asOperands[2]));
-						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+					{
+						const int lookahead = 1;
+						if (shader->dx9Shader && (iNr + lookahead < inst_count)) // FIXME: This is actually a lookahead code path and may not be DX9 specific
+						{
+							remapTarget(op1);
+							Instruction * nextInstr = &(*instructions)[iNr + 1];
+							string outputOp0 = GetComponentStrFromInstruction(instr, 0);
+
+							//nrm generate two instructions，dp4 and rsq
+							if (nextInstr->eOpcode == OPCODE_RSQ && outputOp0.size() == 3)
+							{
+								applySwizzle(op1, op2);
+								sprintf(buffer, "  %s = normalize(%s);\n", writeTarget(op1), ci(op2).c_str());
+								appendOutput(buffer);
+
+								//asm just one line，don't need call ReadStatement
+								//have two instructions
+								iNr++;
+
+								// NOTE: NO CONTINUE HERE - NEED ONE BEFORE ELIMINATING DUPLICATE CODE BELOW
+								// AND NEED A REGRESSION TEST BEFORE DOING THAT.
+							}
+							else
+							{
+								// XXX NOTE Duplicated code below!!!
+								applySwizzle(".xyzw", fixImm(op2, instr->asOperands[1]));
+								applySwizzle(".xyzw", fixImm(op3, instr->asOperands[2]));
+								if (!instr->bSaturate)
+									sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+								else
+									sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+								appendOutput(buffer);
+								// XXX NOTE Duplicated code below!!!
+							}
+						}
 						else
-							sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						{
+							// XXX NOTE Duplicated code above!!!
+							remapTarget(op1);
+							applySwizzle(".xyzw", fixImm(op2, instr->asOperands[1]));
+							applySwizzle(".xyzw", fixImm(op3, instr->asOperands[2]));
+							if (!instr->bSaturate)
+								sprintf(buffer, "  %s = dot(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							else
+								sprintf(buffer, "  %s = saturate(dot(%s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+							appendOutput(buffer);
+							removeBoolean(op1);
+							// XXX NOTE Duplicated code above!!!
+						}
+						break;
+					}
+					case OPCODE_DP2ADD:
+						remapTarget(op1);
+						applySwizzle(".xy", op2);
+						applySwizzle(".xy", op3);
+						applySwizzle(".xy", op4);
+						sprintf(buffer, "  %s = dot2(%s, %s) + %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
+						appendOutput(buffer);
+
+						//dx9
+						break;
+
+						//dx9
+					case OPCODE_LRP:
+						remapTarget(op1);
+						applySwizzle(op1, op2);
+						applySwizzle(op1, op3);
+						applySwizzle(op1, op4);
+						sprintf(buffer, "  %s = lerp(%s, %s, %s);\n", writeTarget(op1), ci(op4).c_str(), ci(op3).c_str(), ci(op2).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
+					case OPCODE_POW:
+						remapTarget(op1);
+						applySwizzle(op1, op2);
+						applySwizzle(op1, op3);
+						sprintf(buffer, "  %s = pow(%s, %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
+						appendOutput(buffer);
+						break;
+						//dx9
 					case OPCODE_RSQ:
 					{
 						remapTarget(op1);
 						applySwizzle(op1, op2);
-						if (!instr->bSaturate)
+						if (!instr->bSaturate) {
+							// The DX9 port switched this to 1/sqrt(), however
+							// it is unclear why that was necessary - rsqrt
+							// should work in everything since vs_1_1 and
+							// ps_2_0 (and in fact the regular sqrt didn't
+							// exist until shader model 4). Look up "fast
+							// inverse square root" to have your mind blown and
+							// get an idea of why this matters.
+							//
+							// Reverting this to rsqrt since the DX9 decompiler
+							// support is clearly unfinished and no explanation
+							// for this change was provided.
+							//
 							sprintf(buffer, "  %s = rsqrt(%s);\n", writeTarget(op1), ci(op2).c_str());
-						else
+						} else {
 							sprintf(buffer, "  %s = saturate(rsqrt(%s));\n", writeTarget(op1), ci(op2).c_str());
+						}
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -5336,29 +5981,44 @@ public:
 					// Was missing the sample_aoffimmi variant. Added as matching sample_b type. Used in FC4.
 					case OPCODE_SAMPLE:
 					{
-						//	else if (!strncmp(statement, "sample_indexable", strlen("sample_indexable")))
-						remapTarget(op1);
-						applySwizzle(".xyzw", op2);
-						applySwizzle(op1, op3);
-						int textureId, samplerId;
-						sscanf_s(op3, "t%d.", &textureId);
-						sscanf_s(op4, "s%d", &samplerId);
-						truncateTexturePos(op2, mTextureType[textureId].c_str());
-						truncateTextureSwiz(op1, mTextureType[textureId].c_str());
-						truncateTextureSwiz(op3, mTextureType[textureId].c_str());
-						if (!instr->bAddressOffset)
-							sprintf(buffer, "  %s = %s.Sample(%s, %s)%s;\n", writeTarget(op1),
-								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
+						if (shader->dx9Shader)
+						{
+							remapTarget(op1);
+							applySwizzle(".xyzw", op2);
+
+							int textureId = atoi(&op3[1]);
+							sprintf(buffer, "  %s = %s.Sample(%s);\n", writeTarget(op1),
+								mTextureNames[textureId].c_str(), ci(op2).c_str());
+
+							appendOutput(buffer);
+						}
 						else
 						{
-							int offsetx = 0, offsety = 0, offsetz = 0;
-							sscanf_s(statement, "sample_aoffimmi(%d,%d,%d", &offsetx, &offsety, &offsetz);
-							sprintf(buffer, "  %s = %s.Sample(%s, %s, int2(%d, %d))%s;\n", writeTarget(op1),
-								mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(),
-								offsetx, offsety, strrchr(op3, '.'));
+							//	else if (!strncmp(statement, "sample_indexable", strlen("sample_indexable")))
+							remapTarget(op1);
+							applySwizzle(".xyzw", op2);
+							applySwizzle(op1, op3);
+							int textureId, samplerId;
+							sscanf_s(op3, "t%d.", &textureId);
+							sscanf_s(op4, "s%d", &samplerId);
+							truncateTexturePos(op2, mTextureType[textureId].c_str());
+							truncateTextureSwiz(op1, mTextureType[textureId].c_str());
+							truncateTextureSwiz(op3, mTextureType[textureId].c_str());
+							if (!instr->bAddressOffset)
+								sprintf(buffer, "  %s = %s.Sample(%s, %s)%s;\n", writeTarget(op1),
+									mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
+							else
+							{
+								int offsetx = 0, offsety = 0, offsetz = 0;
+								sscanf_s(statement, "sample_aoffimmi(%d,%d,%d", &offsetx, &offsety, &offsetz);
+								sprintf(buffer, "  %s = %s.Sample(%s, %s, int2(%d, %d))%s;\n", writeTarget(op1),
+									mTextureNames[textureId].c_str(), mSamplerNames[samplerId].c_str(), ci(op2).c_str(),
+									offsetx, offsety, strrchr(op3, '.'));
+							}
+							appendOutput(buffer);
+							removeBoolean(op1);
 						}
-						appendOutput(buffer);
-						removeBoolean(op1);
+
 						break;
 					}
 
@@ -6011,7 +6671,8 @@ public:
 		// Moved this out of Opcode_ret, because it's possible to have more than one ret
 		// in a shader.  This is the last of a given shader, which seems more correct.
 		// This fixes the double injection of "injectedScreenPos : SV_Position"
-		WritePatches();
+		if (!shader->dx9Shader)
+			WritePatches();
 	}
 
 	void ParseCodeOnlyShaderType(Shader *shader, const char *c, size_t size)
@@ -6135,8 +6796,16 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 		Shader *shader = DecodeDXBC((uint32_t*)params.bytecode);
 		if (!shader) return string();
 
-		d.ParseStructureDefinitions(shader, params.decompiled, params.decompiledSize);
-		d.ReadResourceBindings(params.decompiled, params.decompiledSize);
+		if (shader->dx9Shader)
+		{
+			d.ReadResourceBindingsDX9(params.decompiled, params.decompiledSize);
+		}
+		else
+		{
+			d.ParseStructureDefinitions(shader, params.decompiled, params.decompiledSize);
+			d.ReadResourceBindings(params.decompiled, params.decompiledSize);
+		}
+
 		d.ParseBufferDefinitions(shader, params.decompiled, params.decompiledSize);
 		d.WriteResourceDefinitions();
 		d.WriteAddOnDeclarations();

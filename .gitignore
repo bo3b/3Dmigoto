@@ -10,6 +10,7 @@
 *.lastbuildstate
 *.res
 *.vsps
+CopyToGamesLocal.bat
 
 # Project specific ignores
 /7zip/7-zip.chm
@@ -25,6 +26,7 @@ Zip Release/
 build/
 [Bb]in/
 [Oo]bj/
+*.zip
 
 # Enable "build/" folder in the NuGet Packages folder since NuGet packages use it for MSBuild targets
 !packages/*/build/
@@ -54,8 +56,8 @@ build/
 *.vssscc
 .builds
 *.pidb
-*.log
 *.scc
+*.vsglog
 
 # Visual C++ cache files
 ipch/
@@ -165,9 +167,40 @@ $RECYCLE.BIN/
 
 # Mac desktop service store files
 .DS_Store
-*.vsglog
-*.zip
 
 # Vim swap files
-.*.swp
+# https://github.com/github/gitignore/blob/master/Global/Vim.gitignore
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# NSight debugging tools
 *.nvuser
+
+# ??? - lacked a comment. Added in the DX9 port
+/StereovisionHacks.VC.VC.opendb
+/StereovisionHacks.VC.db
+/.vs/3DMigoto/v15/Browse.VC.db
+*.db
+*.opendb
+*.db-shm
+*.db-wal
+/.vs
+/enc_temp_folder
+
+# 'Smart Command Line Arguments' Visual Studio extension:
+*.args.json
+
+# If you add anything else to this file add it to an existing group above if
+# applicable, or make a new group with a comment hinting as to what it is. If
+# you don't know for sure what it is from or aren't sure which heading above is
+# applicable that's fine - just say so in your comment.
+#
+# But whatever you do don't go and add it to the *wrong* group hoping no one
+# will notice - I don't want to see any more Visual Studio or NSight junk added
+# under the vim heading!
+#
+# There's a great collection of .gitignore templates here:
+# https://github.com/github/gitignore
