@@ -93,17 +93,11 @@ Global
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Debug|Win32.ActiveCfg = Debug|Win32
-		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Debug|Win32.Build.0 = Debug|Win32
 		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Debug|x64.ActiveCfg = Debug|x64
-		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Debug|x64.Build.0 = Debug|x64
 		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Release|Win32.ActiveCfg = Release|Win32
-		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Release|Win32.Build.0 = Release|Win32
 		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Release|x64.ActiveCfg = Release|x64
-		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Release|x64.Build.0 = Release|x64
 		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Zip Release|Win32.ActiveCfg = Zip Release|Win32
-		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Zip Release|Win32.Build.0 = Zip Release|Win32
 		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Zip Release|x64.ActiveCfg = Zip Release|x64
-		{4265C0D8-8671-49C0-8EB5-EB940FD08482}.Zip Release|x64.Build.0 = Zip Release|x64
 		{C9205DC6-7CE4-4939-9EFC-FE61483CCE01}.Debug|Win32.ActiveCfg = Debug|Win32
 		{C9205DC6-7CE4-4939-9EFC-FE61483CCE01}.Debug|x64.ActiveCfg = Debug|x64
 		{C9205DC6-7CE4-4939-9EFC-FE61483CCE01}.Release|Win32.ActiveCfg = Release|Win32
