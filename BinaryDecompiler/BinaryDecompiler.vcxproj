@@ -227,6 +227,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="decode.cpp" />
+    <ClCompile Include="decodeDX9.cpp" />
     <ClCompile Include="reflect.cpp" />
   </ItemGroup>
   <ItemGroup>

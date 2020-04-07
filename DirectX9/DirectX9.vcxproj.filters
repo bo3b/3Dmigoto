@@ -2,6 +2,41 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="d3d9Wrapper.cpp" />
+    <ClCompile Include="IniHandler.cpp" />
+    <ClCompile Include="Overlay.cpp" />
+    <ClCompile Include="CommandList.cpp" />
+    <ClCompile Include="ResourceHash.cpp" />
+    <ClCompile Include="Input.cpp" />
+    <ClCompile Include="Hunting.cpp" />
+    <ClCompile Include="nvprofile.cpp" />
+    <ClCompile Include="ShaderRegex.cpp" />
+    <ClCompile Include="ConstantsTable.cpp" />
+    <ClCompile Include="DLLMainHookDX9.cpp" />
+    <ClCompile Include="HookedDeviceDX9.cpp" />
+    <ClCompile Include="HookedSwapChain.cpp" />
+    <ClCompile Include="HookedD9.cpp" />
+    <ClCompile Include="HookedCubeTexture.cpp" />
+    <ClCompile Include="HookedTexture.cpp" />
+    <ClCompile Include="HookedVolumeTexture.cpp" />
+    <ClCompile Include="HookedVertexBuffer.cpp" />
+    <ClCompile Include="HookedIndexBuffer.cpp" />
+    <ClCompile Include="HookedSurface.cpp" />
+    <ClCompile Include="HookedVolume.cpp" />
+    <ClCompile Include="HookedVertexShader.cpp" />
+    <ClCompile Include="HookedPixelShader.cpp" />
+    <ClCompile Include="HookedQuery.cpp" />
+    <ClCompile Include="HookedVertexDeclaration.cpp" />
+    <ClCompile Include="D3DFont.cpp" />
+    <ClCompile Include="Override.cpp" />
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="..\crc32c-hw-1.0.5\src\crc32c.cpp" />
+    <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
+    <ClCompile Include="..\D3D_Shaders\Assembler.cpp" />
+    <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
+    <ClCompile Include="HookedStateBlock.cpp" />
+    <ClCompile Include="profiling.cpp" />
+    <ClCompile Include="..\util.cpp" />
+    <ClCompile Include="cursor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="d3d9Wrapper.h" />
@@ -18,12 +53,58 @@
     <ClInclude Include="Direct3DVertexShader9Functions.h" />
     <ClInclude Include="Direct3DPixelShader9Functions.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="..\IDirect3DUnknown.h" />
+    <ClInclude Include="IniHandler.h" />
+    <ClInclude Include="Globals.h" />
+    <ClInclude Include="Overlay.h" />
+    <ClInclude Include="CommandList.h" />
+    <ClInclude Include="DrawCallInfo.h" />
+    <ClInclude Include="ResourceHash.h" />
+    <ClInclude Include="Override.h" />
+    <ClInclude Include="Input.h" />
+    <ClInclude Include="..\vkeys.h" />
+    <ClInclude Include="Hunting.h" />
+    <ClInclude Include="nvprofile.h" />
+    <ClInclude Include="ShaderRegex.h" />
+    <ClInclude Include="..\log.h" />
+    <ClInclude Include="ConstantsTable.h" />
+    <ClInclude Include="DLLMainHookDX9.h" />
+    <ClInclude Include="HookedDeviceDX9.h" />
+    <ClInclude Include="Direct3DCubeTexture9Functions.h" />
+    <ClInclude Include="Direct3DVolume9Functions.h" />
+    <ClInclude Include="Direct3DVolumeTexture9Functions.h" />
+    <ClInclude Include="HookedSwapChain.h" />
+    <ClInclude Include="HookedD9.h" />
+    <ClInclude Include="HookedCubeTexture.h" />
+    <ClInclude Include="HookedTexture.h" />
+    <ClInclude Include="HookedVolumeTexture.h" />
+    <ClInclude Include="HookedVertexBuffer.h" />
+    <ClInclude Include="HookedIndexBuffer.h" />
+    <ClInclude Include="HookedSurface.h" />
+    <ClInclude Include="HookedVolume.h" />
+    <ClInclude Include="HookedVertexShader.h" />
+    <ClInclude Include="HookedPixelShader.h" />
+    <ClInclude Include="HookedQuery.h" />
+    <ClInclude Include="HookedVertexDeclaration.h" />
+    <ClInclude Include="D3DFont.h" />
+    <ClInclude Include="..\util.h" />
+    <ClInclude Include="..\crc32c-hw-1.0.5\include\crc32c.h" />
+    <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
+    <ClInclude Include="Direct3DBaseTexture9Functions.h" />
+    <ClInclude Include="HookedD3DXFunctions.h" />
+    <ClInclude Include="HookedD3DX.h" />
+    <ClInclude Include="Direct3DStateBlock9Functions.h" />
+    <ClInclude Include="HookedStateBlock.h" />
+    <ClInclude Include="Direct3DResource9Functions.h" />
+    <ClInclude Include="Direct3DShader9Functions.h" />
+    <ClInclude Include="profiling.h" />
+    <ClInclude Include="FrameAnalysis.h" />
+    <ClInclude Include="FrameAnalysisFunctions.h" />
+    <ClInclude Include="cursor.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d9Wrapper.def" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="Resource.rc" />
+    <ResourceCompile Include="DirectX9.rc" />
   </ItemGroup>
 </Project>

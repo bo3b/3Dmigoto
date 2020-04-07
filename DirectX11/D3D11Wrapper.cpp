@@ -1073,13 +1073,13 @@ void NvAPIOverride()
 // -----------------------------------------------------------------------------------------------
 // This is our hook for LoadLibraryExW, handling the loading of our original_* libraries.
 //
-// The hooks are actually installed during load time in DLLMainHook, but called here 
+// The hooks are actually installed during load time in DLLMainHook, but called here
 // whenever the game or system calls LoadLibraryExW.  These are here because at this
 // point in the runtime, it is OK to do normal calls like LoadLibrary, and logging
 // is available.  This is normal runtime.
 
 
-static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags, 
+static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags,
 	LPCWSTR our_name, LPCWSTR library)
 {
 	WCHAR fullPath[MAX_PATH];
@@ -1096,7 +1096,7 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 
 	// Bypass the known expected call from our wrapped d3d11 & nvapi, where it needs
 	// to call to the system to get APIs. This is a bit of a hack, but if the string
-	// comes in as original_d3d11/nvapi/nvapi64, that's from us, and needs to switch 
+	// comes in as original_d3d11/nvapi/nvapi64, that's from us, and needs to switch
 	// to the real one. The test string should have no path attached.
 
 	if (_wcsicmp(lpLibFileName, our_name) == 0)
@@ -1109,8 +1109,8 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 
 	// For this case, we want to see if it's the game loading d3d11 or nvapi directly
 	// from the system directory, and redirect it to the game folder if so, by stripping
-	// the system path. This is to be case insensitive as we don't know if NVidia will 
-	// change that and otherwise break it it with a driver upgrade. 
+	// the system path. This is to be case insensitive as we don't know if NVidia will
+	// change that and otherwise break it it with a driver upgrade.
 
 	if (_wcsicmp(lpLibFileName, fullPath) == 0)
 	{
@@ -1143,11 +1143,11 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 // Function called for every LoadLibraryExW call once we have hooked it.
 // We want to look for overrides to System32 that we can circumvent.  This only happens
 // in the current process, not system wide.
-// 
+//
 // We need to do two things here.  First, we need to bypass all calls that go
-// directly to the System32 folder, because that will circumvent our wrapping 
+// directly to the System32 folder, because that will circumvent our wrapping
 // of the d3d11 and nvapi APIs. The nvapi itself does this specifically as fake
-// security to avoid proxy DLLs like us. 
+// security to avoid proxy DLLs like us.
 // Second, because we are now forcing all LoadLibraryExW calls back to the game
 // folder, we need somehow to allow us access to the original dlls so that we can
 // get the original proc addresses to call.  We do this with the original_* names
@@ -1164,8 +1164,8 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 //	 LoadLibraryExW("C:\Windows\SysWOW64\d3d11.dll", NULL, 0)
 //	 LoadLibraryExW("C:\Windows\SysWOW64\nvapi.dll", NULL, 0)
 //
-// To be general and simplify the init, we are going to specifically do the bypass 
-// for all variants, even though we only know of this happening on x64 games.  
+// To be general and simplify the init, we are going to specifically do the bypass
+// for all variants, even though we only know of this happening on x64 games.
 //
 // An important thing to remember here is that System32 is automatically rerouted
 // to SysWow64 by the OS as necessary, so we can use System32 in all cases.
@@ -1175,10 +1175,9 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 
 
 // The storage for the original routine so we can call through.
-// Set to nullptr in case we need to check for it already being hooked.
 
 HMODULE(__stdcall *fnOrigLoadLibraryExW)(
-	_In_       LPCTSTR lpFileName,
+	_In_       LPCWSTR lpLibFileName,
 	_Reserved_ HANDLE  hFile,
 	_In_       DWORD   dwFlags
 	) = LoadLibraryExW;
@@ -1202,7 +1201,7 @@ HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ H
 	}
 
 	// Only do these overrides if they are specified in the d3dx.ini file.
-	//  load_library_redirect=0 for off, allowing all through unchanged. 
+	//  load_library_redirect=0 for off, allowing all through unchanged.
 	//  load_library_redirect=1 for nvapi.dll override only, forced to game folder.
 	//  load_library_redirect=2 for both d3d11.dll and nvapi.dll forced to game folder.
 	// This flag can be set by the proxy loading, because it must be off in that case.
@@ -1225,8 +1224,7 @@ HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ H
 			if (module)
 				return module;
 		}
-	}
-	else
+	} else
 		hook_enabled = true;
 
 	// Normal unchanged case.

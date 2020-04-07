@@ -759,7 +759,6 @@ HRESULT AssembleFluganWithSignatureParsing(vector<char> *assembly, vector<byte> 
 
 	return S_OK;
 }
-
 vector<byte> AssembleFluganWithOptionalSignatureParsing(vector<char> *assembly,
 		bool assemble_signatures, vector<byte> *orig_bytecode,
 		vector<AssemblerParseError> *parse_errors)

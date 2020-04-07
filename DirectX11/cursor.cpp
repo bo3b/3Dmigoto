@@ -270,8 +270,7 @@ static LRESULT WINAPI Hooked_DefWindowProc(
 			cursor = (HCURSOR)GetClassLongPtr(hWnd, GCLP_HCURSOR);
 			if (cursor)
 				SetCursor(cursor);
-		}
-		else {
+		} else {
 			// Not in client area. We could continue emulating
 			// DefWindowProc by setting an arrow cursor, bypassing
 			// our hook to set the *real* hardware cursor, but

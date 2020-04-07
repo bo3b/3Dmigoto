@@ -1,0 +1,17 @@
+// ---- Created with 3Dmigoto v1.3.16 on Sun Dec 01 00:09:03 2019
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+  r0.w = dot(vLightDir.xyzw, t0.xyz);
+  r0.xyz = saturate(vLightColor.xyzw * r0.w);
+  r0.w = dot(c13, t0.xyz);
+  r1.xyz = saturate(c15 * r0.w);
+  r0.xyz = r1.xyz + r0.xyz;
+  r0.w = c0.x 1.000000;
+  oC0 = r0.x;
+}

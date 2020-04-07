@@ -9,6 +9,9 @@
 #include "DecompileHLSL.h"
 #include "version.h"
 #include "log.h"
+#define MIGOTO_DX 11 // Selects the DX11 disassembler in util.h - the DX9 dis/assembler is not very
+                     // interesting since it is just Microsoft's - we can add it later, but low priority.
+                     // The DX9 decompiler is more interesting, which is unrelated to this flag.
 #include "util.h"
 #include "shader.h"
 
@@ -396,7 +399,7 @@ static HRESULT Decompile(const void *pShaderBytecode, size_t BytecodeLength, str
 {
 	// Set all to zero, so we only init the ones we are using here:
 	ParseParameters p = {0};
-	DecompilerSettings d = {0};
+	DecompilerSettings d;
 	bool patched = false;
 	bool errorOccurred = false;
 	string disassembly;

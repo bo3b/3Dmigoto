@@ -335,7 +335,7 @@ static void ReadResources(const uint32_t* pui32Tokens,//in
     const uint32_t* pui32FirstToken = pui32Tokens;
     uint32_t i;
 
-    const uint32_t ui32NumConstantBuffers = *pui32Tokens++;
+	const uint32_t ui32NumConstantBuffers = *pui32Tokens++;
     const uint32_t ui32ConstantBufferOffset = *pui32Tokens++;
 
     uint32_t ui32NumResourceBindings = *pui32Tokens++;
@@ -966,7 +966,7 @@ void LoadD3D9ConstantTable(const char* data,
     //Only 1 Constant Table in d3d9
     ASSERT(psInfo->ui32NumConstantBuffers==1);
 
-    psConstantBuffer = new ConstantBuffer();
+    psConstantBuffer = new ConstantBuffer[1];
 
     psInfo->psConstantBuffers = psConstantBuffer;
 

@@ -30,6 +30,16 @@ struct DecompilerSettings
 	std::string BackProject_Vector1, BackProject_Vector2;
 	std::string ObjectPos_ID1, ObjectPos_ID2, ObjectPos_MUL1, ObjectPos_MUL2;
 	std::string MatrixPos_ID1, MatrixPos_MUL1;
+
+	DecompilerSettings() :
+		StereoParamsReg(-1),
+		IniParamsReg(-1),
+		fixSvPosition(false),
+		recompileVs(false),
+		ZRepair_DepthTextureReg1('\0'),
+		ZRepair_DepthTextureReg2('\0'),
+		ZRepair_DepthBuffer(false)
+	{}
 };
 
 struct ParseParameters
@@ -38,6 +48,11 @@ struct ParseParameters
 	const char *decompiled;
 	size_t decompiledSize;
 	bool ZeroOutput;
+
+	//dx9
+	int StereoParamsVertexReg;
+	int StereoParamsPixelReg;
+	//dx9
 
 	DecompilerSettings *G;
 };

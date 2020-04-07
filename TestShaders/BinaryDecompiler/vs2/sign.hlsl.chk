@@ -1,0 +1,16 @@
+// ---- Created with 3Dmigoto v1.3.16 on Sun Dec 01 00:09:36 2019
+
+
+
+// 3Dmigoto declarations
+#define cmp -
+
+
+void main(
+// Needs manual fix for instruction:
+// unknown dcl_:     dcl_position v0
+  r0.x = cmp(-factor.x < factor.x);
+  r0.y = cmp(factor.x < -factor.x);
+  r0.x = r0.x + -r0.y;
+  oPos = v0.x * r0.x;
+}
