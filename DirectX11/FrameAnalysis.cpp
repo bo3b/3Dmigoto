@@ -1752,21 +1752,23 @@ void FrameAnalysisContext::DumpBufferImmediateCtx(ID3D11Buffer *staging, D3D11_B
 
 	if (analyse_options & FrameAnalysisOptions::FMT_BUF_TXT) {
 		filename.replace(ext, wstring::npos, L".txt");
-		FALogInfo("Dumping Buffer %S -> %S\n", filename.c_str(), txt_filename);
 
 		if (buf_type_mask & FrameAnalysisOptions::DUMP_CB) {
 			dedupe_buf_filename_txt(bin_filename, txt_filename, MAX_PATH, 'c', idx, stride, offset);
+			FALogInfo("Dumping Buffer %S -> %S\n", filename.c_str(), txt_filename);
 			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
 				DumpBufferTxt(txt_filename, &map, orig_desc->ByteWidth, 'c', idx, stride, offset);
 			}
 		} else if (buf_type_mask & FrameAnalysisOptions::DUMP_VB) {
 			determine_vb_count(&count, staged_ib_for_vb, call_info, ib_off_for_vb, ib_fmt);
 			dedupe_buf_filename_vb_txt(bin_filename, txt_filename, MAX_PATH, idx, stride, offset, first, count, layout, topology, call_info);
+			FALogInfo("Dumping Buffer %S -> %S\n", filename.c_str(), txt_filename);
 			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
 				DumpVBTxt(txt_filename, &map, orig_desc->ByteWidth, idx, stride, offset, first, count, layout, topology, call_info);
 			}
 		} else if (buf_type_mask & FrameAnalysisOptions::DUMP_IB) {
 			dedupe_buf_filename_ib_txt(bin_filename, txt_filename, MAX_PATH, ib_fmt, offset, first, count, topology);
+			FALogInfo("Dumping Buffer %S -> %S\n", filename.c_str(), txt_filename);
 			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
 				DumpIBTxt(txt_filename, &map, orig_desc->ByteWidth, ib_fmt, offset, first, count, topology);
 			}
@@ -1775,6 +1777,7 @@ void FrameAnalysisContext::DumpBufferImmediateCtx(ID3D11Buffer *staging, D3D11_B
 			// use the generic dump routine:
 
 			dedupe_buf_filename_txt(bin_filename, txt_filename, MAX_PATH, '?', idx, stride, offset);
+			FALogInfo("Dumping Buffer %S -> %S\n", filename.c_str(), txt_filename);
 			if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
 				DumpBufferTxt(txt_filename, &map, orig_desc->ByteWidth, '?', idx, stride, offset);
 			}
