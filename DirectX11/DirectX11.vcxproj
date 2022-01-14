@@ -243,8 +243,8 @@
       <ForceSymbolReferences>_CreateDXGIFactory@8</ForceSymbolReferences>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy “$(WindowsSdkDir)redist\d3d\x86\d3dcompiler_47.dll” “$(TargetDir)” /E /Y
-xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /s
+      <Command>xcopy "$(WindowsSdkDir)redist\d3d\x86\d3dcompiler_47.dll" "$(TargetDir)" /E /Y
+xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)" /S /Y
 call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
@@ -270,8 +270,8 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <ForceSymbolReferences>CreateDXGIFactory</ForceSymbolReferences>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy “$(WindowsSdkDir)redist\d3d\x64\d3dcompiler_47.dll” “$(TargetDir)” /E /Y
-xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /s
+      <Command>xcopy "$(WindowsSdkDir)redist\d3d\x64\d3dcompiler_47.dll" "$(TargetDir)" /E /Y
+xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /S /Y
 call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
@@ -303,9 +303,9 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <ForceSymbolReferences>_CreateDXGIFactory@8</ForceSymbolReferences>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy “$(WindowsSdkDir)redist\d3d\x86\d3dcompiler_47.dll” “$(TargetDir)” /E /Y
-xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /s
-call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
+      <Command>xcopy "$(WindowsSdkDir)redist\d3d\x86\d3dcompiler_47.dll" "$(TargetDir)" /E /Y
+xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)" /S /Y
+</Command>
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -365,9 +365,9 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /s
       <ForceSymbolReferences>CreateDXGIFactory</ForceSymbolReferences>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy “$(WindowsSdkDir)redist\d3d\x64\d3dcompiler_47.dll” “$(TargetDir)” /E /Y
-xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /s
-call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
+      <Command>xcopy "$(WindowsSdkDir)redist\d3d\x64\d3dcompiler_47.dll" "$(TargetDir)" /E /Y
+xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /S /Y
+</Command>
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
