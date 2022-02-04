@@ -22,8 +22,8 @@
 
 class InputListener {
 public:
-	virtual void DownEvent(D3D10Base::ID3D10Device *device) = 0;
-	virtual void UpEvent(D3D10Base::ID3D10Device *device);
+    virtual void DownEvent(D3D10Base::ID3D10Device *device) = 0;
+    virtual void UpEvent(D3D10Base::ID3D10Device *device);
 };
 
 
@@ -43,15 +43,15 @@ typedef void(*InputCallback)(D3D10Base::ID3D10Device *device, void *private_data
 
 class InputCallbacks : public InputListener {
 private:
-	InputCallback down_cb;
-	InputCallback up_cb;
-	void *private_data;
+    InputCallback down_cb;
+    InputCallback up_cb;
+    void *private_data;
 
 public:
-	InputCallbacks(InputCallback down_cb, InputCallback up_cb, void *private_data);
+    InputCallbacks(InputCallback down_cb, InputCallback up_cb, void *private_data);
 
-	void DownEvent(D3D10Base::ID3D10Device *device) override;
-	void UpEvent(D3D10Base::ID3D10Device *device) override;
+    void DownEvent(D3D10Base::ID3D10Device *device) override;
+    void UpEvent(D3D10Base::ID3D10Device *device) override;
 };
 
 
@@ -59,7 +59,7 @@ public:
 // Abstract base class of all input backend button classes
 class InputButton {
 public:
-	virtual bool CheckState() = 0;
+    virtual bool CheckState() = 0;
 };
 
 // -----------------------------------------------------------------------------
@@ -71,10 +71,10 @@ public:
 
 class VKInputButton : public InputButton {
 public:
-	int vkey;
+    int vkey;
 
-	VKInputButton(wchar_t *keyName);
-	bool CheckState() override;
+    VKInputButton(wchar_t *keyName);
+    bool CheckState() override;
 };
 
 // -----------------------------------------------------------------------------
@@ -82,15 +82,15 @@ public:
 // XInputButton to support xbox controllers
 class XInputButton : public InputButton {
 private:
-	int controller;
-	WORD button;
-	BYTE left_trigger;
-	BYTE right_trigger;
+    int controller;
+    WORD button;
+    BYTE left_trigger;
+    BYTE right_trigger;
 
-	bool _CheckState(int controller);
+    bool _CheckState(int controller);
 public:
-	XInputButton(wchar_t *keyName);
-	bool CheckState() override;
+    XInputButton(wchar_t *keyName);
+    bool CheckState() override;
 };
 
 
@@ -100,14 +100,14 @@ public:
 
 class InputAction {
 public:
-	bool last_state;
-	InputButton *button;
-	InputListener *listener;
+    bool last_state;
+    InputButton *button;
+    InputListener *listener;
 
-	InputAction(InputButton *button, InputListener *listener);
-	virtual ~InputAction();
+    InputAction(InputButton *button, InputListener *listener);
+    virtual ~InputAction();
 
-	virtual bool Dispatch(D3D10Base::ID3D10Device *device);
+    virtual bool Dispatch(D3D10Base::ID3D10Device *device);
 };
 
 // -----------------------------------------------------------------------------
@@ -116,12 +116,12 @@ public:
 
 class RepeatingInputAction : public virtual InputAction {
 private:
-	int repeatRate = 8;			// repeats per second
-	ULONGLONG lastTick = 0;
+    int repeatRate = 8;            // repeats per second
+    ULONGLONG lastTick = 0;
 
 public:
-	RepeatingInputAction(InputButton *button, InputListener *listener, int repeat);
-	bool Dispatch(D3D10Base::ID3D10Device *device) override;
+    RepeatingInputAction(InputButton *button, InputListener *listener, int repeat);
+    bool Dispatch(D3D10Base::ID3D10Device *device) override;
 };
 
 // -----------------------------------------------------------------------------
@@ -129,12 +129,12 @@ public:
 // bindings.
 class DelayedInputAction : public virtual InputAction {
 private:
-	int delay_down, delay_up;
-	bool effective_state;
-	ULONGLONG state_change_time;
+    int delay_down, delay_up;
+    bool effective_state;
+    ULONGLONG state_change_time;
 public:
-	DelayedInputAction(InputButton *button, InputListener *listener, int delayDown, int delayUp);
-	bool Dispatch(D3D10Base::ID3D10Device *device) override;
+    DelayedInputAction(InputButton *button, InputListener *listener, int delayDown, int delayUp);
+    bool Dispatch(D3D10Base::ID3D10Device *device) override;
 };
 
 
@@ -145,11 +145,11 @@ public:
 // more variants as needed.
 
 void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
-		InputListener *listener, int auto_repeat, int down_delay,
-		int up_delay);
+        InputListener *listener, int auto_repeat, int down_delay,
+        int up_delay);
 bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key, LPCWSTR ini,
-		InputCallback down_cb, InputCallback up_cb, int auto_repeat,
-		void *private_data);
+        InputCallback down_cb, InputCallback up_cb, int auto_repeat,
+        void *private_data);
 
 // Clears all current key bindings in preparation for reloading the config.
 // Note - this is not safe to call from within an input callback!
