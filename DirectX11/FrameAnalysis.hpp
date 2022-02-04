@@ -1,7 +1,7 @@
 #pragma once
 
 #include <d3d11_1.h>
-#include "HackerContext.h"
+#include "HackerContext.hpp"
 
 // {2AEE5B3A-68ED-44E9-AA4D-9EAA6315D72B}
 DEFINE_GUID(IID_FrameAnalysisContext,

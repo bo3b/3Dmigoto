@@ -1,8 +1,8 @@
-#include "ResourceHash.h"
+#include "ResourceHash.hpp"
 #include "log.h"
 #include "util.h"
 #include "Globals.h"
-#include "Overlay.h"
+#include "Overlay.hpp"
 #include "Main.h"
 int StrResourceDesc(char *buf, size_t size, ::D3DVERTEXBUFFER_DESC *desc) {
 	return _snprintf_s(buf, size, size, "type=Vertex Buffer byte_width=%u "

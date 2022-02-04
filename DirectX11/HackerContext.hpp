@@ -5,10 +5,10 @@
 
 #include "DrawCallInfo.h"
 
-#include "CommandList.h"
+#include "CommandList.hpp"
 
-#include "HackerDevice.h"
-//#include "ResourceHash.h"
+#include "HackerDevice.hpp"
+//#include "ResourceHash.hpp"
 #include "Globals.h"
 
 // {A3046B1E-336B-4D90-9FD6-234BC09B8687}

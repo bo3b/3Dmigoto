@@ -2,7 +2,7 @@
 #include "IniHandler.h"
 #include <algorithm>
 #include <sstream>
-#include "Override.h"
+#include "Override.hpp"
 #include <D3DCompiler.h>
 #define getA(c) (((c)&0xff000000)>>24)
 #define getR(c) (((c)&0x00ff0000)>>16)

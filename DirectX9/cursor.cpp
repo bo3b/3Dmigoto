@@ -1,7 +1,7 @@
 #include "cursor.h"
 
 #include "globals.h"
-#include "Overlay.h"
+#include "Overlay.hpp"
 
 // DX9 Port notes:
 //

@@ -10,7 +10,7 @@
 #include <nvapi.h>
 
 #include "DrawCallInfo.h"
-#include "ResourceHash.h"
+#include "ResourceHash.hpp"
 
 // Used to prevent typos leading to infinite recursion (or at least overflowing
 // the real stack) due to a section running itself or a circular reference. 64
@@ -169,8 +169,8 @@ extern std::vector<CommandList*> registered_command_lists;
 extern std::unordered_set<CommandList*> command_lists_profiling;
 extern std::unordered_set<CommandListCommand*> command_lists_cmd_profiling;
 
-// Forward declaration to avoid circular reference since Override.h includes
-// HackerDevice.h includes HackerContext.h includes CommandList.h
+// Forward declaration to avoid circular reference since Override.hpp includes
+// HackerDevice.hpp includes HackerContext.hpp includes CommandList.hpp
 class PresetOverride;
 
 class PresetCommand : public CommandListCommand {
