@@ -26,29 +26,29 @@
 // Called from DLLMainHook
 
 extern "C" HRESULT (__stdcall *fnOrigCreateDXGIFactory)(
-	REFIID riid,
-	_Out_ void   **ppFactory
-	);
+    REFIID riid,
+    _Out_ void   **ppFactory
+    );
 
 extern "C" HRESULT(__stdcall *fnOrigCreateDXGIFactory1)(
-	REFIID riid,
-	_Out_ void   **ppFactory
-	);
+    REFIID riid,
+    _Out_ void   **ppFactory
+    );
 
 extern "C" HRESULT(__stdcall *fnOrigCreateDXGIFactory2)(
-	UINT Flags,
-	REFIID riid,
-	_Out_ void   **ppFactory
-	);
+    UINT Flags,
+    REFIID riid,
+    _Out_ void   **ppFactory
+    );
 
 
 // Called from d3d11Wrapper for CreateDeviceAndSwapChain
 
 void override_swap_chain(DXGI_SWAP_CHAIN_DESC *pDesc, DXGI_SWAP_CHAIN_DESC *origSwapChainDesc);
 void wrap_swap_chain(HackerDevice *hackerDevice,
-		IDXGISwapChain **ppSwapChain,
-		DXGI_SWAP_CHAIN_DESC *overrideSwapChainDesc,
-		DXGI_SWAP_CHAIN_DESC *origSwapChainDesc);
+        IDXGISwapChain **ppSwapChain,
+        DXGI_SWAP_CHAIN_DESC *overrideSwapChainDesc,
+        DXGI_SWAP_CHAIN_DESC *origSwapChainDesc);
 
 // Called from HookedDXGI
 

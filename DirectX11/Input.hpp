@@ -22,8 +22,8 @@
 
 class InputListener {
 public:
-	virtual void DownEvent(HackerDevice *device) = 0;
-	virtual void UpEvent(HackerDevice *device);
+    virtual void DownEvent(HackerDevice *device) = 0;
+    virtual void UpEvent(HackerDevice *device);
 };
 
 
@@ -43,15 +43,15 @@ typedef void(*InputCallback)(HackerDevice *device, void *private_data);
 
 class InputCallbacks : public InputListener {
 private:
-	InputCallback down_cb;
-	InputCallback up_cb;
-	void *private_data;
+    InputCallback down_cb;
+    InputCallback up_cb;
+    void *private_data;
 
 public:
-	InputCallbacks(InputCallback down_cb, InputCallback up_cb, void *private_data);
+    InputCallbacks(InputCallback down_cb, InputCallback up_cb, void *private_data);
 
-	void DownEvent(HackerDevice *device) override;
-	void UpEvent(HackerDevice *device) override;
+    void DownEvent(HackerDevice *device) override;
+    void UpEvent(HackerDevice *device) override;
 };
 
 
@@ -59,7 +59,7 @@ public:
 // Abstract base class of all input backend button classes
 class InputButton {
 public:
-	virtual bool CheckState() = 0;
+    virtual bool CheckState() = 0;
 };
 
 // -----------------------------------------------------------------------------
@@ -71,11 +71,11 @@ public:
 
 class VKInputButton : public InputButton {
 public:
-	int vkey;
-	bool invert;
+    int vkey;
+    bool invert;
 
-	VKInputButton(const wchar_t *keyName);
-	bool CheckState() override;
+    VKInputButton(const wchar_t *keyName);
+    bool CheckState() override;
 };
 
 // -----------------------------------------------------------------------------
@@ -83,28 +83,28 @@ public:
 // XInputButton to support xbox controllers
 class XInputButton : public InputButton {
 private:
-	int controller;
-	WORD button;
-	BYTE left_trigger;
-	BYTE right_trigger;
-	bool invert;
+    int controller;
+    WORD button;
+    BYTE left_trigger;
+    BYTE right_trigger;
+    bool invert;
 
-	bool _CheckState(int controller);
+    bool _CheckState(int controller);
 public:
-	XInputButton(const wchar_t *keyName);
-	bool CheckState() override;
+    XInputButton(const wchar_t *keyName);
+    bool CheckState() override;
 };
 
 // -----------------------------------------------------------------------------
 // InputButtonList allows multiple InputButtons to be combined:
 class InputButtonList : public InputButton {
-	vector<InputButton*> buttons;
-	void clear();
+    vector<InputButton*> buttons;
+    void clear();
 
 public:
-	InputButtonList(const wchar_t *keyName);
-	~InputButtonList();
-	bool CheckState() override;
+    InputButtonList(const wchar_t *keyName);
+    ~InputButtonList();
+    bool CheckState() override;
 };
 
 
@@ -114,14 +114,14 @@ public:
 
 class InputAction {
 public:
-	bool last_state;
-	InputButton *button;
-	shared_ptr<InputListener> listener;
+    bool last_state;
+    InputButton *button;
+    shared_ptr<InputListener> listener;
 
-	InputAction(InputButton *button, shared_ptr<InputListener> listener);
-	virtual ~InputAction();
+    InputAction(InputButton *button, shared_ptr<InputListener> listener);
+    virtual ~InputAction();
 
-	virtual bool Dispatch(HackerDevice *device);
+    virtual bool Dispatch(HackerDevice *device);
 };
 
 // -----------------------------------------------------------------------------
@@ -130,12 +130,12 @@ public:
 
 class RepeatingInputAction : public virtual InputAction {
 private:
-	int repeatRate = 8;			// repeats per second
-	ULONGLONG lastTick = 0;
+    int repeatRate = 8;            // repeats per second
+    ULONGLONG lastTick = 0;
 
 public:
-	RepeatingInputAction(InputButton *button, shared_ptr<InputListener> listener, int repeat);
-	bool Dispatch(HackerDevice *device) override;
+    RepeatingInputAction(InputButton *button, shared_ptr<InputListener> listener, int repeat);
+    bool Dispatch(HackerDevice *device) override;
 };
 
 // -----------------------------------------------------------------------------
@@ -143,12 +143,12 @@ public:
 // bindings.
 class DelayedInputAction : public virtual InputAction {
 private:
-	int delay_down, delay_up;
-	bool effective_state;
-	ULONGLONG state_change_time;
+    int delay_down, delay_up;
+    bool effective_state;
+    ULONGLONG state_change_time;
 public:
-	DelayedInputAction(InputButton *button, shared_ptr<InputListener> listener, int delayDown, int delayUp);
-	bool Dispatch(HackerDevice *device) override;
+    DelayedInputAction(InputButton *button, shared_ptr<InputListener> listener, int delayDown, int delayUp);
+    bool Dispatch(HackerDevice *device) override;
 };
 
 
@@ -159,11 +159,11 @@ public:
 // more variants as needed.
 
 void RegisterKeyBinding(LPCWSTR iniKey, const wchar_t *keyName,
-		shared_ptr<InputListener> listener, int auto_repeat, int down_delay,
-		int up_delay);
+        shared_ptr<InputListener> listener, int auto_repeat, int down_delay,
+        int up_delay);
 bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key,
-		InputCallback down_cb, InputCallback up_cb, int auto_repeat,
-		void *private_data);
+        InputCallback down_cb, InputCallback up_cb, int auto_repeat,
+        void *private_data);
 wstring user_friendly_ini_key_binding(LPCWSTR app, LPCWSTR iniKey);
 
 // Clears all current key bindings in preparation for reloading the config.
