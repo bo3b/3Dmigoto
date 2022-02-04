@@ -44,9 +44,9 @@ void NvAPIResetEyeSeparationTracking();
 // diffs, but it's really not necessary since no other module will be trying to
 // resolve our internal symbol names... especially since these aren't exported.
 extern "C" HMODULE (__stdcall *fnOrigLoadLibraryExW)(
-	_In_       LPCWSTR lpLibFileName,
-	_Reserved_ HANDLE  hFile,
-	_In_       DWORD   dwFlags
-	);
+    _In_       LPCWSTR lpLibFileName,
+    _Reserved_ HANDLE  hFile,
+    _In_       DWORD   dwFlags
+    );
 
 extern "C" HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);

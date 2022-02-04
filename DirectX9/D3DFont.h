@@ -58,35 +58,35 @@
 #define MAX( A, B ) ( A > B ? A : B )
 
 struct FONT2DVERTEX {
-	D3DXVECTOR4 vXYZRHW;
-	DWORD dwColor;
-	FLOAT TU, TV;
+    D3DXVECTOR4 vXYZRHW;
+    DWORD dwColor;
+    FLOAT TU, TV;
 };
 struct FONTEFFECTVERTEX {
-	D3DXVECTOR4 vXYZRHW;
-	DWORD dwColor;
+    D3DXVECTOR4 vXYZRHW;
+    DWORD dwColor;
 };
 
 inline FONT2DVERTEX InitFont2DVertex(const D3DXVECTOR4& pVertex, D3DCOLOR dwColor, FLOAT TU, FLOAT TV)
 {
-	FONT2DVERTEX textVertex;
+    FONT2DVERTEX textVertex;
 
-	textVertex.vXYZRHW = pVertex;
-	textVertex.dwColor = dwColor;
-	textVertex.TU = TU;
-	textVertex.TV = TV;
+    textVertex.vXYZRHW = pVertex;
+    textVertex.dwColor = dwColor;
+    textVertex.TU = TU;
+    textVertex.TV = TV;
 
-	return textVertex;
+    return textVertex;
 }
 
 inline FONTEFFECTVERTEX InitFontEffectVertex(const D3DXVECTOR4& pVertex, D3DCOLOR dwColor)
 {
-	FONTEFFECTVERTEX fxVertex;
+    FONTEFFECTVERTEX fxVertex;
 
-	fxVertex.vXYZRHW = pVertex;
-	fxVertex.dwColor = dwColor;
+    fxVertex.vXYZRHW = pVertex;
+    fxVertex.dwColor = dwColor;
 
-	return fxVertex;
+    return fxVertex;
 }
 
 #define SAFE_RELEASE( p ) if( p ){ p->Release(); p = NULL; }
@@ -114,68 +114,68 @@ inline FONTEFFECTVERTEX InitFontEffectVertex(const D3DXVECTOR4& pVertex, D3DCOLO
 class CD3DFont {
 public:
 
-	// Constructor / destructor
-	CD3DFont(const char* strFontName, DWORD dwHeight, DWORD dwFlags = 0L);
-	~CD3DFont(void);
+    // Constructor / destructor
+    CD3DFont(const char* strFontName, DWORD dwHeight, DWORD dwFlags = 0L);
+    ~CD3DFont(void);
 
-	// Getter
-	float CD3DFont::GetFontHeight(void); // Added by Sean Pesce
+    // Getter
+    float CD3DFont::GetFontHeight(void); // Added by Sean Pesce
 
-										 // Begin/End batch drawing
-	HRESULT BeginDrawing(void);
-	HRESULT EndDrawing(void);
+                                         // Begin/End batch drawing
+    HRESULT BeginDrawing(void);
+    HRESULT EndDrawing(void);
 
-	// 2D text drawing functions
-	HRESULT DrawText(float fXPos, float fYPos, DWORD dwColor, const char* strText, DWORD dwFlags = 0L, DWORD dwBackgroundColor = 0L);
+    // 2D text drawing functions
+    HRESULT DrawText(float fXPos, float fYPos, DWORD dwColor, const char* strText, DWORD dwFlags = 0L, DWORD dwBackgroundColor = 0L);
 
-	// Function to get extent of text
-	HRESULT GetTextExtent(const char* strText, SIZE* pSize);
+    // Function to get extent of text
+    HRESULT GetTextExtent(const char* strText, SIZE* pSize);
 
-	// Static drawing functions
-	HRESULT BeginStatic(void);
-	HRESULT AddStaticText(float fXPos, float fYPos, DWORD dwColor, const char* strText, DWORD dwFlags = 0L, DWORD dwBackgroundColor = 0L);
-	HRESULT EndStatic(void);
-	HRESULT RenderStaticPrimitives(void);
-	HRESULT ClearStaticBuffer(void);
+    // Static drawing functions
+    HRESULT BeginStatic(void);
+    HRESULT AddStaticText(float fXPos, float fYPos, DWORD dwColor, const char* strText, DWORD dwFlags = 0L, DWORD dwBackgroundColor = 0L);
+    HRESULT EndStatic(void);
+    HRESULT RenderStaticPrimitives(void);
+    HRESULT ClearStaticBuffer(void);
 
-	// Initializing and destroying device-dependent objects
-	HRESULT InitializeDeviceObjects(LPDIRECT3DDEVICE9 pD3DDevice);
-	HRESULT RestoreDeviceObjects(void);
-	HRESULT InvalidateDeviceObjects(void);
-	HRESULT DeleteDeviceObjects(void);
+    // Initializing and destroying device-dependent objects
+    HRESULT InitializeDeviceObjects(LPDIRECT3DDEVICE9 pD3DDevice);
+    HRESULT RestoreDeviceObjects(void);
+    HRESULT InvalidateDeviceObjects(void);
+    HRESULT DeleteDeviceObjects(void);
 
-	// Stateblocks for setting and restoring render states
-	LPDIRECT3DSTATEBLOCK9 m_pStateBlockSaved;
-	LPDIRECT3DSTATEBLOCK9 m_pStateBlockDrawText;
+    // Stateblocks for setting and restoring render states
+    LPDIRECT3DSTATEBLOCK9 m_pStateBlockSaved;
+    LPDIRECT3DSTATEBLOCK9 m_pStateBlockDrawText;
 
-	inline DWORD LightColor(DWORD color);
-	inline DWORD DarkColor(DWORD  color);
+    inline DWORD LightColor(DWORD color);
+    inline DWORD DarkColor(DWORD  color);
 
 protected:
 
-	char m_strFontName[80]; // Font properties
+    char m_strFontName[80]; // Font properties
 
-	float m_fFontHeight;
-	DWORD m_dwFontFlags;
+    float m_fFontHeight;
+    DWORD m_dwFontFlags;
 
-	LPDIRECT3DDEVICE9 m_pD3DDevice; // A D3DDevice used for rendering
-	LPDIRECT3DTEXTURE9 m_pTexture; // The d3d texture for this font
+    LPDIRECT3DDEVICE9 m_pD3DDevice; // A D3DDevice used for rendering
+    LPDIRECT3DTEXTURE9 m_pTexture; // The d3d texture for this font
 
-	DWORD m_dwUsedFontVerts;
-	LPDIRECT3DVERTEXBUFFER9 m_pVB; // VertexBuffer for rendering text
+    DWORD m_dwUsedFontVerts;
+    LPDIRECT3DVERTEXBUFFER9 m_pVB; // VertexBuffer for rendering text
 
-	DWORD   m_dwSpacing;                  // Character pixel spacing per side
-	DWORD m_dwUsedEffectVerts;
-	LPDIRECT3DVERTEXBUFFER9 m_pEffectVB;
+    DWORD   m_dwSpacing;                  // Character pixel spacing per side
+    DWORD m_dwUsedEffectVerts;
+    LPDIRECT3DVERTEXBUFFER9 m_pEffectVB;
 
-	FONT2DVERTEX* m_pFontVertices;
-	FONTEFFECTVERTEX* m_pEffectVertices;
+    FONT2DVERTEX* m_pFontVertices;
+    FONTEFFECTVERTEX* m_pEffectVertices;
 
-	DWORD m_dwTexWidth; // Texture dimensions
-	DWORD m_dwTexHeight;
+    DWORD m_dwTexWidth; // Texture dimensions
+    DWORD m_dwTexHeight;
 
-	float m_fTextScale;
-	float m_fTexCoords[96][4];
+    float m_fTextScale;
+    float m_fTexCoords[96][4];
 };
 
 #endif // __D3DFONT_HEADER__

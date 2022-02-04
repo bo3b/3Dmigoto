@@ -14,47 +14,47 @@ const int stringSize = 256;
 
 struct DecompilerSettings
 {
-	int StereoParamsReg;
-	int IniParamsReg;
+    int StereoParamsReg;
+    int IniParamsReg;
 
-	bool fixSvPosition;
-	bool recompileVs;
-	char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
-	std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
-	std::vector<std::string> ZRepair_Dependencies1, ZRepair_Dependencies2;
-	std::string ZRepair_ZPosCalc1, ZRepair_ZPosCalc2;
-	std::string ZRepair_PositionTexture;
-	bool ZRepair_DepthBuffer;
-	std::vector<std::string> InvTransforms;
-	std::string ZRepair_WorldPosCalc;
-	std::string BackProject_Vector1, BackProject_Vector2;
-	std::string ObjectPos_ID1, ObjectPos_ID2, ObjectPos_MUL1, ObjectPos_MUL2;
-	std::string MatrixPos_ID1, MatrixPos_MUL1;
+    bool fixSvPosition;
+    bool recompileVs;
+    char ZRepair_DepthTextureReg1, ZRepair_DepthTextureReg2;
+    std::string ZRepair_DepthTexture1, ZRepair_DepthTexture2;
+    std::vector<std::string> ZRepair_Dependencies1, ZRepair_Dependencies2;
+    std::string ZRepair_ZPosCalc1, ZRepair_ZPosCalc2;
+    std::string ZRepair_PositionTexture;
+    bool ZRepair_DepthBuffer;
+    std::vector<std::string> InvTransforms;
+    std::string ZRepair_WorldPosCalc;
+    std::string BackProject_Vector1, BackProject_Vector2;
+    std::string ObjectPos_ID1, ObjectPos_ID2, ObjectPos_MUL1, ObjectPos_MUL2;
+    std::string MatrixPos_ID1, MatrixPos_MUL1;
 
-	DecompilerSettings() :
-		StereoParamsReg(-1),
-		IniParamsReg(-1),
-		fixSvPosition(false),
-		recompileVs(false),
-		ZRepair_DepthTextureReg1('\0'),
-		ZRepair_DepthTextureReg2('\0'),
-		ZRepair_DepthBuffer(false)
-	{}
+    DecompilerSettings() :
+        StereoParamsReg(-1),
+        IniParamsReg(-1),
+        fixSvPosition(false),
+        recompileVs(false),
+        ZRepair_DepthTextureReg1('\0'),
+        ZRepair_DepthTextureReg2('\0'),
+        ZRepair_DepthBuffer(false)
+    {}
 };
 
 struct ParseParameters
 {
-	const void *bytecode;
-	const char *decompiled;
-	size_t decompiledSize;
-	bool ZeroOutput;
+    const void *bytecode;
+    const char *decompiled;
+    size_t decompiledSize;
+    bool ZeroOutput;
 
-	//dx9
-	int StereoParamsVertexReg;
-	int StereoParamsPixelReg;
-	//dx9
+    //dx9
+    int StereoParamsVertexReg;
+    int StereoParamsPixelReg;
+    //dx9
 
-	DecompilerSettings *G;
+    DecompilerSettings *G;
 };
 
 const std::string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::string &shaderModel, bool &errorOccurred);
