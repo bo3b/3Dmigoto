@@ -24,7 +24,7 @@ using namespace std;
 #include "DrawCallInfo.h"
 #include <nvstereo.h>
 #include "Globals.h"
-#include "Overlay.h"
+#include "Overlay.hpp"
 
 namespace D3D9Wrapper
 {

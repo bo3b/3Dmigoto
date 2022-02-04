@@ -3,9 +3,9 @@
 #include "lock.h"
 
 #include "D3D11Wrapper.h"
-#include "FrameAnalysis.h"
+#include "FrameAnalysis.hpp"
 #include "Globals.h"
-#include "input.h"
+#include "Input.hpp"
 
 #include <ScreenGrab.h>
 #include <wincodec.h>

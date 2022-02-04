@@ -10,20 +10,20 @@
 // Hierarchy:
 //  HackerContext <- ID3D11DeviceContext1 <- ID3D11DeviceContext <- ID3D11DeviceChild <- IUnknown
 
-#include "HackerContext.h"
+#include "HackerContext.hpp"
 
 //#include "HookedContext.h"
 
 #include "log.h"
 #include "Globals.h"
 
-#include "HackerDevice.h"
+#include "HackerDevice.hpp"
 #include "D3D11Wrapper.h"
-//#include "ResourceHash.h"
-//#include "Override.h"
-#include "ShaderRegex.h"
-#include "FrameAnalysis.h"
-#include "profiling.h"
+//#include "ResourceHash.hpp"
+//#include "Override.hpp"
+#include "ShaderRegex.hpp"
+#include "FrameAnalysis.hpp"
+#include "profiling.hpp"
 
 // -----------------------------------------------------------------------------------------------
 

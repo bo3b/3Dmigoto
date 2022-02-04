@@ -14,15 +14,15 @@
 #include "util.h"
 #include "DecompileHLSL.h"
 
-#include "ResourceHash.h"
-#include "CommandList.h"
-#include "profiling.h"
+#include "ResourceHash.hpp"
+#include "CommandList.hpp"
+#include "profiling.hpp"
 #include "lock.h"
 
 extern HINSTANCE migoto_handle;
 
 // Resolve circular include dependency between Globals.h ->
-// CommandList.h -> HackerContext.h -> Globals.h
+// CommandList.hpp -> HackerContext.hpp -> Globals.h
 class CommandListCommand;
 class CommandList;
 

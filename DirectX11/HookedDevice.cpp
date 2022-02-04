@@ -22,7 +22,7 @@
 //
 // The downside of this is it makes it basically impossible to include any
 // header files that directly or indirectly depend on the C++ interface, which
-// includes HackerDevice.h and HackerContext.h. As tempted as I am to just rip
+// includes HackerDevice.hpp and HackerContext.hpp. As tempted as I am to just rip
 // the vtable definition out into it's own header to get around that, but
 // perhaps this will help decouple this from the rest of 3DMigoto.
 
