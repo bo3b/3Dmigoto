@@ -30,58 +30,58 @@
 
 LPVOID lpvtbl_QueryInterface(IDXGIFactory* pFactory)
 {
-	if (!pFactory)
-		return NULL;
+    if (!pFactory)
+        return NULL;
 
-	return pFactory->lpVtbl->QueryInterface;
+    return pFactory->lpVtbl->QueryInterface;
 }
 
 LPVOID lpvtbl_CreateSwapChain(IDXGIFactory* pFactory)
 {
-	if (!pFactory)
-		return NULL;
+    if (!pFactory)
+        return NULL;
 
-	return pFactory->lpVtbl->CreateSwapChain;
+    return pFactory->lpVtbl->CreateSwapChain;
 }
 
 LPVOID lpvtbl_CreateSwapChainForHwnd(IDXGIFactory2* pFactory2)
 {
-	if (!pFactory2)
-		return NULL;
+    if (!pFactory2)
+        return NULL;
 
-	return pFactory2->lpVtbl->CreateSwapChainForHwnd;
+    return pFactory2->lpVtbl->CreateSwapChainForHwnd;
 }
 
 LPVOID lpvtbl_CreateSwapChainForComposition(IDXGIFactory2* pFactory2)
 {
-	if (!pFactory2)
-		return NULL;
+    if (!pFactory2)
+        return NULL;
 
-	return pFactory2->lpVtbl->CreateSwapChainForComposition;
+    return pFactory2->lpVtbl->CreateSwapChainForComposition;
 }
 
 LPVOID lpvtbl_CreateSwapChainForCoreWindow(IDXGIFactory2* pFactory2)
 {
-	if (!pFactory2)
-		return NULL;
+    if (!pFactory2)
+        return NULL;
 
-	return pFactory2->lpVtbl->CreateSwapChainForCoreWindow;
+    return pFactory2->lpVtbl->CreateSwapChainForCoreWindow;
 }
 
 LPVOID lpvtbl_Present(IDXGISwapChain* pSwapChain)
 {
-	if (!pSwapChain)
-		return NULL;
+    if (!pSwapChain)
+        return NULL;
 
-	return pSwapChain->lpVtbl->Present;
+    return pSwapChain->lpVtbl->Present;
 }
 
 LPVOID lpvtbl_Present1(IDXGISwapChain1* pSwapChain1)
 {
-	if (!pSwapChain1)
-		return NULL;
+    if (!pSwapChain1)
+        return NULL;
 
-	return pSwapChain1->lpVtbl->Present1;
+    return pSwapChain1->lpVtbl->Present1;
 }
 
 

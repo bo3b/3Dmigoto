@@ -10,10 +10,10 @@
 #include <pcre2.h>
 
 enum class ShaderRegexCache {
-	NO_CACHE,
-	NO_MATCH,
-	MATCH,
-	PATCH
+    NO_CACHE,
+    NO_MATCH,
+    MATCH,
+    PATCH
 };
 
 bool apply_shader_regex_groups(std::string *asm_text, const wchar_t *shader_type, std::string *shader_model, UINT64 hash, std::wstring *tagline);
@@ -26,24 +26,24 @@ typedef std::set<std::string> ShaderRegexModels;
 
 class ShaderRegexPattern {
 public:
-	pcre2_code *regex;
-	std::string replace;
+    pcre2_code *regex;
+    std::string replace;
 
-	bool do_replace;
+    bool do_replace;
 
-	// These will be used later when we implement our own advanced
-	// substitution to allow matches to be used between multiple patterns
-	// in the one regex group, and to apply some (very) simple arithmetic
-	// to convert byte offsets to constant buffer indexes and vice versa
-	std::set<std::string> named_capture_groups;
+    // These will be used later when we implement our own advanced
+    // substitution to allow matches to be used between multiple patterns
+    // in the one regex group, and to apply some (very) simple arithmetic
+    // to convert byte offsets to constant buffer indexes and vice versa
+    std::set<std::string> named_capture_groups;
 
-	ShaderRegexPattern();
-	~ShaderRegexPattern();
+    ShaderRegexPattern();
+    ~ShaderRegexPattern();
 
-	bool compile(std::string *pattern);
-	bool named_group_overlaps(ShaderRegexTemps &other_set);
-	bool matches(std::string *asm_text);
-	bool patch(std::string *asm_text, ShaderRegexTemps *temp_regs, unsigned dcl_temps);
+    bool compile(std::string *pattern);
+    bool named_group_overlaps(ShaderRegexTemps &other_set);
+    bool matches(std::string *asm_text);
+    bool patch(std::string *asm_text, ShaderRegexTemps *temp_regs, unsigned dcl_temps);
 };
 
 // These are sorted to make sure we get consistent results between runs
@@ -53,26 +53,26 @@ typedef std::vector<std::string> ShaderRegexDeclarations;
 
 class ShaderRegexGroup {
 public:
-	std::wstring ini_section;
+    std::wstring ini_section;
 
-	ShaderRegexPatterns patterns;
+    ShaderRegexPatterns patterns;
 
-	ShaderRegexDeclarations declarations;
-	ShaderRegexModels shader_models;
-	ShaderRegexTemps temp_regs;
-	float filter_index;
+    ShaderRegexDeclarations declarations;
+    ShaderRegexModels shader_models;
+    ShaderRegexTemps temp_regs;
+    float filter_index;
 
-	CommandList command_list;
-	CommandList post_command_list;
-	std::shared_ptr<RunLinkedCommandList> link;
-	std::shared_ptr<RunLinkedCommandList> post_link;
+    CommandList command_list;
+    CommandList post_command_list;
+    std::shared_ptr<RunLinkedCommandList> link;
+    std::shared_ptr<RunLinkedCommandList> post_link;
 
-	void apply_regex_patterns(std::string *asm_text, bool *match, bool *patch);
-	void link_command_lists_and_filter_index(UINT64 shader_hash);
+    void apply_regex_patterns(std::string *asm_text, bool *match, bool *patch);
+    void link_command_lists_and_filter_index(UINT64 shader_hash);
 
-	ShaderRegexGroup() :
-		filter_index(FLT_MAX)
-	{}
+    ShaderRegexGroup() :
+        filter_index(FLT_MAX)
+    {}
 };
 
 // Sorted to make sure that we always apply the regex patterns in a consistent
