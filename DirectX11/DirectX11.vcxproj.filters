@@ -13,8 +13,6 @@
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
     <ClCompile Include="HookedDXGI.cpp" />
     <ClCompile Include="FrameAnalysis.cpp" />
-    <ClCompile Include="..\D3D_Shaders\Assembler.cpp" />
-    <ClCompile Include="..\crc32c-hw-1.0.5\src\crc32c.cpp" />
     <ClCompile Include="CommandList.cpp" />
     <ClCompile Include="ResourceHash.cpp" />
     <ClCompile Include="HookedContext.cpp" />
@@ -30,6 +28,10 @@
     <ClCompile Include="..\ini_parser_lite.cpp" />
     <ClCompile Include="lock.cpp" />
     <ClCompile Include="cursor.cpp" />
+    <ClCompile Include="..\crc32c-hw-1.0.5\src\crc32c.cpp">
+      <Filter>crc32c-hw-1.0.5</Filter>
+    </ClCompile>
+    <ClCompile Include="..\D3D_Shaders\Assembler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -51,7 +53,6 @@
     <ClInclude Include="..\log.h" />
     <ClInclude Include="..\util.h" />
     <ClInclude Include="..\version.h" />
-    <ClInclude Include="..\crc32c-hw-1.0.5\include\crc32c.h" />
     <ClInclude Include="CommandList.h" />
     <ClInclude Include="ResourceHash.h" />
     <ClInclude Include="HookedContext.h" />
@@ -64,8 +65,16 @@
     <ClInclude Include="profiling.h" />
     <ClInclude Include="lock.h" />
     <ClInclude Include="cursor.h" />
+    <ClInclude Include="..\crc32c-hw-1.0.5\include\crc32c.h">
+      <Filter>crc32c-hw-1.0.5</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="crc32c-hw-1.0.5">
+      <UniqueIdentifier>{f0d93294-b574-4d4e-a776-d213375d1ad9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>
