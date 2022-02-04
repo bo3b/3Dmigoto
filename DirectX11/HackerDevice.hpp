@@ -6,8 +6,8 @@
 #include <INITGUID.h>
 
 #include "nvstereo.h"
-#include "HackerContext.h"
-#include "HackerDXGI.h"
+#include "HackerContext.hpp"
+#include "HackerDXGI.hpp"
 
 // {83FFD841-A5C9-46F4-8109-BC259558FEF4}
 DEFINE_GUID(IID_HackerDevice,

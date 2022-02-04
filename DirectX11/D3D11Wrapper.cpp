@@ -16,9 +16,9 @@
 //#include <string>
 //
 //#include "util.h"
-//#include "Override.h"
-//#include "HackerDevice.h"
-//#include "HackerContext.h"
+//#include "Override.hpp"
+//#include "HackerDevice.hpp"
+//#include "HackerContext.hpp"
 
 // The Log file and the Globals are both used globally, and these are the actual
 // definitions of the variables.  All other uses will be via the extern in the 

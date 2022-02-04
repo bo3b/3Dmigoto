@@ -29,7 +29,7 @@
 #include <dxgi1_2.h>
 
 #include "DXGIWrapper.h"
-//#include "HackerDXGI.h"
+//#include "HackerDXGI.hpp"
 
 #include "log.h"
 

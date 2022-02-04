@@ -6,7 +6,7 @@
 #include <forward_list>
 #include "util.h"
 #include "DrawCallInfo.h"
-#include "ResourceHash.h"
+#include "ResourceHash.hpp"
 #include <chrono>
 #include <nvapi.h>
 
@@ -389,8 +389,8 @@ extern unordered_set<CommandList*> command_lists_profiling;
 extern unordered_set<CommandListCommand*> command_lists_cmd_profiling;
 
 
-// Forward declaration to avoid circular reference since Override.h includes
-// HackerDevice.h includes HackerContext.h includes CommandList.h
+// Forward declaration to avoid circular reference since Override.hpp includes
+// HackerDevice.hpp includes HackerContext.hpppp includes CommandList.h
 class PresetOverride;
 
 class PresetCommand : public CommandListCommand {

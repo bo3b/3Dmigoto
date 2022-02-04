@@ -1,7 +1,7 @@
 #include "cursor.h"
 
 #include "globals.h"
-#include "Overlay.h"
+#include "Overlay.hpp"
 
 //////////////////////////// HARDWARE MOUSE CURSOR SUPPRESSION //////////////////////////
 // To suppress the hardware mouse cursor you would think we just have to call

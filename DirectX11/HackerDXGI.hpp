@@ -2,9 +2,9 @@
 
 #include <dxgi1_2.h>
 
-#include "HackerDevice.h"
-#include "HackerContext.h"
-#include "Overlay.h"
+#include "HackerDevice.hpp"
+#include "HackerContext.hpp"
+#include "Overlay.hpp"
 
 
 // Forward references required because of circular references from the

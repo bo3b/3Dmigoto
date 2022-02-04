@@ -1,4 +1,4 @@
-#include "HackerDevice.h"
+#include "HackerDevice.hpp"
 
 NvAPI_Status CheckStereo();
 void FlagConfigReload(HackerDevice *device, void *private_data);

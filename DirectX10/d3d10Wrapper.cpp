@@ -5,7 +5,7 @@
 #include "../util.h"
 #include "globals.h"
 #include "../HLSLDecompiler/DecompileHLSL.h"
-#include "Override.h"
+#include "Override.hpp"
 #include "IniHandler.h"
 #include "Hunting.h"
 

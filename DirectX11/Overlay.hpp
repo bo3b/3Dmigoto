@@ -12,8 +12,8 @@
 #include "Effects.h"
 #include "VertexTypes.h"
 
-#include "HackerDevice.h"
-#include "HackerContext.h"
+#include "HackerDevice.hpp"
+#include "HackerContext.hpp"
 
 class HackerSwapChain;
 

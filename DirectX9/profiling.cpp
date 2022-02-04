@@ -1,4 +1,4 @@
-#include "profiling.h"
+#include "profiling.hpp"
 #include "globals.h"
 
 #include <algorithm>

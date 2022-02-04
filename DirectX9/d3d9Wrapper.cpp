@@ -3,7 +3,7 @@
 #include <ctime>
 #include "log.h"
 #include "Hunting.h"
-#include "Override.h"
+#include "Override.hpp"
 #include "IniHandler.h"
 #include "nvprofile.h"
 #include "cursor.h" // For InstallSetWindowPosHook

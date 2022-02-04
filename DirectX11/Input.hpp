@@ -1,6 +1,6 @@
 #pragma once
 
-#include "HackerDevice.h"
+#include "HackerDevice.hpp"
 
 // The "input" files are a set of objects to handle user input for both gaming 
 // purposes and for tool purposes, like hunting for shaders.

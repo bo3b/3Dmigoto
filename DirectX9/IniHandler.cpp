@@ -8,10 +8,10 @@
 #include <memory>
 #include <pcre2.h>
 #include <codecvt>
-#include "Override.h"
+#include "Override.hpp"
 #include "Hunting.h"
 #include "nvprofile.h"
-#include "ShaderRegex.h"
+#include "ShaderRegex.hpp"
 #include "cursor.h"
 
 // We don't want to use the same ini file as DX11 since there are some small

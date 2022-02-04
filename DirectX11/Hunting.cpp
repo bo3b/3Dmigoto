@@ -1,4 +1,4 @@
-#include "Hunting.h"
+#include "Hunting.hpp"
 
 #include <string>
 #include <sstream>
@@ -11,15 +11,15 @@
 #include "D3D11Wrapper.h"
 #include "util.h"
 #include "DecompileHLSL.h"
-#include "Input.h"
-#include "Override.h"
+#include "Input.hpp"
+#include "Override.hpp"
 #include "Globals.h"
 #include "IniHandler.h"
 #include "D3D_Shaders\stdafx.h"
-#include "CommandList.h"
-#include "profiling.h"
-#include "FrameAnalysis.h"
-#include "ShaderRegex.h"
+#include "CommandList.hpp"
+#include "profiling.hpp"
+#include "FrameAnalysis.hpp"
+#include "ShaderRegex.hpp"
 
 // bo3b: For this routine, we have a lot of warnings in x64, from converting a size_t result into the needed
 //  DWORD type for the Write calls.  These are writing 256 byte strings, so there is never a chance that it 

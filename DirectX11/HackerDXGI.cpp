@@ -58,18 +58,18 @@
 // version of LockResourceCreationMode:
 #include "lock.h"
 
-#include "HackerDXGI.h"
+#include "HackerDXGI.hpp"
 #include "HookedDevice.h"
 #include "HookedDXGI.h"
 
 #include "log.h"
 #include "util.h"
 #include "globals.h"
-#include "Hunting.h"
-#include "Override.h"
+#include "Hunting.hpp"
+#include "Override.hpp"
 #include "IniHandler.h"
-#include "CommandList.h"
-#include "profiling.h"
+#include "CommandList.hpp"
+#include "profiling.hpp"
 #include "cursor.h" // For InstallHookLate
 
 

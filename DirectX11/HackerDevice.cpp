@@ -12,9 +12,9 @@
 // version of LockResourceCreationMode:
 #include "lock.h"
 
-#include "HackerDevice.h"
+#include "HackerDevice.hpp"
 #include "HookedDevice.h"
-#include "FrameAnalysis.h"
+#include "FrameAnalysis.hpp"
 
 #include <D3Dcompiler.h>
 #include <codecvt>
@@ -24,16 +24,16 @@
 #include "util.h"
 #include "shader.h"
 #include "DecompileHLSL.h"
-#include "HackerContext.h"
-#include "HackerDXGI.h"
+#include "HackerContext.hpp"
+#include "HackerDXGI.hpp"
 
 #include "D3D11Wrapper.h"
 #include "SpriteFont.h"
 #include "D3D_Shaders\stdafx.h"
-#include "ResourceHash.h"
-#include "ShaderRegex.h"
-#include "CommandList.h"
-#include "Hunting.h"
+#include "ResourceHash.hpp"
+#include "ShaderRegex.hpp"
+#include "CommandList.hpp"
+#include "Hunting.hpp"
 
 // A map to look up the HackerDevice from an IUnknown. The reason for using an
 // IUnknown as the key is that an ID3D11Device and IDXGIDevice are actually two

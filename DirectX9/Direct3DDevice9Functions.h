@@ -2,7 +2,7 @@
 #include "../HLSLDecompiler/DecompileHLSL.h"
 #include <D3Dcompiler.h>
 #include "shader.h"
-#include "ShaderRegex.h"
+#include "ShaderRegex.hpp"
 #include "HookedDeviceDX9.h"
 #include "d3d9Wrapper.h"
 #include <DirectXMath.h>
