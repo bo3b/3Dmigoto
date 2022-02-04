@@ -6,56 +6,56 @@ HEAPSIZE 10485760
 ; then to not load as a proper d3d11.dll.
 
 EXPORTS
-	D3DKMTCloseAdapter					@1 
-	D3DKMTDestroyAllocation				@2
-	D3DKMTDestroyContext				@3 
-	D3DKMTDestroyDevice					@4 
-	D3DKMTDestroySynchronizationObject	@5 
-	D3DKMTQueryAdapterInfo              @6 
-	D3DKMTSetDisplayPrivateDriverFormat @7 
-	D3DKMTSignalSynchronizationObject   @8 
-	D3DKMTUnlock                        @9 
-	D3DKMTWaitForSynchronizationObject  @10
+    D3DKMTCloseAdapter                    @1 
+    D3DKMTDestroyAllocation                @2
+    D3DKMTDestroyContext                @3 
+    D3DKMTDestroyDevice                    @4 
+    D3DKMTDestroySynchronizationObject    @5 
+    D3DKMTQueryAdapterInfo              @6 
+    D3DKMTSetDisplayPrivateDriverFormat @7 
+    D3DKMTSignalSynchronizationObject   @8 
+    D3DKMTUnlock                        @9 
+    D3DKMTWaitForSynchronizationObject  @10
 ; missing-- EnableFeatureLevelUpgrade
 ; numbers off from there
-	OpenAdapter10                       @11
-	OpenAdapter10_2                     @12
-	D3D11CoreCreateDevice               @13
-	D3D11CoreCreateLayeredDevice        @14
-	D3D11CoreGetLayeredDeviceSize       @15
-	D3D11CoreRegisterLayers             @16
-	D3D11CreateDevice                   @17
-	D3D11CreateDeviceAndSwapChain       @18
-	D3DKMTCreateAllocation              @19
-	D3DKMTCreateContext                 @20
-	D3DKMTCreateDevice                  @21
-	D3DKMTCreateSynchronizationObject   @22
-	D3DKMTEscape                        @23
-	D3DKMTGetContextSchedulingPriority  @24
-	D3DKMTGetDeviceState                @25
-	D3DKMTGetDisplayModeList            @26
-	D3DKMTGetMultisampleMethodList      @27
-	D3DKMTGetRuntimeData                @28
-	D3DKMTGetSharedPrimaryHandle        @29
-	D3DKMTLock                          @30
-	D3DKMTOpenAdapterFromHdc            @31
-	D3DKMTOpenResource                  @32
-	D3DKMTPresent                       @33
-	D3DKMTQueryAllocationResidency      @34
-	D3DKMTQueryResourceInfo             @35
-	D3DKMTRender                        @36
-	D3DKMTSetAllocationPriority         @37
-	D3DKMTSetContextSchedulingPriority  @38
-	D3DKMTSetDisplayMode                @39
-	D3DKMTSetGammaRamp                  @40
-	D3DKMTSetVidPnSourceOwner           @41
-	D3DKMTWaitForVerticalBlankEvent     @42
+    OpenAdapter10                       @11
+    OpenAdapter10_2                     @12
+    D3D11CoreCreateDevice               @13
+    D3D11CoreCreateLayeredDevice        @14
+    D3D11CoreGetLayeredDeviceSize       @15
+    D3D11CoreRegisterLayers             @16
+    D3D11CreateDevice                   @17
+    D3D11CreateDeviceAndSwapChain       @18
+    D3DKMTCreateAllocation              @19
+    D3DKMTCreateContext                 @20
+    D3DKMTCreateDevice                  @21
+    D3DKMTCreateSynchronizationObject   @22
+    D3DKMTEscape                        @23
+    D3DKMTGetContextSchedulingPriority  @24
+    D3DKMTGetDeviceState                @25
+    D3DKMTGetDisplayModeList            @26
+    D3DKMTGetMultisampleMethodList      @27
+    D3DKMTGetRuntimeData                @28
+    D3DKMTGetSharedPrimaryHandle        @29
+    D3DKMTLock                          @30
+    D3DKMTOpenAdapterFromHdc            @31
+    D3DKMTOpenResource                  @32
+    D3DKMTPresent                       @33
+    D3DKMTQueryAllocationResidency      @34
+    D3DKMTQueryResourceInfo             @35
+    D3DKMTRender                        @36
+    D3DKMTSetAllocationPriority         @37
+    D3DKMTSetContextSchedulingPriority  @38
+    D3DKMTSetDisplayMode                @39
+    D3DKMTSetGammaRamp                  @40
+    D3DKMTSetVidPnSourceOwner           @41
+    D3DKMTWaitForVerticalBlankEvent     @42
 ; missing:
 ; D3DPerformance_BeginEvent
 ; D3DPerformance_EndEvent
 ; D3DPerformance_GetStatus
 ; D3DPerformance_SetMarker
-	
+    
 
 ; Full list from d3d11.dll, sorted by Hint:
 ; D3D11CoreCreateDevice
