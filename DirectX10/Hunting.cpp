@@ -3,7 +3,7 @@
 #include "Main.h"
 #include "../util.h"
 #include "input.h"
-#include "Override.h"
+#include "Override.hpp"
 #include "globals.h"
 #include "../HLSLDecompiler/DecompileHLSL.h"
 

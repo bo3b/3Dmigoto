@@ -1,7 +1,7 @@
 // This Overlay class is to encapsulate all the on-screen drawing code,
 // including creating and using the DirectXTK code.
 
-#include "Overlay.h"
+#include "Overlay.hpp"
 
 #include <DirectXColors.h>
 //#include <StrSafe.h>
@@ -14,10 +14,10 @@
 #include "D3D11Wrapper.h"
 //#include "nvapi.h"
 #include "Globals.h"
-#include "profiling.h"
+#include "profiling.hpp"
 
-#include "HackerDevice.h"
-#include "HackerContext.h"
+#include "HackerDevice.hpp"
+#include "HackerContext.hpp"
 
 #define MAX_SIMULTANEOUS_NOTICES 10
 

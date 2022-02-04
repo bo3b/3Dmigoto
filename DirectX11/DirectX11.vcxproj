@@ -81,25 +81,25 @@
     <ClInclude Include="cursor.h" />
     <ClInclude Include="D3D11Wrapper.h" />
     <ClInclude Include="DLLMainHook.h" />
-    <ClInclude Include="FrameAnalysis.h" />
+    <ClInclude Include="FrameAnalysis.hpp" />
     <ClInclude Include="Globals.h" />
-    <ClInclude Include="HackerContext.h" />
-    <ClInclude Include="HackerDevice.h" />
-    <ClInclude Include="HackerDXGI.h" />
+    <ClInclude Include="HackerContext.hpp" />
+    <ClInclude Include="HackerDevice.hpp" />
+    <ClInclude Include="HackerDXGI.hpp" />
     <ClInclude Include="HookedContext.h" />
     <ClInclude Include="HookedDevice.h" />
     <ClInclude Include="HookedDXGI.h" />
-    <ClInclude Include="Hunting.h" />
+    <ClInclude Include="Hunting.hpp" />
     <ClInclude Include="IniHandler.h" />
-    <ClInclude Include="Input.h" />
+    <ClInclude Include="Input.hpp" />
     <ClInclude Include="lock.h" />
     <ClInclude Include="nvprofile.h" />
-    <ClInclude Include="Overlay.h" />
-    <ClInclude Include="Override.h" />
-    <ClInclude Include="CommandList.h" />
-    <ClInclude Include="profiling.h" />
-    <ClInclude Include="ResourceHash.h" />
-    <ClInclude Include="ShaderRegex.h" />
+    <ClInclude Include="Overlay.hpp" />
+    <ClInclude Include="Override.hpp" />
+    <ClInclude Include="CommandList.hpp" />
+    <ClInclude Include="profiling.hpp" />
+    <ClInclude Include="ResourceHash.hpp" />
+    <ClInclude Include="ShaderRegex.hpp" />
     <ClInclude Include="..\vkeys.h" />
   </ItemGroup>
   <ItemGroup>

@@ -5,8 +5,8 @@
 #include <vector>
 
 #include "util.h"
-#include "Input.h"
-#include "HackerDevice.h"
+#include "Input.hpp"
+#include "HackerDevice.hpp"
 
 enum class KeyOverrideType {
 	INVALID = -1,

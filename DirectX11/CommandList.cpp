@@ -2,19 +2,19 @@
 // version of LockResourceCreationMode:
 #include "lock.h"
 
-#include "CommandList.h"
+#include "CommandList.hpp"
 
 #include <DDSTextureLoader.h>
 #include <WICTextureLoader.h>
 #include <algorithm>
 #include <sstream>
-#include "HackerDevice.h"
-#include "HackerContext.h"
-#include "Override.h"
+#include "HackerDevice.hpp"
+#include "HackerContext.hpp"
+#include "Override.hpp"
 #include "D3D11Wrapper.h"
 #include "IniHandler.h"
-#include "profiling.h"
-#include "Hunting.h"
+#include "profiling.hpp"
+#include "Hunting.hpp"
 #include "cursor.h"
 
 #include <D3DCompiler.h>

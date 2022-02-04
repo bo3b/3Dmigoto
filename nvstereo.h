@@ -70,7 +70,7 @@
 
 // vvvvv 3DMIGOTO ADDITION vvvvv
 #include "log.h"
-#include "profiling.h"
+#include "profiling.hpp"
 #include "util.h"
 // ^^^^^ 3DMIGOTO ADDITION ^^^^^
 

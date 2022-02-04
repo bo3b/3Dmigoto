@@ -364,7 +364,7 @@ public:
 // necessitates using a pointer for the textureoverride contained in the below
 // struct since the definition needs to be known to statically contain one, but
 // we'll hold off until post 1.3 since the FrameAnalysisOptions needs to go in
-// FrameAnalysis.h to make that work, and that is an area that diverged from 1.2:
+// FrameAnalysis.hpp to make that work, and that is an area that diverged from 1.2:
 struct TextureOverride;
 
 class FuzzyMatchResourceDesc {

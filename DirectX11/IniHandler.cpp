@@ -12,10 +12,10 @@
 
 #include "log.h"
 #include "Globals.h"
-#include "Override.h"
-#include "Hunting.h"
+#include "Override.hpp"
+#include "Hunting.hpp"
 #include "nvprofile.h"
-#include "ShaderRegex.h"
+#include "ShaderRegex.hpp"
 #include "cursor.h"
 
 #define INI_FILENAME L"d3dx.ini"

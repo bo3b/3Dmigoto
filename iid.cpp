@@ -33,9 +33,9 @@
 #include "log.h"
 
 // For 3DMigoto IIDs:
-#include "DirectX11/HackerDevice.h"
-#include "DirectX11/HackerContext.h"
-#include "DirectX11/FrameAnalysis.h"
+#include "DirectX11/HackerDevice.hpp"
+#include "DirectX11/HackerContext.hpp"
+#include "DirectX11/FrameAnalysis.hpp"
 
 struct IID_name {
 	IID iid;

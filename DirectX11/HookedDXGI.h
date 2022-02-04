@@ -3,7 +3,7 @@
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
 
-#include "HackerDevice.h"
+#include "HackerDevice.hpp"
 
 // -----------------------------------------------------------------------------
 // This class is 'Hooked', instead of 'Hacker', because it's a hook version, instead

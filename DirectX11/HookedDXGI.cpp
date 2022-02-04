@@ -15,7 +15,7 @@
 #include <d3d11_1.h>
 
 #include "HookedDXGI.h"
-#include "HackerDXGI.h"
+#include "HackerDXGI.hpp"
 
 #include "DLLMainHook.h"
 #include "log.h"

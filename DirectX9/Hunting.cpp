@@ -5,7 +5,7 @@
 #include <D3Dcompiler.h>
 #include <codecvt>
 #include "DecompileHLSL.h"
-#include "Override.h"
+#include "Override.hpp"
 #include "IniHandler.h"
 #include "D3D_Shaders\stdafx.h"
 #include "ConstantsTable.h"

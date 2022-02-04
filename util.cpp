@@ -7,10 +7,10 @@
 
 // FIXME: Move any dependencies from these headers into common:
 #if MIGOTO_DX == 9
-#include "DirectX9\Overlay.h"
+#include "DirectX9\Overlay.hpp"
 #elif MIGOTO_DX == 11
-#include "DirectX11\HackerDevice.h"
-#include "DirectX11\HackerContext.h"
+#include "DirectX11\HackerDevice.hpp"
+#include "DirectX11\HackerContext.hpp"
 #endif // MIGOTO_DX
 
 // Sometimes game directories get funny permissions that cause us problems. I

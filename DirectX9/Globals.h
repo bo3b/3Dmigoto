@@ -8,9 +8,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "profiling.h"
+#include "profiling.hpp"
 #include "CommandList.h"
-#include "ResourceHash.h"
+#include "ResourceHash.hpp"
 #include "DLLMainHookDX9.h"
 #include <DirectXMath.h>
 #include "DecompileHLSL.h"
@@ -24,7 +24,7 @@ namespace D3D9Wrapper {
 	class IDirect3DQuery9;
 }
 // Resolve circular include dependency between Globals.h ->
-// CommandList.h -> HackerContext.h -> Globals.h
+// CommandList.h -> HackerContext.hpp -> Globals.h
 #define	D3D9_VERTEX_INPUT_TEXTURE_SLOT_COUNT	( 4 )
 #define	D3D9_VERTEX_INPUT_START_REG	(D3DVERTEXTEXTURESAMPLER0)
 #define	D3D9_PIXEL_INPUT_TEXTURE_SLOT_COUNT	( 16 )

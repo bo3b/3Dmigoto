@@ -1,5 +1,5 @@
-#include "ShaderRegex.h"
-#include "CommandList.h"
+#include "ShaderRegex.hpp"
+#include "CommandList.hpp"
 #include "globals.h" // For ShaderOverride FIXME: This should be in a separate header
 #include "log.h"
 
