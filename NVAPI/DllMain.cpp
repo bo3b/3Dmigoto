@@ -8,7 +8,6 @@
 #include "../nvapi.h"
 #include "../log.h"
 
-using namespace std;
 
 extern "C"
 {
@@ -165,7 +164,7 @@ static bool    ForceNoNvAPI = 0;
 static bool NoStereoDisable = 0;
 static bool ForceAutomaticStereo = 0;
 
-static map<float, float> GameConvergenceMap, GameConvergenceMapInv;
+static std::map<float, float> GameConvergenceMap, GameConvergenceMapInv;
 static bool gDirectXOverride = false;
 static int gSurfaceCreateMode = -1;
 static bool UnlockSeparation = false;
@@ -517,7 +516,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetConvergence(StereoHandle stereoHandl
         if (GameConvergenceMapInv.find(currentConvergence) == GameConvergenceMapInv.end())
             UserConvergence = currentConvergence;
         // Map special convergence value?
-        map<float, float>::iterator i = GameConvergenceMap.find(newConvergence);
+        std::map<float, float>::iterator i = GameConvergenceMap.find(newConvergence);
         if (i != GameConvergenceMap.end())
             newConvergence = i->second;
         else
