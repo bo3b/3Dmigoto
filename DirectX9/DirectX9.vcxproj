@@ -130,13 +130,13 @@
     <ClInclude Include="Input.h" />
     <ClInclude Include="Main.h" />
     <ClInclude Include="nvprofile.h" />
-    <ClInclude Include="Overlay.h" />
-    <ClInclude Include="Override.h" />
-    <ClInclude Include="profiling.h" />
+    <ClInclude Include="Overlay.hpp" />
+    <ClInclude Include="Override.hpp" />
+    <ClInclude Include="profiling.hpp" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="ResourceHash.h" />
-    <ClInclude Include="ShaderRegex.h" />
-	<ClInclude Include="..\vkeys.h" />
+    <ClInclude Include="ResourceHash.hpp" />
+    <ClInclude Include="ShaderRegex.hpp" />
+    <ClInclude Include="..\vkeys.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX9.rc" />
@@ -269,6 +269,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)pcre2;$(DXSDK_DIR)Include</AdditionalIncludeDirectories>
       <BufferSecurityCheck>true</BufferSecurityCheck>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -277,9 +278,15 @@
       <AdditionalDependencies>version.lib;..\Nektra\NktHookLib_Debug.lib;..\pcre2\pcre2-8-32d.lib;$(OutDir)nvapi.lib;..\nvapi.lib;XINPUT9_1_0.lib;d3dcompiler.lib;Shlwapi.lib;$(DXSDK_DIR)Lib\x86\d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
-      <Message>Copy all Dependencies to target directory.</Message>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -292,6 +299,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)pcre2;$(DXSDK_DIR)Include</AdditionalIncludeDirectories>
       <BufferSecurityCheck>true</BufferSecurityCheck>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -300,9 +308,15 @@
       <AdditionalDependencies>version.lib;..\Nektra\NktHookLib64_Debug.lib;..\pcre2\pcre2-8-64d.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;Shlwapi.lib;$(DXSDK_DIR)Lib\x64\d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
-      <Message>Copy all Dependencies to target directory.</Message>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -328,9 +342,15 @@
       <AdditionalDependencies>version.lib;..\Nektra\NktHookLib.lib;..\pcre2\pcre2-8-32.lib;$(OutDir)nvapi.lib;..\nvapi.lib;XINPUT9_1_0.lib;d3dcompiler.lib;Shlwapi.lib;$(DXSDK_DIR)Lib\x86\d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
-      <Message>Copy all Dependencies to target directory.</Message>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
     <ClCompile>
@@ -355,6 +375,10 @@
       <ModuleDefinitionFile>d3d9Wrapper.def</ModuleDefinitionFile>
       <AdditionalDependencies>version.lib;..\Nektra\NktHookLib.lib;..\pcre2\pcre2-8-32.lib;$(OutDir)nvapi.lib;..\nvapi.lib;XINPUT9_1_0.lib;d3dcompiler.lib;Shlwapi.lib;$(DXSDK_DIR)Lib\x86\d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -380,9 +404,15 @@
       <AdditionalDependencies>version.lib;..\Nektra\NktHookLib64.lib;..\pcre2\pcre2-8-64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;Shlwapi.lib;$(DXSDK_DIR)Lib\x64\d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
-      <Message>Copy all Dependencies to target directory.</Message>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|x64'">
     <ClCompile>
@@ -407,6 +437,10 @@
       <ModuleDefinitionFile>d3d9Wrapper.def</ModuleDefinitionFile>
       <AdditionalDependencies>version.lib;..\Nektra\NktHookLib64.lib;..\pcre2\pcre2-8-64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;Shlwapi.lib;$(DXSDK_DIR)Lib\x64\d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
