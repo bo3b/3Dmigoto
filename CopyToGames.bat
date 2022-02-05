@@ -19,10 +19,10 @@ REM xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\Saints Row IV\" /F /Y /S
 REM xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\Saints Row the Third\" /F /Y /S
 REM xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\F.E.A.R. 3\" /F /Y /S
 REM xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\DefenseGrid2\" /F /Y /S
-xcopy /C "%1*.*" "G:\SteamLibrary\SteamApps\common\DiRT Rally\" /F /Y /S
+xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\DiRT Rally\" /F /Y /S
 
 REM Works with hooking
-xcopy /C "%1*.*" "G:\SteamLibrary\SteamApps\common\Alien Isolation\" /F /Y /S
+xcopy /C "%1*.*" "W:\SteamLibrary\SteamApps\common\Alien Isolation\" /F /Y /S
 
 exit
 
