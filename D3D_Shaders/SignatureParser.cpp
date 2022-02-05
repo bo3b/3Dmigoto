@@ -3,6 +3,9 @@
 #include "log.h"
 #include "shader.h"
 
+using namespace std;
+
+
 #define SFI_RAW_STRUCT_BUF (1LL<<1)
 #define SFI_MIN_PRECISION  (1LL<<4)
 
