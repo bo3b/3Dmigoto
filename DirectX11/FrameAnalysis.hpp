@@ -23,7 +23,7 @@ struct FrameAnalysisDeferredDumpBufferArgs {
     Microsoft::WRL::ComPtr<ID3D11Buffer> staged_ib_for_vb;
 
     D3D11_BUFFER_DESC orig_desc;
-    wstring filename;
+    std::wstring filename;
     FrameAnalysisOptions buf_type_mask;
     int idx;
     DXGI_FORMAT ib_fmt;
@@ -58,7 +58,7 @@ struct FrameAnalysisDeferredDumpTex2DArgs {
     // just to properly handle the refcounting on a raw COM pointer.
     Microsoft::WRL::ComPtr<ID3D11Texture2D> staging;
 
-    wstring filename;
+    std::wstring filename;
     bool stereo;
     D3D11_TEXTURE2D_DESC orig_desc;
     DXGI_FORMAT format;
@@ -76,9 +76,9 @@ struct FrameAnalysisDeferredDumpTex2DArgs {
 // finished, then moved into the immediate context when the command list is
 // executed before finally being garbage collected. They move around, but they
 // are only ever have one owner at a time.
-typedef vector<FrameAnalysisDeferredDumpBufferArgs> FrameAnalysisDeferredBuffers;
+typedef std::vector<FrameAnalysisDeferredDumpBufferArgs> FrameAnalysisDeferredBuffers;
 typedef std::unique_ptr<FrameAnalysisDeferredBuffers> FrameAnalysisDeferredBuffersPtr;
-typedef vector<FrameAnalysisDeferredDumpTex2DArgs> FrameAnalysisDeferredTex2D;
+typedef std::vector<FrameAnalysisDeferredDumpTex2DArgs>  FrameAnalysisDeferredTex2D;
 typedef std::unique_ptr<FrameAnalysisDeferredTex2D> FrameAnalysisDeferredTex2DPtr;
 
 // We make the frame analysis context directly implement ID3D11DeviceContext1 -
@@ -112,7 +112,7 @@ private:
             bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format);
     bool DeferDump2DResource(ID3D11Texture2D *staging, wchar_t *filename,
             bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format);
-    void Dump2DResourceImmediateCtx(ID3D11Texture2D *staging, wstring filename,
+    void Dump2DResourceImmediateCtx(ID3D11Texture2D *staging, std::wstring filename,
             bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format);
 
     HRESULT ResolveMSAA(ID3D11Texture2D *src, D3D11_TEXTURE2D_DESC *srcDesc,
@@ -145,7 +145,7 @@ private:
             D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info,
             ID3D11Buffer *staged_ib_for_vb, UINT ib_off_for_vb);
     void DumpBufferImmediateCtx(ID3D11Buffer *staging, D3D11_BUFFER_DESC *orig_desc,
-            wstring filename, FrameAnalysisOptions buf_type_mask,
+            std::wstring filename, FrameAnalysisOptions buf_type_mask,
             int idx, DXGI_FORMAT ib_fmt, UINT stride, UINT offset,
             UINT first, UINT count, ID3DBlob *layout,
             D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info,

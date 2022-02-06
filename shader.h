@@ -47,7 +47,7 @@ struct sg1_entry_serialiased { // "Version "1" (most recent - I assume that's 5.
 
 struct sgn_entry_unserialised {
     uint32_t stream;
-    string name;
+    std::string name;
     uint32_t name_offset; // Relative to start of the name list
     struct sgn_entry_common common;
     uint32_t min_precision;

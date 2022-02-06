@@ -38,9 +38,9 @@ extern bool gLogDebug;
 #define LogDebugNoNL LogDebug
 #define LogDebugWNoNL LogDebugW
 
-static string LogTime()
+static std::string LogTime()
 {
-    string timeStr;
+    std::string timeStr;
     char cTime[32];
     tm timestruct;
 
