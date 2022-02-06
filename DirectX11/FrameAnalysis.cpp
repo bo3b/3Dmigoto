@@ -17,6 +17,9 @@
 #include <shobjidl.h>
 #include <shlguid.h>
 
+using namespace std;
+
+
 // Flag introduced in Windows 10 Fall Creators Update
 // Someone was clearly on crack when they decided this flag was necessary
 #ifndef SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE

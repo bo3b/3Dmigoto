@@ -21,6 +21,9 @@
 #include "FrameAnalysis.hpp"
 #include "ShaderRegex.hpp"
 
+using namespace std;
+
+
 // bo3b: For this routine, we have a lot of warnings in x64, from converting a size_t result into the needed
 //  DWORD type for the Write calls.  These are writing 256 byte strings, so there is never a chance that it 
 //  will lose data, so rather than do anything heroic here, I'm just doing type casts on the strlen function.

@@ -19,6 +19,9 @@
 
 #include <D3DCompiler.h>
 
+using namespace std;
+
+
 CustomResources customResources;
 CustomShaders customShaders;
 ExplicitCommandListSections explicitCommandListSections;

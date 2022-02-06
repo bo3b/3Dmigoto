@@ -7,6 +7,9 @@
 #include "profiling.hpp"
 #include "Overlay.hpp"
 
+using namespace std;
+
+
 // DirectXTK headers fail to include their own pre-requisits. We just want
 // GetSurfaceInfo from LoaderHelpers
 #include "DirectXTK/Src/pch.h"

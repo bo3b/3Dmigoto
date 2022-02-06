@@ -20,6 +20,9 @@
 
 #define INI_FILENAME L"d3dx.ini"
 
+using namespace std;
+
+
 // List all the section prefixes which may contain a command list here and
 // whether they are a prefix or an exact match. Listing a section here will not
 // automatically treat it as a command list (call ParseCommandList on it to do

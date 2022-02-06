@@ -25,6 +25,9 @@
 #include "FrameAnalysis.hpp"
 #include "profiling.hpp"
 
+using namespace std;
+
+
 // -----------------------------------------------------------------------------------------------
 
 HackerContext* HackerContextFactory(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1)

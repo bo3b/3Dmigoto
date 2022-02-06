@@ -10,6 +10,9 @@
 #include <unordered_set>
 #include <fstream>
 
+using namespace std;
+
+
 ProfileSettings profile_settings;
 
 // Recommended reading:
