@@ -11,21 +11,21 @@ void SavePersistentSettings();
 
 struct IniLine {
     // Same syntax as std::pair, whitespace stripped around each:
-    wstring first;
-    wstring second;
+    std::wstring first;
+    std::wstring second;
 
     // For when we don't want whitespace around the equals sign stripped,
     // or when there is no equals sign (whitespace at the start and end of
     // the whole line is still stripped):
-    wstring raw_line;
+    std::wstring raw_line;
 
     // Namespaced sections can determine the namespace from the section as
     // a whole, but global sections like [Present] can have lines from many
     // different namespaces, so each line stores the namespace it came from
     // to resolve references within the namespace:
-    wstring ini_namespace;
+    std::wstring ini_namespace;
 
-    IniLine(wstring &key, wstring &val, wstring &line, const wstring &ini_namespace) :
+    IniLine(std::wstring &key, std::wstring &val, std::wstring &line, const std::wstring &ini_namespace) :
         first(key),
         second(val),
         raw_line(line),
@@ -51,6 +51,6 @@ template <class T1, class T2>
 T2 GetIniEnumClass(const wchar_t *section, const wchar_t *key, T2 def, bool *found,
         struct EnumName_t<T1, T2> *enum_names);
 
-bool get_namespaced_section_name_lower(const wstring *section, const wstring *ini_namespace, wstring *ret);
-bool get_section_namespace(const wchar_t *section, wstring *ret);
-wstring get_namespaced_var_name_lower(const wstring var, const wstring *ini_namespace);
+bool get_namespaced_section_name_lower(const std::wstring *section, const std::wstring *ini_namespace, std::wstring *ret);
+bool get_section_namespace(const wchar_t *section, std::wstring *ret);
+std::wstring get_namespaced_var_name_lower(const std::wstring var, const std::wstring *ini_namespace);

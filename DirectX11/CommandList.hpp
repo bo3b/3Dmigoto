@@ -77,7 +77,7 @@ public:
 
 class CommandListCommand {
 public:
-    wstring ini_line;
+    std::wstring ini_line;
 
     // For performance metrics:
     LARGE_INTEGER pre_time_spent;
@@ -108,12 +108,12 @@ static EnumName_t<const wchar_t *, VariableFlags> VariableFlagNames[] = {
 
 class CommandListVariable {
 public:
-    wstring name;
+    std::wstring name;
     // TODO: Additional types, such as hash
     float fval;
     VariableFlags flags;
 
-    CommandListVariable(wstring name, float fval, VariableFlags flags) :
+    CommandListVariable(std::wstring name, float fval, VariableFlags flags) :
         name(name), fval(fval), flags(flags)
     {}
 };
@@ -151,7 +151,7 @@ public:
     CommandListScope *scope;
 
     // For performance metrics:
-    wstring ini_section;
+    std::wstring ini_section;
     bool post;
     LARGE_INTEGER time_spent_inclusive;
     LARGE_INTEGER time_spent_exclusive;
@@ -331,7 +331,7 @@ public:
     CustomShader();
     ~CustomShader();
 
-    bool compile(char type, wchar_t *filename, const wstring *wname, const wstring *mod_namespace);
+    bool compile(char type, wchar_t *filename, const std::wstring *wname, const std::wstring *mod_namespace);
     void substantiate(ID3D11Device *mOrigDevice);
 
     void merge_blend_states(ID3D11BlendState *state, FLOAT blend_factor[4], UINT sample_mask, ID3D11Device *mOrigDevice);
@@ -356,9 +356,9 @@ public:
 
 class SkipCommand : public CommandListCommand {
 public:
-    wstring ini_section;
+    std::wstring ini_section;
 
-    SkipCommand(wstring section) :
+    SkipCommand(std::wstring section) :
         ini_section(section)
     {}
 
@@ -370,9 +370,9 @@ public:
 // to abort command list execution if a specific depth target is in use.
 class AbortCommand : public CommandListCommand {
 public:
-    wstring ini_section;
+    std::wstring ini_section;
 
-    AbortCommand(wstring section) :
+    AbortCommand(std::wstring section) :
         ini_section(section)
     {}
 
@@ -474,7 +474,7 @@ static EnumName_t<const wchar_t *, CustomResourceBindFlags> CustomResourceBindFl
 // the description size of each resource type is unique - and it would be
 // highly unusual (though not forbidden) to mix different resource types in a
 // single pool anyway.
-typedef unordered_map<uint32_t, pair<ID3D11Resource*, ID3D11Device*>> ResourcePoolCache;
+typedef std::unordered_map<uint32_t, std::pair<ID3D11Resource*, ID3D11Device*>> ResourcePoolCache;
 class ResourcePool
 {
 public:
@@ -488,7 +488,7 @@ public:
 class CustomResource
 {
 public:
-    wstring name;
+    std::wstring name;
 
     ID3D11Resource *resource;
     ResourcePool resource_pool;
@@ -508,7 +508,7 @@ public:
     unsigned frame_no;
     int copies_this_frame;
 
-    wstring filename;
+    std::wstring filename;
     bool substantiated;
 
     // Used to override description when copying or synthesise resources
@@ -601,7 +601,7 @@ public:
         forbid_view_cache(false)
     {}
 
-    bool ParseTarget(const wchar_t *target, bool is_source, const wstring *ini_namespace);
+    bool ParseTarget(const wchar_t *target, bool is_source, const std::wstring *ini_namespace);
     ID3D11Resource *GetResource(CommandListState *state,
             ID3D11View **view,
             UINT *stride,
@@ -713,10 +713,10 @@ public:
 
 class CommandListToken {
 public:
-    wstring token;
+    std::wstring token;
     size_t token_pos;
 
-    CommandListToken(size_t token_pos, wstring token=L"") :
+    CommandListToken(size_t token_pos, std::wstring token=L"") :
         token_pos(token_pos), token(token)
     {}
     virtual ~CommandListToken() {}; // Because C++
@@ -782,7 +782,7 @@ public:
 // there should be none left in the final tree.
 class CommandListOperatorToken : public CommandListToken {
 public:
-    CommandListOperatorToken(size_t token_pos, wstring token=L"") :
+    CommandListOperatorToken(size_t token_pos, std::wstring token=L"") :
         CommandListToken(token_pos, token)
     {}
 };
@@ -978,7 +978,7 @@ public:
     // For scissor rectangle:
     unsigned scissor;
 
-    CommandListOperand(size_t pos, wstring token=L"") :
+    CommandListOperand(size_t pos, std::wstring token=L"") :
         CommandListToken(pos, token),
         type(ParamOverrideType::INVALID),
         val(FLT_MAX),
@@ -988,7 +988,7 @@ public:
         scissor(0)
     {}
 
-    bool parse(const wstring *operand, const wstring *ini_namespace, CommandListScope *scope);
+    bool parse(const std::wstring *operand, const std::wstring *ini_namespace, CommandListScope *scope);
     float evaluate(CommandListState *state, HackerDevice *device=NULL) override;
     bool static_evaluate(float *ret, HackerDevice *device=NULL) override;
     bool optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement) override;
@@ -998,7 +998,7 @@ class CommandListExpression {
 public:
     std::shared_ptr<CommandListEvaluatable> evaluatable;
 
-    bool parse(const wstring *expression, const wstring *ini_namespace, CommandListScope *scope);
+    bool parse(const std::wstring *expression, const std::wstring *ini_namespace, CommandListScope *scope);
     float evaluate(CommandListState *state, HackerDevice *device=NULL);
     bool static_evaluate(float *ret, HackerDevice *device=NULL);
     bool optimise(HackerDevice *device);
@@ -1040,7 +1040,7 @@ public:
     CommandListExpression expression;
     bool pre_finalised, post_finalised;
     bool has_nested_else_if;
-    wstring section;
+    std::wstring section;
 
     // Commands cannot statically contain command lists, because the
     // command may be optimised out and the command list freed while we are
@@ -1107,7 +1107,7 @@ enum class DrawCommandType {
 
 class DrawCommand : public CommandListCommand {
 public:
-    wstring ini_section;
+    std::wstring ini_section;
     DrawCommandType type;
 
     CommandListExpression args[5];
@@ -1222,7 +1222,7 @@ class FrameAnalysisChangeOptionsCommand : public CommandListCommand {
 public:
     FrameAnalysisOptions analyse_options;
 
-    FrameAnalysisChangeOptionsCommand(wstring *val);
+    FrameAnalysisChangeOptionsCommand(std::wstring *val);
 
     void run(CommandListState*) override;
     bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
@@ -1231,7 +1231,7 @@ public:
 class FrameAnalysisDumpCommand : public CommandListCommand {
 public:
     ResourceCopyTarget target;
-    wstring target_name;
+    std::wstring target_name;
     FrameAnalysisOptions analyse_options;
 
     void run(CommandListState*) override;
@@ -1240,9 +1240,9 @@ public:
 
 class UpscalingFlipBBCommand : public CommandListCommand {
 public:
-    wstring ini_section;
+    std::wstring ini_section;
 
-    UpscalingFlipBBCommand(wstring section);
+    UpscalingFlipBBCommand(std::wstring section);
     ~UpscalingFlipBBCommand();
 
     void run(CommandListState*) override;
@@ -1250,7 +1250,7 @@ public:
 
 class Draw3DMigotoOverlayCommand : public CommandListCommand {
 public:
-    wstring ini_section;
+    std::wstring ini_section;
 
     Draw3DMigotoOverlayCommand(const wchar_t *section) :
         ini_section(section)
@@ -1273,32 +1273,32 @@ void RunViewCommandList(HackerDevice *mHackerDevice,
         bool post);
 
 bool ParseRunExplicitCommandList(const wchar_t *section,
-        const wchar_t *key, wstring *val,
+        const wchar_t *key, std::wstring *val,
         CommandList *explicit_command_list,
         CommandList *pre_command_list,
         CommandList *post_command_list,
-        const wstring *ini_namespace);
+        const std::wstring *ini_namespace);
 
 bool ParseCommandListGeneralCommands(const wchar_t *section,
-        const wchar_t *key, wstring *val,
+        const wchar_t *key, std::wstring *val,
         CommandList *explicit_command_list,
         CommandList *pre_command_list, CommandList *post_command_list,
-        const wstring *ini_namespace);
+        const std::wstring *ini_namespace);
 bool ParseCommandListIniParamOverride(const wchar_t *section,
-        const wchar_t *key, wstring *val, CommandList *command_list,
-        const wstring *ini_namespace);
+        const wchar_t *key, std::wstring *val, CommandList *command_list,
+        const std::wstring *ini_namespace);
 bool ParseCommandListVariableAssignment(const wchar_t *section,
-        const wchar_t *key, wstring *val, const wstring *raw_line,
+        const wchar_t *key, std::wstring *val, const std::wstring *raw_line,
         CommandList *command_list, CommandList *pre_command_list, CommandList *post_command_list,
-        const wstring *ini_namespace);
+        const std::wstring *ini_namespace);
 bool ParseCommandListResourceCopyDirective(const wchar_t *section,
-        const wchar_t *key, wstring *val, CommandList *command_list,
-        const wstring *ini_namespace);
-bool ParseCommandListFlowControl(const wchar_t *section, const wstring *line,
+        const wchar_t *key, std::wstring *val, CommandList *command_list,
+        const std::wstring *ini_namespace);
+bool ParseCommandListFlowControl(const wchar_t *section, const std::wstring *line,
         CommandList *pre_command_list, CommandList *post_command_list,
-        const wstring *ini_namespace);
+        const std::wstring *ini_namespace);
 std::shared_ptr<RunLinkedCommandList>
-        LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_line);
+        LinkCommandLists(CommandList *dst, CommandList *link, const std::wstring *ini_line);
 void optimise_command_lists(HackerDevice *device);
-bool parse_command_list_var_name(const wstring &name, const wstring *ini_namespace, CommandListVariable **target);
-bool valid_variable_name(const wstring &name);
+bool parse_command_list_var_name(const std::wstring &name, const std::wstring *ini_namespace, CommandListVariable **target);
+bool valid_variable_name(const std::wstring &name);
