@@ -3,6 +3,9 @@
 
 #include <algorithm>
 
+using namespace std;
+
+
 void Profiling::Overhead::clear()
 {
     cpu.QuadPart = 0;

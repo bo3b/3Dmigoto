@@ -6,7 +6,10 @@
 #include <algorithm>
 #include <iterator>
 
-ShaderRegexGroups shader_regex_groups;
+using namespace std;
+
+
+ShaderRegexGroups              shader_regex_groups;
 std::vector<ShaderRegexGroup*> shader_regex_group_index;
 uint32_t shader_regex_hash;
 

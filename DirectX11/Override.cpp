@@ -9,7 +9,10 @@
 #include <strsafe.h>
 #include <algorithm>
 
-PresetOverrideMap presetOverrides;
+using namespace std;
+
+
+PresetOverrideMap  presetOverrides;
 
 OverrideTransition CurrentTransition;
 OverrideGlobalSave OverrideSave;

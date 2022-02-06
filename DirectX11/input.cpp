@@ -10,6 +10,9 @@
 #include "vkeys.h"
 #include "IniHandler.h"
 
+using namespace std;
+
+
 // Set a function pointer to the xinput get state call. By default, set it to
 // XInputGetState() in whichever xinput we are linked to (xinput9_1_0.dll). If
 // the d3dx.ini is using the guide button we will try to switch to either
