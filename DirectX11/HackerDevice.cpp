@@ -35,6 +35,9 @@
 #include "CommandList.hpp"
 #include "Hunting.hpp"
 
+using namespace std;
+
+
 // A map to look up the HackerDevice from an IUnknown. The reason for using an
 // IUnknown as the key is that an ID3D11Device and IDXGIDevice are actually two
 // different interfaces to the same object, which means that QueryInterface()
