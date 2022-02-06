@@ -11,6 +11,9 @@
 #include <shellapi.h>
 #include <unordered_set>
 
+using namespace std;
+
+
 ProfileSettings profile_settings;
 
 // Recommended reading:
