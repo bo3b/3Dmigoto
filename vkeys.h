@@ -196,7 +196,7 @@ static int ParseVKey(const wchar_t *name)
 
 // Reverse lookup of key back to string name
 
-static wstring GetKeyName(int key)
+static std::wstring GetKeyName(int key)
 {
     for (int i = 0; i < ARRAYSIZE(VKMappings); i++) {
         if (VKMappings[i].val == key) {

@@ -186,9 +186,9 @@ public:
 
 class KeyOverrideCycleBack : public InputListener
 {
-    shared_ptr<KeyOverrideCycle> cycle;
+    std::shared_ptr<KeyOverrideCycle> cycle;
 public:
-    KeyOverrideCycleBack(shared_ptr<KeyOverrideCycle> cycle) :
+    KeyOverrideCycleBack(std::shared_ptr<KeyOverrideCycle> cycle) :
         cycle(cycle)
     {}
 
@@ -200,7 +200,7 @@ class PresetOverride : public Override
 private:
     bool triggered;
     bool excluded;
-    unordered_set<CommandListCommand*> triggers_this_frame;
+    std::unordered_set<CommandListCommand*> triggers_this_frame;
 
 public:
     PresetOverride() :

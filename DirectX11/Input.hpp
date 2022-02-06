@@ -98,7 +98,7 @@ public:
 // -----------------------------------------------------------------------------
 // InputButtonList allows multiple InputButtons to be combined:
 class InputButtonList : public InputButton {
-    vector<InputButton*> buttons;
+    std::vector<InputButton*> buttons;
     void clear();
 
 public:
@@ -116,9 +116,9 @@ class InputAction {
 public:
     bool last_state;
     InputButton *button;
-    shared_ptr<InputListener> listener;
+    std::shared_ptr<InputListener> listener;
 
-    InputAction(InputButton *button, shared_ptr<InputListener> listener);
+    InputAction(InputButton *button, std::shared_ptr<InputListener> listener);
     virtual ~InputAction();
 
     virtual bool Dispatch(HackerDevice *device);
@@ -134,7 +134,7 @@ private:
     ULONGLONG lastTick = 0;
 
 public:
-    RepeatingInputAction(InputButton *button, shared_ptr<InputListener> listener, int repeat);
+    RepeatingInputAction(InputButton *button, std::shared_ptr<InputListener> listener, int repeat);
     bool Dispatch(HackerDevice *device) override;
 };
 
@@ -147,7 +147,7 @@ private:
     bool effective_state;
     ULONGLONG state_change_time;
 public:
-    DelayedInputAction(InputButton *button, shared_ptr<InputListener> listener, int delayDown, int delayUp);
+    DelayedInputAction(InputButton *button, std::shared_ptr<InputListener> listener, int delayDown, int delayUp);
     bool Dispatch(HackerDevice *device) override;
 };
 
@@ -159,12 +159,12 @@ public:
 // more variants as needed.
 
 void RegisterKeyBinding(LPCWSTR iniKey, const wchar_t *keyName,
-        shared_ptr<InputListener> listener, int auto_repeat, int down_delay,
+        std::shared_ptr<InputListener> listener, int auto_repeat, int down_delay,
         int up_delay);
 bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key,
         InputCallback down_cb, InputCallback up_cb, int auto_repeat,
         void *private_data);
-wstring user_friendly_ini_key_binding(LPCWSTR app, LPCWSTR iniKey);
+std::wstring user_friendly_ini_key_binding(LPCWSTR app, LPCWSTR iniKey);
 
 // Clears all current key bindings in preparation for reloading the config.
 // Note - this is not safe to call from within an input callback!
