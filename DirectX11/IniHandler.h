@@ -1,3 +1,5 @@
+#pragma once
+
 #include "HackerDevice.hpp"
 
 NvAPI_Status CheckStereo();
