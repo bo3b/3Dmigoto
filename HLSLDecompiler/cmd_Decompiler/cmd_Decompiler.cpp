@@ -210,7 +210,7 @@ static HRESULT DisassembleMS(const void *pShaderBytecode, size_t BytecodeLength,
 {
     ID3DBlob *disassembly = nullptr;
     UINT flags = D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS;
-    string comments = "//   using 3Dmigoto command line v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
+    string comments = "//   using 3Dmigoto command line v" + string(VER_FILE_VERSION_STR) + " on " + log_time() + "//\n";
 
     HRESULT hr = D3DDisassemble(pShaderBytecode, BytecodeLength, flags, comments.c_str(), &disassembly);
     if (FAILED(hr)) {
