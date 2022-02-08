@@ -70,7 +70,7 @@ void InitializeDLL()
         if (GetPrivateProfileInt(L"Logging", L"calls", 1, dir))
         {
             LogFile = _fsopen("dxgi_log.txt", "w", _SH_DENYNO);
-            LogInfo("\n *** DXGI DLL starting init  -  %s\n\n", LogTime().c_str());
+            LogInfo("\n *** DXGI DLL starting init  -  %s\n\n", log_time().c_str());
         }
 
         gLogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, dir) == 1;

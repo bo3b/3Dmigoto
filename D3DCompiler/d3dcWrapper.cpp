@@ -34,7 +34,7 @@ void InitializeDLL()
         LogFile = GetPrivateProfileInt(L"Logging", L"calls", 0, dir) ? (FILE *)-1 : 0;
         if (LogFile) fopen_s(&LogFile, "D3DCompiler_" COMPILER_DLL_VERSION "_log.txt", "w");
 
-        LogInfo("\nD3DCompiler_" COMPILER_DLL_VERSION " starting init  -  %s\n\n", LogTime().c_str());
+        LogInfo("\nD3DCompiler_" COMPILER_DLL_VERSION " starting init  -  %s\n\n", log_time().c_str());
 
         // Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
         // to open active files.

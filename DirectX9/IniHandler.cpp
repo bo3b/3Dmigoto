@@ -4092,7 +4092,7 @@ void LoadConfigFile()
     {
         if (!LogFile)
             LogFile = _wfsopen(logFilename, L"w", _SH_DENYNO);
-        LogInfo("\nD3D9 DLL starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, LogTime().c_str());
+        LogInfo("\nD3D9 DLL starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, log_time().c_str());
         LogInfoW(L"----------- " INI_FILENAME L" settings -----------\n");
     }
     LogInfo("[Logging]\n");
@@ -4415,7 +4415,7 @@ void LoadProfileManagerConfig(const wchar_t *exe_path)
     {
         if (!LogFile)
             LogFile = _wfsopen(logFilename, L"w", _SH_DENYNO);
-        LogInfo("\n3DMigoto profile helper starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, LogTime().c_str());
+        LogInfo("\n3DMigoto profile helper starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, log_time().c_str());
         LogInfoW(L"----------- " INI_FILENAME L" settings -----------\n");
     }
     LogInfo("[Logging]\n");

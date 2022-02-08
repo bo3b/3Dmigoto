@@ -290,7 +290,7 @@ static void GetIniSections(IniSections &sections, wchar_t *iniFile)
     delete[] buf;
 }
 
-string LogTime()
+string log_time()
 {
     string timeStr;
     char cTime[32];
@@ -326,7 +326,7 @@ void LoadConfigFile()
     {
         if (!gLogFile)
             gLogFile = _fsopen("d3d10_log.txt", "w", _SH_DENYNO);
-        LogInfo("\nD3D10 DLL starting init  -  %s\n\n", LogTime().c_str());
+        LogInfo("\nD3D10 DLL starting init  -  %s\n\n", log_time().c_str());
         LogInfo("----------- d3dx.ini settings -----------\n");
     }
 

@@ -4056,7 +4056,7 @@ void LoadConfigFile()
     {
         if (!LogFile)
             LogFile = _wfsopen(logFilename, L"w", _SH_DENYNO);
-        LogInfo("\nD3D11 DLL starting init - v %s - %s\n", VER_FILE_VERSION_STR, LogTime().c_str());
+        LogInfo("\nD3D11 DLL starting init - v %s - %s\n", VER_FILE_VERSION_STR, log_time().c_str());
 
         wchar_t our_path[MAX_PATH], exe_path[MAX_PATH];
         GetModuleFileName(migoto_handle, our_path, MAX_PATH);
@@ -4428,7 +4428,7 @@ void LoadProfileManagerConfig(const wchar_t *config_dir)
     {
         if (!LogFile)
             LogFile = _wfsopen(logFilename, L"w", _SH_DENYNO);
-        LogInfo("\n3DMigoto profile helper starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, LogTime().c_str());
+        LogInfo("\n3DMigoto profile helper starting init - v %s - %s\n\n", VER_FILE_VERSION_STR, log_time().c_str());
         LogInfoW(L"----------- " INI_FILENAME L" settings -----------\n");
     }
     LogInfo("[Logging]\n");

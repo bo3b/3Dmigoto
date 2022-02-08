@@ -6762,7 +6762,7 @@ public:
     void WriteHeaderDeclarations()
     {
         string header =
-            "// ---- Created with 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime();
+            "// ---- Created with 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + log_time();
 
         // using .begin() to ensure first lines in files.
         mOutput.insert(mOutput.begin(), header.c_str(), header.c_str() + header.length());
