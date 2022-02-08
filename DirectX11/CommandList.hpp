@@ -17,7 +17,7 @@
 // should be more than generous - I don't want it to be too low and stifle
 // people's imagination, but I'd be very surprised if anyone ever has a
 // legitimate need to exceed this:
-#define MAX_COMMAND_LIST_RECURSION 64
+constexpr int max_command_list_recursion = 64;
 
 // Forward declarations instead of #includes to resolve circular includes (we
 // include Hacker*.h, which includes Globals.h, which includes us):
