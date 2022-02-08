@@ -29,16 +29,16 @@ void NvAPIOverride()
             nvDLL = GetModuleHandle(L"nvapi.dll");
         }
         if (!nvDLL) {
-            LogInfo("Can't get nvapi handle\n");
+            LOG_INFO("Can't get nvapi handle\n");
             nvapi_failed = true;
             return;
         }
     }
     if (!nvapi_QueryInterfacePtr) {
         nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
-        LogDebug("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
+        LOG_DEBUG("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
         if (!nvapi_QueryInterfacePtr) {
-            LogInfo("Unable to call NvAPI_QueryInterface\n");
+            LOG_INFO("Unable to call NvAPI_QueryInterface\n");
             nvapi_failed = true;
             return;
         }
@@ -47,7 +47,7 @@ void NvAPIOverride()
     // One shot, override custom settings.
     intptr_t ret = (intptr_t)nvapi_QueryInterfacePtr(0xb03bb03b);
     if (!warned && (ret & 0xffffffff) != 0xeecc34ab) {
-        LogInfo("  overriding NVAPI wrapper failed.\n");
+        LOG_INFO("  overriding NVAPI wrapper failed.\n");
         warned = true;
     }
 }
@@ -65,16 +65,16 @@ void NvAPIEnableStereoActiveTracking()
             nvDLL = GetModuleHandle(L"nvapi.dll");
         }
         if (!nvDLL) {
-            LogInfo("Can't get nvapi handle\n");
+            LOG_INFO("Can't get nvapi handle\n");
             nvapi_failed = true;
             return;
         }
     }
     if (!nvapi_QueryInterfacePtr) {
         nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
-        LogDebug("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
+        LOG_DEBUG("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
         if (!nvapi_QueryInterfacePtr) {
-            LogInfo("Unable to call NvAPI_QueryInterface\n");
+            LOG_INFO("Unable to call NvAPI_QueryInterface\n");
             nvapi_failed = true;
             return;
         }
@@ -82,7 +82,7 @@ void NvAPIEnableStereoActiveTracking()
 
     intptr_t ret = (intptr_t)nvapi_QueryInterfacePtr(0xa03aa03a);
     if (!warnedStereoActiveTracking && (ret & 0xffffffff) != 0xeecc34ab) {
-        LogInfo("  enabling stereo active tracking in NVAPI wrapper failed.\n");
+        LOG_INFO("  enabling stereo active tracking in NVAPI wrapper failed.\n");
         warnedStereoActiveTracking = true;
     }
 }
@@ -99,16 +99,16 @@ void NvAPIEnableConvergenceTracking()
             nvDLL = GetModuleHandle(L"nvapi.dll");
         }
         if (!nvDLL) {
-            LogInfo("Can't get nvapi handle\n");
+            LOG_INFO("Can't get nvapi handle\n");
             nvapi_failed = true;
             return;
         }
     }
     if (!nvapi_QueryInterfacePtr) {
         nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
-        LogDebug("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
+        LOG_DEBUG("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
         if (!nvapi_QueryInterfacePtr) {
-            LogInfo("Unable to call NvAPI_QueryInterface\n");
+            LOG_INFO("Unable to call NvAPI_QueryInterface\n");
             nvapi_failed = true;
             return;
         }
@@ -117,7 +117,7 @@ void NvAPIEnableConvergenceTracking()
     // One shot, override custom settings.
     intptr_t ret = (intptr_t)nvapi_QueryInterfacePtr(0xc03cc03c);
     if (!warnedConvergenceTracking && (ret & 0xffffffff) != 0xeecc34ab) {
-        LogInfo("  enabling convergence tracking in NVAPI wrapper failed.\n");
+        LOG_INFO("  enabling convergence tracking in NVAPI wrapper failed.\n");
         warnedConvergenceTracking = true;
     }
 }
@@ -134,16 +134,16 @@ void NvAPIEnableSeparationTracking()
             nvDLL = GetModuleHandle(L"nvapi.dll");
         }
         if (!nvDLL) {
-            LogInfo("Can't get nvapi handle\n");
+            LOG_INFO("Can't get nvapi handle\n");
             nvapi_failed = true;
             return;
         }
     }
     if (!nvapi_QueryInterfacePtr) {
         nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
-        LogDebug("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
+        LOG_DEBUG("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
         if (!nvapi_QueryInterfacePtr) {
-            LogInfo("Unable to call NvAPI_QueryInterface\n");
+            LOG_INFO("Unable to call NvAPI_QueryInterface\n");
             nvapi_failed = true;
             return;
         }
@@ -151,7 +151,7 @@ void NvAPIEnableSeparationTracking()
 
     intptr_t ret = (intptr_t)nvapi_QueryInterfacePtr(0xd03dd03d);
     if (!warnedSeparationTracking && (ret & 0xffffffff) != 0xeecc34ab) {
-        LogInfo("  enabling separation tracking in NVAPI wrapper failed.\n");
+        LOG_INFO("  enabling separation tracking in NVAPI wrapper failed.\n");
         warnedSeparationTracking = true;
     }
 }
@@ -168,16 +168,16 @@ void NvAPIEnableEyeSeparationTracking()
             nvDLL = GetModuleHandle(L"nvapi.dll");
         }
         if (!nvDLL) {
-            LogInfo("Can't get nvapi handle\n");
+            LOG_INFO("Can't get nvapi handle\n");
             nvapi_failed = true;
             return;
         }
     }
     if (!nvapi_QueryInterfacePtr) {
         nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
-        LogDebug("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
+        LOG_DEBUG("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
         if (!nvapi_QueryInterfacePtr) {
-            LogInfo("Unable to call NvAPI_QueryInterface\n");
+            LOG_INFO("Unable to call NvAPI_QueryInterface\n");
             nvapi_failed = true;
             return;
         }
@@ -185,7 +185,7 @@ void NvAPIEnableEyeSeparationTracking()
 
     intptr_t ret = (intptr_t)nvapi_QueryInterfacePtr(0xe03ee03e);
     if (!warnedEyeSeparationTracking && (ret & 0xffffffff) != 0xeecc34ab) {
-        LogInfo("  enabling eye separation tracking in NVAPI wrapper failed.\n");
+        LOG_INFO("  enabling eye separation tracking in NVAPI wrapper failed.\n");
         warnedEyeSeparationTracking = true;
     }
 }
@@ -202,16 +202,16 @@ void NvAPIResetStereoActiveTracking()
             nvDLL = GetModuleHandle(L"nvapi.dll");
         }
         if (!nvDLL) {
-            LogInfo("Can't get nvapi handle\n");
+            LOG_INFO("Can't get nvapi handle\n");
             nvapi_failed = true;
             return;
         }
     }
     if (!nvapi_QueryInterfacePtr) {
         nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
-        LogDebug("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
+        LOG_DEBUG("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
         if (!nvapi_QueryInterfacePtr) {
-            LogInfo("Unable to call NvAPI_QueryInterface\n");
+            LOG_INFO("Unable to call NvAPI_QueryInterface\n");
             nvapi_failed = true;
             return;
         }
@@ -219,7 +219,7 @@ void NvAPIResetStereoActiveTracking()
 
     intptr_t ret = (intptr_t)nvapi_QueryInterfacePtr(0xf03ff03f);
     if (!warnedResetStereoActiveTracking && (ret & 0xffffffff) != 0xeecc34ab) {
-        LogInfo("  reset stereo active tracking in NVAPI wrapper failed.\n");
+        LOG_INFO("  reset stereo active tracking in NVAPI wrapper failed.\n");
         warnedResetStereoActiveTracking = true;
     }
 }
@@ -236,16 +236,16 @@ void NvAPIResetConvergenceTracking()
             nvDLL = GetModuleHandle(L"nvapi.dll");
         }
         if (!nvDLL) {
-            LogInfo("Can't get nvapi handle\n");
+            LOG_INFO("Can't get nvapi handle\n");
             nvapi_failed = true;
             return;
         }
     }
     if (!nvapi_QueryInterfacePtr) {
         nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
-        LogDebug("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
+        LOG_DEBUG("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
         if (!nvapi_QueryInterfacePtr) {
-            LogInfo("Unable to call NvAPI_QueryInterface\n");
+            LOG_INFO("Unable to call NvAPI_QueryInterface\n");
             nvapi_failed = true;
             return;
         }
@@ -253,7 +253,7 @@ void NvAPIResetConvergenceTracking()
 
     intptr_t ret = (intptr_t)nvapi_QueryInterfacePtr(0xa03dd03d);
     if (!warnedResetConvergenceTracking && (ret & 0xffffffff) != 0xeecc34ab) {
-        LogInfo("  reset convergence tracking in NVAPI wrapper failed.\n");
+        LOG_INFO("  reset convergence tracking in NVAPI wrapper failed.\n");
         warnedResetConvergenceTracking = true;
     }
 }
@@ -270,16 +270,16 @@ void NvAPIResetSeparationTracking()
             nvDLL = GetModuleHandle(L"nvapi.dll");
         }
         if (!nvDLL) {
-            LogInfo("Can't get nvapi handle\n");
+            LOG_INFO("Can't get nvapi handle\n");
             nvapi_failed = true;
             return;
         }
     }
     if (!nvapi_QueryInterfacePtr) {
         nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
-        LogDebug("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
+        LOG_DEBUG("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
         if (!nvapi_QueryInterfacePtr) {
-            LogInfo("Unable to call NvAPI_QueryInterface\n");
+            LOG_INFO("Unable to call NvAPI_QueryInterface\n");
             nvapi_failed = true;
             return;
         }
@@ -287,7 +287,7 @@ void NvAPIResetSeparationTracking()
 
     intptr_t ret = (intptr_t)nvapi_QueryInterfacePtr(0xb03dd03d);
     if (!warnedResetSeperationTracking && (ret & 0xffffffff) != 0xeecc34ab) {
-        LogInfo("  reset seperation tracking in NVAPI wrapper failed.\n");
+        LOG_INFO("  reset seperation tracking in NVAPI wrapper failed.\n");
         warnedResetSeperationTracking = true;
     }
 }
@@ -304,16 +304,16 @@ void NvAPIResetEyeSeparationTracking()
             nvDLL = GetModuleHandle(L"nvapi.dll");
         }
         if (!nvDLL) {
-            LogInfo("Can't get nvapi handle\n");
+            LOG_INFO("Can't get nvapi handle\n");
             nvapi_failed = true;
             return;
         }
     }
     if (!nvapi_QueryInterfacePtr) {
         nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nvDLL, "nvapi_QueryInterface");
-        LogDebug("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
+        LOG_DEBUG("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
         if (!nvapi_QueryInterfacePtr) {
-            LogInfo("Unable to call NvAPI_QueryInterface\n");
+            LOG_INFO("Unable to call NvAPI_QueryInterface\n");
             nvapi_failed = true;
             return;
         }
@@ -321,7 +321,7 @@ void NvAPIResetEyeSeparationTracking()
 
     intptr_t ret = (intptr_t)nvapi_QueryInterfacePtr(0xc03dd03d);
     if (!warnedResetEyeSeparationTracking && (ret & 0xffffffff) != 0xeecc34ab) {
-        LogInfo("  reset eye separation tracking in NVAPI wrapper failed.\n");
+        LOG_INFO("  reset eye separation tracking in NVAPI wrapper failed.\n");
         warnedResetEyeSeparationTracking = true;
     }
 }
@@ -341,7 +341,7 @@ static bool check_file_description(const char *buf, const wchar_t *module_path)
     unsigned i;
 
     if (!VerQueryValueA(buf, "\\VarFileInfo\\Translation", (void**)&translate_query, &query_size)) {
-        LogInfo("3DMigoto file information query failed\n");
+        LOG_INFO("3DMigoto file information query failed\n");
         return false;
     }
 
@@ -355,12 +355,12 @@ static bool check_file_description(const char *buf, const wchar_t *module_path)
                 translate_query[i].wLanguage,
                 translate_query[i].wCodePage);
         if (FAILED(hr)) {
-            LogInfo("3DMigoto file description query bugged\n");
+            LOG_INFO("3DMigoto file description query bugged\n");
             return false;
         }
 
         if (!VerQueryValueA(buf, id, (void**)&file_description, &file_desc_size)) {
-            LogInfo("3DMigoto file description query failed\n");
+            LOG_INFO("3DMigoto file description query failed\n");
             return false;
         }
 
@@ -404,23 +404,23 @@ static bool dx11_3dmigoto_present()
 
     size = GetFileVersionInfoSize(module_path, &pointless_handle);
     if (!size) {
-        LogInfo("3DMigoto version size check failed\n");
+        LOG_INFO("3DMigoto version size check failed\n");
         return false;
     }
 
     buf = new char[size];
 
     if (!GetFileVersionInfo(module_path, pointless_handle, size, buf)) {
-        LogInfo("3DMigoto version info check failed\n");
+        LOG_INFO("3DMigoto version info check failed\n");
         goto out_free;
     }
 
     if (!check_file_description(buf, module_path)) {
-        LogInfo("Loaded module \"%ls\" is not 3DMigoto\n", module_path);
+        LOG_INFO("Loaded module \"%ls\" is not 3DMigoto\n", module_path);
         goto out_free;
     }
 
-    LogInfo("Loaded module \"%ls\" is 3DMigoto - disabling nvapi redirect in this DLL\n", module_path);
+    LOG_INFO("Loaded module \"%ls\" is 3DMigoto - disabling nvapi redirect in this DLL\n", module_path);
     present = true;
 
 out_free:
@@ -462,7 +462,7 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
         if (check_3dmigoto_dx11 && dx11_3dmigoto_present())
             return NULL;
 
-        LogInfoW(L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n",
+        LOG_INFO_W(L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n",
             lpLibFileName, fullPath);
 
         return fnOrigLoadLibraryExW(fullPath, hFile, dwFlags);
@@ -478,7 +478,7 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
         if (check_3dmigoto_dx11 && dx11_3dmigoto_present())
             return NULL;
 
-        LogInfoW(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
+        LOG_INFO_W(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
 
         return fnOrigLoadLibraryExW(library, hFile, dwFlags);
     }
@@ -533,7 +533,7 @@ HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ H
     HMODULE module;
     static bool hook_enabled = true;
 
-    LogDebugW(L"   Hooked_LoadLibraryExW load: %s.\n", lpLibFileName);
+    LOG_DEBUG_W(L"   Hooked_LoadLibraryExW load: %s.\n", lpLibFileName);
 
     if (_wcsicmp(lpLibFileName, L"SUPPRESS_3DMIGOTO_REDIRECT") == 0) {
         // Something (like Origin's IGO32.dll hook in ntdll.dll

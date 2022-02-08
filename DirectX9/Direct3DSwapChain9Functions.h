@@ -3,8 +3,8 @@
 
 inline void D3D9Wrapper::IDirect3DSwapChain9::Delete()
 {
-    LogInfo("IDirect3DSwapChain9::Delete\n");
-    LogInfo("  deleting self\n");
+    LOG_INFO("IDirect3DSwapChain9::Delete\n");
+    LOG_INFO("  deleting self\n");
     for (auto it = m_backBuffers.begin(); it != m_backBuffers.end();)
     {
         (*it)->Delete();
@@ -47,11 +47,11 @@ D3D9Wrapper::IDirect3DSwapChain9* D3D9Wrapper::IDirect3DSwapChain9::GetSwapChain
 }
 STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::QueryInterface(THIS_ REFIID riid, void ** ppvObj)
 {
-    LogDebug("D3D9Wrapper::IDirect3DSwapChain9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
+    LOG_DEBUG("D3D9Wrapper::IDirect3DSwapChain9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
     HRESULT hr = NULL;
     if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
         return hr;
-    LogInfo("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
+    LOG_INFO("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
     hr = m_pUnk->QueryInterface(riid, ppvObj);
     if (hr == S_OK) {
         if ((*ppvObj) == GetRealOrig()) {
@@ -60,8 +60,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::QueryInterface(THIS_ REFIID riid,
                 ++m_ulRef;
                 ++shared_ref_count;
                 zero_d3d_ref_count = false;
-                LogInfo("  interface replaced with IDirect3DSwapChain9 wrapper.\n");
-                LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+                LOG_INFO("  interface replaced with IDirect3DSwapChain9 wrapper.\n");
+                LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
                 return hr;
             }
         }
@@ -69,7 +69,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::QueryInterface(THIS_ REFIID riid,
         if (unk)
             *ppvObj = unk;
     }
-    LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+    LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
     return hr;
 }
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DSwapChain9::AddRef(THIS)
@@ -82,16 +82,16 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DSwapChain9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DSwapChain9::Release(THIS)
 {
-    LogDebug("IDirect3DSwapChain9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
+    LOG_DEBUG("IDirect3DSwapChain9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-    LogDebug("  internal counter = %d\n", ulRef);
+    LOG_DEBUG("  internal counter = %d\n", ulRef);
 
     --m_ulRef;
     bool prev_non_zero = !zero_d3d_ref_count;
     if (ulRef == 0)
     {
-        if (!gLogDebug) LogInfo("IDirect3DSwapChain9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+        if (!gLogDebug) LOG_INFO("IDirect3DSwapChain9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
         zero_d3d_ref_count = true;
     }
     if (prev_non_zero) {
@@ -111,12 +111,12 @@ static void CheckSwapChain(D3D9Wrapper::IDirect3DSwapChain9 *me)
     me->pendingGetSwapChain = false;
     CheckDevice(me->pendingDevice);
 
-    LogInfo("  calling postponed GetSwapChain.\n");
+    LOG_INFO("  calling postponed GetSwapChain.\n");
     ::LPDIRECT3DSWAPCHAIN9 baseSwapChain = NULL;
     HRESULT hr = me->pendingDevice->GetD3D9Device()->GetSwapChain(me->_SwapChain, &baseSwapChain);
     if (FAILED(hr))
     {
-        LogInfo("    failed getting swap chain with result = %x\n", hr);
+        LOG_INFO("    failed getting swap chain with result = %x\n", hr);
 
         return;
     }
@@ -125,7 +125,7 @@ static void CheckSwapChain(D3D9Wrapper::IDirect3DSwapChain9 *me)
     baseSwapChain->Release();
     if (FAILED(hr))
     {
-        LogInfo("    failed casting swap chain to IDirect3DSwapChain9 with result = %x\n", hr);
+        LOG_INFO("    failed casting swap chain to IDirect3DSwapChain9 with result = %x\n", hr);
 
         return;
     }
@@ -133,7 +133,7 @@ static void CheckSwapChain(D3D9Wrapper::IDirect3DSwapChain9 *me)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::Present(THIS_ CONST RECT* pSourceRect,CONST RECT* pDestRect,HWND hDestWindowOverride,CONST RGNDATA* pDirtyRegion,DWORD dwFlags)
 {
-    LogDebug("IDirect3DSwapChain9::Present called\n");
+    LOG_DEBUG("IDirect3DSwapChain9::Present called\n");
 
     CheckSwapChain(this);
     Profiling::State profiling_state = { 0 };
@@ -184,32 +184,32 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::Present(THIS_ CONST RECT* pSource
     }
     if (profiling)
         Profiling::end(&profiling_state, &Profiling::present_overhead);
-    LogDebug("  returns result=%x\n", hr);
+    LOG_DEBUG("  returns result=%x\n", hr);
 
     return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetFrontBufferData(THIS_ IDirect3DSurface9 *pDestSurface)
 {
-    LogDebug("IDirect3DSwapChain9::GetFrontBufferData called\n");
+    LOG_DEBUG("IDirect3DSwapChain9::GetFrontBufferData called\n");
 
     CheckSwapChain(this);
     HRESULT hr = GetSwapChain9()->GetFrontBufferData(baseSurface9(pDestSurface));
-    LogDebug("  returns result=%x\n", hr);
+    LOG_DEBUG("  returns result=%x\n", hr);
 
     return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetBackBuffer(THIS_ UINT iBackBuffer,::D3DBACKBUFFER_TYPE Type, D3D9Wrapper::IDirect3DSurface9 **ppBackBuffer)
 {
-    LogDebug("IDirect3DSwapChain9::GetBackBuffer called\n");
+    LOG_DEBUG("IDirect3DSwapChain9::GetBackBuffer called\n");
 
     CheckSwapChain(this);
     ::LPDIRECT3DSURFACE9 baseSurface = 0;
     HRESULT hr;
     D3D9Wrapper::IDirect3DSurface9 * wrappedSurface = NULL;
     if (G->SCREEN_UPSCALING > 0 || G->gForceStereo == 2) {
-        LogDebug("HackerFakeDeviceSwapChain::GetBuffer(%s@%p)\n", type_name_dx9((IUnknown*)this), this);
+        LOG_DEBUG("HackerFakeDeviceSwapChain::GetBuffer(%s@%p)\n", type_name_dx9((IUnknown*)this), this);
         if (mFakeSwapChain && mFakeSwapChain->mFakeBackBuffers.size() > iBackBuffer) {
             wrappedSurface = mFakeSwapChain->mFakeBackBuffers.at(iBackBuffer);
             wrappedSurface->AddRef();
@@ -217,7 +217,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetBackBuffer(THIS_ UINT iBackBuf
         }
         else {
             hr = D3DERR_INVALIDCALL;
-            LogInfo("BUG: HackerFakeSwapChain::GetBuffer(): Missing fake back buffer\n");
+            LOG_INFO("BUG: HackerFakeSwapChain::GetBuffer(): Missing fake back buffer\n");
             if (ppBackBuffer) *ppBackBuffer = 0;
             return hr;
         }
@@ -239,7 +239,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetBackBuffer(THIS_ UINT iBackBuf
         }
         else {
             hr = D3DERR_INVALIDCALL;
-            LogInfo("  failed with hr=%x\n", hr);
+            LOG_INFO("  failed with hr=%x\n", hr);
             if (ppBackBuffer) *ppBackBuffer = 0;
             return hr;
         }
@@ -253,14 +253,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetBackBuffer(THIS_ UINT iBackBuf
             }
         }
     }
-    if (ppBackBuffer) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurface, *ppBackBuffer);
+    if (ppBackBuffer) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurface, *ppBackBuffer);
 
     return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetRasterStatus(THIS_ ::D3DRASTER_STATUS* pRasterStatus)
 {
-    LogDebug("IDirect3DSwapChain9::GetRasterStatus called\n");
+    LOG_DEBUG("IDirect3DSwapChain9::GetRasterStatus called\n");
 
     CheckSwapChain(this);
     return GetSwapChain9()->GetRasterStatus(pRasterStatus);
@@ -268,7 +268,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetRasterStatus(THIS_ ::D3DRASTER
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetDisplayMode(THIS_ ::D3DDISPLAYMODE* pMode)
 {
-    LogDebug("IDirect3DSwapChain9::GetDisplayMode called\n");
+    LOG_DEBUG("IDirect3DSwapChain9::GetDisplayMode called\n");
 
     CheckSwapChain(this);
     HRESULT hr = GetSwapChain9()->GetDisplayMode(pMode);
@@ -284,7 +284,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetDisplayMode(THIS_ ::D3DDISPLAY
         //    pMode->RefreshRate = origPresentationParameters.FullScreen_RefreshRateInHz;
         //if (G->SCREEN_REFRESH != -1 && pMode->RefreshRate != G->SCREEN_REFRESH)
         //{
-        //    LogInfo("  overriding refresh rate %d with %d\n", pMode->RefreshRate, G->SCREEN_REFRESH);
+        //    LOG_INFO("  overriding refresh rate %d with %d\n", pMode->RefreshRate, G->SCREEN_REFRESH);
 
         //    pMode->RefreshRate = G->SCREEN_REFRESH;
         //}
@@ -301,8 +301,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetDisplayMode(THIS_ ::D3DDISPLAY
         ////    pMode->Height = G->FORCE_REPORT_HEIGHT;
         ////}
     }
-    if (!pMode) LogInfo("  returns result=%x\n", hr);
-    if (pMode) LogInfo("  returns result=%x, Width=%d, Height=%d, RefreshRate=%d, Format=%d\n", hr,
+    if (!pMode) LOG_INFO("  returns result=%x\n", hr);
+    if (pMode) LOG_INFO("  returns result=%x, Width=%d, Height=%d, RefreshRate=%d, Format=%d\n", hr,
         pMode->Width, pMode->Height, pMode->RefreshRate, pMode->Format);
 
     return hr;
@@ -310,7 +310,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetDisplayMode(THIS_ ::D3DDISPLAY
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetDevice(THIS_ D3D9Wrapper::IDirect3DDevice9** ppDevice)
 {
-    LogDebug("IDirect3DSwapChain9::GetDevice called\n");
+    LOG_DEBUG("IDirect3DSwapChain9::GetDevice called\n");
 
     CheckSwapChain(this);
     HRESULT hr;
@@ -332,7 +332,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetDevice(THIS_ D3D9Wrapper::IDir
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetPresentParameters(THIS_ ::D3DPRESENT_PARAMETERS* pPresentationParameters)
 {
-    LogDebug("IDirect3DSwapChain9::GetPresentParameters called.\n");
+    LOG_DEBUG("IDirect3DSwapChain9::GetPresentParameters called.\n");
 
     CheckSwapChain(this);
     HRESULT hr = GetSwapChain9()->GetPresentParameters(pPresentationParameters);
@@ -343,24 +343,24 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetPresentParameters(THIS_ ::D3DP
             if (mFakeSwapChain != NULL && mFakeSwapChain->mFakeBackBuffers.size() > 0) {
                 pPresentationParameters->BackBufferWidth = mFakeSwapChain->mOrignalWidth;
                 pPresentationParameters->BackBufferHeight = mFakeSwapChain->mOrignalHeight;
-                LogDebug("->Using fake SwapChain Back Buffer Sizes.\n");
+                LOG_DEBUG("->Using fake SwapChain Back Buffer Sizes.\n");
             }
         }
 
-        if (pPresentationParameters) LogDebug("  returns Windowed = %d\n", pPresentationParameters->Windowed);
-        if (pPresentationParameters) LogDebug("  returns Width = %d\n", pPresentationParameters->BackBufferWidth);
-        if (pPresentationParameters) LogDebug("  returns Height = %d\n", pPresentationParameters->BackBufferHeight);
-        if (pPresentationParameters) LogDebug("  returns Refresh rate = %f\n",(float)pPresentationParameters->FullScreen_RefreshRateInHz);
+        if (pPresentationParameters) LOG_DEBUG("  returns Windowed = %d\n", pPresentationParameters->Windowed);
+        if (pPresentationParameters) LOG_DEBUG("  returns Width = %d\n", pPresentationParameters->BackBufferWidth);
+        if (pPresentationParameters) LOG_DEBUG("  returns Height = %d\n", pPresentationParameters->BackBufferHeight);
+        if (pPresentationParameters) LOG_DEBUG("  returns Refresh rate = %f\n",(float)pPresentationParameters->FullScreen_RefreshRateInHz);
 
     }
 
-    LogDebug("  returns result = %x\n", hr);
+    LOG_DEBUG("  returns result = %x\n", hr);
     return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetDisplayModeEx(THIS_ ::D3DDISPLAYMODEEX* pMode,::D3DDISPLAYROTATION* pRotation)
 {
-    LogDebug("IDirect3DSwapChain9::GetDisplayModeEx called.\n");
+    LOG_DEBUG("IDirect3DSwapChain9::GetDisplayModeEx called.\n");
 
     CheckSwapChain(this);
     HRESULT hr = GetSwapChain9Ex()->GetDisplayModeEx(pMode, pRotation);
@@ -376,7 +376,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetDisplayModeEx(THIS_ ::D3DDISPL
         //    pMode->RefreshRate = origPresentationParameters.FullScreen_RefreshRateInHz;
         //if (G->SCREEN_REFRESH != -1 && pMode->RefreshRate != G->SCREEN_REFRESH)
         //{
-        //    LogInfo("  overriding refresh rate %d with %d\n", pMode->RefreshRate, G->SCREEN_REFRESH);
+        //    LOG_INFO("  overriding refresh rate %d with %d\n", pMode->RefreshRate, G->SCREEN_REFRESH);
 
         //    pMode->RefreshRate = G->SCREEN_REFRESH;
         //}
@@ -393,8 +393,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetDisplayModeEx(THIS_ ::D3DDISPL
         ////    pMode->Height = G->FORCE_REPORT_HEIGHT;
         ////}
     }
-    if (!pMode) LogInfo("  returns result=%x\n", hr);
-    if (pMode) LogInfo("  returns result=%x, Width=%d, Height=%d, RefreshRate=%d, Format=%d\n", hr,
+    if (!pMode) LOG_INFO("  returns result=%x\n", hr);
+    if (pMode) LOG_INFO("  returns result=%x, Width=%d, Height=%d, RefreshRate=%d, Format=%d\n", hr,
         pMode->Width, pMode->Height, pMode->RefreshRate, pMode->Format);
 
     return hr;
@@ -402,7 +402,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetDisplayModeEx(THIS_ ::D3DDISPL
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetLastPresentCount(UINT * pLastPresentCount)
 {
-    LogDebug("IDirect3DSwapChain9::GetLastPresentCount called.\n");
+    LOG_DEBUG("IDirect3DSwapChain9::GetLastPresentCount called.\n");
 
     CheckSwapChain(this);
     return GetSwapChain9Ex()->GetLastPresentCount(pLastPresentCount);
@@ -410,7 +410,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetLastPresentCount(UINT * pLastP
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetPresentStats(::D3DPRESENTSTATS * pPresentationStatistics)
 {
-    LogDebug("IDirect3DSwapChain9::GetPresentStatistics called.\n");
+    LOG_DEBUG("IDirect3DSwapChain9::GetPresentStatistics called.\n");
 
     CheckSwapChain(this);
     return GetSwapChain9Ex()->GetPresentStats(pPresentationStatistics);

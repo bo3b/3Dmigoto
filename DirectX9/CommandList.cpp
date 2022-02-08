@@ -316,7 +316,7 @@ void optimise_command_lists(D3D9Wrapper::IDirect3DDevice9 *device)
     CommandList::Commands::iterator new_end;
     DWORD start;
 
-    LogInfo("Optimising command lists...\n");
+    LOG_INFO("Optimising command lists...\n");
     start = GetTickCount();
 
     for (CommandList *command_list : registered_command_lists) {
@@ -358,7 +358,7 @@ void optimise_command_lists(D3D9Wrapper::IDirect3DDevice9 *device)
         for (CommandList *command_list : registered_command_lists) {
             for (i = 0; i < command_list->commands.size(); ) {
                 if (command_list->commands[i]->noop(command_list->post, ignore_cto_pre, ignore_cto_post)) {
-                    LogInfo("Optimised out %s %S\n",
+                    LOG_INFO("Optimised out %s %S\n",
                         command_list->post ? "post" : "pre",
                         command_list->commands[i]->ini_line.c_str());
                     command_list->commands.erase(command_list->commands.begin() + i);
@@ -378,7 +378,7 @@ void optimise_command_lists(D3D9Wrapper::IDirect3DDevice9 *device)
 
     Profiling::update_cto_warning(!ignore_cto_post);
 
-    LogInfo("Command List Optimiser finished after %ums\n", GetTickCount() - start);
+    LOG_INFO("Command List Optimiser finished after %ums\n", GetTickCount() - start);
     registered_command_lists.clear();
     dynamically_allocated_command_lists.clear();
 }
@@ -1247,7 +1247,7 @@ HRESULT DrawCommandVertexBufferPrepare(CommandListState *state, UINT vertexCount
 }
 inline bool SetDrawingSide(CommandListState *state, D3D9Wrapper::RenderPosition side)
 {
-    LogDebug("Command List Direct Mode, SetDrawingSide");
+    LOG_DEBUG("Command List Direct Mode, SetDrawingSide");
     // Already on the correct eye
     if (side == state->mHackerDevice->currentRenderingSide) {
         return true;
@@ -1273,7 +1273,7 @@ inline bool SetDrawingSide(CommandListState *state, D3D9Wrapper::RenderPosition 
                 result = state->mOrigDevice->SetRenderTarget((DWORD)i, pCurrentRT->DirectModeGetRight());
 
             if (result != D3D_OK) {
-                LogDebug("Command List Direct Mode, - Error trying to set one of the Render Targets while switching between active eyes for drawing.\n");
+                LOG_DEBUG("Command List Direct Mode, - Error trying to set one of the Render Targets while switching between active eyes for drawing.\n");
             }
             else {
                 renderTargetChanged = true;
@@ -1302,7 +1302,7 @@ inline bool SetDrawingSide(CommandListState *state, D3D9Wrapper::RenderPosition 
             result = state->mOrigDevice->SetTexture(it->first, pActualRightTexture);
 
         if (result != D3D_OK)
-            LogDebug("Command List Direct Mode, Error trying to set one of the textures while switching between active eyes for drawing.\n");
+            LOG_DEBUG("Command List Direct Mode, Error trying to set one of the textures while switching between active eyes for drawing.\n");
     }
     if (state->mHackerDevice->DirectModeGameProjectionIsSet) {
         if (side == D3D9Wrapper::RenderPosition::Left)
@@ -1983,23 +1983,23 @@ static bool load_cached_shader(FILETIME hlsl_timestamp, wchar_t *cache_path, ID3
 
     if (!GetFileTime(f_cache, NULL, NULL, &cache_timestamp)
         || CompareFileTime(&hlsl_timestamp, &cache_timestamp)) {
-        LogInfo("    Discarding stale cached shader: %S\n", cache_path);
+        LOG_INFO("    Discarding stale cached shader: %S\n", cache_path);
         goto err_close;
     }
 
     filesize = GetFileSize(f_cache, 0);
     if (FAILED(D3DCreateBlob(filesize, ppBytecode))) {
-        LogInfo("    D3DCreateBlob failed\n");
+        LOG_INFO("    D3DCreateBlob failed\n");
         goto err_close;
     }
 
     if (!ReadFile(f_cache, (*ppBytecode)->GetBufferPointer(), (DWORD)(*ppBytecode)->GetBufferSize(), &readsize, 0)
         || readsize != filesize) {
-        LogInfo("    Error reading cached shader\n");
+        LOG_INFO("    Error reading cached shader\n");
         goto err_free;
     }
 
-    LogInfo("    Loaded cached shader: %S\n", cache_path);
+    LOG_INFO("    Loaded cached shader: %S\n", cache_path);
     CloseHandle(f_cache);
     return true;
 
@@ -2031,7 +2031,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
     bool found = false;
     FILETIME timestamp;
 
-    LogInfo("  %cs=%S\n", type, filename);
+    LOG_INFO("  %cs=%S\n", type, filename);
 
     switch (type) {
     case 'v':
@@ -2105,7 +2105,7 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 
     if (!ReadFile(f, srcData.data(), srcDataSize, &readSize, 0)
         || srcDataSize != readSize) {
-        LogInfo("    Error reading HLSL file\n");
+        LOG_INFO("    Error reading HLSL file\n");
         goto err_close;
     }
     CloseHandle(f);
@@ -2125,9 +2125,9 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
     if (pErrorMsgs) {
         LPVOID errMsg = pErrorMsgs->GetBufferPointer();
         SIZE_T errSize = pErrorMsgs->GetBufferSize();
-        LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
+        LOG_INFO("--------------------------------------------- BEGIN ---------------------------------------------\n");
         LogOverlay(LOG_NOTICE, "%*s\n", errSize, errMsg);
-        LogInfo("---------------------------------------------- END ----------------------------------------------\n");
+        LOG_INFO("---------------------------------------------- END ----------------------------------------------\n");
         pErrorMsgs->Release();
     }
 
@@ -2141,14 +2141,14 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 
         wfopen_ensuring_access(&fw, cache_path, L"wb");
         if (fw) {
-            LogInfo("    Storing compiled shader to %S\n", cache_path);
+            LOG_INFO("    Storing compiled shader to %S\n", cache_path);
             fwrite((*ppBytecode)->GetBufferPointer(), 1, (*ppBytecode)->GetBufferSize(), fw);
             fclose(fw);
 
             set_file_last_write_time(cache_path, &timestamp);
         }
         else
-            LogInfo("    Error writing compiled shader to %S\n", cache_path);
+            LOG_INFO("    Error writing compiled shader to %S\n", cache_path);
     }
 
     return false;
@@ -2846,7 +2846,7 @@ void ReleaseCommandListDeviceResources(D3D9Wrapper::IDirect3DDevice9 * mHackerDe
                 i->first.second->migotoResourceCount--;
                 if (i->second.resource) {
                     ULONG result = i->second.resource->Release();
-                    LogDebug("Releasing Command List Device Resource, Copy Op Pool Resource, result = %d\n", result);
+                    LOG_DEBUG("Releasing Command List Device Resource, Copy Op Pool Resource, result = %d\n", result);
                 }
                 i = copyOp->resource_pool.cache.erase(i);
             }
@@ -2856,12 +2856,12 @@ void ReleaseCommandListDeviceResources(D3D9Wrapper::IDirect3DDevice9 * mHackerDe
         }
         if (copyOp->cached_resource) {
             ULONG result = copyOp->cached_resource->Release();
-            LogDebug("Releasing Command List Device Resource, Copy Op Cached Resource, result = %d\n", result);
+            LOG_DEBUG("Releasing Command List Device Resource, Copy Op Cached Resource, result = %d\n", result);
             copyOp->cached_resource = NULL;
         }
         if (copyOp->stereo2mono_intermediate) {
             ULONG result = copyOp->stereo2mono_intermediate->Release();
-            LogDebug("Releasing Command List Device Resource, stereo2mono_intermediate Resource, result = %d\n", result);
+            LOG_DEBUG("Releasing Command List Device Resource, stereo2mono_intermediate Resource, result = %d\n", result);
             copyOp->stereo2mono_intermediate = NULL;
         }
     }
@@ -2874,7 +2874,7 @@ void ReleaseCommandListDeviceResources(D3D9Wrapper::IDirect3DDevice9 * mHackerDe
                 i->first.second->migotoResourceCount--;
                 if (i->second.resource) {
                     ULONG result = i->second.resource->Release();
-                    LogDebug("Releasing Command List Device Resource, Custom Resource Pool Resource, result = %d\n", result);
+                    LOG_DEBUG("Releasing Command List Device Resource, Custom Resource Pool Resource, result = %d\n", result);
                 }
                 i = it->second.resource_pool.cache.erase(i);
             }
@@ -2884,7 +2884,7 @@ void ReleaseCommandListDeviceResources(D3D9Wrapper::IDirect3DDevice9 * mHackerDe
         }
         if (it->second.resource) {
             ULONG result = it->second.resource->Release();
-            LogDebug("Releasing Command List Device Resource,  Custom Resource, result = %d\n", result);
+            LOG_DEBUG("Releasing Command List Device Resource,  Custom Resource, result = %d\n", result);
             it->second.resource = NULL;
             it->second.substantiated = false;
         }
@@ -2893,13 +2893,13 @@ void ReleaseCommandListDeviceResources(D3D9Wrapper::IDirect3DDevice9 * mHackerDe
         if (it->second.mHackerDevice == mHackerDevice) {
             if (it->second.ps) {
                 ULONG result = it->second.ps->Release();
-                LogDebug("Releasing Command List Device Resource, Pixel Shader, result = %d\n", result);
+                LOG_DEBUG("Releasing Command List Device Resource, Pixel Shader, result = %d\n", result);
                 it->second.mHackerDevice->migotoResourceCount--;
                 it->second.ps = NULL;
             }
             if (it->second.vs) {
                 ULONG result = it->second.vs->Release();
-                LogDebug("Releasing Command List Device Resource, Vertex Shader, result = %d\n", result);
+                LOG_DEBUG("Releasing Command List Device Resource, Vertex Shader, result = %d\n", result);
                 it->second.mHackerDevice->migotoResourceCount--;
                 it->second.vs = NULL;
             }
@@ -2916,14 +2916,14 @@ void RecreateCommandListCustomShaders(D3D9Wrapper::IDirect3DDevice9 * mHackerDev
             if (it->second.vs_bytecode) {
                 hr = it->second.mHackerDevice->GetD3D9Device()->CreateVertexShader((DWORD*)it->second.vs_bytecode->GetBufferPointer(), &it->second.vs);
                 if (FAILED(hr))
-                    LogDebug("Recreate Command List Vertex Shader failed:= %d\n", hr);
+                    LOG_DEBUG("Recreate Command List Vertex Shader failed:= %d\n", hr);
                 if (it->second.vs && it->second.mHackerDevice)
                     it->second.mHackerDevice->migotoResourceCount++;
             }
             if (it->second.ps_bytecode) {
                 hr = it->second.mHackerDevice->GetD3D9Device()->CreatePixelShader((DWORD*)it->second.ps_bytecode->GetBufferPointer(), &it->second.ps);
                 if (FAILED(hr))
-                    LogDebug("Recreate Command List Pixel Shader failed:= %d\n", hr);
+                    LOG_DEBUG("Recreate Command List Pixel Shader failed:= %d\n", hr);
                 if (it->second.ps && it->second.mHackerDevice)
                     it->second.mHackerDevice->migotoResourceCount++;
             }
@@ -3097,7 +3097,7 @@ static void UpdateWindowInfo(CommandListState *state)
     if (G->hWnd())
         CursorUpscalingBypass_GetClientRect(G->hWnd(), &state->window_rect);
     else
-        LogDebug("UpdateWindowInfo: No hWnd\n");
+        LOG_DEBUG("UpdateWindowInfo: No hWnd\n");
 }
 static void UpdateCursorInfo(CommandListState *state)
 {
@@ -3111,7 +3111,7 @@ static void UpdateCursorInfo(CommandListState *state)
     if (G->hWnd())
         CursorUpscalingBypass_ScreenToClient(G->hWnd(), &state->cursor_window_coords);
     else
-        LogDebug("UpdateCursorInfo: No hWnd\n");
+        LOG_DEBUG("UpdateCursorInfo: No hWnd\n");
 }
 
 static void UpdateCursorInfoEx(CommandListState *state)
@@ -3194,12 +3194,12 @@ static void _CreateTextureFromBitmap(HDC dc, BITMAP *bitmap_obj,
 
     if (!GetDIBits(dc, hbitmap, 0, bmp_info.biHeight,
         (LPVOID)data.pBits, (BITMAPINFO*)&bmp_info, DIB_RGB_COLORS)) {
-        LogInfo("Software Mouse: GetDIBits() failed\n");
+        LOG_INFO("Software Mouse: GetDIBits() failed\n");
         goto err_free;
     }
     hr = state->mOrigDevice->CreateTexture(bitmap_obj->bmWidth, bitmap_obj->bmHeight, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, tex, NULL);
     if (FAILED(hr)) {
-        LogInfo("Software Mouse: CreateTexture Failed: 0x%x\n", hr);
+        LOG_INFO("Software Mouse: CreateTexture Failed: 0x%x\n", hr);
         goto err_free;
     }
     D3DLOCKED_RECT rect;
@@ -3227,7 +3227,7 @@ static void CreateTextureFromBitmap(HDC dc, HBITMAP hbitmap, CommandListState *s
     BITMAP bitmap_obj;
 
     if (!GetObject(hbitmap, sizeof(BITMAP), &bitmap_obj)) {
-        LogInfo("Software Mouse: GetObject() failed\n");
+        LOG_INFO("Software Mouse: GetObject() failed\n");
         return;
     }
 
@@ -3249,19 +3249,19 @@ static void CreateTextureFromAnimatedCursor(
     unsigned frame;
 
     if (!GetObject(static_bitmap, sizeof(BITMAP), &bitmap_obj)) {
-        LogInfo("Software Mouse: GetObject() failed\n");
+        LOG_INFO("Software Mouse: GetObject() failed\n");
         return;
     }
 
     dc_mem = CreateCompatibleDC(dc);
     if (!dc_mem) {
-        LogInfo("Software Mouse: CreateCompatibleDC() failed\n");
+        LOG_INFO("Software Mouse: CreateCompatibleDC() failed\n");
         return;
     }
 
     ani_bitmap = CreateCompatibleBitmap(dc, bitmap_obj.bmWidth, bitmap_obj.bmHeight);
     if (!ani_bitmap) {
-        LogInfo("Software Mouse: CreateCompatibleBitmap() failed\n");
+        LOG_INFO("Software Mouse: CreateCompatibleBitmap() failed\n");
         goto out_delete_mem_dc;
     }
 
@@ -3272,7 +3272,7 @@ static void CreateTextureFromAnimatedCursor(
     // bitmap:
     SelectObject(dc_mem, ani_bitmap);
     if (!DrawIconEx(dc_mem, 0, 0, cursor, bitmap_obj.bmWidth, bitmap_obj.bmHeight, frame, NULL, flags)) {
-        LogInfo("Software Mouse: DrawIconEx failed\n");
+        LOG_INFO("Software Mouse: DrawIconEx failed\n");
         // Fall back to getting the first frame from the static_bitmap we already have:
         _CreateTextureFromBitmap(dc, &bitmap_obj, static_bitmap, state, tex);
         goto out_delete_ani_bitmap;
@@ -3316,7 +3316,7 @@ static void UpdateCursorResources(CommandListState *state)
     // XXX: Should maybe be the device context for the window?
     dc = GetDC(NULL);
     if (!dc) {
-        LogInfo("Software Mouse: GetDC() failed\n");
+        LOG_INFO("Software Mouse: GetDC() failed\n");
         return;
     }
 
@@ -3785,7 +3785,7 @@ bool CommandListOperandFloat::optimise(D3D9Wrapper::IDirect3DDevice9 *device, st
     if (!static_evaluate(&val, device))
         return false;
 
-    LogInfo("Statically evaluated %S as %f\n",
+    LOG_INFO("Statically evaluated %S as %f\n",
         lookup_enum_name(ParamOverrideTypeNames, type), val);
 
     type = ParamOverrideType::VALUE;
@@ -3829,7 +3829,7 @@ static void tokenise(const wstring *expression, CommandListSyntaxTree<CommandLis
     int i;
     bool last_was_operand = false;
 
-    LogDebug("    Tokenising \"%S\"\n", expression->c_str());
+    LOG_DEBUG("    Tokenising \"%S\"\n", expression->c_str());
 
     while (true) {
     next_token:
@@ -3845,7 +3845,7 @@ static void tokenise(const wstring *expression, CommandListSyntaxTree<CommandLis
             if (!remain.compare(0, wcslen(operator_tokens[i]), operator_tokens[i])) {
                 pos = wcslen(operator_tokens[i]);
                 tree->tokens.emplace_back(make_shared<CommandListOperatorToken>(friendly_pos, remain.substr(0, pos)));
-                LogDebug("      Operator: \"%S\"\n", tree->tokens.back()->token.c_str());
+                LOG_DEBUG("      Operator: \"%S\"\n", tree->tokens.back()->token.c_str());
                 last_was_operand = false;
                 goto next_token; // continue would continue wrong loop
             }
@@ -3874,7 +3874,7 @@ static void tokenise(const wstring *expression, CommandListSyntaxTree<CommandLis
                 operand = make_shared<CommandListOperandFloat>(friendly_pos, token);
                 if (operand->parse(&token, ini_namespace, command_list)) {
                     tree->tokens.emplace_back(std::move(operand));
-                    LogDebug("      Resource Slot: \"%S\"\n", tree->tokens.back()->token.c_str());
+                    LOG_DEBUG("      Resource Slot: \"%S\"\n", tree->tokens.back()->token.c_str());
                     if (last_was_operand)
                         throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
                     last_was_operand = true;
@@ -3906,7 +3906,7 @@ static void tokenise(const wstring *expression, CommandListSyntaxTree<CommandLis
                 operand = make_shared<CommandListOperandFloat>(friendly_pos, token);
                 if (operand->parse(&token, ini_namespace, command_list)) {
                     tree->tokens.emplace_back(std::move(operand));
-                    LogDebug("      Identifier: \"%S\"\n", tree->tokens.back()->token.c_str());
+                    LOG_DEBUG("      Identifier: \"%S\"\n", tree->tokens.back()->token.c_str());
                     if (last_was_operand)
                         throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
                     last_was_operand = true;
@@ -3932,7 +3932,7 @@ static void tokenise(const wstring *expression, CommandListSyntaxTree<CommandLis
             operand = make_shared<CommandListOperandFloat>(friendly_pos, token);
             if (operand->parse(&token, ini_namespace, command_list)) {
                 tree->tokens.emplace_back(std::move(operand));
-                LogDebug("      Float: \"%S\"\n", tree->tokens.back()->token.c_str());
+                LOG_DEBUG("      Float: \"%S\"\n", tree->tokens.back()->token.c_str());
                 if (last_was_operand)
                     throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
                 last_was_operand = true;
@@ -4084,7 +4084,7 @@ static void matrix_tokenise(const wstring *expression, CommandListSyntaxTree<Com
     int i;
     bool last_was_operand = false;
 
-    LogDebug("    Tokenising \"%S\"\n", expression->c_str());
+    LOG_DEBUG("    Tokenising \"%S\"\n", expression->c_str());
 
     while (true) {
     next_token:
@@ -4100,7 +4100,7 @@ static void matrix_tokenise(const wstring *expression, CommandListSyntaxTree<Com
             if (!remain.compare(0, wcslen(matrix_operator_tokens[i]), matrix_operator_tokens[i])) {
                 pos = wcslen(matrix_operator_tokens[i]);
                 tree->tokens.emplace_back(make_shared<CommandListOperatorToken>(friendly_pos, remain.substr(0, pos)));
-                LogDebug("      Operator: \"%S\"\n", tree->tokens.back()->token.c_str());
+                LOG_DEBUG("      Operator: \"%S\"\n", tree->tokens.back()->token.c_str());
                 last_was_operand = false;
                 goto next_token; // continue would continue wrong loop
             }
@@ -4116,7 +4116,7 @@ static void matrix_tokenise(const wstring *expression, CommandListSyntaxTree<Com
                         //throw CommandListSyntaxError(L"Unexpected non matrix: " + token, friendly_pos);
                     operand = make_shared<CommandListMatrixOperand>(matrix, friendly_pos, token);
                     tree->tokens.emplace_back(std::move(operand));
-                    LogDebug("      Identifier: \"%S\"\n", tree->tokens.back()->token.c_str());
+                    LOG_DEBUG("      Identifier: \"%S\"\n", tree->tokens.back()->token.c_str());
                     if (last_was_operand)
                         throw CommandListSyntaxError(L"Unexpected identifier", friendly_pos);
                     last_was_operand = true;
@@ -4416,27 +4416,27 @@ static void _log_token(CommandListToken *token)
         _log_syntax_tree<Evaluatable>(inner);
     }
     else if (op) {
-        LogInfoNoNL("Operator \"%S\"[ ", token->token.c_str());
+        LOG_INFO_NO_NL("Operator \"%S\"[ ", token->token.c_str());
         if (op->lhs_tree)
             _log_token<Evaluatable>(op->lhs_tree.get());
         else if (op->lhs)
             _log_token<Evaluatable>(dynamic_cast<CommandListToken*>(op->lhs.get()));
         if ((op->lhs_tree || op->lhs) && (op->rhs_tree || op->rhs))
-            LogInfoNoNL(", ");
+            LOG_INFO_NO_NL(", ");
         if (op->rhs_tree)
             _log_token<Evaluatable>(op->rhs_tree.get());
         else if (op->rhs)
             _log_token<Evaluatable>(dynamic_cast<CommandListToken*>(op->rhs.get()));
-        LogInfoNoNL(" ]");
+        LOG_INFO_NO_NL(" ]");
     }
     else if (op_tok) {
-        LogInfoNoNL("OperatorToken \"%S\"", token->token.c_str());
+        LOG_INFO_NO_NL("OperatorToken \"%S\"", token->token.c_str());
     }
     else if (operand) {
-        LogInfoNoNL("Operand \"%S\"", token->token.c_str());
+        LOG_INFO_NO_NL("Operand \"%S\"", token->token.c_str());
     }
     else {
-        LogInfoNoNL("Token \"%S\"", token->token.c_str());
+        LOG_INFO_NO_NL("Token \"%S\"", token->token.c_str());
     }
 }
 template <class Evaluatable>
@@ -4444,13 +4444,13 @@ static void _log_syntax_tree(CommandListSyntaxTree<Evaluatable> *tree)
 {
     CommandListSyntaxTree<Evaluatable>::Tokens::iterator i;
 
-    LogInfoNoNL("SyntaxTree[ ");
+    LOG_INFO_NO_NL("SyntaxTree[ ");
     for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
         _log_token<Evaluatable>((*i).get());
         if (i != tree->tokens.end() - 1)
-            LogInfoNoNL(", ");
+            LOG_INFO_NO_NL(", ");
     }
-    LogInfoNoNL(" ]");
+    LOG_INFO_NO_NL(" ]");
 }
 template <class Evaluatable>
 static void log_syntax_tree(CommandListSyntaxTree<Evaluatable> *tree, const char *msg)
@@ -4458,9 +4458,9 @@ static void log_syntax_tree(CommandListSyntaxTree<Evaluatable> *tree, const char
     if (!gLogDebug)
         return;
 
-    LogInfo(msg);
+    LOG_INFO(msg);
     _log_syntax_tree<Evaluatable>(tree);
-    LogInfo("\n");
+    LOG_INFO("\n");
 }
 
 template<class T, class Evaluatable>
@@ -4469,9 +4469,9 @@ static void log_syntax_tree(T token, const char *msg)
     if (!gLogDebug)
         return;
 
-    LogInfo(msg);
+    LOG_INFO(msg);
     _log_token<Evaluatable>(dynamic_cast<CommandListToken*>(token.get()));
-    LogInfo("\n");
+    LOG_INFO("\n");
 }
 
 bool CommandListExpression::parse(const wstring *expression, const wstring *ini_namespace, CommandList *command_list)//CommandListScope *scope)
@@ -4571,7 +4571,7 @@ std::shared_ptr<Evaluatable> CommandListOperator<Evaluatable>::finalise()
     auto rhs_evaluatable = dynamic_pointer_cast<Evaluatable>(rhs_tree);
 
     if (lhs || rhs) {
-        LogInfo("BUG: Attempted to finalise already final operator\n");
+        LOG_INFO("BUG: Attempted to finalise already final operator\n");
         throw CommandListSyntaxError(L"BUG", token_pos);
     }
 
@@ -4623,7 +4623,7 @@ std::shared_ptr<Evaluatable> CommandListSyntaxTree<Evaluatable>::finalise()
                 // contents:
                 token = dynamic_pointer_cast<CommandListToken>(evaluatable);
                 if (!token) {
-                    LogInfo("BUG: finalised token did not cast back\n");
+                    LOG_INFO("BUG: finalised token did not cast back\n");
                     throw CommandListSyntaxError(L"BUG", token_pos);
                 }
                 i = tokens.erase(i);
@@ -4711,9 +4711,9 @@ bool CommandListOperatorFloat::optimise(D3D9Wrapper::IDirect3DDevice9 *device, s
         return making_progress;
 
     // FIXME: Pretty print rather than dumping syntax tree
-    LogInfoNoNL("Statically evaluated \"");
+    LOG_INFO_NO_NL("Statically evaluated \"");
     _log_token<CommandListEvaluatable>(dynamic_cast<CommandListToken*>(this));
-    LogInfo("\" as %f\n", static_val);
+    LOG_INFO("\" as %f\n", static_val);
     static_val_str = std::to_wstring(static_val);
 
     operand = make_shared<CommandListOperandFloat>(token_pos, static_val_str.c_str());
@@ -6051,7 +6051,7 @@ void ResourcePool::emplace(uint32_t hash, HashedResource hashedResource, D3D9Wra
             mHackerDevice->migotoResourceCount++;
         }
         else {
-            LogInfo("Hacker Device was null when emplacing cached resource\n");
+            LOG_INFO("Hacker Device was null when emplacing cached resource\n");
         }
     }
     cache.emplace(make_pair(hash, mHackerDevice), hashedResource);
@@ -6082,7 +6082,7 @@ template <typename DescType>
             *cached_resource = NULL;
         }
         if (hashedResource.resource) {
-            LogDebug("Switching cached resource \n");
+            LOG_DEBUG("Switching cached resource \n");
             Profiling::resource_pool_swaps++;
             hashedResource.resource->AddRef();
             *cached_resource = hashedResource.resource;
@@ -6116,10 +6116,10 @@ static DestResourceType* GetResourceFromPool(
     bool newResource = GetResourceFromPool<DescType>(dst_resource, resource_pool, desc, state->mHackerDevice, reinterpret_cast<IDirect3DResource9**>(&resource), &hash, info);
     if (!newResource) {
         if (resource)
-            LogDebug(" %S\n", ini_line->c_str());
+            LOG_DEBUG(" %S\n", ini_line->c_str());
     }else{
         Profiling::resources_created++;
-        LogInfo("Creating cached resource %S\n", ini_line->c_str());
+        LOG_INFO("Creating cached resource %S\n", ini_line->c_str());
         bool restore_create_mode = false;
         HashedResource newHashedResource;
         NVAPI_STEREO_SURFACECREATEMODE orig_mode;
@@ -6134,17 +6134,17 @@ static DestResourceType* GetResourceFromPool(
         if (G->gForceStereo == 2 && !FAILED(hr)) {
             HRESULT dmHR = DirectModeStereoizeResource(state, desc, pHandle, &resource, info->mode, &newHashedResource);
             if (FAILED(dmHR)) {
-                LogInfo("Direct Mode resource not stereoized %S: 0x%x\n", ini_line->c_str(), dmHR);
+                LOG_INFO("Direct Mode resource not stereoized %S: 0x%x\n", ini_line->c_str(), dmHR);
             }
         }
         if (restore_create_mode && G->gForceStereo != 2) {
             Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, orig_mode);
         }
         if (FAILED(hr)) {
-            LogInfo("Resource copy failed %S: 0x%x\n", ini_line->c_str(), hr);
+            LOG_INFO("Resource copy failed %S: 0x%x\n", ini_line->c_str(), hr);
             LogResourceDesc(desc);
             GetResourceDesc(src_resource, &old_desc);
-            LogInfo("Original resource was:\n");
+            LOG_INFO("Original resource was:\n");
             LogResourceDesc(&old_desc);
             // Prevent further attempts:
             newHashedResource.resource = NULL;
@@ -6155,7 +6155,7 @@ static DestResourceType* GetResourceFromPool(
         resource_pool->emplace(hash, newHashedResource, state->mHackerDevice);
         size = resource_pool->cache.size();
         if (size > 1)
-            LogInfo("  NOTICE: cache now contains %Ii resources\n", size);
+            LOG_INFO("  NOTICE: cache now contains %Ii resources\n", size);
         LogDebugResourceDesc(desc);
     }
     return resource;
@@ -6352,7 +6352,7 @@ void CustomResource::LoadFromFile(IDirect3DDevice9 *mOrigDevice)
     if (override_usage_flags != CustomResourceUsageFlags::INVALID)
         usage_flags |= (DWORD)override_usage_flags;
 
-    LogInfoW(L"Loading custom resource %s\n", filename.c_str());
+    LOG_INFO_W(L"Loading custom resource %s\n", filename.c_str());
     switch (override_type) {
     case CustomResourceType::TEXTURE2D:
         hr = D3DXCreateTextureFromFileEx(mOrigDevice, filename.c_str(), D3DX_DEFAULT, D3DX_DEFAULT, D3DX_FROM_FILE, usage_flags, D3DFMT_UNKNOWN, override_pool, D3DX_DEFAULT, D3DX_DEFAULT, 0, NULL, NULL, (LPDIRECT3DTEXTURE9*)&resource);
@@ -6444,7 +6444,7 @@ void CustomResource::SubstantiateBuffer(IDirect3DDevice9 *mOrigDevice, void **bu
         if (desc.Size > size) {
             void *new_buf = realloc(*buf, desc.Size);
             if (!new_buf) {
-                LogInfo("Out of memory enlarging buffer: [%S]\n", name.c_str());
+                LOG_INFO("Out of memory enlarging buffer: [%S]\n", name.c_str());
                 return;
             }
             memset((char*)new_buf + size, 0, desc.Size - size);
@@ -6459,7 +6459,7 @@ void CustomResource::SubstantiateBuffer(IDirect3DDevice9 *mOrigDevice, void **bu
     VOID* pVoid;
     HRESULT buffLock = buffer->Lock(0, 0, (void**)&pVoid, 0);
     if (FAILED(buffLock)) {
-        LogInfo("Failed to lock buffer for initial data %S [%S]: 0x%x\n",
+        LOG_INFO("Failed to lock buffer for initial data %S [%S]: 0x%x\n",
             lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), hr);
         LogResourceDesc(&desc);
 
@@ -6468,13 +6468,13 @@ void CustomResource::SubstantiateBuffer(IDirect3DDevice9 *mOrigDevice, void **bu
     HRESULT buffUnlock = buffer->Unlock();
     if (FAILED(buffUnlock)) {
 
-        LogInfo("Failed to unlock buffer for initial data %S [%S]: 0x%x\n",
+        LOG_INFO("Failed to unlock buffer for initial data %S [%S]: 0x%x\n",
             lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), hr);
         LogResourceDesc(&desc);
     }
 
     if (SUCCEEDED(hr)) {
-        LogInfo("Substantiated custom %S [%S], usage_flags=0x%03x\n",
+        LOG_INFO("Substantiated custom %S [%S], usage_flags=0x%03x\n",
             lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.Usage);
         LogDebugResourceDesc(&desc);
         resource = (ID3D9Buffer*)buffer;
@@ -6497,7 +6497,7 @@ void CustomResource::SubstantiateRenderTarget(CommandListState *state)
     OverrideSurfacesDesc(&desc, state);
     hr = state->mOrigDevice->CreateRenderTarget(desc.Width, desc.Height, desc.Format, desc.MultiSampleType, desc.MultiSampleQuality, (desc.Usage & D3DUSAGE_DYNAMIC), &renderTarget, NULL);
     if (SUCCEEDED(hr)) {
-        LogInfo("Substantiated custom %S [%S], usage_flags=0x%03x\n",
+        LOG_INFO("Substantiated custom %S [%S], usage_flags=0x%03x\n",
             lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.Usage);
         LogDebugResourceDesc(&desc);
         resource = (IDirect3DSurface9*)renderTarget;
@@ -6519,7 +6519,7 @@ void CustomResource::SubstantiateDepthStencilSurface(CommandListState *state)
     OverrideSurfacesDesc(&desc, state);
     hr = state->mOrigDevice->CreateDepthStencilSurface(desc.Width, desc.Height, desc.Format, desc.MultiSampleType, desc.MultiSampleQuality, (desc.Usage & D3DUSAGE_DYNAMIC), &depthStencil, NULL);
     if (SUCCEEDED(hr)) {
-        LogInfo("Substantiated custom %S [%S], usage_flags=0x%03x\n",
+        LOG_INFO("Substantiated custom %S [%S], usage_flags=0x%03x\n",
             lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.Usage);
         LogDebugResourceDesc(&desc);
         resource = (IDirect3DSurface9*)depthStencil;
@@ -6542,7 +6542,7 @@ void CustomResource::SubstantiateOffscreenPlain(CommandListState *state)
     OverrideSurfacesDesc(&desc, state);
     hr = state->mOrigDevice->CreateOffscreenPlainSurface(desc.Width, desc.Height, desc.Format, desc.Pool, &offscreenPlain, NULL);
     if (SUCCEEDED(hr)) {
-        LogInfo("Substantiated custom %S [%S], usage_flags=0x%03x\n",
+        LOG_INFO("Substantiated custom %S [%S], usage_flags=0x%03x\n",
             lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.Usage);
         LogDebugResourceDesc(&desc);
         resource = (IDirect3DSurface9*)offscreenPlain;
@@ -6568,7 +6568,7 @@ void CustomResource::SubstantiateTexture2D(CommandListState *state)
     OverrideSurfacesDesc(&desc, state);
     hr = state->mOrigDevice->CreateTexture(desc.Width, desc.Height, desc.Levels, desc.Usage, desc.Format, desc.Pool, &tex2d, NULL);
     if (SUCCEEDED(hr)) {
-        LogInfo("Substantiated custom %S [%S], usage_flags=0x%03x\n",
+        LOG_INFO("Substantiated custom %S [%S], usage_flags=0x%03x\n",
             lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.Usage);
         LogDebugResourceDesc(&desc);
         resource = (IDirect3DTexture9*)tex2d;
@@ -6595,7 +6595,7 @@ void CustomResource::SubstantiateTexture3D(CommandListState *state)
 
     hr = state->mOrigDevice->CreateVolumeTexture(desc.Width, desc.Height, desc.Depth, desc.Levels, desc.Usage, desc.Format, desc.Pool, &tex3d, NULL);
     if (SUCCEEDED(hr)) {
-        LogInfo("Substantiated custom %S [%S], usage_flags=0x%03x\n",
+        LOG_INFO("Substantiated custom %S [%S], usage_flags=0x%03x\n",
             lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.Usage);
         LogDebugResourceDesc(&desc);
         resource = (IDirect3DVolumeTexture9*)tex3d;
@@ -6622,7 +6622,7 @@ void CustomResource::SubstantiateTextureCube(CommandListState *state)
 
     hr = state->mOrigDevice->CreateCubeTexture(desc.Width, desc.Levels, desc.Usage, desc.Format, desc.Pool, &texCube, NULL);
     if (SUCCEEDED(hr)) {
-        LogInfo("Substantiated custom %S [%S], usage_flags=0x%03x\n",
+        LOG_INFO("Substantiated custom %S [%S], usage_flags=0x%03x\n",
             lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.Usage);
         LogDebugResourceDesc(&desc);
         resource = (IDirect3DCubeTexture9*)texCube;
@@ -9854,7 +9854,7 @@ static void ReverseStereoBlits(vector<IDirect3DTexture9*>dst_resources, vector<I
     if (!fallback && !G->stereoblit_control_set_once){
         nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, true);
         if (nvret != NVAPI_OK) {
-            LogInfo("Resource copying failed to enable reverse stereo blit\n");
+            LOG_INFO("Resource copying failed to enable reverse stereo blit\n");
             // Fallback path: Copy 2D resource to both sides of the 2x
             // width destination
             fallback = 1;
@@ -10016,7 +10016,7 @@ static void ReverseStereoBlit(IDirect3DSurface9 *dst_resource, IDirect3DSurface9
     if (!fallback && !G->stereoblit_control_set_once) {
         NvAPI_Status nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, true);
         if (nvret != NVAPI_OK) {
-            LogInfo("Resource copying failed to enable reverse stereo blit\n");
+            LOG_INFO("Resource copying failed to enable reverse stereo blit\n");
             // Fallback path: Copy 2D resource to both sides of the 2x
             // width destination
             fallback = 1;
@@ -10342,7 +10342,7 @@ void ResourceCopyOperation::run(CommandListState *state)
             options, stride, offset, format, &buf_dst_size);
 
         if (!*pp_cached_resource) {
-            LogDebug("Resource copy error: Could not create/update destination resource\n");
+            LOG_DEBUG("Resource copy error: Could not create/update destination resource\n");
             goto out_release;
         }
         dst_resource = *pp_cached_resource;
@@ -10367,7 +10367,7 @@ void ResourceCopyOperation::run(CommandListState *state)
                     // resource types (possibly including buffers from the
                     // discovery of the stereo parameters in the cb12 slot), but I
                     // need to test it and make sure it works first
-                    LogInfo("Resource copy: Reverse stereo blit not supported on resource source type %d, resource dest type %d\n", src_type, dst_type);
+                    LOG_INFO("Resource copy: Reverse stereo blit not supported on resource source type %d, resource dest type %d\n", src_type, dst_type);
                     goto out_release;
                 }
                 // TODO: Resolve MSAA to an intermediate resource first

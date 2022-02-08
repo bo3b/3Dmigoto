@@ -21,10 +21,10 @@ static void log_pcre2_error_nonl(int err, char *fmt, ...)
     pcre2_get_error_message(err, buf, sizeof(buf));
 
     va_start(ap, fmt);
-    vLogInfo(fmt, ap);
+    LOG_INFO_V(fmt, ap);
     va_end(ap);
 
-    LogInfo(": %s\n", buf);
+    LOG_INFO(": %s\n", buf);
 }
 
 static bool get_shader_model(std::string *asm_text, std::string *shader_model)
@@ -52,7 +52,7 @@ static bool find_dcl_end(std::string *asm_text, size_t *dcl_end_pos)
     *dcl_end_pos = asm_text->find("\n", *dcl_end_pos + 1);
 
     if (*dcl_end_pos == std::string::npos) {
-        LogInfo("WARNING: Unable to locate end of shader declarations!\n");
+        LOG_INFO("WARNING: Unable to locate end of shader declarations!\n");
         return false;
     }
 
@@ -105,7 +105,7 @@ static unsigned get_dcl_temps(std::string *asm_text)
         return 0;
 
     tmp_regs = stoul(asm_text->substr(dcl_temps + 10, 4));
-    LogInfo("Found dcl_temps %d\n", tmp_regs);
+    LOG_INFO("Found dcl_temps %d\n", tmp_regs);
 
     return tmp_regs;
 }
@@ -118,7 +118,7 @@ static bool update_dcl_temps(std::string *asm_text, size_t new_val)
     if (find_dcl_temps(asm_text, &dcl_temps)) {
         dcl_temps += 11;
         dcl_temps_end = asm_text->find("\n", dcl_temps);
-        LogInfo("Updating dcl_temps %Iu\n", new_val);
+        LOG_INFO("Updating dcl_temps %Iu\n", new_val);
         asm_text->replace(dcl_temps, dcl_temps_end - dcl_temps, std::to_string(new_val));
         return true;
     }
@@ -127,7 +127,7 @@ static bool update_dcl_temps(std::string *asm_text, size_t new_val)
         return false;
 
     insert_str = std::string("\ndcl_temps ") + std::to_string(new_val);
-    LogInfo("Inserting dcl_temps %Iu\n", new_val);
+    LOG_INFO("Inserting dcl_temps %Iu\n", new_val);
     asm_text->insert(dcl_end, insert_str);
     dcl_end += insert_str.size();
 
@@ -292,11 +292,11 @@ bool ShaderRegexPattern::patch(std::string *asm_text, ShaderRegexTemps *temp_reg
             buf, &output_size);
 
     if (rc == PCRE2_ERROR_NOMEMORY) {
-        LogInfo("  NOTICE: regex replace requires a %u byte buffer\n", (unsigned)output_size);
-        LogInfo("  NOTICE: We underestimated by %u bytes and have to start over\n", (unsigned)(output_size - est_size));
-        LogInfo("  NOTICE: What kind of crazy are you doing to get down this code path?\n");
-        LogInfo("  NOTICE: You didn't inject a matrix inverse or two in assembly did you?\n");
-        LogInfo("  NOTICE: Once more, with passion!\n");
+        LOG_INFO("  NOTICE: regex replace requires a %u byte buffer\n", (unsigned)output_size);
+        LOG_INFO("  NOTICE: We underestimated by %u bytes and have to start over\n", (unsigned)(output_size - est_size));
+        LOG_INFO("  NOTICE: What kind of crazy are you doing to get down this code path?\n");
+        LOG_INFO("  NOTICE: You didn't inject a matrix inverse or two in assembly did you?\n");
+        LOG_INFO("  NOTICE: Once more, with passion!\n");
 
         delete [] buf;
         buf = new PCRE2_UCHAR[output_size];
@@ -535,7 +535,7 @@ ShaderRegexCache load_shader_regex_cache(UINT64 hash, const wchar_t *shader_type
             goto out;
         group = shader_regex_group_index[match_ids[i]];
 
-        LogInfo("ShaderRegexCache: %S %016I64x matches [%S]\n", shader_type, hash, group->ini_section.c_str());
+        LOG_INFO("ShaderRegexCache: %S %016I64x matches [%S]\n", shader_type, hash, group->ini_section.c_str());
 
         if (header->patched && tagline)
             tagline->append(std::wstring(L"[") + group->ini_section + std::wstring(L"]"));
@@ -613,7 +613,7 @@ static void save_shader_regex_cache_meta(UINT64 hash, const wchar_t *shader_type
         if (patched) {
             wfopen_ensuring_access(&f, path, L"wb");
             if (!f) {
-                LogInfo("  Error storing ShaderRegex assembly to %S\n", path);
+                LOG_INFO("  Error storing ShaderRegex assembly to %S\n", path);
                 return;
             }
 
@@ -621,10 +621,10 @@ static void save_shader_regex_cache_meta(UINT64 hash, const wchar_t *shader_type
             fwrite(asm_text->c_str(), 1, asm_text->size(), f);
 
             fclose(f);
-            LogInfo("  Storing ShaderRegex assembly to %S\n", path);
+            LOG_INFO("  Storing ShaderRegex assembly to %S\n", path);
         } else {
             if (DeleteFile(path))
-                LogInfo("  Removed stale ShaderRegex assembly file %S\n", path);
+                LOG_INFO("  Removed stale ShaderRegex assembly file %S\n", path);
         }
     }
 }
@@ -675,7 +675,7 @@ bool apply_shader_regex_groups(std::string *asm_text, const wchar_t *shader_type
         if (!match)
             continue;
 
-        LogInfo("ShaderRegex: %s %016I64x matches [%S]\n", shader_model->c_str(), hash, group->ini_section.c_str());
+        LOG_INFO("ShaderRegex: %s %016I64x matches [%S]\n", shader_model->c_str(), hash, group->ini_section.c_str());
         patched = patched || patch;
         match_ids.push_back(j);
 

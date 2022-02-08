@@ -2,8 +2,8 @@
 #include "d3d9Wrapper.h"
 inline void D3D9Wrapper::IDirect3DIndexBuffer9::Delete()
 {
-    LogInfo("IDirect3DIndexBuffer9::Delete\n");
-    LogInfo("  deleting self\n");
+    LOG_INFO("IDirect3DIndexBuffer9::Delete\n");
+    LOG_INFO("  deleting self\n");
 
     D3D9Wrapper::IDirect3DResource9::Delete();
 
@@ -38,11 +38,11 @@ D3D9Wrapper::IDirect3DIndexBuffer9* D3D9Wrapper::IDirect3DIndexBuffer9::GetDirec
 }
 STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::QueryInterface(THIS_ REFIID riid, void ** ppvObj)
 {
-    LogDebug("D3D9Wrapper::IDirect3DIndexBuffer9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
+    LOG_DEBUG("D3D9Wrapper::IDirect3DIndexBuffer9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
     HRESULT hr = NULL;
     if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
         return hr;
-    LogInfo("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
+    LOG_INFO("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
     hr = m_pUnk->QueryInterface(riid, ppvObj);
     if (hr == S_OK) {
         if ((*ppvObj) == GetRealOrig()) {
@@ -50,8 +50,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::QueryInterface(THIS_ REFIID rii
                 *ppvObj = this;
                 zero_d3d_ref_count = false;
                 ++m_ulRef;
-                LogInfo("  interface replaced with IDirect3DIndexBuffer9 wrapper.\n");
-                LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+                LOG_INFO("  interface replaced with IDirect3DIndexBuffer9 wrapper.\n");
+                LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
                 return hr;
             }
         }
@@ -59,7 +59,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::QueryInterface(THIS_ REFIID rii
         if (unk)
             *ppvObj = unk;
     }
-    LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+    LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
     return hr;
 }
 
@@ -72,13 +72,13 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DIndexBuffer9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DIndexBuffer9::Release(THIS)
 {
-    LogDebug("IDirect3DIndexBuffer9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
+    LOG_DEBUG("IDirect3DIndexBuffer9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-    LogDebug("  internal counter = %d\n", ulRef);
+    LOG_DEBUG("  internal counter = %d\n", ulRef);
     if (ulRef == 0)
     {
-        if (!gLogDebug) LogInfo("IDirect3DIndexBuffer9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+        if (!gLogDebug) LOG_INFO("IDirect3DIndexBuffer9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
         zero_d3d_ref_count = true;
         if (!bound)
             Delete();
@@ -88,7 +88,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DIndexBuffer9::Release(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::GetDevice(THIS_ D3D9Wrapper::IDirect3DDevice9** ppDevice)
 {
-    LogDebug("IDirect3DIndexBuffer9::GetDevice called\n");
+    LOG_DEBUG("IDirect3DIndexBuffer9::GetDevice called\n");
 
     CheckIndexBuffer9(this);
     HRESULT hr;
@@ -110,7 +110,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::GetDevice(THIS_ D3D9Wrapper::ID
 
 STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::SetPrivateData(THIS_ REFGUID refguid,CONST void* pData,DWORD SizeOfData,DWORD Flags)
 {
-    LogDebug("IDirect3DIndexBuffer9::SetPrivateData called\n");
+    LOG_DEBUG("IDirect3DIndexBuffer9::SetPrivateData called\n");
 
     CheckIndexBuffer9(this);
     return GetD3DIndexBuffer9()->SetPrivateData(refguid, pData, SizeOfData, Flags);
@@ -118,7 +118,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::SetPrivateData(THIS_ REFGUID re
 
 STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::GetPrivateData(THIS_ REFGUID refguid,void* pData,DWORD* pSizeOfData)
 {
-    LogDebug("IDirect3DIndexBuffer9::GetPrivateData called\n");
+    LOG_DEBUG("IDirect3DIndexBuffer9::GetPrivateData called\n");
 
     CheckIndexBuffer9(this);
     return GetD3DIndexBuffer9()->GetPrivateData(refguid, pData, pSizeOfData);
@@ -126,7 +126,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::GetPrivateData(THIS_ REFGUID re
 
 STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::FreePrivateData(THIS_ REFGUID refguid)
 {
-    LogDebug("IDirect3DIndexBuffer9::GetPrivateData called\n");
+    LOG_DEBUG("IDirect3DIndexBuffer9::GetPrivateData called\n");
 
     CheckIndexBuffer9(this);
     return GetD3DIndexBuffer9()->FreePrivateData(refguid);
@@ -134,7 +134,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::FreePrivateData(THIS_ REFGUID r
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DIndexBuffer9::SetPriority(THIS_ DWORD PriorityNew)
 {
-    LogDebug("IDirect3DIndexBuffer9::SetPriority called\n");
+    LOG_DEBUG("IDirect3DIndexBuffer9::SetPriority called\n");
 
     CheckIndexBuffer9(this);
     return GetD3DIndexBuffer9()->SetPriority(PriorityNew);
@@ -142,7 +142,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DIndexBuffer9::SetPriority(THIS_ DWORD
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DIndexBuffer9::GetPriority(THIS)
 {
-    LogDebug("IDirect3DIndexBuffer9::GetPriority called\n");
+    LOG_DEBUG("IDirect3DIndexBuffer9::GetPriority called\n");
 
     CheckIndexBuffer9(this);
     return GetD3DIndexBuffer9()->GetPriority();
@@ -150,7 +150,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DIndexBuffer9::GetPriority(THIS)
 
 STDMETHODIMP_(void) D3D9Wrapper::IDirect3DIndexBuffer9::PreLoad(THIS)
 {
-    LogDebug("IDirect3DIndexBuffer9::GetPriority called\n");
+    LOG_DEBUG("IDirect3DIndexBuffer9::GetPriority called\n");
 
     CheckIndexBuffer9(this);
     return GetD3DIndexBuffer9()->PreLoad();
@@ -158,25 +158,25 @@ STDMETHODIMP_(void) D3D9Wrapper::IDirect3DIndexBuffer9::PreLoad(THIS)
 
 STDMETHODIMP_(::D3DRESOURCETYPE) D3D9Wrapper::IDirect3DIndexBuffer9::GetType(THIS)
 {
-    LogDebug("IDirect3DIndexBuffer9::GetType called\n");
+    LOG_DEBUG("IDirect3DIndexBuffer9::GetType called\n");
 
     CheckIndexBuffer9(this);
     ::D3DRESOURCETYPE hr = GetD3DIndexBuffer9()->GetType();
-    LogDebug("  returns ResourceType=%x\n", hr);
+    LOG_DEBUG("  returns ResourceType=%x\n", hr);
 
     return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::Lock(THIS_ UINT OffsetToLock,UINT SizeToLock,void** ppbData,DWORD Flags)
 {
-    LogDebug("IDirect3DIndexBuffer9::Lock called with OffsetToLock=%d, SizeToLock=%d, Flags=%x\n", OffsetToLock, SizeToLock, Flags);
+    LOG_DEBUG("IDirect3DIndexBuffer9::Lock called with OffsetToLock=%d, SizeToLock=%d, Flags=%x\n", OffsetToLock, SizeToLock, Flags);
 
     ::IDirect3DIndexBuffer9 *baseIndexBuffer = GetD3DIndexBuffer9();
 
     if (!baseIndexBuffer)
     {
-        if (!gLogDebug) LogInfo("IDirect3DVertexBuffer9::Lock called\n");
-        LogInfo("  postponing call because vertex buffer was not created yet.\n");
+        if (!gLogDebug) LOG_INFO("IDirect3DVertexBuffer9::Lock called\n");
+        LOG_INFO("  postponing call because vertex buffer was not created yet.\n");
 
         if (!pendingLockUnlock)
         {
@@ -192,21 +192,21 @@ STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::Lock(THIS_ UINT OffsetToLock,UI
     hackerDevice->FrameAnalysisLogResourceHash(baseIndexBuffer);
     HRESULT hr = GetD3DIndexBuffer9()->Lock(OffsetToLock, SizeToLock, ppbData, Flags);
     hackerDevice->TrackAndDivertLock<D3D9Wrapper::IDirect3DIndexBuffer9, ::D3DINDEXBUFFER_DESC>(hr, this, SizeToLock, ppbData, Flags);
-    LogDebug("  returns result=%x\n", hr);
+    LOG_DEBUG("  returns result=%x\n", hr);
 
     return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::Unlock(THIS)
 {
-    LogDebug("IDirect3DIndexBuffer9::Unlock called\n");
+    LOG_DEBUG("IDirect3DIndexBuffer9::Unlock called\n");
 
     ::IDirect3DIndexBuffer9 *baseIndexBuffer = GetD3DIndexBuffer9();
 
     if (!baseIndexBuffer)
     {
-        if (!gLogDebug) LogInfo("IDirect3DIndexBuffer9::Unlock called\n");
-        LogInfo("  postponing call because vertex buffer was not created yet.\n");
+        if (!gLogDebug) LOG_INFO("IDirect3DIndexBuffer9::Unlock called\n");
+        LOG_INFO("  postponing call because vertex buffer was not created yet.\n");
 
         return S_OK;
     }
@@ -218,7 +218,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::Unlock(THIS)
 
     hackerDevice->TrackAndDivertUnlock(this);
     HRESULT hr = GetD3DIndexBuffer9()->Unlock();
-    LogDebug("  returns result=%x\n", hr);
+    LOG_DEBUG("  returns result=%x\n", hr);
 
     if (G->analyse_frame)
         hackerDevice->FrameAnalysisAfterUnlock(baseIndexBuffer);
@@ -228,7 +228,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::Unlock(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DIndexBuffer9::GetDesc(THIS_ ::D3DINDEXBUFFER_DESC *pDesc)
 {
-    LogDebug("IDirect3DIndexBuffer9::GetDesc called\n");
+    LOG_DEBUG("IDirect3DIndexBuffer9::GetDesc called\n");
 
     CheckIndexBuffer9(this);
     return GetD3DIndexBuffer9()->GetDesc(pDesc);

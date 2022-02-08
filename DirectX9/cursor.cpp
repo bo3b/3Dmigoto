@@ -103,7 +103,7 @@ static HCURSOR InvisibleCursor()
 
 static int WINAPI Hooked_ShowCursor(_In_ BOOL bShow) {
     G->SET_CURSOR_UPDATE_REQUIRED(1);
-    LogDebug("  Hooked_ShowCursor called \n");
+    LOG_DEBUG("  Hooked_ShowCursor called \n");
     return trampoline_ShowCursor(bShow);
 }
 
@@ -116,7 +116,7 @@ static HCURSOR WINAPI Hooked_SetCursor(
     if (current_cursor != hCursor)
         G->SET_CURSOR_UPDATE_REQUIRED(1);
     current_cursor = hCursor;
-    LogDebug("  Hooked_SetCursor called \n");
+    LOG_DEBUG("  Hooked_SetCursor called \n");
     if (G->hide_cursor)
         return trampoline_SetCursor(InvisibleCursor());
     else
@@ -125,7 +125,7 @@ static HCURSOR WINAPI Hooked_SetCursor(
 
 static HCURSOR WINAPI Hooked_GetCursor(void)
 {
-    LogDebug("  Hooked_GetCursor called \n");
+    LOG_DEBUG("  Hooked_GetCursor called \n");
     if (G->hide_cursor)
         return current_cursor;
     else
@@ -135,7 +135,7 @@ static HCURSOR WINAPI Hooked_GetCursor(void)
 static BOOL WINAPI HideCursor_GetCursorInfo(
     _Inout_ PCURSORINFO pci)
 {
-    LogDebug(" HideCursor_GetCursorInfo called \n");
+    LOG_DEBUG(" HideCursor_GetCursorInfo called \n");
     BOOL rc = trampoline_GetCursorInfo(pci);
 
     if (rc && (pci->flags & CURSOR_SHOWING))
@@ -147,7 +147,7 @@ static BOOL WINAPI HideCursor_GetCursorInfo(
 static BOOL WINAPI Hooked_GetCursorInfo(
     _Inout_ PCURSORINFO pci)
 {
-    LogDebug("  Hooked_GetCursorInfo called \n");
+    LOG_DEBUG("  Hooked_GetCursorInfo called \n");
     BOOL rc = HideCursor_GetCursorInfo(pci);
     RECT client;
 
@@ -156,7 +156,7 @@ static BOOL WINAPI Hooked_GetCursorInfo(
         pci->ptScreenPos.x = pci->ptScreenPos.x * G->GAME_INTERNAL_WIDTH() / client.right;
         pci->ptScreenPos.y = pci->ptScreenPos.y * G->GAME_INTERNAL_HEIGHT() / client.bottom;
 
-        LogDebug("  right = %d, bottom = %d, game width = %d, game height = %d\n", client.right, client.bottom, G->GAME_INTERNAL_WIDTH(), G->GAME_INTERNAL_HEIGHT());
+        LOG_DEBUG("  right = %d, bottom = %d, game width = %d, game height = %d\n", client.right, client.bottom, G->GAME_INTERNAL_WIDTH(), G->GAME_INTERNAL_HEIGHT());
     }
 
     return rc;
@@ -175,7 +175,7 @@ BOOL WINAPI CursorUpscalingBypass_GetCursorInfo(
 
 static BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
 {
-    LogDebug("Hooked_ScreenToClient called \n");
+    LOG_DEBUG("Hooked_ScreenToClient called \n");
     BOOL rc;
     RECT client;
     bool translate = G->SCREEN_UPSCALING > 0 && lpPoint
@@ -198,7 +198,7 @@ static BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
         lpPoint->x = lpPoint->x * G->GAME_INTERNAL_WIDTH() / client.right;
         lpPoint->y = lpPoint->y * G->GAME_INTERNAL_HEIGHT() / client.bottom;
 
-        LogDebug("  translate = %d, x = %d, y = %d, right = %d, bottom = %d, game width = %d, game height = %d\n", translate, lpPoint->x, lpPoint->y, client.right, client.bottom, G->GAME_INTERNAL_WIDTH(), G->GAME_INTERNAL_HEIGHT());
+        LOG_DEBUG("  translate = %d, x = %d, y = %d, right = %d, bottom = %d, game width = %d, game height = %d\n", translate, lpPoint->x, lpPoint->y, client.right, client.bottom, G->GAME_INTERNAL_WIDTH(), G->GAME_INTERNAL_HEIGHT());
     }
 
 
@@ -206,7 +206,7 @@ static BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
 }
 static int WINAPI Hooked_MapWindowPoints(HWND hWndFrom, HWND hWndTo, LPPOINT lpPoints, UINT cPoints)
 {
-    LogDebug("  Hooked_MapWindowPoints called \n");
+    LOG_DEBUG("  Hooked_MapWindowPoints called \n");
     int rc;
     RECT client;
     bool translate = G->adjust_map_window_points && G->SCREEN_UPSCALING > 0 && (hWndFrom == NULL || hWndFrom == HWND_DESKTOP) && hWndTo != NULL && hWndTo != HWND_DESKTOP && lpPoints
@@ -229,7 +229,7 @@ static int WINAPI Hooked_MapWindowPoints(HWND hWndFrom, HWND hWndTo, LPPOINT lpP
         // Now scale to fake game coordinates:
         lpPoints->x = lpPoints->x * G->GAME_INTERNAL_WIDTH() / client.right;
         lpPoints->y = lpPoints->y * G->GAME_INTERNAL_HEIGHT() / client.bottom;
-        LogDebug("  translate = %d, x = %d, y = %d, right = %d, bottom = %d, game width = %d, game height = %d\n", translate, lpPoints->x, lpPoints->y, client.right, client.bottom, G->GAME_INTERNAL_WIDTH(), G->GAME_INTERNAL_HEIGHT());
+        LOG_DEBUG("  translate = %d, x = %d, y = %d, right = %d, bottom = %d, game width = %d, game height = %d\n", translate, lpPoints->x, lpPoints->y, client.right, client.bottom, G->GAME_INTERNAL_WIDTH(), G->GAME_INTERNAL_HEIGHT());
     }
 
 
@@ -253,7 +253,7 @@ static BOOL WINAPI Hooked_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
         lpRect->right = G->GAME_INTERNAL_WIDTH();
         lpRect->bottom = G->GAME_INTERNAL_HEIGHT();
     }
-    LogDebug("  Hooked_GetClientRect called right = %d, bottom = %d\n", lpRect->right, lpRect->bottom);
+    LOG_DEBUG("  Hooked_GetClientRect called right = %d, bottom = %d\n", lpRect->right, lpRect->bottom);
 
     return rc;
 }
@@ -267,7 +267,7 @@ static BOOL WINAPI Hooked_GetWindowRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
         lpRect->right = G->GAME_INTERNAL_WIDTH();
         lpRect->bottom = G->GAME_INTERNAL_HEIGHT();
     }
-    LogDebug("  Hooked_GetWindowRect called right = %d, bottom = %d\n", lpRect->right, lpRect->bottom);
+    LOG_DEBUG("  Hooked_GetWindowRect called right = %d, bottom = %d\n", lpRect->right, lpRect->bottom);
 
     return rc;
 }
@@ -281,7 +281,7 @@ BOOL WINAPI CursorUpscalingBypass_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpR
 
 static BOOL WINAPI Hooked_GetCursorPos(_Out_ LPPOINT lpPoint)
 {
-    LogDebug("Hooked_GetCursorPos called \n");
+    LOG_DEBUG("Hooked_GetCursorPos called \n");
     BOOL res = trampoline_GetCursorPos(lpPoint);
     RECT client;
 
@@ -292,7 +292,7 @@ static BOOL WINAPI Hooked_GetCursorPos(_Out_ LPPOINT lpPoint)
         // TODO: Maybe there is a better way than use globals for the original game resolution
         lpPoint->x = lpPoint->x * G->GAME_INTERNAL_WIDTH() / client.right;
         lpPoint->y = lpPoint->y * G->GAME_INTERNAL_HEIGHT() / client.bottom;
-        LogDebug("  x = %d, y = %d, right = %d, bottom = %d, game width = %d, game height = %d\n", lpPoint->x, lpPoint->y, client.right, client.bottom, G->GAME_INTERNAL_WIDTH(), G->GAME_INTERNAL_HEIGHT());
+        LOG_DEBUG("  x = %d, y = %d, right = %d, bottom = %d, game width = %d, game height = %d\n", lpPoint->x, lpPoint->y, client.right, client.bottom, G->GAME_INTERNAL_WIDTH(), G->GAME_INTERNAL_HEIGHT());
     }
 
     return res;
@@ -307,11 +307,11 @@ static BOOL WINAPI Hooked_SetCursorPos(_In_ int X, _In_ int Y)
         // TODO: Maybe there is a better way than use globals for the original game resolution
         const int new_x = X * client.right / G->GAME_INTERNAL_WIDTH();
         const int new_y = Y * client.bottom / G->GAME_INTERNAL_HEIGHT();
-        LogDebug("  Hooked_SetCursorPos called x = %d, y = %d, right = %d, bottom = %d, game width = %d, game height = %d\n", new_x, new_y, client.right, client.bottom, G->GAME_INTERNAL_WIDTH(), G->GAME_INTERNAL_HEIGHT());
+        LOG_DEBUG("  Hooked_SetCursorPos called x = %d, y = %d, right = %d, bottom = %d, game width = %d, game height = %d\n", new_x, new_y, client.right, client.bottom, G->GAME_INTERNAL_WIDTH(), G->GAME_INTERNAL_HEIGHT());
         return trampoline_SetCursorPos(new_x, new_y);
     }
     else
-        LogDebug("  Hooked_SetCursorPos called x = %d, y = %d", X, Y);
+        LOG_DEBUG("  Hooked_SetCursorPos called x = %d, y = %d", X, Y);
         return trampoline_SetCursorPos(X, Y);
 }
 
@@ -406,13 +406,13 @@ int InstallHookLate(HINSTANCE module, char *func, void **trampoline, void *hook)
 
     fnOrig = NktHookLibHelpers::GetProcedureAddress(module, func);
     if (fnOrig == NULL) {
-        LogInfo("Failed to get address of %s\n", func);
+        LOG_INFO("Failed to get address of %s\n", func);
         return 1;
     }
 
     dwOsErr = cHookMgr.Hook(&hook_id, trampoline, fnOrig, hook);
     if (dwOsErr) {
-        LogInfo("Failed to hook %s: 0x%x\n", func, dwOsErr);
+        LOG_INFO("Failed to hook %s: 0x%x\n", func, dwOsErr);
         return 1;
     }
 
@@ -426,7 +426,7 @@ namespace {
     template<typename DEVM>
     void fixDevMode(DEVM* lpDevMode) {
         if (lpDevMode->dmPelsWidth == G->GAME_INTERNAL_WIDTH() && lpDevMode->dmPelsHeight == G->GAME_INTERNAL_HEIGHT()) {
-            LogDebug(" -> Overriding\n");
+            LOG_DEBUG(" -> Overriding\n");
             if (G->SCREEN_WIDTH != -1)
                 lpDevMode->dmPelsWidth = G->SCREEN_WIDTH;
             if (G->SCREEN_HEIGHT != -1)
@@ -438,7 +438,7 @@ namespace {
 }
 
 GENERATE_INTERCEPT_HEADER(ChangeDisplaySettingsExA, LONG, WINAPI, _In_opt_ LPCSTR lpszDeviceName, _In_opt_ DEVMODEA* lpDevMode, _Reserved_ HWND hwnd, _In_ DWORD dwflags, _In_opt_ LPVOID lParam) {
-    LogDebug("ChangeDisplaySettingsExA\n");
+    LOG_DEBUG("ChangeDisplaySettingsExA\n");
     if (!G->adjust_display_settings || !(G->SCREEN_UPSCALING > 0)) return TrueChangeDisplaySettingsExA(lpszDeviceName, lpDevMode, hwnd, dwflags, lParam);
     if (lpDevMode == NULL) return TrueChangeDisplaySettingsExA(lpszDeviceName, NULL, hwnd, dwflags, lParam);
     DEVMODEA copy = *lpDevMode;
@@ -446,7 +446,7 @@ GENERATE_INTERCEPT_HEADER(ChangeDisplaySettingsExA, LONG, WINAPI, _In_opt_ LPCST
     return TrueChangeDisplaySettingsExA(lpszDeviceName, &copy, hwnd, dwflags, lParam);
 }
 GENERATE_INTERCEPT_HEADER(ChangeDisplaySettingsExW, LONG, WINAPI, _In_opt_ LPCWSTR lpszDeviceName, _In_opt_ DEVMODEW* lpDevMode, _Reserved_ HWND hwnd, _In_ DWORD dwflags, _In_opt_ LPVOID lParam) {
-    LogDebug("ChangeDisplaySettingsExW\n");
+    LOG_DEBUG("ChangeDisplaySettingsExW\n");
     if (!G->adjust_display_settings || !(G->SCREEN_UPSCALING > 0)) return TrueChangeDisplaySettingsExW(lpszDeviceName, lpDevMode, hwnd, dwflags, lParam);
     if (lpDevMode == NULL) return TrueChangeDisplaySettingsExW(lpszDeviceName, NULL, hwnd, dwflags, lParam);
     DEVMODEW copy = *lpDevMode;
@@ -548,7 +548,7 @@ const char* SystemMetricToString(int metric) {
     return "Unknown Metric!";
 }
 GENERATE_INTERCEPT_HEADER(GetSystemMetrics, int, WINAPI, _In_ int nIndex) {
-    LogDebug("DetouredGetSystemMetrics %d - %s\n", nIndex, SystemMetricToString(nIndex));
+    LOG_DEBUG("DetouredGetSystemMetrics %d - %s\n", nIndex, SystemMetricToString(nIndex));
     int ret = TrueGetSystemMetrics(nIndex);
     if (G->adjust_system_metrics && G->SCREEN_UPSCALING > 0 && G->GAME_INTERNAL_WIDTH() > 1 && G->GAME_INTERNAL_HEIGHT() > 1) {
         switch (nIndex) {
@@ -566,7 +566,7 @@ GENERATE_INTERCEPT_HEADER(GetSystemMetrics, int, WINAPI, _In_ int nIndex) {
             break;
         }
     }
-    LogDebug(" -> %d\n", ret);
+    LOG_DEBUG(" -> %d\n", ret);
     return ret;
 }
 
@@ -578,14 +578,14 @@ namespace {
 }
 
 GENERATE_INTERCEPT_HEADER(GetMonitorInfoA, BOOL, WINAPI, _In_ HMONITOR hMonitor, _Inout_ LPMONITORINFO lpmi) {
-    LogDebug("DetouredGetMonitorInfoA %p\n", hMonitor);
+    LOG_DEBUG("DetouredGetMonitorInfoA %p\n", hMonitor);
     BOOL ret = TrueGetMonitorInfoA(hMonitor, lpmi);
     if (G->adjust_monitor_info && G->SCREEN_UPSCALING > 0 && G->GAME_INTERNAL_WIDTH() > 1 && G->GAME_INTERNAL_HEIGHT() > 1)
         adjustMonitorInfo(lpmi);
     return ret;
 }
 GENERATE_INTERCEPT_HEADER(GetMonitorInfoW, BOOL, WINAPI, _In_ HMONITOR hMonitor, _Inout_ LPMONITORINFO lpmi) {
-    LogDebug("DetouredGetMonitorInfoW %p\n", hMonitor);
+    LOG_DEBUG("DetouredGetMonitorInfoW %p\n", hMonitor);
     BOOL ret = TrueGetMonitorInfoW(hMonitor, lpmi);
     if (G->adjust_monitor_info && G->SCREEN_UPSCALING > 0 && G->GAME_INTERNAL_WIDTH() > 1 && G->GAME_INTERNAL_HEIGHT() > 1)
         adjustMonitorInfo(lpmi);
@@ -593,18 +593,18 @@ GENERATE_INTERCEPT_HEADER(GetMonitorInfoW, BOOL, WINAPI, _In_ HMONITOR hMonitor,
 }
 // Mouse stuff //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 GENERATE_INTERCEPT_HEADER(ClipCursor, BOOL, WINAPI, __in_opt CONST RECT *lpRect) {
-    LogDebug("ClipCursor\n");
+    LOG_DEBUG("ClipCursor\n");
     if (G->adjust_clip_cursor && G->SCREEN_UPSCALING > 0) {
-        LogDebug(" -> Overriding\n");
+        LOG_DEBUG(" -> Overriding\n");
         return TrueClipCursor(NULL);
     }
     return TrueClipCursor(lpRect);
 }
 
 GENERATE_INTERCEPT_HEADER(WindowFromPoint, HWND, WINAPI, _In_ POINT Point) {
-    LogDebug("DetouredWindowFromPointA\n");
+    LOG_DEBUG("DetouredWindowFromPointA\n");
     if (G->adjust_window_from_point && G->SCREEN_UPSCALING > 0 && G->GAME_INTERNAL_WIDTH() > 1 && G->GAME_INTERNAL_HEIGHT() > 1) {
-        LogDebug("-> Adjusting position\n");
+        LOG_DEBUG("-> Adjusting position\n");
         Point.x = Point.x * G->SCREEN_WIDTH / G->GAME_INTERNAL_WIDTH();
         Point.y = Point.y * G->SCREEN_HEIGHT / G->GAME_INTERNAL_HEIGHT();
     }
@@ -613,20 +613,20 @@ GENERATE_INTERCEPT_HEADER(WindowFromPoint, HWND, WINAPI, _In_ POINT Point) {
 // Messages /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 GENERATE_INTERCEPT_HEADER(PeekMessageA, BOOL, WINAPI, _Out_ LPMSG lpMsg, _In_opt_ HWND hWnd, _In_ UINT wMsgFilterMin, _In_ UINT wMsgFilterMax, _In_ UINT wRemoveMsg) {
-    LogDebug("DetouredPeekMessageA\n");
+    LOG_DEBUG("DetouredPeekMessageA\n");
     BOOL ret = TruePeekMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
     if (ret && G->adjust_message_pt && G->SCREEN_UPSCALING > 0 && G->GAME_INTERNAL_WIDTH() > 1 && G->GAME_INTERNAL_HEIGHT() > 1) {
-        LogDebug("-> Adjusting position\n");
+        LOG_DEBUG("-> Adjusting position\n");
         lpMsg->pt.x = lpMsg->pt.x * G->GAME_INTERNAL_WIDTH() / G->SCREEN_WIDTH;
         lpMsg->pt.x = lpMsg->pt.x * G->GAME_INTERNAL_HEIGHT() / G->SCREEN_HEIGHT;
     }
     return ret;
 }
 GENERATE_INTERCEPT_HEADER(GetMessageA, BOOL, WINAPI, _Out_ LPMSG lpMsg, _In_opt_ HWND hWnd, _In_ UINT wMsgFilterMin, _In_ UINT wMsgFilterMax) {
-    LogDebug("DetouredGetMessageA\n");
+    LOG_DEBUG("DetouredGetMessageA\n");
     BOOL ret = TrueGetMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
     if (ret && G->adjust_message_pt && G->SCREEN_UPSCALING > 0 && G->GAME_INTERNAL_WIDTH() > 1 && G->GAME_INTERNAL_HEIGHT() > 1) {
-        LogDebug("-> Adjusting position\n");
+        LOG_DEBUG("-> Adjusting position\n");
         lpMsg->pt.x = lpMsg->pt.x * G->GAME_INTERNAL_WIDTH() / G->SCREEN_WIDTH;
         lpMsg->pt.x = lpMsg->pt.x * G->GAME_INTERNAL_HEIGHT() / G->SCREEN_HEIGHT;
     }
@@ -634,7 +634,7 @@ GENERATE_INTERCEPT_HEADER(GetMessageA, BOOL, WINAPI, _Out_ LPMSG lpMsg, _In_opt_
 }
 
 GENERATE_INTERCEPT_HEADER(GetMessagePos, DWORD, WINAPI) {
-    LogDebug("DetouredGetMessagePos\n");
+    LOG_DEBUG("DetouredGetMessagePos\n");
     DWORD ret = TrueGetMessagePos();
     return ret;
 }
@@ -657,90 +657,90 @@ const char* WindowLongOffsetToString(int nIndex) {
 namespace {
     std::map<HWND, WNDPROC> prevWndProcs;
     LRESULT CALLBACK InterceptWindowProc(_In_  HWND hwnd, _In_  UINT uMsg, _In_  WPARAM wParam, _In_  LPARAM lParam) {
-        LogDebug("InterceptWindowProc hwnd: %p\n", hwnd);
+        LOG_DEBUG("InterceptWindowProc hwnd: %p\n", hwnd);
         if (uMsg >= WM_MOUSEFIRST && uMsg <= WM_MOUSELAST) {
             POINTS p = MAKEPOINTS(lParam);
             p.x = p.x * (SHORT)G->GAME_INTERNAL_WIDTH() / G->SCREEN_WIDTH;
             p.y = p.y * (SHORT)G->GAME_INTERNAL_HEIGHT() / G->SCREEN_HEIGHT;
             return CallWindowProc(prevWndProcs[hwnd], hwnd, uMsg, wParam, MAKELPARAM(p.x, p.y));
         }
-        LogDebug(" -> calling original: %p\n", prevWndProcs[hwnd]);
+        LOG_DEBUG(" -> calling original: %p\n", prevWndProcs[hwnd]);
         LRESULT res = CallWindowProc(prevWndProcs[hwnd], hwnd, uMsg, wParam, lParam);
         return res;
     }
 }
 #ifndef _WIN64
 GENERATE_INTERCEPT_HEADER(GetWindowLongA, LONG, WINAPI, _In_ HWND hWnd, _In_ int nIndex) {
-    LogDebug("DetouredGetWindowLongA hwnd: %p -- index: %s\n", hWnd, WindowLongOffsetToString(nIndex));
+    LOG_DEBUG("DetouredGetWindowLongA hwnd: %p -- index: %s\n", hWnd, WindowLongOffsetToString(nIndex));
     if (nIndex == GWL_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0) {
-        LogDebug(" -> return from table\n");
+        LOG_DEBUG(" -> return from table\n");
         if (prevWndProcs.count(hWnd)>0) return (LONG)prevWndProcs[hWnd];
     }
     return TrueGetWindowLongA(hWnd, nIndex);
 }
 GENERATE_INTERCEPT_HEADER(GetWindowLongW, LONG, WINAPI, _In_ HWND hWnd, _In_ int nIndex) {
-    LogDebug("DetouredGetWindowLongW hwnd: %p -- index: %s\n", hWnd, WindowLongOffsetToString(nIndex));
+    LOG_DEBUG("DetouredGetWindowLongW hwnd: %p -- index: %s\n", hWnd, WindowLongOffsetToString(nIndex));
     if (nIndex == GWL_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0) {
-        LogDebug(" -> return from table\n");
+        LOG_DEBUG(" -> return from table\n");
         if (prevWndProcs.count(hWnd)>0) return (LONG)prevWndProcs[hWnd];
     }
     return TrueGetWindowLongW(hWnd, nIndex);
 }
 
 GENERATE_INTERCEPT_HEADER(SetWindowLongA, LONG, WINAPI, _In_ HWND hWnd, _In_ int nIndex, _In_ LONG dwNewLong) {
-    LogDebug("DetouredSetWindowLongA hwnd: %p -- index: %s -- value: %d\n", hWnd, WindowLongOffsetToString(nIndex), dwNewLong);
+    LOG_DEBUG("DetouredSetWindowLongA hwnd: %p -- index: %s -- value: %d\n", hWnd, WindowLongOffsetToString(nIndex), dwNewLong);
     LONG ret = TrueSetWindowLongA(hWnd, nIndex, dwNewLong);
     if (nIndex == GWL_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0 && G->GAME_INTERNAL_WIDTH() > 1 && G->GAME_INTERNAL_HEIGHT() > 1) {
         prevWndProcs[hWnd] = (WNDPROC)dwNewLong;
-        if (prevWndProcs.size() > 10) LogDebug("More than 10 prevWndProcs!\n");
+        if (prevWndProcs.size() > 10) LOG_DEBUG("More than 10 prevWndProcs!\n");
         TrueSetWindowLongA(hWnd, GWL_WNDPROC, (LONG)&InterceptWindowProc);
     }
     return ret;
 }
 GENERATE_INTERCEPT_HEADER(SetWindowLongW, LONG, WINAPI, _In_ HWND hWnd, _In_ int nIndex, _In_ LONG dwNewLong) {
-    LogDebug("DetouredSetWindowLongW hwnd: %p -- index: %s -- value: %d\n", hWnd, WindowLongOffsetToString(nIndex), dwNewLong);
+    LOG_DEBUG("DetouredSetWindowLongW hwnd: %p -- index: %s -- value: %d\n", hWnd, WindowLongOffsetToString(nIndex), dwNewLong);
     LONG ret = TrueSetWindowLongW(hWnd, nIndex, dwNewLong);
     if (nIndex == GWL_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0 && G->GAME_INTERNAL_WIDTH() > 1 && G->GAME_INTERNAL_HEIGHT() > 1) {
         prevWndProcs[hWnd] = (WNDPROC)dwNewLong;
-        if (prevWndProcs.size() > 10) LogDebug("More than 10 prevWndProcs!\n");
+        if (prevWndProcs.size() > 10) LOG_DEBUG("More than 10 prevWndProcs!\n");
         TrueSetWindowLongW(hWnd, GWL_WNDPROC, (LONG)&InterceptWindowProc);
     }
     return ret;
 }
 #else
 GENERATE_INTERCEPT_HEADER(GetWindowLongPtrA, LONG_PTR, WINAPI, _In_ HWND hWnd, _In_ int nIndex) {
-    LogDebug("DetouredGetWindowLongA hwnd: %p -- index: %s\n", hWnd, WindowLongOffsetToString(nIndex));
+    LOG_DEBUG("DetouredGetWindowLongA hwnd: %p -- index: %s\n", hWnd, WindowLongOffsetToString(nIndex));
     if (nIndex == GWLP_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0) {
-        LogDebug(" -> return from table\n");
+        LOG_DEBUG(" -> return from table\n");
         if (prevWndProcs.count(hWnd)>0) return (LONG_PTR)prevWndProcs[hWnd];
     }
     return TrueGetWindowLongPtrA(hWnd, nIndex);
 }
 GENERATE_INTERCEPT_HEADER(GetWindowLongPtrW, LONG_PTR, WINAPI, _In_ HWND hWnd, _In_ int nIndex) {
-    LogDebug("DetouredGetWindowLongW hwnd: %p -- index: %s\n", hWnd, WindowLongOffsetToString(nIndex));
+    LOG_DEBUG("DetouredGetWindowLongW hwnd: %p -- index: %s\n", hWnd, WindowLongOffsetToString(nIndex));
     if (nIndex == GWLP_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0) {
-        LogDebug(" -> return from table\n");
+        LOG_DEBUG(" -> return from table\n");
         if (prevWndProcs.count(hWnd)>0) return (LONG_PTR)prevWndProcs[hWnd];
     }
     return TrueGetWindowLongPtrW(hWnd, nIndex);
 }
 
 GENERATE_INTERCEPT_HEADER(SetWindowLongPtrA, LONG_PTR, WINAPI, _In_ HWND hWnd, _In_ int nIndex, _In_ LONG_PTR dwNewLong) {
-    LogDebug("DetouredSetWindowLongA hwnd: %p -- index: %s -- value: %d\n", hWnd, WindowLongOffsetToString(nIndex), dwNewLong);
+    LOG_DEBUG("DetouredSetWindowLongA hwnd: %p -- index: %s -- value: %d\n", hWnd, WindowLongOffsetToString(nIndex), dwNewLong);
     LONG_PTR ret = TrueSetWindowLongPtrA(hWnd, nIndex, dwNewLong);
     if (nIndex == GWLP_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0 && G->GAME_INTERNAL_WIDTH() > 1 && G->GAME_INTERNAL_HEIGHT() > 1) {
         prevWndProcs[hWnd] = (WNDPROC)dwNewLong;
-        if (prevWndProcs.size() > 10) LogDebug("More than 10 prevWndProcs!\n");
+        if (prevWndProcs.size() > 10) LOG_DEBUG("More than 10 prevWndProcs!\n");
         TrueSetWindowLongPtrA(hWnd, GWLP_WNDPROC, (LONG_PTR)&InterceptWindowProc);
     }
     return ret;
 }
 GENERATE_INTERCEPT_HEADER(SetWindowLongPtrW, LONG_PTR, WINAPI, _In_ HWND hWnd, _In_ int nIndex, _In_ LONG_PTR dwNewLong) {
-    LogDebug("DetouredSetWindowLongW hwnd: %p -- index: %s -- value: %d\n", hWnd, WindowLongOffsetToString(nIndex), dwNewLong);
+    LOG_DEBUG("DetouredSetWindowLongW hwnd: %p -- index: %s -- value: %d\n", hWnd, WindowLongOffsetToString(nIndex), dwNewLong);
     LONG_PTR ret = TrueSetWindowLongPtrW(hWnd, nIndex, dwNewLong);
     if (nIndex == GWLP_WNDPROC && G->intercept_window_proc && G->SCREEN_UPSCALING > 0 && G->GAME_INTERNAL_WIDTH() > 1 && G->GAME_INTERNAL_HEIGHT() > 1) {
         prevWndProcs[hWnd] = (WNDPROC)dwNewLong;
-        if (prevWndProcs.size() > 10) LogDebug("More than 10 prevWndProcs!\n");
+        if (prevWndProcs.size() > 10) LOG_DEBUG("More than 10 prevWndProcs!\n");
         TrueSetWindowLongPtrW(hWnd, GWLP_WNDPROC, (LONG_PTR)&InterceptWindowProc);
     }
     return ret;
@@ -813,12 +813,12 @@ void InstallMouseHooks(bool hide)
     fail |= InstallHookLate(hUser32, "GetMonitorInfoW", (void**)&TrueGetMonitorInfoW, DetouredGetMonitorInfoW);
 
     if (fail) {
-        LogInfo("Failed to hook mouse cursor functions - hide_cursor will not work\n");
+        LOG_INFO("Failed to hook mouse cursor functions - hide_cursor will not work\n");
         BeepFailure2();
         return;
     }
 
-    LogInfo("Successfully hooked mouse cursor functions for hide_cursor\n");
+    LOG_INFO("Successfully hooked mouse cursor functions for hide_cursor\n");
 }
 
 static BOOL(WINAPI *trampoline_SetWindowPos)(_In_ HWND hWnd, _In_opt_ HWND hWndInsertAfter,
@@ -834,7 +834,7 @@ static BOOL WINAPI Hooked_SetWindowPos(
     _In_ int cy,
     _In_ UINT uFlags)
 {
-    LogDebug("  Hooked_SetWindowPos called, width = %d, height = %d \n", cx, cy);
+    LOG_DEBUG("  Hooked_SetWindowPos called, width = %d, height = %d \n", cx, cy);
 
     if (G->SCREEN_UPSCALING != 0) {
         if (cx != 0 && cy != 0) {
@@ -868,12 +868,12 @@ void InstallSetWindowPosHook()
     fail |= InstallHookLate(hUser32, "SetWindowPos", (void**)&trampoline_SetWindowPos, Hooked_SetWindowPos);
 
     if (fail) {
-        LogInfo("Failed to hook SetWindowPos for full_screen=2\n");
+        LOG_INFO("Failed to hook SetWindowPos for full_screen=2\n");
         BeepFailure2();
         return;
     }
 
-    LogInfo("Successfully hooked SetWindowPos for full_screen=2\n");
+    LOG_INFO("Successfully hooked SetWindowPos for full_screen=2\n");
     return;
 }
 
@@ -904,7 +904,7 @@ static HWND WINAPI Hooked_CreateWindowEx(
     _In_opt_ HINSTANCE hInstance,
     _In_opt_ LPVOID    lpParam)
 {
-    LogDebug("  Hooked_CreateWindowEx called, width = %d, height = %d \n", nWidth, nHeight);
+    LOG_DEBUG("  Hooked_CreateWindowEx called, width = %d, height = %d \n", nWidth, nHeight);
     return trampoline_CreateWindowEx(dwExStyle, lpClassName, lpWindowName, dwStyle, x, y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
 }
 //
@@ -922,10 +922,10 @@ void InstallCreateWindowHook()
     hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
     fail |= InstallHookLate(hUser32, "CreateWindowExW", (void**)&trampoline_CreateWindowEx, Hooked_CreateWindowEx);
     if (fail) {
-        LogInfo("Failed to hook create window \n");
+        LOG_INFO("Failed to hook create window \n");
         BeepFailure2();
         return;
     }
 
-    LogInfo("Successfully hooked create window \n");
+    LOG_INFO("Successfully hooked create window \n");
 }

@@ -15,8 +15,8 @@ inline ::IDirect3DCubeTexture9 * D3D9Wrapper::IDirect3DCubeTexture9::DirectModeG
 }
 inline void D3D9Wrapper::IDirect3DCubeTexture9::Delete()
 {
-    LogInfo("IDirect3DCubeTexture9::Delete\n");
-    LogInfo("  deleting self\n");
+    LOG_INFO("IDirect3DCubeTexture9::Delete\n");
+    LOG_INFO("  deleting self\n");
 
     D3D9Wrapper::IDirect3DResource9::Delete();
     for (auto it = m_wrappedSurfaceLevels.cbegin(); it != m_wrappedSurfaceLevels.cend();)
@@ -68,11 +68,11 @@ D3D9Wrapper::IDirect3DCubeTexture9* D3D9Wrapper::IDirect3DCubeTexture9::GetDirec
 
 STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::QueryInterface(THIS_ REFIID riid, void ** ppvObj)
 {
-    LogDebug("D3D9Wrapper::IDirect3DCubeTexture9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
+    LOG_DEBUG("D3D9Wrapper::IDirect3DCubeTexture9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
     HRESULT hr = NULL;
     if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
         return hr;
-    LogInfo("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
+    LOG_INFO("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
     hr = m_pUnk->QueryInterface(riid, ppvObj);
     if (hr == S_OK) {
         if ((*ppvObj) == GetRealOrig()) {
@@ -81,8 +81,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::QueryInterface(THIS_ REFIID rii
                 ++m_ulRef;
                 ++shared_ref_count;
                 zero_d3d_ref_count = false;
-                LogInfo("  interface replaced with IDirect3DCubeTexture9 wrapper.\n");
-                LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+                LOG_INFO("  interface replaced with IDirect3DCubeTexture9 wrapper.\n");
+                LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
                 return hr;
             }
         }
@@ -97,8 +97,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::QueryInterface(THIS_ REFIID rii
                     ++wrapper->m_ulRef;
                     ++shared_ref_count;
                     wrapper->zero_d3d_ref_count = false;
-                    LogInfo("  interface replaced with IDirect3DSurface9 wrapper.\n");
-                    LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+                    LOG_INFO("  interface replaced with IDirect3DSurface9 wrapper.\n");
+                    LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
                     return hr;
                 }
                 else {
@@ -107,8 +107,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::QueryInterface(THIS_ REFIID rii
                     ++wrapper->m_ulRef;
                     ++shared_ref_count;
                     wrapper->zero_d3d_ref_count = false;
-                    LogInfo("  interface replaced with IDirect3DSurface9 wrapper.\n");
-                    LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+                    LOG_INFO("  interface replaced with IDirect3DSurface9 wrapper.\n");
+                    LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
                     return hr;
                 }
             }
@@ -117,7 +117,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::QueryInterface(THIS_ REFIID rii
         if (unk)
             *ppvObj = unk;
     }
-    LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+    LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
     return hr;
 }
 
@@ -131,16 +131,16 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DCubeTexture9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DCubeTexture9::Release(THIS)
 {
-    LogDebug("IDirect3DCubeTexture9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
+    LOG_DEBUG("IDirect3DCubeTexture9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-    LogDebug("  internal counter = %d\n", ulRef);
+    LOG_DEBUG("  internal counter = %d\n", ulRef);
 
     --m_ulRef;
     bool prev_non_zero = !zero_d3d_ref_count;
     if (ulRef == 0)
     {
-        if (!gLogDebug) LogInfo("IDirect3DCubeTexture9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+        if (!gLogDebug) LOG_INFO("IDirect3DCubeTexture9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
         zero_d3d_ref_count = true;
     }
 
@@ -157,7 +157,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DCubeTexture9::Release(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::GetDevice(THIS_ D3D9Wrapper::IDirect3DDevice9** ppDevice)
 {
-    LogDebug("IDirect3DCubeTexture9::GetDevice called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::GetDevice called\n");
 
     CheckCubeTexture9(this);
     HRESULT hr;
@@ -179,7 +179,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::GetDevice(THIS_ D3D9Wrapper::ID
 
 STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::SetPrivateData(THIS_ REFGUID refguid, CONST void* pData, DWORD SizeOfData, DWORD Flags)
 {
-    LogDebug("IDirect3DCubeTexture9::SetPrivateData called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::SetPrivateData called\n");
     CheckCubeTexture9(this);
     HRESULT hr = GetD3DCubeTexture9()->SetPrivateData(refguid, pData, SizeOfData, Flags);
     return hr;
@@ -187,7 +187,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::SetPrivateData(THIS_ REFGUID re
 
 STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::GetPrivateData(THIS_ REFGUID refguid, void* pData, DWORD* pSizeOfData)
 {
-    LogDebug("IDirect3DCubeTexture9::GetPrivateData called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::GetPrivateData called\n");
 
     CheckCubeTexture9(this);
     return GetD3DCubeTexture9()->GetPrivateData(refguid, pData, pSizeOfData);
@@ -195,7 +195,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::GetPrivateData(THIS_ REFGUID re
 
 STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::FreePrivateData(THIS_ REFGUID refguid)
 {
-    LogDebug("IDirect3DCubeTexture9::FreePrivateData called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::FreePrivateData called\n");
 
     CheckCubeTexture9(this);
     HRESULT hr = GetD3DCubeTexture9()->FreePrivateData(refguid);
@@ -205,7 +205,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::FreePrivateData(THIS_ REFGUID r
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DCubeTexture9::SetPriority(THIS_ DWORD PriorityNew)
 {
-    LogDebug("IDirect3DCubeTexture9::SetPriority called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::SetPriority called\n");
 
     CheckCubeTexture9(this);
     if (G->gForceStereo == 2) {
@@ -224,7 +224,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DCubeTexture9::SetPriority(THIS_ DWORD
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DCubeTexture9::GetPriority(THIS)
 {
-    LogDebug("IDirect3DCubeTexture9::GetPriority called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::GetPriority called\n");
 
     CheckCubeTexture9(this);
     return GetD3DCubeTexture9()->GetPriority();
@@ -233,7 +233,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DCubeTexture9::GetPriority(THIS)
 STDMETHODIMP_(void) D3D9Wrapper::IDirect3DCubeTexture9::PreLoad(THIS)
 {
     //managed resources only?
-    LogDebug("IDirect3DCubeTexture9::PreLoad called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::PreLoad called\n");
 
     CheckCubeTexture9(this);
     if (G->gForceStereo == 2) {
@@ -254,7 +254,7 @@ STDMETHODIMP_(void) D3D9Wrapper::IDirect3DCubeTexture9::PreLoad(THIS)
 
 STDMETHODIMP_(::D3DRESOURCETYPE) D3D9Wrapper::IDirect3DCubeTexture9::GetType(THIS)
 {
-    LogDebug("IDirect3DCubeTexture9::GetType called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::GetType called\n");
 
     CheckCubeTexture9(this);
     return GetD3DCubeTexture9()->GetType();
@@ -263,7 +263,7 @@ STDMETHODIMP_(::D3DRESOURCETYPE) D3D9Wrapper::IDirect3DCubeTexture9::GetType(THI
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DCubeTexture9::SetLOD(THIS_ DWORD LODNew)
 {
     //managed resources only?
-    LogDebug("IDirect3DCubeTexture9::SetLOD called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::SetLOD called\n");
 
     CheckCubeTexture9(this);
     hackerDevice->FrameAnalysisLog("SetLOD(cubetexture:0x%p)",
@@ -285,7 +285,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DCubeTexture9::SetLOD(THIS_ DWORD LODN
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DCubeTexture9::GetLOD(THIS)
 {
-    LogDebug("IDirect3DCubeTexture9::GetLOD called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::GetLOD called\n");
 
     CheckCubeTexture9(this);
     DWORD ret = GetD3DCubeTexture9()->GetLOD();
@@ -297,7 +297,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DCubeTexture9::GetLOD(THIS)
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DCubeTexture9::GetLevelCount(THIS)
 {
-    LogDebug("IDirect3DCubeTexture9::GetLevelCount called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::GetLevelCount called\n");
 
     CheckCubeTexture9(this);
     return GetD3DCubeTexture9()->GetLevelCount();
@@ -305,7 +305,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DCubeTexture9::GetLevelCount(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::SetAutoGenFilterType(THIS_ ::D3DTEXTUREFILTERTYPE FilterType)
 {
-    LogDebug("IDirect3DCubeTexture9::SetAutoGenFilterType called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::SetAutoGenFilterType called\n");
 
     CheckCubeTexture9(this);
     HRESULT hr;
@@ -326,7 +326,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::SetAutoGenFilterType(THIS_ ::D3
 
 STDMETHODIMP_(::D3DTEXTUREFILTERTYPE) D3D9Wrapper::IDirect3DCubeTexture9::GetAutoGenFilterType(THIS)
 {
-    LogDebug("IDirect3DCubeTexture9::GetAutoGenFilterType called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::GetAutoGenFilterType called\n");
 
     CheckCubeTexture9(this);
     return GetD3DCubeTexture9()->GetAutoGenFilterType();
@@ -334,7 +334,7 @@ STDMETHODIMP_(::D3DTEXTUREFILTERTYPE) D3D9Wrapper::IDirect3DCubeTexture9::GetAut
 
 STDMETHODIMP_(void) D3D9Wrapper::IDirect3DCubeTexture9::GenerateMipSubLevels(THIS)
 {
-    LogDebug("IDirect3DCubeTexture9::GenerateMipSubLevels called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::GenerateMipSubLevels called\n");
 
     CheckCubeTexture9(this);
     hackerDevice->FrameAnalysisLog("GenerateMipSubLevels(cubetexture:0x%p\n)",
@@ -358,7 +358,7 @@ STDMETHODIMP_(void) D3D9Wrapper::IDirect3DCubeTexture9::GenerateMipSubLevels(THI
 
 STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::GetLevelDesc(THIS_ UINT Level, ::D3DSURFACE_DESC *pDesc)
 {
-    LogDebug("IDirect3DCubeTexture9::GetLevelDesc called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::GetLevelDesc called\n");
 
     CheckCubeTexture9(this);
     return GetD3DCubeTexture9()->GetLevelDesc(Level, pDesc);
@@ -367,12 +367,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::GetLevelDesc(THIS_ UINT Level, 
 STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::GetCubeMapSurface(::D3DCUBEMAP_FACES FaceType, UINT Level, D3D9Wrapper::IDirect3DSurface9 ** ppCubeMapSurface)
 {
 
-    LogDebug("IDirect3DCubeTexture9::GetCubeMapSurface called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::GetCubeMapSurface called\n");
 
 
     if (!GetD3DCubeTexture9())
     {
-        LogInfo("  postponing call because cube texture was not created yet.\n");
+        LOG_INFO("  postponing call because cube texture was not created yet.\n");
 
         D3D9Wrapper::IDirect3DSurface9 *wrapper = D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9((::LPDIRECT3DSURFACE9) 0, hackerDevice, NULL, this);
         wrapper->_Level = Level;
@@ -380,7 +380,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::GetCubeMapSurface(::D3DCUBEMAP_
         wrapper->_CubeTexture = this;
         wrapper->pendingGetCubeMapSurface = true;
         *ppCubeMapSurface = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
 
         return S_OK;
     }
@@ -433,22 +433,22 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::GetCubeMapSurface(::D3DCUBEMAP_
             }
         }
     }
-    if (ppCubeMapSurface) LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurfaceLevel, *ppCubeMapSurface);
+    if (ppCubeMapSurface) LOG_INFO("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurfaceLevel, *ppCubeMapSurface);
 
     return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::LockRect(THIS_ ::D3DCUBEMAP_FACES FaceType, UINT Level, ::D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags)
 {
-    LogDebug("IDirect3DCubeTexture9::LockRect called with FaceType=%d, Level=%d, Rect=l:%d,u:%d,r:%d,b:%d\n", FaceType, Level,
+    LOG_DEBUG("IDirect3DCubeTexture9::LockRect called with FaceType=%d, Level=%d, Rect=l:%d,u:%d,r:%d,b:%d\n", FaceType, Level,
         pRect ? pRect->left : 0, pRect ? pRect->top : 0, pRect ? pRect->right : 0, pRect ? pRect->bottom : 0);
 
     ::IDirect3DCubeTexture9 *pBaseCubeTexture = GetD3DCubeTexture9();
 
     if (!pBaseCubeTexture)
     {
-        if (!gLogDebug) LogInfo("IDirect3DCubeTexture9::LockRect called\n");
-        LogInfo("  postponing call because cube texture was not created yet.\n");
+        if (!gLogDebug) LOG_INFO("IDirect3DCubeTexture9::LockRect called\n");
+        LOG_INFO("  postponing call because cube texture was not created yet.\n");
 
         if (!pendingLockUnlock)
         {
@@ -507,7 +507,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::LockRect(THIS_ ::D3DCUBEMAP_FAC
                             //newTexture = true;
                             //if (FAILED(hr))
                             //{
-                            LogDebug("IDirect3DCubeTexture9::LockRect Direct Mode, failed to create system memory texture, hr = 0x%0.8x\n", hr);
+                            LOG_DEBUG("IDirect3DCubeTexture9::LockRect Direct Mode, failed to create system memory texture, hr = 0x%0.8x\n", hr);
                             DirectLockRectNoMemTex = true;
 
                         }
@@ -517,7 +517,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::LockRect(THIS_ ::D3DCUBEMAP_FAC
                         hr = m_pDirectLockableSysMemTextures[Level]->GetCubeMapSurface(FaceType, 0, &pSurface);
                         if (FAILED(hr))
                         {
-                            LogDebug("IDirect3DCubeTexture9::LockRect Direct Mode, failed get surface level from system memory texture, hr = 0x%0.8x\n", hr);
+                            LOG_DEBUG("IDirect3DCubeTexture9::LockRect Direct Mode, failed get surface level from system memory texture, hr = 0x%0.8x\n", hr);
                             goto postLock;
                         }
                         if (newTexture)
@@ -526,12 +526,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::LockRect(THIS_ ::D3DCUBEMAP_FAC
                             pBaseCubeTexture->GetCubeMapSurface(FaceType, Level, &pActualSurface);
                             if (FAILED(hr))
                             {
-                                LogDebug("IDirect3DCubeTexture9::LockRect Direct Mode, failed get surface level from actual texture, hr = 0x%0.8x\n", hr);
+                                LOG_DEBUG("IDirect3DCubeTexture9::LockRect Direct Mode, failed get surface level from actual texture, hr = 0x%0.8x\n", hr);
                                 goto postLock;
                             }
                             hr = hackerDevice->GetD3D9Device()->GetRenderTargetData(pActualSurface, pSurface);
                             if (FAILED(hr)) {
-                                LogDebug("IDirect3DCubeTexture9::LockRect Direct Mode, failed to update system memory texture surface, hr = 0x%0.8x\n", hr);
+                                LOG_DEBUG("IDirect3DCubeTexture9::LockRect Direct Mode, failed to update system memory texture surface, hr = 0x%0.8x\n", hr);
                                 goto postLock;
                             }
                             pActualSurface->Release();
@@ -544,7 +544,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::LockRect(THIS_ ::D3DCUBEMAP_FAC
                             hr = pBaseCubeTexture->AddDirtyRect(FaceType, pRect);
                             if (FAILED(hr))
                             {
-                                LogDebug("IDirect3DCubeTexture9::LockRect Direct Mode, failed to add dirty rect to actual texture, hr = 0x%0.8x\n", hr);
+                                LOG_DEBUG("IDirect3DCubeTexture9::LockRect Direct Mode, failed to add dirty rect to actual texture, hr = 0x%0.8x\n", hr);
                                 goto postLock;
                             }
                         }
@@ -552,7 +552,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::LockRect(THIS_ ::D3DCUBEMAP_FAC
                         hr = pSurface->LockRect(pLockedRect, pRect, Flags);
                         if (FAILED(hr))
                         {
-                            LogDebug("IDirect3DCubeTexture9::LockRect Direct Mode, failed to LockRect hr = 0x%0.8x\n", hr);
+                            LOG_DEBUG("IDirect3DCubeTexture9::LockRect Direct Mode, failed to LockRect hr = 0x%0.8x\n", hr);
                             goto postLock;
                         }
                         pSurface->Release();
@@ -563,7 +563,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::LockRect(THIS_ ::D3DCUBEMAP_FAC
 
                     if (FAILED(hr))
                     {
-                        LogDebug("IDirect3DCubeTexture9::LockRect Direct Mode, failed to LockRect hr = 0x%0.8x\n", hr);
+                        LOG_DEBUG("IDirect3DCubeTexture9::LockRect Direct Mode, failed to LockRect hr = 0x%0.8x\n", hr);
                         goto postLock;
                     }
                     if (!pRect) {
@@ -618,14 +618,14 @@ postLock:
 
 STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::UnlockRect(THIS_ ::D3DCUBEMAP_FACES FaceType, UINT Level)
 {
-    LogDebug("IDirect3DCubeTexture9::UnlockRect called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::UnlockRect called\n");
     ::IDirect3DCubeTexture9 *pBaseCubeTexture;
     pBaseCubeTexture = GetD3DCubeTexture9();
 
     if (!pBaseCubeTexture)
     {
-        if (!gLogDebug) LogInfo("IDirect3DCubeTexture9::UnlockRect called\n");
-        LogInfo("  postponing call because cube texture was not created yet.\n");
+        if (!gLogDebug) LOG_INFO("IDirect3DCubeTexture9::UnlockRect called\n");
+        LOG_INFO("  postponing call because cube texture was not created yet.\n");
 
         return S_OK;
     }
@@ -663,14 +663,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::UnlockRect(THIS_ ::D3DCUBEMAP_F
                     hr = hackerDevice->GetD3D9Device()->UpdateSurface(pSurface, NULL, pDirectSurfaceRight, NULL);
                     if (FAILED(hr))
                     {
-                        LogDebug("IDirect3DCubeTexture9::UnlockRect Direct Mode, failed to update full right surface, hr = 0x%0.8x\n", hr);
+                        LOG_DEBUG("IDirect3DCubeTexture9::UnlockRect Direct Mode, failed to update full right surface, hr = 0x%0.8x\n", hr);
                         //Just ignore the failed copy back, not much we can do
                         hr = S_OK;
                     }
                     hr = hackerDevice->GetD3D9Device()->UpdateSurface(pSurface, NULL, pActualSurface, NULL);
                     if (FAILED(hr))
                     {
-                        LogDebug("IDirect3DCubeTexture9::UnlockRect Direct Mode, failed to update full left surface, hr = 0x%0.8x\n", hr);
+                        LOG_DEBUG("IDirect3DCubeTexture9::UnlockRect Direct Mode, failed to update full left surface, hr = 0x%0.8x\n", hr);
                         //Just ignore the failed copy back, not much we can do
                         hr = S_OK;
                     }
@@ -686,14 +686,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::UnlockRect(THIS_ ::D3DCUBEMAP_F
                         hr = hackerDevice->GetD3D9Device()->UpdateSurface(pSurface, &(*rectIter).rect, pDirectSurfaceRight, &p);
                         if (FAILED(hr))
                         {
-                            LogDebug("IDirect3DCubeTexture9::UnlockRect Direct Mode, failed to update rect right surface, hr = 0x%0.8x\n", hr);
+                            LOG_DEBUG("IDirect3DCubeTexture9::UnlockRect Direct Mode, failed to update rect right surface, hr = 0x%0.8x\n", hr);
                             //Just ignore the failed copy back, not much we can do
                             hr = S_OK;
                         }
                         hr = hackerDevice->GetD3D9Device()->UpdateSurface(pSurface, &(*rectIter).rect, pActualSurface, &p);
                         if (FAILED(hr))
                         {
-                            LogDebug("IDirect3DCubeTexture9::UnlockRect Direct Mode, failed to update rect left surface, hr = 0x%0.8x\n", hr);
+                            LOG_DEBUG("IDirect3DCubeTexture9::UnlockRect Direct Mode, failed to update rect left surface, hr = 0x%0.8x\n", hr);
                             //Just ignore the failed copy back, not much we can do
                             hr = S_OK;
                         }
@@ -712,7 +712,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::UnlockRect(THIS_ ::D3DCUBEMAP_F
                     hr = m_pDirectCubeTextureRight->LockRect(FaceType, Level, &lRect, NULL, DirectLockedFlags);
                     if (FAILED(hr))
                     {
-                        LogDebug("IDirect3DCubeTexture9::UnlockRect Direct Mode, failed to lock right surface, hr = 0x%0.8x\n", hr);
+                        LOG_DEBUG("IDirect3DCubeTexture9::UnlockRect Direct Mode, failed to lock right surface, hr = 0x%0.8x\n", hr);
                         hr = S_OK;
                     }
                     else {
@@ -731,7 +731,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::UnlockRect(THIS_ ::D3DCUBEMAP_F
                             hr = m_pDirectCubeTextureRight->LockRect(FaceType, Level, &lRect, &(*rectIter).rect, (*rectIter).flags);
                             if (FAILED(hr))
                             {
-                                LogDebug("IDirect3DCubeTexture9::UnlockRect Direct Mode, failed to lock rect on right surface, hr = 0x%0.8x\n", hr);
+                                LOG_DEBUG("IDirect3DCubeTexture9::UnlockRect Direct Mode, failed to lock rect on right surface, hr = 0x%0.8x\n", hr);
                                 hr = S_OK;
                             }
                             else {
@@ -769,7 +769,7 @@ postUnlock:
 
 STDMETHODIMP D3D9Wrapper::IDirect3DCubeTexture9::AddDirtyRect(THIS_ ::D3DCUBEMAP_FACES FaceType, CONST RECT* pDirtyRect)
 {
-    LogDebug("IDirect3DCubeTexture9::AddDirtyRect called\n");
+    LOG_DEBUG("IDirect3DCubeTexture9::AddDirtyRect called\n");
 
     CheckCubeTexture9(this);
     HRESULT hr;

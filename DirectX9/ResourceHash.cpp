@@ -59,40 +59,40 @@ int StrResourceDesc(char *buf, size_t size, struct ResourceHashInfo &info) {
 template <typename DescType>
 static void LogResourceDescCommon(DescType *desc)
 {
-    LogInfo("    Format = %s (%d)\n", TexFormatStrDX9(desc->Format), desc->Format);
-    LogInfo("    Type = 0x%x\n", desc->Type);
-    LogInfo("    Usage = %d\n", desc->Usage);
-    LogInfo("    Pool = 0x%x\n", desc->Pool);
+    LOG_INFO("    Format = %s (%d)\n", TexFormatStrDX9(desc->Format), desc->Format);
+    LOG_INFO("    Type = 0x%x\n", desc->Type);
+    LOG_INFO("    Usage = %d\n", desc->Usage);
+    LOG_INFO("    Pool = 0x%x\n", desc->Pool);
 }
 void LogResourceDesc(const ::D3DVERTEXBUFFER_DESC *desc)
 {
-    LogInfo("  Resource Type = Vertex Buffer\n");
-    LogInfo("    ByteWidth = %d\n", desc->Size);
-    LogInfo("    FVFStructureByteStride = %d\n", strideForFVF(desc->FVF));
+    LOG_INFO("  Resource Type = Vertex Buffer\n");
+    LOG_INFO("    ByteWidth = %d\n", desc->Size);
+    LOG_INFO("    FVFStructureByteStride = %d\n", strideForFVF(desc->FVF));
     LogResourceDescCommon(desc);
 }
 void LogResourceDesc(const ::D3DINDEXBUFFER_DESC *desc)
 {
-    LogInfo("  Resource Type = Index Buffer\n");
-    LogInfo("    ByteWidth = %d\n", desc->Size);
+    LOG_INFO("  Resource Type = Index Buffer\n");
+    LOG_INFO("    ByteWidth = %d\n", desc->Size);
     LogResourceDescCommon(desc);
 }
 void LogResourceDesc(const D3D3DTEXTURE_DESC *desc)
 {
-    LogInfo("  Desc Type = Volume\n");
-    LogInfo("    Width = %d\n", desc->Width);
-    LogInfo("    Height = %d\n", desc->Height);
-    LogInfo("    Depth = %d\n", desc->Depth);
+    LOG_INFO("  Desc Type = Volume\n");
+    LOG_INFO("    Width = %d\n", desc->Width);
+    LOG_INFO("    Height = %d\n", desc->Height);
+    LOG_INFO("    Depth = %d\n", desc->Depth);
     LogResourceDescCommon(desc);
 }
 
 void LogResourceDesc(const D3D2DTEXTURE_DESC *desc)
 {
-    LogInfo("  Desc Type = Surface\n");
-    LogInfo("    Width = %d\n", desc->Width);
-    LogInfo("    Height = %d\n", desc->Height);
-    LogInfo("    SampleDesc.Count = %d\n", desc->MultiSampleType);
-    LogInfo("    SampleDesc.Quality = %d\n", desc->MultiSampleQuality);
+    LOG_INFO("  Desc Type = Surface\n");
+    LOG_INFO("    Width = %d\n", desc->Width);
+    LOG_INFO("    Height = %d\n", desc->Height);
+    LOG_INFO("    SampleDesc.Count = %d\n", desc->MultiSampleType);
+    LOG_INFO("    SampleDesc.Quality = %d\n", desc->MultiSampleQuality);
     LogResourceDescCommon(desc);
 }
 void LogResourceDesc(::IDirect3DResource9 *resource)
@@ -488,7 +488,7 @@ uint32_t Calc2DDataHash(const D3D2DTEXTURE_DESC *pDesc, const ::D3DLOCKED_BOX *p
     if (G->texture_hash_version)
         return Calc2DDataHashAccurate(pDesc, pLockedBox);
 
-    LogDebug("  Using 3DMigoto v1.2.11+ Texture2D CRC calculation\n");
+    LOG_DEBUG("  Using 3DMigoto v1.2.11+ Texture2D CRC calculation\n");
     length = Texture2DLength(pDesc, &pLockedBox[0], 0);
     hash = hash_tex2d_data(hash, pLockedBox[0].pBits, length,
         pDesc, false, true, pLockedBox[0].RowPitch);
@@ -544,7 +544,7 @@ uint32_t Calc3DDataHash(const D3D3DTEXTURE_DESC * pDesc, const ::D3DLOCKED_BOX *
         return 0;
     length = Texture3DLength(pDesc, &pLockedBox[0], 0);
 
-    LogDebug("  Using 3DMigoto v1.2.9+ Texture3D CRC calculation\n");
+    LOG_DEBUG("  Using 3DMigoto v1.2.9+ Texture3D CRC calculation\n");
 
     hash = crc32c_hw(hash, pLockedBox[0].pBits, length);
 
@@ -751,9 +751,9 @@ void UpdateResourceHashFromCPU(D3D9Wrapper::IDirect3DResource9 * resource, ::D3D
         info->hash = CalcDescHash(info->data_hash, desc3D);
     }
 
-    LogDebug("Updated resource hash\n");
-    LogDebug("  old data: %08x new data: %08x\n", old_data_hash, info->data_hash);
-    LogDebug("  old hash: %08x new hash: %08x\n", old_hash, info->hash);
+    LOG_DEBUG("Updated resource hash\n");
+    LOG_DEBUG("  old data: %08x new data: %08x\n", old_data_hash, info->data_hash);
+    LOG_DEBUG("  old hash: %08x new hash: %08x\n", old_hash, info->hash);
 
 out:
     if (Profiling::mode == Profiling::Mode::SUMMARY)
@@ -817,9 +817,9 @@ void PropagateResourceHash(D3D9Wrapper::IDirect3DResource9 *dst, D3D9Wrapper::ID
         break;
     }
 
-    LogDebug("Propagated resource hash\n");
-    LogDebug("  old data: %08x new data: %08x\n", old_data_hash, dst_info->data_hash);
-    LogDebug("  old hash: %08x new hash: %08x\n", old_hash, dst_info->hash);
+    LOG_DEBUG("Propagated resource hash\n");
+    LOG_DEBUG("  old data: %08x new data: %08x\n", old_data_hash, dst_info->data_hash);
+    LOG_DEBUG("  old hash: %08x new hash: %08x\n", old_hash, dst_info->hash);
 
 out:
     if (Profiling::mode == Profiling::Mode::SUMMARY)

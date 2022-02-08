@@ -27,13 +27,13 @@ void D3D9Wrapper::IDirect3DBaseTexture9::Delete()
 }
 void D3D9Wrapper::IDirect3DBaseTexture9::Bound(DWORD Stage)
 {
-    LogInfo("IDirect3DSurface9::Bound stage=%u handle=%p counter=%d this=%p\n", Stage, m_pUnk, m_ulRef, this);
+    LOG_INFO("IDirect3DSurface9::Bound stage=%u handle=%p counter=%d this=%p\n", Stage, m_pUnk, m_ulRef, this);
 
     bound.insert(Stage);
 }
 void D3D9Wrapper::IDirect3DBaseTexture9::Unbound(DWORD Stage)
 {
-    LogInfo("IDirect3DSurface9::Unbound stage=%u handle=%p counter=%d this=%p\n", Stage, m_pUnk, m_ulRef, this);
+    LOG_INFO("IDirect3DSurface9::Unbound stage=%u handle=%p counter=%d this=%p\n", Stage, m_pUnk, m_ulRef, this);
 
     bound.erase(Stage);
     if (shared_ref_count == 0)
