@@ -52,7 +52,7 @@
 // log most of these calls in the HackerDevice, so this would triple the noise
 // and we probably won't need it very often:
 #if 0
-#define HookDebug LogDebug
+#define HookDebug LOG_DEBUG
 #else
 #define HookDebug(...) do { } while (0)
 #endif

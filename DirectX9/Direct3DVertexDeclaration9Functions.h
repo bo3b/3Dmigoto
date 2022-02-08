@@ -7,8 +7,8 @@ inline void D3D9Wrapper::IDirect3DVertexDeclaration9::HookVertexDeclaration()
 
 inline void D3D9Wrapper::IDirect3DVertexDeclaration9::Delete()
 {
-    LogInfo("IDirect3DVertexDeclaration9::Delete\n");
-    LogInfo("  deleting self\n");
+    LOG_INFO("IDirect3DVertexDeclaration9::Delete\n");
+    LOG_INFO("  deleting self\n");
     if (m_pRealUnk) m_List.DeleteMember(m_pRealUnk);
     m_pUnk = 0;
     m_pRealUnk = 0;
@@ -36,11 +36,11 @@ D3D9Wrapper::IDirect3DVertexDeclaration9* D3D9Wrapper::IDirect3DVertexDeclaratio
 }
 STDMETHODIMP D3D9Wrapper::IDirect3DVertexDeclaration9::QueryInterface(THIS_ REFIID riid, void ** ppvObj)
 {
-    LogDebug("D3D9Wrapper::IDirect3DVertexDeclaration9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
+    LOG_DEBUG("D3D9Wrapper::IDirect3DVertexDeclaration9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
     HRESULT hr = NULL;
     if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
         return hr;
-    LogInfo("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
+    LOG_INFO("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
     hr = m_pUnk->QueryInterface(riid, ppvObj);
     if (hr == S_OK) {
         if ((*ppvObj) == GetRealOrig()) {
@@ -48,8 +48,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexDeclaration9::QueryInterface(THIS_ REFI
                 *ppvObj = this;
                 ++m_ulRef;
                 zero_d3d_ref_count = false;
-                LogInfo("  interface replaced with IDirect3DVertexDeclaration9 wrapper.\n");
-                LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+                LOG_INFO("  interface replaced with IDirect3DVertexDeclaration9 wrapper.\n");
+                LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
                 return hr;
             }
         }
@@ -57,7 +57,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexDeclaration9::QueryInterface(THIS_ REFI
         if (unk)
             *ppvObj = unk;
     }
-    LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+    LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
     return hr;
 }
 
@@ -70,16 +70,16 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVertexDeclaration9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVertexDeclaration9::Release(THIS)
 {
-    LogDebug("IDirect3DVertexDeclaration9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
+    LOG_DEBUG("IDirect3DVertexDeclaration9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-    LogDebug("  internal counter = %d\n", ulRef);
+    LOG_DEBUG("  internal counter = %d\n", ulRef);
 
     --m_ulRef;
 
     if (ulRef == 0)
     {
-        if (!gLogDebug) LogInfo("IDirect3DVertexDeclaration9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+        if (!gLogDebug) LOG_INFO("IDirect3DVertexDeclaration9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
         zero_d3d_ref_count = true;
         if (!bound)
             Delete();
@@ -89,7 +89,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVertexDeclaration9::Release(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVertexDeclaration9::GetDevice(THIS_ D3D9Wrapper::IDirect3DDevice9** ppDevice)
 {
-    LogDebug("IDirect3DVertexDeclaration9::GetDevice called\n");
+    LOG_DEBUG("IDirect3DVertexDeclaration9::GetDevice called\n");
 
     CheckVertexDeclaration9(this);
     HRESULT hr;
@@ -111,7 +111,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVertexDeclaration9::GetDevice(THIS_ D3D9Wrapp
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVertexDeclaration9::GetDeclaration(THIS_ ::D3DVERTEXELEMENT9* pElement,UINT* pNumElements)
 {
-    LogDebug("IDirect3DVertexDeclaration9::GetDeclaration called\n");
+    LOG_DEBUG("IDirect3DVertexDeclaration9::GetDeclaration called\n");
 
     CheckVertexDeclaration9(this);
     return GetD3DVertexDeclaration9()->GetDeclaration(pElement, pNumElements);

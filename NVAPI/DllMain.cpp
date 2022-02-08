@@ -192,11 +192,11 @@ FILE *LogFile = 0;
 
 
 #define LogCall(fmt, ...) \
-    do { if (LogCalls) LogInfo(fmt, __VA_ARGS__); } while (0)
+    do { if (LogCalls) LOG_INFO(fmt, __VA_ARGS__); } while (0)
 #define LogSeparation(fmt, ...) \
-    do { if (LogSeparation) LogInfo(fmt, __VA_ARGS__); } while (0)
+    do { if (LogSeparation) LOG_INFO(fmt, __VA_ARGS__); } while (0)
 #define LogConvergence(fmt, ...) \
-    do { if (LogConvergence) LogInfo(fmt, __VA_ARGS__); } while (0)
+    do { if (LogConvergence) LOG_INFO(fmt, __VA_ARGS__); } while (0)
 
 
 // -----------------------------------------------------------------------------------------------
@@ -226,7 +226,7 @@ static void LoadConfigFile()
     if (!LogFile && (LogConvergence || LogSeparation || LogCalls || gLogDebug))
         LogFile = _wfsopen(logFilename, L"w", _SH_DENYNO);
 
-    LogInfo("\nNVapi DLL starting init - v %s -  %s\n\n", VER_FILE_VERSION_STR, log_time().c_str());
+    LOG_INFO("\nNVapi DLL starting init - v %s -  %s\n\n", VER_FILE_VERSION_STR, log_time().c_str());
 
     // Unbuffered logging to remove need for fflush calls, and r/w access to make it easy
     // to open active files.
@@ -241,15 +241,15 @@ static void LoadConfigFile()
         affinity = SetProcessAffinityMask(GetCurrentProcess(), one);
     }
 
-    LogInfo("[Logging]\n");
+    LOG_INFO("[Logging]\n");
     LogCall("  calls=1\n");
-    LogDebug("  debug=1\n");
+    LOG_DEBUG("  debug=1\n");
     LogSeparation("  separation=1\n");
     LogConvergence("  convergence=1\n");
-    if (unbuffered != -1) LogInfo("  unbuffered=1  return: %d\n", unbuffered);
-    if (affinity != -1) LogInfo("  force_cpu_affinity=1  return: %s\n", affinity ? "true" : "false");
+    if (unbuffered != -1) LOG_INFO("  unbuffered=1  return: %d\n", unbuffered);
+    if (affinity != -1) LOG_INFO("  force_cpu_affinity=1  return: %s\n", affinity ? "true" : "false");
 
-    LogInfo("[ConvergenceMap]\n");
+    LOG_INFO("[ConvergenceMap]\n");
     for (int i = 1;; ++i)
     {
         wchar_t id[] = L"Mapxxx", val[MAX_PATH];
@@ -262,7 +262,7 @@ static void LoadConfigFile()
         from = *reinterpret_cast<float *>(&fromHx);
         GameConvergenceMap[from] = to;
         GameConvergenceMapInv[to] = from;
-        LogInfoW(L"  %ls=from %08x to %f\n", id, fromHx, to);
+        LOG_INFO_W(L"  %ls=from %08x to %f\n", id, fromHx, to);
     }
 
     // Device
@@ -276,11 +276,11 @@ static void LoadConfigFile()
     if (GetPrivateProfileString(L"Device", L"full_screen", 0, valueString, MAX_PATH, iniFile))
         swscanf_s(valueString, L"%d", &SCREEN_FULLSCREEN);
 
-    LogInfo("[Device]\n");
-    if (SCREEN_WIDTH != -1) LogInfo("  width=%d\n", SCREEN_WIDTH);
-    if (SCREEN_HEIGHT != -1) LogInfo("  height=%d\n", SCREEN_HEIGHT);
-    if (SCREEN_REFRESH != -1) LogInfo("  refresh_rate=%d\n", SCREEN_REFRESH);
-    if (SCREEN_FULLSCREEN) LogInfo("  full_screen=1\n");
+    LOG_INFO("[Device]\n");
+    if (SCREEN_WIDTH != -1) LOG_INFO("  width=%d\n", SCREEN_WIDTH);
+    if (SCREEN_HEIGHT != -1) LOG_INFO("  height=%d\n", SCREEN_HEIGHT);
+    if (SCREEN_REFRESH != -1) LOG_INFO("  refresh_rate=%d\n", SCREEN_REFRESH);
+    if (SCREEN_FULLSCREEN) LOG_INFO("  full_screen=1\n");
 
     // Stereo
     ForceNoNvAPI = GetPrivateProfileInt(L"Stereo", L"force_no_nvapi", 0, iniFile) == 1;
@@ -291,13 +291,13 @@ static void LoadConfigFile()
     UnlockConvergence = GetPrivateProfileInt(L"Stereo", L"unlock_convergence", 0, iniFile) == 1;
     //CacheSettings = GetPrivateProfileInt(L"Stereo", L"cache_settings", 0, iniFile) == 1;
 
-    LogInfo("[Stereo]\n");
-    LogInfo("  force_no_nvapi=%d\n", ForceNoNvAPI ? 1 : 0);
-    LogInfo("  force_stereo=%d\n", NoStereoDisable ? 1 : 0);
-    LogInfo("  automatic_mode=%d\n", ForceAutomaticStereo ? 1 : 0);
-    LogInfo("  unlock_separation=%d\n", UnlockSeparation ? 1 : 0);
-    LogInfo("  unlock_convergence=%d\n", UnlockConvergence ? 1 : 0);
-    LogInfo("  surface_createmode=%d\n", gSurfaceCreateMode);
+    LOG_INFO("[Stereo]\n");
+    LOG_INFO("  force_no_nvapi=%d\n", ForceNoNvAPI ? 1 : 0);
+    LOG_INFO("  force_stereo=%d\n", NoStereoDisable ? 1 : 0);
+    LOG_INFO("  automatic_mode=%d\n", ForceAutomaticStereo ? 1 : 0);
+    LOG_INFO("  unlock_separation=%d\n", UnlockSeparation ? 1 : 0);
+    LOG_INFO("  unlock_convergence=%d\n", UnlockConvergence ? 1 : 0);
+    LOG_INFO("  surface_createmode=%d\n", gSurfaceCreateMode);
 }
 
 static bool loadDll()
@@ -327,12 +327,12 @@ static bool loadDll()
 #else
 #define REAL_NVAPI_DLL L"nvapi.dll"
 #endif
-    LogDebugW(L"Trying to load original_%s\n", REAL_NVAPI_DLL);
+    LOG_DEBUG_W(L"Trying to load original_%s\n", REAL_NVAPI_DLL);
     nvDLL = LoadLibraryEx(L"original_" REAL_NVAPI_DLL, NULL, 0);
     if (nvDLL == NULL)
     {
         wchar_t libPath[MAX_PATH];
-        LogInfoW(L"*** LoadLibrary of original_%s failed. ***\n", REAL_NVAPI_DLL);
+        LOG_INFO_W(L"*** LoadLibrary of original_%s failed. ***\n", REAL_NVAPI_DLL);
 
         // Redirected load failed. Maybe 3DMigoto isn't loaded, or maybe something
         // (like Origin's IGO32.dll hook in ntdll.dll LdrLoadDll) is interfering
@@ -343,11 +343,11 @@ static bool loadDll()
 
         if (GetSystemDirectoryW(libPath, ARRAYSIZE(libPath))) {
             wcscat_s(libPath, MAX_PATH, L"\\" REAL_NVAPI_DLL);
-            LogInfoW(L"Trying to load %ls\n", libPath);
+            LOG_INFO_W(L"Trying to load %ls\n", libPath);
             nvDLL = LoadLibraryEx(libPath, NULL, 0);
             if (nvDLL == NULL)
             {
-                LogInfoW(L"*** LoadLibrary of %ls failed. ***\n", libPath);
+                LOG_INFO_W(L"*** LoadLibrary of %ls failed. ***\n", libPath);
                 nvapi_load_failed = true;
                 return false;
             }
@@ -481,7 +481,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetConvergence(StereoHandle stereoHandl
 
     if (gDirectXOverride)
     {
-        LogDebug("%s - Stereo_SetConvergence called from DirectX wrapper: ignoring user overrides.\n", log_time().c_str());
+        LOG_DEBUG("%s - Stereo_SetConvergence called from DirectX wrapper: ignoring user overrides.\n", log_time().c_str());
         gDirectXOverride = false;
         ret = (*_NvAPI_Stereo_SetConvergence)(stereoHandle, newConvergence);
         if (ret == NVAPI_OK && TrackConvergence)
@@ -566,7 +566,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetSeparation(StereoHandle stereoHandle
     NvAPI_Status ret;
     if (gDirectXOverride)
     {
-        LogDebug("%s - Stereo_SetSeparation called from DirectX wrapper: ignoring user overrides.\n", log_time().c_str());
+        LOG_DEBUG("%s - Stereo_SetSeparation called from DirectX wrapper: ignoring user overrides.\n", log_time().c_str());
         gDirectXOverride = false;
         ret = (*_NvAPI_Stereo_SetSeparation)(stereoHandle, newSeparationPercentage);
         if (ret == NVAPI_OK && TrackSeparation)
@@ -650,19 +650,19 @@ static NvAPI_Status __cdecl NvAPI_Stereo_Enable()
 
 static NvAPI_Status __cdecl NvAPI_Stereo_IsEnabled(NvU8 *pIsStereoEnabled)
 {
-    LogDebug("%s - NvAPI_Stereo_IsEnabled called.\n", log_time().c_str());
+    LOG_DEBUG("%s - NvAPI_Stereo_IsEnabled called.\n", log_time().c_str());
 
     NvAPI_Status ret = (*_NvAPI_Stereo_IsEnabled)(pIsStereoEnabled);
 
     if (gDirectXOverride) {
-        LogDebug("  Stereo_IsEnabled called from DirectX wrapper.\n");
+        LOG_DEBUG("  Stereo_IsEnabled called from DirectX wrapper.\n");
         gDirectXOverride = false;
     } else if (ForceAutomaticStereo) {
         *pIsStereoEnabled = false;
         LogCall("  NvAPI_Stereo_IsEnabled force return false\n");
     }
 
-    LogDebug("  Returns IsStereoEnabled = %d, Result = %d\n", *pIsStereoEnabled, ret);
+    LOG_DEBUG("  Returns IsStereoEnabled = %d, Result = %d\n", *pIsStereoEnabled, ret);
 
     return ret;
 }
@@ -732,7 +732,7 @@ static NvAPI_Status __cdecl NvAPI_Stereo_IsActivated(StereoHandle stereoHandle, 
     else {
         ret = (*_NvAPI_Stereo_IsActivated)(stereoHandle, pIsStereoOn);
     }
-    LogDebug("%s - Stereo_IsActivated called. Result = %d, IsStereoOn = %d\n", log_time().c_str(), ret, *pIsStereoOn);
+    LOG_DEBUG("%s - Stereo_IsActivated called. Result = %d, IsStereoOn = %d\n", log_time().c_str(), ret, *pIsStereoOn);
     return ret;
 }
 static NvAPI_Status __cdecl NvAPI_Stereo_DecreaseSeparation(StereoHandle stereoHandle)
@@ -802,14 +802,14 @@ static NvAPI_Status __cdecl NvAPI_Stereo_SetDriverMode(NV_STEREO_DRIVER_MODE mod
 {
     if (LogCalls)
     {
-        LogInfo("%s - Stereo_SetDriverMode called with mode = %d.\n", log_time().c_str(), mode);
+        LOG_INFO("%s - Stereo_SetDriverMode called with mode = %d.\n", log_time().c_str(), mode);
         switch (mode)
         {
             case NVAPI_STEREO_DRIVER_MODE_AUTOMATIC:
-                LogInfo("  mode %d means automatic mode\n", mode);
+                LOG_INFO("  mode %d means automatic mode\n", mode);
                 break;
             case NVAPI_STEREO_DRIVER_MODE_DIRECT:
-                LogInfo("  mode %d means direct mode\n", mode);
+                LOG_INFO("  mode %d means direct mode\n", mode);
                 break;
         }
     }
@@ -1037,7 +1037,7 @@ static NvAPI_Status __cdecl NvAPI_D3D11_SetDepthBoundsTest(
     // Call the original fn
     ret = (_NvAPI_D3D11_SetDepthBoundsTest)(pDeviceOrContext, bEnable, fMinDepth, fMaxDepth);
 
-    LogDebug("%s NvAPI_D3D11_SetDepthBoundsTest(%p, %d, %f, %f) -> %d",
+    LOG_DEBUG("%s NvAPI_D3D11_SetDepthBoundsTest(%p, %d, %f, %f) -> %d",
             log_time().c_str(), pDeviceOrContext, bEnable, fMinDepth, fMaxDepth, ret);
 
     // If the game calls this function with fMinDepth == fMaxDepth nvapi
@@ -1056,7 +1056,7 @@ static NvAPI_Status __cdecl NvAPI_D3D11_SetDepthBoundsTest(
 // the Initialize succeeds.
 static NvAPI_Status __cdecl EnableOverride(void)
 {
-    LogDebug("%s - NvAPI EnableOverride called. Next NvAPI call made will not be wrapped.\n", log_time().c_str());
+    LOG_DEBUG("%s - NvAPI EnableOverride called. Next NvAPI call made will not be wrapped.\n", log_time().c_str());
 
     gDirectXOverride = true;
 

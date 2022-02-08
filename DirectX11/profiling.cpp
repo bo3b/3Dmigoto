@@ -115,7 +115,7 @@ void Profiling::update_cto_warning(bool warn)
     for (auto &tof : G->mFuzzyTextureOverrides)
         cto_warn_post_commands(&tof->texture_override->post_command_list);
 
-    LogInfoNoNL("%S", Profiling::cto_warning.c_str());
+    LOG_INFO_NO_NL("%S", Profiling::cto_warning.c_str());
 }
 
 static void update_txt_cto_warning()

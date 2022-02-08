@@ -417,7 +417,7 @@ public:
         else {
             initialValue = InterlockedExchange(&shared_cursor_update_required, cursor_update_required);
         }
-        LogDebug("  SET_CURSOR_UPDATE_REQUIRED called with %d, initial value = %d \n", cursor_update_required, initialValue);
+        LOG_DEBUG("  SET_CURSOR_UPDATE_REQUIRED called with %d, initial value = %d \n", cursor_update_required, initialValue);
         return initialValue;
     }
 
@@ -429,7 +429,7 @@ public:
         else {
             required = InterlockedCompareExchange(&shared_cursor_update_required, 0, 0);
         }
-        LogDebug("  CURSOR_UPDATE_REQUIRED called = %d \n", required);
+        LOG_DEBUG("  CURSOR_UPDATE_REQUIRED called = %d \n", required);
         return required;
     }
     LONG SET_GAME_INTERNAL_WIDTH(LONG game_internal_width) {
@@ -441,7 +441,7 @@ public:
         else {
             initialValue = InterlockedExchange(&shared_game_internal_width, game_internal_width);
         }
-        LogDebug("  SET_GAME_INTERNAL_WIDTH called with %d, initial value = %d \n", game_internal_width, initialValue);
+        LOG_DEBUG("  SET_GAME_INTERNAL_WIDTH called with %d, initial value = %d \n", game_internal_width, initialValue);
         return initialValue;
     }
 
@@ -453,7 +453,7 @@ public:
         else {
             width = InterlockedCompareExchange(&shared_game_internal_width, 0, 0);
         }
-        LogDebug("  GAME_INTERNAL_WIDTH called = %d \n", width);
+        LOG_DEBUG("  GAME_INTERNAL_WIDTH called = %d \n", width);
         return width;
     }
     LONG SET_GAME_INTERNAL_HEIGHT(LONG game_internal_height) {
@@ -466,7 +466,7 @@ public:
             initialValue = InterlockedExchange(&shared_game_internal_height, game_internal_height);
         }
 
-        LogDebug("  SET_GAME_INTERNAL_HEIGHT called with %d, initial value = %d \n", game_internal_height, initialValue);
+        LOG_DEBUG("  SET_GAME_INTERNAL_HEIGHT called with %d, initial value = %d \n", game_internal_height, initialValue);
         return initialValue;
     }
 
@@ -478,7 +478,7 @@ public:
         else {
             height = InterlockedCompareExchange(&shared_game_internal_height, 0, 0);
         }
-        LogDebug("  GAME_INTERNAL_HEIGHT called = %d \n", height);
+        LOG_DEBUG("  GAME_INTERNAL_HEIGHT called = %d \n", height);
         return height;
     }
 

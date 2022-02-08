@@ -68,12 +68,12 @@ static HackerDevice* prepare_devices_for_dx12_warning(IUnknown *unknown_device)
     if (FAILED(unknown_device->QueryInterface(IID_ID3D12CommandQueue, (void**)&d3d12_queue)))
         goto out;
 
-    LogInfo("Preparing to enable D3D11On12 compatibility mode for overlay...\n");
+    LOG_INFO("Preparing to enable D3D11On12 compatibility mode for overlay...\n");
 
     if (FAILED(d3d12_queue->GetDevice(IID_ID3D12Device, (void**)&d3d12_device)))
         goto out;
 
-    LogInfo(" ID3D12Device: %p\n", d3d12_device);
+    LOG_INFO(" ID3D12Device: %p\n", d3d12_device);
 
     // If you need the debug layer, force it in dxcpl.exe instead of here,
     // since we won't have enabled it on the D3D12 device, and doing so now
@@ -87,18 +87,18 @@ static HackerDevice* prepare_devices_for_dx12_warning(IUnknown *unknown_device)
             0, /* node mask */
             &d3d11_device, &d3d11_context, NULL);
     if (FAILED(hr)) {
-        LogInfo("D3D11On12CreateDevice failed: 0x%x\n", hr);
+        LOG_INFO("D3D11On12CreateDevice failed: 0x%x\n", hr);
         goto out;
     }
 
-    LogInfo(" ID3D11Device: %p\n", d3d11_device);
-    LogInfo(" ID3D11DeviceContext: %p\n", d3d11_context);
+    LOG_INFO(" ID3D11Device: %p\n", d3d11_device);
+    LOG_INFO(" ID3D11DeviceContext: %p\n", d3d11_context);
 
     dev_wrap = new HackerDevice((ID3D11Device1*)d3d11_device, (ID3D11DeviceContext1*)d3d11_context);
     context_wrap = HackerContextFactory((ID3D11Device1*)d3d11_device, (ID3D11DeviceContext1*)d3d11_context);
 
-    LogInfo(" HackerDevice: %p\n", dev_wrap);
-    LogInfo(" HackerContext: %p\n", context_wrap);
+    LOG_INFO(" HackerDevice: %p\n", dev_wrap);
+    LOG_INFO(" HackerContext: %p\n", context_wrap);
 
     dev_wrap->SetHackerContext(context_wrap);
     context_wrap->SetHackerDevice(dev_wrap);
@@ -165,7 +165,7 @@ static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device)
         // QueryInterface() it, but let's not tempt fate:
         *device = (hackerDevice)->GetPossiblyHookedOrigDevice1();
     } else {
-        LogInfo("WARNING: Could not locate HackerDevice for %p\n", *device);
+        LOG_INFO("WARNING: Could not locate HackerDevice for %p\n", *device);
         analyse_iunknown(*device);
 
         if (check_interface_supported(*device, IID_ID3D11Device)) {
@@ -178,11 +178,11 @@ static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device)
             //
             // D3D11On12CreateDevice() could possibly lead us here,
             // depending on how that works.
-            LogInfo("BUG: Unwrapped ID3D11Device!\n");
+            LOG_INFO("BUG: Unwrapped ID3D11Device!\n");
             DoubleBeepExit();
         }
 
-        LogInfo("FATAL: Unsupported DirectX Version!\n");
+        LOG_INFO("FATAL: Unsupported DirectX Version!\n");
 
         // Normally we flush the log file on the Present() call, but if
         // we didn't wrap the swap chain that will probably never
@@ -230,18 +230,18 @@ void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc)
         // for 60Hz and we would lose flipping and degrade performance.
         BufferDesc->RefreshRate.Numerator = G->SCREEN_REFRESH;
         BufferDesc->RefreshRate.Denominator = 1;
-        LogInfo("->Forcing refresh rate to = %f\n",
+        LOG_INFO("->Forcing refresh rate to = %f\n",
             (float)BufferDesc->RefreshRate.Numerator / (float)BufferDesc->RefreshRate.Denominator);
     }
     if (G->SCREEN_WIDTH >= 0)
     {
         BufferDesc->Width = G->SCREEN_WIDTH;
-        LogInfo("->Forcing Width to = %d\n", BufferDesc->Width);
+        LOG_INFO("->Forcing Width to = %d\n", BufferDesc->Width);
     }
     if (G->SCREEN_HEIGHT >= 0)
     {
         BufferDesc->Height = G->SCREEN_HEIGHT;
-        LogInfo("->Forcing Height to = %d\n", BufferDesc->Height);
+        LOG_INFO("->Forcing Height to = %d\n", BufferDesc->Height);
     }
 }
 
@@ -258,19 +258,19 @@ static void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
     if (pDesc == NULL)
         return;
 
-    LogInfo("     Windowed = %d\n", pDesc->Windowed);
-    LogInfo("     Width = %d\n", pDesc->BufferDesc.Width);
-    LogInfo("     Height = %d\n", pDesc->BufferDesc.Height);
-    LogInfo("     Refresh rate = %f\n",
+    LOG_INFO("     Windowed = %d\n", pDesc->Windowed);
+    LOG_INFO("     Width = %d\n", pDesc->BufferDesc.Width);
+    LOG_INFO("     Height = %d\n", pDesc->BufferDesc.Height);
+    LOG_INFO("     Refresh rate = %f\n",
         (float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
-    LogInfo("     BufferCount = %d\n", pDesc->BufferCount);
-    LogInfo("     SwapEffect = %d\n", pDesc->SwapEffect);
-    LogInfo("     Flags = 0x%x\n", pDesc->Flags);
+    LOG_INFO("     BufferCount = %d\n", pDesc->BufferCount);
+    LOG_INFO("     SwapEffect = %d\n", pDesc->SwapEffect);
+    LOG_INFO("     Flags = 0x%x\n", pDesc->Flags);
 
     if (G->SCREEN_UPSCALING == 0 && G->SCREEN_FULLSCREEN > 0)
     {
         pDesc->Windowed = false;
-        LogInfo("->Forcing Windowed to = %d\n", pDesc->Windowed);
+        LOG_INFO("->Forcing Windowed to = %d\n", pDesc->Windowed);
     }
 
     if (G->SCREEN_FULLSCREEN == 2 || G->SCREEN_UPSCALING > 0)
@@ -296,14 +296,14 @@ static void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
 static void ForceDisplayParams1(DXGI_SWAP_CHAIN_DESC1 *pDesc, DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc)
 {
     if (pFullscreenDesc) {
-        LogInfo("     Windowed = %d\n", pFullscreenDesc->Windowed);
-        LogInfo("     Refresh rate = %f\n",
+        LOG_INFO("     Windowed = %d\n", pFullscreenDesc->Windowed);
+        LOG_INFO("     Refresh rate = %f\n",
             (float)pFullscreenDesc->RefreshRate.Numerator / (float)pFullscreenDesc->RefreshRate.Denominator);
 
         if (G->SCREEN_FULLSCREEN > 0)
         {
             pFullscreenDesc->Windowed = false;
-            LogInfo("->Forcing Windowed to = %d\n", pFullscreenDesc->Windowed);
+            LOG_INFO("->Forcing Windowed to = %d\n", pFullscreenDesc->Windowed);
         }
 
         if (G->SCREEN_REFRESH >= 0)
@@ -318,7 +318,7 @@ static void ForceDisplayParams1(DXGI_SWAP_CHAIN_DESC1 *pDesc, DXGI_SWAP_CHAIN_FU
             // Unity does ResizeTarget -> SetFullscreenState -> ResizeBuffers
             pFullscreenDesc->RefreshRate.Numerator = G->SCREEN_REFRESH;
             pFullscreenDesc->RefreshRate.Denominator = 1;
-            LogInfo("->Forcing refresh rate to = %f\n",
+            LOG_INFO("->Forcing refresh rate to = %f\n",
                 (float)pFullscreenDesc->RefreshRate.Numerator / (float)pFullscreenDesc->RefreshRate.Denominator);
         }
     }
@@ -335,11 +335,11 @@ static void ForceDisplayParams1(DXGI_SWAP_CHAIN_DESC1 *pDesc, DXGI_SWAP_CHAIN_FU
 
     if (pDesc)
     {
-        LogInfo("     Width = %d\n", pDesc->Width);
-        LogInfo("     Height = %d\n", pDesc->Height);
-        LogInfo("     BufferCount = %d\n", pDesc->BufferCount);
-        LogInfo("     SwapEffect = %d\n", pDesc->SwapEffect);
-        LogInfo("     Flags = 0x%x\n", pDesc->Flags);
+        LOG_INFO("     Width = %d\n", pDesc->Width);
+        LOG_INFO("     Height = %d\n", pDesc->Height);
+        LOG_INFO("     BufferCount = %d\n", pDesc->BufferCount);
+        LOG_INFO("     SwapEffect = %d\n", pDesc->SwapEffect);
+        LOG_INFO("     Flags = 0x%x\n", pDesc->Flags);
 
         if (G->SCREEN_WIDTH >= 0)
         {
@@ -387,7 +387,7 @@ void override_swap_chain(DXGI_SWAP_CHAIN_DESC *pDesc, DXGI_SWAP_CHAIN_DESC *orig
         // TODO: Use a helper class to track *all* different resolutions
         G->mResolutionInfo.width = pDesc->BufferDesc.Width;
         G->mResolutionInfo.height = pDesc->BufferDesc.Height;
-        LogInfo("Got resolution from swap chain: %ix%i\n",
+        LOG_INFO("Got resolution from swap chain: %ix%i\n",
             G->mResolutionInfo.width, G->mResolutionInfo.height);
     }
 
@@ -411,7 +411,7 @@ static void override_factory2_swap_chain(
             // TODO: Use a helper class to track *all* different resolutions
             G->mResolutionInfo.width = (*ppDesc)->Width;
             G->mResolutionInfo.height = (*ppDesc)->Height;
-            LogInfo("  Got resolution from swap chain: %ix%i\n",
+            LOG_INFO("  Got resolution from swap chain: %ix%i\n",
                 G->mResolutionInfo.width, G->mResolutionInfo.height);
         }
     }
@@ -460,13 +460,13 @@ void wrap_swap_chain(HackerDevice *hackerDevice,
     if (G->SCREEN_UPSCALING == 0)        // Normal case
     {
         swapchainWrap = new HackerSwapChain(origSwapChain, hackerDevice, hackerContext);
-        LogInfo("  HackerSwapChain %p created to wrap %p\n", swapchainWrap, origSwapChain);
+        LOG_INFO("  HackerSwapChain %p created to wrap %p\n", swapchainWrap, origSwapChain);
     }
     else                                // Upscaling case
     {
         swapchainWrap = new HackerUpscalingSwapChain(origSwapChain, hackerDevice, hackerContext,
             origSwapChainDesc, overrideSwapChainDesc->BufferDesc.Width, overrideSwapChainDesc->BufferDesc.Height);
-        LogInfo("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, origSwapChain);
+        LOG_INFO("  HackerUpscalingSwapChain %p created to wrap %p.\n", swapchainWrap, origSwapChain);
 
         if (G->SCREEN_UPSCALING == 2 || !origSwapChainDesc->Windowed)
         {
@@ -486,7 +486,7 @@ void wrap_swap_chain(HackerDevice *hackerDevice,
     // will call our Present.
     *ppSwapChain = swapchainWrap;
 
-    LogInfo("-> HackerSwapChain = %p wrapper of ppSwapChain = %p\n", swapchainWrap, origSwapChain);
+    LOG_INFO("-> HackerSwapChain = %p wrapper of ppSwapChain = %p\n", swapchainWrap, origSwapChain);
 }
 
 static void wrap_factory2_swap_chain(
@@ -511,7 +511,7 @@ static void wrap_factory2_swap_chain(
     // so it will call our Present.
     *ppSwapChain = hackerSwapChain;
 
-    LogInfo("-> HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hackerSwapChain, origSwapChain);
+    LOG_INFO("-> HackerSwapChain = %p wrapper of ppSwapChain = %p\n\n", hackerSwapChain, origSwapChain);
 }
 
 
@@ -557,7 +557,7 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
     _Out_  IDXGISwapChain1 **ppSwapChain)
 {
     if (get_tls()->hooking_quirk_protection) {
-        LogInfo("Hooking Quirk: Unexpected call back into IDXGIFactory2::CreateSwapChainForHwnd, passing through\n");
+        LOG_INFO("Hooking Quirk: Unexpected call back into IDXGIFactory2::CreateSwapChainForHwnd, passing through\n");
         // No known cases
         return fnOrigCreateSwapChainForHwnd(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
     }
@@ -566,11 +566,11 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
     DXGI_SWAP_CHAIN_DESC1 descCopy = { 0 };
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenCopy = { 0 };
 
-    LogInfo("*** Hooked IDXGIFactory2::CreateSwapChainForHwnd(%p) called\n", This);
-    LogInfo("  Device = %p\n", pDevice);
-    LogInfo("  SwapChain = %p\n", ppSwapChain);
-    LogInfo("  Description1 = %p\n", pDesc);
-    LogInfo("  FullScreenDescription = %p\n", pFullscreenDesc);
+    LOG_INFO("*** Hooked IDXGIFactory2::CreateSwapChainForHwnd(%p) called\n", This);
+    LOG_INFO("  Device = %p\n", pDevice);
+    LOG_INFO("  SwapChain = %p\n", ppSwapChain);
+    LOG_INFO("  Description1 = %p\n", pDesc);
+    LOG_INFO("  FullScreenDescription = %p\n", pFullscreenDesc);
 
     // Save window handle so we can translate mouse coordinates to the window:
     G->hWnd = hWnd;
@@ -592,13 +592,13 @@ HRESULT __stdcall Hooked_CreateSwapChainForHwnd(
     get_tls()->hooking_quirk_protection = false;
     if (FAILED(hr))
     {
-        LogInfo("->Failed result %#x\n\n", hr);
+        LOG_INFO("->Failed result %#x\n\n", hr);
         goto out_release;
     }
 
     wrap_factory2_swap_chain(hackerDevice, ppSwapChain);
 
-    LogInfo("->return result %#x\n", hr);
+    LOG_INFO("->return result %#x\n", hr);
 out_release:
     if (hackerDevice)
         hackerDevice->Release();
@@ -634,7 +634,7 @@ HRESULT __stdcall Hooked_CreateSwapChainForCoreWindow(
     _COM_Outptr_  IDXGISwapChain1 **ppSwapChain)
 {
     if (get_tls()->hooking_quirk_protection) {
-        LogInfo("Hooking Quirk: Unexpected call back into IDXGIFactory2::CreateSwapChainForCoreWindow, passing through\n");
+        LOG_INFO("Hooking Quirk: Unexpected call back into IDXGIFactory2::CreateSwapChainForCoreWindow, passing through\n");
         // No known cases
         return fnOrigCreateSwapChainForCoreWindow(This, pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
     }
@@ -642,10 +642,10 @@ HRESULT __stdcall Hooked_CreateSwapChainForCoreWindow(
     HackerDevice *hackerDevice = NULL;
     DXGI_SWAP_CHAIN_DESC1 descCopy = { 0 };
 
-    LogInfo("*** Hooked IDXGIFactory2::CreateSwapChainForCoreWindow(%p) called\n", This);
-    LogInfo("  Device = %p\n", pDevice);
-    LogInfo("  SwapChain = %p\n", ppSwapChain);
-    LogInfo("  Description1 = %p\n", pDesc);
+    LOG_INFO("*** Hooked IDXGIFactory2::CreateSwapChainForCoreWindow(%p) called\n", This);
+    LOG_INFO("  Device = %p\n", pDevice);
+    LOG_INFO("  SwapChain = %p\n", ppSwapChain);
+    LOG_INFO("  Description1 = %p\n", pDesc);
 
     // FIXME: Need the hWnd for mouse support
 
@@ -658,13 +658,13 @@ HRESULT __stdcall Hooked_CreateSwapChainForCoreWindow(
     get_tls()->hooking_quirk_protection = false;
     if (FAILED(hr))
     {
-        LogInfo("->Failed result %#x\n\n", hr);
+        LOG_INFO("->Failed result %#x\n\n", hr);
         goto out_release;
     }
 
     wrap_factory2_swap_chain(hackerDevice, ppSwapChain);
 
-    LogInfo("->return result %#x\n", hr);
+    LOG_INFO("->return result %#x\n", hr);
 out_release:
     if (hackerDevice)
         hackerDevice->Release();
@@ -698,7 +698,7 @@ HRESULT __stdcall Hooked_CreateSwapChainForComposition(
     _COM_Outptr_  IDXGISwapChain1 **ppSwapChain)
 {
     if (get_tls()->hooking_quirk_protection) {
-        LogInfo("Hooking Quirk: Unexpected call back into IDXGIFactory2::CreateSwapChainForComposition, passing through\n");
+        LOG_INFO("Hooking Quirk: Unexpected call back into IDXGIFactory2::CreateSwapChainForComposition, passing through\n");
         // No known cases
         return fnOrigCreateSwapChainForComposition(This, pDevice, pDesc, pRestrictToOutput, ppSwapChain);
     }
@@ -706,10 +706,10 @@ HRESULT __stdcall Hooked_CreateSwapChainForComposition(
     HackerDevice *hackerDevice = NULL;
     DXGI_SWAP_CHAIN_DESC1 descCopy = { 0 };
 
-    LogInfo("*** Hooked IDXGIFactory2::CreateSwapChainForComposition(%p) called\n", This);
-    LogInfo("  Device = %p\n", pDevice);
-    LogInfo("  SwapChain = %p\n", ppSwapChain);
-    LogInfo("  Description1 = %p\n", pDesc);
+    LOG_INFO("*** Hooked IDXGIFactory2::CreateSwapChainForComposition(%p) called\n", This);
+    LOG_INFO("  Device = %p\n", pDevice);
+    LOG_INFO("  SwapChain = %p\n", ppSwapChain);
+    LOG_INFO("  Description1 = %p\n", pDesc);
 
     // FIXME: Need the hWnd for mouse support
 
@@ -722,13 +722,13 @@ HRESULT __stdcall Hooked_CreateSwapChainForComposition(
     get_tls()->hooking_quirk_protection = false;
     if (FAILED(hr))
     {
-        LogInfo("->Failed result %#x\n\n", hr);
+        LOG_INFO("->Failed result %#x\n\n", hr);
         goto out_release;
     }
 
     wrap_factory2_swap_chain(hackerDevice, ppSwapChain);
 
-    LogInfo("->return result %#x\n", hr);
+    LOG_INFO("->return result %#x\n", hr);
 out_release:
     if (hackerDevice)
         hackerDevice->Release();
@@ -744,33 +744,33 @@ static void HookFactory2CreateSwapChainMethods(IDXGIFactory2* dxgiFactory)
     DWORD dwOsErr;
     SIZE_T hook_id;
 
-    LogInfo("*** IDXGIFactory2 creating hooks for CreateSwapChain variants. \n");
+    LOG_INFO("*** IDXGIFactory2 creating hooks for CreateSwapChain variants. \n");
 
     dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigCreateSwapChainForHwnd,
         lpvtbl_CreateSwapChainForHwnd(dxgiFactory), Hooked_CreateSwapChainForHwnd, 0);
 
     if (dwOsErr == ERROR_SUCCESS)
-        LogInfo("  Successfully installed IDXGIFactory2->CreateSwapChainForHwnd hook.\n");
+        LOG_INFO("  Successfully installed IDXGIFactory2->CreateSwapChainForHwnd hook.\n");
     else
-        LogInfo("  *** Failed install IDXGIFactory2->CreateSwapChainForHwnd hook.\n");
+        LOG_INFO("  *** Failed install IDXGIFactory2->CreateSwapChainForHwnd hook.\n");
 
 
     dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigCreateSwapChainForCoreWindow,
         lpvtbl_CreateSwapChainForCoreWindow(dxgiFactory), Hooked_CreateSwapChainForCoreWindow, 0);
 
     if (dwOsErr == ERROR_SUCCESS)
-        LogInfo("  Successfully installed IDXGIFactory2->CreateSwapChainForCoreWindow hook.\n");
+        LOG_INFO("  Successfully installed IDXGIFactory2->CreateSwapChainForCoreWindow hook.\n");
     else
-        LogInfo("  *** Failed install IDXGIFactory2->CreateSwapChainForCoreWindow hook.\n");
+        LOG_INFO("  *** Failed install IDXGIFactory2->CreateSwapChainForCoreWindow hook.\n");
 
 
     dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigCreateSwapChainForComposition,
         lpvtbl_CreateSwapChainForComposition(dxgiFactory), Hooked_CreateSwapChainForComposition, 0);
 
     if (dwOsErr == ERROR_SUCCESS)
-        LogInfo("  Successfully installed IDXGIFactory2->CreateSwapChainForComposition hook.\n");
+        LOG_INFO("  Successfully installed IDXGIFactory2->CreateSwapChainForComposition hook.\n");
     else
-        LogInfo("  *** Failed install IDXGIFactory2->CreateSwapChainForComposition hook.\n");
+        LOG_INFO("  *** Failed install IDXGIFactory2->CreateSwapChainForComposition hook.\n");
 }
 
 // -----------------------------------------------------------------------------
@@ -832,7 +832,7 @@ HRESULT __stdcall Hooked_CreateSwapChain(
     _Out_  IDXGISwapChain **ppSwapChain)
 {
     if (get_tls()->hooking_quirk_protection) {
-        LogInfo("Hooking Quirk: Unexpected call back into IDXGIFactory::CreateSwapChain, passing through\n");
+        LOG_INFO("Hooking Quirk: Unexpected call back into IDXGIFactory::CreateSwapChain, passing through\n");
         // Known case: DirectX implements D3D11CreateDeviceAndSwapChain
         //             by calling DXGIFactory::CreateSwapChain (if
         //             ppSwapChain is not NULL), triggering this if we
@@ -841,10 +841,10 @@ HRESULT __stdcall Hooked_CreateSwapChain(
         return fnOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
     }
 
-    LogInfo("\n*** Hooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
-    LogInfo("  Device = %p\n", pDevice);
-    LogInfo("  SwapChain = %p\n", ppSwapChain);
-    LogInfo("  Description = %p\n", pDesc);
+    LOG_INFO("\n*** Hooked IDXGIFactory::CreateSwapChain(%p) called\n", This);
+    LOG_INFO("  Device = %p\n", pDevice);
+    LOG_INFO("  SwapChain = %p\n", ppSwapChain);
+    LOG_INFO("  Description = %p\n", pDesc);
 
     HackerDevice *hackerDevice = NULL;
     DXGI_SWAP_CHAIN_DESC origSwapChainDesc;
@@ -858,17 +858,17 @@ HRESULT __stdcall Hooked_CreateSwapChain(
     get_tls()->hooking_quirk_protection = false;
     if (FAILED(hr))
     {
-        LogInfo("->Failed result %#x\n\n", hr);
+        LOG_INFO("->Failed result %#x\n\n", hr);
         goto out_release;
     }
 
     IDXGISwapChain *retChain = ppSwapChain ? *ppSwapChain : nullptr;
-    LogInfo("  CreateSwapChain returned handle = %p\n", retChain);
+    LOG_INFO("  CreateSwapChain returned handle = %p\n", retChain);
     analyse_iunknown(retChain);
 
     wrap_swap_chain(hackerDevice, ppSwapChain, pDesc, &origSwapChainDesc);
 
-    LogInfo("->IDXGIFactory::CreateSwapChain return result %#x\n\n", hr);
+    LOG_INFO("->IDXGIFactory::CreateSwapChain return result %#x\n\n", hr);
 out_release:
     if (hackerDevice)
         hackerDevice->Release();
@@ -882,7 +882,7 @@ out_release:
 
 static void HookCreateSwapChain(void* factory)
 {
-    LogInfo("*** IDXGIFactory creating hook for CreateSwapChain. \n");
+    LOG_INFO("*** IDXGIFactory creating hook for CreateSwapChain. \n");
 
     IDXGIFactory* dxgiFactory = reinterpret_cast<IDXGIFactory*>(factory);
 
@@ -891,9 +891,9 @@ static void HookCreateSwapChain(void* factory)
         lpvtbl_CreateSwapChain(dxgiFactory), Hooked_CreateSwapChain, 0);
 
     if (dwOsErr == ERROR_SUCCESS)
-        LogInfo("  Successfully installed IDXGIFactory->CreateSwapChain hook.\n");
+        LOG_INFO("  Successfully installed IDXGIFactory->CreateSwapChain hook.\n");
     else
-        LogInfo("  *** Failed install IDXGIFactory->CreateSwapChain hook.\n");
+        LOG_INFO("  *** Failed install IDXGIFactory->CreateSwapChain hook.\n");
 }
 
 
@@ -911,7 +911,7 @@ HRESULT(__stdcall *fnOrigCreateDXGIFactory)(
 
 HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
-    LogInfo("*** Hooked_CreateDXGIFactory called with riid: %s\n", NameFromIID(riid).c_str());
+    LOG_INFO("*** Hooked_CreateDXGIFactory called with riid: %s\n", NameFromIID(riid).c_str());
 
     // If this happens to be first call from the game, let's make sure to load
     // up our d3d11.dll and the .ini file.
@@ -920,7 +920,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
     // If we are being requested to create a DXGIFactory2, lie and say it's not possible.
     if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
     {
-        LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
+        LOG_INFO("  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
         *ppFactory = NULL;
         return E_NOINTERFACE;
     }
@@ -928,7 +928,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
     HRESULT hr = fnOrigCreateDXGIFactory(riid, ppFactory);
     if (FAILED(hr))
     {
-        LogInfo("->failed with HRESULT=%x\n", hr);
+        LOG_INFO("->failed with HRESULT=%x\n", hr);
         return hr;
     }
 
@@ -947,13 +947,13 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
     {
         factoryUnknown->Release();
         *ppFactory = (void*)dxgiFactory;
-        LogInfo("  Upcast QueryInterface(IDXGIFactory2) returned result = %x, factory = %p\n", res, dxgiFactory);
+        LOG_INFO("  Upcast QueryInterface(IDXGIFactory2) returned result = %x, factory = %p\n", res, dxgiFactory);
 
         if (!fnOrigCreateSwapChainForHwnd)
             HookFactory2CreateSwapChainMethods(dxgiFactory);
     }
 
-    LogInfo("  CreateDXGIFactory returned factory = %p, result = %x\n", *ppFactory, hr);
+    LOG_INFO("  CreateDXGIFactory returned factory = %p, result = %x\n", *ppFactory, hr);
     return hr;
 }
 
@@ -976,7 +976,7 @@ HRESULT(__stdcall *fnOrigCreateDXGIFactory1)(
 
 HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 {
-    LogInfo("*** Hooked_CreateDXGIFactory1 called with riid: %s\n", NameFromIID(riid).c_str());
+    LOG_INFO("*** Hooked_CreateDXGIFactory1 called with riid: %s\n", NameFromIID(riid).c_str());
 
     // If this happens to be first call from the game, let's make sure to load
     // up our d3d11.dll and the .ini file.
@@ -985,7 +985,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
     // If we are being requested to create a DXGIFactory2, lie and say it's not possible.
     if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
     {
-        LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
+        LOG_INFO("  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
         *ppFactory1 = NULL;
         return E_NOINTERFACE;
     }
@@ -995,7 +995,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
     HRESULT hr = fnOrigCreateDXGIFactory1(riid, ppFactory1);
     if (FAILED(hr))
     {
-        LogInfo("->failed with HRESULT=%x\n", hr);
+        LOG_INFO("->failed with HRESULT=%x\n", hr);
         return hr;
     }
 
@@ -1014,13 +1014,13 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
     {
         factoryUnknown->Release();
         *ppFactory1 = (void*)dxgiFactory;
-        LogInfo("  Upcast QueryInterface(IDXGIFactory2) returned result = %x, factory = %p\n", res, dxgiFactory);
+        LOG_INFO("  Upcast QueryInterface(IDXGIFactory2) returned result = %x, factory = %p\n", res, dxgiFactory);
 
         if (!fnOrigCreateSwapChainForHwnd)
             HookFactory2CreateSwapChainMethods(dxgiFactory);
     }
 
-    LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x\n", *ppFactory1, hr);
+    LOG_INFO("  CreateDXGIFactory1 returned factory = %p, result = %x\n", *ppFactory1, hr);
     return hr;
 }
 
@@ -1036,7 +1036,7 @@ HRESULT(__stdcall *fnOrigCreateDXGIFactory2)(
 
 HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFactory2)
 {
-    LogInfo("*** Hooked_CreateDXGIFactory2 called with riid: %s\n", NameFromIID(riid).c_str());
+    LOG_INFO("*** Hooked_CreateDXGIFactory2 called with riid: %s\n", NameFromIID(riid).c_str());
 
     // If this happens to be first call from the game, let's make sure to load
     // up our d3d11.dll and the .ini file.
@@ -1045,7 +1045,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFa
     // If we are being requested to create a DXGIFactory2, lie and say it's not possible.
     if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
     {
-        LogInfo("  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
+        LOG_INFO("  returns E_NOINTERFACE as error for IDXGIFactory2.\n");
         *ppFactory2 = NULL;
         return E_NOINTERFACE;
     }
@@ -1055,7 +1055,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFa
     HRESULT hr = fnOrigCreateDXGIFactory2(Flags, riid, ppFactory2);
     if (FAILED(hr))
     {
-        LogInfo("->failed with HRESULT=%x\n", hr);
+        LOG_INFO("->failed with HRESULT=%x\n", hr);
         return hr;
     }
 
@@ -1077,13 +1077,13 @@ HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFa
     {
         factoryUnknown->Release();
         *ppFactory2 = (void*)dxgiFactory;
-        LogInfo("  Upcast QueryInterface(IDXGIFactory2) returned result = %x, factory = %p\n", res, dxgiFactory);
+        LOG_INFO("  Upcast QueryInterface(IDXGIFactory2) returned result = %x, factory = %p\n", res, dxgiFactory);
 
         if (!fnOrigCreateSwapChainForHwnd)
             HookFactory2CreateSwapChainMethods(dxgiFactory);
     }
 
-    LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x\n", *ppFactory2, hr);
+    LOG_INFO("  CreateDXGIFactory2 returned factory = %p, result = %x\n", *ppFactory2, hr);
     return hr;
 }
 
@@ -1137,22 +1137,22 @@ HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFa
 //{
 //    if (LogFile)
 //    {
-//        LogInfo("HackerDXGIFactory::MakeWindowAssociation(%s@%p) called with WindowHandle = %p, Flags = %x\n", type_name(this), this, WindowHandle, Flags);
-//        if (Flags) LogInfoNoNL("  Flags =");
-//        if (Flags & DXGI_MWA_NO_WINDOW_CHANGES) LogInfoNoNL(" DXGI_MWA_NO_WINDOW_CHANGES(no monitoring)");
-//        if (Flags & DXGI_MWA_NO_ALT_ENTER) LogInfoNoNL(" DXGI_MWA_NO_ALT_ENTER");
-//        if (Flags & DXGI_MWA_NO_PRINT_SCREEN) LogInfoNoNL(" DXGI_MWA_NO_PRINT_SCREEN");
-//        if (Flags) LogInfo("\n");
+//        LOG_INFO("HackerDXGIFactory::MakeWindowAssociation(%s@%p) called with WindowHandle = %p, Flags = %x\n", type_name(this), this, WindowHandle, Flags);
+//        if (Flags) LOG_INFO_NO_NL("  Flags =");
+//        if (Flags & DXGI_MWA_NO_WINDOW_CHANGES) LOG_INFO_NO_NL(" DXGI_MWA_NO_WINDOW_CHANGES(no monitoring)");
+//        if (Flags & DXGI_MWA_NO_ALT_ENTER) LOG_INFO_NO_NL(" DXGI_MWA_NO_ALT_ENTER");
+//        if (Flags & DXGI_MWA_NO_PRINT_SCREEN) LOG_INFO_NO_NL(" DXGI_MWA_NO_PRINT_SCREEN");
+//        if (Flags) LOG_INFO("\n");
 //    }
 //
 //    if (G->SCREEN_ALLOW_COMMANDS && Flags)
 //    {
-//        LogInfo("  overriding Flags to allow all window commands\n");
+//        LOG_INFO("  overriding Flags to allow all window commands\n");
 //
 //        Flags = 0;
 //    }
 //    HRESULT hr = mOrigFactory->MakeWindowAssociation(WindowHandle, Flags);
-//    LogInfo("  returns result = %x\n", hr);
+//    LOG_INFO("  returns result = %x\n", hr);
 //
 //    return hr;
 //}
@@ -1177,7 +1177,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFa
 //    /* [annotation][out] */
 //    __out_ecount_part_opt(*pNumModes, *pNumModes)  DXGI_MODE_DESC *pDesc)
 //{
-//    LogInfo("HackerDXGIOutput::GetDisplayModeList(%s@%p) called\n", type_name(this), this);
+//    LOG_INFO("HackerDXGIOutput::GetDisplayModeList(%s@%p) called\n", type_name(this), this);
 //
 //    HRESULT ret = mOrigOutput->GetDisplayModeList(EnumFormat, Flags, pNumModes, pDesc);
 //    if (ret == S_OK && pDesc)
@@ -1187,14 +1187,14 @@ HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFa
 //            int rate = pDesc[j].RefreshRate.Numerator / pDesc[j].RefreshRate.Denominator;
 //            if (FilterRate(rate))
 //            {
-//                LogInfo("  Skipping mode: width=%d, height=%d, refresh rate=%f\n", pDesc[j].Width, pDesc[j].Height,
+//                LOG_INFO("  Skipping mode: width=%d, height=%d, refresh rate=%f\n", pDesc[j].Width, pDesc[j].Height,
 //                    (float)pDesc[j].RefreshRate.Numerator / (float)pDesc[j].RefreshRate.Denominator);
 //                // ToDo: Does this work?  I have no idea why setting width and height to 8 would matter.
 //                pDesc[j].Width = 8; pDesc[j].Height = 8;
 //            }
 //            else
 //            {
-//                LogInfo("  Mode detected: width=%d, height=%d, refresh rate=%f\n", pDesc[j].Width, pDesc[j].Height,
+//                LOG_INFO("  Mode detected: width=%d, height=%d, refresh rate=%f\n", pDesc[j].Width, pDesc[j].Height,
 //                    (float)pDesc[j].RefreshRate.Numerator / (float)pDesc[j].RefreshRate.Denominator);
 //            }
 //        }
@@ -1211,7 +1211,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFa
 //    /* [annotation][in] */
 //    __in_opt  IUnknown *pConcernedDevice)
 //{
-//    if (pModeToMatch) LogInfo("HackerDXGIOutput::FindClosestMatchingMode(%s@%p) called: width=%d, height=%d, refresh rate=%f\n", type_name(this), this,
+//    if (pModeToMatch) LOG_INFO("HackerDXGIOutput::FindClosestMatchingMode(%s@%p) called: width=%d, height=%d, refresh rate=%f\n", type_name(this), this,
 //        pModeToMatch->Width, pModeToMatch->Height, (float)pModeToMatch->RefreshRate.Numerator / (float)pModeToMatch->RefreshRate.Denominator);
 //
 //    HRESULT hr = mOrigOutput->FindClosestMatchingMode(pModeToMatch, pClosestMatch, pConcernedDevice);
@@ -1223,10 +1223,10 @@ HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFa
 //    }
 //    if (pClosestMatch && G->SCREEN_WIDTH >= 0) pClosestMatch->Width = G->SCREEN_WIDTH;
 //    if (pClosestMatch && G->SCREEN_HEIGHT >= 0) pClosestMatch->Height = G->SCREEN_HEIGHT;
-//    if (pClosestMatch) LogInfo("  returning width=%d, height=%d, refresh rate=%f\n",
+//    if (pClosestMatch) LOG_INFO("  returning width=%d, height=%d, refresh rate=%f\n",
 //        pClosestMatch->Width, pClosestMatch->Height, (float)pClosestMatch->RefreshRate.Numerator / (float)pClosestMatch->RefreshRate.Denominator);
 //
-//    LogInfo("  returns hr=%x\n", hr);
+//    LOG_INFO("  returns hr=%x\n", hr);
 //    return hr;
 //}
 //

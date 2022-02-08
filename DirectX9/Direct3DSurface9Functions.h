@@ -115,8 +115,8 @@ HRESULT D3D9Wrapper::IDirect3DSurface9::resolveDepthReplacement()
 }
 inline void D3D9Wrapper::IDirect3DSurface9::Delete()
 {
-    LogInfo("IDirect3DSurface9::Delete handle=%p counter=%d this=%p\n", m_pUnk, m_ulRef, this);
-    LogInfo("  deleting self\n");
+    LOG_INFO("IDirect3DSurface9::Delete handle=%p counter=%d this=%p\n", m_pUnk, m_ulRef, this);
+    LOG_INFO("  deleting self\n");
 
     D3D9Wrapper::IDirect3DResource9::Delete();
 
@@ -327,11 +327,11 @@ D3D9Wrapper::IDirect3DSurface9* D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurfa
 }
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::QueryInterface(THIS_ REFIID riid, void ** ppvObj)
 {
-    LogDebug("D3D9Wrapper::IDirect3DSurface9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
+    LOG_DEBUG("D3D9Wrapper::IDirect3DSurface9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
     HRESULT hr = NULL;
     if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
         return hr;
-    LogInfo("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
+    LOG_INFO("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
     hr = m_pUnk->QueryInterface(riid, ppvObj);
     if (hr == S_OK) {
         if ((*ppvObj) == GetRealOrig()) {
@@ -351,8 +351,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::QueryInterface(THIS_ REFIID riid, v
                     break;
                 }
                 zero_d3d_ref_count = false;
-                LogInfo("  interface replaced with IDirect3DSurface9 wrapper.\n");
-                LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+                LOG_INFO("  interface replaced with IDirect3DSurface9 wrapper.\n");
+                LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
                 return hr;
             }
         }
@@ -360,7 +360,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::QueryInterface(THIS_ REFIID riid, v
         if (unk)
             *ppvObj = unk;
     }
-    LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+    LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
     return hr;
 }
 
@@ -385,16 +385,16 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DSurface9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DSurface9::Release(THIS)
 {
-    LogDebug("IDirect3DSurface9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
+    LOG_DEBUG("IDirect3DSurface9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-    LogDebug("  internal counter = %d\n", ulRef);
+    LOG_DEBUG("  internal counter = %d\n", ulRef);
 
     --m_ulRef;
 
     bool prev_non_zero = !zero_d3d_ref_count;
     if (ulRef == 0)
     {
-        if (!gLogDebug) LogInfo("IDirect3DSurface9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+        if (!gLogDebug) LOG_INFO("IDirect3DSurface9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
         zero_d3d_ref_count = true;
         if (m_OwningContainerType == SurfaceContainerOwnerType::Device && !bound)
             Delete();
@@ -427,7 +427,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DSurface9::Release(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetDevice(THIS_ D3D9Wrapper::IDirect3DDevice9** ppDevice)
 {
-    LogDebug("IDirect3DSurface9::GetDevice called\n");
+    LOG_DEBUG("IDirect3DSurface9::GetDevice called\n");
 
     CheckSurface9(this);
     HRESULT hr;
@@ -449,7 +449,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetDevice(THIS_ D3D9Wrapper::IDirec
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::SetPrivateData(THIS_ REFGUID refguid,CONST void* pData,DWORD SizeOfData,DWORD Flags)
 {
-    LogDebug("IDirect3DSurface9::SetPrivateData called\n");
+    LOG_DEBUG("IDirect3DSurface9::SetPrivateData called\n");
     CheckSurface9(this);
     HRESULT hr = GetD3DSurface9()->SetPrivateData(refguid, pData, SizeOfData, Flags);
     return hr;
@@ -457,14 +457,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::SetPrivateData(THIS_ REFGUID refgui
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetPrivateData(THIS_ REFGUID refguid,void* pData,DWORD* pSizeOfData)
 {
-    LogDebug("IDirect3DSurface9::GetPrivateData called\n");
+    LOG_DEBUG("IDirect3DSurface9::GetPrivateData called\n");
     CheckSurface9(this);
     return GetD3DSurface9()->GetPrivateData(refguid, pData, pSizeOfData);
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::FreePrivateData(THIS_ REFGUID refguid)
 {
-    LogDebug("IDirect3DSurface9::GetPrivateData called\n");
+    LOG_DEBUG("IDirect3DSurface9::GetPrivateData called\n");
     CheckSurface9(this);
     HRESULT hr = GetD3DSurface9()->FreePrivateData(refguid);
     return hr;
@@ -472,7 +472,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::FreePrivateData(THIS_ REFGUID refgu
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DSurface9::SetPriority(THIS_ DWORD PriorityNew)
 {
-    LogDebug("IDirect3DSurface9::SetPriority called\n");
+    LOG_DEBUG("IDirect3DSurface9::SetPriority called\n");
     CheckSurface9(this);
     if (G->gForceStereo == 2) {
         if (IsDirectStereoSurface()) {
@@ -490,7 +490,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DSurface9::SetPriority(THIS_ DWORD Pri
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DSurface9::GetPriority(THIS)
 {
-    LogDebug("IDirect3DSurface9::GetPriority called\n");
+    LOG_DEBUG("IDirect3DSurface9::GetPriority called\n");
     CheckSurface9(this);
     return GetD3DSurface9()->GetPriority();
 }
@@ -498,7 +498,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DSurface9::GetPriority(THIS)
 STDMETHODIMP_(void) D3D9Wrapper::IDirect3DSurface9::PreLoad(THIS)
 {
     //managed resources only?
-    LogDebug("IDirect3DSurface9::PreLoad called\n");
+    LOG_DEBUG("IDirect3DSurface9::PreLoad called\n");
     CheckSurface9(this);
     if (G->gForceStereo == 2) {
         if (IsDirectStereoSurface()) {
@@ -517,14 +517,14 @@ STDMETHODIMP_(void) D3D9Wrapper::IDirect3DSurface9::PreLoad(THIS)
 
 STDMETHODIMP_(::D3DRESOURCETYPE) D3D9Wrapper::IDirect3DSurface9::GetType(THIS)
 {
-    LogDebug("IDirect3DSurface9::GetType called\n");
+    LOG_DEBUG("IDirect3DSurface9::GetType called\n");
     CheckSurface9(this);
     return GetD3DSurface9()->GetType();
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetContainer(THIS_ REFIID riid,void** ppContainer)
 {
-    LogDebug("IDirect3DSurface9::GetContainer called\n");
+    LOG_DEBUG("IDirect3DSurface9::GetContainer called\n");
 
     CheckSurface9(this);
     HRESULT hr;
@@ -603,7 +603,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetContainer(THIS_ REFIID riid,void
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetDesc(THIS_ ::D3DSURFACE_DESC *pDesc)
 {
-    LogDebug("IDirect3DSurface9::GetDesc called\n");
+    LOG_DEBUG("IDirect3DSurface9::GetDesc called\n");
 
     CheckSurface9(this);
 
@@ -612,7 +612,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetDesc(THIS_ ::D3DSURFACE_DESC *pD
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::LockRect(THIS_ ::D3DLOCKED_RECT* pLockedRect,CONST RECT* pRect,DWORD Flags)
 {
-    LogDebug("IDirect3DSurface9::LockRect called\n");
+    LOG_DEBUG("IDirect3DSurface9::LockRect called\n");
 
     CheckSurface9(this);
 
@@ -639,7 +639,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::LockRect(THIS_ ::D3DLOCKED_RECT* pL
                             hr = hackerDevice->GetD3D9Device()->CreateTexture(desc.Width, desc.Height, 1, 0,
                                 desc.Format, ::D3DPOOL_SYSTEMMEM, &m_pDirectLockableSysMemTexture, NULL);
                             if (FAILED(hr)) {
-                                LogDebug("IDirect3DSurface9::LockRect Direct Mode, failed to create system memory texture, hr = 0x%0.8x\n", hr);
+                                LOG_DEBUG("IDirect3DSurface9::LockRect Direct Mode, failed to create system memory texture, hr = 0x%0.8x\n", hr);
                                 DirectLockRectNoMemTex = true;
                                 //goto postLock;
                             }
@@ -654,7 +654,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::LockRect(THIS_ ::D3DLOCKED_RECT* pL
                             hr = hackerDevice->GetD3D9Device()->GetRenderTargetData(pBaseSurface, pSurface);
                             if (FAILED(hr))
                             {
-                                LogDebug("IDirect3DSurface9::LockRect Direct Mode, failed to update system memory texture surface, hr = 0x%0.8x\n", hr);
+                                LOG_DEBUG("IDirect3DSurface9::LockRect Direct Mode, failed to update system memory texture surface, hr = 0x%0.8x\n", hr);
                                 goto postLock;
                             }
                         }
@@ -662,7 +662,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::LockRect(THIS_ ::D3DLOCKED_RECT* pL
                         hr = pSurface->LockRect(pLockedRect, pRect, Flags);
                         if (FAILED(hr))
                         {
-                            LogDebug("IDirect3DSurface9::LockRect Direct Mode, failed to LockRect hr = 0x%0.8x\n", hr);
+                            LOG_DEBUG("IDirect3DSurface9::LockRect Direct Mode, failed to LockRect hr = 0x%0.8x\n", hr);
                             goto postLock;
                         }
                         pSurface->Release();
@@ -675,7 +675,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::LockRect(THIS_ ::D3DLOCKED_RECT* pL
                     hr = pBaseSurface->LockRect(pLockedRect, pRect, Flags);
                     if (FAILED(hr))
                     {
-                        LogDebug("IDirect3DSurface9::LockRect Direct Mode, failed to LockRect hr = 0x%0.8x\n", hr);
+                        LOG_DEBUG("IDirect3DSurface9::LockRect Direct Mode, failed to LockRect hr = 0x%0.8x\n", hr);
                         goto postLock;
                     }
 
@@ -730,7 +730,7 @@ postLock:
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::UnlockRect(THIS)
 {
-    LogDebug("IDirect3DSurface9::UnlockRect called\n");
+    LOG_DEBUG("IDirect3DSurface9::UnlockRect called\n");
     CheckSurface9(this);
     ::IDirect3DSurface9 *pBaseSurface = GetD3DSurface9();
     hackerDevice->FrameAnalysisLog("Unlock(pResource:0x%p)",
@@ -760,7 +760,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::UnlockRect(THIS)
                     hr = hackerDevice->GetD3D9Device()->UpdateSurface(pSurface, NULL, m_pDirectSurfaceRight, NULL);
                     if (FAILED(hr))
                     {
-                        LogDebug("IDirect3DSurface9::UnlockRect Direct Mode, failed to update full right surface, hr = 0x%0.8x\n", hr);
+                        LOG_DEBUG("IDirect3DSurface9::UnlockRect Direct Mode, failed to update full right surface, hr = 0x%0.8x\n", hr);
                         //Just ignore the failed copy back, not much we can do
                         hr = S_OK;
                     }
@@ -768,7 +768,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::UnlockRect(THIS)
                     hr = hackerDevice->GetD3D9Device()->UpdateSurface(pSurface, NULL, pBaseSurface, NULL);
                     if (FAILED(hr))
                     {
-                        LogDebug("IDirect3DSurface9::UnlockRect Direct Mode, failed to update full left surface, hr = 0x%0.8x\n", hr);
+                        LOG_DEBUG("IDirect3DSurface9::UnlockRect Direct Mode, failed to update full left surface, hr = 0x%0.8x\n", hr);
                         //Just ignore the failed copy back, not much we can do
                         hr = S_OK;
                     }
@@ -784,14 +784,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::UnlockRect(THIS)
                         hr = hackerDevice->GetD3D9Device()->UpdateSurface(pSurface, &(*rectIter).rect, m_pDirectSurfaceRight, &p);
                         if (FAILED(hr))
                         {
-                            LogDebug("IDirect3DSurface9::UnlockRect Direct Mode, failed to update rect right surface, hr = 0x%0.8x\n", hr);
+                            LOG_DEBUG("IDirect3DSurface9::UnlockRect Direct Mode, failed to update rect right surface, hr = 0x%0.8x\n", hr);
                             //Just ignore the failed copy back, not much we can do
                             hr = S_OK;
                         }
                         hr = hackerDevice->GetD3D9Device()->UpdateSurface(pSurface, &(*rectIter).rect, pBaseSurface, &p);
                         if (FAILED(hr))
                         {
-                            LogDebug("IDirect3DSurface9::UnlockRect Direct Mode, failed to update rect left surface, hr = 0x%0.8x\n", hr);
+                            LOG_DEBUG("IDirect3DSurface9::UnlockRect Direct Mode, failed to update rect left surface, hr = 0x%0.8x\n", hr);
                             //Just ignore the failed copy back, not much we can do
                             hr = S_OK;
                         }
@@ -806,7 +806,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::UnlockRect(THIS)
                     hr = m_pDirectSurfaceRight->LockRect(&lRect, NULL, DirectLockedFlags);
                     if (FAILED(hr))
                     {
-                        LogDebug("IDirect3DSurface9::UnlockRect Direct Mode, failed to lock right surface, hr = 0x%0.8x\n", hr);
+                        LOG_DEBUG("IDirect3DSurface9::UnlockRect Direct Mode, failed to lock right surface, hr = 0x%0.8x\n", hr);
                         hr = S_OK;
                     }
                     else {
@@ -824,7 +824,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::UnlockRect(THIS)
                         hr = m_pDirectSurfaceRight->LockRect(&lRect, &(*rectIter).rect, (*rectIter).flags);
                         if (FAILED(hr))
                         {
-                            LogDebug("IDirect3DSurface9::UnlockRect Direct Mode, failed to lock rect on right surface, hr = 0x%0.8x\n", hr);
+                            LOG_DEBUG("IDirect3DSurface9::UnlockRect Direct Mode, failed to lock rect on right surface, hr = 0x%0.8x\n", hr);
                             hr = S_OK;
                         }
                         else {
@@ -859,14 +859,14 @@ postUnlock:
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::GetDC(THIS_ HDC *phdc)
 {
-    LogDebug("IDirect3DSurface9::GetDC called\n");
+    LOG_DEBUG("IDirect3DSurface9::GetDC called\n");
     CheckSurface9(this);
     return GetD3DSurface9()->GetDC(phdc);
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DSurface9::ReleaseDC(THIS_ HDC hdc)
 {
-    LogDebug("IDirect3DSurface9::ReleaseDC called\n");
+    LOG_DEBUG("IDirect3DSurface9::ReleaseDC called\n");
     CheckSurface9(this);
     HRESULT hr = GetD3DSurface9()->ReleaseDC(hdc);
     return hr;

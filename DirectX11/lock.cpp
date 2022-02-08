@@ -88,16 +88,16 @@ static void dump_stack_trace()
     wchar_t path[MAX_PATH];
     MODULEINFO mod_info;
 
-    LogInfo("%04x call stack:\n", GetCurrentThreadId());
+    LOG_INFO("%04x call stack:\n", GetCurrentThreadId());
     frames = CaptureStackBackTrace(0, 62, (void**)trace, NULL);
     for (USHORT i = 0; i < frames; i++) {
         if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)trace[i], &module)
          && GetModuleFileName(module, path, MAX_PATH)
          && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO))) {
-            LogInfo("%04x: %S+0x%"PRIxPTR"\n",
+            LOG_INFO("%04x: %S+0x%"PRIxPTR"\n",
                     GetCurrentThreadId(), path, trace[i] - (uintptr_t)mod_info.lpBaseOfDll);
         } else {
-            LogInfo("%04x: 0x%"PRIxPTR"\n",
+            LOG_INFO("%04x: 0x%"PRIxPTR"\n",
                     GetCurrentThreadId(), trace[i]);
         }
     }
@@ -110,49 +110,49 @@ static void log_held_locks(LockStack &held_locks, std::vector<LockStack> &other_
     MODULEINFO mod_info;
     char buf[20];
 
-    LogInfo("%04x held locks (most recent first):\n", GetCurrentThreadId());
+    LOG_INFO("%04x held locks (most recent first):\n", GetCurrentThreadId());
     for (auto info = held_locks.rbegin(); info != held_locks.rend(); info++) {
         if (info->function) {
             // 3DMigoto internal locking call with decorated function and line number
-            LogInfo("%04x: EnterCriticalSection(%s) %s(%d)\n",
+            LOG_INFO("%04x: EnterCriticalSection(%s) %s(%d)\n",
                     GetCurrentThreadId(), lock_name(info->lock, buf), info->function, info->line);
         } else {
             if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)info->ret, &module)
              && GetModuleFileName(module, path, MAX_PATH)
              && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO))) {
-                LogInfo("%04x: EnterCriticalSection(%s) %S+0x%"PRIxPTR"\n",
+                LOG_INFO("%04x: EnterCriticalSection(%s) %S+0x%"PRIxPTR"\n",
                         GetCurrentThreadId(), lock_name(info->lock, buf), path, info->ret - (uintptr_t)mod_info.lpBaseOfDll);
             } else {
-                LogInfo("%04x: EnterCriticalSection(%s) 0x%"PRIxPTR"\n",
+                LOG_INFO("%04x: EnterCriticalSection(%s) 0x%"PRIxPTR"\n",
                         GetCurrentThreadId(), lock_name(info->lock, buf), info->ret);
             }
         }
     }
 
     for (auto &other_stack: other_sides) {
-        LogInfo("----- Previously seen locking pattern that could lead to an AB-BA deadlock:\n");
+        LOG_INFO("----- Previously seen locking pattern that could lead to an AB-BA deadlock:\n");
         // Bit of a copy & paste job just to remove the thread IDs
         // since those aren't saved in the stack (yet?)
         for (auto info = other_stack.rbegin(); info != other_stack.rend(); info++) {
             if (info->function) {
                 // 3DMigoto internal locking call with decorated function and line number
-                LogInfo("      EnterCriticalSection(%s) %s(%d)\n",
+                LOG_INFO("      EnterCriticalSection(%s) %s(%d)\n",
                         lock_name(info->lock, buf), info->function, info->line);
             } else {
                 if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)info->ret, &module)
                  && GetModuleFileName(module, path, MAX_PATH)
                  && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO))) {
-                    LogInfo("      EnterCriticalSection(%s) %S+0x%"PRIxPTR"\n",
+                    LOG_INFO("      EnterCriticalSection(%s) %S+0x%"PRIxPTR"\n",
                             lock_name(info->lock, buf), path, info->ret - (uintptr_t)mod_info.lpBaseOfDll);
                 } else {
-                    LogInfo("      EnterCriticalSection(%s) 0x%"PRIxPTR"\n",
+                    LOG_INFO("      EnterCriticalSection(%s) 0x%"PRIxPTR"\n",
                             lock_name(info->lock, buf), info->ret);
                 }
             }
         }
     }
     if (other_sides.empty()) {
-        LogInfo("----- No previously seen single locking stack could lead to an AB-BA deadlock - this may be a 3+ way deadlock\n");
+        LOG_INFO("----- No previously seen single locking stack could lead to an AB-BA deadlock - this may be a 3+ way deadlock\n");
         // TODO: Search the graph of cached stacks to find all the
         // stacks that can lead to this. We could alternatively store
         // (a second copy of) the locking graph that doesn't have
@@ -169,7 +169,7 @@ static void log_held_locks(LockStack &held_locks, std::vector<LockStack> &other_
     // stacks so we can dump out the other side.
     dump_stack_trace();
 
-    LogInfo("%04x - - - - - - - - - -\n", GetCurrentThreadId());
+    LOG_INFO("%04x - - - - - - - - - -\n", GetCurrentThreadId());
 
     // Just in case we are about to deadlock for real, flush the log file
     // to make sure we know what happened:
@@ -279,7 +279,7 @@ static void validate_lock(LockStack &locks_held, CRITICAL_SECTION *new_lock)
             LogOverlay(LOG_NOTICE, "%04x: Potential deadlock scenario detected: Lock %s taken after %s\n",
                     GetCurrentThreadId(), lock_name(new_lock, buf1), lock_name(issue.first, buf2));
         } else {
-            LogInfo("%04x: Potential deadlock scenario detected: Lock %s taken after %s\n",
+            LOG_INFO("%04x: Potential deadlock scenario detected: Lock %s taken after %s\n",
                     GetCurrentThreadId(), lock_name(new_lock, buf1), lock_name(issue.first, buf2));
         }
     }

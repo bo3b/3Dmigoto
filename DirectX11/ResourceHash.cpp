@@ -105,51 +105,51 @@ int StrResourceDesc(char *buf, size_t size, struct ResourceHashInfo &info)
 template <typename DescType>
 static void LogResourceDescCommon(DescType *desc)
 {
-    LogInfo("    Usage = %d\n", desc->Usage);
-    LogInfo("    BindFlags = 0x%x\n", desc->BindFlags);
-    LogInfo("    CPUAccessFlags = 0x%x\n", desc->CPUAccessFlags);
-    LogInfo("    MiscFlags = 0x%x\n", desc->MiscFlags);
+    LOG_INFO("    Usage = %d\n", desc->Usage);
+    LOG_INFO("    BindFlags = 0x%x\n", desc->BindFlags);
+    LOG_INFO("    CPUAccessFlags = 0x%x\n", desc->CPUAccessFlags);
+    LOG_INFO("    MiscFlags = 0x%x\n", desc->MiscFlags);
 }
 
 void LogResourceDesc(const D3D11_BUFFER_DESC *desc)
 {
-    LogInfo("  Resource Type = Buffer\n");
-    LogInfo("    ByteWidth = %d\n", desc->ByteWidth);
+    LOG_INFO("  Resource Type = Buffer\n");
+    LOG_INFO("    ByteWidth = %d\n", desc->ByteWidth);
     LogResourceDescCommon(desc);
-    LogInfo("    StructureByteStride = %d\n", desc->StructureByteStride);
+    LOG_INFO("    StructureByteStride = %d\n", desc->StructureByteStride);
 }
 
 void LogResourceDesc(const D3D11_TEXTURE1D_DESC *desc)
 {
-    LogInfo("  Resource Type = Texture1D\n");
-    LogInfo("    Width = %d\n", desc->Width);
-    LogInfo("    MipLevels = %d\n", desc->MipLevels);
-    LogInfo("    ArraySize = %d\n", desc->ArraySize);
-    LogInfo("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+    LOG_INFO("  Resource Type = Texture1D\n");
+    LOG_INFO("    Width = %d\n", desc->Width);
+    LOG_INFO("    MipLevels = %d\n", desc->MipLevels);
+    LOG_INFO("    ArraySize = %d\n", desc->ArraySize);
+    LOG_INFO("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
     LogResourceDescCommon(desc);
 }
 
 void LogResourceDesc(const D3D11_TEXTURE2D_DESC *desc)
 {
-    LogInfo("  Resource Type = Texture2D\n");
-    LogInfo("    Width = %d\n", desc->Width);
-    LogInfo("    Height = %d\n", desc->Height);
-    LogInfo("    MipLevels = %d\n", desc->MipLevels);
-    LogInfo("    ArraySize = %d\n", desc->ArraySize);
-    LogInfo("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
-    LogInfo("    SampleDesc.Count = %d\n", desc->SampleDesc.Count);
-    LogInfo("    SampleDesc.Quality = %d\n", desc->SampleDesc.Quality);
+    LOG_INFO("  Resource Type = Texture2D\n");
+    LOG_INFO("    Width = %d\n", desc->Width);
+    LOG_INFO("    Height = %d\n", desc->Height);
+    LOG_INFO("    MipLevels = %d\n", desc->MipLevels);
+    LOG_INFO("    ArraySize = %d\n", desc->ArraySize);
+    LOG_INFO("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+    LOG_INFO("    SampleDesc.Count = %d\n", desc->SampleDesc.Count);
+    LOG_INFO("    SampleDesc.Quality = %d\n", desc->SampleDesc.Quality);
     LogResourceDescCommon(desc);
 }
 
 void LogResourceDesc(const D3D11_TEXTURE3D_DESC *desc)
 {
-    LogInfo("  Resource Type = Texture3D\n");
-    LogInfo("    Width = %d\n", desc->Width);
-    LogInfo("    Height = %d\n", desc->Height);
-    LogInfo("    Depth = %d\n", desc->Depth);
-    LogInfo("    MipLevels = %d\n", desc->MipLevels);
-    LogInfo("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+    LOG_INFO("  Resource Type = Texture3D\n");
+    LOG_INFO("    Width = %d\n", desc->Width);
+    LOG_INFO("    Height = %d\n", desc->Height);
+    LOG_INFO("    Depth = %d\n", desc->Depth);
+    LOG_INFO("    MipLevels = %d\n", desc->MipLevels);
+    LOG_INFO("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
     LogResourceDescCommon(desc);
 }
 
@@ -188,204 +188,204 @@ void LogResourceDesc(ID3D11Resource *resource)
 
 void LogViewDesc(const D3D11_SHADER_RESOURCE_VIEW_DESC *desc)
 {
-    LogInfo("  View Type = Shader Resource\n");
-    LogInfo("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+    LOG_INFO("  View Type = Shader Resource\n");
+    LOG_INFO("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
     switch (desc->ViewDimension) {
         case D3D11_SRV_DIMENSION_UNKNOWN:
-            LogInfo("    ViewDimension = UNKNOWN\n");
+            LOG_INFO("    ViewDimension = UNKNOWN\n");
             break;
         case D3D11_SRV_DIMENSION_BUFFER:
-            LogInfo("    ViewDimension = BUFFER\n");
-            LogInfo("      Buffer.FirstElement/NumElements = %u\n", desc->Buffer.FirstElement);
-            LogInfo("      Buffer.ElementOffset/ElementWidth = %u\n", desc->Buffer.ElementOffset);
+            LOG_INFO("    ViewDimension = BUFFER\n");
+            LOG_INFO("      Buffer.FirstElement/NumElements = %u\n", desc->Buffer.FirstElement);
+            LOG_INFO("      Buffer.ElementOffset/ElementWidth = %u\n", desc->Buffer.ElementOffset);
             break;
         case D3D11_SRV_DIMENSION_TEXTURE1D:
-            LogInfo("    ViewDimension = TEXTURE1D\n");
-            LogInfo("      Texture1D.MostDetailedMip = %u\n", desc->Texture1D.MostDetailedMip);
-            LogInfo("      Texture1D.MipLevels = %d\n", desc->Texture1D.MipLevels);
+            LOG_INFO("    ViewDimension = TEXTURE1D\n");
+            LOG_INFO("      Texture1D.MostDetailedMip = %u\n", desc->Texture1D.MostDetailedMip);
+            LOG_INFO("      Texture1D.MipLevels = %d\n", desc->Texture1D.MipLevels);
             break;
         case D3D11_SRV_DIMENSION_TEXTURE1DARRAY:
-            LogInfo("    ViewDimension = TEXTURE1DARRAY\n");
-            LogInfo("      Texture1DArray.MostDetailedMip = %u\n", desc->Texture1DArray.MostDetailedMip);
-            LogInfo("      Texture1DArray.MipLevels = %d\n", desc->Texture1DArray.MipLevels);
-            LogInfo("      Texture1DArray.FirstArraySlice = %u\n", desc->Texture1DArray.FirstArraySlice);
-            LogInfo("      Texture1DArray.ArraySize = %u\n", desc->Texture1DArray.ArraySize);
+            LOG_INFO("    ViewDimension = TEXTURE1DARRAY\n");
+            LOG_INFO("      Texture1DArray.MostDetailedMip = %u\n", desc->Texture1DArray.MostDetailedMip);
+            LOG_INFO("      Texture1DArray.MipLevels = %d\n", desc->Texture1DArray.MipLevels);
+            LOG_INFO("      Texture1DArray.FirstArraySlice = %u\n", desc->Texture1DArray.FirstArraySlice);
+            LOG_INFO("      Texture1DArray.ArraySize = %u\n", desc->Texture1DArray.ArraySize);
             break;
         case D3D11_SRV_DIMENSION_TEXTURE2D:
-            LogInfo("    ViewDimension = TEXTURE2D\n");
-            LogInfo("      Texture2D.MostDetailedMip = %u\n", desc->Texture2D.MostDetailedMip);
-            LogInfo("      Texture2D.MipLevels = %d\n", desc->Texture2D.MipLevels);
+            LOG_INFO("    ViewDimension = TEXTURE2D\n");
+            LOG_INFO("      Texture2D.MostDetailedMip = %u\n", desc->Texture2D.MostDetailedMip);
+            LOG_INFO("      Texture2D.MipLevels = %d\n", desc->Texture2D.MipLevels);
             break;
         case D3D11_SRV_DIMENSION_TEXTURE2DARRAY:
-            LogInfo("    ViewDimension = TEXTURE2DARRAY\n");
-            LogInfo("      Texture2DArray.MostDetailedMip = %u\n", desc->Texture2DArray.MostDetailedMip);
-            LogInfo("      Texture2DArray.MipLevels = %d\n", desc->Texture2DArray.MipLevels);
-            LogInfo("      Texture2DArray.FirstArraySlice = %u\n", desc->Texture2DArray.FirstArraySlice);
-            LogInfo("      Texture2DArray.ArraySize = %u\n", desc->Texture2DArray.ArraySize);
+            LOG_INFO("    ViewDimension = TEXTURE2DARRAY\n");
+            LOG_INFO("      Texture2DArray.MostDetailedMip = %u\n", desc->Texture2DArray.MostDetailedMip);
+            LOG_INFO("      Texture2DArray.MipLevels = %d\n", desc->Texture2DArray.MipLevels);
+            LOG_INFO("      Texture2DArray.FirstArraySlice = %u\n", desc->Texture2DArray.FirstArraySlice);
+            LOG_INFO("      Texture2DArray.ArraySize = %u\n", desc->Texture2DArray.ArraySize);
             break;
         case D3D11_SRV_DIMENSION_TEXTURE2DMS:
-            LogInfo("    ViewDimension = TEXTURE2DMS\n");
+            LOG_INFO("    ViewDimension = TEXTURE2DMS\n");
             break;
         case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
-            LogInfo("    ViewDimension = TEXTURE2DMSARRAY\n");
-            LogInfo("      Texture2DMSArray.FirstArraySlice = %u\n", desc->Texture2DMSArray.FirstArraySlice);
-            LogInfo("      Texture2DMSArray.ArraySize = %u\n", desc->Texture2DMSArray.ArraySize);
+            LOG_INFO("    ViewDimension = TEXTURE2DMSARRAY\n");
+            LOG_INFO("      Texture2DMSArray.FirstArraySlice = %u\n", desc->Texture2DMSArray.FirstArraySlice);
+            LOG_INFO("      Texture2DMSArray.ArraySize = %u\n", desc->Texture2DMSArray.ArraySize);
             break;
         case D3D11_SRV_DIMENSION_TEXTURE3D:
-            LogInfo("    ViewDimension = TEXTURE3D\n");
-            LogInfo("      Texture3D.MostDetailedMip = %u\n", desc->Texture3D.MostDetailedMip);
-            LogInfo("      Texture3D.MipLevels = %d\n", desc->Texture3D.MipLevels);
+            LOG_INFO("    ViewDimension = TEXTURE3D\n");
+            LOG_INFO("      Texture3D.MostDetailedMip = %u\n", desc->Texture3D.MostDetailedMip);
+            LOG_INFO("      Texture3D.MipLevels = %d\n", desc->Texture3D.MipLevels);
             break;
         case D3D11_SRV_DIMENSION_TEXTURECUBE:
-            LogInfo("    ViewDimension = TEXTURECUBE\n");
-            LogInfo("      TextureCube.MostDetailedMip = %u\n", desc->TextureCube.MostDetailedMip);
-            LogInfo("      TextureCube.MipLevels = %d\n", desc->TextureCube.MipLevels);
+            LOG_INFO("    ViewDimension = TEXTURECUBE\n");
+            LOG_INFO("      TextureCube.MostDetailedMip = %u\n", desc->TextureCube.MostDetailedMip);
+            LOG_INFO("      TextureCube.MipLevels = %d\n", desc->TextureCube.MipLevels);
             break;
         case D3D11_SRV_DIMENSION_TEXTURECUBEARRAY:
-            LogInfo("    ViewDimension = TEXTURECUBEARRAY\n");
-            LogInfo("      TextureCubeArray.MostDetailedMip = %u\n", desc->TextureCubeArray.MostDetailedMip);
-            LogInfo("      TextureCubeArray.MipLevels = %d\n", desc->TextureCubeArray.MipLevels);
-            LogInfo("      TextureCubeArray.First2DArrayFace = %u\n", desc->TextureCubeArray.First2DArrayFace);
-            LogInfo("      TextureCubeArray.NumCubes = %u\n", desc->TextureCubeArray.NumCubes);
+            LOG_INFO("    ViewDimension = TEXTURECUBEARRAY\n");
+            LOG_INFO("      TextureCubeArray.MostDetailedMip = %u\n", desc->TextureCubeArray.MostDetailedMip);
+            LOG_INFO("      TextureCubeArray.MipLevels = %d\n", desc->TextureCubeArray.MipLevels);
+            LOG_INFO("      TextureCubeArray.First2DArrayFace = %u\n", desc->TextureCubeArray.First2DArrayFace);
+            LOG_INFO("      TextureCubeArray.NumCubes = %u\n", desc->TextureCubeArray.NumCubes);
             break;
         case D3D11_SRV_DIMENSION_BUFFEREX:
-            LogInfo("    ViewDimension = BUFFEREX\n");
-            LogInfo("      BufferEx.FirstElement = %u\n", desc->BufferEx.FirstElement);
-            LogInfo("      BufferEx.NumElements = %u\n", desc->BufferEx.NumElements);
-            LogInfo("      BufferEx.Flags = 0x%x\n", desc->BufferEx.Flags);
+            LOG_INFO("    ViewDimension = BUFFEREX\n");
+            LOG_INFO("      BufferEx.FirstElement = %u\n", desc->BufferEx.FirstElement);
+            LOG_INFO("      BufferEx.NumElements = %u\n", desc->BufferEx.NumElements);
+            LOG_INFO("      BufferEx.Flags = 0x%x\n", desc->BufferEx.Flags);
             break;
     }
 }
 
 void LogViewDesc(const D3D11_RENDER_TARGET_VIEW_DESC *desc)
 {
-    LogInfo("  View Type = Render Target\n");
-    LogInfo("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+    LOG_INFO("  View Type = Render Target\n");
+    LOG_INFO("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
     switch (desc->ViewDimension) {
         case D3D11_RTV_DIMENSION_UNKNOWN:
-            LogInfo("    ViewDimension = UNKNOWN\n");
+            LOG_INFO("    ViewDimension = UNKNOWN\n");
             break;
         case D3D11_RTV_DIMENSION_BUFFER:
-            LogInfo("    ViewDimension = BUFFER\n");
-            LogInfo("      Buffer.FirstElement/NumElements = %u\n", desc->Buffer.FirstElement);
-            LogInfo("      Buffer.ElementOffset/ElementWidth = %u\n", desc->Buffer.ElementOffset);
+            LOG_INFO("    ViewDimension = BUFFER\n");
+            LOG_INFO("      Buffer.FirstElement/NumElements = %u\n", desc->Buffer.FirstElement);
+            LOG_INFO("      Buffer.ElementOffset/ElementWidth = %u\n", desc->Buffer.ElementOffset);
             break;
         case D3D11_RTV_DIMENSION_TEXTURE1D:
-            LogInfo("    ViewDimension = TEXTURE1D\n");
-            LogInfo("      Texture1D.MipSlice = %u\n", desc->Texture1D.MipSlice);
+            LOG_INFO("    ViewDimension = TEXTURE1D\n");
+            LOG_INFO("      Texture1D.MipSlice = %u\n", desc->Texture1D.MipSlice);
             break;
         case D3D11_RTV_DIMENSION_TEXTURE1DARRAY:
-            LogInfo("    ViewDimension = TEXTURE1DARRAY\n");
-            LogInfo("      Texture1DArray.MipSlice = %u\n", desc->Texture1DArray.MipSlice);
-            LogInfo("      Texture1DArray.FirstArraySlice = %u\n", desc->Texture1DArray.FirstArraySlice);
-            LogInfo("      Texture1DArray.ArraySize = %u\n", desc->Texture1DArray.ArraySize);
+            LOG_INFO("    ViewDimension = TEXTURE1DARRAY\n");
+            LOG_INFO("      Texture1DArray.MipSlice = %u\n", desc->Texture1DArray.MipSlice);
+            LOG_INFO("      Texture1DArray.FirstArraySlice = %u\n", desc->Texture1DArray.FirstArraySlice);
+            LOG_INFO("      Texture1DArray.ArraySize = %u\n", desc->Texture1DArray.ArraySize);
             break;
         case D3D11_RTV_DIMENSION_TEXTURE2D:
-            LogInfo("    ViewDimension = TEXTURE2D\n");
-            LogInfo("      Texture2D.MipSlice = %u\n", desc->Texture2D.MipSlice);
+            LOG_INFO("    ViewDimension = TEXTURE2D\n");
+            LOG_INFO("      Texture2D.MipSlice = %u\n", desc->Texture2D.MipSlice);
             break;
         case D3D11_RTV_DIMENSION_TEXTURE2DARRAY:
-            LogInfo("    ViewDimension = TEXTURE2DARRAY\n");
-            LogInfo("      Texture2DArray.MipSlice = %u\n", desc->Texture2DArray.MipSlice);
-            LogInfo("      Texture2DArray.FirstArraySlice = %u\n", desc->Texture2DArray.FirstArraySlice);
-            LogInfo("      Texture2DArray.ArraySize = %u\n", desc->Texture2DArray.ArraySize);
+            LOG_INFO("    ViewDimension = TEXTURE2DARRAY\n");
+            LOG_INFO("      Texture2DArray.MipSlice = %u\n", desc->Texture2DArray.MipSlice);
+            LOG_INFO("      Texture2DArray.FirstArraySlice = %u\n", desc->Texture2DArray.FirstArraySlice);
+            LOG_INFO("      Texture2DArray.ArraySize = %u\n", desc->Texture2DArray.ArraySize);
             break;
         case D3D11_RTV_DIMENSION_TEXTURE2DMS:
-            LogInfo("    ViewDimension = TEXTURE2DMS\n");
+            LOG_INFO("    ViewDimension = TEXTURE2DMS\n");
             break;
         case D3D11_RTV_DIMENSION_TEXTURE2DMSARRAY:
-            LogInfo("    ViewDimension = TEXTURE2DMSARRAY\n");
-            LogInfo("      Texture2DMSArray.FirstArraySlice = %u\n", desc->Texture2DMSArray.FirstArraySlice);
-            LogInfo("      Texture2DMSArray.ArraySize = %u\n", desc->Texture2DMSArray.ArraySize);
+            LOG_INFO("    ViewDimension = TEXTURE2DMSARRAY\n");
+            LOG_INFO("      Texture2DMSArray.FirstArraySlice = %u\n", desc->Texture2DMSArray.FirstArraySlice);
+            LOG_INFO("      Texture2DMSArray.ArraySize = %u\n", desc->Texture2DMSArray.ArraySize);
             break;
         case D3D11_RTV_DIMENSION_TEXTURE3D:
-            LogInfo("    ViewDimension = TEXTURE3D\n");
-            LogInfo("      Texture3D.MipSlice = %u\n", desc->Texture3D.MipSlice);
-            LogInfo("      Texture3D.FirstWSlice = %u\n", desc->Texture3D.FirstWSlice);
-            LogInfo("      Texture3D.WSize = %u\n", desc->Texture3D.WSize);
+            LOG_INFO("    ViewDimension = TEXTURE3D\n");
+            LOG_INFO("      Texture3D.MipSlice = %u\n", desc->Texture3D.MipSlice);
+            LOG_INFO("      Texture3D.FirstWSlice = %u\n", desc->Texture3D.FirstWSlice);
+            LOG_INFO("      Texture3D.WSize = %u\n", desc->Texture3D.WSize);
             break;
     }
 }
 
 void LogViewDesc(const D3D11_DEPTH_STENCIL_VIEW_DESC *desc)
 {
-    LogInfo("  View Type = Depth Stencil\n");
-    LogInfo("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
-    LogInfo("    Flags = 0x%x\n", desc->Flags);
+    LOG_INFO("  View Type = Depth Stencil\n");
+    LOG_INFO("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+    LOG_INFO("    Flags = 0x%x\n", desc->Flags);
     switch (desc->ViewDimension) {
         case D3D11_DSV_DIMENSION_UNKNOWN:
-            LogInfo("    ViewDimension = UNKNOWN\n");
+            LOG_INFO("    ViewDimension = UNKNOWN\n");
             break;
         case D3D11_DSV_DIMENSION_TEXTURE1D:
-            LogInfo("    ViewDimension = TEXTURE1D\n");
-            LogInfo("      Texture1D.MipSlice = %u\n", desc->Texture1D.MipSlice);
+            LOG_INFO("    ViewDimension = TEXTURE1D\n");
+            LOG_INFO("      Texture1D.MipSlice = %u\n", desc->Texture1D.MipSlice);
             break;
         case D3D11_DSV_DIMENSION_TEXTURE1DARRAY:
-            LogInfo("    ViewDimension = TEXTURE1DARRAY\n");
-            LogInfo("      Texture1DArray.MipSlice = %u\n", desc->Texture1DArray.MipSlice);
-            LogInfo("      Texture1DArray.FirstArraySlice = %u\n", desc->Texture1DArray.FirstArraySlice);
-            LogInfo("      Texture1DArray.ArraySize = %u\n", desc->Texture1DArray.ArraySize);
+            LOG_INFO("    ViewDimension = TEXTURE1DARRAY\n");
+            LOG_INFO("      Texture1DArray.MipSlice = %u\n", desc->Texture1DArray.MipSlice);
+            LOG_INFO("      Texture1DArray.FirstArraySlice = %u\n", desc->Texture1DArray.FirstArraySlice);
+            LOG_INFO("      Texture1DArray.ArraySize = %u\n", desc->Texture1DArray.ArraySize);
             break;
         case D3D11_DSV_DIMENSION_TEXTURE2D:
-            LogInfo("    ViewDimension = TEXTURE2D\n");
-            LogInfo("      Texture2D.MipSlice = %u\n", desc->Texture2D.MipSlice);
+            LOG_INFO("    ViewDimension = TEXTURE2D\n");
+            LOG_INFO("      Texture2D.MipSlice = %u\n", desc->Texture2D.MipSlice);
             break;
         case D3D11_DSV_DIMENSION_TEXTURE2DARRAY:
-            LogInfo("    ViewDimension = TEXTURE2DARRAY\n");
-            LogInfo("      Texture2DArray.MipSlice = %u\n", desc->Texture2DArray.MipSlice);
-            LogInfo("      Texture2DArray.FirstArraySlice = %u\n", desc->Texture2DArray.FirstArraySlice);
-            LogInfo("      Texture2DArray.ArraySize = %u\n", desc->Texture2DArray.ArraySize);
+            LOG_INFO("    ViewDimension = TEXTURE2DARRAY\n");
+            LOG_INFO("      Texture2DArray.MipSlice = %u\n", desc->Texture2DArray.MipSlice);
+            LOG_INFO("      Texture2DArray.FirstArraySlice = %u\n", desc->Texture2DArray.FirstArraySlice);
+            LOG_INFO("      Texture2DArray.ArraySize = %u\n", desc->Texture2DArray.ArraySize);
             break;
         case D3D11_DSV_DIMENSION_TEXTURE2DMS:
-            LogInfo("    ViewDimension = TEXTURE2DMS\n");
+            LOG_INFO("    ViewDimension = TEXTURE2DMS\n");
             break;
         case D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY:
-            LogInfo("    ViewDimension = TEXTURE2DMSARRAY\n");
-            LogInfo("      Texture2DMSArray.FirstArraySlice = %u\n", desc->Texture2DMSArray.FirstArraySlice);
-            LogInfo("      Texture2DMSArray.ArraySize = %u\n", desc->Texture2DMSArray.ArraySize);
+            LOG_INFO("    ViewDimension = TEXTURE2DMSARRAY\n");
+            LOG_INFO("      Texture2DMSArray.FirstArraySlice = %u\n", desc->Texture2DMSArray.FirstArraySlice);
+            LOG_INFO("      Texture2DMSArray.ArraySize = %u\n", desc->Texture2DMSArray.ArraySize);
             break;
     }
 }
 
 void LogViewDesc(const D3D11_UNORDERED_ACCESS_VIEW_DESC *desc)
 {
-    LogInfo("  View Type = Unordered Access\n");
-    LogInfo("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+    LOG_INFO("  View Type = Unordered Access\n");
+    LOG_INFO("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
     switch (desc->ViewDimension) {
         case D3D11_UAV_DIMENSION_UNKNOWN:
-            LogInfo("    ViewDimension = UNKNOWN\n");
+            LOG_INFO("    ViewDimension = UNKNOWN\n");
             break;
         case D3D11_UAV_DIMENSION_BUFFER:
-            LogInfo("    ViewDimension = BUFFER\n");
-            LogInfo("      Buffer.FirstElement = %u\n", desc->Buffer.FirstElement);
-            LogInfo("      Buffer.NumElements = %u\n", desc->Buffer.NumElements);
-            LogInfo("      Buffer.Flags = 0x%x\n", desc->Buffer.Flags);
+            LOG_INFO("    ViewDimension = BUFFER\n");
+            LOG_INFO("      Buffer.FirstElement = %u\n", desc->Buffer.FirstElement);
+            LOG_INFO("      Buffer.NumElements = %u\n", desc->Buffer.NumElements);
+            LOG_INFO("      Buffer.Flags = 0x%x\n", desc->Buffer.Flags);
             break;
         case D3D11_UAV_DIMENSION_TEXTURE1D:
-            LogInfo("    ViewDimension = TEXTURE1D\n");
-            LogInfo("      Texture1D.MipSlice = %u\n", desc->Texture1D.MipSlice);
+            LOG_INFO("    ViewDimension = TEXTURE1D\n");
+            LOG_INFO("      Texture1D.MipSlice = %u\n", desc->Texture1D.MipSlice);
             break;
         case D3D11_UAV_DIMENSION_TEXTURE1DARRAY:
-            LogInfo("    ViewDimension = TEXTURE1DARRAY\n");
-            LogInfo("      Texture1DArray.MipSlice = %u\n", desc->Texture1DArray.MipSlice);
-            LogInfo("      Texture1DArray.FirstArraySlice = %u\n", desc->Texture1DArray.FirstArraySlice);
-            LogInfo("      Texture1DArray.ArraySize = %u\n", desc->Texture1DArray.ArraySize);
+            LOG_INFO("    ViewDimension = TEXTURE1DARRAY\n");
+            LOG_INFO("      Texture1DArray.MipSlice = %u\n", desc->Texture1DArray.MipSlice);
+            LOG_INFO("      Texture1DArray.FirstArraySlice = %u\n", desc->Texture1DArray.FirstArraySlice);
+            LOG_INFO("      Texture1DArray.ArraySize = %u\n", desc->Texture1DArray.ArraySize);
             break;
         case D3D11_UAV_DIMENSION_TEXTURE2D:
-            LogInfo("    ViewDimension = TEXTURE2D\n");
-            LogInfo("      Texture2D.MipSlice = %u\n", desc->Texture2D.MipSlice);
+            LOG_INFO("    ViewDimension = TEXTURE2D\n");
+            LOG_INFO("      Texture2D.MipSlice = %u\n", desc->Texture2D.MipSlice);
             break;
         case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:
-            LogInfo("    ViewDimension = TEXTURE2DARRAY\n");
-            LogInfo("      Texture2DArray.MipSlice = %u\n", desc->Texture2DArray.MipSlice);
-            LogInfo("      Texture2DArray.FirstArraySlice = %u\n", desc->Texture2DArray.FirstArraySlice);
-            LogInfo("      Texture2DArray.ArraySize = %u\n", desc->Texture2DArray.ArraySize);
+            LOG_INFO("    ViewDimension = TEXTURE2DARRAY\n");
+            LOG_INFO("      Texture2DArray.MipSlice = %u\n", desc->Texture2DArray.MipSlice);
+            LOG_INFO("      Texture2DArray.FirstArraySlice = %u\n", desc->Texture2DArray.FirstArraySlice);
+            LOG_INFO("      Texture2DArray.ArraySize = %u\n", desc->Texture2DArray.ArraySize);
             break;
         case D3D11_UAV_DIMENSION_TEXTURE3D:
-            LogInfo("    ViewDimension = TEXTURE3D\n");
-            LogInfo("      Texture3D.MipSlice = %u\n", desc->Texture3D.MipSlice);
-            LogInfo("      Texture3D.FirstWSlice = %u\n", desc->Texture3D.FirstWSlice);
-            LogInfo("      Texture3D.WSize = %u\n", desc->Texture3D.WSize);
+            LOG_INFO("    ViewDimension = TEXTURE3D\n");
+            LOG_INFO("      Texture3D.MipSlice = %u\n", desc->Texture3D.MipSlice);
+            LOG_INFO("      Texture3D.FirstWSlice = %u\n", desc->Texture3D.FirstWSlice);
+            LOG_INFO("      Texture3D.WSize = %u\n", desc->Texture3D.WSize);
             break;
     }
 }
@@ -724,10 +724,10 @@ uint32_t CalcTexture2DDataHash(
     // TODO: We might consider an ini setting to disable this fallback for
     // new games, or possibly to force it for old games.
     length = Texture2DLength(pDesc, &pInitialData[0], 0);
-    LogDebug("  Texture2D length: %Iu bad v1.2.1 length: %Iu\n", length, length_v12);
+    LOG_DEBUG("  Texture2D length: %Iu bad v1.2.1 length: %Iu\n", length, length_v12);
     if (length_v12 <= length) {
         if (length_v12 < length || pDesc->ArraySize > 1) {
-            LogDebug("  Using 3DMigoto v1.2.1 compatible Texture2D CRC calculation\n");
+            LOG_DEBUG("  Using 3DMigoto v1.2.1 compatible Texture2D CRC calculation\n");
         }
         return hash_tex2d_data(hash, pInitialData[0].pSysMem, length_v12,
                 pDesc, zero_padding, false, pInitialData[0].SysMemPitch);
@@ -742,7 +742,7 @@ uint32_t CalcTexture2DDataHash(
     // In that case, let's do it right... and hopefully this will be the
     // last time we need to change this.
 
-    LogDebug("  Using 3DMigoto v1.2.11+ Texture2D CRC calculation\n");
+    LOG_DEBUG("  Using 3DMigoto v1.2.11+ Texture2D CRC calculation\n");
 
     // We are no longer taking multiple subresources into account in the
     // hash. We did for a short time between 3DMigoto 1.2.9 and 1.2.10, but
@@ -909,10 +909,10 @@ uint32_t CalcTexture3DDataHash(
     // TODO: We might consider an ini setting to disable this fallback for
     // new games, or possibly to force it for old games.
     length = Texture3DLength(pDesc, &pInitialData[0], 0);
-    LogDebug("  Texture3D length: %Iu bad v1.2.1 length: %Iu\n", length, length_v12);
+    LOG_DEBUG("  Texture3D length: %Iu bad v1.2.1 length: %Iu\n", length, length_v12);
     if (length_v12 <= length) {
         if (length_v12 < length) {
-            LogDebug("  Using 3DMigoto v1.2.1 compatible Texture3D CRC calculation\n");
+            LOG_DEBUG("  Using 3DMigoto v1.2.1 compatible Texture3D CRC calculation\n");
         }
         return crc32c_hw(hash, pInitialData[0].pSysMem, length_v12);
     }
@@ -926,7 +926,7 @@ uint32_t CalcTexture3DDataHash(
     // In that case, let's do it right... and hopefully this will be the
     // last time we need to change this.
 
-    LogDebug("  Using 3DMigoto v1.2.9+ Texture3D CRC calculation\n");
+    LOG_DEBUG("  Using 3DMigoto v1.2.9+ Texture3D CRC calculation\n");
 
     hash = crc32c_hw(hash, pInitialData[0].pSysMem, length);
 
@@ -1167,9 +1167,9 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
             break;
     }
 
-    LogDebug("Updated resource hash\n");
-    LogDebug("  old data: %08x new data: %08x\n", old_data_hash, info->data_hash);
-    LogDebug("  old hash: %08x new hash: %08x\n", old_hash, info->hash);
+    LOG_DEBUG("Updated resource hash\n");
+    LOG_DEBUG("  old data: %08x new data: %08x\n", old_data_hash, info->data_hash);
+    LOG_DEBUG("  old hash: %08x new hash: %08x\n", old_hash, info->hash);
 
 out_unlock:
     LeaveCriticalSection(&G->mCriticalSection);
@@ -1240,9 +1240,9 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
             break;
     }
 
-    LogDebug("Propagated resource hash\n");
-    LogDebug("  old data: %08x new data: %08x\n", old_data_hash, dst_info->data_hash);
-    LogDebug("  old hash: %08x new hash: %08x\n", old_hash, dst_info->hash);
+    LOG_DEBUG("Propagated resource hash\n");
+    LOG_DEBUG("  old data: %08x new data: %08x\n", old_data_hash, dst_info->data_hash);
+    LOG_DEBUG("  old hash: %08x new hash: %08x\n", old_hash, dst_info->hash);
 
 out_unlock:
     LeaveCriticalSection(&G->mCriticalSection);
@@ -1278,12 +1278,12 @@ ResourceReleaseTracker::ResourceReleaseTracker(ID3D11Resource *resource) :
 {
     ref = 0;
     HRESULT hr = resource->SetPrivateDataInterface(ResourceReleaseTrackerGuid, this);
-    // LogDebug("ResourceReleaseTracker %p tracking %p: 0x%x\n", this, resource, hr);
+    // LOG_DEBUG("ResourceReleaseTracker %p tracking %p: 0x%x\n", this, resource, hr);
 }
 
 HRESULT STDMETHODCALLTYPE ResourceReleaseTracker::QueryInterface(REFIID riid, _COM_Outptr_ void **ppvObject)
 {
-    LogInfo("ResourceReleaseTracker::QueryInterface(%p:%p) called with IID: %s\n", this, resource, NameFromIID(riid).c_str());
+    LOG_INFO("ResourceReleaseTracker::QueryInterface(%p:%p) called with IID: %s\n", this, resource, NameFromIID(riid).c_str());
 
     // The only interface we support is IUnknown
     if (ppvObject && IsEqualIID(riid, IID_IUnknown)) {
@@ -1298,16 +1298,16 @@ HRESULT STDMETHODCALLTYPE ResourceReleaseTracker::QueryInterface(REFIID riid, _C
 ULONG STDMETHODCALLTYPE ResourceReleaseTracker::AddRef(void)
 {
     ULONG ret = ++ref;
-    // LogDebug("ResourceReleaseTracker::AddRef(%p:%p) -> %lu\n", this, resource, ret);
+    // LOG_DEBUG("ResourceReleaseTracker::AddRef(%p:%p) -> %lu\n", this, resource, ret);
     return ret;
 }
 
 ULONG STDMETHODCALLTYPE ResourceReleaseTracker::Release(void)
 {
     ULONG ret = --ref;
-    // LogDebug("ResourceReleaseTracker::Release(%p:%p) -> %lu\n", this, resource, ret);
+    // LOG_DEBUG("ResourceReleaseTracker::Release(%p:%p) -> %lu\n", this, resource, ret);
     if (ret == 0) {
-        // LogDebug("Removing %p from mResources\n", resource);
+        // LOG_DEBUG("Removing %p from mResources\n", resource);
 
         ////////////////////////////////////////////////////////////
         //                                                        //

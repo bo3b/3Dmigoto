@@ -4,8 +4,8 @@
 
 inline void D3D9Wrapper::IDirect3DStateBlock9::Delete()
 {
-    LogInfo("IDirect3DStateBlock9::Delete\n");
-    LogInfo("  deleting self\n");
+    LOG_INFO("IDirect3DStateBlock9::Delete\n");
+    LOG_INFO("  deleting self\n");
     if (mDirectModeStateBlockDuplication)
         mDirectModeStateBlockDuplication->Release();
     if (m_pRealUnk) m_List.DeleteMember(m_pRealUnk);
@@ -38,19 +38,19 @@ inline D3D9Wrapper::IDirect3DStateBlock9 * D3D9Wrapper::IDirect3DStateBlock9::Ge
 
 STDMETHODIMP D3D9Wrapper::IDirect3DStateBlock9::QueryInterface(THIS_ REFIID riid, void ** ppvObj)
 {
-    LogDebug("D3D9Wrapper::IDirect3DStateBlock9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
+    LOG_DEBUG("D3D9Wrapper::IDirect3DStateBlock9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
     HRESULT hr = NULL;
     if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
         return hr;
-    LogInfo("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
+    LOG_INFO("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
     hr = m_pUnk->QueryInterface(riid, ppvObj);
     if (hr == S_OK) {
         if ((*ppvObj) == GetRealOrig()) {
             if (!(G->enable_hooks >= EnableHooksDX9::ALL)) {
                 *ppvObj = this;
                 ++m_ulRef;
-                LogInfo("  interface replaced with IDirect3DStateBlock9 wrapper.\n");
-                LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+                LOG_INFO("  interface replaced with IDirect3DStateBlock9 wrapper.\n");
+                LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
                 return hr;
             }
         }
@@ -58,7 +58,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DStateBlock9::QueryInterface(THIS_ REFIID riid
         if (unk)
             *ppvObj = unk;
     }
-    LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+    LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
     return hr;
 }
 
@@ -70,16 +70,16 @@ inline STDMETHODIMP_(ULONG __stdcall) D3D9Wrapper::IDirect3DStateBlock9::AddRef(
 
 inline STDMETHODIMP_(ULONG __stdcall) D3D9Wrapper::IDirect3DStateBlock9::Release(void)
 {
-    LogDebug("IDirect3DStateBlock9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
+    LOG_DEBUG("IDirect3DStateBlock9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-    LogDebug("  internal counter = %d\n", ulRef);
+    LOG_DEBUG("  internal counter = %d\n", ulRef);
 
     --m_ulRef;
 
     if (ulRef == 0)
     {
-        if (!gLogDebug) LogInfo("IDirect3DStateBlock9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+        if (!gLogDebug) LOG_INFO("IDirect3DStateBlock9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
 
         Delete();
     }
@@ -88,19 +88,19 @@ inline STDMETHODIMP_(ULONG __stdcall) D3D9Wrapper::IDirect3DStateBlock9::Release
 
 inline STDMETHODIMP_(HRESULT __stdcall) D3D9Wrapper::IDirect3DStateBlock9::Apply()
 {
-    LogDebug("IDirect3DStateBlock9::Apply called\n");
+    LOG_DEBUG("IDirect3DStateBlock9::Apply called\n");
     return GetD3DStateBlock9()->Apply();
 }
 
 inline STDMETHODIMP_(HRESULT __stdcall) D3D9Wrapper::IDirect3DStateBlock9::Capture()
 {
-    LogDebug("IDirect3DStateBlock9::Capture called\n");
+    LOG_DEBUG("IDirect3DStateBlock9::Capture called\n");
     return GetD3DStateBlock9()->Capture();
 }
 
 inline STDMETHODIMP_(HRESULT __stdcall) D3D9Wrapper::IDirect3DStateBlock9::GetDevice(D3D9Wrapper::IDirect3DDevice9 ** ppDevice)
 {
-    LogDebug("IDirect3DStateBlock9::GetDevice called\n");
+    LOG_DEBUG("IDirect3DStateBlock9::GetDevice called\n");
     if (hackerDevice) {
         hackerDevice->GetD3D9Device()->AddRef();
     }

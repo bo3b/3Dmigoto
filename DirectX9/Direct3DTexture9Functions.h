@@ -2,8 +2,8 @@
 #include "d3d9Wrapper.h"
 inline void D3D9Wrapper::IDirect3DTexture9::Delete()
 {
-    LogInfo("IDirect3DTexture9::Delete handle=%p counter=%d this=%p\n", m_pUnk, m_ulRef, this);
-    LogInfo("  deleting self\n");
+    LOG_INFO("IDirect3DTexture9::Delete handle=%p counter=%d this=%p\n", m_pUnk, m_ulRef, this);
+    LOG_INFO("  deleting self\n");
 
     D3D9Wrapper::IDirect3DResource9::Delete();
     for (auto it = m_wrappedSurfaceLevels.cbegin(); it != m_wrappedSurfaceLevels.cend();)
@@ -65,11 +65,11 @@ D3D9Wrapper::IDirect3DTexture9* D3D9Wrapper::IDirect3DTexture9::GetDirect3DTextu
 }
 STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::QueryInterface(THIS_ REFIID riid, void** ppvObj)
 {
-    LogDebug("D3D9Wrapper::IDirect3DTexture9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
+    LOG_DEBUG("D3D9Wrapper::IDirect3DTexture9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
     HRESULT hr = NULL;
     if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
         return hr;
-    LogInfo("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
+    LOG_INFO("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
     hr = m_pUnk->QueryInterface(riid, ppvObj);
     if (hr == S_OK) {
         if ((*ppvObj) == GetRealOrig()) {
@@ -78,8 +78,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::QueryInterface(THIS_ REFIID riid, v
                 ++m_ulRef;
                 shared_ref_count++;
                 zero_d3d_ref_count = false;
-                LogInfo("  interface replaced with IDirect3DTexture9 wrapper.\n");
-                LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+                LOG_INFO("  interface replaced with IDirect3DTexture9 wrapper.\n");
+                LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
                 return hr;
             }
         }
@@ -94,8 +94,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::QueryInterface(THIS_ REFIID riid, v
                     ++wrapper->m_ulRef;
                     ++shared_ref_count;
                     wrapper->zero_d3d_ref_count = false;
-                    LogInfo("  interface replaced with IDirect3DSurface9 wrapper.\n");
-                    LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+                    LOG_INFO("  interface replaced with IDirect3DSurface9 wrapper.\n");
+                    LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
                     return hr;
                 }
                 else {
@@ -104,8 +104,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::QueryInterface(THIS_ REFIID riid, v
                     ++wrapper->m_ulRef;
                     ++shared_ref_count;
                     wrapper->zero_d3d_ref_count = false;
-                    LogInfo("  interface replaced with IDirect3DSurface9 wrapper.\n");
-                    LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+                    LOG_INFO("  interface replaced with IDirect3DSurface9 wrapper.\n");
+                    LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
                     return hr;
                 }
             }
@@ -114,7 +114,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::QueryInterface(THIS_ REFIID riid, v
         if (unk)
             *ppvObj = unk;
     }
-    LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+    LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
     return hr;
 }
 
@@ -128,16 +128,16 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DTexture9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DTexture9::Release(THIS)
 {
-    LogDebug("IDirect3DTexture9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
+    LOG_DEBUG("IDirect3DTexture9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-    LogDebug("  internal counter = %d\n", ulRef);
+    LOG_DEBUG("  internal counter = %d\n", ulRef);
 
     --m_ulRef;
     bool prev_non_zero = !zero_d3d_ref_count;
     if (ulRef <= 0)
     {
-        if (!gLogDebug) LogInfo("IDirect3DTexture9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+        if (!gLogDebug) LOG_INFO("IDirect3DTexture9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
         zero_d3d_ref_count = true;
     }
     if (prev_non_zero) {
@@ -152,7 +152,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DTexture9::Release(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::GetDevice(THIS_ D3D9Wrapper::IDirect3DDevice9** ppDevice)
 {
-    LogDebug("IDirect3DTexture9::GetDevice called\n");
+    LOG_DEBUG("IDirect3DTexture9::GetDevice called\n");
 
     CheckTexture9(this);
     HRESULT hr;
@@ -174,7 +174,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::GetDevice(THIS_ D3D9Wrapper::IDirec
 
 STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::SetPrivateData(THIS_ REFGUID refguid,CONST void* pData,DWORD SizeOfData,DWORD Flags)
 {
-    LogDebug("IDirect3DTexture9::SetPrivateData called\n");
+    LOG_DEBUG("IDirect3DTexture9::SetPrivateData called\n");
     CheckTexture9(this);
     HRESULT hr = GetD3DTexture9()->SetPrivateData(refguid, pData, SizeOfData, Flags);
     return hr;
@@ -182,14 +182,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::SetPrivateData(THIS_ REFGUID refgui
 
 STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::GetPrivateData(THIS_ REFGUID refguid,void* pData,DWORD* pSizeOfData)
 {
-    LogDebug("IDirect3DTexture9::GetPrivateData called\n");
+    LOG_DEBUG("IDirect3DTexture9::GetPrivateData called\n");
     CheckTexture9(this);
     return GetD3DTexture9()->GetPrivateData(refguid, pData, pSizeOfData);
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::FreePrivateData(THIS_ REFGUID refguid)
 {
-    LogDebug("IDirect3DTexture9::FreePrivateData called\n");
+    LOG_DEBUG("IDirect3DTexture9::FreePrivateData called\n");
     CheckTexture9(this);
     HRESULT hr = GetD3DTexture9()->FreePrivateData(refguid);
     return hr;
@@ -197,7 +197,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::FreePrivateData(THIS_ REFGUID refgu
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DTexture9::SetPriority(THIS_ DWORD PriorityNew)
 {
-    LogDebug("IDirect3DTexture9::SetPriority called\n");
+    LOG_DEBUG("IDirect3DTexture9::SetPriority called\n");
     CheckTexture9(this);
     HRESULT hr;
     if (G->gForceStereo == 2) {
@@ -217,7 +217,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DTexture9::SetPriority(THIS_ DWORD Pri
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DTexture9::GetPriority(THIS)
 {
-    LogDebug("IDirect3DTexture9::GetPriority called\n");
+    LOG_DEBUG("IDirect3DTexture9::GetPriority called\n");
     CheckTexture9(this);
     return GetD3DTexture9()->GetPriority();
 }
@@ -225,7 +225,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DTexture9::GetPriority(THIS)
 STDMETHODIMP_(void) D3D9Wrapper::IDirect3DTexture9::PreLoad(THIS)
 {
     //managed resources only?
-    LogDebug("IDirect3DTexture9::PreLoad called\n");
+    LOG_DEBUG("IDirect3DTexture9::PreLoad called\n");
     CheckTexture9(this);
     if (G->gForceStereo == 2){
         if (IsDirectStereoTexture()) {
@@ -243,7 +243,7 @@ STDMETHODIMP_(void) D3D9Wrapper::IDirect3DTexture9::PreLoad(THIS)
 
 STDMETHODIMP_(::D3DRESOURCETYPE) D3D9Wrapper::IDirect3DTexture9::GetType(THIS)
 {
-    LogDebug("IDirect3DTexture9::GetType called\n");
+    LOG_DEBUG("IDirect3DTexture9::GetType called\n");
     CheckTexture9(this);
     return GetD3DTexture9()->GetType();
 }
@@ -251,7 +251,7 @@ STDMETHODIMP_(::D3DRESOURCETYPE) D3D9Wrapper::IDirect3DTexture9::GetType(THIS)
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DTexture9::SetLOD(THIS_ DWORD LODNew)
 {
     //managed resources only?
-    LogDebug("IDirect3DTexture9::SetLOD called\n");
+    LOG_DEBUG("IDirect3DTexture9::SetLOD called\n");
     CheckTexture9(this);
     hackerDevice->FrameAnalysisLog("SetLOD(texture:0x%p)",
         this->GetD3DTexture9());
@@ -273,7 +273,7 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DTexture9::SetLOD(THIS_ DWORD LODNew)
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DTexture9::GetLOD(THIS)
 {
-    LogDebug("IDirect3DTexture9::GetLOD called\n");
+    LOG_DEBUG("IDirect3DTexture9::GetLOD called\n");
     CheckTexture9(this);
     DWORD ret = GetD3DTexture9()->GetLOD();
     hackerDevice->FrameAnalysisLog("GetLOD(texture:0x%p) = %x",
@@ -284,14 +284,14 @@ STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DTexture9::GetLOD(THIS)
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DTexture9::GetLevelCount(THIS)
 {
-    LogDebug("IDirect3DTexture9::GetLevelCount called\n");
+    LOG_DEBUG("IDirect3DTexture9::GetLevelCount called\n");
     CheckTexture9(this);
     return GetD3DTexture9()->GetLevelCount();
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::SetAutoGenFilterType(THIS_ ::D3DTEXTUREFILTERTYPE FilterType)
 {
-    LogDebug("IDirect3DTexture9::SetAutoGenFilterType called\n");
+    LOG_DEBUG("IDirect3DTexture9::SetAutoGenFilterType called\n");
     CheckTexture9(this);
     HRESULT hr;
     if (G->gForceStereo == 2) {
@@ -312,14 +312,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::SetAutoGenFilterType(THIS_ ::D3DTEX
 
 STDMETHODIMP_(::D3DTEXTUREFILTERTYPE) D3D9Wrapper::IDirect3DTexture9::GetAutoGenFilterType(THIS)
 {
-    LogDebug("IDirect3DTexture9::GetAutoGenFilterType called\n");
+    LOG_DEBUG("IDirect3DTexture9::GetAutoGenFilterType called\n");
     CheckTexture9(this);
     return GetD3DTexture9()->GetAutoGenFilterType();
 }
 
 STDMETHODIMP_(void) D3D9Wrapper::IDirect3DTexture9::GenerateMipSubLevels(THIS)
 {
-    LogDebug("IDirect3DTexture9::GenerateMipSubLevels called\n");
+    LOG_DEBUG("IDirect3DTexture9::GenerateMipSubLevels called\n");
     CheckTexture9(this);
     hackerDevice->FrameAnalysisLog("GenerateMipSubLevels(texture:0x%p\n)",
         this->GetD3DTexture9());
@@ -341,7 +341,7 @@ STDMETHODIMP_(void) D3D9Wrapper::IDirect3DTexture9::GenerateMipSubLevels(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::GetLevelDesc(THIS_ UINT Level,::D3DSURFACE_DESC *pDesc)
 {
-    LogDebug("IDirect3DTexture9::GetLevelDesc called\n");
+    LOG_DEBUG("IDirect3DTexture9::GetLevelDesc called\n");
     CheckTexture9(this);
 
     return GetD3DTexture9()->GetLevelDesc(Level, pDesc);
@@ -349,17 +349,17 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::GetLevelDesc(THIS_ UINT Level,::D3D
 
 STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::GetSurfaceLevel(THIS_ UINT Level, D3D9Wrapper::IDirect3DSurface9** ppSurfaceLevel)
 {
-    LogDebug("IDirect3DTexture9::GetSurfaceLevel called\n");
+    LOG_DEBUG("IDirect3DTexture9::GetSurfaceLevel called\n");
     if (!GetD3DTexture9())
     {
-        LogInfo("  postponing call because texture was not created yet.\n");
+        LOG_INFO("  postponing call because texture was not created yet.\n");
 
         D3D9Wrapper::IDirect3DSurface9 *wrapper = D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9((::LPDIRECT3DSURFACE9) 0, hackerDevice, NULL, this);
         wrapper->_Level = Level;
         wrapper->_Texture = this;
         wrapper->pendingGetSurfaceLevel = true;
         *ppSurfaceLevel = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
 
         return S_OK;
     }
@@ -410,21 +410,21 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::GetSurfaceLevel(THIS_ UINT Level, D
         }
     }
 
-    if (ppSurfaceLevel) LogInfo("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurfaceLevel, *ppSurfaceLevel);
+    if (ppSurfaceLevel) LOG_INFO("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseSurfaceLevel, *ppSurfaceLevel);
     return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::LockRect(THIS_ UINT Level,::D3DLOCKED_RECT* pLockedRect,CONST RECT* pRect,DWORD Flags)
 {
-    LogDebug("IDirect3DTexture9::LockRect called with Level=%d, Rect=l:%d,u:%d,r:%d,b:%d\n", Level,
+    LOG_DEBUG("IDirect3DTexture9::LockRect called with Level=%d, Rect=l:%d,u:%d,r:%d,b:%d\n", Level,
         pRect ? pRect->left : 0, pRect ? pRect->top : 0, pRect ? pRect->right : 0, pRect ? pRect->bottom : 0);
 
     ::IDirect3DTexture9 *pBaseTexture = GetD3DTexture9();
 
     if (!pBaseTexture)
     {
-        if (!gLogDebug) LogInfo("IDirect3DTexture9::LockRect called\n");
-        LogInfo("  postponing call because texture was not created yet.\n");
+        if (!gLogDebug) LOG_INFO("IDirect3DTexture9::LockRect called\n");
+        LOG_INFO("  postponing call because texture was not created yet.\n");
 
         if (!pendingLockUnlock)
         {
@@ -480,7 +480,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::LockRect(THIS_ UINT Level,::D3DLOCK
                             //newTexture = true;
                             //if (FAILED(hr))
                             //{
-                            LogDebug("IDirect3DTexture9::LockRect Direct Mode, failed to create system memory texture, hr = 0x%0.8x\n", hr);
+                            LOG_DEBUG("IDirect3DTexture9::LockRect Direct Mode, failed to create system memory texture, hr = 0x%0.8x\n", hr);
                             DirectLockRectNoMemTex = true;
                         }
                     }
@@ -489,7 +489,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::LockRect(THIS_ UINT Level,::D3DLOCK
                         hr = m_pDirectLockableSysMemTextures[Level]->GetSurfaceLevel(0, &pSurface);
                         if (FAILED(hr))
                         {
-                            LogDebug("IDirect3DTexture9::LockRect Direct Mode, failed get surface level from system memory texture, hr = 0x%0.8x\n", hr);
+                            LOG_DEBUG("IDirect3DTexture9::LockRect Direct Mode, failed get surface level from system memory texture, hr = 0x%0.8x\n", hr);
                             goto postLock;
                         }
                         if (newTexture)
@@ -498,12 +498,12 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::LockRect(THIS_ UINT Level,::D3DLOCK
                             pBaseTexture->GetSurfaceLevel(Level, &pActualSurface);
                             if (FAILED(hr))
                             {
-                                LogDebug("IDirect3DTexture9::LockRect Direct Mode, failed get surface level from actual texture, hr = 0x%0.8x\n", hr);
+                                LOG_DEBUG("IDirect3DTexture9::LockRect Direct Mode, failed get surface level from actual texture, hr = 0x%0.8x\n", hr);
                                 goto postLock;
                             }
                             hr = hackerDevice->GetD3D9Device()->GetRenderTargetData(pActualSurface, pSurface);
                             if (FAILED(hr)) {
-                                LogDebug("IDirect3DTexture9::LockRect Direct Mode, failed to update system memory texture surface, hr = 0x%0.8x", hr);
+                                LOG_DEBUG("IDirect3DTexture9::LockRect Direct Mode, failed to update system memory texture surface, hr = 0x%0.8x", hr);
                                 goto postLock;
                             }
                             pActualSurface->Release();
@@ -515,7 +515,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::LockRect(THIS_ UINT Level,::D3DLOCK
                                 hr = pBaseTexture->AddDirtyRect(pRect);
                                 if (FAILED(hr))
                                 {
-                                    LogDebug("IDirect3DTexture9::LockRect Direct Mode, failed to add dirty rect to actual texture, hr = 0x%0.8x\n", hr);
+                                    LOG_DEBUG("IDirect3DTexture9::LockRect Direct Mode, failed to add dirty rect to actual texture, hr = 0x%0.8x\n", hr);
                                     goto postLock;
                                 }
                             }
@@ -523,7 +523,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::LockRect(THIS_ UINT Level,::D3DLOCK
                             hr = pSurface->LockRect(pLockedRect, pRect, Flags);
                             if (FAILED(hr))
                             {
-                                LogDebug("IDirect3DTexture9::LockRect Direct Mode, failed to LockRect hr = 0x%0.8x\n", hr);
+                                LOG_DEBUG("IDirect3DTexture9::LockRect Direct Mode, failed to LockRect hr = 0x%0.8x\n", hr);
                                 goto postLock;
                             }
                             pSurface->Release();
@@ -535,7 +535,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::LockRect(THIS_ UINT Level,::D3DLOCK
                     hr = pBaseTexture->LockRect(Level, pLockedRect, pRect, Flags);
                     if (FAILED(hr))
                     {
-                        LogDebug("IDirect3DTexture9::LockRect Direct Mode, failed to LockRect hr = 0x%0.8x\n", hr);
+                        LOG_DEBUG("IDirect3DTexture9::LockRect Direct Mode, failed to LockRect hr = 0x%0.8x\n", hr);
                         goto postLock;
                     }
                     if (!pRect) {
@@ -587,14 +587,14 @@ postLock:
 
 STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::UnlockRect(THIS_ UINT Level)
 {
-    LogDebug("IDirect3DTexture9::UnlockRect called\n");
+    LOG_DEBUG("IDirect3DTexture9::UnlockRect called\n");
     ::IDirect3DTexture9 *pBaseTexture;
     pBaseTexture = GetD3DTexture9();
 
     if (!pBaseTexture)
     {
-        if (!gLogDebug) LogInfo("IDirect3DTexture9::UnlockRect called\n");
-        LogInfo("  postponing call because texture was not created yet.\n");
+        if (!gLogDebug) LOG_INFO("IDirect3DTexture9::UnlockRect called\n");
+        LOG_INFO("  postponing call because texture was not created yet.\n");
 
         return S_OK;
     }
@@ -631,7 +631,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::UnlockRect(THIS_ UINT Level)
                     hr = hackerDevice->GetD3D9Device()->UpdateSurface(pSurface, NULL, pDirectSurfaceRight, NULL);
                     if (FAILED(hr))
                     {
-                        LogDebug("IDirect3DTexture9::UnlockRect Direct Mode, failed to update full right surface, hr = 0x%0.8x\n", hr);
+                        LOG_DEBUG("IDirect3DTexture9::UnlockRect Direct Mode, failed to update full right surface, hr = 0x%0.8x\n", hr);
                         //Just ignore the failed copy back, not much we can do
                         hr = S_OK;
                     }
@@ -639,7 +639,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::UnlockRect(THIS_ UINT Level)
                     hr = hackerDevice->GetD3D9Device()->UpdateSurface(pSurface, NULL, pActualSurface, NULL);
                     if (FAILED(hr))
                     {
-                        LogDebug("IDirect3DTexture9::UnlockRect Direct Mode, failed to update full left surface, hr = 0x%0.8x\n", hr);
+                        LOG_DEBUG("IDirect3DTexture9::UnlockRect Direct Mode, failed to update full left surface, hr = 0x%0.8x\n", hr);
                         //Just ignore the failed copy back, not much we can do
                         hr = S_OK;
                     }
@@ -655,14 +655,14 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::UnlockRect(THIS_ UINT Level)
                         hr = hackerDevice->GetD3D9Device()->UpdateSurface(pSurface, &(*rectIter).rect, pDirectSurfaceRight, &p);
                         if (FAILED(hr))
                         {
-                            LogDebug("IDirect3DTexture9::UnlockRect Direct Mode, failed to update rect right surface, hr = 0x%0.8x\n", hr);
+                            LOG_DEBUG("IDirect3DTexture9::UnlockRect Direct Mode, failed to update rect right surface, hr = 0x%0.8x\n", hr);
                             //Just ignore the failed copy back, not much we can do
                             hr = S_OK;
                         }
                         hr = hackerDevice->GetD3D9Device()->UpdateSurface(pSurface, &(*rectIter).rect, pActualSurface, &p);
                         if (FAILED(hr))
                         {
-                            LogDebug("IDirect3DTexture9::UnlockRect Direct Mode, failed to update rect left surface, hr = 0x%0.8x\n", hr);
+                            LOG_DEBUG("IDirect3DTexture9::UnlockRect Direct Mode, failed to update rect left surface, hr = 0x%0.8x\n", hr);
                             //Just ignore the failed copy back, not much we can do
                             hr = S_OK;
                         }
@@ -681,7 +681,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::UnlockRect(THIS_ UINT Level)
                     hr = m_pDirectTextureRight->LockRect(Level, &lRect, NULL, DirectLockedFlags);
                     if (FAILED(hr))
                     {
-                        LogDebug("IDirect3DTexture9::UnlockRect Direct Mode, failed to lock right surface, hr = 0x%0.8x\n", hr);
+                        LOG_DEBUG("IDirect3DTexture9::UnlockRect Direct Mode, failed to lock right surface, hr = 0x%0.8x\n", hr);
                         hr = S_OK;
                     }
                     else {
@@ -699,7 +699,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::UnlockRect(THIS_ UINT Level)
                         hr = m_pDirectTextureRight->LockRect(Level, &lRect, &(*rectIter).rect, (*rectIter).flags);
                         if (FAILED(hr))
                         {
-                            LogDebug("IDirect3DTexture9::UnlockRect Direct Mode, failed to lock rect on right surface, hr = 0x%0.8x\n", hr);
+                            LOG_DEBUG("IDirect3DTexture9::UnlockRect Direct Mode, failed to lock rect on right surface, hr = 0x%0.8x\n", hr);
                             hr = S_OK;
                         }
                         else {
@@ -734,7 +734,7 @@ postUnlock:
 
 STDMETHODIMP D3D9Wrapper::IDirect3DTexture9::AddDirtyRect(THIS_ CONST RECT* pDirtyRect)
 {
-    LogDebug("IDirect3DTexture9::AddDirtyRect called\n");
+    LOG_DEBUG("IDirect3DTexture9::AddDirtyRect called\n");
     CheckTexture9(this);
     HRESULT hr;
     if (G->gForceStereo == 2) {

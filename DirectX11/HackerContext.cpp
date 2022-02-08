@@ -58,11 +58,11 @@ HackerContext* HackerContextFactory(ID3D11Device1 *pDevice1, ID3D11DeviceContext
     // on stat collection), so G->hunting is already a pre-requisite for
     // frame analysis:
     if (G->hunting || gLogDebug) {
-        LogInfo("  Creating FrameAnalysisContext\n");
+        LOG_INFO("  Creating FrameAnalysisContext\n");
         return new FrameAnalysisContext(pDevice1, pContext1);
     }
 
-    LogInfo("  Creating HackerContext - frame analysis log will not be available\n");
+    LOG_INFO("  Creating HackerContext - frame analysis log will not be available\n");
     return new HackerContext(pDevice1, pContext1);
 }
 
@@ -354,7 +354,7 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
 
     target->GetDesc(&desc);
 
-    LogDebug("  View #%d, Format = %d, Is2D = %d\n",
+    LOG_DEBUG("  View #%d, Format = %d, Is2D = %d\n",
         view_num, desc.Format, D3D11_RTV_DIMENSION_TEXTURE2D == desc.ViewDimension);
 
     target->GetResource(&resource);
@@ -448,7 +448,7 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 {
     bool use_orig = false;
 
-    LogDebug("  override found for shader\n");
+    LOG_DEBUG("  override found for shader\n");
 
     // We really want to start deprecating all the old filters and switch
     // to using the command list for much greater flexibility. This if()
@@ -561,16 +561,16 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 
     switch (load_shader_regex_cache(hash, shader_type, &patched_bytecode, &tagline)) {
     case ShaderRegexCache::NO_MATCH:
-        LogInfo("%S %016I64x has cached ShaderRegex miss\n", shader_type, hash);
+        LOG_INFO("%S %016I64x has cached ShaderRegex miss\n", shader_type, hash);
         goto out_drop;
     case ShaderRegexCache::MATCH:
-        LogInfo("Loaded %S %016I64x command list from ShaderRegex cache\n", shader_type, hash);
+        LOG_INFO("Loaded %S %016I64x command list from ShaderRegex cache\n", shader_type, hash);
         goto out_drop;
     case ShaderRegexCache::PATCH:
-        LogInfo("Loaded %S %016I64x bytecode from ShaderRegex cache\n", shader_type, hash);
+        LOG_INFO("Loaded %S %016I64x bytecode from ShaderRegex cache\n", shader_type, hash);
         break;
     case ShaderRegexCache::NO_CACHE:
-        LogInfo("Performing deferred shader analysis on %S %016I64x...\n", shader_type, hash);
+        LOG_INFO("Performing deferred shader analysis on %S %016I64x...\n", shader_type, hash);
 
         asm_text = BinaryToAsmText(orig_info->byteCode->GetBufferPointer(),
                 orig_info->byteCode->GetBufferSize(),
@@ -582,19 +582,19 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
         try {
             patch_regex = apply_shader_regex_groups(&asm_text, shader_type, &orig_info->shaderModel, hash, &tagline);
         } catch (...) {
-            LogInfo("    *** Exception while patching shader\n");
+            LOG_INFO("    *** Exception while patching shader\n");
             goto out_drop;
         }
 
         if (!patch_regex) {
-            LogInfo("Patch did not apply\n");
+            LOG_INFO("Patch did not apply\n");
             goto out_drop;
         }
 
         // No longer logging this since we can output to ShaderFixes
         // via hunting if marking_actions = regex, or it could be
         // disassembled from the regex cache with cmd_Decompiler
-        // LogInfo("Patched Shader:\n%s\n", asm_text.c_str());
+        // LOG_INFO("Patched Shader:\n%s\n", asm_text.c_str());
 
         asm_vector.assign(asm_text.begin(), asm_text.end());
 
@@ -602,7 +602,7 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
             vector<AssemblerParseError> parse_errors;
             hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode, &parse_errors);
             if (FAILED(hr)) {
-                LogInfo("    *** Assembling patched shader failed\n");
+                LOG_INFO("    *** Assembling patched shader failed\n");
                 goto out_drop;
             }
             // Parse errors are currently being treated as non-fatal on
@@ -624,7 +624,7 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
             orig_info->linkage, &patched_shader);
     CleanupShaderMaps(patched_shader);
     if (FAILED(hr)) {
-        LogInfo("    *** Creating replacement shader failed\n");
+        LOG_INFO("    *** Creating replacement shader failed\n");
         goto out_drop;
     }
 
@@ -768,7 +768,7 @@ void HackerContext::BeforeDraw(DrawContext &data)
                 selectedVertexBufferPos < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT ||
                 selectedRenderTargetPos < mCurrentRenderTargets.size())
             {
-                LogDebug("  Skipping selected operation. CurrentIndexBuffer = %08lx, CurrentVertexShader = %016I64x, CurrentPixelShader = %016I64x\n",
+                LOG_DEBUG("  Skipping selected operation. CurrentIndexBuffer = %08lx, CurrentVertexShader = %016I64x, CurrentPixelShader = %016I64x\n",
                     mCurrentIndexBuffer, mCurrentVertexShader, mCurrentPixelShader);
 
                 // Snapshot render target list.
@@ -808,14 +808,14 @@ void HackerContext::BeforeDraw(DrawContext &data)
                 }
                 if (G->marking_mode == MarkingMode::MONO && mHackerDevice->mStereoHandle)
                 {
-                    LogDebug("  setting separation=0 for hunting\n");
+                    LOG_DEBUG("  setting separation=0 for hunting\n");
 
                     if (NVAPI_OK != Profiling::NvAPI_Stereo_GetSeparation(mHackerDevice->mStereoHandle, &data.oldSeparation))
-                        LogDebug("    Stereo_GetSeparation failed.\n");
+                        LOG_DEBUG("    Stereo_GetSeparation failed.\n");
 
                     NvAPIOverride();
                     if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, 0))
-                        LogDebug("    Stereo_SetSeparation failed.\n");
+                        LOG_DEBUG("    Stereo_SetSeparation failed.\n");
                 }
                 else if (G->marking_mode == MarkingMode::SKIP)
                 {
@@ -909,7 +909,7 @@ void HackerContext::AfterDraw(DrawContext &data)
     if (mHackerDevice->mStereoHandle && data.oldSeparation != FLT_MAX) {
         NvAPIOverride();
         if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSeparation(mHackerDevice->mStereoHandle, data.oldSeparation))
-            LogDebug("    Stereo_SetSeparation failed.\n");
+            LOG_DEBUG("    Stereo_SetSeparation failed.\n");
     }
 
     if (data.oldVertexShader) {
@@ -945,19 +945,19 @@ ULONG STDMETHODCALLTYPE HackerContext::AddRef(void)
 STDMETHODIMP_(ULONG) HackerContext::Release(THIS)
 {
     ULONG ulRef = mOrigContext1->Release();
-    LogDebug("HackerContext::Release counter=%d, this=%p\n", ulRef, this);
+    LOG_DEBUG("HackerContext::Release counter=%d, this=%p\n", ulRef, this);
 
     if (ulRef <= 0)
     {
-        LogInfo("  deleting self\n");
+        LOG_INFO("  deleting self\n");
 
         if (mHackerDevice != nullptr) {
             if (mHackerDevice->GetHackerContext() == this) {
-                LogInfo("  clearing mHackerDevice->mHackerContext\n");
+                LOG_INFO("  clearing mHackerDevice->mHackerContext\n");
                 mHackerDevice->SetHackerContext(nullptr);
             }
         } else
-            LogInfo("HackerContext::Release - mHackerDevice is NULL\n");
+            LOG_INFO("HackerContext::Release - mHackerDevice is NULL\n");
 
         delete this;
         return 0L;
@@ -973,7 +973,7 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
     /* [in] */ REFIID riid,
     /* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-    LogDebug("HackerContext::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
+    LOG_DEBUG("HackerContext::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
 
     if (ppvObject && IsEqualIID(riid, IID_HackerContext)) {
         // This is a special case - only 3DMigoto itself should know
@@ -987,7 +987,7 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
     HRESULT hr = mOrigContext1->QueryInterface(riid, ppvObject);
     if (FAILED(hr))
     {
-        LogDebug("  failed result = %x for %p\n", hr, ppvObject);
+        LOG_DEBUG("  failed result = %x for %p\n", hr, ppvObject);
         return hr;
     }
 
@@ -996,13 +996,13 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
     if (riid == __uuidof(ID3D11DeviceContext))
     {
         *ppvObject = this;
-        LogDebug("  return HackerContext(%s@%p) wrapper of %p\n", type_name(this), this, mOrigContext1);
+        LOG_DEBUG("  return HackerContext(%s@%p) wrapper of %p\n", type_name(this), this, mOrigContext1);
     }
     else if (riid == __uuidof(ID3D11DeviceContext1))
     {
         if (!G->enable_platform_update) 
         {
-            LogInfo("***  returns E_NOINTERFACE as error for ID3D11DeviceContext1 (try allow_platform_update=1 if the game refuses to run).\n");
+            LOG_INFO("***  returns E_NOINTERFACE as error for ID3D11DeviceContext1 (try allow_platform_update=1 if the game refuses to run).\n");
             *ppvObject = NULL;
             return E_NOINTERFACE;
         }
@@ -1013,10 +1013,10 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
 
         // In this case, we are already an ID3D11DeviceContext1, so just return self.
         *ppvObject = this;
-        LogDebug("  return HackerContext(%s@%p) wrapper of %p\n", type_name(this), this, ppvObject);
+        LOG_DEBUG("  return HackerContext(%s@%p) wrapper of %p\n", type_name(this), this, ppvObject);
     }
 
-    LogDebug("  returns result = %x for %p\n", hr, ppvObject);
+    LOG_DEBUG("  returns result = %x for %p\n", hr, ppvObject);
     return hr;
 }
 
@@ -1036,7 +1036,7 @@ STDMETHODIMP_(void) HackerContext::GetDevice(THIS_
     /* [annotation] */
     __out  ID3D11Device **ppDevice)
 {
-    LogDebug("HackerContext::GetDevice(%s@%p) returns %p\n", type_name(this), this, mHackerDevice);
+    LOG_DEBUG("HackerContext::GetDevice(%s@%p) returns %p\n", type_name(this), this, mHackerDevice);
 
     // Fix ref counting bug that slowly eats away at the device until we
     // crash. In FC4 this can happen after about 10 minutes, or when
@@ -1059,10 +1059,10 @@ STDMETHODIMP HackerContext::GetPrivateData(THIS_
     /* [annotation] */
     __out_bcount_opt(*pDataSize)  void *pData)
 {
-    LogDebug("HackerContext::GetPrivateData(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
+    LOG_DEBUG("HackerContext::GetPrivateData(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
 
     HRESULT hr = mOrigContext1->GetPrivateData(guid, pDataSize, pData);
-    LogDebug("  returns result = %x, DataSize = %d\n", hr, *pDataSize);
+    LOG_DEBUG("  returns result = %x, DataSize = %d\n", hr, *pDataSize);
 
     return hr;
 }
@@ -1075,11 +1075,11 @@ STDMETHODIMP HackerContext::SetPrivateData(THIS_
     /* [annotation] */
     __in_bcount_opt(DataSize)  const void *pData)
 {
-    LogInfo("HackerContext::SetPrivateData(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
-    LogInfo("  DataSize = %d\n", DataSize);
+    LOG_INFO("HackerContext::SetPrivateData(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
+    LOG_INFO("  DataSize = %d\n", DataSize);
 
     HRESULT hr = mOrigContext1->SetPrivateData(guid, DataSize, pData);
-    LogInfo("  returns result = %x\n", hr);
+    LOG_INFO("  returns result = %x\n", hr);
 
     return hr;
 }
@@ -1090,10 +1090,10 @@ STDMETHODIMP HackerContext::SetPrivateDataInterface(THIS_
     /* [annotation] */
     __in_opt  const IUnknown *pData)
 {
-    LogInfo("HackerContext::SetPrivateDataInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
+    LOG_INFO("HackerContext::SetPrivateDataInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
 
     HRESULT hr = mOrigContext1->SetPrivateDataInterface(guid, pData);
-    LogInfo("  returns result = %x\n", hr);
+    LOG_INFO("  returns result = %x\n", hr);
 
     return hr;
 }
@@ -1239,7 +1239,7 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
 
     replace = malloc(map_info->size);
     if (!replace) {
-        LogInfo("TrackAndDivertMap out of memory\n");
+        LOG_INFO("TrackAndDivertMap out of memory\n");
         goto out_profile;
     }
 
@@ -1644,7 +1644,7 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
         dstHash = GetResourceHash(dstTex);
     LeaveCriticalSection(&G->mCriticalSection);
 
-    LogDebug("CopySubresourceRegion %08lx (%u:%u x %u:%u / %u x %u) -> %08lx (%u x %u / %u x %u)\n",
+    LOG_DEBUG("CopySubresourceRegion %08lx (%u:%u x %u:%u / %u x %u) -> %08lx (%u x %u / %u x %u)\n",
             srcHash, pSrcBox->left, pSrcBox->right, pSrcBox->top, pSrcBox->bottom, srcDesc.Width, srcDesc.Height, 
             dstHash, DstX, DstY, dstDesc.Width, dstDesc.Height);
 
@@ -2022,7 +2022,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
             ShaderMap::iterator i = lookup_shader_hash(pShader);
             if (i != G->mShaders.end()) {
                 *currentShaderHash = i->second;
-                LogDebug("  shader found: handle = %p, hash = %016I64x\n", *currentShaderHandle, *currentShaderHash);
+                LOG_DEBUG("  shader found: handle = %p, hash = %016I64x\n", *currentShaderHandle, *currentShaderHash);
 
                 if ((G->hunting == HUNTING_MODE_ENABLED) && visitedShaders) {
                     EnterCriticalSectionPretty(&G->mCriticalSection);
@@ -2031,7 +2031,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
                 }
             }
             else
-                LogDebug("  shader %p not found\n", pShader);
+                LOG_DEBUG("  shader %p not found\n", pShader);
         } else {
             // Not accurate, but if we have a bug where we
             // reference this at least make sure we don't use the
@@ -2043,7 +2043,7 @@ STDMETHODIMP_(void) HackerContext::SetShader(THIS_
         // No longer conditional on G->hunting now that hunting may be soft enabled via key binding
         ShaderReloadMap::iterator it = lookup_reloaded_shader(pShader);
         if (it != G->mReloadedShaders.end() && it->second.replacement != NULL) {
-            LogDebug("  shader replaced by: %p\n", it->second.replacement);
+            LOG_DEBUG("  shader replaced by: %p\n", it->second.replacement);
 
             // It might make sense to Release() the original shader, to recover memory on GPU
             //   -Bo3b
@@ -2572,20 +2572,20 @@ template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
 void HackerContext::BindStereoResources()
 {
     if (!mHackerDevice) {
-        LogInfo("  error querying device. Can't set NVidia stereo parameter texture.\n");
+        LOG_INFO("  error querying device. Can't set NVidia stereo parameter texture.\n");
         return;
     }
 
     // Set NVidia stereo texture.
     if (mHackerDevice->mStereoResourceView && G->StereoParamsReg >= 0) {
-        LogDebug("  adding NVidia stereo parameter texture to shader resources in slot %i.\n", G->StereoParamsReg);
+        LOG_DEBUG("  adding NVidia stereo parameter texture to shader resources in slot %i.\n", G->StereoParamsReg);
 
         (mOrigContext1->*OrigSetShaderResources)(G->StereoParamsReg, 1, &mHackerDevice->mStereoResourceView);
     }
 
     // Set constants from ini file if they exist
     if (mHackerDevice->mIniResourceView && G->IniParamsReg >= 0) {
-        LogDebug("  adding ini constants as texture to shader resources in slot %i.\n", G->IniParamsReg);
+        LOG_DEBUG("  adding ini constants as texture to shader resources in slot %i.\n", G->IniParamsReg);
 
         (mOrigContext1->*OrigSetShaderResources)(G->IniParamsReg, 1, &mHackerDevice->mIniResourceView);
     }
@@ -2628,7 +2628,7 @@ void HackerContext::InitIniParams()
     // happen is unlikely to cause any issues in practice, so let's not try
     // to do anything heroic to deal with it.
     if (mOrigContext1->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE) {
-        LogInfo("BUG: InitIniParams called on a deferred context\n");
+        LOG_INFO("BUG: InitIniParams called on a deferred context\n");
         DoubleBeepExit();
     }
 
@@ -2654,7 +2654,7 @@ void HackerContext::InitIniParams()
             mOrigContext1->Unmap(mHackerDevice->mIniTexture, 0);
             Profiling::iniparams_updates++;
         } else {
-            LogInfo("InitIniParams: Map failed\n");
+            LOG_INFO("InitIniParams: Map failed\n");
         }
     }
 
@@ -2704,7 +2704,7 @@ void HackerContext::SetShaderResources(UINT StartSlot, UINT NumViews,
 
     if (mHackerDevice->mStereoResourceView && G->StereoParamsReg >= 0) {
         if (NumViews > G->StereoParamsReg - StartSlot) {
-            LogDebug("  Game attempted to unbind StereoParams, pinning in slot %i\n", G->StereoParamsReg);
+            LOG_DEBUG("  Game attempted to unbind StereoParams, pinning in slot %i\n", G->StereoParamsReg);
             override_srvs = new ID3D11ShaderResourceView*[NumViews];
             memcpy(override_srvs, ppShaderResourceViews, sizeof(ID3D11ShaderResourceView*) * NumViews);
             override_srvs[G->StereoParamsReg - StartSlot] = mHackerDevice->mStereoResourceView;
@@ -2713,7 +2713,7 @@ void HackerContext::SetShaderResources(UINT StartSlot, UINT NumViews,
 
     if (mHackerDevice->mIniResourceView && G->IniParamsReg >= 0) {
         if (NumViews > G->IniParamsReg - StartSlot) {
-            LogDebug("  Game attempted to unbind IniParams, pinning in slot %i\n", G->IniParamsReg);
+            LOG_DEBUG("  Game attempted to unbind IniParams, pinning in slot %i\n", G->IniParamsReg);
             if (!override_srvs) {
                 override_srvs = new ID3D11ShaderResourceView*[NumViews];
                 memcpy(override_srvs, ppShaderResourceViews, sizeof(ID3D11ShaderResourceView*) * NumViews);
@@ -2777,7 +2777,7 @@ STDMETHODIMP_(void) HackerContext::PSSetShader(THIS_
         // Set custom depth texture.
         if (mHackerDevice->mZBufferResourceView)
         {
-            LogDebug("  adding Z buffer to shader resources in slot 126.\n");
+            LOG_DEBUG("  adding Z buffer to shader resources in slot 126.\n");
 
             mOrigContext1->PSSetShaderResources(126, 1, &mHackerDevice->mZBufferResourceView);
         }

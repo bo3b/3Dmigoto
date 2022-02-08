@@ -70,7 +70,7 @@ void InitializeDLL()
         if (GetPrivateProfileInt(L"Logging", L"calls", 1, dir))
         {
             LogFile = _fsopen("dxgi_log.txt", "w", _SH_DENYNO);
-            LogInfo("\n *** DXGI DLL starting init  -  %s\n\n", log_time().c_str());
+            LOG_INFO("\n *** DXGI DLL starting init  -  %s\n\n", log_time().c_str());
         }
 
         gLogDebug = GetPrivateProfileInt(L"Logging", L"debug", 0, dir) == 1;
@@ -81,7 +81,7 @@ void InitializeDLL()
         if (GetPrivateProfileInt(L"Logging", L"unbuffered", 0, dir))
         {
             unbuffered = setvbuf(LogFile, NULL, _IONBF, 0);
-            LogInfo("  unbuffered=1  return: %d\n", unbuffered);
+            LOG_INFO("  unbuffered=1  return: %d\n", unbuffered);
         }
 
         // Set the CPU affinity based upon d3dx.ini setting.  Useful for debugging and shader hunting in AC3.
@@ -89,15 +89,15 @@ void InitializeDLL()
         {
             DWORD one = 0x01;
             BOOL result = SetProcessAffinityMask(GetCurrentProcess(), one);
-            LogInfo("  CPU Affinity forced to 1- no multithreading: %s\n", result ? "true" : "false");
+            LOG_INFO("  CPU Affinity forced to 1- no multithreading: %s\n", result ? "true" : "false");
         }
 
         if (LogFile)
         {
-            LogInfo("[Logging]\n");
-            LogInfo("  calls=1\n");
-            LogDebug("  debug=1\n");
-            if (waitfordebugger) LogInfo("  waitfordebugger=1\n");
+            LOG_INFO("[Logging]\n");
+            LOG_INFO("  calls=1\n");
+            LOG_DEBUG("  debug=1\n");
+            if (waitfordebugger) LOG_INFO("  waitfordebugger=1\n");
         }
 
         /* Skipped for now.  Maybe revive if we want to make this the wrapper once again.
@@ -119,26 +119,26 @@ void InitializeDLL()
 
         if (LogFile)
         {
-            LogInfo("[Device]\n");
-            if (SCREEN_WIDTH != -1) LogInfo("  width=%d\n", SCREEN_WIDTH);
-            if (SCREEN_HEIGHT != -1) LogInfo("  height=%d\n", SCREEN_HEIGHT);
-            if (SCREEN_REFRESH != -1) LogInfo("  refresh_rate=%d\n", SCREEN_REFRESH);
-            if (FILTER_REFRESH[0]) LogInfoW(L"  filter_refresh_rate=%s\n", FILTER_REFRESH[0]);
-            if (SCREEN_FULLSCREEN) LogInfo("  full_screen=1\n");
+            LOG_INFO("[Device]\n");
+            if (SCREEN_WIDTH != -1) LOG_INFO("  width=%d\n", SCREEN_WIDTH);
+            if (SCREEN_HEIGHT != -1) LOG_INFO("  height=%d\n", SCREEN_HEIGHT);
+            if (SCREEN_REFRESH != -1) LOG_INFO("  refresh_rate=%d\n", SCREEN_REFRESH);
+            if (FILTER_REFRESH[0]) LOG_INFO_W(L"  filter_refresh_rate=%s\n", FILTER_REFRESH[0]);
+            if (SCREEN_FULLSCREEN) LOG_INFO("  full_screen=1\n");
 
-            if (SCREEN_ALLOW_COMMANDS) LogInfo("  allow_windowcommands=1\n");
+            if (SCREEN_ALLOW_COMMANDS) LOG_INFO("  allow_windowcommands=1\n");
         }
         */
     }
 
-    LogInfo(" *** DXGI DLL successfully initialized. *** \n\n");
+    LOG_INFO(" *** DXGI DLL successfully initialized. *** \n\n");
 }
 
 void DestroyDLL()
 {
     if (LogFile)
     {
-        LogInfo("Destroying DLL...\n");
+        LOG_INFO("Destroying DLL...\n");
         fclose(LogFile);
     }
 }
@@ -291,7 +291,7 @@ static void InitDXGI()
     hDXGI = LoadLibrary(sysDir);    
     if (hDXGI == NULL)
     {
-        LogInfo("\n *** LoadLibrary on System32 dxgi.dll failed *** \n\n");
+        LOG_INFO("\n *** LoadLibrary on System32 dxgi.dll failed *** \n\n");
         
         return;
     }
@@ -314,7 +314,7 @@ static void InitDXGI()
     // 8.1 and above, implemented in Win10 version of dxgi.dll
     _CreateDXGIFactory2 = (tCreateDXGIFactory2) GetProcAddress(hDXGI, "CreateDXGIFactory2");
 
-    LogInfo("DXGI GetProcAddress for CreateDXGIFactory2: %p \n\n", _CreateDXGIFactory2);
+    LOG_INFO("DXGI GetProcAddress for CreateDXGIFactory2: %p \n\n", _CreateDXGIFactory2);
 }
 
 
@@ -401,22 +401,22 @@ HRESULT WINAPI DXGIReportAdapterConfiguration(int a)
 HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
     InitDXGI();
-    LogInfo("DXGI CreateDXGIFactory(%s) called \n", UUIDtoString(riid).c_str());
+    LOG_INFO("DXGI CreateDXGIFactory(%s) called \n", UUIDtoString(riid).c_str());
 
     HRESULT hr = (*_CreateDXGIFactory)(riid, ppFactory);
 
-    LogInfo("  return: %x, factory = %p \n", hr, *ppFactory);
+    LOG_INFO("  return: %x, factory = %p \n", hr, *ppFactory);
     return hr;
 }
 
 HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 {
     InitDXGI();
-    LogInfo("DXGI CreateDXGIFactory1(%s) called \n", UUIDtoString(riid).c_str());
+    LOG_INFO("DXGI CreateDXGIFactory1(%s) called \n", UUIDtoString(riid).c_str());
 
     HRESULT hr = (*_CreateDXGIFactory1)(riid, ppFactory);
 
-    LogInfo("  return: %x, factory = %p \n", hr, *ppFactory);
+    LOG_INFO("  return: %x, factory = %p \n", hr, *ppFactory);
     return hr;
 }
 
@@ -429,7 +429,7 @@ HRESULT WINAPI CreateDXGIFactory2(
     _Out_ void   **ppFactory)
 {
     InitDXGI();
-    LogInfo("DXGI CreateDXGIFactory2(%s) called Flags = %d \n", UUIDtoString(riid).c_str(), Flags);
+    LOG_INFO("DXGI CreateDXGIFactory2(%s) called Flags = %d \n", UUIDtoString(riid).c_str(), Flags);
 
     // If the _CreateDXGIFactory2 function is still nullptr, that means we
     // are running on Win7 where the CreateDXGIFactory2 function is not exported.  
@@ -440,13 +440,13 @@ HRESULT WINAPI CreateDXGIFactory2(
     if (_CreateDXGIFactory2 == nullptr)
     {
         HRESULT hr = (*_CreateDXGIFactory)(riid, ppFactory);
-        LogInfo("  _CreateDXGIFactory returns %x factory = %p \n", hr, *ppFactory);
+        LOG_INFO("  _CreateDXGIFactory returns %x factory = %p \n", hr, *ppFactory);
         return hr;
     }
 
     HRESULT hr = (*_CreateDXGIFactory2)(Flags, riid, ppFactory);
 
-    LogInfo("  return: %x, factory = %p \n", hr, *ppFactory);
+    LOG_INFO("  return: %x, factory = %p \n", hr, *ppFactory);
     return hr;
 }
 
@@ -461,23 +461,23 @@ HRESULT WINAPI CreateDXGIFactory2(
 HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
     {
     InitDXGI();
-    LogInfo("CreateDXGIFactory2 called with riid: %s\n", NameFromIID(riid).c_str());
+    LOG_INFO("CreateDXGIFactory2 called with riid: %s\n", NameFromIID(riid).c_str());
     
-    LogInfo("  calling original CreateDXGIFactory2 API\n");
+    LOG_INFO("  calling original CreateDXGIFactory2 API\n");
 
     IDXGIFactory2 *origFactory2;
     HRESULT hr = (*_CreateDXGIFactory2)(riid, (void **)&origFactory2);
     if (FAILED(hr))
     {
-        LogInfo("  failed with HRESULT=%x\n", hr);
+        LOG_INFO("  failed with HRESULT=%x\n", hr);
         return hr;
     }
-    LogInfo("  CreateDXGIFactory2 returned factory = %p, result = %x\n", origFactory2, hr);
+    LOG_INFO("  CreateDXGIFactory2 returned factory = %p, result = %x\n", origFactory2, hr);
 
     HackerDXGIFactory2 *factory2Wrap = new HackerDXGIFactory2(origFactory2, NULL, NULL);
     if (factory2Wrap == NULL)
     {
-        LogInfo("  error allocating factory2Wrap.\n");
+        LOG_INFO("  error allocating factory2Wrap.\n");
         origFactory2->Release();
         return E_OUTOFMEMORY;
     }
@@ -492,25 +492,25 @@ HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
     //HRESULT ret;
     //if (_CreateDXGIFactory2)
     //{
-    //    LogInfo("  calling original CreateDXGIFactory2 API\n");
+    //    LOG_INFO("  calling original CreateDXGIFactory2 API\n");
     //    
     //    ret = (*_CreateDXGIFactory2)(riid, (void **) &origFactory);
     //}
     //else if (_CreateDXGIFactory1)
     //{
-    //    LogInfo("  calling original CreateDXGIFactory1 API\n");
+    //    LOG_INFO("  calling original CreateDXGIFactory1 API\n");
     //    
     //    ret = (*_CreateDXGIFactory1)(riid, (void **) &origFactory);
     //}
     //else
     //{
-    //    LogInfo("  calling original CreateDXGIFactory API\n");
+    //    LOG_INFO("  calling original CreateDXGIFactory API\n");
     //    
     //    ret = (*_CreateDXGIFactory)(riid, (void **) &origFactory);
     //}
     //if (ret != S_OK)
     //{
-    //    LogInfo("  failed with HRESULT=%x\n", ret);
+    //    LOG_INFO("  failed with HRESULT=%x\n", ret);
     //    
     //    return ret;
     //}
@@ -518,7 +518,7 @@ HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
     //D3D11Wrapper::IDXGIFactory2 *wrapper = D3D11Wrapper::IDXGIFactory2::GetDirectFactory(origFactory);
     //if(wrapper == NULL)
     //{
-    //    LogInfo("  error allocating wrapper.\n");
+    //    LOG_INFO("  error allocating wrapper.\n");
     //    
     //    origFactory->Release();
     //    return E_OUTOFMEMORY;
@@ -526,7 +526,7 @@ HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
     //
     //if (ppFactory)
     //    *ppFactory = wrapper;
-    //LogInfo("  returns result = %x, handle = %p, wrapper = %p\n", ret, origFactory, wrapper);
+    //LOG_INFO("  returns result = %x, handle = %p, wrapper = %p\n", ret, origFactory, wrapper);
     //
     //return ret;
 }
@@ -546,17 +546,17 @@ HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
 HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 {
     InitDXGI();
-    LogInfo("CreateDXGIFactory1 called with riid: %s\n", NameFromIID(riid).c_str());
-    LogInfo("  calling original CreateDXGIFactory1 API\n");
+    LOG_INFO("CreateDXGIFactory1 called with riid: %s\n", NameFromIID(riid).c_str());
+    LOG_INFO("  calling original CreateDXGIFactory1 API\n");
 
     IDXGIFactory1 *origFactory1;
     HRESULT hr = (*_CreateDXGIFactory1)(riid, (void **)&origFactory1);
     if (FAILED(hr))
     {
-        LogInfo("  failed with HRESULT=%x\n", hr);
+        LOG_INFO("  failed with HRESULT=%x\n", hr);
         return hr;
     }
-    LogInfo("  CreateDXGIFactory1 returned factory = %p, result = %x\n", origFactory1, hr);
+    LOG_INFO("  CreateDXGIFactory1 returned factory = %p, result = %x\n", origFactory1, hr);
 
     HackerDXGIFactory1 *factory1Wrap;
     if (riid == __uuidof(IDXGIFactory2))
@@ -575,7 +575,7 @@ HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 
     if (factory1Wrap == NULL)
     {
-        LogInfo("  error allocating factory1Wrap.\n");
+        LOG_INFO("  error allocating factory1Wrap.\n");
         origFactory1->Release();
         return E_OUTOFMEMORY;
     }
@@ -588,17 +588,17 @@ HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
 HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
     InitDXGI();
-    LogInfo("CreateDXGIFactory called with riid: %s\n", NameFromIID(riid).c_str());
-    LogInfo("  calling original CreateDXGIFactory API\n");
+    LOG_INFO("CreateDXGIFactory called with riid: %s\n", NameFromIID(riid).c_str());
+    LOG_INFO("  calling original CreateDXGIFactory API\n");
 
     IDXGIFactory *origFactory;
     HRESULT hr = (*_CreateDXGIFactory)(riid, (void **)&origFactory);
     if (FAILED(hr))
     {
-        LogInfo("  failed with HRESULT=%x\n", hr);
+        LOG_INFO("  failed with HRESULT=%x\n", hr);
         return hr;
     }
-    LogInfo("  CreateDXGIFactory returned factory = %p, result = %x\n", origFactory, hr);
+    LOG_INFO("  CreateDXGIFactory returned factory = %p, result = %x\n", origFactory, hr);
 
     // Must also handle the bizarre case of being passed the DXGIFactory2 riid, where we
     // need to return that Factory2.  This is not likely to be used much yet, as Factory2
@@ -626,7 +626,7 @@ HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
 
     if (factoryWrap == NULL)
     {
-        LogInfo("  error allocating factoryWrap.\n");
+        LOG_INFO("  error allocating factoryWrap.\n");
         origFactory->Release();
         return E_OUTOFMEMORY;
     }
@@ -671,7 +671,7 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 //        unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
 //        *ppvObj = p1;
 //        unsigned long cnt2 = p1->AddRef();
-//        LogInfo("  interface replaced with IDXGIAdapter1 wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p1->m_ulRef, cnt2);
+//        LOG_INFO("  interface replaced with IDXGIAdapter1 wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p1->m_ulRef, cnt2);
 //    }
 //    D3D11Wrapper::IDXGIOutput *p2 = (D3D11Wrapper::IDXGIOutput*) D3D11Wrapper::IDXGIOutput::m_List.GetDataPtr(*ppvObj);
 //    if (p2)
@@ -679,7 +679,7 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 //        unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
 //        *ppvObj = p2;
 //        unsigned long cnt2 = p2->AddRef();
-//        LogInfo("  interface replaced with IDXGIOutput wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p2->m_ulRef, cnt2);
+//        LOG_INFO("  interface replaced with IDXGIOutput wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p2->m_ulRef, cnt2);
 //    }
 //    D3D11Wrapper::IDXGIFactory2 *p3 = (D3D11Wrapper::IDXGIFactory2*) D3D11Wrapper::IDXGIFactory::m_List.GetDataPtr(*ppvObj);
 //    if (p3)
@@ -687,7 +687,7 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 //        unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
 //        *ppvObj = p3;
 //        unsigned long cnt2 = p3->AddRef();
-//        LogInfo("  interface replaced with IDXGIFactory2 wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p3->m_ulRef, cnt2);
+//        LOG_INFO("  interface replaced with IDXGIFactory2 wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p3->m_ulRef, cnt2);
 //    }
 //    D3D11Wrapper::IDXGISwapChain *p4 = (D3D11Wrapper::IDXGISwapChain*) D3D11Wrapper::IDXGISwapChain::m_List.GetDataPtr(*ppvObj);
 //    if (p4)
@@ -695,22 +695,22 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 //        unsigned long cnt = ((IUnknown*)*ppvObj)->Release();
 //        *ppvObj = p4;
 //        unsigned long cnt2 = p4->AddRef();
-//        LogInfo("  interface replaced with IDXGISwapChain wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p4->m_ulRef, cnt2);
+//        LOG_INFO("  interface replaced with IDXGISwapChain wrapper. Interface counter=%d, wrapper counter=%d, wrapper internal counter=%d\n", cnt, p4->m_ulRef, cnt2);
 //    }
 //}
 
 
 //STDMETHODIMP D3D11Wrapper::IDirect3DUnknown::QueryInterface(THIS_ REFIID riid, void** ppvObj)
 //{
-////    LogInfo("D3DXGI::IDirect3DUnknown::QueryInterface called at 'this': %s\n", type_name(this));
+////    LOG_INFO("D3DXGI::IDirect3DUnknown::QueryInterface called at 'this': %s\n", type_name(this));
 //
-//    LogInfo("QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %p\n",
+//    LOG_INFO("QueryInterface request for %08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx on %p\n",
 //        riid.Data1, riid.Data2, riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7], this);
 //    bool unknown1 = riid.Data1 == 0x7abb6563 && riid.Data2 == 0x02bc && riid.Data3 == 0x47c4 && riid.Data4[0] == 0x8e && 
 //        riid.Data4[1] == 0xf9 && riid.Data4[2] == 0xac && riid.Data4[3] == 0xc4 && riid.Data4[4] == 0x79 && 
 //        riid.Data4[5] == 0x5e && riid.Data4[6] == 0xdb && riid.Data4[7] == 0xcf;
 //    /*
-//    if (unknown1) LogInfo("  7abb6563-02bc-47c4-8ef9-acc4795edbcf = undocumented. Forcing fail.\n");
+//    if (unknown1) LOG_INFO("  7abb6563-02bc-47c4-8ef9-acc4795edbcf = undocumented. Forcing fail.\n");
 //    if (unknown1)
 //    {
 //        *ppvObj = 0;
@@ -718,14 +718,14 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 //    }
 //    */
 //    HRESULT hr = m_pUnk->QueryInterface(riid, ppvObj);
-//    LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+//    LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
 //    ReplaceInterface(ppvObj);
 //    /*
 //    if (!p1 && !p2 && !p3)
 //    {
 //        ((IDirect3DUnknown*)*ppvObj)->Release();
 //        hr = E_NOINTERFACE;
-//        LogInfo("  removing unknown interface and returning error.\n");
+//        LOG_INFO("  removing unknown interface and returning error.\n");
 //    }
 //    */
 //    
@@ -736,14 +736,14 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 //{
 //    if (!wrapper)
 //        return wrapper;
-//    LogInfo("  checking for device wrapper, handle = %p\n", wrapper);
+//    LOG_INFO("  checking for device wrapper, handle = %p\n", wrapper);
 //    IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x01 } };
 //    IUnknown *realDevice = wrapper;
-//    LogInfo("  dxgi.ReplaceDevice calling wrapper->QueryInterface, wrapper: %s\n", type_name(wrapper));
+//    LOG_INFO("  dxgi.ReplaceDevice calling wrapper->QueryInterface, wrapper: %s\n", type_name(wrapper));
 //
 //    if (wrapper->QueryInterface(marker, (void **)&realDevice) == 0x13bc7e31)
 //    {
-//        LogInfo("    device found. replacing with original handle = %p\n", realDevice);
+//        LOG_INFO("    device found. replacing with original handle = %p\n", realDevice);
 //        
 //        return realDevice;
 //    }
@@ -758,17 +758,17 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 //{
 //    if (!wrapper)
 //        return;
-//    LogInfo("  sending screen resolution to DX11\n");    
+//    LOG_INFO("  sending screen resolution to DX11\n");    
 //    IID marker = { 0x017b2e72ul, 0xbcde, 0x9f15, { 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x03 } };
 //    SwapChainInfo info;
 //    info.width = width;
 //    info.height = height;
 //    SwapChainInfo *infoPtr = &info;
-//    LogInfo("  dxgi.SendScreenResolution calling wrapper->QueryInterface, wrapper: %s\n", type_name(wrapper));
+//    LOG_INFO("  dxgi.SendScreenResolution calling wrapper->QueryInterface, wrapper: %s\n", type_name(wrapper));
 //
 //    if (wrapper->QueryInterface(marker, (void **)&infoPtr) == 0x13bc7e31)
 //    {
-//        LogInfo("    notification successful.\n");
+//        LOG_INFO("    notification successful.\n");
 //    }
 //}
 
@@ -777,7 +777,7 @@ int WINAPI D3DKMTQueryResourceInfo(int a)
 // d3d11 and nvapi64 dlls.  This will get called at static load time to
 // get us hooked into place.  
 //
-// Be Careful of the restrictions on this entry point. No LogInfo, No LoadLibrary e.g.
+// Be Careful of the restrictions on this entry point. No LOG_INFO, No LoadLibrary e.g.
 //
 // This project has a static link to the d3d11.dll call of D3D11CreateDevice, so that any
 // load of this dll will also statically load our d3d11.dll. That avoids the need to

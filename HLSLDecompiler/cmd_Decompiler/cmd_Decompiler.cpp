@@ -22,61 +22,61 @@ bool gLogDebug = false;
 
 static void PrintHelp(int argc, char *argv[])
 {
-    LogInfo("usage: %s [OPTION] FILE...\n\n", argv[0]);
+    LOG_INFO("usage: %s [OPTION] FILE...\n\n", argv[0]);
 
-    LogInfo("  -D, --decompile\n");
-    LogInfo("\t\t\tDecompile binary shaders with 3DMigoto's decompiler\n");
+    LOG_INFO("  -D, --decompile\n");
+    LOG_INFO("\t\t\tDecompile binary shaders with 3DMigoto's decompiler\n");
 
     // We can do this via fxc easily enough for now, and would need to pass in the shader model:
-    // LogInfo("  -C, --compile\n");
-    // LogInfo("\t\t\tCompile binary shaders with Microsoft's compiler\n");
+    // LOG_INFO("  -C, --compile\n");
+    // LOG_INFO("\t\t\tCompile binary shaders with Microsoft's compiler\n");
 
-    LogInfo("  -d, --disassemble, --disassemble-flugan\n");
-    LogInfo("\t\t\tDisassemble binary shaders with Flugan's disassembler\n");
+    LOG_INFO("  -d, --disassemble, --disassemble-flugan\n");
+    LOG_INFO("\t\t\tDisassemble binary shaders with Flugan's disassembler\n");
 
-    LogInfo("  -x, --disassemble-hexdump\n");
-    LogInfo("\t\t\tIntermix the disassembly with the raw hex codes (implies --disassemble-flugan)\n");
+    LOG_INFO("  -x, --disassemble-hexdump\n");
+    LOG_INFO("\t\t\tIntermix the disassembly with the raw hex codes (implies --disassemble-flugan)\n");
 
-    LogInfo("  --disassemble-ms\n");
-    LogInfo("\t\t\tDisassemble binary shaders with Microsoft's disassembler\n");
+    LOG_INFO("  --disassemble-ms\n");
+    LOG_INFO("\t\t\tDisassemble binary shaders with Microsoft's disassembler\n");
 
     // Only applicable to the vs2017 branch / d3dcompiler_47 version:
-    LogInfo("  -6, --disassemble-46\n");
-    LogInfo("\t\t\tApply backwards compatibility formatting patch to disassembler output\n");
+    LOG_INFO("  -6, --disassemble-46\n");
+    LOG_INFO("\t\t\tApply backwards compatibility formatting patch to disassembler output\n");
 
-    LogInfo("  -16, --patch-cb-offsets\n");
-    LogInfo("\t\t\tReplace constant buffer byte offsets with indices when disassembling\n");
+    LOG_INFO("  -16, --patch-cb-offsets\n");
+    LOG_INFO("\t\t\tReplace constant buffer byte offsets with indices when disassembling\n");
 
-    LogInfo("  -a, --assemble\n");
-    LogInfo("\t\t\tAssemble shaders with Flugan's assembler\n");
+    LOG_INFO("  -a, --assemble\n");
+    LOG_INFO("\t\t\tAssemble shaders with Flugan's assembler\n");
 
-    LogInfo("  --copy-reflection FILE\n");
-    LogInfo("\t\t\t\tCopy reflection & signature sections from FILE when assembling");
+    LOG_INFO("  --copy-reflection FILE\n");
+    LOG_INFO("\t\t\t\tCopy reflection & signature sections from FILE when assembling");
 
     // TODO (at the moment we always force):
-    // LogInfo("  -f, --force\n");
-    // LogInfo("\t\t\tOverwrite existing files\n");
+    // LOG_INFO("  -f, --force\n");
+    // LOG_INFO("\t\t\tOverwrite existing files\n");
 
     // Call this validate not verify, because it's impossible to machine
     // verify the decompiler:
-    LogInfo("  -V, --validate\n");
-    LogInfo("\t\t\tRun a validation pass after decompilation / disassembly\n");
+    LOG_INFO("  -V, --validate\n");
+    LOG_INFO("\t\t\tRun a validation pass after decompilation / disassembly\n");
 
-    LogInfo("  --lenient\n");
-    LogInfo("\t\t\tDon't fail shader validation for certain types of section mismatches\n");
+    LOG_INFO("  --lenient\n");
+    LOG_INFO("\t\t\tDon't fail shader validation for certain types of section mismatches\n");
 
-    LogInfo("  -S, --stop-on-failure\n");
-    LogInfo("\t\t\tStop processing files if an error occurs\n");
+    LOG_INFO("  -S, --stop-on-failure\n");
+    LOG_INFO("\t\t\tStop processing files if an error occurs\n");
 
-    LogInfo("  -v, --verbose\n");
-    LogInfo("\t\t\tVerbose debugging output\n");
+    LOG_INFO("  -v, --verbose\n");
+    LOG_INFO("\t\t\tVerbose debugging output\n");
 
     exit(EXIT_FAILURE);
 }
 
 static void PrintVersion()
 {
-    LogInfo("3DMigoto cmd_Decompiler version %s\n", VER_FILE_VERSION_STR);
+    LOG_INFO("3DMigoto cmd_Decompiler version %s\n", VER_FILE_VERSION_STR);
 
     exit(EXIT_SUCCESS);
 }
@@ -184,7 +184,7 @@ void parse_args(int argc, char *argv[])
                 gLogDebug = true;
                 continue;
             }
-            LogInfo("Unrecognised argument: %s\n", arg);
+            LOG_INFO("Unrecognised argument: %s\n", arg);
             PrintHelp(argc, argv); // Does not return
         }
         args.files.push_back(arg);
@@ -196,7 +196,7 @@ void parse_args(int argc, char *argv[])
             + args.disassemble_hexdump
             + args.disassemble_46
             + args.assemble < 1) {
-        LogInfo("No action specified\n");
+        LOG_INFO("No action specified\n");
         PrintHelp(argc, argv); // Does not return
     }
 
@@ -214,7 +214,7 @@ static HRESULT DisassembleMS(const void *pShaderBytecode, size_t BytecodeLength,
 
     HRESULT hr = D3DDisassemble(pShaderBytecode, BytecodeLength, flags, comments.c_str(), &disassembly);
     if (FAILED(hr)) {
-        LogInfo("  disassembly failed. Error: %x\n", hr);
+        LOG_INFO("  disassembly failed. Error: %x\n", hr);
         return hr;
     }
 
@@ -252,8 +252,8 @@ static int validate_section(char section[4], unsigned char *old_section, unsigne
             continue;
 
         if (!rc)
-            LogInfo("\n*** Assembly verification pass failed: mismatch in section %.4s:\n", section);
-        LogInfo("  %.4s+0x%04Ix (0x%08Ix): expected 0x%02x, found 0x%02x\n",
+            LOG_INFO("\n*** Assembly verification pass failed: mismatch in section %.4s:\n", section);
+        LOG_INFO("  %.4s+0x%04Ix (0x%08Ix): expected 0x%02x, found 0x%02x\n",
                 section, pos, off+pos, *p1, *p2);
         rc = 1;
     }
@@ -282,19 +282,19 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
     try {
         hret = AssembleFluganWithSignatureParsing(&assembly_vec, &new_shader);
         if (FAILED(hret)) {
-            LogInfo("\n*** Assembly verification pass failed: Reassembly failed 0x%x\n", hret);
+            LOG_INFO("\n*** Assembly verification pass failed: Reassembly failed 0x%x\n", hret);
             return 1;
         }
     } catch (AssemblerParseError &e) {
         string disassembly;
 
-        LogInfo("\n%s\n\n", e.what());
+        LOG_INFO("\n%s\n\n", e.what());
 
         // Assembler threw a parse error. Switch to disassembly with
         // hexdump mode 2 enabled to identify bad instructions:
         hret = DisassembleFlugan(old_shader->data(), old_shader->size(), &disassembly, 2, false);
         if (SUCCEEDED(hret))
-            LogInfo("%s\n", disassembly.c_str());
+            LOG_INFO("%s\n", disassembly.c_str());
         return 1;
     }
 
@@ -321,16 +321,16 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
                     (!strncmp(old_section_header->signature, "SHEX", 4) &&
                      !strncmp(new_section_header->signature, "SHDR", 4))) {
                     if (args.lenient) {
-                        LogInfo("Notice: SHDR / SHEX mismatch\n");
+                        LOG_INFO("Notice: SHDR / SHEX mismatch\n");
                     } else {
-                        LogInfo("\n*** Assembly verification pass failed: SHDR / SHEX mismatch ***\n");
+                        LOG_INFO("\n*** Assembly verification pass failed: SHDR / SHEX mismatch ***\n");
                         rc = 1;
                     }
                 } else
                     continue;
             }
 
-            LogDebugNoNL(" Checking section %.4s...", old_section_header->signature);
+            LOG_DEBUG_NO_NL(" Checking section %.4s...", old_section_header->signature);
 
             size = min(old_section_header->size, new_section_header->size);
             old_section = (unsigned char*)old_section_header + sizeof(struct section_header);
@@ -346,13 +346,13 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
                     string disassembly;
                     hret = DisassembleFlugan(old_shader->data(), old_shader->size(), &disassembly, 2, false);
                     if (SUCCEEDED(hret))
-                        LogInfo("\n%s\n", disassembly.c_str());
+                        LOG_INFO("\n%s\n", disassembly.c_str());
                 }
             } else
-                LogDebug(" OK\n");
+                LOG_DEBUG(" OK\n");
 
             if (old_section_header->size != new_section_header->size) {
-                LogInfo("\n*** Assembly verification pass failed: size mismatch in section %.4s, expected %i, found %i\n",
+                LOG_INFO("\n*** Assembly verification pass failed: size mismatch in section %.4s, expected %i, found %i\n",
                         old_section_header->signature, old_section_header->size, new_section_header->size);
                 rc = 1;
             }
@@ -367,10 +367,10 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
                 strncmp(old_section_header->signature, "SDBG", 4) && // Debug Info
                 strncmp(old_section_header->signature, "Aon9", 4)) { // Level 9 shader bytecode
                 //strncmp(old_section_header->signature, "SFI0", 4)) { // Subtarget Feature Info (not yet sure if this is critical or not)
-                LogInfo("*** Assembly verification pass failed: Reassembled shader missing %.4s section (not whitelisted)\n", old_section_header->signature);
+                LOG_INFO("*** Assembly verification pass failed: Reassembled shader missing %.4s section (not whitelisted)\n", old_section_header->signature);
                 rc = 1;
             } else
-                LogInfo("Reassembled shader missing %.4s section\n", old_section_header->signature);
+                LOG_INFO("Reassembled shader missing %.4s section\n", old_section_header->signature);
         }
     }
 
@@ -386,11 +386,11 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
                 break;
         }
         if (j == old_dxbc_header->num_sections)
-            LogInfo("Reassembled shader contains %.4s section not in original\n", new_section_header->signature);
+            LOG_INFO("Reassembled shader contains %.4s section not in original\n", new_section_header->signature);
     }
 
     if (!rc)
-        LogInfo("    Assembly verification pass succeeded\n");
+        LOG_INFO("    Assembly verification pass succeeded\n");
     return rc;
 }
 
@@ -409,7 +409,7 @@ static HRESULT Decompile(const void *pShaderBytecode, size_t BytecodeLength, str
     if (FAILED(hret))
         return E_FAIL;
 
-    LogInfo("    creating HLSL representation\n");
+    LOG_INFO("    creating HLSL representation\n");
 
     p.bytecode = pShaderBytecode;
     p.decompiled = disassembly.c_str(); // XXX: Why do we call this "decompiled" when it's actually disassembled?
@@ -429,7 +429,7 @@ static HRESULT Decompile(const void *pShaderBytecode, size_t BytecodeLength, str
 
     *hlslText = DecompileBinaryHLSL(p, patched, *shaderModel, errorOccurred);
     if (!hlslText->size() || errorOccurred) {
-        LogInfo("    error while decompiling\n");
+        LOG_INFO("    error while decompiling\n");
         return E_FAIL;
     }
 
@@ -452,21 +452,21 @@ static int validate_hlsl(string *hlsl, string *shaderModel)
     if (pErrorMsgs && LogFile) { // Check LogFile so the fwrite doesn't crash
         LPVOID errMsg = pErrorMsgs->GetBufferPointer();
         SIZE_T errSize = pErrorMsgs->GetBufferSize();
-        LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
+        LOG_INFO("--------------------------------------------- BEGIN ---------------------------------------------\n");
         fwrite(errMsg, 1, errSize - 1, LogFile);
-        LogInfo("---------------------------------------------- END ----------------------------------------------\n");
+        LOG_INFO("---------------------------------------------- END ----------------------------------------------\n");
         pErrorMsgs->Release();
     }
 
     if (FAILED(hr)) {
-        LogInfo("\n*** Decompiler validation pass failed!\n");
+        LOG_INFO("\n*** Decompiler validation pass failed!\n");
         return EXIT_FAILURE;
     }
 
     // Not a guarantee that the decompilation result is correct, but at
     // least it compiled...
 
-    LogInfo("    Decompiler validation pass succeeded\n");
+    LOG_INFO("    Decompiler validation pass succeeded\n");
     return EXIT_SUCCESS;
 }
 
@@ -482,7 +482,7 @@ static int ReadInput(vector<T> *srcData, string const *filename)
 
     fp = CreateFileA(filename->c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (fp == INVALID_HANDLE_VALUE) {
-        LogInfo("    Shader not found: %s\n", filename->c_str());
+        LOG_INFO("    Shader not found: %s\n", filename->c_str());
         return EXIT_FAILURE;
     }
 
@@ -492,7 +492,7 @@ static int ReadInput(vector<T> *srcData, string const *filename)
     bret = ReadFile(fp, srcData->data(), srcDataSize, &readSize, 0);
     CloseHandle(fp);
     if (!bret || srcDataSize != readSize) {
-        LogInfo("    Error reading input file\n");
+        LOG_INFO("    Error reading input file\n");
         return EXIT_FAILURE;
     }
 
@@ -514,7 +514,7 @@ static int WriteOutput(string const *in_filename, char const *extension, string 
     // Also handles the case where the file has no extension (well, unless
     // some fool does foo.bar\baz):
     out_filename = in_filename->substr(0, in_filename->rfind(".")) + extension;
-    LogInfo("  -> %s\n", out_filename.c_str());
+    LOG_INFO("  -> %s\n", out_filename.c_str());
 
     fopen_s(&fp, out_filename.c_str(), "wb");
     if (!fp)
@@ -537,7 +537,7 @@ static int process(string const *filename)
         return EXIT_FAILURE;
 
     if (args.disassemble_ms) {
-        LogInfo("Disassembling (MS) %s...\n", filename->c_str());
+        LOG_INFO("Disassembling (MS) %s...\n", filename->c_str());
         hret = DisassembleMS(srcData.data(), srcData.size(), &output);
         if (FAILED(hret))
             return EXIT_FAILURE;
@@ -552,7 +552,7 @@ static int process(string const *filename)
     }
 
     if (args.disassemble_flugan || args.disassemble_hexdump || args.disassemble_46) {
-        LogInfo("Disassembling (Flugan) %s...\n", filename->c_str());
+        LOG_INFO("Disassembling (Flugan) %s...\n", filename->c_str());
         hret = DisassembleFlugan(srcData.data(), srcData.size(), &output, args.disassemble_hexdump, args.disassemble_46);
         if (FAILED(hret))
             return EXIT_FAILURE;
@@ -569,7 +569,7 @@ static int process(string const *filename)
     }
 
     if (args.assemble) {
-        LogInfo("Assembling %s...\n", filename->c_str());
+        LOG_INFO("Assembling %s...\n", filename->c_str());
         vector<byte> new_bytecode;
         if (args.reflection_reference.empty()) {
             hret = AssembleFluganWithSignatureParsing(&srcData, &new_bytecode);
@@ -593,7 +593,7 @@ static int process(string const *filename)
     }
 
     if (args.decompile) {
-        LogInfo("Decompiling %s...\n", filename->c_str());
+        LOG_INFO("Decompiling %s...\n", filename->c_str());
         hret = Decompile(srcData.data(), srcData.size(), &output, &model);
         if (FAILED(hret))
             return EXIT_FAILURE;
@@ -625,7 +625,7 @@ int main(int argc, char *argv[])
         try {
             rc = process(&filename) || rc;
         } catch (const exception & e) {
-            LogInfo("\n*** UNHANDLED EXCEPTION: %s\n", e.what());
+            LOG_INFO("\n*** UNHANDLED EXCEPTION: %s\n", e.what());
             rc = EXIT_FAILURE;
         }
 
@@ -634,7 +634,7 @@ int main(int argc, char *argv[])
     }
 
     if (rc)
-        LogInfo("\n*** At least one error occurred during run ***\n");
+        LOG_INFO("\n*** At least one error occurred during run ***\n");
 
     return rc;
 }

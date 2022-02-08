@@ -50,8 +50,8 @@ void FrameAnalysisContext::vFrameAnalysisLog(char *fmt, va_list ap)
 {
     wchar_t filename[MAX_PATH];
 
-    LogDebugNoNL("FrameAnalysisContext(%s@%p)::", type_name(this), this);
-    vLogDebug(fmt, ap);
+    LOG_DEBUG_NO_NL("FrameAnalysisContext(%s@%p)::", type_name(this), this);
+    LOG_DEBUG_V(fmt, ap);
 
     if (!G->analyse_frame) {
         if (frame_analysis_log)
@@ -82,7 +82,7 @@ void FrameAnalysisContext::vFrameAnalysisLog(char *fmt, va_list ap)
 
         frame_analysis_log = _wfsopen(filename, L"w", _SH_DENYNO);
         if (!frame_analysis_log) {
-            LogInfoW(L"Error opening %s\n", filename);
+            LOG_INFO_W(L"Error opening %s\n", filename);
             return;
         }
         draw_call = 1;
@@ -113,7 +113,7 @@ void FrameAnalysisContext::FrameAnalysisLog(char *fmt, ...)
 } while (0)
 
 #define FALogErr(fmt, ...) { \
-    LogInfo("Frame Analysis: " fmt, __VA_ARGS__); \
+    LOG_INFO("Frame Analysis: " fmt, __VA_ARGS__); \
     FrameAnalysisLog("3DMigoto " fmt, __VA_ARGS__); \
 } while (0)
 
@@ -132,7 +132,7 @@ void FrameAnalysisContext::FrameAnalysisLogShaderHash(ID3D11Shader *shader)
     ShaderMap::iterator hash;
 
     // Always complete the line in the debug log:
-    LogDebug("\n");
+    LOG_DEBUG("\n");
 
     if (!G->analyse_frame || !frame_analysis_log)
         return;
@@ -159,7 +159,7 @@ void FrameAnalysisContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource
     struct ResourceHashInfo *info;
 
     // Always complete the line in the debug log:
-    LogDebug("\n");
+    LOG_DEBUG("\n");
 
     if (!G->analyse_frame || !frame_analysis_log)
         return;
@@ -285,7 +285,7 @@ void FrameAnalysisContext::FrameAnalysisLogAsyncQuery(ID3D11Asynchronous *async)
     D3D11_QUERY_DESC desc;
 
     // Always complete the line in the debug log:
-    LogDebug("\n");
+    LOG_DEBUG("\n");
 
     if (!G->analyse_frame || !frame_analysis_log)
         return;
@@ -1904,7 +1904,7 @@ static BOOL CreateDeferredFADirectory(LPCWSTR path)
     if (!CreateDirectoryEnsuringAccess(path)) {
         err = GetLastError();
         if (err != ERROR_ALREADY_EXISTS) {
-            LogInfoW(L"Error creating deferred frame analysis directory: %i\n", err);
+            LOG_INFO_W(L"Error creating deferred frame analysis directory: %i\n", err);
             return FALSE;
         }
     }
@@ -2311,13 +2311,13 @@ void FrameAnalysisContext::link_deduplicated_files(const wchar_t *filename, cons
     }
 
     // Hard links may fail e.g. if running the game off a FAT32 partition:
-    LogDebug("Hard linking %S -> %S failed (0x%u), trying windows shortcut\n",
+    LOG_DEBUG("Hard linking %S -> %S failed (0x%u), trying windows shortcut\n",
             filename, dedupe_filename, GetLastError());
 
     if (create_shortcut(filename, dedupe_filename))
         return;
 
-    LogDebug("Creating shortcut %S -> %S failed. Cannot deduplicate file, moving back.\n",
+    LOG_DEBUG("Creating shortcut %S -> %S failed. Cannot deduplicate file, moving back.\n",
             filename, dedupe_filename);
 
     if (MoveFile(dedupe_filename, filename))
