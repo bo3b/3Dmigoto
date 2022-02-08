@@ -30,19 +30,19 @@ D3D9Wrapper::IDirect3DQuery9* D3D9Wrapper::IDirect3DQuery9::GetDirect3DQuery9(::
 
 STDMETHODIMP D3D9Wrapper::IDirect3DQuery9::QueryInterface(THIS_ REFIID riid, void ** ppvObj)
 {
-    LogDebug("D3D9Wrapper::IDirect3DQuery9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
+    LOG_DEBUG("D3D9Wrapper::IDirect3DQuery9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
     HRESULT hr = NULL;
     if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
         return hr;
-    LogInfo("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
+    LOG_INFO("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
     hr = m_pUnk->QueryInterface(riid, ppvObj);
     if (hr == S_OK) {
         if ((*ppvObj) == GetRealOrig()) {
             if (!(G->enable_hooks >= EnableHooksDX9::ALL)) {
                 *ppvObj = this;
                 ++m_ulRef;
-                LogInfo("  interface replaced with IDirect3DQuery9 wrapper.\n");
-                LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+                LOG_INFO("  interface replaced with IDirect3DQuery9 wrapper.\n");
+                LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
                 return hr;
             }
         }
@@ -50,7 +50,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DQuery9::QueryInterface(THIS_ REFIID riid, voi
         if (unk)
             *ppvObj = unk;
     }
-    LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+    LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
     return hr;
 }
 
@@ -62,17 +62,17 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DQuery9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DQuery9::Release(THIS)
 {
-    LogDebug("IDirect3DQuery9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
+    LOG_DEBUG("IDirect3DQuery9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-    LogDebug("  internal counter = %d\n", ulRef);
+    LOG_DEBUG("  internal counter = %d\n", ulRef);
 
     --m_ulRef;
 
     if (ulRef == 0)
     {
-        if (!gLogDebug) LogInfo("IDirect3DQuery9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
-        LogInfo("  deleting self\n");
+        if (!gLogDebug) LOG_INFO("IDirect3DQuery9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+        LOG_INFO("  deleting self\n");
 
         Delete();
     }
@@ -81,7 +81,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DQuery9::Release(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DQuery9::GetDevice(THIS_ D3D9Wrapper::IDirect3DDevice9** ppDevice)
 {
-    LogDebug("IDirect3DQuery9::GetDevice called\n");
+    LOG_DEBUG("IDirect3DQuery9::GetDevice called\n");
     HRESULT hr;
     if (hackerDevice) {
         hackerDevice->AddRef();
@@ -101,42 +101,42 @@ STDMETHODIMP D3D9Wrapper::IDirect3DQuery9::GetDevice(THIS_ D3D9Wrapper::IDirect3
 
 STDMETHODIMP_(::D3DQUERYTYPE) D3D9Wrapper::IDirect3DQuery9::GetType(THIS)
 {
-    LogDebug("IDirect3DQuery9::GetType called\n");
+    LOG_DEBUG("IDirect3DQuery9::GetType called\n");
 
     ::D3DQUERYTYPE hr = GetD3DQuery9()->GetType();
-    LogDebug("  returns QueryType=%x\n", hr);
+    LOG_DEBUG("  returns QueryType=%x\n", hr);
 
     return hr;
 }
 
 STDMETHODIMP_(DWORD) D3D9Wrapper::IDirect3DQuery9::GetDataSize(THIS)
 {
-    LogDebug("IDirect3DQuery9::GetDataSize called\n");
+    LOG_DEBUG("IDirect3DQuery9::GetDataSize called\n");
 
     DWORD hr = GetD3DQuery9()->GetDataSize();
-    LogDebug("  returns size=%d\n", hr);
+    LOG_DEBUG("  returns size=%d\n", hr);
 
     return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DQuery9::Issue(THIS_ DWORD dwIssueFlags)
 {
-    LogDebug("IDirect3DQuery9::Issue called with IssueFlags=%x, this=%p\n", dwIssueFlags, this);
+    LOG_DEBUG("IDirect3DQuery9::Issue called with IssueFlags=%x, this=%p\n", dwIssueFlags, this);
     hackerDevice->FrameAnalysisLog("IDirect3DQuery9::Issue Async:0x%p(dwIssueFlags:%x)", this, dwIssueFlags);
     hackerDevice->FrameAnalysisLogQuery(this->GetD3DQuery9());
 
     HRESULT hr = GetD3DQuery9()->Issue(dwIssueFlags);
-    LogDebug("  returns result=%x\n", hr);
+    LOG_DEBUG("  returns result=%x\n", hr);
 
     return hr;
 }
 
 STDMETHODIMP D3D9Wrapper::IDirect3DQuery9::GetData(THIS_ void* pData,DWORD dwSize,DWORD dwGetDataFlags)
 {
-    LogDebug("IDirect3DQuery9::GetData called with Data=%p, Size=%d, GetDataFlags=%x\n", pData, dwSize, dwGetDataFlags);
+    LOG_DEBUG("IDirect3DQuery9::GetData called with Data=%p, Size=%d, GetDataFlags=%x\n", pData, dwSize, dwGetDataFlags);
 
     HRESULT hr = GetD3DQuery9()->GetData(pData, dwSize, dwGetDataFlags);
-    LogDebug("  returns result=%x\n", hr);
+    LOG_DEBUG("  returns result=%x\n", hr);
 
     hackerDevice->FrameAnalysisLog("GetData(Async:0x%p, pData:0x%p, dwSize:%x, dwGetDataFlags:%x) = %u",
         this, pData, dwSize, dwGetDataFlags);

@@ -35,13 +35,13 @@ static void SwitchToXinpuGetStateEx()
     // xinput 1.3 and 1.4, which both support this functionality.
     xinput_lib = LoadLibrary(L"xinput1_3.dll");
     if (xinput_lib) {
-        LogInfo("Loaded xinput1_3.dll for guide button support\n");
+        LOG_INFO("Loaded xinput1_3.dll for guide button support\n");
     } else {
         xinput_lib = LoadLibrary(L"xinput1_4.dll");
         if (xinput_lib) {
-            LogInfo("Loaded xinput1_4.dll for guide button support\n");
+            LOG_INFO("Loaded xinput1_4.dll for guide button support\n");
         } else {
-            LogInfo("ERROR: Unable to load xinput 1.3 or 1.4: Guide button will not be available\n");
+            LOG_INFO("ERROR: Unable to load xinput 1.3 or 1.4: Guide button will not be available\n");
             return;
         }
     }
@@ -50,7 +50,7 @@ static void SwitchToXinpuGetStateEx()
     LPCSTR XInputGetStateExOrdinal = (LPCSTR)100;
     XInputGetStateEx = (tXInputGetState)GetProcAddress(xinput_lib, XInputGetStateExOrdinal);
     if (!XInputGetStateEx) {
-        LogInfo("ERROR: Unable to get XInputGetStateEx: Guide button will not be available\n");
+        LOG_INFO("ERROR: Unable to get XInputGetStateEx: Guide button will not be available\n");
         return;
     }
 
@@ -467,7 +467,7 @@ void RegisterKeyBinding(LPCWSTR iniKey, const wchar_t *keyName,
     else
         action = new InputAction(button, listener);
 
-    LogInfoW(L"  %s=%s\n", iniKey, keyName);
+    LOG_INFO_W(L"  %s=%s\n", iniKey, keyName);
     actions.push_back(action);
 }
 

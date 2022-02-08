@@ -80,7 +80,7 @@ static bool InitializeDLL()
         if (status != NVAPI_OK)
         {
             NvAPI_GetErrorMessage(status, errorMessage);
-            LogInfo("  NvAPI_Initialize failed: %s\n", errorMessage);
+            LOG_INFO("  NvAPI_Initialize failed: %s\n", errorMessage);
             return false;
         }
         if (G->gTrackNvAPIStereoActive)
@@ -108,7 +108,7 @@ static bool InitializeDLL()
             if (status != NVAPI_OK)
             {
                 NvAPI_GetErrorMessage(status, errorMessage);
-                LogInfo("  NvAPI_Stereo_Enable failed: %s\n", errorMessage);
+                LOG_INFO("  NvAPI_Stereo_Enable failed: %s\n", errorMessage);
                 return false;
             }
         }
@@ -120,13 +120,13 @@ static bool InitializeDLL()
             if (status != NVAPI_OK)
             {
                 NvAPI_GetErrorMessage(status, errorMessage);
-                LogInfo("*** NvAPI_Stereo_SetDriverMode to Direct, failed: %s\n", errorMessage);
+                LOG_INFO("*** NvAPI_Stereo_SetDriverMode to Direct, failed: %s\n", errorMessage);
                 return false;
             }
-            LogInfo("  NvAPI_Stereo_SetDriverMode successfully set to Direct Mode\n");
+            LOG_INFO("  NvAPI_Stereo_SetDriverMode successfully set to Direct Mode\n");
         }
 
-    LogInfo("\n***  D3D9 DLL successfully initialized.  ***\n\n");
+    LOG_INFO("\n***  D3D9 DLL successfully initialized.  ***\n\n");
     return true;
 }
 
@@ -146,12 +146,12 @@ void InitD39()
 
     if (G->CHAIN_DLL_PATH[0])
     {
-        LogInfo("Proxy loading active, Forcing load_library_redirect=0\n");
+        LOG_INFO("Proxy loading active, Forcing load_library_redirect=0\n");
         G->load_library_redirect = 0;
 
         wchar_t sysDir[MAX_PATH] = { 0 };
         if (!GetModuleFileName(0, sysDir, MAX_PATH)) {
-            LogInfo("GetModuleFileName failed\n");
+            LOG_INFO("GetModuleFileName failed\n");
             DoubleBeepExit();
         }
         wcsrchr(sysDir, L'\\')[1] = 0;
@@ -160,7 +160,7 @@ void InitD39()
         {
             char path[MAX_PATH];
             wcstombs(path, sysDir, MAX_PATH);
-            LogInfo("trying to chain load %s\n", path);
+            LOG_INFO("trying to chain load %s\n", path);
         }
         hD3D = LoadLibrary(sysDir);
         if (!hD3D)
@@ -169,11 +169,11 @@ void InitD39()
             {
                 char path[MAX_PATH];
                 wcstombs(path, G->CHAIN_DLL_PATH, MAX_PATH);
-                LogInfo("load failed. Trying to chain load %s\n", path);
+                LOG_INFO("load failed. Trying to chain load %s\n", path);
             }
             hD3D = LoadLibrary(G->CHAIN_DLL_PATH);
         }
-        LogInfo("Proxy loading result: %p\n", hD3D);
+        LOG_INFO("Proxy loading result: %p\n", hD3D);
     }
     else
     {
@@ -181,12 +181,12 @@ void InitD39()
         // Must remain all lower case to be matched in DLLMainHook.
         // We need the system d3d11 in order to find the original proc addresses.
         // We hook LoadLibraryExW, so we need to use that here.
-        LogInfo("Trying to load original_d3d9.dll\n");
+        LOG_INFO("Trying to load original_d3d9.dll\n");
         hD3D = LoadLibraryEx(L"original_d3d9.dll", NULL, 0);
         if (hD3D == NULL)
         {
             wchar_t libPath[MAX_PATH];
-            LogInfo("*** LoadLibrary on original_d3d9.dll failed.\n");
+            LOG_INFO("*** LoadLibrary on original_d3d9.dll failed.\n");
 
             // Redirected load failed. Something (like Origin's IGO32.dll
             // hook in ntdll.dll LdrLoadDll) is interfering with our hook.
@@ -198,14 +198,14 @@ void InitD39()
             ret = GetSystemDirectoryW(libPath, ARRAYSIZE(libPath));
             if (ret != 0 && ret < ARRAYSIZE(libPath)) {
                 wcscat_s(libPath, MAX_PATH, L"\\d3d9.dll");
-                LogInfoW(L"Trying to load %ls\n", libPath);
+                LOG_INFO_W(L"Trying to load %ls\n", libPath);
                 hD3D = LoadLibraryEx(libPath, NULL, 0);
             }
         }
     }
     if (hD3D == NULL)
     {
-        LogInfo("*** LoadLibrary on original or chained d3d9.dll failed.\n");
+        LOG_INFO("*** LoadLibrary on original or chained d3d9.dll failed.\n");
         DoubleBeepExit();
     }
 
@@ -214,14 +214,14 @@ void DestroyDLL()
 {
     if (LogFile)
     {
-        LogInfo("Destroying DLL...\n");
+        LOG_INFO("Destroying DLL...\n");
         fclose(LogFile);
     }
 }
 
 int WINAPI D3DPERF_BeginEvent(DWORD col, LPCWSTR wszName)
 {
-    LogInfo("D3DPERF_BeginEvent called\n");
+    LOG_INFO("D3DPERF_BeginEvent called\n");
 
     D3D9Wrapper::D3DPERF_BeginEvent call = (D3D9Wrapper::D3DPERF_BeginEvent)GetProcAddress(hD3D, "D3DPERF_BeginEvent");
     return (*call)(col, wszName);
@@ -229,7 +229,7 @@ int WINAPI D3DPERF_BeginEvent(DWORD col, LPCWSTR wszName)
 
 int WINAPI D3DPERF_EndEvent()
 {
-    LogInfo("D3DPERF_EndEvent called\n");
+    LOG_INFO("D3DPERF_EndEvent called\n");
 
     D3D9Wrapper::D3DPERF_EndEvent call = (D3D9Wrapper::D3DPERF_EndEvent)GetProcAddress(hD3D, "D3DPERF_EndEvent");
     return (*call)();
@@ -237,7 +237,7 @@ int WINAPI D3DPERF_EndEvent()
 
 DWORD WINAPI D3DPERF_GetStatus()
 {
-    LogInfo("D3DPERF_GetStatus called\n");
+    LOG_INFO("D3DPERF_GetStatus called\n");
 
     D3D9Wrapper::D3DPERF_GetStatus call = (D3D9Wrapper::D3DPERF_GetStatus)GetProcAddress(hD3D, "D3DPERF_GetStatus");
     return (*call)();
@@ -245,7 +245,7 @@ DWORD WINAPI D3DPERF_GetStatus()
 
 BOOL WINAPI D3DPERF_QueryRepeatFrame()
 {
-    LogInfo("D3DPERF_QueryRepeatFrame called\n");
+    LOG_INFO("D3DPERF_QueryRepeatFrame called\n");
 
     D3D9Wrapper::D3DPERF_QueryRepeatFrame call = (D3D9Wrapper::D3DPERF_QueryRepeatFrame)GetProcAddress(hD3D, "D3DPERF_QueryRepeatFrame");
     return (*call)();
@@ -253,7 +253,7 @@ BOOL WINAPI D3DPERF_QueryRepeatFrame()
 
 void WINAPI D3DPERF_SetMarker(::D3DCOLOR color, LPCWSTR name)
 {
-    LogInfo("D3DPERF_SetMarker called\n");
+    LOG_INFO("D3DPERF_SetMarker called\n");
 
     D3D9Wrapper::D3DPERF_SetMarker call = (D3D9Wrapper::D3DPERF_SetMarker)GetProcAddress(hD3D, "D3DPERF_SetMarker");
     (*call)(color, name);
@@ -261,7 +261,7 @@ void WINAPI D3DPERF_SetMarker(::D3DCOLOR color, LPCWSTR name)
 
 void WINAPI D3DPERF_SetOptions(DWORD options)
 {
-    LogInfo("D3DPERF_SetOptions called\n");
+    LOG_INFO("D3DPERF_SetOptions called\n");
 
     D3D9Wrapper::D3DPERF_SetOptions call = (D3D9Wrapper::D3DPERF_SetOptions)GetProcAddress(hD3D, "D3DPERF_SetOptions");
     (*call)(options);
@@ -269,7 +269,7 @@ void WINAPI D3DPERF_SetOptions(DWORD options)
 
 void WINAPI D3DPERF_SetRegion(::D3DCOLOR color, LPCWSTR name)
 {
-    LogInfo("D3DPERF_SetRegion called\n");
+    LOG_INFO("D3DPERF_SetRegion called\n");
 
     D3D9Wrapper::D3DPERF_SetRegion call = (D3D9Wrapper::D3DPERF_SetRegion)GetProcAddress(hD3D, "D3DPERF_SetRegion");
     (*call)(color, name);
@@ -277,7 +277,7 @@ void WINAPI D3DPERF_SetRegion(::D3DCOLOR color, LPCWSTR name)
 
 void WINAPI DebugSetLevel(int a1, int a2)
 {
-    LogInfo("DebugSetLevel called\n");
+    LOG_INFO("DebugSetLevel called\n");
 
     D3D9Wrapper::DebugSetLevel call = (D3D9Wrapper::DebugSetLevel)GetProcAddress(hD3D, "DebugSetLevel");
     (*call)(a1, a2);
@@ -288,7 +288,7 @@ void WINAPI DebugSetLevel(int a1, int a2)
 //#endif
     //void WINAPI DebugSetMute(int a)
     //{
-    //    LogInfo("DebugSetMute called\n");
+    //    LOG_INFO("DebugSetMute called\n");
 
     //    D3D9Wrapper::DebugSetMute call = (D3D9Wrapper::DebugSetMute)GetProcAddress(hD3D, "DebugSetMute");
     //    (*call)(a);
@@ -299,7 +299,7 @@ void WINAPI DebugSetLevel(int a1, int a2)
 //#endif
 void *WINAPI Direct3DShaderValidatorCreate9()
 {
-    LogInfo("Direct3DShaderValidatorCreate9 called\n");
+    LOG_INFO("Direct3DShaderValidatorCreate9 called\n");
 
     D3D9Wrapper::Direct3DShaderValidatorCreate9 call = (D3D9Wrapper::Direct3DShaderValidatorCreate9)GetProcAddress(hD3D, "Direct3DShaderValidatorCreate9");
     return (*call)();
@@ -307,7 +307,7 @@ void *WINAPI Direct3DShaderValidatorCreate9()
 
 void WINAPI PSGPError(void *D3DFE_PROCESSVERTICES, int PSGPERRORID, unsigned int a)
 {
-    LogInfo("PSGPError called\n");
+    LOG_INFO("PSGPError called\n");
 
     D3D9Wrapper::PSGPError call = (D3D9Wrapper::PSGPError)GetProcAddress(hD3D, "PSGPError");
     (*call)(D3DFE_PROCESSVERTICES, PSGPERRORID, a);
@@ -315,7 +315,7 @@ void WINAPI PSGPError(void *D3DFE_PROCESSVERTICES, int PSGPERRORID, unsigned int
 
 void WINAPI PSGPSampleTexture(void *D3DFE_PROCESSVERTICES, unsigned int a, float (* const b)[4], unsigned int c, float (* const d)[4])
 {
-    LogInfo("PSGPSampleTexture called\n");
+    LOG_INFO("PSGPSampleTexture called\n");
 
     D3D9Wrapper::PSGPSampleTexture call = (D3D9Wrapper::PSGPSampleTexture)GetProcAddress(hD3D, "PSGPSampleTexture");
     (*call)(D3DFE_PROCESSVERTICES, a, b, c, d);
@@ -328,25 +328,25 @@ bool D3D9Wrapper::IDirect3DUnknown::QueryInterface_DXGI_Callback(REFIID riid, vo
     IID m3 = { 0x017b2e72ul, 0xbcde, 0x9f15,{ 0xa1, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x03 } };
     if (IsEqualIID(riid, m1))
     {
-        LogInfo("Callback from dxgi.dll wrapper: requesting real IDirect3DDevice9 handle from %p\n", *ppvObj);
+        LOG_INFO("Callback from dxgi.dll wrapper: requesting real IDirect3DDevice9 handle from %p\n", *ppvObj);
 
         D3D9Wrapper::IDirect3DDevice9 *p = (D3D9Wrapper::IDirect3DDevice9*) D3D9Wrapper::IDirect3DDevice9::m_List.GetDataPtr(*ppvObj);
         if (p)
         {
-            LogInfo("  given pointer was already the real device.\n");
+            LOG_INFO("  given pointer was already the real device.\n");
         }
         else
         {
             *ppvObj = ((D3D9Wrapper::IDirect3DDevice9 *)*ppvObj)->GetRealOrig();
         }
-        LogInfo("  returning handle = %p\n", *ppvObj);
+        LOG_INFO("  returning handle = %p\n", *ppvObj);
 
         *result = 0x13bc7e31;
         return true;
     }
     else if (IsEqualIID(riid, m2))
     {
-        LogDebug("Callback from dxgi.dll wrapper: notification #%d received\n", (int)*ppvObj);
+        LOG_DEBUG("Callback from dxgi.dll wrapper: notification #%d received\n", (int)*ppvObj);
 
         switch ((int)*ppvObj)
         {
@@ -365,7 +365,7 @@ bool D3D9Wrapper::IDirect3DUnknown::QueryInterface_DXGI_Callback(REFIID riid, vo
     else if (IsEqualIID(riid, m3))
     {
         SwapChainInfo *info = (SwapChainInfo *)*ppvObj;
-        LogInfo("Callback from dxgi.dll wrapper: screen resolution width=%d, height=%d received\n",
+        LOG_INFO("Callback from dxgi.dll wrapper: screen resolution width=%d, height=%d received\n",
             info->width, info->height);
 
         //G->mSwapChainInfo = *info;
@@ -385,7 +385,7 @@ D3D9Wrapper::IDirect3DUnknown * D3D9Wrapper::IDirect3DUnknown::QueryInterface_Fi
             return nullptr;
         else {
             ++p1->m_ulRef;
-            LogInfo("  interface replaced with IDirect3DDevice9 wrapper.\n");
+            LOG_INFO("  interface replaced with IDirect3DDevice9 wrapper.\n");
             return p1;
         }
     }
@@ -397,14 +397,14 @@ D3D9Wrapper::IDirect3DUnknown * D3D9Wrapper::IDirect3DUnknown::QueryInterface_Fi
         ++p2->m_ulRef;
         ++p2->shared_ref_count;
         p2->zero_d3d_ref_count = false;
-        LogInfo("  interface replaced with IDirect3DSwapChain9 wrapper.\n");
+        LOG_INFO("  interface replaced with IDirect3DSwapChain9 wrapper.\n");
         return p2;
     }
     D3D9Wrapper::IDirect3D9 *p3 = (D3D9Wrapper::IDirect3D9*) D3D9Wrapper::IDirect3D9::m_List.GetDataPtr(ppvObj);
     if (p3)
     {
         ++p3->m_ulRef;
-        LogInfo("  interface replaced with IDirect3D9 wrapper.\n");
+        LOG_INFO("  interface replaced with IDirect3D9 wrapper.\n");
         return p3;
     }
     D3D9Wrapper::IDirect3DSurface9 *p4 = (D3D9Wrapper::IDirect3DSurface9*) D3D9Wrapper::IDirect3DSurface9::m_List.GetDataPtr(ppvObj);
@@ -424,7 +424,7 @@ D3D9Wrapper::IDirect3DUnknown * D3D9Wrapper::IDirect3DUnknown::QueryInterface_Fi
             ++p4->m_OwningCubeTexture->shared_ref_count;
             break;
         }
-        LogInfo("  interface replaced with IDirect3DSurface9 wrapper.\n");
+        LOG_INFO("  interface replaced with IDirect3DSurface9 wrapper.\n");
         return p4;
     }
     D3D9Wrapper::IDirect3DVertexDeclaration9 *p5 = (D3D9Wrapper::IDirect3DVertexDeclaration9*) D3D9Wrapper::IDirect3DVertexDeclaration9::m_List.GetDataPtr(ppvObj);
@@ -432,7 +432,7 @@ D3D9Wrapper::IDirect3DUnknown * D3D9Wrapper::IDirect3DUnknown::QueryInterface_Fi
     {
         ++p5->m_ulRef;
         p5->zero_d3d_ref_count = false;
-        LogInfo("  interface replaced with IDirect3DVertexDeclaration9 wrapper.\n");
+        LOG_INFO("  interface replaced with IDirect3DVertexDeclaration9 wrapper.\n");
         return p5;
     }
     D3D9Wrapper::IDirect3DTexture9 *p6 = (D3D9Wrapper::IDirect3DTexture9*) D3D9Wrapper::IDirect3DTexture9::m_List.GetDataPtr(ppvObj);
@@ -441,7 +441,7 @@ D3D9Wrapper::IDirect3DUnknown * D3D9Wrapper::IDirect3DUnknown::QueryInterface_Fi
         ++p6->m_ulRef;
         ++p6->shared_ref_count;
         p6->zero_d3d_ref_count = false;
-        LogInfo("  interface replaced with IDirect3DTexture9 wrapper.\n");
+        LOG_INFO("  interface replaced with IDirect3DTexture9 wrapper.\n");
         return p6;
     }
     D3D9Wrapper::IDirect3DVertexBuffer9 *p7 = (D3D9Wrapper::IDirect3DVertexBuffer9*) D3D9Wrapper::IDirect3DVertexBuffer9::m_List.GetDataPtr(ppvObj);
@@ -449,7 +449,7 @@ D3D9Wrapper::IDirect3DUnknown * D3D9Wrapper::IDirect3DUnknown::QueryInterface_Fi
     {
         ++p7->m_ulRef;
         p7->zero_d3d_ref_count = false;
-        LogInfo("  interface replaced with IDirect3DVertexBuffer9 wrapper.\n");
+        LOG_INFO("  interface replaced with IDirect3DVertexBuffer9 wrapper.\n");
         return p7;
     }
     D3D9Wrapper::IDirect3DIndexBuffer9 *p8 = (D3D9Wrapper::IDirect3DIndexBuffer9*) D3D9Wrapper::IDirect3DIndexBuffer9::m_List.GetDataPtr(ppvObj);
@@ -457,14 +457,14 @@ D3D9Wrapper::IDirect3DUnknown * D3D9Wrapper::IDirect3DUnknown::QueryInterface_Fi
     {
         ++p8->m_ulRef;
         p8->zero_d3d_ref_count = false;
-        LogInfo("  interface replaced with IDirect3DIndexBuffer9 wrapper.\n");
+        LOG_INFO("  interface replaced with IDirect3DIndexBuffer9 wrapper.\n");
         return p8;
     }
     D3D9Wrapper::IDirect3DQuery9 *p9 = (D3D9Wrapper::IDirect3DQuery9*) D3D9Wrapper::IDirect3DQuery9::m_List.GetDataPtr(ppvObj);
     if (p9)
     {
         ++p9->m_ulRef;
-        LogInfo("  interface replaced with IDirect3DQuery9 wrapper.\n");
+        LOG_INFO("  interface replaced with IDirect3DQuery9 wrapper.\n");
         return p9;
     }
     D3D9Wrapper::IDirect3DVertexShader9 *p10 = (D3D9Wrapper::IDirect3DVertexShader9*) D3D9Wrapper::IDirect3DVertexShader9::m_List.GetDataPtr(ppvObj);
@@ -472,7 +472,7 @@ D3D9Wrapper::IDirect3DUnknown * D3D9Wrapper::IDirect3DUnknown::QueryInterface_Fi
     {
         ++p10->m_ulRef;
         p10->zero_d3d_ref_count = false;
-        LogInfo("  interface replaced with IDirect3DVertexShader9 wrapper.\n");
+        LOG_INFO("  interface replaced with IDirect3DVertexShader9 wrapper.\n");
         return p10;
     }
     D3D9Wrapper::IDirect3DPixelShader9 *p11 = (D3D9Wrapper::IDirect3DPixelShader9*) D3D9Wrapper::IDirect3DPixelShader9::m_List.GetDataPtr(ppvObj);
@@ -480,7 +480,7 @@ D3D9Wrapper::IDirect3DUnknown * D3D9Wrapper::IDirect3DUnknown::QueryInterface_Fi
     {
         ++p11->m_ulRef;
         p11->zero_d3d_ref_count = false;
-        LogInfo("  interface replaced with IDirect3DPixelShader9 wrapper.\n");
+        LOG_INFO("  interface replaced with IDirect3DPixelShader9 wrapper.\n");
         return p11;
     }
     D3D9Wrapper::IDirect3DCubeTexture9 *p12 = (D3D9Wrapper::IDirect3DCubeTexture9*) D3D9Wrapper::IDirect3DCubeTexture9::m_List.GetDataPtr(ppvObj);
@@ -489,7 +489,7 @@ D3D9Wrapper::IDirect3DUnknown * D3D9Wrapper::IDirect3DUnknown::QueryInterface_Fi
         ++p12->m_ulRef;
         ++p12->shared_ref_count;
         p12->zero_d3d_ref_count = false;
-        LogInfo("  interface replaced with IDirect3DCubeTexture9 wrapper.\n");
+        LOG_INFO("  interface replaced with IDirect3DCubeTexture9 wrapper.\n");
         return p12;
     }
     D3D9Wrapper::IDirect3DVolume9 *p13 = (D3D9Wrapper::IDirect3DVolume9*) D3D9Wrapper::IDirect3DVolume9::m_List.GetDataPtr(ppvObj);
@@ -498,7 +498,7 @@ D3D9Wrapper::IDirect3DUnknown * D3D9Wrapper::IDirect3DUnknown::QueryInterface_Fi
         ++p13->m_ulRef;
         ++p13->m_OwningContainer->shared_ref_count;
         p13->zero_d3d_ref_count = false;
-        LogInfo("  interface replaced with IDirect3DVolume9 wrapper.\n");
+        LOG_INFO("  interface replaced with IDirect3DVolume9 wrapper.\n");
         return p13;
     }
     D3D9Wrapper::IDirect3DVolumeTexture9 *p14 = (D3D9Wrapper::IDirect3DVolumeTexture9*) D3D9Wrapper::IDirect3DVolumeTexture9::m_List.GetDataPtr(ppvObj);
@@ -507,25 +507,25 @@ D3D9Wrapper::IDirect3DUnknown * D3D9Wrapper::IDirect3DUnknown::QueryInterface_Fi
         ++p14->m_ulRef;
         ++p14->shared_ref_count;
         p14->zero_d3d_ref_count = false;
-        LogInfo("  interface replaced with IDirect3DVolumeTexture9 wrapper.\n");
+        LOG_INFO("  interface replaced with IDirect3DVolumeTexture9 wrapper.\n");
         return p14;
     }
     D3D9Wrapper::IDirect3DStateBlock9 *p15 = (D3D9Wrapper::IDirect3DStateBlock9*) D3D9Wrapper::IDirect3DStateBlock9::m_List.GetDataPtr(ppvObj);
     if (p15)
     {
         ++p15->m_ulRef;
-        LogInfo("  interface replaced with IDirect3DStateBlock9 wrapper.\n");
+        LOG_INFO("  interface replaced with IDirect3DStateBlock9 wrapper.\n");
         return p15;
     }
     return nullptr;
 }
 
 HRESULT _Direct3DCreate9Ex(UINT Version, ::IDirect3D9Ex **ppD3D) {
-    LogInfo("Direct3DCreate9Ex called with Version=%d\n", Version);
+    LOG_INFO("Direct3DCreate9Ex called with Version=%d\n", Version);
     D3D9Wrapper::D3DCREATEEX pCreate = (D3D9Wrapper::D3DCREATEEX)GetProcAddress(hD3D, "Direct3DCreate9Ex");
     if (!pCreate)
     {
-        LogInfo("  could not find Direct3DCreate9Ex in d3d9.dll\n");
+        LOG_INFO("  could not find Direct3DCreate9Ex in d3d9.dll\n");
 
         return NULL;
     }
@@ -533,13 +533,13 @@ HRESULT _Direct3DCreate9Ex(UINT Version, ::IDirect3D9Ex **ppD3D) {
     HRESULT hr = pCreate(Version, &pD3D);
     if (FAILED(hr) || pD3D == NULL)
     {
-        LogInfo("  failed with hr=%x\n", hr);
+        LOG_INFO("  failed with hr=%x\n", hr);
 
         return NULL;
     }
 
     D3D9Wrapper::IDirect3D9 *wrapper = D3D9Wrapper::IDirect3D9::GetDirect3D(pD3D, true);
-    LogInfo("  returns handle=%p, wrapper=%p\n", pD3D, wrapper);
+    LOG_INFO("  returns handle=%p, wrapper=%p\n", pD3D, wrapper);
 
     if (!(G->enable_hooks >= EnableHooksDX9::ALL) && wrapper) {
         *ppD3D = (::IDirect3D9Ex*)wrapper;
@@ -553,10 +553,10 @@ HRESULT _Direct3DCreate9Ex(UINT Version, ::IDirect3D9Ex **ppD3D) {
 ::IDirect3D9* WINAPI Direct3DCreate9(UINT Version)
 {
     InitD39();
-    LogInfo("Direct3DCreate9 called with Version=%d\n", Version);
+    LOG_INFO("Direct3DCreate9 called with Version=%d\n", Version);
 
     if (G->gForwardToEx) {
-        LogInfo("forwarding to Direct3DCreate9Ex\n");
+        LOG_INFO("forwarding to Direct3DCreate9Ex\n");
         ::IDirect3D9Ex *pD3D;
         _Direct3DCreate9Ex(Version, &pD3D);
         return pD3D;
@@ -564,7 +564,7 @@ HRESULT _Direct3DCreate9Ex(UINT Version, ::IDirect3D9Ex **ppD3D) {
     D3D9Wrapper::D3DCREATE pCreate = (D3D9Wrapper::D3DCREATE)GetProcAddress(hD3D, "Direct3DCreate9");
     if (!pCreate)
     {
-        LogInfo("  could not find Direct3DCreate9 in d3d9.dll\n");
+        LOG_INFO("  could not find Direct3DCreate9 in d3d9.dll\n");
 
         return NULL;
     }
@@ -572,13 +572,13 @@ HRESULT _Direct3DCreate9Ex(UINT Version, ::IDirect3D9Ex **ppD3D) {
     pD3D = pCreate(Version);
     if (pD3D == NULL)
     {
-        LogInfo("  failed to create D3D9\n");
+        LOG_INFO("  failed to create D3D9\n");
 
         return NULL;
     }
 
     D3D9Wrapper::IDirect3D9 *wrapper = D3D9Wrapper::IDirect3D9::GetDirect3D(pD3D, false);
-    LogInfo("  returns handle=%p, wrapper=%p\n", pD3D, wrapper);
+    LOG_INFO("  returns handle=%p, wrapper=%p\n", pD3D, wrapper);
 
     if (!(G->enable_hooks >= EnableHooksDX9::ALL) && wrapper) {
         return (::IDirect3D9*)wrapper;
@@ -603,14 +603,14 @@ static HRESULT createFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *HackerDevice, 
         if (PresentParams->hDeviceWindow != NULL) {
             RECT winDimensions;
             CursorUpscalingBypass_GetClientRect(PresentParams->hDeviceWindow, &winDimensions);
-            LogInfo(" Get Upscaling Window with left = %d, right = %d, top = %d, bottom = %d\n", winDimensions.left, winDimensions.right, winDimensions.top, winDimensions.bottom);
+            LOG_INFO(" Get Upscaling Window with left = %d, right = %d, top = %d, bottom = %d\n", winDimensions.left, winDimensions.right, winDimensions.top, winDimensions.bottom);
             PresentParams->BackBufferWidth = winDimensions.right - winDimensions.left;
             PresentParams->BackBufferHeight = winDimensions.bottom - winDimensions.top;
         }
         else {
             RECT winDimensions;
             CursorUpscalingBypass_GetClientRect(HackerDevice->_hFocusWindow, &winDimensions);
-            LogInfo(" Get Upscaling Window with left = %d, right = %d, top = %d, bottom = %d\n", winDimensions.left, winDimensions.right, winDimensions.top, winDimensions.bottom);
+            LOG_INFO(" Get Upscaling Window with left = %d, right = %d, top = %d, bottom = %d\n", winDimensions.left, winDimensions.right, winDimensions.top, winDimensions.bottom);
             PresentParams->BackBufferWidth = winDimensions.right - winDimensions.left;
             PresentParams->BackBufferHeight = winDimensions.bottom - winDimensions.top;
         }
@@ -624,13 +624,13 @@ static HRESULT createFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *HackerDevice, 
             hr = HackerDevice->GetD3D9Device()->CreateRenderTarget(PresentParams->BackBufferWidth, PresentParams->BackBufferHeight, PresentParams->BackBufferFormat, PresentParams->MultiSampleType, PresentParams->MultiSampleQuality, (PresentParams->Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER), &pLeftRenderTargetFake, NULL);
             ++HackerDevice->migotoResourceCount;
             if (FAILED(hr)) {
-                LogInfo("  Direct Mode Fake Render Target, failed to create left surface : %d \n", hr);
+                LOG_INFO("  Direct Mode Fake Render Target, failed to create left surface : %d \n", hr);
                 return hr;
             }
             ++HackerDevice->migotoResourceCount;
             hr = HackerDevice->GetD3D9Device()->CreateRenderTarget(PresentParams->BackBufferWidth, PresentParams->BackBufferHeight, PresentParams->BackBufferFormat, PresentParams->MultiSampleType, PresentParams->MultiSampleQuality, (PresentParams->Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER), &pRightRenderTargetFake, NULL);
             if (FAILED(hr)) {
-                LogInfo("  Direct Mode Fake Render Target, failed to create right surface : %d \n", hr);
+                LOG_INFO("  Direct Mode Fake Render Target, failed to create right surface : %d \n", hr);
                 return hr;
             }
             wrappedFakeBackBuffer = D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(pLeftRenderTargetFake, HackerDevice, pRightRenderTargetFake, HackerDevice->mWrappedSwapChains[FakeSwapChain->swapChainIndex]);
@@ -640,12 +640,12 @@ static HRESULT createFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *HackerDevice, 
                 // create left/mono
                 hr = HackerDevice->GetD3D9Device()->CreateRenderTarget(NewWidth, NewHeight, PresentParams->BackBufferFormat, PresentParams->MultiSampleType, PresentParams->MultiSampleQuality, (PresentParams->Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER), &pLeftRenderTargetUpscaling, NULL);
                 if (FAILED(hr)) {
-                    LogInfo("  Direct Mode Real Render Target, failed to create left surface : %d \n", hr);
+                    LOG_INFO("  Direct Mode Real Render Target, failed to create left surface : %d \n", hr);
                     return hr;
                 }
                 hr = HackerDevice->GetD3D9Device()->CreateRenderTarget(NewWidth, NewHeight, PresentParams->BackBufferFormat, PresentParams->MultiSampleType, PresentParams->MultiSampleQuality, (PresentParams->Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER), &pRightRenderTargetUpscaling, NULL);
                 if (FAILED(hr)) {
-                    LogInfo("  Direct Mode Real Render Target, failed to create right surface : %d \n", hr);
+                    LOG_INFO("  Direct Mode Real Render Target, failed to create right surface : %d \n", hr);
                     return hr;
                 }
                 D3D9Wrapper::IDirect3DSurface9 *wrappedDirectModeUpscalingBackBuffer = D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(pLeftRenderTargetUpscaling, HackerDevice, pRightRenderTargetUpscaling, HackerDevice->mWrappedSwapChains[FakeSwapChain->swapChainIndex]);
@@ -656,20 +656,20 @@ static HRESULT createFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *HackerDevice, 
             ::IDirect3DSurface9 *pFakeBackBuffer;
             hr = HackerDevice->GetD3D9Device()->CreateRenderTarget(PresentParams->BackBufferWidth, PresentParams->BackBufferHeight, PresentParams->BackBufferFormat, PresentParams->MultiSampleType, PresentParams->MultiSampleQuality, (PresentParams->Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER), &pFakeBackBuffer, NULL);
             if (FAILED(hr)) {
-                LogInfo("  Fake Render Target, failed to create surface : %d \n", hr);
+                LOG_INFO("  Fake Render Target, failed to create surface : %d \n", hr);
                 return hr;
             }
             ++HackerDevice->migotoResourceCount;
             wrappedFakeBackBuffer = D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(pFakeBackBuffer, HackerDevice, NULL, HackerDevice->mWrappedSwapChains[FakeSwapChain->swapChainIndex]);
         }
         FakeSwapChain->mFakeBackBuffers.emplace(FakeSwapChain->mFakeBackBuffers.begin() + x, wrappedFakeBackBuffer);
-        LogInfo("  Fake Render Target is lockable : %d \n", (PresentParams->Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER));
+        LOG_INFO("  Fake Render Target is lockable : %d \n", (PresentParams->Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER));
     }
     FakeSwapChain->mUpscalingWidth = NewWidth;
     FakeSwapChain->mUpscalingHeight = NewHeight;
     FakeSwapChain->mOrignalWidth = PresentParams->BackBufferWidth;
     FakeSwapChain->mOrignalHeight = PresentParams->BackBufferHeight;
-    LogInfo("  Fake Back Buffer Created With Height = %d and Width = %d \n", PresentParams->BackBufferHeight, PresentParams->BackBufferWidth);
+    LOG_INFO("  Fake Back Buffer Created With Height = %d and Width = %d \n", PresentParams->BackBufferHeight, PresentParams->BackBufferWidth);
     return hr;
 
 }
@@ -688,7 +688,7 @@ HRESULT CreateFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *me, D3D9Wrapper::Fake
         return hr;
     }
     me->mFakeSwapChains.push_back(newChain);
-    LogInfo("  HackerFakeSwapChain for device wrap %p created for device %p.\n", me, me->GetD3D9Device());
+    LOG_INFO("  HackerFakeSwapChain for device wrap %p created for device %p.\n", me, me->GetD3D9Device());
     if (newChain.swapChainIndex == 0) {
         if (newChain.mFakeBackBuffers.size() > 0) {
             hr = me->GetD3D9Device()->SetRenderTarget(0, newChain.mFakeBackBuffers.at(0)->GetD3DSurface9());
@@ -698,7 +698,7 @@ HRESULT CreateFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *me, D3D9Wrapper::Fake
             }
             else {
                 me->m_activeRenderTargets[0] = newChain.mFakeBackBuffers.at(0);
-                LogInfo("  HackerFakeSwapChain for device set default render target for fake back buffer.\n");
+                LOG_INFO("  HackerFakeSwapChain for device set default render target for fake back buffer.\n");
             }
         }
         else {
@@ -742,7 +742,7 @@ HRESULT CreateFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *me, D3D9Wrapper::Fake
                     const D3D9Wrapper::DepthSourceInfo info = { pOrigParams->BackBufferWidth, pOrigParams->BackBufferHeight};
                     me->m_pActiveDepthStencil->depthSourceInfo = info;
                 }
-                LogInfo(" HackerFakeSwapChain created fake depth surface with Width = %d, Height = %d.\n", pOrigParams->BackBufferWidth, pOrigParams->BackBufferHeight);
+                LOG_INFO(" HackerFakeSwapChain created fake depth surface with Width = %d, Height = %d.\n", pOrigParams->BackBufferWidth, pOrigParams->BackBufferHeight);
                 hr = me->GetD3D9Device()->SetDepthStencilSurface(me->mFakeDepthSurface->GetD3DSurface9());
                 if (FAILED(hr)) {
                     LogOverlay(LOG_DIRE, " HackerFakeSwapChain failed to set fake depth surface.\n");
@@ -750,7 +750,7 @@ HRESULT CreateFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *me, D3D9Wrapper::Fake
                     return hr;
                 }
                 else {
-                    LogInfo(" HackerFakeSwapChain set fake depth surface.\n");
+                    LOG_INFO(" HackerFakeSwapChain set fake depth surface.\n");
                 }
             }
 
@@ -766,7 +766,7 @@ static void CheckDevice(D3D9Wrapper::IDirect3DDevice9 *me)
     {
         HRESULT hr;
         if (me->_ex) {
-            LogInfo("  calling postponed CreateDevice.\n");
+            LOG_INFO("  calling postponed CreateDevice.\n");
             hr = me->m_pD3D->GetDirect3D9Ex()->CreateDeviceEx(
                 me->_Adapter,
                 me->_DeviceType,
@@ -788,7 +788,7 @@ static void CheckDevice(D3D9Wrapper::IDirect3DDevice9 *me)
 
         if (FAILED(hr))
         {
-            LogInfo("    failed creating device with result = %x\n", hr);
+            LOG_INFO("    failed creating device with result = %x\n", hr);
 
             return;
         }
@@ -803,7 +803,7 @@ static void CheckDevice(D3D9Wrapper::IDirect3DDevice9 *me)
 
         if (me->pendingCreateDepthStencilSurface)
         {
-            LogInfo("  calling postponed CreateDepthStencilSurface.\n");
+            LOG_INFO("  calling postponed CreateDepthStencilSurface.\n");
 
             hr = me->GetD3D9Device()->CreateDepthStencilSurface(
                 me->pendingCreateDepthStencilSurface->_Width,
@@ -816,7 +816,7 @@ static void CheckDevice(D3D9Wrapper::IDirect3DDevice9 *me)
                 0);
             if (FAILED(hr))
             {
-                LogInfo("    failed creating depth stencil surface with result=%x\n", hr);
+                LOG_INFO("    failed creating depth stencil surface with result=%x\n", hr);
 
                 return;
             }
@@ -827,13 +827,13 @@ static void CheckDevice(D3D9Wrapper::IDirect3DDevice9 *me)
         }
         if (me->pendingSetDepthStencilSurface)
         {
-            LogInfo("  calling postponed SetDepthStencilSurface.\n");
+            LOG_INFO("  calling postponed SetDepthStencilSurface.\n");
 
             ::LPDIRECT3DSURFACE9 baseStencil = baseSurface9(me->pendingSetDepthStencilSurface);
             hr = me->GetD3D9Device()->SetDepthStencilSurface(baseStencil);
             if (FAILED(hr))
             {
-                LogInfo("    failed calling SetDepthStencilSurface with result = %x\n", hr);
+                LOG_INFO("    failed calling SetDepthStencilSurface with result = %x\n", hr);
 
                 return;
             }
@@ -841,7 +841,7 @@ static void CheckDevice(D3D9Wrapper::IDirect3DDevice9 *me)
         }
         if (me->pendingCreateDepthStencilSurfaceEx)
         {
-            LogInfo("  calling postponed CreateDepthStencilSurfaceEx.\n");
+            LOG_INFO("  calling postponed CreateDepthStencilSurfaceEx.\n");
 
             hr = me->GetD3D9DeviceEx()->CreateDepthStencilSurfaceEx(
                 me->pendingCreateDepthStencilSurfaceEx->_Width,
@@ -855,7 +855,7 @@ static void CheckDevice(D3D9Wrapper::IDirect3DDevice9 *me)
                 me->pendingCreateDepthStencilSurfaceEx->_Usage);
             if (FAILED(hr))
             {
-                LogInfo("    failed creating depth stencil surface ex with result=%x\n", hr);
+                LOG_INFO("    failed creating depth stencil surface ex with result=%x\n", hr);
 
                 return;
             }
@@ -874,11 +874,11 @@ static void CheckVertexDeclaration9(D3D9Wrapper::IDirect3DVertexDeclaration9 *me
     me->pendingCreateVertexDeclaration = false;
     CheckDevice(me->pendingDevice);
 
-    LogInfo("  calling postponed CreateVertexDeclaration.\n");
+    LOG_INFO("  calling postponed CreateVertexDeclaration.\n");
     HRESULT hr = me->pendingDevice->GetD3D9Device()->CreateVertexDeclaration(&me->_VertexElements, (::IDirect3DVertexDeclaration9**) &me->m_pRealUnk);
     if (FAILED(hr))
     {
-        LogInfo("    failed creating vertex declaration with result = %x\n", hr);
+        LOG_INFO("    failed creating vertex declaration with result = %x\n", hr);
 
         return;
     }
@@ -894,11 +894,11 @@ static void CheckTexture9(D3D9Wrapper::IDirect3DTexture9 *me)
     {
         me->pendingCreateTexture = false;
         CheckDevice(me->_Device);
-        LogInfo("  calling postponed CreateTexture.\n");
+        LOG_INFO("  calling postponed CreateTexture.\n");
         HRESULT hr = me->_Device->GetD3D9Device()->CreateTexture(me->_Width, me->_Height, me->_Levels, me->_Usage, me->_Format, me->_Pool, (::IDirect3DTexture9**) &me->m_pRealUnk, 0);
         if (FAILED(hr))
         {
-            LogInfo("    failed creating texture with result = %x\n", hr);
+            LOG_INFO("    failed creating texture with result = %x\n", hr);
 
             return;
         }
@@ -909,13 +909,13 @@ static void CheckTexture9(D3D9Wrapper::IDirect3DTexture9 *me)
     if (me->pendingLockUnlock)
     {
         me->pendingLockUnlock = false;
-        LogInfo("  calling postponed Lock.\n");
+        LOG_INFO("  calling postponed Lock.\n");
 
         ::D3DLOCKED_RECT rect;
         HRESULT hr = me->LockRect(me->_Level, &rect, 0, me->_Flags);
         if (FAILED(hr))
         {
-            LogInfo("    failed locking texture with result = %x\n", hr);
+            LOG_INFO("    failed locking texture with result = %x\n", hr);
 
             return;
         }
@@ -924,7 +924,7 @@ static void CheckTexture9(D3D9Wrapper::IDirect3DTexture9 *me)
         hr = me->UnlockRect(me->_Level);
         if (FAILED(hr))
         {
-            LogInfo("    failed unlocking texture with result = %x\n", hr);
+            LOG_INFO("    failed unlocking texture with result = %x\n", hr);
 
             return;
         }
@@ -938,11 +938,11 @@ static void CheckVolumeTexture9(D3D9Wrapper::IDirect3DVolumeTexture9 *me)
     {
         me->pendingCreateTexture = false;
         CheckDevice(me->_Device);
-        LogInfo("  calling postponed CreateVolumeTexture.\n");
+        LOG_INFO("  calling postponed CreateVolumeTexture.\n");
         HRESULT hr = me->_Device->GetD3D9Device()->CreateVolumeTexture(me->_Width, me->_Height, me->_Depth, me->_Levels, me->_Usage, me->_Format, me->_Pool, (::IDirect3DVolumeTexture9**) &me->m_pRealUnk, 0);
         if (FAILED(hr))
         {
-            LogInfo("    failed creating volume texture with result = %x\n", hr);
+            LOG_INFO("    failed creating volume texture with result = %x\n", hr);
 
             return;
         }
@@ -954,13 +954,13 @@ static void CheckVolumeTexture9(D3D9Wrapper::IDirect3DVolumeTexture9 *me)
     if (me->pendingLockUnlock)
     {
         me->pendingLockUnlock = false;
-        LogInfo("  calling postponed Lock.\n");
+        LOG_INFO("  calling postponed Lock.\n");
 
         ::D3DLOCKED_BOX box;
         HRESULT hr = me->LockBox(me->_Level, &box, 0, me->_Flags);
         if (FAILED(hr))
         {
-            LogInfo("    failed locking volume texture with result = %x\n", hr);
+            LOG_INFO("    failed locking volume texture with result = %x\n", hr);
 
             return;
         }
@@ -969,7 +969,7 @@ static void CheckVolumeTexture9(D3D9Wrapper::IDirect3DVolumeTexture9 *me)
         hr = me->UnlockBox(me->_Level);
         if (FAILED(hr))
         {
-            LogInfo("    failed unlocking volume texture with result = %x\n", hr);
+            LOG_INFO("    failed unlocking volume texture with result = %x\n", hr);
 
             return;
         }
@@ -983,11 +983,11 @@ static void CheckCubeTexture9(D3D9Wrapper::IDirect3DCubeTexture9 *me)
     {
         me->pendingCreateTexture = false;
         CheckDevice(me->_Device);
-        LogInfo("  calling postponed CreateCubeTexture.\n");
+        LOG_INFO("  calling postponed CreateCubeTexture.\n");
         HRESULT hr = me->_Device->GetD3D9Device()->CreateCubeTexture(me->_EdgeLength, me->_Levels, me->_Usage, me->_Format, me->_Pool, (::IDirect3DCubeTexture9**) &me->m_pRealUnk, 0);
         if (FAILED(hr))
         {
-            LogInfo("    failed creating cube texture with result = %x\n", hr);
+            LOG_INFO("    failed creating cube texture with result = %x\n", hr);
 
             return;
         }
@@ -998,13 +998,13 @@ static void CheckCubeTexture9(D3D9Wrapper::IDirect3DCubeTexture9 *me)
     if (me->pendingLockUnlock)
     {
         me->pendingLockUnlock = false;
-        LogInfo("  calling postponed Lock.\n");
+        LOG_INFO("  calling postponed Lock.\n");
 
         ::D3DLOCKED_RECT rect;
         HRESULT hr = me->LockRect(me->_FaceType, me->_Level, &rect, 0, me->_Flags);
         if (FAILED(hr))
         {
-            LogInfo("    failed locking cube texture with result = %x\n", hr);
+            LOG_INFO("    failed locking cube texture with result = %x\n", hr);
 
             return;
         }
@@ -1013,7 +1013,7 @@ static void CheckCubeTexture9(D3D9Wrapper::IDirect3DCubeTexture9 *me)
         hr = me->UnlockRect(me->_FaceType, me->_Level);
         if (FAILED(hr))
         {
-            LogInfo("    failed unlocking cube texture with result = %x\n", hr);
+            LOG_INFO("    failed unlocking cube texture with result = %x\n", hr);
 
             return;
         }
@@ -1042,11 +1042,11 @@ static void CheckSurface9(D3D9Wrapper::IDirect3DSurface9 *me)
     if (!me->_Texture) {
         CheckTexture9(me->_Texture);
 
-        LogInfo("  calling postponed GetSurfaceLevel.\n");
+        LOG_INFO("  calling postponed GetSurfaceLevel.\n");
         HRESULT hr = me->_Texture->GetD3DTexture9()->GetSurfaceLevel(me->_Level, (::IDirect3DSurface9**) &me->m_pRealUnk);
         if (FAILED(hr))
         {
-            LogInfo("    failed getting surface with result = %x\n", hr);
+            LOG_INFO("    failed getting surface with result = %x\n", hr);
 
             return;
         }
@@ -1059,11 +1059,11 @@ static void CheckSurface9(D3D9Wrapper::IDirect3DSurface9 *me)
 
         CheckCubeTexture9(me->_CubeTexture);
 
-        LogInfo("  calling postponed GetCubeMapSurface.\n");
+        LOG_INFO("  calling postponed GetCubeMapSurface.\n");
         HRESULT hr = me->_CubeTexture->GetD3DCubeTexture9()->GetCubeMapSurface(me->_FaceType, me->_Level, (::IDirect3DSurface9**) &me->m_pRealUnk);
         if (FAILED(hr))
         {
-            LogInfo("    failed getting surface with result = %x\n", hr);
+            LOG_INFO("    failed getting surface with result = %x\n", hr);
 
             return;
         }
@@ -1078,11 +1078,11 @@ static void CheckVolume9(D3D9Wrapper::IDirect3DVolume9 *me)
     me->pendingGetVolumeLevel = false;
     CheckVolumeTexture9(me->_VolumeTexture);
 
-    LogInfo("  calling postponed GetVolumeLevel.\n");
+    LOG_INFO("  calling postponed GetVolumeLevel.\n");
     HRESULT hr = me->_VolumeTexture->GetD3DVolumeTexture9()->GetVolumeLevel(me->_Level, (::IDirect3DVolume9**) &me->m_pRealUnk);
     if (FAILED(hr))
     {
-        LogInfo("    failed getting volume with result = %x\n", hr);
+        LOG_INFO("    failed getting volume with result = %x\n", hr);
 
         return;
     }
@@ -1098,11 +1098,11 @@ static void CheckVertexBuffer9(D3D9Wrapper::IDirect3DVertexBuffer9 *me)
     {
         me->pendingCreateVertexBuffer = false;
         CheckDevice(me->_Device);
-        LogInfo("  calling postponed CreateVertexBuffer.\n");
+        LOG_INFO("  calling postponed CreateVertexBuffer.\n");
         HRESULT hr = me->_Device->GetD3D9Device()->CreateVertexBuffer(me->_Length, me->_Usage, me->_FVF, me->_Pool, (::IDirect3DVertexBuffer9**) &me->m_pRealUnk, 0);
         if (FAILED(hr))
         {
-            LogInfo("    failed creating vertex buffer with result = %x\n", hr);
+            LOG_INFO("    failed creating vertex buffer with result = %x\n", hr);
 
             return;
         }
@@ -1114,12 +1114,12 @@ static void CheckVertexBuffer9(D3D9Wrapper::IDirect3DVertexBuffer9 *me)
     if (me->pendingLockUnlock)
     {
         me->pendingLockUnlock = false;
-        LogInfo("  calling postponed Lock.\n");
+        LOG_INFO("  calling postponed Lock.\n");
         void *ppbData;
         HRESULT hr = me->Lock(0, me->_Length, &ppbData, me->_Flags);
         if (FAILED(hr))
         {
-            LogInfo("    failed locking vertex buffer with result = %x\n", hr);
+            LOG_INFO("    failed locking vertex buffer with result = %x\n", hr);
 
             return;
         }
@@ -1127,7 +1127,7 @@ static void CheckVertexBuffer9(D3D9Wrapper::IDirect3DVertexBuffer9 *me)
         hr = me->Unlock();
         if (FAILED(hr))
         {
-            LogInfo("    failed unlocking vertex buffer with result = %x\n", hr);
+            LOG_INFO("    failed unlocking vertex buffer with result = %x\n", hr);
 
             return;
         }
@@ -1141,11 +1141,11 @@ static void CheckIndexBuffer9(D3D9Wrapper::IDirect3DIndexBuffer9 *me)
     {
         me->pendingCreateIndexBuffer = false;
         CheckDevice(me->_Device);
-        LogInfo("  calling postponed CreateIndexBuffer.\n");
+        LOG_INFO("  calling postponed CreateIndexBuffer.\n");
         HRESULT hr = me->_Device->GetD3D9Device()->CreateIndexBuffer(me->_Length, me->_Usage, me->_Format, me->_Pool, (::IDirect3DIndexBuffer9**) &me->m_pRealUnk, 0);
         if (FAILED(hr))
         {
-            LogInfo("    failed creating index buffer with result = %x\n", hr);
+            LOG_INFO("    failed creating index buffer with result = %x\n", hr);
 
             return;
         }
@@ -1157,12 +1157,12 @@ static void CheckIndexBuffer9(D3D9Wrapper::IDirect3DIndexBuffer9 *me)
     if (me->pendingLockUnlock)
     {
         me->pendingLockUnlock = false;
-        LogInfo("  calling postponed Lock.\n");
+        LOG_INFO("  calling postponed Lock.\n");
         void *ppbData;
         HRESULT hr = me->Lock(0, me->_Length, &ppbData, me->_Flags);
         if (FAILED(hr))
         {
-            LogInfo("    failed locking index buffer with result = %x\n", hr);
+            LOG_INFO("    failed locking index buffer with result = %x\n", hr);
 
             return;
         }
@@ -1170,7 +1170,7 @@ static void CheckIndexBuffer9(D3D9Wrapper::IDirect3DIndexBuffer9 *me)
         hr = me->Unlock();
         if (FAILED(hr))
         {
-            LogInfo("    failed unlocking index buffer with result = %x\n", hr);
+            LOG_INFO("    failed unlocking index buffer with result = %x\n", hr);
 
             return;
         }
@@ -1183,7 +1183,7 @@ bool _simulateTextureUpdate(D3D9Wrapper::IDirect3DTexture9 * sourceTexture, D3D9
     if (sourceTexture->pendingCreateTexture && destinationTexture->pendingCreateTexture && sourceTexture->pendingLockUnlock &&
         sourceTexture->_Width == destinationTexture->_Width && sourceTexture->_Height == destinationTexture->_Height)
     {
-        LogInfo("  simulating texture update because both textures are not created yet.\n");
+        LOG_INFO("  simulating texture update because both textures are not created yet.\n");
 
         if (!destinationTexture->pendingLockUnlock)
         {
@@ -1200,7 +1200,7 @@ bool _simulateTextureUpdate(D3D9Wrapper::IDirect3DCubeTexture9 *sourceTexture, D
     if (sourceTexture->pendingCreateTexture && destinationTexture->pendingCreateTexture && sourceTexture->pendingLockUnlock &&
         sourceTexture->_EdgeLength == destinationTexture->_EdgeLength)
     {
-        LogInfo("  simulating cube texture update because both textures are not created yet.\n");
+        LOG_INFO("  simulating cube texture update because both textures are not created yet.\n");
 
         if (!destinationTexture->pendingLockUnlock)
         {
@@ -1219,7 +1219,7 @@ bool _simulateTextureUpdate(D3D9Wrapper::IDirect3DVolumeTexture9 *sourceTexture,
     if (sourceTexture->pendingCreateTexture && destinationTexture->pendingCreateTexture && sourceTexture->pendingLockUnlock &&
             sourceTexture->_Width == destinationTexture->_Width && sourceTexture->_Height == destinationTexture->_Height && sourceTexture->_Depth == destinationTexture->_Depth)
     {
-        LogInfo("  simulating volume texture update because both textures are not created yet.\n");
+        LOG_INFO("  simulating volume texture update because both textures are not created yet.\n");
 
         if (!destinationTexture->pendingLockUnlock)
         {
@@ -1612,7 +1612,7 @@ static void ForceDisplayMode(::D3DPRESENT_PARAMETERS *PresentParams, ::D3DDISPLA
         //BufferDesc->RefreshRate.Numerator = G->SCREEN_REFRESH;
         //BufferDesc->RefreshRate.Denominator = 1;
         PresentParams->FullScreen_RefreshRateInHz = G->SCREEN_REFRESH;
-        LogInfo("->Forcing refresh rate to = %f\n",
+        LOG_INFO("->Forcing refresh rate to = %f\n",
             (float)PresentParams->FullScreen_RefreshRateInHz);
         if (FullscreenDisplayMode != NULL)
             FullscreenDisplayMode->RefreshRate = G->SCREEN_REFRESH;
@@ -1620,7 +1620,7 @@ static void ForceDisplayMode(::D3DPRESENT_PARAMETERS *PresentParams, ::D3DDISPLA
     if (G->SCREEN_WIDTH >= 0)
     {
         PresentParams->BackBufferWidth = G->SCREEN_WIDTH;
-        LogInfo("->Forcing Width to = %d\n", PresentParams->BackBufferWidth);
+        LOG_INFO("->Forcing Width to = %d\n", PresentParams->BackBufferWidth);
 
         if (FullscreenDisplayMode != NULL)
             FullscreenDisplayMode->Width = G->SCREEN_WIDTH;
@@ -1628,7 +1628,7 @@ static void ForceDisplayMode(::D3DPRESENT_PARAMETERS *PresentParams, ::D3DDISPLA
     if (G->SCREEN_HEIGHT >= 0)
     {
         PresentParams->BackBufferHeight = G->SCREEN_HEIGHT;
-        LogInfo("->Forcing Height to = %d\n", PresentParams->BackBufferHeight);
+        LOG_INFO("->Forcing Height to = %d\n", PresentParams->BackBufferHeight);
 
         if (FullscreenDisplayMode != NULL)
             FullscreenDisplayMode->Height = G->SCREEN_HEIGHT;
@@ -1649,7 +1649,7 @@ static void ForceDisplayMode(::D3DPRESENT_PARAMETERS *PresentParams, ::D3DDISPLA
     //if (G->gForceStereo == 2)
     //{
     //    PresentParams->BackBufferWidth *= 2;
-    //    LogInfo("->Direct Mode: Forcing Width to = %d\n", PresentParams->BackBufferWidth);
+    //    LOG_INFO("->Direct Mode: Forcing Width to = %d\n", PresentParams->BackBufferWidth);
 
     //}
 }
@@ -1658,16 +1658,16 @@ void ForceDisplayParams(::D3DPRESENT_PARAMETERS *PresentParams, ::D3DDISPLAYMODE
     if (PresentParams == NULL)
         return;
 
-    LogInfo("     Windowed = %d\n", PresentParams->Windowed);
-    LogInfo("     Width = %d\n", PresentParams->BackBufferWidth);
-    LogInfo("     Height = %d\n", PresentParams->BackBufferHeight);
-    LogInfo("     Refresh rate = %f\n",
+    LOG_INFO("     Windowed = %d\n", PresentParams->Windowed);
+    LOG_INFO("     Width = %d\n", PresentParams->BackBufferWidth);
+    LOG_INFO("     Height = %d\n", PresentParams->BackBufferHeight);
+    LOG_INFO("     Refresh rate = %f\n",
         (float)PresentParams->FullScreen_RefreshRateInHz);
 
     if (G->SCREEN_UPSCALING == 2 || G->SCREEN_FULLSCREEN > 0)
     {
         PresentParams->Windowed = false;
-        LogInfo("->Forcing Windowed to = %d\n", PresentParams->Windowed);
+        LOG_INFO("->Forcing Windowed to = %d\n", PresentParams->Windowed);
     }
 
     if (G->SCREEN_FULLSCREEN == 2 || G->SCREEN_UPSCALING > 0)
@@ -1723,7 +1723,7 @@ void DirectModePostCommandList(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, D3D9
 }
 void RunFrameActions(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, CachedStereoValues *cachedStereoValues = NULL)
 {
-    LogDebug("Running frame actions.  Device: %p\n", hackerDevice);
+    LOG_DEBUG("Running frame actions.  Device: %p\n", hackerDevice);
 
     //if (G->frame_no == 0) {
     //    G->fps_start_time = chrono::high_resolution_clock::now();
@@ -1914,12 +1914,12 @@ static void UnWrapTexture(D3D9Wrapper::IDirect3DBaseTexture9* pWrappedTexture, :
         break;
     }
     default:
-        LogDebug("Direct Mode, Unhandled texture type in SetTexture\n");
+        LOG_DEBUG("Direct Mode, Unhandled texture type in SetTexture\n");
         break;
     }
 
     if ((*ppActualLeftTexture) == NULL) {
-        LogDebug("Direct Mode, No left texture\n");
+        LOG_DEBUG("Direct Mode, No left texture\n");
     }
 }
 #include "Direct3D9Functions.h"

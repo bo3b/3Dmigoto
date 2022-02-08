@@ -1153,7 +1153,7 @@ const uint32_t* DeocdeInstruction(const uint32_t* pui32Token, Instruction* psIns
             // instructions (particularly domain, geometry & hull shaders).
             // Throw an explicit exception now, otherwise we will continue to
             // use the uninitialised ui32NumOperands and process garbage.
-            LogInfo("    error parsing shader> unsupported opcode %i\n", eOpcode);
+            LOG_INFO("    error parsing shader> unsupported opcode %i\n", eOpcode);
             throw decompileError;
         }
     }

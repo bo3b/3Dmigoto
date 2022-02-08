@@ -64,7 +64,7 @@ void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
     for (i = lower; i != upper; i++) {
         const wchar_t *id = i->c_str();
 
-        LogInfoW(L"[%s]\n", id);
+        LOG_INFO_W(L"[%s]\n", id);
 
         if (!GetPrivateProfileString(id, L"Key", 0, key, MAX_PATH, iniFile))
             break;
@@ -78,11 +78,11 @@ void RegisterPresetKeyBindings(IniSections &sections, LPCWSTR iniFile)
             type = lookup_enum_val<wchar_t *, KeyOverrideType>
                 (KeyOverrideTypeNames, buf, KeyOverrideType::INVALID);
             if (type == KeyOverrideType::INVALID) {
-                LogInfoW(L"  WARNING: UNKNOWN KEY BINDING TYPE %s\n", buf);
+                LOG_INFO_W(L"  WARNING: UNKNOWN KEY BINDING TYPE %s\n", buf);
                 BeepFailure2();
             }
             else {
-                LogInfoW(L"  type=%s\n", buf);
+                LOG_INFO_W(L"  type=%s\n", buf);
             }
         }
 
@@ -114,15 +114,15 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
     for (i = lower; i != upper; i++) {
         id = i->c_str();
 
-        LogInfoW(L"[%s]\n", id);
+        LOG_INFO_W(L"[%s]\n", id);
 
         if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
             break;
         swscanf_s(setting, L"%16llx", &hash);
-        LogInfo("  Hash=%16llx\n", hash);
+        LOG_INFO("  Hash=%16llx\n", hash);
 
         if (G->mShaderOverrideMap.count(hash)) {
-            LogInfo("  WARNING: Duplicate ShaderOverride hash: %16llx\n", hash);
+            LOG_INFO("  WARNING: Duplicate ShaderOverride hash: %16llx\n", hash);
             BeepFailure2();
         }
         override = &G->mShaderOverrideMap[hash];
@@ -130,20 +130,20 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
         if (GetPrivateProfileString(id, L"Separation", 0, setting, MAX_PATH, iniFile))
         {
             swscanf_s(setting, L"%e", &override->separation);
-            LogInfo("  Separation=%f\n", override->separation);
+            LOG_INFO("  Separation=%f\n", override->separation);
         }
         if (GetPrivateProfileString(id, L"Convergence", 0, setting, MAX_PATH, iniFile))
         {
             swscanf_s(setting, L"%e", &override->convergence);
-            LogInfo("  Convergence=%f\n", override->convergence);
+            LOG_INFO("  Convergence=%f\n", override->convergence);
         }
         if (GetPrivateProfileString(id, L"Handling", 0, setting, MAX_PATH, iniFile)) {
             if (!wcscmp(setting, L"skip")) {
                 override->skip = true;
-                LogInfo("  Handling=skip\n");
+                LOG_INFO("  Handling=skip\n");
             }
             else {
-                LogInfoW(L"  WARNING: Unknown handling type \"%s\"\n", setting);
+                LOG_INFO_W(L"  WARNING: Unknown handling type \"%s\"\n", setting);
                 BeepFailure2();
             }
         }
@@ -151,12 +151,12 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
             override->depth_filter = lookup_enum_val<wchar_t *, DepthBufferFilter>
                 (DepthBufferFilterNames, setting, DepthBufferFilter::INVALID);
             if (override->depth_filter == DepthBufferFilter::INVALID) {
-                LogInfoW(L"  WARNING: Unknown depth_filter \"%s\"\n", setting);
+                LOG_INFO_W(L"  WARNING: Unknown depth_filter \"%s\"\n", setting);
                 override->depth_filter = DepthBufferFilter::NONE;
                 BeepFailure2();
             }
             else {
-                LogInfoW(L"  depth_filter=%s\n", setting);
+                LOG_INFO_W(L"  depth_filter=%s\n", setting);
             }
         }
 
@@ -164,7 +164,7 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
         // identifier for the partner shader
         if (GetPrivateProfileString(id, L"partner", 0, setting, MAX_PATH, iniFile)) {
             swscanf_s(setting, L"%16llx", &override->partner_hash);
-            LogInfo("  partner=%16llx\n", override->partner_hash);
+            LOG_INFO("  partner=%16llx\n", override->partner_hash);
         }
 
 #if 0 /* Iterations are broken since we no longer use present() */
@@ -177,14 +177,14 @@ void ParseShaderOverrideSections(IniSections &sections, LPCWSTR iniFile)
             override->iterations.clear();
             override->iterations.push_back(0);
             swscanf_s(setting, L"%d", &iteration);
-            LogInfo("  Iteration=%d\n", iteration);
+            LOG_INFO("  Iteration=%d\n", iteration);
             override->iterations.push_back(iteration);
         }
 #endif
         if (GetPrivateProfileString(id, L"IndexBufferFilter", 0, setting, MAX_PATH, iniFile))
         {
             swscanf_s(setting, L"%16llx", &hash2);
-            LogInfo("  IndexBufferFilter=%16llx\n", hash2);
+            LOG_INFO("  IndexBufferFilter=%16llx\n", hash2);
             override->indexBufferFilter.push_back(hash2);
         }
     }
@@ -206,15 +206,15 @@ void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
     for (i = lower; i != upper; i++) {
         id = i->c_str();
 
-        LogInfoW(L"[%s]\n", id);
+        LOG_INFO_W(L"[%s]\n", id);
 
         if (!GetPrivateProfileString(id, L"Hash", 0, setting, MAX_PATH, iniFile))
             break;
         swscanf_s(setting, L"%16llx", &hash);
-        LogInfo("  Hash=%16llx\n", hash);
+        LOG_INFO("  Hash=%16llx\n", hash);
 
         if (G->mTextureOverrideMap.count(hash)) {
-            LogInfo("  WARNING: Duplicate TextureOverride hash: %16llx\n", hash);
+            LOG_INFO("  WARNING: Duplicate TextureOverride hash: %16llx\n", hash);
             BeepFailure2();
         }
         override = &G->mTextureOverrideMap[hash];
@@ -223,13 +223,13 @@ void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
         if (stereoMode >= 0)
         {
             override->stereoMode = stereoMode;
-            LogInfo("  StereoMode=%d\n", stereoMode);
+            LOG_INFO("  StereoMode=%d\n", stereoMode);
         }
         int texFormat = GetPrivateProfileInt(id, L"Format", -1, iniFile);
         if (texFormat >= 0)
         {
             override->format = texFormat;
-            LogInfo("  Format=%d\n", texFormat);
+            LOG_INFO("  Format=%d\n", texFormat);
         }
 #if 0 /* Iterations are broken since we no longer use present() */
         if (GetPrivateProfileString(id, L"Iteration", 0, setting, MAX_PATH, iniFile))
@@ -248,7 +248,7 @@ void ParseTextureOverrideSections(IniSections &sections, LPCWSTR iniFile)
             {
                 if (id[j] <= 0) break;
                 override->iterations.push_back(id[j]);
-                LogInfo("  Iteration=%d\n", id[j]);
+                LOG_INFO("  Iteration=%d\n", id[j]);
             }
         }
 #endif
@@ -280,7 +280,7 @@ static void GetIniSections(IniSections &sections, wchar_t *iniFile)
 
     for (ptr = buf; *ptr; ptr++) {
         if (sections.count(ptr)) {
-            LogInfoW(L"WARNING: Duplicate section found in d3dx.ini: [%s]\n", ptr);
+            LOG_INFO_W(L"WARNING: Duplicate section found in d3dx.ini: [%s]\n", ptr);
             BeepFailure2();
         }
         sections.insert(ptr);
@@ -326,8 +326,8 @@ void LoadConfigFile()
     {
         if (!gLogFile)
             gLogFile = _fsopen("d3d10_log.txt", "w", _SH_DENYNO);
-        LogInfo("\nD3D10 DLL starting init  -  %s\n\n", log_time().c_str());
-        LogInfo("----------- d3dx.ini settings -----------\n");
+        LOG_INFO("\nD3D10 DLL starting init  -  %s\n\n", log_time().c_str());
+        LOG_INFO("----------- d3dx.ini settings -----------\n");
     }
 
     GetIniSections(sections, iniFile);
@@ -367,13 +367,13 @@ void LoadConfigFile()
 
     if (gLogFile)
     {
-        LogInfo("[Logging]\n");
-        LogInfo("  calls=1\n");
-        if (gLogInput) LogInfo("  input=1\n");
-        LogDebug("  debug=1\n");
-        if (unbuffered != -1) LogInfo("  unbuffered=1  return: %d\n", unbuffered);
-        if (affinity != -1) LogInfo("  force_cpu_affinity=1  return: %s\n", affinity ? "true" : "false");
-        if (waitfordebugger) LogInfo("  waitfordebugger=1\n");
+        LOG_INFO("[Logging]\n");
+        LOG_INFO("  calls=1\n");
+        if (gLogInput) LOG_INFO("  input=1\n");
+        LOG_DEBUG("  debug=1\n");
+        if (unbuffered != -1) LOG_INFO("  unbuffered=1  return: %d\n", unbuffered);
+        if (affinity != -1) LOG_INFO("  force_cpu_affinity=1  return: %s\n", affinity ? "true" : "false");
+        if (waitfordebugger) LOG_INFO("  waitfordebugger=1\n");
     }
 
     // [System]
@@ -382,8 +382,8 @@ void LoadConfigFile()
     //GetPrivateProfileString(L"System", L"proxy_D3D10", 0, DLL_PATH, MAX_PATH, iniFile);
     //if (gLogFile)
     //{
-    //    LogInfo("[System]\n");
-    //    if (!DLL_PATH) LogInfoW(L"  proxy_D3D10=%s\n", DLL_PATH);
+    //    LOG_INFO("[System]\n");
+    //    if (!DLL_PATH) LOG_INFO_W(L"  proxy_D3D10=%s\n", DLL_PATH);
     //}
 
     // [Device]
@@ -402,14 +402,14 @@ void LoadConfigFile()
 
     if (gLogFile)
     {
-        LogInfo("[Device]\n");
-        if (G->SCREEN_WIDTH != -1) LogInfo("  width=%d\n", G->SCREEN_WIDTH);
-        if (G->SCREEN_HEIGHT != -1) LogInfo("  height=%d\n", G->SCREEN_HEIGHT);
-        if (G->SCREEN_REFRESH != -1) LogInfo("  refresh_rate=%d\n", G->SCREEN_REFRESH);
-        if (refresh[0]) LogInfoW(L"  filter_refresh_rate=%s\n", refresh);
-        if (G->SCREEN_FULLSCREEN) LogInfo("  full_screen=1\n");
-        if (G->gForceStereo) LogInfo("  force_stereo=1\n");
-        if (allowWindowCommands) LogInfo("  allow_windowcommands=1\n");
+        LOG_INFO("[Device]\n");
+        if (G->SCREEN_WIDTH != -1) LOG_INFO("  width=%d\n", G->SCREEN_WIDTH);
+        if (G->SCREEN_HEIGHT != -1) LOG_INFO("  height=%d\n", G->SCREEN_HEIGHT);
+        if (G->SCREEN_REFRESH != -1) LOG_INFO("  refresh_rate=%d\n", G->SCREEN_REFRESH);
+        if (refresh[0]) LOG_INFO_W(L"  filter_refresh_rate=%s\n", refresh);
+        if (G->SCREEN_FULLSCREEN) LOG_INFO("  full_screen=1\n");
+        if (G->gForceStereo) LOG_INFO("  force_stereo=1\n");
+        if (allowWindowCommands) LOG_INFO("  allow_windowcommands=1\n");
     }
 
     // [Stereo]
@@ -420,11 +420,11 @@ void LoadConfigFile()
 
     if (gLogFile)
     {
-        LogInfo("[Stereo]\n");
-        if (automaticMode) LogInfo("  automatic_mode=1\n");
-        if (G->gCreateStereoProfile) LogInfo("  create_profile=1\n");
-        if (G->gSurfaceCreateMode != -1) LogInfo("  surface_createmode=%d\n", G->gSurfaceCreateMode);
-        if (G->gSurfaceSquareCreateMode != -1) LogInfo("  surface_square_createmode=%d\n", G->gSurfaceSquareCreateMode);
+        LOG_INFO("[Stereo]\n");
+        if (automaticMode) LOG_INFO("  automatic_mode=1\n");
+        if (G->gCreateStereoProfile) LOG_INFO("  create_profile=1\n");
+        if (G->gSurfaceCreateMode != -1) LOG_INFO("  surface_createmode=%d\n", G->gSurfaceCreateMode);
+        if (G->gSurfaceSquareCreateMode != -1) LOG_INFO("  surface_square_createmode=%d\n", G->gSurfaceSquareCreateMode);
     }
 
     // [Rendering]
@@ -471,21 +471,21 @@ void LoadConfigFile()
 
     if (gLogFile)
     {
-        LogInfo("[Rendering]\n");
+        LOG_INFO("[Rendering]\n");
         if (G->SHADER_PATH[0])
-            LogInfoW(L"  override_directory=%s\n", G->SHADER_PATH);
+            LOG_INFO_W(L"  override_directory=%s\n", G->SHADER_PATH);
         if (G->SHADER_CACHE_PATH[0])
-            LogInfoW(L"  cache_directory=%s\n", G->SHADER_CACHE_PATH);
+            LOG_INFO_W(L"  cache_directory=%s\n", G->SHADER_CACHE_PATH);
 
-        if (G->CACHE_SHADERS) LogInfo("  cache_shaders=1\n");
-        if (G->PRELOAD_SHADERS) LogInfo("  preload_shaders=1\n");
-        if (G->ENABLE_CRITICAL_SECTION) LogInfo("  use_criticalsection=1\n");
-        if (G->SCISSOR_DISABLE) LogInfo("  rasterizer_disable_scissor=1\n");
+        if (G->CACHE_SHADERS) LOG_INFO("  cache_shaders=1\n");
+        if (G->PRELOAD_SHADERS) LOG_INFO("  preload_shaders=1\n");
+        if (G->ENABLE_CRITICAL_SECTION) LOG_INFO("  use_criticalsection=1\n");
+        if (G->SCISSOR_DISABLE) LOG_INFO("  rasterizer_disable_scissor=1\n");
 
-        if (G->EXPORT_FIXED) LogInfo("  export_fixed=1\n");
-        if (G->EXPORT_SHADERS) LogInfo("  export_shaders=1\n");
-        if (G->EXPORT_HLSL != 0) LogInfo("  export_hlsl=%d\n", G->EXPORT_HLSL);
-        if (G->DumpUsage) LogInfo("  dump_usage=1\n");
+        if (G->EXPORT_FIXED) LOG_INFO("  export_fixed=1\n");
+        if (G->EXPORT_SHADERS) LOG_INFO("  export_shaders=1\n");
+        if (G->EXPORT_HLSL != 0) LOG_INFO("  export_hlsl=%d\n", G->EXPORT_HLSL);
+        if (G->DumpUsage) LOG_INFO("  dump_usage=1\n");
     }
 
 
@@ -579,14 +579,14 @@ void LoadConfigFile()
         G->MatrixPos_MUL1 = readStringParameter(setting);
 
     // Todo: finish logging all these settings
-    LogInfo("  ... missing automatic ini section\n");
+    LOG_INFO("  ... missing automatic ini section\n");
 
 
     // [Hunting]
-    LogInfo("[Hunting]\n");
+    LOG_INFO("[Hunting]\n");
     G->hunting = GetPrivateProfileInt(L"Hunting", L"hunting", 0, iniFile) == 1;
     if (G->hunting)
-        LogInfo("  hunting=1\n");
+        LOG_INFO("  hunting=1\n");
 
     G->marking_mode = MARKING_MODE_SKIP;
     if (GetPrivateProfileString(L"Hunting", L"marking_mode", 0, setting, MAX_PATH, iniFile)) {
@@ -594,7 +594,7 @@ void LoadConfigFile()
         if (!wcscmp(setting, L"mono")) G->marking_mode = MARKING_MODE_MONO;
         if (!wcscmp(setting, L"original")) G->marking_mode = MARKING_MODE_ORIGINAL;
         if (!wcscmp(setting, L"zero")) G->marking_mode = MARKING_MODE_ZERO;
-        LogInfoW(L"  marking_mode=%d\n", G->marking_mode);
+        LOG_INFO_W(L"  marking_mode=%d\n", G->marking_mode);
     }
 
     RegisterHuntingKeyBindings(iniFile);
@@ -643,10 +643,10 @@ void LoadConfigFile()
     if (gLogFile &&
         (G->iniParams.x != FLT_MAX) || (G->iniParams.y != FLT_MAX) || (G->iniParams.z != FLT_MAX) || (G->iniParams.w != FLT_MAX))
     {
-        LogInfo("[Constants]\n");
-        LogInfo("  x=%#.2g\n", G->iniParams.x);
-        LogInfo("  y=%#.2g\n", G->iniParams.y);
-        LogInfo("  z=%#.2g\n", G->iniParams.z);
-        LogInfo("  w=%#.2g\n", G->iniParams.w);
+        LOG_INFO("[Constants]\n");
+        LOG_INFO("  x=%#.2g\n", G->iniParams.x);
+        LOG_INFO("  y=%#.2g\n", G->iniParams.y);
+        LOG_INFO("  z=%#.2g\n", G->iniParams.z);
+        LOG_INFO("  w=%#.2g\n", G->iniParams.w);
     }
 }

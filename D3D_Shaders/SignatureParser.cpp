@@ -212,13 +212,13 @@ static void* serialise_signature_section(char *section24, char *section28, char 
     padding = pad(section_size, 4);
     alloc_size = section_size + sizeof(struct section_header) + padding;
 
-    LogDebug("name_off: %u, name_len: %u, section_size: %u, padding: %u, alloc_size: %u\n",
+    LOG_DEBUG("name_off: %u, name_len: %u, section_size: %u, padding: %u, alloc_size: %u\n",
             name_off, name_len, section_size, padding, alloc_size);
 
     // Allocate entire section, including room for section header and padding:
     section = malloc(alloc_size);
     if (!section) {
-        LogInfo("Out of memory\n");
+        LOG_INFO("Out of memory\n");
         return NULL;
     }
 
@@ -233,7 +233,7 @@ static void* serialise_signature_section(char *section24, char *section28, char 
     entry5 = (struct sg5_entry_serialiased*)entryn;
     entry1 = (struct sg1_entry_serialiased*)entryn;
 
-    LogDebug("section: 0x%p, section_header: 0x%p, sgn_header: 0x%p, padding_ptr: 0x%p, entry: 0x%p\n",
+    LOG_DEBUG("section: 0x%p, section_header: 0x%p, sgn_header: 0x%p, padding_ptr: 0x%p, entry: 0x%p\n",
             section, (char*)section_header, sgn_header, padding_ptr, entryn);
 
     switch (entry_size) {
@@ -304,7 +304,7 @@ static void* parse_signature_section(char *section24, char *section28, char *sec
     while (*pos != shader->npos) {
         line = next_line(shader, pos);
 
-        LogDebug("%s\n", line.c_str());
+        LOG_DEBUG("%s\n", line.c_str());
 
         if (line == "//"
          || line == "// Name                 Index   Mask Register SysValue  Format   Used"
@@ -399,7 +399,7 @@ static void* parse_signature_section(char *section24, char *section28, char *sec
         // }
 name_already_used:
 
-        LogDebug("Stream: %i, Name: %s, Index: %i, Mask: 0x%x, Register: %i, SysValue: %i, Format: %i, Used: 0x%x, Precision: %i\n",
+        LOG_DEBUG("Stream: %i, Name: %s, Index: %i, Mask: 0x%x, Register: %i, SysValue: %i, Format: %i, Used: 0x%x, Precision: %i\n",
                 entry.stream, entry.name.c_str(),
                 entry.common.semantic_index, entry.common.mask,
                 entry.common.reg, entry.common.system_value,
@@ -430,7 +430,7 @@ static void* serialise_subshader_feature_info_section(uint64_t flags)
     // Allocate entire section, including room for section header and padding:
     section = malloc(alloc_size);
     if (!section) {
-        LogInfo("Out of memory\n");
+        LOG_INFO("Out of memory\n");
         return NULL;
     }
 
@@ -505,11 +505,11 @@ uint64_t parse_global_flags_to_sfi(string *shader)
     while (pos != shader->npos) {
         line = next_line(shader, &pos);
         if (!strncmp(line.c_str(), "dcl_globalFlags ", 16)) {
-            LogDebug("%s\n", line.c_str());
+            LOG_DEBUG("%s\n", line.c_str());
             while (gf_pos != string::npos) {
                 for (i = 0; i < ARRAYSIZE(global_flag_sfi_map); i++) {
                     if (!line.compare(gf_pos, global_flag_sfi_map[i].len, global_flag_sfi_map[i].gf)) {
-                        LogDebug("Mapped %s to Subshader Feature 0x%llx\n",
+                        LOG_DEBUG("Mapped %s to Subshader Feature 0x%llx\n",
                                 global_flag_sfi_map[i].gf, global_flag_sfi_map[i].sfi);
                         sfi |= global_flag_sfi_map[i].sfi;
                         gf_pos += global_flag_sfi_map[i].len;
@@ -536,11 +536,11 @@ static uint64_t parse_subshader_feature_info_comment(string *shader, size_t *pos
     while (*pos != shader->npos) {
         line = next_line(shader, pos);
 
-        LogDebug("%s\n", line.c_str());
+        LOG_DEBUG("%s\n", line.c_str());
 
         for (i = 0; i < ARRAYSIZE(subshader_feature_comments); i++) {
             if (!strcmp(line.c_str() + 9, subshader_feature_comments[i])) {
-                LogDebug("Matched Subshader Feature Comment 0x%llx\n", 1LL << i);
+                LOG_DEBUG("Matched Subshader Feature Comment 0x%llx\n", 1LL << i);
                 flags |= 1LL << i;
                 break;
             }
@@ -560,11 +560,11 @@ static void* manufacture_empty_section(char *section_name)
 {
     void *section;
 
-    LogInfo("Manufacturing placeholder %s section...\n", section_name);
+    LOG_INFO("Manufacturing placeholder %s section...\n", section_name);
 
     section = malloc(8);
     if (!section) {
-        LogInfo("Out of memory\n");
+        LOG_INFO("Out of memory\n");
         return NULL;
     }
 
@@ -627,19 +627,19 @@ static bool parse_section(string *line, string *shader, size_t *pos, void **sect
     }
 
     if (!strncmp(line->c_str(), "// Patch Constant signature:", 28)) {
-        LogInfo("Parsing Patch Constant Signature section...\n");
+        LOG_INFO("Parsing Patch Constant Signature section...\n");
         *section = parse_signature_section("PCSG", NULL, "PSG1", shader, pos, is_hull_shader(shader, *pos), *sfi);
     } else if (!strncmp(line->c_str(), "// Input signature:", 19)) {
-        LogInfo("Parsing Input Signature section...\n");
+        LOG_INFO("Parsing Input Signature section...\n");
         *section = parse_signature_section("ISGN", NULL, "ISG1", shader, pos, false, *sfi);
     } else if (!strncmp(line->c_str(), "// Output signature:", 20)) {
-        LogInfo("Parsing Output Signature section...\n");
+        LOG_INFO("Parsing Output Signature section...\n");
         char *section24 = "OSGN";
         if (is_geometry_shader_5(shader, *pos))
             section24 = NULL;
         *section = parse_signature_section(section24, "OSG5", "OSG1", shader, pos, true, *sfi);
     } else if (!strncmp(line->c_str(), "// Note: shader requires additional functionality:", 50)) {
-        LogInfo("Parsing Subshader Feature Info section...\n");
+        LOG_INFO("Parsing Subshader Feature Info section...\n");
         *sfi = parse_subshader_feature_info_comment(shader, pos, *sfi);
     } else if (!strncmp(line->c_str(), "// Note: SHADER WILL ONLY WORK WITH THE DEBUG SDK LAYER ENABLED.", 64)) {
         *force_shex = true;
@@ -698,7 +698,7 @@ static HRESULT manufacture_shader_binary(const void *pShaderAsm, size_t AsmLengt
 
     while (!done && pos != shader_str.npos) {
         line = next_line(&shader_str, &pos);
-        //LogInfo("%s\n", line.c_str());
+        //LOG_INFO("%s\n", line.c_str());
 
         done = parse_section(&line, &shader_str, &pos, &section, &sfi, &force_shex);
         if (section) {
@@ -707,19 +707,19 @@ static HRESULT manufacture_shader_binary(const void *pShaderAsm, size_t AsmLengt
             all_sections_size += section_size;
 
             if (gLogDebug) {
-                LogInfo("Constructed section size=%u:\n", section_size);
+                LOG_INFO("Constructed section size=%u:\n", section_size);
                 for (uint32_t i = 0; i < section_size; i++) {
                     if (i && i % 16 == 0)
-                        LogInfo("\n");
-                    LogInfoNoNL("%02x ", ((unsigned char*)section)[i]);
+                        LOG_INFO("\n");
+                    LOG_INFO_NO_NL("%02x ", ((unsigned char*)section)[i]);
                 }
-                LogInfo("\n");
+                LOG_INFO("\n");
             }
         }
     }
 
     if (!done) {
-        LogInfo("Did not find an assembly text section!\n");
+        LOG_INFO("Did not find an assembly text section!\n");
         goto out_free;
     }
 
@@ -728,7 +728,7 @@ static HRESULT manufacture_shader_binary(const void *pShaderAsm, size_t AsmLengt
         sections.insert(sections.begin(), section);
         section_size = *((uint32_t*)section + 1) + sizeof(section_header);
         all_sections_size += section_size;
-        LogInfo("Inserted Subshader Feature Info section: 0x%llx\n", sfi);
+        LOG_INFO("Inserted Subshader Feature Info section: 0x%llx\n", sfi);
     }
 
     serialise_shader_binary(&sections, all_sections_size, bytecode);

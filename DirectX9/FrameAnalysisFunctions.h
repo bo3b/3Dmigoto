@@ -57,8 +57,8 @@ D3D9Wrapper::FrameAnalysisDevice::~FrameAnalysisDevice()
 void D3D9Wrapper::FrameAnalysisDevice::vFrameAnalysisLog(char *fmt, va_list ap)
 {
     wchar_t filename[MAX_PATH];
-    LogDebugNoNL("HackerDevice(%s@%p)::", type_name_dx9((IUnknown*)this), this);
-    vLogDebug(fmt, ap);
+    LOG_DEBUG_NO_NL("HackerDevice(%s@%p)::", type_name_dx9((IUnknown*)this), this);
+    LOG_DEBUG_V(fmt, ap);
 
     if (!G->analyse_frame) {
         if (frame_analysis_log)
@@ -89,7 +89,7 @@ void D3D9Wrapper::FrameAnalysisDevice::vFrameAnalysisLog(char *fmt, va_list ap)
 
         frame_analysis_log = _wfsopen(filename, L"w", _SH_DENYNO);
         if (!frame_analysis_log) {
-            LogInfoW(L"Error opening %s\n", filename);
+            LOG_INFO_W(L"Error opening %s\n", filename);
             return;
         }
         draw_call = 1;
@@ -120,7 +120,7 @@ void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisLog(char *fmt, ...)
 } while (0)
 
 #define FALogErr(fmt, ...) { \
-    LogInfo("Frame Analysis: " fmt, __VA_ARGS__); \
+    LOG_INFO("Frame Analysis: " fmt, __VA_ARGS__); \
     FrameAnalysisLog("3DMigoto " fmt, __VA_ARGS__); \
 } while (0)
 
@@ -136,7 +136,7 @@ static void FrameAnalysisLogSlot(FILE *frame_analysis_log, int slot, char *slot_
 void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisLogShaderHash(D3D9Wrapper::IDirect3DShader9 *shader)
 {
     // Always complete the line in the debug log:
-    LogDebug("\n");
+    LOG_DEBUG("\n");
     if (!G->analyse_frame || !frame_analysis_log)
         return;
 
@@ -154,7 +154,7 @@ void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisLogResourceHash(D3D9Wrapper:
     struct ResourceHashInfo *info;
 
     // Always complete the line in the debug log:
-    LogDebug("\n");
+    LOG_DEBUG("\n");
 
     if (!G->analyse_frame || !frame_analysis_log)
         return;
@@ -229,7 +229,7 @@ void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisLogMiscArray(UINT start, UIN
 void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisLogQuery(::IDirect3DQuery9 *async)
 {
     // Always complete the line in the debug log:
-    LogDebug("\n");
+    LOG_DEBUG("\n");
 
     if (!G->analyse_frame || !frame_analysis_log)
         return;
@@ -1405,7 +1405,7 @@ static BOOL CreateDeferredFADirectory(LPCWSTR path)
     if (!CreateDirectoryEnsuringAccess(path)) {
         err = GetLastError();
         if (err != ERROR_ALREADY_EXISTS) {
-            LogInfoW(L"Error creating deferred frame analysis directory: %i\n", err);
+            LOG_INFO_W(L"Error creating deferred frame analysis directory: %i\n", err);
             return FALSE;
         }
     }
@@ -1805,13 +1805,13 @@ void D3D9Wrapper::FrameAnalysisDevice::link_deduplicated_files(const wchar_t *fi
     }
 
     // Hard links may fail e.g. if running the game off a FAT32 partition:
-    LogDebug("Hard linking %S -> %S failed (0x%u), trying windows shortcut\n",
+    LOG_DEBUG("Hard linking %S -> %S failed (0x%u), trying windows shortcut\n",
         filename, dedupe_filename, GetLastError());
 
     if (create_shortcut(filename, dedupe_filename))
         return;
 
-    LogDebug("Creating shortcut %S -> %S failed. Cannot deduplicate file, moving back.\n",
+    LOG_DEBUG("Creating shortcut %S -> %S failed. Cannot deduplicate file, moving back.\n",
         filename, dedupe_filename);
 
     if (MoveFile(dedupe_filename, filename))

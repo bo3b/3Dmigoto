@@ -305,7 +305,7 @@ void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
         try {
             button = new XInputButton(keyName);
         } catch (KeyParseError) {
-            LogInfoW(L"  WARNING: UNABLE TO PARSE KEY BINDING %s=%s\n", iniKey, keyName);
+            LOG_INFO_W(L"  WARNING: UNABLE TO PARSE KEY BINDING %s=%s\n", iniKey, keyName);
             BeepFailure2();
             return;
         }
@@ -318,7 +318,7 @@ void RegisterKeyBinding(LPCWSTR iniKey, wchar_t *keyName,
     else
         action = new InputAction(button, listener);
 
-    LogInfoW(L"  %s=%s\n", iniKey, keyName);
+    LOG_INFO_W(L"  %s=%s\n", iniKey, keyName);
     actions.push_back(action);
 }
 

@@ -238,7 +238,7 @@ void DumpUsage(wchar_t *dir)
     wcscat(path, L"ShaderUsage.txt");
     HANDLE f = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (f == INVALID_HANDLE_VALUE) {
-        LogInfo("Error dumping ShaderUsage.txt\n");
+        LOG_INFO("Error dumping ShaderUsage.txt\n");
         return;
     }
 
@@ -265,7 +265,7 @@ static void SimpleScreenShot(D3D9Wrapper::IDirect3DDevice9 *pDevice, HashType ha
 
     HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
     if (FAILED(hr))
-        LogInfo("*** Overlay call CoInitializeEx failed: %d\n", hr);
+        LOG_INFO("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
     hr = pDevice->GetD3D9Device()->GetBackBuffer(0, 0, ::D3DBACKBUFFER_TYPE::D3DBACKBUFFER_TYPE_MONO, &backBuffer);
     if (SUCCEEDED(hr))
@@ -277,7 +277,7 @@ static void SimpleScreenShot(D3D9Wrapper::IDirect3DDevice9 *pDevice, HashType ha
 
     CoUninitialize();
 
-    LogInfoW(L"  SimpleScreenShot on Mark: %s, result: %d\n", fullName, hr);
+    LOG_INFO_W(L"  SimpleScreenShot on Mark: %s, result: %d\n", fullName, hr);
 }
 // Similar to above, but this version enables the reverse stereo blit in nvapi
 // to get the second back buffer and create a stereo 3D JPS:
@@ -301,7 +301,7 @@ static void StereoScreenShot(D3D9Wrapper::IDirect3DDevice9 *pDevice, HashType ha
         Profiling::NvAPI_Stereo_IsActivated(pDevice->mStereoHandle, &stereo);
 
     if (!stereo) {
-        LogInfo("marking_actions=stereo_snapshot: Stereo disabled, falling back to mono snapshot\n");
+        LOG_INFO("marking_actions=stereo_snapshot: Stereo disabled, falling back to mono snapshot\n");
         SimpleScreenShot(pDevice, hash, shaderType);
         return;
     }
@@ -323,13 +323,13 @@ static void StereoScreenShot(D3D9Wrapper::IDirect3DDevice9 *pDevice, HashType ha
 
     hr = pDevice->GetD3D9Device()->CreateOffscreenPlainSurface(desc.Width, desc.Height, desc.Format, desc.Pool, &stereoBackBuffer, NULL);
     if (FAILED(hr)) {
-        LogInfo("StereoScreenShot failed to create intermediate texture resource: 0x%x\n", hr);
+        LOG_INFO("StereoScreenShot failed to create intermediate texture resource: 0x%x\n", hr);
         goto out_release_bb;
     }
     if (!G->stereoblit_control_set_once) {
         nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, true);
         if (nvret != NVAPI_OK) {
-            LogInfo("StereoScreenShot failed to enable reverse stereo blit\n");
+            LOG_INFO("StereoScreenShot failed to enable reverse stereo blit\n");
             goto out_release_stereo_bb;
         }
     }
@@ -346,14 +346,14 @@ static void StereoScreenShot(D3D9Wrapper::IDirect3DDevice9 *pDevice, HashType ha
 
     hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
     if (FAILED(hr))
-        LogInfo("*** Overlay call CoInitializeEx failed: %d\n", hr);
+        LOG_INFO("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
     swprintf_s(fullName, MAX_PATH, L"%ls\\%0*llx-%S.jps", G->SHADER_PATH, hash_len, (UINT64)hash, shaderType);
     hr = D3DXSaveSurfaceToFile(fullName, ::D3DXIFF_JPG, stereoBackBuffer, NULL, NULL);
 
     CoUninitialize();
 
-    LogInfoW(L"  StereoScreenShot on Mark: %s, result: %d\n", fullName, hr);
+    LOG_INFO_W(L"  StereoScreenShot on Mark: %s, result: %d\n", fullName, hr);
     if (!G->stereoblit_control_set_once)
         Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, false);
 out_release_stereo_bb:
@@ -386,7 +386,7 @@ static void MarkingScreenShots(D3D9Wrapper::IDirect3DDevice9 *device, HashType h
 
 static string Decompile(ID3DBlob *pShaderByteCode, string *asmText)
 {
-    LogInfo("    creating HLSL representation.\n");
+    LOG_INFO("    creating HLSL representation.\n");
 
     bool patched = false;
     string shaderModel;
@@ -410,7 +410,7 @@ static string Decompile(ID3DBlob *pShaderByteCode, string *asmText)
 
     if (!decompiledCode.size())
     {
-        LogInfo("    error while decompiling.\n");
+        LOG_INFO("    error while decompiling.\n");
     }
 
     return decompiledCode;
@@ -437,7 +437,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
     HANDLE f = CreateFile(fullName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (f == INVALID_HANDLE_VALUE)
     {
-        LogInfo("    ReloadShader shader not found: %ls\n", fullName);
+        LOG_INFO("    ReloadShader shader not found: %ls\n", fullName);
 
         return true;
     }
@@ -452,7 +452,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
         || !GetFileTime(f, NULL, NULL, &curFileTime)
         || srcDataSize != readSize)
     {
-        LogInfo("    Error reading txt file.\n");
+        LOG_INFO("    Error reading txt file.\n");
         CloseHandle(f);
 
         return true;
@@ -472,9 +472,9 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 
     if (wcsstr(fileName, L"_replace"))
     {
-        LogInfo("   >Replacement shader found. Re-Loading replacement HLSL code from %ls\n", fileName);
-        LogInfo("    Reload source code loaded. Size = %d\n", srcDataSize);
-        LogInfo("    compiling replacement HLSL code with shader model %s\n", shaderModel);
+        LOG_INFO("   >Replacement shader found. Re-Loading replacement HLSL code from %ls\n", fileName);
+        LOG_INFO("    Reload source code loaded. Size = %d\n", srcDataSize);
+        LOG_INFO("    compiling replacement HLSL code with shader model %s\n", shaderModel);
 
         // TODO: Add #defines for StereoParams and IniParams
 
@@ -487,13 +487,13 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
         HRESULT ret = D3DCompile(srcData.data(), srcDataSize, apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE,
             "main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pByteCode, &pErrorMsgs);
 
-        LogInfo("    compile result for replacement HLSL shader: %x\n", ret);
+        LOG_INFO("    compile result for replacement HLSL shader: %x\n", ret);
 
         if (pErrorMsgs)
         {
             LPVOID errMsg = pErrorMsgs->GetBufferPointer();
             SIZE_T errSize = pErrorMsgs->GetBufferSize();
-            LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
+            LOG_INFO("--------------------------------------------- BEGIN ---------------------------------------------\n");
             if (FAILED(ret))
             {
                 // If there are errors they go to the overlay
@@ -506,7 +506,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
                 // these to the overlay.
                 fwrite(errMsg, 1, errSize - 1, LogFile);
             }
-            LogInfo("---------------------------------------------- END ----------------------------------------------\n");
+            LOG_INFO("---------------------------------------------- END ----------------------------------------------\n");
             if (errText)
                 *errText = string((char*)pErrorMsgs->GetBufferPointer(), pErrorMsgs->GetBufferSize() - 1);
             pErrorMsgs->Release();
@@ -524,9 +524,9 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
     }
     else
     {
-        LogInfo("   >Replacement shader found. Re-Loading replacement ASM code from %ls\n", fileName);
-        LogInfo("    Reload source code loaded. Size = %d\n", srcDataSize);
-        LogInfo("    assembling replacement ASM code with shader model %s\n", shaderModel);
+        LOG_INFO("   >Replacement shader found. Re-Loading replacement ASM code from %ls\n", fileName);
+        LOG_INFO("    Reload source code loaded. Size = %d\n", srcDataSize);
+        LOG_INFO("    assembling replacement ASM code with shader model %s\n", shaderModel);
 
         // We need original byte code unchanged, so make a copy.
         vector<byte> byteCode(origByteCode->GetBufferSize());
@@ -540,7 +540,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
         }
         catch (...)
         {
-            LogInfo("  *** assembler failed.\n");
+            LOG_INFO("  *** assembler failed.\n");
             return true;
         }
 
@@ -550,7 +550,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
             memcpy(pByteCode->GetBufferPointer(), byteCode.data(), byteCode.size());
         }
         else {
-            LogInfo("    *** failed to allocate new Blob for assemble.\n");
+            LOG_INFO("    *** failed to allocate new Blob for assemble.\n");
             return true;
         }
     }
@@ -639,7 +639,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D9Wrapper::ID
             // Just skip it in that case, because the new version will be loaded when it is used.
             if (oldShader == NULL)
             {
-                LogInfo("> failed to find original shader in mReloadedShaders: %ls\n", fileName);
+                LOG_INFO("> failed to find original shader in mReloadedShaders: %ls\n", fileName);
                 continue;
             }
 
@@ -710,7 +710,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D9Wrapper::ID
             // candidates for auto patching:
             oldShader->originalShaderInfo.deferred_replacement_candidate = false;
 
-            LogInfo("> successfully reloaded shader: %ls\n", fileName);
+            LOG_INFO("> successfully reloaded shader: %ls\n", fileName);
         }
     }    // for every registered shader in mReloadedShaders
 
@@ -733,13 +733,13 @@ static bool WriteConstantTable(UINT64 hash, OriginalShaderInfo shader_info, D3D9
     ConstantTable ct = ConstantTable();
     success = ct.Create(shader_info.byteCode->GetBufferPointer());
     if (!success) {
-        LogInfo("    failed to create constant table\n");
+        LOG_INFO("    failed to create constant table\n");
         return false;
     }
     string constText = ct.ToString();
 
     if (constText.empty()) {
-        LogInfo("    failed to convert constant table to string\n");
+        LOG_INFO("    failed to convert constant table to string\n");
         return false;
     }
 
@@ -758,7 +758,7 @@ static bool WriteConstantTable(UINT64 hash, OriginalShaderInfo shader_info, D3D9
 
     wfopen_ensuring_access(&f, fullName, L"wb");
     if (!f) {
-        LogInfo("    error storing constant table to %S\n", fullName);
+        LOG_INFO("    error storing constant table to %S\n", fullName);
         return false;
     }
     fprintf_s(f, "\n///////////////////////////////// Constant Table /////////////////////////////////\n");
@@ -793,7 +793,7 @@ static bool WriteASM(string *asmText, string *hlslText, string *errText,
 
     wfopen_ensuring_access(&f, fullName, L"wb");
     if (!f) {
-        LogInfo("    error storing marked shader to %S\n", fullName);
+        LOG_INFO("    error storing marked shader to %S\n", fullName);
         return false;
     }
 
@@ -855,11 +855,11 @@ static bool WriteHLSL(string *asmText, string *hlslText, string *errText,
     wfopen_ensuring_access(&fw, fullName, L"wb");
     if (!fw)
     {
-        LogInfoW(L"    error storing marked shader to %s\n", fullName);
+        LOG_INFO_W(L"    error storing marked shader to %s\n", fullName);
         return false;
     }
 
-    LogInfoW(L"    storing patched shader to %s\n", fullName);
+    LOG_INFO_W(L"    storing patched shader to %s\n", fullName);
 
     fwrite(hlslText->c_str(), 1, hlslText->size(), fw);
 
@@ -874,7 +874,7 @@ static bool WriteHLSL(string *asmText, string *hlslText, string *errText,
     ret = ReloadShader(G->SHADER_PATH, fileName, device, errText);
 
     if (!ret && remove_failed) {
-        LogInfo("    removing shader that failed to reload: %S\n", fullName);
+        LOG_INFO("    removing shader that failed to reload: %S\n", fullName);
         DeleteFile(fullName);
     }
 
@@ -1007,7 +1007,7 @@ static void CopyToFixes(UINT64 hash, D3D9Wrapper::IDirect3DDevice9 *device)
 
 static void TakeScreenShot(D3D9Wrapper::IDirect3DDevice9 *wrapped, void *private_data)
 {
-    LogInfo("> capturing screenshot\n");
+    LOG_INFO("> capturing screenshot\n");
 
     if (wrapped->mStereoHandle)
     {
@@ -1039,7 +1039,7 @@ static void RevertMissingShaders()
             continue;
         }
 
-        LogInfo("Reverting %016llx not found in ShaderFixes\n", (*i)->hash);
+        LOG_INFO("Reverting %016llx not found in ShaderFixes\n", (*i)->hash);
 
         if ((*i)->originalShaderInfo.replacement) {
             --(*i)->hackerDevice->migotoResourceCount;
@@ -1069,7 +1069,7 @@ static void RevertMissingShaders()
 
 static void ReloadFixes(D3D9Wrapper::IDirect3DDevice9 *device, void *private_data)
 {
-    LogInfo("> reloading *_replace.txt fixes from ShaderFixes\n");
+    LOG_INFO("> reloading *_replace.txt fixes from ShaderFixes\n");
 
     if (G->SHADER_PATH[0])
     {
@@ -1124,7 +1124,7 @@ static void DisableFix(D3D9Wrapper::IDirect3DDevice9 *device, void *private_data
     if (G->hunting != HUNTING_MODE_ENABLED)
         return;
 
-    LogInfo("show_original pressed - switching to original shaders\n");
+    LOG_INFO("show_original pressed - switching to original shaders\n");
     G->fix_enabled = false;
 }
 
@@ -1133,7 +1133,7 @@ static void EnableFix(D3D9Wrapper::IDirect3DDevice9 *device, void *private_data)
     if (G->hunting != HUNTING_MODE_ENABLED)
         return;
 
-    LogInfo("show_original released - switching to replaced shaders\n");
+    LOG_INFO("show_original released - switching to replaced shaders\n");
     G->fix_enabled = true;
 }
 static void _AnalyseFrameStop()
@@ -1179,13 +1179,13 @@ static void AnalyseFrame(D3D9Wrapper::IDirect3DDevice9 *device, void *private_da
     wcsrchr(path, L'\\')[1] = 0;
     wcscat_s(path, MAX_PATH, subdir);
 
-    LogInfoW(L"Frame analysis directory: %s\n", path);
+    LOG_INFO_W(L"Frame analysis directory: %s\n", path);
 
     // Bail if the analysis directory already exists or can't be created.
     // This currently limits us to one / second, but that's probably
     // enough. We can always increase the granuality if needed.
     if (!CreateDirectoryEnsuringAccess(path)) {
-        LogInfoW(L"Error creating frame analysis directory: %i\n", GetLastError());
+        LOG_INFO_W(L"Error creating frame analysis directory: %i\n", GetLastError());
         return;
     }
 
@@ -1237,7 +1237,7 @@ static void FreezePerf(D3D9Wrapper::IDirect3DDevice9 *device, void *private_data
     Profiling::freeze = !Profiling::freeze;
 
     if (Profiling::freeze)
-        LogInfoW(L"%s", Profiling::text.c_str());
+        LOG_INFO_W(L"%s", Profiling::text.c_str());
 }
 
 static void DisableDeferred(D3D9Wrapper::IDirect3DDevice9 *device, void *private_data)
@@ -1245,7 +1245,7 @@ static void DisableDeferred(D3D9Wrapper::IDirect3DDevice9 *device, void *private
     if (G->hunting != HUNTING_MODE_ENABLED)
         return;
 
-    LogInfo("Disabling execution of deferred command lists\n");
+    LOG_INFO("Disabling execution of deferred command lists\n");
     G->deferred_contexts_enabled = false;
 }
 
@@ -1254,7 +1254,7 @@ static void EnableDeferred(D3D9Wrapper::IDirect3DDevice9 *device, void *private_
     if (G->hunting != HUNTING_MODE_ENABLED)
         return;
 
-    LogInfo("Enabling execution of deferred command lists\n");
+    LOG_INFO("Enabling execution of deferred command lists\n");
     G->deferred_contexts_enabled = true;
 }
 
@@ -1296,13 +1296,13 @@ static void HuntNext(char *type, std::set<ItemType> *visited,
                 *selectedPos = 0;
                 *selected = *visited->begin();
             }
-            LogInfo("> traversing to next %s #%d. Number of %ss in frame: %d\n",
+            LOG_INFO("> traversing to next %s #%d. Number of %ss in frame: %d\n",
                 type, *selectedPos, type, size);
         }
         else {
             *selectedPos = 0;
             *selected = *visited->begin();
-            LogInfo("> starting at %s #%d. Number of %ss in frame: %d\n",
+            LOG_INFO("> starting at %s #%d. Number of %ss in frame: %d\n",
                 type, *selectedPos, type, size);
         }
     }
@@ -1377,13 +1377,13 @@ static void HuntPrev(char *type, std::set<ItemType> *visited,
                 *selectedPos = size - 1;
                 *selected = *std::prev(end);
             }
-            LogInfo("> traversing to previous %s shader #%d. Number of %s shaders in frame: %d\n",
+            LOG_INFO("> traversing to previous %s shader #%d. Number of %s shaders in frame: %d\n",
                 type, *selectedPos, type, size);
         }
         else {
             *selectedPos = size - 1;
             *selected = *std::prev(end);
-            LogInfo("> starting at %s shader #%d. Number of %s shaders in frame: %d\n",
+            LOG_INFO("> starting at %s shader #%d. Number of %s shaders in frame: %d\n",
                 type, *selectedPos, type, size);
         }
     }
@@ -1479,11 +1479,11 @@ static void MarkVertexBuffer(D3D9Wrapper::IDirect3DDevice9 *device, void *privat
 
     MarkingScreenShots(device, G->mSelectedVertexBuffer, "vb");
 
-    LogInfo(">>>> Vertex buffer marked: vertex buffer hash = %08x\n", G->mSelectedVertexBuffer);
+    LOG_INFO(">>>> Vertex buffer marked: vertex buffer hash = %08x\n", G->mSelectedVertexBuffer);
     for (std::set<UINT64>::iterator i = G->mSelectedVertexBuffer_PixelShader.begin(); i != G->mSelectedVertexBuffer_PixelShader.end(); ++i)
-        LogInfo("     visited pixel shader hash = %016I64x\n", *i);
+        LOG_INFO("     visited pixel shader hash = %016I64x\n", *i);
     for (std::set<UINT64>::iterator i = G->mSelectedVertexBuffer_VertexShader.begin(); i != G->mSelectedVertexBuffer_VertexShader.end(); ++i)
-        LogInfo("     visited vertex shader hash = %016I64x\n", *i);
+        LOG_INFO("     visited vertex shader hash = %016I64x\n", *i);
 
     if (G->DumpUsage)
         DumpUsage(NULL);
@@ -1502,11 +1502,11 @@ static void MarkIndexBuffer(D3D9Wrapper::IDirect3DDevice9 *device, void *private
 
     MarkingScreenShots(device, G->mSelectedIndexBuffer, "ib");
 
-    LogInfo(">>>> Index buffer marked: index buffer hash = %08x\n", G->mSelectedIndexBuffer);
+    LOG_INFO(">>>> Index buffer marked: index buffer hash = %08x\n", G->mSelectedIndexBuffer);
     for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_PixelShader.begin(); i != G->mSelectedIndexBuffer_PixelShader.end(); ++i)
-        LogInfo("     visited pixel shader hash = %016I64x\n", *i);
+        LOG_INFO("     visited pixel shader hash = %016I64x\n", *i);
     for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_VertexShader.begin(); i != G->mSelectedIndexBuffer_VertexShader.end(); ++i)
-        LogInfo("     visited vertex shader hash = %016I64x\n", *i);
+        LOG_INFO("     visited vertex shader hash = %016I64x\n", *i);
 
     if (G->DumpUsage)
         DumpUsage(NULL);
@@ -1521,7 +1521,7 @@ static bool MarkShaderBegin(char *type, UINT64 selected)
 
     EnterCriticalSection(&G->mCriticalSection);
 
-    LogInfo(">>>> %s marked: %s hash = %016I64x\n", type, type, selected);
+    LOG_INFO(">>>> %s marked: %s hash = %016I64x\n", type, type, selected);
 
     return true;
 }
@@ -1536,7 +1536,7 @@ static void MarkShaderEnd(D3D9Wrapper::IDirect3DDevice9 *device, char *long_type
 
     CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(selected);
     if (i != G->mCompiledShaderMap.end())
-        LogInfo("       %s was compiled from source code %s\n", long_type, i->second.c_str());
+        LOG_INFO("       %s was compiled from source code %s\n", long_type, i->second.c_str());
 
     if (G->marking_actions & MarkingAction::CLIPBOARD)
         HashToClipboard(long_type, selected);
@@ -1564,11 +1564,11 @@ static void MarkPixelShader(D3D9Wrapper::IDirect3DDevice9 *device, void *private
         return;
 
     for (std::set<uint32_t>::iterator i = G->mSelectedPixelShader_VertexBuffer.begin(); i != G->mSelectedPixelShader_VertexBuffer.end(); ++i)
-        LogInfo("     visited vertex buffer hash = %08x\n", *i);
+        LOG_INFO("     visited vertex buffer hash = %08x\n", *i);
     for (set<uint32_t>::iterator i = G->mSelectedPixelShader_IndexBuffer.begin(); i != G->mSelectedPixelShader_IndexBuffer.end(); ++i)
-        LogInfo("     visited index buffer hash = %08x\n", *i);
+        LOG_INFO("     visited index buffer hash = %08x\n", *i);
     for (set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PeerShaders.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PeerShaders.end(); ++i)
-        LogInfo("     visited peer shader hash = %016I64x\n", *i);
+        LOG_INFO("     visited peer shader hash = %016I64x\n", *i);
 
     MarkShaderEnd(device, "pixel shader", "ps", G->mSelectedPixelShader);
 }
@@ -1579,11 +1579,11 @@ static void MarkVertexShader(D3D9Wrapper::IDirect3DDevice9 *device, void *privat
         return;
 
     for (std::set<uint32_t>::iterator i = G->mSelectedVertexShader_VertexBuffer.begin(); i != G->mSelectedVertexShader_VertexBuffer.end(); ++i)
-        LogInfo("     visited vertex buffer hash = %08lx\n", *i);
+        LOG_INFO("     visited vertex buffer hash = %08lx\n", *i);
     for (set<uint32_t>::iterator i = G->mSelectedVertexShader_IndexBuffer.begin(); i != G->mSelectedVertexShader_IndexBuffer.end(); ++i)
-        LogInfo("     visited index buffer hash = %08lx\n", *i);
+        LOG_INFO("     visited index buffer hash = %08lx\n", *i);
     for (set<UINT64>::iterator i = G->mVertexShaderInfo[G->mSelectedVertexShader].PeerShaders.begin(); i != G->mVertexShaderInfo[G->mSelectedVertexShader].PeerShaders.end(); ++i)
-        LogInfo("     visited peer shader hash = %016I64x\n", *i);
+        LOG_INFO("     visited peer shader hash = %016I64x\n", *i);
 
     MarkShaderEnd(device, "vertex shader", "ps", G->mSelectedVertexShader);
 }
@@ -1594,7 +1594,7 @@ static uint32_t LogRenderTarget(D3D9Wrapper::IDirect3DResource9 *target, char *l
 
     if (!target || target == (D3D9Wrapper::IDirect3DResource9 *)-1)
     {
-        LogInfo("No render target selected for marking\n");
+        LOG_INFO("No render target selected for marking\n");
         return 0;
     }
 
@@ -1602,7 +1602,7 @@ static uint32_t LogRenderTarget(D3D9Wrapper::IDirect3DResource9 *target, char *l
     uint32_t orig_hash = target->resourceHandleInfo.orig_hash;
     struct ResourceHashInfo &info = G->mResourceInfo[orig_hash];
     StrResourceDesc(buf, 256, info);
-    LogInfo("%srender target handle = %p, hash = %08lx, orig_hash = %08lx, %s\n",
+    LOG_INFO("%srender target handle = %p, hash = %08lx, orig_hash = %08lx, %s\n",
         log_prefix, target, hash, orig_hash, buf);
 
     return orig_hash;
@@ -1640,7 +1640,7 @@ static void TuneUp(D3D9Wrapper::IDirect3DDevice9 *device, void *private_data)
         return;
 
     G->gTuneValue[index] += G->gTuneStep;
-    LogInfo("> Value %Ii tuned to %f\n", index + 1, G->gTuneValue[index]);
+    LOG_INFO("> Value %Ii tuned to %f\n", index + 1, G->gTuneValue[index]);
 }
 
 static void TuneDown(D3D9Wrapper::IDirect3DDevice9 *device, void *private_data)
@@ -1651,7 +1651,7 @@ static void TuneDown(D3D9Wrapper::IDirect3DDevice9 *device, void *private_data)
         return;
 
     G->gTuneValue[index] -= G->gTuneStep;
-    LogInfo("> Value %Ii tuned to %f\n", index + 1, G->gTuneValue[index]);
+    LOG_INFO("> Value %Ii tuned to %f\n", index + 1, G->gTuneValue[index]);
 }
 
 // Start with a fresh set of shaders in the scene - either called explicitly
@@ -1707,7 +1707,7 @@ static void ToggleHunting(D3D9Wrapper::IDirect3DDevice9 *device, void *private_d
         G->hunting = HUNTING_MODE_SOFT_DISABLED;
     else
         G->hunting = HUNTING_MODE_ENABLED;
-    LogInfo("> Hunting toggled to %d\n", G->hunting);
+    LOG_INFO("> Hunting toggled to %d\n", G->hunting);
 }
 
 void ParseHuntingSection()
@@ -1718,7 +1718,7 @@ void ParseHuntingSection()
     MarkingMode new_marking_mode;
     static MarkingMode prev_marking_mode = MarkingMode::INVALID;
 
-    LogInfo("[Hunting]\n");
+    LOG_INFO("[Hunting]\n");
     G->hunting = GetIniInt(L"Hunting", L"hunting", 0, NULL, &migoto_ini);
 
     // reload_config is registered even if not hunting - this allows us to

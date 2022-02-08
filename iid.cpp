@@ -274,11 +274,11 @@ static void check_interface(IUnknown *unknown, REFIID riid, char *iid_name, IUnk
         // https://docs.microsoft.com/en-gb/windows/desktop/com/rules-for-implementing-queryinterface
         canonical_test = _check_interface(test, IID_IUnknown);
         if (canonical_test == canonical)
-            LogInfo("  Supports %s: %p\n", iid_name, test);
+            LOG_INFO("  Supports %s: %p\n", iid_name, test);
         else
-            LogInfo("  Supports %s: %p (COM identity violation: %p)\n", iid_name, test, canonical_test);
+            LOG_INFO("  Supports %s: %p (COM identity violation: %p)\n", iid_name, test, canonical_test);
     } else
-        LogDebug("  %s not supported\n", iid_name);
+        LOG_DEBUG("  %s not supported\n", iid_name);
 }
 
 void analyse_iunknown(IUnknown *unknown)
@@ -289,7 +289,7 @@ void analyse_iunknown(IUnknown *unknown)
     if (!unknown)
         return;
 
-    LogInfo("Checking what interfaces %p supports...\n", unknown);
+    LOG_INFO("Checking what interfaces %p supports...\n", unknown);
 
     canonical = _check_interface(unknown, IID_IUnknown);
 
@@ -297,13 +297,13 @@ void analyse_iunknown(IUnknown *unknown)
         check_interface(unknown, known_interfaces[i].iid, known_interfaces[i].name, canonical);
 
 #ifndef NTDDI_WINBLUE
-    LogInfo("  Win 8.1 interfaces not checked (3DMigoto built with old SDK)\n");
+    LOG_INFO("  Win 8.1 interfaces not checked (3DMigoto built with old SDK)\n");
 #endif
 #ifndef NTDDI_WIN10
-    LogInfo("  Win 10 & DX12 interfaces not checked (3DMigoto built with old SDK)\n");
+    LOG_INFO("  Win 10 & DX12 interfaces not checked (3DMigoto built with old SDK)\n");
 #endif
 #ifndef NTDDI_WIN10_RS3
-    LogInfo("  Win 10 RS3 interfaces not checked (3DMigoto built with old SDK)\n");
+    LOG_INFO("  Win 10 RS3 interfaces not checked (3DMigoto built with old SDK)\n");
 #endif
 }
 

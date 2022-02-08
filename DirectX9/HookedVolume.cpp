@@ -7,7 +7,7 @@
 
 
 #if 0
-#define HookDebug LogDebug
+#define HookDebug LOG_DEBUG
 #else
 #define HookDebug(...) do { } while (0)
 #endif

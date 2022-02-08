@@ -48,7 +48,7 @@ const int maxstring = 1024;
 Overlay::Overlay(D3D9Wrapper::IDirect3DDevice9 *pDevice)
 {
     migotoResourceCount = 0;
-    LogInfo("Overlay::Overlay created for HackerDevice: %p\n", pDevice);
+    LOG_INFO("Overlay::Overlay created for HackerDevice: %p\n", pDevice);
 
     mHackerDevice = pDevice;
     saved_state_block = NULL;
@@ -574,7 +574,7 @@ void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    vLogInfoW(fmt, ap);
+    LOG_INFO_W_V(fmt, ap);
 
     // Using _vsnwprintf_s so we don't crash if the message is too long for
     // the buffer, and truncate it instead - unless we can automatically
@@ -595,7 +595,7 @@ void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
 // ASCII version of the above. DirectXTK only understands wide strings, so we
 // need to convert it to that, but we can't just convert the format and hand it
 // to LogOverlayW, because that would reverse the meaning of %s and %S in the
-// format string. Instead we do our own vLogInfo and _vsnprintf_s to handle the
+// format string. Instead we do our own LOG_INFO_V and _vsnprintf_s to handle the
 // format string correctly and convert the result to a wide string.
 void LogOverlay(LogLevel level, char *fmt, ...)
 {
@@ -604,7 +604,7 @@ void LogOverlay(LogLevel level, char *fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    vLogInfo(fmt, ap);
+    LOG_INFO_V(fmt, ap);
 
     if (!log_levels[level].hide_in_release || G->hunting) {
         // Using _vsnprintf_s so we don't crash if the message is too long for

@@ -3,8 +3,8 @@
 
 inline void D3D9Wrapper::IDirect3DVolume9::Delete()
 {
-    LogInfo("IDirect3DVolume9::Delete\n");
-    LogInfo("  deleting self\n");
+    LOG_INFO("IDirect3DVolume9::Delete\n");
+    LOG_INFO("  deleting self\n");
 
     if (m_pRealUnk) m_List.DeleteMember(m_pRealUnk);
     m_pUnk = 0;
@@ -39,11 +39,11 @@ D3D9Wrapper::IDirect3DVolume9* D3D9Wrapper::IDirect3DVolume9::GetDirect3DVolume9
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::QueryInterface(THIS_ REFIID riid, void ** ppvObj)
 {
-    LogDebug("D3D9Wrapper::IDirect3DVolume9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
+    LOG_DEBUG("D3D9Wrapper::IDirect3DVolume9::QueryInterface called\n");// at 'this': %s\n", type_name_dx9((IUnknown*)this));
     HRESULT hr = NULL;
     if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
         return hr;
-    LogInfo("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
+    LOG_INFO("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
     hr = m_pUnk->QueryInterface(riid, ppvObj);
     if (hr == S_OK) {
         if ((*ppvObj) == GetRealOrig()) {
@@ -52,8 +52,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::QueryInterface(THIS_ REFIID riid, vo
                 ++m_ulRef;
                 ++m_OwningContainer->shared_ref_count;
                 zero_d3d_ref_count = false;
-                LogInfo("  interface replaced with IDirect3DVolume9 wrapper.\n");
-                LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+                LOG_INFO("  interface replaced with IDirect3DVolume9 wrapper.\n");
+                LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
                 return hr;
             }
         }
@@ -61,7 +61,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::QueryInterface(THIS_ REFIID riid, vo
         if (unk)
             *ppvObj = unk;
     }
-    LogInfo("  result = %x, handle = %p\n", hr, *ppvObj);
+    LOG_INFO("  result = %x, handle = %p\n", hr, *ppvObj);
     return hr;
 }
 
@@ -75,16 +75,16 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVolume9::AddRef(THIS)
 
 STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVolume9::Release(THIS)
 {
-    LogDebug("IDirect3DVolume9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
+    LOG_DEBUG("IDirect3DVolume9::Release handle=%p, counter=%d, this=%p\n", m_pUnk, m_ulRef, this);
 
     ULONG ulRef = m_pUnk ? m_pUnk->Release() : 0;
-    LogDebug("  internal counter = %d\n", ulRef);
+    LOG_DEBUG("  internal counter = %d\n", ulRef);
 
     --m_ulRef;
     bool prev_non_zero = !zero_d3d_ref_count;
     if (ulRef == 0)
     {
-        if (!gLogDebug) LogInfo("IDirect3DVolume9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
+        if (!gLogDebug) LOG_INFO("IDirect3DVolume9::Release handle=%p, counter=%d, internal counter = %d\n", m_pUnk, m_ulRef, ulRef);
         zero_d3d_ref_count = true;
     }
     if (prev_non_zero) {
@@ -97,7 +97,7 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DVolume9::Release(THIS)
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::GetDevice(THIS_ D3D9Wrapper::IDirect3DDevice9** ppDevice)
 {
-    LogDebug("IDirect3DVolume9::GetDevice called\n");
+    LOG_DEBUG("IDirect3DVolume9::GetDevice called\n");
 
     CheckVolume9(this);
     HRESULT hr;
@@ -119,7 +119,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::GetDevice(THIS_ D3D9Wrapper::IDirect
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::SetPrivateData(THIS_ REFGUID refguid, CONST void* pData, DWORD SizeOfData, DWORD Flags)
 {
-    LogDebug("IDirect3DVolume9::SetPrivateData called\n");
+    LOG_DEBUG("IDirect3DVolume9::SetPrivateData called\n");
 
     CheckVolume9(this);
     return GetD3DVolume9()->SetPrivateData(refguid, pData, SizeOfData, Flags);
@@ -127,7 +127,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::SetPrivateData(THIS_ REFGUID refguid
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::GetPrivateData(THIS_ REFGUID refguid, void* pData, DWORD* pSizeOfData)
 {
-    LogDebug("IDirect3DVolume9::GetPrivateData called\n");
+    LOG_DEBUG("IDirect3DVolume9::GetPrivateData called\n");
 
     CheckVolume9(this);
     return GetD3DVolume9()->GetPrivateData(refguid, pData, pSizeOfData);
@@ -135,7 +135,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::GetPrivateData(THIS_ REFGUID refguid
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::FreePrivateData(THIS_ REFGUID refguid)
 {
-    LogDebug("IDirect3DVolume9::GetPrivateData called\n");
+    LOG_DEBUG("IDirect3DVolume9::GetPrivateData called\n");
 
     CheckVolume9(this);
     return GetD3DVolume9()->FreePrivateData(refguid);
@@ -143,7 +143,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::FreePrivateData(THIS_ REFGUID refgui
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::GetContainer(THIS_ REFIID riid, void** ppContainer)
 {
-    LogDebug("IDirect3DVolume9::GetContainer called\n");
+    LOG_DEBUG("IDirect3DVolume9::GetContainer called\n");
 
     CheckVolume9(this);
     HRESULT hr;
@@ -174,7 +174,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::GetContainer(THIS_ REFIID riid, void
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::GetDesc(THIS_ ::D3DVOLUME_DESC *pDesc)
 {
-    LogDebug("IDirect3DVolume9::GetDesc called\n");
+    LOG_DEBUG("IDirect3DVolume9::GetDesc called\n");
 
     CheckVolume9(this);
     return GetD3DVolume9()->GetDesc(pDesc);
@@ -182,7 +182,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::GetDesc(THIS_ ::D3DVOLUME_DESC *pDes
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::LockBox(THIS_ ::D3DLOCKED_BOX *pLockedVolume, CONST ::D3DBOX *pBox, DWORD Flags)
 {
-    LogDebug("IDirect3DVolume9::LockBox called\n");
+    LOG_DEBUG("IDirect3DVolume9::LockBox called\n");
 
     CheckVolume9(this);
     return GetD3DVolume9()->LockBox(pLockedVolume, pBox, Flags);
@@ -190,7 +190,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::LockBox(THIS_ ::D3DLOCKED_BOX *pLock
 
 STDMETHODIMP D3D9Wrapper::IDirect3DVolume9::UnlockBox(THIS)
 {
-    LogDebug("IDirect3DVolume9::UnlockBox called\n");
+    LOG_DEBUG("IDirect3DVolume9::UnlockBox called\n");
 
     CheckVolume9(this);
     return GetD3DVolume9()->UnlockBox();
