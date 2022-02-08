@@ -39,7 +39,7 @@ enum class FrameAnalysisOptions;
 // should be more than generous - I don't want it to be too low and stifle
 // people's imagination, but I'd be very surprised if anyone ever has a
 // legitimate need to exceed this:
-#define MAX_COMMAND_LIST_RECURSION 64
+constexpr int max_command_list_recursion = 64;
 
 typedef HRESULT(*CopyLevelSur)(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, ::IDirect3DSurface9 *srcLev, ::IDirect3DSurface9 *dstLev, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect);
 typedef HRESULT(*CopyLevelVol)(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, ::IDirect3DVolume9 *srcLev, ::IDirect3DVolume9 *dstLev, D3D3DTEXTURE_DESC *srcDesc, D3D3DTEXTURE_DESC *dstDesc, ::D3DBOX *srcRect, ::D3DBOX *dstRect);

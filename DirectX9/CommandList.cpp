@@ -226,7 +226,7 @@ static void _RunCommandList(CommandList *command_list, CommandListState *state, 
     CommandList::Commands::iterator i;
     command_list_profiling_state profiling_state;
 
-    if (state->recursion > MAX_COMMAND_LIST_RECURSION) {
+    if (state->recursion > max_command_list_recursion) {
         LogOverlay(LOG_WARNING, "WARNING: Command list recursion limit exceeded! Circular reference?\n");
         return;
     }
