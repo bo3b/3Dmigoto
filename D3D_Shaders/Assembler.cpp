@@ -13,7 +13,7 @@ using namespace std;
 #endif
 
 // for sscanf_s convinience. Explanation in DecompileHLSL.cpp
-#define UCOUNTOF(...) (unsigned)_countof(__VA_ARGS__)
+#define U_COUNT_OF(...) (unsigned)_countof(__VA_ARGS__)
 
 static unordered_map<string, vector<DWORD>> codeBin;
 
@@ -2695,8 +2695,8 @@ static inline void patch_d3dcompiler_47_rdef(string *line, int *rdef_state)
             return;
         }
         numRead = sscanf_s(line->c_str(), "// %s %s %s %s %[a-z]%d %d",
-            name, UCOUNTOF(name), type, UCOUNTOF(type), format, UCOUNTOF(format), dim, UCOUNTOF(dim),
-            &bind_type, UCOUNTOF(bind_type), &bind_idx, &count);
+            name, U_COUNT_OF(name), type, U_COUNT_OF(type), format, U_COUNT_OF(format), dim, U_COUNT_OF(dim),
+            &bind_type, U_COUNT_OF(bind_type), &bind_idx, &count);
         if (numRead == 7) {
             vector<char> buf(line->length() + 1); // d3dcompiler_47 lines should always be longer
             _snprintf_s(buf.data(), buf.size(), _TRUNCATE,
