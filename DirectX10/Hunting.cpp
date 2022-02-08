@@ -154,7 +154,7 @@ static void DumpUsage()
     }
     else
     {
-        LogInfo("Error dumping ShaderUsage.txt\n");
+        LOG_INFO("Error dumping ShaderUsage.txt\n");
 
     }
 }
@@ -176,7 +176,7 @@ static AsmTextBlob* GetDisassembly(D3D10Base::ID3DBlob* pCode)
         &disassembly);
     if (FAILED(ret))
     {
-        LogInfo("    disassembly of original shader failed:\n");
+        LOG_INFO("    disassembly of original shader failed:\n");
         return NULL;
     }
 
@@ -201,7 +201,7 @@ static bool WriteHLSL(string hlslText, AsmTextBlob* asmTextBlob, UINT64 hash, ws
     _wfopen_s(&fw, fullName, L"rb");
     if (fw)
     {
-        LogInfoW(L"    marked shader file already exists: %s\n", fullName);
+        LOG_INFO_W(L"    marked shader file already exists: %s\n", fullName);
         fclose(fw);
         _wfopen_s(&fw, fullName, L"ab");
         if (fw) {
@@ -215,11 +215,11 @@ static bool WriteHLSL(string hlslText, AsmTextBlob* asmTextBlob, UINT64 hash, ws
     _wfopen_s(&fw, fullName, L"wb");
     if (!fw)
     {
-        LogInfoW(L"    error storing marked shader to %s\n", fullName);
+        LOG_INFO_W(L"    error storing marked shader to %s\n", fullName);
         return false;
     }
 
-    LogInfoW(L"    storing patched shader to %s\n", fullName);
+    LOG_INFO_W(L"    storing patched shader to %s\n", fullName);
 
     fwrite(hlslText.c_str(), 1, hlslText.size(), fw);
 
@@ -239,7 +239,7 @@ static bool WriteHLSL(string hlslText, AsmTextBlob* asmTextBlob, UINT64 hash, ws
 
 static string Decompile(D3D10Base::ID3DBlob* pShaderByteCode, AsmTextBlob* disassembly)
 {
-    LogInfo("    creating HLSL representation.\n");
+    LOG_INFO("    creating HLSL representation.\n");
 
     bool patched = false;
     string shaderModel;
@@ -276,7 +276,7 @@ static string Decompile(D3D10Base::ID3DBlob* pShaderByteCode, AsmTextBlob* disas
 
     if (!decompiledCode.size())
     {
-        LogInfo("    error while decompiling.\n");
+        LOG_INFO("    error while decompiling.\n");
     }
 
     return decompiledCode;
@@ -298,7 +298,7 @@ static bool WriteDisassembly(UINT64 hash, wstring shaderType, AsmTextBlob* asmTe
     _wfopen_s(&f, fullName, L"rb");
     if (f)
     {
-        LogInfoW(L"    Shader Mark .bin file already exists: %s\n", fullName);
+        LOG_INFO_W(L"    Shader Mark .bin file already exists: %s\n", fullName);
         fclose(f);
         return false;
     }
@@ -306,14 +306,14 @@ static bool WriteDisassembly(UINT64 hash, wstring shaderType, AsmTextBlob* asmTe
     _wfopen_s(&f, fullName, L"wb");
     if (!f)
     {
-        LogInfoW(L"    Shader Mark could not write asm text file: %s\n", fullName);
+        LOG_INFO_W(L"    Shader Mark could not write asm text file: %s\n", fullName);
         return false;
     }
 
     // Size - 1 to strip NULL terminator
     fwrite(asmTextBlob->GetBufferPointer(), 1, asmTextBlob->GetBufferSize() - 1, f);
     fclose(f);
-    LogInfoW(L"    storing disassembly to %s\n", fullName);
+    LOG_INFO_W(L"    storing disassembly to %s\n", fullName);
 
     return true;
 }
@@ -354,7 +354,7 @@ static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
     HANDLE f = CreateFile(fullName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (f == INVALID_HANDLE_VALUE)
     {
-        LogInfo("    ReloadShader shader not found: %ls\n", fullName);
+        LOG_INFO("    ReloadShader shader not found: %ls\n", fullName);
 
         return true;
     }
@@ -369,7 +369,7 @@ static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
         || !GetFileTime(f, NULL, NULL, &curFileTime)
         || srcDataSize != readSize)
     {
-        LogInfo("    Error reading txt file.\n");
+        LOG_INFO("    Error reading txt file.\n");
 
         return true;
     }
@@ -383,9 +383,9 @@ static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
     }
     *timeStamp = curFileTime;
 
-    LogInfo("   >Replacement shader found. Re-Loading replacement HLSL code from %ls\n", fileName);
-    LogInfo("    Reload source code loaded. Size = %d\n", srcDataSize);
-    LogInfo("    compiling replacement HLSL code with shader model %s\n", shaderModel);
+    LOG_INFO("   >Replacement shader found. Re-Loading replacement HLSL code from %ls\n", fileName);
+    LOG_INFO("    Reload source code loaded. Size = %d\n", srcDataSize);
+    LOG_INFO("    compiling replacement HLSL code with shader model %s\n", shaderModel);
 
 
     D3D10Base::ID3DBlob* pByteCode = nullptr;
@@ -407,15 +407,15 @@ static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
     //    pCompiledOutput->Release(); pCompiledOutput = 0;
     //}
 
-    LogInfo("    compile result of replacement HLSL shader: %x\n", ret);
+    LOG_INFO("    compile result of replacement HLSL shader: %x\n", ret);
 
     if (gLogFile && pErrorMsgs)
     {
         LPVOID errMsg = pErrorMsgs->GetBufferPointer();
         SIZE_T errSize = pErrorMsgs->GetBufferSize();
-        LogInfo("--------------------------------------------- BEGIN ---------------------------------------------\n");
+        LOG_INFO("--------------------------------------------- BEGIN ---------------------------------------------\n");
         fwrite(errMsg, 1, errSize - 1, gLogFile);
-        LogInfo("---------------------------------------------- END ----------------------------------------------\n");
+        LOG_INFO("---------------------------------------------- END ----------------------------------------------\n");
         pErrorMsgs->Release();
     }
 
@@ -442,9 +442,9 @@ static bool CompileShader(wchar_t *shaderFixPath, wchar_t *fileName, const char 
             char fileName[MAX_PATH];
             wcstombs(fileName, val, MAX_PATH);
             if (fw)
-                LogInfo("    storing compiled shader to %s\n", fileName);
+                LOG_INFO("    storing compiled shader to %s\n", fileName);
             else
-                LogInfo("    error writing compiled shader to %s\n", fileName);
+                LOG_INFO("    error writing compiled shader to %s\n", fileName);
         }
         if (fw)
         {
@@ -525,7 +525,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D10Base::ID3D
             // Just skip it in that case, because the new version will be loaded when it is used.
             if (oldShader == NULL)
             {
-                LogInfo("> failed to find original shader in mReloadedShaders: %ls\n", fileName);
+                LOG_INFO("> failed to find original shader in mReloadedShaders: %ls\n", fileName);
                 continue;
             }
 
@@ -579,7 +579,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D10Base::ID3D
             shaderCode->Release();
             G->mReloadedShaders[oldShader].byteCode = pShaderBytecode;
 
-            LogInfo("> successfully reloaded shader: %ls\n", fileName);
+            LOG_INFO("> successfully reloaded shader: %ls\n", fileName);
         }
     }    // for every registered shader in mReloadedShaders 
 
@@ -636,12 +636,12 @@ static void CopyToFixes(UINT64 hash, D3D10Base::ID3D10Device *device)
     if (success)
     {
         BeepSuccess();            // High beep for success, to notify it's running fresh fixes.
-        LogInfo("> successfully copied Marked shader to ShaderFixes\n");
+        LOG_INFO("> successfully copied Marked shader to ShaderFixes\n");
     }
     else
     {
         BeepFailure();            // Bonk sound for failure.
-        LogInfo("> FAILED to copy Marked shader to ShaderFixes\n");
+        LOG_INFO("> FAILED to copy Marked shader to ShaderFixes\n");
     }
 }
 
@@ -649,7 +649,7 @@ static void CopyToFixes(UINT64 hash, D3D10Base::ID3D10Device *device)
 // Key binding callbacks
 static void TakeScreenShot(D3D10Base::ID3D10Device *device, void *private_data)
 {
-    LogInfo("> capturing screenshot\n");
+    LOG_INFO("> capturing screenshot\n");
 
     D3D10Wrapper::ID3D10Device* wrapped = (D3D10Wrapper::ID3D10Device*) D3D10Wrapper::ID3D10Device::m_List.GetDataPtr(device);
     if (wrapped->mStereoHandle)
@@ -658,7 +658,7 @@ static void TakeScreenShot(D3D10Base::ID3D10Device *device, void *private_data)
         err = D3D10Base::NvAPI_Stereo_CapturePngImage(wrapped->mStereoHandle);
         if (err != D3D10Base::NVAPI_OK)
         {
-            LogInfo("> screenshot failed, error:%d\n", err);
+            LOG_INFO("> screenshot failed, error:%d\n", err);
             BeepFailure2();        // Brnk, dunk sound for failure.
         }
     }
@@ -666,7 +666,7 @@ static void TakeScreenShot(D3D10Base::ID3D10Device *device, void *private_data)
 
 static void ReloadFixes(D3D10Base::ID3D10Device *device, void *private_data)
 {
-    LogInfo("> reloading *_replace.txt fixes from ShaderFixes\n");
+    LOG_INFO("> reloading *_replace.txt fixes from ShaderFixes\n");
 
     if (G->SHADER_PATH[0])
     {
@@ -690,25 +690,25 @@ static void ReloadFixes(D3D10Base::ID3D10Device *device, void *private_data)
         if (success)
         {
             BeepSuccess();        // High beep for success, to notify it's running fresh fixes.
-            LogInfo("> successfully reloaded shaders from ShaderFixes\n");
+            LOG_INFO("> successfully reloaded shaders from ShaderFixes\n");
         }
         else
         {
             BeepFailure();            // Bonk sound for failure.
-            LogInfo("> FAILED to reload shaders from ShaderFixes\n");
+            LOG_INFO("> FAILED to reload shaders from ShaderFixes\n");
         }
     }
 }
 
 static void DisableFix(D3D10Base::ID3D10Device *device, void *private_data)
 {
-    LogInfo("show_original pressed - switching to original shaders\n");
+    LOG_INFO("show_original pressed - switching to original shaders\n");
     G->fix_enabled = false;
 }
 
 static void EnableFix(D3D10Base::ID3D10Device *device, void *private_data)
 {
-    LogInfo("show_original released - switching to replaced shaders\n");
+    LOG_INFO("show_original released - switching to replaced shaders\n");
     G->fix_enabled = true;
 }
 
@@ -720,19 +720,19 @@ static void NextIndexBuffer(D3D10Base::ID3D10Device *device, void *private_data)
     {
         G->mSelectedIndexBuffer = *i;
         G->mSelectedIndexBufferPos++;
-        LogInfo("> traversing to next index buffer #%d. Number of index buffers in frame: %Iu\n", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
+        LOG_INFO("> traversing to next index buffer #%d. Number of index buffers in frame: %Iu\n", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
     }
     if (i == G->mVisitedIndexBuffers.end() && ++G->mSelectedIndexBufferPos < G->mVisitedIndexBuffers.size() && G->mSelectedIndexBufferPos >= 0)
     {
         i = G->mVisitedIndexBuffers.begin();
         std::advance(i, G->mSelectedIndexBufferPos);
         G->mSelectedIndexBuffer = *i;
-        LogInfo("> last index buffer lost. traversing to next index buffer #%d. Number of index buffers in frame: %Iu\n", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
+        LOG_INFO("> last index buffer lost. traversing to next index buffer #%d. Number of index buffers in frame: %Iu\n", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
     }
     if (i == G->mVisitedIndexBuffers.end() && G->mVisitedIndexBuffers.size() != 0)
     {
         G->mSelectedIndexBufferPos = 0;
-        LogInfo("> traversing to index buffer #0. Number of index buffers in frame: %Iu\n", G->mVisitedIndexBuffers.size());
+        LOG_INFO("> traversing to index buffer #0. Number of index buffers in frame: %Iu\n", G->mVisitedIndexBuffers.size());
 
         G->mSelectedIndexBuffer = *G->mVisitedIndexBuffers.begin();
     }
@@ -748,19 +748,19 @@ static void PrevIndexBuffer(D3D10Base::ID3D10Device *device, void *private_data)
         --i;
         G->mSelectedIndexBuffer = *i;
         G->mSelectedIndexBufferPos--;
-        LogInfo("> traversing to previous index buffer #%d. Number of index buffers in frame: %Iu\n", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
+        LOG_INFO("> traversing to previous index buffer #%d. Number of index buffers in frame: %Iu\n", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
     }
     if (i == G->mVisitedIndexBuffers.end() && --G->mSelectedIndexBufferPos < G->mVisitedIndexBuffers.size() && G->mSelectedIndexBufferPos >= 0)
     {
         i = G->mVisitedIndexBuffers.begin();
         std::advance(i, G->mSelectedIndexBufferPos);
         G->mSelectedIndexBuffer = *i;
-        LogInfo("> last index buffer lost. traversing to previous index buffer #%d. Number of index buffers in frame: %Iu\n", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
+        LOG_INFO("> last index buffer lost. traversing to previous index buffer #%d. Number of index buffers in frame: %Iu\n", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
     }
     if (i == G->mVisitedIndexBuffers.end() && G->mVisitedIndexBuffers.size() != 0)
     {
         G->mSelectedIndexBufferPos = 0;
-        LogInfo("> traversing to index buffer #0. Number of index buffers in frame: %Iu\n", G->mVisitedIndexBuffers.size());
+        LOG_INFO("> traversing to index buffer #0. Number of index buffers in frame: %Iu\n", G->mVisitedIndexBuffers.size());
 
         G->mSelectedIndexBuffer = *G->mVisitedIndexBuffers.begin();
     }
@@ -771,11 +771,11 @@ static void MarkIndexBuffer(D3D10Base::ID3D10Device *device, void *private_data)
 {
     if (gLogFile)
     {
-        LogInfo(">>>> Index buffer marked: index buffer hash = %08lx%08lx\n", (UINT32)(G->mSelectedIndexBuffer >> 32), (UINT32)G->mSelectedIndexBuffer);
+        LOG_INFO(">>>> Index buffer marked: index buffer hash = %08lx%08lx\n", (UINT32)(G->mSelectedIndexBuffer >> 32), (UINT32)G->mSelectedIndexBuffer);
         for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_PixelShader.begin(); i != G->mSelectedIndexBuffer_PixelShader.end(); ++i)
-            LogInfo("     visited pixel shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
+            LOG_INFO("     visited pixel shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
         for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_VertexShader.begin(); i != G->mSelectedIndexBuffer_VertexShader.end(); ++i)
-            LogInfo("     visited vertex shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
+            LOG_INFO("     visited vertex shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
     }
     if (G->DumpUsage) DumpUsage();
 }
@@ -788,19 +788,19 @@ static void NextPixelShader(D3D10Base::ID3D10Device *device, void *private_data)
     {
         G->mSelectedPixelShader = *i;
         G->mSelectedPixelShaderPos++;
-        LogInfo("> traversing to next pixel shader #%d. Number of pixel shaders in frame: %Iu\n", G->mSelectedPixelShaderPos, G->mVisitedPixelShaders.size());
+        LOG_INFO("> traversing to next pixel shader #%d. Number of pixel shaders in frame: %Iu\n", G->mSelectedPixelShaderPos, G->mVisitedPixelShaders.size());
     }
     if (i == G->mVisitedPixelShaders.end() && ++G->mSelectedPixelShaderPos < G->mVisitedPixelShaders.size() && G->mSelectedPixelShaderPos >= 0)
     {
         i = G->mVisitedPixelShaders.begin();
         std::advance(i, G->mSelectedPixelShaderPos);
         G->mSelectedPixelShader = *i;
-        LogInfo("> last pixel shader lost. traversing to next pixel shader #%d. Number of pixel shaders in frame: %Iu\n", G->mSelectedPixelShaderPos, G->mVisitedPixelShaders.size());
+        LOG_INFO("> last pixel shader lost. traversing to next pixel shader #%d. Number of pixel shaders in frame: %Iu\n", G->mSelectedPixelShaderPos, G->mVisitedPixelShaders.size());
     }
     if (i == G->mVisitedPixelShaders.end() && G->mVisitedPixelShaders.size() != 0)
     {
         G->mSelectedPixelShaderPos = 0;
-        LogInfo("> traversing to pixel shader #0. Number of pixel shaders in frame: %Iu\n", G->mVisitedPixelShaders.size());
+        LOG_INFO("> traversing to pixel shader #0. Number of pixel shaders in frame: %Iu\n", G->mVisitedPixelShaders.size());
 
         G->mSelectedPixelShader = *G->mVisitedPixelShaders.begin();
     }
@@ -816,19 +816,19 @@ static void PrevPixelShader(D3D10Base::ID3D10Device *device, void *private_data)
         --i;
         G->mSelectedPixelShader = *i;
         G->mSelectedPixelShaderPos--;
-        LogInfo("> traversing to previous pixel shader #%d. Number of pixel shaders in frame: %Iu\n", G->mSelectedPixelShaderPos, G->mVisitedPixelShaders.size());
+        LOG_INFO("> traversing to previous pixel shader #%d. Number of pixel shaders in frame: %Iu\n", G->mSelectedPixelShaderPos, G->mVisitedPixelShaders.size());
     }
     if (i == G->mVisitedPixelShaders.end() && --G->mSelectedPixelShaderPos < G->mVisitedPixelShaders.size() && G->mSelectedPixelShaderPos >= 0)
     {
         i = G->mVisitedPixelShaders.begin();
         std::advance(i, G->mSelectedPixelShaderPos);
         G->mSelectedPixelShader = *i;
-        LogInfo("> last pixel shader lost. traversing to previous pixel shader #%d. Number of pixel shaders in frame: %Iu\n", G->mSelectedPixelShaderPos, G->mVisitedPixelShaders.size());
+        LOG_INFO("> last pixel shader lost. traversing to previous pixel shader #%d. Number of pixel shaders in frame: %Iu\n", G->mSelectedPixelShaderPos, G->mVisitedPixelShaders.size());
     }
     if (i == G->mVisitedPixelShaders.end() && G->mVisitedPixelShaders.size() != 0)
     {
         G->mSelectedPixelShaderPos = 0;
-        LogInfo("> traversing to pixel shader #0. Number of pixel shaders in frame: %Iu\n", G->mVisitedPixelShaders.size());
+        LOG_INFO("> traversing to pixel shader #0. Number of pixel shaders in frame: %Iu\n", G->mVisitedPixelShaders.size());
 
         G->mSelectedPixelShader = *G->mVisitedPixelShaders.begin();
     }
@@ -840,21 +840,21 @@ static void MarkPixelShader(D3D10Base::ID3D10Device *device, void *private_data)
     if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
     if (gLogFile)
     {
-        LogInfo(">>>> Pixel shader marked: pixel shader hash = %08lx%08lx\n", (UINT32)(G->mSelectedPixelShader >> 32), (UINT32)G->mSelectedPixelShader);
+        LOG_INFO(">>>> Pixel shader marked: pixel shader hash = %08lx%08lx\n", (UINT32)(G->mSelectedPixelShader >> 32), (UINT32)G->mSelectedPixelShader);
         for (std::set<UINT64>::iterator i = G->mSelectedPixelShader_IndexBuffer.begin(); i != G->mSelectedPixelShader_IndexBuffer.end(); ++i)
-            LogInfo("     visited index buffer hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
+            LOG_INFO("     visited index buffer hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
         for (std::set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PartnerShader.end(); ++i)
-            LogInfo("     visited vertex shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
+            LOG_INFO("     visited vertex shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
     }
     CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(G->mSelectedPixelShader);
     if (i != G->mCompiledShaderMap.end())
     {
-        LogInfo("       pixel shader was compiled from source code %s\n", i->second.c_str());
+        LOG_INFO("       pixel shader was compiled from source code %s\n", i->second.c_str());
     }
     i = G->mCompiledShaderMap.find(G->mSelectedVertexShader);
     if (i != G->mCompiledShaderMap.end())
     {
-        LogInfo("       vertex shader was compiled from source code %s\n", i->second.c_str());
+        LOG_INFO("       vertex shader was compiled from source code %s\n", i->second.c_str());
     }
     // Copy marked shader to ShaderFixes
     CopyToFixes(G->mSelectedPixelShader, device);
@@ -870,19 +870,19 @@ static void NextVertexShader(D3D10Base::ID3D10Device *device, void *private_data
     {
         G->mSelectedVertexShader = *i;
         G->mSelectedVertexShaderPos++;
-        LogInfo("> traversing to next vertex shader #%d. Number of vertex shaders in frame: %Iu\n", G->mSelectedVertexShaderPos, G->mVisitedVertexShaders.size());
+        LOG_INFO("> traversing to next vertex shader #%d. Number of vertex shaders in frame: %Iu\n", G->mSelectedVertexShaderPos, G->mVisitedVertexShaders.size());
     }
     if (i == G->mVisitedVertexShaders.end() && ++G->mSelectedVertexShaderPos < G->mVisitedVertexShaders.size() && G->mSelectedVertexShaderPos >= 0)
     {
         i = G->mVisitedVertexShaders.begin();
         std::advance(i, G->mSelectedVertexShaderPos);
         G->mSelectedVertexShader = *i;
-        LogInfo("> last vertex shader lost. traversing to previous vertex shader #%d. Number of vertex shaders in frame: %Iu\n", G->mSelectedVertexShaderPos, G->mVisitedVertexShaders.size());
+        LOG_INFO("> last vertex shader lost. traversing to previous vertex shader #%d. Number of vertex shaders in frame: %Iu\n", G->mSelectedVertexShaderPos, G->mVisitedVertexShaders.size());
     }
     if (i == G->mVisitedVertexShaders.end() && G->mVisitedVertexShaders.size() != 0)
     {
         G->mSelectedVertexShaderPos = 0;
-        LogInfo("> traversing to vertex shader #0. Number of vertex shaders in frame: %Iu\n", G->mVisitedVertexShaders.size());
+        LOG_INFO("> traversing to vertex shader #0. Number of vertex shaders in frame: %Iu\n", G->mVisitedVertexShaders.size());
 
         G->mSelectedVertexShader = *G->mVisitedVertexShaders.begin();
     }
@@ -898,19 +898,19 @@ static void PrevVertexShader(D3D10Base::ID3D10Device *device, void *private_data
         --i;
         G->mSelectedVertexShader = *i;
         G->mSelectedVertexShaderPos--;
-        LogInfo("> traversing to previous vertex shader #%d. Number of vertex shaders in frame: %Iu\n", G->mSelectedVertexShaderPos, G->mVisitedVertexShaders.size());
+        LOG_INFO("> traversing to previous vertex shader #%d. Number of vertex shaders in frame: %Iu\n", G->mSelectedVertexShaderPos, G->mVisitedVertexShaders.size());
     }
     if (i == G->mVisitedVertexShaders.end() && --G->mSelectedVertexShaderPos < G->mVisitedVertexShaders.size() && G->mSelectedVertexShaderPos >= 0)
     {
         i = G->mVisitedVertexShaders.begin();
         std::advance(i, G->mSelectedVertexShaderPos);
         G->mSelectedVertexShader = *i;
-        LogInfo("> last vertex shader lost. traversing to previous vertex shader #%d. Number of vertex shaders in frame: %Iu\n", G->mSelectedVertexShaderPos, G->mVisitedVertexShaders.size());
+        LOG_INFO("> last vertex shader lost. traversing to previous vertex shader #%d. Number of vertex shaders in frame: %Iu\n", G->mSelectedVertexShaderPos, G->mVisitedVertexShaders.size());
     }
     if (i == G->mVisitedVertexShaders.end() && G->mVisitedVertexShaders.size() != 0)
     {
         G->mSelectedVertexShaderPos = 0;
-        LogInfo("> traversing to vertex shader #0. Number of vertex shaders in frame: %Iu\n", G->mVisitedVertexShaders.size());
+        LOG_INFO("> traversing to vertex shader #0. Number of vertex shaders in frame: %Iu\n", G->mVisitedVertexShaders.size());
 
         G->mSelectedVertexShader = *G->mVisitedVertexShaders.begin();
     }
@@ -922,17 +922,17 @@ static void MarkVertexShader(D3D10Base::ID3D10Device *device, void *private_data
     if (G->ENABLE_CRITICAL_SECTION) EnterCriticalSection(&G->mCriticalSection);
     if (gLogFile)
     {
-        LogInfo(">>>> Vertex shader marked: vertex shader hash = %08lx%08lx\n", (UINT32)(G->mSelectedVertexShader >> 32), (UINT32)G->mSelectedVertexShader);
+        LOG_INFO(">>>> Vertex shader marked: vertex shader hash = %08lx%08lx\n", (UINT32)(G->mSelectedVertexShader >> 32), (UINT32)G->mSelectedVertexShader);
         for (std::set<UINT64>::iterator i = G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.begin(); i != G->mVertexShaderInfo[G->mSelectedVertexShader].PartnerShader.end(); ++i)
-            LogInfo("     visited pixel shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
+            LOG_INFO("     visited pixel shader hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
         for (std::set<UINT64>::iterator i = G->mSelectedVertexShader_IndexBuffer.begin(); i != G->mSelectedVertexShader_IndexBuffer.end(); ++i)
-            LogInfo("     visited index buffer hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
+            LOG_INFO("     visited index buffer hash = %08lx%08lx\n", (UINT32)(*i >> 32), (UINT32)*i);
     }
 
     CompiledShaderMap::iterator i = G->mCompiledShaderMap.find(G->mSelectedVertexShader);
     if (i != G->mCompiledShaderMap.end())
     {
-        LogInfo("       shader was compiled from source code %s\n", i->second.c_str());
+        LOG_INFO("       shader was compiled from source code %s\n", i->second.c_str());
     }
     // Copy marked shader to ShaderFixes
     CopyToFixes(G->mSelectedVertexShader, device);
@@ -948,19 +948,19 @@ static void NextRenderTarget(D3D10Base::ID3D10Device *device, void *private_data
     {
         G->mSelectedRenderTarget = *i;
         G->mSelectedRenderTargetPos++;
-        LogInfo("> traversing to next render target #%d. Number of render targets in frame: %Iu\n", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
+        LOG_INFO("> traversing to next render target #%d. Number of render targets in frame: %Iu\n", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
     }
     if (i == G->mVisitedRenderTargets.end() && ++G->mSelectedRenderTargetPos < G->mVisitedRenderTargets.size() && G->mSelectedRenderTargetPos >= 0)
     {
         i = G->mVisitedRenderTargets.begin();
         std::advance(i, G->mSelectedRenderTargetPos);
         G->mSelectedRenderTarget = *i;
-        LogInfo("> last render target lost. traversing to next render target #%d. Number of render targets frame: %Iu\n", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
+        LOG_INFO("> last render target lost. traversing to next render target #%d. Number of render targets frame: %Iu\n", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
     }
     if (i == G->mVisitedRenderTargets.end() && G->mVisitedRenderTargets.size() != 0)
     {
         G->mSelectedRenderTargetPos = 0;
-        LogInfo("> traversing to render target #0. Number of render targets in frame: %Iu\n", G->mVisitedRenderTargets.size());
+        LOG_INFO("> traversing to render target #0. Number of render targets in frame: %Iu\n", G->mVisitedRenderTargets.size());
 
         G->mSelectedRenderTarget = *G->mVisitedRenderTargets.begin();
     }
@@ -976,19 +976,19 @@ static void PrevRenderTarget(D3D10Base::ID3D10Device *device, void *private_data
         --i;
         G->mSelectedRenderTarget = *i;
         G->mSelectedRenderTargetPos--;
-        LogInfo("> traversing to previous render target #%d. Number of render targets in frame: %Iu\n", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
+        LOG_INFO("> traversing to previous render target #%d. Number of render targets in frame: %Iu\n", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
     }
     if (i == G->mVisitedRenderTargets.end() && --G->mSelectedRenderTargetPos < G->mVisitedRenderTargets.size() && G->mSelectedRenderTargetPos >= 0)
     {
         i = G->mVisitedRenderTargets.begin();
         std::advance(i, G->mSelectedRenderTargetPos);
         G->mSelectedRenderTarget = *i;
-        LogInfo("> last render target lost. traversing to previous render target #%d. Number of render targets in frame: %Iu\n", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
+        LOG_INFO("> last render target lost. traversing to previous render target #%d. Number of render targets in frame: %Iu\n", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
     }
     if (i == G->mVisitedRenderTargets.end() && G->mVisitedRenderTargets.size() != 0)
     {
         G->mSelectedRenderTargetPos = 0;
-        LogInfo("> traversing to render target #0. Number of render targets in frame: %Iu\n", G->mVisitedRenderTargets.size());
+        LOG_INFO("> traversing to render target #0. Number of render targets in frame: %Iu\n", G->mVisitedRenderTargets.size());
 
         G->mSelectedRenderTarget = *G->mVisitedRenderTargets.begin();
     }
@@ -1000,14 +1000,14 @@ static void LogRenderTarget(void *target, char *log_prefix)
     char buf[256];
 
     if (!target || target == (void *)1) {
-        LogInfo("No render target selected for marking\n");
+        LOG_INFO("No render target selected for marking\n");
         return;
     }
 
     UINT64 hash = G->mRenderTargets[target];
     struct ResourceInfo &info = G->mRenderTargetInfo[hash];
     StrRenderTarget(buf, 256, info);
-    LogInfo("%srender target handle = %p, hash = %.16llx, %s\n",
+    LOG_INFO("%srender target handle = %p, hash = %.16llx, %s\n",
         log_prefix, target, hash, buf);
 }
 
@@ -1032,7 +1032,7 @@ static void TuneUp(D3D10Base::ID3D10Device *device, void *private_data)
     int index = (int)private_data;
 
     G->gTuneValue[index] += G->gTuneStep;
-    LogInfo("> Value %i tuned to %f\n", index + 1, G->gTuneValue[index]);
+    LOG_INFO("> Value %i tuned to %f\n", index + 1, G->gTuneValue[index]);
 }
 
 static void TuneDown(D3D10Base::ID3D10Device *device, void *private_data)
@@ -1040,7 +1040,7 @@ static void TuneDown(D3D10Base::ID3D10Device *device, void *private_data)
     int index = (int)private_data;
 
     G->gTuneValue[index] -= G->gTuneStep;
-    LogInfo("> Value %i tuned to %f\n", index + 1, G->gTuneValue[index]);
+    LOG_INFO("> Value %i tuned to %f\n", index + 1, G->gTuneValue[index]);
 }
 
 // Start with a fresh set of shaders in the scene - either called explicitly
@@ -1151,7 +1151,7 @@ void RegisterHuntingKeyBindings(wchar_t *iniFile)
         RegisterIniKeyBinding(L"Hunting", buf, iniFile, TuneDown, NULL, repeat, (void*)i);
     }
 
-    LogInfoW(L"  repeat_rate=%d\n", repeat);
+    LOG_INFO_W(L"  repeat_rate=%d\n", repeat);
 }
 
 // Rather than do all that, we now insert a RunFrameActions in the Draw method of the Context object,
@@ -1176,7 +1176,7 @@ void RunFrameActions(D3D10Base::ID3D10Device *device)
         return;
     last_ticks = ticks;
 
-    LogDebug("Running frame actions.  Device: %p\n", device);
+    LOG_DEBUG("Running frame actions.  Device: %p\n", device);
 
     // Regardless of log settings, since this runs every frame, let's flush the log
     // so that the most lost will be one frame worth.  Tradeoff of performance to accuracy

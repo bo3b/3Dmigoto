@@ -1143,7 +1143,7 @@ Shader* DecodeDX9BC(const uint32_t* pui32Tokens)
 					// instructions.
 					// Throw an explicit exception now, otherwise we will continue to
 					// use the uninitialised ui32NumOperands and process garbage.
-					LogInfo("    error parsing shader> unsupported opcode %i\n", eOpcode);
+					LOG_INFO("    error parsing shader> unsupported opcode %i\n", eOpcode);
 					throw decompileErrorDX9;
                    // ASSERT(0);
                    // break;

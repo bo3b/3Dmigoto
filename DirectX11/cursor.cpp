@@ -312,13 +312,13 @@ int InstallHookLate(HINSTANCE module, char *func, void **trampoline, void *hook)
 
     fnOrig = NktHookLibHelpers::GetProcedureAddress(module, func);
     if (fnOrig == NULL) {
-        LogInfo("Failed to get address of %s\n", func);
+        LOG_INFO("Failed to get address of %s\n", func);
         return 1;
     }
 
     dwOsErr = cHookMgr.Hook(&hook_id, trampoline, fnOrig, hook);
     if (dwOsErr) {
-        LogInfo("Failed to hook %s: 0x%x\n", func, dwOsErr);
+        LOG_INFO("Failed to hook %s: 0x%x\n", func, dwOsErr);
         return 1;
     }
 
@@ -358,5 +358,5 @@ void InstallMouseHooks(bool hide)
         return;
     }
 
-    LogInfo("Successfully hooked mouse cursor functions for hide_cursor\n");
+    LOG_INFO("Successfully hooked mouse cursor functions for hide_cursor\n");
 }

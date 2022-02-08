@@ -37,61 +37,61 @@ void Override::ParseIniSection(LPCWSTR section, LPCWSTR ini)
 
     if (GetPrivateProfileString(section, L"separation", 0, buf, MAX_PATH, ini)) {
         swscanf_s(buf, L"%f", &mOverrideSeparation);
-        LogInfo("  separation=%#.2f\n", mOverrideSeparation);
+        LOG_INFO("  separation=%#.2f\n", mOverrideSeparation);
     }
 
     if (GetPrivateProfileString(section, L"convergence", 0, buf, MAX_PATH, ini)) {
         swscanf_s(buf, L"%f", &mOverrideConvergence);
-        LogInfo("  convergence=%#.2f\n", mOverrideConvergence);
+        LOG_INFO("  convergence=%#.2f\n", mOverrideConvergence);
     }
 
     if (GetPrivateProfileString(section, L"x", 0, buf, MAX_PATH, ini)) {
         swscanf_s(buf, L"%f", &mOverrideParams.x);
-        LogInfo("  x=%#.2g\n", mOverrideParams.x);
+        LOG_INFO("  x=%#.2g\n", mOverrideParams.x);
     }
 
     if (GetPrivateProfileString(section, L"y", 0, buf, MAX_PATH, ini)) {
         swscanf_s(buf, L"%f", &mOverrideParams.y);
-        LogInfo("  y=%#.2g\n", mOverrideParams.y);
+        LOG_INFO("  y=%#.2g\n", mOverrideParams.y);
     }
 
     if (GetPrivateProfileString(section, L"z", 0, buf, MAX_PATH, ini)) {
         swscanf_s(buf, L"%f", &mOverrideParams.z);
-        LogInfo("  z=%#.2g\n", mOverrideParams.z);
+        LOG_INFO("  z=%#.2g\n", mOverrideParams.z);
     }
 
     if (GetPrivateProfileString(section, L"w", 0, buf, MAX_PATH, ini)) {
         swscanf_s(buf, L"%f", &mOverrideParams.w);
-        LogInfo("  w=%#.2g\n", mOverrideParams.w);
+        LOG_INFO("  w=%#.2g\n", mOverrideParams.w);
     }
 
     transition = GetPrivateProfileInt(section, L"transition", 0, ini);
     if (transition)
-        LogInfo("  transition=%ims\n", transition);
+        LOG_INFO("  transition=%ims\n", transition);
 
     release_transition = GetPrivateProfileInt(section, L"release_transition", 0, ini);
     if (release_transition)
-        LogInfo("  release_transition=%ims\n", release_transition);
+        LOG_INFO("  release_transition=%ims\n", release_transition);
 
     if (GetPrivateProfileString(section, L"transition_type", 0, buf, MAX_PATH, ini)) {
         transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
         if (transition_type == TransitionType::INVALID) {
-            LogInfoW(L"WARNING: Invalid transition_type=\"%s\"\n", buf);
+            LOG_INFO_W(L"WARNING: Invalid transition_type=\"%s\"\n", buf);
             transition_type = TransitionType::LINEAR;
             BeepFailure2();
         } else {
-            LogInfoW(L"  transition_type=%s\n", buf);
+            LOG_INFO_W(L"  transition_type=%s\n", buf);
         }
     }
 
     if (GetPrivateProfileString(section, L"release_transition_type", 0, buf, MAX_PATH, ini)) {
         release_transition_type = lookup_enum_val<wchar_t *, TransitionType>(TransitionTypeNames, buf, TransitionType::INVALID);
         if (release_transition_type == TransitionType::INVALID) {
-            LogInfoW(L"WARNING: Invalid release_transition_type=\"%s\"\n", buf);
+            LOG_INFO_W(L"WARNING: Invalid release_transition_type=\"%s\"\n", buf);
             release_transition_type = TransitionType::LINEAR;
             BeepFailure2();
         } else {
-            LogInfoW(L"  release_transition_type=%s\n", buf);
+            LOG_INFO_W(L"  release_transition_type=%s\n", buf);
         }
     }
 }
@@ -143,7 +143,7 @@ struct KeyOverrideCycleParam
     void log(wchar_t *name)
     {
         if (*cur)
-            LogInfoWNoNL(L" %s=%s", name, cur);
+            LOG_INFO_W_NO_NL(L" %s=%s", name, cur);
     }
 
     float as_float(float default)
@@ -184,7 +184,7 @@ struct KeyOverrideCycleParam
 
         val = lookup_enum_val<wchar_t *, TransitionType>(enum_names, cur, (T2)-1);
         if (val == (T2)-1) {
-            LogInfoW(L"WARNING: Unmatched value \"%s\"\n", cur);
+            LOG_INFO_W(L"WARNING: Unmatched value \"%s\"\n", cur);
             BeepFailure2();
             return default;
         }
@@ -229,7 +229,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section, LPCWSTR ini)
         if (!not_done)
             break;
 
-        LogInfoNoNL("  Cycle %i:", i);
+        LOG_INFO_NO_NL("  Cycle %i:", i);
         x.log(L"x");
         y.log(L"y");
         z.log(L"z");
@@ -240,7 +240,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section, LPCWSTR ini)
         release_transition.log(L"release_transition");
         transition_type.log(L"transition_type");
         release_transition_type.log(L"release_transition_type");
-        LogInfo("\n");
+        LOG_INFO("\n");
 
         presets.push_back(KeyOverride(KeyOverrideType::CYCLE,
             x.as_float(FLT_MAX), y.as_float(FLT_MAX),
@@ -270,7 +270,7 @@ static void UpdateIniParams(D3D10Base::ID3D10Device *device,
         D3D10Wrapper::ID3D10Device* wrapper,
         DirectX::XMFLOAT4 *params)
 {
-    LogDebug("UpdateIniParams for DX10- unimplemented\n");
+    LOG_DEBUG("UpdateIniParams for DX10- unimplemented\n");
 
     //D3D10Base::ID3D10DeviceContext* realContext; device->GetImmediateContext(&realContext);
     //D3D10Base::D3D10_MAPPED_SUBRESOURCE mappedResource;
@@ -293,12 +293,12 @@ static void UpdateIniParams(D3D10Base::ID3D10Device *device,
     //memcpy(mappedResource.pData, &G->iniParams, sizeof(G->iniParams));
     //realContext->Unmap(wrapper->mIniTexture, 0);
 
-    //LogDebug(" IniParams remapped to %#.2g, %#.2g, %#.2g, %#.2g\n", params->x, params->y, params->z, params->w);
+    //LOG_DEBUG(" IniParams remapped to %#.2g, %#.2g, %#.2g, %#.2g\n", params->x, params->y, params->z, params->w);
 }
 
 void Override::Activate(D3D10Base::ID3D10Device *device)
 {
-    LogInfo("User key activation -->\n");
+    LOG_INFO("User key activation -->\n");
 
     CurrentTransition.ScheduleTransition(device,
             mOverrideSeparation,
@@ -313,7 +313,7 @@ void Override::Activate(D3D10Base::ID3D10Device *device)
 
 void Override::Deactivate(D3D10Base::ID3D10Device *device)
 {
-    LogInfo("User key deactivation <--\n");
+    LOG_INFO("User key deactivation <--\n");
 
     CurrentTransition.ScheduleTransition(device,
             mUserSeparation,
@@ -358,7 +358,7 @@ static void _ScheduleTransition(struct OverrideTransitionParam *transition,
         char *name, float current, float val, ULONGLONG now, int time,
         TransitionType transition_type)
 {
-    LogInfoNoNL(" %s: %#.2g -> %#.2g", name, current, val);
+    LOG_INFO_NO_NL(" %s: %#.2g -> %#.2g", name, current, val);
     transition->start = current;
     transition->target = val;
     transition->activation_time = now;
@@ -380,23 +380,23 @@ void OverrideTransition::ScheduleTransition(D3D10Base::ID3D10Device *device,
     if (!wrapper)
         return;
 
-    LogInfoNoNL(" Override");
+    LOG_INFO_NO_NL(" Override");
     if (time) {
-        LogInfoNoNL(" transition: %ims", time);
-        LogInfoWNoNL(L" transition_type: %s",
+        LOG_INFO_NO_NL(" transition: %ims", time);
+        LOG_INFO_W_NO_NL(L" transition_type: %s",
             lookup_enum_name<wchar_t *, TransitionType>(TransitionTypeNames, transition_type));
     }
 
     if (target_separation != FLT_MAX) {
         err = D3D10Base::NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &current);
         if (err != D3D10Base::NVAPI_OK)
-            LogDebug("    Stereo_GetSeparation failed: %i\n", err);
+            LOG_DEBUG("    Stereo_GetSeparation failed: %i\n", err);
         _ScheduleTransition(&separation, "separation", current, target_separation, now, time, transition_type);
     }
     if (target_convergence != FLT_MAX) {
         err = D3D10Base::NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &current);
         if (err != D3D10Base::NVAPI_OK)
-            LogDebug("    Stereo_GetConvergence failed: %i\n", err);
+            LOG_DEBUG("    Stereo_GetConvergence failed: %i\n", err);
         _ScheduleTransition(&convergence, "convergence", current, target_convergence, now, time, transition_type);
     }
     if (target_x != FLT_MAX)
@@ -407,7 +407,7 @@ void OverrideTransition::ScheduleTransition(D3D10Base::ID3D10Device *device,
         _ScheduleTransition(&z, "z", G->iniParams.z, target_z, now, time, transition_type);
     if (target_w != FLT_MAX)
         _ScheduleTransition(&w, "w", G->iniParams.w, target_w, now, time, transition_type);
-    LogInfo("\n");
+    LOG_INFO("\n");
 }
 
 static float _UpdateTransition(struct OverrideTransitionParam *transition, ULONGLONG now)
@@ -453,22 +453,22 @@ void OverrideTransition::UpdateTransitions(D3D10Base::ID3D10Device *device)
 
     val = _UpdateTransition(&separation, now);
     if (val != FLT_MAX) {
-        LogInfo(" Transitioning separation to %#.2f\n", val);
+        LOG_INFO(" Transitioning separation to %#.2f\n", val);
 
 //        D3D10Wrapper::NvAPIOverride();
         err = D3D10Base::NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
         if (err != D3D10Base::NVAPI_OK)
-            LogDebug("    Stereo_SetSeparation failed: %i\n", err);
+            LOG_DEBUG("    Stereo_SetSeparation failed: %i\n", err);
     }
 
     val = _UpdateTransition(&convergence, now);
     if (val != FLT_MAX) {
-        LogInfo(" Transitioning convergence to %#.2f\n", val);
+        LOG_INFO(" Transitioning convergence to %#.2f\n", val);
 
         //D3D10Wrapper::NvAPIOverride();
         err = D3D10Base::NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
         if (err != D3D10Base::NVAPI_OK)
-            LogDebug("    Stereo_SetConvergence failed: %i\n", err);
+            LOG_DEBUG("    Stereo_SetConvergence failed: %i\n", err);
     }
 
     params.x = _UpdateTransition(&x, now);
@@ -511,22 +511,22 @@ void OverrideGlobalSave::Reset(D3D10Wrapper::ID3D10Device* wrapper)
     // them anyway.
     val = separation.Reset();
     if (val != FLT_MAX) {
-        LogInfo(" Restoring separation to %#.2f\n", val);
+        LOG_INFO(" Restoring separation to %#.2f\n", val);
 
 //        D3D10Wrapper::NvAPIOverride();
         err = D3D10Base::NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
         if (err != D3D10Base::NVAPI_OK)
-            LogDebug("    Stereo_SetSeparation failed: %i\n", err);
+            LOG_DEBUG("    Stereo_SetSeparation failed: %i\n", err);
     }
 
     val = convergence.Reset();
     if (val != FLT_MAX) {
-        LogInfo(" Restoring convergence to %#.2f\n", val);
+        LOG_INFO(" Restoring convergence to %#.2f\n", val);
 
     //    D3D10Wrapper::NvAPIOverride();
         err = D3D10Base::NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
         if (err != D3D10Base::NVAPI_OK)
-            LogDebug("    Stereo_SetConvergence failed: %i\n", err);
+            LOG_DEBUG("    Stereo_SetConvergence failed: %i\n", err);
     }
 }
 
@@ -560,7 +560,7 @@ void OverrideGlobalSave::Save(D3D10Base::ID3D10Device *device, Override *preset)
         } else {
             err = D3D10Base::NvAPI_Stereo_GetSeparation(wrapper->mStereoHandle, &val);
             if (err != D3D10Base::NVAPI_OK) {
-                LogDebug("    Stereo_GetSeparation failed: %i\n", err);
+                LOG_DEBUG("    Stereo_GetSeparation failed: %i\n", err);
             }
         }
 
@@ -574,7 +574,7 @@ void OverrideGlobalSave::Save(D3D10Base::ID3D10Device *device, Override *preset)
         } else {
             err = D3D10Base::NvAPI_Stereo_GetConvergence(wrapper->mStereoHandle, &val);
             if (err != D3D10Base::NVAPI_OK) {
-                LogDebug("    Stereo_GetConvergence failed: %i\n", err);
+                LOG_DEBUG("    Stereo_GetConvergence failed: %i\n", err);
             }
         }
 
@@ -629,7 +629,7 @@ void OverrideGlobalSaveParam::Restore(float *val)
             *val = save;
         save = FLT_MAX;
     } else if (refcount < 0) {
-        LogInfo("BUG! OverrideGlobalSaveParam refcount < 0!\n");
+        LOG_INFO("BUG! OverrideGlobalSaveParam refcount < 0!\n");
     }
 }
 

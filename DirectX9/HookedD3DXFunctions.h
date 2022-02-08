@@ -8,7 +8,7 @@ HRESULT WINAPI Hooked_D3DXComputeNormalMap(
     _In_        DWORD              Channel,
     _In_        FLOAT              Amplitude) {
 
-    LogInfo("Hooked_D3DXComputeNormalMap called with SourceTexture=%p, DestinationTexture=%p\n", pSrcTexture, pTexture);
+    LOG_INFO("Hooked_D3DXComputeNormalMap called with SourceTexture=%p, DestinationTexture=%p\n", pSrcTexture, pTexture);
 
     ::IDirect3DTexture9 *baseSourceTexture = baseTexture9(pSrcTexture);
     ::IDirect3DTexture9 *baseDestTexture = baseTexture9(pTexture);
@@ -30,18 +30,18 @@ HRESULT WINAPI Hooked_D3DXComputeNormalMap(
         hr = trampoline_D3DXComputeNormalMap(pDestTextureLeft, pSourceTextureLeft, pSrcPalette, Flags, Channel, Amplitude);
         if (SUCCEEDED(hr)) {
             if (!pSourceTextureRight && pDestTextureRight) {
-                LogDebug("Hooked_D3DXComputeNormalMap Direct Mode, INFO: Source is not stereo, destination is stereo. Copying source to both sides of destination.\n");
+                LOG_DEBUG("Hooked_D3DXComputeNormalMap Direct Mode, INFO: Source is not stereo, destination is stereo. Copying source to both sides of destination.\n");
                 hr = trampoline_D3DXComputeNormalMap(pDestTextureRight, pSourceTextureLeft, pSrcPalette, Flags, Channel, Amplitude);
                 if (FAILED(hr))
-                    LogDebug("ERROR: Hooked_D3DXComputeNormalMap - Failed to copy source left to destination right.\n");
+                    LOG_DEBUG("ERROR: Hooked_D3DXComputeNormalMap - Failed to copy source left to destination right.\n");
             }
             else if (pSourceTextureRight && !pDestTextureRight) {
-                LogDebug("Hooked_D3DXComputeNormalMap Direct Mode, INFO:  Source is stereo, destination is not stereo. Copied Left side only.\n");
+                LOG_DEBUG("Hooked_D3DXComputeNormalMap Direct Mode, INFO:  Source is stereo, destination is not stereo. Copied Left side only.\n");
             }
             else if (pSourceTextureRight && pDestTextureRight) {
                 hr = trampoline_D3DXComputeNormalMap(pDestTextureRight, pSourceTextureRight, pSrcPalette, Flags, Channel, Amplitude);
                 if (FAILED(hr))
-                    LogDebug("Hooked_D3DXComputeNormalMap Direct Mode, ERROR: Failed to copy source right to destination right.\n");
+                    LOG_DEBUG("Hooked_D3DXComputeNormalMap Direct Mode, ERROR: Failed to copy source right to destination right.\n");
             }
         }
     }
@@ -52,7 +52,7 @@ HRESULT WINAPI Hooked_D3DXComputeNormalMap(
     if (G->track_texture_updates == 1)
         PropagateResourceHash(wrappedDest, wrappedSource);
 
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -67,12 +67,12 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTexture(
     _Out_ D3D9Wrapper::IDirect3DCubeTexture9* *ppCubeTexture)
 {
 
-    LogInfo("Hooked_D3DXCreateCubeTexture EdgeLength=%d Format=%d\n", Size, Format);
+    LOG_INFO("Hooked_D3DXCreateCubeTexture EdgeLength=%d Format=%d\n", Size, Format);
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
 
         D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
@@ -84,13 +84,13 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTexture(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppCubeTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
         return S_OK;
     }
 
     if (Pool == ::D3DPOOL_MANAGED)
     {
-        LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
+        LOG_DEBUG("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
         Pool = ::D3DPOOL_DEFAULT;
         if (!(Usage & D3DUSAGE_DYNAMIC))
@@ -117,13 +117,13 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTexture(
                 wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, pRightTexture);
             }
             else {
-                LogDebug("Hooked_D3DXCreateCubeTexture Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
+                LOG_DEBUG("Hooked_D3DXCreateCubeTexture Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
                 wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, NULL);
             }
         }
         else {
             if (FAILED(hr))
-                LogDebug("Hooked_D3DXCreateCubeTexture Direct Mode, failed to create left surface, hr = %d ", hr);
+                LOG_DEBUG("Hooked_D3DXCreateCubeTexture Direct Mode, failed to create left surface, hr = %d ", hr);
             wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, NULL);
         }
     }
@@ -141,9 +141,9 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTexture(
         }
     }
 
-    if (ppCubeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
+    if (ppCubeTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
 
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -152,12 +152,12 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFile(
     _In_  D3D9Wrapper::IDirect3DDevice9*      pDevice,
     _In_  LPCTSTR                pSrcFile,
     _Out_ D3D9Wrapper::IDirect3DCubeTexture9* *ppCubeTexture) {
-    LogInfo("Hooked_D3DXCreateCubeTextureFromFile EdgeLength=%d Format=%d\n", D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
+    LOG_INFO("Hooked_D3DXCreateCubeTextureFromFile EdgeLength=%d Format=%d\n", D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
 
         D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
@@ -169,7 +169,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFile(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppCubeTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
         return S_OK;
     }
     D3D2DTEXTURE_DESC pDesc;
@@ -192,13 +192,13 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFile(
                 wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, pRightTexture);
             }
             else {
-                LogDebug("Hooked_D3DXCreateCubeTextureFromFile Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
+                LOG_DEBUG("Hooked_D3DXCreateCubeTextureFromFile Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
                 wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, NULL);
             }
         }
         else {
             if (FAILED(hr))
-                LogDebug("Hooked_D3DXCreateCubeTextureFromFile Direct Mode, failed to create left surface, hr = %d ", hr);
+                LOG_DEBUG("Hooked_D3DXCreateCubeTextureFromFile Direct Mode, failed to create left surface, hr = %d ", hr);
             wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, NULL);
         }
     }
@@ -216,9 +216,9 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFile(
         }
     }
 
-    if (ppCubeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
+    if (ppCubeTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
 
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -237,12 +237,12 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileEx(
     _Out_ ::D3DXIMAGE_INFO         *pSrcInfo,
     _Out_ PALETTEENTRY           *pPalette,
     _Out_ D3D9Wrapper::IDirect3DCubeTexture9* *ppCubeTexture) {
-    LogInfo("Hooked_D3DXCreateCubeTextureFromFileEx EdgeLength=%d Format=%d\n", Size, Format);
+    LOG_INFO("Hooked_D3DXCreateCubeTextureFromFileEx EdgeLength=%d Format=%d\n", Size, Format);
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
 
         D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
@@ -254,13 +254,13 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileEx(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppCubeTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
         return S_OK;
     }
 
     if (Pool == ::D3DPOOL_MANAGED)
     {
-        LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
+        LOG_DEBUG("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
         Pool = ::D3DPOOL_DEFAULT;
         if (!(Usage & D3DUSAGE_DYNAMIC))
@@ -287,13 +287,13 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileEx(
                 wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, pRightTexture);
             }
             else {
-                LogDebug("Hooked_D3DXCreateCubeTextureFromFileEx Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
+                LOG_DEBUG("Hooked_D3DXCreateCubeTextureFromFileEx Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
                 wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, NULL);
             }
         }
         else {
             if (FAILED(hr))
-                LogDebug("Hooked_D3DXCreateCubeTextureFromFileEx Direct Mode, failed to create left surface, hr = %d ", hr);
+                LOG_DEBUG("Hooked_D3DXCreateCubeTextureFromFileEx Direct Mode, failed to create left surface, hr = %d ", hr);
             wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, NULL);
         }
     }
@@ -311,9 +311,9 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileEx(
         }
     }
 
-    if (ppCubeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
+    if (ppCubeTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
 
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -323,12 +323,12 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemory(
     _In_  LPCVOID                pSrcData,
     _In_  UINT                   SrcDataSize,
     _Out_ D3D9Wrapper::IDirect3DCubeTexture9* *ppCubeTexture) {
-    LogInfo("Hooked_D3DXCreateCubeTextureFromFileInMemory EdgeLength=%d Format=%d\n", D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
+    LOG_INFO("Hooked_D3DXCreateCubeTextureFromFileInMemory EdgeLength=%d Format=%d\n", D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
 
         D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
@@ -340,7 +340,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemory(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppCubeTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
         return S_OK;
     }
     D3D2DTEXTURE_DESC pDesc;
@@ -363,13 +363,13 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemory(
                 wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, pRightTexture);
             }
             else {
-                LogDebug("Hooked_D3DXCreateCubeTextureFromFileInMemory Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
+                LOG_DEBUG("Hooked_D3DXCreateCubeTextureFromFileInMemory Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
                 wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, NULL);
             }
         }
         else {
             if (FAILED(hr))
-                LogDebug("Hooked_D3DXCreateCubeTextureFromFileInMemory Direct Mode, failed to create left surface, hr = %d ", hr);
+                LOG_DEBUG("Hooked_D3DXCreateCubeTextureFromFileInMemory Direct Mode, failed to create left surface, hr = %d ", hr);
             wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, NULL);
         }
     }
@@ -387,9 +387,9 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemory(
         }
     }
 
-    if (ppCubeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
+    if (ppCubeTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
 
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -409,12 +409,12 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemoryEx(
     _Inout_ ::D3DXIMAGE_INFO         *pSrcInfo,
     _Out_   PALETTEENTRY           *pPalette,
     _Out_   D3D9Wrapper::IDirect3DCubeTexture9* *ppCubeTexture) {
-    LogInfo("Hooked_D3DXCreateCubeTextureFromFileInMemoryEx EdgeLength=%d Format=%d\n", Size, Format);
+    LOG_INFO("Hooked_D3DXCreateCubeTextureFromFileInMemoryEx EdgeLength=%d Format=%d\n", Size, Format);
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
 
         D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
@@ -426,13 +426,13 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemoryEx(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppCubeTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
         return S_OK;
     }
 
     if (Pool == ::D3DPOOL_MANAGED)
     {
-        LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
+        LOG_DEBUG("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
         Pool = ::D3DPOOL_DEFAULT;
         if (!(Usage & D3DUSAGE_DYNAMIC))
@@ -459,13 +459,13 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemoryEx(
                 wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, pRightTexture);
             }
             else {
-                LogDebug("Hooked_D3DXCreateCubeTextureFromFileInMemoryEx Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
+                LOG_DEBUG("Hooked_D3DXCreateCubeTextureFromFileInMemoryEx Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
                 wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, NULL);
             }
         }
         else {
             if (FAILED(hr))
-                LogDebug("Hooked_D3DXCreateCubeTextureFromFileInMemoryEx Direct Mode, failed to create left surface, hr = %d ", hr);
+                LOG_DEBUG("Hooked_D3DXCreateCubeTextureFromFileInMemoryEx Direct Mode, failed to create left surface, hr = %d ", hr);
             wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, NULL);
         }
     }
@@ -483,9 +483,9 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromFileInMemoryEx(
         }
     }
 
-    if (ppCubeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
+    if (ppCubeTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
 
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -495,12 +495,12 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResource(
     _In_  HMODULE                hSrcModule,
     _In_  LPCTSTR                pSrcResource,
     _Out_ D3D9Wrapper::IDirect3DCubeTexture9* *ppCubeTexture) {
-    LogInfo("Hooked_D3DXCreateCubeTextureFromResource EdgeLength=%d Format=%d\n", D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
+    LOG_INFO("Hooked_D3DXCreateCubeTextureFromResource EdgeLength=%d Format=%d\n", D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
 
         D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
@@ -512,7 +512,7 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResource(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppCubeTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
         return S_OK;
     }
     D3D2DTEXTURE_DESC pDesc;
@@ -535,13 +535,13 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResource(
                 wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, pRightTexture);
             }
             else {
-                LogDebug("Hooked_D3DXCreateCubeTextureFromResource Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
+                LOG_DEBUG("Hooked_D3DXCreateCubeTextureFromResource Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
                 wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, NULL);
             }
         }
         else {
             if (FAILED(hr))
-                LogDebug("Hooked_D3DXCreateCubeTextureFromResource Direct Mode, failed to create left surface, hr = %d ", hr);
+                LOG_DEBUG("Hooked_D3DXCreateCubeTextureFromResource Direct Mode, failed to create left surface, hr = %d ", hr);
             wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, NULL);
         }
     }
@@ -559,9 +559,9 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResource(
         }
     }
 
-    if (ppCubeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
+    if (ppCubeTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
 
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -581,12 +581,12 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResourceEx(
     _Inout_ ::D3DXIMAGE_INFO         *pSrcInfo,
     _Out_   PALETTEENTRY           *pPalette,
     _Out_   D3D9Wrapper::IDirect3DCubeTexture9* *ppCubeTexture) {
-    LogInfo("Hooked_D3DXCreateCubeTextureFromResourceEx EdgeLength=%d Format=%d\n", Size, Format);
+    LOG_INFO("Hooked_D3DXCreateCubeTextureFromResourceEx EdgeLength=%d Format=%d\n", Size, Format);
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
 
         D3D9Wrapper::IDirect3DCubeTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9((::LPDIRECT3DCUBETEXTURE9) 0, wrappedDevice, NULL);
@@ -598,13 +598,13 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResourceEx(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppCubeTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
         return S_OK;
     }
 
     if (Pool == ::D3DPOOL_MANAGED)
     {
-        LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
+        LOG_DEBUG("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
         Pool = ::D3DPOOL_DEFAULT;
         if (!(Usage & D3DUSAGE_DYNAMIC))
@@ -631,13 +631,13 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResourceEx(
                 wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, pRightTexture);
             }
             else {
-                LogDebug("Hooked_D3DXCreateCubeTextureFromResourceEx Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
+                LOG_DEBUG("Hooked_D3DXCreateCubeTextureFromResourceEx Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
                 wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, NULL);
             }
         }
         else {
             if (FAILED(hr))
-                LogDebug("Hooked_D3DXCreateCubeTextureFromResourceEx Direct Mode, failed to create left surface, hr = %d ", hr);
+                LOG_DEBUG("Hooked_D3DXCreateCubeTextureFromResourceEx Direct Mode, failed to create left surface, hr = %d ", hr);
             wrapper = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(baseTexture, wrappedDevice, NULL);
         }
     }
@@ -655,9 +655,9 @@ HRESULT WINAPI Hooked_D3DXCreateCubeTextureFromResourceEx(
         }
     }
 
-    if (ppCubeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
+    if (ppCubeTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppCubeTexture);
 
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -672,14 +672,14 @@ HRESULT WINAPI Hooked_D3DXCreateTexture(
     _In_  ::D3DPOOL            Pool,
     _Out_ D3D9Wrapper::IDirect3DTexture9* *ppTexture)
 {
-    LogDebug("Hooked_D3DXCreateTexture called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
+    LOG_DEBUG("Hooked_D3DXCreateTexture called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
         Width, Height, MipLevels, Usage, Format, Pool);
 
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
         D3D9Wrapper::IDirect3DTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
         wrapper->_Width = Width;
@@ -691,7 +691,7 @@ HRESULT WINAPI Hooked_D3DXCreateTexture(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
 
         return S_OK;
     }
@@ -699,7 +699,7 @@ HRESULT WINAPI Hooked_D3DXCreateTexture(
     ::LPDIRECT3DTEXTURE9 baseTexture = 0;
     if (Pool == ::D3DPOOL_MANAGED)
     {
-        LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
+        LOG_DEBUG("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
         Pool = ::D3DPOOL_DEFAULT;
         if (!(Usage & D3DUSAGE_DYNAMIC))
@@ -723,13 +723,13 @@ HRESULT WINAPI Hooked_D3DXCreateTexture(
                 wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, pRightTexture);
             }
             else {
-                LogDebug("Hooked_D3DXCreateTexture Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
+                LOG_DEBUG("Hooked_D3DXCreateTexture Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
                 wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, NULL);
             }
         }
         else {
             if (FAILED(hr))
-                LogDebug("Hooked_D3DXCreateTexture Direct Mode, failed to create left surface, hr = %d ", hr);
+                LOG_DEBUG("Hooked_D3DXCreateTexture Direct Mode, failed to create left surface, hr = %d ", hr);
             wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, NULL);
         }
     }
@@ -747,7 +747,7 @@ HRESULT WINAPI Hooked_D3DXCreateTexture(
         }
     }
 
-    if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
+    if (ppTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 
     return hr;
 }
@@ -757,14 +757,14 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFile(
     _In_  LPCTSTR            pSrcFile,
     _Out_ D3D9Wrapper::IDirect3DTexture9* *ppTexture) {
 
-    LogDebug("Hooked_D3DXCreateTextureFromFile called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
+    LOG_DEBUG("Hooked_D3DXCreateTextureFromFile called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
         D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, ::D3DFMT_UNKNOWN, ::D3DPOOL_DEFAULT);
 
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
         D3D9Wrapper::IDirect3DTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
         wrapper->_Width = D3DX_DEFAULT;
@@ -776,7 +776,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFile(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
         return S_OK;
     }
 
@@ -799,13 +799,13 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFile(
                 wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, pRightTexture);
             }
             else {
-                LogDebug("Hooked_D3DXCreateTextureFromFile Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
+                LOG_DEBUG("Hooked_D3DXCreateTextureFromFile Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
                 wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, NULL);
             }
         }
         else {
             if (FAILED(hr))
-                LogDebug("Hooked_D3DXCreateTextureFromFile Direct Mode, failed to create left surface, hr = %d ", hr);
+                LOG_DEBUG("Hooked_D3DXCreateTextureFromFile Direct Mode, failed to create left surface, hr = %d ", hr);
             wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, NULL);
         }
     }
@@ -823,7 +823,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFile(
         }
     }
 
-    if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
+    if (ppTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 
     return hr;
 }
@@ -843,14 +843,14 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileEx(
     _Inout_ ::D3DXIMAGE_INFO     *pSrcInfo,
     _Out_   PALETTEENTRY       *pPalette,
     _Out_   D3D9Wrapper::IDirect3DTexture9* *ppTexture) {
-    LogDebug("Hooked_D3DXCreateTextureFromFileEx called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
+    LOG_DEBUG("Hooked_D3DXCreateTextureFromFileEx called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
         Width, Height, MipLevels, Usage, Format, Pool);
 
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
         D3D9Wrapper::IDirect3DTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
         wrapper->_Width = Width;
@@ -862,7 +862,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileEx(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
 
         return S_OK;
     }
@@ -870,7 +870,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileEx(
     ::LPDIRECT3DTEXTURE9 baseTexture = 0;
     if (Pool == ::D3DPOOL_MANAGED)
     {
-        LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
+        LOG_DEBUG("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
         Pool = ::D3DPOOL_DEFAULT;
         if (!(Usage & D3DUSAGE_DYNAMIC))
@@ -894,13 +894,13 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileEx(
                 wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, pRightTexture);
             }
             else {
-                LogDebug("Hooked_D3DXCreateTextureFromFileEx Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
+                LOG_DEBUG("Hooked_D3DXCreateTextureFromFileEx Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
                 wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, NULL);
             }
         }
         else {
             if (FAILED(hr))
-                LogDebug("Hooked_D3DXCreateTextureFromFileEx Direct Mode, failed to create left surface, hr = %d ", hr);
+                LOG_DEBUG("Hooked_D3DXCreateTextureFromFileEx Direct Mode, failed to create left surface, hr = %d ", hr);
             wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, NULL);
         }
     }
@@ -918,7 +918,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileEx(
         }
     }
 
-    if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
+    if (ppTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 
     return hr;
 }
@@ -928,14 +928,14 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemory(
     _In_  LPCVOID            pSrcData,
     _In_  UINT               SrcDataSize,
     _Out_ D3D9Wrapper::IDirect3DTexture9* *ppTexture) {
-    LogDebug("Hooked_D3DXCreateTextureFromFileInMemory called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
+    LOG_DEBUG("Hooked_D3DXCreateTextureFromFileInMemory called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
         D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, ::D3DFMT_UNKNOWN, ::D3DPOOL_DEFAULT);
 
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
         D3D9Wrapper::IDirect3DTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
         wrapper->_Width = D3DX_DEFAULT;
@@ -947,7 +947,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemory(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
         return S_OK;
     }
 
@@ -970,13 +970,13 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemory(
                 wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, pRightTexture);
             }
             else {
-                LogDebug("Hooked_D3DXCreateTextureFromFileInMemory Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
+                LOG_DEBUG("Hooked_D3DXCreateTextureFromFileInMemory Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
                 wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, NULL);
             }
         }
         else {
             if (FAILED(hr))
-                LogDebug("Hooked_D3DXCreateTextureFromFileInMemory Direct Mode, failed to create left surface, hr = %d ", hr);
+                LOG_DEBUG("Hooked_D3DXCreateTextureFromFileInMemory Direct Mode, failed to create left surface, hr = %d ", hr);
             wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, NULL);
         }
     }
@@ -994,7 +994,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemory(
         }
     }
 
-    if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
+    if (ppTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 
     return hr;
 }
@@ -1015,14 +1015,14 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemoryEx(
     _Inout_ ::D3DXIMAGE_INFO     *pSrcInfo,
     _Out_   PALETTEENTRY       *pPalette,
     _Out_   D3D9Wrapper::IDirect3DTexture9* *ppTexture) {
-    LogDebug("Hooked_D3DXCreateTextureFromFileInMemoryEx called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
+    LOG_DEBUG("Hooked_D3DXCreateTextureFromFileInMemoryEx called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
         Width, Height, MipLevels, Usage, Format, Pool);
 
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
         D3D9Wrapper::IDirect3DTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
         wrapper->_Width = Width;
@@ -1034,7 +1034,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemoryEx(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
 
         return S_OK;
     }
@@ -1042,7 +1042,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemoryEx(
     ::LPDIRECT3DTEXTURE9 baseTexture = 0;
     if (Pool == ::D3DPOOL_MANAGED)
     {
-        LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
+        LOG_DEBUG("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
         Pool = ::D3DPOOL_DEFAULT;
         if (!(Usage & D3DUSAGE_DYNAMIC))
@@ -1066,13 +1066,13 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemoryEx(
                 wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, pRightTexture);
             }
             else {
-                LogDebug("Hooked_D3DXCreateTextureFromFileInMemoryEx Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
+                LOG_DEBUG("Hooked_D3DXCreateTextureFromFileInMemoryEx Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
                 wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, NULL);
             }
         }
         else {
             if (FAILED(hr))
-                LogDebug("Hooked_D3DXCreateTextureFromFileInMemoryEx Direct Mode, failed to create left surface, hr = %d ", hr);
+                LOG_DEBUG("Hooked_D3DXCreateTextureFromFileInMemoryEx Direct Mode, failed to create left surface, hr = %d ", hr);
             wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, NULL);
         }
     }
@@ -1090,7 +1090,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromFileInMemoryEx(
         }
     }
 
-    if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
+    if (ppTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 
     return hr;
 }
@@ -1100,14 +1100,14 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResource(
     _In_  HMODULE            hSrcModule,
     _In_  LPCTSTR            pSrcResource,
     _Out_ D3D9Wrapper::IDirect3DTexture9* *ppTexture) {
-    LogDebug("Hooked_D3DXCreateTextureFromResource called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
+    LOG_DEBUG("Hooked_D3DXCreateTextureFromResource called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
         D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, ::D3DFMT_UNKNOWN, ::D3DPOOL_DEFAULT);
 
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
         D3D9Wrapper::IDirect3DTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
         wrapper->_Width = D3DX_DEFAULT;
@@ -1119,7 +1119,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResource(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
         return S_OK;
     }
 
@@ -1142,13 +1142,13 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResource(
                 wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, pRightTexture);
             }
             else {
-                LogDebug("Hooked_D3DXCreateTextureFromResource Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
+                LOG_DEBUG("Hooked_D3DXCreateTextureFromResource Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
                 wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, NULL);
             }
         }
         else {
             if (FAILED(hr))
-                LogDebug("Hooked_D3DXCreateTextureFromResource Direct Mode, failed to create left surface, hr = %d ", hr);
+                LOG_DEBUG("Hooked_D3DXCreateTextureFromResource Direct Mode, failed to create left surface, hr = %d ", hr);
             wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, NULL);
         }
     }
@@ -1166,7 +1166,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResource(
         }
     }
 
-    if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
+    if (ppTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 
     return hr;
 }
@@ -1187,14 +1187,14 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResourceEx(
     _Inout_ ::D3DXIMAGE_INFO     *pSrcInfo,
     _Out_   PALETTEENTRY       *pPalette,
     _Out_   D3D9Wrapper::IDirect3DTexture9* *ppTexture) {
-    LogDebug("Hooked_D3DXCreateTextureFromResourceEx called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
+    LOG_DEBUG("Hooked_D3DXCreateTextureFromResourceEx called with Width=%d, Height=%d, Levels=%d, Usage=%x, Format=%d, Pool=%d\n",
         Width, Height, MipLevels, Usage, Format, Pool);
 
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
         D3D9Wrapper::IDirect3DTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9((::LPDIRECT3DTEXTURE9) 0, wrappedDevice, NULL);
         wrapper->_Width = Width;
@@ -1206,7 +1206,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResourceEx(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
 
         return S_OK;
     }
@@ -1214,7 +1214,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResourceEx(
     ::LPDIRECT3DTEXTURE9 baseTexture = 0;
     if (Pool == ::D3DPOOL_MANAGED)
     {
-        LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
+        LOG_DEBUG("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
 
         Pool = ::D3DPOOL_DEFAULT;
         if (!(Usage & D3DUSAGE_DYNAMIC))
@@ -1238,13 +1238,13 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResourceEx(
                 wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, pRightTexture);
             }
             else {
-                LogDebug("Hooked_D3DXCreateTextureFromResourceEx Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
+                LOG_DEBUG("Hooked_D3DXCreateTextureFromResourceEx Direct Mode, failed to create right texture, falling back to mono, hr = %d", hr);
                 wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, NULL);
             }
         }
         else {
             if (FAILED(hr))
-                LogDebug("Hooked_D3DXCreateTextureFromResourceEx Direct Mode, failed to create left surface, hr = %d ", hr);
+                LOG_DEBUG("Hooked_D3DXCreateTextureFromResourceEx Direct Mode, failed to create left surface, hr = %d ", hr);
             wrapper = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(baseTexture, wrappedDevice, NULL);
         }
     }
@@ -1262,7 +1262,7 @@ HRESULT WINAPI Hooked_D3DXCreateTextureFromResourceEx(
         }
     }
 
-    if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
+    if (ppTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
 
     return hr;
 }
@@ -1277,12 +1277,12 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTexture(
     _In_  ::D3DFORMAT                Format,
     _In_  ::D3DPOOL                  Pool,
     _Out_ D3D9Wrapper::IDirect3DVolumeTexture9* *ppVolumeTexture) {
-    LogInfo("Hooked_D3DXCreateVolumeTexture Width=%d Height=%d Format=%d\n", Width, Height, Format);
+    LOG_INFO("Hooked_D3DXCreateVolumeTexture Width=%d Height=%d Format=%d\n", Width, Height, Format);
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
 
         D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
@@ -1296,14 +1296,14 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTexture(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppVolumeTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
 
         return S_OK;
     }
 
     if (Pool == ::D3DPOOL_MANAGED)
     {
-        LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
+        LOG_DEBUG("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
         Pool = ::D3DPOOL_DEFAULT;
         if (!(Usage & D3DUSAGE_DYNAMIC))
             Usage = Usage | D3DUSAGE_DYNAMIC;
@@ -1332,8 +1332,8 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTexture(
         }
 
     }
-    if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
-    LogInfo("  returns result=%x\n", hr);
+    if (ppVolumeTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -1342,12 +1342,12 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFile(
     _In_  D3D9Wrapper::IDirect3DDevice9*        pDevice,
     _In_  LPCTSTR                  pSrcFile,
     _Out_ D3D9Wrapper::IDirect3DVolumeTexture9* *ppVolumeTexture) {
-    LogInfo("Hooked_D3DXCreateVolumeTextureFromFile Width=%d Height=%d Format=%d\n", D3DX_DEFAULT, D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
+    LOG_INFO("Hooked_D3DXCreateVolumeTextureFromFile Width=%d Height=%d Format=%d\n", D3DX_DEFAULT, D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
 
         D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
@@ -1361,7 +1361,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFile(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppVolumeTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
 
         return S_OK;
     }
@@ -1388,8 +1388,8 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFile(
             }
         }
     }
-    if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
-    LogInfo("  returns result=%x\n", hr);
+    if (ppVolumeTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -1410,12 +1410,12 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileEx(
     _Inout_ ::D3DXIMAGE_INFO           *pSrcInfo,
     _Out_   PALETTEENTRY             *pPalette,
     _Out_   D3D9Wrapper::IDirect3DVolumeTexture9* *ppTexture) {
-    LogInfo("Hooked_D3DXCreateVolumeTextureFromFileEx Width=%d Height=%d Format=%d\n", Width, Height, Format);
+    LOG_INFO("Hooked_D3DXCreateVolumeTextureFromFileEx Width=%d Height=%d Format=%d\n", Width, Height, Format);
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
 
         D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
@@ -1429,14 +1429,14 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileEx(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
 
         return S_OK;
     }
 
     if (Pool == ::D3DPOOL_MANAGED)
     {
-        LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
+        LOG_DEBUG("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
         Pool = ::D3DPOOL_DEFAULT;
         if (!(Usage & D3DUSAGE_DYNAMIC))
             Usage = Usage | D3DUSAGE_DYNAMIC;
@@ -1465,8 +1465,8 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileEx(
         }
     }
 
-    if (ppTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
-    LogInfo("  returns result=%x\n", hr);
+    if (ppTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppTexture);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -1476,12 +1476,12 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemory(
     LPCVOID                   pSrcData,
     UINT                      SrcDataSize,
     D3D9Wrapper::IDirect3DVolumeTexture9** ppVolumeTexture) {
-    LogInfo("Hooked_D3DXCreateVolumeTextureFromFileInMemory Width=%d Height=%d Format=%d\n", D3DX_DEFAULT, D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
+    LOG_INFO("Hooked_D3DXCreateVolumeTextureFromFileInMemory Width=%d Height=%d Format=%d\n", D3DX_DEFAULT, D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
 
         D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
@@ -1495,7 +1495,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemory(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppVolumeTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
 
         return S_OK;
     }
@@ -1522,8 +1522,8 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemory(
             }
         }
     }
-    if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
-    LogInfo("  returns result=%x\n", hr);
+    if (ppVolumeTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -1545,12 +1545,12 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemoryEx(
     _Inout_ ::D3DXIMAGE_INFO           *pSrcInfo,
     _Out_   PALETTEENTRY             *pPalette,
     _Out_   D3D9Wrapper::IDirect3DVolumeTexture9* *ppVolumeTexture) {
-    LogInfo("Hooked_D3DXCreateVolumeTextureFromFileInMemoryEx Width=%d Height=%d Format=%d\n", Width, Height, Format);
+    LOG_INFO("Hooked_D3DXCreateVolumeTextureFromFileInMemoryEx Width=%d Height=%d Format=%d\n", Width, Height, Format);
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
 
         D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
@@ -1564,14 +1564,14 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemoryEx(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppVolumeTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
 
         return S_OK;
     }
 
     if (Pool == ::D3DPOOL_MANAGED)
     {
-        LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
+        LOG_DEBUG("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
         Pool = ::D3DPOOL_DEFAULT;
         if (!(Usage & D3DUSAGE_DYNAMIC))
             Usage = Usage | D3DUSAGE_DYNAMIC;
@@ -1600,8 +1600,8 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromFileInMemoryEx(
         }
     }
 
-    if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
-    LogInfo("  returns result=%x\n", hr);
+    if (ppVolumeTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -1611,12 +1611,12 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResource(
     _In_  HMODULE                  hSrcModule,
     _In_  LPCTSTR                  pSrcResource,
     _Out_ D3D9Wrapper::IDirect3DVolumeTexture9* *ppVolumeTexture) {
-    LogInfo("Hooked_D3DXCreateVolumeTextureFromResource Width=%d Height=%d Format=%d\n", D3DX_DEFAULT, D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
+    LOG_INFO("Hooked_D3DXCreateVolumeTextureFromResource Width=%d Height=%d Format=%d\n", D3DX_DEFAULT, D3DX_DEFAULT, ::D3DFMT_UNKNOWN);
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
 
         D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
@@ -1630,7 +1630,7 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResource(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppVolumeTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
 
         return S_OK;
     }
@@ -1657,8 +1657,8 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResource(
             }
         }
     }
-    if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
-    LogInfo("  returns result=%x\n", hr);
+    if (ppVolumeTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -1680,12 +1680,12 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResourceEx(
     _Inout_ ::D3DXIMAGE_INFO           *pSrcInfo,
     _Out_   PALETTEENTRY             *pPalette,
     _Out_   D3D9Wrapper::IDirect3DVolumeTexture9* *ppVolumeTexture) {
-    LogInfo("Hooked_D3DXCreateVolumeTextureFromResourceEx Width=%d Height=%d Format=%d\n", Width, Height, Format);
+    LOG_INFO("Hooked_D3DXCreateVolumeTextureFromResourceEx Width=%d Height=%d Format=%d\n", Width, Height, Format);
     D3D9Wrapper::IDirect3DDevice9 *wrappedDevice = wrappedDevice9(pDevice);
 
     if (!wrappedDevice->GetD3D9Device())
     {
-        LogInfo("  postponing call because device was not created yet.\n");
+        LOG_INFO("  postponing call because device was not created yet.\n");
 
         D3D9Wrapper::IDirect3DVolumeTexture9 *wrapper;
         wrapper = D3D9Wrapper::IDirect3DVolumeTexture9::GetDirect3DVolumeTexture9((::LPDIRECT3DVOLUMETEXTURE9) 0, wrappedDevice);
@@ -1699,14 +1699,14 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResourceEx(
         wrapper->_Device = wrappedDevice;
         wrapper->pendingCreateTexture = true;
         *ppVolumeTexture = wrapper;
-        LogInfo("  returns handle=%p\n", wrapper);
+        LOG_INFO("  returns handle=%p\n", wrapper);
 
         return S_OK;
     }
 
     if (Pool == ::D3DPOOL_MANAGED)
     {
-        LogDebug("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
+        LOG_DEBUG("  Pool changed from MANAGED to DEFAULT because of DirectX9Ex migration.\n");
         Pool = ::D3DPOOL_DEFAULT;
         if (!(Usage & D3DUSAGE_DYNAMIC))
             Usage = Usage | D3DUSAGE_DYNAMIC;
@@ -1735,8 +1735,8 @@ HRESULT WINAPI Hooked_D3DXCreateVolumeTextureFromResourceEx(
         }
     }
 
-    if (ppVolumeTexture) LogDebug("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
-    LogInfo("  returns result=%x\n", hr);
+    if (ppVolumeTexture) LOG_DEBUG("  returns result=%x, handle=%p, wrapper=%p\n", hr, baseTexture, *ppVolumeTexture);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -1745,7 +1745,7 @@ HRESULT WINAPI Hooked_D3DXFillCubeTexture(
     _Out_ D3D9Wrapper::IDirect3DCubeTexture9* pTexture,
     _In_  ::LPD3DXFILL3D           pFunction,
     _In_  LPVOID                 pData) {
-    LogInfo("Hooked_D3DXFillCubeTexture called with DestinationTexture=%p\n", pTexture);
+    LOG_INFO("Hooked_D3DXFillCubeTexture called with DestinationTexture=%p\n", pTexture);
 
     ::IDirect3DCubeTexture9 *baseDestTexture = baseTexture9(pTexture);
 
@@ -1759,12 +1759,12 @@ HRESULT WINAPI Hooked_D3DXFillCubeTexture(
         hr = trampoline_D3DXFillCubeTexture(pDestTextureLeft, pFunction, pData);
         if (SUCCEEDED(hr)) {
             if (!pDestTextureRight) {
-                LogDebug("Hooked_D3DXFillCubeTexture Direct Mode, INFO:  Destination is not stereo. Filled Left side only.\n");
+                LOG_DEBUG("Hooked_D3DXFillCubeTexture Direct Mode, INFO:  Destination is not stereo. Filled Left side only.\n");
             }
             else{
                 hr = trampoline_D3DXFillCubeTexture(pDestTextureRight, pFunction, pData);
                 if (FAILED(hr))
-                    LogDebug("Hooked_D3DXFillCubeTexture Direct Mode, ERROR: Failed to filled destination right.\n");
+                    LOG_DEBUG("Hooked_D3DXFillCubeTexture Direct Mode, ERROR: Failed to filled destination right.\n");
             }
         }
     }
@@ -1772,7 +1772,7 @@ HRESULT WINAPI Hooked_D3DXFillCubeTexture(
         hr = trampoline_D3DXFillCubeTexture(baseDestTexture, pFunction, pData);
     }
 
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -1780,7 +1780,7 @@ HRESULT WINAPI Hooked_D3DXFillCubeTexture(
 HRESULT WINAPI Hooked_D3DXFillCubeTextureTX(
     _In_ D3D9Wrapper::IDirect3DCubeTexture9* pTexture,
     _In_ ::LPD3DXTEXTURESHADER    pTextureShader) {
-    LogInfo("Hooked_D3DXFillCubeTextureTX called with DestinationTexture=%p\n", pTexture);
+    LOG_INFO("Hooked_D3DXFillCubeTextureTX called with DestinationTexture=%p\n", pTexture);
 
     ::IDirect3DCubeTexture9 *baseDestTexture = baseTexture9(pTexture);
 
@@ -1794,12 +1794,12 @@ HRESULT WINAPI Hooked_D3DXFillCubeTextureTX(
         hr = trampoline_D3DXFillCubeTextureTX(pDestTextureLeft, pTextureShader);
         if (SUCCEEDED(hr)) {
             if (!pDestTextureRight) {
-                LogDebug("Hooked_D3DXFillCubeTextureTX Direct Mode, INFO:  Destination is not stereo. Filled Left side only.\n");
+                LOG_DEBUG("Hooked_D3DXFillCubeTextureTX Direct Mode, INFO:  Destination is not stereo. Filled Left side only.\n");
             }
             else {
                 hr = trampoline_D3DXFillCubeTextureTX(pDestTextureRight, pTextureShader);
                 if (FAILED(hr))
-                    LogDebug("Hooked_D3DXFillCubeTextureTX Direct Mode, ERROR: Failed to filled destination right.\n");
+                    LOG_DEBUG("Hooked_D3DXFillCubeTextureTX Direct Mode, ERROR: Failed to filled destination right.\n");
             }
         }
     }
@@ -1807,7 +1807,7 @@ HRESULT WINAPI Hooked_D3DXFillCubeTextureTX(
         hr = trampoline_D3DXFillCubeTextureTX(baseDestTexture, pTextureShader);
     }
 
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -1816,7 +1816,7 @@ HRESULT WINAPI Hooked_D3DXFillTexture(
     _Out_ D3D9Wrapper::IDirect3DTexture9* pTexture,
     _In_  ::LPD3DXFILL2D       pFunction,
     _In_  LPVOID             pData) {
-    LogInfo("Hooked_D3DXFillCubeTexture called with DestinationTexture=%p\n", pTexture);
+    LOG_INFO("Hooked_D3DXFillCubeTexture called with DestinationTexture=%p\n", pTexture);
 
     ::IDirect3DTexture9 *baseDestTexture = baseTexture9(pTexture);
 
@@ -1830,19 +1830,19 @@ HRESULT WINAPI Hooked_D3DXFillTexture(
         hr = trampoline_D3DXFillTexture(pDestTextureLeft, pFunction, pData);
         if (SUCCEEDED(hr)) {
             if (!pDestTextureRight) {
-                LogDebug("Hooked_D3DXFillCubeTexture Direct Mode, INFO:  Destination is not stereo. Filled Left side only.\n");
+                LOG_DEBUG("Hooked_D3DXFillCubeTexture Direct Mode, INFO:  Destination is not stereo. Filled Left side only.\n");
             }
             else {
                 hr = trampoline_D3DXFillTexture(pDestTextureRight, pFunction, pData);
                 if (FAILED(hr))
-                    LogDebug("Hooked_D3DXFillCubeTexture Direct Mode, ERROR: Failed to filled destination right.\n");
+                    LOG_DEBUG("Hooked_D3DXFillCubeTexture Direct Mode, ERROR: Failed to filled destination right.\n");
             }
         }
     }
     else {
         hr = trampoline_D3DXFillTexture(baseDestTexture, pFunction, pData);
     }
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -1850,7 +1850,7 @@ HRESULT WINAPI Hooked_D3DXFillTexture(
 HRESULT WINAPI Hooked_D3DXFillTextureTX(
     _Inout_ D3D9Wrapper::IDirect3DTexture9*  pTexture,
     _In_    ::LPD3DXTEXTURESHADER pTextureShader) {
-    LogInfo("Hooked_D3DXFillTextureTX called with DestinationTexture=%p\n", pTexture);
+    LOG_INFO("Hooked_D3DXFillTextureTX called with DestinationTexture=%p\n", pTexture);
 
     ::IDirect3DTexture9 *baseDestTexture = baseTexture9(pTexture);
 
@@ -1864,12 +1864,12 @@ HRESULT WINAPI Hooked_D3DXFillTextureTX(
         hr = trampoline_D3DXFillTextureTX(pDestTextureLeft, pTextureShader);
         if (SUCCEEDED(hr)) {
             if (!pDestTextureRight) {
-                LogDebug("Hooked_D3DXFillTextureTX Direct Mode, INFO:  Destination is not stereo. Filled Left side only.\n");
+                LOG_DEBUG("Hooked_D3DXFillTextureTX Direct Mode, INFO:  Destination is not stereo. Filled Left side only.\n");
             }
             else {
                 hr = trampoline_D3DXFillTextureTX(pDestTextureRight, pTextureShader);
                 if (FAILED(hr))
-                    LogDebug("Hooked_D3DXFillTextureTX Direct Mode, ERROR: Failed to filled destination right.\n");
+                    LOG_DEBUG("Hooked_D3DXFillTextureTX Direct Mode, ERROR: Failed to filled destination right.\n");
             }
         }
     }
@@ -1877,7 +1877,7 @@ HRESULT WINAPI Hooked_D3DXFillTextureTX(
         hr = trampoline_D3DXFillTextureTX(baseDestTexture, pTextureShader);
     }
 
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -1886,12 +1886,12 @@ HRESULT WINAPI Hooked_D3DXFillVolumeTexture(
     _Out_ D3D9Wrapper::IDirect3DVolumeTexture9* pTexture,
     _In_  ::LPD3DXFILL3D             pFunction,
     _In_  LPVOID                   pData) {
-    LogInfo("Hooked_D3DXFillVolumeTexture called with DestinationTexture=%p\n", pTexture);
+    LOG_INFO("Hooked_D3DXFillVolumeTexture called with DestinationTexture=%p\n", pTexture);
 
     ::IDirect3DVolumeTexture9 *baseDestTexture = baseTexture9(pTexture);
 
     HRESULT hr = trampoline_D3DXFillVolumeTexture(baseDestTexture, pFunction, pData);
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -1899,12 +1899,12 @@ HRESULT WINAPI Hooked_D3DXFillVolumeTexture(
 HRESULT WINAPI Hooked_D3DXFillVolumeTextureTX(
     _In_ D3D9Wrapper::IDirect3DVolumeTexture9* pTexture,
     _In_ ::LPD3DXTEXTURESHADER      pTextureShader) {
-    LogInfo("Hooked_D3DXFillVolumeTextureTX called with DestinationTexture=%p\n", pTexture);
+    LOG_INFO("Hooked_D3DXFillVolumeTextureTX called with DestinationTexture=%p\n", pTexture);
 
     ::IDirect3DVolumeTexture9 *baseDestTexture = baseTexture9(pTexture);
 
     HRESULT hr = trampoline_D3DXFillVolumeTextureTX(baseDestTexture, pTextureShader);
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -1914,7 +1914,7 @@ HRESULT WINAPI Hooked_D3DXFilterTexture(
     _Out_ const PALETTEENTRY           *pPalette,
     _In_        UINT                   SrcLevel,
     _In_        DWORD                  MipFilter) {
-    LogInfo("Hooked_D3DXFilterTexture called with DestinationTexture=%p\n", pBaseTexture);
+    LOG_INFO("Hooked_D3DXFilterTexture called with DestinationTexture=%p\n", pBaseTexture);
 
     ::IDirect3DBaseTexture9 *baseDestTexture = baseTexture9(pBaseTexture);
 
@@ -1929,19 +1929,19 @@ HRESULT WINAPI Hooked_D3DXFilterTexture(
         hr = trampoline_D3DXFilterTexture(pDestTextureLeft, pPalette, SrcLevel, MipFilter);
         if (SUCCEEDED(hr)) {
             if (!pDestTextureRight) {
-                LogDebug("Hooked_D3DXFillTextureTX Direct Mode, INFO:  Destination is not stereo. Filled Left side only.\n");
+                LOG_DEBUG("Hooked_D3DXFillTextureTX Direct Mode, INFO:  Destination is not stereo. Filled Left side only.\n");
             }
             else {
                 hr = trampoline_D3DXFilterTexture(pDestTextureRight, pPalette, SrcLevel, MipFilter);
                 if (FAILED(hr))
-                    LogDebug("Hooked_D3DXFillTextureTX Direct Mode, ERROR: Failed to filled destination right.\n");
+                    LOG_DEBUG("Hooked_D3DXFillTextureTX Direct Mode, ERROR: Failed to filled destination right.\n");
             }
         }
     }
     else {
         hr = trampoline_D3DXFilterTexture(baseDestTexture, pPalette, SrcLevel, MipFilter);
     }
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -1955,7 +1955,7 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromFile(
     _In_          DWORD              Filter,
     _In_          ::D3DCOLOR           ColorKey,
     _Inout_       ::D3DXIMAGE_INFO     *pSrcInfo) {
-    LogDebug("Hooked_D3DXLoadSurfaceFromFile called using DestSurface=%p\n", pDestSurface);
+    LOG_DEBUG("Hooked_D3DXLoadSurfaceFromFile called using DestSurface=%p\n", pDestSurface);
     ::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
     HRESULT hr;
     if (G->gForceStereo == 2) {
@@ -1965,19 +1965,19 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromFile(
         hr = trampoline_D3DXLoadSurfaceFromFile(pDestSurfaceLeft, pDestPalette, pDestRect, pSrcFile, pSrcRect, Filter, ColorKey, pSrcInfo);
         if (SUCCEEDED(hr)) {
             if (!pDestSurfaceRight) {
-                LogDebug("INFO: Hooked_D3DXLoadSurfaceFromFile - Destination is not stereo. Loaded Left side only.\n");
+                LOG_DEBUG("INFO: Hooked_D3DXLoadSurfaceFromFile - Destination is not stereo. Loaded Left side only.\n");
             }
             else{
                 hr = trampoline_D3DXLoadSurfaceFromFile(pDestSurfaceRight, pDestPalette, pDestRect, pSrcFile, pSrcRect, Filter, ColorKey, pSrcInfo);
                 if (FAILED(hr))
-                    LogDebug("ERROR: Hooked_D3DXLoadSurfaceFromFile - Failed to load right side.\n");
+                    LOG_DEBUG("ERROR: Hooked_D3DXLoadSurfaceFromFile - Failed to load right side.\n");
             }
         }
     }
     else {
         hr = trampoline_D3DXLoadSurfaceFromFile(baseDestSurface, pDestPalette, pDestRect, pSrcFile, pSrcRect, Filter, ColorKey, pSrcInfo);
     }
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -1992,7 +1992,7 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromFileInMemory(
     _In_          DWORD              Filter,
     _In_          ::D3DCOLOR           ColorKey,
     _Inout_       ::D3DXIMAGE_INFO     *pSrcInfo) {
-    LogDebug("Hooked_D3DXLoadSurfaceFromFileInMemory called using DestSurface=%p\n", pDestSurface);
+    LOG_DEBUG("Hooked_D3DXLoadSurfaceFromFileInMemory called using DestSurface=%p\n", pDestSurface);
     ::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
     HRESULT hr;
     if (G->gForceStereo == 2) {
@@ -2002,19 +2002,19 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromFileInMemory(
         hr = trampoline_D3DXLoadSurfaceFromFileInMemory(pDestSurfaceLeft, pDestPalette, pDestRect, pSrcData, SrcData, pSrcRect, Filter, ColorKey, pSrcInfo);
         if (SUCCEEDED(hr)) {
             if (!pDestSurfaceRight) {
-                LogDebug("INFO: Hooked_D3DXLoadSurfaceFromFileInMemory - Destination is not stereo. Loaded Left side only.\n");
+                LOG_DEBUG("INFO: Hooked_D3DXLoadSurfaceFromFileInMemory - Destination is not stereo. Loaded Left side only.\n");
             }
             else {
                 hr = trampoline_D3DXLoadSurfaceFromFileInMemory(pDestSurfaceRight, pDestPalette, pDestRect, pSrcData, SrcData, pSrcRect, Filter, ColorKey, pSrcInfo);
                 if (FAILED(hr))
-                    LogDebug("ERROR: Hooked_D3DXLoadSurfaceFromFileInMemory - Failed to load right side.\n");
+                    LOG_DEBUG("ERROR: Hooked_D3DXLoadSurfaceFromFileInMemory - Failed to load right side.\n");
             }
         }
     }
     else {
         hr = trampoline_D3DXLoadSurfaceFromFileInMemory(baseDestSurface, pDestPalette, pDestRect, pSrcData, SrcData, pSrcRect, Filter, ColorKey, pSrcInfo);
     }
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -2030,7 +2030,7 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromMemory(
     _In_ const RECT               *pSrcRect,
     _In_       DWORD              Filter,
     _In_       ::D3DCOLOR           ColorKey) {
-    LogDebug("Hooked_D3DXLoadSurfaceFromMemory called using DestSurface=%p\n", pDestSurface);
+    LOG_DEBUG("Hooked_D3DXLoadSurfaceFromMemory called using DestSurface=%p\n", pDestSurface);
     ::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
     HRESULT hr;
     if (G->gForceStereo == 2) {
@@ -2040,19 +2040,19 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromMemory(
         hr = trampoline_D3DXLoadSurfaceFromMemory(pDestSurfaceLeft, pDestPalette, pDestRect, pSrcMemory, SrcFormat, SrcPitch, pSrcPalette, pSrcRect, Filter, ColorKey);
         if (SUCCEEDED(hr)) {
             if (!pDestSurfaceRight) {
-                LogDebug("INFO: Hooked_D3DXLoadSurfaceFromMemory - Destination is not stereo. Loaded Left side only.\n");
+                LOG_DEBUG("INFO: Hooked_D3DXLoadSurfaceFromMemory - Destination is not stereo. Loaded Left side only.\n");
             }
             else {
                 hr = trampoline_D3DXLoadSurfaceFromMemory(pDestSurfaceRight, pDestPalette, pDestRect, pSrcMemory, SrcFormat, SrcPitch, pSrcPalette, pSrcRect, Filter, ColorKey);
                 if (FAILED(hr))
-                    LogDebug("ERROR: Hooked_D3DXLoadSurfaceFromMemory - Failed to load right side.\n");
+                    LOG_DEBUG("ERROR: Hooked_D3DXLoadSurfaceFromMemory - Failed to load right side.\n");
             }
         }
     }
     else {
         hr = trampoline_D3DXLoadSurfaceFromMemory(baseDestSurface, pDestPalette, pDestRect, pSrcMemory, SrcFormat, SrcPitch, pSrcPalette, pSrcRect, Filter, ColorKey);
     }
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -2067,7 +2067,7 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromResource(
     _In_          DWORD              Filter,
     _In_          ::D3DCOLOR           ColorKey,
     _Inout_       ::D3DXIMAGE_INFO     *pSrcInfo) {
-    LogDebug("Hooked_D3DXLoadSurfaceFromResource called using DestSurface=%p\n", pDestSurface);
+    LOG_DEBUG("Hooked_D3DXLoadSurfaceFromResource called using DestSurface=%p\n", pDestSurface);
     ::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
     HRESULT hr;
     if (G->gForceStereo == 2) {
@@ -2077,19 +2077,19 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromResource(
         hr = trampoline_D3DXLoadSurfaceFromResource(pDestSurfaceLeft, pDestPalette, pDestRect, hSrcModule, pSrcResource, pSrcRect, Filter, ColorKey, pSrcInfo);
         if (SUCCEEDED(hr)) {
             if (!pDestSurfaceRight) {
-                LogDebug("INFO: Hooked_D3DXLoadSurfaceFromResource - Destination is not stereo. Loaded Left side only.\n");
+                LOG_DEBUG("INFO: Hooked_D3DXLoadSurfaceFromResource - Destination is not stereo. Loaded Left side only.\n");
             }
             else {
                 hr = trampoline_D3DXLoadSurfaceFromResource(pDestSurfaceRight, pDestPalette, pDestRect, hSrcModule, pSrcResource, pSrcRect, Filter, ColorKey, pSrcInfo);
                 if (FAILED(hr))
-                    LogDebug("ERROR: Hooked_D3DXLoadSurfaceFromResource - Failed to load right side.\n");
+                    LOG_DEBUG("ERROR: Hooked_D3DXLoadSurfaceFromResource - Failed to load right side.\n");
             }
         }
     }
     else {
         hr = trampoline_D3DXLoadSurfaceFromResource(baseDestSurface, pDestPalette, pDestRect, hSrcModule, pSrcResource, pSrcRect, Filter, ColorKey, pSrcInfo);
     }
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -2102,7 +2102,7 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromSurface(
     _In_ const RECT               *pSrcRect,
     _In_       DWORD              Filter,
     _In_       ::D3DCOLOR           ColorKey) {
-    LogDebug("Hooked_D3DXLoadSurfaceFromSurface called using SourceSurface=%p, DestSurface=%p\n", pSrcSurface, pDestSurface);
+    LOG_DEBUG("Hooked_D3DXLoadSurfaceFromSurface called using SourceSurface=%p, DestSurface=%p\n", pSrcSurface, pDestSurface);
     ::LPDIRECT3DSURFACE9 baseSourceSurface = baseSurface9(pSrcSurface);
     ::LPDIRECT3DSURFACE9 baseDestSurface = baseSurface9(pDestSurface);
     HRESULT hr;
@@ -2117,25 +2117,25 @@ HRESULT WINAPI Hooked_D3DXLoadSurfaceFromSurface(
         hr = trampoline_D3DXLoadSurfaceFromSurface(pDestSurfaceLeft, pDestPalette, pDestRect, pSourceSurfaceLeft, pSrcPalette, pSrcRect, Filter, ColorKey);
         if (SUCCEEDED(hr)) {
             if (!pSourceSurfaceRight && pDestSurfaceRight) {
-                LogDebug("Hooked_D3DXLoadSurfaceFromSurface, Direct Mode, - Source is not stereo, destination is stereo. Copying source to both sides of destination.\n");
+                LOG_DEBUG("Hooked_D3DXLoadSurfaceFromSurface, Direct Mode, - Source is not stereo, destination is stereo. Copying source to both sides of destination.\n");
                 hr = trampoline_D3DXLoadSurfaceFromSurface(pDestSurfaceRight, pDestPalette, pDestRect, pSourceSurfaceLeft, pSrcPalette, pSrcRect, Filter, ColorKey);
                 if (FAILED(hr))
-                    LogDebug("ERROR: Hooked_D3DXLoadSurfaceFromSurface - Failed to copy source left to destination right.\n");
+                    LOG_DEBUG("ERROR: Hooked_D3DXLoadSurfaceFromSurface - Failed to copy source left to destination right.\n");
             }
             else if (pSourceSurfaceRight && !pDestSurfaceRight) {
-                LogDebug("INFO: Hooked_D3DXLoadSurfaceFromSurface - Source is stereo, destination is not stereo. Copied Left side only.\n");
+                LOG_DEBUG("INFO: Hooked_D3DXLoadSurfaceFromSurface - Source is stereo, destination is not stereo. Copied Left side only.\n");
             }
             else if (pSourceSurfaceRight && pDestSurfaceRight) {
                 hr = trampoline_D3DXLoadSurfaceFromSurface(pDestSurfaceRight, pDestPalette, pDestRect, pSourceSurfaceRight, pSrcPalette, pSrcRect, Filter, ColorKey);
                 if (FAILED(hr))
-                    LogDebug("ERROR: Hooked_D3DXLoadSurfaceFromSurface - Failed to copy source right to destination right.\n");
+                    LOG_DEBUG("ERROR: Hooked_D3DXLoadSurfaceFromSurface - Failed to copy source right to destination right.\n");
             }
         }
     }
     else {
         hr = trampoline_D3DXLoadSurfaceFromSurface(baseDestSurface, pDestPalette, pDestRect, baseSourceSurface, pSrcPalette, pSrcRect, Filter, ColorKey);
     }
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -2149,10 +2149,10 @@ HRESULT WINAPI Hooked_D3DXLoadVolumeFromFile(
     _In_       DWORD             Filter,
     _In_       ::D3DCOLOR          ColorKey,
     _In_       ::D3DXIMAGE_INFO    *pSrcInfo) {
-    LogDebug("Hooked_D3DXLoadVolumeFromFile called using DestSurface=%p\n", pDestVolume);
+    LOG_DEBUG("Hooked_D3DXLoadVolumeFromFile called using DestSurface=%p\n", pDestVolume);
     ::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
     HRESULT hr = trampoline_D3DXLoadVolumeFromFile(baseDestVolume, pDestPalette, pDestBox, pSrcFile, pSrcBox, Filter, ColorKey, pSrcInfo);
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -2167,10 +2167,10 @@ HRESULT WINAPI Hooked_D3DXLoadVolumeFromFileInMemory(
     _In_       DWORD             Filter,
     _In_       ::D3DCOLOR          ColorKey,
     _In_       ::D3DXIMAGE_INFO    *pSrcInfo) {
-    LogDebug("Hooked_D3DXLoadVolumeFromFileInMemory called using DestSurface=%p\n", pDestVolume);
+    LOG_DEBUG("Hooked_D3DXLoadVolumeFromFileInMemory called using DestSurface=%p\n", pDestVolume);
     ::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
     HRESULT hr = trampoline_D3DXLoadVolumeFromFileInMemory(baseDestVolume, pDestPalette, pDestBox, pSrcData, SrcDataSize, pSrcBox, Filter, ColorKey, pSrcInfo);
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -2187,10 +2187,10 @@ HRESULT WINAPI Hooked_D3DXLoadVolumeFromMemory(
     _In_ const ::D3DBOX            *pSrcBox,
     _In_       DWORD             Filter,
     _In_       ::D3DCOLOR          ColorKey) {
-    LogDebug("Hooked_D3DXLoadVolumeFromMemory called using DestSurface=%p\n", pDestVolume);
+    LOG_DEBUG("Hooked_D3DXLoadVolumeFromMemory called using DestSurface=%p\n", pDestVolume);
     ::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
     HRESULT hr = trampoline_D3DXLoadVolumeFromMemory(baseDestVolume, pDestPalette, pDestBox, pSrcMemory, SrcFormat, SrcRowPitch, SrcSlicePitch, pSrcPalette, pSrcBox, Filter, ColorKey);
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -2205,10 +2205,10 @@ HRESULT WINAPI Hooked_D3DXLoadVolumeFromResource(
     DWORD                     Filter,
     ::D3DCOLOR                  ColorKey,
     ::D3DXIMAGE_INFO*           pSrcInfo) {
-    LogDebug("Hooked_D3DXLoadVolumeFromResource called using DestSurface=%p\n", pDestVolume);
+    LOG_DEBUG("Hooked_D3DXLoadVolumeFromResource called using DestSurface=%p\n", pDestVolume);
     ::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
     HRESULT hr = trampoline_D3DXLoadVolumeFromResource(baseDestVolume, pDestPalette, pDestBox, hSrcModule, pSrcResource, pSrcBox, Filter, ColorKey, pSrcInfo);
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
@@ -2222,11 +2222,11 @@ HRESULT WINAPI Hooked_D3DXLoadVolumeFromVolume(
     _In_ const ::D3DBOX            *pSrcBox,
     _In_       DWORD             Filter,
     _In_       ::D3DCOLOR          ColorKey) {
-    LogDebug("Hooked_D3DXLoadVolumeFromVolume called using DestSurface=%p\n", pDestVolume);
+    LOG_DEBUG("Hooked_D3DXLoadVolumeFromVolume called using DestSurface=%p\n", pDestVolume);
     ::LPDIRECT3DVOLUME9 baseSourceVolume = baseVolume9(pSrcVolume);
     ::LPDIRECT3DVOLUME9 baseDestVolume = baseVolume9(pDestVolume);
     HRESULT hr = trampoline_D3DXLoadVolumeFromVolume(baseDestVolume, pDestPalette, pDestBox, baseSourceVolume, pSrcPalette, pSrcBox, Filter, ColorKey);
-    LogInfo("  returns result=%x\n", hr);
+    LOG_INFO("  returns result=%x\n", hr);
 
     return hr;
 }
