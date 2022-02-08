@@ -152,6 +152,10 @@ void touch_file(wchar_t *path, DWORD flags)
     set_file_last_write_time(path, &ft, flags);
 }
 
+void touch_dir(wchar_t *path)
+{
+    touch_file(path, FILE_FLAG_BACKUP_SEMANTICS);
+}
 
 // -----------------------------------------------------------------------------------------------
 // When logging, it's not very helpful to have long sequences of hex instead of
