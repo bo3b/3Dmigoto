@@ -9,7 +9,7 @@
 // ID3D11Device4                    11.4
 
 // Include before util.h (or any header that includes util.h) to get pretty
-// version of LockResourceCreationMode:
+// version of LOCK_RESOURCE_CREATION_MODE:
 #include "lock.h"
 
 #include "HackerDevice.hpp"
@@ -456,14 +456,14 @@ void HackerDevice::Create3DMigotoResources()
     // be considdered non-fatal, as stereo could be disabled in the control
     // panel, or we could be on an AMD or Intel card.
 
-    LockResourceCreationMode();
+    LOCK_RESOURCE_CREATION_MODE();
 
     CreateStereoParamResources();
     CreateIniParamResources();
     CreatePinkHuntingResources();
     SetGlobalNVSurfaceCreationMode();
 
-    UnlockResourceCreationMode();
+    UNLOCK_RESOURCE_CREATION_MODE();
 
     optimise_command_lists(this);
 }
@@ -2100,7 +2100,7 @@ static const DescType* process_texture_override(uint32_t hash,
         }
     }
 
-    LockResourceCreationMode();
+    LOCK_RESOURCE_CREATION_MODE();
 
     if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) -1) {
         Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
@@ -2121,7 +2121,7 @@ static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMo
             LOG_INFO("    restore call failed.\n");
     }
 
-    UnlockResourceCreationMode();
+    UNLOCK_RESOURCE_CREATION_MODE();
 }
 
 STDMETHODIMP HackerDevice::CreateBuffer(THIS_
