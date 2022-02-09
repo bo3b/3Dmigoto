@@ -227,7 +227,7 @@ public:
     // the newline was done intentionally. For now this is just for our
     // reference, but later we might actually make the default function
     // insert a newline:
-#define FrameAnalysisLogNoNL FrameAnalysisLog
+#define FRAME_ANALYSIS_LOG_NO_NL FrameAnalysisLog
 
     void FrameAnalysisTrigger(FrameAnalysisOptions new_options) override;
     void FrameAnalysisDump(ID3D11Resource *resource, FrameAnalysisOptions options,
