@@ -14,7 +14,7 @@ void _EnterCriticalSectionPretty(CRITICAL_SECTION *lock, char *function, int lin
 //
 // **AVOID CALLING THIS FROM GLOBAL CONSTRUCTORS**
 // https://yosefk.com/c++fqa/ctors.html#fqa-10.12
-#define InitializeCriticalSectionPretty(lock) \
+#define INIT_CRITICAL_SECTION(lock) \
     _InitializeCriticalSectionPretty(lock, #lock)
 void _InitializeCriticalSectionPretty(CRITICAL_SECTION *lock, char *lock_name);
 
