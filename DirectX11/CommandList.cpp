@@ -175,8 +175,8 @@ static void CommandListFlushState(CommandListState *state)
     }
 }
 
-static void RunCommandListComplete(HackerDevice *mHackerDevice,
-        HackerContext *mHackerContext,
+static void RunCommandListComplete(HackerDevice *hacker_device,
+        HackerContext *hacker_context,
         CommandList *command_list,
         DrawCallInfo *call_info,
         ID3D11Resource **resource,
@@ -184,10 +184,10 @@ static void RunCommandListComplete(HackerDevice *mHackerDevice,
         bool post)
 {
     CommandListState state;
-    state.mHackerDevice = mHackerDevice;
-    state.mHackerContext = mHackerContext;
-    state.mOrigDevice1 = mHackerDevice->GetPassThroughOrigDevice1();
-    state.mOrigContext1 = mHackerContext->GetPassThroughOrigContext1();
+    state.mHackerDevice = hacker_device;
+    state.mHackerContext = hacker_context;
+    state.mOrigDevice1 = hacker_device->GetPassThroughOrigDevice1();
+    state.mOrigContext1 = hacker_context->GetPassThroughOrigContext1();
 
     state.call_info = call_info;
     state.resource = resource;
@@ -198,8 +198,8 @@ static void RunCommandListComplete(HackerDevice *mHackerDevice,
     CommandListFlushState(&state);
 }
 
-void RunCommandList(HackerDevice *mHackerDevice,
-        HackerContext *mHackerContext,
+void RunCommandList(HackerDevice *hacker_device,
+        HackerContext *hacker_context,
         CommandList *command_list,
         DrawCallInfo *call_info,
         bool post)
@@ -208,22 +208,22 @@ void RunCommandList(HackerDevice *mHackerDevice,
     if (call_info)
         resource = (ID3D11Resource**)call_info->indirect_buffer;
 
-    RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
+    RunCommandListComplete(hacker_device, hacker_context, command_list,
             call_info, resource, NULL, post);
 }
 
-void RunResourceCommandList(HackerDevice *mHackerDevice,
-        HackerContext *mHackerContext,
+void RunResourceCommandList(HackerDevice *hacker_device,
+        HackerContext *hacker_context,
         CommandList *command_list,
         ID3D11Resource **resource,
         bool post)
 {
-    RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
+    RunCommandListComplete(hacker_device, hacker_context, command_list,
             NULL, resource, NULL, post);
 }
 
-void RunViewCommandList(HackerDevice *mHackerDevice,
-        HackerContext *mHackerContext,
+void RunViewCommandList(HackerDevice *hacker_device,
+        HackerContext *hacker_context,
         CommandList *command_list,
         ID3D11View *view,
         bool post)
@@ -233,7 +233,7 @@ void RunViewCommandList(HackerDevice *mHackerDevice,
     if (view)
         view->GetResource(&res);
 
-    RunCommandListComplete(mHackerDevice, mHackerContext, command_list,
+    RunCommandListComplete(hacker_device, hacker_context, command_list,
             NULL, &res, view, post);
 
     if (res)
@@ -1970,60 +1970,60 @@ err:
     return true;
 }
 
-void CustomShader::substantiate(ID3D11Device *mOrigDevice1)
+void CustomShader::substantiate(ID3D11Device *orig_device)
 {
     if (substantiated)
         return;
     substantiated = true;
 
     if (vs_bytecode) {
-        mOrigDevice1->CreateVertexShader(vs_bytecode->GetBufferPointer(), vs_bytecode->GetBufferSize(), NULL, &vs);
+        orig_device->CreateVertexShader(vs_bytecode->GetBufferPointer(), vs_bytecode->GetBufferSize(), NULL, &vs);
         CleanupShaderMaps(vs);
         vs_bytecode->Release();
         vs_bytecode = NULL;
     }
     if (hs_bytecode) {
-        mOrigDevice1->CreateHullShader(hs_bytecode->GetBufferPointer(), hs_bytecode->GetBufferSize(), NULL, &hs);
+        orig_device->CreateHullShader(hs_bytecode->GetBufferPointer(), hs_bytecode->GetBufferSize(), NULL, &hs);
         CleanupShaderMaps(hs);
         hs_bytecode->Release();
         hs_bytecode = NULL;
     }
     if (ds_bytecode) {
-        mOrigDevice1->CreateDomainShader(ds_bytecode->GetBufferPointer(), ds_bytecode->GetBufferSize(), NULL, &ds);
+        orig_device->CreateDomainShader(ds_bytecode->GetBufferPointer(), ds_bytecode->GetBufferSize(), NULL, &ds);
         CleanupShaderMaps(ds);
         ds_bytecode->Release();
         ds_bytecode = NULL;
     }
     if (gs_bytecode) {
-        mOrigDevice1->CreateGeometryShader(gs_bytecode->GetBufferPointer(), gs_bytecode->GetBufferSize(), NULL, &gs);
+        orig_device->CreateGeometryShader(gs_bytecode->GetBufferPointer(), gs_bytecode->GetBufferSize(), NULL, &gs);
         CleanupShaderMaps(gs);
         gs_bytecode->Release();
         gs_bytecode = NULL;
     }
     if (ps_bytecode) {
-        mOrigDevice1->CreatePixelShader(ps_bytecode->GetBufferPointer(), ps_bytecode->GetBufferSize(), NULL, &ps);
+        orig_device->CreatePixelShader(ps_bytecode->GetBufferPointer(), ps_bytecode->GetBufferSize(), NULL, &ps);
         CleanupShaderMaps(ps);
         ps_bytecode->Release();
         ps_bytecode = NULL;
     }
     if (cs_bytecode) {
-        mOrigDevice1->CreateComputeShader(cs_bytecode->GetBufferPointer(), cs_bytecode->GetBufferSize(), NULL, &cs);
+        orig_device->CreateComputeShader(cs_bytecode->GetBufferPointer(), cs_bytecode->GetBufferSize(), NULL, &cs);
         CleanupShaderMaps(cs);
         cs_bytecode->Release();
         cs_bytecode = NULL;
     }
 
     if (blend_override == 1) // 2 will merge the blend state at draw time
-        mOrigDevice1->CreateBlendState(&blend_desc, &blend_state);
+        orig_device->CreateBlendState(&blend_desc, &blend_state);
 
     if (depth_stencil_override == 1) // 2 will merge depth/stencil state at draw time
-        mOrigDevice1->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
+        orig_device->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
 
     if (rs_override == 1) // 2 will merge rasterizer state at draw time
-        mOrigDevice1->CreateRasterizerState(&rs_desc, &rs_state);
+        orig_device->CreateRasterizerState(&rs_desc, &rs_state);
 
     if (sampler_override == 1)
-        mOrigDevice1->CreateSamplerState(&sampler_desc, &sampler_state);
+        orig_device->CreateSamplerState(&sampler_desc, &sampler_state);
 }
 
 // Similar to memcpy, but also takes a mask. Any bits in the mask that are set
@@ -2040,7 +2040,7 @@ static void memcpy_masked_merge(void *dest, void *src, void *mask, size_t n)
         c_dest[i] = c_dest[i] & ~c_mask[i] | c_src[i] & c_mask[i];
 }
 
-void CustomShader::merge_blend_states(ID3D11BlendState *src_state, FLOAT src_blend_factor[4], UINT src_sample_mask, ID3D11Device *mOrigDevice1)
+void CustomShader::merge_blend_states(ID3D11BlendState *src_state, FLOAT src_blend_factor[4], UINT src_sample_mask, ID3D11Device *orig_device)
 {
     D3D11_BLEND_DESC src_desc;
     int i;
@@ -2080,10 +2080,10 @@ void CustomShader::merge_blend_states(ID3D11BlendState *src_state, FLOAT src_ble
     }
     blend_sample_mask = blend_sample_mask & ~blend_sample_mask_merge_mask | src_sample_mask & blend_sample_mask_merge_mask;
 
-    mOrigDevice1->CreateBlendState(&blend_desc, &blend_state);
+    orig_device->CreateBlendState(&blend_desc, &blend_state);
 }
 
-void CustomShader::merge_depth_stencil_states(ID3D11DepthStencilState *src_state, UINT src_stencil_ref, ID3D11Device *mOrigDevice1)
+void CustomShader::merge_depth_stencil_states(ID3D11DepthStencilState *src_state, UINT src_stencil_ref, ID3D11Device *orig_device)
 {
     D3D11_DEPTH_STENCIL_DESC src_desc;
 
@@ -2119,10 +2119,10 @@ void CustomShader::merge_depth_stencil_states(ID3D11DepthStencilState *src_state
     memcpy_masked_merge(&depth_stencil_desc, &src_desc, &depth_stencil_mask, sizeof(D3D11_DEPTH_STENCIL_DESC));
     stencil_ref = stencil_ref & ~stencil_ref_mask | src_stencil_ref & stencil_ref_mask;
 
-    mOrigDevice1->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
+    orig_device->CreateDepthStencilState(&depth_stencil_desc, &depth_stencil_state);
 }
 
-void CustomShader::merge_rasterizer_states(ID3D11RasterizerState *src_state, ID3D11Device *mOrigDevice1)
+void CustomShader::merge_rasterizer_states(ID3D11RasterizerState *src_state, ID3D11Device *orig_device)
 {
     D3D11_RASTERIZER_DESC src_desc;
 
@@ -2153,7 +2153,7 @@ void CustomShader::merge_rasterizer_states(ID3D11RasterizerState *src_state, ID3
 
     memcpy_masked_merge(&rs_desc, &src_desc, &rs_mask, sizeof(D3D11_RASTERIZER_DESC));
 
-    mOrigDevice1->CreateRasterizerState(&rs_desc, &rs_state);
+    orig_device->CreateRasterizerState(&rs_desc, &rs_state);
 }
 
 struct saved_shader_inst
@@ -4266,25 +4266,25 @@ CustomResource::~CustomResource()
     free(initial_data);
 }
 
-bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE *orig_mode)
+bool CustomResource::OverrideSurfaceCreationMode(StereoHandle stereo_handle, NVAPI_STEREO_SURFACECREATEMODE *orig_mode)
 {
 
     if (override_mode == CustomResourceMode::DEFAULT)
         return false;
 
-    Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, orig_mode);
+    Profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereo_handle, orig_mode);
 
     switch (override_mode) {
         case CustomResourceMode::STEREO:
-            Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+            Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle,
                     NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
             return true;
         case CustomResourceMode::MONO:
-            Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+            Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle,
                     NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
             return true;
         case CustomResourceMode::AUTO:
-            Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,
+            Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle,
                     NVAPI_STEREO_SURFACECREATEMODE_AUTO);
             return true;
     }
@@ -4292,7 +4292,7 @@ bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVA
     return false;
 }
 
-void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mStereoHandle,
+void CustomResource::Substantiate(ID3D11Device *orig_device, StereoHandle stereo_handle,
         D3D11_BIND_FLAG bind_flags, D3D11_RESOURCE_MISC_FLAG misc_flags)
 {
     NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
@@ -4332,37 +4332,37 @@ void CustomResource::Substantiate(ID3D11Device *mOrigDevice1, StereoHandle mSter
 
     LOCK_RESOURCE_CREATION_MODE();
 
-    restore_create_mode = OverrideSurfaceCreationMode(mStereoHandle, &orig_mode);
+    restore_create_mode = OverrideSurfaceCreationMode(stereo_handle, &orig_mode);
 
     if (!filename.empty()) {
-        LoadFromFile(mOrigDevice1);
+        LoadFromFile(orig_device);
     } else {
         switch (override_type) {
             case CustomResourceType::BUFFER:
             case CustomResourceType::STRUCTURED_BUFFER:
             case CustomResourceType::RAW_BUFFER:
-                SubstantiateBuffer(mOrigDevice1, NULL, 0);
+                SubstantiateBuffer(orig_device, NULL, 0);
                 break;
             case CustomResourceType::TEXTURE1D:
-                SubstantiateTexture1D(mOrigDevice1);
+                SubstantiateTexture1D(orig_device);
                 break;
             case CustomResourceType::TEXTURE2D:
             case CustomResourceType::CUBE:
-                SubstantiateTexture2D(mOrigDevice1);
+                SubstantiateTexture2D(orig_device);
                 break;
             case CustomResourceType::TEXTURE3D:
-                SubstantiateTexture3D(mOrigDevice1);
+                SubstantiateTexture3D(orig_device);
                 break;
         }
     }
 
     if (restore_create_mode)
-        Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
+        Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, orig_mode);
 
     UNLOCK_RESOURCE_CREATION_MODE();
 }
 
-void CustomResource::LoadBufferFromFile(ID3D11Device *mOrigDevice1)
+void CustomResource::LoadBufferFromFile(ID3D11Device *orig_device)
 {
     DWORD size, read_size;
     void *buf = NULL;
@@ -4386,7 +4386,7 @@ void CustomResource::LoadBufferFromFile(ID3D11Device *mOrigDevice1)
         goto out_delete;
     }
 
-    SubstantiateBuffer(mOrigDevice1, &buf, size);
+    SubstantiateBuffer(orig_device, &buf, size);
 
 out_delete:
     free(buf);
@@ -4394,7 +4394,7 @@ out_close:
     CloseHandle(f);
 }
 
-void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
+void CustomResource::LoadFromFile(ID3D11Device *orig_device)
 {
     wstring ext;
     HRESULT hr;
@@ -4403,7 +4403,7 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
         case CustomResourceType::BUFFER:
         case CustomResourceType::STRUCTURED_BUFFER:
         case CustomResourceType::RAW_BUFFER:
-            return LoadBufferFromFile(mOrigDevice1);
+            return LoadBufferFromFile(orig_device);
     }
 
     // This code path doesn't get a chance to override the resource
@@ -4432,19 +4432,19 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
     ext = filename.substr(filename.rfind(L"."));
     if (!_wcsicmp(ext.c_str(), L".dds")) {
         LOG_INFO_W(L"Loading custom resource %s as DDS, bind_flags=0x%03x\n", filename.c_str(), bind_flags);
-        hr = DirectX::CreateDDSTextureFromFileEx(mOrigDevice1,
+        hr = DirectX::CreateDDSTextureFromFileEx(orig_device,
                 filename.c_str(), 0,
                 D3D11_USAGE_DEFAULT, bind_flags, 0, misc_flags,
                 false, &resource, NULL, NULL);
     } else {
         LOG_INFO_W(L"Loading custom resource %s as WIC, bind_flags=0x%03x\n", filename.c_str(), bind_flags);
-        hr = DirectX::CreateWICTextureFromFileEx(mOrigDevice1,
+        hr = DirectX::CreateWICTextureFromFileEx(orig_device,
                 filename.c_str(), 0,
                 D3D11_USAGE_DEFAULT, bind_flags, 0, misc_flags,
                 false, &resource, NULL);
     }
     if (SUCCEEDED(hr)) {
-        device = mOrigDevice1;
+        device = orig_device;
         is_null = false;
         // TODO:
         // format = ...
@@ -4452,7 +4452,7 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
         LogOverlay(LOG_WARNING, "Failed to load custom texture resource %S: 0x%x\n", filename.c_str(), hr);
 }
 
-void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, DWORD size)
+void CustomResource::SubstantiateBuffer(ID3D11Device *orig_device, void **buf, DWORD size)
 {
     D3D11_SUBRESOURCE_DATA data = {0}, *pInitialData = NULL;
     ID3D11Buffer *buffer;
@@ -4505,13 +4505,13 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, 
         pInitialData = &data;
     }
 
-    hr = mOrigDevice1->CreateBuffer(&desc, pInitialData, &buffer);
+    hr = orig_device->CreateBuffer(&desc, pInitialData, &buffer);
     if (SUCCEEDED(hr)) {
         LOG_INFO("Substantiated custom %S [%S], bind_flags=0x%03x\n",
                 lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
         LogDebugResourceDesc(&desc);
         resource = (ID3D11Resource*)buffer;
-        device = mOrigDevice1;
+        device = orig_device;
         is_null = false;
         OverrideOutOfBandInfo(&format, &stride);
     } else {
@@ -4520,7 +4520,7 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, 
         LogResourceDesc(&desc);
     }
 }
-void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice1)
+void CustomResource::SubstantiateTexture1D(ID3D11Device *orig_device)
 {
     ID3D11Texture1D *tex1d;
     D3D11_TEXTURE1D_DESC desc;
@@ -4532,13 +4532,13 @@ void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice1)
     desc.MiscFlags = misc_flags;
     OverrideTexDesc(&desc);
 
-    hr = mOrigDevice1->CreateTexture1D(&desc, NULL, &tex1d);
+    hr = orig_device->CreateTexture1D(&desc, NULL, &tex1d);
     if (SUCCEEDED(hr)) {
         LOG_INFO("Substantiated custom %S [%S], bind_flags=0x%03x\n",
                 lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
         LogDebugResourceDesc(&desc);
         resource = (ID3D11Resource*)tex1d;
-        device = mOrigDevice1;
+        device = orig_device;
         is_null = false;
     } else {
         LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
@@ -4546,7 +4546,7 @@ void CustomResource::SubstantiateTexture1D(ID3D11Device *mOrigDevice1)
         LogResourceDesc(&desc);
     }
 }
-void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice1)
+void CustomResource::SubstantiateTexture2D(ID3D11Device *orig_device)
 {
     ID3D11Texture2D *tex2d;
     D3D11_TEXTURE2D_DESC desc;
@@ -4558,13 +4558,13 @@ void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice1)
     desc.MiscFlags = misc_flags;
     OverrideTexDesc(&desc);
 
-    hr = mOrigDevice1->CreateTexture2D(&desc, NULL, &tex2d);
+    hr = orig_device->CreateTexture2D(&desc, NULL, &tex2d);
     if (SUCCEEDED(hr)) {
         LOG_INFO("Substantiated custom %S [%S], bind_flags=0x%03x\n",
                 lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
         LogDebugResourceDesc(&desc);
         resource = (ID3D11Resource*)tex2d;
-        device = mOrigDevice1;
+        device = orig_device;
         is_null = false;
     } else {
         LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
@@ -4572,7 +4572,7 @@ void CustomResource::SubstantiateTexture2D(ID3D11Device *mOrigDevice1)
         LogResourceDesc(&desc);
     }
 }
-void CustomResource::SubstantiateTexture3D(ID3D11Device *mOrigDevice1)
+void CustomResource::SubstantiateTexture3D(ID3D11Device *orig_device)
 {
     ID3D11Texture3D *tex3d;
     D3D11_TEXTURE3D_DESC desc;
@@ -4584,13 +4584,13 @@ void CustomResource::SubstantiateTexture3D(ID3D11Device *mOrigDevice1)
     desc.MiscFlags = misc_flags;
     OverrideTexDesc(&desc);
 
-    hr = mOrigDevice1->CreateTexture3D(&desc, NULL, &tex3d);
+    hr = orig_device->CreateTexture3D(&desc, NULL, &tex3d);
     if (SUCCEEDED(hr)) {
         LOG_INFO("Substantiated custom %S [%S], bind_flags=0x%03x\n",
                 lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.BindFlags);
         LogDebugResourceDesc(&desc);
         resource = (ID3D11Resource*)tex3d;
-        device = mOrigDevice1;
+        device = orig_device;
         is_null = false;
     } else {
         LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
@@ -5018,7 +5018,7 @@ err:
     goto out;
 }
 
-void CustomResource::expire(ID3D11Device *mOrigDevice1, ID3D11DeviceContext *mOrigContext1)
+void CustomResource::expire(ID3D11Device *orig_device, ID3D11DeviceContext *orig_context)
 {
     ID3D11Resource *new_resource = NULL;
 
@@ -5032,7 +5032,7 @@ void CustomResource::expire(ID3D11Device *mOrigDevice1, ID3D11DeviceContext *mOr
     // in use GetDevice() will return the real device, but we will compare
     // it with the ReShade device and think there has been a device swap
     // when there has not been.
-    if (device == mOrigDevice1)
+    if (device == orig_device)
         return;
 
     // Attempt to transfer resource to new device by staging to the CPU and
@@ -5051,7 +5051,7 @@ void CustomResource::expire(ID3D11Device *mOrigDevice1, ID3D11DeviceContext *mOr
     //       on new device (for convoluted startup sequences)
     LOG_INFO("Device mismatch, transferring [%S] to new device\n", name.c_str());
     new_resource = inter_device_resource_transfer(
-            mOrigDevice1, mOrigContext1, resource, &name);
+            orig_device, orig_context, resource, &name);
 
     // Expire cache:
     resource->Release();
@@ -5062,7 +5062,7 @@ void CustomResource::expire(ID3D11Device *mOrigDevice1, ID3D11DeviceContext *mOr
     if (new_resource) {
         // Inter-device copy succeeded, switch to the new resource:
         resource = new_resource;
-        device = mOrigDevice1;
+        device = orig_device;
     } else {
         // Inter-device copy failed / skipped. Flag resource for
         // re-substantiation (if possible for this resource):

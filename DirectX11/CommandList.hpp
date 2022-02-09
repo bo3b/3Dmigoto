@@ -331,12 +331,12 @@ public:
     CustomShader();
     ~CustomShader();
 
-    bool compile(char type, wchar_t *filename, const std::wstring *wname, const std::wstring *mod_namespace);
-    void substantiate(ID3D11Device *mOrigDevice);
+    bool compile(char type, wchar_t *filename, const std::wstring *wname, const std::wstring *namespace_path);
+    void substantiate(ID3D11Device *orig_device);
 
-    void merge_blend_states(ID3D11BlendState *state, FLOAT blend_factor[4], UINT sample_mask, ID3D11Device *mOrigDevice);
-    void merge_depth_stencil_states(ID3D11DepthStencilState *state, UINT stencil_ref, ID3D11Device *mOrigDevice);
-    void merge_rasterizer_states(ID3D11RasterizerState *state, ID3D11Device *mOrigDevice);
+    void merge_blend_states(ID3D11BlendState *src_state, FLOAT src_blend_factor[4], UINT src_sample_mask, ID3D11Device *orig_device);
+    void merge_depth_stencil_states(ID3D11DepthStencilState *src_state, UINT src_stencil_ref, ID3D11Device *orig_device);
+    void merge_rasterizer_states(ID3D11RasterizerState *src_state, ID3D11Device *orig_device);
 };
 
 typedef std::unordered_map<std::wstring, class CustomShader> CustomShaders;
@@ -537,22 +537,22 @@ public:
     CustomResource();
     ~CustomResource();
 
-    void Substantiate(ID3D11Device *mOrigDevice, StereoHandle mStereoHandle, D3D11_BIND_FLAG bind_flags, D3D11_RESOURCE_MISC_FLAG misc_flags);
-    bool OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE *orig_mode);
+    void Substantiate(ID3D11Device *orig_device, StereoHandle stereo_handle, D3D11_BIND_FLAG bind_flags, D3D11_RESOURCE_MISC_FLAG misc_flags);
+    bool OverrideSurfaceCreationMode(StereoHandle stereo_handle, NVAPI_STEREO_SURFACECREATEMODE *orig_mode);
     void OverrideBufferDesc(D3D11_BUFFER_DESC *desc);
     void OverrideTexDesc(D3D11_TEXTURE1D_DESC *desc);
     void OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc);
     void OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc);
     void OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride);
-    void expire(ID3D11Device *mOrigDevice1, ID3D11DeviceContext *mOrigContext1);
+    void expire(ID3D11Device *orig_device, ID3D11DeviceContext *orig_context);
 
 private:
-    void LoadFromFile(ID3D11Device *mOrigDevice);
-    void LoadBufferFromFile(ID3D11Device *mOrigDevice);
-    void SubstantiateBuffer(ID3D11Device *mOrigDevice, void **buf, DWORD size);
-    void SubstantiateTexture1D(ID3D11Device *mOrigDevice);
-    void SubstantiateTexture2D(ID3D11Device *mOrigDevice);
-    void SubstantiateTexture3D(ID3D11Device *mOrigDevice);
+    void LoadFromFile(ID3D11Device *orig_device);
+    void LoadBufferFromFile(ID3D11Device *orig_device);
+    void SubstantiateBuffer(ID3D11Device *orig_device, void **buf, DWORD size);
+    void SubstantiateTexture1D(ID3D11Device *orig_device);
+    void SubstantiateTexture2D(ID3D11Device *orig_device);
+    void SubstantiateTexture3D(ID3D11Device *orig_device);
 };
 
 typedef std::unordered_map<std::wstring, class CustomResource> CustomResources;
@@ -707,7 +707,7 @@ public:
 
     ResourceStagingOperation();
 
-    HRESULT map(CommandListState *state, D3D11_MAPPED_SUBRESOURCE *map);
+    HRESULT map(CommandListState *state, D3D11_MAPPED_SUBRESOURCE *mapping);
     void unmap(CommandListState *state);
 };
 
@@ -1259,16 +1259,16 @@ public:
     void run(CommandListState*) override;
 };
 
-void RunCommandList(HackerDevice *mHackerDevice,
-        HackerContext *mHackerContext,
+void RunCommandList(HackerDevice *hacker_device,
+        HackerContext *hacker_context,
         CommandList *command_list, DrawCallInfo *call_info,
         bool post);
-void RunResourceCommandList(HackerDevice *mHackerDevice,
-        HackerContext *mHackerContext,
+void RunResourceCommandList(HackerDevice *hacker_device,
+        HackerContext *hacker_context,
         CommandList *command_list, ID3D11Resource **resource,
         bool post);
-void RunViewCommandList(HackerDevice *mHackerDevice,
-        HackerContext *mHackerContext,
+void RunViewCommandList(HackerDevice *hacker_device,
+        HackerContext *hacker_context,
         CommandList *command_list, ID3D11View *view,
         bool post);
 
