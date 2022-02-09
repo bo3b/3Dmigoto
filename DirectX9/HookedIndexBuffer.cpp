@@ -7,9 +7,9 @@
 
 
 #if 0
-#define HookDebug LOG_DEBUG
+#define HOOK_DEBUG LOG_DEBUG
 #else
-#define HookDebug(...) do { } while (0)
+#define HOOK_DEBUG(...) do { } while (0)
 #endif
 
 typedef std::unordered_map<IDirect3DIndexBuffer9 *, IDirect3DIndexBuffer9 *> IndexBufferMap;
@@ -46,7 +46,7 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 {
     IDirect3DIndexBuffer9 *index_buffer = lookup_hooked_index_buffer(This);
 
-    HookDebug("HookedIndexBuffer:: QueryInterface()\n");
+    HOOK_DEBUG("HookedIndexBuffer:: QueryInterface()\n");
 
     if (index_buffer)
         return IDirect3DIndexBuffer9_QueryInterface(index_buffer, riid, ppvObject);
@@ -59,7 +59,7 @@ static ULONG STDMETHODCALLTYPE AddRef(
 {
     IDirect3DIndexBuffer9 *index_buffer = lookup_hooked_index_buffer(This);
 
-    HookDebug("HookedIndexBuffer:: AddRef()\n");
+    HOOK_DEBUG("HookedIndexBuffer:: AddRef()\n");
 
     if (index_buffer)
         return IDirect3DIndexBuffer9_AddRef(index_buffer);
@@ -73,7 +73,7 @@ static ULONG STDMETHODCALLTYPE Release(
     IndexBufferMap::iterator i;
     ULONG ref;
 
-    HookDebug("HookedIndexBuffer:: Release()\n");
+    HOOK_DEBUG("HookedIndexBuffer:: Release()\n");
 
     EnterCriticalSection(&index_buffer_map_lock);
     i = index_buffer_map.find(This);
@@ -95,7 +95,7 @@ static HRESULT STDMETHODCALLTYPE FreePrivateData(
 {
     IDirect3DIndexBuffer9 *index_buffer = lookup_hooked_index_buffer(This);
 
-    HookDebug("HookedIndexBuffer:: FreePrivateData()\n");
+    HOOK_DEBUG("HookedIndexBuffer:: FreePrivateData()\n");
 
     if (index_buffer)
         return IDirect3DIndexBuffer9_FreePrivateData(index_buffer, refguid);
@@ -108,7 +108,7 @@ static HRESULT STDMETHODCALLTYPE GetDevice(
 {
     IDirect3DIndexBuffer9 *index_buffer = lookup_hooked_index_buffer(This);
 
-    HookDebug("HookedIndexBuffer:: GetDevice()\n");
+    HOOK_DEBUG("HookedIndexBuffer:: GetDevice()\n");
 
     if (index_buffer)
         return IDirect3DIndexBuffer9_GetDevice(index_buffer, ppDevice);
@@ -121,7 +121,7 @@ static DWORD STDMETHODCALLTYPE GetPriority(
 {
     IDirect3DIndexBuffer9 *index_buffer = lookup_hooked_index_buffer(This);
 
-    HookDebug("HookedIndexBuffer:: GetPriority()\n");
+    HOOK_DEBUG("HookedIndexBuffer:: GetPriority()\n");
 
     if (index_buffer)
         return IDirect3DIndexBuffer9_GetPriority(index_buffer);
@@ -137,7 +137,7 @@ static HRESULT STDMETHODCALLTYPE GetPrivateData(
 {
     IDirect3DIndexBuffer9 *index_buffer = lookup_hooked_index_buffer(This);
 
-    HookDebug("HookedIndexBuffer:: GetPrivateData()\n");
+    HOOK_DEBUG("HookedIndexBuffer:: GetPrivateData()\n");
 
     if (index_buffer)
         return IDirect3DIndexBuffer9_GetPrivateData(index_buffer, refguid, pData, pSizeOfData);
@@ -150,7 +150,7 @@ static D3DRESOURCETYPE STDMETHODCALLTYPE GetType(
 {
     IDirect3DIndexBuffer9 *index_buffer = lookup_hooked_index_buffer(This);
 
-    HookDebug("HookedIndexBuffer:: GetType()\n");
+    HOOK_DEBUG("HookedIndexBuffer:: GetType()\n");
 
     if (index_buffer)
         return IDirect3DIndexBuffer9_GetType(index_buffer);
@@ -163,7 +163,7 @@ static void STDMETHODCALLTYPE PreLoad(
 {
     IDirect3DIndexBuffer9 *index_buffer = lookup_hooked_index_buffer(This);
 
-    HookDebug("HookedIndexBuffer:: PreLoad()\n");
+    HOOK_DEBUG("HookedIndexBuffer:: PreLoad()\n");
 
     if (index_buffer)
         return IDirect3DIndexBuffer9_PreLoad(index_buffer);
@@ -176,7 +176,7 @@ static DWORD STDMETHODCALLTYPE SetPriority(
 {
     IDirect3DIndexBuffer9 *index_buffer = lookup_hooked_index_buffer(This);
 
-    HookDebug("HookedIndexBuffer:: SetPriority()\n");
+    HOOK_DEBUG("HookedIndexBuffer:: SetPriority()\n");
 
     if (index_buffer)
         return IDirect3DIndexBuffer9_SetPriority(index_buffer, PriorityNew);
@@ -194,7 +194,7 @@ static HRESULT STDMETHODCALLTYPE SetPrivateData(
 {
     IDirect3DIndexBuffer9 *index_buffer = lookup_hooked_index_buffer(This);
 
-    HookDebug("HookedIndexBuffer:: SetPrivateData()\n");
+    HOOK_DEBUG("HookedIndexBuffer:: SetPrivateData()\n");
 
     if (index_buffer)
         return IDirect3DIndexBuffer9_SetPrivateData(index_buffer, refguid, pData, SizeOfData, Flags);
@@ -208,7 +208,7 @@ static HRESULT STDMETHODCALLTYPE GetDesc(
 {
     IDirect3DIndexBuffer9 *index_buffer = lookup_hooked_index_buffer(This);
 
-    HookDebug("HookedIndexBuffer:: GetDesc()\n");
+    HOOK_DEBUG("HookedIndexBuffer:: GetDesc()\n");
 
     if (index_buffer)
         return IDirect3DIndexBuffer9_GetDesc(index_buffer, pDesc);
@@ -225,7 +225,7 @@ static HRESULT STDMETHODCALLTYPE Lock(
 {
     IDirect3DIndexBuffer9 *index_buffer = lookup_hooked_index_buffer(This);
 
-    HookDebug("HookedIndexBuffer:: Lock()\n");
+    HOOK_DEBUG("HookedIndexBuffer:: Lock()\n");
 
     if (index_buffer)
         return IDirect3DIndexBuffer9_Lock(index_buffer, OffsetToLock, SizeToLock, ppbData, Flags);
@@ -238,7 +238,7 @@ static HRESULT STDMETHODCALLTYPE Unlock(
 {
     IDirect3DIndexBuffer9 *index_buffer = lookup_hooked_index_buffer(This);
 
-    HookDebug("HookedIndexBuffer:: Unlock()\n");
+    HOOK_DEBUG("HookedIndexBuffer:: Unlock()\n");
 
     if (index_buffer)
         return IDirect3DIndexBuffer9_Unlock(index_buffer);
@@ -293,7 +293,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
     REFIID riid,
     __RPC__deref_out  void **ppvObject)
 {
-    HookDebug("TrampolineIDirect3DIndexBuffer9:: QueryInterface()\n");
+    HOOK_DEBUG("TrampolineIDirect3DIndexBuffer9:: QueryInterface()\n");
 
     return orig_vtable.QueryInterface(((IDirect3DIndexBuffer9Trampoline*)This)->orig_this, riid, ppvObject);
 }
@@ -302,7 +302,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
 static ULONG STDMETHODCALLTYPE TrampolineAddRef(
     IDirect3DIndexBuffer9 * This)
 {
-    HookDebug("TrampolineIDirect3DIndexBuffer9:: AddRef()\n");
+    HOOK_DEBUG("TrampolineIDirect3DIndexBuffer9:: AddRef()\n");
 
     return orig_vtable.AddRef(((IDirect3DIndexBuffer9Trampoline*)This)->orig_this);
 }
@@ -310,7 +310,7 @@ static ULONG STDMETHODCALLTYPE TrampolineAddRef(
 static ULONG STDMETHODCALLTYPE TrampolineRelease(
     IDirect3DIndexBuffer9 * This)
 {
-    HookDebug("TrampolineIDirect3DIndexBuffer9:: Release()\n");
+    HOOK_DEBUG("TrampolineIDirect3DIndexBuffer9:: Release()\n");
 
     return orig_vtable.Release(((IDirect3DIndexBuffer9Trampoline*)This)->orig_this);
 }
@@ -318,7 +318,7 @@ static ULONG STDMETHODCALLTYPE TrampolineRelease(
 static HRESULT STDMETHODCALLTYPE TrampolineFreePrivateData(
     IDirect3DIndexBuffer9 * This, REFGUID refguid)
 {
-    HookDebug("TrampolineIDirect3DIndexBuffer9:: FreePrivateData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DIndexBuffer9:: FreePrivateData()\n");
 
     return orig_vtable.FreePrivateData(((IDirect3DIndexBuffer9Trampoline*)This)->orig_this, refguid);
 }
@@ -326,7 +326,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineFreePrivateData(
 static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(
     IDirect3DIndexBuffer9 * This, IDirect3DDevice9 **ppDevice)
 {
-    HookDebug("TrampolineIDirect3DIndexBuffer9:: GetDevice()\n");
+    HOOK_DEBUG("TrampolineIDirect3DIndexBuffer9:: GetDevice()\n");
 
     return orig_vtable.GetDevice(((IDirect3DIndexBuffer9Trampoline*)This)->orig_this, ppDevice);
 }
@@ -334,7 +334,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(
 static DWORD STDMETHODCALLTYPE TrampolineGetPriority(
     IDirect3DIndexBuffer9 * This)
 {
-    HookDebug("TrampolineIDirect3DIndexBuffer9:: GetPriority()\n");
+    HOOK_DEBUG("TrampolineIDirect3DIndexBuffer9:: GetPriority()\n");
 
     return orig_vtable.GetPriority(((IDirect3DIndexBuffer9Trampoline*)This)->orig_this);
 }
@@ -345,7 +345,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetPrivateData(
      void    *pData,
      DWORD   *pSizeOfData)
 {
-    HookDebug("TrampolineIDirect3DIndexBuffer9:: GetPrivateData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DIndexBuffer9:: GetPrivateData()\n");
 
     return orig_vtable.GetPrivateData(((IDirect3DIndexBuffer9Trampoline*)This)->orig_this, refguid, pData, pSizeOfData);
 }
@@ -353,7 +353,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetPrivateData(
 static D3DRESOURCETYPE STDMETHODCALLTYPE TrampolineGetType(
     IDirect3DIndexBuffer9 * This)
 {
-    HookDebug("TrampolineIDirect3DIndexBuffer9:: GetType()\n");
+    HOOK_DEBUG("TrampolineIDirect3DIndexBuffer9:: GetType()\n");
 
     return orig_vtable.GetType(((IDirect3DIndexBuffer9Trampoline*)This)->orig_this);
 }
@@ -361,7 +361,7 @@ static D3DRESOURCETYPE STDMETHODCALLTYPE TrampolineGetType(
 static void STDMETHODCALLTYPE TrampolinePreLoad(
     IDirect3DIndexBuffer9 * This)
 {
-    HookDebug("TrampolineIDirect3DIndexBuffer9::PreLoad()\n");
+    HOOK_DEBUG("TrampolineIDirect3DIndexBuffer9::PreLoad()\n");
 
     return orig_vtable.PreLoad(((IDirect3DIndexBuffer9Trampoline*)This)->orig_this);
 }
@@ -369,7 +369,7 @@ static void STDMETHODCALLTYPE TrampolinePreLoad(
 static DWORD STDMETHODCALLTYPE TrampolineSetPriority(
     IDirect3DIndexBuffer9 * This, DWORD PriorityNew)
 {
-    HookDebug("TrampolineIDirect3DIndexBuffer9::SetPriority()\n");
+    HOOK_DEBUG("TrampolineIDirect3DIndexBuffer9::SetPriority()\n");
 
     return orig_vtable.SetPriority(((IDirect3DIndexBuffer9Trampoline*)This)->orig_this, PriorityNew);
 }
@@ -381,7 +381,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateData(
            DWORD   SizeOfData,
            DWORD   Flags)
 {
-    HookDebug("TrampolineIDirect3DIndexBuffer9::SetPrivateData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DIndexBuffer9::SetPrivateData()\n");
 
     return orig_vtable.SetPrivateData(((IDirect3DIndexBuffer9Trampoline*)This)->orig_this, refguid, pData, SizeOfData, Flags);
 }
@@ -390,7 +390,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetDesc(
     IDirect3DIndexBuffer9 * This,
     D3DINDEXBUFFER_DESC *pDesc)
 {
-    HookDebug("TrampolineIDirect3DIndexBuffer9::GetDesc()\n");
+    HOOK_DEBUG("TrampolineIDirect3DIndexBuffer9::GetDesc()\n");
 
     return orig_vtable.GetDesc(((IDirect3DIndexBuffer9Trampoline*)This)->orig_this, pDesc);
 }
@@ -402,7 +402,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineLock(
      VOID  **ppbData,
       DWORD Flags)
 {
-    HookDebug("TrampolineIDirect3DIndexBuffer9::Lock()\n");
+    HOOK_DEBUG("TrampolineIDirect3DIndexBuffer9::Lock()\n");
 
     return orig_vtable.Lock(((IDirect3DIndexBuffer9Trampoline*)This)->orig_this, OffsetToLock, SizeToLock, ppbData, Flags);
 }
@@ -410,7 +410,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineLock(
 static HRESULT STDMETHODCALLTYPE TrampolineUnlock(
     IDirect3DIndexBuffer9 * This)
 {
-    HookDebug("TrampolineIDirect3DIndexBuffer9::Unlock()\n");
+    HOOK_DEBUG("TrampolineIDirect3DIndexBuffer9::Unlock()\n");
 
     return orig_vtable.Unlock(((IDirect3DIndexBuffer9Trampoline*)This)->orig_this);
 }

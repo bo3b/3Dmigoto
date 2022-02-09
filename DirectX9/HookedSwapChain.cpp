@@ -8,9 +8,9 @@
 
 
 #if 0
-#define HookDebug LOG_DEBUG
+#define HOOK_DEBUG LOG_DEBUG
 #else
-#define HookDebug(...) do { } while (0)
+#define HOOK_DEBUG(...) do { } while (0)
 #endif
 
 typedef std::unordered_map<IDirect3DSwapChain9 *, IDirect3DSwapChain9 *> ChainMap;
@@ -63,7 +63,7 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 {
     IDirect3DSwapChain9 *chain = lookup_hooked_swapchain(This);
 
-    HookDebug("HookedSwapChain:: QueryInterface()\n");
+    HOOK_DEBUG("HookedSwapChain:: QueryInterface()\n");
 
     if (chain)
         return IDirect3DSwapChain9_QueryInterface(chain, riid, ppvObject);
@@ -76,7 +76,7 @@ static ULONG STDMETHODCALLTYPE AddRef(
 {
     IDirect3DSwapChain9 *chain = lookup_hooked_swapchain(This);
 
-    HookDebug("HookedSwapChain:: AddRef()\n");
+    HOOK_DEBUG("HookedSwapChain:: AddRef()\n");
 
     if (chain)
         return IDirect3DSwapChain9_AddRef(chain);
@@ -90,7 +90,7 @@ static ULONG STDMETHODCALLTYPE Release(
     ChainMap::iterator i;
     ULONG ref;
 
-    HookDebug("HookedChain:: Release()\n");
+    HOOK_DEBUG("HookedChain:: Release()\n");
 
     EnterCriticalSection(&chain_map_lock);
     i = chain_map.find(This);
@@ -111,7 +111,7 @@ static ULONG STDMETHODCALLTYPE Release(
 static HRESULT STDMETHODCALLTYPE Present(IDirect3DSwapChain9 * This, RECT* pSourceRect, CONST RECT* pDestRect, HWND hDestWindowOverride, CONST RGNDATA* pDirtyRegion, DWORD dwFlags) {
     IDirect3DSwapChain9 *chain = lookup_hooked_swapchain(This);
 
-    HookDebug("HookedChain::Present()\n");
+    HOOK_DEBUG("HookedChain::Present()\n");
 
     if (chain)
         return IDirect3DSwapChain9_Present(chain, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
@@ -123,7 +123,7 @@ static HRESULT STDMETHODCALLTYPE Present(IDirect3DSwapChain9 * This, RECT* pSour
 static HRESULT STDMETHODCALLTYPE GetFrontBufferData(IDirect3DSwapChain9 * This, IDirect3DSurface9 *pDestSurface) {
     IDirect3DSwapChain9 *chain = lookup_hooked_swapchain(This);
 
-    HookDebug("HookedChain::GetFrontBufferData()\n");
+    HOOK_DEBUG("HookedChain::GetFrontBufferData()\n");
 
     if (chain)
         return IDirect3DSwapChain9_GetFrontBufferData(chain, pDestSurface);
@@ -135,7 +135,7 @@ static HRESULT STDMETHODCALLTYPE GetFrontBufferData(IDirect3DSwapChain9 * This, 
 static HRESULT STDMETHODCALLTYPE GetBackBuffer(IDirect3DSwapChain9 * This, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9 **ppBackBuffer) {
     IDirect3DSwapChain9 *chain = lookup_hooked_swapchain(This);
 
-    HookDebug("HookedChain::GetBackBuffer()\n");
+    HOOK_DEBUG("HookedChain::GetBackBuffer()\n");
 
     if (chain)
         return IDirect3DSwapChain9_GetBackBuffer(chain, iBackBuffer, Type, ppBackBuffer);
@@ -147,7 +147,7 @@ static HRESULT STDMETHODCALLTYPE GetBackBuffer(IDirect3DSwapChain9 * This, UINT 
 static HRESULT STDMETHODCALLTYPE GetRasterStatus(IDirect3DSwapChain9 * This, D3DRASTER_STATUS* pRasterStatus){
     IDirect3DSwapChain9 *chain = lookup_hooked_swapchain(This);
 
-    HookDebug("HookedChain::GetRasterStatus()\n");
+    HOOK_DEBUG("HookedChain::GetRasterStatus()\n");
 
     if (chain)
         return IDirect3DSwapChain9_GetRasterStatus(chain, pRasterStatus);
@@ -159,7 +159,7 @@ static HRESULT STDMETHODCALLTYPE GetRasterStatus(IDirect3DSwapChain9 * This, D3D
 static HRESULT STDMETHODCALLTYPE GetDisplayMode(IDirect3DSwapChain9 * This, D3DDISPLAYMODE* pMode) {
     IDirect3DSwapChain9 *chain = lookup_hooked_swapchain(This);
 
-    HookDebug("HookedChain::GetDisplayMode()\n");
+    HOOK_DEBUG("HookedChain::GetDisplayMode()\n");
 
     if (chain)
         return IDirect3DSwapChain9_GetDisplayMode(chain, pMode);
@@ -170,7 +170,7 @@ static HRESULT STDMETHODCALLTYPE GetDisplayMode(IDirect3DSwapChain9 * This, D3DD
 static HRESULT STDMETHODCALLTYPE GetDevice(IDirect3DSwapChain9 * This, IDirect3DDevice9** ppDevice) {
     IDirect3DSwapChain9 *chain = lookup_hooked_swapchain(This);
 
-    HookDebug("HookedChain::GetDevice()\n");
+    HOOK_DEBUG("HookedChain::GetDevice()\n");
 
     if (chain)
         return IDirect3DSwapChain9_GetDevice(chain, ppDevice);
@@ -182,7 +182,7 @@ static HRESULT STDMETHODCALLTYPE GetDevice(IDirect3DSwapChain9 * This, IDirect3D
 static HRESULT STDMETHODCALLTYPE GetPresentParameters(IDirect3DSwapChain9 * This, D3DPRESENT_PARAMETERS* pPresentationParameters) {
     IDirect3DSwapChain9 *chain = lookup_hooked_swapchain(This);
 
-    HookDebug("HookedChain::GetPresentParameters()\n");
+    HOOK_DEBUG("HookedChain::GetPresentParameters()\n");
 
     if (chain)
         return IDirect3DSwapChain9_GetPresentParameters(chain, pPresentationParameters);
@@ -194,7 +194,7 @@ static HRESULT STDMETHODCALLTYPE GetPresentParameters(IDirect3DSwapChain9 * This
 static HRESULT STDMETHODCALLTYPE GetDisplayModeEx(IDirect3DSwapChain9Ex * This, D3DDISPLAYMODEEX *pMode, D3DDISPLAYROTATION *pRotation) {
     IDirect3DSwapChain9Ex *chain = lookup_hooked_swapchain(This);
 
-    HookDebug("HookedChain::GetDisplayModeEx()\n");
+    HOOK_DEBUG("HookedChain::GetDisplayModeEx()\n");
 
     if (chain)
         return IDirect3DSwapChain9Ex_GetDisplayModeEx(chain, pMode, pRotation);
@@ -206,7 +206,7 @@ static HRESULT STDMETHODCALLTYPE GetDisplayModeEx(IDirect3DSwapChain9Ex * This, 
 static HRESULT STDMETHODCALLTYPE GetLastPresentCount(IDirect3DSwapChain9Ex * This, UINT *pLastPresentCount) {
     IDirect3DSwapChain9Ex *chain = lookup_hooked_swapchain(This);
 
-    HookDebug("HookedChain::GetLastPresentCount()\n");
+    HOOK_DEBUG("HookedChain::GetLastPresentCount()\n");
 
     if (chain)
         return IDirect3DSwapChain9Ex_GetLastPresentCount(chain, pLastPresentCount);
@@ -218,7 +218,7 @@ static HRESULT STDMETHODCALLTYPE GetLastPresentCount(IDirect3DSwapChain9Ex * Thi
 static HRESULT STDMETHODCALLTYPE GetPresentStats(IDirect3DSwapChain9Ex * This, D3DPRESENTSTATS *pPresentationStatistics) {
     IDirect3DSwapChain9Ex *chain = lookup_hooked_swapchain(This);
 
-    HookDebug("HookedChain::GetPresentStatistics()\n");
+    HOOK_DEBUG("HookedChain::GetPresentStatistics()\n");
 
     if (chain)
         return IDirect3DSwapChain9Ex_GetPresentStats(chain, pPresentationStatistics);
@@ -286,7 +286,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
     REFIID riid,
     __RPC__deref_out  void **ppvObject)
 {
-    HookDebug("TrampolineSwapChain:: QueryInterface()\n");
+    HOOK_DEBUG("TrampolineSwapChain:: QueryInterface()\n");
 
     return orig_vtable.QueryInterface(((IDirect3DSwapChain9Trampoline*)This)->orig_this, riid, ppvObject);
 }
@@ -295,7 +295,7 @@ template<typename SwapChain>
 static ULONG STDMETHODCALLTYPE TrampolineAddRef(
     SwapChain * This)
 {
-    HookDebug("TrampolineSwapChain:: AddRef()\n");
+    HOOK_DEBUG("TrampolineSwapChain:: AddRef()\n");
 
     return orig_vtable.AddRef(((IDirect3DSwapChain9Trampoline*)This)->orig_this);
 }
@@ -304,7 +304,7 @@ template<typename SwapChain>
 static ULONG STDMETHODCALLTYPE TrampolineRelease(
     SwapChain * This)
 {
-    HookDebug("TrampolineSwapChain:: Release()\n");
+    HOOK_DEBUG("TrampolineSwapChain:: Release()\n");
 
     return orig_vtable.Release(((IDirect3DSwapChain9Trampoline*)This)->orig_this);
 }
@@ -312,7 +312,7 @@ static ULONG STDMETHODCALLTYPE TrampolineRelease(
 template<typename SwapChain>
 static HRESULT STDMETHODCALLTYPE TrampolinePresent(SwapChain * This, CONST RECT* pSourceRect, CONST RECT* pDestRect, HWND hDestWindowOverride, CONST RGNDATA* pDirtyRegion, DWORD dwFlags) {
 
-    HookDebug("TrampolineSwapChain:: Present()\n");
+    HOOK_DEBUG("TrampolineSwapChain:: Present()\n");
 
     return orig_vtable.Present(((IDirect3DSwapChain9Trampoline*)This)->orig_this, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
 
@@ -320,7 +320,7 @@ static HRESULT STDMETHODCALLTYPE TrampolinePresent(SwapChain * This, CONST RECT*
 template<typename SwapChain>
 static HRESULT STDMETHODCALLTYPE TrampolineGetFrontBufferData(SwapChain * This, IDirect3DSurface9 *pDestSurface) {
 
-    HookDebug("TrampolineSwapChain:: GetFrontBufferData()\n");
+    HOOK_DEBUG("TrampolineSwapChain:: GetFrontBufferData()\n");
 
     return orig_vtable.GetFrontBufferData(((IDirect3DSwapChain9Trampoline*)This)->orig_this, pDestSurface);
 
@@ -328,7 +328,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetFrontBufferData(SwapChain * This, 
 template<typename SwapChain>
 static HRESULT STDMETHODCALLTYPE TrampolineGetBackBuffer(SwapChain * This, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9 **ppBackBuffer) {
 
-    HookDebug("TrampolineSwapChain:: GetBackBuffer(()\n");
+    HOOK_DEBUG("TrampolineSwapChain:: GetBackBuffer(()\n");
 
     return orig_vtable.GetBackBuffer(((IDirect3DSwapChain9Trampoline*)This)->orig_this, iBackBuffer, Type, ppBackBuffer);
 
@@ -337,14 +337,14 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetBackBuffer(SwapChain * This, UINT 
 template<typename SwapChain>
 static HRESULT STDMETHODCALLTYPE TrampolineGetRasterStatus(SwapChain * This, D3DRASTER_STATUS* pRasterStatus) {
 
-    HookDebug("TrampolineSwapChain:: GetRasterStatus()\n");
+    HOOK_DEBUG("TrampolineSwapChain:: GetRasterStatus()\n");
 
     return orig_vtable.GetRasterStatus(((IDirect3DSwapChain9Trampoline*)This)->orig_this, pRasterStatus);
 
 }
 template<typename SwapChain>
 static HRESULT STDMETHODCALLTYPE TrampolineGetDisplayMode(SwapChain * This, D3DDISPLAYMODE* pMode) {
-    HookDebug("TrampolineSwapChain:: GetDisplayMode()\n");
+    HOOK_DEBUG("TrampolineSwapChain:: GetDisplayMode()\n");
 
     return orig_vtable.GetDisplayMode(((IDirect3DSwapChain9Trampoline*)This)->orig_this, pMode);
 
@@ -353,7 +353,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetDisplayMode(SwapChain * This, D3DD
 template<typename SwapChain>
 static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(SwapChain * This, IDirect3DDevice9** ppDevice) {
 
-    HookDebug("TrampolineSwapChain:: GetDevice()\n");
+    HOOK_DEBUG("TrampolineSwapChain:: GetDevice()\n");
 
     return orig_vtable.GetDevice(((IDirect3DSwapChain9Trampoline*)This)->orig_this, ppDevice);
 
@@ -361,7 +361,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(SwapChain * This, IDirect3D
 template<typename SwapChain>
 static HRESULT STDMETHODCALLTYPE TrampolineGetPresentParameters(SwapChain * This, D3DPRESENT_PARAMETERS* pPresentationParameters) {
 
-    HookDebug("TrampolineSwapChain:: GetPresentParameters()\n");
+    HOOK_DEBUG("TrampolineSwapChain:: GetPresentParameters()\n");
 
     return orig_vtable.GetPresentParameters(((IDirect3DSwapChain9Trampoline*)This)->orig_this, pPresentationParameters);
 
@@ -369,7 +369,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetPresentParameters(SwapChain * This
 
 static HRESULT STDMETHODCALLTYPE TrampolineGetPresentStats(IDirect3DSwapChain9Ex *This, D3DPRESENTSTATS *pPresentationStatistics) {
 
-    HookDebug("TrampolineSwapChain:: GetPresentStats()\n");
+    HOOK_DEBUG("TrampolineSwapChain:: GetPresentStats()\n");
 
     return orig_vtable_ex.GetPresentStats(((IDirect3DSwapChain9ExTrampoline*)This)->orig_this, pPresentationStatistics);
 
@@ -377,7 +377,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetPresentStats(IDirect3DSwapChain9Ex
 
 static HRESULT STDMETHODCALLTYPE TrampolineGetLastPresentCount(IDirect3DSwapChain9Ex *This, UINT *pLastPresentCount) {
 
-    HookDebug("TrampolineSwapChain:: GetLastPresentCount()\n");
+    HOOK_DEBUG("TrampolineSwapChain:: GetLastPresentCount()\n");
 
     return orig_vtable_ex.GetLastPresentCount(((IDirect3DSwapChain9ExTrampoline*)This)->orig_this, pLastPresentCount);
 
@@ -385,7 +385,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetLastPresentCount(IDirect3DSwapChai
 
 static HRESULT STDMETHODCALLTYPE TrampolineGetDisplayModeEx(IDirect3DSwapChain9Ex *This, D3DDISPLAYMODEEX *pMode, D3DDISPLAYROTATION *pRotation) {
 
-    HookDebug("TrampolineSwapChain:: GetDisplayModeEx()\n");
+    HOOK_DEBUG("TrampolineSwapChain:: GetDisplayModeEx()\n");
 
     return orig_vtable_ex.GetDisplayModeEx(((IDirect3DSwapChain9ExTrampoline*)This)->orig_this, pMode, pRotation);
 

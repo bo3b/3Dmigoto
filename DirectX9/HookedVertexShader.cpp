@@ -7,9 +7,9 @@
 
 
 #if 0
-#define HookDebug LOG_DEBUG
+#define HOOK_DEBUG LOG_DEBUG
 #else
-#define HookDebug(...) do { } while (0)
+#define HOOK_DEBUG(...) do { } while (0)
 #endif
 
 typedef std::unordered_map<IDirect3DVertexShader9 *, IDirect3DVertexShader9 *> VertexShaderMap;
@@ -46,7 +46,7 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 {
     IDirect3DVertexShader9 *vertex_shader = lookup_hooked_vertex_shader(This);
 
-    HookDebug("HookedVertexShader:: QueryInterface()\n");
+    HOOK_DEBUG("HookedVertexShader:: QueryInterface()\n");
 
     if (vertex_shader)
         return IDirect3DVertexShader9_QueryInterface(vertex_shader, riid, ppvObject);
@@ -59,7 +59,7 @@ static ULONG STDMETHODCALLTYPE AddRef(
 {
     IDirect3DVertexShader9 *vertex_shader = lookup_hooked_vertex_shader(This);
 
-    HookDebug("HookedVertexShader:: AddRef()\n");
+    HOOK_DEBUG("HookedVertexShader:: AddRef()\n");
 
     if (vertex_shader)
         return IDirect3DVertexShader9_AddRef(vertex_shader);
@@ -73,7 +73,7 @@ static ULONG STDMETHODCALLTYPE Release(
     VertexShaderMap::iterator i;
     ULONG ref;
 
-    HookDebug("HookedVertexShader:: Release()\n");
+    HOOK_DEBUG("HookedVertexShader:: Release()\n");
 
     EnterCriticalSection(&vertex_shader_map_lock);
     i = vertex_shader_map.find(This);
@@ -95,7 +95,7 @@ static HRESULT STDMETHODCALLTYPE GetDevice(
 {
     IDirect3DVertexShader9 *vertex_shader = lookup_hooked_vertex_shader(This);
 
-    HookDebug("HookedVertexShader:: GetDevice()\n");
+    HOOK_DEBUG("HookedVertexShader:: GetDevice()\n");
 
     if (vertex_shader)
         return IDirect3DVertexShader9_GetDevice(vertex_shader, ppDevice);
@@ -110,7 +110,7 @@ static HRESULT STDMETHODCALLTYPE GetFunction(
 {
     IDirect3DVertexShader9 *vertex_shader = lookup_hooked_vertex_shader(This);
 
-    HookDebug("HookedVertexShader:: GetFunction()\n");
+    HOOK_DEBUG("HookedVertexShader:: GetFunction()\n");
 
     if (vertex_shader)
         return IDirect3DVertexShader9_GetFunction(vertex_shader, pData, pSizeOfData);
@@ -155,7 +155,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
     REFIID riid,
     __RPC__deref_out  void **ppvObject)
 {
-    HookDebug("TrampolineIDirect3DVertexShader9:: QueryInterface()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexShader9:: QueryInterface()\n");
 
     return orig_vtable.QueryInterface(((IDirect3DVertexShader9Trampoline*)This)->orig_this, riid, ppvObject);
 }
@@ -164,7 +164,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
 static ULONG STDMETHODCALLTYPE TrampolineAddRef(
     IDirect3DVertexShader9 * This)
 {
-    HookDebug("TrampolineIDirect3DVertexShader9:: AddRef()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexShader9:: AddRef()\n");
 
     return orig_vtable.AddRef(((IDirect3DVertexShader9Trampoline*)This)->orig_this);
 }
@@ -172,7 +172,7 @@ static ULONG STDMETHODCALLTYPE TrampolineAddRef(
 static ULONG STDMETHODCALLTYPE TrampolineRelease(
     IDirect3DVertexShader9 * This)
 {
-    HookDebug("TrampolineIDirect3DVertexShader9:: Release()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexShader9:: Release()\n");
 
     return orig_vtable.Release(((IDirect3DVertexShader9Trampoline*)This)->orig_this);
 }
@@ -180,7 +180,7 @@ static ULONG STDMETHODCALLTYPE TrampolineRelease(
 static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(
     IDirect3DVertexShader9 * This, IDirect3DDevice9 **ppDevice)
 {
-    HookDebug("TrampolineIDirect3DVertexShader9:: GetDevice()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexShader9:: GetDevice()\n");
 
     return orig_vtable.GetDevice(((IDirect3DVertexShader9Trampoline*)This)->orig_this, ppDevice);
 }
@@ -190,7 +190,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetFunction(
      void *pData,
      UINT *pSizeOfData)
 {
-    HookDebug("TrampolineIDirect3DVertexShader9:: GetFunction()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexShader9:: GetFunction()\n");
 
     return orig_vtable.GetFunction(((IDirect3DVertexShader9Trampoline*)This)->orig_this, pData, pSizeOfData);
 }
