@@ -7,9 +7,9 @@
 
 
 #if 0
-#define HookDebug LOG_DEBUG
+#define HOOK_DEBUG LOG_DEBUG
 #else
-#define HookDebug(...) do { } while (0)
+#define HOOK_DEBUG(...) do { } while (0)
 #endif
 
 typedef std::unordered_map<IDirect3DVertexDeclaration9 *, IDirect3DVertexDeclaration9 *> VertexDeclarationMap;
@@ -46,7 +46,7 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 {
     IDirect3DVertexDeclaration9 *vertex_declaration = lookup_hooked_vertex_declaration(This);
 
-    HookDebug("HookedVertexDeclaration:: QueryInterface()\n");
+    HOOK_DEBUG("HookedVertexDeclaration:: QueryInterface()\n");
 
     if (vertex_declaration)
         return IDirect3DVertexDeclaration9_QueryInterface(vertex_declaration, riid, ppvObject);
@@ -59,7 +59,7 @@ static ULONG STDMETHODCALLTYPE AddRef(
 {
     IDirect3DVertexDeclaration9 *vertex_declaration = lookup_hooked_vertex_declaration(This);
 
-    HookDebug("HookedVertexDeclaration:: AddRef()\n");
+    HOOK_DEBUG("HookedVertexDeclaration:: AddRef()\n");
 
     if (vertex_declaration)
         return IDirect3DVertexDeclaration9_AddRef(vertex_declaration);
@@ -73,7 +73,7 @@ static ULONG STDMETHODCALLTYPE Release(
     VertexDeclarationMap::iterator i;
     ULONG ref;
 
-    HookDebug("HookedVertexDeclaration:: Release()\n");
+    HOOK_DEBUG("HookedVertexDeclaration:: Release()\n");
 
     EnterCriticalSection(&vertex_declaration_map_lock);
     i = vertex_declaration_map.find(This);
@@ -95,7 +95,7 @@ static HRESULT STDMETHODCALLTYPE GetDevice(
 {
     IDirect3DVertexDeclaration9 *vertex_declaration = lookup_hooked_vertex_declaration(This);
 
-    HookDebug("HookedVertexDeclaration:: GetDevice()\n");
+    HOOK_DEBUG("HookedVertexDeclaration:: GetDevice()\n");
 
     if (vertex_declaration)
         return IDirect3DVertexDeclaration9_GetDevice(vertex_declaration, ppDevice);
@@ -110,7 +110,7 @@ static HRESULT STDMETHODCALLTYPE GetDeclaration(
 {
     IDirect3DVertexDeclaration9 *vertex_declaration = lookup_hooked_vertex_declaration(This);
 
-    HookDebug("HookedVertexDeclaration:: GetFunction()\n");
+    HOOK_DEBUG("HookedVertexDeclaration:: GetFunction()\n");
 
     if (vertex_declaration)
         return IDirect3DVertexDeclaration9_GetDeclaration(vertex_declaration, pDecl, pNumElements);
@@ -155,7 +155,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
     REFIID riid,
     __RPC__deref_out  void **ppvObject)
 {
-    HookDebug("TrampolineIDirect3DVertexDeclaration9:: QueryInterface()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexDeclaration9:: QueryInterface()\n");
 
     return orig_vtable.QueryInterface(((IDirect3DVertexDeclaration9Trampoline*)This)->orig_this, riid, ppvObject);
 }
@@ -164,7 +164,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
 static ULONG STDMETHODCALLTYPE TrampolineAddRef(
     IDirect3DVertexDeclaration9 * This)
 {
-    HookDebug("TrampolineIDirect3DVertexDeclaration9:: AddRef()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexDeclaration9:: AddRef()\n");
 
     return orig_vtable.AddRef(((IDirect3DVertexDeclaration9Trampoline*)This)->orig_this);
 }
@@ -172,7 +172,7 @@ static ULONG STDMETHODCALLTYPE TrampolineAddRef(
 static ULONG STDMETHODCALLTYPE TrampolineRelease(
     IDirect3DVertexDeclaration9 * This)
 {
-    HookDebug("TrampolineIDirect3DVertexDeclaration9:: Release()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexDeclaration9:: Release()\n");
 
     return orig_vtable.Release(((IDirect3DVertexDeclaration9Trampoline*)This)->orig_this);
 }
@@ -180,7 +180,7 @@ static ULONG STDMETHODCALLTYPE TrampolineRelease(
 static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(
     IDirect3DVertexDeclaration9 * This, IDirect3DDevice9 **ppDevice)
 {
-    HookDebug("TrampolineIDirect3DVertexDeclaration9:: GetDevice()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexDeclaration9:: GetDevice()\n");
 
     return orig_vtable.GetDevice(((IDirect3DVertexDeclaration9Trampoline*)This)->orig_this, ppDevice);
 }
@@ -190,7 +190,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetDeclaration(
      D3DVERTEXELEMENT9 *pDecl,
          UINT              *pNumElements)
 {
-    HookDebug("TrampolineIDirect3DVertexDeclaration9:: GetDeclaration()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexDeclaration9:: GetDeclaration()\n");
 
     return orig_vtable.GetDeclaration(((IDirect3DVertexDeclaration9Trampoline*)This)->orig_this, pDecl, pNumElements);
 }

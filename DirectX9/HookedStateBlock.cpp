@@ -7,9 +7,9 @@
 
 
 #if 0
-#define HookDebug LOG_DEBUG
+#define HOOK_DEBUG LOG_DEBUG
 #else
-#define HookDebug(...) do { } while (0)
+#define HOOK_DEBUG(...) do { } while (0)
 #endif
 
 typedef std::unordered_map<IDirect3DStateBlock9 *, IDirect3DStateBlock9 *> stateblockMap;
@@ -46,7 +46,7 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 {
     IDirect3DStateBlock9 *stateblock = lookup_hooked_stateblock(This);
 
-    HookDebug("HookedStateBlock:: QueryInterface()\n");
+    HOOK_DEBUG("HookedStateBlock:: QueryInterface()\n");
 
     if (stateblock)
         return IDirect3DStateBlock9_QueryInterface(stateblock, riid, ppvObject);
@@ -59,7 +59,7 @@ static ULONG STDMETHODCALLTYPE AddRef(
 {
     IDirect3DStateBlock9 *stateblock = lookup_hooked_stateblock(This);
 
-    HookDebug("HookedStateBlock:: AddRef()\n");
+    HOOK_DEBUG("HookedStateBlock:: AddRef()\n");
 
     if (stateblock)
         return IDirect3DStateBlock9_AddRef(stateblock);
@@ -73,7 +73,7 @@ static ULONG STDMETHODCALLTYPE Release(
     stateblockMap::iterator i;
     ULONG ref;
 
-    HookDebug("HookedStateBlock:: Release()\n");
+    HOOK_DEBUG("HookedStateBlock:: Release()\n");
 
     EnterCriticalSection(&stateblock_map_lock);
     i = stateblock_map.find(This);
@@ -95,7 +95,7 @@ static HRESULT STDMETHODCALLTYPE Apply(
 {
     IDirect3DStateBlock9 *stateblock = lookup_hooked_stateblock(This);
 
-    HookDebug("HookedStateBlock:: Apply()\n");
+    HOOK_DEBUG("HookedStateBlock:: Apply()\n");
 
     if (stateblock)
         return IDirect3DStateBlock9_Apply(stateblock);
@@ -108,7 +108,7 @@ static HRESULT STDMETHODCALLTYPE GetDevice(
 {
     IDirect3DStateBlock9 *stateblock = lookup_hooked_stateblock(This);
 
-    HookDebug("HookedStateBlock:: GetDevice()\n");
+    HOOK_DEBUG("HookedStateBlock:: GetDevice()\n");
 
     if (stateblock)
         return IDirect3DStateBlock9_GetDevice(stateblock, ppDevice);
@@ -121,7 +121,7 @@ static HRESULT STDMETHODCALLTYPE Capture(
 {
     IDirect3DStateBlock9 *stateblock = lookup_hooked_stateblock(This);
 
-    HookDebug("HookedStateBlock:: Capture()\n");
+    HOOK_DEBUG("HookedStateBlock:: Capture()\n");
 
     if (stateblock)
         return IDirect3DStateBlock9_Capture(stateblock);
@@ -167,7 +167,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
     REFIID riid,
     __RPC__deref_out  void **ppvObject)
 {
-    HookDebug("TrampolineIDirect3DStateBlock9:: QueryInterface()\n");
+    HOOK_DEBUG("TrampolineIDirect3DStateBlock9:: QueryInterface()\n");
 
     return orig_vtable.QueryInterface(((IDirect3DStateBlock9Trampoline*)This)->orig_this, riid, ppvObject);
 }
@@ -176,7 +176,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
 static ULONG STDMETHODCALLTYPE TrampolineAddRef(
     IDirect3DStateBlock9 * This)
 {
-    HookDebug("TrampolineIDirect3DStateBlock9:: AddRef()\n");
+    HOOK_DEBUG("TrampolineIDirect3DStateBlock9:: AddRef()\n");
 
     return orig_vtable.AddRef(((IDirect3DStateBlock9Trampoline*)This)->orig_this);
 }
@@ -184,7 +184,7 @@ static ULONG STDMETHODCALLTYPE TrampolineAddRef(
 static ULONG STDMETHODCALLTYPE TrampolineRelease(
     IDirect3DStateBlock9 * This)
 {
-    HookDebug("TrampolineIDirect3DStateBlock9:: Release()\n");
+    HOOK_DEBUG("TrampolineIDirect3DStateBlock9:: Release()\n");
 
     return orig_vtable.Release(((IDirect3DStateBlock9Trampoline*)This)->orig_this);
 }
@@ -192,7 +192,7 @@ static ULONG STDMETHODCALLTYPE TrampolineRelease(
 static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(
     IDirect3DStateBlock9 * This, IDirect3DDevice9 **ppDevice)
 {
-    HookDebug("TrampolineIDirect3DStateBlock9:: GetDevice()\n");
+    HOOK_DEBUG("TrampolineIDirect3DStateBlock9:: GetDevice()\n");
 
     return orig_vtable.GetDevice(((IDirect3DStateBlock9Trampoline*)This)->orig_this, ppDevice);
 }
@@ -200,7 +200,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(
 static HRESULT STDMETHODCALLTYPE TrampolineApply(
     IDirect3DStateBlock9 * This)
 {
-    HookDebug("TrampolineIDirect3DStateBlock9:: Apply()\n");
+    HOOK_DEBUG("TrampolineIDirect3DStateBlock9:: Apply()\n");
 
     return orig_vtable.Apply(((IDirect3DStateBlock9Trampoline*)This)->orig_this);
 }
@@ -208,7 +208,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineApply(
 static HRESULT STDMETHODCALLTYPE TrampolineCapture(
     IDirect3DStateBlock9 * This)
 {
-    HookDebug("TrampolineIDirect3DStateBlock9:: Capture()\n");
+    HOOK_DEBUG("TrampolineIDirect3DStateBlock9:: Capture()\n");
 
     return orig_vtable.Capture(((IDirect3DStateBlock9Trampoline*)This)->orig_this);
 }

@@ -7,9 +7,9 @@
 
 
 #if 0
-#define HookDebug LOG_DEBUG
+#define HOOK_DEBUG LOG_DEBUG
 #else
-#define HookDebug(...) do { } while (0)
+#define HOOK_DEBUG(...) do { } while (0)
 #endif
 
 typedef std::unordered_map<IDirect3DVolume9 *, IDirect3DVolume9 *> volumeMap;
@@ -46,7 +46,7 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 {
     IDirect3DVolume9 *volume = lookup_hooked_volume(This);
 
-    HookDebug("HookedVolume:: QueryInterface()\n");
+    HOOK_DEBUG("HookedVolume:: QueryInterface()\n");
 
     if (volume)
         return IDirect3DVolume9_QueryInterface(volume, riid, ppvObject);
@@ -59,7 +59,7 @@ static ULONG STDMETHODCALLTYPE AddRef(
 {
     IDirect3DVolume9 *volume = lookup_hooked_volume(This);
 
-    HookDebug("HookedVolume:: AddRef()\n");
+    HOOK_DEBUG("HookedVolume:: AddRef()\n");
 
     if (volume)
         return IDirect3DVolume9_AddRef(volume);
@@ -73,7 +73,7 @@ static ULONG STDMETHODCALLTYPE Release(
     volumeMap::iterator i;
     ULONG ref;
 
-    HookDebug("HookedVolume:: Release()\n");
+    HOOK_DEBUG("HookedVolume:: Release()\n");
 
     EnterCriticalSection(&volume_map_lock);
     i = volume_map.find(This);
@@ -95,7 +95,7 @@ static HRESULT STDMETHODCALLTYPE FreePrivateData(
 {
     IDirect3DVolume9 *volume = lookup_hooked_volume(This);
 
-    HookDebug("HookedVolume:: FreePrivateData()\n");
+    HOOK_DEBUG("HookedVolume:: FreePrivateData()\n");
 
     if (volume)
         return IDirect3DVolume9_FreePrivateData(volume, refguid);
@@ -108,7 +108,7 @@ static HRESULT STDMETHODCALLTYPE GetDevice(
 {
     IDirect3DVolume9 *volume = lookup_hooked_volume(This);
 
-    HookDebug("HookedVolume:: GetDevice()\n");
+    HOOK_DEBUG("HookedVolume:: GetDevice()\n");
 
     if (volume)
         return IDirect3DVolume9_GetDevice(volume, ppDevice);
@@ -124,7 +124,7 @@ static HRESULT STDMETHODCALLTYPE GetPrivateData(
 {
     IDirect3DVolume9 *volume = lookup_hooked_volume(This);
 
-    HookDebug("HookedVolume:: GetPrivateData()\n");
+    HOOK_DEBUG("HookedVolume:: GetPrivateData()\n");
 
     if (volume)
         return IDirect3DVolume9_GetPrivateData(volume, refguid, pData, pSizeOfData);
@@ -141,7 +141,7 @@ static HRESULT STDMETHODCALLTYPE SetPrivateData(
 {
     IDirect3DVolume9 *volume = lookup_hooked_volume(This);
 
-    HookDebug("HookedVolume:: SetPrivateData()\n");
+    HOOK_DEBUG("HookedVolume:: SetPrivateData()\n");
 
     if (volume)
         return IDirect3DVolume9_SetPrivateData(volume, refguid, pData, SizeOfData, Flags);
@@ -155,7 +155,7 @@ static HRESULT STDMETHODCALLTYPE GetDesc(
 {
     IDirect3DVolume9 *volume = lookup_hooked_volume(This);
 
-    HookDebug("HookedVolume:: GetDesc()\n");
+    HOOK_DEBUG("HookedVolume:: GetDesc()\n");
 
     if (volume)
         return IDirect3DVolume9_GetDesc(volume, pDesc);
@@ -171,7 +171,7 @@ static HRESULT STDMETHODCALLTYPE LockBox(
 {
     IDirect3DVolume9 *volume = lookup_hooked_volume(This);
 
-    HookDebug("HookedVolume:: LockBox()\n");
+    HOOK_DEBUG("HookedVolume:: LockBox()\n");
 
     if (volume)
         return IDirect3DVolume9_LockBox(volume, pLockedVolume, pBox, Flags);
@@ -184,7 +184,7 @@ static HRESULT STDMETHODCALLTYPE UnlockBox(
 {
     IDirect3DVolume9 *volume = lookup_hooked_volume(This);
 
-    HookDebug("HookedVolume:: UnlockBox()\n");
+    HOOK_DEBUG("HookedVolume:: UnlockBox()\n");
 
     if (volume)
         return IDirect3DVolume9_UnlockBox(volume);
@@ -199,7 +199,7 @@ static HRESULT STDMETHODCALLTYPE GetContainer(
 {
     IDirect3DVolume9 *volume = lookup_hooked_volume(This);
 
-    HookDebug("HookedVolume:: GetContainer()\n");
+    HOOK_DEBUG("HookedVolume:: GetContainer()\n");
 
     if (volume)
         return IDirect3DVolume9_GetContainer(volume, riid, ppContainer);
@@ -252,7 +252,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
     REFIID riid,
     __RPC__deref_out  void **ppvObject)
 {
-    HookDebug("TrampolineIDirect3DVolume9:: QueryInterface()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolume9:: QueryInterface()\n");
 
     return orig_vtable.QueryInterface(((IDirect3DVolume9Trampoline*)This)->orig_this, riid, ppvObject);
 }
@@ -261,7 +261,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
 static ULONG STDMETHODCALLTYPE TrampolineAddRef(
     IDirect3DVolume9 * This)
 {
-    HookDebug("TrampolineIDirect3DVolume9:: AddRef()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolume9:: AddRef()\n");
 
     return orig_vtable.AddRef(((IDirect3DVolume9Trampoline*)This)->orig_this);
 }
@@ -269,7 +269,7 @@ static ULONG STDMETHODCALLTYPE TrampolineAddRef(
 static ULONG STDMETHODCALLTYPE TrampolineRelease(
     IDirect3DVolume9 * This)
 {
-    HookDebug("TrampolineIDirect3DVolume9:: Release()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolume9:: Release()\n");
 
     return orig_vtable.Release(((IDirect3DVolume9Trampoline*)This)->orig_this);
 }
@@ -277,7 +277,7 @@ static ULONG STDMETHODCALLTYPE TrampolineRelease(
 static HRESULT STDMETHODCALLTYPE TrampolineFreePrivateData(
     IDirect3DVolume9 * This, REFGUID refguid)
 {
-    HookDebug("TrampolineIDirect3DVolume9:: FreePrivateData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolume9:: FreePrivateData()\n");
 
     return orig_vtable.FreePrivateData(((IDirect3DVolume9Trampoline*)This)->orig_this, refguid);
 }
@@ -285,7 +285,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineFreePrivateData(
 static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(
     IDirect3DVolume9 * This, IDirect3DDevice9 **ppDevice)
 {
-    HookDebug("TrampolineIDirect3DVolume9:: GetDevice()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolume9:: GetDevice()\n");
 
     return orig_vtable.GetDevice(((IDirect3DVolume9Trampoline*)This)->orig_this, ppDevice);
 }
@@ -296,7 +296,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetPrivateData(
      void    *pData,
      DWORD   *pSizeOfData)
 {
-    HookDebug("TrampolineIDirect3DVolume9:: GetPrivateData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolume9:: GetPrivateData()\n");
 
     return orig_vtable.GetPrivateData(((IDirect3DVolume9Trampoline*)This)->orig_this, refguid, pData, pSizeOfData);
 }
@@ -308,7 +308,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateData(
            DWORD   SizeOfData,
            DWORD   Flags)
 {
-    HookDebug("TrampolineIDirect3DVolume9::SetPrivateData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolume9::SetPrivateData()\n");
 
     return orig_vtable.SetPrivateData(((IDirect3DVolume9Trampoline*)This)->orig_this, refguid, pData, SizeOfData, Flags);
 }
@@ -317,7 +317,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetDesc(
     IDirect3DVolume9 * This,
     D3DVOLUME_DESC *pDesc)
 {
-    HookDebug("TrampolineIDirect3DVolume9::GetDesc()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolume9::GetDesc()\n");
 
     return orig_vtable.GetDesc(((IDirect3DVolume9Trampoline*)This)->orig_this, pDesc);
 }
@@ -328,7 +328,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineLockBox(
       const D3DBOX        *pBox,
             DWORD         Flags)
 {
-    HookDebug("TrampolineIDirect3DVolume9::LockBox()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolume9::LockBox()\n");
 
     return orig_vtable.LockBox(((IDirect3DVolume9Trampoline*)This)->orig_this, pLockedVolume, pBox, Flags);
 }
@@ -336,7 +336,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineLockBox(
 static HRESULT STDMETHODCALLTYPE TrampolineUnlockBox(
     IDirect3DVolume9 * This)
 {
-    HookDebug("TrampolineIDirect3DVolume9::UnlockBox()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolume9::UnlockBox()\n");
 
     return orig_vtable.UnlockBox(((IDirect3DVolume9Trampoline*)This)->orig_this);
 }
@@ -346,7 +346,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetContainer(
       REFIID riid,
      void   **ppContainer)
 {
-    HookDebug("TrampolineIDirect3DVolume9::GetContainer()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolume9::GetContainer()\n");
 
     return orig_vtable.GetContainer(((IDirect3DVolume9Trampoline*)This)->orig_this, riid, ppContainer);
 }

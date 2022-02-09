@@ -7,9 +7,9 @@
 
 
 #if 0
-#define HookDebug LOG_DEBUG
+#define HOOK_DEBUG LOG_DEBUG
 #else
-#define HookDebug(...) do { } while (0)
+#define HOOK_DEBUG(...) do { } while (0)
 #endif
 
 typedef std::unordered_map<IDirect3DQuery9 *, IDirect3DQuery9 *> QueryMap;
@@ -46,7 +46,7 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 {
     IDirect3DQuery9 *query = lookup_hooked_query(This);
 
-    HookDebug("HookedQuery:: QueryInterface()\n");
+    HOOK_DEBUG("HookedQuery:: QueryInterface()\n");
 
     if (query)
         return IDirect3DQuery9_QueryInterface(query, riid, ppvObject);
@@ -59,7 +59,7 @@ static ULONG STDMETHODCALLTYPE AddRef(
 {
     IDirect3DQuery9 *query = lookup_hooked_query(This);
 
-    HookDebug("HookedQuery:: AddRef()\n");
+    HOOK_DEBUG("HookedQuery:: AddRef()\n");
 
     if (query)
         return IDirect3DQuery9_AddRef(query);
@@ -73,7 +73,7 @@ static ULONG STDMETHODCALLTYPE Release(
     QueryMap::iterator i;
     ULONG ref;
 
-    HookDebug("HookedQuery:: Release()\n");
+    HOOK_DEBUG("HookedQuery:: Release()\n");
 
     EnterCriticalSection(&query_map_lock);
     i = query_map.find(This);
@@ -95,7 +95,7 @@ static HRESULT STDMETHODCALLTYPE GetDevice(
 {
     IDirect3DQuery9 *query = lookup_hooked_query(This);
 
-    HookDebug("HookedQuery:: GetDevice()\n");
+    HOOK_DEBUG("HookedQuery:: GetDevice()\n");
 
     if (query)
         return IDirect3DQuery9_GetDevice(query, ppDevice);
@@ -111,7 +111,7 @@ static HRESULT STDMETHODCALLTYPE GetData(
 {
     IDirect3DQuery9 *query = lookup_hooked_query(This);
 
-    HookDebug("HookedQuery:: GetData()\n");
+    HOOK_DEBUG("HookedQuery:: GetData()\n");
 
     if (query)
         return IDirect3DQuery9_GetData(query, pData, dwSize, dwGetDataFlags);
@@ -124,7 +124,7 @@ static DWORD STDMETHODCALLTYPE GetDataSize(
 {
     IDirect3DQuery9 *query = lookup_hooked_query(This);
 
-    HookDebug("HookedQuery:: GetDataSize()\n");
+    HOOK_DEBUG("HookedQuery:: GetDataSize()\n");
 
     if (query)
         return IDirect3DQuery9_GetDataSize(query);
@@ -137,7 +137,7 @@ static D3DQUERYTYPE STDMETHODCALLTYPE GetType(
 {
     IDirect3DQuery9 *query = lookup_hooked_query(This);
 
-    HookDebug("HookedQuery:: GetType()\n");
+    HOOK_DEBUG("HookedQuery:: GetType()\n");
 
     if (query)
         return IDirect3DQuery9_GetType(query);
@@ -150,7 +150,7 @@ static HRESULT STDMETHODCALLTYPE Issue(
 {
     IDirect3DQuery9 *query = lookup_hooked_query(This);
 
-    HookDebug("HookedQuery:: Issue()\n");
+    HOOK_DEBUG("HookedQuery:: Issue()\n");
 
     if (query)
         return IDirect3DQuery9_Issue(query, dwIssueFlags);
@@ -199,7 +199,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
     REFIID riid,
     __RPC__deref_out  void **ppvObject)
 {
-    HookDebug("TrampolineIDirect3DQuery9:: QueryInterface()\n");
+    HOOK_DEBUG("TrampolineIDirect3DQuery9:: QueryInterface()\n");
 
     return orig_vtable.QueryInterface(((IDirect3DQuery9Trampoline*)This)->orig_this, riid, ppvObject);
 }
@@ -208,7 +208,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
 static ULONG STDMETHODCALLTYPE TrampolineAddRef(
     IDirect3DQuery9 * This)
 {
-    HookDebug("TrampolineIDirect3DQuery9:: AddRef()\n");
+    HOOK_DEBUG("TrampolineIDirect3DQuery9:: AddRef()\n");
 
     return orig_vtable.AddRef(((IDirect3DQuery9Trampoline*)This)->orig_this);
 }
@@ -216,7 +216,7 @@ static ULONG STDMETHODCALLTYPE TrampolineAddRef(
 static ULONG STDMETHODCALLTYPE TrampolineRelease(
     IDirect3DQuery9 * This)
 {
-    HookDebug("TrampolineIDirect3DQuery9:: Release()\n");
+    HOOK_DEBUG("TrampolineIDirect3DQuery9:: Release()\n");
 
     return orig_vtable.Release(((IDirect3DQuery9Trampoline*)This)->orig_this);
 }
@@ -224,7 +224,7 @@ static ULONG STDMETHODCALLTYPE TrampolineRelease(
 static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(
     IDirect3DQuery9 * This, IDirect3DDevice9 **ppDevice)
 {
-    HookDebug("TrampolineIDirect3DQuery9:: GetDevice()\n");
+    HOOK_DEBUG("TrampolineIDirect3DQuery9:: GetDevice()\n");
 
     return orig_vtable.GetDevice(((IDirect3DQuery9Trampoline*)This)->orig_this, ppDevice);
 }
@@ -235,7 +235,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetData(
           DWORD dwSize,
           DWORD dwGetDataFlags)
 {
-    HookDebug("TrampolineIDirect3DQuery9:: GetData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DQuery9:: GetData()\n");
 
     return orig_vtable.GetData(((IDirect3DQuery9Trampoline*)This)->orig_this, pData, dwSize, dwGetDataFlags);
 }
@@ -243,7 +243,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetData(
 static DWORD STDMETHODCALLTYPE TrampolineGetDataSize(
     IDirect3DQuery9 * This)
 {
-    HookDebug("TrampolineIDirect3DQuery9:: GetDataSize()\n");
+    HOOK_DEBUG("TrampolineIDirect3DQuery9:: GetDataSize()\n");
 
     return orig_vtable.GetDataSize(((IDirect3DQuery9Trampoline*)This)->orig_this);
 }
@@ -251,7 +251,7 @@ static DWORD STDMETHODCALLTYPE TrampolineGetDataSize(
 static D3DQUERYTYPE STDMETHODCALLTYPE TrampolineGetType(
     IDirect3DQuery9 * This)
 {
-    HookDebug("TrampolineIDirect3DQuery9:: GetType()\n");
+    HOOK_DEBUG("TrampolineIDirect3DQuery9:: GetType()\n");
 
     return orig_vtable.GetType(((IDirect3DQuery9Trampoline*)This)->orig_this);
 }
@@ -259,7 +259,7 @@ static D3DQUERYTYPE STDMETHODCALLTYPE TrampolineGetType(
 static HRESULT STDMETHODCALLTYPE TrampolineIssue(
     IDirect3DQuery9 * This, DWORD dwIssueFlags)
 {
-    HookDebug("TrampolineIDirect3DQuery9:: Issue()\n");
+    HOOK_DEBUG("TrampolineIDirect3DQuery9:: Issue()\n");
 
     return orig_vtable.Issue(((IDirect3DQuery9Trampoline*)This)->orig_this, dwIssueFlags);
 }

@@ -52,9 +52,9 @@
 // log most of these calls in the HackerDevice, so this would triple the noise
 // and we probably won't need it very often:
 #if 0
-#define HookDebug LOG_DEBUG
+#define HOOK_DEBUG LOG_DEBUG
 #else
-#define HookDebug(...) do { } while (0)
+#define HOOK_DEBUG(...) do { } while (0)
 #endif
 
 
@@ -94,7 +94,7 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(ID3D11DeviceContext1 *This, REFI
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::QueryInterface()\n");
+    HOOK_DEBUG("HookedContext::QueryInterface()\n");
 
     if (context)
         return ID3D11DeviceContext1_QueryInterface(context, riid, ppvObject);
@@ -106,7 +106,7 @@ static ULONG STDMETHODCALLTYPE AddRef(ID3D11DeviceContext1 *This)
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::AddRef()\n");
+    HOOK_DEBUG("HookedContext::AddRef()\n");
 
     if (context)
         return ID3D11DeviceContext1_AddRef(context);
@@ -119,7 +119,7 @@ static ULONG STDMETHODCALLTYPE Release(ID3D11DeviceContext1 *This)
     ContextMap::iterator i;
     ULONG ref;
 
-    HookDebug("HookedContext::Release()\n");
+    HOOK_DEBUG("HookedContext::Release()\n");
 
     EnterCriticalSectionPretty(&context_map_lock);
     i = context_map.find(This);
@@ -142,7 +142,7 @@ static void STDMETHODCALLTYPE GetDevice(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GetDevice()\n");
+    HOOK_DEBUG("HookedContext::GetDevice()\n");
 
     if (context)
         return ID3D11DeviceContext1_GetDevice(context, ppDevice);
@@ -160,7 +160,7 @@ static HRESULT STDMETHODCALLTYPE GetPrivateData(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GetPrivateData()\n");
+    HOOK_DEBUG("HookedContext::GetPrivateData()\n");
 
     if (context)
         return ID3D11DeviceContext1_GetPrivateData(context, guid, pDataSize, pData);
@@ -178,7 +178,7 @@ static HRESULT STDMETHODCALLTYPE SetPrivateData(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::SetPrivateData()\n");
+    HOOK_DEBUG("HookedContext::SetPrivateData()\n");
 
     if (context)
         return ID3D11DeviceContext1_SetPrivateData(context, guid, DataSize, pData);
@@ -194,7 +194,7 @@ static HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(ID3D11DeviceContext1 *T
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::SetPrivateDataInterface()\n");
+    HOOK_DEBUG("HookedContext::SetPrivateDataInterface()\n");
 
     if (context)
         return ID3D11DeviceContext1_SetPrivateDataInterface(context, guid, pData);
@@ -213,7 +213,7 @@ static void STDMETHODCALLTYPE VSSetConstantBuffers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::VSSetConstantBuffers()\n");
+    HOOK_DEBUG("HookedContext::VSSetConstantBuffers()\n");
 
     if (context)
         return ID3D11DeviceContext1_VSSetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
@@ -231,7 +231,7 @@ static void STDMETHODCALLTYPE PSSetShaderResources(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::PSSetShaderResources()\n");
+    HOOK_DEBUG("HookedContext::PSSetShaderResources()\n");
 
     if (context)
         return ID3D11DeviceContext1_PSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
@@ -248,7 +248,7 @@ static void STDMETHODCALLTYPE PSSetShader(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::PSSetShader()\n");
+    HOOK_DEBUG("HookedContext::PSSetShader()\n");
 
     if (context)
         return ID3D11DeviceContext1_PSSetShader(context,  pPixelShader, ppClassInstances, NumClassInstances);
@@ -266,7 +266,7 @@ static void STDMETHODCALLTYPE PSSetSamplers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::PSSetSamplers()\n");
+    HOOK_DEBUG("HookedContext::PSSetSamplers()\n");
 
     if (context)
         return ID3D11DeviceContext1_PSSetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
@@ -283,7 +283,7 @@ static void STDMETHODCALLTYPE VSSetShader(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::VSSetShader()\n");
+    HOOK_DEBUG("HookedContext::VSSetShader()\n");
 
     if (context)
         return ID3D11DeviceContext1_VSSetShader(context,  pVertexShader, ppClassInstances, NumClassInstances);
@@ -301,7 +301,7 @@ static void STDMETHODCALLTYPE DrawIndexed(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::DrawIndexed()\n");
+    HOOK_DEBUG("HookedContext::DrawIndexed()\n");
 
     if (context)
         return ID3D11DeviceContext1_DrawIndexed(context,  IndexCount, StartIndexLocation, BaseVertexLocation);
@@ -317,7 +317,7 @@ static void STDMETHODCALLTYPE Draw(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::Draw()\n");
+    HOOK_DEBUG("HookedContext::Draw()\n");
 
     if (context)
         return ID3D11DeviceContext1_Draw(context,  VertexCount, StartVertexLocation);
@@ -339,7 +339,7 @@ static HRESULT STDMETHODCALLTYPE Map(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::Map()\n");
+    HOOK_DEBUG("HookedContext::Map()\n");
 
     if (context)
         return ID3D11DeviceContext1_Map(context,  pResource, Subresource, MapType, MapFlags, pMappedResource);
@@ -355,7 +355,7 @@ static void STDMETHODCALLTYPE Unmap(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::Unmap()\n");
+    HOOK_DEBUG("HookedContext::Unmap()\n");
 
     if (context)
         return ID3D11DeviceContext1_Unmap(context,  pResource, Subresource);
@@ -373,7 +373,7 @@ static void STDMETHODCALLTYPE PSSetConstantBuffers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::PSSetConstantBuffers()\n");
+    HOOK_DEBUG("HookedContext::PSSetConstantBuffers()\n");
 
     if (context)
         return ID3D11DeviceContext1_PSSetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
@@ -387,7 +387,7 @@ static void STDMETHODCALLTYPE IASetInputLayout(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::IASetInputLayout()\n");
+    HOOK_DEBUG("HookedContext::IASetInputLayout()\n");
 
     if (context)
         return ID3D11DeviceContext1_IASetInputLayout(context,  pInputLayout);
@@ -409,7 +409,7 @@ static void STDMETHODCALLTYPE IASetVertexBuffers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::IASetVertexBuffers()\n");
+    HOOK_DEBUG("HookedContext::IASetVertexBuffers()\n");
 
     if (context)
         return ID3D11DeviceContext1_IASetVertexBuffers(context,  StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
@@ -427,7 +427,7 @@ static void STDMETHODCALLTYPE IASetIndexBuffer(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::IASetIndexBuffer()\n");
+    HOOK_DEBUG("HookedContext::IASetIndexBuffer()\n");
 
     if (context)
         return ID3D11DeviceContext1_IASetIndexBuffer(context,  pIndexBuffer, Format, Offset);
@@ -449,7 +449,7 @@ static void STDMETHODCALLTYPE DrawIndexedInstanced(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::DrawIndexedInstanced()\n");
+    HOOK_DEBUG("HookedContext::DrawIndexedInstanced()\n");
 
     if (context)
         return ID3D11DeviceContext1_DrawIndexedInstanced(context,  IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
@@ -469,7 +469,7 @@ static void STDMETHODCALLTYPE DrawInstanced(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::DrawInstanced()\n");
+    HOOK_DEBUG("HookedContext::DrawInstanced()\n");
 
     if (context)
         return ID3D11DeviceContext1_DrawInstanced(context,  VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
@@ -487,7 +487,7 @@ static void STDMETHODCALLTYPE GSSetConstantBuffers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GSSetConstantBuffers()\n");
+    HOOK_DEBUG("HookedContext::GSSetConstantBuffers()\n");
 
     if (context)
         return ID3D11DeviceContext1_GSSetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
@@ -504,7 +504,7 @@ static void STDMETHODCALLTYPE GSSetShader(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GSSetShader()\n");
+    HOOK_DEBUG("HookedContext::GSSetShader()\n");
 
     if (context)
         return ID3D11DeviceContext1_GSSetShader(context,  pShader, ppClassInstances, NumClassInstances);
@@ -518,7 +518,7 @@ static void STDMETHODCALLTYPE IASetPrimitiveTopology(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::IASetPrimitiveTopology()\n");
+    HOOK_DEBUG("HookedContext::IASetPrimitiveTopology()\n");
 
     if (context)
         return ID3D11DeviceContext1_IASetPrimitiveTopology(context,  Topology);
@@ -536,7 +536,7 @@ static void STDMETHODCALLTYPE VSSetShaderResources(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::VSSetShaderResources()\n");
+    HOOK_DEBUG("HookedContext::VSSetShaderResources()\n");
 
     if (context)
         return ID3D11DeviceContext1_VSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
@@ -554,7 +554,7 @@ static void STDMETHODCALLTYPE VSSetSamplers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::VSSetSamplers()\n");
+    HOOK_DEBUG("HookedContext::VSSetSamplers()\n");
 
     if (context)
         return ID3D11DeviceContext1_VSSetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
@@ -568,7 +568,7 @@ static void STDMETHODCALLTYPE Begin(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::Begin()\n");
+    HOOK_DEBUG("HookedContext::Begin()\n");
 
     if (context)
         return ID3D11DeviceContext1_Begin(context,  pAsync);
@@ -582,7 +582,7 @@ static void STDMETHODCALLTYPE End(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::End()\n");
+    HOOK_DEBUG("HookedContext::End()\n");
 
     if (context)
         return ID3D11DeviceContext1_End(context,  pAsync);
@@ -602,7 +602,7 @@ static HRESULT STDMETHODCALLTYPE GetData(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GetData()\n");
+    HOOK_DEBUG("HookedContext::GetData()\n");
 
     if (context)
         return ID3D11DeviceContext1_GetData(context,  pAsync, pData, DataSize, GetDataFlags);
@@ -618,7 +618,7 @@ static void STDMETHODCALLTYPE SetPredication(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::SetPredication()\n");
+    HOOK_DEBUG("HookedContext::SetPredication()\n");
 
     if (context)
         return ID3D11DeviceContext1_SetPredication(context,  pPredicate, PredicateValue);
@@ -636,7 +636,7 @@ static void STDMETHODCALLTYPE GSSetShaderResources(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GSSetShaderResources()\n");
+    HOOK_DEBUG("HookedContext::GSSetShaderResources()\n");
 
     if (context)
         return ID3D11DeviceContext1_GSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
@@ -654,7 +654,7 @@ static void STDMETHODCALLTYPE GSSetSamplers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GSSetSamplers()\n");
+    HOOK_DEBUG("HookedContext::GSSetSamplers()\n");
 
     if (context)
         return ID3D11DeviceContext1_GSSetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
@@ -672,7 +672,7 @@ static void STDMETHODCALLTYPE OMSetRenderTargets(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::OMSetRenderTargets()\n");
+    HOOK_DEBUG("HookedContext::OMSetRenderTargets()\n");
 
     if (context)
         return ID3D11DeviceContext1_OMSetRenderTargets(context,  NumViews, ppRenderTargetViews, pDepthStencilView);
@@ -698,7 +698,7 @@ static void STDMETHODCALLTYPE OMSetRenderTargetsAndUnorderedAccessViews(ID3D11De
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::OMSetRenderTargetsAndUnorderedAccessViews()\n");
+    HOOK_DEBUG("HookedContext::OMSetRenderTargetsAndUnorderedAccessViews()\n");
 
     if (context)
         return ID3D11DeviceContext1_OMSetRenderTargetsAndUnorderedAccessViews(context,  NumRTVs, ppRenderTargetViews, pDepthStencilView, UAVStartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
@@ -716,7 +716,7 @@ static void STDMETHODCALLTYPE OMSetBlendState(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::OMSetBlendState()\n");
+    HOOK_DEBUG("HookedContext::OMSetBlendState()\n");
 
     if (context)
         return ID3D11DeviceContext1_OMSetBlendState(context,  pBlendState, BlendFactor, SampleMask);
@@ -732,7 +732,7 @@ static void STDMETHODCALLTYPE OMSetDepthStencilState(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::OMSetDepthStencilState()\n");
+    HOOK_DEBUG("HookedContext::OMSetDepthStencilState()\n");
 
     if (context)
         return ID3D11DeviceContext1_OMSetDepthStencilState(context,  pDepthStencilState, StencilRef);
@@ -750,7 +750,7 @@ static void STDMETHODCALLTYPE SOSetTargets(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::SOSetTargets()\n");
+    HOOK_DEBUG("HookedContext::SOSetTargets()\n");
 
     if (context)
         return ID3D11DeviceContext1_SOSetTargets(context,  NumBuffers, ppSOTargets, pOffsets);
@@ -761,7 +761,7 @@ static void STDMETHODCALLTYPE DrawAuto(ID3D11DeviceContext1 *This)
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::DrawAuto()\n");
+    HOOK_DEBUG("HookedContext::DrawAuto()\n");
 
     if (context)
         return ID3D11DeviceContext1_DrawAuto(context);
@@ -777,7 +777,7 @@ static void STDMETHODCALLTYPE DrawIndexedInstancedIndirect(ID3D11DeviceContext1 
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::DrawIndexedInstancedIndirect()\n");
+    HOOK_DEBUG("HookedContext::DrawIndexedInstancedIndirect()\n");
 
     if (context)
         return ID3D11DeviceContext1_DrawIndexedInstancedIndirect(context,  pBufferForArgs, AlignedByteOffsetForArgs);
@@ -793,7 +793,7 @@ static void STDMETHODCALLTYPE DrawInstancedIndirect(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::DrawInstancedIndirect()\n");
+    HOOK_DEBUG("HookedContext::DrawInstancedIndirect()\n");
 
     if (context)
         return ID3D11DeviceContext1_DrawInstancedIndirect(context,  pBufferForArgs, AlignedByteOffsetForArgs);
@@ -811,7 +811,7 @@ static void STDMETHODCALLTYPE Dispatch(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::Dispatch()\n");
+    HOOK_DEBUG("HookedContext::Dispatch()\n");
 
     if (context)
         return ID3D11DeviceContext1_Dispatch(context,  ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
@@ -827,7 +827,7 @@ static void STDMETHODCALLTYPE DispatchIndirect(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::DispatchIndirect()\n");
+    HOOK_DEBUG("HookedContext::DispatchIndirect()\n");
 
     if (context)
         return ID3D11DeviceContext1_DispatchIndirect(context,  pBufferForArgs, AlignedByteOffsetForArgs);
@@ -841,7 +841,7 @@ static void STDMETHODCALLTYPE RSSetState(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::RSSetState()\n");
+    HOOK_DEBUG("HookedContext::RSSetState()\n");
 
     if (context)
         return ID3D11DeviceContext1_RSSetState(context,  pRasterizerState);
@@ -857,7 +857,7 @@ static void STDMETHODCALLTYPE RSSetViewports(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::RSSetViewports()\n");
+    HOOK_DEBUG("HookedContext::RSSetViewports()\n");
 
     if (context)
         return ID3D11DeviceContext1_RSSetViewports(context,  NumViewports, pViewports);
@@ -873,7 +873,7 @@ static void STDMETHODCALLTYPE RSSetScissorRects(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::RSSetScissorRects()\n");
+    HOOK_DEBUG("HookedContext::RSSetScissorRects()\n");
 
     if (context)
         return ID3D11DeviceContext1_RSSetScissorRects(context,  NumRects, pRects);
@@ -901,7 +901,7 @@ static void STDMETHODCALLTYPE CopySubresourceRegion(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::CopySubresourceRegion()\n");
+    HOOK_DEBUG("HookedContext::CopySubresourceRegion()\n");
 
     if (context)
         return ID3D11DeviceContext1_CopySubresourceRegion(context,  pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
@@ -917,7 +917,7 @@ static void STDMETHODCALLTYPE CopyResource(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::CopyResource()\n");
+    HOOK_DEBUG("HookedContext::CopyResource()\n");
 
     if (context)
         return ID3D11DeviceContext1_CopyResource(context,  pDstResource, pSrcResource);
@@ -941,7 +941,7 @@ static void STDMETHODCALLTYPE UpdateSubresource(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::UpdateSubresource()\n");
+    HOOK_DEBUG("HookedContext::UpdateSubresource()\n");
 
     if (context)
         return ID3D11DeviceContext1_UpdateSubresource(context,  pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
@@ -959,7 +959,7 @@ static void STDMETHODCALLTYPE CopyStructureCount(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::CopyStructureCount()\n");
+    HOOK_DEBUG("HookedContext::CopyStructureCount()\n");
 
     if (context)
         return ID3D11DeviceContext1_CopyStructureCount(context,  pDstBuffer, DstAlignedByteOffset, pSrcView);
@@ -975,7 +975,7 @@ static void STDMETHODCALLTYPE ClearRenderTargetView(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::ClearRenderTargetView()\n");
+    HOOK_DEBUG("HookedContext::ClearRenderTargetView()\n");
 
     if (context)
         return ID3D11DeviceContext1_ClearRenderTargetView(context,  pRenderTargetView, ColorRGBA);
@@ -991,7 +991,7 @@ static void STDMETHODCALLTYPE ClearUnorderedAccessViewUint(ID3D11DeviceContext1 
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::ClearUnorderedAccessViewUint()\n");
+    HOOK_DEBUG("HookedContext::ClearUnorderedAccessViewUint()\n");
 
     if (context)
         return ID3D11DeviceContext1_ClearUnorderedAccessViewUint(context,  pUnorderedAccessView, Values);
@@ -1007,7 +1007,7 @@ static void STDMETHODCALLTYPE ClearUnorderedAccessViewFloat(ID3D11DeviceContext1
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::ClearUnorderedAccessViewFloat()\n");
+    HOOK_DEBUG("HookedContext::ClearUnorderedAccessViewFloat()\n");
 
     if (context)
         return ID3D11DeviceContext1_ClearUnorderedAccessViewFloat(context,  pUnorderedAccessView, Values);
@@ -1027,7 +1027,7 @@ static void STDMETHODCALLTYPE ClearDepthStencilView(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::ClearDepthStencilView()\n");
+    HOOK_DEBUG("HookedContext::ClearDepthStencilView()\n");
 
     if (context)
         return ID3D11DeviceContext1_ClearDepthStencilView(context,  pDepthStencilView, ClearFlags, Depth, Stencil);
@@ -1041,7 +1041,7 @@ static void STDMETHODCALLTYPE GenerateMips(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GenerateMips()\n");
+    HOOK_DEBUG("HookedContext::GenerateMips()\n");
 
     if (context)
         return ID3D11DeviceContext1_GenerateMips(context,  pShaderResourceView);
@@ -1056,7 +1056,7 @@ static void STDMETHODCALLTYPE SetResourceMinLOD(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::SetResourceMinLOD()\n");
+    HOOK_DEBUG("HookedContext::SetResourceMinLOD()\n");
 
     if (context)
         return ID3D11DeviceContext1_SetResourceMinLOD(context,  pResource, MinLOD);
@@ -1070,7 +1070,7 @@ static FLOAT STDMETHODCALLTYPE GetResourceMinLOD(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GetResourceMinLOD()\n");
+    HOOK_DEBUG("HookedContext::GetResourceMinLOD()\n");
 
     if (context)
         return ID3D11DeviceContext1_GetResourceMinLOD(context,  pResource);
@@ -1092,7 +1092,7 @@ static void STDMETHODCALLTYPE ResolveSubresource(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::ResolveSubresource()\n");
+    HOOK_DEBUG("HookedContext::ResolveSubresource()\n");
 
     if (context)
         return ID3D11DeviceContext1_ResolveSubresource(context,  pDstResource, DstSubresource, pSrcResource, SrcSubresource, Format);
@@ -1107,7 +1107,7 @@ static void STDMETHODCALLTYPE ExecuteCommandList(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::ExecuteCommandList()\n");
+    HOOK_DEBUG("HookedContext::ExecuteCommandList()\n");
 
     if (context)
         return ID3D11DeviceContext1_ExecuteCommandList(context,  pCommandList, RestoreContextState);
@@ -1125,7 +1125,7 @@ static void STDMETHODCALLTYPE HSSetShaderResources(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::HSSetShaderResources()\n");
+    HOOK_DEBUG("HookedContext::HSSetShaderResources()\n");
 
     if (context)
         return ID3D11DeviceContext1_HSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
@@ -1142,7 +1142,7 @@ static void STDMETHODCALLTYPE HSSetShader(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::HSSetShader()\n");
+    HOOK_DEBUG("HookedContext::HSSetShader()\n");
 
     if (context)
         return ID3D11DeviceContext1_HSSetShader(context,  pHullShader, ppClassInstances, NumClassInstances);
@@ -1160,7 +1160,7 @@ static void STDMETHODCALLTYPE HSSetSamplers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::HSSetSamplers()\n");
+    HOOK_DEBUG("HookedContext::HSSetSamplers()\n");
 
     if (context)
         return ID3D11DeviceContext1_HSSetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
@@ -1178,7 +1178,7 @@ static void STDMETHODCALLTYPE HSSetConstantBuffers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::HSSetConstantBuffers()\n");
+    HOOK_DEBUG("HookedContext::HSSetConstantBuffers()\n");
 
     if (context)
         return ID3D11DeviceContext1_HSSetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
@@ -1196,7 +1196,7 @@ static void STDMETHODCALLTYPE DSSetShaderResources(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::DSSetShaderResources()\n");
+    HOOK_DEBUG("HookedContext::DSSetShaderResources()\n");
 
     if (context)
         return ID3D11DeviceContext1_DSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
@@ -1213,7 +1213,7 @@ static void STDMETHODCALLTYPE DSSetShader(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::DSSetShader()\n");
+    HOOK_DEBUG("HookedContext::DSSetShader()\n");
 
     if (context)
         return ID3D11DeviceContext1_DSSetShader(context,  pDomainShader, ppClassInstances, NumClassInstances);
@@ -1231,7 +1231,7 @@ static void STDMETHODCALLTYPE DSSetSamplers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::DSSetSamplers()\n");
+    HOOK_DEBUG("HookedContext::DSSetSamplers()\n");
 
     if (context)
         return ID3D11DeviceContext1_DSSetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
@@ -1249,7 +1249,7 @@ static void STDMETHODCALLTYPE DSSetConstantBuffers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::DSSetConstantBuffers()\n");
+    HOOK_DEBUG("HookedContext::DSSetConstantBuffers()\n");
 
     if (context)
         return ID3D11DeviceContext1_DSSetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
@@ -1267,7 +1267,7 @@ static void STDMETHODCALLTYPE CSSetShaderResources(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::CSSetShaderResources()\n");
+    HOOK_DEBUG("HookedContext::CSSetShaderResources()\n");
 
     if (context)
         return ID3D11DeviceContext1_CSSetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
@@ -1287,7 +1287,7 @@ static void STDMETHODCALLTYPE CSSetUnorderedAccessViews(ID3D11DeviceContext1 *Th
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::CSSetUnorderedAccessViews()\n");
+    HOOK_DEBUG("HookedContext::CSSetUnorderedAccessViews()\n");
 
     if (context)
         return ID3D11DeviceContext1_CSSetUnorderedAccessViews(context,  StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
@@ -1304,7 +1304,7 @@ static void STDMETHODCALLTYPE CSSetShader(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::CSSetShader()\n");
+    HOOK_DEBUG("HookedContext::CSSetShader()\n");
 
     if (context)
         return ID3D11DeviceContext1_CSSetShader(context,  pComputeShader, ppClassInstances, NumClassInstances);
@@ -1322,7 +1322,7 @@ static void STDMETHODCALLTYPE CSSetSamplers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::CSSetSamplers()\n");
+    HOOK_DEBUG("HookedContext::CSSetSamplers()\n");
 
     if (context)
         return ID3D11DeviceContext1_CSSetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
@@ -1340,7 +1340,7 @@ static void STDMETHODCALLTYPE CSSetConstantBuffers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::CSSetConstantBuffers()\n");
+    HOOK_DEBUG("HookedContext::CSSetConstantBuffers()\n");
 
     if (context)
         return ID3D11DeviceContext1_CSSetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
@@ -1358,7 +1358,7 @@ static void STDMETHODCALLTYPE VSGetConstantBuffers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::VSGetConstantBuffers()\n");
+    HOOK_DEBUG("HookedContext::VSGetConstantBuffers()\n");
 
     if (context)
         return ID3D11DeviceContext1_VSGetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
@@ -1376,7 +1376,7 @@ static void STDMETHODCALLTYPE PSGetShaderResources(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::PSGetShaderResources()\n");
+    HOOK_DEBUG("HookedContext::PSGetShaderResources()\n");
 
     if (context)
         return ID3D11DeviceContext1_PSGetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
@@ -1394,7 +1394,7 @@ static void STDMETHODCALLTYPE PSGetShader(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::PSGetShader()\n");
+    HOOK_DEBUG("HookedContext::PSGetShader()\n");
 
     if (context)
         return ID3D11DeviceContext1_PSGetShader(context,  ppPixelShader, ppClassInstances, pNumClassInstances);
@@ -1412,7 +1412,7 @@ static void STDMETHODCALLTYPE PSGetSamplers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::PSGetSamplers()\n");
+    HOOK_DEBUG("HookedContext::PSGetSamplers()\n");
 
     if (context)
         return ID3D11DeviceContext1_PSGetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
@@ -1430,7 +1430,7 @@ static void STDMETHODCALLTYPE VSGetShader(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::VSGetShader()\n");
+    HOOK_DEBUG("HookedContext::VSGetShader()\n");
 
     if (context)
         return ID3D11DeviceContext1_VSGetShader(context,  ppVertexShader, ppClassInstances, pNumClassInstances);
@@ -1448,7 +1448,7 @@ static void STDMETHODCALLTYPE PSGetConstantBuffers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::PSGetConstantBuffers()\n");
+    HOOK_DEBUG("HookedContext::PSGetConstantBuffers()\n");
 
     if (context)
         return ID3D11DeviceContext1_PSGetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
@@ -1462,7 +1462,7 @@ static void STDMETHODCALLTYPE IAGetInputLayout(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::IAGetInputLayout()\n");
+    HOOK_DEBUG("HookedContext::IAGetInputLayout()\n");
 
     if (context)
         return ID3D11DeviceContext1_IAGetInputLayout(context,  ppInputLayout);
@@ -1484,7 +1484,7 @@ static void STDMETHODCALLTYPE IAGetVertexBuffers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::IAGetVertexBuffers()\n");
+    HOOK_DEBUG("HookedContext::IAGetVertexBuffers()\n");
 
     if (context)
         return ID3D11DeviceContext1_IAGetVertexBuffers(context,  StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
@@ -1502,7 +1502,7 @@ static void STDMETHODCALLTYPE IAGetIndexBuffer(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::IAGetIndexBuffer()\n");
+    HOOK_DEBUG("HookedContext::IAGetIndexBuffer()\n");
 
     if (context)
         return ID3D11DeviceContext1_IAGetIndexBuffer(context,  pIndexBuffer, Format, Offset);
@@ -1520,7 +1520,7 @@ static void STDMETHODCALLTYPE GSGetConstantBuffers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GSGetConstantBuffers()\n");
+    HOOK_DEBUG("HookedContext::GSGetConstantBuffers()\n");
 
     if (context)
         return ID3D11DeviceContext1_GSGetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
@@ -1538,7 +1538,7 @@ static void STDMETHODCALLTYPE GSGetShader(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GSGetShader()\n");
+    HOOK_DEBUG("HookedContext::GSGetShader()\n");
 
     if (context)
         return ID3D11DeviceContext1_GSGetShader(context,  ppGeometryShader, ppClassInstances, pNumClassInstances);
@@ -1552,7 +1552,7 @@ static void STDMETHODCALLTYPE IAGetPrimitiveTopology(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::IAGetPrimitiveTopology()\n");
+    HOOK_DEBUG("HookedContext::IAGetPrimitiveTopology()\n");
 
     if (context)
         return ID3D11DeviceContext1_IAGetPrimitiveTopology(context,  pTopology);
@@ -1570,7 +1570,7 @@ static void STDMETHODCALLTYPE VSGetShaderResources(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::VSGetShaderResources()\n");
+    HOOK_DEBUG("HookedContext::VSGetShaderResources()\n");
 
     if (context)
         return ID3D11DeviceContext1_VSGetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
@@ -1588,7 +1588,7 @@ static void STDMETHODCALLTYPE VSGetSamplers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::VSGetSamplers()\n");
+    HOOK_DEBUG("HookedContext::VSGetSamplers()\n");
 
     if (context)
         return ID3D11DeviceContext1_VSGetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
@@ -1604,7 +1604,7 @@ static void STDMETHODCALLTYPE GetPredication(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GetPredication()\n");
+    HOOK_DEBUG("HookedContext::GetPredication()\n");
 
     if (context)
         return ID3D11DeviceContext1_GetPredication(context,  ppPredicate, pPredicateValue);
@@ -1622,7 +1622,7 @@ static void STDMETHODCALLTYPE GSGetShaderResources(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GSGetShaderResources()\n");
+    HOOK_DEBUG("HookedContext::GSGetShaderResources()\n");
 
     if (context)
         return ID3D11DeviceContext1_GSGetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
@@ -1640,7 +1640,7 @@ static void STDMETHODCALLTYPE GSGetSamplers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GSGetSamplers()\n");
+    HOOK_DEBUG("HookedContext::GSGetSamplers()\n");
 
     if (context)
         return ID3D11DeviceContext1_GSGetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
@@ -1658,7 +1658,7 @@ static void STDMETHODCALLTYPE OMGetRenderTargets(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::OMGetRenderTargets()\n");
+    HOOK_DEBUG("HookedContext::OMGetRenderTargets()\n");
 
     if (context)
         return ID3D11DeviceContext1_OMGetRenderTargets(context,  NumViews, ppRenderTargetViews, ppDepthStencilView);
@@ -1682,7 +1682,7 @@ static void STDMETHODCALLTYPE OMGetRenderTargetsAndUnorderedAccessViews(ID3D11De
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::OMGetRenderTargetsAndUnorderedAccessViews()\n");
+    HOOK_DEBUG("HookedContext::OMGetRenderTargetsAndUnorderedAccessViews()\n");
 
     if (context)
         return ID3D11DeviceContext1_OMGetRenderTargetsAndUnorderedAccessViews(context,  NumRTVs, ppRenderTargetViews, ppDepthStencilView, UAVStartSlot, NumUAVs, ppUnorderedAccessViews);
@@ -1700,7 +1700,7 @@ static void STDMETHODCALLTYPE OMGetBlendState(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::OMGetBlendState()\n");
+    HOOK_DEBUG("HookedContext::OMGetBlendState()\n");
 
     if (context)
         return ID3D11DeviceContext1_OMGetBlendState(context,  ppBlendState, BlendFactor, pSampleMask);
@@ -1716,7 +1716,7 @@ static void STDMETHODCALLTYPE OMGetDepthStencilState(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::OMGetDepthStencilState()\n");
+    HOOK_DEBUG("HookedContext::OMGetDepthStencilState()\n");
 
     if (context)
         return ID3D11DeviceContext1_OMGetDepthStencilState(context,  ppDepthStencilState, pStencilRef);
@@ -1732,7 +1732,7 @@ static void STDMETHODCALLTYPE SOGetTargets(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::SOGetTargets()\n");
+    HOOK_DEBUG("HookedContext::SOGetTargets()\n");
 
     if (context)
         return ID3D11DeviceContext1_SOGetTargets(context,  NumBuffers, ppSOTargets);
@@ -1746,7 +1746,7 @@ static void STDMETHODCALLTYPE RSGetState(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::RSGetState()\n");
+    HOOK_DEBUG("HookedContext::RSGetState()\n");
 
     if (context)
         return ID3D11DeviceContext1_RSGetState(context,  ppRasterizerState);
@@ -1762,7 +1762,7 @@ static void STDMETHODCALLTYPE RSGetViewports(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::RSGetViewports()\n");
+    HOOK_DEBUG("HookedContext::RSGetViewports()\n");
 
     if (context)
         return ID3D11DeviceContext1_RSGetViewports(context,  pNumViewports, pViewports);
@@ -1778,7 +1778,7 @@ static void STDMETHODCALLTYPE RSGetScissorRects(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::RSGetScissorRects()\n");
+    HOOK_DEBUG("HookedContext::RSGetScissorRects()\n");
 
     if (context)
         return ID3D11DeviceContext1_RSGetScissorRects(context,  pNumRects, pRects);
@@ -1796,7 +1796,7 @@ static void STDMETHODCALLTYPE HSGetShaderResources(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::HSGetShaderResources()\n");
+    HOOK_DEBUG("HookedContext::HSGetShaderResources()\n");
 
     if (context)
         return ID3D11DeviceContext1_HSGetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
@@ -1814,7 +1814,7 @@ static void STDMETHODCALLTYPE HSGetShader(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::HSGetShader()\n");
+    HOOK_DEBUG("HookedContext::HSGetShader()\n");
 
     if (context)
         return ID3D11DeviceContext1_HSGetShader(context,  ppHullShader, ppClassInstances, pNumClassInstances);
@@ -1832,7 +1832,7 @@ static void STDMETHODCALLTYPE HSGetSamplers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::HSGetSamplers()\n");
+    HOOK_DEBUG("HookedContext::HSGetSamplers()\n");
 
     if (context)
         return ID3D11DeviceContext1_HSGetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
@@ -1850,7 +1850,7 @@ static void STDMETHODCALLTYPE HSGetConstantBuffers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::HSGetConstantBuffers()\n");
+    HOOK_DEBUG("HookedContext::HSGetConstantBuffers()\n");
 
     if (context)
         return ID3D11DeviceContext1_HSGetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
@@ -1868,7 +1868,7 @@ static void STDMETHODCALLTYPE DSGetShaderResources(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::DSGetShaderResources()\n");
+    HOOK_DEBUG("HookedContext::DSGetShaderResources()\n");
 
     if (context)
         return ID3D11DeviceContext1_DSGetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
@@ -1886,7 +1886,7 @@ static void STDMETHODCALLTYPE DSGetShader(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::DSGetShader()\n");
+    HOOK_DEBUG("HookedContext::DSGetShader()\n");
 
     if (context)
         return ID3D11DeviceContext1_DSGetShader(context,  ppDomainShader, ppClassInstances, pNumClassInstances);
@@ -1904,7 +1904,7 @@ static void STDMETHODCALLTYPE DSGetSamplers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::DSGetSamplers()\n");
+    HOOK_DEBUG("HookedContext::DSGetSamplers()\n");
 
     if (context)
         return ID3D11DeviceContext1_DSGetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
@@ -1922,7 +1922,7 @@ static void STDMETHODCALLTYPE DSGetConstantBuffers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::DSGetConstantBuffers()\n");
+    HOOK_DEBUG("HookedContext::DSGetConstantBuffers()\n");
 
     if (context)
         return ID3D11DeviceContext1_DSGetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
@@ -1940,7 +1940,7 @@ static void STDMETHODCALLTYPE CSGetShaderResources(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::CSGetShaderResources()\n");
+    HOOK_DEBUG("HookedContext::CSGetShaderResources()\n");
 
     if (context)
         return ID3D11DeviceContext1_CSGetShaderResources(context,  StartSlot, NumViews, ppShaderResourceViews);
@@ -1958,7 +1958,7 @@ static void STDMETHODCALLTYPE CSGetUnorderedAccessViews(ID3D11DeviceContext1 *Th
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::CSGetUnorderedAccessViews()\n");
+    HOOK_DEBUG("HookedContext::CSGetUnorderedAccessViews()\n");
 
     if (context)
         return ID3D11DeviceContext1_CSGetUnorderedAccessViews(context,  StartSlot, NumUAVs, ppUnorderedAccessViews);
@@ -1976,7 +1976,7 @@ static void STDMETHODCALLTYPE CSGetShader(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::CSGetShader()\n");
+    HOOK_DEBUG("HookedContext::CSGetShader()\n");
 
     if (context)
         return ID3D11DeviceContext1_CSGetShader(context,  ppComputeShader, ppClassInstances, pNumClassInstances);
@@ -1994,7 +1994,7 @@ static void STDMETHODCALLTYPE CSGetSamplers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::CSGetSamplers()\n");
+    HOOK_DEBUG("HookedContext::CSGetSamplers()\n");
 
     if (context)
         return ID3D11DeviceContext1_CSGetSamplers(context,  StartSlot, NumSamplers, ppSamplers);
@@ -2012,7 +2012,7 @@ static void STDMETHODCALLTYPE CSGetConstantBuffers(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::CSGetConstantBuffers()\n");
+    HOOK_DEBUG("HookedContext::CSGetConstantBuffers()\n");
 
     if (context)
         return ID3D11DeviceContext1_CSGetConstantBuffers(context,  StartSlot, NumBuffers, ppConstantBuffers);
@@ -2024,7 +2024,7 @@ static void STDMETHODCALLTYPE ClearState(ID3D11DeviceContext1 *This)
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::ClearState()\n");
+    HOOK_DEBUG("HookedContext::ClearState()\n");
 
     if (context)
         return ID3D11DeviceContext1_ClearState(context);
@@ -2036,7 +2036,7 @@ static void STDMETHODCALLTYPE Flush(ID3D11DeviceContext1 *This)
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::Flush()\n");
+    HOOK_DEBUG("HookedContext::Flush()\n");
 
     if (context)
         return ID3D11DeviceContext1_Flush(context);
@@ -2048,7 +2048,7 @@ static D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType(ID3D11DeviceContext1 
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GetType()\n");
+    HOOK_DEBUG("HookedContext::GetType()\n");
 
     if (context)
         return ID3D11DeviceContext1_GetType(context);
@@ -2060,7 +2060,7 @@ static UINT STDMETHODCALLTYPE GetContextFlags(ID3D11DeviceContext1 *This)
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::GetContextFlags()\n");
+    HOOK_DEBUG("HookedContext::GetContextFlags()\n");
 
     if (context)
         return ID3D11DeviceContext1_GetContextFlags(context);
@@ -2075,7 +2075,7 @@ static HRESULT STDMETHODCALLTYPE FinishCommandList(ID3D11DeviceContext1 *This,
 {
     ID3D11DeviceContext1 *context = lookup_hooked_context(This);
 
-    HookDebug("HookedContext::FinishCommandList()\n");
+    HOOK_DEBUG("HookedContext::FinishCommandList()\n");
 
     if (context)
         return ID3D11DeviceContext1_FinishCommandList(context, RestoreDeferredContextState, ppCommandList);
@@ -2231,19 +2231,19 @@ typedef struct ID3D11DeviceContext1Trampoline {
 // IUnknown
 static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(ID3D11DeviceContext1 *This, REFIID riid, void **ppvObject)
 {
-    HookDebug("TrampolineContext::QueryInterface()\n");
+    HOOK_DEBUG("TrampolineContext::QueryInterface()\n");
     return orig_vtable.QueryInterface(((ID3D11DeviceContext1Trampoline*)This)->orig_this, riid, ppvObject);
 }
 static ULONG STDMETHODCALLTYPE TrampolineAddRef(ID3D11DeviceContext1 *This)
 {
-    HookDebug("TrampolineContext::AddRef()\n");
+    HOOK_DEBUG("TrampolineContext::AddRef()\n");
     return orig_vtable.AddRef(((ID3D11DeviceContext1Trampoline*)This)->orig_this);
 }
 static ULONG STDMETHODCALLTYPE TrampolineRelease(ID3D11DeviceContext1 *This)
 {
     ULONG ref;
 
-    HookDebug("TrampolineContext::Release()\n");
+    HOOK_DEBUG("TrampolineContext::Release()\n");
     ref = orig_vtable.Release(((ID3D11DeviceContext1Trampoline*)This)->orig_this);
 
     if (!ref)
@@ -2256,7 +2256,7 @@ static void STDMETHODCALLTYPE TrampolineGetDevice(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __out  ID3D11Device **ppDevice)
 {
-    HookDebug("TrampolineContext::GetDevice()\n");
+    HOOK_DEBUG("TrampolineContext::GetDevice()\n");
     return orig_vtable.GetDevice(((ID3D11DeviceContext1Trampoline*)This)->orig_this, ppDevice);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineGetPrivateData(ID3D11DeviceContext1 *This,
@@ -2267,7 +2267,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetPrivateData(ID3D11DeviceContext1 *
         /* [annotation] */
         __out_bcount_opt( *pDataSize )  void *pData)
 {
-    HookDebug("TrampolineContext::GetPrivateData()\n");
+    HOOK_DEBUG("TrampolineContext::GetPrivateData()\n");
     return orig_vtable.GetPrivateData(((ID3D11DeviceContext1Trampoline*)This)->orig_this, guid, pDataSize, pData);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateData(ID3D11DeviceContext1 *This,
@@ -2278,7 +2278,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateData(ID3D11DeviceContext1 *
         /* [annotation] */
         __in_bcount_opt( DataSize )  const void *pData)
 {
-    HookDebug("TrampolineContext::SetPrivateData()\n");
+    HOOK_DEBUG("TrampolineContext::SetPrivateData()\n");
     return orig_vtable.SetPrivateData(((ID3D11DeviceContext1Trampoline*)This)->orig_this, guid, DataSize, pData);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateDataInterface(ID3D11DeviceContext1 *This,
@@ -2287,7 +2287,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateDataInterface(ID3D11DeviceC
         /* [annotation] */
         __in_opt  const IUnknown *pData)
 {
-    HookDebug("TrampolineContext::SetPrivateDataInterface()\n");
+    HOOK_DEBUG("TrampolineContext::SetPrivateDataInterface()\n");
     return orig_vtable.SetPrivateDataInterface(((ID3D11DeviceContext1Trampoline*)This)->orig_this, guid, pData);
 }
 // ID3D11DeviceContext1
@@ -2299,7 +2299,7 @@ static void STDMETHODCALLTYPE TrampolineVSSetConstantBuffers(ID3D11DeviceContext
         /* [annotation] */
         __in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers)
 {
-    HookDebug("TrampolineContext::VSSetConstantBuffers()\n");
+    HOOK_DEBUG("TrampolineContext::VSSetConstantBuffers()\n");
     return orig_vtable.VSSetConstantBuffers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumBuffers, ppConstantBuffers);
 }
 static void STDMETHODCALLTYPE TrampolinePSSetShaderResources(ID3D11DeviceContext1 *This,
@@ -2310,7 +2310,7 @@ static void STDMETHODCALLTYPE TrampolinePSSetShaderResources(ID3D11DeviceContext
         /* [annotation] */
         __in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
-    HookDebug("TrampolineContext::PSSetShaderResources()\n");
+    HOOK_DEBUG("TrampolineContext::PSSetShaderResources()\n");
     return orig_vtable.PSSetShaderResources(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumViews, ppShaderResourceViews);
 }
 static void STDMETHODCALLTYPE TrampolinePSSetShader(ID3D11DeviceContext1 *This,
@@ -2320,7 +2320,7 @@ static void STDMETHODCALLTYPE TrampolinePSSetShader(ID3D11DeviceContext1 *This,
         __in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
         UINT NumClassInstances)
 {
-    HookDebug("TrampolineContext::PSSetShader()\n");
+    HOOK_DEBUG("TrampolineContext::PSSetShader()\n");
     return orig_vtable.PSSetShader(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pPixelShader, ppClassInstances, NumClassInstances);
 }
 static void STDMETHODCALLTYPE TrampolinePSSetSamplers(ID3D11DeviceContext1 *This,
@@ -2331,7 +2331,7 @@ static void STDMETHODCALLTYPE TrampolinePSSetSamplers(ID3D11DeviceContext1 *This
         /* [annotation] */
         __in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers)
 {
-    HookDebug("TrampolineContext::PSSetSamplers()\n");
+    HOOK_DEBUG("TrampolineContext::PSSetSamplers()\n");
     return orig_vtable.PSSetSamplers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumSamplers, ppSamplers);
 }
 static void STDMETHODCALLTYPE TrampolineVSSetShader(ID3D11DeviceContext1 *This,
@@ -2341,7 +2341,7 @@ static void STDMETHODCALLTYPE TrampolineVSSetShader(ID3D11DeviceContext1 *This,
         __in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
         UINT NumClassInstances)
 {
-    HookDebug("TrampolineContext::VSSetShader()\n");
+    HOOK_DEBUG("TrampolineContext::VSSetShader()\n");
     return orig_vtable.VSSetShader(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pVertexShader, ppClassInstances, NumClassInstances);
 }
 static void STDMETHODCALLTYPE TrampolineDrawIndexed(ID3D11DeviceContext1 *This,
@@ -2352,7 +2352,7 @@ static void STDMETHODCALLTYPE TrampolineDrawIndexed(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __in  INT BaseVertexLocation)
 {
-    HookDebug("TrampolineContext::DrawIndexed()\n");
+    HOOK_DEBUG("TrampolineContext::DrawIndexed()\n");
     return orig_vtable.DrawIndexed(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  IndexCount, StartIndexLocation, BaseVertexLocation);
 }
 static void STDMETHODCALLTYPE TrampolineDraw(ID3D11DeviceContext1 *This,
@@ -2361,7 +2361,7 @@ static void STDMETHODCALLTYPE TrampolineDraw(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __in  UINT StartVertexLocation)
 {
-    HookDebug("TrampolineContext::Draw()\n");
+    HOOK_DEBUG("TrampolineContext::Draw()\n");
     return orig_vtable.Draw(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  VertexCount, StartVertexLocation);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineMap(ID3D11DeviceContext1 *This,
@@ -2376,7 +2376,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineMap(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __out  D3D11_MAPPED_SUBRESOURCE *pMappedResource)
 {
-    HookDebug("TrampolineContext::Map()\n");
+    HOOK_DEBUG("TrampolineContext::Map()\n");
     return orig_vtable.Map(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pResource, Subresource, MapType, MapFlags, pMappedResource);
 }
 static void STDMETHODCALLTYPE TrampolineUnmap(ID3D11DeviceContext1 *This,
@@ -2385,7 +2385,7 @@ static void STDMETHODCALLTYPE TrampolineUnmap(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __in  UINT Subresource)
 {
-    HookDebug("TrampolineContext::Unmap()\n");
+    HOOK_DEBUG("TrampolineContext::Unmap()\n");
     return orig_vtable.Unmap(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pResource, Subresource);
 }
 static void STDMETHODCALLTYPE TrampolinePSSetConstantBuffers(ID3D11DeviceContext1 *This,
@@ -2396,14 +2396,14 @@ static void STDMETHODCALLTYPE TrampolinePSSetConstantBuffers(ID3D11DeviceContext
         /* [annotation] */
         __in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers)
 {
-    HookDebug("TrampolineContext::PSSetConstantBuffers()\n");
+    HOOK_DEBUG("TrampolineContext::PSSetConstantBuffers()\n");
     return orig_vtable.PSSetConstantBuffers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumBuffers, ppConstantBuffers);
 }
 static void STDMETHODCALLTYPE TrampolineIASetInputLayout(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __in_opt  ID3D11InputLayout *pInputLayout)
 {
-    HookDebug("TrampolineContext::IASetInputLayout()\n");
+    HOOK_DEBUG("TrampolineContext::IASetInputLayout()\n");
     return orig_vtable.IASetInputLayout(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pInputLayout);
 }
 static void STDMETHODCALLTYPE TrampolineIASetVertexBuffers(ID3D11DeviceContext1 *This,
@@ -2418,7 +2418,7 @@ static void STDMETHODCALLTYPE TrampolineIASetVertexBuffers(ID3D11DeviceContext1 
         /* [annotation] */
         __in_ecount(NumBuffers)  const UINT *pOffsets)
 {
-    HookDebug("TrampolineContext::IASetVertexBuffers()\n");
+    HOOK_DEBUG("TrampolineContext::IASetVertexBuffers()\n");
     return orig_vtable.IASetVertexBuffers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
 }
 static void STDMETHODCALLTYPE TrampolineIASetIndexBuffer(ID3D11DeviceContext1 *This,
@@ -2429,7 +2429,7 @@ static void STDMETHODCALLTYPE TrampolineIASetIndexBuffer(ID3D11DeviceContext1 *T
         /* [annotation] */
         __in  UINT Offset)
 {
-    HookDebug("TrampolineContext::IASetIndexBuffer()\n");
+    HOOK_DEBUG("TrampolineContext::IASetIndexBuffer()\n");
     return orig_vtable.IASetIndexBuffer(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pIndexBuffer, Format, Offset);
 }
 static void STDMETHODCALLTYPE TrampolineDrawIndexedInstanced(ID3D11DeviceContext1 *This,
@@ -2444,7 +2444,7 @@ static void STDMETHODCALLTYPE TrampolineDrawIndexedInstanced(ID3D11DeviceContext
         /* [annotation] */
         __in  UINT StartInstanceLocation)
 {
-    HookDebug("TrampolineContext::DrawIndexedInstanced()\n");
+    HOOK_DEBUG("TrampolineContext::DrawIndexedInstanced()\n");
     return orig_vtable.DrawIndexedInstanced(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
 }
 static void STDMETHODCALLTYPE TrampolineDrawInstanced(ID3D11DeviceContext1 *This,
@@ -2457,7 +2457,7 @@ static void STDMETHODCALLTYPE TrampolineDrawInstanced(ID3D11DeviceContext1 *This
         /* [annotation] */
         __in  UINT StartInstanceLocation)
 {
-    HookDebug("TrampolineContext::DrawInstanced()\n");
+    HOOK_DEBUG("TrampolineContext::DrawInstanced()\n");
     return orig_vtable.DrawInstanced(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
 }
 static void STDMETHODCALLTYPE TrampolineGSSetConstantBuffers(ID3D11DeviceContext1 *This,
@@ -2468,7 +2468,7 @@ static void STDMETHODCALLTYPE TrampolineGSSetConstantBuffers(ID3D11DeviceContext
         /* [annotation] */
         __in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers)
 {
-    HookDebug("TrampolineContext::GSSetConstantBuffers()\n");
+    HOOK_DEBUG("TrampolineContext::GSSetConstantBuffers()\n");
     return orig_vtable.GSSetConstantBuffers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumBuffers, ppConstantBuffers);
 }
 static void STDMETHODCALLTYPE TrampolineGSSetShader(ID3D11DeviceContext1 *This,
@@ -2478,14 +2478,14 @@ static void STDMETHODCALLTYPE TrampolineGSSetShader(ID3D11DeviceContext1 *This,
         __in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
         UINT NumClassInstances)
 {
-    HookDebug("TrampolineContext::GSSetShader()\n");
+    HOOK_DEBUG("TrampolineContext::GSSetShader()\n");
     return orig_vtable.GSSetShader(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pShader, ppClassInstances, NumClassInstances);
 }
 static void STDMETHODCALLTYPE TrampolineIASetPrimitiveTopology(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __in  D3D11_PRIMITIVE_TOPOLOGY Topology)
 {
-    HookDebug("TrampolineContext::IASetPrimitiveTopology()\n");
+    HOOK_DEBUG("TrampolineContext::IASetPrimitiveTopology()\n");
     return orig_vtable.IASetPrimitiveTopology(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  Topology);
 }
 static void STDMETHODCALLTYPE TrampolineVSSetShaderResources(ID3D11DeviceContext1 *This,
@@ -2496,7 +2496,7 @@ static void STDMETHODCALLTYPE TrampolineVSSetShaderResources(ID3D11DeviceContext
         /* [annotation] */
         __in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
-    HookDebug("TrampolineContext::VSSetShaderResources()\n");
+    HOOK_DEBUG("TrampolineContext::VSSetShaderResources()\n");
     return orig_vtable.VSSetShaderResources(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumViews, ppShaderResourceViews);
 }
 static void STDMETHODCALLTYPE TrampolineVSSetSamplers(ID3D11DeviceContext1 *This,
@@ -2507,21 +2507,21 @@ static void STDMETHODCALLTYPE TrampolineVSSetSamplers(ID3D11DeviceContext1 *This
         /* [annotation] */
         __in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers)
 {
-    HookDebug("TrampolineContext::VSSetSamplers()\n");
+    HOOK_DEBUG("TrampolineContext::VSSetSamplers()\n");
     return orig_vtable.VSSetSamplers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumSamplers, ppSamplers);
 }
 static void STDMETHODCALLTYPE TrampolineBegin(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __in  ID3D11Asynchronous *pAsync)
 {
-    HookDebug("TrampolineContext::Begin()\n");
+    HOOK_DEBUG("TrampolineContext::Begin()\n");
     return orig_vtable.Begin(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pAsync);
 }
 static void STDMETHODCALLTYPE TrampolineEnd(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __in  ID3D11Asynchronous *pAsync)
 {
-    HookDebug("TrampolineContext::End()\n");
+    HOOK_DEBUG("TrampolineContext::End()\n");
     return orig_vtable.End(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pAsync);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineGetData(ID3D11DeviceContext1 *This,
@@ -2534,7 +2534,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetData(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __in  UINT GetDataFlags)
 {
-    HookDebug("TrampolineContext::GetData()\n");
+    HOOK_DEBUG("TrampolineContext::GetData()\n");
     return orig_vtable.GetData(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pAsync, pData, DataSize, GetDataFlags);
 }
 static void STDMETHODCALLTYPE TrampolineSetPredication(ID3D11DeviceContext1 *This,
@@ -2543,7 +2543,7 @@ static void STDMETHODCALLTYPE TrampolineSetPredication(ID3D11DeviceContext1 *Thi
         /* [annotation] */
         __in  BOOL PredicateValue)
 {
-    HookDebug("TrampolineContext::SetPredication()\n");
+    HOOK_DEBUG("TrampolineContext::SetPredication()\n");
     return orig_vtable.SetPredication(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pPredicate, PredicateValue);
 }
 static void STDMETHODCALLTYPE TrampolineGSSetShaderResources(ID3D11DeviceContext1 *This,
@@ -2554,7 +2554,7 @@ static void STDMETHODCALLTYPE TrampolineGSSetShaderResources(ID3D11DeviceContext
         /* [annotation] */
         __in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
-    HookDebug("TrampolineContext::GSSetShaderResources()\n");
+    HOOK_DEBUG("TrampolineContext::GSSetShaderResources()\n");
     return orig_vtable.GSSetShaderResources(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumViews, ppShaderResourceViews);
 }
 static void STDMETHODCALLTYPE TrampolineGSSetSamplers(ID3D11DeviceContext1 *This,
@@ -2565,7 +2565,7 @@ static void STDMETHODCALLTYPE TrampolineGSSetSamplers(ID3D11DeviceContext1 *This
         /* [annotation] */
         __in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers)
 {
-    HookDebug("TrampolineContext::GSSetSamplers()\n");
+    HOOK_DEBUG("TrampolineContext::GSSetSamplers()\n");
     return orig_vtable.GSSetSamplers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumSamplers, ppSamplers);
 }
 static void STDMETHODCALLTYPE TrampolineOMSetRenderTargets(ID3D11DeviceContext1 *This,
@@ -2576,7 +2576,7 @@ static void STDMETHODCALLTYPE TrampolineOMSetRenderTargets(ID3D11DeviceContext1 
         /* [annotation] */
         __in_opt  ID3D11DepthStencilView *pDepthStencilView)
 {
-    HookDebug("TrampolineContext::OMSetRenderTargets()\n");
+    HOOK_DEBUG("TrampolineContext::OMSetRenderTargets()\n");
     return orig_vtable.OMSetRenderTargets(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  NumViews, ppRenderTargetViews, pDepthStencilView);
 }
 static void STDMETHODCALLTYPE TrampolineOMSetRenderTargetsAndUnorderedAccessViews(ID3D11DeviceContext1 *This,
@@ -2595,7 +2595,7 @@ static void STDMETHODCALLTYPE TrampolineOMSetRenderTargetsAndUnorderedAccessView
         /* [annotation] */
         __in_ecount_opt(NumUAVs)  const UINT *pUAVInitialCounts)
 {
-    HookDebug("TrampolineContext::OMSetRenderTargetsAndUnorderedAccessViews()\n");
+    HOOK_DEBUG("TrampolineContext::OMSetRenderTargetsAndUnorderedAccessViews()\n");
     return orig_vtable.OMSetRenderTargetsAndUnorderedAccessViews(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  NumRTVs, ppRenderTargetViews, pDepthStencilView, UAVStartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
 }
 static void STDMETHODCALLTYPE TrampolineOMSetBlendState(ID3D11DeviceContext1 *This,
@@ -2606,7 +2606,7 @@ static void STDMETHODCALLTYPE TrampolineOMSetBlendState(ID3D11DeviceContext1 *Th
         /* [annotation] */
         __in  UINT SampleMask)
 {
-    HookDebug("TrampolineContext::OMSetBlendState()\n");
+    HOOK_DEBUG("TrampolineContext::OMSetBlendState()\n");
     return orig_vtable.OMSetBlendState(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pBlendState, BlendFactor, SampleMask);
 }
 static void STDMETHODCALLTYPE TrampolineOMSetDepthStencilState(ID3D11DeviceContext1 *This,
@@ -2615,7 +2615,7 @@ static void STDMETHODCALLTYPE TrampolineOMSetDepthStencilState(ID3D11DeviceConte
         /* [annotation] */
         __in  UINT StencilRef)
 {
-    HookDebug("TrampolineContext::OMSetDepthStencilState()\n");
+    HOOK_DEBUG("TrampolineContext::OMSetDepthStencilState()\n");
     return orig_vtable.OMSetDepthStencilState(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pDepthStencilState, StencilRef);
 }
 static void STDMETHODCALLTYPE TrampolineSOSetTargets(ID3D11DeviceContext1 *This,
@@ -2626,12 +2626,12 @@ static void STDMETHODCALLTYPE TrampolineSOSetTargets(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __in_ecount_opt(NumBuffers)  const UINT *pOffsets)
 {
-    HookDebug("TrampolineContext::SOSetTargets()\n");
+    HOOK_DEBUG("TrampolineContext::SOSetTargets()\n");
     return orig_vtable.SOSetTargets(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  NumBuffers, ppSOTargets, pOffsets);
 }
 static void STDMETHODCALLTYPE TrampolineDrawAuto(ID3D11DeviceContext1 *This)
 {
-    HookDebug("TrampolineContext::DrawAuto()\n");
+    HOOK_DEBUG("TrampolineContext::DrawAuto()\n");
     return orig_vtable.DrawAuto(((ID3D11DeviceContext1Trampoline*)This)->orig_this);
 }
 static void STDMETHODCALLTYPE TrampolineDrawIndexedInstancedIndirect(ID3D11DeviceContext1 *This,
@@ -2640,7 +2640,7 @@ static void STDMETHODCALLTYPE TrampolineDrawIndexedInstancedIndirect(ID3D11Devic
         /* [annotation] */
         __in  UINT AlignedByteOffsetForArgs)
 {
-    HookDebug("TrampolineContext::DrawIndexedInstancedIndirect()\n");
+    HOOK_DEBUG("TrampolineContext::DrawIndexedInstancedIndirect()\n");
     return orig_vtable.DrawIndexedInstancedIndirect(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pBufferForArgs, AlignedByteOffsetForArgs);
 }
 static void STDMETHODCALLTYPE TrampolineDrawInstancedIndirect(ID3D11DeviceContext1 *This,
@@ -2649,7 +2649,7 @@ static void STDMETHODCALLTYPE TrampolineDrawInstancedIndirect(ID3D11DeviceContex
         /* [annotation] */
         __in  UINT AlignedByteOffsetForArgs)
 {
-    HookDebug("TrampolineContext::DrawInstancedIndirect()\n");
+    HOOK_DEBUG("TrampolineContext::DrawInstancedIndirect()\n");
     return orig_vtable.DrawInstancedIndirect(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pBufferForArgs, AlignedByteOffsetForArgs);
 }
 static void STDMETHODCALLTYPE TrampolineDispatch(ID3D11DeviceContext1 *This,
@@ -2660,7 +2660,7 @@ static void STDMETHODCALLTYPE TrampolineDispatch(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __in  UINT ThreadGroupCountZ)
 {
-    HookDebug("TrampolineContext::Dispatch()\n");
+    HOOK_DEBUG("TrampolineContext::Dispatch()\n");
     return orig_vtable.Dispatch(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
 }
 static void STDMETHODCALLTYPE TrampolineDispatchIndirect(ID3D11DeviceContext1 *This,
@@ -2669,14 +2669,14 @@ static void STDMETHODCALLTYPE TrampolineDispatchIndirect(ID3D11DeviceContext1 *T
         /* [annotation] */
         __in  UINT AlignedByteOffsetForArgs)
 {
-    HookDebug("TrampolineContext::DispatchIndirect()\n");
+    HOOK_DEBUG("TrampolineContext::DispatchIndirect()\n");
     return orig_vtable.DispatchIndirect(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pBufferForArgs, AlignedByteOffsetForArgs);
 }
 static void STDMETHODCALLTYPE TrampolineRSSetState(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __in_opt  ID3D11RasterizerState *pRasterizerState)
 {
-    HookDebug("TrampolineContext::RSSetState()\n");
+    HOOK_DEBUG("TrampolineContext::RSSetState()\n");
     return orig_vtable.RSSetState(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pRasterizerState);
 }
 static void STDMETHODCALLTYPE TrampolineRSSetViewports(ID3D11DeviceContext1 *This,
@@ -2685,7 +2685,7 @@ static void STDMETHODCALLTYPE TrampolineRSSetViewports(ID3D11DeviceContext1 *Thi
         /* [annotation] */
         __in_ecount_opt(NumViewports)  const D3D11_VIEWPORT *pViewports)
 {
-    HookDebug("TrampolineContext::RSSetViewports()\n");
+    HOOK_DEBUG("TrampolineContext::RSSetViewports()\n");
     return orig_vtable.RSSetViewports(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  NumViewports, pViewports);
 }
 static void STDMETHODCALLTYPE TrampolineRSSetScissorRects(ID3D11DeviceContext1 *This,
@@ -2694,7 +2694,7 @@ static void STDMETHODCALLTYPE TrampolineRSSetScissorRects(ID3D11DeviceContext1 *
         /* [annotation] */
         __in_ecount_opt(NumRects)  const D3D11_RECT *pRects)
 {
-    HookDebug("TrampolineContext::RSSetScissorRects()\n");
+    HOOK_DEBUG("TrampolineContext::RSSetScissorRects()\n");
     return orig_vtable.RSSetScissorRects(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  NumRects, pRects);
 }
 static void STDMETHODCALLTYPE TrampolineCopySubresourceRegion(ID3D11DeviceContext1 *This,
@@ -2715,7 +2715,7 @@ static void STDMETHODCALLTYPE TrampolineCopySubresourceRegion(ID3D11DeviceContex
         /* [annotation] */
         __in_opt  const D3D11_BOX *pSrcBox)
 {
-    HookDebug("TrampolineContext::CopySubresourceRegion()\n");
+    HOOK_DEBUG("TrampolineContext::CopySubresourceRegion()\n");
     return orig_vtable.CopySubresourceRegion(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
 }
 static void STDMETHODCALLTYPE TrampolineCopyResource(ID3D11DeviceContext1 *This,
@@ -2724,7 +2724,7 @@ static void STDMETHODCALLTYPE TrampolineCopyResource(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __in  ID3D11Resource *pSrcResource)
 {
-    HookDebug("TrampolineContext::CopyResource()\n");
+    HOOK_DEBUG("TrampolineContext::CopyResource()\n");
     return orig_vtable.CopyResource(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pDstResource, pSrcResource);
 }
 static void STDMETHODCALLTYPE TrampolineUpdateSubresource(ID3D11DeviceContext1 *This,
@@ -2741,7 +2741,7 @@ static void STDMETHODCALLTYPE TrampolineUpdateSubresource(ID3D11DeviceContext1 *
         /* [annotation] */
         __in  UINT SrcDepthPitch)
 {
-    HookDebug("TrampolineContext::UpdateSubresource()\n");
+    HOOK_DEBUG("TrampolineContext::UpdateSubresource()\n");
     return orig_vtable.UpdateSubresource(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
 }
 static void STDMETHODCALLTYPE TrampolineCopyStructureCount(ID3D11DeviceContext1 *This,
@@ -2752,7 +2752,7 @@ static void STDMETHODCALLTYPE TrampolineCopyStructureCount(ID3D11DeviceContext1 
         /* [annotation] */
         __in  ID3D11UnorderedAccessView *pSrcView)
 {
-    HookDebug("TrampolineContext::CopyStructureCount()\n");
+    HOOK_DEBUG("TrampolineContext::CopyStructureCount()\n");
     return orig_vtable.CopyStructureCount(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pDstBuffer, DstAlignedByteOffset, pSrcView);
 }
 static void STDMETHODCALLTYPE TrampolineClearRenderTargetView(ID3D11DeviceContext1 *This,
@@ -2761,7 +2761,7 @@ static void STDMETHODCALLTYPE TrampolineClearRenderTargetView(ID3D11DeviceContex
         /* [annotation] */
         __in  const FLOAT ColorRGBA[ 4 ])
 {
-    HookDebug("TrampolineContext::ClearRenderTargetView()\n");
+    HOOK_DEBUG("TrampolineContext::ClearRenderTargetView()\n");
     return orig_vtable.ClearRenderTargetView(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pRenderTargetView, ColorRGBA);
 }
 static void STDMETHODCALLTYPE TrampolineClearUnorderedAccessViewUint(ID3D11DeviceContext1 *This,
@@ -2770,7 +2770,7 @@ static void STDMETHODCALLTYPE TrampolineClearUnorderedAccessViewUint(ID3D11Devic
         /* [annotation] */
         __in  const UINT Values[ 4 ])
 {
-    HookDebug("TrampolineContext::ClearUnorderedAccessViewUint()\n");
+    HOOK_DEBUG("TrampolineContext::ClearUnorderedAccessViewUint()\n");
     return orig_vtable.ClearUnorderedAccessViewUint(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pUnorderedAccessView, Values);
 }
 static void STDMETHODCALLTYPE TrampolineClearUnorderedAccessViewFloat(ID3D11DeviceContext1 *This,
@@ -2779,7 +2779,7 @@ static void STDMETHODCALLTYPE TrampolineClearUnorderedAccessViewFloat(ID3D11Devi
         /* [annotation] */
         __in  const FLOAT Values[ 4 ])
 {
-    HookDebug("TrampolineContext::ClearUnorderedAccessViewFloat()\n");
+    HOOK_DEBUG("TrampolineContext::ClearUnorderedAccessViewFloat()\n");
     return orig_vtable.ClearUnorderedAccessViewFloat(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pUnorderedAccessView, Values);
 }
 static void STDMETHODCALLTYPE TrampolineClearDepthStencilView(ID3D11DeviceContext1 *This,
@@ -2792,14 +2792,14 @@ static void STDMETHODCALLTYPE TrampolineClearDepthStencilView(ID3D11DeviceContex
         /* [annotation] */
         __in  UINT8 Stencil)
 {
-    HookDebug("TrampolineContext::ClearDepthStencilView()\n");
+    HOOK_DEBUG("TrampolineContext::ClearDepthStencilView()\n");
     return orig_vtable.ClearDepthStencilView(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pDepthStencilView, ClearFlags, Depth, Stencil);
 }
 static void STDMETHODCALLTYPE TrampolineGenerateMips(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __in  ID3D11ShaderResourceView *pShaderResourceView)
 {
-    HookDebug("TrampolineContext::GenerateMips()\n");
+    HOOK_DEBUG("TrampolineContext::GenerateMips()\n");
     return orig_vtable.GenerateMips(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pShaderResourceView);
 }
 static void STDMETHODCALLTYPE TrampolineSetResourceMinLOD(ID3D11DeviceContext1 *This,
@@ -2807,14 +2807,14 @@ static void STDMETHODCALLTYPE TrampolineSetResourceMinLOD(ID3D11DeviceContext1 *
         __in  ID3D11Resource *pResource,
         FLOAT MinLOD)
 {
-    HookDebug("TrampolineContext::SetResourceMinLOD()\n");
+    HOOK_DEBUG("TrampolineContext::SetResourceMinLOD()\n");
     return orig_vtable.SetResourceMinLOD(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pResource, MinLOD);
 }
 static FLOAT STDMETHODCALLTYPE TrampolineGetResourceMinLOD(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __in  ID3D11Resource *pResource)
 {
-    HookDebug("TrampolineContext::GetResourceMinLOD()\n");
+    HOOK_DEBUG("TrampolineContext::GetResourceMinLOD()\n");
     return orig_vtable.GetResourceMinLOD(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pResource);
 }
 static void STDMETHODCALLTYPE TrampolineResolveSubresource(ID3D11DeviceContext1 *This,
@@ -2829,7 +2829,7 @@ static void STDMETHODCALLTYPE TrampolineResolveSubresource(ID3D11DeviceContext1 
         /* [annotation] */
         __in  DXGI_FORMAT Format)
 {
-    HookDebug("TrampolineContext::ResolveSubresource()\n");
+    HOOK_DEBUG("TrampolineContext::ResolveSubresource()\n");
     return orig_vtable.ResolveSubresource(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pDstResource, DstSubresource, pSrcResource, SrcSubresource, Format);
 }
 static void STDMETHODCALLTYPE TrampolineExecuteCommandList(ID3D11DeviceContext1 *This,
@@ -2837,7 +2837,7 @@ static void STDMETHODCALLTYPE TrampolineExecuteCommandList(ID3D11DeviceContext1 
         __in  ID3D11CommandList *pCommandList,
         BOOL RestoreContextState)
 {
-    HookDebug("TrampolineContext::ExecuteCommandList()\n");
+    HOOK_DEBUG("TrampolineContext::ExecuteCommandList()\n");
     return orig_vtable.ExecuteCommandList(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pCommandList, RestoreContextState);
 }
 static void STDMETHODCALLTYPE TrampolineHSSetShaderResources(ID3D11DeviceContext1 *This,
@@ -2848,7 +2848,7 @@ static void STDMETHODCALLTYPE TrampolineHSSetShaderResources(ID3D11DeviceContext
         /* [annotation] */
         __in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
-    HookDebug("TrampolineContext::HSSetShaderResources()\n");
+    HOOK_DEBUG("TrampolineContext::HSSetShaderResources()\n");
     return orig_vtable.HSSetShaderResources(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumViews, ppShaderResourceViews);
 }
 static void STDMETHODCALLTYPE TrampolineHSSetShader(ID3D11DeviceContext1 *This,
@@ -2858,7 +2858,7 @@ static void STDMETHODCALLTYPE TrampolineHSSetShader(ID3D11DeviceContext1 *This,
         __in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
         UINT NumClassInstances)
 {
-    HookDebug("TrampolineContext::HSSetShader()\n");
+    HOOK_DEBUG("TrampolineContext::HSSetShader()\n");
     return orig_vtable.HSSetShader(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pHullShader, ppClassInstances, NumClassInstances);
 }
 static void STDMETHODCALLTYPE TrampolineHSSetSamplers(ID3D11DeviceContext1 *This,
@@ -2869,7 +2869,7 @@ static void STDMETHODCALLTYPE TrampolineHSSetSamplers(ID3D11DeviceContext1 *This
         /* [annotation] */
         __in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers)
 {
-    HookDebug("TrampolineContext::HSSetSamplers()\n");
+    HOOK_DEBUG("TrampolineContext::HSSetSamplers()\n");
     return orig_vtable.HSSetSamplers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumSamplers, ppSamplers);
 }
 static void STDMETHODCALLTYPE TrampolineHSSetConstantBuffers(ID3D11DeviceContext1 *This,
@@ -2880,7 +2880,7 @@ static void STDMETHODCALLTYPE TrampolineHSSetConstantBuffers(ID3D11DeviceContext
         /* [annotation] */
         __in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers)
 {
-    HookDebug("TrampolineContext::HSSetConstantBuffers()\n");
+    HOOK_DEBUG("TrampolineContext::HSSetConstantBuffers()\n");
     return orig_vtable.HSSetConstantBuffers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumBuffers, ppConstantBuffers);
 }
 static void STDMETHODCALLTYPE TrampolineDSSetShaderResources(ID3D11DeviceContext1 *This,
@@ -2891,7 +2891,7 @@ static void STDMETHODCALLTYPE TrampolineDSSetShaderResources(ID3D11DeviceContext
         /* [annotation] */
         __in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
-    HookDebug("TrampolineContext::DSSetShaderResources()\n");
+    HOOK_DEBUG("TrampolineContext::DSSetShaderResources()\n");
     return orig_vtable.DSSetShaderResources(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumViews, ppShaderResourceViews);
 }
 static void STDMETHODCALLTYPE TrampolineDSSetShader(ID3D11DeviceContext1 *This,
@@ -2901,7 +2901,7 @@ static void STDMETHODCALLTYPE TrampolineDSSetShader(ID3D11DeviceContext1 *This,
         __in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
         UINT NumClassInstances)
 {
-    HookDebug("TrampolineContext::DSSetShader()\n");
+    HOOK_DEBUG("TrampolineContext::DSSetShader()\n");
     return orig_vtable.DSSetShader(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pDomainShader, ppClassInstances, NumClassInstances);
 }
 static void STDMETHODCALLTYPE TrampolineDSSetSamplers(ID3D11DeviceContext1 *This,
@@ -2912,7 +2912,7 @@ static void STDMETHODCALLTYPE TrampolineDSSetSamplers(ID3D11DeviceContext1 *This
         /* [annotation] */
         __in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers)
 {
-    HookDebug("TrampolineContext::DSSetSamplers()\n");
+    HOOK_DEBUG("TrampolineContext::DSSetSamplers()\n");
     return orig_vtable.DSSetSamplers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumSamplers, ppSamplers);
 }
 static void STDMETHODCALLTYPE TrampolineDSSetConstantBuffers(ID3D11DeviceContext1 *This,
@@ -2923,7 +2923,7 @@ static void STDMETHODCALLTYPE TrampolineDSSetConstantBuffers(ID3D11DeviceContext
         /* [annotation] */
         __in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers)
 {
-    HookDebug("TrampolineContext::DSSetConstantBuffers()\n");
+    HOOK_DEBUG("TrampolineContext::DSSetConstantBuffers()\n");
     return orig_vtable.DSSetConstantBuffers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumBuffers, ppConstantBuffers);
 }
 static void STDMETHODCALLTYPE TrampolineCSSetShaderResources(ID3D11DeviceContext1 *This,
@@ -2934,7 +2934,7 @@ static void STDMETHODCALLTYPE TrampolineCSSetShaderResources(ID3D11DeviceContext
         /* [annotation] */
         __in_ecount(NumViews)  ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
-    HookDebug("TrampolineContext::CSSetShaderResources()\n");
+    HOOK_DEBUG("TrampolineContext::CSSetShaderResources()\n");
     return orig_vtable.CSSetShaderResources(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumViews, ppShaderResourceViews);
 }
 static void STDMETHODCALLTYPE TrampolineCSSetUnorderedAccessViews(ID3D11DeviceContext1 *This,
@@ -2947,7 +2947,7 @@ static void STDMETHODCALLTYPE TrampolineCSSetUnorderedAccessViews(ID3D11DeviceCo
         /* [annotation] */
         __in_ecount(NumUAVs)  const UINT *pUAVInitialCounts)
 {
-    HookDebug("TrampolineContext::CSSetUnorderedAccessViews()\n");
+    HOOK_DEBUG("TrampolineContext::CSSetUnorderedAccessViews()\n");
     return orig_vtable.CSSetUnorderedAccessViews(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
 }
 static void STDMETHODCALLTYPE TrampolineCSSetShader(ID3D11DeviceContext1 *This,
@@ -2957,7 +2957,7 @@ static void STDMETHODCALLTYPE TrampolineCSSetShader(ID3D11DeviceContext1 *This,
         __in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
         UINT NumClassInstances)
 {
-    HookDebug("TrampolineContext::CSSetShader()\n");
+    HOOK_DEBUG("TrampolineContext::CSSetShader()\n");
     return orig_vtable.CSSetShader(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pComputeShader, ppClassInstances, NumClassInstances);
 }
 static void STDMETHODCALLTYPE TrampolineCSSetSamplers(ID3D11DeviceContext1 *This,
@@ -2968,7 +2968,7 @@ static void STDMETHODCALLTYPE TrampolineCSSetSamplers(ID3D11DeviceContext1 *This
         /* [annotation] */
         __in_ecount(NumSamplers)  ID3D11SamplerState *const *ppSamplers)
 {
-    HookDebug("TrampolineContext::CSSetSamplers()\n");
+    HOOK_DEBUG("TrampolineContext::CSSetSamplers()\n");
     return orig_vtable.CSSetSamplers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumSamplers, ppSamplers);
 }
 static void STDMETHODCALLTYPE TrampolineCSSetConstantBuffers(ID3D11DeviceContext1 *This,
@@ -2979,7 +2979,7 @@ static void STDMETHODCALLTYPE TrampolineCSSetConstantBuffers(ID3D11DeviceContext
         /* [annotation] */
         __in_ecount(NumBuffers)  ID3D11Buffer *const *ppConstantBuffers)
 {
-    HookDebug("TrampolineContext::CSSetConstantBuffers()\n");
+    HOOK_DEBUG("TrampolineContext::CSSetConstantBuffers()\n");
     return orig_vtable.CSSetConstantBuffers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumBuffers, ppConstantBuffers);
 }
 static void STDMETHODCALLTYPE TrampolineVSGetConstantBuffers(ID3D11DeviceContext1 *This,
@@ -2990,7 +2990,7 @@ static void STDMETHODCALLTYPE TrampolineVSGetConstantBuffers(ID3D11DeviceContext
         /* [annotation] */
         __out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers)
 {
-    HookDebug("TrampolineContext::VSGetConstantBuffers()\n");
+    HOOK_DEBUG("TrampolineContext::VSGetConstantBuffers()\n");
     return orig_vtable.VSGetConstantBuffers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumBuffers, ppConstantBuffers);
 }
 static void STDMETHODCALLTYPE TrampolinePSGetShaderResources(ID3D11DeviceContext1 *This,
@@ -3001,7 +3001,7 @@ static void STDMETHODCALLTYPE TrampolinePSGetShaderResources(ID3D11DeviceContext
         /* [annotation] */
         __out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
-    HookDebug("TrampolineContext::PSGetShaderResources()\n");
+    HOOK_DEBUG("TrampolineContext::PSGetShaderResources()\n");
     return orig_vtable.PSGetShaderResources(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumViews, ppShaderResourceViews);
 }
 static void STDMETHODCALLTYPE TrampolinePSGetShader(ID3D11DeviceContext1 *This,
@@ -3012,7 +3012,7 @@ static void STDMETHODCALLTYPE TrampolinePSGetShader(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __inout_opt  UINT *pNumClassInstances)
 {
-    HookDebug("TrampolineContext::PSGetShader()\n");
+    HOOK_DEBUG("TrampolineContext::PSGetShader()\n");
     return orig_vtable.PSGetShader(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  ppPixelShader, ppClassInstances, pNumClassInstances);
 }
 static void STDMETHODCALLTYPE TrampolinePSGetSamplers(ID3D11DeviceContext1 *This,
@@ -3023,7 +3023,7 @@ static void STDMETHODCALLTYPE TrampolinePSGetSamplers(ID3D11DeviceContext1 *This
         /* [annotation] */
         __out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
-    HookDebug("TrampolineContext::PSGetSamplers()\n");
+    HOOK_DEBUG("TrampolineContext::PSGetSamplers()\n");
     return orig_vtable.PSGetSamplers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumSamplers, ppSamplers);
 }
 static void STDMETHODCALLTYPE TrampolineVSGetShader(ID3D11DeviceContext1 *This,
@@ -3034,7 +3034,7 @@ static void STDMETHODCALLTYPE TrampolineVSGetShader(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __inout_opt  UINT *pNumClassInstances)
 {
-    HookDebug("TrampolineContext::VSGetShader()\n");
+    HOOK_DEBUG("TrampolineContext::VSGetShader()\n");
     return orig_vtable.VSGetShader(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  ppVertexShader, ppClassInstances, pNumClassInstances);
 }
 static void STDMETHODCALLTYPE TrampolinePSGetConstantBuffers(ID3D11DeviceContext1 *This,
@@ -3045,14 +3045,14 @@ static void STDMETHODCALLTYPE TrampolinePSGetConstantBuffers(ID3D11DeviceContext
         /* [annotation] */
         __out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers)
 {
-    HookDebug("TrampolineContext::PSGetConstantBuffers()\n");
+    HOOK_DEBUG("TrampolineContext::PSGetConstantBuffers()\n");
     return orig_vtable.PSGetConstantBuffers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumBuffers, ppConstantBuffers);
 }
 static void STDMETHODCALLTYPE TrampolineIAGetInputLayout(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __out  ID3D11InputLayout **ppInputLayout)
 {
-    HookDebug("TrampolineContext::IAGetInputLayout()\n");
+    HOOK_DEBUG("TrampolineContext::IAGetInputLayout()\n");
     return orig_vtable.IAGetInputLayout(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  ppInputLayout);
 }
 static void STDMETHODCALLTYPE TrampolineIAGetVertexBuffers(ID3D11DeviceContext1 *This,
@@ -3067,7 +3067,7 @@ static void STDMETHODCALLTYPE TrampolineIAGetVertexBuffers(ID3D11DeviceContext1 
         /* [annotation] */
         __out_ecount_opt(NumBuffers)  UINT *pOffsets)
 {
-    HookDebug("TrampolineContext::IAGetVertexBuffers()\n");
+    HOOK_DEBUG("TrampolineContext::IAGetVertexBuffers()\n");
     return orig_vtable.IAGetVertexBuffers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
 }
 static void STDMETHODCALLTYPE TrampolineIAGetIndexBuffer(ID3D11DeviceContext1 *This,
@@ -3078,7 +3078,7 @@ static void STDMETHODCALLTYPE TrampolineIAGetIndexBuffer(ID3D11DeviceContext1 *T
         /* [annotation] */
         __out_opt  UINT *Offset)
 {
-    HookDebug("TrampolineContext::IAGetIndexBuffer()\n");
+    HOOK_DEBUG("TrampolineContext::IAGetIndexBuffer()\n");
     return orig_vtable.IAGetIndexBuffer(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pIndexBuffer, Format, Offset);
 }
 static void STDMETHODCALLTYPE TrampolineGSGetConstantBuffers(ID3D11DeviceContext1 *This,
@@ -3089,7 +3089,7 @@ static void STDMETHODCALLTYPE TrampolineGSGetConstantBuffers(ID3D11DeviceContext
         /* [annotation] */
         __out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers)
 {
-    HookDebug("TrampolineContext::GSGetConstantBuffers()\n");
+    HOOK_DEBUG("TrampolineContext::GSGetConstantBuffers()\n");
     return orig_vtable.GSGetConstantBuffers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumBuffers, ppConstantBuffers);
 }
 static void STDMETHODCALLTYPE TrampolineGSGetShader(ID3D11DeviceContext1 *This,
@@ -3100,14 +3100,14 @@ static void STDMETHODCALLTYPE TrampolineGSGetShader(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __inout_opt  UINT *pNumClassInstances)
 {
-    HookDebug("TrampolineContext::GSGetShader()\n");
+    HOOK_DEBUG("TrampolineContext::GSGetShader()\n");
     return orig_vtable.GSGetShader(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  ppGeometryShader, ppClassInstances, pNumClassInstances);
 }
 static void STDMETHODCALLTYPE TrampolineIAGetPrimitiveTopology(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __out  D3D11_PRIMITIVE_TOPOLOGY *pTopology)
 {
-    HookDebug("TrampolineContext::IAGetPrimitiveTopology()\n");
+    HOOK_DEBUG("TrampolineContext::IAGetPrimitiveTopology()\n");
     return orig_vtable.IAGetPrimitiveTopology(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pTopology);
 }
 static void STDMETHODCALLTYPE TrampolineVSGetShaderResources(ID3D11DeviceContext1 *This,
@@ -3118,7 +3118,7 @@ static void STDMETHODCALLTYPE TrampolineVSGetShaderResources(ID3D11DeviceContext
         /* [annotation] */
         __out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
-    HookDebug("TrampolineContext::VSGetShaderResources()\n");
+    HOOK_DEBUG("TrampolineContext::VSGetShaderResources()\n");
     return orig_vtable.VSGetShaderResources(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumViews, ppShaderResourceViews);
 }
 static void STDMETHODCALLTYPE TrampolineVSGetSamplers(ID3D11DeviceContext1 *This,
@@ -3129,7 +3129,7 @@ static void STDMETHODCALLTYPE TrampolineVSGetSamplers(ID3D11DeviceContext1 *This
         /* [annotation] */
         __out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
-    HookDebug("TrampolineContext::VSGetSamplers()\n");
+    HOOK_DEBUG("TrampolineContext::VSGetSamplers()\n");
     return orig_vtable.VSGetSamplers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumSamplers, ppSamplers);
 }
 static void STDMETHODCALLTYPE TrampolineGetPredication(ID3D11DeviceContext1 *This,
@@ -3138,7 +3138,7 @@ static void STDMETHODCALLTYPE TrampolineGetPredication(ID3D11DeviceContext1 *Thi
         /* [annotation] */
         __out_opt  BOOL *pPredicateValue)
 {
-    HookDebug("TrampolineContext::GetPredication()\n");
+    HOOK_DEBUG("TrampolineContext::GetPredication()\n");
     return orig_vtable.GetPredication(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  ppPredicate, pPredicateValue);
 }
 static void STDMETHODCALLTYPE TrampolineGSGetShaderResources(ID3D11DeviceContext1 *This,
@@ -3149,7 +3149,7 @@ static void STDMETHODCALLTYPE TrampolineGSGetShaderResources(ID3D11DeviceContext
         /* [annotation] */
         __out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
-    HookDebug("TrampolineContext::GSGetShaderResources()\n");
+    HOOK_DEBUG("TrampolineContext::GSGetShaderResources()\n");
     return orig_vtable.GSGetShaderResources(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumViews, ppShaderResourceViews);
 }
 static void STDMETHODCALLTYPE TrampolineGSGetSamplers(ID3D11DeviceContext1 *This,
@@ -3160,7 +3160,7 @@ static void STDMETHODCALLTYPE TrampolineGSGetSamplers(ID3D11DeviceContext1 *This
         /* [annotation] */
         __out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
-    HookDebug("TrampolineContext::GSGetSamplers()\n");
+    HOOK_DEBUG("TrampolineContext::GSGetSamplers()\n");
     return orig_vtable.GSGetSamplers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumSamplers, ppSamplers);
 }
 static void STDMETHODCALLTYPE TrampolineOMGetRenderTargets(ID3D11DeviceContext1 *This,
@@ -3171,7 +3171,7 @@ static void STDMETHODCALLTYPE TrampolineOMGetRenderTargets(ID3D11DeviceContext1 
         /* [annotation] */
         __out_opt  ID3D11DepthStencilView **ppDepthStencilView)
 {
-    HookDebug("TrampolineContext::OMGetRenderTargets()\n");
+    HOOK_DEBUG("TrampolineContext::OMGetRenderTargets()\n");
     return orig_vtable.OMGetRenderTargets(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  NumViews, ppRenderTargetViews, ppDepthStencilView);
 }
 static void STDMETHODCALLTYPE TrampolineOMGetRenderTargetsAndUnorderedAccessViews(ID3D11DeviceContext1 *This,
@@ -3188,7 +3188,7 @@ static void STDMETHODCALLTYPE TrampolineOMGetRenderTargetsAndUnorderedAccessView
         /* [annotation] */
         __out_ecount_opt(NumUAVs)  ID3D11UnorderedAccessView **ppUnorderedAccessViews)
 {
-    HookDebug("TrampolineContext::OMGetRenderTargetsAndUnorderedAccessViews()\n");
+    HOOK_DEBUG("TrampolineContext::OMGetRenderTargetsAndUnorderedAccessViews()\n");
     return orig_vtable.OMGetRenderTargetsAndUnorderedAccessViews(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  NumRTVs, ppRenderTargetViews, ppDepthStencilView, UAVStartSlot, NumUAVs, ppUnorderedAccessViews);
 }
 static void STDMETHODCALLTYPE TrampolineOMGetBlendState(ID3D11DeviceContext1 *This,
@@ -3199,7 +3199,7 @@ static void STDMETHODCALLTYPE TrampolineOMGetBlendState(ID3D11DeviceContext1 *Th
         /* [annotation] */
         __out_opt  UINT *pSampleMask)
 {
-    HookDebug("TrampolineContext::OMGetBlendState()\n");
+    HOOK_DEBUG("TrampolineContext::OMGetBlendState()\n");
     return orig_vtable.OMGetBlendState(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  ppBlendState, BlendFactor, pSampleMask);
 }
 static void STDMETHODCALLTYPE TrampolineOMGetDepthStencilState(ID3D11DeviceContext1 *This,
@@ -3208,7 +3208,7 @@ static void STDMETHODCALLTYPE TrampolineOMGetDepthStencilState(ID3D11DeviceConte
         /* [annotation] */
         __out_opt  UINT *pStencilRef)
 {
-    HookDebug("TrampolineContext::OMGetDepthStencilState()\n");
+    HOOK_DEBUG("TrampolineContext::OMGetDepthStencilState()\n");
     return orig_vtable.OMGetDepthStencilState(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  ppDepthStencilState, pStencilRef);
 }
 static void STDMETHODCALLTYPE TrampolineSOGetTargets(ID3D11DeviceContext1 *This,
@@ -3217,14 +3217,14 @@ static void STDMETHODCALLTYPE TrampolineSOGetTargets(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __out_ecount(NumBuffers)  ID3D11Buffer **ppSOTargets)
 {
-    HookDebug("TrampolineContext::SOGetTargets()\n");
+    HOOK_DEBUG("TrampolineContext::SOGetTargets()\n");
     return orig_vtable.SOGetTargets(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  NumBuffers, ppSOTargets);
 }
 static void STDMETHODCALLTYPE TrampolineRSGetState(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __out  ID3D11RasterizerState **ppRasterizerState)
 {
-    HookDebug("TrampolineContext::RSGetState()\n");
+    HOOK_DEBUG("TrampolineContext::RSGetState()\n");
     return orig_vtable.RSGetState(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  ppRasterizerState);
 }
 static void STDMETHODCALLTYPE TrampolineRSGetViewports(ID3D11DeviceContext1 *This,
@@ -3233,7 +3233,7 @@ static void STDMETHODCALLTYPE TrampolineRSGetViewports(ID3D11DeviceContext1 *Thi
         /* [annotation] */
         __out_ecount_opt(*pNumViewports)  D3D11_VIEWPORT *pViewports)
 {
-    HookDebug("TrampolineContext::RSGetViewports()\n");
+    HOOK_DEBUG("TrampolineContext::RSGetViewports()\n");
     return orig_vtable.RSGetViewports(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pNumViewports, pViewports);
 }
 static void STDMETHODCALLTYPE TrampolineRSGetScissorRects(ID3D11DeviceContext1 *This,
@@ -3242,7 +3242,7 @@ static void STDMETHODCALLTYPE TrampolineRSGetScissorRects(ID3D11DeviceContext1 *
         /* [annotation] */
         __out_ecount_opt(*pNumRects)  D3D11_RECT *pRects)
 {
-    HookDebug("TrampolineContext::RSGetScissorRects()\n");
+    HOOK_DEBUG("TrampolineContext::RSGetScissorRects()\n");
     return orig_vtable.RSGetScissorRects(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  pNumRects, pRects);
 }
 static void STDMETHODCALLTYPE TrampolineHSGetShaderResources(ID3D11DeviceContext1 *This,
@@ -3253,7 +3253,7 @@ static void STDMETHODCALLTYPE TrampolineHSGetShaderResources(ID3D11DeviceContext
         /* [annotation] */
         __out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
-    HookDebug("TrampolineContext::HSGetShaderResources()\n");
+    HOOK_DEBUG("TrampolineContext::HSGetShaderResources()\n");
     return orig_vtable.HSGetShaderResources(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumViews, ppShaderResourceViews);
 }
 static void STDMETHODCALLTYPE TrampolineHSGetShader(ID3D11DeviceContext1 *This,
@@ -3264,7 +3264,7 @@ static void STDMETHODCALLTYPE TrampolineHSGetShader(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __inout_opt  UINT *pNumClassInstances)
 {
-    HookDebug("TrampolineContext::HSGetShader()\n");
+    HOOK_DEBUG("TrampolineContext::HSGetShader()\n");
     return orig_vtable.HSGetShader(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  ppHullShader, ppClassInstances, pNumClassInstances);
 }
 static void STDMETHODCALLTYPE TrampolineHSGetSamplers(ID3D11DeviceContext1 *This,
@@ -3275,7 +3275,7 @@ static void STDMETHODCALLTYPE TrampolineHSGetSamplers(ID3D11DeviceContext1 *This
         /* [annotation] */
         __out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
-    HookDebug("TrampolineContext::HSGetSamplers()\n");
+    HOOK_DEBUG("TrampolineContext::HSGetSamplers()\n");
     return orig_vtable.HSGetSamplers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumSamplers, ppSamplers);
 }
 static void STDMETHODCALLTYPE TrampolineHSGetConstantBuffers(ID3D11DeviceContext1 *This,
@@ -3286,7 +3286,7 @@ static void STDMETHODCALLTYPE TrampolineHSGetConstantBuffers(ID3D11DeviceContext
         /* [annotation] */
         __out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers)
 {
-    HookDebug("TrampolineContext::HSGetConstantBuffers()\n");
+    HOOK_DEBUG("TrampolineContext::HSGetConstantBuffers()\n");
     return orig_vtable.HSGetConstantBuffers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumBuffers, ppConstantBuffers);
 }
 static void STDMETHODCALLTYPE TrampolineDSGetShaderResources(ID3D11DeviceContext1 *This,
@@ -3297,7 +3297,7 @@ static void STDMETHODCALLTYPE TrampolineDSGetShaderResources(ID3D11DeviceContext
         /* [annotation] */
         __out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
-    HookDebug("TrampolineContext::DSGetShaderResources()\n");
+    HOOK_DEBUG("TrampolineContext::DSGetShaderResources()\n");
     return orig_vtable.DSGetShaderResources(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumViews, ppShaderResourceViews);
 }
 static void STDMETHODCALLTYPE TrampolineDSGetShader(ID3D11DeviceContext1 *This,
@@ -3308,7 +3308,7 @@ static void STDMETHODCALLTYPE TrampolineDSGetShader(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __inout_opt  UINT *pNumClassInstances)
 {
-    HookDebug("TrampolineContext::DSGetShader()\n");
+    HOOK_DEBUG("TrampolineContext::DSGetShader()\n");
     return orig_vtable.DSGetShader(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  ppDomainShader, ppClassInstances, pNumClassInstances);
 }
 static void STDMETHODCALLTYPE TrampolineDSGetSamplers(ID3D11DeviceContext1 *This,
@@ -3319,7 +3319,7 @@ static void STDMETHODCALLTYPE TrampolineDSGetSamplers(ID3D11DeviceContext1 *This
         /* [annotation] */
         __out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
-    HookDebug("TrampolineContext::DSGetSamplers()\n");
+    HOOK_DEBUG("TrampolineContext::DSGetSamplers()\n");
     return orig_vtable.DSGetSamplers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumSamplers, ppSamplers);
 }
 static void STDMETHODCALLTYPE TrampolineDSGetConstantBuffers(ID3D11DeviceContext1 *This,
@@ -3330,7 +3330,7 @@ static void STDMETHODCALLTYPE TrampolineDSGetConstantBuffers(ID3D11DeviceContext
         /* [annotation] */
         __out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers)
 {
-    HookDebug("TrampolineContext::DSGetConstantBuffers()\n");
+    HOOK_DEBUG("TrampolineContext::DSGetConstantBuffers()\n");
     return orig_vtable.DSGetConstantBuffers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumBuffers, ppConstantBuffers);
 }
 static void STDMETHODCALLTYPE TrampolineCSGetShaderResources(ID3D11DeviceContext1 *This,
@@ -3341,7 +3341,7 @@ static void STDMETHODCALLTYPE TrampolineCSGetShaderResources(ID3D11DeviceContext
         /* [annotation] */
         __out_ecount(NumViews)  ID3D11ShaderResourceView **ppShaderResourceViews)
 {
-    HookDebug("TrampolineContext::CSGetShaderResources()\n");
+    HOOK_DEBUG("TrampolineContext::CSGetShaderResources()\n");
     return orig_vtable.CSGetShaderResources(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumViews, ppShaderResourceViews);
 }
 static void STDMETHODCALLTYPE TrampolineCSGetUnorderedAccessViews(ID3D11DeviceContext1 *This,
@@ -3352,7 +3352,7 @@ static void STDMETHODCALLTYPE TrampolineCSGetUnorderedAccessViews(ID3D11DeviceCo
         /* [annotation] */
         __out_ecount(NumUAVs)  ID3D11UnorderedAccessView **ppUnorderedAccessViews)
 {
-    HookDebug("TrampolineContext::CSGetUnorderedAccessViews()\n");
+    HOOK_DEBUG("TrampolineContext::CSGetUnorderedAccessViews()\n");
     return orig_vtable.CSGetUnorderedAccessViews(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumUAVs, ppUnorderedAccessViews);
 }
 static void STDMETHODCALLTYPE TrampolineCSGetShader(ID3D11DeviceContext1 *This,
@@ -3363,7 +3363,7 @@ static void STDMETHODCALLTYPE TrampolineCSGetShader(ID3D11DeviceContext1 *This,
         /* [annotation] */
         __inout_opt  UINT *pNumClassInstances)
 {
-    HookDebug("TrampolineContext::CSGetShader()\n");
+    HOOK_DEBUG("TrampolineContext::CSGetShader()\n");
     return orig_vtable.CSGetShader(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  ppComputeShader, ppClassInstances, pNumClassInstances);
 }
 static void STDMETHODCALLTYPE TrampolineCSGetSamplers(ID3D11DeviceContext1 *This,
@@ -3374,7 +3374,7 @@ static void STDMETHODCALLTYPE TrampolineCSGetSamplers(ID3D11DeviceContext1 *This
         /* [annotation] */
         __out_ecount(NumSamplers)  ID3D11SamplerState **ppSamplers)
 {
-    HookDebug("TrampolineContext::CSGetSamplers()\n");
+    HOOK_DEBUG("TrampolineContext::CSGetSamplers()\n");
     return orig_vtable.CSGetSamplers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumSamplers, ppSamplers);
 }
 static void STDMETHODCALLTYPE TrampolineCSGetConstantBuffers(ID3D11DeviceContext1 *This,
@@ -3385,27 +3385,27 @@ static void STDMETHODCALLTYPE TrampolineCSGetConstantBuffers(ID3D11DeviceContext
         /* [annotation] */
         __out_ecount(NumBuffers)  ID3D11Buffer **ppConstantBuffers)
 {
-    HookDebug("TrampolineContext::CSGetConstantBuffers()\n");
+    HOOK_DEBUG("TrampolineContext::CSGetConstantBuffers()\n");
     return orig_vtable.CSGetConstantBuffers(((ID3D11DeviceContext1Trampoline*)This)->orig_this,  StartSlot, NumBuffers, ppConstantBuffers);
 }
 static void STDMETHODCALLTYPE TrampolineClearState(ID3D11DeviceContext1 *This)
 {
-    HookDebug("TrampolineContext::ClearState()\n");
+    HOOK_DEBUG("TrampolineContext::ClearState()\n");
     return orig_vtable.ClearState(((ID3D11DeviceContext1Trampoline*)This)->orig_this);
 }
 static void STDMETHODCALLTYPE TrampolineFlush(ID3D11DeviceContext1 *This)
 {
-    HookDebug("TrampolineContext::Flush()\n");
+    HOOK_DEBUG("TrampolineContext::Flush()\n");
     return orig_vtable.Flush(((ID3D11DeviceContext1Trampoline*)This)->orig_this);
 }
 static D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE TrampolineGetType(ID3D11DeviceContext1 *This)
 {
-    HookDebug("TrampolineContext::GetType()\n");
+    HOOK_DEBUG("TrampolineContext::GetType()\n");
     return orig_vtable.GetType(((ID3D11DeviceContext1Trampoline*)This)->orig_this);
 }
 static UINT STDMETHODCALLTYPE TrampolineGetContextFlags(ID3D11DeviceContext1 *This)
 {
-    HookDebug("TrampolineContext::GetContextFlags()\n");
+    HOOK_DEBUG("TrampolineContext::GetContextFlags()\n");
     return orig_vtable.GetContextFlags(((ID3D11DeviceContext1Trampoline*)This)->orig_this);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineFinishCommandList(ID3D11DeviceContext1 *This,
@@ -3413,7 +3413,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineFinishCommandList(ID3D11DeviceContext
         /* [annotation] */
         __out_opt  ID3D11CommandList **ppCommandList)
 {
-    HookDebug("TrampolineContext::FinishCommandList()\n");
+    HOOK_DEBUG("TrampolineContext::FinishCommandList()\n");
     return orig_vtable.FinishCommandList(((ID3D11DeviceContext1Trampoline*)This)->orig_this, RestoreDeferredContextState, ppCommandList);
 }
 

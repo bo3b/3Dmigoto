@@ -7,9 +7,9 @@
 
 
 #if 0
-#define HookDebug LOG_DEBUG
+#define HOOK_DEBUG LOG_DEBUG
 #else
-#define HookDebug(...) do { } while (0)
+#define HOOK_DEBUG(...) do { } while (0)
 #endif
 
 typedef std::unordered_map<IDirect3DVolumeTexture9 *, IDirect3DVolumeTexture9 *> VolumeTextureMap;
@@ -46,7 +46,7 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: QueryInterface()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: QueryInterface()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_QueryInterface(volume_texture, riid, ppvObject);
@@ -59,7 +59,7 @@ static ULONG STDMETHODCALLTYPE AddRef(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: AddRef()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: AddRef()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_AddRef(volume_texture);
@@ -73,7 +73,7 @@ static ULONG STDMETHODCALLTYPE Release(
     VolumeTextureMap::iterator i;
     ULONG ref;
 
-    HookDebug("HookedVolumeTexture:: Release()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: Release()\n");
 
     EnterCriticalSection(&volume_texture_map_lock);
     i = volume_texture_map.find(This);
@@ -95,7 +95,7 @@ static HRESULT STDMETHODCALLTYPE FreePrivateData(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: FreePrivateData()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: FreePrivateData()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_FreePrivateData(volume_texture, refguid);
@@ -108,7 +108,7 @@ static HRESULT STDMETHODCALLTYPE GetDevice(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: GetDevice()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: GetDevice()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_GetDevice(volume_texture, ppDevice);
@@ -121,7 +121,7 @@ static DWORD STDMETHODCALLTYPE GetPriority(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: GetPriority()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: GetPriority()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_GetPriority(volume_texture);
@@ -137,7 +137,7 @@ static HRESULT STDMETHODCALLTYPE GetPrivateData(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: GetPrivateData()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: GetPrivateData()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_GetPrivateData(volume_texture, refguid, pData, pSizeOfData);
@@ -150,7 +150,7 @@ static D3DRESOURCETYPE STDMETHODCALLTYPE GetType(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: GetType()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: GetType()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_GetType(volume_texture);
@@ -163,7 +163,7 @@ static void STDMETHODCALLTYPE PreLoad(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: PreLoad()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: PreLoad()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_PreLoad(volume_texture);
@@ -176,7 +176,7 @@ static DWORD STDMETHODCALLTYPE SetPriority(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: SetPriority()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: SetPriority()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_SetPriority(volume_texture, PriorityNew);
@@ -194,7 +194,7 @@ static HRESULT STDMETHODCALLTYPE SetPrivateData(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: SetPrivateData()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: SetPrivateData()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_SetPrivateData(volume_texture, refguid, pData, SizeOfData, Flags);
@@ -207,7 +207,7 @@ static VOID STDMETHODCALLTYPE GenerateMipSubLevels(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: GenerateMipSubLevels()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: GenerateMipSubLevels()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_GenerateMipSubLevels(volume_texture);
@@ -220,7 +220,7 @@ static D3DTEXTUREFILTERTYPE STDMETHODCALLTYPE GetAutoGenFilterType(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: GetAutoGenFilterType()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: GetAutoGenFilterType()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_GetAutoGenFilterType(volume_texture);
@@ -233,7 +233,7 @@ static DWORD STDMETHODCALLTYPE GetLevelCount(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: GetLevelCount()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: GetLevelCount()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_GetLevelCount(volume_texture);
@@ -246,7 +246,7 @@ static DWORD STDMETHODCALLTYPE GetLOD(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: GetLOD ()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: GetLOD ()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_GetLOD(volume_texture);
@@ -259,7 +259,7 @@ static HRESULT STDMETHODCALLTYPE SetAutoGenFilterType(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: SetAutoGenFilterType ()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: SetAutoGenFilterType ()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_SetAutoGenFilterType(volume_texture, FilterType);
@@ -272,7 +272,7 @@ static DWORD STDMETHODCALLTYPE SetLOD(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: SetLOD ()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: SetLOD ()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_SetLOD(volume_texture, LODNew);
@@ -286,7 +286,7 @@ static HRESULT STDMETHODCALLTYPE AddDirtyBox(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: AddDirtyBox()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: AddDirtyBox()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_AddDirtyBox(volume_texture, pDirtyBox);
@@ -301,7 +301,7 @@ static HRESULT STDMETHODCALLTYPE GetVolumeLevel(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: GetVolumeLevel()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: GetVolumeLevel()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_GetVolumeLevel(volume_texture, Level, ppVolumeLevel);
@@ -316,7 +316,7 @@ static HRESULT STDMETHODCALLTYPE GetLevelDesc(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: GetLevelDesc()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: GetLevelDesc()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_GetLevelDesc(volume_texture, Level, pDesc);
@@ -334,7 +334,7 @@ static HRESULT STDMETHODCALLTYPE LockBox(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: LockBox()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: LockBox()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_LockBox(volume_texture, Level, pLockedVolume, pBox, Flags);
@@ -348,7 +348,7 @@ static HRESULT STDMETHODCALLTYPE UnlockBox(
 {
     IDirect3DVolumeTexture9 *volume_texture = lookup_hooked_volume_texture(This);
 
-    HookDebug("HookedVolumeTexture:: UnlockBox()\n");
+    HOOK_DEBUG("HookedVolumeTexture:: UnlockBox()\n");
 
     if (volume_texture)
         return IDirect3DVolumeTexture9_UnlockBox(volume_texture, Level);
@@ -413,7 +413,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
     REFIID riid,
     __RPC__deref_out  void **ppvObject)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9:: QueryInterface()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9:: QueryInterface()\n");
 
     return orig_vtable.QueryInterface(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this, riid, ppvObject);
 }
@@ -422,7 +422,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
 static ULONG STDMETHODCALLTYPE TrampolineAddRef(
     IDirect3DVolumeTexture9 * This)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9:: AddRef()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9:: AddRef()\n");
 
     return orig_vtable.AddRef(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this);
 }
@@ -430,7 +430,7 @@ static ULONG STDMETHODCALLTYPE TrampolineAddRef(
 static ULONG STDMETHODCALLTYPE TrampolineRelease(
     IDirect3DVolumeTexture9 * This)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9:: Release()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9:: Release()\n");
 
     return orig_vtable.Release(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this);
 }
@@ -438,7 +438,7 @@ static ULONG STDMETHODCALLTYPE TrampolineRelease(
 static HRESULT STDMETHODCALLTYPE TrampolineFreePrivateData(
     IDirect3DVolumeTexture9 * This, REFGUID refguid)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9:: FreePrivateData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9:: FreePrivateData()\n");
 
     return orig_vtable.FreePrivateData(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this, refguid);
 }
@@ -446,7 +446,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineFreePrivateData(
 static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(
     IDirect3DVolumeTexture9 * This, IDirect3DDevice9 **ppDevice)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9:: GetDevice()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9:: GetDevice()\n");
 
     return orig_vtable.GetDevice(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this, ppDevice);
 }
@@ -454,7 +454,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(
 static DWORD STDMETHODCALLTYPE TrampolineGetPriority(
     IDirect3DVolumeTexture9 * This)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9:: GetPriority()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9:: GetPriority()\n");
 
     return orig_vtable.GetPriority(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this);
 }
@@ -465,7 +465,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetPrivateData(
      void    *pData,
      DWORD   *pSizeOfData)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9:: GetPrivateData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9:: GetPrivateData()\n");
 
     return orig_vtable.GetPrivateData(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this, refguid, pData, pSizeOfData);
 }
@@ -473,7 +473,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetPrivateData(
 static D3DRESOURCETYPE STDMETHODCALLTYPE TrampolineGetType(
     IDirect3DVolumeTexture9 * This)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9:: GetType()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9:: GetType()\n");
 
     return orig_vtable.GetType(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this);
 }
@@ -481,7 +481,7 @@ static D3DRESOURCETYPE STDMETHODCALLTYPE TrampolineGetType(
 static void STDMETHODCALLTYPE TrampolinePreLoad(
     IDirect3DVolumeTexture9 * This)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9::PreLoad()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9::PreLoad()\n");
 
     return orig_vtable.PreLoad(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this);
 }
@@ -489,7 +489,7 @@ static void STDMETHODCALLTYPE TrampolinePreLoad(
 static DWORD STDMETHODCALLTYPE TrampolineSetPriority(
     IDirect3DVolumeTexture9 * This, DWORD PriorityNew)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9::SetPriority()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9::SetPriority()\n");
 
     return orig_vtable.SetPriority(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this, PriorityNew);
 }
@@ -501,7 +501,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateData(
            DWORD   SizeOfData,
            DWORD   Flags)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9::SetPrivateData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9::SetPrivateData()\n");
 
     return orig_vtable.SetPrivateData(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this, refguid, pData, SizeOfData, Flags);
 }
@@ -509,7 +509,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateData(
 static VOID STDMETHODCALLTYPE TrampolineGenerateMipSubLevels(
     IDirect3DVolumeTexture9 * This)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9::GenerateMipSubLevels()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9::GenerateMipSubLevels()\n");
 
     return orig_vtable.GenerateMipSubLevels(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this);
 }
@@ -517,7 +517,7 @@ static VOID STDMETHODCALLTYPE TrampolineGenerateMipSubLevels(
 static D3DTEXTUREFILTERTYPE STDMETHODCALLTYPE TrampolineGetAutoGenFilterType(
     IDirect3DVolumeTexture9 * This)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9::GetAutoGenFilterType()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9::GetAutoGenFilterType()\n");
 
     return orig_vtable.GetAutoGenFilterType(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this);
 }
@@ -525,7 +525,7 @@ static D3DTEXTUREFILTERTYPE STDMETHODCALLTYPE TrampolineGetAutoGenFilterType(
 static DWORD STDMETHODCALLTYPE TrampolineGetLevelCount(
     IDirect3DVolumeTexture9 * This)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9::GetLevelCount()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9::GetLevelCount()\n");
 
     return orig_vtable.GetLevelCount(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this);
 }
@@ -533,7 +533,7 @@ static DWORD STDMETHODCALLTYPE TrampolineGetLevelCount(
 static DWORD STDMETHODCALLTYPE TrampolineGetLOD(
     IDirect3DVolumeTexture9 * This)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9::GetLOD()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9::GetLOD()\n");
 
     return orig_vtable.GetLOD(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this);
 }
@@ -541,7 +541,7 @@ static DWORD STDMETHODCALLTYPE TrampolineGetLOD(
 static HRESULT STDMETHODCALLTYPE TrampolineSetAutoGenFilterType(
     IDirect3DVolumeTexture9 * This, D3DTEXTUREFILTERTYPE FilterType)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9::SetAutoGenFilterType()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9::SetAutoGenFilterType()\n");
 
     return orig_vtable.SetAutoGenFilterType(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this, FilterType);
 }
@@ -549,7 +549,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineSetAutoGenFilterType(
 static DWORD STDMETHODCALLTYPE TrampolineSetLOD(
     IDirect3DVolumeTexture9 * This, DWORD LODNew)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9::SetLOD()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9::SetLOD()\n");
 
     return orig_vtable.SetLOD(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this, LODNew);
 }
@@ -558,7 +558,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineAddDirtyBox(
     IDirect3DVolumeTexture9 * This,
      const D3DBOX *pDirtyBox)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9::AddDirtyBox()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9::AddDirtyBox()\n");
 
     return orig_vtable.AddDirtyBox(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this, pDirtyBox);
 }
@@ -568,7 +568,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetVolumeLevel(
               UINT             Level,
      IDirect3DVolume9 **ppVolumeLevel)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9::GetVolumeLevel()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9::GetVolumeLevel()\n");
 
     return orig_vtable.GetVolumeLevel(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this, Level, ppVolumeLevel);
 }
@@ -578,7 +578,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetLevelDesc(
       UINT            Level,
      D3DVOLUME_DESC *pDesc)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9::GetLevelDesc()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9::GetLevelDesc()\n");
 
     return orig_vtable.GetLevelDesc(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this, Level, pDesc);
 }
@@ -590,7 +590,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineLockBox(
       const D3DBOX        *pBox,
             DWORD         Flags)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9::LockBox()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9::LockBox()\n");
 
     return orig_vtable.LockBox(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this, Level, pLockedVolume, pBox, Flags);
 }
@@ -599,7 +599,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineUnlockBox(
     IDirect3DVolumeTexture9 * This,
      UINT             Level)
 {
-    HookDebug("TrampolineIDirect3DVolumeTexture9::UnlockBox()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVolumeTexture9::UnlockBox()\n");
 
     return orig_vtable.UnlockBox(((IDirect3DVolumeTexture9Trampoline*)This)->orig_this, Level);
 }

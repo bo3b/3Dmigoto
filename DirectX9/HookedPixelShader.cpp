@@ -7,9 +7,9 @@
 
 
 #if 0
-#define HookDebug LOG_DEBUG
+#define HOOK_DEBUG LOG_DEBUG
 #else
-#define HookDebug(...) do { } while (0)
+#define HOOK_DEBUG(...) do { } while (0)
 #endif
 
 typedef std::unordered_map<IDirect3DPixelShader9 *, IDirect3DPixelShader9 *> PixelShaderMap;
@@ -46,7 +46,7 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 {
     IDirect3DPixelShader9 *pixel_shader = lookup_hooked_pixel_shader(This);
 
-    HookDebug("HookedPixelShader:: QueryInterface()\n");
+    HOOK_DEBUG("HookedPixelShader:: QueryInterface()\n");
 
     if (pixel_shader)
         return IDirect3DPixelShader9_QueryInterface(pixel_shader, riid, ppvObject);
@@ -59,7 +59,7 @@ static ULONG STDMETHODCALLTYPE AddRef(
 {
     IDirect3DPixelShader9 *pixel_shader = lookup_hooked_pixel_shader(This);
 
-    HookDebug("HookedPixelShader:: AddRef()\n");
+    HOOK_DEBUG("HookedPixelShader:: AddRef()\n");
 
     if (pixel_shader)
         return IDirect3DPixelShader9_AddRef(pixel_shader);
@@ -73,7 +73,7 @@ static ULONG STDMETHODCALLTYPE Release(
     PixelShaderMap::iterator i;
     ULONG ref;
 
-    HookDebug("HookedPixelShader:: Release()\n");
+    HOOK_DEBUG("HookedPixelShader:: Release()\n");
 
     EnterCriticalSection(&pixel_shader_map_lock);
     i = pixel_shader_map.find(This);
@@ -95,7 +95,7 @@ static HRESULT STDMETHODCALLTYPE GetDevice(
 {
     IDirect3DPixelShader9 *pixel_shader = lookup_hooked_pixel_shader(This);
 
-    HookDebug("HookedPixelShader:: GetDevice()\n");
+    HOOK_DEBUG("HookedPixelShader:: GetDevice()\n");
 
     if (pixel_shader)
         return IDirect3DPixelShader9_GetDevice(pixel_shader, ppDevice);
@@ -110,7 +110,7 @@ static HRESULT STDMETHODCALLTYPE GetFunction(
 {
     IDirect3DPixelShader9 *pixel_shader = lookup_hooked_pixel_shader(This);
 
-    HookDebug("HookedPixelShader:: GetFunction()\n");
+    HOOK_DEBUG("HookedPixelShader:: GetFunction()\n");
 
     if (pixel_shader)
         return IDirect3DPixelShader9_GetFunction(pixel_shader, pData, pSizeOfData);
@@ -155,7 +155,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
     REFIID riid,
     __RPC__deref_out  void **ppvObject)
 {
-    HookDebug("TrampolineIDirect3DPixelShader9:: QueryInterface()\n");
+    HOOK_DEBUG("TrampolineIDirect3DPixelShader9:: QueryInterface()\n");
 
     return orig_vtable.QueryInterface(((IDirect3DPixelShader9Trampoline*)This)->orig_this, riid, ppvObject);
 }
@@ -164,7 +164,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
 static ULONG STDMETHODCALLTYPE TrampolineAddRef(
     IDirect3DPixelShader9 * This)
 {
-    HookDebug("TrampolineIDirect3DPixelShader9:: AddRef()\n");
+    HOOK_DEBUG("TrampolineIDirect3DPixelShader9:: AddRef()\n");
 
     return orig_vtable.AddRef(((IDirect3DPixelShader9Trampoline*)This)->orig_this);
 }
@@ -172,7 +172,7 @@ static ULONG STDMETHODCALLTYPE TrampolineAddRef(
 static ULONG STDMETHODCALLTYPE TrampolineRelease(
     IDirect3DPixelShader9 * This)
 {
-    HookDebug("TrampolineIDirect3DPixelShader9:: Release()\n");
+    HOOK_DEBUG("TrampolineIDirect3DPixelShader9:: Release()\n");
 
     return orig_vtable.Release(((IDirect3DPixelShader9Trampoline*)This)->orig_this);
 }
@@ -180,7 +180,7 @@ static ULONG STDMETHODCALLTYPE TrampolineRelease(
 static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(
     IDirect3DPixelShader9 * This, IDirect3DDevice9 **ppDevice)
 {
-    HookDebug("TrampolineIDirect3DPixelShader9:: GetDevice()\n");
+    HOOK_DEBUG("TrampolineIDirect3DPixelShader9:: GetDevice()\n");
 
     return orig_vtable.GetDevice(((IDirect3DPixelShader9Trampoline*)This)->orig_this, ppDevice);
 }
@@ -190,7 +190,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetFunction(
      void *pData,
      UINT *pSizeOfData)
 {
-    HookDebug("TrampolineIDirect3DPixelShader9:: GetFunction()\n");
+    HOOK_DEBUG("TrampolineIDirect3DPixelShader9:: GetFunction()\n");
 
     return orig_vtable.GetFunction(((IDirect3DPixelShader9Trampoline*)This)->orig_this, pData, pSizeOfData);
 }
