@@ -5,9 +5,15 @@
 
 // This version of EnterCriticalSection will use the function and line number
 // in any lock stacks dumped when potential deadlock hazards are detected:
-#define EnterCriticalSectionPretty(lock) \
+#define ENTER_CRITICAL_SECTION(lock) \
     _EnterCriticalSectionPretty(lock, __FUNCTION__, __LINE__)
 void _EnterCriticalSectionPretty(CRITICAL_SECTION *lock, char *function, int line);
+
+// To keep visual consistency, we define this macro to bookend the sections
+// that are actually critical. The use of these macros will thus always show
+// that we want the pretty version with Function and Line numbers.
+#define LEAVE_CRITICAL_SECTION(lock) \
+    LeaveCriticalSection(lock)
 
 // Use this when initialising a critical section in 3DMigoto to give it a nice
 // name in lock stack dumps rather than using its address.

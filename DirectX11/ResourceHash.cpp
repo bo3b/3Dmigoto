@@ -832,13 +832,13 @@ ResourceHandleInfo* GetResourceHandleInfo(ID3D11Resource *resource)
     std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
     ResourceHandleInfo* ret = NULL;
 
-    EnterCriticalSectionPretty(&G->mResourcesLock);
+    ENTER_CRITICAL_SECTION(&G->mResourcesLock);
 
     j = lookup_resource_handle_info(resource);
     if (j != G->mResources.end())
         ret = &j->second;
 
-    LeaveCriticalSection(&G->mResourcesLock);
+    LEAVE_CRITICAL_SECTION(&G->mResourcesLock);
 
     return ret;
 }
@@ -1004,7 +1004,7 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
     if (Profiling::mode == Profiling::Mode::SUMMARY)
         Profiling::start(&profiling_state);
 
-    EnterCriticalSectionPretty(&G->mCriticalSection);
+    ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
     dst_handle_info = GetResourceHandleInfo(dest);
     if (!dst_handle_info)
@@ -1104,7 +1104,7 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
     }
 
 out_unlock:
-    LeaveCriticalSection(&G->mCriticalSection);
+    LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
     if (Profiling::mode == Profiling::Mode::SUMMARY)
         Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
@@ -1129,7 +1129,7 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
     if (Profiling::mode == Profiling::Mode::SUMMARY)
         Profiling::start(&profiling_state);
 
-    EnterCriticalSectionPretty(&G->mCriticalSection);
+    ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
     info = GetResourceHandleInfo(resource);
     if (!info)
@@ -1184,7 +1184,7 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
     LOG_DEBUG("  old hash: %08x new hash: %08x\n", old_hash, info->hash);
 
 out_unlock:
-    LeaveCriticalSection(&G->mCriticalSection);
+    LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
     if (Profiling::mode == Profiling::Mode::SUMMARY)
         Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
@@ -1202,7 +1202,7 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
     if (Profiling::mode == Profiling::Mode::SUMMARY)
         Profiling::start(&profiling_state);
 
-    EnterCriticalSectionPretty(&G->mCriticalSection);
+    ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
     dst_info = GetResourceHandleInfo(dst);
     if (!dst_info)
@@ -1257,7 +1257,7 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
     LOG_DEBUG("  old hash: %08x new hash: %08x\n", old_hash, dst_info->hash);
 
 out_unlock:
-    LeaveCriticalSection(&G->mCriticalSection);
+    LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
     if (Profiling::mode == Profiling::Mode::SUMMARY)
         Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
@@ -1346,9 +1346,9 @@ ULONG STDMETHODCALLTYPE ResourceReleaseTracker::Release(void)
         //                                                        //
         ////////////////////////////////////////////////////////////
 
-        EnterCriticalSectionPretty(&G->mResourcesLock);
+        ENTER_CRITICAL_SECTION(&G->mResourcesLock);
         G->mResources.erase(resource);
-        LeaveCriticalSection(&G->mResourcesLock);
+        LEAVE_CRITICAL_SECTION(&G->mResourcesLock);
         delete this;
     }
     return ret;
@@ -1681,9 +1681,9 @@ static void find_texture_override_for_resource_by_hash(ID3D11Resource *resource,
     if (G->mTextureOverrideMap.empty())
         return;
 
-    EnterCriticalSectionPretty(&G->mCriticalSection);
+    ENTER_CRITICAL_SECTION(&G->mCriticalSection);
         hash = GetResourceHash(resource);
-    LeaveCriticalSection(&G->mCriticalSection);
+    LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
     if (!hash)
         return;
 
