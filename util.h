@@ -63,15 +63,17 @@ extern CRITICAL_SECTION resource_creation_mode_lock;
 // Use the pretty lock debugging version if lock.h is included first, otherwise
 // use the regular EnterCriticalSection:
 #ifdef EnterCriticalSectionPretty
-#define LOCK_RESOURCE_CREATION_MODE() \
-    EnterCriticalSectionPretty(&resource_creation_mode_lock)
+    #define LOCK_RESOURCE_CREATION_MODE() \
+        ENTER_CRITICAL_SECTION(&resource_creation_mode_lock)
+    #define UNLOCK_RESOURCE_CREATION_MODE() \
+        LEAVE_CRITICAL_SECTION(&resource_creation_mode_lock)
 #else
-#define LOCK_RESOURCE_CREATION_MODE() \
-    EnterCriticalSection(&resource_creation_mode_lock)
+    #define LOCK_RESOURCE_CREATION_MODE() \
+        EnterCriticalSection(&resource_creation_mode_lock)
+    #define UNLOCK_RESOURCE_CREATION_MODE() \
+        LeaveCriticalSection(&resource_creation_mode_lock)
 #endif
 
-#define UNLOCK_RESOURCE_CREATION_MODE() \
-    LeaveCriticalSection(&resource_creation_mode_lock)
 
 // -----------------------------------------------------------------------------------------------
 

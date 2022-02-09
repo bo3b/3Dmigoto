@@ -534,7 +534,7 @@ static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS *Exce
 
     // If multiple threads crash only allow one to write the crash dump and
     // the rest stop here:
-    EnterCriticalSectionPretty(&crash_handler_lock);
+    ENTER_CRITICAL_SECTION(&crash_handler_lock);
 
     auto fp = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ,
             0, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -616,7 +616,7 @@ static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS *Exce
     }
 
 unlock:
-    LeaveCriticalSection(&crash_handler_lock);
+    LEAVE_CRITICAL_SECTION(&crash_handler_lock);
 
     return ret;
 }

@@ -77,13 +77,13 @@ ID3D11DeviceContext1* lookup_hooked_context(ID3D11DeviceContext1 *orig_context)
     if (!hooks_installed)
         return NULL;
 
-    EnterCriticalSectionPretty(&context_map_lock);
+    ENTER_CRITICAL_SECTION(&context_map_lock);
     i = context_map.find(orig_context);
     if (i == context_map.end()) {
-        LeaveCriticalSection(&context_map_lock);
+        LEAVE_CRITICAL_SECTION(&context_map_lock);
         return NULL;
     }
-    LeaveCriticalSection(&context_map_lock);
+    LEAVE_CRITICAL_SECTION(&context_map_lock);
 
     return i->second;
 }
@@ -121,7 +121,7 @@ static ULONG STDMETHODCALLTYPE Release(ID3D11DeviceContext1 *This)
 
     HOOK_DEBUG("HookedContext::Release()\n");
 
-    EnterCriticalSectionPretty(&context_map_lock);
+    ENTER_CRITICAL_SECTION(&context_map_lock);
     i = context_map.find(This);
     if (i != context_map.end()) {
         ref = ID3D11DeviceContext1_Release(i->second);
@@ -130,7 +130,7 @@ static ULONG STDMETHODCALLTYPE Release(ID3D11DeviceContext1 *This)
     } else
         ref = orig_vtable.Release(This);
 
-    LeaveCriticalSection(&context_map_lock);
+    LEAVE_CRITICAL_SECTION(&context_map_lock);
 
     return ref;
 }
@@ -3542,9 +3542,9 @@ ID3D11DeviceContext1* hook_context(ID3D11DeviceContext1 *orig_context, ID3D11Dev
     trampoline_context->orig_this = orig_context;
 
     install_hooks(orig_context);
-    EnterCriticalSectionPretty(&context_map_lock);
+    ENTER_CRITICAL_SECTION(&context_map_lock);
     context_map[orig_context] = hacker_context;
-    LeaveCriticalSection(&context_map_lock);
+    LEAVE_CRITICAL_SECTION(&context_map_lock);
 
     return (ID3D11DeviceContext1*)trampoline_context;
 }

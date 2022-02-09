@@ -142,13 +142,13 @@ void FrameAnalysisContext::FrameAnalysisLogShaderHash(ID3D11Shader *shader)
         return;
     }
 
-    EnterCriticalSectionPretty(&G->mCriticalSection);
+    ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
     hash = lookup_shader_hash(shader);
     if (hash != end(G->mShaders))
         fprintf(frame_analysis_log, " hash=%016llx", hash->second);
 
-    LeaveCriticalSection(&G->mCriticalSection);
+    LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
     fprintf(frame_analysis_log, "\n");
 }
@@ -169,8 +169,8 @@ void FrameAnalysisContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource
         return;
     }
 
-    EnterCriticalSectionPretty(&G->mCriticalSection);
-    EnterCriticalSectionPretty(&G->mResourcesLock);
+    ENTER_CRITICAL_SECTION(&G->mCriticalSection);
+    ENTER_CRITICAL_SECTION(&G->mResourcesLock);
 
     try {
         hash = G->mResources.at(resource).hash;
@@ -195,8 +195,8 @@ void FrameAnalysisContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource
     } catch (std::out_of_range) {
     }
 
-    LeaveCriticalSection(&G->mResourcesLock);
-    LeaveCriticalSection(&G->mCriticalSection);
+    LEAVE_CRITICAL_SECTION(&G->mResourcesLock);
+    LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
     fprintf(frame_analysis_log, "\n");
 }
@@ -1584,7 +1584,7 @@ void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_li
     if (frame_analysis_deferred_buffer_lists.empty() && frame_analysis_deferred_tex2d_lists.empty())
         return;
 
-    EnterCriticalSectionPretty(&G->mCriticalSection);
+    ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
     try {
         deferred_buffers = std::move(frame_analysis_deferred_buffer_lists.at(command_list));
@@ -1623,7 +1623,7 @@ void FrameAnalysisContext::dump_deferred_resources(ID3D11CommandList *command_li
         }
     }
 
-    LeaveCriticalSection(&G->mCriticalSection);
+    LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
 void FrameAnalysisContext::finish_deferred_resources(ID3D11CommandList *command_list)
@@ -1631,7 +1631,7 @@ void FrameAnalysisContext::finish_deferred_resources(ID3D11CommandList *command_
     if (!command_list || (!deferred_buffers && !deferred_tex2d))
         return;
 
-    EnterCriticalSectionPretty(&G->mCriticalSection);
+    ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
     if (deferred_buffers) {
         FALogInfo("Finishing deferred staging Buffer list %p on context %p\n", deferred_buffers.get(), this);
@@ -1645,7 +1645,7 @@ void FrameAnalysisContext::finish_deferred_resources(ID3D11CommandList *command_
         frame_analysis_deferred_tex2d_lists.emplace(command_list, std::move(deferred_tex2d));
     }
 
-    LeaveCriticalSection(&G->mCriticalSection);
+    LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
 void FrameAnalysisContext::determine_vb_count(UINT *count, ID3D11Buffer *staged_ib_for_vb,
@@ -1966,14 +1966,14 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t si
         StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%06i", draw_call);
     }
 
-    EnterCriticalSectionPretty(&G->mResourcesLock);
+    ENTER_CRITICAL_SECTION(&G->mResourcesLock);
     try {
         hash = G->mResources.at(handle).hash;
         orig_hash = G->mResources.at(handle).orig_hash;
     } catch (std::out_of_range) {
         hash = orig_hash = 0;
     }
-    LeaveCriticalSection(&G->mResourcesLock);
+    LEAVE_CRITICAL_SECTION(&G->mResourcesLock);
 
     if (hash) {
         try {
@@ -2048,14 +2048,14 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, s
 
     StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"%s", type);
 
-    EnterCriticalSectionPretty(&G->mResourcesLock);
+    ENTER_CRITICAL_SECTION(&G->mResourcesLock);
     try {
         hash = G->mResources.at(handle).hash;
         orig_hash = G->mResources.at(handle).orig_hash;
     } catch (std::out_of_range) {
         hash = orig_hash = 0;
     }
-    LeaveCriticalSection(&G->mResourcesLock);
+    LEAVE_CRITICAL_SECTION(&G->mResourcesLock);
 
     if (hash) {
         try {
@@ -2883,7 +2883,7 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 
     // Grab the critical section now as we may need it several times during
     // dumping for mResources
-    EnterCriticalSectionPretty(&G->mCriticalSection);
+    ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
     if (analyse_options & FrameAnalysisOptions::DUMP_CB)
         DumpCBs(compute);
@@ -2905,7 +2905,7 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
     if (analyse_options & FrameAnalysisOptions::DUMP_DEPTH && !compute)
         DumpDepthStencilTargets();
 
-    LeaveCriticalSection(&G->mCriticalSection);
+    LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
     if ((analyse_options & FrameAnalysisOptions::FMT_2D_MASK) &&
         (analyse_options & FrameAnalysisOptions::STEREO) &&
@@ -2940,7 +2940,7 @@ void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
 
     set_default_dump_formats(false);
 
-    EnterCriticalSectionPretty(&G->mCriticalSection);
+    ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
     // We don't have a view at this point to get a fully typed format, so
     // we leave format as DXGI_FORMAT_UNKNOWN, which will use the format
@@ -2951,7 +2951,7 @@ void FrameAnalysisContext::_FrameAnalysisAfterUpdate(ID3D11Resource *resource,
         DumpResource(resource, filename, analyse_options, -1, DXGI_FORMAT_UNKNOWN, 0, 0);
     }
 
-    LeaveCriticalSection(&G->mCriticalSection);
+    LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
     non_draw_call_dump_counter++;
 }
@@ -2999,7 +2999,7 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
         }
     }
 
-    EnterCriticalSectionPretty(&G->mCriticalSection);
+    ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
     hr = FrameAnalysisFilenameResource(filename, MAX_PATH, target, resource, false);
     if (FAILED(hr)) {
@@ -3010,7 +3010,7 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
     if (SUCCEEDED(hr))
         DumpResource(resource, filename, analyse_options, -1, format, stride, offset);
 
-    LeaveCriticalSection(&G->mCriticalSection);
+    LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
     if ((analyse_options & FrameAnalysisOptions::STEREO) &&
         (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
