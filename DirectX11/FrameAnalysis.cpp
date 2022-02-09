@@ -3113,7 +3113,7 @@ STDMETHODIMP FrameAnalysisContext::Map(THIS_
         /* [annotation] */
         __out D3D11_MAPPED_SUBRESOURCE *pMappedResource)
 {
-    FrameAnalysisLogNoNL("Map(pResource:0x%p, Subresource:%u, MapType:%u, MapFlags:%u, pMappedResource:0x%p)",
+    FRAME_ANALYSIS_LOG_NO_NL("Map(pResource:0x%p, Subresource:%u, MapType:%u, MapFlags:%u, pMappedResource:0x%p)",
             pResource, Subresource, MapType, MapFlags, pMappedResource);
     FrameAnalysisLogResourceHash(pResource);
 
@@ -3126,7 +3126,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::Unmap(THIS_
         /* [annotation] */
         __in  UINT Subresource)
 {
-    FrameAnalysisLogNoNL("Unmap(pResource:0x%p, Subresource:%u)",
+    FRAME_ANALYSIS_LOG_NO_NL("Unmap(pResource:0x%p, Subresource:%u)",
             pResource, Subresource);
     FrameAnalysisLogResourceHash(pResource);
 
@@ -3204,7 +3204,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::GSSetShader(THIS_
 {
     HackerContext::GSSetShader(pShader, ppClassInstances, NumClassInstances);
 
-    FrameAnalysisLogNoNL("GSSetShader(pShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
+    FRAME_ANALYSIS_LOG_NO_NL("GSSetShader(pShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
             pShader, ppClassInstances, NumClassInstances);
     FrameAnalysisLogShaderHash<ID3D11GeometryShader>(pShader);
 }
@@ -3253,7 +3253,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::Begin(THIS_
         /* [annotation] */
         __in  ID3D11Asynchronous *pAsync)
 {
-    FrameAnalysisLogNoNL("Begin(pAsync:0x%p)", pAsync);
+    FRAME_ANALYSIS_LOG_NO_NL("Begin(pAsync:0x%p)", pAsync);
     FrameAnalysisLogAsyncQuery(pAsync);
 
     HackerContext::Begin(pAsync);
@@ -3263,7 +3263,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::End(THIS_
         /* [annotation] */
         __in  ID3D11Asynchronous *pAsync)
 {
-    FrameAnalysisLogNoNL("End(pAsync:0x%p)", pAsync);
+    FRAME_ANALYSIS_LOG_NO_NL("End(pAsync:0x%p)", pAsync);
     FrameAnalysisLogAsyncQuery(pAsync);
 
     HackerContext::End(pAsync);
@@ -3281,7 +3281,7 @@ STDMETHODIMP FrameAnalysisContext::GetData(THIS_
 {
     HRESULT ret = HackerContext::GetData(pAsync, pData, DataSize, GetDataFlags);
 
-    FrameAnalysisLogNoNL("GetData(pAsync:0x%p, pData:0x%p, DataSize:%u, GetDataFlags:%u) = %u",
+    FRAME_ANALYSIS_LOG_NO_NL("GetData(pAsync:0x%p, pData:0x%p, DataSize:%u, GetDataFlags:%u) = %u",
             pAsync, pData, DataSize, GetDataFlags, ret);
     FrameAnalysisLogAsyncQuery(pAsync);
     if (SUCCEEDED(ret))
@@ -3296,7 +3296,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::SetPredication(THIS_
         /* [annotation] */
         __in  BOOL PredicateValue)
 {
-    FrameAnalysisLogNoNL("SetPredication(pPredicate:0x%p, PredicateValue:%s)",
+    FRAME_ANALYSIS_LOG_NO_NL("SetPredication(pPredicate:0x%p, PredicateValue:%s)",
             pPredicate, PredicateValue ? "true" : "false");
     FrameAnalysisLogAsyncQuery(pPredicate);
 
@@ -3399,7 +3399,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DispatchIndirect(THIS_
         /* [annotation] */
         __in  UINT AlignedByteOffsetForArgs)
 {
-    FrameAnalysisLogNoNL("DispatchIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)",
+    FRAME_ANALYSIS_LOG_NO_NL("DispatchIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)",
             pBufferForArgs, AlignedByteOffsetForArgs);
     FrameAnalysisLogResourceHash(pBufferForArgs);
 
@@ -3500,7 +3500,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::UpdateSubresource(THIS_
         /* [annotation] */
         __in  UINT SrcDepthPitch)
 {
-    FrameAnalysisLogNoNL("UpdateSubresource(pDstResource:0x%p, DstSubresource:%u, pDstBox:0x%p, pSrcData:0x%p, SrcRowPitch:%u, SrcDepthPitch:%u)",
+    FRAME_ANALYSIS_LOG_NO_NL("UpdateSubresource(pDstResource:0x%p, DstSubresource:%u, pDstBox:0x%p, pSrcData:0x%p, SrcRowPitch:%u, SrcDepthPitch:%u)",
             pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
     FrameAnalysisLogResourceHash(pDstResource);
 
@@ -3586,7 +3586,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::SetResourceMinLOD(THIS_
         __in  ID3D11Resource *pResource,
         FLOAT MinLOD)
 {
-    FrameAnalysisLogNoNL("SetResourceMinLOD(pResource:0x%p)",
+    FRAME_ANALYSIS_LOG_NO_NL("SetResourceMinLOD(pResource:0x%p)",
             pResource);
     FrameAnalysisLogResourceHash(pResource);
 
@@ -3599,7 +3599,7 @@ STDMETHODIMP_(FLOAT) FrameAnalysisContext::GetResourceMinLOD(THIS_
 {
     FLOAT ret = HackerContext::GetResourceMinLOD(pResource);
 
-    FrameAnalysisLogNoNL("GetResourceMinLOD(pResource:0x%p) = %f",
+    FRAME_ANALYSIS_LOG_NO_NL("GetResourceMinLOD(pResource:0x%p) = %f",
             pResource, ret);
     FrameAnalysisLogResourceHash(pResource);
     return ret;
@@ -3677,7 +3677,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::HSSetShader(THIS_
         __in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
         UINT NumClassInstances)
 {
-    FrameAnalysisLogNoNL("HSSetShader(pHullShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
+    FRAME_ANALYSIS_LOG_NO_NL("HSSetShader(pHullShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
             pHullShader, ppClassInstances, NumClassInstances);
     FrameAnalysisLogShaderHash<ID3D11HullShader>(pHullShader);
 
@@ -3736,7 +3736,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DSSetShader(THIS_
         __in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
         UINT NumClassInstances)
 {
-    FrameAnalysisLogNoNL("DSSetShader(pDomainShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
+    FRAME_ANALYSIS_LOG_NO_NL("DSSetShader(pDomainShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
             pDomainShader, ppClassInstances, NumClassInstances);
     FrameAnalysisLogShaderHash<ID3D11DomainShader>(pDomainShader);
 
@@ -3819,7 +3819,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::CSSetShader(THIS_
         __in_ecount_opt(NumClassInstances)  ID3D11ClassInstance *const *ppClassInstances,
         UINT NumClassInstances)
 {
-    FrameAnalysisLogNoNL("CSSetShader(pComputeShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
+    FRAME_ANALYSIS_LOG_NO_NL("CSSetShader(pComputeShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
             pComputeShader, ppClassInstances, NumClassInstances);
     FrameAnalysisLogShaderHash<ID3D11ComputeShader>(pComputeShader);
 
@@ -3896,7 +3896,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::PSGetShader(THIS_
 {
     HackerContext::PSGetShader(ppPixelShader, ppClassInstances, pNumClassInstances);
 
-    FrameAnalysisLogNoNL("PSGetShader(ppPixelShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
+    FRAME_ANALYSIS_LOG_NO_NL("PSGetShader(ppPixelShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
             ppPixelShader, ppClassInstances, pNumClassInstances);
     if (ppPixelShader)
         FrameAnalysisLogShaderHash<ID3D11PixelShader>(*ppPixelShader);
@@ -3929,7 +3929,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::VSGetShader(THIS_
 {
     HackerContext::VSGetShader(ppVertexShader, ppClassInstances, pNumClassInstances);
 
-    FrameAnalysisLogNoNL("VSGetShader(ppVertexShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
+    FRAME_ANALYSIS_LOG_NO_NL("VSGetShader(ppVertexShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
             ppVertexShader, ppClassInstances, pNumClassInstances);
     if (ppVertexShader)
         FrameAnalysisLogShaderHash<ID3D11VertexShader>(*ppVertexShader);
@@ -4020,7 +4020,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::GSGetShader(THIS_
 {
     HackerContext::GSGetShader(ppGeometryShader, ppClassInstances, pNumClassInstances);
 
-    FrameAnalysisLogNoNL("GSGetShader(ppGeometryShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
+    FRAME_ANALYSIS_LOG_NO_NL("GSGetShader(ppGeometryShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
             ppGeometryShader, ppClassInstances, pNumClassInstances);
     if (ppGeometryShader)
         FrameAnalysisLogShaderHash<ID3D11GeometryShader>(*ppGeometryShader);
@@ -4076,7 +4076,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::GetPredication(THIS_
 {
     HackerContext::GetPredication(ppPredicate, pPredicateValue);
 
-    FrameAnalysisLogNoNL("GetPredication(ppPredicate:0x%p, pPredicateValue:0x%p)",
+    FRAME_ANALYSIS_LOG_NO_NL("GetPredication(ppPredicate:0x%p, pPredicateValue:0x%p)",
             ppPredicate, pPredicateValue);
     FrameAnalysisLogAsyncQuery(ppPredicate ? *ppPredicate : NULL);
 }
@@ -4252,7 +4252,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::HSGetShader(THIS_
 {
     HackerContext::HSGetShader(ppHullShader, ppClassInstances, pNumClassInstances);
 
-    FrameAnalysisLogNoNL("HSGetShader(ppHullShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
+    FRAME_ANALYSIS_LOG_NO_NL("HSGetShader(ppHullShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
             ppHullShader, ppClassInstances, pNumClassInstances);
     if (ppHullShader)
         FrameAnalysisLogShaderHash<ID3D11HullShader>(*ppHullShader);
@@ -4315,7 +4315,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DSGetShader(THIS_
 {
     HackerContext::DSGetShader(ppDomainShader, ppClassInstances, pNumClassInstances);
 
-    FrameAnalysisLogNoNL("DSGetShader(ppDomainShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
+    FRAME_ANALYSIS_LOG_NO_NL("DSGetShader(ppDomainShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
             ppDomainShader, ppClassInstances, pNumClassInstances);
     if (ppDomainShader)
         FrameAnalysisLogShaderHash<ID3D11DomainShader>(*ppDomainShader);
@@ -4393,7 +4393,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::CSGetShader(THIS_
 {
     HackerContext::CSGetShader(ppComputeShader, ppClassInstances, pNumClassInstances);
 
-    FrameAnalysisLogNoNL("CSGetShader(ppComputeShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
+    FRAME_ANALYSIS_LOG_NO_NL("CSGetShader(ppComputeShader:0x%p, ppClassInstances:0x%p, pNumClassInstances:0x%p)",
             ppComputeShader, ppClassInstances, pNumClassInstances);
     if (ppComputeShader)
         FrameAnalysisLogShaderHash<ID3D11ComputeShader>(*ppComputeShader);
@@ -4483,7 +4483,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::VSSetShader(THIS_
         __in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
         UINT NumClassInstances)
 {
-    FrameAnalysisLogNoNL("VSSetShader(pVertexShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
+    FRAME_ANALYSIS_LOG_NO_NL("VSSetShader(pVertexShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
             pVertexShader, ppClassInstances, NumClassInstances);
     FrameAnalysisLogShaderHash<ID3D11VertexShader>(pVertexShader);
 
@@ -4512,7 +4512,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::PSSetShader(THIS_
         __in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
         UINT NumClassInstances)
 {
-    FrameAnalysisLogNoNL("PSSetShader(pPixelShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
+    FRAME_ANALYSIS_LOG_NO_NL("PSSetShader(pPixelShader:0x%p, ppClassInstances:0x%p, NumClassInstances:%u)",
             pPixelShader, ppClassInstances, NumClassInstances);
     FrameAnalysisLogShaderHash<ID3D11PixelShader>(pPixelShader);
 
@@ -4567,7 +4567,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::IASetIndexBuffer(THIS_
         /* [annotation] */
         __in  UINT Offset)
 {
-    FrameAnalysisLogNoNL("IASetIndexBuffer(pIndexBuffer:0x%p, Format:%u, Offset:%u)",
+    FRAME_ANALYSIS_LOG_NO_NL("IASetIndexBuffer(pIndexBuffer:0x%p, Format:%u, Offset:%u)",
             pIndexBuffer, Format, Offset);
     FrameAnalysisLogResourceHash(pIndexBuffer);
 
@@ -4727,7 +4727,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawIndexedInstancedIndirect(THIS_
         /* [annotation] */
         __in  UINT AlignedByteOffsetForArgs)
 {
-    FrameAnalysisLogNoNL("DrawIndexedInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)",
+    FRAME_ANALYSIS_LOG_NO_NL("DrawIndexedInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)",
             pBufferForArgs, AlignedByteOffsetForArgs);
     FrameAnalysisLogResourceHash(pBufferForArgs);
 
@@ -4747,7 +4747,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::DrawInstancedIndirect(THIS_
         /* [annotation] */
         __in  UINT AlignedByteOffsetForArgs)
 {
-    FrameAnalysisLogNoNL("DrawInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)",
+    FRAME_ANALYSIS_LOG_NO_NL("DrawInstancedIndirect(pBufferForArgs:0x%p, AlignedByteOffsetForArgs:%u)",
             pBufferForArgs, AlignedByteOffsetForArgs);
     FrameAnalysisLogResourceHash(pBufferForArgs);
 
@@ -4818,7 +4818,7 @@ void STDMETHODCALLTYPE FrameAnalysisContext::UpdateSubresource1(
         /* [annotation] */
         _In_  UINT CopyFlags)
 {
-    FrameAnalysisLogNoNL("UpdateSubresource1(pDstResource:0x%p, DstSubresource:%u, pDstBox:0x%p, pSrcData:0x%p, SrcRowPitch:%u, SrcDepthPitch:%u, CopyFlags:%u)",
+    FRAME_ANALYSIS_LOG_NO_NL("UpdateSubresource1(pDstResource:0x%p, DstSubresource:%u, pDstBox:0x%p, pSrcData:0x%p, SrcRowPitch:%u, SrcDepthPitch:%u, CopyFlags:%u)",
             pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, CopyFlags);
     FrameAnalysisLogResourceHash(pDstResource);
 
@@ -4829,7 +4829,7 @@ void STDMETHODCALLTYPE FrameAnalysisContext::DiscardResource(
         /* [annotation] */
         _In_  ID3D11Resource *pResource)
 {
-    FrameAnalysisLogNoNL("DiscardResource(pResource:0x%p)",
+    FRAME_ANALYSIS_LOG_NO_NL("DiscardResource(pResource:0x%p)",
             pResource);
     FrameAnalysisLogResourceHash(pResource);
 
