@@ -4,9 +4,9 @@
 #include "DLLMainHookDX9.h"
 
 #if 0
-#define HookDebug LOG_DEBUG
+#define HOOK_DEBUG LOG_DEBUG
 #else
-#define HookDebug(...) do { } while (0)
+#define HOOK_DEBUG(...) do { } while (0)
 #endif
 
 // A map to look up the hacker device from the original device:
@@ -64,7 +64,7 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice:: QueryInterface()\n");
+    HOOK_DEBUG("HookedDevice:: QueryInterface()\n");
 
     if (device)
         return IDirect3DDevice9_QueryInterface(device, riid, ppvObject);
@@ -76,7 +76,7 @@ static ULONG STDMETHODCALLTYPE AddRef(
 {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice:: AddRef()\n");
+    HOOK_DEBUG("HookedDevice:: AddRef()\n");
 
     if (device)
         return IDirect3DDevice9_AddRef(device);
@@ -90,7 +90,7 @@ static ULONG STDMETHODCALLTYPE Release(
     DeviceMap::iterator i;
     ULONG ref;
 
-    HookDebug("HookedDevice:: Release()\n");
+    HOOK_DEBUG("HookedDevice:: Release()\n");
 
     EnterCriticalSection(&device_map_lock);
     i = device_map.find((IDirect3DDevice9*)This);
@@ -108,7 +108,7 @@ static ULONG STDMETHODCALLTYPE Release(
 static HRESULT STDMETHODCALLTYPE TestCooperativeLevel(IDirect3DDevice9 * This) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::TestCooperativeLevel()\n");
+    HOOK_DEBUG("HookedDevice::TestCooperativeLevel()\n");
 
     if (device)
         return IDirect3DDevice9_TestCooperativeLevel(device);
@@ -118,7 +118,7 @@ static HRESULT STDMETHODCALLTYPE TestCooperativeLevel(IDirect3DDevice9 * This) {
 }
 static UINT STDMETHODCALLTYPE GetAvailableTextureMem(IDirect3DDevice9 * This) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::GetAvailableTextureMem()\n");
+    HOOK_DEBUG("HookedDevice::GetAvailableTextureMem()\n");
 
     if (device)
         return IDirect3DDevice9_GetAvailableTextureMem(device);
@@ -130,7 +130,7 @@ static UINT STDMETHODCALLTYPE GetAvailableTextureMem(IDirect3DDevice9 * This) {
 static HRESULT STDMETHODCALLTYPE EvictManagedResources(IDirect3DDevice9 * This) {
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::EvictManagedResources()\n");
+    HOOK_DEBUG("HookedDevice::EvictManagedResources()\n");
 
     if (device)
         return IDirect3DDevice9_EvictManagedResources(device);
@@ -143,7 +143,7 @@ static HRESULT STDMETHODCALLTYPE EvictManagedResources(IDirect3DDevice9 * This) 
 static HRESULT STDMETHODCALLTYPE GetDirect3D(IDirect3DDevice9 * This, IDirect3D9** ppD3D9) {
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::GetDirect3D()\n");
+    HOOK_DEBUG("HookedDevice::GetDirect3D()\n");
 
     if (device)
         return IDirect3DDevice9_GetDirect3D(device, ppD3D9);
@@ -154,7 +154,7 @@ static HRESULT STDMETHODCALLTYPE GetDirect3D(IDirect3DDevice9 * This, IDirect3D9
 static HRESULT STDMETHODCALLTYPE _GetDeviceCaps(IDirect3DDevice9 * This, D3DCAPS9* pCaps) {
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::GetDeviceCaps()\n");
+    HOOK_DEBUG("HookedDevice::GetDeviceCaps()\n");
 
     if (device)
         return IDirect3DDevice9_GetDeviceCaps(device, pCaps);
@@ -166,7 +166,7 @@ static HRESULT STDMETHODCALLTYPE _GetDeviceCaps(IDirect3DDevice9 * This, D3DCAPS
 static HRESULT STDMETHODCALLTYPE GetDisplayMode(IDirect3DDevice9 * This, UINT iSwapChain, D3DDISPLAYMODE* pMode) {
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::GetDisplayMode()\n");
+    HOOK_DEBUG("HookedDevice::GetDisplayMode()\n");
 
     if (device)
         return IDirect3DDevice9_GetDisplayMode(device, iSwapChain, pMode);
@@ -180,7 +180,7 @@ static HRESULT STDMETHODCALLTYPE GetDisplayMode(IDirect3DDevice9 * This, UINT iS
 static HRESULT STDMETHODCALLTYPE GetCreationParameters(IDirect3DDevice9 * This, D3DDEVICE_CREATION_PARAMETERS *pParameters) {
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::GetCreationParameters()\n");
+    HOOK_DEBUG("HookedDevice::GetCreationParameters()\n");
 
     if (device)
         return IDirect3DDevice9_GetCreationParameters(device, pParameters);
@@ -192,7 +192,7 @@ static HRESULT STDMETHODCALLTYPE GetCreationParameters(IDirect3DDevice9 * This, 
 static HRESULT STDMETHODCALLTYPE SetCursorProperties(IDirect3DDevice9 * This, UINT XHotSpot, UINT YHotSpot, IDirect3DSurface9* pCursorBitmap) {
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::SetCursorProperties()\n");
+    HOOK_DEBUG("HookedDevice::SetCursorProperties()\n");
 
     if (device)
         return IDirect3DDevice9_SetCursorProperties(device, XHotSpot, YHotSpot, pCursorBitmap);
@@ -205,7 +205,7 @@ static HRESULT STDMETHODCALLTYPE SetCursorProperties(IDirect3DDevice9 * This, UI
 static void STDMETHODCALLTYPE SetCursorPosition(IDirect3DDevice9 * This, int X, int Y, DWORD Flags) {
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::SetCursorPosition()\n");
+    HOOK_DEBUG("HookedDevice::SetCursorPosition()\n");
 
     if (device)
         return IDirect3DDevice9_SetCursorPosition(device, X, Y, Flags);
@@ -217,7 +217,7 @@ static void STDMETHODCALLTYPE SetCursorPosition(IDirect3DDevice9 * This, int X, 
 static BOOL STDMETHODCALLTYPE _ShowCursor(IDirect3DDevice9 * This, BOOL bShow) {
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::ShowCursor()\n");
+    HOOK_DEBUG("HookedDevice::ShowCursor()\n");
 
     if (device)
         return IDirect3DDevice9_ShowCursor(device, bShow);
@@ -228,7 +228,7 @@ static BOOL STDMETHODCALLTYPE _ShowCursor(IDirect3DDevice9 * This, BOOL bShow) {
 }
 static HRESULT STDMETHODCALLTYPE CreateAdditionalSwapChain(IDirect3DDevice9 * This, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** pSwapChain) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::CreateAdditionalSwapChain()\n");
+    HOOK_DEBUG("HookedDevice::CreateAdditionalSwapChain()\n");
 
     if (device)
         return IDirect3DDevice9_CreateAdditionalSwapChain(device, pPresentationParameters, pSwapChain);
@@ -240,7 +240,7 @@ static HRESULT STDMETHODCALLTYPE CreateAdditionalSwapChain(IDirect3DDevice9 * Th
 static HRESULT STDMETHODCALLTYPE GetSwapChain(IDirect3DDevice9 * This, UINT iSwapChain, IDirect3DSwapChain9** pSwapChain) {
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::GetSwapChain()\n");
+    HOOK_DEBUG("HookedDevice::GetSwapChain()\n");
 
     if (device)
         return IDirect3DDevice9_GetSwapChain(device, iSwapChain, pSwapChain);
@@ -252,7 +252,7 @@ static HRESULT STDMETHODCALLTYPE GetSwapChain(IDirect3DDevice9 * This, UINT iSwa
 
 static UINT STDMETHODCALLTYPE GetNumberOfSwapChains(IDirect3DDevice9 * This) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::GetNumberOfSwapChains()\n");
+    HOOK_DEBUG("HookedDevice::GetNumberOfSwapChains()\n");
 
     if (device)
         return IDirect3DDevice9_GetNumberOfSwapChains(device);
@@ -264,7 +264,7 @@ static UINT STDMETHODCALLTYPE GetNumberOfSwapChains(IDirect3DDevice9 * This) {
 static HRESULT STDMETHODCALLTYPE Reset(IDirect3DDevice9 * This, D3DPRESENT_PARAMETERS* pPresentationParameters) {
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::Reset()\n");
+    HOOK_DEBUG("HookedDevice::Reset()\n");
 
     if (device)
         return IDirect3DDevice9_Reset(device, pPresentationParameters);
@@ -276,7 +276,7 @@ static HRESULT STDMETHODCALLTYPE Reset(IDirect3DDevice9 * This, D3DPRESENT_PARAM
 static HRESULT STDMETHODCALLTYPE Present(IDirect3DDevice9 * This, const RECT* pSourceRect, CONST RECT* pDestRect, HWND hDestWindowOverride, CONST RGNDATA* pDirtyRegion) {
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::Present()\n");
+    HOOK_DEBUG("HookedDevice::Present()\n");
 
     if (device)
         return IDirect3DDevice9_Present(device, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
@@ -289,7 +289,7 @@ static HRESULT STDMETHODCALLTYPE Present(IDirect3DDevice9 * This, const RECT* pS
 static HRESULT STDMETHODCALLTYPE GetBackBuffer(IDirect3DDevice9 * This, UINT iSwapChain, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer) {
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::GetBackBuffer()\n");
+    HOOK_DEBUG("HookedDevice::GetBackBuffer()\n");
 
     if (device)
         return IDirect3DDevice9_GetBackBuffer(device, iSwapChain, iBackBuffer, Type, ppBackBuffer);
@@ -300,7 +300,7 @@ static HRESULT STDMETHODCALLTYPE GetBackBuffer(IDirect3DDevice9 * This, UINT iSw
 }
 static HRESULT STDMETHODCALLTYPE GetRasterStatus(IDirect3DDevice9 * This, UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::GetRasterStatus()\n");
+    HOOK_DEBUG("HookedDevice::GetRasterStatus()\n");
 
     if (device)
         return IDirect3DDevice9_GetRasterStatus(device, iSwapChain, pRasterStatus);
@@ -313,7 +313,7 @@ static HRESULT STDMETHODCALLTYPE GetRasterStatus(IDirect3DDevice9 * This, UINT i
 
 static HRESULT STDMETHODCALLTYPE SetDialogBoxMode(IDirect3DDevice9 * This, BOOL bEnableDialogs) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::SetDialogBoxMode()\n");
+    HOOK_DEBUG("HookedDevice::SetDialogBoxMode()\n");
 
     if (device)
         return IDirect3DDevice9_SetDialogBoxMode(device, bEnableDialogs);
@@ -324,7 +324,7 @@ static HRESULT STDMETHODCALLTYPE SetDialogBoxMode(IDirect3DDevice9 * This, BOOL 
 
 static void STDMETHODCALLTYPE SetGammaRamp(IDirect3DDevice9 * This, UINT iSwapChain, DWORD Flags, CONST D3DGAMMARAMP* pRamp) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::SetGammaRamp()\n");
+    HOOK_DEBUG("HookedDevice::SetGammaRamp()\n");
 
     if (device)
         return IDirect3DDevice9_SetGammaRamp(device, iSwapChain, Flags, pRamp);
@@ -336,7 +336,7 @@ static void STDMETHODCALLTYPE SetGammaRamp(IDirect3DDevice9 * This, UINT iSwapCh
 static void STDMETHODCALLTYPE GetGammaRamp(IDirect3DDevice9 * This, UINT iSwapChain, D3DGAMMARAMP* pRamp) {
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::GetGammaRamp()\n");
+    HOOK_DEBUG("HookedDevice::GetGammaRamp()\n");
 
     if (device)
         return IDirect3DDevice9_GetGammaRamp(device, iSwapChain, pRamp);
@@ -346,7 +346,7 @@ static void STDMETHODCALLTYPE GetGammaRamp(IDirect3DDevice9 * This, UINT iSwapCh
 
 static HRESULT STDMETHODCALLTYPE CreateTexture(IDirect3DDevice9 * This, UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DTexture9** ppTexture, HANDLE* pSharedHandle) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::CreateTexture()\n");
+    HOOK_DEBUG("HookedDevice::CreateTexture()\n");
 
     if (device)
         return IDirect3DDevice9_CreateTexture(device, Width, Height, Levels, Usage, Format, Pool, ppTexture, pSharedHandle);
@@ -359,7 +359,7 @@ static HRESULT STDMETHODCALLTYPE CreateTexture(IDirect3DDevice9 * This, UINT Wid
 static HRESULT STDMETHODCALLTYPE CreateVolumeTexture(IDirect3DDevice9 * This, UINT Width, UINT Height, UINT Depth, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DVolumeTexture9** ppVolumeTexture, HANDLE* pSharedHandle) {
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
-    HookDebug("HookedDevice::CreateVolumeTexture()\n");
+    HOOK_DEBUG("HookedDevice::CreateVolumeTexture()\n");
 
     if (device)
         return IDirect3DDevice9_CreateVolumeTexture(device, Width, Height, Depth, Levels, Usage, Format, Pool, ppVolumeTexture, pSharedHandle);
@@ -373,7 +373,7 @@ static HRESULT STDMETHODCALLTYPE CreateCubeTexture(IDirect3DDevice9 * This, UINT
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::CreateCubeTexture()\n");
+    HOOK_DEBUG("HookedDevice::CreateCubeTexture()\n");
 
     if (device)
         return IDirect3DDevice9_CreateCubeTexture(device, EdgeLength, Levels, Usage, Format, Pool, ppCubeTexture, pSharedHandle);
@@ -386,7 +386,7 @@ static HRESULT STDMETHODCALLTYPE CreateVertexBuffer(IDirect3DDevice9 * This, UIN
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::CreateVertexBuffer()\n");
+    HOOK_DEBUG("HookedDevice::CreateVertexBuffer()\n");
 
     if (device)
         return IDirect3DDevice9_CreateVertexBuffer(device, Length, Usage, FVF, Pool, ppVertexBuffer, pSharedHandle);
@@ -400,7 +400,7 @@ static HRESULT STDMETHODCALLTYPE CreateIndexBuffer(IDirect3DDevice9 * This, UINT
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::CreateIndexBuffer()\n");
+    HOOK_DEBUG("HookedDevice::CreateIndexBuffer()\n");
 
     if (device)
         return IDirect3DDevice9_CreateIndexBuffer(device, Length, Usage, Format, Pool, ppIndexBuffer, pSharedHandle);
@@ -414,7 +414,7 @@ static HRESULT STDMETHODCALLTYPE CreateRenderTarget(IDirect3DDevice9 * This, UIN
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::CreateRenderTarget()\n");
+    HOOK_DEBUG("HookedDevice::CreateRenderTarget()\n");
 
     if (device)
         return IDirect3DDevice9_CreateRenderTarget(device, Width, Height, Format, MultiSample, MultisampleQuality, Lockable, ppSurface, pSharedHandle);
@@ -428,7 +428,7 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilSurface(IDirect3DDevice9 * Th
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::CreateDepthStencilSurface()\n");
+    HOOK_DEBUG("HookedDevice::CreateDepthStencilSurface()\n");
 
     if (device)
         return IDirect3DDevice9_CreateDepthStencilSurface(device, Width, Height, Format, MultiSample, MultisampleQuality, Discard, ppSurface, pSharedHandle);
@@ -443,7 +443,7 @@ static HRESULT STDMETHODCALLTYPE UpdateSurface(IDirect3DDevice9 * This, IDirect3
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::UpdateSurface()\n");
+    HOOK_DEBUG("HookedDevice::UpdateSurface()\n");
 
     if (device)
         return IDirect3DDevice9_UpdateSurface(device, pSourceSurface, pSourceRect, pDestinationSurface, pDestPoint);
@@ -457,7 +457,7 @@ static HRESULT STDMETHODCALLTYPE UpdateTexture(IDirect3DDevice9 * This, IDirect3
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::UpdateTexture()\n");
+    HOOK_DEBUG("HookedDevice::UpdateTexture()\n");
 
     if (device)
         return IDirect3DDevice9_UpdateTexture(device, pSourceTexture, pDestinationTexture);
@@ -472,7 +472,7 @@ static HRESULT STDMETHODCALLTYPE GetRenderTargetData(IDirect3DDevice9 * This, ID
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetRenderTargetData()\n");
+    HOOK_DEBUG("HookedDevice::GetRenderTargetData()\n");
 
     if (device)
         return IDirect3DDevice9_GetRenderTargetData(device, pRenderTarget, pDestSurface);
@@ -488,7 +488,7 @@ static HRESULT STDMETHODCALLTYPE GetFrontBufferData(IDirect3DDevice9 * This, UIN
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetFrontBufferData()\n");
+    HOOK_DEBUG("HookedDevice::GetFrontBufferData()\n");
 
     if (device)
         return IDirect3DDevice9_GetFrontBufferData(device, iSwapChain, pDestSurface);
@@ -501,7 +501,7 @@ static HRESULT STDMETHODCALLTYPE StretchRect(IDirect3DDevice9 * This, IDirect3DS
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::StretchRect()\n");
+    HOOK_DEBUG("HookedDevice::StretchRect()\n");
 
     if (device)
         return IDirect3DDevice9_StretchRect(device, pSourceSurface, pSourceRect, pDestSurface, pDestRect, Filter);
@@ -516,7 +516,7 @@ static HRESULT STDMETHODCALLTYPE ColorFill(IDirect3DDevice9 * This, IDirect3DSur
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::ColorFill()\n");
+    HOOK_DEBUG("HookedDevice::ColorFill()\n");
 
     if (device)
         return IDirect3DDevice9_ColorFill(device, pSurface, pRect, color);
@@ -530,7 +530,7 @@ static HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurface(IDirect3DDevice9 * 
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::CreateOffscreenPlainSurface()\n");
+    HOOK_DEBUG("HookedDevice::CreateOffscreenPlainSurface()\n");
 
     if (device)
         return IDirect3DDevice9_CreateOffscreenPlainSurface(device, Width, Height, Format, Pool, ppSurface, pSharedHandle);
@@ -542,7 +542,7 @@ static HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurface(IDirect3DDevice9 * 
 static HRESULT STDMETHODCALLTYPE SetRenderTarget(IDirect3DDevice9 * This, DWORD RenderTargetIndex, IDirect3DSurface9* pRenderTarget) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetRenderTarget()\n");
+    HOOK_DEBUG("HookedDevice::SetRenderTarget()\n");
 
     if (device)
         return IDirect3DDevice9_SetRenderTarget(device, RenderTargetIndex, pRenderTarget);
@@ -555,7 +555,7 @@ static HRESULT STDMETHODCALLTYPE SetRenderTarget(IDirect3DDevice9 * This, DWORD 
 static HRESULT STDMETHODCALLTYPE GetRenderTarget(IDirect3DDevice9 * This, DWORD RenderTargetIndex, IDirect3DSurface9** ppRenderTarget) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetRenderTarget()\n");
+    HOOK_DEBUG("HookedDevice::GetRenderTarget()\n");
 
     if (device)
         return IDirect3DDevice9_GetRenderTarget(device, RenderTargetIndex, ppRenderTarget);
@@ -570,7 +570,7 @@ static HRESULT STDMETHODCALLTYPE SetDepthStencilSurface(IDirect3DDevice9 * This,
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetDepthStencilSurface()\n");
+    HOOK_DEBUG("HookedDevice::SetDepthStencilSurface()\n");
 
     if (device)
         return IDirect3DDevice9_SetDepthStencilSurface(device, pNewZStencil);
@@ -584,7 +584,7 @@ static HRESULT STDMETHODCALLTYPE GetDepthStencilSurface(IDirect3DDevice9 * This,
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetDepthStencilSurface()\n");
+    HOOK_DEBUG("HookedDevice::GetDepthStencilSurface()\n");
 
     if (device)
         return IDirect3DDevice9_GetDepthStencilSurface(device, ppZStencilSurface);
@@ -595,7 +595,7 @@ static HRESULT STDMETHODCALLTYPE GetDepthStencilSurface(IDirect3DDevice9 * This,
 static HRESULT STDMETHODCALLTYPE BeginScene(IDirect3DDevice9 * This) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::BeginScene()\n");
+    HOOK_DEBUG("HookedDevice::BeginScene()\n");
 
     if (device)
         return IDirect3DDevice9_BeginScene(device);
@@ -607,7 +607,7 @@ static HRESULT STDMETHODCALLTYPE BeginScene(IDirect3DDevice9 * This) {
 static HRESULT STDMETHODCALLTYPE EndScene(IDirect3DDevice9 * This) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::EndScene()\n");
+    HOOK_DEBUG("HookedDevice::EndScene()\n");
 
     if (device)
         return IDirect3DDevice9_EndScene(device);
@@ -619,7 +619,7 @@ static HRESULT STDMETHODCALLTYPE EndScene(IDirect3DDevice9 * This) {
 static HRESULT STDMETHODCALLTYPE Clear(IDirect3DDevice9 * This, DWORD Count, CONST D3DRECT* pRects, DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::Clear()\n");
+    HOOK_DEBUG("HookedDevice::Clear()\n");
 
     if (device)
         return IDirect3DDevice9_Clear(device, Count, pRects, Flags, Color, Z, Stencil);
@@ -631,7 +631,7 @@ static HRESULT STDMETHODCALLTYPE Clear(IDirect3DDevice9 * This, DWORD Count, CON
 static HRESULT STDMETHODCALLTYPE SetTransform(IDirect3DDevice9 * This, D3DTRANSFORMSTATETYPE State, CONST D3DMATRIX* pMatrix) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetTransform()\n");
+    HOOK_DEBUG("HookedDevice::SetTransform()\n");
 
     if (device)
         return IDirect3DDevice9_SetTransform(device, State, pMatrix);
@@ -644,7 +644,7 @@ static HRESULT STDMETHODCALLTYPE GetTransform(IDirect3DDevice9 * This, D3DTRANSF
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetTransform()\n");
+    HOOK_DEBUG("HookedDevice::GetTransform()\n");
 
     if (device)
         return IDirect3DDevice9_GetTransform(device, State, pMatrix);
@@ -656,7 +656,7 @@ static HRESULT STDMETHODCALLTYPE MultiplyTransform(IDirect3DDevice9 * This, D3DT
 
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::MultiplyTransform()\n");
+    HOOK_DEBUG("HookedDevice::MultiplyTransform()\n");
 
     if (device)
         return IDirect3DDevice9_MultiplyTransform(device, State, pMatrix);
@@ -667,7 +667,7 @@ static HRESULT STDMETHODCALLTYPE MultiplyTransform(IDirect3DDevice9 * This, D3DT
 static HRESULT STDMETHODCALLTYPE SetViewport(IDirect3DDevice9 * This, CONST D3DVIEWPORT9* pViewport) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetViewport()\n");
+    HOOK_DEBUG("HookedDevice::SetViewport()\n");
 
     if (device)
         return IDirect3DDevice9_SetViewport(device, pViewport);
@@ -679,7 +679,7 @@ static HRESULT STDMETHODCALLTYPE SetViewport(IDirect3DDevice9 * This, CONST D3DV
 static HRESULT STDMETHODCALLTYPE GetViewport(IDirect3DDevice9 * This, D3DVIEWPORT9* pViewport) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetViewport()\n");
+    HOOK_DEBUG("HookedDevice::GetViewport()\n");
 
     if (device)
         return IDirect3DDevice9_GetViewport(device, pViewport);
@@ -691,7 +691,7 @@ static HRESULT STDMETHODCALLTYPE GetViewport(IDirect3DDevice9 * This, D3DVIEWPOR
 static HRESULT STDMETHODCALLTYPE SetMaterial(IDirect3DDevice9 * This, CONST D3DMATERIAL9* pMaterial) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetMaterial()\n");
+    HOOK_DEBUG("HookedDevice::SetMaterial()\n");
 
     if (device)
         return IDirect3DDevice9_SetMaterial(device, pMaterial);
@@ -703,7 +703,7 @@ static HRESULT STDMETHODCALLTYPE SetMaterial(IDirect3DDevice9 * This, CONST D3DM
 static HRESULT STDMETHODCALLTYPE GetMaterial(IDirect3DDevice9 * This, D3DMATERIAL9* pMaterial) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetMaterial()\n");
+    HOOK_DEBUG("HookedDevice::GetMaterial()\n");
 
     if (device)
         return IDirect3DDevice9_GetMaterial(device, pMaterial);
@@ -715,7 +715,7 @@ static HRESULT STDMETHODCALLTYPE GetMaterial(IDirect3DDevice9 * This, D3DMATERIA
 static HRESULT STDMETHODCALLTYPE SetLight(IDirect3DDevice9 * This, DWORD Index, CONST D3DLIGHT9 *pLight) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetLight()\n");
+    HOOK_DEBUG("HookedDevice::SetLight()\n");
 
     if (device)
         return IDirect3DDevice9_SetLight(device, Index, pLight);
@@ -726,7 +726,7 @@ static HRESULT STDMETHODCALLTYPE SetLight(IDirect3DDevice9 * This, DWORD Index, 
 static HRESULT STDMETHODCALLTYPE GetLight(IDirect3DDevice9 * This, DWORD Index, D3DLIGHT9 *pLight) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetLight()\n");
+    HOOK_DEBUG("HookedDevice::GetLight()\n");
 
     if (device)
         return IDirect3DDevice9_GetLight(device, Index, pLight);
@@ -737,7 +737,7 @@ static HRESULT STDMETHODCALLTYPE GetLight(IDirect3DDevice9 * This, DWORD Index, 
 static HRESULT STDMETHODCALLTYPE LightEnable(IDirect3DDevice9 * This, DWORD Index, BOOL Enable) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::LightEnable()\n");
+    HOOK_DEBUG("HookedDevice::LightEnable()\n");
 
     if (device)
         return IDirect3DDevice9_LightEnable(device, Index, Enable);
@@ -748,7 +748,7 @@ static HRESULT STDMETHODCALLTYPE LightEnable(IDirect3DDevice9 * This, DWORD Inde
 static HRESULT STDMETHODCALLTYPE GetLightEnable(IDirect3DDevice9 * This, DWORD Index, BOOL* pEnable) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetLightEnable()\n");
+    HOOK_DEBUG("HookedDevice::GetLightEnable()\n");
 
     if (device)
         return IDirect3DDevice9_GetLightEnable(device, Index, pEnable);
@@ -759,7 +759,7 @@ static HRESULT STDMETHODCALLTYPE GetLightEnable(IDirect3DDevice9 * This, DWORD I
 static HRESULT STDMETHODCALLTYPE SetClipPlane(IDirect3DDevice9 * This, DWORD Index, CONST float* pPlane) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetClipPlane()\n");
+    HOOK_DEBUG("HookedDevice::SetClipPlane()\n");
 
     if (device)
         return IDirect3DDevice9_SetClipPlane(device, Index, pPlane);
@@ -770,7 +770,7 @@ static HRESULT STDMETHODCALLTYPE SetClipPlane(IDirect3DDevice9 * This, DWORD Ind
 static HRESULT STDMETHODCALLTYPE GetClipPlane(IDirect3DDevice9 * This, DWORD Index, float* pPlane) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetClipPlane()\n");
+    HOOK_DEBUG("HookedDevice::GetClipPlane()\n");
 
     if (device)
         return IDirect3DDevice9_GetClipPlane(device, Index, pPlane);
@@ -781,7 +781,7 @@ static HRESULT STDMETHODCALLTYPE GetClipPlane(IDirect3DDevice9 * This, DWORD Ind
 static HRESULT STDMETHODCALLTYPE SetRenderState(IDirect3DDevice9 * This, D3DRENDERSTATETYPE State, DWORD Value) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetRenderState()\n");
+    HOOK_DEBUG("HookedDevice::SetRenderState()\n");
 
     if (device)
         return IDirect3DDevice9_SetRenderState(device, State, Value);
@@ -791,7 +791,7 @@ static HRESULT STDMETHODCALLTYPE SetRenderState(IDirect3DDevice9 * This, D3DREND
 static HRESULT STDMETHODCALLTYPE GetRenderState(IDirect3DDevice9 * This, D3DRENDERSTATETYPE State, DWORD* pValue) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetRenderState()\n");
+    HOOK_DEBUG("HookedDevice::GetRenderState()\n");
 
     if (device)
         return IDirect3DDevice9_GetRenderState(device, State, pValue);
@@ -801,7 +801,7 @@ static HRESULT STDMETHODCALLTYPE GetRenderState(IDirect3DDevice9 * This, D3DREND
 static HRESULT STDMETHODCALLTYPE CreateStateBlock(IDirect3DDevice9 * This, D3DSTATEBLOCKTYPE Type, IDirect3DStateBlock9** ppSB) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::CreateStateBlock()\n");
+    HOOK_DEBUG("HookedDevice::CreateStateBlock()\n");
 
     if (device)
         return IDirect3DDevice9_CreateStateBlock(device, Type, ppSB);
@@ -812,7 +812,7 @@ static HRESULT STDMETHODCALLTYPE CreateStateBlock(IDirect3DDevice9 * This, D3DST
 static HRESULT STDMETHODCALLTYPE BeginStateBlock(IDirect3DDevice9 * This) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::BeginStateBlock()\n");
+    HOOK_DEBUG("HookedDevice::BeginStateBlock()\n");
 
     if (device)
         return IDirect3DDevice9_BeginStateBlock(device);
@@ -822,7 +822,7 @@ static HRESULT STDMETHODCALLTYPE BeginStateBlock(IDirect3DDevice9 * This) {
 static HRESULT STDMETHODCALLTYPE EndStateBlock(IDirect3DDevice9 * This, IDirect3DStateBlock9** ppSB) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::EndStateBlock()\n");
+    HOOK_DEBUG("HookedDevice::EndStateBlock()\n");
 
     if (device)
         return IDirect3DDevice9_EndStateBlock(device, ppSB);
@@ -833,7 +833,7 @@ static HRESULT STDMETHODCALLTYPE EndStateBlock(IDirect3DDevice9 * This, IDirect3
 static HRESULT STDMETHODCALLTYPE SetClipStatus(IDirect3DDevice9 * This, CONST D3DCLIPSTATUS9* pClipStatus) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetClipStatus()\n");
+    HOOK_DEBUG("HookedDevice::SetClipStatus()\n");
 
     if (device)
         return IDirect3DDevice9_SetClipStatus(device, pClipStatus);
@@ -844,7 +844,7 @@ static HRESULT STDMETHODCALLTYPE SetClipStatus(IDirect3DDevice9 * This, CONST D3
 static HRESULT STDMETHODCALLTYPE GetClipStatus(IDirect3DDevice9 * This, D3DCLIPSTATUS9* pClipStatus) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetClipStatus()\n");
+    HOOK_DEBUG("HookedDevice::GetClipStatus()\n");
 
     if (device)
         return IDirect3DDevice9_GetClipStatus(device, pClipStatus);
@@ -855,7 +855,7 @@ static HRESULT STDMETHODCALLTYPE GetClipStatus(IDirect3DDevice9 * This, D3DCLIPS
 static HRESULT STDMETHODCALLTYPE GetTexture(IDirect3DDevice9 * This, DWORD Stage, IDirect3DBaseTexture9** ppTexture) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetTexture()\n");
+    HOOK_DEBUG("HookedDevice::GetTexture()\n");
 
     if (device)
         return IDirect3DDevice9_GetTexture(device, Stage, ppTexture);
@@ -866,7 +866,7 @@ static HRESULT STDMETHODCALLTYPE GetTexture(IDirect3DDevice9 * This, DWORD Stage
 static HRESULT STDMETHODCALLTYPE SetTexture(IDirect3DDevice9 * This, DWORD Stage, IDirect3DBaseTexture9* ppTexture) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetTexture()\n");
+    HOOK_DEBUG("HookedDevice::SetTexture()\n");
 
     if (device)
         return IDirect3DDevice9_SetTexture(device, Stage, ppTexture);
@@ -876,7 +876,7 @@ static HRESULT STDMETHODCALLTYPE SetTexture(IDirect3DDevice9 * This, DWORD Stage
 static HRESULT STDMETHODCALLTYPE GetTextureStageState(IDirect3DDevice9 * This, DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD* pValue) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetTextureStageState()\n");
+    HOOK_DEBUG("HookedDevice::GetTextureStageState()\n");
 
     if (device)
         return IDirect3DDevice9_GetTextureStageState(device, Stage, Type, pValue);
@@ -887,7 +887,7 @@ static HRESULT STDMETHODCALLTYPE GetTextureStageState(IDirect3DDevice9 * This, D
 static HRESULT STDMETHODCALLTYPE SetTextureStageState(IDirect3DDevice9 * This, DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD Value) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetTextureStageState()\n");
+    HOOK_DEBUG("HookedDevice::SetTextureStageState()\n");
 
     if (device)
         return IDirect3DDevice9_SetTextureStageState(device, Stage, Type, Value);
@@ -898,7 +898,7 @@ static HRESULT STDMETHODCALLTYPE SetTextureStageState(IDirect3DDevice9 * This, D
 static HRESULT STDMETHODCALLTYPE GetSamplerState(IDirect3DDevice9 * This, DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD* pValue) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetSamplerState()\n");
+    HOOK_DEBUG("HookedDevice::GetSamplerState()\n");
 
     if (device)
         return IDirect3DDevice9_GetSamplerState(device, Sampler, Type, pValue);
@@ -909,7 +909,7 @@ static HRESULT STDMETHODCALLTYPE GetSamplerState(IDirect3DDevice9 * This, DWORD 
 static HRESULT STDMETHODCALLTYPE SetSamplerState(IDirect3DDevice9 * This, DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD Value) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetSamplerState()\n");
+    HOOK_DEBUG("HookedDevice::SetSamplerState()\n");
 
     if (device)
         return IDirect3DDevice9_SetSamplerState(device, Sampler, Type, Value);
@@ -920,7 +920,7 @@ static HRESULT STDMETHODCALLTYPE SetSamplerState(IDirect3DDevice9 * This, DWORD 
 static HRESULT STDMETHODCALLTYPE ValidateDevice(IDirect3DDevice9 * This, DWORD* pNumPasses) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::ValidateDevice()\n");
+    HOOK_DEBUG("HookedDevice::ValidateDevice()\n");
 
     if (device)
         return IDirect3DDevice9_ValidateDevice(device, pNumPasses);
@@ -931,7 +931,7 @@ static HRESULT STDMETHODCALLTYPE ValidateDevice(IDirect3DDevice9 * This, DWORD* 
 static HRESULT STDMETHODCALLTYPE _SetPaletteEntries(IDirect3DDevice9 * This, UINT PaletteNumber, CONST PALETTEENTRY* pEntries) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetPaletteEntries()\n");
+    HOOK_DEBUG("HookedDevice::SetPaletteEntries()\n");
 
     if (device)
         return IDirect3DDevice9_SetPaletteEntries(device, PaletteNumber, pEntries);
@@ -941,7 +941,7 @@ static HRESULT STDMETHODCALLTYPE _SetPaletteEntries(IDirect3DDevice9 * This, UIN
 static HRESULT STDMETHODCALLTYPE _GetPaletteEntries(IDirect3DDevice9 * This, UINT PaletteNumber, PALETTEENTRY* pEntries) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetPaletteEntries()\n");
+    HOOK_DEBUG("HookedDevice::GetPaletteEntries()\n");
 
     if (device)
         return IDirect3DDevice9_GetPaletteEntries(device, PaletteNumber, pEntries);
@@ -952,7 +952,7 @@ static HRESULT STDMETHODCALLTYPE _GetPaletteEntries(IDirect3DDevice9 * This, UIN
 static HRESULT STDMETHODCALLTYPE SetCurrentTexturePalette(IDirect3DDevice9 * This, UINT PaletteNumber) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetCurrentTexturePalette()\n");
+    HOOK_DEBUG("HookedDevice::SetCurrentTexturePalette()\n");
 
     if (device)
         return IDirect3DDevice9_SetCurrentTexturePalette(device, PaletteNumber);
@@ -962,7 +962,7 @@ static HRESULT STDMETHODCALLTYPE SetCurrentTexturePalette(IDirect3DDevice9 * Thi
 static HRESULT STDMETHODCALLTYPE GetCurrentTexturePalette(IDirect3DDevice9 * This, UINT *PaletteNumber) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetCurrentTexturePalette()\n");
+    HOOK_DEBUG("HookedDevice::GetCurrentTexturePalette()\n");
 
     if (device)
         return IDirect3DDevice9_GetCurrentTexturePalette(device, PaletteNumber);
@@ -973,7 +973,7 @@ static HRESULT STDMETHODCALLTYPE GetCurrentTexturePalette(IDirect3DDevice9 * Thi
 static HRESULT STDMETHODCALLTYPE SetScissorRect(IDirect3DDevice9 * This, CONST RECT* pRect) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetScissorRect()\n");
+    HOOK_DEBUG("HookedDevice::SetScissorRect()\n");
 
     if (device)
         return IDirect3DDevice9_SetScissorRect(device, pRect);
@@ -983,7 +983,7 @@ static HRESULT STDMETHODCALLTYPE SetScissorRect(IDirect3DDevice9 * This, CONST R
 static HRESULT STDMETHODCALLTYPE GetScissorRect(IDirect3DDevice9 * This, RECT* pRect) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetScissorRect()\n");
+    HOOK_DEBUG("HookedDevice::GetScissorRect()\n");
 
     if (device)
         return IDirect3DDevice9_GetScissorRect(device, pRect);
@@ -993,7 +993,7 @@ static HRESULT STDMETHODCALLTYPE GetScissorRect(IDirect3DDevice9 * This, RECT* p
 static HRESULT STDMETHODCALLTYPE SetSoftwareVertexProcessing(IDirect3DDevice9 * This, BOOL bSoftware) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetSoftwareVertexProcessing()\n");
+    HOOK_DEBUG("HookedDevice::SetSoftwareVertexProcessing()\n");
 
     if (device)
         return IDirect3DDevice9_SetSoftwareVertexProcessing(device, bSoftware);
@@ -1004,7 +1004,7 @@ static HRESULT STDMETHODCALLTYPE SetSoftwareVertexProcessing(IDirect3DDevice9 * 
 static BOOL STDMETHODCALLTYPE GetSoftwareVertexProcessing(IDirect3DDevice9 * This) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetSoftwareVertexProcessing()\n");
+    HOOK_DEBUG("HookedDevice::GetSoftwareVertexProcessing()\n");
 
     if (device)
         return IDirect3DDevice9_GetSoftwareVertexProcessing(device);
@@ -1014,7 +1014,7 @@ static BOOL STDMETHODCALLTYPE GetSoftwareVertexProcessing(IDirect3DDevice9 * Thi
 static HRESULT STDMETHODCALLTYPE SetNPatchMode(IDirect3DDevice9 * This, float nSegments) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetNPatchMode()\n");
+    HOOK_DEBUG("HookedDevice::SetNPatchMode()\n");
 
     if (device)
         return IDirect3DDevice9_SetNPatchMode(device, nSegments);
@@ -1024,7 +1024,7 @@ static HRESULT STDMETHODCALLTYPE SetNPatchMode(IDirect3DDevice9 * This, float nS
 static float STDMETHODCALLTYPE GetNPatchMode(IDirect3DDevice9 * This) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetNPatchMode()\n");
+    HOOK_DEBUG("HookedDevice::GetNPatchMode()\n");
 
     if (device)
         return IDirect3DDevice9_GetNPatchMode(device);
@@ -1036,7 +1036,7 @@ static float STDMETHODCALLTYPE GetNPatchMode(IDirect3DDevice9 * This) {
 static HRESULT STDMETHODCALLTYPE DrawPrimitive(IDirect3DDevice9 * This, D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::DrawPrimitive()\n");
+    HOOK_DEBUG("HookedDevice::DrawPrimitive()\n");
 
     if (device)
         return IDirect3DDevice9_DrawPrimitive(device, PrimitiveType, StartVertex, PrimitiveCount);
@@ -1048,7 +1048,7 @@ static HRESULT STDMETHODCALLTYPE DrawPrimitive(IDirect3DDevice9 * This, D3DPRIMI
 static HRESULT STDMETHODCALLTYPE DrawIndexedPrimitive(IDirect3DDevice9 * This, D3DPRIMITIVETYPE Type, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::DrawIndexedPrimitive()\n");
+    HOOK_DEBUG("HookedDevice::DrawIndexedPrimitive()\n");
 
     if (device)
         return IDirect3DDevice9_DrawIndexedPrimitive(device, Type, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
@@ -1060,7 +1060,7 @@ static HRESULT STDMETHODCALLTYPE DrawIndexedPrimitive(IDirect3DDevice9 * This, D
 static HRESULT STDMETHODCALLTYPE DrawPrimitiveUP(IDirect3DDevice9 * This, D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::DrawPrimitiveUP()\n");
+    HOOK_DEBUG("HookedDevice::DrawPrimitiveUP()\n");
 
     if (device)
         return IDirect3DDevice9_DrawPrimitiveUP(device, PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
@@ -1071,7 +1071,7 @@ static HRESULT STDMETHODCALLTYPE DrawPrimitiveUP(IDirect3DDevice9 * This, D3DPRI
 static HRESULT STDMETHODCALLTYPE DrawIndexedPrimitiveUP(IDirect3DDevice9 * This, D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertices, UINT PrimitiveCount, CONST void* pIndexData, D3DFORMAT IndexDataFormat, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::DrawIndexedPrimitiveUP()\n");
+    HOOK_DEBUG("HookedDevice::DrawIndexedPrimitiveUP()\n");
 
     if (device)
         return IDirect3DDevice9_DrawIndexedPrimitiveUP(device, PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride);
@@ -1083,7 +1083,7 @@ static HRESULT STDMETHODCALLTYPE DrawIndexedPrimitiveUP(IDirect3DDevice9 * This,
 static HRESULT STDMETHODCALLTYPE ProcessVertices(IDirect3DDevice9 * This, UINT SrcStartIndex, UINT DestIndex, UINT VertexCount, IDirect3DVertexBuffer9* pDestBuffer, IDirect3DVertexDeclaration9* pVertexDecl, DWORD Flags) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::ProcessVertices()\n");
+    HOOK_DEBUG("HookedDevice::ProcessVertices()\n");
 
     if (device)
         return IDirect3DDevice9_ProcessVertices(device, SrcStartIndex, DestIndex, VertexCount, pDestBuffer, pVertexDecl, Flags);
@@ -1094,7 +1094,7 @@ static HRESULT STDMETHODCALLTYPE ProcessVertices(IDirect3DDevice9 * This, UINT S
 static HRESULT STDMETHODCALLTYPE CreateVertexDeclaration(IDirect3DDevice9 * This, CONST D3DVERTEXELEMENT9* pVertexElements, IDirect3DVertexDeclaration9** ppDecl) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::CreateVertexDeclaration()\n");
+    HOOK_DEBUG("HookedDevice::CreateVertexDeclaration()\n");
 
     if (device)
         return IDirect3DDevice9_CreateVertexDeclaration(device, pVertexElements, ppDecl);
@@ -1106,7 +1106,7 @@ static HRESULT STDMETHODCALLTYPE CreateVertexDeclaration(IDirect3DDevice9 * This
 static HRESULT STDMETHODCALLTYPE SetVertexDeclaration(IDirect3DDevice9 * This, IDirect3DVertexDeclaration9* pDecl) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetVertexDeclaration()\n");
+    HOOK_DEBUG("HookedDevice::SetVertexDeclaration()\n");
 
     if (device)
         return IDirect3DDevice9_SetVertexDeclaration(device, pDecl);
@@ -1117,7 +1117,7 @@ static HRESULT STDMETHODCALLTYPE SetVertexDeclaration(IDirect3DDevice9 * This, I
 static HRESULT STDMETHODCALLTYPE GetVertexDeclaration(IDirect3DDevice9 * This, IDirect3DVertexDeclaration9** ppDecl) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetVertexDeclaration()\n");
+    HOOK_DEBUG("HookedDevice::GetVertexDeclaration()\n");
 
     if (device)
         return IDirect3DDevice9_GetVertexDeclaration(device, ppDecl);
@@ -1128,7 +1128,7 @@ static HRESULT STDMETHODCALLTYPE GetVertexDeclaration(IDirect3DDevice9 * This, I
 static HRESULT STDMETHODCALLTYPE SetFVF(IDirect3DDevice9 * This, DWORD FVF) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetFVF()\n");
+    HOOK_DEBUG("HookedDevice::SetFVF()\n");
 
     if (device)
         return IDirect3DDevice9_SetFVF(device, FVF);
@@ -1139,7 +1139,7 @@ static HRESULT STDMETHODCALLTYPE SetFVF(IDirect3DDevice9 * This, DWORD FVF) {
 static HRESULT STDMETHODCALLTYPE GetFVF(IDirect3DDevice9 * This, DWORD* pFVF) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetFVF()\n");
+    HOOK_DEBUG("HookedDevice::GetFVF()\n");
 
     if (device)
         return IDirect3DDevice9_GetFVF(device, pFVF);
@@ -1150,7 +1150,7 @@ static HRESULT STDMETHODCALLTYPE GetFVF(IDirect3DDevice9 * This, DWORD* pFVF) {
 static HRESULT STDMETHODCALLTYPE CreateVertexShader(IDirect3DDevice9 * This, CONST DWORD* pFunction, IDirect3DVertexShader9** ppShader) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::CreateVertexShader()\n");
+    HOOK_DEBUG("HookedDevice::CreateVertexShader()\n");
 
     if (device)
         return IDirect3DDevice9_CreateVertexShader(device, pFunction, ppShader);
@@ -1161,7 +1161,7 @@ static HRESULT STDMETHODCALLTYPE CreateVertexShader(IDirect3DDevice9 * This, CON
 static HRESULT STDMETHODCALLTYPE SetVertexShader(IDirect3DDevice9 * This, IDirect3DVertexShader9* pShader) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetVertexShader()\n");
+    HOOK_DEBUG("HookedDevice::SetVertexShader()\n");
 
     if (device)
         return IDirect3DDevice9_SetVertexShader(device, pShader);
@@ -1173,7 +1173,7 @@ static HRESULT STDMETHODCALLTYPE SetVertexShader(IDirect3DDevice9 * This, IDirec
 static HRESULT STDMETHODCALLTYPE GetVertexShader(IDirect3DDevice9 * This, IDirect3DVertexShader9** ppShader) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetVertexShader()\n");
+    HOOK_DEBUG("HookedDevice::GetVertexShader()\n");
 
     if (device)
         return IDirect3DDevice9_GetVertexShader(device, ppShader);
@@ -1184,7 +1184,7 @@ static HRESULT STDMETHODCALLTYPE GetVertexShader(IDirect3DDevice9 * This, IDirec
 static HRESULT STDMETHODCALLTYPE SetVertexShaderConstantF(IDirect3DDevice9 * This, UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetVertexShaderConstantF()\n");
+    HOOK_DEBUG("HookedDevice::SetVertexShaderConstantF()\n");
 
     if (device)
         return IDirect3DDevice9_SetVertexShaderConstantF(device, StartRegister, pConstantData, Vector4fCount);
@@ -1196,7 +1196,7 @@ static HRESULT STDMETHODCALLTYPE SetVertexShaderConstantF(IDirect3DDevice9 * Thi
 static HRESULT STDMETHODCALLTYPE GetVertexShaderConstantF(IDirect3DDevice9 * This, UINT StartRegister, float* pConstantData, UINT Vector4fCount) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetVertexShaderConstantF()\n");
+    HOOK_DEBUG("HookedDevice::GetVertexShaderConstantF()\n");
 
     if (device)
         return IDirect3DDevice9_GetVertexShaderConstantF(device, StartRegister, pConstantData, Vector4fCount);
@@ -1208,7 +1208,7 @@ static HRESULT STDMETHODCALLTYPE GetVertexShaderConstantF(IDirect3DDevice9 * Thi
 static HRESULT STDMETHODCALLTYPE SetVertexShaderConstantI(IDirect3DDevice9 * This, UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetVertexShaderConstantI()\n");
+    HOOK_DEBUG("HookedDevice::SetVertexShaderConstantI()\n");
 
     if (device)
         return IDirect3DDevice9_SetVertexShaderConstantI(device, StartRegister, pConstantData, Vector4iCount);
@@ -1219,7 +1219,7 @@ static HRESULT STDMETHODCALLTYPE SetVertexShaderConstantI(IDirect3DDevice9 * Thi
 static HRESULT STDMETHODCALLTYPE GetVertexShaderConstantI(IDirect3DDevice9 * This, UINT StartRegister, int* pConstantData, UINT Vector4iCount) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetVertexShaderConstantI()\n");
+    HOOK_DEBUG("HookedDevice::GetVertexShaderConstantI()\n");
 
     if (device)
         return IDirect3DDevice9_GetVertexShaderConstantI(device, StartRegister, pConstantData, Vector4iCount);
@@ -1231,7 +1231,7 @@ static HRESULT STDMETHODCALLTYPE GetVertexShaderConstantI(IDirect3DDevice9 * Thi
 static HRESULT STDMETHODCALLTYPE SetVertexShaderConstantB(IDirect3DDevice9 * This, UINT StartRegister, CONST BOOL* pConstantData, UINT  BoolCount) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetVertexShaderConstantB()\n");
+    HOOK_DEBUG("HookedDevice::SetVertexShaderConstantB()\n");
 
     if (device)
         return IDirect3DDevice9_SetVertexShaderConstantB(device, StartRegister, pConstantData, BoolCount);
@@ -1243,7 +1243,7 @@ static HRESULT STDMETHODCALLTYPE SetVertexShaderConstantB(IDirect3DDevice9 * Thi
 static HRESULT STDMETHODCALLTYPE GetVertexShaderConstantB(IDirect3DDevice9 * This, UINT StartRegister, BOOL* pConstantData, UINT BoolCount) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetVertexShaderConstantB()\n");
+    HOOK_DEBUG("HookedDevice::GetVertexShaderConstantB()\n");
 
     if (device)
         return IDirect3DDevice9_GetVertexShaderConstantB(device, StartRegister, pConstantData, BoolCount);
@@ -1255,7 +1255,7 @@ static HRESULT STDMETHODCALLTYPE GetVertexShaderConstantB(IDirect3DDevice9 * Thi
 static HRESULT STDMETHODCALLTYPE SetStreamSource(IDirect3DDevice9 * This, UINT StreamNumber, IDirect3DVertexBuffer9* pStreamData, UINT OffsetInBytes, UINT Stride) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetStreamSource()\n");
+    HOOK_DEBUG("HookedDevice::SetStreamSource()\n");
 
     if (device)
         return IDirect3DDevice9_SetStreamSource(device, StreamNumber, pStreamData, OffsetInBytes, Stride);
@@ -1267,7 +1267,7 @@ static HRESULT STDMETHODCALLTYPE SetStreamSource(IDirect3DDevice9 * This, UINT S
 static HRESULT STDMETHODCALLTYPE GetStreamSource(IDirect3DDevice9 * This, UINT StreamNumber, IDirect3DVertexBuffer9** ppStreamData, UINT* pOffsetInBytes, UINT* pStride) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetStreamSource()\n");
+    HOOK_DEBUG("HookedDevice::GetStreamSource()\n");
 
     if (device)
         return IDirect3DDevice9_GetStreamSource(device, StreamNumber, ppStreamData, pOffsetInBytes, pStride);
@@ -1279,7 +1279,7 @@ static HRESULT STDMETHODCALLTYPE GetStreamSource(IDirect3DDevice9 * This, UINT S
 static HRESULT STDMETHODCALLTYPE SetStreamSourceFreq(IDirect3DDevice9 * This, UINT StreamNumber, UINT Setting) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetStreamSourceFreq()\n");
+    HOOK_DEBUG("HookedDevice::SetStreamSourceFreq()\n");
 
     if (device)
         return IDirect3DDevice9_SetStreamSourceFreq(device, StreamNumber, Setting);
@@ -1291,7 +1291,7 @@ static HRESULT STDMETHODCALLTYPE SetStreamSourceFreq(IDirect3DDevice9 * This, UI
 static HRESULT STDMETHODCALLTYPE GetStreamSourceFreq(IDirect3DDevice9 * This, UINT StreamNumber, UINT* pSetting) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetStreamSourceFreq()\n");
+    HOOK_DEBUG("HookedDevice::GetStreamSourceFreq()\n");
 
     if (device)
         return IDirect3DDevice9_GetStreamSourceFreq(device, StreamNumber, pSetting);
@@ -1303,7 +1303,7 @@ static HRESULT STDMETHODCALLTYPE GetStreamSourceFreq(IDirect3DDevice9 * This, UI
 static HRESULT STDMETHODCALLTYPE SetIndices(IDirect3DDevice9 * This, IDirect3DIndexBuffer9* pIndexData) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetIndices()\n");
+    HOOK_DEBUG("HookedDevice::SetIndices()\n");
 
     if (device)
         return IDirect3DDevice9_SetIndices(device, pIndexData);
@@ -1314,7 +1314,7 @@ static HRESULT STDMETHODCALLTYPE SetIndices(IDirect3DDevice9 * This, IDirect3DIn
 static HRESULT STDMETHODCALLTYPE GetIndices(IDirect3DDevice9 * This, IDirect3DIndexBuffer9** ppIndexData) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetIndices()\n");
+    HOOK_DEBUG("HookedDevice::GetIndices()\n");
 
     if (device)
         return IDirect3DDevice9_GetIndices(device, ppIndexData);
@@ -1326,7 +1326,7 @@ static HRESULT STDMETHODCALLTYPE GetIndices(IDirect3DDevice9 * This, IDirect3DIn
 static HRESULT STDMETHODCALLTYPE CreatePixelShader(IDirect3DDevice9 * This, CONST DWORD* pFunction, IDirect3DPixelShader9** ppShader) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::CreatePixelShader()\n");
+    HOOK_DEBUG("HookedDevice::CreatePixelShader()\n");
 
     if (device)
         return IDirect3DDevice9_CreatePixelShader(device, pFunction, ppShader);
@@ -1338,7 +1338,7 @@ static HRESULT STDMETHODCALLTYPE CreatePixelShader(IDirect3DDevice9 * This, CONS
 static HRESULT STDMETHODCALLTYPE SetPixelShader(IDirect3DDevice9 * This, IDirect3DPixelShader9* pShader) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetPixelShader()\n");
+    HOOK_DEBUG("HookedDevice::SetPixelShader()\n");
 
     if (device)
         return IDirect3DDevice9_SetPixelShader(device, pShader);
@@ -1350,7 +1350,7 @@ static HRESULT STDMETHODCALLTYPE SetPixelShader(IDirect3DDevice9 * This, IDirect
 static HRESULT STDMETHODCALLTYPE GetPixelShader(IDirect3DDevice9 * This, IDirect3DPixelShader9** ppShader) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetPixelShader()\n");
+    HOOK_DEBUG("HookedDevice::GetPixelShader()\n");
 
     if (device)
         return IDirect3DDevice9_GetPixelShader(device, ppShader);
@@ -1362,7 +1362,7 @@ static HRESULT STDMETHODCALLTYPE GetPixelShader(IDirect3DDevice9 * This, IDirect
 static HRESULT STDMETHODCALLTYPE SetPixelShaderConstantF(IDirect3DDevice9 * This, UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetPixelShaderConstantF()\n");
+    HOOK_DEBUG("HookedDevice::SetPixelShaderConstantF()\n");
 
     if (device)
         return IDirect3DDevice9_SetPixelShaderConstantF(device, StartRegister, pConstantData, Vector4fCount);
@@ -1374,7 +1374,7 @@ static HRESULT STDMETHODCALLTYPE SetPixelShaderConstantF(IDirect3DDevice9 * This
 static HRESULT STDMETHODCALLTYPE GetPixelShaderConstantF(IDirect3DDevice9 * This, UINT StartRegister, float* pConstantData, UINT Vector4fCount) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetPixelShaderConstantF()\n");
+    HOOK_DEBUG("HookedDevice::GetPixelShaderConstantF()\n");
 
     if (device)
         return IDirect3DDevice9_GetPixelShaderConstantF(device, StartRegister, pConstantData, Vector4fCount);
@@ -1386,7 +1386,7 @@ static HRESULT STDMETHODCALLTYPE GetPixelShaderConstantF(IDirect3DDevice9 * This
 static HRESULT STDMETHODCALLTYPE SetPixelShaderConstantI(IDirect3DDevice9 * This, UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetPixelShaderConstantI()\n");
+    HOOK_DEBUG("HookedDevice::SetPixelShaderConstantI()\n");
 
     if (device)
         return IDirect3DDevice9_SetPixelShaderConstantI(device, StartRegister, pConstantData, Vector4iCount);
@@ -1398,7 +1398,7 @@ static HRESULT STDMETHODCALLTYPE SetPixelShaderConstantI(IDirect3DDevice9 * This
 static HRESULT STDMETHODCALLTYPE GetPixelShaderConstantI(IDirect3DDevice9 * This, UINT StartRegister, int* pConstantData, UINT Vector4iCount) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetPixelShaderConstantI()\n");
+    HOOK_DEBUG("HookedDevice::GetPixelShaderConstantI()\n");
 
     if (device)
         return IDirect3DDevice9_GetPixelShaderConstantI(device, StartRegister, pConstantData, Vector4iCount);
@@ -1410,7 +1410,7 @@ static HRESULT STDMETHODCALLTYPE GetPixelShaderConstantI(IDirect3DDevice9 * This
 static HRESULT STDMETHODCALLTYPE SetPixelShaderConstantB(IDirect3DDevice9 * This, UINT StartRegister, CONST BOOL* pConstantData, UINT BoolCount) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::SetPixelShaderConstantB()\n");
+    HOOK_DEBUG("HookedDevice::SetPixelShaderConstantB()\n");
 
     if (device)
         return IDirect3DDevice9_SetPixelShaderConstantB(device, StartRegister, pConstantData, BoolCount);
@@ -1422,7 +1422,7 @@ static HRESULT STDMETHODCALLTYPE SetPixelShaderConstantB(IDirect3DDevice9 * This
 static HRESULT STDMETHODCALLTYPE GetPixelShaderConstantB(IDirect3DDevice9 * This, UINT StartRegister, BOOL* pConstantData, UINT BoolCount) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::GetPixelShaderConstantB()\n");
+    HOOK_DEBUG("HookedDevice::GetPixelShaderConstantB()\n");
 
     if (device)
         return IDirect3DDevice9_GetPixelShaderConstantB(device, StartRegister, pConstantData, BoolCount);
@@ -1434,7 +1434,7 @@ static HRESULT STDMETHODCALLTYPE GetPixelShaderConstantB(IDirect3DDevice9 * This
 static HRESULT STDMETHODCALLTYPE DrawRectPatch(IDirect3DDevice9 * This, UINT Handle, CONST float* pNumSegs, CONST D3DRECTPATCH_INFO* pRectPatchInfo) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::DrawRectPatch()\n");
+    HOOK_DEBUG("HookedDevice::DrawRectPatch()\n");
 
     if (device)
         return IDirect3DDevice9_DrawRectPatch(device, Handle, pNumSegs, pRectPatchInfo);
@@ -1446,7 +1446,7 @@ static HRESULT STDMETHODCALLTYPE DrawRectPatch(IDirect3DDevice9 * This, UINT Han
 static HRESULT STDMETHODCALLTYPE DrawTriPatch(IDirect3DDevice9 * This, UINT Handle, CONST float* pNumSegs, CONST D3DTRIPATCH_INFO* pTriPatchInfo) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::DrawTriPatch()\n");
+    HOOK_DEBUG("HookedDevice::DrawTriPatch()\n");
 
     if (device)
         return IDirect3DDevice9_DrawTriPatch(device, Handle, pNumSegs, pTriPatchInfo);
@@ -1458,7 +1458,7 @@ static HRESULT STDMETHODCALLTYPE DrawTriPatch(IDirect3DDevice9 * This, UINT Hand
 static HRESULT STDMETHODCALLTYPE DeletePatch(IDirect3DDevice9 * This, UINT Handle) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::DeletePatch()\n");
+    HOOK_DEBUG("HookedDevice::DeletePatch()\n");
 
     if (device)
         return IDirect3DDevice9_DeletePatch(device, Handle);
@@ -1470,7 +1470,7 @@ static HRESULT STDMETHODCALLTYPE DeletePatch(IDirect3DDevice9 * This, UINT Handl
 static HRESULT STDMETHODCALLTYPE CreateQuery(IDirect3DDevice9 * This, D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery) {
     IDirect3DDevice9 *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDevice::CreateQuery()\n");
+    HOOK_DEBUG("HookedDevice::CreateQuery()\n");
 
     if (device)
         return IDirect3DDevice9_CreateQuery(device, Type, ppQuery);
@@ -1481,7 +1481,7 @@ static HRESULT STDMETHODCALLTYPE CreateQuery(IDirect3DDevice9 * This, D3DQUERYTY
 static HRESULT STDMETHODCALLTYPE CheckDeviceState(IDirect3DDevice9Ex * This, HWND hWindow) {
     IDirect3DDevice9Ex *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDeviceEx::CheckDeviceState()\n");
+    HOOK_DEBUG("HookedDeviceEx::CheckDeviceState()\n");
 
     if (device)
         return IDirect3DDevice9Ex_CheckDeviceState(device, hWindow);
@@ -1492,7 +1492,7 @@ static HRESULT STDMETHODCALLTYPE CheckDeviceState(IDirect3DDevice9Ex * This, HWN
 static HRESULT STDMETHODCALLTYPE CheckResourceResidency(IDirect3DDevice9Ex * This, IDirect3DResource9 **pResourceArray, UINT32 NumResources) {
     IDirect3DDevice9Ex *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDeviceEx::CheckResourceResidency()\n");
+    HOOK_DEBUG("HookedDeviceEx::CheckResourceResidency()\n");
 
     if (device)
         return IDirect3DDevice9Ex_CheckResourceResidency(device, pResourceArray, NumResources);
@@ -1502,7 +1502,7 @@ static HRESULT STDMETHODCALLTYPE CheckResourceResidency(IDirect3DDevice9Ex * Thi
 static HRESULT STDMETHODCALLTYPE ComposeRects(IDirect3DDevice9Ex * This, IDirect3DSurface9 *pSource, IDirect3DSurface9 *pDestination, IDirect3DVertexBuffer9 *pSrcRectDescriptors, UINT NumRects, IDirect3DVertexBuffer9 *pDstRectDescriptors, D3DCOMPOSERECTSOP Operation, INT XOffset, INT YOffset) {
     IDirect3DDevice9Ex *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDeviceEx::ComposeRects()\n");
+    HOOK_DEBUG("HookedDeviceEx::ComposeRects()\n");
 
     if (device)
         return IDirect3DDevice9Ex_ComposeRects(device, pSource, pDestination, pSrcRectDescriptors, NumRects, pDstRectDescriptors, Operation, XOffset, YOffset);
@@ -1512,7 +1512,7 @@ static HRESULT STDMETHODCALLTYPE ComposeRects(IDirect3DDevice9Ex * This, IDirect
 static HRESULT STDMETHODCALLTYPE CreateDepthStencilSurfaceEx(IDirect3DDevice9Ex * This, UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, IDirect3DSurface9 **ppSurface, HANDLE *pSharedHandle, DWORD Usage) {
     IDirect3DDevice9Ex *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDeviceEx::CreateDepthStencilSurfaceEx()\n");
+    HOOK_DEBUG("HookedDeviceEx::CreateDepthStencilSurfaceEx()\n");
 
     if (device)
         return IDirect3DDevice9Ex_CreateDepthStencilSurfaceEx(device, Width, Height, Format, MultiSample, MultisampleQuality, Discard, ppSurface, pSharedHandle, Usage);
@@ -1522,7 +1522,7 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilSurfaceEx(IDirect3DDevice9Ex 
 static HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurfaceEx(IDirect3DDevice9Ex * This, UINT Width, UINT Height, D3DFORMAT Format, D3DPOOL Pool, IDirect3DSurface9 **ppSurface, HANDLE *pSharedHandle, DWORD Usage) {
     IDirect3DDevice9Ex *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDeviceEx::CreateOffscreenPlainSurfaceEx()\n");
+    HOOK_DEBUG("HookedDeviceEx::CreateOffscreenPlainSurfaceEx()\n");
 
     if (device)
         return IDirect3DDevice9Ex_CreateOffscreenPlainSurfaceEx(device, Width, Height, Format, Pool, ppSurface, pSharedHandle, Usage);
@@ -1533,7 +1533,7 @@ static HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurfaceEx(IDirect3DDevice9E
 static HRESULT STDMETHODCALLTYPE CreateRenderTargetEx(IDirect3DDevice9Ex * This, UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, IDirect3DSurface9 **ppSurface, HANDLE *pSharedHandle, DWORD Usage) {
     IDirect3DDevice9Ex *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDeviceEx::CreateRenderTargetEx ()\n");
+    HOOK_DEBUG("HookedDeviceEx::CreateRenderTargetEx ()\n");
 
     if (device)
         return IDirect3DDevice9Ex_CreateRenderTargetEx(device, Width, Height, Format, MultiSample, MultisampleQuality, Lockable, ppSurface, pSharedHandle, Usage);
@@ -1544,7 +1544,7 @@ static HRESULT STDMETHODCALLTYPE CreateRenderTargetEx(IDirect3DDevice9Ex * This,
 static HRESULT STDMETHODCALLTYPE GetDisplayModeEx(IDirect3DDevice9Ex * This, UINT iSwapChain, D3DDISPLAYMODEEX *pMode, D3DDISPLAYROTATION *pRotation) {
     IDirect3DDevice9Ex *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDeviceEx::GetDisplayModeEx ()\n");
+    HOOK_DEBUG("HookedDeviceEx::GetDisplayModeEx ()\n");
 
     if (device)
         return IDirect3DDevice9Ex_GetDisplayModeEx(device, iSwapChain, pMode, pRotation);
@@ -1555,7 +1555,7 @@ static HRESULT STDMETHODCALLTYPE GetDisplayModeEx(IDirect3DDevice9Ex * This, UIN
 static HRESULT STDMETHODCALLTYPE GetGPUThreadPriority(IDirect3DDevice9Ex * This, INT *pPriority) {
     IDirect3DDevice9Ex *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDeviceEx::GetGPUThreadPriority ()\n");
+    HOOK_DEBUG("HookedDeviceEx::GetGPUThreadPriority ()\n");
 
     if (device)
         return IDirect3DDevice9Ex_GetGPUThreadPriority(device, pPriority);
@@ -1566,7 +1566,7 @@ static HRESULT STDMETHODCALLTYPE GetGPUThreadPriority(IDirect3DDevice9Ex * This,
 static HRESULT STDMETHODCALLTYPE GetMaximumFrameLatency(IDirect3DDevice9Ex * This, UINT *pMaxLatency) {
     IDirect3DDevice9Ex *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDeviceEx::GetMaximumFrameLatency ()\n");
+    HOOK_DEBUG("HookedDeviceEx::GetMaximumFrameLatency ()\n");
 
     if (device)
         return IDirect3DDevice9Ex_GetMaximumFrameLatency(device, pMaxLatency);
@@ -1577,7 +1577,7 @@ static HRESULT STDMETHODCALLTYPE GetMaximumFrameLatency(IDirect3DDevice9Ex * Thi
 static HRESULT STDMETHODCALLTYPE PresentEx(IDirect3DDevice9Ex * This, const RECT *pSourceRect, const RECT *pDestRect, HWND hDestWindowOverride, const RGNDATA *pDirtyRegion, DWORD dwFlags) {
     IDirect3DDevice9Ex *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDeviceEx::PresentEx ()\n");
+    HOOK_DEBUG("HookedDeviceEx::PresentEx ()\n");
 
     if (device)
         return IDirect3DDevice9Ex_PresentEx(device, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
@@ -1588,7 +1588,7 @@ static HRESULT STDMETHODCALLTYPE PresentEx(IDirect3DDevice9Ex * This, const RECT
 static HRESULT STDMETHODCALLTYPE ResetEx(IDirect3DDevice9Ex * This, D3DPRESENT_PARAMETERS *pPresentationParameters, D3DDISPLAYMODEEX *pFullscreenDisplayMode) {
     IDirect3DDevice9Ex *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDeviceEx::ResetEx ()\n");
+    HOOK_DEBUG("HookedDeviceEx::ResetEx ()\n");
 
     if (device)
         return IDirect3DDevice9Ex_ResetEx(device, pPresentationParameters, pFullscreenDisplayMode);
@@ -1599,7 +1599,7 @@ static HRESULT STDMETHODCALLTYPE ResetEx(IDirect3DDevice9Ex * This, D3DPRESENT_P
 static HRESULT STDMETHODCALLTYPE SetConvolutionMonoKernel(IDirect3DDevice9Ex * This, UINT Width, UINT Height, float *RowWeights, float *ColumnWeights) {
     IDirect3DDevice9Ex *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDeviceEx::SetConvolutionMonoKernel ()\n");
+    HOOK_DEBUG("HookedDeviceEx::SetConvolutionMonoKernel ()\n");
 
     if (device)
         return IDirect3DDevice9Ex_SetConvolutionMonoKernel(device, Width, Height, RowWeights, ColumnWeights);
@@ -1610,7 +1610,7 @@ static HRESULT STDMETHODCALLTYPE SetConvolutionMonoKernel(IDirect3DDevice9Ex * T
 static HRESULT STDMETHODCALLTYPE SetGPUThreadPriority(IDirect3DDevice9Ex * This, INT pPriority) {
     IDirect3DDevice9Ex *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDeviceEx::SetGPUThreadPriority ()\n");
+    HOOK_DEBUG("HookedDeviceEx::SetGPUThreadPriority ()\n");
 
     if (device)
         return IDirect3DDevice9Ex_SetGPUThreadPriority(device, pPriority);
@@ -1621,7 +1621,7 @@ static HRESULT STDMETHODCALLTYPE SetGPUThreadPriority(IDirect3DDevice9Ex * This,
 static HRESULT STDMETHODCALLTYPE SetMaximumFrameLatency(IDirect3DDevice9Ex * This, UINT pMaxLatency) {
     IDirect3DDevice9Ex *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDeviceEx::SetMaximumFrameLatency ()\n");
+    HOOK_DEBUG("HookedDeviceEx::SetMaximumFrameLatency ()\n");
 
     if (device)
         return IDirect3DDevice9Ex_SetMaximumFrameLatency(device, pMaxLatency);
@@ -1632,7 +1632,7 @@ static HRESULT STDMETHODCALLTYPE SetMaximumFrameLatency(IDirect3DDevice9Ex * Thi
 static HRESULT STDMETHODCALLTYPE WaitForVBlank(IDirect3DDevice9Ex * This, UINT SwapChainIndex) {
     IDirect3DDevice9Ex *device = lookup_hooked_device_dx9(This);
 
-    HookDebug("HookedDeviceEx::WaitForVBlank  ()\n");
+    HOOK_DEBUG("HookedDeviceEx::WaitForVBlank  ()\n");
 
     if (device)
         return IDirect3DDevice9Ex_WaitForVBlank(device, SwapChainIndex);
@@ -1834,7 +1834,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
      REFIID riid,
     __RPC__deref_out  void **ppvObject)
 {
-    HookDebug("TrampolineDevice:: QueryInterface()\n");
+    HOOK_DEBUG("TrampolineDevice:: QueryInterface()\n");
 
     return orig_vtable.QueryInterface(((IDirect3DDevice9Trampoline*)This)->orig_this, riid, ppvObject);
 }
@@ -1842,7 +1842,7 @@ template <typename Device>
 static ULONG STDMETHODCALLTYPE TrampolineAddRef(
     Device * This)
 {
-    HookDebug("TrampolineDevice:: AddRef()\n");
+    HOOK_DEBUG("TrampolineDevice:: AddRef()\n");
 
     return orig_vtable.AddRef(((IDirect3DDevice9Trampoline*)This)->orig_this);
 }
@@ -1850,7 +1850,7 @@ template <typename Device>
  static ULONG STDMETHODCALLTYPE TrampolineRelease(
      Device * This)
 {
-    HookDebug("TrampolineDevice:: Release()\n");
+    HOOK_DEBUG("TrampolineDevice:: Release()\n");
 
     return orig_vtable.Release(((IDirect3DDevice9Trampoline*)This)->orig_this);
 }
@@ -1858,14 +1858,14 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineTestCooperativeLevel(Device * This) {
 
-    HookDebug("TrampolineDevice:: TestCooperativeLevel()\n");
+    HOOK_DEBUG("TrampolineDevice:: TestCooperativeLevel()\n");
 
     return orig_vtable.TestCooperativeLevel(((IDirect3DDevice9Trampoline*)This)->orig_this);
 
 }
  template <typename Device>
  static UINT STDMETHODCALLTYPE TrampolineGetAvailableTextureMem(Device * This) {
-    HookDebug("TrampolineDevice:: TrampolineGetAvailableTextureMem()\n");
+    HOOK_DEBUG("TrampolineDevice:: TrampolineGetAvailableTextureMem()\n");
 
     return orig_vtable.GetAvailableTextureMem(((IDirect3DDevice9Trampoline*)This)->orig_this);
 
@@ -1874,7 +1874,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineEvictManagedResources(Device * This) {
 
-    HookDebug("TrampolineDevice:: EvictManagedResources()\n");
+    HOOK_DEBUG("TrampolineDevice:: EvictManagedResources()\n");
 
     return orig_vtable.EvictManagedResources(((IDirect3DDevice9Trampoline*)This)->orig_this);
 
@@ -1884,7 +1884,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetDirect3D(Device * This, IDirect3D9** ppD3D9) {
 
-    HookDebug("TrampolineDevice:: GetDirect3D()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetDirect3D()\n");
 
     return orig_vtable.GetDirect3D(((IDirect3DDevice9Trampoline*)This)->orig_this, ppD3D9);
 
@@ -1893,7 +1893,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetDeviceCaps(Device * This, D3DCAPS9* pCaps) {
 
-    HookDebug("TrampolineDevice:: GetDeviceCaps()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetDeviceCaps()\n");
 
     return orig_vtable.GetDeviceCaps(((IDirect3DDevice9Trampoline*)This)->orig_this, pCaps);
 
@@ -1901,7 +1901,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetDisplayMode(Device * This, UINT iSwapChain, D3DDISPLAYMODE* pMode) {
 
-    HookDebug("TrampolineDevice:: GetDisplayMode()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetDisplayMode()\n");
 
     return orig_vtable.GetDisplayMode(((IDirect3DDevice9Trampoline*)This)->orig_this, iSwapChain, pMode);
 
@@ -1911,7 +1911,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetCreationParameters(Device * This, D3DDEVICE_CREATION_PARAMETERS *pParameters) {
 
-    HookDebug("TrampolineDevice:: GetCreationParameters()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetCreationParameters()\n");
 
     return orig_vtable.GetCreationParameters(((IDirect3DDevice9Trampoline*)This)->orig_this, pParameters);
 
@@ -1922,7 +1922,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetCursorProperties(Device * This, UINT XHotSpot, UINT YHotSpot, IDirect3DSurface9* pCursorBitmap) {
 
-    HookDebug("TrampolineDevice:: SetCursorProperties()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetCursorProperties()\n");
 
     return orig_vtable.SetCursorProperties(((IDirect3DDevice9Trampoline*)This)->orig_this, XHotSpot, YHotSpot, pCursorBitmap);
 
@@ -1933,7 +1933,7 @@ template <typename Device>
  template <typename Device>
  static void STDMETHODCALLTYPE TrampolineSetCursorPosition(Device * This, int X, int Y, DWORD Flags) {
 
-    HookDebug("TrampolineDevice:: SetCursorPosition()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetCursorPosition()\n");
 
     return orig_vtable.SetCursorPosition(((IDirect3DDevice9Trampoline*)This)->orig_this, X, Y, Flags);
 
@@ -1941,7 +1941,7 @@ template <typename Device>
  template <typename Device>
  static BOOL STDMETHODCALLTYPE TrampolineShowCursor(Device * This, BOOL bShow) {
 
-    HookDebug("TrampolineDevice:: ShowCursor()\n");
+    HOOK_DEBUG("TrampolineDevice:: ShowCursor()\n");
 
     return orig_vtable.ShowCursor(((IDirect3DDevice9Trampoline*)This)->orig_this, bShow);
 
@@ -1950,14 +1950,14 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineCreateAdditionalSwapChain(Device * This, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** pSwapChain) {
-    HookDebug("TrampolineDevice:: CreateAdditionalSwapChain()\n");
+    HOOK_DEBUG("TrampolineDevice:: CreateAdditionalSwapChain()\n");
 
     return orig_vtable.CreateAdditionalSwapChain(((IDirect3DDevice9Trampoline*)This)->orig_this, pPresentationParameters, pSwapChain);
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetSwapChain(Device * This, UINT iSwapChain, IDirect3DSwapChain9** pSwapChain) {
 
-    HookDebug("TrampolineDevice:: GetSwapChain()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetSwapChain()\n");
 
     return orig_vtable.GetSwapChain(((IDirect3DDevice9Trampoline*)This)->orig_this, iSwapChain, pSwapChain);
 
@@ -1965,7 +1965,7 @@ template <typename Device>
 }
  template <typename Device>
  static UINT STDMETHODCALLTYPE TrampolineGetNumberOfSwapChains(Device * This) {
-    HookDebug("TrampolineDevice:: GetNumberOfSwapChains()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetNumberOfSwapChains()\n");
 
     return orig_vtable.GetNumberOfSwapChains(((IDirect3DDevice9Trampoline*)This)->orig_this);
 
@@ -1975,7 +1975,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineReset(Device * This, D3DPRESENT_PARAMETERS* pPresentationParameters) {
 
-    HookDebug("TrampolineDevice:: Reset()\n");
+    HOOK_DEBUG("TrampolineDevice:: Reset()\n");
 
     return orig_vtable.Reset(((IDirect3DDevice9Trampoline*)This)->orig_this, pPresentationParameters);
 
@@ -1985,7 +1985,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolinePresent(Device * This, const RECT* pSourceRect, CONST RECT* pDestRect, HWND hDestWindowOverride, CONST RGNDATA* pDirtyRegion) {
 
-    HookDebug("TrampolineDevice:: Present()\n");
+    HOOK_DEBUG("TrampolineDevice:: Present()\n");
 
     return orig_vtable.Present(((IDirect3DDevice9Trampoline*)This)->orig_this, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
 
@@ -1995,7 +1995,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetBackBuffer(Device * This, UINT iSwapChain, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer) {
 
-    HookDebug("TrampolineDevice:: GetBackBuffer()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetBackBuffer()\n");
 
     return orig_vtable.GetBackBuffer(((IDirect3DDevice9Trampoline*)This)->orig_this, iSwapChain, iBackBuffer, Type, ppBackBuffer);
 
@@ -2003,7 +2003,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetRasterStatus(Device * This, UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus) {
-    HookDebug("TrampolineDevice:: GetRasterStatus()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetRasterStatus()\n");
 
     return orig_vtable.GetRasterStatus(((IDirect3DDevice9Trampoline*)This)->orig_this, iSwapChain, pRasterStatus);
 
@@ -2012,7 +2012,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetDialogBoxMode(Device * This, BOOL bEnableDialogs) {
-    HookDebug("TrampolineDevice:: SetDialogBoxMode()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetDialogBoxMode()\n");
 
     return orig_vtable.SetDialogBoxMode(((IDirect3DDevice9Trampoline*)This)->orig_this, bEnableDialogs);
 
@@ -2021,7 +2021,7 @@ template <typename Device>
 }
  template <typename Device>
  static void STDMETHODCALLTYPE TrampolineSetGammaRamp(Device * This, UINT iSwapChain, DWORD Flags, CONST D3DGAMMARAMP* pRamp) {
-    HookDebug("TrampolineDevice:: SetGammaRamp()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetGammaRamp()\n");
 
     return orig_vtable.SetGammaRamp(((IDirect3DDevice9Trampoline*)This)->orig_this, iSwapChain, Flags, pRamp);
 
@@ -2031,7 +2031,7 @@ template <typename Device>
  template <typename Device>
  static void STDMETHODCALLTYPE TrampolineGetGammaRamp(Device * This, UINT iSwapChain, D3DGAMMARAMP* pRamp) {
 
-    HookDebug("TrampolineDevice:: GetGammaRamp()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetGammaRamp()\n");
 
     return orig_vtable.GetGammaRamp(((IDirect3DDevice9Trampoline*)This)->orig_this, iSwapChain, pRamp);
 
@@ -2040,7 +2040,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineCreateTexture(Device * This, UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DTexture9** ppTexture, HANDLE* pSharedHandle) {
 
-    HookDebug("TrampolineDevice:: CreateTexture()\n");
+    HOOK_DEBUG("TrampolineDevice:: CreateTexture()\n");
 
     return orig_vtable.CreateTexture(((IDirect3DDevice9Trampoline*)This)->orig_this, Width, Height, Levels, Usage, Format, Pool, ppTexture, pSharedHandle);
 
@@ -2050,7 +2050,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineCreateVolumeTexture(Device * This, UINT Width, UINT Height, UINT Depth, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DVolumeTexture9** ppVolumeTexture, HANDLE* pSharedHandle) {
 
-    HookDebug("TrampolineDevice:: CreateVolumeTexture()\n");
+    HOOK_DEBUG("TrampolineDevice:: CreateVolumeTexture()\n");
 
     return orig_vtable.CreateVolumeTexture(((IDirect3DDevice9Trampoline*)This)->orig_this, Width, Height, Depth, Levels, Usage, Format, Pool, ppVolumeTexture, pSharedHandle);
 
@@ -2058,7 +2058,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineCreateCubeTexture(Device * This, UINT EdgeLength, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DCubeTexture9** ppCubeTexture, HANDLE* pSharedHandle) {
 
-    HookDebug("TrampolineDevice:: CreateCubeTexture()\n");
+    HOOK_DEBUG("TrampolineDevice:: CreateCubeTexture()\n");
 
     return orig_vtable.CreateCubeTexture(((IDirect3DDevice9Trampoline*)This)->orig_this, EdgeLength, Levels, Usage, Format, Pool, ppCubeTexture, pSharedHandle);
 
@@ -2066,7 +2066,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineCreateVertexBuffer(Device * This, UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, IDirect3DVertexBuffer9** ppVertexBuffer, HANDLE* pSharedHandle) {
 
-    HookDebug("TrampolineDevice:: CreateVertexBuffer()\n");
+    HOOK_DEBUG("TrampolineDevice:: CreateVertexBuffer()\n");
 
     return orig_vtable.CreateVertexBuffer(((IDirect3DDevice9Trampoline*)This)->orig_this, Length, Usage, FVF, Pool, ppVertexBuffer, pSharedHandle);
 
@@ -2075,7 +2075,7 @@ template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineCreateIndexBuffer(Device * This, UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DIndexBuffer9** ppIndexBuffer, HANDLE* pSharedHandle) {
 
 
-    HookDebug("TrampolineDevice:: CreateIndexBuffer()\n");
+    HOOK_DEBUG("TrampolineDevice:: CreateIndexBuffer()\n");
 
     return orig_vtable.CreateIndexBuffer(((IDirect3DDevice9Trampoline*)This)->orig_this, Length, Usage, Format, Pool, ppIndexBuffer, pSharedHandle);
 
@@ -2084,7 +2084,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineCreateRenderTarget(Device * This, UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle) {
 
-    HookDebug("TrampolineDevice:: CreateRenderTarget()\n");
+    HOOK_DEBUG("TrampolineDevice:: CreateRenderTarget()\n");
 
     return orig_vtable.CreateRenderTarget(((IDirect3DDevice9Trampoline*)This)->orig_this, Width, Height, Format, MultiSample, MultisampleQuality, Lockable, ppSurface, pSharedHandle);
 
@@ -2093,7 +2093,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineCreateDepthStencilSurface(Device * This, UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle) {
 
-    HookDebug("TrampolineDevice:: CreateDepthStencilSurface()\n");
+    HOOK_DEBUG("TrampolineDevice:: CreateDepthStencilSurface()\n");
 
     return orig_vtable.CreateDepthStencilSurface(((IDirect3DDevice9Trampoline*)This)->orig_this, Width, Height, Format, MultiSample, MultisampleQuality, Discard, ppSurface, pSharedHandle);
 
@@ -2103,7 +2103,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineUpdateSurface(Device * This, IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestinationSurface, CONST POINT* pDestPoint) {
 
-    HookDebug("TrampolineDevice:: UpdateSurface()\n");
+    HOOK_DEBUG("TrampolineDevice:: UpdateSurface()\n");
 
     return orig_vtable.UpdateSurface(((IDirect3DDevice9Trampoline*)This)->orig_this, pSourceSurface, pSourceRect, pDestinationSurface, pDestPoint);
 
@@ -2112,7 +2112,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineUpdateTexture(Device * This, IDirect3DBaseTexture9* pSourceTexture, IDirect3DBaseTexture9* pDestinationTexture) {
 
-    HookDebug("TrampolineDevice:: UpdateTexture()\n");
+    HOOK_DEBUG("TrampolineDevice:: UpdateTexture()\n");
 
     return orig_vtable.UpdateTexture(((IDirect3DDevice9Trampoline*)This)->orig_this, pSourceTexture, pDestinationTexture);
 
@@ -2122,7 +2122,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetRenderTargetData(Device * This, IDirect3DSurface9* pRenderTarget, IDirect3DSurface9* pDestSurface) {
 
-    HookDebug("TrampolineDevice:: GetRenderTargetData()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetRenderTargetData()\n");
 
     return orig_vtable.GetRenderTargetData(((IDirect3DDevice9Trampoline*)This)->orig_this, pRenderTarget, pDestSurface);
 
@@ -2133,7 +2133,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetFrontBufferData(Device * This, UINT iSwapChain, IDirect3DSurface9* pDestSurface) {
 
-    HookDebug("TrampolineDevice:: GetFrontBufferData()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetFrontBufferData()\n");
 
     return orig_vtable.GetFrontBufferData(((IDirect3DDevice9Trampoline*)This)->orig_this, iSwapChain, pDestSurface);
 
@@ -2143,7 +2143,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineStretchRect(Device * This, IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestSurface, CONST RECT* pDestRect, D3DTEXTUREFILTERTYPE Filter) {
 
-    HookDebug("TrampolineDevice:: StretchRect()\n");
+    HOOK_DEBUG("TrampolineDevice:: StretchRect()\n");
 
     return orig_vtable.StretchRect(((IDirect3DDevice9Trampoline*)This)->orig_this, pSourceSurface, pSourceRect, pDestSurface, pDestRect, Filter);
 
@@ -2152,7 +2152,7 @@ template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineColorFill(Device * This, IDirect3DSurface9* pSurface, CONST RECT* pRect, D3DCOLOR color) {
 
 
-    HookDebug("TrampolineDevice:: ColorFill()\n");
+    HOOK_DEBUG("TrampolineDevice:: ColorFill()\n");
 
     return orig_vtable.ColorFill(((IDirect3DDevice9Trampoline*)This)->orig_this, pSurface, pRect, color);
 
@@ -2161,7 +2161,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineCreateOffscreenPlainSurface(Device * This, UINT Width, UINT Height, D3DFORMAT Format, D3DPOOL Pool, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle) {
 
-    HookDebug("TrampolineDevice:: CreateOffscreenPlainSurface()\n");
+    HOOK_DEBUG("TrampolineDevice:: CreateOffscreenPlainSurface()\n");
 
     return orig_vtable.CreateOffscreenPlainSurface(((IDirect3DDevice9Trampoline*)This)->orig_this, Width, Height, Format, Pool, ppSurface, pSharedHandle);
 
@@ -2169,7 +2169,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetRenderTarget(Device * This, DWORD RenderTargetIndex, IDirect3DSurface9* pRenderTarget) {
-    HookDebug("TrampolineDevice:: SetRenderTarget()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetRenderTarget()\n");
 
     return orig_vtable.SetRenderTarget(((IDirect3DDevice9Trampoline*)This)->orig_this, RenderTargetIndex, pRenderTarget);
 
@@ -2177,7 +2177,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetRenderTarget(Device * This, DWORD RenderTargetIndex, IDirect3DSurface9** ppRenderTarget) {
-    HookDebug("TrampolineDevice:: GetRenderTarget()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetRenderTarget()\n");
 
     return orig_vtable.GetRenderTarget(((IDirect3DDevice9Trampoline*)This)->orig_this, RenderTargetIndex, ppRenderTarget);
 
@@ -2186,7 +2186,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetDepthStencilSurface(Device * This, IDirect3DSurface9* pNewZStencil) {
 
-    HookDebug("TrampolineDevice:: SetDepthStencilSurface()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetDepthStencilSurface()\n");
 
     return orig_vtable.SetDepthStencilSurface(((IDirect3DDevice9Trampoline*)This)->orig_this, pNewZStencil);
 
@@ -2195,7 +2195,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetDepthStencilSurface(Device * This, IDirect3DSurface9** ppZStencilSurface) {
 
-    HookDebug("TrampolineDevice:: GetDepthStencilSurface()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetDepthStencilSurface()\n");
 
     return orig_vtable.GetDepthStencilSurface(((IDirect3DDevice9Trampoline*)This)->orig_this, ppZStencilSurface);
 
@@ -2203,7 +2203,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineBeginScene(Device * This) {
-    HookDebug("TrampolineDevice:: BeginScene()\n");
+    HOOK_DEBUG("TrampolineDevice:: BeginScene()\n");
 
     return orig_vtable.BeginScene(((IDirect3DDevice9Trampoline*)This)->orig_this);
 
@@ -2211,7 +2211,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineEndScene(Device * This) {
-    HookDebug("TrampolineDevice:: EndScene()\n");
+    HOOK_DEBUG("TrampolineDevice:: EndScene()\n");
 
     return orig_vtable.EndScene(((IDirect3DDevice9Trampoline*)This)->orig_this);
 
@@ -2220,7 +2220,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineClear(Device * This, DWORD Count, CONST D3DRECT* pRects, DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil) {
-    HookDebug("TrampolineDevice:: Clear()\n");
+    HOOK_DEBUG("TrampolineDevice:: Clear()\n");
 
     return orig_vtable.Clear(((IDirect3DDevice9Trampoline*)This)->orig_this, Count, pRects, Flags, Color, Z, Stencil);
 
@@ -2229,7 +2229,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetTransform(Device * This, D3DTRANSFORMSTATETYPE State, CONST D3DMATRIX* pMatrix) {
-    HookDebug("TrampolineDevice:: SetTransform()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetTransform()\n");
 
     return orig_vtable.SetTransform(((IDirect3DDevice9Trampoline*)This)->orig_this, State, pMatrix);
 
@@ -2237,7 +2237,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetTransform(Device * This, D3DTRANSFORMSTATETYPE State, D3DMATRIX* pMatrix) {
 
-    HookDebug("TrampolineDevice:: GetTransform()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetTransform()\n");
 
     return orig_vtable.GetTransform(((IDirect3DDevice9Trampoline*)This)->orig_this, State, pMatrix);
 
@@ -2245,14 +2245,14 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineMultiplyTransform(Device * This, D3DTRANSFORMSTATETYPE State, CONST D3DMATRIX* pMatrix) {
 
-    HookDebug("TrampolineDevice:: MultiplyTransform()\n");
+    HOOK_DEBUG("TrampolineDevice:: MultiplyTransform()\n");
 
     return orig_vtable.MultiplyTransform(((IDirect3DDevice9Trampoline*)This)->orig_this, State, pMatrix);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetViewport(Device * This, CONST D3DVIEWPORT9* pViewport) {
-    HookDebug("TrampolineDevice:: SetViewport()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetViewport()\n");
 
     return orig_vtable.SetViewport(((IDirect3DDevice9Trampoline*)This)->orig_this, pViewport);
 
@@ -2260,7 +2260,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetViewport(Device * This, D3DVIEWPORT9* pViewport) {
-    HookDebug("TrampolineDevice:: GetViewport()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetViewport()\n");
 
     return orig_vtable.GetViewport(((IDirect3DDevice9Trampoline*)This)->orig_this, pViewport);
 
@@ -2268,7 +2268,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetMaterial(Device * This, CONST D3DMATERIAL9* pMaterial) {
-    HookDebug("TrampolineDevice:: SetMaterial()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetMaterial()\n");
 
     return orig_vtable.SetMaterial(((IDirect3DDevice9Trampoline*)This)->orig_this, pMaterial);
 
@@ -2276,14 +2276,14 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetMaterial(Device * This, D3DMATERIAL9* pMaterial) {
-    HookDebug("TrampolineDevice:: GetMaterial()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetMaterial()\n");
 
     return orig_vtable.GetMaterial(((IDirect3DDevice9Trampoline*)This)->orig_this, pMaterial);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetLight(Device * This, DWORD Index, CONST D3DLIGHT9 *pLight) {
-    HookDebug("TrampolineDevice:: SetLight()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetLight()\n");
 
     return orig_vtable.SetLight(((IDirect3DDevice9Trampoline*)This)->orig_this, Index, pLight);
 
@@ -2291,14 +2291,14 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetLight(Device * This, DWORD Index, D3DLIGHT9 *pLight) {
-    HookDebug("TrampolineDevice:: GetLight()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetLight()\n");
 
     return orig_vtable.GetLight(((IDirect3DDevice9Trampoline*)This)->orig_this, Index, pLight);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineLightEnable(Device * This, DWORD Index, BOOL Enable) {
-    HookDebug("TrampolineDevice:: LightEnable()\n");
+    HOOK_DEBUG("TrampolineDevice:: LightEnable()\n");
 
     return orig_vtable.LightEnable(((IDirect3DDevice9Trampoline*)This)->orig_this, Index, Enable);
 
@@ -2306,7 +2306,7 @@ template <typename Device>
 
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetLightEnable(Device * This, DWORD Index, BOOL* pEnable) {
-    HookDebug("TrampolineDevice:: GetLightEnable()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetLightEnable()\n");
 
     return orig_vtable.GetLightEnable(((IDirect3DDevice9Trampoline*)This)->orig_this, Index, pEnable);
 
@@ -2314,179 +2314,179 @@ template <typename Device>
 
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetClipPlane(Device * This, DWORD Index, CONST float* pPlane) {
-    HookDebug("TrampolineDevice:: SetClipPlane()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetClipPlane()\n");
 
     return orig_vtable.SetClipPlane(((IDirect3DDevice9Trampoline*)This)->orig_this, Index, pPlane);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetClipPlane(Device * This, DWORD Index, float* pPlane) {
-    HookDebug("TrampolineDevice:: GetClipPlane()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetClipPlane()\n");
 
     return orig_vtable.GetClipPlane(((IDirect3DDevice9Trampoline*)This)->orig_this, Index, pPlane);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetRenderState(Device * This, D3DRENDERSTATETYPE State, DWORD Value) {
-    HookDebug("TrampolineDevice:: SetRenderState()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetRenderState()\n");
 
     return orig_vtable.SetRenderState(((IDirect3DDevice9Trampoline*)This)->orig_this, State, Value);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetRenderState(Device * This, D3DRENDERSTATETYPE State, DWORD* pValue) {
-    HookDebug("TrampolineDevice:: GetRenderState()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetRenderState()\n");
 
     return orig_vtable.GetRenderState(((IDirect3DDevice9Trampoline*)This)->orig_this, State, pValue);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineCreateStateBlock(Device * This, D3DSTATEBLOCKTYPE Type, IDirect3DStateBlock9** ppSB) {
-    HookDebug("TrampolineDevice:: CreateStateBlock()\n");
+    HOOK_DEBUG("TrampolineDevice:: CreateStateBlock()\n");
 
     return orig_vtable.CreateStateBlock(((IDirect3DDevice9Trampoline*)This)->orig_this, Type, ppSB);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineBeginStateBlock(Device * This) {
-    HookDebug("TrampolineDevice:: BeginStateBlock()\n");
+    HOOK_DEBUG("TrampolineDevice:: BeginStateBlock()\n");
 
     return orig_vtable.BeginStateBlock(((IDirect3DDevice9Trampoline*)This)->orig_this);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineEndStateBlock(Device * This, IDirect3DStateBlock9** ppSB) {
-    HookDebug("TrampolineDevice:: EndStateBlock()\n");
+    HOOK_DEBUG("TrampolineDevice:: EndStateBlock()\n");
 
     return orig_vtable.EndStateBlock(((IDirect3DDevice9Trampoline*)This)->orig_this, ppSB);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetClipStatus(Device * This, CONST D3DCLIPSTATUS9* pClipStatus) {
-    HookDebug("TrampolineDevice:: SetClipStatus()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetClipStatus()\n");
 
     return orig_vtable.SetClipStatus(((IDirect3DDevice9Trampoline*)This)->orig_this, pClipStatus);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetClipStatus(Device * This, D3DCLIPSTATUS9* pClipStatus) {
-    HookDebug("TrampolineDevice:: GetClipStatus()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetClipStatus()\n");
 
     return orig_vtable.GetClipStatus(((IDirect3DDevice9Trampoline*)This)->orig_this, pClipStatus);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetTexture(Device * This, DWORD Stage, IDirect3DBaseTexture9** ppTexture) {
-    HookDebug("TrampolineDevice:: GetTexture()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetTexture()\n");
 
     return orig_vtable.GetTexture(((IDirect3DDevice9Trampoline*)This)->orig_this, Stage, ppTexture);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetTexture(Device * This, DWORD Stage, IDirect3DBaseTexture9* ppTexture) {
-    HookDebug("TrampolineDevice:: SetTexture()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetTexture()\n");
 
     return orig_vtable.SetTexture(((IDirect3DDevice9Trampoline*)This)->orig_this, Stage, ppTexture);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetTextureStageState(Device * This, DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD* pValue) {
-    HookDebug("TrampolineDevice:: GetTextureStageState()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetTextureStageState()\n");
 
     return orig_vtable.GetTextureStageState(((IDirect3DDevice9Trampoline*)This)->orig_this, Stage, Type, pValue);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetTextureStageState(Device * This, DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD Value) {
-    HookDebug("TrampolineDevice:: SetTextureStageState()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetTextureStageState()\n");
 
     return orig_vtable.SetTextureStageState(((IDirect3DDevice9Trampoline*)This)->orig_this, Stage, Type, Value);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetSamplerState(Device * This, DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD* pValue) {
-    HookDebug("TrampolineDevice:: GetSamplerState()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetSamplerState()\n");
 
     return orig_vtable.GetSamplerState(((IDirect3DDevice9Trampoline*)This)->orig_this, Sampler, Type, pValue);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetSamplerState(Device * This, DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD Value) {
-    HookDebug("TrampolineDevice:: SetSamplerState()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetSamplerState()\n");
 
     return orig_vtable.SetSamplerState(((IDirect3DDevice9Trampoline*)This)->orig_this, Sampler, Type, Value);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineValidateDevice(Device * This, DWORD* pNumPasses) {
-    HookDebug("TrampolineDevice:: ValidateDevice()\n");
+    HOOK_DEBUG("TrampolineDevice:: ValidateDevice()\n");
 
     return orig_vtable.ValidateDevice(((IDirect3DDevice9Trampoline*)This)->orig_this, pNumPasses);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetPaletteEntries(Device * This, UINT PaletteNumber, CONST PALETTEENTRY* pEntries) {
-    HookDebug("TrampolineDevice:: SetPaletteEntries()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetPaletteEntries()\n");
 
     return orig_vtable.SetPaletteEntries(((IDirect3DDevice9Trampoline*)This)->orig_this, PaletteNumber, pEntries);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetPaletteEntries(Device * This, UINT PaletteNumber, PALETTEENTRY* pEntries) {
-    HookDebug("TrampolineDevice:: GetPaletteEntries()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetPaletteEntries()\n");
 
     return orig_vtable.GetPaletteEntries(((IDirect3DDevice9Trampoline*)This)->orig_this, PaletteNumber, pEntries);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetCurrentTexturePalette(Device * This, UINT PaletteNumber) {
-    HookDebug("TrampolineDevice:: SetCurrentTexturePalette()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetCurrentTexturePalette()\n");
 
     return orig_vtable.SetCurrentTexturePalette(((IDirect3DDevice9Trampoline*)This)->orig_this, PaletteNumber);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetCurrentTexturePalette(Device * This, UINT *PaletteNumber) {
-    HookDebug("TrampolineDevice:: GetCurrentTexturePalette()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetCurrentTexturePalette()\n");
 
     return orig_vtable.GetCurrentTexturePalette(((IDirect3DDevice9Trampoline*)This)->orig_this, PaletteNumber);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetScissorRect(Device * This, CONST RECT* pRect) {
-    HookDebug("TrampolineDevice:: SetScissorRect()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetScissorRect()\n");
 
     return orig_vtable.SetScissorRect(((IDirect3DDevice9Trampoline*)This)->orig_this, pRect);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetScissorRect(Device * This, RECT* pRect) {
-    HookDebug("TrampolineDevice:: GetScissorRect()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetScissorRect()\n");
 
     return orig_vtable.GetScissorRect(((IDirect3DDevice9Trampoline*)This)->orig_this, pRect);
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetSoftwareVertexProcessing(Device * This, BOOL bSoftware) {
-    HookDebug("TrampolineDevice:: SetSoftwareVertexProcessing()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetSoftwareVertexProcessing()\n");
 
     return orig_vtable.SetSoftwareVertexProcessing(((IDirect3DDevice9Trampoline*)This)->orig_this, bSoftware);
 }
  template <typename Device>
  static BOOL STDMETHODCALLTYPE TrampolineGetSoftwareVertexProcessing(Device * This) {
-    HookDebug("TrampolineDevice:: GetSoftwareVertexProcessing()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetSoftwareVertexProcessing()\n");
 
     return orig_vtable.GetSoftwareVertexProcessing(((IDirect3DDevice9Trampoline*)This)->orig_this);
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetNPatchMode(Device * This, float nSegments) {
-    HookDebug("TrampolineDevice:: SetNPatchMode()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetNPatchMode()\n");
 
     return orig_vtable.SetNPatchMode(((IDirect3DDevice9Trampoline*)This)->orig_this, nSegments);
 
 }
  template <typename Device>
  static float STDMETHODCALLTYPE TrampolineGetNPatchMode(Device * This) {
-    HookDebug("TrampolineDevice:: GetNPatchMode()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetNPatchMode()\n");
 
     return orig_vtable.GetNPatchMode(((IDirect3DDevice9Trampoline*)This)->orig_this);
 
@@ -2494,7 +2494,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineDrawPrimitive(Device * This, D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount) {
-    HookDebug("TrampolineDevice:: DrawPrimitive()\n");
+    HOOK_DEBUG("TrampolineDevice:: DrawPrimitive()\n");
 
     return orig_vtable.DrawPrimitive(((IDirect3DDevice9Trampoline*)This)->orig_this, PrimitiveType, StartVertex, PrimitiveCount);
 
@@ -2502,7 +2502,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineDrawIndexedPrimitive(Device * This, D3DPRIMITIVETYPE Type, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount) {
-    HookDebug("TrampolineDevice:: DrawIndexedPrimitive()\n");
+    HOOK_DEBUG("TrampolineDevice:: DrawIndexedPrimitive()\n");
 
     return orig_vtable.DrawIndexedPrimitive(((IDirect3DDevice9Trampoline*)This)->orig_this, Type, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
 
@@ -2510,63 +2510,63 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineDrawPrimitiveUP(Device * This, D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride) {
-    HookDebug("TrampolineDevice:: DrawPrimitiveUP()\n");
+    HOOK_DEBUG("TrampolineDevice:: DrawPrimitiveUP()\n");
 
     return orig_vtable.DrawPrimitiveUP(((IDirect3DDevice9Trampoline*)This)->orig_this, PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineDrawIndexedPrimitiveUP(Device * This, D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertices, UINT PrimitiveCount, CONST void* pIndexData, D3DFORMAT IndexDataFormat, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride) {
-    HookDebug("TrampolineDevice:: DrawIndexedPrimitiveUP()\n");
+    HOOK_DEBUG("TrampolineDevice:: DrawIndexedPrimitiveUP()\n");
 
     return orig_vtable.DrawIndexedPrimitiveUP(((IDirect3DDevice9Trampoline*)This)->orig_this, PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineProcessVertices(Device * This, UINT SrcStartIndex, UINT DestIndex, UINT VertexCount, IDirect3DVertexBuffer9* pDestBuffer, IDirect3DVertexDeclaration9* pVertexDecl, DWORD Flags) {
-    HookDebug("TrampolineDevice:: ProcessVertices()\n");
+    HOOK_DEBUG("TrampolineDevice:: ProcessVertices()\n");
 
     return orig_vtable.ProcessVertices(((IDirect3DDevice9Trampoline*)This)->orig_this, SrcStartIndex, DestIndex, VertexCount, pDestBuffer, pVertexDecl, Flags);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineCreateVertexDeclaration(Device * This, CONST D3DVERTEXELEMENT9* pVertexElements, IDirect3DVertexDeclaration9** ppDecl) {
-    HookDebug("TrampolineDevice:: CreateVertexDeclaration()\n");
+    HOOK_DEBUG("TrampolineDevice:: CreateVertexDeclaration()\n");
 
     return orig_vtable.CreateVertexDeclaration(((IDirect3DDevice9Trampoline*)This)->orig_this, pVertexElements, ppDecl);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetVertexDeclaration(Device * This, IDirect3DVertexDeclaration9* pDecl) {
-    HookDebug("TrampolineDevice:: SetVertexDeclaration()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetVertexDeclaration()\n");
 
     return orig_vtable.SetVertexDeclaration(((IDirect3DDevice9Trampoline*)This)->orig_this, pDecl);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetVertexDeclaration(Device * This, IDirect3DVertexDeclaration9** ppDecl) {
-    HookDebug("TrampolineDevice:: GetVertexDeclaration()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetVertexDeclaration()\n");
 
     return orig_vtable.GetVertexDeclaration(((IDirect3DDevice9Trampoline*)This)->orig_this, ppDecl);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetFVF(Device * This, DWORD FVF) {
-    HookDebug("TrampolineDevice:: SetFVF()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetFVF()\n");
 
     return orig_vtable.SetFVF(((IDirect3DDevice9Trampoline*)This)->orig_this, FVF);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetFVF(Device * This, DWORD* pFVF) {
-    HookDebug("TrampolineDevice:: GetFVF()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetFVF()\n");
 
     return orig_vtable.GetFVF(((IDirect3DDevice9Trampoline*)This)->orig_this, pFVF);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineCreateVertexShader(Device * This, CONST DWORD* pFunction, IDirect3DVertexShader9** ppShader) {
-    HookDebug("TrampolineDevice:: CreateVertexShader()\n");
+    HOOK_DEBUG("TrampolineDevice:: CreateVertexShader()\n");
 
     return orig_vtable.CreateVertexShader(((IDirect3DDevice9Trampoline*)This)->orig_this, pFunction, ppShader);
 
@@ -2574,7 +2574,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetVertexShader(Device * This, IDirect3DVertexShader9* pShader) {
-    HookDebug("TrampolineDevice:: SetVertexShader()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetVertexShader()\n");
 
     return orig_vtable.SetVertexShader(((IDirect3DDevice9Trampoline*)This)->orig_this, pShader);
 
@@ -2583,7 +2583,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetVertexShader(Device * This, IDirect3DVertexShader9** ppShader) {
-    HookDebug("TrampolineDevice:: GetVertexShader()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetVertexShader()\n");
 
     return orig_vtable.GetVertexShader(((IDirect3DDevice9Trampoline*)This)->orig_this, ppShader);
 
@@ -2592,7 +2592,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetVertexShaderConstantF(Device * This, UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount) {
-    HookDebug("TrampolineDevice:: SetVertexShaderConstantF()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetVertexShaderConstantF()\n");
 
     return orig_vtable.SetVertexShaderConstantF(((IDirect3DDevice9Trampoline*)This)->orig_this, StartRegister, pConstantData, Vector4fCount);
 
@@ -2600,7 +2600,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetVertexShaderConstantF(Device * This, UINT StartRegister, float* pConstantData, UINT Vector4fCount) {
-    HookDebug("TrampolineDevice:: GetVertexShaderConstantF()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetVertexShaderConstantF()\n");
 
     return orig_vtable.GetVertexShaderConstantF(((IDirect3DDevice9Trampoline*)This)->orig_this, StartRegister, pConstantData, Vector4fCount);
 
@@ -2608,63 +2608,63 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetVertexShaderConstantI(Device * This, UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount) {
-    HookDebug("TrampolineDevice:: SetVertexShaderConstantI()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetVertexShaderConstantI()\n");
 
     return orig_vtable.SetVertexShaderConstantI(((IDirect3DDevice9Trampoline*)This)->orig_this, StartRegister, pConstantData, Vector4iCount);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetVertexShaderConstantI(Device * This, UINT StartRegister, int* pConstantData, UINT Vector4iCount) {
-    HookDebug("TrampolineDevice:: GetVertexShaderConstantI()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetVertexShaderConstantI()\n");
 
     return orig_vtable.GetVertexShaderConstantI(((IDirect3DDevice9Trampoline*)This)->orig_this, StartRegister, pConstantData, Vector4iCount);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetVertexShaderConstantB(Device * This, UINT StartRegister, CONST BOOL* pConstantData, UINT  BoolCount) {
-    HookDebug("TrampolineDevice:: SetVertexShaderConstantB()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetVertexShaderConstantB()\n");
 
     return orig_vtable.SetVertexShaderConstantB(((IDirect3DDevice9Trampoline*)This)->orig_this, StartRegister, pConstantData, BoolCount);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetVertexShaderConstantB(Device * This, UINT StartRegister, BOOL* pConstantData, UINT BoolCount) {
-    HookDebug("TrampolineDevice:: GetVertexShaderConstantB()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetVertexShaderConstantB()\n");
 
     return orig_vtable.GetVertexShaderConstantB(((IDirect3DDevice9Trampoline*)This)->orig_this, StartRegister, pConstantData, BoolCount);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetStreamSource(Device * This, UINT StreamNumber, IDirect3DVertexBuffer9* pStreamData, UINT OffsetInBytes, UINT Stride) {
-    HookDebug("TrampolineDevice:: SetStreamSource()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetStreamSource()\n");
 
     return orig_vtable.SetStreamSource(((IDirect3DDevice9Trampoline*)This)->orig_this, StreamNumber, pStreamData, OffsetInBytes, Stride);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetStreamSource(Device * This, UINT StreamNumber, IDirect3DVertexBuffer9** ppStreamData, UINT* pOffsetInBytes, UINT* pStride) {
-    HookDebug("TrampolineDevice:: GetStreamSource()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetStreamSource()\n");
 
     return orig_vtable.GetStreamSource(((IDirect3DDevice9Trampoline*)This)->orig_this, StreamNumber, ppStreamData, pOffsetInBytes, pStride);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetStreamSourceFreq(Device * This, UINT StreamNumber, UINT Setting) {
-    HookDebug("TrampolineDevice:: SetStreamSourceFreq()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetStreamSourceFreq()\n");
 
     return orig_vtable.SetStreamSourceFreq(((IDirect3DDevice9Trampoline*)This)->orig_this, StreamNumber, Setting);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetStreamSourceFreq(Device * This, UINT StreamNumber, UINT* pSetting) {
-    HookDebug("TrampolineDevice:: GetStreamSourceFreq()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetStreamSourceFreq()\n");
 
     return orig_vtable.GetStreamSourceFreq(((IDirect3DDevice9Trampoline*)This)->orig_this, StreamNumber, pSetting);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetIndices(Device * This, IDirect3DIndexBuffer9* pIndexData) {
-    HookDebug("TrampolineDevice:: SetIndices()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetIndices()\n");
 
     return orig_vtable.SetIndices(((IDirect3DDevice9Trampoline*)This)->orig_this, pIndexData);
 
@@ -2672,7 +2672,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetIndices(Device * This, IDirect3DIndexBuffer9** ppIndexData) {
-    HookDebug("TrampolineDevice:: GetIndices()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetIndices()\n");
 
     return orig_vtable.GetIndices(((IDirect3DDevice9Trampoline*)This)->orig_this, ppIndexData);
 
@@ -2680,7 +2680,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineCreatePixelShader(Device * This, CONST DWORD* pFunction, IDirect3DPixelShader9** ppShader) {
-    HookDebug("TrampolineDevice:: CreatePixelShader()\n");
+    HOOK_DEBUG("TrampolineDevice:: CreatePixelShader()\n");
 
     return orig_vtable.CreatePixelShader(((IDirect3DDevice9Trampoline*)This)->orig_this, pFunction, ppShader);
 
@@ -2688,14 +2688,14 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetPixelShader(Device * This, IDirect3DPixelShader9* pShader) {
-    HookDebug("TrampolineDevice:: SetPixelShader()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetPixelShader()\n");
 
     return orig_vtable.SetPixelShader(((IDirect3DDevice9Trampoline*)This)->orig_this, pShader);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetPixelShader(Device * This, IDirect3DPixelShader9** ppShader) {
-    HookDebug("TrampolineDevice:: GetPixelShader()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetPixelShader()\n");
 
     return orig_vtable.GetPixelShader(((IDirect3DDevice9Trampoline*)This)->orig_this, ppShader);
 
@@ -2703,7 +2703,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetPixelShaderConstantF(Device * This, UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount) {
-    HookDebug("TrampolineDevice:: SetPixelShaderConstantF()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetPixelShaderConstantF()\n");
 
     return orig_vtable.SetPixelShaderConstantF(((IDirect3DDevice9Trampoline*)This)->orig_this, StartRegister, pConstantData, Vector4fCount);
 
@@ -2711,7 +2711,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetPixelShaderConstantF(Device * This, UINT StartRegister, float* pConstantData, UINT Vector4fCount) {
-    HookDebug("TrampolineDevice:: GetPixelShaderConstantF()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetPixelShaderConstantF()\n");
 
     return orig_vtable.GetPixelShaderConstantF(((IDirect3DDevice9Trampoline*)This)->orig_this, StartRegister, pConstantData, Vector4fCount);
 
@@ -2719,7 +2719,7 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetPixelShaderConstantI(Device * This, UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount) {
-    HookDebug("TrampolineDevice:: SetPixelShaderConstantI()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetPixelShaderConstantI()\n");
 
     return orig_vtable.SetPixelShaderConstantI(((IDirect3DDevice9Trampoline*)This)->orig_this, StartRegister, pConstantData, Vector4iCount);
 
@@ -2727,42 +2727,42 @@ template <typename Device>
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetPixelShaderConstantI(Device * This, UINT StartRegister, int* pConstantData, UINT Vector4iCount) {
-    HookDebug("TrampolineDevice:: GetPixelShaderConstantI()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetPixelShaderConstantI()\n");
 
     return orig_vtable.GetPixelShaderConstantI(((IDirect3DDevice9Trampoline*)This)->orig_this, StartRegister, pConstantData, Vector4iCount);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineSetPixelShaderConstantB(Device * This, UINT StartRegister, CONST BOOL* pConstantData, UINT BoolCount) {
-    HookDebug("TrampolineDevice:: SetPixelShaderConstantB()\n");
+    HOOK_DEBUG("TrampolineDevice:: SetPixelShaderConstantB()\n");
 
     return orig_vtable.SetPixelShaderConstantB(((IDirect3DDevice9Trampoline*)This)->orig_this, StartRegister, pConstantData, BoolCount);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineGetPixelShaderConstantB(Device * This, UINT StartRegister, BOOL* pConstantData, UINT BoolCount) {
-    HookDebug("TrampolineDevice:: GetPixelShaderConstantB()\n");
+    HOOK_DEBUG("TrampolineDevice:: GetPixelShaderConstantB()\n");
 
     return orig_vtable.GetPixelShaderConstantB(((IDirect3DDevice9Trampoline*)This)->orig_this, StartRegister, pConstantData, BoolCount);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineDrawRectPatch(Device * This, UINT Handle, CONST float* pNumSegs, CONST D3DRECTPATCH_INFO* pRectPatchInfo) {
-    HookDebug("TrampolineDevice:: DrawRectPatch()\n");
+    HOOK_DEBUG("TrampolineDevice:: DrawRectPatch()\n");
 
     return orig_vtable.DrawRectPatch(((IDirect3DDevice9Trampoline*)This)->orig_this, Handle, pNumSegs, pRectPatchInfo);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineDrawTriPatch(Device * This, UINT Handle, CONST float* pNumSegs, CONST D3DTRIPATCH_INFO* pTriPatchInfo) {
-    HookDebug("TrampolineDevice:: DrawTriPatch()\n");
+    HOOK_DEBUG("TrampolineDevice:: DrawTriPatch()\n");
 
     return orig_vtable.DrawTriPatch(((IDirect3DDevice9Trampoline*)This)->orig_this, Handle, pNumSegs, pTriPatchInfo);
 
 }
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineDeletePatch(Device * This, UINT Handle) {
-    HookDebug("TrampolineDevice:: DeletePatch()\n");
+    HOOK_DEBUG("TrampolineDevice:: DeletePatch()\n");
 
     return orig_vtable.DeletePatch(((IDirect3DDevice9Trampoline*)This)->orig_this, Handle);
 
@@ -2771,7 +2771,7 @@ template <typename Device>
  template <typename Device>
  static HRESULT STDMETHODCALLTYPE TrampolineCreateQuery(Device * This, D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery) {
 
-    HookDebug("TrampolineDevice:: CreateQuery()\n");
+    HOOK_DEBUG("TrampolineDevice:: CreateQuery()\n");
 
     return orig_vtable.CreateQuery(((IDirect3DDevice9Trampoline*)This)->orig_this, Type, ppQuery);
 
@@ -2779,94 +2779,94 @@ template <typename Device>
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCheckDeviceState(IDirect3DDevice9Ex * This, HWND hWindow)
 {
-    HookDebug("TrampolineDeviceEx:: CheckDeviceState()\n");
+    HOOK_DEBUG("TrampolineDeviceEx:: CheckDeviceState()\n");
 
     return orig_vtable_ex.CheckDeviceState(((IDirect3DDevice9ExTrampoline*)This)->orig_this, hWindow);
 }
 
 static HRESULT STDMETHODCALLTYPE TrampolineCheckResourceResidency(IDirect3DDevice9Ex * This, IDirect3DResource9 **pResourceArray, UINT32 NumResources)
 {
-    HookDebug("TrampolineDeviceEx:: CheckResourceResidency()\n");
+    HOOK_DEBUG("TrampolineDeviceEx:: CheckResourceResidency()\n");
 
     return orig_vtable_ex.CheckResourceResidency(((IDirect3DDevice9ExTrampoline*)This)->orig_this, pResourceArray, NumResources);
 }
 
 static HRESULT STDMETHODCALLTYPE TrampolineComposeRects(IDirect3DDevice9Ex * This, IDirect3DSurface9 *pSource, IDirect3DSurface9 *pDestination, IDirect3DVertexBuffer9 *pSrcRectDescriptors, UINT NumRects, IDirect3DVertexBuffer9 *pDstRectDescriptors, D3DCOMPOSERECTSOP Operation, INT XOffset, INT YOffset)
 {
-    HookDebug("TrampolineDeviceEx:: ComposeRects()\n");
+    HOOK_DEBUG("TrampolineDeviceEx:: ComposeRects()\n");
 
     return orig_vtable_ex.ComposeRects(((IDirect3DDevice9ExTrampoline*)This)->orig_this, pSource, pDestination, pSrcRectDescriptors, NumRects, pDstRectDescriptors, Operation, XOffset, YOffset);
 }
 
 static HRESULT STDMETHODCALLTYPE TrampolineCreateDepthStencilSurfaceEx(IDirect3DDevice9Ex * This, UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, IDirect3DSurface9 **ppSurface, HANDLE *pSharedHandle, DWORD Usage)
 {
-    HookDebug("TrampolineDeviceEx:: CreateDepthStencilSurfaceEx()\n");
+    HOOK_DEBUG("TrampolineDeviceEx:: CreateDepthStencilSurfaceEx()\n");
 
     return orig_vtable_ex.CreateDepthStencilSurfaceEx(((IDirect3DDevice9ExTrampoline*)This)->orig_this, Width, Height, Format, MultiSample, MultisampleQuality, Discard, ppSurface, pSharedHandle, Usage);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateOffscreenPlainSurfaceEx(IDirect3DDevice9Ex * This, UINT Width, UINT Height, D3DFORMAT Format, D3DPOOL Pool, IDirect3DSurface9 **ppSurface, HANDLE *pSharedHandle, DWORD Usage)
 {
-    HookDebug("TrampolineDeviceEx:: CreateOffscreenPlainSurfaceEx()\n");
+    HOOK_DEBUG("TrampolineDeviceEx:: CreateOffscreenPlainSurfaceEx()\n");
 
     return orig_vtable_ex.CreateOffscreenPlainSurfaceEx(((IDirect3DDevice9ExTrampoline*)This)->orig_this, Width, Height, Format, Pool, ppSurface, pSharedHandle, Usage);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateRenderTargetEx(IDirect3DDevice9Ex * This, UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, IDirect3DSurface9 **ppSurface, HANDLE *pSharedHandle, DWORD Usage)
 {
-    HookDebug("TrampolineDeviceEx:: CreateRenderTargetEx()\n");
+    HOOK_DEBUG("TrampolineDeviceEx:: CreateRenderTargetEx()\n");
 
     return orig_vtable_ex.CreateRenderTargetEx(((IDirect3DDevice9ExTrampoline*)This)->orig_this, Width, Height, Format, MultiSample, MultisampleQuality, Lockable, ppSurface, pSharedHandle, Usage);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineGetDisplayModeEx(IDirect3DDevice9Ex * This, UINT iSwapChain, D3DDISPLAYMODEEX *pMode, D3DDISPLAYROTATION *pRotation)
 {
-    HookDebug("TrampolineDeviceEx:: GetDisplayModeEx()\n");
+    HOOK_DEBUG("TrampolineDeviceEx:: GetDisplayModeEx()\n");
 
     return orig_vtable_ex.GetDisplayModeEx(((IDirect3DDevice9ExTrampoline*)This)->orig_this, iSwapChain, pMode, pRotation);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineGetGPUThreadPriority(IDirect3DDevice9Ex * This, INT *pPriority)
 {
-    HookDebug("TrampolineDeviceEx:: GetGPUThreadPriority()\n");
+    HOOK_DEBUG("TrampolineDeviceEx:: GetGPUThreadPriority()\n");
 
     return orig_vtable_ex.GetGPUThreadPriority(((IDirect3DDevice9ExTrampoline*)This)->orig_this, pPriority);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineGetMaximumFrameLatency(IDirect3DDevice9Ex * This, UINT *pMaxLatency)
 {
-    HookDebug("TrampolineDeviceEx:: GetMaximumFrameLatency()\n");
+    HOOK_DEBUG("TrampolineDeviceEx:: GetMaximumFrameLatency()\n");
 
     return orig_vtable_ex.GetMaximumFrameLatency(((IDirect3DDevice9ExTrampoline*)This)->orig_this, pMaxLatency);
 }
 static HRESULT STDMETHODCALLTYPE TrampolinePresentEx(IDirect3DDevice9Ex * This, const RECT *pSourceRect, const RECT *pDestRect, HWND hDestWindowOverride, const RGNDATA *pDirtyRegion, DWORD dwFlags)
 {
-    HookDebug("TrampolineDeviceEx:: PresentEx()\n");
+    HOOK_DEBUG("TrampolineDeviceEx:: PresentEx()\n");
 
     return orig_vtable_ex.PresentEx(((IDirect3DDevice9ExTrampoline*)This)->orig_this, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineResetEx(IDirect3DDevice9Ex * This, D3DPRESENT_PARAMETERS *pPresentationParameters, D3DDISPLAYMODEEX *pFullscreenDisplayMode)
 {
-    HookDebug("TrampolineDeviceEx:: ResetEx()\n");
+    HOOK_DEBUG("TrampolineDeviceEx:: ResetEx()\n");
 
     return orig_vtable_ex.ResetEx(((IDirect3DDevice9ExTrampoline*)This)->orig_this, pPresentationParameters, pFullscreenDisplayMode);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineSetConvolutionMonoKernel(IDirect3DDevice9Ex * This, UINT Width, UINT Height, float *RowWeights, float *ColumnWeights)
 {
-    HookDebug("TrampolineDeviceEx:: SetConvolutionMonoKernel()\n");
+    HOOK_DEBUG("TrampolineDeviceEx:: SetConvolutionMonoKernel()\n");
 
     return orig_vtable_ex.SetConvolutionMonoKernel(((IDirect3DDevice9ExTrampoline*)This)->orig_this, Width, Height, RowWeights, ColumnWeights);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineSetGPUThreadPriority(IDirect3DDevice9Ex * This, INT pPriority)
 {
-    HookDebug("TrampolineDeviceEx:: SetGPUThreadPriority()\n");
+    HOOK_DEBUG("TrampolineDeviceEx:: SetGPUThreadPriority()\n");
 
     return orig_vtable_ex.SetGPUThreadPriority(((IDirect3DDevice9ExTrampoline*)This)->orig_this, pPriority);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineSetMaximumFrameLatency(IDirect3DDevice9Ex * This, UINT pMaxLatency)
 {
-    HookDebug("TrampolineDeviceEx:: SetMaximumFrameLatency()\n");
+    HOOK_DEBUG("TrampolineDeviceEx:: SetMaximumFrameLatency()\n");
 
     return orig_vtable_ex.SetMaximumFrameLatency(((IDirect3DDevice9ExTrampoline*)This)->orig_this, pMaxLatency);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineWaitForVBlank(IDirect3DDevice9Ex * This, UINT SwapChainIndex)
 {
-    HookDebug("TrampolineDeviceEx:: WaitForVBlank()\n");
+    HOOK_DEBUG("TrampolineDeviceEx:: WaitForVBlank()\n");
 
     return orig_vtable_ex.WaitForVBlank(((IDirect3DDevice9ExTrampoline*)This)->orig_this, SwapChainIndex);
 }
@@ -3156,7 +3156,7 @@ IDirect3DDevice9* hook_device(IDirect3DDevice9 *orig_device, IDirect3DDevice9 *h
 }
 void remove_hooked_device(::IDirect3DDevice9 * orig_device)
 {
-    HookDebug("HookedDevice:: Remove Device()\n");
+    HOOK_DEBUG("HookedDevice:: Remove Device()\n");
     DeviceMap::iterator i;
     EnterCriticalSection(&device_map_lock);
     i = device_map.find(orig_device);
