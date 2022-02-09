@@ -310,9 +310,9 @@ void HackerSwapChain::RunFrameActions()
     // rapidly converge upon all active shaders.
 
     if (difftime(time(NULL), G->huntTime) > 60) {
-        EnterCriticalSectionPretty(&G->mCriticalSection);
+        ENTER_CRITICAL_SECTION(&G->mCriticalSection);
         TimeoutHuntingBuffers();
-        LeaveCriticalSection(&G->mCriticalSection);
+        LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
     }
 }
 

@@ -72,13 +72,13 @@ ID3D11Device1* lookup_hooked_device(ID3D11Device1 *orig_device)
     if (!hooks_installed)
         return NULL;
 
-    EnterCriticalSectionPretty(&device_map_lock);
+    ENTER_CRITICAL_SECTION(&device_map_lock);
     i = device_map.find(orig_device);
     if (i == device_map.end()) {
-        LeaveCriticalSection(&device_map_lock);
+        LEAVE_CRITICAL_SECTION(&device_map_lock);
         return NULL;
     }
-    LeaveCriticalSection(&device_map_lock);
+    LEAVE_CRITICAL_SECTION(&device_map_lock);
 
     return i->second;
 }
@@ -122,7 +122,7 @@ static ULONG STDMETHODCALLTYPE Release(
 
     HOOK_DEBUG("HookedDevice::Release()\n");
 
-    EnterCriticalSectionPretty(&device_map_lock);
+    ENTER_CRITICAL_SECTION(&device_map_lock);
     i = device_map.find(This);
     if (i != device_map.end()) {
         ref = ID3D11Device1_Release(i->second);
@@ -131,7 +131,7 @@ static ULONG STDMETHODCALLTYPE Release(
     } else
         ref = orig_vtable.Release(This);
 
-    LeaveCriticalSection(&device_map_lock);
+    LEAVE_CRITICAL_SECTION(&device_map_lock);
 
     return ref;
 }
@@ -1525,9 +1525,9 @@ ID3D11Device1* hook_device(ID3D11Device1 *orig_device, ID3D11Device1 *hacker_dev
     trampoline_device->orig_this = orig_device;
 
     install_hooks(orig_device);
-    EnterCriticalSectionPretty(&device_map_lock);
+    ENTER_CRITICAL_SECTION(&device_map_lock);
     device_map[orig_device] = hacker_device;
-    LeaveCriticalSection(&device_map_lock);
+    LEAVE_CRITICAL_SECTION(&device_map_lock);
 
     return (ID3D11Device1*)trampoline_device;
 }

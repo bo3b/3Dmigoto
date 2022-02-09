@@ -2261,7 +2261,7 @@ static void ParseShaderOverrideSections()
     // Lock entire routine. This can be re-inited live.  These shaderoverrides
     // are unlikely to be changing much, but for consistency.
     //  We actually already lock the entire config reload, so this is redundant -DSS
-    EnterCriticalSectionPretty(&G->mCriticalSection);
+    ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
     G->mShaderOverrideMap.clear();
 
@@ -2319,7 +2319,7 @@ static void ParseShaderOverrideSections()
 
         warn_deprecated_shaderoverride_options(id, override);
     }
-    LeaveCriticalSection(&G->mCriticalSection);
+    LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
 // Oh C++, do you really not have a .split() in your standard library?
@@ -3117,7 +3117,7 @@ static void ParseTextureOverrideSections()
     // Lock entire routine, this can be re-inited.  These shaderoverrides
     // are unlikely to be changing much, but for consistency.
     //  We actually already lock the entire config reload, so this is redundant -DSS
-    EnterCriticalSectionPretty(&G->mCriticalSection);
+    ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
     G->mTextureOverrideMap.clear();
     G->mFuzzyTextureOverrides.clear();
@@ -3184,7 +3184,7 @@ static void ParseTextureOverrideSections()
         }
     }
 
-    LeaveCriticalSection(&G->mCriticalSection);
+    LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ff476088(v=vs.85).aspx
@@ -4556,7 +4556,7 @@ void ReloadConfig(HackerDevice *device)
     // Lock the entire config reload as it touches many global structures
     // that could potentially be accessed from other threads (e.g. deferred
     // contexts) while we do this
-    EnterCriticalSectionPretty(&G->mCriticalSection);
+    ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
     // Clears any notices currently displayed on the overlay. This ensures
     // that any notices that haven't timed out yet (e.g. from a previous
@@ -4586,7 +4586,7 @@ void ReloadConfig(HackerDevice *device)
 
     MarkAllShadersDeferredUnprocessed();
 
-    LeaveCriticalSection(&G->mCriticalSection);
+    LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
     // Execute the [Constants] command list in the immediate context to
     // initialise iniParams and perform any other custom initialisation the
