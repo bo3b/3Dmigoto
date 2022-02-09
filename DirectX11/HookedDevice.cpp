@@ -921,7 +921,7 @@ static void install_hooks(ID3D11Device1 *device)
     // Hooks should only be installed once as they will affect all contexts
     if (hooks_installed)
         return;
-    InitializeCriticalSectionPretty(&device_map_lock);
+    INIT_CRITICAL_SECTION(&device_map_lock);
     hooks_installed = true;
 
     // Make sure that everything in the orig_vtable is filled in just in
