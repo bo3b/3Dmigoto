@@ -59,17 +59,18 @@ const int INI_PARAMS_SIZE_WARNING = 256;
 // this from another project that they need to InitializeCriticalSection[Pretty]
 extern CRITICAL_SECTION resource_creation_mode_lock;
 
+// TODO: Is this necessary? Why not use the pretty version in all cases?
 // Use the pretty lock debugging version if lock.h is included first, otherwise
 // use the regular EnterCriticalSection:
 #ifdef EnterCriticalSectionPretty
-#define LockResourceCreationMode() \
+#define LOCK_RESOURCE_CREATION_MODE() \
     EnterCriticalSectionPretty(&resource_creation_mode_lock)
 #else
-#define LockResourceCreationMode() \
+#define LOCK_RESOURCE_CREATION_MODE() \
     EnterCriticalSection(&resource_creation_mode_lock)
 #endif
 
-#define UnlockResourceCreationMode() \
+#define UNLOCK_RESOURCE_CREATION_MODE() \
     LeaveCriticalSection(&resource_creation_mode_lock)
 
 // -----------------------------------------------------------------------------------------------

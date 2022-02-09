@@ -55,7 +55,7 @@
 // and HackerContext.
 
 // Include before util.h (or any header that includes util.h) to get pretty
-// version of LockResourceCreationMode:
+// version of LOCK_RESOURCE_CREATION_MODE:
 #include "lock.h"
 
 #include "HackerDXGI.hpp"
@@ -1004,9 +1004,9 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
         fake_buffer_desc.Height = pFakeSwapChainDesc->BufferDesc.Height;
         fake_buffer_desc.CPUAccessFlags = 0;
 
-        LockResourceCreationMode();
+        LOCK_RESOURCE_CREATION_MODE();
         hr = mHackerDevice->GetPassThroughOrigDevice1()->CreateTexture2D(&fake_buffer_desc, nullptr, &mFakeBackBuffer);
-        UnlockResourceCreationMode();
+        UNLOCK_RESOURCE_CREATION_MODE();
     }
     break;
     case 1:
@@ -1218,9 +1218,9 @@ STDMETHODIMP HackerUpscalingSwapChain::ResizeBuffers(THIS_
             fd.Height = Height;
             fd.Format = NewFormat;
             // just recreate texture with new width and height
-            LockResourceCreationMode();
+            LOCK_RESOURCE_CREATION_MODE();
             hr = mHackerDevice->GetPassThroughOrigDevice1()->CreateTexture2D(&fd, nullptr, &mFakeBackBuffer);
-            UnlockResourceCreationMode();
+            UNLOCK_RESOURCE_CREATION_MODE();
         }
         else  // nothing to resize
             hr = S_OK;

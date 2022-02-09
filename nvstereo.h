@@ -461,9 +461,9 @@ namespace nv {
                 desc.CPUAccessFlags = 0;
                 desc.MiscFlags = 0;
 
-                LockResourceCreationMode();
+                LOCK_RESOURCE_CREATION_MODE();
                 HRESULT ret = pDevice->CreateTexture2D(&desc, &sysData, &staging);
-                UnlockResourceCreationMode();
+                UNLOCK_RESOURCE_CREATION_MODE();
                 delete sysData.pSysMem;
                 if (ret != S_OK)
                 {
