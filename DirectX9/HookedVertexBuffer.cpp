@@ -7,9 +7,9 @@
 
 
 #if 0
-#define HookDebug LOG_DEBUG
+#define HOOK_DEBUG LOG_DEBUG
 #else
-#define HookDebug(...) do { } while (0)
+#define HOOK_DEBUG(...) do { } while (0)
 #endif
 
 typedef std::unordered_map<IDirect3DVertexBuffer9 *, IDirect3DVertexBuffer9 *> VertexBufferMap;
@@ -46,7 +46,7 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 {
     IDirect3DVertexBuffer9 *vertex_buffer = lookup_hooked_vertex_buffer(This);
 
-    HookDebug("HookedVertexBuffer:: QueryInterface()\n");
+    HOOK_DEBUG("HookedVertexBuffer:: QueryInterface()\n");
 
     if (vertex_buffer)
         return IDirect3DVertexBuffer9_QueryInterface(vertex_buffer, riid, ppvObject);
@@ -59,7 +59,7 @@ static ULONG STDMETHODCALLTYPE AddRef(
 {
     IDirect3DVertexBuffer9 *vertex_buffer = lookup_hooked_vertex_buffer(This);
 
-    HookDebug("HookedVertexBuffer:: AddRef()\n");
+    HOOK_DEBUG("HookedVertexBuffer:: AddRef()\n");
 
     if (vertex_buffer)
         return IDirect3DVertexBuffer9_AddRef(vertex_buffer);
@@ -73,7 +73,7 @@ static ULONG STDMETHODCALLTYPE Release(
     VertexBufferMap::iterator i;
     ULONG ref;
 
-    HookDebug("HookedVertexBuffer:: Release()\n");
+    HOOK_DEBUG("HookedVertexBuffer:: Release()\n");
 
     EnterCriticalSection(&vertex_buffer_map_lock);
     i = vertex_buffer_map.find(This);
@@ -95,7 +95,7 @@ static HRESULT STDMETHODCALLTYPE FreePrivateData(
 {
     IDirect3DVertexBuffer9 *vertex_buffer = lookup_hooked_vertex_buffer(This);
 
-    HookDebug("HookedVertexBuffer:: FreePrivateData()\n");
+    HOOK_DEBUG("HookedVertexBuffer:: FreePrivateData()\n");
 
     if (vertex_buffer)
         return IDirect3DVertexBuffer9_FreePrivateData(vertex_buffer, refguid);
@@ -108,7 +108,7 @@ static HRESULT STDMETHODCALLTYPE GetDevice(
 {
     IDirect3DVertexBuffer9 *vertex_buffer = lookup_hooked_vertex_buffer(This);
 
-    HookDebug("HookedVertexBuffer:: GetDevice()\n");
+    HOOK_DEBUG("HookedVertexBuffer:: GetDevice()\n");
 
     if (vertex_buffer)
         return IDirect3DVertexBuffer9_GetDevice(vertex_buffer, ppDevice);
@@ -121,7 +121,7 @@ static DWORD STDMETHODCALLTYPE GetPriority(
 {
     IDirect3DVertexBuffer9 *vertex_buffer = lookup_hooked_vertex_buffer(This);
 
-    HookDebug("HookedVertexBuffer:: GetPriority()\n");
+    HOOK_DEBUG("HookedVertexBuffer:: GetPriority()\n");
 
     if (vertex_buffer)
         return IDirect3DVertexBuffer9_GetPriority(vertex_buffer);
@@ -137,7 +137,7 @@ static HRESULT STDMETHODCALLTYPE GetPrivateData(
 {
     IDirect3DVertexBuffer9 *vertex_buffer = lookup_hooked_vertex_buffer(This);
 
-    HookDebug("HookedVertexBuffer:: GetPrivateData()\n");
+    HOOK_DEBUG("HookedVertexBuffer:: GetPrivateData()\n");
 
     if (vertex_buffer)
         return IDirect3DVertexBuffer9_GetPrivateData(vertex_buffer, refguid, pData, pSizeOfData);
@@ -150,7 +150,7 @@ static D3DRESOURCETYPE STDMETHODCALLTYPE GetType(
 {
     IDirect3DVertexBuffer9 *vertex_buffer = lookup_hooked_vertex_buffer(This);
 
-    HookDebug("HookedVertexBuffer:: GetType()\n");
+    HOOK_DEBUG("HookedVertexBuffer:: GetType()\n");
 
     if (vertex_buffer)
         return IDirect3DVertexBuffer9_GetType(vertex_buffer);
@@ -163,7 +163,7 @@ static void STDMETHODCALLTYPE PreLoad(
 {
     IDirect3DVertexBuffer9 *vertex_buffer = lookup_hooked_vertex_buffer(This);
 
-    HookDebug("HookedVertexBuffer:: PreLoad()\n");
+    HOOK_DEBUG("HookedVertexBuffer:: PreLoad()\n");
 
     if (vertex_buffer)
         return IDirect3DVertexBuffer9_PreLoad(vertex_buffer);
@@ -176,7 +176,7 @@ static DWORD STDMETHODCALLTYPE SetPriority(
 {
     IDirect3DVertexBuffer9 *vertex_buffer = lookup_hooked_vertex_buffer(This);
 
-    HookDebug("HookedVertexBuffer:: SetPriority()\n");
+    HOOK_DEBUG("HookedVertexBuffer:: SetPriority()\n");
 
     if (vertex_buffer)
         return IDirect3DVertexBuffer9_SetPriority(vertex_buffer, PriorityNew);
@@ -194,7 +194,7 @@ static HRESULT STDMETHODCALLTYPE SetPrivateData(
 {
     IDirect3DVertexBuffer9 *vertex_buffer = lookup_hooked_vertex_buffer(This);
 
-    HookDebug("HookedVertexBuffer:: SetPrivateData()\n");
+    HOOK_DEBUG("HookedVertexBuffer:: SetPrivateData()\n");
 
     if (vertex_buffer)
         return IDirect3DVertexBuffer9_SetPrivateData(vertex_buffer, refguid, pData, SizeOfData, Flags);
@@ -208,7 +208,7 @@ static HRESULT STDMETHODCALLTYPE GetDesc(
 {
     IDirect3DVertexBuffer9 *vertex_buffer = lookup_hooked_vertex_buffer(This);
 
-    HookDebug("HookedVertexBuffer:: GetDesc()\n");
+    HOOK_DEBUG("HookedVertexBuffer:: GetDesc()\n");
 
     if (vertex_buffer)
         return IDirect3DVertexBuffer9_GetDesc(vertex_buffer, pDesc);
@@ -225,7 +225,7 @@ static HRESULT STDMETHODCALLTYPE Lock(
 {
     IDirect3DVertexBuffer9 *vertex_buffer = lookup_hooked_vertex_buffer(This);
 
-    HookDebug("HookedVertexBuffer:: Lock()\n");
+    HOOK_DEBUG("HookedVertexBuffer:: Lock()\n");
 
     if (vertex_buffer)
         return IDirect3DVertexBuffer9_Lock(vertex_buffer, OffsetToLock, SizeToLock, ppbData, Flags);
@@ -238,7 +238,7 @@ static HRESULT STDMETHODCALLTYPE Unlock(
 {
     IDirect3DVertexBuffer9 *vertex_buffer = lookup_hooked_vertex_buffer(This);
 
-    HookDebug("HookedVertexBuffer:: Unlock()\n");
+    HOOK_DEBUG("HookedVertexBuffer:: Unlock()\n");
 
     if (vertex_buffer)
         return IDirect3DVertexBuffer9_Unlock(vertex_buffer);
@@ -293,7 +293,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
     REFIID riid,
     __RPC__deref_out  void **ppvObject)
 {
-    HookDebug("TrampolineIDirect3DVertexBuffer9:: QueryInterface()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexBuffer9:: QueryInterface()\n");
 
     return orig_vtable.QueryInterface(((IDirect3DVertexBuffer9Trampoline*)This)->orig_this, riid, ppvObject);
 }
@@ -302,7 +302,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
 static ULONG STDMETHODCALLTYPE TrampolineAddRef(
     IDirect3DVertexBuffer9 * This)
 {
-    HookDebug("TrampolineIDirect3DVertexBuffer9:: AddRef()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexBuffer9:: AddRef()\n");
 
     return orig_vtable.AddRef(((IDirect3DVertexBuffer9Trampoline*)This)->orig_this);
 }
@@ -310,7 +310,7 @@ static ULONG STDMETHODCALLTYPE TrampolineAddRef(
 static ULONG STDMETHODCALLTYPE TrampolineRelease(
     IDirect3DVertexBuffer9 * This)
 {
-    HookDebug("TrampolineIDirect3DVertexBuffer9:: Release()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexBuffer9:: Release()\n");
 
     return orig_vtable.Release(((IDirect3DVertexBuffer9Trampoline*)This)->orig_this);
 }
@@ -318,7 +318,7 @@ static ULONG STDMETHODCALLTYPE TrampolineRelease(
 static HRESULT STDMETHODCALLTYPE TrampolineFreePrivateData(
     IDirect3DVertexBuffer9 * This, REFGUID refguid)
 {
-    HookDebug("TrampolineIDirect3DVertexBuffer9:: FreePrivateData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexBuffer9:: FreePrivateData()\n");
 
     return orig_vtable.FreePrivateData(((IDirect3DVertexBuffer9Trampoline*)This)->orig_this, refguid);
 }
@@ -326,7 +326,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineFreePrivateData(
 static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(
     IDirect3DVertexBuffer9 * This, IDirect3DDevice9 **ppDevice)
 {
-    HookDebug("TrampolineIDirect3DVertexBuffer9:: GetDevice()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexBuffer9:: GetDevice()\n");
 
     return orig_vtable.GetDevice(((IDirect3DVertexBuffer9Trampoline*)This)->orig_this, ppDevice);
 }
@@ -334,7 +334,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(
 static DWORD STDMETHODCALLTYPE TrampolineGetPriority(
     IDirect3DVertexBuffer9 * This)
 {
-    HookDebug("TrampolineIDirect3DVertexBuffer9:: GetPriority()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexBuffer9:: GetPriority()\n");
 
     return orig_vtable.GetPriority(((IDirect3DVertexBuffer9Trampoline*)This)->orig_this);
 }
@@ -345,7 +345,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetPrivateData(
      void    *pData,
      DWORD   *pSizeOfData)
 {
-    HookDebug("TrampolineIDirect3DVertexBuffer9:: GetPrivateData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexBuffer9:: GetPrivateData()\n");
 
     return orig_vtable.GetPrivateData(((IDirect3DVertexBuffer9Trampoline*)This)->orig_this, refguid, pData, pSizeOfData);
 }
@@ -353,7 +353,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetPrivateData(
 static D3DRESOURCETYPE STDMETHODCALLTYPE TrampolineGetType(
     IDirect3DVertexBuffer9 * This)
 {
-    HookDebug("TrampolineIDirect3DVertexBuffer9:: GetType()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexBuffer9:: GetType()\n");
 
     return orig_vtable.GetType(((IDirect3DVertexBuffer9Trampoline*)This)->orig_this);
 }
@@ -361,7 +361,7 @@ static D3DRESOURCETYPE STDMETHODCALLTYPE TrampolineGetType(
 static void STDMETHODCALLTYPE TrampolinePreLoad(
     IDirect3DVertexBuffer9 * This)
 {
-    HookDebug("TrampolineIDirect3DVertexBuffer9::PreLoad()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexBuffer9::PreLoad()\n");
 
     return orig_vtable.PreLoad(((IDirect3DVertexBuffer9Trampoline*)This)->orig_this);
 }
@@ -369,7 +369,7 @@ static void STDMETHODCALLTYPE TrampolinePreLoad(
 static DWORD STDMETHODCALLTYPE TrampolineSetPriority(
     IDirect3DVertexBuffer9 * This, DWORD PriorityNew)
 {
-    HookDebug("TrampolineIDirect3DVertexBuffer9::SetPriority()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexBuffer9::SetPriority()\n");
 
     return orig_vtable.SetPriority(((IDirect3DVertexBuffer9Trampoline*)This)->orig_this, PriorityNew);
 }
@@ -381,7 +381,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateData(
            DWORD   SizeOfData,
            DWORD   Flags)
 {
-    HookDebug("TrampolineIDirect3DVertexBuffer9::SetPrivateData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexBuffer9::SetPrivateData()\n");
 
     return orig_vtable.SetPrivateData(((IDirect3DVertexBuffer9Trampoline*)This)->orig_this, refguid, pData, SizeOfData, Flags);
 }
@@ -390,7 +390,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetDesc(
     IDirect3DVertexBuffer9 * This,
     D3DVERTEXBUFFER_DESC *pDesc)
 {
-    HookDebug("TrampolineIDirect3DVertexBuffer9::GetDesc()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexBuffer9::GetDesc()\n");
 
     return orig_vtable.GetDesc(((IDirect3DVertexBuffer9Trampoline*)This)->orig_this, pDesc);
 }
@@ -402,7 +402,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineLock(
      VOID  **ppbData,
       DWORD Flags)
 {
-    HookDebug("TrampolineIDirect3DVertexBuffer9::Lock()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexBuffer9::Lock()\n");
 
     return orig_vtable.Lock(((IDirect3DVertexBuffer9Trampoline*)This)->orig_this, OffsetToLock, SizeToLock, ppbData, Flags);
 }
@@ -410,7 +410,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineLock(
 static HRESULT STDMETHODCALLTYPE TrampolineUnlock(
     IDirect3DVertexBuffer9 * This)
 {
-    HookDebug("TrampolineIDirect3DVertexBuffer9::Unlock()\n");
+    HOOK_DEBUG("TrampolineIDirect3DVertexBuffer9::Unlock()\n");
 
     return orig_vtable.Unlock(((IDirect3DVertexBuffer9Trampoline*)This)->orig_this);
 }

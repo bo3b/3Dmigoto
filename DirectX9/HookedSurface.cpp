@@ -7,9 +7,9 @@
 
 
 #if 0
-#define HookDebug LOG_DEBUG
+#define HOOK_DEBUG LOG_DEBUG
 #else
-#define HookDebug(...) do { } while (0)
+#define HOOK_DEBUG(...) do { } while (0)
 #endif
 
 typedef std::unordered_map<IDirect3DSurface9 *, IDirect3DSurface9 *> SurfaceMap;
@@ -46,7 +46,7 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: QueryInterface()\n");
+    HOOK_DEBUG("HookedSurface:: QueryInterface()\n");
 
     if (surface)
         return IDirect3DSurface9_QueryInterface(surface, riid, ppvObject);
@@ -59,7 +59,7 @@ static ULONG STDMETHODCALLTYPE AddRef(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: AddRef()\n");
+    HOOK_DEBUG("HookedSurface:: AddRef()\n");
 
     if (surface)
         return IDirect3DSurface9_AddRef(surface);
@@ -73,7 +73,7 @@ static ULONG STDMETHODCALLTYPE Release(
     SurfaceMap::iterator i;
     ULONG ref;
 
-    HookDebug("HookedSurface:: Release()\n");
+    HOOK_DEBUG("HookedSurface:: Release()\n");
 
     EnterCriticalSection(&surface_map_lock);
     i = surface_map.find(This);
@@ -95,7 +95,7 @@ static HRESULT STDMETHODCALLTYPE FreePrivateData(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: FreePrivateData()\n");
+    HOOK_DEBUG("HookedSurface:: FreePrivateData()\n");
 
     if (surface)
         return IDirect3DSurface9_FreePrivateData(surface, refguid);
@@ -108,7 +108,7 @@ static HRESULT STDMETHODCALLTYPE GetDevice(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: GetDevice()\n");
+    HOOK_DEBUG("HookedSurface:: GetDevice()\n");
 
     if (surface)
         return IDirect3DSurface9_GetDevice(surface, ppDevice);
@@ -121,7 +121,7 @@ static DWORD STDMETHODCALLTYPE GetPriority(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: GetPriority()\n");
+    HOOK_DEBUG("HookedSurface:: GetPriority()\n");
 
     if (surface)
         return IDirect3DSurface9_GetPriority(surface);
@@ -137,7 +137,7 @@ static HRESULT STDMETHODCALLTYPE GetPrivateData(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: GetPrivateData()\n");
+    HOOK_DEBUG("HookedSurface:: GetPrivateData()\n");
 
     if (surface)
         return IDirect3DSurface9_GetPrivateData(surface, refguid, pData, pSizeOfData);
@@ -150,7 +150,7 @@ static D3DRESOURCETYPE STDMETHODCALLTYPE GetType(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: GetType()\n");
+    HOOK_DEBUG("HookedSurface:: GetType()\n");
 
     if (surface)
         return IDirect3DSurface9_GetType(surface);
@@ -163,7 +163,7 @@ static void STDMETHODCALLTYPE PreLoad(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: PreLoad()\n");
+    HOOK_DEBUG("HookedSurface:: PreLoad()\n");
 
     if (surface)
         return IDirect3DSurface9_PreLoad(surface);
@@ -176,7 +176,7 @@ static DWORD STDMETHODCALLTYPE SetPriority(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: SetPriority()\n");
+    HOOK_DEBUG("HookedSurface:: SetPriority()\n");
 
     if (surface)
         return IDirect3DSurface9_SetPriority(surface, PriorityNew);
@@ -194,7 +194,7 @@ static HRESULT STDMETHODCALLTYPE SetPrivateData(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: SetPrivateData()\n");
+    HOOK_DEBUG("HookedSurface:: SetPrivateData()\n");
 
     if (surface)
         return IDirect3DSurface9_SetPrivateData(surface, refguid, pData, SizeOfData, Flags);
@@ -208,7 +208,7 @@ static HRESULT STDMETHODCALLTYPE GetDesc(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: GetDesc()\n");
+    HOOK_DEBUG("HookedSurface:: GetDesc()\n");
 
     if (surface)
         return IDirect3DSurface9_GetDesc(surface, pDesc);
@@ -224,7 +224,7 @@ static HRESULT STDMETHODCALLTYPE LockRect(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: Lock()\n");
+    HOOK_DEBUG("HookedSurface:: Lock()\n");
 
     if (surface)
         return IDirect3DSurface9_LockRect(surface, pLockedRect, pRect, Flags);
@@ -237,7 +237,7 @@ static HRESULT STDMETHODCALLTYPE UnlockRect(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: UnlockRect()\n");
+    HOOK_DEBUG("HookedSurface:: UnlockRect()\n");
 
     if (surface)
         return IDirect3DSurface9_UnlockRect(surface);
@@ -252,7 +252,7 @@ static HRESULT STDMETHODCALLTYPE GetContainer(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: GetContainer()\n");
+    HOOK_DEBUG("HookedSurface:: GetContainer()\n");
 
     if (surface)
         return IDirect3DSurface9_GetContainer(surface, riid, ppContainer);
@@ -266,7 +266,7 @@ static HRESULT STDMETHODCALLTYPE _GetDC(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: GetDC()\n");
+    HOOK_DEBUG("HookedSurface:: GetDC()\n");
 
     if (surface)
         return IDirect3DSurface9_GetDC(surface, phdc);
@@ -280,7 +280,7 @@ static HRESULT STDMETHODCALLTYPE _ReleaseDC(
 {
     IDirect3DSurface9 *surface = lookup_hooked_surface(This);
 
-    HookDebug("HookedSurface:: ReleaseDC()\n");
+    HOOK_DEBUG("HookedSurface:: ReleaseDC()\n");
 
     if (surface)
         return IDirect3DSurface9_ReleaseDC(surface, hdc);
@@ -340,7 +340,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
     REFIID riid,
     __RPC__deref_out  void **ppvObject)
 {
-    HookDebug("TrampolineIDirect3DSurface9:: QueryInterface()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9:: QueryInterface()\n");
 
     return orig_vtable.QueryInterface(((IDirect3DSurface9Trampoline*)This)->orig_this, riid, ppvObject);
 }
@@ -349,7 +349,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
 static ULONG STDMETHODCALLTYPE TrampolineAddRef(
     IDirect3DSurface9 * This)
 {
-    HookDebug("TrampolineIDirect3DSurface9:: AddRef()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9:: AddRef()\n");
 
     return orig_vtable.AddRef(((IDirect3DSurface9Trampoline*)This)->orig_this);
 }
@@ -357,7 +357,7 @@ static ULONG STDMETHODCALLTYPE TrampolineAddRef(
 static ULONG STDMETHODCALLTYPE TrampolineRelease(
     IDirect3DSurface9 * This)
 {
-    HookDebug("TrampolineIDirect3DSurface9:: Release()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9:: Release()\n");
 
     return orig_vtable.Release(((IDirect3DSurface9Trampoline*)This)->orig_this);
 }
@@ -365,7 +365,7 @@ static ULONG STDMETHODCALLTYPE TrampolineRelease(
 static HRESULT STDMETHODCALLTYPE TrampolineFreePrivateData(
     IDirect3DSurface9 * This, REFGUID refguid)
 {
-    HookDebug("TrampolineIDirect3DSurface9:: FreePrivateData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9:: FreePrivateData()\n");
 
     return orig_vtable.FreePrivateData(((IDirect3DSurface9Trampoline*)This)->orig_this, refguid);
 }
@@ -373,7 +373,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineFreePrivateData(
 static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(
     IDirect3DSurface9 * This, IDirect3DDevice9 **ppDevice)
 {
-    HookDebug("TrampolineIDirect3DSurface9:: GetDevice()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9:: GetDevice()\n");
 
     return orig_vtable.GetDevice(((IDirect3DSurface9Trampoline*)This)->orig_this, ppDevice);
 }
@@ -381,7 +381,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetDevice(
 static DWORD STDMETHODCALLTYPE TrampolineGetPriority(
     IDirect3DSurface9 * This)
 {
-    HookDebug("TrampolineIDirect3DSurface9:: GetPriority()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9:: GetPriority()\n");
 
     return orig_vtable.GetPriority(((IDirect3DSurface9Trampoline*)This)->orig_this);
 }
@@ -392,7 +392,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetPrivateData(
      void    *pData,
      DWORD   *pSizeOfData)
 {
-    HookDebug("TrampolineIDirect3DSurface9:: GetPrivateData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9:: GetPrivateData()\n");
 
     return orig_vtable.GetPrivateData(((IDirect3DSurface9Trampoline*)This)->orig_this, refguid, pData, pSizeOfData);
 }
@@ -400,7 +400,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetPrivateData(
 static D3DRESOURCETYPE STDMETHODCALLTYPE TrampolineGetType(
     IDirect3DSurface9 * This)
 {
-    HookDebug("TrampolineIDirect3DSurface9:: GetType()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9:: GetType()\n");
 
     return orig_vtable.GetType(((IDirect3DSurface9Trampoline*)This)->orig_this);
 }
@@ -408,7 +408,7 @@ static D3DRESOURCETYPE STDMETHODCALLTYPE TrampolineGetType(
 static void STDMETHODCALLTYPE TrampolinePreLoad(
     IDirect3DSurface9 * This)
 {
-    HookDebug("TrampolineIDirect3DSurface9::PreLoad()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9::PreLoad()\n");
 
     return orig_vtable.PreLoad(((IDirect3DSurface9Trampoline*)This)->orig_this);
 }
@@ -416,7 +416,7 @@ static void STDMETHODCALLTYPE TrampolinePreLoad(
 static DWORD STDMETHODCALLTYPE TrampolineSetPriority(
     IDirect3DSurface9 * This, DWORD PriorityNew)
 {
-    HookDebug("TrampolineIDirect3DSurface9::SetPriority()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9::SetPriority()\n");
 
     return orig_vtable.SetPriority(((IDirect3DSurface9Trampoline*)This)->orig_this, PriorityNew);
 }
@@ -428,7 +428,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateData(
            DWORD   SizeOfData,
            DWORD   Flags)
 {
-    HookDebug("TrampolineIDirect3DSurface9::SetPrivateData()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9::SetPrivateData()\n");
 
     return orig_vtable.SetPrivateData(((IDirect3DSurface9Trampoline*)This)->orig_this, refguid, pData, SizeOfData, Flags);
 }
@@ -437,7 +437,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetDesc(
     IDirect3DSurface9 * This,
     D3DSURFACE_DESC *pDesc)
 {
-    HookDebug("TrampolineIDirect3DSurface9::GetDesc()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9::GetDesc()\n");
 
     return orig_vtable.GetDesc(((IDirect3DSurface9Trampoline*)This)->orig_this, pDesc);
 }
@@ -448,7 +448,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineLockRect(
       const RECT           *pRect,
             DWORD          Flags)
 {
-    HookDebug("TrampolineIDirect3DSurface9::LockRect()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9::LockRect()\n");
 
     return orig_vtable.LockRect(((IDirect3DSurface9Trampoline*)This)->orig_this, pLockedRect, pRect, Flags);
 }
@@ -456,7 +456,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineLockRect(
 static HRESULT STDMETHODCALLTYPE TrampolineUnlockRect(
     IDirect3DSurface9 * This)
 {
-    HookDebug("TrampolineIDirect3DSurface9::UnlockRect()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9::UnlockRect()\n");
 
     return orig_vtable.UnlockRect(((IDirect3DSurface9Trampoline*)This)->orig_this);
 }
@@ -466,7 +466,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetContainer(
       REFIID riid,
      void   **ppContainer)
 {
-    HookDebug("TrampolineIDirect3DSurface9::GetContainer()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9::GetContainer()\n");
 
     return orig_vtable.GetContainer(((IDirect3DSurface9Trampoline*)This)->orig_this, riid, ppContainer);
 }
@@ -475,7 +475,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetDC(
     IDirect3DSurface9 * This,
     HDC *phdc)
 {
-    HookDebug("TrampolineIDirect3DSurface9::GetDC()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9::GetDC()\n");
 
     return orig_vtable.GetDC(((IDirect3DSurface9Trampoline*)This)->orig_this, phdc);
 }
@@ -484,7 +484,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineReleaseDC(
     IDirect3DSurface9 * This,
     HDC hdc)
 {
-    HookDebug("TrampolineIDirect3DSurface9::ReleaseDC()\n");
+    HOOK_DEBUG("TrampolineIDirect3DSurface9::ReleaseDC()\n");
 
     return orig_vtable.ReleaseDC(((IDirect3DSurface9Trampoline*)This)->orig_this, hdc);
 }

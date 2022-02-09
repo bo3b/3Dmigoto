@@ -5,9 +5,9 @@
 #include "DLLMainHookDX9.h"
 
 #if 0
-#define HookDebug LOG_DEBUG
+#define HOOK_DEBUG LOG_DEBUG
 #else
-#define HookDebug(...) do { } while (0)
+#define HOOK_DEBUG(...) do { } while (0)
 #endif
 
 #undef  INTERFACE
@@ -95,7 +95,7 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 {
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9:: QueryInterface()\n");
+    HOOK_DEBUG("HookedD9:: QueryInterface()\n");
 
     if (D9)
         return IDirect3D9Ex_QueryInterface((IDirect3D9*)D9,riid, ppvObject);
@@ -108,7 +108,7 @@ static ULONG STDMETHODCALLTYPE AddRef(
 {
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9:: AddRef()\n");
+    HOOK_DEBUG("HookedD9:: AddRef()\n");
 
     if (D9)
         return IDirect3D9Ex_AddRef(D9);
@@ -122,7 +122,7 @@ static ULONG STDMETHODCALLTYPE Release(
     D9Map::iterator i;
     ULONG ref;
 
-    HookDebug("HookedD9:: Release()\n");
+    HOOK_DEBUG("HookedD9:: Release()\n");
 
     EnterCriticalSection(&D9_map_lock);
     i = D9_map.find(This);
@@ -142,7 +142,7 @@ static ULONG STDMETHODCALLTYPE Release(
 static HRESULT STDMETHODCALLTYPE RegisterSoftwareDevice(IDirect3D9 * This, void* pInitializeFunction) {
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::RegisterSoftwareDevice()\n");
+    HOOK_DEBUG("HookedD9::RegisterSoftwareDevice()\n");
 
     if (D9)
         return IDirect3D9_RegisterSoftwareDevice((IDirect3D9*)D9, pInitializeFunction);
@@ -154,7 +154,7 @@ static HRESULT STDMETHODCALLTYPE RegisterSoftwareDevice(IDirect3D9 * This, void*
 static UINT STDMETHODCALLTYPE GetAdapterCount(IDirect3D9 * This) {
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::GetAdapterCount()\n");
+    HOOK_DEBUG("HookedD9::GetAdapterCount()\n");
 
     if (D9)
         return IDirect3D9Ex_GetAdapterCount(D9);
@@ -166,7 +166,7 @@ static UINT STDMETHODCALLTYPE GetAdapterCount(IDirect3D9 * This) {
 static HRESULT STDMETHODCALLTYPE GetAdapterIdentifier(IDirect3D9 * This, UINT Adapter, DWORD Flags, D3DADAPTER_IDENTIFIER9* pIdentifier){
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::GetAdapterIdentifier()\n");
+    HOOK_DEBUG("HookedD9::GetAdapterIdentifier()\n");
 
     if (D9)
         return IDirect3D9Ex_GetAdapterIdentifier((IDirect3D9*)D9,Adapter, Flags, pIdentifier);
@@ -178,7 +178,7 @@ static HRESULT STDMETHODCALLTYPE GetAdapterIdentifier(IDirect3D9 * This, UINT Ad
 static UINT STDMETHODCALLTYPE GetAdapterModeCount(IDirect3D9 * This, UINT Adapter, D3DFORMAT Format) {
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::GetAdapterModeCount()\n");
+    HOOK_DEBUG("HookedD9::GetAdapterModeCount()\n");
 
     if (D9)
         return IDirect3D9Ex_GetAdapterModeCount((IDirect3D9*)D9,Adapter, Format);
@@ -190,7 +190,7 @@ static UINT STDMETHODCALLTYPE GetAdapterModeCount(IDirect3D9 * This, UINT Adapte
 static HRESULT STDMETHODCALLTYPE EnumAdapterModes(IDirect3D9 * This, UINT Adapter, D3DFORMAT Format, UINT Mode, D3DDISPLAYMODE* pMode){
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::EnumAdapterModes()\n");
+    HOOK_DEBUG("HookedD9::EnumAdapterModes()\n");
 
     if (D9)
         return IDirect3D9Ex_EnumAdapterModes((IDirect3D9*)D9,Adapter, Format, Mode, pMode);
@@ -202,7 +202,7 @@ static HRESULT STDMETHODCALLTYPE EnumAdapterModes(IDirect3D9 * This, UINT Adapte
 static HRESULT STDMETHODCALLTYPE GetAdapterDisplayMode(IDirect3D9 * This, UINT Adapter, D3DDISPLAYMODE* pMode) {
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::GetAdapterDisplayMode()\n");
+    HOOK_DEBUG("HookedD9::GetAdapterDisplayMode()\n");
 
     if (D9)
         return IDirect3D9Ex_GetAdapterDisplayMode((IDirect3D9*)D9,Adapter, pMode);
@@ -214,7 +214,7 @@ static HRESULT STDMETHODCALLTYPE GetAdapterDisplayMode(IDirect3D9 * This, UINT A
 static HRESULT STDMETHODCALLTYPE CheckDeviceType(IDirect3D9 * This, UINT Adapter, D3DDEVTYPE DevType, D3DFORMAT AdapterFormat, D3DFORMAT BackBufferFormat, BOOL bWindowed){
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::CheckDeviceType()\n");
+    HOOK_DEBUG("HookedD9::CheckDeviceType()\n");
 
     if (D9)
         return IDirect3D9Ex_CheckDeviceType((IDirect3D9*)D9,Adapter, DevType, AdapterFormat, BackBufferFormat, bWindowed);
@@ -226,7 +226,7 @@ static HRESULT STDMETHODCALLTYPE CheckDeviceType(IDirect3D9 * This, UINT Adapter
 static HRESULT STDMETHODCALLTYPE CheckDeviceFormat(IDirect3D9 * This, UINT Adapter, D3DDEVTYPE DeviceType, D3DFORMAT AdapterFormat, DWORD Usage, D3DRESOURCETYPE RType, D3DFORMAT CheckFormat){
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::CheckDeviceFormat()\n");
+    HOOK_DEBUG("HookedD9::CheckDeviceFormat()\n");
 
     if (D9)
         return IDirect3D9Ex_CheckDeviceFormat((IDirect3D9*)D9,Adapter, DeviceType, AdapterFormat, Usage, RType, CheckFormat);
@@ -238,7 +238,7 @@ static HRESULT STDMETHODCALLTYPE CheckDeviceFormat(IDirect3D9 * This, UINT Adapt
 static HRESULT STDMETHODCALLTYPE CheckDeviceMultiSampleType(IDirect3D9 * This, UINT Adapter, D3DDEVTYPE DeviceType, D3DFORMAT SurfaceFormat, BOOL Windowed, D3DMULTISAMPLE_TYPE MultiSampleType, DWORD* pQualityLevels){
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::CheckDeviceMultiSampleType()\n");
+    HOOK_DEBUG("HookedD9::CheckDeviceMultiSampleType()\n");
 
     if (D9)
         return IDirect3D9Ex_CheckDeviceMultiSampleType((IDirect3D9*)D9,Adapter, DeviceType, SurfaceFormat, Windowed, MultiSampleType, pQualityLevels);
@@ -250,7 +250,7 @@ static HRESULT STDMETHODCALLTYPE CheckDeviceMultiSampleType(IDirect3D9 * This, U
 static HRESULT STDMETHODCALLTYPE CheckDepthStencilMatch(IDirect3D9 * This, UINT Adapter, D3DDEVTYPE DeviceType, D3DFORMAT AdapterFormat, D3DFORMAT RenderTargetFormat, D3DFORMAT DepthStencilFormat){
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::CheckDepthStencilMatch()\n");
+    HOOK_DEBUG("HookedD9::CheckDepthStencilMatch()\n");
 
     if (D9)
         return IDirect3D9Ex_CheckDepthStencilMatch((IDirect3D9*)D9,Adapter, DeviceType, AdapterFormat, RenderTargetFormat, DepthStencilFormat);
@@ -262,7 +262,7 @@ static HRESULT STDMETHODCALLTYPE CheckDepthStencilMatch(IDirect3D9 * This, UINT 
 static HRESULT STDMETHODCALLTYPE CheckDeviceFormatConversion(IDirect3D9 * This, UINT Adapter, D3DDEVTYPE DeviceType, D3DFORMAT SourceFormat, D3DFORMAT TargetFormat) {
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::CheckDeviceFormatConversion()\n");
+    HOOK_DEBUG("HookedD9::CheckDeviceFormatConversion()\n");
 
     if (D9)
         return IDirect3D9Ex_CheckDeviceFormatConversion((IDirect3D9*)D9,Adapter, DeviceType, SourceFormat, TargetFormat);
@@ -274,7 +274,7 @@ static HRESULT STDMETHODCALLTYPE CheckDeviceFormatConversion(IDirect3D9 * This, 
 static HRESULT STDMETHODCALLTYPE _GetDeviceCaps(IDirect3D9 * This, UINT Adapter, D3DDEVTYPE DeviceType, D3DCAPS9* pCaps) {
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::GetDeviceCaps()\n");
+    HOOK_DEBUG("HookedD9::GetDeviceCaps()\n");
 
     if (D9)
         return IDirect3D9Ex_GetDeviceCaps((IDirect3D9*)D9, Adapter, DeviceType, pCaps);
@@ -286,7 +286,7 @@ static HRESULT STDMETHODCALLTYPE _GetDeviceCaps(IDirect3D9 * This, UINT Adapter,
 static HMONITOR STDMETHODCALLTYPE GetAdapterMonitor(IDirect3D9 * This, UINT Adapter) {
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::GetAdapterMonitor()\n");
+    HOOK_DEBUG("HookedD9::GetAdapterMonitor()\n");
 
     if (D9)
         return IDirect3D9Ex_GetAdapterMonitor((IDirect3D9*)D9,Adapter);
@@ -298,7 +298,7 @@ static HMONITOR STDMETHODCALLTYPE GetAdapterMonitor(IDirect3D9 * This, UINT Adap
 static HRESULT STDMETHODCALLTYPE CreateDevice(IDirect3D9 * This, UINT Adapter, ::D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface){
     IDirect3D9 *D9 = (IDirect3D9*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::CreateDevice()\n");
+    HOOK_DEBUG("HookedD9::CreateDevice()\n");
 
     if (D9)
         return IDirect3D9Ex_CreateDevice((IDirect3D9*)D9,Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, ppReturnedDeviceInterface);
@@ -318,7 +318,7 @@ static HRESULT STDMETHODCALLTYPE CreateDeviceEx(IDirect3D9Ex2 * This,
 {
     IDirect3D9Ex2 *D9 = (IDirect3D9Ex2*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::CreateDeviceEx()\n");
+    HOOK_DEBUG("HookedD9::CreateDeviceEx()\n");
 
     if (D9)
         return IDirect3D9Ex_CreateDeviceEx((IDirect3D9Ex2*)D9,Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, pFullscreenDisplayMode, ppReturnedDeviceInterface);
@@ -335,7 +335,7 @@ static HRESULT STDMETHODCALLTYPE EnumAdapterModesEx(IDirect3D9Ex2 * This,
 {
     IDirect3D9Ex2 *D9 = (IDirect3D9Ex2*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::EnumAdapterModesEx()\n");
+    HOOK_DEBUG("HookedD9::EnumAdapterModesEx()\n");
 
     if (D9)
         return IDirect3D9Ex_EnumAdapterModesEx((IDirect3D9Ex2*)D9,Adapter, pFilter, Mode, pMode);
@@ -351,7 +351,7 @@ static HRESULT STDMETHODCALLTYPE GetAdapterDisplayModeEx(IDirect3D9Ex2 * This,
 {
     IDirect3D9Ex2 *D9 = (IDirect3D9Ex2*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::GetAdapterDisplayModeEx()\n");
+    HOOK_DEBUG("HookedD9::GetAdapterDisplayModeEx()\n");
 
     if (D9)
         return IDirect3D9Ex_GetAdapterDisplayModeEx((IDirect3D9Ex2*)D9,Adapter, pMode, pRotation);
@@ -366,7 +366,7 @@ static HRESULT STDMETHODCALLTYPE GetAdapterLUID(IDirect3D9Ex2 * This,
 {
     IDirect3D9Ex2 *D9 = (IDirect3D9Ex2*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::GetAdapterLUID()\n");
+    HOOK_DEBUG("HookedD9::GetAdapterLUID()\n");
 
     if (D9)
         return IDirect3D9Ex_GetAdapterLUID((IDirect3D9Ex2*)D9,Adapter, pLUID);
@@ -381,7 +381,7 @@ static HRESULT STDMETHODCALLTYPE GetAdapterModeCountEx(IDirect3D9Ex2 * This,
 {
     IDirect3D9Ex2 *D9 = (IDirect3D9Ex2*)lookup_hooked_D9((IDirect3D9Ex*)This);
 
-    HookDebug("HookedD9::GetAdapterModeCountEx()\n");
+    HOOK_DEBUG("HookedD9::GetAdapterModeCountEx()\n");
 
     if (D9)
         return IDirect3D9Ex_GetAdapterModeCountEx((IDirect3D9Ex2*)D9,Adapter, pFilter);
@@ -455,7 +455,7 @@ template<typename D3D9>
     REFIID riid,
     __RPC__deref_out  void **ppvObject)
 {
-    HookDebug("TrampolineIDirect3D9:: QueryInterface()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: QueryInterface()\n");
 
     return orig_vtable.QueryInterface(((IDirect3D9Trampoline*)This)->orig_this, riid, ppvObject);
 }
@@ -464,7 +464,7 @@ template<typename D3D9>
  static ULONG STDMETHODCALLTYPE TrampolineAddRef(
      D3D9 * This)
 {
-    HookDebug("TrampolineIDirect3D9:: AddRef()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: AddRef()\n");
 
     return orig_vtable.AddRef(((IDirect3D9Trampoline*)This)->orig_this);
 }
@@ -472,7 +472,7 @@ template<typename D3D9>
  static ULONG STDMETHODCALLTYPE TrampolineRelease(
      D3D9 * This)
 {
-    HookDebug("TrampolineIDirect3D9:: Release()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: Release()\n");
 
     return orig_vtable.Release(((IDirect3D9Trampoline*)This)->orig_this);
 }
@@ -484,7 +484,7 @@ template<typename D3D9>
      D3DFORMAT  RenderTargetFormat,
      D3DFORMAT  DepthStencilFormat)
 {
-    HookDebug("TrampolineIDirect3D9:: CheckDepthStencilMatch()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: CheckDepthStencilMatch()\n");
 
     return orig_vtable.CheckDepthStencilMatch(((IDirect3D9Trampoline*)This)->orig_this, Adapter, DeviceType, AdapterFormat, RenderTargetFormat, DepthStencilFormat);
 }
@@ -497,7 +497,7 @@ template<typename D3D9>
      D3DRESOURCETYPE RType,
      D3DFORMAT       CheckFormat)
 {
-    HookDebug("TrampolineIDirect3D9:: CheckDeviceFormat()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: CheckDeviceFormat()\n");
 
     return orig_vtable.CheckDeviceFormat(((IDirect3D9Trampoline*)This)->orig_this, Adapter, DeviceType, AdapterFormat, Usage, RType, CheckFormat);
 }
@@ -508,7 +508,7 @@ template<typename D3D9>
      D3DFORMAT  SourceFormat,
      D3DFORMAT  TargetFormat)
 {
-    HookDebug("TrampolineIDirect3D9:: CheckDeviceFormatConversion()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: CheckDeviceFormatConversion()\n");
 
     return orig_vtable.CheckDeviceFormatConversion(((IDirect3D9Trampoline*)This)->orig_this, Adapter, DeviceType, SourceFormat, TargetFormat);
 }
@@ -521,7 +521,7 @@ template<typename D3D9>
       D3DMULTISAMPLE_TYPE MultiSampleType,
      DWORD               *pQualityLevels)
 {
-    HookDebug("TrampolineIDirect3D9:: CheckDeviceMultiSampleType()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: CheckDeviceMultiSampleType()\n");
 
     return orig_vtable.CheckDeviceMultiSampleType(((IDirect3D9Trampoline*)This)->orig_this, Adapter, DeviceType, SurfaceFormat, Windowed, MultiSampleType, pQualityLevels);
 }
@@ -533,7 +533,7 @@ template<typename D3D9>
      D3DFORMAT  BackBufferFormat,
      BOOL       Windowed)
 {
-    HookDebug("TrampolineIDirect3D9:: CheckDeviceType()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: CheckDeviceType()\n");
 
     return orig_vtable.CheckDeviceType(((IDirect3D9Trampoline*)This)->orig_this, Adapter, DeviceType, DisplayFormat, BackBufferFormat, Windowed);
 }
@@ -544,7 +544,7 @@ template<typename D3D9>
       UINT           Mode,
      D3DDISPLAYMODE *pMode)
 {
-    HookDebug("TrampolineIDirect3D9:: EnumAdapterModes()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: EnumAdapterModes()\n");
 
     return orig_vtable.EnumAdapterModes(((IDirect3D9Trampoline*)This)->orig_this, Adapter, Format, Mode, pMode);
 }
@@ -552,7 +552,7 @@ template<typename D3D9>
  static UINT STDMETHODCALLTYPE TrampolineGetAdapterCount(
      D3D9 * This)
 {
-    HookDebug("TrampolineIDirect3D9:: EnumAdapterModes()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: EnumAdapterModes()\n");
 
     return orig_vtable.GetAdapterCount(((IDirect3D9Trampoline*)This)->orig_this);
 }
@@ -561,7 +561,7 @@ template<typename D3D9>
      D3D9 * This, UINT Adapter,
      D3DDISPLAYMODE *pMode)
 {
-    HookDebug("TrampolineIDirect3D9:: GetAdapterDisplayMode()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: GetAdapterDisplayMode()\n");
 
     return orig_vtable.GetAdapterDisplayMode(((IDirect3D9Trampoline*)This)->orig_this, Adapter, pMode);
  }
@@ -571,7 +571,7 @@ template<typename D3D9>
       DWORD Flags,
      D3DADAPTER_IDENTIFIER9 *pIdentifier)
 {
-    HookDebug("TrampolineIDirect3D9:: GetAdapterIdentifier()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: GetAdapterIdentifier()\n");
 
     return orig_vtable.GetAdapterIdentifier(((IDirect3D9Trampoline*)This)->orig_this, Adapter, Flags, pIdentifier);
 }
@@ -580,7 +580,7 @@ template<typename D3D9>
      D3D9 * This, UINT Adapter,
      D3DFORMAT Format)
 {
-    HookDebug("TrampolineIDirect3D9:: GetAdapterModeCount()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: GetAdapterModeCount()\n");
 
     return orig_vtable.GetAdapterModeCount(((IDirect3D9Trampoline*)This)->orig_this, Adapter, Format);
 }
@@ -589,7 +589,7 @@ template<typename D3D9>
  static HMONITOR STDMETHODCALLTYPE TrampolineGetAdapterMonitor(
      D3D9 * This, UINT Adapter)
 {
-    HookDebug("TrampolineIDirect3D9:: GetAdapterMonitor()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: GetAdapterMonitor()\n");
 
     return orig_vtable.GetAdapterMonitor(((IDirect3D9Trampoline*)This)->orig_this, Adapter);
 }
@@ -599,7 +599,7 @@ template<typename D3D9>
       D3DDEVTYPE DeviceType,
      D3DCAPS9   *pCaps)
 {
-    HookDebug("TrampolineIDirect3D9:: GetDeviceCaps()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: GetDeviceCaps()\n");
 
     return orig_vtable.GetDeviceCaps(((IDirect3D9Trampoline*)This)->orig_this, Adapter, DeviceType, pCaps);
 }
@@ -607,7 +607,7 @@ template<typename D3D9>
  static HRESULT STDMETHODCALLTYPE TrampolineRegisterSoftwareDevice(
      D3D9 * This, void *pInitializeFunction)
 {
-    HookDebug("TrampolineIDirect3D9:: RegisterSoftwareDevice()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: RegisterSoftwareDevice()\n");
 
     return orig_vtable.RegisterSoftwareDevice(((IDirect3D9Trampoline*)This)->orig_this, pInitializeFunction);
 }
@@ -620,7 +620,7 @@ template<typename D3D9>
          D3DPRESENT_PARAMETERS *pPresentationParameters,
      IDirect3DDevice9      **ppReturnedDeviceInterface)
 {
-    HookDebug("TrampolineIDirect3D9:: CreateDevice()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: CreateDevice()\n");
 
     return orig_vtable.CreateDevice(((IDirect3D9Trampoline*)This)->orig_this, Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, ppReturnedDeviceInterface);
 }
@@ -636,7 +636,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateDeviceEx(
      IDirect3DDevice9Ex    **ppReturnedDeviceInterface)
 
 {
-    HookDebug("TrampolineIDirect3D9:: CreateDeviceEx()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: CreateDeviceEx()\n");
 
     return orig_vtable_ex.CreateDeviceEx(((IDirect3D9ExTrampoline*)This)->orig_this, Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, pFullscreenDisplayMode, ppReturnedDeviceInterface);
 }
@@ -649,7 +649,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineEnumAdapterModesEx(
            D3DDISPLAYMODEEX     *pMode)
 
 {
-    HookDebug("TrampolineIDirect3D9:: EnumAdapterModesEx()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: EnumAdapterModesEx()\n");
 
     return orig_vtable_ex.EnumAdapterModesEx(((IDirect3D9ExTrampoline*)This)->orig_this, Adapter, pFilter, Mode, pMode);
 }
@@ -662,7 +662,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetAdapterDisplayModeEx(
      D3DDISPLAYROTATION *pRotation)
 
 {
-    HookDebug("TrampolineIDirect3D9:: GetAdapterDisplayModeEx()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: GetAdapterDisplayModeEx()\n");
 
     return orig_vtable_ex.GetAdapterDisplayModeEx(((IDirect3D9ExTrampoline*)This)->orig_this, Adapter, pMode, pRotation);
 }
@@ -673,7 +673,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetAdapterLUID(
      LUID *pLUID)
 
 {
-    HookDebug("TrampolineIDirect3D9:: GetAdapterLUID()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: GetAdapterLUID()\n");
 
     return orig_vtable_ex.GetAdapterLUID(((IDirect3D9ExTrampoline*)This)->orig_this, Adapter, pLUID);
 }
@@ -684,7 +684,7 @@ static UINT STDMETHODCALLTYPE TrampolineGetAdapterModeCountEx(
      const D3DDISPLAYMODEFILTER *pFilter)
 
 {
-    HookDebug("TrampolineIDirect3D9:: GetAdapterModeCountEx()\n");
+    HOOK_DEBUG("TrampolineIDirect3D9:: GetAdapterModeCountEx()\n");
 
     return orig_vtable_ex.GetAdapterModeCountEx(((IDirect3D9ExTrampoline*)This)->orig_this, Adapter, pFilter);
 }
