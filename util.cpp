@@ -661,7 +661,7 @@ void install_crash_handler(int level)
         return;
     }
 
-    InitializeCriticalSectionPretty(&crash_handler_lock);
+    INIT_CRITICAL_SECTION(&crash_handler_lock);
 
     old_mode = SetErrorMode(SEM_FAILCRITICALERRORS);
 

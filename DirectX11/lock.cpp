@@ -482,7 +482,7 @@ void enable_lock_dependency_checks()
         return;
     lock_dependency_checks_enabled = true;
 
-    InitializeCriticalSectionPretty(&graph_lock);
+    INIT_CRITICAL_SECTION(&graph_lock);
 
     if ((ntdll = GetModuleHandleA("ntdll.dll"))
       && GetModuleInformation(GetCurrentProcess(), ntdll, &mod_info, sizeof(MODULEINFO))) {

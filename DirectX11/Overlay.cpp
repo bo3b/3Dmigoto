@@ -35,7 +35,7 @@ public:
 
     Notices()
     {
-        InitializeCriticalSectionPretty(&lock);
+        INIT_CRITICAL_SECTION(&lock);
     }
 
     ~Notices()
