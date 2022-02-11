@@ -38,18 +38,18 @@ public:
 class Overlay
 {
 private:
-    IDXGISwapChain* mOrigSwapChain;
-    ID3D11Device* mOrigDevice;
-    ID3D11DeviceContext* mOrigContext;
-    HackerDevice* mHackerDevice;
-    HackerContext* mHackerContext;
+    IDXGISwapChain* origSwapChain;
+    ID3D11Device* origDevice;
+    ID3D11DeviceContext* origContext;
+    HackerDevice* hackerDevice;
+    HackerContext* hackerContext;
 
-    DirectX::XMUINT2 mResolution;
-    std::unique_ptr<DirectX::SpriteBatch> mSpriteBatch;
-    std::unique_ptr<DirectX::CommonStates> mStates;
-    std::unique_ptr<DirectX::BasicEffect> mEffect;
-    std::unique_ptr<DirectX::PrimitiveBatch<DirectX::VertexPositionColor>> mPrimitiveBatch;
-    Microsoft::WRL::ComPtr<ID3D11InputLayout> mInputLayout;
+    DirectX::XMUINT2 resolution;
+    std::unique_ptr<DirectX::SpriteBatch> spriteBatch;
+    std::unique_ptr<DirectX::CommonStates> states;
+    std::unique_ptr<DirectX::BasicEffect> effect;
+    std::unique_ptr<DirectX::PrimitiveBatch<DirectX::VertexPositionColor>> primitiveBatch;
+    Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
 
     // These are all state that we save away before drawing the overlay and
     // restore again afterwards. Basically everything that DirectTK
@@ -107,9 +107,9 @@ private:
     void DrawOutlinedString(DirectX::SpriteFont *font, wchar_t const *text, DirectX::XMFLOAT2 const &position, DirectX::FXMVECTOR color);
 
 public:
-    std::unique_ptr<DirectX::SpriteFont> mFont;
-    std::unique_ptr<DirectX::SpriteFont> mFontNotifications;
-    std::unique_ptr<DirectX::SpriteFont> mFontProfiling;
+    std::unique_ptr<DirectX::SpriteFont> font;
+    std::unique_ptr<DirectX::SpriteFont> fontNotifications;
+    std::unique_ptr<DirectX::SpriteFont> fontProfiling;
 
     Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain);
     ~Overlay();
