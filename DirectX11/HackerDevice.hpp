@@ -35,7 +35,7 @@ class HackerSwapChain;
 // was an awful choice on Microsoft's part to begin with.  Meaningless number
 // completely unrelated to version/revision or functionality.  Bad.
 // We will use the *1 notation for object names that are specific types,
-// like the mOrigDevice1 to avoid misleading types.
+// like the origDevice1 to avoid misleading types.
 //
 // Any HackerDevice will be the superset object ID3D11Device1 in all cases
 // except for Win7 missing the evil platform_update.
@@ -46,13 +46,13 @@ class HackerSwapChain;
 class HackerDevice : public ID3D11Device1
 {
 private:
-    ID3D11Device1 *mOrigDevice1;
-    ID3D11Device1 *mRealOrigDevice1;
-    ID3D11DeviceContext1 *mOrigContext1;
-    IUnknown *mUnknown;
+    ID3D11Device1 *origDevice1;
+    ID3D11Device1 *realOrigDevice1;
+    ID3D11DeviceContext1 *origContext1;
+    IUnknown *unknown;
 
-    HackerContext *mHackerContext;
-    HackerSwapChain *mHackerSwapChain;
+    HackerContext *hackerContext;
+    HackerSwapChain *hackerSwapChain;
 
     // Utility routines
     char *_ReplaceShaderFromShaderFixes(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
@@ -115,13 +115,13 @@ private:
         wchar_t *shaderType);
 
 public:
-    StereoHandle mStereoHandle;
-    nv::stereo::ParamTextureManagerD3D11 mParamTextureManager;
-    ID3D11Texture2D *mStereoTexture;
-    ID3D11ShaderResourceView *mStereoResourceView;
-    ID3D11ShaderResourceView *mZBufferResourceView;
-    ID3D11Texture1D *mIniTexture;
-    ID3D11ShaderResourceView *mIniResourceView;
+    StereoHandle stereoHandle;
+    nv::stereo::ParamTextureManagerD3D11 paramTextureManager;
+    ID3D11Texture2D *stereoTexture;
+    ID3D11ShaderResourceView *stereoResourceView;
+    ID3D11ShaderResourceView *zBufferResourceView;
+    ID3D11Texture1D *iniTexture;
+    ID3D11ShaderResourceView *iniResourceView;
 
     HackerDevice(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
 
