@@ -24,9 +24,9 @@ void InstallSetWindowPosHook();
 class HackerSwapChain : public IDXGISwapChain1
 {
 protected:
-    IDXGISwapChain1 *mOrigSwapChain1;
-    HackerDevice *mHackerDevice;
-    HackerContext *mHackerContext;
+    IDXGISwapChain1 *origSwapChain1;
+    HackerDevice *hackerDevice;
+    HackerContext *hackerContext;
 
 public:
     HackerSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pDevice, HackerContext *pContext);
@@ -34,7 +34,7 @@ public:
     IDXGISwapChain1* GetOrigSwapChain1();
     void UpdateStereoParams();
     void RunFrameActions();
-    Overlay *mOverlay;
+    Overlay *overlay;
 
 
     /** IUnknown **/
@@ -194,11 +194,11 @@ public:
 class HackerUpscalingSwapChain : public HackerSwapChain
 {
 private:
-    IDXGISwapChain1 *mFakeSwapChain1;
-    ID3D11Texture2D *mFakeBackBuffer;
+    IDXGISwapChain1 *fakeSwapChain1;
+    ID3D11Texture2D *fakeBackBuffer;
 
-    UINT mWidth;
-    UINT mHeight;
+    UINT width;
+    UINT height;
 
 public:
     HackerUpscalingSwapChain::HackerUpscalingSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pHackerDevice, HackerContext *pHackerContext,
