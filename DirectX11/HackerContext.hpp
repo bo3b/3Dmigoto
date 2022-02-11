@@ -32,9 +32,9 @@ struct ShaderOverride;
 
 struct DrawContext
 {
-    float oldSeparation;
-    ID3D11PixelShader *oldPixelShader;
-    ID3D11VertexShader *oldVertexShader;
+    float old_separation;
+    ID3D11PixelShader *old_pixel_shader;
+    ID3D11VertexShader *old_vertex_shader;
     CommandList *post_commands[5];
     DrawCallInfo call_info;
 
@@ -42,9 +42,9 @@ struct DrawContext
             UINT VertexCount, UINT IndexCount, UINT InstanceCount,
             UINT FirstVertex, UINT FirstIndex, UINT FirstInstance,
             ID3D11Buffer **indirect_buffer, UINT args_offset) :
-        oldSeparation(FLT_MAX),
-        oldVertexShader(NULL),
-        oldPixelShader(NULL),
+        old_separation(FLT_MAX),
+        old_vertex_shader(NULL),
+        old_pixel_shader(NULL),
         call_info(type, VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance,
                 indirect_buffer, args_offset)
     {
@@ -100,7 +100,7 @@ struct MappedResourceInfo {
 // was an awful choice on Microsoft's part to begin with.  Meaningless number
 // completely unrelated to version/revision or functionality.  Bad.
 // We will use the *1 notation for object names that are specific types,
-// like the mOrigContext1 to avoid misleading types.
+// like the origContext1 to avoid misleading types.
 //
 // Any HackerDevice will be the superset object ID3D11DeviceContext1 in all cases
 // except for Win7 missing the evil platform_update.
@@ -111,22 +111,22 @@ struct MappedResourceInfo {
 class HackerContext : public ID3D11DeviceContext1
 {
 private:
-    ID3D11Device1 *mOrigDevice1;
-    ID3D11DeviceContext1 *mOrigContext1;
-    ID3D11DeviceContext1 *mRealOrigContext1;
-    HackerDevice *mHackerDevice;
+    ID3D11Device1 *origDevice1;
+    ID3D11DeviceContext1 *origContext1;
+    ID3D11DeviceContext1 *realOrigContext1;
+    HackerDevice *hackerDevice;
 
     // These are per-context, moved from globals.h:
-    uint32_t mCurrentVertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
-    uint32_t mCurrentIndexBuffer; // Only valid while hunting=1
-    std::vector<ID3D11Resource *> mCurrentRenderTargets;
-    ID3D11Resource *mCurrentDepthTarget;
-    UINT mCurrentPSUAVStartSlot;
-    UINT mCurrentPSNumUAVs;
+    uint32_t currentVertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+    uint32_t currentIndexBuffer; // Only valid while hunting=1
+    std::vector<ID3D11Resource *> currentRenderTargets;
+    ID3D11Resource *currentDepthTarget;
+    UINT currentPSUAVStartSlot;
+    UINT currentPSNumUAVs;
 
     // Used for deny_cpu_read, track_texture_updates and constant buffer matching
     typedef std::unordered_map<ID3D11Resource*, MappedResourceInfo> MappedResources;
-    MappedResources mMappedResources;
+    MappedResources mappedResources;
 
     // These private methods are utility routines for HackerContext.
     void BeforeDraw(DrawContext &data);
@@ -201,12 +201,12 @@ protected:
     // until it has been further decoupled from HackerContext. Be wary of
     // relying on these - they will be zero in release mode with no
     // ShaderOverrides / ShaderRegex:
-    UINT64 mCurrentVertexShader;
-    UINT64 mCurrentHullShader;
-    UINT64 mCurrentDomainShader;
-    UINT64 mCurrentGeometryShader;
-    UINT64 mCurrentPixelShader;
-    UINT64 mCurrentComputeShader;
+    UINT64 currentVertexShader;
+    UINT64 currentHullShader;
+    UINT64 currentDomainShader;
+    UINT64 currentGeometryShader;
+    UINT64 currentPixelShader;
+    UINT64 currentComputeShader;
 
 public:
     HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
@@ -227,12 +227,12 @@ public:
 
     // These are the shaders the game has set, which may be different from
     // the ones we have bound to the pipeline:
-    ID3D11VertexShader *mCurrentVertexShaderHandle;
-    ID3D11PixelShader *mCurrentPixelShaderHandle;
-    ID3D11ComputeShader *mCurrentComputeShaderHandle;
-    ID3D11GeometryShader *mCurrentGeometryShaderHandle;
-    ID3D11DomainShader *mCurrentDomainShaderHandle;
-    ID3D11HullShader *mCurrentHullShaderHandle;
+    ID3D11VertexShader *currentVertexShaderHandle;
+    ID3D11PixelShader *currentPixelShaderHandle;
+    ID3D11ComputeShader *currentComputeShaderHandle;
+    ID3D11GeometryShader *currentGeometryShaderHandle;
+    ID3D11DomainShader *currentDomainShaderHandle;
+    ID3D11HullShader *currentHullShaderHandle;
 
     /*** IUnknown methods ***/
 
