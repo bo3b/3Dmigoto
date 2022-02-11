@@ -77,28 +77,28 @@ public:
 class Override : public virtual OverrideBase
 {
 private:
-    int transition, release_transition;
-    TransitionType transition_type, release_transition_type;
+    int transition, releaseTransition;
+    TransitionType transitionType, releaseTransitionType;
 
-    bool is_conditional;
+    bool isConditional;
     CommandListExpression condition;
 
-    CommandList activate_command_list;
-    CommandList deactivate_command_list;
+    CommandList activateCommandList;
+    CommandList deactivateCommandList;
 
 protected:
     bool active;
 
 public:
-    OverrideParams mOverrideParams;
-    OverrideVars mOverrideVars;
-    float mOverrideSeparation;
-    float mOverrideConvergence;
+    OverrideParams overrideParams;
+    OverrideVars overrideVars;
+    float overrideSeparation;
+    float overrideConvergence;
 
-    OverrideParams mSavedParams;
-    OverrideVars mSavedVars;
-    float mUserSeparation;
-    float mUserConvergence;
+    OverrideParams savedParams;
+    OverrideVars savedVars;
+    float userSeparation;
+    float userConvergence;
 
     Override();
     Override(OverrideParams *params, OverrideVars *vars, float separation,
@@ -107,19 +107,19 @@ public:
          TransitionType release_transition_type,
          bool is_conditional, CommandListExpression condition,
          CommandList activate_command_list, CommandList deactivate_command_list) :
-        mOverrideSeparation(separation),
-        mOverrideConvergence(convergence),
+        overrideSeparation(separation),
+        overrideConvergence(convergence),
         transition(transition),
-        release_transition(release_transition),
-        transition_type(transition_type),
-        release_transition_type(release_transition_type),
-        is_conditional(is_conditional),
+        releaseTransition(release_transition),
+        transitionType(transition_type),
+        releaseTransitionType(release_transition_type),
+        isConditional(is_conditional),
         condition(condition),
-        activate_command_list(activate_command_list),
-        deactivate_command_list(deactivate_command_list)
+        activateCommandList(activate_command_list),
+        deactivateCommandList(deactivate_command_list)
     {
-        mOverrideParams = *params;
-        mOverrideVars = *vars;
+        overrideParams = *params;
+        overrideVars = *vars;
     }
 
     void ParseIniSection(LPCWSTR section) override;
@@ -200,27 +200,27 @@ class PresetOverride : public Override
 private:
     bool triggered;
     bool excluded;
-    std::unordered_set<CommandListCommand*> triggers_this_frame;
+    std::unordered_set<CommandListCommand*> triggersThisFrame;
 
 public:
     PresetOverride() :
         Override(),
         triggered(false),
         excluded(false),
-        unique_triggers_required(0)
+        uniqueTriggersRequired(0)
     {}
 
     void Trigger(CommandListCommand *triggered_from);
     void Exclude();
     void Update(HackerDevice *device);
 
-    unsigned unique_triggers_required;
+    unsigned uniqueTriggersRequired;
 };
 
 // Sorted map so that if multiple presets affect the same thing the results
 // will be consistent:
 typedef std::map<std::wstring, class PresetOverride> PresetOverrideMap;
-extern PresetOverrideMap presetOverrides;
+extern PresetOverrideMap preset_overrides;
 
 struct OverrideTransitionParam
 {
@@ -288,5 +288,5 @@ public:
 // We only use a single transition instance to simplify the edge cases and
 // answer what happens when we have overlapping transitions - there can only be
 // one active transition for each parameter.
-extern OverrideTransition CurrentTransition;
-extern OverrideGlobalSave OverrideSave;
+extern OverrideTransition current_transition;
+extern OverrideGlobalSave override_save;

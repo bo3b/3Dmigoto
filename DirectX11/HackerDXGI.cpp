@@ -266,8 +266,8 @@ void HackerSwapChain::RunFrameActions()
     // that purpose rather than breaking the existing behaviour.
     bool newEvent = DispatchInputEvents(hackerDevice);
 
-    CurrentTransition.UpdatePresets(hackerDevice);
-    CurrentTransition.UpdateTransitions(hackerDevice);
+    current_transition.UpdatePresets(hackerDevice);
+    current_transition.UpdateTransitions(hackerDevice);
 
     // The config file is not safe to reload from within the input handler
     // since it needs to change the key bindings, so it sets this flag
