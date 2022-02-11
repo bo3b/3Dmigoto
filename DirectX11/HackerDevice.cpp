@@ -244,15 +244,15 @@ static void unregister_hacker_device(HackerDevice *hacker_device)
 // -----------------------------------------------------------------------------------------------
 
 HackerDevice::HackerDevice(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1) : 
-    mStereoHandle(0), mStereoResourceView(0), mStereoTexture(0),
-    mIniResourceView(0), mIniTexture(0),
-    mZBufferResourceView(0)
+    stereoHandle(0), stereoResourceView(0), stereoTexture(0),
+    iniResourceView(0), iniTexture(0),
+    zBufferResourceView(0)
 {
-    mOrigDevice1 = pDevice1;
-    mRealOrigDevice1 = pDevice1;
-    mOrigContext1 = pContext1;
-    // Must be done after mOrigDevice1 is set:
-    mUnknown = register_hacker_device(this);
+    origDevice1 = pDevice1;
+    realOrigDevice1 = pDevice1;
+    origContext1 = pContext1;
+    // Must be done after origDevice1 is set:
+    unknown = register_hacker_device(this);
 }
 
 HRESULT HackerDevice::CreateStereoParamResources()
@@ -263,18 +263,18 @@ HRESULT HackerDevice::CreateStereoParamResources()
     // We use the original device here. Functionally it should not matter
     // if we use the HackerDevice, but it does result in a lot of noise in
     // the frame analysis log as every call into nvapi using the
-    // mStereoHandle calls Begin() and End() on the immediate context.
+    // stereoHandle calls Begin() and End() on the immediate context.
 
     // Todo: This call will fail if stereo is disabled. Proper notification?
-    nvret = NvAPI_Stereo_CreateHandleFromIUnknown(mOrigDevice1, &mStereoHandle);
+    nvret = NvAPI_Stereo_CreateHandleFromIUnknown(origDevice1, &stereoHandle);
     if (nvret != NVAPI_OK)
     {
-        mStereoHandle = 0;
+        stereoHandle = 0;
         LOG_INFO("HackerDevice::CreateStereoParamResources NvAPI_Stereo_CreateHandleFromIUnknown failed: %d\n", nvret);
         return nvret;
     }
-    mParamTextureManager.mStereoHandle = mStereoHandle;
-    LOG_INFO("  created NVAPI stereo handle. Handle = %p\n", mStereoHandle);
+    paramTextureManager.stereoHandle = stereoHandle;
+    LOG_INFO("  created NVAPI stereo handle. Handle = %p\n", stereoHandle);
 
     // Create stereo parameter texture.
     LOG_INFO("  creating stereo parameter texture.\n");
@@ -292,13 +292,13 @@ HRESULT HackerDevice::CreateStereoParamResources()
     desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
     desc.CPUAccessFlags = 0;
     desc.MiscFlags = 0;
-    hr = mOrigDevice1->CreateTexture2D(&desc, 0, &mStereoTexture);
+    hr = origDevice1->CreateTexture2D(&desc, 0, &stereoTexture);
     if (FAILED(hr))
     {
         LOG_INFO("    call failed with result = %x.\n", hr);
         return hr;
     }
-    LOG_INFO("    stereo texture created, handle = %p\n", mStereoTexture);
+    LOG_INFO("    stereo texture created, handle = %p\n", stereoTexture);
 
     // Since we need to bind the texture to a shader input, we also need a resource view.
     LOG_INFO("  creating stereo parameter resource view.\n");
@@ -309,14 +309,14 @@ HRESULT HackerDevice::CreateStereoParamResources()
     descRV.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
     descRV.Texture2D.MostDetailedMip = 0;
     descRV.Texture2D.MipLevels = -1;
-    hr = mOrigDevice1->CreateShaderResourceView(mStereoTexture, &descRV, &mStereoResourceView);
+    hr = origDevice1->CreateShaderResourceView(stereoTexture, &descRV, &stereoResourceView);
     if (FAILED(hr))
     {
         LOG_INFO("    call failed with result = %x.\n", hr);
         return hr;
     }
 
-    LOG_INFO("    stereo texture resource view created, handle = %p.\n", mStereoResourceView);
+    LOG_INFO("    stereo texture resource view created, handle = %p.\n", stereoResourceView);
     return S_OK;
 }
 
@@ -332,14 +332,14 @@ HRESULT HackerDevice::CreateIniParamResources()
     memset(&desc, 0, sizeof(D3D11_TEXTURE1D_DESC));
 
     // If we are resizing IniParams we must release the old versions:
-    if (mIniResourceView) {
-        long refcount = mIniResourceView->Release();
-        mIniResourceView = NULL;
+    if (iniResourceView) {
+        long refcount = iniResourceView->Release();
+        iniResourceView = NULL;
         LOG_INFO("  releasing ini parameters resource view, refcount = %d\n", refcount);
     }
-    if (mIniTexture) {
-        long refcount = mIniTexture->Release();
-        mIniTexture = NULL;
+    if (iniTexture) {
+        long refcount = iniTexture->Release();
+        iniTexture = NULL;
         LOG_INFO("  releasing iniparams texture, refcount = %d\n", refcount);
     }
 
@@ -369,13 +369,13 @@ HRESULT HackerDevice::CreateIniParamResources()
     desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;                // As resource view, access via t120
     desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;                // allow CPU access for hotkeys
     desc.MiscFlags = 0;
-    ret = mOrigDevice1->CreateTexture1D(&desc, &initialData, &mIniTexture);
+    ret = origDevice1->CreateTexture1D(&desc, &initialData, &iniTexture);
     if (FAILED(ret))
     {
         LOG_INFO("    CreateTexture1D call failed with result = %x.\n", ret);
         return ret;
     }
-    LOG_INFO("    IniParam texture created, handle = %p\n", mIniTexture);
+    LOG_INFO("    IniParam texture created, handle = %p\n", iniTexture);
 
     // Since we need to bind the texture to a shader input, we also need a resource view.
     // The pDesc is set to NULL so that it will simply use the desc format above.
@@ -384,14 +384,14 @@ HRESULT HackerDevice::CreateIniParamResources()
     D3D11_SHADER_RESOURCE_VIEW_DESC descRV;
     memset(&descRV, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
 
-    ret = mOrigDevice1->CreateShaderResourceView(mIniTexture, NULL, &mIniResourceView);
+    ret = origDevice1->CreateShaderResourceView(iniTexture, NULL, &iniResourceView);
     if (FAILED(ret))
     {
         LOG_INFO("   CreateShaderResourceView call failed with result = %x.\n", ret);
         return ret;
     }
 
-    LOG_INFO("    Iniparams resource view created, handle = %p.\n", mIniResourceView);
+    LOG_INFO("    Iniparams resource view created, handle = %p.\n", iniResourceView);
     return S_OK;
 }
 
@@ -411,7 +411,7 @@ void HackerDevice::CreatePinkHuntingResources()
         LOG_INFO("  Created pink mode pixel shader: %d\n", hr);
         if (SUCCEEDED(hr))
         {
-            hr = mOrigDevice1->CreatePixelShader((DWORD*)blob->GetBufferPointer(), blob->GetBufferSize(), NULL, &G->mPinkingShader);
+            hr = origDevice1->CreatePixelShader((DWORD*)blob->GetBufferPointer(), blob->GetBufferSize(), NULL, &G->mPinkingShader);
             CleanupShaderMaps(G->mPinkingShader);
             if (FAILED(hr))
                 LOG_INFO("  Failed to create pinking pixel shader: %d\n", hr);
@@ -425,12 +425,12 @@ HRESULT HackerDevice::SetGlobalNVSurfaceCreationMode()
     HRESULT hr;
 
     // Override custom settings.
-    if (mStereoHandle && G->gSurfaceCreateMode >= 0)
+    if (stereoHandle && G->gSurfaceCreateMode >= 0)
     {
         NvAPIOverride();
         LOG_INFO("  setting custom surface creation mode.\n");
 
-        hr = Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle,    (NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
+        hr = Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle,    (NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
         if (hr != NVAPI_OK)
         {
             LOG_INFO("    custom surface creation call failed: %d.\n", hr);
@@ -473,23 +473,23 @@ void HackerDevice::Create3DMigotoResources()
 
 void HackerDevice::SetHackerContext(HackerContext *pHackerContext)
 {
-    mHackerContext = pHackerContext;
+    hackerContext = pHackerContext;
 }
 
 HackerContext* HackerDevice::GetHackerContext()
 {
-    LOG_INFO("HackerDevice::GetHackerContext returns %p\n", mHackerContext);
-    return mHackerContext;
+    LOG_INFO("HackerDevice::GetHackerContext returns %p\n", hackerContext);
+    return hackerContext;
 }
 
 void HackerDevice::SetHackerSwapChain(HackerSwapChain *pHackerSwapChain)
 {
-    mHackerSwapChain = pHackerSwapChain;
+    hackerSwapChain = pHackerSwapChain;
 }
 
 HackerSwapChain* HackerDevice::GetHackerSwapChain()
 {
-    return mHackerSwapChain;
+    return hackerSwapChain;
 }
 
 
@@ -501,7 +501,7 @@ HackerSwapChain* HackerDevice::GetHackerSwapChain()
 // recurse until the stack ran out:
 ID3D11Device1* HackerDevice::GetPossiblyHookedOrigDevice1()
 {
-    return mRealOrigDevice1;
+    return realOrigDevice1;
 }
 
 // Use this one when you specifically don't want calls through this object to
@@ -509,25 +509,25 @@ ID3D11Device1* HackerDevice::GetPossiblyHookedOrigDevice1()
 // above, but when hooking this will be the trampoline object instead:
 ID3D11Device1* HackerDevice::GetPassThroughOrigDevice1()
 {
-    return mOrigDevice1;
+    return origDevice1;
 }
 
 ID3D11DeviceContext1* HackerDevice::GetPossiblyHookedOrigContext1()
 {
-    return mOrigContext1;
+    return origContext1;
 }
 
 ID3D11DeviceContext1* HackerDevice::GetPassThroughOrigContext1()
 {
-    if (mHackerContext)
-        return mHackerContext->GetPassThroughOrigContext1();
+    if (hackerContext)
+        return hackerContext->GetPassThroughOrigContext1();
 
-    return mOrigContext1;
+    return origContext1;
 }
 
 IUnknown* HackerDevice::GetIUnknown()
 {
-    return mUnknown;
+    return unknown;
 }
 
 void HackerDevice::HookDevice()
@@ -535,10 +535,10 @@ void HackerDevice::HookDevice()
     // This will install hooks in the original device (if they have not
     // already been installed from a prior device) which will call the
     // equivalent function in this HackerDevice. It returns a trampoline
-    // interface which we use in place of mOrigDevice1 to call the real
+    // interface which we use in place of origDevice1 to call the real
     // original device, thereby side stepping the problem that calling the
-    // old mOrigDevice1 would be hooked and call back into us endlessly:
-    mOrigDevice1 = hook_device(mOrigDevice1, this);
+    // old origDevice1 would be hooked and call back into us endlessly:
+    origDevice1 = hook_device(origDevice1, this);
 }
 
 
@@ -1302,7 +1302,7 @@ HRESULT HackerDevice::ReplaceShaderFromShaderFixes(UINT64 hash,
     LOG_DEBUG("    HackerDevice::Create%lsShader.  Device: %p\n", shaderType, this);
 
     *ppShader = NULL; // Appease the static analysis gods
-    hr = (mOrigDevice1->*OrigCreateShader)(replaceShader, replaceShaderSize, pClassLinkage, ppShader);
+    hr = (origDevice1->*OrigCreateShader)(replaceShader, replaceShaderSize, pClassLinkage, ppShader);
     if (FAILED(hr)) {
         LOG_INFO("    error replacing shader.\n");
         goto out_delete;
@@ -1328,7 +1328,7 @@ HRESULT HackerDevice::ReplaceShaderFromShaderFixes(UINT64 hash,
     }
 
     // FIXME: We have some very similar data structures that we should merge together:
-    // mReloadedShaders and mOriginalShader.
+    // mReloadedShaders and originalShader.
     KeepOriginalShader<ID3D11Shader, OrigCreateShader>
         (hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
 
@@ -1363,7 +1363,7 @@ HRESULT HackerDevice::ProcessShaderNotFoundInShaderFixes(UINT64 hash,
     HRESULT hr;
 
     *ppShader = NULL; // Appease the static analysis gods
-    hr = (mOrigDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
+    hr = (origDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
     if (FAILED(hr))
         return hr;
 
@@ -1384,14 +1384,14 @@ HRESULT HackerDevice::ProcessShaderNotFoundInShaderFixes(UINT64 hash,
                 // Also add the original shader to the original shaders
                 // map so that if it is later replaced marking_mode =
                 // original and depth buffer filtering will work:
-                if (lookup_original_shader(*ppShader) == end(G->mOriginalShaders)) {
+                if (lookup_original_shader(*ppShader) == end(G->originalShaders)) {
                     // Since we are both returning *and* storing this we need to
                     // bump the refcount to 2, otherwise it could get freed and we
                     // may get a crash later in RevertMissingShaders, especially
                     // easy to expose with the auto shader patching engine
                     // and reverting shaders:
                     (*ppShader)->AddRef();
-                    G->mOriginalShaders[*ppShader] = *ppShader;
+                    G->originalShaders[*ppShader] = *ppShader;
                 }
             }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
@@ -1471,10 +1471,10 @@ void CleanupShaderMaps(ID3D11DeviceChild *handle)
 
     {
         ShaderReplacementMap::iterator i = lookup_original_shader(handle);
-        if (i != G->mOriginalShaders.end()) {
+        if (i != G->originalShaders.end()) {
             LOG_INFO("Shader handle %p reused, releasing previous original shader\n", handle);
             i->second->Release();
-            G->mOriginalShaders.erase(i);
+            G->originalShaders.erase(i);
         }
     }
 
@@ -1507,10 +1507,10 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType,
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
-        hr = (mOrigDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+        hr = (origDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
         CleanupShaderMaps(originalShader);
         if (SUCCEEDED(hr))
-            G->mOriginalShaders[pShader] = originalShader;
+            G->originalShaders[pShader] = originalShader;
 
         // Unlike the *other* code path in CreateShader that can also
         // fill out this structure, we do *not* bump the refcount on
@@ -1527,12 +1527,12 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType,
 
 STDMETHODIMP_(ULONG) HackerDevice::AddRef(THIS)
 {
-    return mOrigDevice1->AddRef();
+    return origDevice1->AddRef();
 }
 
 STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 {
-    ULONG ulRef = mOrigDevice1->Release();
+    ULONG ulRef = origDevice1->Release();
     LOG_DEBUG("HackerDevice::Release counter=%d, this=%p\n", ulRef, this);
 
     if (ulRef <= 0)
@@ -1543,34 +1543,34 @@ STDMETHODIMP_(ULONG) HackerDevice::Release(THIS)
 
         unregister_hacker_device(this);
 
-        if (mStereoHandle)
+        if (stereoHandle)
         {
-            int result = NvAPI_Stereo_DestroyHandle(mStereoHandle);
-            mStereoHandle = 0;
+            int result = NvAPI_Stereo_DestroyHandle(stereoHandle);
+            stereoHandle = 0;
             LOG_INFO("  releasing NVAPI stereo handle, result = %d\n", result);
         }
-        if (mStereoResourceView)
+        if (stereoResourceView)
         {
-            long result = mStereoResourceView->Release();
-            mStereoResourceView = 0;
+            long result = stereoResourceView->Release();
+            stereoResourceView = 0;
             LOG_INFO("  releasing stereo parameters resource view, result = %d\n", result);
         }
-        if (mStereoTexture)
+        if (stereoTexture)
         {
-            long result = mStereoTexture->Release();
-            mStereoTexture = 0;
+            long result = stereoTexture->Release();
+            stereoTexture = 0;
             LOG_INFO("  releasing stereo texture, result = %d\n", result);
         }
-        if (mIniResourceView)
+        if (iniResourceView)
         {
-            long result = mIniResourceView->Release();
-            mIniResourceView = 0;
+            long result = iniResourceView->Release();
+            iniResourceView = 0;
             LOG_INFO("  releasing ini parameters resource view, result = %d\n", result);
         }
-        if (mIniTexture)
+        if (iniTexture)
         {
-            long result = mIniTexture->Release();
-            mIniTexture = 0;
+            long result = iniTexture->Release();
+            iniTexture = 0;
             LOG_INFO("  releasing iniparams texture, result = %d\n", result);
         }
         delete this;
@@ -1620,7 +1620,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
         return S_OK;
     }
 
-    HRESULT hr = mOrigDevice1->QueryInterface(riid, ppvObject);
+    HRESULT hr = origDevice1->QueryInterface(riid, ppvObject);
     if (FAILED(hr))
     {
         LOG_INFO("  failed result = %x for %p\n", hr, ppvObject);
@@ -1636,7 +1636,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
             // If we are hooking we don't return the wrapped device
             *ppvObject = this;
         }
-        LOG_DEBUG("  return HackerDevice(%s@%p) wrapper of %p\n", type_name(this), this, mRealOrigDevice1);
+        LOG_DEBUG("  return HackerDevice(%s@%p) wrapper of %p\n", type_name(this), this, realOrigDevice1);
     }
     else if (riid == __uuidof(ID3D11Device1))
     {
@@ -1668,7 +1668,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
             // If we are hooking we don't return the wrapped device
             *ppvObject = this;
         }
-        LOG_DEBUG("  return HackerDevice(%s@%p) wrapper of %p\n", type_name(this), this, mRealOrigDevice1);
+        LOG_DEBUG("  return HackerDevice(%s@%p) wrapper of %p\n", type_name(this), this, realOrigDevice1);
     }
 
     LOG_DEBUG("  returns result = %x for %p\n", hr, *ppvObject);
@@ -1690,7 +1690,7 @@ STDMETHODIMP HackerDevice::CreateUnorderedAccessView(THIS_
     /* [annotation] */
     __out_opt  ID3D11UnorderedAccessView **ppUAView)
 {
-    return mOrigDevice1->CreateUnorderedAccessView(pResource, pDesc, ppUAView);
+    return origDevice1->CreateUnorderedAccessView(pResource, pDesc, ppUAView);
 }
 
 STDMETHODIMP HackerDevice::CreateRenderTargetView(THIS_
@@ -1702,7 +1702,7 @@ STDMETHODIMP HackerDevice::CreateRenderTargetView(THIS_
     __out_opt  ID3D11RenderTargetView **ppRTView)
 {
     LOG_DEBUG("HackerDevice::CreateRenderTargetView(%s@%p)\n", type_name(this), this);
-    return mOrigDevice1->CreateRenderTargetView(pResource, pDesc, ppRTView);
+    return origDevice1->CreateRenderTargetView(pResource, pDesc, ppRTView);
 }
 
 STDMETHODIMP HackerDevice::CreateDepthStencilView(THIS_
@@ -1714,7 +1714,7 @@ STDMETHODIMP HackerDevice::CreateDepthStencilView(THIS_
     __out_opt  ID3D11DepthStencilView **ppDepthStencilView)
 {
     LOG_DEBUG("HackerDevice::CreateDepthStencilView(%s@%p)\n", type_name(this), this);
-    return mOrigDevice1->CreateDepthStencilView(pResource, pDesc, ppDepthStencilView);
+    return origDevice1->CreateDepthStencilView(pResource, pDesc, ppDepthStencilView);
 }
 
 STDMETHODIMP HackerDevice::CreateInputLayout(THIS_
@@ -1732,7 +1732,7 @@ STDMETHODIMP HackerDevice::CreateInputLayout(THIS_
     HRESULT ret;
     ID3DBlob *blob;
 
-    ret = mOrigDevice1->CreateInputLayout(pInputElementDescs, NumElements, pShaderBytecodeWithInputSignature,
+    ret = origDevice1->CreateInputLayout(pInputElementDescs, NumElements, pShaderBytecodeWithInputSignature,
         BytecodeLength, ppInputLayout);
 
     if (G->hunting && SUCCEEDED(ret) && ppInputLayout && *ppInputLayout) {
@@ -1760,7 +1760,7 @@ STDMETHODIMP HackerDevice::CreateClassLinkage(THIS_
     /* [annotation] */
     __out  ID3D11ClassLinkage **ppLinkage)
 {
-    return mOrigDevice1->CreateClassLinkage(ppLinkage);
+    return origDevice1->CreateClassLinkage(ppLinkage);
 }
 
 STDMETHODIMP HackerDevice::CreateBlendState(THIS_
@@ -1769,7 +1769,7 @@ STDMETHODIMP HackerDevice::CreateBlendState(THIS_
     /* [annotation] */
     __out_opt  ID3D11BlendState **ppBlendState)
 {
-    return mOrigDevice1->CreateBlendState(pBlendStateDesc, ppBlendState);
+    return origDevice1->CreateBlendState(pBlendStateDesc, ppBlendState);
 }
 
 STDMETHODIMP HackerDevice::CreateDepthStencilState(THIS_
@@ -1778,7 +1778,7 @@ STDMETHODIMP HackerDevice::CreateDepthStencilState(THIS_
     /* [annotation] */
     __out_opt  ID3D11DepthStencilState **ppDepthStencilState)
 {
-    return mOrigDevice1->CreateDepthStencilState(pDepthStencilDesc, ppDepthStencilState);
+    return origDevice1->CreateDepthStencilState(pDepthStencilDesc, ppDepthStencilState);
 }
 
 STDMETHODIMP HackerDevice::CreateSamplerState(THIS_
@@ -1787,7 +1787,7 @@ STDMETHODIMP HackerDevice::CreateSamplerState(THIS_
     /* [annotation] */
     __out_opt  ID3D11SamplerState **ppSamplerState)
 {
-    return mOrigDevice1->CreateSamplerState(pSamplerDesc, ppSamplerState);
+    return origDevice1->CreateSamplerState(pSamplerDesc, ppSamplerState);
 }
 
 STDMETHODIMP HackerDevice::CreateQuery(THIS_
@@ -1796,7 +1796,7 @@ STDMETHODIMP HackerDevice::CreateQuery(THIS_
     /* [annotation] */
     __out_opt  ID3D11Query **ppQuery)
 {
-    HRESULT hr = mOrigDevice1->CreateQuery(pQueryDesc, ppQuery);
+    HRESULT hr = origDevice1->CreateQuery(pQueryDesc, ppQuery);
     if (G->hunting && SUCCEEDED(hr) && ppQuery && *ppQuery)
         G->mQueryTypes[*ppQuery] = AsyncQueryType::QUERY;
     return hr;
@@ -1808,7 +1808,7 @@ STDMETHODIMP HackerDevice::CreatePredicate(THIS_
     /* [annotation] */
     __out_opt  ID3D11Predicate **ppPredicate)
 {
-    HRESULT hr = mOrigDevice1->CreatePredicate(pPredicateDesc, ppPredicate);
+    HRESULT hr = origDevice1->CreatePredicate(pPredicateDesc, ppPredicate);
     if (G->hunting && SUCCEEDED(hr) && ppPredicate && *ppPredicate)
         G->mQueryTypes[*ppPredicate] = AsyncQueryType::PREDICATE;
     return hr;
@@ -1820,7 +1820,7 @@ STDMETHODIMP HackerDevice::CreateCounter(THIS_
     /* [annotation] */
     __out_opt  ID3D11Counter **ppCounter)
 {
-    HRESULT hr = mOrigDevice1->CreateCounter(pCounterDesc, ppCounter);
+    HRESULT hr = origDevice1->CreateCounter(pCounterDesc, ppCounter);
     if (G->hunting && SUCCEEDED(hr) && ppCounter && *ppCounter)
         G->mQueryTypes[*ppCounter] = AsyncQueryType::COUNTER;
     return hr;
@@ -1834,7 +1834,7 @@ STDMETHODIMP HackerDevice::OpenSharedResource(THIS_
     /* [annotation] */
     __out_opt  void **ppResource)
 {
-    return mOrigDevice1->OpenSharedResource(hResource, ReturnedInterface, ppResource);
+    return origDevice1->OpenSharedResource(hResource, ReturnedInterface, ppResource);
 }
 
 STDMETHODIMP HackerDevice::CheckFormatSupport(THIS_
@@ -1843,7 +1843,7 @@ STDMETHODIMP HackerDevice::CheckFormatSupport(THIS_
     /* [annotation] */
     __out  UINT *pFormatSupport)
 {
-    return mOrigDevice1->CheckFormatSupport(Format, pFormatSupport);
+    return origDevice1->CheckFormatSupport(Format, pFormatSupport);
 }
 
 STDMETHODIMP HackerDevice::CheckMultisampleQualityLevels(THIS_
@@ -1854,14 +1854,14 @@ STDMETHODIMP HackerDevice::CheckMultisampleQualityLevels(THIS_
     /* [annotation] */
     __out  UINT *pNumQualityLevels)
 {
-    return mOrigDevice1->CheckMultisampleQualityLevels(Format, SampleCount, pNumQualityLevels);
+    return origDevice1->CheckMultisampleQualityLevels(Format, SampleCount, pNumQualityLevels);
 }
 
 STDMETHODIMP_(void) HackerDevice::CheckCounterInfo(THIS_
     /* [annotation] */
     __out  D3D11_COUNTER_INFO *pCounterInfo)
 {
-    return mOrigDevice1->CheckCounterInfo(pCounterInfo);
+    return origDevice1->CheckCounterInfo(pCounterInfo);
 }
 
 STDMETHODIMP HackerDevice::CheckCounter(THIS_
@@ -1884,7 +1884,7 @@ STDMETHODIMP HackerDevice::CheckCounter(THIS_
     /* [annotation] */
     __inout_opt  UINT *pDescriptionLength)
 {
-    return mOrigDevice1->CheckCounter(pDesc, pType, pActiveCounters, szName, pNameLength, szUnits,
+    return origDevice1->CheckCounter(pDesc, pType, pActiveCounters, szName, pNameLength, szUnits,
         pUnitsLength, szDescription, pDescriptionLength);
 }
 
@@ -1894,7 +1894,7 @@ STDMETHODIMP HackerDevice::CheckFeatureSupport(THIS_
     __out_bcount(FeatureSupportDataSize)  void *pFeatureSupportData,
     UINT FeatureSupportDataSize)
 {
-    return mOrigDevice1->CheckFeatureSupport(Feature, pFeatureSupportData, FeatureSupportDataSize);
+    return origDevice1->CheckFeatureSupport(Feature, pFeatureSupportData, FeatureSupportDataSize);
 }
 
 STDMETHODIMP HackerDevice::GetPrivateData(THIS_
@@ -1905,7 +1905,7 @@ STDMETHODIMP HackerDevice::GetPrivateData(THIS_
     /* [annotation] */
     __out_bcount_opt(*pDataSize)  void *pData)
 {
-    return mOrigDevice1->GetPrivateData(guid, pDataSize, pData);
+    return origDevice1->GetPrivateData(guid, pDataSize, pData);
 }
 
 STDMETHODIMP HackerDevice::SetPrivateData(THIS_
@@ -1916,7 +1916,7 @@ STDMETHODIMP HackerDevice::SetPrivateData(THIS_
     /* [annotation] */
     __in_bcount_opt(DataSize)  const void *pData)
 {
-    return mOrigDevice1->SetPrivateData(guid, DataSize, pData);
+    return origDevice1->SetPrivateData(guid, DataSize, pData);
 }
 
 STDMETHODIMP HackerDevice::SetPrivateDataInterface(THIS_
@@ -1927,7 +1927,7 @@ STDMETHODIMP HackerDevice::SetPrivateDataInterface(THIS_
 {
     LOG_INFO("HackerDevice::SetPrivateDataInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
 
-    return mOrigDevice1->SetPrivateDataInterface(guid, pData);
+    return origDevice1->SetPrivateDataInterface(guid, pData);
 }
 
 // Doesn't seem like any games use this, but might be something we need to
@@ -1935,7 +1935,7 @@ STDMETHODIMP HackerDevice::SetPrivateDataInterface(THIS_
 
 STDMETHODIMP_(D3D_FEATURE_LEVEL) HackerDevice::GetFeatureLevel(THIS)
 {
-    D3D_FEATURE_LEVEL featureLevel = mOrigDevice1->GetFeatureLevel();
+    D3D_FEATURE_LEVEL featureLevel = origDevice1->GetFeatureLevel();
 
     LOG_DEBUG("HackerDevice::GetFeatureLevel(%s@%p) returns FeatureLevel:%x\n", type_name(this), this, featureLevel);
     return featureLevel;
@@ -1943,23 +1943,23 @@ STDMETHODIMP_(D3D_FEATURE_LEVEL) HackerDevice::GetFeatureLevel(THIS)
 
 STDMETHODIMP_(UINT) HackerDevice::GetCreationFlags(THIS)
 {
-    return mOrigDevice1->GetCreationFlags();
+    return origDevice1->GetCreationFlags();
 }
 
 STDMETHODIMP HackerDevice::GetDeviceRemovedReason(THIS)
 {
-    return mOrigDevice1->GetDeviceRemovedReason();
+    return origDevice1->GetDeviceRemovedReason();
 }
 
 STDMETHODIMP HackerDevice::SetExceptionMode(THIS_
     UINT RaiseFlags)
 {
-    return mOrigDevice1->SetExceptionMode(RaiseFlags);
+    return origDevice1->SetExceptionMode(RaiseFlags);
 }
 
 STDMETHODIMP_(UINT) HackerDevice::GetExceptionMode(THIS)
 {
-    return mOrigDevice1->GetExceptionMode();
+    return origDevice1->GetExceptionMode();
 }
 
 
@@ -2046,7 +2046,7 @@ static void override_resource_desc(D3D11_TEXTURE3D_DESC *desc, TextureOverride *
 
 template <typename DescType>
 static const DescType* process_texture_override(uint32_t hash,
-        StereoHandle mStereoHandle,
+        StereoHandle stereoHandle,
         const DescType *origDesc,
         DescType *newDesc,
         NVAPI_STEREO_SURFACECREATEMODE *oldMode)
@@ -2103,21 +2103,21 @@ static const DescType* process_texture_override(uint32_t hash,
     LOCK_RESOURCE_CREATION_MODE();
 
     if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) -1) {
-        Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
+        Profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereoHandle, oldMode);
         NvAPIOverride();
         LOG_INFO("    setting custom surface creation mode %d\n", newMode);
 
-        if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
+        if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, newMode))
             LOG_INFO("      call failed.\n");
     }
 
     return ret;
 }
 
-static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMode, StereoHandle mStereoHandle)
+static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMode, StereoHandle stereoHandle)
 {
     if (oldMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1) {
-        if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
+        if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, oldMode))
             LOG_INFO("    restore call failed.\n");
     }
 
@@ -2149,10 +2149,10 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
         hash = crc32c_hw(hash, pDesc, sizeof(D3D11_BUFFER_DESC));
 
     // Override custom settings?
-    pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
+    pNewDesc = process_texture_override(hash, stereoHandle, pDesc, &newDesc, &oldMode);
 
-    HRESULT hr = mOrigDevice1->CreateBuffer(pNewDesc, pInitialData, ppBuffer);
-    restore_old_surface_create_mode(oldMode, mStereoHandle);
+    HRESULT hr = origDevice1->CreateBuffer(pNewDesc, pInitialData, ppBuffer);
+    restore_old_surface_create_mode(oldMode, stereoHandle);
     if (hr == S_OK && ppBuffer && *ppBuffer)
     {
         ENTER_CRITICAL_SECTION(&G->mResourcesLock);
@@ -2203,11 +2203,11 @@ STDMETHODIMP HackerDevice::CreateTexture1D(THIS_
     LOG_DEBUG("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
     // Override custom settings?
-    pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
+    pNewDesc = process_texture_override(hash, stereoHandle, pDesc, &newDesc, &oldMode);
 
-    HRESULT hr = mOrigDevice1->CreateTexture1D(pNewDesc, pInitialData, ppTexture1D);
+    HRESULT hr = origDevice1->CreateTexture1D(pNewDesc, pInitialData, ppTexture1D);
 
-    restore_old_surface_create_mode(oldMode, mStereoHandle);
+    restore_old_surface_create_mode(oldMode, stereoHandle);
 
     if (hr == S_OK && ppTexture1D && *ppTexture1D)
     {
@@ -2316,11 +2316,11 @@ STDMETHODIMP HackerDevice::CreateTexture2D(THIS_
     LOG_DEBUG("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
     // Override custom settings?
-    pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
+    pNewDesc = process_texture_override(hash, stereoHandle, pDesc, &newDesc, &oldMode);
 
     // Actual creation:
-    HRESULT hr = mOrigDevice1->CreateTexture2D(pNewDesc, pInitialData, ppTexture2D);
-    restore_old_surface_create_mode(oldMode, mStereoHandle);
+    HRESULT hr = origDevice1->CreateTexture2D(pNewDesc, pInitialData, ppTexture2D);
+    restore_old_surface_create_mode(oldMode, stereoHandle);
     if (ppTexture2D) LOG_DEBUG("  returns result = %x, handle = %p\n", hr, *ppTexture2D);
 
     // Register texture. Every one seen.
@@ -2387,11 +2387,11 @@ STDMETHODIMP HackerDevice::CreateTexture3D(THIS_
     LOG_INFO("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
     // Override custom settings?
-    pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
+    pNewDesc = process_texture_override(hash, stereoHandle, pDesc, &newDesc, &oldMode);
 
-    HRESULT hr = mOrigDevice1->CreateTexture3D(pNewDesc, pInitialData, ppTexture3D);
+    HRESULT hr = origDevice1->CreateTexture3D(pNewDesc, pInitialData, ppTexture3D);
 
-    restore_old_surface_create_mode(oldMode, mStereoHandle);
+    restore_old_surface_create_mode(oldMode, stereoHandle);
 
     // Register texture.
     if (hr == S_OK && ppTexture3D)
@@ -2429,7 +2429,7 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
 {
     LOG_DEBUG("HackerDevice::CreateShaderResourceView called\n");
 
-    HRESULT hr = mOrigDevice1->CreateShaderResourceView(pResource, pDesc, ppSRView);
+    HRESULT hr = origDevice1->CreateShaderResourceView(pResource, pDesc, ppSRView);
 
     // Check for depth buffer view.
     if (hr == S_OK && G->ZBufferHashToInject && ppSRView)
@@ -2440,7 +2440,7 @@ STDMETHODIMP HackerDevice::CreateShaderResourceView(THIS_
         {
             LOG_INFO("  resource view of z buffer found: handle = %p, hash = %08lx\n", *ppSRView, i->second.hash);
 
-            mZBufferResourceView = *ppSRView;
+            zBufferResourceView = *ppSRView;
         }
         LEAVE_CRITICAL_SECTION(&G->mResourcesLock);
     }
@@ -2566,7 +2566,7 @@ STDMETHODIMP HackerDevice::CreateShader(THIS_
 
     if (!ppShader || !pShaderBytecode) {
         // Let DX worry about the error code
-        return (mOrigDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
+        return (origDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
     }
 
     // Calculate hash
@@ -2651,7 +2651,7 @@ STDMETHODIMP HackerDevice::CreateGeometryShaderWithStreamOutput(THIS_
     // TODO: This is another call that can create geometry and/or vertex
     // shaders - hook them up and allow them to be overridden as well.
 
-    HRESULT hr = mOrigDevice1->CreateGeometryShaderWithStreamOutput(pShaderBytecode, BytecodeLength, pSODeclaration,
+    HRESULT hr = origDevice1->CreateGeometryShaderWithStreamOutput(pShaderBytecode, BytecodeLength, pSODeclaration,
         NumEntries, pBufferStrides, NumStrides, RasterizedStream, pClassLinkage, ppGeometryShader);
     LOG_INFO("  returns result = %x, handle = %p\n", hr, (ppGeometryShader ? *ppGeometryShader : NULL));
 
@@ -2743,7 +2743,7 @@ STDMETHODIMP HackerDevice::CreateRasterizerState(THIS_
         const_cast<D3D11_RASTERIZER_DESC*>(pRasterizerDesc)->ScissorEnable = FALSE;
     }
 
-    hr = mOrigDevice1->CreateRasterizerState(pRasterizerDesc, ppRasterizerState);
+    hr = origDevice1->CreateRasterizerState(pRasterizerDesc, ppRasterizerState);
 
     LOG_DEBUG("  returns result = %x\n", hr);
     return hr;
@@ -2763,7 +2763,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
     LOG_INFO("HackerDevice::CreateDeferredContext(%s@%p) called with flags = %#x, ptr:%p\n", 
         type_name(this), this, ContextFlags, ppDeferredContext);
 
-    HRESULT hr = mOrigDevice1->CreateDeferredContext(ContextFlags, ppDeferredContext);
+    HRESULT hr = origDevice1->CreateDeferredContext(ContextFlags, ppDeferredContext);
     if (FAILED(hr))
     {
         LOG_INFO("  failed result = %x for %p\n", hr, ppDeferredContext);
@@ -2777,7 +2777,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext(THIS_
         HRESULT res = (*ppDeferredContext)->QueryInterface(IID_PPV_ARGS(&origContext1));
         if (FAILED(res))
             origContext1 = static_cast<ID3D11DeviceContext1*>(*ppDeferredContext);
-        HackerContext *hackerContext = HackerContextFactory(mRealOrigDevice1, origContext1);
+        HackerContext *hackerContext = HackerContextFactory(realOrigDevice1, origContext1);
         hackerContext->SetHackerDevice(this);
         hackerContext->Bind3DMigotoResources();
 
@@ -2836,12 +2836,12 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
     // was no race.
 
     // We still need to call the original function to make sure the reference counts are correct:
-    mOrigDevice1->GetImmediateContext(ppImmediateContext);
+    origDevice1->GetImmediateContext(ppImmediateContext);
 
-    // we can arrive here with no mHackerContext created if one was not
+    // we can arrive here with no hackerContext created if one was not
     // requested from CreateDevice/CreateDeviceFromSwapChain. In that case
     // we need to wrap the immediate context now:
-    if (mHackerContext == nullptr)
+    if (hackerContext == nullptr)
     {
         LOG_INFO("*** HackerContext missing at HackerDevice::GetImmediateContext\n");
 
@@ -2851,23 +2851,23 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext(THIS_
         HRESULT res = (*ppImmediateContext)->QueryInterface(IID_PPV_ARGS(&origContext1));
         if (FAILED(res))
             origContext1 = static_cast<ID3D11DeviceContext1*>(*ppImmediateContext);
-        mHackerContext = HackerContextFactory(mRealOrigDevice1, origContext1);
-        mHackerContext->SetHackerDevice(this);
-        mHackerContext->Bind3DMigotoResources();
+        hackerContext = HackerContextFactory(realOrigDevice1, origContext1);
+        hackerContext->SetHackerDevice(this);
+        hackerContext->Bind3DMigotoResources();
         if (!G->constants_run)
-            mHackerContext->InitIniParams();
+            hackerContext->InitIniParams();
         if (G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT)
-            mHackerContext->HookContext();
-        LOG_INFO("  HackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);
+            hackerContext->HookContext();
+        LOG_INFO("  HackerContext %p created to wrap %p\n", hackerContext, *ppImmediateContext);
     }
-    else if (mHackerContext->GetPossiblyHookedOrigContext1() != *ppImmediateContext)
+    else if (hackerContext->GetPossiblyHookedOrigContext1() != *ppImmediateContext)
     {
-        LOG_INFO("WARNING: mHackerContext %p found to be wrapping %p instead of %p at HackerDevice::GetImmediateContext!\n",
-                mHackerContext, mHackerContext->GetPossiblyHookedOrigContext1(), *ppImmediateContext);
+        LOG_INFO("WARNING: hackerContext %p found to be wrapping %p instead of %p at HackerDevice::GetImmediateContext!\n",
+                hackerContext, hackerContext->GetPossiblyHookedOrigContext1(), *ppImmediateContext);
     }
 
     if (!(G->enable_hooks & EnableHooks::IMMEDIATE_CONTEXT))
-        *ppImmediateContext = mHackerContext;
+        *ppImmediateContext = hackerContext;
     LOG_DEBUG("  returns handle = %p\n", *ppImmediateContext);
 }
 
@@ -2901,28 +2901,28 @@ STDMETHODIMP_(void) HackerDevice::GetImmediateContext1(
     }
 
     // We still need to call the original function to make sure the reference counts are correct:
-    mOrigDevice1->GetImmediateContext1(ppImmediateContext);
+    origDevice1->GetImmediateContext1(ppImmediateContext);
 
-    // we can arrive here with no mHackerContext created if one was not
+    // we can arrive here with no hackerContext created if one was not
     // requested from CreateDevice/CreateDeviceFromSwapChain. In that case
     // we need to wrap the immediate context now:
-    if (mHackerContext == nullptr)
+    if (hackerContext == nullptr)
     {
         LOG_INFO("*** HackerContext1 missing at HackerDevice::GetImmediateContext1\n");
 
         analyse_iunknown(*ppImmediateContext);
 
-        mHackerContext = HackerContextFactory(mOrigDevice1, *ppImmediateContext);
-        mHackerContext->SetHackerDevice(this);
-        LOG_INFO("  mHackerContext %p created to wrap %p\n", mHackerContext, *ppImmediateContext);
+        hackerContext = HackerContextFactory(origDevice1, *ppImmediateContext);
+        hackerContext->SetHackerDevice(this);
+        LOG_INFO("  hackerContext %p created to wrap %p\n", hackerContext, *ppImmediateContext);
     }
-    else if (mHackerContext->GetPossiblyHookedOrigContext1() != *ppImmediateContext)
+    else if (hackerContext->GetPossiblyHookedOrigContext1() != *ppImmediateContext)
     {
-        LOG_INFO("WARNING: mHackerContext %p found to be wrapping %p instead of %p at HackerDevice::GetImmediateContext1!\n",
-            mHackerContext, mHackerContext->GetPossiblyHookedOrigContext1(), *ppImmediateContext);
+        LOG_INFO("WARNING: hackerContext %p found to be wrapping %p instead of %p at HackerDevice::GetImmediateContext1!\n",
+            hackerContext, hackerContext->GetPossiblyHookedOrigContext1(), *ppImmediateContext);
     }
 
-    *ppImmediateContext = reinterpret_cast<ID3D11DeviceContext1*>(mHackerContext);
+    *ppImmediateContext = reinterpret_cast<ID3D11DeviceContext1*>(hackerContext);
     LOG_INFO("  returns handle = %p\n", *ppImmediateContext);
 }
 
@@ -2938,7 +2938,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext1(
     LOG_INFO("HackerDevice::CreateDeferredContext1(%s@%p) called with flags = %#x, ptr:%p\n",
         type_name(this), this, ContextFlags, ppDeferredContext);
 
-    HRESULT hr = mOrigDevice1->CreateDeferredContext1(ContextFlags, ppDeferredContext);
+    HRESULT hr = origDevice1->CreateDeferredContext1(ContextFlags, ppDeferredContext);
     if (FAILED(hr))
     {
         LOG_INFO("  failed result = %x for %p\n", hr, ppDeferredContext);
@@ -2948,7 +2948,7 @@ STDMETHODIMP HackerDevice::CreateDeferredContext1(
     if (ppDeferredContext)
     {
         analyse_iunknown(*ppDeferredContext);
-        HackerContext *hackerContext = HackerContextFactory(mRealOrigDevice1, *ppDeferredContext);
+        HackerContext *hackerContext = HackerContextFactory(realOrigDevice1, *ppDeferredContext);
         hackerContext->SetHackerDevice(this);
         hackerContext->Bind3DMigotoResources();
 
@@ -2970,7 +2970,7 @@ STDMETHODIMP HackerDevice::CreateBlendState1(
     /* [annotation] */
     _Out_opt_  ID3D11BlendState1 **ppBlendState)
 {
-    return mOrigDevice1->CreateBlendState1(pBlendStateDesc, ppBlendState);
+    return origDevice1->CreateBlendState1(pBlendStateDesc, ppBlendState);
 }
 
 STDMETHODIMP HackerDevice::CreateRasterizerState1(
@@ -2979,7 +2979,7 @@ STDMETHODIMP HackerDevice::CreateRasterizerState1(
     /* [annotation] */
     _Out_opt_  ID3D11RasterizerState1 **ppRasterizerState)
 {
-    return mOrigDevice1->CreateRasterizerState1(pRasterizerDesc, ppRasterizerState);
+    return origDevice1->CreateRasterizerState1(pRasterizerDesc, ppRasterizerState);
 }
 
 STDMETHODIMP HackerDevice::CreateDeviceContextState(
@@ -2994,7 +2994,7 @@ STDMETHODIMP HackerDevice::CreateDeviceContextState(
     /* [annotation] */
     _Out_opt_  ID3DDeviceContextState **ppContextState)
 {
-    return mOrigDevice1->CreateDeviceContextState(Flags, pFeatureLevels, FeatureLevels, SDKVersion, EmulatedInterface, pChosenFeatureLevel, ppContextState);
+    return origDevice1->CreateDeviceContextState(Flags, pFeatureLevels, FeatureLevels, SDKVersion, EmulatedInterface, pChosenFeatureLevel, ppContextState);
 }
 
 STDMETHODIMP HackerDevice::OpenSharedResource1(
@@ -3005,7 +3005,7 @@ STDMETHODIMP HackerDevice::OpenSharedResource1(
     /* [annotation] */
     _Out_  void **ppResource)
 {
-    return mOrigDevice1->OpenSharedResource1(hResource, returnedInterface, ppResource);
+    return origDevice1->OpenSharedResource1(hResource, returnedInterface, ppResource);
 }
 
 STDMETHODIMP HackerDevice::OpenSharedResourceByName(
@@ -3018,6 +3018,6 @@ STDMETHODIMP HackerDevice::OpenSharedResourceByName(
     /* [annotation] */
     _Out_  void **ppResource)
 {
-    return mOrigDevice1->OpenSharedResourceByName(lpName, dwDesiredAccess, returnedInterface, ppResource);
+    return origDevice1->OpenSharedResourceByName(lpName, dwDesiredAccess, returnedInterface, ppResource);
 }
 
