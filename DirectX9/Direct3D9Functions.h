@@ -7,9 +7,9 @@ void D3D9Wrapper::IDirect3D9::HookD9()
     // This will install hooks in the original device (if they have not
     // already been installed from a prior device) which will call the
     // equivalent function in this HackerDevice. It returns a trampoline
-    // interface which we use in place of mOrigDevice to call the real
+    // interface which we use in place of origDevice to call the real
     // original device, thereby side stepping the problem that calling the
-    // old mOrigDevice would be hooked and call back into us endlessly:
+    // old origDevice would be hooked and call back into us endlessly:
     if (_ex)
         m_pUnk = hook_D9(GetDirect3D9Ex(), reinterpret_cast<::IDirect3D9Ex*>(this));
     else

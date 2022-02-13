@@ -1301,7 +1301,7 @@ static void EnumeratePresetOverrideSections()
     wstring preset_id;
     IniSections::iterator lower, upper, i;
 
-    presetOverrides.clear();
+    preset_overrides.clear();
 
     lower = migoto_ini.ini_sections.lower_bound(wstring(L"Preset"));
     upper = prefix_upper_bound(migoto_ini.ini_sections, wstring(L"Preset"));
@@ -1314,7 +1314,7 @@ static void EnumeratePresetOverrideSections()
         std::transform(preset_id.begin(), preset_id.end(), preset_id.begin(), ::towlower);
 
         // Construct a preset in the global list:
-        presetOverrides[preset_id];
+        preset_overrides[preset_id];
     }
 }
 static void ParseHelixPresetOverrideSections()
@@ -1327,7 +1327,7 @@ static void ParsePresetOverrideSections()
     PresetOverride *preset;
     IniSections::iterator lower, upper, i;
 
-    presetOverrides.clear();
+    preset_overrides.clear();
 
     lower = migoto_ini.ini_sections.lower_bound(wstring(L"Preset"));
     upper = prefix_upper_bound(migoto_ini.ini_sections, wstring(L"Preset"));
@@ -1342,8 +1342,8 @@ static void ParsePresetOverrideSections()
         std::transform(preset_id.begin(), preset_id.end(), preset_id.begin(), ::towlower);
 
         // Read parameters from ini
-        presetOverrides[preset_id];
-        preset = &presetOverrides[preset_id];
+        preset_overrides[preset_id];
+        preset = &preset_overrides[preset_id];
         preset->ParseIniSection(id);
     }
 }
@@ -1621,7 +1621,7 @@ static void ParseResourceSections()
     CustomResource *custom_resource;
     wchar_t setting[MAX_PATH], path[MAX_PATH];
 
-    customResources.clear();
+    custom_resources.clear();
 
     lower = migoto_ini.ini_sections.lower_bound(wstring(L"Resource"));
     upper = prefix_upper_bound(migoto_ini.ini_sections, wstring(L"Resource"));
@@ -1637,7 +1637,7 @@ static void ParseResourceSections()
         // sort of variable declaration), so explicitly construct a
         // CustomResource for each one. Use the [] operator so the
         // default constructor will be used:
-        custom_resource = &customResources[resource_id];
+        custom_resource = &custom_resources[resource_id];
         custom_resource->name = i->first;
 
         custom_resource->max_copies_per_frame =
@@ -2182,8 +2182,8 @@ static void ParseConstantsSection()
     }
 
     // Second pass for the command list:
-    G->constants_command_list.clear();
-    G->post_constants_command_list.clear();
+    G->constants_command_list.Clear();
+    G->post_constants_command_list.Clear();
     ParseCommandList(L"Constants", &G->constants_command_list, &G->post_constants_command_list, NULL);
 }
 
@@ -3607,53 +3607,53 @@ static void ParseRSState(CustomShader *shader, const wchar_t *section)
     desc->fill_mode = (::D3DFILLMODE)GetIniEnum(section, L"fill", ::D3DFILL_SOLID, &found,
         L"D3DFILL_", FillModes, ARRAYSIZE(FillModes), 2, &migoto_ini);
     if (found) {
-        shader->rs_override = 1;
+        shader->rsOverride = 1;
         mask->fill_mode = (::D3DFILLMODE)0;
     }
 
     desc->cull_mode = (::D3DCULL)GetIniEnum(section, L"cull", ::D3DCULL_CCW, &found,
         L"D3DCULL_", CullModes, ARRAYSIZE(CullModes), 1, &migoto_ini);
     if (found) {
-        shader->rs_override = 1;
+        shader->rsOverride = 1;
         mask->cull_mode = (::D3DCULL)0;
     }
     desc->depth_bias = GetIniInt(section, L"depth_bias", 0, &found, &migoto_ini);
     if (found) {
-        shader->rs_override = 1;
+        shader->rsOverride = 1;
         mask->depth_bias = 0;
     }
     desc->slope_scale_depth_bias = (DWORD)GetIniFloat(section, L"slope_scaled_depth_bias", 0, &found, &migoto_ini);
     if (found) {
-        shader->rs_override = 1;
+        shader->rsOverride = 1;
         mask->slope_scale_depth_bias = 0;
     }
 
     desc->clipping = GetIniBool(section, L"depth_clip_enable", true, &found, &migoto_ini);
     if (found) {
-        shader->rs_override = 1;
+        shader->rsOverride = 1;
         mask->clipping = 0;
     }
 
     desc->scissor_test_enable = GetIniBool(section, L"scissor_enable", false, &found, &migoto_ini);
     if (found) {
-        shader->rs_override = 1;
+        shader->rsOverride = 1;
         mask->scissor_test_enable = 0;
     }
 
     desc->multisample_antialias = GetIniBool(section, L"multisample_enable", false, &found, &migoto_ini);
     if (found) {
-        shader->rs_override = 1;
+        shader->rsOverride = 1;
         mask->multisample_antialias = 0;
     }
 
     desc->anti_aliased_line_enable = GetIniBool(section, L"antialiased_line_enable", false, &found, &migoto_ini);
     if (found) {
-        shader->rs_override = 1;
+        shader->rsOverride = 1;
         mask->anti_aliased_line_enable = 0;
     }
 
     if (GetIniBool(section, L"rasterizer_state_merge", false, NULL, &migoto_ini))
-        shader->rs_override = 2;
+        shader->rsOverride = 2;
 }
 
 struct PrimitiveTopology {
@@ -3848,14 +3848,14 @@ static void _EnumerateCustomShaderSections(IniSections::iterator lower, IniSecti
         std::transform(shader_id.begin(), shader_id.end(), shader_id.begin(), ::towlower);
 
         // Construct a custom shader in the global list:
-        customShaders[shader_id];
+        custom_shaders[shader_id];
     }
 }
 static void EnumerateCustomShaderSections()
 {
     IniSections::iterator lower, upper;
 
-    customShaders.clear();
+    custom_shaders.clear();
 
     lower = migoto_ini.ini_sections.lower_bound(wstring(L"BuiltInCustomShader"));
     upper = prefix_upper_bound(migoto_ini.ini_sections, wstring(L"BuiltInCustomShader"));
@@ -3874,7 +3874,7 @@ static void ParseCustomShaderSections()
     bool failed;
     wstring namespace_path;
 
-    for (i = customShaders.begin(); i != customShaders.end(); i++) {
+    for (i = custom_shaders.begin(); i != custom_shaders.end(); i++) {
         shader_id = &i->first;
         custom_shader = &i->second;
 
@@ -3944,14 +3944,14 @@ static void _EnumerateExplicitCommandListSections(IniSections::iterator lower, I
         std::transform(section_id.begin(), section_id.end(), section_id.begin(), ::towlower);
 
         // Construct an explicit command list section in the global list:
-        explicitCommandListSections[section_id];
+        explicit_command_list_sections[section_id];
     }
 }
 static void EnumerateExplicitCommandListSections()
 {
     IniSections::iterator lower, upper;
 
-    explicitCommandListSections.clear();
+    explicit_command_list_sections.clear();
 
     lower = migoto_ini.ini_sections.lower_bound(wstring(L"BuiltInCommandList"));
     upper = prefix_upper_bound(migoto_ini.ini_sections, wstring(L"BuiltInCommandList"));
@@ -3968,7 +3968,7 @@ static void ParseExplicitCommandListSections()
     ExplicitCommandListSection *command_list_section;
     const wstring *section_id;
 
-    for (i = explicitCommandListSections.begin(); i != explicitCommandListSections.end(); i++) {
+    for (i = explicit_command_list_sections.begin(); i != explicit_command_list_sections.end(); i++) {
         section_id = &i->first;
         command_list_section = &i->second;
 
@@ -4367,18 +4367,18 @@ void LoadConfigFile()
     ParseTextureOverrideSections();
 
     LOG_INFO("[Present]\n");
-    G->present_command_list.clear();
-    G->post_present_command_list.clear();
+    G->present_command_list.Clear();
+    G->post_present_command_list.Clear();
     ParseCommandList(L"Present", &G->present_command_list, &G->post_present_command_list, NULL);
 
     LOG_INFO("[ClearRenderTargetView]\n");
-    G->clear_rtv_command_list.clear();
-    G->post_clear_rtv_command_list.clear();
+    G->clear_rtv_command_list.Clear();
+    G->post_clear_rtv_command_list.Clear();
     ParseCommandList(L"ClearRenderTargetView", &G->clear_rtv_command_list, &G->post_clear_rtv_command_list, NULL);
 
     LOG_INFO("[ClearDepthStencilView]\n");
-    G->clear_dsv_command_list.clear();
-    G->post_clear_dsv_command_list.clear();
+    G->clear_dsv_command_list.Clear();
+    G->post_clear_dsv_command_list.Clear();
     ParseCommandList(L"ClearDepthStencilView", &G->clear_dsv_command_list, &G->post_clear_dsv_command_list, NULL);
 
     LOG_INFO("[Profile]\n");
@@ -4531,7 +4531,7 @@ void ReloadConfig(D3D9Wrapper::IDirect3DDevice9 *device)
     command_lists_cmd_profiling.clear();
 
     // Reset the counters on the global parameter save area:
-    OverrideSave.Reset(device);
+    override_save.Reset(device);
 
     LoadConfigFile();
     optimise_command_lists(device);

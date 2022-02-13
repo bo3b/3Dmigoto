@@ -4,10 +4,10 @@
 #include <math.h>
 #include <strsafe.h>
 
-PresetOverrideMap presetOverrides;
+PresetOverrideMap preset_overrides;
 
-OverrideTransition CurrentTransition;
-OverrideGlobalSave OverrideSave;
+OverrideTransition current_transition;
+OverrideGlobalSave override_save;
 Override::Override()
 {
     // It's important for us to know if any are actively in use or not, so setting them
@@ -349,8 +349,8 @@ bool Override::MatchesCurrent(D3D9Wrapper::IDirect3DDevice9 *device)
     float val;
 
     for (i = begin(mOverrideParams); i != end(mOverrideParams); i++) {
-        std::map<OverrideParam, OverrideTransitionParam>::iterator transition = CurrentTransition.params.find(i->first);
-        if (transition != CurrentTransition.params.end() && transition->second.time != -1)
+        std::map<OverrideParam, OverrideTransitionParam>::iterator transition = current_transition.params.find(i->first);
+        if (transition != current_transition.params.end() && transition->second.time != -1)
             val = transition->second.target;
         else
             val = G->IniConstants[i->first.idx].*i->first.component;
@@ -360,8 +360,8 @@ bool Override::MatchesCurrent(D3D9Wrapper::IDirect3DDevice9 *device)
     }
 
     for (j = begin(mOverrideVars); j != end(mOverrideVars); j++) {
-        std::map<CommandListVariableFloat*, OverrideTransitionParam>::iterator transition = CurrentTransition.vars.find(j->first);
-        if (transition != CurrentTransition.vars.end() && transition->second.time != -1)
+        std::map<CommandListVariableFloat*, OverrideTransitionParam>::iterator transition = current_transition.vars.find(j->first);
+        if (transition != current_transition.vars.end() && transition->second.time != -1)
             val = transition->second.target;
         else
             val = j->first->fval;
@@ -371,11 +371,11 @@ bool Override::MatchesCurrent(D3D9Wrapper::IDirect3DDevice9 *device)
     }
 
     if (mOverrideSeparation != FLT_MAX) {
-        if (CurrentTransition.separation.time != -1) {
-            val = CurrentTransition.separation.target;
+        if (current_transition.separation.time != -1) {
+            val = current_transition.separation.target;
         }
         else {
-            err = Profiling::NvAPI_Stereo_GetSeparation(device->mStereoHandle, &val);
+            err = Profiling::NvAPI_Stereo_GetSeparation(device->stereoHandle, &val);
             if (err != NVAPI_OK) {
                 LOG_DEBUG("    Stereo_GetSeparation failed: %i\n", err);
                 val = mOverrideSeparation;
@@ -395,11 +395,11 @@ bool Override::MatchesCurrent(D3D9Wrapper::IDirect3DDevice9 *device)
             return false;
     }
     if (mOverrideConvergence != FLT_MAX) {
-        if (CurrentTransition.convergence.time != -1) {
-            val = CurrentTransition.convergence.target;
+        if (current_transition.convergence.time != -1) {
+            val = current_transition.convergence.target;
         }
         else {
-            err = Profiling::NvAPI_Stereo_GetConvergence(device->mStereoHandle, &val);
+            err = Profiling::NvAPI_Stereo_GetConvergence(device->stereoHandle, &val);
             if (err != NVAPI_OK) {
                 LOG_DEBUG("    Stereo_GetConvergence failed: %i\n", err);
                 val = mOverrideConvergence;
@@ -508,10 +508,10 @@ void Override::Activate(D3D9Wrapper::IDirect3DDevice9 *device, bool override_has
 
     if (override_has_deactivate_condition) {
         active = true;
-        OverrideSave.Save(device, this, cachedStereoValues);
+        override_save.Save(device, this, cachedStereoValues);
     }
 
-    CurrentTransition.ScheduleTransition(device,
+    current_transition.ScheduleTransition(device,
         mOverrideSeparation,
         mOverrideConvergence,
         &mOverrideParams,
@@ -539,9 +539,9 @@ void Override::Deactivate(D3D9Wrapper::IDirect3DDevice9 *device, CachedStereoVal
     LOG_INFO("User key deactivation <--\n");
 
     active = false;
-    OverrideSave.Restore(this);
+    override_save.Restore(this);
 
-    CurrentTransition.ScheduleTransition(device,
+    current_transition.ScheduleTransition(device,
         mUserSeparation,
         mUserConvergence,
         &mSavedParams,
@@ -584,9 +584,9 @@ void KeyOverride::UpEvent(D3D9Wrapper::IDirect3DDevice9 *device)
 
 void PresetOverride::Trigger(CommandListCommand *triggered_from)
 {
-    if (unique_triggers_required) {
+    if (uniqueTriggersRequired) {
         triggers_this_frame.insert(triggered_from);
-        if (triggers_this_frame.size() >= unique_triggers_required)
+        if (triggers_this_frame.size() >= uniqueTriggersRequired)
             triggered = true;
     }
     else {
@@ -608,7 +608,7 @@ void PresetOverride::Update(D3D9Wrapper::IDirect3DDevice9 *wrapper, CachedStereo
     else if (active && (!triggered || excluded))
         Override::Deactivate(wrapper, cachedStereoValues);
 
-    if (unique_triggers_required)
+    if (uniqueTriggersRequired)
         triggers_this_frame.clear();
     triggered = false;
     excluded = false;
@@ -688,7 +688,7 @@ void OverrideTransition::UpdatePresets(D3D9Wrapper::IDirect3DDevice9 *wrapper, C
     PresetOverrideMap::iterator i;
 
     // Deactivate any presets that were not triggered this frame:
-    for (i = presetOverrides.begin(); i != presetOverrides.end(); i++)
+    for (i = preset_overrides.begin(); i != preset_overrides.end(); i++)
         i->second.Update(wrapper, cachedStereoValues);
 }
 
@@ -830,32 +830,32 @@ void OverrideGlobalSave::Reset(D3D9Wrapper::IDirect3DDevice9* wrapper)
     // Don't worry about the ini params since the config reload will reset
     // them anyway.
     val = separation.Reset();
-    if (val == FLT_MAX && CurrentTransition.separation.time != -1)
-        val = CurrentTransition.separation.target;
+    if (val == FLT_MAX && current_transition.separation.time != -1)
+        val = current_transition.separation.target;
     if (val != FLT_MAX) {
         LOG_INFO(" Restoring separation to %#.2f\n", val);
 
         NvAPIOverride();
-        err = Profiling::NvAPI_Stereo_SetSeparation(wrapper->mStereoHandle, val);
+        err = Profiling::NvAPI_Stereo_SetSeparation(wrapper->stereoHandle, val);
         if (err != NVAPI_OK)
             LOG_DEBUG("    Stereo_SetSeparation failed: %i\n", err);
     }
 
     val = convergence.Reset();
-    if (val == FLT_MAX && CurrentTransition.convergence.time != -1)
-        val = CurrentTransition.convergence.target;
+    if (val == FLT_MAX && current_transition.convergence.time != -1)
+        val = current_transition.convergence.target;
     if (val != FLT_MAX) {
         LOG_INFO(" Restoring convergence to %#.2f\n", val);
 
         NvAPIOverride();
-        err = Profiling::NvAPI_Stereo_SetConvergence(wrapper->mStereoHandle, val);
+        err = Profiling::NvAPI_Stereo_SetConvergence(wrapper->stereoHandle, val);
         if (err != NVAPI_OK)
             LOG_DEBUG("    Stereo_SetConvergence failed: %i\n", err);
     }
 
     // Make sure any current transition won't continue to change the
     // parameters after the reset:
-    CurrentTransition.Stop();
+    current_transition.Stop();
 }
 
 void OverrideGlobalSaveParam::Save(float val)
@@ -880,8 +880,8 @@ void OverrideGlobalSave::Save(D3D9Wrapper::IDirect3DDevice9 *wrapper, Override *
     float val;
 
     if (preset->mOverrideSeparation != FLT_MAX) {
-        if (CurrentTransition.separation.time != -1) {
-            val = CurrentTransition.separation.target;
+        if (current_transition.separation.time != -1) {
+            val = current_transition.separation.target;
         }
         else {
             err = GetSeparation(wrapper, cachedStereoValues, &val);
@@ -895,8 +895,8 @@ void OverrideGlobalSave::Save(D3D9Wrapper::IDirect3DDevice9 *wrapper, Override *
     }
 
     if (preset->mOverrideConvergence != FLT_MAX) {
-        if (CurrentTransition.convergence.time != -1) {
-            val = CurrentTransition.convergence.target;
+        if (current_transition.convergence.time != -1) {
+            val = current_transition.convergence.target;
         }
         else {
             err = GetConvergence(wrapper, cachedStereoValues, &val);
@@ -910,8 +910,8 @@ void OverrideGlobalSave::Save(D3D9Wrapper::IDirect3DDevice9 *wrapper, Override *
     }
 
     for (i = preset->mOverrideParams.begin(); i != preset->mOverrideParams.end(); i++) {
-        std::map<OverrideParam, OverrideTransitionParam>::iterator transition = CurrentTransition.params.find(i->first);
-        if (transition != CurrentTransition.params.end() && transition->second.time != -1)
+        std::map<OverrideParam, OverrideTransitionParam>::iterator transition = current_transition.params.find(i->first);
+        if (transition != current_transition.params.end() && transition->second.time != -1)
             val = transition->second.target;
         else
             val = G->IniConstants[i->first.idx].*i->first.component;
@@ -921,8 +921,8 @@ void OverrideGlobalSave::Save(D3D9Wrapper::IDirect3DDevice9 *wrapper, Override *
     }
 
     for (j = preset->mOverrideVars.begin(); j != preset->mOverrideVars.end(); j++) {
-        std::map<CommandListVariableFloat*, OverrideTransitionParam>::iterator transition = CurrentTransition.vars.find(j->first);
-        if (transition != CurrentTransition.vars.end() && transition->second.time != -1)
+        std::map<CommandListVariableFloat*, OverrideTransitionParam>::iterator transition = current_transition.vars.find(j->first);
+        if (transition != current_transition.vars.end() && transition->second.time != -1)
             val = transition->second.target;
         else
             val = j->first->fval;

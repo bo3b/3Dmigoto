@@ -952,7 +952,7 @@ FuzzyMatchResourceDesc::FuzzyMatchResourceDesc(std::wstring section) :
 {
 
     // TODO: Statically contain this once we sort out our header files:
-    texture_override = new TextureOverride();
+    texture_override = new texture_override();
     texture_override->ini_section = section;
 }
 
@@ -1096,7 +1096,7 @@ bool FuzzyMatchResourceDesc::update_types_matched()
 
     return matches_vbuffer || matches_ibuffer || matches_tex || matches_volumetex || matches_cubetex || matches_surface;
 }
-static bool matches_draw_info(TextureOverride *tex_override, DrawCallInfo *call_info)
+static bool matches_draw_info(texture_override *tex_override, DrawCallInfo *call_info)
 {
     if (!tex_override->has_draw_context_match)
         return true;
@@ -1214,7 +1214,7 @@ void find_texture_overrides_for_resource(::IDirect3DResource9 *resource, Resourc
     }
 }
 
-bool TextureOverrideLess(const struct TextureOverride &lhs, const struct TextureOverride &rhs)
+bool TextureOverrideLess(const struct texture_override &lhs, const struct texture_override &rhs)
 {
     // For texture create time overrides we want the highest priority
     // texture override to take precedence, which will happen if it is

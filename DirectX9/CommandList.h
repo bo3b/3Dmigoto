@@ -41,13 +41,13 @@ enum class FrameAnalysisOptions;
 // legitimate need to exceed this:
 constexpr int max_command_list_recursion = 64;
 
-typedef HRESULT(*CopyLevelSur)(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, ::IDirect3DSurface9 *srcLev, ::IDirect3DSurface9 *dstLev, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect);
-typedef HRESULT(*CopyLevelVol)(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, ::IDirect3DVolume9 *srcLev, ::IDirect3DVolume9 *dstLev, D3D3DTEXTURE_DESC *srcDesc, D3D3DTEXTURE_DESC *dstDesc, ::D3DBOX *srcRect, ::D3DBOX *dstRect);
+typedef HRESULT(*CopyLevelSur)(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, ::IDirect3DSurface9 *srcLev, ::IDirect3DSurface9 *dstLev, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect);
+typedef HRESULT(*CopyLevelVol)(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, ::IDirect3DVolume9 *srcLev, ::IDirect3DVolume9 *dstLev, D3D3DTEXTURE_DESC *srcDesc, D3D3DTEXTURE_DESC *dstDesc, ::D3DBOX *srcRect, ::D3DBOX *dstRect);
 
 template <CopyLevelSur c>
-struct CopyLevelSurface { static HRESULT copyLevel(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, ::IDirect3DSurface9 *srcLev, ::IDirect3DSurface9 *dstLev, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect); };
+struct CopyLevelSurface { static HRESULT copyLevel(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, ::IDirect3DSurface9 *srcLev, ::IDirect3DSurface9 *dstLev, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect); };
 template <CopyLevelVol c>
-struct CopyLevelVolume { static HRESULT copyLevel(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, ::IDirect3DVolume9 *srcLev, ::IDirect3DVolume9 *dstLev, D3D3DTEXTURE_DESC *srcDesc, D3D3DTEXTURE_DESC *dstDesc, ::D3DBOX *srcRect, ::D3DBOX *dstRect); };
+struct CopyLevelVolume { static HRESULT copyLevel(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, ::IDirect3DVolume9 *srcLev, ::IDirect3DVolume9 *dstLev, D3D3DTEXTURE_DESC *srcDesc, D3D3DTEXTURE_DESC *dstDesc, ::D3DBOX *srcRect, ::D3DBOX *dstRect); };
 
 typedef struct D3D9_ALPHATEST_DESC {
     DWORD alpha_ref;
@@ -213,8 +213,8 @@ public:
 class ResourceCopyTarget;
 class CommandListState {
 public:
-    D3D9Wrapper::IDirect3DDevice9 *mHackerDevice;
-    ::IDirect3DDevice9 *mOrigDevice;
+    D3D9Wrapper::IDirect3DDevice9 *hackerDevice;
+    ::IDirect3DDevice9 *origDevice;
     // Used to avoid querying the render target dimensions twice in the
     // common case we are going to store both width & height in separate
     // ini params:
@@ -267,9 +267,9 @@ public:
 
     virtual ~CommandListCommand() {};
 
-    virtual void run(CommandListState*) = 0;
+    virtual void Run(CommandListState*) = 0;
     virtual bool optimise(D3D9Wrapper::IDirect3DDevice9 *device) { return false; }
-    virtual bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) { return false; }
+    virtual bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) { return false; }
 };
 
 // Using vector of pointers to allow mixed types, and shared_ptr to handle
@@ -374,7 +374,7 @@ public:
     LARGE_INTEGER time_spent_inclusive;
     LARGE_INTEGER time_spent_exclusive;
     unsigned executions;
-    void clear();
+    void Clear();
 
     CommandList() :
         post(false),
@@ -403,7 +403,7 @@ public:
         exclude(false)
     {}
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 class ExplicitCommandListSection
 {
@@ -413,7 +413,7 @@ public:
 };
 
 typedef std::unordered_map<std::wstring, class ExplicitCommandListSection> ExplicitCommandListSections;
-extern ExplicitCommandListSections explicitCommandListSections;
+extern ExplicitCommandListSections explicit_command_list_sections;
 
 class RunExplicitCommandList : public CommandListCommand {
 public:
@@ -425,8 +425,8 @@ public:
         run_pre_and_post_together(false)
     {}
 
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class RunLinkedCommandList : public CommandListCommand {
@@ -437,8 +437,8 @@ public:
         link(link)
     {}
 
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/gg615083(v=vs.85).aspx
@@ -500,16 +500,16 @@ class CustomShader
 {
 public:
     D3DCompileFlags compile_flags;
-    D3D9Wrapper::IDirect3DDevice9 *mHackerDevice;
-    bool vs_override, ps_override;
+    D3D9Wrapper::IDirect3DDevice9 *hackerDevice;
+    bool vsOverride, psOverride;
     ::IDirect3DVertexShader9 *vs;
     ::IDirect3DPixelShader9 *ps;
     bool enable_timer;
     chrono::high_resolution_clock::duration run_interval;
     chrono::high_resolution_clock::time_point last_time_run;
 
-    ID3DBlob *vs_bytecode;
-    ID3DBlob *ps_bytecode;
+    ID3DBlob *vsBytecode;
+    ID3DBlob *psBytecode;
 
     int blend_override;
     int alpha_test_override;
@@ -530,7 +530,7 @@ public:
     D3D9_ALPHATEST_DESC alpha_test_desc;
     ID3D9AlphaTestState *alpha_test_state;
 
-    int rs_override;
+    int rsOverride;
 
     D3D9_RASTERIZER_DESC rs_desc;
     D3D9_RASTERIZER_DESC rs_mask;
@@ -553,15 +553,15 @@ public:
     ~CustomShader();
 
     bool compile(char type, wchar_t *filename, const wstring *wname, const wstring *namespace_path);
-    void substantiate(::IDirect3DDevice9 *mOrigDevice, D3D9Wrapper::IDirect3DDevice9 *mDevice);
+    void substantiate(::IDirect3DDevice9 *origDevice, D3D9Wrapper::IDirect3DDevice9 *mDevice);
 
-    void merge_blend_states(ID3D9BlendState *src_state, ::IDirect3DDevice9 *mOrigDevice);
+    void merge_blend_states(ID3D9BlendState *src_state, ::IDirect3DDevice9 *origDevice);
     void merge_depth_stencil_states(ID3D9DepthStencilState *state);
-    void merge_rasterizer_states(ID3D9RasterizerState *state, ::IDirect3DDevice9 *mOrigDevice);
+    void merge_rasterizer_states(ID3D9RasterizerState *state, ::IDirect3DDevice9 *origDevice);
 };
 
 typedef std::unordered_map<std::wstring, class CustomShader> CustomShaders;
-extern CustomShaders customShaders;
+extern CustomShaders custom_shaders;
 
 class RunCustomShaderCommand : public CommandListCommand {
 public:
@@ -570,10 +570,10 @@ public:
     RunCustomShaderCommand() :
         custom_shader(NULL)
     {}
-    void GetSamplerStates(::IDirect3DDevice9 * mOrigDevice, std::map<UINT, ID3D9SamplerState*> *saved_sampler_states);
-    void SetSamplerStates(::IDirect3DDevice9 * mOrigDevice, std::map<UINT, ID3D9SamplerState*> ss);
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void GetSamplerStates(::IDirect3DDevice9 * origDevice, std::map<UINT, ID3D9SamplerState*> *saved_sampler_states);
+    void SetSamplerStates(::IDirect3DDevice9 * origDevice, std::map<UINT, ID3D9SamplerState*> ss);
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 enum class DrawCommandType {
@@ -601,7 +601,7 @@ public:
         type(DrawCommandType::INVALID)
     {}
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
     void draw(CommandListState*, DrawCommandType);
 };
 
@@ -613,7 +613,7 @@ public:
         ini_section(section)
     {}
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 // Handling=abort aborts the current command list, and any command lists that
@@ -627,7 +627,7 @@ public:
         ini_section(section)
     {}
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 
@@ -767,7 +767,7 @@ public:
     ResourcePoolCache cache;
     ~ResourcePool();
 
-    void emplace(uint32_t hash, HashedResource hashedResource, D3D9Wrapper::IDirect3DDevice9 *mHackerDevice);
+    void emplace(uint32_t hash, HashedResource hashedResource, D3D9Wrapper::IDirect3DDevice9 *hackerDevice);
 };
 class CommandListExpression;
 class CustomResource
@@ -822,8 +822,8 @@ public:
     CustomResource();
     ~CustomResource();
 
-    void Substantiate (CommandListState *state, StereoHandle mStereoHandle, DWORD usage_flags);
-    bool OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE *new_mode);
+    void Substantiate (CommandListState *state, StereoHandle stereoHandle, DWORD usage_flags);
+    bool OverrideSurfaceCreationMode(StereoHandle stereoHandle, NVAPI_STEREO_SURFACECREATEMODE *new_mode);
 
     void OverrideBufferDesc(::D3DVERTEXBUFFER_DESC *desc);
     void OverrideBufferDesc(::D3DINDEXBUFFER_DESC * desc);
@@ -832,11 +832,11 @@ public:
     void OverrideOutOfBandInfo(::D3DFORMAT *format, UINT *stride);
 
 private:
-    void LoadFromFile(::IDirect3DDevice9 *mOrigDevice);
+    void LoadFromFile(::IDirect3DDevice9 *origDevice);
     template<typename ID3D9Buffer, typename ID3D9BufferDesc>
-    void LoadBufferFromFile(::IDirect3DDevice9 *mOrigDevice);
+    void LoadBufferFromFile(::IDirect3DDevice9 *origDevice);
     template<typename ID3D9Buffer, typename ID3D9BufferDesc>
-    void SubstantiateBuffer(::IDirect3DDevice9 *mOrigDevice, void **buf, DWORD size);
+    void SubstantiateBuffer(::IDirect3DDevice9 *origDevice, void **buf, DWORD size);
     void SubstantiateTexture2D(CommandListState *state);
     void SubstantiateTexture3D(CommandListState *state);
     void SubstantiateTextureCube(CommandListState *state);
@@ -846,7 +846,7 @@ private:
 };
 
 typedef std::unordered_map<std::wstring, class CustomResource> CustomResources;
-extern CustomResources customResources;
+extern CustomResources custom_resources;
 
 // Forward declaration since TextureOverride also contains a command list
 struct TextureOverride;
@@ -926,14 +926,14 @@ static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
 class ResourceCopyTarget {
 public:
     ResourceCopyTargetType type;
-    wchar_t shader_type;
+    wchar_t shaderType;
     unsigned slot;
-    CustomResource *custom_resource;
+    CustomResource *customResource;
     ResourceCopyTarget() :
         type(ResourceCopyTargetType::INVALID),
-        shader_type(L'\0'),
+        shaderType(L'\0'),
         slot(0),
-        custom_resource(NULL)
+        customResource(NULL)
     {}
 
     bool ParseTarget(const wchar_t *target, bool is_source, const wstring *ini_namespace);
@@ -975,7 +975,7 @@ public:
     ResourceCopyOperation();
     ~ResourceCopyOperation();
     void DirectModeCopyResource(CommandListState *state, ::IDirect3DResource9 *src_resource, ::IDirect3DResource9 *dst_resource, bool direct_mode_wrapped_resource_source, bool direct_mode_wrapped_resource_dest);
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 typedef std::vector<ResourceCopyOperation*> ResourceCopyOperations;
@@ -990,7 +990,7 @@ public:
     ResourceStagingOperation();
 
     HRESULT map(CommandListState *state, void **mapping);
-    void unmap(CommandListState *state);
+    void Unmap(CommandListState *state);
     template<typename SourceSurface, typename DestSurface, typename Desc, typename LockedRect>
     HRESULT mapSurface(CommandListState * state, SourceSurface * cached_surface, void ** mapping, DWORD flags = NULL);
     template<typename BufferType, typename Desc>
@@ -999,10 +999,10 @@ public:
 class CommandListToken {
 public:
     wstring token;
-    size_t token_pos;
+    size_t tokenPos;
 
     CommandListToken(size_t token_pos, wstring token = L"") :
-        token_pos(token_pos), token(token)
+        tokenPos(token_pos), token(token)
     {}
     virtual ~CommandListToken() {}; // Because C++
 };
@@ -1047,8 +1047,8 @@ public:
 // Alternatives are implementing our own iterator, or the visitor pattern.
 class CommandListWalkable {
 public:
-    typedef std::vector<std::shared_ptr<CommandListWalkable>> Walk;
-    virtual Walk walk() = 0;
+    typedef std::vector<std::shared_ptr<CommandListWalkable>> Walks;
+    virtual Walks Walk() = 0;
 };
 template <class Evaluatable>
 class CommandListSyntaxTree :
@@ -1064,7 +1064,7 @@ public:
         CommandListToken(token_pos)
     {}
     std::shared_ptr<Evaluatable> finalise() override;
-    Walk walk() override;
+    Walks Walk() override;
 };
 
 // Placeholder for operator tokens from the tokenisation stage. These will all
@@ -1100,7 +1100,7 @@ public:
     {}
 
     std::shared_ptr<Evaluatable> finalise() override;
-    Walk walk() override;
+    Walks Walk() override;
 
     static const wchar_t* pattern() { return L"<IMPLEMENT ME>"; }
 };
@@ -1406,15 +1406,15 @@ public:
 
 class ParamOverride : public AssignmentCommand {
 public:
-    int param_idx;
-    float DirectX::XMFLOAT4::*param_component;
+    int paramIdx;
+    float DirectX::XMFLOAT4::*paramComponent;
 
     ParamOverride() :
-        param_idx(-1),
-        param_component(NULL)
+        paramIdx(-1),
+        paramComponent(NULL)
     {};
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 enum class ConstantType {
     INVALID,
@@ -1438,7 +1438,7 @@ public:
     VariableArrayAssignment() {};
     ~VariableArrayAssignment() {};
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 class SetShaderConstant : public AssignmentCommand {
 public:
@@ -1459,7 +1459,7 @@ public:
         if (assign)
             delete assign;
     };
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 class VariableArrayFromShaderConstantAssignment : public CommandListCommand {
 public:
@@ -1474,7 +1474,7 @@ public:
         slot(-1)
     {};
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 class VariableArrayFromArrayAssignment : public CommandListCommand {
 public:
@@ -1482,7 +1482,7 @@ public:
 
     VariableArrayFromArrayAssignment(){};
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 class VariableArrayFromMatrixAssignment : public CommandListCommand {
 public:
@@ -1492,7 +1492,7 @@ public:
 
     VariableArrayFromMatrixAssignment() : matrix(NULL), start_slot(0) {};
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 class VariableArrayFromMatrixExpressionAssignment : public CommandListCommand {
 public:
@@ -1502,7 +1502,7 @@ public:
 
     VariableArrayFromMatrixExpressionAssignment() : start_slot(0){};
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 class VariableArrayFromExpressionAssignment : public CommandListCommand {
 public:
@@ -1511,7 +1511,7 @@ public:
 
     VariableArrayFromExpressionAssignment() {};
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 class MatrixFromShaderConstantAssignment : public CommandListCommand {
@@ -1534,7 +1534,7 @@ public:
         num_slots(16)
     {};
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 class MatrixFromArrayAssignment : public CommandListCommand {
 public:
@@ -1544,7 +1544,7 @@ public:
 
     MatrixFromArrayAssignment() : pMatrix(NULL), dst_start(0){};
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 class MatrixFromMatrixAssignment : public CommandListCommand {
 public:
@@ -1556,7 +1556,7 @@ public:
 
     MatrixFromMatrixAssignment() : src_matrix(NULL), dst_matrix(NULL), src_start(0), dst_start(0), num_slots(16){};
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 class MatrixFromMatrixExpressionAssignment : public CommandListCommand {
 public:
@@ -1568,7 +1568,7 @@ public:
 
     MatrixFromMatrixExpressionAssignment() : pMatrix(NULL), src_start(0), dst_start(0), num_slots(16){};
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 class MatrixFromExpressionAssignment : public CommandListCommand {
 public:
@@ -1578,7 +1578,7 @@ public:
 
     MatrixFromExpressionAssignment() : pMatrix(NULL), dst_start(0){};
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 class MatrixAssignment : public CommandListCommand {
 public:
@@ -1590,7 +1590,7 @@ public:
 
     MatrixAssignment() {};
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 class VariableAssignment : public AssignmentCommand {
 public:
@@ -1600,7 +1600,7 @@ public:
         var(NULL)
     {};
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 class IfCommand : public CommandListCommand {
@@ -1622,9 +1622,9 @@ public:
 
     IfCommand(const wchar_t *section);
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
     bool optimise(D3D9Wrapper::IDirect3DDevice9 *device) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class ElseIfCommand : public IfCommand {
@@ -1636,8 +1636,8 @@ public:
 
 class CommandPlaceholder : public CommandListCommand {
 public:
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 class ElsePlaceholder : public CommandPlaceholder {
 };
@@ -1646,14 +1646,14 @@ class CheckTextureOverrideCommand : public CommandListCommand {
 public:
     // For processing command lists in TextureOverride sections:
     ResourceCopyTarget target;
-    bool run_pre_and_post_together;
+    bool runPreAndPostTogether;
 
     CheckTextureOverrideCommand() :
-        run_pre_and_post_together(false)
+        runPreAndPostTogether(false)
     {}
 
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 class ClearSurfaceCommand : public CommandListCommand {
 public:
@@ -1674,7 +1674,7 @@ public:
     ClearSurfaceCommand();
     void clear_surface(::IDirect3DResource9 *resource, CommandListState *state);
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 class ResetPerFrameLimitsCommand : public CommandListCommand {
@@ -1687,7 +1687,7 @@ public:
         resource(NULL)
     {}
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 class PerDrawStereoOverrideCommand : public CommandListCommand {
 public:
@@ -1701,14 +1701,14 @@ public:
 
     PerDrawStereoOverrideCommand(bool restore_on_post);
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
     bool optimise(D3D9Wrapper::IDirect3DDevice9 *device) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
-    bool update_val(CommandListState *state);
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    bool UpdateVal(CommandListState *state);
 
-    virtual const char* stereo_param_name() = 0;
-    virtual float get_stereo_value(CommandListState*) = 0;
-    virtual void set_stereo_value(CommandListState*, float val) = 0;
+    virtual const char* StereoParamName() = 0;
+    virtual float GetStereoValue(CommandListState*) = 0;
+    virtual void SetStereoValue(CommandListState*, float val) = 0;
 };
 class PerDrawSeparationOverrideCommand : public PerDrawStereoOverrideCommand
 {
@@ -1717,9 +1717,9 @@ public:
         PerDrawStereoOverrideCommand(restore_on_post)
     {}
 
-    const char* stereo_param_name() override { return "separation"; }
-    float get_stereo_value(CommandListState*) override;
-    void set_stereo_value(CommandListState*, float val) override;
+    const char* StereoParamName() override { return "separation"; }
+    float GetStereoValue(CommandListState*) override;
+    void SetStereoValue(CommandListState*, float val) override;
 };
 class PerDrawConvergenceOverrideCommand : public PerDrawStereoOverrideCommand
 {
@@ -1728,16 +1728,16 @@ public:
         PerDrawStereoOverrideCommand(restore_on_post)
     {}
 
-    const char* stereo_param_name() override { return "convergence"; }
-    float get_stereo_value(CommandListState*) override;
-    void set_stereo_value(CommandListState*, float val) override;
+    const char* StereoParamName() override { return "convergence"; }
+    float GetStereoValue(CommandListState*) override;
+    void SetStereoValue(CommandListState*, float val) override;
 };
 class DirectModeSetActiveEyeCommand : public CommandListCommand {
 public:
     NV_STEREO_ACTIVE_EYE eye;
 
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class FrameAnalysisChangeOptionsCommand : public CommandListCommand {
@@ -1746,8 +1746,8 @@ public:
 
     FrameAnalysisChangeOptionsCommand(wstring *val);
 
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class FrameAnalysisDumpCommand : public CommandListCommand {
@@ -1756,8 +1756,8 @@ public:
     wstring target_name;
     FrameAnalysisOptions analyse_options;
 
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class FrameAnalysisDumpConstantsCommand : public CommandListCommand {
@@ -1766,8 +1766,8 @@ public:
     wchar_t constant_type;
     UINT start_slot;
     UINT num_slots;
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class UpscalingFlipBBCommand : public CommandListCommand {
@@ -1777,7 +1777,7 @@ public:
     UpscalingFlipBBCommand(wstring section);
     ~UpscalingFlipBBCommand();
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 class Draw3DMigotoOverlayCommand : public CommandListCommand {
@@ -1788,7 +1788,7 @@ public:
         ini_section(section)
     {}
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 enum class BuiltInFunctionName {
     AUTOCONVERGENCE = 0,
@@ -1841,12 +1841,12 @@ public:
     bool ParseParam(const wchar_t *name, CommandList *pre_command_list, const wstring *ini_namespace);
     CustomFunctionCommand();
     ~CustomFunctionCommand();
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
-void RunCommandList(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,
+void RunCommandList(D3D9Wrapper::IDirect3DDevice9 *hackerDevice,
     CommandList *command_list, DrawCallInfo *call_info,
     bool post, CachedStereoValues *cachedStereoValues = NULL);
-void RunResourceCommandList(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,
+void RunResourceCommandList(D3D9Wrapper::IDirect3DDevice9 *hackerDevice,
     CommandList *command_list, ::IDirect3DResource9 *resource,
     bool post, CachedStereoValues *cachedStereoValues = NULL);
 bool ParseRunExplicitCommandList(const wchar_t *section,
@@ -1904,8 +1904,8 @@ bool ParseRunFunction(const wchar_t *section,
     const wchar_t *key, wstring *val, CommandList *command_list,
     CommandList *pre_command_list, CommandList *post_command_list,
     const wstring *ini_namespace);
-void ReleaseCommandListDeviceResources(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice);
-void RecreateCommandListCustomShaders(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice);
+void ReleaseCommandListDeviceResources(D3D9Wrapper::IDirect3DDevice9 *hackerDevice);
+void RecreateCommandListCustomShaders(D3D9Wrapper::IDirect3DDevice9 *hackerDevice);
 
 bool ParseHelixShaderOverrideGetConstant(const wchar_t *section,
     const wchar_t *key, wstring *val, const wstring *raw_line,
