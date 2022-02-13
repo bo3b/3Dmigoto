@@ -81,19 +81,19 @@ static void cto_warn_post_commands(CommandList *command_list)
             // If commands aren't the culprits - it's whatever
             // stopped their post phases from being optimised out
             // we should warn about:
-            cto_warn_post_commands(if_command->true_commands_post.get());
-            cto_warn_post_commands(if_command->false_commands_post.get());
+            cto_warn_post_commands(if_command->trueCommandsPost.get());
+            cto_warn_post_commands(if_command->falseCommandsPost.get());
         } else
-            Profiling::cto_warning += command->ini_line + L"\n";
+            Profiling::cto_warning += command->iniLine + L"\n";
 
         run_command = dynamic_cast<RunExplicitCommandList*>(command.get());
         if (run_command) {
             // Run commands can be the culprits themselves, or
             // what they contain, so list the run command and
             // recurse into the command lists it calls:
-            if (run_command->run_pre_and_post_together)
-                cto_warn_post_commands(&run_command->command_list_section->command_list);
-            cto_warn_post_commands(&run_command->command_list_section->post_command_list);
+            if (run_command->runPreAndPostTogether)
+                cto_warn_post_commands(&run_command->commandListSection->commandList);
+            cto_warn_post_commands(&run_command->commandListSection->postCommandList);
         }
     }
 }
@@ -154,7 +154,7 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
         present_overhead.QuadPart = Profiling::present_overhead.cpu.QuadPart - Profiling::overlay_overhead.cpu.QuadPart;
 
     for (CommandList *command_list : command_lists_profiling)
-        command_list_overhead.QuadPart += command_list->time_spent_exclusive.QuadPart;
+        command_list_overhead.QuadPart += command_list->timeSpentExclusive.QuadPart;
 
     present_overhead.QuadPart = present_overhead.QuadPart * 1000000 / freq.QuadPart;
     command_list_overhead.QuadPart = command_list_overhead.QuadPart * 1000000 / freq.QuadPart;
@@ -315,7 +315,7 @@ static void update_txt_command_lists(LARGE_INTEGER collection_duration, LARGE_IN
 
     vector<CommandList*> sorted(command_lists_profiling.begin(), command_lists_profiling.end());
     std::sort(sorted.begin(), sorted.end(), [](const CommandList *lhs, const CommandList *rhs) {
-        return lhs->time_spent_inclusive.QuadPart > rhs->time_spent_inclusive.QuadPart;
+        return lhs->timeSpentInclusive.QuadPart > rhs->timeSpentInclusive.QuadPart;
     });
 
     Profiling::text += L" (Top Command Lists):\n"
@@ -323,8 +323,8 @@ static void update_txt_command_lists(LARGE_INTEGER collection_duration, LARGE_IN
                 L"count | CPU/frame ~fps cost | CPU/frame ~fps cost |\n"
                 L"----- | --------- --------- | --------- --------- |\n";
     for (CommandList *command_list : sorted) {
-        inclusive.QuadPart = command_list->time_spent_inclusive.QuadPart * 1000000 / freq.QuadPart;
-        exclusive.QuadPart = command_list->time_spent_exclusive.QuadPart * 1000000 / freq.QuadPart;
+        inclusive.QuadPart = command_list->timeSpentInclusive.QuadPart * 1000000 / freq.QuadPart;
+        exclusive.QuadPart = command_list->timeSpentExclusive.QuadPart * 1000000 / freq.QuadPart;
 
         // fps estimate based on the assumption that if we took 100%
         // CPU time it would cost all 60fps:
@@ -339,7 +339,7 @@ static void update_txt_command_lists(LARGE_INTEGER collection_duration, LARGE_IN
                 (float)exclusive.QuadPart / frames,
                 exclusive_fps,
                 command_list->post ? L"post" : L"pre",
-                command_list->ini_section.c_str()
+                command_list->iniSection.c_str()
         );
         Profiling::text += buf;
         // TODO: GPU time spent
@@ -355,8 +355,8 @@ static void update_txt_commands(LARGE_INTEGER collection_duration, LARGE_INTEGER
     vector<CommandListCommand*> sorted(command_lists_cmd_profiling.begin(), command_lists_cmd_profiling.end());
 
     std::sort(sorted.begin(), sorted.end(), [](const CommandListCommand *lhs, const CommandListCommand *rhs) {
-        return (lhs->pre_time_spent.QuadPart + lhs->post_time_spent.QuadPart) >
-               (rhs->pre_time_spent.QuadPart + rhs->post_time_spent.QuadPart);
+        return (lhs->preTimeSpent.QuadPart + lhs->postTimeSpent.QuadPart) >
+               (rhs->preTimeSpent.QuadPart + rhs->postTimeSpent.QuadPart);
     });
 
     Profiling::text += L" (Top Commands):\n"
@@ -364,33 +364,33 @@ static void update_txt_commands(LARGE_INTEGER collection_duration, LARGE_INTEGER
                 L"count CPU/frame ~fps cost | count CPU/frame ~fps cost\n"
                 L"----- --------- --------- | ----- --------- ---------\n";
     for (CommandListCommand *cmd : sorted) {
-        pre_time_spent.QuadPart = cmd->pre_time_spent.QuadPart * 1000000 / freq.QuadPart;
-        post_time_spent.QuadPart = cmd->post_time_spent.QuadPart * 1000000 / freq.QuadPart;
+        pre_time_spent.QuadPart = cmd->preTimeSpent.QuadPart * 1000000 / freq.QuadPart;
+        post_time_spent.QuadPart = cmd->postTimeSpent.QuadPart * 1000000 / freq.QuadPart;
 
         // fps estimate based on the assumption that if we took 100%
         // CPU time it would cost all 60fps:
         pre_fps_cost = 60.0 * pre_time_spent.QuadPart / collection_duration.QuadPart;
         post_fps_cost = 60.0 * post_time_spent.QuadPart / collection_duration.QuadPart;
 
-        if (cmd->pre_executions) {
+        if (cmd->preExecutions) {
             _snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
                     L"%5.0f %7.2fus %9f | ",
-                    ceil((float)cmd->pre_executions / frames),
+                    ceil((float)cmd->preExecutions / frames),
                     (float)pre_time_spent.QuadPart / frames,
                     pre_fps_cost);
             Profiling::text += buf;
         } else
             Profiling::text += L"                          | ";
-        if (cmd->post_executions) {
+        if (cmd->postExecutions) {
             _snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
                     L"%5.0f %7.2fus %9f ",
-                    ceil((float)cmd->post_executions / frames),
+                    ceil((float)cmd->postExecutions / frames),
                     (float)post_time_spent.QuadPart / frames,
                     post_fps_cost);
             Profiling::text += buf;
         } else
             Profiling::text += L"                          ";
-        Profiling::text += cmd->ini_line;
+        Profiling::text += cmd->iniLine;
         Profiling::text += L"\n";
         // TODO: GPU time spent
     }
