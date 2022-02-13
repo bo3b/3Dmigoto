@@ -238,7 +238,7 @@ void HackerSwapChain::RunFrameActions()
     // a pre-present command list. We have a separate post-present command
     // list after the present call in case we need to restore state or
     // affect something at the start of the frame.
-    RunCommandList(hackerDevice, hackerContext, &G->present_command_list, NULL, false);
+    run_command_list(hackerDevice, hackerContext, &G->present_command_list, NULL, false);
 
     if (G->analyse_frame) {
         // We don't allow hold to be changed mid-frame due to potential
@@ -579,7 +579,7 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
         // Run the post present command list now, which can be used to restore
         // state changed in the pre-present command list, or to perform some
         // action at the start of a frame:
-        RunCommandList(hackerDevice, hackerContext, &G->post_present_command_list, NULL, true);
+        run_command_list(hackerDevice, hackerContext, &G->post_present_command_list, NULL, true);
 
         if (profiling)
             Profiling::end(&profiling_state, &Profiling::present_overhead);
@@ -884,7 +884,7 @@ STDMETHODIMP HackerSwapChain::Present1(THIS_
         // Run the post present command list now, which can be used to restore
         // state changed in the pre-present command list, or to perform some
         // action at the start of a frame:
-        RunCommandList(hackerDevice, hackerContext, &G->post_present_command_list, NULL, true);
+        run_command_list(hackerDevice, hackerContext, &G->post_present_command_list, NULL, true);
 
         if (profiling)
             Profiling::end(&profiling_state, &Profiling::present_overhead);

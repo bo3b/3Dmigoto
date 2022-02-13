@@ -28,26 +28,26 @@ class ResourceCopyTarget;
 
 class CommandListState {
 public:
-    HackerDevice *mHackerDevice;
-    HackerContext *mHackerContext;
-    ID3D11Device1 *mOrigDevice1;
-    ID3D11DeviceContext1 *mOrigContext1;
+    HackerDevice *hackerDevice;
+    HackerContext *hackerContext;
+    ID3D11Device1 *origDevice1;
+    ID3D11DeviceContext1 *origContext1;
 
     // Used to avoid querying the render target dimensions twice in the
     // common case we are going to store both width & height in separate
     // ini params:
-    float rt_width, rt_height;
-    DrawCallInfo *call_info;
+    float rtWidth, rtHeight;
+    DrawCallInfo *callInfo;
     bool post;
     bool aborted;
 
-    bool scissor_valid;
-    D3D11_RECT scissor_rects[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+    bool scissorValid;
+    D3D11_RECT scissorRects[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
 
     // If set this resource is in some way related to the command list
     // invocation - a constant buffer we are analysing, a render target
     // being cleared, etc.
-    ResourceCopyTarget *this_target;
+    ResourceCopyTarget *thisTarget;
     ID3D11Resource **resource;
     ID3D11View *view;
 
@@ -55,21 +55,21 @@ public:
     // somewhere that is updated at most once per frame rather than once
     // per command list execution, and we would ideally skip the resource
     // creation if the cursor is unchanged.
-    CURSORINFO cursor_info;
-    POINT cursor_window_coords;
-    ICONINFO cursor_info_ex;
-    ID3D11Texture2D *cursor_mask_tex;
-    ID3D11Texture2D *cursor_color_tex;
-    ID3D11ShaderResourceView *cursor_mask_view;
-    ID3D11ShaderResourceView *cursor_color_view;
-    RECT window_rect;
+    CURSORINFO cursorInfo;
+    POINT cursorWindowCoords;
+    ICONINFO cursorInfoEx;
+    ID3D11Texture2D *cursorMaskTex;
+    ID3D11Texture2D *cursorColorTex;
+    ID3D11ShaderResourceView *cursorMaskView;
+    ID3D11ShaderResourceView *cursorColorView;
+    RECT windowRect;
 
     int recursion;
-    int extra_indent;
-    LARGE_INTEGER profiling_time_recursive;
+    int extraIndent;
+    LARGE_INTEGER profilingTimeRecursive;
 
     // Anything that needs to be updated at the end of the command list:
-    bool update_params;
+    bool updateParams;
 
     CommandListState();
     ~CommandListState();
@@ -77,19 +77,19 @@ public:
 
 class CommandListCommand {
 public:
-    std::wstring ini_line;
+    std::wstring iniLine;
 
     // For performance metrics:
-    LARGE_INTEGER pre_time_spent;
-    LARGE_INTEGER post_time_spent;
-    unsigned pre_executions;
-    unsigned post_executions;
+    LARGE_INTEGER preTimeSpent;
+    LARGE_INTEGER postTimeSpent;
+    unsigned preExecutions;
+    unsigned postExecutions;
 
     virtual ~CommandListCommand() {};
 
-    virtual void run(CommandListState*) = 0;
-    virtual bool optimise(HackerDevice *device) { return false; }
-    virtual bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) { return false; }
+    virtual void Run(CommandListState*) = 0;
+    virtual bool Optimise(HackerDevice *device) { return false; }
+    virtual bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) { return false; }
 };
 
 enum class VariableFlags {
@@ -147,17 +147,17 @@ public:
     // list so they can be freed along with the command list, but at
     // runtime they are accessed directly by pointer. forward_list is used
     // because it doesn't invalidate pointers on insertion like vectors do.
-    std::forward_list<CommandListVariable> static_vars;
+    std::forward_list<CommandListVariable> staticVars;
     CommandListScope *scope;
 
     // For performance metrics:
-    std::wstring ini_section;
+    std::wstring iniSection;
     bool post;
-    LARGE_INTEGER time_spent_inclusive;
-    LARGE_INTEGER time_spent_exclusive;
+    LARGE_INTEGER timeSpentInclusive;
+    LARGE_INTEGER timeSpentExclusive;
     unsigned executions;
 
-    void clear();
+    void Clear();
 
     CommandList() :
         post(false),
@@ -183,31 +183,31 @@ public:
         exclude(false)
     {}
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 class ExplicitCommandListSection
 {
 public:
-    CommandList command_list;
-    CommandList post_command_list;
+    CommandList commandList;
+    CommandList postCommandList;
 };
 
 typedef std::unordered_map<std::wstring, class ExplicitCommandListSection> ExplicitCommandListSections;
-extern ExplicitCommandListSections explicitCommandListSections;
+extern ExplicitCommandListSections explicit_command_list_sections;
 
 class RunExplicitCommandList : public CommandListCommand {
 public:
-    ExplicitCommandListSection *command_list_section;
-    bool run_pre_and_post_together;
+    ExplicitCommandListSection *commandListSection;
+    bool runPreAndPostTogether;
 
     RunExplicitCommandList() :
-        command_list_section(NULL),
-        run_pre_and_post_together(false)
+        commandListSection(NULL),
+        runPreAndPostTogether(false)
     {}
 
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 // XXX: If this is ever used for a purpose other than ShaderRegex in the future
@@ -221,8 +221,8 @@ public:
         link(link)
     {}
 
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/gg615083(v=vs.85).aspx
@@ -283,8 +283,8 @@ static EnumName_t<const wchar_t *, D3DCompileFlags> D3DCompileFlagNames[] = {
 class CustomShader
 {
 public:
-    bool vs_override, hs_override, ds_override, gs_override, ps_override, cs_override;
-    D3DCompileFlags compile_flags;
+    bool vsOverride, hsOverride, dsOverride, gsOverride, psOverride, csOverride;
+    D3DCompileFlags compileFlags;
     ID3D11VertexShader *vs;
     ID3D11HullShader *hs;
     ID3D11DomainShader *ds;
@@ -292,77 +292,77 @@ public:
     ID3D11PixelShader *ps;
     ID3D11ComputeShader *cs;
 
-    ID3DBlob *vs_bytecode, *hs_bytecode, *ds_bytecode;
-    ID3DBlob *gs_bytecode, *ps_bytecode, *cs_bytecode;
+    ID3DBlob *vsBytecode, *hsBytecode, *dsBytecode;
+    ID3DBlob *gsBytecode, *psBytecode, *csBytecode;
 
-    int blend_override;
-    D3D11_BLEND_DESC blend_desc;
-    D3D11_BLEND_DESC blend_mask;
-    ID3D11BlendState *blend_state;
-    FLOAT blend_factor[4], blend_factor_merge_mask[4];
-    UINT blend_sample_mask, blend_sample_mask_merge_mask;
+    int blendOverride;
+    D3D11_BLEND_DESC blendDesc;
+    D3D11_BLEND_DESC blendMask;
+    ID3D11BlendState *blendState;
+    FLOAT blendFactor[4], blendFactorMergeMask[4];
+    UINT blendSampleMask, blendSampleMaskMergeMask;
 
-    int depth_stencil_override;
-    D3D11_DEPTH_STENCIL_DESC depth_stencil_desc;
-    D3D11_DEPTH_STENCIL_DESC depth_stencil_mask;
-    ID3D11DepthStencilState *depth_stencil_state;
-    UINT stencil_ref, stencil_ref_mask;
+    int depthStencilOverride;
+    D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
+    D3D11_DEPTH_STENCIL_DESC depthStencilMask;
+    ID3D11DepthStencilState *depthStencilState;
+    UINT stencilRef, stencilRefMask;
 
-    int rs_override;
-    D3D11_RASTERIZER_DESC rs_desc;
-    D3D11_RASTERIZER_DESC rs_mask;
-    ID3D11RasterizerState *rs_state;
+    int rsOverride;
+    D3D11_RASTERIZER_DESC rsDesc;
+    D3D11_RASTERIZER_DESC rsMask;
+    ID3D11RasterizerState *rsState;
 
-    int sampler_override;
-    D3D11_SAMPLER_DESC sampler_desc;
-    ID3D11SamplerState* sampler_state;
+    int samplerOverride;
+    D3D11_SAMPLER_DESC samplerDesc;
+    ID3D11SamplerState* samplerState;
 
     D3D11_PRIMITIVE_TOPOLOGY topology;
 
-    CommandList command_list;
-    CommandList post_command_list;
+    CommandList commandList;
+    CommandList postCommandList;
 
     bool substantiated;
 
-    int max_executions_per_frame;
-    unsigned frame_no;
-    int executions_this_frame;
+    int maxExecutionsPerFrame;
+    unsigned frameNo;
+    int executionsThisFrame;
 
     CustomShader();
     ~CustomShader();
 
-    bool compile(char type, wchar_t *filename, const std::wstring *wname, const std::wstring *namespace_path);
-    void substantiate(ID3D11Device *orig_device);
+    bool Compile(char type, wchar_t *filename, const std::wstring *wname, const std::wstring *namespace_path);
+    void Substantiate(ID3D11Device *orig_device);
 
-    void merge_blend_states(ID3D11BlendState *src_state, FLOAT src_blend_factor[4], UINT src_sample_mask, ID3D11Device *orig_device);
-    void merge_depth_stencil_states(ID3D11DepthStencilState *src_state, UINT src_stencil_ref, ID3D11Device *orig_device);
-    void merge_rasterizer_states(ID3D11RasterizerState *src_state, ID3D11Device *orig_device);
+    void MergeBlendStates(ID3D11BlendState *src_state, FLOAT src_blend_factor[4], UINT src_sample_mask, ID3D11Device *orig_device);
+    void MergeDepthStencilStates(ID3D11DepthStencilState *src_state, UINT src_stencil_ref, ID3D11Device *orig_device);
+    void MergeRasterizerStates(ID3D11RasterizerState *src_state, ID3D11Device *orig_device);
 };
 
 typedef std::unordered_map<std::wstring, class CustomShader> CustomShaders;
-extern CustomShaders customShaders;
+extern CustomShaders custom_shaders;
 
 class RunCustomShaderCommand : public CommandListCommand {
 public:
-    CustomShader *custom_shader;
+    CustomShader *customShader;
 
     RunCustomShaderCommand() :
-        custom_shader(NULL)
+        customShader(NULL)
     {}
 
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class SkipCommand : public CommandListCommand {
 public:
-    std::wstring ini_section;
+    std::wstring iniSection;
 
     SkipCommand(std::wstring section) :
-        ini_section(section)
+        iniSection(section)
     {}
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 // Handling=abort aborts the current command list, and any command lists that
@@ -370,13 +370,13 @@ public:
 // to abort command list execution if a specific depth target is in use.
 class AbortCommand : public CommandListCommand {
 public:
-    std::wstring ini_section;
+    std::wstring iniSection;
 
     AbortCommand(std::wstring section) :
-        ini_section(section)
+        iniSection(section)
     {}
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 
@@ -482,7 +482,7 @@ public:
 
     ~ResourcePool();
 
-    void emplace(uint32_t hash, ID3D11Resource *resource, ID3D11Device *device);
+    void Emplace(uint32_t hash, ID3D11Resource *resource, ID3D11Device *device);
 };
 
 class CustomResource
@@ -491,48 +491,48 @@ public:
     std::wstring name;
 
     ID3D11Resource *resource;
-    ResourcePool resource_pool;
+    ResourcePool resourcePool;
     ID3D11Device *device;
     ID3D11View *view;
-    bool is_null;
+    bool isNull;
 
-    D3D11_BIND_FLAG bind_flags;
-    D3D11_RESOURCE_MISC_FLAG misc_flags;
+    D3D11_BIND_FLAG bindFlags;
+    D3D11_RESOURCE_MISC_FLAG miscFlags;
 
     UINT stride;
     UINT offset;
-    UINT buf_size;
+    UINT bufSize;
     DXGI_FORMAT format;
 
-    int max_copies_per_frame;
-    unsigned frame_no;
-    int copies_this_frame;
+    int maxCopiesPerFrame;
+    unsigned frameNo;
+    int copiesThisFrame;
 
     std::wstring filename;
     bool substantiated;
 
     // Used to override description when copying or synthesise resources
     // from scratch:
-    CustomResourceType override_type;
-    CustomResourceMode override_mode;
-    CustomResourceBindFlags override_bind_flags;
-    ResourceMiscFlags override_misc_flags;
-    DXGI_FORMAT override_format;
-    int override_width;
-    int override_height;
-    int override_depth;
-    int override_mips;
-    int override_array;
-    int override_msaa;
-    int override_msaa_quality;
-    int override_byte_width;
-    int override_stride;
+    CustomResourceType overrideType;
+    CustomResourceMode overrideMode;
+    CustomResourceBindFlags overrideBindFlags;
+    ResourceMiscFlags overrideMiscFlags;
+    DXGI_FORMAT overrideFormat;
+    int overrideWidth;
+    int overrideHeight;
+    int overrideDepth;
+    int overrideMips;
+    int overrideArray;
+    int overrideMsaa;
+    int overrideMsaaQuality;
+    int overrideByteWidth;
+    int overrideStride;
 
-    float width_multiply;
-    float height_multiply;
+    float widthMultiply;
+    float heightMultiply;
 
-    void *initial_data;
-    size_t initial_data_size;
+    void *initialData;
+    size_t initialDataSize;
 
     CustomResource();
     ~CustomResource();
@@ -544,7 +544,7 @@ public:
     void OverrideTexDesc(D3D11_TEXTURE2D_DESC *desc);
     void OverrideTexDesc(D3D11_TEXTURE3D_DESC *desc);
     void OverrideOutOfBandInfo(DXGI_FORMAT *format, UINT *stride);
-    void expire(ID3D11Device *orig_device, ID3D11DeviceContext *orig_context);
+    void Expire(ID3D11Device *orig_device, ID3D11DeviceContext *orig_context);
 
 private:
     void LoadFromFile(ID3D11Device *orig_device);
@@ -556,7 +556,7 @@ private:
 };
 
 typedef std::unordered_map<std::wstring, class CustomResource> CustomResources;
-extern CustomResources customResources;
+extern CustomResources custom_resources;
 
 // Forward declaration since TextureOverride also contains a command list
 struct TextureOverride;
@@ -588,17 +588,17 @@ enum class ResourceCopyTargetType {
 class ResourceCopyTarget {
 public:
     ResourceCopyTargetType type;
-    wchar_t shader_type;
+    wchar_t shaderType;
     unsigned slot;
-    CustomResource *custom_resource;
-    bool forbid_view_cache;
+    CustomResource *customResource;
+    bool forbidViewCache;
 
     ResourceCopyTarget() :
         type(ResourceCopyTargetType::INVALID),
-        shader_type(L'\0'),
+        shaderType(L'\0'),
         slot(0),
-        custom_resource(NULL),
-        forbid_view_cache(false)
+        customResource(NULL),
+        forbidViewCache(false)
     {}
 
     bool ParseTarget(const wchar_t *target, bool is_source, const std::wstring *ini_namespace);
@@ -686,19 +686,19 @@ public:
     ResourceCopyTarget dst;
     ResourceCopyOptions options;
 
-    ID3D11Resource *cached_resource;
-    ResourcePool resource_pool;
-    ID3D11View *cached_view;
+    ID3D11Resource *cachedResource;
+    ResourcePool resourcePool;
+    ID3D11View *cachedView;
 
     // Additional intermediate resources required for certain operations
     // (TODO: add alternate cache in CustomResource to cut down on extra
     // copies when copying to a single resource from many sources)
-    ID3D11Resource *stereo2mono_intermediate;
+    ID3D11Resource *stereo2MonoIntermediate;
 
     ResourceCopyOperation();
     ~ResourceCopyOperation();
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 class ResourceStagingOperation : public ResourceCopyOperation {
@@ -707,17 +707,17 @@ public:
 
     ResourceStagingOperation();
 
-    HRESULT map(CommandListState *state, D3D11_MAPPED_SUBRESOURCE *mapping);
-    void unmap(CommandListState *state);
+    HRESULT Map(CommandListState *state, D3D11_MAPPED_SUBRESOURCE *mapping);
+    void Unmap(CommandListState *state);
 };
 
 class CommandListToken {
 public:
     std::wstring token;
-    size_t token_pos;
+    size_t tokenPos;
 
     CommandListToken(size_t token_pos, std::wstring token=L"") :
-        token_pos(token_pos), token(token)
+        tokenPos(token_pos), token(token)
     {}
     virtual ~CommandListToken() {}; // Because C++
 };
@@ -729,9 +729,9 @@ class CommandListEvaluatable {
 public:
     virtual ~CommandListEvaluatable() {}; // Because C++
 
-    virtual float evaluate(CommandListState *state, HackerDevice *device=NULL) = 0;
-    virtual bool static_evaluate(float *ret, HackerDevice *device=NULL) = 0;
-    virtual bool optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement) = 0;
+    virtual float Evaluate(CommandListState *state, HackerDevice *device=NULL) = 0;
+    virtual bool StaticEvaluate(float *ret, HackerDevice *device=NULL) = 0;
+    virtual bool Optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement) = 0;
 };
 
 // Indicates that this node can be used as an operand, checked when
@@ -747,7 +747,7 @@ public:
 // with evaluatable operands and operators
 class CommandListFinalisable {
 public:
-    virtual std::shared_ptr<CommandListEvaluatable> finalise() = 0;
+    virtual std::shared_ptr<CommandListEvaluatable> Finalise() = 0;
 };
 
 // Signifies that a node contains other syntax trees that can be walked over.
@@ -757,8 +757,8 @@ public:
 // Alternatives are implementing our own iterator, or the visitor pattern.
 class CommandListWalkable {
 public:
-    typedef std::vector<std::shared_ptr<CommandListWalkable>> Walk;
-    virtual Walk walk() = 0;
+    typedef std::vector<std::shared_ptr<CommandListWalkable>> Walks;
+    virtual Walks Walk() = 0;
 };
 
 class CommandListSyntaxTree :
@@ -773,8 +773,8 @@ public:
     CommandListSyntaxTree(size_t token_pos) :
         CommandListToken(token_pos)
     {}
-    std::shared_ptr<CommandListEvaluatable> finalise() override;
-    Walk walk() override;
+    std::shared_ptr<CommandListEvaluatable> Finalise() override;
+    Walks Walk() override;
 };
 
 // Placeholder for operator tokens from the tokenisation stage. These will all
@@ -797,8 +797,8 @@ class CommandListOperator :
     public CommandListOperandBase,
     public CommandListWalkable {
 public:
-    std::shared_ptr<CommandListToken> lhs_tree;
-    std::shared_ptr<CommandListToken> rhs_tree;
+    std::shared_ptr<CommandListToken> lhsTree;
+    std::shared_ptr<CommandListToken> rhsTree;
     std::shared_ptr<CommandListEvaluatable> lhs;
     std::shared_ptr<CommandListEvaluatable> rhs;
 
@@ -806,25 +806,25 @@ public:
             std::shared_ptr<CommandListToken> lhs,
             CommandListOperatorToken &t,
             std::shared_ptr<CommandListToken> rhs
-        ) : CommandListOperatorToken(t), lhs_tree(lhs), rhs_tree(rhs)
+        ) : CommandListOperatorToken(t), lhsTree(lhs), rhsTree(rhs)
     {}
 
-    std::shared_ptr<CommandListEvaluatable> finalise() override;
-    float evaluate(CommandListState *state, HackerDevice *device=NULL) override;
-    bool static_evaluate(float *ret, HackerDevice *device=NULL) override;
-    bool optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement) override;
-    Walk walk() override;
+    std::shared_ptr<CommandListEvaluatable> Finalise() override;
+    float Evaluate(CommandListState *state, HackerDevice *device=NULL) override;
+    bool StaticEvaluate(float *ret, HackerDevice *device=NULL) override;
+    bool Optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement) override;
+    Walks Walk() override;
 
-    static const wchar_t* pattern() { return L"<IMPLEMENT ME>"; }
-    virtual float evaluate(float lhs, float rhs) = 0;
+    static const wchar_t* Pattern() { return L"<IMPLEMENT ME>"; }
+    virtual float Evaluate(float lhs, float rhs) = 0;
 };
 
 // Abstract base factory class for defining operators. Statically instantiate
 // the template below for each implemented operator.
 class CommandListOperatorFactoryBase {
 public:
-    virtual const wchar_t* pattern() = 0;
-    virtual std::shared_ptr<CommandListOperator> create(
+    virtual const wchar_t* Pattern() = 0;
+    virtual std::shared_ptr<CommandListOperator> Create(
             std::shared_ptr<CommandListToken> lhs,
             CommandListOperatorToken &t,
             std::shared_ptr<CommandListToken> rhs) = 0;
@@ -836,11 +836,11 @@ public:
 template <class T>
 class CommandListOperatorFactory : public CommandListOperatorFactoryBase {
 public:
-    const wchar_t* pattern() override {
+    const wchar_t* Pattern() override {
         return T::pattern();
     }
 
-    std::shared_ptr<CommandListOperator> create(
+    std::shared_ptr<CommandListOperator> Create(
             std::shared_ptr<CommandListToken> lhs,
             CommandListOperatorToken &t,
             std::shared_ptr<CommandListToken> rhs) override
@@ -957,23 +957,23 @@ class CommandListOperand :
     public CommandListToken,
     public CommandListOperandBase,
     public CommandListEvaluatable {
-    float process_texture_filter(CommandListState*);
-    float process_shader_filter(CommandListState*);
+    float ProcessTextureFilter(CommandListState*);
+    float ProcessShaderFilter(CommandListState*);
 public:
     // TODO: Break up into separate classes for each operand type
     ParamOverrideType type;
     float val;
 
     // For INI_PARAM type:
-    float DirectX::XMFLOAT4::*param_component;
-    int param_idx;
+    float DirectX::XMFLOAT4::*paramComponent;
+    int paramIdx;
 
     // For VARIABLE type:
-    float *var_ftarget;
+    float *varFtarget;
 
     // For texture filters:
-    ResourceCopyTarget texture_filter_target;
-    wchar_t shader_filter_target;
+    ResourceCopyTarget textureFilterTarget;
+    wchar_t shaderFilterTarget;
 
     // For scissor rectangle:
     unsigned scissor;
@@ -982,46 +982,46 @@ public:
         CommandListToken(pos, token),
         type(ParamOverrideType::INVALID),
         val(FLT_MAX),
-        param_component(NULL),
-        param_idx(0),
-        var_ftarget(NULL),
+        paramComponent(NULL),
+        paramIdx(0),
+        varFtarget(NULL),
         scissor(0)
     {}
 
-    bool parse(const std::wstring *operand, const std::wstring *ini_namespace, CommandListScope *scope);
-    float evaluate(CommandListState *state, HackerDevice *device=NULL) override;
-    bool static_evaluate(float *ret, HackerDevice *device=NULL) override;
-    bool optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement) override;
+    bool Parse(const std::wstring *operand, const std::wstring *ini_namespace, CommandListScope *scope);
+    float Evaluate(CommandListState *state, HackerDevice *device=NULL) override;
+    bool StaticEvaluate(float *ret, HackerDevice *device=NULL) override;
+    bool Optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement) override;
 };
 
 class CommandListExpression {
 public:
     std::shared_ptr<CommandListEvaluatable> evaluatable;
 
-    bool parse(const std::wstring *expression, const std::wstring *ini_namespace, CommandListScope *scope);
-    float evaluate(CommandListState *state, HackerDevice *device=NULL);
-    bool static_evaluate(float *ret, HackerDevice *device=NULL);
-    bool optimise(HackerDevice *device);
+    bool Parse(const std::wstring *expression, const std::wstring *ini_namespace, CommandListScope *scope);
+    float Evaluate(CommandListState *state, HackerDevice *device=NULL);
+    bool StaticEvaluate(float *ret, HackerDevice *device=NULL);
+    bool Optimise(HackerDevice *device);
 };
 
 class AssignmentCommand : public CommandListCommand {
 public:
     CommandListExpression expression;
 
-    bool optimise(HackerDevice *device) override;
+    bool Optimise(HackerDevice *device) override;
 };
 
 class ParamOverride : public AssignmentCommand {
 public:
-    int param_idx;
-    float DirectX::XMFLOAT4::*param_component;
+    int paramIdx;
+    float DirectX::XMFLOAT4::*paramComponent;
 
     ParamOverride() :
-        param_idx(-1),
-        param_component(NULL)
+        paramIdx(-1),
+        paramComponent(NULL)
     {}
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 class VariableAssignment : public AssignmentCommand {
@@ -1032,14 +1032,14 @@ public:
         var(NULL)
     {}
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 class IfCommand : public CommandListCommand {
 public:
     CommandListExpression expression;
-    bool pre_finalised, post_finalised;
-    bool has_nested_else_if;
+    bool preFinalised, postFinalised;
+    bool hasNestedElseIf;
     std::wstring section;
 
     // Commands cannot statically contain command lists, because the
@@ -1047,16 +1047,16 @@ public:
     // still in the middle of optimisations. These are dynamically
     // allocated, and also stored in a second data structure until
     // optimisations are complete
-    std::shared_ptr<CommandList> true_commands_pre;
-    std::shared_ptr<CommandList> true_commands_post;
-    std::shared_ptr<CommandList> false_commands_pre;
-    std::shared_ptr<CommandList> false_commands_post;
+    std::shared_ptr<CommandList> trueCommandsPre;
+    std::shared_ptr<CommandList> trueCommandsPost;
+    std::shared_ptr<CommandList> falseCommandsPre;
+    std::shared_ptr<CommandList> falseCommandsPost;
 
     IfCommand(const wchar_t *section);
 
-    void run(CommandListState*) override;
-    bool optimise(HackerDevice *device) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Optimise(HackerDevice *device) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class ElseIfCommand : public IfCommand {
@@ -1068,8 +1068,8 @@ public:
 
 class CommandPlaceholder : public CommandListCommand {
 public:
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 class ElsePlaceholder : public CommandPlaceholder {
 };
@@ -1078,14 +1078,14 @@ class CheckTextureOverrideCommand : public CommandListCommand {
 public:
     // For processing command lists in TextureOverride sections:
     ResourceCopyTarget target;
-    bool run_pre_and_post_together;
+    bool runPreAndPostTogether;
 
     CheckTextureOverrideCommand() :
-        run_pre_and_post_together(false)
+        runPreAndPostTogether(false)
     {}
 
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 enum class DrawCommandType {
@@ -1107,50 +1107,50 @@ enum class DrawCommandType {
 
 class DrawCommand : public CommandListCommand {
 public:
-    std::wstring ini_section;
+    std::wstring iniSection;
     DrawCommandType type;
 
     CommandListExpression args[5];
-    ResourceCopyTarget indirect_buffer;
+    ResourceCopyTarget indirectBuffer;
 
     DrawCommand::DrawCommand() :
         type(DrawCommandType::INVALID)
     {}
 
-    void do_indirect_draw_call(CommandListState *state, char *name,
+    void DoIndirectDrawCall(CommandListState *state, char *name,
         void (__stdcall ID3D11DeviceContext::*IndirectDrawCall)(THIS_
         ID3D11Buffer *pBufferForArgs,
-        UINT AlignedByteOffsetForArgs));
-    inline void eval_args(int nargs, INT result[5], CommandListState *state);
-    void run(CommandListState*) override;
+        UINT aligned_byte_offset_for_args));
+    inline void EvalArgs(int nargs, INT result[5], CommandListState *state);
+    void Run(CommandListState*) override;
 };
 
 class ClearViewCommand : public CommandListCommand {
 public:
     ResourceCopyTarget target;
 
-    FLOAT dsv_depth;
-    UINT8 dsv_stencil;
+    FLOAT dsvDepth;
+    UINT8 dsvStencil;
 
     // If neither "depth" or "stencil" are specified, both will be used:
-    bool clear_depth;
-    bool clear_stencil;
+    bool clearDepth;
+    bool clearStencil;
 
     // fval is used for RTV colours and UAVs when clearing them with
     // floating point values. uval is used for UAVs if nothing looked like
     // a float.
     FLOAT fval[4];
     UINT uval[4];
-    bool clear_uav_uint;
+    bool clearUavUint;
 
     ClearViewCommand();
 
-    ID3D11View* create_best_view(ID3D11Resource *resource,
+    ID3D11View* CreateBestView(ID3D11Resource *resource,
         CommandListState *state, UINT stride,
         UINT offset, DXGI_FORMAT format, UINT buf_src_size);
-    void clear_unknown_view(ID3D11View*, CommandListState *state);
+    void ClearUnknownView(ID3D11View*, CommandListState *state);
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 class ResetPerFrameLimitsCommand : public CommandListCommand {
@@ -1163,7 +1163,7 @@ public:
         resource(NULL)
     {}
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 class PerDrawStereoOverrideCommand : public CommandListCommand {
@@ -1171,21 +1171,21 @@ public:
     CommandListExpression expression;
     float val;
     float saved;
-    bool restore_on_post;
-    bool did_set_value_on_pre;
-    bool staging_type;
-    ResourceStagingOperation staging_op;
+    bool restoreOnPost;
+    bool didSetValueOnPre;
+    bool stagingType;
+    ResourceStagingOperation stagingOp;
 
     PerDrawStereoOverrideCommand(bool restore_on_post);
 
-    void run(CommandListState*) override;
-    bool optimise(HackerDevice *device) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
-    bool update_val(CommandListState *state);
+    void Run(CommandListState*) override;
+    bool Optimise(HackerDevice *device) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    bool UpdateVal(CommandListState *state);
 
-    virtual const char* stereo_param_name() = 0;
-    virtual float get_stereo_value(CommandListState*) = 0;
-    virtual void set_stereo_value(CommandListState*, float val) = 0;
+    virtual const char* StereoParamName() = 0;
+    virtual float GetStereoValue(CommandListState*) = 0;
+    virtual void SetStereoValue(CommandListState*, float val) = 0;
 };
 class PerDrawSeparationOverrideCommand : public PerDrawStereoOverrideCommand
 {
@@ -1194,9 +1194,9 @@ public:
         PerDrawStereoOverrideCommand(restore_on_post)
     {}
 
-    const char* stereo_param_name() override { return "separation"; }
-    float get_stereo_value(CommandListState*) override;
-    void set_stereo_value(CommandListState*, float val) override;
+    const char* StereoParamName() override { return "separation"; }
+    float GetStereoValue(CommandListState*) override;
+    void SetStereoValue(CommandListState*, float val) override;
 };
 class PerDrawConvergenceOverrideCommand : public PerDrawStereoOverrideCommand
 {
@@ -1205,100 +1205,100 @@ public:
         PerDrawStereoOverrideCommand(restore_on_post)
     {}
 
-    const char* stereo_param_name() override { return "convergence"; }
-    float get_stereo_value(CommandListState*) override;
-    void set_stereo_value(CommandListState*, float val) override;
+    const char* StereoParamName() override { return "convergence"; }
+    float GetStereoValue(CommandListState*) override;
+    void SetStereoValue(CommandListState*, float val) override;
 };
 
 class DirectModeSetActiveEyeCommand : public CommandListCommand {
 public:
     NV_STEREO_ACTIVE_EYE eye;
 
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class FrameAnalysisChangeOptionsCommand : public CommandListCommand {
 public:
-    FrameAnalysisOptions analyse_options;
+    FrameAnalysisOptions analyseOptions;
 
     FrameAnalysisChangeOptionsCommand(std::wstring *val);
 
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class FrameAnalysisDumpCommand : public CommandListCommand {
 public:
     ResourceCopyTarget target;
-    std::wstring target_name;
-    FrameAnalysisOptions analyse_options;
+    std::wstring targetName;
+    FrameAnalysisOptions analyseOptions;
 
-    void run(CommandListState*) override;
-    bool noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
+    void Run(CommandListState*) override;
+    bool Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post) override;
 };
 
 class UpscalingFlipBBCommand : public CommandListCommand {
 public:
-    std::wstring ini_section;
+    std::wstring iniSection;
 
     UpscalingFlipBBCommand(std::wstring section);
     ~UpscalingFlipBBCommand();
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
 class Draw3DMigotoOverlayCommand : public CommandListCommand {
 public:
-    std::wstring ini_section;
+    std::wstring iniSection;
 
     Draw3DMigotoOverlayCommand(const wchar_t *section) :
-        ini_section(section)
+        iniSection(section)
     {}
 
-    void run(CommandListState*) override;
+    void Run(CommandListState*) override;
 };
 
-void RunCommandList(HackerDevice *hacker_device,
+void run_command_list(HackerDevice *hacker_device,
         HackerContext *hacker_context,
         CommandList *command_list, DrawCallInfo *call_info,
         bool post);
-void RunResourceCommandList(HackerDevice *hacker_device,
+void run_resource_command_list(HackerDevice *hacker_device,
         HackerContext *hacker_context,
         CommandList *command_list, ID3D11Resource **resource,
         bool post);
-void RunViewCommandList(HackerDevice *hacker_device,
+void run_view_command_list(HackerDevice *hacker_device,
         HackerContext *hacker_context,
         CommandList *command_list, ID3D11View *view,
         bool post);
 
-bool ParseRunExplicitCommandList(const wchar_t *section,
+bool parse_run_explicit_command_list(const wchar_t *section,
         const wchar_t *key, std::wstring *val,
         CommandList *explicit_command_list,
         CommandList *pre_command_list,
         CommandList *post_command_list,
         const std::wstring *ini_namespace);
 
-bool ParseCommandListGeneralCommands(const wchar_t *section,
+bool parse_command_list_general_commands(const wchar_t *section,
         const wchar_t *key, std::wstring *val,
         CommandList *explicit_command_list,
         CommandList *pre_command_list, CommandList *post_command_list,
         const std::wstring *ini_namespace);
-bool ParseCommandListIniParamOverride(const wchar_t *section,
+bool parse_command_list_ini_param_override(const wchar_t *section,
         const wchar_t *key, std::wstring *val, CommandList *command_list,
         const std::wstring *ini_namespace);
-bool ParseCommandListVariableAssignment(const wchar_t *section,
+bool parse_command_list_variable_assignment(const wchar_t *section,
         const wchar_t *key, std::wstring *val, const std::wstring *raw_line,
         CommandList *command_list, CommandList *pre_command_list, CommandList *post_command_list,
         const std::wstring *ini_namespace);
-bool ParseCommandListResourceCopyDirective(const wchar_t *section,
+bool parse_command_list_resource_copy_directive(const wchar_t *section,
         const wchar_t *key, std::wstring *val, CommandList *command_list,
         const std::wstring *ini_namespace);
-bool ParseCommandListFlowControl(const wchar_t *section, const std::wstring *line,
+bool parse_command_list_flow_control(const wchar_t *section, const std::wstring *line,
         CommandList *pre_command_list, CommandList *post_command_list,
         const std::wstring *ini_namespace);
 std::shared_ptr<RunLinkedCommandList>
-        LinkCommandLists(CommandList *dst, CommandList *link, const std::wstring *ini_line);
+        link_command_lists(CommandList *dst, CommandList *link, const std::wstring *ini_line);
 void optimise_command_lists(HackerDevice *device);
 bool parse_command_list_var_name(const std::wstring &name, const std::wstring *ini_namespace, CommandListVariable **target);
 bool valid_variable_name(const std::wstring &name);
