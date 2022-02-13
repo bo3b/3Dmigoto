@@ -287,10 +287,10 @@ static void SimpleScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 {
     wchar_t fullName[MAX_PATH];
     ID3D11Texture2D *backBuffer;
-    HackerSwapChain *mHackerSwapChain = pDevice->GetHackerSwapChain();
+    HackerSwapChain *hacker_swap_chain = pDevice->GetHackerSwapChain();
     int hash_len = sizeof(HashType) * 2;
 
-    if (!mHackerSwapChain) {
+    if (!hacker_swap_chain) {
         LogOverlay(LOG_DIRE, "marking_actions=mono_snapshot: Unable to get back buffer\n");
         return;
     }
@@ -299,7 +299,7 @@ static void SimpleScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
     if (FAILED(hr))
         LOG_INFO("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
-    hr = mHackerSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
+    hr = hacker_swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
     if (SUCCEEDED(hr))
     {
         swprintf_s(fullName, MAX_PATH, L"%ls\\%0*llx-%S.jpg", G->SHADER_PATH, hash_len, (UINT64)hash, shaderType);
@@ -318,7 +318,7 @@ static void SimpleScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 template <typename HashType>
 static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderType)
 {
-    HackerSwapChain *mHackerSwapChain = pDevice->GetHackerSwapChain();
+    HackerSwapChain *hacker_swap_chain = pDevice->GetHackerSwapChain();
     wchar_t fullName[MAX_PATH];
     ID3D11Texture2D *backBuffer = NULL;
     ID3D11Texture2D *stereoBackBuffer = NULL;
@@ -333,7 +333,7 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
     NvAPIOverride();
     Profiling::NvAPI_Stereo_IsEnabled(&stereo);
     if (stereo)
-        Profiling::NvAPI_Stereo_IsActivated(pDevice->mStereoHandle, &stereo);
+        Profiling::NvAPI_Stereo_IsActivated(pDevice->stereoHandle, &stereo);
 
     if (!stereo) {
         LOG_INFO("marking_actions=stereo_snapshot: Stereo disabled, falling back to mono snapshot\n");
@@ -341,12 +341,12 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
         return;
     }
 
-    if (!mHackerSwapChain) {
+    if (!hacker_swap_chain) {
         LogOverlay(LOG_DIRE, "marking_actions=stereo_snapshot: Unable to get back buffer\n");
         return;
     }
 
-    hr = mHackerSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
+    hr = hacker_swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
     if (FAILED(hr))
         return;
 
@@ -362,7 +362,7 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
         goto out_release_bb;
     }
 
-    nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, true);
+    nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->stereoHandle, true);
     if (nvret != NVAPI_OK) {
         LOG_INFO("StereoScreenShot failed to enable reverse stereo blit\n");
         goto out_release_stereo_bb;
@@ -392,7 +392,7 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 
     LOG_INFO_W(L"  StereoScreenShot on Mark: %s, result: %d\n", fullName, hr);
 
-    Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, false);
+    Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->stereoHandle, false);
 out_release_stereo_bb:
     stereoBackBuffer->Release();
 out_release_bb:
@@ -1189,10 +1189,10 @@ static void TakeScreenShot(HackerDevice *wrapped, void *private_data)
 {
     LOG_INFO("> capturing screenshot\n");
 
-    if (wrapped->mStereoHandle)
+    if (wrapped->stereoHandle)
     {
         NvAPI_Status err;
-        err = NvAPI_Stereo_CapturePngImage(wrapped->mStereoHandle);
+        err = NvAPI_Stereo_CapturePngImage(wrapped->stereoHandle);
         if (err != NVAPI_OK)
         {
             LogOverlay(LOG_WARNING, "> screenshot failed, error:%d\n", err);
