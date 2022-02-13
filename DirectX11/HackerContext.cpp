@@ -492,7 +492,7 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
         }
     }
 
-    RunCommandList(hackerDevice, this, &shaderOverride->command_list, &data->call_info, false);
+    run_command_list(hackerDevice, this, &shaderOverride->command_list, &data->call_info, false);
 
     if (ENABLE_LEGACY_FILTERS) {
         // Deprecated since the logic can be moved into the shaders with far more flexibility
@@ -902,7 +902,7 @@ void HackerContext::AfterDraw(DrawContext &data)
 
     for (i = 0; i < 5; i++) {
         if (data.post_commands[i]) {
-            RunCommandList(hackerDevice, this, data.post_commands[i], &data.call_info, true);
+            run_command_list(hackerDevice, this, data.post_commands[i], &data.call_info, true);
         }
     }
 
@@ -1540,7 +1540,7 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
             // lot of it's logic doesn't really apply to
             // compute shaders. The main thing we care
             // about is the command list, so just run that:
-            RunCommandList(hackerDevice, this, &i->second.command_list, &context->call_info, false);
+            run_command_list(hackerDevice, this, &i->second.command_list, &context->call_info, false);
             return !context->call_info.skip;
         }
     }
@@ -1551,7 +1551,7 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
 void HackerContext::AfterDispatch(DispatchContext *context)
 {
     if (context->post_commands)
-        RunCommandList(hackerDevice, this, context->post_commands, &context->call_info, true);
+        run_command_list(hackerDevice, this, context->post_commands, &context->call_info, true);
 }
 
 STDMETHODIMP_(void) HackerContext::Dispatch(THIS_
@@ -1768,9 +1768,9 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewUint(THIS_
     /* [annotation] */
     __in  const UINT Values[4])
 {
-    RunViewCommandList(hackerDevice, this, &G->clear_uav_uint_command_list, pUnorderedAccessView, false);
+    run_view_command_list(hackerDevice, this, &G->clear_uav_uint_command_list, pUnorderedAccessView, false);
     origContext1->ClearUnorderedAccessViewUint(pUnorderedAccessView, Values);
-    RunViewCommandList(hackerDevice, this, &G->post_clear_uav_uint_command_list, pUnorderedAccessView, true);
+    run_view_command_list(hackerDevice, this, &G->post_clear_uav_uint_command_list, pUnorderedAccessView, true);
 }
 
 STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewFloat(THIS_
@@ -1779,9 +1779,9 @@ STDMETHODIMP_(void) HackerContext::ClearUnorderedAccessViewFloat(THIS_
     /* [annotation] */
     __in  const FLOAT Values[4])
 {
-    RunViewCommandList(hackerDevice, this, &G->clear_uav_float_command_list, pUnorderedAccessView, false);
+    run_view_command_list(hackerDevice, this, &G->clear_uav_float_command_list, pUnorderedAccessView, false);
     origContext1->ClearUnorderedAccessViewFloat(pUnorderedAccessView, Values);
-    RunViewCommandList(hackerDevice, this, &G->post_clear_uav_float_command_list, pUnorderedAccessView, true);
+    run_view_command_list(hackerDevice, this, &G->post_clear_uav_float_command_list, pUnorderedAccessView, true);
 }
 
 STDMETHODIMP_(void) HackerContext::ClearDepthStencilView(THIS_
@@ -1794,9 +1794,9 @@ STDMETHODIMP_(void) HackerContext::ClearDepthStencilView(THIS_
     /* [annotation] */
     __in  UINT8 Stencil)
 {
-    RunViewCommandList(hackerDevice, this, &G->clear_dsv_command_list, pDepthStencilView, false);
+    run_view_command_list(hackerDevice, this, &G->clear_dsv_command_list, pDepthStencilView, false);
     origContext1->ClearDepthStencilView(pDepthStencilView, ClearFlags, Depth, Stencil);
-    RunViewCommandList(hackerDevice, this, &G->post_clear_dsv_command_list, pDepthStencilView, true);
+    run_view_command_list(hackerDevice, this, &G->post_clear_dsv_command_list, pDepthStencilView, true);
 }
 
 STDMETHODIMP_(void) HackerContext::GenerateMips(THIS_
@@ -2659,14 +2659,14 @@ void HackerContext::InitIniParams()
     }
 
     // The command list will take care of initialising any non-zero values:
-    RunCommandList(hackerDevice, this, &G->constants_command_list, NULL, false);
+    run_command_list(hackerDevice, this, &G->constants_command_list, NULL, false);
     // We don't consider persistent globals set in the [Constants] pre
     // command list as making the user config file dirty, because this
     // command list includes the user config file's [Constants] itself.
     // We clear only the low bit here, so that this may be overridden if
     // an invalid value is found that is scheduled to be removed:
     G->user_config_dirty &= ~1;
-    RunCommandList(hackerDevice, this, &G->post_constants_command_list, NULL, true);
+    run_command_list(hackerDevice, this, &G->post_constants_command_list, NULL, true);
 
     // Only want to run [Constants] on initial load and config reload. In
     // some games we see additional DirectX devices & contexts being
@@ -3025,9 +3025,9 @@ STDMETHODIMP_(void) HackerContext::ClearRenderTargetView(THIS_
     /* [annotation] */
     __in  const FLOAT ColorRGBA[4])
 {
-    RunViewCommandList(hackerDevice, this, &G->clear_rtv_command_list, pRenderTargetView, false);
+    run_view_command_list(hackerDevice, this, &G->clear_rtv_command_list, pRenderTargetView, false);
     origContext1->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
-    RunViewCommandList(hackerDevice, this, &G->post_clear_rtv_command_list, pRenderTargetView, true);
+    run_view_command_list(hackerDevice, this, &G->post_clear_rtv_command_list, pRenderTargetView, true);
 }
 
 

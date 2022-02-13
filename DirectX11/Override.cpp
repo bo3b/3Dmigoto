@@ -83,7 +83,7 @@ void Override::ParseIniSection(LPCWSTR section)
         // Expressions are case insensitive:
         std::transform(sbuf.begin(), sbuf.end(), sbuf.begin(), ::towlower);
 
-        if (!condition.parse(&sbuf, &ini_namespace, NULL)) {
+        if (!condition.Parse(&sbuf, &ini_namespace, NULL)) {
             LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%S\"\n", buf);
         } else {
             isConditional = true;
@@ -101,7 +101,7 @@ void Override::ParseIniSection(LPCWSTR section)
     if (GetIniStringAndLog(section, L"run", NULL, buf, MAX_PATH)) {
         wstring sbuf(buf);
 
-        if (!ParseRunExplicitCommandList(section, L"run", &sbuf, NULL, &activateCommandList, &deactivateCommandList, &ini_namespace))
+        if (!parse_run_explicit_command_list(section, L"run", &sbuf, NULL, &activateCommandList, &deactivateCommandList, &ini_namespace))
             LogOverlay(LOG_WARNING, "WARNING: Invalid run=\"%S\"\n", sbuf.c_str());
     }
 }
@@ -215,7 +215,7 @@ struct KeyOverrideCycleParam
         // Expressions are case insensitive:
         std::transform(scur.begin(), scur.end(), scur.begin(), ::towlower);
 
-        if (!expression->parse(&scur, &ini_namespace, NULL)) {
+        if (!expression->Parse(&scur, &ini_namespace, NULL)) {
             LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%s\"\n", cur.c_str());
             return false;
         }
@@ -235,7 +235,7 @@ struct KeyOverrideCycleParam
 
         get_section_namespace(section, &ini_namespace);
 
-        if (!ParseRunExplicitCommandList(section, L"run", &scur, NULL, pre_command_list, deactivate_command_list, &ini_namespace))
+        if (!parse_run_explicit_command_list(section, L"run", &scur, NULL, pre_command_list, deactivate_command_list, &ini_namespace))
             LogOverlay(LOG_WARNING, "WARNING: Invalid run=\"%s\"\n", cur.c_str());
     }
 };
@@ -515,7 +515,7 @@ std::vector<CommandList*> pending_post_command_lists;
 
 void Override::Activate(HackerDevice *device, bool override_has_deactivate_condition)
 {
-    if (isConditional && condition.evaluate(NULL, device) == 0) {
+    if (isConditional && condition.Evaluate(NULL, device) == 0) {
         LOG_INFO("Skipping override activation: condition not met\n");
         return;
     }
@@ -535,7 +535,7 @@ void Override::Activate(HackerDevice *device, bool override_has_deactivate_condi
             transition,
             transitionType);
 
-    RunCommandList(device, device->GetHackerContext(), &activateCommandList, NULL, false);
+    run_command_list(device, device->GetHackerContext(), &activateCommandList, NULL, false);
     if (!override_has_deactivate_condition) {
         // type=activate or type=cycle that don't have an explicit deactivate
         // We run their post lists after the upcoming UpdateTransitions() so
@@ -564,12 +564,12 @@ void Override::Deactivate(HackerDevice *device)
             releaseTransition,
             releaseTransitionType);
 
-    RunCommandList(device, device->GetHackerContext(), &deactivateCommandList, NULL, true);
+    run_command_list(device, device->GetHackerContext(), &deactivateCommandList, NULL, true);
 }
 
 void Override::Toggle(HackerDevice *device)
 {
-    if (isConditional && condition.evaluate(NULL, device) == 0) {
+    if (isConditional && condition.Evaluate(NULL, device) == 0) {
         LOG_INFO("Skipping toggle override: condition not met\n");
         return;
     }
@@ -798,7 +798,7 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
     // Run any post command lists from type=activate / cycle now so that
     // they can see the first frame of the updated value:
     for (auto i : pending_post_command_lists)
-        RunCommandList(wrapper, wrapper->GetHackerContext(), i, NULL, true);
+        run_command_list(wrapper, wrapper->GetHackerContext(), i, NULL, true);
     pending_post_command_lists.clear();
 }
 

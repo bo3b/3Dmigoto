@@ -382,10 +382,10 @@ void ShaderRegexGroup::link_command_lists_and_filter_index(UINT64 shader_hash)
     shader_override = &G->mShaderOverrideMap[shader_hash];
 
     // Initialise the ShaderOverride's command lists if they aren't already:
-    if (shader_override->command_list.ini_section.empty()) {
-        ini_section = command_list.ini_section + L".Match";
-        shader_override->command_list.ini_section = ini_section;
-        shader_override->post_command_list.ini_section = ini_section;
+    if (shader_override->command_list.iniSection.empty()) {
+        ini_section = command_list.iniSection + L".Match";
+        shader_override->command_list.iniSection = ini_section;
+        shader_override->post_command_list.iniSection = ini_section;
         shader_override->post_command_list.post = true;
     }
 
@@ -419,13 +419,13 @@ void ShaderRegexGroup::link_command_lists_and_filter_index(UINT64 shader_hash)
 
     // This is the first shader this pattern has matched. Create a new
     // RunLinkedCommandList command and link it up:
-    ini_line = L"[" + command_list.ini_section + L".Match] run = linked command list";
+    ini_line = L"[" + command_list.iniSection + L".Match] run = linked command list";
 
     if (!command_list.commands.empty())
-        link = LinkCommandLists(&shader_override->command_list, &command_list, &ini_line);
+        link = link_command_lists(&shader_override->command_list, &command_list, &ini_line);
 
     if (!post_command_list.commands.empty())
-        post_link = LinkCommandLists(&shader_override->post_command_list, &post_command_list, &ini_line);
+        post_link = link_command_lists(&shader_override->post_command_list, &post_command_list, &ini_line);
 }
 
 bool unlink_shader_regex_command_lists_and_filter_index(UINT64 shader_hash)
