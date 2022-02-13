@@ -471,16 +471,16 @@ HRESULT D3D9Wrapper::FrameAnalysisDevice::CreateStagingResource(Surface **resour
         // arguably better since it will be immediately obvious, but
         // risks missing the second perspective if the original
         // resource was actually stereo)
-        Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &orig_mode);
+        Profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereoHandle, &orig_mode);
         if (orig_mode != NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO) {
-            Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
+            Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
             restoreOrig = true;
         }
 
     }
     hr = _CreateStagingResource(resource, desc, GetPassThroughOrigDevice());
     if ((analyse_options & FrameAnalysisOptions::STEREO) && restoreOrig)
-        Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
+        Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, orig_mode);
 
     return hr;
 }
@@ -1492,10 +1492,10 @@ HRESULT D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisFilename(wchar_t *filenam
     if (analyse_options & FrameAnalysisOptions::FILENAME_HANDLE)
         StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"@%p", handle);
 
-        if (mCurrentVertexShaderHandle && mCurrentVertexShaderHandle->hash)
-            StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-vs=%016I64x", mCurrentVertexShaderHandle->hash);
-        if (mCurrentPixelShaderHandle && mCurrentPixelShaderHandle->hash)
-            StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ps=%016I64x", mCurrentPixelShaderHandle->hash);
+        if (currentVertexShaderHandle && currentVertexShaderHandle->hash)
+            StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-vs=%016I64x", currentVertexShaderHandle->hash);
+        if (currentPixelShaderHandle && currentPixelShaderHandle->hash)
+            StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ps=%016I64x", currentPixelShaderHandle->hash);
 
 
     hr = StringCchPrintfW(pos, rem, L".XXX");
@@ -1987,7 +1987,7 @@ void D3D9Wrapper::FrameAnalysisDevice::_DumpCBs(char shader_type, wchar_t consta
 
 void D3D9Wrapper::FrameAnalysisDevice::DumpCBs()
 {
-    if (mCurrentVertexShaderHandle && mCurrentVertexShaderHandle->hash) {
+    if (currentVertexShaderHandle && currentVertexShaderHandle->hash) {
         float floats[D3D9_MAX_VERTEX_FLOAT_CONSTANT_SLOT_COUNT * 4];
         GetPassThroughOrigDevice()->GetVertexShaderConstantF(0, floats, D3D9_MAX_VERTEX_FLOAT_CONSTANT_SLOT_COUNT);
         _DumpCBs('v', 'f', floats, D3D9_MAX_VERTEX_FLOAT_CONSTANT_SLOT_COUNT * 16, -1, -1);
@@ -1998,7 +1998,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpCBs()
         GetPassThroughOrigDevice()->GetVertexShaderConstantB(0, bools, D3D9_MAX_BOOL_CONSTANT_SLOT_COUNT);
         _DumpCBs('v', 'b', bools, D3D9_MAX_BOOL_CONSTANT_SLOT_COUNT * 16, -1, -1);
     }
-    if (mCurrentPixelShaderHandle && mCurrentPixelShaderHandle->hash) {
+    if (currentPixelShaderHandle && currentPixelShaderHandle->hash) {
         float floats[D3D9_MAX_PIXEL_FLOAT_CONSTANT_SLOT_COUNT * 4];
         GetPassThroughOrigDevice()->GetPixelShaderConstantF(0, floats, D3D9_MAX_PIXEL_FLOAT_CONSTANT_SLOT_COUNT);
         _DumpCBs('p', 'f', floats, D3D9_MAX_PIXEL_FLOAT_CONSTANT_SLOT_COUNT * 16, -1, -1);
@@ -2016,7 +2016,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpCB(char shader_type, wchar_t constant
     vector<float> floats;
     vector<int> ints;
     vector<BOOL> bools;
-    if (shader_type == 'v' && mCurrentVertexShaderHandle && mCurrentVertexShaderHandle->hash) {
+    if (shader_type == 'v' && currentVertexShaderHandle && currentVertexShaderHandle->hash) {
         switch (constant_type) {
         case 'f':
             if (start_slot >= 0 && (start_slot + num_slots) < D3D9_MAX_VERTEX_FLOAT_CONSTANT_SLOT_COUNT) {
@@ -2043,7 +2043,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpCB(char shader_type, wchar_t constant
         return;
     }
 
-    if (shader_type == 'p' && mCurrentPixelShaderHandle && mCurrentPixelShaderHandle->hash) {
+    if (shader_type == 'p' && currentPixelShaderHandle && currentPixelShaderHandle->hash) {
         switch (constant_type) {
         case 'f':
             if (start_slot >= 0 && (start_slot + num_slots) < D3D9_MAX_PIXEL_FLOAT_CONSTANT_SLOT_COUNT) {
@@ -2156,10 +2156,10 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpIB(DrawCallInfo *call_info, ::IDirect
 
 void D3D9Wrapper::FrameAnalysisDevice::DumpTextures()
 {
-    if (mCurrentVertexShaderHandle) {
+    if (currentVertexShaderHandle) {
         _DumpTextures('v');
     }
-    if (mCurrentPixelShaderHandle) {
+    if (currentPixelShaderHandle) {
         _DumpTextures('p');
     }
 }
@@ -2269,7 +2269,7 @@ void D3D9Wrapper::FrameAnalysisDevice::update_stereo_dumping_mode()
     NvAPIOverride();
     Profiling::NvAPI_Stereo_IsEnabled(&stereo);
     if (stereo)
-        Profiling::NvAPI_Stereo_IsActivated(mStereoHandle, &stereo);
+        Profiling::NvAPI_Stereo_IsActivated(stereoHandle, &stereo);
 
     if (!stereo) {
         // 3D Vision is disabled, force mono dumping mode:
@@ -2340,7 +2340,7 @@ void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisAfterDraw(DrawCallInfo *call
         (analyse_options & FrameAnalysisOptions::STEREO)){// &&
         // Enable reverse stereo blit for all resources we are about to dump:
         if (!G->stereoblit_control_set_once) {
-            nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(mStereoHandle, true);
+            nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(stereoHandle, true);
             if (nvret != NVAPI_OK) {
                 FALogErr("DumpStereoResource failed to enable reverse stereo blit\n");
                 // Continue anyway, we should still be able to dump in 2D...
@@ -2363,7 +2363,7 @@ void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisAfterDraw(DrawCallInfo *call
     if ((analyse_options & FrameAnalysisOptions::FMT_2D_MASK) &&
         (analyse_options & FrameAnalysisOptions::STEREO)){// &&
         if (!G->stereoblit_control_set_once)
-            Profiling::NvAPI_Stereo_ReverseStereoBlitControl(mStereoHandle, false);
+            Profiling::NvAPI_Stereo_ReverseStereoBlitControl(stereoHandle, false);
     }
     draw_call++;
 }
@@ -2423,7 +2423,7 @@ void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisDump(::IDirect3DResource9 *r
     if ((analyse_options & FrameAnalysisOptions::STEREO)){// &&
         // Enable reverse stereo blit for all resources we are about to dump:
         if (!G->stereoblit_control_set_once) {
-            nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(mStereoHandle, true);
+            nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(stereoHandle, true);
             if (nvret != NVAPI_OK) {
                 FALogErr("FrameAnalyisDump failed to enable reverse stereo blit\n");
                 // Continue anyway, we should still be able to dump in 2D...
@@ -2446,7 +2446,7 @@ void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisDump(::IDirect3DResource9 *r
 
     if ((analyse_options & FrameAnalysisOptions::STEREO)){
         if (!G->stereoblit_control_set_once)
-            Profiling::NvAPI_Stereo_ReverseStereoBlitControl(mStereoHandle, false);
+            Profiling::NvAPI_Stereo_ReverseStereoBlitControl(stereoHandle, false);
     }
 
     non_draw_call_dump_counter++;

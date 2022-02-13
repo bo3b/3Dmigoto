@@ -19,11 +19,11 @@ struct LogLevelParams {
 };
 
 struct LogLevelParams log_levels[] = {
-    { Gdiplus::Color::Red,       20000, false, &Overlay::mFontNotifications }, // DIRE
-{ Gdiplus::Color::OrangeRed, 10000, false, &Overlay::mFontNotifications }, // WARNING
-{ Gdiplus::Color::OrangeRed, 10000, false, &Overlay::mFontProfiling }, // WARNING_MONOSPACE
-{ Gdiplus::Color::Orange,     5000,  true, &Overlay::mFontNotifications }, // NOTICE
-{ Gdiplus::Color::LimeGreen,  2000,  true, &Overlay::mFontNotifications }, // INFO
+    { Gdiplus::Color::Red,       20000, false, &Overlay::fontNotifications }, // DIRE
+{ Gdiplus::Color::OrangeRed, 10000, false, &Overlay::fontNotifications }, // WARNING
+{ Gdiplus::Color::OrangeRed, 10000, false, &Overlay::fontProfiling }, // WARNING_MONOSPACE
+{ Gdiplus::Color::Orange,     5000,  true, &Overlay::fontNotifications }, // NOTICE
+{ Gdiplus::Color::LimeGreen,  2000,  true, &Overlay::fontNotifications }, // INFO
 };
 
 // Side note: Not really stoked with C++ string handling.  There are like 4 or
@@ -50,25 +50,25 @@ Overlay::Overlay(D3D9Wrapper::IDirect3DDevice9 *pDevice)
     migotoResourceCount = 0;
     LOG_INFO("Overlay::Overlay created for HackerDevice: %p\n", pDevice);
 
-    mHackerDevice = pDevice;
+    hackerDevice = pDevice;
     saved_state_block = NULL;
 
-    mFont.reset(new CD3DFont("Courier", 10, D3DFONT_BOLD));
-    mFontNotifications.reset(new CD3DFont("Arial", 10, D3DFONT_BOLD));
-    mFontProfiling.reset(new CD3DFont("Courier", 5, D3DFONT_BOLD));
+    font.reset(new CD3DFont("Courier", 10, D3DFONT_BOLD));
+    fontNotifications.reset(new CD3DFont("Arial", 10, D3DFONT_BOLD));
+    fontProfiling.reset(new CD3DFont("Courier", 5, D3DFONT_BOLD));
 
-    mFont->InitializeDeviceObjects(mHackerDevice->GetD3D9Device());
-    mFontNotifications->InitializeDeviceObjects(mHackerDevice->GetD3D9Device());
-    mFontProfiling->InitializeDeviceObjects(mHackerDevice->GetD3D9Device());
+    font->InitializeDeviceObjects(hackerDevice->GetD3D9Device());
+    fontNotifications->InitializeDeviceObjects(hackerDevice->GetD3D9Device());
+    fontProfiling->InitializeDeviceObjects(hackerDevice->GetD3D9Device());
 
-    mFont->RestoreDeviceObjects();
-    mFontNotifications->RestoreDeviceObjects();
-    mFontProfiling->RestoreDeviceObjects();
-    if (mFont.get())
+    font->RestoreDeviceObjects();
+    fontNotifications->RestoreDeviceObjects();
+    fontProfiling->RestoreDeviceObjects();
+    if (font.get())
         migotoResourceCount += 3;
-    if (mFontNotifications.get())
+    if (fontNotifications.get())
         migotoResourceCount += 3;
-    if (mFontProfiling.get())
+    if (fontProfiling.get())
         migotoResourceCount += 3;
 }
 
@@ -80,11 +80,11 @@ Overlay::~Overlay()
         saved_state_block = NULL;
     }
 
-    if (mFont.get())
+    if (font.get())
         migotoResourceCount -= 3;
-    if (mFontNotifications.get())
+    if (fontNotifications.get())
         migotoResourceCount -= 3;
-    if (mFontProfiling.get())
+    if (fontProfiling.get())
         migotoResourceCount -= 3;
 }
 
@@ -92,7 +92,7 @@ void Overlay::SaveState()
 {
 
     if (saved_state_block == NULL) {
-        mHackerDevice->GetD3D9Device()->CreateStateBlock(::D3DSBT_ALL, &saved_state_block);
+        hackerDevice->GetD3D9Device()->CreateStateBlock(::D3DSBT_ALL, &saved_state_block);
         ++migotoResourceCount;
     }
     saved_state_block->Capture();
@@ -125,7 +125,7 @@ HRESULT Overlay::InitDrawState(::IDirect3DSwapChain9 *pSwapChain)
             return hr;
     }
     else {
-        hr = mHackerDevice->GetD3D9Device()->GetBackBuffer(0, 0, ::D3DBACKBUFFER_TYPE_MONO, &back_buffer);
+        hr = hackerDevice->GetD3D9Device()->GetBackBuffer(0, 0, ::D3DBACKBUFFER_TYPE_MONO, &back_buffer);
         if (FAILED(hr))
             return hr;
     }
@@ -134,20 +134,20 @@ HRESULT Overlay::InitDrawState(::IDirect3DSwapChain9 *pSwapChain)
     // and we need the address of the BackBuffer anyway, so this is low cost.
     ::D3DSURFACE_DESC description;
     back_buffer->GetDesc(&description);
-    mResolution = DirectX::XMUINT2(description.Width, description.Height);
-    hr = mHackerDevice->GetD3D9Device()->SetRenderTarget(0, back_buffer);
+    resolution = DirectX::XMUINT2(description.Width, description.Height);
+    hr = hackerDevice->GetD3D9Device()->SetRenderTarget(0, back_buffer);
     if (FAILED(hr))
         return hr;
     ::D3DVIEWPORT9 viewport;
-    hr = mHackerDevice->GetD3D9Device()->GetViewport(&viewport);
+    hr = hackerDevice->GetD3D9Device()->GetViewport(&viewport);
     if (FAILED(hr))
         return hr;
-    if (viewport.Width != (mResolution.x) || viewport.Height != (mResolution.y))
+    if (viewport.Width != (resolution.x) || viewport.Height != (resolution.y))
     {
         viewport.X = 0;
         viewport.Y = 0;
-        viewport.Width = (mResolution.x);
-        viewport.Height = (mResolution.y);
+        viewport.Width = (resolution.x);
+        viewport.Height = (resolution.y);
         viewport.MinZ = 0.0f;
         viewport.MaxZ = 1.0f;
     }
@@ -176,12 +176,12 @@ void Overlay::DrawRectangle(float x, float y, float w, float h, float r, float g
     { x, y + h, 1.0f, 1.0f,  colour },
     { x + w, y + h, 1.0f, 1.0f, colour },
     };
-    mHackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_ALPHABLENDENABLE, TRUE);
-    mHackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_BLENDOP, ::D3DBLENDOP_ADD);
-    mHackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_SRCBLEND, ::D3DBLEND_SRCALPHA);
-    mHackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_DESTBLEND, ::D3DBLEND_INVSRCALPHA);
-    mHackerDevice->GetD3D9Device()->SetFVF(CUSTOMFVF);
-    mHackerDevice->GetD3D9Device()->DrawPrimitiveUP(::D3DPT_TRIANGLESTRIP, 2, quad, sizeof(CUSTOMVERTEX));
+    hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_ALPHABLENDENABLE, TRUE);
+    hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_BLENDOP, ::D3DBLENDOP_ADD);
+    hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_SRCBLEND, ::D3DBLEND_SRCALPHA);
+    hackerDevice->GetD3D9Device()->SetRenderState(::D3DRS_DESTBLEND, ::D3DBLEND_INVSRCALPHA);
+    hackerDevice->GetD3D9Device()->SetFVF(CUSTOMFVF);
+    hackerDevice->GetD3D9Device()->DrawPrimitiveUP(::D3DPT_TRIANGLESTRIP, 2, quad, sizeof(CUSTOMVERTEX));
 }
 
 void Overlay::DrawOutlinedString(CD3DFont *font, wchar_t const *text, ::D3DXVECTOR2 const &position, DWORD color)
@@ -282,13 +282,13 @@ void Overlay::DrawShaderInfoLine(wchar_t *osdString, float *y) {
     char c[MAX_PATH];
     wcstombs(c, osdString, MAX_PATH);
 
-    mFont->GetTextExtent(c, &strSize);
+    font->GetTextExtent(c, &strSize);
 
     if (!G->verbose_overlay)
-        x = max(float(mResolution.x - strSize.cx) / 2, float(0));
+        x = max(float(resolution.x - strSize.cx) / 2, float(0));
 
     textPosition = ::D3DXVECTOR2(x, 10 + ((*y)++ * (float)strSize.cy));
-    mFont->DrawTextW(textPosition.x, textPosition.y, Gdiplus::Color::LimeGreen, c, 0, 0);
+    font->DrawTextW(textPosition.x, textPosition.y, Gdiplus::Color::LimeGreen, c, 0, 0);
 }
 
 void Overlay::DrawShaderInfoLine(wchar_t *type, UINT64 selectedShader, float *y) {
@@ -393,9 +393,9 @@ void Overlay::DrawProfiling(float *y)
     char c[MAX_PATH];
     wcstombs(c, Profiling::text.substr(0, (MAX_PATH - 1)).c_str(), MAX_PATH);
 
-    mFontProfiling->GetTextExtent(c, &strSize);
+    fontProfiling->GetTextExtent(c, &strSize);
     DrawRectangle(0, *y, (float)(strSize.cx + 3), (float)strSize.cy, 0, 0, 0, 0.75);
-    mFontProfiling->DrawTextW(0, *y, Gdiplus::Color::Goldenrod, c, 0, 0);
+    fontProfiling->DrawTextW(0, *y, Gdiplus::Color::Goldenrod, c, 0, 0);
 }
 // Create a string for display on the bottom edge of the screen, that contains the current
 // stereo info of separation and convergence.
@@ -406,7 +406,7 @@ static void CreateStereoInfoString(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, 
     // Rather than draw graphic bars, this will just be numeric.  Because
     // convergence is essentially an arbitrary number.
     float separation, convergence;
-    bool stereo = !!hackerDevice->mStereoHandle;
+    bool stereo = !!hackerDevice->stereoHandle;
     if (stereo)
     {
         NvAPIOverride();
@@ -430,30 +430,30 @@ static void CreateStereoInfoString(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, 
 
 void Overlay::Resize(UINT Width, UINT Height)
 {
-    mResolution.x = Width;
-    mResolution.y = Height;
+    resolution.x = Width;
+    resolution.y = Height;
 }
 
 ULONG Overlay::ReferenceCount()
 {
     UINT ref = migotoResourceCount;
-    if (mFont.get()) {
-        if (mFont->m_pStateBlockDrawText)
+    if (font.get()) {
+        if (font->m_pStateBlockDrawText)
             ref++;
-        if (mFont->m_pStateBlockSaved)
+        if (font->m_pStateBlockSaved)
             ref++;
     }
 
-    if (mFontNotifications.get()) {
-        if (mFontNotifications->m_pStateBlockDrawText)
+    if (fontNotifications.get()) {
+        if (fontNotifications->m_pStateBlockDrawText)
             ref++;
-        if (mFontNotifications->m_pStateBlockSaved)
+        if (fontNotifications->m_pStateBlockSaved)
             ref++;
     }
-    if (mFontProfiling.get()) {
-        if (mFontProfiling->m_pStateBlockDrawText)
+    if (fontProfiling.get()) {
+        if (fontProfiling->m_pStateBlockDrawText)
             ref++;
-        if (mFontProfiling->m_pStateBlockSaved)
+        if (fontProfiling->m_pStateBlockSaved)
             ref++;
     }
     return ref;
@@ -484,7 +484,7 @@ void Overlay::DrawOverlay(CachedStereoValues *cachedStereoValues, ::IDirect3DSwa
             float y = 10.0f;
 
             if (G->hunting == HUNTING_MODE_ENABLED) {
-                hr = mFont->BeginDrawing();
+                hr = font->BeginDrawing();
                 if (FAILED(hr))
                     goto restore_end;
                 // Top of screen
@@ -492,49 +492,49 @@ void Overlay::DrawOverlay(CachedStereoValues *cachedStereoValues, ::IDirect3DSwa
                 char c[MAX_PATH];
                 wcstombs(c, osdString, MAX_PATH);
 
-                hr = mFont->GetTextExtent(c, &strSize);
+                hr = font->GetTextExtent(c, &strSize);
                 if (FAILED(hr))
                     goto drawing_end;
-                textPosition = ::D3DXVECTOR2(float(mResolution.x - strSize.cx) / 2, y);
-                DrawOutlinedString(mFont.get(), osdString, textPosition, Gdiplus::Color::LimeGreen);
+                textPosition = ::D3DXVECTOR2(float(resolution.x - strSize.cx) / 2, y);
+                DrawOutlinedString(font.get(), osdString, textPosition, Gdiplus::Color::LimeGreen);
                 y += strSize.cy;
 
                 DrawShaderInfoLines(&y);
 
                 // Bottom of screen
-                CreateStereoInfoString(mHackerDevice, osdString, cachedStereoValues);
+                CreateStereoInfoString(hackerDevice, osdString, cachedStereoValues);
                 wcstombs(c, osdString, MAX_PATH);
-                hr = mFont->GetTextExtent(c, &strSize);
+                hr = font->GetTextExtent(c, &strSize);
                 if (FAILED(hr))
                     goto drawing_end;
-                textPosition = ::D3DXVECTOR2(float(mResolution.x - strSize.cx) / 2, float(mResolution.y - strSize.cy - 10));
-                DrawOutlinedString(mFont.get(), osdString, textPosition, Gdiplus::Color::LimeGreen);
+                textPosition = ::D3DXVECTOR2(float(resolution.x - strSize.cx) / 2, float(resolution.y - strSize.cy - 10));
+                DrawOutlinedString(font.get(), osdString, textPosition, Gdiplus::Color::LimeGreen);
             drawing_end:
-                mFont->EndDrawing();
+                font->EndDrawing();
             }
 
             if (has_notice) {
-                hr = mFontNotifications->BeginDrawing();
+                hr = fontNotifications->BeginDrawing();
                 if (FAILED(hr))
                     goto restore_end;
-                hr = mFontProfiling->BeginDrawing();
+                hr = fontProfiling->BeginDrawing();
                 if (FAILED(hr)) {
-                    mFontNotifications->EndDrawing();
+                    fontNotifications->EndDrawing();
                     goto restore_end;
                 }
                 DrawNotices(&y);
-                mFontNotifications->EndDrawing();
+                fontNotifications->EndDrawing();
                 if (Profiling::mode != Profiling::Mode::NONE)
                     DrawProfiling(&y);
-                mFontProfiling->EndDrawing();
+                fontProfiling->EndDrawing();
             }
             else {
-                hr = mFontProfiling->BeginDrawing();
+                hr = fontProfiling->BeginDrawing();
                 if (FAILED(hr))
                     goto restore_end;
                 if (Profiling::mode != Profiling::Mode::NONE)
                     DrawProfiling(&y);
-                mFontProfiling->EndDrawing();
+                fontProfiling->EndDrawing();
             }
         }
     }

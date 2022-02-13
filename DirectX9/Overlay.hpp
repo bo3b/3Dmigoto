@@ -34,8 +34,8 @@ public:
 class Overlay
 {
 private:
-    D3D9Wrapper::IDirect3DDevice9 *mHackerDevice;
-    DirectX::XMUINT2 mResolution;
+    D3D9Wrapper::IDirect3DDevice9 *hackerDevice;
+    DirectX::XMUINT2 resolution;
     ::IDirect3DStateBlock9 *saved_state_block;
     void SaveState();
     void RestoreState();
@@ -58,9 +58,9 @@ public:
     void Resize(UINT Width, UINT Height);
     ULONG ReferenceCount();
 
-    std::unique_ptr<CD3DFont> mFont;
-    std::unique_ptr<CD3DFont> mFontNotifications;
-    std::unique_ptr<CD3DFont> mFontProfiling;
+    std::unique_ptr<CD3DFont> font;
+    std::unique_ptr<CD3DFont> fontNotifications;
+    std::unique_ptr<CD3DFont> fontProfiling;
 };
 
 void ClearNotices();

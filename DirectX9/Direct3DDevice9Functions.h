@@ -13,10 +13,10 @@ inline void D3D9Wrapper::IDirect3DDevice9::Delete()
     if (G->enable_hooks & EnableHooksDX9::DEVICE)
         remove_hooked_device((::IDirect3DDevice9*)m_pRealUnk);
 
-    if (mStereoHandle)
+    if (stereoHandle)
     {
-        int result = NvAPI_Stereo_DestroyHandle(mStereoHandle);
-        mStereoHandle = 0;
+        int result = NvAPI_Stereo_DestroyHandle(stereoHandle);
+        stereoHandle = 0;
         LOG_INFO("  releasing NVAPI stereo handle, result = %d\n", result);
     }
     UnbindResources();
@@ -97,10 +97,10 @@ inline HRESULT D3D9Wrapper::IDirect3DDevice9::ReleaseStereoTexture()
 {
     // Release stereo parameter texture.
     LOG_INFO("  release stereo parameter texture.\n");
-    if (this->mStereoTexture) {
-        ULONG ret = this->mStereoTexture->Release();
-        LOG_INFO("    stereo texture release, handle = %p\n", this->mStereoTexture);
-        this->mStereoTexture = NULL;
+    if (this->stereoTexture) {
+        ULONG ret = this->stereoTexture->Release();
+        LOG_INFO("    stereo texture release, handle = %p\n", this->stereoTexture);
+        this->stereoTexture = NULL;
         --migotoResourceCount;
     }
     return S_OK;
@@ -110,29 +110,29 @@ inline HRESULT D3D9Wrapper::IDirect3DDevice9::CreateStereoTexture()
     HRESULT hr;
     // Create stereo parameter texture.
     LOG_INFO("  creating stereo parameter texture.\n");
-    hr = GetD3D9Device()->CreateTexture(nv::stereo::ParamTextureManagerD3D9::Parms::StereoTexWidth, nv::stereo::ParamTextureManagerD3D9::Parms::StereoTexHeight, 1, 0, nv::stereo::ParamTextureManagerD3D9::Parms::StereoTexFormat, ::D3DPOOL_DEFAULT, &this->mStereoTexture, NULL);
+    hr = GetD3D9Device()->CreateTexture(nv::stereo::ParamTextureManagerD3D9::Parms::StereoTexWidth, nv::stereo::ParamTextureManagerD3D9::Parms::StereoTexHeight, 1, 0, nv::stereo::ParamTextureManagerD3D9::Parms::StereoTexFormat, ::D3DPOOL_DEFAULT, &this->stereoTexture, NULL);
 
     if (FAILED(hr))
     {
         LOG_INFO("    call failed with result = %x.\n", hr);
         return hr;
     }
-    LOG_INFO("    stereo texture created, handle = %p\n", this->mStereoTexture);
+    LOG_INFO("    stereo texture created, handle = %p\n", this->stereoTexture);
     ++migotoResourceCount;
     return S_OK;
 }
 inline HRESULT D3D9Wrapper::IDirect3DDevice9::CreateStereoHandle() {
     NvAPI_Status nvret;
     // Todo: This call will fail if stereo is disabled. Proper notification?
-    nvret = NvAPI_Stereo_CreateHandleFromIUnknown(m_pUnk, &this->mStereoHandle);
+    nvret = NvAPI_Stereo_CreateHandleFromIUnknown(m_pUnk, &this->stereoHandle);
     if (nvret != NVAPI_OK)
     {
-        this->mStereoHandle = 0;
+        this->stereoHandle = 0;
         LOG_INFO("HackerDevice::CreateStereoParamResources NvAPI_Stereo_CreateHandleFromIUnknown failed: %d\n", nvret);
         return nvret;
     }
-    this->mParamTextureManager.mStereoHandle = this->mStereoHandle;
-    LOG_INFO("  created NVAPI stereo handle. Handle = %p\n", this->mStereoHandle);
+    this->mParamTextureManager.stereoHandle = this->stereoHandle;
+    LOG_INFO("  created NVAPI stereo handle. Handle = %p\n", this->stereoHandle);
 
     return InitStereoHandle();
 }
@@ -140,7 +140,7 @@ inline HRESULT D3D9Wrapper::IDirect3DDevice9::InitStereoHandle() {
     NvAPI_Status nvret = NVAPI_OK;
     retreivedInitial3DSettings = false;
     if (G->stereoblit_control_set_once && G->gForceStereo != 2) {
-        nvret = NvAPI_Stereo_ReverseStereoBlitControl(this->mStereoHandle, true);
+        nvret = NvAPI_Stereo_ReverseStereoBlitControl(this->stereoHandle, true);
         if (nvret != NVAPI_OK) {
             LOG_INFO("  Failed to enable reverse stereo blit\n");
         }
@@ -189,12 +189,12 @@ inline HRESULT D3D9Wrapper::IDirect3DDevice9::SetGlobalNVSurfaceCreationMode()
 {
     HRESULT hr;
     // Override custom settings.
-    if (mStereoHandle && G->gSurfaceCreateMode >= 0)
+    if (stereoHandle && G->gSurfaceCreateMode >= 0)
     {
         NvAPIOverride();
         LOG_INFO("  setting custom surface creation mode.\n");
 
-        hr = NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, (NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
+        hr = NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, (NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
         if (hr != NVAPI_OK)
         {
             LOG_INFO("    custom surface creation call failed: %d.\n", hr);
@@ -1117,30 +1117,30 @@ inline void D3D9Wrapper::IDirect3DDevice9::Bind3DMigotoResources()
 {
     HRESULT hr;
     // Set NVidia stereo texture.
-    if (this->mStereoTexture && ((G->helix_fix && G->helix_StereoParamsVertexReg > -1) || G->StereoParamsVertexReg > -1)) {
+    if (this->stereoTexture && ((G->helix_fix && G->helix_StereoParamsVertexReg > -1) || G->StereoParamsVertexReg > -1)) {
         if (G->helix_fix && G->helix_StereoParamsVertexReg > -1) {
             LOG_DEBUG("  adding NVidia stereo parameter texture to vertex shader resources in slot %i.\n", G->helix_StereoParamsVertexReg);
-            hr = GetD3D9Device()->SetTexture(G->helix_StereoParamsVertexReg, this->mStereoTexture);
+            hr = GetD3D9Device()->SetTexture(G->helix_StereoParamsVertexReg, this->stereoTexture);
             if (FAILED(hr))
                 LOG_INFO("  failed to add NVidia stereo parameter texture to vertex shader resources in slot %i.\n", G->helix_StereoParamsVertexReg);
         }
         else {
             LOG_DEBUG("  adding NVidia stereo parameter texture to vertex shader resources in slot %i.\n", G->StereoParamsVertexReg);
-            hr = GetD3D9Device()->SetTexture(G->StereoParamsVertexReg, this->mStereoTexture);
+            hr = GetD3D9Device()->SetTexture(G->StereoParamsVertexReg, this->stereoTexture);
             if (FAILED(hr))
                 LOG_INFO("  failed to add NVidia stereo parameter texture to vertex shader resources in slot %i.\n", G->StereoParamsVertexReg);
         }
     }
-    if (this->mStereoTexture && ((G->helix_fix && G->helix_StereoParamsPixelReg > -1) || G->StereoParamsPixelReg > -1)) {
+    if (this->stereoTexture && ((G->helix_fix && G->helix_StereoParamsPixelReg > -1) || G->StereoParamsPixelReg > -1)) {
         if (G->helix_fix && G->helix_StereoParamsPixelReg > -1) {
             LOG_DEBUG("  adding NVidia stereo parameter texture to pixel shader resources in slot %i.\n", G->helix_StereoParamsPixelReg);
-            hr = GetD3D9Device()->SetTexture(G->helix_StereoParamsPixelReg, this->mStereoTexture);
+            hr = GetD3D9Device()->SetTexture(G->helix_StereoParamsPixelReg, this->stereoTexture);
             if (FAILED(hr))
                 LOG_INFO("  failed to add NVidia stereo parameter texture to pixel shader resources in slot %i.\n", G->helix_StereoParamsPixelReg);
         }
         else {
             LOG_DEBUG("  adding NVidia stereo parameter texture to pixel shader resources in slot %i.\n", G->StereoParamsPixelReg);
-            hr = GetD3D9Device()->SetTexture(G->StereoParamsPixelReg, this->mStereoTexture);
+            hr = GetD3D9Device()->SetTexture(G->StereoParamsPixelReg, this->stereoTexture);
             if (FAILED(hr))
                 LOG_INFO("  failed to add NVidia stereo parameter texture to pixel shader resources in slot %i.\n", G->StereoParamsPixelReg);
         }
@@ -1160,7 +1160,7 @@ inline void D3D9Wrapper::IDirect3DDevice9::Bind3DMigotoResources()
 HRESULT D3D9Wrapper::IDirect3DDevice9::_SetTexture(DWORD Sampler, ::IDirect3DBaseTexture9 * pTexture)
 {
     bool overrideStereo = false;
-    if (this->mStereoTexture){
+    if (this->stereoTexture){
 
         if (G->helix_fix && (G->helix_StereoParamsVertexReg == Sampler)) {
             LOG_INFO("  Game attempted to unbind vertex StereoParams, pinning in slot %i\n", G->helix_StereoParamsVertexReg);
@@ -1489,11 +1489,11 @@ void D3D9Wrapper::IDirect3DDevice9::RecordResourceStats(D3D9Wrapper::IDirect3DRe
 
 void D3D9Wrapper::IDirect3DDevice9::RecordPeerShaders(set<UINT64> *PeerShaders, D3D9Wrapper::IDirect3DShader9 *this_shader)
 {
-    if (mCurrentVertexShaderHandle && mCurrentVertexShaderHandle->hash && mCurrentVertexShaderHandle->hash != this_shader->hash)
-        PeerShaders->insert(mCurrentVertexShaderHandle->hash);
+    if (currentVertexShaderHandle && currentVertexShaderHandle->hash && currentVertexShaderHandle->hash != this_shader->hash)
+        PeerShaders->insert(currentVertexShaderHandle->hash);
 
-    if (mCurrentPixelShaderHandle && mCurrentPixelShaderHandle->hash && mCurrentPixelShaderHandle->hash != this_shader->hash)
-        PeerShaders->insert(mCurrentPixelShaderHandle->hash);
+    if (currentPixelShaderHandle && currentPixelShaderHandle->hash && currentPixelShaderHandle->hash != this_shader->hash)
+        PeerShaders->insert(currentPixelShaderHandle->hash);
 }
 
 
@@ -1506,24 +1506,24 @@ void D3D9Wrapper::IDirect3DDevice9::RecordGraphicsShaderStats()
     if (Profiling::mode == Profiling::Mode::SUMMARY)
         Profiling::start(&profiling_state);
 
-    if (mCurrentVertexShaderHandle) {
-        info = &G->mVertexShaderInfo[mCurrentVertexShaderHandle->hash];
-        mCurrentVertexShaderHandle->shaderInfo = info;
+    if (currentVertexShaderHandle) {
+        info = &G->mVertexShaderInfo[currentVertexShaderHandle->hash];
+        currentVertexShaderHandle->shaderInfo = info;
         RecordVertexShaderResourceUsage(info);
-        RecordPeerShaders(&info->PeerShaders, mCurrentVertexShaderHandle);
+        RecordPeerShaders(&info->PeerShaders, currentVertexShaderHandle);
     }
 
-    if (mCurrentPixelShaderHandle) {
-        info = &G->mPixelShaderInfo[mCurrentPixelShaderHandle->hash];
-        mCurrentPixelShaderHandle->shaderInfo = info;
+    if (currentPixelShaderHandle) {
+        info = &G->mPixelShaderInfo[currentPixelShaderHandle->hash];
+        currentPixelShaderHandle->shaderInfo = info;
         RecordPixelShaderResourceUsage(info);
-        RecordPeerShaders(&info->PeerShaders, mCurrentPixelShaderHandle);
+        RecordPeerShaders(&info->PeerShaders, currentPixelShaderHandle);
 
-        for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
+        for (selectedRenderTargetPos = 0; selectedRenderTargetPos < currentRenderTargets.size(); ++selectedRenderTargetPos) {
             if (selectedRenderTargetPos >= info->RenderTargets.size())
                 info->RenderTargets.push_back(set<ResourceSnapshot>());
 
-            info->RenderTargets[selectedRenderTargetPos].insert(SnapshotResource(mCurrentRenderTargets[selectedRenderTargetPos]));
+            info->RenderTargets[selectedRenderTargetPos].insert(SnapshotResource(currentRenderTargets[selectedRenderTargetPos]));
         }
 
         if (m_pActiveDepthStencil)
@@ -1574,29 +1574,29 @@ void D3D9Wrapper::IDirect3DDevice9::BeforeDraw(DrawContext & data)
             UINT64 vertexHash = -1;
             UINT64 pixelHash = -1;
 
-            if (mCurrentVertexShaderHandle)
-                vertexHash = mCurrentVertexShaderHandle->hash;
+            if (currentVertexShaderHandle)
+                vertexHash = currentVertexShaderHandle->hash;
 
-            if (mCurrentPixelShaderHandle)
-                pixelHash = mCurrentPixelShaderHandle->hash;
+            if (currentPixelShaderHandle)
+                pixelHash = currentPixelShaderHandle->hash;
             // Selection
             for (selectedVertexBufferPos = 0; selectedVertexBufferPos < D3D9_VERTEX_INPUT_RESOURCE_SLOT_COUNT; ++selectedVertexBufferPos) {
-                if (mCurrentVertexBuffers[selectedVertexBufferPos] == G->mSelectedVertexBuffer)
+                if (currentVertexBuffers[selectedVertexBufferPos] == G->mSelectedVertexBuffer)
                     break;
             }
-            for (selectedRenderTargetPos = 0; selectedRenderTargetPos < mCurrentRenderTargets.size(); ++selectedRenderTargetPos) {
-                if (mCurrentRenderTargets[selectedRenderTargetPos] == G->mSelectedRenderTarget)
+            for (selectedRenderTargetPos = 0; selectedRenderTargetPos < currentRenderTargets.size(); ++selectedRenderTargetPos) {
+                if (currentRenderTargets[selectedRenderTargetPos] == G->mSelectedRenderTarget)
                     break;
             }
 
-            if (mCurrentIndexBuffer == G->mSelectedIndexBuffer ||
+            if (currentIndexBuffer == G->mSelectedIndexBuffer ||
                 vertexHash == G->mSelectedVertexShader ||
                 pixelHash == G->mSelectedPixelShader ||
                 selectedVertexBufferPos < D3D9_VERTEX_INPUT_RESOURCE_SLOT_COUNT ||
-                selectedRenderTargetPos < mCurrentRenderTargets.size())
+                selectedRenderTargetPos < currentRenderTargets.size())
             {
                 LOG_DEBUG("  Skipping selected operation. CurrentIndexBuffer = %08lx, CurrentVertexShader = %016I64x, CurrentPixelShader = %016I64x\n",
-                    mCurrentIndexBuffer, vertexHash, pixelHash);
+                    currentIndexBuffer, vertexHash, pixelHash);
 
                 // Snapshot render target list.
                 if (G->mSelectedRenderTargetSnapshot != G->mSelectedRenderTarget)
@@ -1604,44 +1604,44 @@ void D3D9Wrapper::IDirect3DDevice9::BeforeDraw(DrawContext & data)
                     G->mSelectedRenderTargetSnapshotList.clear();
                     G->mSelectedRenderTargetSnapshot = G->mSelectedRenderTarget;
                 }
-                G->mSelectedRenderTargetSnapshotList.insert(mCurrentRenderTargets.begin(), mCurrentRenderTargets.end());
+                G->mSelectedRenderTargetSnapshotList.insert(currentRenderTargets.begin(), currentRenderTargets.end());
                 // Snapshot info.
                 for (i = 0; i < D3D9_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
-                    if (mCurrentVertexBuffers[i] == G->mSelectedVertexBuffer) {
+                    if (currentVertexBuffers[i] == G->mSelectedVertexBuffer) {
                         G->mSelectedVertexBuffer_VertexShader.insert(vertexHash);
                         G->mSelectedVertexBuffer_PixelShader.insert(pixelHash);
                     }
                 }
-                if (mCurrentIndexBuffer == G->mSelectedIndexBuffer)
+                if (currentIndexBuffer == G->mSelectedIndexBuffer)
                 {
                     G->mSelectedIndexBuffer_VertexShader.insert(vertexHash);
                     G->mSelectedIndexBuffer_PixelShader.insert(pixelHash);
                 }
                 if (vertexHash == G->mSelectedVertexShader) {
                     for (i = 0; i < D3D9_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
-                        if (mCurrentVertexBuffers[i])
-                            G->mSelectedVertexShader_VertexBuffer.insert(mCurrentVertexBuffers[i]);
+                        if (currentVertexBuffers[i])
+                            G->mSelectedVertexShader_VertexBuffer.insert(currentVertexBuffers[i]);
                     }
-                    if (mCurrentIndexBuffer)
-                        G->mSelectedVertexShader_IndexBuffer.insert(mCurrentIndexBuffer);
+                    if (currentIndexBuffer)
+                        G->mSelectedVertexShader_IndexBuffer.insert(currentIndexBuffer);
                 }
                 if (pixelHash == G->mSelectedPixelShader) {
                     for (i = 0; i < D3D9_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
-                        if (mCurrentVertexBuffers[i])
-                            G->mSelectedVertexShader_VertexBuffer.insert(mCurrentVertexBuffers[i]);
+                        if (currentVertexBuffers[i])
+                            G->mSelectedVertexShader_VertexBuffer.insert(currentVertexBuffers[i]);
                     }
-                    if (mCurrentIndexBuffer)
-                        G->mSelectedPixelShader_IndexBuffer.insert(mCurrentIndexBuffer);
+                    if (currentIndexBuffer)
+                        G->mSelectedPixelShader_IndexBuffer.insert(currentIndexBuffer);
                 }
-                if (G->marking_mode == MarkingMode::MONO && mStereoHandle)
+                if (G->marking_mode == MarkingMode::MONO && stereoHandle)
                 {
                     LOG_DEBUG("  setting separation=0 for hunting\n");
 
-                    if (NVAPI_OK != GetSeparation(this, &data.cachedStereoValues, &data.oldSeparation)) //Profiling::NvAPI_Stereo_GetSeparation(this->mStereoHandle, &data.oldSeparation))
+                    if (NVAPI_OK != GetSeparation(this, &data.cachedStereoValues, &data.oldSeparation)) //Profiling::NvAPI_Stereo_GetSeparation(this->stereoHandle, &data.oldSeparation))
                         LOG_DEBUG("    Stereo_GetSeparation failed.\n");
 
                     NvAPIOverride();
-                    if (NVAPI_OK != SetSeparation(this, &data.cachedStereoValues, 0))//Profiling::NvAPI_Stereo_SetSeparation(this->mStereoHandle, 0))
+                    if (NVAPI_OK != SetSeparation(this, &data.cachedStereoValues, 0))//Profiling::NvAPI_Stereo_SetSeparation(this->stereoHandle, 0))
                         LOG_DEBUG("    Stereo_SetSeparation failed.\n");
                 }
                 else if (G->marking_mode == MarkingMode::SKIP)
@@ -1658,7 +1658,7 @@ void D3D9Wrapper::IDirect3DDevice9::BeforeDraw(DrawContext & data)
                 else if (G->marking_mode == MarkingMode::PINK)
                 {
                     if (G->mPinkingShader) {
-                        data.oldPixelShader = mCurrentPixelShaderHandle;
+                        data.oldPixelShader = currentPixelShaderHandle;
                         SwitchPSShader(G->mPinkingShader);
                     }
 
@@ -1674,30 +1674,30 @@ void D3D9Wrapper::IDirect3DDevice9::BeforeDraw(DrawContext & data)
     DeferredShaderReplacementBeforeDraw();
 
     // Override settings?
-    if (mCurrentVertexShaderHandle && mCurrentVertexShaderHandle->shaderOverride) {
-        if (mCurrentVertexShaderHandle->shaderOverride->per_frame) {
-            if (mCurrentVertexShaderHandle->shaderOverride->frame_no != G->frame_no) {
-                mCurrentVertexShaderHandle->shaderOverride->frame_no = G->frame_no;
-                data.post_commands[0] = &mCurrentVertexShaderHandle->shaderOverride->post_command_list;
-                ProcessShaderOverride(mCurrentVertexShaderHandle->shaderOverride, false, &data);
+    if (currentVertexShaderHandle && currentVertexShaderHandle->shaderOverride) {
+        if (currentVertexShaderHandle->shaderOverride->per_frame) {
+            if (currentVertexShaderHandle->shaderOverride->frame_no != G->frame_no) {
+                currentVertexShaderHandle->shaderOverride->frame_no = G->frame_no;
+                data.post_commands[0] = &currentVertexShaderHandle->shaderOverride->post_command_list;
+                ProcessShaderOverride(currentVertexShaderHandle->shaderOverride, false, &data);
             }
         }
         else {
-            data.post_commands[0] = &mCurrentVertexShaderHandle->shaderOverride->post_command_list;
-            ProcessShaderOverride(mCurrentVertexShaderHandle->shaderOverride, false, &data);
+            data.post_commands[0] = &currentVertexShaderHandle->shaderOverride->post_command_list;
+            ProcessShaderOverride(currentVertexShaderHandle->shaderOverride, false, &data);
         }
     }
-    if (mCurrentPixelShaderHandle && mCurrentPixelShaderHandle->shaderOverride) {
-        if (mCurrentPixelShaderHandle->shaderOverride->per_frame) {
-            if (mCurrentPixelShaderHandle->shaderOverride->frame_no != G->frame_no) {
-                mCurrentPixelShaderHandle->shaderOverride->frame_no = G->frame_no;
-                data.post_commands[0] = &mCurrentPixelShaderHandle->shaderOverride->post_command_list;
-                ProcessShaderOverride(mCurrentPixelShaderHandle->shaderOverride, true, &data);
+    if (currentPixelShaderHandle && currentPixelShaderHandle->shaderOverride) {
+        if (currentPixelShaderHandle->shaderOverride->per_frame) {
+            if (currentPixelShaderHandle->shaderOverride->frame_no != G->frame_no) {
+                currentPixelShaderHandle->shaderOverride->frame_no = G->frame_no;
+                data.post_commands[0] = &currentPixelShaderHandle->shaderOverride->post_command_list;
+                ProcessShaderOverride(currentPixelShaderHandle->shaderOverride, true, &data);
             }
         }
         else {
-            data.post_commands[0] = &mCurrentPixelShaderHandle->shaderOverride->post_command_list;
-            ProcessShaderOverride(mCurrentPixelShaderHandle->shaderOverride, true, &data);
+            data.post_commands[0] = &currentPixelShaderHandle->shaderOverride->post_command_list;
+            ProcessShaderOverride(currentPixelShaderHandle->shaderOverride, true, &data);
         }
     }
 out_profile:
@@ -1742,11 +1742,11 @@ void D3D9Wrapper::IDirect3DDevice9::ProcessShaderOverride(ShaderOverride *shader
         // the command list with far more flexibility than this allows
         if (shaderOverride->partner_hash) {
             if (isPixelShader) {
-                if (mCurrentVertexShaderHandle->hash != shaderOverride->partner_hash)
+                if (currentVertexShaderHandle->hash != shaderOverride->partner_hash)
                     use_orig = true;
             }
             else {
-                if (mCurrentPixelShaderHandle->hash != shaderOverride->partner_hash)
+                if (currentPixelShaderHandle->hash != shaderOverride->partner_hash)
                     use_orig = true;
             }
         }
@@ -1758,15 +1758,15 @@ void D3D9Wrapper::IDirect3DDevice9::ProcessShaderOverride(ShaderOverride *shader
         // Deprecated since the logic can be moved into the shaders with far more flexibility
         if (use_orig) {
             if (isPixelShader) {
-                if (mCurrentPixelShaderHandle->originalShader) {
-                    data->oldPixelShader = mCurrentPixelShaderHandle;
-                    SwitchPSShader((::IDirect3DPixelShader9*)mCurrentPixelShaderHandle->originalShader);
+                if (currentPixelShaderHandle->originalShader) {
+                    data->oldPixelShader = currentPixelShaderHandle;
+                    SwitchPSShader((::IDirect3DPixelShader9*)currentPixelShaderHandle->originalShader);
                 }
             }
             else {
-                if (mCurrentVertexShaderHandle->originalShader) {
-                    data->oldVertexShader = mCurrentVertexShaderHandle;
-                    SwitchVSShader((::IDirect3DVertexShader9*)mCurrentVertexShaderHandle->originalShader);
+                if (currentVertexShaderHandle->originalShader) {
+                    data->oldVertexShader = currentVertexShaderHandle;
+                    SwitchVSShader((::IDirect3DVertexShader9*)currentVertexShaderHandle->originalShader);
                 }
             }
         }
@@ -1863,13 +1863,13 @@ void D3D9Wrapper::IDirect3DDevice9::DeferredShaderReplacementBeforeDraw()
 
     EnterCriticalSection(&G->mCriticalSection);
 
-    if (mCurrentVertexShaderHandle) {
+    if (currentVertexShaderHandle) {
         DeferredShaderReplacement<::IDirect3DVertexShader9, &::IDirect3DDevice9::CreateVertexShader>
-            (mCurrentVertexShaderHandle, L"vs");
+            (currentVertexShaderHandle, L"vs");
     }
-    if (mCurrentPixelShaderHandle) {
+    if (currentPixelShaderHandle) {
         DeferredShaderReplacement<::IDirect3DPixelShader9, &::IDirect3DDevice9::CreatePixelShader>
-            (mCurrentPixelShaderHandle, L"ps");
+            (currentPixelShaderHandle, L"ps");
     }
 
     LeaveCriticalSection(&G->mCriticalSection);
@@ -1904,9 +1904,9 @@ void D3D9Wrapper::IDirect3DDevice9::AfterDraw(DrawContext & data)
             RunCommandList(this, data.post_commands[i], &data.call_info, true, &data.cachedStereoValues);
         }
     }
-    if (this->mStereoHandle && data.oldSeparation != FLT_MAX) {
+    if (this->stereoHandle && data.oldSeparation != FLT_MAX) {
         NvAPIOverride();
-        if (NVAPI_OK != SetSeparation(this, &data.cachedStereoValues, data.oldSeparation))//Profiling::NvAPI_Stereo_SetSeparation(this->mStereoHandle, data.oldSeparation))
+        if (NVAPI_OK != SetSeparation(this, &data.cachedStereoValues, data.oldSeparation))//Profiling::NvAPI_Stereo_SetSeparation(this->stereoHandle, data.oldSeparation))
             LOG_DEBUG("    Stereo_SetSeparation failed.\n");
     }
 
@@ -1937,7 +1937,7 @@ void D3D9Wrapper::IDirect3DDevice9::RecordRenderTargetInfo(D3D9Wrapper::IDirect3
     // get tricky otherwise
     orig_hash = GetOrigResourceHash(target);
 
-    mCurrentRenderTargets.push_back(target);
+    currentRenderTargets.push_back(target);
     G->mVisitedRenderTargets.insert(target);
     G->mRenderTargetInfo.insert(orig_hash);
 }
@@ -2090,7 +2090,7 @@ D3D9Wrapper::IDirect3DDevice9::IDirect3DDevice9(::LPDIRECT3DDEVICE9 pDevice, D3D
     m_pD3D(pD3D),
     pendingCreateDepthStencilSurface(0),
     pendingCreateDepthStencilSurfaceEx(0),
-    pendingSetDepthStencilSurface(0), mStereoHandle(0),  mStereoTexture(0),
+    pendingSetDepthStencilSurface(0), stereoHandle(0),  stereoTexture(0),
     mClDrawVertexBuffer(NULL), mClDrawVertexDecl(NULL),
     mFakeDepthSurface(NULL),
     migotoResourceCount(0),
@@ -2121,10 +2121,10 @@ D3D9Wrapper::IDirect3DDevice9::IDirect3DDevice9(::LPDIRECT3DDEVICE9 pDevice, D3D
     stereo_params_updated_this_frame(false)
 {
     update_stereo_params_interval = chrono::milliseconds((long)(G->update_stereo_params_freq * 1000));
-    mCurrentIndexBuffer = 0;
-    memset(mCurrentVertexBuffers, 0, sizeof(mCurrentVertexBuffers));
-    mCurrentVertexShaderHandle = NULL;
-    mCurrentPixelShaderHandle = NULL;
+    currentIndexBuffer = 0;
+    memset(currentVertexBuffers, 0, sizeof(currentVertexBuffers));
+    currentVertexShaderHandle = NULL;
+    currentPixelShaderHandle = NULL;
     analyse_options = FrameAnalysisOptions::INVALID;
     frame_analysis_log = NULL;
     get_sli_enabled();
@@ -2189,13 +2189,13 @@ STDMETHODIMP_(ULONG) D3D9Wrapper::IDirect3DDevice9::AddRef(THIS)
 }
 void D3D9Wrapper::IDirect3DDevice9::UnbindResources()
 {
-    if (mCurrentVertexShaderHandle) {
-        mCurrentVertexShaderHandle->Unbound();
-        mCurrentVertexShaderHandle = NULL;
+    if (currentVertexShaderHandle) {
+        currentVertexShaderHandle->Unbound();
+        currentVertexShaderHandle = NULL;
     }
-    if (mCurrentPixelShaderHandle) {
-        mCurrentPixelShaderHandle->Unbound();
-        mCurrentPixelShaderHandle = NULL;
+    if (currentPixelShaderHandle) {
+        currentPixelShaderHandle->Unbound();
+        currentPixelShaderHandle = NULL;
     }
     if (m_pActiveVertexDeclaration) {
         m_pActiveVertexDeclaration->Unbound();
@@ -3140,12 +3140,12 @@ static HRESULT CreateSurface(Surface **baseSurface, ResourceHandleInfo *handle_i
     LOG_DEBUG("  hash = %08lx\n", hash);
 
     // Override custom settings?
-    pNewDesc = process_texture_override<Desc>(hash, me->mStereoHandle, pDesc, &newDesc, &oldMode);
+    pNewDesc = process_texture_override<Desc>(hash, me->stereoHandle, pDesc, &newDesc, &oldMode);
 
     // Actual creation:
     HRESULT hr = _CreateSurface(baseSurface, pNewDesc, me, pSharedHandle, type);
 
-    restore_old_surface_create_mode(oldMode, me->mStereoHandle);
+    restore_old_surface_create_mode(oldMode, me->stereoHandle);
     if (baseSurface) LOG_DEBUG("  returns result = %x, handle = %p\n", hr, *baseSurface);
 
     // Register texture. Every one seen.
@@ -3218,25 +3218,25 @@ static void AdjustForConstResolution(UINT *hashWidth, UINT *hashHeight)
         *hashHeight = 'SR/2';
     }
 }
-static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMode, StereoHandle mStereoHandle)
+static void restore_old_surface_create_mode(NVAPI_STEREO_SURFACECREATEMODE oldMode, StereoHandle stereoHandle)
 {
     if (oldMode == (NVAPI_STEREO_SURFACECREATEMODE) - 1)
         return;
 
-    if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, oldMode))
+    if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, oldMode))
         LOG_INFO("    restore call failed.\n");
 }
 
 template <typename DescType>
 static const DescType* process_texture_override(uint32_t hash,
-    StereoHandle mStereoHandle,
+    StereoHandle stereoHandle,
     const DescType *origDesc,
     DescType *newDesc,
     NVAPI_STEREO_SURFACECREATEMODE *oldMode)
 {
     NVAPI_STEREO_SURFACECREATEMODE newMode = (NVAPI_STEREO_SURFACECREATEMODE) - 1;
     TextureOverrideMatches matches;
-    TextureOverride *textureOverride = NULL;
+    texture_override *textureOverride = NULL;
     const DescType* ret = origDesc;
     unsigned i;
 
@@ -3279,18 +3279,18 @@ static const DescType* process_texture_override(uint32_t hash,
     }
 
     if (G->gForceStereo != 2 && newMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1) {
-        Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, oldMode);
+        Profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereoHandle, oldMode);
         NvAPIOverride();
         LOG_INFO("  setting custom surface creation mode.\n");
 
-        if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, newMode))
+        if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, newMode))
             LOG_INFO("    call failed.\n");
     }
 
     return ret;
 }
 
-static bool check_texture_override_iteration(TextureOverride *textureOverride)
+static bool check_texture_override_iteration(texture_override *textureOverride)
 {
     if (textureOverride->iterations.empty())
         return true;
@@ -3308,7 +3308,7 @@ static bool check_texture_override_iteration(TextureOverride *textureOverride)
     return false;
 }
 template <typename DescType>
-static void override_resource_desc_common_2d_3d(DescType *desc, TextureOverride *textureOverride)
+static void override_resource_desc_common_2d_3d(DescType *desc, texture_override *textureOverride)
 {
     if (textureOverride->format != -1) {
         LOG_INFO("  setting custom format to %d\n", textureOverride->format);
@@ -3336,13 +3336,13 @@ static void override_resource_desc_common_2d_3d(DescType *desc, TextureOverride 
     }
 }
 
-static void override_resource_desc(::D3DVERTEXBUFFER_DESC *desc, TextureOverride *textureOverride) {}
-static void override_resource_desc(::D3DINDEXBUFFER_DESC *desc, TextureOverride *textureOverride) {}
-static void override_resource_desc(D3D2DTEXTURE_DESC *desc, TextureOverride *textureOverride)
+static void override_resource_desc(::D3DVERTEXBUFFER_DESC *desc, texture_override *textureOverride) {}
+static void override_resource_desc(::D3DINDEXBUFFER_DESC *desc, texture_override *textureOverride) {}
+static void override_resource_desc(D3D2DTEXTURE_DESC *desc, texture_override *textureOverride)
 {
     override_resource_desc_common_2d_3d(desc, textureOverride);
 }
-static void override_resource_desc(D3D3DTEXTURE_DESC *desc, TextureOverride *textureOverride)
+static void override_resource_desc(D3D3DTEXTURE_DESC *desc, texture_override *textureOverride)
 {
     override_resource_desc_common_2d_3d(desc, textureOverride);
 }
@@ -3616,10 +3616,10 @@ static HRESULT CreateBuffer(BufferType** baseBuffer, ResourceHandleInfo *info, c
         hash = crc32c_hw(hash, pDesc, sizeof(DescType));
 
     // Override custom settings?
-    pNewDesc = process_texture_override<DescType>(hash, me->mStereoHandle, pDesc, &newDesc, &oldMode);
+    pNewDesc = process_texture_override<DescType>(hash, me->stereoHandle, pDesc, &newDesc, &oldMode);
 
     HRESULT hr = _CreateBuffer(baseBuffer, pNewDesc, me, pSharedHandle);
-    restore_old_surface_create_mode(oldMode, me->mStereoHandle);
+    restore_old_surface_create_mode(oldMode, me->stereoHandle);
     if (hr == S_OK && baseBuffer && *baseBuffer)
     {
         info->type = pDesc->Type;
@@ -4335,7 +4335,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetRenderTarget(THIS_ DWORD RenderTa
     }
     if (G->hunting == HUNTING_MODE_ENABLED) {
         EnterCriticalSection(&G->mCriticalSection);
-        mCurrentRenderTargets.clear();
+        currentRenderTargets.clear();
         LeaveCriticalSection(&G->mCriticalSection);
         if (G->DumpUsage) {
             if (Profiling::mode == Profiling::Mode::SUMMARY)
@@ -5229,9 +5229,9 @@ inline void D3D9Wrapper::IDirect3DDevice9::UpdateStereoParams(bool forceUpdate, 
     }
 
     // Update stereo parameter texture. It's possible to arrive here with no texture available though,
-    // so we need to check first. Added check on mStereoHandle to fix crash when stereo disabled in
-    // DX9 port since mStereoTexture is created unconditionally.
-    if (mStereoTexture && mStereoHandle)
+    // so we need to check first. Added check on stereoHandle to fix crash when stereo disabled in
+    // DX9 port since stereoTexture is created unconditionally.
+    if (stereoTexture && stereoHandle)
     {
         LOG_DEBUG("  updating stereo parameter texture.\n");
         if (allValuesKnown) {
@@ -5256,11 +5256,11 @@ inline void D3D9Wrapper::IDirect3DDevice9::UpdateStereoParams(bool forceUpdate, 
             mParamTextureManager.mKnownSeparation = cachedStereoValues->KnownSeparation;
             mParamTextureManager.mKnownEyeSeparation = cachedStereoValues->KnownEyeSeparation;
             mParamTextureManager.mKnownStereoActive = cachedStereoValues->KnownStereoActive;
-            mParamTextureManager.mStereoActiveIsKnown = cachedStereoValues->StereoActiveIsKnown;
+            mParamTextureManager.stereoActiveIsKnown = cachedStereoValues->StereoActiveIsKnown;
         }
         if (forceUpdate)
             mParamTextureManager.mForceUpdate = true;
-        bool updated = mParamTextureManager.UpdateStereoTexture(GetD3D9Device(), GetD3D9Device(), mStereoTexture, false);
+        bool updated = mParamTextureManager.UpdateStereoTexture(GetD3D9Device(), GetD3D9Device(), stereoTexture, false);
         if (updated) {
 
         }
@@ -5718,7 +5718,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetVertexShader(THIS_ D3D9Wrapper::I
         (wrappedShader,
             &G->mVisitedVertexShaders,
             G->mSelectedVertexShader,
-            &mCurrentVertexShaderHandle);
+            &currentVertexShaderHandle);
     LOG_DEBUG("  returns result=%x\n", hr);
 
     return hr;
@@ -5735,15 +5735,15 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetVertexShader(THIS_ D3D9Wrapper::I
         hr = D3DERR_INVALIDCALL;
     }
     else {
-        if (mCurrentVertexShaderHandle) {
-            baseShader = mCurrentVertexShaderHandle->GetD3DVertexShader9();
-            mCurrentVertexShaderHandle->AddRef();
+        if (currentVertexShaderHandle) {
+            baseShader = currentVertexShaderHandle->GetD3DVertexShader9();
+            currentVertexShaderHandle->AddRef();
             hr = S_OK;
             if (!(G->enable_hooks >= EnableHooksDX9::ALL)) {
-                *ppShader = mCurrentVertexShaderHandle;
+                *ppShader = currentVertexShaderHandle;
             }
             else {
-                *ppShader = reinterpret_cast<D3D9Wrapper::IDirect3DVertexShader9*>(mCurrentVertexShaderHandle->GetRealOrig());
+                *ppShader = reinterpret_cast<D3D9Wrapper::IDirect3DVertexShader9*>(currentVertexShaderHandle->GetRealOrig());
             }
         }
         else {
@@ -5856,11 +5856,11 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetStreamSource(THIS_ UINT StreamNum
     if (G->hunting == HUNTING_MODE_ENABLED) {
         EnterCriticalSection(&G->mCriticalSection);
         if (baseVertexBuffer) {
-            mCurrentVertexBuffers[StreamNumber] = GetResourceHash(wrappedVertexBuffer);
-            G->mVisitedVertexBuffers.insert(mCurrentVertexBuffers[StreamNumber]);
+            currentVertexBuffers[StreamNumber] = GetResourceHash(wrappedVertexBuffer);
+            G->mVisitedVertexBuffers.insert(currentVertexBuffers[StreamNumber]);
         }
         else
-            mCurrentVertexBuffers[StreamNumber] = 0;
+            currentVertexBuffers[StreamNumber] = 0;
         LeaveCriticalSection(&G->mCriticalSection);
     }
     LOG_DEBUG("  returns result=%x\n", hr);
@@ -5942,13 +5942,13 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetIndices(THIS_ IDirect3DIndexBuffe
 
     // This is only used for index buffer hunting nowadays since the
     // command list checks the hash on demand only when it is needed
-    mCurrentIndexBuffer = 0;
+    currentIndexBuffer = 0;
     if (baseIndexBuffer && G->hunting == HUNTING_MODE_ENABLED) {
-        mCurrentIndexBuffer = GetResourceHash(pIndexBuffer);
-        if (mCurrentIndexBuffer) {
+        currentIndexBuffer = GetResourceHash(pIndexBuffer);
+        if (currentIndexBuffer) {
             // When hunting, save this as a visited index buffer to cycle through.
             EnterCriticalSection(&G->mCriticalSection);
-            G->mVisitedIndexBuffers.insert(mCurrentIndexBuffer);
+            G->mVisitedIndexBuffers.insert(currentIndexBuffer);
             LeaveCriticalSection(&G->mCriticalSection);
         }
     }
@@ -6022,7 +6022,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::SetPixelShader(THIS_ IDirect3DPixelS
         (wrappedShader,
             &G->mVisitedPixelShaders,
             G->mSelectedPixelShader,
-            &mCurrentPixelShaderHandle);
+            &currentPixelShaderHandle);
     LOG_DEBUG("  returns result=%x\n", hr);
     return hr;
 }
@@ -6039,15 +6039,15 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::GetPixelShader(THIS_ D3D9Wrapper::ID
         hr = D3DERR_INVALIDCALL;
     }
     else {
-        if (mCurrentPixelShaderHandle) {
-            baseShader = mCurrentPixelShaderHandle->GetD3DPixelShader9();
-            mCurrentPixelShaderHandle->AddRef();
+        if (currentPixelShaderHandle) {
+            baseShader = currentPixelShaderHandle->GetD3DPixelShader9();
+            currentPixelShaderHandle->AddRef();
             hr = S_OK;
             if (!(G->enable_hooks >= EnableHooksDX9::ALL)) {
-                *ppShader = mCurrentPixelShaderHandle;
+                *ppShader = currentPixelShaderHandle;
             }
             else {
-                *ppShader = reinterpret_cast<D3D9Wrapper::IDirect3DPixelShader9*>(mCurrentPixelShaderHandle->GetRealOrig());
+                *ppShader = reinterpret_cast<D3D9Wrapper::IDirect3DPixelShader9*>(currentPixelShaderHandle->GetRealOrig());
             }
         }
         else {
