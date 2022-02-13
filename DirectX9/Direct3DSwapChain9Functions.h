@@ -341,8 +341,8 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::GetPresentParameters(THIS_ ::D3DP
     {
         if (G->SCREEN_UPSCALING > 0 || G->gForceStereo == 2) {
             if (mFakeSwapChain != NULL && mFakeSwapChain->mFakeBackBuffers.size() > 0) {
-                pPresentationParameters->BackBufferWidth = mFakeSwapChain->mOrignalWidth;
-                pPresentationParameters->BackBufferHeight = mFakeSwapChain->mOrignalHeight;
+                pPresentationParameters->BackBufferWidth = mFakeSwapChain->orignalWidth;
+                pPresentationParameters->BackBufferHeight = mFakeSwapChain->orignalHeight;
                 LOG_DEBUG("->Using fake SwapChain Back Buffer Sizes.\n");
             }
         }

@@ -147,8 +147,8 @@ struct FakeSwapChain {
     vector<D3D9Wrapper::IDirect3DSurface9*> mDirectModeUpscalingBackBuffers;
     UINT mUpscalingWidth;
     UINT mUpscalingHeight;
-    UINT mOrignalWidth;
-    UINT mOrignalHeight;
+    UINT orignalWidth;
+    UINT orignalHeight;
 };
 struct DrawContext
 {
@@ -229,8 +229,8 @@ public:
 
     vector<::IDirect3DResource9*> nvapi_registered_resources;
     HRESULT NVAPIStretchRect(::IDirect3DResource9 *src, ::IDirect3DResource9 *dst, RECT *srcRect, RECT *dstRect);
-    D3D9Wrapper::IDirect3DVertexShader9 *mCurrentVertexShaderHandle;
-    D3D9Wrapper::IDirect3DPixelShader9 *mCurrentPixelShaderHandle;
+    D3D9Wrapper::IDirect3DVertexShader9 *currentVertexShaderHandle;
+    D3D9Wrapper::IDirect3DPixelShader9 *currentPixelShaderHandle;
     chrono::high_resolution_clock::duration update_stereo_params_interval;
     chrono::high_resolution_clock::time_point update_stereo_params_last_run;
     void UpdateStereoParams(bool forceUpdate, CachedStereoValues *cachedStereoValues = NULL);
@@ -306,9 +306,9 @@ public:
     void TrackAndDivertLock(HRESULT lock_hr, Buffer *pResource,
         UINT SizeToLock, void *ppbData, DWORD MapFlags);
 
-    StereoHandle mStereoHandle;
+    StereoHandle stereoHandle;
     nv::stereo::ParamTextureManagerD3D9 mParamTextureManager;
-    ::IDirect3DTexture9 *mStereoTexture;
+    ::IDirect3DTexture9 *stereoTexture;
 
     char *ReplaceShader(UINT64 hash, const wchar_t *shaderType, const void *pShaderBytecode,
         SIZE_T BytecodeLength, SIZE_T &pCodeSize, string &foundShaderModel, FILETIME &timeStamp,
@@ -560,9 +560,9 @@ public:
 
         protected:
             // These are per-context, moved from globals.h:
-            uint32_t mCurrentIndexBuffer;
-            uint32_t mCurrentVertexBuffers[D3D9_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
-            std::vector<D3D9Wrapper::IDirect3DSurface9*> mCurrentRenderTargets;
+            uint32_t currentIndexBuffer;
+            uint32_t currentVertexBuffers[D3D9_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+            std::vector<D3D9Wrapper::IDirect3DSurface9*> currentRenderTargets;
             FILE * frame_analysis_log;
             FrameAnalysisOptions analyse_options;
 };

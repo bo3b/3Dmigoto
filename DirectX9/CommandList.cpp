@@ -10,9 +10,9 @@
 #define getB(c) ((c)&0x000000ff)
 #define D3D_COMPILE_STANDARD_FILE_INCLUDE ((ID3DInclude*)(UINT_PTR)1)
 
-CustomResources customResources;
-CustomShaders customShaders;
-ExplicitCommandListSections explicitCommandListSections;
+CustomResources custom_resources;
+CustomShaders custom_shaders;
+ExplicitCommandListSections explicit_command_list_sections;
 CustomFunctions customFunctions;
 InternalFuntionFloats internalFunctionFloats = {
     { InternalFunctionFloat::ACSTATE_LAST_SET_CONVERGENCE , 0.0f },
@@ -50,12 +50,12 @@ std::vector<std::shared_ptr<CommandList>> dynamically_allocated_command_lists;
 NvAPI_Status SetConvergence(D3D9Wrapper::IDirect3DDevice9 *device, CachedStereoValues *cachedStereoValues, float convergence)
 {
     cachedStereoValues->KnownConvergence = convergence;
-    return Profiling::NvAPI_Stereo_SetConvergence(device->mStereoHandle, convergence);
+    return Profiling::NvAPI_Stereo_SetConvergence(device->stereoHandle, convergence);
 }
 NvAPI_Status SetSeparation(D3D9Wrapper::IDirect3DDevice9 *device, CachedStereoValues *cachedStereoValues, float seperation)
 {
     cachedStereoValues->KnownSeparation = seperation;
-    return Profiling::NvAPI_Stereo_SetSeparation(device->mStereoHandle, seperation);
+    return Profiling::NvAPI_Stereo_SetSeparation(device->stereoHandle, seperation);
 }
 
 NvAPI_Status GetConvergence(D3D9Wrapper::IDirect3DDevice9 *device, CachedStereoValues *cachedStereoValues, float * convergence)
@@ -66,7 +66,7 @@ NvAPI_Status GetConvergence(D3D9Wrapper::IDirect3DDevice9 *device, CachedStereoV
         nret = NvAPI_Status::NVAPI_OK;
     }
     else {
-        nret = Profiling::NvAPI_Stereo_GetConvergence(device->mStereoHandle, convergence);
+        nret = Profiling::NvAPI_Stereo_GetConvergence(device->stereoHandle, convergence);
         cachedStereoValues->KnownConvergence = *convergence;
     }
     return nret;
@@ -80,7 +80,7 @@ NvAPI_Status GetSeparation(D3D9Wrapper::IDirect3DDevice9 *device, CachedStereoVa
         nret = NvAPI_Status::NVAPI_OK;
     }
     else {
-        nret = Profiling::NvAPI_Stereo_GetSeparation(device->mStereoHandle, seperation);
+        nret = Profiling::NvAPI_Stereo_GetSeparation(device->stereoHandle, seperation);
         cachedStereoValues->KnownSeparation = *seperation;
     }
     return nret;
@@ -94,7 +94,7 @@ NvAPI_Status GetEyeSeparation(D3D9Wrapper::IDirect3DDevice9 *device, CachedStere
         nret = NvAPI_Status::NVAPI_OK;
     }
     else {
-        nret = Profiling::NvAPI_Stereo_GetEyeSeparation(device->mStereoHandle, eyeseperation);
+        nret = Profiling::NvAPI_Stereo_GetEyeSeparation(device->stereoHandle, eyeseperation);
         cachedStereoValues->KnownEyeSeparation = *eyeseperation;
     }
     return nret;
@@ -109,7 +109,7 @@ NvAPI_Status GetStereoActive(D3D9Wrapper::IDirect3DDevice9 *device, CachedStereo
     }
     else {
         NvU8 _active;
-        nret = Profiling::NvAPI_Stereo_IsActivated(device->mStereoHandle, &_active);
+        nret = Profiling::NvAPI_Stereo_IsActivated(device->stereoHandle, &_active);
         *active = !!_active;
         cachedStereoValues->KnownStereoActive = *active;
         cachedStereoValues->StereoActiveIsKnown = true;
@@ -137,7 +137,7 @@ NvAPI_Status GetStereoEnabled(CachedStereoValues *cachedStereoValues, bool *enab
 // macro instead of a function for this to concatenate static strings:
 #define COMMAND_LIST_LOG(state, fmt, ...) \
     do { \
-        (state)->mHackerDevice->FrameAnalysisLog("3DMigoto%*s " fmt, state->recursion, "", __VA_ARGS__); \
+        (state)->hackerDevice->FrameAnalysisLog("3DMigoto%*s " fmt, state->recursion, "", __VA_ARGS__); \
     } while (0)
 struct command_list_profiling_state {
     LARGE_INTEGER list_start_time;
@@ -221,7 +221,7 @@ static inline void profile_command_list_cmd_end(CommandListCommand *cmd, Command
         cmd->pre_executions++;
     }
 }
-static void _RunCommandList(CommandList *command_list, CommandListState *state, bool recursive = true)
+static void _run_command_list(CommandList *command_list, CommandListState *state, bool recursive = true)
 {
     CommandList::Commands::iterator i;
     command_list_profiling_state profiling_state;
@@ -243,7 +243,7 @@ static void _RunCommandList(CommandList *command_list, CommandListState *state, 
 
     for (i = command_list->commands.begin(); i < command_list->commands.end() && !state->aborted; i++) {
         profile_command_list_cmd_start(i->get(), &profiling_state);
-        (*i)->run(state);
+        (*i)->Run(state);
         profile_command_list_cmd_end(i->get(), state, &profiling_state);
     }
 
@@ -255,14 +255,14 @@ static void _RunCommandList(CommandList *command_list, CommandListState *state, 
     }
 }
 
-static void CommandListFlushState(CommandListState *state)
+static void command_list_flush_state(CommandListState *state)
 {
     if (state->update_params && G->IniConstants.size() > 0) {
 
         for (std::map<int, DirectX::XMFLOAT4>::iterator it = G->IniConstants.begin(); it != G->IniConstants.end(); ++it) {
             float pConstants[4] = { it->second.x, it->second.y, it->second.z, it->second.w };
-            state->mOrigDevice->SetVertexShaderConstantF(it->first, pConstants, 1);
-            state->mOrigDevice->SetPixelShaderConstantF(it->first, pConstants, 1);
+            state->origDevice->SetVertexShaderConstantF(it->first, pConstants, 1);
+            state->origDevice->SetPixelShaderConstantF(it->first, pConstants, 1);
 
         }
         state->update_params = false;
@@ -270,15 +270,15 @@ static void CommandListFlushState(CommandListState *state)
     }
 }
 
-static void RunCommandListComplete(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,
+static void RunCommandListComplete(D3D9Wrapper::IDirect3DDevice9 *hackerDevice,
     CommandList *command_list,
     DrawCallInfo *call_info,
     IDirect3DResource9 *resource,
     bool post, CachedStereoValues *cachedStereoValues)
 {
     CommandListState state;
-    state.mHackerDevice = mHackerDevice;
-    state.mOrigDevice = mHackerDevice->GetD3D9Device();
+    state.hackerDevice = hackerDevice;
+    state.origDevice = hackerDevice->GetD3D9Device();
     state.call_info = call_info;
     state.resource = resource;
     state.post = post;
@@ -287,25 +287,25 @@ static void RunCommandListComplete(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,
         state.cachedStereoValues = cachedStereoValues;
     else
         state.cachedStereoValues = &_cachedStereoValues;
-    _RunCommandList(command_list, &state);
-    CommandListFlushState(&state);
+    _run_command_list(command_list, &state);
+    command_list_flush_state(&state);
 }
 
-void RunCommandList(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,
+void RunCommandList(D3D9Wrapper::IDirect3DDevice9 *hackerDevice,
     CommandList *command_list,
     DrawCallInfo *call_info,
     bool post, CachedStereoValues *cachedStereoValues)
 {
-    RunCommandListComplete(mHackerDevice, command_list,
+    RunCommandListComplete(hackerDevice, command_list,
         call_info, NULL, post, cachedStereoValues);
 }
 
-void RunResourceCommandList(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,
+void RunResourceCommandList(D3D9Wrapper::IDirect3DDevice9 *hackerDevice,
     CommandList *command_list,
     IDirect3DResource9 *resource,
     bool post, CachedStereoValues *cachedStereoValues)
 {
-    RunCommandListComplete(mHackerDevice, command_list,
+    RunCommandListComplete(hackerDevice, command_list,
         NULL, resource, post, cachedStereoValues);
 }
 void optimise_command_lists(D3D9Wrapper::IDirect3DDevice9 *device)
@@ -357,7 +357,7 @@ void optimise_command_lists(D3D9Wrapper::IDirect3DDevice9 *device)
         // processing these
         for (CommandList *command_list : registered_command_lists) {
             for (i = 0; i < command_list->commands.size(); ) {
-                if (command_list->commands[i]->noop(command_list->post, ignore_cto_pre, ignore_cto_post)) {
+                if (command_list->commands[i]->Noop(command_list->post, ignore_cto_pre, ignore_cto_post)) {
                     LOG_INFO("Optimised out %s %S\n",
                         command_list->post ? "post" : "pre",
                         command_list->commands[i]->ini_line.c_str());
@@ -382,7 +382,7 @@ void optimise_command_lists(D3D9Wrapper::IDirect3DDevice9 *device)
     registered_command_lists.clear();
     dynamically_allocated_command_lists.clear();
 }
-static bool AddCommandToList(CommandListCommand *command,
+static bool add_command_to_list(CommandListCommand *command,
     CommandList *explicit_command_list,
     CommandList *sensible_command_list,
     CommandList *pre_command_list,
@@ -425,7 +425,7 @@ static bool AddCommandToList(CommandListCommand *command,
 
     return true;
 }
-static bool ParseCheckTextureOverride(const wchar_t *section,
+static bool parse_check_texture_override(const wchar_t *section,
     const wchar_t *key, wstring *val,
     CommandList *explicit_command_list,
     CommandList *pre_command_list,
@@ -442,17 +442,17 @@ static bool ParseCheckTextureOverride(const wchar_t *section,
         // If the user indicated an explicit command list we will run the pre
         // and post lists of the target list together.
         if (explicit_command_list)
-            operation->run_pre_and_post_together = true;
+            operation->runPreAndPostTogether = true;
         else if (post_command_list)
             G->implicit_post_checktextureoverride_used = true;
 
-        return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
+        return add_command_to_list(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
     }
 
     delete operation;
     return false;
 }
-static bool ParseResetPerFrameLimits(const wchar_t *section,
+static bool parse_reset_per_frame_limits(const wchar_t *section,
     const wchar_t *key, wstring *val,
     CommandList *explicit_command_list,
     CommandList *pre_command_list,
@@ -468,12 +468,12 @@ static bool ParseResetPerFrameLimits(const wchar_t *section,
     if (!wcsncmp(val->c_str(), L"resource", 8)) {
         wstring resource_id(val->c_str());
 
-        res = customResources.end();
+        res = custom_resources.end();
         if (get_namespaced_section_name_lower(&resource_id, ini_namespace, &namespaced_section, &migoto_ini))
-            res = customResources.find(namespaced_section);
-        if (res == customResources.end())
-            res = customResources.find(resource_id);
-        if (res == customResources.end())
+            res = custom_resources.find(namespaced_section);
+        if (res == custom_resources.end())
+            res = custom_resources.find(resource_id);
+        if (res == custom_resources.end())
             goto bail;
 
         operation->resource = &res->second;
@@ -482,18 +482,18 @@ static bool ParseResetPerFrameLimits(const wchar_t *section,
     if (!wcsncmp(val->c_str(), L"customshader", 12) || !wcsncmp(val->c_str(), L"builtincustomshader", 19)) {
         wstring shader_id(val->c_str());
 
-        shader = customShaders.end();
+        shader = custom_shaders.end();
         if (get_namespaced_section_name_lower(&shader_id, ini_namespace, &namespaced_section, &migoto_ini))
-            shader = customShaders.find(namespaced_section);
-        if (shader == customShaders.end())
-            shader = customShaders.find(shader_id);
-        if (shader == customShaders.end())
+            shader = custom_shaders.find(namespaced_section);
+        if (shader == custom_shaders.end())
+            shader = custom_shaders.find(shader_id);
+        if (shader == custom_shaders.end())
             goto bail;
 
         operation->shader = &shader->second;
     }
 
-    return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+    return add_command_to_list(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
     delete operation;
@@ -585,7 +585,7 @@ static bool ParseClearSurface(const wchar_t *section,
         operation->fval[idx] = operation->fval[idx - 1];
     }
 
-    return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+    return add_command_to_list(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
     delete operation;
@@ -593,7 +593,7 @@ bail:
 }
 
 
-static bool ParseRunShader(const wchar_t *section,
+static bool parse_run_shader(const wchar_t *section,
     const wchar_t *key, wstring *val,
     CommandList *explicit_command_list,
     CommandList *pre_command_list,
@@ -609,23 +609,23 @@ static bool ParseRunShader(const wchar_t *section,
     // unordered_map:
     wstring shader_id(val->c_str());
 
-    shader = customShaders.end();
+    shader = custom_shaders.end();
     if (get_namespaced_section_name_lower(&shader_id, ini_namespace, &namespaced_section, &migoto_ini))
-        shader = customShaders.find(namespaced_section);
-    if (shader == customShaders.end())
-        shader = customShaders.find(shader_id);
-    if (shader == customShaders.end())
+        shader = custom_shaders.find(namespaced_section);
+    if (shader == custom_shaders.end())
+        shader = custom_shaders.find(shader_id);
+    if (shader == custom_shaders.end())
         goto bail;
 
     operation->custom_shader = &shader->second;
-    return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+    return add_command_to_list(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
     delete operation;
     return false;
 }
 
-bool ParseRunExplicitCommandList(const wchar_t *section,
+bool parse_run_explicit_command_list(const wchar_t *section,
     const wchar_t *key, wstring *val,
     CommandList *explicit_command_list,
     CommandList *pre_command_list,
@@ -643,12 +643,12 @@ bool ParseRunExplicitCommandList(const wchar_t *section,
     wstring section_id(val->c_str());
     std::transform(section_id.begin(), section_id.end(), section_id.begin(), ::towlower);
 
-    shader = explicitCommandListSections.end();
+    shader = explicit_command_list_sections.end();
     if (get_namespaced_section_name_lower(&section_id, ini_namespace, &namespaced_section, &migoto_ini))
-        shader = explicitCommandListSections.find(namespaced_section);
-    if (shader == explicitCommandListSections.end())
-        shader = explicitCommandListSections.find(section_id);
-    if (shader == explicitCommandListSections.end())
+        shader = explicit_command_list_sections.find(namespaced_section);
+    if (shader == explicit_command_list_sections.end())
+        shader = explicit_command_list_sections.find(section_id);
+    if (shader == explicit_command_list_sections.end())
         goto bail;
 
     // If the user indicated an explicit command list we will run the pre
@@ -658,17 +658,17 @@ bool ParseRunExplicitCommandList(const wchar_t *section,
         operation->run_pre_and_post_together = true;
 
     operation->command_list_section = &shader->second;
-    // This function is nearly identical to ParseRunShader, but in case we
+    // This function is nearly identical to parse_run_shader, but in case we
     // later refactor these together note that here we do not specify a
     // sensible command list, so it will be added to both pre and post
     // command lists:
-    return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
+    return add_command_to_list(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
 
 bail:
     delete operation;
     return false;
 }
-static bool ParsePreset(const wchar_t *section,
+static bool parse_preset(const wchar_t *section,
     const wchar_t *key, wstring *val,
     CommandList *explicit_command_list,
     CommandList *pre_command_list,
@@ -698,28 +698,28 @@ static bool ParsePreset(const wchar_t *section,
     prefixed_section = wstring(L"preset") + preset_id;
 
     // And now with namespacing, we have four permutations to try...
-    i = presetOverrides.end();
+    i = preset_overrides.end();
     // First, add the 'Preset' (i.e. the user did not) and try namespaced:
     if (get_namespaced_section_name_lower(&prefixed_section, ini_namespace, &namespaced_section, &migoto_ini))
-        i = presetOverrides.find(namespaced_section);
+        i = preset_overrides.find(namespaced_section);
     // Second, try namespaced without adding the prefix:
-    if (i == presetOverrides.end()) {
+    if (i == preset_overrides.end()) {
         if (get_namespaced_section_name_lower(&preset_id, ini_namespace, &namespaced_section, &migoto_ini))
-            i = presetOverrides.find(namespaced_section);
+            i = preset_overrides.find(namespaced_section);
     }
     // Third, add the 'Preset' and try global:
-    if (i == presetOverrides.end())
-        i = presetOverrides.find(prefixed_section);
+    if (i == preset_overrides.end())
+        i = preset_overrides.find(prefixed_section);
     // Finally, don't add the prefix and try global:
-    if (i == presetOverrides.end())
-        i = presetOverrides.find(preset_id);
-    if (i == presetOverrides.end())
+    if (i == preset_overrides.end())
+        i = preset_overrides.find(preset_id);
+    if (i == preset_overrides.end())
         goto bail;
 
     operation->preset = &i->second;
     operation->exclude = exclude;
 
-    return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+    return add_command_to_list(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
     delete operation;
@@ -790,13 +790,13 @@ static bool ParseDrawCommand(const wchar_t *section,
         goto bail;
 
     operation->ini_section = section;
-    return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+    return add_command_to_list(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
     delete operation;
     return false;
 }
-static bool ParseDirectModeSetActiveEyeCommand(const wchar_t *section,
+static bool parse_direct_mode_set_active_eye_command(const wchar_t *section,
     const wchar_t *key, wstring *val,
     CommandList *explicit_command_list,
     CommandList *pre_command_list,
@@ -822,13 +822,13 @@ static bool ParseDirectModeSetActiveEyeCommand(const wchar_t *section,
     goto bail;
 
 success:
-    return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+    return add_command_to_list(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
     delete operation;
     return false;
 }
-static bool ParsePerDrawStereoOverride(const wchar_t *section,
+static bool parse_per_draw_stereo_override(const wchar_t *section,
     const wchar_t *key, wstring *val,
     CommandList *explicit_command_list,
     CommandList *pre_command_list,
@@ -861,13 +861,13 @@ success:
     // the value, and the post command list will restore the original. If
     // an explicit command list is specified then the value will only be
     // set, not restored (regardless of whether that is pre or post)
-    return AddCommandToList(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
+    return add_command_to_list(operation, explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
 
 bail:
     delete operation;
     return false;
 }
-static bool ParseFrameAnalysisDump(const wchar_t *section,
+static bool parse_frame_analysis_dump(const wchar_t *section,
     const wchar_t *key, wstring *val,
     CommandList *explicit_command_list,
     CommandList *pre_command_list,
@@ -908,7 +908,7 @@ static bool ParseFrameAnalysisDump(const wchar_t *section,
     std::replace(operation->target_name.begin(), operation->target_name.end(), L'*', L'_');
 
     delete[] buf;
-    return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+    return add_command_to_list(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
     delete[] buf;
@@ -994,85 +994,85 @@ static bool ParseFrameAnalysisDumpConstants(const wchar_t *section,
     operation->shader_type = (char)shader_type;
     operation->start_slot = idx;
 
-    return AddCommandToList(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+    return add_command_to_list(operation, explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
 bail:
     delete operation;
     return false;
 }
-bool ParseCommandListGeneralCommands(const wchar_t *section,
+bool parse_command_list_general_commands(const wchar_t *section,
     const wchar_t *key, wstring *val,
     CommandList *explicit_command_list,
     CommandList *pre_command_list, CommandList *post_command_list,
     const wstring *ini_namespace)
 {
     if (!wcscmp(key, L"checktextureoverride"))
-        return ParseCheckTextureOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
+        return parse_check_texture_override(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
     if (!wcscmp(key, L"run")) {
         if (!wcsncmp(val->c_str(), L"customshader", 12) || !wcsncmp(val->c_str(), L"builtincustomshader", 19))
-            return ParseRunShader(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
+            return parse_run_shader(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
         if (!wcsncmp(val->c_str(), L"commandlist", 11) || !wcsncmp(val->c_str(), L"builtincommandlist", 18))
-            return ParseRunExplicitCommandList(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
+            return parse_run_explicit_command_list(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
         if (!wcsncmp(val->c_str(), L"function", 8) || !wcsncmp(val->c_str(), L"builtinfunction", 15))
             return ParseRunFunction(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
     }
 
     if (!wcscmp(key, L"preset"))
-        return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list, false, ini_namespace);
+        return parse_preset(section, key, val, explicit_command_list, pre_command_list, post_command_list, false, ini_namespace);
     if (!wcscmp(key, L"exclude_preset"))
-        return ParsePreset(section, key, val, explicit_command_list, pre_command_list, post_command_list, true, ini_namespace);
+        return parse_preset(section, key, val, explicit_command_list, pre_command_list, post_command_list, true, ini_namespace);
 
     if (!wcscmp(key, L"handling")) {
         // skip only makes sense in pre command lists, since it needs
         // to run before the original draw call:
         if (!wcscmp(val->c_str(), L"skip"))
-            return AddCommandToList(new SkipCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+            return add_command_to_list(new SkipCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
         // abort defaults to both command lists, to abort command list
         // execution both before and after the draw call:
         if (!wcscmp(val->c_str(), L"abort"))
-            return AddCommandToList(new AbortCommand(section), explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
+            return add_command_to_list(new AbortCommand(section), explicit_command_list, NULL, pre_command_list, post_command_list, section, key, val);
     }
 
     if (!wcscmp(key, L"reset_per_frame_limits"))
-        return ParseResetPerFrameLimits(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
+        return parse_reset_per_frame_limits(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
     if (!wcscmp(key, L"clear"))
         return ParseClearSurface(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
     if (!wcscmp(key, L"separation"))
-        return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, true, ini_namespace);
+        return parse_per_draw_stereo_override(section, key, val, explicit_command_list, pre_command_list, post_command_list, true, ini_namespace);
 
     if (!wcscmp(key, L"convergence"))
-        return ParsePerDrawStereoOverride(section, key, val, explicit_command_list, pre_command_list, post_command_list, false, ini_namespace);
+        return parse_per_draw_stereo_override(section, key, val, explicit_command_list, pre_command_list, post_command_list, false, ini_namespace);
 
     if (!wcscmp(key, L"direct_mode_eye"))
-        return ParseDirectModeSetActiveEyeCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
+        return parse_direct_mode_set_active_eye_command(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 
     if (!wcscmp(key, L"analyse_options"))
-        return AddCommandToList(new FrameAnalysisChangeOptionsCommand(val), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+        return add_command_to_list(new FrameAnalysisChangeOptionsCommand(val), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
     if (!wcscmp(key, L"dump"))
         return ParseFrameAnalysisDumpConstants(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
     if (!wcscmp(key, L"dump"))
-        return ParseFrameAnalysisDump(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
+        return parse_frame_analysis_dump(section, key, val, explicit_command_list, pre_command_list, post_command_list, ini_namespace);
 
     if (!wcscmp(key, L"special")) {
         if (!wcscmp(val->c_str(), L"upscaling_switch_bb"))
-            return AddCommandToList(new UpscalingFlipBBCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+            return add_command_to_list(new UpscalingFlipBBCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
 
         if (!wcscmp(val->c_str(), L"draw_3dmigoto_overlay"))
-            return AddCommandToList(new Draw3DMigotoOverlayCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
+            return add_command_to_list(new Draw3DMigotoOverlayCommand(section), explicit_command_list, pre_command_list, NULL, NULL, section, key, val);
     }
 
     return ParseDrawCommand(section, key, val, explicit_command_list, pre_command_list, post_command_list);
 }
 
-void CheckTextureOverrideCommand::run(CommandListState *state)
+void CheckTextureOverrideCommand::Run(CommandListState *state)
 {
     TextureOverrideMatches matches;
     ResourceCopyTarget *saved_this = NULL;
@@ -1085,29 +1085,29 @@ void CheckTextureOverrideCommand::run(CommandListState *state)
 
     saved_this = state->this_target;
     state->this_target = &target;
-    if (run_pre_and_post_together) {
+    if (runPreAndPostTogether) {
         saved_post = state->post;
         state->post = false;
         for (i = 0; i < matches.size(); i++)
-            _RunCommandList(&matches[i]->command_list, state);
+            _run_command_list(&matches[i]->command_list, state);
         state->post = true;
         for (i = 0; i < matches.size(); i++)
-            _RunCommandList(&matches[i]->post_command_list, state);
+            _run_command_list(&matches[i]->post_command_list, state);
         state->post = saved_post;
     }
     else {
         for (i = 0; i < matches.size(); i++) {
             if (state->post)
-                _RunCommandList(&matches[i]->post_command_list, state);
+                _run_command_list(&matches[i]->post_command_list, state);
             else
-                _RunCommandList(&matches[i]->command_list, state);
+                _run_command_list(&matches[i]->command_list, state);
         }
     }
     state->this_target = saved_this;
 }
-bool CheckTextureOverrideCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
+bool CheckTextureOverrideCommand::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
-    if (run_pre_and_post_together)
+    if (runPreAndPostTogether)
         return (ignore_cto_pre && ignore_cto_post);
 
     if (post)
@@ -1123,7 +1123,7 @@ ClearSurfaceCommand::ClearSurfaceCommand() :
     memset(fval, 0, sizeof(fval));
     memset(uval, 0, sizeof(uval));
 }
-void ResetPerFrameLimitsCommand::run(CommandListState *state)
+void ResetPerFrameLimitsCommand::Run(CommandListState *state)
 {
     COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
@@ -1133,7 +1133,7 @@ void ResetPerFrameLimitsCommand::run(CommandListState *state)
     if (resource)
         resource->copies_this_frame = 0;
 }
-void PresetCommand::run(CommandListState *state)
+void PresetCommand::Run(CommandListState *state)
 {
     COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
@@ -1143,12 +1143,12 @@ void PresetCommand::run(CommandListState *state)
         preset->Trigger(this);
 }
 
-static UINT get_index_count_from_current_ib(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice)
+static UINT get_index_count_from_current_ib(D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
 {
     ::IDirect3DIndexBuffer9 *ib;
     ::D3DINDEXBUFFER_DESC desc;
 
-    mHackerDevice->GetD3D9Device()->GetIndices(&ib);
+    hackerDevice->GetD3D9Device()->GetIndices(&ib);
     if (!ib)
         return 0;
     ib->GetDesc(&desc);
@@ -1170,34 +1170,34 @@ struct CUSTOMVERTEX_DRAWCOMMAND
 HRESULT DrawCommandVertexBufferPrepare(CommandListState *state, UINT vertexCount) {
     HRESULT hr;
     bool recreateVertexBuffer = false;
-    if (state->mHackerDevice->mClDrawVertexBuffer == NULL) {
+    if (state->hackerDevice->mClDrawVertexBuffer == NULL) {
         recreateVertexBuffer = true;
     }
     else {
         D3DVERTEXBUFFER_DESC vDesc;// = NULL;
-        state->mHackerDevice->mClDrawVertexBuffer->GetDesc(&vDesc);
+        state->hackerDevice->mClDrawVertexBuffer->GetDesc(&vDesc);
         if (vDesc.Size < vertexCount*(sizeof(CUSTOMVERTEX_DRAWCOMMAND))) {
             recreateVertexBuffer = true;
         }
     }
 
     if (recreateVertexBuffer) {
-        if (state->mHackerDevice->mClDrawVertexBuffer != NULL) {
-            --state->mHackerDevice->migotoResourceCount;
-            state->mHackerDevice->mClDrawVertexBuffer->Release();
-            state->mHackerDevice->mClDrawVertexBuffer = NULL;
+        if (state->hackerDevice->mClDrawVertexBuffer != NULL) {
+            --state->hackerDevice->migotoResourceCount;
+            state->hackerDevice->mClDrawVertexBuffer->Release();
+            state->hackerDevice->mClDrawVertexBuffer = NULL;
         }
-        hr = state->mOrigDevice->CreateVertexBuffer(
+        hr = state->origDevice->CreateVertexBuffer(
             vertexCount*(sizeof(CUSTOMVERTEX_DRAWCOMMAND)),
             0,
             0,
             D3DPOOL_DEFAULT,
-            &state->mHackerDevice->mClDrawVertexBuffer,
+            &state->hackerDevice->mClDrawVertexBuffer,
             NULL);
         if (FAILED(hr))
             return hr;
         else
-            ++state->mHackerDevice->migotoResourceCount;
+            ++state->hackerDevice->migotoResourceCount;
 
         vector<CUSTOMVERTEX_DRAWCOMMAND> DrawVertices(vertexCount);
         float i = 0;
@@ -1206,16 +1206,16 @@ HRESULT DrawCommandVertexBufferPrepare(CommandListState *state, UINT vertexCount
             i += 1.0f;
         } while (i < vertexCount);
         VOID* pVoid;
-        hr = state->mHackerDevice->mClDrawVertexBuffer->Lock(0, 0, (void**)&pVoid, 0);
+        hr = state->hackerDevice->mClDrawVertexBuffer->Lock(0, 0, (void**)&pVoid, 0);
         if (FAILED(hr))
             return hr;
         std::memcpy(pVoid, &DrawVertices[0], sizeof(CUSTOMVERTEX_DRAWCOMMAND) * vertexCount);
-        hr = state->mHackerDevice->mClDrawVertexBuffer->Unlock();
+        hr = state->hackerDevice->mClDrawVertexBuffer->Unlock();
         if (FAILED(hr))
             return hr;
     }
 
-    if (state->mHackerDevice->mClDrawVertexDecl == NULL) {
+    if (state->hackerDevice->mClDrawVertexDecl == NULL) {
         D3DVERTEXELEMENT9 index;
         index.Usage = D3DDECLUSAGE_TEXCOORD;
         index.UsageIndex = 0;
@@ -1228,19 +1228,19 @@ HRESULT DrawCommandVertexBufferPrepare(CommandListState *state, UINT vertexCount
             index,
             D3DDECL_END()
         };
-        hr = state->mOrigDevice->CreateVertexDeclaration(vertexElements, &state->mHackerDevice->mClDrawVertexDecl);
+        hr = state->origDevice->CreateVertexDeclaration(vertexElements, &state->hackerDevice->mClDrawVertexDecl);
         if (FAILED(hr))
             return hr;
         else
-            ++state->mHackerDevice->migotoResourceCount;
+            ++state->hackerDevice->migotoResourceCount;
     }
-    hr = state->mOrigDevice->SetVertexDeclaration(state->mHackerDevice->mClDrawVertexDecl);
+    hr = state->origDevice->SetVertexDeclaration(state->hackerDevice->mClDrawVertexDecl);
     if (FAILED(hr))
         return hr;
-    hr = state->mOrigDevice->SetStreamSourceFreq(0, 1);
+    hr = state->origDevice->SetStreamSourceFreq(0, 1);
     if (FAILED(hr))
         return hr;
-    hr = state->mOrigDevice->SetStreamSource(0, state->mHackerDevice->mClDrawVertexBuffer, 0,  sizeof(CUSTOMVERTEX_DRAWCOMMAND));
+    hr = state->origDevice->SetStreamSource(0, state->hackerDevice->mClDrawVertexBuffer, 0,  sizeof(CUSTOMVERTEX_DRAWCOMMAND));
     if (FAILED(hr))
         return hr;
     return D3D_OK;
@@ -1249,28 +1249,28 @@ inline bool SetDrawingSide(CommandListState *state, D3D9Wrapper::RenderPosition 
 {
     LOG_DEBUG("Command List Direct Mode, SetDrawingSide");
     // Already on the correct eye
-    if (side == state->mHackerDevice->currentRenderingSide) {
+    if (side == state->hackerDevice->currentRenderingSide) {
         return true;
     }
     // should never try and render for the right eye if there is no render target for the main render targets right side
-    if (!state->mHackerDevice->m_activeRenderTargets[0]->IsDirectStereoSurface() && (side == D3D9Wrapper::RenderPosition::Right)) {
+    if (!state->hackerDevice->m_activeRenderTargets[0]->IsDirectStereoSurface() && (side == D3D9Wrapper::RenderPosition::Right)) {
         return false;
     }
     // Everything hasn't changed yet but we set this first so we don't accidentally use the member instead of the local and break
     // things, as I have already managed twice.
-    state->mHackerDevice->currentRenderingSide = side;
+    state->hackerDevice->currentRenderingSide = side;
     // switch render targets to new side
     bool renderTargetChanged = false;
     HRESULT result;
     D3D9Wrapper::IDirect3DSurface9* pCurrentRT;
-    for (std::vector<D3D9Wrapper::IDirect3DSurface9*>::size_type i = 0; i != state->mHackerDevice->m_activeRenderTargets.size(); i++)
+    for (std::vector<D3D9Wrapper::IDirect3DSurface9*>::size_type i = 0; i != state->hackerDevice->m_activeRenderTargets.size(); i++)
     {
-        if ((pCurrentRT = state->mHackerDevice->m_activeRenderTargets[i]) != NULL) {
+        if ((pCurrentRT = state->hackerDevice->m_activeRenderTargets[i]) != NULL) {
 
             if (side == D3D9Wrapper::RenderPosition::Left)
-                result = state->mOrigDevice->SetRenderTarget((DWORD)i, pCurrentRT->DirectModeGetLeft());
+                result = state->origDevice->SetRenderTarget((DWORD)i, pCurrentRT->DirectModeGetLeft());
             else
-                result = state->mOrigDevice->SetRenderTarget((DWORD)i, pCurrentRT->DirectModeGetRight());
+                result = state->origDevice->SetRenderTarget((DWORD)i, pCurrentRT->DirectModeGetRight());
 
             if (result != D3D_OK) {
                 LOG_DEBUG("Command List Direct Mode, - Error trying to set one of the Render Targets while switching between active eyes for drawing.\n");
@@ -1281,11 +1281,11 @@ inline bool SetDrawingSide(CommandListState *state, D3D9Wrapper::RenderPosition 
         }
     }
     // switch depth stencil to new side
-    if (state->mHackerDevice->m_pActiveDepthStencil != NULL) {
+    if (state->hackerDevice->m_pActiveDepthStencil != NULL) {
         if (side == D3D9Wrapper::RenderPosition::Left)
-            result = state->mOrigDevice->SetDepthStencilSurface(state->mHackerDevice->m_pActiveDepthStencil->DirectModeGetLeft());
+            result = state->origDevice->SetDepthStencilSurface(state->hackerDevice->m_pActiveDepthStencil->DirectModeGetLeft());
         else
-            result = state->mOrigDevice->SetDepthStencilSurface(state->mHackerDevice->m_pActiveDepthStencil->DirectModeGetRight());
+            result = state->origDevice->SetDepthStencilSurface(state->hackerDevice->m_pActiveDepthStencil->DirectModeGetRight());
     }
     // switch textures to new side
     ::IDirect3DBaseTexture9* pActualLeftTexture = NULL;
@@ -1295,30 +1295,30 @@ inline bool SetDrawingSide(CommandListState *state, D3D9Wrapper::RenderPosition 
     {
         pActualLeftTexture = NULL;
         pActualRightTexture = NULL;
-        state->mHackerDevice->HackerDeviceUnWrapTexture(it->second, &pActualLeftTexture, &pActualRightTexture);
+        state->hackerDevice->HackerDeviceUnWrapTexture(it->second, &pActualLeftTexture, &pActualRightTexture);
         if (side == D3D9Wrapper::RenderPosition::Left)
-            result = state->mOrigDevice->SetTexture(it->first, pActualLeftTexture);
+            result = state->origDevice->SetTexture(it->first, pActualLeftTexture);
         else
-            result = state->mOrigDevice->SetTexture(it->first, pActualRightTexture);
+            result = state->origDevice->SetTexture(it->first, pActualRightTexture);
 
         if (result != D3D_OK)
             LOG_DEBUG("Command List Direct Mode, Error trying to set one of the textures while switching between active eyes for drawing.\n");
     }
-    if (state->mHackerDevice->DirectModeGameProjectionIsSet) {
+    if (state->hackerDevice->DirectModeGameProjectionIsSet) {
         if (side == D3D9Wrapper::RenderPosition::Left)
-            state->mOrigDevice->SetTransform(::D3DTS_PROJECTION, &state->mHackerDevice->m_leftProjection);
+            state->origDevice->SetTransform(::D3DTS_PROJECTION, &state->hackerDevice->m_leftProjection);
         else
-            state->mOrigDevice->SetTransform(::D3DTS_PROJECTION, &state->mHackerDevice->m_rightProjection);
+            state->origDevice->SetTransform(::D3DTS_PROJECTION, &state->hackerDevice->m_rightProjection);
     }
     return true;
 }
 inline bool SwitchDrawingSide(CommandListState *state)
 {
     bool switched = false;
-    if (state->mHackerDevice->currentRenderingSide == D3D9Wrapper::RenderPosition::Left) {
+    if (state->hackerDevice->currentRenderingSide == D3D9Wrapper::RenderPosition::Left) {
         switched = SetDrawingSide(state, D3D9Wrapper::RenderPosition::Right);
     }
-    else if (state->mHackerDevice->currentRenderingSide == D3D9Wrapper::RenderPosition::Right) {
+    else if (state->hackerDevice->currentRenderingSide == D3D9Wrapper::RenderPosition::Right) {
         switched = SetDrawingSide(state, D3D9Wrapper::RenderPosition::Left);
     }
     return switched;
@@ -1326,7 +1326,7 @@ inline bool SwitchDrawingSide(CommandListState *state)
 
 void DrawCommand::draw(CommandListState* state, DrawCommandType type) {
 
-    IDirect3DDevice9 *mOrigDevice = state->mOrigDevice;
+    IDirect3DDevice9 *origDevice = state->origDevice;
     DrawCallInfo *info = state->call_info;
 
     HRESULT hr;
@@ -1335,9 +1335,9 @@ void DrawCommand::draw(CommandListState* state, DrawCommandType type) {
     UINT saved_stream_source_offset;
     UINT saved_stream_source_stride;
     IDirect3DVertexDeclaration9 *saved_vertex_declaration;
-    mOrigDevice->GetVertexDeclaration(&saved_vertex_declaration);
-    mOrigDevice->GetStreamSource(0, &saved_vertex_buffer, &saved_stream_source_offset, &saved_stream_source_stride);
-    mOrigDevice->GetStreamSourceFreq(0, &saved_stream_source_freq_divider);
+    origDevice->GetVertexDeclaration(&saved_vertex_declaration);
+    origDevice->GetStreamSource(0, &saved_vertex_buffer, &saved_stream_source_offset, &saved_stream_source_stride);
+    origDevice->GetStreamSourceFreq(0, &saved_stream_source_freq_divider);
     D3DVERTEXBUFFER_DESC pDesc;
     UINT primitiveCount;
     UINT NumVertices;
@@ -1353,13 +1353,13 @@ void DrawCommand::draw(CommandListState* state, DrawCommandType type) {
             COMMAND_LIST_LOG(state, "  Draw vertex buffer prepare failure: %d\n", hr);
 
         primitiveCount = DrawVerticesCountToPrimitiveCount(args[0], info->primitive_type);
-        hr = mOrigDevice->DrawPrimitive(info->primitive_type, args[1], primitiveCount);
+        hr = origDevice->DrawPrimitive(info->primitive_type, args[1], primitiveCount);
         if (FAILED(hr)) {
             COMMAND_LIST_LOG(state, "  Draw failure: %d\n", hr);
         }
         else if (G->gForceStereo == 2){
             if (SwitchDrawingSide(state)) {
-                hr = mOrigDevice->DrawPrimitive(info->primitive_type, args[1], primitiveCount);
+                hr = origDevice->DrawPrimitive(info->primitive_type, args[1], primitiveCount);
                 if (FAILED(hr))
                     COMMAND_LIST_LOG(state, "  Direct Mode Draw failure after side switch: %d\n", hr);
             }
@@ -1370,13 +1370,13 @@ void DrawCommand::draw(CommandListState* state, DrawCommandType type) {
         hr = DrawCommandVertexBufferPrepare(state, DrawPrimitiveCountToVerticesCount(args[2], info->primitive_type));
         if (FAILED(hr))
             COMMAND_LIST_LOG(state, "  Draw vertex buffer prepare failure: %d\n", hr);
-        hr = mOrigDevice->DrawPrimitive(D3DPRIMITIVETYPE(args[0]), args[1], args[2]);
+        hr = origDevice->DrawPrimitive(D3DPRIMITIVETYPE(args[0]), args[1], args[2]);
         if (FAILED(hr)) {
             COMMAND_LIST_LOG(state, "  Draw Primitive failure: %d\n", hr);
         }
         else if (G->gForceStereo == 2) {
             if (SwitchDrawingSide(state)) {
-                hr = mOrigDevice->DrawPrimitive(D3DPRIMITIVETYPE(args[0]), args[1], args[2]);
+                hr = origDevice->DrawPrimitive(D3DPRIMITIVETYPE(args[0]), args[1], args[2]);
                 if (FAILED(hr))
                     COMMAND_LIST_LOG(state, "  Direct Mode Draw Primitive failure after side switch: %d\n", hr);
             }
@@ -1391,16 +1391,16 @@ void DrawCommand::draw(CommandListState* state, DrawCommandType type) {
         hr = DrawCommandVertexBufferPrepare(state, args[0]);
         if (FAILED(hr))
             COMMAND_LIST_LOG(state, "  Draw vertex buffer prepare failure: %d\n", hr);
-        state->mHackerDevice->mClDrawVertexBuffer->GetDesc(&pDesc);
+        state->hackerDevice->mClDrawVertexBuffer->GetDesc(&pDesc);
         NumVertices = (pDesc.Size / sizeof(CUSTOMVERTEX_DRAWCOMMAND));
         primitiveCount = DrawVerticesCountToPrimitiveCount(args[0], info->primitive_type);
-        hr = mOrigDevice->DrawIndexedPrimitive(info->primitive_type, (INT)args[2], 0, NumVertices, args[1], primitiveCount);
+        hr = origDevice->DrawIndexedPrimitive(info->primitive_type, (INT)args[2], 0, NumVertices, args[1], primitiveCount);
         if (FAILED(hr)) {
             COMMAND_LIST_LOG(state, "  Draw Indexed failure: %d\n", hr);
         }
         else if (G->gForceStereo == 2) {
             if (SwitchDrawingSide(state)) {
-                hr = mOrigDevice->DrawIndexedPrimitive(info->primitive_type, (INT)args[2], 0, NumVertices, args[1], primitiveCount);
+                hr = origDevice->DrawIndexedPrimitive(info->primitive_type, (INT)args[2], 0, NumVertices, args[1], primitiveCount);
                 if (FAILED(hr))
                     COMMAND_LIST_LOG(state, "  Direct Mode Draw Indexed failure after side switch: %d\n", hr);
             }
@@ -1411,13 +1411,13 @@ void DrawCommand::draw(CommandListState* state, DrawCommandType type) {
         hr = DrawCommandVertexBufferPrepare(state, DrawPrimitiveCountToVerticesCount(args[5], info->primitive_type));
         if (FAILED(hr))
             COMMAND_LIST_LOG(state, "  Draw vertex buffer prepare failure: %d\n", hr);
-        hr = mOrigDevice->DrawIndexedPrimitive(D3DPRIMITIVETYPE(args[0]), (INT)args[1], args[2], args[3], args[4], args[5]);
+        hr = origDevice->DrawIndexedPrimitive(D3DPRIMITIVETYPE(args[0]), (INT)args[1], args[2], args[3], args[4], args[5]);
         if (FAILED(hr)) {
             COMMAND_LIST_LOG(state, "  Draw Indexed Primitive failure: %d\n", hr);
         }
         else if (G->gForceStereo == 2) {
             if (SwitchDrawingSide(state)) {
-                hr = mOrigDevice->DrawIndexedPrimitive(D3DPRIMITIVETYPE(args[0]), (INT)args[1], args[2], args[3], args[4], args[5]);
+                hr = origDevice->DrawIndexedPrimitive(D3DPRIMITIVETYPE(args[0]), (INT)args[1], args[2], args[3], args[4], args[5]);
                 if (FAILED(hr))
                     COMMAND_LIST_LOG(state, "  Direct Mode Draw Indexed Primitive failure after side switch: %d\n", hr);
             }
@@ -1425,9 +1425,9 @@ void DrawCommand::draw(CommandListState* state, DrawCommandType type) {
         break;
     }
 
-    mOrigDevice->SetVertexDeclaration(saved_vertex_declaration);
-    mOrigDevice->SetStreamSourceFreq(0, saved_stream_source_freq_divider);
-    mOrigDevice->SetStreamSource(0, saved_vertex_buffer, saved_stream_source_offset, saved_stream_source_stride);
+    origDevice->SetVertexDeclaration(saved_vertex_declaration);
+    origDevice->SetStreamSourceFreq(0, saved_stream_source_freq_divider);
+    origDevice->SetStreamSource(0, saved_vertex_buffer, saved_stream_source_offset, saved_stream_source_stride);
 
     if(saved_vertex_declaration)
         saved_vertex_declaration->Release();
@@ -1437,10 +1437,10 @@ void DrawCommand::draw(CommandListState* state, DrawCommandType type) {
 
 }
 
-void DrawCommand::run(CommandListState *state)
+void DrawCommand::Run(CommandListState *state)
 {
-    D3D9Wrapper::IDirect3DDevice9 *mHackerDevice = state->mHackerDevice;
-    IDirect3DDevice9 *mOrigDevice = state->mOrigDevice;
+    D3D9Wrapper::IDirect3DDevice9 *hackerDevice = state->hackerDevice;
+    IDirect3DDevice9 *origDevice = state->origDevice;
     DrawCallInfo *info = state->call_info;
     UINT auto_count = 0;
 
@@ -1454,7 +1454,7 @@ void DrawCommand::run(CommandListState *state)
     }
 
     // Ensure IniParams are visible:
-    CommandListFlushState(state);
+    command_list_flush_state(state);
 
     Profiling::injected_draw_calls++;
     switch (type) {
@@ -1478,27 +1478,27 @@ void DrawCommand::run(CommandListState *state)
         switch (info->type) {
         case DrawCall::DrawIndexedUP:
             COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedPrimitiveUP (%u, %u, %u, %u, %u, %p, %u, %p, %u)\n", ini_section.c_str(), info->primitive_type, info->MinVertexIndex, info->NumVertices, info->PrimitiveCount, info->pIndexData, info->IndexDataFormat, info->pVertexStreamZeroData, info->VertexStreamZeroStride);
-            mOrigDevice->DrawIndexedPrimitiveUP(info->primitive_type, info->MinVertexIndex, info->NumVertices, info->PrimitiveCount, info->pIndexData, info->IndexDataFormat, info->pVertexStreamZeroData, info->VertexStreamZeroStride);
+            origDevice->DrawIndexedPrimitiveUP(info->primitive_type, info->MinVertexIndex, info->NumVertices, info->PrimitiveCount, info->pIndexData, info->IndexDataFormat, info->pVertexStreamZeroData, info->VertexStreamZeroStride);
             break;
         case DrawCall::DrawUP:
             COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawPrimitiveUP (%u, %u, %u, %p, %u)\n", ini_section.c_str(), info->primitive_type, info->PrimitiveCount, info->pVertexStreamZeroData, info->VertexStreamZeroStride);
-            mOrigDevice->DrawPrimitiveUP(info->primitive_type, info->PrimitiveCount, info->pVertexStreamZeroData, info->VertexStreamZeroStride);
+            origDevice->DrawPrimitiveUP(info->primitive_type, info->PrimitiveCount, info->pVertexStreamZeroData, info->VertexStreamZeroStride);
             break;
         case DrawCall::DrawIndexed:
             COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedPrimitive (%u, %u, %u, %u, %u, %u, %u)\n", ini_section.c_str(), info->primitive_type, info->StartVertex, info->MinVertexIndex, info->NumVertices, info->StartIndex, info->PrimitiveCount);
-            mOrigDevice->DrawIndexedPrimitive(info->primitive_type, (INT)info->StartVertex, info->MinVertexIndex, info->NumVertices, info->StartIndex, info->PrimitiveCount);
+            origDevice->DrawIndexedPrimitive(info->primitive_type, (INT)info->StartVertex, info->MinVertexIndex, info->NumVertices, info->StartIndex, info->PrimitiveCount);
             break;
         case DrawCall::Draw:
             COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawPrimitive  (%u, %u, %u, %u)\n", ini_section.c_str(), info->primitive_type, info->StartVertex, info->PrimitiveCount);
-            mOrigDevice->DrawPrimitive(info->primitive_type, info->StartVertex, info->PrimitiveCount);
+            origDevice->DrawPrimitive(info->primitive_type, info->StartVertex, info->PrimitiveCount);
             break;
         case DrawCall::DrawTriPatch:
             COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawTriPatch(%u, %u, %f, %p)\n", ini_section.c_str(), info->Handle, info->pNumSegs, info->pTriPatchInfo);
-            mOrigDevice->DrawTriPatch(info->Handle, info->pNumSegs, info->pTriPatchInfo);
+            origDevice->DrawTriPatch(info->Handle, info->pNumSegs, info->pTriPatchInfo);
             break;
         case DrawCall::DrawRectPatch:
             COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawRectPatch (%u, %u, %f, %p)\n", ini_section.c_str(), info->Handle, info->pNumSegs, info->pRectPatchInfo);
-            mOrigDevice->DrawRectPatch(info->Handle, info->pNumSegs, info->pRectPatchInfo);
+            origDevice->DrawRectPatch(info->Handle, info->pNumSegs, info->pRectPatchInfo);
             break;
         default:
             LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> unknown draw call type\n");
@@ -1506,17 +1506,17 @@ void DrawCommand::run(CommandListState *state)
         }
         break;
     case DrawCommandType::AUTO_INDEX_COUNT:
-        auto_count = get_index_count_from_current_ib(mHackerDevice);
+        auto_count = get_index_count_from_current_ib(hackerDevice);
         COMMAND_LIST_LOG(state, "[%S] drawindexed = auto -> DrawIndexed(%u, 0, 0)\n", ini_section.c_str(), auto_count);
         if (auto_count)
-            mHackerDevice->DrawIndexedPrimitive(info->primitive_type, 0, 0, auto_count, 0, DrawVerticesCountToPrimitiveCount(auto_count, info->primitive_type));
+            hackerDevice->DrawIndexedPrimitive(info->primitive_type, 0, 0, auto_count, 0, DrawVerticesCountToPrimitiveCount(auto_count, info->primitive_type));
         else
             COMMAND_LIST_LOG(state, "  Unable to determine index count\n");
         break;
     }
 }
 
-void SkipCommand::run(CommandListState *state)
+void SkipCommand::Run(CommandListState *state)
 {
     COMMAND_LIST_LOG(state, "[%S] handling = skip\n", ini_section.c_str());
 
@@ -1526,7 +1526,7 @@ void SkipCommand::run(CommandListState *state)
         COMMAND_LIST_LOG(state, "  No active draw call to skip\n");
 }
 
-void AbortCommand::run(CommandListState *state)
+void AbortCommand::Run(CommandListState *state)
 {
     COMMAND_LIST_LOG(state, "[%S] handling = abort\n", ini_section.c_str());
 
@@ -1541,7 +1541,7 @@ PerDrawStereoOverrideCommand::PerDrawStereoOverrideCommand(bool restore_on_post)
     did_set_value_on_pre(false)
 {}
 
-bool PerDrawStereoOverrideCommand::update_val(CommandListState *state)
+bool PerDrawStereoOverrideCommand::UpdateVal(CommandListState *state)
 {
     void *mapping = NULL;
     HRESULT hr;
@@ -1565,7 +1565,7 @@ bool PerDrawStereoOverrideCommand::update_val(CommandListState *state)
         // Otherwise we can refer to the resource description)
         //tmp = ((float*)mapping.pData)[0];
         tmp = ((float*)mapping)[0];
-        staging_op.unmap(state);
+        staging_op.Unmap(state);
 
         if (isnan(tmp)) {
             COMMAND_LIST_LOG(state, "  Disregarding NAN\n");
@@ -1582,14 +1582,14 @@ bool PerDrawStereoOverrideCommand::update_val(CommandListState *state)
     }
 
     staging_op.staging = true;
-    staging_op.run(state);
+    staging_op.Run(state);
     return ret;
 }
-void PerDrawStereoOverrideCommand::run(CommandListState *state)
+void PerDrawStereoOverrideCommand::Run(CommandListState *state)
 {
     COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-    if (!state->mHackerDevice->mStereoHandle) {
+    if (!state->hackerDevice->stereoHandle) {
         COMMAND_LIST_LOG(state, "  No Stereo Handle\n");
         return;
     }
@@ -1600,12 +1600,12 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
                 return;
             did_set_value_on_pre = false;
 
-            COMMAND_LIST_LOG(state, "  Restoring %s = %f\n", stereo_param_name(), saved);
-            set_stereo_value(state, saved);
+            COMMAND_LIST_LOG(state, "  Restoring %s = %f\n", StereoParamName(), saved);
+            SetStereoValue(state, saved);
         }
         else {
             if (staging_type) {
-                if (!(did_set_value_on_pre = update_val(state)))
+                if (!(did_set_value_on_pre = UpdateVal(state)))
                     return;
             }
             else {
@@ -1613,10 +1613,10 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
                 did_set_value_on_pre = true;
             }
 
-            saved = get_stereo_value(state);
+            saved = GetStereoValue(state);
 
             COMMAND_LIST_LOG(state, "  Setting per-draw call %s = %f * %f = %f\n",
-                stereo_param_name(), val, saved, val * saved);
+                StereoParamName(), val, saved, val * saved);
 
             // The original ShaderOverride code multiplied the new
             // separation and convergence by the old ones, so I'm
@@ -1626,19 +1626,19 @@ void PerDrawStereoOverrideCommand::run(CommandListState *state)
             // generally only useful to use convergence=0 to move
             // something to infinity, and in that case it won't
             // matter.
-            set_stereo_value(state, val * saved);
+            SetStereoValue(state, val * saved);
         }
     }
     else {
         if (staging_type) {
-            if (!update_val(state))
+            if (!UpdateVal(state))
                 return;
         }
         else
             val = expression.evaluate(state);
 
-        COMMAND_LIST_LOG(state, "  Setting %s = %f\n", stereo_param_name(), val);
-        set_stereo_value(state, val);
+        COMMAND_LIST_LOG(state, "  Setting %s = %f\n", StereoParamName(), val);
+        SetStereoValue(state, val);
     }
 }
 
@@ -1649,7 +1649,7 @@ bool PerDrawStereoOverrideCommand::optimise(D3D9Wrapper::IDirect3DDevice9 *devic
     return expression.optimise(device);
 }
 
-bool PerDrawStereoOverrideCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
+bool PerDrawStereoOverrideCommand::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
     NvU8 enabled = false;
 
@@ -1658,15 +1658,15 @@ bool PerDrawStereoOverrideCommand::noop(bool post, bool ignore_cto_pre, bool ign
     return !enabled;
 }
 
-void DirectModeSetActiveEyeCommand::run(CommandListState *state)
+void DirectModeSetActiveEyeCommand::Run(CommandListState *state)
 {
     COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-    if (NVAPI_OK != Profiling::NvAPI_Stereo_SetActiveEye(state->mHackerDevice->mStereoHandle, eye))
+    if (NVAPI_OK != Profiling::NvAPI_Stereo_SetActiveEye(state->hackerDevice->stereoHandle, eye))
         COMMAND_LIST_LOG(state, "  Stereo_SetActiveEye failed\n");
 }
 
-bool DirectModeSetActiveEyeCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
+bool DirectModeSetActiveEyeCommand::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
     NvU8 enabled = false;
 
@@ -1678,37 +1678,37 @@ bool DirectModeSetActiveEyeCommand::noop(bool post, bool ignore_cto_pre, bool ig
     // if only nvapi provided a GetDriverMode() API to determine that
 }
 
-float PerDrawSeparationOverrideCommand::get_stereo_value(CommandListState *state)
+float PerDrawSeparationOverrideCommand::GetStereoValue(CommandListState *state)
 {
     float ret = 0.0f;
 
-    if (NVAPI_OK != GetSeparation(state->mHackerDevice, state->cachedStereoValues, &ret))//        state->mHackerDevice->GetSeparation(&ret))//Profiling::NvAPI_Stereo_GetSeparation(state->mHackerDevice->mStereoHandle, &ret))
+    if (NVAPI_OK != GetSeparation(state->hackerDevice, state->cachedStereoValues, &ret))//        state->hackerDevice->GetSeparation(&ret))//Profiling::NvAPI_Stereo_GetSeparation(state->hackerDevice->stereoHandle, &ret))
         COMMAND_LIST_LOG(state, "  Stereo_GetSeparation failed\n");
 
     return ret;
 }
 
-void PerDrawSeparationOverrideCommand::set_stereo_value(CommandListState *state, float val)
+void PerDrawSeparationOverrideCommand::SetStereoValue(CommandListState *state, float val)
 {
     NvAPIOverride();
-    if (NVAPI_OK != SetSeparation(state->mHackerDevice, state->cachedStereoValues, val))//state->mHackerDevice->SetSeparation(val))//Profiling::NvAPI_Stereo_SetSeparation(state->mHackerDevice->mStereoHandle, val))
+    if (NVAPI_OK != SetSeparation(state->hackerDevice, state->cachedStereoValues, val))//state->hackerDevice->SetSeparation(val))//Profiling::NvAPI_Stereo_SetSeparation(state->hackerDevice->stereoHandle, val))
         COMMAND_LIST_LOG(state, "  Stereo_SetSeparation failed\n");
 }
 
-float PerDrawConvergenceOverrideCommand::get_stereo_value(CommandListState *state)
+float PerDrawConvergenceOverrideCommand::GetStereoValue(CommandListState *state)
 {
     float ret = 0.0f;
 
-    if (NVAPI_OK != GetConvergence(state->mHackerDevice, state->cachedStereoValues, &ret))//state->mHackerDevice->GetConvergence(&ret))//Profiling::NvAPI_Stereo_GetConvergence(state->mHackerDevice->mStereoHandle, &ret))
+    if (NVAPI_OK != GetConvergence(state->hackerDevice, state->cachedStereoValues, &ret))//state->hackerDevice->GetConvergence(&ret))//Profiling::NvAPI_Stereo_GetConvergence(state->hackerDevice->stereoHandle, &ret))
         COMMAND_LIST_LOG(state, "  Stereo_GetConvergence failed\n");
 
     return ret;
 }
 
-void PerDrawConvergenceOverrideCommand::set_stereo_value(CommandListState *state, float val)
+void PerDrawConvergenceOverrideCommand::SetStereoValue(CommandListState *state, float val)
 {
     NvAPIOverride();
-    if (NVAPI_OK != SetConvergence(state->mHackerDevice, state->cachedStereoValues, val))//state->mHackerDevice->SetConvergence(val))//Profiling::NvAPI_Stereo_SetConvergence(state->mHackerDevice->mStereoHandle, val))
+    if (NVAPI_OK != SetConvergence(state->hackerDevice, state->cachedStereoValues, val))//state->hackerDevice->SetConvergence(val))//Profiling::NvAPI_Stereo_SetConvergence(state->hackerDevice->stereoHandle, val))
         COMMAND_LIST_LOG(state, "  Stereo_SetConvergence failed\n");
 }
 
@@ -1730,14 +1730,14 @@ FrameAnalysisChangeOptionsCommand::FrameAnalysisChangeOptionsCommand(wstring *va
     delete[] buf;
 }
 
-void FrameAnalysisChangeOptionsCommand::run(CommandListState *state)
+void FrameAnalysisChangeOptionsCommand::Run(CommandListState *state)
 {
     COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
-    state->mHackerDevice->FrameAnalysisTrigger(analyse_options);
+    state->hackerDevice->FrameAnalysisTrigger(analyse_options);
 }
 
-bool FrameAnalysisChangeOptionsCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
+bool FrameAnalysisChangeOptionsCommand::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
     return (G->hunting == HUNTING_MODE_DISABLED || G->frame_analysis_registered == false);
 }
@@ -1783,7 +1783,7 @@ static void FillInMissingInfo(CommandListState *state, IDirect3DResource9 *resou
         if (!*stride) {
             if (vbuf_desc.FVF == 0) {
                 IDirect3DVertexDeclaration9 *vd = NULL;
-                state->mOrigDevice->GetVertexDeclaration(&vd);
+                state->origDevice->GetVertexDeclaration(&vd);
                 if (vd)
                     strideForVertexDeclaration(vd, stride);
             }
@@ -1837,7 +1837,7 @@ static void FillInMissingInfo(CommandListState *state, IDirect3DResource9 *resou
             *stride = d3d_format_bytes(*format);
     }
 }
-void FrameAnalysisDumpCommand::run(CommandListState *state)
+void FrameAnalysisDumpCommand::Run(CommandListState *state)
 {
     IDirect3DResource9 *resource = NULL;
     UINT stride = 0;
@@ -1864,13 +1864,13 @@ void FrameAnalysisDumpCommand::run(CommandListState *state)
     FillInMissingInfo(state, resource, &stride, &offset, &buf_size, &format);
     if (wrapper)
         info = &wrapper->resourceHandleInfo;
-    state->mHackerDevice->FrameAnalysisDump(resource, analyse_options, target_name.c_str(), format, stride, offset, info);
+    state->hackerDevice->FrameAnalysisDump(resource, analyse_options, target_name.c_str(), format, stride, offset, info);
 
     if (resource)
         resource->Release();
 }
 
-bool FrameAnalysisDumpCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
+bool FrameAnalysisDumpCommand::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
     return (G->hunting == HUNTING_MODE_DISABLED || G->frame_analysis_registered == false);
 }
@@ -1886,33 +1886,33 @@ UpscalingFlipBBCommand::~UpscalingFlipBBCommand()
     G->upscaling_command_list_using_explicit_bb_flip = false;
 }
 
-void UpscalingFlipBBCommand::run(CommandListState *state)
+void UpscalingFlipBBCommand::Run(CommandListState *state)
 {
     COMMAND_LIST_LOG(state, "[%S] special = upscaling_switch_bb\n", ini_section.c_str());
     G->bb_is_upscaling_bb = false;
 }
 
-void Draw3DMigotoOverlayCommand::run(CommandListState *state)
+void Draw3DMigotoOverlayCommand::Run(CommandListState *state)
 {
     COMMAND_LIST_LOG(state, "[%S] special = draw_3dmigoto_overlay\n", ini_section.c_str());
-    if (state->mHackerDevice->getOverlay()) {
-        state->mHackerDevice->getOverlay()->DrawOverlay();
+    if (state->hackerDevice->getOverlay()) {
+        state->hackerDevice->getOverlay()->DrawOverlay();
         G->suppress_overlay = true;
     }
 }
 
 CustomShader::CustomShader() :
-    vs_override(false),
-    ps_override(false),
+    vsOverride(false),
+    psOverride(false),
     vs(NULL),
     ps(NULL),
-    vs_bytecode(NULL),
-    ps_bytecode(NULL),
+    vsBytecode(NULL),
+    psBytecode(NULL),
     blend_override(0), blend_state(NULL),
     blend_sample_mask_merge_mask(0xffffffff),
     depth_stencil_override(0), depth_stencil_state(NULL),
     stencil_ref_mask(~0),
-    rs_override(0), rs_state(NULL),
+    rsOverride(0), rs_state(NULL),
     alpha_test_override(0),
     alpha_test_state(NULL),
     primitive_type(D3DPRIMITIVETYPE(-1)),
@@ -1922,7 +1922,7 @@ CustomShader::CustomShader() :
     executions_this_frame(0),
     sampler_override(0),
     sampler_states(),
-    mHackerDevice(NULL),
+    hackerDevice(NULL),
     enable_timer(false),
     run_interval(chrono::milliseconds(0)),
     last_time_run(chrono::high_resolution_clock::now()),
@@ -1942,14 +1942,14 @@ CustomShader::~CustomShader()
     if (vs) {
         vs->Release();
         vs = NULL;
-        if (mHackerDevice)
-            mHackerDevice->migotoResourceCount--;
+        if (hackerDevice)
+            hackerDevice->migotoResourceCount--;
     }
     if (ps) {
         ps->Release();
         ps = NULL;
-        if (mHackerDevice)
-            mHackerDevice->migotoResourceCount--;
+        if (hackerDevice)
+            hackerDevice->migotoResourceCount--;
     }
     LeaveCriticalSection(&G->mCriticalSection);
     if (blend_state)
@@ -1960,10 +1960,10 @@ CustomShader::~CustomShader()
     if (rs_state)
         rs_state->~ID3D9RasterizerState();
 
-    if (vs_bytecode)
-        vs_bytecode->Release();
-    if (ps_bytecode)
-        ps_bytecode->Release();
+    if (vsBytecode)
+        vsBytecode->Release();
+    if (psBytecode)
+        psBytecode->Release();
     map<UINT, ID3D9SamplerState*>::iterator it;
     for (it = sampler_states.begin(); it != sampler_states.end(); it++)
     {
@@ -2016,7 +2016,7 @@ static const D3D_SHADER_MACRO ps_macros[] = { "PIXEL_SHADER", "", NULL, NULL };
 
 // This is similar to the other compile routines, but still distinct enough to
 // get it's own function for now - TODO: Refactor out the common code
-bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, const wstring *namespace_path)
+bool CustomShader::Compile(char type, wchar_t *filename, const wstring *wname, const wstring *namespace_path)
 {
     wchar_t wpath[MAX_PATH], cache_path[MAX_PATH];
     char apath[MAX_PATH];
@@ -2035,14 +2035,14 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 
     switch (type) {
     case 'v':
-        ppBytecode = &vs_bytecode;
+        ppBytecode = &vsBytecode;
         macros = vs_macros;
-        vs_override = true;
+        vsOverride = true;
         break;
     case 'p':
-        ppBytecode = &ps_bytecode;
+        ppBytecode = &psBytecode;
         macros = ps_macros;
-        ps_override = true;
+        psOverride = true;
         break;
     default:
         // Should not happen
@@ -2162,113 +2162,113 @@ void CreateBlendState(D3D9_BLEND_DESC pBlendDesc, ID3D9BlendState ** ppBlendStat
 {
     *ppBlendState = new ID3D9BlendState(pBlendDesc);
 };
-void GetAlphaTestState(IDirect3DDevice9 * mOrigDevice, ID3D9AlphaTestState ** ppAlphaTestState)
+void GetAlphaTestState(IDirect3DDevice9 * origDevice, ID3D9AlphaTestState ** ppAlphaTestState)
 {
     D3D9_ALPHATEST_DESC pDesc;
     DWORD pValue;
-    mOrigDevice->GetRenderState(D3DRS_ALPHAFUNC, &pValue);
+    origDevice->GetRenderState(D3DRS_ALPHAFUNC, &pValue);
     pDesc.alpha_func = (D3DCMPFUNC)pValue;
-    mOrigDevice->GetRenderState(D3DRS_ALPHAREF, &pValue);
+    origDevice->GetRenderState(D3DRS_ALPHAREF, &pValue);
     pDesc.alpha_ref = (DWORD)pValue;
-    mOrigDevice->GetRenderState(D3DRS_ALPHATESTENABLE, &pValue);
+    origDevice->GetRenderState(D3DRS_ALPHATESTENABLE, &pValue);
     pDesc.alpha_test_enable = (BOOL)pValue;
 
     *ppAlphaTestState = new ID3D9AlphaTestState(pDesc);
 
 };
-void GetDepthStencilState(IDirect3DDevice9 * mOrigDevice, ID3D9DepthStencilState ** ppDepthStencilState)
+void GetDepthStencilState(IDirect3DDevice9 * origDevice, ID3D9DepthStencilState ** ppDepthStencilState)
 {
     D3D9_DEPTH_STENCIL_DESC pDesc;
     DWORD pValue;
-    mOrigDevice->GetRenderState(D3DRS_STENCILENABLE, &pValue);
+    origDevice->GetRenderState(D3DRS_STENCILENABLE, &pValue);
     BOOL stencil_enable = (pValue != 0);
     pDesc.stencil_enable = stencil_enable;
-    mOrigDevice->GetRenderState(D3DRS_STENCILFAIL, &pValue);
+    origDevice->GetRenderState(D3DRS_STENCILFAIL, &pValue);
     pDesc.stencil_fail = (D3DSTENCILOP)pValue;
-    mOrigDevice->GetRenderState(D3DRS_STENCILZFAIL, &pValue);
+    origDevice->GetRenderState(D3DRS_STENCILZFAIL, &pValue);
     pDesc.stencil_z_fail = (D3DSTENCILOP)pValue;
-    mOrigDevice->GetRenderState(D3DRS_STENCILPASS, &pValue);
+    origDevice->GetRenderState(D3DRS_STENCILPASS, &pValue);
     pDesc.stencil_pass = (D3DSTENCILOP)pValue;
-    mOrigDevice->GetRenderState(D3DRS_STENCILFUNC, &pValue);
+    origDevice->GetRenderState(D3DRS_STENCILFUNC, &pValue);
     pDesc.stencil_func = (D3DCMPFUNC)pValue;
-    mOrigDevice->GetRenderState(D3DRS_STENCILREF, &pValue);
+    origDevice->GetRenderState(D3DRS_STENCILREF, &pValue);
     pDesc.stencil_ref = (UINT)pValue;
-    mOrigDevice->GetRenderState(D3DRS_STENCILMASK, &pValue);
+    origDevice->GetRenderState(D3DRS_STENCILMASK, &pValue);
     pDesc.stencil_mask = pValue;
-    mOrigDevice->GetRenderState(D3DRS_STENCILWRITEMASK, &pValue);
+    origDevice->GetRenderState(D3DRS_STENCILWRITEMASK, &pValue);
     pDesc.stencil_write_mask = pValue;
 
-    mOrigDevice->GetRenderState(D3DRS_ZENABLE, &pValue);
+    origDevice->GetRenderState(D3DRS_ZENABLE, &pValue);
     BOOL z_enable = (pValue != 0);
     pDesc.z_enable = z_enable;
-    mOrigDevice->GetRenderState(D3DRS_ZWRITEENABLE, &pValue);
+    origDevice->GetRenderState(D3DRS_ZWRITEENABLE, &pValue);
     BOOL z_write_enable = (pValue != 0);
     pDesc.z_write_enable = z_write_enable;
-    mOrigDevice->GetRenderState(D3DRS_ZFUNC, &pValue);
+    origDevice->GetRenderState(D3DRS_ZFUNC, &pValue);
     pDesc.z_func = (D3DCMPFUNC)pValue;
-    mOrigDevice->GetRenderState(D3DRS_TWOSIDEDSTENCILMODE, &pValue);
+    origDevice->GetRenderState(D3DRS_TWOSIDEDSTENCILMODE, &pValue);
     BOOL two_sided_stencil_mode = (pValue != 0);
     pDesc.two_sided_stencil_mode = two_sided_stencil_mode;
-    mOrigDevice->GetRenderState(D3DRS_CCW_STENCILFAIL, &pValue);
+    origDevice->GetRenderState(D3DRS_CCW_STENCILFAIL, &pValue);
     pDesc.ccw_stencil_fail = (D3DSTENCILOP)pValue;
-    mOrigDevice->GetRenderState(D3DRS_CCW_STENCILZFAIL, &pValue);
+    origDevice->GetRenderState(D3DRS_CCW_STENCILZFAIL, &pValue);
     pDesc.ccw_stencil_z_fail = (D3DSTENCILOP)pValue;
-    mOrigDevice->GetRenderState(D3DRS_CCW_STENCILPASS, &pValue);
+    origDevice->GetRenderState(D3DRS_CCW_STENCILPASS, &pValue);
     pDesc.ccw_stencil_pass = (D3DSTENCILOP)pValue;
-    mOrigDevice->GetRenderState(D3DRS_CCW_STENCILFUNC, &pValue);
+    origDevice->GetRenderState(D3DRS_CCW_STENCILFUNC, &pValue);
     pDesc.ccw_stencil_func = (D3DCMPFUNC)pValue;
-    mOrigDevice->GetRenderState(D3DRS_DEPTHBIAS, &pValue);
+    origDevice->GetRenderState(D3DRS_DEPTHBIAS, &pValue);
     pDesc.depth_bias = (UINT)pValue;
 
     *ppDepthStencilState = new ID3D9DepthStencilState(pDesc);
 
 };
-void SetRSState(IDirect3DDevice9 * mOrigDevice, ID3D9RasterizerState * pRasterizerStateState)
+void SetRSState(IDirect3DDevice9 * origDevice, ID3D9RasterizerState * pRasterizerStateState)
 {
 
     D3D9_RASTERIZER_DESC pDesc;
     pRasterizerStateState->GetDesc(&pDesc);
-    mOrigDevice->SetRenderState(D3DRS_FILLMODE, pDesc.fill_mode);
-    mOrigDevice->SetRenderState(D3DRS_ANTIALIASEDLINEENABLE, pDesc.anti_aliased_line_enable);
-    mOrigDevice->SetRenderState(D3DRS_CLIPPING, pDesc.clipping);
-    mOrigDevice->SetRenderState(D3DRS_CULLMODE, pDesc.cull_mode);
-    mOrigDevice->SetRenderState(D3DRS_DEPTHBIAS, pDesc.depth_bias);
-    mOrigDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, pDesc.scissor_test_enable);
-    mOrigDevice->SetRenderState(D3DRS_SLOPESCALEDEPTHBIAS, pDesc.slope_scale_depth_bias);
-    mOrigDevice->SetRenderState(D3DRS_CLIPPLANEENABLE, pDesc.clip_plane_enable);
-    mOrigDevice->SetRenderState(D3DRS_MULTISAMPLEANTIALIAS, pDesc.multisample_antialias);
+    origDevice->SetRenderState(D3DRS_FILLMODE, pDesc.fill_mode);
+    origDevice->SetRenderState(D3DRS_ANTIALIASEDLINEENABLE, pDesc.anti_aliased_line_enable);
+    origDevice->SetRenderState(D3DRS_CLIPPING, pDesc.clipping);
+    origDevice->SetRenderState(D3DRS_CULLMODE, pDesc.cull_mode);
+    origDevice->SetRenderState(D3DRS_DEPTHBIAS, pDesc.depth_bias);
+    origDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, pDesc.scissor_test_enable);
+    origDevice->SetRenderState(D3DRS_SLOPESCALEDEPTHBIAS, pDesc.slope_scale_depth_bias);
+    origDevice->SetRenderState(D3DRS_CLIPPLANEENABLE, pDesc.clip_plane_enable);
+    origDevice->SetRenderState(D3DRS_MULTISAMPLEANTIALIAS, pDesc.multisample_antialias);
 }
-void SetAlphaTestState(IDirect3DDevice9 * mOrigDevice, ID3D9AlphaTestState * pAlphaTestState)
+void SetAlphaTestState(IDirect3DDevice9 * origDevice, ID3D9AlphaTestState * pAlphaTestState)
 {
     D3D9_ALPHATEST_DESC pDesc;
     pAlphaTestState->GetDesc(&pDesc);
-    mOrigDevice->SetRenderState(D3DRS_ALPHAREF, pDesc.alpha_ref);
-    mOrigDevice->SetRenderState(D3DRS_ALPHATESTENABLE, pDesc.alpha_test_enable);
-    mOrigDevice->SetRenderState(D3DRS_ALPHAFUNC, pDesc.alpha_func);
+    origDevice->SetRenderState(D3DRS_ALPHAREF, pDesc.alpha_ref);
+    origDevice->SetRenderState(D3DRS_ALPHATESTENABLE, pDesc.alpha_test_enable);
+    origDevice->SetRenderState(D3DRS_ALPHAFUNC, pDesc.alpha_func);
 }
-void SetDepthStencilState(IDirect3DDevice9 * mOrigDevice, ID3D9DepthStencilState * pDepthStencilState)
+void SetDepthStencilState(IDirect3DDevice9 * origDevice, ID3D9DepthStencilState * pDepthStencilState)
 {
 
     D3D9_DEPTH_STENCIL_DESC pDesc;
     pDepthStencilState->GetDesc(&pDesc);
-    mOrigDevice->SetRenderState(D3DRS_STENCILENABLE, pDesc.stencil_enable);
-    mOrigDevice->SetRenderState(D3DRS_STENCILFAIL, pDesc.stencil_fail);
-    mOrigDevice->SetRenderState(D3DRS_STENCILZFAIL, pDesc.stencil_z_fail);
-    mOrigDevice->SetRenderState(D3DRS_STENCILPASS, pDesc.stencil_pass);
-    mOrigDevice->SetRenderState(D3DRS_STENCILFUNC, pDesc.stencil_func);
-    mOrigDevice->SetRenderState(D3DRS_STENCILREF, pDesc.stencil_ref);
-    mOrigDevice->SetRenderState(D3DRS_STENCILMASK, pDesc.stencil_mask);
-    mOrigDevice->SetRenderState(D3DRS_STENCILWRITEMASK, pDesc.stencil_write_mask);
+    origDevice->SetRenderState(D3DRS_STENCILENABLE, pDesc.stencil_enable);
+    origDevice->SetRenderState(D3DRS_STENCILFAIL, pDesc.stencil_fail);
+    origDevice->SetRenderState(D3DRS_STENCILZFAIL, pDesc.stencil_z_fail);
+    origDevice->SetRenderState(D3DRS_STENCILPASS, pDesc.stencil_pass);
+    origDevice->SetRenderState(D3DRS_STENCILFUNC, pDesc.stencil_func);
+    origDevice->SetRenderState(D3DRS_STENCILREF, pDesc.stencil_ref);
+    origDevice->SetRenderState(D3DRS_STENCILMASK, pDesc.stencil_mask);
+    origDevice->SetRenderState(D3DRS_STENCILWRITEMASK, pDesc.stencil_write_mask);
 
-    mOrigDevice->SetRenderState(D3DRS_ZENABLE, pDesc.z_enable);
-    mOrigDevice->SetRenderState(D3DRS_ZWRITEENABLE, pDesc.z_write_enable);
-    mOrigDevice->SetRenderState(D3DRS_ZFUNC, pDesc.z_func);
-    mOrigDevice->SetRenderState(D3DRS_TWOSIDEDSTENCILMODE, pDesc.two_sided_stencil_mode);
-    mOrigDevice->SetRenderState(D3DRS_CCW_STENCILFAIL, pDesc.ccw_stencil_fail);
-    mOrigDevice->SetRenderState(D3DRS_CCW_STENCILZFAIL, pDesc.ccw_stencil_z_fail);
-    mOrigDevice->SetRenderState(D3DRS_CCW_STENCILPASS, pDesc.ccw_stencil_pass);
-    mOrigDevice->SetRenderState(D3DRS_CCW_STENCILFUNC, pDesc.ccw_stencil_func);
-    mOrigDevice->SetRenderState(D3DRS_DEPTHBIAS, pDesc.depth_bias);
+    origDevice->SetRenderState(D3DRS_ZENABLE, pDesc.z_enable);
+    origDevice->SetRenderState(D3DRS_ZWRITEENABLE, pDesc.z_write_enable);
+    origDevice->SetRenderState(D3DRS_ZFUNC, pDesc.z_func);
+    origDevice->SetRenderState(D3DRS_TWOSIDEDSTENCILMODE, pDesc.two_sided_stencil_mode);
+    origDevice->SetRenderState(D3DRS_CCW_STENCILFAIL, pDesc.ccw_stencil_fail);
+    origDevice->SetRenderState(D3DRS_CCW_STENCILZFAIL, pDesc.ccw_stencil_z_fail);
+    origDevice->SetRenderState(D3DRS_CCW_STENCILPASS, pDesc.ccw_stencil_pass);
+    origDevice->SetRenderState(D3DRS_CCW_STENCILFUNC, pDesc.ccw_stencil_func);
+    origDevice->SetRenderState(D3DRS_DEPTHBIAS, pDesc.depth_bias);
 }
 void CreateDepthStencilState(D3D9_DEPTH_STENCIL_DESC pDepthStencilDesc, ID3D9DepthStencilState ** pDepthStencilState)
 {
@@ -2282,23 +2282,23 @@ void CreateRasterizerState(D3D9_RASTERIZER_DESC desc, ID3D9RasterizerState **sta
 
     *state = new ID3D9RasterizerState(desc);
 }
-void CustomShader::substantiate(IDirect3DDevice9 *mOrigDevice, D3D9Wrapper::IDirect3DDevice9 *mDevice)
+void CustomShader::substantiate(IDirect3DDevice9 *origDevice, D3D9Wrapper::IDirect3DDevice9 *mDevice)
 {
     if (substantiated)
         return;
     substantiated = true;
 
-    mHackerDevice = mDevice;
+    hackerDevice = mDevice;
 
-    if (vs_bytecode) {
-        mOrigDevice->CreateVertexShader((DWORD*)vs_bytecode->GetBufferPointer(), &vs);
-        if (vs && mHackerDevice)
-            mHackerDevice->migotoResourceCount++;
+    if (vsBytecode) {
+        origDevice->CreateVertexShader((DWORD*)vsBytecode->GetBufferPointer(), &vs);
+        if (vs && hackerDevice)
+            hackerDevice->migotoResourceCount++;
     }
-    if (ps_bytecode) {
-        mOrigDevice->CreatePixelShader((DWORD*)ps_bytecode->GetBufferPointer(), &ps);
-        if (ps && mHackerDevice)
-            mHackerDevice->migotoResourceCount++;
+    if (psBytecode) {
+        origDevice->CreatePixelShader((DWORD*)psBytecode->GetBufferPointer(), &ps);
+        if (ps && hackerDevice)
+            hackerDevice->migotoResourceCount++;
     }
     if (blend_override == 1) // 2 will merge the blend state at draw time
         CreateBlendState(blend_desc, &blend_state);
@@ -2306,7 +2306,7 @@ void CustomShader::substantiate(IDirect3DDevice9 *mOrigDevice, D3D9Wrapper::IDir
     if (depth_stencil_override == 1) // 2 will merge depth/stencil state at draw time
         CreateDepthStencilState(depth_stencil_desc, &depth_stencil_state);
 
-    if (rs_override == 1) // 2 will merge rasterizer state at draw time
+    if (rsOverride == 1) // 2 will merge rasterizer state at draw time
         CreateRasterizerState(rs_desc, &rs_state);
 
     if (alpha_test_override == 1)
@@ -2339,7 +2339,7 @@ FLOAT getRGBAComponent(D3DCOLOR colour, int component) {
         return -1;
     }
 }
-void CustomShader::merge_blend_states(ID3D9BlendState *src_state, IDirect3DDevice9 *mOrigDevice)
+void CustomShader::merge_blend_states(ID3D9BlendState *src_state, IDirect3DDevice9 *origDevice)
 {
     D3D9_BLEND_DESC src_desc;
     int i;
@@ -2428,11 +2428,11 @@ void CustomShader::merge_depth_stencil_states(ID3D9DepthStencilState *src_state)
     CreateDepthStencilState(depth_stencil_desc, &depth_stencil_state);
 }
 
-void CustomShader::merge_rasterizer_states(ID3D9RasterizerState *src_state, IDirect3DDevice9 *mOrigDevice)
+void CustomShader::merge_rasterizer_states(ID3D9RasterizerState *src_state, IDirect3DDevice9 *origDevice)
 {
     D3D9_RASTERIZER_DESC src_desc;
 
-    if (rs_override != 2)
+    if (rsOverride != 2)
         return;
 
     if (rs_state)
@@ -2460,168 +2460,168 @@ void CustomShader::merge_rasterizer_states(ID3D9RasterizerState *src_state, IDir
     memcpy_masked_merge(&rs_desc, &src_desc, &rs_mask, sizeof(D3D9_RASTERIZER_DESC));
     CreateRasterizerState(rs_desc, &rs_state);
 }
-void _SetSamplerStates(IDirect3DDevice9 * mOrigDevice, D3D9_SAMPLER_DESC pDesc, UINT slot) {
-    mOrigDevice->SetSamplerState(slot, D3DSAMP_ADDRESSU, pDesc.address_u);
-    mOrigDevice->SetSamplerState(slot, D3DSAMP_ADDRESSV, pDesc.address_v);
-    mOrigDevice->SetSamplerState(slot, D3DSAMP_ADDRESSW, pDesc.address_w);
-    mOrigDevice->SetSamplerState(slot, D3DSAMP_BORDERCOLOR, pDesc.border_colour);
-    mOrigDevice->SetSamplerState(slot, D3DSAMP_MAXANISOTROPY, pDesc.max_anisotropy);
-    mOrigDevice->SetSamplerState(slot, D3DSAMP_MAXMIPLEVEL, pDesc.max_mip_level);
-    mOrigDevice->SetSamplerState(slot, D3DSAMP_MIPMAPLODBIAS, pDesc.mip_map_lod_bias);
-    mOrigDevice->SetSamplerState(slot, D3DSAMP_MINFILTER, pDesc.min_filter);
-    mOrigDevice->SetSamplerState(slot, D3DSAMP_MIPFILTER, pDesc.mip_filter);
-    mOrigDevice->SetSamplerState(slot, D3DSAMP_MAGFILTER, pDesc.mag_filter);
-    mOrigDevice->SetSamplerState(slot, D3DSAMP_SRGBTEXTURE, pDesc.srgb_texture);
-    mOrigDevice->SetSamplerState(slot, D3DSAMP_ELEMENTINDEX, pDesc.element_index);
-    mOrigDevice->SetSamplerState(slot, D3DSAMP_DMAPOFFSET, pDesc.dmap_offset);
+void _SetSamplerStates(IDirect3DDevice9 * origDevice, D3D9_SAMPLER_DESC pDesc, UINT slot) {
+    origDevice->SetSamplerState(slot, D3DSAMP_ADDRESSU, pDesc.address_u);
+    origDevice->SetSamplerState(slot, D3DSAMP_ADDRESSV, pDesc.address_v);
+    origDevice->SetSamplerState(slot, D3DSAMP_ADDRESSW, pDesc.address_w);
+    origDevice->SetSamplerState(slot, D3DSAMP_BORDERCOLOR, pDesc.border_colour);
+    origDevice->SetSamplerState(slot, D3DSAMP_MAXANISOTROPY, pDesc.max_anisotropy);
+    origDevice->SetSamplerState(slot, D3DSAMP_MAXMIPLEVEL, pDesc.max_mip_level);
+    origDevice->SetSamplerState(slot, D3DSAMP_MIPMAPLODBIAS, pDesc.mip_map_lod_bias);
+    origDevice->SetSamplerState(slot, D3DSAMP_MINFILTER, pDesc.min_filter);
+    origDevice->SetSamplerState(slot, D3DSAMP_MIPFILTER, pDesc.mip_filter);
+    origDevice->SetSamplerState(slot, D3DSAMP_MAGFILTER, pDesc.mag_filter);
+    origDevice->SetSamplerState(slot, D3DSAMP_SRGBTEXTURE, pDesc.srgb_texture);
+    origDevice->SetSamplerState(slot, D3DSAMP_ELEMENTINDEX, pDesc.element_index);
+    origDevice->SetSamplerState(slot, D3DSAMP_DMAPOFFSET, pDesc.dmap_offset);
 }
-void RunCustomShaderCommand::SetSamplerStates(::IDirect3DDevice9 * mOrigDevice, std::map<UINT, ID3D9SamplerState*> ss)
+void RunCustomShaderCommand::SetSamplerStates(::IDirect3DDevice9 * origDevice, std::map<UINT, ID3D9SamplerState*> ss)
 {
     map<UINT, ID3D9SamplerState*>::iterator it;
     for (it = ss.begin(); it != ss.end(); it++)
     {
         D3D9_SAMPLER_DESC pDesc;
         it->second->GetDesc(&pDesc);
-        _SetSamplerStates(mOrigDevice, pDesc, it->first);
+        _SetSamplerStates(origDevice, pDesc, it->first);
     }
 }
-void _GetSamplerStates(IDirect3DDevice9 * mOrigDevice, D3D9_SAMPLER_DESC *pDesc, UINT reg) {
+void _GetSamplerStates(IDirect3DDevice9 * origDevice, D3D9_SAMPLER_DESC *pDesc, UINT reg) {
     DWORD pValue;
-    mOrigDevice->GetSamplerState(reg, D3DSAMP_ADDRESSU, &pValue);
+    origDevice->GetSamplerState(reg, D3DSAMP_ADDRESSU, &pValue);
     pDesc->address_u = (D3DTEXTUREADDRESS)pValue;
-    mOrigDevice->GetSamplerState(reg, D3DSAMP_ADDRESSV, &pValue);
+    origDevice->GetSamplerState(reg, D3DSAMP_ADDRESSV, &pValue);
     pDesc->address_v = (D3DTEXTUREADDRESS)pValue;
-    mOrigDevice->GetSamplerState(reg, D3DSAMP_ADDRESSW, &pValue);
+    origDevice->GetSamplerState(reg, D3DSAMP_ADDRESSW, &pValue);
     pDesc->address_w = (D3DTEXTUREADDRESS)pValue;
-    mOrigDevice->GetSamplerState(reg, D3DSAMP_BORDERCOLOR, &pValue);
+    origDevice->GetSamplerState(reg, D3DSAMP_BORDERCOLOR, &pValue);
     pDesc->border_colour = (D3DCOLOR)pValue;
-    mOrigDevice->GetSamplerState(reg, D3DSAMP_MAXANISOTROPY, &pValue);
+    origDevice->GetSamplerState(reg, D3DSAMP_MAXANISOTROPY, &pValue);
     pDesc->max_anisotropy = pValue;
-    mOrigDevice->GetSamplerState(reg, D3DSAMP_MAXMIPLEVEL, &pValue);
+    origDevice->GetSamplerState(reg, D3DSAMP_MAXMIPLEVEL, &pValue);
     pDesc->max_mip_level = pValue;
-    mOrigDevice->GetSamplerState(reg, D3DSAMP_MIPMAPLODBIAS, &pValue);
+    origDevice->GetSamplerState(reg, D3DSAMP_MIPMAPLODBIAS, &pValue);
     pDesc->mip_map_lod_bias = pValue;
-    mOrigDevice->GetSamplerState(reg, D3DSAMP_MINFILTER, &pValue);
+    origDevice->GetSamplerState(reg, D3DSAMP_MINFILTER, &pValue);
     pDesc->min_filter = (D3DTEXTUREFILTERTYPE)pValue;
-    mOrigDevice->GetSamplerState(reg, D3DSAMP_MIPFILTER, &pValue);
+    origDevice->GetSamplerState(reg, D3DSAMP_MIPFILTER, &pValue);
     pDesc->mip_filter = (D3DTEXTUREFILTERTYPE)pValue;
-    mOrigDevice->GetSamplerState(reg, D3DSAMP_MAGFILTER, &pValue);
+    origDevice->GetSamplerState(reg, D3DSAMP_MAGFILTER, &pValue);
     pDesc->mag_filter = (D3DTEXTUREFILTERTYPE)pValue;
-    mOrigDevice->GetSamplerState(reg, D3DSAMP_SRGBTEXTURE, &pValue);
+    origDevice->GetSamplerState(reg, D3DSAMP_SRGBTEXTURE, &pValue);
     pDesc->srgb_texture = pValue;
-    mOrigDevice->GetSamplerState(reg, D3DSAMP_ELEMENTINDEX, &pValue);
+    origDevice->GetSamplerState(reg, D3DSAMP_ELEMENTINDEX, &pValue);
     pDesc->element_index = pValue;
-    mOrigDevice->GetSamplerState(reg, D3DSAMP_DMAPOFFSET, &pValue);
+    origDevice->GetSamplerState(reg, D3DSAMP_DMAPOFFSET, &pValue);
     pDesc->dmap_offset = pValue;
 
 }
-void RunCustomShaderCommand::GetSamplerStates(::IDirect3DDevice9 * mOrigDevice, std::map<UINT, ID3D9SamplerState*> *saved_sampler_states) {
+void RunCustomShaderCommand::GetSamplerStates(::IDirect3DDevice9 * origDevice, std::map<UINT, ID3D9SamplerState*> *saved_sampler_states) {
 
     map<UINT, ID3D9SamplerState*>::iterator it;
 
     for (it = custom_shader->sampler_states.begin(); it != custom_shader->sampler_states.end(); it++) {
         D3D9_SAMPLER_DESC pDesc;
-        _GetSamplerStates(mOrigDevice, &pDesc, it->first);
+        _GetSamplerStates(origDevice, &pDesc, it->first);
         saved_sampler_states->insert(std::pair<UINT, ID3D9SamplerState*>(it->first, new ID3D9SamplerState(pDesc)));
     }
 }
 
 
-void GetRSState(IDirect3DDevice9 * mOrigDevice, ID3D9RasterizerState ** ppRSState)
+void GetRSState(IDirect3DDevice9 * origDevice, ID3D9RasterizerState ** ppRSState)
 {
     D3D9_RASTERIZER_DESC pDesc;
     DWORD value;
-    mOrigDevice->GetRenderState(D3DRS_FILLMODE, &value);
+    origDevice->GetRenderState(D3DRS_FILLMODE, &value);
     pDesc.fill_mode = (D3DFILLMODE)value;
-    mOrigDevice->GetRenderState(D3DRS_ANTIALIASEDLINEENABLE, &value);
+    origDevice->GetRenderState(D3DRS_ANTIALIASEDLINEENABLE, &value);
     pDesc.anti_aliased_line_enable = value;
-    mOrigDevice->GetRenderState(D3DRS_CLIPPING, &value);
+    origDevice->GetRenderState(D3DRS_CLIPPING, &value);
     pDesc.clipping = value;
-    mOrigDevice->GetRenderState(D3DRS_CULLMODE, &value);
+    origDevice->GetRenderState(D3DRS_CULLMODE, &value);
     pDesc.cull_mode = (D3DCULL)value;
-    mOrigDevice->GetRenderState(D3DRS_DEPTHBIAS, &value);
+    origDevice->GetRenderState(D3DRS_DEPTHBIAS, &value);
     pDesc.depth_bias = value;
-    mOrigDevice->GetRenderState(D3DRS_SCISSORTESTENABLE, &value);
+    origDevice->GetRenderState(D3DRS_SCISSORTESTENABLE, &value);
     pDesc.scissor_test_enable = value;
-    mOrigDevice->GetRenderState(D3DRS_SLOPESCALEDEPTHBIAS, &value);
+    origDevice->GetRenderState(D3DRS_SLOPESCALEDEPTHBIAS, &value);
     pDesc.slope_scale_depth_bias = value;
-    mOrigDevice->GetRenderState(D3DRS_CLIPPLANEENABLE, &value);
+    origDevice->GetRenderState(D3DRS_CLIPPLANEENABLE, &value);
     pDesc.clip_plane_enable = value;
-    mOrigDevice->GetRenderState(D3DRS_MULTISAMPLEANTIALIAS, &value);
+    origDevice->GetRenderState(D3DRS_MULTISAMPLEANTIALIAS, &value);
     pDesc.multisample_antialias = (BOOL)value;
 
     *ppRSState = new ID3D9RasterizerState(pDesc);
 
 };
 
-void GetBlendState(IDirect3DDevice9 * mOrigDevice, ID3D9BlendState **ppBlendState, FLOAT* pBlendFactor)
+void GetBlendState(IDirect3DDevice9 * origDevice, ID3D9BlendState **ppBlendState, FLOAT* pBlendFactor)
 {
     D3D9_BLEND_DESC pDesc;
     DWORD pValue;
-    mOrigDevice->GetRenderState(D3DRS_ALPHABLENDENABLE, &pValue);
+    origDevice->GetRenderState(D3DRS_ALPHABLENDENABLE, &pValue);
     pDesc.alpha_blend_enable = pValue;
-    mOrigDevice->GetRenderState(D3DRS_BLENDOP, &pValue);
+    origDevice->GetRenderState(D3DRS_BLENDOP, &pValue);
     pDesc.blend_op = (D3DBLENDOP)pValue;
-    mOrigDevice->GetRenderState(D3DRS_BLENDOPALPHA, &pValue);
+    origDevice->GetRenderState(D3DRS_BLENDOPALPHA, &pValue);
     pDesc.blend_op_alpha = (D3DBLENDOP)pValue;
-    mOrigDevice->GetRenderState(D3DRS_COLORWRITEENABLE, &pValue);
+    origDevice->GetRenderState(D3DRS_COLORWRITEENABLE, &pValue);
     pDesc.color_write_enable = (DWORD)pValue;
-    mOrigDevice->GetRenderState(D3DRS_DESTBLENDALPHA, &pValue);
+    origDevice->GetRenderState(D3DRS_DESTBLENDALPHA, &pValue);
     pDesc.dest_blend_alpha = (D3DBLEND)pValue;
-    mOrigDevice->GetRenderState(D3DRS_DESTBLEND, &pValue);
+    origDevice->GetRenderState(D3DRS_DESTBLEND, &pValue);
     pDesc.dest_blend = (D3DBLEND)pValue;
-    mOrigDevice->GetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, &pValue);
+    origDevice->GetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, &pValue);
     pDesc.seperate_alpha_blend_enable = pValue;
-    mOrigDevice->GetRenderState(D3DRS_SRCBLEND, &pValue);
+    origDevice->GetRenderState(D3DRS_SRCBLEND, &pValue);
     pDesc.src_blend = (D3DBLEND)pValue;
-    mOrigDevice->GetRenderState(D3DRS_SRCBLENDALPHA, &pValue);
+    origDevice->GetRenderState(D3DRS_SRCBLENDALPHA, &pValue);
     pDesc.src_blend_alpha = (D3DBLEND)pValue;
-    mOrigDevice->GetRenderState(D3DRS_BLENDFACTOR, &pValue);
+    origDevice->GetRenderState(D3DRS_BLENDFACTOR, &pValue);
     pDesc.blend_factor = (D3DCOLOR)pValue;
     for (int i = 0; i < 4; i++) {
         pBlendFactor[i] = getRGBAComponent(pDesc.blend_factor, i);
 
     }
-    mOrigDevice->GetRenderState(D3DRS_TEXTUREFACTOR, &pValue);
+    origDevice->GetRenderState(D3DRS_TEXTUREFACTOR, &pValue);
     pDesc.texture_factor = (D3DCOLOR)pValue;
-    mOrigDevice->GetRenderState(D3DRS_COLORWRITEENABLE1, &pValue);
+    origDevice->GetRenderState(D3DRS_COLORWRITEENABLE1, &pValue);
     pDesc.color_write_enable1 = (DWORD)pValue;
-    mOrigDevice->GetRenderState(D3DRS_COLORWRITEENABLE2, &pValue);
+    origDevice->GetRenderState(D3DRS_COLORWRITEENABLE2, &pValue);
     pDesc.color_write_enable2 = (DWORD)pValue;
-    mOrigDevice->GetRenderState(D3DRS_COLORWRITEENABLE3, &pValue);
+    origDevice->GetRenderState(D3DRS_COLORWRITEENABLE3, &pValue);
     pDesc.color_write_enable3 = (DWORD)pValue;
-    mOrigDevice->GetRenderState(D3DRS_MULTISAMPLEMASK, &pValue);
+    origDevice->GetRenderState(D3DRS_MULTISAMPLEMASK, &pValue);
     pDesc.multisample_mask = (DWORD)pValue;
     *ppBlendState = new ID3D9BlendState(pDesc);
 
 };
 
-void SetBlendState(IDirect3DDevice9 * mOrigDevice, ID3D9BlendState *pBlendState, FLOAT BlendFactor[4])
+void SetBlendState(IDirect3DDevice9 * origDevice, ID3D9BlendState *pBlendState, FLOAT BlendFactor[4])
 {
     D3D9_BLEND_DESC pDesc;
     pBlendState->GetDesc(&pDesc);
-    mOrigDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, pDesc.alpha_blend_enable);
-    mOrigDevice->SetRenderState(D3DRS_BLENDOP, pDesc.blend_op);
-    mOrigDevice->SetRenderState(D3DRS_BLENDOPALPHA, pDesc.blend_op_alpha);
-    mOrigDevice->SetRenderState(D3DRS_COLORWRITEENABLE, pDesc.color_write_enable);
-    mOrigDevice->SetRenderState(D3DRS_DESTBLEND, pDesc.dest_blend);
-    mOrigDevice->SetRenderState(D3DRS_DESTBLENDALPHA, pDesc.dest_blend_alpha);
-    mOrigDevice->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, pDesc.seperate_alpha_blend_enable);
-    mOrigDevice->SetRenderState(D3DRS_SRCBLEND, pDesc.src_blend);
-    mOrigDevice->SetRenderState(D3DRS_SRCBLENDALPHA, pDesc.src_blend_alpha);
-    mOrigDevice->SetRenderState(D3DRS_BLENDFACTOR, D3DCOLOR_RGBA((int)BlendFactor[0], (int)BlendFactor[1], (int)BlendFactor[2], (int)BlendFactor[3]));
-    mOrigDevice->SetRenderState(D3DRS_MULTISAMPLEMASK, pDesc.multisample_mask);
+    origDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, pDesc.alpha_blend_enable);
+    origDevice->SetRenderState(D3DRS_BLENDOP, pDesc.blend_op);
+    origDevice->SetRenderState(D3DRS_BLENDOPALPHA, pDesc.blend_op_alpha);
+    origDevice->SetRenderState(D3DRS_COLORWRITEENABLE, pDesc.color_write_enable);
+    origDevice->SetRenderState(D3DRS_DESTBLEND, pDesc.dest_blend);
+    origDevice->SetRenderState(D3DRS_DESTBLENDALPHA, pDesc.dest_blend_alpha);
+    origDevice->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, pDesc.seperate_alpha_blend_enable);
+    origDevice->SetRenderState(D3DRS_SRCBLEND, pDesc.src_blend);
+    origDevice->SetRenderState(D3DRS_SRCBLENDALPHA, pDesc.src_blend_alpha);
+    origDevice->SetRenderState(D3DRS_BLENDFACTOR, D3DCOLOR_RGBA((int)BlendFactor[0], (int)BlendFactor[1], (int)BlendFactor[2], (int)BlendFactor[3]));
+    origDevice->SetRenderState(D3DRS_MULTISAMPLEMASK, pDesc.multisample_mask);
 
-    mOrigDevice->SetRenderState(D3DRS_TEXTUREFACTOR, pDesc.texture_factor);
-    mOrigDevice->SetRenderState(D3DRS_COLORWRITEENABLE1, pDesc.color_write_enable1);
-    mOrigDevice->SetRenderState(D3DRS_COLORWRITEENABLE2, pDesc.color_write_enable2);
-    mOrigDevice->SetRenderState(D3DRS_COLORWRITEENABLE3, pDesc.color_write_enable3);
-    mOrigDevice->SetRenderState(D3DRS_MULTISAMPLEMASK, pDesc.multisample_mask);
+    origDevice->SetRenderState(D3DRS_TEXTUREFACTOR, pDesc.texture_factor);
+    origDevice->SetRenderState(D3DRS_COLORWRITEENABLE1, pDesc.color_write_enable1);
+    origDevice->SetRenderState(D3DRS_COLORWRITEENABLE2, pDesc.color_write_enable2);
+    origDevice->SetRenderState(D3DRS_COLORWRITEENABLE3, pDesc.color_write_enable3);
+    origDevice->SetRenderState(D3DRS_MULTISAMPLEMASK, pDesc.multisample_mask);
 }
 
-void RunCustomShaderCommand::run(CommandListState *state)
+void RunCustomShaderCommand::Run(CommandListState *state)
 {
-    IDirect3DDevice9 *mOrigDevice = state->mOrigDevice;
+    IDirect3DDevice9 *origDevice = state->origDevice;
     IDirect3DVertexShader9 *saved_vs = NULL;
     IDirect3DPixelShader9 *saved_ps = NULL;
     ID3D9BlendState *saved_blend = NULL;
@@ -2658,7 +2658,7 @@ void RunCustomShaderCommand::run(CommandListState *state)
         }
     }
 
-    custom_shader->substantiate(mOrigDevice, state->mHackerDevice);
+    custom_shader->substantiate(origDevice, state->hackerDevice);
     state->m_activeStereoTextureStages.clear();
     // Assign custom shaders first before running the command lists, and
     // restore them last. This is so that if someone was injecting a
@@ -2667,33 +2667,33 @@ void RunCustomShaderCommand::run(CommandListState *state)
     // by calling the next shader in sequence from the command list after
     // the draw call.
 
-    if (custom_shader->vs_override) {
-        mOrigDevice->GetVertexShader(&saved_vs);
-        mOrigDevice->SetVertexShader(custom_shader->vs);
+    if (custom_shader->vsOverride) {
+        origDevice->GetVertexShader(&saved_vs);
+        origDevice->SetVertexShader(custom_shader->vs);
     }
-    if (custom_shader->ps_override) {
-        mOrigDevice->GetPixelShader(&saved_ps);
-        mOrigDevice->SetPixelShader(custom_shader->ps);
+    if (custom_shader->psOverride) {
+        origDevice->GetPixelShader(&saved_ps);
+        origDevice->SetPixelShader(custom_shader->ps);
     }
     if (custom_shader->blend_override) {
-        GetBlendState(mOrigDevice, &saved_blend, saved_blend_factor);
-        custom_shader->merge_blend_states(saved_blend, mOrigDevice);
-        SetBlendState(mOrigDevice, custom_shader->blend_state, custom_shader->blend_factor);
+        GetBlendState(origDevice, &saved_blend, saved_blend_factor);
+        custom_shader->merge_blend_states(saved_blend, origDevice);
+        SetBlendState(origDevice, custom_shader->blend_state, custom_shader->blend_factor);
     }
 
     if (custom_shader->alpha_test_override) {
-        GetAlphaTestState(mOrigDevice, &saved_ats);
-        SetAlphaTestState(mOrigDevice, custom_shader->alpha_test_state);
+        GetAlphaTestState(origDevice, &saved_ats);
+        SetAlphaTestState(origDevice, custom_shader->alpha_test_state);
     }
     if (custom_shader->depth_stencil_override) {
-        GetDepthStencilState(mOrigDevice, &saved_depth_stencil);
+        GetDepthStencilState(origDevice, &saved_depth_stencil);
         custom_shader->merge_depth_stencil_states(saved_depth_stencil);
-        SetDepthStencilState(mOrigDevice, custom_shader->depth_stencil_state);
+        SetDepthStencilState(origDevice, custom_shader->depth_stencil_state);
     }
-    if (custom_shader->rs_override) {
-        GetRSState(mOrigDevice, &saved_rs);
-        custom_shader->merge_rasterizer_states(saved_rs, mOrigDevice);
-        SetRSState(mOrigDevice, custom_shader->rs_state);
+    if (custom_shader->rsOverride) {
+        GetRSState(origDevice, &saved_rs);
+        custom_shader->merge_rasterizer_states(saved_rs, origDevice);
+        SetRSState(origDevice, custom_shader->rs_state);
     }
     DrawCallInfo c = DrawCallInfo(DrawCall::Invalid, custom_shader->primitive_type, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, D3DFMT_UNKNOWN, 0, NULL, NULL, NULL);
     if (state->call_info == NULL) {
@@ -2706,68 +2706,68 @@ void RunCustomShaderCommand::run(CommandListState *state)
             state->call_info->primitive_type = custom_shader->primitive_type;
     }
     if (custom_shader->sampler_override) {
-        GetSamplerStates(mOrigDevice, &saved_sampler_states);
-        SetSamplerStates(mOrigDevice, custom_shader->sampler_states);
+        GetSamplerStates(origDevice, &saved_sampler_states);
+        SetSamplerStates(origDevice, custom_shader->sampler_states);
     }
     // We save off the viewports unconditionally for now. We could
     // potentially skip this by flagging if a command list may alter them,
     // but that probably wouldn't buy us anything:
-    mOrigDevice->GetViewport(&saved_viewport);
+    origDevice->GetViewport(&saved_viewport);
     DWORD i;
     if (G->gForceStereo == 2) {
-        saved_dss_wrapper = state->mHackerDevice->m_pActiveDepthStencil;
-        saved_rtss_wrappers = state->mHackerDevice->m_activeRenderTargets;
+        saved_dss_wrapper = state->hackerDevice->m_pActiveDepthStencil;
+        saved_rtss_wrappers = state->hackerDevice->m_activeRenderTargets;
     }
     else
-        save_om_state(state->mOrigDevice, &om_state);
+        save_om_state(state->origDevice, &om_state);
     saved_post = state->post;
     state->post = false;
-    _RunCommandList(&custom_shader->command_list, state);
+    _run_command_list(&custom_shader->command_list, state);
     state->post = true;
-    _RunCommandList(&custom_shader->post_command_list, state);
+    _run_command_list(&custom_shader->post_command_list, state);
     state->post = saved_post;
     // Finally restore the original shaders
-    if (custom_shader->vs_override)
-        mOrigDevice->SetVertexShader(saved_vs);
-    if (custom_shader->ps_override)
-        mOrigDevice->SetPixelShader(saved_ps);
+    if (custom_shader->vsOverride)
+        origDevice->SetVertexShader(saved_vs);
+    if (custom_shader->psOverride)
+        origDevice->SetPixelShader(saved_ps);
     if (custom_shader->blend_override)
-        SetBlendState(mOrigDevice, saved_blend, saved_blend_factor);
+        SetBlendState(origDevice, saved_blend, saved_blend_factor);
     if (custom_shader->depth_stencil_override)
-        SetDepthStencilState(mOrigDevice, saved_depth_stencil);
-    if (custom_shader->rs_override)
-        SetRSState(mOrigDevice, saved_rs);
+        SetDepthStencilState(origDevice, saved_depth_stencil);
+    if (custom_shader->rsOverride)
+        SetRSState(origDevice, saved_rs);
     if (custom_shader->alpha_test_override)
-        SetAlphaTestState(mOrigDevice, saved_ats);
+        SetAlphaTestState(origDevice, saved_ats);
 
     if (saved_primitive_type != D3DPRIMITIVETYPE(-1))
         state->call_info->primitive_type = saved_primitive_type;
     else
         state->call_info = NULL;
     if (custom_shader->sampler_override)
-        SetSamplerStates(mOrigDevice, saved_sampler_states);
-    mOrigDevice->SetViewport(&saved_viewport);
+        SetSamplerStates(origDevice, saved_sampler_states);
+    origDevice->SetViewport(&saved_viewport);
     if (G->gForceStereo == 2) {
         if (saved_dss_wrapper) {
-            state->mHackerDevice->m_pActiveDepthStencil = saved_dss_wrapper;
-            if (state->mHackerDevice->currentRenderingSide == D3D9Wrapper::RenderPosition::Left)
-                mOrigDevice->SetDepthStencilSurface(saved_dss_wrapper->DirectModeGetLeft());
+            state->hackerDevice->m_pActiveDepthStencil = saved_dss_wrapper;
+            if (state->hackerDevice->currentRenderingSide == D3D9Wrapper::RenderPosition::Left)
+                origDevice->SetDepthStencilSurface(saved_dss_wrapper->DirectModeGetLeft());
             else
-                mOrigDevice->SetDepthStencilSurface(saved_dss_wrapper->DirectModeGetRight());
+                origDevice->SetDepthStencilSurface(saved_dss_wrapper->DirectModeGetRight());
         }
-        state->mHackerDevice->m_activeRenderTargets = saved_rtss_wrappers;
+        state->hackerDevice->m_activeRenderTargets = saved_rtss_wrappers;
         for (i = 0; i < saved_rtss_wrappers.size(); i++) {
             D3D9Wrapper::IDirect3DSurface9 *rts = saved_rtss_wrappers.at(i);
             if (rts) {
-                if (state->mHackerDevice->currentRenderingSide == D3D9Wrapper::RenderPosition::Left)
-                    mOrigDevice->SetRenderTarget(i, rts->DirectModeGetLeft());
+                if (state->hackerDevice->currentRenderingSide == D3D9Wrapper::RenderPosition::Left)
+                    origDevice->SetRenderTarget(i, rts->DirectModeGetLeft());
                 else
-                    mOrigDevice->SetRenderTarget(i, rts->DirectModeGetRight());
+                    origDevice->SetRenderTarget(i, rts->DirectModeGetRight());
             }
         }
     }
     else
-        restore_om_state(state->mOrigDevice, &om_state);
+        restore_om_state(state->origDevice, &om_state);
     if (saved_vs)
         saved_vs->Release();
     if (saved_ps)
@@ -2785,11 +2785,11 @@ void RunCustomShaderCommand::run(CommandListState *state)
     saved_sampler_states.clear();
 }
 
-bool RunCustomShaderCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
+bool RunCustomShaderCommand::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
     return (custom_shader->command_list.commands.empty() && custom_shader->post_command_list.commands.empty());
 }
-void RunExplicitCommandList::run(CommandListState *state)
+void RunExplicitCommandList::Run(CommandListState *state)
 {
     bool saved_post;
 
@@ -2798,18 +2798,18 @@ void RunExplicitCommandList::run(CommandListState *state)
     if (run_pre_and_post_together) {
         saved_post = state->post;
         state->post = false;
-        _RunCommandList(&command_list_section->command_list, state);
+        _run_command_list(&command_list_section->command_list, state);
         state->post = true;
-        _RunCommandList(&command_list_section->post_command_list, state);
+        _run_command_list(&command_list_section->post_command_list, state);
         state->post = saved_post;
     }
     else if (state->post)
-        _RunCommandList(&command_list_section->post_command_list, state);
+        _run_command_list(&command_list_section->post_command_list, state);
     else
-        _RunCommandList(&command_list_section->command_list, state);
+        _run_command_list(&command_list_section->command_list, state);
 }
 
-bool RunExplicitCommandList::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
+bool RunExplicitCommandList::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
     if (run_pre_and_post_together)
         return (command_list_section->command_list.commands.empty() && command_list_section->post_command_list.commands.empty());
@@ -2826,23 +2826,23 @@ void LinkCommandLists(CommandList *dst, CommandList *link, const wstring *ini_li
     dst->commands.push_back(std::shared_ptr<CommandListCommand>(operation));
 }
 
-void RunLinkedCommandList::run(CommandListState *state)
+void RunLinkedCommandList::Run(CommandListState *state)
 {
-    _RunCommandList(link, state, false);
+    _run_command_list(link, state, false);
 }
 
-bool RunLinkedCommandList::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
+bool RunLinkedCommandList::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
     return link->commands.empty();
 }
 
-void ReleaseCommandListDeviceResources(D3D9Wrapper::IDirect3DDevice9 * mHackerDevice)
+void ReleaseCommandListDeviceResources(D3D9Wrapper::IDirect3DDevice9 * hackerDevice)
 {
     EnterCriticalSection(&G->mCriticalSection);
     for (auto const& copyOp : resourceCopyOperations) {
         for (auto i = copyOp->resource_pool.cache.begin(); i != copyOp->resource_pool.cache.end(); /* not hoisted */ /* no increment */)
         {
-            if (i->first.second == mHackerDevice) {
+            if (i->first.second == hackerDevice) {
                 i->first.second->migotoResourceCount--;
                 if (i->second.resource) {
                     ULONG result = i->second.resource->Release();
@@ -2866,11 +2866,11 @@ void ReleaseCommandListDeviceResources(D3D9Wrapper::IDirect3DDevice9 * mHackerDe
         }
     }
 
-    for (CustomResources::iterator it = customResources.begin(); it != customResources.end(); ++it) {
+    for (CustomResources::iterator it = custom_resources.begin(); it != custom_resources.end(); ++it) {
 
         for (auto i = it->second.resource_pool.cache.begin(); i != it->second.resource_pool.cache.end(); /* not hoisted */ /* no increment */)
         {
-            if (i->first.second == mHackerDevice) {
+            if (i->first.second == hackerDevice) {
                 i->first.second->migotoResourceCount--;
                 if (i->second.resource) {
                     ULONG result = i->second.resource->Release();
@@ -2889,18 +2889,18 @@ void ReleaseCommandListDeviceResources(D3D9Wrapper::IDirect3DDevice9 * mHackerDe
             it->second.substantiated = false;
         }
     }
-    for (CustomShaders::iterator it = customShaders.begin(); it != customShaders.end(); ++it) {
-        if (it->second.mHackerDevice == mHackerDevice) {
+    for (CustomShaders::iterator it = custom_shaders.begin(); it != custom_shaders.end(); ++it) {
+        if (it->second.hackerDevice == hackerDevice) {
             if (it->second.ps) {
                 ULONG result = it->second.ps->Release();
                 LOG_DEBUG("Releasing Command List Device Resource, Pixel Shader, result = %d\n", result);
-                it->second.mHackerDevice->migotoResourceCount--;
+                it->second.hackerDevice->migotoResourceCount--;
                 it->second.ps = NULL;
             }
             if (it->second.vs) {
                 ULONG result = it->second.vs->Release();
                 LOG_DEBUG("Releasing Command List Device Resource, Vertex Shader, result = %d\n", result);
-                it->second.mHackerDevice->migotoResourceCount--;
+                it->second.hackerDevice->migotoResourceCount--;
                 it->second.vs = NULL;
             }
         }
@@ -2908,24 +2908,24 @@ void ReleaseCommandListDeviceResources(D3D9Wrapper::IDirect3DDevice9 * mHackerDe
     LeaveCriticalSection(&G->mCriticalSection);
 }
 
-void RecreateCommandListCustomShaders(D3D9Wrapper::IDirect3DDevice9 * mHackerDevice)
+void RecreateCommandListCustomShaders(D3D9Wrapper::IDirect3DDevice9 * hackerDevice)
 {
-    for (CustomShaders::iterator it = customShaders.begin(); it != customShaders.end(); ++it) {
-        if (it->second.mHackerDevice == mHackerDevice) {
+    for (CustomShaders::iterator it = custom_shaders.begin(); it != custom_shaders.end(); ++it) {
+        if (it->second.hackerDevice == hackerDevice) {
             HRESULT hr;
-            if (it->second.vs_bytecode) {
-                hr = it->second.mHackerDevice->GetD3D9Device()->CreateVertexShader((DWORD*)it->second.vs_bytecode->GetBufferPointer(), &it->second.vs);
+            if (it->second.vsBytecode) {
+                hr = it->second.hackerDevice->GetD3D9Device()->CreateVertexShader((DWORD*)it->second.vsBytecode->GetBufferPointer(), &it->second.vs);
                 if (FAILED(hr))
                     LOG_DEBUG("Recreate Command List Vertex Shader failed:= %d\n", hr);
-                if (it->second.vs && it->second.mHackerDevice)
-                    it->second.mHackerDevice->migotoResourceCount++;
+                if (it->second.vs && it->second.hackerDevice)
+                    it->second.hackerDevice->migotoResourceCount++;
             }
-            if (it->second.ps_bytecode) {
-                hr = it->second.mHackerDevice->GetD3D9Device()->CreatePixelShader((DWORD*)it->second.ps_bytecode->GetBufferPointer(), &it->second.ps);
+            if (it->second.psBytecode) {
+                hr = it->second.hackerDevice->GetD3D9Device()->CreatePixelShader((DWORD*)it->second.psBytecode->GetBufferPointer(), &it->second.ps);
                 if (FAILED(hr))
                     LOG_DEBUG("Recreate Command List Pixel Shader failed:= %d\n", hr);
-                if (it->second.ps && it->second.mHackerDevice)
-                    it->second.mHackerDevice->migotoResourceCount++;
+                if (it->second.ps && it->second.hackerDevice)
+                    it->second.hackerDevice->migotoResourceCount++;
             }
         }
     }
@@ -2938,7 +2938,7 @@ static void ProcessRTSize(CommandListState *state)
     if (state->rt_width != -1)
         return;
 
-    state->mOrigDevice->GetRenderTarget(0, &surface);
+    state->origDevice->GetRenderTarget(0, &surface);
 
     if (!surface)
         return;
@@ -2950,12 +2950,12 @@ static void ProcessRTSize(CommandListState *state)
 
     surface->Release();
 }
-static void UpdateScissorInfo(CommandListState *state)
+static void update_scissor_info(CommandListState *state)
 {
     if (state->scissor_valid)
         return;
 
-    state->mOrigDevice->GetScissorRect(&state->scissor_rect);
+    state->origDevice->GetScissorRect(&state->scissor_rect);
 
     state->scissor_valid = true;
 }
@@ -3030,7 +3030,7 @@ float CommandListOperandFloat::staging_op_val(CommandListState * state)
             depth = 0;
         }
         ++depth;*/
-        staging_op.unmap(state);
+        staging_op.Unmap(state);
 
         if (isnan(tmp)) {
             COMMAND_LIST_LOG(state, "  Disregarding NAN\n");
@@ -3046,19 +3046,19 @@ float CommandListOperandFloat::staging_op_val(CommandListState * state)
     }
 
     staging_op.staging = true;
-    staging_op.run(state);
+    staging_op.Run(state);
     return ret;
 }
 
-void CommandList::clear()
+void CommandList::Clear()
 {
     commands.clear();
     static_vars.clear();
 }
 
 CommandListState::CommandListState() :
-    mHackerDevice(NULL),
-    mOrigDevice(NULL),
+    hackerDevice(NULL),
+    origDevice(NULL),
     rt_width(-1),
     rt_height(-1),
     call_info(NULL),
@@ -3089,7 +3089,7 @@ CommandListState::~CommandListState()
 
 }
 
-static void UpdateWindowInfo(CommandListState *state)
+static void update_window_info(CommandListState *state)
 {
     if (state->window_rect.right)
         return;
@@ -3099,7 +3099,7 @@ static void UpdateWindowInfo(CommandListState *state)
     else
         LOG_DEBUG("UpdateWindowInfo: No hWnd\n");
 }
-static void UpdateCursorInfo(CommandListState *state)
+static void update_cursor_info(CommandListState *state)
 {
     if (state->cursor_info.cbSize)
         return;
@@ -3114,12 +3114,12 @@ static void UpdateCursorInfo(CommandListState *state)
         LOG_DEBUG("UpdateCursorInfo: No hWnd\n");
 }
 
-static void UpdateCursorInfoEx(CommandListState *state)
+static void update_cursor_info_ex(CommandListState *state)
 {
     if (state->cursor_info_ex.hbmMask)
         return;
 
-    UpdateCursorInfo(state);
+    update_cursor_info(state);
 
     GetIconInfo(state->cursor_info.hCursor, &state->cursor_info_ex);
 }
@@ -3127,7 +3127,7 @@ static void UpdateCursorInfoEx(CommandListState *state)
 // Uses an undocumented Windows API to get info about animated cursors and
 // calculate the current frame based on the global tick count
 // https://stackoverflow.com/questions/6969801/how-do-i-determine-if-the-current-mouse-cursor-is-animated
-static unsigned GetCursorFrame(HCURSOR cursor)
+static unsigned get_cursor_frame(HCURSOR cursor)
 {
     typedef HCURSOR(WINAPI* GET_CURSOR_FRAME_INFO)(HCURSOR, LPCWSTR, DWORD, DWORD*, DWORD*);
     static GET_CURSOR_FRAME_INFO fnGetCursorFrameInfo = NULL;
@@ -3197,7 +3197,7 @@ static void _CreateTextureFromBitmap(HDC dc, BITMAP *bitmap_obj,
         LOG_INFO("Software Mouse: GetDIBits() failed\n");
         goto err_free;
     }
-    hr = state->mOrigDevice->CreateTexture(bitmap_obj->bmWidth, bitmap_obj->bmHeight, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, tex, NULL);
+    hr = state->origDevice->CreateTexture(bitmap_obj->bmWidth, bitmap_obj->bmHeight, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, tex, NULL);
     if (FAILED(hr)) {
         LOG_INFO("Software Mouse: CreateTexture Failed: 0x%x\n", hr);
         goto err_free;
@@ -3265,7 +3265,7 @@ static void CreateTextureFromAnimatedCursor(
         goto out_delete_mem_dc;
     }
 
-    frame = GetCursorFrame(cursor);
+    frame = get_cursor_frame(cursor);
 
     // To get a frame from an animated cursor we have to use DrawIconEx to
     // draw it to another bitmap, then we can create a texture from that
@@ -3286,7 +3286,7 @@ out_delete_mem_dc:
     DeleteDC(dc_mem);
 }
 
-static void UpdateCursorResources(CommandListState *state)
+static void update_cursor_resources(CommandListState *state)
 {
     HDC dc;
     Profiling::State profiling_state;
@@ -3296,22 +3296,22 @@ static void UpdateCursorResources(CommandListState *state)
     //it changes. Naturally this won't work with animated cursors (although possibly software already), and
     //perhaps a better approach would be to use a resource pool to capture all possible states of the cursor instead.
 
-    if (!G->CURSOR_UPDATE_REQUIRED() && (state->mHackerDevice->cursor_mask_tex || state->mHackerDevice->cursor_color_tex))
+    if (!G->CURSOR_UPDATE_REQUIRED() && (state->hackerDevice->cursor_mask_tex || state->hackerDevice->cursor_color_tex))
         return;
     G->SET_CURSOR_UPDATE_REQUIRED(0);
-    if (state->mHackerDevice->cursor_mask_tex) {
-        state->mHackerDevice->cursor_mask_tex->Release();
-        state->mHackerDevice->cursor_mask_tex = NULL;
+    if (state->hackerDevice->cursor_mask_tex) {
+        state->hackerDevice->cursor_mask_tex->Release();
+        state->hackerDevice->cursor_mask_tex = NULL;
     }
-    if (state->mHackerDevice->cursor_color_tex) {
-        state->mHackerDevice->cursor_color_tex->Release();
-        state->mHackerDevice->cursor_color_tex = NULL;
+    if (state->hackerDevice->cursor_color_tex) {
+        state->hackerDevice->cursor_color_tex->Release();
+        state->hackerDevice->cursor_color_tex = NULL;
     }
 
     if (Profiling::mode == Profiling::Mode::SUMMARY)
         Profiling::start(&profiling_state);
 
-    UpdateCursorInfoEx(state);
+    update_cursor_info_ex(state);
 
     // XXX: Should maybe be the device context for the window?
     dc = GetDC(NULL);
@@ -3329,7 +3329,7 @@ static void UpdateCursorResources(CommandListState *state)
             DI_IMAGE,
             state->cursor_info_ex.hbmColor,
             state,
-            &state->mHackerDevice->cursor_color_tex);
+            &state->hackerDevice->cursor_color_tex);
 
         if (state->cursor_info_ex.hbmMask) {
             // Since it's a colour cursor the mask bitmap will be
@@ -3341,7 +3341,7 @@ static void UpdateCursorResources(CommandListState *state)
                 DI_MASK,
                 state->cursor_info_ex.hbmMask,
                 state,
-                &state->mHackerDevice->cursor_mask_tex);
+                &state->hackerDevice->cursor_mask_tex);
         }
     }
     else if (state->cursor_info_ex.hbmMask) {
@@ -3352,7 +3352,7 @@ static void UpdateCursorResources(CommandListState *state)
             dc,
             state->cursor_info_ex.hbmMask,
             state,
-            &state->mHackerDevice->cursor_mask_tex);
+            &state->hackerDevice->cursor_mask_tex);
     }
 
     ReleaseDC(NULL, dc);
@@ -3507,7 +3507,7 @@ float CommandListOperandFloat::evaluate(CommandListState *state, D3D9Wrapper::ID
     IDirect3DBaseTexture9 *texture = NULL;
 
     if (state)
-        device = state->mHackerDevice;
+        device = state->hackerDevice;
     else if (!device) {
         LogOverlay(LOG_DIRE, "BUG: CommandListOperand::evaluate called with neither state nor device\n");
         return 0;
@@ -3534,19 +3534,19 @@ float CommandListOperandFloat::evaluate(CommandListState *state, D3D9Wrapper::ID
         if (state)
             GetSeparation(device, state->cachedStereoValues, &fret);
         else
-            Profiling::NvAPI_Stereo_GetSeparation(device->mStereoHandle, &fret);
+            Profiling::NvAPI_Stereo_GetSeparation(device->stereoHandle, &fret);
         return fret;
     case ParamOverrideType::CONVERGENCE:
         if (state)
             GetConvergence(device, state->cachedStereoValues, &fret);
         else
-            Profiling::NvAPI_Stereo_GetConvergence(device->mStereoHandle, &fret);
+            Profiling::NvAPI_Stereo_GetConvergence(device->stereoHandle, &fret);
         return fret;
     case ParamOverrideType::EYE_SEPARATION:
         if (state)
             GetEyeSeparation(device, state->cachedStereoValues, &fret);
         else
-            Profiling::NvAPI_Stereo_GetEyeSeparation(device->mStereoHandle, &fret);
+            Profiling::NvAPI_Stereo_GetEyeSeparation(device->stereoHandle, &fret);
         return fret;
     case ParamOverrideType::STEREO_ACTIVE:
         if (state) {
@@ -3554,7 +3554,7 @@ float CommandListOperandFloat::evaluate(CommandListState *state, D3D9Wrapper::ID
             return stereo;
         }
         else {
-            Profiling::NvAPI_Stereo_IsActivated(device->mStereoHandle, &_stereo);
+            Profiling::NvAPI_Stereo_IsActivated(device->stereoHandle, &_stereo);
             return !!_stereo;
         }
     case ParamOverrideType::SLI:
@@ -3674,10 +3674,10 @@ float CommandListOperandFloat::evaluate(CommandListState *state, D3D9Wrapper::ID
         }
         return state->rt_height;
     case ParamOverrideType::WINDOW_WIDTH:
-        UpdateWindowInfo(state);
+        update_window_info(state);
         return (float)state->window_rect.right;
     case ParamOverrideType::WINDOW_HEIGHT:
-        UpdateWindowInfo(state);
+        update_window_info(state);
         return (float)state->window_rect.bottom;
     case ParamOverrideType::TEXTURE:
         return process_texture_filter(state);
@@ -3690,45 +3690,45 @@ float CommandListOperandFloat::evaluate(CommandListState *state, D3D9Wrapper::ID
             return (float)DrawPrimitiveCountToVerticesCount(state->call_info->PrimitiveCount, state->call_info->primitive_type);
         return 0;
     case ParamOverrideType::CURSOR_VISIBLE:
-        UpdateCursorInfo(state);
+        update_cursor_info(state);
         return !!(state->cursor_info.flags & CURSOR_SHOWING);
     case ParamOverrideType::CURSOR_SCREEN_X:
-        UpdateCursorInfo(state);
+        update_cursor_info(state);
         return (float)state->cursor_info.ptScreenPos.x;
     case ParamOverrideType::CURSOR_SCREEN_Y:
-        UpdateCursorInfo(state);
+        update_cursor_info(state);
         return (float)state->cursor_info.ptScreenPos.y;
     case ParamOverrideType::CURSOR_WINDOW_X:
-        UpdateCursorInfo(state);
+        update_cursor_info(state);
         return (float)state->cursor_window_coords.x;
     case ParamOverrideType::CURSOR_WINDOW_Y:
-        UpdateCursorInfo(state);
+        update_cursor_info(state);
         return (float)state->cursor_window_coords.y;
     case ParamOverrideType::CURSOR_X:
-        UpdateCursorInfo(state);
-        UpdateWindowInfo(state);
+        update_cursor_info(state);
+        update_window_info(state);
         return (float)state->cursor_window_coords.x / (float)state->window_rect.right;
     case ParamOverrideType::CURSOR_Y:
-        UpdateCursorInfo(state);
-        UpdateWindowInfo(state);
+        update_cursor_info(state);
+        update_window_info(state);
         return (float)state->cursor_window_coords.y / (float)state->window_rect.bottom;
     case ParamOverrideType::CURSOR_HOTSPOT_X:
-        UpdateCursorInfoEx(state);
+        update_cursor_info_ex(state);
         return (float)state->cursor_info_ex.xHotspot;
     case ParamOverrideType::CURSOR_HOTSPOT_Y:
-        UpdateCursorInfoEx(state);
+        update_cursor_info_ex(state);
         return (float)state->cursor_info_ex.yHotspot;
     case ParamOverrideType::SCISSOR_LEFT:
-        UpdateScissorInfo(state);
+        update_scissor_info(state);
         return (float)state->scissor_rect.left;
     case ParamOverrideType::SCISSOR_TOP:
-        UpdateScissorInfo(state);
+        update_scissor_info(state);
         return (float)state->scissor_rect.top;
     case ParamOverrideType::SCISSOR_RIGHT:
-        UpdateScissorInfo(state);
+        update_scissor_info(state);
         return (float)state->scissor_rect.right;
     case ParamOverrideType::SCISSOR_BOTTOM:
-        UpdateScissorInfo(state);
+        update_scissor_info(state);
         return (float)state->scissor_rect.bottom;
     case ParamOverrideType::STAGING_OP:
         return staging_op_val(state);
@@ -4143,7 +4143,7 @@ static void group_parenthesis(CommandListSyntaxTree<Evaluatable> *tree)
             for (rit = std::reverse_iterator<CommandListSyntaxTree<Evaluatable>::Tokens::iterator>(i); rit != tree->tokens.rend(); rit++) {
                 lbracket = dynamic_cast<CommandListOperatorToken*>(rit->get());
                 if (lbracket && !lbracket->token.compare(L"(")) {
-                    inner = std::make_shared<CommandListSyntaxTree<Evaluatable>>(lbracket->token_pos);
+                    inner = std::make_shared<CommandListSyntaxTree<Evaluatable>>(lbracket->tokenPos);
                     // XXX: Double check bounds are right:
                     inner->tokens.assign(rit.base(), i);
                     i = tree->tokens.erase(rit.base() - 1, i + 1);
@@ -4151,7 +4151,7 @@ static void group_parenthesis(CommandListSyntaxTree<Evaluatable> *tree)
                     goto continue_rbracket_search; // continue would continue wrong loop
                 }
             }
-            throw CommandListSyntaxError(L"Unmatched )", rbracket->token_pos);
+            throw CommandListSyntaxError(L"Unmatched )", rbracket->tokenPos);
         }
     continue_rbracket_search: false;
     }
@@ -4159,7 +4159,7 @@ static void group_parenthesis(CommandListSyntaxTree<Evaluatable> *tree)
     for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
         lbracket = dynamic_cast<CommandListOperatorToken*>(i->get());
         if (lbracket && !lbracket->token.compare(L"("))
-            throw CommandListSyntaxError(L"Unmatched (", lbracket->token_pos);
+            throw CommandListSyntaxError(L"Unmatched (", lbracket->tokenPos);
     }
 }
 
@@ -4382,7 +4382,7 @@ static void transform_operators_recursive(CommandListWalkable *tree,
     // Depth first to ensure that we have visited all sub-trees before
     // transforming operators in this level, since that may add new
     // sub-trees
-    for (auto &inner : tree->walk()) {
+    for (auto &inner : tree->Walk()) {
         transform_operators_recursive<Evaluatable>(dynamic_cast<CommandListWalkable*>(inner.get()),
             factories, num_factories, right_associative, unary);
     }
@@ -4572,7 +4572,7 @@ std::shared_ptr<Evaluatable> CommandListOperator<Evaluatable>::finalise()
 
     if (lhs || rhs) {
         LOG_INFO("BUG: Attempted to finalise already final operator\n");
-        throw CommandListSyntaxError(L"BUG", token_pos);
+        throw CommandListSyntaxError(L"BUG", tokenPos);
     }
 
     if (lhs_tree) { // Binary operators only
@@ -4581,7 +4581,7 @@ std::shared_ptr<Evaluatable> CommandListOperator<Evaluatable>::finalise()
         if (!lhs && lhs_evaluatable)
             lhs = lhs_evaluatable;
         if (!lhs)
-            throw CommandListSyntaxError(L"BUG: LHS operand invalid", token_pos);
+            throw CommandListSyntaxError(L"BUG: LHS operand invalid", tokenPos);
         lhs_tree = nullptr;
     }
 
@@ -4590,7 +4590,7 @@ std::shared_ptr<Evaluatable> CommandListOperator<Evaluatable>::finalise()
     if (!rhs && rhs_evaluatable)
         rhs = rhs_evaluatable;
     if (!rhs)
-        throw CommandListSyntaxError(L"BUG: RHS operand invalid", token_pos);
+        throw CommandListSyntaxError(L"BUG: RHS operand invalid", tokenPos);
     rhs_tree = nullptr;
 
     // Can't return "this", because that is an unmanaged version of the
@@ -4624,7 +4624,7 @@ std::shared_ptr<Evaluatable> CommandListSyntaxTree<Evaluatable>::finalise()
                 token = dynamic_pointer_cast<CommandListToken>(evaluatable);
                 if (!token) {
                     LOG_INFO("BUG: finalised token did not cast back\n");
-                    throw CommandListSyntaxError(L"BUG", token_pos);
+                    throw CommandListSyntaxError(L"BUG", tokenPos);
                 }
                 i = tokens.erase(i);
                 i = tokens.insert(i, std::move(token));
@@ -4639,18 +4639,18 @@ std::shared_ptr<Evaluatable> CommandListSyntaxTree<Evaluatable>::finalise()
         throw CommandListSyntaxError(L"Empty expression", 0);
 
     if (tokens.size() > 1)
-        throw CommandListSyntaxError(L"Unexpected", tokens[1]->token_pos);
+        throw CommandListSyntaxError(L"Unexpected", tokens[1]->tokenPos);
 
     evaluatable = dynamic_pointer_cast<Evaluatable>(tokens[0]);
     if (!evaluatable)
-        throw CommandListSyntaxError(L"Non-evaluatable", tokens[0]->token_pos);
+        throw CommandListSyntaxError(L"Non-evaluatable", tokens[0]->tokenPos);
 
     return evaluatable;
 }
 template <class Evaluatable>
-vector<std::shared_ptr<CommandListWalkable>> CommandListSyntaxTree<Evaluatable>::walk()
+vector<std::shared_ptr<CommandListWalkable>> CommandListSyntaxTree<Evaluatable>::Walk()
 {
-    Walk ret;
+    Walks ret;
     std::shared_ptr<CommandListWalkable> inner;
     Tokens::iterator i;
 
@@ -4716,16 +4716,16 @@ bool CommandListOperatorFloat::optimise(D3D9Wrapper::IDirect3DDevice9 *device, s
     LOG_INFO("\" as %f\n", static_val);
     static_val_str = std::to_wstring(static_val);
 
-    operand = make_shared<CommandListOperandFloat>(token_pos, static_val_str.c_str());
+    operand = make_shared<CommandListOperandFloat>(tokenPos, static_val_str.c_str());
     operand->type = ParamOverrideType::VALUE;
     operand->val = static_val;
     *replacement = dynamic_pointer_cast<CommandListEvaluatable>(operand);
     return true;
 }
 template <class Evaluatable>
-vector<std::shared_ptr<CommandListWalkable>> CommandListOperator<Evaluatable>::walk()
+vector<std::shared_ptr<CommandListWalkable>> CommandListOperator<Evaluatable>::Walk()
 {
-    Walk ret;
+    Walks ret;
     std::shared_ptr<CommandListWalkable> lhs;
     std::shared_ptr<CommandListWalkable> rhs;
 
@@ -4740,9 +4740,9 @@ vector<std::shared_ptr<CommandListWalkable>> CommandListOperator<Evaluatable>::w
     return ret;
 }
 
-void ParamOverride::run(CommandListState *state)
+void ParamOverride::Run(CommandListState *state)
 {
-    float *dest = &(G->IniConstants[param_idx].*param_component);
+    float *dest = &(G->IniConstants[paramIdx].*paramComponent);
     float orig = *dest;
 
     COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
@@ -4754,7 +4754,7 @@ void ParamOverride::run(CommandListState *state)
     state->update_params |= (*dest != orig);
 }
 
-void VariableAssignment::run(CommandListState *state)
+void VariableAssignment::Run(CommandListState *state)
 {
     float orig = var->fval;
 
@@ -5432,13 +5432,13 @@ bool CommandListOperandFloat::parse(const wstring *operand, const wstring *ini_n
 // y2 = ps-t0 (use parameter for texture filtering based on texture slot of shader type)
 // z3 = rt_width / rt_height (set parameter to render target width/height)
 // w4 = res_width / res_height (set parameter to resolution width/height)
-bool ParseCommandListIniParamOverride(const wchar_t *section,
+bool parse_command_list_ini_param_override(const wchar_t *section,
     const wchar_t *key, wstring *val, CommandList *command_list,
     const wstring *ini_namespace)
 {
     ParamOverride *param = new ParamOverride();
 
-    if (!ParseIniParamName(key, &param->param_idx, &param->param_component))
+    if (!ParseIniParamName(key, &param->paramIdx, &param->paramComponent))
         goto bail;
 
     if (!param->expression.parse(val, ini_namespace, command_list))
@@ -5803,7 +5803,7 @@ bool ParseCommandListVariableArrayAssignment(const wchar_t * section, const wcha
     return true;
 }
 
-bool ParseCommandListVariableAssignment(const wchar_t *section,
+bool parse_command_list_variable_assignment(const wchar_t *section,
     const wchar_t *key, wstring *val, const wstring *raw_line,
     CommandList *command_list, CommandList *pre_command_list, CommandList *post_command_list,
     const wstring *ini_namespace)
@@ -5859,7 +5859,7 @@ bool ParseHelixShaderOverrideSetSampler(const wchar_t *section,
         ret = swscanf_s(val->c_str(), L"%u%n", &reg, &len1);
         if (ret != 0 && ret != EOF && len1 == val->length()) {
             command->options = ResourceCopyOptions::REFERENCE;
-            command->dst.shader_type = shader_type;
+            command->dst.shaderType = shader_type;
             command->dst.type = ResourceCopyTargetType::SHADER_RESOURCE;
             if (shader_type == L'v')
                 command->dst.slot = reg - 257;
@@ -5868,17 +5868,17 @@ bool ParseHelixShaderOverrideSetSampler(const wchar_t *section,
             wstring resource_id(L"resourcehelixsampler" + wstring(1, samp));
             wstring namespaced_section;
 
-            res = customResources.end();
+            res = custom_resources.end();
             if (get_namespaced_section_name_lower(&resource_id, ini_namespace, &namespaced_section, &helix_ini))
-                res = customResources.find(namespaced_section);
-            if (res == customResources.end())
-                res = customResources.find(resource_id);
-            if (res == customResources.end()) {
-                command->src.custom_resource = &customResources[resource_id];
-                command->src.custom_resource->name = resource_id;
+                res = custom_resources.find(namespaced_section);
+            if (res == custom_resources.end())
+                res = custom_resources.find(resource_id);
+            if (res == custom_resources.end()) {
+                command->src.customResource = &custom_resources[resource_id];
+                command->src.customResource->name = resource_id;
             }
             else {
-                command->src.custom_resource = &res->second;
+                command->src.customResource = &res->second;
             }
             command->src.type = ResourceCopyTargetType::CUSTOM_RESOURCE;
             command->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
@@ -5901,7 +5901,7 @@ bool ParseHelixShaderOverrideGetSampler(const wchar_t * section, const wchar_t *
         ret = swscanf_s(val->c_str(), L"%u%n", &reg, &len1);
         if (ret != 0 && ret != EOF && len1 == val->length()) {
             command->options = ResourceCopyOptions::REFERENCE;
-            command->src.shader_type = shader_type;
+            command->src.shaderType = shader_type;
             command->src.type = ResourceCopyTargetType::SHADER_RESOURCE;
             if (shader_type == L'v')
                 command->src.slot = reg - 257;
@@ -5910,17 +5910,17 @@ bool ParseHelixShaderOverrideGetSampler(const wchar_t * section, const wchar_t *
             wstring resource_id(L"resourcehelixsampler" + wstring(1, samp));
             wstring namespaced_section;
 
-            res = customResources.end();
+            res = custom_resources.end();
             if (get_namespaced_section_name_lower(&resource_id, ini_namespace, &namespaced_section, &helix_ini))
-                res = customResources.find(namespaced_section);
-            if (res == customResources.end())
-                res = customResources.find(resource_id);
-            if (res == customResources.end()) {
-                command->dst.custom_resource = &customResources[resource_id];
-                command->dst.custom_resource->name = resource_id;
+                res = custom_resources.find(namespaced_section);
+            if (res == custom_resources.end())
+                res = custom_resources.find(resource_id);
+            if (res == custom_resources.end()) {
+                command->dst.customResource = &custom_resources[resource_id];
+                command->dst.customResource->name = resource_id;
             }
             else {
-                command->dst.custom_resource = &res->second;
+                command->dst.customResource = &res->second;
             }
             command->dst.type = ResourceCopyTargetType::CUSTOM_RESOURCE;
             command->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
@@ -6043,18 +6043,18 @@ ResourcePool::~ResourcePool()
     cache.clear();
 }
 
-void ResourcePool::emplace(uint32_t hash, HashedResource hashedResource, D3D9Wrapper::IDirect3DDevice9 *mHackerDevice)
+void ResourcePool::emplace(uint32_t hash, HashedResource hashedResource, D3D9Wrapper::IDirect3DDevice9 *hackerDevice)
 {
     if (hashedResource.resource){
         hashedResource.resource->AddRef();
-        if (mHackerDevice) {
-            mHackerDevice->migotoResourceCount++;
+        if (hackerDevice) {
+            hackerDevice->migotoResourceCount++;
         }
         else {
             LOG_INFO("Hacker Device was null when emplacing cached resource\n");
         }
     }
-    cache.emplace(make_pair(hash, mHackerDevice), hashedResource);
+    cache.emplace(make_pair(hash, hackerDevice), hashedResource);
 }
 template <typename DescType>
     static bool GetResourceFromPool(
@@ -6113,7 +6113,7 @@ static DestResourceType* GetResourceFromPool(
     size_t size;
     HRESULT hr;
 
-    bool newResource = GetResourceFromPool<DescType>(dst_resource, resource_pool, desc, state->mHackerDevice, reinterpret_cast<IDirect3DResource9**>(&resource), &hash, info);
+    bool newResource = GetResourceFromPool<DescType>(dst_resource, resource_pool, desc, state->hackerDevice, reinterpret_cast<IDirect3DResource9**>(&resource), &hash, info);
     if (!newResource) {
         if (resource)
             LOG_DEBUG(" %S\n", ini_line->c_str());
@@ -6130,7 +6130,7 @@ static DestResourceType* GetResourceFromPool(
                 restore_create_mode = true;
             }
         }
-        hr = CreateResource(state->mOrigDevice, desc, pHandle, &resource);
+        hr = CreateResource(state->origDevice, desc, pHandle, &resource);
         if (G->gForceStereo == 2 && !FAILED(hr)) {
             HRESULT dmHR = DirectModeStereoizeResource(state, desc, pHandle, &resource, info->mode, &newHashedResource);
             if (FAILED(dmHR)) {
@@ -6148,11 +6148,11 @@ static DestResourceType* GetResourceFromPool(
             LogResourceDesc(&old_desc);
             // Prevent further attempts:
             newHashedResource.resource = NULL;
-            resource_pool->emplace(hash, newHashedResource, state->mHackerDevice);
+            resource_pool->emplace(hash, newHashedResource, state->hackerDevice);
             return NULL;
         }
         newHashedResource.resource = resource;
-        resource_pool->emplace(hash, newHashedResource, state->mHackerDevice);
+        resource_pool->emplace(hash, newHashedResource, state->hackerDevice);
         size = resource_pool->cache.size();
         if (size > 1)
             LOG_INFO("  NOTICE: cache now contains %Ii resources\n", size);
@@ -6209,7 +6209,7 @@ CustomResource::~CustomResource()
     LeaveCriticalSection(&G->mCriticalSection);
     free(initial_data);
 }
-bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE *new_mode)
+bool CustomResource::OverrideSurfaceCreationMode(StereoHandle stereoHandle, NVAPI_STEREO_SURFACECREATEMODE *new_mode)
 {
 
     if (override_mode == CustomResourceMode::DEFAULT)
@@ -6229,7 +6229,7 @@ bool CustomResource::OverrideSurfaceCreationMode(StereoHandle mStereoHandle, NVA
     return false;
 }
 
-void CustomResource::Substantiate(CommandListState *state, StereoHandle mStereoHandle, DWORD usage_flags)
+void CustomResource::Substantiate(CommandListState *state, StereoHandle stereoHandle, DWORD usage_flags)
 {
     NVAPI_STEREO_SURFACECREATEMODE new_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
     NVAPI_STEREO_SURFACECREATEMODE orig_mode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
@@ -6266,23 +6266,23 @@ void CustomResource::Substantiate(CommandListState *state, StereoHandle mStereoH
     // parameters while probing the hardware before it settles on the one
     // it will actually use.
 
-    override_mode = OverrideSurfaceCreationMode(mStereoHandle, &new_mode);
+    override_mode = OverrideSurfaceCreationMode(stereoHandle, &new_mode);
     if (override_mode) {
-        Profiling::NvAPI_Stereo_GetSurfaceCreationMode(mStereoHandle, &orig_mode);
+        Profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereoHandle, &orig_mode);
         if (orig_mode != new_mode) {
-            Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, new_mode);
+            Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, new_mode);
             restore_create_mode = true;
         }
     }
     if (!filename.empty()) {
-        LoadFromFile(state->mOrigDevice);
+        LoadFromFile(state->origDevice);
     }
     else {
         switch (override_type) {
         case CustomResourceType::VERTEXBUFFER:
-            SubstantiateBuffer<IDirect3DVertexBuffer9, D3DVERTEXBUFFER_DESC>(state->mOrigDevice, NULL, 0);
+            SubstantiateBuffer<IDirect3DVertexBuffer9, D3DVERTEXBUFFER_DESC>(state->origDevice, NULL, 0);
         case CustomResourceType::INDEXBUFFER:
-            SubstantiateBuffer<IDirect3DIndexBuffer9, D3DINDEXBUFFER_DESC>(state->mOrigDevice, NULL, 0);
+            SubstantiateBuffer<IDirect3DIndexBuffer9, D3DINDEXBUFFER_DESC>(state->origDevice, NULL, 0);
             break;
         case CustomResourceType::TEXTURE2D:
             SubstantiateTexture2D(state);
@@ -6305,10 +6305,10 @@ void CustomResource::Substantiate(CommandListState *state, StereoHandle mStereoH
     }
 
     if (restore_create_mode)
-        Profiling::NvAPI_Stereo_SetSurfaceCreationMode(mStereoHandle, orig_mode);
+        Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, orig_mode);
 }
 template<typename ID3D9Buffer, typename ID3D9BufferDesc>
-void CustomResource::LoadBufferFromFile(IDirect3DDevice9 *mOrigDevice)
+void CustomResource::LoadBufferFromFile(IDirect3DDevice9 *origDevice)
 {
     DWORD size, read_size;
     void *buf = NULL;
@@ -6332,22 +6332,22 @@ void CustomResource::LoadBufferFromFile(IDirect3DDevice9 *mOrigDevice)
         goto out_delete;
     }
 
-    SubstantiateBuffer<ID3D9Buffer, ID3D9BufferDesc>(mOrigDevice, &buf, size);
+    SubstantiateBuffer<ID3D9Buffer, ID3D9BufferDesc>(origDevice, &buf, size);
 
 out_delete:
     free(buf);
 out_close:
     CloseHandle(f);
 }
-void CustomResource::LoadFromFile(IDirect3DDevice9 *mOrigDevice)
+void CustomResource::LoadFromFile(IDirect3DDevice9 *origDevice)
 {
     HRESULT hr;
     D3DXIMAGE_INFO image_info;
     if (override_type == CustomResourceType::VERTEXBUFFER)
-        return LoadBufferFromFile<IDirect3DVertexBuffer9, D3DVERTEXBUFFER_DESC>(mOrigDevice);
+        return LoadBufferFromFile<IDirect3DVertexBuffer9, D3DVERTEXBUFFER_DESC>(origDevice);
 
     if (override_type == CustomResourceType::INDEXBUFFER)
-        return LoadBufferFromFile<IDirect3DIndexBuffer9, D3DINDEXBUFFER_DESC>(mOrigDevice);
+        return LoadBufferFromFile<IDirect3DIndexBuffer9, D3DINDEXBUFFER_DESC>(origDevice);
 
     if (override_usage_flags != CustomResourceUsageFlags::INVALID)
         usage_flags |= (DWORD)override_usage_flags;
@@ -6355,18 +6355,18 @@ void CustomResource::LoadFromFile(IDirect3DDevice9 *mOrigDevice)
     LOG_INFO_W(L"Loading custom resource %s\n", filename.c_str());
     switch (override_type) {
     case CustomResourceType::TEXTURE2D:
-        hr = D3DXCreateTextureFromFileEx(mOrigDevice, filename.c_str(), D3DX_DEFAULT, D3DX_DEFAULT, D3DX_FROM_FILE, usage_flags, D3DFMT_UNKNOWN, override_pool, D3DX_DEFAULT, D3DX_DEFAULT, 0, NULL, NULL, (LPDIRECT3DTEXTURE9*)&resource);
+        hr = D3DXCreateTextureFromFileEx(origDevice, filename.c_str(), D3DX_DEFAULT, D3DX_DEFAULT, D3DX_FROM_FILE, usage_flags, D3DFMT_UNKNOWN, override_pool, D3DX_DEFAULT, D3DX_DEFAULT, 0, NULL, NULL, (LPDIRECT3DTEXTURE9*)&resource);
         break;
     case CustomResourceType::TEXTURE3D:
-        hr = D3DXCreateVolumeTextureFromFileEx(mOrigDevice, filename.c_str(), D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, D3DX_FROM_FILE, usage_flags, D3DFMT_UNKNOWN, override_pool, D3DX_DEFAULT, D3DX_DEFAULT, 0, NULL, NULL, (LPDIRECT3DVOLUMETEXTURE9*)&resource);
+        hr = D3DXCreateVolumeTextureFromFileEx(origDevice, filename.c_str(), D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, D3DX_FROM_FILE, usage_flags, D3DFMT_UNKNOWN, override_pool, D3DX_DEFAULT, D3DX_DEFAULT, 0, NULL, NULL, (LPDIRECT3DVOLUMETEXTURE9*)&resource);
         break;
     case CustomResourceType::CUBE:
-        hr = D3DXCreateCubeTextureFromFileEx(mOrigDevice, filename.c_str(), D3DX_DEFAULT, D3DX_FROM_FILE, usage_flags, D3DFMT_UNKNOWN, override_pool, D3DX_DEFAULT, D3DX_DEFAULT, 0, NULL, NULL, (LPDIRECT3DCUBETEXTURE9*)&resource);
+        hr = D3DXCreateCubeTextureFromFileEx(origDevice, filename.c_str(), D3DX_DEFAULT, D3DX_FROM_FILE, usage_flags, D3DFMT_UNKNOWN, override_pool, D3DX_DEFAULT, D3DX_DEFAULT, 0, NULL, NULL, (LPDIRECT3DCUBETEXTURE9*)&resource);
         break;
     case CustomResourceType::DEPTHSTENCILSURFACE:
         hr = D3DXGetImageInfoFromFile(filename.c_str(), &image_info);
         if (!FAILED(hr)) {
-            hr = mOrigDevice->CreateDepthStencilSurface(image_info.Width, image_info.Height, image_info.Format, D3DMULTISAMPLE_NONE, 0, (usage_flags & D3DUSAGE_DYNAMIC), (LPDIRECT3DSURFACE9*)&resource, NULL);
+            hr = origDevice->CreateDepthStencilSurface(image_info.Width, image_info.Height, image_info.Format, D3DMULTISAMPLE_NONE, 0, (usage_flags & D3DUSAGE_DYNAMIC), (LPDIRECT3DSURFACE9*)&resource, NULL);
             if (!FAILED(hr))
                 hr = D3DXLoadSurfaceFromFile((LPDIRECT3DSURFACE9)resource, NULL, NULL, filename.c_str(), NULL, D3DX_DEFAULT, 0, NULL);
         }
@@ -6374,7 +6374,7 @@ void CustomResource::LoadFromFile(IDirect3DDevice9 *mOrigDevice)
     case CustomResourceType::RENDERTARGET:
         hr = D3DXGetImageInfoFromFile(filename.c_str(), &image_info);
         if (!FAILED(hr)) {
-            hr = mOrigDevice->CreateRenderTarget(image_info.Width, image_info.Height, image_info.Format, D3DMULTISAMPLE_NONE, 0, (usage_flags & D3DUSAGE_DYNAMIC), (LPDIRECT3DSURFACE9*)&resource, NULL);
+            hr = origDevice->CreateRenderTarget(image_info.Width, image_info.Height, image_info.Format, D3DMULTISAMPLE_NONE, 0, (usage_flags & D3DUSAGE_DYNAMIC), (LPDIRECT3DSURFACE9*)&resource, NULL);
             if (!FAILED(hr))
                 hr = D3DXLoadSurfaceFromFile((LPDIRECT3DSURFACE9)resource, NULL, NULL, filename.c_str(), NULL, D3DX_DEFAULT, 0, NULL);
         }
@@ -6382,7 +6382,7 @@ void CustomResource::LoadFromFile(IDirect3DDevice9 *mOrigDevice)
     case CustomResourceType::OFFSCREENPLAIN:
         hr = D3DXGetImageInfoFromFile(filename.c_str(), &image_info);
         if (!FAILED(hr)) {
-            hr = mOrigDevice->CreateOffscreenPlainSurface(image_info.Width, image_info.Height, image_info.Format, override_pool, (LPDIRECT3DSURFACE9*)&resource, NULL);
+            hr = origDevice->CreateOffscreenPlainSurface(image_info.Width, image_info.Height, image_info.Format, override_pool, (LPDIRECT3DSURFACE9*)&resource, NULL);
             if (!FAILED(hr))
                 hr = D3DXLoadSurfaceFromFile((LPDIRECT3DSURFACE9)resource, NULL, NULL, filename.c_str(), NULL, D3DX_DEFAULT, 0, NULL);
         }
@@ -6404,7 +6404,7 @@ static HRESULT _CreateCustomBuffer(IDirect3DIndexBuffer9 *buffer, D3DINDEXBUFFER
     return device->CreateIndexBuffer(desc->Size, desc->Usage, desc->Format, desc->Pool, &buffer, NULL);
 }
 template<typename ID3D9Buffer, typename ID3D9BufferDesc>
-void CustomResource::SubstantiateBuffer(IDirect3DDevice9 *mOrigDevice, void **buf, DWORD size)
+void CustomResource::SubstantiateBuffer(IDirect3DDevice9 *origDevice, void **buf, DWORD size)
 {
     void* data = { 0 }, *pInitialData = NULL;
     ID3D9Buffer *buffer = NULL;
@@ -6455,7 +6455,7 @@ void CustomResource::SubstantiateBuffer(IDirect3DDevice9 *mOrigDevice, void **bu
         pInitialData = &data;
     }
 
-    hr = _CreateCustomBuffer(buffer, &desc, mOrigDevice);
+    hr = _CreateCustomBuffer(buffer, &desc, origDevice);
     VOID* pVoid;
     HRESULT buffLock = buffer->Lock(0, 0, (void**)&pVoid, 0);
     if (FAILED(buffLock)) {
@@ -6495,7 +6495,7 @@ void CustomResource::SubstantiateRenderTarget(CommandListState *state)
     memset(&desc, 0, sizeof(desc));
     desc.Format = D3DFMT_UNKNOWN;
     OverrideSurfacesDesc(&desc, state);
-    hr = state->mOrigDevice->CreateRenderTarget(desc.Width, desc.Height, desc.Format, desc.MultiSampleType, desc.MultiSampleQuality, (desc.Usage & D3DUSAGE_DYNAMIC), &renderTarget, NULL);
+    hr = state->origDevice->CreateRenderTarget(desc.Width, desc.Height, desc.Format, desc.MultiSampleType, desc.MultiSampleQuality, (desc.Usage & D3DUSAGE_DYNAMIC), &renderTarget, NULL);
     if (SUCCEEDED(hr)) {
         LOG_INFO("Substantiated custom %S [%S], usage_flags=0x%03x\n",
             lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.Usage);
@@ -6517,7 +6517,7 @@ void CustomResource::SubstantiateDepthStencilSurface(CommandListState *state)
     memset(&desc, 0, sizeof(desc));
     desc.Format = D3DFMT_UNKNOWN;
     OverrideSurfacesDesc(&desc, state);
-    hr = state->mOrigDevice->CreateDepthStencilSurface(desc.Width, desc.Height, desc.Format, desc.MultiSampleType, desc.MultiSampleQuality, (desc.Usage & D3DUSAGE_DYNAMIC), &depthStencil, NULL);
+    hr = state->origDevice->CreateDepthStencilSurface(desc.Width, desc.Height, desc.Format, desc.MultiSampleType, desc.MultiSampleQuality, (desc.Usage & D3DUSAGE_DYNAMIC), &depthStencil, NULL);
     if (SUCCEEDED(hr)) {
         LOG_INFO("Substantiated custom %S [%S], usage_flags=0x%03x\n",
             lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.Usage);
@@ -6540,7 +6540,7 @@ void CustomResource::SubstantiateOffscreenPlain(CommandListState *state)
     desc.Pool = D3DPOOL_DEFAULT;
     desc.Format = D3DFMT_UNKNOWN;
     OverrideSurfacesDesc(&desc, state);
-    hr = state->mOrigDevice->CreateOffscreenPlainSurface(desc.Width, desc.Height, desc.Format, desc.Pool, &offscreenPlain, NULL);
+    hr = state->origDevice->CreateOffscreenPlainSurface(desc.Width, desc.Height, desc.Format, desc.Pool, &offscreenPlain, NULL);
     if (SUCCEEDED(hr)) {
         LOG_INFO("Substantiated custom %S [%S], usage_flags=0x%03x\n",
             lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.Usage);
@@ -6566,7 +6566,7 @@ void CustomResource::SubstantiateTexture2D(CommandListState *state)
     desc.Format = D3DFMT_UNKNOWN;
     desc.Levels = 1;
     OverrideSurfacesDesc(&desc, state);
-    hr = state->mOrigDevice->CreateTexture(desc.Width, desc.Height, desc.Levels, desc.Usage, desc.Format, desc.Pool, &tex2d, NULL);
+    hr = state->origDevice->CreateTexture(desc.Width, desc.Height, desc.Levels, desc.Usage, desc.Format, desc.Pool, &tex2d, NULL);
     if (SUCCEEDED(hr)) {
         LOG_INFO("Substantiated custom %S [%S], usage_flags=0x%03x\n",
             lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.Usage);
@@ -6593,7 +6593,7 @@ void CustomResource::SubstantiateTexture3D(CommandListState *state)
     desc.Levels = 1;
     OverrideSurfacesDesc(&desc, state);
 
-    hr = state->mOrigDevice->CreateVolumeTexture(desc.Width, desc.Height, desc.Depth, desc.Levels, desc.Usage, desc.Format, desc.Pool, &tex3d, NULL);
+    hr = state->origDevice->CreateVolumeTexture(desc.Width, desc.Height, desc.Depth, desc.Levels, desc.Usage, desc.Format, desc.Pool, &tex3d, NULL);
     if (SUCCEEDED(hr)) {
         LOG_INFO("Substantiated custom %S [%S], usage_flags=0x%03x\n",
             lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.Usage);
@@ -6620,7 +6620,7 @@ void CustomResource::SubstantiateTextureCube(CommandListState *state)
     desc.Levels = 1;
     OverrideSurfacesDesc(&desc, state);
 
-    hr = state->mOrigDevice->CreateCubeTexture(desc.Width, desc.Levels, desc.Usage, desc.Format, desc.Pool, &texCube, NULL);
+    hr = state->origDevice->CreateCubeTexture(desc.Width, desc.Levels, desc.Usage, desc.Format, desc.Pool, &texCube, NULL);
     if (SUCCEEDED(hr)) {
         LOG_INFO("Substantiated custom %S [%S], usage_flags=0x%03x\n",
             lookup_enum_name(CustomResourceTypeNames, override_type), name.c_str(), desc.Usage);
@@ -6660,36 +6660,36 @@ HRESULT CreateResource(IDirect3DDevice9 *device, D3D2DTEXTURE_DESC *desc, HANDLE
 }
 HRESULT DirectModeStereoizeResource(CommandListState *state, D3D2DTEXTURE_DESC *pDesc, HANDLE *pHandle, IDirect3DSurface9 **wrappedResource, NVAPI_STEREO_SURFACECREATEMODE createMode, HashedResource *hashedResource) {
     HRESULT hr = D3D_OK;
-    if (createMode != NVAPI_STEREO_SURFACECREATEMODE::NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO && state->mHackerDevice->HackerDeviceShouldDuplicateSurface(pDesc)) {
+    if (createMode != NVAPI_STEREO_SURFACECREATEMODE::NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO && state->hackerDevice->HackerDeviceShouldDuplicateSurface(pDesc)) {
         IDirect3DSurface9 *rightSurface;
-        hr = CreateResource(state->mOrigDevice, pDesc, pHandle, &rightSurface);
+        hr = CreateResource(state->origDevice, pDesc, pHandle, &rightSurface);
         D3D9Wrapper::IDirect3DSurface9 *wrappedStereoSurface;
         if (!FAILED(hr)) {
-            wrappedStereoSurface = D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(*wrappedResource, state->mHackerDevice, rightSurface);
+            wrappedStereoSurface = D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(*wrappedResource, state->hackerDevice, rightSurface);
         }
         else {
-            wrappedStereoSurface = D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(*wrappedResource, state->mHackerDevice, NULL);
+            wrappedStereoSurface = D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(*wrappedResource, state->hackerDevice, NULL);
         }
         *wrappedResource = (IDirect3DSurface9*)wrappedStereoSurface;
     }
     else {
-        D3D9Wrapper::IDirect3DSurface9 *wrappedStereoSurface = D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(*wrappedResource, state->mHackerDevice, NULL);
+        D3D9Wrapper::IDirect3DSurface9 *wrappedStereoSurface = D3D9Wrapper::IDirect3DSurface9::GetDirect3DSurface9(*wrappedResource, state->hackerDevice, NULL);
         *wrappedResource = (IDirect3DSurface9*)wrappedStereoSurface;
     }
     return hr;
 }
 HRESULT DirectModeStereoizeResource(CommandListState *state, D3D2DTEXTURE_DESC *pDesc, HANDLE *pHandle, IDirect3DTexture9 **wrappedResource, NVAPI_STEREO_SURFACECREATEMODE createMode, HashedResource *hashedResource) {
 
-    if (createMode != NVAPI_STEREO_SURFACECREATEMODE::NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO && state->mHackerDevice->HackerDeviceShouldDuplicateSurface(pDesc)) {
+    if (createMode != NVAPI_STEREO_SURFACECREATEMODE::NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO && state->hackerDevice->HackerDeviceShouldDuplicateSurface(pDesc)) {
         HRESULT hr;
         IDirect3DTexture9 *rightTexture;
-        hr = CreateResource(state->mOrigDevice, pDesc, pHandle, &rightTexture);
+        hr = CreateResource(state->origDevice, pDesc, pHandle, &rightTexture);
         D3D9Wrapper::IDirect3DTexture9 *wrappedStereoTexture;
         if (!FAILED(hr)) {
-            wrappedStereoTexture = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(*wrappedResource, state->mHackerDevice, rightTexture);
+            wrappedStereoTexture = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(*wrappedResource, state->hackerDevice, rightTexture);
         }
         else {
-            wrappedStereoTexture = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(*wrappedResource, state->mHackerDevice, NULL);
+            wrappedStereoTexture = D3D9Wrapper::IDirect3DTexture9::GetDirect3DTexture9(*wrappedResource, state->hackerDevice, NULL);
         }
         *wrappedResource = (IDirect3DTexture9*)wrappedStereoTexture;
         return hr;
@@ -6700,16 +6700,16 @@ HRESULT DirectModeStereoizeResource(CommandListState *state, D3D2DTEXTURE_DESC *
 
 }
 HRESULT DirectModeStereoizeResource(CommandListState *state, D3D2DTEXTURE_DESC *pDesc, HANDLE *pHandle, IDirect3DCubeTexture9 **wrappedResource, NVAPI_STEREO_SURFACECREATEMODE createMode, HashedResource *hashedResource) {
-    if (createMode != NVAPI_STEREO_SURFACECREATEMODE::NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO && state->mHackerDevice->HackerDeviceShouldDuplicateSurface(pDesc)) {
+    if (createMode != NVAPI_STEREO_SURFACECREATEMODE::NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO && state->hackerDevice->HackerDeviceShouldDuplicateSurface(pDesc)) {
         HRESULT hr;
         IDirect3DCubeTexture9 *rightTexture;
-        hr = CreateResource(state->mOrigDevice, pDesc, pHandle, &rightTexture);
+        hr = CreateResource(state->origDevice, pDesc, pHandle, &rightTexture);
         D3D9Wrapper::IDirect3DCubeTexture9 *wrappedStereoTexture;
         if (!FAILED(hr)) {
-            wrappedStereoTexture = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(*wrappedResource, state->mHackerDevice, rightTexture);
+            wrappedStereoTexture = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(*wrappedResource, state->hackerDevice, rightTexture);
         }
         else {
-            wrappedStereoTexture = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(*wrappedResource, state->mHackerDevice, NULL);
+            wrappedStereoTexture = D3D9Wrapper::IDirect3DCubeTexture9::GetDirect3DCubeTexture9(*wrappedResource, state->hackerDevice, NULL);
         }
         *wrappedResource = (IDirect3DCubeTexture9*)wrappedStereoTexture;
         return hr;
@@ -6896,7 +6896,7 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source, cons
     int ret, len;
     size_t length = wcslen(target);
     CustomResources::iterator res;
-    ret = swscanf_s(target, L"%lcs-s%u%n", &shader_type, 1, &slot, &len);
+    ret = swscanf_s(target, L"%lcs-s%u%n", &shaderType, 1, &slot, &len);
     if (ret == 2 && len == length && ((slot < D3D9_PIXEL_INPUT_TEXTURE_SLOT_COUNT) || (slot >= D3D9_VERTEX_INPUT_START_REG && slot < (D3D9_VERTEX_INPUT_START_REG + D3D9_VERTEX_INPUT_TEXTURE_SLOT_COUNT)))) {
         type = ResourceCopyTargetType::SHADER_RESOURCE;
         goto check_shader_type;
@@ -6941,15 +6941,15 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source, cons
         wstring resource_id(target);
         wstring namespaced_section;
 
-        res = customResources.end();
+        res = custom_resources.end();
         if (get_namespaced_section_name_lower(&resource_id, ini_namespace, &namespaced_section, &migoto_ini))
-            res = customResources.find(namespaced_section);
-        if (res == customResources.end())
-            res = customResources.find(resource_id);
-        if (res == customResources.end())
+            res = custom_resources.find(namespaced_section);
+        if (res == custom_resources.end())
+            res = custom_resources.find(resource_id);
+        if (res == custom_resources.end())
             return false;
 
-        custom_resource = &res->second;
+        customResource = &res->second;
         type = ResourceCopyTargetType::CUSTOM_RESOURCE;
         return true;
     }
@@ -7017,7 +7017,7 @@ bool ResourceCopyTarget::ParseTarget(const wchar_t *target, bool is_source, cons
     return false;
 
 check_shader_type:
-    switch (shader_type) {
+    switch (shaderType) {
     case L'v': case L'p':
         return true;
     }
@@ -7108,7 +7108,7 @@ bool ParseRunFunction(const wchar_t * section, const wchar_t * key, wstring * va
 
     return false;
 }
-bool ParseCommandListResourceCopyDirective(const wchar_t *section,
+bool parse_command_list_resource_copy_directive(const wchar_t *section,
     const wchar_t *key, wstring *val, CommandList *command_list,
     const wstring *ini_namespace)
 {
@@ -7193,8 +7193,8 @@ bool ParseCommandListResourceCopyDirective(const wchar_t *section,
     if (operation->src.type == ResourceCopyTargetType::CUSTOM_RESOURCE &&
         (operation->options & ResourceCopyOptions::REFERENCE)) {
         // Fucking C++ making this line 3x longer than it should be:
-        operation->src.custom_resource->usage_flags = (DWORD)
-        (operation->src.custom_resource->usage_flags | operation->dst.UsageFlags(NULL));
+        operation->src.customResource->usage_flags = (DWORD)
+        (operation->src.customResource->usage_flags | operation->dst.UsageFlags(NULL));
     }
 
     operation->ini_line = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
@@ -7204,7 +7204,7 @@ bail:
     delete operation;
     return false;
 }
-static bool ParseIfCommand(const wchar_t *section, const wstring *line,
+static bool parse_if_command(const wchar_t *section, const wstring *line,
     CommandList *pre_command_list, CommandList *post_command_list,
     const wstring *ini_namespace)
 {
@@ -7217,13 +7217,13 @@ static bool ParseIfCommand(const wchar_t *section, const wstring *line,
     // New scope level to isolate local variables:
     pre_command_list->scope->emplace_front();
 
-    return AddCommandToList(operation, NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
+    return add_command_to_list(operation, NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
 bail:
     delete operation;
     return false;
 }
 
-static bool ParseElseIfCommand(const wchar_t *section, const wstring *line, int prefix,
+static bool parse_else_if_command(const wchar_t *section, const wstring *line, int prefix,
     CommandList *pre_command_list, CommandList *post_command_list,
     const wstring *ini_namespace)
 {
@@ -7239,23 +7239,23 @@ static bool ParseElseIfCommand(const wchar_t *section, const wstring *line, int 
     // "else if" is implemented by nesting another if/endif inside the
     // parent if command's else clause. We add both an ElsePlaceholder and
     // an ElseIfCommand here, and will fix up the "endif" balance later.
-    AddCommandToList(new ElsePlaceholder(), NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
-    return AddCommandToList(operation, NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
+    add_command_to_list(new ElsePlaceholder(), NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
+    return add_command_to_list(operation, NULL, NULL, pre_command_list, post_command_list, section, line->c_str(), NULL);
 bail:
     delete operation;
     return false;
 }
 
-static bool ParseElseCommand(const wchar_t *section,
+static bool parse_else_command(const wchar_t *section,
     CommandList *pre_command_list, CommandList *post_command_list)
 {
     // Clear deepest scope level to isolate local variables:
     pre_command_list->scope->front().clear();
 
-    return AddCommandToList(new ElsePlaceholder(), NULL, NULL, pre_command_list, post_command_list, section, L"else", NULL);
+    return add_command_to_list(new ElsePlaceholder(), NULL, NULL, pre_command_list, post_command_list, section, L"else", NULL);
 }
 
-static bool _ParseEndIfCommand(const wchar_t *section,
+static bool _parse_end_if_command(const wchar_t *section,
     CommandList *command_list, bool post, bool has_nested_else_if = false)
 {
     CommandList::Commands::reverse_iterator rit;
@@ -7297,7 +7297,7 @@ static bool _ParseEndIfCommand(const wchar_t *section,
                 if_command->post_finalised = true;
                 if_command->has_nested_else_if = has_nested_else_if;
                 if (else_if_command)
-                    return _ParseEndIfCommand(section, command_list, post, true);
+                    return _parse_end_if_command(section, command_list, post, true);
                 return true;
             }
             else if (!post && !if_command->pre_finalised) {
@@ -7313,7 +7313,7 @@ static bool _ParseEndIfCommand(const wchar_t *section,
                 if_command->pre_finalised = true;
                 if_command->has_nested_else_if = has_nested_else_if;
                 if (else_if_command)
-                    return _ParseEndIfCommand(section, command_list, post, true);
+                    return _parse_end_if_command(section, command_list, post, true);
                 return true;
             }
         }
@@ -7323,14 +7323,14 @@ static bool _ParseEndIfCommand(const wchar_t *section,
     return false;
 }
 
-static bool ParseEndIfCommand(const wchar_t *section,
+static bool parse_end_if_command(const wchar_t *section,
     CommandList *pre_command_list, CommandList *post_command_list)
 {
     bool ret;
 
-    ret = _ParseEndIfCommand(section, pre_command_list, false);
+    ret = _parse_end_if_command(section, pre_command_list, false);
     if (post_command_list)
-        ret = ret && _ParseEndIfCommand(section, post_command_list, true);
+        ret = ret && _parse_end_if_command(section, post_command_list, true);
 
     if (ret)
         pre_command_list->scope->pop_front();
@@ -7338,20 +7338,20 @@ static bool ParseEndIfCommand(const wchar_t *section,
     return ret;
 }
 
-bool ParseCommandListFlowControl(const wchar_t *section, const wstring *line,
+bool parse_command_list_flow_control(const wchar_t *section, const wstring *line,
     CommandList *pre_command_list, CommandList *post_command_list,
     const wstring *ini_namespace)
 {
     if (!wcsncmp(line->c_str(), L"if ", 3))
-        return ParseIfCommand(section, line, pre_command_list, post_command_list, ini_namespace);
+        return parse_if_command(section, line, pre_command_list, post_command_list, ini_namespace);
     if (!wcsncmp(line->c_str(), L"elif ", 5))
-        return ParseElseIfCommand(section, line, 5, pre_command_list, post_command_list, ini_namespace);
+        return parse_else_if_command(section, line, 5, pre_command_list, post_command_list, ini_namespace);
     if (!wcsncmp(line->c_str(), L"else if ", 8))
-        return ParseElseIfCommand(section, line, 8, pre_command_list, post_command_list, ini_namespace);
+        return parse_else_if_command(section, line, 8, pre_command_list, post_command_list, ini_namespace);
     if (!wcscmp(line->c_str(), L"else"))
-        return ParseElseCommand(section, pre_command_list, post_command_list);
+        return parse_else_command(section, pre_command_list, post_command_list);
     if (!wcscmp(line->c_str(), L"endif"))
-        return ParseEndIfCommand(section, pre_command_list, post_command_list);
+        return parse_end_if_command(section, pre_command_list, post_command_list);
 
     return false;
 }
@@ -7392,15 +7392,15 @@ IfCommand::IfCommand(const wchar_t *section) :
     registered_command_lists.push_back(false_commands_post.get());
 }
 
-void IfCommand::run(CommandListState *state)
+void IfCommand::Run(CommandListState *state)
 {
     if (expression.evaluate(state)) {
         COMMAND_LIST_LOG(state, "%S: true {\n", ini_line.c_str());
         state->extra_indent++;
         if (state->post)
-            _RunCommandList(true_commands_post.get(), state, false);
+            _run_command_list(true_commands_post.get(), state, false);
         else
-            _RunCommandList(true_commands_pre.get(), state, false);
+            _run_command_list(true_commands_pre.get(), state, false);
         state->extra_indent--;
         COMMAND_LIST_LOG(state, "} endif\n");
     }
@@ -7411,9 +7411,9 @@ void IfCommand::run(CommandListState *state)
             state->extra_indent++;
         }
         if (state->post)
-            _RunCommandList(false_commands_post.get(), state, false);
+            _run_command_list(false_commands_post.get(), state, false);
         else
-            _RunCommandList(false_commands_pre.get(), state, false);
+            _run_command_list(false_commands_pre.get(), state, false);
         if (!has_nested_else_if) {
             state->extra_indent--;
             COMMAND_LIST_LOG(state, "} endif\n");
@@ -7426,7 +7426,7 @@ bool IfCommand::optimise(D3D9Wrapper::IDirect3DDevice9 *device)
     return expression.optimise(device);
 }
 
-bool IfCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
+bool IfCommand::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
     float static_val;
     bool is_static;
@@ -7439,12 +7439,12 @@ bool IfCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
     is_static = expression.static_evaluate(&static_val);
     if (is_static) {
         if (static_val) {
-            false_commands_pre->clear();
-            false_commands_post->clear();
+            false_commands_pre->Clear();
+            false_commands_post->Clear();
         }
         else {
-            true_commands_pre->clear();
-            true_commands_post->clear();
+            true_commands_pre->Clear();
+            true_commands_post->Clear();
         }
     }
 
@@ -7453,12 +7453,12 @@ bool IfCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
     return true_commands_pre->commands.empty() && false_commands_pre->commands.empty();
 }
 
-void CommandPlaceholder::run(CommandListState*)
+void CommandPlaceholder::Run(CommandListState*)
 {
     LogOverlay(LOG_DIRE, "BUG: Placeholder command executed: %S\n", ini_line.c_str());
 }
 
-bool CommandPlaceholder::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
+bool CommandPlaceholder::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
     LogOverlay(LOG_WARNING, "WARNING: Command not terminated: %S\n", ini_line.c_str());
     return true;
@@ -7472,8 +7472,8 @@ IDirect3DResource9 *ResourceCopyTarget::GetResource(
     ResourceCopyTarget *dst,
     D3D9Wrapper::IDirect3DResource9 **wrapper)
 {
-    D3D9Wrapper::IDirect3DDevice9 *mHackerDevice = state->mHackerDevice;
-    IDirect3DDevice9 *mOrigDevice = state->mOrigDevice;
+    D3D9Wrapper::IDirect3DDevice9 *hackerDevice = state->hackerDevice;
+    IDirect3DDevice9 *origDevice = state->origDevice;
 
     ::IDirect3DBaseTexture9 *tex = NULL;
     ::IDirect3DSurface9 *sur = NULL;
@@ -7490,21 +7490,21 @@ IDirect3DResource9 *ResourceCopyTarget::GetResource(
     //    // FIXME: On win8 (or with evil update?), we should use
     //    // Get/SetConstantBuffers1 and copy the offset into the buffer as well
 
-        switch (shader_type) {
+        switch (shaderType) {
         case L'v':
-            mOrigDevice->GetTexture((D3DDMAPSAMPLER + 1 + slot), &tex);
+            origDevice->GetTexture((D3DDMAPSAMPLER + 1 + slot), &tex);
             if (tex && wrapper) {
-                auto it = mHackerDevice->m_activeTextureStages.find((D3DDMAPSAMPLER + 1 + slot));
-                if (it != mHackerDevice->m_activeTextureStages.end()) {
+                auto it = hackerDevice->m_activeTextureStages.find((D3DDMAPSAMPLER + 1 + slot));
+                if (it != hackerDevice->m_activeTextureStages.end()) {
                     *wrapper = it->second;
                 }
             }
             return tex;
         case L'p':
-            mOrigDevice->GetTexture(slot, &tex);
+            origDevice->GetTexture(slot, &tex);
             if (tex && wrapper) {
-                auto it = mHackerDevice->m_activeTextureStages.find(slot);
-                if (it != mHackerDevice->m_activeTextureStages.end()) {
+                auto it = hackerDevice->m_activeTextureStages.find(slot);
+                if (it != hackerDevice->m_activeTextureStages.end()) {
                     *wrapper = it->second;
                 }
             }
@@ -7518,12 +7518,12 @@ IDirect3DResource9 *ResourceCopyTarget::GetResource(
         // TODO: If copying this to a constant buffer, provide some
         // means to get the strides + offsets from within the shader.
         // Perhaps as an IniParam, or in another constant buffer?
-        mOrigDevice->GetStreamSource(slot, &vbuf, offset, stride);
+        origDevice->GetStreamSource(slot, &vbuf, offset, stride);
         if (state->call_info)
             *offset += state->call_info->StartVertex * *stride;
         if (vbuf && wrapper) {
-            auto it = mHackerDevice->m_activeVertexBuffers.find(slot);
-            if (it != mHackerDevice->m_activeVertexBuffers.end()){
+            auto it = hackerDevice->m_activeVertexBuffers.find(slot);
+            if (it != hackerDevice->m_activeVertexBuffers.end()){
                 D3D9Wrapper::activeVertexBuffer avb = it->second;
                 *wrapper = avb.m_vertexBuffer;
             }
@@ -7532,47 +7532,47 @@ IDirect3DResource9 *ResourceCopyTarget::GetResource(
     case ResourceCopyTargetType::INDEX_BUFFER:
         // TODO: Similar comment as vertex buffers above, provide a
         // means for a shader to get format + offset.
-        mOrigDevice->GetIndices(&ibuf);
+        origDevice->GetIndices(&ibuf);
         *stride = d3d_format_bytes(*format);
         if (state->call_info)
             *offset = state->call_info->StartIndex * *stride;
         if (ibuf && wrapper) {
-            *wrapper = mHackerDevice->m_activeIndexBuffer;
+            *wrapper = hackerDevice->m_activeIndexBuffer;
         }
         return ibuf;
 
     case ResourceCopyTargetType::RENDER_TARGET:
         D3DCAPS9 pCaps;
-        state->mOrigDevice->GetDeviceCaps(&pCaps);
+        state->origDevice->GetDeviceCaps(&pCaps);
         if (slot >= 0 && slot < pCaps.NumSimultaneousRTs)
-            mOrigDevice->GetRenderTarget(slot, &sur);
-        if (sur && wrapper && (slot < mHackerDevice->m_activeRenderTargets.size()) && (slot > 0)) {
-            *wrapper = mHackerDevice->m_activeRenderTargets[slot];
+            origDevice->GetRenderTarget(slot, &sur);
+        if (sur && wrapper && (slot < hackerDevice->m_activeRenderTargets.size()) && (slot > 0)) {
+            *wrapper = hackerDevice->m_activeRenderTargets[slot];
         }
         return sur;
 
     case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
-        mOrigDevice->GetDepthStencilSurface(&sur);
+        origDevice->GetDepthStencilSurface(&sur);
         if (sur && wrapper) {
-            *wrapper = mHackerDevice->m_pActiveDepthStencil;
+            *wrapper = hackerDevice->m_pActiveDepthStencil;
         }
         return sur;
 
     case ResourceCopyTargetType::CUSTOM_RESOURCE:
         if (dst)
             usage_flags = dst->UsageFlags(state);
-        custom_resource->Substantiate(state, state->mHackerDevice->mStereoHandle, usage_flags);
+        customResource->Substantiate(state, state->hackerDevice->stereoHandle, usage_flags);
 
         if (stride)
-            *stride = custom_resource->stride;
+            *stride = customResource->stride;
         if (offset)
-            *offset = custom_resource->offset;
+            *offset = customResource->offset;
         if (format)
-            *format = custom_resource->format;
+            *format = customResource->format;
         if (buf_size)
-            *buf_size = custom_resource->buf_size;
+            *buf_size = customResource->buf_size;
 
-        if (custom_resource->is_null) {
+        if (customResource->is_null) {
             // Optimisation to allow the resource to be set to null
             // without throwing away the cache so we don't
             // endlessly create & destroy temporary resources.
@@ -7580,26 +7580,26 @@ IDirect3DResource9 *ResourceCopyTarget::GetResource(
             return NULL;
         }
 
-        if (custom_resource->resource)
-            custom_resource->resource->AddRef();
-        return custom_resource->resource;
+        if (customResource->resource)
+            customResource->resource->AddRef();
+        return customResource->resource;
 
     case ResourceCopyTargetType::STEREO_PARAMS:
-        if (mHackerDevice->mStereoTexture)
-            mHackerDevice->mStereoTexture->AddRef();
-        return mHackerDevice->mStereoTexture;
+        if (hackerDevice->stereoTexture)
+            hackerDevice->stereoTexture->AddRef();
+        return hackerDevice->stereoTexture;
 
     case ResourceCopyTargetType::CURSOR_MASK:
-        UpdateCursorResources(state);
-        if (state->mHackerDevice->cursor_mask_tex)
-            state->mHackerDevice->cursor_mask_tex->AddRef();
-        return state->mHackerDevice->cursor_mask_tex;
+        update_cursor_resources(state);
+        if (state->hackerDevice->cursor_mask_tex)
+            state->hackerDevice->cursor_mask_tex->AddRef();
+        return state->hackerDevice->cursor_mask_tex;
 
     case ResourceCopyTargetType::CURSOR_COLOR:
-        UpdateCursorResources(state);
-        if (state->mHackerDevice->cursor_color_tex)
-            state->mHackerDevice->cursor_color_tex->AddRef();
-        return state->mHackerDevice->cursor_color_tex;
+        update_cursor_resources(state);
+        if (state->hackerDevice->cursor_color_tex)
+            state->hackerDevice->cursor_color_tex->AddRef();
+        return state->hackerDevice->cursor_color_tex;
 
     case ResourceCopyTargetType::THIS_RESOURCE:
         if (state->this_target)
@@ -7631,8 +7631,8 @@ IDirect3DResource9 *ResourceCopyTarget::GetResource(
             }
         }else
         {
-            if (G->bb_is_upscaling_bb && mHackerDevice->mFakeSwapChains.size() > 0 && mHackerDevice->mFakeSwapChains[0].mFakeBackBuffers.size() > 0) {
-                D3D9Wrapper::IDirect3DSurface9 *wrappedBackBuffer = mHackerDevice->mFakeSwapChains[0].mFakeBackBuffers[0];
+            if (G->bb_is_upscaling_bb && hackerDevice->mFakeSwapChains.size() > 0 && hackerDevice->mFakeSwapChains[0].mFakeBackBuffers.size() > 0) {
+                D3D9Wrapper::IDirect3DSurface9 *wrappedBackBuffer = hackerDevice->mFakeSwapChains[0].mFakeBackBuffers[0];
                 if (wrapper)
                     *wrapper = wrappedBackBuffer;
                 wrappedBackBuffer->GetD3DResource9()->AddRef();
@@ -7641,11 +7641,11 @@ IDirect3DResource9 *ResourceCopyTarget::GetResource(
             else {
                 if (G->SCREEN_UPSCALING > 0) {
                     ::IDirect3DSurface9 *realBB;
-                    mOrigDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, (IDirect3DSurface9**)&realBB);
+                    origDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, (IDirect3DSurface9**)&realBB);
                     return realBB;
                 }
                 else {
-                    D3D9Wrapper::IDirect3DSurface9 *wrappedBackBuffer = mHackerDevice->deviceSwapChain->m_backBuffers[0];
+                    D3D9Wrapper::IDirect3DSurface9 *wrappedBackBuffer = hackerDevice->deviceSwapChain->m_backBuffers[0];
                     if (wrapper)
                         *wrapper = wrappedBackBuffer;
                     wrappedBackBuffer->GetD3DResource9()->AddRef();
@@ -7667,11 +7667,11 @@ IDirect3DResource9 *ResourceCopyTarget::GetResource(
         {
             if (G->SCREEN_UPSCALING > 0) {
                 ::IDirect3DSurface9 *realBB;
-                mOrigDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, (IDirect3DSurface9**)&realBB);
+                origDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, (IDirect3DSurface9**)&realBB);
                 return realBB;
             }
             else {
-                D3D9Wrapper::IDirect3DSurface9 *wrappedBackBuffer = mHackerDevice->deviceSwapChain->m_backBuffers[0];
+                D3D9Wrapper::IDirect3DSurface9 *wrappedBackBuffer = hackerDevice->deviceSwapChain->m_backBuffers[0];
                 if (wrapper)
                     *wrapper = wrappedBackBuffer;
                 wrappedBackBuffer->GetD3DResource9()->AddRef();
@@ -7690,8 +7690,8 @@ IDirect3DResource9 *ResourceCopyTarget::GetResource(
         }else
         {
             D3D9Wrapper::IDirect3DSurface9 *wrappedBackBuffer = NULL;
-            if (mHackerDevice->mFakeSwapChains.size() > 0 && mHackerDevice->mFakeSwapChains[0].mFakeBackBuffers.size() > 0)
-                wrappedBackBuffer = mHackerDevice->mFakeSwapChains[0].mFakeBackBuffers[0];
+            if (hackerDevice->mFakeSwapChains.size() > 0 && hackerDevice->mFakeSwapChains[0].mFakeBackBuffers.size() > 0)
+                wrappedBackBuffer = hackerDevice->mFakeSwapChains[0].mFakeBackBuffers[0];
             else
                 return NULL;
             if (wrapper)
@@ -7700,27 +7700,27 @@ IDirect3DResource9 *ResourceCopyTarget::GetResource(
             return wrappedBackBuffer->GetD3DResource9();
         }
     case ResourceCopyTargetType::REPLACEMENT_DEPTH_TEXTURE:
-        if (!mHackerDevice->depthstencil_replacement || !(mHackerDevice->depthstencil_replacement->depthstencil_replacement_texture))
+        if (!hackerDevice->depthstencil_replacement || !(hackerDevice->depthstencil_replacement->depthstencil_replacement_texture))
             return NULL;
-        if (!state->resolved_depth_replacement && mHackerDevice->depthstencil_replacement->depthstencil_replacement_multisampled) {
-            mHackerDevice->depthstencil_replacement->resolveDepthReplacement();
+        if (!state->resolved_depth_replacement && hackerDevice->depthstencil_replacement->depthstencil_replacement_multisampled) {
+            hackerDevice->depthstencil_replacement->resolveDepthReplacement();
             state->resolved_depth_replacement = true;
         }
-        else if (!state->copied_depth_replacement && mHackerDevice->depthstencil_replacement->depthstencil_replacement_resolvedAA) {
-            mHackerDevice->depthstencil_replacement->copyDepthSurfaceToTexture();
+        else if (!state->copied_depth_replacement && hackerDevice->depthstencil_replacement->depthstencil_replacement_resolvedAA) {
+            hackerDevice->depthstencil_replacement->copyDepthSurfaceToTexture();
             state->copied_depth_replacement = true;
         }
-        mHackerDevice->depthstencil_replacement->depthstencil_replacement_texture->AddRef();
+        hackerDevice->depthstencil_replacement->depthstencil_replacement_texture->AddRef();
         if (wrapper)
-            *wrapper = mHackerDevice->depthstencil_replacement;
-        return mHackerDevice->depthstencil_replacement->depthstencil_replacement_texture;
+            *wrapper = hackerDevice->depthstencil_replacement;
+        return hackerDevice->depthstencil_replacement->depthstencil_replacement_texture;
     case ResourceCopyTargetType::REPLACEMENT_DEPTH_SURFACE:
-        if (!mHackerDevice->depthstencil_replacement || !(mHackerDevice->depthstencil_replacement->depthstencil_replacement_surface))
+        if (!hackerDevice->depthstencil_replacement || !(hackerDevice->depthstencil_replacement->depthstencil_replacement_surface))
             return NULL;
-        mHackerDevice->depthstencil_replacement->depthstencil_replacement_surface->AddRef();
+        hackerDevice->depthstencil_replacement->depthstencil_replacement_surface->AddRef();
         if (wrapper)
-            *wrapper = mHackerDevice->depthstencil_replacement;
-        return mHackerDevice->depthstencil_replacement->depthstencil_replacement_surface;
+            *wrapper = hackerDevice->depthstencil_replacement;
+        return hackerDevice->depthstencil_replacement->depthstencil_replacement_surface;
     }
 
     return NULL;
@@ -7735,8 +7735,8 @@ void ResourceCopyTarget::SetResource(
     UINT buf_size,
     D3D9Wrapper::IDirect3DResource9 **wrapper)
 {
-    IDirect3DDevice9 *mOrigDevice = state->mOrigDevice;
-    D3D9Wrapper::IDirect3DDevice9 *mHackerDevice = state->mHackerDevice;
+    IDirect3DDevice9 *origDevice = state->origDevice;
+    D3D9Wrapper::IDirect3DDevice9 *hackerDevice = state->hackerDevice;
     IDirect3DVertexBuffer9 *vb;
     IDirect3DIndexBuffer9 *ib;
 
@@ -7746,26 +7746,26 @@ void ResourceCopyTarget::SetResource(
     //    // Get/SetConstantBuffers1 and copy the offset into the buffer as well
     //    buf = (ID3D11Buffer*)res;
         IDirect3DBaseTexture9 * tex;
-        switch (shader_type) {
+        switch (shaderType) {
         case L'v':
             if (!res) {
-                mOrigDevice->SetTexture((D3DDMAPSAMPLER + 1 + slot), NULL);
+                origDevice->SetTexture((D3DDMAPSAMPLER + 1 + slot), NULL);
                 if (wrapper) {
-                    auto it = mHackerDevice->m_activeTextureStages.find((D3DDMAPSAMPLER + 1 + slot));
-                    if (it != mHackerDevice->m_activeTextureStages.end()) {
+                    auto it = hackerDevice->m_activeTextureStages.find((D3DDMAPSAMPLER + 1 + slot));
+                    if (it != hackerDevice->m_activeTextureStages.end()) {
                         it->second->Unbound(it->first);
-                        mHackerDevice->m_activeTextureStages.erase(it);
+                        hackerDevice->m_activeTextureStages.erase(it);
                     }
                 }
                 return;
             }
             tex = reinterpret_cast<IDirect3DBaseTexture9*>(res);
-            mOrigDevice->SetTexture((D3DDMAPSAMPLER + 1 + slot), tex);
+            origDevice->SetTexture((D3DDMAPSAMPLER + 1 + slot), tex);
             if (wrapper) {
                 if (*wrapper) {
                     D3D9Wrapper::IDirect3DBaseTexture9 *wrappedTexture = reinterpret_cast<D3D9Wrapper::IDirect3DBaseTexture9*>(*wrapper);
-                    auto it = mHackerDevice->m_activeTextureStages.find((D3DDMAPSAMPLER + 1 + slot));
-                    if (it != mHackerDevice->m_activeTextureStages.end()) {
+                    auto it = hackerDevice->m_activeTextureStages.find((D3DDMAPSAMPLER + 1 + slot));
+                    if (it != hackerDevice->m_activeTextureStages.end()) {
                         if (wrappedTexture != it->second) {
                             wrappedTexture->Bound(it->first);
                             it->second->Unbound(it->first);
@@ -7774,14 +7774,14 @@ void ResourceCopyTarget::SetResource(
                     }
                     else {
                         wrappedTexture->Bound(D3DDMAPSAMPLER + 1 + slot);
-                        mHackerDevice->m_activeTextureStages.emplace((D3DDMAPSAMPLER + 1 + slot), wrappedTexture);
+                        hackerDevice->m_activeTextureStages.emplace((D3DDMAPSAMPLER + 1 + slot), wrappedTexture);
                     }
                 }
                 else {
-                    auto it = mHackerDevice->m_activeTextureStages.find((D3DDMAPSAMPLER + 1 + slot));
-                    if (it != mHackerDevice->m_activeTextureStages.end()) {
+                    auto it = hackerDevice->m_activeTextureStages.find((D3DDMAPSAMPLER + 1 + slot));
+                    if (it != hackerDevice->m_activeTextureStages.end()) {
                         it->second->Unbound(it->first);
-                        mHackerDevice->m_activeTextureStages.erase(it);
+                        hackerDevice->m_activeTextureStages.erase(it);
                     }
                 }
             }
@@ -7790,23 +7790,23 @@ void ResourceCopyTarget::SetResource(
         case L'p':
 
             if (!res) {
-                mOrigDevice->SetTexture(slot, NULL);
+                origDevice->SetTexture(slot, NULL);
                 if (wrapper) {
-                    auto it = mHackerDevice->m_activeTextureStages.find(slot);
-                    if (it != mHackerDevice->m_activeTextureStages.end()) {
+                    auto it = hackerDevice->m_activeTextureStages.find(slot);
+                    if (it != hackerDevice->m_activeTextureStages.end()) {
                         it->second->Unbound(it->first);
-                        mHackerDevice->m_activeTextureStages.erase(it);
+                        hackerDevice->m_activeTextureStages.erase(it);
                     }
                 }
                 return;
             }
             tex = reinterpret_cast<IDirect3DBaseTexture9*>(res);
-            mOrigDevice->SetTexture((slot), tex);
+            origDevice->SetTexture((slot), tex);
             if (wrapper) {
                 if (*wrapper) {
                     D3D9Wrapper::IDirect3DBaseTexture9 *wrappedTexture = reinterpret_cast<D3D9Wrapper::IDirect3DBaseTexture9*>(*wrapper);
-                    auto it = mHackerDevice->m_activeTextureStages.find(slot);
-                    if (it != mHackerDevice->m_activeTextureStages.end()) {
+                    auto it = hackerDevice->m_activeTextureStages.find(slot);
+                    if (it != hackerDevice->m_activeTextureStages.end()) {
                         if (wrappedTexture != it->second) {
                             wrappedTexture->Bound(slot);
                             it->second->Unbound(slot);
@@ -7815,14 +7815,14 @@ void ResourceCopyTarget::SetResource(
                     }
                     else {
                         wrappedTexture->Bound(slot);
-                        mHackerDevice->m_activeTextureStages.emplace(slot, wrappedTexture);
+                        hackerDevice->m_activeTextureStages.emplace(slot, wrappedTexture);
                     }
                 }
                 else {
-                    auto it = mHackerDevice->m_activeTextureStages.find(slot);
-                    if (it != mHackerDevice->m_activeTextureStages.end()) {
+                    auto it = hackerDevice->m_activeTextureStages.find(slot);
+                    if (it != hackerDevice->m_activeTextureStages.end()) {
                         it->second->Unbound(it->first);
-                        mHackerDevice->m_activeTextureStages.erase(it);
+                        hackerDevice->m_activeTextureStages.erase(it);
                     }
                 }
             }
@@ -7834,24 +7834,24 @@ void ResourceCopyTarget::SetResource(
         break;
     case ResourceCopyTargetType::VERTEX_BUFFER:
         if (!res) {
-            mOrigDevice->SetStreamSource(slot, NULL, offset, stride);
+            origDevice->SetStreamSource(slot, NULL, offset, stride);
             if (wrapper) {
-                auto it = mHackerDevice->m_activeVertexBuffers.find(slot);
-                if (it != mHackerDevice->m_activeVertexBuffers.end()) {
+                auto it = hackerDevice->m_activeVertexBuffers.find(slot);
+                if (it != hackerDevice->m_activeVertexBuffers.end()) {
                     it->second.m_vertexBuffer->Unbound();
-                    mHackerDevice->m_activeVertexBuffers.erase(it);
+                    hackerDevice->m_activeVertexBuffers.erase(it);
                 }
             }
             return;
         }
 
         vb = reinterpret_cast<IDirect3DVertexBuffer9*>(res);
-        mOrigDevice->SetStreamSource(slot, vb, offset, stride);
+        origDevice->SetStreamSource(slot, vb, offset, stride);
         if (wrapper) {
             if (*wrapper) {
                 D3D9Wrapper::IDirect3DVertexBuffer9 *wrappedVertexBuffer = reinterpret_cast<D3D9Wrapper::IDirect3DVertexBuffer9*>(*wrapper);
-                auto it = mHackerDevice->m_activeVertexBuffers.find(slot);
-                if (it != mHackerDevice->m_activeVertexBuffers.end()) {
+                auto it = hackerDevice->m_activeVertexBuffers.find(slot);
+                if (it != hackerDevice->m_activeVertexBuffers.end()) {
                     if (wrappedVertexBuffer != it->second.m_vertexBuffer) {
                         D3D9Wrapper::activeVertexBuffer avb;
                         avb.m_offsetInBytes = offset;
@@ -7872,14 +7872,14 @@ void ResourceCopyTarget::SetResource(
                     avb.m_pStride = offset;
                     avb.m_vertexBuffer = wrappedVertexBuffer;
                     wrappedVertexBuffer->Bound();
-                    mHackerDevice->m_activeVertexBuffers.emplace(slot, avb);
+                    hackerDevice->m_activeVertexBuffers.emplace(slot, avb);
                 }
             }
             else {
-                auto it = mHackerDevice->m_activeVertexBuffers.find(slot);
-                if (it != mHackerDevice->m_activeVertexBuffers.end()) {
+                auto it = hackerDevice->m_activeVertexBuffers.find(slot);
+                if (it != hackerDevice->m_activeVertexBuffers.end()) {
                     it->second.m_vertexBuffer->Unbound();
-                    mHackerDevice->m_activeVertexBuffers.erase(it);
+                    hackerDevice->m_activeVertexBuffers.erase(it);
                 }
             }
         }
@@ -7887,38 +7887,38 @@ void ResourceCopyTarget::SetResource(
     case ResourceCopyTargetType::INDEX_BUFFER:
 
         if (!res) {
-            mOrigDevice->SetIndices(NULL);
+            origDevice->SetIndices(NULL);
             if (wrapper) {
-                if (mHackerDevice->m_activeIndexBuffer)
-                    mHackerDevice->m_activeIndexBuffer->Unbound();
-                mHackerDevice->m_activeIndexBuffer = NULL;
+                if (hackerDevice->m_activeIndexBuffer)
+                    hackerDevice->m_activeIndexBuffer->Unbound();
+                hackerDevice->m_activeIndexBuffer = NULL;
             }
             return;
         }
         ib = reinterpret_cast<IDirect3DIndexBuffer9*>(res);
-        mOrigDevice->SetIndices(ib);
+        origDevice->SetIndices(ib);
         if (wrapper) {
             D3D9Wrapper::IDirect3DIndexBuffer9 *wrappedIndexBuffer = reinterpret_cast<D3D9Wrapper::IDirect3DIndexBuffer9*>(*wrapper);
-            if (wrappedIndexBuffer != mHackerDevice->m_activeIndexBuffer) {
+            if (wrappedIndexBuffer != hackerDevice->m_activeIndexBuffer) {
                 if (wrappedIndexBuffer)
                     wrappedIndexBuffer->Bound();
-                if (mHackerDevice->m_activeIndexBuffer)
-                    mHackerDevice->m_activeIndexBuffer->Unbound();
-                mHackerDevice->m_activeIndexBuffer = wrappedIndexBuffer;
+                if (hackerDevice->m_activeIndexBuffer)
+                    hackerDevice->m_activeIndexBuffer->Unbound();
+                hackerDevice->m_activeIndexBuffer = wrappedIndexBuffer;
             }
         }
         return;
     case ResourceCopyTargetType::RENDER_TARGET:
         D3DCAPS9 pCaps;
-        state->mOrigDevice->GetDeviceCaps(&pCaps);
+        state->origDevice->GetDeviceCaps(&pCaps);
         if (!res) {
             if (slot > 0 && slot < pCaps.NumSimultaneousRTs)
-                mOrigDevice->SetRenderTarget(slot, NULL);
-            if (wrapper && (slot < mHackerDevice->m_activeRenderTargets.size()) && (slot > 0)){
-                D3D9Wrapper::IDirect3DSurface9 *existingRT = mHackerDevice->m_activeRenderTargets[slot];
+                origDevice->SetRenderTarget(slot, NULL);
+            if (wrapper && (slot < hackerDevice->m_activeRenderTargets.size()) && (slot > 0)){
+                D3D9Wrapper::IDirect3DSurface9 *existingRT = hackerDevice->m_activeRenderTargets[slot];
                 if (existingRT)
                     existingRT->Unbound();
-                mHackerDevice->m_activeRenderTargets[slot] = NULL;
+                hackerDevice->m_activeRenderTargets[slot] = NULL;
             }
             return;
         }
@@ -7926,38 +7926,38 @@ void ResourceCopyTarget::SetResource(
             IDirect3DSurface9 *pSurfaceLevel;
         case D3DRESOURCETYPE::D3DRTYPE_SURFACE:
             if (slot >= 0 && slot < pCaps.NumSimultaneousRTs) {
-                mOrigDevice->SetRenderTarget(slot, reinterpret_cast<IDirect3DSurface9*>(res));
+                origDevice->SetRenderTarget(slot, reinterpret_cast<IDirect3DSurface9*>(res));
             }
-            if (wrapper && (slot < mHackerDevice->m_activeRenderTargets.size()) && (slot > 0)) {
+            if (wrapper && (slot < hackerDevice->m_activeRenderTargets.size()) && (slot > 0)) {
                 D3D9Wrapper::IDirect3DSurface9 *wrappedRT = reinterpret_cast<D3D9Wrapper::IDirect3DSurface9*>(*wrapper);
-                D3D9Wrapper::IDirect3DSurface9 *existingRT = mHackerDevice->m_activeRenderTargets[slot];
+                D3D9Wrapper::IDirect3DSurface9 *existingRT = hackerDevice->m_activeRenderTargets[slot];
                 if (wrappedRT != existingRT) {
                     if (wrappedRT)
                         wrappedRT->Bound();
                     if (existingRT)
                         existingRT->Unbound();
-                    mHackerDevice->m_activeRenderTargets[slot] = wrappedRT;
+                    hackerDevice->m_activeRenderTargets[slot] = wrappedRT;
                 }
             }
             return;
         case D3DRESOURCETYPE::D3DRTYPE_CUBETEXTURE:
             if (slot >= 0 && slot < pCaps.NumSimultaneousRTs) {
                 (reinterpret_cast<IDirect3DCubeTexture9*>(res))->GetCubeMapSurface(D3DCUBEMAP_FACE_POSITIVE_X, 0, &pSurfaceLevel);
-                mOrigDevice->SetRenderTarget(slot, pSurfaceLevel);
+                origDevice->SetRenderTarget(slot, pSurfaceLevel);
                 pSurfaceLevel->Release();
             }
-            if (wrapper && (slot < mHackerDevice->m_activeRenderTargets.size()) && (slot > 0)) {
+            if (wrapper && (slot < hackerDevice->m_activeRenderTargets.size()) && (slot > 0)) {
                 D3D9Wrapper::IDirect3DCubeTexture9 *wrappedCubeRT = reinterpret_cast<D3D9Wrapper::IDirect3DCubeTexture9*>(*wrapper);
                 D3D9Wrapper::IDirect3DSurface9 *wrappedRT = NULL;
                 if (wrappedCubeRT)
                     wrappedCubeRT->GetCubeMapSurface(D3DCUBEMAP_FACE_POSITIVE_X, 0, &wrappedRT);
-                D3D9Wrapper::IDirect3DSurface9 *existingRT = mHackerDevice->m_activeRenderTargets[slot];
+                D3D9Wrapper::IDirect3DSurface9 *existingRT = hackerDevice->m_activeRenderTargets[slot];
                 if (wrappedRT != existingRT) {
                     if (wrappedRT)
                         wrappedRT->Bound();
                     if (existingRT)
                         existingRT->Unbound();
-                    mHackerDevice->m_activeRenderTargets[slot] = wrappedRT;
+                    hackerDevice->m_activeRenderTargets[slot] = wrappedRT;
                 }
                 if (wrappedRT)
                     wrappedRT->Release();
@@ -7966,21 +7966,21 @@ void ResourceCopyTarget::SetResource(
         case D3DRESOURCETYPE::D3DRTYPE_TEXTURE:
             if (slot >= 0 && slot < pCaps.NumSimultaneousRTs) {
                 (reinterpret_cast<IDirect3DTexture9*>(res))->GetSurfaceLevel(0, &pSurfaceLevel);
-                mOrigDevice->SetRenderTarget(slot, pSurfaceLevel);
+                origDevice->SetRenderTarget(slot, pSurfaceLevel);
                 pSurfaceLevel->Release();
             }
-            if (wrapper && (slot < mHackerDevice->m_activeRenderTargets.size()) && (slot > 0)) {
+            if (wrapper && (slot < hackerDevice->m_activeRenderTargets.size()) && (slot > 0)) {
                 D3D9Wrapper::IDirect3DTexture9 *wrappedTexRT = reinterpret_cast<D3D9Wrapper::IDirect3DTexture9*>(*wrapper);
                 D3D9Wrapper::IDirect3DSurface9 *wrappedRT = NULL;
                 if (wrappedTexRT)
                     wrappedTexRT->GetSurfaceLevel(0, &wrappedRT);
-                D3D9Wrapper::IDirect3DSurface9 *existingRT = mHackerDevice->m_activeRenderTargets[slot];
+                D3D9Wrapper::IDirect3DSurface9 *existingRT = hackerDevice->m_activeRenderTargets[slot];
                 if (wrappedRT != existingRT) {
                     if (wrappedRT)
                         wrappedRT->Bound();
                     if (existingRT)
                         existingRT->Unbound();
-                    mHackerDevice->m_activeRenderTargets[slot] = wrappedRT;
+                    hackerDevice->m_activeRenderTargets[slot] = wrappedRT;
                 }
                 if (wrappedRT)
                     wrappedRT->Release();
@@ -7992,32 +7992,32 @@ void ResourceCopyTarget::SetResource(
     case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
         IDirect3DSurface9 *pSurfaceLevel;
         if (!res) {
-            mOrigDevice->SetDepthStencilSurface(NULL);
+            origDevice->SetDepthStencilSurface(NULL);
             if (wrapper) {
-                if (mHackerDevice->m_pActiveDepthStencil)
-                    mHackerDevice->m_pActiveDepthStencil->Unbound();
-                mHackerDevice->m_pActiveDepthStencil = NULL;
+                if (hackerDevice->m_pActiveDepthStencil)
+                    hackerDevice->m_pActiveDepthStencil->Unbound();
+                hackerDevice->m_pActiveDepthStencil = NULL;
             }
             return;
         }
 
         switch (res->GetType()) {
         case D3DRESOURCETYPE::D3DRTYPE_SURFACE:
-            mOrigDevice->SetDepthStencilSurface(reinterpret_cast<IDirect3DSurface9*>(res));
+            origDevice->SetDepthStencilSurface(reinterpret_cast<IDirect3DSurface9*>(res));
             if (wrapper) {
                 D3D9Wrapper::IDirect3DSurface9 *wrappedDS = reinterpret_cast<D3D9Wrapper::IDirect3DSurface9*>(*wrapper);
-                if (wrappedDS != mHackerDevice->m_pActiveDepthStencil) {
+                if (wrappedDS != hackerDevice->m_pActiveDepthStencil) {
                     if (wrappedDS)
                         wrappedDS->Bound();
-                    if (mHackerDevice->m_pActiveDepthStencil)
-                        mHackerDevice->m_pActiveDepthStencil->Unbound();
-                    mHackerDevice->m_pActiveDepthStencil = wrappedDS;
+                    if (hackerDevice->m_pActiveDepthStencil)
+                        hackerDevice->m_pActiveDepthStencil->Unbound();
+                    hackerDevice->m_pActiveDepthStencil = wrappedDS;
                 }
             }
             return;
         case D3DRESOURCETYPE::D3DRTYPE_CUBETEXTURE:
             (reinterpret_cast<IDirect3DCubeTexture9*>(res))->GetCubeMapSurface(D3DCUBEMAP_FACE_POSITIVE_X, 0, &pSurfaceLevel);
-            mOrigDevice->SetDepthStencilSurface(pSurfaceLevel);
+            origDevice->SetDepthStencilSurface(pSurfaceLevel);
             pSurfaceLevel->Release();
 
             if (wrapper) {
@@ -8025,12 +8025,12 @@ void ResourceCopyTarget::SetResource(
                 D3D9Wrapper::IDirect3DSurface9 *wrappedDS = NULL;
                 if (wrappedCubeDS)
                     wrappedCubeDS->GetCubeMapSurface(D3DCUBEMAP_FACE_POSITIVE_X, 0, &wrappedDS);
-                if (wrappedDS != mHackerDevice->m_pActiveDepthStencil) {
+                if (wrappedDS != hackerDevice->m_pActiveDepthStencil) {
                     if (wrappedDS)
                         wrappedDS->Bound();
-                    if (mHackerDevice->m_pActiveDepthStencil)
-                        mHackerDevice->m_pActiveDepthStencil->Unbound();
-                    mHackerDevice->m_pActiveDepthStencil = wrappedDS;
+                    if (hackerDevice->m_pActiveDepthStencil)
+                        hackerDevice->m_pActiveDepthStencil->Unbound();
+                    hackerDevice->m_pActiveDepthStencil = wrappedDS;
                 }
                 if (wrappedDS)
                     wrappedDS->Release();
@@ -8038,19 +8038,19 @@ void ResourceCopyTarget::SetResource(
             return;
         case D3DRESOURCETYPE::D3DRTYPE_TEXTURE:
             (reinterpret_cast<IDirect3DTexture9*>(res))->GetSurfaceLevel(0, &pSurfaceLevel);
-            mOrigDevice->SetDepthStencilSurface(pSurfaceLevel);
+            origDevice->SetDepthStencilSurface(pSurfaceLevel);
             pSurfaceLevel->Release();
             if (wrapper) {
                 D3D9Wrapper::IDirect3DTexture9 *wrappedTexDS = reinterpret_cast<D3D9Wrapper::IDirect3DTexture9*>(*wrapper);
                 D3D9Wrapper::IDirect3DSurface9 *wrappedDS = NULL;
                 if (wrappedTexDS)
                     wrappedTexDS->GetSurfaceLevel(0, &wrappedDS);
-                if (wrappedDS != mHackerDevice->m_pActiveDepthStencil) {
+                if (wrappedDS != hackerDevice->m_pActiveDepthStencil) {
                     if (wrappedDS)
                         wrappedDS->Bound();
-                    if (mHackerDevice->m_pActiveDepthStencil)
-                        mHackerDevice->m_pActiveDepthStencil->Unbound();
-                    mHackerDevice->m_pActiveDepthStencil = wrappedDS;
+                    if (hackerDevice->m_pActiveDepthStencil)
+                        hackerDevice->m_pActiveDepthStencil->Unbound();
+                    hackerDevice->m_pActiveDepthStencil = wrappedDS;
                 }
                 if (wrappedDS)
                     wrappedDS->Release();
@@ -8060,20 +8060,20 @@ void ResourceCopyTarget::SetResource(
             return;
         }
     case ResourceCopyTargetType::CUSTOM_RESOURCE:
-        custom_resource->stride = stride;
-        custom_resource->offset = offset;
-        custom_resource->format = format;
-        custom_resource->buf_size = buf_size;
+        customResource->stride = stride;
+        customResource->offset = offset;
+        customResource->format = format;
+        customResource->buf_size = buf_size;
 
 
         if (res == NULL) {
             // Optimisation to allow the resource to be set to null
             // without throwing away the cache so we don't
             // endlessly create & destroy temporary resources.
-            custom_resource->is_null = true;
+            customResource->is_null = true;
             return;
         }
-        custom_resource->is_null = false;
+        customResource->is_null = false;
 
         // If we are passed our own resource (might happen if the
         // resource is used directly in the run() function, or if
@@ -8081,12 +8081,12 @@ void ResourceCopyTarget::SetResource(
         // AddRef() and Release(), and definitely don't Release()
         // before AddRef()
 
-        if (custom_resource->resource != res) {
-            if (custom_resource->resource)
-                custom_resource->resource->Release();
-            custom_resource->resource = res;
-            if (custom_resource->resource)
-                custom_resource->resource->AddRef();
+        if (customResource->resource != res) {
+            if (customResource->resource)
+                customResource->resource->Release();
+            customResource->resource = res;
+            if (customResource->resource)
+                customResource->resource->AddRef();
         }
         break;
 
@@ -8120,7 +8120,7 @@ DWORD ResourceCopyTarget::UsageFlags(CommandListState *state)
     case ResourceCopyTargetType::DEPTH_STENCIL_TARGET:
         return D3DUSAGE_DEPTHSTENCIL;
     case ResourceCopyTargetType::CUSTOM_RESOURCE:
-        return custom_resource->usage_flags;
+        return customResource->usage_flags;
     case ResourceCopyTargetType::THIS_RESOURCE:
         if (state && state->this_target)
             return state->this_target->UsageFlags(state);
@@ -8193,7 +8193,7 @@ static ID3D9Buffer *RecreateCompatibleBuffer(
     }
 
     if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE)
-        dst->custom_resource->OverrideBufferDesc(&new_desc);
+        dst->customResource->OverrideBufferDesc(&new_desc);
 
     return GetResourceFromPool<ID3D9Buffer, ID3D9Buffer, ID3D9BufferDesc>
         (ini_line, src_resource, dst_resource, resource_pool, state, &new_desc);
@@ -8337,9 +8337,9 @@ static D3DFORMAT MakeNonDSVFormat(D3DFORMAT fmt)
     }
 }
 template <typename DescType>
-static void Texture2DDescResolveMSAA(DescType *desc) {}
+static void texture_2d_desc_resolve_msaa(DescType *desc) {}
 template <>
-static void Texture2DDescResolveMSAA(D3DSURFACE_DESC *desc)
+static void texture_2d_desc_resolve_msaa(D3DSURFACE_DESC *desc)
 {
     desc->MultiSampleType = D3DMULTISAMPLE_NONE;
     desc->MultiSampleQuality = 0;
@@ -8353,7 +8353,7 @@ static IDirect3DResource9* RecreateCompatibleSurfaces(
     ResourcePool *resource_pool,
     DWORD usage_flags,
     CommandListState *state,
-    StereoHandle mStereoHandle,
+    StereoHandle stereoHandle,
     ResourceCopyOptions options,
     bool override_create_mode = false,
     NVAPI_STEREO_SURFACECREATEMODE surfaceCreationMode = NVAPI_STEREO_SURFACECREATEMODE::NVAPI_STEREO_SURFACECREATEMODE_AUTO
@@ -8404,7 +8404,7 @@ static IDirect3DResource9* RecreateCompatibleSurfaces(
 
     // TODO: reverse_blit might need to imply resolve_msaa:
     if (options & ResourceCopyOptions::RESOLVE_MSAA)
-        Texture2DDescResolveMSAA(&new_desc);
+        texture_2d_desc_resolve_msaa(&new_desc);
 
     // XXX: Any changes needed in new_desc->MiscFlags?
     //
@@ -8416,7 +8416,7 @@ static IDirect3DResource9* RecreateCompatibleSurfaces(
     new_desc.Usage &= ~D3DUSAGE_AUTOGENMIPMAP;
 
     if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE)
-        dst->custom_resource->OverrideSurfacesDesc(&new_desc, state);
+        dst->customResource->OverrideSurfacesDesc(&new_desc, state);
     ResourceCreationInfo info;
     info.mode = surfaceCreationMode;
 
@@ -8424,15 +8424,15 @@ static IDirect3DResource9* RecreateCompatibleSurfaces(
     switch (new_desc.Type) {
     case D3DRTYPE_SURFACE:
         resourceFromPool = GetResourceFromPool<SourceResourceType, IDirect3DSurface9, D3D2DTEXTURE_DESC>
-            (ini_line, src_resource, (IDirect3DSurface9*)dst_resource, resource_pool, state, &new_desc, override_create_mode, mStereoHandle, pSharedHandle, &info);
+            (ini_line, src_resource, (IDirect3DSurface9*)dst_resource, resource_pool, state, &new_desc, override_create_mode, stereoHandle, pSharedHandle, &info);
         break;
     case D3DRTYPE_TEXTURE:
         resourceFromPool = GetResourceFromPool<SourceResourceType, IDirect3DTexture9, D3D2DTEXTURE_DESC>
-            (ini_line, src_resource, (IDirect3DTexture9*)dst_resource, resource_pool, state, &new_desc, override_create_mode, mStereoHandle, pSharedHandle, &info);
+            (ini_line, src_resource, (IDirect3DTexture9*)dst_resource, resource_pool, state, &new_desc, override_create_mode, stereoHandle, pSharedHandle, &info);
         break;
     case D3DRTYPE_CUBETEXTURE:
         resourceFromPool = GetResourceFromPool<SourceResourceType, IDirect3DCubeTexture9, D3D2DTEXTURE_DESC>
-            (ini_line, src_resource, (IDirect3DCubeTexture9*)dst_resource, resource_pool, state, &new_desc, override_create_mode, mStereoHandle, pSharedHandle, &info);
+            (ini_line, src_resource, (IDirect3DCubeTexture9*)dst_resource, resource_pool, state, &new_desc, override_create_mode, stereoHandle, pSharedHandle, &info);
         break;
     }
     return resourceFromPool;
@@ -8445,7 +8445,7 @@ static IDirect3DVolumeTexture9* RecreateCompatibleVolumeTexture(
     ResourcePool *resource_pool,
     DWORD usage_flags,
     CommandListState *state,
-    StereoHandle mStereoHandle,
+    StereoHandle stereoHandle,
     ResourceCopyOptions options,
     bool override_create_mode = false,
     NVAPI_STEREO_SURFACECREATEMODE surfaceCreationMode = NVAPI_STEREO_SURFACECREATEMODE::NVAPI_STEREO_SURFACECREATEMODE_AUTO
@@ -8464,7 +8464,7 @@ static IDirect3DVolumeTexture9* RecreateCompatibleVolumeTexture(
 
     // TODO: reverse_blit might need to imply resolve_msaa:
     if (options & ResourceCopyOptions::RESOLVE_MSAA)
-        Texture2DDescResolveMSAA(&new_desc);
+        texture_2d_desc_resolve_msaa(&new_desc);
 
     // XXX: Any changes needed in new_desc->MiscFlags?
     //
@@ -8476,12 +8476,12 @@ static IDirect3DVolumeTexture9* RecreateCompatibleVolumeTexture(
     new_desc.Usage &= ~D3DUSAGE_AUTOGENMIPMAP;
 
     if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE)
-        dst->custom_resource->OverrideSurfacesDesc(&new_desc, state);
+        dst->customResource->OverrideSurfacesDesc(&new_desc, state);
     ResourceCreationInfo info;
     info.mode = surfaceCreationMode;
 
     return GetResourceFromPool<IDirect3DVolumeTexture9, IDirect3DVolumeTexture9, D3D3DTEXTURE_DESC>
-        (ini_line, src_resource, dst_resource, resource_pool, state, &new_desc, override_create_mode, mStereoHandle, pSharedHandle, &info);
+        (ini_line, src_resource, dst_resource, resource_pool, state, &new_desc, override_create_mode, stereoHandle, pSharedHandle, &info);
 }
 static void RecreateCompatibleResource(
     wstring *ini_line,
@@ -8490,7 +8490,7 @@ static void RecreateCompatibleResource(
     IDirect3DResource9 **dst_resource,
     ResourcePool *resource_pool,
     CommandListState *state,
-    StereoHandle mStereoHandle,
+    StereoHandle stereoHandle,
     ResourceCopyOptions options,
     UINT stride,
     UINT offset,
@@ -8511,7 +8511,7 @@ static void RecreateCompatibleResource(
     if (*dst_resource) {
         dst_type = (*dst_resource)->GetType();
     }
-    if (mStereoHandle || G->gForceStereo == 2) {
+    if (stereoHandle || G->gForceStereo == 2) {
         if (options & ResourceCopyOptions::CREATEMODE_MASK) {
             override_create_mode = true;
 
@@ -8528,7 +8528,7 @@ static void RecreateCompatibleResource(
             }
         }
         else if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE) {
-            override_create_mode = dst->custom_resource->OverrideSurfaceCreationMode(mStereoHandle, &new_mode);
+            override_create_mode = dst->customResource->OverrideSurfaceCreationMode(stereoHandle, &new_mode);
         }
     }
 
@@ -8542,25 +8542,25 @@ static void RecreateCompatibleResource(
     case D3DRTYPE_SURFACE:
         res = RecreateCompatibleSurfaces<IDirect3DSurface9>
         (ini_line, dst, (IDirect3DSurface9*)src_resource, *dst_resource, resource_pool, usage_flags,
-            state, mStereoHandle, options,
+            state, stereoHandle, options,
             override_create_mode, new_mode);
         break;
     case D3DRTYPE_TEXTURE:
         res = RecreateCompatibleSurfaces<IDirect3DTexture9>
         (ini_line, dst, (IDirect3DTexture9*)src_resource, *dst_resource, resource_pool, usage_flags,
-            state, mStereoHandle, options,
+            state, stereoHandle, options,
             override_create_mode, new_mode);
         break;
     case D3DRTYPE_CUBETEXTURE:
         res = RecreateCompatibleSurfaces<IDirect3DCubeTexture9>
         (ini_line, dst, (IDirect3DCubeTexture9*)src_resource, *dst_resource, resource_pool, usage_flags,
-            state, mStereoHandle, options,
+            state, stereoHandle, options,
             override_create_mode, new_mode);
         break;
     case D3DRTYPE_VOLUMETEXTURE:
         res = RecreateCompatibleVolumeTexture
         (ini_line, dst, (IDirect3DVolumeTexture9*)src_resource, (IDirect3DVolumeTexture9*)*dst_resource, resource_pool, usage_flags,
-            state, mStereoHandle, options,
+            state, stereoHandle, options,
             override_create_mode, new_mode);
         break;
     }
@@ -8604,7 +8604,7 @@ static void SetViewportFromResource(CommandListState *state, IDirect3DResource9 
         viewport.Width = sur_desc.Width;
         viewport.Height = sur_desc.Height;
     }
-    state->mOrigDevice->SetViewport(&viewport);
+    state->origDevice->SetViewport(&viewport);
 }
 
 ResourceCopyOperation::ResourceCopyOperation() :
@@ -8661,20 +8661,20 @@ HRESULT mapGetSourceSurface(IDirect3DVolumeTexture9 *container, IDirect3DVolume9
 HRESULT mapUpdateDestResource(CommandListState *state, D3D2DTEXTURE_DESC *desc, IDirect3DSurface9 *srcSur, IDirect3DSurface9 *dstSur) {
     if ((desc->Usage & D3DUSAGE_RENDERTARGET)){
         if (desc->MultiSampleType == D3DMULTISAMPLE_NONE)
-            return state->mOrigDevice->GetRenderTargetData(srcSur, dstSur);
+            return state->origDevice->GetRenderTargetData(srcSur, dstSur);
         else {
             IDirect3DSurface9 *resolve_aa;
-            state->mOrigDevice->CreateRenderTarget(desc->Width, desc->Height, desc->Format, D3DMULTISAMPLE_NONE, 0, false, &resolve_aa, NULL);
-            state->mOrigDevice->StretchRect(srcSur, NULL, resolve_aa, NULL, D3DTEXTUREFILTERTYPE::D3DTEXF_POINT);
-            return state->mOrigDevice->GetRenderTargetData(resolve_aa, dstSur);
+            state->origDevice->CreateRenderTarget(desc->Width, desc->Height, desc->Format, D3DMULTISAMPLE_NONE, 0, false, &resolve_aa, NULL);
+            state->origDevice->StretchRect(srcSur, NULL, resolve_aa, NULL, D3DTEXTUREFILTERTYPE::D3DTEXF_POINT);
+            return state->origDevice->GetRenderTargetData(resolve_aa, dstSur);
         }
     }
     else if ((desc->Usage & D3DUSAGE_DEPTHSTENCIL)){
             IDirect3DSurface9 *intermediate;
-            state->mOrigDevice->CreateRenderTarget(desc->Width, desc->Height, desc->Format, D3DMULTISAMPLE_NONE, 0, false, &intermediate, NULL);
+            state->origDevice->CreateRenderTarget(desc->Width, desc->Height, desc->Format, D3DMULTISAMPLE_NONE, 0, false, &intermediate, NULL);
             if (D3DXLoadSurfaceFromSurface(intermediate, NULL, NULL, srcSur, NULL, NULL, D3DX_DEFAULT, 0 == E_FAIL))
-                state->mHackerDevice->NVAPIStretchRect(srcSur, intermediate, NULL, NULL);
-            return state->mOrigDevice->GetRenderTargetData(intermediate, dstSur);
+                state->hackerDevice->NVAPIStretchRect(srcSur, intermediate, NULL, NULL);
+            return state->origDevice->GetRenderTargetData(intermediate, dstSur);
     }
     else {
         return D3DXLoadSurfaceFromSurface(dstSur, NULL, NULL, srcSur, NULL, NULL, D3DX_DEFAULT, 0);
@@ -8712,18 +8712,18 @@ HRESULT mapUpdateDestResource(CommandListState *state, D3D2DTEXTURE_DESC *desc, 
     return mapUpdateDestResource(state, desc, srcSur, dstSur);
 }
 HRESULT mapCreateDestResource(CommandListState *state, D3D2DTEXTURE_DESC *desc, IDirect3DSurface9 *sur) {
-    return state->mOrigDevice->CreateOffscreenPlainSurface(desc->Width, desc->Height, desc->Format, D3DPOOL::D3DPOOL_SYSTEMMEM, &sur, NULL);
+    return state->origDevice->CreateOffscreenPlainSurface(desc->Width, desc->Height, desc->Format, D3DPOOL::D3DPOOL_SYSTEMMEM, &sur, NULL);
 }
 HRESULT mapCreateDestResource(CommandListState *state, D3D2DTEXTURE_DESC *desc, IDirect3DTexture9 *sur) {
-    return state->mOrigDevice->CreateTexture(desc->Width, desc->Height, 1, 0, desc->Format, D3DPOOL::D3DPOOL_SYSTEMMEM, &sur, NULL);
+    return state->origDevice->CreateTexture(desc->Width, desc->Height, 1, 0, desc->Format, D3DPOOL::D3DPOOL_SYSTEMMEM, &sur, NULL);
 }
 
 HRESULT mapCreateDestResource(CommandListState *state, D3D3DTEXTURE_DESC *desc, IDirect3DVolumeTexture9 *sur) {
-    return state->mOrigDevice->CreateVolumeTexture(desc->Width, desc->Height, desc->Depth, 1, 0, desc->Format, D3DPOOL::D3DPOOL_SYSTEMMEM, &sur, NULL);
+    return state->origDevice->CreateVolumeTexture(desc->Width, desc->Height, desc->Depth, 1, 0, desc->Format, D3DPOOL::D3DPOOL_SYSTEMMEM, &sur, NULL);
 }
 
 HRESULT mapCreateDestResource(CommandListState *state, D3D2DTEXTURE_DESC *desc, IDirect3DCubeTexture9 *sur) {
-    return state->mOrigDevice->CreateCubeTexture(desc->Width, 1, 0, desc->Format, D3DPOOL::D3DPOOL_SYSTEMMEM, &sur, NULL);
+    return state->origDevice->CreateCubeTexture(desc->Width, 1, 0, desc->Format, D3DPOOL::D3DPOOL_SYSTEMMEM, &sur, NULL);
 }
 
 template<typename SourceSurface, typename DestSurface, typename Desc, typename LockedRect>
@@ -8815,7 +8815,7 @@ HRESULT ResourceStagingOperation::map(CommandListState *state, void **mapping)
     return hr;
 }
 
-void ResourceStagingOperation::unmap(CommandListState *state)
+void ResourceStagingOperation::Unmap(CommandListState *state)
 {
     if (mapped_resource)
         switch (mapped_resource_type) {
@@ -8885,14 +8885,14 @@ HRESULT GetLevel(IDirect3DCubeTexture9 *tex, UINT face, UINT level, IDirect3DSur
     return tex->GetCubeMapSurface((D3DCUBEMAP_FACES)face, level, ppLev);
 }
 template<CopyLevelSur c>
-HRESULT CopyLevelSurface<c>::copyLevel(D3D9Wrapper::IDirect3DDevice9 * mHackerDevice, IDirect3DSurface9 * srcLev, IDirect3DSurface9 * dstLev, D3D2DTEXTURE_DESC * srcDesc, D3D2DTEXTURE_DESC * dstDesc, RECT * srcRect, RECT * dstRect)
+HRESULT CopyLevelSurface<c>::copyLevel(D3D9Wrapper::IDirect3DDevice9 * hackerDevice, IDirect3DSurface9 * srcLev, IDirect3DSurface9 * dstLev, D3D2DTEXTURE_DESC * srcDesc, D3D2DTEXTURE_DESC * dstDesc, RECT * srcRect, RECT * dstRect)
 {
-    return c(mHackerDevice, srcLev, dstLev, srcDesc, dstDesc, srcRect, dstRect);
+    return c(hackerDevice, srcLev, dstLev, srcDesc, dstDesc, srcRect, dstRect);
 };
 template<CopyLevelVol c>
-HRESULT CopyLevelVolume<c>::copyLevel(D3D9Wrapper::IDirect3DDevice9 * mHackerDevice, IDirect3DVolume9 * srcLev, IDirect3DVolume9 * dstLev, D3D3DTEXTURE_DESC * srcDesc, D3D3DTEXTURE_DESC * dstDesc, D3DBOX * srcRect, D3DBOX * dstRect)
+HRESULT CopyLevelVolume<c>::copyLevel(D3D9Wrapper::IDirect3DDevice9 * hackerDevice, IDirect3DVolume9 * srcLev, IDirect3DVolume9 * dstLev, D3D3DTEXTURE_DESC * srcDesc, D3D3DTEXTURE_DESC * dstDesc, D3DBOX * srcRect, D3DBOX * dstRect)
 {
-    return c(mHackerDevice, srcLev, dstLev, srcDesc, dstDesc, srcRect, dstRect);
+    return c(hackerDevice, srcLev, dstLev, srcDesc, dstDesc, srcRect, dstRect);
 };
 bool isCompressedFormat(D3DFORMAT fmt) {
 
@@ -8976,7 +8976,7 @@ bool d3dformat_stretchRect_source(D3DFORMAT fmt) {
         return false;
     }
 }
-bool CanGetRenderTarget(IDirect3DDevice9 * mOrigDevice, D3D2DTEXTURE_DESC * srcDesc, D3D2DTEXTURE_DESC * dstDesc)
+bool CanGetRenderTarget(IDirect3DDevice9 * origDevice, D3D2DTEXTURE_DESC * srcDesc, D3D2DTEXTURE_DESC * dstDesc)
 {
     if (srcDesc->Format != dstDesc->Format)
         return false;
@@ -8988,7 +8988,7 @@ bool CanGetRenderTarget(IDirect3DDevice9 * mOrigDevice, D3D2DTEXTURE_DESC * srcD
         return false;
     return true;
 }
-bool CanDirectXStretchRectDS(IDirect3DDevice9 * mOrigDevice, D3D2DTEXTURE_DESC * srcDesc, D3D2DTEXTURE_DESC * dstDesc, RECT *srcRect, RECT *dstRect)
+bool CanDirectXStretchRectDS(IDirect3DDevice9 * origDevice, D3D2DTEXTURE_DESC * srcDesc, D3D2DTEXTURE_DESC * dstDesc, RECT *srcRect, RECT *dstRect)
 {
     if (srcRect || dstRect)
         return false;
@@ -9006,7 +9006,7 @@ bool CanDirectXStretchRectDS(IDirect3DDevice9 * mOrigDevice, D3D2DTEXTURE_DESC *
     }
     return true;
 }
-bool CanDirectXStretchRectRT(IDirect3DDevice9 * mOrigDevice, D3D2DTEXTURE_DESC * srcDesc, D3D2DTEXTURE_DESC * dstDesc)
+bool CanDirectXStretchRectRT(IDirect3DDevice9 * origDevice, D3D2DTEXTURE_DESC * srcDesc, D3D2DTEXTURE_DESC * dstDesc)
 {
     if (isCompressedFormat(srcDesc->Format) || isCompressedFormat(dstDesc->Format)) {
         return false;
@@ -9017,7 +9017,7 @@ bool CanDirectXStretchRectRT(IDirect3DDevice9 * mOrigDevice, D3D2DTEXTURE_DESC *
         }
         else {
             IDirect3D9 *pD3D9;
-            mOrigDevice->GetDirect3D(&pD3D9);
+            origDevice->GetDirect3D(&pD3D9);
             HRESULT hr = pD3D9->CheckDeviceFormatConversion(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, srcDesc->Format, dstDesc->Format);
             if (FAILED(hr)) {
                 return false;
@@ -9032,7 +9032,7 @@ bool CanDirectXStretchRectRT(IDirect3DDevice9 * mOrigDevice, D3D2DTEXTURE_DESC *
         }
     }
     D3DCAPS9 d3dCaps;
-    mOrigDevice->GetDeviceCaps(&d3dCaps);
+    origDevice->GetDeviceCaps(&d3dCaps);
     if (dstDesc->Type == D3DRTYPE_CUBETEXTURE || dstDesc->Type == D3DRTYPE_TEXTURE)
     {
         if (!(d3dCaps.DevCaps2 & D3DDEVCAPS2_CAN_STRETCHRECT_FROM_TEXTURES)) {
@@ -9076,7 +9076,7 @@ bool CanDirectXStretchRectRT(IDirect3DDevice9 * mOrigDevice, D3D2DTEXTURE_DESC *
     }
 }
 template <typename Texture, typename Surface, typename Desc, typename Rect, typename CopyLevel>
-HRESULT CopyAllLevelsOfTexture(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DCubeTexture9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc = NULL, RECT *srcRect = NULL, RECT *dstRect = NULL) {
+HRESULT CopyAllLevelsOfTexture(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DCubeTexture9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc = NULL, RECT *srcRect = NULL, RECT *dstRect = NULL) {
     HRESULT outputHR = S_OK;
     for (int face = 0; face < 6; face++) {
         for (UINT x = 0; x < srcDesc->Levels; x++) {
@@ -9101,7 +9101,7 @@ HRESULT CopyAllLevelsOfTexture(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDi
                 LevelRect(dstRect, &calcDstRect, x);
                 levelDstRect = &calcDstRect;
             }
-            hr = CopyLevel::copyLevel(mHackerDevice, srcLev, dstLev, srcDesc, dstDesc, levelSrcRect, levelDstRect);
+            hr = CopyLevel::copyLevel(hackerDevice, srcLev, dstLev, srcDesc, dstDesc, levelSrcRect, levelDstRect);
             if (FAILED(hr))
                 outputHR = hr;
             srcLev->Release();
@@ -9112,7 +9112,7 @@ HRESULT CopyAllLevelsOfTexture(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDi
 }
 
 template <typename Texture, typename Surface, typename Desc, typename Rect, typename CopyLevel>
-HRESULT CopyAllLevelsOfTexture(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, Texture *src, Texture *dst, Desc *srcDesc, Desc *dstDesc = NULL, Rect *srcRect = NULL, Rect *dstRect = NULL) {
+HRESULT CopyAllLevelsOfTexture(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, Texture *src, Texture *dst, Desc *srcDesc, Desc *dstDesc = NULL, Rect *srcRect = NULL, Rect *dstRect = NULL) {
     HRESULT outputHR = S_OK;
     for (UINT x = 0; x < srcDesc->Levels; x++) {
         HRESULT hr;
@@ -9136,7 +9136,7 @@ HRESULT CopyAllLevelsOfTexture(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, Tex
             LevelRect(dstRect, &calcDstRect, x);
             levelDstRect = &calcDstRect;
         }
-        hr = CopyLevel::copyLevel(mHackerDevice, srcLev, dstLev, srcDesc, dstDesc, levelSrcRect, levelDstRect);
+        hr = CopyLevel::copyLevel(hackerDevice, srcLev, dstLev, srcDesc, dstDesc, levelSrcRect, levelDstRect);
         if (FAILED(hr))
             outputHR = hr;
         srcLev->Release();
@@ -9164,14 +9164,14 @@ void LevelRect(D3DBOX *inputRect, D3DBOX *outputRect, UINT level) {
     oBox.Bottom = inputRect->Bottom >> level;
     *outputRect = oBox;
 }
-HRESULT _ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT _ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     if (srcDesc->Pool == D3DPOOL::D3DPOOL_DEFAULT) {
-        if (CanDirectXStretchRectRT(mHackerDevice->GetD3D9Device(), srcDesc, dstDesc)) {
-            return mHackerDevice->GetD3D9Device()->StretchRect(src, srcRect, dst, NULL, D3DTEXF_POINT);
+        if (CanDirectXStretchRectRT(hackerDevice->GetD3D9Device(), srcDesc, dstDesc)) {
+            return hackerDevice->GetD3D9Device()->StretchRect(src, srcRect, dst, NULL, D3DTEXF_POINT);
         }
         else {
-            hr = mHackerDevice->NVAPIStretchRect(src, dst, srcRect, NULL);
+            hr = hackerDevice->NVAPIStretchRect(src, dst, srcRect, NULL);
             if (FAILED(hr))
                 hr = D3DXLoadSurfaceFromSurface(dst, NULL, NULL, src, NULL, srcRect, D3DX_DEFAULT, 0);
             return hr;
@@ -9189,7 +9189,7 @@ HRESULT _ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurf
             height = srcDesc->Height;
         }
         IDirect3DSurface9 *rmLev;
-        hr = mHackerDevice->GetD3D9Device()->CreateRenderTarget(width, height, srcDesc->Format, srcDesc->MultiSampleType, srcDesc->MultiSampleQuality, false, &rmLev, NULL);
+        hr = hackerDevice->GetD3D9Device()->CreateRenderTarget(width, height, srcDesc->Format, srcDesc->MultiSampleType, srcDesc->MultiSampleQuality, false, &rmLev, NULL);
         if (FAILED(hr))
             return hr;
         hr = D3DXLoadSurfaceFromSurface(rmLev, NULL, NULL, src, NULL, srcRect, D3DX_DEFAULT, 0);
@@ -9208,20 +9208,20 @@ HRESULT _ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurf
         rmDesc.Usage = D3DUSAGE_RENDERTARGET;
         rmDesc.Levels = 1;
 
-        if (CanDirectXStretchRectRT(mHackerDevice->GetD3D9Device(), &rmDesc, dstDesc)) {
-            hr = mHackerDevice->GetD3D9Device()->StretchRect(rmLev, NULL, dst, NULL, D3DTEXF_POINT);
+        if (CanDirectXStretchRectRT(hackerDevice->GetD3D9Device(), &rmDesc, dstDesc)) {
+            hr = hackerDevice->GetD3D9Device()->StretchRect(rmLev, NULL, dst, NULL, D3DTEXF_POINT);
         }
         else {
             hr = D3DXLoadSurfaceFromSurface(dst, NULL, NULL, rmLev, NULL, NULL, D3DX_DEFAULT, 0);
             if (FAILED(hr))
-                hr = mHackerDevice->NVAPIStretchRect(rmLev, dst, NULL, NULL);
+                hr = hackerDevice->NVAPIStretchRect(rmLev, dst, NULL, NULL);
         }
         rmLev->Release();
     }
     return hr;
 }
 
-HRESULT _IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT _IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     UINT width;
     UINT height;
@@ -9233,7 +9233,7 @@ HRESULT _IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, I
         width = srcDesc->Width;
         height = srcDesc->Height;
     }
-    hr = mHackerDevice->GetD3D9Device()->CreateRenderTarget(width, height, srcDesc->Format, D3DMULTISAMPLE_NONE, 0, false, &dst, NULL);
+    hr = hackerDevice->GetD3D9Device()->CreateRenderTarget(width, height, srcDesc->Format, D3DMULTISAMPLE_NONE, 0, false, &dst, NULL);
     if (FAILED(hr)) {
         return hr;
     }
@@ -9248,13 +9248,13 @@ HRESULT _IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, I
         dstDesc.Type = D3DRTYPE_SURFACE;
         dstDesc.Usage = D3DUSAGE_RENDERTARGET;
         dstDesc.Levels = 1;
-        if (CanDirectXStretchRectRT(mHackerDevice->GetD3D9Device(), srcDesc, &dstDesc)) {
-            return mHackerDevice->GetD3D9Device()->StretchRect(src, srcRect, dst, NULL, D3DTEXF_POINT);
+        if (CanDirectXStretchRectRT(hackerDevice->GetD3D9Device(), srcDesc, &dstDesc)) {
+            return hackerDevice->GetD3D9Device()->StretchRect(src, srcRect, dst, NULL, D3DTEXF_POINT);
         }
         else {
             hr = D3DXLoadSurfaceFromSurface(dst, NULL, NULL, src, NULL, srcRect, D3DX_DEFAULT, 0);
             if (FAILED(hr))
-                hr = mHackerDevice->NVAPIStretchRect(src, dst, srcRect, NULL);
+                hr = hackerDevice->NVAPIStretchRect(src, dst, srcRect, NULL);
 
             return hr;
         }
@@ -9262,7 +9262,7 @@ HRESULT _IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, I
     else {
 
         IDirect3DSurface9 *rmLev;
-        hr = mHackerDevice->GetD3D9Device()->CreateRenderTarget(width, height, srcDesc->Format, srcDesc->MultiSampleType, srcDesc->MultiSampleQuality, false, &rmLev, NULL);
+        hr = hackerDevice->GetD3D9Device()->CreateRenderTarget(width, height, srcDesc->Format, srcDesc->MultiSampleType, srcDesc->MultiSampleQuality, false, &rmLev, NULL);
         if (FAILED(hr))
             return hr;
         hr = D3DXLoadSurfaceFromSurface(rmLev, NULL, NULL, src, NULL, srcRect, D3DX_DEFAULT, 0);
@@ -9289,106 +9289,106 @@ HRESULT _IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, I
         dstDesc.Type = D3DRTYPE_SURFACE;
         dstDesc.Usage = D3DUSAGE_RENDERTARGET;
         dstDesc.Levels = 1;
-        if (CanDirectXStretchRectRT(mHackerDevice->GetD3D9Device(), &iDesc, &dstDesc)) {
-            hr = mHackerDevice->GetD3D9Device()->StretchRect(rmLev, NULL, dst, NULL, D3DTEXF_POINT);
+        if (CanDirectXStretchRectRT(hackerDevice->GetD3D9Device(), &iDesc, &dstDesc)) {
+            hr = hackerDevice->GetD3D9Device()->StretchRect(rmLev, NULL, dst, NULL, D3DTEXF_POINT);
         }
         else {
             hr = D3DXLoadSurfaceFromSurface(dst, NULL, NULL, rmLev, NULL, srcRect, D3DX_DEFAULT, 0);
             if (FAILED(hr))
-                hr = mHackerDevice->NVAPIStretchRect(rmLev, dst, NULL, NULL);
+                hr = hackerDevice->NVAPIStretchRect(rmLev, dst, NULL, NULL);
 
         }
         rmLev->Release();
     }
     return hr;
 }
-HRESULT IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src,  IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
-    return _IntermediateResolveMSAA(mHackerDevice, src, dst, srcDesc, dstDesc, srcRect, dstRect);
+HRESULT IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src,  IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+    return _IntermediateResolveMSAA(hackerDevice, src, dst, srcDesc, dstDesc, srcRect, dstRect);
 }
 
-HRESULT IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,  IDirect3DSurface9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice,  IDirect3DSurface9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *dstSur = NULL;
     GetLevel(dst, 0, &dstSur);
-    hr = _IntermediateResolveMSAA(mHackerDevice, src, dstSur, srcDesc, dstDesc, srcRect, dstRect);
+    hr = _IntermediateResolveMSAA(hackerDevice, src, dstSur, srcDesc, dstDesc, srcRect, dstRect);
     dstSur->Release();
     return hr;
 }
 
-HRESULT IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *dstSur = NULL;
     GetLevel(dst, 0, 0, &dstSur);
-    hr = _IntermediateResolveMSAA(mHackerDevice, src, dstSur, srcDesc, dstDesc, srcRect, dstRect);
+    hr = _IntermediateResolveMSAA(hackerDevice, src, dstSur, srcDesc, dstDesc, srcRect, dstRect);
     dstSur->Release();
     return hr;
 }
 
-HRESULT IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,  IDirect3DTexture9 *src,IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice,  IDirect3DTexture9 *src,IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *srcSur = NULL;
     GetLevel(src, 0, &srcSur);
-    hr = _IntermediateResolveMSAA(mHackerDevice, srcSur, dst, srcDesc, dstDesc, srcRect, dstRect);
+    hr = _IntermediateResolveMSAA(hackerDevice, srcSur, dst, srcDesc, dstDesc, srcRect, dstRect);
     srcSur->Release();
     return hr;
 }
 
-HRESULT IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,  IDirect3DCubeTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice,  IDirect3DCubeTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *srcSur = NULL;
     GetLevel(src, 0, 0, &srcSur);
-    hr = _IntermediateResolveMSAA(mHackerDevice, srcSur, dst, srcDesc, dstDesc, srcRect, dstRect);
+    hr = _IntermediateResolveMSAA(hackerDevice, srcSur, dst, srcDesc, dstDesc, srcRect, dstRect);
     srcSur->Release();
     return hr;
 }
 
-HRESULT IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DCubeTexture9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
-    return CopyAllLevelsOfTexture<IDirect3DCubeTexture9, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<_IntermediateResolveMSAA>>(mHackerDevice, src, dst, srcDesc, dstDesc, srcRect, dstRect);
+HRESULT IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DCubeTexture9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+    return CopyAllLevelsOfTexture<IDirect3DCubeTexture9, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<_IntermediateResolveMSAA>>(hackerDevice, src, dst, srcDesc, dstDesc, srcRect, dstRect);
 }
 
-HRESULT IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DTexture9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
-    return CopyAllLevelsOfTexture<IDirect3DTexture9, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<_IntermediateResolveMSAA>>(mHackerDevice, src, dst, srcDesc, dstDesc, srcRect, dstRect);
+HRESULT IntermediateResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DTexture9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+    return CopyAllLevelsOfTexture<IDirect3DTexture9, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<_IntermediateResolveMSAA>>(hackerDevice, src, dst, srcDesc, dstDesc, srcRect, dstRect);
 }
-HRESULT ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DTexture9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
-    return CopyAllLevelsOfTexture<IDirect3DTexture9, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<_ResolveMSAA>>(mHackerDevice, src, dst, srcDesc, dstDesc, srcRect, dstRect);
+HRESULT ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DTexture9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+    return CopyAllLevelsOfTexture<IDirect3DTexture9, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<_ResolveMSAA>>(hackerDevice, src, dst, srcDesc, dstDesc, srcRect, dstRect);
 }
-HRESULT ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DCubeTexture9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
-    return CopyAllLevelsOfTexture<IDirect3DCubeTexture9, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<_ResolveMSAA>>(mHackerDevice, src,  dst, srcDesc, dstDesc, srcRect, dstRect);
+HRESULT ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DCubeTexture9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+    return CopyAllLevelsOfTexture<IDirect3DCubeTexture9, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<_ResolveMSAA>>(hackerDevice, src,  dst, srcDesc, dstDesc, srcRect, dstRect);
 }
-HRESULT ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
-    return _ResolveMSAA(mHackerDevice, src,  dst, srcDesc, dstDesc, srcRect, dstRect);
+HRESULT ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+    return _ResolveMSAA(hackerDevice, src,  dst, srcDesc, dstDesc, srcRect, dstRect);
 }
-HRESULT ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *dstSur = NULL;
     GetLevel(dst, 0, &dstSur);
-    hr =  _ResolveMSAA(mHackerDevice, src,  dstSur, srcDesc, dstDesc, srcRect, dstRect);
+    hr =  _ResolveMSAA(hackerDevice, src,  dstSur, srcDesc, dstDesc, srcRect, dstRect);
     dstSur->Release();
     return hr;
 }
 
-HRESULT ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *dstSur = NULL;
     GetLevel(dst, 0, 0, &dstSur);
-    hr = _ResolveMSAA(mHackerDevice, src,  dstSur, srcDesc, dstDesc, srcRect, dstRect);
+    hr = _ResolveMSAA(hackerDevice, src,  dstSur, srcDesc, dstDesc, srcRect, dstRect);
     dstSur->Release();
     return hr;
 }
-HRESULT ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DTexture9 *src,  IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DTexture9 *src,  IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *srcSur = NULL;
     GetLevel(src, 0, &srcSur);
-    hr = _ResolveMSAA(mHackerDevice,  srcSur,  dst, srcDesc, dstDesc, srcRect, dstRect);
+    hr = _ResolveMSAA(hackerDevice,  srcSur,  dst, srcDesc, dstDesc, srcRect, dstRect);
     srcSur->Release();
     return hr;
 }
 
-HRESULT ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,  IDirect3DCubeTexture9 *src,  IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT ResolveMSAA(D3D9Wrapper::IDirect3DDevice9 *hackerDevice,  IDirect3DCubeTexture9 *src,  IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *srcSur = NULL;
     GetLevel(src, 0, 0, &srcSur);
-    hr = _ResolveMSAA(mHackerDevice,  srcSur,  dst, srcDesc, dstDesc, srcRect, dstRect);
+    hr = _ResolveMSAA(hackerDevice,  srcSur,  dst, srcDesc, dstDesc, srcRect, dstRect);
     srcSur->Release();
     return hr;
 }
@@ -9411,17 +9411,17 @@ static HRESULT ResolveMSAA(IDirect3DResource9 *dst_resource, IDirect3DResource9 
         case D3DRTYPE_SURFACE:
             dstSur = (IDirect3DSurface9*)src_resource;
             dst_desc = D3D2DTEXTURE_DESC(dstSur);
-            hr = ResolveMSAA(state->mHackerDevice, srcSur, dstSur, &src_desc, &dst_desc, NULL, NULL);
+            hr = ResolveMSAA(state->hackerDevice, srcSur, dstSur, &src_desc, &dst_desc, NULL, NULL);
             break;
         case D3DRTYPE_TEXTURE:
             dstTex = (IDirect3DTexture9*)src_resource;
             dst_desc = D3D2DTEXTURE_DESC(dstTex);
-            hr = ResolveMSAA(state->mHackerDevice, srcSur, dstTex, &src_desc, &dst_desc, NULL, NULL);
+            hr = ResolveMSAA(state->hackerDevice, srcSur, dstTex, &src_desc, &dst_desc, NULL, NULL);
             break;
         case D3DRTYPE_CUBETEXTURE:
             dstCube = (IDirect3DCubeTexture9*)src_resource;
             dst_desc = D3D2DTEXTURE_DESC(dstCube);
-            hr = ResolveMSAA(state->mHackerDevice, srcSur, dstCube, &src_desc, &dst_desc, NULL, NULL);
+            hr = ResolveMSAA(state->hackerDevice, srcSur, dstCube, &src_desc, &dst_desc, NULL, NULL);
             break;
         }
         break;
@@ -9432,12 +9432,12 @@ static HRESULT ResolveMSAA(IDirect3DResource9 *dst_resource, IDirect3DResource9 
         case D3DRTYPE_SURFACE:
             dstSur = (IDirect3DSurface9*)src_resource;
             dst_desc = D3D2DTEXTURE_DESC(dstSur);
-            hr = ResolveMSAA(state->mHackerDevice, srcTex, dstSur, &src_desc, &dst_desc, NULL, NULL);
+            hr = ResolveMSAA(state->hackerDevice, srcTex, dstSur, &src_desc, &dst_desc, NULL, NULL);
             break;
         case D3DRTYPE_TEXTURE:
             dstTex = (IDirect3DTexture9*)src_resource;
             dst_desc = D3D2DTEXTURE_DESC(dstTex);
-            hr = ResolveMSAA(state->mHackerDevice, srcTex, dstTex, &src_desc, &dst_desc, NULL, NULL);
+            hr = ResolveMSAA(state->hackerDevice, srcTex, dstTex, &src_desc, &dst_desc, NULL, NULL);
             break;
         }
         break;
@@ -9448,32 +9448,32 @@ static HRESULT ResolveMSAA(IDirect3DResource9 *dst_resource, IDirect3DResource9 
         case D3DRTYPE_SURFACE:
             dstSur = (IDirect3DSurface9*)src_resource;
             dst_desc = D3D2DTEXTURE_DESC(dstSur);
-            hr = ResolveMSAA(state->mHackerDevice, srcCube, dstSur, &src_desc, &dst_desc, NULL, NULL);
+            hr = ResolveMSAA(state->hackerDevice, srcCube, dstSur, &src_desc, &dst_desc, NULL, NULL);
             break;
         case D3DRTYPE_CUBETEXTURE:
             dstCube = (IDirect3DCubeTexture9*)src_resource;
             dst_desc = D3D2DTEXTURE_DESC(dstCube);
-            hr = ResolveMSAA(state->mHackerDevice, srcCube, dstCube, &src_desc, &dst_desc, NULL, NULL);
+            hr = ResolveMSAA(state->hackerDevice, srcCube, dstCube, &src_desc, &dst_desc, NULL, NULL);
             break;
         }
         break;
     }
     return hr;
 }
-HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,  IDirect3DSurface9 *src,  IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *hackerDevice,  IDirect3DSurface9 *src,  IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     return D3DXLoadSurfaceFromSurface(dst, NULL, dstRect, src, NULL, srcRect, D3DX_DEFAULT, 0);
 }
 
 template <typename Texture>
-HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, Texture *src, Texture *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
-    return CopyAllLevelsOfTexture<Texture, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<D3DXSurfaceToSurface>>(mHackerDevice, src, dst, srcDesc, dstDesc, srcRect, dstRect);
+HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, Texture *src, Texture *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+    return CopyAllLevelsOfTexture<Texture, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<D3DXSurfaceToSurface>>(hackerDevice, src, dst, srcDesc, dstDesc, srcRect, dstRect);
 }
 
-HRESULT D3DXVolumeToVolume(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DVolume9 *src, IDirect3DVolume9 *dst, D3D3DTEXTURE_DESC *srcDesc, D3D3DTEXTURE_DESC *dstDesc, D3DBOX *srcRect, D3DBOX *dstRect) {
+HRESULT D3DXVolumeToVolume(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DVolume9 *src, IDirect3DVolume9 *dst, D3D3DTEXTURE_DESC *srcDesc, D3D3DTEXTURE_DESC *dstDesc, D3DBOX *srcRect, D3DBOX *dstRect) {
     return D3DXLoadVolumeFromVolume(dst, NULL, dstRect, src, NULL, srcRect, D3DTEXF_POINT, 0);
 }
 
-HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *dstSur = NULL;
     GetLevel(dst, 0, &dstSur);
@@ -9482,7 +9482,7 @@ HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDire
     return hr;
 }
 
-HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *dstSur = NULL;
     GetLevel(dst, 0, 0, &dstSur);
@@ -9490,7 +9490,7 @@ HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDire
     dstSur->Release();
     return hr;
 }
-HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *srcSur = NULL;
     GetLevel(src, 0, &srcSur);
@@ -9499,7 +9499,7 @@ HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDire
     return hr;
 }
 
-HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DCubeTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DCubeTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *srcSur = NULL;
     GetLevel(src, 0, 0, &srcSur);
@@ -9507,162 +9507,162 @@ HRESULT D3DXSurfaceToSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDire
     srcSur->Release();
     return hr;
 }
-HRESULT GetRenderTargetData(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
-    return mHackerDevice->GetD3D9Device()->GetRenderTargetData(src, dst);
+HRESULT GetRenderTargetData(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+    return hackerDevice->GetD3D9Device()->GetRenderTargetData(src, dst);
 }
 
-HRESULT GetRenderTargetData(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT GetRenderTargetData(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *dstSur = NULL;
     GetLevel(dst, 0, &dstSur);
-    hr = mHackerDevice->GetD3D9Device()->GetRenderTargetData(src, dstSur);
+    hr = hackerDevice->GetD3D9Device()->GetRenderTargetData(src, dstSur);
     dstSur->Release();
     return hr;
 }
-HRESULT GetRenderTargetData(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT GetRenderTargetData(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *dstSur = NULL;
     GetLevel(dst, 0, 0, &dstSur);
-    hr = mHackerDevice->GetD3D9Device()->GetRenderTargetData(src, dstSur);
+    hr = hackerDevice->GetD3D9Device()->GetRenderTargetData(src, dstSur);
     dstSur->Release();
     return hr;
 }
-HRESULT GetRenderTargetData(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,  IDirect3DTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT GetRenderTargetData(D3D9Wrapper::IDirect3DDevice9 *hackerDevice,  IDirect3DTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *srcSur = NULL;
     GetLevel(src, 0, &srcSur);
-    hr = mHackerDevice->GetD3D9Device()->GetRenderTargetData(srcSur, dst);
+    hr = hackerDevice->GetD3D9Device()->GetRenderTargetData(srcSur, dst);
     srcSur->Release();
     return hr;
 }
-HRESULT GetRenderTargetData(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DCubeTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT GetRenderTargetData(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DCubeTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *srcSur = NULL;
     GetLevel(src, 0, 0, &srcSur);
-    hr = mHackerDevice->GetD3D9Device()->GetRenderTargetData(srcSur, dst);
+    hr = hackerDevice->GetD3D9Device()->GetRenderTargetData(srcSur, dst);
     srcSur->Release();
     return hr;
 }
 
-HRESULT GetRenderTargetData(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,  IDirect3DCubeTexture9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect ) {
-    return CopyAllLevelsOfTexture<IDirect3DCubeTexture9, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<GetRenderTargetData>>(mHackerDevice,  src, dst, srcDesc, dstDesc, srcRect, dstRect );
+HRESULT GetRenderTargetData(D3D9Wrapper::IDirect3DDevice9 *hackerDevice,  IDirect3DCubeTexture9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect ) {
+    return CopyAllLevelsOfTexture<IDirect3DCubeTexture9, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<GetRenderTargetData>>(hackerDevice,  src, dst, srcDesc, dstDesc, srcRect, dstRect );
 }
-HRESULT GetRenderTargetData(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DTexture9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
-    return CopyAllLevelsOfTexture<IDirect3DTexture9, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<GetRenderTargetData>>(mHackerDevice, src, dst, srcDesc, dstDesc, srcRect, dstRect);
+HRESULT GetRenderTargetData(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DTexture9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+    return CopyAllLevelsOfTexture<IDirect3DTexture9, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<GetRenderTargetData>>(hackerDevice, src, dst, srcDesc, dstDesc, srcRect, dstRect);
 }
-HRESULT StretchRect(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc,  RECT *srcRect, RECT *dstRect) {
-    return mHackerDevice->GetD3D9Device()->StretchRect(src, srcRect, dst, dstRect, D3DTEXF_POINT);
+HRESULT StretchRect(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc,  RECT *srcRect, RECT *dstRect) {
+    return hackerDevice->GetD3D9Device()->StretchRect(src, srcRect, dst, dstRect, D3DTEXF_POINT);
 }
 
-HRESULT StretchRect(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT StretchRect(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *dstSur = NULL;
     GetLevel(dst, 0, &dstSur);
-    hr = mHackerDevice->GetD3D9Device()->StretchRect(src, srcRect, dstSur, dstRect, D3DTEXF_POINT);
+    hr = hackerDevice->GetD3D9Device()->StretchRect(src, srcRect, dstSur, dstRect, D3DTEXF_POINT);
     dstSur->Release();
     return hr;
 }
 
-HRESULT StretchRect(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice,IDirect3DSurface9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT StretchRect(D3D9Wrapper::IDirect3DDevice9 *hackerDevice,IDirect3DSurface9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *dstSur = NULL;
     GetLevel(dst, 0, 0, &dstSur);
-    hr = mHackerDevice->GetD3D9Device()->StretchRect(src, srcRect, dstSur, dstRect, D3DTEXF_POINT);
+    hr = hackerDevice->GetD3D9Device()->StretchRect(src, srcRect, dstSur, dstRect, D3DTEXF_POINT);
     dstSur->Release();
     return hr;
 }
-HRESULT StretchRect(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
+HRESULT StretchRect(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *srcSur = NULL;
     GetLevel(src, 0, &srcSur);
-    hr = mHackerDevice->GetD3D9Device()->StretchRect(srcSur, srcRect, dst, dstRect, D3DTEXF_POINT);
+    hr = hackerDevice->GetD3D9Device()->StretchRect(srcSur, srcRect, dst, dstRect, D3DTEXF_POINT);
     srcSur->Release();
     return hr;
 }
 
-HRESULT StretchRect(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DCubeTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc,  RECT *srcRect, RECT *dstRect) {
+HRESULT StretchRect(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DCubeTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc,  RECT *srcRect, RECT *dstRect) {
     HRESULT hr;
     IDirect3DSurface9 *srcSur = NULL;
     GetLevel(src, 0, 0, &srcSur);
-    hr = mHackerDevice->GetD3D9Device()->StretchRect(srcSur, srcRect, dst, dstRect, D3DTEXF_POINT);
+    hr = hackerDevice->GetD3D9Device()->StretchRect(srcSur, srcRect, dst, dstRect, D3DTEXF_POINT);
     srcSur->Release();
     return hr;
 }
 
 template <typename Texture>
-HRESULT StretchRect(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, Texture *src, Texture *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc,  RECT *srcRect, RECT *dstRect) {
-    return CopyAllLevelsOfTexture<Texture, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<StretchRect>>(mHackerDevice,  src, dst, srcDesc,dstDesc,  srcRect, dstRect);
+HRESULT StretchRect(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, Texture *src, Texture *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc,  RECT *srcRect, RECT *dstRect) {
+    return CopyAllLevelsOfTexture<Texture, IDirect3DSurface9, D3D2DTEXTURE_DESC, RECT, CopyLevelSurface<StretchRect>>(hackerDevice,  src, dst, srcDesc,dstDesc,  srcRect, dstRect);
 }
 
-HRESULT UpdateSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect = NULL, RECT *dstRect = NULL) {
+HRESULT UpdateSurface(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect = NULL, RECT *dstRect = NULL) {
     if (dstRect != NULL) {
         POINT dPoint = { dstRect->left, dstRect->top };
-        return mHackerDevice->GetD3D9Device()->UpdateSurface(src, srcRect, dst, &dPoint);
+        return hackerDevice->GetD3D9Device()->UpdateSurface(src, srcRect, dst, &dPoint);
     }
     else {
-        return mHackerDevice->GetD3D9Device()->UpdateSurface(src, srcRect, dst, NULL);
+        return hackerDevice->GetD3D9Device()->UpdateSurface(src, srcRect, dst, NULL);
     }
 }
-HRESULT UpdateSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect = NULL, RECT *dstRect = NULL) {
+HRESULT UpdateSurface(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect = NULL, RECT *dstRect = NULL) {
     IDirect3DSurface9 *dstSur = NULL;
     GetLevel(dst, 0, &dstSur);
     if (dstRect != NULL) {
         POINT dPoint = { dstRect->left, dstRect->top };
-        return mHackerDevice->GetD3D9Device()->UpdateSurface(src, srcRect, dstSur, &dPoint);
+        return hackerDevice->GetD3D9Device()->UpdateSurface(src, srcRect, dstSur, &dPoint);
     }
     else {
-        return mHackerDevice->GetD3D9Device()->UpdateSurface(src, srcRect, dstSur, NULL);
+        return hackerDevice->GetD3D9Device()->UpdateSurface(src, srcRect, dstSur, NULL);
     }
 }
-HRESULT UpdateSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DSurface9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect = NULL, RECT *dstRect = NULL) {
+HRESULT UpdateSurface(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DSurface9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect = NULL, RECT *dstRect = NULL) {
     IDirect3DSurface9 *dstSur = NULL;
     GetLevel(dst, 0, 0, &dstSur);
     if (dstRect != NULL) {
         POINT dPoint = { dstRect->left, dstRect->top };
-        return mHackerDevice->GetD3D9Device()->UpdateSurface(src, srcRect, dstSur, &dPoint);
+        return hackerDevice->GetD3D9Device()->UpdateSurface(src, srcRect, dstSur, &dPoint);
     }
     else {
-        return mHackerDevice->GetD3D9Device()->UpdateSurface(src, srcRect, dstSur, NULL);
+        return hackerDevice->GetD3D9Device()->UpdateSurface(src, srcRect, dstSur, NULL);
     }
 }
-HRESULT UpdateSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect = NULL, RECT *dstRect = NULL) {
+HRESULT UpdateSurface(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect = NULL, RECT *dstRect = NULL) {
     IDirect3DSurface9 *srcSur = NULL;
     GetLevel(src, 0, &srcSur);
     if (dstRect != NULL) {
         POINT dPoint = { dstRect->left, dstRect->top };
-        return mHackerDevice->GetD3D9Device()->UpdateSurface(srcSur, srcRect, dst, &dPoint);
+        return hackerDevice->GetD3D9Device()->UpdateSurface(srcSur, srcRect, dst, &dPoint);
     }
     else {
-        return mHackerDevice->GetD3D9Device()->UpdateSurface(srcSur, srcRect, dst, NULL);
+        return hackerDevice->GetD3D9Device()->UpdateSurface(srcSur, srcRect, dst, NULL);
     }
 }
 
-HRESULT UpdateSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DCubeTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect = NULL, RECT *dstRect = NULL) {
+HRESULT UpdateSurface(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DCubeTexture9 *src, IDirect3DSurface9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect = NULL, RECT *dstRect = NULL) {
     IDirect3DSurface9 *srcSur = NULL;
     GetLevel(src, 0, 0, &srcSur);
     if (dstRect != NULL) {
         POINT dPoint = { dstRect->left, dstRect->top };
-        return mHackerDevice->GetD3D9Device()->UpdateSurface(srcSur, srcRect, dst, &dPoint);
+        return hackerDevice->GetD3D9Device()->UpdateSurface(srcSur, srcRect, dst, &dPoint);
     }
     else {
-        return mHackerDevice->GetD3D9Device()->UpdateSurface(srcSur, srcRect, dst, NULL);
+        return hackerDevice->GetD3D9Device()->UpdateSurface(srcSur, srcRect, dst, NULL);
     }
 }
 
-HRESULT UpdateSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DCubeTexture9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect = NULL, RECT *dstRect = NULL) {
+HRESULT UpdateSurface(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DCubeTexture9 *src, IDirect3DCubeTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect = NULL, RECT *dstRect = NULL) {
     if (srcRect != NULL)
         AddDirtyRect(src, srcRect);
     if (dstRect != NULL)
         AddDirtyRect(dst, dstRect);
-    return mHackerDevice->GetD3D9Device()->UpdateTexture(src, dst);
+    return hackerDevice->GetD3D9Device()->UpdateTexture(src, dst);
 }
 
-HRESULT UpdateSurface(D3D9Wrapper::IDirect3DDevice9 *mHackerDevice, IDirect3DTexture9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect = NULL, RECT *dstRect = NULL) {
+HRESULT UpdateSurface(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, IDirect3DTexture9 *src, IDirect3DTexture9 *dst, D3D2DTEXTURE_DESC *srcDesc, D3D2DTEXTURE_DESC *dstDesc, RECT *srcRect = NULL, RECT *dstRect = NULL) {
     if (srcRect != NULL)
         AddDirtyRect(src, srcRect);
     if (dstRect != NULL)
         AddDirtyRect(dst, dstRect);
-    return mHackerDevice->GetD3D9Device()->UpdateTexture(src, dst);
+    return hackerDevice->GetD3D9Device()->UpdateTexture(src, dst);
 }
 template <typename SrcSurface, typename DstSurface>
 static HRESULT _CopyResource(CommandListState *state, SrcSurface *srcSurface, DstSurface *dstSurface, RECT *srcRect = NULL, RECT *dstRect = NULL) {
@@ -9672,48 +9672,48 @@ static HRESULT _CopyResource(CommandListState *state, SrcSurface *srcSurface, Ds
     GetResourceDesc(dstSurface, &dstDesc);
     HRESULT hr;
     if (dstDesc.Usage & D3DUSAGE_DEPTHSTENCIL || srcDesc.Usage & D3DUSAGE_DEPTHSTENCIL) {
-            if ((dstDesc.Usage & D3DUSAGE_DEPTHSTENCIL && srcDesc.Usage & D3DUSAGE_DEPTHSTENCIL) && CanDirectXStretchRectDS(state->mOrigDevice, &srcDesc, &dstDesc, srcRect, dstRect))
-                hr = StretchRect(state->mHackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
+            if ((dstDesc.Usage & D3DUSAGE_DEPTHSTENCIL && srcDesc.Usage & D3DUSAGE_DEPTHSTENCIL) && CanDirectXStretchRectDS(state->origDevice, &srcDesc, &dstDesc, srcRect, dstRect))
+                hr = StretchRect(state->hackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
             else
-                hr = D3DXSurfaceToSurface(state->mHackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
+                hr = D3DXSurfaceToSurface(state->hackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
             if (FAILED(hr))
-                hr = state->mHackerDevice->NVAPIStretchRect(srcSurface, dstSurface, srcRect, dstRect);
+                hr = state->hackerDevice->NVAPIStretchRect(srcSurface, dstSurface, srcRect, dstRect);
             return hr;
     }
     else {
         if (srcDesc.Pool == D3DPOOL::D3DPOOL_SYSTEMMEM) {
             if (dstDesc.Pool == D3DPOOL_SYSTEMMEM || dstDesc.MultiSampleType != D3DMULTISAMPLE_NONE)
-                return D3DXSurfaceToSurface(state->mHackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
+                return D3DXSurfaceToSurface(state->hackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
             else
-                return UpdateSurface(state->mHackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
+                return UpdateSurface(state->hackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
         }
         else {
             if (dstDesc.Pool == D3DPOOL_SYSTEMMEM) {
-                if (CanGetRenderTarget(state->mOrigDevice, &srcDesc, &dstDesc)) {
+                if (CanGetRenderTarget(state->origDevice, &srcDesc, &dstDesc)) {
                     if (srcDesc.MultiSampleType == D3DMULTISAMPLE_NONE) {
-                        return GetRenderTargetData(state->mHackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
+                        return GetRenderTargetData(state->hackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
                     }
                     else {
                         COMMAND_LIST_LOG(state, "  resolving MSAA\n");
                         SrcSurface *intermediateSur = NULL;
-                        hr = IntermediateResolveMSAA(state->mHackerDevice, srcSurface, intermediateSur, &srcDesc, &dstDesc, srcRect, dstRect);
+                        hr = IntermediateResolveMSAA(state->hackerDevice, srcSurface, intermediateSur, &srcDesc, &dstDesc, srcRect, dstRect);
                         if (FAILED(hr))
                             return hr;
-                        return GetRenderTargetData(state->mHackerDevice, intermediateSur, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
+                        return GetRenderTargetData(state->hackerDevice, intermediateSur, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
                     }
                 }
                 else {
-                    return D3DXSurfaceToSurface(state->mHackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
+                    return D3DXSurfaceToSurface(state->hackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
                 }
             }
             else {
-                if (CanDirectXStretchRectRT(state->mOrigDevice, &srcDesc, &dstDesc)) {
-                    return StretchRect(state->mHackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
+                if (CanDirectXStretchRectRT(state->origDevice, &srcDesc, &dstDesc)) {
+                    return StretchRect(state->hackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
                 }
                 else {
-                    hr = D3DXSurfaceToSurface(state->mHackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
+                    hr = D3DXSurfaceToSurface(state->hackerDevice, srcSurface, dstSurface, &srcDesc, &dstDesc, srcRect, dstRect);
                     if (FAILED(hr))
-                        hr = state->mHackerDevice->NVAPIStretchRect(srcSurface, dstSurface, srcRect, dstRect);
+                        hr = state->hackerDevice->NVAPIStretchRect(srcSurface, dstSurface, srcRect, dstRect);
                     return hr;
                 }
             }
@@ -9730,14 +9730,14 @@ static HRESULT CopyResource(CommandListState *state, IDirect3DVolumeTexture9 *sr
     D3D3DTEXTURE_DESC dst_desc;
     GetResourceDesc(dstResource, &dst_desc);
     if (!(src_desc.Pool == D3DPOOL::D3DPOOL_SYSTEMMEM) || !(dst_desc.Pool == D3DPOOL::D3DPOOL_DEFAULT)) {
-        return CopyAllLevelsOfTexture<IDirect3DVolumeTexture9, IDirect3DVolume9, D3D3DTEXTURE_DESC, D3DBOX, CopyLevelVolume<D3DXVolumeToVolume>>(state->mHackerDevice, srcResource, dstResource, &src_desc, &dst_desc, srcRect, dstRect);
+        return CopyAllLevelsOfTexture<IDirect3DVolumeTexture9, IDirect3DVolume9, D3D3DTEXTURE_DESC, D3DBOX, CopyLevelVolume<D3DXVolumeToVolume>>(state->hackerDevice, srcResource, dstResource, &src_desc, &dst_desc, srcRect, dstRect);
     }
     else {
         if (srcRect != NULL)
             AddDirtyRect(srcResource, srcRect);
         if (dstRect != NULL)
             AddDirtyRect(dstResource, dstRect);
-        return state->mOrigDevice->UpdateTexture(srcResource, dstResource);
+        return state->origDevice->UpdateTexture(srcResource, dstResource);
     }
 }
 static HRESULT CopyResource(CommandListState *state, IDirect3DCubeTexture9 *srcResource, IDirect3DCubeTexture9 *dstResource, RECT *srcRect = NULL, RECT *dstRect = NULL) {
@@ -9852,7 +9852,7 @@ static void ReverseStereoBlits(vector<IDirect3DTexture9*>dst_resources, vector<I
     RECT dstRect;
     LONG fallbackside = 0;
     if (!fallback && !G->stereoblit_control_set_once){
-        nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, true);
+        nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->hackerDevice->stereoHandle, true);
         if (nvret != NVAPI_OK) {
             LOG_INFO("Resource copying failed to enable reverse stereo blit\n");
             // Fallback path: Copy 2D resource to both sides of the 2x
@@ -9892,22 +9892,22 @@ static void ReverseStereoBlits(vector<IDirect3DTexture9*>dst_resources, vector<I
                 dstRect.right = width * 2;
                 dstRect.bottom = height;
             }
-            state->mOrigDevice->StretchRect(src_surface, &srcRect, dst_surface, &dstRect, D3DTEXF_POINT);
+            state->origDevice->StretchRect(src_surface, &srcRect, dst_surface, &dstRect, D3DTEXF_POINT);
         }
 
         src_surface->Release();
         dst_surface->Release();
     }
     if (!fallback && !G->stereoblit_control_set_once)
-        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, false);
+        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->hackerDevice->stereoHandle, false);
 }
 static void DirectModeReverseStereoBlitSurfaceToSurface(IDirect3DSurface9 *left_surface, IDirect3DSurface9 *right_surface, IDirect3DSurface9 *dst_surface, CommandListState *state) {
-    if (state->mHackerDevice->sli_enabled()) {
+    if (state->hackerDevice->sli_enabled()) {
         IDirect3DSurface9 *origRT;
-        state->mOrigDevice->GetRenderTarget(0, &origRT);
-        state->mOrigDevice->SetRenderTarget(0, dst_surface);
-        state->mOrigDevice->Clear(0L, NULL, D3DCLEAR_TARGET, 0x00000000, 1.0f, 0L);
-        state->mOrigDevice->SetRenderTarget(0, origRT);
+        state->origDevice->GetRenderTarget(0, &origRT);
+        state->origDevice->SetRenderTarget(0, dst_surface);
+        state->origDevice->Clear(0L, NULL, D3DCLEAR_TARGET, 0x00000000, 1.0f, 0L);
+        state->origDevice->SetRenderTarget(0, origRT);
     }
     D3DSURFACE_DESC srcDesc;
     left_surface->GetDesc(&srcDesc);
@@ -9919,9 +9919,9 @@ static void DirectModeReverseStereoBlitSurfaceToSurface(IDirect3DSurface9 *left_
         dstRect.right = upperX + srcDesc.Width;
         dstRect.bottom = srcDesc.Height;
         if (side == 0)
-            state->mOrigDevice->StretchRect(left_surface, NULL, dst_surface, &dstRect, D3DTEXF_POINT);
+            state->origDevice->StretchRect(left_surface, NULL, dst_surface, &dstRect, D3DTEXF_POINT);
         else
-            state->mOrigDevice->StretchRect(right_surface, NULL, dst_surface, &dstRect, D3DTEXF_POINT);
+            state->origDevice->StretchRect(right_surface, NULL, dst_surface, &dstRect, D3DTEXF_POINT);
     }
 }
 
@@ -10014,7 +10014,7 @@ static void ReverseStereoBlit(IDirect3DSurface9 *dst_resource, IDirect3DSurface9
 
     LONG fallbackside = 0;
     if (!fallback && !G->stereoblit_control_set_once) {
-        NvAPI_Status nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, true);
+        NvAPI_Status nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->hackerDevice->stereoHandle, true);
         if (nvret != NVAPI_OK) {
             LOG_INFO("Resource copying failed to enable reverse stereo blit\n");
             // Fallback path: Copy 2D resource to both sides of the 2x
@@ -10023,10 +10023,10 @@ static void ReverseStereoBlit(IDirect3DSurface9 *dst_resource, IDirect3DSurface9
         }
     }
     IDirect3DSurface9 *origRT;
-    state->mOrigDevice->GetRenderTarget(0, &origRT);
-    state->mOrigDevice->SetRenderTarget(0, dst_resource);
-    state->mOrigDevice->Clear(0L, NULL, D3DCLEAR_TARGET, 0x00000000, 1.0f, 0L);
-    state->mOrigDevice->SetRenderTarget(0, origRT);
+    state->origDevice->GetRenderTarget(0, &origRT);
+    state->origDevice->SetRenderTarget(0, dst_resource);
+    state->origDevice->Clear(0L, NULL, D3DCLEAR_TARGET, 0x00000000, 1.0f, 0L);
+    state->origDevice->SetRenderTarget(0, origRT);
     origRT->Release();
     for (fallbackside = 0; fallbackside < 1 + fallback; fallbackside++) {
         if (fallback) {
@@ -10038,13 +10038,13 @@ static void ReverseStereoBlit(IDirect3DSurface9 *dst_resource, IDirect3DSurface9
             dstRect.top = 0;
             dstRect.right = upperX + srcDesc.Width;
             dstRect.bottom = srcDesc.Height;
-            state->mOrigDevice->StretchRect(src_resource, NULL, dst_resource, &dstRect, D3DTEXF_POINT);
+            state->origDevice->StretchRect(src_resource, NULL, dst_resource, &dstRect, D3DTEXF_POINT);
         }else{
-            state->mOrigDevice->StretchRect(src_resource, NULL, dst_resource, NULL, D3DTEXF_POINT);
+            state->origDevice->StretchRect(src_resource, NULL, dst_resource, NULL, D3DTEXF_POINT);
         }
     }
     if (!fallback && !G->stereoblit_control_set_once)
-        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->mHackerDevice->mStereoHandle, false);
+        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->hackerDevice->stereoHandle, false);
 }
 template<typename ID3D9SourceBuffer, typename ID3D9DestBuffer>
 static HRESULT SpecialCopyBufferRegion(ID3D9DestBuffer *dst_resource, ID3D9SourceBuffer *src_resource,
@@ -10128,10 +10128,10 @@ void ClearSurfaceCommand::clear_surface(IDirect3DResource9 *resource, CommandLis
         COMMAND_LIST_LOG(state, "  clearing RTV\n");
         Profiling::surfaces_cleared++;
         IDirect3DSurface9 *origRT;
-        state->mOrigDevice->GetRenderTarget(0, &origRT);
-        state->mOrigDevice->SetRenderTarget(0, surface);
-        state->mOrigDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_RGBA((int)fval[0], (int)fval[1], (int)fval[2], (int)fval[3]), NULL, NULL);
-        state->mOrigDevice->SetRenderTarget(0, origRT);
+        state->origDevice->GetRenderTarget(0, &origRT);
+        state->origDevice->SetRenderTarget(0, surface);
+        state->origDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_RGBA((int)fval[0], (int)fval[1], (int)fval[2], (int)fval[3]), NULL, NULL);
+        state->origDevice->SetRenderTarget(0, origRT);
         origRT->Release();
     }
     if (desc.Usage & D3DUSAGE_DEPTHSTENCIL) {
@@ -10145,17 +10145,17 @@ void ClearSurfaceCommand::clear_surface(IDirect3DResource9 *resource, CommandLis
         else if (clear_stencil)
             flags = D3DCLEAR_STENCIL;
         IDirect3DSurface9 *origDS;
-        state->mOrigDevice->GetDepthStencilSurface(&origDS);
-        state->mOrigDevice->SetDepthStencilSurface(surface);
-        state->mOrigDevice->Clear(0, NULL, flags, NULL, dsv_depth, dsv_stencil);
-        state->mOrigDevice->SetDepthStencilSurface(origDS);
+        state->origDevice->GetDepthStencilSurface(&origDS);
+        state->origDevice->SetDepthStencilSurface(surface);
+        state->origDevice->Clear(0, NULL, flags, NULL, dsv_depth, dsv_stencil);
+        state->origDevice->SetDepthStencilSurface(origDS);
         origDS->Release();
     }
     if (surface)
         surface->Release();
 }
 
-void ClearSurfaceCommand::run(CommandListState *state)
+void ClearSurfaceCommand::Run(CommandListState *state)
 {
     IDirect3DResource9 *resource = NULL;
     UINT stride = 0;
@@ -10273,9 +10273,9 @@ void ResourceCopyOperation::DirectModeCopyResource(CommandListState *state, ::ID
     }
 }
 
-void ResourceCopyOperation::run(CommandListState *state)
+void ResourceCopyOperation::Run(CommandListState *state)
 {
-    D3D9Wrapper::IDirect3DDevice9 *mHackerDevice = state->mHackerDevice;
+    D3D9Wrapper::IDirect3DDevice9 *hackerDevice = state->hackerDevice;
     IDirect3DResource9 *src_resource = NULL;
     IDirect3DResource9 *dst_resource = NULL;
 
@@ -10316,21 +10316,21 @@ void ResourceCopyOperation::run(CommandListState *state)
         // the cache in the ResourceCopyOperation. This will reduce the
         // number of extra resources we have floating around if copying
         // something to a single custom resource from multiple shaders.
-        pp_cached_resource = &dst.custom_resource->resource;
-        p_resource_pool = &dst.custom_resource->resource_pool;
+        pp_cached_resource = &dst.customResource->resource;
+        p_resource_pool = &dst.customResource->resource_pool;
 
-        if (dst.custom_resource->max_copies_per_frame) {
-            if (dst.custom_resource->frame_no != G->frame_no) {
-                dst.custom_resource->frame_no = G->frame_no;
-                dst.custom_resource->copies_this_frame = 1;
+        if (dst.customResource->max_copies_per_frame) {
+            if (dst.customResource->frame_no != G->frame_no) {
+                dst.customResource->frame_no = G->frame_no;
+                dst.customResource->copies_this_frame = 1;
             }
-            else if (dst.custom_resource->copies_this_frame++ >= dst.custom_resource->max_copies_per_frame) {
+            else if (dst.customResource->copies_this_frame++ >= dst.customResource->max_copies_per_frame) {
                 COMMAND_LIST_LOG(state, "  max_copies_per_frame exceeded\n");
                 return;
             }
         }
 
-        dst.custom_resource->OverrideOutOfBandInfo(&format, &stride);
+        dst.customResource->OverrideOutOfBandInfo(&format, &stride);
     }
 
     FillInMissingInfo(state, src_resource, &stride, &offset, &buf_src_size, &format);
@@ -10338,7 +10338,7 @@ void ResourceCopyOperation::run(CommandListState *state)
     if (options & ResourceCopyOptions::COPY_MASK) {
         RecreateCompatibleResource(&ini_line, &dst, src_resource,
             pp_cached_resource, p_resource_pool,
-            state, mHackerDevice->mStereoHandle,
+            state, hackerDevice->stereoHandle,
             options, stride, offset, format, &buf_dst_size);
 
         if (!*pp_cached_resource) {
@@ -10398,24 +10398,24 @@ void ResourceCopyOperation::run(CommandListState *state)
                 default:
                     ((IDirect3DTexture9*)dst_resource)->GetSurfaceLevel(0, &dst_surface);
                 }
-                LONG fallback = state->mHackerDevice->mParamTextureManager.mActive ? 0 : 1;
-                bool sli_enabled = state->mHackerDevice->sli_enabled();
+                LONG fallback = state->hackerDevice->mParamTextureManager.mActive ? 0 : 1;
+                bool sli_enabled = state->hackerDevice->sli_enabled();
                 if (!fallback && sli_enabled && src_type != D3DRTYPE_TEXTURE) {
                     RecreateCompatibleResource(&(ini_line + L" (intermediate)"),
                         NULL, src_resource, (IDirect3DResource9**)&stereo2mono_intermediate,
                         p_resource_pool,
-                        state, mHackerDevice->mStereoHandle,
+                        state, hackerDevice->stereoHandle,
                         (ResourceCopyOptions)(options | ResourceCopyOptions::STEREO),
                         stride, offset, format, NULL);
                     IDirect3DSurface9 *stereo2mono_intermediate_surface = NULL;
                     stereo2mono_intermediate->GetSurfaceLevel(0, &stereo2mono_intermediate_surface);
                     IDirect3DSurface9 *origRT;
-                    state->mOrigDevice->GetRenderTarget(0, &origRT);
-                    state->mOrigDevice->SetRenderTarget(0, stereo2mono_intermediate_surface);
-                    state->mOrigDevice->Clear(0L, NULL, D3DCLEAR_TARGET, 0x00000000, 1.0f, 0L);
-                    state->mOrigDevice->SetRenderTarget(0, origRT);
+                    state->origDevice->GetRenderTarget(0, &origRT);
+                    state->origDevice->SetRenderTarget(0, stereo2mono_intermediate_surface);
+                    state->origDevice->Clear(0L, NULL, D3DCLEAR_TARGET, 0x00000000, 1.0f, 0L);
+                    state->origDevice->SetRenderTarget(0, origRT);
                     origRT->Release();
-                    state->mOrigDevice->StretchRect(src_surface, NULL, stereo2mono_intermediate_surface, NULL, D3DTEXF_POINT);
+                    state->origDevice->StretchRect(src_surface, NULL, stereo2mono_intermediate_surface, NULL, D3DTEXF_POINT);
                     ReverseStereoBlit(dst_surface, stereo2mono_intermediate_surface, state, fallback);
                 }
                 else {
@@ -10468,7 +10468,7 @@ out_release:
 }
 HRESULT ResourceCopyTarget::DirectModeGetRealBackBuffer(CommandListState *state, UINT iBackBuffer, D3D9Wrapper::IDirect3DSurface9 ** ppBackBuffer)
 {
-    D3D9Wrapper::FakeSwapChain *swapChain = &state->mHackerDevice->mFakeSwapChains[0];
+    D3D9Wrapper::FakeSwapChain *swapChain = &state->hackerDevice->mFakeSwapChains[0];
     if (!swapChain)
         return D3DERR_INVALIDCALL;
     D3D9Wrapper::IDirect3DSurface9 *wrappedBackBuffer;
@@ -10493,7 +10493,7 @@ HRESULT ResourceCopyTarget::DirectModeGetRealBackBuffer(CommandListState *state,
 }
 HRESULT ResourceCopyTarget::DirectModeGetFakeBackBuffer(CommandListState *state, UINT iBackBuffer, D3D9Wrapper::IDirect3DSurface9 ** ppBackBuffer)
 {
-    D3D9Wrapper::FakeSwapChain *swapChain = &state->mHackerDevice->mFakeSwapChains[0];
+    D3D9Wrapper::FakeSwapChain *swapChain = &state->hackerDevice->mFakeSwapChains[0];
     if (!swapChain)
         return D3DERR_INVALIDCALL;
     if (iBackBuffer > (swapChain->mFakeBackBuffers.size() - 1))
@@ -10612,11 +10612,11 @@ bool FunctionAutoConvergence::run(CommandListState *state, vector<CommandListVar
     else
     {
         if (isnan(convergence))
-            GetConvergence(state->mHackerDevice, state->cachedStereoValues, &convergence);
+            GetConvergence(state->hackerDevice, state->cachedStereoValues, &convergence);
         if (isnan(raw_sep))
-            GetSeparation(state->mHackerDevice, state->cachedStereoValues, &raw_sep);
+            GetSeparation(state->hackerDevice, state->cachedStereoValues, &raw_sep);
         if (isnan(separation))
-            GetEyeSeparation(state->mHackerDevice, state->cachedStereoValues, &separation);
+            GetEyeSeparation(state->hackerDevice, state->cachedStereoValues, &separation);
 
         if (prev_auto_convergence_enabled == 1.0f) {
             current_convergence = *last_set_convergence;
@@ -10889,11 +10889,11 @@ CustomFunctionCommand::~CustomFunctionCommand()
 {
 }
 
-void CustomFunctionCommand::run(CommandListState *state)
+void CustomFunctionCommand::Run(CommandListState *state)
 {
     function->run(state, &params);
 }
-void SetShaderConstant::run(CommandListState *state)
+void SetShaderConstant::Run(CommandListState *state)
 {
 
     COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
@@ -10901,7 +10901,7 @@ void SetShaderConstant::run(CommandListState *state)
     COMMAND_LIST_LOG(state, "  set shader constant, shader_type = %lc, constant_type = %u, slot = %u \n", shader_type, constant_type, slot);
 
     if (vars.size()) {
-        assign->run(state);
+        assign->Run(state);
         UINT count = (UINT)ceil(vars.size() / 4);
         vector<float> pConstantsF;
         vector<int> pConstantsI;
@@ -10913,10 +10913,10 @@ void SetShaderConstant::run(CommandListState *state)
             if (vars.size() % 4 != 0) {
                 switch (shader_type) {
                 case L'v':
-                    state->mOrigDevice->GetVertexShaderConstantF(slot + count - 1, &pConstantsF[((slot + count - 1) * 4)], 1);
+                    state->origDevice->GetVertexShaderConstantF(slot + count - 1, &pConstantsF[((slot + count - 1) * 4)], 1);
                     break;
                 case L'p':
-                    state->mOrigDevice->GetPixelShaderConstantF(slot + count - 1, &pConstantsF[((slot + count - 1) * 4)], 1);
+                    state->origDevice->GetPixelShaderConstantF(slot + count - 1, &pConstantsF[((slot + count - 1) * 4)], 1);
                     break;
                 default:
                     return;
@@ -10925,10 +10925,10 @@ void SetShaderConstant::run(CommandListState *state)
             copy(vars.begin(), vars.end(), pConstantsF.begin());
             switch (shader_type) {
             case L'v':
-                state->mOrigDevice->SetVertexShaderConstantF(slot, &pConstantsF[0], count);
+                state->origDevice->SetVertexShaderConstantF(slot, &pConstantsF[0], count);
                 return;
             case L'p':
-                state->mOrigDevice->SetPixelShaderConstantF(slot, &pConstantsF[0], count);
+                state->origDevice->SetPixelShaderConstantF(slot, &pConstantsF[0], count);
                 return;
             }
             return;
@@ -10937,10 +10937,10 @@ void SetShaderConstant::run(CommandListState *state)
             if (vars.size() % 4 != 0) {
                 switch (shader_type) {
                 case L'v':
-                    state->mOrigDevice->GetVertexShaderConstantI(slot + count - 1, &pConstantsI[((slot + count - 1) * 4)], 1);
+                    state->origDevice->GetVertexShaderConstantI(slot + count - 1, &pConstantsI[((slot + count - 1) * 4)], 1);
                     break;
                 case L'p':
-                    state->mOrigDevice->GetPixelShaderConstantI(slot + count - 1, &pConstantsI[((slot + count - 1) * 4)], 1);
+                    state->origDevice->GetPixelShaderConstantI(slot + count - 1, &pConstantsI[((slot + count - 1) * 4)], 1);
                     break;
                 default:
                     return;
@@ -10949,10 +10949,10 @@ void SetShaderConstant::run(CommandListState *state)
             std::transform(vars.begin(), vars.end(), pConstantsI.begin(), [](float v) -> int { return (int)v; });
             switch (shader_type) {
             case L'v':
-                state->mOrigDevice->SetVertexShaderConstantI(slot, &pConstantsI[0], count);
+                state->origDevice->SetVertexShaderConstantI(slot, &pConstantsI[0], count);
                 return;
             case L'p':
-                state->mOrigDevice->SetPixelShaderConstantI(slot, &pConstantsI[0], count);
+                state->origDevice->SetPixelShaderConstantI(slot, &pConstantsI[0], count);
                 return;
             }
             return;
@@ -10961,10 +10961,10 @@ void SetShaderConstant::run(CommandListState *state)
             if (vars.size() % 4 != 0) {
                 switch (shader_type) {
                 case L'v':
-                    state->mOrigDevice->GetVertexShaderConstantB(slot + count - 1, &pConstantsB[((slot + count - 1) * 4)], 1);
+                    state->origDevice->GetVertexShaderConstantB(slot + count - 1, &pConstantsB[((slot + count - 1) * 4)], 1);
                     break;
                 case L'p':
-                    state->mOrigDevice->GetPixelShaderConstantB(slot + count - 1, &pConstantsB[((slot + count - 1) * 4)], 1);
+                    state->origDevice->GetPixelShaderConstantB(slot + count - 1, &pConstantsB[((slot + count - 1) * 4)], 1);
                     break;
                 default:
                     return;
@@ -10973,10 +10973,10 @@ void SetShaderConstant::run(CommandListState *state)
             std::transform(vars.begin(), vars.end(), pConstantsB.begin(), [](float v) -> BOOL { return !!v; });
             switch (shader_type) {
             case L'v':
-                state->mOrigDevice->SetVertexShaderConstantB(slot, &pConstantsB[0], count);
+                state->origDevice->SetVertexShaderConstantB(slot, &pConstantsB[0], count);
                 return;
             case L'p':
-                state->mOrigDevice->SetPixelShaderConstantB(slot, &pConstantsB[0], count);
+                state->origDevice->SetPixelShaderConstantB(slot, &pConstantsB[0], count);
                 return;
             }
             return;
@@ -10990,10 +10990,10 @@ void SetShaderConstant::run(CommandListState *state)
     case ConstantType::FLOAT:
         switch (shader_type) {
         case L'v':
-            state->mOrigDevice->GetVertexShaderConstantF(slot, pConstantsF, 1);
+            state->origDevice->GetVertexShaderConstantF(slot, pConstantsF, 1);
             break;
         case L'p':
-            state->mOrigDevice->GetPixelShaderConstantF(slot, pConstantsF, 1);
+            state->origDevice->GetPixelShaderConstantF(slot, pConstantsF, 1);
             break;
         default:
             return;
@@ -11012,20 +11012,20 @@ void SetShaderConstant::run(CommandListState *state)
         }
         switch (shader_type) {
         case L'v':
-            state->mOrigDevice->SetVertexShaderConstantF(slot, pConstantsF, 1);
+            state->origDevice->SetVertexShaderConstantF(slot, pConstantsF, 1);
             return;
         case L'p':
-            state->mOrigDevice->SetPixelShaderConstantF(slot, pConstantsF, 1);
+            state->origDevice->SetPixelShaderConstantF(slot, pConstantsF, 1);
             return;
         }
         return;
     case ConstantType::INT:
         switch (shader_type) {
         case L'v':
-            state->mOrigDevice->GetVertexShaderConstantI(slot, pConstantsI, 1);
+            state->origDevice->GetVertexShaderConstantI(slot, pConstantsI, 1);
             break;
         case L'p':
-            state->mOrigDevice->GetPixelShaderConstantI(slot, pConstantsI, 1);
+            state->origDevice->GetPixelShaderConstantI(slot, pConstantsI, 1);
             break;
         default:
             return;
@@ -11044,20 +11044,20 @@ void SetShaderConstant::run(CommandListState *state)
         }
         switch (shader_type) {
         case L'v':
-            state->mOrigDevice->SetVertexShaderConstantI(slot, pConstantsI, 1);
+            state->origDevice->SetVertexShaderConstantI(slot, pConstantsI, 1);
             return;
         case L'p':
-            state->mOrigDevice->SetPixelShaderConstantI(slot, pConstantsI, 1);
+            state->origDevice->SetPixelShaderConstantI(slot, pConstantsI, 1);
             return;
         }
         return;
     case ConstantType::BOOL:
         switch (shader_type) {
         case L'v':
-            state->mOrigDevice->GetVertexShaderConstantB(slot, pConstantsB, 1);
+            state->origDevice->GetVertexShaderConstantB(slot, pConstantsB, 1);
             break;
         case L'p':
-            state->mOrigDevice->GetPixelShaderConstantB(slot, pConstantsB, 1);
+            state->origDevice->GetPixelShaderConstantB(slot, pConstantsB, 1);
             break;
         default:
             return;
@@ -11076,15 +11076,15 @@ void SetShaderConstant::run(CommandListState *state)
         }
         switch (shader_type) {
         case L'v':
-            state->mOrigDevice->SetVertexShaderConstantB(slot, pConstantsB, 1);
+            state->origDevice->SetVertexShaderConstantB(slot, pConstantsB, 1);
             return;
         case L'p':
-            state->mOrigDevice->SetPixelShaderConstantB(slot, pConstantsB, 1);
+            state->origDevice->SetPixelShaderConstantB(slot, pConstantsB, 1);
             return;
         }
     }
 }
-void VariableArrayFromShaderConstantAssignment::run(CommandListState *state)
+void VariableArrayFromShaderConstantAssignment::Run(CommandListState *state)
 {
     COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
@@ -11103,10 +11103,10 @@ void VariableArrayFromShaderConstantAssignment::run(CommandListState *state)
         pConstantsF.resize(count * 4);
         switch (shader_type) {
         case L'v':
-            state->mOrigDevice->GetVertexShaderConstantF(slot, &pConstantsF[0], count);
+            state->origDevice->GetVertexShaderConstantF(slot, &pConstantsF[0], count);
             break;
         case L'p':
-            state->mOrigDevice->GetPixelShaderConstantF(slot, &pConstantsF[0], count);
+            state->origDevice->GetPixelShaderConstantF(slot, &pConstantsF[0], count);
             break;
         default:
             return;
@@ -11121,10 +11121,10 @@ void VariableArrayFromShaderConstantAssignment::run(CommandListState *state)
         pConstantsI.resize(count * 4);
         switch (shader_type) {
         case L'v':
-            state->mOrigDevice->GetVertexShaderConstantI(slot, &pConstantsI[0], count);
+            state->origDevice->GetVertexShaderConstantI(slot, &pConstantsI[0], count);
             break;
         case L'p':
-            state->mOrigDevice->GetPixelShaderConstantI(slot, &pConstantsI[0], count);
+            state->origDevice->GetPixelShaderConstantI(slot, &pConstantsI[0], count);
             break;
         default:
             return;
@@ -11139,10 +11139,10 @@ void VariableArrayFromShaderConstantAssignment::run(CommandListState *state)
         pConstantsB.resize(count * 4);
         switch (shader_type) {
         case L'v':
-            state->mOrigDevice->GetVertexShaderConstantB(slot, &pConstantsB[0], count);
+            state->origDevice->GetVertexShaderConstantB(slot, &pConstantsB[0], count);
             break;
         case L'p':
-            state->mOrigDevice->GetPixelShaderConstantB(slot, &pConstantsB[0], count);
+            state->origDevice->GetPixelShaderConstantB(slot, &pConstantsB[0], count);
             break;
         default:
             return;
@@ -11156,7 +11156,7 @@ void VariableArrayFromShaderConstantAssignment::run(CommandListState *state)
     }
 }
 
-void VariableArrayAssignment::run(CommandListState *state)
+void VariableArrayAssignment::Run(CommandListState *state)
 {
     for (auto it = shader_constant_assignments.begin(); it != shader_constant_assignments.end();)
     {
@@ -11185,7 +11185,7 @@ void VariableArrayAssignment::run(CommandListState *state)
     }
 }
 
-void VariableArrayFromArrayAssignment::run(CommandListState *)
+void VariableArrayFromArrayAssignment::Run(CommandListState *)
 {
     for (auto it = map.cbegin(); it != map.cend();)
     {
@@ -11194,7 +11194,7 @@ void VariableArrayFromArrayAssignment::run(CommandListState *)
     }
 }
 
-void VariableArrayFromExpressionAssignment::run(CommandListState *state)
+void VariableArrayFromExpressionAssignment::Run(CommandListState *state)
 {
     *fval = expression.evaluate(state);
 }
@@ -11211,7 +11211,7 @@ void VariableArrayFromExpressionAssignment::run(CommandListState *state)
     return m_pMatrix->fmatrix;
 }
 
-void VariableArrayFromMatrixAssignment::run(CommandListState *)
+void VariableArrayFromMatrixAssignment::Run(CommandListState *)
 {
     UINT m = start_slot;
     for (UINT i = 0; i < vars.size() && m < 16; ++i)
@@ -11221,7 +11221,7 @@ void VariableArrayFromMatrixAssignment::run(CommandListState *)
     }
 }
 
-void VariableArrayFromMatrixExpressionAssignment::run(CommandListState *state)
+void VariableArrayFromMatrixExpressionAssignment::Run(CommandListState *state)
 {
     ::D3DXMATRIX matrix = expression.evaluate(state);
     UINT m = start_slot;
@@ -11232,7 +11232,7 @@ void VariableArrayFromMatrixExpressionAssignment::run(CommandListState *state)
     }
 }
 
-void MatrixAssignment::run(CommandListState *state)
+void MatrixAssignment::Run(CommandListState *state)
 {
     for (auto it = shader_constant_assignments.begin(); it != shader_constant_assignments.end();)
     {
@@ -11261,7 +11261,7 @@ void MatrixAssignment::run(CommandListState *state)
     }
 }
 
-void MatrixFromShaderConstantAssignment::run(CommandListState *state)
+void MatrixFromShaderConstantAssignment::Run(CommandListState *state)
 {
     COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
 
@@ -11276,10 +11276,10 @@ void MatrixFromShaderConstantAssignment::run(CommandListState *state)
         pConstantsF.assign(16, 0);
         switch (shader_type) {
         case L'v':
-            state->mOrigDevice->GetVertexShaderConstantF(slot, &pConstantsF[0], vectorCount);
+            state->origDevice->GetVertexShaderConstantF(slot, &pConstantsF[0], vectorCount);
             break;
         case L'p':
-            state->mOrigDevice->GetPixelShaderConstantF(slot, &pConstantsF[0], vectorCount);
+            state->origDevice->GetPixelShaderConstantF(slot, &pConstantsF[0], vectorCount);
             break;
         default:
             return;
@@ -11290,10 +11290,10 @@ void MatrixFromShaderConstantAssignment::run(CommandListState *state)
         pConstantsI.assign(16, 0);
         switch (shader_type) {
         case L'v':
-            state->mOrigDevice->GetVertexShaderConstantI(slot, &pConstantsI[0], vectorCount);
+            state->origDevice->GetVertexShaderConstantI(slot, &pConstantsI[0], vectorCount);
             break;
         case L'p':
-            state->mOrigDevice->GetPixelShaderConstantI(slot, &pConstantsI[0], vectorCount);
+            state->origDevice->GetPixelShaderConstantI(slot, &pConstantsI[0], vectorCount);
             break;
         default:
             return;
@@ -11304,10 +11304,10 @@ void MatrixFromShaderConstantAssignment::run(CommandListState *state)
         pConstantsB.assign(16, 0);
         switch (shader_type) {
         case L'v':
-            state->mOrigDevice->GetVertexShaderConstantB(slot, &pConstantsB[0], vectorCount);
+            state->origDevice->GetVertexShaderConstantB(slot, &pConstantsB[0], vectorCount);
             break;
         case L'p':
-            state->mOrigDevice->GetPixelShaderConstantB(slot, &pConstantsB[0], vectorCount);
+            state->origDevice->GetPixelShaderConstantB(slot, &pConstantsB[0], vectorCount);
             break;
         default:
             return;
@@ -11317,7 +11317,7 @@ void MatrixFromShaderConstantAssignment::run(CommandListState *state)
     }
 }
 
-void MatrixFromArrayAssignment::run(CommandListState *)
+void MatrixFromArrayAssignment::Run(CommandListState *)
 {
     UINT i = 0;
     for (UINT m = dst_start; m < 16 && i < arr.size(); ++m)
@@ -11327,7 +11327,7 @@ void MatrixFromArrayAssignment::run(CommandListState *)
     }
 }
 
-void MatrixFromMatrixAssignment::run(CommandListState *)
+void MatrixFromMatrixAssignment::Run(CommandListState *)
 {
     for (UINT i = 0; i < num_slots; ++i)
     {
@@ -11335,7 +11335,7 @@ void MatrixFromMatrixAssignment::run(CommandListState *)
     }
 }
 
-void MatrixFromMatrixExpressionAssignment::run(CommandListState *state)
+void MatrixFromMatrixExpressionAssignment::Run(CommandListState *state)
 {
     ::D3DXMATRIX src_matrix = expression.evaluate(state);
     for (UINT i = 0; i < num_slots; ++i)
@@ -11344,23 +11344,23 @@ void MatrixFromMatrixExpressionAssignment::run(CommandListState *state)
     }
 }
 
-void MatrixFromExpressionAssignment::run(CommandListState *state)
+void MatrixFromExpressionAssignment::Run(CommandListState *state)
 {
     float val = expression.evaluate(state);
     (*pMatrix)[dst_start] = val;
 }
 
-void FrameAnalysisDumpConstantsCommand::run(CommandListState *state)
+void FrameAnalysisDumpConstantsCommand::Run(CommandListState *state)
 {
     // Fast exit if frame analysis is currently inactive:
     if (!G->analyse_frame)
         return;
 
     COMMAND_LIST_LOG(state, "%S\n", ini_line.c_str());
-    state->mHackerDevice->DumpCB(shader_type, constant_type, start_slot, num_slots);
+    state->hackerDevice->DumpCB(shader_type, constant_type, start_slot, num_slots);
 }
 
-bool FrameAnalysisDumpConstantsCommand::noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
+bool FrameAnalysisDumpConstantsCommand::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
     return (G->hunting == HUNTING_MODE_DISABLED || G->frame_analysis_registered == false);
 }

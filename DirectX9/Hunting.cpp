@@ -298,7 +298,7 @@ static void StereoScreenShot(D3D9Wrapper::IDirect3DDevice9 *pDevice, HashType ha
     NvAPIOverride();
     Profiling::NvAPI_Stereo_IsEnabled(&stereo);
     if (stereo)
-        Profiling::NvAPI_Stereo_IsActivated(pDevice->mStereoHandle, &stereo);
+        Profiling::NvAPI_Stereo_IsActivated(pDevice->stereoHandle, &stereo);
 
     if (!stereo) {
         LOG_INFO("marking_actions=stereo_snapshot: Stereo disabled, falling back to mono snapshot\n");
@@ -327,7 +327,7 @@ static void StereoScreenShot(D3D9Wrapper::IDirect3DDevice9 *pDevice, HashType ha
         goto out_release_bb;
     }
     if (!G->stereoblit_control_set_once) {
-        nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, true);
+        nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->stereoHandle, true);
         if (nvret != NVAPI_OK) {
             LOG_INFO("StereoScreenShot failed to enable reverse stereo blit\n");
             goto out_release_stereo_bb;
@@ -355,7 +355,7 @@ static void StereoScreenShot(D3D9Wrapper::IDirect3DDevice9 *pDevice, HashType ha
 
     LOG_INFO_W(L"  StereoScreenShot on Mark: %s, result: %d\n", fullName, hr);
     if (!G->stereoblit_control_set_once)
-        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->mStereoHandle, false);
+        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->stereoHandle, false);
 out_release_stereo_bb:
     stereoBackBuffer->Release();
 out_release_bb:
@@ -1009,10 +1009,10 @@ static void TakeScreenShot(D3D9Wrapper::IDirect3DDevice9 *wrapped, void *private
 {
     LOG_INFO("> capturing screenshot\n");
 
-    if (wrapped->mStereoHandle)
+    if (wrapped->stereoHandle)
     {
         NvAPI_Status err;
-        err = NvAPI_Stereo_CapturePngImage(wrapped->mStereoHandle);
+        err = NvAPI_Stereo_CapturePngImage(wrapped->stereoHandle);
         if (err != NVAPI_OK)
         {
             LogOverlay(LOG_WARNING, "> screenshot failed, error:%d\n", err);

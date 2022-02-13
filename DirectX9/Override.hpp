@@ -197,20 +197,20 @@ public:
         Override(),
         triggered(false),
         excluded(false),
-        unique_triggers_required(0)
+        uniqueTriggersRequired(0)
     {}
 
     void Trigger(CommandListCommand *triggered_from);
     void Exclude();
     void Update(D3D9Wrapper::IDirect3DDevice9 *device, CachedStereoValues *cachedStereoValues = NULL);
 
-    unsigned unique_triggers_required;
+    unsigned uniqueTriggersRequired;
 };
 
 // Sorted map so that if multiple presets affect the same thing the results
 // will be consistent:
 typedef std::map<std::wstring, class PresetOverride> PresetOverrideMap;
-extern PresetOverrideMap presetOverrides;
+extern PresetOverrideMap preset_overrides;
 
 struct OverrideTransitionParam
 {
@@ -276,5 +276,5 @@ public:
 // We only use a single transition instance to simplify the edge cases and
 // answer what happens when we have overlapping transitions - there can only be
 // one active transition for each parameter.
-extern OverrideTransition CurrentTransition;
-extern OverrideGlobalSave OverrideSave;
+extern OverrideTransition current_transition;
+extern OverrideGlobalSave override_save;

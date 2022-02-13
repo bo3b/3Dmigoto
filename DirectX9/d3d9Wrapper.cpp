@@ -667,8 +667,8 @@ static HRESULT createFakeSwapChain(D3D9Wrapper::IDirect3DDevice9 *HackerDevice, 
     }
     FakeSwapChain->mUpscalingWidth = NewWidth;
     FakeSwapChain->mUpscalingHeight = NewHeight;
-    FakeSwapChain->mOrignalWidth = PresentParams->BackBufferWidth;
-    FakeSwapChain->mOrignalHeight = PresentParams->BackBufferHeight;
+    FakeSwapChain->orignalWidth = PresentParams->BackBufferWidth;
+    FakeSwapChain->orignalHeight = PresentParams->BackBufferHeight;
     LOG_INFO("  Fake Back Buffer Created With Height = %d and Width = %d \n", PresentParams->BackBufferHeight, PresentParams->BackBufferWidth);
     return hr;
 
@@ -1805,8 +1805,8 @@ void RunFrameActions(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, CachedStereoVa
     // that purpose rather than breaking the existing behaviour.
     bool newEvent = DispatchInputEvents(hackerDevice);
 
-    CurrentTransition.UpdatePresets(hackerDevice, cachedStereoValues);
-    CurrentTransition.UpdateTransitions(hackerDevice, cachedStereoValues);
+    current_transition.UpdatePresets(hackerDevice, cachedStereoValues);
+    current_transition.UpdateTransitions(hackerDevice, cachedStereoValues);
 
     // The config file is not safe to reload from within the input handler
     // since it needs to change the key bindings, so it sets this flag
