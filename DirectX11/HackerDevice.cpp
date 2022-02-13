@@ -273,7 +273,7 @@ HRESULT HackerDevice::CreateStereoParamResources()
         LOG_INFO("HackerDevice::CreateStereoParamResources NvAPI_Stereo_CreateHandleFromIUnknown failed: %d\n", nvret);
         return nvret;
     }
-    paramTextureManager.stereoHandle = stereoHandle;
+    paramTextureManager.mStereoHandle = stereoHandle;
     LOG_INFO("  created NVAPI stereo handle. Handle = %p\n", stereoHandle);
 
     // Create stereo parameter texture.
@@ -1384,14 +1384,14 @@ HRESULT HackerDevice::ProcessShaderNotFoundInShaderFixes(UINT64 hash,
                 // Also add the original shader to the original shaders
                 // map so that if it is later replaced marking_mode =
                 // original and depth buffer filtering will work:
-                if (lookup_original_shader(*ppShader) == end(G->originalShaders)) {
+                if (lookup_original_shader(*ppShader) == end(G->mOriginalShaders)) {
                     // Since we are both returning *and* storing this we need to
                     // bump the refcount to 2, otherwise it could get freed and we
                     // may get a crash later in RevertMissingShaders, especially
                     // easy to expose with the auto shader patching engine
                     // and reverting shaders:
                     (*ppShader)->AddRef();
-                    G->originalShaders[*ppShader] = *ppShader;
+                    G->mOriginalShaders[*ppShader] = *ppShader;
                 }
             }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
@@ -1471,10 +1471,10 @@ void CleanupShaderMaps(ID3D11DeviceChild *handle)
 
     {
         ShaderReplacementMap::iterator i = lookup_original_shader(handle);
-        if (i != G->originalShaders.end()) {
+        if (i != G->mOriginalShaders.end()) {
             LOG_INFO("Shader handle %p reused, releasing previous original shader\n", handle);
             i->second->Release();
-            G->originalShaders.erase(i);
+            G->mOriginalShaders.erase(i);
         }
     }
 
@@ -1510,7 +1510,7 @@ void HackerDevice::KeepOriginalShader(UINT64 hash, wchar_t *shaderType,
         hr = (origDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
         CleanupShaderMaps(originalShader);
         if (SUCCEEDED(hr))
-            G->originalShaders[pShader] = originalShader;
+            G->mOriginalShaders[pShader] = originalShader;
 
         // Unlike the *other* code path in CreateShader that can also
         // fill out this structure, we do *not* bump the refcount on

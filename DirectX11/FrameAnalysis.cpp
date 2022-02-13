@@ -563,14 +563,14 @@ HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
         // arguably better since it will be immediately obvious, but
         // risks missing the second perspective if the original
         // resource was actually stereo)
-        Profiling::NvAPI_Stereo_GetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, &orig_mode);
-        Profiling::NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
+        Profiling::NvAPI_Stereo_GetSurfaceCreationMode(GetHackerDevice()->stereoHandle, &orig_mode);
+        Profiling::NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->stereoHandle, NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
     }
 
     hr = GetHackerDevice()->GetPassThroughOrigDevice1()->CreateTexture2D(&desc, NULL, resource);
 
     if (analyse_options & FrameAnalysisOptions::STEREO)
-        Profiling::NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->mStereoHandle, orig_mode);
+        Profiling::NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->stereoHandle, orig_mode);
 
     UNLOCK_RESOURCE_CREATION_MODE();
 
@@ -2001,18 +2001,18 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t si
         StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"@%p", handle);
 
     if (compute) {
-        StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-cs=%016I64x", mCurrentComputeShader);
+        StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-cs=%016I64x", currentComputeShader);
     } else {
-        if (mCurrentVertexShader)
-            StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-vs=%016I64x", mCurrentVertexShader);
-        if (mCurrentHullShader)
-            StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-hs=%016I64x", mCurrentHullShader);
-        if (mCurrentDomainShader)
-            StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ds=%016I64x", mCurrentDomainShader);
-        if (mCurrentGeometryShader)
-            StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-gs=%016I64x", mCurrentGeometryShader);
-        if (mCurrentPixelShader)
-            StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ps=%016I64x", mCurrentPixelShader);
+        if (currentVertexShader)
+            StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-vs=%016I64x", currentVertexShader);
+        if (currentHullShader)
+            StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-hs=%016I64x", currentHullShader);
+        if (currentDomainShader)
+            StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ds=%016I64x", currentDomainShader);
+        if (currentGeometryShader)
+            StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-gs=%016I64x", currentGeometryShader);
+        if (currentPixelShader)
+            StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ps=%016I64x", currentPixelShader);
     }
 
     hr = StringCchPrintfW(pos, rem, L".XXX");
@@ -2397,28 +2397,28 @@ void FrameAnalysisContext::DumpCBs(bool compute)
     ID3D11Buffer *buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
 
     if (compute) {
-        if (mCurrentComputeShader) {
+        if (currentComputeShader) {
             GetPassThroughOrigContext1()->CSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
             _DumpCBs('c', compute, buffers);
         }
     } else {
-        if (mCurrentVertexShader) {
+        if (currentVertexShader) {
             GetPassThroughOrigContext1()->VSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
             _DumpCBs('v', compute, buffers);
         }
-        if (mCurrentHullShader) {
+        if (currentHullShader) {
             GetPassThroughOrigContext1()->HSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
             _DumpCBs('h', compute, buffers);
         }
-        if (mCurrentDomainShader) {
+        if (currentDomainShader) {
             GetPassThroughOrigContext1()->DSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
             _DumpCBs('d', compute, buffers);
         }
-        if (mCurrentGeometryShader) {
+        if (currentGeometryShader) {
             GetPassThroughOrigContext1()->GSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
             _DumpCBs('g', compute, buffers);
         }
-        if (mCurrentPixelShader) {
+        if (currentPixelShader) {
             GetPassThroughOrigContext1()->PSGetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, buffers);
             _DumpCBs('p', compute, buffers);
         }
@@ -2565,28 +2565,28 @@ void FrameAnalysisContext::DumpTextures(bool compute)
     ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
 
     if (compute) {
-        if (mCurrentComputeShader) {
+        if (currentComputeShader) {
             GetPassThroughOrigContext1()->CSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
             _DumpTextures('c', compute, views);
         }
     } else {
-        if (mCurrentVertexShader) {
+        if (currentVertexShader) {
             GetPassThroughOrigContext1()->VSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
             _DumpTextures('v', compute, views);
         }
-        if (mCurrentHullShader) {
+        if (currentHullShader) {
             GetPassThroughOrigContext1()->HSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
             _DumpTextures('h', compute, views);
         }
-        if (mCurrentDomainShader) {
+        if (currentDomainShader) {
             GetPassThroughOrigContext1()->DSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
             _DumpTextures('d', compute, views);
         }
-        if (mCurrentGeometryShader) {
+        if (currentGeometryShader) {
             GetPassThroughOrigContext1()->GSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
             _DumpTextures('g', compute, views);
         }
-        if (mCurrentPixelShader) {
+        if (currentPixelShader) {
             GetPassThroughOrigContext1()->PSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
             _DumpTextures('p', compute, views);
         }
@@ -2798,7 +2798,7 @@ void FrameAnalysisContext::update_stereo_dumping_mode()
     NvAPIOverride();
     Profiling::NvAPI_Stereo_IsEnabled(&stereo);
     if (stereo)
-        Profiling::NvAPI_Stereo_IsActivated(GetHackerDevice()->mStereoHandle, &stereo);
+        Profiling::NvAPI_Stereo_IsActivated(GetHackerDevice()->stereoHandle, &stereo);
 
     if (!stereo) {
         // 3D Vision is disabled, force mono dumping mode:
@@ -2874,7 +2874,7 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
         (analyse_options & FrameAnalysisOptions::STEREO) &&
         (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
         // Enable reverse stereo blit for all resources we are about to dump:
-        nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
+        nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, true);
         if (nvret != NVAPI_OK) {
             FALogErr("DumpStereoResource failed to enable reverse stereo blit\n");
             // Continue anyway, we should still be able to dump in 2D...
@@ -2910,7 +2910,7 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
     if ((analyse_options & FrameAnalysisOptions::FMT_2D_MASK) &&
         (analyse_options & FrameAnalysisOptions::STEREO) &&
         (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
-        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
+        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, false);
     }
 
     draw_call++;
@@ -2992,7 +2992,7 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
     if ((analyse_options & FrameAnalysisOptions::STEREO) &&
         (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
         // Enable reverse stereo blit for all resources we are about to dump:
-        nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
+        nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, true);
         if (nvret != NVAPI_OK) {
             FALogErr("FrameAnalyisDump failed to enable reverse stereo blit\n");
             // Continue anyway, we should still be able to dump in 2D...
@@ -3014,7 +3014,7 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 
     if ((analyse_options & FrameAnalysisOptions::STEREO) &&
         (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
-        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
+        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, false);
     }
 
     non_draw_call_dump_counter++;
@@ -3640,7 +3640,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::ExecuteCommandList(THIS_
         // on a deferred context it must be enabled on the immediate context
         // when the command list is executed. We don't know what options may
         // have been used during the dump, so enable it unconditionally.
-        nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, true);
+        nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, true);
         if (nvret != NVAPI_OK) {
             FALogErr("FrameAnalyisDump failed to enable reverse stereo blit\n");
             // Continue anyway, we should still be able to dump in 2D...
@@ -3650,7 +3650,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::ExecuteCommandList(THIS_
     HackerContext::ExecuteCommandList(pCommandList, RestoreContextState);
 
     if (G->analyse_frame)
-        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->mStereoHandle, false);
+        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, false);
 
     dump_deferred_resources(pCommandList);
 }
