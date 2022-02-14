@@ -115,17 +115,17 @@ void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisLog(char *fmt, ...)
     va_end(ap);
 }
 
-#define FALogInfo(fmt, ...) { \
+#define FA_LOG_INFO(fmt, ...) { \
     FrameAnalysisLog("3DMigoto " fmt, __VA_ARGS__); \
 } while (0)
 
-#define FALogErr(fmt, ...) { \
+#define FA_LOG_ERR(fmt, ...) { \
     LOG_INFO("Frame Analysis: " fmt, __VA_ARGS__); \
     FrameAnalysisLog("3DMigoto " fmt, __VA_ARGS__); \
 } while (0)
 
 
-static void FrameAnalysisLogSlot(FILE *frame_analysis_log, int slot, char *slot_name)
+static void frame_analysis_log_slot(FILE *frame_analysis_log, int slot, char *slot_name)
 {
     if (slot_name)
         fprintf(frame_analysis_log, "       %s:", slot_name);
@@ -195,7 +195,7 @@ void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisLogResource(int slot, char *
     if (!resource || !G->analyse_frame || !frame_analysis_log)
         return;
 
-    FrameAnalysisLogSlot(frame_analysis_log, slot, slot_name);
+    frame_analysis_log_slot(frame_analysis_log, slot, slot_name);
     fprintf(frame_analysis_log, " resource=0x%p", resource);
 
     FrameAnalysisLogResourceHash(resource);
@@ -221,7 +221,7 @@ void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisLogMiscArray(UINT start, UIN
     for (i = 0; i < len; i++) {
         item = array[i];
         if (item) {
-            FrameAnalysisLogSlot(frame_analysis_log, start + i, NULL);
+            frame_analysis_log_slot(frame_analysis_log, start + i, NULL);
             fprintf(frame_analysis_log, " handle=0x%p\n", item);
         }
     }
@@ -340,7 +340,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpSurface(SurfaceType *resource, wstrin
     ext = filename.find_last_of(L'.');
     save_ext = save_filename.find_last_of(L'.');
     if (ext == wstring::npos || save_ext == wstring::npos) {
-        FALogErr("Dump2DResource: Filename missing extension\n");
+        FA_LOG_ERR("Dump2DResource: Filename missing extension\n");
         return;
     }
 
@@ -358,7 +358,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpSurface(SurfaceType *resource, wstrin
         // will dump out DDS files for those instead.
         filename.replace(ext, wstring::npos, wic_ext);
         save_filename.replace(save_ext, wstring::npos, wic_ext);
-        FALogInfo("Dumping Texture2D %S -> %S\n", filename.c_str(), save_filename.c_str());
+        FA_LOG_INFO("Dumping Texture2D %S -> %S\n", filename.c_str(), save_filename.c_str());
 
         hr = S_OK;
         if (GetFileAttributes(save_filename.c_str()) == INVALID_FILE_ATTRIBUTES)
@@ -371,7 +371,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpSurface(SurfaceType *resource, wstrin
         ((analyse_options & FrameAnalysisOptions::FMT_2D_AUTO) && FAILED(hr))) {
         filename.replace(ext, wstring::npos, L".dds");
         save_filename.replace(save_ext, wstring::npos, L".dds");
-        FALogInfo("Dumping Texture2D %S -> %S\n", filename.c_str(), save_filename.c_str());
+        FA_LOG_INFO("Dumping Texture2D %S -> %S\n", filename.c_str(), save_filename.c_str());
 
         hr = S_OK;
         if (GetFileAttributes(save_filename.c_str()) == INVALID_FILE_ATTRIBUTES)
@@ -380,12 +380,12 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpSurface(SurfaceType *resource, wstrin
     }
 
     if (FAILED(hr))
-        FALogErr("Failed to dump Texture2D %S -> %S: 0x%x\n", filename.c_str(), save_filename.c_str(), hr);
+        FA_LOG_ERR("Failed to dump Texture2D %S -> %S: 0x%x\n", filename.c_str(), save_filename.c_str(), hr);
 
     if (analyse_options & FrameAnalysisOptions::FMT_DESC) {
         filename.replace(ext, wstring::npos, L".dsc");
         save_filename.replace(save_ext, wstring::npos, L".dsc");
-        FALogInfo("Dumping Texture2D %S -> %S\n", filename.c_str(), save_filename.c_str());
+        FA_LOG_INFO("Dumping Texture2D %S -> %S\n", filename.c_str(), save_filename.c_str());
 
         if (GetFileAttributes(save_filename.c_str()) == INVALID_FILE_ATTRIBUTES)
             DumpDesc(orig_desc, save_filename.c_str());
@@ -532,7 +532,7 @@ HRESULT D3D9Wrapper::FrameAnalysisDevice::ResolveMSAA(SurfaceType *src, D3D2DTEX
     // so we need yet another intermediate texture:
     hr = CreateStagingResource(&resolved, *srcDesc, false, true, format);
     if (FAILED(hr)) {
-        FALogErr("ResolveMSAA failed to create intermediate texture: 0x%x\n", hr);
+        FA_LOG_ERR("ResolveMSAA failed to create intermediate texture: 0x%x\n", hr);
         return hr;
     }
     for (level = 0; level < srcDesc->Levels; level++) {
@@ -560,7 +560,7 @@ template<typename Surface>HRESULT D3D9Wrapper::FrameAnalysisDevice::StageResourc
 
     hr = CreateStagingResource(&staging, *srcDesc, false, false, format);
     if (FAILED(hr)) {
-        FALogErr("StageResource failed to create intermediate texture: 0x%x\n", hr);
+        FA_LOG_ERR("StageResource failed to create intermediate texture: 0x%x\n", hr);
         return hr;
     }
 
@@ -608,7 +608,7 @@ template <typename Surface> void D3D9Wrapper::FrameAnalysisDevice::DumpStereoRes
 
     hr = CreateStagingResource(&stereoResource, srcDesc, true, false, format);
     if (FAILED(hr)) {
-        FALogErr("DumpStereoResource failed to create stereo texture: 0x%x\n", hr);
+        FA_LOG_ERR("DumpStereoResource failed to create stereo texture: 0x%x\n", hr);
         return;
     }
     hr = ResolveMSAA<Surface>(resource, &srcDesc, &tmpResource, format);
@@ -669,7 +669,7 @@ void D3D9Wrapper::FrameAnalysisDevice::dedupe_buf_filename_txt(const wchar_t *bi
         StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-stride=%u", stride);
 
     if (FAILED(StringCchPrintfW(pos, rem, L".txt")))
-        FALogErr("Failed to create buffer filename\n");
+        FA_LOG_ERR("Failed to create buffer filename\n");
 }
 
 /*
@@ -688,7 +688,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpBufferTxt(wchar_t *filename, void *ma
 
     err = wfopen_ensuring_access(&fd, filename, L"w");
     if (!fd) {
-        FALogErr("Unable to create %S: %u\n", filename, err);
+        FA_LOG_ERR("Unable to create %S: %u\n", filename, err);
         return;
     }
 
@@ -759,7 +759,7 @@ void D3D9Wrapper::FrameAnalysisDevice::dedupe_buf_filename_vb_txt(const wchar_t 
         StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-count=%u", count);
 
     if (FAILED(StringCchPrintfW(pos, rem, L".txt")))
-        FALogErr("Failed to create vertex buffer filename\n");
+        FA_LOG_ERR("Failed to create vertex buffer filename\n");
 }
 
 static void dump_ia_layout(FILE *fd, ::D3DVERTEXELEMENT9 *vertex_elemet, UINT num_elements)//, int slot)//, bool *per_vert, bool *per_inst)
@@ -972,7 +972,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpVBTxt(wchar_t *filename, void *map,
     UINT num_elements = 0;
     err = wfopen_ensuring_access(&fd, filename, L"w");
     if (!fd) {
-        FALogErr("Unable to create %S: %u\n", filename, err);
+        FA_LOG_ERR("Unable to create %S: %u\n", filename, err);
         return;
     }
 
@@ -990,7 +990,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpVBTxt(wchar_t *filename, void *map,
         dump_ia_layout(fd, vertex_element, num_elements);
     }
     if (!stride) {
-        FALogErr("Cannot dump vertex buffer with stride=0\n");
+        FA_LOG_ERR("Cannot dump vertex buffer with stride=0\n");
         goto out_close;
     }
 
@@ -1034,7 +1034,7 @@ void D3D9Wrapper::FrameAnalysisDevice::dedupe_buf_filename_ib_txt(const wchar_t 
         StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-count=%u", count);
 
     if (FAILED(StringCchPrintfW(pos, rem, L".txt")))
-        FALogErr("Failed to create index buffer filename\n");
+        FA_LOG_ERR("Failed to create index buffer filename\n");
 }
 
 void D3D9Wrapper::FrameAnalysisDevice::DumpIBTxt(wchar_t *filename, void *map,
@@ -1050,7 +1050,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpIBTxt(wchar_t *filename, void *map,
 
     err = wfopen_ensuring_access(&fd, filename, L"w");
     if (!fd) {
-        FALogErr("Unable to create %S: %u\n", filename, err);
+        FA_LOG_ERR("Unable to create %S: %u\n", filename, err);
         return;
     }
 
@@ -1127,7 +1127,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpDesc(DescType *desc, const wchar_t *f
 
     err = wfopen_ensuring_access(&fd, filename, L"w");
     if (!fd) {
-        FALogErr("Unable to create %S: %u\n", filename, err);
+        FA_LOG_ERR("Unable to create %S: %u\n", filename, err);
         return;
     }
     fwrite(buf, 1, strlen(buf), fd);
@@ -1159,7 +1159,7 @@ void D3D9Wrapper::FrameAnalysisDevice::determine_vb_count(UINT *count, ::IDirect
     staged_ib_for_vb->GetDesc(&ib_desc);
     hr = staged_ib_for_vb->Lock(0, ib_desc.Size, &ib_map, D3DLOCK_READONLY);
     if (FAILED(hr)) {
-        FALogErr("determine_vb_count failed to map index buffer staging resource: 0x%x\n", hr);
+        FA_LOG_ERR("determine_vb_count failed to map index buffer staging resource: 0x%x\n", hr);
         return;
     }
 
@@ -1205,7 +1205,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpBufferImmediateCtx(ID3D9Buffer *stagi
 
     hr = staging->Lock(0, orig_desc->Size, &map, D3DLOCK_READONLY);
     if (FAILED(hr)) {
-        FALogErr("DumpBuffer failed to map staging resource: 0x%x\n", hr);
+        FA_LOG_ERR("DumpBuffer failed to map staging resource: 0x%x\n", hr);
         return;
     }
 
@@ -1214,19 +1214,19 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpBufferImmediateCtx(ID3D9Buffer *stagi
     ext = filename.find_last_of(L'.');
     bin_ext = wcsrchr(bin_filename, L'.');
     if (ext == wstring::npos || !bin_ext) {
-        FALogErr("DumpBuffer: Filename missing extension\n");
+        FA_LOG_ERR("DumpBuffer: Filename missing extension\n");
         goto out_unmap;
     }
 
     if (analyse_options & FrameAnalysisOptions::FMT_BUF_BIN) {
         filename.replace(ext, wstring::npos, L".buf");
         wcscpy_s(bin_ext, MAX_PATH + bin_filename - bin_ext, L".buf");
-        FALogInfo("Dumping Buffer %S -> %S\n", filename.c_str(), bin_filename);
+        FA_LOG_INFO("Dumping Buffer %S -> %S\n", filename.c_str(), bin_filename);
 
         if (GetFileAttributes(bin_filename) == INVALID_FILE_ATTRIBUTES) {
             err = wfopen_ensuring_access(&fd, bin_filename, L"wb");
             if (!fd) {
-                FALogErr("Unable to create %S: %u\n", bin_filename, err);
+                FA_LOG_ERR("Unable to create %S: %u\n", bin_filename, err);
                 goto out_unmap;
             }
             fwrite(map, 1, orig_desc->Size, fd);
@@ -1237,7 +1237,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpBufferImmediateCtx(ID3D9Buffer *stagi
 
     if (analyse_options & FrameAnalysisOptions::FMT_BUF_TXT) {
         filename.replace(ext, wstring::npos, L".txt");
-        FALogInfo("Dumping Buffer %S -> %S\n", filename.c_str(), txt_filename);
+        FA_LOG_INFO("Dumping Buffer %S -> %S\n", filename.c_str(), txt_filename);
         if (buf_type_mask & FrameAnalysisOptions::DUMP_VB) {
             determine_vb_count(&count, staged_ib_for_vb, call_info, ib_off_for_vb, ib_fmt);
             dedupe_buf_filename_vb_txt(bin_filename, txt_filename, MAX_PATH, idx, stride, offset, first, count, layout, topology, call_info);
@@ -1268,7 +1268,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpBufferImmediateCtx(ID3D9Buffer *stagi
     if (analyse_options & FrameAnalysisOptions::FMT_DESC) {
         filename.replace(ext, wstring::npos, L".dsc");
         wcscpy_s(bin_ext, MAX_PATH + bin_filename - bin_ext, L".dsc");
-        FALogInfo("Dumping Buffer %S -> %S\n", filename.c_str(), bin_filename);
+        FA_LOG_INFO("Dumping Buffer %S -> %S\n", filename.c_str(), bin_filename);
 
         if (GetFileAttributes(bin_filename) == INVALID_FILE_ATTRIBUTES)
             DumpDesc(orig_desc, bin_filename);
@@ -1309,7 +1309,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpBuffer(ID3D9Buffer *buffer, wchar_t *
     desc.Usage &= ~D3DUSAGE_DYNAMIC;
     hr = _CreateBuffer(staging, &desc, GetPassThroughOrigDevice());
     if (FAILED(hr)) {
-        FALogErr("DumpBuffer failed to create staging buffer: 0x%x\n", hr);
+        FA_LOG_ERR("DumpBuffer failed to create staging buffer: 0x%x\n", hr);
         return;
     }
     void *pDataSrc;
@@ -1347,14 +1347,14 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpResource(::IDirect3DResource9 *resour
             DumpBuffer<::IDirect3DVertexBuffer9, ::D3DVERTEXBUFFER_DESC>((::IDirect3DVertexBuffer9*)resource, filename, buf_type_mask, idx, format, stride, offset,
                 0, 0, NULL, ::D3DPRIMITIVETYPE(-1), NULL, NULL, NULL, 0);
         else
-            FALogInfo("Skipped dumping Buffer (No buffer formats enabled): %S\n", filename);
+            FA_LOG_INFO("Skipped dumping Buffer (No buffer formats enabled): %S\n", filename);
         break;
     case ::D3DRTYPE_INDEXBUFFER:
         if (analyse_options & FrameAnalysisOptions::FMT_BUF_MASK)
             DumpBuffer<::IDirect3DIndexBuffer9, ::D3DINDEXBUFFER_DESC>((::IDirect3DIndexBuffer9*)resource, filename, buf_type_mask, idx, format, stride, offset,
                 0, 0, NULL, ::D3DPRIMITIVETYPE(-1), NULL, NULL, NULL, 0);
         else
-            FALogInfo("Skipped dumping Buffer (No buffer formats enabled): %S\n", filename);
+            FA_LOG_INFO("Skipped dumping Buffer (No buffer formats enabled): %S\n", filename);
         break;
     case ::D3DRTYPE_SURFACE:
         if (analyse_options & FrameAnalysisOptions::FMT_2D_MASK) {
@@ -1364,7 +1364,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpResource(::IDirect3DResource9 *resour
                 DumpSurface<::IDirect3DSurface9>((::IDirect3DSurface9*)resource, filename, false, NULL, format);
         }
         else
-            FALogInfo("Skipped dumping surface (No surface formats enabled): %S\n", filename);
+            FA_LOG_INFO("Skipped dumping surface (No surface formats enabled): %S\n", filename);
         break;
     case ::D3DRTYPE_TEXTURE:
         if (analyse_options & FrameAnalysisOptions::FMT_2D_MASK) {
@@ -1374,7 +1374,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpResource(::IDirect3DResource9 *resour
                 DumpSurface<::IDirect3DTexture9>((::IDirect3DTexture9*)resource, filename, false, NULL, format);
         }
         else
-            FALogInfo("Skipped dumping Texture2D (No Texture2D formats enabled): %S\n", filename);
+            FA_LOG_INFO("Skipped dumping Texture2D (No Texture2D formats enabled): %S\n", filename);
         break;
     case ::D3DRTYPE_CUBETEXTURE:
         if (analyse_options & FrameAnalysisOptions::FMT_2D_MASK) {
@@ -1384,18 +1384,18 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpResource(::IDirect3DResource9 *resour
                 DumpSurface<::IDirect3DCubeTexture9>((::IDirect3DCubeTexture9*)resource, filename, false, NULL, format);
         }
         else
-            FALogInfo("Skipped dumping Texture2D (No Texture2D formats enabled): %S\n", filename);
+            FA_LOG_INFO("Skipped dumping Texture2D (No Texture2D formats enabled): %S\n", filename);
         break;
     case ::D3DRTYPE_VOLUMETEXTURE:
-        FALogInfo("Skipped dumping Texture3D: %S\n", filename);
+        FA_LOG_INFO("Skipped dumping Texture3D: %S\n", filename);
         break;
     default:
-        FALogInfo("Skipped dumping resource of unknown type %i: %S\n", type, filename);
+        FA_LOG_INFO("Skipped dumping resource of unknown type %i: %S\n", type, filename);
         break;
     }
 }
 
-static BOOL CreateDeferredFADirectory(LPCWSTR path)
+static BOOL create_deferred_fa_directory(LPCWSTR path)
 {
     DWORD err;
 
@@ -1500,7 +1500,7 @@ HRESULT D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisFilename(wchar_t *filenam
 
     hr = StringCchPrintfW(pos, rem, L".XXX");
     if (FAILED(hr)) {
-        FALogErr("Failed to create filename: 0x%x\n", hr);
+        FA_LOG_ERR("Failed to create filename: 0x%x\n", hr);
         // Could create a shorter filename without hashes if this
         // becomes a problem in practice
     }
@@ -1556,7 +1556,7 @@ HRESULT D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisFilenameResource(wchar_t 
 
     hr = StringCchPrintfW(pos, rem, L".XXX");
     if (FAILED(hr))
-        FALogErr("Failed to create filename: 0x%x\n", hr);
+        FA_LOG_ERR("Failed to create filename: 0x%x\n", hr);
 
     return hr;
 }
@@ -1611,7 +1611,7 @@ const wchar_t* D3D9Wrapper::FrameAnalysisDevice::dedupe_sur2d_filename(Surface *
     // generated after creation I guess).
     hr = mapSurface(resource, &rect);
     if (FAILED(hr)) {
-        FALogErr("Frame Analysis filename deduplication failed to map resource: 0x%x\n", hr);
+        FA_LOG_ERR("Frame Analysis filename deduplication failed to map resource: 0x%x\n", hr);
         goto err;
     };
 
@@ -1708,7 +1708,7 @@ void D3D9Wrapper::FrameAnalysisDevice::rotate_deduped_file(const wchar_t *dedupe
             // xxxxxxx.1.xxx - max 1023 hard links
             // xxxxxxx.2.xxx - max 1023 hard links
             // etc.
-            FALogInfo("Max hard links exceeded, rotating deduped file: %S\n", rotated_filename);
+            FA_LOG_INFO("Max hard links exceeded, rotating deduped file: %S\n", rotated_filename);
             MoveFile(dedupe_filename, rotated_filename);
             CopyFile(rotated_filename, dedupe_filename, TRUE);
             return;
@@ -1791,7 +1791,7 @@ void D3D9Wrapper::FrameAnalysisDevice::link_deduplicated_files(const wchar_t *fi
         }
 
         // May fail if developer mode is not enabled on Windows 10:
-        FALogErr("Symlinking %S -> %S failed (0x%u), trying hard link\n",
+        FA_LOG_ERR("Symlinking %S -> %S failed (0x%u), trying hard link\n",
             filename, relative_path, GetLastError());
     }
 
@@ -1817,7 +1817,7 @@ void D3D9Wrapper::FrameAnalysisDevice::link_deduplicated_files(const wchar_t *fi
     if (MoveFile(dedupe_filename, filename))
         return;
 
-    FALogErr("All attempts to link deduplicated file failed, giving up: %S -> %S\n",
+    FA_LOG_ERR("All attempts to link deduplicated file failed, giving up: %S -> %S\n",
         filename, dedupe_filename);
 }
 void D3D9Wrapper::FrameAnalysisDevice::_DumpTextures(char shader_type)
@@ -1844,7 +1844,7 @@ void D3D9Wrapper::FrameAnalysisDevice::_DumpTextures(char shader_type)
     }
     for (i = 0; i < maxSampler && G->analyse_frame; i++) {
         if ((i == G->StereoParamsPixelReg || (D3DDMAPSAMPLER + 1 + i == G->StereoParamsVertexReg)) || (G->helix_fix && (i == G->helix_StereoParamsPixelReg || (D3DDMAPSAMPLER + 1 + i == G->helix_StereoParamsVertexReg)))) {
-            FALogInfo("Skipped 3DMigoto resource in slot %cs-t%i\n", shader_type, i);
+            FA_LOG_INFO("Skipped 3DMigoto resource in slot %cs-t%i\n", shader_type, i);
             continue;
         }
         if (shader_type == 'v') {
@@ -1970,13 +1970,13 @@ void D3D9Wrapper::FrameAnalysisDevice::_DumpCBs(char shader_type, wchar_t consta
         ext = _filename.find_last_of(L'.');
         txt_ext = wcsrchr(txt_filename, L'.');
         if (ext == wstring::npos || !txt_ext) {
-            FALogErr("DumpBuffer: Filename missing extension\n");
+            FA_LOG_ERR("DumpBuffer: Filename missing extension\n");
             return;
         }
 
         _filename.replace(ext, wstring::npos, L".txt");
         wcscpy_s(txt_ext, MAX_PATH + txt_filename - txt_ext, L".txt");
-        FALogInfo("Dumping Buffer %S -> %S\n", _filename.c_str(), txt_filename);
+        FA_LOG_INFO("Dumping Buffer %S -> %S\n", _filename.c_str(), txt_filename);
 
         if (GetFileAttributes(txt_filename) == INVALID_FILE_ATTRIBUTES) {
             DumpBufferTxt(txt_filename, buffer, size, '?', -1, 0, 0);
@@ -2249,14 +2249,14 @@ void D3D9Wrapper::FrameAnalysisDevice::update_per_draw_analyse_options()
     analyse_options = G->cur_analyse_options;
     // Log whenever new persistent options take effect, but only once:
     if (G->cur_analyse_options & FrameAnalysisOptions::PERSIST) {
-        FALogInfo("analyse_options (persistent): %08x\n", G->cur_analyse_options);
+        FA_LOG_INFO("analyse_options (persistent): %08x\n", G->cur_analyse_options);
         G->cur_analyse_options &= (FrameAnalysisOptions)~FrameAnalysisOptions::PERSIST;
     }
 
     if (!oneshot_valid)
         return;
 
-    FALogInfo("analyse_options (one-shot): %08x\n", oneshot_analyse_options);
+    FA_LOG_INFO("analyse_options (one-shot): %08x\n", oneshot_analyse_options);
 
     analyse_options = oneshot_analyse_options;
     oneshot_analyse_options = FrameAnalysisOptions::INVALID;
@@ -2342,7 +2342,7 @@ void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisAfterDraw(DrawCallInfo *call
         if (!G->stereoblit_control_set_once) {
             nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(stereoHandle, true);
             if (nvret != NVAPI_OK) {
-                FALogErr("DumpStereoResource failed to enable reverse stereo blit\n");
+                FA_LOG_ERR("DumpStereoResource failed to enable reverse stereo blit\n");
                 // Continue anyway, we should still be able to dump in 2D...
             }
         }
@@ -2425,7 +2425,7 @@ void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisDump(::IDirect3DResource9 *r
         if (!G->stereoblit_control_set_once) {
             nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(stereoHandle, true);
             if (nvret != NVAPI_OK) {
-                FALogErr("FrameAnalyisDump failed to enable reverse stereo blit\n");
+                FA_LOG_ERR("FrameAnalyisDump failed to enable reverse stereo blit\n");
                 // Continue anyway, we should still be able to dump in 2D...
             }
         }
