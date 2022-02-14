@@ -115,10 +115,10 @@ private:
     void Dump2DResourceImmediateCtx(ID3D11Texture2D *staging, std::wstring filename,
             bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format);
 
-    HRESULT ResolveMSAA(ID3D11Texture2D *src, D3D11_TEXTURE2D_DESC *srcDesc,
+    HRESULT ResolveMSAA(ID3D11Texture2D *src, D3D11_TEXTURE2D_DESC *src_desc,
             ID3D11Texture2D **resolved, DXGI_FORMAT format);
     HRESULT StageResource(ID3D11Texture2D *src,
-            D3D11_TEXTURE2D_DESC *srcDesc, ID3D11Texture2D **dst, DXGI_FORMAT format);
+            D3D11_TEXTURE2D_DESC *src_desc, ID3D11Texture2D **dst, DXGI_FORMAT format);
     HRESULT CreateStagingResource(ID3D11Texture2D **resource,
         D3D11_TEXTURE2D_DESC desc, bool stereo, bool msaa, DXGI_FORMAT format);
 
@@ -169,48 +169,48 @@ private:
     template <typename DescType>
     void DumpDesc(DescType *desc, const wchar_t *filename);
 
-    void dump_deferred_resources(ID3D11CommandList *command_list);
-    void finish_deferred_resources(ID3D11CommandList *command_list);
+    void DumpDeferredResources(ID3D11CommandList *command_list);
+    void FinishDeferredResources(ID3D11CommandList *command_list);
 
     HRESULT FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
             wchar_t *reg, char shader_type, int idx, ID3D11Resource *handle);
     HRESULT FrameAnalysisFilenameResource(wchar_t *filename, size_t size, const wchar_t *type,
             ID3D11Resource *handle, bool force_filename_handle);
-    const wchar_t* dedupe_tex2d_filename(ID3D11Texture2D *resource,
+    const wchar_t* DedupeTex2DFilename(ID3D11Texture2D *resource,
             D3D11_TEXTURE2D_DESC *desc, wchar_t *dedupe_filename,
             size_t size, const wchar_t *traditional_filename, DXGI_FORMAT format);
-    void dedupe_buf_filename(ID3D11Buffer *resource,
+    void DedupeBufFilename(ID3D11Buffer *resource,
             D3D11_BUFFER_DESC *orig_desc,
             D3D11_MAPPED_SUBRESOURCE *map,
             wchar_t *dedupe_filename, size_t size);
-    void dedupe_buf_filename_txt(const wchar_t *bin_filename,
+    void DedupeBufFilenameTxt(const wchar_t *bin_filename,
             wchar_t *txt_filename, size_t size, char type, int idx,
             UINT stride, UINT offset);
-    void dedupe_buf_filename_vb_txt(const wchar_t *bin_filename,
+    void DedupeBufFilenameVBTxt(const wchar_t *bin_filename,
             wchar_t *txt_filename, size_t size, int idx,
             UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
             D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info);
-    void dedupe_buf_filename_ib_txt(const wchar_t *bin_filename,
+    void DedupeBufFilenameIBTxt(const wchar_t *bin_filename,
             wchar_t *txt_filename, size_t size, DXGI_FORMAT ib_fmt,
             UINT offset, UINT first, UINT count, D3D11_PRIMITIVE_TOPOLOGY topology);
-    void link_deduplicated_files(const wchar_t *filename, const wchar_t *dedupe_filename);
-    void rotate_when_nearing_hard_link_limit(const wchar_t *dedupe_filename);
-    void rotate_deduped_file(const wchar_t *dedupe_filename);
-    void get_deduped_dir(wchar_t *path, size_t size);
+    void LinkDeduplicatedFiles(const wchar_t *filename, const wchar_t *dedupe_filename);
+    void RotateWhenNearingHardLinkLimit(const wchar_t *dedupe_filename);
+    void RotateDedupedFile(const wchar_t *dedupe_filename);
+    void GetDedupedDir(wchar_t *path, size_t size);
 
-    void determine_vb_count(UINT *count, ID3D11Buffer *staged_ib_for_vb,
+    void DetermineVBCount(UINT *count, ID3D11Buffer *staged_ib_for_vb,
             DrawCallInfo *call_info, UINT ib_off_for_vb, DXGI_FORMAT ib_fmt);
 
     void FrameAnalysisClearRT(ID3D11RenderTargetView *target);
     void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
-    void update_per_draw_analyse_options();
+    void UpdatePerDrawAnalyseOptions();
     void FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info);
     void _FrameAnalysisAfterUpdate(ID3D11Resource *pResource,
             FrameAnalysisOptions type_mask, wchar_t *type);
     void FrameAnalysisAfterUnmap(ID3D11Resource *pResource);
     void FrameAnalysisAfterUpdate(ID3D11Resource *pResource);
-    void update_stereo_dumping_mode();
-    void set_default_dump_formats(bool draw);
+    void UpdateStereoDumpingMode();
+    void SetDefaultDumpFormats(bool draw);
 
     FrameAnalysisOptions analyse_options;
     FrameAnalysisOptions oneshot_analyse_options;
