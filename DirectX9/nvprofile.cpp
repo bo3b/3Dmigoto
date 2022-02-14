@@ -1443,7 +1443,7 @@ void CALLBACK Install3DMigotoDriverProfileW(HWND hwnd, HINSTANCE hinst, LPWSTR l
     LoadLibrary(NVAPI_DLL);
 
     // Tell our nvapi.dll that it's us calling, and it's OK.
-    NvAPIOverride();
+    nvapi_override();
     status = NvAPI_Initialize();
     if (status != NVAPI_OK) {
         LOG_INFO_NO_NL("  NvAPI_Initialize failed: ");

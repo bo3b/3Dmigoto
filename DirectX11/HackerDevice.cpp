@@ -427,7 +427,7 @@ HRESULT HackerDevice::SetGlobalNVSurfaceCreationMode()
     // Override custom settings.
     if (stereoHandle && G->gSurfaceCreateMode >= 0)
     {
-        NvAPIOverride();
+        nvapi_override();
         LOG_INFO("  setting custom surface creation mode.\n");
 
         hr = Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle,    (NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
@@ -2104,7 +2104,7 @@ static const DescType* process_texture_override(uint32_t hash,
 
     if (newMode != (NVAPI_STEREO_SURFACECREATEMODE) -1) {
         Profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereoHandle, oldMode);
-        NvAPIOverride();
+        nvapi_override();
         LOG_INFO("    setting custom surface creation mode %d\n", newMode);
 
         if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, newMode))

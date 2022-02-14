@@ -191,7 +191,7 @@ inline HRESULT D3D9Wrapper::IDirect3DDevice9::SetGlobalNVSurfaceCreationMode()
     // Override custom settings.
     if (stereoHandle && G->gSurfaceCreateMode >= 0)
     {
-        NvAPIOverride();
+        nvapi_override();
         LOG_INFO("  setting custom surface creation mode.\n");
 
         hr = NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, (NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceCreateMode);
@@ -1640,7 +1640,7 @@ void D3D9Wrapper::IDirect3DDevice9::BeforeDraw(DrawContext & data)
                     if (NVAPI_OK != GetSeparation(this, &data.cachedStereoValues, &data.oldSeparation)) //Profiling::NvAPI_Stereo_GetSeparation(this->stereoHandle, &data.oldSeparation))
                         LOG_DEBUG("    Stereo_GetSeparation failed.\n");
 
-                    NvAPIOverride();
+                    nvapi_override();
                     if (NVAPI_OK != SetSeparation(this, &data.cachedStereoValues, 0))//Profiling::NvAPI_Stereo_SetSeparation(this->stereoHandle, 0))
                         LOG_DEBUG("    Stereo_SetSeparation failed.\n");
                 }
@@ -1905,7 +1905,7 @@ void D3D9Wrapper::IDirect3DDevice9::AfterDraw(DrawContext & data)
         }
     }
     if (this->stereoHandle && data.oldSeparation != FLT_MAX) {
-        NvAPIOverride();
+        nvapi_override();
         if (NVAPI_OK != SetSeparation(this, &data.cachedStereoValues, data.oldSeparation))//Profiling::NvAPI_Stereo_SetSeparation(this->stereoHandle, data.oldSeparation))
             LOG_DEBUG("    Stereo_SetSeparation failed.\n");
     }
@@ -3280,7 +3280,7 @@ static const DescType* process_texture_override(uint32_t hash,
 
     if (G->gForceStereo != 2 && newMode != (NVAPI_STEREO_SURFACECREATEMODE) - 1) {
         Profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereoHandle, oldMode);
-        NvAPIOverride();
+        nvapi_override();
         LOG_INFO("  setting custom surface creation mode.\n");
 
         if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, newMode))

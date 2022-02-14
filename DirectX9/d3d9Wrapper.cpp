@@ -54,7 +54,7 @@ struct SwapChainInfo
 {
     int width, height;
 };
-static bool InitializeDLL()
+static bool initialize_dll()
 {
     if (G->gInitialized)
         return true;
@@ -75,7 +75,7 @@ static bool InitializeDLL()
         NvAPI_Status status;
 //
 //        // Tell our nvapi.dll that it's us calling, and it's OK.
-        NvAPIOverride();
+        nvapi_override();
         status = NvAPI_Initialize();
         if (status != NVAPI_OK)
         {
@@ -99,11 +99,11 @@ static bool InitializeDLL()
         // starts it calls NvAPI_Initialize that we want to return an error for.
         // But, the NV stereo driver ALSO calls NvAPI_Initialize, and we need to let
         // that one go through.  So by calling Stereo_Enable early here, we force
-        // the NV stereo to load and take advantage of the pending NvAPIOverride,
+        // the NV stereo to load and take advantage of the pending nvapi_override,
         // then all subsequent game calls to Initialize will return an error.
         if (G->gForceNoNvAPI)
         {
-            NvAPIOverride();
+            nvapi_override();
             status = NvAPI_Stereo_Enable();
             if (status != NVAPI_OK)
             {
@@ -136,7 +136,7 @@ void InitD39()
 
     if (hD3D) return;
     InitializeCriticalSection(&G->mCriticalSection);
-    InitializeDLL();
+    initialize_dll();
 
     // Chain through to the either the original DLL in the system, or to a proxy
     // DLL with the same interface, specified in the d3dx.ini file.
@@ -210,7 +210,7 @@ void InitD39()
     }
 
 }
-void DestroyDLL()
+void destroy_dll()
 {
     if (LogFile)
     {
