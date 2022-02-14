@@ -409,7 +409,7 @@ static void CreateStereoInfoString(D3D9Wrapper::IDirect3DDevice9 *hackerDevice, 
     bool stereo = !!hackerDevice->stereoHandle;
     if (stereo)
     {
-        NvAPIOverride();
+        nvapi_override();
         GetStereoEnabled(cachedStereoValues, &stereo);
         if (stereo)
         {

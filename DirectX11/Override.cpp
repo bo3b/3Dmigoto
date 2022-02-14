@@ -745,7 +745,7 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
     if (val != FLT_MAX) {
         LOG_INFO(" Transitioning separation to %#.2f\n", val);
 
-        NvAPIOverride();
+        nvapi_override();
         err = Profiling::NvAPI_Stereo_SetSeparation(wrapper->stereoHandle, val);
         if (err != NVAPI_OK)
             LOG_DEBUG("    Stereo_SetSeparation failed: %i\n", err);
@@ -755,7 +755,7 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
     if (val != FLT_MAX) {
         LOG_INFO(" Transitioning convergence to %#.2f\n", val);
 
-        NvAPIOverride();
+        nvapi_override();
         err = Profiling::NvAPI_Stereo_SetConvergence(wrapper->stereoHandle, val);
         if (err != NVAPI_OK)
             LOG_DEBUG("    Stereo_SetConvergence failed: %i\n", err);
@@ -848,7 +848,7 @@ void OverrideGlobalSave::Reset(HackerDevice* wrapper)
     if (val != FLT_MAX) {
         LOG_INFO(" Restoring separation to %#.2f\n", val);
 
-        NvAPIOverride();
+        nvapi_override();
         err = Profiling::NvAPI_Stereo_SetSeparation(wrapper->stereoHandle, val);
         if (err != NVAPI_OK)
             LOG_DEBUG("    Stereo_SetSeparation failed: %i\n", err);
@@ -860,7 +860,7 @@ void OverrideGlobalSave::Reset(HackerDevice* wrapper)
     if (val != FLT_MAX) {
         LOG_INFO(" Restoring convergence to %#.2f\n", val);
 
-        NvAPIOverride();
+        nvapi_override();
         err = Profiling::NvAPI_Stereo_SetConvergence(wrapper->stereoHandle, val);
         if (err != NVAPI_OK)
             LOG_DEBUG("    Stereo_SetConvergence failed: %i\n", err);

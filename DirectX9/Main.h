@@ -30,7 +30,7 @@ namespace D3D9Wrapper
 {
 #include "d3d9Wrapper.h"
 }
-void NvAPIOverride();
+void nvapi_override();
 void NvAPIEnableStereoActiveTracking();
 void NvAPIEnableConvergenceTracking();
 void NvAPIEnableSeparationTracking();
@@ -49,4 +49,4 @@ extern "C" HMODULE (__stdcall *fnOrigLoadLibraryExW)(
     _In_       DWORD   dwFlags
     );
 
-extern "C" HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);
+extern "C" HMODULE __stdcall hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);

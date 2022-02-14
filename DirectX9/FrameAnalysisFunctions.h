@@ -2266,7 +2266,7 @@ void D3D9Wrapper::FrameAnalysisDevice::update_per_draw_analyse_options()
 void D3D9Wrapper::FrameAnalysisDevice::update_stereo_dumping_mode()
 {
     NvU8 stereo = false;
-    NvAPIOverride();
+    nvapi_override();
     Profiling::NvAPI_Stereo_IsEnabled(&stereo);
     if (stereo)
         Profiling::NvAPI_Stereo_IsActivated(stereoHandle, &stereo);

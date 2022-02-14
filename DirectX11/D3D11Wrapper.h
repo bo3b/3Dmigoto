@@ -5,10 +5,10 @@
 #include <dxgi1_2.h>
 
 
-void InitD311();
-void DestroyDLL();
+void init_d3d11();
+void destroy_dll();
 
-void NvAPIOverride();
+void nvapi_override();
 
 extern "C" HMODULE (__stdcall *fnOrigLoadLibraryExW)(
     _In_       LPCWSTR lpLibFileName,
@@ -16,7 +16,7 @@ extern "C" HMODULE (__stdcall *fnOrigLoadLibraryExW)(
     _In_       DWORD   dwFlags
     );
 
-extern "C" HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);
+extern "C" HMODULE __stdcall hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);
 
 
 // These are moved up to the header file so we can call them from elsewhere.
