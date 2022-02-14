@@ -34,21 +34,21 @@ CNktHookLib cHookMgr;
 // ----------------------------------------------------------------------------
 // Use this logging when at DLLMain which is too early to do anything with the file system.
 #if _DEBUG
-bool bLog = true;
+bool debug_log = true;
 #else
-bool bLog = false;
+bool debug_log = false;
 #endif
 
 // Special logging for this strange moment at runtime.
 // We cannot log to our normal file, because this is too early, in DLLMain.
 // Nektra provides a safe log though, so we will use this when debugging.
 
-static void LogHooking(char *fmt, ...)
+static void log_hooking(char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
 
-    if (bLog)
+    if (debug_log)
         NktHookLibHelpers::DebugVPrint(fmt, ap);
 
     va_end(ap);
@@ -56,29 +56,29 @@ static void LogHooking(char *fmt, ...)
 
 
 // ----------------------------------------------------------------------------
-static HRESULT InstallHookDLLMain(LPCWSTR moduleName, char *func, void **trampoline, void *hook)
+static HRESULT install_hook_dll_main(LPCWSTR module_name, char *func, void **trampoline, void *hook)
 {
     HINSTANCE module;
     SIZE_T hook_id;
-    DWORD dwOsErr;
+    DWORD os_err;
     void *fnOrig;
 
-    module = NktHookLibHelpers::GetModuleBaseAddress(moduleName);
+    module = NktHookLibHelpers::GetModuleBaseAddress(module_name);
     if (module == NULL)
     {
-        LogHooking("*** Failed to GetModuleBaseAddress for %s\n", moduleName);
+        log_hooking("*** Failed to GetModuleBaseAddress for %s\n", module_name);
         return E_FAIL;
     }
 
     fnOrig = NktHookLibHelpers::GetProcedureAddress(module, func);
     if (fnOrig == NULL) {
-        LogHooking("*** Failed to get address of %s\n", func);
+        log_hooking("*** Failed to get address of %s\n", func);
         return E_FAIL;
     }
 
-    dwOsErr = cHookMgr.Hook(&hook_id, trampoline, fnOrig, hook);
-    if (dwOsErr != ERROR_SUCCESS) {
-        LogHooking("*** Failed to hook %s: 0x%x\n", func, dwOsErr);
+    os_err = cHookMgr.Hook(&hook_id, trampoline, fnOrig, hook);
+    if (os_err != ERROR_SUCCESS) {
+        log_hooking("*** Failed to hook %s: 0x%x\n", func, os_err);
         return E_FAIL;
     }
 
@@ -90,9 +90,9 @@ static HRESULT InstallHookDLLMain(LPCWSTR moduleName, char *func, void **trampol
 // Only ExW version for now, used by nvapi.
 // Safe: Kernel32.dll known to be linked directly to our d3d11.dll
 
-static HRESULT HookLoadLibraryExW()
+static HRESULT hook_LoadLibraryExW()
 {
-    HRESULT hr = InstallHookDLLMain(L"Kernel32.dll", "LoadLibraryExW", (LPVOID*)&fnOrigLoadLibraryExW, hooked_LoadLibraryExW);
+    HRESULT hr = install_hook_dll_main(L"Kernel32.dll", "LoadLibraryExW", (LPVOID*)&fnOrigLoadLibraryExW, hooked_LoadLibraryExW);
     if (FAILED(hr))
         return E_FAIL;
 
@@ -101,46 +101,46 @@ static HRESULT HookLoadLibraryExW()
 
 
 // ----------------------------------------------------------------------------
-// Object            OS                DXGI version    Feature level
-// IDXGIFactory        Win7            1.0                11.0
-// IDXGIFactory1    Win7            1.0                11.0
-// IDXGIFactory2    Platform update    1.2                11.1
-// IDXGIFactory3    Win8.1            1.3
-// IDXGIFactory4                    1.4
-// IDXGIFactory5                    1.5
+// Object           OS            DXGI version      Feature level
+// IDXGIFactory     Win7             1.0                11.0
+// IDXGIFactory1    Win7             1.0                11.0
+// IDXGIFactory2    Platform update  1.2                11.1
+// IDXGIFactory3    Win8.1           1.3
+// IDXGIFactory4                     1.4
+// IDXGIFactory5                     1.5
 //
 // IDXGIFactory2 is *not* exported until Win8.1 DLLs, and is specifically
 // not part of a Win7 platform_update runtime.
 
-static HRESULT HookDXGIFactories()
+static HRESULT hook_dxgi_factories()
 {
     HRESULT hr;
 
-    hr = InstallHookDLLMain(L"dxgi.dll", "CreateDXGIFactory", (LPVOID*)&fnOrigCreateDXGIFactory, Hooked_CreateDXGIFactory);
+    hr = install_hook_dll_main(L"dxgi.dll", "CreateDXGIFactory", (LPVOID*)&fnOrigCreateDXGIFactory, Hooked_CreateDXGIFactory);
     if (FAILED(hr))
         return E_FAIL;
 
-    hr = InstallHookDLLMain(L"dxgi.dll", "CreateDXGIFactory1", (LPVOID*)&fnOrigCreateDXGIFactory1, Hooked_CreateDXGIFactory1);
+    hr = install_hook_dll_main(L"dxgi.dll", "CreateDXGIFactory1", (LPVOID*)&fnOrigCreateDXGIFactory1, Hooked_CreateDXGIFactory1);
     if (FAILED(hr))
         return E_FAIL;
 
     // We do not care if this fails - this function does not exist on Win7
-    InstallHookDLLMain(L"dxgi.dll", "CreateDXGIFactory2", (LPVOID*)&fnOrigCreateDXGIFactory2, Hooked_CreateDXGIFactory2);
+    install_hook_dll_main(L"dxgi.dll", "CreateDXGIFactory2", (LPVOID*)&fnOrigCreateDXGIFactory2, Hooked_CreateDXGIFactory2);
 
     return NOERROR;
 }
 
-static HRESULT HookD3D11(HINSTANCE our_dll)
+static HRESULT hook_d3d11(HINSTANCE our_dll)
 {
     HRESULT hr;
 
-    LogHooking("Hooking d3d11.dll...\n");
+    log_hooking("Hooking d3d11.dll...\n");
 
     // TODO: What if d3d11.dll isn't loaded in the process yet? We can't
     // use LoadLibrary() from DllMain. Does Nektra handle this somehow, or
     // should we defer the hook until later (perhaps our LoadLibrary hook)?
 
-    hr = InstallHookDLLMain(L"d3d11.dll", "D3D11CreateDevice",
+    hr = install_hook_dll_main(L"d3d11.dll", "D3D11CreateDevice",
             (LPVOID*)&_D3D11CreateDevice, D3D11CreateDevice);
     if (FAILED(hr))
         return E_FAIL;
@@ -149,7 +149,7 @@ static HRESULT HookD3D11(HINSTANCE our_dll)
     // unresolved external - looks like the function signature doesn't
     // quite match the prototype in the Win 10 SDK. Whatever - it's
     // compatible, so just use GetProcAddress() rather than fight it.
-    hr = InstallHookDLLMain(L"d3d11.dll", "D3D11CreateDeviceAndSwapChain",
+    hr = install_hook_dll_main(L"d3d11.dll", "D3D11CreateDeviceAndSwapChain",
             (LPVOID*)&_D3D11CreateDeviceAndSwapChain,
             GetProcAddress(our_dll, "D3D11CreateDeviceAndSwapChain"));
     if (FAILED(hr))
@@ -160,7 +160,7 @@ static HRESULT HookD3D11(HINSTANCE our_dll)
 
 
 // ----------------------------------------------------------------------------
-static void RemoveHooks()
+static void remove_hooks()
 {
     cHookMgr.UnhookAll();
 }
@@ -200,7 +200,7 @@ static bool verify_intended_target(HINSTANCE our_dll)
     if (!_wcsicmp(our_path, exe_path))
         return true;
 
-    LogHooking("3DMigoto loaded from outside game directory\n"
+    log_hooking("3DMigoto loaded from outside game directory\n"
                "Exe directory: \"%S\" basename: \"%S\"\n"
                "Our directory: \"%S\" basename: \"%S\"\n",
            exe_path, exe_basename, our_path, our_basename);
@@ -320,7 +320,7 @@ BOOL WINAPI DllMain(
     {
         case DLL_PROCESS_ATTACH:
             migoto_handle = hinstDLL;
-            cHookMgr.SetEnableDebugOutput(bLog);
+            cHookMgr.SetEnableDebugOutput(debug_log);
 
             // If we are loaded via injection we will end up in
             // every newly task in the system. We don't want that,
@@ -333,11 +333,11 @@ BOOL WINAPI DllMain(
             // d3d11.dll. I'm not positive if this is the "best"
             // way to check for this, but it seems to work:
             if (hinstDLL != GetModuleHandleA("d3d11.dll"))
-                HookD3D11(hinstDLL);
+                hook_d3d11(hinstDLL);
 
-            if (FAILED(HookLoadLibraryExW()))
+            if (FAILED(hook_LoadLibraryExW()))
                 return false;
-            if (FAILED(HookDXGIFactories()))
+            if (FAILED(hook_dxgi_factories()))
                 return false;
 
             tls_idx = TlsAlloc();
@@ -347,7 +347,7 @@ BOOL WINAPI DllMain(
             break;
 
         case DLL_PROCESS_DETACH:
-            RemoveHooks();
+            remove_hooks();
             if (tls_idx != TLS_OUT_OF_INDEXES) {
                 // FIXME: If we are being dynamically unloaded
                 // (lpvReserved == NULL), we should delete the
