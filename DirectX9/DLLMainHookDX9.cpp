@@ -99,7 +99,7 @@ static bool HookLoadLibraryExW()
         return false;
     }
 
-    fail |= InstallHookDLLMain(hKernel32, "LoadLibraryExW", (LPVOID*)&fnOrigLoadLibraryExW, Hooked_LoadLibraryExW);
+    fail |= InstallHookDLLMain(hKernel32, "LoadLibraryExW", (LPVOID*)&fnOrigLoadLibraryExW, hooked_LoadLibraryExW);
 
     if (fail)
     {
