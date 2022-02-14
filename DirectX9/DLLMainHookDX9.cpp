@@ -39,7 +39,7 @@ bool bLog = false;
 // We cannot log to our normal file, because this is too early, in DLLMain.
 // Nektra provides a safe log though, so we will use this when debugging.
 
-static void LogHooking(char *fmt, ...)
+static void log_hooking(char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -67,13 +67,13 @@ static HRESULT InstallHookDLLMain(HINSTANCE module, char *func, void **trampolin
 
     fnOrig = NktHookLibHelpers::GetProcedureAddress(module, func);
     if (fnOrig == NULL) {
-        LogHooking("*** Failed to get address of %s\n", func);
+        log_hooking("*** Failed to get address of %s\n", func);
         return E_FAIL;
     }
 
     dwOsErr = cHookMgr.Hook(&hook_id, trampoline, fnOrig, hook);
     if (dwOsErr != ERROR_SUCCESS) {
-        LogHooking("*** Failed to hook %s: 0x%x\n", func, dwOsErr);
+        log_hooking("*** Failed to hook %s: 0x%x\n", func, dwOsErr);
         return E_FAIL;
     }
 
@@ -90,12 +90,12 @@ static bool HookLoadLibraryExW()
     HINSTANCE hKernel32;
     int fail = 0;
 
-    LogHooking("Attempting to hook LoadLibraryExW using Deviare in-proc.\n");
+    log_hooking("Attempting to hook LoadLibraryExW using Deviare in-proc.\n");
 
     hKernel32 = NktHookLibHelpers::GetModuleBaseAddress(L"Kernel32.dll");
     if (hKernel32 == NULL)
     {
-        LogHooking("Failed to get Kernel32 module for Loadlibrary hook.\n");
+        log_hooking("Failed to get Kernel32 module for Loadlibrary hook.\n");
         return false;
     }
 
@@ -103,11 +103,11 @@ static bool HookLoadLibraryExW()
 
     if (fail)
     {
-        LogHooking("InstallHooks for LoadLibraryExW using Deviare in-proc failed\n");
+        log_hooking("InstallHooks for LoadLibraryExW using Deviare in-proc failed\n");
         return false;
     }
 
-    LogHooking("InstallHooks for LoadLibraryExW using Deviare in-proc succeeded\n");
+    log_hooking("InstallHooks for LoadLibraryExW using Deviare in-proc succeeded\n");
     return true;
 }
 
@@ -195,7 +195,7 @@ static void hook_d3dx9(HINSTANCE module)
 #endif // 0
 
 // ----------------------------------------------------------------------------
-static void RemoveHooks()
+static void remove_hooks()
 {
     cHookMgr.UnhookAll();
 }
@@ -231,7 +231,7 @@ BOOL WINAPI DllMain(
             break;
 
         case DLL_PROCESS_DETACH:
-            RemoveHooks();
+            remove_hooks();
             break;
 
         case DLL_THREAD_ATTACH:
