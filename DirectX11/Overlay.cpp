@@ -759,7 +759,7 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
     NvU8 stereo = !!stereoHandle;
     if (stereo)
     {
-        NvAPIOverride();
+        nvapi_override();
         Profiling::NvAPI_Stereo_IsEnabled(&stereo);
         if (stereo)
         {

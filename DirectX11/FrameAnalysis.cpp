@@ -2795,7 +2795,7 @@ void FrameAnalysisContext::update_stereo_dumping_mode()
 {
     NvU8 stereo = false;
 
-    NvAPIOverride();
+    nvapi_override();
     Profiling::NvAPI_Stereo_IsEnabled(&stereo);
     if (stereo)
         Profiling::NvAPI_Stereo_IsActivated(GetHackerDevice()->stereoHandle, &stereo);

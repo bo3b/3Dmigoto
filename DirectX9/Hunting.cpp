@@ -295,7 +295,7 @@ static void StereoScreenShot(D3D9Wrapper::IDirect3DDevice9 *pDevice, HashType ha
     NvAPI_Status nvret;
     int hash_len = sizeof(HashType) * 2;
     NvU8 stereo = false;
-    NvAPIOverride();
+    nvapi_override();
     Profiling::NvAPI_Stereo_IsEnabled(&stereo);
     if (stereo)
         Profiling::NvAPI_Stereo_IsActivated(pDevice->stereoHandle, &stereo);

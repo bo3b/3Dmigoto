@@ -134,7 +134,7 @@ void InitializeDLL()
     LOG_INFO(" *** DXGI DLL successfully initialized. *** \n\n");
 }
 
-void DestroyDLL()
+void destroy_dll()
 {
     if (LogFile)
     {

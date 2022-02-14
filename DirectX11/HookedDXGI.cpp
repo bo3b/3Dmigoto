@@ -915,7 +915,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 
     // If this happens to be first call from the game, let's make sure to load
     // up our d3d11.dll and the .ini file.
-    InitD311();
+    init_d3d11();
 
     // If we are being requested to create a DXGIFactory2, lie and say it's not possible.
     if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
@@ -980,7 +980,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 
     // If this happens to be first call from the game, let's make sure to load
     // up our d3d11.dll and the .ini file.
-    InitD311();
+    init_d3d11();
 
     // If we are being requested to create a DXGIFactory2, lie and say it's not possible.
     if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
@@ -1040,7 +1040,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFa
 
     // If this happens to be first call from the game, let's make sure to load
     // up our d3d11.dll and the .ini file.
-    InitD311();
+    init_d3d11();
 
     // If we are being requested to create a DXGIFactory2, lie and say it's not possible.
     if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
@@ -1094,7 +1094,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFa
 // The hooks need to be installed late, and cannot be installed during DLLMain, because
 // they need to be installed in the COM object vtable itself, and the order cannot be
 // defined that early.  Because the documentation says it's not viable at DLLMain time,
-// we'll install these hooks at InitD311() time, essentially the first call of D3D11.
+// we'll install these hooks at init_d3d11() time, essentially the first call of D3D11.
 // 
 // The piece we care about in DXGI is the swap chain, and we don't otherwise have a
 // good way to access it.  It can be created directly via DXGI, and not through 

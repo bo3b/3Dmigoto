@@ -1406,7 +1406,7 @@ bool PerDrawStereoOverrideCommand::Noop(bool post, bool ignore_cto_pre, bool ign
 {
     NvU8 enabled = false;
 
-    NvAPIOverride();
+    nvapi_override();
     Profiling::NvAPI_Stereo_IsEnabled(&enabled);
     return !enabled;
 }
@@ -1423,7 +1423,7 @@ bool DirectModeSetActiveEyeCommand::Noop(bool post, bool ignore_cto_pre, bool ig
 {
     NvU8 enabled = false;
 
-    NvAPIOverride();
+    nvapi_override();
     Profiling::NvAPI_Stereo_IsEnabled(&enabled);
     return !enabled;
 
@@ -1443,7 +1443,7 @@ float PerDrawSeparationOverrideCommand::GetStereoValue(CommandListState *state)
 
 void PerDrawSeparationOverrideCommand::SetStereoValue(CommandListState *state, float val)
 {
-    NvAPIOverride();
+    nvapi_override();
     if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSeparation(state->hackerDevice->stereoHandle, val))
         COMMAND_LIST_LOG(state, "  Stereo_SetSeparation failed\n");
 }
@@ -1460,7 +1460,7 @@ float PerDrawConvergenceOverrideCommand::GetStereoValue(CommandListState *state)
 
 void PerDrawConvergenceOverrideCommand::SetStereoValue(CommandListState *state, float val)
 {
-    NvAPIOverride();
+    nvapi_override();
     if (NVAPI_OK != Profiling::NvAPI_Stereo_SetConvergence(state->hackerDevice->stereoHandle, val))
         COMMAND_LIST_LOG(state, "  Stereo_SetConvergence failed\n");
 }
@@ -3081,7 +3081,7 @@ bool CommandListOperand::StaticEvaluate(float *ret, HackerDevice *device)
         case ParamOverrideType::CONVERGENCE:
         case ParamOverrideType::EYE_SEPARATION:
         case ParamOverrideType::STEREO_ACTIVE:
-            NvAPIOverride();
+            nvapi_override();
             Profiling::NvAPI_Stereo_IsEnabled(&stereo);
             if (!stereo) {
                 *ret = 0.0;

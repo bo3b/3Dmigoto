@@ -16,7 +16,7 @@ static HMODULE nvDLL;
 static bool nvapi_failed = false;
 typedef NvAPI_Status *(__cdecl *nvapi_QueryInterfaceType)(unsigned int offset);
 static nvapi_QueryInterfaceType nvapi_QueryInterfacePtr;
-void NvAPIOverride()
+void nvapi_override()
 {
     static bool warned = false;
 
@@ -462,7 +462,7 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
         if (check_3dmigoto_dx11 && dx11_3dmigoto_present())
             return NULL;
 
-        LOG_INFO_W(L"Hooked_LoadLibraryExW switching to original dll: %s to %s.\n",
+        LOG_INFO_W(L"hooked_LoadLibraryExW switching to original dll: %s to %s.\n",
             lpLibFileName, fullPath);
 
         return fnOrigLoadLibraryExW(fullPath, hFile, dwFlags);
@@ -478,7 +478,7 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
         if (check_3dmigoto_dx11 && dx11_3dmigoto_present())
             return NULL;
 
-        LOG_INFO_W(L"Replaced Hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
+        LOG_INFO_W(L"Replaced hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
 
         return fnOrigLoadLibraryExW(library, hFile, dwFlags);
     }
@@ -528,12 +528,12 @@ HMODULE(__stdcall *fnOrigLoadLibraryExW)(
     _In_       DWORD   dwFlags
     ) = LoadLibraryExW;
 
-HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
+HMODULE __stdcall hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
 {
     HMODULE module;
     static bool hook_enabled = true;
 
-    LOG_DEBUG_W(L"   Hooked_LoadLibraryExW load: %s.\n", lpLibFileName);
+    LOG_DEBUG_W(L"   hooked_LoadLibraryExW load: %s.\n", lpLibFileName);
 
     if (_wcsicmp(lpLibFileName, L"SUPPRESS_3DMIGOTO_REDIRECT") == 0) {
         // Something (like Origin's IGO32.dll hook in ntdll.dll

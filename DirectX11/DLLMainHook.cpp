@@ -92,7 +92,7 @@ static HRESULT InstallHookDLLMain(LPCWSTR moduleName, char *func, void **trampol
 
 static HRESULT HookLoadLibraryExW()
 {
-    HRESULT hr = InstallHookDLLMain(L"Kernel32.dll", "LoadLibraryExW", (LPVOID*)&fnOrigLoadLibraryExW, Hooked_LoadLibraryExW);
+    HRESULT hr = InstallHookDLLMain(L"Kernel32.dll", "LoadLibraryExW", (LPVOID*)&fnOrigLoadLibraryExW, hooked_LoadLibraryExW);
     if (FAILED(hr))
         return E_FAIL;
 
@@ -361,7 +361,7 @@ BOOL WINAPI DllMain(
                 delete TlsGetValue(tls_idx);
                 TlsFree(tls_idx);
             }
-            DestroyDLL();
+            destroy_dll();
             break;
 
         case DLL_THREAD_ATTACH:

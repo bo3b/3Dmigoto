@@ -70,7 +70,7 @@ void InitializeDLL()
     LOG_INFO("  DLL initialized.\n");
 }
 
-void DestroyDLL()
+void destroy_dll()
 {
     if (LogFile)
     {
