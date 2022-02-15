@@ -1352,7 +1352,7 @@ void DrawCommand::draw(CommandListState* state, DrawCommandType type) {
         if (FAILED(hr))
             COMMAND_LIST_LOG(state, "  Draw vertex buffer prepare failure: %d\n", hr);
 
-        primitiveCount = DrawVerticesCountToPrimitiveCount(args[0], info->primitive_type);
+        primitiveCount = draw_vertices_count_to_primitive_count(args[0], info->primitive_type);
         hr = origDevice->DrawPrimitive(info->primitive_type, args[1], primitiveCount);
         if (FAILED(hr)) {
             COMMAND_LIST_LOG(state, "  Draw failure: %d\n", hr);
@@ -1367,7 +1367,7 @@ void DrawCommand::draw(CommandListState* state, DrawCommandType type) {
         break;
     case DrawCommandType::DRAWPRIMITIVE:
         COMMAND_LIST_LOG(state, "[%S] DrawPrimitive(%u,%u,%i)\n", ini_section.c_str(), (DWORD)args[0], args[1], args[2]);
-        hr = DrawCommandVertexBufferPrepare(state, DrawPrimitiveCountToVerticesCount(args[2], info->primitive_type));
+        hr = DrawCommandVertexBufferPrepare(state, draw_primitive_count_to_vertices_count(args[2], info->primitive_type));
         if (FAILED(hr))
             COMMAND_LIST_LOG(state, "  Draw vertex buffer prepare failure: %d\n", hr);
         hr = origDevice->DrawPrimitive(D3DPRIMITIVETYPE(args[0]), args[1], args[2]);
@@ -1393,7 +1393,7 @@ void DrawCommand::draw(CommandListState* state, DrawCommandType type) {
             COMMAND_LIST_LOG(state, "  Draw vertex buffer prepare failure: %d\n", hr);
         state->hackerDevice->mClDrawVertexBuffer->GetDesc(&pDesc);
         NumVertices = (pDesc.Size / sizeof(CUSTOMVERTEX_DRAWCOMMAND));
-        primitiveCount = DrawVerticesCountToPrimitiveCount(args[0], info->primitive_type);
+        primitiveCount = draw_vertices_count_to_primitive_count(args[0], info->primitive_type);
         hr = origDevice->DrawIndexedPrimitive(info->primitive_type, (INT)args[2], 0, NumVertices, args[1], primitiveCount);
         if (FAILED(hr)) {
             COMMAND_LIST_LOG(state, "  Draw Indexed failure: %d\n", hr);
@@ -1408,7 +1408,7 @@ void DrawCommand::draw(CommandListState* state, DrawCommandType type) {
         break;
     case DrawCommandType::DRAWINDEXEDPRIMITIVE:
         COMMAND_LIST_LOG(state, "[%S] DrawIndexed(%u, %i, %u, %u, %u, %u)\n", ini_section.c_str(), args[0], (INT)args[1], args[2], args[3], args[4], args[5]);
-        hr = DrawCommandVertexBufferPrepare(state, DrawPrimitiveCountToVerticesCount(args[5], info->primitive_type));
+        hr = DrawCommandVertexBufferPrepare(state, draw_primitive_count_to_vertices_count(args[5], info->primitive_type));
         if (FAILED(hr))
             COMMAND_LIST_LOG(state, "  Draw vertex buffer prepare failure: %d\n", hr);
         hr = origDevice->DrawIndexedPrimitive(D3DPRIMITIVETYPE(args[0]), (INT)args[1], args[2], args[3], args[4], args[5]);
@@ -1509,7 +1509,7 @@ void DrawCommand::Run(CommandListState *state)
         auto_count = get_index_count_from_current_ib(hackerDevice);
         COMMAND_LIST_LOG(state, "[%S] drawindexed = auto -> DrawIndexed(%u, 0, 0)\n", ini_section.c_str(), auto_count);
         if (auto_count)
-            hackerDevice->DrawIndexedPrimitive(info->primitive_type, 0, 0, auto_count, 0, DrawVerticesCountToPrimitiveCount(auto_count, info->primitive_type));
+            hackerDevice->DrawIndexedPrimitive(info->primitive_type, 0, 0, auto_count, 0, draw_vertices_count_to_primitive_count(auto_count, info->primitive_type));
         else
             COMMAND_LIST_LOG(state, "  Unable to determine index count\n");
         break;
@@ -1751,7 +1751,7 @@ HRESULT strideForVertexDeclaration(IDirect3DVertexDeclaration9 *vd, UINT *totalB
     *totalBytes = 0;
     for (UINT x = 0; x < (numElements - 1); x++) {
         D3DVERTEXELEMENT9 element = decl[x];
-        *totalBytes += byteSizeFromD3DType((D3DDECLTYPE)element.Type);
+        *totalBytes += byte_size_from_d3d_type((D3DDECLTYPE)element.Type);
     }
 
     return hr;
@@ -3683,11 +3683,11 @@ float CommandListOperandFloat::evaluate(CommandListState *state, D3D9Wrapper::ID
         return process_texture_filter(state);
     case ParamOverrideType::VERTEX_COUNT:
         if (state->call_info)
-            return (float)DrawPrimitiveCountToVerticesCount(state->call_info->PrimitiveCount, state->call_info->primitive_type);
+            return (float)draw_primitive_count_to_vertices_count(state->call_info->PrimitiveCount, state->call_info->primitive_type);
         return 0;
     case ParamOverrideType::INDEX_COUNT:
         if (state->call_info)
-            return (float)DrawPrimitiveCountToVerticesCount(state->call_info->PrimitiveCount, state->call_info->primitive_type);
+            return (float)draw_primitive_count_to_vertices_count(state->call_info->PrimitiveCount, state->call_info->primitive_type);
         return 0;
     case ParamOverrideType::CURSOR_VISIBLE:
         update_cursor_info(state);
@@ -5237,7 +5237,7 @@ bool CommandListOperandFloat::parse(const wstring *operand, const wstring *ini_n
     }
 
     // Try parsing operand as an ini param:
-    if (ParseIniParamName(operand->c_str(), &idx, &component)) {
+    if (parse_ini_param_name(operand->c_str(), &idx, &component)) {
         type = ParamOverrideType::INI_PARAM;
         return operand_allowed_in_context(type, scope);
     }
@@ -5438,7 +5438,7 @@ bool parse_command_list_ini_param_override(const wchar_t *section,
 {
     ParamOverride *param = new ParamOverride();
 
-    if (!ParseIniParamName(key, &param->paramIdx, &param->paramComponent))
+    if (!parse_ini_param_name(key, &param->paramIdx, &param->paramComponent))
         goto bail;
 
     if (!param->expression.parse(val, ini_namespace, command_list))
