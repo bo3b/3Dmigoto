@@ -1,0 +1,5 @@
+---
+Checks:            '-*,modernize-use-nullptr,modernize-deprecated-headers,modernize-raw-string-literal, modernize-redundant-void-arg, modernize-return-braced-init-list,modernize-use-bool-literals,modernize-use-default-member-init,modernize-use-equals-default,modernize-use-override,bugprone-reserved-identifier,bugprone-suspicious-include,bugprone-suspicious-missing-comma,bugprone-suspicious-semicolon'
+WarningsAsErrors:  ''
+HeaderFilterRegex: '.*'
+FormatStyle:       'file'
