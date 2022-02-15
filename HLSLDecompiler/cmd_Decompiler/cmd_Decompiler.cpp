@@ -233,7 +233,7 @@ static HRESULT DisassembleFlugan(const void *pShaderBytecode, size_t BytecodeLen
     // FIXME: This is a bit of a waste - we convert from a vector<char> to
     // a void* + size_t to a vector<byte>
 
-    *asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength, args.patch_cb_offsets, true, hexdump, d3dcompiler_46_compat);
+    *asmText = binary_to_asm_text(pShaderBytecode, BytecodeLength, args.patch_cb_offsets, true, hexdump, d3dcompiler_46_compat);
     if (*asmText == "")
         return E_FAIL;
 

@@ -412,7 +412,7 @@ void init_d3d11()
         wchar_t sys_dir[MAX_PATH] = {0};
         if (!GetModuleFileName(migoto_handle, sys_dir, MAX_PATH)) {
             LOG_INFO("GetModuleFileName failed\n");
-            DoubleBeepExit();
+            double_beep_exit();
         }
         wcsrchr(sys_dir, L'\\')[1] = 0;
         wcscat(sys_dir, G->CHAIN_DLL_PATH);
@@ -466,7 +466,7 @@ void init_d3d11()
     if (hD3D11 == NULL)
     {
         LOG_INFO("*** LoadLibrary on original or chained d3d11.dll failed.\n");
-        DoubleBeepExit();
+        double_beep_exit();
     }
 
     _D3DKMTQueryAdapterInfo = (tD3DKMTQueryAdapterInfo)GetProcAddress(hD3D11, "D3DKMTQueryAdapterInfo");

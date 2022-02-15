@@ -213,7 +213,7 @@ static void emit_ini_warning_tone()
     if (!ini_warned)
         return;
     ini_warned = false;
-    BeepFailure();
+    beep_failure();
 }
 
 static bool get_namespaced_section_name(const wstring *section, const wstring *ini_namespace, wstring *ret, IniFile *ini)
@@ -758,7 +758,7 @@ int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
                 // If someone passed in a default value that is
                 // too long, treat it as a programming error
                 // and terminate:
-                DoubleBeepExit();
+                double_beep_exit();
             }
             else
                 rc = (int)wcslen(ret);
@@ -785,7 +785,7 @@ bool GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def
 
     if (!ret) {
         LOG_INFO("BUG: Misuse of GetIniString()\n");
-        DoubleBeepExit();
+        double_beep_exit();
     }
 
     try {
@@ -1530,7 +1530,7 @@ static void ParseResourceInitialData(CustomResource *custom_resource, const wcha
     // parsing formats on the fly for more complex structured buffers.
     // e.g. data = R32_FLOAT 1 2 3 4
     std::getline(tokens, token, ' ');
-    format = ParseFormatStringDX9(token.c_str(), false);
+    format = parse_format_string_dx9(token.c_str(), false);
     if (format == (::D3DFORMAT)-1) {
         format = custom_resource->override_format;
         tokens.seekg(0);
@@ -1667,12 +1667,12 @@ static void ParseResourceSections()
         }
 
         if (GetIniString(i->first.c_str(), L"format", 0, setting, MAX_PATH, &migoto_ini)) {
-            custom_resource->override_format = ParseFormatStringDX9(setting, true);
+            custom_resource->override_format = parse_format_string_dx9(setting, true);
             if (custom_resource->override_format == (::D3DFORMAT)-1) {
                 IniWarning("  WARNING: Unknown format \"%S\"\n", setting);
             }
             else {
-                LOG_INFO("  format=%s\n", TexFormatStrDX9(custom_resource->override_format));
+                LOG_INFO("  format=%s\n", tex_format_str_dx9(custom_resource->override_format));
             }
         }
 
@@ -1819,7 +1819,7 @@ static void ParseCommandList(const wchar_t *id,
     // list up to date:
     if (!migoto_ini.IsCommandListSection(id)) {
         LOG_INFO_W(L"BUG: ParseCommandList() called on a section not in the CommandListSections list: %s\n", id);
-        DoubleBeepExit();
+        double_beep_exit();
     }
 
     scope.emplace_front();
@@ -3058,7 +3058,7 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
     }
     // Format string
     if (GetIniStringAndLog(section, L"match_format", 0, setting, MAX_PATH, &migoto_ini)) {
-        fuzzy->Format.val = ParseFormatStringDX9(setting, true);
+        fuzzy->Format.val = parse_format_string_dx9(setting, true);
         if (fuzzy->Format.val == (::D3DFORMAT)-1)
             IniWarning("  WARNING: Unknown format \"%S\"\n", setting);
         else
@@ -3089,7 +3089,7 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
 
     if (!G->mFuzzyTextureOverrides.insert(std::shared_ptr<FuzzyMatchResourceDesc>(fuzzy)).second) {
         IniWarning("BUG: Unexpected error inserting fuzzy texture override\n");
-        DoubleBeepExit();
+        double_beep_exit();
     }
 }
 static void warn_if_duplicate_texture_hash(TextureOverride *override, uint32_t hash)
@@ -4047,7 +4047,7 @@ void LoadHelixConfigFile() {
     wchar_t iniFile[MAX_PATH];
 
     if (!GetModuleFileName(0, iniFile, MAX_PATH))
-        DoubleBeepExit();
+        double_beep_exit();
     wcsrchr(iniFile, L'\\')[1] = 0;
     wcscat(iniFile, G->helix_ini);
     ParseHelixIniFile(iniFile);
@@ -4074,7 +4074,7 @@ void LoadConfigFile()
     G->gInitialized = true;
 
     if (!GetModuleFileName(0, iniFile, MAX_PATH))
-        DoubleBeepExit();
+        double_beep_exit();
     wcsrchr(iniFile, L'\\')[1] = 0;
     wcscpy(logFilename, iniFile);
     wcscat(iniFile, INI_FILENAME);
@@ -4116,7 +4116,7 @@ void LoadConfigFile()
                 wcscpy(G->HELIX_SHADER_PATH_VERTEX, setting);
             }
             // Create directory?
-            CreateDirectoryEnsuringAccess(G->HELIX_SHADER_PATH_VERTEX);
+            create_directory_ensuring_access(G->HELIX_SHADER_PATH_VERTEX);
         }
         if (GetIniStringAndLog(L"Rendering", L"helix_pixel_override_directory", L"ShaderOverride\\PixelShaders", G->HELIX_SHADER_PATH_PIXEL, MAX_PATH, &migoto_ini))
         {
@@ -4130,7 +4130,7 @@ void LoadConfigFile()
                 wcscpy(G->HELIX_SHADER_PATH_PIXEL, setting);
             }
             // Create directory?
-            CreateDirectoryEnsuringAccess(G->HELIX_SHADER_PATH_PIXEL);
+            create_directory_ensuring_access(G->HELIX_SHADER_PATH_PIXEL);
         }
         LoadHelixConfigFile();
     }
@@ -4279,7 +4279,7 @@ void LoadConfigFile()
             wcscpy(G->SHADER_PATH, setting);
         }
         // Create directory?
-        CreateDirectoryEnsuringAccess(G->SHADER_PATH);
+        create_directory_ensuring_access(G->SHADER_PATH);
     }
 
     if (GetIniStringAndLog(L"Rendering", L"cache_directory", 0, G->SHADER_CACHE_PATH, MAX_PATH, &migoto_ini))
@@ -4294,7 +4294,7 @@ void LoadConfigFile()
             wcscpy(G->SHADER_CACHE_PATH, setting);
         }
         // Create directory?
-        CreateDirectoryEnsuringAccess(G->SHADER_CACHE_PATH);
+        create_directory_ensuring_access(G->SHADER_CACHE_PATH);
     }
 
     G->CACHE_SHADERS = GetIniBool(L"Rendering", L"cache_shaders", false, NULL, &migoto_ini);
@@ -4403,7 +4403,7 @@ void LoadProfileManagerConfig(const wchar_t *exe_path)
     G->gInitialized = true;
 
     if (wcscpy_s(iniFile, MAX_PATH, exe_path))
-        DoubleBeepExit();
+        double_beep_exit();
     wcsrchr(iniFile, L'\\')[1] = 0;
     wcscpy(logFilename, iniFile);
     wcscat(iniFile, INI_FILENAME);

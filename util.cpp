@@ -55,7 +55,7 @@ static SECURITY_ATTRIBUTES* init_security_attributes(SECURITY_ATTRIBUTES *sa)
     return NULL;
 }
 
-BOOL CreateDirectoryEnsuringAccess(LPCWSTR path)
+BOOL create_directory_ensuring_access(LPCWSTR path)
 {
     SECURITY_ATTRIBUTES sa, *psa = NULL;
     BOOL ret = false;
@@ -86,7 +86,7 @@ errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t *filename, const wcha
         // make it do some heroics on read/append as well, but I don't
         // want to push this further than we need to.
         LOG_INFO("FIXME: wfopen_ensuring_access only supports opening for write\n");
-        DoubleBeepExit();
+        double_beep_exit();
     }
 
     if (wcsstr(mode, L"b") == NULL)
@@ -130,7 +130,7 @@ errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t *filename, const wcha
     return 0;
 }
 
-void set_file_last_write_time(wchar_t *path, FILETIME *ftWrite, DWORD flags)
+void set_file_last_write_time(wchar_t *path, FILETIME *ft_write, DWORD flags)
 {
     HANDLE f;
 
@@ -138,7 +138,7 @@ void set_file_last_write_time(wchar_t *path, FILETIME *ftWrite, DWORD flags)
     if (f == INVALID_HANDLE_VALUE)
         return;
 
-    SetFileTime(f, NULL, NULL, ftWrite);
+    SetFileTime(f, NULL, NULL, ft_write);
     CloseHandle(f);
 }
 
@@ -164,7 +164,7 @@ void touch_dir(wchar_t *path)
 // DEFINE_GUID(IID_IDXGIFactory,0x7b7166ec,0x21c7,0x44ae,0xb2,0x1a,0xc9,0xae,0x32,0x1a,0xe3,0x69);
 //
 
-std::string NameFromIID(IID id)
+std::string name_from_IID(IID id)
 {
     // Adding every MIDL_INTERFACE from d3d11_1.h to make this reporting complete.
     // Doesn't seem useful to do every object from d3d11.h itself.
@@ -304,22 +304,22 @@ std::string NameFromIID(IID id)
     // For unknown IIDs lets return the hex string.
     // Converting from wchar_t to string using stackoverflow suggestion.
 
-    std::string iidString;
+    std::string iid_string;
     wchar_t wiid[128];
     if (SUCCEEDED(StringFromGUID2(id, wiid, 128)))
     {
         std::wstring convert = std::wstring(wiid);
-        iidString = std::string(convert.begin(), convert.end());
+        iid_string = std::string(convert.begin(), convert.end());
     }
     else
     {
-        iidString = "unknown";
+        iid_string = "unknown";
     }
 
-    return iidString;
+    return iid_string;
 }
 
-static void WarnIfConflictingFileExists(wchar_t *path, wchar_t *conflicting_path, const char *message)
+static void warn_if_conflicting_file_exists(wchar_t *path, wchar_t *conflicting_path, const char *message)
 {
     DWORD attrib = GetFileAttributes(conflicting_path);
 
@@ -329,7 +329,7 @@ static void WarnIfConflictingFileExists(wchar_t *path, wchar_t *conflicting_path
     LogOverlay(LOG_DIRE, "WARNING: %s\"%S\" conflicts with \"%S\"\n", message, conflicting_path, path);
 }
 
-void WarnIfConflictingShaderExists(wchar_t *orig_path, const char *message)
+void warn_if_conflicting_shader_exists(wchar_t *orig_path, const char *message)
 {
     wchar_t conflicting_path[MAX_PATH], *postfix;
 
@@ -340,9 +340,9 @@ void WarnIfConflictingShaderExists(wchar_t *orig_path, const char *message)
     postfix = wcsstr(conflicting_path, L"_replace");
     if (postfix) {
         wcscpy_s(postfix, conflicting_path + MAX_PATH - postfix, L".txt");
-        WarnIfConflictingFileExists(orig_path, conflicting_path, message);
+        warn_if_conflicting_file_exists(orig_path, conflicting_path, message);
         wcscpy_s(postfix, conflicting_path + MAX_PATH - postfix, L".bin");
-        WarnIfConflictingFileExists(orig_path, conflicting_path, message);
+        warn_if_conflicting_file_exists(orig_path, conflicting_path, message);
         return;
     }
 
@@ -351,9 +351,9 @@ void WarnIfConflictingShaderExists(wchar_t *orig_path, const char *message)
     postfix = wcsstr(conflicting_path, L".");
     if (postfix) {
         wcscpy_s(postfix, conflicting_path + MAX_PATH - postfix, L"_replace.txt");
-        WarnIfConflictingFileExists(orig_path, conflicting_path, message);
+        warn_if_conflicting_file_exists(orig_path, conflicting_path, message);
         wcscpy_s(postfix, conflicting_path + MAX_PATH - postfix, L"_replace.bin");
-        WarnIfConflictingFileExists(orig_path, conflicting_path, message);
+        warn_if_conflicting_file_exists(orig_path, conflicting_path, message);
         return;
     }
 }

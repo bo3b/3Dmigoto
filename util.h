@@ -42,7 +42,7 @@
 // If a shaderhacker wants more than 1024 (256x4) IniParams they should
 // probably think about using a different storage means anyway, since IniParams
 // has other problems such as no meaningful names, no namespacing, etc.
-const int INI_PARAMS_SIZE_WARNING = 256;
+constexpr int ini_params_size_warning = 256;
 
 // -----------------------------------------------------------------------------------------------
 
@@ -135,7 +135,7 @@ static UINT64 fnv_64_buf(const void *buf, size_t len)
 
 // Strip spaces from the right of a string.
 // Returns a pointer to the last non-NULL character of the truncated string.
-static char *RightStripA(char *buf)
+static char *right_strip_a(char *buf)
 {
     char *end = buf + strlen(buf) - 1;
     while (end > buf && isspace(*end))
@@ -143,7 +143,7 @@ static char *RightStripA(char *buf)
     *(end + 1) = 0;
     return end;
 }
-static wchar_t *RightStripW(wchar_t *buf)
+static wchar_t *right_strip_w(wchar_t *buf)
 {
     wchar_t *end = buf + wcslen(buf) - 1;
     while (end > buf && iswspace(*end))
@@ -152,40 +152,40 @@ static wchar_t *RightStripW(wchar_t *buf)
     return end;
 }
 
-static char *readStringParameter(wchar_t *val)
+static char *read_string_parameter(wchar_t *val)
 {
     static char buf[MAX_PATH];
     wcstombs(buf, val, MAX_PATH);
-    RightStripA(buf);
+    right_strip_a(buf);
     char *start = buf; while (isspace(*start)) start++;
     return start;
 }
 
-static void BeepSuccess() 
+static void beep_success() 
 {
     // High beep for success
     Beep(1800, 400);
 }
 
-static void BeepShort() 
+static void beep_short() 
 {
     // Short High beep
     Beep(1800, 100);
 }
 
-static void BeepFailure() 
+static void beep_failure() 
 {
     // Bonk sound for failure.
     Beep(200, 150);
 }
 
-static void BeepFailure2() 
+static void beep_sad_failure() 
 {
     // Brnk, dunk sound for failure.
     Beep(300, 200); Beep(200, 150);
 }
 
-static void BeepProfileFail()
+static void beep_profile_fail()
 {
     // Brnk, du-du-dunk sound to signify the profile failed to install.
     // This is more likely to hit than the others for an end user (e.g. if
@@ -197,13 +197,13 @@ static void BeepProfileFail()
     Beep(200, 200);
 }
 
-static DECLSPEC_NORETURN void DoubleBeepExit()
+static DECLSPEC_NORETURN void double_beep_exit()
 {
     // Fatal error somewhere, known to crash, might as well exit cleanly
     // with some notification.
-    BeepFailure2();
+    beep_sad_failure();
     Sleep(500);
-    BeepFailure2();
+    beep_sad_failure();
     Sleep(200);
     if (LogFile) {
         // Make sure the log is written out so we see the failure message
@@ -525,14 +525,14 @@ static char *DXGIFormats[] = {
     "B4G4R4A4_UNORM"
 };
 
-static char *TexFormatStr(unsigned int format)
+static char *tex_format_str(unsigned int format)
 {
     if (format < sizeof(DXGIFormats) / sizeof(DXGIFormats[0]))
         return DXGIFormats[format];
     return "UNKNOWN";
 }
 
-static DXGI_FORMAT ParseFormatString(const char *fmt, bool allow_numeric_format)
+static DXGI_FORMAT parse_format_string(const char *fmt, bool allow_numeric_format)
 {
     size_t num_formats = sizeof(DXGIFormats) / sizeof(DXGIFormats[0]);
     unsigned format;
@@ -559,18 +559,18 @@ static DXGI_FORMAT ParseFormatString(const char *fmt, bool allow_numeric_format)
     return (DXGI_FORMAT)-1;
 }
 
-static DXGI_FORMAT ParseFormatString(const wchar_t *wfmt, bool allow_numeric_format)
+static DXGI_FORMAT parse_format_string(const wchar_t *wfmt, bool allow_numeric_format)
 {
     char afmt[42];
 
     wcstombs(afmt, wfmt, 42);
     afmt[41] = '\0';
 
-    return ParseFormatString(afmt, allow_numeric_format);
+    return parse_format_string(afmt, allow_numeric_format);
 }
 
 // From DirectXTK with extra formats added
-static DXGI_FORMAT EnsureNotTypeless( DXGI_FORMAT fmt )
+static DXGI_FORMAT ensure_not_typeless(DXGI_FORMAT fmt)
 {
     // Assumes UNORM or FLOAT; doesn't use UINT or SINT
     switch( fmt )
@@ -759,23 +759,23 @@ static const char* type_name_dx9(IUnknown *object)
 // New version using Flugan's wrapper around D3DDisassemble to replace the
 // problematic %f floating point values with %.9e, which is enough that a 32bit
 // floating point value will be reproduced exactly:
-static std::string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength,
+static std::string binary_to_asm_text(const void *shader_bytecode, size_t bytecode_length,
         bool patch_cb_offsets,
         bool disassemble_undecipherable_data = true,
         int hexdump = 0, bool d3dcompiler_46_compat = true)
 {
     std::string comments;
-    std::vector<byte> byteCode(BytecodeLength);
+    std::vector<byte> byte_code(bytecode_length);
     std::vector<byte> disassembly;
     HRESULT r;
 
     comments = "//   using 3Dmigoto v" + std::string(VER_FILE_VERSION_STR) + " on " + log_time() + "//\n";
-    memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
+    memcpy(byte_code.data(), shader_bytecode, bytecode_length);
 
 #if MIGOTO_DX == 9
-    r = disassemblerDX9(&byteCode, &disassembly, comments.c_str());
+    r = disassemblerDX9(&byte_code, &disassembly, comments.c_str());
 #elif MIGOTO_DX == 11
-    r = disassembler(&byteCode, &disassembly, comments.c_str(), hexdump,
+    r = disassembler(&byte_code, &disassembly, comments.c_str(), hexdump,
             d3dcompiler_46_compat, disassemble_undecipherable_data, patch_cb_offsets);
 #endif // MIGOTO_DX
     if (FAILED(r)) {
@@ -797,9 +797,9 @@ static std::string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeL
 // This is an interesting idea, but doesn't work well here because of project structure.
 // for the moment, let's leave this here, but use the disassemble search approach.
 
-//static string GetShaderModel(const void *pShaderBytecode)
+//static string GetShaderModel(const void *shader_bytecode)
 //{
-//    Shader *shader = DecodeDXBC((uint32_t*)pShaderBytecode);
+//    Shader *shader = DecodeDXBC((uint32_t*)shader_bytecode);
 //    if (shader == nullptr)
 //        return "";
 //
@@ -837,15 +837,15 @@ static std::string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeL
 //    return shaderModel;
 //}
 
-static std::string GetShaderModel(const void *pShaderBytecode, size_t bytecodeLength)
+static std::string get_shader_model(const void *shader_bytecode, size_t bytecode_length)
 {
-    std::string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength, false);
-    if (asmText.empty())
+    std::string asm_text = binary_to_asm_text(shader_bytecode, bytecode_length, false);
+    if (asm_text.empty())
         return "";
 
     // Read shader model. This is the first not commented line.
-    char *pos = (char *)asmText.data();
-    char *end = pos + asmText.size();
+    char *pos = (char *)asm_text.data();
+    char *end = pos + asm_text.size();
     while ((pos[0] == '/' || pos[0] == '\n') && pos < end)
     {
         while (pos[0] != 0x0a && pos < end) pos++;
@@ -854,9 +854,9 @@ static std::string GetShaderModel(const void *pShaderBytecode, size_t bytecodeLe
     // Extract model.
     char *eol = pos;
     while (eol[0] != 0x0a && pos < end) eol++;
-    std::string shaderModel(pos, eol);
+    std::string shader_model(pos, eol);
 
-    return shaderModel;
+    return shader_model;
 }
 
 // Create a text file containing text for the string specified.  Can be Asm or HLSL.
@@ -867,24 +867,24 @@ static std::string GetShaderModel(const void *pShaderBytecode, size_t bytecodeLe
 // We previously would overwrite the file only after checking if the contents were different,
 // this relaxes that to just being same file name.
 
-static HRESULT CreateTextFile(wchar_t *fullPath, std::string *asmText, bool overwrite)
+static HRESULT create_text_file(wchar_t *full_path, std::string *asm_text, bool overwrite)
 {
     FILE *f;
 
     if (!overwrite) {
-        _wfopen_s(&f, fullPath, L"rb");
+        _wfopen_s(&f, full_path, L"rb");
         if (f)
         {
             fclose(f);
-            LOG_INFO_W(L"    CreateTextFile error: file already exists %s\n", fullPath);
+            LOG_INFO_W(L"    CreateTextFile error: file already exists %s\n", full_path);
             return ERROR_FILE_EXISTS;
         }
     }
 
-    _wfopen_s(&f, fullPath, L"wb");
+    _wfopen_s(&f, full_path, L"wb");
     if (f)
     {
-        fwrite(asmText->data(), 1, asmText->size(), f);
+        fwrite(asm_text->data(), 1, asm_text->size(), f);
         fclose(f);
     }
 
@@ -897,31 +897,28 @@ static HRESULT CreateTextFile(wchar_t *fullPath, std::string *asmText, bool over
 
 // Specific variant to name files consistently, so we know they are Asm text.
 
-static HRESULT CreateAsmTextFile(wchar_t* fileDirectory, UINT64 hash, const wchar_t* shaderType, 
-    const void *pShaderBytecode, size_t bytecodeLength, bool patch_cb_offsets)
+static HRESULT create_asm_text_file(wchar_t* file_directory, UINT64 hash, const wchar_t* shader_type, const void* shader_bytecode, size_t bytecode_length, bool patch_cb_offsets)
 {
-    std::string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength, patch_cb_offsets);
-    if (asmText.empty())
-    {
+    std::string asm_text = binary_to_asm_text(shader_bytecode, bytecode_length, patch_cb_offsets);
+    if (asm_text.empty())
         return E_OUTOFMEMORY;
-    }
 
-    wchar_t fullPath[MAX_PATH];
-    swprintf_s(fullPath, MAX_PATH, L"%ls\\%016llx-%ls.txt", fileDirectory, hash, shaderType);
+    wchar_t full_path[MAX_PATH];
+    swprintf_s(full_path, MAX_PATH, L"%ls\\%016llx-%ls.txt", file_directory, hash, shader_type);
 
-    HRESULT hr = CreateTextFile(fullPath, &asmText, false);
+    HRESULT hr = create_text_file(full_path, &asm_text, false);
 
     if (SUCCEEDED(hr))
-        LOG_INFO_W(L"    storing disassembly to %s\n", fullPath);
+        LOG_INFO_W(L"    storing disassembly to %s\n", full_path);
     else
-        LOG_INFO_W(L"    error: %x, storing disassembly to %s\n", hr, fullPath);
+        LOG_INFO_W(L"    error: %x, storing disassembly to %s\n", hr, full_path);
 
     return hr;
 }
 
 // Specific variant to name files, so we know they are HLSL text.
 
-static HRESULT CreateHLSLTextFile(UINT64 hash, std::string hlslText)
+static HRESULT create_hlsl_text_file(UINT64 hash, std::string hlsl_text)
 {
 
 }
@@ -929,7 +926,7 @@ static HRESULT CreateHLSLTextFile(UINT64 hash, std::string hlslText)
 // -----------------------------------------------------------------------------------------------
 
 // Parses the name of one of the IniParam constants: x, y, z, w, x1, y1, ..., z7, w7
-static bool ParseIniParamName(const wchar_t *name, int *idx, float DirectX::XMFLOAT4::**component)
+static bool parse_ini_param_name(const wchar_t *name, int *idx, float DirectX::XMFLOAT4::**component)
 {
     int ret, len1, len2;
     wchar_t component_chr;
@@ -972,16 +969,16 @@ static bool ParseIniParamName(const wchar_t *name, int *idx, float DirectX::XMFL
 
 // -----------------------------------------------------------------------------------------------
 
-BOOL CreateDirectoryEnsuringAccess(LPCWSTR path);
+BOOL create_directory_ensuring_access(LPCWSTR path);
 errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t *filename, const wchar_t *mode);
-void set_file_last_write_time(wchar_t *path, FILETIME *ftWrite, DWORD flags=0);
+void set_file_last_write_time(wchar_t *path, FILETIME *ft_write, DWORD flags=0);
 void touch_file(wchar_t *path, DWORD flags=0);
 void touch_dir(wchar_t* path);
 
 bool check_interface_supported(IUnknown *unknown, REFIID riid);
 void analyse_iunknown(IUnknown *unknown);
 
-// For the time being, since we are not setup to use the Win10 SDK, we'll add
+// TODO: For the time being, since we are not setup to use the Win10 SDK, we'll add
 // these manually. Some games under Win10 are requesting these.
 
 struct _declspec(uuid("9d06dffa-d1e5-4d07-83a8-1bb123f2f841")) ID3D11Device2;
@@ -990,9 +987,9 @@ struct _declspec(uuid("A8BE2AC4-199F-4946-B331-79599FB98DE7")) IDXGISwapChain2;
 struct _declspec(uuid("94D99BDB-F1F8-4AB0-B236-7DA0170EDAB1")) IDXGISwapChain3;
 struct _declspec(uuid("3D585D5A-BD4A-489E-B1F4-3DBCB6452FFB")) IDXGISwapChain4;
 
-std::string NameFromIID(IID id);
+std::string name_from_IID(IID id);
 
-void WarnIfConflictingShaderExists(wchar_t *orig_path, const char *message = "");
+void warn_if_conflicting_shader_exists(wchar_t *orig_path, const char *message = "");
 static const char *end_user_conflicting_shader_msg =
     "Conflicting shaders present - please use uninstall.bat and reinstall the fix.\n";
 
@@ -1021,7 +1018,7 @@ void restore_om_state(ID3D11DeviceContext *context, struct OMState *state);
 
 // -----------------------------------------------------------------------------------------------
 #if MIGOTO_DX == 9
-static std::map<int, char*> D3DFORMATS = {
+static std::map<int, char*> d3d_formats = {
     { 0, "UNKNOWN" },
     { 20, "R8G8B8" },
     { 21, "A8R8G8B8" },
@@ -1079,7 +1076,7 @@ static std::map<int, char*> D3DFORMATS = {
     { 199, "BINARYBUFFER " }
 };
 
-static char *TexFormatStrDX9(D3DFORMAT format)
+static char *tex_format_str_dx9(D3DFORMAT format)
 {
     switch (format) {
     case MAKEFOURCC('U', 'Y', 'V', 'Y'):
@@ -1104,17 +1101,17 @@ static char *TexFormatStrDX9(D3DFORMAT format)
         return "MULTI2_ARGB8";
     default:
         std::map<int, char*>::iterator it;
-        it = D3DFORMATS.find(format);
-        if (it != D3DFORMATS.end())
+        it = d3d_formats.find(format);
+        if (it != d3d_formats.end())
             return it->second;
         return "UNKNOWN";
 
     }
 }
 
-static D3DFORMAT ParseFormatStringDX9(const char *fmt, bool allow_numeric_format)
+static D3DFORMAT parse_format_string_dx9(const char *fmt, bool allow_numeric_format)
 {
-    size_t num_formats = D3DFORMATS.size();
+    size_t num_formats = d3d_formats.size();
     unsigned format;
     int nargs, end;
 
@@ -1130,7 +1127,7 @@ static D3DFORMAT ParseFormatStringDX9(const char *fmt, bool allow_numeric_format
 
     // Look up format string:
     std::map<int, char*>::iterator it;
-    for (it = D3DFORMATS.begin(); it != D3DFORMATS.end(); it++)
+    for (it = d3d_formats.begin(); it != d3d_formats.end(); it++)
     {
         if (!_strnicmp(fmt, it->second, 30))
             return (D3DFORMAT)it->first;
@@ -1140,16 +1137,16 @@ static D3DFORMAT ParseFormatStringDX9(const char *fmt, bool allow_numeric_format
     return (D3DFORMAT) - 1;
 }
 
-static D3DFORMAT ParseFormatStringDX9(const wchar_t *wfmt, bool allow_numeric_format)
+static D3DFORMAT parse_format_string_dx9(const wchar_t *wfmt, bool allow_numeric_format)
 {
     char afmt[42];
 
     wcstombs(afmt, wfmt, 42);
     afmt[41] = '\0';
 
-    return ParseFormatStringDX9(afmt, allow_numeric_format);
+    return parse_format_string_dx9(afmt, allow_numeric_format);
 }
-inline size_t BitsPerPixel(_In_ D3DFORMAT fmt)
+inline size_t bits_per_pixel(_In_ D3DFORMAT fmt)
 {
     switch (fmt)
     {
@@ -1297,7 +1294,7 @@ static UINT d3d_format_bytes(D3DFORMAT format) {
     }
 
 }
-static UINT byteSizeFromD3DType(D3DDECLTYPE type) {
+static UINT byte_size_from_d3d_type(D3DDECLTYPE type) {
     switch (type) {
     case D3DDECLTYPE_FLOAT1:
         return sizeof(float);
@@ -1331,7 +1328,7 @@ static UINT byteSizeFromD3DType(D3DDECLTYPE type) {
     }
 }
 
-static DWORD decl_type_to_FVF(D3DDECLTYPE type, D3DDECLUSAGE usage, BYTE usageIndex, int nWeights) {
+static DWORD decl_type_to_FVF(D3DDECLTYPE type, D3DDECLUSAGE usage, BYTE usage_index, int n_weights) {
     switch (type) {
     case D3DDECLTYPE_FLOAT3:
         switch (usage) {
@@ -1348,7 +1345,7 @@ static DWORD decl_type_to_FVF(D3DDECLTYPE type, D3DDECLUSAGE usage, BYTE usageIn
         return NULL;
     case D3DDECLTYPE_UBYTE4:
         if (usage == D3DDECLUSAGE_BLENDINDICES)
-            switch (nWeights) {
+            switch (n_weights) {
             case 0:
                 return D3DFVF_XYZB1;
             case 1:
@@ -1368,7 +1365,7 @@ static DWORD decl_type_to_FVF(D3DDECLTYPE type, D3DDECLUSAGE usage, BYTE usageIn
         return NULL;
     case D3DDECLTYPE_D3DCOLOR:
         if (usage == D3DDECLUSAGE_COLOR) {
-            switch (usageIndex) {
+            switch (usage_index) {
             case 0:
                 return D3DFVF_DIFFUSE;
             case 1:
@@ -1467,108 +1464,108 @@ static D3DDECLTYPE d3d_format_to_decl_type(D3DFORMAT format)
 
 
 static UINT strideForFVF(DWORD FVF) {
-    UINT totalBytes = 0;
+    UINT total_bytes = 0;
 
     if (FVF & D3DFVF_XYZ)
-        totalBytes += 3 * sizeof(float);
+        total_bytes += 3 * sizeof(float);
     if (FVF & D3DFVF_XYZRHW)
-        totalBytes += 4 * sizeof(float);
+        total_bytes += 4 * sizeof(float);
     if (FVF & D3DFVF_XYZW)
-        totalBytes += 4 * sizeof(float);
+        total_bytes += 4 * sizeof(float);
     if (FVF & D3DFVF_XYZB5) {
-        totalBytes += 8 * sizeof(float);
+        total_bytes += 8 * sizeof(float);
     }
     if (FVF & D3DFVF_LASTBETA_UBYTE4) {
-        totalBytes += 8 * sizeof(float);
+        total_bytes += 8 * sizeof(float);
     }
     if (FVF & D3DFVF_LASTBETA_D3DCOLOR) {
-        totalBytes += 8 * sizeof(float);
+        total_bytes += 8 * sizeof(float);
     }
     if (FVF & D3DFVF_XYZB4) {
-        totalBytes += 7 * sizeof(float);
+        total_bytes += 7 * sizeof(float);
     }
     if (FVF & D3DFVF_XYZB3) {
-        totalBytes += 6 * sizeof(float);
+        total_bytes += 6 * sizeof(float);
     }
     if (FVF & D3DFVF_XYZB2) {
-        totalBytes += 5 * sizeof(float);
+        total_bytes += 5 * sizeof(float);
     }
     if (FVF & D3DFVF_XYZB1) {
-        totalBytes += 4 * sizeof(float);
+        total_bytes += 4 * sizeof(float);
     }
     if (FVF & D3DFVF_NORMAL) {
-        totalBytes += 3 * sizeof(float);
+        total_bytes += 3 * sizeof(float);
     }
     if (FVF & D3DFVF_PSIZE) {
-        totalBytes += sizeof(float);
+        total_bytes += sizeof(float);
     }
     if (FVF & D3DFVF_DIFFUSE) {
-        totalBytes += sizeof(float);
+        total_bytes += sizeof(float);
     }
     if (FVF & D3DFVF_SPECULAR) {
-        totalBytes += sizeof(float);
+        total_bytes += sizeof(float);
     }
 
     for (int x = 1; x < 8; x++) {
         if (FVF & D3DFVF_TEXCOORDSIZE1(x)) {
-            totalBytes += sizeof(float);
+            total_bytes += sizeof(float);
         }
         if (FVF & D3DFVF_TEXCOORDSIZE2(x)) {
-            totalBytes += 2 * sizeof(float);
+            total_bytes += 2 * sizeof(float);
         }
         if (FVF & D3DFVF_TEXCOORDSIZE3(x)) {
-            totalBytes += 3 * sizeof(float);
+            total_bytes += 3 * sizeof(float);
         }
         if (FVF & D3DFVF_TEXCOORDSIZE4(x)) {
-            totalBytes += 4 * sizeof(float);
+            total_bytes += 4 * sizeof(float);
         }
     }
 
-    return totalBytes;
+    return total_bytes;
 
 }
-static UINT DrawVerticesCountToPrimitiveCount(UINT vCount, D3DPRIMITIVETYPE pType) {
+static UINT draw_vertices_count_to_primitive_count(UINT ver_count, D3DPRIMITIVETYPE prim_type) {
 
-    switch (pType) {
+    switch (prim_type) {
     case D3DPT_POINTLIST:
-        return vCount;
+        return ver_count;
     case D3DPT_LINELIST:
-        return vCount / 2;
+        return ver_count / 2;
     case D3DPT_LINESTRIP:
-        return vCount - 1;
+        return ver_count - 1;
     case D3DPT_TRIANGLELIST:
-        return vCount / 3;
+        return ver_count / 3;
     case D3DPT_TRIANGLESTRIP:
-        return vCount - 2;
+        return ver_count - 2;
     case D3DPT_TRIANGLEFAN:
-        return vCount - 2;
+        return ver_count - 2;
     case D3DPT_FORCE_DWORD:
-        return vCount - 2;
+        return ver_count - 2;
     default:
-        return vCount - 2;
+        return ver_count - 2;
     }
 
 
 }
-static UINT DrawPrimitiveCountToVerticesCount(UINT pCount, D3DPRIMITIVETYPE pType) {
+static UINT draw_primitive_count_to_vertices_count(UINT ver_count, D3DPRIMITIVETYPE prim_type) {
 
-    switch (pType) {
+    switch (prim_type) {
     case D3DPT_POINTLIST:
-        return pCount;
+        return ver_count;
     case D3DPT_LINELIST:
-        return pCount * 2;
+        return ver_count * 2;
     case D3DPT_LINESTRIP:
-        return pCount + 1;
+        return ver_count + 1;
     case D3DPT_TRIANGLELIST:
-        return pCount * 3;
+        return ver_count * 3;
     case D3DPT_TRIANGLESTRIP:
-        return pCount + 2;
+        return ver_count + 2;
     case D3DPT_TRIANGLEFAN:
-        return pCount + 2;
+        return ver_count + 2;
     case D3DPT_FORCE_DWORD:
-        return pCount + 2;
+        return ver_count + 2;
     default:
-        return pCount + 2;
+        return ver_count + 2;
     }
 }
 #endif // MIGOTO_DX == 9

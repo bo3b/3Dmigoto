@@ -323,7 +323,7 @@ static bool LoadCachedShader(wchar_t *binPath, const wchar_t *pShaderType,
     }
 
     LOG_INFO_W(L"    Replacement binary shader found: %s\n", binPath);
-    WarnIfConflictingShaderExists(binPath, end_user_conflicting_shader_msg);
+    warn_if_conflicting_shader_exists(binPath, end_user_conflicting_shader_msg);
 
     codeSize = GetFileSize(f, 0);
     pCode = new char[codeSize];
@@ -382,7 +382,7 @@ static void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
     if (f != INVALID_HANDLE_VALUE)
     {
         LOG_INFO("    Replacement shader found. Loading replacement HLSL code.\n");
-        WarnIfConflictingShaderExists(path, end_user_conflicting_shader_msg);
+        warn_if_conflicting_shader_exists(path, end_user_conflicting_shader_msg);
 
         DWORD srcDataSize = GetFileSize(f, 0);
         char *srcData = new char[srcDataSize];
@@ -396,7 +396,7 @@ static void ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
         LOG_INFO("    Source code loaded. Size = %d\n", srcDataSize);
 
         // Disassemble old shader to get shader model.
-        shaderModel = GetShaderModel(pShaderBytecode, pBytecodeLength);
+        shaderModel = get_shader_model(pShaderBytecode, pBytecodeLength);
         if (shaderModel.empty())
         {
             LOG_INFO("    disassembly of original shader failed.\n");
@@ -493,7 +493,7 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
     if (f != INVALID_HANDLE_VALUE)
     {
         LOG_INFO("    Replacement ASM shader found. Assembling replacement ASM code.\n");
-        WarnIfConflictingShaderExists(path, end_user_conflicting_shader_msg);
+        warn_if_conflicting_shader_exists(path, end_user_conflicting_shader_msg);
 
         DWORD srcDataSize = GetFileSize(f, 0);
         vector<char> asmTextBytes(srcDataSize);
@@ -507,7 +507,7 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
         LOG_INFO("    Asm source code loaded. Size = %d\n", srcDataSize);
 
         // Disassemble old shader to get shader model.
-        shaderModel = GetShaderModel(pShaderBytecode, pBytecodeLength);
+        shaderModel = get_shader_model(pShaderBytecode, pBytecodeLength);
         if (shaderModel.empty())
         {
             LOG_INFO("    disassembly of original shader failed.\n");
@@ -584,7 +584,7 @@ inline char * D3D9Wrapper::IDirect3DDevice9::ReplaceShader(UINT64 hash, const wc
         // Export every shader seen as an ASM text file.
         if (G->EXPORT_SHADERS)
         {
-            CreateAsmTextFile(G->SHADER_CACHE_PATH, hash, shaderType, pShaderBytecode, BytecodeLength, false);
+            create_asm_text_file(G->SHADER_CACHE_PATH, hash, shaderType, pShaderBytecode, BytecodeLength, false);
         }
 
 
@@ -771,7 +771,7 @@ inline char * D3D9Wrapper::IDirect3DDevice9::ReplaceShader(UINT64 hash, const wc
                     // comparison between original ASM, and recompiled ASM.
                     if ((G->EXPORT_HLSL >= 3) && pCompiledOutput)
                     {
-                        string asmText = BinaryToAsmText(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize(), false);
+                        string asmText = binary_to_asm_text(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize(), false);
                         if (asmText.empty())
                         {
                             LOG_INFO("    disassembly of recompiled shader failed.\n");
@@ -1540,7 +1540,7 @@ void D3D9Wrapper::IDirect3DDevice9::BeforeDraw(DrawContext & data)
     if (Profiling::mode == Profiling::Mode::SUMMARY)
         Profiling::start(&profiling_state);
     if (G->gAutoDetectDepthBuffer) {
-        UINT _vertices = DrawPrimitiveCountToVerticesCount(data.call_info.PrimitiveCount, data.call_info.primitive_type);
+        UINT _vertices = draw_primitive_count_to_vertices_count(data.call_info.PrimitiveCount, data.call_info.primitive_type);
         vertices += _vertices;
         drawCalls += 1;
 
@@ -1796,7 +1796,7 @@ void D3D9Wrapper::IDirect3DDevice9::DeferredShaderReplacement(D3D9Wrapper::IDire
     // (until config reload) regardless of whether we patch it or not:
     orig_info->deferred_replacement_processed = true;
 
-    asm_text = BinaryToAsmText(orig_info->byteCode->GetBufferPointer(),
+    asm_text = binary_to_asm_text(orig_info->byteCode->GetBufferPointer(),
         orig_info->byteCode->GetBufferSize(), false);
     if (asm_text.empty())
         return;
@@ -2040,7 +2040,7 @@ inline void D3D9Wrapper::IDirect3DDevice9::OnCreateOrRestore(::D3DPRESENT_PARAME
         if (FAILED(hrUp)) {
             LOG_INFO("Creation of Upscaling Swapchain failed. Error: %s\n", ex.c_str());
             // Something went wrong inform the user with double beep and end!;
-            DoubleBeepExit();
+            double_beep_exit();
         }
         deviceSwapChain->mFakeSwapChain = newFakeSwapChain;
     }
@@ -2162,7 +2162,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::QueryInterface(THIS_ REFIID riid, vo
     HRESULT hr = NULL;
     if (QueryInterface_DXGI_Callback(riid, ppvObj, &hr))
         return hr;
-    LOG_INFO("QueryInterface request for %s on %p\n", NameFromIID(riid), this);
+    LOG_INFO("QueryInterface request for %s on %p\n", name_from_IID(riid), this);
     hr = m_pUnk->QueryInterface(riid, ppvObj);
     if (hr == S_OK) {
         if ((*ppvObj) == GetRealOrig()) {
@@ -2599,7 +2599,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::CreateAdditionalSwapChain(THIS_ ::D3
         if (FAILED(upHr)) {
             LOG_INFO("HackerDevice:CreateAdditionalSwapChain(): Creation of Upscaling Swapchain failed. Error: %s\n", ex.c_str());
             // Something went wrong inform the user with double beep and end!;
-            DoubleBeepExit();
+            double_beep_exit();
         }
         else {
             NewSwapChain->mFakeSwapChain = newFakeSwapChain;

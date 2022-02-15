@@ -179,7 +179,7 @@ static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device)
             // D3D11On12CreateDevice() could possibly lead us here,
             // depending on how that works.
             LOG_INFO("BUG: Unwrapped ID3D11Device!\n");
-            DoubleBeepExit();
+            double_beep_exit();
         }
 
         LOG_INFO("FATAL: Unsupported DirectX Version!\n");
@@ -205,7 +205,7 @@ static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device)
         if (hackerDevice)
             LogOverlayW(LOG_DIRE, L"3DMigoto does not support DirectX 12\nPlease set the game to use DirectX 11\n");
         else
-            BeepProfileFail();
+            beep_profile_fail();
     }
 
     return hackerDevice;
@@ -911,7 +911,7 @@ HRESULT(__stdcall *fnOrigCreateDXGIFactory)(
 
 HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
-    LOG_INFO("*** Hooked_CreateDXGIFactory called with riid: %s\n", NameFromIID(riid).c_str());
+    LOG_INFO("*** Hooked_CreateDXGIFactory called with riid: %s\n", name_from_IID(riid).c_str());
 
     // If this happens to be first call from the game, let's make sure to load
     // up our d3d11.dll and the .ini file.
@@ -976,7 +976,7 @@ HRESULT(__stdcall *fnOrigCreateDXGIFactory1)(
 
 HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 {
-    LOG_INFO("*** Hooked_CreateDXGIFactory1 called with riid: %s\n", NameFromIID(riid).c_str());
+    LOG_INFO("*** Hooked_CreateDXGIFactory1 called with riid: %s\n", name_from_IID(riid).c_str());
 
     // If this happens to be first call from the game, let's make sure to load
     // up our d3d11.dll and the .ini file.
@@ -1036,7 +1036,7 @@ HRESULT(__stdcall *fnOrigCreateDXGIFactory2)(
 
 HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFactory2)
 {
-    LOG_INFO("*** Hooked_CreateDXGIFactory2 called with riid: %s\n", NameFromIID(riid).c_str());
+    LOG_INFO("*** Hooked_CreateDXGIFactory2 called with riid: %s\n", name_from_IID(riid).c_str());
 
     // If this happens to be first call from the game, let's make sure to load
     // up our d3d11.dll and the .ini file.

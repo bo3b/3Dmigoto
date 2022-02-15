@@ -598,7 +598,7 @@ HRESULT FrameAnalysisContext::ResolveMSAA(ID3D11Texture2D *src,
         return hr;
     }
 
-    DXGI_FORMAT fmt = EnsureNotTypeless(src_desc->Format);
+    DXGI_FORMAT fmt = ensure_not_typeless(src_desc->Format);
     UINT support = 0;
 
     hr = GetHackerDevice()->GetPassThroughOrigDevice1()->CheckFormatSupport( fmt, &support );
@@ -890,7 +890,7 @@ static void dump_ia_layout(FILE *fd, D3D11_INPUT_ELEMENT_DESC *layout_desc, size
         fprintf(fd, "element[%i]:\n", i);
         fprintf(fd, "  SemanticName: %s\n", layout_desc[i].SemanticName);
         fprintf(fd, "  SemanticIndex: %u\n", layout_desc[i].SemanticIndex);
-        fprintf(fd, "  Format: %s\n", TexFormatStr(layout_desc[i].Format));
+        fprintf(fd, "  Format: %s\n", tex_format_str(layout_desc[i].Format));
         fprintf(fd, "  InputSlot: %u\n", layout_desc[i].InputSlot);
         if (layout_desc[i].AlignedByteOffset == D3D11_APPEND_ALIGNED_ELEMENT)
             fprintf(fd, "  AlignedByteOffset: append\n");
@@ -1412,7 +1412,7 @@ void FrameAnalysisContext::DedupeBufFilenameIBTxt(const wchar_t *bin_filename,
     StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ib");
 
     if (ib_fmt != DXGI_FORMAT_UNKNOWN)
-        StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-format=%S", TexFormatStr(ib_fmt));
+        StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-format=%S", tex_format_str(ib_fmt));
 
     if (topology != D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED)
         StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-topology=%S", topology_str(topology));
@@ -1901,7 +1901,7 @@ static BOOL create_deferred_fa_directory(LPCWSTR path)
     // Deferred contexts don't have an opportunity to create their
     // dumps directory earlier, so do so now:
 
-    if (!CreateDirectoryEnsuringAccess(path)) {
+    if (!create_directory_ensuring_access(path)) {
         err = GetLastError();
         if (err != ERROR_ALREADY_EXISTS) {
             LOG_INFO_W(L"Error creating deferred frame analysis directory: %i\n", err);
@@ -1923,7 +1923,7 @@ void FrameAnalysisContext::GetDedupedDir(wchar_t *path, size_t size)
         _snwprintf_s(path, size, size, L"%ls\\deduped", G->ANALYSIS_PATH);
     }
 
-    CreateDirectoryEnsuringAccess(path);
+    create_directory_ensuring_access(path);
 }
 
 HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
@@ -2144,7 +2144,7 @@ const wchar_t* FrameAnalysisContext::DedupeTex2DFilename(ID3D11Texture2D *resour
         format = orig_desc->Format;
 
     GetDedupedDir(dedupe_dir, MAX_PATH);
-    _snwprintf_s(dedupe_filename, size, size, L"%ls\\%08x-%S.XXX", dedupe_dir, hash, TexFormatStr(format));
+    _snwprintf_s(dedupe_filename, size, size, L"%ls\\%08x-%S.XXX", dedupe_dir, hash, tex_format_str(format));
 
     return dedupe_filename;
 err:

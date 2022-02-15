@@ -9,34 +9,34 @@ int StrResourceDesc(char *buf, size_t size, ::D3DVERTEXBUFFER_DESC *desc) {
         "usage=\"%S\" FVF=0x%x format=\"%S\" "
         "pool=%u",
         desc->Size, TexResourceUsage(desc->Usage),
-        desc->FVF, TexFormatStrDX9(desc->Format), desc->Pool);
+        desc->FVF, tex_format_str_dx9(desc->Format), desc->Pool);
 }
 int StrResourceDesc(char *buf, size_t size, ::D3DINDEXBUFFER_DESC *desc) {
     return _snprintf_s(buf, size, size, "type=Index Buffer byte_width=%u "
         "usage=\"%S\" format=\"%S\" "
         "pool=%u",
-        desc->Size, TexResourceUsage(desc->Usage),TexFormatStrDX9(desc->Format), desc->Pool);
+        desc->Size, TexResourceUsage(desc->Usage),tex_format_str_dx9(desc->Format), desc->Pool);
 }
 int StrResourceDesc(char *buf, size_t size, ::D3DSURFACE_DESC *desc) {
     return _snprintf_s(buf, size, size, "type=Surface resource_type=0x%x width=%u height=%u"
         "usage=\"%S\" format=\"%S\" "
         "pool=%u multisampling_type=%u multisampling_quality=%u", desc->Type,
         desc->Width, desc->Height, TexResourceUsage(desc->Usage),
-        TexFormatStrDX9(desc->Format), desc->Pool, desc->MultiSampleType, desc->MultiSampleQuality);
+        tex_format_str_dx9(desc->Format), desc->Pool, desc->MultiSampleType, desc->MultiSampleQuality);
 }
 int StrResourceDesc(char *buf, size_t size, D3D2DTEXTURE_DESC *desc) {
     return _snprintf_s(buf, size, size, "type=2DTexture resource_type=0x%x width=%u height=%u"
         "usage=\"%S\" format=\"%S\" "
         "pool=%u levels=%u multisampling_type=%u multisampling_quality=%u", desc->Type,
         desc->Width, desc->Height, TexResourceUsage(desc->Usage),
-        TexFormatStrDX9(desc->Format), desc->Pool, desc->Levels, desc->MultiSampleType, desc->MultiSampleQuality);
+        tex_format_str_dx9(desc->Format), desc->Pool, desc->Levels, desc->MultiSampleType, desc->MultiSampleQuality);
 }
 int StrResourceDesc(char *buf, size_t size, D3D3DTEXTURE_DESC *desc) {
     return _snprintf_s(buf, size, size, "type=3DTexture width=%u height=%u depth=%u"
         "usage=\"%S\" format=\"%S\" "
         "pool=%u levels=%u shared_handle=%p",
         desc->Width, desc->Height, desc->Depth, TexResourceUsage(desc->Usage),
-        TexFormatStrDX9(desc->Format), desc->Pool, desc->Levels);
+        tex_format_str_dx9(desc->Format), desc->Pool, desc->Levels);
 }
 int StrResourceDesc(char *buf, size_t size, struct ResourceHashInfo &info) {
     switch (info.type) {
@@ -59,7 +59,7 @@ int StrResourceDesc(char *buf, size_t size, struct ResourceHashInfo &info) {
 template <typename DescType>
 static void LogResourceDescCommon(DescType *desc)
 {
-    LOG_INFO("    Format = %s (%d)\n", TexFormatStrDX9(desc->Format), desc->Format);
+    LOG_INFO("    Format = %s (%d)\n", tex_format_str_dx9(desc->Format), desc->Format);
     LOG_INFO("    Type = 0x%x\n", desc->Type);
     LOG_INFO("    Usage = %d\n", desc->Usage);
     LOG_INFO("    Pool = 0x%x\n", desc->Pool);
@@ -390,7 +390,7 @@ inline void GetSurfaceInfo(_In_ size_t width,
     }
     else
     {
-        size_t bpp = BitsPerPixel(fmt);
+        size_t bpp = bits_per_pixel(fmt);
         rowBytes = (width * bpp + 7) / 8; // round up to nearest byte
         numRows = height;
         numBytes = rowBytes * height;
@@ -1106,9 +1106,9 @@ static bool matches_draw_info(texture_override *tex_override, DrawCallInfo *call
         return false;
     if (!tex_override->match_first_index.matches_uint(call_info->StartIndex))
         return false;
-    if (!tex_override->match_vertex_count.matches_uint(DrawPrimitiveCountToVerticesCount(call_info->PrimitiveCount, call_info->primitive_type)))
+    if (!tex_override->match_vertex_count.matches_uint(draw_primitive_count_to_vertices_count(call_info->PrimitiveCount, call_info->primitive_type)))
         return false;
-    if (!tex_override->match_index_count.matches_uint(DrawPrimitiveCountToVerticesCount(call_info->PrimitiveCount, call_info->primitive_type)))
+    if (!tex_override->match_index_count.matches_uint(draw_primitive_count_to_vertices_count(call_info->PrimitiveCount, call_info->primitive_type)))
         return false;
     return true;
 }

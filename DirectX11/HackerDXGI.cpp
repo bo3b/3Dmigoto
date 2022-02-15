@@ -340,7 +340,7 @@ STDMETHODIMP HackerSwapChain::QueryInterface(THIS_
     /* [in] */ REFIID riid,
     /* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-    LOG_INFO("HackerSwapChain::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
+    LOG_INFO("HackerSwapChain::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, name_from_IID(riid).c_str());
 
     HRESULT hr = origSwapChain1->QueryInterface(riid, ppvObject);
     if (FAILED(hr) || !*ppvObject)
@@ -450,7 +450,7 @@ STDMETHODIMP HackerSwapChain::SetPrivateData(THIS_
     /* [annotation][in] */
     __in_bcount(DataSize)  const void *pData)
 {
-    LOG_INFO("HackerSwapChain::SetPrivateData(%s@%p) called with GUID: %s\n", type_name(this), this, NameFromIID(Name).c_str());
+    LOG_INFO("HackerSwapChain::SetPrivateData(%s@%p) called with GUID: %s\n", type_name(this), this, name_from_IID(Name).c_str());
     LOG_INFO("  DataSize = %d\n", DataSize);
 
     HRESULT hr = origSwapChain1->SetPrivateData(Name, DataSize, pData);
@@ -464,7 +464,7 @@ STDMETHODIMP HackerSwapChain::SetPrivateDataInterface(THIS_
     /* [annotation][in] */
     __in  const IUnknown *pUnknown)
 {
-    LOG_INFO("HackerSwapChain::SetPrivateDataInterface(%s@%p) called with GUID: %s\n", type_name(this), this, NameFromIID(Name).c_str());
+    LOG_INFO("HackerSwapChain::SetPrivateDataInterface(%s@%p) called with GUID: %s\n", type_name(this), this, name_from_IID(Name).c_str());
 
     HRESULT hr = origSwapChain1->SetPrivateDataInterface(Name, pUnknown);
     LOG_INFO("  returns result = %x\n", hr);
@@ -479,7 +479,7 @@ STDMETHODIMP HackerSwapChain::GetPrivateData(THIS_
     /* [annotation][out] */
     __out_bcount(*pDataSize)  void *pData)
 {
-    LOG_INFO("HackerSwapChain::GetPrivateData(%s@%p) called with GUID: %s\n", type_name(this), this, NameFromIID(Name).c_str());
+    LOG_INFO("HackerSwapChain::GetPrivateData(%s@%p) called with GUID: %s\n", type_name(this), this, name_from_IID(Name).c_str());
 
     HRESULT hr = origSwapChain1->GetPrivateData(Name, pDataSize, pData);
     LOG_INFO("  returns result = %x\n", hr);
@@ -506,7 +506,7 @@ STDMETHODIMP HackerSwapChain::GetParent(THIS_
     /* [annotation][retval][out] */
     __out  void **ppParent)
 {
-    LOG_INFO("HackerSwapChain::GetParent(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
+    LOG_INFO("HackerSwapChain::GetParent(%s@%p) called with IID: %s\n", type_name(this), this, name_from_IID(riid).c_str());
 
     HRESULT hr = origSwapChain1->GetParent(riid, ppParent);
     if (FAILED(hr))
@@ -528,7 +528,7 @@ STDMETHODIMP HackerSwapChain::GetDevice(
     /* [annotation][retval][out] */
     _Out_  void **ppDevice)
 {
-    LOG_DEBUG("HackerSwapChain::GetDevice(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
+    LOG_DEBUG("HackerSwapChain::GetDevice(%s@%p) called with IID: %s\n", type_name(this), this, name_from_IID(riid).c_str());
 
     HRESULT hr = origSwapChain1->GetDevice(riid, ppDevice);
     LOG_DEBUG("  returns result = %x, handle = %p\n", hr, *ppDevice);
@@ -596,7 +596,7 @@ STDMETHODIMP HackerSwapChain::GetBuffer(THIS_
     /* [annotation][out][in] */
     _Out_  void **ppSurface)
 {
-    LOG_DEBUG("HackerSwapChain::GetBuffer(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
+    LOG_DEBUG("HackerSwapChain::GetBuffer(%s@%p) called with IID: %s\n", type_name(this), this, name_from_IID(riid).c_str());
 
     HRESULT hr = origSwapChain1->GetBuffer(Buffer, riid, ppSurface);
     LOG_DEBUG("  returns %x\n", hr);
@@ -826,7 +826,7 @@ STDMETHODIMP HackerSwapChain::GetCoreWindow(THIS_
     /* [annotation][out] */
     _Out_  void **ppUnk)
 {
-    LOG_INFO("HackerSwapChain::GetCoreWindow(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(refiid).c_str());
+    LOG_INFO("HackerSwapChain::GetCoreWindow(%s@%p) called with IID: %s\n", type_name(this), this, name_from_IID(refiid).c_str());
 
     HRESULT hr = origSwapChain1->GetCoreWindow(refiid, ppUnk);
     LOG_INFO("  returns result = %x\n", hr);
@@ -1019,7 +1019,7 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
             LogOverlay(LOG_DIRE, "HackerUpscalingSwapChain::createRenderTarget failed to get DXGIFactory\n");
             // Not positive if we will be able to get an overlay to
             // display the error, so also issue an audible warning:
-            BeepFailure2();
+            beep_sad_failure();
             return;
         }
         const UINT flagBackup = pFakeSwapChainDesc->Flags;
@@ -1047,7 +1047,7 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
         LogOverlay(LOG_DIRE, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed ==> provided upscaling mode is not valid.\n");
         // Not positive if we will be able to get an overlay to
         // display the error, so also issue an audible warning:
-        BeepFailure2();
+        beep_sad_failure();
         return;
     }
 
@@ -1058,7 +1058,7 @@ void HackerUpscalingSwapChain::CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwa
         LogOverlay(LOG_DIRE, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed\n");
         // Not positive if we will be able to get an overlay to
         // display the error, so also issue an audible warning:
-        BeepFailure2();
+        beep_sad_failure();
     }
 }
 
@@ -1069,7 +1069,7 @@ STDMETHODIMP HackerUpscalingSwapChain::GetBuffer(THIS_
     /* [annotation][out][in] */
     _Out_  void **ppSurface)
 {
-    LOG_DEBUG("HackerUpscalingSwapChain::GetBuffer(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
+    LOG_DEBUG("HackerUpscalingSwapChain::GetBuffer(%s@%p) called with IID: %s\n", type_name(this), this, name_from_IID(riid).c_str());
 
     HRESULT hr = S_OK;
 
@@ -1088,7 +1088,7 @@ STDMETHODIMP HackerUpscalingSwapChain::GetBuffer(THIS_
     else
     {
         LOG_INFO("BUG: HackerUpscalingDXGISwapChain::GetBuffer(): Missing upscaling object\n");
-        DoubleBeepExit();
+        double_beep_exit();
     }
 
     LOG_DEBUG("  returns %x\n", hr);
@@ -1233,7 +1233,7 @@ STDMETHODIMP HackerUpscalingSwapChain::ResizeBuffers(THIS_
     else
     {
         LOG_INFO("BUG: HackerUpscalingSwapChain::ResizeBuffers(): Missing upscaling object\n");
-        DoubleBeepExit();
+        double_beep_exit();
     }
 
     LOG_INFO("  returns result = %x\n", hr);

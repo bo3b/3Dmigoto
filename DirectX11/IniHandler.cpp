@@ -252,7 +252,7 @@ static void emit_ini_warning_tone()
     if (!ini_warned)
         return;
     ini_warned = false;
-    BeepFailure();
+    beep_failure();
 }
 
 static bool get_namespaced_section_name(const wstring *section, const wstring *ini_namespace, wstring *ret)
@@ -875,7 +875,7 @@ int GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def,
                 // If someone passed in a default value that is
                 // too long, treat it as a programming error
                 // and terminate:
-                DoubleBeepExit();
+                double_beep_exit();
             } else
                 rc = (int)wcslen(ret);
         } else {
@@ -900,7 +900,7 @@ bool GetIniString(const wchar_t *section, const wchar_t *key, const wchar_t *def
 
     if (!ret) {
         LOG_INFO("BUG: Misuse of GetIniString()\n");
-        DoubleBeepExit();
+        double_beep_exit();
     }
 
     try {
@@ -1633,7 +1633,7 @@ static void ParseResourceInitialData(CustomResource *custom_resource, const wcha
     // parsing formats on the fly for more complex structured buffers.
     // e.g. data = R32_FLOAT 1 2 3 4
     std::getline(tokens, token, ' ');
-    format = ParseFormatString(token.c_str(), false);
+    format = parse_format_string(token.c_str(), false);
     if (format == (DXGI_FORMAT)-1) {
         format = custom_resource->overrideFormat;
         tokens.seekg(0);
@@ -1792,11 +1792,11 @@ static void ParseResourceSections()
         custom_resource->overrideMode = GetIniEnumClass(i->first.c_str(), L"mode", CustomResourceMode::DEFAULT, NULL, CustomResourceModeNames);
 
         if (GetIniString(i->first.c_str(), L"format", 0, setting, MAX_PATH)) {
-            custom_resource->overrideFormat = ParseFormatString(setting, true);
+            custom_resource->overrideFormat = parse_format_string(setting, true);
             if (custom_resource->overrideFormat == (DXGI_FORMAT)-1) {
                 INI_WARNING("WARNING: Unknown format \"%S\"\n", setting);
             } else {
-                LOG_INFO("  format=%s\n", TexFormatStr(custom_resource->overrideFormat));
+                LOG_INFO("  format=%s\n", tex_format_str(custom_resource->overrideFormat));
             }
         }
 
@@ -1885,7 +1885,7 @@ static void ParseCommandList(const wchar_t *id,
     // list up to date:
     if (!IsCommandListSection(id)) {
         LOG_INFO_W(L"BUG: ParseCommandList() called on a section not in the CommandListSections list: %s\n", id);
-        DoubleBeepExit();
+        double_beep_exit();
     }
 
     scope.emplace_front();
@@ -3008,7 +3008,7 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
 
     // Format string
     if (GetIniStringAndLog(section, L"match_format", 0, setting, MAX_PATH)) {
-        fuzzy->Format.val = ParseFormatString(setting, true);
+        fuzzy->Format.val = parse_format_string(setting, true);
         if (fuzzy->Format.val == (DXGI_FORMAT)-1)
             INI_WARNING("WARNING: Unknown format \"%S\"\n", setting);
         else
@@ -3045,7 +3045,7 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
 
     if (!G->mFuzzyTextureOverrides.insert(std::shared_ptr<FuzzyMatchResourceDesc>(fuzzy)).second) {
         INI_WARNING("BUG: Unexpected error inserting fuzzy texture override\n");
-        DoubleBeepExit();
+        double_beep_exit();
     }
 }
 
@@ -4040,7 +4040,7 @@ void LoadConfigFile()
     G->gInitialized = true;
 
     if (!GetModuleFileName(migoto_handle, iniFile, MAX_PATH))
-        DoubleBeepExit();
+        double_beep_exit();
     wcsrchr(iniFile, L'\\')[1] = 0;
     wcscpy(logFilename, iniFile);
     wcscat(iniFile, INI_FILENAME);
@@ -4188,7 +4188,7 @@ void LoadConfigFile()
             wcscpy(G->SHADER_PATH, setting);
         }
         // Create directory?
-        CreateDirectoryEnsuringAccess(G->SHADER_PATH);
+        create_directory_ensuring_access(G->SHADER_PATH);
     }
     if (GetIniStringAndLog(L"Rendering", L"cache_directory", 0, G->SHADER_CACHE_PATH, MAX_PATH))
     {
@@ -4202,7 +4202,7 @@ void LoadConfigFile()
             wcscpy(G->SHADER_CACHE_PATH, setting);
         }
         // Create directory?
-        CreateDirectoryEnsuringAccess(G->SHADER_CACHE_PATH);
+        create_directory_ensuring_access(G->SHADER_CACHE_PATH);
     }
 
     G->CACHE_SHADERS = GetIniBool(L"Rendering", L"cache_shaders", false, NULL);
@@ -4240,7 +4240,7 @@ void LoadConfigFile()
     {
         char buf[MAX_PATH];
         wcstombs(buf, setting, MAX_PATH);
-        char *end = RightStripA(buf);
+        char *end = right_strip_a(buf);
         G->decompiler_settings.ZRepair_DepthTextureReg1 = *end; *(end - 1) = 0;
         char *start = buf; while (isspace(*start)) start++;
         G->decompiler_settings.ZRepair_DepthTexture1 = start;
@@ -4249,19 +4249,19 @@ void LoadConfigFile()
     {
         char buf[MAX_PATH];
         wcstombs(buf, setting, MAX_PATH);
-        char *end = RightStripA(buf);
+        char *end = right_strip_a(buf);
         G->decompiler_settings.ZRepair_DepthTextureReg2 = *end; *(end - 1) = 0;
         char *start = buf; while (isspace(*start)) start++;
         G->decompiler_settings.ZRepair_DepthTexture2 = start;
     }
     if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_ZPosCalc1", 0, setting, MAX_PATH))
-        G->decompiler_settings.ZRepair_ZPosCalc1 = readStringParameter(setting);
+        G->decompiler_settings.ZRepair_ZPosCalc1 = read_string_parameter(setting);
     if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_ZPosCalc2", 0, setting, MAX_PATH))
-        G->decompiler_settings.ZRepair_ZPosCalc2 = readStringParameter(setting);
+        G->decompiler_settings.ZRepair_ZPosCalc2 = read_string_parameter(setting);
     if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_PositionTexture", 0, setting, MAX_PATH))
-        G->decompiler_settings.ZRepair_PositionTexture = readStringParameter(setting);
+        G->decompiler_settings.ZRepair_PositionTexture = read_string_parameter(setting);
     if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_PositionCalc", 0, setting, MAX_PATH))
-        G->decompiler_settings.ZRepair_WorldPosCalc = readStringParameter(setting);
+        G->decompiler_settings.ZRepair_WorldPosCalc = read_string_parameter(setting);
     if (GetIniStringAndLog(L"Rendering", L"fix_ZRepair_Dependencies1", 0, setting, MAX_PATH))
     {
         char buf[MAX_PATH];
@@ -4306,21 +4306,21 @@ void LoadConfigFile()
         G->decompiler_settings.ZRepair_DepthBuffer = !!G->ZBufferHashToInject;
     }
     if (GetIniStringAndLog(L"Rendering", L"fix_BackProjectionTransform1", 0, setting, MAX_PATH))
-        G->decompiler_settings.BackProject_Vector1 = readStringParameter(setting);
+        G->decompiler_settings.BackProject_Vector1 = read_string_parameter(setting);
     if (GetIniStringAndLog(L"Rendering", L"fix_BackProjectionTransform2", 0, setting, MAX_PATH))
-        G->decompiler_settings.BackProject_Vector2 = readStringParameter(setting);
+        G->decompiler_settings.BackProject_Vector2 = read_string_parameter(setting);
     if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition1", 0, setting, MAX_PATH))
-        G->decompiler_settings.ObjectPos_ID1 = readStringParameter(setting);
+        G->decompiler_settings.ObjectPos_ID1 = read_string_parameter(setting);
     if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition2", 0, setting, MAX_PATH))
-        G->decompiler_settings.ObjectPos_ID2 = readStringParameter(setting);
+        G->decompiler_settings.ObjectPos_ID2 = read_string_parameter(setting);
     if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition1Multiplier", 0, setting, MAX_PATH))
-        G->decompiler_settings.ObjectPos_MUL1 = readStringParameter(setting);
+        G->decompiler_settings.ObjectPos_MUL1 = read_string_parameter(setting);
     if (GetIniStringAndLog(L"Rendering", L"fix_ObjectPosition2Multiplier", 0, setting, MAX_PATH))
-        G->decompiler_settings.ObjectPos_MUL2 = readStringParameter(setting);
+        G->decompiler_settings.ObjectPos_MUL2 = read_string_parameter(setting);
     if (GetIniStringAndLog(L"Rendering", L"fix_MatrixOperand1", 0, setting, MAX_PATH))
-        G->decompiler_settings.MatrixPos_ID1 = readStringParameter(setting);
+        G->decompiler_settings.MatrixPos_ID1 = read_string_parameter(setting);
     if (GetIniStringAndLog(L"Rendering", L"fix_MatrixOperand1Multiplier", 0, setting, MAX_PATH))
-        G->decompiler_settings.MatrixPos_MUL1 = readStringParameter(setting);
+        G->decompiler_settings.MatrixPos_MUL1 = read_string_parameter(setting);
 
     // [Hunting]
     ParseHuntingSection();
@@ -4416,7 +4416,7 @@ void LoadProfileManagerConfig(const wchar_t *config_dir)
     G->gInitialized = true;
 
     if (wcscpy_s(iniFile, MAX_PATH, config_dir))
-        DoubleBeepExit();
+        double_beep_exit();
     wcsrchr(iniFile, L'\\')[1] = 0;
     wcscpy(logFilename, iniFile);
     wcscat(iniFile, INI_FILENAME);

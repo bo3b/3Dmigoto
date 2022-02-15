@@ -1171,7 +1171,7 @@ int parse_ini_profile_line(wstring *lhs, wstring *rhs)
         // broken utf16 will do to DirectXTK
         LOG_INFO_NO_NL("  WARNING: Unrecognised line (bad setting): %S = %S", lhs->c_str(), rhs->c_str());
         LOG_INFO("\n"); // In case of utf16 parse error
-        BeepFailure2();
+        beep_sad_failure();
         return -1;
     }
 
@@ -1180,7 +1180,7 @@ int parse_ini_profile_line(wstring *lhs, wstring *rhs)
         // broken utf16 will do to DirectXTK
         LOG_INFO_NO_NL("  WARNING: Unrecognised line (bad value): %S = %S", lhs->c_str(), rhs->c_str());
         LOG_INFO("\n"); // In case of utf16 parse error
-        BeepFailure2();
+        beep_sad_failure();
         return -1;
     }
 
@@ -1197,7 +1197,7 @@ int parse_ini_profile_line(wstring *lhs, wstring *rhs)
         // Still doing an audible warning here, because this code path
         // is (also) called from the helper, which has no overlay, and
         // who knows what the result of a bad profile will be:
-        BeepFailure2();
+        beep_sad_failure();
     }
 
     profile_settings[setting.settingId] = setting;
@@ -1801,7 +1801,7 @@ void log_check_and_update_nv_profiles()
         // Also doing an audible warning to really drive home the point
         // the user was supposed to click OK to that UAC prompt and we
         // are not happy:
-        BeepProfileFail();
+        beep_profile_fail();
     }
 
 bail:

@@ -572,7 +572,7 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
     case ShaderRegexCache::NO_CACHE:
         LOG_INFO("Performing deferred shader analysis on %S %016I64x...\n", shader_type, hash);
 
-        asm_text = BinaryToAsmText(orig_info->byteCode->GetBufferPointer(),
+        asm_text = binary_to_asm_text(orig_info->byteCode->GetBufferPointer(),
                 orig_info->byteCode->GetBufferSize(),
                 G->patch_cb_offsets,
                 G->disassemble_undecipherable_custom_data);
@@ -973,7 +973,7 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
     /* [in] */ REFIID riid,
     /* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-    LOG_DEBUG("HackerContext::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
+    LOG_DEBUG("HackerContext::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, name_from_IID(riid).c_str());
 
     if (ppvObject && IsEqualIID(riid, IID_HackerContext)) {
         // This is a special case - only 3DMigoto itself should know
@@ -1059,7 +1059,7 @@ STDMETHODIMP HackerContext::GetPrivateData(THIS_
     /* [annotation] */
     __out_bcount_opt(*pDataSize)  void *pData)
 {
-    LOG_DEBUG("HackerContext::GetPrivateData(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
+    LOG_DEBUG("HackerContext::GetPrivateData(%s@%p) called with IID: %s\n", type_name(this), this, name_from_IID(guid).c_str());
 
     HRESULT hr = origContext1->GetPrivateData(guid, pDataSize, pData);
     LOG_DEBUG("  returns result = %x, DataSize = %d\n", hr, *pDataSize);
@@ -1075,7 +1075,7 @@ STDMETHODIMP HackerContext::SetPrivateData(THIS_
     /* [annotation] */
     __in_bcount_opt(DataSize)  const void *pData)
 {
-    LOG_INFO("HackerContext::SetPrivateData(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
+    LOG_INFO("HackerContext::SetPrivateData(%s@%p) called with IID: %s\n", type_name(this), this, name_from_IID(guid).c_str());
     LOG_INFO("  DataSize = %d\n", DataSize);
 
     HRESULT hr = origContext1->SetPrivateData(guid, DataSize, pData);
@@ -1090,7 +1090,7 @@ STDMETHODIMP HackerContext::SetPrivateDataInterface(THIS_
     /* [annotation] */
     __in_opt  const IUnknown *pData)
 {
-    LOG_INFO("HackerContext::SetPrivateDataInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
+    LOG_INFO("HackerContext::SetPrivateDataInterface(%s@%p) called with IID: %s\n", type_name(this), this, name_from_IID(guid).c_str());
 
     HRESULT hr = origContext1->SetPrivateDataInterface(guid, pData);
     LOG_INFO("  returns result = %x\n", hr);
@@ -2629,7 +2629,7 @@ void HackerContext::InitIniParams()
     // to do anything heroic to deal with it.
     if (origContext1->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE) {
         LOG_INFO("BUG: InitIniParams called on a deferred context\n");
-        DoubleBeepExit();
+        double_beep_exit();
     }
 
     // The command list only changes ini params that are defined, but for

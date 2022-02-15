@@ -814,7 +814,7 @@ void InstallMouseHooks(bool hide)
 
     if (fail) {
         LOG_INFO("Failed to hook mouse cursor functions - hide_cursor will not work\n");
-        BeepFailure2();
+        beep_sad_failure();
         return;
     }
 
@@ -869,7 +869,7 @@ void InstallSetWindowPosHook()
 
     if (fail) {
         LOG_INFO("Failed to hook SetWindowPos for full_screen=2\n");
-        BeepFailure2();
+        beep_sad_failure();
         return;
     }
 
@@ -923,7 +923,7 @@ void InstallCreateWindowHook()
     fail |= InstallHookLate(hUser32, "CreateWindowExW", (void**)&trampoline_CreateWindowEx, Hooked_CreateWindowEx);
     if (fail) {
         LOG_INFO("Failed to hook create window \n");
-        BeepFailure2();
+        beep_sad_failure();
         return;
     }
 

@@ -56,7 +56,7 @@ int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE1D_DESC *desc)
     return _snprintf_s(buf, size, size, "type=Texture1D width=%u mips=%u "
         "array=%u format=\"%s\" usage=\"%S\" %S %S %S",
         desc->Width, desc->MipLevels, desc->ArraySize,
-        TexFormatStr(desc->Format), TexResourceUsage(desc->Usage),
+        tex_format_str(desc->Format), TexResourceUsage(desc->Usage),
         TexBindFlags(desc->BindFlags).c_str(),
         TexCPUFlags(desc->CPUAccessFlags).c_str(),
         TexMiscFlags(desc->MiscFlags).c_str());
@@ -68,7 +68,7 @@ int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE2D_DESC *desc)
         "array=%u format=\"%s\" msaa=%u "
         "msaa_quality=%u usage=\"%S\" %S %S %S",
         desc->Width, desc->Height, desc->MipLevels, desc->ArraySize,
-        TexFormatStr(desc->Format), desc->SampleDesc.Count,
+        tex_format_str(desc->Format), desc->SampleDesc.Count,
         desc->SampleDesc.Quality, TexResourceUsage(desc->Usage),
         TexBindFlags(desc->BindFlags).c_str(),
         TexCPUFlags(desc->CPUAccessFlags).c_str(),
@@ -80,7 +80,7 @@ int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE3D_DESC *desc)
     return _snprintf_s(buf, size, size, "type=Texture3D width=%u height=%u depth=%u "
         "mips=%u format=\"%s\" usage=\"%S\" %S %S %S",
         desc->Width, desc->Height, desc->Depth, desc->MipLevels,
-        TexFormatStr(desc->Format), TexResourceUsage(desc->Usage),
+        tex_format_str(desc->Format), TexResourceUsage(desc->Usage),
         TexBindFlags(desc->BindFlags).c_str(),
         TexCPUFlags(desc->CPUAccessFlags).c_str(),
         TexMiscFlags(desc->MiscFlags).c_str());
@@ -125,7 +125,7 @@ void LogResourceDesc(const D3D11_TEXTURE1D_DESC *desc)
     LOG_INFO("    Width = %d\n", desc->Width);
     LOG_INFO("    MipLevels = %d\n", desc->MipLevels);
     LOG_INFO("    ArraySize = %d\n", desc->ArraySize);
-    LOG_INFO("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+    LOG_INFO("    Format = %s (%d)\n", tex_format_str(desc->Format), desc->Format);
     LogResourceDescCommon(desc);
 }
 
@@ -136,7 +136,7 @@ void LogResourceDesc(const D3D11_TEXTURE2D_DESC *desc)
     LOG_INFO("    Height = %d\n", desc->Height);
     LOG_INFO("    MipLevels = %d\n", desc->MipLevels);
     LOG_INFO("    ArraySize = %d\n", desc->ArraySize);
-    LOG_INFO("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+    LOG_INFO("    Format = %s (%d)\n", tex_format_str(desc->Format), desc->Format);
     LOG_INFO("    SampleDesc.Count = %d\n", desc->SampleDesc.Count);
     LOG_INFO("    SampleDesc.Quality = %d\n", desc->SampleDesc.Quality);
     LogResourceDescCommon(desc);
@@ -149,7 +149,7 @@ void LogResourceDesc(const D3D11_TEXTURE3D_DESC *desc)
     LOG_INFO("    Height = %d\n", desc->Height);
     LOG_INFO("    Depth = %d\n", desc->Depth);
     LOG_INFO("    MipLevels = %d\n", desc->MipLevels);
-    LOG_INFO("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+    LOG_INFO("    Format = %s (%d)\n", tex_format_str(desc->Format), desc->Format);
     LogResourceDescCommon(desc);
 }
 
@@ -189,7 +189,7 @@ void LogResourceDesc(ID3D11Resource *resource)
 void LogViewDesc(const D3D11_SHADER_RESOURCE_VIEW_DESC *desc)
 {
     LOG_INFO("  View Type = Shader Resource\n");
-    LOG_INFO("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+    LOG_INFO("    Format = %s (%d)\n", tex_format_str(desc->Format), desc->Format);
     switch (desc->ViewDimension) {
         case D3D11_SRV_DIMENSION_UNKNOWN:
             LOG_INFO("    ViewDimension = UNKNOWN\n");
@@ -260,7 +260,7 @@ void LogViewDesc(const D3D11_SHADER_RESOURCE_VIEW_DESC *desc)
 void LogViewDesc(const D3D11_RENDER_TARGET_VIEW_DESC *desc)
 {
     LOG_INFO("  View Type = Render Target\n");
-    LOG_INFO("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+    LOG_INFO("    Format = %s (%d)\n", tex_format_str(desc->Format), desc->Format);
     switch (desc->ViewDimension) {
         case D3D11_RTV_DIMENSION_UNKNOWN:
             LOG_INFO("    ViewDimension = UNKNOWN\n");
@@ -310,7 +310,7 @@ void LogViewDesc(const D3D11_RENDER_TARGET_VIEW_DESC *desc)
 void LogViewDesc(const D3D11_DEPTH_STENCIL_VIEW_DESC *desc)
 {
     LOG_INFO("  View Type = Depth Stencil\n");
-    LOG_INFO("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+    LOG_INFO("    Format = %s (%d)\n", tex_format_str(desc->Format), desc->Format);
     LOG_INFO("    Flags = 0x%x\n", desc->Flags);
     switch (desc->ViewDimension) {
         case D3D11_DSV_DIMENSION_UNKNOWN:
@@ -350,7 +350,7 @@ void LogViewDesc(const D3D11_DEPTH_STENCIL_VIEW_DESC *desc)
 void LogViewDesc(const D3D11_UNORDERED_ACCESS_VIEW_DESC *desc)
 {
     LOG_INFO("  View Type = Unordered Access\n");
-    LOG_INFO("    Format = %s (%d)\n", TexFormatStr(desc->Format), desc->Format);
+    LOG_INFO("    Format = %s (%d)\n", tex_format_str(desc->Format), desc->Format);
     switch (desc->ViewDimension) {
         case D3D11_UAV_DIMENSION_UNKNOWN:
             LOG_INFO("    ViewDimension = UNKNOWN\n");
@@ -1283,7 +1283,7 @@ ResourceReleaseTracker::ResourceReleaseTracker(ID3D11Resource *resource) :
 
 HRESULT STDMETHODCALLTYPE ResourceReleaseTracker::QueryInterface(REFIID riid, _COM_Outptr_ void **ppvObject)
 {
-    LOG_INFO("ResourceReleaseTracker::QueryInterface(%p:%p) called with IID: %s\n", this, resource, NameFromIID(riid).c_str());
+    LOG_INFO("ResourceReleaseTracker::QueryInterface(%p:%p) called with IID: %s\n", this, resource, name_from_IID(riid).c_str());
 
     // The only interface we support is IUnknown
     if (ppvObject && IsEqualIID(riid, IID_IUnknown)) {
