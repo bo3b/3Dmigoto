@@ -114,7 +114,7 @@ HackerDevice* lookup_hacker_device(IUnknown *unknown)
     if (FAILED(unknown->QueryInterface(IID_IUnknown, (void**)&real_unknown))) {
         // ... ehh, what? Shouldn't happen. Fatal.
         LOG_INFO("lookup_hacker_device: QueryInterface(IID_Unknown) failed\n");
-        DoubleBeepExit();
+        double_beep_exit();
     }
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
@@ -179,7 +179,7 @@ static IUnknown* register_hacker_device(HackerDevice *hacker_device)
     // As above, our key is the real IUnknown gained through QueryInterface
     if (FAILED(hacker_device->GetPassThroughOrigDevice1()->QueryInterface(IID_IUnknown, (void**)&real_unknown))) {
         LOG_INFO("register_hacker_device: QueryInterface(IID_Unknown) failed\n");
-        DoubleBeepExit();
+        double_beep_exit();
     }
 
     LOG_INFO("register_hacker_device: Registering IUnknown: %p -> HackerDevice: %p\n",
@@ -343,9 +343,9 @@ HRESULT HackerDevice::CreateIniParamResources()
         LOG_INFO("  releasing iniparams texture, refcount = %d\n", refcount);
     }
 
-    if (G->iniParamsReserved > INI_PARAMS_SIZE_WARNING) {
+    if (G->iniParamsReserved > ini_params_size_warning) {
         LogOverlay(LOG_NOTICE, "NOTICE: %d requested IniParams exceeds the recommended %d\n",
-                G->iniParamsReserved, INI_PARAMS_SIZE_WARNING);
+                G->iniParamsReserved, ini_params_size_warning);
     }
 
     G->iniParams.resize(G->iniParamsReserved);
@@ -713,7 +713,7 @@ static bool LoadCachedShader(wchar_t *binPath, const wchar_t *pShaderType,
     }
 
     LOG_INFO_W(L"    Replacement binary shader found: %s\n", binPath);
-    WarnIfConflictingShaderExists(binPath, end_user_conflicting_shader_msg);
+    warn_if_conflicting_shader_exists(binPath, end_user_conflicting_shader_msg);
 
     codeSize = GetFileSize(f, 0);
     pCode = new char[codeSize];
@@ -774,7 +774,7 @@ static bool ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
     if (f != INVALID_HANDLE_VALUE)
     {
         LOG_INFO("    Replacement shader found. Loading replacement HLSL code.\n");
-        WarnIfConflictingShaderExists(path, end_user_conflicting_shader_msg);
+        warn_if_conflicting_shader_exists(path, end_user_conflicting_shader_msg);
 
         DWORD srcDataSize = GetFileSize(f, 0);
         char *srcData = new char[srcDataSize];
@@ -788,7 +788,7 @@ static bool ReplaceHLSLShader(__in UINT64 hash, const wchar_t *pShaderType,
         LOG_INFO("    Source code loaded. Size = %d\n", srcDataSize);
 
         // Disassemble old shader to get shader model.
-        shaderModel = GetShaderModel(pShaderBytecode, pBytecodeLength);
+        shaderModel = get_shader_model(pShaderBytecode, pBytecodeLength);
         if (shaderModel.empty())
         {
             LOG_INFO("    disassembly of original shader failed.\n");
@@ -905,7 +905,7 @@ static bool ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
     if (f != INVALID_HANDLE_VALUE)
     {
         LOG_INFO("    Replacement ASM shader found. Assembling replacement ASM code.\n");
-        WarnIfConflictingShaderExists(path, end_user_conflicting_shader_msg);
+        warn_if_conflicting_shader_exists(path, end_user_conflicting_shader_msg);
 
         DWORD srcDataSize = GetFileSize(f, 0);
         vector<char> asmTextBytes(srcDataSize);
@@ -919,7 +919,7 @@ static bool ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
         LOG_INFO("    Asm source code loaded. Size = %d\n", srcDataSize);
 
         // Disassemble old shader to get shader model.
-        shaderModel = GetShaderModel(pShaderBytecode, pBytecodeLength);
+        shaderModel = get_shader_model(pShaderBytecode, pBytecodeLength);
         if (shaderModel.empty())
         {
             LOG_INFO("    disassembly of original shader failed.\n");
@@ -1032,7 +1032,7 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
         return NULL;
 
     // Disassemble old shader for fixing.
-    asmText = BinaryToAsmText(pShaderBytecode, BytecodeLength, false);
+    asmText = binary_to_asm_text(pShaderBytecode, BytecodeLength, false);
     if (asmText.empty()) {
         LOG_INFO("    disassembly of original shader failed.\n");
         return NULL;
@@ -1130,7 +1130,7 @@ static bool DecompileAndPossiblyPatchShader(__in UINT64 hash,
     // comparison between original ASM, and recompiled ASM.
     if ((G->EXPORT_HLSL >= 3) && pCompiledOutput)
     {
-        asmText = BinaryToAsmText(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize(), G->patch_cb_offsets);
+        asmText = binary_to_asm_text(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize(), G->patch_cb_offsets);
         if (asmText.empty())
         {
             LOG_INFO("    disassembly of recompiled shader failed.\n");
@@ -1227,7 +1227,7 @@ char* HackerDevice::_ReplaceShaderFromShaderFixes(UINT64 hash, const wchar_t *sh
 
     // Export every shader seen as an ASM text file.
     if (G->EXPORT_SHADERS)
-        CreateAsmTextFile(G->SHADER_CACHE_PATH, hash, shaderType, pShaderBytecode, BytecodeLength, G->patch_cb_offsets);
+        create_asm_text_file(G->SHADER_CACHE_PATH, hash, shaderType, pShaderBytecode, BytecodeLength, G->patch_cb_offsets);
 
 
     // Read the binary compiled shaders, as previously cached shaders.  This is how
@@ -1609,7 +1609,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
     /* [in] */ REFIID riid,
     /* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject)
 {
-    LOG_DEBUG("HackerDevice::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(riid).c_str());
+    LOG_DEBUG("HackerDevice::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, name_from_IID(riid).c_str());
 
     if (ppvObject && IsEqualIID(riid, IID_HackerDevice)) {
         // This is a special case - only 3DMigoto itself should know
@@ -1925,7 +1925,7 @@ STDMETHODIMP HackerDevice::SetPrivateDataInterface(THIS_
     /* [annotation] */
     __in_opt  const IUnknown *pData)
 {
-    LOG_INFO("HackerDevice::SetPrivateDataInterface(%s@%p) called with IID: %s\n", type_name(this), this, NameFromIID(guid).c_str());
+    LOG_INFO("HackerDevice::SetPrivateDataInterface(%s@%p) called with IID: %s\n", type_name(this), this, name_from_IID(guid).c_str());
 
     return origDevice1->SetPrivateDataInterface(guid, pData);
 }

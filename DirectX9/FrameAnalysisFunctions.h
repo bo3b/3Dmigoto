@@ -903,7 +903,7 @@ static int fprint_decltype(FILE *fd, ::D3DDECLTYPE type, uint8_t *buf)
         return 0;
     }
 
-    for (i = 0; i < byteSizeFromD3DType(type); i++)
+    for (i = 0; i < byte_size_from_d3d_type(type); i++)
         fprintf(fd, "%02x", buf[i]);
     return i * 2;
 }
@@ -928,7 +928,7 @@ static void dump_vb_elem(FILE *fd, uint8_t *buf,
     fprint_decltype(fd, ::D3DDECLTYPE(vertex_element[elem].Type), buf + offset);
     fprintf(fd, "\n");
 
-    size = byteSizeFromD3DType(::D3DDECLTYPE(vertex_element[elem].Type));// dxgi_format_size(layout_desc[elem].Format);
+    size = byte_size_from_d3d_type(::D3DDECLTYPE(vertex_element[elem].Type));// dxgi_format_size(layout_desc[elem].Format);
     if (!size)
         fprintf(fd, "# WARNING: Unknown format size, vertex buffer may be decoded incorrectly\n");
     offset += size;
@@ -1019,7 +1019,7 @@ void D3D9Wrapper::FrameAnalysisDevice::dedupe_buf_filename_ib_txt(const wchar_t 
     StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-ib");
 
     if (ib_fmt != ::D3DFORMAT::D3DFMT_UNKNOWN)
-        StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-format=%S", TexFormatStrDX9(ib_fmt));
+        StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-format=%S", tex_format_str_dx9(ib_fmt));
 
     if (topology != ::D3DPRIMITIVETYPE(-1))
         StringCchPrintfExW(pos, rem, &pos, &rem, NULL, L"-topology=%S", TopologyStr(topology));
@@ -1402,7 +1402,7 @@ static BOOL create_deferred_fa_directory(LPCWSTR path)
     // Deferred contexts don't have an opportunity to create their
     // dumps directory earlier, so do so now:
 
-    if (!CreateDirectoryEnsuringAccess(path)) {
+    if (!create_directory_ensuring_access(path)) {
         err = GetLastError();
         if (err != ERROR_ALREADY_EXISTS) {
             LOG_INFO_W(L"Error creating deferred frame analysis directory: %i\n", err);
@@ -1425,7 +1425,7 @@ void D3D9Wrapper::FrameAnalysisDevice::get_deduped_dir(wchar_t *path, size_t siz
         _snwprintf_s(path, size, size, L"%ls\\deduped", G->ANALYSIS_PATH);
     }
 
-    CreateDirectoryEnsuringAccess(path);
+    create_directory_ensuring_access(path);
 }
 
 HRESULT D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisFilename(wchar_t *filename, size_t size,
@@ -1635,7 +1635,7 @@ const wchar_t* D3D9Wrapper::FrameAnalysisDevice::dedupe_sur2d_filename(Surface *
         format = orig_desc->Format;
 
     get_deduped_dir(dedupe_dir, MAX_PATH);
-    _snwprintf_s(dedupe_filename, size, size, L"%ls\\%08x-%S.XXX", dedupe_dir, hash, TexFormatStrDX9(format));
+    _snwprintf_s(dedupe_filename, size, size, L"%ls\\%08x-%S.XXX", dedupe_dir, hash, tex_format_str_dx9(format));
 
     return dedupe_filename;
 err:
@@ -1906,7 +1906,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpMesh(DrawCallInfo *call_info)
     // dump to keep the text files small. This is not applicable when only
     // dumping vertex buffers as binary, since we always dump the entire
     // buffer in that case.
-    if (dump_vbs && (analyse_options & FrameAnalysisOptions::FMT_BUF_TXT) && DrawPrimitiveCountToVerticesCount(call_info->PrimitiveCount, call_info->primitive_type))
+    if (dump_vbs && (analyse_options & FrameAnalysisOptions::FMT_BUF_TXT) && draw_primitive_count_to_vertices_count(call_info->PrimitiveCount, call_info->primitive_type))
         dump_ibs = true;
 
     if (dump_ibs)
@@ -2085,7 +2085,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpVBs(DrawCallInfo *call_info, ::IDirec
 
     if (call_info) {
         first = call_info->StartVertex;
-        count = DrawPrimitiveCountToVerticesCount(call_info->PrimitiveCount, call_info->primitive_type);
+        count = draw_primitive_count_to_vertices_count(call_info->PrimitiveCount, call_info->primitive_type);
     }
 
     // The format of each vertex buffer cannot be obtained from this call.
@@ -2137,7 +2137,7 @@ void D3D9Wrapper::FrameAnalysisDevice::DumpIB(DrawCallInfo *call_info, ::IDirect
 
     if (call_info) {
         first = call_info->StartIndex;
-        count = DrawPrimitiveCountToVerticesCount(call_info->PrimitiveCount, call_info->primitive_type);
+        count = draw_primitive_count_to_vertices_count(call_info->PrimitiveCount, call_info->primitive_type);
     }
     if (!m_activeIndexBuffer)
         return;

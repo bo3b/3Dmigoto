@@ -945,14 +945,14 @@ int parse_ini_profile_line(wstring *lhs, wstring *rhs)
     if (parse_ini_profile_lhs(lhs, &setting)) {
         LOG_INFO_NO_NL("  WARNING: Unrecognised line (bad setting): %S = %S", lhs->c_str(), rhs->c_str());
         LOG_INFO("\n"); // In case of utf16 parse error
-        BeepFailure2();
+        beep_sad_failure();
         return -1;
     }
 
     if (parse_ini_profile_rhs(rhs, &setting)) {
         LOG_INFO_NO_NL("  WARNING: Unrecognised line (bad value): %S = %S", lhs->c_str(), rhs->c_str());
         LOG_INFO("\n"); // In case of utf16 parse error
-        BeepFailure2();
+        beep_sad_failure();
         return -1;
     }
 
@@ -966,7 +966,7 @@ int parse_ini_profile_line(wstring *lhs, wstring *rhs)
     // check here on the setting ID:
     if (profile_settings.count(setting.settingId)) {
         LOG_INFO_W(L"WARNING: Duplicate driver profile setting ID found in d3dx.ini: 0x%08x\n", setting.settingId);
-        BeepFailure2();
+        beep_sad_failure();
     }
 
     profile_settings[setting.settingId] = setting;
@@ -1566,7 +1566,7 @@ void log_check_and_update_nv_profiles()
 
     if (need_profile_update(session, profile)) {
         LOG_INFO("WARNING: Profile update failed!\n");
-        BeepProfileFail();
+        beep_profile_fail();
     }
 
 bail:

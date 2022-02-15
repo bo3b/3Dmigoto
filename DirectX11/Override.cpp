@@ -51,7 +51,7 @@ void Override::ParseIniSection(LPCWSTR section)
 
     GetIniSection(&section_vec, section);
     for (entry = section_vec->begin(); entry < section_vec->end(); entry++) {
-        if (ParseIniParamName(entry->first.c_str(), &param_idx, &param_component)) {
+        if (parse_ini_param_name(entry->first.c_str(), &param_idx, &param_component)) {
             val = GetIniFloat(section, entry->first.c_str(), FLT_MAX, NULL);
             if (val != FLT_MAX) {
                 // Reserve space in IniParams for this variable:
@@ -271,7 +271,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 
     GetIniSection(&section_vec, section);
     for (entry = section_vec->begin(); entry < section_vec->end(); entry++) {
-        if (ParseIniParamName(entry->first.c_str(), &param_idx, &param_component)) {
+        if (parse_ini_param_name(entry->first.c_str(), &param_idx, &param_component)) {
             // Reserve space in IniParams for this variable:
             G->iniParamsReserved = max(G->iniParamsReserved, param_idx + 1);
 

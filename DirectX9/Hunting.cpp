@@ -432,7 +432,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
     char apath[MAX_PATH];
     swprintf_s(fullName, MAX_PATH, L"%s\\%s", shaderFixPath, fileName);
 
-    WarnIfConflictingShaderExists(fullName);
+    warn_if_conflicting_shader_exists(fullName);
 
     HANDLE f = CreateFile(fullName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (f == INVALID_HANDLE_VALUE)
@@ -661,7 +661,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D9Wrapper::ID
             // Disassemble the binary to get that string.
             if (shaderModel.compare("bin") == 0)
             {
-                shaderModel = GetShaderModel(shaderCode->GetBufferPointer(), shaderCode->GetBufferSize());
+                shaderModel = get_shader_model(shaderCode->GetBufferPointer(), shaderCode->GetBufferSize());
                 if (shaderModel.empty())
                     goto err;
                 oldShader->originalShaderInfo.shaderModel = shaderModel;
@@ -889,7 +889,7 @@ static bool check_shader_file_already_exists(wchar_t *path, bool bin)
     if (attrib == INVALID_FILE_ATTRIBUTES)
         return false;
 
-    WarnIfConflictingShaderExists(path);
+    warn_if_conflicting_shader_exists(path);
 
     if (bin) {
         LogOverlay(LOG_NOTICE, "cached shader found, but lacks a matching .txt file: %S\n", path);
@@ -965,7 +965,7 @@ static void CopyToFixes(UINT64 hash, D3D9Wrapper::IDirect3DDevice9 *device)
                     LogOverlay(LOG_NOTICE, "> Failed to output constant table to ShaderFixes\n");
             }
 
-            asmText = BinaryToAsmText(iter->originalShaderInfo.byteCode->GetBufferPointer(), iter->originalShaderInfo.byteCode->GetBufferSize(), false);
+            asmText = binary_to_asm_text(iter->originalShaderInfo.byteCode->GetBufferPointer(), iter->originalShaderInfo.byteCode->GetBufferSize(), false);
             if (asmText.empty())
                 break;
 
@@ -998,7 +998,7 @@ static void CopyToFixes(UINT64 hash, D3D9Wrapper::IDirect3DDevice9 *device)
     {
         if (G->marking_actions & MarkingAction::HLSL || G->marking_actions & MarkingAction::ASM) {
             LogOverlay(LOG_WARNING, "> FAILED to copy Marked shader to ShaderFixes\n");
-            BeepFailure();
+            beep_failure();
         }
         if (constant_table_success)
             LogOverlay(LOG_NOTICE, "> successfully output constant table to ShaderFixes\n");
@@ -1114,7 +1114,7 @@ static void ReloadFixes(D3D9Wrapper::IDirect3DDevice9 *device, void *private_dat
         else
         {
             LogOverlay(LOG_WARNING, "> FAILED to reload shaders from ShaderFixes\n");
-            BeepFailure();
+            beep_failure();
         }
     }
 }
@@ -1184,7 +1184,7 @@ static void AnalyseFrame(D3D9Wrapper::IDirect3DDevice9 *device, void *private_da
     // Bail if the analysis directory already exists or can't be created.
     // This currently limits us to one / second, but that's probably
     // enough. We can always increase the granuality if needed.
-    if (!CreateDirectoryEnsuringAccess(path)) {
+    if (!create_directory_ensuring_access(path)) {
         LOG_INFO_W(L"Error creating frame analysis directory: %i\n", GetLastError());
         return;
     }

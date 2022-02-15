@@ -601,7 +601,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
     char apath[MAX_PATH];
     swprintf_s(fullName, MAX_PATH, L"%s\\%s", shaderFixPath, fileName);
 
-    WarnIfConflictingShaderExists(fullName);
+    warn_if_conflicting_shader_exists(fullName);
 
     HANDLE f = CreateFile(fullName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (f == INVALID_HANDLE_VALUE)
@@ -840,7 +840,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
             // Disassemble the binary to get that string.
             if (shaderModel.compare("bin") == 0)
             {
-                shaderModel = GetShaderModel(shaderCode->GetBufferPointer(), shaderCode->GetBufferSize());
+                shaderModel = get_shader_model(shaderCode->GetBufferPointer(), shaderCode->GetBufferSize());
                 if (shaderModel.empty())
                     goto err;
                 G->mReloadedShaders[oldShader].shaderModel = shaderModel;
@@ -1045,7 +1045,7 @@ static bool check_shader_file_already_exists(wchar_t *path, bool bin)
     if (attrib == INVALID_FILE_ATTRIBUTES)
         return false;
 
-    WarnIfConflictingShaderExists(path);
+    warn_if_conflicting_shader_exists(path);
 
     if (bin) {
         LogOverlay(LOG_NOTICE, "cached shader found, but lacks a matching .txt file: %S\n", path);
@@ -1119,7 +1119,7 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
                 // RDEF making it not all that useful to look at. Instead we will disassemble the
                 // original shader now (with RDEF assuming the game didn't strip that), run
                 // ShaderRegex and output that.
-                asmText = BinaryToAsmText(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize(), G->patch_cb_offsets);
+                asmText = binary_to_asm_text(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize(), G->patch_cb_offsets);
                 if (asmText.empty())
                     break;
                 wstring tagline(L"// MANUALLY DUMPED ");
@@ -1139,7 +1139,7 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
             if (G->marking_actions & MarkingAction::HLSL) {
                 // TODO: Allow the decompiler to parse the patched CB offsets
                 // and move this line back to the common code path:
-                asmText = BinaryToAsmText(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize(), false);
+                asmText = binary_to_asm_text(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize(), false);
                 if (asmText.empty())
                     break;
 
@@ -1152,7 +1152,7 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
             }
 
             if (asm_enabled) {
-                asmText = BinaryToAsmText(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize(), G->patch_cb_offsets);
+                asmText = binary_to_asm_text(iter.second.byteCode->GetBufferPointer(), iter.second.byteCode->GetBufferSize(), G->patch_cb_offsets);
                 if (asmText.empty())
                     break;
 
@@ -1181,7 +1181,7 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
     else
     {
         LogOverlay(LOG_WARNING, "> FAILED to copy Marked shader to ShaderFixes\n");
-        BeepFailure();
+        beep_failure();
     }
 }
 
@@ -1297,7 +1297,7 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
         else
         {
             LogOverlay(LOG_WARNING, "> FAILED to reload shaders from ShaderFixes\n");
-            BeepFailure();
+            beep_failure();
         }
     }
 }
@@ -1369,7 +1369,7 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
     // Bail if the analysis directory already exists or can't be created.
     // This currently limits us to one / second, but that's probably
     // enough. We can always increase the granuality if needed.
-    if (!CreateDirectoryEnsuringAccess(path)) {
+    if (!create_directory_ensuring_access(path)) {
         LOG_INFO_W(L"Error creating frame analysis directory: %i\n", GetLastError());
         return;
     }
