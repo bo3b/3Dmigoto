@@ -41,7 +41,7 @@ void Override::ParseIniSection(LPCWSTR section)
 
     GetIniSection(&section_vec, section, &migoto_ini);
     for (entry = section_vec->begin(); entry < section_vec->end(); entry++) {
-        if (ParseIniParamName(entry->first.c_str(), &param_idx, &param_component)) {
+        if (parse_ini_param_name(entry->first.c_str(), &param_idx, &param_component)) {
             val = GetIniFloat(section, entry->first.c_str(), FLT_MAX, NULL, &migoto_ini);
             if (val != FLT_MAX) {
                 mOverrideParams[OverrideParam(param_idx, param_component)] = val;
@@ -258,7 +258,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
 
     GetIniSection(&section_vec, section, &migoto_ini);
     for (entry = section_vec->begin(); entry < section_vec->end(); entry++) {
-        if (ParseIniParamName(entry->first.c_str(), &param_idx, &param_component)) {
+        if (parse_ini_param_name(entry->first.c_str(), &param_idx, &param_component)) {
             GetIniString(section, entry->first.c_str(), 0, &param_bufs[OverrideParam(param_idx, param_component)].buf, &migoto_ini);
         }
         else if (entry->first.c_str()[0] == L'$') {

@@ -152,7 +152,7 @@ void InitD39()
         wchar_t sysDir[MAX_PATH] = { 0 };
         if (!GetModuleFileName(0, sysDir, MAX_PATH)) {
             LOG_INFO("GetModuleFileName failed\n");
-            DoubleBeepExit();
+            double_beep_exit();
         }
         wcsrchr(sysDir, L'\\')[1] = 0;
         wcscat(sysDir, G->CHAIN_DLL_PATH);
@@ -206,7 +206,7 @@ void InitD39()
     if (hD3D == NULL)
     {
         LOG_INFO("*** LoadLibrary on original or chained d3d9.dll failed.\n");
-        DoubleBeepExit();
+        double_beep_exit();
     }
 
 }

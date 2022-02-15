@@ -4048,7 +4048,7 @@ bool CommandListOperand::Parse(const wstring *operand, const wstring *ini_namesp
     }
 
     // Try parsing operand as an ini param:
-    if (ParseIniParamName(operand->c_str(), &paramIdx, &paramComponent)) {
+    if (parse_ini_param_name(operand->c_str(), &paramIdx, &paramComponent)) {
         type = ParamOverrideType::INI_PARAM;
         // Reserve space in IniParams for this variable:
         G->iniParamsReserved = max(G->iniParamsReserved, paramIdx + 1);
@@ -4129,7 +4129,7 @@ bool parse_command_list_ini_param_override(const wchar_t *section,
 {
     ParamOverride *param = new ParamOverride();
 
-    if (!ParseIniParamName(key, &param->paramIdx, &param->paramComponent))
+    if (!parse_ini_param_name(key, &param->paramIdx, &param->paramComponent))
         goto bail;
 
     if (!param->expression.Parse(val, ini_namespace, command_list->scope))
@@ -4915,7 +4915,7 @@ static ID3D11Resource * inter_device_resource_transfer(ID3D11Device *dst_dev, ID
             }
             if (is_dsv_format(tex1d_desc.Format) > 0) {
                 LogOverlay(LOG_NOTICE, "Inter-device transfer of [%S] with depth/stencil format %s may or may not work. Please report success/failure.\n",
-                        name->c_str(), TexFormatStr(tex1d_desc.Format));
+                        name->c_str(), tex_format_str(tex1d_desc.Format));
             }
 
             dst_dev->CreateTexture1D(&tex1d_desc, NULL, (ID3D11Texture1D**)&dst_res);
@@ -4979,7 +4979,7 @@ static ID3D11Resource * inter_device_resource_transfer(ID3D11Device *dst_dev, ID
             }
             if (is_dsv_format(tex2d_desc.Format) > 0) {
                 LogOverlay(LOG_NOTICE, "Inter-device transfer of [%S] with depth/stencil format %s may or may not work. Please report success/failure.\n",
-                        name->c_str(), TexFormatStr(tex2d_desc.Format));
+                        name->c_str(), tex_format_str(tex2d_desc.Format));
             }
 
             dst_dev->CreateTexture2D(&tex2d_desc, NULL, (ID3D11Texture2D**)&dst_res);
@@ -6542,7 +6542,7 @@ static DXGI_FORMAT make_dsv_format(DXGI_FORMAT fmt)
             return DXGI_FORMAT_D16_UNORM;
 
         default:
-            return EnsureNotTypeless(fmt);
+            return ensure_not_typeless(fmt);
     }
 }
 
@@ -6575,7 +6575,7 @@ static DXGI_FORMAT make_non_dsv_format(DXGI_FORMAT fmt)
             return DXGI_FORMAT_R16_UNORM;
 
         default:
-            return EnsureNotTypeless(fmt);
+            return ensure_not_typeless(fmt);
     }
 }
 
@@ -7325,7 +7325,7 @@ static void resolve_msaa(ID3D11Resource *dst_resource, ID3D11Resource *src_resou
     dst = (ID3D11Texture2D*)dst_resource;
 
     dst->GetDesc(&desc);
-    fmt = EnsureNotTypeless(desc.Format);
+    fmt = ensure_not_typeless(desc.Format);
 
     hr = state->origDevice1->CheckFormatSupport( fmt, &support );
     if (FAILED(hr) || !(support & D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE)) {
