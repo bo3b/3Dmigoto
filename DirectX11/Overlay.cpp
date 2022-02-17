@@ -6,11 +6,13 @@
 #include <stdexcept>
 #include <DirectXColors.h>
 //#include <StrSafe.h>
+#include <stdexcept>
 
 #include "SimpleMath.h"
 #include "SpriteBatch.h"
 
 #include "log.h"
+#include "lock.h"
 #include "version.h"
 #include "D3D11Wrapper.h"
 //#include "nvapi.h"
@@ -600,7 +602,8 @@ static void CreateShaderCountString(wchar_t *counts)
 
 static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 {
-    for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> loaded in G->mReloadedShaders)
+    for (auto &loaded: G->mReloadedShaders)
+    //for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> loaded in G->mReloadedShaders)
     {
         if ((loaded.second.hash == selectedShader) && !loaded.second.infoText.empty())
         {
