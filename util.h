@@ -22,12 +22,11 @@
 #include "D3D_Shaders\stdafx.h"
 
 #if MIGOTO_DX == 11
-#include "DirectX11\HookedDevice.h"
-#include "DirectX11\HookedContext.h"
+    #include "DirectX11\HookedDevice.h"
+    #include "DirectX11\HookedContext.h"
 #elif MIGOTO_DX == 9
-#include "DirectX9\HookedDeviceDX9.h"
-#endif // MIGOTO_DX
-
+    #include "DirectX9\HookedDeviceDX9.h"
+#endif  // MIGOTO_DX
 
 // Sets the threshold for warning about IniParams size. The larger IniParams is
 // the more CPU -> GPU bandwidth we will require to update it, so we want to
@@ -75,10 +74,9 @@ extern CRITICAL_SECTION resource_creation_mode_lock;
         LeaveCriticalSection(&resource_creation_mode_lock)
 #endif
 
-
 // -----------------------------------------------------------------------------------------------
 
-// Create hash code for textures or buffers.  
+// Create hash code for textures or buffers.
 
 // Wrapped in try/catch because it can crash in Dirt Rally,
 // because of noncontiguous or non-mapped memory for the texture.  Not sure this
@@ -87,15 +85,15 @@ extern CRITICAL_SECTION resource_creation_mode_lock;
 // Now switching to use crc32_append instead of fnv_64_buf for performance. This
 // implementation of crc32c uses the SSE 4.2 instructions in the CPU to calculate,
 // and is some 30x faster than fnv_64_buf.
-// 
+//
 // Not changing shader hash calculation as there are thousands of shaders already
 // in the field, and there is no known bottleneck for that calculation.
 
-static uint32_t crc32c_hw(uint32_t seed, const void *buffer, size_t length)
+static uint32_t crc32c_hw(uint32_t seed, const void* buffer, size_t length)
 {
     try
     {
-        const uint8_t *cast_buffer = static_cast<const uint8_t*>(buffer);
+        const uint8_t* cast_buffer = static_cast<const uint8_t*>(buffer);
 
         return crc32c_append(seed, cast_buffer, length);
     }
@@ -107,18 +105,17 @@ static uint32_t crc32c_hw(uint32_t seed, const void *buffer, size_t length)
     }
 }
 
-
 // -----------------------------------------------------------------------------------------------
 
 // Primary hash calculation for all shader file names.
 
 // 64 bit magic FNV-0 and FNV-1 prime
 #define FNV_64_PRIME ((UINT64)0x100000001b3ULL)
-static UINT64 fnv_64_buf(const void *buf, size_t len)
+static UINT64 fnv_64_buf(const void* buf, size_t len)
 {
     UINT64 hval = 0;
-    unsigned const char *bp = (unsigned const char *)buf;    /* start of buffer */
-    unsigned const char *be = bp + len;        /* beyond end of buffer */
+    unsigned const char* bp = (unsigned const char*)buf; /* start of buffer */
+    unsigned const char* be = bp + len;                  /* beyond end of buffer */
 
     // FNV-1 hash each octet of the buffer
     while (bp < be)
@@ -131,59 +128,61 @@ static UINT64 fnv_64_buf(const void *buf, size_t len)
     return hval;
 }
 
-
 // -----------------------------------------------------------------------------------------------
 
 // Strip spaces from the right of a string.
 // Returns a pointer to the last non-NULL character of the truncated string.
-static char *right_strip_a(char *buf)
+static char* right_strip_a(char* buf)
 {
-    char *end = buf + strlen(buf) - 1;
+    char* end = buf + strlen(buf) - 1;
     while (end > buf && isspace(*end))
         end--;
     *(end + 1) = 0;
     return end;
 }
-static wchar_t *right_strip_w(wchar_t *buf)
+static wchar_t* right_strip_w(wchar_t* buf)
 {
-    wchar_t *end = buf + wcslen(buf) - 1;
+    wchar_t* end = buf + wcslen(buf) - 1;
     while (end > buf && iswspace(*end))
         end--;
     *(end + 1) = 0;
     return end;
 }
 
-static char *read_string_parameter(wchar_t *val)
+static char* read_string_parameter(wchar_t* val)
 {
     static char buf[MAX_PATH];
     wcstombs(buf, val, MAX_PATH);
     right_strip_a(buf);
-    char *start = buf; while (isspace(*start)) start++;
+    char* start = buf;
+    while (isspace(*start))
+        start++;
     return start;
 }
 
-static void beep_success() 
+static void beep_success()
 {
     // High beep for success
     Beep(1800, 400);
 }
 
-static void beep_short() 
+static void beep_short()
 {
     // Short High beep
     Beep(1800, 100);
 }
 
-static void beep_failure() 
+static void beep_failure()
 {
     // Bonk sound for failure.
     Beep(200, 150);
 }
 
-static void beep_sad_failure() 
+static void beep_sad_failure()
 {
     // Brnk, dunk sound for failure.
-    Beep(300, 200); Beep(200, 150);
+    Beep(300, 200);
+    Beep(200, 150);
 }
 
 static void beep_profile_fail()
@@ -206,7 +205,8 @@ static DECLSPEC_NORETURN void double_beep_exit()
     Sleep(500);
     beep_sad_failure();
     Sleep(200);
-    if (LogFile) {
+    if (LogFile)
+    {
         // Make sure the log is written out so we see the failure message
         fclose(LogFile);
         LogFile = 0;
@@ -214,14 +214,13 @@ static DECLSPEC_NORETURN void double_beep_exit()
     ExitProcess(0xc0000135);
 }
 
-
 // -----------------------------------------------------------------------------------------------
 
-static int _autoicmp(const wchar_t *s1, const wchar_t *s2)
+static int _autoicmp(const wchar_t* s1, const wchar_t* s2)
 {
     return _wcsicmp(s1, s2);
 }
-static int _autoicmp(const char *s1, const char *s2)
+static int _autoicmp(const char* s1, const char* s2)
 {
     return _stricmp(s1, s2);
 }
@@ -229,10 +228,12 @@ static int _autoicmp(const char *s1, const char *s2)
 // To use this function be sure to terminate an EnumName_t list with {NULL, 0}
 // as it cannot use ArraySize on passed in arrays.
 template <class T1, class T2>
-static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, T2 type, bool *found=NULL)
+static T2 lookup_enum_val(struct EnumName_t<T1, T2>* enum_names, T1 name, T2 type, bool* found = NULL)
 {
-    for (; enum_names->name; enum_names++) {
-        if (!_autoicmp(name, enum_names->name)) {
+    for (; enum_names->name; enum_names++)
+    {
+        if (!_autoicmp(name, enum_names->name))
+        {
             if (found)
                 *found = true;
             return enum_names->val;
@@ -245,10 +246,12 @@ static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, T2 typ
     return type;
 }
 template <class T1, class T2>
-static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, size_t len, T2 type, bool *found=NULL)
+static T2 lookup_enum_val(struct EnumName_t<T1, T2>* enum_names, T1 name, size_t len, T2 type, bool* found = NULL)
 {
-    for (; enum_names->name; enum_names++) {
-        if (!_wcsnicmp(name, enum_names->name, len)) {
+    for (; enum_names->name; enum_names++)
+    {
+        if (!_wcsnicmp(name, enum_names->name, len))
+        {
             if (found)
                 *found = true;
             return enum_names->val;
@@ -261,9 +264,10 @@ static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, size_t
     return type;
 }
 template <class T1, class T2>
-static T1 lookup_enum_name(struct EnumName_t<T1, T2> *enum_names, T2 val)
+static T1 lookup_enum_name(struct EnumName_t<T1, T2>* enum_names, T2 val)
 {
-    for (; enum_names->name; enum_names++) {
+    for (; enum_names->name; enum_names++)
+    {
         if (val == enum_names->val)
             return enum_names->name;
     }
@@ -272,13 +276,15 @@ static T1 lookup_enum_name(struct EnumName_t<T1, T2> *enum_names, T2 val)
 }
 
 template <class T2>
-static std::wstring lookup_enum_bit_names(struct EnumName_t<const wchar_t*, T2> *enum_names, T2 val)
+static std::wstring lookup_enum_bit_names(struct EnumName_t<const wchar_t*, T2>* enum_names, T2 val)
 {
     std::wstring ret;
     T2 remaining = val;
 
-    for (; enum_names->name; enum_names++) {
-        if ((T2)(val & enum_names->val) == enum_names->val) {
+    for (; enum_names->name; enum_names++)
+    {
+        if ((T2)(val & enum_names->val) == enum_names->val)
+        {
             if (!ret.empty())
                 ret += L' ';
             ret += enum_names->name;
@@ -286,7 +292,8 @@ static std::wstring lookup_enum_bit_names(struct EnumName_t<const wchar_t*, T2> 
         }
     }
 
-    if (remaining != (T2)0) {
+    if (remaining != (T2)0)
+    {
         wchar_t buf[20];
         wsprintf(buf, L"%x", remaining);
         if (!ret.empty())
@@ -308,7 +315,7 @@ static std::wstring lookup_enum_bit_names(struct EnumName_t<const wchar_t*, T2> 
 // unrecognised option will be returned. Multiple unrecognised options are
 // still considered errors.
 template <class T1, class T2, class T3>
-static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T3 option_string, T1 *unrecognised)
+static T2 parse_enum_option_string(struct EnumName_t<T1, T2>* enum_names, T3 option_string, T1* unrecognised)
 {
     T3 ptr = option_string, cur;
     T2 ret = (T2)0;
@@ -317,30 +324,42 @@ static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T3 opt
     if (unrecognised)
         *unrecognised = NULL;
 
-    while (*ptr) {
+    while (*ptr)
+    {
         // Skip over whitespace:
-        for (; *ptr == L' '; ptr++) {}
+        for (; *ptr == L' '; ptr++)
+        {
+        }
 
         // Mark start of current entry:
         cur = ptr;
 
         // Scan until the next whitespace or end of string:
-        for (; *ptr && *ptr != L' '; ptr++) {}
+        for (; *ptr && *ptr != L' '; ptr++)
+        {
+        }
 
-        if (*ptr) {
+        if (*ptr)
+        {
             // NULL terminate the current entry and advance pointer:
             *ptr = L'\0';
             ptr++;
         }
 
         // Lookup the value of the current entry:
-        tmp = lookup_enum_val<T1, T2> (enum_names, cur, T2::INVALID);
-        if (tmp != T2::INVALID) {
+        tmp = lookup_enum_val<T1, T2>(enum_names, cur, T2::INVALID);
+        if (tmp != T2::INVALID)
+        {
             ret |= tmp;
-        } else {
-            if (unrecognised && !(*unrecognised)) {
+        }
+        else
+        {
+            if (unrecognised && !(*unrecognised))
+            {
                 *unrecognised = cur;
-            } else {
+            }
+            else
+            {
                 LogOverlayW(LOG_WARNING, L"WARNING: Unknown option: %s\n", cur);
                 ret |= T2::INVALID;
             }
@@ -356,7 +375,7 @@ static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T3 opt
 // cannot use const, so the three argument template version above is to allow
 // both const and non-const types passed in.
 template <class T1, class T2>
-static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T1 option_string, T1 *unrecognised)
+static T2 parse_enum_option_string(struct EnumName_t<T1, T2>* enum_names, T1 option_string, T1* unrecognised)
 {
     return parse_enum_option_string<T1, T2, T1>(enum_names, option_string, unrecognised);
 }
@@ -365,7 +384,7 @@ static T2 parse_enum_option_string(struct EnumName_t<T1, T2> *enum_names, T1 opt
 // keyword and returns the position without throwing any errors. It also
 // doesn't modify the option_string, allowing it to be used with C++ strings.
 template <class T1, class T2>
-static T2 parse_enum_option_string_prefix(struct EnumName_t<T1, T2> *enum_names, T1 option_string, T1 *unrecognised)
+static T2 parse_enum_option_string_prefix(struct EnumName_t<T1, T2>* enum_names, T1 option_string, T1* unrecognised)
 {
     T1 ptr = option_string, cur;
     T2 ret = (T2)0;
@@ -375,15 +394,20 @@ static T2 parse_enum_option_string_prefix(struct EnumName_t<T1, T2> *enum_names,
     if (unrecognised)
         *unrecognised = NULL;
 
-    while (*ptr) {
+    while (*ptr)
+    {
         // Skip over whitespace:
-        for (; *ptr == L' '; ptr++) {}
+        for (; *ptr == L' '; ptr++)
+        {
+        }
 
         // Mark start of current entry:
         cur = ptr;
 
         // Scan until the next whitespace or end of string:
-        for (; *ptr && *ptr != L' '; ptr++) {}
+        for (; *ptr && *ptr != L' '; ptr++)
+        {
+        }
 
         // Note word length:
         len = ptr - cur;
@@ -393,10 +417,13 @@ static T2 parse_enum_option_string_prefix(struct EnumName_t<T1, T2> *enum_names,
             ptr++;
 
         // Lookup the value of the current entry:
-        tmp = lookup_enum_val<T1, T2> (enum_names, cur, len, T2::INVALID);
-        if (tmp != T2::INVALID) {
+        tmp = lookup_enum_val<T1, T2>(enum_names, cur, len, T2::INVALID);
+        if (tmp != T2::INVALID)
+        {
             ret |= tmp;
-        } else {
+        }
+        else
+        {
             if (unrecognised)
                 *unrecognised = cur;
             return ret;
@@ -407,7 +434,7 @@ static T2 parse_enum_option_string_prefix(struct EnumName_t<T1, T2> *enum_names,
 
 #if MIGOTO_DX == 11
 // http://msdn.microsoft.com/en-us/library/windows/desktop/bb173059(v=vs.85).aspx
-static char *DXGIFormats[] = {
+static char* DXGIFormats[] = {
     "UNKNOWN",
     "R32G32B32A32_TYPELESS",
     "R32G32B32A32_FLOAT",
@@ -526,20 +553,21 @@ static char *DXGIFormats[] = {
     "B4G4R4A4_UNORM"
 };
 
-static char *tex_format_str(unsigned int format)
+static char* tex_format_str(unsigned int format)
 {
     if (format < sizeof(DXGIFormats) / sizeof(DXGIFormats[0]))
         return DXGIFormats[format];
     return "UNKNOWN";
 }
 
-static DXGI_FORMAT parse_format_string(const char *fmt, bool allow_numeric_format)
+static DXGI_FORMAT parse_format_string(const char* fmt, bool allow_numeric_format)
 {
     size_t num_formats = sizeof(DXGIFormats) / sizeof(DXGIFormats[0]);
     unsigned format;
     int nargs, end;
 
-    if (allow_numeric_format) {
+    if (allow_numeric_format)
+    {
         // Try parsing format string as decimal:
         nargs = sscanf_s(fmt, "%u%n", &format, &end);
         if (nargs == 1 && end == strlen(fmt))
@@ -550,7 +578,8 @@ static DXGI_FORMAT parse_format_string(const char *fmt, bool allow_numeric_forma
         fmt += 12;
 
     // Look up format string:
-    for (format = 0; format < num_formats; format++) {
+    for (format = 0; format < num_formats; format++)
+    {
         if (!_strnicmp(fmt, DXGIFormats[format], 30))
             return (DXGI_FORMAT)format;
     }
@@ -560,7 +589,7 @@ static DXGI_FORMAT parse_format_string(const char *fmt, bool allow_numeric_forma
     return (DXGI_FORMAT)-1;
 }
 
-static DXGI_FORMAT parse_format_string(const wchar_t *wfmt, bool allow_numeric_format)
+static DXGI_FORMAT parse_format_string(const wchar_t* wfmt, bool allow_numeric_format)
 {
     char afmt[42];
 
@@ -574,40 +603,63 @@ static DXGI_FORMAT parse_format_string(const wchar_t *wfmt, bool allow_numeric_f
 static DXGI_FORMAT ensure_not_typeless(DXGI_FORMAT fmt)
 {
     // Assumes UNORM or FLOAT; doesn't use UINT or SINT
-    switch( fmt )
+    switch (fmt)
     {
-    case DXGI_FORMAT_R32G32B32A32_TYPELESS:    return DXGI_FORMAT_R32G32B32A32_FLOAT;
-    case DXGI_FORMAT_R32G32B32_TYPELESS:       return DXGI_FORMAT_R32G32B32_FLOAT;
-    case DXGI_FORMAT_R16G16B16A16_TYPELESS:    return DXGI_FORMAT_R16G16B16A16_UNORM;
-    case DXGI_FORMAT_R32G32_TYPELESS:          return DXGI_FORMAT_R32G32_FLOAT;
-    case DXGI_FORMAT_R10G10B10A2_TYPELESS:     return DXGI_FORMAT_R10G10B10A2_UNORM;
-    case DXGI_FORMAT_R8G8B8A8_TYPELESS:        return DXGI_FORMAT_R8G8B8A8_UNORM;
-    case DXGI_FORMAT_R16G16_TYPELESS:          return DXGI_FORMAT_R16G16_UNORM;
-    case DXGI_FORMAT_R32_TYPELESS:             return DXGI_FORMAT_R32_FLOAT;
-    case DXGI_FORMAT_R8G8_TYPELESS:            return DXGI_FORMAT_R8G8_UNORM;
-    case DXGI_FORMAT_R16_TYPELESS:             return DXGI_FORMAT_R16_UNORM;
-    case DXGI_FORMAT_R8_TYPELESS:              return DXGI_FORMAT_R8_UNORM;
-    case DXGI_FORMAT_BC1_TYPELESS:             return DXGI_FORMAT_BC1_UNORM;
-    case DXGI_FORMAT_BC2_TYPELESS:             return DXGI_FORMAT_BC2_UNORM;
-    case DXGI_FORMAT_BC3_TYPELESS:             return DXGI_FORMAT_BC3_UNORM;
-    case DXGI_FORMAT_BC4_TYPELESS:             return DXGI_FORMAT_BC4_UNORM;
-    case DXGI_FORMAT_BC5_TYPELESS:             return DXGI_FORMAT_BC5_UNORM;
-    case DXGI_FORMAT_B8G8R8A8_TYPELESS:        return DXGI_FORMAT_B8G8R8A8_UNORM;
-    case DXGI_FORMAT_B8G8R8X8_TYPELESS:        return DXGI_FORMAT_B8G8R8X8_UNORM;
-    case DXGI_FORMAT_BC7_TYPELESS:             return DXGI_FORMAT_BC7_UNORM;
-// Extra depth/stencil buffer formats not covered in DirectXTK (discards
-// stencil buffer to allow binding to a shader resource, alternatively we could
-// discard the depth buffer if we ever needed the stencil buffer):
-    case DXGI_FORMAT_R32G8X24_TYPELESS:        return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
-    case DXGI_FORMAT_R24G8_TYPELESS:           return DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-    default:                                   return fmt;
+        case DXGI_FORMAT_R32G32B32A32_TYPELESS:
+            return DXGI_FORMAT_R32G32B32A32_FLOAT;
+        case DXGI_FORMAT_R32G32B32_TYPELESS:
+            return DXGI_FORMAT_R32G32B32_FLOAT;
+        case DXGI_FORMAT_R16G16B16A16_TYPELESS:
+            return DXGI_FORMAT_R16G16B16A16_UNORM;
+        case DXGI_FORMAT_R32G32_TYPELESS:
+            return DXGI_FORMAT_R32G32_FLOAT;
+        case DXGI_FORMAT_R10G10B10A2_TYPELESS:
+            return DXGI_FORMAT_R10G10B10A2_UNORM;
+        case DXGI_FORMAT_R8G8B8A8_TYPELESS:
+            return DXGI_FORMAT_R8G8B8A8_UNORM;
+        case DXGI_FORMAT_R16G16_TYPELESS:
+            return DXGI_FORMAT_R16G16_UNORM;
+        case DXGI_FORMAT_R32_TYPELESS:
+            return DXGI_FORMAT_R32_FLOAT;
+        case DXGI_FORMAT_R8G8_TYPELESS:
+            return DXGI_FORMAT_R8G8_UNORM;
+        case DXGI_FORMAT_R16_TYPELESS:
+            return DXGI_FORMAT_R16_UNORM;
+        case DXGI_FORMAT_R8_TYPELESS:
+            return DXGI_FORMAT_R8_UNORM;
+        case DXGI_FORMAT_BC1_TYPELESS:
+            return DXGI_FORMAT_BC1_UNORM;
+        case DXGI_FORMAT_BC2_TYPELESS:
+            return DXGI_FORMAT_BC2_UNORM;
+        case DXGI_FORMAT_BC3_TYPELESS:
+            return DXGI_FORMAT_BC3_UNORM;
+        case DXGI_FORMAT_BC4_TYPELESS:
+            return DXGI_FORMAT_BC4_UNORM;
+        case DXGI_FORMAT_BC5_TYPELESS:
+            return DXGI_FORMAT_BC5_UNORM;
+        case DXGI_FORMAT_B8G8R8A8_TYPELESS:
+            return DXGI_FORMAT_B8G8R8A8_UNORM;
+        case DXGI_FORMAT_B8G8R8X8_TYPELESS:
+            return DXGI_FORMAT_B8G8R8X8_UNORM;
+        case DXGI_FORMAT_BC7_TYPELESS:
+            return DXGI_FORMAT_BC7_UNORM;
+            // Extra depth/stencil buffer formats not covered in DirectXTK (discards
+            // stencil buffer to allow binding to a shader resource, alternatively we could
+            // discard the depth buffer if we ever needed the stencil buffer):
+        case DXGI_FORMAT_R32G8X24_TYPELESS:
+            return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+        case DXGI_FORMAT_R24G8_TYPELESS:
+            return DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+        default:
+            return fmt;
     }
 }
 
 // Is there already a utility function that does this?
 static UINT dxgi_format_size(DXGI_FORMAT format)
 {
-    switch (format) {
+    switch (format)
+    {
         case DXGI_FORMAT_R32G32B32A32_TYPELESS:
         case DXGI_FORMAT_R32G32B32A32_FLOAT:
         case DXGI_FORMAT_R32G32B32A32_UINT:
@@ -696,11 +748,10 @@ static UINT dxgi_format_size(DXGI_FORMAT format)
     }
 }
 
-
-static const char* type_name(IUnknown *object)
+static const char* type_name(IUnknown* object)
 {
-    ID3D11Device1 *device;
-    ID3D11DeviceContext1 *context;
+    ID3D11Device1* device;
+    ID3D11DeviceContext1* context;
 
     // Seems that not even try / catch is safe in all cases of this
     // (grumble grumble poorly designed grumble...). The only cases where
@@ -715,20 +766,25 @@ static const char* type_name(IUnknown *object)
     if (context)
         return "Hooked_ID3D11DeviceContext";
 
-    try {
+    try
+    {
         return typeid(*object).name();
-    } catch (std::__non_rtti_object) {
+    }
+    catch (std::__non_rtti_object)
+    {
         return "<NO_RTTI>";
-    } catch(std::bad_typeid) {
+    }
+    catch (std::bad_typeid)
+    {
         return "<NULL>";
     }
 }
-#endif // MIGOTO_DX == 11
+#endif  // MIGOTO_DX == 11
 
 #if MIGOTO_DX == 9
-static const char* type_name_dx9(IUnknown *object)
+static const char* type_name_dx9(IUnknown* object)
 {
-    IDirect3DDevice9 *device;
+    IDirect3DDevice9* device;
 
     // Seems that not even try / catch is safe in all cases of this
     // (grumble grumble poorly designed grumble...). The only cases where
@@ -740,30 +796,29 @@ static const char* type_name_dx9(IUnknown *object)
     if (device)
         return "Hooked_IDirect3DDevice9";
 
-    try {
+    try
+    {
         return typeid(*object).name();
     }
-    catch (std::__non_rtti_object) {
+    catch (std::__non_rtti_object)
+    {
         return "<NO_RTTI>";
     }
-    catch (std::bad_typeid) {
+    catch (std::bad_typeid)
+    {
         return "<NULL>";
     }
 }
-#endif // MIGOTO_DX == 9
+#endif  // MIGOTO_DX == 9
 // -----------------------------------------------------------------------------------------------
 
 // Common routine to handle disassembling binary shaders to asm text.
 // This is used whenever we need the Asm text.
 
-
 // New version using Flugan's wrapper around D3DDisassemble to replace the
 // problematic %f floating point values with %.9e, which is enough that a 32bit
 // floating point value will be reproduced exactly:
-static std::string binary_to_asm_text(const void *shader_bytecode, size_t bytecode_length,
-        bool patch_cb_offsets,
-        bool disassemble_undecipherable_data = true,
-        int hexdump = 0, bool d3dcompiler_46_compat = true)
+static std::string binary_to_asm_text(const void* shader_bytecode, size_t bytecode_length, bool patch_cb_offsets, bool disassemble_undecipherable_data = true, int hexdump = 0, bool d3dcompiler_46_compat = true)
 {
     std::string comments;
     std::vector<byte> byte_code(bytecode_length);
@@ -776,10 +831,10 @@ static std::string binary_to_asm_text(const void *shader_bytecode, size_t byteco
 #if MIGOTO_DX == 9
     r = disassemblerDX9(&byte_code, &disassembly, comments.c_str());
 #elif MIGOTO_DX == 11
-    r = disassembler(&byte_code, &disassembly, comments.c_str(), hexdump,
-            d3dcompiler_46_compat, disassemble_undecipherable_data, patch_cb_offsets);
-#endif // MIGOTO_DX
-    if (FAILED(r)) {
+    r = disassembler(&byte_code, &disassembly, comments.c_str(), hexdump, d3dcompiler_46_compat, disassemble_undecipherable_data, patch_cb_offsets);
+#endif  // MIGOTO_DX
+    if (FAILED(r))
+    {
         LOG_INFO("  disassembly failed. Error: %x\n", r);
         return "";
     }
@@ -798,63 +853,65 @@ static std::string binary_to_asm_text(const void *shader_bytecode, size_t byteco
 // This is an interesting idea, but doesn't work well here because of project structure.
 // for the moment, let's leave this here, but use the disassemble search approach.
 
-//static string GetShaderModel(const void *shader_bytecode)
+// static string GetShaderModel(const void *shader_bytecode)
 //{
-//    Shader *shader = DecodeDXBC((uint32_t*)shader_bytecode);
-//    if (shader == nullptr)
-//        return "";
+//     Shader *shader = DecodeDXBC((uint32_t*)shader_bytecode);
+//     if (shader == nullptr)
+//         return "";
 //
-//    string shaderModel;
-//    
-//    switch (shader->eShaderType)
-//    {
-//    case PIXEL_SHADER:
-//        shaderModel = "ps";
-//        break;
-//    case VERTEX_SHADER:
-//        shaderModel = "vs";
-//        break;
-//    case GEOMETRY_SHADER:
-//        shaderModel = "gs";
-//        break;
-//    case HULL_SHADER:
-//        shaderModel = "hs";
-//        break;
-//    case DOMAIN_SHADER:
-//        shaderModel = "ds";
-//        break;
-//    case COMPUTE_SHADER:
-//        shaderModel = "cs";
-//        break;
-//    default:
-//        return "";        // Failure.
-//    }
+//     string shaderModel;
 //
-//    shaderModel += "_" + shader->ui32MajorVersion;
-//    shaderModel += "_" + shader->ui32MinorVersion;
+//     switch (shader->eShaderType)
+//     {
+//     case PIXEL_SHADER:
+//         shaderModel = "ps";
+//         break;
+//     case VERTEX_SHADER:
+//         shaderModel = "vs";
+//         break;
+//     case GEOMETRY_SHADER:
+//         shaderModel = "gs";
+//         break;
+//     case HULL_SHADER:
+//         shaderModel = "hs";
+//         break;
+//     case DOMAIN_SHADER:
+//         shaderModel = "ds";
+//         break;
+//     case COMPUTE_SHADER:
+//         shaderModel = "cs";
+//         break;
+//     default:
+//         return "";        // Failure.
+//     }
 //
-//    delete shader;
+//     shaderModel += "_" + shader->ui32MajorVersion;
+//     shaderModel += "_" + shader->ui32MinorVersion;
 //
-//    return shaderModel;
-//}
+//     delete shader;
+//
+//     return shaderModel;
+// }
 
-static std::string get_shader_model(const void *shader_bytecode, size_t bytecode_length)
+static std::string get_shader_model(const void* shader_bytecode, size_t bytecode_length)
 {
     std::string asm_text = binary_to_asm_text(shader_bytecode, bytecode_length, false);
     if (asm_text.empty())
         return "";
 
     // Read shader model. This is the first not commented line.
-    char *pos = (char *)asm_text.data();
-    char *end = pos + asm_text.size();
+    char* pos = (char*)asm_text.data();
+    char* end = pos + asm_text.size();
     while ((pos[0] == '/' || pos[0] == '\n') && pos < end)
     {
-        while (pos[0] != 0x0a && pos < end) pos++;
+        while (pos[0] != 0x0a && pos < end)
+            pos++;
         pos++;
     }
     // Extract model.
-    char *eol = pos;
-    while (eol[0] != 0x0a && pos < end) eol++;
+    char* eol = pos;
+    while (eol[0] != 0x0a && pos < end)
+        eol++;
     std::string shader_model(pos, eol);
 
     return shader_model;
@@ -868,11 +925,12 @@ static std::string get_shader_model(const void *shader_bytecode, size_t bytecode
 // We previously would overwrite the file only after checking if the contents were different,
 // this relaxes that to just being same file name.
 
-static HRESULT create_text_file(wchar_t *full_path, std::string *asm_text, bool overwrite)
+static HRESULT create_text_file(wchar_t* full_path, std::string* asm_text, bool overwrite)
 {
-    FILE *f;
+    FILE* f;
 
-    if (!overwrite) {
+    if (!overwrite)
+    {
         _wfopen_s(&f, full_path, L"rb");
         if (f)
         {
@@ -894,7 +952,6 @@ static HRESULT create_text_file(wchar_t *full_path, std::string *asm_text, bool 
 
 // Get shader type from asm, first non-commented line.  CS, PS, VS.
 // Not sure this works on weird Unity variant with embedded types.
-
 
 // Specific variant to name files consistently, so we know they are Asm text.
 
@@ -921,13 +978,12 @@ static HRESULT create_asm_text_file(wchar_t* file_directory, UINT64 hash, const 
 
 static HRESULT create_hlsl_text_file(UINT64 hash, std::string hlsl_text)
 {
-
 }
 
 // -----------------------------------------------------------------------------------------------
 
 // Parses the name of one of the IniParam constants: x, y, z, w, x1, y1, ..., z7, w7
-static bool parse_ini_param_name(const wchar_t *name, int *idx, float DirectX::XMFLOAT4::**component)
+static bool parse_ini_param_name(const wchar_t* name, int* idx, float DirectX::XMFLOAT4::** component)
 {
     int ret, len1, len2;
     wchar_t component_chr;
@@ -937,20 +993,26 @@ static bool parse_ini_param_name(const wchar_t *name, int *idx, float DirectX::X
 
     // May or may not have matched index. Make sure entire string was
     // matched either way and check index is valid if it was matched:
-    if (ret == 1 && len1 == length) {
+    if (ret == 1 && len1 == length)
+    {
         *idx = 0;
-    } else if (ret == 2 && len2 == length) {
+    }
+    else if (ret == 2 && len2 == length)
+    {
 #if MIGOTO_DX == 9
         // Added gating for this DX9 specific limitation that we definitely do
         // not want to enforce in DX11 as that would break a bunch of mods -DSS
         if (*idx >= 225)
             return false;
-#endif // MIGOTO_DX == 9
-    } else {
+#endif  // MIGOTO_DX == 9
+    }
+    else
+    {
         return false;
     }
 
-    switch (towlower(component_chr)) {
+    switch (towlower(component_chr))
+    {
         case L'x':
             *component = &DirectX::XMFLOAT4::x;
             return true;
@@ -971,13 +1033,13 @@ static bool parse_ini_param_name(const wchar_t *name, int *idx, float DirectX::X
 // -----------------------------------------------------------------------------------------------
 
 BOOL create_directory_ensuring_access(LPCWSTR path);
-errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t *filename, const wchar_t *mode);
-void set_file_last_write_time(wchar_t *path, FILETIME *ft_write, DWORD flags=0);
-void touch_file(wchar_t *path, DWORD flags=0);
+errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t* filename, const wchar_t* mode);
+void set_file_last_write_time(wchar_t* path, FILETIME* ft_write, DWORD flags = 0);
+void touch_file(wchar_t* path, DWORD flags = 0);
 void touch_dir(wchar_t* path);
 
-bool check_interface_supported(IUnknown *unknown, REFIID riid);
-void analyse_iunknown(IUnknown *unknown);
+bool check_interface_supported(IUnknown* unknown, REFIID riid);
+void analyse_iunknown(IUnknown* unknown);
 
 // TODO: For the time being, since we are not setup to use the Win10 SDK, we'll add
 // these manually. Some games under Win10 are requesting these.
@@ -990,32 +1052,33 @@ struct _declspec(uuid("3D585D5A-BD4A-489E-B1F4-3DBCB6452FFB")) IDXGISwapChain4;
 
 std::string name_from_IID(IID id);
 
-void warn_if_conflicting_shader_exists(wchar_t *orig_path, const char *message = "");
-static const char *end_user_conflicting_shader_msg =
+void warn_if_conflicting_shader_exists(wchar_t* orig_path, const char* message = "");
+static const char* end_user_conflicting_shader_msg =
     "Conflicting shaders present - please use uninstall.bat and reinstall the fix.\n";
 
-struct OMState {
+struct OMState
+{
     UINT NumRTVs;
 #if MIGOTO_DX == 9
     std::vector<IDirect3DSurface9*> rtvs;
-    IDirect3DSurface9 *dsv;
+    IDirect3DSurface9* dsv;
 #elif MIGOTO_DX == 11
-    ID3D11RenderTargetView *rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
-    ID3D11DepthStencilView *dsv;
+    ID3D11RenderTargetView* rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
+    ID3D11DepthStencilView* dsv;
     UINT UAVStartSlot;
     UINT NumUAVs;
-    ID3D11UnorderedAccessView *uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
-#endif // MIGOTO_DX
+    ID3D11UnorderedAccessView* uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
+#endif  // MIGOTO_DX
 };
 
 // TODO: Could use DX version specific typedefs for these differences
 #if MIGOTO_DX == 9
-void save_om_state(IDirect3DDevice9 *device, struct OMState *state);
-void restore_om_state(IDirect3DDevice9 *device, struct OMState *state);
+void save_om_state(IDirect3DDevice9* device, struct OMState* state);
+void restore_om_state(IDirect3DDevice9* device, struct OMState* state);
 #elif MIGOTO_DX == 11
-void save_om_state(ID3D11DeviceContext *context, struct OMState *state);
-void restore_om_state(ID3D11DeviceContext *context, struct OMState *state);
-#endif // MIGOTO_DX
+void save_om_state(ID3D11DeviceContext* context, struct OMState* state);
+void restore_om_state(ID3D11DeviceContext* context, struct OMState* state);
+#endif  // MIGOTO_DX
 
 // -----------------------------------------------------------------------------------------------
 #if MIGOTO_DX == 9
@@ -1077,46 +1140,47 @@ static std::map<int, char*> d3d_formats = {
     { 199, "BINARYBUFFER " }
 };
 
-static char *tex_format_str_dx9(D3DFORMAT format)
+static char* tex_format_str_dx9(D3DFORMAT format)
 {
-    switch (format) {
-    case MAKEFOURCC('U', 'Y', 'V', 'Y'):
-        return "UYVY";
-    case MAKEFOURCC('R', 'G', 'B', 'G'):
-        return "R8G8_B8G8";
-    case MAKEFOURCC('Y', 'U', 'Y', '2'):
-        return "YUY2";
-    case MAKEFOURCC('G', 'R', 'G', 'B'):
-        return "G8R8_G8B8";
-    case MAKEFOURCC('D', 'X', 'T', '1'):
-        return "DXT1";
-    case MAKEFOURCC('D', 'X', 'T', '2'):
-        return "DXT2";
-    case MAKEFOURCC('D', 'X', 'T', '3'):
-        return "DXT3";
-    case MAKEFOURCC('D', 'X', 'T', '4'):
-        return "DXT4";
-    case MAKEFOURCC('D', 'X', 'T', '5'):
-        return "DXT5";
-    case MAKEFOURCC('M', 'E', 'T', '1'):
-        return "MULTI2_ARGB8";
-    default:
-        std::map<int, char*>::iterator it;
-        it = d3d_formats.find(format);
-        if (it != d3d_formats.end())
-            return it->second;
-        return "UNKNOWN";
-
+    switch (format)
+    {
+        case MAKEFOURCC('U', 'Y', 'V', 'Y'):
+            return "UYVY";
+        case MAKEFOURCC('R', 'G', 'B', 'G'):
+            return "R8G8_B8G8";
+        case MAKEFOURCC('Y', 'U', 'Y', '2'):
+            return "YUY2";
+        case MAKEFOURCC('G', 'R', 'G', 'B'):
+            return "G8R8_G8B8";
+        case MAKEFOURCC('D', 'X', 'T', '1'):
+            return "DXT1";
+        case MAKEFOURCC('D', 'X', 'T', '2'):
+            return "DXT2";
+        case MAKEFOURCC('D', 'X', 'T', '3'):
+            return "DXT3";
+        case MAKEFOURCC('D', 'X', 'T', '4'):
+            return "DXT4";
+        case MAKEFOURCC('D', 'X', 'T', '5'):
+            return "DXT5";
+        case MAKEFOURCC('M', 'E', 'T', '1'):
+            return "MULTI2_ARGB8";
+        default:
+            std::map<int, char*>::iterator it;
+            it = d3d_formats.find(format);
+            if (it != d3d_formats.end())
+                return it->second;
+            return "UNKNOWN";
     }
 }
 
-static D3DFORMAT parse_format_string_dx9(const char *fmt, bool allow_numeric_format)
+static D3DFORMAT parse_format_string_dx9(const char* fmt, bool allow_numeric_format)
 {
     size_t num_formats = d3d_formats.size();
     unsigned format;
     int nargs, end;
 
-    if (allow_numeric_format) {
+    if (allow_numeric_format)
+    {
         // Try parsing format string as decimal:
         nargs = sscanf_s(fmt, "%u%n", &format, &end);
         if (nargs == 1 && end == strlen(fmt))
@@ -1135,10 +1199,10 @@ static D3DFORMAT parse_format_string_dx9(const char *fmt, bool allow_numeric_for
     }
     // UNKNOWN/0 is a valid format (e.g. for structured buffers), so return
     // -1 cast to a DXGI_FORMAT to signify an error:
-    return (D3DFORMAT) - 1;
+    return (D3DFORMAT)-1;
 }
 
-static D3DFORMAT parse_format_string_dx9(const wchar_t *wfmt, bool allow_numeric_format)
+static D3DFORMAT parse_format_string_dx9(const wchar_t* wfmt, bool allow_numeric_format)
 {
     char afmt[42];
 
@@ -1151,320 +1215,328 @@ inline size_t bits_per_pixel(_In_ D3DFORMAT fmt)
 {
     switch (fmt)
     {
-    case D3DFMT_A32B32G32R32F:
-    case D3DFMT_DXT2:
-    case D3DFMT_DXT3:
-    case D3DFMT_DXT4:
-    case D3DFMT_DXT5:
-        128;
-    case D3DFMT_A16B16G16R16:
-    case D3DFMT_Q16W16V16U16:
-    case D3DFMT_A16B16G16R16F:
-    case D3DFMT_G32R32F:
-    case D3DFMT_DXT1:
-        64;
-    case D3DFMT_A2B10G10R10:
-    case D3DFMT_A8B8G8R8:
-    case D3DFMT_X8B8G8R8:
-    case D3DFMT_G16R16:
-    case D3DFMT_A2R10G10B10:
-    case D3DFMT_V16U16:
-    case D3DFMT_A2W10V10U10:
-    case D3DFMT_A8R8G8B8:
-    case D3DFMT_X8R8G8B8:
-    case D3DFMT_X8L8V8U8:
-    case D3DFMT_Q8W8V8U8:
-    case D3DFMT_D32:
-    case D3DFMT_D24S8:
-    case D3DFMT_D24X8:
-    case D3DFMT_D24X4S4:
-    case D3DFMT_D32F_LOCKABLE:
-    case D3DFMT_D24FS8:
-    case D3DFMT_D32_LOCKABLE:
-    case D3DFMT_INDEX32:
-    case D3DFMT_G16R16F:
-    case D3DFMT_R32F:
-    case D3DFMT_A2B10G10R10_XR_BIAS:
-    case D3DFMT_UYVY:
-    case D3DFMT_YUY2:
-        32;
-    case D3DFMT_R8G8B8:
-        24;
-    case D3DFMT_R5G6B5:
-    case D3DFMT_X1R5G5B5:
-    case D3DFMT_A1R5G5B5:
-    case D3DFMT_A4R4G4B4:
-    case D3DFMT_A8R3G3B2:
-    case D3DFMT_X4R4G4B4:
-    case D3DFMT_A8P8:
-    case D3DFMT_A8L8:
-    case D3DFMT_V8U8:
-    case D3DFMT_L6V5U5:
-    case D3DFMT_D16_LOCKABLE:
-    case D3DFMT_D15S1:
-    case D3DFMT_D16:
-    case D3DFMT_L16:
-    case D3DFMT_INDEX16:
-    case D3DFMT_R16F:
-    case D3DFMT_CxV8U8:
-    case D3DFMT_R8G8_B8G8:
-    case D3DFMT_G8R8_G8B8:
-        16;
-    case D3DFMT_R3G3B2:
-    case D3DFMT_A8:
-    case D3DFMT_P8:
-    case D3DFMT_L8:
-    case D3DFMT_A4L4:
-    case D3DFMT_S8_LOCKABLE:
-        8;
-    default:
-        return 0;
+        case D3DFMT_A32B32G32R32F:
+        case D3DFMT_DXT2:
+        case D3DFMT_DXT3:
+        case D3DFMT_DXT4:
+        case D3DFMT_DXT5:
+            128;
+        case D3DFMT_A16B16G16R16:
+        case D3DFMT_Q16W16V16U16:
+        case D3DFMT_A16B16G16R16F:
+        case D3DFMT_G32R32F:
+        case D3DFMT_DXT1:
+            64;
+        case D3DFMT_A2B10G10R10:
+        case D3DFMT_A8B8G8R8:
+        case D3DFMT_X8B8G8R8:
+        case D3DFMT_G16R16:
+        case D3DFMT_A2R10G10B10:
+        case D3DFMT_V16U16:
+        case D3DFMT_A2W10V10U10:
+        case D3DFMT_A8R8G8B8:
+        case D3DFMT_X8R8G8B8:
+        case D3DFMT_X8L8V8U8:
+        case D3DFMT_Q8W8V8U8:
+        case D3DFMT_D32:
+        case D3DFMT_D24S8:
+        case D3DFMT_D24X8:
+        case D3DFMT_D24X4S4:
+        case D3DFMT_D32F_LOCKABLE:
+        case D3DFMT_D24FS8:
+        case D3DFMT_D32_LOCKABLE:
+        case D3DFMT_INDEX32:
+        case D3DFMT_G16R16F:
+        case D3DFMT_R32F:
+        case D3DFMT_A2B10G10R10_XR_BIAS:
+        case D3DFMT_UYVY:
+        case D3DFMT_YUY2:
+            32;
+        case D3DFMT_R8G8B8:
+            24;
+        case D3DFMT_R5G6B5:
+        case D3DFMT_X1R5G5B5:
+        case D3DFMT_A1R5G5B5:
+        case D3DFMT_A4R4G4B4:
+        case D3DFMT_A8R3G3B2:
+        case D3DFMT_X4R4G4B4:
+        case D3DFMT_A8P8:
+        case D3DFMT_A8L8:
+        case D3DFMT_V8U8:
+        case D3DFMT_L6V5U5:
+        case D3DFMT_D16_LOCKABLE:
+        case D3DFMT_D15S1:
+        case D3DFMT_D16:
+        case D3DFMT_L16:
+        case D3DFMT_INDEX16:
+        case D3DFMT_R16F:
+        case D3DFMT_CxV8U8:
+        case D3DFMT_R8G8_B8G8:
+        case D3DFMT_G8R8_G8B8:
+            16;
+        case D3DFMT_R3G3B2:
+        case D3DFMT_A8:
+        case D3DFMT_P8:
+        case D3DFMT_L8:
+        case D3DFMT_A4L4:
+        case D3DFMT_S8_LOCKABLE:
+            8;
+        default:
+            return 0;
     }
 }
-static UINT d3d_format_bytes(D3DFORMAT format) {
-
-    switch (format) {
-    case D3DFMT_A32B32G32R32F:
-    case D3DFMT_DXT2:
-    case D3DFMT_DXT3:
-    case D3DFMT_DXT4:
-    case D3DFMT_DXT5:
-        16;
-    case D3DFMT_A16B16G16R16:
-    case D3DFMT_Q16W16V16U16:
-    case D3DFMT_A16B16G16R16F:
-    case D3DFMT_G32R32F:
-    case D3DFMT_DXT1:
-        8;
-    case D3DFMT_A2B10G10R10:
-    case D3DFMT_A8B8G8R8:
-    case D3DFMT_X8B8G8R8:
-    case D3DFMT_G16R16:
-    case D3DFMT_A2R10G10B10:
-    case D3DFMT_V16U16:
-    case D3DFMT_A2W10V10U10:
-    case D3DFMT_A8R8G8B8:
-    case D3DFMT_X8R8G8B8:
-    case D3DFMT_X8L8V8U8:
-    case D3DFMT_Q8W8V8U8:
-    case D3DFMT_D32:
-    case D3DFMT_D24S8:
-    case D3DFMT_D24X8:
-    case D3DFMT_D24X4S4:
-    case D3DFMT_D32F_LOCKABLE:
-    case D3DFMT_D24FS8:
-    case D3DFMT_D32_LOCKABLE:
-    case D3DFMT_INDEX32:
-    case D3DFMT_G16R16F:
-    case D3DFMT_R32F:
-    case D3DFMT_A2B10G10R10_XR_BIAS:
-    case D3DFMT_UYVY:
-    case D3DFMT_YUY2:
-        4;
-    case D3DFMT_R8G8B8:
-        3;
-    case D3DFMT_R5G6B5:
-    case D3DFMT_X1R5G5B5:
-    case D3DFMT_A1R5G5B5:
-    case D3DFMT_A4R4G4B4:
-    case D3DFMT_A8R3G3B2:
-    case D3DFMT_X4R4G4B4:
-    case D3DFMT_A8P8:
-    case D3DFMT_A8L8:
-    case D3DFMT_V8U8:
-    case D3DFMT_L6V5U5:
-    case D3DFMT_D16_LOCKABLE:
-    case D3DFMT_D15S1:
-    case D3DFMT_D16:
-    case D3DFMT_L16:
-    case D3DFMT_INDEX16:
-    case D3DFMT_R16F:
-    case D3DFMT_CxV8U8:
-    case D3DFMT_R8G8_B8G8:
-    case D3DFMT_G8R8_G8B8:
-        2;
-    case D3DFMT_R3G3B2:
-    case D3DFMT_A8:
-    case D3DFMT_P8:
-    case D3DFMT_L8:
-    case D3DFMT_A4L4:
-    case D3DFMT_S8_LOCKABLE:
-        1;
-    default:
-        return 0;
-    }
-
-}
-static UINT byte_size_from_d3d_type(D3DDECLTYPE type) {
-    switch (type) {
-    case D3DDECLTYPE_FLOAT1:
-        return sizeof(float);
-    case D3DDECLTYPE_FLOAT2:
-        return 2 * sizeof(float);
-    case D3DDECLTYPE_FLOAT3:
-        return 3 * sizeof(float);
-    case D3DDECLTYPE_FLOAT4:
-        return 4 * sizeof(float);
-    case D3DDECLTYPE_D3DCOLOR:
-    case D3DDECLTYPE_UBYTE4:
-    case D3DDECLTYPE_UBYTE4N:
-        return 4 * sizeof(BYTE);
-    case D3DDECLTYPE_SHORT2:
-    case D3DDECLTYPE_SHORT2N:
-    case D3DDECLTYPE_USHORT2N:
-    case D3DDECLTYPE_FLOAT16_2:
-        return 2 * sizeof(short int);
-    case D3DDECLTYPE_SHORT4:
-    case D3DDECLTYPE_SHORT4N:
-    case D3DDECLTYPE_USHORT4N:
-    case D3DDECLTYPE_FLOAT16_4:
-        return 4 * sizeof(short int);
-    case D3DDECLTYPE_UDEC3:
-    case D3DDECLTYPE_DEC3N:
-        return 3 * sizeof(short int);
-    case D3DDECLTYPE_UNUSED:
-        return 0;
-    default:
-        return NULL;
+static UINT d3d_format_bytes(D3DFORMAT format)
+{
+    switch (format)
+    {
+        case D3DFMT_A32B32G32R32F:
+        case D3DFMT_DXT2:
+        case D3DFMT_DXT3:
+        case D3DFMT_DXT4:
+        case D3DFMT_DXT5:
+            16;
+        case D3DFMT_A16B16G16R16:
+        case D3DFMT_Q16W16V16U16:
+        case D3DFMT_A16B16G16R16F:
+        case D3DFMT_G32R32F:
+        case D3DFMT_DXT1:
+            8;
+        case D3DFMT_A2B10G10R10:
+        case D3DFMT_A8B8G8R8:
+        case D3DFMT_X8B8G8R8:
+        case D3DFMT_G16R16:
+        case D3DFMT_A2R10G10B10:
+        case D3DFMT_V16U16:
+        case D3DFMT_A2W10V10U10:
+        case D3DFMT_A8R8G8B8:
+        case D3DFMT_X8R8G8B8:
+        case D3DFMT_X8L8V8U8:
+        case D3DFMT_Q8W8V8U8:
+        case D3DFMT_D32:
+        case D3DFMT_D24S8:
+        case D3DFMT_D24X8:
+        case D3DFMT_D24X4S4:
+        case D3DFMT_D32F_LOCKABLE:
+        case D3DFMT_D24FS8:
+        case D3DFMT_D32_LOCKABLE:
+        case D3DFMT_INDEX32:
+        case D3DFMT_G16R16F:
+        case D3DFMT_R32F:
+        case D3DFMT_A2B10G10R10_XR_BIAS:
+        case D3DFMT_UYVY:
+        case D3DFMT_YUY2:
+            4;
+        case D3DFMT_R8G8B8:
+            3;
+        case D3DFMT_R5G6B5:
+        case D3DFMT_X1R5G5B5:
+        case D3DFMT_A1R5G5B5:
+        case D3DFMT_A4R4G4B4:
+        case D3DFMT_A8R3G3B2:
+        case D3DFMT_X4R4G4B4:
+        case D3DFMT_A8P8:
+        case D3DFMT_A8L8:
+        case D3DFMT_V8U8:
+        case D3DFMT_L6V5U5:
+        case D3DFMT_D16_LOCKABLE:
+        case D3DFMT_D15S1:
+        case D3DFMT_D16:
+        case D3DFMT_L16:
+        case D3DFMT_INDEX16:
+        case D3DFMT_R16F:
+        case D3DFMT_CxV8U8:
+        case D3DFMT_R8G8_B8G8:
+        case D3DFMT_G8R8_G8B8:
+            2;
+        case D3DFMT_R3G3B2:
+        case D3DFMT_A8:
+        case D3DFMT_P8:
+        case D3DFMT_L8:
+        case D3DFMT_A4L4:
+        case D3DFMT_S8_LOCKABLE:
+            1;
+        default:
+            return 0;
     }
 }
-
-static DWORD decl_type_to_FVF(D3DDECLTYPE type, D3DDECLUSAGE usage, BYTE usage_index, int n_weights) {
-    switch (type) {
-    case D3DDECLTYPE_FLOAT3:
-        switch (usage) {
-        case D3DDECLUSAGE_POSITION:
-            return D3DFVF_XYZ;
-        case D3DDECLUSAGE_NORMAL:
-            return D3DFVF_NORMAL;
+static UINT byte_size_from_d3d_type(D3DDECLTYPE type)
+{
+    switch (type)
+    {
+        case D3DDECLTYPE_FLOAT1:
+            return sizeof(float);
+        case D3DDECLTYPE_FLOAT2:
+            return 2 * sizeof(float);
+        case D3DDECLTYPE_FLOAT3:
+            return 3 * sizeof(float);
+        case D3DDECLTYPE_FLOAT4:
+            return 4 * sizeof(float);
+        case D3DDECLTYPE_D3DCOLOR:
+        case D3DDECLTYPE_UBYTE4:
+        case D3DDECLTYPE_UBYTE4N:
+            return 4 * sizeof(BYTE);
+        case D3DDECLTYPE_SHORT2:
+        case D3DDECLTYPE_SHORT2N:
+        case D3DDECLTYPE_USHORT2N:
+        case D3DDECLTYPE_FLOAT16_2:
+            return 2 * sizeof(short int);
+        case D3DDECLTYPE_SHORT4:
+        case D3DDECLTYPE_SHORT4N:
+        case D3DDECLTYPE_USHORT4N:
+        case D3DDECLTYPE_FLOAT16_4:
+            return 4 * sizeof(short int);
+        case D3DDECLTYPE_UDEC3:
+        case D3DDECLTYPE_DEC3N:
+            return 3 * sizeof(short int);
+        case D3DDECLTYPE_UNUSED:
+            return 0;
         default:
             return NULL;
-        }
-    case D3DDECLTYPE_FLOAT4:
-        if (usage == D3DDECLUSAGE_POSITIONT)
-            return D3DFVF_XYZRHW;
-        return NULL;
-    case D3DDECLTYPE_UBYTE4:
-        if (usage == D3DDECLUSAGE_BLENDINDICES)
-            switch (n_weights) {
-            case 0:
-                return D3DFVF_XYZB1;
-            case 1:
-                return D3DFVF_XYZB2;
-            case 2:
-                return D3DFVF_XYZB3;
-            case 3:
-                return D3DFVF_XYZB4;
-            case 4:
-                return D3DFVF_XYZB5;
-            default:
-                return D3DFVF_XYZB1;
+    }
+}
+
+static DWORD decl_type_to_FVF(D3DDECLTYPE type, D3DDECLUSAGE usage, BYTE usage_index, int n_weights)
+{
+    switch (type)
+    {
+        case D3DDECLTYPE_FLOAT3:
+            switch (usage)
+            {
+                case D3DDECLUSAGE_POSITION:
+                    return D3DFVF_XYZ;
+                case D3DDECLUSAGE_NORMAL:
+                    return D3DFVF_NORMAL;
+                default:
+                    return NULL;
             }
-    case D3DDECLTYPE_FLOAT1:
-        if (usage == D3DDECLUSAGE_PSIZE)
-            return D3DFVF_PSIZE;
-        return NULL;
-    case D3DDECLTYPE_D3DCOLOR:
-        if (usage == D3DDECLUSAGE_COLOR) {
-            switch (usage_index) {
-            case 0:
-                return D3DFVF_DIFFUSE;
-            case 1:
-                return D3DFVF_SPECULAR;
-            default:
+        case D3DDECLTYPE_FLOAT4:
+            if (usage == D3DDECLUSAGE_POSITIONT)
+                return D3DFVF_XYZRHW;
+            return NULL;
+        case D3DDECLTYPE_UBYTE4:
+            if (usage == D3DDECLUSAGE_BLENDINDICES)
+                switch (n_weights)
+                {
+                    case 0:
+                        return D3DFVF_XYZB1;
+                    case 1:
+                        return D3DFVF_XYZB2;
+                    case 2:
+                        return D3DFVF_XYZB3;
+                    case 3:
+                        return D3DFVF_XYZB4;
+                    case 4:
+                        return D3DFVF_XYZB5;
+                    default:
+                        return D3DFVF_XYZB1;
+                }
+        case D3DDECLTYPE_FLOAT1:
+            if (usage == D3DDECLUSAGE_PSIZE)
+                return D3DFVF_PSIZE;
+            return NULL;
+        case D3DDECLTYPE_D3DCOLOR:
+            if (usage == D3DDECLUSAGE_COLOR)
+            {
+                switch (usage_index)
+                {
+                    case 0:
+                        return D3DFVF_DIFFUSE;
+                    case 1:
+                        return D3DFVF_SPECULAR;
+                    default:
+                        return NULL;
+                }
+            }
+            else
+            {
                 return NULL;
             }
-        }
-        else {
+        default:
             return NULL;
-        }
-    default:
-        return NULL;
-
     }
-
 }
 
 static D3DDECLTYPE d3d_format_to_decl_type(D3DFORMAT format)
 {
-    switch (format) {
-    case D3DFMT_A32B32G32R32F:
-        return D3DDECLTYPE_FLOAT4;
-    case D3DFMT_A16B16G16R16:
-        return D3DDECLTYPE_SHORT4;
-    case D3DFMT_Q16W16V16U16:
-        return D3DDECLTYPE_SHORT4;
-    case D3DFMT_A16B16G16R16F:
-        return D3DDECLTYPE_FLOAT16_4;
-    case D3DFMT_G32R32F:
-        return D3DDECLTYPE_FLOAT2;
-    case D3DFMT_A2B10G10R10:
-        return D3DDECLTYPE_UDEC3;
-    case D3DFMT_A8B8G8R8:
-        return     D3DDECLTYPE_UBYTE4;
-    case D3DFMT_X8B8G8R8:
-        return     D3DDECLTYPE_UBYTE4;
-    case D3DFMT_G16R16:
-        return D3DDECLTYPE_USHORT2N;
-    case D3DFMT_A2R10G10B10:
-        return D3DDECLTYPE_UDEC3;
-    case D3DFMT_V16U16:
-        return D3DDECLTYPE_SHORT2;
-    case D3DFMT_A2W10V10U10:
-    case D3DFMT_A8R8G8B8:
-        return D3DDECLTYPE_D3DCOLOR;
-    case D3DFMT_X8R8G8B8:
-        return D3DDECLTYPE_UBYTE4;
-    case D3DFMT_X8L8V8U8:
-        return D3DDECLTYPE_UBYTE4;
-    case D3DFMT_Q8W8V8U8:
-        return D3DDECLTYPE_UBYTE4;
-    case D3DFMT_D32:
-    case D3DFMT_D24S8:
-    case D3DFMT_D24X8:
-    case D3DFMT_D24X4S4:
-    case D3DFMT_D32F_LOCKABLE:
-    case D3DFMT_D24FS8:
-    case D3DFMT_D32_LOCKABLE:
-    case D3DFMT_INDEX32:
-    case D3DFMT_G16R16F:
-        return D3DDECLTYPE_FLOAT16_2;
-    case D3DFMT_R32F:
-    case D3DFMT_A2B10G10R10_XR_BIAS:
-        return D3DDECLTYPE_UDEC3;
-    case D3DFMT_R8G8B8:
-    case D3DFMT_R5G6B5:
-    case D3DFMT_X1R5G5B5:
-    case D3DFMT_A1R5G5B5:
-    case D3DFMT_A4R4G4B4:
-    case D3DFMT_A8R3G3B2:
-    case D3DFMT_X4R4G4B4:
-    case D3DFMT_A8P8:
-    case D3DFMT_A8L8:
-    case D3DFMT_V8U8:
-    case D3DFMT_L6V5U5:
-    case D3DFMT_D16_LOCKABLE:
-    case D3DFMT_D15S1:
-    case D3DFMT_D16:
-    case D3DFMT_L16:
-    case D3DFMT_INDEX16:
-    case D3DFMT_R16F:
-    case D3DFMT_CxV8U8:
-    case D3DFMT_R8G8_B8G8:
-    case D3DFMT_G8R8_G8B8:
-    case D3DFMT_R3G3B2:
-    case D3DFMT_A8:
-    case D3DFMT_P8:
-    case D3DFMT_L8:
-    case D3DFMT_A4L4:
-    case D3DFMT_S8_LOCKABLE:
-    default:
-        return (D3DDECLTYPE) - 1;
+    switch (format)
+    {
+        case D3DFMT_A32B32G32R32F:
+            return D3DDECLTYPE_FLOAT4;
+        case D3DFMT_A16B16G16R16:
+            return D3DDECLTYPE_SHORT4;
+        case D3DFMT_Q16W16V16U16:
+            return D3DDECLTYPE_SHORT4;
+        case D3DFMT_A16B16G16R16F:
+            return D3DDECLTYPE_FLOAT16_4;
+        case D3DFMT_G32R32F:
+            return D3DDECLTYPE_FLOAT2;
+        case D3DFMT_A2B10G10R10:
+            return D3DDECLTYPE_UDEC3;
+        case D3DFMT_A8B8G8R8:
+            return D3DDECLTYPE_UBYTE4;
+        case D3DFMT_X8B8G8R8:
+            return D3DDECLTYPE_UBYTE4;
+        case D3DFMT_G16R16:
+            return D3DDECLTYPE_USHORT2N;
+        case D3DFMT_A2R10G10B10:
+            return D3DDECLTYPE_UDEC3;
+        case D3DFMT_V16U16:
+            return D3DDECLTYPE_SHORT2;
+        case D3DFMT_A2W10V10U10:
+        case D3DFMT_A8R8G8B8:
+            return D3DDECLTYPE_D3DCOLOR;
+        case D3DFMT_X8R8G8B8:
+            return D3DDECLTYPE_UBYTE4;
+        case D3DFMT_X8L8V8U8:
+            return D3DDECLTYPE_UBYTE4;
+        case D3DFMT_Q8W8V8U8:
+            return D3DDECLTYPE_UBYTE4;
+        case D3DFMT_D32:
+        case D3DFMT_D24S8:
+        case D3DFMT_D24X8:
+        case D3DFMT_D24X4S4:
+        case D3DFMT_D32F_LOCKABLE:
+        case D3DFMT_D24FS8:
+        case D3DFMT_D32_LOCKABLE:
+        case D3DFMT_INDEX32:
+        case D3DFMT_G16R16F:
+            return D3DDECLTYPE_FLOAT16_2;
+        case D3DFMT_R32F:
+        case D3DFMT_A2B10G10R10_XR_BIAS:
+            return D3DDECLTYPE_UDEC3;
+        case D3DFMT_R8G8B8:
+        case D3DFMT_R5G6B5:
+        case D3DFMT_X1R5G5B5:
+        case D3DFMT_A1R5G5B5:
+        case D3DFMT_A4R4G4B4:
+        case D3DFMT_A8R3G3B2:
+        case D3DFMT_X4R4G4B4:
+        case D3DFMT_A8P8:
+        case D3DFMT_A8L8:
+        case D3DFMT_V8U8:
+        case D3DFMT_L6V5U5:
+        case D3DFMT_D16_LOCKABLE:
+        case D3DFMT_D15S1:
+        case D3DFMT_D16:
+        case D3DFMT_L16:
+        case D3DFMT_INDEX16:
+        case D3DFMT_R16F:
+        case D3DFMT_CxV8U8:
+        case D3DFMT_R8G8_B8G8:
+        case D3DFMT_G8R8_G8B8:
+        case D3DFMT_R3G3B2:
+        case D3DFMT_A8:
+        case D3DFMT_P8:
+        case D3DFMT_L8:
+        case D3DFMT_A4L4:
+        case D3DFMT_S8_LOCKABLE:
+        default:
+            return (D3DDECLTYPE)-1;
     }
 }
 
-
-static UINT strideForFVF(DWORD FVF) {
+static UINT strideForFVF(DWORD FVF)
+{
     UINT total_bytes = 0;
 
     if (FVF & D3DFVF_XYZ)
@@ -1473,105 +1545,120 @@ static UINT strideForFVF(DWORD FVF) {
         total_bytes += 4 * sizeof(float);
     if (FVF & D3DFVF_XYZW)
         total_bytes += 4 * sizeof(float);
-    if (FVF & D3DFVF_XYZB5) {
+    if (FVF & D3DFVF_XYZB5)
+    {
         total_bytes += 8 * sizeof(float);
     }
-    if (FVF & D3DFVF_LASTBETA_UBYTE4) {
+    if (FVF & D3DFVF_LASTBETA_UBYTE4)
+    {
         total_bytes += 8 * sizeof(float);
     }
-    if (FVF & D3DFVF_LASTBETA_D3DCOLOR) {
+    if (FVF & D3DFVF_LASTBETA_D3DCOLOR)
+    {
         total_bytes += 8 * sizeof(float);
     }
-    if (FVF & D3DFVF_XYZB4) {
+    if (FVF & D3DFVF_XYZB4)
+    {
         total_bytes += 7 * sizeof(float);
     }
-    if (FVF & D3DFVF_XYZB3) {
+    if (FVF & D3DFVF_XYZB3)
+    {
         total_bytes += 6 * sizeof(float);
     }
-    if (FVF & D3DFVF_XYZB2) {
+    if (FVF & D3DFVF_XYZB2)
+    {
         total_bytes += 5 * sizeof(float);
     }
-    if (FVF & D3DFVF_XYZB1) {
+    if (FVF & D3DFVF_XYZB1)
+    {
         total_bytes += 4 * sizeof(float);
     }
-    if (FVF & D3DFVF_NORMAL) {
+    if (FVF & D3DFVF_NORMAL)
+    {
         total_bytes += 3 * sizeof(float);
     }
-    if (FVF & D3DFVF_PSIZE) {
+    if (FVF & D3DFVF_PSIZE)
+    {
         total_bytes += sizeof(float);
     }
-    if (FVF & D3DFVF_DIFFUSE) {
+    if (FVF & D3DFVF_DIFFUSE)
+    {
         total_bytes += sizeof(float);
     }
-    if (FVF & D3DFVF_SPECULAR) {
+    if (FVF & D3DFVF_SPECULAR)
+    {
         total_bytes += sizeof(float);
     }
 
-    for (int x = 1; x < 8; x++) {
-        if (FVF & D3DFVF_TEXCOORDSIZE1(x)) {
+    for (int x = 1; x < 8; x++)
+    {
+        if (FVF & D3DFVF_TEXCOORDSIZE1(x))
+        {
             total_bytes += sizeof(float);
         }
-        if (FVF & D3DFVF_TEXCOORDSIZE2(x)) {
+        if (FVF & D3DFVF_TEXCOORDSIZE2(x))
+        {
             total_bytes += 2 * sizeof(float);
         }
-        if (FVF & D3DFVF_TEXCOORDSIZE3(x)) {
+        if (FVF & D3DFVF_TEXCOORDSIZE3(x))
+        {
             total_bytes += 3 * sizeof(float);
         }
-        if (FVF & D3DFVF_TEXCOORDSIZE4(x)) {
+        if (FVF & D3DFVF_TEXCOORDSIZE4(x))
+        {
             total_bytes += 4 * sizeof(float);
         }
     }
 
     return total_bytes;
-
 }
-static UINT draw_vertices_count_to_primitive_count(UINT ver_count, D3DPRIMITIVETYPE prim_type) {
-
-    switch (prim_type) {
-    case D3DPT_POINTLIST:
-        return ver_count;
-    case D3DPT_LINELIST:
-        return ver_count / 2;
-    case D3DPT_LINESTRIP:
-        return ver_count - 1;
-    case D3DPT_TRIANGLELIST:
-        return ver_count / 3;
-    case D3DPT_TRIANGLESTRIP:
-        return ver_count - 2;
-    case D3DPT_TRIANGLEFAN:
-        return ver_count - 2;
-    case D3DPT_FORCE_DWORD:
-        return ver_count - 2;
-    default:
-        return ver_count - 2;
-    }
-
-
-}
-static UINT draw_primitive_count_to_vertices_count(UINT ver_count, D3DPRIMITIVETYPE prim_type) {
-
-    switch (prim_type) {
-    case D3DPT_POINTLIST:
-        return ver_count;
-    case D3DPT_LINELIST:
-        return ver_count * 2;
-    case D3DPT_LINESTRIP:
-        return ver_count + 1;
-    case D3DPT_TRIANGLELIST:
-        return ver_count * 3;
-    case D3DPT_TRIANGLESTRIP:
-        return ver_count + 2;
-    case D3DPT_TRIANGLEFAN:
-        return ver_count + 2;
-    case D3DPT_FORCE_DWORD:
-        return ver_count + 2;
-    default:
-        return ver_count + 2;
+static UINT draw_vertices_count_to_primitive_count(UINT ver_count, D3DPRIMITIVETYPE prim_type)
+{
+    switch (prim_type)
+    {
+        case D3DPT_POINTLIST:
+            return ver_count;
+        case D3DPT_LINELIST:
+            return ver_count / 2;
+        case D3DPT_LINESTRIP:
+            return ver_count - 1;
+        case D3DPT_TRIANGLELIST:
+            return ver_count / 3;
+        case D3DPT_TRIANGLESTRIP:
+            return ver_count - 2;
+        case D3DPT_TRIANGLEFAN:
+            return ver_count - 2;
+        case D3DPT_FORCE_DWORD:
+            return ver_count - 2;
+        default:
+            return ver_count - 2;
     }
 }
-#endif // MIGOTO_DX == 9
+static UINT draw_primitive_count_to_vertices_count(UINT ver_count, D3DPRIMITIVETYPE prim_type)
+{
+    switch (prim_type)
+    {
+        case D3DPT_POINTLIST:
+            return ver_count;
+        case D3DPT_LINELIST:
+            return ver_count * 2;
+        case D3DPT_LINESTRIP:
+            return ver_count + 1;
+        case D3DPT_TRIANGLELIST:
+            return ver_count * 3;
+        case D3DPT_TRIANGLESTRIP:
+            return ver_count + 2;
+        case D3DPT_TRIANGLEFAN:
+            return ver_count + 2;
+        case D3DPT_FORCE_DWORD:
+            return ver_count + 2;
+        default:
+            return ver_count + 2;
+    }
+}
+#endif  // MIGOTO_DX == 9
 
 #if MIGOTO_DX == 11
-extern IDXGISwapChain *last_fullscreen_swap_chain;
-#endif // MIGOTO_DX == 11
+extern IDXGISwapChain* last_fullscreen_swap_chain;
+#endif  // MIGOTO_DX == 11
 void install_crash_handler(int level);

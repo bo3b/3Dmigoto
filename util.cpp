@@ -9,11 +9,11 @@
 
 // FIXME: Move any dependencies from these headers into common:
 #if MIGOTO_DX == 9
-#include "DirectX9\Overlay.hpp"
+    #include "DirectX9\Overlay.hpp"
 #elif MIGOTO_DX == 11
-#include "DirectX11\HackerDevice.hpp"
-#include "DirectX11\HackerContext.hpp"
-#endif // MIGOTO_DX
+    #include "DirectX11\HackerDevice.hpp"
+    #include "DirectX11\HackerContext.hpp"
+#endif  // MIGOTO_DX
 
 // Sometimes game directories get funny permissions that cause us problems. I
 // have no clue how or why this happens, and the usual way to deal with it is
@@ -36,20 +36,22 @@
 //   https://msdn.microsoft.com/en-us/library/windows/desktop/ms717798(v=vs.85).aspx
 //
 
-static SECURITY_ATTRIBUTES* init_security_attributes(SECURITY_ATTRIBUTES *sa)
+static SECURITY_ATTRIBUTES* init_security_attributes(SECURITY_ATTRIBUTES* sa)
 {
     sa->nLength = sizeof(SECURITY_ATTRIBUTES);
     sa->bInheritHandle = FALSE;
     sa->lpSecurityDescriptor = NULL;
 
     if (ConvertStringSecurityDescriptorToSecurityDescriptor(
-            L"D:" // Discretionary ACL
+            L"D:"  // Discretionary ACL
             // Removed string from MSDN that denies guests/anonymous users
-            L"(A;OICI;GRGX;;;WD)" // Give everyone read/execute access
-            L"(A;OICI;GA;;;AU)" // Allow full control to authenticated users (GRGWGX is not enough to delete contents?)
+            L"(A;OICI;GRGX;;;WD)"  // Give everyone read/execute access
+            L"(A;OICI;GA;;;AU)"    // Allow full control to authenticated users (GRGWGX is not enough to delete contents?)
             // Using "CO" for Creator/Owner instead of "AU" seems ineffective
-            L"(A;OICI;GA;;;BA)" // Allow full control to administrators
-            , SDDL_REVISION_1, &sa->lpSecurityDescriptor, NULL)) {
+            L"(A;OICI;GA;;;BA)"  // Allow full control to administrators
+            ,
+            SDDL_REVISION_1, &sa->lpSecurityDescriptor, NULL))
+    {
         return sa;
     }
 
@@ -73,17 +75,18 @@ BOOL create_directory_ensuring_access(LPCWSTR path)
 
 // Replacement for _wfopen_s that ensures the permissions will be set so we can
 // read it back later.
-errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t *filename, const wchar_t *mode)
+errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t* filename, const wchar_t* mode)
 {
     SECURITY_ATTRIBUTES sa, *psa = NULL;
     HANDLE fh = NULL;
     int fd = -1;
-    FILE *fp = NULL;
+    FILE* fp = NULL;
     int osf_flags = 0;
 
     *pFile = NULL;
 
-    if (wcsstr(mode, L"w") == NULL) {
+    if (wcsstr(mode, L"w") == NULL)
+    {
         // This function is for creating new files for now. We could
         // make it do some heroics on read/append as well, but I don't
         // want to push this further than we need to.
@@ -102,14 +105,16 @@ errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t *filename, const wcha
     psa = init_security_attributes(&sa);
     fh = CreateFile(filename, GENERIC_WRITE, 0, psa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     LocalFree(sa.lpSecurityDescriptor);
-    if (fh == INVALID_HANDLE_VALUE) {
+    if (fh == INVALID_HANDLE_VALUE)
+    {
         // FIXME: Map GetLastError() to appropriate errno
         return EIO;
     }
 
     // Convert the HANDLE into a file descriptor.
     fd = _open_osfhandle((intptr_t)fh, osf_flags);
-    if (fd == -1) {
+    if (fd == -1)
+    {
         CloseHandle(fh);
         return EIO;
     }
@@ -119,7 +124,8 @@ errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t *filename, const wcha
 
     // Convert the file descriptor into a file pointer.
     fp = _wfdopen(fd, mode);
-    if (!fp) {
+    if (!fp)
+    {
         _close(fd);
         return EIO;
     }
@@ -132,7 +138,7 @@ errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t *filename, const wcha
     return 0;
 }
 
-void set_file_last_write_time(wchar_t *path, FILETIME *ft_write, DWORD flags)
+void set_file_last_write_time(wchar_t* path, FILETIME* ft_write, DWORD flags)
 {
     HANDLE f;
 
@@ -144,7 +150,7 @@ void set_file_last_write_time(wchar_t *path, FILETIME *ft_write, DWORD flags)
     CloseHandle(f);
 }
 
-void touch_file(wchar_t *path, DWORD flags)
+void touch_file(wchar_t* path, DWORD flags)
 {
     FILETIME ft;
     SYSTEMTIME st;
@@ -154,7 +160,7 @@ void touch_file(wchar_t *path, DWORD flags)
     set_file_last_write_time(path, &ft, flags);
 }
 
-void touch_dir(wchar_t *path)
+void touch_dir(wchar_t* path)
 {
     touch_file(path, FILE_FLAG_BACKUP_SEMANTICS);
 }
@@ -174,32 +180,32 @@ std::string name_from_IID(IID id)
     if (__uuidof(IUnknown) == id)
         return "IUnknown";
 
-    // FIXME: We should probably have these IIDs defined regardless of target
-    // to catch potential cases where multiple versions of 3DMigoto are
-    // coexisting and the devices get mixed up
+        // FIXME: We should probably have these IIDs defined regardless of target
+        // to catch potential cases where multiple versions of 3DMigoto are
+        // coexisting and the devices get mixed up
 #if MIGOTO_DX == 11
     if (IID_HackerDevice == id)
         return "HackerDevice";
     if (IID_HackerContext == id)
         return "HackerContext";
 #elif MIGOTO_DX == 9
-    // FIXME: DX9 GUIDs are not using the correct macros, and need verification
-    // that they haven't been copy + pasted
-    //if (IID_D3D9Wrapper_IDirect3DDevice9 == id)
-    //    return "3DMigotoDevice9";
+        // FIXME: DX9 GUIDs are not using the correct macros, and need verification
+        // that they haven't been copy + pasted
+        // if (IID_D3D9Wrapper_IDirect3DDevice9 == id)
+        //    return "3DMigotoDevice9";
 #endif
 
 #ifdef _D3D9_H_
     if (__uuidof(IDirect3DDevice9) == id)
         return "IDirect3DDevice9";
-#endif // _D3D9_H_
+#endif  // _D3D9_H_
 
 #ifdef __d3d10_h__
     if (__uuidof(ID3D10Multithread) == id)
         return "ID3D10Multithread";
     if (__uuidof(ID3D10Device) == id)
         return "ID3D10Device";
-#endif // __d3d10_h__
+#endif  // __d3d10_h__
 
 #ifdef __d3d11_h__
     if (__uuidof(ID3D11Device) == id)
@@ -212,9 +218,9 @@ std::string name_from_IID(IID id)
         return "ID3D11BlendState";
     if (__uuidof(ID3D11RasterizerState) == id)
         return "ID3D11RasterizerState";
-    if (__uuidof(ID3D11Texture2D) == id)    // Used to fetch backbuffer
+    if (__uuidof(ID3D11Texture2D) == id)  // Used to fetch backbuffer
         return "ID3D11Texture2D";
-#endif // __d3d11_h__
+#endif  // __d3d11_h__
 
 #ifdef __d3d11_1_h__
     if (__uuidof(ID3D11BlendState1) == id)
@@ -229,12 +235,12 @@ std::string name_from_IID(IID id)
         return "ID3DDeviceContextState";
     if (__uuidof(ID3DUserDefinedAnnotation) == id)
         return "ID3DUserDefinedAnnotation";
-#endif // __d3d11_1_h__
+#endif  // __d3d11_1_h__
 
     // XXX: From newer Windows SDK than we are using. Defined in util.h for now
     if (__uuidof(ID3D11Device2) == id)  // d3d11_2.h when the time comes
         return "ID3D11Device2";
-    if (__uuidof(ID3D11DeviceContext2) == id) // d3d11_2.h when the time comes
+    if (__uuidof(ID3D11DeviceContext2) == id)  // d3d11_2.h when the time comes
         return "ID3D11DeviceContext2";
 
 #ifdef __d3d11sdklayers_h__
@@ -242,7 +248,7 @@ std::string name_from_IID(IID id)
         return "ID3D11InfoQueue";
 #endif
 
-    // All the DXGI interfaces from dxgi.h, and dxgi1_2.h
+        // All the DXGI interfaces from dxgi.h, and dxgi1_2.h
 #ifdef __dxgi_h__
     if (__uuidof(IDXGIAdapter) == id)
         return "IDXGIAdapter";
@@ -272,7 +278,7 @@ std::string name_from_IID(IID id)
         return "IDXGISurface1";
     if (__uuidof(IDXGISwapChain) == id)
         return "IDXGISwapChain";
-#endif // __dxgi_h__
+#endif  // __dxgi_h__
 
 #ifdef __dxgi1_2_h__
     if (__uuidof(IDXGIAdapter2) == id)
@@ -293,14 +299,14 @@ std::string name_from_IID(IID id)
         return "IDXGISurface2";
     if (__uuidof(IDXGISwapChain1) == id)
         return "IDXGISwapChain1";
-#endif // __dxgi1_2_h__
+#endif  // __dxgi1_2_h__
 
     // XXX: From newer Windows SDK than we are using. Defined in util.h for now
-    if (__uuidof(IDXGISwapChain2) == id)        // dxgi1_3 A8BE2AC4-199F-4946-B331-79599FB98DE7
+    if (__uuidof(IDXGISwapChain2) == id)  // dxgi1_3 A8BE2AC4-199F-4946-B331-79599FB98DE7
         return "IDXGISwapChain2";
-    if (__uuidof(IDXGISwapChain3) == id)        // dxgi1_4 94D99BDB-F1F8-4AB0-B236-7DA0170EDAB1
+    if (__uuidof(IDXGISwapChain3) == id)  // dxgi1_4 94D99BDB-F1F8-4AB0-B236-7DA0170EDAB1
         return "IDXGISwapChain3";
-    if (__uuidof(IDXGISwapChain4) == id)        // dxgi1_5 3D585D5A-BD4A-489E-B1F4-3DBCB6452FFB
+    if (__uuidof(IDXGISwapChain4) == id)  // dxgi1_5 3D585D5A-BD4A-489E-B1F4-3DBCB6452FFB
         return "IDXGISwapChain4";
 
     // For unknown IIDs lets return the hex string.
@@ -321,7 +327,7 @@ std::string name_from_IID(IID id)
     return iid_string;
 }
 
-static void warn_if_conflicting_file_exists(wchar_t *path, wchar_t *conflicting_path, const char *message)
+static void warn_if_conflicting_file_exists(wchar_t* path, wchar_t* conflicting_path, const char* message)
 {
     DWORD attrib = GetFileAttributes(conflicting_path);
 
@@ -331,7 +337,7 @@ static void warn_if_conflicting_file_exists(wchar_t *path, wchar_t *conflicting_
     LogOverlay(LOG_DIRE, "WARNING: %s\"%S\" conflicts with \"%S\"\n", message, conflicting_path, path);
 }
 
-void warn_if_conflicting_shader_exists(wchar_t *orig_path, const char *message)
+void warn_if_conflicting_shader_exists(wchar_t* orig_path, const char* message)
 {
     wchar_t conflicting_path[MAX_PATH], *postfix;
 
@@ -340,7 +346,8 @@ void warn_if_conflicting_shader_exists(wchar_t *orig_path, const char *message)
     // If we're using a HLSL shader, make sure there are no conflicting
     // assembly shaders, either text or binary:
     postfix = wcsstr(conflicting_path, L"_replace");
-    if (postfix) {
+    if (postfix)
+    {
         wcscpy_s(postfix, conflicting_path + MAX_PATH - postfix, L".txt");
         warn_if_conflicting_file_exists(orig_path, conflicting_path, message);
         wcscpy_s(postfix, conflicting_path + MAX_PATH - postfix, L".bin");
@@ -351,7 +358,8 @@ void warn_if_conflicting_shader_exists(wchar_t *orig_path, const char *message)
     // If we're using an assembly shader, make sure there are no
     // conflicting HLSL shaders, either text or binary:
     postfix = wcsstr(conflicting_path, L".");
-    if (postfix) {
+    if (postfix)
+    {
         wcscpy_s(postfix, conflicting_path + MAX_PATH - postfix, L"_replace.txt");
         warn_if_conflicting_file_exists(orig_path, conflicting_path, message);
         wcscpy_s(postfix, conflicting_path + MAX_PATH - postfix, L"_replace.bin");
@@ -361,7 +369,7 @@ void warn_if_conflicting_shader_exists(wchar_t *orig_path, const char *message)
 }
 
 #if MIGOTO_DX == 9
-void save_om_state(IDirect3DDevice9 *device, struct OMState *state)
+void save_om_state(IDirect3DDevice9* device, struct OMState* state)
 {
     DWORD i;
 
@@ -374,21 +382,24 @@ void save_om_state(IDirect3DDevice9 *device, struct OMState *state)
     if (state->rtvs.size() != caps.NumSimultaneousRTs)
         state->rtvs.resize(caps.NumSimultaneousRTs);
     state->NumRTVs = 0;
-    for (i = 0; i < caps.NumSimultaneousRTs; i++) {
-        IDirect3DSurface9 *rt = NULL;
+    for (i = 0; i < caps.NumSimultaneousRTs; i++)
+    {
+        IDirect3DSurface9* rt = NULL;
         device->GetRenderTarget(i, &rt);
         state->rtvs[i] = rt;
-        if (rt) {
+        if (rt)
+        {
             state->NumRTVs = i + 1;
         }
     }
     device->GetDepthStencilSurface(&state->dsv);
 }
 
-void restore_om_state(IDirect3DDevice9 *device, struct OMState *state)
+void restore_om_state(IDirect3DDevice9* device, struct OMState* state)
 {
     UINT i;
-    for (i = 0; i < state->NumRTVs; i++) {
+    for (i = 0; i < state->NumRTVs; i++)
+    {
         device->SetRenderTarget(i, state->rtvs[i]);
         if (state->rtvs[i])
             state->rtvs[i]->Release();
@@ -398,7 +409,7 @@ void restore_om_state(IDirect3DDevice9 *device, struct OMState *state)
         state->dsv->Release();
 }
 #elif MIGOTO_DX == 11
-void save_om_state(ID3D11DeviceContext *context, struct OMState *state)
+void save_om_state(ID3D11DeviceContext* context, struct OMState* state)
 {
     int i;
 
@@ -410,7 +421,8 @@ void save_om_state(ID3D11DeviceContext *context, struct OMState *state)
     context->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, state->rtvs, &state->dsv);
 
     state->NumRTVs = 0;
-    for (i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++) {
+    for (i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
+    {
         if (state->rtvs[i])
             state->NumRTVs = i + 1;
     }
@@ -426,15 +438,15 @@ void save_om_state(ID3D11DeviceContext *context, struct OMState *state)
     context->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, state->UAVStartSlot, state->NumUAVs, state->uavs);
 }
 
-void restore_om_state(ID3D11DeviceContext *context, struct OMState *state)
+void restore_om_state(ID3D11DeviceContext* context, struct OMState* state)
 {
-    static const UINT uav_counts[D3D11_PS_CS_UAV_REGISTER_COUNT] = {(UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1};
+    static const UINT uav_counts[D3D11_PS_CS_UAV_REGISTER_COUNT] = { (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1 };
     UINT i;
 
-    context->OMSetRenderTargetsAndUnorderedAccessViews(state->NumRTVs, state->rtvs, state->dsv,
-            state->UAVStartSlot, state->NumUAVs, state->uavs, uav_counts);
+    context->OMSetRenderTargetsAndUnorderedAccessViews(state->NumRTVs, state->rtvs, state->dsv, state->UAVStartSlot, state->NumUAVs, state->uavs, uav_counts);
 
-    for (i = 0; i < state->NumRTVs; i++) {
+    for (i = 0; i < state->NumRTVs; i++)
+    {
         if (state->rtvs[i])
             state->rtvs[i]->Release();
     }
@@ -442,13 +454,14 @@ void restore_om_state(ID3D11DeviceContext *context, struct OMState *state)
     if (state->dsv)
         state->dsv->Release();
 
-    for (i = 0; i < state->NumUAVs; i++) {
+    for (i = 0; i < state->NumUAVs; i++)
+    {
         if (state->uavs[i])
             state->uavs[i]->Release();
     }
 }
 
-IDXGISwapChain *last_fullscreen_swap_chain;
+IDXGISwapChain* last_fullscreen_swap_chain;
 static CRITICAL_SECTION crash_handler_lock;
 static int crash_handler_level;
 
@@ -469,12 +482,12 @@ static DWORD WINAPI crash_handler_switch_to_window(_In_ LPVOID lpParameter)
     //
     // TODO: See if we can find a way to make this more reliable
     //
-    if (last_fullscreen_swap_chain) {
-        LOG_INFO("Attempting emergency switch to windowed mode on swap chain %p\n",
-                last_fullscreen_swap_chain);
+    if (last_fullscreen_swap_chain)
+    {
+        LOG_INFO("Attempting emergency switch to windowed mode on swap chain %p\n", last_fullscreen_swap_chain);
 
         last_fullscreen_swap_chain->SetFullscreenState(FALSE, NULL);
-        //last_fullscreen_swap_chain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+        // last_fullscreen_swap_chain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
     }
 
     if (LogFile)
@@ -483,7 +496,7 @@ static DWORD WINAPI crash_handler_switch_to_window(_In_ LPVOID lpParameter)
     return 0;
 }
 
-static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS *ExceptionInfo)
+static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS* ExceptionInfo)
 {
     wchar_t path[MAX_PATH];
     tm timestruct;
@@ -491,22 +504,32 @@ static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS *Exce
     LONG ret = EXCEPTION_CONTINUE_EXECUTION;
 
     // SOS
-    Beep(250, 100); Beep(250, 100); Beep(250, 100);
-    Beep(200, 300); Beep(200, 200); Beep(200, 200);
-    Beep(250, 100); Beep(250, 100); Beep(250, 100);
+    Beep(250, 100);
+    Beep(250, 100);
+    Beep(250, 100);
+    Beep(200, 300);
+    Beep(200, 200);
+    Beep(200, 200);
+    Beep(250, 100);
+    Beep(250, 100);
+    Beep(250, 100);
 
     // Before anything else, flush the log file and log exception info
 
-    if (LogFile) {
+    if (LogFile)
+    {
         fflush(LogFile);
 
-        LOG_INFO("\n\n ######################################\n"
-                    " ### 3DMigoto Crash Handler Invoked ###\n");
+        LOG_INFO(
+            "\n\n ######################################\n"
+            " ### 3DMigoto Crash Handler Invoked ###\n");
 
         int i = 0;
-        for (auto record = ExceptionInfo->ExceptionRecord; record; record = record->ExceptionRecord, i++) {
-            LOG_INFO(" ######################################\n"
-                    " ### Exception Record %i\n"
+        for (auto record = ExceptionInfo->ExceptionRecord; record; record = record->ExceptionRecord, i++)
+        {
+            LOG_INFO(
+                " ######################################\n"
+                " ### Exception Record %i\n"
                 " ###    ExceptionCode: 0x%08x\n"
                 " ###   ExceptionFlags: 0x%08x\n"
                 " ### ExceptionAddress: 0x%p\n"
@@ -538,22 +561,21 @@ static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS *Exce
     // the rest stop here:
     ENTER_CRITICAL_SECTION(&crash_handler_lock);
 
-    auto fp = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ,
-            0, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (fp != INVALID_HANDLE_VALUE) {
+    auto fp = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (fp != INVALID_HANDLE_VALUE)
+    {
         LOG_INFO("Writing minidump to %S...\n", path);
 
-        MINIDUMP_EXCEPTION_INFORMATION dump_info =
-            { GetCurrentThreadId(), ExceptionInfo, FALSE };
+        MINIDUMP_EXCEPTION_INFORMATION dump_info = { GetCurrentThreadId(), ExceptionInfo, FALSE };
 
-        if (MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(),
-                fp, MiniDumpWithHandleData, &dump_info, NULL, NULL))
+        if (MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), fp, MiniDumpWithHandleData, &dump_info, NULL, NULL))
             LOG_INFO("Succeeded\n");
         else
             LOG_INFO("Failed :(\n");
 
         CloseHandle(fp);
-    } else
+    }
+    else
         LOG_INFO("Error creating minidump file \"%S\": %d\n", path, GetLastError());
 
     if (LogFile)
@@ -563,8 +585,10 @@ static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS *Exce
     // responding to various key bindings, sounding a reminder tone every
     // 5 seconds. All key bindings in this mode are prefixed with Ctrl+Alt
     // to prevent them being accidentally triggered.
-    if (crash_handler_level == 2) {
-        if (LogFile) {
+    if (crash_handler_level == 2)
+    {
+        if (LogFile)
+        {
             LOG_INFO("3DMigoto interactive crash handler invoked:\n");
             LOG_INFO(" Ctrl+Alt+Q: Quit (execute exception handler)\n");
             LOG_INFO(" Ctrl+Alt+K: Kill process\n");
@@ -574,26 +598,38 @@ static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS *Exce
             LOG_INFO("\n");
             fflush(LogFile);
         }
-        while (1) {
+        while (1)
+        {
             Beep(500, 100);
-            for (int i = 0; i < 50; i++) {
+            for (int i = 0; i < 50; i++)
+            {
                 Sleep(100);
                 if (GetAsyncKeyState(VK_CONTROL) < 0 &&
-                    GetAsyncKeyState(VK_MENU) < 0) {
-                    if (GetAsyncKeyState('C') < 0) {
-                        LOG_INFO("Attempting to continue...\n"); fflush(LogFile); Beep(1000, 100);
+                    GetAsyncKeyState(VK_MENU) < 0)
+                {
+                    if (GetAsyncKeyState('C') < 0)
+                    {
+                        LOG_INFO("Attempting to continue...\n");
+                        fflush(LogFile);
+                        Beep(1000, 100);
                         ret = EXCEPTION_CONTINUE_EXECUTION;
                         goto unlock;
                     }
 
-                    if (GetAsyncKeyState('Q') < 0) {
-                        LOG_INFO("Executing exception handler...\n"); fflush(LogFile); Beep(1000, 100);
+                    if (GetAsyncKeyState('Q') < 0)
+                    {
+                        LOG_INFO("Executing exception handler...\n");
+                        fflush(LogFile);
+                        Beep(1000, 100);
                         ret = EXCEPTION_EXECUTE_HANDLER;
                         goto unlock;
                     }
 
-                    if (GetAsyncKeyState('K') < 0) {
-                        LOG_INFO("Killing process...\n"); fflush(LogFile); Beep(1000, 100);
+                    if (GetAsyncKeyState('K') < 0)
+                    {
+                        LOG_INFO("Killing process...\n");
+                        fflush(LogFile);
+                        Beep(1000, 100);
                         ExitProcess(0x3D819070);
                     }
 
@@ -601,14 +637,20 @@ static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS *Exce
                     // S = Suspend all other threads
                     // R = Resume all other threads
 
-                    if (GetAsyncKeyState('B') < 0) {
-                        LOG_INFO("Dropping to debugger...\n"); fflush(LogFile); Beep(1000, 100);
+                    if (GetAsyncKeyState('B') < 0)
+                    {
+                        LOG_INFO("Dropping to debugger...\n");
+                        fflush(LogFile);
+                        Beep(1000, 100);
                         __debugbreak();
                         goto unlock;
                     }
 
-                    if (GetAsyncKeyState('W') < 0) {
-                        LOG_INFO("Attempting to switch to windowed mode...\n"); fflush(LogFile); Beep(1000, 100);
+                    if (GetAsyncKeyState('W') < 0)
+                    {
+                        LOG_INFO("Attempting to switch to windowed mode...\n");
+                        fflush(LogFile);
+                        Beep(1000, 100);
                         CreateThread(NULL, 0, crash_handler_switch_to_window, NULL, 0, NULL);
                         Sleep(1000);
                     }
@@ -625,18 +667,21 @@ unlock:
 
 static DWORD WINAPI exception_keyboard_monitor(_In_ LPVOID lpParameter)
 {
-    while (1) {
+    while (1)
+    {
         Sleep(1000);
         if (GetAsyncKeyState(VK_CONTROL) < 0 &&
             GetAsyncKeyState(VK_MENU) < 0 &&
-            GetAsyncKeyState(VK_F11) < 0) {
+            GetAsyncKeyState(VK_F11) < 0)
+        {
             // User must be really committed to this to invoke the
             // crash handler, and this is a simple measure against
             // accidentally invoking it multiple times in a row:
             Sleep(3000);
             if (GetAsyncKeyState(VK_CONTROL) < 0 &&
                 GetAsyncKeyState(VK_MENU) < 0 &&
-                GetAsyncKeyState(VK_F11) < 0) {
+                GetAsyncKeyState(VK_F11) < 0)
+            {
                 // Make sure 3DMigoto's exception handler is
                 // still installed and trigger it:
                 SetUnhandledExceptionFilter(migoto_exception_filter);
@@ -644,7 +689,6 @@ static DWORD WINAPI exception_keyboard_monitor(_In_ LPVOID lpParameter)
             }
         }
     }
-
 }
 
 void install_crash_handler(int level)
@@ -658,7 +702,8 @@ void install_crash_handler(int level)
     // TODO: Call set_terminate() on every thread to catch unhandled C++
     // exceptions as well
 
-    if (old_handler == migoto_exception_filter) {
+    if (old_handler == migoto_exception_filter)
+    {
         LOG_INFO("  > 3DMigoto crash handler already installed\n");
         return;
     }
@@ -667,8 +712,7 @@ void install_crash_handler(int level)
 
     old_mode = SetErrorMode(SEM_FAILCRITICALERRORS);
 
-    LOG_INFO("  > Installed 3DMigoto crash handler, previous exception filter: %p, previous error mode: %x\n",
-            old_handler, old_mode);
+    LOG_INFO("  > Installed 3DMigoto crash handler, previous exception filter: %p, previous error mode: %x\n", old_handler, old_mode);
 
     // Spawn a thread to monitor for a keyboard salute to trigger the
     // exception handler in the event of a hang/deadlock:
