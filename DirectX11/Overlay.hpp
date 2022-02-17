@@ -12,6 +12,7 @@
 #include "Effects.h"
 #include "VertexTypes.h"
 
+#include "lock.h"
 #include "HackerDevice.hpp"
 #include "HackerContext.hpp"
 
