@@ -2,7 +2,8 @@
 
 #include <wrl.h>
 #include <string>
-#include <nvapi.h>
+
+#include "nvapi.h"
 
 namespace Profiling {
     enum class Mode {
