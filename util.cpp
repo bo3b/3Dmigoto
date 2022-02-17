@@ -1,9 +1,11 @@
-#include <util.h>
+#include "util.h"
 
 #include <sddl.h>
 #include <io.h>
 #include <fcntl.h>
 #include <Dbghelp.h>
+
+#include "DirectX11\lock.h"
 
 // FIXME: Move any dependencies from these headers into common:
 #if MIGOTO_DX == 9

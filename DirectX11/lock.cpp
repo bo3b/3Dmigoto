@@ -94,10 +94,10 @@ static void dump_stack_trace()
         if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)trace[i], &module)
          && GetModuleFileName(module, path, MAX_PATH)
          && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO))) {
-            LOG_INFO("%04x: %S+0x%"PRIxPTR"\n",
+            LOG_INFO("%04x: %S+0x%" PRIxPTR"\n",
                     GetCurrentThreadId(), path, trace[i] - (uintptr_t)mod_info.lpBaseOfDll);
         } else {
-            LOG_INFO("%04x: 0x%"PRIxPTR"\n",
+            LOG_INFO("%04x: 0x%" PRIxPTR"\n",
                     GetCurrentThreadId(), trace[i]);
         }
     }
@@ -120,10 +120,10 @@ static void log_held_locks(LockStack &held_locks, std::vector<LockStack> &other_
             if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)info->ret, &module)
              && GetModuleFileName(module, path, MAX_PATH)
              && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO))) {
-                LOG_INFO("%04x: EnterCriticalSection(%s) %S+0x%"PRIxPTR"\n",
+                LOG_INFO("%04x: EnterCriticalSection(%s) %S+0x%" PRIxPTR"\n",
                         GetCurrentThreadId(), lock_name(info->lock, buf), path, info->ret - (uintptr_t)mod_info.lpBaseOfDll);
             } else {
-                LOG_INFO("%04x: EnterCriticalSection(%s) 0x%"PRIxPTR"\n",
+                LOG_INFO("%04x: EnterCriticalSection(%s) 0x%" PRIxPTR"\n",
                         GetCurrentThreadId(), lock_name(info->lock, buf), info->ret);
             }
         }
@@ -142,10 +142,10 @@ static void log_held_locks(LockStack &held_locks, std::vector<LockStack> &other_
                 if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)info->ret, &module)
                  && GetModuleFileName(module, path, MAX_PATH)
                  && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO))) {
-                    LOG_INFO("      EnterCriticalSection(%s) %S+0x%"PRIxPTR"\n",
+                    LOG_INFO("      EnterCriticalSection(%s) %S+0x%" PRIxPTR"\n",
                             lock_name(info->lock, buf), path, info->ret - (uintptr_t)mod_info.lpBaseOfDll);
                 } else {
-                    LOG_INFO("      EnterCriticalSection(%s) 0x%"PRIxPTR"\n",
+                    LOG_INFO("      EnterCriticalSection(%s) 0x%" PRIxPTR"\n",
                             lock_name(info->lock, buf), info->ret);
                 }
             }
@@ -344,7 +344,7 @@ static void EnterCriticalSectionHook(CRITICAL_SECTION *lock)
     get_tls()->hooking_quirk_protection = false;
 }
 
-void _EnterCriticalSectionPretty(CRITICAL_SECTION *lock, char *function, int line)
+void _EnterCriticalSectionPretty(CRITICAL_SECTION *lock, const char *function, int line)
 {
     if (!lock_dependency_checks_enabled)
         return EnterCriticalSection(lock);
@@ -355,7 +355,7 @@ void _EnterCriticalSectionPretty(CRITICAL_SECTION *lock, char *function, int lin
     get_tls()->hooking_quirk_protection = true;
 
     LockStack &locks_held = get_tls()->locks_held;
-    push_lock(locks_held, lock, (uintptr_t)_ReturnAddress(), function, line);
+    push_lock(locks_held, lock, (uintptr_t)_ReturnAddress(), const_cast<char*>(function), line);
     validate_lock(locks_held, lock);
 
     _EnterCriticalSection(lock);

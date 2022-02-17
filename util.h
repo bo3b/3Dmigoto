@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <vcruntime_typeinfo.h>
 
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
@@ -228,7 +229,7 @@ static int _autoicmp(const char *s1, const char *s2)
 // To use this function be sure to terminate an EnumName_t list with {NULL, 0}
 // as it cannot use ArraySize on passed in arrays.
 template <class T1, class T2>
-static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, T2 default, bool *found=NULL)
+static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, T2 type, bool *found=NULL)
 {
     for (; enum_names->name; enum_names++) {
         if (!_autoicmp(name, enum_names->name)) {
@@ -241,10 +242,10 @@ static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, T2 def
     if (found)
         *found = false;
 
-    return default;
+    return type;
 }
 template <class T1, class T2>
-static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, size_t len, T2 default, bool *found=NULL)
+static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, size_t len, T2 type, bool *found=NULL)
 {
     for (; enum_names->name; enum_names++) {
         if (!_wcsnicmp(name, enum_names->name, len)) {
@@ -257,7 +258,7 @@ static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, size_t
     if (found)
         *found = false;
 
-    return default;
+    return type;
 }
 template <class T1, class T2>
 static T1 lookup_enum_name(struct EnumName_t<T1, T2> *enum_names, T2 val)
