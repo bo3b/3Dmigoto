@@ -6,7 +6,7 @@
 // This version of EnterCriticalSection will use the function and line number
 // in any lock stacks dumped when potential deadlock hazards are detected:
 #define ENTER_CRITICAL_SECTION(lock) \
-    _EnterCriticalSectionPretty(lock, __func__, __LINE__)
+    _EnterCriticalSectionPretty(lock, __FUNCTION__, __LINE__)
 void _EnterCriticalSectionPretty(CRITICAL_SECTION *lock, const char *function, int line);
 
 // To keep visual consistency, we define this macro to bookend the sections
