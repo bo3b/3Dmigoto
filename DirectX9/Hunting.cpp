@@ -625,7 +625,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, D3D9Wrapper::ID
     // This needs to use the value to find the key, so a linear search.
     // It's notable that the map can contain multiple copies of the same hash, used for different visual
     // items, but with same original code.  We need to update all copies.
-    for each (D3D9Wrapper::IDirect3DShader9 *iter in G->mReloadedShaders)
+    for (auto& iter : G->mReloadedShaders)
     {
         if (iter->hash == hash)
         {
@@ -955,7 +955,7 @@ static void CopyToFixes(UINT64 hash, D3D9Wrapper::IDirect3DDevice9 *device)
     string asmText, hlslText, errText;
 
     // The key of the map is the actual shader, we thus need to do a linear search to find our marked hash.
-    for each (D3D9Wrapper::IDirect3DShader9 *iter in G->mReloadedShaders)
+    for (auto& iter : G->mReloadedShaders)
     {
             if (iter->hash == hash)
         {
