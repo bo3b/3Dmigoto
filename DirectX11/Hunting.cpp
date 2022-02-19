@@ -283,11 +283,11 @@ void DumpUsage(wchar_t *dir)
 // return the S_FALSE if it's already inited.
 
 template <typename HashType>
-static void SimpleScreenShot(HackerDevice *pDevice, HashType hash, char *shaderType)
+static void SimpleScreenShot(HackerDevice *device, HashType hash, char *shader_type)
 {
     wchar_t fullName[MAX_PATH];
     ID3D11Texture2D *backBuffer;
-    HackerSwapChain *hacker_swap_chain = pDevice->GetHackerSwapChain();
+    HackerSwapChain *hacker_swap_chain = device->GetHackerSwapChain();
     int hash_len = sizeof(HashType) * 2;
 
     if (!hacker_swap_chain) {
@@ -302,8 +302,8 @@ static void SimpleScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
     hr = hacker_swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
     if (SUCCEEDED(hr))
     {
-        swprintf_s(fullName, MAX_PATH, L"%ls\\%0*llx-%S.jpg", G->SHADER_PATH, hash_len, (UINT64)hash, shaderType);
-        hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext1(), backBuffer, GUID_ContainerFormatJpeg, fullName);
+        swprintf_s(fullName, MAX_PATH, L"%ls\\%0*llx-%S.jpg", G->SHADER_PATH, hash_len, (UINT64)hash, shader_type);
+        hr = DirectX::SaveWICTextureToFile(device->GetPassThroughOrigContext1(), backBuffer, GUID_ContainerFormatJpeg, fullName);
         backBuffer->Release();
     }
 
@@ -316,9 +316,9 @@ static void SimpleScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
 // to get the second back buffer and create a stereo 3D JPS:
 
 template <typename HashType>
-static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderType)
+static void StereoScreenShot(HackerDevice *device, HashType hash, char *shader_type)
 {
-    HackerSwapChain *hacker_swap_chain = pDevice->GetHackerSwapChain();
+    HackerSwapChain *hacker_swap_chain = device->GetHackerSwapChain();
     wchar_t fullName[MAX_PATH];
     ID3D11Texture2D *backBuffer = NULL;
     ID3D11Texture2D *stereoBackBuffer = NULL;
@@ -333,11 +333,11 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
     nvapi_override();
     Profiling::NvAPI_Stereo_IsEnabled(&stereo);
     if (stereo)
-        Profiling::NvAPI_Stereo_IsActivated(pDevice->stereoHandle, &stereo);
+        Profiling::NvAPI_Stereo_IsActivated(device->stereoHandle, &stereo);
 
     if (!stereo) {
         LOG_INFO("marking_actions=stereo_snapshot: Stereo disabled, falling back to mono snapshot\n");
-        SimpleScreenShot(pDevice, hash, shaderType);
+        SimpleScreenShot(device, hash, shader_type);
         return;
     }
 
@@ -356,13 +356,13 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
     srcWidth = desc.Width;
     desc.Width = srcWidth * 2;
 
-    hr = pDevice->GetPassThroughOrigDevice1()->CreateTexture2D(&desc, NULL, &stereoBackBuffer);
+    hr = device->GetPassThroughOrigDevice1()->CreateTexture2D(&desc, NULL, &stereoBackBuffer);
     if (FAILED(hr)) {
         LOG_INFO("StereoScreenShot failed to create intermediate texture resource: 0x%x\n", hr);
         goto out_release_bb;
     }
 
-    nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->stereoHandle, true);
+    nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(device->stereoHandle, true);
     if (nvret != NVAPI_OK) {
         LOG_INFO("StereoScreenShot failed to enable reverse stereo blit\n");
         goto out_release_stereo_bb;
@@ -379,20 +379,20 @@ static void StereoScreenShot(HackerDevice *pDevice, HashType hash, char *shaderT
     // NVAPI documentation hasn't been updated to indicate which is the
     // correct function to use for the reverse stereo blit in DX11...
     // Fortunately there was really only one possibility, which is:
-    pDevice->GetPassThroughOrigContext1()->CopySubresourceRegion(stereoBackBuffer, 0, 0, 0, 0, backBuffer, 0, &srcBox);
+    device->GetPassThroughOrigContext1()->CopySubresourceRegion(stereoBackBuffer, 0, 0, 0, 0, backBuffer, 0, &srcBox);
 
     hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
     if (FAILED(hr))
         LOG_INFO("*** Overlay call CoInitializeEx failed: %d\n", hr);
 
-    swprintf_s(fullName, MAX_PATH, L"%ls\\%0*llx-%S.jps", G->SHADER_PATH, hash_len, (UINT64)hash, shaderType);
-    hr = DirectX::SaveWICTextureToFile(pDevice->GetPassThroughOrigContext1(), stereoBackBuffer, GUID_ContainerFormatJpeg, fullName);
+    swprintf_s(fullName, MAX_PATH, L"%ls\\%0*llx-%S.jps", G->SHADER_PATH, hash_len, (UINT64)hash, shader_type);
+    hr = DirectX::SaveWICTextureToFile(device->GetPassThroughOrigContext1(), stereoBackBuffer, GUID_ContainerFormatJpeg, fullName);
 
     CoUninitialize();
 
     LOG_INFO_W(L"  StereoScreenShot on Mark: %s, result: %d\n", fullName, hr);
 
-    Profiling::NvAPI_Stereo_ReverseStereoBlitControl(pDevice->stereoHandle, false);
+    Profiling::NvAPI_Stereo_ReverseStereoBlitControl(device->stereoHandle, false);
 out_release_stereo_bb:
     stereoBackBuffer->Release();
 out_release_bb:
@@ -425,7 +425,7 @@ static void MarkingScreenShots(HackerDevice *device, HashType hash, char *short_
 // This is pretty heavyweight obviously, so it is only being done during Mark operations.
 // Todo: another copy/paste job, we really need some subroutines, utility library.
 
-static string Decompile(ID3DBlob *pShaderByteCode, string *asmText)
+static string Decompile(ID3DBlob *shader_byte_code, string *asm_text)
 {
     LOG_INFO("    creating HLSL representation.\n");
 
@@ -434,9 +434,9 @@ static string Decompile(ID3DBlob *pShaderByteCode, string *asmText)
     bool errorOccurred = false;
 
     ParseParameters p;
-    p.bytecode = pShaderByteCode->GetBufferPointer();
-    p.decompiled = asmText->c_str();
-    p.decompiledSize = asmText->size();
+    p.bytecode = shader_byte_code->GetBufferPointer();
+    p.decompiled = asm_text->c_str();
+    p.decompiledSize = asm_text->size();
     p.ZeroOutput = false;
     p.G = &G->decompiler_settings;
     const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
@@ -488,7 +488,7 @@ void MigotoIncludeHandler::push_dir(const char *path)
         dir_stack.push_back("");
 }
 
-STDMETHODIMP MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID *ppData, UINT *pBytes)
+STDMETHODIMP MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE include_type, LPCSTR file_name, LPCVOID parent_data, LPCVOID *data, UINT *bytes)
 {
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> codec;
     char *buf = NULL;
@@ -497,7 +497,7 @@ STDMETHODIMP MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFi
     wstring wpath;
     HANDLE f;
 
-    LOG_DEBUG("      MigotoIncludeHandler::Open(%p, %u, %s, %p)\n", this, IncludeType, pFileName, pParentData);
+    LOG_DEBUG("      MigotoIncludeHandler::Open(%p, %u, %s, %p)\n", this, include_type, file_name, parent_data);
 
     // For backwards compatibility with D3D_COMPILE_STANDARD_FILE_INCLUDE
     // we only search for shaders relative to the *initial* source file by
@@ -515,9 +515,9 @@ STDMETHODIMP MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFi
     // contrived enough to ignore it and drop the option, but its safer to
     // include the option.
     if (G->recursive_include)
-        apath = dir_stack.back() + pFileName;
+        apath = dir_stack.back() + file_name;
     else
-        apath = dir_stack.front() + pFileName;
+        apath = dir_stack.front() + file_name;
     wpath = codec.from_bytes(apath);
 
     f = CreateFile(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -532,7 +532,7 @@ STDMETHODIMP MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFi
         // directories on different editions (e.g. FC4 / FCPrimal Steam
         // vs UPlay), so we disallow this if recursive_include is
         // enabled as that already disables backwards compatibility.
-        apath = pFileName;
+        apath = file_name;
         wpath = codec.from_bytes(apath);
         f = CreateFile(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     }
@@ -545,7 +545,7 @@ STDMETHODIMP MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFi
     // compatibility neither do we. If we ever add internal/generated
     // headers we might consider requiring they use the system form, e.g.
     // #include <3dmigoto.h>
-    switch (IncludeType) {
+    switch (include_type) {
         case D3D_INCLUDE_LOCAL:
             LOG_INFO("      #include \"%s\"\n", apath.c_str());
             break;
@@ -564,8 +564,8 @@ STDMETHODIMP MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFi
     }
     CloseHandle(f);
 
-    *pBytes = size;
-    *ppData = buf;
+    *bytes = size;
+    *data = buf;
     push_dir(apath.c_str());
     LOG_DEBUG("       -> %p\n", buf);
 
@@ -577,10 +577,10 @@ err_free:
     return E_FAIL;
 }
 
-STDMETHODIMP MigotoIncludeHandler::Close(LPCVOID pData)
+STDMETHODIMP MigotoIncludeHandler::Close(LPCVOID data)
 {
-    LOG_DEBUG("      MigotoIncludeHandler::Close(%p, %p)\n", this, pData);
-    delete [] pData;
+    LOG_DEBUG("      MigotoIncludeHandler::Close(%p, %p)\n", this, data);
+    delete [] data;
     dir_stack.pop_back();
     return S_OK;
 }
@@ -592,14 +592,14 @@ STDMETHODIMP MigotoIncludeHandler::Close(LPCVOID pData)
 
 // Compile example taken from: http://msdn.microsoft.com/en-us/library/windows/desktop/hh968107(v=vs.85).aspx
 
-static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const char *shaderModel, 
-    UINT64 hash, wstring shaderType, ID3DBlob *origByteCode,
-    __out FILETIME* timeStamp, __out wstring &headerLine, _Outptr_ ID3DBlob** pCode, string *errText)
+static bool RegenerateShader(wchar_t *shader_fix_path, wchar_t *file_name, const char *shader_model, 
+    UINT64 hash, wstring shader_type, ID3DBlob *orig_byte_code,
+    __out FILETIME* time_stamp, __out wstring &header_line, _Outptr_ ID3DBlob** code, string *err_text)
 {
-    *pCode = nullptr;
+    *code = nullptr;
     wchar_t fullName[MAX_PATH];
     char apath[MAX_PATH];
-    swprintf_s(fullName, MAX_PATH, L"%s\\%s", shaderFixPath, fileName);
+    swprintf_s(fullName, MAX_PATH, L"%s\\%s", shader_fix_path, file_name);
 
     warn_if_conflicting_shader_exists(fullName);
 
@@ -630,20 +630,20 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 
     // Check file time stamp, and only recompile shaders that have been edited since they were loaded.
     // This dramatically improves the F10 reload speed.
-    if (!CompareFileTime(timeStamp, &curFileTime))
+    if (!CompareFileTime(time_stamp, &curFileTime))
     {
         return false;
     }
-    *timeStamp = curFileTime;
+    *time_stamp = curFileTime;
 
     // Now that we are sure to be reloading, let's see if it's an ASM file and assemble instead.
     ID3DBlob* pByteCode = nullptr;
     
-    if (wcsstr(fileName, L"_replace"))
+    if (wcsstr(file_name, L"_replace"))
     {
-        LOG_INFO("   >Replacement shader found. Re-Loading replacement HLSL code from %ls\n", fileName);
+        LOG_INFO("   >Replacement shader found. Re-Loading replacement HLSL code from %ls\n", file_name);
         LOG_INFO("    Reload source code loaded. Size = %d\n", srcDataSize);
-        LOG_INFO("    compiling replacement HLSL code with shader model %s\n", shaderModel);
+        LOG_INFO("    compiling replacement HLSL code with shader model %s\n", shader_model);
 
         // TODO: Add #defines for StereoParams and IniParams
 
@@ -656,7 +656,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
         MigotoIncludeHandler include_handler(apath);
         HRESULT ret = D3DCompile(srcData.data(), srcDataSize, apath, 0,
                 G->recursive_include == -1 ? D3D_COMPILE_STANDARD_FILE_INCLUDE : &include_handler,
-            "main", shaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pByteCode, &pErrorMsgs);
+            "main", shader_model, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pByteCode, &pErrorMsgs);
 
         LOG_INFO("    compile result for replacement HLSL shader: %x\n", ret);
 
@@ -678,8 +678,8 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
                 fwrite(errMsg, 1, errSize - 1, LogFile);
             }
             LOG_INFO("---------------------------------------------- END ----------------------------------------------\n");
-            if (errText)
-                *errText = string((char*)pErrorMsgs->GetBufferPointer(), pErrorMsgs->GetBufferSize() - 1);
+            if (err_text)
+                *err_text = string((char*)pErrorMsgs->GetBufferPointer(), pErrorMsgs->GetBufferSize() - 1);
             pErrorMsgs->Release();
         }
 
@@ -695,13 +695,13 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
     }
     else
     {
-        LOG_INFO("   >Replacement shader found. Re-Loading replacement ASM code from %ls\n", fileName);
+        LOG_INFO("   >Replacement shader found. Re-Loading replacement ASM code from %ls\n", file_name);
         LOG_INFO("    Reload source code loaded. Size = %d\n", srcDataSize);
-        LOG_INFO("    assembling replacement ASM code with shader model %s\n", shaderModel);
+        LOG_INFO("    assembling replacement ASM code with shader model %s\n", shader_model);
 
         // We need original byte code unchanged, so make a copy.
-        vector<byte> byteCode(origByteCode->GetBufferSize());
-        memcpy(byteCode.data(), origByteCode->GetBufferPointer(), origByteCode->GetBufferSize());
+        vector<byte> byteCode(orig_byte_code->GetBufferSize());
+        memcpy(byteCode.data(), orig_byte_code->GetBufferPointer(), orig_byte_code->GetBufferSize());
 
         try
         {
@@ -712,7 +712,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
         catch (const exception &e)
         {
             LogOverlay(LOG_NOTICE, "Error assembling %S: %s\n",
-                    fileName, e.what());
+                    file_name, e.what());
             return true;
         }
 
@@ -735,10 +735,10 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
     // For success, let's add the first line of text from the file to the OriginalShaderInfo,
     // so the ShaderHacker can edit the line and reload and have it live.
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> utf8_to_utf16;
-    headerLine = utf8_to_utf16.from_bytes(srcData.data(), strchr(srcData.data(), '\n'));
+    header_line = utf8_to_utf16.from_bytes(srcData.data(), strchr(srcData.data(), '\n'));
 
     // pCode on return == NULL for error cases, valid if made it this far.
-    *pCode = pByteCode;
+    *code = pByteCode;
 
     return true;
 }
@@ -773,7 +773,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 // new version will be used at VSSetShader and PSSetShader.
 // File names are uniform in the form: 3c69e169edc8cd5f-ps_replace.txt
 
-static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *device, string *errText)
+static bool ReloadShader(wchar_t *shader_path, wchar_t *file_name, HackerDevice *device, string *err_text)
 {
     UINT64 hash;
     ShaderOverrideMap::iterator override;
@@ -789,7 +789,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
     bool rc = true;
 
     // Extract hash from first 16 characters of file name so we can look up details by hash
-    wstring ws = fileName;
+    wstring ws = file_name;
     hash = stoull(ws.substr(0, 16), NULL, 16);
 
     // This is probably unnecessary, because we modify already existing map entries, but
@@ -817,7 +817,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
             // Just skip it in that case, because the new version will be loaded when it is used.
             if (oldShader == NULL)
             {
-                LOG_INFO("> failed to find original shader in mReloadedShaders: %ls\n", fileName);
+                LOG_INFO("> failed to find original shader in mReloadedShaders: %ls\n", file_name);
                 continue;
             }
 
@@ -848,7 +848,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 
             // Compile anew. If timestamp is unchanged, the code is unchanged, continue to next shader.
             ID3DBlob *pShaderBytecode = NULL;
-            if (!RegenerateShader(shaderPath, fileName, shaderModel.c_str(), hash, shaderType, shaderCode, &timeStamp, headerLine, &pShaderBytecode, errText))
+            if (!RegenerateShader(shader_path, file_name, shaderModel.c_str(), hash, shaderType, shaderCode, &timeStamp, headerLine, &pShaderBytecode, err_text))
                 continue;
 
             // If we compiled but got nothing, that's a fatal error we need to report.
@@ -916,7 +916,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
             // candidates for auto patching:
             G->mReloadedShaders[oldShader].deferred_replacement_candidate = false;
 
-            LOG_INFO("> successfully reloaded shader: %ls\n", fileName);
+            LOG_INFO("> successfully reloaded shader: %ls\n", file_name);
         }
     }    // for every registered shader in mReloadedShaders 
 
@@ -929,7 +929,7 @@ err:
     goto out;
 }
 
-static bool WriteASM(string *asmText, string *hlslText, string *errText,
+static bool WriteASM(string *asm_text, string *hlsl_text, string *err_text,
         UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device, wstring *tagline = NULL)
 {
     wchar_t fileName[MAX_PATH];
@@ -949,20 +949,20 @@ static bool WriteASM(string *asmText, string *hlslText, string *errText,
     if (tagline)
         fprintf_s(f, "%S\n", tagline->c_str());
 
-    fwrite(asmText->c_str(), 1, asmText->size(), f);
+    fwrite(asm_text->c_str(), 1, asm_text->size(), f);
 
-    if (hlslText && !hlslText->empty()) {
+    if (hlsl_text && !hlsl_text->empty()) {
         fprintf_s(f, "\n///////////////////////////////// HLSL Code /////////////////////////////////\n");
-        std::istringstream hlslTokens(*hlslText);
+        std::istringstream hlslTokens(*hlsl_text);
         while (std::getline(hlslTokens, token, '\n')) {
             if (token.empty())
                 fprintf(f, "//\n");
             else
                 fprintf(f, "// %s\n", token.c_str());
         }
-        if (errText && !errText->empty()) {
+        if (err_text && !err_text->empty()) {
             fprintf_s(f, "//////////////////////////////// HLSL Errors ////////////////////////////////\n");
-            std::istringstream errTokens(*errText);
+            std::istringstream errTokens(*err_text);
             while (std::getline(errTokens, token, '\n')) {
                 if (token.empty())
                     fprintf(f, "//\n");
@@ -989,7 +989,7 @@ static bool WriteASM(string *asmText, string *hlslText, string *errText,
 // and thus is not different than the file on disk.
 // If a file was already extant in the ShaderFixes, it will be picked up at game launch as the master shaderByteCode.
 
-static bool WriteHLSL(string *asmText, string *hlslText, string *errText,
+static bool WriteHLSL(string *asm_text, string *hlsl_text, string *err_text,
         UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device, bool remove_failed)
 {
     wchar_t fileName[MAX_PATH];
@@ -998,8 +998,8 @@ static bool WriteHLSL(string *asmText, string *hlslText, string *errText,
     bool ret;
 
     // Try to decompile the current byte code into HLSL:
-    *hlslText = Decompile(shader_info.byteCode, asmText);
-    if (hlslText->empty())
+    *hlsl_text = Decompile(shader_info.byteCode, asm_text);
+    if (hlsl_text->empty())
         return false;
 
     // We no longer check if the file exists and touch it at this point -
@@ -1017,17 +1017,17 @@ static bool WriteHLSL(string *asmText, string *hlslText, string *errText,
 
     LOG_INFO_W(L"    storing patched shader to %s\n", fullName);
 
-    fwrite(hlslText->c_str(), 1, hlslText->size(), fw);
+    fwrite(hlsl_text->c_str(), 1, hlsl_text->size(), fw);
 
     fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-    fwrite(asmText->c_str(), 1, asmText->size(), fw);
+    fwrite(asm_text->c_str(), 1, asm_text->size(), fw);
     fprintf_s(fw, "\n//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
 
     fclose(fw);
 
     // Lastly, reload the shader generated, to check for decompile errors, set it as the active
     // shader code, in case there are visual errors, and make it the match the code in the file.
-    ret = ReloadShader(G->SHADER_PATH, fileName, device, errText);
+    ret = ReloadShader(G->SHADER_PATH, fileName, device, err_text);
 
     if (!ret && remove_failed) {
         LOG_INFO("    removing shader that failed to reload: %S\n", fullName);
@@ -1456,7 +1456,7 @@ static void NextMarkingMode(HackerDevice *device, void *private_data)
 
 template <typename ItemType>
 static void HuntNext(char *type, std::set<ItemType> *visited,
-        ItemType *selected, int *selectedPos)
+        ItemType *selected, int *selected_pos)
 {
     if (G->hunting != HUNTING_MODE_ENABLED)
         return;
@@ -1474,19 +1474,19 @@ static void HuntNext(char *type, std::set<ItemType> *visited,
         if (found) {
             loc++;
             if (loc != end) {
-                (*selectedPos)++;
+                (*selected_pos)++;
                 *selected = *loc;
             } else {
-                *selectedPos = 0;
+                *selected_pos = 0;
                 *selected = *visited->begin();
             }
             LOG_INFO("> traversing to next %s #%d. Number of %ss in frame: %d\n",
-                    type, *selectedPos, type, size);
+                    type, *selected_pos, type, size);
         } else {
-            *selectedPos = 0;
+            *selected_pos = 0;
             *selected = *visited->begin();
             LOG_INFO("> starting at %s #%d. Number of %ss in frame: %d\n",
-                    type, *selectedPos, type, size);
+                    type, *selected_pos, type, size);
         }
     }
 out:
@@ -1552,7 +1552,7 @@ static void NextRenderTarget(HackerDevice *device, void *private_data)
 
 template <typename ItemType>
 static void HuntPrev(char *type, std::set<ItemType> *visited,
-        ItemType *selected, int *selectedPos)
+        ItemType *selected, int *selected_pos)
 {
     if (G->hunting != HUNTING_MODE_ENABLED)
         return;
@@ -1570,20 +1570,20 @@ static void HuntPrev(char *type, std::set<ItemType> *visited,
 
         if (found) {
             if (loc != front) {
-                (*selectedPos)--;
+                (*selected_pos)--;
                 loc--;
                 *selected = *loc;
             } else {
-                *selectedPos = size - 1;
+                *selected_pos = size - 1;
                 *selected = *std::prev(end);
             }
             LOG_INFO("> traversing to previous %s shader #%d. Number of %s shaders in frame: %d\n",
-                    type, *selectedPos, type, size);
+                    type, *selected_pos, type, size);
         } else {
-            *selectedPos = size - 1;
+            *selected_pos = size - 1;
             *selected = *std::prev(end);
             LOG_INFO("> starting at %s shader #%d. Number of %s shaders in frame: %d\n",
-                    type, *selectedPos, type, size);
+                    type, *selected_pos, type, size);
         }
     }
 out:
