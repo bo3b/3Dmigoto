@@ -364,7 +364,7 @@ public:
     {
         string interpolation = "";
 
-        for each(Declaration declaration in shader->asPhase[MAIN_PHASE].ppsDecl[0])
+        for (auto& declaration : shader->asPhase[MAIN_PHASE].ppsDecl[0])
         {
             if (declaration.eOpcode == OPCODE_DCL_INPUT_PS)
             {
