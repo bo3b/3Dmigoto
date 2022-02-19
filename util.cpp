@@ -202,7 +202,7 @@ int _autoicmp(const char* s1, const char* s2)
 // -----------------------------------------------------------------------------------------------
 
 // http://msdn.microsoft.com/en-us/library/windows/desktop/bb173059(v=vs.85).aspx
-static char* DXGIFormats[] = {
+static const char* DXGIFormats[] = {
     "UNKNOWN",
     "R32G32B32A32_TYPELESS",
     "R32G32B32A32_FLOAT",
@@ -321,7 +321,7 @@ static char* DXGIFormats[] = {
     "B4G4R4A4_UNORM"
 };
 
-char* tex_format_str(unsigned int format)
+const char* tex_format_str(unsigned int format)
 {
     if (format < sizeof(DXGIFormats) / sizeof(DXGIFormats[0]))
         return DXGIFormats[format];

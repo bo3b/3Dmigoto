@@ -326,7 +326,7 @@ static T2 parse_enum_option_string_prefix(struct EnumName_t<T1, T2>* enum_names,
 // -----------------------------------------------------------------------------------------------
 
 #if MIGOTO_DX == 11
-char* tex_format_str(unsigned int format);
+const char* tex_format_str(unsigned int format);
 
 DXGI_FORMAT parse_format_string(const char* fmt, bool allow_numeric_format);
 DXGI_FORMAT parse_format_string(const wchar_t* wfmt, bool allow_numeric_format);
