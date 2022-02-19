@@ -312,28 +312,28 @@ out_close:
 DWORD tls_idx = TLS_OUT_OF_INDEXES;
 
 BOOL WINAPI DllMain(
-    _In_  HINSTANCE hinstDLL,
-    _In_  DWORD fdwReason,
-    _In_  LPVOID lpvReserved)
+    _In_  HINSTANCE hinst_dll,
+    _In_  DWORD fdw_reason,
+    _In_  LPVOID lpv_reserved)
 {
-    switch (fdwReason)
+    switch (fdw_reason)
     {
         case DLL_PROCESS_ATTACH:
-            migoto_handle = hinstDLL;
+            migoto_handle = hinst_dll;
             cHookMgr.SetEnableDebugOutput(debug_log);
 
             // If we are loaded via injection we will end up in
             // every newly task in the system. We don't want that,
             // so bail early if this is not the intended target
-            if (!verify_intended_target(hinstDLL))
+            if (!verify_intended_target(hinst_dll))
                 return false;
 
             // Hook d3d11.dll if we are loaded via injection either
             // under a different name, or just not as the primary
             // d3d11.dll. I'm not positive if this is the "best"
             // way to check for this, but it seems to work:
-            if (hinstDLL != GetModuleHandleA("d3d11.dll"))
-                hook_d3d11(hinstDLL);
+            if (hinst_dll != GetModuleHandleA("d3d11.dll"))
+                hook_d3d11(hinst_dll);
 
             if (FAILED(hook_LoadLibraryExW()))
                 return false;

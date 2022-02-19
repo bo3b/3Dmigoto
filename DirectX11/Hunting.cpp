@@ -802,7 +802,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
     // This needs to use the value to find the key, so a linear search.
     // It's notable that the map can contain multiple copies of the same hash, used for different visual
     // items, but with same original code.  We need to update all copies.
-    for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
+    for (auto& iter: G->mReloadedShaders)
     {
         if (iter.second.hash == hash)
         {
@@ -1108,7 +1108,7 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
     string asmText, hlslText, errText;
 
     // The key of the map is the actual shader, we thus need to do a linear search to find our marked hash.
-    for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
+    for (auto& iter : G->mReloadedShaders)
     {
         if (iter.second.hash == hash)
         {
