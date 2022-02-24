@@ -500,12 +500,12 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
             if (isPixelShader) {
                 ShaderReplacementMap::iterator i = lookup_original_shader(currentPixelShaderHandle);
                 if (i != G->mOriginalShaders.end())
-                    data->old_pixel_shader = SwitchPSShader((ID3D11PixelShader*)i->second);
+                    data->old_pixel_shader = SwitchPSShader(static_cast<ID3D11PixelShader*>(i->second));
             }
             else {
                 ShaderReplacementMap::iterator i = lookup_original_shader(currentVertexShaderHandle);
                 if (i != G->mOriginalShaders.end())
-                    data->old_vertex_shader = SwitchVSShader((ID3D11VertexShader*)i->second);
+                    data->old_vertex_shader = SwitchVSShader(static_cast<ID3D11VertexShader*>(i->second));
             }
         }
     }
@@ -1202,22 +1202,22 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
     pResource->GetType(&dim);
     switch (dim) {
         case D3D11_RESOURCE_DIMENSION_BUFFER:
-            buf = (ID3D11Buffer*)pResource;
+            buf = static_cast<ID3D11Buffer*>(pResource);
             buf->GetDesc(&buf_desc);
             map_info->size = buf_desc.ByteWidth;
             break;
         case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
-            tex1d = (ID3D11Texture1D*)pResource;
+            tex1d = static_cast<ID3D11Texture1D*>(pResource);
             tex1d->GetDesc(&tex1d_desc);
             map_info->size = dxgi_format_size(tex1d_desc.Format) * tex1d_desc.Width;
             break;
         case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-            tex2d = (ID3D11Texture2D*)pResource;
+            tex2d = static_cast<ID3D11Texture2D*>(pResource);
             tex2d->GetDesc(&tex2d_desc);
             map_info->size = pMappedResource->RowPitch * tex2d_desc.Height;
             break;
         case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-            tex3d = (ID3D11Texture3D*)pResource;
+            tex3d = static_cast<ID3D11Texture3D*>(pResource);
             tex3d->GetDesc(&tex3d_desc);
             map_info->size = pMappedResource->DepthPitch * tex3d_desc.Depth;
             break;
@@ -1550,8 +1550,8 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
         UINT DstY, ID3D11Resource *pSrcResource, const D3D11_BOX *pSrcBox,
         UINT *replaceDstX, D3D11_BOX *replaceBox)
 {
-    ID3D11Texture2D * src_tex = (ID3D11Texture2D*)pSrcResource;
-    ID3D11Texture2D * dst_tex = (ID3D11Texture2D*)pDstResource;
+    ID3D11Texture2D * src_tex = static_cast<ID3D11Texture2D*>(pSrcResource);
+    ID3D11Texture2D * dst_tex = static_cast<ID3D11Texture2D*>(pDstResource);
     D3D11_TEXTURE2D_DESC src_desc, dst_desc;
     D3D11_RESOURCE_DIMENSION src_dim, dst_dim;
     uint32_t src_hash, dst_hash;
@@ -1915,7 +1915,7 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
             // If we did want to do better here we could return a wrapper object when the game
             // creates the original shader, and manage original/replaced/reverted/etc from there.
             //   -DSS
-            repl_shader = (ID3D11Shader*)it->second.replacement;
+            repl_shader = static_cast<ID3D11Shader*>(it->second.replacement);
         }
 
         if (G->hunting == HUNTING_MODE_ENABLED) {
@@ -1923,7 +1923,7 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
             if (G->marking_mode == MarkingMode::ORIGINAL || !G->fix_enabled) {
                 ShaderReplacementMap::iterator j = lookup_original_shader(pShader);
                 if ((selectedShader == *currentShaderHash || !G->fix_enabled) && j != G->mOriginalShaders.end()) {
-                    repl_shader = (ID3D11Shader*)j->second;
+                    repl_shader = static_cast<ID3D11Shader*>(j->second);
                 }
             }
         }
