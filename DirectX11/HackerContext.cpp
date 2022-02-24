@@ -71,23 +71,23 @@ HackerContext::HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pCon
     origDevice1 = pDevice1;
     origContext1 = pContext1;
     realOrigContext1 = pContext1;
-    hackerDevice = NULL;
+    hackerDevice = nullptr;
 
     memset(currentVertexBuffers, 0, sizeof(currentVertexBuffers));
     currentIndexBuffer = 0;
     currentVertexShader = 0;
-    currentVertexShaderHandle = NULL;
+    currentVertexShaderHandle = nullptr;
     currentPixelShader = 0;
-    currentPixelShaderHandle = NULL;
+    currentPixelShaderHandle = nullptr;
     currentComputeShader = 0;
-    currentComputeShaderHandle = NULL;
+    currentComputeShaderHandle = nullptr;
     currentGeometryShader = 0;
-    currentGeometryShaderHandle = NULL;
+    currentGeometryShaderHandle = nullptr;
     currentDomainShader = 0;
-    currentDomainShaderHandle = NULL;
+    currentDomainShaderHandle = nullptr;
     currentHullShader = 0;
-    currentHullShaderHandle = NULL;
-    currentDepthTarget = NULL;
+    currentHullShaderHandle = nullptr;
+    currentDepthTarget = nullptr;
     currentPSUAVStartSlot = 0;
     currentPSNumUAVs = 0;
 }
@@ -144,15 +144,15 @@ void HackerContext::HookContext()
 // should only be used for map lookups.
 ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11View *view, std::set<uint32_t> *resource_info)
 {
-    ID3D11Resource *resource = NULL;
+    ID3D11Resource *resource = nullptr;
     uint32_t orig_hash = 0;
 
     if (!view)
-        return NULL;
+        return nullptr;
 
     view->GetResource(&resource);
     if (!resource)
-        return NULL;
+        return nullptr;
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
@@ -272,7 +272,7 @@ void HackerContext::RecordGraphicsShaderStats()
     if (currentPixelShader) {
         // This API is poorly designed, because we have to know the
         // current UAV start slot.
-        OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, currentPSUAVStartSlot, currentPSNumUAVs, uavs);
+        OMGetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, currentPSUAVStartSlot, currentPSNumUAVs, uavs);
 
         RecordShaderResourceUsage<&ID3D11DeviceContext::PSGetShaderResources>
             (G->mPixelShaderInfo, currentPixelShader);
@@ -349,7 +349,7 @@ void HackerContext::RecordComputeShaderStats()
 void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num)
 {
     D3D11_RENDER_TARGET_VIEW_DESC desc;
-    ID3D11Resource *resource = NULL;
+    ID3D11Resource *resource = nullptr;
     uint32_t orig_hash = 0;
 
     target->GetDesc(&desc);
@@ -383,7 +383,7 @@ out_unlock:
 void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 {
     D3D11_DEPTH_STENCIL_VIEW_DESC desc;
-    ID3D11Resource *resource = NULL;
+    ID3D11Resource *resource = nullptr;
     uint32_t orig_hash = 0;
 
     if (!target)
@@ -459,9 +459,9 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
         // list can match oD for the depth buffer, which will return
         // negative zero -0.0 if no depth buffer is assigned.
         if (shaderOverride->depth_filter != DepthBufferFilter::NONE) {
-            ID3D11DepthStencilView *pDepthStencilView = NULL;
+            ID3D11DepthStencilView *pDepthStencilView = nullptr;
 
-            origContext1->OMGetRenderTargets(0, NULL, &pDepthStencilView);
+            origContext1->OMGetRenderTargets(0, nullptr, &pDepthStencilView);
 
             // Remember - we are NOT switching to the original shader when the condition is true
             if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_ACTIVE && !pDepthStencilView) {
@@ -531,10 +531,10 @@ template <class ID3D11Shader,
 >
 void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 hash, wchar_t *shader_type)
 {
-    ID3D11Shader *orig_shader = NULL, *patched_shader = NULL;
+    ID3D11Shader *orig_shader = nullptr, *patched_shader = nullptr;
     ID3D11ClassInstance *class_instances[256]{};
     ShaderReloadMap::iterator orig_info_i;
-    OriginalShaderInfo *orig_info = NULL;
+    OriginalShaderInfo *orig_info = nullptr;
     UINT num_instances = 0;
     string asm_text;
     bool patch_regex = false;
@@ -1003,7 +1003,7 @@ HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
         if (!G->enable_platform_update) 
         {
             LOG_INFO("***  returns E_NOINTERFACE as error for ID3D11DeviceContext1 (try allow_platform_update=1 if the game refuses to run).\n");
-            *ppvObject = NULL;
+            *ppvObject = nullptr;
             return E_NOINTERFACE;
         }
 
@@ -1139,16 +1139,16 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
         D3D11_MAPPED_SUBRESOURCE *pMappedResource)
 {
     D3D11_RESOURCE_DIMENSION dim;
-    ID3D11Buffer *buf = NULL;
-    ID3D11Texture1D *tex1d = NULL;
-    ID3D11Texture2D *tex2d = NULL;
-    ID3D11Texture3D *tex3d = NULL;
+    ID3D11Buffer *buf = nullptr;
+    ID3D11Texture1D *tex1d = nullptr;
+    ID3D11Texture2D *tex2d = nullptr;
+    ID3D11Texture3D *tex3d = nullptr;
     D3D11_BUFFER_DESC buf_desc;
     D3D11_TEXTURE1D_DESC tex1d_desc;
     D3D11_TEXTURE2D_DESC tex2d_desc;
     D3D11_TEXTURE3D_DESC tex3d_desc;
-    MappedResourceInfo *map_info = NULL;
-    void *replace = NULL;
+    MappedResourceInfo *map_info = nullptr;
+    void *replace = nullptr;
     bool divertable = false, divert = false, track = false;
     bool write = false, read = false, deny = false;
     Profiling::State profiling_state;
@@ -1248,7 +1248,7 @@ out_profile:
 void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresource)
 {
     MappedResources::iterator i;
-    MappedResourceInfo *map_info = NULL;
+    MappedResourceInfo *map_info = nullptr;
     Profiling::State profiling_state;
 
     if (Profiling::mode == Profiling::Mode::SUMMARY)
@@ -1620,7 +1620,7 @@ void STDMETHODCALLTYPE HackerContext::CopySubresourceRegion(
     // it stands to reason that it won't always fill the entire resource
     // and the hashes might be less predictable. Possibly something to
     // enable as an option in the future if there is a proven need.
-    if (G->track_texture_updates == 1 && DstSubresource == 0 && DstX == 0 && DstY == 0 && DstZ == 0 && pSrcBox == NULL)
+    if (G->track_texture_updates == 1 && DstSubresource == 0 && DstX == 0 && DstY == 0 && DstZ == 0 && pSrcBox == nullptr)
         PropagateResourceHash(pDstResource, pSrcResource);
 }
 
@@ -1629,7 +1629,7 @@ void STDMETHODCALLTYPE HackerContext::CopyResource(
     _In_  ID3D11Resource *pSrcResource)
 {
     if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
-        MarkResourceHashContaminated(pDstResource, 0, pSrcResource, 0, 'C', 0, 0, 0, NULL);
+        MarkResourceHashContaminated(pDstResource, 0, pSrcResource, 0, 'C', 0, 0, 0, nullptr);
     }
 
      origContext1->CopyResource(pDstResource, pSrcResource);
@@ -1647,7 +1647,7 @@ void STDMETHODCALLTYPE HackerContext::UpdateSubresource(
     _In_  UINT SrcDepthPitch)
 {
     if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
-        MarkResourceHashContaminated(pDstResource, DstSubresource, NULL, 0, 'U', 0, 0, 0, NULL);
+        MarkResourceHashContaminated(pDstResource, DstSubresource, nullptr, 0, 'U', 0, 0, 0, nullptr);
     }
 
      origContext1->UpdateSubresource(pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch,
@@ -1659,7 +1659,7 @@ void STDMETHODCALLTYPE HackerContext::UpdateSubresource(
     // it stands to reason that it won't always fill the entire resource
     // and the hashes might be less predictable. Possibly something to
     // enable as an option in the future if there is a proven need.
-    if (G->track_texture_updates == 1 && DstSubresource == 0 && pDstBox == NULL)
+    if (G->track_texture_updates == 1 && DstSubresource == 0 && pDstBox == nullptr)
         UpdateResourceHashFromCPU(pDstResource, pSrcData, SrcRowPitch, SrcDepthPitch);
 }
 
@@ -1903,7 +1903,7 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
         // If the shader has been live reloaded from ShaderFixes, use the new one
         // No longer conditional on G->hunting now that hunting may be soft enabled via key binding
         ShaderReloadMap::iterator it = lookup_reloaded_shader(pShader);
-        if (it != G->mReloadedShaders.end() && it->second.replacement != NULL) {
+        if (it != G->mReloadedShaders.end() && it->second.replacement != nullptr) {
             LOG_DEBUG("  shader replaced by: %p\n", it->second.replacement);
 
             // It might make sense to Release() the original shader, to recover memory on GPU
@@ -2403,14 +2403,14 @@ void HackerContext::InitIniParams()
     }
 
     // The command list will take care of initialising any non-zero values:
-    run_command_list(hackerDevice, this, &G->constants_command_list, NULL, false);
+    run_command_list(hackerDevice, this, &G->constants_command_list, nullptr, false);
     // We don't consider persistent globals set in the [Constants] pre
     // command list as making the user config file dirty, because this
     // command list includes the user config file's [Constants] itself.
     // We clear only the low bit here, so that this may be overridden if
     // an invalid value is found that is scheduled to be removed:
     G->user_config_dirty &= ~1;
-    run_command_list(hackerDevice, this, &G->post_constants_command_list, NULL, true);
+    run_command_list(hackerDevice, this, &G->post_constants_command_list, nullptr, true);
 
     // Only want to run [Constants] on initial load and config reload. In
     // some games we see additional DirectX devices & contexts being
@@ -2441,7 +2441,7 @@ template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(
 void HackerContext::SetShaderResources(UINT StartSlot, UINT NumViews,
         ID3D11ShaderResourceView *const *ppShaderResourceViews)
 {
-    ID3D11ShaderResourceView **override_srvs = NULL;
+    ID3D11ShaderResourceView **override_srvs = nullptr;
 
     if (!hackerDevice)
         return;
@@ -2526,7 +2526,7 @@ void STDMETHODCALLTYPE HackerContext::DrawIndexed(
     _In_  UINT StartIndexLocation,
     _In_  INT BaseVertexLocation)
 {
-    DrawContext c = DrawContext(DrawCall::DrawIndexed, 0, IndexCount, 0, BaseVertexLocation, StartIndexLocation, 0, NULL, 0);
+    DrawContext c = DrawContext(DrawCall::DrawIndexed, 0, IndexCount, 0, BaseVertexLocation, StartIndexLocation, 0, nullptr, 0);
     BeforeDraw(c);
 
     if (!c.call_info.skip)
@@ -2538,7 +2538,7 @@ void STDMETHODCALLTYPE HackerContext::Draw(
     _In_  UINT VertexCount,
     _In_  UINT StartVertexLocation)
 {
-    DrawContext c = DrawContext(DrawCall::Draw, VertexCount, 0, 0, StartVertexLocation, 0, 0, NULL, 0);
+    DrawContext c = DrawContext(DrawCall::Draw, VertexCount, 0, 0, StartVertexLocation, 0, 0, nullptr, 0);
     BeforeDraw(c);
 
     if (!c.call_info.skip)
@@ -2574,7 +2574,7 @@ void STDMETHODCALLTYPE HackerContext::DrawIndexedInstanced(
     _In_  INT BaseVertexLocation,
     _In_  UINT StartInstanceLocation)
 {
-    DrawContext c = DrawContext(DrawCall::DrawIndexedInstanced, 0, IndexCountPerInstance, InstanceCount, BaseVertexLocation, StartIndexLocation, StartInstanceLocation, NULL, 0);
+    DrawContext c = DrawContext(DrawCall::DrawIndexedInstanced, 0, IndexCountPerInstance, InstanceCount, BaseVertexLocation, StartIndexLocation, StartInstanceLocation, nullptr, 0);
     BeforeDraw(c);
 
     if (!c.call_info.skip)
@@ -2589,7 +2589,7 @@ void STDMETHODCALLTYPE HackerContext::DrawInstanced(
     _In_  UINT StartVertexLocation,
     _In_  UINT StartInstanceLocation)
 {
-    DrawContext c = DrawContext(DrawCall::DrawInstanced, VertexCountPerInstance, 0, InstanceCount, StartVertexLocation, 0, StartInstanceLocation, NULL, 0);
+    DrawContext c = DrawContext(DrawCall::DrawInstanced, VertexCountPerInstance, 0, InstanceCount, StartVertexLocation, 0, StartInstanceLocation, nullptr, 0);
     BeforeDraw(c);
 
     if (!c.call_info.skip)
@@ -2615,7 +2615,7 @@ void STDMETHODCALLTYPE HackerContext::OMSetRenderTargets(
     if (G->hunting == HUNTING_MODE_ENABLED) {
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
             currentRenderTargets.clear();
-            currentDepthTarget = NULL;
+            currentDepthTarget = nullptr;
             currentPSNumUAVs = 0;
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
@@ -2657,7 +2657,7 @@ void STDMETHODCALLTYPE HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(
 
         if (NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) {
             currentRenderTargets.clear();
-            currentDepthTarget = NULL;
+            currentDepthTarget = nullptr;
             if (G->DumpUsage) {
                 if (Profiling::mode == Profiling::Mode::SUMMARY)
                     Profiling::start(&profiling_state);
@@ -2690,7 +2690,7 @@ void STDMETHODCALLTYPE HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(
 
 void STDMETHODCALLTYPE HackerContext::DrawAuto(THIS)
 {
-    DrawContext c = DrawContext(DrawCall::DrawAuto, 0, 0, 0, 0, 0, 0, NULL, 0);
+    DrawContext c = DrawContext(DrawCall::DrawAuto, 0, 0, 0, 0, 0, 0, nullptr, 0);
     BeforeDraw(c);
 
     if (!c.call_info.skip)
