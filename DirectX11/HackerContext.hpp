@@ -43,8 +43,8 @@ struct DrawContext
             UINT FirstVertex, UINT FirstIndex, UINT FirstInstance,
             ID3D11Buffer **indirect_buffer, UINT args_offset) :
         old_separation(FLT_MAX),
-        old_vertex_shader(NULL),
-        old_pixel_shader(NULL),
+        old_vertex_shader(nullptr),
+        old_pixel_shader(nullptr),
         call_info(type, VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance,
                 indirect_buffer, args_offset)
     {
@@ -58,12 +58,12 @@ struct DispatchContext
     DrawCallInfo call_info;
 
     DispatchContext(UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ) :
-        post_commands(NULL),
-        call_info(DrawCall::Dispatch, 0, 0, 0, 0, 0, 0, NULL, 0, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ)
+        post_commands(nullptr),
+        call_info(DrawCall::Dispatch, 0, 0, 0, 0, 0, 0, nullptr, 0, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ)
     {}
 
     DispatchContext(ID3D11Buffer **indirect_buffer, UINT args_offset) :
-        post_commands(NULL),
+        post_commands(nullptr),
         call_info(DrawCall::DispatchIndirect, 0, 0, 0, 0, 0, 0, indirect_buffer, args_offset)
     {}
 };
@@ -78,7 +78,7 @@ struct MappedResourceInfo {
     size_t size;
 
     MappedResourceInfo() :
-        orig_pData(NULL),
+        orig_pData(nullptr),
         size(0),
         mapped_writable(false)
     {}
