@@ -30,7 +30,7 @@ using namespace std;
 
 // -----------------------------------------------------------------------------------------------
 
-HackerContext* HackerContextFactory(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1)
+HackerContext* HackerContextFactory(ID3D11Device1 *device1, ID3D11DeviceContext1 *context1)
 {
     // We can either create a straight HackerContext, or a souped up
     // FrameAnalysisContext that provides more functionality, at the cost
@@ -59,18 +59,18 @@ HackerContext* HackerContextFactory(ID3D11Device1 *pDevice1, ID3D11DeviceContext
     // frame analysis:
     if (G->hunting || gLogDebug) {
         LOG_INFO("  Creating FrameAnalysisContext\n");
-        return new FrameAnalysisContext(pDevice1, pContext1);
+        return new FrameAnalysisContext(device1, context1);
     }
 
     LOG_INFO("  Creating HackerContext - frame analysis log will not be available\n");
-    return new HackerContext(pDevice1, pContext1);
+    return new HackerContext(device1, context1);
 }
 
-HackerContext::HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1)
+HackerContext::HackerContext(ID3D11Device1 *device1, ID3D11DeviceContext1 *context1)
 {
-    origDevice1 = pDevice1;
-    origContext1 = pContext1;
-    realOrigContext1 = pContext1;
+    origDevice1 = device1;
+    origContext1 = context1;
+    realOrigContext1 = context1;
     hackerDevice = nullptr;
 
     memset(currentVertexBuffers, 0, sizeof(currentVertexBuffers));
@@ -96,9 +96,9 @@ HackerContext::HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pCon
 // Save the corresponding HackerDevice, as we need to use it periodically to get
 // access to the StereoParams.
 
-void HackerContext::SetHackerDevice(HackerDevice *pDevice)
+void HackerContext::SetHackerDevice(HackerDevice *hacker_device)
 {
-    hackerDevice = pDevice;
+    hackerDevice = hacker_device;
 }
 
 HackerDevice* HackerContext::GetHackerDevice()
@@ -198,22 +198,22 @@ void HackerContext::_RecordShaderResourceUsage(ShaderInfoData *shader_info, ID3D
     }
 }
 
-void HackerContext::RecordPeerShaders(std::set<UINT64> *PeerShaders, UINT64 this_shader_hash)
+void HackerContext::RecordPeerShaders(std::set<UINT64> *peer_shaders, UINT64 this_shader_hash)
 {
     if (currentVertexShader && currentVertexShader != this_shader_hash)
-        PeerShaders->insert(currentVertexShader);
+        peer_shaders->insert(currentVertexShader);
 
     if (currentHullShader && currentHullShader != this_shader_hash)
-        PeerShaders->insert(currentHullShader);
+        peer_shaders->insert(currentHullShader);
 
     if (currentDomainShader && currentDomainShader != this_shader_hash)
-        PeerShaders->insert(currentDomainShader);
+        peer_shaders->insert(currentDomainShader);
 
     if (currentGeometryShader && currentGeometryShader != this_shader_hash)
-        PeerShaders->insert(currentGeometryShader);
+        peer_shaders->insert(currentGeometryShader);
 
     if (currentPixelShader && currentPixelShader != this_shader_hash)
-        PeerShaders->insert(currentPixelShader);
+        peer_shaders->insert(currentPixelShader);
 }
 
 
@@ -221,7 +221,7 @@ template <void (__stdcall ID3D11DeviceContext::*GetShaderResources)(
         UINT StartSlot,
         UINT NumViews,
         ID3D11ShaderResourceView **ppShaderResourceViews)>
-void HackerContext::RecordShaderResourceUsage(std::map<UINT64, ShaderInfoData> &ShaderInfo, UINT64 currentShader)
+void HackerContext::RecordShaderResourceUsage(std::map<UINT64, ShaderInfoData> &shader_info, UINT64 current_shader)
 {
     ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
     ShaderInfoData *info;
@@ -230,9 +230,9 @@ void HackerContext::RecordShaderResourceUsage(std::map<UINT64, ShaderInfoData> &
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
-        info = &ShaderInfo[currentShader];
+        info = &shader_info[current_shader];
         _RecordShaderResourceUsage(info, views);
-        RecordPeerShaders(&info->PeerShaders, currentShader);
+        RecordPeerShaders(&info->PeerShaders, current_shader);
 
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
@@ -444,7 +444,7 @@ ID3D11PixelShader* HackerContext::SwitchPSShader(ID3D11PixelShader *shader)
 }
 
 #define ENABLE_LEGACY_FILTERS 1
-void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader, draw_context *data)
+void HackerContext::ProcessShaderOverride(ShaderOverride *shader_override, bool is_pixel_shader, draw_context *data)
 {
     bool use_orig = false;
 
@@ -458,16 +458,16 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
         // Deprecated: The texture filtering support in the command
         // list can match oD for the depth buffer, which will return
         // negative zero -0.0 if no depth buffer is assigned.
-        if (shaderOverride->depth_filter != DepthBufferFilter::NONE) {
+        if (shader_override->depth_filter != DepthBufferFilter::NONE) {
             ID3D11DepthStencilView * depth_stencil_view = nullptr;
 
             origContext1->OMGetRenderTargets(0, nullptr, &depth_stencil_view);
 
             // Remember - we are NOT switching to the original shader when the condition is true
-            if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_ACTIVE && !depth_stencil_view) {
+            if (shader_override->depth_filter == DepthBufferFilter::DEPTH_ACTIVE && !depth_stencil_view) {
                 use_orig = true;
             }
-            else if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_INACTIVE && depth_stencil_view) {
+            else if (shader_override->depth_filter == DepthBufferFilter::DEPTH_INACTIVE && depth_stencil_view) {
                 use_orig = true;
             }
 
@@ -480,24 +480,24 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
 
         // Deprecated: Partner filtering can already be achieved with
         // the command list with far more flexibility than this allows
-        if (shaderOverride->partner_hash) {
-            if (isPixelShader) {
-                if (currentVertexShader != shaderOverride->partner_hash)
+        if (shader_override->partner_hash) {
+            if (is_pixel_shader) {
+                if (currentVertexShader != shader_override->partner_hash)
                     use_orig = true;
             }
             else {
-                if (currentPixelShader != shaderOverride->partner_hash)
+                if (currentPixelShader != shader_override->partner_hash)
                     use_orig = true;
             }
         }
     }
 
-    run_command_list(hackerDevice, this, &shaderOverride->command_list, &data->call_info, false);
+    run_command_list(hackerDevice, this, &shader_override->command_list, &data->call_info, false);
 
     if (ENABLE_LEGACY_FILTERS) {
         // Deprecated since the logic can be moved into the shaders with far more flexibility
         if (use_orig) {
-            if (isPixelShader) {
+            if (is_pixel_shader) {
                 ShaderReplacementMap::iterator i = lookup_original_shader(currentPixelShaderHandle);
                 if (i != G->mOriginalShaders.end())
                     data->old_pixel_shader = SwitchPSShader(static_cast<ID3D11PixelShader*>(i->second));
@@ -1546,22 +1546,22 @@ void STDMETHODCALLTYPE HackerContext::RSSetScissorRects(
  * colour render target to a texture as an input for transparent refraction
  * effects. Expands the rectange to the full width.
  */
-bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
-        UINT DstY, ID3D11Resource *pSrcResource, const D3D11_BOX *pSrcBox,
-        UINT *replaceDstX, D3D11_BOX *replaceBox)
+bool HackerContext::ExpandRegionCopy(ID3D11Resource *dst_resource, UINT DstX,
+        UINT DstY, ID3D11Resource *src_resource, const D3D11_BOX *src_box,
+        UINT *replace_DstX, D3D11_BOX *replace_box)
 {
-    ID3D11Texture2D * src_tex = static_cast<ID3D11Texture2D*>(pSrcResource);
-    ID3D11Texture2D * dst_tex = static_cast<ID3D11Texture2D*>(pDstResource);
+    ID3D11Texture2D * src_tex = static_cast<ID3D11Texture2D*>(src_resource);
+    ID3D11Texture2D * dst_tex = static_cast<ID3D11Texture2D*>(dst_resource);
     D3D11_TEXTURE2D_DESC src_desc, dst_desc;
     D3D11_RESOURCE_DIMENSION src_dim, dst_dim;
     uint32_t src_hash, dst_hash;
     TextureOverrideMap::iterator i;
 
-    if (!pSrcResource || !pDstResource || !pSrcBox)
+    if (!src_resource || !dst_resource || !src_box)
         return false;
 
-    pSrcResource->GetType(&src_dim);
-    pDstResource->GetType(&dst_dim);
+    src_resource->GetType(&src_dim);
+    dst_resource->GetType(&dst_dim);
     if (src_dim != dst_dim || src_dim != D3D11_RESOURCE_DIMENSION_TEXTURE2D)
         return false;
 
@@ -1573,7 +1573,7 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
     LOG_DEBUG("CopySubresourceRegion %08lx (%u:%u x %u:%u / %u x %u) -> %08lx (%u x %u / %u x %u)\n",
-              src_hash, pSrcBox->left, pSrcBox->right, pSrcBox->top, pSrcBox->bottom, src_desc.Width, src_desc.Height,
+              src_hash, src_box->left, src_box->right, src_box->top, src_box->bottom, src_desc.Width, src_desc.Height,
               dst_hash, DstX, DstY, dst_desc.Width, dst_desc.Height);
 
     i = lookup_textureoverride(dst_hash);
@@ -1583,10 +1583,10 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
     if (!i->second.begin()->expand_region_copy)
         return false;
 
-    memcpy(replaceBox, pSrcBox, sizeof(D3D11_BOX));
-    *replaceDstX = 0;
-    replaceBox->left = 0;
-    replaceBox->right = dst_desc.Width;
+    memcpy(replace_box, src_box, sizeof(D3D11_BOX));
+    *replace_DstX = 0;
+    replace_box->left = 0;
+    replace_box->right = dst_desc.Width;
 
     return true;
 }
@@ -1859,17 +1859,17 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
     _In_opt_ ID3D11Shader *pShader,
     _In_reads_opt_(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
     UINT NumClassInstances,
-    std::set<UINT64> *visitedShaders,
-    UINT64 selectedShader,
-    UINT64 *currentShaderHash,
-    ID3D11Shader **currentShaderHandle)
+    std::set<UINT64> *visited_shaders,
+    UINT64 selected_shader,
+    UINT64 *current_shader_hash,
+    ID3D11Shader **current_shader_handle)
 {
     ID3D11Shader *repl_shader = pShader;
 
     // Always update the current shader handle no matter what so we can
     // reliably check if a shader of a given type is bound and for certain
     // types of old style filtering:
-    *currentShaderHandle = pShader;
+    *current_shader_handle = pShader;
 
     if (pShader) {
         // Store as current shader. Need to do this even while
@@ -1882,12 +1882,12 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
         if (!G->mShaderOverrideMap.empty() || !shader_regex_groups.empty() || (G->hunting == HUNTING_MODE_ENABLED)) {
             ShaderMap::iterator i = lookup_shader_hash(pShader);
             if (i != G->mShaders.end()) {
-                *currentShaderHash = i->second;
-                LOG_DEBUG("  shader found: handle = %p, hash = %016I64x\n", *currentShaderHandle, *currentShaderHash);
+                *current_shader_hash = i->second;
+                LOG_DEBUG("  shader found: handle = %p, hash = %016I64x\n", *current_shader_handle, *current_shader_hash);
 
-                if ((G->hunting == HUNTING_MODE_ENABLED) && visitedShaders) {
+                if ((G->hunting == HUNTING_MODE_ENABLED) && visited_shaders) {
                     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-                    visitedShaders->insert(i->second);
+                    visited_shaders->insert(i->second);
                     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
                 }
             }
@@ -1897,7 +1897,7 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
             // Not accurate, but if we have a bug where we
             // reference this at least make sure we don't use the
             // *wrong* hash
-            *currentShaderHash = 0;
+            *current_shader_hash = 0;
         }
 
         // If the shader has been live reloaded from ShaderFixes, use the new one
@@ -1922,14 +1922,14 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
             // Replacement map.
             if (G->marking_mode == MarkingMode::ORIGINAL || !G->fix_enabled) {
                 ShaderReplacementMap::iterator j = lookup_original_shader(pShader);
-                if ((selectedShader == *currentShaderHash || !G->fix_enabled) && j != G->mOriginalShaders.end()) {
+                if ((selected_shader == *current_shader_hash || !G->fix_enabled) && j != G->mOriginalShaders.end()) {
                     repl_shader = static_cast<ID3D11Shader*>(j->second);
                 }
             }
         }
 
     } else {
-        *currentShaderHash = 0;
+        *current_shader_hash = 0;
     }
 
     // Call through to original XXSetShader, but pShader may have been replaced.
