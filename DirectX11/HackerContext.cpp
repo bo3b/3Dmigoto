@@ -240,7 +240,7 @@ void HackerContext::RecordShaderResourceUsage(std::map<UINT64, ShaderInfoData> &
 void HackerContext::RecordGraphicsShaderStats()
 {
     ID3D11UnorderedAccessView *uavs[D3D11_1_UAV_SLOT_COUNT]; // DX11: 8, DX11.1: 64
-    UINT selectedRenderTargetPos;
+    UINT selected_render_target_pos;
     ShaderInfoData *info;
     ID3D11Resource *resource;
     UINT i;
@@ -280,11 +280,11 @@ void HackerContext::RecordGraphicsShaderStats()
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
             info = &G->mPixelShaderInfo[currentPixelShader];
 
-            for (selectedRenderTargetPos = 0; selectedRenderTargetPos < currentRenderTargets.size(); ++selectedRenderTargetPos) {
-                if (selectedRenderTargetPos >= info->RenderTargets.size())
+            for (selected_render_target_pos = 0; selected_render_target_pos < currentRenderTargets.size(); ++selected_render_target_pos) {
+                if (selected_render_target_pos >= info->RenderTargets.size())
                     info->RenderTargets.push_back(std::set<ResourceSnapshot>());
 
-                info->RenderTargets[selectedRenderTargetPos].insert(SnapshotResource(currentRenderTargets[selectedRenderTargetPos]));
+                info->RenderTargets[selected_render_target_pos].insert(SnapshotResource(currentRenderTargets[selected_render_target_pos]));
             }
 
             if (currentDepthTarget)
@@ -412,35 +412,35 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 ID3D11VertexShader* HackerContext::SwitchVSShader(ID3D11VertexShader *shader)
 {
 
-    ID3D11VertexShader *pVertexShader;
-    ID3D11ClassInstance *pClassInstances;
-    UINT NumClassInstances = 0, i;
+    ID3D11VertexShader * vertex_shader;
+    ID3D11ClassInstance * class_instances;
+    UINT num_class_instances = 0, i;
 
     // We can possibly save the need to get the current shader by saving the ClassInstances
-    origContext1->VSGetShader(&pVertexShader, &pClassInstances, &NumClassInstances);
-    origContext1->VSSetShader(shader, &pClassInstances, NumClassInstances);
+    origContext1->VSGetShader(&vertex_shader, &class_instances, &num_class_instances);
+    origContext1->VSSetShader(shader, &class_instances, num_class_instances);
 
-    for (i = 0; i < NumClassInstances; i++)
-        pClassInstances[i].Release();
+    for (i = 0; i < num_class_instances; i++)
+        class_instances[i].Release();
 
-    return pVertexShader;
+    return vertex_shader;
 }
 
 ID3D11PixelShader* HackerContext::SwitchPSShader(ID3D11PixelShader *shader)
 {
 
-    ID3D11PixelShader *pPixelShader;
-    ID3D11ClassInstance *pClassInstances;
-    UINT NumClassInstances = 0, i;
+    ID3D11PixelShader * pixel_shader;
+    ID3D11ClassInstance * class_instances;
+    UINT num_class_instances = 0, i;
 
     // We can possibly save the need to get the current shader by saving the ClassInstances
-    origContext1->PSGetShader(&pPixelShader, &pClassInstances, &NumClassInstances);
-    origContext1->PSSetShader(shader, &pClassInstances, NumClassInstances);
+    origContext1->PSGetShader(&pixel_shader, &class_instances, &num_class_instances);
+    origContext1->PSSetShader(shader, &class_instances, num_class_instances);
 
-    for (i = 0; i < NumClassInstances; i++)
-        pClassInstances[i].Release();
+    for (i = 0; i < num_class_instances; i++)
+        class_instances[i].Release();
 
-    return pPixelShader;
+    return pixel_shader;
 }
 
 #define ENABLE_LEGACY_FILTERS 1
@@ -459,20 +459,20 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool i
         // list can match oD for the depth buffer, which will return
         // negative zero -0.0 if no depth buffer is assigned.
         if (shaderOverride->depth_filter != DepthBufferFilter::NONE) {
-            ID3D11DepthStencilView *pDepthStencilView = nullptr;
+            ID3D11DepthStencilView * depth_stencil_view = nullptr;
 
-            origContext1->OMGetRenderTargets(0, nullptr, &pDepthStencilView);
+            origContext1->OMGetRenderTargets(0, nullptr, &depth_stencil_view);
 
             // Remember - we are NOT switching to the original shader when the condition is true
-            if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_ACTIVE && !pDepthStencilView) {
+            if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_ACTIVE && !depth_stencil_view) {
                 use_orig = true;
             }
-            else if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_INACTIVE && pDepthStencilView) {
+            else if (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_INACTIVE && depth_stencil_view) {
                 use_orig = true;
             }
 
-            if (pDepthStencilView)
-                pDepthStencilView->Release();
+            if (depth_stencil_view)
+                depth_stencil_view->Release();
 
             // TODO: Add alternate filter type where the depth
             // buffer state is passed as an input to the shader
@@ -738,8 +738,8 @@ void HackerContext::BeforeDraw(DrawContext &data)
     // If we are not hunting shaders, we should skip all of this shader management for a performance bump.
     if (G->hunting == HUNTING_MODE_ENABLED)
     {
-        UINT selectedVertexBufferPos;
-        UINT selectedRenderTargetPos;
+        UINT selected_vertex_buffer_pos;
+        UINT selected_render_target_pos;
         UINT i;
 
         // In some cases stat collection can have a significant
@@ -751,12 +751,12 @@ void HackerContext::BeforeDraw(DrawContext &data)
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
         {
             // Selection
-            for (selectedVertexBufferPos = 0; selectedVertexBufferPos < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; ++selectedVertexBufferPos) {
-                if (currentVertexBuffers[selectedVertexBufferPos] == G->mSelectedVertexBuffer)
+            for (selected_vertex_buffer_pos = 0; selected_vertex_buffer_pos < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; ++selected_vertex_buffer_pos) {
+                if (currentVertexBuffers[selected_vertex_buffer_pos] == G->mSelectedVertexBuffer)
                     break;
             }
-            for (selectedRenderTargetPos = 0; selectedRenderTargetPos < currentRenderTargets.size(); ++selectedRenderTargetPos) {
-                if (currentRenderTargets[selectedRenderTargetPos] == G->mSelectedRenderTarget)
+            for (selected_render_target_pos = 0; selected_render_target_pos < currentRenderTargets.size(); ++selected_render_target_pos) {
+                if (currentRenderTargets[selected_render_target_pos] == G->mSelectedRenderTarget)
                     break;
             }
             if (currentIndexBuffer == G->mSelectedIndexBuffer ||
@@ -765,8 +765,8 @@ void HackerContext::BeforeDraw(DrawContext &data)
                 currentGeometryShader == G->mSelectedGeometryShader ||
                 currentDomainShader == G->mSelectedDomainShader ||
                 currentHullShader == G->mSelectedHullShader ||
-                selectedVertexBufferPos < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT ||
-                selectedRenderTargetPos < currentRenderTargets.size())
+                selected_vertex_buffer_pos < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT ||
+                selected_render_target_pos < currentRenderTargets.size())
             {
                 LOG_DEBUG("  Skipping selected operation. CurrentIndexBuffer = %08lx, CurrentVertexShader = %016I64x, CurrentPixelShader = %016I64x\n",
                     currentIndexBuffer, currentVertexShader, currentPixelShader);
@@ -944,10 +944,10 @@ ULONG STDMETHODCALLTYPE HackerContext::AddRef(void)
 
 ULONG STDMETHODCALLTYPE HackerContext::Release(THIS)
 {
-    ULONG ulRef = origContext1->Release();
-    LOG_DEBUG("HackerContext::Release counter=%d, this=%p\n", ulRef, this);
+    ULONG ul_ref = origContext1->Release();
+    LOG_DEBUG("HackerContext::Release counter=%d, this=%p\n", ul_ref, this);
 
-    if (ulRef <= 0)
+    if (ul_ref <= 0)
     {
         LOG_INFO("  deleting self\n");
 
@@ -962,7 +962,7 @@ ULONG STDMETHODCALLTYPE HackerContext::Release(THIS)
         delete this;
         return 0L;
     }
-    return ulRef;
+    return ul_ref;
 }
 
 // In a strange case, Mafia 3 calls this hacky interface with the request for
@@ -1550,33 +1550,33 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
         UINT DstY, ID3D11Resource *pSrcResource, const D3D11_BOX *pSrcBox,
         UINT *replaceDstX, D3D11_BOX *replaceBox)
 {
-    ID3D11Texture2D *srcTex = (ID3D11Texture2D*)pSrcResource;
-    ID3D11Texture2D *dstTex = (ID3D11Texture2D*)pDstResource;
-    D3D11_TEXTURE2D_DESC srcDesc, dstDesc;
-    D3D11_RESOURCE_DIMENSION srcDim, dstDim;
-    uint32_t srcHash, dstHash;
+    ID3D11Texture2D * src_tex = (ID3D11Texture2D*)pSrcResource;
+    ID3D11Texture2D * dst_tex = (ID3D11Texture2D*)pDstResource;
+    D3D11_TEXTURE2D_DESC src_desc, dst_desc;
+    D3D11_RESOURCE_DIMENSION src_dim, dst_dim;
+    uint32_t src_hash, dst_hash;
     TextureOverrideMap::iterator i;
 
     if (!pSrcResource || !pDstResource || !pSrcBox)
         return false;
 
-    pSrcResource->GetType(&srcDim);
-    pDstResource->GetType(&dstDim);
-    if (srcDim != dstDim || srcDim != D3D11_RESOURCE_DIMENSION_TEXTURE2D)
+    pSrcResource->GetType(&src_dim);
+    pDstResource->GetType(&dst_dim);
+    if (src_dim != dst_dim || src_dim != D3D11_RESOURCE_DIMENSION_TEXTURE2D)
         return false;
 
-    srcTex->GetDesc(&srcDesc);
-    dstTex->GetDesc(&dstDesc);
+    src_tex->GetDesc(&src_desc);
+    dst_tex->GetDesc(&dst_desc);
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-        srcHash = GetResourceHash(srcTex);
-        dstHash = GetResourceHash(dstTex);
+        src_hash = GetResourceHash(src_tex);
+        dst_hash = GetResourceHash(dst_tex);
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
     LOG_DEBUG("CopySubresourceRegion %08lx (%u:%u x %u:%u / %u x %u) -> %08lx (%u x %u / %u x %u)\n",
-            srcHash, pSrcBox->left, pSrcBox->right, pSrcBox->top, pSrcBox->bottom, srcDesc.Width, srcDesc.Height, 
-            dstHash, DstX, DstY, dstDesc.Width, dstDesc.Height);
+              src_hash, pSrcBox->left, pSrcBox->right, pSrcBox->top, pSrcBox->bottom, src_desc.Width, src_desc.Height,
+              dst_hash, DstX, DstY, dst_desc.Width, dst_desc.Height);
 
-    i = lookup_textureoverride(dstHash);
+    i = lookup_textureoverride(dst_hash);
     if (i == G->mTextureOverrideMap.end())
         return false;
 
@@ -1586,7 +1586,7 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
     memcpy(replaceBox, pSrcBox, sizeof(D3D11_BOX));
     *replaceDstX = 0;
     replaceBox->left = 0;
-    replaceBox->right = dstDesc.Width;
+    replaceBox->right = dst_desc.Width;
 
     return true;
 }
@@ -1601,17 +1601,17 @@ void STDMETHODCALLTYPE HackerContext::CopySubresourceRegion(
     _In_  UINT SrcSubresource,
     _In_opt_  const D3D11_BOX *pSrcBox)
 {
-    D3D11_BOX replaceSrcBox;
-    UINT replaceDstX = DstX;
+    D3D11_BOX replace_src_box;
+    UINT replace_DstX = DstX;
 
     if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
         MarkResourceHashContaminated(pDstResource, DstSubresource, pSrcResource, SrcSubresource, 'S', DstX, DstY, DstZ, pSrcBox);
     }
 
-    if (ExpandRegionCopy(pDstResource, DstX, DstY, pSrcResource, pSrcBox, &replaceDstX, &replaceSrcBox))
-        pSrcBox = &replaceSrcBox;
+    if (ExpandRegionCopy(pDstResource, DstX, DstY, pSrcResource, pSrcBox, &replace_DstX, &replace_src_box))
+        pSrcBox = &replace_src_box;
 
-     origContext1->CopySubresourceRegion(pDstResource, DstSubresource, replaceDstX, DstY, DstZ,
+     origContext1->CopySubresourceRegion(pDstResource, DstSubresource, replace_DstX, DstY, DstZ,
         pSrcResource, SrcSubresource, pSrcBox);
 
     // We only update the destination resource hash when the entire
@@ -2358,7 +2358,7 @@ void HackerContext::Bind3DMigotoResources()
 
 void HackerContext::InitIniParams()
 {
-    D3D11_MAPPED_SUBRESOURCE mappedResource;
+    D3D11_MAPPED_SUBRESOURCE mapped_resource;
     HRESULT hr;
 
     // Only the immediate context is allowed to perform [Constants]
@@ -2392,9 +2392,9 @@ void HackerContext::InitIniParams()
     // further command list optimisations cause [Constants] to bail out
     // early and not consider update_params at all.
     if (hackerDevice->iniTexture) {
-        hr = origContext1->Map(hackerDevice->iniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+        hr = origContext1->Map(hackerDevice->iniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
         if (SUCCEEDED(hr)) {
-            memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
+            memcpy(mapped_resource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
             origContext1->Unmap(hackerDevice->iniTexture, 0);
             Profiling::iniparams_updates++;
         } else {
