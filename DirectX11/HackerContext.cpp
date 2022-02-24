@@ -444,7 +444,7 @@ ID3D11PixelShader* HackerContext::SwitchPSShader(ID3D11PixelShader *shader)
 }
 
 #define ENABLE_LEGACY_FILTERS 1
-void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader, DrawContext *data)
+void HackerContext::ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader, draw_context *data)
 {
     bool use_orig = false;
 
@@ -728,7 +728,7 @@ void HackerContext::DeferredShaderReplacementBeforeDispatch()
 }
 
 
-void HackerContext::BeforeDraw(DrawContext &data)
+void HackerContext::BeforeDraw(draw_context &data)
 {
     Profiling::State profiling_state;
 
@@ -889,7 +889,7 @@ out_profile:
         Profiling::end(&profiling_state, &Profiling::draw_overhead);
 }
 
-void HackerContext::AfterDraw(DrawContext &data)
+void HackerContext::AfterDraw(draw_context &data)
 {
     int i;
     Profiling::State profiling_state;
@@ -1147,7 +1147,7 @@ void HackerContext::TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
     D3D11_TEXTURE1D_DESC tex1d_desc;
     D3D11_TEXTURE2D_DESC tex2d_desc;
     D3D11_TEXTURE3D_DESC tex3d_desc;
-    MappedResourceInfo *map_info = nullptr;
+    mapped_resource_info *map_info = nullptr;
     void *replace = nullptr;
     bool divertable = false, divert = false, track = false;
     bool write = false, read = false, deny = false;
@@ -1248,7 +1248,7 @@ out_profile:
 void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresource)
 {
     MappedResources::iterator i;
-    MappedResourceInfo *map_info = nullptr;
+    mapped_resource_info *map_info = nullptr;
     Profiling::State profiling_state;
 
     if (Profiling::mode == Profiling::Mode::SUMMARY)
@@ -1450,7 +1450,7 @@ void STDMETHODCALLTYPE HackerContext::SOSetTargets(
      origContext1->SOSetTargets(NumBuffers, ppSOTargets, pOffsets);
 }
 
-bool HackerContext::BeforeDispatch(DispatchContext *context)
+bool HackerContext::BeforeDispatch(dispatch_context *context)
 {
     if (G->hunting == HUNTING_MODE_ENABLED) {
         if (G->DumpUsage)
@@ -1486,7 +1486,7 @@ bool HackerContext::BeforeDispatch(DispatchContext *context)
     return true;
 }
 
-void HackerContext::AfterDispatch(DispatchContext *context)
+void HackerContext::AfterDispatch(dispatch_context *context)
 {
     if (context->post_commands)
         run_command_list(hackerDevice, this, context->post_commands, &context->call_info, true);
@@ -1497,7 +1497,7 @@ void STDMETHODCALLTYPE HackerContext::Dispatch(
     _In_  UINT ThreadGroupCountY,
     _In_  UINT ThreadGroupCountZ)
 {
-    DispatchContext context{ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ};
+    dispatch_context context{ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ};
 
     if (BeforeDispatch(&context))
         origContext1->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
@@ -1511,7 +1511,7 @@ void STDMETHODCALLTYPE HackerContext::DispatchIndirect(
     _In_  ID3D11Buffer *pBufferForArgs,
     _In_  UINT AlignedByteOffsetForArgs)
 {
-    DispatchContext context{&pBufferForArgs, AlignedByteOffsetForArgs};
+    dispatch_context context{&pBufferForArgs, AlignedByteOffsetForArgs};
 
     if (BeforeDispatch(&context))
         origContext1->DispatchIndirect(pBufferForArgs, AlignedByteOffsetForArgs);
@@ -2526,7 +2526,7 @@ void STDMETHODCALLTYPE HackerContext::DrawIndexed(
     _In_  UINT StartIndexLocation,
     _In_  INT BaseVertexLocation)
 {
-    DrawContext c = DrawContext(DrawCall::DrawIndexed, 0, IndexCount, 0, BaseVertexLocation, StartIndexLocation, 0, nullptr, 0);
+    draw_context c = draw_context(DrawCall::DrawIndexed, 0, IndexCount, 0, BaseVertexLocation, StartIndexLocation, 0, nullptr, 0);
     BeforeDraw(c);
 
     if (!c.call_info.skip)
@@ -2538,7 +2538,7 @@ void STDMETHODCALLTYPE HackerContext::Draw(
     _In_  UINT VertexCount,
     _In_  UINT StartVertexLocation)
 {
-    DrawContext c = DrawContext(DrawCall::Draw, VertexCount, 0, 0, StartVertexLocation, 0, 0, nullptr, 0);
+    draw_context c = draw_context(DrawCall::Draw, VertexCount, 0, 0, StartVertexLocation, 0, 0, nullptr, 0);
     BeforeDraw(c);
 
     if (!c.call_info.skip)
@@ -2574,7 +2574,7 @@ void STDMETHODCALLTYPE HackerContext::DrawIndexedInstanced(
     _In_  INT BaseVertexLocation,
     _In_  UINT StartInstanceLocation)
 {
-    DrawContext c = DrawContext(DrawCall::DrawIndexedInstanced, 0, IndexCountPerInstance, InstanceCount, BaseVertexLocation, StartIndexLocation, StartInstanceLocation, nullptr, 0);
+    draw_context c = draw_context(DrawCall::DrawIndexedInstanced, 0, IndexCountPerInstance, InstanceCount, BaseVertexLocation, StartIndexLocation, StartInstanceLocation, nullptr, 0);
     BeforeDraw(c);
 
     if (!c.call_info.skip)
@@ -2589,7 +2589,7 @@ void STDMETHODCALLTYPE HackerContext::DrawInstanced(
     _In_  UINT StartVertexLocation,
     _In_  UINT StartInstanceLocation)
 {
-    DrawContext c = DrawContext(DrawCall::DrawInstanced, VertexCountPerInstance, 0, InstanceCount, StartVertexLocation, 0, StartInstanceLocation, nullptr, 0);
+    draw_context c = draw_context(DrawCall::DrawInstanced, VertexCountPerInstance, 0, InstanceCount, StartVertexLocation, 0, StartInstanceLocation, nullptr, 0);
     BeforeDraw(c);
 
     if (!c.call_info.skip)
@@ -2690,7 +2690,7 @@ void STDMETHODCALLTYPE HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(
 
 void STDMETHODCALLTYPE HackerContext::DrawAuto(THIS)
 {
-    DrawContext c = DrawContext(DrawCall::DrawAuto, 0, 0, 0, 0, 0, 0, nullptr, 0);
+    draw_context c = draw_context(DrawCall::DrawAuto, 0, 0, 0, 0, 0, 0, nullptr, 0);
     BeforeDraw(c);
 
     if (!c.call_info.skip)
@@ -2702,7 +2702,7 @@ void STDMETHODCALLTYPE HackerContext::DrawIndexedInstancedIndirect(
     _In_  ID3D11Buffer *pBufferForArgs,
     _In_  UINT AlignedByteOffsetForArgs)
 {
-    DrawContext c = DrawContext(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
+    draw_context c = draw_context(DrawCall::DrawIndexedInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
     BeforeDraw(c);
 
     if (!c.call_info.skip)
@@ -2714,7 +2714,7 @@ void STDMETHODCALLTYPE HackerContext::DrawInstancedIndirect(
     _In_  ID3D11Buffer *pBufferForArgs,
     _In_  UINT AlignedByteOffsetForArgs)
 {
-    DrawContext c = DrawContext(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
+    draw_context c = draw_context(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
     BeforeDraw(c);
 
     if (!c.call_info.skip)
