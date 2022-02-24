@@ -19,7 +19,7 @@ DEFINE_GUID(IID_HackerContext,
 // Self forward reference for the factory interface.
 class HackerContext;
 
-HackerContext* HackerContextFactory(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
+HackerContext* HackerContextFactory(ID3D11Device1 *device1, ID3D11DeviceContext1 *context1);
 
 // Forward declaration to allow circular reference between HackerContext and HackerDevice. 
 // We need this to allow each to reference the other as needed.
@@ -39,13 +39,13 @@ struct draw_context
     DrawCallInfo call_info;
 
     draw_context(DrawCall type,
-            UINT VertexCount, UINT IndexCount, UINT InstanceCount,
-            UINT FirstVertex, UINT FirstIndex, UINT FirstInstance,
+            UINT vertex_count, UINT index_count, UINT instance_count,
+            UINT first_vertex, UINT first_index, UINT first_instance,
             ID3D11Buffer **indirect_buffer, UINT args_offset) :
         old_separation(FLT_MAX),
         old_pixel_shader(nullptr),
         old_vertex_shader(nullptr),
-        call_info(type, VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance,
+        call_info(type, vertex_count, index_count, instance_count, first_vertex, first_index, first_instance,
                   indirect_buffer, args_offset)
     {
         memset(post_commands, 0, sizeof(post_commands));
@@ -134,6 +134,7 @@ private:
     void AfterDraw(draw_context &data);
     bool BeforeDispatch(dispatch_context *context);
     void AfterDispatch(dispatch_context *context);
+
     template <class ID3D11Shader,
         void (__stdcall ID3D11DeviceContext::*GetShaderVS2013BUGWORKAROUND)(ID3D11Shader**, ID3D11ClassInstance**, UINT*),
         void (__stdcall ID3D11DeviceContext::*SetShaderVS2013BUGWORKAROUND)(ID3D11Shader*, ID3D11ClassInstance*const*, UINT),
@@ -142,9 +143,10 @@ private:
     void DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 hash, wchar_t *shader_type);
     void DeferredShaderReplacementBeforeDraw();
     void DeferredShaderReplacementBeforeDispatch();
-    bool ExpandRegionCopy(ID3D11Resource *pDstResource, UINT DstX,
-        UINT DstY, ID3D11Resource *pSrcResource, const D3D11_BOX *pSrcBox,
-        UINT *replaceDstX, D3D11_BOX *replaceBox);
+
+    bool ExpandRegionCopy(ID3D11Resource *dst_resource, UINT DstX,
+        UINT DstY, ID3D11Resource *src_resource, const D3D11_BOX *src_box,
+        UINT *replace_DstX, D3D11_BOX *replace_box);
     bool MapDenyCPURead(ID3D11Resource *pResource, UINT Subresource,
             D3D11_MAP MapType, UINT MapFlags,
             D3D11_MAPPED_SUBRESOURCE *pMappedResource);
@@ -152,46 +154,48 @@ private:
         UINT Subresource, D3D11_MAP MapType, UINT MapFlags,
         D3D11_MAPPED_SUBRESOURCE *pMappedResource);
     void TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresource);
-    void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader, draw_context *data);
+
+    void ProcessShaderOverride(ShaderOverride *shader_override, bool is_pixel_shader, draw_context *data);
     ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
     ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
     void RecordDepthStencil(ID3D11DepthStencilView *target);
-    template <void (__stdcall ID3D11DeviceContext::*GetShaderResources)(THIS_
+
+    template <void (__stdcall ID3D11DeviceContext::*GetShaderResources)(
         UINT StartSlot,
         UINT NumViews,
         ID3D11ShaderResourceView **ppShaderResourceViews)>
-    void RecordShaderResourceUsage(std::map<UINT64, ShaderInfoData> &ShaderInfo, UINT64 currentShader);
+    void RecordShaderResourceUsage(std::map<UINT64, ShaderInfoData> &shader_info, UINT64 current_shader);
     void _RecordShaderResourceUsage(ShaderInfoData *shader_info,
             ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]);
     void RecordGraphicsShaderStats();
     void RecordComputeShaderStats();
-    void RecordPeerShaders(std::set<UINT64> *PeerShaders, UINT64 this_shader_hash);
+    void RecordPeerShaders(std::set<UINT64> *peer_shaders, UINT64 shader_hash);
     void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);
     ID3D11Resource* RecordResourceViewStats(ID3D11View *view, std::set<uint32_t> *resource_info);
 
     // Templates to reduce duplicated code:
     template <class ID3D11Shader,
-         void (__stdcall ID3D11DeviceContext::*OrigSetShader)(THIS_
+         void (__stdcall ID3D11DeviceContext::*OrigSetShader)(
                  ID3D11Shader *pShader,
                  ID3D11ClassInstance *const *ppClassInstances,
                  UINT NumClassInstances)
          >
-    STDMETHODIMP_(void) SetShader(THIS_
+    STDMETHODIMP_(void) SetShader(
         /* [annotation] */
         __in_opt ID3D11Shader *pShader,
         /* [annotation] */
         __in_ecount_opt(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
         UINT NumClassInstances,
-        std::set<UINT64> *visitedShaders,
-        UINT64 selectedShader,
-        UINT64 *currentShaderHash,
-        ID3D11Shader **currentShaderHandle);
-    template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
+        std::set<UINT64> *visited_shaders,
+        UINT64 selected_shader,
+        UINT64 *current_shader_hash,
+        ID3D11Shader **current_shader_handle);
+    template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(
             UINT StartSlot,
             UINT NumViews,
             ID3D11ShaderResourceView *const *ppShaderResourceViews)>
     void BindStereoResources();
-    template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(THIS_
+    template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(
             UINT StartSlot,
             UINT NumViews,
             ID3D11ShaderResourceView *const *ppShaderResourceViews)>
@@ -210,9 +214,9 @@ protected:
     UINT64 currentComputeShader;
 
 public:
-    HackerContext(ID3D11Device1 *pDevice1, ID3D11DeviceContext1 *pContext1);
+    HackerContext(ID3D11Device1 *device1, ID3D11DeviceContext1 *context1);
 
-    void SetHackerDevice(HackerDevice *pDevice);
+    void SetHackerDevice(HackerDevice *hacker_device);
     HackerDevice* GetHackerDevice();
     void Bind3DMigotoResources();
     void InitIniParams();
