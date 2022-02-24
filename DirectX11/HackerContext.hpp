@@ -30,7 +30,7 @@ enum class FrameAnalysisOptions;
 struct ShaderOverride;
 
 
-struct DrawContext
+struct draw_context
 {
     float old_separation;
     ID3D11PixelShader *old_pixel_shader;
@@ -38,31 +38,31 @@ struct DrawContext
     CommandList *post_commands[5];
     DrawCallInfo call_info;
 
-    DrawContext(DrawCall type,
+    draw_context(DrawCall type,
             UINT VertexCount, UINT IndexCount, UINT InstanceCount,
             UINT FirstVertex, UINT FirstIndex, UINT FirstInstance,
             ID3D11Buffer **indirect_buffer, UINT args_offset) :
         old_separation(FLT_MAX),
-        old_vertex_shader(nullptr),
         old_pixel_shader(nullptr),
+        old_vertex_shader(nullptr),
         call_info(type, VertexCount, IndexCount, InstanceCount, FirstVertex, FirstIndex, FirstInstance,
-                indirect_buffer, args_offset)
+                  indirect_buffer, args_offset)
     {
         memset(post_commands, 0, sizeof(post_commands));
     }
 };
 
-struct DispatchContext
+struct dispatch_context
 {
     CommandList *post_commands;
     DrawCallInfo call_info;
 
-    DispatchContext(UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ) :
+    dispatch_context(UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ) :
         post_commands(nullptr),
         call_info(DrawCall::Dispatch, 0, 0, 0, 0, 0, 0, nullptr, 0, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ)
     {}
 
-    DispatchContext(ID3D11Buffer **indirect_buffer, UINT args_offset) :
+    dispatch_context(ID3D11Buffer **indirect_buffer, UINT args_offset) :
         post_commands(nullptr),
         call_info(DrawCall::DispatchIndirect, 0, 0, 0, 0, 0, 0, indirect_buffer, args_offset)
     {}
@@ -71,16 +71,17 @@ struct DispatchContext
 
 
 // These are per-context so we shouldn't need locks
-struct MappedResourceInfo {
+struct mapped_resource_info {
     D3D11_MAPPED_SUBRESOURCE map;
     bool mapped_writable;
     void *orig_pData;
     size_t size;
 
-    MappedResourceInfo() :
-        orig_pData(nullptr),
-        size(0),
-        mapped_writable(false)
+    mapped_resource_info() :
+          map(),
+          mapped_writable(false),
+          orig_pData(nullptr),
+          size(0)
     {}
 };
 
@@ -125,14 +126,14 @@ private:
     UINT currentPSNumUAVs;
 
     // Used for deny_cpu_read, track_texture_updates and constant buffer matching
-    typedef std::unordered_map<ID3D11Resource*, MappedResourceInfo> MappedResources;
+    typedef std::unordered_map<ID3D11Resource*, mapped_resource_info> MappedResources;
     MappedResources mappedResources;
 
     // These private methods are utility routines for HackerContext.
-    void BeforeDraw(DrawContext &data);
-    void AfterDraw(DrawContext &data);
-    bool BeforeDispatch(DispatchContext *context);
-    void AfterDispatch(DispatchContext *context);
+    void BeforeDraw(draw_context &data);
+    void AfterDraw(draw_context &data);
+    bool BeforeDispatch(dispatch_context *context);
+    void AfterDispatch(dispatch_context *context);
     template <class ID3D11Shader,
         void (__stdcall ID3D11DeviceContext::*GetShaderVS2013BUGWORKAROUND)(ID3D11Shader**, ID3D11ClassInstance**, UINT*),
         void (__stdcall ID3D11DeviceContext::*SetShaderVS2013BUGWORKAROUND)(ID3D11Shader*, ID3D11ClassInstance*const*, UINT),
@@ -151,7 +152,7 @@ private:
         UINT Subresource, D3D11_MAP MapType, UINT MapFlags,
         D3D11_MAPPED_SUBRESOURCE *pMappedResource);
     void TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresource);
-    void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader, DrawContext *data);
+    void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader, draw_context *data);
     ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
     ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
     void RecordDepthStencil(ID3D11DepthStencilView *target);
