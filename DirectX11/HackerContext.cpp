@@ -217,11 +217,14 @@ void HackerContext::RecordPeerShaders(std::set<UINT64> *peer_shaders, UINT64 thi
 }
 
 
-template <void (__stdcall ID3D11DeviceContext::*GetShaderResources)(
-        UINT StartSlot,
-        UINT NumViews,
-        ID3D11ShaderResourceView **ppShaderResourceViews)>
-void HackerContext::RecordShaderResourceUsage(std::map<UINT64, ShaderInfoData> &shader_info, UINT64 current_shader)
+template <
+    void (__stdcall ID3D11DeviceContext::*GetShaderResources)(
+        UINT                       StartSlot,
+        UINT                       NumViews,
+        ID3D11ShaderResourceView** ppShaderResourceViews)>
+void HackerContext::RecordShaderResourceUsage(
+    std::map<UINT64, ShaderInfoData>& shader_info,
+    UINT64                            current_shader)
 {
     ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
     ShaderInfoData *info;
@@ -524,12 +527,15 @@ void HackerContext::ProcessShaderOverride(ShaderOverride *shader_override, bool 
 // ShaderFixes, either at shader creation time, or dynamically by the
 // mReloadedShaders map - user replaced shaders should always take priority
 // over automatically replaced shaders.
-template <class ID3D11Shader,
+template <
+    class ID3D11Shader,
     void (__stdcall ID3D11DeviceContext::*GetShaderVS2013BUGWORKAROUND)(ID3D11Shader**, ID3D11ClassInstance**, UINT*),
-    void (__stdcall ID3D11DeviceContext::*SetShaderVS2013BUGWORKAROUND)(ID3D11Shader*, ID3D11ClassInstance*const*, UINT),
-    HRESULT (__stdcall ID3D11Device::*CreateShader)(const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11Shader**)
->
-void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 hash, wchar_t *shader_type)
+    void (__stdcall ID3D11DeviceContext::*SetShaderVS2013BUGWORKAROUND)(ID3D11Shader*, ID3D11ClassInstance* const*, UINT),
+    HRESULT (__stdcall ID3D11Device::*CreateShader)(const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11Shader**)>
+void HackerContext::DeferredShaderReplacement(
+    ID3D11DeviceChild* shader,
+    UINT64             hash,
+    wchar_t*           shader_type)
 {
     ID3D11Shader *orig_shader = nullptr, *patched_shader = nullptr;
     ID3D11ClassInstance *class_instances[256]{};
@@ -1849,20 +1855,20 @@ void STDMETHODCALLTYPE HackerContext::CSSetUnorderedAccessViews(
 
 
 // C++ function template of common code shared by all XXSetShader functions:
-template <class ID3D11Shader,
-     void (__stdcall ID3D11DeviceContext::*OrigSetShader)(
-             ID3D11Shader *pShader,
-             ID3D11ClassInstance *const *ppClassInstances,
-             UINT NumClassInstances)
-     >
+template <
+    class ID3D11Shader,
+    void (__stdcall ID3D11DeviceContext::*OrigSetShader)(
+        ID3D11Shader*               pShader,
+        ID3D11ClassInstance* const* ppClassInstances,
+        UINT                        NumClassInstances)>
 void STDMETHODCALLTYPE HackerContext::SetShader(
-    _In_opt_ ID3D11Shader *pShader,
-    _In_reads_opt_(NumClassInstances) ID3D11ClassInstance *const *ppClassInstances,
-    UINT NumClassInstances,
-    std::set<UINT64> *visited_shaders,
-    UINT64 selected_shader,
-    UINT64 *current_shader_hash,
-    ID3D11Shader **current_shader_handle)
+    _In_opt_ ID3D11Shader*                                        pShader,
+    _In_reads_opt_(NumClassInstances) ID3D11ClassInstance* const* ppClassInstances,
+    UINT                                                          NumClassInstances,
+    std::set<UINT64>*                                             visited_shaders,
+    UINT64                                                        selected_shader,
+    UINT64*                                                       current_shader_hash,
+    ID3D11Shader**                                                current_shader_handle)
 {
     ID3D11Shader *repl_shader = pShader;
 
@@ -2309,10 +2315,11 @@ HRESULT STDMETHODCALLTYPE HackerContext::FinishCommandList(
 
 // -----------------------------------------------------------------------------------------------
 
-template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(
-        UINT StartSlot,
-        UINT NumViews,
-        ID3D11ShaderResourceView *const *ppShaderResourceViews)>
+template <
+    void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(
+        UINT                             StartSlot,
+        UINT                             NumViews,
+        ID3D11ShaderResourceView* const* ppShaderResourceViews)>
 void HackerContext::BindStereoResources()
 {
     if (!hackerDevice) {
@@ -2434,12 +2441,15 @@ void HackerContext::InitIniParams()
 
 // This function makes sure that the StereoParams and IniParams resources
 // remain pinned whenever the game assigns shader resources:
-template <void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(
-        UINT StartSlot,
-        UINT NumViews,
-        ID3D11ShaderResourceView *const *ppShaderResourceViews)>
-void HackerContext::SetShaderResources(UINT StartSlot, UINT NumViews,
-        ID3D11ShaderResourceView *const *ppShaderResourceViews)
+template <
+    void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(
+        UINT                             StartSlot,
+        UINT                             NumViews,
+        ID3D11ShaderResourceView* const* ppShaderResourceViews)>
+void HackerContext::SetShaderResources(
+    UINT                             StartSlot,
+    UINT                             NumViews,
+    ID3D11ShaderResourceView* const* ppShaderResourceViews)
 {
     ID3D11ShaderResourceView **override_srvs = nullptr;
 
@@ -2711,8 +2721,8 @@ void STDMETHODCALLTYPE HackerContext::DrawIndexedInstancedIndirect(
 }
 
 void STDMETHODCALLTYPE HackerContext::DrawInstancedIndirect(
-    _In_  ID3D11Buffer *pBufferForArgs,
-    _In_  UINT AlignedByteOffsetForArgs)
+    _In_ ID3D11Buffer* pBufferForArgs,
+    _In_ UINT          AlignedByteOffsetForArgs)
 {
     draw_context c = draw_context(DrawCall::DrawInstancedIndirect, 0, 0, 0, 0, 0, 0, &pBufferForArgs, AlignedByteOffsetForArgs);
     BeforeDraw(c);
@@ -2723,8 +2733,8 @@ void STDMETHODCALLTYPE HackerContext::DrawInstancedIndirect(
 }
 
 void STDMETHODCALLTYPE HackerContext::ClearRenderTargetView(
-    _In_  ID3D11RenderTargetView *pRenderTargetView,
-    _In_  const FLOAT ColorRGBA[4])
+    _In_ ID3D11RenderTargetView* pRenderTargetView,
+    _In_ const FLOAT             ColorRGBA[4])
 {
     run_view_command_list(hackerDevice, this, &G->clear_rtv_command_list, pRenderTargetView, false);
     origContext1->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
