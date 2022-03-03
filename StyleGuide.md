@@ -56,6 +56,14 @@ Style guide with some _why_:
 -----
 <br>
 
+Some notes based on research. Hard to understand details of tools.
+
+clang-format has limited abilities, not enough detail in specifications to get exactly what I'd want.  In particular, the function parameters for definitions cannot be wrapped, if the line limit is 0.  There are no flags to wrap those.  In addition, setting it low to like 40, which forces wraps then breaks the ability to align assignments. Not enough flexibility.  So, we'll leave it at 0, and format those using Resharper for a first pass, and manually later on.
+
+<br>
+-----
+<br>
+
 #### Discussions
 
 > That all looks good to me, cheers Bob. Regarding templates, are we against using templated functions for subclasses? There are quite a few instances in the code where I have used a template instead of a virtual function in the (perhaps misguided) belief that it will compile to fewer instructions. I know there are maintenance of costs of doing this and am by no means wedded to this tactic, but just thought now would be the time to mention it.
@@ -91,3 +99,4 @@ The current approach using templates is good for coding, but bad for performance
 Academic for now.  Unless we hit a particular game or scenario where we prove out a performance problem, there is no need to switch now, even as we are starting semi-fresh.
 
 > As I needed to wrap all the shaders anyway, shader override pointers are now passed into the shader constructor, doing away with the map search on draw. This was causing a crash on F10 reload, as existing shaders were then pointing at deallocated overrides, but have fixed this in the latest update.
+
