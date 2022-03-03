@@ -155,7 +155,7 @@ ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11View *view, std::se
         return nullptr;
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-
+    {
         // We are using the original resource hash for stat collection - things
         // get tricky otherwise
         orig_hash = GetOrigResourceHash(resource);
@@ -164,7 +164,7 @@ ID3D11Resource* HackerContext::RecordResourceViewStats(ID3D11View *view, std::se
 
         if (orig_hash)
             resource_info->insert(orig_hash);
-
+    }
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
     return resource;
@@ -232,11 +232,11 @@ void HackerContext::RecordShaderResourceUsage(
     (origContext1->*GetShaderResources)(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-
+    {
         info = &shader_info[current_shader];
         _RecordShaderResourceUsage(info, views);
         RecordPeerShaders(&info->PeerShaders, current_shader);
-
+    }
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
@@ -281,6 +281,7 @@ void HackerContext::RecordGraphicsShaderStats()
             (G->mPixelShaderInfo, currentPixelShader);
 
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
+        {
             info = &G->mPixelShaderInfo[currentPixelShader];
 
             for (selected_render_target_pos = 0; selected_render_target_pos < currentRenderTargets.size(); ++selected_render_target_pos) {
@@ -304,6 +305,7 @@ void HackerContext::RecordGraphicsShaderStats()
                     }
                 }
             }
+        }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
     }
 
@@ -329,7 +331,7 @@ void HackerContext::RecordComputeShaderStats()
     origContext1->CSGetUnorderedAccessViews(0, num_uavs, uavs);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-
+    {
         info = &G->mComputeShaderInfo[currentComputeShader];
         _RecordShaderResourceUsage(info, srvs);
 
@@ -345,7 +347,7 @@ void HackerContext::RecordComputeShaderStats()
 
         if (Profiling::mode == Profiling::Mode::SUMMARY)
             Profiling::end(&profiling_state, &Profiling::stat_overhead);
-
+    }
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
@@ -365,7 +367,7 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
         return;
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-
+    {
         // We are using the original resource hash for stat collection - things
         // get tricky otherwise
         orig_hash = GetOrigResourceHash((ID3D11Texture2D *)resource);
@@ -378,7 +380,7 @@ void HackerContext::RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT 
         currentRenderTargets.push_back(resource);
         G->mVisitedRenderTargets.insert(resource);
         G->mRenderTargetInfo.insert(orig_hash);
-
+    }
 out_unlock:
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
@@ -399,7 +401,7 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
     target->GetDesc(&desc);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-
+    {
         // We are using the original resource hash for stat collection - things
         // get tricky otherwise
         orig_hash = GetOrigResourceHash(resource);
@@ -408,7 +410,7 @@ void HackerContext::RecordDepthStencil(ID3D11DepthStencilView *target)
 
         currentDepthTarget = resource;
         G->mDepthTargetInfo.insert(orig_hash);
-
+    }
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
@@ -551,97 +553,98 @@ void HackerContext::DeferredShaderReplacement(
     vector<char> asm_vector;
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
+    {
+        // Faster than catching an out_of_range exception from .at():
+        orig_info_i = lookup_reloaded_shader(shader);
+        if (orig_info_i == G->mReloadedShaders.end())
+            goto out_drop;
+        orig_info = &orig_info_i->second;
 
-    // Faster than catching an out_of_range exception from .at():
-    orig_info_i = lookup_reloaded_shader(shader);
-    if (orig_info_i == G->mReloadedShaders.end())
-        goto out_drop;
-    orig_info = &orig_info_i->second;
-
-    if (!orig_info->deferred_replacement_candidate || orig_info->deferred_replacement_processed)
-        goto out_drop;
-
-    // Remember that we have analysed this one so we don't check it again
-    // (until config reload) regardless of whether we patch it or not:
-    orig_info->deferred_replacement_processed = true;
-
-    switch (load_shader_regex_cache(hash, shader_type, &patched_bytecode, &tagline)) {
-    case ShaderRegexCache::NO_MATCH:
-        LOG_INFO("%S %016I64x has cached ShaderRegex miss\n", shader_type, hash);
-        goto out_drop;
-    case ShaderRegexCache::MATCH:
-        LOG_INFO("Loaded %S %016I64x command list from ShaderRegex cache\n", shader_type, hash);
-        goto out_drop;
-    case ShaderRegexCache::PATCH:
-        LOG_INFO("Loaded %S %016I64x bytecode from ShaderRegex cache\n", shader_type, hash);
-        break;
-    case ShaderRegexCache::NO_CACHE:
-        LOG_INFO("Performing deferred shader analysis on %S %016I64x...\n", shader_type, hash);
-
-        asm_text = binary_to_asm_text(orig_info->byteCode->GetBufferPointer(),
-                orig_info->byteCode->GetBufferSize(),
-                G->patch_cb_offsets,
-                G->disassemble_undecipherable_custom_data);
-        if (asm_text.empty())
+        if (!orig_info->deferred_replacement_candidate || orig_info->deferred_replacement_processed)
             goto out_drop;
 
-        try {
-            patch_regex = apply_shader_regex_groups(&asm_text, shader_type, &orig_info->shaderModel, hash, &tagline);
-        } catch (...) {
-            LOG_INFO("    *** Exception while patching shader\n");
+        // Remember that we have analysed this one so we don't check it again
+        // (until config reload) regardless of whether we patch it or not:
+        orig_info->deferred_replacement_processed = true;
+
+        switch (load_shader_regex_cache(hash, shader_type, &patched_bytecode, &tagline)) {
+        case ShaderRegexCache::NO_MATCH:
+            LOG_INFO("%S %016I64x has cached ShaderRegex miss\n", shader_type, hash);
             goto out_drop;
-        }
-
-        if (!patch_regex) {
-            LOG_INFO("Patch did not apply\n");
+        case ShaderRegexCache::MATCH:
+            LOG_INFO("Loaded %S %016I64x command list from ShaderRegex cache\n", shader_type, hash);
             goto out_drop;
-        }
+        case ShaderRegexCache::PATCH:
+            LOG_INFO("Loaded %S %016I64x bytecode from ShaderRegex cache\n", shader_type, hash);
+            break;
+        case ShaderRegexCache::NO_CACHE:
+            LOG_INFO("Performing deferred shader analysis on %S %016I64x...\n", shader_type, hash);
 
-        // No longer logging this since we can output to ShaderFixes
-        // via hunting if marking_actions = regex, or it could be
-        // disassembled from the regex cache with cmd_Decompiler
-        // LOG_INFO("Patched Shader:\n%s\n", asm_text.c_str());
+            asm_text = binary_to_asm_text(orig_info->byteCode->GetBufferPointer(),
+                    orig_info->byteCode->GetBufferSize(),
+                    G->patch_cb_offsets,
+                    G->disassemble_undecipherable_custom_data);
+            if (asm_text.empty())
+                goto out_drop;
 
-        asm_vector.assign(asm_text.begin(), asm_text.end());
-
-        try {
-            vector<AssemblerParseError> parse_errors;
-            hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode, &parse_errors);
-            if (FAILED(hr)) {
-                LOG_INFO("    *** Assembling patched shader failed\n");
+            try {
+                patch_regex = apply_shader_regex_groups(&asm_text, shader_type, &orig_info->shaderModel, hash, &tagline);
+            } catch (...) {
+                LOG_INFO("    *** Exception while patching shader\n");
                 goto out_drop;
             }
-            // Parse errors are currently being treated as non-fatal on
-            // creation time replacement and ShaderRegex for backwards
-            // compatibility (live shader reload is fatal).
-            for (auto &parse_error : parse_errors)
-                LogOverlay(LOG_NOTICE, "%016I64x-%S %S: %s\n",
-                        hash, shader_type, tagline.c_str(), parse_error.what());
-        } catch (const exception &e) {
-            LogOverlay(LOG_WARNING, "Error assembling ShaderRegex patched %016I64x-%S\n%S\n%s\n",
-                    hash, shader_type, tagline.c_str(), e.what());
+
+            if (!patch_regex) {
+                LOG_INFO("Patch did not apply\n");
+                goto out_drop;
+            }
+
+            // No longer logging this since we can output to ShaderFixes
+            // via hunting if marking_actions = regex, or it could be
+            // disassembled from the regex cache with cmd_Decompiler
+            // LOG_INFO("Patched Shader:\n%s\n", asm_text.c_str());
+
+            asm_vector.assign(asm_text.begin(), asm_text.end());
+
+            try {
+                vector<AssemblerParseError> parse_errors;
+                hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode, &parse_errors);
+                if (FAILED(hr)) {
+                    LOG_INFO("    *** Assembling patched shader failed\n");
+                    goto out_drop;
+                }
+                // Parse errors are currently being treated as non-fatal on
+                // creation time replacement and ShaderRegex for backwards
+                // compatibility (live shader reload is fatal).
+                for (auto &parse_error : parse_errors)
+                    LogOverlay(LOG_NOTICE, "%016I64x-%S %S: %s\n",
+                            hash, shader_type, tagline.c_str(), parse_error.what());
+            } catch (const exception &e) {
+                LogOverlay(LOG_WARNING, "Error assembling ShaderRegex patched %016I64x-%S\n%S\n%s\n",
+                        hash, shader_type, tagline.c_str(), e.what());
+                goto out_drop;
+            }
+
+            save_shader_regex_cache_bin(hash, shader_type, &patched_bytecode);
+        }
+
+        hr = (origDevice1->*CreateShader)(patched_bytecode.data(), patched_bytecode.size(),
+                orig_info->linkage, &patched_shader);
+        CleanupShaderMaps(patched_shader);
+        if (FAILED(hr)) {
+            LOG_INFO("    *** Creating replacement shader failed\n");
             goto out_drop;
         }
 
-        save_shader_regex_cache_bin(hash, shader_type, &patched_bytecode);
+        // Update replacement map so we don't have to repeat this process.
+        // Not updating the bytecode in the replaced shader map - we do that
+        // elsewhere, but I think that is a bug. Need to untangle that first.
+        if (orig_info->replacement)
+            orig_info->replacement->Release();
+        orig_info->replacement = patched_shader;
+        orig_info->infoText = tagline;
+
     }
-
-    hr = (origDevice1->*CreateShader)(patched_bytecode.data(), patched_bytecode.size(),
-            orig_info->linkage, &patched_shader);
-    CleanupShaderMaps(patched_shader);
-    if (FAILED(hr)) {
-        LOG_INFO("    *** Creating replacement shader failed\n");
-        goto out_drop;
-    }
-
-    // Update replacement map so we don't have to repeat this process.
-    // Not updating the bytecode in the replaced shader map - we do that
-    // elsewhere, but I think that is a bug. Need to untangle that first.
-    if (orig_info->replacement)
-        orig_info->replacement->Release();
-    orig_info->replacement = patched_shader;
-    orig_info->infoText = tagline;
-
     // Now that we've finished updating our data structures we can drop the
     // critical section before calling into DirectX to bind the replacement
     // shader. This was necessary to avoid a deadlock with the resource
@@ -1130,7 +1133,9 @@ bool HackerContext::MapDenyCPURead(
         return false;
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
+    {
         hash = GetResourceHash(pResource);
+    }
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
     i = lookup_textureoverride(hash);
@@ -1335,12 +1340,14 @@ void STDMETHODCALLTYPE HackerContext::IASetVertexBuffers(
 
      if (G->hunting == HUNTING_MODE_ENABLED) {
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-        for (UINT i = StartSlot; (i < StartSlot + NumBuffers) && (i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT); i++) {
-            if (ppVertexBuffers && ppVertexBuffers[i]) {
-                currentVertexBuffers[i] = GetResourceHash(ppVertexBuffers[i]);
-                G->mVisitedVertexBuffers.insert(currentVertexBuffers[i]);
-            } else
-                currentVertexBuffers[i] = 0;
+        {
+            for (UINT i = StartSlot; (i < StartSlot + NumBuffers) && (i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT); i++) {
+               if (ppVertexBuffers && ppVertexBuffers[i]) {
+                    currentVertexBuffers[i] = GetResourceHash(ppVertexBuffers[i]);
+                    G->mVisitedVertexBuffers.insert(currentVertexBuffers[i]);
+                } else
+                    currentVertexBuffers[i] = 0;
+            }
         }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
      }
@@ -1574,8 +1581,10 @@ bool HackerContext::ExpandRegionCopy(ID3D11Resource *dst_resource, UINT DstX,
     src_tex->GetDesc(&src_desc);
     dst_tex->GetDesc(&dst_desc);
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
+    {
         src_hash = GetResourceHash(src_tex);
         dst_hash = GetResourceHash(dst_tex);
+    }
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
     LOG_DEBUG("CopySubresourceRegion %08lx (%u:%u x %u:%u / %u x %u) -> %08lx (%u x %u / %u x %u)\n",
@@ -1893,7 +1902,9 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
 
                 if ((G->hunting == HUNTING_MODE_ENABLED) && visited_shaders) {
                     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-                    visited_shaders->insert(i->second);
+                    {
+                        visited_shaders->insert(i->second);
+                    }
                     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
                 }
             }
@@ -2571,7 +2582,9 @@ void STDMETHODCALLTYPE HackerContext::IASetIndexBuffer(
         if (currentIndexBuffer) {
             // When hunting, save this as a visited index buffer to cycle through.
             ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-            G->mVisitedIndexBuffers.insert(currentIndexBuffer);
+            {
+                G->mVisitedIndexBuffers.insert(currentIndexBuffer);
+            }
             LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
         }
     }
@@ -2624,9 +2637,11 @@ void STDMETHODCALLTYPE HackerContext::OMSetRenderTargets(
 
     if (G->hunting == HUNTING_MODE_ENABLED) {
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
+        {
             currentRenderTargets.clear();
             currentDepthTarget = nullptr;
             currentPSNumUAVs = 0;
+        }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
         if (G->DumpUsage) {
@@ -2664,33 +2679,33 @@ void STDMETHODCALLTYPE HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(
 
     if (G->hunting == HUNTING_MODE_ENABLED) {
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
+        {
+            if (NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) {
+                currentRenderTargets.clear();
+                currentDepthTarget = nullptr;
+                if (G->DumpUsage) {
+                    if (Profiling::mode == Profiling::Mode::SUMMARY)
+                        Profiling::start(&profiling_state);
 
-        if (NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) {
-            currentRenderTargets.clear();
-            currentDepthTarget = nullptr;
-            if (G->DumpUsage) {
-                if (Profiling::mode == Profiling::Mode::SUMMARY)
-                    Profiling::start(&profiling_state);
-
-                if (ppRenderTargetViews) {
-                    for (UINT i = 0; i < NumRTVs; ++i) {
-                        if (ppRenderTargetViews[i])
-                            RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+                    if (ppRenderTargetViews) {
+                        for (UINT i = 0; i < NumRTVs; ++i) {
+                            if (ppRenderTargetViews[i])
+                                RecordRenderTargetInfo(ppRenderTargetViews[i], i);
+                        }
                     }
-                }
-                RecordDepthStencil(pDepthStencilView);
+                    RecordDepthStencil(pDepthStencilView);
 
-                if (Profiling::mode == Profiling::Mode::SUMMARY)
-                    Profiling::end(&profiling_state, &Profiling::stat_overhead);
+                    if (Profiling::mode == Profiling::Mode::SUMMARY)
+                        Profiling::end(&profiling_state, &Profiling::stat_overhead);
+                }
+            }
+
+            if (NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS) {
+                currentPSUAVStartSlot = UAVStartSlot;
+                currentPSNumUAVs = NumUAVs;
+                // TODO: Record UAV stats
             }
         }
-
-        if (NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS) {
-            currentPSUAVStartSlot = UAVStartSlot;
-            currentPSNumUAVs = NumUAVs;
-            // TODO: Record UAV stats
-        }
-
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
     }
 
