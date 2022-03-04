@@ -19,6 +19,8 @@ DEFINE_GUID(IID_HackerDevice,
 class HackerContext;
 class HackerSwapChain;
 
+HackerDevice* lookup_hacker_device(IUnknown* unknown);
+
 
 // 1-6-18:  Current approach will be to only create one level of wrapping,
 // specifically HackerDevice and HackerContext, based on the ID3D11Device1,
@@ -504,4 +506,3 @@ public:
         _Out_  void **ppResource); 
 };
 
-HackerDevice* lookup_hacker_device(IUnknown *unknown);
