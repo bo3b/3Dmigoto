@@ -227,15 +227,29 @@ static HRESULT DisassembleMS(const void *pShaderBytecode, size_t BytecodeLength,
     return S_OK;
 }
 
+// Because of complicated header includes, switching this routine to just directly disassemble instead
+// of using binary_to_asm_text from Util.
+
 static HRESULT DisassembleFlugan(const void *pShaderBytecode, size_t BytecodeLength, string *asmText,
         int hexdump, bool d3dcompiler_46_compat)
 {
-    // FIXME: This is a bit of a waste - we convert from a vector<char> to
-    // a void* + size_t to a vector<byte>
+    std::string       comments;
+    std::vector<byte> byte_code(BytecodeLength);
+    std::vector<byte> disassembly;
+    HRESULT           r;
 
-    *asmText = binary_to_asm_text(pShaderBytecode, BytecodeLength, args.patch_cb_offsets, true, hexdump, d3dcompiler_46_compat);
-    if (*asmText == "")
+    comments = "//   using 3Dmigoto v" + std::string(VER_FILE_VERSION_STR) + " on " + log_time() + "//\n";
+    memcpy(byte_code.data(), pShaderBytecode, BytecodeLength);
+
+    r = disassembler(&byte_code, &disassembly, comments.c_str(), hexdump, d3dcompiler_46_compat, true, args.patch_cb_offsets);
+
+    if (FAILED(r))
+    {
+        LOG_INFO("  disassembly failed. Error: %x\n", r);
         return E_FAIL;
+    }
+
+    *asmText = std::string(disassembly.begin(), disassembly.end());
 
     return S_OK;
 }
