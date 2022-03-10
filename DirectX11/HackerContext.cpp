@@ -211,21 +211,21 @@ void HackerContext::_RecordShaderResourceUsage(
 
 void HackerContext::RecordPeerShaders(
     std::set<UINT64>* peer_shaders,
-    UINT64            this_shader_hash)
+    UINT64            shader_hash)
 {
-    if (currentVertexShader && currentVertexShader != this_shader_hash)
+    if (currentVertexShader && currentVertexShader != shader_hash)
         peer_shaders->insert(currentVertexShader);
 
-    if (currentHullShader && currentHullShader != this_shader_hash)
+    if (currentHullShader && currentHullShader != shader_hash)
         peer_shaders->insert(currentHullShader);
 
-    if (currentDomainShader && currentDomainShader != this_shader_hash)
+    if (currentDomainShader && currentDomainShader != shader_hash)
         peer_shaders->insert(currentDomainShader);
 
-    if (currentGeometryShader && currentGeometryShader != this_shader_hash)
+    if (currentGeometryShader && currentGeometryShader != shader_hash)
         peer_shaders->insert(currentGeometryShader);
 
-    if (currentPixelShader && currentPixelShader != this_shader_hash)
+    if (currentPixelShader && currentPixelShader != shader_hash)
         peer_shaders->insert(currentPixelShader);
 }
 

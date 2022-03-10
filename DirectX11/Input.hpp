@@ -147,7 +147,7 @@ private:
     bool effective_state;
     ULONGLONG state_change_time;
 public:
-    DelayedInputAction(InputButton *button, std::shared_ptr<InputListener> listener, int delayDown, int delayUp);
+    DelayedInputAction(InputButton *button, std::shared_ptr<InputListener> listener, int delay_down, int delay_up);
     bool Dispatch(HackerDevice *device) override;
 };
 
@@ -161,7 +161,7 @@ public:
 void RegisterKeyBinding(LPCWSTR iniKey, const wchar_t *keyName,
         std::shared_ptr<InputListener> listener, int auto_repeat, int down_delay,
         int up_delay);
-bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR key,
+bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR ini_key,
         InputCallback down_cb, InputCallback up_cb, int auto_repeat,
         void *private_data);
 std::wstring user_friendly_ini_key_binding(LPCWSTR app, LPCWSTR iniKey);

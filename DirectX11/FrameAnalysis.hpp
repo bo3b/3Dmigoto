@@ -130,7 +130,7 @@ private:
             UINT first, UINT count, ID3DBlob *layout,
             D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info);
     void DumpIBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
-            UINT size, DXGI_FORMAT ib_fmt, UINT offset,
+            UINT size, DXGI_FORMAT format, UINT offset,
             UINT first, UINT count, D3D11_PRIMITIVE_TOPOLOGY topology);
 
     void DumpBuffer(ID3D11Buffer *buffer, wchar_t *filename,
@@ -177,7 +177,7 @@ private:
     HRESULT FrameAnalysisFilenameResource(wchar_t *filename, size_t size, const wchar_t *type,
             ID3D11Resource *handle, bool force_filename_handle);
     const wchar_t* DedupeTex2DFilename(ID3D11Texture2D *resource,
-            D3D11_TEXTURE2D_DESC *desc, wchar_t *dedupe_filename,
+            D3D11_TEXTURE2D_DESC *orig_desc, wchar_t *dedupe_filename,
             size_t size, const wchar_t *traditional_filename, DXGI_FORMAT format);
     void DedupeBufFilename(ID3D11Buffer *resource,
             D3D11_BUFFER_DESC *orig_desc,
@@ -205,10 +205,10 @@ private:
     void FrameAnalysisClearUAV(ID3D11UnorderedAccessView *uav);
     void UpdatePerDrawAnalyseOptions();
     void FrameAnalysisAfterDraw(bool compute, DrawCallInfo *call_info);
-    void _FrameAnalysisAfterUpdate(ID3D11Resource *pResource,
+    void _FrameAnalysisAfterUpdate(ID3D11Resource *resource,
             FrameAnalysisOptions type_mask, wchar_t *type);
-    void FrameAnalysisAfterUnmap(ID3D11Resource *pResource);
-    void FrameAnalysisAfterUpdate(ID3D11Resource *pResource);
+    void FrameAnalysisAfterUnmap(ID3D11Resource *resource);
+    void FrameAnalysisAfterUpdate(ID3D11Resource *resource);
     void UpdateStereoDumpingMode();
     void SetDefaultDumpFormats(bool draw);
 

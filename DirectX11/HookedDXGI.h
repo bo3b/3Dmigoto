@@ -56,7 +56,7 @@ extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFact
 
 extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1);
 
-extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFactory1);
+extern "C" HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFactory2);
 
 
 extern "C" LPVOID lpvtbl_QueryInterface(IDXGIFactory* pFactory);
