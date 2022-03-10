@@ -1010,7 +1010,9 @@ ULONG STDMETHODCALLTYPE HackerContext::Release()
             }
         }
         else
+        {
             LOG_INFO("HackerContext::Release - hackerDevice is NULL\n");
+        }
 
         delete this;
         return 0L;
@@ -1023,8 +1025,8 @@ ULONG STDMETHODCALLTYPE HackerContext::Release()
 // same object that it is using to call.  I swear.
 
 HRESULT STDMETHODCALLTYPE HackerContext::QueryInterface(
-    /* [in] */ REFIID                     riid,
-    /* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject)
+    REFIID riid,
+    void** ppvObject)
 {
     LOG_DEBUG("HackerContext::QueryInterface(%s@%p) called with IID: %s\n", type_name(this), this, name_from_IID(riid).c_str());
 
@@ -1160,18 +1162,18 @@ void STDMETHODCALLTYPE HackerContext::VSSetConstantBuffers(
 }
 
 bool HackerContext::MapDenyCPURead(
-    ID3D11Resource*           pResource,
-    UINT                      Subresource,
-    D3D11_MAP                 MapType,
-    UINT                      MapFlags,
-    D3D11_MAPPED_SUBRESOURCE* pMappedResource)
+    ID3D11Resource*           resource,
+    UINT                      subresource,
+    D3D11_MAP                 map_type,
+    UINT                      map_flags,
+    D3D11_MAPPED_SUBRESOURCE* mapped_resource)
 {
     uint32_t                     hash;
     TextureOverrideMap::iterator i;
 
     // Currently only replacing first subresource to simplify map type, and
     // only on read access as it is unclear how to handle a read/write access.
-    if (Subresource != 0)
+    if (subresource != 0)
         return false;
 
     if (G->mTextureOverrideMap.empty())
@@ -1179,7 +1181,7 @@ bool HackerContext::MapDenyCPURead(
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
     {
-        hash = GetResourceHash(pResource);
+        hash = GetResourceHash(resource);
     }
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
@@ -1192,11 +1194,11 @@ bool HackerContext::MapDenyCPURead(
 
 void HackerContext::TrackAndDivertMap(
     HRESULT                   map_hr,
-    ID3D11Resource*           pResource,
-    UINT                      Subresource,
-    D3D11_MAP                 MapType,
-    UINT                      MapFlags,
-    D3D11_MAPPED_SUBRESOURCE* pMappedResource)
+    ID3D11Resource*           resource,
+    UINT                      subresource,
+    D3D11_MAP                 map_type,
+    UINT                      map_flags,
+    D3D11_MAPPED_SUBRESOURCE* mapped_resource)
 {
     D3D11_RESOURCE_DIMENSION dim;
     ID3D11Buffer*            buf   = nullptr;
@@ -1216,10 +1218,10 @@ void HackerContext::TrackAndDivertMap(
     if (Profiling::mode == Profiling::Mode::SUMMARY)
         Profiling::start(&profiling_state);
 
-    if (FAILED(map_hr) || !pResource || !pMappedResource || !pMappedResource->pData)
+    if (FAILED(map_hr) || !resource || !mapped_resource || !mapped_resource->pData)
         goto out_profile;
 
-    switch (MapType)
+    switch (map_type)
     {
         case D3D11_MAP_READ_WRITE:
             read = true;
@@ -1241,47 +1243,47 @@ void HackerContext::TrackAndDivertMap(
             // all these IO mapped addresses, but not sure about
             // performance or if there might be any unintended
             // consequences like uninitialised data:
-            divert = track = MapTrackResourceHashUpdate(pResource, Subresource);
+            divert = track = MapTrackResourceHashUpdate(resource, subresource);
             break;
 
         case D3D11_MAP_READ:
             read = divertable = true;
-            divert = deny = MapDenyCPURead(pResource, Subresource, MapType, MapFlags, pMappedResource);
+            divert = deny = MapDenyCPURead(resource, subresource, map_type, map_flags, mapped_resource);
             break;
     }
 
     if (!track && !divert)
         goto out_profile;
 
-    map_info                  = &mappedResources[pResource];
+    map_info                  = &mappedResources[resource];
     map_info->mapped_writable = write;
-    memcpy(&map_info->map, pMappedResource, sizeof(D3D11_MAPPED_SUBRESOURCE));
+    memcpy(&map_info->map, mapped_resource, sizeof(D3D11_MAPPED_SUBRESOURCE));
 
     if (!divertable || !divert)
         goto out_profile;
 
-    pResource->GetType(&dim);
+    resource->GetType(&dim);
     switch (dim)
     {
         case D3D11_RESOURCE_DIMENSION_BUFFER:
-            buf = static_cast<ID3D11Buffer*>(pResource);
+            buf = static_cast<ID3D11Buffer*>(resource);
             buf->GetDesc(&buf_desc);
             map_info->size = buf_desc.ByteWidth;
             break;
         case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
-            tex1d = static_cast<ID3D11Texture1D*>(pResource);
+            tex1d = static_cast<ID3D11Texture1D*>(resource);
             tex1d->GetDesc(&tex1d_desc);
             map_info->size = dxgi_format_size(tex1d_desc.Format) * tex1d_desc.Width;
             break;
         case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-            tex2d = static_cast<ID3D11Texture2D*>(pResource);
+            tex2d = static_cast<ID3D11Texture2D*>(resource);
             tex2d->GetDesc(&tex2d_desc);
-            map_info->size = pMappedResource->RowPitch * tex2d_desc.Height;
+            map_info->size = mapped_resource->RowPitch * tex2d_desc.Height;
             break;
         case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-            tex3d = static_cast<ID3D11Texture3D*>(pResource);
+            tex3d = static_cast<ID3D11Texture3D*>(resource);
             tex3d->GetDesc(&tex3d_desc);
-            map_info->size = pMappedResource->DepthPitch * tex3d_desc.Depth;
+            map_info->size = mapped_resource->DepthPitch * tex3d_desc.Depth;
             break;
         default:
             goto out_profile;
@@ -1295,13 +1297,13 @@ void HackerContext::TrackAndDivertMap(
     }
 
     if (read && !deny)
-        memcpy(replace, pMappedResource->pData, map_info->size);
+        memcpy(replace, mapped_resource->pData, map_info->size);
     else
         memset(replace, 0, map_info->size);
 
-    map_info->orig_pData   = pMappedResource->pData;
+    map_info->orig_pData   = mapped_resource->pData;
     map_info->map.pData    = replace;
-    pMappedResource->pData = replace;
+    mapped_resource->pData = replace;
 
 out_profile:
     if (Profiling::mode == Profiling::Mode::SUMMARY)
@@ -1309,8 +1311,8 @@ out_profile:
 }
 
 void HackerContext::TrackAndDivertUnmap(
-    ID3D11Resource* pResource,
-    UINT            Subresource)
+    ID3D11Resource* resource,
+    UINT            subresource)
 {
     MappedResources::iterator i;
     mapped_resource_info*     map_info = nullptr;
@@ -1322,13 +1324,13 @@ void HackerContext::TrackAndDivertUnmap(
     if (mappedResources.empty())
         goto out_profile;
 
-    i = mappedResources.find(pResource);
+    i = mappedResources.find(resource);
     if (i == mappedResources.end())
         goto out_profile;
     map_info = &i->second;
 
-    if (G->track_texture_updates == 1 && Subresource == 0 && map_info->mapped_writable)
-        UpdateResourceHashFromCPU(pResource, map_info->map.pData, map_info->map.RowPitch, map_info->map.DepthPitch);
+    if (G->track_texture_updates == 1 && subresource == 0 && map_info->mapped_writable)
+        UpdateResourceHashFromCPU(resource, map_info->map.pData, map_info->map.RowPitch, map_info->map.DepthPitch);
 
     if (map_info->orig_pData)
     {
@@ -1405,7 +1407,9 @@ void STDMETHODCALLTYPE HackerContext::IASetVertexBuffers(
                     G->mVisitedVertexBuffers.insert(currentVertexBuffers[i]);
                 }
                 else
+                {
                     currentVertexBuffers[i] = 0;
+                }
             }
         }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
@@ -1621,11 +1625,11 @@ void STDMETHODCALLTYPE HackerContext::RSSetScissorRects(
  */
 bool HackerContext::ExpandRegionCopy(
     ID3D11Resource*  dst_resource,
-    UINT             DstX,
-    UINT             DstY,
+    UINT             dst_x,
+    UINT             dst_y,
     ID3D11Resource*  src_resource,
     const D3D11_BOX* src_box,
-    UINT*            replace_DstX,
+    UINT*            replace_dst_x,
     D3D11_BOX*       replace_box)
 {
     ID3D11Texture2D*             src_tex = static_cast<ID3D11Texture2D*>(src_resource);
@@ -1652,7 +1656,7 @@ bool HackerContext::ExpandRegionCopy(
     }
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
-    LOG_DEBUG("CopySubresourceRegion %08lx (%u:%u x %u:%u / %u x %u) -> %08lx (%u x %u / %u x %u)\n", src_hash, src_box->left, src_box->right, src_box->top, src_box->bottom, src_desc.Width, src_desc.Height, dst_hash, DstX, DstY, dst_desc.Width, dst_desc.Height);
+    LOG_DEBUG("CopySubresourceRegion %08lx (%u:%u x %u:%u / %u x %u) -> %08lx (%u x %u / %u x %u)\n", src_hash, src_box->left, src_box->right, src_box->top, src_box->bottom, src_desc.Width, src_desc.Height, dst_hash, dst_x, dst_y, dst_desc.Width, dst_desc.Height);
 
     i = lookup_textureoverride(dst_hash);
     if (i == G->mTextureOverrideMap.end())
@@ -1662,7 +1666,7 @@ bool HackerContext::ExpandRegionCopy(
         return false;
 
     memcpy(replace_box, src_box, sizeof(D3D11_BOX));
-    *replace_DstX      = 0;
+    *replace_dst_x     = 0;
     replace_box->left  = 0;
     replace_box->right = dst_desc.Width;
 
@@ -1926,22 +1930,22 @@ template <
         ID3D11ClassInstance* const* ppClassInstances,
         UINT                        NumClassInstances)>
 void STDMETHODCALLTYPE HackerContext::SetShader(
-    ID3D11Shader*               pShader,
-    ID3D11ClassInstance* const* ppClassInstances,
-    UINT                        NumClassInstances,
+    ID3D11Shader*               shader,
+    ID3D11ClassInstance* const* class_instances,
+    UINT                        num_class_instances,
     std::set<UINT64>*           visited_shaders,
     UINT64                      selected_shader,
     UINT64*                     current_shader_hash,
     ID3D11Shader**              current_shader_handle)
 {
-    ID3D11Shader* repl_shader = pShader;
+    ID3D11Shader* repl_shader = shader;
 
     // Always update the current shader handle no matter what so we can
     // reliably check if a shader of a given type is bound and for certain
     // types of old style filtering:
-    *current_shader_handle = pShader;
+    *current_shader_handle = shader;
 
-    if (pShader)
+    if (shader)
     {
         // Store as current shader. Need to do this even while
         // not hunting for ShaderOverride section in BeforeDraw
@@ -1952,7 +1956,7 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
         // grumble grumble this optimisation caught me out *TWICE* grumble grumble -DSS
         if (!G->mShaderOverrideMap.empty() || !shader_regex_groups.empty() || (G->hunting == HUNTING_MODE_ENABLED))
         {
-            ShaderMap::iterator i = lookup_shader_hash(pShader);
+            ShaderMap::iterator i = lookup_shader_hash(shader);
             if (i != G->mShaders.end())
             {
                 *current_shader_hash = i->second;
@@ -1968,7 +1972,9 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
                 }
             }
             else
-                LOG_DEBUG("  shader %p not found\n", pShader);
+            {
+                LOG_DEBUG("  shader %p not found\n", shader);
+            }
         }
         else
         {
@@ -1980,7 +1986,7 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
 
         // If the shader has been live reloaded from ShaderFixes, use the new one
         // No longer conditional on G->hunting now that hunting may be soft enabled via key binding
-        ShaderReloadMap::iterator it = lookup_reloaded_shader(pShader);
+        ShaderReloadMap::iterator it = lookup_reloaded_shader(shader);
         if (it != G->mReloadedShaders.end() && it->second.replacement != nullptr)
         {
             LOG_DEBUG("  shader replaced by: %p\n", it->second.replacement);
@@ -2002,7 +2008,7 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
             // Replacement map.
             if (G->marking_mode == MarkingMode::ORIGINAL || !G->fix_enabled)
             {
-                ShaderReplacementMap::iterator j = lookup_original_shader(pShader);
+                ShaderReplacementMap::iterator j = lookup_original_shader(shader);
                 if ((selected_shader == *current_shader_hash || !G->fix_enabled) && j != G->mOriginalShaders.end())
                 {
                     repl_shader = static_cast<ID3D11Shader*>(j->second);
@@ -2016,7 +2022,7 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
     }
 
     // Call through to original XXSetShader, but pShader may have been replaced.
-    (origContext1->*OrigSetShader)(repl_shader, ppClassInstances, NumClassInstances);
+    (origContext1->*OrigSetShader)(repl_shader, class_instances, num_class_instances);
 }
 
 void STDMETHODCALLTYPE HackerContext::CSSetShader(
@@ -2062,7 +2068,7 @@ void STDMETHODCALLTYPE HackerContext::PSGetShaderResources(
 void STDMETHODCALLTYPE HackerContext::PSGetShader(
     ID3D11PixelShader**   ppPixelShader,
     ID3D11ClassInstance** ppClassInstances,
-    __inout_opt UINT* pNumClassInstances)
+    UINT*                 pNumClassInstances)
 {
     origContext1->PSGetShader(ppPixelShader, ppClassInstances, pNumClassInstances);
 }
@@ -2078,7 +2084,7 @@ void STDMETHODCALLTYPE HackerContext::PSGetSamplers(
 void STDMETHODCALLTYPE HackerContext::VSGetShader(
     ID3D11VertexShader**  ppVertexShader,
     ID3D11ClassInstance** ppClassInstances,
-    __inout_opt UINT* pNumClassInstances)
+    UINT*                 pNumClassInstances)
 {
     origContext1->VSGetShader(ppVertexShader, ppClassInstances, pNumClassInstances);
 
@@ -2128,7 +2134,7 @@ void STDMETHODCALLTYPE HackerContext::GSGetConstantBuffers(
 void STDMETHODCALLTYPE HackerContext::GSGetShader(
     ID3D11GeometryShader** ppGeometryShader,
     ID3D11ClassInstance**  ppClassInstances,
-    __inout_opt UINT* pNumClassInstances)
+    UINT*                  pNumClassInstances)
 {
     origContext1->GSGetShader(ppGeometryShader, ppClassInstances, pNumClassInstances);
 }
@@ -2226,15 +2232,15 @@ void STDMETHODCALLTYPE HackerContext::RSGetState(
 }
 
 void STDMETHODCALLTYPE HackerContext::RSGetViewports(
-    /*_range(0, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE )*/ UINT* pNumViewports,
-    D3D11_VIEWPORT*                                                                pViewports)
+    UINT*           pNumViewports,
+    D3D11_VIEWPORT* pViewports)
 {
     origContext1->RSGetViewports(pNumViewports, pViewports);
 }
 
 void STDMETHODCALLTYPE HackerContext::RSGetScissorRects(
-    /*_range(0, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE )*/ UINT* pNumRects,
-    D3D11_RECT*                                                                    pRects)
+    UINT*       pNumRects,
+    D3D11_RECT* pRects)
 {
     origContext1->RSGetScissorRects(pNumRects, pRects);
 }
@@ -2250,7 +2256,7 @@ void STDMETHODCALLTYPE HackerContext::HSGetShaderResources(
 void STDMETHODCALLTYPE HackerContext::HSGetShader(
     ID3D11HullShader**    ppHullShader,
     ID3D11ClassInstance** ppClassInstances,
-    __inout_opt UINT* pNumClassInstances)
+    UINT*                 pNumClassInstances)
 {
     origContext1->HSGetShader(ppHullShader, ppClassInstances, pNumClassInstances);
 }
@@ -2282,7 +2288,7 @@ void STDMETHODCALLTYPE HackerContext::DSGetShaderResources(
 void STDMETHODCALLTYPE HackerContext::DSGetShader(
     ID3D11DomainShader**  ppDomainShader,
     ID3D11ClassInstance** ppClassInstances,
-    __inout_opt UINT* pNumClassInstances)
+    UINT*                 pNumClassInstances)
 {
     origContext1->DSGetShader(ppDomainShader, ppClassInstances, pNumClassInstances);
 }
@@ -2322,7 +2328,7 @@ void STDMETHODCALLTYPE HackerContext::CSGetUnorderedAccessViews(
 void STDMETHODCALLTYPE HackerContext::CSGetShader(
     ID3D11ComputeShader** ppComputeShader,
     ID3D11ClassInstance** ppClassInstances,
-    __inout_opt UINT* pNumClassInstances)
+    UINT*                 pNumClassInstances)
 {
     origContext1->CSGetShader(ppComputeShader, ppClassInstances, pNumClassInstances);
 }
@@ -2526,9 +2532,9 @@ template <
         UINT                             NumViews,
         ID3D11ShaderResourceView* const* ppShaderResourceViews)>
 void HackerContext::SetShaderResources(
-    UINT                             StartSlot,
-    UINT                             NumViews,
-    ID3D11ShaderResourceView* const* ppShaderResourceViews)
+    UINT                             start_slot,
+    UINT                             num_views,
+    ID3D11ShaderResourceView* const* shader_resource_views)
 {
     ID3D11ShaderResourceView** override_srvs = nullptr;
 
@@ -2537,37 +2543,37 @@ void HackerContext::SetShaderResources(
 
     if (hackerDevice->stereoResourceView && G->StereoParamsReg >= 0)
     {
-        if (NumViews > G->StereoParamsReg - StartSlot)
+        if (num_views > G->StereoParamsReg - start_slot)
         {
             LOG_DEBUG("  Game attempted to unbind StereoParams, pinning in slot %i\n", G->StereoParamsReg);
-            override_srvs = new ID3D11ShaderResourceView*[NumViews];
-            memcpy(override_srvs, ppShaderResourceViews, sizeof(ID3D11ShaderResourceView*) * NumViews);
-            override_srvs[G->StereoParamsReg - StartSlot] = hackerDevice->stereoResourceView;
+            override_srvs = new ID3D11ShaderResourceView*[num_views];
+            memcpy(override_srvs, shader_resource_views, sizeof(ID3D11ShaderResourceView*) * num_views);
+            override_srvs[G->StereoParamsReg - start_slot] = hackerDevice->stereoResourceView;
         }
     }
 
     if (hackerDevice->iniResourceView && G->IniParamsReg >= 0)
     {
-        if (NumViews > G->IniParamsReg - StartSlot)
+        if (num_views > G->IniParamsReg - start_slot)
         {
             LOG_DEBUG("  Game attempted to unbind IniParams, pinning in slot %i\n", G->IniParamsReg);
             if (!override_srvs)
             {
-                override_srvs = new ID3D11ShaderResourceView*[NumViews];
-                memcpy(override_srvs, ppShaderResourceViews, sizeof(ID3D11ShaderResourceView*) * NumViews);
+                override_srvs = new ID3D11ShaderResourceView*[num_views];
+                memcpy(override_srvs, shader_resource_views, sizeof(ID3D11ShaderResourceView*) * num_views);
             }
-            override_srvs[G->IniParamsReg - StartSlot] = hackerDevice->iniResourceView;
+            override_srvs[G->IniParamsReg - start_slot] = hackerDevice->iniResourceView;
         }
     }
 
     if (override_srvs)
     {
-        (origContext1->*OrigSetShaderResources)(StartSlot, NumViews, override_srvs);
+        (origContext1->*OrigSetShaderResources)(start_slot, num_views, override_srvs);
         delete[] override_srvs;
     }
     else
     {
-        (origContext1->*OrigSetShaderResources)(StartSlot, NumViews, ppShaderResourceViews);
+        (origContext1->*OrigSetShaderResources)(start_slot, num_views, shader_resource_views);
     }
 }
 

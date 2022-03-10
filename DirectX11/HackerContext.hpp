@@ -136,10 +136,10 @@ private:
     void DeferredShaderReplacementBeforeDraw();
     void DeferredShaderReplacementBeforeDispatch();
 
-    bool ExpandRegionCopy(ID3D11Resource* dst_resource, UINT DstX, UINT DstY, ID3D11Resource* src_resource, const D3D11_BOX* src_box, UINT* replace_DstX, D3D11_BOX* replace_box);
-    bool MapDenyCPURead(ID3D11Resource* pResource, UINT Subresource, D3D11_MAP MapType, UINT MapFlags, D3D11_MAPPED_SUBRESOURCE* pMappedResource);
-    void TrackAndDivertMap(HRESULT map_hr, ID3D11Resource* pResource, UINT Subresource, D3D11_MAP MapType, UINT MapFlags, D3D11_MAPPED_SUBRESOURCE* pMappedResource);
-    void TrackAndDivertUnmap(ID3D11Resource* pResource, UINT Subresource);
+    bool ExpandRegionCopy(ID3D11Resource* dst_resource, UINT dst_x, UINT dst_y, ID3D11Resource* src_resource, const D3D11_BOX* src_box, UINT* replace_dst_x, D3D11_BOX* replace_box);
+    bool MapDenyCPURead(ID3D11Resource* resource, UINT subresource, D3D11_MAP map_type, UINT map_flags, D3D11_MAPPED_SUBRESOURCE* mapped_resource);
+    void TrackAndDivertMap(HRESULT map_hr, ID3D11Resource* resource, UINT subresource, D3D11_MAP map_type, UINT map_flags, D3D11_MAPPED_SUBRESOURCE* mapped_resource);
+    void TrackAndDivertUnmap(ID3D11Resource* resource, UINT subresource);
 
     void                ProcessShaderOverride(shader_override* shader_override, bool is_pixel_shader, draw_context* data);
     ID3D11PixelShader*  SwitchPSShader(ID3D11PixelShader* shader);
@@ -162,9 +162,9 @@ private:
         class ID3D11Shader,
         void (__stdcall ID3D11DeviceContext::*OrigSetShader)(ID3D11Shader* pShader, ID3D11ClassInstance* const* ppClassInstances, UINT NumClassInstances)>
     void STDMETHODCALLTYPE SetShader(
-        ID3D11Shader*               pShader,
-        ID3D11ClassInstance* const* ppClassInstances,
-        UINT                        NumClassInstances,
+        ID3D11Shader*               shader,
+        ID3D11ClassInstance* const* class_instances,
+        UINT                        num_class_instances,
         std::set<UINT64>*           visited_shaders,
         UINT64                      selected_shader,
         UINT64*                     current_shader_hash,
@@ -176,7 +176,7 @@ private:
 
     template <
         void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView* const* ppShaderResourceViews)>
-    void SetShaderResources(UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView* const* ppShaderResourceViews);
+    void SetShaderResources(UINT start_slot, UINT num_views, ID3D11ShaderResourceView* const* shader_resource_views);
 
 protected:
     // Allow FrameAnalysisContext access to these as an interim measure
