@@ -156,7 +156,7 @@ void FrameAnalysisContext::FrameAnalysisLogShaderHash(ID3D11Shader *shader)
 void FrameAnalysisContext::FrameAnalysisLogResourceHash(ID3D11Resource *resource)
 {
     uint32_t hash, orig_hash;
-    struct ResourceHashInfo *info;
+    struct resource_hash_info *info;
 
     // Always complete the line in the debug log:
     LOG_DEBUG("\n");
@@ -1591,7 +1591,7 @@ void FrameAnalysisContext::DumpDeferredResources(ID3D11CommandList *command_list
         frame_analysis_deferred_buffer_lists.erase(command_list);
     } catch (std::out_of_range) {}
     if (deferred_buffers) {
-        for (FrameAnalysisDeferredDumpBufferArgs &i : *deferred_buffers) {
+        for (frame_analysis_deferred_dump_buffer_args &i : *deferred_buffers) {
             // Process key inputs to allow user to abort long running frame analysis sessions:
             DispatchInputEvents(GetHackerDevice());
             if (!G->analyse_frame)
@@ -1611,7 +1611,7 @@ void FrameAnalysisContext::DumpDeferredResources(ID3D11CommandList *command_list
         frame_analysis_deferred_tex2d_lists.erase(command_list);
     } catch (std::out_of_range) {}
     if (deferred_tex2d) {
-        for (FrameAnalysisDeferredDumpTex2DArgs &i : *deferred_tex2d) {
+        for (frame_analysis_deferred_dump_tex_2d_args &i : *deferred_tex2d) {
             // Process key inputs to allow user to abort long running frame analysis sessions:
             DispatchInputEvents(GetHackerDevice());
             if (!G->analyse_frame)
@@ -1929,7 +1929,7 @@ void FrameAnalysisContext::GetDedupedDir(wchar_t *path, size_t size)
 HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t size, bool compute,
         wchar_t *reg, char shader_type, int idx, ID3D11Resource *handle)
 {
-    struct ResourceHashInfo *info;
+    struct resource_hash_info *info;
     uint32_t hash, orig_hash;
     wchar_t *pos;
     size_t rem;
@@ -2027,7 +2027,7 @@ HRESULT FrameAnalysisContext::FrameAnalysisFilename(wchar_t *filename, size_t si
 
 HRESULT FrameAnalysisContext::FrameAnalysisFilenameResource(wchar_t *filename, size_t size, const wchar_t *type, ID3D11Resource *handle, bool force_filename_handle)
 {
-    struct ResourceHashInfo *info;
+    struct resource_hash_info *info;
     uint32_t hash, orig_hash;
     wchar_t *pos;
     size_t rem;

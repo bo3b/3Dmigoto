@@ -342,7 +342,7 @@ void optimise_command_lists(D3D9Wrapper::IDirect3DDevice9 *device)
         // FIXME: This should itself ignore any checktextureoverrides
         // inside these command lists
         for (auto &tolkv : G->mTextureOverrideMap) {
-            for (TextureOverride &to : tolkv.second) {
+            for (texture_override &to : tolkv.second) {
                 ignore_cto_pre = ignore_cto_pre && to.command_list.commands.empty();
                 ignore_cto_post = ignore_cto_post && to.post_command_list.commands.empty();
             }
@@ -2631,7 +2631,7 @@ void RunCustomShaderCommand::Run(CommandListState *state)
     D3DVIEWPORT9 saved_viewport;
     FLOAT saved_blend_factor[4];
     bool saved_post;
-    struct OMState om_state;
+    struct om_state om_state;
     D3DPRIMITIVETYPE saved_primitive_type;
     map<UINT, ID3D9SamplerState*> saved_sampler_states;
     vector<D3D9Wrapper::IDirect3DSurface9*> saved_rtss_wrappers;

@@ -44,7 +44,7 @@ static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *ta
 
     uint32_t src_hash;
     UINT src_idx, src_mip, dst_idx, dst_mip;
-    struct ResourceHashInfo *info;
+    struct resource_hash_info *info;
     char buf[256];
     DWORD written; // Really? A >required< "optional" paramter that we don't care about?
     bool nl;
@@ -152,7 +152,7 @@ static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *ta
     }
 }
 
-static void DumpUsageRegister(HANDLE f, char *tag, int id, const ResourceSnapshot &info)
+static void DumpUsageRegister(HANDLE f, char *tag, int id, const resource_snapshot &info)
 {
     char buf[256];
     DWORD written;
@@ -185,14 +185,14 @@ static void DumpUsageRegister(HANDLE f, char *tag, int id, const ResourceSnapsho
     WriteFile(f, buf, castStrLen(buf), &written, 0);
 }
 
-static void DumpShaderUsageInfo(HANDLE f, std::map<UINT64, ShaderInfoData> *info_map, char *tag)
+static void DumpShaderUsageInfo(HANDLE f, std::map<UINT64, shader_info_data> *info_map, char *tag)
 {
-    std::map<UINT64, ShaderInfoData>::iterator i;
+    std::map<UINT64, shader_info_data>::iterator i;
     std::set<UINT64>::iterator j;
-    std::map<int, std::set<ResourceSnapshot>>::const_iterator k;
-    std::set<ResourceSnapshot>::const_iterator o;
-    std::vector<std::set<ResourceSnapshot>>::iterator m;
-    std::set<ResourceSnapshot>::iterator n;
+    std::map<int, std::set<resource_snapshot>>::const_iterator k;
+    std::set<resource_snapshot>::const_iterator o;
+    std::vector<std::set<resource_snapshot>>::iterator m;
+    std::set<resource_snapshot>::iterator n;
     char buf[256];
     DWORD written;
     int pos;
@@ -930,7 +930,7 @@ err:
 }
 
 static bool WriteASM(string *asm_text, string *hlsl_text, string *err_text,
-        UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device, wstring *tagline = NULL)
+        UINT64 hash, original_shader_info shader_info, HackerDevice *device, wstring *tagline = NULL)
 {
     wchar_t file_name[MAX_PATH];
     wchar_t full_name[MAX_PATH];
@@ -990,7 +990,7 @@ static bool WriteASM(string *asm_text, string *hlsl_text, string *err_text,
 // If a file was already extant in the ShaderFixes, it will be picked up at game launch as the master shaderByteCode.
 
 static bool WriteHLSL(string *asm_text, string *hlsl_text, string *err_text,
-        UINT64 hash, OriginalShaderInfo shader_info, HackerDevice *device, bool remove_failed)
+        UINT64 hash, original_shader_info shader_info, HackerDevice *device, bool remove_failed)
 {
     wchar_t file_name[MAX_PATH];
     wchar_t full_name[MAX_PATH];
@@ -1856,7 +1856,7 @@ static uint32_t LogRenderTarget(ID3D11Resource *target, char *log_prefix)
     uint32_t hash = G->mResources[target].hash;
     uint32_t orig_hash = G->mResources[target].orig_hash;
     LEAVE_CRITICAL_SECTION(&G->mResourcesLock);
-    struct ResourceHashInfo &info = G->mResourceInfo[orig_hash];
+    struct resource_hash_info &info = G->mResourceInfo[orig_hash];
     StrResourceDesc(buf, 256, info);
     LOG_INFO("%srender target handle = %p, hash = %08lx, orig_hash = %08lx, %s\n",
         log_prefix, target, hash, orig_hash, buf);

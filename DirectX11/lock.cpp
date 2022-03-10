@@ -325,8 +325,8 @@ static void EnterCriticalSectionHook(CRITICAL_SECTION *lock)
     if (ignore_caller((uintptr_t)_ReturnAddress()))
         return _EnterCriticalSection(lock);
 
-    // If a TLS structure hasn't been allocated yet for this thread, we
-    // might be in the TLS allocation itself!
+    // If a tls structure hasn't been allocated yet for this thread, we
+    // might be in the tls allocation itself!
     if (!TlsGetValue(tls_idx))
         return _EnterCriticalSection(lock);
 
@@ -372,8 +372,8 @@ static BOOL TryEnterCriticalSectionHook(CRITICAL_SECTION *lock)
     if (ignore_caller((uintptr_t)_ReturnAddress()))
         return ret;
 
-    // If a TLS structure hasn't been allocated yet for this thread, we
-    // might be in the TLS allocation itself!
+    // If a tls structure hasn't been allocated yet for this thread, we
+    // might be in the tls allocation itself!
     if (!TlsGetValue(tls_idx))
         return ret;
 
@@ -398,8 +398,8 @@ static void LeaveCriticalSectionHook(CRITICAL_SECTION *lock)
     if (ignore_caller((uintptr_t)_ReturnAddress()))
         return;
 
-    // If a TLS structure hasn't been allocated yet for this thread, we
-    // might be in the TLS allocation itself!
+    // If a tls structure hasn't been allocated yet for this thread, we
+    // might be in the tls allocation itself!
     if (!TlsGetValue(tls_idx))
         return;
 
@@ -422,8 +422,8 @@ static void LeaveCriticalSectionHook(CRITICAL_SECTION *lock)
 
 static void DeleteCriticalSectionHook(CRITICAL_SECTION *lock)
 {
-    // If a TLS structure hasn't been allocated yet for this thread, we
-    // might be in the TLS allocation itself!
+    // If a tls structure hasn't been allocated yet for this thread, we
+    // might be in the tls allocation itself!
     if (!TlsGetValue(tls_idx))
         return;
 

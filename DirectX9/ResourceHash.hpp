@@ -172,7 +172,7 @@ template<> struct std::hash<CopySubresourceRegionContaminationMapKey>
 typedef std::map<CopySubresourceRegionContaminationMapKey, CopySubresourceRegionContamination>
 CopySubresourceRegionContaminationMap;
 // Tracks info about resources by their *original* hash. Primarily for stat collection:
-struct ResourceHashInfo
+struct resource_hash_info
 {
     ::D3DRESOURCETYPE type;
     ::D3DVERTEXBUFFER_DESC vbuf_desc;
@@ -186,40 +186,40 @@ struct ResourceHashInfo
     std::set<uint32_t> copy_contamination;
     CopySubresourceRegionContaminationMap region_contamination;
 
-    ResourceHashInfo() :
+    resource_hash_info() :
         type((::D3DRESOURCETYPE)-1),
         initial_data_used_in_hash(false),
         hash_contaminated(false)
     {}
 
-    struct ResourceHashInfo & operator= (::D3DVERTEXBUFFER_DESC desc)
+    struct resource_hash_info & operator= (::D3DVERTEXBUFFER_DESC desc)
     {
         type = ::D3DRTYPE_VERTEXBUFFER;
         vbuf_desc = desc;
         return *this;
     }
-    struct ResourceHashInfo & operator= (::D3DINDEXBUFFER_DESC desc)
+    struct resource_hash_info & operator= (::D3DINDEXBUFFER_DESC desc)
     {
         type = ::D3DRTYPE_INDEXBUFFER;
         ibuf_desc = desc;
         return *this;
     }
 
-    struct ResourceHashInfo & operator= (D3D2DTEXTURE_DESC desc)
+    struct resource_hash_info & operator= (D3D2DTEXTURE_DESC desc)
     {
         type = desc.Type;
         desc2D = desc;
         return *this;
     }
 
-    struct ResourceHashInfo & operator= (D3D3DTEXTURE_DESC desc)
+    struct resource_hash_info & operator= (D3D3DTEXTURE_DESC desc)
     {
         type = ::D3DRTYPE_VOLUMETEXTURE;
         desc3D = desc;
         return *this;
     }
 };
-typedef std::unordered_map<uint32_t, struct ResourceHashInfo> ResourceInfoMap;
+typedef std::unordered_map<uint32_t, struct resource_hash_info> ResourceInfoMap;
 uint32_t CalcDescHash(uint32_t initial_hash, const D3D2DTEXTURE_DESC *const_desc);
 uint32_t CalcDescHash(uint32_t initial_hash, const D3D3DTEXTURE_DESC *const_desc);
 
@@ -246,7 +246,7 @@ int StrResourceDesc(char *buf, size_t size, ::D3DVERTEXBUFFER_DESC *desc);
 int StrResourceDesc(char *buf, size_t size, ::D3DINDEXBUFFER_DESC *desc);
 int StrResourceDesc(char *buf, size_t size, D3D3DTEXTURE_DESC *desc);
 int StrResourceDesc(char *buf, size_t size, D3D2DTEXTURE_DESC *desc);
-int StrResourceDesc(char *buf, size_t size, struct ResourceHashInfo &info);
+int StrResourceDesc(char *buf, size_t size, struct resource_hash_info &info);
 
 void LogResourceDesc(const ::D3DVERTEXBUFFER_DESC *desc);
 void LogResourceDesc(const ::D3DINDEXBUFFER_DESC *desc);
@@ -492,7 +492,7 @@ public:
 // struct since the definition needs to be known to statically contain one, but
 // we'll hold off until post 1.3 since the FrameAnalysisOptions needs to go in
 // FrameAnalysis.h to make that work, and that is an area that diverged from 1.2:
-struct TextureOverride;
+struct texture_override;
 
 class FuzzyMatchResourceDesc {
 private:
@@ -503,7 +503,7 @@ private:
     template <typename DescType>
     bool check_common_buffer_fields(const DescType *desc) const;
 public:
-    struct TextureOverride *texture_override;
+    struct texture_override *texture_override;
 
     int priority;
 
@@ -538,7 +538,7 @@ public:
     void set_resource_type(::D3DRESOURCETYPE type);
     bool update_types_matched();
 };
-bool TextureOverrideLess(const struct TextureOverride &lhs, const struct TextureOverride &rhs);
+bool TextureOverrideLess(const struct texture_override &lhs, const struct texture_override &rhs);
 struct FuzzyMatchResourceDescLess {
     bool operator() (const std::shared_ptr<FuzzyMatchResourceDesc> &lhs, const std::shared_ptr<FuzzyMatchResourceDesc> &rhs) const;
 };
@@ -546,7 +546,7 @@ struct FuzzyMatchResourceDescLess {
 // given resource, but we want to make sure we always process them in the same
 // order for consistent results.
 typedef std::set<std::shared_ptr<FuzzyMatchResourceDesc>, FuzzyMatchResourceDescLess> FuzzyTextureOverrides;
-typedef std::vector<TextureOverride*> TextureOverrideMatches;
+typedef std::vector<texture_override*> TextureOverrideMatches;
 template <typename DescType>
 void find_texture_overrides(uint32_t hash, const DescType *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
 void find_texture_overrides_for_resource(::IDirect3DResource9 *resource, ResourceHandleInfo *info, TextureOverrideMatches *matches, DrawCallInfo *call_info);

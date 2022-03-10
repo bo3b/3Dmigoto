@@ -2127,7 +2127,7 @@ static wchar_t *true_false_overrule[] = {
     L"overrule", // GetIniBoolIntOrEnum will also accept 2
 };
 
-static void check_shaderoverride_duplicates(bool duplicate, const wchar_t *id, ShaderOverride *override, UINT64 hash)
+static void check_shaderoverride_duplicates(bool duplicate, const wchar_t *id, shader_override *override, UINT64 hash)
 {
     int allow_duplicates;
 
@@ -2175,7 +2175,7 @@ static void check_shaderoverride_duplicates(bool duplicate, const wchar_t *id, S
     override->allow_duplicate_hashes = allow_duplicates;
 }
 
-static void warn_deprecated_shaderoverride_options(const wchar_t *id, ShaderOverride *override)
+static void warn_deprecated_shaderoverride_options(const wchar_t *id, shader_override *override)
 {
     // I've seen several shaderhackers attempt to use the deprecated
     // partner= in a way that won't work recently. Detect, warn and
@@ -2242,7 +2242,7 @@ static void ParseShaderOverrideSections()
     IniSections::iterator lower, upper, i;
     wchar_t setting[MAX_PATH];
     const wchar_t *id;
-    ShaderOverride *override;
+    shader_override *override;
     UINT64 hash;
     bool duplicate, found;
     bool disable_scissor;
@@ -2802,7 +2802,7 @@ static void parse_fuzzy_numeric_match_expression(const wchar_t *setting, FuzzyMa
         return parse_fuzzy_numeric_match_expression_error(ptr);
 }
 
-static void parse_texture_override_common(const wchar_t *id, TextureOverride *override, bool register_command_lists)
+static void parse_texture_override_common(const wchar_t *id,texture_override *override, bool register_command_lists)
 {
     wchar_t setting[MAX_PATH];
     bool found;
@@ -2824,7 +2824,7 @@ static void parse_texture_override_common(const wchar_t *id, TextureOverride *ov
     if (GetIniString(id, L"Iteration", 0, setting, MAX_PATH))
     {
         // TODO: This supports more iterations than the
-        // ShaderOverride iteration parameter, and it's not
+        // shader_override iteration parameter, and it's not
         // clear why there is a difference. This seems like the
         // better way, but should change it to use my list
         // parsing code rather than hard coding a maximum of 10
@@ -3041,7 +3041,7 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
         return;
     }
 
-    parse_texture_override_common(section, fuzzy->texture_override, true);
+    parse_texture_override_common(section, fuzzy->textureOverride, true);
 
     if (!G->mFuzzyTextureOverrides.insert(std::shared_ptr<FuzzyMatchResourceDesc>(fuzzy)).second) {
         INI_WARNING("BUG: Unexpected error inserting fuzzy texture override\n");
@@ -3049,7 +3049,7 @@ static void parse_texture_override_fuzzy_match(const wchar_t *section)
     }
 }
 
-static void warn_if_duplicate_texture_hash(TextureOverride *override, uint32_t hash)
+static void warn_if_duplicate_texture_hash(texture_override *override, uint32_t hash)
 {
     TextureOverrideMap::iterator i;
     TextureOverrideList::iterator j;
@@ -3084,7 +3084,7 @@ static void ParseTextureOverrideSections()
 {
     IniSections::iterator lower, upper, i;
     const wchar_t *id;
-    TextureOverride *override;
+    texture_override *override;
     uint32_t hash;
     bool found;
 
@@ -3152,7 +3152,7 @@ static void ParseTextureOverrideSections()
         // to hold pointers so it can rearrange the pointers however it
         // likes without changing the TextureOverrides they point to,
         // similar to how the CommandList data structures work.
-        for (TextureOverride &to : tolkv.second) {
+        for (texture_override &to : tolkv.second) {
             registered_command_lists.push_back(&to.command_list);
             registered_command_lists.push_back(&to.post_command_list);
         }

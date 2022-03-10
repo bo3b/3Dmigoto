@@ -31,7 +31,7 @@ static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *ta
 
     uint32_t srcHash;
     UINT SrcMip, DstMip;
-    struct ResourceHashInfo *info;
+    struct resource_hash_info *info;
     char buf[256];
     DWORD written; // Really? A >required< "optional" paramter that we don't care about?
     bool nl;
@@ -138,7 +138,7 @@ static void DumpUsageResourceInfo(HANDLE f, std::set<uint32_t> *hashes, char *ta
     }
 }
 
-static void DumpUsageRegister(HANDLE f, char *tag, int id, const ResourceSnapshot &info)
+static void DumpUsageRegister(HANDLE f, char *tag, int id, const resource_snapshot &info)
 {
     char buf[256];
     DWORD written;
@@ -172,14 +172,14 @@ static void DumpUsageRegister(HANDLE f, char *tag, int id, const ResourceSnapsho
     WriteFile(f, buf, castStrLen(buf), &written, 0);
 }
 
-static void DumpShaderUsageInfo(HANDLE f, std::map<UINT64, ShaderInfoData> *info_map, char *tag)
+static void DumpShaderUsageInfo(HANDLE f, std::map<UINT64, shader_info_data> *info_map, char *tag)
 {
-    std::map<UINT64, ShaderInfoData>::iterator i;
+    std::map<UINT64, shader_info_data>::iterator i;
     std::set<UINT64>::iterator j;
-    std::map<int, std::set<ResourceSnapshot>>::const_iterator k;
-    std::set<ResourceSnapshot>::const_iterator o;
-    std::vector<std::set<ResourceSnapshot>>::iterator m;
-    std::set<ResourceSnapshot>::iterator n;
+    std::map<int, std::set<resource_snapshot>>::const_iterator k;
+    std::set<resource_snapshot>::const_iterator o;
+    std::vector<std::set<resource_snapshot>>::iterator m;
+    std::set<resource_snapshot>::iterator n;
     char buf[256];
     DWORD written;
     int pos;
@@ -723,7 +723,7 @@ err:
     goto out;
 }
 
-static bool WriteConstantTable(UINT64 hash, OriginalShaderInfo shader_info, D3D9Wrapper::IDirect3DDevice9 *device)
+static bool WriteConstantTable(UINT64 hash, original_shader_info shader_info, D3D9Wrapper::IDirect3DDevice9 *device)
 {
     bool success = false;
     wchar_t fileName[MAX_PATH];
@@ -770,7 +770,7 @@ static bool WriteConstantTable(UINT64 hash, OriginalShaderInfo shader_info, D3D9
 
 }
 static bool WriteASM(string *asmText, string *hlslText, string *errText,
-    UINT64 hash, OriginalShaderInfo shader_info, D3D9Wrapper::IDirect3DDevice9 *device)
+    UINT64 hash, original_shader_info shader_info, D3D9Wrapper::IDirect3DDevice9 *device)
 {
     std::istringstream hlslTokens(*hlslText);
     std::istringstream errTokens(*errText);
@@ -834,7 +834,7 @@ static bool WriteASM(string *asmText, string *hlslText, string *errText,
 // If a file was already extant in the ShaderFixes, it will be picked up at game launch as the master shaderByteCode.
 
 static bool WriteHLSL(string *asmText, string *hlslText, string *errText,
-    UINT64 hash, OriginalShaderInfo shader_info, D3D9Wrapper::IDirect3DDevice9 *device, bool remove_failed)
+    UINT64 hash, original_shader_info shader_info, D3D9Wrapper::IDirect3DDevice9 *device, bool remove_failed)
 {
     wchar_t fileName[MAX_PATH];
     wchar_t fullName[MAX_PATH];
@@ -1600,7 +1600,7 @@ static uint32_t LogRenderTarget(D3D9Wrapper::IDirect3DResource9 *target, char *l
 
     uint32_t hash = target->resourceHandleInfo.hash;
     uint32_t orig_hash = target->resourceHandleInfo.orig_hash;
-    struct ResourceHashInfo &info = G->mResourceInfo[orig_hash];
+    struct resource_hash_info &info = G->mResourceInfo[orig_hash];
     StrResourceDesc(buf, 256, info);
     LOG_INFO("%srender target handle = %p, hash = %08lx, orig_hash = %08lx, %s\n",
         log_prefix, target, hash, orig_hash, buf);

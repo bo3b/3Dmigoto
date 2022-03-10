@@ -86,7 +86,7 @@ int StrResourceDesc(char *buf, size_t size, const D3D11_TEXTURE3D_DESC *desc)
         TexMiscFlags(desc->MiscFlags).c_str());
 }
 
-int StrResourceDesc(char *buf, size_t size, struct ResourceHashInfo &info)
+int StrResourceDesc(char *buf, size_t size, struct resource_hash_info &info)
 {
     switch (info.type) {
         case D3D11_RESOURCE_DIMENSION_BUFFER:
@@ -945,7 +945,7 @@ static bool supports_hash_tracking(ResourceHandleInfo *handle_info)
             handle_info->type == D3D11_RESOURCE_DIMENSION_TEXTURE3D);
 }
 
-static bool GetResourceInfoFields(struct ResourceHashInfo *info, UINT subresource,
+static bool GetResourceInfoFields(struct resource_hash_info *info, UINT subresource,
         UINT *width, UINT *height, UINT *depth,
         UINT *idx, UINT *mip, UINT *array_size)
 {
@@ -978,7 +978,7 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
         UINT DstX, UINT DstY, UINT DstZ, const D3D11_BOX *SrcBox)
 {
     ResourceHandleInfo *dst_handle_info;
-    struct ResourceHashInfo *dstInfo, *srcInfo = NULL;
+    struct resource_hash_info *dstInfo, *srcInfo = NULL;
     uint32_t srcHash = 0, dstHash = 0;
     UINT srcWidth = 1, srcHeight = 1, srcDepth = 1, srcMip = 0, srcIdx = 0, srcArraySize = 1;
     UINT dstWidth = 1, dstHeight = 1, dstDepth = 1, dstMip = 0, dstIdx = 0, dstArraySize = 1;
@@ -1466,13 +1466,13 @@ FuzzyMatchResourceDesc::FuzzyMatchResourceDesc(std::wstring section) :
     matches_tex3d(true)
 {
     // TODO: Statically contain this once we sort out our header files:
-    texture_override = new TextureOverride();
-    texture_override->ini_section = section;
+    textureOverride = new texture_override();
+    textureOverride->ini_section = section;
 }
 
 FuzzyMatchResourceDesc::~FuzzyMatchResourceDesc()
 {
-    delete texture_override;
+    delete textureOverride;
 }
 
 template <typename DescType>
@@ -1621,7 +1621,7 @@ bool FuzzyMatchResourceDesc::update_types_matched()
     return matches_buffer || matches_tex1d || matches_tex2d || matches_tex3d;
 }
 
-static bool matches_draw_info(TextureOverride *tex_override, DrawCallInfo *call_info)
+static bool matches_draw_info(texture_override *tex_override, DrawCallInfo *call_info)
 {
     if (!tex_override->has_draw_context_match)
         return true;
@@ -1684,8 +1684,8 @@ static void find_texture_overrides_for_desc(const DescType *desc, TextureOverrid
     FuzzyTextureOverrides::iterator i;
 
     for (i = G->mFuzzyTextureOverrides.begin(); i != G->mFuzzyTextureOverrides.end(); i++) {
-        if ((*i)->matches(desc) && matches_draw_info((*i)->texture_override, call_info))
-            matches->push_back((*i)->texture_override);
+        if ((*i)->matches(desc) && matches_draw_info((*i)->textureOverride, call_info))
+            matches->push_back((*i)->textureOverride);
     }
 }
 
@@ -1748,7 +1748,7 @@ void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverri
     }
 }
 
-bool TextureOverrideLess(const struct TextureOverride &lhs, const struct TextureOverride &rhs)
+bool TextureOverrideLess(const struct texture_override &lhs, const struct texture_override &rhs)
 {
     // For texture create time overrides we want the highest priority
     // texture override to take precedence, which will happen if it is
@@ -1762,5 +1762,5 @@ bool TextureOverrideLess(const struct TextureOverride &lhs, const struct Texture
 }
 bool FuzzyMatchResourceDescLess::operator() (const std::shared_ptr<FuzzyMatchResourceDesc> &lhs, const std::shared_ptr<FuzzyMatchResourceDesc> &rhs) const
 {
-    return TextureOverrideLess(*lhs->texture_override, *rhs->texture_override);
+    return TextureOverrideLess(*lhs->textureOverride, *rhs->textureOverride);
 }

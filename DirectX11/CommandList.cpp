@@ -274,14 +274,14 @@ void optimise_command_lists(HackerDevice *device)
         // FIXME: This should itself ignore any checktextureoverrides
         // inside these command lists
         for (auto &tolkv : G->mTextureOverrideMap) {
-            for (TextureOverride &to : tolkv.second) {
+            for (texture_override &to : tolkv.second) {
                 ignore_cto_pre = ignore_cto_pre && to.command_list.commands.empty();
                 ignore_cto_post = ignore_cto_post && to.post_command_list.commands.empty();
             }
         }
         for (auto &tof : G->mFuzzyTextureOverrides) {
-            ignore_cto_pre = ignore_cto_pre && tof->texture_override->command_list.commands.empty();
-            ignore_cto_post = ignore_cto_post && tof->texture_override->post_command_list.commands.empty();
+            ignore_cto_pre = ignore_cto_pre && tof->textureOverride->command_list.commands.empty();
+            ignore_cto_post = ignore_cto_post && tof->textureOverride->post_command_list.commands.empty();
         }
 
         // Go through each registered command list and remove any

@@ -106,7 +106,7 @@ static EnumName_t<const wchar_t *, ShaderHashType> ShaderHashNames[] = {
 //    replacement is either ID3D11VertexShader or ID3D11PixelShader
 //  found is used to revert shaders that are deleted from ShaderFixes
 //  infoText is shown in the OSD when the shader is actively selected.
-struct OriginalShaderInfo
+struct original_shader_info
 {
     UINT64 hash;
     std::wstring shaderType;
@@ -126,7 +126,7 @@ struct OriginalShaderInfo
 void CleanupShaderMaps(ID3D11DeviceChild *handle);
 
 // Key is the overridden shader that was given back to the game at CreateVertexShader (vs or ps)
-typedef std::unordered_map<ID3D11DeviceChild *, OriginalShaderInfo> ShaderReloadMap;
+typedef std::unordered_map<ID3D11DeviceChild *, original_shader_info> ShaderReloadMap;
 
 // TODO: We can probably merge this into ShaderReloadMap
 typedef std::unordered_map<ID3D11DeviceChild *, ID3D11DeviceChild *> ShaderReplacementMap;
@@ -255,7 +255,7 @@ static EnumName_t<const wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] =
     {NULL, DepthBufferFilter::INVALID} // End of list marker
 };
 
-struct ShaderOverride {
+struct shader_override {
     std::wstring first_ini_section;
     DepthBufferFilter depth_filter;
     UINT64 partner_hash;
@@ -266,7 +266,7 @@ struct ShaderOverride {
     CommandList command_list;
     CommandList post_command_list;
 
-    ShaderOverride() :
+    shader_override() :
         depth_filter(DepthBufferFilter::NONE),
         partner_hash(0),
         allow_duplicate_hashes(1),
@@ -276,9 +276,9 @@ struct ShaderOverride {
         model[0] = '\0';
     }
 };
-typedef std::unordered_map<UINT64, struct ShaderOverride> ShaderOverrideMap;
+typedef std::unordered_map<UINT64, struct shader_override> ShaderOverrideMap;
 
-struct TextureOverride {
+struct texture_override {
     std::wstring ini_section;
     int stereoMode;
     int format;
@@ -305,7 +305,7 @@ struct TextureOverride {
     CommandList command_list;
     CommandList post_command_list;
 
-    TextureOverride() :
+    texture_override() :
         stereoMode(-1),
         format(-1),
         width(-1),
@@ -315,6 +315,7 @@ struct TextureOverride {
         expand_region_copy(false),
         deny_cpu_read(false),
         filter_index(FLT_MAX),
+        backup_filter_index(0),
         has_draw_context_match(false),
         has_match_priority(false),
         priority(0)
@@ -329,24 +330,24 @@ typedef std::unordered_map<ID3D11Resource *, ResourceHandleInfo> ResourceMap;
 // We can't use a std::set to enforce this ordering, as that makes the
 // TextureOverrides const, but there are a few places we modify it. Instead, we
 // will sort it in the ini parser when we create the list.
-typedef std::vector<struct TextureOverride> TextureOverrideList;
+typedef std::vector<struct texture_override> TextureOverrideList;
 typedef std::unordered_map<uint32_t, TextureOverrideList> TextureOverrideMap;
 
 // We use this when collecting resource info for ShaderUsage.txt to take a
 // snapshot of the resource handle, hash and original hash. We used to just
 // save the resource handle, but that was problematic since handles can get
 // reused, and so we could record the wrong hash in the ShaderUsage.txt
-struct ResourceSnapshot
+struct resource_snapshot
 {
     ID3D11Resource *handle;
     uint32_t hash;
     uint32_t orig_hash;
 
-    ResourceSnapshot(ID3D11Resource *handle, uint32_t hash, uint32_t orig_hash):
+    resource_snapshot(ID3D11Resource *handle, uint32_t hash, uint32_t orig_hash):
         handle(handle), hash(hash), orig_hash(orig_hash)
     {}
 };
-static inline bool operator<(const ResourceSnapshot &lhs, const ResourceSnapshot &rhs)
+static inline bool operator<(const resource_snapshot &lhs, const resource_snapshot &rhs)
 {
     if (lhs.orig_hash != rhs.orig_hash)
         return (lhs.orig_hash < rhs.orig_hash);
@@ -355,14 +356,14 @@ static inline bool operator<(const ResourceSnapshot &lhs, const ResourceSnapshot
     return (lhs.handle < rhs.handle);
 }
 
-struct ShaderInfoData
+struct shader_info_data
 {
     // All are std::map or std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
-    std::map<int, std::set<ResourceSnapshot>> ResourceRegisters;
+    std::map<int, std::set<resource_snapshot>> ResourceRegisters;
     std::set<UINT64> PeerShaders;
-    std::vector<std::set<ResourceSnapshot>> RenderTargets;
-    std::map<int, std::set<ResourceSnapshot>> UAVs;
-    std::set<ResourceSnapshot> DepthTargets;
+    std::vector<std::set<resource_snapshot>> RenderTargets;
+    std::map<int, std::set<resource_snapshot>> UAVs;
+    std::set<resource_snapshot> DepthTargets;
 };
 
 enum class GetResolutionFrom {
@@ -376,12 +377,12 @@ static EnumName_t<const wchar_t *, GetResolutionFrom> GetResolutionFromNames[] =
     {NULL, GetResolutionFrom::INVALID} // End of list marker
 };
 
-struct ResolutionInfo
+struct resolution_info
 {
     int width, height;
     GetResolutionFrom from;
 
-    ResolutionInfo() :
+    resolution_info() :
         from(GetResolutionFrom::INVALID),
         width(-1),
         height(-1)
@@ -395,7 +396,7 @@ enum class AsyncQueryType
     COUNTER,
 };
 
-struct Globals
+struct globals
 {
     bool gInitialized;
     bool gReloadConfigPending;
@@ -478,7 +479,7 @@ struct Globals
     int StereoParamsReg;
     int IniParamsReg;
 
-    ResolutionInfo mResolutionInfo;
+    resolution_info mResolutionInfo;
     CommandList present_command_list;
     CommandList post_present_command_list;
     CommandList clear_rtv_command_list;
@@ -594,14 +595,14 @@ struct Globals
     ID3D11Resource *mSelectedRenderTargetSnapshot;
     std::set<ID3D11Resource *> mSelectedRenderTargetSnapshotList;            // std::set so that render targets will be sorted in log when marked
     // Relations
-    std::map<UINT64, ShaderInfoData> mVertexShaderInfo;            // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
-    std::map<UINT64, ShaderInfoData> mHullShaderInfo;            // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
-    std::map<UINT64, ShaderInfoData> mDomainShaderInfo;            // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
-    std::map<UINT64, ShaderInfoData> mGeometryShaderInfo;        // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
-    std::map<UINT64, ShaderInfoData> mPixelShaderInfo;            // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
-    std::map<UINT64, ShaderInfoData> mComputeShaderInfo;        // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+    std::map<UINT64, shader_info_data> mVertexShaderInfo;            // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+    std::map<UINT64, shader_info_data> mHullShaderInfo;            // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+    std::map<UINT64, shader_info_data> mDomainShaderInfo;            // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+    std::map<UINT64, shader_info_data> mGeometryShaderInfo;        // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+    std::map<UINT64, shader_info_data> mPixelShaderInfo;            // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+    std::map<UINT64, shader_info_data> mComputeShaderInfo;        // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 
-    Globals() :
+    globals() :
 
         mSelectedRenderTargetSnapshot(0),
         mSelectedRenderTargetPos(-1),
@@ -715,12 +716,12 @@ struct Globals
 // Everything in this struct has a unique copy per thread. It would be vastly
 // simpler to just use the "thread_local" keyword, but MSDN warns that it can
 // interfere with delay loading DLLs (without any detail as to what it means by
-// that), so to err on the side of caution I'm using the old Win32 TLS API. We
-// are using a structure to ensure we only consume a single TLS slot since they
+// that), so to err on the side of caution I'm using the old Win32 tls API. We
+// are using a structure to ensure we only consume a single tls slot since they
 // are limited, regardless of how many thread local variables we might want in
 // the future. Use the below accessor function to get a pointer to this
 // structure for the current thread.
-struct TLS
+struct tls
 {
     // This is set before calling into a DirectX function known to be
     // problematic if hooks are in use that can lead to one of our
@@ -743,26 +744,27 @@ struct TLS
 
     LockStack locks_held;
 
-    TLS() :
+    tls() :
         hooking_quirk_protection(false)
     {}
 };
 
-extern DWORD tls_idx;
-static struct TLS* get_tls()
+extern DWORD       tls_idx;
+static struct tls* get_tls()
 {
-    TLS *tls;
+    tls* Tls;
 
-    tls = (TLS*)TlsGetValue(tls_idx);
-    if (!tls) {
-        tls = new TLS();
-        TlsSetValue(tls_idx, tls);
+    Tls = (tls*)TlsGetValue(tls_idx);
+    if (!Tls)
+    {
+        Tls = new tls();
+        TlsSetValue(tls_idx, Tls);
     }
 
-    return tls;
+    return Tls;
 }
 
-extern Globals *G;
+extern globals *G;
 
 static inline ShaderMap::iterator lookup_shader_hash(ID3D11DeviceChild *shader)
 {
