@@ -147,7 +147,7 @@ private:
     bool effective_state;
     ULONGLONG state_change_time;
 public:
-    DelayedInputAction(InputButton *button, shared_ptr<InputListener> listener, int delayDown, int delayUp);
+    DelayedInputAction(InputButton *button, shared_ptr<InputListener> listener, int delay_down, int delay_up);
     bool Dispatch(D3D9Wrapper::IDirect3DDevice9 *device) override;
 };
 

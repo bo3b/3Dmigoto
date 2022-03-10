@@ -212,7 +212,7 @@ public:
 
     void Trigger(CommandListCommand *triggered_from);
     void Exclude();
-    void Update(HackerDevice *device);
+    void Update(HackerDevice *wrapper);
 
     unsigned uniqueTriggersRequired;
 };
@@ -248,7 +248,7 @@ public:
 
     void ScheduleTransition(HackerDevice *wrapper,
             float target_separation, float target_convergence,
-            OverrideParams *targets, OverrideVars *vars,
+            OverrideParams *targets, OverrideVars *var_targets,
             int time, TransitionType transition_type);
     void UpdatePresets(HackerDevice *wrapper);
     void OverrideTransition::UpdateTransitions(HackerDevice *wrapper);

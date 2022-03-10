@@ -578,13 +578,13 @@ HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
 }
 
 HRESULT FrameAnalysisContext::ResolveMSAA(ID3D11Texture2D *src,
-        D3D11_TEXTURE2D_DESC *src_desc, ID3D11Texture2D **dst, DXGI_FORMAT format)
+        D3D11_TEXTURE2D_DESC *src_desc, ID3D11Texture2D **resolved, DXGI_FORMAT format)
 {
-    ID3D11Texture2D *resolved = NULL;
+    ID3D11Texture2D *dest = NULL;
     UINT item, level, index;
     HRESULT hr;
 
-    *dst = NULL;
+    *resolved = NULL;
 
     if (src_desc->SampleDesc.Count <= 1)
         return S_OK;
@@ -592,7 +592,7 @@ HRESULT FrameAnalysisContext::ResolveMSAA(ID3D11Texture2D *src,
     // Resolve MSAA surfaces. Procedure copied from DirectXTK
     // These need to have D3D11_USAGE_DEFAULT to resolve,
     // so we need yet another intermediate texture:
-    hr = CreateStagingResource(&resolved, *src_desc, false, true, format);
+    hr = CreateStagingResource(&dest, *src_desc, false, true, format);
     if (FAILED(hr)) {
         FA_LOG_ERR("ResolveMSAA failed to create intermediate texture: 0x%x\n", hr);
         return hr;
@@ -610,15 +610,15 @@ HRESULT FrameAnalysisContext::ResolveMSAA(ID3D11Texture2D *src,
     for (item = 0; item < src_desc->ArraySize; item++) {
         for (level = 0; level < src_desc->MipLevels; level++) {
             index = D3D11CalcSubresource(level, item, max(src_desc->MipLevels, 1));
-            GetDumpingContext()->ResolveSubresource(resolved, index, src, index, fmt);
+            GetDumpingContext()->ResolveSubresource(dest, index, src, index, fmt);
         }
     }
 
-    *dst = resolved;
+    *resolved = dest;
     return S_OK;
 
 err_release:
-    resolved->Release();
+    dest->Release();
     return hr;
 }
 
@@ -1340,7 +1340,7 @@ static void dump_vb_instance_data(FILE *fd, D3D11_MAPPED_SUBRESOURCE *map,
  * other info like the semantic).
  */
 void FrameAnalysisContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE *map,
-        UINT size, int slot, UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
+        UINT size, int idx, UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
         D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info)
 {
     FILE *fd = NULL;
@@ -1371,7 +1371,7 @@ void FrameAnalysisContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE
     if (layout) {
         layout_desc = (D3D11_INPUT_ELEMENT_DESC*)layout->GetBufferPointer();
         layout_elements = layout->GetBufferSize() / sizeof(D3D11_INPUT_ELEMENT_DESC);
-        dump_ia_layout(fd, layout_desc, layout_elements, slot, &per_vert, &per_inst);
+        dump_ia_layout(fd, layout_desc, layout_elements, idx, &per_vert, &per_inst);
     }
     if (!stride) {
         FA_LOG_ERR("Cannot dump vertex buffer with stride=0\n");
@@ -1382,18 +1382,18 @@ void FrameAnalysisContext::DumpVBTxt(wchar_t *filename, D3D11_MAPPED_SUBRESOURCE
         if (per_vert) {
             fprintf(fd, "\nvertex-data:\n");
             dump_vb_known_layout(fd, map, layout_desc, layout_elements,
-                    size, slot, offset, first, count, stride);
+                    size, idx, offset, first, count, stride);
         }
 
         if (per_inst && call_info) {
             fprintf(fd, "\ninstance-data:\n");
             dump_vb_instance_data(fd, map, layout_desc,
-                    layout_elements, size, slot, offset,
+                    layout_elements, size, idx, offset,
                     call_info->FirstInstance,
                     call_info->InstanceCount, stride);
         }
     } else {
-        dump_vb_unknown_layout(fd, map, size, slot, offset, first, count, stride);
+        dump_vb_unknown_layout(fd, map, size, idx, offset, first, count, stride);
     }
 
 out_close:
