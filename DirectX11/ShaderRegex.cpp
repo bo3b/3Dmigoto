@@ -368,7 +368,7 @@ void ShaderRegexGroup::apply_regex_patterns(std::string *asm_text, bool *match, 
 
 void ShaderRegexGroup::link_command_lists_and_filter_index(UINT64 shader_hash)
 {
-    ShaderOverride *shader_override = NULL;
+    shader_override *shader_override = NULL;
     wstring ini_section, ini_line;
     CommandList::Commands::reverse_iterator i;
 
@@ -430,7 +430,7 @@ void ShaderRegexGroup::link_command_lists_and_filter_index(UINT64 shader_hash)
 
 bool unlink_shader_regex_command_lists_and_filter_index(UINT64 shader_hash)
 {
-    ShaderOverride *shader_override = NULL;
+    shader_override *shader_override = NULL;
     CommandList::Commands::iterator i, next;
     RunLinkedCommandList *link;
     bool ret = false;

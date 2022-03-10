@@ -175,7 +175,7 @@ ID3D11Resource* HackerContext::RecordResourceViewStats(
     return resource;
 }
 
-static ResourceSnapshot snapshot_resource(
+static resource_snapshot snapshot_resource(
     ID3D11Resource* handle)
 {
     uint32_t hash = 0, orig_hash = 0;
@@ -187,11 +187,11 @@ static ResourceSnapshot snapshot_resource(
         orig_hash = info->orig_hash;
     }
 
-    return ResourceSnapshot(handle, hash, orig_hash);
+    return resource_snapshot(handle, hash, orig_hash);
 }
 
 void HackerContext::_RecordShaderResourceUsage(
-    ShaderInfoData*           shader_info,
+    shader_info_data*         shader_info,
     ID3D11ShaderResourceView* views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT])
 {
     ID3D11Resource* resource;
@@ -235,11 +235,11 @@ template <
         UINT                       NumViews,
         ID3D11ShaderResourceView** ppShaderResourceViews)>
 void HackerContext::RecordShaderResourceUsage(
-    std::map<UINT64, ShaderInfoData>& shader_info,
-    UINT64                            current_shader)
+    std::map<UINT64, shader_info_data>& shader_info,
+    UINT64                              current_shader)
 {
     ID3D11ShaderResourceView* views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
-    ShaderInfoData*           info;
+    shader_info_data*         info;
 
     (origContext1->*GetShaderResources)(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, views);
 
@@ -256,7 +256,7 @@ void HackerContext::RecordGraphicsShaderStats()
 {
     ID3D11UnorderedAccessView* uavs[D3D11_1_UAV_SLOT_COUNT];  // DX11: 8, DX11.1: 64
     UINT                       selected_render_target_pos;
-    ShaderInfoData*            info;
+    shader_info_data*          info;
     ID3D11Resource*            resource;
     UINT                       i;
     Profiling::State           profiling_state;
@@ -299,7 +299,7 @@ void HackerContext::RecordGraphicsShaderStats()
             for (selected_render_target_pos = 0; selected_render_target_pos < currentRenderTargets.size(); ++selected_render_target_pos)
             {
                 if (selected_render_target_pos >= info->RenderTargets.size())
-                    info->RenderTargets.push_back(std::set<ResourceSnapshot>());
+                    info->RenderTargets.push_back(std::set<resource_snapshot>());
 
                 info->RenderTargets[selected_render_target_pos].insert(snapshot_resource(currentRenderTargets[selected_render_target_pos]));
             }
@@ -333,7 +333,7 @@ void HackerContext::RecordComputeShaderStats()
 {
     ID3D11ShaderResourceView*  srvs[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
     ID3D11UnorderedAccessView* uavs[D3D11_1_UAV_SLOT_COUNT];  // DX11: 8, DX11.1: 64
-    ShaderInfoData*            info;
+    shader_info_data*          info;
     D3D_FEATURE_LEVEL          level    = origDevice1->GetFeatureLevel();
     UINT                       num_uavs = (level >= D3D_FEATURE_LEVEL_11_1 ? D3D11_1_UAV_SLOT_COUNT : D3D11_PS_CS_UAV_REGISTER_COUNT);
     ID3D11Resource*            resource;
@@ -470,9 +470,9 @@ ID3D11PixelShader* HackerContext::SwitchPSShader(
 
 #define ENABLE_LEGACY_FILTERS 1
 void HackerContext::ProcessShaderOverride(
-    ShaderOverride* shader_override,
-    bool            is_pixel_shader,
-    draw_context*   data)
+    shader_override* shader_override,
+    bool             is_pixel_shader,
+    draw_context*    data)
 {
     bool use_orig = false;
 
@@ -577,7 +577,7 @@ void HackerContext::DeferredShaderReplacement(
     ID3D11Shader*             patched_shader = nullptr;
     ID3D11ClassInstance*      class_instances[256] {};
     ShaderReloadMap::iterator orig_info_i;
-    OriginalShaderInfo*       orig_info     = nullptr;
+    original_shader_info*     orig_info     = nullptr;
     UINT                      num_instances = 0;
     string                    asm_text;
     bool                      patch_regex = false;

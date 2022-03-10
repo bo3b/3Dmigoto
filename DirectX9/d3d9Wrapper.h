@@ -532,8 +532,8 @@ public:
         bool sli;
         Overlay * mOverlay;
         void RecordGraphicsShaderStats();
-        void RecordVertexShaderResourceUsage(ShaderInfoData *shader_info);
-        void RecordPixelShaderResourceUsage(ShaderInfoData *shader_info);
+        void RecordVertexShaderResourceUsage(shader_info_data *shader_info);
+        void RecordPixelShaderResourceUsage(shader_info_data *shader_info);
         void RecordResourceStats(D3D9Wrapper::IDirect3DResource9 *resource, std::set<uint32_t> *resource_info);
         void RecordPeerShaders(set<UINT64> *PeerShaders, D3D9Wrapper::IDirect3DShader9 *this_shader);
         void SwitchPSShader(::IDirect3DPixelShader9 *shader);
@@ -541,7 +541,7 @@ public:
         void DeferredShaderReplacementBeforeDraw();
         template<typename ID3D9Shader, HRESULT (__stdcall ::IDirect3DDevice9::*_CreateShader)(const DWORD*, ID3D9Shader**)>
         void DeferredShaderReplacement(D3D9Wrapper::IDirect3DShader9 *shader, wchar_t *shader_type);
-        void ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader, D3D9Wrapper::DrawContext *data);
+        void ProcessShaderOverride(shader_override *shaderOverride, bool isPixelShader, D3D9Wrapper::DrawContext *data);
         void RecordRenderTargetInfo(D3D9Wrapper::IDirect3DSurface9 *target, DWORD RenderTargetIndex);
         void RecordDepthStencil(D3D9Wrapper::IDirect3DSurface9 *target);
         template <class ID3D9ShaderWrapper, class ID3D9Shader,
@@ -1042,11 +1042,11 @@ public:
     int magic;
     ShaderType shaderType;
     UINT64 hash;
-    OriginalShaderInfo originalShaderInfo;
+    original_shader_info originalShaderInfo;
     IUnknown *zeroShader;
     IUnknown *originalShader;
-    ShaderInfoData *shaderInfo;
-    ShaderOverride *shaderOverride;
+    shader_info_data *shaderInfo;
+    shader_override *shaderOverride;
     string *compiledShader;
 
     __forceinline IUnknown* GetD3DShader9() { return m_pUnk; };

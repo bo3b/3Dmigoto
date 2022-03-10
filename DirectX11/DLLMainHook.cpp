@@ -351,13 +351,13 @@ BOOL WINAPI DllMain(
             if (tls_idx != TLS_OUT_OF_INDEXES) {
                 // FIXME: If we are being dynamically unloaded
                 // (lpvReserved == NULL), we should delete the
-                // TLS structure from all other threads, but we
+                // tls structure from all other threads, but we
                 // don't have an easy way to get that at the
                 // moment. On program termination (lpvReserved
                 // != NULL) we are not permitted to do that, so
-                // for now just release the TLS structure from
+                // for now just release the tls structure from
                 // the current thread (if allocated) and
-                // release the TLS index allocated for the DLL.
+                // release the tls index allocated for the DLL.
                 delete TlsGetValue(tls_idx);
                 TlsFree(tls_idx);
             }
@@ -367,7 +367,7 @@ BOOL WINAPI DllMain(
         case DLL_THREAD_ATTACH:
             // Do thread-specific initialization.
 
-            // We could allocate a TLS structure here, but why
+            // We could allocate a tls structure here, but why
             // bother? This isn't called for threads that already
             // exist when we were attached and get_tls() will
             // allocate the structure on demand as needed.

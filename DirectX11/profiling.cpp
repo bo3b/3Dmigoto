@@ -109,11 +109,11 @@ void Profiling::update_cto_warning(bool warn)
     warned_cto_command_lists.clear();
 
     for (auto &tolkv : G->mTextureOverrideMap) {
-        for (TextureOverride &to : tolkv.second)
+        for (texture_override &to : tolkv.second)
             cto_warn_post_commands(&to.post_command_list);
     }
     for (auto &tof : G->mFuzzyTextureOverrides)
-        cto_warn_post_commands(&tof->texture_override->post_command_list);
+        cto_warn_post_commands(&tof->textureOverride->post_command_list);
 
     LOG_INFO_NO_NL("%S", Profiling::cto_warning.c_str());
 }

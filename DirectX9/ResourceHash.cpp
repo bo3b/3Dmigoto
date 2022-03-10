@@ -38,7 +38,7 @@ int StrResourceDesc(char *buf, size_t size, D3D3DTEXTURE_DESC *desc) {
         desc->Width, desc->Height, desc->Depth, TexResourceUsage(desc->Usage),
         tex_format_str_dx9(desc->Format), desc->Pool, desc->Levels);
 }
-int StrResourceDesc(char *buf, size_t size, struct ResourceHashInfo &info) {
+int StrResourceDesc(char *buf, size_t size, struct resource_hash_info &info) {
     switch (info.type) {
     case ::D3DRESOURCETYPE::D3DRTYPE_VERTEXBUFFER:
         return StrResourceDesc(buf, size, &info.vbuf_desc);
@@ -565,7 +565,7 @@ static bool supports_hash_tracking(ResourceHandleInfo *handle_info)
         );
 }
 
-static bool GetResourceInfoFields(struct ResourceHashInfo *info,
+static bool GetResourceInfoFields(struct resource_hash_info *info,
     UINT *width, UINT *height, UINT *depth)
 {
     switch (info->type) {
@@ -591,7 +591,7 @@ void MarkResourceHashContaminated(D3D9Wrapper::IDirect3DResource9 *dest, UINT ds
     ::D3DBOX *DstBox, const ::D3DBOX *SrcBox)
 {
     ResourceHandleInfo *dst_handle_info;
-    struct ResourceHashInfo *dstInfo, *srcInfo = NULL;
+    struct resource_hash_info *dstInfo, *srcInfo = NULL;
     uint32_t srcHash = 0, dstHash = 0;
     UINT srcWidth = 1, srcHeight = 1, srcDepth = 1;// , srcMip = 0, srcIdx = 0, srcArraySize = 1;
     UINT dstWidth = 1, dstHeight = 1, dstDepth = 1;// , dstMip = 0, dstIdx = 0, dstArraySize = 1;

@@ -363,7 +363,7 @@ void ShaderRegexGroup::apply_regex_patterns(std::string *asm_text, bool *match, 
 
 void ShaderRegexGroup::link_command_lists(UINT64 shader_hash)
 {
-    ShaderOverride *shader_override = NULL;
+    shader_override *shader_override = NULL;
     wchar_t buf[32];
     wstring ini_section, ini_line;
 

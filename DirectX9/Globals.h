@@ -124,7 +124,7 @@ typedef std::unordered_map<UINT64, std::string> CompiledShaderMap;
 //    replacement is either ID3D11VertexShader or ID3D11PixelShader
 //  found is used to revert shaders that are deleted from ShaderFixes
 //  infoText is shown in the OSD when the shader is actively selected.
-struct OriginalShaderInfo
+struct original_shader_info
 {
     UINT64 hash;
     std::wstring shaderType;
@@ -256,7 +256,7 @@ static EnumName_t<const wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] =
     { NULL, DepthBufferFilter::INVALID } // End of list marker
 };
 
-struct ShaderOverride {
+struct shader_override {
     std::wstring first_ini_section;
     DepthBufferFilter depth_filter;
     UINT64 partner_hash;
@@ -270,7 +270,7 @@ struct ShaderOverride {
     CommandList command_list;
     CommandList post_command_list;
 
-    ShaderOverride() :
+    shader_override() :
         depth_filter(DepthBufferFilter::NONE),
         partner_hash(0),
         analyse_options(FrameAnalysisOptions::INVALID),
@@ -281,9 +281,9 @@ struct ShaderOverride {
         model[0] = '\0';
     }
 };
-typedef std::unordered_map<UINT64, struct ShaderOverride> ShaderOverrideMap;
+typedef std::unordered_map<UINT64, struct shader_override> ShaderOverrideMap;
 
-struct TextureOverride {
+struct texture_override {
     std::wstring ini_section;
     int stereoMode;
     int format;
@@ -307,7 +307,7 @@ struct TextureOverride {
     CommandList command_list;
     CommandList post_command_list;
 
-    TextureOverride() :
+    texture_override() :
         stereoMode(-1),
         format(-1),
         width(-1),
@@ -329,7 +329,7 @@ struct TextureOverride {
 // We can't use a std::set to enforce this ordering, as that makes the
 // TextureOverrides const, but there are a few places we modify it. Instead, we
 // will sort it in the ini parser when we create the list.
-typedef std::vector<struct TextureOverride> TextureOverrideList;
+typedef std::vector<struct texture_override> TextureOverrideList;
 typedef std::unordered_map<uint32_t, TextureOverrideList> TextureOverrideMap;
 //typedef std::unordered_map<uint32_t, struct TextureOverride> TextureOverrideMap;
 
@@ -337,17 +337,17 @@ typedef std::unordered_map<uint32_t, TextureOverrideList> TextureOverrideMap;
 // snapshot of the resource handle, hash and original hash. We used to just
 // save the resource handle, but that was problematic since handles can get
 // reused, and so we could record the wrong hash in the ShaderUsage.txt
-struct ResourceSnapshot
+struct resource_snapshot
 {
     D3D9Wrapper::IDirect3DResource9 *handle;
     uint32_t hash;
     uint32_t orig_hash;
 
-    ResourceSnapshot(D3D9Wrapper::IDirect3DResource9 *handle, uint32_t hash, uint32_t orig_hash) :
+    resource_snapshot(D3D9Wrapper::IDirect3DResource9 *handle, uint32_t hash, uint32_t orig_hash) :
         handle(handle), hash(hash), orig_hash(orig_hash)
     {}
 };
-static inline bool operator<(const ResourceSnapshot &lhs, const ResourceSnapshot &rhs)
+static inline bool operator<(const resource_snapshot &lhs, const resource_snapshot &rhs)
 {
     if (lhs.orig_hash != rhs.orig_hash)
         return (lhs.orig_hash < rhs.orig_hash);
@@ -356,13 +356,13 @@ static inline bool operator<(const ResourceSnapshot &lhs, const ResourceSnapshot
     return (lhs.handle < rhs.handle);
 }
 
-struct ShaderInfoData
+struct shader_info_data
 {
     // All are std::map or std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
-    map<int, std::set<ResourceSnapshot>> ResourceRegisters;
+    map<int, std::set<resource_snapshot>> ResourceRegisters;
     set<UINT64> PeerShaders;
-    vector<set<ResourceSnapshot>> RenderTargets;
-    set<ResourceSnapshot> DepthTargets;
+    vector<set<resource_snapshot>> RenderTargets;
+    set<resource_snapshot> DepthTargets;
 };
 
 enum class GetResolutionFrom {
@@ -376,19 +376,19 @@ static EnumName_t<const wchar_t *, GetResolutionFrom> GetResolutionFromNames[] =
     { NULL, GetResolutionFrom::INVALID } // End of list marker
 };
 
-struct ResolutionInfo
+struct resolution_info
 {
     int width, height;
     GetResolutionFrom from;
 
-    ResolutionInfo() :
+    resolution_info() :
         from(GetResolutionFrom::INVALID),
         width(-1),
         height(-1)
     {}
 };
 
-struct Globals
+struct globals
 {
 private:
     HWND local_hWnd; // To translate mouse coordinates to the window
@@ -617,7 +617,7 @@ public:
 
     std::map<int, DirectX::XMFLOAT4> IniConstants;
 
-    ResolutionInfo mResolutionInfo;
+    resolution_info mResolutionInfo;
     CommandList present_command_list;
     CommandList post_present_command_list;
     CommandList clear_rtv_command_list;
@@ -671,7 +671,7 @@ public:
     std::vector<D3D9Wrapper::IDirect3DQuery9*> mQueries;
 
     // These five items work with the *original* resource hash:
-    std::unordered_map<uint32_t, struct ResourceHashInfo> mResourceInfo;
+    std::unordered_map<uint32_t, struct resource_hash_info> mResourceInfo;
     std::set<uint32_t> mRenderTargetInfo;                    // std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
     std::set<uint32_t> mDepthTargetInfo;                    // std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
     std::set<uint32_t> mShaderResourceInfo;                    // std::set so that ShaderUsage.txt is sorted - lookup time is O(log N)
@@ -684,10 +684,10 @@ public:
     D3D9Wrapper::IDirect3DSurface9 *mSelectedRenderTargetSnapshot;
     std::set<D3D9Wrapper::IDirect3DSurface9 *> mSelectedRenderTargetSnapshotList;            // std::set so that render targets will be sorted in log when marked
 
-    map<UINT64, ShaderInfoData> mVertexShaderInfo;            // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
-    map<UINT64, ShaderInfoData> mPixelShaderInfo;            // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+    map<UINT64, shader_info_data> mVertexShaderInfo;            // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
+    map<UINT64, shader_info_data> mPixelShaderInfo;            // std::map so that ShaderUsage.txt is sorted - lookup time is O(log N)
 
-    Globals() :
+    globals() :
         gDelayDeviceCreation(false),
         process_index(0),
 
@@ -838,7 +838,7 @@ public:
     }
 };
 
-extern Globals *G;
+extern globals *G;
 
 static inline ShaderOverrideMap::iterator lookup_shaderoverride(UINT64 hash)
 {

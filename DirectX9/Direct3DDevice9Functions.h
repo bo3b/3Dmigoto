@@ -816,7 +816,7 @@ inline char * D3D9Wrapper::IDirect3DDevice9::ReplaceShader(UINT64 hash, const wc
 }
 inline bool D3D9Wrapper::IDirect3DDevice9::NeedOriginalShader(D3D9Wrapper::IDirect3DShader9 *wrapper)
 {
-    ShaderOverride *shaderOverride;
+    shader_override *shaderOverride;
 
     if (G->hunting && (G->marking_mode == MarkingMode::ORIGINAL || G->config_reloadable || G->show_original_enabled))
         return true;
@@ -873,7 +873,7 @@ HRESULT D3D9Wrapper::IDirect3DDevice9::CreateShader(const DWORD *pFunction, ID3D
     ShaderOverrideMap::iterator override;
     const char *overrideShaderModel = NULL;
     char *replaceShader;
-    ShaderOverride *shaderOverride = NULL;
+    shader_override *shaderOverride = NULL;
     SIZE_T BytecodeLength = 0;
 
     if (pFunction && ppShader)
@@ -1434,7 +1434,7 @@ void D3D9Wrapper::IDirect3DDevice9::TrackAndDivertUnlock(D3D9Wrapper::IDirect3DR
     if (Profiling::mode == Profiling::Mode::SUMMARY)
         Profiling::end(&profiling_state, &Profiling::map_overhead);
 }
-static ResourceSnapshot SnapshotResource(D3D9Wrapper::IDirect3DResource9 *handle)
+static resource_snapshot SnapshotResource(D3D9Wrapper::IDirect3DResource9 *handle)
 {
     uint32_t hash = 0, orig_hash = 0;
 
@@ -1443,9 +1443,9 @@ static ResourceSnapshot SnapshotResource(D3D9Wrapper::IDirect3DResource9 *handle
         hash = info->hash;
         orig_hash = info->orig_hash;
     }
-    return ResourceSnapshot(handle , hash, orig_hash);
+    return resource_snapshot(handle , hash, orig_hash);
 }
-void D3D9Wrapper::IDirect3DDevice9::RecordPixelShaderResourceUsage(ShaderInfoData *shader_info)
+void D3D9Wrapper::IDirect3DDevice9::RecordPixelShaderResourceUsage(shader_info_data *shader_info)
 {
     for (int i = 0; i < 16; i++) {
         D3D9Wrapper::IDirect3DBaseTexture9 *tex;
@@ -1459,7 +1459,7 @@ void D3D9Wrapper::IDirect3DDevice9::RecordPixelShaderResourceUsage(ShaderInfoDat
         }
     }
 }
-void D3D9Wrapper::IDirect3DDevice9::RecordVertexShaderResourceUsage(ShaderInfoData *shader_info)
+void D3D9Wrapper::IDirect3DDevice9::RecordVertexShaderResourceUsage(shader_info_data *shader_info)
 {
     for (int i = 0; i < 4; i++) {
         D3D9Wrapper::IDirect3DBaseTexture9 *tex;
@@ -1500,7 +1500,7 @@ void D3D9Wrapper::IDirect3DDevice9::RecordPeerShaders(set<UINT64> *PeerShaders, 
 void D3D9Wrapper::IDirect3DDevice9::RecordGraphicsShaderStats()
 {
     UINT selectedRenderTargetPos;
-    ShaderInfoData *info;
+    shader_info_data *info;
     Profiling::State profiling_state;
 
     if (Profiling::mode == Profiling::Mode::SUMMARY)
@@ -1521,7 +1521,7 @@ void D3D9Wrapper::IDirect3DDevice9::RecordGraphicsShaderStats()
 
         for (selectedRenderTargetPos = 0; selectedRenderTargetPos < currentRenderTargets.size(); ++selectedRenderTargetPos) {
             if (selectedRenderTargetPos >= info->RenderTargets.size())
-                info->RenderTargets.push_back(set<ResourceSnapshot>());
+                info->RenderTargets.push_back(set<resource_snapshot>());
 
             info->RenderTargets[selectedRenderTargetPos].insert(SnapshotResource(currentRenderTargets[selectedRenderTargetPos]));
         }
@@ -1706,7 +1706,7 @@ out_profile:
 }
 
 #define ENABLE_LEGACY_FILTERS 1
-void D3D9Wrapper::IDirect3DDevice9::ProcessShaderOverride(ShaderOverride *shaderOverride, bool isPixelShader, DrawContext *data)
+void D3D9Wrapper::IDirect3DDevice9::ProcessShaderOverride(shader_override *shaderOverride, bool isPixelShader, DrawContext *data)
 {
     bool use_orig = false;
 
@@ -1778,7 +1778,7 @@ void D3D9Wrapper::IDirect3DDevice9::DeferredShaderReplacement(D3D9Wrapper::IDire
 {
     ID3D9Shader    *patched_shader = NULL;
     UINT64 hash = shader->hash;
-    OriginalShaderInfo *orig_info = NULL;
+    original_shader_info *orig_info = NULL;
     UINT num_instances = 0;
     string asm_text;
     bool patch_regex = false;
