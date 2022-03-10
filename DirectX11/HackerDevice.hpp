@@ -98,7 +98,7 @@ private:
             SIZE_T              BytecodeLength,
             ID3D11ClassLinkage* pClassLinkage,
             ID3D11Shader**      ppShader)>
-    STDMETHODIMP CreateShader(const void* pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage* pClassLinkage, ID3D11Shader** ppShader, wchar_t* shaderType);
+    HRESULT STDMETHODCALLTYPE CreateShader(const void* pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage* pClassLinkage, ID3D11Shader** ppShader, wchar_t* shaderType);
 
 public:
     StereoHandle                         stereoHandle;

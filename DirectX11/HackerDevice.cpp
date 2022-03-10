@@ -1760,7 +1760,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::QueryInterface(
 // These are the boilerplate routines that are necessary to pass through any calls to these
 // to Direct3D.  Since Direct3D does not have proper objects, we can't rely on super class calls.
 
-STDMETHODIMP HackerDevice::CreateUnorderedAccessView(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateUnorderedAccessView(
     ID3D11Resource*                         pResource,
     const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc,
     ID3D11UnorderedAccessView**             ppUAView)
@@ -1768,7 +1768,7 @@ STDMETHODIMP HackerDevice::CreateUnorderedAccessView(
     return origDevice1->CreateUnorderedAccessView(pResource, pDesc, ppUAView);
 }
 
-STDMETHODIMP HackerDevice::CreateRenderTargetView(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateRenderTargetView(
     ID3D11Resource*                      pResource,
     const D3D11_RENDER_TARGET_VIEW_DESC* pDesc,
     ID3D11RenderTargetView**             ppRTView)
@@ -1777,7 +1777,7 @@ STDMETHODIMP HackerDevice::CreateRenderTargetView(
     return origDevice1->CreateRenderTargetView(pResource, pDesc, ppRTView);
 }
 
-STDMETHODIMP HackerDevice::CreateDepthStencilView(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateDepthStencilView(
     ID3D11Resource*                      pResource,
     const D3D11_DEPTH_STENCIL_VIEW_DESC* pDesc,
     ID3D11DepthStencilView**             ppDepthStencilView)
@@ -1786,7 +1786,7 @@ STDMETHODIMP HackerDevice::CreateDepthStencilView(
     return origDevice1->CreateDepthStencilView(pResource, pDesc, ppDepthStencilView);
 }
 
-STDMETHODIMP HackerDevice::CreateInputLayout(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateInputLayout(
     const D3D11_INPUT_ELEMENT_DESC* pInputElementDescs,
     UINT                            NumElements,
     const void*                     pShaderBytecodeWithInputSignature,
@@ -1821,34 +1821,34 @@ STDMETHODIMP HackerDevice::CreateInputLayout(
     return ret;
 }
 
-STDMETHODIMP HackerDevice::CreateClassLinkage(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateClassLinkage(
     ID3D11ClassLinkage** ppLinkage)
 {
     return origDevice1->CreateClassLinkage(ppLinkage);
 }
 
-STDMETHODIMP HackerDevice::CreateBlendState(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateBlendState(
     const D3D11_BLEND_DESC* pBlendStateDesc,
     ID3D11BlendState**      ppBlendState)
 {
     return origDevice1->CreateBlendState(pBlendStateDesc, ppBlendState);
 }
 
-STDMETHODIMP HackerDevice::CreateDepthStencilState(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateDepthStencilState(
     const D3D11_DEPTH_STENCIL_DESC* pDepthStencilDesc,
     ID3D11DepthStencilState**       ppDepthStencilState)
 {
     return origDevice1->CreateDepthStencilState(pDepthStencilDesc, ppDepthStencilState);
 }
 
-STDMETHODIMP HackerDevice::CreateSamplerState(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateSamplerState(
     const D3D11_SAMPLER_DESC* pSamplerDesc,
     ID3D11SamplerState**      ppSamplerState)
 {
     return origDevice1->CreateSamplerState(pSamplerDesc, ppSamplerState);
 }
 
-STDMETHODIMP HackerDevice::CreateQuery(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateQuery(
     const D3D11_QUERY_DESC* pQueryDesc,
     ID3D11Query**           ppQuery)
 {
@@ -1858,7 +1858,7 @@ STDMETHODIMP HackerDevice::CreateQuery(
     return hr;
 }
 
-STDMETHODIMP HackerDevice::CreatePredicate(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreatePredicate(
     const D3D11_QUERY_DESC* pPredicateDesc,
     ID3D11Predicate**       ppPredicate)
 {
@@ -1868,7 +1868,7 @@ STDMETHODIMP HackerDevice::CreatePredicate(
     return hr;
 }
 
-STDMETHODIMP HackerDevice::CreateCounter(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateCounter(
     const D3D11_COUNTER_DESC* pCounterDesc,
     ID3D11Counter**           ppCounter)
 {
@@ -1878,7 +1878,7 @@ STDMETHODIMP HackerDevice::CreateCounter(
     return hr;
 }
 
-STDMETHODIMP HackerDevice::OpenSharedResource(
+HRESULT STDMETHODCALLTYPE HackerDevice::OpenSharedResource(
     HANDLE hResource,
     REFIID ReturnedInterface,
     void** ppResource)
@@ -1886,14 +1886,14 @@ STDMETHODIMP HackerDevice::OpenSharedResource(
     return origDevice1->OpenSharedResource(hResource, ReturnedInterface, ppResource);
 }
 
-STDMETHODIMP HackerDevice::CheckFormatSupport(
+HRESULT STDMETHODCALLTYPE HackerDevice::CheckFormatSupport(
     DXGI_FORMAT Format,
     UINT*       pFormatSupport)
 {
     return origDevice1->CheckFormatSupport(Format, pFormatSupport);
 }
 
-STDMETHODIMP HackerDevice::CheckMultisampleQualityLevels(
+HRESULT STDMETHODCALLTYPE HackerDevice::CheckMultisampleQualityLevels(
     DXGI_FORMAT Format,
     UINT        SampleCount,
     UINT*       pNumQualityLevels)
@@ -1907,7 +1907,7 @@ void STDMETHODCALLTYPE HackerDevice::CheckCounterInfo(
     return origDevice1->CheckCounterInfo(pCounterInfo);
 }
 
-STDMETHODIMP HackerDevice::CheckCounter(
+HRESULT STDMETHODCALLTYPE HackerDevice::CheckCounter(
     const D3D11_COUNTER_DESC* pDesc,
     D3D11_COUNTER_TYPE*       pType,
     UINT*                     pActiveCounters,
@@ -1921,7 +1921,7 @@ STDMETHODIMP HackerDevice::CheckCounter(
     return origDevice1->CheckCounter(pDesc, pType, pActiveCounters, szName, pNameLength, szUnits, pUnitsLength, szDescription, pDescriptionLength);
 }
 
-STDMETHODIMP HackerDevice::CheckFeatureSupport(
+HRESULT STDMETHODCALLTYPE HackerDevice::CheckFeatureSupport(
     D3D11_FEATURE Feature,
     void*         pFeatureSupportData,
     UINT          FeatureSupportDataSize)
@@ -1929,7 +1929,7 @@ STDMETHODIMP HackerDevice::CheckFeatureSupport(
     return origDevice1->CheckFeatureSupport(Feature, pFeatureSupportData, FeatureSupportDataSize);
 }
 
-STDMETHODIMP HackerDevice::GetPrivateData(
+HRESULT STDMETHODCALLTYPE HackerDevice::GetPrivateData(
     REFGUID guid,
     UINT*   pDataSize,
     void*   pData)
@@ -1937,7 +1937,7 @@ STDMETHODIMP HackerDevice::GetPrivateData(
     return origDevice1->GetPrivateData(guid, pDataSize, pData);
 }
 
-STDMETHODIMP HackerDevice::SetPrivateData(
+HRESULT STDMETHODCALLTYPE HackerDevice::SetPrivateData(
     const GUID& guid,
     UINT        DataSize,
     const void* pData)
@@ -1945,7 +1945,7 @@ STDMETHODIMP HackerDevice::SetPrivateData(
     return origDevice1->SetPrivateData(guid, DataSize, pData);
 }
 
-STDMETHODIMP HackerDevice::SetPrivateDataInterface(
+HRESULT STDMETHODCALLTYPE HackerDevice::SetPrivateDataInterface(
     REFGUID         guid,
     const IUnknown* pData)
 {
@@ -1970,12 +1970,12 @@ UINT STDMETHODCALLTYPE HackerDevice::GetCreationFlags()
     return origDevice1->GetCreationFlags();
 }
 
-STDMETHODIMP HackerDevice::GetDeviceRemovedReason()
+HRESULT STDMETHODCALLTYPE HackerDevice::GetDeviceRemovedReason()
 {
     return origDevice1->GetDeviceRemovedReason();
 }
 
-STDMETHODIMP HackerDevice::SetExceptionMode(
+HRESULT STDMETHODCALLTYPE HackerDevice::SetExceptionMode(
     UINT RaiseFlags)
 {
     return origDevice1->SetExceptionMode(RaiseFlags);
@@ -2174,7 +2174,7 @@ static void restore_old_surface_create_mode(
     UNLOCK_RESOURCE_CREATION_MODE();
 }
 
-STDMETHODIMP HackerDevice::CreateBuffer(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateBuffer(
     const D3D11_BUFFER_DESC*      pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
     ID3D11Buffer**                ppBuffer)
@@ -2228,7 +2228,7 @@ STDMETHODIMP HackerDevice::CreateBuffer(
     return hr;
 }
 
-STDMETHODIMP HackerDevice::CreateTexture1D(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateTexture1D(
     const D3D11_TEXTURE1D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
     ID3D11Texture1D**             ppTexture1D)
@@ -2302,7 +2302,7 @@ static bool heuristic_could_be_possible_resolution(
     return true;
 }
 
-STDMETHODIMP HackerDevice::CreateTexture2D(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateTexture2D(
     const D3D11_TEXTURE2D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
     ID3D11Texture2D**             ppTexture2D)
@@ -2392,7 +2392,7 @@ STDMETHODIMP HackerDevice::CreateTexture2D(
     return hr;
 }
 
-STDMETHODIMP HackerDevice::CreateTexture3D(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateTexture3D(
     const D3D11_TEXTURE3D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
     ID3D11Texture3D**             ppTexture3D)
@@ -2462,7 +2462,7 @@ STDMETHODIMP HackerDevice::CreateTexture3D(
     return hr;
 }
 
-STDMETHODIMP HackerDevice::CreateShaderResourceView(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateShaderResourceView(
     ID3D11Resource*                        pResource,
     const D3D11_SHADER_RESOURCE_VIEW_DESC* pDesc,
     ID3D11ShaderResourceView**             ppSRView)
@@ -2596,7 +2596,7 @@ template <
         SIZE_T              BytecodeLength,
         ID3D11ClassLinkage* pClassLinkage,
         ID3D11Shader**      ppShader)>
-STDMETHODIMP HackerDevice::CreateShader(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateShader(
     const void*         pShaderBytecode,
     SIZE_T              BytecodeLength,
     ID3D11ClassLinkage* pClassLinkage,
@@ -2635,7 +2635,7 @@ STDMETHODIMP HackerDevice::CreateShader(
     return hr;
 }
 
-STDMETHODIMP HackerDevice::CreateVertexShader(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateVertexShader(
     const void*          pShaderBytecode,
     SIZE_T               BytecodeLength,
     ID3D11ClassLinkage*  pClassLinkage,
@@ -2646,7 +2646,7 @@ STDMETHODIMP HackerDevice::CreateVertexShader(
     return CreateShader<ID3D11VertexShader, &ID3D11Device::CreateVertexShader>(pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader, L"vs");
 }
 
-STDMETHODIMP HackerDevice::CreateGeometryShader(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateGeometryShader(
     const void*            pShaderBytecode,
     SIZE_T                 BytecodeLength,
     ID3D11ClassLinkage*    pClassLinkage,
@@ -2657,7 +2657,7 @@ STDMETHODIMP HackerDevice::CreateGeometryShader(
     return CreateShader<ID3D11GeometryShader, &ID3D11Device::CreateGeometryShader>(pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader, L"gs");
 }
 
-STDMETHODIMP HackerDevice::CreateGeometryShaderWithStreamOutput(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateGeometryShaderWithStreamOutput(
     const void*                       pShaderBytecode,
     SIZE_T                            BytecodeLength,
     const D3D11_SO_DECLARATION_ENTRY* pSODeclaration,
@@ -2679,7 +2679,7 @@ STDMETHODIMP HackerDevice::CreateGeometryShaderWithStreamOutput(
     return hr;
 }
 
-STDMETHODIMP HackerDevice::CreatePixelShader(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreatePixelShader(
     const void*         pShaderBytecode,
     SIZE_T              BytecodeLength,
     ID3D11ClassLinkage* pClassLinkage,
@@ -2690,7 +2690,7 @@ STDMETHODIMP HackerDevice::CreatePixelShader(
     return CreateShader<ID3D11PixelShader, &ID3D11Device::CreatePixelShader>(pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader, L"ps");
 }
 
-STDMETHODIMP HackerDevice::CreateHullShader(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateHullShader(
     const void*         pShaderBytecode,
     SIZE_T              BytecodeLength,
     ID3D11ClassLinkage* pClassLinkage,
@@ -2701,7 +2701,7 @@ STDMETHODIMP HackerDevice::CreateHullShader(
     return CreateShader<ID3D11HullShader, &ID3D11Device::CreateHullShader>(pShaderBytecode, BytecodeLength, pClassLinkage, ppHullShader, L"hs");
 }
 
-STDMETHODIMP HackerDevice::CreateDomainShader(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateDomainShader(
     const void*          pShaderBytecode,
     SIZE_T               BytecodeLength,
     ID3D11ClassLinkage*  pClassLinkage,
@@ -2712,7 +2712,7 @@ STDMETHODIMP HackerDevice::CreateDomainShader(
     return CreateShader<ID3D11DomainShader, &ID3D11Device::CreateDomainShader>(pShaderBytecode, BytecodeLength, pClassLinkage, ppDomainShader, L"ds");
 }
 
-STDMETHODIMP HackerDevice::CreateComputeShader(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateComputeShader(
     const void*           pShaderBytecode,
     SIZE_T                BytecodeLength,
     ID3D11ClassLinkage*   pClassLinkage,
@@ -2723,7 +2723,7 @@ STDMETHODIMP HackerDevice::CreateComputeShader(
     return CreateShader<ID3D11ComputeShader, &ID3D11Device::CreateComputeShader>(pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader, L"cs");
 }
 
-STDMETHODIMP HackerDevice::CreateRasterizerState(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateRasterizerState(
     const D3D11_RASTERIZER_DESC* pRasterizerDesc,
     ID3D11RasterizerState**      ppRasterizerState)
 {
@@ -2756,7 +2756,7 @@ STDMETHODIMP HackerDevice::CreateRasterizerState(
 
 // A deferred context is for multithreading part of the drawing.
 
-STDMETHODIMP HackerDevice::CreateDeferredContext(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateDeferredContext(
     UINT                  ContextFlags,
     ID3D11DeviceContext** ppDeferredContext)
 {
@@ -2923,7 +2923,7 @@ void STDMETHODCALLTYPE HackerDevice::GetImmediateContext1(
 // Now used for platform_update games.  Dishonored2 uses this.
 // Updated to follow the lead of CreateDeferredContext.
 
-STDMETHODIMP HackerDevice::CreateDeferredContext1(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateDeferredContext1(
     UINT                   ContextFlags,
     ID3D11DeviceContext1** ppDeferredContext)
 {
@@ -2955,21 +2955,21 @@ STDMETHODIMP HackerDevice::CreateDeferredContext1(
     return hr;
 }
 
-STDMETHODIMP HackerDevice::CreateBlendState1(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateBlendState1(
     const D3D11_BLEND_DESC1* pBlendStateDesc,
     ID3D11BlendState1**      ppBlendState)
 {
     return origDevice1->CreateBlendState1(pBlendStateDesc, ppBlendState);
 }
 
-STDMETHODIMP HackerDevice::CreateRasterizerState1(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateRasterizerState1(
     const D3D11_RASTERIZER_DESC1* pRasterizerDesc,
     ID3D11RasterizerState1**      ppRasterizerState)
 {
     return origDevice1->CreateRasterizerState1(pRasterizerDesc, ppRasterizerState);
 }
 
-STDMETHODIMP HackerDevice::CreateDeviceContextState(
+HRESULT STDMETHODCALLTYPE HackerDevice::CreateDeviceContextState(
     UINT                     Flags,
     const D3D_FEATURE_LEVEL* pFeatureLevels,
     UINT                     FeatureLevels,
@@ -2981,7 +2981,7 @@ STDMETHODIMP HackerDevice::CreateDeviceContextState(
     return origDevice1->CreateDeviceContextState(Flags, pFeatureLevels, FeatureLevels, SDKVersion, EmulatedInterface, pChosenFeatureLevel, ppContextState);
 }
 
-STDMETHODIMP HackerDevice::OpenSharedResource1(
+HRESULT STDMETHODCALLTYPE HackerDevice::OpenSharedResource1(
     HANDLE hResource,
     REFIID returnedInterface,
     void** ppResource)
@@ -2989,7 +2989,7 @@ STDMETHODIMP HackerDevice::OpenSharedResource1(
     return origDevice1->OpenSharedResource1(hResource, returnedInterface, ppResource);
 }
 
-STDMETHODIMP HackerDevice::OpenSharedResourceByName(
+HRESULT STDMETHODCALLTYPE HackerDevice::OpenSharedResourceByName(
     LPCWSTR lpName,
     DWORD   dwDesiredAccess,
     REFIID  returnedInterface,
