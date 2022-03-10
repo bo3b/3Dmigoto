@@ -560,7 +560,7 @@ typedef std::unordered_map<std::wstring, class CustomResource> CustomResources;
 extern CustomResources custom_resources;
 
 // Forward declaration since TextureOverride also contains a command list
-struct TextureOverride;
+struct texture_override;
 
 enum class ResourceCopyTargetType {
     INVALID,
