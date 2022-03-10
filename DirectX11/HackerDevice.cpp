@@ -1470,7 +1470,7 @@ HRESULT HackerDevice::ProcessShaderNotFoundInShaderFixes(
 bool HackerDevice::NeedOriginalShader(
     UINT64 hash)
 {
-    ShaderOverride*             shaderOverride;
+    shader_override*            shaderOverride;
     ShaderOverrideMap::iterator i;
 
     if (G->hunting && (G->marking_mode == MarkingMode::ORIGINAL || G->config_reloadable || G->show_original_enabled))
@@ -1989,7 +1989,7 @@ UINT STDMETHODCALLTYPE HackerDevice::GetExceptionMode()
 // -----------------------------------------------------------------------------------------------
 
 static bool check_texture_override_iteration(
-    TextureOverride* textureOverride)
+    texture_override* textureOverride)
 {
     if (textureOverride->iterations.empty())
         return true;
@@ -2034,7 +2034,7 @@ template <
     typename DescType>
 static void override_resource_desc_common_2d_3d(
     DescType*        desc,
-    TextureOverride* textureOverride)
+    texture_override* textureOverride)
 {
     if (textureOverride->format != -1)
     {
@@ -2069,19 +2069,19 @@ static void override_resource_desc_common_2d_3d(
 
 static void override_resource_desc(
     D3D11_BUFFER_DESC* desc,
-    TextureOverride*   textureOverride) {}
+    texture_override*  textureOverride) {}
 static void override_resource_desc(
     D3D11_TEXTURE1D_DESC* desc,
-    TextureOverride*      textureOverride) {}
+    texture_override*     textureOverride) {}
 static void override_resource_desc(
     D3D11_TEXTURE2D_DESC* desc,
-    TextureOverride*      textureOverride)
+    texture_override*     textureOverride)
 {
     override_resource_desc_common_2d_3d(desc, textureOverride);
 }
 static void override_resource_desc(
     D3D11_TEXTURE3D_DESC* desc,
-    TextureOverride*      textureOverride)
+    texture_override*     textureOverride)
 {
     override_resource_desc_common_2d_3d(desc, textureOverride);
 }
@@ -2097,7 +2097,7 @@ static const DescType* process_texture_override(
 {
     NVAPI_STEREO_SURFACECREATEMODE newMode = (NVAPI_STEREO_SURFACECREATEMODE)-1;
     TextureOverrideMatches         matches;
-    TextureOverride*               textureOverride = NULL;
+    texture_override*              textureOverride = NULL;
     const DescType*                ret             = origDesc;
     unsigned                       i;
 

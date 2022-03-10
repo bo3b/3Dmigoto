@@ -35,8 +35,8 @@ ThreadSafePointerSet D3D9Wrapper::IDirect3DStateBlock9::m_List;
 // profile helper that does not use the same init paths as the regular dll.
 // Statically allocate it as StaticG and point the old G pointer to it to avoid
 // needing to change every reference.
-Globals StaticG;
-Globals *G = &StaticG;
+globals StaticG;
+globals *G = &StaticG;
 static HMODULE hD3D;
 FILE *LogFile = 0;
 bool gLogDebug = false;

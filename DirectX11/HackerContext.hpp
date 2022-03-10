@@ -25,7 +25,7 @@ HackerContext* HackerContextFactory(ID3D11Device1* device1, ID3D11DeviceContext1
 class HackerDevice;
 
 enum class FrameAnalysisOptions;
-struct ShaderOverride;
+struct shader_override;
 
 struct draw_context
 {
@@ -141,16 +141,16 @@ private:
     void TrackAndDivertMap(HRESULT map_hr, ID3D11Resource* pResource, UINT Subresource, D3D11_MAP MapType, UINT MapFlags, D3D11_MAPPED_SUBRESOURCE* pMappedResource);
     void TrackAndDivertUnmap(ID3D11Resource* pResource, UINT Subresource);
 
-    void                ProcessShaderOverride(ShaderOverride* shader_override, bool is_pixel_shader, draw_context* data);
+    void                ProcessShaderOverride(shader_override* shader_override, bool is_pixel_shader, draw_context* data);
     ID3D11PixelShader*  SwitchPSShader(ID3D11PixelShader* shader);
     ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader* shader);
     void                RecordDepthStencil(ID3D11DepthStencilView* target);
 
     template <
         void (__stdcall ID3D11DeviceContext::*GetShaderResources)(UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView** ppShaderResourceViews)>
-    void RecordShaderResourceUsage(std::map<UINT64, ShaderInfoData>& shader_info, UINT64 current_shader);
+    void RecordShaderResourceUsage(std::map<UINT64, shader_info_data>& shader_info, UINT64 current_shader);
 
-    void            _RecordShaderResourceUsage(ShaderInfoData* shader_info, ID3D11ShaderResourceView* views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]);
+    void            _RecordShaderResourceUsage(shader_info_data* shader_info, ID3D11ShaderResourceView* views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]);
     void            RecordGraphicsShaderStats();
     void            RecordComputeShaderStats();
     void            RecordPeerShaders(std::set<UINT64>* peer_shaders, UINT64 shader_hash);
@@ -162,13 +162,13 @@ private:
         class ID3D11Shader,
         void (__stdcall ID3D11DeviceContext::*OrigSetShader)(ID3D11Shader* pShader, ID3D11ClassInstance* const* ppClassInstances, UINT NumClassInstances)>
     void STDMETHODCALLTYPE SetShader(
-        _In_opt_ ID3D11Shader*                                        pShader,
-        _In_reads_opt_(NumClassInstances) ID3D11ClassInstance* const* ppClassInstances,
-        UINT                                                          NumClassInstances,
-        std::set<UINT64>*                                             visited_shaders,
-        UINT64                                                        selected_shader,
-        UINT64*                                                       current_shader_hash,
-        ID3D11Shader**                                                current_shader_handle);
+        ID3D11Shader*               pShader,
+        ID3D11ClassInstance* const* ppClassInstances,
+        UINT                        NumClassInstances,
+        std::set<UINT64>*           visited_shaders,
+        UINT64                      selected_shader,
+        UINT64*                     current_shader_hash,
+        ID3D11Shader**              current_shader_handle);
 
     template <
         void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView* const* ppShaderResourceViews)>

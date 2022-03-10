@@ -11,7 +11,7 @@ DEFINE_GUID(IID_FrameAnalysisContext,
 DEFINE_GUID(InputLayoutDescGuid,
 0x4eaf92bd, 0x5552, 0x44c7, 0x80, 0x4c, 0x4c, 0xe1, 0x1, 0x4c, 0x1b, 0x17);
 
-struct FrameAnalysisDeferredDumpBufferArgs {
+struct frame_analysis_deferred_dump_buffer_args {
     FrameAnalysisOptions analyse_options;
 
     // Using a ComPtr here because the vector that this class is placed in
@@ -35,7 +35,7 @@ struct FrameAnalysisDeferredDumpBufferArgs {
     UINT ib_off_for_vb;
     D3D11_PRIMITIVE_TOPOLOGY topology;
 
-    FrameAnalysisDeferredDumpBufferArgs(FrameAnalysisOptions analyse_options, ID3D11Buffer *staging,
+    frame_analysis_deferred_dump_buffer_args(FrameAnalysisOptions analyse_options, ID3D11Buffer *staging,
             D3D11_BUFFER_DESC *orig_desc, wchar_t *filename, FrameAnalysisOptions buf_type_mask, int idx,
             DXGI_FORMAT ib_fmt, UINT stride, UINT offset, UINT first, UINT count, ID3DBlob *layout,
             D3D11_PRIMITIVE_TOPOLOGY topology, DrawCallInfo *call_info,
@@ -49,7 +49,7 @@ struct FrameAnalysisDeferredDumpBufferArgs {
         staged_ib_for_vb(staged_ib_for_vb), ib_off_for_vb(ib_off_for_vb)
     {}
 };
-struct FrameAnalysisDeferredDumpTex2DArgs {
+struct frame_analysis_deferred_dump_tex_2d_args {
     FrameAnalysisOptions analyse_options;
 
     // Using a ComPtr here because the vector that this class is placed in
@@ -63,7 +63,7 @@ struct FrameAnalysisDeferredDumpTex2DArgs {
     D3D11_TEXTURE2D_DESC orig_desc;
     DXGI_FORMAT format;
 
-    FrameAnalysisDeferredDumpTex2DArgs(FrameAnalysisOptions analyse_options,
+    frame_analysis_deferred_dump_tex_2d_args(FrameAnalysisOptions analyse_options,
             ID3D11Texture2D *staging, wchar_t *filename,
             bool stereo, D3D11_TEXTURE2D_DESC *orig_desc, DXGI_FORMAT format) :
         analyse_options(analyse_options), staging(staging),
@@ -76,9 +76,9 @@ struct FrameAnalysisDeferredDumpTex2DArgs {
 // finished, then moved into the immediate context when the command list is
 // executed before finally being garbage collected. They move around, but they
 // are only ever have one owner at a time.
-typedef std::vector<FrameAnalysisDeferredDumpBufferArgs> FrameAnalysisDeferredBuffers;
+typedef std::vector<frame_analysis_deferred_dump_buffer_args> FrameAnalysisDeferredBuffers;
 typedef std::unique_ptr<FrameAnalysisDeferredBuffers> FrameAnalysisDeferredBuffersPtr;
-typedef std::vector<FrameAnalysisDeferredDumpTex2DArgs>  FrameAnalysisDeferredTex2D;
+typedef std::vector<frame_analysis_deferred_dump_tex_2d_args>  FrameAnalysisDeferredTex2D;
 typedef std::unique_ptr<FrameAnalysisDeferredTex2D> FrameAnalysisDeferredTex2DPtr;
 
 // We make the frame analysis context directly implement ID3D11DeviceContext1 -

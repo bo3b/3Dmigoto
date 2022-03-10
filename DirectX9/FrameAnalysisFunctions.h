@@ -151,7 +151,7 @@ void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisLogShaderHash(D3D9Wrapper::I
 void D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisLogResourceHash(D3D9Wrapper::IDirect3DResource9 *resource)
 {
     uint32_t hash, orig_hash;
-    struct ResourceHashInfo *info;
+    struct resource_hash_info *info;
 
     // Always complete the line in the debug log:
     LOG_DEBUG("\n");
@@ -1431,7 +1431,7 @@ void D3D9Wrapper::FrameAnalysisDevice::get_deduped_dir(wchar_t *path, size_t siz
 HRESULT D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisFilename(wchar_t *filename, size_t size,
     wchar_t *reg, char shader_type, int idx, D3D9Wrapper::IDirect3DResource9 *handle)
 {
-    struct ResourceHashInfo *info;
+    struct resource_hash_info *info;
     uint32_t hash = 0;
     uint32_t orig_hash = 0;
     wchar_t *pos;
@@ -1509,7 +1509,7 @@ HRESULT D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisFilename(wchar_t *filenam
 }
 HRESULT D3D9Wrapper::FrameAnalysisDevice::FrameAnalysisFilenameResource(wchar_t *filename, size_t size, const wchar_t *type, ::IDirect3DResource9 *handle, bool force_filename_handle, ResourceHandleInfo *handle_info)
 {
-    struct ResourceHashInfo *info;
+    struct resource_hash_info *info;
     uint32_t hash = 0;
     uint32_t orig_hash = 0;
     wchar_t *pos;
