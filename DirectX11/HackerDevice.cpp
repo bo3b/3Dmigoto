@@ -252,13 +252,13 @@ static void unregister_hacker_device(
 // -----------------------------------------------------------------------------------------------
 
 HackerDevice::HackerDevice(
-    ID3D11Device1*        pDevice1,
-    ID3D11DeviceContext1* pContext1) :
+    ID3D11Device1*        device1,
+    ID3D11DeviceContext1* context1) :
     stereoHandle(0), stereoResourceView(0), stereoTexture(0), iniResourceView(0), iniTexture(0), zBufferResourceView(0)
 {
-    origDevice1     = pDevice1;
-    realOrigDevice1 = pDevice1;
-    origContext1    = pContext1;
+    origDevice1     = device1;
+    realOrigDevice1 = device1;
+    origContext1    = context1;
     // Must be done after origDevice1 is set:
     unknown = register_hacker_device(this);
 }
@@ -481,9 +481,9 @@ void HackerDevice::Create3DMigotoResources()
 // Save reference to corresponding HackerContext during CreateDevice, needed for GetImmediateContext.
 
 void HackerDevice::SetHackerContext(
-    HackerContext* pHackerContext)
+    HackerContext* hacker_context)
 {
-    hackerContext = pHackerContext;
+    hackerContext = hacker_context;
 }
 
 HackerContext* HackerDevice::GetHackerContext()
@@ -493,9 +493,9 @@ HackerContext* HackerDevice::GetHackerContext()
 }
 
 void HackerDevice::SetHackerSwapChain(
-    HackerSwapChain* pHackerSwapChain)
+    HackerSwapChain* hacker_swap_chain)
 {
-    hackerSwapChain = pHackerSwapChain;
+    hackerSwapChain = hacker_swap_chain;
 }
 
 HackerSwapChain* HackerDevice::GetHackerSwapChain()
@@ -1263,17 +1263,17 @@ static bool DecompileAndPossiblyPatchShader(
 
 char* HackerDevice::_ReplaceShaderFromShaderFixes(
     UINT64         hash,
-    const wchar_t* shaderType,
-    const void*    pShaderBytecode,
-    SIZE_T         BytecodeLength,
-    SIZE_T&        pCodeSize,
-    string&        foundShaderModel,
-    FILETIME&      timeStamp,
-    wstring&       headerLine,
-    const char*    overrideShaderModel)
+    const wchar_t* shader_type,
+    const void*    shader_bytecode,
+    SIZE_T         bytecode_length,
+    SIZE_T&        code_size,
+    string&        found_shader_model,
+    FILETIME&      time_stamp,
+    wstring&       header_line,
+    const char*    override_shader_model)
 {
-    foundShaderModel = "";
-    timeStamp        = { 0 };
+    found_shader_model = "";
+    time_stamp         = { 0 };
 
     char* pCode = 0;
 
@@ -1282,30 +1282,30 @@ char* HackerDevice::_ReplaceShaderFromShaderFixes(
 
     // Export every original game shader as a .bin file.
     if (G->EXPORT_BINARY)
-        ExportOrigBinary(hash, shaderType, pShaderBytecode, BytecodeLength);
+        ExportOrigBinary(hash, shader_type, shader_bytecode, bytecode_length);
 
     // Export every shader seen as an ASM text file.
     if (G->EXPORT_SHADERS)
-        create_asm_text_file(G->SHADER_CACHE_PATH, hash, shaderType, pShaderBytecode, BytecodeLength, G->patch_cb_offsets);
+        create_asm_text_file(G->SHADER_CACHE_PATH, hash, shader_type, shader_bytecode, bytecode_length, G->patch_cb_offsets);
 
     // Read the binary compiled shaders, as previously cached shaders.  This is how
     // fixes normally ship, so that we just load previously compiled/assembled shaders.
-    if (LoadBinaryShaders(hash, shaderType, pCode, pCodeSize, foundShaderModel, timeStamp))
+    if (LoadBinaryShaders(hash, shader_type, pCode, code_size, found_shader_model, time_stamp))
         return pCode;
 
     // Load previously created HLSL shaders, but only from ShaderFixes.
-    if (ReplaceHLSLShader(hash, shaderType, pShaderBytecode, BytecodeLength, overrideShaderModel, pCode, pCodeSize, foundShaderModel, timeStamp, headerLine))
+    if (ReplaceHLSLShader(hash, shader_type, shader_bytecode, bytecode_length, override_shader_model, pCode, code_size, found_shader_model, time_stamp, header_line))
     {
         return pCode;
     }
 
     // If still not found, look for replacement ASM text shaders.
-    if (ReplaceASMShader(hash, shaderType, pShaderBytecode, BytecodeLength, pCode, pCodeSize, foundShaderModel, timeStamp, headerLine))
+    if (ReplaceASMShader(hash, shader_type, shader_bytecode, bytecode_length, pCode, code_size, found_shader_model, time_stamp, header_line))
     {
         return pCode;
     }
 
-    if (DecompileAndPossiblyPatchShader(hash, shaderType, pShaderBytecode, BytecodeLength, pCode, pCodeSize, foundShaderModel, timeStamp, headerLine, shaderType, foundShaderModel, timeStamp, overrideShaderModel))
+    if (DecompileAndPossiblyPatchShader(hash, shader_type, shader_bytecode, bytecode_length, pCode, code_size, found_shader_model, time_stamp, header_line, shader_type, found_shader_model, time_stamp, override_shader_model))
     {
         return pCode;
     }
@@ -1331,11 +1331,11 @@ template <
         ID3D11Shader**      ppShader)>
 HRESULT HackerDevice::ReplaceShaderFromShaderFixes(
     UINT64              hash,
-    const void*         pShaderBytecode,
-    SIZE_T              BytecodeLength,
-    ID3D11ClassLinkage* pClassLinkage,
-    ID3D11Shader**      ppShader,
-    wchar_t*            shaderType)
+    const void*         shader_bytecode,
+    SIZE_T              bytecode_length,
+    ID3D11ClassLinkage* class_linkage,
+    ID3D11Shader**      shader,
+    wchar_t*            shader_type)
 {
     ShaderOverrideMap::iterator override;
     const char*                 overrideShaderModel = NULL;
@@ -1353,22 +1353,22 @@ HRESULT HackerDevice::ReplaceShaderFromShaderFixes(
             overrideShaderModel = override->second.model;
     }
 
-    char* replaceShader = _ReplaceShaderFromShaderFixes(hash, shaderType, pShaderBytecode, BytecodeLength, replaceShaderSize, shaderModel, ftWrite, headerLine, overrideShaderModel);
+    char* replaceShader = _ReplaceShaderFromShaderFixes(hash, shader_type, shader_bytecode, bytecode_length, replaceShaderSize, shaderModel, ftWrite, headerLine, overrideShaderModel);
     if (!replaceShader)
         return E_FAIL;
 
     // Create the new shader.
-    LOG_DEBUG("    HackerDevice::Create%lsShader.  Device: %p\n", shaderType, this);
+    LOG_DEBUG("    HackerDevice::Create%lsShader.  Device: %p\n", shader_type, this);
 
-    *ppShader = NULL;  // Appease the static analysis gods
-    hr        = (origDevice1->*OrigCreateShader)(replaceShader, replaceShaderSize, pClassLinkage, ppShader);
+    *shader = NULL;  // Appease the static analysis gods
+    hr      = (origDevice1->*OrigCreateShader)(replaceShader, replaceShaderSize, class_linkage, shader);
     if (FAILED(hr))
     {
         LOG_INFO("    error replacing shader.\n");
         goto out_delete;
     }
 
-    CleanupShaderMaps(*ppShader);
+    CleanupShaderMaps(*shader);
 
     LOG_INFO("    shader successfully replaced.\n");
 
@@ -1376,22 +1376,22 @@ HRESULT HackerDevice::ReplaceShaderFromShaderFixes(
     {
         // Hunting mode:  keep byteCode around for possible replacement or marking
         ID3DBlob* blob;
-        hr = D3DCreateBlob(BytecodeLength, &blob);
+        hr = D3DCreateBlob(bytecode_length, &blob);
         if (SUCCEEDED(hr))
         {
             // We save the *original* shader bytecode, not the replaced shader,
             // because we will use this in CopyToFixes and ShaderRegex in the
             // event that the shader is deleted.
-            memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
+            memcpy(blob->GetBufferPointer(), shader_bytecode, blob->GetBufferSize());
             ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-            RegisterForReload(*ppShader, hash, shaderType, shaderModel, pClassLinkage, blob, ftWrite, headerLine, false);
+            RegisterForReload(*shader, hash, shader_type, shaderModel, class_linkage, blob, ftWrite, headerLine, false);
             LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
         }
     }
 
     // FIXME: We have some very similar data structures that we should merge together:
     // mReloadedShaders and originalShader.
-    KeepOriginalShader<ID3D11Shader, OrigCreateShader>(hash, shaderType, *ppShader, pShaderBytecode, BytecodeLength, pClassLinkage);
+    KeepOriginalShader<ID3D11Shader, OrigCreateShader>(hash, shader_type, *shader, shader_bytecode, bytecode_length, class_linkage);
 
 out_delete:
     delete replaceShader;
@@ -1418,20 +1418,20 @@ template <
         ID3D11Shader**      ppShader)>
 HRESULT HackerDevice::ProcessShaderNotFoundInShaderFixes(
     UINT64              hash,
-    const void*         pShaderBytecode,
-    SIZE_T              BytecodeLength,
-    ID3D11ClassLinkage* pClassLinkage,
-    ID3D11Shader**      ppShader,
-    wchar_t*            shaderType)
+    const void*         shader_bytecode,
+    SIZE_T              bytecode_length,
+    ID3D11ClassLinkage* class_linkage,
+    ID3D11Shader**      shader,
+    wchar_t*            shader_type)
 {
     HRESULT hr;
 
-    *ppShader = NULL;  // Appease the static analysis gods
-    hr        = (origDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
+    *shader = NULL;  // Appease the static analysis gods
+    hr      = (origDevice1->*OrigCreateShader)(shader_bytecode, bytecode_length, class_linkage, shader);
     if (FAILED(hr))
         return hr;
 
-    CleanupShaderMaps(*ppShader);
+    CleanupShaderMaps(*shader);
 
     // When in hunting mode, make a copy of the original binary, regardless.  This can be replaced, but we'll at least
     // have a copy for every shader seen. If we are performing any sort of deferred shader replacement, such as pipline
@@ -1441,24 +1441,24 @@ HRESULT HackerDevice::ProcessShaderNotFoundInShaderFixes(
     {
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
         ID3DBlob* blob;
-        hr = D3DCreateBlob(BytecodeLength, &blob);
+        hr = D3DCreateBlob(bytecode_length, &blob);
         if (SUCCEEDED(hr))
         {
-            memcpy(blob->GetBufferPointer(), pShaderBytecode, blob->GetBufferSize());
-            RegisterForReload(*ppShader, hash, shaderType, "bin", pClassLinkage, blob, { 0 }, L"", true);
+            memcpy(blob->GetBufferPointer(), shader_bytecode, blob->GetBufferSize());
+            RegisterForReload(*shader, hash, shader_type, "bin", class_linkage, blob, { 0 }, L"", true);
 
             // Also add the original shader to the original shaders
             // map so that if it is later replaced marking_mode =
             // original and depth buffer filtering will work:
-            if (lookup_original_shader(*ppShader) == end(G->mOriginalShaders))
+            if (lookup_original_shader(*shader) == end(G->mOriginalShaders))
             {
                 // Since we are both returning *and* storing this we need to
                 // bump the refcount to 2, otherwise it could get freed and we
                 // may get a crash later in RevertMissingShaders, especially
                 // easy to expose with the auto shader patching engine
                 // and reverting shaders:
-                (*ppShader)->AddRef();
-                G->mOriginalShaders[*ppShader] = *ppShader;
+                (*shader)->AddRef();
+                G->mOriginalShaders[*shader] = *shader;
             }
         }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
@@ -1566,11 +1566,11 @@ template <
         ID3D11Shader**      ppShader)>
 void HackerDevice::KeepOriginalShader(
     UINT64              hash,
-    wchar_t*            shaderType,
-    ID3D11Shader*       pShader,
-    const void*         pShaderBytecode,
-    SIZE_T              BytecodeLength,
-    ID3D11ClassLinkage* pClassLinkage)
+    wchar_t*            shader_type,
+    ID3D11Shader*       shader,
+    const void*         shader_bytecode,
+    SIZE_T              bytecode_length,
+    ID3D11ClassLinkage* class_linkage)
 {
     ID3D11Shader* originalShader = NULL;
     HRESULT       hr;
@@ -1578,14 +1578,14 @@ void HackerDevice::KeepOriginalShader(
     if (!NeedOriginalShader(hash))
         return;
 
-    LOG_INFO_W(L"    keeping original shader for filtering: %016llx-%ls\n", hash, shaderType);
+    LOG_INFO_W(L"    keeping original shader for filtering: %016llx-%ls\n", hash, shader_type);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
-    hr = (origDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, &originalShader);
+    hr = (origDevice1->*OrigCreateShader)(shader_bytecode, bytecode_length, class_linkage, &originalShader);
     CleanupShaderMaps(originalShader);
     if (SUCCEEDED(hr))
-        G->mOriginalShaders[pShader] = originalShader;
+        G->mOriginalShaders[shader] = originalShader;
 
     // Unlike the *other* code path in CreateShader that can also
     // fill out this structure, we do *not* bump the refcount on
@@ -2597,40 +2597,40 @@ template <
         ID3D11ClassLinkage* pClassLinkage,
         ID3D11Shader**      ppShader)>
 HRESULT STDMETHODCALLTYPE HackerDevice::CreateShader(
-    const void*         pShaderBytecode,
-    SIZE_T              BytecodeLength,
-    ID3D11ClassLinkage* pClassLinkage,
-    ID3D11Shader**      ppShader,
-    wchar_t*            shaderType)
+    const void*         shader_bytecode,
+    SIZE_T              bytecode_length,
+    ID3D11ClassLinkage* class_linkage,
+    ID3D11Shader**      shader,
+    wchar_t*            shader_type)
 {
     HRESULT hr;
     UINT64  hash;
 
-    if (!ppShader || !pShaderBytecode)
+    if (!shader || !shader_bytecode)
     {
         // Let DX worry about the error code
-        return (origDevice1->*OrigCreateShader)(pShaderBytecode, BytecodeLength, pClassLinkage, ppShader);
+        return (origDevice1->*OrigCreateShader)(shader_bytecode, bytecode_length, class_linkage, shader);
     }
 
     // Calculate hash
-    hash = hash_shader(pShaderBytecode, BytecodeLength);
+    hash = hash_shader(shader_bytecode, bytecode_length);
 
-    hr = ReplaceShaderFromShaderFixes<ID3D11Shader, OrigCreateShader>(hash, pShaderBytecode, BytecodeLength, pClassLinkage, ppShader, shaderType);
+    hr = ReplaceShaderFromShaderFixes<ID3D11Shader, OrigCreateShader>(hash, shader_bytecode, bytecode_length, class_linkage, shader, shader_type);
 
     if (hr != S_OK)
     {
-        hr = ProcessShaderNotFoundInShaderFixes<ID3D11Shader, OrigCreateShader>(hash, pShaderBytecode, BytecodeLength, pClassLinkage, ppShader, shaderType);
+        hr = ProcessShaderNotFoundInShaderFixes<ID3D11Shader, OrigCreateShader>(hash, shader_bytecode, bytecode_length, class_linkage, shader, shader_type);
     }
 
     if (hr == S_OK)
     {
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-        G->mShaders[*ppShader] = hash;
-        LOG_DEBUG_W(L"    %ls: handle = %p, hash = %016I64x\n", shaderType, *ppShader, hash);
+        G->mShaders[*shader] = hash;
+        LOG_DEBUG_W(L"    %ls: handle = %p, hash = %016I64x\n", shader_type, *shader, hash);
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
     }
 
-    LOG_INFO("  returns result = %x, handle = %p\n", hr, *ppShader);
+    LOG_INFO("  returns result = %x, handle = %p\n", hr, *shader);
 
     return hr;
 }

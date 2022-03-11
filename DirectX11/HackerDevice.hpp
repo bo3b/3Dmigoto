@@ -55,7 +55,7 @@ private:
     HackerSwapChain* hackerSwapChain;
 
     // Utility routines
-    char* _ReplaceShaderFromShaderFixes(UINT64 hash, const wchar_t* shaderType, const void* pShaderBytecode, SIZE_T BytecodeLength, SIZE_T& pCodeSize, std::string& foundShaderModel, FILETIME& timeStamp, std::wstring& headerLine, const char* overrideShaderModel);
+    char* _ReplaceShaderFromShaderFixes(UINT64 hash, const wchar_t* shader_type, const void* shader_bytecode, SIZE_T bytecode_length, SIZE_T& code_size, std::string& found_shader_model, FILETIME& time_stamp, std::wstring& header_line, const char* override_shader_model);
 
     template <
         class ID3D11Shader,
@@ -64,7 +64,7 @@ private:
             SIZE_T              BytecodeLength,
             ID3D11ClassLinkage* pClassLinkage,
             ID3D11Shader**      ppShader)>
-    HRESULT ReplaceShaderFromShaderFixes(UINT64 hash, const void* pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage* pClassLinkage, ID3D11Shader** ppShader, wchar_t* shaderType);
+    HRESULT ReplaceShaderFromShaderFixes(UINT64 hash, const void* shader_bytecode, SIZE_T bytecode_length, ID3D11ClassLinkage* class_linkage, ID3D11Shader** shader, wchar_t* shader_type);
 
     template <
         class ID3D11Shader,
@@ -73,7 +73,7 @@ private:
             SIZE_T              BytecodeLength,
             ID3D11ClassLinkage* pClassLinkage,
             ID3D11Shader**      ppShader)>
-    HRESULT ProcessShaderNotFoundInShaderFixes(UINT64 hash, const void* pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage* pClassLinkage, ID3D11Shader** ppShader, wchar_t* shaderType);
+    HRESULT ProcessShaderNotFoundInShaderFixes(UINT64 hash, const void* shader_bytecode, SIZE_T bytecode_length, ID3D11ClassLinkage* class_linkage, ID3D11Shader** shader, wchar_t* shader_type);
 
     bool NeedOriginalShader(UINT64 hash);
 
@@ -84,7 +84,7 @@ private:
             SIZE_T              BytecodeLength,
             ID3D11ClassLinkage* pClassLinkage,
             ID3D11Shader**      ppShader)>
-    void KeepOriginalShader(UINT64 hash, wchar_t* shaderType, ID3D11Shader* pShader, const void* pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage* pClassLinkage);
+    void KeepOriginalShader(UINT64 hash, wchar_t* shader_type, ID3D11Shader* shader, const void* shader_bytecode, SIZE_T bytecode_length, ID3D11ClassLinkage* class_linkage);
 
     HRESULT CreateStereoParamResources();
     void    CreatePinkHuntingResources();
@@ -98,7 +98,7 @@ private:
             SIZE_T              BytecodeLength,
             ID3D11ClassLinkage* pClassLinkage,
             ID3D11Shader**      ppShader)>
-    HRESULT STDMETHODCALLTYPE CreateShader(const void* pShaderBytecode, SIZE_T BytecodeLength, ID3D11ClassLinkage* pClassLinkage, ID3D11Shader** ppShader, wchar_t* shaderType);
+    HRESULT STDMETHODCALLTYPE CreateShader(const void* shader_bytecode, SIZE_T bytecode_length, ID3D11ClassLinkage* class_linkage, ID3D11Shader** shader, wchar_t* shader_type);
 
 public:
     StereoHandle                         stereoHandle;
@@ -109,12 +109,12 @@ public:
     ID3D11Texture1D*                     iniTexture;
     ID3D11ShaderResourceView*            iniResourceView;
 
-    HackerDevice(ID3D11Device1* pDevice1, ID3D11DeviceContext1* pContext1);
+    HackerDevice(ID3D11Device1* device1, ID3D11DeviceContext1* context1);
 
     HRESULT CreateIniParamResources();
     void    Create3DMigotoResources();
-    void    SetHackerContext(HackerContext* pHackerContext);
-    void    SetHackerSwapChain(HackerSwapChain* pHackerSwapChain);
+    void    SetHackerContext(HackerContext* hacker_context);
+    void    SetHackerSwapChain(HackerSwapChain* hacker_swap_chain);
 
     HackerContext*        GetHackerContext();
     HackerSwapChain*      GetHackerSwapChain();
