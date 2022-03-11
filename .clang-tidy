@@ -1,5 +1,24 @@
+# Checks:            '-*,modernize-use-nullptr,modernize-deprecated-headers,modernize-raw-string-literal, modernize-redundant-void-arg, modernize-return-braced-init-list,modernize-use-bool-literals,modernize-use-default-member-init,modernize-use-equals-default,modernize-use-override,bugprone-reserved-identifier,bugprone-suspicious-include,bugprone-suspicious-missing-comma,bugprone-suspicious-semicolon'
 ---
-Checks:            '-*,modernize-use-nullptr,modernize-deprecated-headers,modernize-raw-string-literal, modernize-redundant-void-arg, modernize-return-braced-init-list,modernize-use-bool-literals,modernize-use-default-member-init,modernize-use-equals-default,modernize-use-override,bugprone-reserved-identifier,bugprone-suspicious-include,bugprone-suspicious-missing-comma,bugprone-suspicious-semicolon'
 WarningsAsErrors:  ''
 HeaderFilterRegex: '.*'
 FormatStyle:       'file'
+Checks:            '-*,readability-identifier-naming'
+CheckOptions:
+ - { key: readability-identifier-naming.ClassCase,             value: CamelCase  }
+ - { key: readability-identifier-naming.MethodCase,            value: CamelCase  }
+ - { key: readability-identifier-naming.ClassMemberNames,      value: camelBack  }
+ - { key: readability-identifier-naming.TemplateParameterCase, value: CamelCase  }
+ - { key: readability-identifier-naming.MacroDefinitionCase,   value: UPPER_CASE }
+ - { key: readability-identifier-naming.GlobalConstantCase,    value: lower_case }
+ - { key: readability-identifier-naming.ConstantCase,          value: lower_case }
+ - { key: readability-identifier-naming.GlobalFunctionCase,    value: lower_case }
+ - { key: readability-identifier-naming.FunctionCase,          value: lower_case }
+# - { key: readability-identifier-naming.ParameterCase,         value: lower_case }
+ - { key: readability-identifier-naming.ParameterPackCase,     value: camelBack }
+ - { key: readability-identifier-naming.StructCase,            value: lower_case }
+ - { key: readability-identifier-naming.VariableCase,          value: lower_case }
+ - { key: readability-identifier-naming.UnionCase,             value: lower_case }
+ - { key: readability-identifier-naming.NamespaceCase,         value: lower_case }
+ - { key: readability-identifier-naming.EnumCase,              value: Camel_Snake_Case }
+ - { key: readability-identifier-naming.EnumConstantCase,      value: lower_case }
