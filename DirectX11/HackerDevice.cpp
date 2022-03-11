@@ -311,13 +311,13 @@ HRESULT HackerDevice::CreateStereoParamResources()
     // Since we need to bind the texture to a shader input, we also need a resource view.
     LOG_INFO("  creating stereo parameter resource view.\n");
 
-    D3D11_SHADER_RESOURCE_VIEW_DESC descRV;
-    memset(&descRV, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-    descRV.Format                    = desc.Format;
-    descRV.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
-    descRV.Texture2D.MostDetailedMip = 0;
-    descRV.Texture2D.MipLevels       = -1;
-    hr                               = origDevice1->CreateShaderResourceView(stereoTexture, &descRV, &stereoResourceView);
+    D3D11_SHADER_RESOURCE_VIEW_DESC desc_rv;
+    memset(&desc_rv, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
+    desc_rv.Format                    = desc.Format;
+    desc_rv.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
+    desc_rv.Texture2D.MostDetailedMip = 0;
+    desc_rv.Texture2D.MipLevels       = -1;
+    hr                                = origDevice1->CreateShaderResourceView(stereoTexture, &desc_rv, &stereoResourceView);
     if (FAILED(hr))
     {
         LOG_INFO("    call failed with result = %x.\n", hr);
@@ -335,7 +335,7 @@ HRESULT HackerDevice::CreateIniParamResources()
     // issues with config reload.
 
     HRESULT                ret;
-    D3D11_SUBRESOURCE_DATA initialData {};
+    D3D11_SUBRESOURCE_DATA initial_data {};
     D3D11_TEXTURE1D_DESC   desc;
     memset(&desc, 0, sizeof(D3D11_TEXTURE1D_DESC));
 
@@ -369,8 +369,8 @@ HRESULT HackerDevice::CreateIniParamResources()
 
     // Stuff the constants read from the .ini file into the subresource data structure, so
     // we can init the texture with them.
-    initialData.pSysMem     = G->iniParams.data();
-    initialData.SysMemPitch = sizeof(DirectX::XMFLOAT4) * (UINT)G->iniParams.size();  // Ignored for Texture1D, but still recommended for debugging
+    initial_data.pSysMem     = G->iniParams.data();
+    initial_data.SysMemPitch = sizeof(DirectX::XMFLOAT4) * (UINT)G->iniParams.size();  // Ignored for Texture1D, but still recommended for debugging
 
     desc.Width          = (UINT)G->iniParams.size();  // n texels, .rgba as a float4
     desc.MipLevels      = 1;
@@ -380,7 +380,7 @@ HRESULT HackerDevice::CreateIniParamResources()
     desc.BindFlags      = D3D11_BIND_SHADER_RESOURCE;      // As resource view, access via t120
     desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;          // allow CPU access for hotkeys
     desc.MiscFlags      = 0;
-    ret                 = origDevice1->CreateTexture1D(&desc, &initialData, &iniTexture);
+    ret                 = origDevice1->CreateTexture1D(&desc, &initial_data, &iniTexture);
     if (FAILED(ret))
     {
         LOG_INFO("    CreateTexture1D call failed with result = %x.\n", ret);
@@ -392,8 +392,8 @@ HRESULT HackerDevice::CreateIniParamResources()
     // The pDesc is set to NULL so that it will simply use the desc format above.
     LOG_INFO("  creating IniParam resource view.\n");
 
-    D3D11_SHADER_RESOURCE_VIEW_DESC descRV;
-    memset(&descRV, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
+    D3D11_SHADER_RESOURCE_VIEW_DESC desc_rv;
+    memset(&desc_rv, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
 
     ret = origDevice1->CreateShaderResourceView(iniTexture, NULL, &iniResourceView);
     if (FAILED(ret))
@@ -564,35 +564,35 @@ void HackerDevice::HookDevice()
 
 // Currently, critical lock must be taken BEFORE this is called.
 
-static void RegisterForReload(
-    ID3D11DeviceChild*  ppShader,
+static void register_for_reload(
+    ID3D11DeviceChild*  shader,
     UINT64              hash,
-    wstring             shaderType,
-    string              shaderModel,
-    ID3D11ClassLinkage* pClassLinkage,
-    ID3DBlob*           byteCode,
-    FILETIME            timeStamp,
+    wstring             shader_type,
+    string              shader_model,
+    ID3D11ClassLinkage* class_linkage,
+    ID3DBlob*           byte_code,
+    FILETIME            time_stamp,
     wstring             text,
     bool                deferred_replacement_candidate)
 {
-    LOG_INFO("    shader registered for possible reloading: %016llx_%ls as %s - %ls\n", hash, shaderType.c_str(), shaderModel.c_str(), text.c_str());
+    LOG_INFO("    shader registered for possible reloading: %016llx_%ls as %s - %ls\n", hash, shader_type.c_str(), shader_model.c_str(), text.c_str());
 
     // Pretty sure we had a bug before since we would save a pointer to the
     // class linkage object without bumping its refcount, but I don't know
     // of any game that uses this to test it.
-    if (pClassLinkage)
-        pClassLinkage->AddRef();
+    if (class_linkage)
+        class_linkage->AddRef();
 
-    G->mReloadedShaders[ppShader].hash                           = hash;
-    G->mReloadedShaders[ppShader].shaderType                     = shaderType;
-    G->mReloadedShaders[ppShader].shaderModel                    = shaderModel;
-    G->mReloadedShaders[ppShader].linkage                        = pClassLinkage;
-    G->mReloadedShaders[ppShader].byteCode                       = byteCode;
-    G->mReloadedShaders[ppShader].timeStamp                      = timeStamp;
-    G->mReloadedShaders[ppShader].replacement                    = NULL;
-    G->mReloadedShaders[ppShader].infoText                       = text;
-    G->mReloadedShaders[ppShader].deferred_replacement_candidate = deferred_replacement_candidate;
-    G->mReloadedShaders[ppShader].deferred_replacement_processed = false;
+    G->mReloadedShaders[shader].hash                           = hash;
+    G->mReloadedShaders[shader].shaderType                     = shader_type;
+    G->mReloadedShaders[shader].shaderModel                    = shader_model;
+    G->mReloadedShaders[shader].linkage                        = class_linkage;
+    G->mReloadedShaders[shader].byteCode                       = byte_code;
+    G->mReloadedShaders[shader].timeStamp                      = time_stamp;
+    G->mReloadedShaders[shader].replacement                    = NULL;
+    G->mReloadedShaders[shader].infoText                       = text;
+    G->mReloadedShaders[shader].deferred_replacement_candidate = deferred_replacement_candidate;
+    G->mReloadedShaders[shader].deferred_replacement_processed = false;
 }
 
 // Helper routines for ReplaceShader, as a way to factor out some of the inline code, in
@@ -602,17 +602,17 @@ static void RegisterForReload(
 // feature in the d3dx.ini.  Seems like it might be nice to have them named *_orig.bin, to
 // make them more clear.
 
-static void ExportOrigBinary(
+static void export_orig_binary(
     UINT64         hash,
-    const wchar_t* pShaderType,
-    const void*    pShaderBytecode,
-    SIZE_T         pBytecodeLength)
+    const wchar_t* shader_type,
+    const void*    shader_bytecode,
+    SIZE_T         bytecode_length)
 {
     wchar_t path[MAX_PATH];
     HANDLE  f;
     bool    exists = false;
 
-    swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_CACHE_PATH, hash, pShaderType);
+    swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_CACHE_PATH, hash, shader_type);
     f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (f != INVALID_HANDLE_VALUE)
     {
@@ -620,18 +620,18 @@ static void ExportOrigBinary(
         while (f != INVALID_HANDLE_VALUE)
         {
             // Check if same file.
-            DWORD dataSize = GetFileSize(f, 0);
-            char* buf      = new char[dataSize];
-            DWORD readSize;
-            if (!ReadFile(f, buf, dataSize, &readSize, 0) || dataSize != readSize)
+            DWORD data_size = GetFileSize(f, 0);
+            char* buf       = new char[data_size];
+            DWORD read_size;
+            if (!ReadFile(f, buf, data_size, &read_size, 0) || data_size != read_size)
                 LOG_INFO("  Error reading file.\n");
             CloseHandle(f);
-            if (dataSize == pBytecodeLength && !memcmp(pShaderBytecode, buf, dataSize))
+            if (data_size == bytecode_length && !memcmp(shader_bytecode, buf, data_size))
                 exists = true;
             delete[] buf;
             if (exists)
                 break;
-            swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_%d.bin", G->SHADER_CACHE_PATH, hash, pShaderType, ++cnt);
+            swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_%d.bin", G->SHADER_CACHE_PATH, hash, shader_type, ++cnt);
             f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         }
     }
@@ -642,7 +642,7 @@ static void ExportOrigBinary(
         if (fw)
         {
             LOG_INFO_W(L"    storing original binary shader to %s\n", path);
-            fwrite(pShaderBytecode, 1, pBytecodeLength, fw);
+            fwrite(shader_bytecode, 1, bytecode_length, fw);
             fclose(fw);
         }
         else
@@ -652,9 +652,9 @@ static void ExportOrigBinary(
     }
 }
 
-static bool GetFileLastWriteTime(
+static bool get_file_last_write_time(
     wchar_t*  path,
-    FILETIME* ftWrite)
+    FILETIME* ft_write)
 {
     HANDLE f;
 
@@ -662,23 +662,23 @@ static bool GetFileLastWriteTime(
     if (f == INVALID_HANDLE_VALUE)
         return false;
 
-    GetFileTime(f, NULL, NULL, ftWrite);
+    GetFileTime(f, NULL, NULL, ft_write);
     CloseHandle(f);
     return true;
 }
 
-static bool CheckCacheTimestamp(
-    HANDLE    binHandle,
-    wchar_t*  binPath,
-    FILETIME& pTimeStamp)
+static bool check_cache_timestamp(
+    HANDLE    bin_handle,
+    wchar_t*  bin_path,
+    FILETIME& time_stamp)
 {
-    FILETIME txtTime, binTime;
-    wchar_t  txtPath[MAX_PATH], *end = NULL;
+    FILETIME txt_time, bin_time;
+    wchar_t  txt_path[MAX_PATH], *end = NULL;
 
-    wcscpy_s(txtPath, MAX_PATH, binPath);
-    end = wcsstr(txtPath, L".bin");
+    wcscpy_s(txt_path, MAX_PATH, bin_path);
+    end = wcsstr(txt_path, L".bin");
     wcscpy_s(end, sizeof(L".bin"), L".txt");
-    if (GetFileLastWriteTime(txtPath, &txtTime) && GetFileTime(binHandle, NULL, NULL, &binTime))
+    if (get_file_last_write_time(txt_path, &txt_time) && GetFileTime(bin_handle, NULL, NULL, &bin_time))
     {
         // We need to compare the timestamp on the .bin and .txt files.
         // This needs to be an exact match to ensure that the .bin file
@@ -688,14 +688,14 @@ static bool CheckCacheTimestamp(
         // files in the zip files that fixes are distributed in contain
         // a timestamp that may be older than .bin files generated on
         // an end-users system.
-        if (CompareFileTime(&binTime, &txtTime))
+        if (CompareFileTime(&bin_time, &txt_time))
             return false;
 
         // It no longer matters which timestamp we save for later
         // comparison, since they need to match, but we save the .txt
         // file's timestamp since that is the one we are comparing
         // against later.
-        pTimeStamp = txtTime;
+        time_stamp = txt_time;
         return true;
     }
 
@@ -713,53 +713,53 @@ static bool CheckCacheTimestamp(
     // might have been shipped with only .bin files - historically we have
     // allowed (but discouraged) that scenario, so for now we issue a
     // warning but allow it.
-    LOG_INFO("    WARNING: Unable to validate timestamp of %S - no corresponding .txt file?\n", binPath);
+    LOG_INFO("    WARNING: Unable to validate timestamp of %S - no corresponding .txt file?\n", bin_path);
     return true;
 }
 
-static bool LoadCachedShader(
-    wchar_t*       binPath,
-    const wchar_t* pShaderType,
-    char*&         pCode,
-    SIZE_T&        pCodeSize,
-    string&        pShaderModel,
-    FILETIME&      pTimeStamp)
+static bool load_cached_shader(
+    wchar_t*       bin_path,
+    const wchar_t* shader_type,
+    char*&         code,
+    SIZE_T&        code_size,
+    string&        shader_model,
+    FILETIME&      time_stamp)
 {
     HANDLE f;
-    DWORD  codeSize, readSize;
+    DWORD  file_size, read_size;
 
-    f = CreateFile(binPath, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    f = CreateFile(bin_path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (f == INVALID_HANDLE_VALUE)
         return false;
 
-    if (!CheckCacheTimestamp(f, binPath, pTimeStamp))
+    if (!check_cache_timestamp(f, bin_path, time_stamp))
     {
-        LOG_INFO_W(L"    Discarding stale cached shader: %s\n", binPath);
+        LOG_INFO_W(L"    Discarding stale cached shader: %s\n", bin_path);
         goto bail_close_handle;
     }
 
-    LOG_INFO_W(L"    Replacement binary shader found: %s\n", binPath);
-    warn_if_conflicting_shader_exists(binPath, end_user_conflicting_shader_msg);
+    LOG_INFO_W(L"    Replacement binary shader found: %s\n", bin_path);
+    warn_if_conflicting_shader_exists(bin_path, end_user_conflicting_shader_msg);
 
-    codeSize = GetFileSize(f, 0);
-    pCode    = new char[codeSize];
-    if (!ReadFile(f, pCode, codeSize, &readSize, 0) || codeSize != readSize)
+    file_size = GetFileSize(f, 0);
+    code      = new char[file_size];
+    if (!ReadFile(f, code, file_size, &read_size, 0) || file_size != read_size)
     {
         LOG_INFO("    Error reading binary file.\n");
         goto err_free_code;
     }
 
-    pCodeSize = codeSize;
-    LOG_INFO("    Bytecode loaded. Size = %Iu\n", pCodeSize);
+    code_size = file_size;
+    LOG_INFO("    Bytecode loaded. Size = %Iu\n", code_size);
     CloseHandle(f);
 
-    pShaderModel = "bin";  // tag it as reload candidate, but needing disassemble
+    shader_model = "bin";  // tag it as reload candidate, but needing disassemble
 
     return true;
 
 err_free_code:
-    delete[] pCode;
-    pCode = NULL;
+    delete[] code;
+    code = NULL;
 bail_close_handle:
     CloseHandle(f);
     return false;
@@ -768,139 +768,139 @@ bail_close_handle:
 // Load .bin shaders from the ShaderFixes folder as cached shaders.
 // This will load either *_replace.bin, or *.bin variants.
 
-static bool LoadBinaryShaders(
+static bool load_binary_shaders(
     UINT64         hash,
-    const wchar_t* pShaderType,
-    char*&         pCode,
-    SIZE_T&        pCodeSize,
-    string&        pShaderModel,
-    FILETIME&      pTimeStamp)
+    const wchar_t* shader_type,
+    char*&         code,
+    SIZE_T&        code_size,
+    string&        shader_model,
+    FILETIME&      time_stamp)
 {
     wchar_t path[MAX_PATH];
 
-    swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, pShaderType);
-    if (LoadCachedShader(path, pShaderType, pCode, pCodeSize, pShaderModel, pTimeStamp))
+    swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, shader_type);
+    if (load_cached_shader(path, shader_type, code, code_size, shader_model, time_stamp))
         return true;
 
     // If we can't find an HLSL compiled version, look for ASM assembled one.
-    swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
-    return LoadCachedShader(path, pShaderType, pCode, pCodeSize, pShaderModel, pTimeStamp);
+    swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, shader_type);
+    return load_cached_shader(path, shader_type, code, code_size, shader_model, time_stamp);
 }
 
 // Load an HLSL text file as the replacement shader.  Recompile it using D3DCompile.
 // If caching is enabled, save a .bin replacement for this new shader.
 
-static bool ReplaceHLSLShader(
+static bool replace_hlsl_shader(
     UINT64         hash,
-    const wchar_t* pShaderType,
-    const void*    pShaderBytecode,
-    SIZE_T         pBytecodeLength,
-    const char*    pOverrideShaderModel,
-    char*&         pCode,
-    SIZE_T&        pCodeSize,
-    string&        pShaderModel,
-    FILETIME&      pTimeStamp,
-    wstring&       pHeaderLine)
+    const wchar_t* shader_type,
+    const void*    shader_bytecode,
+    SIZE_T         bytecode_length,
+    const char*    override_shader_model,
+    char*&         code,
+    SIZE_T&        code_size,
+    string&        shader_model,
+    FILETIME&      time_stamp,
+    wstring&       header_line)
 {
     wchar_t path[MAX_PATH];
     HANDLE  f;
-    string  shaderModel;
+    string  asm_shader_model;
 
-    swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, pShaderType);
+    swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shader_type);
     f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (f != INVALID_HANDLE_VALUE)
     {
         LOG_INFO("    Replacement shader found. Loading replacement HLSL code.\n");
         warn_if_conflicting_shader_exists(path, end_user_conflicting_shader_msg);
 
-        DWORD    srcDataSize = GetFileSize(f, 0);
-        char*    srcData     = new char[srcDataSize];
-        DWORD    readSize;
-        FILETIME ftWrite;
-        if (!ReadFile(f, srcData, srcDataSize, &readSize, 0) || !GetFileTime(f, NULL, NULL, &ftWrite) || srcDataSize != readSize)
+        DWORD    src_data_size = GetFileSize(f, 0);
+        char*    src_data      = new char[src_data_size];
+        DWORD    read_size;
+        FILETIME ft_write;
+        if (!ReadFile(f, src_data, src_data_size, &read_size, 0) || !GetFileTime(f, NULL, NULL, &ft_write) || src_data_size != read_size)
             LOG_INFO("    Error reading file.\n");
         CloseHandle(f);
-        LOG_INFO("    Source code loaded. Size = %d\n", srcDataSize);
+        LOG_INFO("    Source code loaded. Size = %d\n", src_data_size);
 
         // Disassemble old shader to get shader model.
-        shaderModel = get_shader_model(pShaderBytecode, pBytecodeLength);
-        if (shaderModel.empty())
+        asm_shader_model = get_shader_model(shader_bytecode, bytecode_length);
+        if (asm_shader_model.empty())
         {
             LOG_INFO("    disassembly of original shader failed.\n");
 
-            delete[] srcData;
+            delete[] src_data;
         }
         else
         {
             // Any HLSL compiled shaders are reloading candidates, if moved to ShaderFixes
-            pShaderModel = shaderModel;
-            pTimeStamp   = ftWrite;
+            shader_model = asm_shader_model;
+            time_stamp   = ft_write;
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> utf8_to_utf16;
-            pHeaderLine = utf8_to_utf16.from_bytes(srcData, strchr(srcData, '\n'));
+            header_line = utf8_to_utf16.from_bytes(src_data, strchr(src_data, '\n'));
 
             // Way too many obscure interractions in this function, using another
             // temporary variable to not modify anything already here and reduce
             // the risk of breaking it in some subtle way:
-            const char* tmpShaderModel;
+            const char* tmp_shader_model;
             char        apath[MAX_PATH];
 
-            if (pOverrideShaderModel)
-                tmpShaderModel = pOverrideShaderModel;
+            if (override_shader_model)
+                tmp_shader_model = override_shader_model;
             else
-                tmpShaderModel = shaderModel.c_str();
+                tmp_shader_model = asm_shader_model.c_str();
 
             // Compile replacement.
-            LOG_INFO("    compiling replacement HLSL code with shader model %s\n", tmpShaderModel);
+            LOG_INFO("    compiling replacement HLSL code with shader model %s\n", tmp_shader_model);
 
             // TODO: Add #defines for StereoParams and IniParams
 
-            ID3DBlob* errorMsgs;  // FIXME: This can leak
-            ID3DBlob* compiledOutput = 0;
+            ID3DBlob* error_msgs;  // FIXME: This can leak
+            ID3DBlob* compiled_output = 0;
             // Pass the real filename and use the standard include handler so that
             // #include will work with a relative path from the shader itself.
             // Later we could add a custom include handler to track dependencies so
             // that we can make reloading work better when using includes:
             wcstombs(apath, path, MAX_PATH);
             MigotoIncludeHandler include_handler(apath);
-            HRESULT              ret = D3DCompile(srcData, srcDataSize, apath, 0, G->recursive_include == -1 ? D3D_COMPILE_STANDARD_FILE_INCLUDE : &include_handler, "main", tmpShaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &compiledOutput, &errorMsgs);
-            delete[] srcData;
-            srcData = 0;
-            if (compiledOutput)
+            HRESULT              ret = D3DCompile(src_data, src_data_size, apath, 0, G->recursive_include == -1 ? D3D_COMPILE_STANDARD_FILE_INCLUDE : &include_handler, "main", tmp_shader_model, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &compiled_output, &error_msgs);
+            delete[] src_data;
+            src_data = 0;
+            if (compiled_output)
             {
-                pCodeSize = compiledOutput->GetBufferSize();
-                pCode     = new char[pCodeSize];
-                memcpy(pCode, compiledOutput->GetBufferPointer(), pCodeSize);
-                compiledOutput->Release();
-                compiledOutput = 0;
+                code_size = compiled_output->GetBufferSize();
+                code      = new char[code_size];
+                memcpy(code, compiled_output->GetBufferPointer(), code_size);
+                compiled_output->Release();
+                compiled_output = 0;
             }
 
             LOG_INFO("    compile result of replacement HLSL shader: %x\n", ret);
 
-            if (LogFile && errorMsgs)
+            if (LogFile && error_msgs)
             {
-                LPVOID errMsg  = errorMsgs->GetBufferPointer();
-                SIZE_T errSize = errorMsgs->GetBufferSize();
+                LPVOID err_msg  = error_msgs->GetBufferPointer();
+                SIZE_T err_size = error_msgs->GetBufferSize();
                 LOG_INFO("--------------------------------------------- BEGIN ---------------------------------------------\n");
-                fwrite(errMsg, 1, errSize - 1, LogFile);
+                fwrite(err_msg, 1, err_size - 1, LogFile);
                 LOG_INFO("---------------------------------------------- END ----------------------------------------------\n");
-                errorMsgs->Release();
+                error_msgs->Release();
             }
 
             // Cache binary replacement.
-            if (G->CACHE_SHADERS && pCode)
+            if (G->CACHE_SHADERS && code)
             {
-                swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, pShaderType);
+                swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls_replace.bin", G->SHADER_PATH, hash, shader_type);
                 FILE* fw;
                 wfopen_ensuring_access(&fw, path, L"wb");
                 if (fw)
                 {
                     LOG_INFO("    storing compiled shader to %S\n", path);
-                    fwrite(pCode, 1, pCodeSize, fw);
+                    fwrite(code, 1, code_size, fw);
                     fclose(fw);
 
                     // Set the last modified timestamp on the cached shader to match the
                     // .txt file it is created from, so we can later check its validity:
-                    set_file_last_write_time(path, &ftWrite);
+                    set_file_last_write_time(path, &ft_write);
                 }
                 else
                 {
@@ -909,7 +909,7 @@ static bool ReplaceHLSLShader(
             }
         }
     }
-    return !!pCode;
+    return !!code;
 }
 
 // If a matching file exists, load an ASM text shader as a replacement for a shader.
@@ -930,83 +930,83 @@ static bool ReplaceHLSLShader(
 //
 // So it should be clear by name, what type of file they are.
 
-static bool ReplaceASMShader(
+static bool replace_asm_shader(
     UINT64         hash,
-    const wchar_t* pShaderType,
-    const void*    pShaderBytecode,
-    SIZE_T         pBytecodeLength,
-    char*&         pCode,
-    SIZE_T&        pCodeSize,
-    string&        pShaderModel,
-    FILETIME&      pTimeStamp,
-    wstring&       pHeaderLine)
+    const wchar_t* shader_type,
+    const void*    shader_bytecode,
+    SIZE_T         bytecode_length,
+    char*&         code,
+    SIZE_T&        code_size,
+    string&        shader_model,
+    FILETIME&      time_stamp,
+    wstring&       header_line)
 {
     wchar_t path[MAX_PATH];
     HANDLE  f;
-    string  shaderModel;
+    string  asm_shader_model;
 
-    swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.txt", G->SHADER_PATH, hash, pShaderType);
+    swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.txt", G->SHADER_PATH, hash, shader_type);
     f = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (f != INVALID_HANDLE_VALUE)
     {
         LOG_INFO("    Replacement ASM shader found. Assembling replacement ASM code.\n");
         warn_if_conflicting_shader_exists(path, end_user_conflicting_shader_msg);
 
-        DWORD        srcDataSize = GetFileSize(f, 0);
-        vector<char> asmTextBytes(srcDataSize);
-        DWORD        readSize;
-        FILETIME     ftWrite;
-        if (!ReadFile(f, asmTextBytes.data(), srcDataSize, &readSize, 0) || !GetFileTime(f, NULL, NULL, &ftWrite) || srcDataSize != readSize)
+        DWORD        src_data_size = GetFileSize(f, 0);
+        vector<char> asm_text_bytes(src_data_size);
+        DWORD        read_size;
+        FILETIME     ft_write;
+        if (!ReadFile(f, asm_text_bytes.data(), src_data_size, &read_size, 0) || !GetFileTime(f, NULL, NULL, &ft_write) || src_data_size != read_size)
             LOG_INFO("    Error reading file.\n");
         CloseHandle(f);
-        LOG_INFO("    Asm source code loaded. Size = %d\n", srcDataSize);
+        LOG_INFO("    Asm source code loaded. Size = %d\n", src_data_size);
 
         // Disassemble old shader to get shader model.
-        shaderModel = get_shader_model(pShaderBytecode, pBytecodeLength);
-        if (shaderModel.empty())
+        asm_shader_model = get_shader_model(shader_bytecode, bytecode_length);
+        if (asm_shader_model.empty())
         {
             LOG_INFO("    disassembly of original shader failed.\n");
         }
         else
         {
             // Any ASM shaders are reloading candidates, if moved to ShaderFixes
-            pShaderModel = shaderModel;
-            pTimeStamp   = ftWrite;
+            shader_model = asm_shader_model;
+            time_stamp   = ft_write;
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> utf8_to_utf16;
-            pHeaderLine = utf8_to_utf16.from_bytes(asmTextBytes.data(), strchr(asmTextBytes.data(), '\n'));
+            header_line = utf8_to_utf16.from_bytes(asm_text_bytes.data(), strchr(asm_text_bytes.data(), '\n'));
 
-            vector<byte> byteCode(pBytecodeLength);
-            memcpy(byteCode.data(), pShaderBytecode, pBytecodeLength);
+            vector<byte> byte_code(bytecode_length);
+            memcpy(byte_code.data(), shader_bytecode, bytecode_length);
 
             // Re-assemble the ASM text back to binary
             try
             {
                 vector<AssemblerParseError> parse_errors;
-                byteCode = AssembleFluganWithOptionalSignatureParsing(&asmTextBytes, G->assemble_signature_comments, &byteCode, &parse_errors);
+                byte_code = AssembleFluganWithOptionalSignatureParsing(&asm_text_bytes, G->assemble_signature_comments, &byte_code, &parse_errors);
 
                 // Assuming the re-assembly worked, let's make it the active shader code.
-                pCodeSize = byteCode.size();
-                pCode     = new char[pCodeSize];
-                memcpy(pCode, byteCode.data(), pCodeSize);
+                code_size = byte_code.size();
+                code      = new char[code_size];
+                memcpy(code, byte_code.data(), code_size);
 
                 // Cache binary replacement.
                 if (parse_errors.empty())
                 {
-                    if (G->CACHE_SHADERS && pCode && parse_errors.empty())
+                    if (G->CACHE_SHADERS && code && parse_errors.empty())
                     {
                         // Write reassembled binary output as a cached shader.
                         FILE* fw;
-                        swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, pShaderType);
+                        swprintf_s(path, MAX_PATH, L"%ls\\%016llx-%ls.bin", G->SHADER_PATH, hash, shader_type);
                         wfopen_ensuring_access(&fw, path, L"wb");
                         if (fw)
                         {
                             LOG_INFO_W(L"    storing reassembled binary to %s\n", path);
-                            fwrite(byteCode.data(), 1, byteCode.size(), fw);
+                            fwrite(byte_code.data(), 1, byte_code.size(), fw);
                             fclose(fw);
 
                             // Set the last modified timestamp on the cached shader to match the
                             // .txt file it is created from, so we can later check its validity:
-                            set_file_last_write_time(path, &ftWrite);
+                            set_file_last_write_time(path, &ft_write);
                         }
                         else
                         {
@@ -1027,7 +1027,7 @@ static bool ReplaceASMShader(
                     // shaderhackers to see their bugs. For much the same
                     // reason we disable caching these shaders above (though
                     // that is not retrospective if a cache already existed).
-                    pTimeStamp = { 0 };
+                    time_stamp = { 0 };
                 }
             }
             catch (const exception& e)
@@ -1037,37 +1037,35 @@ static bool ReplaceASMShader(
         }
     }
 
-    return !!pCode;
+    return !!code;
 }
 
-static bool DecompileAndPossiblyPatchShader(
+static bool decompile_and_possibly_patch_shader(
     UINT64         hash,
-    const wchar_t* pShaderType,
-    const void*    pShaderBytecode,
-    SIZE_T         BytecodeLength,
-    char*&         pCode,
-    SIZE_T&        pCodeSize,
-    string&        pShaderModel,
-    FILETIME&      pTimeStamp,
-    wstring&       pHeaderLine,
-    const wchar_t* shaderType,
-    string&        foundShaderModel,
-    FILETIME&      timeStamp,
-    const char*    overrideShaderModel)
+    const void*    shader_bytecode,
+    SIZE_T         bytecode_length,
+    char*&         code,
+    SIZE_T&        code_size,
+    string&        shader_model,
+    wstring&       header_line,
+    const wchar_t* shader_type,
+    string&        found_shader_model,
+    FILETIME&      time_stamp,
+    const char*    override_shader_model)
 {
     wchar_t val[MAX_PATH];
-    string  asmText;
-    FILE*   fw            = NULL;
-    string  shaderModel   = "";
-    bool    patched       = false;
-    bool    errorOccurred = false;
+    string  asm_text;
+    FILE*   fw               = NULL;
+    string  asm_shader_model = "";
+    bool    patched          = false;
+    bool    error_occurred   = false;
     HRESULT hr;
 
     if (!G->EXPORT_HLSL && !G->decompiler_settings.fixSvPosition && !G->decompiler_settings.recompileVs)
         return NULL;
 
     // Skip?
-    swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_bad.txt", G->SHADER_PATH, hash, shaderType);
+    swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_bad.txt", G->SHADER_PATH, hash, shader_type);
     if (GetFileAttributes(val) != INVALID_FILE_ATTRIBUTES)
     {
         LOG_INFO("    skipping shader marked bad. %S\n", val);
@@ -1076,17 +1074,17 @@ static bool DecompileAndPossiblyPatchShader(
 
     // Store HLSL export files in ShaderCache, auto-Fixed shaders in ShaderFixes
     if (G->EXPORT_HLSL >= 1)
-        swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_CACHE_PATH, hash, shaderType);
+        swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_CACHE_PATH, hash, shader_type);
     else
-        swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shaderType);
+        swprintf_s(val, MAX_PATH, L"%ls\\%016llx-%ls_replace.txt", G->SHADER_PATH, hash, shader_type);
 
     // If we can open the file already, it exists, and thus we should skip doing this slow operation again.
     if (GetFileAttributes(val) != INVALID_FILE_ATTRIBUTES)
         return NULL;
 
     // Disassemble old shader for fixing.
-    asmText = binary_to_asm_text(pShaderBytecode, BytecodeLength, false);
-    if (asmText.empty())
+    asm_text = binary_to_asm_text(shader_bytecode, bytecode_length, false);
+    if (asm_text.empty())
     {
         LOG_INFO("    disassembly of original shader failed.\n");
         return NULL;
@@ -1096,13 +1094,13 @@ static bool DecompileAndPossiblyPatchShader(
     LOG_INFO("    creating HLSL representation.\n");
 
     ParseParameters p {};
-    p.bytecode                  = pShaderBytecode;
-    p.decompiled                = asmText.c_str();
-    p.decompiledSize            = asmText.size();
-    p.ZeroOutput                = false;
-    p.G                         = &G->decompiler_settings;
-    const string decompiledCode = DecompileBinaryHLSL(p, patched, shaderModel, errorOccurred);
-    if (!decompiledCode.size() || errorOccurred)
+    p.bytecode                   = shader_bytecode;
+    p.decompiled                 = asm_text.c_str();
+    p.decompiledSize             = asm_text.size();
+    p.ZeroOutput                 = false;
+    p.G                          = &G->decompiler_settings;
+    const string decompiled_code = DecompileBinaryHLSL(p, patched, asm_shader_model, error_occurred);
+    if (!decompiled_code.size() || error_occurred)
     {
         LOG_INFO("    error while decompiling.\n");
         return NULL;
@@ -1119,7 +1117,7 @@ static bool DecompileAndPossiblyPatchShader(
 
         LOG_INFO("    storing patched shader to %S\n", val);
         // Save decompiled HLSL code to that new file.
-        fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), fw);
+        fwrite(decompiled_code.c_str(), 1, decompiled_code.size(), fw);
 
         // Now also write the ASM text to the shader file as a set of comments at the bottom.
         // That will make the ASM code the master reference for fixing shaders, and should be more
@@ -1127,7 +1125,7 @@ static bool DecompileAndPossiblyPatchShader(
         if (G->EXPORT_HLSL >= 2)
         {
             fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Original ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-            fwrite(asmText.c_str(), 1, asmText.size(), fw);
+            fwrite(asm_text.c_str(), 1, asm_text.size(), fw);
             fprintf_s(fw, "\n//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
         }
     }
@@ -1138,89 +1136,89 @@ static bool DecompileAndPossiblyPatchShader(
     // Way too many obscure interractions in this function, using another
     // temporary variable to not modify anything already here and reduce
     // the risk of breaking it in some subtle way:
-    const char* tmpShaderModel;
+    const char* tmp_shader_model;
     char        apath[MAX_PATH];
 
-    if (overrideShaderModel)
-        tmpShaderModel = overrideShaderModel;
+    if (override_shader_model)
+        tmp_shader_model = override_shader_model;
     else
-        tmpShaderModel = shaderModel.c_str();
+        tmp_shader_model = asm_shader_model.c_str();
 
-    LOG_INFO("    compiling fixed HLSL code with shader model %s, size = %Iu\n", tmpShaderModel, decompiledCode.size());
+    LOG_INFO("    compiling fixed HLSL code with shader model %s, size = %Iu\n", tmp_shader_model, decompiled_code.size());
 
     // TODO: Add #defines for StereoParams and IniParams
 
-    ID3DBlob* pErrorMsgs;
-    ID3DBlob* pCompiledOutput = NULL;
+    ID3DBlob* error_msgs      = nullptr;
+    ID3DBlob* compiled_output = NULL;
     // Probably unecessary here since this shader is one we freshly decompiled,
     // but for consistency pass the path here as well so that the standard
     // include handler can correctly handle includes with paths relative to the
     // shader itself:
     wcstombs(apath, val, MAX_PATH);
-    hr = D3DCompile(decompiledCode.c_str(), decompiledCode.size(), apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", tmpShaderModel, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &pCompiledOutput, &pErrorMsgs);
+    hr = D3DCompile(decompiled_code.c_str(), decompiled_code.size(), apath, 0, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", tmp_shader_model, D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &compiled_output, &error_msgs);
     LOG_INFO("    compile result of fixed HLSL shader: %x\n", hr);
 
-    if (LogFile && pErrorMsgs)
+    if (LogFile && error_msgs)
     {
-        LPVOID errMsg  = pErrorMsgs->GetBufferPointer();
-        SIZE_T errSize = pErrorMsgs->GetBufferSize();
+        LPVOID err_msg  = error_msgs->GetBufferPointer();
+        SIZE_T err_size = error_msgs->GetBufferSize();
         LOG_INFO("--------------------------------------------- BEGIN ---------------------------------------------\n");
-        fwrite(errMsg, 1, errSize - 1, LogFile);
+        fwrite(err_msg, 1, err_size - 1, LogFile);
         LOG_INFO("------------------------------------------- HLSL code -------------------------------------------\n");
-        fwrite(decompiledCode.c_str(), 1, decompiledCode.size(), LogFile);
+        fwrite(decompiled_code.c_str(), 1, decompiled_code.size(), LogFile);
         LOG_INFO("\n---------------------------------------------- END ----------------------------------------------\n");
 
         // And write the errors to the HLSL file as comments too, as a more convenient spot to see them.
         fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HLSL errors ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-        fwrite(errMsg, 1, errSize - 1, fw);
+        fwrite(err_msg, 1, err_size - 1, fw);
         fprintf_s(fw, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
     }
-    if (pErrorMsgs)
-        pErrorMsgs->Release();
+    if (error_msgs)
+        error_msgs->Release();
 
     // If requested by .ini, also write the newly re-compiled assembly code to the file.  This gives a direct
     // comparison between original ASM, and recompiled ASM.
-    if ((G->EXPORT_HLSL >= 3) && pCompiledOutput)
+    if ((G->EXPORT_HLSL >= 3) && compiled_output)
     {
-        asmText = binary_to_asm_text(pCompiledOutput->GetBufferPointer(), pCompiledOutput->GetBufferSize(), G->patch_cb_offsets);
-        if (asmText.empty())
+        asm_text = binary_to_asm_text(compiled_output->GetBufferPointer(), compiled_output->GetBufferSize(), G->patch_cb_offsets);
+        if (asm_text.empty())
         {
             LOG_INFO("    disassembly of recompiled shader failed.\n");
         }
         else
         {
             fprintf_s(fw, "\n\n/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Recompiled ASM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-            fwrite(asmText.c_str(), 1, asmText.size(), fw);
+            fwrite(asm_text.c_str(), 1, asm_text.size(), fw);
             fprintf_s(fw, "\n//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/\n");
         }
     }
 
-    if (pCompiledOutput)
+    if (compiled_output)
     {
         // If the shader has been auto-fixed, return it as the live shader.
         // For just caching shaders, we return zero so it won't affect game visuals.
         if (patched)
         {
-            pCodeSize = pCompiledOutput->GetBufferSize();
-            pCode     = new char[pCodeSize];
-            memcpy(pCode, pCompiledOutput->GetBufferPointer(), pCodeSize);
+            code_size = compiled_output->GetBufferSize();
+            code      = new char[code_size];
+            memcpy(code, compiled_output->GetBufferPointer(), code_size);
         }
-        pCompiledOutput->Release();
-        pCompiledOutput = NULL;
+        compiled_output->Release();
+        compiled_output = NULL;
     }
 
     if (fw)
     {
         // Any HLSL compiled shaders are reloading candidates, if moved to ShaderFixes
-        FILETIME ftWrite;
-        GetFileTime(fw, NULL, NULL, &ftWrite);
-        foundShaderModel = shaderModel;
-        timeStamp        = ftWrite;
+        FILETIME ft_write;
+        GetFileTime(fw, NULL, NULL, &ft_write);
+        found_shader_model = asm_shader_model;
+        time_stamp         = ft_write;
 
         fclose(fw);
     }
 
-    return !!pCode;
+    return !!code;
 }
 
 // Fairly bold new strategy here for ReplaceShader.
@@ -1275,14 +1273,14 @@ char* HackerDevice::_ReplaceShaderFromShaderFixes(
     found_shader_model = "";
     time_stamp         = { 0 };
 
-    char* pCode = 0;
+    char* code = 0;
 
     if (!G->SHADER_PATH[0] || !G->SHADER_CACHE_PATH[0])
         return NULL;
 
     // Export every original game shader as a .bin file.
     if (G->EXPORT_BINARY)
-        ExportOrigBinary(hash, shader_type, shader_bytecode, bytecode_length);
+        export_orig_binary(hash, shader_type, shader_bytecode, bytecode_length);
 
     // Export every shader seen as an ASM text file.
     if (G->EXPORT_SHADERS)
@@ -1290,24 +1288,24 @@ char* HackerDevice::_ReplaceShaderFromShaderFixes(
 
     // Read the binary compiled shaders, as previously cached shaders.  This is how
     // fixes normally ship, so that we just load previously compiled/assembled shaders.
-    if (LoadBinaryShaders(hash, shader_type, pCode, code_size, found_shader_model, time_stamp))
-        return pCode;
+    if (load_binary_shaders(hash, shader_type, code, code_size, found_shader_model, time_stamp))
+        return code;
 
     // Load previously created HLSL shaders, but only from ShaderFixes.
-    if (ReplaceHLSLShader(hash, shader_type, shader_bytecode, bytecode_length, override_shader_model, pCode, code_size, found_shader_model, time_stamp, header_line))
+    if (replace_hlsl_shader(hash, shader_type, shader_bytecode, bytecode_length, override_shader_model, code, code_size, found_shader_model, time_stamp, header_line))
     {
-        return pCode;
+        return code;
     }
 
     // If still not found, look for replacement ASM text shaders.
-    if (ReplaceASMShader(hash, shader_type, shader_bytecode, bytecode_length, pCode, code_size, found_shader_model, time_stamp, header_line))
+    if (replace_asm_shader(hash, shader_type, shader_bytecode, bytecode_length, code, code_size, found_shader_model, time_stamp, header_line))
     {
-        return pCode;
+        return code;
     }
 
-    if (DecompileAndPossiblyPatchShader(hash, shader_type, shader_bytecode, bytecode_length, pCode, code_size, found_shader_model, time_stamp, header_line, shader_type, found_shader_model, time_stamp, override_shader_model))
+    if (decompile_and_possibly_patch_shader(hash, shader_bytecode, bytecode_length, code, code_size, found_shader_model, header_line, shader_type, found_shader_model, time_stamp, override_shader_model))
     {
-        return pCode;
+        return code;
     }
 
     return NULL;
@@ -1338,11 +1336,11 @@ HRESULT HackerDevice::ReplaceShaderFromShaderFixes(
     wchar_t*            shader_type)
 {
     ShaderOverrideMap::iterator override;
-    const char*                 overrideShaderModel = NULL;
-    SIZE_T                      replaceShaderSize;
-    string                      shaderModel;
-    wstring                     headerLine;
-    FILETIME                    ftWrite;
+    const char*                 override_shader_model = NULL;
+    SIZE_T                      replace_shader_size;
+    string                      shader_model;
+    wstring                     header_line;
+    FILETIME                    ft_write;
     HRESULT                     hr = E_FAIL;
 
     // Check if the user has overridden the shader model:
@@ -1350,18 +1348,18 @@ HRESULT HackerDevice::ReplaceShaderFromShaderFixes(
     if (override != G->mShaderOverrideMap.end())
     {
         if (override->second.model[0])
-            overrideShaderModel = override->second.model;
+            override_shader_model = override->second.model;
     }
 
-    char* replaceShader = _ReplaceShaderFromShaderFixes(hash, shader_type, shader_bytecode, bytecode_length, replaceShaderSize, shaderModel, ftWrite, headerLine, overrideShaderModel);
-    if (!replaceShader)
+    char* replace_shader = _ReplaceShaderFromShaderFixes(hash, shader_type, shader_bytecode, bytecode_length, replace_shader_size, shader_model, ft_write, header_line, override_shader_model);
+    if (!replace_shader)
         return E_FAIL;
 
     // Create the new shader.
     LOG_DEBUG("    HackerDevice::Create%lsShader.  Device: %p\n", shader_type, this);
 
     *shader = NULL;  // Appease the static analysis gods
-    hr      = (origDevice1->*OrigCreateShader)(replaceShader, replaceShaderSize, class_linkage, shader);
+    hr      = (origDevice1->*OrigCreateShader)(replace_shader, replace_shader_size, class_linkage, shader);
     if (FAILED(hr))
     {
         LOG_INFO("    error replacing shader.\n");
@@ -1374,7 +1372,7 @@ HRESULT HackerDevice::ReplaceShaderFromShaderFixes(
 
     if (G->hunting)
     {
-        // Hunting mode:  keep byteCode around for possible replacement or marking
+        // Hunting mode:  keep byte_code around for possible replacement or marking
         ID3DBlob* blob;
         hr = D3DCreateBlob(bytecode_length, &blob);
         if (SUCCEEDED(hr))
@@ -1384,7 +1382,7 @@ HRESULT HackerDevice::ReplaceShaderFromShaderFixes(
             // event that the shader is deleted.
             memcpy(blob->GetBufferPointer(), shader_bytecode, blob->GetBufferSize());
             ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-            RegisterForReload(*shader, hash, shader_type, shaderModel, class_linkage, blob, ftWrite, headerLine, false);
+            register_for_reload(*shader, hash, shader_type, shader_model, class_linkage, blob, ft_write, header_line, false);
             LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
         }
     }
@@ -1394,7 +1392,7 @@ HRESULT HackerDevice::ReplaceShaderFromShaderFixes(
     KeepOriginalShader<ID3D11Shader, OrigCreateShader>(hash, shader_type, *shader, shader_bytecode, bytecode_length, class_linkage);
 
 out_delete:
-    delete replaceShader;
+    delete replace_shader;
     return hr;
 }
 
@@ -1445,7 +1443,7 @@ HRESULT HackerDevice::ProcessShaderNotFoundInShaderFixes(
         if (SUCCEEDED(hr))
         {
             memcpy(blob->GetBufferPointer(), shader_bytecode, blob->GetBufferSize());
-            RegisterForReload(*shader, hash, shader_type, "bin", class_linkage, blob, { 0 }, L"", true);
+            register_for_reload(*shader, hash, shader_type, "bin", class_linkage, blob, { 0 }, L"", true);
 
             // Also add the original shader to the original shaders
             // map so that if it is later replaced marking_mode =
@@ -1470,7 +1468,7 @@ HRESULT HackerDevice::ProcessShaderNotFoundInShaderFixes(
 bool HackerDevice::NeedOriginalShader(
     UINT64 hash)
 {
-    shader_override*            shaderOverride;
+    shader_override*            shader_override;
     ShaderOverrideMap::iterator i;
 
     if (G->hunting && (G->marking_mode == MarkingMode::ORIGINAL || G->config_reloadable || G->show_original_enabled))
@@ -1479,15 +1477,15 @@ bool HackerDevice::NeedOriginalShader(
     i = lookup_shaderoverride(hash);
     if (i == G->mShaderOverrideMap.end())
         return false;
-    shaderOverride = &i->second;
+    shader_override = &i->second;
 
-    if ((shaderOverride->depth_filter == DepthBufferFilter::DEPTH_ACTIVE) ||
-        (shaderOverride->depth_filter == DepthBufferFilter::DEPTH_INACTIVE))
+    if ((shader_override->depth_filter == DepthBufferFilter::DEPTH_ACTIVE) ||
+        (shader_override->depth_filter == DepthBufferFilter::DEPTH_INACTIVE))
     {
         return true;
     }
 
-    if (shaderOverride->partner_hash)
+    if (shader_override->partner_hash)
         return true;
 
     return false;
@@ -1572,7 +1570,7 @@ void HackerDevice::KeepOriginalShader(
     SIZE_T              bytecode_length,
     ID3D11ClassLinkage* class_linkage)
 {
-    ID3D11Shader* originalShader = NULL;
+    ID3D11Shader* original_shader = NULL;
     HRESULT       hr;
 
     if (!NeedOriginalShader(hash))
@@ -1582,10 +1580,10 @@ void HackerDevice::KeepOriginalShader(
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
-    hr = (origDevice1->*OrigCreateShader)(shader_bytecode, bytecode_length, class_linkage, &originalShader);
-    CleanupShaderMaps(originalShader);
+    hr = (origDevice1->*OrigCreateShader)(shader_bytecode, bytecode_length, class_linkage, &original_shader);
+    CleanupShaderMaps(original_shader);
     if (SUCCEEDED(hr))
-        G->mOriginalShaders[shader] = originalShader;
+        G->mOriginalShaders[shader] = original_shader;
 
     // Unlike the *other* code path in CreateShader that can also
     // fill out this structure, we do *not* bump the refcount on
@@ -1606,13 +1604,13 @@ ULONG STDMETHODCALLTYPE HackerDevice::AddRef()
 
 ULONG STDMETHODCALLTYPE HackerDevice::Release()
 {
-    ULONG ulRef = origDevice1->Release();
-    LOG_DEBUG("HackerDevice::Release counter=%d, this=%p\n", ulRef, this);
+    ULONG ul_ref = origDevice1->Release();
+    LOG_DEBUG("HackerDevice::Release counter=%d, this=%p\n", ul_ref, this);
 
-    if (ulRef <= 0)
+    if (ul_ref <= 0)
     {
         if (!gLogDebug)
-            LOG_INFO("HackerDevice::Release counter=%d, this=%p\n", ulRef, this);
+            LOG_INFO("HackerDevice::Release counter=%d, this=%p\n", ul_ref, this);
         LOG_INFO("  deleting self\n");
 
         unregister_hacker_device(this);
@@ -1650,7 +1648,7 @@ ULONG STDMETHODCALLTYPE HackerDevice::Release()
         delete this;
         return 0L;
     }
-    return ulRef;
+    return ul_ref;
 }
 
 // If called with IDXGIDevice, that's the game trying to access the original DXGIFactory to
@@ -1938,7 +1936,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::GetPrivateData(
 }
 
 HRESULT STDMETHODCALLTYPE HackerDevice::SetPrivateData(
-    const GUID& guid,
+    REFGUID     guid,
     UINT        DataSize,
     const void* pData)
 {
@@ -1959,10 +1957,10 @@ HRESULT STDMETHODCALLTYPE HackerDevice::SetPrivateDataInterface(
 
 D3D_FEATURE_LEVEL STDMETHODCALLTYPE HackerDevice::GetFeatureLevel()
 {
-    D3D_FEATURE_LEVEL featureLevel = origDevice1->GetFeatureLevel();
+    D3D_FEATURE_LEVEL feature_level = origDevice1->GetFeatureLevel();
 
-    LOG_DEBUG("HackerDevice::GetFeatureLevel(%s@%p) returns FeatureLevel:%x\n", type_name(this), this, featureLevel);
-    return featureLevel;
+    LOG_DEBUG("HackerDevice::GetFeatureLevel(%s@%p) returns FeatureLevel:%x\n", type_name(this), this, feature_level);
+    return feature_level;
 }
 
 UINT STDMETHODCALLTYPE HackerDevice::GetCreationFlags()
@@ -1989,18 +1987,18 @@ UINT STDMETHODCALLTYPE HackerDevice::GetExceptionMode()
 // -----------------------------------------------------------------------------------------------
 
 static bool check_texture_override_iteration(
-    texture_override* textureOverride)
+    texture_override* texture_override)
 {
-    if (textureOverride->iterations.empty())
+    if (texture_override->iterations.empty())
         return true;
 
-    std::vector<int>::iterator k                = textureOverride->iterations.begin();
-    int                        currentIteration = textureOverride->iterations[0] = textureOverride->iterations[0] + 1;
-    LOG_INFO("  current iteration = %d\n", currentIteration);
+    std::vector<int>::iterator k                 = texture_override->iterations.begin();
+    int                        current_iteration = texture_override->iterations[0] = texture_override->iterations[0] + 1;
+    LOG_INFO("  current iteration = %d\n", current_iteration);
 
-    while (++k != textureOverride->iterations.end())
+    while (++k != texture_override->iterations.end())
     {
-        if (currentIteration == *k)
+        if (current_iteration == *k)
             return true;
     }
 
@@ -2034,91 +2032,91 @@ template <
     typename DescType>
 static void override_resource_desc_common_2d_3d(
     DescType*         desc,
-    texture_override* textureOverride)
+    texture_override* texture_override)
 {
-    if (textureOverride->format != -1)
+    if (texture_override->format != -1)
     {
-        LOG_INFO("  setting custom format to %d\n", textureOverride->format);
-        desc->Format = (DXGI_FORMAT)textureOverride->format;
+        LOG_INFO("  setting custom format to %d\n", texture_override->format);
+        desc->Format = (DXGI_FORMAT)texture_override->format;
     }
 
-    if (textureOverride->width != -1)
+    if (texture_override->width != -1)
     {
-        LOG_INFO("  setting custom width to %d\n", textureOverride->width);
-        desc->Width = textureOverride->width;
+        LOG_INFO("  setting custom width to %d\n", texture_override->width);
+        desc->Width = texture_override->width;
     }
 
-    if (textureOverride->width_multiply != 1.0f)
+    if (texture_override->width_multiply != 1.0f)
     {
-        desc->Width = (UINT)(desc->Width * textureOverride->width_multiply);
-        LOG_INFO("  multiplying custom width by %f to %d\n", textureOverride->width_multiply, desc->Width);
+        desc->Width = (UINT)(desc->Width * texture_override->width_multiply);
+        LOG_INFO("  multiplying custom width by %f to %d\n", texture_override->width_multiply, desc->Width);
     }
 
-    if (textureOverride->height != -1)
+    if (texture_override->height != -1)
     {
-        LOG_INFO("  setting custom height to %d\n", textureOverride->height);
-        desc->Height = textureOverride->height;
+        LOG_INFO("  setting custom height to %d\n", texture_override->height);
+        desc->Height = texture_override->height;
     }
 
-    if (textureOverride->height_multiply != 1.0f)
+    if (texture_override->height_multiply != 1.0f)
     {
-        desc->Height = (UINT)(desc->Height * textureOverride->height_multiply);
-        LOG_INFO("  multiplying custom height by %f to %d\n", textureOverride->height_multiply, desc->Height);
+        desc->Height = (UINT)(desc->Height * texture_override->height_multiply);
+        LOG_INFO("  multiplying custom height by %f to %d\n", texture_override->height_multiply, desc->Height);
     }
 }
 
 static void override_resource_desc(
     D3D11_BUFFER_DESC* desc,
-    texture_override*  textureOverride) {}
+    texture_override*  texture_override) {}
 static void override_resource_desc(
     D3D11_TEXTURE1D_DESC* desc,
-    texture_override*     textureOverride) {}
+    texture_override*     texture_override) {}
 static void override_resource_desc(
     D3D11_TEXTURE2D_DESC* desc,
-    texture_override*     textureOverride)
+    texture_override*     texture_override)
 {
-    override_resource_desc_common_2d_3d(desc, textureOverride);
+    override_resource_desc_common_2d_3d(desc, texture_override);
 }
 static void override_resource_desc(
     D3D11_TEXTURE3D_DESC* desc,
-    texture_override*     textureOverride)
+    texture_override*     texture_override)
 {
-    override_resource_desc_common_2d_3d(desc, textureOverride);
+    override_resource_desc_common_2d_3d(desc, texture_override);
 }
 
 template <
     typename DescType>
 static const DescType* process_texture_override(
     uint32_t                        hash,
-    StereoHandle                    stereoHandle,
-    const DescType*                 origDesc,
-    DescType*                       newDesc,
-    NVAPI_STEREO_SURFACECREATEMODE* oldMode)
+    StereoHandle                    stereo_handle,
+    const DescType*                 orig_desc,
+    DescType*                       new_desc,
+    NVAPI_STEREO_SURFACECREATEMODE* old_mode)
 {
-    NVAPI_STEREO_SURFACECREATEMODE newMode = (NVAPI_STEREO_SURFACECREATEMODE)-1;
+    NVAPI_STEREO_SURFACECREATEMODE new_mode = (NVAPI_STEREO_SURFACECREATEMODE)-1;
     TextureOverrideMatches         matches;
-    texture_override*              textureOverride = NULL;
-    const DescType*                ret             = origDesc;
+    texture_override*              texture_override = NULL;
+    const DescType*                ret              = orig_desc;
     unsigned                       i;
 
-    *oldMode = (NVAPI_STEREO_SURFACECREATEMODE)-1;
+    *old_mode = (NVAPI_STEREO_SURFACECREATEMODE)-1;
 
     // Check for square surfaces. We used to do this after processing the
     // StereoMode in TextureOverrides, but realistically we always want the
     // TextureOverrides to be able to override this since they are more
     // specific, so now we do this first.
-    if (is_square_surface(origDesc))
-        newMode = (NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceSquareCreateMode;
+    if (is_square_surface(orig_desc))
+        new_mode = (NVAPI_STEREO_SURFACECREATEMODE)G->gSurfaceSquareCreateMode;
 
-    find_texture_overrides(hash, origDesc, &matches, NULL);
+    find_texture_overrides(hash, orig_desc, &matches, NULL);
 
-    if (origDesc && !matches.empty())
+    if (orig_desc && !matches.empty())
     {
         // There is at least one matching texture override, which means
         // we may possibly be altering the resource description. Make a
         // copy of it and adjust the return pointer to the copy:
-        *newDesc = *origDesc;
-        ret      = newDesc;
+        *new_desc = *orig_desc;
+        ret      = new_desc;
 
         // We go through each matching texture override applying any
         // resource description and stereo mode overrides. The texture
@@ -2127,34 +2125,34 @@ static const DescType* process_texture_override(
         // lower priority ones.
         for (i = 0; i < matches.size(); i++)
         {
-            textureOverride = matches[i];
+            texture_override = matches[i];
 
             if (LogFile)
             {
                 char buf[256] {};
-                StrResourceDesc(buf, 256, origDesc);
-                LOG_INFO("  %S matched resource with hash=%08x %s\n", textureOverride->ini_section.c_str(), hash, buf);
+                StrResourceDesc(buf, 256, orig_desc);
+                LOG_INFO("  %S matched resource with hash=%08x %s\n", texture_override->ini_section.c_str(), hash, buf);
             }
 
-            if (!check_texture_override_iteration(textureOverride))
+            if (!check_texture_override_iteration(texture_override))
                 continue;
 
-            if (textureOverride->stereoMode != -1)
-                newMode = (NVAPI_STEREO_SURFACECREATEMODE)textureOverride->stereoMode;
+            if (texture_override->stereoMode != -1)
+                new_mode = (NVAPI_STEREO_SURFACECREATEMODE)texture_override->stereoMode;
 
-            override_resource_desc(newDesc, textureOverride);
+            override_resource_desc(new_desc, texture_override);
         }
     }
 
     LOCK_RESOURCE_CREATION_MODE();
 
-    if (newMode != (NVAPI_STEREO_SURFACECREATEMODE)-1)
+    if (new_mode != (NVAPI_STEREO_SURFACECREATEMODE)-1)
     {
-        Profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereoHandle, oldMode);
+        Profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereo_handle, old_mode);
         nvapi_override();
-        LOG_INFO("    setting custom surface creation mode %d\n", newMode);
+        LOG_INFO("    setting custom surface creation mode %d\n", new_mode);
 
-        if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, newMode))
+        if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, new_mode))
             LOG_INFO("      call failed.\n");
     }
 
@@ -2162,12 +2160,12 @@ static const DescType* process_texture_override(
 }
 
 static void restore_old_surface_create_mode(
-    NVAPI_STEREO_SURFACECREATEMODE oldMode,
-    StereoHandle                   stereoHandle)
+    NVAPI_STEREO_SURFACECREATEMODE old_mode,
+    StereoHandle                   stereo_handle)
 {
-    if (oldMode != (NVAPI_STEREO_SURFACECREATEMODE)-1)
+    if (old_mode != (NVAPI_STEREO_SURFACECREATEMODE)-1)
     {
-        if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, oldMode))
+        if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, old_mode))
             LOG_INFO("    restore call failed.\n");
     }
 
@@ -2179,9 +2177,9 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateBuffer(
     const D3D11_SUBRESOURCE_DATA* pInitialData,
     ID3D11Buffer**                ppBuffer)
 {
-    D3D11_BUFFER_DESC              newDesc;
-    const D3D11_BUFFER_DESC*       pNewDesc = NULL;
-    NVAPI_STEREO_SURFACECREATEMODE oldMode;
+    D3D11_BUFFER_DESC              new_desc;
+    const D3D11_BUFFER_DESC*       new_desc_ptr = NULL;
+    NVAPI_STEREO_SURFACECREATEMODE old_mode;
 
     LOG_DEBUG("HackerDevice::CreateBuffer called\n");
     if (pDesc)
@@ -2196,10 +2194,10 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateBuffer(
         hash = crc32c_hw(hash, pDesc, sizeof(D3D11_BUFFER_DESC));
 
     // Override custom settings?
-    pNewDesc = process_texture_override(hash, stereoHandle, pDesc, &newDesc, &oldMode);
+    new_desc_ptr = process_texture_override(hash, stereoHandle, pDesc, &new_desc, &old_mode);
 
-    HRESULT hr = origDevice1->CreateBuffer(pNewDesc, pInitialData, ppBuffer);
-    restore_old_surface_create_mode(oldMode, stereoHandle);
+    HRESULT hr = origDevice1->CreateBuffer(new_desc_ptr, pInitialData, ppBuffer);
+    restore_old_surface_create_mode(old_mode, stereoHandle);
     if (hr == S_OK && ppBuffer && *ppBuffer)
     {
         ENTER_CRITICAL_SECTION(&G->mResourcesLock);
@@ -2228,14 +2226,16 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateBuffer(
     return hr;
 }
 
+// -----------------------------------------------------------------------------------------------
+
 HRESULT STDMETHODCALLTYPE HackerDevice::CreateTexture1D(
     const D3D11_TEXTURE1D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
     ID3D11Texture1D**             ppTexture1D)
 {
-    D3D11_TEXTURE1D_DESC           newDesc;
-    const D3D11_TEXTURE1D_DESC*    pNewDesc = NULL;
-    NVAPI_STEREO_SURFACECREATEMODE oldMode;
+    D3D11_TEXTURE1D_DESC           new_desc;
+    const D3D11_TEXTURE1D_DESC*    new_desc_ptr = NULL;
+    NVAPI_STEREO_SURFACECREATEMODE old_mode;
     uint32_t                       data_hash, hash;
 
     LOG_DEBUG("HackerDevice::CreateTexture1D called\n");
@@ -2248,11 +2248,11 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateTexture1D(
     LOG_DEBUG("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
     // Override custom settings?
-    pNewDesc = process_texture_override(hash, stereoHandle, pDesc, &newDesc, &oldMode);
+    new_desc_ptr = process_texture_override(hash, stereoHandle, pDesc, &new_desc, &old_mode);
 
-    HRESULT hr = origDevice1->CreateTexture1D(pNewDesc, pInitialData, ppTexture1D);
+    HRESULT hr = origDevice1->CreateTexture1D(new_desc_ptr, pInitialData, ppTexture1D);
 
-    restore_old_surface_create_mode(oldMode, stereoHandle);
+    restore_old_surface_create_mode(old_mode, stereoHandle);
 
     if (hr == S_OK && ppTexture1D && *ppTexture1D)
     {
@@ -2307,9 +2307,9 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateTexture2D(
     const D3D11_SUBRESOURCE_DATA* pInitialData,
     ID3D11Texture2D**             ppTexture2D)
 {
-    D3D11_TEXTURE2D_DESC           newDesc;
-    const D3D11_TEXTURE2D_DESC*    pNewDesc = NULL;
-    NVAPI_STEREO_SURFACECREATEMODE oldMode;
+    D3D11_TEXTURE2D_DESC           new_desc;
+    const D3D11_TEXTURE2D_DESC*    new_desc_ptr = NULL;
+    NVAPI_STEREO_SURFACECREATEMODE old_mode;
 
     LOG_DEBUG("HackerDevice::CreateTexture2D called with parameters\n");
     if (pDesc)
@@ -2359,11 +2359,11 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateTexture2D(
     LOG_DEBUG("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
     // Override custom settings?
-    pNewDesc = process_texture_override(hash, stereoHandle, pDesc, &newDesc, &oldMode);
+    new_desc_ptr = process_texture_override(hash, stereoHandle, pDesc, &new_desc, &old_mode);
 
     // Actual creation:
-    HRESULT hr = origDevice1->CreateTexture2D(pNewDesc, pInitialData, ppTexture2D);
-    restore_old_surface_create_mode(oldMode, stereoHandle);
+    HRESULT hr = origDevice1->CreateTexture2D(new_desc_ptr, pInitialData, ppTexture2D);
+    restore_old_surface_create_mode(old_mode, stereoHandle);
     if (ppTexture2D)
         LOG_DEBUG("  returns result = %x, handle = %p\n", hr, *ppTexture2D);
 
@@ -2397,9 +2397,9 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateTexture3D(
     const D3D11_SUBRESOURCE_DATA* pInitialData,
     ID3D11Texture3D**             ppTexture3D)
 {
-    D3D11_TEXTURE3D_DESC           newDesc;
-    const D3D11_TEXTURE3D_DESC*    pNewDesc = NULL;
-    NVAPI_STEREO_SURFACECREATEMODE oldMode;
+    D3D11_TEXTURE3D_DESC           new_desc;
+    const D3D11_TEXTURE3D_DESC*    new_desc_ptr = NULL;
+    NVAPI_STEREO_SURFACECREATEMODE old_mode;
 
     LOG_INFO("HackerDevice::CreateTexture3D called with parameters\n");
     if (pDesc)
@@ -2429,11 +2429,11 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateTexture3D(
     LOG_INFO("  InitialData = %p, hash = %08lx\n", pInitialData, hash);
 
     // Override custom settings?
-    pNewDesc = process_texture_override(hash, stereoHandle, pDesc, &newDesc, &oldMode);
+    new_desc_ptr = process_texture_override(hash, stereoHandle, pDesc, &new_desc, &old_mode);
 
-    HRESULT hr = origDevice1->CreateTexture3D(pNewDesc, pInitialData, ppTexture3D);
+    HRESULT hr = origDevice1->CreateTexture3D(new_desc_ptr, pInitialData, ppTexture3D);
 
-    restore_old_surface_create_mode(oldMode, stereoHandle);
+    restore_old_surface_create_mode(old_mode, stereoHandle);
 
     // Register texture.
     if (hr == S_OK && ppTexture3D)
@@ -2519,20 +2519,20 @@ static char* hash_whitelisted_sections[] = {
 
 static uint32_t hash_shader_bytecode(
     struct dxbc_header* header,
-    SIZE_T              BytecodeLength)
+    SIZE_T              bytecode_length)
 {
     uint32_t*              offsets = (uint32_t*)((char*)header + sizeof(struct dxbc_header));
     struct section_header* section;
     unsigned               i, j;
     uint32_t               hash = 0;
 
-    if (BytecodeLength < sizeof(struct dxbc_header) + header->num_sections * sizeof(uint32_t))
+    if (bytecode_length < sizeof(struct dxbc_header) + header->num_sections * sizeof(uint32_t))
         return 0;
 
     for (i = 0; i < header->num_sections; i++)
     {
         section = (struct section_header*)((char*)header + offsets[i]);
-        if (BytecodeLength < (char*)section - (char*)header + sizeof(struct section_header) + section->size)
+        if (bytecode_length < (char*)section - (char*)header + sizeof(struct section_header) + section->size)
             return 0;
 
         for (j = 0; j < ARRAYSIZE(hash_whitelisted_sections); j++)
@@ -2546,20 +2546,20 @@ static uint32_t hash_shader_bytecode(
 }
 
 static UINT64 hash_shader(
-    const void* pShaderBytecode,
-    SIZE_T      BytecodeLength)
+    const void* shader_bytecode,
+    SIZE_T      bytecode_length)
 {
     UINT64              hash   = 0;
-    struct dxbc_header* header = (struct dxbc_header*)pShaderBytecode;
+    struct dxbc_header* header = (struct dxbc_header*)shader_bytecode;
 
-    if (BytecodeLength < sizeof(struct dxbc_header))
+    if (bytecode_length < sizeof(struct dxbc_header))
         goto fnv;
 
     switch (G->shader_hash_type)
     {
         case ShaderHashType::FNV:
 fnv:
-            hash = fnv_64_buf(pShaderBytecode, BytecodeLength);
+            hash = fnv_64_buf(shader_bytecode, bytecode_length);
             LOG_INFO("       FNV hash = %016I64x\n", hash);
             break;
 
@@ -2578,7 +2578,7 @@ fnv:
             break;
 
         case ShaderHashType::BYTECODE:
-            hash = hash_shader_bytecode(header, BytecodeLength);
+            hash = hash_shader_bytecode(header, bytecode_length);
             if (!hash)
                 goto fnv;
             LOG_INFO("  Bytecode hash = %016I64x\n", hash);
@@ -2641,7 +2641,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateVertexShader(
     ID3D11ClassLinkage*  pClassLinkage,
     ID3D11VertexShader** ppVertexShader)
 {
-    LOG_INFO("HackerDevice::CreateVertexShader called with BytecodeLength = %Iu, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
+    LOG_INFO("HackerDevice::CreateVertexShader called with bytecode_length = %Iu, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
 
     return CreateShader<ID3D11VertexShader, &ID3D11Device::CreateVertexShader>(pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader, L"vs");
 }
@@ -2652,7 +2652,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateGeometryShader(
     ID3D11ClassLinkage*    pClassLinkage,
     ID3D11GeometryShader** ppGeometryShader)
 {
-    LOG_INFO("HackerDevice::CreateGeometryShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
+    LOG_INFO("HackerDevice::CreateGeometryShader called with bytecode_length = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
     return CreateShader<ID3D11GeometryShader, &ID3D11Device::CreateGeometryShader>(pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader, L"gs");
 }
@@ -2685,7 +2685,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreatePixelShader(
     ID3D11ClassLinkage* pClassLinkage,
     ID3D11PixelShader** ppPixelShader)
 {
-    LOG_INFO("HackerDevice::CreatePixelShader called with BytecodeLength = %Iu, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
+    LOG_INFO("HackerDevice::CreatePixelShader called with bytecode_length = %Iu, handle = %p, ClassLinkage = %p\n", BytecodeLength, pShaderBytecode, pClassLinkage);
 
     return CreateShader<ID3D11PixelShader, &ID3D11Device::CreatePixelShader>(pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader, L"ps");
 }
@@ -2696,7 +2696,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateHullShader(
     ID3D11ClassLinkage* pClassLinkage,
     ID3D11HullShader**  ppHullShader)
 {
-    LOG_INFO("HackerDevice::CreateHullShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
+    LOG_INFO("HackerDevice::CreateHullShader called with bytecode_length = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
     return CreateShader<ID3D11HullShader, &ID3D11Device::CreateHullShader>(pShaderBytecode, BytecodeLength, pClassLinkage, ppHullShader, L"hs");
 }
@@ -2707,7 +2707,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateDomainShader(
     ID3D11ClassLinkage*  pClassLinkage,
     ID3D11DomainShader** ppDomainShader)
 {
-    LOG_INFO("HackerDevice::CreateDomainShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
+    LOG_INFO("HackerDevice::CreateDomainShader called with bytecode_length = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
     return CreateShader<ID3D11DomainShader, &ID3D11Device::CreateDomainShader>(pShaderBytecode, BytecodeLength, pClassLinkage, ppDomainShader, L"ds");
 }
@@ -2718,7 +2718,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateComputeShader(
     ID3D11ClassLinkage*   pClassLinkage,
     ID3D11ComputeShader** ppComputeShader)
 {
-    LOG_INFO("HackerDevice::CreateComputeShader called with BytecodeLength = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
+    LOG_INFO("HackerDevice::CreateComputeShader called with bytecode_length = %Iu, handle = %p\n", BytecodeLength, pShaderBytecode);
 
     return CreateShader<ID3D11ComputeShader, &ID3D11Device::CreateComputeShader>(pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader, L"cs");
 }
@@ -2772,20 +2772,20 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateDeferredContext(
     if (ppDeferredContext)
     {
         analyse_iunknown(*ppDeferredContext);
-        ID3D11DeviceContext1* origContext1;
-        HRESULT               res = (*ppDeferredContext)->QueryInterface(IID_PPV_ARGS(&origContext1));
+        ID3D11DeviceContext1* orig_context1;
+        HRESULT               res = (*ppDeferredContext)->QueryInterface(IID_PPV_ARGS(&orig_context1));
         if (FAILED(res))
-            origContext1 = static_cast<ID3D11DeviceContext1*>(*ppDeferredContext);
-        HackerContext* hackerContext = HackerContextFactory(realOrigDevice1, origContext1);
-        hackerContext->SetHackerDevice(this);
-        hackerContext->Bind3DMigotoResources();
+            orig_context1 = static_cast<ID3D11DeviceContext1*>(*ppDeferredContext);
+        HackerContext* hacker_context = HackerContextFactory(realOrigDevice1, orig_context1);
+        hacker_context->SetHackerDevice(this);
+        hacker_context->Bind3DMigotoResources();
 
         if (G->enable_hooks & EnableHooks::DEFERRED_CONTEXTS)
-            hackerContext->HookContext();
+            hacker_context->HookContext();
         else
-            *ppDeferredContext = hackerContext;
+            *ppDeferredContext = hacker_context;
 
-        LOG_INFO("  created HackerContext(%s@%p) wrapper of %p\n", type_name(hackerContext), hackerContext, origContext1);
+        LOG_INFO("  created HackerContext(%s@%p) wrapper of %p\n", type_name(hacker_context), hacker_context, orig_context1);
     }
 
     LOG_INFO("  returns result = %x for %p\n", hr, *ppDeferredContext);
@@ -2844,11 +2844,11 @@ void STDMETHODCALLTYPE HackerDevice::GetImmediateContext(
 
         analyse_iunknown(*ppImmediateContext);
 
-        ID3D11DeviceContext1* origContext1;
-        HRESULT               res = (*ppImmediateContext)->QueryInterface(IID_PPV_ARGS(&origContext1));
+        ID3D11DeviceContext1* orig_context1;
+        HRESULT               res = (*ppImmediateContext)->QueryInterface(IID_PPV_ARGS(&orig_context1));
         if (FAILED(res))
-            origContext1 = static_cast<ID3D11DeviceContext1*>(*ppImmediateContext);
-        hackerContext = HackerContextFactory(realOrigDevice1, origContext1);
+            orig_context1 = static_cast<ID3D11DeviceContext1*>(*ppImmediateContext);
+        hackerContext = HackerContextFactory(realOrigDevice1, orig_context1);
         hackerContext->SetHackerDevice(this);
         hackerContext->Bind3DMigotoResources();
         if (!G->constants_run)
@@ -2939,16 +2939,16 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateDeferredContext1(
     if (ppDeferredContext)
     {
         analyse_iunknown(*ppDeferredContext);
-        HackerContext* hackerContext = HackerContextFactory(realOrigDevice1, *ppDeferredContext);
-        hackerContext->SetHackerDevice(this);
-        hackerContext->Bind3DMigotoResources();
+        HackerContext* hacker_context = HackerContextFactory(realOrigDevice1, *ppDeferredContext);
+        hacker_context->SetHackerDevice(this);
+        hacker_context->Bind3DMigotoResources();
 
         if (G->enable_hooks & EnableHooks::DEFERRED_CONTEXTS)
-            hackerContext->HookContext();
+            hacker_context->HookContext();
         else
-            *ppDeferredContext = hackerContext;
+            *ppDeferredContext = hacker_context;
 
-        LOG_INFO("  created HackerContext(%s@%p) wrapper of %p\n", type_name(hackerContext), hackerContext, *ppDeferredContext);
+        LOG_INFO("  created HackerContext(%s@%p) wrapper of %p\n", type_name(hacker_context), hacker_context, *ppDeferredContext);
     }
 
     LOG_INFO("  returns result = %x for %p\n", hr, *ppDeferredContext);
