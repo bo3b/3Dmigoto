@@ -120,11 +120,13 @@ HackerDevice* lookup_hacker_device(
     }
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-    i = device_map.find(real_unknown);
-    if (i != device_map.end())
     {
-        ret = i->second;
-        ret->AddRef();
+        i = device_map.find(real_unknown);
+        if (i != device_map.end())
+        {
+            ret = i->second;
+            ret->AddRef();
+        }
     }
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
@@ -192,7 +194,9 @@ static IUnknown* register_hacker_device(
     LOG_INFO("register_hacker_device: Registering IUnknown: %p -> HackerDevice: %p\n", real_unknown, hacker_device);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-    device_map[real_unknown] = hacker_device;
+    {
+        device_map[real_unknown] = hacker_device;
+    }
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
     real_unknown->Release();
@@ -233,17 +237,19 @@ static void unregister_hacker_device(
     // out a message - we know that the HackerDevice won't have been reused
     // yet, so this is safe.
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-    i = device_map.find(real_unknown);
-    if (i != device_map.end())
     {
-        if (i->second == hacker_device)
+        i = device_map.find(real_unknown);
+        if (i != device_map.end())
         {
-            LOG_INFO("unregister_hacker_device: Unregistering IUnknown %p -> HackerDevice %p\n", real_unknown, hacker_device);
-            device_map.erase(i);
-        }
-        else
-        {
-            LOG_INFO("BUG: Removing HackerDevice from device_map     IUnknown %p expected to map to %p, actually %p\n", real_unknown, hacker_device, i->second);
+            if (i->second == hacker_device)
+            {
+                LOG_INFO("unregister_hacker_device: Unregistering IUnknown %p -> HackerDevice %p\n", real_unknown, hacker_device);
+                device_map.erase(i);
+            }
+            else
+            {
+                LOG_INFO("BUG: Removing HackerDevice from device_map     IUnknown %p expected to map to %p, actually %p\n", real_unknown, hacker_device, i->second);
+            }
         }
     }
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
@@ -467,12 +473,12 @@ void HackerDevice::Create3DMigotoResources()
     // panel, or we could be on an AMD or Intel card.
 
     LOCK_RESOURCE_CREATION_MODE();
-
-    CreateStereoParamResources();
-    CreateIniParamResources();
-    CreatePinkHuntingResources();
-    SetGlobalNVSurfaceCreationMode();
-
+    {
+        CreateStereoParamResources();
+        CreateIniParamResources();
+        CreatePinkHuntingResources();
+        SetGlobalNVSurfaceCreationMode();
+    }
     UNLOCK_RESOURCE_CREATION_MODE();
 
     optimise_command_lists(this);
@@ -1382,7 +1388,9 @@ HRESULT HackerDevice::ReplaceShaderFromShaderFixes(
             // event that the shader is deleted.
             memcpy(blob->GetBufferPointer(), shader_bytecode, blob->GetBufferSize());
             ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-            register_for_reload(*shader, hash, shader_type, shader_model, class_linkage, blob, ft_write, header_line, false);
+            {
+                register_for_reload(*shader, hash, shader_type, shader_model, class_linkage, blob, ft_write, header_line, false);
+            }
             LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
         }
     }
@@ -1438,25 +1446,27 @@ HRESULT HackerDevice::ProcessShaderNotFoundInShaderFixes(
     if (G->hunting || !shader_regex_groups.empty())
     {
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-        ID3DBlob* blob;
-        hr = D3DCreateBlob(bytecode_length, &blob);
-        if (SUCCEEDED(hr))
         {
-            memcpy(blob->GetBufferPointer(), shader_bytecode, blob->GetBufferSize());
-            register_for_reload(*shader, hash, shader_type, "bin", class_linkage, blob, { 0 }, L"", true);
-
-            // Also add the original shader to the original shaders
-            // map so that if it is later replaced marking_mode =
-            // original and depth buffer filtering will work:
-            if (lookup_original_shader(*shader) == end(G->mOriginalShaders))
+            ID3DBlob* blob;
+            hr = D3DCreateBlob(bytecode_length, &blob);
+            if (SUCCEEDED(hr))
             {
-                // Since we are both returning *and* storing this we need to
-                // bump the refcount to 2, otherwise it could get freed and we
-                // may get a crash later in RevertMissingShaders, especially
-                // easy to expose with the auto shader patching engine
-                // and reverting shaders:
-                (*shader)->AddRef();
-                G->mOriginalShaders[*shader] = *shader;
+                memcpy(blob->GetBufferPointer(), shader_bytecode, blob->GetBufferSize());
+                register_for_reload(*shader, hash, shader_type, "bin", class_linkage, blob, { 0 }, L"", true);
+
+                // Also add the original shader to the original shaders
+                // map so that if it is later replaced marking_mode =
+                // original and depth buffer filtering will work:
+                if (lookup_original_shader(*shader) == end(G->mOriginalShaders))
+                {
+                    // Since we are both returning *and* storing this we need to
+                    // bump the refcount to 2, otherwise it could get freed and we
+                    // may get a crash later in RevertMissingShaders, especially
+                    // easy to expose with the auto shader patching engine
+                    // and reverting shaders:
+                    (*shader)->AddRef();
+                    G->mOriginalShaders[*shader] = *shader;
+                }
             }
         }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
@@ -1514,41 +1524,41 @@ void CleanupShaderMaps(
         return;
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-
     {
-        ShaderMap::iterator i = lookup_shader_hash(handle);
-        if (i != G->mShaders.end())
         {
-            LOG_INFO("Shader handle %p reused, previous hash was: %016llx\n", handle, i->second);
-            G->mShaders.erase(i);
+            ShaderMap::iterator i = lookup_shader_hash(handle);
+            if (i != G->mShaders.end())
+            {
+                LOG_INFO("Shader handle %p reused, previous hash was: %016llx\n", handle, i->second);
+                G->mShaders.erase(i);
+            }
+        }
+
+        {
+            ShaderReloadMap::iterator i = lookup_reloaded_shader(handle);
+            if (i != G->mReloadedShaders.end())
+            {
+                LOG_INFO("Shader handle %p reused, found in mReloadedShaders\n", handle);
+                if (i->second.replacement)
+                    i->second.replacement->Release();
+                if (i->second.byteCode)
+                    i->second.byteCode->Release();
+                if (i->second.linkage)
+                    i->second.linkage->Release();
+                G->mReloadedShaders.erase(i);
+            }
+        }
+
+        {
+            ShaderReplacementMap::iterator i = lookup_original_shader(handle);
+            if (i != G->mOriginalShaders.end())
+            {
+                LOG_INFO("Shader handle %p reused, releasing previous original shader\n", handle);
+                i->second->Release();
+                G->mOriginalShaders.erase(i);
+            }
         }
     }
-
-    {
-        ShaderReloadMap::iterator i = lookup_reloaded_shader(handle);
-        if (i != G->mReloadedShaders.end())
-        {
-            LOG_INFO("Shader handle %p reused, found in mReloadedShaders\n", handle);
-            if (i->second.replacement)
-                i->second.replacement->Release();
-            if (i->second.byteCode)
-                i->second.byteCode->Release();
-            if (i->second.linkage)
-                i->second.linkage->Release();
-            G->mReloadedShaders.erase(i);
-        }
-    }
-
-    {
-        ShaderReplacementMap::iterator i = lookup_original_shader(handle);
-        if (i != G->mOriginalShaders.end())
-        {
-            LOG_INFO("Shader handle %p reused, releasing previous original shader\n", handle);
-            i->second->Release();
-            G->mOriginalShaders.erase(i);
-        }
-    }
-
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
@@ -1579,17 +1589,17 @@ void HackerDevice::KeepOriginalShader(
     LOG_INFO_W(L"    keeping original shader for filtering: %016llx-%ls\n", hash, shader_type);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
+    {
+        hr = (origDevice1->*OrigCreateShader)(shader_bytecode, bytecode_length, class_linkage, &original_shader);
+        CleanupShaderMaps(original_shader);
+        if (SUCCEEDED(hr))
+            G->mOriginalShaders[shader] = original_shader;
 
-    hr = (origDevice1->*OrigCreateShader)(shader_bytecode, bytecode_length, class_linkage, &original_shader);
-    CleanupShaderMaps(original_shader);
-    if (SUCCEEDED(hr))
-        G->mOriginalShaders[shader] = original_shader;
-
-    // Unlike the *other* code path in CreateShader that can also
-    // fill out this structure, we do *not* bump the refcount on
-    // the originalShader here since we are *only* storing it, not
-    // also returning it to the game.
-
+        // Unlike the *other* code path in CreateShader that can also
+        // fill out this structure, we do *not* bump the refcount on
+        // the originalShader here since we are *only* storing it, not
+        // also returning it to the game.
+    }
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
@@ -2116,7 +2126,7 @@ static const DescType* process_texture_override(
         // we may possibly be altering the resource description. Make a
         // copy of it and adjust the return pointer to the copy:
         *new_desc = *orig_desc;
-        ret      = new_desc;
+        ret       = new_desc;
 
         // We go through each matching texture override applying any
         // resource description and stereo mode overrides. The texture
@@ -2145,30 +2155,31 @@ static const DescType* process_texture_override(
     }
 
     LOCK_RESOURCE_CREATION_MODE();
-
-    if (new_mode != (NVAPI_STEREO_SURFACECREATEMODE)-1)
     {
-        Profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereo_handle, old_mode);
-        nvapi_override();
-        LOG_INFO("    setting custom surface creation mode %d\n", new_mode);
+        if (new_mode != (NVAPI_STEREO_SURFACECREATEMODE)-1)
+        {
+            Profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereo_handle, old_mode);
+            nvapi_override();
+            LOG_INFO("    setting custom surface creation mode %d\n", new_mode);
 
-        if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, new_mode))
-            LOG_INFO("      call failed.\n");
+            if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, new_mode))
+                LOG_INFO("      call failed.\n");
+        }
+        return ret;
     }
-
-    return ret;
 }
 
 static void restore_old_surface_create_mode(
     NVAPI_STEREO_SURFACECREATEMODE old_mode,
     StereoHandle                   stereo_handle)
 {
-    if (old_mode != (NVAPI_STEREO_SURFACECREATEMODE)-1)
     {
-        if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, old_mode))
-            LOG_INFO("    restore call failed.\n");
+        if (old_mode != (NVAPI_STEREO_SURFACECREATEMODE)-1)
+        {
+            if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, old_mode))
+                LOG_INFO("    restore call failed.\n");
+        }
     }
-
     UNLOCK_RESOURCE_CREATION_MODE();
 }
 
@@ -2201,25 +2212,28 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateBuffer(
     if (hr == S_OK && ppBuffer && *ppBuffer)
     {
         ENTER_CRITICAL_SECTION(&G->mResourcesLock);
-        ResourceHandleInfo* handle_info = &G->mResources[*ppBuffer];
-        new ResourceReleaseTracker(*ppBuffer);
-        handle_info->type      = D3D11_RESOURCE_DIMENSION_BUFFER;
-        handle_info->hash      = hash;
-        handle_info->orig_hash = hash;
-        handle_info->data_hash = data_hash;
+        {
+            ResourceHandleInfo* handle_info = &G->mResources[*ppBuffer];
+            new ResourceReleaseTracker(*ppBuffer);
+            handle_info->type      = D3D11_RESOURCE_DIMENSION_BUFFER;
+            handle_info->hash      = hash;
+            handle_info->orig_hash = hash;
+            handle_info->data_hash = data_hash;
 
-        // XXX: This is only used for hash tracking, which we
-        // don't enable for buffers for performance reasons:
-        // if (pDesc)
-        //    memcpy(&handle_info->descBuf, pDesc, sizeof(D3D11_BUFFER_DESC));
-
+            // XXX: This is only used for hash tracking, which we
+            // don't enable for buffers for performance reasons:
+            // if (pDesc)
+            //    memcpy(&handle_info->descBuf, pDesc, sizeof(D3D11_BUFFER_DESC));
+        }
         LEAVE_CRITICAL_SECTION(&G->mResourcesLock);
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-        // For stat collection and hash contamination tracking:
-        if (G->hunting && pDesc)
         {
-            G->mResourceInfo[hash]                           = *pDesc;
-            G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+            // For stat collection and hash contamination tracking:
+            if (G->hunting && pDesc)
+            {
+                G->mResourceInfo[hash]                           = *pDesc;
+                G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+            }
         }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
     }
@@ -2257,24 +2271,27 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateTexture1D(
     if (hr == S_OK && ppTexture1D && *ppTexture1D)
     {
         ENTER_CRITICAL_SECTION(&G->mResourcesLock);
-        ResourceHandleInfo* handle_info = &G->mResources[*ppTexture1D];
-        new ResourceReleaseTracker(*ppTexture1D);
-        handle_info->type      = D3D11_RESOURCE_DIMENSION_TEXTURE1D;
-        handle_info->hash      = hash;
-        handle_info->orig_hash = hash;
-        handle_info->data_hash = data_hash;
+        {
+            ResourceHandleInfo* handle_info = &G->mResources[*ppTexture1D];
+            new ResourceReleaseTracker(*ppTexture1D);
+            handle_info->type      = D3D11_RESOURCE_DIMENSION_TEXTURE1D;
+            handle_info->hash      = hash;
+            handle_info->orig_hash = hash;
+            handle_info->data_hash = data_hash;
 
-        // TODO: For hash tracking if we ever need it for Texture1Ds:
-        // if (pDesc)
-        //     memcpy(&handle_info->desc1D, pDesc, sizeof(D3D11_TEXTURE1D_DESC));
+            // TODO: For hash tracking if we ever need it for Texture1Ds:
+            // if (pDesc)
+            //     memcpy(&handle_info->desc1D, pDesc, sizeof(D3D11_TEXTURE1D_DESC));
+        }
         LEAVE_CRITICAL_SECTION(&G->mResourcesLock);
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-
-        // For stat collection and hash contamination tracking:
-        if (G->hunting && pDesc)
         {
-            G->mResourceInfo[hash]                           = *pDesc;
-            G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+            // For stat collection and hash contamination tracking:
+            if (G->hunting && pDesc)
+            {
+                G->mResourceInfo[hash]                           = *pDesc;
+                G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+            }
         }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
     }
@@ -2371,20 +2388,24 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateTexture2D(
     if (hr == S_OK && ppTexture2D)
     {
         ENTER_CRITICAL_SECTION(&G->mResourcesLock);
-        ResourceHandleInfo* handle_info = &G->mResources[*ppTexture2D];
-        new ResourceReleaseTracker(*ppTexture2D);
-        handle_info->type      = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
-        handle_info->hash      = hash;
-        handle_info->orig_hash = hash;
-        handle_info->data_hash = data_hash;
-        if (pDesc)
-            memcpy(&handle_info->desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
+        {
+            ResourceHandleInfo* handle_info = &G->mResources[*ppTexture2D];
+            new ResourceReleaseTracker(*ppTexture2D);
+            handle_info->type      = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
+            handle_info->hash      = hash;
+            handle_info->orig_hash = hash;
+            handle_info->data_hash = data_hash;
+            if (pDesc)
+                memcpy(&handle_info->desc2D, pDesc, sizeof(D3D11_TEXTURE2D_DESC));
+        }
         LEAVE_CRITICAL_SECTION(&G->mResourcesLock);
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-        if (G->hunting && pDesc)
         {
-            G->mResourceInfo[hash]                           = *pDesc;
-            G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+            if (G->hunting && pDesc)
+            {
+                G->mResourceInfo[hash]                           = *pDesc;
+                G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+            }
         }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
     }
@@ -2439,20 +2460,24 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateTexture3D(
     if (hr == S_OK && ppTexture3D)
     {
         ENTER_CRITICAL_SECTION(&G->mResourcesLock);
-        ResourceHandleInfo* handle_info = &G->mResources[*ppTexture3D];
-        new ResourceReleaseTracker(*ppTexture3D);
-        handle_info->type      = D3D11_RESOURCE_DIMENSION_TEXTURE3D;
-        handle_info->hash      = hash;
-        handle_info->orig_hash = hash;
-        handle_info->data_hash = data_hash;
-        if (pDesc)
-            memcpy(&handle_info->desc3D, pDesc, sizeof(D3D11_TEXTURE3D_DESC));
+        {
+            ResourceHandleInfo* handle_info = &G->mResources[*ppTexture3D];
+            new ResourceReleaseTracker(*ppTexture3D);
+            handle_info->type      = D3D11_RESOURCE_DIMENSION_TEXTURE3D;
+            handle_info->hash      = hash;
+            handle_info->orig_hash = hash;
+            handle_info->data_hash = data_hash;
+            if (pDesc)
+                memcpy(&handle_info->desc3D, pDesc, sizeof(D3D11_TEXTURE3D_DESC));
+        }
         LEAVE_CRITICAL_SECTION(&G->mResourcesLock);
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-        if (G->hunting && pDesc)
         {
-            G->mResourceInfo[hash]                           = *pDesc;
-            G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+            if (G->hunting && pDesc)
+            {
+                G->mResourceInfo[hash]                           = *pDesc;
+                G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
+            }
         }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
     }
@@ -2475,12 +2500,14 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateShaderResourceView(
     if (hr == S_OK && G->ZBufferHashToInject && ppSRView)
     {
         ENTER_CRITICAL_SECTION(&G->mResourcesLock);
-        unordered_map<ID3D11Resource*, ResourceHandleInfo>::iterator i = lookup_resource_handle_info(pResource);
-        if (i != G->mResources.end() && i->second.hash == G->ZBufferHashToInject)
         {
-            LOG_INFO("  resource view of z buffer found: handle = %p, hash = %08lx\n", *ppSRView, i->second.hash);
+            unordered_map<ID3D11Resource*, ResourceHandleInfo>::iterator i = lookup_resource_handle_info(pResource);
+            if (i != G->mResources.end() && i->second.hash == G->ZBufferHashToInject)
+            {
+                LOG_INFO("  resource view of z buffer found: handle = %p, hash = %08lx\n", *ppSRView, i->second.hash);
 
-            zBufferResourceView = *ppSRView;
+                zBufferResourceView = *ppSRView;
+            }
         }
         LEAVE_CRITICAL_SECTION(&G->mResourcesLock);
     }
@@ -2625,8 +2652,10 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateShader(
     if (hr == S_OK)
     {
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-        G->mShaders[*shader] = hash;
-        LOG_DEBUG_W(L"    %ls: handle = %p, hash = %016I64x\n", shader_type, *shader, hash);
+        {
+            G->mShaders[*shader] = hash;
+            LOG_DEBUG_W(L"    %ls: handle = %p, hash = %016I64x\n", shader_type, *shader, hash);
+        }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
     }
 
