@@ -668,7 +668,7 @@ void HackerContext::DeferredShaderReplacement(
         }
 
         hr = (origDevice1->*CreateShader)(patched_bytecode.data(), patched_bytecode.size(), orig_info->linkage, &patched_shader);
-        CleanupShaderMaps(patched_shader);
+        cleanup_shader_maps(patched_shader);
         if (FAILED(hr))
         {
             LOG_INFO("    *** Creating replacement shader failed\n");
