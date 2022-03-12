@@ -3,7 +3,8 @@
 WarningsAsErrors:  ''
 HeaderFilterRegex: '.*'
 FormatStyle:       'file'
-Checks:            '-*,readability-identifier-naming'
+Checks:            '-*,modernize-use-nullptr,modernize-deprecated-headers,modernize-redundant-void-arg,google-readability-casting'
+#Checks:            '-*,readability-identifier-naming'
 CheckOptions:
  - { key: readability-identifier-naming.ClassCase,             value: CamelCase  }
  - { key: readability-identifier-naming.MethodCase,            value: CamelCase  }

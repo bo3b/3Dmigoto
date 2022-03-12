@@ -1,9 +1,7 @@
 #pragma once
 
-#include <unordered_map>
-
 #include <d3d11_1.h>
-#include <INITGUID.h>
+#include <initguid.h>
 
 #include "nvstereo.h"
 #include "HackerContext.hpp"
@@ -51,8 +49,8 @@ private:
     ID3D11DeviceContext1* origContext1;
     IUnknown*             unknown;
 
-    HackerContext*   hackerContext;
-    HackerSwapChain* hackerSwapChain;
+    HackerContext*   hackerContext {};
+    HackerSwapChain* hackerSwapChain {};
 
     // Utility routines
     char* _ReplaceShaderFromShaderFixes(UINT64 hash, const wchar_t* shader_type, const void* shader_bytecode, SIZE_T bytecode_length, SIZE_T& code_size, std::string& found_shader_model, FILETIME& time_stamp, std::wstring& header_line, const char* override_shader_model);
@@ -135,9 +133,9 @@ public:
         /* [in] */ REFIID riid,
         /* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject);
 
-    ULONG STDMETHODCALLTYPE AddRef(void);
+    ULONG STDMETHODCALLTYPE AddRef();
 
-    ULONG STDMETHODCALLTYPE Release(void);
+    ULONG STDMETHODCALLTYPE Release();
 
 
     /*** ID3D11Device methods ***/
@@ -423,11 +421,11 @@ public:
         /* [annotation] */
         _In_opt_  const IUnknown *pData);
 
-    D3D_FEATURE_LEVEL STDMETHODCALLTYPE GetFeatureLevel(void);
+    D3D_FEATURE_LEVEL STDMETHODCALLTYPE GetFeatureLevel();
 
-    UINT STDMETHODCALLTYPE GetCreationFlags(void);
+    UINT STDMETHODCALLTYPE GetCreationFlags();
 
-    HRESULT STDMETHODCALLTYPE GetDeviceRemovedReason(void);
+    HRESULT STDMETHODCALLTYPE GetDeviceRemovedReason();
 
     void STDMETHODCALLTYPE GetImmediateContext(
         /* [annotation] */
@@ -436,7 +434,7 @@ public:
     HRESULT STDMETHODCALLTYPE SetExceptionMode(
         UINT RaiseFlags);
 
-    UINT STDMETHODCALLTYPE GetExceptionMode(void);
+    UINT STDMETHODCALLTYPE GetExceptionMode();
 
 
     /*** ID3D11Device1 methods ***/
