@@ -865,37 +865,37 @@ static bool ReloadShader(wchar_t *shader_path, wchar_t *file_name, HackerDevice 
             {
                 hr = device->GetPassThroughOrigDevice1()->CreateVertexShader(shader_bytecode->GetBufferPointer(), shader_bytecode->GetBufferSize(), class_linkage,
                     (ID3D11VertexShader**)&replacement);
-                CleanupShaderMaps(replacement);
+                cleanup_shader_maps(replacement);
             }
             else if (shader_type.compare(L"ps") == 0)
             {
                 hr = device->GetPassThroughOrigDevice1()->CreatePixelShader(shader_bytecode->GetBufferPointer(), shader_bytecode->GetBufferSize(), class_linkage,
                     (ID3D11PixelShader**)&replacement);
-                CleanupShaderMaps(replacement);
+                cleanup_shader_maps(replacement);
             }
             else if (shader_type.compare(L"cs") == 0)
             {
                 hr = device->GetPassThroughOrigDevice1()->CreateComputeShader(shader_bytecode->GetBufferPointer(),
                     shader_bytecode->GetBufferSize(), class_linkage, (ID3D11ComputeShader**)&replacement);
-                CleanupShaderMaps(replacement);
+                cleanup_shader_maps(replacement);
             }
             else if (shader_type.compare(L"gs") == 0)
             {
                 hr = device->GetPassThroughOrigDevice1()->CreateGeometryShader(shader_bytecode->GetBufferPointer(),
                     shader_bytecode->GetBufferSize(), class_linkage, (ID3D11GeometryShader**)&replacement);
-                CleanupShaderMaps(replacement);
+                cleanup_shader_maps(replacement);
             }
             else if (shader_type.compare(L"hs") == 0)
             {
                 hr = device->GetPassThroughOrigDevice1()->CreateHullShader(shader_bytecode->GetBufferPointer(),
                     shader_bytecode->GetBufferSize(), class_linkage, (ID3D11HullShader**)&replacement);
-                CleanupShaderMaps(replacement);
+                cleanup_shader_maps(replacement);
             }
             else if (shader_type.compare(L"ds") == 0)
             {
                 hr = device->GetPassThroughOrigDevice1()->CreateDomainShader(shader_bytecode->GetBufferPointer(),
                     shader_bytecode->GetBufferSize(), class_linkage, (ID3D11DomainShader**)&replacement);
-                CleanupShaderMaps(replacement);
+                cleanup_shader_maps(replacement);
             }
             if (FAILED(hr))
                 goto err;
