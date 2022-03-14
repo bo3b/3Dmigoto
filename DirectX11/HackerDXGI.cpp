@@ -116,7 +116,7 @@ void InstallSetWindowPosHook()
         return;
 
     hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
-    fail |= InstallHookLate(hUser32, "SetWindowPos", (void**)&fnOrigSetWindowPos, Hooked_SetWindowPos);
+    fail |= InstallHookLate(hUser32, "SetWindowPos", reinterpret_cast<void**>(&fnOrigSetWindowPos), Hooked_SetWindowPos);
 
     if (fail)
     {
@@ -166,7 +166,7 @@ HackerSwapChain::HackerSwapChain(
     }
     else
     {
-        ID3D11DeviceContext* tmpContext = NULL;
+        ID3D11DeviceContext* tmpContext = nullptr;
         // GetImmediateContext will bump the refcount for us.
         // In the case of hooking, GetImmediateContext will not return
         // a HackerContext, so we don't use it's return directly, but
@@ -186,7 +186,7 @@ HackerSwapChain::HackerSwapChain(
     catch (...)
     {
         LOG_INFO("  *** Failed to create Overlay. Exception caught.\n");
-        overlay = NULL;
+        overlay = nullptr;
     }
 }
 
@@ -207,7 +207,8 @@ void HackerSwapChain::UpdateStereoParams()
         hackerDevice->paramTextureManager.mTuneVariable2 = G->gTuneValue[1];
         hackerDevice->paramTextureManager.mTuneVariable3 = G->gTuneValue[2];
         hackerDevice->paramTextureManager.mTuneVariable4 = G->gTuneValue[3];
-        int counter                                      = 0;
+
+        int counter = 0;
         if (counter-- < 0)
         {
             counter                                        = 30;
@@ -246,7 +247,7 @@ void HackerSwapChain::RunFrameActions()
     // a pre-present command list. We have a separate post-present command
     // list after the present call in case we need to restore state or
     // affect something at the start of the frame.
-    run_command_list(hackerDevice, hackerContext, &G->present_command_list, NULL, false);
+    run_command_list(hackerDevice, hackerContext, &G->present_command_list, nullptr, false);
 
     if (G->analyse_frame)
     {
@@ -309,7 +310,7 @@ void HackerSwapChain::RunFrameActions()
 
     // Update the huntTime whenever we get fresh user input.
     if (newEvent)
-        G->huntTime = time(NULL);
+        G->huntTime = time(nullptr);
 
     // Clear buffers after some user idle time.  This allows the buffers to be
     // stable during a hunt, and cleared after one minute of idle time.  The idea
@@ -321,10 +322,12 @@ void HackerSwapChain::RunFrameActions()
     // The arrays will be continually filled by the SetShader sections, but should
     // rapidly converge upon all active shaders.
 
-    if (difftime(time(NULL), G->huntTime) > 60)
+    if (difftime(time(nullptr), G->huntTime) > 60)
     {
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-        TimeoutHuntingBuffers();
+        {
+            TimeoutHuntingBuffers();
+        }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
     }
 }
@@ -373,27 +376,27 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::QueryInterface(
     if (riid == __uuidof(IDXGISwapChain2))
     {
         LOG_INFO("***  returns E_NOINTERFACE as error for IDXGISwapChain2.\n");
-        *ppvObject = NULL;
+        *ppvObject = nullptr;
         return E_NOINTERFACE;
     }
     if (riid == __uuidof(IDXGISwapChain3))
     {
         LOG_INFO("***  returns E_NOINTERFACE as error for IDXGISwapChain3.\n");
-        *ppvObject = NULL;
+        *ppvObject = nullptr;
         return E_NOINTERFACE;
     }
     if (riid == __uuidof(IDXGISwapChain4))
     {
         LOG_INFO("***  returns E_NOINTERFACE as error for IDXGISwapChain4.\n");
-        *ppvObject = NULL;
+        *ppvObject = nullptr;
         return E_NOINTERFACE;
     }
 
-    IUnknown* unk_this;
-    HRESULT   hr_this = origSwapChain1->QueryInterface(__uuidof(IUnknown), (void**)&unk_this);
+    IUnknown* unk_this = nullptr;
+    HRESULT   hr_this  = origSwapChain1->QueryInterface(__uuidof(IUnknown), reinterpret_cast<void**>(&unk_this));
 
-    IUnknown* unk_ppvObject;
-    HRESULT   hr_ppvObject = reinterpret_cast<IUnknown*>(*ppvObject)->QueryInterface(__uuidof(IUnknown), (void**)&unk_ppvObject);
+    IUnknown* unk_ppvObject = nullptr;
+    HRESULT   hr_ppvObject  = static_cast<IUnknown*>(*ppvObject)->QueryInterface(__uuidof(IUnknown), reinterpret_cast<void**>(&unk_ppvObject));
 
     if (SUCCEEDED(hr_this) && SUCCEEDED(hr_ppvObject))
     {
@@ -434,7 +437,9 @@ ULONG STDMETHODCALLTYPE HackerSwapChain::Release()
                 hackerDevice->SetHackerSwapChain(nullptr);
             }
             else
+            {
                 LOG_INFO("  hackerDevice %p not using hackerSwapchain %p\n", hackerDevice, this);
+            }
             hackerDevice->Release();
         }
 
@@ -445,7 +450,7 @@ ULONG STDMETHODCALLTYPE HackerSwapChain::Release()
             delete overlay;
 
         if (last_fullscreen_swap_chain == origSwapChain1)
-            last_fullscreen_swap_chain = NULL;
+            last_fullscreen_swap_chain = nullptr;
 
         LOG_INFO("  counter=%d, this=%p, deleting self.\n", ulRef, this);
 
@@ -583,7 +588,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::Present(
         // Run the post present command list now, which can be used to restore
         // state changed in the pre-present command list, or to perform some
         // action at the start of a frame:
-        run_command_list(hackerDevice, hackerContext, &G->post_present_command_list, NULL, true);
+        run_command_list(hackerDevice, hackerContext, &G->post_present_command_list, nullptr, true);
 
         if (profiling)
             Profiling::end(&profiling_state, &Profiling::present_overhead);
@@ -677,7 +682,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::GetDesc(
         if (pDesc)
             LOG_DEBUG("  returns Height = %d\n", pDesc->BufferDesc.Height);
         if (pDesc)
-            LOG_DEBUG("  returns Refresh rate = %f\n", (float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
+            LOG_DEBUG("  returns Refresh rate = %f\n", static_cast<float>(pDesc->BufferDesc.RefreshRate.Numerator) / static_cast<float>(pDesc->BufferDesc.RefreshRate.Denominator));
     }
 
     LOG_DEBUG("  returns result = %x\n", hr);
@@ -713,7 +718,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::ResizeTarget(
 
     LOG_INFO("HackerSwapChain::ResizeTarget(%s@%p) called\n", type_name(this), this);
     LOG_INFO("  Width: %d, Height: %d\n", pNewTargetParameters->Width, pNewTargetParameters->Height);
-    LOG_INFO("     Refresh rate = %f\n", (float)pNewTargetParameters->RefreshRate.Numerator / (float)pNewTargetParameters->RefreshRate.Denominator);
+    LOG_INFO("     Refresh rate = %f\n", static_cast<float>(pNewTargetParameters->RefreshRate.Numerator) / static_cast<float>(pNewTargetParameters->RefreshRate.Denominator));
 
     // Historically we have only forced the refresh rate when full-screen.
     // I don't know if we ever had a good reason for that, but it
@@ -800,7 +805,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::GetFullscreenDesc(
         if (pDesc)
             LOG_INFO("  returns Windowed = %d\n", pDesc->Windowed);
         if (pDesc)
-            LOG_INFO("  returns Refresh rate = %f\n", (float)pDesc->RefreshRate.Numerator / (float)pDesc->RefreshRate.Denominator);
+            LOG_INFO("  returns Refresh rate = %f\n", static_cast<float>(pDesc->RefreshRate.Numerator) / static_cast<float>(pDesc->RefreshRate.Denominator));
     }
     LOG_INFO("  returns result = %x\n", hr);
 
@@ -878,7 +883,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::Present1(
         // Run the post present command list now, which can be used to restore
         // state changed in the pre-present command list, or to perform some
         // action at the start of a frame:
-        run_command_list(hackerDevice, hackerContext, &G->post_present_command_list, NULL, true);
+        run_command_list(hackerDevice, hackerContext, &G->post_present_command_list, nullptr, true);
 
         if (profiling)
             Profiling::end(&profiling_state, &Profiling::present_overhead);
@@ -960,8 +965,8 @@ HackerUpscalingSwapChain::HackerUpscalingSwapChain(
         pSwapChain,
         pHackerDevice,
         pHackerContext),
-    fakeBackBuffer(nullptr),
     fakeSwapChain1(nullptr),
+    fakeBackBuffer(nullptr),
     width(0),
     height(0)
 {
@@ -1168,7 +1173,7 @@ HRESULT STDMETHODCALLTYPE HackerUpscalingSwapChain::GetDesc(
         if (pDesc)
             LOG_DEBUG("  returns Height = %d\n", pDesc->BufferDesc.Height);
         if (pDesc)
-            LOG_DEBUG("  returns Refresh rate = %f\n", (float)pDesc->BufferDesc.RefreshRate.Numerator / (float)pDesc->BufferDesc.RefreshRate.Denominator);
+            LOG_DEBUG("  returns Refresh rate = %f\n", static_cast<float>(pDesc->BufferDesc.RefreshRate.Numerator) / static_cast<float>(pDesc->BufferDesc.RefreshRate.Denominator));
     }
     LOG_DEBUG("  returns result = %x\n", hr);
     return hr;
@@ -1221,7 +1226,9 @@ HRESULT STDMETHODCALLTYPE HackerUpscalingSwapChain::ResizeBuffers(
             UNLOCK_RESOURCE_CREATION_MODE();
         }
         else  // nothing to resize
+        {
             hr = S_OK;
+        }
     }
     else if (fakeSwapChain1)  // UPSCALE_MODE 1
     {
@@ -1264,13 +1271,13 @@ HRESULT STDMETHODCALLTYPE HackerUpscalingSwapChain::ResizeTarget(
         DEVMODE dmScreenSettings;
         memset(&dmScreenSettings, 0, sizeof(dmScreenSettings));
         dmScreenSettings.dmSize       = sizeof(dmScreenSettings);
-        dmScreenSettings.dmPelsWidth  = (unsigned long)width;
-        dmScreenSettings.dmPelsHeight = (unsigned long)height;
+        dmScreenSettings.dmPelsWidth  = static_cast<unsigned long>(width);
+        dmScreenSettings.dmPelsHeight = static_cast<unsigned long>(height);
         dmScreenSettings.dmBitsPerPel = 32;
         dmScreenSettings.dmFields     = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
 
         // Change the display settings to full screen.
-        LONG displ_chainge_res = ChangeDisplaySettingsEx(NULL, &dmScreenSettings, nullptr, CDS_FULLSCREEN, 0);
+        LONG displ_chainge_res = ChangeDisplaySettingsEx(nullptr, &dmScreenSettings, nullptr, CDS_FULLSCREEN, nullptr);
         hr                     = displ_chainge_res == 0 ? S_OK : DXGI_ERROR_INVALID_CALL;
     }
     else if (G->SCREEN_UPSCALING == 1)
