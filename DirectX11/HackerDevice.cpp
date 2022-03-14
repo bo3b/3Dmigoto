@@ -292,20 +292,19 @@ HRESULT HackerDevice::CreateStereoParamResources()
     // Create stereo parameter texture.
     LOG_INFO("  creating stereo parameter texture.\n");
 
-    D3D11_TEXTURE2D_DESC desc;
-    memset(&desc, 0, sizeof(D3D11_TEXTURE2D_DESC));
-    desc.Width              = nv::stereo::ParamTextureManagerD3D11::Parms::StereoTexWidth;
-    desc.Height             = nv::stereo::ParamTextureManagerD3D11::Parms::StereoTexHeight;
-    desc.MipLevels          = 1;
-    desc.ArraySize          = 1;
-    desc.Format             = nv::stereo::ParamTextureManagerD3D11::Parms::StereoTexFormat;
-    desc.SampleDesc.Count   = 1;
-    desc.SampleDesc.Quality = 0;
-    desc.Usage              = D3D11_USAGE_DEFAULT;
-    desc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
-    desc.CPUAccessFlags     = 0;
-    desc.MiscFlags          = 0;
-    hr                      = origDevice1->CreateTexture2D(&desc, nullptr, &stereoTexture);
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width                = nv::stereo::ParamTextureManagerD3D11::Parms::StereoTexWidth;
+    desc.Height               = nv::stereo::ParamTextureManagerD3D11::Parms::StereoTexHeight;
+    desc.MipLevels            = 1;
+    desc.ArraySize            = 1;
+    desc.Format               = nv::stereo::ParamTextureManagerD3D11::Parms::StereoTexFormat;
+    desc.SampleDesc.Count     = 1;
+    desc.SampleDesc.Quality   = 0;
+    desc.Usage                = D3D11_USAGE_DEFAULT;
+    desc.BindFlags            = D3D11_BIND_SHADER_RESOURCE;
+    desc.CPUAccessFlags       = 0;
+    desc.MiscFlags            = 0;
+    hr                        = origDevice1->CreateTexture2D(&desc, nullptr, &stereoTexture);
     if (FAILED(hr))
     {
         LOG_INFO("    call failed with result = %x.\n", hr);
@@ -316,13 +315,12 @@ HRESULT HackerDevice::CreateStereoParamResources()
     // Since we need to bind the texture to a shader input, we also need a resource view.
     LOG_INFO("  creating stereo parameter resource view.\n");
 
-    D3D11_SHADER_RESOURCE_VIEW_DESC desc_rv;
-    memset(&desc_rv, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-    desc_rv.Format                    = desc.Format;
-    desc_rv.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
-    desc_rv.Texture2D.MostDetailedMip = 0;
-    desc_rv.Texture2D.MipLevels       = -1;
-    hr                                = origDevice1->CreateShaderResourceView(stereoTexture, &desc_rv, &stereoResourceView);
+    D3D11_SHADER_RESOURCE_VIEW_DESC desc_rv = {};
+    desc_rv.Format                          = desc.Format;
+    desc_rv.ViewDimension                   = D3D11_SRV_DIMENSION_TEXTURE2D;
+    desc_rv.Texture2D.MostDetailedMip       = 0;
+    desc_rv.Texture2D.MipLevels             = -1;
+    hr                                      = origDevice1->CreateShaderResourceView(stereoTexture, &desc_rv, &stereoResourceView);
     if (FAILED(hr))
     {
         LOG_INFO("    call failed with result = %x.\n", hr);
@@ -341,8 +339,7 @@ HRESULT HackerDevice::CreateIniParamResources()
 
     HRESULT                ret;
     D3D11_SUBRESOURCE_DATA initial_data {};
-    D3D11_TEXTURE1D_DESC   desc;
-    memset(&desc, 0, sizeof(D3D11_TEXTURE1D_DESC));
+    D3D11_TEXTURE1D_DESC   desc = {};
 
     // If we are resizing IniParams we must release the old versions:
     if (iniResourceView)
@@ -396,9 +393,6 @@ HRESULT HackerDevice::CreateIniParamResources()
     // Since we need to bind the texture to a shader input, we also need a resource view.
     // The pDesc is set to NULL so that it will simply use the desc format above.
     LOG_INFO("  creating IniParam resource view.\n");
-
-    D3D11_SHADER_RESOURCE_VIEW_DESC desc_rv;
-    memset(&desc_rv, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
 
     ret = origDevice1->CreateShaderResourceView(iniTexture, nullptr, &iniResourceView);
     if (FAILED(ret))
@@ -2575,8 +2569,8 @@ static UINT64 hash_shader(
     const void* shader_bytecode,
     SIZE_T      bytecode_length)
 {
-    UINT64              hash   = 0;
-    struct dxbc_header* header = (struct dxbc_header*)shader_bytecode;
+    UINT64       hash   = 0;
+    struct dxbc_header* header = static_cast<struct dxbc_header*>(const_cast<void*>(shader_bytecode));
 
     if (bytecode_length < sizeof(struct dxbc_header))
         goto fnv;
