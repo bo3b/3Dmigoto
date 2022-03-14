@@ -6,7 +6,6 @@
 #include "HackerContext.hpp"
 #include "Overlay.hpp"
 
-
 // Forward references required because of circular references from the
 // other 'Hacker' objects.
 
@@ -14,8 +13,8 @@ class HackerDevice;
 class HackerContext;
 class Overlay;
 
-
 void InstallSetWindowPosHook();
+void ForceDisplayMode(DXGI_MODE_DESC* BufferDesc);
 
 // -----------------------------------------------------------------------------
 // Hierarchy:
@@ -24,18 +23,21 @@ void InstallSetWindowPosHook();
 class HackerSwapChain : public IDXGISwapChain1
 {
 protected:
-    IDXGISwapChain1 *origSwapChain1;
-    HackerDevice *hackerDevice;
-    HackerContext *hackerContext;
+    IDXGISwapChain1* origSwapChain1;
+    HackerDevice*    hackerDevice;
+    HackerContext*   hackerContext;
 
 public:
-    HackerSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pDevice, HackerContext *pContext);
-    
-    IDXGISwapChain1* GetOrigSwapChain1();
-    void UpdateStereoParams();
-    void RunFrameActions();
-    Overlay *overlay;
+    HackerSwapChain(IDXGISwapChain1* pSwapChain, HackerDevice* pDevice, HackerContext* pContext);
 
+    IDXGISwapChain1* GetOrigSwapChain1();
+    void             UpdateStereoParams();
+    void             RunFrameActions();
+    Overlay*         overlay;
+
+    // clang-format off
+    // For all the override function definitions, let's disable the clang-format, in order to keep the
+    // original formatting from the original Microsoft DX11 functions.
 
     /** IUnknown **/
 
@@ -188,55 +190,56 @@ public:
         _Out_  DXGI_MODE_ROTATION *pRotation);
 };
 
+// clang-format on
 
 // -----------------------------------------------------------------------------
 
 class HackerUpscalingSwapChain : public HackerSwapChain
 {
 private:
-    IDXGISwapChain1 *fakeSwapChain1;
-    ID3D11Texture2D *fakeBackBuffer;
+    IDXGISwapChain1* fakeSwapChain1;
+    ID3D11Texture2D* fakeBackBuffer;
 
     UINT width;
     UINT height;
 
 public:
-    HackerUpscalingSwapChain::HackerUpscalingSwapChain(IDXGISwapChain1 *pSwapChain, HackerDevice *pHackerDevice, HackerContext *pHackerContext,
-        DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc, UINT newWidth, UINT newHeight);
+    HackerUpscalingSwapChain::HackerUpscalingSwapChain(IDXGISwapChain1* pSwapChain, HackerDevice* pHackerDevice, HackerContext* pHackerContext, DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc, UINT newWidth, UINT newHeight);
     ~HackerUpscalingSwapChain();
 
 private:
     void CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc);
 
 public:
+    // clang-format off
 
-    STDMETHOD(GetBuffer)(THIS_
+    HRESULT STDMETHODCALLTYPE GetBuffer(
         /* [in] */ UINT Buffer,
         /* [annotation][in] */
         _In_  REFIID riid,
         /* [annotation][out][in] */
         _Out_  void **ppSurface);
 
-    STDMETHOD(SetFullscreenState)(THIS_
+    HRESULT STDMETHODCALLTYPE SetFullscreenState(
         /* [in] */ BOOL Fullscreen,
         /* [annotation][in] */
         _In_opt_  IDXGIOutput *pTarget);
 
-    STDMETHOD(GetDesc)(THIS_
+    HRESULT STDMETHODCALLTYPE GetDesc(
         /* [annotation][out] */
         _Out_  DXGI_SWAP_CHAIN_DESC *pDesc);
 
-    STDMETHOD(ResizeBuffers)(THIS_
+    HRESULT STDMETHODCALLTYPE ResizeBuffers(
         /* [in] */ UINT BufferCount,
         /* [in] */ UINT Width,
         /* [in] */ UINT Height,
         /* [in] */ DXGI_FORMAT NewFormat,
         /* [in] */ UINT SwapChainFlags);
 
-    STDMETHOD(ResizeTarget)(THIS_
+    HRESULT STDMETHODCALLTYPE ResizeTarget(
         /* [annotation][in] */
         _In_  const DXGI_MODE_DESC *pNewTargetParameters);
 
 };
 
-void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc);
+// clang-format on
