@@ -204,7 +204,7 @@ private:
     UINT height;
 
 public:
-    HackerUpscalingSwapChain::HackerUpscalingSwapChain(IDXGISwapChain1* pSwapChain, HackerDevice* pHackerDevice, HackerContext* pHackerContext, DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc, UINT newWidth, UINT newHeight);
+    HackerUpscalingSwapChain(IDXGISwapChain1* pSwapChain, HackerDevice* pHackerDevice, HackerContext* pHackerContext, DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc, UINT newWidth, UINT newHeight);
     ~HackerUpscalingSwapChain();
 
 private:
