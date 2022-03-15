@@ -130,6 +130,42 @@ void install_SetWindowPos_hook()
 
 // -----------------------------------------------------------------------------
 
+void force_display_mode(
+    DXGI_MODE_DESC* buffer_desc)
+{
+    // Historically we have only forced the refresh rate when full-screen.
+    // I don't know if we ever had a good reason for that, but it
+    // complicates forcing the refresh rate in games that start windowed
+    // and later switch to full screen, so now forcing it unconditionally
+    // to see how that goes. Helps Unity games work with 3D TV Play.
+    //
+    // UE4 does SetFullscreenState -> ResizeBuffers -> ResizeTarget
+    // Unity does ResizeTarget -> SetFullscreenState -> ResizeBuffers
+    if (G->SCREEN_REFRESH >= 0)
+    {
+        // FIXME: This may disable flipping (and use blitting instead)
+        // if the forced numerator and denominator does not exactly
+        // match a mode enumerated on the output. e.g. We would force
+        // 60Hz as 60/1, but the display might actually use 60000/1001
+        // for 60Hz and we would lose flipping and degrade performance.
+        buffer_desc->RefreshRate.Numerator   = G->SCREEN_REFRESH;
+        buffer_desc->RefreshRate.Denominator = 1;
+        LOG_INFO("->Forcing refresh rate to = %f\n", static_cast<float>(buffer_desc->RefreshRate.Numerator) / static_cast<float>(buffer_desc->RefreshRate.Denominator));
+    }
+    if (G->SCREEN_WIDTH >= 0)
+    {
+        buffer_desc->Width = G->SCREEN_WIDTH;
+        LOG_INFO("->Forcing Width to = %d\n", buffer_desc->Width);
+    }
+    if (G->SCREEN_HEIGHT >= 0)
+    {
+        buffer_desc->Height = G->SCREEN_HEIGHT;
+        LOG_INFO("->Forcing Height to = %d\n", buffer_desc->Height);
+    }
+}
+
+// -----------------------------------------------------------------------------
+
 // In the Elite Dangerous case, they Release the HackerContext objects before creating the
 // swap chain.  That causes problems, because we are not expecting anyone to get here without
 // having a valid context.  They later call GetImmediateContext, which will generate a wrapped
@@ -137,14 +173,14 @@ void install_SetWindowPos_hook()
 // this case, which will save the reference for their GetImmediateContext call.
 
 HackerSwapChain::HackerSwapChain(
-    IDXGISwapChain1* pSwapChain,
-    HackerDevice*    pDevice,
-    HackerContext*   pContext)
+    IDXGISwapChain1* swap_chain,
+    HackerDevice*    device,
+    HackerContext*   context)
 {
-    origSwapChain1 = pSwapChain;
+    origSwapChain1 = swap_chain;
 
-    hackerDevice  = pDevice;
-    hackerContext = pContext;
+    hackerDevice  = device;
+    hackerContext = context;
 
     // Bump the refcounts on the device and context to make sure they can't
     // be released as long as the swap chain is alive and we may be
@@ -955,25 +991,25 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::GetRotation(
 // resolutions.  Particularly good for 4K passive 3D.
 
 HackerUpscalingSwapChain::HackerUpscalingSwapChain(
-    IDXGISwapChain1*      pSwapChain,
-    HackerDevice*         pHackerDevice,
-    HackerContext*        pHackerContext,
-    DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc,
-    UINT                  newWidth,
-    UINT                  newHeight) :
+    IDXGISwapChain1*      swap_chain,
+    HackerDevice*         hacker_device,
+    HackerContext*        hacker_context,
+    DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc,
+    UINT                  new_width,
+    UINT                  new_height) :
     HackerSwapChain(
-        pSwapChain,
-        pHackerDevice,
-        pHackerContext),
+        swap_chain,
+        hacker_device,
+        hacker_context),
     fakeSwapChain1(nullptr),
     fakeBackBuffer(nullptr),
     width(0),
     height(0)
 {
-    CreateRenderTarget(pFakeSwapChainDesc);
+    CreateRenderTarget(fake_swap_chain_desc);
 
-    width  = newWidth;
-    height = newHeight;
+    width  = new_width;
+    height = new_height;
 }
 
 HackerUpscalingSwapChain::~HackerUpscalingSwapChain()
@@ -985,7 +1021,7 @@ HackerUpscalingSwapChain::~HackerUpscalingSwapChain()
 }
 
 void HackerUpscalingSwapChain::CreateRenderTarget(
-    DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc)
+    DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc)
 {
     HRESULT hr;
 
@@ -996,18 +1032,17 @@ void HackerUpscalingSwapChain::CreateRenderTarget(
             // TODO: multisampled swap chain
             // TODO: multiple buffers within one spaw chain
             // ==> in this case upscale_mode = 1 should be used at the moment
-            D3D11_TEXTURE2D_DESC fake_buffer_desc;
-            std::memset(&fake_buffer_desc, 0, sizeof(D3D11_TEXTURE2D_DESC));
-            fake_buffer_desc.ArraySize        = 1;
-            fake_buffer_desc.MipLevels        = 1;
-            fake_buffer_desc.BindFlags        = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-            fake_buffer_desc.Usage            = D3D11_USAGE_DEFAULT;
-            fake_buffer_desc.SampleDesc.Count = 1;
-            fake_buffer_desc.Format           = pFakeSwapChainDesc->BufferDesc.Format;
-            fake_buffer_desc.MiscFlags        = 0;
-            fake_buffer_desc.Width            = pFakeSwapChainDesc->BufferDesc.Width;
-            fake_buffer_desc.Height           = pFakeSwapChainDesc->BufferDesc.Height;
-            fake_buffer_desc.CPUAccessFlags   = 0;
+            D3D11_TEXTURE2D_DESC fake_buffer_desc = {};
+            fake_buffer_desc.ArraySize            = 1;
+            fake_buffer_desc.MipLevels            = 1;
+            fake_buffer_desc.BindFlags            = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+            fake_buffer_desc.Usage                = D3D11_USAGE_DEFAULT;
+            fake_buffer_desc.SampleDesc.Count     = 1;
+            fake_buffer_desc.Format               = fake_swap_chain_desc->BufferDesc.Format;
+            fake_buffer_desc.MiscFlags            = 0;
+            fake_buffer_desc.Width                = fake_swap_chain_desc->BufferDesc.Width;
+            fake_buffer_desc.Height               = fake_swap_chain_desc->BufferDesc.Height;
+            fake_buffer_desc.CPUAccessFlags       = 0;
 
             LOCK_RESOURCE_CREATION_MODE();
             hr = hackerDevice->GetPassThroughOrigDevice1()->CreateTexture2D(&fake_buffer_desc, nullptr, &fakeBackBuffer);
@@ -1027,13 +1062,13 @@ void HackerUpscalingSwapChain::CreateRenderTarget(
                 beep_sad_failure();
                 return;
             }
-            const UINT flag_backup = pFakeSwapChainDesc->Flags;
+            const UINT flag_backup = fake_swap_chain_desc->Flags;
 
             // fake swap chain should have no influence on window
-            pFakeSwapChainDesc->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+            fake_swap_chain_desc->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
             IDXGISwapChain* swap_chain;
             get_tls()->hooking_quirk_protection = true;
-            factory->CreateSwapChain(hackerDevice->GetPossiblyHookedOrigDevice1(), pFakeSwapChainDesc, &swap_chain);
+            factory->CreateSwapChain(hackerDevice->GetPossiblyHookedOrigDevice1(), fake_swap_chain_desc, &swap_chain);
             get_tls()->hooking_quirk_protection = false;
 
             factory->Release();
@@ -1045,7 +1080,7 @@ void HackerUpscalingSwapChain::CreateRenderTarget(
                 fakeSwapChain1 = reinterpret_cast<IDXGISwapChain1*>(swap_chain);
 
             // restore old state in case fall back is required ToDo: Unlikely needed now.
-            pFakeSwapChainDesc->Flags = flag_backup;
+            fake_swap_chain_desc->Flags = flag_backup;
         }
         break;
         default:
@@ -1268,8 +1303,7 @@ HRESULT STDMETHODCALLTYPE HackerUpscalingSwapChain::ResizeTarget(
 
     if (G->SCREEN_UPSCALING == 2)
     {
-        DEVMODE dm_screen_settings;
-        memset(&dm_screen_settings, 0, sizeof(dm_screen_settings));
+        DEVMODE dm_screen_settings      = {};
         dm_screen_settings.dmSize       = sizeof(dm_screen_settings);
         dm_screen_settings.dmPelsWidth  = static_cast<unsigned long>(width);
         dm_screen_settings.dmPelsHeight = static_cast<unsigned long>(height);

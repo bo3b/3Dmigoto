@@ -211,40 +211,6 @@ static HackerDevice* sort_out_swap_chain_device_mess(IUnknown **device)
     return hackerDevice;
 }
 
-void ForceDisplayMode(DXGI_MODE_DESC *BufferDesc)
-{
-    // Historically we have only forced the refresh rate when full-screen.
-    // I don't know if we ever had a good reason for that, but it
-    // complicates forcing the refresh rate in games that start windowed
-    // and later switch to full screen, so now forcing it unconditionally
-    // to see how that goes. Helps Unity games work with 3D TV Play.
-    //
-    // UE4 does SetFullscreenState -> ResizeBuffers -> ResizeTarget
-    // Unity does ResizeTarget -> SetFullscreenState -> ResizeBuffers
-    if (G->SCREEN_REFRESH >= 0)
-    {
-        // FIXME: This may disable flipping (and use blitting instead)
-        // if the forced numerator and denominator does not exactly
-        // match a mode enumerated on the output. e.g. We would force
-        // 60Hz as 60/1, but the display might actually use 60000/1001
-        // for 60Hz and we would lose flipping and degrade performance.
-        BufferDesc->RefreshRate.Numerator = G->SCREEN_REFRESH;
-        BufferDesc->RefreshRate.Denominator = 1;
-        LOG_INFO("->Forcing refresh rate to = %f\n",
-            (float)BufferDesc->RefreshRate.Numerator / (float)BufferDesc->RefreshRate.Denominator);
-    }
-    if (G->SCREEN_WIDTH >= 0)
-    {
-        BufferDesc->Width = G->SCREEN_WIDTH;
-        LOG_INFO("->Forcing Width to = %d\n", BufferDesc->Width);
-    }
-    if (G->SCREEN_HEIGHT >= 0)
-    {
-        BufferDesc->Height = G->SCREEN_HEIGHT;
-        LOG_INFO("->Forcing Height to = %d\n", BufferDesc->Height);
-    }
-}
-
 
 // -----------------------------------------------------------------------------
 // This tweaks the parameters passed to the real CreateSwapChain, to change behavior.
@@ -281,10 +247,10 @@ static void ForceDisplayParams(DXGI_SWAP_CHAIN_DESC *pDesc)
         // https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
         //
         // This hook is also very important in case of Upscaling
-        InstallSetWindowPosHook();
+        install_SetWindowPos_hook();
     }
 
-    ForceDisplayMode(&pDesc->BufferDesc);
+    force_display_mode(&pDesc->BufferDesc);
 }
 
 // Different variant for the CreateSwapChainForHwnd.
@@ -330,7 +296,7 @@ static void ForceDisplayParams1(DXGI_SWAP_CHAIN_DESC1 *pDesc, DXGI_SWAP_CHAIN_FU
         // Unconfirmed, but possibly related to:
         // https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
 
-        InstallSetWindowPosHook();
+        install_SetWindowPos_hook();
     }
 
     if (pDesc)
