@@ -9,7 +9,6 @@
 // pointer and pass that back to the HackerDevice for it to use in place of the
 // original device.
 
-
 // We are defining CINTERFACE here to get the C declarations of the
 // ID3D11Device1, which uses a struct with function pointers for the vtable.
 // That avoids some nasty casting which we would have to do with the C++
@@ -41,21 +40,23 @@
 #include "log.h"
 #include "lock.h"
 
-
 // Change this to 1 to enable debug logging of hooks and the trampolines back
 // to the original device. Disabled by default as debug logging will already
 // log most of these calls in the HackerDevice, so this would triple the noise
 // and we probably won't need it very often:
 #if 0
-#define HOOK_DEBUG LOG_DEBUG
+    #define HOOK_DEBUG LOG_DEBUG
 #else
-#define HOOK_DEBUG(...) do { } while (0)
+    #define HOOK_DEBUG(...) \
+        do                  \
+        {                   \
+        } while (0)
 #endif
 
-
 // A map to look up the hacker device from the original device:
-typedef std::unordered_map<ID3D11Device1 *, ID3D11Device1 *> DeviceMap;
-static DeviceMap device_map;
+typedef std::unordered_map<ID3D11Device1*, ID3D11Device1*> DeviceMap;
+
+static DeviceMap        device_map;
 static CRITICAL_SECTION device_map_lock;
 
 // Holds all the function pointers that we need to call into the real original
@@ -64,34 +65,15 @@ static struct ID3D11Device1Vtbl orig_vtable;
 
 static bool hooks_installed = false;
 
-
-ID3D11Device1* lookup_hooked_device(ID3D11Device1 *orig_device)
-{
-    DeviceMap::iterator i;
-
-    if (!hooks_installed)
-        return NULL;
-
-    ENTER_CRITICAL_SECTION(&device_map_lock);
-    i = device_map.find(orig_device);
-    if (i == device_map.end()) {
-        LEAVE_CRITICAL_SECTION(&device_map_lock);
-        return NULL;
-    }
-    LEAVE_CRITICAL_SECTION(&device_map_lock);
-
-    return i->second;
-}
-
-
+// -----------------------------------------------------------------------------------------------
 // IUnknown
+
 static HRESULT STDMETHODCALLTYPE QueryInterface(
-        ID3D11Device1 * This,
-        /* [in] */ REFIID riid,
-        /* [annotation][iid_is][out] */
-        __RPC__deref_out  void **ppvObject)
+    ID3D11Device1* This,
+    REFIID         riid,
+    void**         ppvObject)
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::QueryInterface()\n");
 
@@ -102,9 +84,9 @@ static HRESULT STDMETHODCALLTYPE QueryInterface(
 }
 
 static ULONG STDMETHODCALLTYPE AddRef(
-        ID3D11Device1 * This)
+    ID3D11Device1* This)
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::AddRef()\n");
 
@@ -115,20 +97,22 @@ static ULONG STDMETHODCALLTYPE AddRef(
 }
 
 static ULONG STDMETHODCALLTYPE Release(
-        ID3D11Device1 * This)
+    ID3D11Device1* This)
 {
     DeviceMap::iterator i;
-    ULONG ref;
+    ULONG               ref;
 
     HOOK_DEBUG("HookedDevice::Release()\n");
 
     ENTER_CRITICAL_SECTION(&device_map_lock);
     i = device_map.find(This);
-    if (i != device_map.end()) {
+    if (i != device_map.end())
+    {
         ref = ID3D11Device1_Release(i->second);
         if (!ref)
             device_map.erase(i);
-    } else
+    }
+    else
         ref = orig_vtable.Release(This);
 
     LEAVE_CRITICAL_SECTION(&device_map_lock);
@@ -136,18 +120,17 @@ static ULONG STDMETHODCALLTYPE Release(
     return ref;
 }
 
+// -----------------------------------------------------------------------------------------------
 // ID3D11Device1
+
 static HRESULT STDMETHODCALLTYPE CreateBuffer(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_BUFFER_DESC *pDesc,
-        /* [annotation] */
-        __in_opt  const D3D11_SUBRESOURCE_DATA *pInitialData,
-        /* [annotation] */
-        __out_opt  ID3D11Buffer **ppBuffer)
+    ID3D11Device1*                This,
+    const D3D11_BUFFER_DESC*      pDesc,
+    const D3D11_SUBRESOURCE_DATA* pInitialData,
+    ID3D11Buffer**                ppBuffer)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateBuffer()\n");
 
@@ -158,16 +141,13 @@ static HRESULT STDMETHODCALLTYPE CreateBuffer(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateTexture1D(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_TEXTURE1D_DESC *pDesc,
-        /* [annotation] */
-        __in_xcount_opt(pDesc->MipLevels * pDesc->ArraySize)  const D3D11_SUBRESOURCE_DATA *pInitialData,
-        /* [annotation] */
-        __out_opt  ID3D11Texture1D **ppTexture1D)
+    ID3D11Device1*                This,
+    const D3D11_TEXTURE1D_DESC*   pDesc,
+    const D3D11_SUBRESOURCE_DATA* pInitialData,
+    ID3D11Texture1D**             ppTexture1D)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateTexture1D()\n");
 
@@ -177,18 +157,14 @@ static HRESULT STDMETHODCALLTYPE CreateTexture1D(
     return orig_vtable.CreateTexture1D(This, pDesc, pInitialData, ppTexture1D);
 }
 
-
 static HRESULT STDMETHODCALLTYPE CreateTexture2D(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_TEXTURE2D_DESC *pDesc,
-        /* [annotation] */
-        __in_xcount_opt(pDesc->MipLevels * pDesc->ArraySize)  const D3D11_SUBRESOURCE_DATA *pInitialData,
-        /* [annotation] */
-        __out_opt  ID3D11Texture2D **ppTexture2D)
+    ID3D11Device1*                This,
+    const D3D11_TEXTURE2D_DESC*   pDesc,
+    const D3D11_SUBRESOURCE_DATA* pInitialData,
+    ID3D11Texture2D**             ppTexture2D)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateTexture2D()\n");
 
@@ -198,18 +174,14 @@ static HRESULT STDMETHODCALLTYPE CreateTexture2D(
     return orig_vtable.CreateTexture2D(This, pDesc, pInitialData, ppTexture2D);
 }
 
-
 static HRESULT STDMETHODCALLTYPE CreateTexture3D(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_TEXTURE3D_DESC *pDesc,
-        /* [annotation] */
-        __in_xcount_opt(pDesc->MipLevels)  const D3D11_SUBRESOURCE_DATA *pInitialData,
-        /* [annotation] */
-        __out_opt  ID3D11Texture3D **ppTexture3D)
+    ID3D11Device1*                This,
+    const D3D11_TEXTURE3D_DESC*   pDesc,
+    const D3D11_SUBRESOURCE_DATA* pInitialData,
+    ID3D11Texture3D**             ppTexture3D)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateTexture3D()\n");
 
@@ -220,16 +192,13 @@ static HRESULT STDMETHODCALLTYPE CreateTexture3D(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateShaderResourceView(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  ID3D11Resource *pResource,
-        /* [annotation] */
-        __in_opt  const D3D11_SHADER_RESOURCE_VIEW_DESC *pDesc,
-        /* [annotation] */
-        __out_opt  ID3D11ShaderResourceView **ppSRView)
+    ID3D11Device1*                         This,
+    ID3D11Resource*                        pResource,
+    const D3D11_SHADER_RESOURCE_VIEW_DESC* pDesc,
+    ID3D11ShaderResourceView**             ppSRView)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateShaderResourceView()\n");
 
@@ -240,16 +209,13 @@ static HRESULT STDMETHODCALLTYPE CreateShaderResourceView(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateUnorderedAccessView(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  ID3D11Resource *pResource,
-        /* [annotation] */
-        __in_opt  const D3D11_UNORDERED_ACCESS_VIEW_DESC *pDesc,
-        /* [annotation] */
-        __out_opt  ID3D11UnorderedAccessView **ppUAView)
+    ID3D11Device1*                          This,
+    ID3D11Resource*                         pResource,
+    const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc,
+    ID3D11UnorderedAccessView**             ppUAView)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateUnorderedAccessView()\n");
 
@@ -260,16 +226,13 @@ static HRESULT STDMETHODCALLTYPE CreateUnorderedAccessView(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateRenderTargetView(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  ID3D11Resource *pResource,
-        /* [annotation] */
-        __in_opt  const D3D11_RENDER_TARGET_VIEW_DESC *pDesc,
-        /* [annotation] */
-        __out_opt  ID3D11RenderTargetView **ppRTView)
+    ID3D11Device1*                       This,
+    ID3D11Resource*                      pResource,
+    const D3D11_RENDER_TARGET_VIEW_DESC* pDesc,
+    ID3D11RenderTargetView**             ppRTView)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateRenderTargetView()\n");
 
@@ -280,16 +243,13 @@ static HRESULT STDMETHODCALLTYPE CreateRenderTargetView(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateDepthStencilView(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  ID3D11Resource *pResource,
-        /* [annotation] */
-        __in_opt  const D3D11_DEPTH_STENCIL_VIEW_DESC *pDesc,
-        /* [annotation] */
-        __out_opt  ID3D11DepthStencilView **ppDepthStencilView)
+    ID3D11Device1*                       This,
+    ID3D11Resource*                      pResource,
+    const D3D11_DEPTH_STENCIL_VIEW_DESC* pDesc,
+    ID3D11DepthStencilView**             ppDepthStencilView)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateDepthStencilView()\n");
 
@@ -300,20 +260,15 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilView(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateInputLayout(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in_ecount(NumElements)  const D3D11_INPUT_ELEMENT_DESC *pInputElementDescs,
-        /* [annotation] */
-        __in_range( 0, D3D11_IA_VERTEX_INPUT_STRUCTURE_ELEMENT_COUNT )  UINT NumElements,
-        /* [annotation] */
-        __in  const void *pShaderBytecodeWithInputSignature,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __out_opt  ID3D11InputLayout **ppInputLayout)
+    ID3D11Device1*                  This,
+    const D3D11_INPUT_ELEMENT_DESC* pInputElementDescs,
+    UINT                            NumElements,
+    const void*                     pShaderBytecodeWithInputSignature,
+    SIZE_T                          BytecodeLength,
+    ID3D11InputLayout**             ppInputLayout)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateInputLayout()\n");
 
@@ -324,18 +279,14 @@ static HRESULT STDMETHODCALLTYPE CreateInputLayout(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateVertexShader(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const void *pShaderBytecode,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __in_opt  ID3D11ClassLinkage *pClassLinkage,
-        /* [annotation] */
-        __out_opt  ID3D11VertexShader **ppVertexShader)
+    ID3D11Device1*       This,
+    const void*          pShaderBytecode,
+    SIZE_T               BytecodeLength,
+    ID3D11ClassLinkage*  pClassLinkage,
+    ID3D11VertexShader** ppVertexShader)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateVertexShader()\n");
 
@@ -346,18 +297,14 @@ static HRESULT STDMETHODCALLTYPE CreateVertexShader(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateGeometryShader(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const void *pShaderBytecode,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __in_opt  ID3D11ClassLinkage *pClassLinkage,
-        /* [annotation] */
-        __out_opt  ID3D11GeometryShader **ppGeometryShader)
+    ID3D11Device1*         This,
+    const void*            pShaderBytecode,
+    SIZE_T                 BytecodeLength,
+    ID3D11ClassLinkage*    pClassLinkage,
+    ID3D11GeometryShader** ppGeometryShader)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateGeometryShader()\n");
 
@@ -368,28 +315,19 @@ static HRESULT STDMETHODCALLTYPE CreateGeometryShader(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateGeometryShaderWithStreamOutput(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const void *pShaderBytecode,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __in_ecount_opt(NumEntries)  const D3D11_SO_DECLARATION_ENTRY *pSODeclaration,
-        /* [annotation] */
-        __in_range( 0, D3D11_SO_STREAM_COUNT * D3D11_SO_OUTPUT_COMPONENT_COUNT )  UINT NumEntries,
-        /* [annotation] */
-        __in_ecount_opt(NumStrides)  const UINT *pBufferStrides,
-        /* [annotation] */
-        __in_range( 0, D3D11_SO_BUFFER_SLOT_COUNT )  UINT NumStrides,
-        /* [annotation] */
-        __in  UINT RasterizedStream,
-        /* [annotation] */
-        __in_opt  ID3D11ClassLinkage *pClassLinkage,
-        /* [annotation] */
-        __out_opt  ID3D11GeometryShader **ppGeometryShader)
+    ID3D11Device1*                    This,
+    const void*                       pShaderBytecode,
+    SIZE_T                            BytecodeLength,
+    const D3D11_SO_DECLARATION_ENTRY* pSODeclaration,
+    UINT                              NumEntries,
+    const UINT*                       pBufferStrides,
+    UINT                              NumStrides,
+    UINT                              RasterizedStream,
+    ID3D11ClassLinkage*               pClassLinkage,
+    ID3D11GeometryShader**            ppGeometryShader)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateGeometryShaderWithStreamOutput()\n");
 
@@ -400,18 +338,14 @@ static HRESULT STDMETHODCALLTYPE CreateGeometryShaderWithStreamOutput(
 }
 
 static HRESULT STDMETHODCALLTYPE CreatePixelShader(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const void *pShaderBytecode,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __in_opt  ID3D11ClassLinkage *pClassLinkage,
-        /* [annotation] */
-        __out_opt  ID3D11PixelShader **ppPixelShader)
+    ID3D11Device1*      This,
+    const void*         pShaderBytecode,
+    SIZE_T              BytecodeLength,
+    ID3D11ClassLinkage* pClassLinkage,
+    ID3D11PixelShader** ppPixelShader)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreatePixelShader()\n");
 
@@ -422,18 +356,14 @@ static HRESULT STDMETHODCALLTYPE CreatePixelShader(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateHullShader(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const void *pShaderBytecode,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __in_opt  ID3D11ClassLinkage *pClassLinkage,
-        /* [annotation] */
-        __out_opt  ID3D11HullShader **ppHullShader)
+    ID3D11Device1*      This,
+    const void*         pShaderBytecode,
+    SIZE_T              BytecodeLength,
+    ID3D11ClassLinkage* pClassLinkage,
+    ID3D11HullShader**  ppHullShader)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateHullShader()\n");
 
@@ -444,18 +374,14 @@ static HRESULT STDMETHODCALLTYPE CreateHullShader(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateDomainShader(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const void *pShaderBytecode,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __in_opt  ID3D11ClassLinkage *pClassLinkage,
-        /* [annotation] */
-        __out_opt  ID3D11DomainShader **ppDomainShader)
+    ID3D11Device1*       This,
+    const void*          pShaderBytecode,
+    SIZE_T               BytecodeLength,
+    ID3D11ClassLinkage*  pClassLinkage,
+    ID3D11DomainShader** ppDomainShader)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateDomainShader()\n");
 
@@ -466,18 +392,14 @@ static HRESULT STDMETHODCALLTYPE CreateDomainShader(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateComputeShader(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const void *pShaderBytecode,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __in_opt  ID3D11ClassLinkage *pClassLinkage,
-        /* [annotation] */
-        __out_opt  ID3D11ComputeShader **ppComputeShader)
+    ID3D11Device1*        This,
+    const void*           pShaderBytecode,
+    SIZE_T                BytecodeLength,
+    ID3D11ClassLinkage*   pClassLinkage,
+    ID3D11ComputeShader** ppComputeShader)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateComputeShader()\n");
 
@@ -488,12 +410,11 @@ static HRESULT STDMETHODCALLTYPE CreateComputeShader(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateClassLinkage(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __out  ID3D11ClassLinkage **ppLinkage)
+    ID3D11Device1*       This,
+    ID3D11ClassLinkage** ppLinkage)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateClassLinkage()\n");
 
@@ -504,14 +425,12 @@ static HRESULT STDMETHODCALLTYPE CreateClassLinkage(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateBlendState(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_BLEND_DESC *pBlendStateDesc,
-        /* [annotation] */
-        __out_opt  ID3D11BlendState **ppBlendState)
+    ID3D11Device1*          This,
+    const D3D11_BLEND_DESC* pBlendStateDesc,
+    ID3D11BlendState**      ppBlendState)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateBlendState()\n");
 
@@ -522,14 +441,12 @@ static HRESULT STDMETHODCALLTYPE CreateBlendState(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateDepthStencilState(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_DEPTH_STENCIL_DESC *pDepthStencilDesc,
-        /* [annotation] */
-        __out_opt  ID3D11DepthStencilState **ppDepthStencilState)
+    ID3D11Device1*                  This,
+    const D3D11_DEPTH_STENCIL_DESC* pDepthStencilDesc,
+    ID3D11DepthStencilState**       ppDepthStencilState)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateDepthStencilState()\n");
 
@@ -540,14 +457,12 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilState(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateRasterizerState(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_RASTERIZER_DESC *pRasterizerDesc,
-        /* [annotation] */
-        __out_opt  ID3D11RasterizerState **ppRasterizerState)
+    ID3D11Device1*               This,
+    const D3D11_RASTERIZER_DESC* pRasterizerDesc,
+    ID3D11RasterizerState**      ppRasterizerState)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateRasterizerState()\n");
 
@@ -558,14 +473,12 @@ static HRESULT STDMETHODCALLTYPE CreateRasterizerState(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateSamplerState(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_SAMPLER_DESC *pSamplerDesc,
-        /* [annotation] */
-        __out_opt  ID3D11SamplerState **ppSamplerState)
+    ID3D11Device1*            This,
+    const D3D11_SAMPLER_DESC* pSamplerDesc,
+    ID3D11SamplerState**      ppSamplerState)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateSamplerState()\n");
 
@@ -576,14 +489,12 @@ static HRESULT STDMETHODCALLTYPE CreateSamplerState(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateQuery(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_QUERY_DESC *pQueryDesc,
-        /* [annotation] */
-        __out_opt  ID3D11Query **ppQuery)
+    ID3D11Device1*          This,
+    const D3D11_QUERY_DESC* pQueryDesc,
+    ID3D11Query**           ppQuery)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateQuery()\n");
 
@@ -594,14 +505,12 @@ static HRESULT STDMETHODCALLTYPE CreateQuery(
 }
 
 static HRESULT STDMETHODCALLTYPE CreatePredicate(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_QUERY_DESC *pPredicateDesc,
-        /* [annotation] */
-        __out_opt  ID3D11Predicate **ppPredicate)
+    ID3D11Device1*          This,
+    const D3D11_QUERY_DESC* pPredicateDesc,
+    ID3D11Predicate**       ppPredicate)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreatePredicate()\n");
 
@@ -612,14 +521,12 @@ static HRESULT STDMETHODCALLTYPE CreatePredicate(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateCounter(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_COUNTER_DESC *pCounterDesc,
-        /* [annotation] */
-        __out_opt  ID3D11Counter **ppCounter)
+    ID3D11Device1*            This,
+    const D3D11_COUNTER_DESC* pCounterDesc,
+    ID3D11Counter**           ppCounter)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateCounter()\n");
 
@@ -630,13 +537,12 @@ static HRESULT STDMETHODCALLTYPE CreateCounter(
 }
 
 static HRESULT STDMETHODCALLTYPE CreateDeferredContext(
-        ID3D11Device1 * This,
-        UINT ContextFlags,
-        /* [annotation] */
-        __out_opt  ID3D11DeviceContext **ppDeferredContext)
+    ID3D11Device1*        This,
+    UINT                  ContextFlags,
+    ID3D11DeviceContext** ppDeferredContext)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CreateDeferredContext()\n");
 
@@ -647,15 +553,12 @@ static HRESULT STDMETHODCALLTYPE CreateDeferredContext(
 }
 
 static HRESULT STDMETHODCALLTYPE OpenSharedResource(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  HANDLE hResource,
-        /* [annotation] */
-        __in  REFIID ReturnedInterface,
-        /* [annotation] */
-        __out_opt  void **ppResource)
+    ID3D11Device1* This,
+    HANDLE         hResource,
+    REFIID         ReturnedInterface,
+    void**         ppResource)
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::OpenSharedResource()\n");
 
@@ -666,14 +569,12 @@ static HRESULT STDMETHODCALLTYPE OpenSharedResource(
 }
 
 static HRESULT STDMETHODCALLTYPE CheckFormatSupport(
-    ID3D11Device1 * This,
-    /* [annotation] */
-    __in  DXGI_FORMAT Format,
-    /* [annotation] */
-    __out  UINT *pFormatSupport)
+    ID3D11Device1* This,
+    DXGI_FORMAT    Format,
+    UINT*          pFormatSupport)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CheckFormatSupport()\n");
 
@@ -684,16 +585,13 @@ static HRESULT STDMETHODCALLTYPE CheckFormatSupport(
 }
 
 static HRESULT STDMETHODCALLTYPE CheckMultisampleQualityLevels(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  DXGI_FORMAT Format,
-        /* [annotation] */
-        __in  UINT SampleCount,
-        /* [annotation] */
-        __out  UINT *pNumQualityLevels)
+    ID3D11Device1* This,
+    DXGI_FORMAT    Format,
+    UINT           SampleCount,
+    UINT*          pNumQualityLevels)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CheckMultisampleQualityLevels()\n");
 
@@ -704,12 +602,11 @@ static HRESULT STDMETHODCALLTYPE CheckMultisampleQualityLevels(
 }
 
 static void STDMETHODCALLTYPE CheckCounterInfo(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __out  D3D11_COUNTER_INFO *pCounterInfo)
+    ID3D11Device1*      This,
+    D3D11_COUNTER_INFO* pCounterInfo)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CheckCounterInfo()\n");
 
@@ -720,28 +617,19 @@ static void STDMETHODCALLTYPE CheckCounterInfo(
 }
 
 static HRESULT STDMETHODCALLTYPE CheckCounter(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_COUNTER_DESC *pDesc,
-        /* [annotation] */
-        __out  D3D11_COUNTER_TYPE *pType,
-        /* [annotation] */
-        __out  UINT *pActiveCounters,
-        /* [annotation] */
-        __out_ecount_opt(*pNameLength)  LPSTR szName,
-        /* [annotation] */
-        __inout_opt  UINT *pNameLength,
-        /* [annotation] */
-        __out_ecount_opt(*pUnitsLength)  LPSTR szUnits,
-        /* [annotation] */
-        __inout_opt  UINT *pUnitsLength,
-        /* [annotation] */
-        __out_ecount_opt(*pDescriptionLength)  LPSTR szDescription,
-        /* [annotation] */
-        __inout_opt  UINT *pDescriptionLength)
+    ID3D11Device1*            This,
+    const D3D11_COUNTER_DESC* pDesc,
+    D3D11_COUNTER_TYPE*       pType,
+    UINT*                     pActiveCounters,
+    LPSTR                     szName,
+    UINT*                     pNameLength,
+    LPSTR                     szUnits,
+    UINT*                     pUnitsLength,
+    LPSTR                     szDescription,
+    UINT*                     pDescriptionLength)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CheckCounter()\n");
 
@@ -752,14 +640,13 @@ static HRESULT STDMETHODCALLTYPE CheckCounter(
 }
 
 static HRESULT STDMETHODCALLTYPE CheckFeatureSupport(
-        ID3D11Device1 * This,
-        D3D11_FEATURE Feature,
-        /* [annotation] */
-        __out_bcount(FeatureSupportDataSize)  void *pFeatureSupportData,
-        UINT FeatureSupportDataSize)
+    ID3D11Device1* This,
+    D3D11_FEATURE  Feature,
+    void*          pFeatureSupportData,
+    UINT           FeatureSupportDataSize)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::CheckFeatureSupport()\n");
 
@@ -770,16 +657,13 @@ static HRESULT STDMETHODCALLTYPE CheckFeatureSupport(
 }
 
 static HRESULT STDMETHODCALLTYPE GetPrivateData(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  REFGUID guid,
-        /* [annotation] */
-        __inout  UINT *pDataSize,
-        /* [annotation] */
-        __out_bcount_opt(*pDataSize)  void *pData)
+    ID3D11Device1* This,
+    REFGUID        guid,
+    UINT*          pDataSize,
+    void*          pData)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::GetPrivateData()\n");
 
@@ -790,16 +674,13 @@ static HRESULT STDMETHODCALLTYPE GetPrivateData(
 }
 
 static HRESULT STDMETHODCALLTYPE SetPrivateData(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  REFGUID guid,
-        /* [annotation] */
-        __in  UINT DataSize,
-        /* [annotation] */
-        __in_bcount_opt(DataSize)  const void *pData)
+    ID3D11Device1* This,
+    REFGUID        guid,
+    UINT           DataSize,
+    const void*    pData)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::SetPrivateData()\n");
 
@@ -810,14 +691,12 @@ static HRESULT STDMETHODCALLTYPE SetPrivateData(
 }
 
 static HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  REFGUID guid,
-        /* [annotation] */
-        __in_opt  const IUnknown *pData)
+    ID3D11Device1*  This,
+    REFGUID         guid,
+    const IUnknown* pData)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::SetPrivateDataInterface()\n");
 
@@ -828,10 +707,10 @@ static HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
 }
 
 static D3D_FEATURE_LEVEL STDMETHODCALLTYPE GetFeatureLevel(
-        ID3D11Device1 * This)
+    ID3D11Device1* This)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::GetFeatureLevel()\n");
 
@@ -842,10 +721,10 @@ static D3D_FEATURE_LEVEL STDMETHODCALLTYPE GetFeatureLevel(
 }
 
 static UINT STDMETHODCALLTYPE GetCreationFlags(
-        ID3D11Device1 * This)
+    ID3D11Device1* This)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::GetCreationFlags()\n");
 
@@ -856,10 +735,10 @@ static UINT STDMETHODCALLTYPE GetCreationFlags(
 }
 
 static HRESULT STDMETHODCALLTYPE GetDeviceRemovedReason(
-        ID3D11Device1 * This)
+    ID3D11Device1* This)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::GetDeviceRemovedReason()\n");
 
@@ -870,12 +749,11 @@ static HRESULT STDMETHODCALLTYPE GetDeviceRemovedReason(
 }
 
 static void STDMETHODCALLTYPE GetImmediateContext(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __out  ID3D11DeviceContext **ppImmediateContext)
+    ID3D11Device1*        This,
+    ID3D11DeviceContext** ppImmediateContext)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::GetImmediateContext()\n");
 
@@ -886,11 +764,11 @@ static void STDMETHODCALLTYPE GetImmediateContext(
 }
 
 static HRESULT STDMETHODCALLTYPE SetExceptionMode(
-        ID3D11Device1 * This,
-        UINT RaiseFlags)
+    ID3D11Device1* This,
+    UINT           RaiseFlags)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::SetExceptionMode()\n");
 
@@ -901,10 +779,10 @@ static HRESULT STDMETHODCALLTYPE SetExceptionMode(
 }
 
 static UINT STDMETHODCALLTYPE GetExceptionMode(
-        ID3D11Device1 * This)
+    ID3D11Device1* This)
 
 {
-    ID3D11Device1 *device = lookup_hooked_device(This);
+    ID3D11Device1* device = lookup_hooked_device(This);
 
     HOOK_DEBUG("HookedDevice::GetExceptionMode()\n");
 
@@ -914,7 +792,8 @@ static UINT STDMETHODCALLTYPE GetExceptionMode(
     return orig_vtable.GetExceptionMode(This);
 }
 
-static void install_hooks(ID3D11Device1 *device)
+static void install_hooks(
+    ID3D11Device1* device)
 {
     SIZE_T hook_id;
 
@@ -928,6 +807,7 @@ static void install_hooks(ID3D11Device1 *device)
     // case we miss one of the hooks below:
     memcpy(&orig_vtable, device->lpVtbl, sizeof(struct ID3D11Device1Vtbl));
 
+    // clang-format off
     // At the moment we are just throwing away the hook IDs - we should
     // probably hold on to them incase we need to remove the hooks later:
     cHookMgr.Hook(&hook_id, (void**)&orig_vtable.QueryInterface,                       device->lpVtbl->QueryInterface,                       QueryInterface);
@@ -973,36 +853,38 @@ static void install_hooks(ID3D11Device1 *device)
     cHookMgr.Hook(&hook_id, (void**)&orig_vtable.GetImmediateContext,                  device->lpVtbl->GetImmediateContext,                  GetImmediateContext);
     cHookMgr.Hook(&hook_id, (void**)&orig_vtable.SetExceptionMode,                     device->lpVtbl->SetExceptionMode,                     SetExceptionMode);
     cHookMgr.Hook(&hook_id, (void**)&orig_vtable.GetExceptionMode,                     device->lpVtbl->GetExceptionMode,                     GetExceptionMode);
+    // clang-format on
 }
 
 // This provides another ID3D11Device1 interface for calling the original
 // functions in orig_vtable. This replaces mOrigDevice in the HackerDevice and
 // elsewhere and gives us a way to call back into the game with minimal code
 // changes.
-typedef struct ID3D11Device1Trampoline {
-    CONST_VTBL struct ID3D11Device1Vtbl *lpVtbl;
-    ID3D11Device1 *orig_this;
+typedef struct ID3D11Device1Trampoline
+{
+    CONST_VTBL struct ID3D11Device1Vtbl* lpVtbl;
+    ID3D11Device1*                       orig_this;
 } ID3D11Device1Trampoline;
 
-
+// -----------------------------------------------------------------------------------------------
 // IUnknown
+
 static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
-        ID3D11Device1 * This,
-        /* [in] */ REFIID riid,
-        /* [annotation][iid_is][out] */
-        __RPC__deref_out  void **ppvObject)
+    ID3D11Device1* This,
+    REFIID         riid,
+    void**         ppvObject)
 {
     HOOK_DEBUG("TrampolineDevice::QueryInterface()\n");
     return orig_vtable.QueryInterface(((ID3D11Device1Trampoline*)This)->orig_this, riid, ppvObject);
 }
 static ULONG STDMETHODCALLTYPE TrampolineAddRef(
-        ID3D11Device1 *This)
+    ID3D11Device1* This)
 {
     HOOK_DEBUG("TrampolineDevice::AddRef()\n");
     return orig_vtable.AddRef(((ID3D11Device1Trampoline*)This)->orig_this);
 }
 static ULONG STDMETHODCALLTYPE TrampolineRelease(
-        ID3D11Device1 *This)
+    ID3D11Device1* This)
 {
     ULONG ref;
 
@@ -1014,459 +896,356 @@ static ULONG STDMETHODCALLTYPE TrampolineRelease(
 
     return ref;
 }
+
+// -----------------------------------------------------------------------------------------------
 // ID3D11Device1
+
 static HRESULT STDMETHODCALLTYPE TrampolineCreateBuffer(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_BUFFER_DESC *pDesc,
-        /* [annotation] */
-        __in_opt  const D3D11_SUBRESOURCE_DATA *pInitialData,
-        /* [annotation] */
-        __out_opt  ID3D11Buffer **ppBuffer)
+    ID3D11Device1*                This,
+    const D3D11_BUFFER_DESC*      pDesc,
+    const D3D11_SUBRESOURCE_DATA* pInitialData,
+    ID3D11Buffer**                ppBuffer)
 {
     HOOK_DEBUG("TrampolineDevice::CreateBuffer()\n");
     return orig_vtable.CreateBuffer(((ID3D11Device1Trampoline*)This)->orig_this, pDesc, pInitialData, ppBuffer);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateTexture1D(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_TEXTURE1D_DESC *pDesc,
-        /* [annotation] */
-        __in_xcount_opt(pDesc->MipLevels * pDesc->ArraySize)  const D3D11_SUBRESOURCE_DATA *pInitialData,
-        /* [annotation] */
-        __out_opt  ID3D11Texture1D **ppTexture1D)
+    ID3D11Device1*                This,
+    const D3D11_TEXTURE1D_DESC*   pDesc,
+    const D3D11_SUBRESOURCE_DATA* pInitialData,
+    ID3D11Texture1D**             ppTexture1D)
 {
     HOOK_DEBUG("TrampolineDevice::CreateTexture1D()\n");
     return orig_vtable.CreateTexture1D(((ID3D11Device1Trampoline*)This)->orig_this, pDesc, pInitialData, ppTexture1D);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateTexture2D(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_TEXTURE2D_DESC *pDesc,
-        /* [annotation] */
-        __in_xcount_opt(pDesc->MipLevels * pDesc->ArraySize)  const D3D11_SUBRESOURCE_DATA *pInitialData,
-        /* [annotation] */
-        __out_opt  ID3D11Texture2D **ppTexture2D)
+    ID3D11Device1*                This,
+    const D3D11_TEXTURE2D_DESC*   pDesc,
+    const D3D11_SUBRESOURCE_DATA* pInitialData,
+    ID3D11Texture2D**             ppTexture2D)
 {
     HOOK_DEBUG("TrampolineDevice::CreateTexture2D()\n");
     return orig_vtable.CreateTexture2D(((ID3D11Device1Trampoline*)This)->orig_this, pDesc, pInitialData, ppTexture2D);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateTexture3D(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_TEXTURE3D_DESC *pDesc,
-        /* [annotation] */
-        __in_xcount_opt(pDesc->MipLevels)  const D3D11_SUBRESOURCE_DATA *pInitialData,
-        /* [annotation] */
-        __out_opt  ID3D11Texture3D **ppTexture3D)
+    ID3D11Device1*                This,
+    const D3D11_TEXTURE3D_DESC*   pDesc,
+    const D3D11_SUBRESOURCE_DATA* pInitialData,
+    ID3D11Texture3D**             ppTexture3D)
 {
     HOOK_DEBUG("TrampolineDevice::CreateTexture3D()\n");
     return orig_vtable.CreateTexture3D(((ID3D11Device1Trampoline*)This)->orig_this, pDesc, pInitialData, ppTexture3D);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateShaderResourceView(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  ID3D11Resource *pResource,
-        /* [annotation] */
-        __in_opt  const D3D11_SHADER_RESOURCE_VIEW_DESC *pDesc,
-        /* [annotation] */
-        __out_opt  ID3D11ShaderResourceView **ppSRView)
+    ID3D11Device1*                         This,
+    ID3D11Resource*                        pResource,
+    const D3D11_SHADER_RESOURCE_VIEW_DESC* pDesc,
+    ID3D11ShaderResourceView**             ppSRView)
 {
     HOOK_DEBUG("TrampolineDevice::CreateShaderResourceView()\n");
     return orig_vtable.CreateShaderResourceView(((ID3D11Device1Trampoline*)This)->orig_this, pResource, pDesc, ppSRView);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateUnorderedAccessView(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  ID3D11Resource *pResource,
-        /* [annotation] */
-        __in_opt  const D3D11_UNORDERED_ACCESS_VIEW_DESC *pDesc,
-        /* [annotation] */
-        __out_opt  ID3D11UnorderedAccessView **ppUAView)
+    ID3D11Device1*                          This,
+    ID3D11Resource*                         pResource,
+    const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc,
+    ID3D11UnorderedAccessView**             ppUAView)
 {
     HOOK_DEBUG("TrampolineDevice::CreateUnorderedAccessView()\n");
     return orig_vtable.CreateUnorderedAccessView(((ID3D11Device1Trampoline*)This)->orig_this, pResource, pDesc, ppUAView);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateRenderTargetView(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  ID3D11Resource *pResource,
-        /* [annotation] */
-        __in_opt  const D3D11_RENDER_TARGET_VIEW_DESC *pDesc,
-        /* [annotation] */
-        __out_opt  ID3D11RenderTargetView **ppRTView)
+    ID3D11Device1*                       This,
+    ID3D11Resource*                      pResource,
+    const D3D11_RENDER_TARGET_VIEW_DESC* pDesc,
+    ID3D11RenderTargetView**             ppRTView)
 {
     HOOK_DEBUG("TrampolineDevice::CreateRenderTargetView()\n");
     return orig_vtable.CreateRenderTargetView(((ID3D11Device1Trampoline*)This)->orig_this, pResource, pDesc, ppRTView);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateDepthStencilView(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  ID3D11Resource *pResource,
-        /* [annotation] */
-        __in_opt  const D3D11_DEPTH_STENCIL_VIEW_DESC *pDesc,
-        /* [annotation] */
-        __out_opt  ID3D11DepthStencilView **ppDepthStencilView)
+    ID3D11Device1*                       This,
+    ID3D11Resource*                      pResource,
+    const D3D11_DEPTH_STENCIL_VIEW_DESC* pDesc,
+    ID3D11DepthStencilView**             ppDepthStencilView)
 {
     HOOK_DEBUG("TrampolineDevice::CreateDepthStencilView()\n");
     return orig_vtable.CreateDepthStencilView(((ID3D11Device1Trampoline*)This)->orig_this, pResource, pDesc, ppDepthStencilView);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateInputLayout(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in_ecount(NumElements)  const D3D11_INPUT_ELEMENT_DESC *pInputElementDescs,
-        /* [annotation] */
-        __in_range( 0, D3D11_IA_VERTEX_INPUT_STRUCTURE_ELEMENT_COUNT )  UINT NumElements,
-        /* [annotation] */
-        __in  const void *pShaderBytecodeWithInputSignature,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __out_opt  ID3D11InputLayout **ppInputLayout)
+    ID3D11Device1*                  This,
+    const D3D11_INPUT_ELEMENT_DESC* pInputElementDescs,
+    UINT                            NumElements,
+    const void*                     pShaderBytecodeWithInputSignature,
+    SIZE_T                          BytecodeLength,
+    ID3D11InputLayout**             ppInputLayout)
 {
     HOOK_DEBUG("TrampolineDevice::CreateInputLayout()\n");
     return orig_vtable.CreateInputLayout(((ID3D11Device1Trampoline*)This)->orig_this, pInputElementDescs, NumElements, pShaderBytecodeWithInputSignature, BytecodeLength, ppInputLayout);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateVertexShader(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const void *pShaderBytecode,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __in_opt  ID3D11ClassLinkage *pClassLinkage,
-        /* [annotation] */
-        __out_opt  ID3D11VertexShader **ppVertexShader)
+    ID3D11Device1*       This,
+    const void*          pShaderBytecode,
+    SIZE_T               BytecodeLength,
+    ID3D11ClassLinkage*  pClassLinkage,
+    ID3D11VertexShader** ppVertexShader)
 {
     HOOK_DEBUG("TrampolineDevice::CreateVertexShader()\n");
     return orig_vtable.CreateVertexShader(((ID3D11Device1Trampoline*)This)->orig_this, pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateGeometryShader(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const void *pShaderBytecode,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __in_opt  ID3D11ClassLinkage *pClassLinkage,
-        /* [annotation] */
-        __out_opt  ID3D11GeometryShader **ppGeometryShader)
+    ID3D11Device1*         This,
+    const void*            pShaderBytecode,
+    SIZE_T                 BytecodeLength,
+    ID3D11ClassLinkage*    pClassLinkage,
+    ID3D11GeometryShader** ppGeometryShader)
 {
     HOOK_DEBUG("TrampolineDevice::CreateGeometryShader()\n");
     return orig_vtable.CreateGeometryShader(((ID3D11Device1Trampoline*)This)->orig_this, pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateGeometryShaderWithStreamOutput(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const void *pShaderBytecode,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __in_ecount_opt(NumEntries)  const D3D11_SO_DECLARATION_ENTRY *pSODeclaration,
-        /* [annotation] */
-        __in_range( 0, D3D11_SO_STREAM_COUNT * D3D11_SO_OUTPUT_COMPONENT_COUNT )  UINT NumEntries,
-        /* [annotation] */
-        __in_ecount_opt(NumStrides)  const UINT *pBufferStrides,
-        /* [annotation] */
-        __in_range( 0, D3D11_SO_BUFFER_SLOT_COUNT )  UINT NumStrides,
-        /* [annotation] */
-        __in  UINT RasterizedStream,
-        /* [annotation] */
-        __in_opt  ID3D11ClassLinkage *pClassLinkage,
-        /* [annotation] */
-        __out_opt  ID3D11GeometryShader **ppGeometryShader)
+    ID3D11Device1*                    This,
+    const void*                       pShaderBytecode,
+    SIZE_T                            BytecodeLength,
+    const D3D11_SO_DECLARATION_ENTRY* pSODeclaration,
+    UINT                              NumEntries,
+    const UINT*                       pBufferStrides,
+    UINT                              NumStrides,
+    UINT                              RasterizedStream,
+    ID3D11ClassLinkage*               pClassLinkage,
+    ID3D11GeometryShader**            ppGeometryShader)
 {
     HOOK_DEBUG("TrampolineDevice::CreateGeometryShaderWithStreamOutput()\n");
     return orig_vtable.CreateGeometryShaderWithStreamOutput(((ID3D11Device1Trampoline*)This)->orig_this, pShaderBytecode, BytecodeLength, pSODeclaration, NumEntries, pBufferStrides, NumStrides, RasterizedStream, pClassLinkage, ppGeometryShader);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreatePixelShader(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const void *pShaderBytecode,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __in_opt  ID3D11ClassLinkage *pClassLinkage,
-        /* [annotation] */
-        __out_opt  ID3D11PixelShader **ppPixelShader)
+    ID3D11Device1*      This,
+    const void*         pShaderBytecode,
+    SIZE_T              BytecodeLength,
+    ID3D11ClassLinkage* pClassLinkage,
+    ID3D11PixelShader** ppPixelShader)
 {
     HOOK_DEBUG("TrampolineDevice::CreatePixelShader()\n");
     return orig_vtable.CreatePixelShader(((ID3D11Device1Trampoline*)This)->orig_this, pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateHullShader(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const void *pShaderBytecode,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __in_opt  ID3D11ClassLinkage *pClassLinkage,
-        /* [annotation] */
-        __out_opt  ID3D11HullShader **ppHullShader)
+    ID3D11Device1*      This,
+    const void*         pShaderBytecode,
+    SIZE_T              BytecodeLength,
+    ID3D11ClassLinkage* pClassLinkage,
+    ID3D11HullShader**  ppHullShader)
 {
     HOOK_DEBUG("TrampolineDevice::CreateHullShader()\n");
     return orig_vtable.CreateHullShader(((ID3D11Device1Trampoline*)This)->orig_this, pShaderBytecode, BytecodeLength, pClassLinkage, ppHullShader);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateDomainShader(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const void *pShaderBytecode,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __in_opt  ID3D11ClassLinkage *pClassLinkage,
-        /* [annotation] */
-        __out_opt  ID3D11DomainShader **ppDomainShader)
+    ID3D11Device1*       This,
+    const void*          pShaderBytecode,
+    SIZE_T               BytecodeLength,
+    ID3D11ClassLinkage*  pClassLinkage,
+    ID3D11DomainShader** ppDomainShader)
 {
     HOOK_DEBUG("TrampolineDevice::CreateDomainShader()\n");
     return orig_vtable.CreateDomainShader(((ID3D11Device1Trampoline*)This)->orig_this, pShaderBytecode, BytecodeLength, pClassLinkage, ppDomainShader);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateComputeShader(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const void *pShaderBytecode,
-        /* [annotation] */
-        __in  SIZE_T BytecodeLength,
-        /* [annotation] */
-        __in_opt  ID3D11ClassLinkage *pClassLinkage,
-        /* [annotation] */
-        __out_opt  ID3D11ComputeShader **ppComputeShader)
+    ID3D11Device1*        This,
+    const void*           pShaderBytecode,
+    SIZE_T                BytecodeLength,
+    ID3D11ClassLinkage*   pClassLinkage,
+    ID3D11ComputeShader** ppComputeShader)
 {
     HOOK_DEBUG("TrampolineDevice::CreateComputeShader()\n");
     return orig_vtable.CreateComputeShader(((ID3D11Device1Trampoline*)This)->orig_this, pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateClassLinkage(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __out  ID3D11ClassLinkage **ppLinkage)
+    ID3D11Device1*       This,
+    ID3D11ClassLinkage** ppLinkage)
 {
     HOOK_DEBUG("TrampolineDevice::CreateClassLinkage()\n");
     return orig_vtable.CreateClassLinkage(((ID3D11Device1Trampoline*)This)->orig_this, ppLinkage);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateBlendState(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_BLEND_DESC *pBlendStateDesc,
-        /* [annotation] */
-        __out_opt  ID3D11BlendState **ppBlendState)
+    ID3D11Device1*          This,
+    const D3D11_BLEND_DESC* pBlendStateDesc,
+    ID3D11BlendState**      ppBlendState)
 {
     HOOK_DEBUG("TrampolineDevice::CreateBlendState()\n");
     return orig_vtable.CreateBlendState(((ID3D11Device1Trampoline*)This)->orig_this, pBlendStateDesc, ppBlendState);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateDepthStencilState(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_DEPTH_STENCIL_DESC *pDepthStencilDesc,
-        /* [annotation] */
-        __out_opt  ID3D11DepthStencilState **ppDepthStencilState)
+    ID3D11Device1*                  This,
+    const D3D11_DEPTH_STENCIL_DESC* pDepthStencilDesc,
+    ID3D11DepthStencilState**       ppDepthStencilState)
 {
     HOOK_DEBUG("TrampolineDevice::CreateDepthStencilState()\n");
     return orig_vtable.CreateDepthStencilState(((ID3D11Device1Trampoline*)This)->orig_this, pDepthStencilDesc, ppDepthStencilState);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateRasterizerState(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_RASTERIZER_DESC *pRasterizerDesc,
-        /* [annotation] */
-        __out_opt  ID3D11RasterizerState **ppRasterizerState)
+    ID3D11Device1*               This,
+    const D3D11_RASTERIZER_DESC* pRasterizerDesc,
+    ID3D11RasterizerState**      ppRasterizerState)
 {
     HOOK_DEBUG("TrampolineDevice::CreateRasterizerState()\n");
     return orig_vtable.CreateRasterizerState(((ID3D11Device1Trampoline*)This)->orig_this, pRasterizerDesc, ppRasterizerState);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateSamplerState(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_SAMPLER_DESC *pSamplerDesc,
-        /* [annotation] */
-        __out_opt  ID3D11SamplerState **ppSamplerState)
+    ID3D11Device1*            This,
+    const D3D11_SAMPLER_DESC* pSamplerDesc,
+    ID3D11SamplerState**      ppSamplerState)
 {
     HOOK_DEBUG("TrampolineDevice::CreateSamplerState()\n");
     return orig_vtable.CreateSamplerState(((ID3D11Device1Trampoline*)This)->orig_this, pSamplerDesc, ppSamplerState);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateQuery(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_QUERY_DESC *pQueryDesc,
-        /* [annotation] */
-        __out_opt  ID3D11Query **ppQuery)
+    ID3D11Device1*          This,
+    const D3D11_QUERY_DESC* pQueryDesc,
+    ID3D11Query**           ppQuery)
 {
     HOOK_DEBUG("TrampolineDevice::CreateQuery()\n");
     return orig_vtable.CreateQuery(((ID3D11Device1Trampoline*)This)->orig_this, pQueryDesc, ppQuery);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreatePredicate(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_QUERY_DESC *pPredicateDesc,
-        /* [annotation] */
-        __out_opt  ID3D11Predicate **ppPredicate)
+    ID3D11Device1*          This,
+    const D3D11_QUERY_DESC* pPredicateDesc,
+    ID3D11Predicate**       ppPredicate)
 {
     HOOK_DEBUG("TrampolineDevice::CreatePredicate()\n");
     return orig_vtable.CreatePredicate(((ID3D11Device1Trampoline*)This)->orig_this, pPredicateDesc, ppPredicate);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateCounter(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_COUNTER_DESC *pCounterDesc,
-        /* [annotation] */
-        __out_opt  ID3D11Counter **ppCounter)
+    ID3D11Device1*            This,
+    const D3D11_COUNTER_DESC* pCounterDesc,
+    ID3D11Counter**           ppCounter)
 {
     HOOK_DEBUG("TrampolineDevice::CreateCounter()\n");
     return orig_vtable.CreateCounter(((ID3D11Device1Trampoline*)This)->orig_this, pCounterDesc, ppCounter);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCreateDeferredContext(
-        ID3D11Device1 * This,
-        UINT ContextFlags,
-        /* [annotation] */
-        __out_opt  ID3D11DeviceContext **ppDeferredContext)
+    ID3D11Device1*        This,
+    UINT                  ContextFlags,
+    ID3D11DeviceContext** ppDeferredContext)
 {
     HOOK_DEBUG("TrampolineDevice::CreateDeferredContext()\n");
     return orig_vtable.CreateDeferredContext(((ID3D11Device1Trampoline*)This)->orig_this, ContextFlags, ppDeferredContext);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineOpenSharedResource(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  HANDLE hResource,
-        /* [annotation] */
-        __in  REFIID ReturnedInterface,
-        /* [annotation] */
-        __out_opt  void **ppResource)
+    ID3D11Device1* This,
+    HANDLE         hResource,
+    REFIID         ReturnedInterface,
+    void**         ppResource)
 {
     HOOK_DEBUG("TrampolineDevice::OpenSharedResource()\n");
     return orig_vtable.OpenSharedResource(((ID3D11Device1Trampoline*)This)->orig_this, hResource, ReturnedInterface, ppResource);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCheckFormatSupport(
-    ID3D11Device1 * This,
-    /* [annotation] */
-    __in  DXGI_FORMAT Format,
-    /* [annotation] */
-    __out  UINT *pFormatSupport)
+    ID3D11Device1* This,
+    DXGI_FORMAT    Format,
+    UINT*          pFormatSupport)
 {
     HOOK_DEBUG("TrampolineDevice::CheckFormatSupport()\n");
     return orig_vtable.CheckFormatSupport(((ID3D11Device1Trampoline*)This)->orig_this, Format, pFormatSupport);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCheckMultisampleQualityLevels(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  DXGI_FORMAT Format,
-        /* [annotation] */
-        __in  UINT SampleCount,
-        /* [annotation] */
-        __out  UINT *pNumQualityLevels)
+    ID3D11Device1* This,
+    DXGI_FORMAT    Format,
+    UINT           SampleCount,
+    UINT*          pNumQualityLevels)
 {
     HOOK_DEBUG("TrampolineDevice::CheckMultisampleQualityLevels()\n");
     return orig_vtable.CheckMultisampleQualityLevels(((ID3D11Device1Trampoline*)This)->orig_this, Format, SampleCount, pNumQualityLevels);
 }
 static void STDMETHODCALLTYPE TrampolineCheckCounterInfo(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __out  D3D11_COUNTER_INFO *pCounterInfo)
+    ID3D11Device1*      This,
+    D3D11_COUNTER_INFO* pCounterInfo)
 {
     HOOK_DEBUG("TrampolineDevice::CheckCounterInfo()\n");
     return orig_vtable.CheckCounterInfo(((ID3D11Device1Trampoline*)This)->orig_this, pCounterInfo);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCheckCounter(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  const D3D11_COUNTER_DESC *pDesc,
-        /* [annotation] */
-        __out  D3D11_COUNTER_TYPE *pType,
-        /* [annotation] */
-        __out  UINT *pActiveCounters,
-        /* [annotation] */
-        __out_ecount_opt(*pNameLength)  LPSTR szName,
-        /* [annotation] */
-        __inout_opt  UINT *pNameLength,
-        /* [annotation] */
-        __out_ecount_opt(*pUnitsLength)  LPSTR szUnits,
-        /* [annotation] */
-        __inout_opt  UINT *pUnitsLength,
-        /* [annotation] */
-        __out_ecount_opt(*pDescriptionLength)  LPSTR szDescription,
-        /* [annotation] */
-        __inout_opt  UINT *pDescriptionLength)
+    ID3D11Device1*            This,
+    const D3D11_COUNTER_DESC* pDesc,
+    D3D11_COUNTER_TYPE*       pType,
+    UINT*                     pActiveCounters,
+    LPSTR                     szName,
+    UINT*                     pNameLength,
+    LPSTR                     szUnits,
+    UINT*                     pUnitsLength,
+    LPSTR                     szDescription,
+    UINT*                     pDescriptionLength)
 {
     HOOK_DEBUG("TrampolineDevice::CheckCounter()\n");
     return orig_vtable.CheckCounter(((ID3D11Device1Trampoline*)This)->orig_this, pDesc, pType, pActiveCounters, szName, pNameLength, szUnits, pUnitsLength, szDescription, pDescriptionLength);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineCheckFeatureSupport(
-        ID3D11Device1 * This,
-        D3D11_FEATURE Feature,
-        /* [annotation] */
-        __out_bcount(FeatureSupportDataSize)  void *pFeatureSupportData,
-        UINT FeatureSupportDataSize)
+    ID3D11Device1* This,
+    D3D11_FEATURE  Feature,
+    void*          pFeatureSupportData,
+    UINT           FeatureSupportDataSize)
 {
     HOOK_DEBUG("TrampolineDevice::CheckFeatureSupport()\n");
     return orig_vtable.CheckFeatureSupport(((ID3D11Device1Trampoline*)This)->orig_this, Feature, pFeatureSupportData, FeatureSupportDataSize);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineGetPrivateData(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  REFGUID guid,
-        /* [annotation] */
-        __inout  UINT *pDataSize,
-        /* [annotation] */
-        __out_bcount_opt(*pDataSize)  void *pData)
+    ID3D11Device1* This,
+    REFGUID        guid,
+    UINT*          pDataSize,
+    void*          pData)
 {
     HOOK_DEBUG("TrampolineDevice::GetPrivateData()\n");
     return orig_vtable.GetPrivateData(((ID3D11Device1Trampoline*)This)->orig_this, guid, pDataSize, pData);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateData(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  REFGUID guid,
-        /* [annotation] */
-        __in  UINT DataSize,
-        /* [annotation] */
-        __in_bcount_opt(DataSize)  const void *pData)
+    ID3D11Device1* This,
+    REFGUID        guid,
+    UINT           DataSize,
+    const void*    pData)
 {
     HOOK_DEBUG("TrampolineDevice::SetPrivateData()\n");
     return orig_vtable.SetPrivateData(((ID3D11Device1Trampoline*)This)->orig_this, guid, DataSize, pData);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateDataInterface(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __in  REFGUID guid,
-        /* [annotation] */
-        __in_opt  const IUnknown *pData)
+    ID3D11Device1*  This,
+    REFGUID         guid,
+    const IUnknown* pData)
 {
     HOOK_DEBUG("TrampolineDevice::SetPrivateDataInterface()\n");
     return orig_vtable.SetPrivateDataInterface(((ID3D11Device1Trampoline*)This)->orig_this, guid, pData);
 }
 static D3D_FEATURE_LEVEL STDMETHODCALLTYPE TrampolineGetFeatureLevel(
-        ID3D11Device1 * This)
+    ID3D11Device1* This)
 {
     HOOK_DEBUG("TrampolineDevice::GetFeatureLevel()\n");
     return orig_vtable.GetFeatureLevel(((ID3D11Device1Trampoline*)This)->orig_this);
 }
 static UINT STDMETHODCALLTYPE TrampolineGetCreationFlags(
-        ID3D11Device1 * This)
+    ID3D11Device1* This)
 {
     HOOK_DEBUG("TrampolineDevice::GetCreationFlags()\n");
     return orig_vtable.GetCreationFlags(((ID3D11Device1Trampoline*)This)->orig_this);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineGetDeviceRemovedReason(
-        ID3D11Device1 * This)
+    ID3D11Device1* This)
 {
     HOOK_DEBUG("TrampolineDevice::GetDeviceRemovedReason()\n");
     return orig_vtable.GetDeviceRemovedReason(((ID3D11Device1Trampoline*)This)->orig_this);
 }
 static void STDMETHODCALLTYPE TrampolineGetImmediateContext(
-        ID3D11Device1 * This,
-        /* [annotation] */
-        __out  ID3D11DeviceContext **ppImmediateContext)
+    ID3D11Device1*        This,
+    ID3D11DeviceContext** ppImmediateContext)
 {
     HOOK_DEBUG("TrampolineDevice::GetImmediateContext()\n");
     return orig_vtable.GetImmediateContext(((ID3D11Device1Trampoline*)This)->orig_this, ppImmediateContext);
 }
 static HRESULT STDMETHODCALLTYPE TrampolineSetExceptionMode(
-        ID3D11Device1 * This,
-        UINT RaiseFlags)
+    ID3D11Device1* This,
+    UINT           RaiseFlags)
 {
     HOOK_DEBUG("TrampolineDevice::SetExceptionMode()\n");
     return orig_vtable.SetExceptionMode(((ID3D11Device1Trampoline*)This)->orig_this, RaiseFlags);
 }
 static UINT STDMETHODCALLTYPE TrampolineGetExceptionMode(
-        ID3D11Device1 * This)
+    ID3D11Device1* This)
 {
     HOOK_DEBUG("TrampolineDevice::GetExceptionMode()\n");
     return orig_vtable.GetExceptionMode(((ID3D11Device1Trampoline*)This)->orig_this);
@@ -1518,11 +1297,35 @@ static CONST_VTBL struct ID3D11Device1Vtbl trampoline_vtable = {
     TrampolineGetExceptionMode,
 };
 
-ID3D11Device1* hook_device(ID3D11Device1 *orig_device, ID3D11Device1 *hacker_device)
+// -----------------------------------------------------------------------------------------------
+
+ID3D11Device1* lookup_hooked_device(
+    ID3D11Device1* orig_device)
 {
-    ID3D11Device1Trampoline *trampoline_device = new ID3D11Device1Trampoline();
-    trampoline_device->lpVtbl = &trampoline_vtable;
-    trampoline_device->orig_this = orig_device;
+    DeviceMap::iterator i;
+
+    if (!hooks_installed)
+        return NULL;
+
+    ENTER_CRITICAL_SECTION(&device_map_lock);
+    i = device_map.find(orig_device);
+    if (i == device_map.end())
+    {
+        LEAVE_CRITICAL_SECTION(&device_map_lock);
+        return NULL;
+    }
+    LEAVE_CRITICAL_SECTION(&device_map_lock);
+
+    return i->second;
+}
+
+ID3D11Device1* hook_device(
+    ID3D11Device1* orig_device,
+    ID3D11Device1* hacker_device)
+{
+    ID3D11Device1Trampoline* trampoline_device = new ID3D11Device1Trampoline();
+    trampoline_device->lpVtbl                  = &trampoline_vtable;
+    trampoline_device->orig_this               = orig_device;
 
     install_hooks(orig_device);
     ENTER_CRITICAL_SECTION(&device_map_lock);
