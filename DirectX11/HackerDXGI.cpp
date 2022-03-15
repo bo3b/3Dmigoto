@@ -74,9 +74,9 @@
 // -----------------------------------------------------------------------------
 // SetWindowPos hook, activated by full_screen=2 in d3dx.ini
 
-static BOOL(WINAPI* fnOrigSetWindowPos)(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) = nullptr;
+static BOOL(WINAPI* fn_orig_SetWindowPos)(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) = nullptr;
 
-static BOOL WINAPI Hooked_SetWindowPos(
+static BOOL WINAPI hooked_SetWindowPos(
     HWND hWnd,
     HWND hWndInsertAfter,
     int  X,
@@ -103,20 +103,20 @@ static BOOL WINAPI Hooked_SetWindowPos(
         return true;
     }
 
-    return fnOrigSetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
+    return fn_orig_SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
 }
 
-void InstallSetWindowPosHook()
+void install_SetWindowPos_hook()
 {
-    HINSTANCE hUser32;
+    HINSTANCE user32;
     int       fail = 0;
 
     // Only attempt to hook it once:
-    if (fnOrigSetWindowPos != nullptr)
+    if (fn_orig_SetWindowPos != nullptr)
         return;
 
-    hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
-    fail |= InstallHookLate(hUser32, "SetWindowPos", reinterpret_cast<void**>(&fnOrigSetWindowPos), Hooked_SetWindowPos);
+    user32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
+    fail |= InstallHookLate(user32, "SetWindowPos", reinterpret_cast<void**>(&fn_orig_SetWindowPos), hooked_SetWindowPos);
 
     if (fail)
     {
@@ -166,12 +166,12 @@ HackerSwapChain::HackerSwapChain(
     }
     else
     {
-        ID3D11DeviceContext* tmpContext = nullptr;
+        ID3D11DeviceContext* tmp_context = nullptr;
         // GetImmediateContext will bump the refcount for us.
         // In the case of hooking, GetImmediateContext will not return
         // a HackerContext, so we don't use it's return directly, but
         // rather just use it to make GetHackerContext valid:
-        hackerDevice->GetImmediateContext(&tmpContext);
+        hackerDevice->GetImmediateContext(&tmp_context);
         hackerContext = hackerDevice->GetHackerContext();
     }
 
@@ -277,7 +277,7 @@ void HackerSwapChain::RunFrameActions()
     // present. If we ever needed to run the command list before this
     // point, we should consider making an explicit "pre" command list for
     // that purpose rather than breaking the existing behaviour.
-    bool newEvent = DispatchInputEvents(hackerDevice);
+    bool new_event = DispatchInputEvents(hackerDevice);
 
     current_transition.UpdatePresets(hackerDevice);
     current_transition.UpdateTransitions(hackerDevice);
@@ -309,7 +309,7 @@ void HackerSwapChain::RunFrameActions()
         return;
 
     // Update the huntTime whenever we get fresh user input.
-    if (newEvent)
+    if (new_event)
         G->huntTime = time(nullptr);
 
     // Clear buffers after some user idle time.  This allows the buffers to be
@@ -395,17 +395,17 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::QueryInterface(
     IUnknown* unk_this = nullptr;
     HRESULT   hr_this  = origSwapChain1->QueryInterface(__uuidof(IUnknown), reinterpret_cast<void**>(&unk_this));
 
-    IUnknown* unk_ppvObject = nullptr;
-    HRESULT   hr_ppvObject  = static_cast<IUnknown*>(*ppvObject)->QueryInterface(__uuidof(IUnknown), reinterpret_cast<void**>(&unk_ppvObject));
+    IUnknown* unk_ppv_object = nullptr;
+    HRESULT   hr_ppv_object  = static_cast<IUnknown*>(*ppvObject)->QueryInterface(__uuidof(IUnknown), reinterpret_cast<void**>(&unk_ppv_object));
 
-    if (SUCCEEDED(hr_this) && SUCCEEDED(hr_ppvObject))
+    if (SUCCEEDED(hr_this) && SUCCEEDED(hr_ppv_object))
     {
         // For an actual case of this->QueryInterface(this), just return our HackerSwapChain object.
-        if (unk_this == unk_ppvObject)
+        if (unk_this == unk_ppv_object)
             *ppvObject = this;
 
         unk_this->Release();
-        unk_ppvObject->Release();
+        unk_ppv_object->Release();
 
         LOG_INFO("  return HackerSwapChain(%s@%p) wrapper of %p\n", type_name(this), this, origSwapChain1);
         return hr;
@@ -417,17 +417,17 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::QueryInterface(
 
 ULONG STDMETHODCALLTYPE HackerSwapChain::AddRef()
 {
-    ULONG ulRef = origSwapChain1->AddRef();
-    LOG_INFO("HackerSwapChain::AddRef(%s@%p), counter=%d, this=%p\n", type_name(this), this, ulRef, this);
-    return ulRef;
+    ULONG ul_ref = origSwapChain1->AddRef();
+    LOG_INFO("HackerSwapChain::AddRef(%s@%p), counter=%d, this=%p\n", type_name(this), this, ul_ref, this);
+    return ul_ref;
 }
 
 ULONG STDMETHODCALLTYPE HackerSwapChain::Release()
 {
-    ULONG ulRef = origSwapChain1->Release();
-    LOG_INFO("HackerSwapChain::Release(%s@%p), counter=%d, this=%p\n", type_name(this), this, ulRef, this);
+    ULONG ul_ref = origSwapChain1->Release();
+    LOG_INFO("HackerSwapChain::Release(%s@%p), counter=%d, this=%p\n", type_name(this), this, ul_ref, this);
 
-    if (ulRef <= 0)
+    if (ul_ref <= 0)
     {
         if (hackerDevice)
         {
@@ -452,12 +452,12 @@ ULONG STDMETHODCALLTYPE HackerSwapChain::Release()
         if (last_fullscreen_swap_chain == origSwapChain1)
             last_fullscreen_swap_chain = nullptr;
 
-        LOG_INFO("  counter=%d, this=%p, deleting self.\n", ulRef, this);
+        LOG_INFO("  counter=%d, this=%p, deleting self.\n", ul_ref, this);
 
         delete this;
         return 0L;
     }
-    return ulRef;
+    return ul_ref;
 }
 
 // -----------------------------------------------------------------------------
@@ -626,7 +626,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::SetFullscreenState(
             // issues with hooking the call when we don't need it.
             // Unconfirmed, but possibly related to:
             // https://forums.geforce.com/default/topic/685657/3d-vision/3dmigoto-now-open-source-/post/4801159/#4801159
-            InstallSetWindowPosHook();
+            install_SetWindowPos_hook();
         }
 
         Fullscreen = true;
@@ -733,7 +733,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::ResizeTarget(
     // Unity does ResizeTarget -> SetFullscreenState -> ResizeBuffers
 
     memcpy(&new_desc, pNewTargetParameters, sizeof(DXGI_MODE_DESC));
-    ForceDisplayMode(&new_desc);
+    force_display_mode(&new_desc);
 
     HRESULT hr = origSwapChain1->ResizeTarget(&new_desc);
     LOG_INFO("  returns result = %x\n", hr);
@@ -1016,9 +1016,9 @@ void HackerUpscalingSwapChain::CreateRenderTarget(
         break;
         case 1:
         {
-            IDXGIFactory* pFactory = nullptr;
+            IDXGIFactory* factory = nullptr;
 
-            hr = origSwapChain1->GetParent(IID_PPV_ARGS(&pFactory));
+            hr = origSwapChain1->GetParent(IID_PPV_ARGS(&factory));
             if (FAILED(hr))
             {
                 LogOverlay(LOG_DIRE, "HackerUpscalingSwapChain::createRenderTarget failed to get DXGIFactory\n");
@@ -1027,25 +1027,25 @@ void HackerUpscalingSwapChain::CreateRenderTarget(
                 beep_sad_failure();
                 return;
             }
-            const UINT flagBackup = pFakeSwapChainDesc->Flags;
+            const UINT flag_backup = pFakeSwapChainDesc->Flags;
 
             // fake swap chain should have no influence on window
             pFakeSwapChainDesc->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-            IDXGISwapChain* swapChain;
+            IDXGISwapChain* swap_chain;
             get_tls()->hooking_quirk_protection = true;
-            pFactory->CreateSwapChain(hackerDevice->GetPossiblyHookedOrigDevice1(), pFakeSwapChainDesc, &swapChain);
+            factory->CreateSwapChain(hackerDevice->GetPossiblyHookedOrigDevice1(), pFakeSwapChainDesc, &swap_chain);
             get_tls()->hooking_quirk_protection = false;
 
-            pFactory->Release();
+            factory->Release();
 
-            HRESULT res = swapChain->QueryInterface(IID_PPV_ARGS(&fakeSwapChain1));
+            HRESULT res = swap_chain->QueryInterface(IID_PPV_ARGS(&fakeSwapChain1));
             if (SUCCEEDED(res))
-                swapChain->Release();
+                swap_chain->Release();
             else
-                fakeSwapChain1 = reinterpret_cast<IDXGISwapChain1*>(swapChain);
+                fakeSwapChain1 = reinterpret_cast<IDXGISwapChain1*>(swap_chain);
 
             // restore old state in case fall back is required ToDo: Unlikely needed now.
-            pFakeSwapChainDesc->Flags = flagBackup;
+            pFakeSwapChainDesc->Flags = flag_backup;
         }
         break;
         default:
@@ -1268,16 +1268,16 @@ HRESULT STDMETHODCALLTYPE HackerUpscalingSwapChain::ResizeTarget(
 
     if (G->SCREEN_UPSCALING == 2)
     {
-        DEVMODE dmScreenSettings;
-        memset(&dmScreenSettings, 0, sizeof(dmScreenSettings));
-        dmScreenSettings.dmSize       = sizeof(dmScreenSettings);
-        dmScreenSettings.dmPelsWidth  = static_cast<unsigned long>(width);
-        dmScreenSettings.dmPelsHeight = static_cast<unsigned long>(height);
-        dmScreenSettings.dmBitsPerPel = 32;
-        dmScreenSettings.dmFields     = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
+        DEVMODE dm_screen_settings;
+        memset(&dm_screen_settings, 0, sizeof(dm_screen_settings));
+        dm_screen_settings.dmSize       = sizeof(dm_screen_settings);
+        dm_screen_settings.dmPelsWidth  = static_cast<unsigned long>(width);
+        dm_screen_settings.dmPelsHeight = static_cast<unsigned long>(height);
+        dm_screen_settings.dmBitsPerPel = 32;
+        dm_screen_settings.dmFields     = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
 
         // Change the display settings to full screen.
-        LONG displ_chainge_res = ChangeDisplaySettingsEx(nullptr, &dmScreenSettings, nullptr, CDS_FULLSCREEN, nullptr);
+        LONG displ_chainge_res = ChangeDisplaySettingsEx(nullptr, &dm_screen_settings, nullptr, CDS_FULLSCREEN, nullptr);
         hr                     = displ_chainge_res == 0 ? S_OK : DXGI_ERROR_INVALID_CALL;
     }
     else if (G->SCREEN_UPSCALING == 1)
