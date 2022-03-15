@@ -13,8 +13,8 @@ class HackerDevice;
 class HackerContext;
 class Overlay;
 
-void InstallSetWindowPosHook();
-void ForceDisplayMode(DXGI_MODE_DESC* BufferDesc);
+void install_SetWindowPos_hook();
+void force_display_mode(DXGI_MODE_DESC* BufferDesc);
 
 // -----------------------------------------------------------------------------
 // Hierarchy:
