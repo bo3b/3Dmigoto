@@ -13,8 +13,9 @@ class HackerDevice;
 class HackerContext;
 class Overlay;
 
+// Non member functions referenced in HookedDXGI
 void install_SetWindowPos_hook();
-void force_display_mode(DXGI_MODE_DESC* BufferDesc);
+void force_display_mode(DXGI_MODE_DESC* buffer_desc);
 
 // -----------------------------------------------------------------------------
 // Hierarchy:
@@ -28,7 +29,7 @@ protected:
     HackerContext*   hackerContext;
 
 public:
-    HackerSwapChain(IDXGISwapChain1* pSwapChain, HackerDevice* pDevice, HackerContext* pContext);
+    HackerSwapChain(IDXGISwapChain1* swap_chain, HackerDevice* device, HackerContext* context);
 
     IDXGISwapChain1* GetOrigSwapChain1();
     void             UpdateStereoParams();
@@ -204,11 +205,11 @@ private:
     UINT height;
 
 public:
-    HackerUpscalingSwapChain(IDXGISwapChain1* pSwapChain, HackerDevice* pHackerDevice, HackerContext* pHackerContext, DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc, UINT newWidth, UINT newHeight);
+    HackerUpscalingSwapChain(IDXGISwapChain1* swap_chain, HackerDevice* hacker_device, HackerContext* hacker_context, DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc, UINT new_width, UINT new_height);
     ~HackerUpscalingSwapChain();
 
 private:
-    void CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* pFakeSwapChainDesc);
+    void CreateRenderTarget(DXGI_SWAP_CHAIN_DESC* fake_swap_chain_desc);
 
 public:
     // clang-format off
