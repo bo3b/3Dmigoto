@@ -13,9 +13,9 @@ CheckOptions:
  - { key: readability-identifier-naming.MacroDefinitionCase,   value: UPPER_CASE }
  - { key: readability-identifier-naming.GlobalConstantCase,    value: lower_case }
  - { key: readability-identifier-naming.ConstantCase,          value: lower_case }
- # - { key: readability-identifier-naming.GlobalFunctionCase,    value: lower_case }
- # - { key: readability-identifier-naming.FunctionCase,          value: lower_case }
- # - { key: readability-identifier-naming.ParameterCase,         value: lower_case }
+ - { key: readability-identifier-naming.GlobalFunctionCase,    value: lower_case }
+ - { key: readability-identifier-naming.FunctionCase,          value: lower_case }
+ #- { key: readability-identifier-naming.ParameterCase,         value: lower_case }
  - { key: readability-identifier-naming.ParameterPackCase,     value: camelBack }
  - { key: readability-identifier-naming.StructCase,            value: lower_case }
  - { key: readability-identifier-naming.VariableCase,          value: lower_case }
