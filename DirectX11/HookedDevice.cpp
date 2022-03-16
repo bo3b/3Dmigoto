@@ -130,7 +130,6 @@ static HRESULT STDMETHODCALLTYPE CreateBuffer(
     const D3D11_BUFFER_DESC*      pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
     ID3D11Buffer**                ppBuffer)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -147,7 +146,6 @@ static HRESULT STDMETHODCALLTYPE CreateTexture1D(
     const D3D11_TEXTURE1D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
     ID3D11Texture1D**             ppTexture1D)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -164,7 +162,6 @@ static HRESULT STDMETHODCALLTYPE CreateTexture2D(
     const D3D11_TEXTURE2D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
     ID3D11Texture2D**             ppTexture2D)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -181,7 +178,6 @@ static HRESULT STDMETHODCALLTYPE CreateTexture3D(
     const D3D11_TEXTURE3D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
     ID3D11Texture3D**             ppTexture3D)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -198,7 +194,6 @@ static HRESULT STDMETHODCALLTYPE CreateShaderResourceView(
     ID3D11Resource*                        pResource,
     const D3D11_SHADER_RESOURCE_VIEW_DESC* pDesc,
     ID3D11ShaderResourceView**             ppSRView)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -215,7 +210,6 @@ static HRESULT STDMETHODCALLTYPE CreateUnorderedAccessView(
     ID3D11Resource*                         pResource,
     const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc,
     ID3D11UnorderedAccessView**             ppUAView)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -232,7 +226,6 @@ static HRESULT STDMETHODCALLTYPE CreateRenderTargetView(
     ID3D11Resource*                      pResource,
     const D3D11_RENDER_TARGET_VIEW_DESC* pDesc,
     ID3D11RenderTargetView**             ppRTView)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -249,7 +242,6 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilView(
     ID3D11Resource*                      pResource,
     const D3D11_DEPTH_STENCIL_VIEW_DESC* pDesc,
     ID3D11DepthStencilView**             ppDepthStencilView)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -268,7 +260,6 @@ static HRESULT STDMETHODCALLTYPE CreateInputLayout(
     const void*                     pShaderBytecodeWithInputSignature,
     SIZE_T                          BytecodeLength,
     ID3D11InputLayout**             ppInputLayout)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -286,7 +277,6 @@ static HRESULT STDMETHODCALLTYPE CreateVertexShader(
     SIZE_T               BytecodeLength,
     ID3D11ClassLinkage*  pClassLinkage,
     ID3D11VertexShader** ppVertexShader)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -304,7 +294,6 @@ static HRESULT STDMETHODCALLTYPE CreateGeometryShader(
     SIZE_T                 BytecodeLength,
     ID3D11ClassLinkage*    pClassLinkage,
     ID3D11GeometryShader** ppGeometryShader)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -327,7 +316,6 @@ static HRESULT STDMETHODCALLTYPE CreateGeometryShaderWithStreamOutput(
     UINT                              RasterizedStream,
     ID3D11ClassLinkage*               pClassLinkage,
     ID3D11GeometryShader**            ppGeometryShader)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -345,7 +333,6 @@ static HRESULT STDMETHODCALLTYPE CreatePixelShader(
     SIZE_T              BytecodeLength,
     ID3D11ClassLinkage* pClassLinkage,
     ID3D11PixelShader** ppPixelShader)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -363,7 +350,6 @@ static HRESULT STDMETHODCALLTYPE CreateHullShader(
     SIZE_T              BytecodeLength,
     ID3D11ClassLinkage* pClassLinkage,
     ID3D11HullShader**  ppHullShader)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -381,7 +367,6 @@ static HRESULT STDMETHODCALLTYPE CreateDomainShader(
     SIZE_T               BytecodeLength,
     ID3D11ClassLinkage*  pClassLinkage,
     ID3D11DomainShader** ppDomainShader)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -399,7 +384,6 @@ static HRESULT STDMETHODCALLTYPE CreateComputeShader(
     SIZE_T                BytecodeLength,
     ID3D11ClassLinkage*   pClassLinkage,
     ID3D11ComputeShader** ppComputeShader)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -414,7 +398,6 @@ static HRESULT STDMETHODCALLTYPE CreateComputeShader(
 static HRESULT STDMETHODCALLTYPE CreateClassLinkage(
     ID3D11Device1*       This,
     ID3D11ClassLinkage** ppLinkage)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -430,7 +413,6 @@ static HRESULT STDMETHODCALLTYPE CreateBlendState(
     ID3D11Device1*          This,
     const D3D11_BLEND_DESC* pBlendStateDesc,
     ID3D11BlendState**      ppBlendState)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -446,7 +428,6 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilState(
     ID3D11Device1*                  This,
     const D3D11_DEPTH_STENCIL_DESC* pDepthStencilDesc,
     ID3D11DepthStencilState**       ppDepthStencilState)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -462,7 +443,6 @@ static HRESULT STDMETHODCALLTYPE CreateRasterizerState(
     ID3D11Device1*               This,
     const D3D11_RASTERIZER_DESC* pRasterizerDesc,
     ID3D11RasterizerState**      ppRasterizerState)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -478,7 +458,6 @@ static HRESULT STDMETHODCALLTYPE CreateSamplerState(
     ID3D11Device1*            This,
     const D3D11_SAMPLER_DESC* pSamplerDesc,
     ID3D11SamplerState**      ppSamplerState)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -494,7 +473,6 @@ static HRESULT STDMETHODCALLTYPE CreateQuery(
     ID3D11Device1*          This,
     const D3D11_QUERY_DESC* pQueryDesc,
     ID3D11Query**           ppQuery)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -510,7 +488,6 @@ static HRESULT STDMETHODCALLTYPE CreatePredicate(
     ID3D11Device1*          This,
     const D3D11_QUERY_DESC* pPredicateDesc,
     ID3D11Predicate**       ppPredicate)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -526,7 +503,6 @@ static HRESULT STDMETHODCALLTYPE CreateCounter(
     ID3D11Device1*            This,
     const D3D11_COUNTER_DESC* pCounterDesc,
     ID3D11Counter**           ppCounter)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -542,7 +518,6 @@ static HRESULT STDMETHODCALLTYPE CreateDeferredContext(
     ID3D11Device1*        This,
     UINT                  ContextFlags,
     ID3D11DeviceContext** ppDeferredContext)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -574,7 +549,6 @@ static HRESULT STDMETHODCALLTYPE CheckFormatSupport(
     ID3D11Device1* This,
     DXGI_FORMAT    Format,
     UINT*          pFormatSupport)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -591,7 +565,6 @@ static HRESULT STDMETHODCALLTYPE CheckMultisampleQualityLevels(
     DXGI_FORMAT    Format,
     UINT           SampleCount,
     UINT*          pNumQualityLevels)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -606,7 +579,6 @@ static HRESULT STDMETHODCALLTYPE CheckMultisampleQualityLevels(
 static void STDMETHODCALLTYPE CheckCounterInfo(
     ID3D11Device1*      This,
     D3D11_COUNTER_INFO* pCounterInfo)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -629,7 +601,6 @@ static HRESULT STDMETHODCALLTYPE CheckCounter(
     UINT*                     pUnitsLength,
     LPSTR                     szDescription,
     UINT*                     pDescriptionLength)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -646,7 +617,6 @@ static HRESULT STDMETHODCALLTYPE CheckFeatureSupport(
     D3D11_FEATURE  Feature,
     void*          pFeatureSupportData,
     UINT           FeatureSupportDataSize)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -663,7 +633,6 @@ static HRESULT STDMETHODCALLTYPE GetPrivateData(
     REFGUID        guid,
     UINT*          pDataSize,
     void*          pData)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -680,7 +649,6 @@ static HRESULT STDMETHODCALLTYPE SetPrivateData(
     REFGUID        guid,
     UINT           DataSize,
     const void*    pData)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -696,7 +664,6 @@ static HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
     ID3D11Device1*  This,
     REFGUID         guid,
     const IUnknown* pData)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -710,7 +677,6 @@ static HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
 
 static D3D_FEATURE_LEVEL STDMETHODCALLTYPE GetFeatureLevel(
     ID3D11Device1* This)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -724,7 +690,6 @@ static D3D_FEATURE_LEVEL STDMETHODCALLTYPE GetFeatureLevel(
 
 static UINT STDMETHODCALLTYPE GetCreationFlags(
     ID3D11Device1* This)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -738,7 +703,6 @@ static UINT STDMETHODCALLTYPE GetCreationFlags(
 
 static HRESULT STDMETHODCALLTYPE GetDeviceRemovedReason(
     ID3D11Device1* This)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -753,7 +717,6 @@ static HRESULT STDMETHODCALLTYPE GetDeviceRemovedReason(
 static void STDMETHODCALLTYPE GetImmediateContext(
     ID3D11Device1*        This,
     ID3D11DeviceContext** ppImmediateContext)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -768,7 +731,6 @@ static void STDMETHODCALLTYPE GetImmediateContext(
 static HRESULT STDMETHODCALLTYPE SetExceptionMode(
     ID3D11Device1* This,
     UINT           RaiseFlags)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -782,7 +744,6 @@ static HRESULT STDMETHODCALLTYPE SetExceptionMode(
 
 static UINT STDMETHODCALLTYPE GetExceptionMode(
     ID3D11Device1* This)
-
 {
     ID3D11Device1* device = lookup_hooked_device(This);
 
@@ -871,7 +832,7 @@ typedef struct
 // -----------------------------------------------------------------------------------------------
 // IUnknown
 
-static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
+static HRESULT STDMETHODCALLTYPE trampoline_QueryInterface(
     ID3D11Device1* This,
     REFIID         riid,
     void**         ppvObject)
@@ -879,13 +840,13 @@ static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
     HOOK_DEBUG("TrampolineDevice::QueryInterface()\n");
     return orig_vtable.QueryInterface(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, riid, ppvObject);
 }
-static ULONG STDMETHODCALLTYPE TrampolineAddRef(
+static ULONG STDMETHODCALLTYPE trampoline_AddRef(
     ID3D11Device1* This)
 {
     HOOK_DEBUG("TrampolineDevice::AddRef()\n");
     return orig_vtable.AddRef(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this);
 }
-static ULONG STDMETHODCALLTYPE TrampolineRelease(
+static ULONG STDMETHODCALLTYPE trampoline_Release(
     ID3D11Device1* This)
 {
     ULONG ref;
@@ -902,7 +863,7 @@ static ULONG STDMETHODCALLTYPE TrampolineRelease(
 // -----------------------------------------------------------------------------------------------
 // ID3D11Device1
 
-static HRESULT STDMETHODCALLTYPE TrampolineCreateBuffer(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateBuffer(
     ID3D11Device1*                This,
     const D3D11_BUFFER_DESC*      pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
@@ -911,7 +872,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateBuffer(
     HOOK_DEBUG("TrampolineDevice::CreateBuffer()\n");
     return orig_vtable.CreateBuffer(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pDesc, pInitialData, ppBuffer);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateTexture1D(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateTexture1D(
     ID3D11Device1*                This,
     const D3D11_TEXTURE1D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
@@ -920,7 +881,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateTexture1D(
     HOOK_DEBUG("TrampolineDevice::CreateTexture1D()\n");
     return orig_vtable.CreateTexture1D(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pDesc, pInitialData, ppTexture1D);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateTexture2D(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateTexture2D(
     ID3D11Device1*                This,
     const D3D11_TEXTURE2D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
@@ -929,7 +890,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateTexture2D(
     HOOK_DEBUG("TrampolineDevice::CreateTexture2D()\n");
     return orig_vtable.CreateTexture2D(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pDesc, pInitialData, ppTexture2D);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateTexture3D(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateTexture3D(
     ID3D11Device1*                This,
     const D3D11_TEXTURE3D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
@@ -938,7 +899,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateTexture3D(
     HOOK_DEBUG("TrampolineDevice::CreateTexture3D()\n");
     return orig_vtable.CreateTexture3D(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pDesc, pInitialData, ppTexture3D);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateShaderResourceView(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateShaderResourceView(
     ID3D11Device1*                         This,
     ID3D11Resource*                        pResource,
     const D3D11_SHADER_RESOURCE_VIEW_DESC* pDesc,
@@ -947,7 +908,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateShaderResourceView(
     HOOK_DEBUG("TrampolineDevice::CreateShaderResourceView()\n");
     return orig_vtable.CreateShaderResourceView(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pResource, pDesc, ppSRView);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateUnorderedAccessView(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateUnorderedAccessView(
     ID3D11Device1*                          This,
     ID3D11Resource*                         pResource,
     const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc,
@@ -956,7 +917,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateUnorderedAccessView(
     HOOK_DEBUG("TrampolineDevice::CreateUnorderedAccessView()\n");
     return orig_vtable.CreateUnorderedAccessView(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pResource, pDesc, ppUAView);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateRenderTargetView(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateRenderTargetView(
     ID3D11Device1*                       This,
     ID3D11Resource*                      pResource,
     const D3D11_RENDER_TARGET_VIEW_DESC* pDesc,
@@ -965,7 +926,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateRenderTargetView(
     HOOK_DEBUG("TrampolineDevice::CreateRenderTargetView()\n");
     return orig_vtable.CreateRenderTargetView(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pResource, pDesc, ppRTView);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateDepthStencilView(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateDepthStencilView(
     ID3D11Device1*                       This,
     ID3D11Resource*                      pResource,
     const D3D11_DEPTH_STENCIL_VIEW_DESC* pDesc,
@@ -974,7 +935,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateDepthStencilView(
     HOOK_DEBUG("TrampolineDevice::CreateDepthStencilView()\n");
     return orig_vtable.CreateDepthStencilView(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pResource, pDesc, ppDepthStencilView);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateInputLayout(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateInputLayout(
     ID3D11Device1*                  This,
     const D3D11_INPUT_ELEMENT_DESC* pInputElementDescs,
     UINT                            NumElements,
@@ -985,7 +946,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateInputLayout(
     HOOK_DEBUG("TrampolineDevice::CreateInputLayout()\n");
     return orig_vtable.CreateInputLayout(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pInputElementDescs, NumElements, pShaderBytecodeWithInputSignature, BytecodeLength, ppInputLayout);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateVertexShader(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateVertexShader(
     ID3D11Device1*       This,
     const void*          pShaderBytecode,
     SIZE_T               BytecodeLength,
@@ -995,7 +956,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateVertexShader(
     HOOK_DEBUG("TrampolineDevice::CreateVertexShader()\n");
     return orig_vtable.CreateVertexShader(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pShaderBytecode, BytecodeLength, pClassLinkage, ppVertexShader);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateGeometryShader(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateGeometryShader(
     ID3D11Device1*         This,
     const void*            pShaderBytecode,
     SIZE_T                 BytecodeLength,
@@ -1005,7 +966,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateGeometryShader(
     HOOK_DEBUG("TrampolineDevice::CreateGeometryShader()\n");
     return orig_vtable.CreateGeometryShader(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateGeometryShaderWithStreamOutput(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateGeometryShaderWithStreamOutput(
     ID3D11Device1*                    This,
     const void*                       pShaderBytecode,
     SIZE_T                            BytecodeLength,
@@ -1020,7 +981,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateGeometryShaderWithStreamOutput(
     HOOK_DEBUG("TrampolineDevice::CreateGeometryShaderWithStreamOutput()\n");
     return orig_vtable.CreateGeometryShaderWithStreamOutput(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pShaderBytecode, BytecodeLength, pSODeclaration, NumEntries, pBufferStrides, NumStrides, RasterizedStream, pClassLinkage, ppGeometryShader);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreatePixelShader(
+static HRESULT STDMETHODCALLTYPE trampoline_CreatePixelShader(
     ID3D11Device1*      This,
     const void*         pShaderBytecode,
     SIZE_T              BytecodeLength,
@@ -1030,7 +991,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreatePixelShader(
     HOOK_DEBUG("TrampolineDevice::CreatePixelShader()\n");
     return orig_vtable.CreatePixelShader(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pShaderBytecode, BytecodeLength, pClassLinkage, ppPixelShader);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateHullShader(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateHullShader(
     ID3D11Device1*      This,
     const void*         pShaderBytecode,
     SIZE_T              BytecodeLength,
@@ -1040,7 +1001,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateHullShader(
     HOOK_DEBUG("TrampolineDevice::CreateHullShader()\n");
     return orig_vtable.CreateHullShader(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pShaderBytecode, BytecodeLength, pClassLinkage, ppHullShader);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateDomainShader(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateDomainShader(
     ID3D11Device1*       This,
     const void*          pShaderBytecode,
     SIZE_T               BytecodeLength,
@@ -1050,7 +1011,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateDomainShader(
     HOOK_DEBUG("TrampolineDevice::CreateDomainShader()\n");
     return orig_vtable.CreateDomainShader(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pShaderBytecode, BytecodeLength, pClassLinkage, ppDomainShader);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateComputeShader(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateComputeShader(
     ID3D11Device1*        This,
     const void*           pShaderBytecode,
     SIZE_T                BytecodeLength,
@@ -1060,14 +1021,14 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateComputeShader(
     HOOK_DEBUG("TrampolineDevice::CreateComputeShader()\n");
     return orig_vtable.CreateComputeShader(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pShaderBytecode, BytecodeLength, pClassLinkage, ppComputeShader);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateClassLinkage(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateClassLinkage(
     ID3D11Device1*       This,
     ID3D11ClassLinkage** ppLinkage)
 {
     HOOK_DEBUG("TrampolineDevice::CreateClassLinkage()\n");
     return orig_vtable.CreateClassLinkage(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, ppLinkage);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateBlendState(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateBlendState(
     ID3D11Device1*          This,
     const D3D11_BLEND_DESC* pBlendStateDesc,
     ID3D11BlendState**      ppBlendState)
@@ -1075,7 +1036,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateBlendState(
     HOOK_DEBUG("TrampolineDevice::CreateBlendState()\n");
     return orig_vtable.CreateBlendState(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pBlendStateDesc, ppBlendState);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateDepthStencilState(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateDepthStencilState(
     ID3D11Device1*                  This,
     const D3D11_DEPTH_STENCIL_DESC* pDepthStencilDesc,
     ID3D11DepthStencilState**       ppDepthStencilState)
@@ -1083,7 +1044,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateDepthStencilState(
     HOOK_DEBUG("TrampolineDevice::CreateDepthStencilState()\n");
     return orig_vtable.CreateDepthStencilState(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pDepthStencilDesc, ppDepthStencilState);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateRasterizerState(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateRasterizerState(
     ID3D11Device1*               This,
     const D3D11_RASTERIZER_DESC* pRasterizerDesc,
     ID3D11RasterizerState**      ppRasterizerState)
@@ -1091,7 +1052,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateRasterizerState(
     HOOK_DEBUG("TrampolineDevice::CreateRasterizerState()\n");
     return orig_vtable.CreateRasterizerState(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pRasterizerDesc, ppRasterizerState);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateSamplerState(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateSamplerState(
     ID3D11Device1*            This,
     const D3D11_SAMPLER_DESC* pSamplerDesc,
     ID3D11SamplerState**      ppSamplerState)
@@ -1099,7 +1060,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateSamplerState(
     HOOK_DEBUG("TrampolineDevice::CreateSamplerState()\n");
     return orig_vtable.CreateSamplerState(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pSamplerDesc, ppSamplerState);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateQuery(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateQuery(
     ID3D11Device1*          This,
     const D3D11_QUERY_DESC* pQueryDesc,
     ID3D11Query**           ppQuery)
@@ -1107,7 +1068,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateQuery(
     HOOK_DEBUG("TrampolineDevice::CreateQuery()\n");
     return orig_vtable.CreateQuery(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pQueryDesc, ppQuery);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreatePredicate(
+static HRESULT STDMETHODCALLTYPE trampoline_CreatePredicate(
     ID3D11Device1*          This,
     const D3D11_QUERY_DESC* pPredicateDesc,
     ID3D11Predicate**       ppPredicate)
@@ -1115,7 +1076,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreatePredicate(
     HOOK_DEBUG("TrampolineDevice::CreatePredicate()\n");
     return orig_vtable.CreatePredicate(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pPredicateDesc, ppPredicate);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateCounter(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateCounter(
     ID3D11Device1*            This,
     const D3D11_COUNTER_DESC* pCounterDesc,
     ID3D11Counter**           ppCounter)
@@ -1123,7 +1084,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateCounter(
     HOOK_DEBUG("TrampolineDevice::CreateCounter()\n");
     return orig_vtable.CreateCounter(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pCounterDesc, ppCounter);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCreateDeferredContext(
+static HRESULT STDMETHODCALLTYPE trampoline_CreateDeferredContext(
     ID3D11Device1*        This,
     UINT                  ContextFlags,
     ID3D11DeviceContext** ppDeferredContext)
@@ -1131,7 +1092,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCreateDeferredContext(
     HOOK_DEBUG("TrampolineDevice::CreateDeferredContext()\n");
     return orig_vtable.CreateDeferredContext(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, ContextFlags, ppDeferredContext);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineOpenSharedResource(
+static HRESULT STDMETHODCALLTYPE trampoline_OpenSharedResource(
     ID3D11Device1* This,
     HANDLE         hResource,
     REFIID         ReturnedInterface,
@@ -1140,7 +1101,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineOpenSharedResource(
     HOOK_DEBUG("TrampolineDevice::OpenSharedResource()\n");
     return orig_vtable.OpenSharedResource(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, hResource, ReturnedInterface, ppResource);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCheckFormatSupport(
+static HRESULT STDMETHODCALLTYPE trampoline_CheckFormatSupport(
     ID3D11Device1* This,
     DXGI_FORMAT    Format,
     UINT*          pFormatSupport)
@@ -1148,7 +1109,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCheckFormatSupport(
     HOOK_DEBUG("TrampolineDevice::CheckFormatSupport()\n");
     return orig_vtable.CheckFormatSupport(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, Format, pFormatSupport);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCheckMultisampleQualityLevels(
+static HRESULT STDMETHODCALLTYPE trampoline_CheckMultisampleQualityLevels(
     ID3D11Device1* This,
     DXGI_FORMAT    Format,
     UINT           SampleCount,
@@ -1157,14 +1118,14 @@ static HRESULT STDMETHODCALLTYPE TrampolineCheckMultisampleQualityLevels(
     HOOK_DEBUG("TrampolineDevice::CheckMultisampleQualityLevels()\n");
     return orig_vtable.CheckMultisampleQualityLevels(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, Format, SampleCount, pNumQualityLevels);
 }
-static void STDMETHODCALLTYPE TrampolineCheckCounterInfo(
+static void STDMETHODCALLTYPE trampoline_CheckCounterInfo(
     ID3D11Device1*      This,
     D3D11_COUNTER_INFO* pCounterInfo)
 {
     HOOK_DEBUG("TrampolineDevice::CheckCounterInfo()\n");
     return orig_vtable.CheckCounterInfo(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pCounterInfo);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCheckCounter(
+static HRESULT STDMETHODCALLTYPE trampoline_CheckCounter(
     ID3D11Device1*            This,
     const D3D11_COUNTER_DESC* pDesc,
     D3D11_COUNTER_TYPE*       pType,
@@ -1179,7 +1140,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCheckCounter(
     HOOK_DEBUG("TrampolineDevice::CheckCounter()\n");
     return orig_vtable.CheckCounter(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, pDesc, pType, pActiveCounters, szName, pNameLength, szUnits, pUnitsLength, szDescription, pDescriptionLength);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineCheckFeatureSupport(
+static HRESULT STDMETHODCALLTYPE trampoline_CheckFeatureSupport(
     ID3D11Device1* This,
     D3D11_FEATURE  Feature,
     void*          pFeatureSupportData,
@@ -1188,7 +1149,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineCheckFeatureSupport(
     HOOK_DEBUG("TrampolineDevice::CheckFeatureSupport()\n");
     return orig_vtable.CheckFeatureSupport(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, Feature, pFeatureSupportData, FeatureSupportDataSize);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineGetPrivateData(
+static HRESULT STDMETHODCALLTYPE trampoline_GetPrivateData(
     ID3D11Device1* This,
     REFGUID        guid,
     UINT*          pDataSize,
@@ -1197,7 +1158,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineGetPrivateData(
     HOOK_DEBUG("TrampolineDevice::GetPrivateData()\n");
     return orig_vtable.GetPrivateData(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, guid, pDataSize, pData);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateData(
+static HRESULT STDMETHODCALLTYPE trampoline_SetPrivateData(
     ID3D11Device1* This,
     REFGUID        guid,
     UINT           DataSize,
@@ -1206,7 +1167,7 @@ static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateData(
     HOOK_DEBUG("TrampolineDevice::SetPrivateData()\n");
     return orig_vtable.SetPrivateData(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, guid, DataSize, pData);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateDataInterface(
+static HRESULT STDMETHODCALLTYPE trampoline_SetPrivateDataInterface(
     ID3D11Device1*  This,
     REFGUID         guid,
     const IUnknown* pData)
@@ -1214,39 +1175,39 @@ static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateDataInterface(
     HOOK_DEBUG("TrampolineDevice::SetPrivateDataInterface()\n");
     return orig_vtable.SetPrivateDataInterface(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, guid, pData);
 }
-static D3D_FEATURE_LEVEL STDMETHODCALLTYPE TrampolineGetFeatureLevel(
+static D3D_FEATURE_LEVEL STDMETHODCALLTYPE trampoline_GetFeatureLevel(
     ID3D11Device1* This)
 {
     HOOK_DEBUG("TrampolineDevice::GetFeatureLevel()\n");
     return orig_vtable.GetFeatureLevel(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this);
 }
-static UINT STDMETHODCALLTYPE TrampolineGetCreationFlags(
+static UINT STDMETHODCALLTYPE trampoline_GetCreationFlags(
     ID3D11Device1* This)
 {
     HOOK_DEBUG("TrampolineDevice::GetCreationFlags()\n");
     return orig_vtable.GetCreationFlags(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineGetDeviceRemovedReason(
+static HRESULT STDMETHODCALLTYPE trampoline_GetDeviceRemovedReason(
     ID3D11Device1* This)
 {
     HOOK_DEBUG("TrampolineDevice::GetDeviceRemovedReason()\n");
     return orig_vtable.GetDeviceRemovedReason(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this);
 }
-static void STDMETHODCALLTYPE TrampolineGetImmediateContext(
+static void STDMETHODCALLTYPE trampoline_GetImmediateContext(
     ID3D11Device1*        This,
     ID3D11DeviceContext** ppImmediateContext)
 {
     HOOK_DEBUG("TrampolineDevice::GetImmediateContext()\n");
     return orig_vtable.GetImmediateContext(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, ppImmediateContext);
 }
-static HRESULT STDMETHODCALLTYPE TrampolineSetExceptionMode(
+static HRESULT STDMETHODCALLTYPE trampoline_SetExceptionMode(
     ID3D11Device1* This,
     UINT           RaiseFlags)
 {
     HOOK_DEBUG("TrampolineDevice::SetExceptionMode()\n");
     return orig_vtable.SetExceptionMode(reinterpret_cast<ID3D11Device1_trampoline*>(This)->orig_this, RaiseFlags);
 }
-static UINT STDMETHODCALLTYPE TrampolineGetExceptionMode(
+static UINT STDMETHODCALLTYPE trampoline_GetExceptionMode(
     ID3D11Device1* This)
 {
     HOOK_DEBUG("TrampolineDevice::GetExceptionMode()\n");
@@ -1254,49 +1215,49 @@ static UINT STDMETHODCALLTYPE TrampolineGetExceptionMode(
 }
 
 static CONST_VTBL struct ID3D11Device1Vtbl trampoline_vtable = {
-    TrampolineQueryInterface,
-    TrampolineAddRef,
-    TrampolineRelease,
-    TrampolineCreateBuffer,
-    TrampolineCreateTexture1D,
-    TrampolineCreateTexture2D,
-    TrampolineCreateTexture3D,
-    TrampolineCreateShaderResourceView,
-    TrampolineCreateUnorderedAccessView,
-    TrampolineCreateRenderTargetView,
-    TrampolineCreateDepthStencilView,
-    TrampolineCreateInputLayout,
-    TrampolineCreateVertexShader,
-    TrampolineCreateGeometryShader,
-    TrampolineCreateGeometryShaderWithStreamOutput,
-    TrampolineCreatePixelShader,
-    TrampolineCreateHullShader,
-    TrampolineCreateDomainShader,
-    TrampolineCreateComputeShader,
-    TrampolineCreateClassLinkage,
-    TrampolineCreateBlendState,
-    TrampolineCreateDepthStencilState,
-    TrampolineCreateRasterizerState,
-    TrampolineCreateSamplerState,
-    TrampolineCreateQuery,
-    TrampolineCreatePredicate,
-    TrampolineCreateCounter,
-    TrampolineCreateDeferredContext,
-    TrampolineOpenSharedResource,
-    TrampolineCheckFormatSupport,
-    TrampolineCheckMultisampleQualityLevels,
-    TrampolineCheckCounterInfo,
-    TrampolineCheckCounter,
-    TrampolineCheckFeatureSupport,
-    TrampolineGetPrivateData,
-    TrampolineSetPrivateData,
-    TrampolineSetPrivateDataInterface,
-    TrampolineGetFeatureLevel,
-    TrampolineGetCreationFlags,
-    TrampolineGetDeviceRemovedReason,
-    TrampolineGetImmediateContext,
-    TrampolineSetExceptionMode,
-    TrampolineGetExceptionMode,
+    trampoline_QueryInterface,
+    trampoline_AddRef,
+    trampoline_Release,
+    trampoline_CreateBuffer,
+    trampoline_CreateTexture1D,
+    trampoline_CreateTexture2D,
+    trampoline_CreateTexture3D,
+    trampoline_CreateShaderResourceView,
+    trampoline_CreateUnorderedAccessView,
+    trampoline_CreateRenderTargetView,
+    trampoline_CreateDepthStencilView,
+    trampoline_CreateInputLayout,
+    trampoline_CreateVertexShader,
+    trampoline_CreateGeometryShader,
+    trampoline_CreateGeometryShaderWithStreamOutput,
+    trampoline_CreatePixelShader,
+    trampoline_CreateHullShader,
+    trampoline_CreateDomainShader,
+    trampoline_CreateComputeShader,
+    trampoline_CreateClassLinkage,
+    trampoline_CreateBlendState,
+    trampoline_CreateDepthStencilState,
+    trampoline_CreateRasterizerState,
+    trampoline_CreateSamplerState,
+    trampoline_CreateQuery,
+    trampoline_CreatePredicate,
+    trampoline_CreateCounter,
+    trampoline_CreateDeferredContext,
+    trampoline_OpenSharedResource,
+    trampoline_CheckFormatSupport,
+    trampoline_CheckMultisampleQualityLevels,
+    trampoline_CheckCounterInfo,
+    trampoline_CheckCounter,
+    trampoline_CheckFeatureSupport,
+    trampoline_GetPrivateData,
+    trampoline_SetPrivateData,
+    trampoline_SetPrivateDataInterface,
+    trampoline_GetFeatureLevel,
+    trampoline_GetCreationFlags,
+    trampoline_GetDeviceRemovedReason,
+    trampoline_GetImmediateContext,
+    trampoline_SetExceptionMode,
+    trampoline_GetExceptionMode,
 };
 
 // -----------------------------------------------------------------------------------------------
