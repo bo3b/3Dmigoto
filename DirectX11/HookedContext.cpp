@@ -2039,34 +2039,34 @@ typedef struct
 {
     CONST_VTBL struct ID3D11DeviceContext1Vtbl* lpVtbl;
     ID3D11DeviceContext1*                       orig_this;
-} ID3D11DeviceContext1Trampoline;
+} ID3D11DeviceContext1_trampoline;
 
 // -----------------------------------------------------------------------------------------------
 // IUnknown
 
-static HRESULT STDMETHODCALLTYPE TrampolineQueryInterface(
+static HRESULT STDMETHODCALLTYPE trampoline_QueryInterface(
     ID3D11DeviceContext1* This,
     REFIID                riid,
     void**                ppvObject)
 {
-    HOOK_DEBUG("TrampolineContext::QueryInterface()\n");
-    return orig_vtable.QueryInterface((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, riid, ppvObject);
+    HOOK_DEBUG("trampoline_Context::QueryInterface()\n");
+    return orig_vtable.QueryInterface((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, riid, ppvObject);
 }
 
-static ULONG STDMETHODCALLTYPE TrampolineAddRef(
+static ULONG STDMETHODCALLTYPE trampoline_AddRef(
     ID3D11DeviceContext1* This)
 {
-    HOOK_DEBUG("TrampolineContext::AddRef()\n");
-    return orig_vtable.AddRef((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this);
+    HOOK_DEBUG("trampoline_Context::AddRef()\n");
+    return orig_vtable.AddRef((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this);
 }
 
-static ULONG STDMETHODCALLTYPE TrampolineRelease(
+static ULONG STDMETHODCALLTYPE trampoline_Release(
     ID3D11DeviceContext1* This)
 {
     ULONG ref;
 
-    HOOK_DEBUG("TrampolineContext::Release()\n");
-    ref = orig_vtable.Release((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this);
+    HOOK_DEBUG("trampoline_Context::Release()\n");
+    ref = orig_vtable.Release((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this);
 
     if (!ref)
         delete This;
@@ -2077,116 +2077,116 @@ static ULONG STDMETHODCALLTYPE TrampolineRelease(
 // -----------------------------------------------------------------------------------------------
 // ID3D11DeviceChild
 
-static void STDMETHODCALLTYPE TrampolineGetDevice(
+static void STDMETHODCALLTYPE trampoline_GetDevice(
     ID3D11DeviceContext1* This,
     ID3D11Device**        ppDevice)
 {
-    HOOK_DEBUG("TrampolineContext::GetDevice()\n");
-    return orig_vtable.GetDevice((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, ppDevice);
+    HOOK_DEBUG("trampoline_Context::GetDevice()\n");
+    return orig_vtable.GetDevice((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, ppDevice);
 }
 
-static HRESULT STDMETHODCALLTYPE TrampolineGetPrivateData(
+static HRESULT STDMETHODCALLTYPE trampoline_GetPrivateData(
     ID3D11DeviceContext1* This,
     REFGUID               guid,
     UINT*                 pDataSize,
     void*                 pData)
 {
-    HOOK_DEBUG("TrampolineContext::GetPrivateData()\n");
-    return orig_vtable.GetPrivateData((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, guid, pDataSize, pData);
+    HOOK_DEBUG("trampoline_Context::GetPrivateData()\n");
+    return orig_vtable.GetPrivateData((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, guid, pDataSize, pData);
 }
 
-static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateData(
+static HRESULT STDMETHODCALLTYPE trampoline_SetPrivateData(
     ID3D11DeviceContext1* This,
     REFGUID               guid,
     UINT                  DataSize,
     const void*           pData)
 {
-    HOOK_DEBUG("TrampolineContext::SetPrivateData()\n");
-    return orig_vtable.SetPrivateData((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, guid, DataSize, pData);
+    HOOK_DEBUG("trampoline_Context::SetPrivateData()\n");
+    return orig_vtable.SetPrivateData((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, guid, DataSize, pData);
 }
 
-static HRESULT STDMETHODCALLTYPE TrampolineSetPrivateDataInterface(
+static HRESULT STDMETHODCALLTYPE trampoline_SetPrivateDataInterface(
     ID3D11DeviceContext1* This,
     REFGUID               guid,
     const IUnknown*       pData)
 {
-    HOOK_DEBUG("TrampolineContext::SetPrivateDataInterface()\n");
-    return orig_vtable.SetPrivateDataInterface((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, guid, pData);
+    HOOK_DEBUG("trampoline_Context::SetPrivateDataInterface()\n");
+    return orig_vtable.SetPrivateDataInterface((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, guid, pData);
 }
 
 // -----------------------------------------------------------------------------------------------
 // ID3D11DeviceContext1
 
-static void STDMETHODCALLTYPE TrampolineVSSetConstantBuffers(
+static void STDMETHODCALLTYPE trampoline_VSSetConstantBuffers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumBuffers,
     ID3D11Buffer* const*  ppConstantBuffers)
 {
-    HOOK_DEBUG("TrampolineContext::VSSetConstantBuffers()\n");
-    return orig_vtable.VSSetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
+    HOOK_DEBUG("trampoline_Context::VSSetConstantBuffers()\n");
+    return orig_vtable.VSSetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
 }
 
-static void STDMETHODCALLTYPE TrampolinePSSetShaderResources(
+static void STDMETHODCALLTYPE trampoline_PSSetShaderResources(
     ID3D11DeviceContext1*            This,
     UINT                             StartSlot,
     UINT                             NumViews,
     ID3D11ShaderResourceView* const* ppShaderResourceViews)
 {
-    HOOK_DEBUG("TrampolineContext::PSSetShaderResources()\n");
-    return orig_vtable.PSSetShaderResources((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
+    HOOK_DEBUG("trampoline_Context::PSSetShaderResources()\n");
+    return orig_vtable.PSSetShaderResources((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
 }
 
-static void STDMETHODCALLTYPE TrampolinePSSetShader(
+static void STDMETHODCALLTYPE trampoline_PSSetShader(
     ID3D11DeviceContext1*       This,
     ID3D11PixelShader*          pPixelShader,
     ID3D11ClassInstance* const* ppClassInstances,
     UINT                        NumClassInstances)
 {
-    HOOK_DEBUG("TrampolineContext::PSSetShader()\n");
-    return orig_vtable.PSSetShader((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pPixelShader, ppClassInstances, NumClassInstances);
+    HOOK_DEBUG("trampoline_Context::PSSetShader()\n");
+    return orig_vtable.PSSetShader((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pPixelShader, ppClassInstances, NumClassInstances);
 }
 
-static void STDMETHODCALLTYPE TrampolinePSSetSamplers(
+static void STDMETHODCALLTYPE trampoline_PSSetSamplers(
     ID3D11DeviceContext1*      This,
     UINT                       StartSlot,
     UINT                       NumSamplers,
     ID3D11SamplerState* const* ppSamplers)
 {
-    HOOK_DEBUG("TrampolineContext::PSSetSamplers()\n");
-    return orig_vtable.PSSetSamplers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
+    HOOK_DEBUG("trampoline_Context::PSSetSamplers()\n");
+    return orig_vtable.PSSetSamplers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
 }
 
-static void STDMETHODCALLTYPE TrampolineVSSetShader(
+static void STDMETHODCALLTYPE trampoline_VSSetShader(
     ID3D11DeviceContext1*       This,
     ID3D11VertexShader*         pVertexShader,
     ID3D11ClassInstance* const* ppClassInstances,
     UINT                        NumClassInstances)
 {
-    HOOK_DEBUG("TrampolineContext::VSSetShader()\n");
-    return orig_vtable.VSSetShader((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pVertexShader, ppClassInstances, NumClassInstances);
+    HOOK_DEBUG("trampoline_Context::VSSetShader()\n");
+    return orig_vtable.VSSetShader((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pVertexShader, ppClassInstances, NumClassInstances);
 }
 
-static void STDMETHODCALLTYPE TrampolineDrawIndexed(
+static void STDMETHODCALLTYPE trampoline_DrawIndexed(
     ID3D11DeviceContext1* This,
     UINT                  IndexCount,
     UINT                  StartIndexLocation,
     INT                   BaseVertexLocation)
 {
-    HOOK_DEBUG("TrampolineContext::DrawIndexed()\n");
-    return orig_vtable.DrawIndexed((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, IndexCount, StartIndexLocation, BaseVertexLocation);
+    HOOK_DEBUG("trampoline_Context::DrawIndexed()\n");
+    return orig_vtable.DrawIndexed((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, IndexCount, StartIndexLocation, BaseVertexLocation);
 }
 
-static void STDMETHODCALLTYPE TrampolineDraw(
+static void STDMETHODCALLTYPE trampoline_Draw(
     ID3D11DeviceContext1* This,
     UINT                  VertexCount,
     UINT                  StartVertexLocation)
 {
-    HOOK_DEBUG("TrampolineContext::Draw()\n");
-    return orig_vtable.Draw((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, VertexCount, StartVertexLocation);
+    HOOK_DEBUG("trampoline_Context::Draw()\n");
+    return orig_vtable.Draw((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, VertexCount, StartVertexLocation);
 }
 
-static HRESULT STDMETHODCALLTYPE TrampolineMap(
+static HRESULT STDMETHODCALLTYPE trampoline_Map(
     ID3D11DeviceContext1*     This,
     ID3D11Resource*           pResource,
     UINT                      Subresource,
@@ -2194,38 +2194,38 @@ static HRESULT STDMETHODCALLTYPE TrampolineMap(
     UINT                      MapFlags,
     D3D11_MAPPED_SUBRESOURCE* pMappedResource)
 {
-    HOOK_DEBUG("TrampolineContext::Map()\n");
-    return orig_vtable.Map((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pResource, Subresource, MapType, MapFlags, pMappedResource);
+    HOOK_DEBUG("trampoline_Context::Map()\n");
+    return orig_vtable.Map((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pResource, Subresource, MapType, MapFlags, pMappedResource);
 }
 
-static void STDMETHODCALLTYPE TrampolineUnmap(
+static void STDMETHODCALLTYPE trampoline_Unmap(
     ID3D11DeviceContext1* This,
     ID3D11Resource*       pResource,
     UINT                  Subresource)
 {
-    HOOK_DEBUG("TrampolineContext::Unmap()\n");
-    return orig_vtable.Unmap((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pResource, Subresource);
+    HOOK_DEBUG("trampoline_Context::Unmap()\n");
+    return orig_vtable.Unmap((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pResource, Subresource);
 }
 
-static void STDMETHODCALLTYPE TrampolinePSSetConstantBuffers(
+static void STDMETHODCALLTYPE trampoline_PSSetConstantBuffers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumBuffers,
     ID3D11Buffer* const*  ppConstantBuffers)
 {
-    HOOK_DEBUG("TrampolineContext::PSSetConstantBuffers()\n");
-    return orig_vtable.PSSetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
+    HOOK_DEBUG("trampoline_Context::PSSetConstantBuffers()\n");
+    return orig_vtable.PSSetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
 }
 
-static void STDMETHODCALLTYPE TrampolineIASetInputLayout(
+static void STDMETHODCALLTYPE trampoline_IASetInputLayout(
     ID3D11DeviceContext1* This,
     ID3D11InputLayout*    pInputLayout)
 {
-    HOOK_DEBUG("TrampolineContext::IASetInputLayout()\n");
-    return orig_vtable.IASetInputLayout((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pInputLayout);
+    HOOK_DEBUG("trampoline_Context::IASetInputLayout()\n");
+    return orig_vtable.IASetInputLayout((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pInputLayout);
 }
 
-static void STDMETHODCALLTYPE TrampolineIASetVertexBuffers(
+static void STDMETHODCALLTYPE trampoline_IASetVertexBuffers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumBuffers,
@@ -2233,21 +2233,21 @@ static void STDMETHODCALLTYPE TrampolineIASetVertexBuffers(
     const UINT*           pStrides,
     const UINT*           pOffsets)
 {
-    HOOK_DEBUG("TrampolineContext::IASetVertexBuffers()\n");
-    return orig_vtable.IASetVertexBuffers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
+    HOOK_DEBUG("trampoline_Context::IASetVertexBuffers()\n");
+    return orig_vtable.IASetVertexBuffers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
 }
 
-static void STDMETHODCALLTYPE TrampolineIASetIndexBuffer(
+static void STDMETHODCALLTYPE trampoline_IASetIndexBuffer(
     ID3D11DeviceContext1* This,
     ID3D11Buffer*         pIndexBuffer,
     DXGI_FORMAT           Format,
     UINT                  Offset)
 {
-    HOOK_DEBUG("TrampolineContext::IASetIndexBuffer()\n");
-    return orig_vtable.IASetIndexBuffer((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pIndexBuffer, Format, Offset);
+    HOOK_DEBUG("trampoline_Context::IASetIndexBuffer()\n");
+    return orig_vtable.IASetIndexBuffer((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pIndexBuffer, Format, Offset);
 }
 
-static void STDMETHODCALLTYPE TrampolineDrawIndexedInstanced(
+static void STDMETHODCALLTYPE trampoline_DrawIndexedInstanced(
     ID3D11DeviceContext1* This,
     UINT                  IndexCountPerInstance,
     UINT                  InstanceCount,
@@ -2255,136 +2255,136 @@ static void STDMETHODCALLTYPE TrampolineDrawIndexedInstanced(
     INT                   BaseVertexLocation,
     UINT                  StartInstanceLocation)
 {
-    HOOK_DEBUG("TrampolineContext::DrawIndexedInstanced()\n");
-    return orig_vtable.DrawIndexedInstanced((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
+    HOOK_DEBUG("trampoline_Context::DrawIndexedInstanced()\n");
+    return orig_vtable.DrawIndexedInstanced((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
 }
 
-static void STDMETHODCALLTYPE TrampolineDrawInstanced(
+static void STDMETHODCALLTYPE trampoline_DrawInstanced(
     ID3D11DeviceContext1* This,
     UINT                  VertexCountPerInstance,
     UINT                  InstanceCount,
     UINT                  StartVertexLocation,
     UINT                  StartInstanceLocation)
 {
-    HOOK_DEBUG("TrampolineContext::DrawInstanced()\n");
-    return orig_vtable.DrawInstanced((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
+    HOOK_DEBUG("trampoline_Context::DrawInstanced()\n");
+    return orig_vtable.DrawInstanced((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
 }
 
-static void STDMETHODCALLTYPE TrampolineGSSetConstantBuffers(
+static void STDMETHODCALLTYPE trampoline_GSSetConstantBuffers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumBuffers,
     ID3D11Buffer* const*  ppConstantBuffers)
 {
-    HOOK_DEBUG("TrampolineContext::GSSetConstantBuffers()\n");
-    return orig_vtable.GSSetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
+    HOOK_DEBUG("trampoline_Context::GSSetConstantBuffers()\n");
+    return orig_vtable.GSSetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
 }
 
-static void STDMETHODCALLTYPE TrampolineGSSetShader(
+static void STDMETHODCALLTYPE trampoline_GSSetShader(
     ID3D11DeviceContext1*       This,
     ID3D11GeometryShader*       pShader,
     ID3D11ClassInstance* const* ppClassInstances,
     UINT                        NumClassInstances)
 {
-    HOOK_DEBUG("TrampolineContext::GSSetShader()\n");
-    return orig_vtable.GSSetShader((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pShader, ppClassInstances, NumClassInstances);
+    HOOK_DEBUG("trampoline_Context::GSSetShader()\n");
+    return orig_vtable.GSSetShader((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pShader, ppClassInstances, NumClassInstances);
 }
 
-static void STDMETHODCALLTYPE TrampolineIASetPrimitiveTopology(
+static void STDMETHODCALLTYPE trampoline_IASetPrimitiveTopology(
     ID3D11DeviceContext1*    This,
     D3D11_PRIMITIVE_TOPOLOGY Topology)
 {
-    HOOK_DEBUG("TrampolineContext::IASetPrimitiveTopology()\n");
-    return orig_vtable.IASetPrimitiveTopology((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, Topology);
+    HOOK_DEBUG("trampoline_Context::IASetPrimitiveTopology()\n");
+    return orig_vtable.IASetPrimitiveTopology((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, Topology);
 }
 
-static void STDMETHODCALLTYPE TrampolineVSSetShaderResources(
+static void STDMETHODCALLTYPE trampoline_VSSetShaderResources(
     ID3D11DeviceContext1*            This,
     UINT                             StartSlot,
     UINT                             NumViews,
     ID3D11ShaderResourceView* const* ppShaderResourceViews)
 {
-    HOOK_DEBUG("TrampolineContext::VSSetShaderResources()\n");
-    return orig_vtable.VSSetShaderResources((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
+    HOOK_DEBUG("trampoline_Context::VSSetShaderResources()\n");
+    return orig_vtable.VSSetShaderResources((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
 }
 
-static void STDMETHODCALLTYPE TrampolineVSSetSamplers(
+static void STDMETHODCALLTYPE trampoline_VSSetSamplers(
     ID3D11DeviceContext1*      This,
     UINT                       StartSlot,
     UINT                       NumSamplers,
     ID3D11SamplerState* const* ppSamplers)
 {
-    HOOK_DEBUG("TrampolineContext::VSSetSamplers()\n");
-    return orig_vtable.VSSetSamplers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
+    HOOK_DEBUG("trampoline_Context::VSSetSamplers()\n");
+    return orig_vtable.VSSetSamplers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
 }
 
-static void STDMETHODCALLTYPE TrampolineBegin(
+static void STDMETHODCALLTYPE trampoline_Begin(
     ID3D11DeviceContext1* This,
     ID3D11Asynchronous*   pAsync)
 {
-    HOOK_DEBUG("TrampolineContext::Begin()\n");
-    return orig_vtable.Begin((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pAsync);
+    HOOK_DEBUG("trampoline_Context::Begin()\n");
+    return orig_vtable.Begin((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pAsync);
 }
 
-static void STDMETHODCALLTYPE TrampolineEnd(
+static void STDMETHODCALLTYPE trampoline_End(
     ID3D11DeviceContext1* This,
     ID3D11Asynchronous*   pAsync)
 {
-    HOOK_DEBUG("TrampolineContext::End()\n");
-    return orig_vtable.End((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pAsync);
+    HOOK_DEBUG("trampoline_Context::End()\n");
+    return orig_vtable.End((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pAsync);
 }
 
-static HRESULT STDMETHODCALLTYPE TrampolineGetData(
+static HRESULT STDMETHODCALLTYPE trampoline_GetData(
     ID3D11DeviceContext1* This,
     ID3D11Asynchronous*   pAsync,
     void*                 pData,
     UINT                  DataSize,
     UINT                  GetDataFlags)
 {
-    HOOK_DEBUG("TrampolineContext::GetData()\n");
-    return orig_vtable.GetData((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pAsync, pData, DataSize, GetDataFlags);
+    HOOK_DEBUG("trampoline_Context::GetData()\n");
+    return orig_vtable.GetData((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pAsync, pData, DataSize, GetDataFlags);
 }
 
-static void STDMETHODCALLTYPE TrampolineSetPredication(
+static void STDMETHODCALLTYPE trampoline_SetPredication(
     ID3D11DeviceContext1* This,
     ID3D11Predicate*      pPredicate,
     BOOL                  PredicateValue)
 {
-    HOOK_DEBUG("TrampolineContext::SetPredication()\n");
-    return orig_vtable.SetPredication((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pPredicate, PredicateValue);
+    HOOK_DEBUG("trampoline_Context::SetPredication()\n");
+    return orig_vtable.SetPredication((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pPredicate, PredicateValue);
 }
 
-static void STDMETHODCALLTYPE TrampolineGSSetShaderResources(
+static void STDMETHODCALLTYPE trampoline_GSSetShaderResources(
     ID3D11DeviceContext1*            This,
     UINT                             StartSlot,
     UINT                             NumViews,
     ID3D11ShaderResourceView* const* ppShaderResourceViews)
 {
-    HOOK_DEBUG("TrampolineContext::GSSetShaderResources()\n");
-    return orig_vtable.GSSetShaderResources((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
+    HOOK_DEBUG("trampoline_Context::GSSetShaderResources()\n");
+    return orig_vtable.GSSetShaderResources((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
 }
 
-static void STDMETHODCALLTYPE TrampolineGSSetSamplers(
+static void STDMETHODCALLTYPE trampoline_GSSetSamplers(
     ID3D11DeviceContext1*      This,
     UINT                       StartSlot,
     UINT                       NumSamplers,
     ID3D11SamplerState* const* ppSamplers)
 {
-    HOOK_DEBUG("TrampolineContext::GSSetSamplers()\n");
-    return orig_vtable.GSSetSamplers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
+    HOOK_DEBUG("trampoline_Context::GSSetSamplers()\n");
+    return orig_vtable.GSSetSamplers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
 }
 
-static void STDMETHODCALLTYPE TrampolineOMSetRenderTargets(
+static void STDMETHODCALLTYPE trampoline_OMSetRenderTargets(
     ID3D11DeviceContext1*          This,
     UINT                           NumViews,
     ID3D11RenderTargetView* const* ppRenderTargetViews,
     ID3D11DepthStencilView*        pDepthStencilView)
 {
-    HOOK_DEBUG("TrampolineContext::OMSetRenderTargets()\n");
-    return orig_vtable.OMSetRenderTargets((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, NumViews, ppRenderTargetViews, pDepthStencilView);
+    HOOK_DEBUG("trampoline_Context::OMSetRenderTargets()\n");
+    return orig_vtable.OMSetRenderTargets((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, NumViews, ppRenderTargetViews, pDepthStencilView);
 }
 
-static void STDMETHODCALLTYPE TrampolineOMSetRenderTargetsAndUnorderedAccessViews(
+static void STDMETHODCALLTYPE trampoline_OMSetRenderTargetsAndUnorderedAccessViews(
     ID3D11DeviceContext1*             This,
     UINT                              NumRTVs,
     ID3D11RenderTargetView* const*    ppRenderTargetViews,
@@ -2394,110 +2394,110 @@ static void STDMETHODCALLTYPE TrampolineOMSetRenderTargetsAndUnorderedAccessView
     ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                       pUAVInitialCounts)
 {
-    HOOK_DEBUG("TrampolineContext::OMSetRenderTargetsAndUnorderedAccessViews()\n");
-    return orig_vtable.OMSetRenderTargetsAndUnorderedAccessViews((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, NumRTVs, ppRenderTargetViews, pDepthStencilView, UAVStartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
+    HOOK_DEBUG("trampoline_Context::OMSetRenderTargetsAndUnorderedAccessViews()\n");
+    return orig_vtable.OMSetRenderTargetsAndUnorderedAccessViews((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, NumRTVs, ppRenderTargetViews, pDepthStencilView, UAVStartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
 }
 
-static void STDMETHODCALLTYPE TrampolineOMSetBlendState(
+static void STDMETHODCALLTYPE trampoline_OMSetBlendState(
     ID3D11DeviceContext1* This,
     ID3D11BlendState*     pBlendState,
     const FLOAT           BlendFactor[4],
     UINT                  SampleMask)
 {
-    HOOK_DEBUG("TrampolineContext::OMSetBlendState()\n");
-    return orig_vtable.OMSetBlendState((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pBlendState, BlendFactor, SampleMask);
+    HOOK_DEBUG("trampoline_Context::OMSetBlendState()\n");
+    return orig_vtable.OMSetBlendState((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pBlendState, BlendFactor, SampleMask);
 }
 
-static void STDMETHODCALLTYPE TrampolineOMSetDepthStencilState(
+static void STDMETHODCALLTYPE trampoline_OMSetDepthStencilState(
     ID3D11DeviceContext1*    This,
     ID3D11DepthStencilState* pDepthStencilState,
     UINT                     StencilRef)
 {
-    HOOK_DEBUG("TrampolineContext::OMSetDepthStencilState()\n");
-    return orig_vtable.OMSetDepthStencilState((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pDepthStencilState, StencilRef);
+    HOOK_DEBUG("trampoline_Context::OMSetDepthStencilState()\n");
+    return orig_vtable.OMSetDepthStencilState((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pDepthStencilState, StencilRef);
 }
 
-static void STDMETHODCALLTYPE TrampolineSOSetTargets(
+static void STDMETHODCALLTYPE trampoline_SOSetTargets(
     ID3D11DeviceContext1* This,
     UINT                  NumBuffers,
     ID3D11Buffer* const*  ppSOTargets,
     const UINT*           pOffsets)
 {
-    HOOK_DEBUG("TrampolineContext::SOSetTargets()\n");
-    return orig_vtable.SOSetTargets((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, NumBuffers, ppSOTargets, pOffsets);
+    HOOK_DEBUG("trampoline_Context::SOSetTargets()\n");
+    return orig_vtable.SOSetTargets((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, NumBuffers, ppSOTargets, pOffsets);
 }
 
-static void STDMETHODCALLTYPE TrampolineDrawAuto(
+static void STDMETHODCALLTYPE trampoline_DrawAuto(
     ID3D11DeviceContext1* This)
 {
-    HOOK_DEBUG("TrampolineContext::DrawAuto()\n");
-    return orig_vtable.DrawAuto((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this);
+    HOOK_DEBUG("trampoline_Context::DrawAuto()\n");
+    return orig_vtable.DrawAuto((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this);
 }
 
-static void STDMETHODCALLTYPE TrampolineDrawIndexedInstancedIndirect(
+static void STDMETHODCALLTYPE trampoline_DrawIndexedInstancedIndirect(
     ID3D11DeviceContext1* This,
     ID3D11Buffer*         pBufferForArgs,
     UINT                  AlignedByteOffsetForArgs)
 {
-    HOOK_DEBUG("TrampolineContext::DrawIndexedInstancedIndirect()\n");
-    return orig_vtable.DrawIndexedInstancedIndirect((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pBufferForArgs, AlignedByteOffsetForArgs);
+    HOOK_DEBUG("trampoline_Context::DrawIndexedInstancedIndirect()\n");
+    return orig_vtable.DrawIndexedInstancedIndirect((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pBufferForArgs, AlignedByteOffsetForArgs);
 }
 
-static void STDMETHODCALLTYPE TrampolineDrawInstancedIndirect(
+static void STDMETHODCALLTYPE trampoline_DrawInstancedIndirect(
     ID3D11DeviceContext1* This,
     ID3D11Buffer*         pBufferForArgs,
     UINT                  AlignedByteOffsetForArgs)
 {
-    HOOK_DEBUG("TrampolineContext::DrawInstancedIndirect()\n");
-    return orig_vtable.DrawInstancedIndirect((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pBufferForArgs, AlignedByteOffsetForArgs);
+    HOOK_DEBUG("trampoline_Context::DrawInstancedIndirect()\n");
+    return orig_vtable.DrawInstancedIndirect((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pBufferForArgs, AlignedByteOffsetForArgs);
 }
 
-static void STDMETHODCALLTYPE TrampolineDispatch(
+static void STDMETHODCALLTYPE trampoline_Dispatch(
     ID3D11DeviceContext1* This,
     UINT                  ThreadGroupCountX,
     UINT                  ThreadGroupCountY,
     UINT                  ThreadGroupCountZ)
 {
-    HOOK_DEBUG("TrampolineContext::Dispatch()\n");
-    return orig_vtable.Dispatch((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+    HOOK_DEBUG("trampoline_Context::Dispatch()\n");
+    return orig_vtable.Dispatch((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
 }
 
-static void STDMETHODCALLTYPE TrampolineDispatchIndirect(
+static void STDMETHODCALLTYPE trampoline_DispatchIndirect(
     ID3D11DeviceContext1* This,
     ID3D11Buffer*         pBufferForArgs,
     UINT                  AlignedByteOffsetForArgs)
 {
-    HOOK_DEBUG("TrampolineContext::DispatchIndirect()\n");
-    return orig_vtable.DispatchIndirect((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pBufferForArgs, AlignedByteOffsetForArgs);
+    HOOK_DEBUG("trampoline_Context::DispatchIndirect()\n");
+    return orig_vtable.DispatchIndirect((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pBufferForArgs, AlignedByteOffsetForArgs);
 }
 
-static void STDMETHODCALLTYPE TrampolineRSSetState(
+static void STDMETHODCALLTYPE trampoline_RSSetState(
     ID3D11DeviceContext1*  This,
     ID3D11RasterizerState* pRasterizerState)
 {
-    HOOK_DEBUG("TrampolineContext::RSSetState()\n");
-    return orig_vtable.RSSetState((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pRasterizerState);
+    HOOK_DEBUG("trampoline_Context::RSSetState()\n");
+    return orig_vtable.RSSetState((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pRasterizerState);
 }
 
-static void STDMETHODCALLTYPE TrampolineRSSetViewports(
+static void STDMETHODCALLTYPE trampoline_RSSetViewports(
     ID3D11DeviceContext1* This,
     UINT                  NumViewports,
     const D3D11_VIEWPORT* pViewports)
 {
-    HOOK_DEBUG("TrampolineContext::RSSetViewports()\n");
-    return orig_vtable.RSSetViewports((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, NumViewports, pViewports);
+    HOOK_DEBUG("trampoline_Context::RSSetViewports()\n");
+    return orig_vtable.RSSetViewports((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, NumViewports, pViewports);
 }
 
-static void STDMETHODCALLTYPE TrampolineRSSetScissorRects(
+static void STDMETHODCALLTYPE trampoline_RSSetScissorRects(
     ID3D11DeviceContext1* This,
     UINT                  NumRects,
     const D3D11_RECT*     pRects)
 {
-    HOOK_DEBUG("TrampolineContext::RSSetScissorRects()\n");
-    return orig_vtable.RSSetScissorRects((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, NumRects, pRects);
+    HOOK_DEBUG("trampoline_Context::RSSetScissorRects()\n");
+    return orig_vtable.RSSetScissorRects((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, NumRects, pRects);
 }
 
-static void STDMETHODCALLTYPE TrampolineCopySubresourceRegion(
+static void STDMETHODCALLTYPE trampoline_CopySubresourceRegion(
     ID3D11DeviceContext1* This,
     ID3D11Resource*       pDstResource,
     UINT                  DstSubresource,
@@ -2508,20 +2508,20 @@ static void STDMETHODCALLTYPE TrampolineCopySubresourceRegion(
     UINT                  SrcSubresource,
     const D3D11_BOX*      pSrcBox)
 {
-    HOOK_DEBUG("TrampolineContext::CopySubresourceRegion()\n");
-    return orig_vtable.CopySubresourceRegion((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
+    HOOK_DEBUG("trampoline_Context::CopySubresourceRegion()\n");
+    return orig_vtable.CopySubresourceRegion((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
 }
 
-static void STDMETHODCALLTYPE TrampolineCopyResource(
+static void STDMETHODCALLTYPE trampoline_CopyResource(
     ID3D11DeviceContext1* This,
     ID3D11Resource*       pDstResource,
     ID3D11Resource*       pSrcResource)
 {
-    HOOK_DEBUG("TrampolineContext::CopyResource()\n");
-    return orig_vtable.CopyResource((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pDstResource, pSrcResource);
+    HOOK_DEBUG("trampoline_Context::CopyResource()\n");
+    return orig_vtable.CopyResource((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pDstResource, pSrcResource);
 }
 
-static void STDMETHODCALLTYPE TrampolineUpdateSubresource(
+static void STDMETHODCALLTYPE trampoline_UpdateSubresource(
     ID3D11DeviceContext1* This,
     ID3D11Resource*       pDstResource,
     UINT                  DstSubresource,
@@ -2530,84 +2530,84 @@ static void STDMETHODCALLTYPE TrampolineUpdateSubresource(
     UINT                  SrcRowPitch,
     UINT                  SrcDepthPitch)
 {
-    HOOK_DEBUG("TrampolineContext::UpdateSubresource()\n");
-    return orig_vtable.UpdateSubresource((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
+    HOOK_DEBUG("trampoline_Context::UpdateSubresource()\n");
+    return orig_vtable.UpdateSubresource((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
 }
 
-static void STDMETHODCALLTYPE TrampolineCopyStructureCount(
+static void STDMETHODCALLTYPE trampoline_CopyStructureCount(
     ID3D11DeviceContext1*      This,
     ID3D11Buffer*              pDstBuffer,
     UINT                       DstAlignedByteOffset,
     ID3D11UnorderedAccessView* pSrcView)
 {
-    HOOK_DEBUG("TrampolineContext::CopyStructureCount()\n");
-    return orig_vtable.CopyStructureCount((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pDstBuffer, DstAlignedByteOffset, pSrcView);
+    HOOK_DEBUG("trampoline_Context::CopyStructureCount()\n");
+    return orig_vtable.CopyStructureCount((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pDstBuffer, DstAlignedByteOffset, pSrcView);
 }
 
-static void STDMETHODCALLTYPE TrampolineClearRenderTargetView(
+static void STDMETHODCALLTYPE trampoline_ClearRenderTargetView(
     ID3D11DeviceContext1*   This,
     ID3D11RenderTargetView* pRenderTargetView,
     const FLOAT             ColorRGBA[4])
 {
-    HOOK_DEBUG("TrampolineContext::ClearRenderTargetView()\n");
-    return orig_vtable.ClearRenderTargetView((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pRenderTargetView, ColorRGBA);
+    HOOK_DEBUG("trampoline_Context::ClearRenderTargetView()\n");
+    return orig_vtable.ClearRenderTargetView((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pRenderTargetView, ColorRGBA);
 }
 
-static void STDMETHODCALLTYPE TrampolineClearUnorderedAccessViewUint(
+static void STDMETHODCALLTYPE trampoline_ClearUnorderedAccessViewUint(
     ID3D11DeviceContext1*      This,
     ID3D11UnorderedAccessView* pUnorderedAccessView,
     const UINT                 Values[4])
 {
-    HOOK_DEBUG("TrampolineContext::ClearUnorderedAccessViewUint()\n");
-    return orig_vtable.ClearUnorderedAccessViewUint((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pUnorderedAccessView, Values);
+    HOOK_DEBUG("trampoline_Context::ClearUnorderedAccessViewUint()\n");
+    return orig_vtable.ClearUnorderedAccessViewUint((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pUnorderedAccessView, Values);
 }
 
-static void STDMETHODCALLTYPE TrampolineClearUnorderedAccessViewFloat(
+static void STDMETHODCALLTYPE trampoline_ClearUnorderedAccessViewFloat(
     ID3D11DeviceContext1*      This,
     ID3D11UnorderedAccessView* pUnorderedAccessView,
     const FLOAT                Values[4])
 {
-    HOOK_DEBUG("TrampolineContext::ClearUnorderedAccessViewFloat()\n");
-    return orig_vtable.ClearUnorderedAccessViewFloat((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pUnorderedAccessView, Values);
+    HOOK_DEBUG("trampoline_Context::ClearUnorderedAccessViewFloat()\n");
+    return orig_vtable.ClearUnorderedAccessViewFloat((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pUnorderedAccessView, Values);
 }
 
-static void STDMETHODCALLTYPE TrampolineClearDepthStencilView(
+static void STDMETHODCALLTYPE trampoline_ClearDepthStencilView(
     ID3D11DeviceContext1*   This,
     ID3D11DepthStencilView* pDepthStencilView,
     UINT                    ClearFlags,
     FLOAT                   Depth,
     UINT8                   Stencil)
 {
-    HOOK_DEBUG("TrampolineContext::ClearDepthStencilView()\n");
-    return orig_vtable.ClearDepthStencilView((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pDepthStencilView, ClearFlags, Depth, Stencil);
+    HOOK_DEBUG("trampoline_Context::ClearDepthStencilView()\n");
+    return orig_vtable.ClearDepthStencilView((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pDepthStencilView, ClearFlags, Depth, Stencil);
 }
 
-static void STDMETHODCALLTYPE TrampolineGenerateMips(
+static void STDMETHODCALLTYPE trampoline_GenerateMips(
     ID3D11DeviceContext1*     This,
     ID3D11ShaderResourceView* pShaderResourceView)
 {
-    HOOK_DEBUG("TrampolineContext::GenerateMips()\n");
-    return orig_vtable.GenerateMips((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pShaderResourceView);
+    HOOK_DEBUG("trampoline_Context::GenerateMips()\n");
+    return orig_vtable.GenerateMips((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pShaderResourceView);
 }
 
-static void STDMETHODCALLTYPE TrampolineSetResourceMinLOD(
+static void STDMETHODCALLTYPE trampoline_SetResourceMinLOD(
     ID3D11DeviceContext1* This,
     ID3D11Resource*       pResource,
     FLOAT                 MinLOD)
 {
-    HOOK_DEBUG("TrampolineContext::SetResourceMinLOD()\n");
-    return orig_vtable.SetResourceMinLOD((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pResource, MinLOD);
+    HOOK_DEBUG("trampoline_Context::SetResourceMinLOD()\n");
+    return orig_vtable.SetResourceMinLOD((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pResource, MinLOD);
 }
 
-static FLOAT STDMETHODCALLTYPE TrampolineGetResourceMinLOD(
+static FLOAT STDMETHODCALLTYPE trampoline_GetResourceMinLOD(
     ID3D11DeviceContext1* This,
     ID3D11Resource*       pResource)
 {
-    HOOK_DEBUG("TrampolineContext::GetResourceMinLOD()\n");
-    return orig_vtable.GetResourceMinLOD((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pResource);
+    HOOK_DEBUG("trampoline_Context::GetResourceMinLOD()\n");
+    return orig_vtable.GetResourceMinLOD((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pResource);
 }
 
-static void STDMETHODCALLTYPE TrampolineResolveSubresource(
+static void STDMETHODCALLTYPE trampoline_ResolveSubresource(
     ID3D11DeviceContext1* This,
     ID3D11Resource*       pDstResource,
     UINT                  DstSubresource,
@@ -2615,219 +2615,219 @@ static void STDMETHODCALLTYPE TrampolineResolveSubresource(
     UINT                  SrcSubresource,
     DXGI_FORMAT           Format)
 {
-    HOOK_DEBUG("TrampolineContext::ResolveSubresource()\n");
-    return orig_vtable.ResolveSubresource((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pDstResource, DstSubresource, pSrcResource, SrcSubresource, Format);
+    HOOK_DEBUG("trampoline_Context::ResolveSubresource()\n");
+    return orig_vtable.ResolveSubresource((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pDstResource, DstSubresource, pSrcResource, SrcSubresource, Format);
 }
 
-static void STDMETHODCALLTYPE TrampolineExecuteCommandList(
+static void STDMETHODCALLTYPE trampoline_ExecuteCommandList(
     ID3D11DeviceContext1* This,
     ID3D11CommandList*    pCommandList,
     BOOL                  RestoreContextState)
 {
-    HOOK_DEBUG("TrampolineContext::ExecuteCommandList()\n");
-    return orig_vtable.ExecuteCommandList((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pCommandList, RestoreContextState);
+    HOOK_DEBUG("trampoline_Context::ExecuteCommandList()\n");
+    return orig_vtable.ExecuteCommandList((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pCommandList, RestoreContextState);
 }
 
-static void STDMETHODCALLTYPE TrampolineHSSetShaderResources(
+static void STDMETHODCALLTYPE trampoline_HSSetShaderResources(
     ID3D11DeviceContext1*            This,
     UINT                             StartSlot,
     UINT                             NumViews,
     ID3D11ShaderResourceView* const* ppShaderResourceViews)
 {
-    HOOK_DEBUG("TrampolineContext::HSSetShaderResources()\n");
-    return orig_vtable.HSSetShaderResources((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
+    HOOK_DEBUG("trampoline_Context::HSSetShaderResources()\n");
+    return orig_vtable.HSSetShaderResources((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
 }
 
-static void STDMETHODCALLTYPE TrampolineHSSetShader(
+static void STDMETHODCALLTYPE trampoline_HSSetShader(
     ID3D11DeviceContext1*       This,
     ID3D11HullShader*           pHullShader,
     ID3D11ClassInstance* const* ppClassInstances,
     UINT                        NumClassInstances)
 {
-    HOOK_DEBUG("TrampolineContext::HSSetShader()\n");
-    return orig_vtable.HSSetShader((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pHullShader, ppClassInstances, NumClassInstances);
+    HOOK_DEBUG("trampoline_Context::HSSetShader()\n");
+    return orig_vtable.HSSetShader((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pHullShader, ppClassInstances, NumClassInstances);
 }
 
-static void STDMETHODCALLTYPE TrampolineHSSetSamplers(
+static void STDMETHODCALLTYPE trampoline_HSSetSamplers(
     ID3D11DeviceContext1*      This,
     UINT                       StartSlot,
     UINT                       NumSamplers,
     ID3D11SamplerState* const* ppSamplers)
 {
-    HOOK_DEBUG("TrampolineContext::HSSetSamplers()\n");
-    return orig_vtable.HSSetSamplers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
+    HOOK_DEBUG("trampoline_Context::HSSetSamplers()\n");
+    return orig_vtable.HSSetSamplers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
 }
 
-static void STDMETHODCALLTYPE TrampolineHSSetConstantBuffers(
+static void STDMETHODCALLTYPE trampoline_HSSetConstantBuffers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumBuffers,
     ID3D11Buffer* const*  ppConstantBuffers)
 {
-    HOOK_DEBUG("TrampolineContext::HSSetConstantBuffers()\n");
-    return orig_vtable.HSSetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
+    HOOK_DEBUG("trampoline_Context::HSSetConstantBuffers()\n");
+    return orig_vtable.HSSetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
 }
 
-static void STDMETHODCALLTYPE TrampolineDSSetShaderResources(
+static void STDMETHODCALLTYPE trampoline_DSSetShaderResources(
     ID3D11DeviceContext1*            This,
     UINT                             StartSlot,
     UINT                             NumViews,
     ID3D11ShaderResourceView* const* ppShaderResourceViews)
 {
-    HOOK_DEBUG("TrampolineContext::DSSetShaderResources()\n");
-    return orig_vtable.DSSetShaderResources((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
+    HOOK_DEBUG("trampoline_Context::DSSetShaderResources()\n");
+    return orig_vtable.DSSetShaderResources((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
 }
 
-static void STDMETHODCALLTYPE TrampolineDSSetShader(
+static void STDMETHODCALLTYPE trampoline_DSSetShader(
     ID3D11DeviceContext1*       This,
     ID3D11DomainShader*         pDomainShader,
     ID3D11ClassInstance* const* ppClassInstances,
     UINT                        NumClassInstances)
 {
-    HOOK_DEBUG("TrampolineContext::DSSetShader()\n");
-    return orig_vtable.DSSetShader((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pDomainShader, ppClassInstances, NumClassInstances);
+    HOOK_DEBUG("trampoline_Context::DSSetShader()\n");
+    return orig_vtable.DSSetShader((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pDomainShader, ppClassInstances, NumClassInstances);
 }
 
-static void STDMETHODCALLTYPE TrampolineDSSetSamplers(
+static void STDMETHODCALLTYPE trampoline_DSSetSamplers(
     ID3D11DeviceContext1*      This,
     UINT                       StartSlot,
     UINT                       NumSamplers,
     ID3D11SamplerState* const* ppSamplers)
 {
-    HOOK_DEBUG("TrampolineContext::DSSetSamplers()\n");
-    return orig_vtable.DSSetSamplers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
+    HOOK_DEBUG("trampoline_Context::DSSetSamplers()\n");
+    return orig_vtable.DSSetSamplers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
 }
 
-static void STDMETHODCALLTYPE TrampolineDSSetConstantBuffers(
+static void STDMETHODCALLTYPE trampoline_DSSetConstantBuffers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumBuffers,
     ID3D11Buffer* const*  ppConstantBuffers)
 {
-    HOOK_DEBUG("TrampolineContext::DSSetConstantBuffers()\n");
-    return orig_vtable.DSSetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
+    HOOK_DEBUG("trampoline_Context::DSSetConstantBuffers()\n");
+    return orig_vtable.DSSetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
 }
 
-static void STDMETHODCALLTYPE TrampolineCSSetShaderResources(
+static void STDMETHODCALLTYPE trampoline_CSSetShaderResources(
     ID3D11DeviceContext1*            This,
     UINT                             StartSlot,
     UINT                             NumViews,
     ID3D11ShaderResourceView* const* ppShaderResourceViews)
 {
-    HOOK_DEBUG("TrampolineContext::CSSetShaderResources()\n");
-    return orig_vtable.CSSetShaderResources((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
+    HOOK_DEBUG("trampoline_Context::CSSetShaderResources()\n");
+    return orig_vtable.CSSetShaderResources((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
 }
 
-static void STDMETHODCALLTYPE TrampolineCSSetUnorderedAccessViews(
+static void STDMETHODCALLTYPE trampoline_CSSetUnorderedAccessViews(
     ID3D11DeviceContext1*             This,
     UINT                              StartSlot,
     UINT                              NumUAVs,
     ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                       pUAVInitialCounts)
 {
-    HOOK_DEBUG("TrampolineContext::CSSetUnorderedAccessViews()\n");
-    return orig_vtable.CSSetUnorderedAccessViews((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
+    HOOK_DEBUG("trampoline_Context::CSSetUnorderedAccessViews()\n");
+    return orig_vtable.CSSetUnorderedAccessViews((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
 }
 
-static void STDMETHODCALLTYPE TrampolineCSSetShader(
+static void STDMETHODCALLTYPE trampoline_CSSetShader(
     ID3D11DeviceContext1*       This,
     ID3D11ComputeShader*        pComputeShader,
     ID3D11ClassInstance* const* ppClassInstances,
     UINT                        NumClassInstances)
 {
-    HOOK_DEBUG("TrampolineContext::CSSetShader()\n");
-    return orig_vtable.CSSetShader((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pComputeShader, ppClassInstances, NumClassInstances);
+    HOOK_DEBUG("trampoline_Context::CSSetShader()\n");
+    return orig_vtable.CSSetShader((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pComputeShader, ppClassInstances, NumClassInstances);
 }
 
-static void STDMETHODCALLTYPE TrampolineCSSetSamplers(
+static void STDMETHODCALLTYPE trampoline_CSSetSamplers(
     ID3D11DeviceContext1*      This,
     UINT                       StartSlot,
     UINT                       NumSamplers,
     ID3D11SamplerState* const* ppSamplers)
 {
-    HOOK_DEBUG("TrampolineContext::CSSetSamplers()\n");
-    return orig_vtable.CSSetSamplers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
+    HOOK_DEBUG("trampoline_Context::CSSetSamplers()\n");
+    return orig_vtable.CSSetSamplers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
 }
 
-static void STDMETHODCALLTYPE TrampolineCSSetConstantBuffers(
+static void STDMETHODCALLTYPE trampoline_CSSetConstantBuffers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumBuffers,
     ID3D11Buffer* const*  ppConstantBuffers)
 {
-    HOOK_DEBUG("TrampolineContext::CSSetConstantBuffers()\n");
-    return orig_vtable.CSSetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
+    HOOK_DEBUG("trampoline_Context::CSSetConstantBuffers()\n");
+    return orig_vtable.CSSetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
 }
 
-static void STDMETHODCALLTYPE TrampolineVSGetConstantBuffers(
+static void STDMETHODCALLTYPE trampoline_VSGetConstantBuffers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumBuffers,
     ID3D11Buffer**        ppConstantBuffers)
 {
-    HOOK_DEBUG("TrampolineContext::VSGetConstantBuffers()\n");
-    return orig_vtable.VSGetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
+    HOOK_DEBUG("trampoline_Context::VSGetConstantBuffers()\n");
+    return orig_vtable.VSGetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
 }
 
-static void STDMETHODCALLTYPE TrampolinePSGetShaderResources(
+static void STDMETHODCALLTYPE trampoline_PSGetShaderResources(
     ID3D11DeviceContext1*      This,
     UINT                       StartSlot,
     UINT                       NumViews,
     ID3D11ShaderResourceView** ppShaderResourceViews)
 {
-    HOOK_DEBUG("TrampolineContext::PSGetShaderResources()\n");
-    return orig_vtable.PSGetShaderResources((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
+    HOOK_DEBUG("trampoline_Context::PSGetShaderResources()\n");
+    return orig_vtable.PSGetShaderResources((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
 }
 
-static void STDMETHODCALLTYPE TrampolinePSGetShader(
+static void STDMETHODCALLTYPE trampoline_PSGetShader(
     ID3D11DeviceContext1* This,
     ID3D11PixelShader**   ppPixelShader,
     ID3D11ClassInstance** ppClassInstances,
     UINT*                 pNumClassInstances)
 {
-    HOOK_DEBUG("TrampolineContext::PSGetShader()\n");
-    return orig_vtable.PSGetShader((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, ppPixelShader, ppClassInstances, pNumClassInstances);
+    HOOK_DEBUG("trampoline_Context::PSGetShader()\n");
+    return orig_vtable.PSGetShader((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, ppPixelShader, ppClassInstances, pNumClassInstances);
 }
 
-static void STDMETHODCALLTYPE TrampolinePSGetSamplers(
+static void STDMETHODCALLTYPE trampoline_PSGetSamplers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumSamplers,
     ID3D11SamplerState**  ppSamplers)
 {
-    HOOK_DEBUG("TrampolineContext::PSGetSamplers()\n");
-    return orig_vtable.PSGetSamplers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
+    HOOK_DEBUG("trampoline_Context::PSGetSamplers()\n");
+    return orig_vtable.PSGetSamplers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
 }
 
-static void STDMETHODCALLTYPE TrampolineVSGetShader(
+static void STDMETHODCALLTYPE trampoline_VSGetShader(
     ID3D11DeviceContext1* This,
     ID3D11VertexShader**  ppVertexShader,
     ID3D11ClassInstance** ppClassInstances,
     UINT*                 pNumClassInstances)
 {
-    HOOK_DEBUG("TrampolineContext::VSGetShader()\n");
-    return orig_vtable.VSGetShader((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, ppVertexShader, ppClassInstances, pNumClassInstances);
+    HOOK_DEBUG("trampoline_Context::VSGetShader()\n");
+    return orig_vtable.VSGetShader((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, ppVertexShader, ppClassInstances, pNumClassInstances);
 }
 
-static void STDMETHODCALLTYPE TrampolinePSGetConstantBuffers(
+static void STDMETHODCALLTYPE trampoline_PSGetConstantBuffers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumBuffers,
     ID3D11Buffer**        ppConstantBuffers)
 {
-    HOOK_DEBUG("TrampolineContext::PSGetConstantBuffers()\n");
-    return orig_vtable.PSGetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
+    HOOK_DEBUG("trampoline_Context::PSGetConstantBuffers()\n");
+    return orig_vtable.PSGetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
 }
 
-static void STDMETHODCALLTYPE TrampolineIAGetInputLayout(
+static void STDMETHODCALLTYPE trampoline_IAGetInputLayout(
     ID3D11DeviceContext1* This,
     ID3D11InputLayout**   ppInputLayout)
 {
-    HOOK_DEBUG("TrampolineContext::IAGetInputLayout()\n");
-    return orig_vtable.IAGetInputLayout((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, ppInputLayout);
+    HOOK_DEBUG("trampoline_Context::IAGetInputLayout()\n");
+    return orig_vtable.IAGetInputLayout((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, ppInputLayout);
 }
 
-static void STDMETHODCALLTYPE TrampolineIAGetVertexBuffers(
+static void STDMETHODCALLTYPE trampoline_IAGetVertexBuffers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumBuffers,
@@ -2835,108 +2835,108 @@ static void STDMETHODCALLTYPE TrampolineIAGetVertexBuffers(
     UINT*                 pStrides,
     UINT*                 pOffsets)
 {
-    HOOK_DEBUG("TrampolineContext::IAGetVertexBuffers()\n");
-    return orig_vtable.IAGetVertexBuffers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
+    HOOK_DEBUG("trampoline_Context::IAGetVertexBuffers()\n");
+    return orig_vtable.IAGetVertexBuffers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
 }
 
-static void STDMETHODCALLTYPE TrampolineIAGetIndexBuffer(
+static void STDMETHODCALLTYPE trampoline_IAGetIndexBuffer(
     ID3D11DeviceContext1* This,
     ID3D11Buffer**        pIndexBuffer,
     DXGI_FORMAT*          Format,
     UINT*                 Offset)
 {
-    HOOK_DEBUG("TrampolineContext::IAGetIndexBuffer()\n");
-    return orig_vtable.IAGetIndexBuffer((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pIndexBuffer, Format, Offset);
+    HOOK_DEBUG("trampoline_Context::IAGetIndexBuffer()\n");
+    return orig_vtable.IAGetIndexBuffer((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pIndexBuffer, Format, Offset);
 }
 
-static void STDMETHODCALLTYPE TrampolineGSGetConstantBuffers(
+static void STDMETHODCALLTYPE trampoline_GSGetConstantBuffers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumBuffers,
     ID3D11Buffer**        ppConstantBuffers)
 {
-    HOOK_DEBUG("TrampolineContext::GSGetConstantBuffers()\n");
-    return orig_vtable.GSGetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
+    HOOK_DEBUG("trampoline_Context::GSGetConstantBuffers()\n");
+    return orig_vtable.GSGetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
 }
 
-static void STDMETHODCALLTYPE TrampolineGSGetShader(
+static void STDMETHODCALLTYPE trampoline_GSGetShader(
     ID3D11DeviceContext1*  This,
     ID3D11GeometryShader** ppGeometryShader,
     ID3D11ClassInstance**  ppClassInstances,
     UINT*                  pNumClassInstances)
 {
-    HOOK_DEBUG("TrampolineContext::GSGetShader()\n");
-    return orig_vtable.GSGetShader((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, ppGeometryShader, ppClassInstances, pNumClassInstances);
+    HOOK_DEBUG("trampoline_Context::GSGetShader()\n");
+    return orig_vtable.GSGetShader((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, ppGeometryShader, ppClassInstances, pNumClassInstances);
 }
 
-static void STDMETHODCALLTYPE TrampolineIAGetPrimitiveTopology(
+static void STDMETHODCALLTYPE trampoline_IAGetPrimitiveTopology(
     ID3D11DeviceContext1*     This,
     D3D11_PRIMITIVE_TOPOLOGY* pTopology)
 {
-    HOOK_DEBUG("TrampolineContext::IAGetPrimitiveTopology()\n");
-    return orig_vtable.IAGetPrimitiveTopology((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pTopology);
+    HOOK_DEBUG("trampoline_Context::IAGetPrimitiveTopology()\n");
+    return orig_vtable.IAGetPrimitiveTopology((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pTopology);
 }
 
-static void STDMETHODCALLTYPE TrampolineVSGetShaderResources(
+static void STDMETHODCALLTYPE trampoline_VSGetShaderResources(
     ID3D11DeviceContext1*      This,
     UINT                       StartSlot,
     UINT                       NumViews,
     ID3D11ShaderResourceView** ppShaderResourceViews)
 {
-    HOOK_DEBUG("TrampolineContext::VSGetShaderResources()\n");
-    return orig_vtable.VSGetShaderResources((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
+    HOOK_DEBUG("trampoline_Context::VSGetShaderResources()\n");
+    return orig_vtable.VSGetShaderResources((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
 }
 
-static void STDMETHODCALLTYPE TrampolineVSGetSamplers(
+static void STDMETHODCALLTYPE trampoline_VSGetSamplers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumSamplers,
     ID3D11SamplerState**  ppSamplers)
 {
-    HOOK_DEBUG("TrampolineContext::VSGetSamplers()\n");
-    return orig_vtable.VSGetSamplers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
+    HOOK_DEBUG("trampoline_Context::VSGetSamplers()\n");
+    return orig_vtable.VSGetSamplers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
 }
 
-static void STDMETHODCALLTYPE TrampolineGetPredication(
+static void STDMETHODCALLTYPE trampoline_GetPredication(
     ID3D11DeviceContext1* This,
     ID3D11Predicate**     ppPredicate,
     BOOL*                 pPredicateValue)
 {
-    HOOK_DEBUG("TrampolineContext::GetPredication()\n");
-    return orig_vtable.GetPredication((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, ppPredicate, pPredicateValue);
+    HOOK_DEBUG("trampoline_Context::GetPredication()\n");
+    return orig_vtable.GetPredication((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, ppPredicate, pPredicateValue);
 }
 
-static void STDMETHODCALLTYPE TrampolineGSGetShaderResources(
+static void STDMETHODCALLTYPE trampoline_GSGetShaderResources(
     ID3D11DeviceContext1*      This,
     UINT                       StartSlot,
     UINT                       NumViews,
     ID3D11ShaderResourceView** ppShaderResourceViews)
 {
-    HOOK_DEBUG("TrampolineContext::GSGetShaderResources()\n");
-    return orig_vtable.GSGetShaderResources((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
+    HOOK_DEBUG("trampoline_Context::GSGetShaderResources()\n");
+    return orig_vtable.GSGetShaderResources((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
 }
 
-static void STDMETHODCALLTYPE TrampolineGSGetSamplers(
+static void STDMETHODCALLTYPE trampoline_GSGetSamplers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumSamplers,
     ID3D11SamplerState**  ppSamplers)
 {
-    HOOK_DEBUG("TrampolineContext::GSGetSamplers()\n");
-    return orig_vtable.GSGetSamplers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
+    HOOK_DEBUG("trampoline_Context::GSGetSamplers()\n");
+    return orig_vtable.GSGetSamplers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
 }
 
-static void STDMETHODCALLTYPE TrampolineOMGetRenderTargets(
+static void STDMETHODCALLTYPE trampoline_OMGetRenderTargets(
     ID3D11DeviceContext1*    This,
     UINT                     NumViews,
     ID3D11RenderTargetView** ppRenderTargetViews,
     ID3D11DepthStencilView** ppDepthStencilView)
 {
-    HOOK_DEBUG("TrampolineContext::OMGetRenderTargets()\n");
-    return orig_vtable.OMGetRenderTargets((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, NumViews, ppRenderTargetViews, ppDepthStencilView);
+    HOOK_DEBUG("trampoline_Context::OMGetRenderTargets()\n");
+    return orig_vtable.OMGetRenderTargets((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, NumViews, ppRenderTargetViews, ppDepthStencilView);
 }
 
-static void STDMETHODCALLTYPE TrampolineOMGetRenderTargetsAndUnorderedAccessViews(
+static void STDMETHODCALLTYPE trampoline_OMGetRenderTargetsAndUnorderedAccessViews(
     ID3D11DeviceContext1*       This,
     UINT                        NumRTVs,
     ID3D11RenderTargetView**    ppRenderTargetViews,
@@ -2945,347 +2945,347 @@ static void STDMETHODCALLTYPE TrampolineOMGetRenderTargetsAndUnorderedAccessView
     UINT                        NumUAVs,
     ID3D11UnorderedAccessView** ppUnorderedAccessViews)
 {
-    HOOK_DEBUG("TrampolineContext::OMGetRenderTargetsAndUnorderedAccessViews()\n");
-    return orig_vtable.OMGetRenderTargetsAndUnorderedAccessViews((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, NumRTVs, ppRenderTargetViews, ppDepthStencilView, UAVStartSlot, NumUAVs, ppUnorderedAccessViews);
+    HOOK_DEBUG("trampoline_Context::OMGetRenderTargetsAndUnorderedAccessViews()\n");
+    return orig_vtable.OMGetRenderTargetsAndUnorderedAccessViews((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, NumRTVs, ppRenderTargetViews, ppDepthStencilView, UAVStartSlot, NumUAVs, ppUnorderedAccessViews);
 }
 
-static void STDMETHODCALLTYPE TrampolineOMGetBlendState(
+static void STDMETHODCALLTYPE trampoline_OMGetBlendState(
     ID3D11DeviceContext1* This,
     ID3D11BlendState**    ppBlendState,
     FLOAT                 BlendFactor[4],
     UINT*                 pSampleMask)
 {
-    HOOK_DEBUG("TrampolineContext::OMGetBlendState()\n");
-    return orig_vtable.OMGetBlendState((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, ppBlendState, BlendFactor, pSampleMask);
+    HOOK_DEBUG("trampoline_Context::OMGetBlendState()\n");
+    return orig_vtable.OMGetBlendState((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, ppBlendState, BlendFactor, pSampleMask);
 }
 
-static void STDMETHODCALLTYPE TrampolineOMGetDepthStencilState(
+static void STDMETHODCALLTYPE trampoline_OMGetDepthStencilState(
     ID3D11DeviceContext1*     This,
     ID3D11DepthStencilState** ppDepthStencilState,
     UINT*                     pStencilRef)
 {
-    HOOK_DEBUG("TrampolineContext::OMGetDepthStencilState()\n");
-    return orig_vtable.OMGetDepthStencilState((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, ppDepthStencilState, pStencilRef);
+    HOOK_DEBUG("trampoline_Context::OMGetDepthStencilState()\n");
+    return orig_vtable.OMGetDepthStencilState((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, ppDepthStencilState, pStencilRef);
 }
 
-static void STDMETHODCALLTYPE TrampolineSOGetTargets(
+static void STDMETHODCALLTYPE trampoline_SOGetTargets(
     ID3D11DeviceContext1* This,
     UINT                  NumBuffers,
     ID3D11Buffer**        ppSOTargets)
 {
-    HOOK_DEBUG("TrampolineContext::SOGetTargets()\n");
-    return orig_vtable.SOGetTargets((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, NumBuffers, ppSOTargets);
+    HOOK_DEBUG("trampoline_Context::SOGetTargets()\n");
+    return orig_vtable.SOGetTargets((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, NumBuffers, ppSOTargets);
 }
 
-static void STDMETHODCALLTYPE TrampolineRSGetState(
+static void STDMETHODCALLTYPE trampoline_RSGetState(
     ID3D11DeviceContext1*   This,
     ID3D11RasterizerState** ppRasterizerState)
 {
-    HOOK_DEBUG("TrampolineContext::RSGetState()\n");
-    return orig_vtable.RSGetState((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, ppRasterizerState);
+    HOOK_DEBUG("trampoline_Context::RSGetState()\n");
+    return orig_vtable.RSGetState((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, ppRasterizerState);
 }
 
-static void STDMETHODCALLTYPE TrampolineRSGetViewports(
+static void STDMETHODCALLTYPE trampoline_RSGetViewports(
     ID3D11DeviceContext1* This,
     UINT*                 pNumViewports,
     D3D11_VIEWPORT*       pViewports)
 {
-    HOOK_DEBUG("TrampolineContext::RSGetViewports()\n");
-    return orig_vtable.RSGetViewports((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pNumViewports, pViewports);
+    HOOK_DEBUG("trampoline_Context::RSGetViewports()\n");
+    return orig_vtable.RSGetViewports((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pNumViewports, pViewports);
 }
 
-static void STDMETHODCALLTYPE TrampolineRSGetScissorRects(
+static void STDMETHODCALLTYPE trampoline_RSGetScissorRects(
     ID3D11DeviceContext1* This,
     UINT*                 pNumRects,
     D3D11_RECT*           pRects)
 {
-    HOOK_DEBUG("TrampolineContext::RSGetScissorRects()\n");
-    return orig_vtable.RSGetScissorRects((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, pNumRects, pRects);
+    HOOK_DEBUG("trampoline_Context::RSGetScissorRects()\n");
+    return orig_vtable.RSGetScissorRects((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, pNumRects, pRects);
 }
 
-static void STDMETHODCALLTYPE TrampolineHSGetShaderResources(
+static void STDMETHODCALLTYPE trampoline_HSGetShaderResources(
     ID3D11DeviceContext1*      This,
     UINT                       StartSlot,
     UINT                       NumViews,
     ID3D11ShaderResourceView** ppShaderResourceViews)
 {
-    HOOK_DEBUG("TrampolineContext::HSGetShaderResources()\n");
-    return orig_vtable.HSGetShaderResources((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
+    HOOK_DEBUG("trampoline_Context::HSGetShaderResources()\n");
+    return orig_vtable.HSGetShaderResources((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
 }
 
-static void STDMETHODCALLTYPE TrampolineHSGetShader(
+static void STDMETHODCALLTYPE trampoline_HSGetShader(
     ID3D11DeviceContext1* This,
     ID3D11HullShader**    ppHullShader,
     ID3D11ClassInstance** ppClassInstances,
     UINT*                 pNumClassInstances)
 {
-    HOOK_DEBUG("TrampolineContext::HSGetShader()\n");
-    return orig_vtable.HSGetShader((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, ppHullShader, ppClassInstances, pNumClassInstances);
+    HOOK_DEBUG("trampoline_Context::HSGetShader()\n");
+    return orig_vtable.HSGetShader((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, ppHullShader, ppClassInstances, pNumClassInstances);
 }
 
-static void STDMETHODCALLTYPE TrampolineHSGetSamplers(
+static void STDMETHODCALLTYPE trampoline_HSGetSamplers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumSamplers,
     ID3D11SamplerState**  ppSamplers)
 {
-    HOOK_DEBUG("TrampolineContext::HSGetSamplers()\n");
-    return orig_vtable.HSGetSamplers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
+    HOOK_DEBUG("trampoline_Context::HSGetSamplers()\n");
+    return orig_vtable.HSGetSamplers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
 }
 
-static void STDMETHODCALLTYPE TrampolineHSGetConstantBuffers(
+static void STDMETHODCALLTYPE trampoline_HSGetConstantBuffers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumBuffers,
     ID3D11Buffer**        ppConstantBuffers)
 {
-    HOOK_DEBUG("TrampolineContext::HSGetConstantBuffers()\n");
-    return orig_vtable.HSGetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
+    HOOK_DEBUG("trampoline_Context::HSGetConstantBuffers()\n");
+    return orig_vtable.HSGetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
 }
 
-static void STDMETHODCALLTYPE TrampolineDSGetShaderResources(
+static void STDMETHODCALLTYPE trampoline_DSGetShaderResources(
     ID3D11DeviceContext1*      This,
     UINT                       StartSlot,
     UINT                       NumViews,
     ID3D11ShaderResourceView** ppShaderResourceViews)
 {
-    HOOK_DEBUG("TrampolineContext::DSGetShaderResources()\n");
-    return orig_vtable.DSGetShaderResources((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
+    HOOK_DEBUG("trampoline_Context::DSGetShaderResources()\n");
+    return orig_vtable.DSGetShaderResources((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
 }
 
-static void STDMETHODCALLTYPE TrampolineDSGetShader(
+static void STDMETHODCALLTYPE trampoline_DSGetShader(
     ID3D11DeviceContext1* This,
     ID3D11DomainShader**  ppDomainShader,
     ID3D11ClassInstance** ppClassInstances,
     UINT*                 pNumClassInstances)
 {
-    HOOK_DEBUG("TrampolineContext::DSGetShader()\n");
-    return orig_vtable.DSGetShader((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, ppDomainShader, ppClassInstances, pNumClassInstances);
+    HOOK_DEBUG("trampoline_Context::DSGetShader()\n");
+    return orig_vtable.DSGetShader((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, ppDomainShader, ppClassInstances, pNumClassInstances);
 }
 
-static void STDMETHODCALLTYPE TrampolineDSGetSamplers(
+static void STDMETHODCALLTYPE trampoline_DSGetSamplers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumSamplers,
     ID3D11SamplerState**  ppSamplers)
 {
-    HOOK_DEBUG("TrampolineContext::DSGetSamplers()\n");
-    return orig_vtable.DSGetSamplers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
+    HOOK_DEBUG("trampoline_Context::DSGetSamplers()\n");
+    return orig_vtable.DSGetSamplers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
 }
 
-static void STDMETHODCALLTYPE TrampolineDSGetConstantBuffers(
+static void STDMETHODCALLTYPE trampoline_DSGetConstantBuffers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumBuffers,
     ID3D11Buffer**        ppConstantBuffers)
 {
-    HOOK_DEBUG("TrampolineContext::DSGetConstantBuffers()\n");
-    return orig_vtable.DSGetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
+    HOOK_DEBUG("trampoline_Context::DSGetConstantBuffers()\n");
+    return orig_vtable.DSGetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
 }
 
-static void STDMETHODCALLTYPE TrampolineCSGetShaderResources(
+static void STDMETHODCALLTYPE trampoline_CSGetShaderResources(
     ID3D11DeviceContext1*      This,
     UINT                       StartSlot,
     UINT                       NumViews,
     ID3D11ShaderResourceView** ppShaderResourceViews)
 {
-    HOOK_DEBUG("TrampolineContext::CSGetShaderResources()\n");
-    return orig_vtable.CSGetShaderResources((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
+    HOOK_DEBUG("trampoline_Context::CSGetShaderResources()\n");
+    return orig_vtable.CSGetShaderResources((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumViews, ppShaderResourceViews);
 }
 
-static void STDMETHODCALLTYPE TrampolineCSGetUnorderedAccessViews(
+static void STDMETHODCALLTYPE trampoline_CSGetUnorderedAccessViews(
     ID3D11DeviceContext1*       This,
     UINT                        StartSlot,
     UINT                        NumUAVs,
     ID3D11UnorderedAccessView** ppUnorderedAccessViews)
 {
-    HOOK_DEBUG("TrampolineContext::CSGetUnorderedAccessViews()\n");
-    return orig_vtable.CSGetUnorderedAccessViews((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumUAVs, ppUnorderedAccessViews);
+    HOOK_DEBUG("trampoline_Context::CSGetUnorderedAccessViews()\n");
+    return orig_vtable.CSGetUnorderedAccessViews((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumUAVs, ppUnorderedAccessViews);
 }
 
-static void STDMETHODCALLTYPE TrampolineCSGetShader(
+static void STDMETHODCALLTYPE trampoline_CSGetShader(
     ID3D11DeviceContext1* This,
     ID3D11ComputeShader** ppComputeShader,
     ID3D11ClassInstance** ppClassInstances,
     UINT*                 pNumClassInstances)
 {
-    HOOK_DEBUG("TrampolineContext::CSGetShader()\n");
-    return orig_vtable.CSGetShader((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, ppComputeShader, ppClassInstances, pNumClassInstances);
+    HOOK_DEBUG("trampoline_Context::CSGetShader()\n");
+    return orig_vtable.CSGetShader((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, ppComputeShader, ppClassInstances, pNumClassInstances);
 }
 
-static void STDMETHODCALLTYPE TrampolineCSGetSamplers(
+static void STDMETHODCALLTYPE trampoline_CSGetSamplers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumSamplers,
     ID3D11SamplerState**  ppSamplers)
 {
-    HOOK_DEBUG("TrampolineContext::CSGetSamplers()\n");
-    return orig_vtable.CSGetSamplers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
+    HOOK_DEBUG("trampoline_Context::CSGetSamplers()\n");
+    return orig_vtable.CSGetSamplers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumSamplers, ppSamplers);
 }
 
-static void STDMETHODCALLTYPE TrampolineCSGetConstantBuffers(
+static void STDMETHODCALLTYPE trampoline_CSGetConstantBuffers(
     ID3D11DeviceContext1* This,
     UINT                  StartSlot,
     UINT                  NumBuffers,
     ID3D11Buffer**        ppConstantBuffers)
 {
-    HOOK_DEBUG("TrampolineContext::CSGetConstantBuffers()\n");
-    return orig_vtable.CSGetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
+    HOOK_DEBUG("trampoline_Context::CSGetConstantBuffers()\n");
+    return orig_vtable.CSGetConstantBuffers((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, StartSlot, NumBuffers, ppConstantBuffers);
 }
 
-static void STDMETHODCALLTYPE TrampolineClearState(
+static void STDMETHODCALLTYPE trampoline_ClearState(
     ID3D11DeviceContext1* This)
 {
-    HOOK_DEBUG("TrampolineContext::ClearState()\n");
-    return orig_vtable.ClearState((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this);
+    HOOK_DEBUG("trampoline_Context::ClearState()\n");
+    return orig_vtable.ClearState((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this);
 }
 
-static void STDMETHODCALLTYPE TrampolineFlush(
+static void STDMETHODCALLTYPE trampoline_Flush(
     ID3D11DeviceContext1* This)
 {
-    HOOK_DEBUG("TrampolineContext::Flush()\n");
-    return orig_vtable.Flush((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this);
+    HOOK_DEBUG("trampoline_Context::Flush()\n");
+    return orig_vtable.Flush((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this);
 }
 
-static D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE TrampolineGetType(
+static D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE trampoline_GetType(
     ID3D11DeviceContext1* This)
 {
-    HOOK_DEBUG("TrampolineContext::GetType()\n");
-    return orig_vtable.GetType((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this);
+    HOOK_DEBUG("trampoline_Context::GetType()\n");
+    return orig_vtable.GetType((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this);
 }
 
-static UINT STDMETHODCALLTYPE TrampolineGetContextFlags(
+static UINT STDMETHODCALLTYPE trampoline_GetContextFlags(
     ID3D11DeviceContext1* This)
 {
-    HOOK_DEBUG("TrampolineContext::GetContextFlags()\n");
-    return orig_vtable.GetContextFlags((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this);
+    HOOK_DEBUG("trampoline_Context::GetContextFlags()\n");
+    return orig_vtable.GetContextFlags((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this);
 }
 
-static HRESULT STDMETHODCALLTYPE TrampolineFinishCommandList(
+static HRESULT STDMETHODCALLTYPE trampoline_FinishCommandList(
     ID3D11DeviceContext1* This,
     BOOL                  RestoreDeferredContextState,
     ID3D11CommandList**   ppCommandList)
 {
-    HOOK_DEBUG("TrampolineContext::FinishCommandList()\n");
-    return orig_vtable.FinishCommandList((reinterpret_cast<ID3D11DeviceContext1Trampoline*>(This))->orig_this, RestoreDeferredContextState, ppCommandList);
+    HOOK_DEBUG("trampoline_Context::FinishCommandList()\n");
+    return orig_vtable.FinishCommandList((reinterpret_cast<ID3D11DeviceContext1_trampoline*>(This))->orig_this, RestoreDeferredContextState, ppCommandList);
 }
 
 static CONST_VTBL struct ID3D11DeviceContext1Vtbl trampoline_vtable = {
-    TrampolineQueryInterface,
-    TrampolineAddRef,
-    TrampolineRelease,
-    TrampolineGetDevice,
-    TrampolineGetPrivateData,
-    TrampolineSetPrivateData,
-    TrampolineSetPrivateDataInterface,
-    TrampolineVSSetConstantBuffers,
-    TrampolinePSSetShaderResources,
-    TrampolinePSSetShader,
-    TrampolinePSSetSamplers,
-    TrampolineVSSetShader,
-    TrampolineDrawIndexed,
-    TrampolineDraw,
-    TrampolineMap,
-    TrampolineUnmap,
-    TrampolinePSSetConstantBuffers,
-    TrampolineIASetInputLayout,
-    TrampolineIASetVertexBuffers,
-    TrampolineIASetIndexBuffer,
-    TrampolineDrawIndexedInstanced,
-    TrampolineDrawInstanced,
-    TrampolineGSSetConstantBuffers,
-    TrampolineGSSetShader,
-    TrampolineIASetPrimitiveTopology,
-    TrampolineVSSetShaderResources,
-    TrampolineVSSetSamplers,
-    TrampolineBegin,
-    TrampolineEnd,
-    TrampolineGetData,
-    TrampolineSetPredication,
-    TrampolineGSSetShaderResources,
-    TrampolineGSSetSamplers,
-    TrampolineOMSetRenderTargets,
-    TrampolineOMSetRenderTargetsAndUnorderedAccessViews,
-    TrampolineOMSetBlendState,
-    TrampolineOMSetDepthStencilState,
-    TrampolineSOSetTargets,
-    TrampolineDrawAuto,
-    TrampolineDrawIndexedInstancedIndirect,
-    TrampolineDrawInstancedIndirect,
-    TrampolineDispatch,
-    TrampolineDispatchIndirect,
-    TrampolineRSSetState,
-    TrampolineRSSetViewports,
-    TrampolineRSSetScissorRects,
-    TrampolineCopySubresourceRegion,
-    TrampolineCopyResource,
-    TrampolineUpdateSubresource,
-    TrampolineCopyStructureCount,
-    TrampolineClearRenderTargetView,
-    TrampolineClearUnorderedAccessViewUint,
-    TrampolineClearUnorderedAccessViewFloat,
-    TrampolineClearDepthStencilView,
-    TrampolineGenerateMips,
-    TrampolineSetResourceMinLOD,
-    TrampolineGetResourceMinLOD,
-    TrampolineResolveSubresource,
-    TrampolineExecuteCommandList,
-    TrampolineHSSetShaderResources,
-    TrampolineHSSetShader,
-    TrampolineHSSetSamplers,
-    TrampolineHSSetConstantBuffers,
-    TrampolineDSSetShaderResources,
-    TrampolineDSSetShader,
-    TrampolineDSSetSamplers,
-    TrampolineDSSetConstantBuffers,
-    TrampolineCSSetShaderResources,
-    TrampolineCSSetUnorderedAccessViews,
-    TrampolineCSSetShader,
-    TrampolineCSSetSamplers,
-    TrampolineCSSetConstantBuffers,
-    TrampolineVSGetConstantBuffers,
-    TrampolinePSGetShaderResources,
-    TrampolinePSGetShader,
-    TrampolinePSGetSamplers,
-    TrampolineVSGetShader,
-    TrampolinePSGetConstantBuffers,
-    TrampolineIAGetInputLayout,
-    TrampolineIAGetVertexBuffers,
-    TrampolineIAGetIndexBuffer,
-    TrampolineGSGetConstantBuffers,
-    TrampolineGSGetShader,
-    TrampolineIAGetPrimitiveTopology,
-    TrampolineVSGetShaderResources,
-    TrampolineVSGetSamplers,
-    TrampolineGetPredication,
-    TrampolineGSGetShaderResources,
-    TrampolineGSGetSamplers,
-    TrampolineOMGetRenderTargets,
-    TrampolineOMGetRenderTargetsAndUnorderedAccessViews,
-    TrampolineOMGetBlendState,
-    TrampolineOMGetDepthStencilState,
-    TrampolineSOGetTargets,
-    TrampolineRSGetState,
-    TrampolineRSGetViewports,
-    TrampolineRSGetScissorRects,
-    TrampolineHSGetShaderResources,
-    TrampolineHSGetShader,
-    TrampolineHSGetSamplers,
-    TrampolineHSGetConstantBuffers,
-    TrampolineDSGetShaderResources,
-    TrampolineDSGetShader,
-    TrampolineDSGetSamplers,
-    TrampolineDSGetConstantBuffers,
-    TrampolineCSGetShaderResources,
-    TrampolineCSGetUnorderedAccessViews,
-    TrampolineCSGetShader,
-    TrampolineCSGetSamplers,
-    TrampolineCSGetConstantBuffers,
-    TrampolineClearState,
-    TrampolineFlush,
-    TrampolineGetType,
-    TrampolineGetContextFlags,
-    TrampolineFinishCommandList,
+    trampoline_QueryInterface,
+    trampoline_AddRef,
+    trampoline_Release,
+    trampoline_GetDevice,
+    trampoline_GetPrivateData,
+    trampoline_SetPrivateData,
+    trampoline_SetPrivateDataInterface,
+    trampoline_VSSetConstantBuffers,
+    trampoline_PSSetShaderResources,
+    trampoline_PSSetShader,
+    trampoline_PSSetSamplers,
+    trampoline_VSSetShader,
+    trampoline_DrawIndexed,
+    trampoline_Draw,
+    trampoline_Map,
+    trampoline_Unmap,
+    trampoline_PSSetConstantBuffers,
+    trampoline_IASetInputLayout,
+    trampoline_IASetVertexBuffers,
+    trampoline_IASetIndexBuffer,
+    trampoline_DrawIndexedInstanced,
+    trampoline_DrawInstanced,
+    trampoline_GSSetConstantBuffers,
+    trampoline_GSSetShader,
+    trampoline_IASetPrimitiveTopology,
+    trampoline_VSSetShaderResources,
+    trampoline_VSSetSamplers,
+    trampoline_Begin,
+    trampoline_End,
+    trampoline_GetData,
+    trampoline_SetPredication,
+    trampoline_GSSetShaderResources,
+    trampoline_GSSetSamplers,
+    trampoline_OMSetRenderTargets,
+    trampoline_OMSetRenderTargetsAndUnorderedAccessViews,
+    trampoline_OMSetBlendState,
+    trampoline_OMSetDepthStencilState,
+    trampoline_SOSetTargets,
+    trampoline_DrawAuto,
+    trampoline_DrawIndexedInstancedIndirect,
+    trampoline_DrawInstancedIndirect,
+    trampoline_Dispatch,
+    trampoline_DispatchIndirect,
+    trampoline_RSSetState,
+    trampoline_RSSetViewports,
+    trampoline_RSSetScissorRects,
+    trampoline_CopySubresourceRegion,
+    trampoline_CopyResource,
+    trampoline_UpdateSubresource,
+    trampoline_CopyStructureCount,
+    trampoline_ClearRenderTargetView,
+    trampoline_ClearUnorderedAccessViewUint,
+    trampoline_ClearUnorderedAccessViewFloat,
+    trampoline_ClearDepthStencilView,
+    trampoline_GenerateMips,
+    trampoline_SetResourceMinLOD,
+    trampoline_GetResourceMinLOD,
+    trampoline_ResolveSubresource,
+    trampoline_ExecuteCommandList,
+    trampoline_HSSetShaderResources,
+    trampoline_HSSetShader,
+    trampoline_HSSetSamplers,
+    trampoline_HSSetConstantBuffers,
+    trampoline_DSSetShaderResources,
+    trampoline_DSSetShader,
+    trampoline_DSSetSamplers,
+    trampoline_DSSetConstantBuffers,
+    trampoline_CSSetShaderResources,
+    trampoline_CSSetUnorderedAccessViews,
+    trampoline_CSSetShader,
+    trampoline_CSSetSamplers,
+    trampoline_CSSetConstantBuffers,
+    trampoline_VSGetConstantBuffers,
+    trampoline_PSGetShaderResources,
+    trampoline_PSGetShader,
+    trampoline_PSGetSamplers,
+    trampoline_VSGetShader,
+    trampoline_PSGetConstantBuffers,
+    trampoline_IAGetInputLayout,
+    trampoline_IAGetVertexBuffers,
+    trampoline_IAGetIndexBuffer,
+    trampoline_GSGetConstantBuffers,
+    trampoline_GSGetShader,
+    trampoline_IAGetPrimitiveTopology,
+    trampoline_VSGetShaderResources,
+    trampoline_VSGetSamplers,
+    trampoline_GetPredication,
+    trampoline_GSGetShaderResources,
+    trampoline_GSGetSamplers,
+    trampoline_OMGetRenderTargets,
+    trampoline_OMGetRenderTargetsAndUnorderedAccessViews,
+    trampoline_OMGetBlendState,
+    trampoline_OMGetDepthStencilState,
+    trampoline_SOGetTargets,
+    trampoline_RSGetState,
+    trampoline_RSGetViewports,
+    trampoline_RSGetScissorRects,
+    trampoline_HSGetShaderResources,
+    trampoline_HSGetShader,
+    trampoline_HSGetSamplers,
+    trampoline_HSGetConstantBuffers,
+    trampoline_DSGetShaderResources,
+    trampoline_DSGetShader,
+    trampoline_DSGetSamplers,
+    trampoline_DSGetConstantBuffers,
+    trampoline_CSGetShaderResources,
+    trampoline_CSGetUnorderedAccessViews,
+    trampoline_CSGetShader,
+    trampoline_CSGetSamplers,
+    trampoline_CSGetConstantBuffers,
+    trampoline_ClearState,
+    trampoline_Flush,
+    trampoline_GetType,
+    trampoline_GetContextFlags,
+    trampoline_FinishCommandList,
 };
 
 ID3D11DeviceContext1* lookup_hooked_context(
@@ -3314,7 +3314,7 @@ ID3D11DeviceContext1* hook_context(
     ID3D11DeviceContext1* orig_context,
     ID3D11DeviceContext1* hacker_context)
 {
-    auto trampoline_context       = new ID3D11DeviceContext1Trampoline();
+    auto trampoline_context       = new ID3D11DeviceContext1_trampoline();
     trampoline_context->lpVtbl    = &trampoline_vtable;
     trampoline_context->orig_this = orig_context;
 
