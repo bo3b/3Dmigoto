@@ -116,16 +116,16 @@ static HRESULT hook_dxgi_factories()
 {
     HRESULT hr;
 
-    hr = install_hook_dll_main(L"dxgi.dll", "CreateDXGIFactory", (LPVOID*)&fnOrigCreateDXGIFactory, Hooked_CreateDXGIFactory);
+    hr = install_hook_dll_main(L"dxgi.dll", "CreateDXGIFactory", (LPVOID*)&fn_orig_CreateDXGIFactory, hooked_CreateDXGIFactory);
     if (FAILED(hr))
         return E_FAIL;
 
-    hr = install_hook_dll_main(L"dxgi.dll", "CreateDXGIFactory1", (LPVOID*)&fnOrigCreateDXGIFactory1, Hooked_CreateDXGIFactory1);
+    hr = install_hook_dll_main(L"dxgi.dll", "CreateDXGIFactory1", (LPVOID*)&fn_orig_CreateDXGIFactory1, hooked_CreateDXGIFactory1);
     if (FAILED(hr))
         return E_FAIL;
 
     // We do not care if this fails - this function does not exist on Win7
-    install_hook_dll_main(L"dxgi.dll", "CreateDXGIFactory2", (LPVOID*)&fnOrigCreateDXGIFactory2, Hooked_CreateDXGIFactory2);
+    install_hook_dll_main(L"dxgi.dll", "CreateDXGIFactory2", (LPVOID*)&fn_orig_CreateDXGIFactory2, hooked_CreateDXGIFactory2);
 
     return NOERROR;
 }
