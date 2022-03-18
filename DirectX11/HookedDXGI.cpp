@@ -870,12 +870,12 @@ static void HookCreateSwapChain(void* factory)
 // We are going to always upcast to an IDXGIFactory2 for any calls here.
 // The only time we'll not use Factory2 is on Win7 without the evil update.
 
-HRESULT(__stdcall *fnOrigCreateDXGIFactory)(
+HRESULT(__stdcall *fn_orig_CreateDXGIFactory)(
     REFIID riid,
     _Out_ void   **ppFactory
     ) = CreateDXGIFactory;
 
-HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
+HRESULT __stdcall hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 {
     LOG_INFO("*** Hooked_CreateDXGIFactory called with riid: %s\n", name_from_IID(riid).c_str());
 
@@ -891,7 +891,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
         return E_NOINTERFACE;
     }
 
-    HRESULT hr = fnOrigCreateDXGIFactory(riid, ppFactory);
+    HRESULT hr = fn_orig_CreateDXGIFactory(riid, ppFactory);
     if (FAILED(hr))
     {
         LOG_INFO("->failed with HRESULT=%x\n", hr);
@@ -935,12 +935,12 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 //  until Win10, where the d3d11.dll also then includes CreateDXGIFactory2. We only 
 //  really care about installing a hook for CreateSwapChain which will still get done.
 
-HRESULT(__stdcall *fnOrigCreateDXGIFactory1)(
+HRESULT(__stdcall *fn_orig_CreateDXGIFactory1)(
     REFIID riid,
     _Out_ void   **ppFactory
     ) = CreateDXGIFactory1;
 
-HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
+HRESULT __stdcall hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 {
     LOG_INFO("*** Hooked_CreateDXGIFactory1 called with riid: %s\n", name_from_IID(riid).c_str());
 
@@ -958,7 +958,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 
     // Call original factory, regardless of what they requested, to keep the
     // same expected sequence from their perspective.  (Which includes refcounts)
-    HRESULT hr = fnOrigCreateDXGIFactory1(riid, ppFactory1);
+    HRESULT hr = fn_orig_CreateDXGIFactory1(riid, ppFactory1);
     if (FAILED(hr))
     {
         LOG_INFO("->failed with HRESULT=%x\n", hr);
@@ -994,13 +994,13 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 // Win 8.1, and refering to it would prevent the dynamic linker from loading us
 // on Win 7 (this warning is only applicable to the vs2015 branch with newer
 // Windows SDKs, since it is not possible to refer to this on the older SDK):
-HRESULT(__stdcall *fnOrigCreateDXGIFactory2)(
+HRESULT(__stdcall *fn_orig_CreateDXGIFactory2)(
     UINT Flags,
     REFIID riid,
     _Out_ void   **ppFactory
     ) = nullptr;
 
-HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFactory2)
+HRESULT __stdcall hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFactory2)
 {
     LOG_INFO("*** Hooked_CreateDXGIFactory2 called with riid: %s\n", name_from_IID(riid).c_str());
 
@@ -1018,7 +1018,7 @@ HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFa
 
     // Call original factory, regardless of what they requested, to keep the
     // same expected sequence from their perspective.  (Which includes refcounts)
-    HRESULT hr = fnOrigCreateDXGIFactory2(Flags, riid, ppFactory2);
+    HRESULT hr = fn_orig_CreateDXGIFactory2(Flags, riid, ppFactory2);
     if (FAILED(hr))
     {
         LOG_INFO("->failed with HRESULT=%x\n", hr);
