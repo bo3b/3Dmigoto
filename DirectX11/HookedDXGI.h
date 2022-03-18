@@ -30,8 +30,8 @@ extern "C" HRESULT(__stdcall* fn_orig_CreateDXGIFactory2)(UINT Flags, REFIID rii
 
 // Called from d3d11Wrapper for CreateDeviceAndSwapChain
 
-void override_swap_chain(DXGI_SWAP_CHAIN_DESC* pDesc, DXGI_SWAP_CHAIN_DESC* origSwapChainDesc);
-void wrap_swap_chain(HackerDevice* hackerDevice, IDXGISwapChain** ppSwapChain, DXGI_SWAP_CHAIN_DESC* overrideSwapChainDesc, DXGI_SWAP_CHAIN_DESC* origSwapChainDesc);
+void override_swap_chain(DXGI_SWAP_CHAIN_DESC* desc, DXGI_SWAP_CHAIN_DESC* orig_swap_chain_desc);
+void wrap_swap_chain(HackerDevice* hacker_device, IDXGISwapChain** swap_chain, DXGI_SWAP_CHAIN_DESC* override_swap_chain_desc, DXGI_SWAP_CHAIN_DESC* orig_swap_chain_desc);
 
 // Called from HookedDXGI
 

@@ -1,10 +1,10 @@
-# Checks:            '-*,modernize-use-nullptr,modernize-deprecated-headers,modernize-raw-string-literal, modernize-redundant-void-arg, modernize-return-braced-init-list,modernize-use-bool-literals,modernize-use-default-member-init,modernize-use-equals-default,modernize-use-override,bugprone-reserved-identifier,bugprone-suspicious-include,bugprone-suspicious-missing-comma,bugprone-suspicious-semicolon'
+# Checks:            '-*,modernize-use-nullptr,modernize-deprecated-headers,modernize-raw-string-literal, modernize-redundant-void-arg, modernize-use-bool-literals,bugprone-reserved-identifier,bugprone-suspicious-include,bugprone-suspicious-missing-comma,bugprone-suspicious-semicolon'
 ---
 WarningsAsErrors:  ''
 HeaderFilterRegex: '.*'
 FormatStyle:       'file'
-# Checks:            '-*,readability-identifier-naming'
-Checks:            '-*,modernize-use-nullptr,modernize-deprecated-headers,modernize-redundant-void-arg,google-readability-casting'
+Checks:            '-*,readability-identifier-naming'
+# Checks:            '-*,modernize-use-nullptr, modernize-deprecated-headers, modernize-redundant-void-arg, modernize-use-bool-literals, google-readability-casting'
 CheckOptions:
  - { key: readability-identifier-naming.ClassCase,             value: CamelCase  }
  - { key: readability-identifier-naming.MethodCase,            value: CamelCase  }
@@ -13,12 +13,15 @@ CheckOptions:
  - { key: readability-identifier-naming.MacroDefinitionCase,   value: UPPER_CASE }
  - { key: readability-identifier-naming.GlobalConstantCase,    value: lower_case }
  - { key: readability-identifier-naming.ConstantCase,          value: lower_case }
- # - { key: readability-identifier-naming.GlobalFunctionCase,    value: lower_case }
- # - { key: readability-identifier-naming.FunctionCase,          value: lower_case }
- #- { key: readability-identifier-naming.ParameterCase,         value: lower_case }
+ - { key: readability-identifier-naming.GlobalFunctionCase,    value: lower_case }
+ - { key: readability-identifier-naming.GlobalFunctionIgnoredRegexp,    value: "(fn_orig_.*|lpvtbl_.*|hooked_.*)" }
+ - { key: readability-identifier-naming.FunctionCase,          value: lower_case }
+ - { key: readability-identifier-naming.ParameterCase,         value: lower_case }
+ - { key: readability-identifier-naming.ParameterIgnoredRegexp,    value: "(This|pDevice|pDesc|pWindow|hWnd|pFullscreenDesc|pRestrictToOutput|ppSwapChain|pSwapChain.?|ppFactory.?|pFactory.?|Flags)" }
  - { key: readability-identifier-naming.ParameterPackCase,     value: camelBack }
  - { key: readability-identifier-naming.StructCase,            value: lower_case }
  - { key: readability-identifier-naming.VariableCase,          value: lower_case }
+ - { key: readability-identifier-naming.VariableIgnoredRegexp,    value: "(fn_orig_.*)" }
  - { key: readability-identifier-naming.UnionCase,             value: lower_case }
  - { key: readability-identifier-naming.NamespaceCase,         value: lower_case }
  - { key: readability-identifier-naming.EnumCase,              value: Camel_Snake_Case }
