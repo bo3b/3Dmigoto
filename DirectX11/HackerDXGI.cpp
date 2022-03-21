@@ -586,7 +586,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::Present(
     UINT SyncInterval,
     UINT Flags)
 {
-    Profiling::State profiling_state = { 0 };
+    Profiling::State profiling_state = {};
     bool             profiling       = false;
 
     LOG_DEBUG("HackerSwapChain::Present(%s@%p) called with\n", type_name(this), this);
@@ -880,7 +880,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::Present1(
     UINT                           PresentFlags,
     const DXGI_PRESENT_PARAMETERS* pPresentParameters)
 {
-    Profiling::State profiling_state = { 0 };
+    Profiling::State profiling_state = {};
     gLogDebug                        = true;
     bool profiling                   = false;
 

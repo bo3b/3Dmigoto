@@ -17,7 +17,10 @@ CheckOptions:
  - { key: readability-identifier-naming.GlobalFunctionIgnoredRegexp,    value: "(fn_orig_.*|lpvtbl_.*|hooked_.*)" }
  - { key: readability-identifier-naming.FunctionCase,          value: lower_case }
  - { key: readability-identifier-naming.ParameterCase,         value: lower_case }
- - { key: readability-identifier-naming.ParameterIgnoredRegexp,    value: "(This|pDevice|pDesc|pWindow|hWnd|pFullscreenDesc|pRestrictToOutput|ppSwapChain|pSwapChain.?|ppFactory.?|pFactory.?|Flags)" }
+# For HookedDXGI 
+# - { key: readability-identifier-naming.ParameterIgnoredRegexp,    value: "(This|pDevice|pDesc|pWindow|hWnd|pFullscreenDesc|pRestrictToOutput|ppSwapChain|pSwapChain.?|ppFactory.?|pFactory.?|Flags|BufferCount}Width|Height|NewFormat)" }
+# For Hacker* files - ignores all DX11 input params
+ - { key: readability-identifier-naming.ParameterIgnoredRegexp,    value: "(.*vObject|.*DataSize|Name|.*Unknown|.*Data|.*Parent|.*Device|.*Output|.*Hwnd|.*RestrictToOutput|.*Stats|.*LastPresentCount|.*OutPut|.*Unk|.*PresentParameters|PresentFlags|SyncInterval|.*RestricttoOutput|.*Color|.*Rotation|Buffer|.*Surface|.*Fullscreen|.*Target|.*Desc|.*NewTargetParameters|Flags|BufferCount|SwapChainFlags|Width|Height|NewFormat)" }
  - { key: readability-identifier-naming.ParameterPackCase,     value: camelBack }
  - { key: readability-identifier-naming.StructCase,            value: lower_case }
  - { key: readability-identifier-naming.VariableCase,          value: lower_case }
