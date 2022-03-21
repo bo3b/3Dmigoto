@@ -46,9 +46,9 @@ public:
         /* [in] */ REFIID riid,
         /* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject);
 
-    ULONG STDMETHODCALLTYPE AddRef(void);
+    ULONG STDMETHODCALLTYPE AddRef();
 
-    ULONG STDMETHODCALLTYPE Release(void);
+    ULONG STDMETHODCALLTYPE Release();
 
 
     /** IDXGIObject **/
@@ -168,7 +168,7 @@ public:
         /* [annotation][in] */
         _In_  const DXGI_PRESENT_PARAMETERS *pPresentParameters);
 
-    BOOL STDMETHODCALLTYPE IsTemporaryMonoSupported(void);
+    BOOL STDMETHODCALLTYPE IsTemporaryMonoSupported();
 
     HRESULT STDMETHODCALLTYPE GetRestrictToOutput(
         /* [annotation][out] */
