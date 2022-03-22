@@ -465,7 +465,7 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
         LOG_INFO_W(L"hooked_LoadLibraryExW switching to original dll: %s to %s.\n",
             lpLibFileName, fullPath);
 
-        return fnOrigLoadLibraryExW(fullPath, hFile, dwFlags);
+        return fn_orig_LoadLibraryExW(fullPath, hFile, dwFlags);
     }
 
     // For this case, we want to see if it's the game loading d3d11 or nvapi directly
@@ -480,7 +480,7 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 
         LOG_INFO_W(L"Replaced hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, library);
 
-        return fnOrigLoadLibraryExW(library, hFile, dwFlags);
+        return fn_orig_LoadLibraryExW(library, hFile, dwFlags);
     }
 
     return NULL;
@@ -522,7 +522,7 @@ static HMODULE ReplaceOnMatch(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags
 
 // The storage for the original routine so we can call through.
 
-HMODULE(__stdcall *fnOrigLoadLibraryExW)(
+HMODULE(__stdcall *fn_orig_LoadLibraryExW)(
     _In_       LPCWSTR lpLibFileName,
     _Reserved_ HANDLE  hFile,
     _In_       DWORD   dwFlags
@@ -574,5 +574,5 @@ HMODULE __stdcall hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ H
         hook_enabled = true;
 
     // Normal unchanged case.
-    return fnOrigLoadLibraryExW(lpLibFileName, hFile, dwFlags);
+    return fn_orig_LoadLibraryExW(lpLibFileName, hFile, dwFlags);
 }

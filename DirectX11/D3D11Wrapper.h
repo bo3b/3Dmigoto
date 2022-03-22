@@ -9,7 +9,7 @@ void destroy_dll();
 
 void nvapi_override();
 
-extern "C" HMODULE(__stdcall* fnOrigLoadLibraryExW)(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);
+extern "C" HMODULE(__stdcall* fn_orig_LoadLibraryExW)(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);
 
 extern "C" HMODULE __stdcall hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);
 

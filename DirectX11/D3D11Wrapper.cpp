@@ -32,7 +32,7 @@
 globals  StaticG;
 globals* G = &StaticG;
 
-FILE* LogFile   = 0;  // off by default.
+FILE* LogFile   = nullptr;  // off by default.
 bool  gLogDebug = false;
 
 // This critical section must be held to avoid race conditions when creating
@@ -340,7 +340,7 @@ typedef struct D3D10DDIARG_OPENADAPTER
     };
 } D3D10DDIARG_OPENADAPTER;
 
-static HMODULE hD3D11 = 0;
+static HMODULE hD3D11 = nullptr;
 
 typedef int(WINAPI* tD3DKMTQueryAdapterInfo)(_D3DKMT_QUERYADAPTERINFO*);
 static tD3DKMTQueryAdapterInfo _D3DKMTQueryAdapterInfo;
@@ -440,8 +440,8 @@ void init_d3d11()
         // We need the system d3d11 in order to find the original proc addresses.
         // We hook LoadLibraryExW, so we need to use that here.
         LOG_INFO("Trying to load original_d3d11.dll\n");
-        hD3D11 = LoadLibraryEx(L"original_d3d11.dll", NULL, 0);
-        if (hD3D11 == NULL)
+        hD3D11 = LoadLibraryEx(L"original_d3d11.dll", nullptr, 0);
+        if (hD3D11 == nullptr)
         {
             wchar_t lib_path[MAX_PATH];
             LOG_INFO("*** LoadLibrary on original_d3d11.dll failed.\n");
@@ -451,41 +451,41 @@ void init_d3d11()
             // Fall back to using the full path after suppressing 3DMigoto's
             // redirect to make sure we don't get a reference to ourselves:
 
-            LoadLibraryEx(L"SUPPRESS_3DMIGOTO_REDIRECT", NULL, 0);
+            LoadLibraryEx(L"SUPPRESS_3DMIGOTO_REDIRECT", nullptr, 0);
 
             ret = GetSystemDirectoryW(lib_path, ARRAYSIZE(lib_path));
             if (ret != 0 && ret < ARRAYSIZE(lib_path))
             {
                 wcscat_s(lib_path, MAX_PATH, L"\\d3d11.dll");
                 LOG_INFO_W(L"Trying to load %ls\n", lib_path);
-                hD3D11 = LoadLibraryEx(lib_path, NULL, 0);
+                hD3D11 = LoadLibraryEx(lib_path, nullptr, 0);
             }
         }
     }
-    if (hD3D11 == NULL)
+    if (hD3D11 == nullptr)
     {
         LOG_INFO("*** LoadLibrary on original or chained d3d11.dll failed.\n");
         double_beep_exit();
     }
 
-    _D3DKMTQueryAdapterInfo        = (tD3DKMTQueryAdapterInfo)GetProcAddress(hD3D11, "D3DKMTQueryAdapterInfo");
-    _OpenAdapter10                 = (tOpenAdapter10)GetProcAddress(hD3D11, "OpenAdapter10");
-    _OpenAdapter10_2               = (tOpenAdapter10_2)GetProcAddress(hD3D11, "OpenAdapter10_2");
-    _D3D11CoreCreateDevice         = (tD3D11CoreCreateDevice)GetProcAddress(hD3D11, "D3D11CoreCreateDevice");
-    _D3D11CoreCreateLayeredDevice  = (tD3D11CoreCreateLayeredDevice)GetProcAddress(hD3D11, "D3D11CoreCreateLayeredDevice");
-    _D3D11CoreGetLayeredDeviceSize = (tD3D11CoreGetLayeredDeviceSize)GetProcAddress(hD3D11, "D3D11CoreGetLayeredDeviceSize");
-    _D3D11CoreRegisterLayers       = (tD3D11CoreRegisterLayers)GetProcAddress(hD3D11, "D3D11CoreRegisterLayers");
+    _D3DKMTQueryAdapterInfo        = reinterpret_cast<tD3DKMTQueryAdapterInfo>(GetProcAddress(hD3D11, "D3DKMTQueryAdapterInfo"));
+    _OpenAdapter10                 = reinterpret_cast<tOpenAdapter10>(GetProcAddress(hD3D11, "OpenAdapter10"));
+    _OpenAdapter10_2               = reinterpret_cast<tOpenAdapter10_2>(GetProcAddress(hD3D11, "OpenAdapter10_2"));
+    _D3D11CoreCreateDevice         = reinterpret_cast<tD3D11CoreCreateDevice>(GetProcAddress(hD3D11, "D3D11CoreCreateDevice"));
+    _D3D11CoreCreateLayeredDevice  = reinterpret_cast<tD3D11CoreCreateLayeredDevice>(GetProcAddress(hD3D11, "D3D11CoreCreateLayeredDevice"));
+    _D3D11CoreGetLayeredDeviceSize = reinterpret_cast<tD3D11CoreGetLayeredDeviceSize>(GetProcAddress(hD3D11, "D3D11CoreGetLayeredDeviceSize"));
+    _D3D11CoreRegisterLayers       = reinterpret_cast<tD3D11CoreRegisterLayers>(GetProcAddress(hD3D11, "D3D11CoreRegisterLayers"));
     if (!_D3D11CreateDevice)
-        _D3D11CreateDevice = (PFN_D3D11_CREATE_DEVICE)GetProcAddress(hD3D11, "D3D11CreateDevice");
+        _D3D11CreateDevice = reinterpret_cast<PFN_D3D11_CREATE_DEVICE>(GetProcAddress(hD3D11, "D3D11CreateDevice"));
     if (!_D3D11CreateDeviceAndSwapChain)
-        _D3D11CreateDeviceAndSwapChain = (PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN)GetProcAddress(hD3D11, "D3D11CreateDeviceAndSwapChain");
-    _D3DKMTGetDeviceState     = (tD3DKMTGetDeviceState)GetProcAddress(hD3D11, "D3DKMTGetDeviceState");
-    _D3DKMTOpenAdapterFromHdc = (tD3DKMTOpenAdapterFromHdc)GetProcAddress(hD3D11, "D3DKMTOpenAdapterFromHdc");
-    _D3DKMTOpenResource       = (tD3DKMTOpenResource)GetProcAddress(hD3D11, "D3DKMTOpenResource");
-    _D3DKMTQueryResourceInfo  = (tD3DKMTQueryResourceInfo)GetProcAddress(hD3D11, "D3DKMTQueryResourceInfo");
+        _D3D11CreateDeviceAndSwapChain = reinterpret_cast<PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN>(GetProcAddress(hD3D11, "D3D11CreateDeviceAndSwapChain"));
+    _D3DKMTGetDeviceState     = reinterpret_cast<tD3DKMTGetDeviceState>(GetProcAddress(hD3D11, "D3DKMTGetDeviceState"));
+    _D3DKMTOpenAdapterFromHdc = reinterpret_cast<tD3DKMTOpenAdapterFromHdc>(GetProcAddress(hD3D11, "D3DKMTOpenAdapterFromHdc"));
+    _D3DKMTOpenResource       = reinterpret_cast<tD3DKMTOpenResource>(GetProcAddress(hD3D11, "D3DKMTOpenResource"));
+    _D3DKMTQueryResourceInfo  = reinterpret_cast<tD3DKMTQueryResourceInfo>(GetProcAddress(hD3D11, "D3DKMTQueryResourceInfo"));
 
 #ifdef NTDDI_WIN10
-    _D3D11On12CreateDevice = (PFN_D3D11ON12_CREATE_DEVICE)GetProcAddress(hD3D11, "D3D11On12CreateDevice");
+    _D3D11On12CreateDevice = reinterpret_cast<PFN_D3D11ON12_CREATE_DEVICE>(GetProcAddress(hD3D11, "D3D11On12CreateDevice"));
 #endif
 }
 
@@ -631,11 +631,11 @@ static void show_debug_info(
     ID3D11Debug* d3d_debug = nullptr;
     if (orig_device != nullptr)
     {
-        if (SUCCEEDED(orig_device->QueryInterface(__uuidof(ID3D11Debug), (void**)&d3d_debug)))
+        if (SUCCEEDED(orig_device->QueryInterface(__uuidof(ID3D11Debug), reinterpret_cast<void**>(&d3d_debug))))
         {
             ID3D11InfoQueue* d3d_info_queue = nullptr;
 
-            if (SUCCEEDED(d3d_debug->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&d3d_info_queue)))
+            if (SUCCEEDED(d3d_debug->QueryInterface(__uuidof(ID3D11InfoQueue), reinterpret_cast<void**>(&d3d_info_queue))))
             {
                 d3d_info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
                 d3d_info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
@@ -1074,7 +1074,7 @@ void nvapi_override()
     }
     if (!nvapi_QueryInterfacePtr)
     {
-        nvapi_QueryInterfacePtr = (nvapi_QueryInterfaceType)GetProcAddress(nv_dll, "nvapi_QueryInterface");
+        nvapi_QueryInterfacePtr = reinterpret_cast<nvapi_QueryInterfaceType>(GetProcAddress(nv_dll, "nvapi_QueryInterface"));
         LOG_DEBUG("nvapi_QueryInterfacePtr @ 0x%p\n", nvapi_QueryInterfacePtr);
         if (!nvapi_QueryInterfacePtr)
         {
@@ -1085,7 +1085,7 @@ void nvapi_override()
     }
 
     // One shot, override custom settings.
-    intptr_t ret = (intptr_t)nvapi_QueryInterfacePtr(0xb03bb03b);
+    intptr_t ret = reinterpret_cast<intptr_t>(nvapi_QueryInterfacePtr(0xb03bb03b));
     if (!warned && (ret & 0xffffffff) != 0xeecc34ab)
     {
         LOG_INFO("  overriding NVAPI wrapper failed.\n");
@@ -1116,7 +1116,7 @@ static HMODULE replace_on_match(
 
     ret = GetSystemDirectoryW(full_path, ARRAYSIZE(full_path));
     if (ret == 0 || ret >= ARRAYSIZE(full_path))
-        return NULL;
+        return nullptr;
     wcscat_s(full_path, MAX_PATH, L"\\");
     wcscat_s(full_path, MAX_PATH, library);
 
@@ -1129,7 +1129,7 @@ static HMODULE replace_on_match(
     {
         LOG_INFO_W(L"hooked_LoadLibraryExW switching to original dll: %s to %s.\n", lpLibFileName, full_path);
 
-        return fnOrigLoadLibraryExW(full_path, hFile, dwFlags);
+        return fn_orig_LoadLibraryExW(full_path, hFile, dwFlags);
     }
 
     // For this case, we want to see if it's the game loading d3d11 or nvapi directly
@@ -1152,17 +1152,17 @@ static HMODULE replace_on_match(
 
             LOG_INFO_W(L"Replaced hooked_LoadLibraryExW for: %s to %s.\n", lpLibFileName, full_path);
 
-            HMODULE ret = fnOrigLoadLibraryExW(full_path, hFile, dwFlags);
-            if (ret)
-                return ret;
+            HMODULE module = fn_orig_LoadLibraryExW(full_path, hFile, dwFlags);
+            if (module)
+                return module;
         }
 
         LOG_INFO_W(L"Replaced hooked_LoadLibraryExW fallback for: %s to %s.\n", lpLibFileName, library);
 
-        return fnOrigLoadLibraryExW(library, hFile, dwFlags);
+        return fn_orig_LoadLibraryExW(library, hFile, dwFlags);
     }
 
-    return NULL;
+    return nullptr;
 }
 
 // Function called for every LoadLibraryExW call once we have hooked it.
@@ -1180,14 +1180,14 @@ static HMODULE replace_on_match(
 //
 // There three use cases:
 // x32 game on x32 OS
-//     LoadLibraryExW("C:\Windows\system32\d3d11.dll", NULL, 0)
-//     LoadLibraryExW("C:\Windows\system32\nvapi.dll", NULL, 0)
+//     LoadLibraryExW("C:\Windows\system32\d3d11.dll", nullptr, 0)
+//     LoadLibraryExW("C:\Windows\system32\nvapi.dll", nullptr, 0)
 // x64 game on x64 OS
-//     LoadLibraryExW("C:\Windows\system32\d3d11.dll", NULL, 0)
-//     LoadLibraryExW("C:\Windows\system32\nvapi64.dll", NULL, 0)
+//     LoadLibraryExW("C:\Windows\system32\d3d11.dll", nullptr, 0)
+//     LoadLibraryExW("C:\Windows\system32\nvapi64.dll", nullptr, 0)
 // x32 game on x64 OS
-//     LoadLibraryExW("C:\Windows\SysWOW64\d3d11.dll", NULL, 0)
-//     LoadLibraryExW("C:\Windows\SysWOW64\nvapi.dll", NULL, 0)
+//     LoadLibraryExW("C:\Windows\SysWOW64\d3d11.dll", nullptr, 0)
+//     LoadLibraryExW("C:\Windows\SysWOW64\nvapi.dll", nullptr, 0)
 //
 // To be general and simplify the init, we are going to specifically do the bypass
 // for all variants, even though we only know of this happening on x64 games.
@@ -1200,7 +1200,7 @@ static HMODULE replace_on_match(
 
 // The storage for the original routine so we can call through.
 
-HMODULE(__stdcall* fnOrigLoadLibraryExW)
+HMODULE(__stdcall* fn_orig_LoadLibraryExW)
 (LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags) = LoadLibraryExW;
 
 HMODULE __stdcall hooked_LoadLibraryExW(
@@ -1222,7 +1222,7 @@ HMODULE __stdcall hooked_LoadLibraryExW(
         // them a reference to themselves. Subsequent calls will be
         // armed again in case we still need the redirect.
         hook_enabled = false;
-        return NULL;
+        return nullptr;
     }
 
     // Only do these overrides if they are specified in the d3dx.ini file.
@@ -1251,10 +1251,12 @@ HMODULE __stdcall hooked_LoadLibraryExW(
         }
     }
     else
+    {
         hook_enabled = true;
+    }
 
     // Normal unchanged case.
-    return fnOrigLoadLibraryExW(lpLibFileName, hFile, dwFlags);
+    return fn_orig_LoadLibraryExW(lpLibFileName, hFile, dwFlags);
 }
 
 // This callback proc allows us to hook into any application we need. It is
@@ -1283,5 +1285,5 @@ LRESULT CALLBACK CBTProc(
     WPARAM wParam,
     LPARAM lParam)
 {
-    return CallNextHookEx(0, nCode, wParam, lParam);
+    return CallNextHookEx(nullptr, nCode, wParam, lParam);
 }
