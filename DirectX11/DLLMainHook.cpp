@@ -92,7 +92,7 @@ static HRESULT install_hook_dll_main(LPCWSTR module_name, char *func, void **tra
 
 static HRESULT hook_LoadLibraryExW()
 {
-    HRESULT hr = install_hook_dll_main(L"Kernel32.dll", "LoadLibraryExW", (LPVOID*)&fnOrigLoadLibraryExW, hooked_LoadLibraryExW);
+    HRESULT hr = install_hook_dll_main(L"Kernel32.dll", "LoadLibraryExW", (LPVOID*)&fn_orig_LoadLibraryExW, hooked_LoadLibraryExW);
     if (FAILED(hr))
         return E_FAIL;
 
