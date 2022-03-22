@@ -43,7 +43,7 @@ void NvAPIResetEyeSeparationTracking();
 // Duplicated the extern "C" junk from the DX11 project for the sake of minimal
 // diffs, but it's really not necessary since no other module will be trying to
 // resolve our internal symbol names... especially since these aren't exported.
-extern "C" HMODULE (__stdcall *fnOrigLoadLibraryExW)(
+extern "C" HMODULE (__stdcall *fn_orig_LoadLibraryExW)(
     _In_       LPCWSTR lpLibFileName,
     _Reserved_ HANDLE  hFile,
     _In_       DWORD   dwFlags
