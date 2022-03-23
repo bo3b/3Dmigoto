@@ -2280,7 +2280,7 @@ static bool create_shortcut(const wchar_t *filename, const wchar_t *dedupe_filen
 
 void FrameAnalysisContext::LinkDeduplicatedFiles(const wchar_t *filename, const wchar_t *dedupe_filename)
 {
-    wchar_t relative_path[MAX_PATH] = {0};
+    wchar_t relative_path[MAX_PATH] = {};
 
     // Bail if source didn't get created:
     if (GetFileAttributes(dedupe_filename) == INVALID_FILE_ATTRIBUTES)

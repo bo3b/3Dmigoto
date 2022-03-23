@@ -1048,7 +1048,7 @@ static void RevertMissingShaders()
 
         replacement->AddRef();
         (*i)->originalShaderInfo.replacement = replacement;
-        (*i)->originalShaderInfo.timeStamp = { 0 };
+        (*i)->originalShaderInfo.timeStamp = {};
         (*i)->originalShaderInfo.infoText.clear();
 
         // Any shaders that we revert become candidates for auto

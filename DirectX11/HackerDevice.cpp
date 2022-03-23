@@ -1026,7 +1026,7 @@ static bool replace_asm_shader(
                     // shaderhackers to see their bugs. For much the same
                     // reason we disable caching these shaders above (though
                     // that is not retrospective if a cache already existed).
-                    time_stamp = { 0 };
+                    time_stamp = {};
                 }
             }
             catch (const exception& e)
@@ -1270,7 +1270,7 @@ char* HackerDevice::_ReplaceShaderFromShaderFixes(
     const char*    override_shader_model)
 {
     found_shader_model = "";
-    time_stamp         = { 0 };
+    time_stamp         = {};
 
     char* code = nullptr;
 
@@ -1445,7 +1445,7 @@ HRESULT HackerDevice::ProcessShaderNotFoundInShaderFixes(
             if (SUCCEEDED(hr))
             {
                 memcpy(blob->GetBufferPointer(), shader_bytecode, blob->GetBufferSize());
-                register_for_reload(*shader, hash, shader_type, "bin", class_linkage, blob, { 0 }, L"", true);
+                register_for_reload(*shader, hash, shader_type, "bin", class_linkage, blob, {}, L"", true);
 
                 // Also add the original shader to the original shaders
                 // map so that if it is later replaced marking_mode =

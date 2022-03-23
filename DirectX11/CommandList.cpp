@@ -4453,7 +4453,7 @@ void CustomResource::LoadFromFile(ID3D11Device *orig_device)
 
 void CustomResource::SubstantiateBuffer(ID3D11Device *orig_device, void **buf, DWORD size)
 {
-    D3D11_SUBRESOURCE_DATA data = {0}, *pInitialData = NULL;
+    D3D11_SUBRESOURCE_DATA data = {}, *pInitialData = NULL;
     ID3D11Buffer *buffer;
     D3D11_BUFFER_DESC desc;
     HRESULT hr;
