@@ -531,7 +531,7 @@ static bool is_user_customise_allowed(unsigned id)
 
 static void log_nv_error(NvAPI_Status status)
 {
-    NvAPI_ShortString desc = {0};
+    NvAPI_ShortString desc = {};
 
     if (status == NVAPI_OK)
         return;
@@ -697,7 +697,7 @@ static void identify_internal_settings(NvDRSSessionHandle session,
         std::unordered_set<unsigned> **internal_settings)
 {
     NvAPI_Status status = NVAPI_OK;
-    NVDRS_PROFILE info = {0};
+    NVDRS_PROFILE info = {};
 
     *internal_settings = NULL;
 
@@ -893,7 +893,7 @@ bail:
 
 void log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile)
 {
-    NVDRS_PROFILE info = {0};
+    NVDRS_PROFILE info = {};
     NvAPI_Status status = NVAPI_OK;
 
     info.version = NVDRS_PROFILE_VER;
@@ -924,7 +924,7 @@ static NvDRSProfileHandle get_cur_nv_profile(NvDRSSessionHandle session)
 {
     NvDRSProfileHandle profile = 0;
     NvAPI_Status status = NVAPI_OK;
-    NVDRS_APPLICATION app = {0};
+    NVDRS_APPLICATION app = {};
     wchar_t path[MAX_PATH];
 
     if (!get_exe_path(path, MAX_PATH)) {
@@ -954,8 +954,8 @@ static void log_relevant_nv_profiles(NvDRSSessionHandle session, NvDRSProfileHan
     NvDRSProfileHandle base_profile = 0;
     NvDRSProfileHandle global_profile = 0;
     NvDRSProfileHandle stereo_profile = 0;
-    NVDRS_PROFILE base_info = {0};
-    NVDRS_PROFILE global_info = {0};
+    NVDRS_PROFILE base_info = {};
+    NVDRS_PROFILE global_info = {};
     NvAPI_Status status = NVAPI_OK;
     NvU32 len = 0;
     char *default_stereo_profile = NULL;
@@ -1151,7 +1151,7 @@ static int parse_ini_profile_rhs(wstring *rhs, NVDRS_SETTING *setting)
 int parse_ini_profile_line(wstring *lhs, wstring *rhs)
 {
     NvAPI_Status status = NVAPI_OK;
-    NVDRS_SETTING setting = {0};
+    NVDRS_SETTING setting = {};
 
     setting.version = NVDRS_SETTING_VER;
 
@@ -1315,7 +1315,7 @@ static void spawn_privileged_profile_helper_task()
     wchar_t d3dcompiler_temp_path[MAX_PATH];
     wchar_t game_path[MAX_PATH];
     wstring params;
-    SHELLEXECUTEINFO info = {0};
+    SHELLEXECUTEINFO info = {};
     HMODULE module;
     DWORD rc;
     bool do_rm = false;
@@ -1437,7 +1437,7 @@ static bool compare_setting(NvDRSSessionHandle session,
         std::unordered_set<unsigned> *internal_settings,
         bool log)
 {
-    NVDRS_SETTING driver_setting = {0};
+    NVDRS_SETTING driver_setting = {};
     NvAPI_Status status = NVAPI_OK;
     unsigned dval = 0;
     bool internal;
@@ -1561,7 +1561,7 @@ static void generate_profile_name(wchar_t *name)
 static int add_exe_to_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile)
 {
     NvAPI_Status status = NVAPI_OK;
-    NVDRS_APPLICATION app = {0};
+    NVDRS_APPLICATION app = {};
 
     app.version = NVDRS_APPLICATION_VER;
     // Could probably add the full path, but then we would be more likely
@@ -1585,7 +1585,7 @@ static NvDRSProfileHandle create_profile(NvDRSSessionHandle session)
 {
     NvAPI_Status status = NVAPI_OK;
     NvDRSProfileHandle profile = 0;
-    NVDRS_PROFILE info = {0};
+    NVDRS_PROFILE info = {};
 
     info.version = NVDRS_PROFILE_VER;
     generate_profile_name((wchar_t*)info.profileName);

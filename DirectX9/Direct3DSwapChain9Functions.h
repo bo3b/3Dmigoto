@@ -136,7 +136,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DSwapChain9::Present(THIS_ CONST RECT* pSource
     LOG_DEBUG("IDirect3DSwapChain9::Present called\n");
 
     CheckSwapChain(this);
-    Profiling::State profiling_state = { 0 };
+    Profiling::State profiling_state = {};
     bool profiling = false;
     // Profiling::mode may change below, so make a copy
     profiling = Profiling::mode == Profiling::Mode::SUMMARY;

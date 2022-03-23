@@ -1419,7 +1419,7 @@ static string translate_string_operand(string &in)
 // shader when the debug layer is enabled, potentially making them quite valuable
 static vector<DWORD> assemble_printf(string &s, vector<DWORD> &v, vector<string> &w, bool errorf)
 {
-    shader_ins ins = {0};
+    shader_ins ins = {};
     ins.opcode = 0x35;
     ins._11_23 = 0x4;
     v.push_back(ins.op);
@@ -2261,7 +2261,7 @@ static vector<DWORD> assembleIns(string s)
         // any cases where this should be non-zero:
         if (w[2][0] == 't') {
             numOps++;
-            os.push_back(vector<DWORD>{0});
+            os.push_back(vector<DWORD>{});
         }
 
         ins->length = 1;
