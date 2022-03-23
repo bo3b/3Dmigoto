@@ -149,7 +149,7 @@ void InitD39()
         LOG_INFO("Proxy loading active, Forcing load_library_redirect=0\n");
         G->load_library_redirect = 0;
 
-        wchar_t sysDir[MAX_PATH] = { 0 };
+        wchar_t sysDir[MAX_PATH] = {};
         if (!GetModuleFileName(0, sysDir, MAX_PATH)) {
             LOG_INFO("GetModuleFileName failed\n");
             double_beep_exit();

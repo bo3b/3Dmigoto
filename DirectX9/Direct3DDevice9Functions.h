@@ -568,7 +568,7 @@ static void ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 inline char * D3D9Wrapper::IDirect3DDevice9::ReplaceShader(UINT64 hash, const wchar_t * shaderType, const void * pShaderBytecode, SIZE_T BytecodeLength, SIZE_T & pCodeSize, string & foundShaderModel, FILETIME & timeStamp, wstring & headerLine, const char * overrideShaderModel)
 {
     foundShaderModel = "";
-    timeStamp = { 0 };
+    timeStamp = {};
 
     char *pCode = 0;
     wchar_t val[MAX_PATH];
@@ -2877,7 +2877,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::Present(THIS_ CONST RECT* pSourceRec
     LOG_DEBUG("  hDestWindowOverride = %p\n", hDestWindowOverride);
     LOG_DEBUG("  pDirtyRegion = %p\n", pDirtyRegion);
     CheckDevice(this);
-    Profiling::State profiling_state = { 0 };
+    Profiling::State profiling_state = {};
     bool profiling = false;
     if (G->SCREEN_FULLSCREEN == 2)
     {
@@ -6530,7 +6530,7 @@ STDMETHODIMP D3D9Wrapper::IDirect3DDevice9::PresentEx(RECT * pSourceRect, const 
     LOG_DEBUG("  pDirtyRegion = %p\n", pDirtyRegion);
     LOG_DEBUG("  dwFlags = %d\n", dwFlags);
     CheckDevice(this);
-    Profiling::State profiling_state = { 0 };
+    Profiling::State profiling_state = {};
     bool profiling = false;
     if (G->SCREEN_FULLSCREEN == 2)
     {

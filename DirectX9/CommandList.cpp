@@ -6406,7 +6406,7 @@ static HRESULT _CreateCustomBuffer(IDirect3DIndexBuffer9 *buffer, D3DINDEXBUFFER
 template<typename ID3D9Buffer, typename ID3D9BufferDesc>
 void CustomResource::SubstantiateBuffer(IDirect3DDevice9 *origDevice, void **buf, DWORD size)
 {
-    void* data = { 0 }, *pInitialData = NULL;
+    void* data = {}, *pInitialData = NULL;
     ID3D9Buffer *buffer = NULL;
     ID3D9BufferDesc desc;
     HRESULT hr;
