@@ -582,7 +582,7 @@ HRESULT CD3DFont::DrawText(float fXPos, float fYPos, DWORD dwColor, const char* 
 
     if (dwFlags & D3DFONT_BACKGROUND)
     {
-        SIZE szFontBox = { 0 };
+        SIZE szFontBox = {};
 
         if (FAILED(GetTextExtent(strText, &szFontBox)))
             return E_FAIL;
@@ -904,7 +904,7 @@ HRESULT CD3DFont::AddStaticText(float fXPos, float fYPos, DWORD dwColor, const c
         if (m_dwUsedEffectVerts > (MAX_NUM_VERTICES - 6))
             return E_FAIL;
 
-        SIZE szFontBox = { 0 };
+        SIZE szFontBox = {};
 
         if (FAILED(GetTextExtent(strText, &szFontBox)))
             return E_FAIL;

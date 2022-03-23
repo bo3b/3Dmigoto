@@ -412,7 +412,7 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 static HRESULT Decompile(const void *pShaderBytecode, size_t BytecodeLength, string *hlslText, string *shaderModel)
 {
     // Set all to zero, so we only init the ones we are using here:
-    ParseParameters p = {0};
+    ParseParameters p = {};
     DecompilerSettings d;
     bool patched = false;
     bool errorOccurred = false;

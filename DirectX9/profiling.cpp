@@ -130,8 +130,8 @@ static void update_txt_cto_warning()
 
 static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER freq, unsigned frames)
 {
-    LARGE_INTEGER present_overhead = {0};
-    LARGE_INTEGER command_list_overhead = {0};
+    LARGE_INTEGER present_overhead = {};
+    LARGE_INTEGER command_list_overhead = {};
     LARGE_INTEGER overlay_overhead;
     LARGE_INTEGER draw_overhead;
     LARGE_INTEGER map_overhead;
@@ -401,7 +401,7 @@ static void update_txt_commands(LARGE_INTEGER collection_duration, LARGE_INTEGER
 
 void Profiling::update_txt()
 {
-    static LARGE_INTEGER freq = {0};
+    static LARGE_INTEGER freq = {};
     LARGE_INTEGER end_time, collection_duration;
     unsigned frames = G->frame_no - start_frame_no;
     wchar_t buf[256];

@@ -16,7 +16,7 @@ FILE *LogFile = 0;
 static bool gInitialized = false;
 
 static bool EXPORT_SHADERS = false;
-static wchar_t SHADER_PATH[MAX_PATH] = { 0 };
+static wchar_t SHADER_PATH[MAX_PATH] = {};
 
 using namespace std;
 
