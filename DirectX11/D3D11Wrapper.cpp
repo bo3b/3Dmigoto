@@ -7,33 +7,32 @@
 
 #include "nvprofile.h"
 
-//#include <Shlobj.h>
-//#include <Winuser.h>
-//#include <map>
-//#include <vector>
-//#include <set>
-//#include <iterator>
-//#include <string>
-//
-//#include "util.h"
-//#include "Override.hpp"
-//#include "HackerDevice.hpp"
-//#include "HackerContext.hpp"
-
 // The Log file and the Globals are both used globally, and these are the actual
 // definitions of the variables.  All other uses will be via the extern in the
-// globals.h and log.h files.
+// globals.h and log.h files.  Other tools like nvapi.dll and cmd_decompiler make
+// their own versions.
 
 // Globals used to be allocated on the heap, which is pointless given that it
 // is global, and fragile given that we now have a second entry point for the
 // profile helper that does not use the same init paths as the regular dll.
-// Statically allocate it as StaticG and point the old G pointer to it to avoid
+// Statically allocate it as static_G and point the old G pointer to it to avoid
 // needing to change every reference.
-globals  StaticG;
-globals* G = &StaticG;
+globals  static_G;
+globals* G = &static_G;
+
+// It's worth noting that I researched Boost logging, and that would allow us
+// to have multiple output sinks like VS or stderr output at the same time as file
+// based. Also it's a weird distinction to have nvapi log its own, and boost allows
+// for multiple clients of same log.  It is pretty much a drop in replacement with a
+// better feature set.  However we have a long history with our current logging, so it
+// doesn't feel like a priority.
 
 FILE* LogFile   = nullptr;  // off by default.
 bool  gLogDebug = false;
+
+// An HMODULE reference to the real D3D11.dll in the system32 drivers.
+// We chain through to it after being called.
+static HMODULE system_d3d11 = nullptr;
 
 // This critical section must be held to avoid race conditions when creating
 // any resource. The nvapi functions used to set the resource creation mode
@@ -309,6 +308,10 @@ int WINAPI D3DKMTSetVidPnSourceOwner()
     return 0;
 }
 
+// These are all copied out of the WindowDriverKit, which we don't particularly want
+// to include here.  We don't use them except as a pass through to keep the d3d11.dll running.
+// As such, we won't change their naming or structure in any way.
+
 typedef ULONG D3DKMT_HANDLE;
 typedef int   KMTQUERYADAPTERINFOTYPE;
 
@@ -339,8 +342,6 @@ typedef struct D3D10DDIARG_OPENADAPTER
         D3D10_2DDI_ADAPTERFUNCS* pAdapterFuncs_2;
     };
 } D3D10DDIARG_OPENADAPTER;
-
-static HMODULE hD3D11 = nullptr;
 
 typedef int(WINAPI* tD3DKMTQueryAdapterInfo)(_D3DKMT_QUERYADAPTERINFO*);
 static tD3DKMTQueryAdapterInfo _D3DKMTQueryAdapterInfo;
@@ -386,7 +387,7 @@ void init_d3d11()
 {
     UINT ret;
 
-    if (hD3D11)
+    if (system_d3d11)
         return;
 
     INIT_CRITICAL_SECTION(&G->mCriticalSection);
@@ -406,7 +407,7 @@ void init_d3d11()
         LOG_INFO("Proxy loading active, Forcing load_library_redirect=0\n");
         G->load_library_redirect = 0;
 
-        wchar_t sys_dir[MAX_PATH] = { 0 };
+        wchar_t sys_dir[MAX_PATH] = {};
         if (!GetModuleFileName(migoto_handle, sys_dir, MAX_PATH))
         {
             LOG_INFO("GetModuleFileName failed\n");
@@ -420,8 +421,8 @@ void init_d3d11()
             wcstombs(path, sys_dir, MAX_PATH);
             LOG_INFO("trying to chain load %s\n", path);
         }
-        hD3D11 = LoadLibrary(sys_dir);
-        if (!hD3D11)
+        system_d3d11 = LoadLibrary(sys_dir);
+        if (!system_d3d11)
         {
             if (LogFile)
             {
@@ -429,9 +430,9 @@ void init_d3d11()
                 wcstombs(path, G->CHAIN_DLL_PATH, MAX_PATH);
                 LOG_INFO("load failed. Trying to chain load %s\n", path);
             }
-            hD3D11 = LoadLibrary(G->CHAIN_DLL_PATH);
+            system_d3d11 = LoadLibrary(G->CHAIN_DLL_PATH);
         }
-        LOG_INFO("Proxy loading result: %p\n", hD3D11);
+        LOG_INFO("Proxy loading result: %p\n", system_d3d11);
     }
     else
     {
@@ -440,8 +441,8 @@ void init_d3d11()
         // We need the system d3d11 in order to find the original proc addresses.
         // We hook LoadLibraryExW, so we need to use that here.
         LOG_INFO("Trying to load original_d3d11.dll\n");
-        hD3D11 = LoadLibraryEx(L"original_d3d11.dll", nullptr, 0);
-        if (hD3D11 == nullptr)
+        system_d3d11 = LoadLibraryEx(L"original_d3d11.dll", nullptr, 0);
+        if (system_d3d11 == nullptr)
         {
             wchar_t lib_path[MAX_PATH];
             LOG_INFO("*** LoadLibrary on original_d3d11.dll failed.\n");
@@ -458,34 +459,34 @@ void init_d3d11()
             {
                 wcscat_s(lib_path, MAX_PATH, L"\\d3d11.dll");
                 LOG_INFO_W(L"Trying to load %ls\n", lib_path);
-                hD3D11 = LoadLibraryEx(lib_path, nullptr, 0);
+                system_d3d11 = LoadLibraryEx(lib_path, nullptr, 0);
             }
         }
     }
-    if (hD3D11 == nullptr)
+    if (system_d3d11 == nullptr)
     {
         LOG_INFO("*** LoadLibrary on original or chained d3d11.dll failed.\n");
         double_beep_exit();
     }
 
-    _D3DKMTQueryAdapterInfo        = reinterpret_cast<tD3DKMTQueryAdapterInfo>(GetProcAddress(hD3D11, "D3DKMTQueryAdapterInfo"));
-    _OpenAdapter10                 = reinterpret_cast<tOpenAdapter10>(GetProcAddress(hD3D11, "OpenAdapter10"));
-    _OpenAdapter10_2               = reinterpret_cast<tOpenAdapter10_2>(GetProcAddress(hD3D11, "OpenAdapter10_2"));
-    _D3D11CoreCreateDevice         = reinterpret_cast<tD3D11CoreCreateDevice>(GetProcAddress(hD3D11, "D3D11CoreCreateDevice"));
-    _D3D11CoreCreateLayeredDevice  = reinterpret_cast<tD3D11CoreCreateLayeredDevice>(GetProcAddress(hD3D11, "D3D11CoreCreateLayeredDevice"));
-    _D3D11CoreGetLayeredDeviceSize = reinterpret_cast<tD3D11CoreGetLayeredDeviceSize>(GetProcAddress(hD3D11, "D3D11CoreGetLayeredDeviceSize"));
-    _D3D11CoreRegisterLayers       = reinterpret_cast<tD3D11CoreRegisterLayers>(GetProcAddress(hD3D11, "D3D11CoreRegisterLayers"));
+    _D3DKMTQueryAdapterInfo        = reinterpret_cast<tD3DKMTQueryAdapterInfo>(GetProcAddress(system_d3d11, "D3DKMTQueryAdapterInfo"));
+    _OpenAdapter10                 = reinterpret_cast<tOpenAdapter10>(GetProcAddress(system_d3d11, "OpenAdapter10"));
+    _OpenAdapter10_2               = reinterpret_cast<tOpenAdapter10_2>(GetProcAddress(system_d3d11, "OpenAdapter10_2"));
+    _D3D11CoreCreateDevice         = reinterpret_cast<tD3D11CoreCreateDevice>(GetProcAddress(system_d3d11, "D3D11CoreCreateDevice"));
+    _D3D11CoreCreateLayeredDevice  = reinterpret_cast<tD3D11CoreCreateLayeredDevice>(GetProcAddress(system_d3d11, "D3D11CoreCreateLayeredDevice"));
+    _D3D11CoreGetLayeredDeviceSize = reinterpret_cast<tD3D11CoreGetLayeredDeviceSize>(GetProcAddress(system_d3d11, "D3D11CoreGetLayeredDeviceSize"));
+    _D3D11CoreRegisterLayers       = reinterpret_cast<tD3D11CoreRegisterLayers>(GetProcAddress(system_d3d11, "D3D11CoreRegisterLayers"));
     if (!_D3D11CreateDevice)
-        _D3D11CreateDevice = reinterpret_cast<PFN_D3D11_CREATE_DEVICE>(GetProcAddress(hD3D11, "D3D11CreateDevice"));
+        _D3D11CreateDevice = reinterpret_cast<PFN_D3D11_CREATE_DEVICE>(GetProcAddress(system_d3d11, "D3D11CreateDevice"));
     if (!_D3D11CreateDeviceAndSwapChain)
-        _D3D11CreateDeviceAndSwapChain = reinterpret_cast<PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN>(GetProcAddress(hD3D11, "D3D11CreateDeviceAndSwapChain"));
-    _D3DKMTGetDeviceState     = reinterpret_cast<tD3DKMTGetDeviceState>(GetProcAddress(hD3D11, "D3DKMTGetDeviceState"));
-    _D3DKMTOpenAdapterFromHdc = reinterpret_cast<tD3DKMTOpenAdapterFromHdc>(GetProcAddress(hD3D11, "D3DKMTOpenAdapterFromHdc"));
-    _D3DKMTOpenResource       = reinterpret_cast<tD3DKMTOpenResource>(GetProcAddress(hD3D11, "D3DKMTOpenResource"));
-    _D3DKMTQueryResourceInfo  = reinterpret_cast<tD3DKMTQueryResourceInfo>(GetProcAddress(hD3D11, "D3DKMTQueryResourceInfo"));
+        _D3D11CreateDeviceAndSwapChain = reinterpret_cast<PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN>(GetProcAddress(system_d3d11, "D3D11CreateDeviceAndSwapChain"));
+    _D3DKMTGetDeviceState     = reinterpret_cast<tD3DKMTGetDeviceState>(GetProcAddress(system_d3d11, "D3DKMTGetDeviceState"));
+    _D3DKMTOpenAdapterFromHdc = reinterpret_cast<tD3DKMTOpenAdapterFromHdc>(GetProcAddress(system_d3d11, "D3DKMTOpenAdapterFromHdc"));
+    _D3DKMTOpenResource       = reinterpret_cast<tD3DKMTOpenResource>(GetProcAddress(system_d3d11, "D3DKMTOpenResource"));
+    _D3DKMTQueryResourceInfo  = reinterpret_cast<tD3DKMTQueryResourceInfo>(GetProcAddress(system_d3d11, "D3DKMTQueryResourceInfo"));
 
 #ifdef NTDDI_WIN10
-    _D3D11On12CreateDevice = reinterpret_cast<PFN_D3D11ON12_CREATE_DEVICE>(GetProcAddress(hD3D11, "D3D11On12CreateDevice"));
+    _D3D11On12CreateDevice = reinterpret_cast<PFN_D3D11ON12_CREATE_DEVICE>(GetProcAddress(system_d3d11, "D3D11On12CreateDevice"));
 #endif
 }
 
