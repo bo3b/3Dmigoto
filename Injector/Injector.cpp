@@ -6,7 +6,7 @@
 #include "util_min.h"
 
 #include <windows.h>
-#include <stdio.h>
+#include <cstdio>
 #include <tlhelp32.h>
 #include <set>
 

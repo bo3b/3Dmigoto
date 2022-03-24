@@ -31,7 +31,7 @@
 
 #include <excpt.h>
 
-#include "assert.h"
+#include <cassert>
 #include "log.h"
 #include "version.h"
 

@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "float.h"
+#include <cfloat>
 
 #include <stdexcept>
 
