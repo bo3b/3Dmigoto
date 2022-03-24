@@ -4,7 +4,6 @@
 #include <d3d11_1.h>
 #include <vector>
 
-#include "util.h"
 #include "Input.hpp"
 #include "HackerDevice.hpp"
 

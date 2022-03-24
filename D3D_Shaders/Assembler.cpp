@@ -1,5 +1,6 @@
 #include "stdafx.h"
-#include <cfloat>
+
+#include <unordered_map>
 
 #include <stdexcept>
 
