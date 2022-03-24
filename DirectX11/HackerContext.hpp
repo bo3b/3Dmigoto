@@ -108,7 +108,7 @@ private:
     ID3D11DeviceContext1* realOrigContext1;
     HackerDevice*         hackerDevice;
 
-    // These are per-context, moved from globals.h:
+    // These are per-context, moved from Globals.h:
     uint32_t                     currentVertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
     uint32_t                     currentIndexBuffer;  // Only valid while hunting=1
     std::vector<ID3D11Resource*> currentRenderTargets;

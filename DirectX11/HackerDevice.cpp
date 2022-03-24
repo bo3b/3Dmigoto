@@ -10,7 +10,7 @@
 
 // Include before util.h (or any header that includes util.h) to get pretty
 // version of LOCK_RESOURCE_CREATION_MODE:
-#include "lock.h"
+#include "Lock.h"
 
 #include "HackerDevice.hpp"
 #include "HookedDevice.h"

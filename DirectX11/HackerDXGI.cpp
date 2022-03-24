@@ -55,7 +55,7 @@
 
 // Include before util.h (or any header that includes util.h) to get pretty
 // version of LOCK_RESOURCE_CREATION_MODE:
-#include "lock.h"
+#include "Lock.h"
 
 #include "HackerDXGI.hpp"
 #include "HookedDevice.h"
@@ -63,13 +63,13 @@
 
 #include "log.h"
 #include "util.h"
-#include "globals.h"
+#include "Globals.h"
 #include "Hunting.hpp"
 #include "Override.hpp"
 #include "IniHandler.h"
 #include "CommandList.hpp"
-#include "profiling.hpp"
-#include "cursor.h"  // For InstallHookLate
+#include "Profiling.hpp"
+#include "Cursor.h"  // For InstallHookLate
 
 // -----------------------------------------------------------------------------
 // SetWindowPos hook, activated by full_screen=2 in d3dx.ini

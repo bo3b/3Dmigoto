@@ -15,8 +15,8 @@
 #include "Override.hpp"
 #include "Globals.h"
 #include "IniHandler.h"
-#include "D3D_Shaders\stdafx.h"
-#include "profiling.hpp"
+#include "D3D_Shaders/stdafx.h"
+#include "Profiling.hpp"
 #include "FrameAnalysis.hpp"
 #include "ShaderRegex.hpp"
 
