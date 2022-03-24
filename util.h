@@ -1,33 +1,12 @@
 #pragma once
 
-#include <cctype>
-#include <cwchar>
-#include <string>
-#include <vector>
-#include <map>
-#include <typeinfo>
-
 #include <d3d11_1.h>
-#include <dxgi1_2.h>
-
-#include <D3Dcompiler.h>
-#include <d3d9.h>
 #include <DirectXMath.h>
+#include <dxgi1_2.h>
+#include <string>
 #include <vcruntime_typeinfo.h>
+#include <Windows.h>
 
-#include "version.h"
-#include "log.h"
-#include "crc32c.h"
-#include "util_min.h"
-
-#include "D3D_Shaders\stdafx.h"
-
-#if MIGOTO_DX == 11
-    #include "DirectX11\HookedDevice.h"
-    #include "DirectX11\HookedContext.h"
-#elif MIGOTO_DX == 9
-    #include "DirectX9\HookedDeviceDX9.h"
-#endif  // MIGOTO_DX
 
 // Sets the threshold for warning about IniParams size. The larger IniParams is
 // the more CPU -> GPU bandwidth we will require to update it, so we want to

@@ -1,5 +1,11 @@
 #include "util.h"
 
+#include "crc32c.h"
+#include "version.h"
+
+#include "DirectX11/HookedContext.h"
+#include "DirectX11/HookedDevice.h"
+
 #include <sddl.h>
 #include <io.h>
 #include <fcntl.h>

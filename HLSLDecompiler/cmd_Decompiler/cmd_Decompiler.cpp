@@ -3,8 +3,6 @@
 
 #include "stdafx.h"
 
-#include <iostream>     // console output
-
 #include <D3Dcompiler.h>
 #include "DecompileHLSL.h"
 #include "version.h"
