@@ -24,7 +24,7 @@
 #include "ShaderRegex.hpp"
 #include "FrameAnalysis.hpp"
 #include "HookedContext.h"
-#include "profiling.hpp"
+#include "Profiling.hpp"
 
 using namespace std;
 

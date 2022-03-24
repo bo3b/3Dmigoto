@@ -5,11 +5,11 @@
 #include "IniHandler.h"
 #include "HookedDXGI.h"
 
-#include "nvprofile.h"
+#include "NVProfile.h"
 
 // The Log file and the Globals are both used globally, and these are the actual
 // definitions of the variables.  All other uses will be via the extern in the
-// globals.h and log.h files.  Other tools like nvapi.dll and cmd_decompiler make
+// Globals.h and log.h files.  Other tools like nvapi.dll and cmd_decompiler make
 // their own versions.
 
 // Globals used to be allocated on the heap, which is pointless given that it
