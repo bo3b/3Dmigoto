@@ -28,7 +28,6 @@
 #include <dxgidebug.h>
 #include <d3d9.h>
 #include <d3d10_1.h>
-#include <d3d10shader.h>
 
 #include "log.h"
 

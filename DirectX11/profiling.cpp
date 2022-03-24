@@ -1,5 +1,6 @@
 #include "profiling.hpp"
 #include "globals.h"
+#include "log.h"
 
 #include <algorithm>
 

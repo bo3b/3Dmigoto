@@ -5,16 +5,10 @@
 
 #pragma once
 
-#include "targetver.h"
-
-#include <cstdio>
-#include <tchar.h>
 #include <cstdint>
 #include "D3DCompiler.h"
 #include <string>
 #include <vector>
-#include <unordered_map>
-
 
 // VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
 class AssemblerParseError: public std::exception {
