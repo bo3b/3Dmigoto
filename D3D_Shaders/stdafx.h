@@ -7,9 +7,9 @@
 
 #include "targetver.h"
 
-#include <stdio.h>
+#include <cstdio>
 #include <tchar.h>
-#include "stdint.h"
+#include <cstdint>
 #include "D3DCompiler.h"
 #include <string>
 #include <vector>

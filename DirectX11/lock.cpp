@@ -2,7 +2,7 @@
 #include "Overlay.hpp"
 
 #include <psapi.h>
-#include <inttypes.h>
+#include <cinttypes>
 #include <unordered_map>
 #include <vector>
 

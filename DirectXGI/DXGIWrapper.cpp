@@ -24,7 +24,7 @@
 
 
 #include <Windows.h>
-#include <stdio.h>
+#include <cstdio>
 #include <Shlobj.h>
 #include <dxgi1_2.h>
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <d3d11_1.h>
-#include <stdint.h>
+#include <cstdint>
 #include <tuple>
 #include <map>
 #include <set>

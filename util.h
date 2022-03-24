@@ -1,7 +1,7 @@
 #pragma once
 
-#include <ctype.h>
-#include <wchar.h>
+#include <cctype>
+#include <cwchar>
 #include <string>
 #include <vector>
 #include <map>

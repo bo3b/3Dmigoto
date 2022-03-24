@@ -1,16 +1,16 @@
 #pragma once
 
 // Windows Header Files
-#include <math.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstdlib>
 #include <tchar.h>
 #include <crtdbg.h>
 #include <Windows.h>
 #include <Shlobj.h>
-#include <assert.h>
+#include <cassert>
 #include <oleauto.h>
 #include <shellapi.h>
-#include <stdio.h>
+#include <cstdio>
 #include <map>
 #include <ctime>
 #include <fstream>

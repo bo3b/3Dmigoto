@@ -10,7 +10,7 @@
 #include <ScreenGrab.h>
 #include <wincodec.h>
 #include <Strsafe.h>
-#include <stdarg.h>
+#include <cstdarg>
 #include <Shlwapi.h>
 
 // For windows shortcuts:
