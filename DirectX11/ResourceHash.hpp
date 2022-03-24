@@ -12,6 +12,8 @@
 #include "util.h"
 #include "DrawCallInfo.h"
 
+#include <unordered_map>
+
 // Tracks info about specific resource instances:
 struct ResourceHandleInfo
 {

@@ -17,6 +17,7 @@
 #include "nvprofile.h"
 #include "ShaderRegex.hpp"
 #include "cursor.h"
+#include "version.h"
 
 #define INI_FILENAME L"d3dx.ini"
 

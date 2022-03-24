@@ -16,7 +16,6 @@
 #include "Globals.h"
 #include "IniHandler.h"
 #include "D3D_Shaders\stdafx.h"
-#include "CommandList.hpp"
 #include "profiling.hpp"
 #include "FrameAnalysis.hpp"
 #include "ShaderRegex.hpp"

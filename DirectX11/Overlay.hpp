@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <d3d11_1.h>
-#include <dxgi1_2.h>
 #include <wrl.h>
 
 #include "SpriteFont.h"
@@ -12,7 +11,6 @@
 #include "Effects.h"
 #include "VertexTypes.h"
 
-#include "lock.h"
 #include "HackerDevice.hpp"
 #include "HackerContext.hpp"
 

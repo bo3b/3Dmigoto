@@ -7,7 +7,7 @@
 #include "../util.h"
 #include "../nvapi.h"
 #include "../log.h"
-
+#include "../version.h"
 
 extern "C"
 {
