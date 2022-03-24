@@ -15,8 +15,8 @@
 
 #include "ResourceHash.hpp"
 #include "CommandList.hpp"
-#include "profiling.hpp"
-#include "lock.h"
+#include "Profiling.hpp"
+#include "Lock.h"
 
 extern HINSTANCE migoto_handle;
 

@@ -4,8 +4,8 @@
 #include "D3D11Wrapper.h"
 
 // Including this after the above headers so the nvapi.h include will pick up
-// the d3d11.h pre-processor defines to avoid mis-matches with profiling.hpp:
-#include "nvprofile.h"
+// the d3d11.h pre-processor defines to avoid mis-matches with Profiling.hpp:
+#include "NVProfile.h"
 
 #include <unordered_set>
 #include <fstream>

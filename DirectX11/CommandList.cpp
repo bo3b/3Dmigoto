@@ -1,6 +1,6 @@
 // Include before util.h (or any header that includes util.h) to get pretty
 // version of LOCK_RESOURCE_CREATION_MODE:
-#include "lock.h"
+#include "Lock.h"
 
 #include "CommandList.hpp"
 
@@ -13,9 +13,9 @@
 #include "Override.hpp"
 #include "D3D11Wrapper.h"
 #include "IniHandler.h"
-#include "profiling.hpp"
+#include "Profiling.hpp"
 #include "Hunting.hpp"
-#include "cursor.h"
+#include "Cursor.h"
 
 #include <D3DCompiler.h>
 

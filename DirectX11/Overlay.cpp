@@ -11,12 +11,12 @@
 #include "SpriteBatch.h"
 
 #include "log.h"
-#include "lock.h"
+#include "Lock.h"
 #include "version.h"
 #include "D3D11Wrapper.h"
 //#include "nvapi.h"
 #include "Globals.h"
-#include "profiling.hpp"
+#include "Profiling.hpp"
 
 #include "HackerDevice.hpp"
 #include "HackerContext.hpp"

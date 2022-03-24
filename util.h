@@ -12,7 +12,7 @@
 
 #include "util_min.h"
 
-#include "D3D_Shaders\stdafx.h"
+#include "D3D_Shaders/stdafx.h"
 
 
 // Sets the threshold for warning about IniParams size. The larger IniParams is
@@ -47,7 +47,7 @@ constexpr int ini_params_size_warning = 256;
 extern CRITICAL_SECTION resource_creation_mode_lock;
 
 // TODO: Is this necessary? Why not use the pretty version in all cases?
-// Use the pretty lock debugging version if lock.h is included first, otherwise
+// Use the pretty lock debugging version if Lock.h is included first, otherwise
 // use the regular EnterCriticalSection:
 #ifdef EnterCriticalSectionPretty
     #define LOCK_RESOURCE_CREATION_MODE() \

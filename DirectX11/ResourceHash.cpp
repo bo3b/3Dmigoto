@@ -3,8 +3,8 @@
 #include <INITGUID.h>
 #include "log.h"
 #include "util.h"
-#include "globals.h"
-#include "profiling.hpp"
+#include "Globals.h"
+#include "Profiling.hpp"
 #include "Overlay.hpp"
 
 using namespace std;

@@ -14,9 +14,9 @@
 #include "Globals.h"
 #include "Override.hpp"
 #include "Hunting.hpp"
-#include "nvprofile.h"
+#include "NVProfile.h"
 #include "ShaderRegex.hpp"
-#include "cursor.h"
+#include "Cursor.h"
 #include "version.h"
 
 #define INI_FILENAME L"d3dx.ini"

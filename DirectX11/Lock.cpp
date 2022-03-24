@@ -1,4 +1,4 @@
-#include "lock.h"
+#include "Lock.h"
 #include "Overlay.hpp"
 
 #include <psapi.h>
