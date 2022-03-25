@@ -1,12 +1,12 @@
 #include "Override.hpp"
 
-#include "Globals.h"
 #include "D3D11Wrapper.h"
+#include "Globals.h"
 #include "IniHandler.h"
 
+#include <algorithm>
 #include <cmath>
 #include <strsafe.h>
-#include <algorithm>
 
 using namespace std;
 

@@ -1,11 +1,10 @@
 #include "ResourceHash.hpp"
 
-#include <INITGUID.h>
-#include "log.h"
-#include "util.h"
 #include "Globals.h"
-#include "Profiling.hpp"
+#include "log.h"
 #include "Overlay.hpp"
+#include "Profiling.hpp"
+#include "util.h"
 
 using namespace std;
 

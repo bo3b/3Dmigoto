@@ -5,8 +5,9 @@
 
 #pragma once
 
-#include <cstdint>
 #include "D3DCompiler.h"
+
+#include <cstdint>
 #include <string>
 #include <vector>
 

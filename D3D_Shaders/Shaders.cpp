@@ -2,12 +2,13 @@
 //
 
 #include "stdafx.h"
+
+#include <direct.h>
+#include <iostream>
 #include <map>
 #include <string>
-#include <vector>
-#include <iostream>
-#include <direct.h>
 #include <tchar.h>
+#include <vector>
 
 using namespace std;
 

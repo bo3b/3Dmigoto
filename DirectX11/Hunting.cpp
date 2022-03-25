@@ -1,24 +1,24 @@
 #include "Hunting.hpp"
 
-#include <string>
-#include <sstream>
-#include <D3Dcompiler.h>
-#include <codecvt>
-
-#include "ScreenGrab.h"
-#include "wincodec.h"
-
 #include "D3D11Wrapper.h"
-#include "util.h"
 #include "DecompileHLSL.h"
-#include "Input.hpp"
-#include "Override.hpp"
+#include "FrameAnalysis.hpp"
 #include "Globals.h"
 #include "IniHandler.h"
-#include "D3D_Shaders/stdafx.h"
+#include "Input.hpp"
+#include "Override.hpp"
 #include "Profiling.hpp"
-#include "FrameAnalysis.hpp"
+#include "ScreenGrab.h"
 #include "ShaderRegex.hpp"
+#include "util.h"
+#include "wincodec.h"
+
+#include "D3D_Shaders/stdafx.h"
+
+#include <codecvt>
+#include <D3Dcompiler.h>
+#include <sstream>
+#include <string>
 
 using namespace std;
 

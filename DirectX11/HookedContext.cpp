@@ -38,12 +38,13 @@
 #undef D3D11_NO_HELPERS
 #undef CINTERFACE
 
-#include <unordered_map>
-
 #include "HookedContext.h"
+
 #include "DLLMainHook.h"
-#include "log.h"
 #include "Lock.h"
+#include "log.h"
+
+#include <unordered_map>
 
 // Change this to 1 to enable debug logging of hooks and the trampolines back
 // to the original context. Disabled by default as debug logging will already

@@ -1,17 +1,17 @@
 // cmd_Decompiler.cpp : Defines the entry point for the console application.
 //
 
+#include "DecompileHLSL.h"
+#include "log.h"
 #include "stdafx.h"
+#include "version.h"
 
 #include <D3Dcompiler.h>
-#include "DecompileHLSL.h"
-#include "version.h"
-#include "log.h"
 #define MIGOTO_DX 11 // Selects the DX11 disassembler in util.h - the DX9 dis/assembler is not very
                      // interesting since it is just Microsoft's - we can add it later, but low priority.
                      // The DX9 decompiler is more interesting, which is unrelated to this flag.
-#include "util.h"
 #include "shader.h"
+#include "util.h"
 
 using namespace std;
 
@@ -26,8 +26,9 @@ static void PrintHelp(int argc, char *argv[])
     LOG_INFO("\t\t\tDecompile binary shaders with 3DMigoto's decompiler\n");
 
     // We can do this via fxc easily enough for now, and would need to pass in the shader model:
-    // LOG_INFO("  -C, --compile\n");
-    // LOG_INFO("\t\t\tCompile binary shaders with Microsoft's compiler\n");
+    LOG_INFO("  -C, --compile\n");
+    LOG_INFO("\t\t\tCompile binary shaders with Microsoft's compiler\n");
+    LOG_INFO("\t\t\Use the fxc compiler in VS cmd window.\n");
 
     LOG_INFO("  -d, --disassemble, --disassemble-flugan\n");
     LOG_INFO("\t\t\tDisassemble binary shaders with Flugan's disassembler\n");
@@ -49,7 +50,7 @@ static void PrintHelp(int argc, char *argv[])
     LOG_INFO("\t\t\tAssemble shaders with Flugan's assembler\n");
 
     LOG_INFO("  --copy-reflection FILE\n");
-    LOG_INFO("\t\t\t\tCopy reflection & signature sections from FILE when assembling");
+    LOG_INFO("\t\t\t\tCopy reflection & signature sections from FILE when assembling\n");
 
     // TODO (at the moment we always force):
     // LOG_INFO("  -f, --force\n");

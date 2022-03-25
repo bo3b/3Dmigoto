@@ -1,8 +1,8 @@
 #include "util_min.h"
 
 #include <cctype>
-#include <cstring>
 #include <cstdlib>
+#include <cstring>
 
 // Minimalistic ini file parsing routines that are intended to be safe to use
 // from DllMain. Should be fairly fast since they don't update our usual data

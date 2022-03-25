@@ -12,19 +12,14 @@
 
 #include "HackerContext.hpp"
 
-//#include "HookedContext.h"
-
-#include "log.h"
-#include "Globals.h"
-
-#include "HackerDevice.hpp"
 #include "D3D11Wrapper.h"
-//#include "ResourceHash.hpp"
-//#include "Override.hpp"
-#include "ShaderRegex.hpp"
 #include "FrameAnalysis.hpp"
+#include "Globals.h"
+#include "HackerDevice.hpp"
 #include "HookedContext.h"
+#include "log.h"
 #include "Profiling.hpp"
+#include "ShaderRegex.hpp"
 
 using namespace std;
 

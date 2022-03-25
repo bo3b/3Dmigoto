@@ -1,8 +1,8 @@
 #pragma once
 
-#include <unordered_map>
 #include <nvapi.h>
 #include <string>
+#include <unordered_map>
 
 typedef std::unordered_map<NvU32, NVDRS_SETTING> ProfileSettings;
 extern ProfileSettings profile_settings;
