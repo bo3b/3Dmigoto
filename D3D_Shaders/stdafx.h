@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "D3DCompiler.h"
+#include "d3dcompiler.h"
 
 #include <cstdint>
 #include <string>

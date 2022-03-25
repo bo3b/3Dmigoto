@@ -10,12 +10,12 @@
 #include <cstdarg>
 #include <ScreenGrab.h>
 #include <Shlwapi.h>
-#include <Strsafe.h>
+#include <strsafe.h>
 #include <wincodec.h>
 
 // For windows shortcuts:
-#include <shlguid.h>
-#include <shobjidl.h>
+#include <ShlGuid.h>
+#include <ShObjIdl.h>
 
 using namespace std;
 

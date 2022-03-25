@@ -12,9 +12,6 @@
 #include "SpriteBatch.h"
 #include "version.h"
 
-#include <DirectXColors.h>
-#include <stdexcept>
-
 using namespace std;
 
 
