@@ -6,7 +6,6 @@
 #include "HackerDevice.hpp"
 
 #include <d3d11_1.h>
-#include <INITGUID.h>
 
 // {A3046B1E-336B-4D90-9FD6-234BC09B8687}
 DEFINE_GUID(IID_HackerContext, 0xa3046b1e, 0x336b, 0x4d90, 0x9f, 0xd6, 0x23, 0x4b, 0xc0, 0x9b, 0x86, 0x87);
