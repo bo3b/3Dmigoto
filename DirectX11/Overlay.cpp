@@ -10,17 +10,10 @@
 
 #include "SimpleMath.h"
 #include "SpriteBatch.h"
-
-#include "log.h"
-#include "Lock.h"
 #include "version.h"
-#include "D3D11Wrapper.h"
-//#include "nvapi.h"
-#include "Globals.h"
-#include "Profiling.hpp"
 
-#include "HackerDevice.hpp"
-#include "HackerContext.hpp"
+#include <DirectXColors.h>
+#include <stdexcept>
 
 using namespace std;
 

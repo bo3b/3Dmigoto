@@ -1,5 +1,4 @@
 #include "Cursor.h"
-
 #include "Globals.h"
 #include "Overlay.hpp"
 

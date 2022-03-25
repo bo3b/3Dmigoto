@@ -1,11 +1,11 @@
 #pragma once
 
-#include <d3d11_1.h>
-#include <initguid.h>
-
-#include "nvstereo.h"
 #include "HackerContext.hpp"
 #include "HackerDXGI.hpp"
+#include "nvstereo.h"
+
+#include <d3d11_1.h>
+#include <initguid.h>
 
 // {83FFD841-A5C9-46F4-8109-BC259558FEF4}
 DEFINE_GUID(IID_HackerDevice, 0x83ffd841, 0xa5c9, 0x46f4, 0x81, 0x9, 0xbc, 0x25, 0x95, 0x58, 0xfe, 0xf4);

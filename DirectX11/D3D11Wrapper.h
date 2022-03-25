@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Windows.h>
 #include <d3d11_1.h>
+#include <Windows.h>
 
 void init_d3d11();
 void destroy_dll();

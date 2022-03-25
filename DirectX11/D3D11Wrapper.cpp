@@ -1,10 +1,9 @@
 #include "D3D11Wrapper.h"
 
-#include "log.h"
 #include "Globals.h"
-#include "IniHandler.h"
 #include "HookedDXGI.h"
-
+#include "IniHandler.h"
+#include "log.h"
 #include "NVProfile.h"
 
 // The Log file and the Globals are both used globally, and these are the actual

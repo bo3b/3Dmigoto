@@ -23,16 +23,14 @@
 //  in Windows directly load our d3d11.dll without any code or other requirements.
 
 
-#include <Windows.h>
-#include <cstdio>
-#include <Shlobj.h>
-#include <dxgi1_2.h>
-
 #include "DXGIWrapper.h"
-//#include "HackerDXGI.hpp"
 
 #include "log.h"
 
+#include <cstdio>
+#include <dxgi1_2.h>
+#include <Shlobj.h>
+#include <Windows.h>
 
 bool gLogDebug = false;
 FILE *LogFile = 0;
