@@ -1,14 +1,14 @@
 #include "Input.hpp"
 
-#include <Xinput.h>
-#include <vector>
-#include <algorithm>
-#include <sstream>
-
+#include "IniHandler.h"
 #include "log.h"
 #include "util.h"
 #include "vkeys.h"
-#include "IniHandler.h"
+
+#include <algorithm>
+#include <sstream>
+#include <vector>
+#include <Xinput.h>
 
 using namespace std;
 

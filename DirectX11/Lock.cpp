@@ -1,8 +1,8 @@
 #include "Lock.h"
 #include "Overlay.hpp"
 
-#include <psapi.h>
 #include <cinttypes>
+#include <psapi.h>
 #include <unordered_map>
 #include <vector>
 

@@ -3,11 +3,10 @@
 #include "CommandList.hpp"
 
 #include <map>
+#include <pcre2.h>
 #include <set>
 #include <string>
 #include <vector>
-
-#include <pcre2.h>
 
 enum class ShaderRegexCache {
     NO_CACHE,

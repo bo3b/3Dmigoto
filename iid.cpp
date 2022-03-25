@@ -1,7 +1,6 @@
 // Must include this before including any of the d3d headers to have
 // DEFINE_GUID work for the IIDs:
 #include <INITGUID.h>
-
 #include <sdkddkver.h>
 
 #ifdef NTDDI_WIN10_RS3
@@ -12,29 +11,29 @@
 
 #ifdef NTDDI_WIN10
 // FIXME: Check if any of these require a minimum 10.x SDK version
+#include <d3d11_4.h>
 #include <d3d12.h>
 #include <dxgi1_5.h>
-#include <d3d11_4.h>
 #endif
 
 #ifdef NTDDI_WINBLUE
 // SDK 8.1 or higher
-#include <dxgi1_3.h>
 #include <d3d11_2.h>
+#include <dxgi1_3.h>
 #endif
-
-#include <dxgi1_2.h>
-#include <d3d11_1.h>
-#include <dxgidebug.h>
-#include <d3d9.h>
-#include <d3d10_1.h>
 
 #include "log.h"
 
+#include <d3d10_1.h>
+#include <d3d11_1.h>
+#include <d3d9.h>
+#include <dxgi1_2.h>
+#include <dxgidebug.h>
+
 // For 3DMigoto IIDs:
-#include "DirectX11/HackerDevice.hpp"
-#include "DirectX11/HackerContext.hpp"
 #include "DirectX11/FrameAnalysis.hpp"
+#include "DirectX11/HackerContext.hpp"
+#include "DirectX11/HackerDevice.hpp"
 
 struct IID_name {
     IID iid;

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <wrl.h>
-#include <string>
-
 #include "nvapi.h"
+
+#include <string>
+#include <wrl.h>
 
 namespace Profiling {
     enum class Mode {
