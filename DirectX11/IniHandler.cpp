@@ -6,6 +6,7 @@
 #include "log.h"
 #include "NVProfile.h"
 #include "Override.hpp"
+#include "pcre2.h"
 #include "ShaderRegex.hpp"
 #include "version.h"
 
@@ -14,7 +15,6 @@
 #include <fstream>
 #include <iterator>
 #include <memory>
-#include <pcre2.h>
 #include <sstream>
 #include <string>
 #include <strsafe.h>

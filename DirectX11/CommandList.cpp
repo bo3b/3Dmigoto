@@ -8,12 +8,11 @@
 #include "HackerDevice.hpp"
 #include "Hunting.hpp"
 #include "IniHandler.h"
-#include "Lock.h"
 #include "Override.hpp"
 #include "Profiling.hpp"
 
 #include <algorithm>
-#include <D3DCompiler.h>
+#include <d3dcompiler.h>
 #include <DDSTextureLoader.h>
 #include <sstream>
 #include <WICTextureLoader.h>

@@ -16,7 +16,7 @@
 #include "D3D_Shaders/stdafx.h"
 
 #include <codecvt>
-#include <D3Dcompiler.h>
+#include <d3dcompiler.h>
 #include <sstream>
 #include <string>
 

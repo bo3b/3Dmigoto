@@ -1,6 +1,6 @@
 // Must include this before including any of the d3d headers to have
 // DEFINE_GUID work for the IIDs:
-#include <INITGUID.h>
+#include <initguid.h>
 #include <sdkddkver.h>
 
 #ifdef NTDDI_WIN10_RS3

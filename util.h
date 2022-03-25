@@ -5,9 +5,7 @@
 #include "D3D_Shaders/stdafx.h"
 
 #include <cctype>
-#include <cwchar>
 #include <d3d11_1.h>
-#include <D3Dcompiler.h>
 #include <DirectXMath.h>
 #include <string>
 #include <vector>

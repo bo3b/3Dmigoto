@@ -29,7 +29,7 @@
 
 #include <cstdio>
 #include <dxgi1_2.h>
-#include <Shlobj.h>
+#include <ShlObj.h>
 #include <Windows.h>
 
 bool gLogDebug = false;

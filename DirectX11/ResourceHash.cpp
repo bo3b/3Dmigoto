@@ -13,9 +13,6 @@
 #include "DirectXTK/Src/PlatformHelpers.h"
 #include "DirectXTK/Src/LoaderHelpers.h"
 
-#include <INITGUID.h>
-
-
 using namespace std;
 
 // Overloaded functions to log any kind of resource description (useful to call
