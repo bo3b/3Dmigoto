@@ -1,4 +1,4 @@
-// Object             OS               DXGI version    Feature level
+// Object             OS               DXGI version       Feature level
 // IDXGIFactory       Win7             1.0                11.0
 // IDXGIFactory1      Win7             1.0                11.0
 // IDXGIFactory2      Platform update  1.2                11.1
@@ -12,15 +12,15 @@
 // IDXGISwapChain3    Win10            1.4
 // IDXGISwapChain4                     1.5
 
-#include <d3d11_1.h>
-
 #include "HookedDXGI.h"
-#include "HackerDXGI.hpp"
 
+#include "D3D11Wrapper.h"
 #include "DLLMainHook.h"
+#include "HackerDXGI.hpp"
 #include "log.h"
 #include "util.h"
-#include "D3D11Wrapper.h"
+
+#include <d3d11_1.h>
 
 // This class is for a different approach than the wrapping of the system objects
 // like we do with ID3D11Device for example.  When we wrap a COM object like that,

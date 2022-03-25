@@ -1,18 +1,17 @@
 #pragma once
 
-#include <memory>
-#include <d3d11_1.h>
-#include <wrl.h>
-
-#include "SpriteFont.h"
-#include "SpriteBatch.h"
-#include "PrimitiveBatch.h"
 #include "CommonStates.h"
 #include "Effects.h"
+#include "HackerContext.hpp"
+#include "HackerDevice.hpp"
+#include "PrimitiveBatch.h"
+#include "SpriteBatch.h"
+#include "SpriteFont.h"
 #include "VertexTypes.h"
 
-#include "HackerDevice.hpp"
-#include "HackerContext.hpp"
+#include <d3d11_1.h>
+#include <memory>
+#include <wrl.h>
 
 class HackerSwapChain;
 

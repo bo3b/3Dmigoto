@@ -1,13 +1,16 @@
-#include "Main.h"
-#include <dxgi1_2.h>
-#include <d3d11_1.h>
-
+// Must be included before nvapi.h, otherwise we don't see all of the calls
+// that we want to wrap.
 #include <d3d9.h>
 
-#include "../util.h"
-#include "../nvapi.h"
 #include "../log.h"
+#include "../nvapi.h"
 #include "../version.h"
+
+#include <cstdio>
+#include <d3d11_1.h>
+#include <map>
+#include <Shlobj.h>
+#include <tchar.h>
 
 extern "C"
 {

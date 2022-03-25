@@ -36,7 +36,6 @@
     <ClInclude Include="..\nvapi.h" />
     <ClInclude Include="..\nvstereo.h" />
     <ClInclude Include="..\version.h" />
-    <ClInclude Include="Main.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="NVAPI.rc">

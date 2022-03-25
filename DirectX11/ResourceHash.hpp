@@ -1,18 +1,17 @@
 #pragma once
 
-#include <d3d11_1.h>
-#include <cstdint>
-#include <tuple>
-#include <map>
-#include <set>
-#include <vector>
-#include <memory>
-#include <atomic>
-
-#include "util.h"
 #include "DrawCallInfo.h"
+#include "util.h"
 
+#include <atomic>
+#include <cstdint>
+#include <d3d11_1.h>
+#include <map>
+#include <memory>
+#include <set>
+#include <tuple>
 #include <unordered_map>
+#include <vector>
 
 // Tracks info about specific resource instances:
 struct ResourceHandleInfo

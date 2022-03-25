@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <ctime>
+#include <string>
 
 // Wrappers to make logging cleaner.
 

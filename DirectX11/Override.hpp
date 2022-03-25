@@ -1,11 +1,11 @@
 #pragma once
 
-#include <DirectXMath.h>
-#include <d3d11_1.h>
-#include <vector>
-
-#include "Input.hpp"
 #include "HackerDevice.hpp"
+#include "Input.hpp"
+
+#include <d3d11_1.h>
+#include <DirectXMath.h>
+#include <vector>
 
 enum class KeyOverrideType {
     INVALID = -1,

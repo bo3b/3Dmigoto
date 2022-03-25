@@ -1,23 +1,22 @@
 // Include before util.h (or any header that includes util.h) to get pretty
 // version of LOCK_RESOURCE_CREATION_MODE:
-#include "Lock.h"
-
 #include "CommandList.hpp"
 
-#include <DDSTextureLoader.h>
-#include <WICTextureLoader.h>
-#include <algorithm>
-#include <sstream>
-#include "HackerDevice.hpp"
-#include "HackerContext.hpp"
-#include "Override.hpp"
-#include "D3D11Wrapper.h"
-#include "IniHandler.h"
-#include "Profiling.hpp"
-#include "Hunting.hpp"
 #include "Cursor.h"
+#include "D3D11Wrapper.h"
+#include "HackerContext.hpp"
+#include "HackerDevice.hpp"
+#include "Hunting.hpp"
+#include "IniHandler.h"
+#include "Lock.h"
+#include "Override.hpp"
+#include "Profiling.hpp"
 
+#include <algorithm>
 #include <D3DCompiler.h>
+#include <DDSTextureLoader.h>
+#include <sstream>
+#include <WICTextureLoader.h>
 
 using namespace std;
 

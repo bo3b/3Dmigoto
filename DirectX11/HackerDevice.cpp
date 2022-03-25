@@ -10,29 +10,28 @@
 
 // Include before util.h (or any header that includes util.h) to get pretty
 // version of LOCK_RESOURCE_CREATION_MODE:
-#include "Lock.h"
-
 #include "HackerDevice.hpp"
-#include "HookedDevice.h"
-#include "FrameAnalysis.hpp"
 
-#include <d3dcompiler.h>
-#include <codecvt>
-
-#include "nvapi.h"
-#include "log.h"
-#include "util.h"
-#include "shader.h"
+#include "CommandList.hpp"
+#include "D3D11Wrapper.h"
 #include "DecompileHLSL.h"
+#include "FrameAnalysis.hpp"
 #include "HackerContext.hpp"
 #include "HackerDXGI.hpp"
-
-#include "D3D11Wrapper.h"
-#include "D3D_Shaders/stdafx.h"
-#include "ResourceHash.hpp"
-#include "ShaderRegex.hpp"
-#include "CommandList.hpp"
+#include "HookedDevice.h"
 #include "Hunting.hpp"
+#include "Lock.h"
+#include "log.h"
+#include "nvapi.h"
+#include "ResourceHash.hpp"
+#include "shader.h"
+#include "ShaderRegex.hpp"
+#include "util.h"
+
+#include "D3D_Shaders/stdafx.h"
+
+#include <codecvt>
+#include <d3dcompiler.h>
 
 using namespace std;
 

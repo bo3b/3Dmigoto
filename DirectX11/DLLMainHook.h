@@ -1,7 +1,8 @@
 #pragma once
 
-#include "Nektra/NktHookLib.h"
 #include "util_min.h"
+
+#include "Nektra/NktHookLib.h"
 
 // We can have only one of these hook libraries for the entire process.
 // This is exported so that we can install hooks later during runtime, as

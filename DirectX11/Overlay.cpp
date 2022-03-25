@@ -3,23 +3,19 @@
 
 #include "Overlay.hpp"
 
-#include <DirectXColors.h>
-//#include <StrSafe.h>
-#include <stdexcept>
-
+#include "D3D11Wrapper.h"
+#include "Globals.h"
+#include "HackerContext.hpp"
+#include "HackerDevice.hpp"
+#include "Lock.h"
+#include "log.h"
+#include "Profiling.hpp"
 #include "SimpleMath.h"
 #include "SpriteBatch.h"
-
-#include "log.h"
-#include "Lock.h"
 #include "version.h"
-#include "D3D11Wrapper.h"
-//#include "nvapi.h"
-#include "Globals.h"
-#include "Profiling.hpp"
 
-#include "HackerDevice.hpp"
-#include "HackerContext.hpp"
+#include <DirectXColors.h>
+#include <stdexcept>
 
 using namespace std;
 

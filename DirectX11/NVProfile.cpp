@@ -1,14 +1,14 @@
-#include "../util.h"
-//#include "Globals.h"
-#include "IniHandler.h"
 #include "D3D11Wrapper.h"
+#include "IniHandler.h"
+
+#include "../util.h"
 
 // Including this after the above headers so the nvapi.h include will pick up
 // the d3d11.h pre-processor defines to avoid mis-matches with Profiling.hpp:
 #include "NVProfile.h"
 
-#include <unordered_set>
 #include <fstream>
+#include <unordered_set>
 
 using namespace std;
 

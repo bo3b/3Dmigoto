@@ -1,17 +1,16 @@
 #pragma once
 
+#include "DrawCallInfo.h"
+#include "nvapi.h"
+#include "ResourceHash.hpp"
+#include "util.h"
+
+#include <d3d11_1.h>
+#include <DirectXMath.h>
+#include <forward_list>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
-#include <forward_list>
-#include <d3d11_1.h>
-#include <DirectXMath.h>
-
-#include "util.h"
-#include "nvapi.h"
-
-#include "DrawCallInfo.h"
-#include "ResourceHash.hpp"
 
 // Used to prevent typos leading to infinite recursion (or at least overflowing
 // the real stack) due to a section running itself or a circular reference. 64

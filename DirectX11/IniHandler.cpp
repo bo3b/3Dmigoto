@@ -1,23 +1,23 @@
 #include "IniHandler.h"
 
+#include "Cursor.h"
+#include "Globals.h"
+#include "Hunting.hpp"
+#include "log.h"
+#include "NVProfile.h"
+#include "Override.hpp"
+#include "ShaderRegex.hpp"
+#include "version.h"
+
 #include <algorithm>
-#include <iterator>
-#include <string>
-#include <strsafe.h>
+#include <codecvt>
 #include <fstream>
-#include <sstream>
+#include <iterator>
 #include <memory>
 #include <pcre2.h>
-#include <codecvt>
-
-#include "log.h"
-#include "Globals.h"
-#include "Override.hpp"
-#include "Hunting.hpp"
-#include "NVProfile.h"
-#include "ShaderRegex.hpp"
-#include "Cursor.h"
-#include "version.h"
+#include <sstream>
+#include <string>
+#include <strsafe.h>
 
 #define INI_FILENAME L"d3dx.ini"
 

@@ -1,19 +1,16 @@
 #pragma once
 
-#include <cctype>
-#include <cwchar>
-#include <string>
-#include <vector>
-
-#include <d3d11_1.h>
-
-#include <D3Dcompiler.h>
-#include <DirectXMath.h>
-
 #include "util_min.h"
 
 #include "D3D_Shaders/stdafx.h"
 
+#include <cctype>
+#include <cwchar>
+#include <d3d11_1.h>
+#include <D3Dcompiler.h>
+#include <DirectXMath.h>
+#include <string>
+#include <vector>
 
 // Sets the threshold for warning about IniParams size. The larger IniParams is
 // the more CPU -> GPU bandwidth we will require to update it, so we want to

@@ -5,13 +5,12 @@
 
 #include "DirectX11/HookedContext.h"
 #include "DirectX11/HookedDevice.h"
-
-#include <sddl.h>
-#include <io.h>
-#include <fcntl.h>
-#include <Dbghelp.h>
-
 #include "DirectX11/Lock.h"
+
+#include <Dbghelp.h>
+#include <fcntl.h>
+#include <io.h>
+#include <sddl.h>
 
 // FIXME: Move any dependencies from these headers into common:
 #if MIGOTO_DX == 9

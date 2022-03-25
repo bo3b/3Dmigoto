@@ -1,21 +1,21 @@
 // Include before util.h (or any header that includes util.h) to get pretty
 // version of LOCK_RESOURCE_CREATION_MODE:
-#include "Lock.h"
+#include "FrameAnalysis.hpp"
 
 #include "D3D11Wrapper.h"
-#include "FrameAnalysis.hpp"
 #include "Globals.h"
 #include "Input.hpp"
+#include "Lock.h"
 
-#include <ScreenGrab.h>
-#include <wincodec.h>
-#include <Strsafe.h>
 #include <cstdarg>
+#include <ScreenGrab.h>
 #include <Shlwapi.h>
+#include <Strsafe.h>
+#include <wincodec.h>
 
 // For windows shortcuts:
-#include <shobjidl.h>
 #include <shlguid.h>
+#include <shobjidl.h>
 
 using namespace std;
 

@@ -1,22 +1,21 @@
 #pragma once
 
-#include <d3d11_1.h>
+#include "CommandList.hpp"
+#include "DecompileHLSL.h"
+#include "DirectXMath.h"
+#include "DLLMainHook.h"
+#include "Lock.h"
+#include "Profiling.hpp"
+#include "ResourceHash.hpp"
+#include "util.h"
+
 #include <ctime>
-#include <vector>
-#include <set>
+#include <d3d11_1.h>
 #include <map>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
-
-#include "DLLMainHook.h"
-#include "DirectXMath.h"
-#include "util.h"
-#include "DecompileHLSL.h"
-
-#include "ResourceHash.hpp"
-#include "CommandList.hpp"
-#include "Profiling.hpp"
-#include "Lock.h"
+#include <vector>
 
 extern HINSTANCE migoto_handle;
 
