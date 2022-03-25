@@ -5,9 +5,9 @@
 #include "Injector.h"
 #include "util_min.h"
 
-#include <windows.h>
+#include <Windows.h>
 #include <cstdio>
-#include <tlhelp32.h>
+#include <TlHelp32.h>
 #include <set>
 
 static void wait_keypress(const char *msg)

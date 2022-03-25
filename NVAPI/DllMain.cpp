@@ -9,7 +9,7 @@
 #include <cstdio>
 #include <d3d11_1.h>
 #include <map>
-#include <Shlobj.h>
+#include <ShlObj.h>
 #include <tchar.h>
 
 extern "C"

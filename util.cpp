@@ -7,7 +7,7 @@
 #include "DirectX11/HookedDevice.h"
 #include "DirectX11/Lock.h"
 
-#include <Dbghelp.h>
+#include <DbgHelp.h>
 #include <fcntl.h>
 #include <io.h>
 #include <sddl.h>

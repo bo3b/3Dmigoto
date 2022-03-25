@@ -62,7 +62,7 @@
 #endif
 #endif // MIGOTO_DX
 
-#include <D3D9.h>
+#include <d3d9.h>
 #include <d3d11_1.h>
 // ^^^^^ 3DMIGOTO ADDITION ^^^^^
 

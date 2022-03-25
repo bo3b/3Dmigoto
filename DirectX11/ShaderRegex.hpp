@@ -1,9 +1,9 @@
 #pragma once
 
 #include "CommandList.hpp"
+#include "pcre2.h"
 
 #include <map>
-#include <pcre2.h>
 #include <set>
 #include <string>
 #include <vector>

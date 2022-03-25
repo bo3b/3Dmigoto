@@ -61,7 +61,6 @@
 #include "Cursor.h"  // For InstallHookLate
 #include "Globals.h"
 #include "HookedDevice.h"
-#include "HookedDXGI.h"
 #include "Hunting.hpp"
 #include "IniHandler.h"
 #include "Lock.h"
