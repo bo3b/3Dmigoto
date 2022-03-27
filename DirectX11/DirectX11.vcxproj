@@ -46,7 +46,7 @@
     <ClCompile Include="..\iid.cpp" />
     <ClCompile Include="..\ini_parser_lite.cpp" />
     <ClCompile Include="..\util.cpp" />
-    <ClCompile Include="cursor.cpp" />
+    <ClCompile Include="Cursor.cpp" />
     <ClCompile Include="D3D11Wrapper.cpp" />
     <ClCompile Include="DLLMainHook.cpp" />
     <ClCompile Include="FrameAnalysis.cpp" />
@@ -61,10 +61,10 @@
     <ClCompile Include="IniHandler.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="lock.cpp" />
-    <ClCompile Include="nvprofile.cpp" />
+    <ClCompile Include="NVProfile.cpp" />
     <ClCompile Include="Overlay.cpp" />
     <ClCompile Include="Override.cpp" />
-    <ClCompile Include="profiling.cpp" />
+    <ClCompile Include="Profiling.cpp" />
     <ClCompile Include="ResourceHash.cpp" />
     <ClCompile Include="ShaderRegex.cpp" />
   </ItemGroup>
@@ -78,7 +78,7 @@
     <ClInclude Include="..\shader.h" />
     <ClInclude Include="..\util.h" />
     <ClInclude Include="..\version.h" />
-    <ClInclude Include="cursor.h" />
+    <ClInclude Include="Cursor.h" />
     <ClInclude Include="D3D11Wrapper.h" />
     <ClInclude Include="DLLMainHook.h" />
     <ClInclude Include="FrameAnalysis.hpp" />
@@ -93,11 +93,11 @@
     <ClInclude Include="IniHandler.h" />
     <ClInclude Include="Input.hpp" />
     <ClInclude Include="lock.h" />
-    <ClInclude Include="nvprofile.h" />
+    <ClInclude Include="NVProfile.h" />
     <ClInclude Include="Overlay.hpp" />
     <ClInclude Include="Override.hpp" />
     <ClInclude Include="CommandList.hpp" />
-    <ClInclude Include="profiling.hpp" />
+    <ClInclude Include="Profiling.hpp" />
     <ClInclude Include="ResourceHash.hpp" />
     <ClInclude Include="ShaderRegex.hpp" />
     <ClInclude Include="..\vkeys.h" />
