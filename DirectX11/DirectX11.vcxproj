@@ -81,6 +81,7 @@
     <ClInclude Include="Cursor.h" />
     <ClInclude Include="D3D11Wrapper.h" />
     <ClInclude Include="DLLMainHook.h" />
+    <ClInclude Include="DrawCallInfo.h" />
     <ClInclude Include="FrameAnalysis.hpp" />
     <ClInclude Include="Globals.h" />
     <ClInclude Include="HackerContext.hpp" />
