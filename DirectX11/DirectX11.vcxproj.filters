@@ -17,21 +17,29 @@
     <ClCompile Include="ResourceHash.cpp" />
     <ClCompile Include="HookedContext.cpp" />
     <ClCompile Include="HookedDevice.cpp" />
-    <ClCompile Include="nvprofile.cpp" />
+    <ClCompile Include="NVProfile.cpp" />
     <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
     <ClCompile Include="ShaderRegex.cpp" />
     <ClCompile Include="HookAddresses.c" />
     <ClCompile Include="HackerDXGI.cpp" />
-    <ClCompile Include="..\iid.cpp" />
-    <ClCompile Include="..\util.cpp" />
-    <ClCompile Include="profiling.cpp" />
-    <ClCompile Include="..\ini_parser_lite.cpp" />
-    <ClCompile Include="lock.cpp" />
-    <ClCompile Include="cursor.cpp" />
+    <ClCompile Include="Profiling.cpp" />
+    <ClCompile Include="Cursor.cpp" />
     <ClCompile Include="..\crc32c-hw-1.0.5\src\crc32c.cpp">
       <Filter>crc32c-hw-1.0.5</Filter>
     </ClCompile>
     <ClCompile Include="..\D3D_Shaders\Assembler.cpp" />
+    <ClCompile Include="..\iid.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ini_parser_lite.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="lock.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\util.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
@@ -46,27 +54,39 @@
     <ClInclude Include="Input.hpp" />
     <ClInclude Include="Overlay.hpp" />
     <ClInclude Include="Override.hpp" />
-    <ClInclude Include="..\vkeys.h" />
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
     <ClInclude Include="HookedDXGI.h" />
     <ClInclude Include="DLLMainHook.h" />
-    <ClInclude Include="..\log.h" />
-    <ClInclude Include="..\util.h" />
-    <ClInclude Include="..\version.h" />
     <ClInclude Include="CommandList.hpp" />
     <ClInclude Include="ResourceHash.hpp" />
     <ClInclude Include="HookedContext.h" />
     <ClInclude Include="HookedDevice.h" />
-    <ClInclude Include="..\shader.h" />
-    <ClInclude Include="nvprofile.h" />
+    <ClInclude Include="NVProfile.h" />
     <ClInclude Include="ShaderRegex.hpp" />
     <ClInclude Include="FrameAnalysis.hpp" />
     <ClInclude Include="HackerDXGI.hpp" />
-    <ClInclude Include="profiling.hpp" />
-    <ClInclude Include="lock.h" />
-    <ClInclude Include="cursor.h" />
+    <ClInclude Include="Profiling.hpp" />
+    <ClInclude Include="Cursor.h" />
     <ClInclude Include="..\crc32c-hw-1.0.5\include\crc32c.h">
       <Filter>crc32c-hw-1.0.5</Filter>
+    </ClInclude>
+    <ClInclude Include="lock.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\log.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shader.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\util.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\version.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vkeys.h">
+      <Filter>Shared</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -75,6 +95,9 @@
   <ItemGroup>
     <Filter Include="crc32c-hw-1.0.5">
       <UniqueIdentifier>{f0d93294-b574-4d4e-a776-d213375d1ad9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shared">
+      <UniqueIdentifier>{bd277569-5d6a-49f0-824e-e44f09096358}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
