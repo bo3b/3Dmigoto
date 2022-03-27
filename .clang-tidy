@@ -3,9 +3,8 @@
 WarningsAsErrors:  ''
 HeaderFilterRegex: '.*'
 FormatStyle:       'none'
-#Checks:            '-*,readability-identifier-naming'
-#Checks:            '-*,modernize-use-nullptr,modernize-deprecated-headers,modernize-redundant-void-arg,modernize-use-bool-literals'
-Checks:            '-*,modernize-deprecated-headers'
+Checks:            '-*,readability-identifier-naming,modernize-use-nullptr,modernize-deprecated-headers,modernize-redundant-void-arg,modernize-use-bool-literals'
+#Checks:            '-*,modernize-deprecated-headers'
 CheckOptions:
  - { key: readability-identifier-naming.ClassCase,              value: CamelCase  }
  - { key: readability-identifier-naming.MethodCase,             value: CamelCase  }
@@ -43,4 +42,5 @@ CheckOptions:
  - { key: readability-identifier-naming.UnionCase,              value: lower_case }
  - { key: readability-identifier-naming.NamespaceCase,          value: lower_case }
  - { key: readability-identifier-naming.EnumCase,               value: Camel_Snake_Case }
+ - { key: readability-identifier-naming.ScopedEnumConstantCase, value: Camel_Snake_Case }
  - { key: readability-identifier-naming.EnumConstantCase,       value: lower_case }
