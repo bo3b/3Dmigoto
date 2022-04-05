@@ -706,7 +706,7 @@ static bool RegenerateShader(wchar_t *shader_fix_path, wchar_t *file_name, const
         {
             // Treat parse errors on shader reload as fatal since there should
             // be a shaderhacker at the keyboard ready to fix their bugs.
-            byte_code_copy = AssembleFluganWithOptionalSignatureParsing(&src_data, G->assemble_signature_comments, &byte_code_copy);
+            byte_code_copy = assemble_flugan_with_optional_signature_parsing(&src_data, G->assemble_signature_comments, &byte_code_copy);
         }
         catch (const exception &e)
         {

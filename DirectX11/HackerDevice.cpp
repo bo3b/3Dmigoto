@@ -980,7 +980,7 @@ static bool replace_asm_shader(
             try
             {
                 vector<AssemblerParseError> parse_errors;
-                byte_code = AssembleFluganWithOptionalSignatureParsing(&asm_text_bytes, G->assemble_signature_comments, &byte_code, &parse_errors);
+                byte_code = assemble_flugan_with_optional_signature_parsing(&asm_text_bytes, G->assemble_signature_comments, &byte_code, &parse_errors);
 
                 // Assuming the re-assembly worked, let's make it the active shader code.
                 code_size = byte_code.size();
