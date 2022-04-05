@@ -2,7 +2,7 @@
 
 #include "util_min.h"
 
-#include "D3D_Shaders/stdafx.h"
+#include "Assembler/Assembler.h"
 
 #include <cctype>
 #include <d3d11_1.h>
