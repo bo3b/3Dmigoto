@@ -87,8 +87,8 @@ static string convertF(DWORD original)
 {
     char buf[80];
     char scientific[80];
-    char *scientific_exp = NULL;
     int exp;
+    char * scientific_exp = nullptr;
 
     float fOriginal = reinterpret_cast<float &>(original);
 
@@ -2926,7 +2926,7 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
     char* asmBuffer;
     size_t asmSize;
     vector<byte> asmBuf;
-    ID3DBlob* pDissassembly = NULL;
+    ID3DBlob* pDissassembly = nullptr;
 
     // We disable debug info in the disassembler as it interferes with our
     // ability to match assembly lines with bytecode below

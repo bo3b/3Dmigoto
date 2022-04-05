@@ -189,20 +189,20 @@ static void* serialise_signature_section(char *section24, char *section28, char 
 {
     void *section;
     uint32_t section_size, padding, alloc_size, name_off;
-    char *name_ptr = NULL;
-    void *padding_ptr = NULL;
-    struct section_header *section_header = NULL;
-    struct sgn_header *sgn_header = NULL;
-    sgn_entry_serialiased *entryn = NULL;
-    sg5_entry_serialiased *entry5 = NULL;
-    sg1_entry_serialiased *entry1 = NULL;
+    char *                  name_ptr       = nullptr;
+    void *                  padding_ptr    = nullptr;
+    struct section_header * section_header = nullptr;
+    struct sgn_header *     sgn_header     = nullptr;
+    sgn_entry_serialiased * entryn         = nullptr;
+    sg5_entry_serialiased * entry5         = nullptr;
+    sg1_entry_serialiased * entry1         = nullptr;
 
     // Geometry shader 5 never uses OSGN, bump to OSG5:
-    if (entry_size == 24 && section24 == NULL)
+    if (entry_size == 24 && section24 == nullptr)
         entry_size = 28;
 
     // Only OSG5 exists in version 5, so bump ISG & PSG to version 5.1:
-    if (entry_size == 28 && section28 == NULL)
+    if (entry_size == 28 && section28 == nullptr)
         entry_size = 32;
 
     // Calculate various offsets and sizes:
@@ -218,7 +218,7 @@ static void* serialise_signature_section(char *section24, char *section28, char 
     section = malloc(alloc_size);
     if (!section) {
         LOG_INFO("Out of memory\n");
-        return NULL;
+        return nullptr;
     }
 
     // Pointers to useful data structures and offsets in the buffer:
@@ -418,19 +418,19 @@ name_already_used:
 static void* serialise_subshader_feature_info_section(uint64_t flags)
 {
     void *section;
-    struct section_header *section_header = NULL;
     const uint32_t section_size = 8;
     const uint32_t alloc_size = sizeof(struct section_header) + section_size;
-    uint64_t *flags_ptr = NULL;
+    struct section_header * section_header = nullptr;
+    uint64_t *              flags_ptr      = nullptr;
 
     if (!flags)
-        return NULL;
+        return nullptr;
 
     // Allocate entire section, including room for section header and padding:
     section = malloc(alloc_size);
     if (!section) {
         LOG_INFO("Out of memory\n");
-        return NULL;
+        return nullptr;
     }
 
     // Pointers to useful data structures and offsets in the buffer:
@@ -564,7 +564,7 @@ static void* manufacture_empty_section(char *section_name)
     section = malloc(8);
     if (!section) {
         LOG_INFO("Out of memory\n");
-        return NULL;
+        return nullptr;
     }
 
     memcpy(section, section_name, 4);
@@ -611,7 +611,7 @@ static bool is_geometry_shader_5(string *shader, size_t start_pos) {
 
 static bool parse_section(string *line, string *shader, size_t *pos, void **section, uint64_t *sfi, bool *force_shex)
 {
-    *section = NULL;
+    *section = nullptr;
 
     if (!strncmp(line->c_str() + 1, "s_4_", 4)) {
         if (!!(*sfi & SFI_FORCE_SHEX) || *force_shex)
@@ -627,15 +627,15 @@ static bool parse_section(string *line, string *shader, size_t *pos, void **sect
 
     if (!strncmp(line->c_str(), "// Patch Constant signature:", 28)) {
         LOG_INFO("Parsing Patch Constant Signature section...\n");
-        *section = parse_signature_section("PCSG", NULL, "PSG1", shader, pos, is_hull_shader(shader, *pos), *sfi);
+        *section = parse_signature_section("PCSG", nullptr, "PSG1", shader, pos, is_hull_shader(shader, *pos), *sfi);
     } else if (!strncmp(line->c_str(), "// Input signature:", 19)) {
         LOG_INFO("Parsing Input Signature section...\n");
-        *section = parse_signature_section("ISGN", NULL, "ISG1", shader, pos, false, *sfi);
+        *section = parse_signature_section("ISGN", nullptr, "ISG1", shader, pos, false, *sfi);
     } else if (!strncmp(line->c_str(), "// Output signature:", 20)) {
         LOG_INFO("Parsing Output Signature section...\n");
         char *section24 = "OSGN";
         if (is_geometry_shader_5(shader, *pos))
-            section24 = NULL;
+            section24 = nullptr;
         *section = parse_signature_section(section24, "OSG5", "OSG1", shader, pos, true, *sfi);
     } else if (!strncmp(line->c_str(), "// Note: shader requires additional functionality:", 50)) {
         LOG_INFO("Parsing Subshader Feature Info section...\n");
@@ -649,11 +649,11 @@ static bool parse_section(string *line, string *shader, size_t *pos, void **sect
 
 static void serialise_shader_binary(vector<void*> *sections, uint32_t all_sections_size, vector<byte> *bytecode)
 {
-    struct dxbc_header *header = NULL;
-    uint32_t *section_offset_ptr = NULL;
-    void *section_ptr = NULL;
     uint32_t section_size;
     uint32_t shader_size;
+    struct dxbc_header * header             = nullptr;
+    uint32_t *           section_offset_ptr = nullptr;
+    void *               section_ptr        = nullptr;
 
     // Calculate final size of shader binary:
     shader_size = (uint32_t)(sizeof(struct dxbc_header) + 4 * sections->size() + all_sections_size);

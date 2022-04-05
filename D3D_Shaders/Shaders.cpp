@@ -12,8 +12,8 @@
 
 using namespace std;
 
-FILE *LogFile = NULL;
 bool gLogDebug = false;
+FILE * LogFile   = nullptr;
 
 static vector<string> enumerateFiles(string pathName, string filter = "") {
     vector<string> files;
@@ -40,7 +40,7 @@ static vector<byte> readFile(string fileName) {
     vector<byte> buffer;
     FILE* f;
     fopen_s(&f, fileName.c_str(), "rb");
-    if (f != NULL) {
+    if (f != nullptr) {
         fseek(f, 0L, SEEK_END);
         int fileSize = ftell(f);
         buffer.resize(fileSize);
@@ -92,7 +92,7 @@ int _tmain(int argc, _TCHAR* argv[])
                 string fileName = files[i];
 
                 vector<byte> ASM;
-                disassembler(&readFile(fileName), &ASM, NULL);
+                disassembler(&readFile(fileName), &ASM, nullptr);
 
                 fileName.erase(fileName.size() - 3, 3);
                 fileName.append("txt");
@@ -154,7 +154,7 @@ int _tmain(int argc, _TCHAR* argv[])
                 string fileName = files[i];
 
                 vector<byte> ASM;
-                disassembler(&readFile(fileName), &ASM, NULL);
+                disassembler(&readFile(fileName), &ASM, nullptr);
 
                 fileName.erase(fileName.size() - 3, 3);
                 fileName.append("txt");
