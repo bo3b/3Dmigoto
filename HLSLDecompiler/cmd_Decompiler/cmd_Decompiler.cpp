@@ -293,7 +293,7 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
     // from the assembler. FIXME: We really need to clean up how the
     // buffers are passed between these functions
     try {
-        hret = AssembleFluganWithSignatureParsing(&assembly_vec, &new_shader);
+        hret = assemble_flugan_with_signature_parsing(&assembly_vec, &new_shader);
         if (FAILED(hret)) {
             LOG_INFO("\n*** Assembly verification pass failed: Reassembly failed 0x%x\n", hret);
             return 1;
@@ -585,14 +585,14 @@ static int process(string const *filename)
         LOG_INFO("Assembling %s...\n", filename->c_str());
         vector<byte> new_bytecode;
         if (args.reflection_reference.empty()) {
-            hret = AssembleFluganWithSignatureParsing(&srcData, &new_bytecode);
+            hret = assemble_flugan_with_signature_parsing(&srcData, &new_bytecode);
             if (FAILED(hret))
                 return EXIT_FAILURE;
         } else {
             vector<byte> refData;
             if (ReadInput(&refData, &args.reflection_reference))
                 return EXIT_FAILURE;
-            new_bytecode = AssembleFluganWithOptionalSignatureParsing(&srcData, false, &refData);
+            new_bytecode = assemble_flugan_with_optional_signature_parsing(&srcData, false, &refData);
         }
 
         // TODO:
