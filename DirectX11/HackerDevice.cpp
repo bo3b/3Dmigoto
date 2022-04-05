@@ -28,7 +28,7 @@
 #include "ShaderRegex.hpp"
 #include "util.h"
 
-#include "D3D_Shaders/stdafx.h"
+#include "Assembler/Assembler.h"
 
 #include <codecvt>
 #include <d3dcompiler.h>

@@ -1,5 +1,10 @@
 #pragma once
 
+#include "util_min.h"
+
+#include "Assembler/Assembler.h"
+
+#include <cctype>
 #include <d3d11_1.h>
 #include <DirectXMath.h>
 #include <dxgi1_2.h>
