@@ -642,7 +642,7 @@ void HackerContext::DeferredShaderReplacement(
                 try
                 {
                     vector<AssemblerParseError> parse_errors;
-                    hr = AssembleFluganWithSignatureParsing(&asm_vector, &patched_bytecode, &parse_errors);
+                    hr = assemble_flugan_with_signature_parsing(&asm_vector, &patched_bytecode, &parse_errors);
                     if (FAILED(hr))
                     {
                         LOG_INFO("    *** Assembling patched shader failed\n");

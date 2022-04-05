@@ -2851,7 +2851,7 @@ static inline void replace_cb_offsets_with_indices(string *line)
 }
 
 #if MIGOTO_DX == 9
-HRESULT disassemblerDX9(vector<byte> *buffer, vector<byte> *ret, const char *comment)
+HRESULT disassembler_dx9(vector<byte> *buffer, vector<byte> *ret, const char *comment)
 {
     char* asmBuffer;
     size_t asmSize;
@@ -3219,9 +3219,9 @@ static vector<DWORD> ComputeHash(byte const* input, DWORD size)
     return hash;
 }
 
-// origByteCode is modified in this function, so passing it by value!
-// asmFile is not modified, so passing it by pointer -DarkStarSword
-vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode,
+// orig_bytecode is modified in this function, so passing it by value!
+// asm_file is not modified, so passing it by pointer -DarkStarSword
+vector<byte> assembler(vector<char> *asm_file, vector<byte> orig_bytecode,
         vector<AssemblerParseError> *parse_errors)
 {
     byte fourcc[4];
@@ -3231,10 +3231,10 @@ vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode,
     DWORD numChunks;
     vector<DWORD> chunkOffsets;
 
-    // TODO: Add robust error checking here (origBytecode is at least as large as
+    // TODO: Add robust error checking here (orig_bytecode is at least as large as
     // the header, etc). I've added a check for numChunks < 1 as that
     // would lead to codeByteStart being used uninitialised
-    byte* pPosition = origBytecode.data();
+    byte* pPosition = orig_bytecode.data();
     std::memcpy(fourcc, pPosition, 4);
     pPosition += 4;
     std::memcpy(fHash, pPosition, 16);
@@ -3252,13 +3252,13 @@ vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode,
 
     char* asmBuffer;
     size_t asmSize;
-    asmBuffer = asmFile->data();
-    asmSize = asmFile->size();
+    asmBuffer = asm_file->data();
+    asmSize = asm_file->size();
     byte* codeByteStart;
     int codeChunk = 0;
     for (DWORD i = 1; i <= numChunks; i++) {
         codeChunk = numChunks - i;
-        codeByteStart = origBytecode.data() + chunkOffsets[numChunks - i];
+        codeByteStart = orig_bytecode.data() + chunkOffsets[numChunks - i];
         if (memcmp(codeByteStart, "SHEX", 4) == 0 || memcmp(codeByteStart, "SHDR", 4) == 0)
             break;
     }
@@ -3299,8 +3299,8 @@ vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode,
                 o.insert(o.end(), ins.begin(), ins.end());
             }
         } catch (AssemblerParseError &e) {
-            e.line_no = i + 1;
-            e.update_msg();
+            e.lineNo = i + 1;
+            e.UpdateMsg();
 
             // Since we never used to warn about parse errors there
             // may well be shaders with problems in the wild that
@@ -3320,30 +3320,30 @@ vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode,
         }
     }
     codeStart = (DWORD*)(codeByteStart); // Endian bug, not that we care
-    auto it = origBytecode.begin() + chunkOffsets[codeChunk] + 8;
+    auto it = orig_bytecode.begin() + chunkOffsets[codeChunk] + 8;
     size_t codeSize = codeStart[1];
-    origBytecode.erase(it, it + codeSize);
+    orig_bytecode.erase(it, it + codeSize);
     size_t newCodeSize = 4 * o.size();
     codeStart[1] = (DWORD)newCodeSize;
     vector<byte> newCode(newCodeSize);
     o[1] = (DWORD)o.size();
     memcpy(newCode.data(), o.data(), newCodeSize);
-    it = origBytecode.begin() + chunkOffsets[codeChunk] + 8;
-    origBytecode.insert(it, newCode.begin(), newCode.end());
-    DWORD* dwordBuffer = (DWORD*)origBytecode.data();
+    it = orig_bytecode.begin() + chunkOffsets[codeChunk] + 8;
+    orig_bytecode.insert(it, newCode.begin(), newCode.end());
+    DWORD* dwordBuffer = (DWORD*)orig_bytecode.data();
     for (DWORD i = codeChunk + 1; i < numChunks; i++) {
         dwordBuffer[8 + i] += (DWORD)(newCodeSize - codeSize);
     }
-    dwordBuffer[6] = (DWORD)origBytecode.size();
-    vector<DWORD> hash = ComputeHash((byte const*)origBytecode.data() + 20, (DWORD)origBytecode.size() - 20);
+    dwordBuffer[6] = (DWORD)orig_bytecode.size();
+    vector<DWORD> hash = ComputeHash((byte const*)orig_bytecode.data() + 20, (DWORD)orig_bytecode.size() - 20);
     dwordBuffer[1] = hash[0];
     dwordBuffer[2] = hash[1];
     dwordBuffer[3] = hash[2];
     dwordBuffer[4] = hash[3];
-    return origBytecode;
+    return orig_bytecode;
 }
 #if MIGOTO_DX == 9
-vector<byte> assemblerDX9(vector<char> *asmFile)
+vector<byte> assembler_dx9(vector<char> *asmFile)
 {
     vector<byte> ret;
     LPD3DXBUFFER pAssembly;

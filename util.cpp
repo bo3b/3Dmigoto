@@ -600,7 +600,7 @@ std::string binary_to_asm_text(const void* shader_bytecode, size_t bytecode_leng
     memcpy(byte_code.data(), shader_bytecode, bytecode_length);
 
     #if MIGOTO_DX == 9
-    r = disassemblerDX9(&byte_code, &disassembly, comments.c_str());
+    r = disassembler_dx9(&byte_code, &disassembly, comments.c_str());
     #elif MIGOTO_DX == 11
     r = disassembler(&byte_code, &disassembly, comments.c_str(), hexdump, d3dcompiler_46_compat, disassemble_undecipherable_data, patch_cb_offsets);
     #endif  // MIGOTO_DX
