@@ -33,6 +33,9 @@
     <ClInclude Include="..\..\shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Assembler\Assembler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -44,10 +47,10 @@
     <ClCompile Include="..\DecompileHLSL.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\D3D_Shaders\Assembler.cpp">
+    <ClCompile Include="..\..\Assembler\Assembler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\D3D_Shaders\SignatureParser.cpp">
+    <ClCompile Include="..\..\Assembler\SignatureParser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
