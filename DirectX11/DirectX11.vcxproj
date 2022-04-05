@@ -32,9 +32,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Assembler\Assembler.cpp" />
+    <ClCompile Include="..\Assembler\SignatureParser.cpp" />
     <ClCompile Include="..\crc32c-hw-1.0.5\src\crc32c.cpp" />
-    <ClCompile Include="..\D3D_Shaders\Assembler.cpp" />
-    <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
     <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
     <ClCompile Include="CommandList.cpp" />
     <ClCompile Include="..\iid.cpp" />
@@ -66,6 +66,7 @@
     <None Include="d3d11Wrapper.def" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Assembler\Assembler.h" />
     <ClInclude Include="..\crc32c-hw-1.0.5\include\crc32c.h" />
     <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
     <ClInclude Include="..\log.h" />
@@ -233,12 +234,12 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalIncludeDirectories>
 $(SolutionDir);
+$(SolutionDir)Assembler;
 $(SolutionDir)HLSLDecompiler;
 $(SolutionDir)ThirdPartyLibs\Nektra-lib;
 $(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main;
 $(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x86-windows-static\include;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
-$(SolutionDir)D3D_Shaders;
       </AdditionalIncludeDirectories>
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -285,12 +286,12 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>
 $(SolutionDir);
+$(SolutionDir)Assembler;
 $(SolutionDir)HLSLDecompiler;
 $(SolutionDir)ThirdPartyLibs\Nektra-lib;
 $(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main;
 $(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x86-windows-static\include;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
-$(SolutionDir)D3D_Shaders;
       </AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -342,12 +343,12 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>
 $(SolutionDir);
+$(SolutionDir)Assembler;
 $(SolutionDir)HLSLDecompiler;
 $(SolutionDir)ThirdPartyLibs\Nektra-lib;
 $(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main;
 $(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x86-windows-static\include;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
-$(SolutionDir)D3D_Shaders;
       </AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -396,12 +397,12 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /S
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalIncludeDirectories>
 $(SolutionDir);
+$(SolutionDir)Assembler;
 $(SolutionDir)HLSLDecompiler;
 $(SolutionDir)ThirdPartyLibs\Nektra-lib;
 $(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main;
 $(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x64-windows-static\include;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
-$(SolutionDir)D3D_Shaders;
       </AdditionalIncludeDirectories>
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -448,12 +449,12 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>
 $(SolutionDir);
+$(SolutionDir)Assembler;
 $(SolutionDir)HLSLDecompiler;
 $(SolutionDir)ThirdPartyLibs\Nektra-lib;
 $(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main;
 $(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x64-windows-static\include;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
-$(SolutionDir)D3D_Shaders;
       </AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -503,12 +504,12 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>
 $(SolutionDir);
+$(SolutionDir)Assembler;
 $(SolutionDir)HLSLDecompiler;
 $(SolutionDir)ThirdPartyLibs\Nektra-lib;
 $(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main;
 $(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x64-windows-static\include;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
-$(SolutionDir)D3D_Shaders;
       </AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
