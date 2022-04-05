@@ -177,7 +177,7 @@ static string convertD(DWORD v1, DWORD v2)
     return buf;
 }
 
-void writeLUT()
+void write_lut()
 {
     FILE* f;
 
@@ -2521,7 +2521,7 @@ static string assembleAndCompare(string s, vector<DWORD> v)
     return ret;
 }
 
-vector<string> stringToLines(const char* start, size_t size)
+vector<string> string_to_lines(const char* start, size_t size)
 {
     vector<string> lines;
     const char* pStart = start;
@@ -2949,13 +2949,13 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
             break;
     }
     // FIXME: If neither SHEX or SHDR was found in the shader, codeByteStart will be garbage
-    vector<string> lines = stringToLines(asmBuffer, asmSize);
     DWORD* codeStart = (DWORD*)(codeByteStart + 8);
     bool codeStarted = false;
     bool multiLine = false;
     int multiLines = 0;
     string s2;
     vector<DWORD> o;
+    vector<string> lines       = string_to_lines(asmBuffer, asmSize);
     for (DWORD i = 0; i < lines.size(); i++) {
         uint32_t line_byte_offset = (uint32_t)((byte*)codeStart - buffer->data());
         string s = lines[i];
@@ -2998,7 +2998,7 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
                 codeStart++;
             }
             s = assembleAndCompare(s, v);
-            auto sLines = stringToLines(s.c_str(), s.size());
+            auto   sLines    = string_to_lines(s.c_str(), s.size());
             size_t startLine = i - sLines.size() + 1;
             for (size_t j = 0; j < sLines.size(); j++) {
                 lines[startLine + j] = sLines[j];
@@ -3263,12 +3263,12 @@ vector<byte> assembler(vector<char> *asm_file, vector<byte> orig_bytecode,
             break;
     }
     // FIXME: If neither SHEX or SHDR was found in the shader, codeByteStart will be garbage
-    vector<string> lines = stringToLines(asmBuffer, asmSize);
     DWORD* codeStart = (DWORD*)(codeByteStart + 8);
     bool codeStarted = false;
     bool multiLine = false;
     string s2;
     vector<DWORD> o;
+    vector<string> lines       = string_to_lines(asmBuffer, asmSize);
     for (DWORD i = 0; i < lines.size(); i++) {
         try {
             string s = lines[i];
