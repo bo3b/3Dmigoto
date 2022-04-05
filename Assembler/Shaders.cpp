@@ -68,7 +68,7 @@ int _tmain(int argc, _TCHAR* argv[])
     if (f) {
         size_t fr = ::fread(gamebuffer, 1, 10000, f);
         fclose(f);
-        lines = stringToLines(gamebuffer, fr);
+        lines = string_to_lines(gamebuffer, fr);
     }
 
     if (lines.size() > 0) {
@@ -174,7 +174,7 @@ int _tmain(int argc, _TCHAR* argv[])
         }
         cout << endl;
 
-        writeLUT();
+        write_lut();
     }
     return 0;
 }
