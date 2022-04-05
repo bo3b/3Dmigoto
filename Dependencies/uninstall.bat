@@ -100,10 +100,10 @@ del DirectXTK.lib
 del DirectXTK.pdb
 del DirectXTK.ilk
 
-del D3D_Shaders.exe
-del D3D_Shaders.pdb
-del D3D_Shaders.ilk
-del D3D_Shaders.lib
+del Assembler.exe
+del Assembler.pdb
+del Assembler.ilk
+del Assembler.lib
 
 del BinaryDecompiler.lib
 
