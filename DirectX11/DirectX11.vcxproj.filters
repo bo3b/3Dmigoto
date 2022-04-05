@@ -18,7 +18,6 @@
     <ClCompile Include="HookedContext.cpp" />
     <ClCompile Include="HookedDevice.cpp" />
     <ClCompile Include="NVProfile.cpp" />
-    <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
     <ClCompile Include="ShaderRegex.cpp" />
     <ClCompile Include="HookAddresses.c" />
     <ClCompile Include="HackerDXGI.cpp" />
@@ -27,7 +26,6 @@
     <ClCompile Include="..\crc32c-hw-1.0.5\src\crc32c.cpp">
       <Filter>crc32c-hw-1.0.5</Filter>
     </ClCompile>
-    <ClCompile Include="..\D3D_Shaders\Assembler.cpp" />
     <ClCompile Include="..\iid.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
@@ -38,6 +36,12 @@
       <Filter>Shared</Filter>
     </ClCompile>
     <ClCompile Include="..\util.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assembler\Assembler.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assembler\SignatureParser.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
   </ItemGroup>
@@ -89,6 +93,9 @@
       <Filter>Shared</Filter>
     </ClInclude>
     <ClInclude Include="DrawCallInfo.h" />
+    <ClInclude Include="..\Assembler\Assembler.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />
