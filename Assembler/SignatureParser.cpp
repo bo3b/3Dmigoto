@@ -1,6 +1,6 @@
+#include "Assembler.h"
 #include "log.h"
 #include "shader.h"
-#include "stdafx.h"
 
 using namespace std;
 
