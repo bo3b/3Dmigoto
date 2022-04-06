@@ -119,7 +119,7 @@ int _tmain(
                 fwrite(ASM.data(), 1, ASM.size(), f);
                 fclose(f);
 
-                int newProgress = (int)(50.0 * i / files.size());
+                int newProgress = static_cast<int>(50.0 * i / files.size());
                 if (newProgress > progress)
                 {
                     cout << ".";
@@ -145,7 +145,7 @@ int _tmain(
                 fileName.append("bin");
                 auto BIN = readFile(fileName);
 
-                auto CBO = assembler((vector<char>*)&ASM, BIN);
+                auto CBO = assembler(reinterpret_cast<vector<char>*>(&ASM), BIN);
 
                 fileName.erase(fileName.size() - 3, 3);
                 fileName.append("cbo");
@@ -157,7 +157,7 @@ int _tmain(
                     fclose(f);
                 }
 
-                int newProgress = (int)(50.0 * i / files.size());
+                int newProgress = static_cast<int>(50.0 * i / files.size());
                 if (newProgress > progress)
                 {
                     cout << ".";
@@ -191,7 +191,7 @@ int _tmain(
                     fclose(f);
                 }
 
-                int newProgress = (int)(50.0 * i / files.size());
+                int newProgress = static_cast<int>(50.0 * i / files.size());
                 if (newProgress > progress)
                 {
                     cout << ".";

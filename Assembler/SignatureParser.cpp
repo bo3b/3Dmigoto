@@ -287,7 +287,7 @@ static void* serialise_signature_section(
         entry_size = 32;
 
     // Calculate various offsets and sizes:
-    name_off     = (uint32_t)(sizeof(struct sgn_header) + (entry_size * entries->size()));
+    name_off     = static_cast<uint32_t>(sizeof(struct sgn_header) + (entry_size * entries->size()));
     section_size = name_off + name_len;
     padding      = pad(section_size, 4);
     alloc_size   = section_size + sizeof(struct section_header) + padding;
@@ -303,15 +303,15 @@ static void* serialise_signature_section(
     }
 
     // Pointers to useful data structures and offsets in the buffer:
-    section_header = (struct section_header*)section;
-    sgn_header     = (struct sgn_header*)((char*)section_header + sizeof(struct section_header));
-    padding_ptr    = (void*)((char*)sgn_header + section_size);
+    section_header = static_cast<::section_header*>(section);
+    sgn_header     = reinterpret_cast<struct sgn_header*>(reinterpret_cast<char*>(section_header) + sizeof(struct section_header));
+    padding_ptr    = static_cast<void*>(reinterpret_cast<char*>(sgn_header) + section_size);
     // Only one of these will be used as the base address depending on the
     // structure version, but pointers to the older versions will also be
     // updated during the iteration:
-    entryn = (struct sgn_entry_serialiased*)((char*)sgn_header + sizeof(struct sgn_header));
-    entry5 = (struct sg5_entry_serialiased*)entryn;
-    entry1 = (struct sg1_entry_serialiased*)entryn;
+    entryn = reinterpret_cast<struct sgn_entry_serialiased*>(reinterpret_cast<char*>(sgn_header) + sizeof(struct sgn_header));
+    entry5 = reinterpret_cast<struct sg5_entry_serialiased*>(entryn);
+    entry1 = reinterpret_cast<struct sg1_entry_serialiased*>(entryn);
 
     LOG_DEBUG("section: 0x%p, section_header: 0x%p, sgn_header: 0x%p, padding_ptr: 0x%p, entry: 0x%p\n", section, (char*)section_header, sgn_header, padding_ptr, entryn);
 
@@ -331,7 +331,7 @@ static void* serialise_signature_section(
     }
     section_header->size = section_size + padding;
 
-    sgn_header->num_entries = (uint32_t)entries->size();
+    sgn_header->num_entries = static_cast<uint32_t>(entries->size());
     sgn_header->unknown     = sizeof(struct sgn_header);  // Not confirmed, but seems likely. Always 8
 
     // Fill out entries:
@@ -351,7 +351,7 @@ static void* serialise_signature_section(
             // Fall through
             case 24:
                 entryn->name_offset = name_off + unserialised.name_offset;
-                name_ptr            = (char*)sgn_header + entryn->name_offset;
+                name_ptr            = reinterpret_cast<char*>(sgn_header) + entryn->name_offset;
                 memcpy(name_ptr, unserialised.name.c_str(), unserialised.name.size() + 1);
                 memcpy(&entryn->common, &unserialised.common, sizeof(struct sgn_entry_common));
                 entryn++;
@@ -417,7 +417,7 @@ static void* parse_signature_section(
         memset(mask, ' ', 8);
         memset(used, ' ', 8);
 
-        numRead = sscanf_s((line + "       ").c_str(), "// %s %d%7c %s %s %s%7c", semantic_name, (unsigned)ARRAYSIZE(semantic_name), &entry.common.semantic_index, mask, (unsigned)ARRAYSIZE(mask), &reg, (unsigned)ARRAYSIZE(reg), system_value, (unsigned)ARRAYSIZE(system_value), format, (unsigned)ARRAYSIZE(format), used, (unsigned)ARRAYSIZE(used));
+        numRead = sscanf_s((line + "       ").c_str(), "// %s %d%7c %s %s %s%7c", semantic_name, static_cast<unsigned>(ARRAYSIZE(semantic_name)), &entry.common.semantic_index, mask, static_cast<unsigned>(ARRAYSIZE(mask)), &reg, static_cast<unsigned>(ARRAYSIZE(reg)), system_value, static_cast<unsigned>(ARRAYSIZE(system_value)), format, static_cast<unsigned>(ARRAYSIZE(format)), used, static_cast<unsigned>(ARRAYSIZE(used)));
 
         if (numRead != 7)
         {
@@ -431,7 +431,7 @@ static void* parse_signature_section(
 
         // Try parsing the semantic name with streams, and bump the
         // section version if sucessful:
-        numRead = sscanf_s(semantic_name, "m%u:%s", &entry.stream, semantic_name2, (unsigned)ARRAYSIZE(semantic_name2));
+        numRead = sscanf_s(semantic_name, "m%u:%s", &entry.stream, semantic_name2, static_cast<unsigned>(ARRAYSIZE(semantic_name2)));
         if (numRead == 2)
         {
             entry_size = max(entry_size, 28);
@@ -479,7 +479,7 @@ static void* parse_signature_section(
             }
         }  // else { ;-)
         entry.name_offset = name_off;
-        name_off += (uint32_t)entry.name.size() + 1;
+        name_off += static_cast<uint32_t>(entry.name.size()) + 1;
         // }
 name_already_used:
         LOG_DEBUG("Stream: %i, Name: %s, Index: %i, Mask: 0x%x, Register: %i, SysValue: %i, Format: %i, Used: 0x%x, Precision: %i\n", entry.stream, entry.name.c_str(), entry.common.semantic_index, entry.common.mask, entry.common.reg, entry.common.system_value, entry.common.format, entry.common.used, entry.min_precision);
@@ -515,11 +515,11 @@ static void* serialise_subshader_feature_info_section(
     }
 
     // Pointers to useful data structures and offsets in the buffer:
-    section_header = (struct section_header*)section;
+    section_header = static_cast<::section_header*>(section);
     memcpy(section_header->signature, "SFI0", 4);
     section_header->size = section_size;
 
-    flags_ptr  = (uint64_t*)((char*)section_header + sizeof(struct section_header));
+    flags_ptr  = reinterpret_cast<uint64_t*>(reinterpret_cast<char*>(section_header) + sizeof(struct section_header));
     *flags_ptr = flags;
 
     return section;
@@ -648,7 +648,7 @@ static void* manufacture_empty_section(
     }
 
     memcpy(section, section_name, 4);
-    memset((char*)section + 4, 0, 4);
+    memset(static_cast<char*>(section) + 4, 0, 4);
 
     return section;
 }
@@ -764,28 +764,28 @@ static void serialise_shader_binary(
     void*               section_ptr        = nullptr;
 
     // Calculate final size of shader binary:
-    shader_size = (uint32_t)(sizeof(struct dxbc_header) + 4 * sections->size() + all_sections_size);
+    shader_size = static_cast<uint32_t>(sizeof(struct dxbc_header) + 4 * sections->size() + all_sections_size);
 
     bytecode->resize(shader_size);
 
     // Get some useful pointers into the buffer:
-    header             = (struct dxbc_header*)bytecode->data();
-    section_offset_ptr = (uint32_t*)((char*)header + sizeof(struct dxbc_header));
-    section_ptr        = (void*)(section_offset_ptr + sections->size());
+    header             = reinterpret_cast<struct dxbc_header*>(bytecode->data());
+    section_offset_ptr = reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(header) + sizeof(struct dxbc_header));
+    section_ptr        = static_cast<void*>(section_offset_ptr + sections->size());
 
     memcpy(header->signature, "DXBC", 4);
     memset(header->hash, 0, sizeof(header->hash));  // Will be filled in by assembler
     header->one          = 1;
     header->size         = shader_size;
-    header->num_sections = (uint32_t)sections->size();
+    header->num_sections = static_cast<uint32_t>(sections->size());
 
     for (void* section : *sections)
     {
-        section_size = *((uint32_t*)section + 1) + sizeof(section_header);
+        section_size = *(static_cast<uint32_t*>(section) + 1) + sizeof(section_header);
         memcpy(section_ptr, section, section_size);
-        *section_offset_ptr = (uint32_t)((char*)section_ptr - (char*)header);
+        *section_offset_ptr = static_cast<uint32_t>(static_cast<char*>(section_ptr) - reinterpret_cast<char*>(header));
         section_offset_ptr++;
-        section_ptr = (char*)section_ptr + section_size;
+        section_ptr = static_cast<char*>(section_ptr) + section_size;
     }
 }
 
@@ -794,7 +794,7 @@ static HRESULT manufacture_shader_binary(
     size_t        AsmLength,
     vector<byte>* bytecode)
 {
-    string        shader_str((const char*)pShaderAsm, AsmLength);
+    string        shader_str(static_cast<const char*>(pShaderAsm), AsmLength);
     string        line;
     size_t        pos  = 0;
     bool          done = false;
@@ -816,7 +816,7 @@ static HRESULT manufacture_shader_binary(
         if (section)
         {
             sections.push_back(section);
-            section_size = *((uint32_t*)section + 1) + sizeof(section_header);
+            section_size = *(static_cast<uint32_t*>(section) + 1) + sizeof(section_header);
             all_sections_size += section_size;
 
             if (gLogDebug)
@@ -826,7 +826,7 @@ static HRESULT manufacture_shader_binary(
                 {
                     if (i && i % 16 == 0)
                         LOG_INFO("\n");
-                    LOG_INFO_NO_NL("%02x ", ((unsigned char*)section)[i]);
+                    LOG_INFO_NO_NL("%02x ", (static_cast<unsigned char*>(section))[i]);
                 }
                 LOG_INFO("\n");
             }
@@ -843,7 +843,7 @@ static HRESULT manufacture_shader_binary(
     {
         section = serialise_subshader_feature_info_section(sfi);
         sections.insert(sections.begin(), section);
-        section_size = *((uint32_t*)section + 1) + sizeof(section_header);
+        section_size = *(static_cast<uint32_t*>(section) + 1) + sizeof(section_header);
         all_sections_size += section_size;
         LOG_INFO("Inserted Subshader Feature Info section: 0x%llx\n", sfi);
     }
