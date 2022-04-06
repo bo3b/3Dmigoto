@@ -2,7 +2,7 @@
 ---
 WarningsAsErrors:  ''
 HeaderFilterRegex: '.*'
-FormatStyle:       'none'
+#FormatStyle:       'none'
 Checks:            '-*,readability-identifier-naming,modernize-use-nullptr,modernize-deprecated-headers,modernize-redundant-void-arg,modernize-use-bool-literals'
 #Checks:            '-*,modernize-deprecated-headers'
 CheckOptions:
