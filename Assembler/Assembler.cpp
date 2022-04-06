@@ -1,5 +1,6 @@
 #include "Assembler.h"
 
+#include <stdexcept>
 #include <unordered_map>
 
 #if MIGOTO_DX == 9
@@ -63,8 +64,8 @@ static DWORD strToDWORD(
     }
     if (s.find('.') < s.size())
     {
-        float f  = (float)atof(s.c_str());
-        auto  pF = (DWORD*)&f;
+        float f  = static_cast<float>(atof(s.c_str()));
+        auto  pF = reinterpret_cast<DWORD*>(&f);
         return *pF;
     }
     return atoi(s.c_str());
@@ -81,11 +82,11 @@ static uint64_t str_to_raw_double(
     {
         uint32_t v1, v2;
         sscanf_s(s.c_str(), "0x%x, 0x%x", &v1, &v2);
-        return (uint64_t)v1 | (uint64_t)v2 << 32;
+        return static_cast<uint64_t>(v1) | static_cast<uint64_t>(v2) << 32;
     }
 
     d = atof(s.c_str());
-    return *(uint64_t*)&d;
+    return *reinterpret_cast<uint64_t*>(&d);
 }
 
 static string convertF(
@@ -163,8 +164,8 @@ static string convertD(
     DWORD v2)
 {
     char     buf[80];
-    uint64_t q = (uint64_t)v1 | ((uint64_t)v2 << 32);
-    auto     d = (double*)&q;
+    uint64_t q = static_cast<uint64_t>(v1) | (static_cast<uint64_t>(v2) << 32);
+    auto     d = reinterpret_cast<double*>(&q);
 
     if (isnan(*d) || isinf(*d))
     {
@@ -209,7 +210,7 @@ void write_lut()
             if (i == 0)
             {
                 char hex[40];
-                auto ins = (shader_ins*)&b[0];
+                auto ins = reinterpret_cast<shader_ins*>(&b[0]);
                 if (ins->_11_23 > 0)
                 {
                     if (ins->extended)
@@ -804,7 +805,7 @@ static vector<DWORD> assembleOp(
     DWORD         num   = 0;
     DWORD         index = 0;
     DWORD         value = 0;
-    auto          tOp   = (token_operand*)&op;
+    auto          tOp   = reinterpret_cast<token_operand*>(&op);
     tOp->comps_enum     = 2;  // 4
 
     num = atoi(s.c_str());
@@ -1519,7 +1520,7 @@ static void check_num_ops(
     int             min_expected,
     int             max_expected = -1)
 {
-    int  num_operands = (int)w.size() - 1;
+    int  num_operands = static_cast<int>(w.size()) - 1;
     char buf[80];
 
     // We will throw a parse error if there are too few operands. That
@@ -1608,10 +1609,10 @@ static vector<DWORD> assemble_printf(
 
     check_num_ops(s, w, 1, 0);
     string   msg    = translate_string_operand(w[1]);
-    uint32_t msgLen = (uint32_t)msg.size();
+    uint32_t msgLen = static_cast<uint32_t>(msg.size());
     v.push_back(msgLen);
 
-    uint32_t numOps = (uint32_t)w.size() - 2;
+    uint32_t numOps = static_cast<uint32_t>(w.size()) - 2;
     v.push_back(numOps);
     v.push_back(numOps * 2);
     for (uint32_t i = 0; i < numOps; i++)
@@ -1622,11 +1623,11 @@ static vector<DWORD> assemble_printf(
 
     // Resize large enough to fit the message with a NULL
     // terminator, rounded up for padding:
-    uintptr_t msgOff = (uintptr_t)v.size() * 4;
-    insLen           = (msgLen + 4) / 4 + (uint32_t)v.size();
+    uintptr_t msgOff = v.size() * 4;
+    insLen           = (msgLen + 4) / 4 + static_cast<uint32_t>(v.size());
     v.resize(insLen);
     v[1] = insLen;
-    memcpy((char*)v.data() + msgOff, msg.c_str(), msgLen);
+    memcpy(reinterpret_cast<char*>(v.data()) + msgOff, msg.c_str(), msgLen);
 
     return v;
 }
@@ -1647,7 +1648,7 @@ static vector<DWORD> assemble_undecipherable_custom_data(
     // if it went through our disassembler fixup path we appended a hexdump
     // of the instruction that we can now reassemble:
 
-    numOps = (uint32_t)w.size() - 3;
+    numOps = static_cast<uint32_t>(w.size()) - 3;
     for (i = 0; i < numOps; i++)
     {
         sscanf_s(w[i + 3].c_str(), "%x", &word);
@@ -1668,7 +1669,7 @@ static vector<DWORD> assembleIns(
         return v;
     }
     DWORD  op  = 0;
-    auto   ins = (shader_ins*)&op;
+    auto   ins = reinterpret_cast<shader_ins*>(&op);
     size_t pos = s.find("[precise");
     if (pos != string::npos)
     {
@@ -1833,7 +1834,7 @@ static vector<DWORD> assembleIns(
             Os.push_back(assembleOp(w[i + 1], i < numSpecial));
         ins->length = 1;
         for (int i = 0; i < numOps; i++)
-            ins->length += (int)Os[i].size();
+            ins->length += static_cast<int>(Os[i].size());
         v.push_back(op);
         for (int i = 0; i < numOps; i++)
             v.insert(v.end(), Os[i].begin(), Os[i].end());
@@ -1860,7 +1861,7 @@ static vector<DWORD> assembleIns(
             ins->_11_23 |= 0x20;
         ins->length = 1;
         for (int i = 0; i < numOps; i++)
-            ins->length += (int)Os[i].size();
+            ins->length += static_cast<int>(Os[i].size());
         v.push_back(op);
         for (int i = 0; i < numOps; i++)
             v.insert(v.end(), Os[i].begin(), Os[i].end());
@@ -1879,7 +1880,7 @@ static vector<DWORD> assembleIns(
         ins->length   = 1 + (vIns[2] & 3);
         ins->extended = 1;
         for (int i = 0; i < numOps; i++)
-            ins->length += (int)Os[i].size();
+            ins->length += static_cast<int>(Os[i].size());
         v.push_back(op);
         if (vIns[2] == 3)
             v.push_back(parseAoffimmi(0x80000001, w[1]));
@@ -1944,7 +1945,7 @@ static vector<DWORD> assembleIns(
     else if (o == "dcl_input")
     {
         check_num_ops(s, w, 1);
-        vector<DWORD> os = assembleOp(w[1], 1);
+        vector<DWORD> os = assembleOp(w[1], true);
         ins->opcode      = 0x5f;
         ins->length      = 1 + os.size();
         // Should sort special value for text constants.
@@ -1956,7 +1957,7 @@ static vector<DWORD> assembleIns(
     else if (o == "dcl_output")
     {
         check_num_ops(s, w, 1);
-        vector<DWORD> os = assembleOp(w[1], 1);
+        vector<DWORD> os = assembleOp(w[1], true);
         ins->opcode      = 0x65;
         ins->length      = 1 + os.size();
         v.push_back(op);
@@ -2590,7 +2591,7 @@ static vector<DWORD> assembleIns(
 
         ins->length = 1;
         for (int i = 0; i < numOps; i++)
-            ins->length += (int)os[i].size();
+            ins->length += static_cast<int>(os[i].size());
 
         v.push_back(op);
         for (int i = 0; i < numOps; i++)
@@ -3352,11 +3353,11 @@ HRESULT disassembler(
     pPosition += 4;
     std::memcpy(fHash, pPosition, 16);
     pPosition += 16;
-    one = *(DWORD*)pPosition;
+    one = *reinterpret_cast<DWORD*>(pPosition);
     pPosition += 4;
-    fSize = *(DWORD*)pPosition;
+    fSize = *reinterpret_cast<DWORD*>(pPosition);
     pPosition += 4;
-    numChunks = *(DWORD*)pPosition;
+    numChunks = *reinterpret_cast<DWORD*>(pPosition);
     if (numChunks < 1)
         return S_FALSE;
     pPosition += 4;
@@ -3374,7 +3375,7 @@ HRESULT disassembler(
     if (FAILED(ok))
         return ok;
 
-    asmBuffer = (char*)pDissassembly->GetBufferPointer();
+    asmBuffer = static_cast<char*>(pDissassembly->GetBufferPointer());
     asmSize   = pDissassembly->GetBufferSize();
 
     byte* codeByteStart;
@@ -3387,7 +3388,7 @@ HRESULT disassembler(
             break;
     }
     // FIXME: If neither SHEX or SHDR was found in the shader, codeByteStart will be garbage
-    auto           codeStart   = (DWORD*)(codeByteStart + 8);
+    auto           codeStart   = reinterpret_cast<DWORD*>(codeByteStart + 8);
     bool           codeStarted = false;
     bool           multiLine   = false;
     int            multiLines  = 0;
@@ -3396,7 +3397,7 @@ HRESULT disassembler(
     vector<string> lines = string_to_lines(asmBuffer, asmSize);
     for (DWORD i = 0; i < lines.size(); i++)
     {
-        uint32_t line_byte_offset = (uint32_t)((byte*)codeStart - buffer->data());
+        uint32_t line_byte_offset = static_cast<uint32_t>(reinterpret_cast<byte*>(codeStart) - buffer->data());
         string   s                = lines[i];
 
         if (!memcmp(s.c_str(), "//", 2))
@@ -3433,7 +3434,7 @@ HRESULT disassembler(
             s         = s2;
             multiLine = false;
             multiLines++;
-            auto ins = (shader_ins*)codeStart;
+            auto ins = reinterpret_cast<shader_ins*>(codeStart);
             v.push_back(*codeStart);
             codeStart++;
             DWORD length = *codeStart;
@@ -3461,7 +3462,7 @@ HRESULT disassembler(
         }
         else if (s.size() > 0)
         {
-            auto ins = (shader_ins*)codeStart;
+            auto ins = reinterpret_cast<shader_ins*>(codeStart);
             v.push_back(*codeStart);
             codeStart++;
 
@@ -3715,11 +3716,11 @@ vector<byte> assembler(
     pPosition += 4;
     std::memcpy(fHash, pPosition, 16);
     pPosition += 16;
-    one = *(DWORD*)pPosition;
+    one = *reinterpret_cast<DWORD*>(pPosition);
     pPosition += 4;
-    fSize = *(DWORD*)pPosition;
+    fSize = *reinterpret_cast<DWORD*>(pPosition);
     pPosition += 4;
-    numChunks = *(DWORD*)pPosition;
+    numChunks = *reinterpret_cast<DWORD*>(pPosition);
     if (numChunks < 1)
         throw std::invalid_argument("assembler: Bad shader binary");
     pPosition += 4;
@@ -3740,7 +3741,7 @@ vector<byte> assembler(
             break;
     }
     // FIXME: If neither SHEX or SHDR was found in the shader, codeByteStart will be garbage
-    auto           codeStart   = (DWORD*)(codeByteStart + 8);
+    auto           codeStart   = reinterpret_cast<DWORD*>(codeByteStart + 8);
     bool           codeStarted = false;
     bool           multiLine   = false;
     string         s2;
@@ -3810,24 +3811,24 @@ vector<byte> assembler(
             parse_errors->push_back(e);
         }
     }
-    codeStart       = (DWORD*)(codeByteStart);  // Endian bug, not that we care
+    codeStart       = reinterpret_cast<DWORD*>(codeByteStart);  // Endian bug, not that we care
     auto   it       = orig_bytecode.begin() + chunkOffsets[codeChunk] + 8;
     size_t codeSize = codeStart[1];
     orig_bytecode.erase(it, it + codeSize);
     size_t newCodeSize = 4 * o.size();
-    codeStart[1]       = (DWORD)newCodeSize;
+    codeStart[1]       = static_cast<DWORD>(newCodeSize);
     vector<byte> newCode(newCodeSize);
-    o[1] = (DWORD)o.size();
+    o[1] = static_cast<DWORD>(o.size());
     memcpy(newCode.data(), o.data(), newCodeSize);
     it = orig_bytecode.begin() + chunkOffsets[codeChunk] + 8;
     orig_bytecode.insert(it, newCode.begin(), newCode.end());
-    auto dwordBuffer = (DWORD*)orig_bytecode.data();
+    auto dwordBuffer = reinterpret_cast<DWORD*>(orig_bytecode.data());
     for (DWORD i = codeChunk + 1; i < numChunks; i++)
     {
-        dwordBuffer[8 + i] += (DWORD)(newCodeSize - codeSize);
+        dwordBuffer[8 + i] += static_cast<DWORD>(newCodeSize - codeSize);
     }
-    dwordBuffer[6]     = (DWORD)orig_bytecode.size();
-    vector<DWORD> hash = ComputeHash((const byte*)orig_bytecode.data() + 20, (DWORD)orig_bytecode.size() - 20);
+    dwordBuffer[6]     = static_cast<DWORD>(orig_bytecode.size());
+    vector<DWORD> hash = ComputeHash(static_cast<const byte*>(orig_bytecode.data()) + 20, static_cast<DWORD>(orig_bytecode.size()) - 20);
     dwordBuffer[1]     = hash[0];
     dwordBuffer[2]     = hash[1];
     dwordBuffer[3]     = hash[2];
