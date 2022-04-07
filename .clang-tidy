@@ -3,8 +3,8 @@
 WarningsAsErrors:  ''
 HeaderFilterRegex: '.*'
 #FormatStyle:       'none'
-#Checks:            '-*,readability-identifier-naming,google-readability-casting,modernize-use-nullptr,modernize-deprecated-headers,modernize-redundant-void-arg,modernize-use-bool-literals'
-Checks:            '-*,google-readability-casting,modernize-use-nullptr,modernize-deprecated-headers,modernize-redundant-void-arg,modernize-use-bool-literals'
+Checks:            '-*,readability-identifier-naming,google-readability-casting,modernize-use-nullptr,modernize-deprecated-headers,modernize-redundant-void-arg,modernize-use-bool-literals'
+#Checks:            '-*,google-readability-casting,modernize-use-nullptr,modernize-deprecated-headers,modernize-redundant-void-arg,modernize-use-bool-literals'
 #Checks:            '-*,modernize-deprecated-headers'
 CheckOptions:
  - { key: readability-identifier-naming.ClassCase,              value: CamelCase  }
@@ -14,10 +14,10 @@ CheckOptions:
  - { key: readability-identifier-naming.MacroDefinitionCase,    value: UPPER_CASE }
  - { key: readability-identifier-naming.GlobalConstantCase,     value: lower_case }
  - { key: readability-identifier-naming.ConstantCase,           value: lower_case }
- - { key: readability-identifier-naming.GlobalFunctionCase,     value: lower_case }
- - { key: readability-identifier-naming.GlobalFunctionIgnoredRegexp,    value: "(fn_orig_.*|lpvtbl_.*|hooked_.*|D3D11.*|D3DKMT.*|_?OpenAdapter10_2|_?OpenAdapter10|CBTProc)" }
- - { key: readability-identifier-naming.FunctionCase,           value: lower_case }
- - { key: readability-identifier-naming.FunctionIgnoredRegexp,  value: "(_?D3DKMT.*|trampoline_.*|QueryInterface|AddRef|Release|CreateBuffer|CreateTexture1D|CreateTexture2D|CreateTexture3D|CreateShaderResourceView|CreateUnorderedAccessView|CreateRenderTargetView|CreateDepthStencilView|CreateInputLayout|CreateVertexShader|CreateGeometryShader|CreateGeometryShaderWithStreamOutput|CreatePixelShader|CreateHullShader|CreateDomainShader|CreateComputeShader|CreateClassLinkage|CreateBlendState|CreateDepthStencilState|CreateRasterizerState|CreateSamplerState|CreateQuery|CreatePredicate|CreateCounter|CreateDeferredContext|OpenSharedResource|CheckFormatSupport|CheckMultisampleQualityLevels|CheckCounterInfo|CheckCounter|CheckFeatureSupport|GetPrivateData|SetPrivateData|SetPrivateDataInterface|GetFeatureLevel|GetCreationFlags|GetDeviceRemovedReason|GetImmediateContext|SetExceptionMode|GetExceptionMode)" }
+# - { key: readability-identifier-naming.GlobalFunctionCase,     value: lower_case }
+# - { key: readability-identifier-naming.GlobalFunctionIgnoredRegexp,    value: "(fn_orig_.*|lpvtbl_.*|hooked_.*|D3D11.*|D3DKMT.*|_?OpenAdapter10_2|_?OpenAdapter10|CBTProc)" }
+# - { key: readability-identifier-naming.FunctionCase,           value: lower_case }
+# - { key: readability-identifier-naming.FunctionIgnoredRegexp,  value: "(_?D3DKMT.*|trampoline_.*|QueryInterface|AddRef|Release|CreateBuffer|CreateTexture1D|CreateTexture2D|CreateTexture3D|CreateShaderResourceView|CreateUnorderedAccessView|CreateRenderTargetView|CreateDepthStencilView|CreateInputLayout|CreateVertexShader|CreateGeometryShader|CreateGeometryShaderWithStreamOutput|CreatePixelShader|CreateHullShader|CreateDomainShader|CreateComputeShader|CreateClassLinkage|CreateBlendState|CreateDepthStencilState|CreateRasterizerState|CreateSamplerState|CreateQuery|CreatePredicate|CreateCounter|CreateDeferredContext|OpenSharedResource|CheckFormatSupport|CheckMultisampleQualityLevels|CheckCounterInfo|CheckCounter|CheckFeatureSupport|GetPrivateData|SetPrivateData|SetPrivateDataInterface|GetFeatureLevel|GetCreationFlags|GetDeviceRemovedReason|GetImmediateContext|SetExceptionMode|GetExceptionMode)" }
  - { key: readability-identifier-naming.ParameterCase,          value: lower_case }
 #
 # Every ID3D11Device1 input parameter from regex filtering:
@@ -37,9 +37,9 @@ CheckOptions:
  - { key: readability-identifier-naming.ParameterPackCase,      value: camelBack }
  - { key: readability-identifier-naming.StructCase,             value: lower_case }
  - { key: readability-identifier-naming.VariableCase,           value: lower_case }
- - { key: readability-identifier-naming.VariableIgnoredRegexp,  value: "(fn_orig_.*)" }
+ - { key: readability-identifier-naming.VariableIgnoredRegexp,  value: "ASM|BIN|CBO|(fn_orig_.*)" }
  - { key: readability-identifier-naming.GlobalVariableCase,     value: lower_case }
- - { key: readability-identifier-naming.GlobalVariableIgnoredRegexp,  value: "(_?D3DKMT.*|_?D3D11.*|_?OpenAdapter.*)" }
+ - { key: readability-identifier-naming.GlobalVariableIgnoredRegexp,  value: "gLogDebug|LogFile|(_?D3DKMT.*|_?D3D11.*|_?OpenAdapter.*)" }
  - { key: readability-identifier-naming.UnionCase,              value: lower_case }
  - { key: readability-identifier-naming.NamespaceCase,          value: lower_case }
  - { key: readability-identifier-naming.EnumCase,               value: Camel_Snake_Case }

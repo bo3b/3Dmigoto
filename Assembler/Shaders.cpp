@@ -16,44 +16,44 @@ bool  gLogDebug = false;
 FILE* LogFile   = nullptr;
 
 static vector<string> enumerateFiles(
-    string pathName,
+    string path_name,
     string filter = "")
 {
     vector<string>   files;
-    WIN32_FIND_DATAA FindFileData;
-    HANDLE           hFind;
-    string           sName = pathName;
-    sName.append(filter);
-    hFind = FindFirstFileA(sName.c_str(), &FindFileData);
-    if (hFind != INVALID_HANDLE_VALUE)
+    WIN32_FIND_DATAA find_file_data;
+    HANDLE           h_find;
+    string           s_name = path_name;
+    s_name.append(filter);
+    h_find = FindFirstFileA(s_name.c_str(), &find_file_data);
+    if (h_find != INVALID_HANDLE_VALUE)
     {
-        string fName = pathName;
-        fName.append(FindFileData.cFileName);
-        files.push_back(fName);
-        while (FindNextFileA(hFind, &FindFileData))
+        string f_name = path_name;
+        f_name.append(find_file_data.cFileName);
+        files.push_back(f_name);
+        while (FindNextFileA(h_find, &find_file_data))
         {
-            fName = pathName;
-            fName.append(FindFileData.cFileName);
-            files.push_back(fName);
+            f_name = path_name;
+            f_name.append(find_file_data.cFileName);
+            files.push_back(f_name);
         }
-        FindClose(hFind);
+        FindClose(h_find);
     }
     return files;
 }
 
 static vector<byte> readFile(
-    string fileName)
+    string file_name)
 {
     vector<byte> buffer;
     FILE*        f;
-    fopen_s(&f, fileName.c_str(), "rb");
+    fopen_s(&f, file_name.c_str(), "rb");
     if (f != nullptr)
     {
         fseek(f, 0L, SEEK_END);
-        int fileSize = ftell(f);
-        buffer.resize(fileSize);
+        int file_size = ftell(f);
+        buffer.resize(file_size);
         fseek(f, 0L, SEEK_SET);
-        size_t numRead = fread(buffer.data(), 1, buffer.size(), f);
+        size_t num_read = fread(buffer.data(), 1, buffer.size(), f);
         fclose(f);
     }
     return buffer;
@@ -63,9 +63,9 @@ int _tmain(
     int     argc,
     _TCHAR* argv[])
 {
-    int            shaderNo = 1;
-    vector<string> gameNames;
-    string         pathName;
+    int            shader_no = 1;
+    vector<string> game_names;
+    string         path_name;
     vector<string> files;
     FILE*          f;
     char           cwd[MAX_PATH];
@@ -86,41 +86,41 @@ int _tmain(
     {
         for (auto i = lines.begin(); i != lines.end(); i++)
         {
-            gameNames.push_back(*i);
+            game_names.push_back(*i);
         }
     }
     else
     {
-        gameNames.push_back(cwd);
+        game_names.push_back(cwd);
     }
-    for (DWORD i = 0; i < gameNames.size(); i++)
+    for (DWORD i = 0; i < game_names.size(); i++)
     {
-        string gameName = gameNames[i];
-        cout << gameName << ":" << endl;
+        string game_name = game_names[i];
+        cout << game_name << ":" << endl;
 
         int progress = 0;
-        pathName     = gameName;
-        pathName.append("\\ShaderCache\\");
-        files = enumerateFiles(pathName, "????????????????-??.bin");
+        path_name    = game_name;
+        path_name.append("\\ShaderCache\\");
+        files = enumerateFiles(path_name, "????????????????-??.bin");
         if (files.size() > 0)
         {
             cout << "bin->asm: ";
             for (DWORD i = 0; i < files.size(); i++)
             {
-                string fileName = files[i];
+                string file_name = files[i];
 
                 vector<byte> ASM;
-                disassembler(&readFile(fileName), &ASM, nullptr);
+                disassembler(&readFile(file_name), &ASM, nullptr);
 
-                fileName.erase(fileName.size() - 3, 3);
-                fileName.append("txt");
+                file_name.erase(file_name.size() - 3, 3);
+                file_name.append("txt");
                 FILE* f;
-                fopen_s(&f, fileName.c_str(), "wb");
+                fopen_s(&f, file_name.c_str(), "wb");
                 fwrite(ASM.data(), 1, ASM.size(), f);
                 fclose(f);
 
-                int newProgress = static_cast<int>(50.0 * i / files.size());
-                if (newProgress > progress)
+                int new_progress = static_cast<int>(50.0 * i / files.size());
+                if (new_progress > progress)
                 {
                     cout << ".";
                     progress++;
@@ -129,36 +129,36 @@ int _tmain(
         }
         cout << endl;
 
-        progress = 0;
-        pathName = gameName;
-        pathName.append("\\ShaderCache\\");
-        files = enumerateFiles(pathName, "????????????????-??.txt");
+        progress  = 0;
+        path_name = game_name;
+        path_name.append("\\ShaderCache\\");
+        files = enumerateFiles(path_name, "????????????????-??.txt");
         if (files.size() > 0)
         {
             cout << "asm->cbo: ";
             for (DWORD i = 0; i < files.size(); i++)
             {
-                string fileName = files[i];
+                string file_name = files[i];
 
-                auto ASM = readFile(fileName);
-                fileName.erase(fileName.size() - 3, 3);
-                fileName.append("bin");
-                auto BIN = readFile(fileName);
+                auto ASM = readFile(file_name);
+                file_name.erase(file_name.size() - 3, 3);
+                file_name.append("bin");
+                auto BIN = readFile(file_name);
 
                 auto CBO = assembler(reinterpret_cast<vector<char>*>(&ASM), BIN);
 
-                fileName.erase(fileName.size() - 3, 3);
-                fileName.append("cbo");
+                file_name.erase(file_name.size() - 3, 3);
+                file_name.append("cbo");
                 FILE* f;
-                fopen_s(&f, fileName.c_str(), "wb");
+                fopen_s(&f, file_name.c_str(), "wb");
                 if (f)
                 {
                     fwrite(CBO.data(), 1, CBO.size(), f);
                     fclose(f);
                 }
 
-                int newProgress = static_cast<int>(50.0 * i / files.size());
-                if (newProgress > progress)
+                int new_progress = static_cast<int>(50.0 * i / files.size());
+                if (new_progress > progress)
                 {
                     cout << ".";
                     progress++;
@@ -167,32 +167,32 @@ int _tmain(
         }
         cout << endl;
 
-        progress = 0;
-        pathName = gameNames[i];
-        pathName.append("\\Mark\\");
-        files = enumerateFiles(pathName, "*.bin");
+        progress  = 0;
+        path_name = game_names[i];
+        path_name.append("\\Mark\\");
+        files = enumerateFiles(path_name, "*.bin");
         if (files.size() > 0)
         {
             cout << "bin->asm validate: ";
             for (DWORD i = 0; i < files.size(); i++)
             {
-                string fileName = files[i];
+                string file_name = files[i];
 
                 vector<byte> ASM;
-                disassembler(&readFile(fileName), &ASM, nullptr);
+                disassembler(&readFile(file_name), &ASM, nullptr);
 
-                fileName.erase(fileName.size() - 3, 3);
-                fileName.append("txt");
+                file_name.erase(file_name.size() - 3, 3);
+                file_name.append("txt");
                 FILE* f;
-                fopen_s(&f, fileName.c_str(), "wb");
+                fopen_s(&f, file_name.c_str(), "wb");
                 if (f)
                 {
                     fwrite(ASM.data(), 1, ASM.size(), f);
                     fclose(f);
                 }
 
-                int newProgress = static_cast<int>(50.0 * i / files.size());
-                if (newProgress > progress)
+                int new_progress = static_cast<int>(50.0 * i / files.size());
+                if (new_progress > progress)
                 {
                     cout << ".";
                     progress++;
