@@ -14,7 +14,7 @@ using namespace std;
 // VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
 class AsmSignatureParseError : public exception
 {
-} parseError;
+} parse_error;
 
 static string next_line(
     string* shader,
@@ -81,7 +81,7 @@ static void parse_format(
         }
     }
 
-    throw parseError;
+    throw parse_error;
 }
 
 struct svt
@@ -205,7 +205,7 @@ static uint32_t parse_system_value(
             return system_value_abbreviations[i].val;
     }
 
-    throw parseError;
+    throw parse_error;
 }
 
 static uint8_t parse_mask(
@@ -247,7 +247,7 @@ static uint8_t parse_mask(
             case '/':  // N/A
                 return 0x1 ^ xor_val;
             default:
-                throw parseError;
+                throw parse_error;
         }
     }
     return ret ^ xor_val;
@@ -313,7 +313,7 @@ static void* serialise_signature_section(
     entry5 = reinterpret_cast<struct sg5_entry_serialiased*>(entryn);
     entry1 = reinterpret_cast<struct sg1_entry_serialiased*>(entryn);
 
-    LOG_DEBUG("section: 0x%p, section_header: 0x%p, sgn_header: 0x%p, padding_ptr: 0x%p, entry: 0x%p\n", section, (char*)section_header, sgn_header, padding_ptr, entryn);
+    LOG_DEBUG("section: 0x%p, section_header: 0x%p, sgn_header: 0x%p, padding_ptr: 0x%p, entry: 0x%p\n", section, reinterpret_cast<char*>(section_header), sgn_header, padding_ptr, entryn);
 
     switch (entry_size)
     {
@@ -327,7 +327,7 @@ static void* serialise_signature_section(
             memcpy(&section_header->signature, section32, 4);
             break;
         default:
-            throw parseError;
+            throw parse_error;
     }
     section_header->size = section_size + padding;
 
@@ -374,7 +374,7 @@ static void* parse_signature_section(
 {
     string                                line;
     size_t                                old_pos = *pos;
-    int                                   numRead;
+    int                                   num_read;
     uint32_t                              name_off   = 0;
     int                                   entry_size = 24;    // We use the size, because in MS's usual wisdom version 1 is higher than version 5 :facepalm:
     char                                  semantic_name[64];  // Semantic names are limited to 63 characters in fxc
@@ -417,9 +417,9 @@ static void* parse_signature_section(
         memset(mask, ' ', 8);
         memset(used, ' ', 8);
 
-        numRead = sscanf_s((line + "       ").c_str(), "// %s %d%7c %s %s %s%7c", semantic_name, static_cast<unsigned>(ARRAYSIZE(semantic_name)), &entry.common.semantic_index, mask, static_cast<unsigned>(ARRAYSIZE(mask)), &reg, static_cast<unsigned>(ARRAYSIZE(reg)), system_value, static_cast<unsigned>(ARRAYSIZE(system_value)), format, static_cast<unsigned>(ARRAYSIZE(format)), used, static_cast<unsigned>(ARRAYSIZE(used)));
+        num_read = sscanf_s((line + "       ").c_str(), "// %s %d%7c %s %s %s%7c", semantic_name, static_cast<unsigned>(ARRAYSIZE(semantic_name)), &entry.common.semantic_index, mask, static_cast<unsigned>(ARRAYSIZE(mask)), &reg, static_cast<unsigned>(ARRAYSIZE(reg)), system_value, static_cast<unsigned>(ARRAYSIZE(system_value)), format, static_cast<unsigned>(ARRAYSIZE(format)), used, static_cast<unsigned>(ARRAYSIZE(used)));
 
-        if (numRead != 7)
+        if (num_read != 7)
         {
             // I really would love to throw parseError here to
             // catch typos, but since this is in a comment I can't
@@ -431,8 +431,8 @@ static void* parse_signature_section(
 
         // Try parsing the semantic name with streams, and bump the
         // section version if sucessful:
-        numRead = sscanf_s(semantic_name, "m%u:%s", &entry.stream, semantic_name2, static_cast<unsigned>(ARRAYSIZE(semantic_name2)));
-        if (numRead == 2)
+        num_read = sscanf_s(semantic_name, "m%u:%s", &entry.stream, semantic_name2, static_cast<unsigned>(ARRAYSIZE(semantic_name2)));
+        if (num_read == 2)
         {
             entry_size = max(entry_size, 28);
             entry.name = semantic_name2;
@@ -452,7 +452,7 @@ static void* parse_signature_section(
 
         // Try parsing register as a decimal number. If it is not, it
         // is a special purpose register, in which case we store -1:
-        if (numRead = sscanf_s(reg, "%d", &entry.common.reg) == 0)
+        if (num_read = sscanf_s(reg, "%d", &entry.common.reg) == 0)
             entry.common.reg = 0xffffffff;
 
         entry.common.system_value = parse_system_value(system_value);
@@ -790,11 +790,11 @@ static void serialise_shader_binary(
 }
 
 static HRESULT manufacture_shader_binary(
-    const void*   pShaderAsm,
-    size_t        AsmLength,
+    const void*   shader_asm,
+    size_t        asm_length,
     vector<byte>* bytecode)
 {
-    string        shader_str(static_cast<const char*>(pShaderAsm), AsmLength);
+    string        shader_str(static_cast<const char*>(shader_asm), asm_length);
     string        line;
     size_t        pos  = 0;
     bool          done = false;
@@ -896,7 +896,7 @@ vector<byte> assemble_flugan_with_optional_signature_parsing(
 
     hr = assemble_flugan_with_signature_parsing(assembly, &new_bytecode, parse_errors);
     if (FAILED(hr))
-        throw parseError;
+        throw parse_error;
 
     return new_bytecode;
 }
