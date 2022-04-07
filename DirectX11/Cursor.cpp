@@ -83,7 +83,7 @@ static HCURSOR InvisibleCursor()
 // We hook the SetCursor call so that we can catch the current cursor that the
 // game has set and return it in the GetCursorInfo call whenever the software
 // cursor is visible but the hardware cursor is not.
-static HCURSOR WINAPI Hooked_SetCursor(
+static HCURSOR WINAPI hooked_SetCursor(
     HCURSOR hCursor)
 {
     current_cursor = hCursor;
@@ -94,8 +94,7 @@ static HCURSOR WINAPI Hooked_SetCursor(
         return trampoline_SetCursor(hCursor);
 }
 
-static HCURSOR WINAPI Hooked_GetCursor(
-    void)
+static HCURSOR WINAPI hooked_GetCursor()
 {
     if (G->hide_cursor)
         return current_cursor;
@@ -114,7 +113,7 @@ static BOOL WINAPI HideCursor_GetCursorInfo(
     return rc;
 }
 
-static BOOL WINAPI Hooked_GetCursorInfo(
+static BOOL WINAPI hooked_GetCursorInfo(
     PCURSORINFO pci)
 {
     BOOL rc = HideCursor_GetCursorInfo(pci);
@@ -140,7 +139,7 @@ BOOL WINAPI cursor_upscaling_bypass_GetCursorInfo(
     return GetCursorInfo(pci);
 }
 
-static BOOL WINAPI Hooked_ScreenToClient(
+static BOOL WINAPI hooked_ScreenToClient(
     HWND    hWnd,
     LPPOINT lpPoint)
 {
@@ -176,7 +175,7 @@ BOOL WINAPI cursor_upscaling_bypass_ScreenToClient(
     return ScreenToClient(hWnd, lpPoint);
 }
 
-static BOOL WINAPI Hooked_GetClientRect(
+static BOOL WINAPI hooked_GetClientRect(
     HWND   hWnd,
     LPRECT lpRect)
 {
@@ -200,7 +199,7 @@ BOOL WINAPI cursor_upscaling_bypass_GetClientRect(
     return GetClientRect(hWnd, lpRect);
 }
 
-static BOOL WINAPI Hooked_GetCursorPos(
+static BOOL WINAPI hooked_GetCursorPos(
     LPPOINT lpPoint)
 {
     BOOL res = trampoline_GetCursorPos(lpPoint);
@@ -218,7 +217,7 @@ static BOOL WINAPI Hooked_GetCursorPos(
     return res;
 }
 
-static BOOL WINAPI Hooked_SetCursorPos(
+static BOOL WINAPI hooked_SetCursorPos(
     int X,
     int Y)
 {
@@ -245,7 +244,7 @@ static BOOL WINAPI Hooked_SetCursorPos(
 //
 // An alternative to hooking DefWindowProc in this manner might be to use
 // SetWindowsHookEx since it can also hook window messages.
-static LRESULT WINAPI Hooked_DefWindowProc(
+static LRESULT WINAPI hooked_DefWindowProc(
     HWND              hWnd,
     UINT              Msg,
     WPARAM            wParam,
@@ -306,22 +305,22 @@ static LRESULT WINAPI Hooked_DefWindowProc(
     return trampoline_DefWindowProc(hWnd, Msg, wParam, lParam);
 }
 
-static LRESULT WINAPI Hooked_DefWindowProcA(
+static LRESULT WINAPI hooked_DefWindowProcA(
     HWND   hWnd,
     UINT   Msg,
     WPARAM wParam,
     LPARAM lParam)
 {
-    return Hooked_DefWindowProc(hWnd, Msg, wParam, lParam, trampoline_DefWindowProcA);
+    return hooked_DefWindowProc(hWnd, Msg, wParam, lParam, trampoline_DefWindowProcA);
 }
 
-static LRESULT WINAPI Hooked_DefWindowProcW(
+static LRESULT WINAPI hooked_DefWindowProcW(
     HWND   hWnd,
     UINT   Msg,
     WPARAM wParam,
     LPARAM lParam)
 {
-    return Hooked_DefWindowProc(hWnd, Msg, wParam, lParam, trampoline_DefWindowProcW);
+    return hooked_DefWindowProc(hWnd, Msg, wParam, lParam, trampoline_DefWindowProcW);
 }
 
 int install_hook_late(

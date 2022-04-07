@@ -2594,7 +2594,7 @@ static void update_window_info(CommandListState *state)
         return;
 
     if (G->hWnd)
-        CursorUpscalingBypass_GetClientRect(G->hWnd, &state->windowRect);
+        cursor_upscaling_bypass_GetClientRect(G->hWnd, &state->windowRect);
     else
         LOG_DEBUG("UpdateWindowInfo: No hWnd\n");
 }
@@ -2605,11 +2605,11 @@ static void update_cursor_info(CommandListState *state)
         return;
 
     state->cursorInfo.cbSize = sizeof(CURSORINFO);
-    CursorUpscalingBypass_GetCursorInfo(&state->cursorInfo);
+    cursor_upscaling_bypass_GetCursorInfo(&state->cursorInfo);
     memcpy(&state->cursorWindowCoords, &state->cursorInfo.ptScreenPos, sizeof(POINT));
 
     if (G->hWnd)
-        CursorUpscalingBypass_ScreenToClient(G->hWnd, &state->cursorWindowCoords);
+        cursor_upscaling_bypass_ScreenToClient(G->hWnd, &state->cursorWindowCoords);
     else
         LOG_DEBUG("UpdateCursorInfo: No hWnd\n");
 }

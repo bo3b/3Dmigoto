@@ -58,7 +58,7 @@
 #include "HackerDXGI.hpp"
 
 #include "CommandList.hpp"
-#include "Cursor.h"  // For InstallHookLate
+#include "Cursor.h"  // For install_hook_late
 #include "Globals.h"
 #include "HookedDevice.h"
 #include "Hunting.hpp"
@@ -114,7 +114,7 @@ void install_SetWindowPos_hook()
         return;
 
     user32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
-    fail |= InstallHookLate(user32, "SetWindowPos", reinterpret_cast<void**>(&fn_orig_SetWindowPos), hooked_SetWindowPos);
+    fail |= install_hook_late(user32, "SetWindowPos", reinterpret_cast<void**>(&fn_orig_SetWindowPos), hooked_SetWindowPos);
 
     if (fail)
     {

@@ -4401,7 +4401,7 @@ void LoadConfigFile()
     LOG_INFO("\n");
 
     if (G->hide_cursor || G->SCREEN_UPSCALING)
-        InstallMouseHooks(G->hide_cursor);
+        install_mouse_hooks(G->hide_cursor);
 
     emit_ini_warning_tone();
 }
