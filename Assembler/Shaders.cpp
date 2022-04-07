@@ -15,7 +15,7 @@ using namespace std;
 bool  gLogDebug = false;
 FILE* LogFile   = nullptr;
 
-static vector<string> enumerateFiles(
+static vector<string> enumerate_files(
     string path_name,
     string filter = "")
 {
@@ -41,7 +41,7 @@ static vector<string> enumerateFiles(
     return files;
 }
 
-static vector<byte> readFile(
+static vector<byte> read_file(
     string file_name)
 {
     vector<byte> buffer;
@@ -101,7 +101,7 @@ int _tmain(
         int progress = 0;
         path_name    = game_name;
         path_name.append("\\ShaderCache\\");
-        files = enumerateFiles(path_name, "????????????????-??.bin");
+        files = enumerate_files(path_name, "????????????????-??.bin");
         if (files.size() > 0)
         {
             cout << "bin->asm: ";
@@ -110,7 +110,7 @@ int _tmain(
                 string file_name = files[i];
 
                 vector<byte> ASM;
-                disassembler(&readFile(file_name), &ASM, nullptr);
+                disassembler(&read_file(file_name), &ASM, nullptr);
 
                 file_name.erase(file_name.size() - 3, 3);
                 file_name.append("txt");
@@ -132,7 +132,7 @@ int _tmain(
         progress  = 0;
         path_name = game_name;
         path_name.append("\\ShaderCache\\");
-        files = enumerateFiles(path_name, "????????????????-??.txt");
+        files = enumerate_files(path_name, "????????????????-??.txt");
         if (files.size() > 0)
         {
             cout << "asm->cbo: ";
@@ -140,10 +140,10 @@ int _tmain(
             {
                 string file_name = files[i];
 
-                auto ASM = readFile(file_name);
+                auto ASM = read_file(file_name);
                 file_name.erase(file_name.size() - 3, 3);
                 file_name.append("bin");
-                auto BIN = readFile(file_name);
+                auto BIN = read_file(file_name);
 
                 auto CBO = assembler(reinterpret_cast<vector<char>*>(&ASM), BIN);
 
@@ -170,7 +170,7 @@ int _tmain(
         progress  = 0;
         path_name = game_names[i];
         path_name.append("\\Mark\\");
-        files = enumerateFiles(path_name, "*.bin");
+        files = enumerate_files(path_name, "*.bin");
         if (files.size() > 0)
         {
             cout << "bin->asm validate: ";
@@ -179,7 +179,7 @@ int _tmain(
                 string file_name = files[i];
 
                 vector<byte> ASM;
-                disassembler(&readFile(file_name), &ASM, nullptr);
+                disassembler(&read_file(file_name), &ASM, nullptr);
 
                 file_name.erase(file_name.size() - 3, 3);
                 file_name.append("txt");
