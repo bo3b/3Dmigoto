@@ -1,11 +1,11 @@
 #pragma once
 
-#include <windows.h>
+#include <Windows.h>
 
 // These functions will bypass our hooks *if* the option to do so has been enabled:
-BOOL WINAPI CursorUpscalingBypass_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect);
-BOOL WINAPI CursorUpscalingBypass_GetCursorInfo(_Inout_ PCURSORINFO pci);
-BOOL WINAPI CursorUpscalingBypass_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint);
+BOOL WINAPI cursor_upscaling_bypass_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect);
+BOOL WINAPI cursor_upscaling_bypass_GetCursorInfo(_Inout_ PCURSORINFO pci);
+BOOL WINAPI cursor_upscaling_bypass_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint);
 
-int InstallHookLate(HINSTANCE module, char *func, void **trampoline, void *hook);
-void InstallMouseHooks(bool hide);
+int  install_hook_late(HINSTANCE module, char* func, void** trampoline, void* hook);
+void install_mouse_hooks(bool hide);
