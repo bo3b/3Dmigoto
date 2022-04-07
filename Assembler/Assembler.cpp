@@ -17,7 +17,7 @@ using namespace std;
 // for sscanf_s convinience. Explanation in DecompileHLSL.cpp
 #define U_COUNT_OF(...) (unsigned)_countof(__VA_ARGS__)
 
-static unordered_map<string, vector<DWORD>> codeBin;
+static unordered_map<string, vector<DWORD>> code_bin;
 
 static DWORD strToDWORD(
     string s)
@@ -58,15 +58,15 @@ static DWORD strToDWORD(
 
     if (s.substr(0, 2) == "0x")
     {
-        DWORD decimalValue;
-        sscanf_s(s.c_str(), "0x%x", &decimalValue);
-        return decimalValue;
+        DWORD decimal_value;
+        sscanf_s(s.c_str(), "0x%x", &decimal_value);
+        return decimal_value;
     }
     if (s.find('.') < s.size())
     {
-        float f  = static_cast<float>(atof(s.c_str()));
-        auto  pF = reinterpret_cast<DWORD*>(&f);
-        return *pF;
+        float f   = static_cast<float>(atof(s.c_str()));
+        auto  p_f = reinterpret_cast<DWORD*>(&f);
+        return *p_f;
     }
     return atoi(s.c_str());
 }
@@ -97,14 +97,14 @@ static string convertF(
     int   exp;
     char* scientific_exp = nullptr;
 
-    float fOriginal = reinterpret_cast<float&>(original);
+    float f_original = reinterpret_cast<float&>(original);
 
     // This printf produces different results depending on the toolchain
     // and/or SDK we are using. e.g. the value 0x3CAAAAAB will produce:
     // VS2013 / Win  8.0 SDK: 2.083333395E-002
     // VS2015 / Win 10.0 SDK: 2.083333395E-02
     // So, we can't hardcode where the exponent is - we have to find it.
-    sprintf_s(scientific, 80, "%.9E", fOriginal);
+    sprintf_s(scientific, 80, "%.9E", f_original);
 
     scientific_exp = strstr(scientific, "E");
 
@@ -129,31 +129,31 @@ static string convertF(
     switch (exp)
     {
         case 0:
-            sprintf_s(buf, 80, "%.8f", fOriginal);
+            sprintf_s(buf, 80, "%.8f", f_original);
             break;
         case -1:
-            sprintf_s(buf, 80, "%.9f", fOriginal);
+            sprintf_s(buf, 80, "%.9f", f_original);
             break;
         case -2:
-            sprintf_s(buf, 80, "%.10f", fOriginal);
+            sprintf_s(buf, 80, "%.10f", f_original);
             break;
         case -3:
-            sprintf_s(buf, 80, "%.11f", fOriginal);
+            sprintf_s(buf, 80, "%.11f", f_original);
             break;
         case -4:
-            sprintf_s(buf, 80, "%.12f", fOriginal);
+            sprintf_s(buf, 80, "%.12f", f_original);
             break;
         case -5:
-            sprintf_s(buf, 80, "%.13f", fOriginal);
+            sprintf_s(buf, 80, "%.13f", f_original);
             break;
         case -6:
-            sprintf_s(buf, 80, "%.14f", fOriginal);
+            sprintf_s(buf, 80, "%.14f", f_original);
             break;
         default:
             if (exp < 0)
-                sprintf_s(buf, 80, "%.9E", fOriginal);
+                sprintf_s(buf, 80, "%.9E", f_original);
             else
-                sprintf_s(buf, 80, "%.8f", fOriginal);
+                sprintf_s(buf, 80, "%.8f", f_original);
             break;
     }
     return buf;
@@ -199,12 +199,12 @@ void write_lut()
     if (!f)
         return;
 
-    for (auto it = codeBin.begin(); it != codeBin.end(); ++it)
+    for (auto it = code_bin.begin(); it != code_bin.end(); ++it)
     {
         fputs(it->first.c_str(), f);
         fputs(":->", f);
-        vector<DWORD> b           = it->second;
-        int           nextOperand = 1;
+        vector<DWORD> b            = it->second;
+        int           next_operand = 1;
         for (DWORD i = 0; i < b.size(); i++)
         {
             if (i == 0)
@@ -241,91 +241,91 @@ void write_lut()
 
 static void handleSwizzle(
     string         s,
-    token_operand* tOp,
+    token_operand* t_op,
     bool           special = false)
 {
     if (special == true)
     {
         // Mask
-        tOp->mode = 0;  // Mask
+        t_op->mode = 0;  // Mask
         if (s.size() > 0 && s[0] == 'x')
         {
-            tOp->sel |= 0x1;
+            t_op->sel |= 0x1;
             s.erase(s.begin());
         }
         if (s.size() > 0 && s[0] == 'y')
         {
-            tOp->sel |= 0x2;
+            t_op->sel |= 0x2;
             s.erase(s.begin());
         }
         if (s.size() > 0 && s[0] == 'z')
         {
-            tOp->sel |= 0x4;
+            t_op->sel |= 0x4;
             s.erase(s.begin());
         }
         if (s.size() > 0 && s[0] == 'w')
         {
-            tOp->sel |= 0x8;
+            t_op->sel |= 0x8;
             s.erase(s.begin());
         }
         return;
     }
     else if (s.size() == 0)
     {
-        tOp->mode       = 0;
-        tOp->comps_enum = 0;
+        t_op->mode       = 0;
+        t_op->comps_enum = 0;
         return;
     }
     else if (s.size() == 4)
     {
         // Swizzle
-        tOp->mode = 1;  // Swizzle
+        t_op->mode = 1;  // Swizzle
         for (int i = 0; i < 4; i++)
         {
             if (s[i] == 'x')
-                tOp->sel |= 0 << (2 * i);
+                t_op->sel |= 0 << (2 * i);
             if (s[i] == 'y')
-                tOp->sel |= 1 << (2 * i);
+                t_op->sel |= 1 << (2 * i);
             if (s[i] == 'z')
-                tOp->sel |= 2 << (2 * i);
+                t_op->sel |= 2 << (2 * i);
             if (s[i] == 'w')
-                tOp->sel |= 3 << (2 * i);
+                t_op->sel |= 3 << (2 * i);
         }
     }
     else if (s.size() == 1)
     {
-        tOp->mode = 2;  // Scalar
+        t_op->mode = 2;  // Scalar
         if (s[0] == 'x')
-            tOp->sel = 0;
+            t_op->sel = 0;
         if (s[0] == 'y')
-            tOp->sel = 1;
+            t_op->sel = 1;
         if (s[0] == 'z')
-            tOp->sel = 2;
+            t_op->sel = 2;
         if (s[0] == 'w')
-            tOp->sel = 3;
+            t_op->sel = 3;
     }
     else
     {
         // Mask
-        tOp->mode = 0;  // Mask
+        t_op->mode = 0;  // Mask
         if (s.size() > 0 && s[0] == 'x')
         {
-            tOp->sel |= 0x1;
+            t_op->sel |= 0x1;
             s.erase(s.begin());
         }
         if (s.size() > 0 && s[0] == 'y')
         {
-            tOp->sel |= 0x2;
+            t_op->sel |= 0x2;
             s.erase(s.begin());
         }
         if (s.size() > 0 && s[0] == 'z')
         {
-            tOp->sel |= 0x4;
+            t_op->sel |= 0x4;
             s.erase(s.begin());
         }
         if (s.size() > 0 && s[0] == 'w')
         {
-            tOp->sel |= 0x8;
+            t_op->sel |= 0x8;
             s.erase(s.begin());
         }
     }
@@ -384,7 +384,7 @@ static struct special_purpose_register special_purpose_registers[] = {
 static bool assemble_special_purpose_register(
     string&        s,
     vector<DWORD>& v,
-    token_operand* tOp,
+    token_operand* t_op,
     bool           special)
 {
     size_t swiz_pos = s.find('.');
@@ -395,15 +395,15 @@ static bool assemble_special_purpose_register(
         if (s.compare(0, swiz_pos, special_purpose_registers[i].name))
             continue;
 
-        tOp->file = special_purpose_registers[i].file;
+        t_op->file = special_purpose_registers[i].file;
 
         // comps_enum was set to 2 as a default at the start of assembleOp
         if (swiz_pos != string::npos)
-            handleSwizzle(s.substr(swiz_pos + 1), tOp, special);
+            handleSwizzle(s.substr(swiz_pos + 1), t_op, special);
         else
-            tOp->comps_enum = special_purpose_registers[i].comps_enum;
+            t_op->comps_enum = special_purpose_registers[i].comps_enum;
 
-        v.insert(v.begin(), tOp->op);
+        v.insert(v.begin(), t_op->op);
         return true;
     }
 
@@ -417,48 +417,48 @@ static vector<DWORD> assembleOp(
 static vector<DWORD> assemble_cbvox_operand(
     string&        s,
     vector<DWORD>& v,
-    token_operand* tOp,
+    token_operand* t_op,
     bool           special,
     DWORD          num)
 {
-    tOp->num_indices = 2;
+    t_op->num_indices = 2;
     if (s[0] == 'x')
     {  // Indexable temp array
-        tOp->file = 3;
+        t_op->file = 3;
         s.erase(s.begin());
     }
     else if (s[0] == 'o')
     {  // Output register
-        tOp->file        = 2;
-        tOp->num_indices = 1;
+        t_op->file        = 2;
+        t_op->num_indices = 1;
         s.erase(s.begin());
     }
     else if (s[0] == 'v')
     {  // Input register
-        tOp->file = 1;
+        t_op->file = 1;
         if (s.size() > 4 && s[1] == 'i' && s[2] == 'c' && s[3] == 'p')
         {  // Hull shader vicp
-            tOp->file = 0x19;
+            t_op->file = 0x19;
             s.erase(s.begin());
             s.erase(s.begin());
             s.erase(s.begin());
         }
         else if (s.size() > 4 && s[1] == 'o' && s[2] == 'c' && s[3] == 'p')
         {  // Hull shader vocp
-            tOp->file = 0x1A;
+            t_op->file = 0x1A;
             s.erase(s.begin());
             s.erase(s.begin());
             s.erase(s.begin());
         }
         else if (s[1] == 'p' && s[2] == 'c')
         {  // Patch constant
-            tOp->file = 0x1B;
+            t_op->file = 0x1B;
             s.erase(s.begin());
             s.erase(s.begin());
         }
         s.erase(s.begin());
-        tOp->num_indices = 1;
-        size_t start     = s.find("][");
+        t_op->num_indices = 1;
+        size_t start      = s.find("][");
         if (start != string::npos)
         {
             size_t end    = s.find("]", start + 1);
@@ -466,50 +466,50 @@ static vector<DWORD> assemble_cbvox_operand(
             string index1 = s.substr(start + 2, end - start - 2);
             if (index0.find("+") != string::npos)
             {
-                string        sReg = index0.substr(0, index0.find(" + "));
-                string        sAdd = index0.substr(index0.find(" + ") + 3);
-                vector<DWORD> reg  = assembleOp(sReg);
-                tOp->num_indices   = 2;
-                tOp->index0_repr   = 2;
-                int iAdd           = atoi(sAdd.c_str());
-                if (iAdd)
-                    tOp->index0_repr = 3;
+                string        s_reg = index0.substr(0, index0.find(" + "));
+                string        s_add = index0.substr(index0.find(" + ") + 3);
+                vector<DWORD> reg   = assembleOp(s_reg);
+                t_op->num_indices   = 2;
+                t_op->index0_repr   = 2;
+                int i_add           = atoi(s_add.c_str());
+                if (i_add)
+                    t_op->index0_repr = 3;
                 if (index1.find("+") != string::npos)
                 {
-                    string        sReg2 = index1.substr(0, index1.find(" + "));
-                    string        sAdd2 = index1.substr(index1.find(" + ") + 3);
-                    vector<DWORD> reg2  = assembleOp(sReg2);
-                    tOp->index1_repr    = 2;
-                    int iAdd2           = atoi(sAdd.c_str());
-                    if (iAdd2)
-                        tOp->index1_repr = 3;
+                    string        s_reg2 = index1.substr(0, index1.find(" + "));
+                    string        s_add2 = index1.substr(index1.find(" + ") + 3);
+                    vector<DWORD> reg2   = assembleOp(s_reg2);
+                    t_op->index1_repr    = 2;
+                    int i_add2           = atoi(s_add.c_str());
+                    if (i_add2)
+                        t_op->index1_repr = 3;
                     string swizzle = s.substr(s.find("].") + 2);
-                    handleSwizzle(swizzle, tOp);
-                    v.insert(v.begin(), tOp->op);
-                    if (iAdd)
-                        v.push_back(iAdd);
+                    handleSwizzle(swizzle, t_op);
+                    v.insert(v.begin(), t_op->op);
+                    if (i_add)
+                        v.push_back(i_add);
                     v.push_back(reg[0]);
                     v.push_back(reg[1]);
-                    if (iAdd2)
-                        v.push_back(iAdd2);
+                    if (i_add2)
+                        v.push_back(i_add2);
                     v.push_back(reg2[0]);
                     v.push_back(reg2[1]);
                     return v;
                 }
                 string swizzle = s.substr(s.find("].") + 2);
-                handleSwizzle(swizzle, tOp);
-                v.insert(v.begin(), tOp->op);
-                if (iAdd)
-                    v.push_back(iAdd);
+                handleSwizzle(swizzle, t_op);
+                v.insert(v.begin(), t_op->op);
+                if (i_add)
+                    v.push_back(i_add);
                 v.push_back(reg[0]);
                 v.push_back(reg[1]);
                 v.push_back(atoi(index1.c_str()));
                 return v;
             }
-            tOp->num_indices = 2;
-            string swizzle   = s.substr(s.find('.') + 1);
-            handleSwizzle(swizzle, tOp, special);
-            v.insert(v.begin(), tOp->op);
+            t_op->num_indices = 2;
+            string swizzle    = s.substr(s.find('.') + 1);
+            handleSwizzle(swizzle, t_op, special);
+            v.insert(v.begin(), t_op->op);
             v.push_back(atoi(index0.c_str()));
             v.push_back(atoi(index1.c_str()));
             return v;
@@ -517,37 +517,37 @@ static vector<DWORD> assemble_cbvox_operand(
     }
     else if (s[0] == 'i')
     {  // Immediate Constant Buffer
-        tOp->file = 9;
+        t_op->file = 9;
         s.erase(s.begin());
         s.erase(s.begin());
         s.erase(s.begin());
-        tOp->num_indices = 1;
+        t_op->num_indices = 1;
     }
     else
     {  // Constant buffer
-        tOp->file = 8;
+        t_op->file = 8;
         s.erase(s.begin());
         s.erase(s.begin());
     }
-    string sNum;
-    bool   hasIndex = false;
+    string s_num;
+    bool   has_index = false;
     if (s.find("[") < s.size())
     {
-        sNum     = s.substr(0, s.find('['));
-        hasIndex = true;
+        s_num     = s.substr(0, s.find('['));
+        has_index = true;
     }
     else
     {
-        sNum = s.substr(0, s.find('.'));
+        s_num = s.substr(0, s.find('.'));
     }
     string index;
-    if (hasIndex)
+    if (has_index)
     {
         size_t start = s.find('[');
         size_t end   = s.find(']', start);
         index        = s.substr(start + 1, end - start - 1);
     }
-    if (hasIndex)
+    if (has_index)
     {
         if (index.find('+') < index.size())
         {
@@ -555,64 +555,64 @@ static vector<DWORD> assemble_cbvox_operand(
             DWORD         idx = atoi(s2.c_str());
             string        s3  = index.substr(0, index.find('+') - 1);
             vector<DWORD> reg = assembleOp(s3);
-            if (sNum.size() > 0)
+            if (s_num.size() > 0)
             {
-                num = atoi(sNum.c_str());
+                num = atoi(s_num.c_str());
                 v.push_back(num);
             }
             if (idx != 0)
             {
                 v.push_back(idx);
-                if (sNum.size() > 0)
-                    tOp->index1_repr = 3;  // Reg + imm
+                if (s_num.size() > 0)
+                    t_op->index1_repr = 3;  // Reg + imm
                 else
-                    tOp->index0_repr = 3;  // Reg + imm
+                    t_op->index0_repr = 3;  // Reg + imm
             }
             else
             {
-                if (sNum.size() > 0)
-                    tOp->index1_repr = 2;  // Reg;
+                if (s_num.size() > 0)
+                    t_op->index1_repr = 2;  // Reg;
                 else
-                    tOp->index0_repr = 2;  // Reg;
+                    t_op->index0_repr = 2;  // Reg;
             }
             for (DWORD i = 0; i < reg.size(); i++)
             {
                 v.push_back(reg[i]);
             }
-            handleSwizzle(s.substr(s.find("].") + 2), tOp, special);
+            handleSwizzle(s.substr(s.find("].") + 2), t_op, special);
 
-            v.insert(v.begin(), tOp->op);
+            v.insert(v.begin(), t_op->op);
             return v;
         }
         DWORD idx = atoi(index.c_str());
-        num       = atoi(sNum.c_str());
+        num       = atoi(s_num.c_str());
         v.push_back(num);
         v.push_back(idx);
         if (s.find('.') < s.size())
         {
-            handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+            handleSwizzle(s.substr(s.find('.') + 1), t_op, special);
         }
         else
         {
-            tOp->mode = 1;  // Swizzle
-            tOp->sel  = 0xE4;
+            t_op->mode = 1;  // Swizzle
+            t_op->sel  = 0xE4;
         }
-        v.insert(v.begin(), tOp->op);
+        v.insert(v.begin(), t_op->op);
         return v;
     }
-    num = atoi(sNum.c_str());
+    num = atoi(s_num.c_str());
     v.push_back(num);
-    handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
-    v.insert(v.begin(), tOp->op);
+    handleSwizzle(s.substr(s.find('.') + 1), t_op, special);
+    v.insert(v.begin(), t_op->op);
     return v;
 }
 
 static vector<DWORD> assemble_literal_operand(
     string&        s,
     vector<DWORD>& v,
-    token_operand* tOp)
+    token_operand* t_op)
 {
-    tOp->file = 4;
+    t_op->file = 4;
     s.erase(s.begin());
     if (s.find(",") < s.size())
     {
@@ -638,19 +638,19 @@ static vector<DWORD> assemble_literal_operand(
     }
     else
     {
-        tOp->comps_enum = 1;  // 1
+        t_op->comps_enum = 1;  // 1
         s.erase(s.begin());
         s.pop_back();
         v.push_back(strToDWORD(s));
     }
-    v.insert(v.begin(), tOp->op);
+    v.insert(v.begin(), t_op->op);
     return v;
 }
 
 static vector<DWORD> assemble_double_operand(
     string&        s,
     vector<DWORD>& v,
-    token_operand* tOp)
+    token_operand* t_op)
 {
     // Examples of double literals (from RE2):
     //   d(0.000000l, 766800.000000l)
@@ -680,9 +680,9 @@ static vector<DWORD> assemble_double_operand(
     // So we need a special case to handle 64bit hex values split into two
     // 32bit components.
 
-    tOp->file       = 5;  // Double
-    tOp->comps_enum = 2;  // Use 4 components (until proven otherwise)
-    v.push_back(tOp->op);
+    t_op->file       = 5;  // Double
+    t_op->comps_enum = 2;  // Use 4 components (until proven otherwise)
+    v.push_back(t_op->op);
 
     size_t comma = s.find(",", 2);
     if (comma == string::npos)
@@ -745,7 +745,7 @@ static DWORD encode_min_precision_type(
 static void parse_min_precision_tag(
     string&        s,
     vector<DWORD>& v,
-    token_operand* tOp,
+    token_operand* t_op,
     DWORD*         ext)
 {
     size_t tag;
@@ -783,7 +783,7 @@ static void parse_min_precision_tag(
     DWORD type1 = encode_min_precision_type(s.c_str() + tag + 1);
     if (type1)
     {
-        tOp->extended = 1;
+        t_op->extended = 1;
         *ext |= 0x00000001;
         *ext |= type1;
     }
@@ -805,8 +805,8 @@ static vector<DWORD> assembleOp(
     DWORD         num   = 0;
     DWORD         index = 0;
     DWORD         value = 0;
-    auto          tOp   = reinterpret_cast<token_operand*>(&op);
-    tOp->comps_enum     = 2;  // 4
+    auto          t_op  = reinterpret_cast<token_operand*>(&op);
+    t_op->comps_enum    = 2;  // 4
 
     num = atoi(s.c_str());
     if (num != 0)
@@ -817,14 +817,14 @@ static vector<DWORD> assembleOp(
     if (s[0] == '-')
     {
         s.erase(s.begin());
-        tOp->extended = 1;
+        t_op->extended = 1;
         ext |= 0x41;
     }
     if (s[0] == '|')
     {
         s.erase(s.begin());
         s.erase(s.end() - 1);
-        tOp->extended = 1;
+        t_op->extended = 1;
         ext |= 0x81;
     }
 
@@ -846,49 +846,49 @@ static vector<DWORD> assembleOp(
     // Processing this after absolute value so that |var {type}| will be
     // processed in a natural order, though this function also strips the
     // tag as a secondary measure (either would be sufficient by itself):
-    parse_min_precision_tag(s, v, tOp, &ext);
+    parse_min_precision_tag(s, v, t_op, &ext);
 
-    if (tOp->extended)
+    if (t_op->extended)
         v.push_back(ext);
 
-    if (assemble_special_purpose_register(s, v, tOp, special))
+    if (assemble_special_purpose_register(s, v, t_op, special))
         return v;
 
     if (s[0] == 'i' && s[1] == 'c' && s[2] == 'b' || s[0] == 'c' && s[1] == 'b' || s[0] == 'C' && s[1] == 'B'  // Compatibility with d3dcompiler_47 disassembly -DarkStarSword
         || s[0] == 'x' || s[0] == 'o' || s[0] == 'v')
     {
-        return assemble_cbvox_operand(s, v, tOp, special, num);
+        return assemble_cbvox_operand(s, v, t_op, special, num);
     }
 
     if (s[0] == 'l')
-        return assemble_literal_operand(s, v, tOp);
+        return assemble_literal_operand(s, v, t_op);
 
     if (s[0] == 'd')
-        return assemble_double_operand(s, v, tOp);
+        return assemble_double_operand(s, v, t_op);
 
     if (s[0] == 'r')
     {
-        tOp->file = 0;
+        t_op->file = 0;
     }
     else if (s[0] == 's')
     {
-        tOp->file = 6;
+        t_op->file = 6;
     }
     else if (s[0] == 't')
     {
-        tOp->file = 7;
+        t_op->file = 7;
     }
     else if (s[0] == 'g')
     {
-        tOp->file = 0x1F;
+        t_op->file = 0x1F;
     }
     else if (s[0] == 'u')
     {
-        tOp->file = 0x1E;
+        t_op->file = 0x1E;
     }
     else if (s[0] == 'm')
     {
-        tOp->file = 0x10;
+        t_op->file = 0x10;
     }
     else
     {
@@ -896,16 +896,16 @@ static vector<DWORD> assembleOp(
     }
 
     s.erase(s.begin());
-    tOp->num_indices = 1;
-    num              = atoi(s.substr(0, s.find('.')).c_str());
+    t_op->num_indices = 1;
+    num               = atoi(s.substr(0, s.find('.')).c_str());
     v.push_back(num);
     if (s.find('.') < s.size())
     {
-        handleSwizzle(s.substr(s.find('.') + 1), tOp, special);
+        handleSwizzle(s.substr(s.find('.') + 1), t_op, special);
     }
     else
     {
-        handleSwizzle("", tOp, special);
+        handleSwizzle("", t_op, special);
     }
     v.insert(v.begin(), op);
     return v;
@@ -1025,11 +1025,11 @@ static DWORD parseAoffimmi(
     return aoffimmi;
 }
 
-static unordered_map<string, vector<DWORD>> hackMap = {
+static unordered_map<string, vector<DWORD>> hack_map = {
     { "dcl_output oMask", { 0x02000065, 0x0000F000 } },
 };
 
-static unordered_map<string, vector<int>> ldMap = {
+static unordered_map<string, vector<int>> ld_map = {
     // Hint: Compiling for shader model 5 always uses _indexable variants,
     //       so use shader model 4 to test vanilla and _aoffimmi (address
     //       offset immediate) variants. resource_types.hlsl has test cases
@@ -1096,7 +1096,7 @@ static unordered_map<string, vector<int>> ldMap = {
     { "ld_structured_indexable", { 4, 0xa7, 2 } },
 };
 
-static unordered_map<string, vector<int>> insMap = {
+static unordered_map<string, vector<int>> ins_map = {
     { "add", { 3, 0x00 } },
     { "and", { 3, 0x01 } },
     { "break", { 0, 0x02 } },
@@ -1599,8 +1599,8 @@ static vector<DWORD> assemble_printf(
     ins._11_23     = 0x4;
     v.push_back(ins.op);
 
-    uint32_t insLen = 0;
-    v.push_back(insLen);  // placeholder
+    uint32_t ins_len = 0;
+    v.push_back(ins_len);  // placeholder
     if (errorf)
         v.push_back(0x00200103);
     else
@@ -1608,14 +1608,14 @@ static vector<DWORD> assemble_printf(
     v.push_back(1);  // ?
 
     check_num_ops(s, w, 1, 0);
-    string   msg    = translate_string_operand(w[1]);
-    uint32_t msgLen = static_cast<uint32_t>(msg.size());
-    v.push_back(msgLen);
+    string   msg     = translate_string_operand(w[1]);
+    uint32_t msg_len = static_cast<uint32_t>(msg.size());
+    v.push_back(msg_len);
 
-    uint32_t numOps = static_cast<uint32_t>(w.size()) - 2;
-    v.push_back(numOps);
-    v.push_back(numOps * 2);
-    for (uint32_t i = 0; i < numOps; i++)
+    uint32_t num_ops = static_cast<uint32_t>(w.size()) - 2;
+    v.push_back(num_ops);
+    v.push_back(num_ops * 2);
+    for (uint32_t i = 0; i < num_ops; i++)
     {
         vector<DWORD> os = assembleOp(w[i + 2]);
         v.insert(v.end(), os.begin(), os.end());
@@ -1623,11 +1623,11 @@ static vector<DWORD> assemble_printf(
 
     // Resize large enough to fit the message with a NULL
     // terminator, rounded up for padding:
-    uintptr_t msgOff = v.size() * 4;
-    insLen           = (msgLen + 4) / 4 + static_cast<uint32_t>(v.size());
-    v.resize(insLen);
-    v[1] = insLen;
-    memcpy(reinterpret_cast<char*>(v.data()) + msgOff, msg.c_str(), msgLen);
+    uintptr_t msg_off = v.size() * 4;
+    ins_len           = (msg_len + 4) / 4 + static_cast<uint32_t>(v.size());
+    v.resize(ins_len);
+    v[1] = ins_len;
+    memcpy(reinterpret_cast<char*>(v.data()) + msg_off, msg.c_str(), msg_len);
 
     return v;
 }
@@ -1637,7 +1637,7 @@ static vector<DWORD> assemble_undecipherable_custom_data(
     vector<DWORD>&  v,
     vector<string>& w)
 {
-    uint32_t numOps, word, i;
+    uint32_t num_ops, word, i;
 
     check_num_ops(s, w, 2, 0);
     if (w[1] != "custom" || w[2] != "data")
@@ -1648,8 +1648,8 @@ static vector<DWORD> assemble_undecipherable_custom_data(
     // if it went through our disassembler fixup path we appended a hexdump
     // of the instruction that we can now reassemble:
 
-    numOps = static_cast<uint32_t>(w.size()) - 3;
-    for (i = 0; i < numOps; i++)
+    num_ops = static_cast<uint32_t>(w.size()) - 3;
+    for (i = 0; i < num_ops; i++)
     {
         sscanf_s(w[i + 3].c_str(), "%x", &word);
         v.push_back(word);
@@ -1663,9 +1663,9 @@ static vector<DWORD> assembleIns(
 {
     unsigned msaa_samples = 0;
 
-    if (hackMap.find(s) != hackMap.end())
+    if (hack_map.find(s) != hack_map.end())
     {
-        auto v = hackMap[s];
+        auto v = hack_map[s];
         return v;
     }
     DWORD  op  = 0;
@@ -1673,9 +1673,9 @@ static vector<DWORD> assembleIns(
     size_t pos = s.find("[precise");
     if (pos != string::npos)
     {
-        size_t endPos  = s.find("]", pos) + 1;
-        string precise = s.substr(pos, endPos - pos);
-        s.erase(pos, endPos - pos);
+        size_t end_pos = s.find("]", pos) + 1;
+        string precise = s.substr(pos, end_pos - pos);
+        s.erase(pos, end_pos - pos);
         int x = 0;
         int y = 0;
         int z = 0;
@@ -1726,13 +1726,13 @@ static vector<DWORD> assembleIns(
         o           = o.substr(0, o.find("_opc"));
         ins->_11_23 = 4096;
     }
-    bool bNZ  = o.find("_nz") < o.size();
-    bool bZ   = o.find("_z") < o.size();
-    bool bSat = o.find("_sat") < o.size();
-    if (bSat)
+    bool b_nz  = o.find("_nz") < o.size();
+    bool b_z   = o.find("_z") < o.size();
+    bool b_sat = o.find("_sat") < o.size();
+    if (b_sat)
         o = o.substr(0, o.find("_sat"));
-    bool bGlc = o.find("_glc") < o.size();  // Globally coherent UAV declaration
-    if (bGlc)
+    bool b_glc = o.find("_glc") < o.size();  // Globally coherent UAV declaration
+    if (b_glc)
         o = o.substr(0, o.find("_glc"));
 
     if (o == "hs_decls")
@@ -1822,74 +1822,74 @@ static vector<DWORD> assembleIns(
     else if (w[0] == "store_uav_typed")
     {
         ins->opcode = 0x86;
-        int numOps  = 3;
-        check_num_ops(s, w, numOps);
+        int num_ops = 3;
+        check_num_ops(s, w, num_ops);
         if (w[1][0] == 'u')
         {
             ins->opcode = 0xa4;
         }
-        vector<vector<DWORD>> Os;
-        int                   numSpecial = 1;
-        for (int i = 0; i < numOps; i++)
-            Os.push_back(assembleOp(w[i + 1], i < numSpecial));
+        vector<vector<DWORD>> os;
+        int                   num_special = 1;
+        for (int i = 0; i < num_ops; i++)
+            os.push_back(assembleOp(w[i + 1], i < num_special));
         ins->length = 1;
-        for (int i = 0; i < numOps; i++)
-            ins->length += static_cast<int>(Os[i].size());
+        for (int i = 0; i < num_ops; i++)
+            ins->length += static_cast<int>(os[i].size());
         v.push_back(op);
-        for (int i = 0; i < numOps; i++)
-            v.insert(v.end(), Os[i].begin(), Os[i].end());
+        for (int i = 0; i < num_ops; i++)
+            v.insert(v.end(), os[i].begin(), os[i].end());
     }
-    else if (insMap.find(o) != insMap.end())
+    else if (ins_map.find(o) != ins_map.end())
     {
-        vector<int> vIns   = insMap[o];
-        int         numOps = vIns[0];
-        check_num_ops(s, w, numOps);
-        vector<vector<DWORD>> Os;
-        int                   numSpecial = 1;
-        if (vIns.size() > 2)
-            numSpecial = vIns[2];
-        for (int i = 0; i < numOps; i++)
-            Os.push_back(assembleOp(w[i + 1], i < numSpecial));
-        ins->opcode = vIns[1];
-        if (bSat)
+        vector<int> v_ins   = ins_map[o];
+        int         num_ops = v_ins[0];
+        check_num_ops(s, w, num_ops);
+        vector<vector<DWORD>> os;
+        int                   num_special = 1;
+        if (v_ins.size() > 2)
+            num_special = v_ins[2];
+        for (int i = 0; i < num_ops; i++)
+            os.push_back(assembleOp(w[i + 1], i < num_special));
+        ins->opcode = v_ins[1];
+        if (b_sat)
             ins->_11_23 |= 0x04;
-        if (bNZ)
+        if (b_nz)
             ins->_11_23 |= 0x80;
-        if (bZ)
+        if (b_z)
             ins->_11_23 |= 0x00;
-        if (bGlc)
+        if (b_glc)
             ins->_11_23 |= 0x20;
         ins->length = 1;
-        for (int i = 0; i < numOps; i++)
-            ins->length += static_cast<int>(Os[i].size());
+        for (int i = 0; i < num_ops; i++)
+            ins->length += static_cast<int>(os[i].size());
         v.push_back(op);
-        for (int i = 0; i < numOps; i++)
-            v.insert(v.end(), Os[i].begin(), Os[i].end());
+        for (int i = 0; i < num_ops; i++)
+            v.insert(v.end(), os[i].begin(), os[i].end());
     }
-    else if (ldMap.find(o) != ldMap.end())
+    else if (ld_map.find(o) != ld_map.end())
     {
-        vector<int>           vIns   = ldMap[o];
-        int                   numOps = vIns[0];
-        vector<vector<DWORD>> Os;
-        int                   startPos = 1 + (vIns[2] & 3);
+        vector<int>           v_ins   = ld_map[o];
+        int                   num_ops = v_ins[0];
+        vector<vector<DWORD>> os;
+        int                   start_pos = 1 + (v_ins[2] & 3);
         //startPos = w.size() - numOps;
-        check_num_ops(s, w, startPos + numOps - 1);
-        for (int i = 0; i < numOps; i++)
-            Os.push_back(assembleOp(w[i + startPos], i == 0));
-        ins->opcode   = vIns[1];
-        ins->length   = 1 + (vIns[2] & 3);
+        check_num_ops(s, w, start_pos + num_ops - 1);
+        for (int i = 0; i < num_ops; i++)
+            os.push_back(assembleOp(w[i + start_pos], i == 0));
+        ins->opcode   = v_ins[1];
+        ins->length   = 1 + (v_ins[2] & 3);
         ins->extended = 1;
-        for (int i = 0; i < numOps; i++)
-            ins->length += static_cast<int>(Os[i].size());
+        for (int i = 0; i < num_ops; i++)
+            ins->length += static_cast<int>(os[i].size());
         v.push_back(op);
-        if (vIns[2] == 3)
+        if (v_ins[2] == 3)
             v.push_back(parseAoffimmi(0x80000001, w[1]));
-        if (vIns[2] == 1)
+        if (v_ins[2] == 1)
             v.push_back(parseAoffimmi(1, w[1]));
-        if (vIns[2] & 2)
+        if (v_ins[2] & 2)
         {
             int c = 1;
-            if (vIns[2] == 3)
+            if (v_ins[2] == 3)
                 c = 2;
             if (w[c] == "(texture1d)")
                 v.push_back(0x80000082);
@@ -1921,26 +1921,26 @@ static vector<DWORD> assembleIns(
                 d += atoi(stride.c_str()) << 11;
                 v.push_back(d);
             }
-            if (w[startPos - 1] == "(float,float,float,float)")
+            if (w[start_pos - 1] == "(float,float,float,float)")
                 v.push_back(0x00155543);
-            if (w[startPos - 1] == "(uint,uint,uint,uint)")
+            if (w[start_pos - 1] == "(uint,uint,uint,uint)")
                 v.push_back(0x00111103);
-            if (w[startPos - 1] == "(sint,sint,sint,sint)")
+            if (w[start_pos - 1] == "(sint,sint,sint,sint)")
                 v.push_back(0x000CCCC3);
-            if (w[startPos - 1] == "(mixed,mixed,mixed,mixed)")
+            if (w[start_pos - 1] == "(mixed,mixed,mixed,mixed)")
                 v.push_back(0x00199983);
-            if (w[startPos - 1] == "(unorm,unorm,unorm,unorm)")
+            if (w[start_pos - 1] == "(unorm,unorm,unorm,unorm)")
                 v.push_back(0x00044443);
             // Added snorm and double types -DarkStarSword
-            if (w[startPos - 1] == "(snorm,snorm,snorm,snorm)")
+            if (w[start_pos - 1] == "(snorm,snorm,snorm,snorm)")
                 v.push_back(0x00088883);
-            if (w[startPos - 1] == "(double,<continued>,<unused>,<unused>)")
+            if (w[start_pos - 1] == "(double,<continued>,<unused>,<unused>)")
                 v.push_back(0x002661c3);
-            if (w[startPos - 1] == "(double,<continued>,double,<continued>)")
+            if (w[start_pos - 1] == "(double,<continued>,double,<continued>)")
                 v.push_back(0x0021e1c3);
         }
-        for (int i = 0; i < numOps; i++)
-            v.insert(v.end(), Os[i].begin(), Os[i].end());
+        for (int i = 0; i < num_ops; i++)
+            v.insert(v.end(), os[i].begin(), os[i].end());
     }
     else if (o == "dcl_input")
     {
@@ -2011,7 +2011,7 @@ static vector<DWORD> assembleIns(
         vector<DWORD> os = assembleOp(w[2]);
         ins->opcode      = 0x9c;
         ins->_11_23      = 2;
-        if (bGlc)
+        if (b_glc)
             ins->_11_23 |= 0x20;
         ins->length = 4;
         v.push_back(op);
@@ -2024,7 +2024,7 @@ static vector<DWORD> assembleIns(
         vector<DWORD> os = assembleOp(w[2]);
         ins->opcode      = 0x9c;
         ins->_11_23      = 7;
-        if (bGlc)
+        if (b_glc)
             ins->_11_23 |= 0x20;
         ins->length = 4;
         v.push_back(op);
@@ -2048,7 +2048,7 @@ static vector<DWORD> assembleIns(
         vector<DWORD> os = assembleOp(w[2]);
         ins->opcode      = 0x9c;
         ins->_11_23      = 1;
-        if (bGlc)
+        if (b_glc)
             ins->_11_23 |= 0x20;
         ins->length = 4;
         v.push_back(op);
@@ -2072,7 +2072,7 @@ static vector<DWORD> assembleIns(
         vector<DWORD> os = assembleOp(w[2]);
         ins->opcode      = 0x9c;
         ins->_11_23      = 5;
-        if (bGlc)
+        if (b_glc)
             ins->_11_23 |= 0x20;
         ins->length = 4;
         v.push_back(op);
@@ -2118,7 +2118,7 @@ static vector<DWORD> assembleIns(
         vector<DWORD> os = assembleOp(w[2]);
         ins->opcode      = 0x9c;
         ins->_11_23      = 3;
-        if (bGlc)
+        if (b_glc)
             ins->_11_23 |= 0x20;
         ins->length = 4;
         v.push_back(op);
@@ -2131,7 +2131,7 @@ static vector<DWORD> assembleIns(
         vector<DWORD> os = assembleOp(w[2]);
         ins->opcode      = 0x9c;
         ins->_11_23      = 8;
-        if (bGlc)
+        if (b_glc)
             ins->_11_23 |= 0x20;
         ins->length = 4;
         v.push_back(op);
@@ -2573,9 +2573,9 @@ static vector<DWORD> assembleIns(
         // rasterizer. In the former case it has an extra 0 appended.
         vector<vector<DWORD>> os;
         ins->opcode = 0x6e;
-        int numOps  = 3;
-        check_num_ops(s, w, numOps);
-        for (int i = 0; i < numOps; i++)
+        int num_ops = 3;
+        check_num_ops(s, w, num_ops);
+        for (int i = 0; i < num_ops; i++)
             os.push_back(assembleOp(w[i + 1], i < 1));
 
         // When the instruction operates on a texture register
@@ -2585,16 +2585,16 @@ static vector<DWORD> assembleIns(
         // any cases where this should be non-zero:
         if (w[2][0] == 't')
         {
-            numOps++;
+            num_ops++;
             os.push_back(vector<DWORD> {});
         }
 
         ins->length = 1;
-        for (int i = 0; i < numOps; i++)
+        for (int i = 0; i < num_ops; i++)
             ins->length += static_cast<int>(os[i].size());
 
         v.push_back(op);
-        for (int i = 0; i < numOps; i++)
+        for (int i = 0; i < num_ops; i++)
             v.insert(v.end(), os[i].begin(), os[i].end());
     }
     else if (o == "printf")
@@ -2622,16 +2622,16 @@ static string assembleAndCompare(
     vector<DWORD> v)
 {
     string s2;
-    int    numSpaces = 0;
+    int    num_spaces = 0;
     while (memcmp(s.c_str(), " ", 1) == 0)
     {
         s.erase(s.begin());
-        numSpaces++;
+        num_spaces++;
     }
-    size_t        lastLiteral = 0;
-    size_t        lastEnd     = 0;
+    size_t        last_literal = 0;
+    size_t        last_end     = 0;
     vector<DWORD> v2;
-    string        sNew = s;
+    string        s_new = s;
     string        s3;
     bool          valid = true;
 
@@ -2659,68 +2659,68 @@ static string assembleAndCompare(
             {
                 if (v[i] == 0x1835)
                 {
-                    int size     = v[++i];
-                    int loopSize = (size - 2) / 4;
-                    lastLiteral  = sNew.find("{ { ");
-                    for (int j = 0; j < loopSize; j++)
+                    int size      = v[++i];
+                    int loop_size = (size - 2) / 4;
+                    last_literal  = s_new.find("{ { ");
+                    for (int j = 0; j < loop_size; j++)
                     {
                         i++;
-                        lastLiteral = sNew.find("{ ", lastLiteral + 1);
-                        lastEnd     = sNew.find(",", lastLiteral + 1);
-                        s3          = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
+                        last_literal = s_new.find("{ ", last_literal + 1);
+                        last_end     = s_new.find(",", last_literal + 1);
+                        s3           = s_new.substr(last_literal + 2, last_end - 2 - last_literal);
                         if (v[i] != v2[i])
                         {
-                            string sLiteral = convertF(v[i]);
-                            string sBegin   = sNew.substr(0, lastLiteral + 2);  // +2 matches length of "{ "
-                            lastLiteral     = sBegin.size();
-                            sBegin.append(sLiteral);
-                            sBegin.append(sNew.substr(lastEnd));
-                            sNew = sBegin;
+                            string s_literal = convertF(v[i]);
+                            string s_begin   = s_new.substr(0, last_literal + 2);  // +2 matches length of "{ "
+                            last_literal     = s_begin.size();
+                            s_begin.append(s_literal);
+                            s_begin.append(s_new.substr(last_end));
+                            s_new = s_begin;
                         }
                         i++;
-                        lastLiteral = sNew.find(",", lastLiteral + 1);
-                        lastEnd     = sNew.find(",", lastLiteral + 1);
-                        s3          = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
+                        last_literal = s_new.find(",", last_literal + 1);
+                        last_end     = s_new.find(",", last_literal + 1);
+                        s3           = s_new.substr(last_literal + 2, last_end - 2 - last_literal);
                         if (v[i] != v2[i])
                         {
-                            string sLiteral = convertF(v[i]);
-                            string sBegin   = sNew.substr(0, lastLiteral + 1);  // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-                            if (sNew[lastLiteral + 1] == ' ')
-                                sBegin = sNew.substr(0, lastLiteral + 2);  // Keep the space
-                            lastLiteral = sBegin.size();
-                            sBegin.append(sLiteral);
-                            sBegin.append(sNew.substr(lastEnd));
-                            sNew = sBegin;
+                            string s_literal = convertF(v[i]);
+                            string s_begin   = s_new.substr(0, last_literal + 1);  // BUG FIXED: Was using +2, but "," is only length 1 -DSS
+                            if (s_new[last_literal + 1] == ' ')
+                                s_begin = s_new.substr(0, last_literal + 2);  // Keep the space
+                            last_literal = s_begin.size();
+                            s_begin.append(s_literal);
+                            s_begin.append(s_new.substr(last_end));
+                            s_new = s_begin;
                         }
                         i++;
-                        lastLiteral = sNew.find(",", lastLiteral + 1);
-                        lastEnd     = sNew.find(",", lastLiteral + 1);
-                        s3          = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
+                        last_literal = s_new.find(",", last_literal + 1);
+                        last_end     = s_new.find(",", last_literal + 1);
+                        s3           = s_new.substr(last_literal + 2, last_end - 2 - last_literal);
                         if (v[i] != v2[i])
                         {
-                            string sLiteral = convertF(v[i]);
-                            string sBegin   = sNew.substr(0, lastLiteral + 1);  // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-                            if (sNew[lastLiteral + 1] == ' ')
-                                sBegin = sNew.substr(0, lastLiteral + 2);  // Keep the space
-                            lastLiteral = sBegin.size();
-                            sBegin.append(sLiteral);
-                            sBegin.append(sNew.substr(lastEnd));
-                            sNew = sBegin;
+                            string s_literal = convertF(v[i]);
+                            string s_begin   = s_new.substr(0, last_literal + 1);  // BUG FIXED: Was using +2, but "," is only length 1 -DSS
+                            if (s_new[last_literal + 1] == ' ')
+                                s_begin = s_new.substr(0, last_literal + 2);  // Keep the space
+                            last_literal = s_begin.size();
+                            s_begin.append(s_literal);
+                            s_begin.append(s_new.substr(last_end));
+                            s_new = s_begin;
                         }
                         i++;
-                        lastLiteral = sNew.find(",", lastLiteral + 1);
-                        lastEnd     = sNew.find("}", lastLiteral + 1);
-                        s3          = sNew.substr(lastLiteral + 2, lastEnd - 2 - lastLiteral);
+                        last_literal = s_new.find(",", last_literal + 1);
+                        last_end     = s_new.find("}", last_literal + 1);
+                        s3           = s_new.substr(last_literal + 2, last_end - 2 - last_literal);
                         if (v[i] != v2[i])
                         {
-                            string sLiteral = convertF(v[i]);
-                            string sBegin   = sNew.substr(0, lastLiteral + 1);  // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-                            if (sNew[lastLiteral + 1] == ' ')
-                                sBegin = sNew.substr(0, lastLiteral + 2);  // Keep the space
-                            lastLiteral = sBegin.size();
-                            sBegin.append(sLiteral);
-                            sBegin.append(sNew.substr(lastEnd));
-                            sNew = sBegin;
+                            string s_literal = convertF(v[i]);
+                            string s_begin   = s_new.substr(0, last_literal + 1);  // BUG FIXED: Was using +2, but "," is only length 1 -DSS
+                            if (s_new[last_literal + 1] == ' ')
+                                s_begin = s_new.substr(0, last_literal + 2);  // Keep the space
+                            last_literal = s_begin.size();
+                            s_begin.append(s_literal);
+                            s_begin.append(s_new.substr(last_end));
+                            s_new = s_begin;
                         }
                     }
                     i++;
@@ -2728,108 +2728,108 @@ static string assembleAndCompare(
                 else if (v[i] == 0x4001)
                 {  // One component float literal
                     i++;
-                    lastLiteral = sNew.find("l(", lastLiteral + 1);
-                    lastEnd     = sNew.find(")", lastLiteral);
+                    last_literal = s_new.find("l(", last_literal + 1);
+                    last_end     = s_new.find(")", last_literal);
                     if (v[i] != v2[i])
                     {
-                        string sLiteral = convertF(v[i]);
-                        string sBegin   = sNew.substr(0, lastLiteral + 2);  // +2 matches length of "l("
-                        lastLiteral     = sBegin.size();
-                        sBegin.append(sLiteral);
-                        sBegin.append(sNew.substr(lastEnd));
-                        sNew = sBegin;
+                        string s_literal = convertF(v[i]);
+                        string s_begin   = s_new.substr(0, last_literal + 2);  // +2 matches length of "l("
+                        last_literal     = s_begin.size();
+                        s_begin.append(s_literal);
+                        s_begin.append(s_new.substr(last_end));
+                        s_new = s_begin;
                     }
                 }
                 else if (v[i] == 0x4002)
                 {  // Four component float literal
                     i++;
-                    lastLiteral = sNew.find("l(", lastLiteral);
-                    lastEnd     = sNew.find(",", lastLiteral);
+                    last_literal = s_new.find("l(", last_literal);
+                    last_end     = s_new.find(",", last_literal);
                     if (v[i] != v2[i])
                     {
-                        string sLiteral = convertF(v[i]);
-                        string sBegin   = sNew.substr(0, lastLiteral + 2);  // +2 matches length of "l("
-                        lastLiteral     = sBegin.size();
-                        sBegin.append(sLiteral);
-                        sBegin.append(sNew.substr(lastEnd));
-                        sNew = sBegin;
+                        string s_literal = convertF(v[i]);
+                        string s_begin   = s_new.substr(0, last_literal + 2);  // +2 matches length of "l("
+                        last_literal     = s_begin.size();
+                        s_begin.append(s_literal);
+                        s_begin.append(s_new.substr(last_end));
+                        s_new = s_begin;
                     }
                     i++;
-                    lastLiteral = sNew.find(",", lastLiteral + 1);
-                    lastEnd     = sNew.find(",", lastLiteral + 1);
+                    last_literal = s_new.find(",", last_literal + 1);
+                    last_end     = s_new.find(",", last_literal + 1);
                     if (v[i] != v2[i])
                     {
-                        string sLiteral = convertF(v[i]);
-                        string sBegin   = sNew.substr(0, lastLiteral + 1);  // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-                        if (sNew[lastLiteral + 1] == ' ')
-                            sBegin = sNew.substr(0, lastLiteral + 2);  // Keep the space
-                        lastLiteral = sBegin.size();
-                        sBegin.append(sLiteral);
-                        sBegin.append(sNew.substr(lastEnd));
-                        sNew = sBegin;
+                        string s_literal = convertF(v[i]);
+                        string s_begin   = s_new.substr(0, last_literal + 1);  // BUG FIXED: Was using +2, but "," is only length 1 -DSS
+                        if (s_new[last_literal + 1] == ' ')
+                            s_begin = s_new.substr(0, last_literal + 2);  // Keep the space
+                        last_literal = s_begin.size();
+                        s_begin.append(s_literal);
+                        s_begin.append(s_new.substr(last_end));
+                        s_new = s_begin;
                     }
                     i++;
-                    lastLiteral = sNew.find(",", lastLiteral + 1);
-                    lastEnd     = sNew.find(",", lastLiteral + 1);
+                    last_literal = s_new.find(",", last_literal + 1);
+                    last_end     = s_new.find(",", last_literal + 1);
                     if (v[i] != v2[i])
                     {
-                        string sLiteral = convertF(v[i]);
-                        string sBegin   = sNew.substr(0, lastLiteral + 1);  // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-                        if (sNew[lastLiteral + 1] == ' ')
-                            sBegin = sNew.substr(0, lastLiteral + 2);  // Keep the space
-                        lastLiteral = sBegin.size();
-                        sBegin.append(sLiteral);
-                        sBegin.append(sNew.substr(lastEnd));
-                        sNew = sBegin;
+                        string s_literal = convertF(v[i]);
+                        string s_begin   = s_new.substr(0, last_literal + 1);  // BUG FIXED: Was using +2, but "," is only length 1 -DSS
+                        if (s_new[last_literal + 1] == ' ')
+                            s_begin = s_new.substr(0, last_literal + 2);  // Keep the space
+                        last_literal = s_begin.size();
+                        s_begin.append(s_literal);
+                        s_begin.append(s_new.substr(last_end));
+                        s_new = s_begin;
                     }
                     i++;
-                    lastLiteral = sNew.find(",", lastLiteral + 1);
-                    lastEnd     = sNew.find(")", lastLiteral + 1);
+                    last_literal = s_new.find(",", last_literal + 1);
+                    last_end     = s_new.find(")", last_literal + 1);
                     if (v[i] != v2[i])
                     {
-                        string sLiteral = convertF(v[i]);
-                        string sBegin   = sNew.substr(0, lastLiteral + 1);  // BUG FIXED: Was using +2, but "," is only length 1 -DSS
-                        if (sNew[lastLiteral + 1] == ' ')
-                            sBegin = sNew.substr(0, lastLiteral + 2);  // Keep the space
-                        sBegin.append(sLiteral);
-                        lastLiteral = sBegin.size();
-                        sBegin.append(sNew.substr(lastEnd));
-                        sNew = sBegin;
+                        string s_literal = convertF(v[i]);
+                        string s_begin   = s_new.substr(0, last_literal + 1);  // BUG FIXED: Was using +2, but "," is only length 1 -DSS
+                        if (s_new[last_literal + 1] == ' ')
+                            s_begin = s_new.substr(0, last_literal + 2);  // Keep the space
+                        s_begin.append(s_literal);
+                        last_literal = s_begin.size();
+                        s_begin.append(s_new.substr(last_end));
+                        s_new = s_begin;
                     }
                 }
                 else if (v[i] == 0x5002)
                 {  // Double literal (two doubles x two components/double)
                     i += 2;
-                    lastLiteral = sNew.find("d(", lastLiteral);
-                    lastEnd     = sNew.find(",", lastLiteral);
+                    last_literal = s_new.find("d(", last_literal);
+                    last_end     = s_new.find(",", last_literal);
                     // If it's a hex literal it is split over four components instead of two:
-                    if (!sNew.compare(lastLiteral + 2, 2, "0x"))
-                        lastEnd = sNew.find(",", lastLiteral + 1);
+                    if (!s_new.compare(last_literal + 2, 2, "0x"))
+                        last_end = s_new.find(",", last_literal + 1);
                     if (v[i - 1] != v2[i - 1] || v[i] != v2[i])
                     {
-                        string sLiteral = convertD(v[i - 1], v[i]);
-                        string sBegin   = sNew.substr(0, lastLiteral + 2);
-                        lastLiteral     = sBegin.size();
-                        sBegin.append(sLiteral);
-                        sBegin.append(sNew.substr(lastEnd));
-                        sNew = sBegin;
+                        string s_literal = convertD(v[i - 1], v[i]);
+                        string s_begin   = s_new.substr(0, last_literal + 2);
+                        last_literal     = s_begin.size();
+                        s_begin.append(s_literal);
+                        s_begin.append(s_new.substr(last_end));
+                        s_new = s_begin;
                     }
                     i += 2;
-                    lastLiteral = sNew.find(",", lastLiteral + 1);
+                    last_literal = s_new.find(",", last_literal + 1);
                     // If it's a hex literal it is split over four components instead of two:
-                    if (!sNew.compare(lastLiteral + 2, 2, "0x"))
-                        lastLiteral = sNew.find(",", lastLiteral + 1);
-                    lastEnd = sNew.find(")", lastLiteral + 1);
+                    if (!s_new.compare(last_literal + 2, 2, "0x"))
+                        last_literal = s_new.find(",", last_literal + 1);
+                    last_end = s_new.find(")", last_literal + 1);
                     if (v[i - 1] != v2[i - 1] || v[i] != v2[i])
                     {
-                        string sLiteral = convertD(v[i - 1], v[i]);
-                        string sBegin   = sNew.substr(0, lastLiteral + 1);
-                        if (sNew[lastLiteral + 1] == ' ')
-                            sBegin = sNew.substr(0, lastLiteral + 2);
-                        sBegin.append(sLiteral);
-                        lastLiteral = sBegin.size();
-                        sBegin.append(sNew.substr(lastEnd));
-                        sNew = sBegin;
+                        string s_literal = convertD(v[i - 1], v[i]);
+                        string s_begin   = s_new.substr(0, last_literal + 1);
+                        if (s_new[last_literal + 1] == ' ')
+                            s_begin = s_new.substr(0, last_literal + 2);
+                        s_begin.append(s_literal);
+                        last_literal = s_begin.size();
+                        s_begin.append(s_new.substr(last_end));
+                        s_new = s_begin;
                     }
                 }
                 else if (v[i] != v2[i])
@@ -2879,10 +2879,10 @@ static string assembleAndCompare(
             {
                 s2 = s;
                 s2.append(" orig");
-                codeBin[s2] = v;
-                s2          = s;
+                code_bin[s2] = v;
+                s2           = s;
                 s2.append(" fail");
-                codeBin[s2] = v2;
+                code_bin[s2] = v2;
             }
         }
     }
@@ -2892,15 +2892,15 @@ static string assembleAndCompare(
         {
             s2 = "!missing ";
             s2.append(s);
-            codeBin[s2] = v;
+            code_bin[s2] = v;
         }
     }
     string ret = "";
-    for (int i = 0; i < numSpaces; i++)
+    for (int i = 0; i < num_spaces; i++)
     {
         ret.append(" ");
     }
-    ret.append(sNew);
+    ret.append(s_new);
     return ret;
 }
 
@@ -2909,23 +2909,23 @@ vector<string> string_to_lines(
     size_t      size)
 {
     vector<string> lines;
-    const char*    pStart   = start;
-    const char*    pEnd     = pStart;
-    const char*    pRealEnd = pStart + size;
+    const char*    p_start    = start;
+    const char*    p_end      = p_start;
+    const char*    p_real_end = p_start + size;
     while (true)
     {
-        while (*pEnd != '\n' && pEnd < pRealEnd)
+        while (*p_end != '\n' && p_end < p_real_end)
         {
-            pEnd++;
+            p_end++;
         }
-        if (*pStart == 0)
+        if (*p_start == 0)
         {
             break;
         }
-        string s(pStart, pEnd++);
-        pStart = pEnd;
+        string s(p_start, p_end++);
+        p_start = p_end;
         lines.push_back(s);
-        if (pStart >= pRealEnd)
+        if (p_start >= p_real_end)
         {
             break;
         }
@@ -2962,23 +2962,23 @@ static vector<string> stringToLinesDX9(
     size_t      size)
 {
     vector<string> lines;
-    const char*    pStart   = start;
-    const char*    pEnd     = pStart;
-    const char*    pRealEnd = pStart + size;
+    const char*    p_start    = start;
+    const char*    p_end      = p_start;
+    const char*    p_real_end = p_start + size;
     while (true)
     {
-        while (*pEnd != '\n' && pEnd < pRealEnd)
+        while (*p_end != '\n' && p_end < p_real_end)
         {
-            pEnd++;
+            p_end++;
         }
-        if (*pStart == 0)
+        if (*p_start == 0)
         {
             break;
         }
-        string s(pStart, pEnd++);
-        pStart = pEnd;
+        string s(p_start, p_end++);
+        p_start = p_end;
         lines.push_back(s);
-        if (pStart >= pRealEnd)
+        if (p_start >= p_real_end)
         {
             break;
         }
@@ -3020,7 +3020,7 @@ static void hexdump_instruction(
     vector<DWORD>&  v,
     vector<string>& lines,
     DWORD*          i,
-    int*            multiLines,
+    int*            multi_lines,
     uint32_t        line_byte_offset,
     int             hexdump_mode)
 {
@@ -3068,9 +3068,9 @@ static void hexdump_instruction(
     }
 
     auto pos = lines.begin() + (*i)++;
-    if (*multiLines)
-        pos -= *multiLines - 1;
-    *multiLines = 0;
+    if (*multi_lines)
+        pos -= *multi_lines - 1;
+    *multi_lines = 0;
 
     lines.insert(pos, hd);
 }
@@ -3099,7 +3099,7 @@ static inline void patch_d3dcompiler_47_rdef(
     int*    rdef_state)
 {
     char name[256], type[16], format[16], dim[16], bind_type[16];
-    int  bind_idx, count, numRead;
+    int  bind_idx, count, num_read;
 
     switch (*rdef_state)
     {
@@ -3120,8 +3120,8 @@ static inline void patch_d3dcompiler_47_rdef(
                 ++*rdef_state;
                 return;
             }
-            numRead = sscanf_s(line->c_str(), "// %s %s %s %s %[a-z]%d %d", name, U_COUNT_OF(name), type, U_COUNT_OF(type), format, U_COUNT_OF(format), dim, U_COUNT_OF(dim), &bind_type, U_COUNT_OF(bind_type), &bind_idx, &count);
-            if (numRead == 7)
+            num_read = sscanf_s(line->c_str(), "// %s %s %s %s %[a-z]%d %d", name, U_COUNT_OF(name), type, U_COUNT_OF(type), format, U_COUNT_OF(format), dim, U_COUNT_OF(dim), &bind_type, U_COUNT_OF(bind_type), &bind_idx, &count);
+            if (num_read == 7)
             {
                 vector<char> buf(line->length() + 1);  // d3dcompiler_47 lines should always be longer
                 _snprintf_s(buf.data(), buf.size(), _TRUNCATE, "// %-30s %10s %7s %11s %4d %8d", name, type, format, dim, bind_idx, count);
@@ -3188,7 +3188,7 @@ static char txt_swiz[] = { 'x', 'y', 'z', 'w' };
 static inline void replace_cb_offsets_with_indices(
     string* line)
 {
-    int      numRead, end1 = 0, end2 = 0;
+    int      num_read, end1 = 0, end2 = 0;
     unsigned offset = 0, size = 0;
     unsigned first_swiz, last_swiz;
     unsigned first_idx, last_idx;
@@ -3201,11 +3201,11 @@ static inline void replace_cb_offsets_with_indices(
     if (comment == string::npos)
         return;
 
-    numRead = sscanf_s(line->c_str() + comment, "// Offset: %u%n Size: %u%n", &offset, &end1, &size, &end2);
-    if (numRead < 1)
+    num_read = sscanf_s(line->c_str() + comment, "// Offset: %u%n Size: %u%n", &offset, &end1, &size, &end2);
+    if (num_read < 1)
         return;
 
-    if (numRead == 1)
+    if (num_read == 1)
         suffix = line->substr(comment + end1);
     else
         suffix = line->substr(comment + end2);
@@ -3213,7 +3213,7 @@ static inline void replace_cb_offsets_with_indices(
 
     last_idx = first_idx = offset / 16;
     last_swiz = first_swiz = offset % 16 / 4;
-    if (numRead == 2 && size >= 4)
+    if (num_read == 2 && size >= 4)
     {
         last_idx  = (offset + size - 4) / 16;
         last_swiz = (offset + size - 4) % 16 / 4;
@@ -3222,7 +3222,7 @@ static inline void replace_cb_offsets_with_indices(
     _snprintf_s(buf, 32, _TRUNCATE, "// Index: %4u", first_idx);
     *line += buf;
 
-    if (first_swiz || (numRead == 2 && size <= 16))
+    if (first_swiz || (num_read == 2 && size <= 16))
     {
         // Offset is not on a cb boundary, or this entry has 4
         // or less components (if known). Show the swizzle:
@@ -3265,7 +3265,7 @@ static inline void replace_cb_offsets_with_indices(
     for (; n < 3 * 5; n++)
         *line += ' ';
 
-    if (numRead == 2)
+    if (num_read == 2)
     {
         _snprintf_s(buf, 32, _TRUNCATE, " Components: %5u", size / 4);
         *line += buf;
@@ -3338,66 +3338,66 @@ HRESULT disassembler(
     bool          patch_cb_offsets)
 {
     byte          fourcc[4];
-    DWORD         fHash[4];
+    DWORD         f_hash[4];
     DWORD         one;
-    DWORD         fSize;
-    DWORD         numChunks;
-    vector<DWORD> chunkOffsets;
+    DWORD         f_size;
+    DWORD         num_chunks;
+    vector<DWORD> chunk_offsets;
     int           rdef_state = 0;
 
     // TODO: Add robust error checking here (buffer is at least as large as
     // the header, etc). I've added a check for numChunks < 1 as that
     // would lead to codeByteStart being used uninitialised
-    byte* pPosition = buffer->data();
-    std::memcpy(fourcc, pPosition, 4);
-    pPosition += 4;
-    std::memcpy(fHash, pPosition, 16);
-    pPosition += 16;
-    one = *reinterpret_cast<DWORD*>(pPosition);
-    pPosition += 4;
-    fSize = *reinterpret_cast<DWORD*>(pPosition);
-    pPosition += 4;
-    numChunks = *reinterpret_cast<DWORD*>(pPosition);
-    if (numChunks < 1)
+    byte* p_position = buffer->data();
+    std::memcpy(fourcc, p_position, 4);
+    p_position += 4;
+    std::memcpy(f_hash, p_position, 16);
+    p_position += 16;
+    one = *reinterpret_cast<DWORD*>(p_position);
+    p_position += 4;
+    f_size = *reinterpret_cast<DWORD*>(p_position);
+    p_position += 4;
+    num_chunks = *reinterpret_cast<DWORD*>(p_position);
+    if (num_chunks < 1)
         return S_FALSE;
-    pPosition += 4;
-    chunkOffsets.resize(numChunks);
-    std::memcpy(chunkOffsets.data(), pPosition, 4 * numChunks);
+    p_position += 4;
+    chunk_offsets.resize(num_chunks);
+    std::memcpy(chunk_offsets.data(), p_position, 4 * num_chunks);
 
-    char*        asmBuffer;
-    size_t       asmSize;
-    vector<byte> asmBuf;
-    ID3DBlob*    pDissassembly = nullptr;
+    char*        asm_buffer;
+    size_t       asm_size;
+    vector<byte> asm_buf;
+    ID3DBlob*    p_dissassembly = nullptr;
 
     // We disable debug info in the disassembler as it interferes with our
     // ability to match assembly lines with bytecode below
-    HRESULT ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS | D3D_DISASM_DISABLE_DEBUG_INFO, comment, &pDissassembly);
+    HRESULT ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS | D3D_DISASM_DISABLE_DEBUG_INFO, comment, &p_dissassembly);
     if (FAILED(ok))
         return ok;
 
-    asmBuffer = static_cast<char*>(pDissassembly->GetBufferPointer());
-    asmSize   = pDissassembly->GetBufferSize();
+    asm_buffer = static_cast<char*>(p_dissassembly->GetBufferPointer());
+    asm_size   = p_dissassembly->GetBufferSize();
 
-    byte* codeByteStart;
-    int   codeChunk = 0;
-    for (DWORD i = 1; i <= numChunks; i++)
+    byte* code_byte_start;
+    int   code_chunk = 0;
+    for (DWORD i = 1; i <= num_chunks; i++)
     {
-        codeChunk     = numChunks - i;
-        codeByteStart = buffer->data() + chunkOffsets[numChunks - i];
-        if (memcmp(codeByteStart, "SHEX", 4) == 0 || memcmp(codeByteStart, "SHDR", 4) == 0)
+        code_chunk      = num_chunks - i;
+        code_byte_start = buffer->data() + chunk_offsets[num_chunks - i];
+        if (memcmp(code_byte_start, "SHEX", 4) == 0 || memcmp(code_byte_start, "SHDR", 4) == 0)
             break;
     }
     // FIXME: If neither SHEX or SHDR was found in the shader, codeByteStart will be garbage
-    auto           codeStart   = reinterpret_cast<DWORD*>(codeByteStart + 8);
-    bool           codeStarted = false;
-    bool           multiLine   = false;
-    int            multiLines  = 0;
+    auto           code_start   = reinterpret_cast<DWORD*>(code_byte_start + 8);
+    bool           code_started = false;
+    bool           multi_line   = false;
+    int            multi_lines  = 0;
     string         s2;
     vector<DWORD>  o;
-    vector<string> lines = string_to_lines(asmBuffer, asmSize);
+    vector<string> lines = string_to_lines(asm_buffer, asm_size);
     for (DWORD i = 0; i < lines.size(); i++)
     {
-        uint32_t line_byte_offset = static_cast<uint32_t>(reinterpret_cast<byte*>(codeStart) - buffer->data());
+        uint32_t line_byte_offset = static_cast<uint32_t>(reinterpret_cast<byte*>(code_start) - buffer->data());
         string   s                = lines[i];
 
         if (!memcmp(s.c_str(), "//", 2))
@@ -3410,66 +3410,66 @@ HRESULT disassembler(
         }
 
         vector<DWORD> v;
-        if (!codeStarted)
+        if (!code_started)
         {
             if (s.size() > 0 && s[0] != ' ')
             {
-                codeStarted = true;
-                v.push_back(*codeStart);
-                codeStart += 2;
+                code_started = true;
+                v.push_back(*code_start);
+                code_start += 2;
                 s        = assembleAndCompare(s, v);
                 lines[i] = s;
             }
         }
         else if (s.find("{ {") < s.size())
         {
-            s2         = s;
-            multiLine  = true;
-            multiLines = 1;
+            s2          = s;
+            multi_line  = true;
+            multi_lines = 1;
         }
         else if (s.find("} }") < s.size())
         {
             s2.append("\n");
             s2.append(s);
-            s         = s2;
-            multiLine = false;
-            multiLines++;
-            auto ins = reinterpret_cast<shader_ins*>(codeStart);
-            v.push_back(*codeStart);
-            codeStart++;
-            DWORD length = *codeStart;
-            v.push_back(*codeStart);
-            codeStart++;
+            s          = s2;
+            multi_line = false;
+            multi_lines++;
+            auto ins = reinterpret_cast<shader_ins*>(code_start);
+            v.push_back(*code_start);
+            code_start++;
+            DWORD length = *code_start;
+            v.push_back(*code_start);
+            code_start++;
             for (DWORD j = 2; j < length; j++)
             {
-                v.push_back(*codeStart);
-                codeStart++;
+                v.push_back(*code_start);
+                code_start++;
             }
-            s                = assembleAndCompare(s, v);
-            auto   sLines    = string_to_lines(s.c_str(), s.size());
-            size_t startLine = i - sLines.size() + 1;
-            for (size_t j = 0; j < sLines.size(); j++)
+            s                 = assembleAndCompare(s, v);
+            auto   s_lines    = string_to_lines(s.c_str(), s.size());
+            size_t start_line = i - s_lines.size() + 1;
+            for (size_t j = 0; j < s_lines.size(); j++)
             {
-                lines[startLine + j] = sLines[j];
+                lines[start_line + j] = s_lines[j];
             }
             //lines[i] = s;
         }
-        else if (multiLine)
+        else if (multi_line)
         {
             s2.append("\n");
             s2.append(s);
-            multiLines++;
+            multi_lines++;
         }
         else if (s.size() > 0)
         {
-            auto ins = reinterpret_cast<shader_ins*>(codeStart);
-            v.push_back(*codeStart);
-            codeStart++;
+            auto ins = reinterpret_cast<shader_ins*>(code_start);
+            v.push_back(*code_start);
+            code_start++;
 
             for (DWORD j = 1; j < ins->length; j++)
             {
-                v.push_back(*codeStart);
-                codeStart++;
+                v.push_back(*code_start);
+                code_start++;
             }
             if (s == "undecipherable custom data")
             {
@@ -3479,10 +3479,10 @@ HRESULT disassembler(
                 // to have some bits zeroed. Removed the case
                 // to skip processing custom data immediately
                 // following a ret. -DarkStarSword
-                uint32_t len = *codeStart;
-                v.push_back(*codeStart++);
+                uint32_t len = *code_start;
+                v.push_back(*code_start++);
                 for (uint32_t j = 1; j < len - 1; j++)
-                    v.push_back(*codeStart++);
+                    v.push_back(*code_start++);
                 if (disassemble_undecipherable_data)
                     encode_custom_data(s, v);
                 else
@@ -3492,10 +3492,10 @@ HRESULT disassembler(
             {
                 // Opcode 0x35 is custom data (specifically printf/errorf).
                 // Instruction length is in the next word instead:
-                uint32_t len = *codeStart;
-                v.push_back(*(codeStart)++);
+                uint32_t len = *code_start;
+                v.push_back(*(code_start)++);
                 for (uint32_t j = 1; j < len - 1; j++)
-                    v.push_back(*(codeStart)++);
+                    v.push_back(*(code_start)++);
                 s = assembleAndCompare(s, v);
             }
             else
@@ -3505,8 +3505,8 @@ HRESULT disassembler(
             lines[i] = s;
         }
 
-        if (hexdump && !multiLine)
-            hexdump_instruction(s, v, lines, &i, &multiLines, line_byte_offset, hexdump);
+        if (hexdump && !multi_line)
+            hexdump_instruction(s, v, lines, &i, &multi_lines, line_byte_offset, hexdump);
     }
     ret->clear();
     for (size_t i = 0; i < lines.size(); i++)
@@ -3518,7 +3518,7 @@ HRESULT disassembler(
         ret->insert(ret->end(), '\n');
     }
 
-    pDissassembly->Release();
+    p_dissassembly->Release();
 
     return S_OK;
 }
@@ -3563,47 +3563,47 @@ static vector<DWORD> ComputeHash(
     DWORD i = 0;
     DWORD edi;
     DWORD edx;
-    DWORD processedSize = 0;
+    DWORD processed_size = 0;
 
-    DWORD sizeHash   = size & 0x3F;
-    bool  sizeHash56 = sizeHash >= 56;
-    DWORD restSize   = sizeHash56 ? 120 - 56 : 56 - sizeHash;
-    DWORD loopSize   = (size + 8 + restSize) >> 6;
-    DWORD Dst[16]    = {};
-    DWORD Data[]     = { 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    DWORD loopSize2  = loopSize - (sizeHash56 ? 2 : 1);
-    DWORD start_0    = 0;
-    auto  pSrc       = (DWORD*)input;
-    DWORD h[]        = { 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476 };
-    if (loopSize > 0)
+    DWORD size_hash   = size & 0x3F;
+    bool  size_hash56 = size_hash >= 56;
+    DWORD rest_size   = size_hash56 ? 120 - 56 : 56 - size_hash;
+    DWORD loop_size   = (size + 8 + rest_size) >> 6;
+    DWORD dst[16]     = {};
+    DWORD data[]      = { 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    DWORD loop_size2  = loop_size - (size_hash56 ? 2 : 1);
+    DWORD start_0     = 0;
+    auto  p_src       = reinterpret_cast<DWORD*>(const_cast<byte*>(input));
+    DWORD h[]         = { 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476 };
+    if (loop_size > 0)
     {
-        while (i < loopSize)
+        while (i < loop_size)
         {
-            if (i == loopSize2)
+            if (i == loop_size2)
             {
-                if (!sizeHash56)
+                if (!size_hash56)
                 {
-                    Dst[0]        = size << 3;
-                    DWORD remSize = size - processedSize;
-                    std::memcpy(&Dst[1], pSrc, remSize);
-                    std::memcpy(&Dst[1 + remSize / 4], Data, restSize);
-                    Dst[15] = (size * 2) | 1;
-                    pSrc    = Dst;
+                    dst[0]         = size << 3;
+                    DWORD rem_size = size - processed_size;
+                    std::memcpy(&dst[1], p_src, rem_size);
+                    std::memcpy(&dst[1 + rem_size / 4], data, rest_size);
+                    dst[15] = (size * 2) | 1;
+                    p_src   = dst;
                 }
                 else
                 {
-                    DWORD remSize = size - processedSize;
-                    std::memcpy(&Dst[0], pSrc, remSize);
-                    std::memcpy(&Dst[remSize / 4], Data, 64 - remSize);
-                    pSrc = Dst;
+                    DWORD rem_size = size - processed_size;
+                    std::memcpy(&dst[0], p_src, rem_size);
+                    std::memcpy(&dst[rem_size / 4], data, 64 - rem_size);
+                    p_src = dst;
                 }
             }
-            else if (i > loopSize2)
+            else if (i > loop_size2)
             {
-                Dst[0] = size << 3;
-                std::memcpy(&Dst[1], &Data[1], 56);
-                Dst[15] = (size * 2) | 1;
-                pSrc    = Dst;
+                dst[0] = size << 3;
+                std::memcpy(&dst[1], &data[1], 56);
+                dst[15] = (size * 2) | 1;
+                p_src   = dst;
             }
 
             // initial values from memory
@@ -3612,80 +3612,80 @@ static vector<DWORD> ComputeHash(
             edi = h[2];
             esi = h[3];
 
-            edx = _rotl((~ebx & esi | ebx & edi) + pSrc[0] + 0xD76AA478 + edx, 7) + ebx;
-            esi = _rotl((~edx & edi | edx & ebx) + pSrc[1] + 0xE8C7B756 + esi, 12) + edx;
-            edi = _rotr((~esi & ebx | esi & edx) + pSrc[2] + 0x242070DB + edi, 15) + esi;
-            ebx = _rotr((~edi & edx | edi & esi) + pSrc[3] + 0xC1BDCEEE + ebx, 10) + edi;
-            edx = _rotl((~ebx & esi | ebx & edi) + pSrc[4] + 0xF57C0FAF + edx, 7) + ebx;
-            esi = _rotl((~edx & edi | ebx & edx) + pSrc[5] + 0x4787C62A + esi, 12) + edx;
-            edi = _rotr((~esi & ebx | esi & edx) + pSrc[6] + 0xA8304613 + edi, 15) + esi;
-            ebx = _rotr((~edi & edx | edi & esi) + pSrc[7] + 0xFD469501 + ebx, 10) + edi;
-            edx = _rotl((~ebx & esi | ebx & edi) + pSrc[8] + 0x698098D8 + edx, 7) + ebx;
-            esi = _rotl((~edx & edi | ebx & edx) + pSrc[9] + 0x8B44F7AF + esi, 12) + edx;
-            edi = _rotr((~esi & ebx | esi & edx) + pSrc[10] + 0xFFFF5BB1 + edi, 15) + esi;
-            ebx = _rotr((~edi & edx | edi & esi) + pSrc[11] + 0x895CD7BE + ebx, 10) + edi;
-            edx = _rotl((~ebx & esi | ebx & edi) + pSrc[12] + 0x6B901122 + edx, 7) + ebx;
-            esi = _rotl((~edx & edi | ebx & edx) + pSrc[13] + 0xFD987193 + esi, 12) + edx;
-            edi = _rotr((~esi & ebx | esi & edx) + pSrc[14] + 0xA679438E + edi, 15) + esi;
-            ebx = _rotr((~edi & edx | edi & esi) + pSrc[15] + 0x49B40821 + ebx, 10) + edi;
+            edx = _rotl((~ebx & esi | ebx & edi) + p_src[0] + 0xD76AA478 + edx, 7) + ebx;
+            esi = _rotl((~edx & edi | edx & ebx) + p_src[1] + 0xE8C7B756 + esi, 12) + edx;
+            edi = _rotr((~esi & ebx | esi & edx) + p_src[2] + 0x242070DB + edi, 15) + esi;
+            ebx = _rotr((~edi & edx | edi & esi) + p_src[3] + 0xC1BDCEEE + ebx, 10) + edi;
+            edx = _rotl((~ebx & esi | ebx & edi) + p_src[4] + 0xF57C0FAF + edx, 7) + ebx;
+            esi = _rotl((~edx & edi | ebx & edx) + p_src[5] + 0x4787C62A + esi, 12) + edx;
+            edi = _rotr((~esi & ebx | esi & edx) + p_src[6] + 0xA8304613 + edi, 15) + esi;
+            ebx = _rotr((~edi & edx | edi & esi) + p_src[7] + 0xFD469501 + ebx, 10) + edi;
+            edx = _rotl((~ebx & esi | ebx & edi) + p_src[8] + 0x698098D8 + edx, 7) + ebx;
+            esi = _rotl((~edx & edi | ebx & edx) + p_src[9] + 0x8B44F7AF + esi, 12) + edx;
+            edi = _rotr((~esi & ebx | esi & edx) + p_src[10] + 0xFFFF5BB1 + edi, 15) + esi;
+            ebx = _rotr((~edi & edx | edi & esi) + p_src[11] + 0x895CD7BE + ebx, 10) + edi;
+            edx = _rotl((~ebx & esi | ebx & edi) + p_src[12] + 0x6B901122 + edx, 7) + ebx;
+            esi = _rotl((~edx & edi | ebx & edx) + p_src[13] + 0xFD987193 + esi, 12) + edx;
+            edi = _rotr((~esi & ebx | esi & edx) + p_src[14] + 0xA679438E + edi, 15) + esi;
+            ebx = _rotr((~edi & edx | edi & esi) + p_src[15] + 0x49B40821 + ebx, 10) + edi;
 
-            edx = _rotl((~esi & edi | esi & ebx) + pSrc[1] + 0xF61E2562 + edx, 5) + ebx;
-            esi = _rotl((~edi & ebx | edi & edx) + pSrc[6] + 0xC040B340 + esi, 9) + edx;
-            edi = _rotl((~ebx & edx | ebx & esi) + pSrc[11] + 0x265E5A51 + edi, 14) + esi;
-            ebx = _rotr((~edx & esi | edx & edi) + pSrc[0] + 0xE9B6C7AA + ebx, 12) + edi;
-            edx = _rotl((~esi & edi | esi & ebx) + pSrc[5] + 0xD62F105D + edx, 5) + ebx;
-            esi = _rotl((~edi & ebx | edi & edx) + pSrc[10] + 0x02441453 + esi, 9) + edx;
-            edi = _rotl((~ebx & edx | ebx & esi) + pSrc[15] + 0xD8A1E681 + edi, 14) + esi;
-            ebx = _rotr((~edx & esi | edx & edi) + pSrc[4] + 0xE7D3FBC8 + ebx, 12) + edi;
-            edx = _rotl((~esi & edi | esi & ebx) + pSrc[9] + 0x21E1CDE6 + edx, 5) + ebx;
-            esi = _rotl((~edi & ebx | edi & edx) + pSrc[14] + 0xC33707D6 + esi, 9) + edx;
-            edi = _rotl((~ebx & edx | ebx & esi) + pSrc[3] + 0xF4D50D87 + edi, 14) + esi;
-            ebx = _rotr((~edx & esi | edx & edi) + pSrc[8] + 0x455A14ED + ebx, 12) + edi;
-            edx = _rotl((~esi & edi | esi & ebx) + pSrc[13] + 0xA9E3E905 + edx, 5) + ebx;
-            esi = _rotl((~edi & ebx | edi & edx) + pSrc[2] + 0xFCEFA3F8 + esi, 9) + edx;
-            edi = _rotl((~ebx & edx | ebx & esi) + pSrc[7] + 0x676F02D9 + edi, 14) + esi;
-            ebx = _rotr((~edx & esi | edx & edi) + pSrc[12] + 0x8D2A4C8A + ebx, 12) + edi;
+            edx = _rotl((~esi & edi | esi & ebx) + p_src[1] + 0xF61E2562 + edx, 5) + ebx;
+            esi = _rotl((~edi & ebx | edi & edx) + p_src[6] + 0xC040B340 + esi, 9) + edx;
+            edi = _rotl((~ebx & edx | ebx & esi) + p_src[11] + 0x265E5A51 + edi, 14) + esi;
+            ebx = _rotr((~edx & esi | edx & edi) + p_src[0] + 0xE9B6C7AA + ebx, 12) + edi;
+            edx = _rotl((~esi & edi | esi & ebx) + p_src[5] + 0xD62F105D + edx, 5) + ebx;
+            esi = _rotl((~edi & ebx | edi & edx) + p_src[10] + 0x02441453 + esi, 9) + edx;
+            edi = _rotl((~ebx & edx | ebx & esi) + p_src[15] + 0xD8A1E681 + edi, 14) + esi;
+            ebx = _rotr((~edx & esi | edx & edi) + p_src[4] + 0xE7D3FBC8 + ebx, 12) + edi;
+            edx = _rotl((~esi & edi | esi & ebx) + p_src[9] + 0x21E1CDE6 + edx, 5) + ebx;
+            esi = _rotl((~edi & ebx | edi & edx) + p_src[14] + 0xC33707D6 + esi, 9) + edx;
+            edi = _rotl((~ebx & edx | ebx & esi) + p_src[3] + 0xF4D50D87 + edi, 14) + esi;
+            ebx = _rotr((~edx & esi | edx & edi) + p_src[8] + 0x455A14ED + ebx, 12) + edi;
+            edx = _rotl((~esi & edi | esi & ebx) + p_src[13] + 0xA9E3E905 + edx, 5) + ebx;
+            esi = _rotl((~edi & ebx | edi & edx) + p_src[2] + 0xFCEFA3F8 + esi, 9) + edx;
+            edi = _rotl((~ebx & edx | ebx & esi) + p_src[7] + 0x676F02D9 + edi, 14) + esi;
+            ebx = _rotr((~edx & esi | edx & edi) + p_src[12] + 0x8D2A4C8A + ebx, 12) + edi;
 
-            edx = _rotl((esi ^ edi ^ ebx) + pSrc[5] + 0xFFFA3942 + edx, 4) + ebx;
-            esi = _rotl((edi ^ ebx ^ edx) + pSrc[8] + 0x8771F681 + esi, 11) + edx;
-            edi = _rotl((ebx ^ edx ^ esi) + pSrc[11] + 0x6D9D6122 + edi, 16) + esi;
-            ebx = _rotr((edx ^ esi ^ edi) + pSrc[14] + 0xFDE5380C + ebx, 9) + edi;
-            edx = _rotl((esi ^ edi ^ ebx) + pSrc[1] + 0xA4BEEA44 + edx, 4) + ebx;
-            esi = _rotl((edi ^ ebx ^ edx) + pSrc[4] + 0x4BDECFA9 + esi, 11) + edx;
-            edi = _rotl((ebx ^ edx ^ esi) + pSrc[7] + 0xF6BB4B60 + edi, 16) + esi;
-            ebx = _rotr((edx ^ esi ^ edi) + pSrc[10] + 0xBEBFBC70 + ebx, 9) + edi;
-            edx = _rotl((esi ^ edi ^ ebx) + pSrc[13] + 0x289B7EC6 + edx, 4) + ebx;
-            esi = _rotl((edi ^ ebx ^ edx) + pSrc[0] + 0xEAA127FA + esi, 11) + edx;
-            edi = _rotl((ebx ^ edx ^ esi) + pSrc[3] + 0xD4EF3085 + edi, 16) + esi;
-            ebx = _rotr((edx ^ esi ^ edi) + pSrc[6] + 0x04881D05 + ebx, 9) + edi;
-            edx = _rotl((esi ^ edi ^ ebx) + pSrc[9] + 0xD9D4D039 + edx, 4) + ebx;
-            esi = _rotl((edi ^ ebx ^ edx) + pSrc[12] + 0xE6DB99E5 + esi, 11) + edx;
-            edi = _rotl((ebx ^ edx ^ esi) + pSrc[15] + 0x1FA27CF8 + edi, 16) + esi;
-            ebx = _rotr((edx ^ esi ^ edi) + pSrc[2] + 0xC4AC5665 + ebx, 9) + edi;
+            edx = _rotl((esi ^ edi ^ ebx) + p_src[5] + 0xFFFA3942 + edx, 4) + ebx;
+            esi = _rotl((edi ^ ebx ^ edx) + p_src[8] + 0x8771F681 + esi, 11) + edx;
+            edi = _rotl((ebx ^ edx ^ esi) + p_src[11] + 0x6D9D6122 + edi, 16) + esi;
+            ebx = _rotr((edx ^ esi ^ edi) + p_src[14] + 0xFDE5380C + ebx, 9) + edi;
+            edx = _rotl((esi ^ edi ^ ebx) + p_src[1] + 0xA4BEEA44 + edx, 4) + ebx;
+            esi = _rotl((edi ^ ebx ^ edx) + p_src[4] + 0x4BDECFA9 + esi, 11) + edx;
+            edi = _rotl((ebx ^ edx ^ esi) + p_src[7] + 0xF6BB4B60 + edi, 16) + esi;
+            ebx = _rotr((edx ^ esi ^ edi) + p_src[10] + 0xBEBFBC70 + ebx, 9) + edi;
+            edx = _rotl((esi ^ edi ^ ebx) + p_src[13] + 0x289B7EC6 + edx, 4) + ebx;
+            esi = _rotl((edi ^ ebx ^ edx) + p_src[0] + 0xEAA127FA + esi, 11) + edx;
+            edi = _rotl((ebx ^ edx ^ esi) + p_src[3] + 0xD4EF3085 + edi, 16) + esi;
+            ebx = _rotr((edx ^ esi ^ edi) + p_src[6] + 0x04881D05 + ebx, 9) + edi;
+            edx = _rotl((esi ^ edi ^ ebx) + p_src[9] + 0xD9D4D039 + edx, 4) + ebx;
+            esi = _rotl((edi ^ ebx ^ edx) + p_src[12] + 0xE6DB99E5 + esi, 11) + edx;
+            edi = _rotl((ebx ^ edx ^ esi) + p_src[15] + 0x1FA27CF8 + edi, 16) + esi;
+            ebx = _rotr((edx ^ esi ^ edi) + p_src[2] + 0xC4AC5665 + ebx, 9) + edi;
 
-            edx = _rotl(((~esi | ebx) ^ edi) + pSrc[0] + 0xF4292244 + edx, 6) + ebx;
-            esi = _rotl(((~edi | edx) ^ ebx) + pSrc[7] + 0x432AFF97 + esi, 10) + edx;
-            edi = _rotl(((~ebx | esi) ^ edx) + pSrc[14] + 0xAB9423A7 + edi, 15) + esi;
-            ebx = _rotr(((~edx | edi) ^ esi) + pSrc[5] + 0xFC93A039 + ebx, 11) + edi;
-            edx = _rotl(((~esi | ebx) ^ edi) + pSrc[12] + 0x655B59C3 + edx, 6) + ebx;
-            esi = _rotl(((~edi | edx) ^ ebx) + pSrc[3] + 0x8F0CCC92 + esi, 10) + edx;
-            edi = _rotl(((~ebx | esi) ^ edx) + pSrc[10] + 0xFFEFF47D + edi, 15) + esi;
-            ebx = _rotr(((~edx | edi) ^ esi) + pSrc[1] + 0x85845DD1 + ebx, 11) + edi;
-            edx = _rotl(((~esi | ebx) ^ edi) + pSrc[8] + 0x6FA87E4F + edx, 6) + ebx;
-            esi = _rotl(((~edi | edx) ^ ebx) + pSrc[15] + 0xFE2CE6E0 + esi, 10) + edx;
-            edi = _rotl(((~ebx | esi) ^ edx) + pSrc[6] + 0xA3014314 + edi, 15) + esi;
-            ebx = _rotr(((~edx | edi) ^ esi) + pSrc[13] + 0x4E0811A1 + ebx, 11) + edi;
-            edx = _rotl(((~esi | ebx) ^ edi) + pSrc[4] + 0xF7537E82 + edx, 6) + ebx;
+            edx = _rotl(((~esi | ebx) ^ edi) + p_src[0] + 0xF4292244 + edx, 6) + ebx;
+            esi = _rotl(((~edi | edx) ^ ebx) + p_src[7] + 0x432AFF97 + esi, 10) + edx;
+            edi = _rotl(((~ebx | esi) ^ edx) + p_src[14] + 0xAB9423A7 + edi, 15) + esi;
+            ebx = _rotr(((~edx | edi) ^ esi) + p_src[5] + 0xFC93A039 + ebx, 11) + edi;
+            edx = _rotl(((~esi | ebx) ^ edi) + p_src[12] + 0x655B59C3 + edx, 6) + ebx;
+            esi = _rotl(((~edi | edx) ^ ebx) + p_src[3] + 0x8F0CCC92 + esi, 10) + edx;
+            edi = _rotl(((~ebx | esi) ^ edx) + p_src[10] + 0xFFEFF47D + edi, 15) + esi;
+            ebx = _rotr(((~edx | edi) ^ esi) + p_src[1] + 0x85845DD1 + ebx, 11) + edi;
+            edx = _rotl(((~esi | ebx) ^ edi) + p_src[8] + 0x6FA87E4F + edx, 6) + ebx;
+            esi = _rotl(((~edi | edx) ^ ebx) + p_src[15] + 0xFE2CE6E0 + esi, 10) + edx;
+            edi = _rotl(((~ebx | esi) ^ edx) + p_src[6] + 0xA3014314 + edi, 15) + esi;
+            ebx = _rotr(((~edx | edi) ^ esi) + p_src[13] + 0x4E0811A1 + ebx, 11) + edi;
+            edx = _rotl(((~esi | ebx) ^ edi) + p_src[4] + 0xF7537E82 + edx, 6) + ebx;
             h[0] += edx;
-            esi = _rotl(((~edi | edx) ^ ebx) + pSrc[11] + 0xBD3AF235 + esi, 10) + edx;
+            esi = _rotl(((~edi | edx) ^ ebx) + p_src[11] + 0xBD3AF235 + esi, 10) + edx;
             h[3] += esi;
-            edi = _rotl(((~ebx | esi) ^ edx) + pSrc[2] + 0x2AD7D2BB + edi, 15) + esi;
+            edi = _rotl(((~ebx | esi) ^ edx) + p_src[2] + 0x2AD7D2BB + edi, 15) + esi;
             h[2] += edi;
-            ebx = _rotr(((~edx | edi) ^ esi) + pSrc[9] + 0xEB86D391 + ebx, 11) + edi;
+            ebx = _rotr(((~edx | edi) ^ esi) + p_src[9] + 0xEB86D391 + ebx, 11) + edi;
             h[1] += ebx;
 
-            processedSize += 0x40;
-            pSrc += 16;
+            processed_size += 0x40;
+            p_src += 16;
             i++;
         }
     }
@@ -3702,51 +3702,51 @@ vector<byte> assembler(
     vector<AssemblerParseError>* parse_errors)
 {
     byte          fourcc[4];
-    DWORD         fHash[4];
+    DWORD         f_hash[4];
     DWORD         one;
-    DWORD         fSize;
-    DWORD         numChunks;
-    vector<DWORD> chunkOffsets;
+    DWORD         f_size;
+    DWORD         num_chunks;
+    vector<DWORD> chunk_offsets;
 
     // TODO: Add robust error checking here (orig_bytecode is at least as large as
     // the header, etc). I've added a check for numChunks < 1 as that
     // would lead to codeByteStart being used uninitialised
-    byte* pPosition = orig_bytecode.data();
-    std::memcpy(fourcc, pPosition, 4);
-    pPosition += 4;
-    std::memcpy(fHash, pPosition, 16);
-    pPosition += 16;
-    one = *reinterpret_cast<DWORD*>(pPosition);
-    pPosition += 4;
-    fSize = *reinterpret_cast<DWORD*>(pPosition);
-    pPosition += 4;
-    numChunks = *reinterpret_cast<DWORD*>(pPosition);
-    if (numChunks < 1)
+    byte* p_position = orig_bytecode.data();
+    std::memcpy(fourcc, p_position, 4);
+    p_position += 4;
+    std::memcpy(f_hash, p_position, 16);
+    p_position += 16;
+    one = *reinterpret_cast<DWORD*>(p_position);
+    p_position += 4;
+    f_size = *reinterpret_cast<DWORD*>(p_position);
+    p_position += 4;
+    num_chunks = *reinterpret_cast<DWORD*>(p_position);
+    if (num_chunks < 1)
         throw std::invalid_argument("assembler: Bad shader binary");
-    pPosition += 4;
-    chunkOffsets.resize(numChunks);
-    std::memcpy(chunkOffsets.data(), pPosition, 4 * numChunks);
+    p_position += 4;
+    chunk_offsets.resize(num_chunks);
+    std::memcpy(chunk_offsets.data(), p_position, 4 * num_chunks);
 
-    char*  asmBuffer;
-    size_t asmSize;
-    asmBuffer = asm_file->data();
-    asmSize   = asm_file->size();
-    byte* codeByteStart;
-    int   codeChunk = 0;
-    for (DWORD i = 1; i <= numChunks; i++)
+    char*  asm_buffer;
+    size_t asm_size;
+    asm_buffer = asm_file->data();
+    asm_size   = asm_file->size();
+    byte* code_byte_start;
+    int   code_chunk = 0;
+    for (DWORD i = 1; i <= num_chunks; i++)
     {
-        codeChunk     = numChunks - i;
-        codeByteStart = orig_bytecode.data() + chunkOffsets[numChunks - i];
-        if (memcmp(codeByteStart, "SHEX", 4) == 0 || memcmp(codeByteStart, "SHDR", 4) == 0)
+        code_chunk      = num_chunks - i;
+        code_byte_start = orig_bytecode.data() + chunk_offsets[num_chunks - i];
+        if (memcmp(code_byte_start, "SHEX", 4) == 0 || memcmp(code_byte_start, "SHDR", 4) == 0)
             break;
     }
     // FIXME: If neither SHEX or SHDR was found in the shader, codeByteStart will be garbage
-    auto           codeStart   = reinterpret_cast<DWORD*>(codeByteStart + 8);
-    bool           codeStarted = false;
-    bool           multiLine   = false;
+    auto           code_start   = reinterpret_cast<DWORD*>(code_byte_start + 8);
+    bool           code_started = false;
+    bool           multi_line   = false;
     string         s2;
     vector<DWORD>  o;
-    vector<string> lines = string_to_lines(asmBuffer, asmSize);
+    vector<string> lines = string_to_lines(asm_buffer, asm_size);
     for (DWORD i = 0; i < lines.size(); i++)
     {
         try
@@ -3754,11 +3754,11 @@ vector<byte> assembler(
             string s = lines[i];
             preprocessLine(s);
             vector<DWORD> v;
-            if (!codeStarted)
+            if (!code_started)
             {
                 if (s.size() > 0 && s[0] != ' ')
                 {
-                    codeStarted       = true;
+                    code_started      = true;
                     vector<DWORD> ins = assembleIns(s);
                     o.insert(o.end(), ins.begin(), ins.end());
                     o.push_back(0);
@@ -3766,19 +3766,19 @@ vector<byte> assembler(
             }
             else if (s.find("{ {") < s.size())
             {
-                s2        = s;
-                multiLine = true;
+                s2         = s;
+                multi_line = true;
             }
             else if (s.find("} }") < s.size())
             {
                 s2.append("\n");
                 s2.append(s);
                 s                 = s2;
-                multiLine         = false;
+                multi_line        = false;
                 vector<DWORD> ins = assembleIns(s);
                 o.insert(o.end(), ins.begin(), ins.end());
             }
-            else if (multiLine)
+            else if (multi_line)
             {
                 s2.append("\n");
                 s2.append(s);
@@ -3811,28 +3811,28 @@ vector<byte> assembler(
             parse_errors->push_back(e);
         }
     }
-    codeStart       = reinterpret_cast<DWORD*>(codeByteStart);  // Endian bug, not that we care
-    auto   it       = orig_bytecode.begin() + chunkOffsets[codeChunk] + 8;
-    size_t codeSize = codeStart[1];
-    orig_bytecode.erase(it, it + codeSize);
-    size_t newCodeSize = 4 * o.size();
-    codeStart[1]       = static_cast<DWORD>(newCodeSize);
-    vector<byte> newCode(newCodeSize);
+    code_start       = reinterpret_cast<DWORD*>(code_byte_start);  // Endian bug, not that we care
+    auto   it        = orig_bytecode.begin() + chunk_offsets[code_chunk] + 8;
+    size_t code_size = code_start[1];
+    orig_bytecode.erase(it, it + code_size);
+    size_t new_code_size = 4 * o.size();
+    code_start[1]        = static_cast<DWORD>(new_code_size);
+    vector<byte> new_code(new_code_size);
     o[1] = static_cast<DWORD>(o.size());
-    memcpy(newCode.data(), o.data(), newCodeSize);
-    it = orig_bytecode.begin() + chunkOffsets[codeChunk] + 8;
-    orig_bytecode.insert(it, newCode.begin(), newCode.end());
-    auto dwordBuffer = reinterpret_cast<DWORD*>(orig_bytecode.data());
-    for (DWORD i = codeChunk + 1; i < numChunks; i++)
+    memcpy(new_code.data(), o.data(), new_code_size);
+    it = orig_bytecode.begin() + chunk_offsets[code_chunk] + 8;
+    orig_bytecode.insert(it, new_code.begin(), new_code.end());
+    auto dword_buffer = reinterpret_cast<DWORD*>(orig_bytecode.data());
+    for (DWORD i = code_chunk + 1; i < num_chunks; i++)
     {
-        dwordBuffer[8 + i] += static_cast<DWORD>(newCodeSize - codeSize);
+        dword_buffer[8 + i] += static_cast<DWORD>(new_code_size - code_size);
     }
-    dwordBuffer[6]     = static_cast<DWORD>(orig_bytecode.size());
+    dword_buffer[6]    = static_cast<DWORD>(orig_bytecode.size());
     vector<DWORD> hash = ComputeHash(static_cast<const byte*>(orig_bytecode.data()) + 20, static_cast<DWORD>(orig_bytecode.size()) - 20);
-    dwordBuffer[1]     = hash[0];
-    dwordBuffer[2]     = hash[1];
-    dwordBuffer[3]     = hash[2];
-    dwordBuffer[4]     = hash[3];
+    dword_buffer[1]    = hash[0];
+    dword_buffer[2]    = hash[1];
+    dword_buffer[3]    = hash[2];
+    dword_buffer[4]    = hash[3];
     return orig_bytecode;
 }
 #if MIGOTO_DX == 9
