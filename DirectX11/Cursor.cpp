@@ -1,4 +1,5 @@
 #include "Cursor.h"
+
 #include "Globals.h"
 #include "Overlay.hpp"
 
@@ -29,19 +30,22 @@
 
 HCURSOR current_cursor = NULL;
 
-typedef LRESULT(WINAPI *lpfnDefWindowProc)(_In_ HWND hWnd,
-    _In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam);
+typedef LRESULT(WINAPI* lpfnDefWindowProc)(
+    HWND   hWnd,
+    UINT   Msg,
+    WPARAM wParam,
+    LPARAM lParam);
 
 static lpfnDefWindowProc trampoline_DefWindowProcA = DefWindowProcA;
 static lpfnDefWindowProc trampoline_DefWindowProcW = DefWindowProcW;
 
-static HCURSOR(WINAPI *trampoline_SetCursor)(_In_opt_ HCURSOR hCursor) = SetCursor;
-static HCURSOR(WINAPI *trampoline_GetCursor)(void) = GetCursor;
-static BOOL(WINAPI *trampoline_GetCursorInfo)(_Inout_ PCURSORINFO pci) = GetCursorInfo;
-static BOOL(WINAPI* trampoline_SetCursorPos)(_In_ int X, _In_ int Y) = SetCursorPos;
-static BOOL(WINAPI* trampoline_GetCursorPos)(_Out_ LPPOINT lpPoint) = GetCursorPos;
-static BOOL(WINAPI* trampoline_ScreenToClient)(_In_ HWND hWnd, LPPOINT lpPoint) = ScreenToClient;
-static BOOL(WINAPI* trampoline_GetClientRect)(_In_ HWND hWnd, _Out_ LPRECT lpRect) = GetClientRect;
+static HCURSOR(WINAPI* trampoline_SetCursor)(HCURSOR hCursor)              = SetCursor;
+static HCURSOR(WINAPI* trampoline_GetCursor)(void)                         = GetCursor;
+static BOOL(WINAPI* trampoline_GetCursorInfo)(PCURSORINFO pci)             = GetCursorInfo;
+static BOOL(WINAPI* trampoline_SetCursorPos)(int X, int Y)                 = SetCursorPos;
+static BOOL(WINAPI* trampoline_GetCursorPos)(LPPOINT lpPoint)              = GetCursorPos;
+static BOOL(WINAPI* trampoline_ScreenToClient)(HWND hWnd, LPPOINT lpPoint) = ScreenToClient;
+static BOOL(WINAPI* trampoline_GetClientRect)(HWND hWnd, LPRECT lpRect)    = GetClientRect;
 
 // This routine creates an invisible cursor that we can set whenever we are
 // hiding the cursor. It is static, so will only be created the first time this
@@ -49,15 +53,17 @@ static BOOL(WINAPI* trampoline_GetClientRect)(_In_ HWND hWnd, _Out_ LPRECT lpRec
 static HCURSOR InvisibleCursor()
 {
     static HCURSOR cursor = NULL;
-    int width, height;
-    unsigned pitch, size;
-    char *and, *xor;
+    int            width, height;
+    unsigned       pitch, size;
+    char*and;
+    char* xor ;
 
-    if (!cursor) {
-        width = GetSystemMetrics(SM_CXCURSOR);
+    if (!cursor)
+    {
+        width  = GetSystemMetrics(SM_CXCURSOR);
         height = GetSystemMetrics(SM_CYCURSOR);
-        pitch = ((width + 31) / 32) * 4;
-        size = pitch * height;
+        pitch  = ((width + 31) / 32) * 4;
+        size   = pitch * height;
 
         and = new char[size];
         xor = new char[size];
@@ -67,8 +73,8 @@ static HCURSOR InvisibleCursor()
 
         cursor = CreateCursor(GetModuleHandle(NULL), 0, 0, width, height, and, xor);
 
-        delete[] and;
-        delete[] xor;
+        delete[]and;
+        delete[] xor ;
     }
 
     return cursor;
@@ -78,7 +84,7 @@ static HCURSOR InvisibleCursor()
 // game has set and return it in the GetCursorInfo call whenever the software
 // cursor is visible but the hardware cursor is not.
 static HCURSOR WINAPI Hooked_SetCursor(
-    _In_opt_ HCURSOR hCursor)
+    HCURSOR hCursor)
 {
     current_cursor = hCursor;
 
@@ -88,7 +94,8 @@ static HCURSOR WINAPI Hooked_SetCursor(
         return trampoline_SetCursor(hCursor);
 }
 
-static HCURSOR WINAPI Hooked_GetCursor(void)
+static HCURSOR WINAPI Hooked_GetCursor(
+    void)
 {
     if (G->hide_cursor)
         return current_cursor;
@@ -97,7 +104,7 @@ static HCURSOR WINAPI Hooked_GetCursor(void)
 }
 
 static BOOL WINAPI HideCursor_GetCursorInfo(
-    _Inout_ PCURSORINFO pci)
+    PCURSORINFO pci)
 {
     BOOL rc = trampoline_GetCursorInfo(pci);
 
@@ -108,7 +115,7 @@ static BOOL WINAPI HideCursor_GetCursorInfo(
 }
 
 static BOOL WINAPI Hooked_GetCursorInfo(
-    _Inout_ PCURSORINFO pci)
+    PCURSORINFO pci)
 {
     BOOL rc = HideCursor_GetCursorInfo(pci);
     RECT client;
@@ -122,8 +129,8 @@ static BOOL WINAPI Hooked_GetCursorInfo(
     return rc;
 }
 
-BOOL WINAPI CursorUpscalingBypass_GetCursorInfo(
-    _Inout_ PCURSORINFO pci)
+BOOL WINAPI cursor_upscaling_bypass_GetCursorInfo(
+    PCURSORINFO pci)
 {
     if (G->cursor_upscaling_bypass)
     {
@@ -133,14 +140,13 @@ BOOL WINAPI CursorUpscalingBypass_GetCursorInfo(
     return GetCursorInfo(pci);
 }
 
-static BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
+static BOOL WINAPI Hooked_ScreenToClient(
+    HWND    hWnd,
+    LPPOINT lpPoint)
 {
     BOOL rc;
     RECT client;
-    bool translate = G->SCREEN_UPSCALING > 0 && lpPoint
-        && trampoline_GetClientRect(G->hWnd, &client)
-        && client.right && client.bottom
-        && G->GAME_INTERNAL_WIDTH && G->GAME_INTERNAL_HEIGHT;
+    bool translate = G->SCREEN_UPSCALING > 0 && lpPoint && trampoline_GetClientRect(G->hWnd, &client) && client.right && client.bottom && G->GAME_INTERNAL_WIDTH && G->GAME_INTERNAL_HEIGHT;
 
     if (translate)
     {
@@ -161,34 +167,41 @@ static BOOL WINAPI Hooked_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
     return rc;
 }
 
-BOOL WINAPI CursorUpscalingBypass_ScreenToClient(_In_ HWND hWnd, LPPOINT lpPoint)
+BOOL WINAPI cursor_upscaling_bypass_ScreenToClient(
+    HWND    hWnd,
+    LPPOINT lpPoint)
 {
     if (G->cursor_upscaling_bypass)
         return trampoline_ScreenToClient(hWnd, lpPoint);
     return ScreenToClient(hWnd, lpPoint);
 }
 
-static BOOL WINAPI Hooked_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
+static BOOL WINAPI Hooked_GetClientRect(
+    HWND   hWnd,
+    LPRECT lpRect)
 {
     BOOL rc = trampoline_GetClientRect(hWnd, lpRect);
 
     if (G->upscaling_hooks_armed && rc && G->SCREEN_UPSCALING > 0 && lpRect != NULL)
     {
-        lpRect->right = G->GAME_INTERNAL_WIDTH;
+        lpRect->right  = G->GAME_INTERNAL_WIDTH;
         lpRect->bottom = G->GAME_INTERNAL_HEIGHT;
     }
 
     return rc;
 }
 
-BOOL WINAPI CursorUpscalingBypass_GetClientRect(_In_ HWND hWnd, _Out_ LPRECT lpRect)
+BOOL WINAPI cursor_upscaling_bypass_GetClientRect(
+    HWND   hWnd,
+    LPRECT lpRect)
 {
     if (G->cursor_upscaling_bypass)
         return trampoline_GetClientRect(hWnd, lpRect);
     return GetClientRect(hWnd, lpRect);
 }
 
-static BOOL WINAPI Hooked_GetCursorPos(_Out_ LPPOINT lpPoint)
+static BOOL WINAPI Hooked_GetCursorPos(
+    LPPOINT lpPoint)
 {
     BOOL res = trampoline_GetCursorPos(lpPoint);
     RECT client;
@@ -205,7 +218,9 @@ static BOOL WINAPI Hooked_GetCursorPos(_Out_ LPPOINT lpPoint)
     return res;
 }
 
-static BOOL WINAPI Hooked_SetCursorPos(_In_ int X, _In_ int Y)
+static BOOL WINAPI Hooked_SetCursorPos(
+    int X,
+    int Y)
 {
     RECT client;
 
@@ -231,25 +246,26 @@ static BOOL WINAPI Hooked_SetCursorPos(_In_ int X, _In_ int Y)
 // An alternative to hooking DefWindowProc in this manner might be to use
 // SetWindowsHookEx since it can also hook window messages.
 static LRESULT WINAPI Hooked_DefWindowProc(
-    _In_ HWND   hWnd,
-    _In_ UINT   Msg,
-    _In_ WPARAM wParam,
-    _In_ LPARAM lParam,
+    HWND              hWnd,
+    UINT              Msg,
+    WPARAM            wParam,
+    LPARAM            lParam,
     lpfnDefWindowProc trampoline_DefWindowProc)
 {
-
-    HWND parent = NULL;
+    HWND    parent = NULL;
     HCURSOR cursor = NULL;
-    LPARAM ret = 0;
+    LPARAM  ret    = 0;
 
-    if (Msg == WM_SETCURSOR) {
+    if (Msg == WM_SETCURSOR)
+    {
         // XXX: Should we use GetParent or GetAncestor? GetParent can
         // return an "owner" window, while GetAncestor only returns
         // parents... Not sure which the official DefWindowProc uses,
         // but I suspect the answer is GetAncestor, so go with that:
         parent = GetAncestor(hWnd, GA_PARENT);
 
-        if (parent) {
+        if (parent)
+        {
             // Pass the message to the parent window, just like the
             // real DefWindowProc does. This may call back in here
             // if the parent also doesn't handle this message, and
@@ -265,11 +281,14 @@ static LRESULT WINAPI Hooked_DefWindowProc(
         // DefWindowProc would bypass that) so that we can track the
         // current cursor set by the game and force the hardware cursor
         // to remain hidden.
-        if ((lParam & 0xffff) == HTCLIENT) {
+        if ((lParam & 0xffff) == HTCLIENT)
+        {
             cursor = (HCURSOR)GetClassLongPtr(hWnd, GCLP_HCURSOR);
             if (cursor)
                 SetCursor(cursor);
-        } else {
+        }
+        else
+        {
             // Not in client area. We could continue emulating
             // DefWindowProc by setting an arrow cursor, bypassing
             // our hook to set the *real* hardware cursor, but
@@ -287,22 +306,33 @@ static LRESULT WINAPI Hooked_DefWindowProc(
     return trampoline_DefWindowProc(hWnd, Msg, wParam, lParam);
 }
 
-static LRESULT WINAPI Hooked_DefWindowProcA(_In_ HWND hWnd, _In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+static LRESULT WINAPI Hooked_DefWindowProcA(
+    HWND   hWnd,
+    UINT   Msg,
+    WPARAM wParam,
+    LPARAM lParam)
 {
     return Hooked_DefWindowProc(hWnd, Msg, wParam, lParam, trampoline_DefWindowProcA);
 }
 
-static LRESULT WINAPI Hooked_DefWindowProcW(_In_ HWND hWnd, _In_ UINT Msg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+static LRESULT WINAPI Hooked_DefWindowProcW(
+    HWND   hWnd,
+    UINT   Msg,
+    WPARAM wParam,
+    LPARAM lParam)
 {
     return Hooked_DefWindowProc(hWnd, Msg, wParam, lParam, trampoline_DefWindowProcW);
 }
 
-
-int InstallHookLate(HINSTANCE module, char *func, void **trampoline, void *hook)
+int install_hook_late(
+    HINSTANCE module,
+    char*     func,
+    void**    trampoline,
+    void*     hook)
 {
     SIZE_T hook_id;
-    DWORD dwOsErr;
-    void *fnOrig;
+    DWORD  dwOsErr;
+    void*  fnOrig;
 
     // Early exit with error so the caller doesn't need to explicitly deal
     // with errors getting the module handle:
@@ -310,13 +340,15 @@ int InstallHookLate(HINSTANCE module, char *func, void **trampoline, void *hook)
         return 1;
 
     fnOrig = NktHookLibHelpers::GetProcedureAddress(module, func);
-    if (fnOrig == NULL) {
+    if (fnOrig == NULL)
+    {
         LOG_INFO("Failed to get address of %s\n", func);
         return 1;
     }
 
     dwOsErr = cHookMgr.Hook(&hook_id, trampoline, fnOrig, hook);
-    if (dwOsErr) {
+    if (dwOsErr)
+    {
         LOG_INFO("Failed to hook %s: 0x%x\n", func, dwOsErr);
         return 1;
     }
@@ -324,11 +356,12 @@ int InstallHookLate(HINSTANCE module, char *func, void **trampoline, void *hook)
     return 0;
 }
 
-void InstallMouseHooks(bool hide)
+void install_mouse_hooks(
+    bool hide)
 {
-    HINSTANCE hUser32;
+    HINSTANCE   hUser32;
     static bool hook_installed = false;
-    int fail = 0;
+    int         fail           = 0;
 
     // Only attempt to hook it once:
     if (hook_installed)
@@ -342,17 +375,18 @@ void InstallMouseHooks(bool hide)
         SetCursor(InvisibleCursor());
 
     hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
-    fail |= InstallHookLate(hUser32, "SetCursor", (void**)&trampoline_SetCursor, Hooked_SetCursor);
-    fail |= InstallHookLate(hUser32, "GetCursor", (void**)&trampoline_GetCursor, Hooked_GetCursor);
-    fail |= InstallHookLate(hUser32, "GetCursorInfo", (void**)&trampoline_GetCursorInfo, Hooked_GetCursorInfo);
-    fail |= InstallHookLate(hUser32, "DefWindowProcA", (void**)&trampoline_DefWindowProcA, Hooked_DefWindowProcA);
-    fail |= InstallHookLate(hUser32, "DefWindowProcW", (void**)&trampoline_DefWindowProcW, Hooked_DefWindowProcW);
-    fail |= InstallHookLate(hUser32, "SetCursorPos", (void**)&trampoline_SetCursorPos, Hooked_SetCursorPos);
-    fail |= InstallHookLate(hUser32, "GetCursorPos", (void**)&trampoline_GetCursorPos, Hooked_GetCursorPos);
-    fail |= InstallHookLate(hUser32, "ScreenToClient", (void**)&trampoline_ScreenToClient, Hooked_ScreenToClient);
-    fail |= InstallHookLate(hUser32, "GetClientRect", (void**)&trampoline_GetClientRect, Hooked_GetClientRect);
+    fail |= install_hook_late(hUser32, "SetCursor", (void**)&trampoline_SetCursor, Hooked_SetCursor);
+    fail |= install_hook_late(hUser32, "GetCursor", (void**)&trampoline_GetCursor, Hooked_GetCursor);
+    fail |= install_hook_late(hUser32, "GetCursorInfo", (void**)&trampoline_GetCursorInfo, Hooked_GetCursorInfo);
+    fail |= install_hook_late(hUser32, "DefWindowProcA", (void**)&trampoline_DefWindowProcA, Hooked_DefWindowProcA);
+    fail |= install_hook_late(hUser32, "DefWindowProcW", (void**)&trampoline_DefWindowProcW, Hooked_DefWindowProcW);
+    fail |= install_hook_late(hUser32, "SetCursorPos", (void**)&trampoline_SetCursorPos, Hooked_SetCursorPos);
+    fail |= install_hook_late(hUser32, "GetCursorPos", (void**)&trampoline_GetCursorPos, Hooked_GetCursorPos);
+    fail |= install_hook_late(hUser32, "ScreenToClient", (void**)&trampoline_ScreenToClient, Hooked_ScreenToClient);
+    fail |= install_hook_late(hUser32, "GetClientRect", (void**)&trampoline_GetClientRect, Hooked_GetClientRect);
 
-    if (fail) {
+    if (fail)
+    {
         LogOverlay(LOG_DIRE, "Failed to hook mouse cursor functions - hide_cursor will not work\n");
         return;
     }
