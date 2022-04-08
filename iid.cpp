@@ -4,22 +4,22 @@
 #include <sdkddkver.h>
 
 #ifdef NTDDI_WIN10_RS3
-// SDK 10.0.16299.0 or higher
-// Haven't checked if this was also in RS2
-#include <dxgi1_6.h>
+    // SDK 10.0.16299.0 or higher
+    // Haven't checked if this was also in RS2
+    #include <dxgi1_6.h>
 #endif
 
 #ifdef NTDDI_WIN10
-// FIXME: Check if any of these require a minimum 10.x SDK version
-#include <d3d11_4.h>
-#include <d3d12.h>
-#include <dxgi1_5.h>
+    // FIXME: Check if any of these require a minimum 10.x SDK version
+    #include <d3d11_4.h>
+    #include <d3d12.h>
+    #include <dxgi1_5.h>
 #endif
 
 #ifdef NTDDI_WINBLUE
-// SDK 8.1 or higher
-#include <d3d11_2.h>
-#include <dxgi1_3.h>
+    // SDK 8.1 or higher
+    #include <d3d11_2.h>
+    #include <dxgi1_3.h>
 #endif
 
 #include "log.h"
@@ -35,21 +35,25 @@
 #include "DirectX11/HackerContext.hpp"
 #include "DirectX11/HackerDevice.hpp"
 
-struct IID_name {
-    IID iid;
-    char *name;
+struct IID_name
+{
+    IID   iid;
+    char* name;
 };
 
-#define IID(name) { IID_##name, #name }
+#define IID(name)         \
+    {                     \
+        IID_##name, #name \
+    }
 
 // IIDs used to identify if a known third party tool is sitting between us and
 // DirectX (for informational / debugging purposes only):
-DEFINE_GUID(IID_ReShadeD3D10Device,         0x88399375, 0x734F, 0x4892, 0xA9, 0x5F, 0x70, 0xDD, 0x42, 0xCE, 0x7C, 0xDD);
-DEFINE_GUID(IID_ReShadeD3D11Device,         0x72299288, 0x2C68, 0x4AD8, 0x94, 0x5D, 0x2B, 0xFB, 0x5A, 0xA9, 0xC6, 0x09);
-DEFINE_GUID(IID_ReShadeD3D11DeviceContext,  0x27B0246B, 0x2152, 0x4D42, 0xAD, 0x11, 0x32, 0x48, 0x94, 0x72, 0x23, 0x8F);
-DEFINE_GUID(IID_ReShadeDXGIDevice,          0xCB285C3B, 0x3677, 0x4332, 0x98, 0xC7, 0xD6, 0x33, 0x9B, 0x97, 0x82, 0xB1);
-DEFINE_GUID(IID_ReShadeDXGISwapChain,       0x1F445F9F, 0x9887, 0x4C4C, 0x90, 0x55, 0x4E, 0x3B, 0xAD, 0xAF, 0xCC, 0xA8);
-DEFINE_GUID(IID_SpecialKD3D11DeviceContext, 0xe8a22a3f, 0x1405, 0x424c, 0xae, 0x99, 0x0d, 0x3e, 0x9d, 0x54, 0x7c, 0x32); // Returns the unwrapped device
+DEFINE_GUID(IID_ReShadeD3D10Device, 0x88399375, 0x734F, 0x4892, 0xA9, 0x5F, 0x70, 0xDD, 0x42, 0xCE, 0x7C, 0xDD);
+DEFINE_GUID(IID_ReShadeD3D11Device, 0x72299288, 0x2C68, 0x4AD8, 0x94, 0x5D, 0x2B, 0xFB, 0x5A, 0xA9, 0xC6, 0x09);
+DEFINE_GUID(IID_ReShadeD3D11DeviceContext, 0x27B0246B, 0x2152, 0x4D42, 0xAD, 0x11, 0x32, 0x48, 0x94, 0x72, 0x23, 0x8F);
+DEFINE_GUID(IID_ReShadeDXGIDevice, 0xCB285C3B, 0x3677, 0x4332, 0x98, 0xC7, 0xD6, 0x33, 0x9B, 0x97, 0x82, 0xB1);
+DEFINE_GUID(IID_ReShadeDXGISwapChain, 0x1F445F9F, 0x9887, 0x4C4C, 0x90, 0x55, 0x4E, 0x3B, 0xAD, 0xAF, 0xCC, 0xA8);
+DEFINE_GUID(IID_SpecialKD3D11DeviceContext, 0xe8a22a3f, 0x1405, 0x424c, 0xae, 0x99, 0x0d, 0x3e, 0x9d, 0x54, 0x7c, 0x32);  // Returns the unwrapped device
 
 static const struct IID_name known_interfaces[] = {
     IID(IUnknown),
@@ -244,11 +248,14 @@ static const struct IID_name known_interfaces[] = {
 };
 
 // NOTE: This releases the interface it returns.
-static IUnknown* _check_interface(IUnknown *unknown, REFIID riid)
+static IUnknown* _check_interface(
+    IUnknown* unknown,
+    REFIID    riid)
 {
-    IUnknown *test;
+    IUnknown* test;
 
-    if (SUCCEEDED(unknown->QueryInterface(riid, (void**)&test))) {
+    if (SUCCEEDED(unknown->QueryInterface(riid, (void**)&test)))
+    {
         test->Release();
         return test;
     }
@@ -256,17 +263,24 @@ static IUnknown* _check_interface(IUnknown *unknown, REFIID riid)
     return NULL;
 }
 
-bool check_interface_supported(IUnknown *unknown, REFIID riid)
+bool check_interface_supported(
+    IUnknown* unknown,
+    REFIID    riid)
 {
     return !!_check_interface(unknown, riid);
 }
 
-static void check_interface(IUnknown *unknown, REFIID riid, char *iid_name, IUnknown *canonical)
+static void check_interface(
+    IUnknown* unknown,
+    REFIID    riid,
+    char*     iid_name,
+    IUnknown* canonical)
 {
-    IUnknown *test = _check_interface(unknown, riid);
-    IUnknown *canonical_test;
+    IUnknown* test = _check_interface(unknown, riid);
+    IUnknown* canonical_test;
 
-    if (test) {
+    if (test)
+    {
         // Check for violations of the COM identity rule, as that may
         // interfere with our ability to locate our HackerObjects:
         // https://docs.microsoft.com/en-gb/windows/desktop/com/rules-for-implementing-queryinterface
@@ -275,14 +289,16 @@ static void check_interface(IUnknown *unknown, REFIID riid, char *iid_name, IUnk
             LOG_INFO("  Supports %s: %p\n", iid_name, test);
         else
             LOG_INFO("  Supports %s: %p (COM identity violation: %p)\n", iid_name, test, canonical_test);
-    } else
+    }
+    else
         LOG_DEBUG("  %s not supported\n", iid_name);
 }
 
-void analyse_iunknown(IUnknown *unknown)
+void analyse_iunknown(
+    IUnknown* unknown)
 {
-    IUnknown *canonical;
-    int i;
+    IUnknown* canonical;
+    int       i;
 
     if (!unknown)
         return;
@@ -304,4 +320,3 @@ void analyse_iunknown(IUnknown *unknown)
     LOG_INFO("  Win 10 RS3 interfaces not checked (3DMigoto built with old SDK)\n");
 #endif
 }
-
