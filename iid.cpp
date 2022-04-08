@@ -252,15 +252,15 @@ static IUnknown* _check_interface(
     IUnknown* unknown,
     REFIID    riid)
 {
-    IUnknown* test;
+    IUnknown* test = nullptr;
 
-    if (SUCCEEDED(unknown->QueryInterface(riid, (void**)&test)))
+    if (SUCCEEDED(unknown->QueryInterface(riid, reinterpret_cast<void**>(&test))))
     {
         test->Release();
         return test;
     }
 
-    return NULL;
+    return nullptr;
 }
 
 bool check_interface_supported(
@@ -291,7 +291,9 @@ static void check_interface(
             LOG_INFO("  Supports %s: %p (COM identity violation: %p)\n", iid_name, test, canonical_test);
     }
     else
+    {
         LOG_DEBUG("  %s not supported\n", iid_name);
+    }
 }
 
 void analyse_iunknown(
