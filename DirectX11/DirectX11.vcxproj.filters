@@ -96,6 +96,18 @@
     <ClInclude Include="..\Assembler\Assembler.h">
       <Filter>Shared</Filter>
     </ClInclude>
+    <ClInclude Include="..\nvapi.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\nvstereo.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\PointerSet.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\util_min.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />
