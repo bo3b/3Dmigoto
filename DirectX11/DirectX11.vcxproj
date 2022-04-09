@@ -75,7 +75,6 @@
     <ClInclude Include="..\log.h" />
     <ClInclude Include="..\nvapi.h" />
     <ClInclude Include="..\nvstereo.h" />
-    <ClInclude Include="..\PointerSet.h" />
     <ClInclude Include="..\shader.h" />
     <ClInclude Include="..\util.h" />
     <ClInclude Include="..\util_min.h" />

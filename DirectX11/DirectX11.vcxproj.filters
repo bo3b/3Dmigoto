@@ -102,9 +102,6 @@
     <ClInclude Include="..\nvstereo.h">
       <Filter>Shared</Filter>
     </ClInclude>
-    <ClInclude Include="..\PointerSet.h">
-      <Filter>Shared</Filter>
-    </ClInclude>
     <ClInclude Include="..\util_min.h">
       <Filter>Shared</Filter>
     </ClInclude>
