@@ -99,7 +99,7 @@ enum class VariableFlags {
     INVALID         = (signed)0xffffffff,
 };
 SENSIBLE_ENUM(VariableFlags);
-static EnumName_t<const wchar_t *, VariableFlags> VariableFlagNames[] = {
+static Enum_Name_t<const wchar_t *, VariableFlags> VariableFlagNames[] = {
     {L"global", VariableFlags::GLOBAL},
     {L"persist", VariableFlags::PERSIST},
 
@@ -252,7 +252,7 @@ enum class D3DCompileFlags {
     INVALID                            = (signed)0xffffffff,
 };
 SENSIBLE_ENUM(D3DCompileFlags);
-static EnumName_t<const wchar_t *, D3DCompileFlags> D3DCompileFlagNames[] = {
+static Enum_Name_t<const wchar_t *, D3DCompileFlags> D3DCompileFlagNames[] = {
     {L"debug", D3DCompileFlags::DEBUG},
     {L"skip_validation", D3DCompileFlags::SKIP_VALIDATION},
     {L"skip_optimization", D3DCompileFlags::SKIP_OPTIMIZATION},
@@ -390,7 +390,7 @@ enum class CustomResourceType {
     TEXTURE3D,
     CUBE,
 };
-static EnumName_t<const wchar_t *, CustomResourceType> CustomResourceTypeNames[] = {
+static Enum_Name_t<const wchar_t *, CustomResourceType> CustomResourceTypeNames[] = {
     // Use the same names as HLSL here since they are what shaderhackers
     // will see in the shaders, even if some of these have no distinction
     // from our point of view, or are just a misc flag:
@@ -419,7 +419,7 @@ enum class CustomResourceMode {
     STEREO,
     MONO,
 };
-static EnumName_t<const wchar_t *, CustomResourceMode> CustomResourceModeNames[] = {
+static Enum_Name_t<const wchar_t *, CustomResourceMode> CustomResourceModeNames[] = {
     {L"auto", CustomResourceMode::AUTO},
     {L"stereo", CustomResourceMode::STEREO},
     {L"mono", CustomResourceMode::MONO},
@@ -447,7 +447,7 @@ enum class CustomResourceBindFlags {
     VIDEO_ENCODER   = 0x00000400,
 };
 SENSIBLE_ENUM(CustomResourceBindFlags);
-static EnumName_t<const wchar_t *, CustomResourceBindFlags> CustomResourceBindFlagNames[] = {
+static Enum_Name_t<const wchar_t *, CustomResourceBindFlags> CustomResourceBindFlagNames[] = {
     {L"vertex_buffer", CustomResourceBindFlags::VERTEX_BUFFER},
     {L"index_buffer", CustomResourceBindFlags::INDEX_BUFFER},
     {L"constant_buffer", CustomResourceBindFlags::CONSTANT_BUFFER},
@@ -642,7 +642,7 @@ enum class ResourceCopyOptions {
     CREATEMODE_MASK = 0x00000070,
 };
 SENSIBLE_ENUM(ResourceCopyOptions);
-static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
+static Enum_Name_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
     {L"copy", ResourceCopyOptions::COPY},
     {L"ref", ResourceCopyOptions::REFERENCE},
     {L"reference", ResourceCopyOptions::REFERENCE},
@@ -911,49 +911,49 @@ enum class ParamOverrideType {
 	FRAME_ANALYSIS,
 	EFFECTIVE_DPI, // For calculating UI scaling factor on 4K+. Note not the same thing as raw DPI.
 };
-static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
-	{L"rt_width", ParamOverrideType::RT_WIDTH},
-	{L"rt_height", ParamOverrideType::RT_HEIGHT},
-	{L"res_width", ParamOverrideType::RES_WIDTH},
-	{L"res_height", ParamOverrideType::RES_HEIGHT},
-	{L"window_width", ParamOverrideType::WINDOW_WIDTH},
-	{L"window_height", ParamOverrideType::WINDOW_HEIGHT},
-	{L"vertex_count", ParamOverrideType::VERTEX_COUNT},
-	{L"index_count", ParamOverrideType::INDEX_COUNT},
-	{L"instance_count", ParamOverrideType::INSTANCE_COUNT},
-	{L"first_vertex", ParamOverrideType::FIRST_VERTEX},
-	{L"first_index", ParamOverrideType::FIRST_INDEX},
-	{L"first_instance", ParamOverrideType::FIRST_INSTANCE},
-	{L"thread_group_count_x", ParamOverrideType::THREAD_GROUP_COUNT_X},
-	{L"thread_group_count_y", ParamOverrideType::THREAD_GROUP_COUNT_Y},
-	{L"thread_group_count_z", ParamOverrideType::THREAD_GROUP_COUNT_Z},
-	{L"indirect_offset", ParamOverrideType::INDIRECT_OFFSET},
-	{L"draw_type", ParamOverrideType::DRAW_TYPE},
-	{L"cursor_showing", ParamOverrideType::CURSOR_VISIBLE},
-	{L"cursor_screen_x", ParamOverrideType::CURSOR_SCREEN_X},
-	{L"cursor_screen_y", ParamOverrideType::CURSOR_SCREEN_Y},
-	{L"cursor_window_x", ParamOverrideType::CURSOR_WINDOW_X},
-	{L"cursor_window_y", ParamOverrideType::CURSOR_WINDOW_Y},
-	{L"cursor_x", ParamOverrideType::CURSOR_X},
-	{L"cursor_y", ParamOverrideType::CURSOR_Y},
-	{L"cursor_hotspot_x", ParamOverrideType::CURSOR_HOTSPOT_X},
-	{L"cursor_hotspot_y", ParamOverrideType::CURSOR_HOTSPOT_Y},
-	{L"time", ParamOverrideType::TIME},
-	{L"scissor_left", ParamOverrideType::SCISSOR_LEFT},
-	{L"scissor_top", ParamOverrideType::SCISSOR_TOP},
-	{L"scissor_right", ParamOverrideType::SCISSOR_RIGHT},
-	{L"scissor_bottom", ParamOverrideType::SCISSOR_BOTTOM},
-	{L"separation", ParamOverrideType::RAW_SEPARATION},
-	{L"raw_separation", ParamOverrideType::RAW_SEPARATION},
-	{L"eye_separation", ParamOverrideType::EYE_SEPARATION},
-	{L"convergence", ParamOverrideType::CONVERGENCE},
-	{L"stereo_active", ParamOverrideType::STEREO_ACTIVE},
-	{L"stereo_available", ParamOverrideType::STEREO_AVAILABLE},
-	{L"sli", ParamOverrideType::SLI},
-	{L"hunting", ParamOverrideType::HUNTING},
-	{L"frame_analysis", ParamOverrideType::FRAME_ANALYSIS},
-	{L"effective_dpi", ParamOverrideType::EFFECTIVE_DPI},
-	{NULL, ParamOverrideType::INVALID} // End of list marker
+static Enum_Name_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
+    {L"rt_width", ParamOverrideType::RT_WIDTH},
+    {L"rt_height", ParamOverrideType::RT_HEIGHT},
+    {L"res_width", ParamOverrideType::RES_WIDTH},
+    {L"res_height", ParamOverrideType::RES_HEIGHT},
+    {L"window_width", ParamOverrideType::WINDOW_WIDTH},
+    {L"window_height", ParamOverrideType::WINDOW_HEIGHT},
+    {L"vertex_count", ParamOverrideType::VERTEX_COUNT},
+    {L"index_count", ParamOverrideType::INDEX_COUNT},
+    {L"instance_count", ParamOverrideType::INSTANCE_COUNT},
+    {L"first_vertex", ParamOverrideType::FIRST_VERTEX},
+    {L"first_index", ParamOverrideType::FIRST_INDEX},
+    {L"first_instance", ParamOverrideType::FIRST_INSTANCE},
+    {L"thread_group_count_x", ParamOverrideType::THREAD_GROUP_COUNT_X},
+    {L"thread_group_count_y", ParamOverrideType::THREAD_GROUP_COUNT_Y},
+    {L"thread_group_count_z", ParamOverrideType::THREAD_GROUP_COUNT_Z},
+    {L"indirect_offset", ParamOverrideType::INDIRECT_OFFSET},
+    {L"draw_type", ParamOverrideType::DRAW_TYPE},
+    {L"cursor_showing", ParamOverrideType::CURSOR_VISIBLE},
+    {L"cursor_screen_x", ParamOverrideType::CURSOR_SCREEN_X},
+    {L"cursor_screen_y", ParamOverrideType::CURSOR_SCREEN_Y},
+    {L"cursor_window_x", ParamOverrideType::CURSOR_WINDOW_X},
+    {L"cursor_window_y", ParamOverrideType::CURSOR_WINDOW_Y},
+    {L"cursor_x", ParamOverrideType::CURSOR_X},
+    {L"cursor_y", ParamOverrideType::CURSOR_Y},
+    {L"cursor_hotspot_x", ParamOverrideType::CURSOR_HOTSPOT_X},
+    {L"cursor_hotspot_y", ParamOverrideType::CURSOR_HOTSPOT_Y},
+    {L"time", ParamOverrideType::TIME},
+    {L"scissor_left", ParamOverrideType::SCISSOR_LEFT},
+    {L"scissor_top", ParamOverrideType::SCISSOR_TOP},
+    {L"scissor_right", ParamOverrideType::SCISSOR_RIGHT},
+    {L"scissor_bottom", ParamOverrideType::SCISSOR_BOTTOM},
+    {L"separation", ParamOverrideType::RAW_SEPARATION},
+    {L"raw_separation", ParamOverrideType::RAW_SEPARATION},
+    {L"eye_separation", ParamOverrideType::EYE_SEPARATION},
+    {L"convergence", ParamOverrideType::CONVERGENCE},
+    {L"stereo_active", ParamOverrideType::STEREO_ACTIVE},
+    {L"stereo_available", ParamOverrideType::STEREO_AVAILABLE},
+    {L"sli", ParamOverrideType::SLI},
+    {L"hunting", ParamOverrideType::HUNTING},
+    {L"frame_analysis", ParamOverrideType::FRAME_ANALYSIS},
+    {L"effective_dpi", ParamOverrideType::EFFECTIVE_DPI},
+    {NULL, ParamOverrideType::INVALID} // End of list marker
 };
 class CommandListOperand :
     public CommandListToken,

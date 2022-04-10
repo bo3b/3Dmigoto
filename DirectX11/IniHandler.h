@@ -49,7 +49,7 @@ int GetIniStringAndLog(const wchar_t *section, const wchar_t *key, const wchar_t
          wchar_t *ret, unsigned size);
 template <class T1, class T2>
 T2 GetIniEnumClass(const wchar_t *section, const wchar_t *key, T2 def, bool *found,
-        struct EnumName_t<T1, T2> *enum_names);
+        struct Enum_Name_t<T1, T2> *enum_names);
 
 bool get_namespaced_section_name_lower(const std::wstring *section, const std::wstring *ini_namespace, std::wstring *ret);
 bool get_section_namespace(const wchar_t *section, std::wstring *ret);
