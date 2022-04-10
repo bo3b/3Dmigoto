@@ -4,6 +4,7 @@
 
 #include <string>
 
+// clang-format off
 // http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
 static EnumName_t<wchar_t *, int> VKMappings[] = {
     {L"LBUTTON", 0x01},
@@ -167,18 +168,21 @@ static EnumName_t<wchar_t *, int> VKMappings[] = {
     {L"+", 0x6B},
     {L"Prnt Scrn", 0x2C},
 };
+// clang-format on
 
-static int ParseVKey(const wchar_t *name)
+static int parse_VKey(const wchar_t* name)
 {
     int i;
 
-    if (wcslen(name) == 1) {
+    if (wcslen(name) == 1)
+    {
         wchar_t c = towupper(name[0]);
         if ((c >= L'0' && c <= L'9') || (c >= L'A' && c <= L'Z'))
             return c;
     }
 
-    if (!wcsncmp(name, L"0x", 2)) {
+    if (!wcsncmp(name, L"0x", 2))
+    {
         unsigned int vkey;
         swscanf_s(name, L"%x", &vkey);
         return vkey;
@@ -187,7 +191,8 @@ static int ParseVKey(const wchar_t *name)
     if (!_wcsnicmp(name, L"VK_", 3))
         name += 3;
 
-    for (i = 0; i < ARRAYSIZE(VKMappings); i++) {
+    for (i = 0; i < ARRAYSIZE(VKMappings); i++)
+    {
         if (!_wcsicmp(name, VKMappings[i].name))
             return VKMappings[i].val;
     }
@@ -197,10 +202,12 @@ static int ParseVKey(const wchar_t *name)
 
 // Reverse lookup of key back to string name
 
-static std::wstring GetKeyName(int key)
+static std::wstring get_key_name(int key)
 {
-    for (int i = 0; i < ARRAYSIZE(VKMappings); i++) {
-        if (VKMappings[i].val == key) {
+    for (int i = 0; i < ARRAYSIZE(VKMappings); i++)
+    {
+        if (VKMappings[i].val == key)
+        {
             return (VKMappings[i].name);
         }
     }
