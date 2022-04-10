@@ -41,21 +41,21 @@
 //   https://msdn.microsoft.com/en-us/library/windows/desktop/ms717798(v=vs.85).aspx
 //
 
-static SECURITY_ATTRIBUTES* init_security_attributes(SECURITY_ATTRIBUTES* sa)
+static SECURITY_ATTRIBUTES* init_security_attributes(
+    SECURITY_ATTRIBUTES* sa)
 {
-    sa->nLength = sizeof(SECURITY_ATTRIBUTES);
-    sa->bInheritHandle = FALSE;
+    sa->nLength              = sizeof(SECURITY_ATTRIBUTES);
+    sa->bInheritHandle       = FALSE;
     sa->lpSecurityDescriptor = NULL;
 
-    if (ConvertStringSecurityDescriptorToSecurityDescriptor(
-            L"D:"  // Discretionary ACL
-            // Removed string from MSDN that denies guests/anonymous users
-            L"(A;OICI;GRGX;;;WD)"  // Give everyone read/execute access
-            L"(A;OICI;GA;;;AU)"    // Allow full control to authenticated users (GRGWGX is not enough to delete contents?)
-            // Using "CO" for Creator/Owner instead of "AU" seems ineffective
-            L"(A;OICI;GA;;;BA)"  // Allow full control to administrators
-            ,
-            SDDL_REVISION_1, &sa->lpSecurityDescriptor, NULL))
+    if (ConvertStringSecurityDescriptorToSecurityDescriptor(L"D:"  // Discretionary ACL
+                                                            // Removed string from MSDN that denies guests/anonymous users
+                                                            L"(A;OICI;GRGX;;;WD)"  // Give everyone read/execute access
+                                                            L"(A;OICI;GA;;;AU)"    // Allow full control to authenticated users (GRGWGX is not enough to delete contents?)
+                                                            // Using "CO" for Creator/Owner instead of "AU" seems ineffective
+                                                            L"(A;OICI;GA;;;BA)"  // Allow full control to administrators
+                                                            ,
+                                                            SDDL_REVISION_1, &sa->lpSecurityDescriptor, NULL))
     {
         return sa;
     }
@@ -63,7 +63,6 @@ static SECURITY_ATTRIBUTES* init_security_attributes(SECURITY_ATTRIBUTES* sa)
     LOG_INFO("ConvertStringSecurityDescriptorToSecurityDescriptor failed\n");
     return NULL;
 }
-
 
 // Wrapped in try/catch because it can crash in Dirt Rally,
 // because of noncontiguous or non-mapped memory for the texture.  Not sure this
@@ -75,7 +74,10 @@ static SECURITY_ATTRIBUTES* init_security_attributes(SECURITY_ATTRIBUTES* sa)
 //
 // Not changing shader hash calculation as there are thousands of shaders already
 // in the field, and there is no known bottleneck for that calculation.
-uint32_t crc32c_hw(uint32_t seed, const void* buffer, size_t length)
+uint32_t crc32c_hw(
+    uint32_t    seed,
+    const void* buffer,
+    size_t      length)
 {
     try
     {
@@ -92,11 +94,13 @@ uint32_t crc32c_hw(uint32_t seed, const void* buffer, size_t length)
 }
 
 // Primary hash calculation for all shader file names.
-UINT64 fnv_64_buf(const void* buf, size_t len)
+UINT64 fnv_64_buf(
+    const void* buf,
+    size_t      len)
 {
-    UINT64 hval = 0;
-    unsigned const char* bp = (unsigned const char*)buf; /* start of buffer */
-    unsigned const char* be = bp + len;                  /* beyond end of buffer */
+    UINT64               hval = 0;
+    unsigned const char* bp   = (unsigned const char*)buf; /* start of buffer */
+    unsigned const char* be   = bp + len;                  /* beyond end of buffer */
 
     // FNV-1 hash each octet of the buffer
     while (bp < be)
@@ -111,7 +115,8 @@ UINT64 fnv_64_buf(const void* buf, size_t len)
 
 // Strip spaces from the right of a string.
 // Returns a pointer to the last non-NULL character of the truncated string.
-char* right_strip_a(char* buf)
+char* right_strip_a(
+    char* buf)
 {
     char* end = buf + strlen(buf) - 1;
     while (end > buf && isspace(*end))
@@ -120,7 +125,8 @@ char* right_strip_a(char* buf)
     return end;
 }
 
-wchar_t* right_strip_w(wchar_t* buf)
+wchar_t* right_strip_w(
+    wchar_t* buf)
 {
     wchar_t* end = buf + wcslen(buf) - 1;
     while (end > buf && iswspace(*end))
@@ -129,7 +135,8 @@ wchar_t* right_strip_w(wchar_t* buf)
     return end;
 }
 
-char* read_string_parameter(wchar_t* val)
+char* read_string_parameter(
+    wchar_t* val)
 {
     static char buf[MAX_PATH];
     wcstombs(buf, val, MAX_PATH);
@@ -194,18 +201,23 @@ void double_beep_exit()
     ExitProcess(0xc0000135);
 }
 
-int _autoicmp(const wchar_t* s1, const wchar_t* s2)
+int _autoicmp(
+    const wchar_t* s1,
+    const wchar_t* s2)
 {
     return _wcsicmp(s1, s2);
 }
 
-int _autoicmp(const char* s1, const char* s2)
+int _autoicmp(
+    const char* s1,
+    const char* s2)
 {
     return _stricmp(s1, s2);
 }
 
 // -----------------------------------------------------------------------------------------------
 
+// clang-format off
 // http://msdn.microsoft.com/en-us/library/windows/desktop/bb173059(v=vs.85).aspx
 static const char* DXGIFormats[] = {
     "UNKNOWN",
@@ -325,19 +337,23 @@ static const char* DXGIFormats[] = {
     "A8P8",
     "B4G4R4A4_UNORM"
 };
+// clang-format on
 
-const char* tex_format_str(unsigned int format)
+const char* tex_format_str(
+    unsigned int format)
 {
     if (format < sizeof(DXGIFormats) / sizeof(DXGIFormats[0]))
         return DXGIFormats[format];
     return "UNKNOWN";
 }
 
-DXGI_FORMAT parse_format_string(const char* fmt, bool allow_numeric_format)
+DXGI_FORMAT parse_format_string(
+    const char* fmt,
+    bool        allow_numeric_format)
 {
-    size_t num_formats = sizeof(DXGIFormats) / sizeof(DXGIFormats[0]);
+    size_t   num_formats = sizeof(DXGIFormats) / sizeof(DXGIFormats[0]);
     unsigned format;
-    int nargs, end;
+    int      nargs, end;
 
     if (allow_numeric_format)
     {
@@ -362,7 +378,9 @@ DXGI_FORMAT parse_format_string(const char* fmt, bool allow_numeric_format)
     return (DXGI_FORMAT)-1;
 }
 
-DXGI_FORMAT parse_format_string(const wchar_t* wfmt, bool allow_numeric_format)
+DXGI_FORMAT parse_format_string(
+    const wchar_t* wfmt,
+    bool           allow_numeric_format)
 {
     char afmt[42];
 
@@ -373,7 +391,8 @@ DXGI_FORMAT parse_format_string(const wchar_t* wfmt, bool allow_numeric_format)
 }
 
 // From DirectXTK with extra formats added
-DXGI_FORMAT ensure_not_typeless(DXGI_FORMAT fmt)
+DXGI_FORMAT ensure_not_typeless(
+    DXGI_FORMAT fmt)
 {
     // Assumes UNORM or FLOAT; doesn't use UINT or SINT
     switch (fmt)
@@ -416,9 +435,9 @@ DXGI_FORMAT ensure_not_typeless(DXGI_FORMAT fmt)
             return DXGI_FORMAT_B8G8R8X8_UNORM;
         case DXGI_FORMAT_BC7_TYPELESS:
             return DXGI_FORMAT_BC7_UNORM;
-            // Extra depth/stencil buffer formats not covered in DirectXTK (discards
-            // stencil buffer to allow binding to a shader resource, alternatively we could
-            // discard the depth buffer if we ever needed the stencil buffer):
+        // Extra depth/stencil buffer formats not covered in DirectXTK (discards
+        // stencil buffer to allow binding to a shader resource, alternatively we could
+        // discard the depth buffer if we ever needed the stencil buffer):
         case DXGI_FORMAT_R32G8X24_TYPELESS:
             return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
         case DXGI_FORMAT_R24G8_TYPELESS:
@@ -429,7 +448,8 @@ DXGI_FORMAT ensure_not_typeless(DXGI_FORMAT fmt)
 }
 
 // Is there already a utility function that does this?
-UINT dxgi_format_size(DXGI_FORMAT format)
+UINT dxgi_format_size(
+    DXGI_FORMAT format)
 {
     switch (format)
     {
@@ -521,9 +541,10 @@ UINT dxgi_format_size(DXGI_FORMAT format)
     }
 }
 
-const char* type_name(IUnknown* object)
+const char* type_name(
+    IUnknown* object)
 {
-    ID3D11Device1* device;
+    ID3D11Device1*        device;
     ID3D11DeviceContext1* context;
 
     // Seems that not even try / catch is safe in all cases of this
@@ -589,21 +610,27 @@ const char* type_name_dx9(IUnknown* object)
 // New version using Flugan's wrapper around D3DDisassemble to replace the
 // problematic %f floating point values with %.9e, which is enough that a 32bit
 // floating point value will be reproduced exactly:
-std::string binary_to_asm_text(const void* shader_bytecode, size_t bytecode_length, bool patch_cb_offsets, bool disassemble_undecipherable_data, int hexdump, bool d3dcompiler_46_compat)
+std::string binary_to_asm_text(
+    const void* shader_bytecode,
+    size_t      bytecode_length,
+    bool        patch_cb_offsets,
+    bool        disassemble_undecipherable_data,
+    int         hexdump,
+    bool        d3dcompiler_46_compat)
 {
-    std::string comments;
+    std::string       comments;
     std::vector<byte> byte_code(bytecode_length);
     std::vector<byte> disassembly;
-    HRESULT r;
+    HRESULT           r;
 
     comments = "//   using 3Dmigoto v" + std::string(VER_FILE_VERSION_STR) + " on " + log_time() + "//\n";
     memcpy(byte_code.data(), shader_bytecode, bytecode_length);
 
-    #if MIGOTO_DX == 9
+#if MIGOTO_DX == 9
     r = disassembler_dx9(&byte_code, &disassembly, comments.c_str());
-    #elif MIGOTO_DX == 11
+#elif MIGOTO_DX == 11
     r = disassembler(&byte_code, &disassembly, comments.c_str(), hexdump, d3dcompiler_46_compat, disassemble_undecipherable_data, patch_cb_offsets);
-    #endif  // MIGOTO_DX
+#endif  // MIGOTO_DX
     if (FAILED(r))
     {
         LOG_INFO("  disassembly failed. Error: %x\n", r);
@@ -620,7 +647,9 @@ std::string binary_to_asm_text(const void* shader_bytecode, size_t bytecode_leng
 // The other reason to do it this way is that we have seen multiple shader versions
 // in Unity games, and the old technique of searching for the first uncommented line
 // would fail.
-std::string get_shader_model(const void* shader_bytecode, size_t bytecode_length)
+std::string get_shader_model(
+    const void* shader_bytecode,
+    size_t      bytecode_length)
 {
     std::string asm_text = binary_to_asm_text(shader_bytecode, bytecode_length, false);
     if (asm_text.empty())
@@ -643,7 +672,6 @@ std::string get_shader_model(const void* shader_bytecode, size_t bytecode_length
 
     return shader_model;
 }
-
 
 // This is an interesting idea, but doesn't work well here because of project structure.
 // for the moment, let's leave this here, but use the disassemble search approach.
@@ -695,7 +723,10 @@ std::string get_shader_model(const void* shader_bytecode, size_t bytecode_length
 
 // We previously would overwrite the file only after checking if the contents were different,
 // this relaxes that to just being same file name.
-HRESULT create_text_file(wchar_t* full_path, std::string* asm_text, bool overwrite)
+HRESULT create_text_file(
+    wchar_t*     full_path,
+    std::string* asm_text,
+    bool         overwrite)
 {
     FILE* f;
 
@@ -724,7 +755,13 @@ HRESULT create_text_file(wchar_t* full_path, std::string* asm_text, bool overwri
 // Not sure this works on weird Unity variant with embedded types.
 
 // Specific variant to name files consistently, so we know they are Asm text.
-HRESULT create_asm_text_file(wchar_t* file_directory, UINT64 hash, const wchar_t* shader_type, const void* shader_bytecode, size_t bytecode_length, bool patch_cb_offsets)
+HRESULT create_asm_text_file(
+    wchar_t*       file_directory,
+    UINT64         hash,
+    const wchar_t* shader_type,
+    const void*    shader_bytecode,
+    size_t         bytecode_length,
+    bool           patch_cb_offsets)
 {
     std::string asm_text = binary_to_asm_text(shader_bytecode, bytecode_length, patch_cb_offsets);
     if (asm_text.empty())
@@ -743,7 +780,9 @@ HRESULT create_asm_text_file(wchar_t* file_directory, UINT64 hash, const wchar_t
     return hr;
 }
 
-HRESULT create_hlsl_text_file(UINT64 hash, std::string hlsl_text)
+HRESULT create_hlsl_text_file(
+    UINT64      hash,
+    std::string hlsl_text)
 {
     return 0;
 }
@@ -751,11 +790,14 @@ HRESULT create_hlsl_text_file(UINT64 hash, std::string hlsl_text)
 // -----------------------------------------------------------------------------------------------
 
 // Parses the name of one of the IniParam constants: x, y, z, w, x1, y1, ..., z7, w7
-bool parse_ini_param_name(const wchar_t* name, int* idx, float DirectX::XMFLOAT4::** component)
+bool parse_ini_param_name(
+    const wchar_t* name,
+    int*           idx,
+    float DirectX::XMFLOAT4::** component)
 {
-    int ret, len1, len2;
+    int     ret, len1, len2;
     wchar_t component_chr;
-    size_t length = wcslen(name);
+    size_t  length = wcslen(name);
 
     ret = swscanf_s(name, L"%lc%n%u%n", &component_chr, 1, &len1, idx, &len2);
 
@@ -800,10 +842,11 @@ bool parse_ini_param_name(const wchar_t* name, int* idx, float DirectX::XMFLOAT4
 
 // -----------------------------------------------------------------------------------------------
 
-BOOL create_directory_ensuring_access(LPCWSTR path)
+BOOL create_directory_ensuring_access(
+    LPCWSTR path)
 {
     SECURITY_ATTRIBUTES sa, *psa = NULL;
-    BOOL ret = false;
+    BOOL                ret = false;
 
     psa = init_security_attributes(&sa);
 
@@ -816,13 +859,16 @@ BOOL create_directory_ensuring_access(LPCWSTR path)
 
 // Replacement for _wfopen_s that ensures the permissions will be set so we can
 // read it back later.
-errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t* filename, const wchar_t* mode)
+errno_t wfopen_ensuring_access(
+    FILE**         pFile,
+    const wchar_t* filename,
+    const wchar_t* mode)
 {
     SECURITY_ATTRIBUTES sa, *psa = NULL;
-    HANDLE fh = NULL;
-    int fd = -1;
-    FILE* fp = NULL;
-    int osf_flags = 0;
+    HANDLE              fh        = NULL;
+    int                 fd        = -1;
+    FILE*               fp        = NULL;
+    int                 osf_flags = 0;
 
     *pFile = NULL;
 
@@ -844,7 +890,7 @@ errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t* filename, const wcha
     // convert the resulting handle into a C file descriptor, then a FILE*
     // that can be used as per usual.
     psa = init_security_attributes(&sa);
-    fh = CreateFile(filename, GENERIC_WRITE, 0, psa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    fh  = CreateFile(filename, GENERIC_WRITE, 0, psa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     LocalFree(sa.lpSecurityDescriptor);
     if (fh == INVALID_HANDLE_VALUE)
     {
@@ -879,7 +925,10 @@ errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t* filename, const wcha
     return 0;
 }
 
-void set_file_last_write_time(wchar_t* path, FILETIME* ft_write, DWORD flags)
+void set_file_last_write_time(
+    wchar_t*  path,
+    FILETIME* ft_write,
+    DWORD     flags)
 {
     HANDLE f;
 
@@ -891,9 +940,11 @@ void set_file_last_write_time(wchar_t* path, FILETIME* ft_write, DWORD flags)
     CloseHandle(f);
 }
 
-void touch_file(wchar_t* path, DWORD flags)
+void touch_file(
+    wchar_t* path,
+    DWORD    flags)
 {
-    FILETIME ft;
+    FILETIME   ft;
     SYSTEMTIME st;
 
     GetSystemTime(&st);
@@ -901,7 +952,8 @@ void touch_file(wchar_t* path, DWORD flags)
     set_file_last_write_time(path, &ft, flags);
 }
 
-void touch_dir(wchar_t* path)
+void touch_dir(
+    wchar_t* path)
 {
     touch_file(path, FILE_FLAG_BACKUP_SEMANTICS);
 }
@@ -913,7 +965,8 @@ void touch_dir(wchar_t* path)
 // DEFINE_GUID(IID_IDXGIFactory,0x7b7166ec,0x21c7,0x44ae,0xb2,0x1a,0xc9,0xae,0x32,0x1a,0xe3,0x69);
 //
 
-std::string name_from_IID(IID id)
+std::string name_from_IID(
+    IID id)
 {
     // Adding every MIDL_INTERFACE from d3d11_1.h to make this reporting complete.
     // Doesn't seem useful to do every object from d3d11.h itself.
@@ -1054,11 +1107,11 @@ std::string name_from_IID(IID id)
     // Converting from wchar_t to string using stackoverflow suggestion.
 
     std::string iid_string;
-    wchar_t wiid[128];
+    wchar_t     wiid[128];
     if (SUCCEEDED(StringFromGUID2(id, wiid, 128)))
     {
         std::wstring convert = std::wstring(wiid);
-        iid_string = std::string(convert.begin(), convert.end());
+        iid_string           = std::string(convert.begin(), convert.end());
     }
     else
     {
@@ -1068,7 +1121,10 @@ std::string name_from_IID(IID id)
     return iid_string;
 }
 
-static void warn_if_conflicting_file_exists(wchar_t* path, wchar_t* conflicting_path, const char* message)
+static void warn_if_conflicting_file_exists(
+    wchar_t*    path,
+    wchar_t*    conflicting_path,
+    const char* message)
 {
     DWORD attrib = GetFileAttributes(conflicting_path);
 
@@ -1078,7 +1134,9 @@ static void warn_if_conflicting_file_exists(wchar_t* path, wchar_t* conflicting_
     LogOverlay(LOG_DIRE, "WARNING: %s\"%S\" conflicts with \"%S\"\n", message, conflicting_path, path);
 }
 
-void warn_if_conflicting_shader_exists(wchar_t* orig_path, const char* message)
+void warn_if_conflicting_shader_exists(
+    wchar_t*    orig_path,
+    const char* message)
 {
     wchar_t conflicting_path[MAX_PATH], *postfix;
 
@@ -1150,7 +1208,9 @@ void restore_om_state(IDirect3DDevice9* device, struct OMState* state)
         state->dsv->Release();
 }
 #elif MIGOTO_DX == 11
-void save_om_state(ID3D11DeviceContext* context, struct OMState* state)
+void save_om_state(
+    ID3D11DeviceContext* context,
+    struct OMState* state)
 {
     int i;
 
@@ -1179,7 +1239,9 @@ void save_om_state(ID3D11DeviceContext* context, struct OMState* state)
     context->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, state->UAVStartSlot, state->NumUAVs, state->uavs);
 }
 
-void restore_om_state(ID3D11DeviceContext* context, struct OMState* state)
+void restore_om_state(
+    ID3D11DeviceContext* context,
+    struct OMState* state)
 {
     static const UINT uav_counts[D3D11_PS_CS_UAV_REGISTER_COUNT] = { (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1 };
     UINT i;
@@ -1204,6 +1266,7 @@ void restore_om_state(ID3D11DeviceContext* context, struct OMState* state)
 
 // -----------------------------------------------------------------------------------------------
 
+// clang-format off
 static std::map<int, char*> d3d_formats = {
     { 0, "UNKNOWN" },
     { 20, "R8G8B8" },
@@ -1261,8 +1324,10 @@ static std::map<int, char*> d3d_formats = {
     { 119, "A2B10G10R10_XR_BIAS" },
     { 199, "BINARYBUFFER " }
 };
+// clang-format on
 
-char* tex_format_str_dx9(D3DFORMAT format)
+char* tex_format_str_dx9(
+    D3DFORMAT format)
 {
     switch (format)
     {
@@ -1295,7 +1360,9 @@ char* tex_format_str_dx9(D3DFORMAT format)
     }
 }
 
-D3DFORMAT parse_format_string_dx9(const char* fmt, bool allow_numeric_format)
+D3DFORMAT parse_format_string_dx9(
+    const char* fmt,
+    bool allow_numeric_format)
 {
     size_t num_formats = d3d_formats.size();
     unsigned format;
@@ -1324,7 +1391,9 @@ D3DFORMAT parse_format_string_dx9(const char* fmt, bool allow_numeric_format)
     return (D3DFORMAT)-1;
 }
 
-D3DFORMAT parse_format_string_dx9(const wchar_t* wfmt, bool allow_numeric_format)
+D3DFORMAT parse_format_string_dx9(
+    const wchar_t* wfmt,
+    bool allow_numeric_format)
 {
     char afmt[42];
 
@@ -1334,7 +1403,8 @@ D3DFORMAT parse_format_string_dx9(const wchar_t* wfmt, bool allow_numeric_format
     return parse_format_string_dx9(afmt, allow_numeric_format);
 }
 
-inline size_t bits_per_pixel(D3DFORMAT fmt)
+inline size_t bits_per_pixel(
+    D3DFORMAT fmt)
 {
     switch (fmt)
     {
@@ -1409,7 +1479,8 @@ inline size_t bits_per_pixel(D3DFORMAT fmt)
     }
 }
 
-UINT d3d_format_bytes(D3DFORMAT format)
+UINT d3d_format_bytes(
+    D3DFORMAT format)
 {
     switch (format)
     {
@@ -1484,7 +1555,8 @@ UINT d3d_format_bytes(D3DFORMAT format)
     }
 }
 
-UINT byte_size_from_d3d_type(D3DDECLTYPE type)
+UINT byte_size_from_d3d_type(
+    D3DDECLTYPE type)
 {
     switch (type)
     {
@@ -1520,7 +1592,11 @@ UINT byte_size_from_d3d_type(D3DDECLTYPE type)
     }
 }
 
-DWORD decl_type_to_FVF(D3DDECLTYPE type, D3DDECLUSAGE usage, BYTE usage_index, int n_weights)
+DWORD decl_type_to_FVF(
+    D3DDECLTYPE type,
+    D3DDECLUSAGE usage,
+    BYTE usage_index,
+    int n_weights)
 {
     switch (type)
     {
@@ -1581,7 +1657,8 @@ DWORD decl_type_to_FVF(D3DDECLTYPE type, D3DDECLUSAGE usage, BYTE usage_index, i
     }
 }
 
-D3DDECLTYPE d3d_format_to_decl_type(D3DFORMAT format)
+D3DDECLTYPE d3d_format_to_decl_type(
+    D3DFORMAT format)
 {
     switch (format)
     {
@@ -1660,7 +1737,8 @@ D3DDECLTYPE d3d_format_to_decl_type(D3DFORMAT format)
     }
 }
 
-UINT strideForFVF(DWORD FVF)
+UINT strideForFVF(
+    DWORD FVF)
 {
     UINT total_bytes = 0;
 
@@ -1738,7 +1816,9 @@ UINT strideForFVF(DWORD FVF)
     return total_bytes;
 }
 
-UINT draw_vertices_count_to_primitive_count(UINT ver_count, D3DPRIMITIVETYPE prim_type)
+UINT draw_vertices_count_to_primitive_count(
+    UINT ver_count,
+    D3DPRIMITIVETYPE prim_type)
 {
     switch (prim_type)
     {
@@ -1761,7 +1841,9 @@ UINT draw_vertices_count_to_primitive_count(UINT ver_count, D3DPRIMITIVETYPE pri
     }
 }
 
-UINT draw_primitive_count_to_vertices_count(UINT ver_count, D3DPRIMITIVETYPE prim_type)
+UINT draw_primitive_count_to_vertices_count(
+    UINT ver_count,
+    D3DPRIMITIVETYPE prim_type)
 {
     switch (prim_type)
     {
@@ -1790,7 +1872,8 @@ IDXGISwapChain* last_fullscreen_swap_chain;
 static CRITICAL_SECTION crash_handler_lock;
 static int crash_handler_level;
 
-static DWORD WINAPI crash_handler_switch_to_window(_In_ LPVOID lpParameter)
+static DWORD WINAPI crash_handler_switch_to_window(
+    LPVOID lpParameter)
 {
     // Debugging is a pain in exclusive full screen, especially without a
     // second monitor attached (and even with one if you don't know about
@@ -1821,7 +1904,8 @@ static DWORD WINAPI crash_handler_switch_to_window(_In_ LPVOID lpParameter)
     return 0;
 }
 
-static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS* ExceptionInfo)
+static LONG WINAPI migoto_exception_filter(
+    struct _EXCEPTION_POINTERS* ExceptionInfo)
 {
     wchar_t path[MAX_PATH];
     tm timestruct;
@@ -1860,11 +1944,7 @@ static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS* Exce
                 " ### ExceptionAddress: 0x%p\n"
                 " ### NumberParameters: 0x%u\n"
                 " ###",
-                i,
-                record->ExceptionCode,
-                record->ExceptionFlags,
-                record->ExceptionAddress,
-                record->NumberParameters);
+                i, record->ExceptionCode, record->ExceptionFlags, record->ExceptionAddress, record->NumberParameters);
             for (unsigned j = 0; j < record->NumberParameters; j++)
                 LOG_INFO(" %08Ix", record->ExceptionInformation[j]);
             LOG_INFO("\n");
@@ -1929,8 +2009,7 @@ static LONG WINAPI migoto_exception_filter(_In_ struct _EXCEPTION_POINTERS* Exce
             for (int i = 0; i < 50; i++)
             {
                 Sleep(100);
-                if (GetAsyncKeyState(VK_CONTROL) < 0 &&
-                    GetAsyncKeyState(VK_MENU) < 0)
+                if (GetAsyncKeyState(VK_CONTROL) < 0 && GetAsyncKeyState(VK_MENU) < 0)
                 {
                     if (GetAsyncKeyState('C') < 0)
                     {
@@ -1990,22 +2069,19 @@ unlock:
     return ret;
 }
 
-static DWORD WINAPI exception_keyboard_monitor(_In_ LPVOID lpParameter)
+static DWORD WINAPI exception_keyboard_monitor(
+    LPVOID lpParameter)
 {
     while (1)
     {
         Sleep(1000);
-        if (GetAsyncKeyState(VK_CONTROL) < 0 &&
-            GetAsyncKeyState(VK_MENU) < 0 &&
-            GetAsyncKeyState(VK_F11) < 0)
+        if (GetAsyncKeyState(VK_CONTROL) < 0 && GetAsyncKeyState(VK_MENU) < 0 && GetAsyncKeyState(VK_F11) < 0)
         {
             // User must be really committed to this to invoke the
             // crash handler, and this is a simple measure against
             // accidentally invoking it multiple times in a row:
             Sleep(3000);
-            if (GetAsyncKeyState(VK_CONTROL) < 0 &&
-                GetAsyncKeyState(VK_MENU) < 0 &&
-                GetAsyncKeyState(VK_F11) < 0)
+            if (GetAsyncKeyState(VK_CONTROL) < 0 && GetAsyncKeyState(VK_MENU) < 0 && GetAsyncKeyState(VK_F11) < 0)
             {
                 // Make sure 3DMigoto's exception handler is
                 // still installed and trigger it:
@@ -2016,7 +2092,8 @@ static DWORD WINAPI exception_keyboard_monitor(_In_ LPVOID lpParameter)
     }
 }
 
-void install_crash_handler(int level)
+void install_crash_handler(
+    int level)
 {
     LPTOP_LEVEL_EXCEPTION_FILTER old_handler;
     UINT old_mode;

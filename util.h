@@ -74,7 +74,7 @@ UINT64 fnv_64_buf(const void* buf, size_t len);
 
 // Strip spaces from the right of a string.
 // Returns a pointer to the last non-NULL character of the truncated string.
-char* right_strip_a(char* buf);
+char*    right_strip_a(char* buf);
 wchar_t* right_strip_w(wchar_t* buf);
 
 char* read_string_parameter(wchar_t* val);
@@ -152,7 +152,7 @@ template <class T2>
 static std::wstring lookup_enum_bit_names(struct EnumName_t<const wchar_t*, T2>* enum_names, T2 val)
 {
     std::wstring ret;
-    T2 remaining = val;
+    T2           remaining = val;
 
     for (; enum_names->name; enum_names++)
     {
@@ -167,7 +167,7 @@ static std::wstring lookup_enum_bit_names(struct EnumName_t<const wchar_t*, T2>*
 
     if (remaining != (T2)0)
     {
-        wchar_t buf[20]{};
+        wchar_t buf[20] {};
         wsprintf(buf, L"%x", remaining);
         if (!ret.empty())
             ret += L' ';
@@ -259,9 +259,9 @@ static T2 parse_enum_option_string(struct EnumName_t<T1, T2>* enum_names, T1 opt
 template <class T1, class T2>
 static T2 parse_enum_option_string_prefix(struct EnumName_t<T1, T2>* enum_names, T1 option_string, T1* unrecognised)
 {
-    T1 ptr = option_string, cur;
-    T2 ret = (T2)0;
-    T2 tmp = T2::INVALID;
+    T1     ptr = option_string, cur;
+    T2     ret = (T2)0;
+    T2     tmp = T2::INVALID;
     size_t len;
 
     if (unrecognised)
@@ -358,11 +358,11 @@ bool parse_ini_param_name(const wchar_t* name, int* idx, float DirectX::XMFLOAT4
 
 // -----------------------------------------------------------------------------------------------
 
-BOOL create_directory_ensuring_access(LPCWSTR path);
+BOOL    create_directory_ensuring_access(LPCWSTR path);
 errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t* filename, const wchar_t* mode);
-void set_file_last_write_time(wchar_t* path, FILETIME* ft_write, DWORD flags = 0);
-void touch_file(wchar_t* path, DWORD flags = 0);
-void touch_dir(wchar_t* path);
+void    set_file_last_write_time(wchar_t* path, FILETIME* ft_write, DWORD flags = 0);
+void    touch_file(wchar_t* path, DWORD flags = 0);
+void    touch_dir(wchar_t* path);
 
 bool check_interface_supported(IUnknown* unknown, REFIID riid);
 void analyse_iunknown(IUnknown* unknown);
@@ -378,7 +378,7 @@ struct _declspec(uuid("3D585D5A-BD4A-489E-B1F4-3DBCB6452FFB")) IDXGISwapChain4;
 
 std::string name_from_IID(IID id);
 
-void warn_if_conflicting_shader_exists(wchar_t* orig_path, const char* message = "");
+void               warn_if_conflicting_shader_exists(wchar_t* orig_path, const char* message = "");
 static const char* end_user_conflicting_shader_msg =
     "Conflicting shaders present - please use uninstall.bat and reinstall the fix.\n";
 
@@ -387,12 +387,12 @@ struct OMState
     UINT NumRTVs;
 #if MIGOTO_DX == 9
     std::vector<IDirect3DSurface9*> rtvs;
-    IDirect3DSurface9* dsv;
+    IDirect3DSurface9*              dsv;
 #elif MIGOTO_DX == 11
-    ID3D11RenderTargetView* rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
-    ID3D11DepthStencilView* dsv;
-    UINT UAVStartSlot;
-    UINT NumUAVs;
+    ID3D11RenderTargetView*    rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
+    ID3D11DepthStencilView*    dsv;
+    UINT                       UAVStartSlot;
+    UINT                       NumUAVs;
     ID3D11UnorderedAccessView* uavs[D3D11_PS_CS_UAV_REGISTER_COUNT];
 #endif  // MIGOTO_DX
 };
@@ -413,10 +413,10 @@ char* tex_format_str_dx9(D3DFORMAT format);
 
 D3DFORMAT parse_format_string_dx9(const char* fmt, bool allow_numeric_format);
 
-D3DFORMAT parse_format_string_dx9(const wchar_t* wfmt, bool allow_numeric_format);
+D3DFORMAT     parse_format_string_dx9(const wchar_t* wfmt, bool allow_numeric_format);
 inline size_t bits_per_pixel(_In_ D3DFORMAT fmt);
-UINT d3d_format_bytes(D3DFORMAT format);
-UINT byte_size_from_d3d_type(D3DDECLTYPE type);
+UINT          d3d_format_bytes(D3DFORMAT format);
+UINT          byte_size_from_d3d_type(D3DDECLTYPE type);
 
 DWORD decl_type_to_FVF(D3DDECLTYPE type, D3DDECLUSAGE usage, BYTE usage_index, int n_weights);
 
