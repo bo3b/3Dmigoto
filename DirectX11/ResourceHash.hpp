@@ -268,7 +268,7 @@ enum class ResourceCPUAccessFlags {
     READ    = 0x00020000,
 };
 SENSIBLE_ENUM(ResourceCPUAccessFlags);
-static EnumName_t<const wchar_t *, ResourceCPUAccessFlags> ResourceCPUAccessFlagNames[] = {
+static Enum_Name_t<const wchar_t *, ResourceCPUAccessFlags> ResourceCPUAccessFlagNames[] = {
     {L"write", ResourceCPUAccessFlags::WRITE},
     {L"read", ResourceCPUAccessFlags::READ},
     {NULL, ResourceCPUAccessFlags::INVALID} // End of list marker
@@ -295,7 +295,7 @@ enum class ResourceMiscFlags {
     HW_PROTECTED                     = 0x00080000,
 };
 SENSIBLE_ENUM(ResourceMiscFlags);
-static EnumName_t<const wchar_t *, ResourceMiscFlags> ResourceMiscFlagNames[] = {
+static Enum_Name_t<const wchar_t *, ResourceMiscFlags> ResourceMiscFlagNames[] = {
     {L"generate_mips", ResourceMiscFlags::GENERATE_MIPS},
     {L"shared", ResourceMiscFlags::SHARED},
     {L"texturecube", ResourceMiscFlags::TEXTURECUBE},
