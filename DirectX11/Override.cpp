@@ -181,7 +181,7 @@ struct KeyOverrideCycleParam
     }
 
     template <class T1, class T2>
-    T2 as_enum(EnumName_t<T1, T2> *enum_names, T2 default)
+    T2 as_enum(Enum_Name_t<T1, T2> *enum_names, T2 default)
     {
         T2 val;
 
