@@ -57,7 +57,7 @@ private:
         FLOAT BlendFactor[4];
         UINT SampleMask;
 
-        OMState om_state;
+        om_state om_state;
 
         D3D11_VIEWPORT pViewPorts[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
         UINT RSNumViewPorts;

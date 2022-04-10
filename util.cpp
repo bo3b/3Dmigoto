@@ -16,8 +16,8 @@
 #if MIGOTO_DX == 9
     #include "DirectX9\Overlay.hpp"
 #elif MIGOTO_DX == 11
-    #include "DirectX11/HackerDevice.hpp"
     #include "DirectX11/HackerContext.hpp"
+    #include "DirectX11/HackerDevice.hpp"
 #endif  // MIGOTO_DX
 
 // Sometimes game directories get funny permissions that cause us problems. I
@@ -46,7 +46,7 @@ static SECURITY_ATTRIBUTES* init_security_attributes(
 {
     sa->nLength              = sizeof(SECURITY_ATTRIBUTES);
     sa->bInheritHandle       = FALSE;
-    sa->lpSecurityDescriptor = NULL;
+    sa->lpSecurityDescriptor = nullptr;
 
     if (ConvertStringSecurityDescriptorToSecurityDescriptor(L"D:"  // Discretionary ACL
                                                             // Removed string from MSDN that denies guests/anonymous users
@@ -55,13 +55,13 @@ static SECURITY_ATTRIBUTES* init_security_attributes(
                                                             // Using "CO" for Creator/Owner instead of "AU" seems ineffective
                                                             L"(A;OICI;GA;;;BA)"  // Allow full control to administrators
                                                             ,
-                                                            SDDL_REVISION_1, &sa->lpSecurityDescriptor, NULL))
+                                                            SDDL_REVISION_1, &sa->lpSecurityDescriptor, nullptr))
     {
         return sa;
     }
 
     LOG_INFO("ConvertStringSecurityDescriptorToSecurityDescriptor failed\n");
-    return NULL;
+    return nullptr;
 }
 
 // Wrapped in try/catch because it can crash in Dirt Rally,
@@ -99,8 +99,8 @@ UINT64 fnv_64_buf(
     size_t      len)
 {
     UINT64               hval = 0;
-    unsigned const char* bp   = (unsigned const char*)buf; /* start of buffer */
-    unsigned const char* be   = bp + len;                  /* beyond end of buffer */
+    unsigned const char* bp   = static_cast<unsigned char const*>(buf); /* start of buffer */
+    unsigned const char* be   = bp + len;                               /* beyond end of buffer */
 
     // FNV-1 hash each octet of the buffer
     while (bp < be)
@@ -108,7 +108,7 @@ UINT64 fnv_64_buf(
         // multiply by the 64 bit FNV magic prime mod 2^64 */
         hval *= FNV_64_PRIME;
         // xor the bottom with the current octet
-        hval ^= (UINT64)*bp++;
+        hval ^= static_cast<UINT64>(*bp++);
     }
     return hval;
 }
@@ -120,7 +120,9 @@ char* right_strip_a(
 {
     char* end = buf + strlen(buf) - 1;
     while (end > buf && isspace(*end))
+    {
         end--;
+    }
     *(end + 1) = 0;
     return end;
 }
@@ -130,7 +132,9 @@ wchar_t* right_strip_w(
 {
     wchar_t* end = buf + wcslen(buf) - 1;
     while (end > buf && iswspace(*end))
+    {
         end--;
+    }
     *(end + 1) = 0;
     return end;
 }
@@ -143,7 +147,9 @@ char* read_string_parameter(
     right_strip_a(buf);
     char* start = buf;
     while (isspace(*start))
+    {
         start++;
+    }
     return start;
 }
 
@@ -196,7 +202,7 @@ void double_beep_exit()
     {
         // Make sure the log is written out so we see the failure message
         fclose(LogFile);
-        LogFile = 0;
+        LogFile = nullptr;
     }
     ExitProcess(0xc0000135);
 }
@@ -219,7 +225,7 @@ int _autoicmp(
 
 // clang-format off
 // http://msdn.microsoft.com/en-us/library/windows/desktop/bb173059(v=vs.85).aspx
-static const char* DXGIFormats[] = {
+static const char* dxgi_formats[] = {
     "UNKNOWN",
     "R32G32B32A32_TYPELESS",
     "R32G32B32A32_FLOAT",
@@ -342,8 +348,8 @@ static const char* DXGIFormats[] = {
 const char* tex_format_str(
     unsigned int format)
 {
-    if (format < sizeof(DXGIFormats) / sizeof(DXGIFormats[0]))
-        return DXGIFormats[format];
+    if (format < sizeof(dxgi_formats) / sizeof(dxgi_formats[0]))
+        return dxgi_formats[format];
     return "UNKNOWN";
 }
 
@@ -351,7 +357,7 @@ DXGI_FORMAT parse_format_string(
     const char* fmt,
     bool        allow_numeric_format)
 {
-    size_t   num_formats = sizeof(DXGIFormats) / sizeof(DXGIFormats[0]);
+    size_t   num_formats = sizeof(dxgi_formats) / sizeof(dxgi_formats[0]);
     unsigned format;
     int      nargs, end;
 
@@ -360,7 +366,7 @@ DXGI_FORMAT parse_format_string(
         // Try parsing format string as decimal:
         nargs = sscanf_s(fmt, "%u%n", &format, &end);
         if (nargs == 1 && end == strlen(fmt))
-            return (DXGI_FORMAT)format;
+            return static_cast<DXGI_FORMAT>(format);
     }
 
     if (!_strnicmp(fmt, "DXGI_FORMAT_", 12))
@@ -369,13 +375,13 @@ DXGI_FORMAT parse_format_string(
     // Look up format string:
     for (format = 0; format < num_formats; format++)
     {
-        if (!_strnicmp(fmt, DXGIFormats[format], 30))
-            return (DXGI_FORMAT)format;
+        if (!_strnicmp(fmt, dxgi_formats[format], 30))
+            return static_cast<DXGI_FORMAT>(format);
     }
 
     // UNKNOWN/0 is a valid format (e.g. for structured buffers), so return
     // -1 cast to a DXGI_FORMAT to signify an error:
-    return (DXGI_FORMAT)-1;
+    return static_cast<DXGI_FORMAT>(-1);
 }
 
 DXGI_FORMAT parse_format_string(
@@ -553,10 +559,10 @@ const char* type_name(
     // hooking the device and/or context, so check if it is one of those
     // cases:
 
-    device = lookup_hooked_device((ID3D11Device1*)object);
+    device = lookup_hooked_device(static_cast<ID3D11Device1*>(object));
     if (device)
         return "Hooked_ID3D11Device";
-    context = lookup_hooked_context((ID3D11DeviceContext1*)object);
+    context = lookup_hooked_context(static_cast<ID3D11DeviceContext1*>(object));
     if (context)
         return "Hooked_ID3D11DeviceContext";
 
@@ -656,18 +662,22 @@ std::string get_shader_model(
         return "";
 
     // Read shader model. This is the first not commented line.
-    char* pos = (char*)asm_text.data();
+    char* pos = const_cast<char*>(asm_text.data());
     char* end = pos + asm_text.size();
     while ((pos[0] == '/' || pos[0] == '\n') && pos < end)
     {
         while (pos[0] != 0x0a && pos < end)
+        {
             pos++;
+        }
         pos++;
     }
     // Extract model.
     char* eol = pos;
     while (eol[0] != 0x0a && pos < end)
+    {
         eol++;
+    }
     std::string shader_model(pos, eol);
 
     return shader_model;
@@ -845,7 +855,7 @@ bool parse_ini_param_name(
 BOOL create_directory_ensuring_access(
     LPCWSTR path)
 {
-    SECURITY_ATTRIBUTES sa, *psa = NULL;
+    SECURITY_ATTRIBUTES sa, *psa = nullptr;
     BOOL                ret = false;
 
     psa = init_security_attributes(&sa);
@@ -860,19 +870,19 @@ BOOL create_directory_ensuring_access(
 // Replacement for _wfopen_s that ensures the permissions will be set so we can
 // read it back later.
 errno_t wfopen_ensuring_access(
-    FILE**         pFile,
+    FILE**         file,
     const wchar_t* filename,
     const wchar_t* mode)
 {
-    SECURITY_ATTRIBUTES sa, *psa = NULL;
-    HANDLE              fh        = NULL;
+    SECURITY_ATTRIBUTES sa, *psa = nullptr;
+    HANDLE              fh        = nullptr;
     int                 fd        = -1;
-    FILE*               fp        = NULL;
+    FILE*               fp        = nullptr;
     int                 osf_flags = 0;
 
-    *pFile = NULL;
+    *file = nullptr;
 
-    if (wcsstr(mode, L"w") == NULL)
+    if (wcsstr(mode, L"w") == nullptr)
     {
         // This function is for creating new files for now. We could
         // make it do some heroics on read/append as well, but I don't
@@ -881,7 +891,7 @@ errno_t wfopen_ensuring_access(
         double_beep_exit();
     }
 
-    if (wcsstr(mode, L"b") == NULL)
+    if (wcsstr(mode, L"b") == nullptr)
         osf_flags |= _O_TEXT;
 
     // We use _wfopen_s so that we can use formatted print routines, but to
@@ -890,7 +900,7 @@ errno_t wfopen_ensuring_access(
     // convert the resulting handle into a C file descriptor, then a FILE*
     // that can be used as per usual.
     psa = init_security_attributes(&sa);
-    fh  = CreateFile(filename, GENERIC_WRITE, 0, psa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    fh  = CreateFile(filename, GENERIC_WRITE, 0, psa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     LocalFree(sa.lpSecurityDescriptor);
     if (fh == INVALID_HANDLE_VALUE)
     {
@@ -899,7 +909,7 @@ errno_t wfopen_ensuring_access(
     }
 
     // Convert the HANDLE into a file descriptor.
-    fd = _open_osfhandle((intptr_t)fh, osf_flags);
+    fd = _open_osfhandle(reinterpret_cast<intptr_t>(fh), osf_flags);
     if (fd == -1)
     {
         CloseHandle(fh);
@@ -921,7 +931,7 @@ errno_t wfopen_ensuring_access(
     // will be implicitly closed with fclose(fp). Convenient for us,
     // because it means the caller doesn't have to care about the fh or fd.
 
-    *pFile = fp;
+    *file = fp;
     return 0;
 }
 
@@ -932,11 +942,11 @@ void set_file_last_write_time(
 {
     HANDLE f;
 
-    f = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | flags, NULL);
+    f = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | flags, nullptr);
     if (f == INVALID_HANDLE_VALUE)
         return;
 
-    SetFileTime(f, NULL, NULL, ft_write);
+    SetFileTime(f, nullptr, nullptr, ft_write);
     CloseHandle(f);
 }
 
@@ -1210,7 +1220,7 @@ void restore_om_state(IDirect3DDevice9* device, struct OMState* state)
 #elif MIGOTO_DX == 11
 void save_om_state(
     ID3D11DeviceContext* context,
-    struct OMState* state)
+    struct om_state* state)
 {
     int i;
 
@@ -1236,14 +1246,14 @@ void save_om_state(
 
     // Finally get all the UAVs. Since we already retrieved the RTVs and
     // DSV we can skip getting them:
-    context->OMGetRenderTargetsAndUnorderedAccessViews(0, NULL, NULL, state->UAVStartSlot, state->NumUAVs, state->uavs);
+    context->OMGetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, state->UAVStartSlot, state->NumUAVs, state->uavs);
 }
 
 void restore_om_state(
     ID3D11DeviceContext* context,
-    struct OMState* state)
+    struct om_state* state)
 {
-    static const UINT uav_counts[D3D11_PS_CS_UAV_REGISTER_COUNT] = { (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1, (UINT)-1 };
+    static constexpr UINT uav_counts[D3D11_PS_CS_UAV_REGISTER_COUNT] = { static_cast<UINT>(-1), static_cast<UINT>(-1), static_cast<UINT>(-1), static_cast<UINT>(-1), static_cast<UINT>(-1), static_cast<UINT>(-1), static_cast<UINT>(-1), static_cast<UINT>(-1) };
     UINT i;
 
     context->OMSetRenderTargetsAndUnorderedAccessViews(state->NumRTVs, state->rtvs, state->dsv, state->UAVStartSlot, state->NumUAVs, state->uavs, uav_counts);
@@ -1364,7 +1374,6 @@ D3DFORMAT parse_format_string_dx9(
     const char* fmt,
     bool allow_numeric_format)
 {
-    size_t num_formats = d3d_formats.size();
     unsigned format;
     int nargs, end;
 
@@ -1373,7 +1382,7 @@ D3DFORMAT parse_format_string_dx9(
         // Try parsing format string as decimal:
         nargs = sscanf_s(fmt, "%u%n", &format, &end);
         if (nargs == 1 && end == strlen(fmt))
-            return (D3DFORMAT)format;
+            return static_cast<D3DFORMAT>(format);
     }
 
     if (!_strnicmp(fmt, "D3DFMT_", 7))
@@ -1384,11 +1393,11 @@ D3DFORMAT parse_format_string_dx9(
     for (it = d3d_formats.begin(); it != d3d_formats.end(); it++)
     {
         if (!_strnicmp(fmt, it->second, 30))
-            return (D3DFORMAT)it->first;
+            return static_cast<D3DFORMAT>(it->first);
     }
     // UNKNOWN/0 is a valid format (e.g. for structured buffers), so return
     // -1 cast to a DXGI_FORMAT to signify an error:
-    return (D3DFORMAT)-1;
+    return static_cast<D3DFORMAT>(-1);
 }
 
 D3DFORMAT parse_format_string_dx9(
@@ -1636,6 +1645,7 @@ DWORD decl_type_to_FVF(
                 return D3DFVF_PSIZE;
             return NULL;
         case D3DDECLTYPE_D3DCOLOR:
+        {
             if (usage == D3DDECLUSAGE_COLOR)
             {
                 switch (usage_index)
@@ -1648,10 +1658,8 @@ DWORD decl_type_to_FVF(
                         return NULL;
                 }
             }
-            else
-            {
-                return NULL;
-            }
+            return NULL;
+        }
         default:
             return NULL;
     }
@@ -1733,11 +1741,11 @@ D3DDECLTYPE d3d_format_to_decl_type(
         case D3DFMT_A4L4:
         case D3DFMT_S8_LOCKABLE:
         default:
-            return (D3DDECLTYPE)-1;
+            return static_cast<D3DDECLTYPE>(-1);
     }
 }
 
-UINT strideForFVF(
+UINT stride_for_FVF(
     DWORD FVF)
 {
     UINT total_bytes = 0;
@@ -1894,7 +1902,7 @@ static DWORD WINAPI crash_handler_switch_to_window(
     {
         LOG_INFO("Attempting emergency switch to windowed mode on swap chain %p\n", last_fullscreen_swap_chain);
 
-        last_fullscreen_swap_chain->SetFullscreenState(FALSE, NULL);
+        last_fullscreen_swap_chain->SetFullscreenState(FALSE, nullptr);
         // last_fullscreen_swap_chain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
     }
 
@@ -1908,7 +1916,7 @@ static LONG WINAPI migoto_exception_filter(
     struct _EXCEPTION_POINTERS* ExceptionInfo)
 {
     wchar_t path[MAX_PATH];
-    tm timestruct;
+    tm timestruct {};
     time_t ltime;
     LONG ret = EXCEPTION_CONTINUE_EXECUTION;
 
@@ -1958,7 +1966,7 @@ static LONG WINAPI migoto_exception_filter(
     // this could fail - if we really want a robust crash handler we could
     // bring in something like breakpad
 
-    ltime = time(NULL);
+    ltime = time(nullptr);
     localtime_s(&timestruct, &ltime);
     wcsftime(path, MAX_PATH, L"3DM-%Y%m%d%H%M%S.dmp", &timestruct);
 
@@ -1966,14 +1974,14 @@ static LONG WINAPI migoto_exception_filter(
     // the rest stop here:
     ENTER_CRITICAL_SECTION(&crash_handler_lock);
 
-    auto fp = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+    auto fp = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (fp != INVALID_HANDLE_VALUE)
     {
         LOG_INFO("Writing minidump to %S...\n", path);
 
         MINIDUMP_EXCEPTION_INFORMATION dump_info = { GetCurrentThreadId(), ExceptionInfo, FALSE };
 
-        if (MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), fp, MiniDumpWithHandleData, &dump_info, NULL, NULL))
+        if (MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), fp, MiniDumpWithHandleData, &dump_info, nullptr, nullptr))
             LOG_INFO("Succeeded\n");
         else
             LOG_INFO("Failed :(\n");
@@ -1981,7 +1989,9 @@ static LONG WINAPI migoto_exception_filter(
         CloseHandle(fp);
     }
     else
+    {
         LOG_INFO("Error creating minidump file \"%S\": %d\n", path, GetLastError());
+    }
 
     if (LogFile)
         fflush(LogFile);
@@ -2003,7 +2013,7 @@ static LONG WINAPI migoto_exception_filter(
             LOG_INFO("\n");
             fflush(LogFile);
         }
-        while (1)
+        while (true)
         {
             Beep(500, 100);
             for (int i = 0; i < 50; i++)
@@ -2055,7 +2065,7 @@ static LONG WINAPI migoto_exception_filter(
                         LOG_INFO("Attempting to switch to windowed mode...\n");
                         fflush(LogFile);
                         Beep(1000, 100);
-                        CreateThread(NULL, 0, crash_handler_switch_to_window, NULL, 0, NULL);
+                        CreateThread(nullptr, 0, crash_handler_switch_to_window, nullptr, 0, nullptr);
                         Sleep(1000);
                     }
                 }
@@ -2072,7 +2082,7 @@ unlock:
 static DWORD WINAPI exception_keyboard_monitor(
     LPVOID lpParameter)
 {
-    while (1)
+    while (true)
     {
         Sleep(1000);
         if (GetAsyncKeyState(VK_CONTROL) < 0 && GetAsyncKeyState(VK_MENU) < 0 && GetAsyncKeyState(VK_F11) < 0)
@@ -2086,7 +2096,7 @@ static DWORD WINAPI exception_keyboard_monitor(
                 // Make sure 3DMigoto's exception handler is
                 // still installed and trigger it:
                 SetUnhandledExceptionFilter(migoto_exception_filter);
-                RaiseException(0x3D819070, 0, 0, NULL);
+                RaiseException(0x3D819070, 0, 0, nullptr);
             }
         }
     }
@@ -2118,6 +2128,6 @@ void install_crash_handler(
 
     // Spawn a thread to monitor for a keyboard salute to trigger the
     // exception handler in the event of a hang/deadlock:
-    CreateThread(NULL, 0, exception_keyboard_monitor, NULL, 0, NULL);
+    CreateThread(nullptr, 0, exception_keyboard_monitor, nullptr, 0, nullptr);
 }
 #endif

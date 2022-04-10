@@ -101,7 +101,7 @@ int _autoicmp(const char* s1, const char* s2);
 // To use this function be sure to terminate an EnumName_t list with {NULL, 0}
 // as it cannot use ArraySize on passed in arrays.
 template <class T1, class T2>
-static T2 lookup_enum_val(struct EnumName_t<T1, T2>* enum_names, T1 name, T2 type, bool* found = NULL)
+static T2 lookup_enum_val(struct EnumName_t<T1, T2>* enum_names, T1 name, T2 type, bool* found = nullptr)
 {
     for (; enum_names->name; enum_names++)
     {
@@ -119,7 +119,7 @@ static T2 lookup_enum_val(struct EnumName_t<T1, T2>* enum_names, T1 name, T2 typ
     return type;
 }
 template <class T1, class T2>
-static T2 lookup_enum_val(struct EnumName_t<T1, T2>* enum_names, T1 name, size_t len, T2 type, bool* found = NULL)
+static T2 lookup_enum_val(struct EnumName_t<T1, T2>* enum_names, T1 name, size_t len, T2 type, bool* found = nullptr)
 {
     for (; enum_names->name; enum_names++)
     {
@@ -359,7 +359,7 @@ bool parse_ini_param_name(const wchar_t* name, int* idx, float DirectX::XMFLOAT4
 // -----------------------------------------------------------------------------------------------
 
 BOOL    create_directory_ensuring_access(LPCWSTR path);
-errno_t wfopen_ensuring_access(FILE** pFile, const wchar_t* filename, const wchar_t* mode);
+errno_t wfopen_ensuring_access(FILE** file, const wchar_t* filename, const wchar_t* mode);
 void    set_file_last_write_time(wchar_t* path, FILETIME* ft_write, DWORD flags = 0);
 void    touch_file(wchar_t* path, DWORD flags = 0);
 void    touch_dir(wchar_t* path);
@@ -382,7 +382,7 @@ void               warn_if_conflicting_shader_exists(wchar_t* orig_path, const c
 static const char* end_user_conflicting_shader_msg =
     "Conflicting shaders present - please use uninstall.bat and reinstall the fix.\n";
 
-struct OMState
+struct om_state
 {
     UINT NumRTVs;
 #if MIGOTO_DX == 9
@@ -399,11 +399,11 @@ struct OMState
 
 // TODO: Could use DX version specific typedefs for these differences
 #if MIGOTO_DX == 9
-void save_om_state(IDirect3DDevice9* device, struct OMState* state);
-void restore_om_state(IDirect3DDevice9* device, struct OMState* state);
+void save_om_state(IDirect3DDevice9* device, struct om_state* state);
+void restore_om_state(IDirect3DDevice9* device, struct om_state* state);
 #elif MIGOTO_DX == 11
-void save_om_state(ID3D11DeviceContext* context, struct OMState* state);
-void restore_om_state(ID3D11DeviceContext* context, struct OMState* state);
+void save_om_state(ID3D11DeviceContext* context, struct om_state* state);
+void restore_om_state(ID3D11DeviceContext* context, struct om_state* state);
 #endif  // MIGOTO_DX
 
 // -----------------------------------------------------------------------------------------------
@@ -422,7 +422,7 @@ DWORD decl_type_to_FVF(D3DDECLTYPE type, D3DDECLUSAGE usage, BYTE usage_index, i
 
 D3DDECLTYPE d3d_format_to_decl_type(D3DFORMAT format);
 
-UINT strideForFVF(DWORD FVF);
+UINT stride_for_FVF(DWORD FVF);
 UINT draw_vertices_count_to_primitive_count(UINT ver_count, D3DPRIMITIVETYPE prim_type);
 UINT draw_primitive_count_to_vertices_count(UINT ver_count, D3DPRIMITIVETYPE prim_type);
 #endif  // MIGOTO_DX == 9

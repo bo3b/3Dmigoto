@@ -2193,7 +2193,7 @@ void RunCustomShaderCommand::Run(CommandListState *state)
     UINT saved_sample_mask;
     UINT saved_stencil_ref;
     bool saved_post;
-    struct OMState om_state;
+    struct om_state om_state;
     UINT i;
     D3D11_PRIMITIVE_TOPOLOGY saved_topology;
     UINT num_sampler = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
