@@ -127,7 +127,7 @@ VKInputButton::VKInputButton(const wchar_t *keyName) :
         keyName += 3;
     }
 
-    vkey = ParseVKey(keyName);
+    vkey = parse_VKey(keyName);
     if (vkey < 0)
         throw keyParseError;
 }
