@@ -13,7 +13,7 @@ enum class KeyOverrideType {
     TOGGLE,
     CYCLE,
 };
-static EnumName_t<const wchar_t *, KeyOverrideType> KeyOverrideTypeNames[] = {
+static Enum_Name_t<const wchar_t *, KeyOverrideType> KeyOverrideTypeNames[] = {
     {L"activate", KeyOverrideType::ACTIVATE},
     {L"hold", KeyOverrideType::HOLD},
     {L"toggle", KeyOverrideType::TOGGLE},
@@ -26,7 +26,7 @@ enum class TransitionType {
     LINEAR,
     COSINE,
 };
-static EnumName_t<const char *, TransitionType> TransitionTypeNames[] = {
+static Enum_Name_t<const char *, TransitionType> TransitionTypeNames[] = {
     {"linear", TransitionType::LINEAR},
     {"cosine", TransitionType::COSINE},
     {NULL, TransitionType::INVALID} // End of list marker

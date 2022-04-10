@@ -29,7 +29,7 @@ enum class EnableHooks {
     RECOMMENDED                 = 0x00000007,
 };
 SENSIBLE_ENUM(EnableHooks);
-static EnumName_t<wchar_t *, EnableHooks> EnableHooksNames[] = {
+static Enum_Name_t<wchar_t *, EnableHooks> EnableHooksNames[] = {
     { L"deferred_contexts", EnableHooks::DEFERRED_CONTEXTS },
     { L"immediate_context", EnableHooks::IMMEDIATE_CONTEXT },
     { L"context", EnableHooks::IMMEDIATE_CONTEXT },

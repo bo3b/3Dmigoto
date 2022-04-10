@@ -1135,7 +1135,7 @@ static int GetIniEnum(const wchar_t *section, const wchar_t *key, int def, bool 
 // the DirectXTK API uses wide characters we might keep it around.
 template <class T1, class T>
 T GetIniEnumClass(const wchar_t *section, const wchar_t *key, T def, bool *found,
-        struct EnumName_t<const wchar_t *, T> *enum_names)
+        struct Enum_Name_t<const wchar_t *, T> *enum_names)
 {
     wchar_t val[MAX_PATH];
     T ret = def;
@@ -1160,7 +1160,7 @@ T GetIniEnumClass(const wchar_t *section, const wchar_t *key, T def, bool *found
 
 template <class T>
 T GetIniEnumClass(const wchar_t *section, const wchar_t *key, T def, bool *found,
-        struct EnumName_t<const wchar_t *, T> *enum_names)
+        struct Enum_Name_t<const wchar_t *, T> *enum_names)
 {
     return GetIniEnumClass<const wchar_t *, T>(section, key, def, found, enum_names);
 }
@@ -1168,7 +1168,7 @@ T GetIniEnumClass(const wchar_t *section, const wchar_t *key, T def, bool *found
 // char* specialisation of the above. No character limit
 template <class T1, class T>
 T GetIniEnumClass(const wchar_t *section, const wchar_t *key, T def, bool *found,
-        struct EnumName_t<const char *, T> *enum_names)
+        struct Enum_Name_t<const char *, T> *enum_names)
 {
     string val;
     T ret = def;
@@ -1194,9 +1194,9 @@ T GetIniEnumClass(const wchar_t *section, const wchar_t *key, T def, bool *found
 // Explicit template expansion is necessary to generate these functions for
 // the compiler to generate them so they can be used from other source files:
 template TransitionType GetIniEnumClass<const char *, TransitionType>(const wchar_t *section, const wchar_t *key, TransitionType def, bool *found,
-        struct EnumName_t<const char *, TransitionType> *enum_names);
+        struct Enum_Name_t<const char *, TransitionType> *enum_names);
 template MarkingMode GetIniEnumClass<const wchar_t *, MarkingMode>(const wchar_t *section, const wchar_t *key, MarkingMode def, bool *found,
-        struct EnumName_t<const wchar_t *, MarkingMode> *enum_names);
+        struct Enum_Name_t<const wchar_t *, MarkingMode> *enum_names);
 
 // For options that used to be booleans and are now integers. Boolean values
 // (0/1/true/false/yes/no/on/off) will continue retuning 0/1 for backwards
@@ -2890,7 +2890,7 @@ static bool texture_override_section_has_fuzzy_match_keys(const wchar_t *section
 
 template <class T>
 static bool parse_masked_flags_field(const wstring setting, unsigned *val, unsigned *mask,
-        struct EnumName_t<const wchar_t *, T> *enum_names)
+        struct Enum_Name_t<const wchar_t *, T> *enum_names)
 {
     std::vector<std::wstring> tokens;
     std::wstring token;

@@ -27,7 +27,7 @@ inline bool      operator ! (ENUMTYPE a) { return (!((int)a)); }
 // clang-format on
 
 template <class T1, class T2>
-struct EnumName_t
+struct Enum_Name_t
 {
     T1 name;
     T2 val;

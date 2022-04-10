@@ -39,7 +39,7 @@ enum class MarkingMode {
 
     INVALID, // Must be last - used for next_marking_mode
 };
-static EnumName_t<const wchar_t *, MarkingMode> MarkingModeNames[] = {
+static Enum_Name_t<const wchar_t *, MarkingMode> MarkingModeNames[] = {
     {L"skip", MarkingMode::SKIP},
     {L"mono", MarkingMode::MONO},
     {L"original", MarkingMode::ORIGINAL},
@@ -61,7 +61,7 @@ enum class MarkingAction {
     DEFAULT    = 0x0000003,
 };
 SENSIBLE_ENUM(MarkingAction);
-static EnumName_t<const wchar_t *, MarkingAction> MarkingActionNames[] = {
+static Enum_Name_t<const wchar_t *, MarkingAction> MarkingActionNames[] = {
     {L"hlsl", MarkingAction::HLSL},
     {L"asm", MarkingAction::ASM},
     {L"assembly", MarkingAction::ASM},
@@ -80,7 +80,7 @@ enum class ShaderHashType {
     EMBEDDED,
     BYTECODE,
 };
-static EnumName_t<const wchar_t *, ShaderHashType> ShaderHashNames[] = {
+static Enum_Name_t<const wchar_t *, ShaderHashType> ShaderHashNames[] = {
     {L"3dmigoto", ShaderHashType::FNV},
     {L"embedded", ShaderHashType::EMBEDDED},
     {L"bytecode", ShaderHashType::BYTECODE},
@@ -186,7 +186,7 @@ enum class FrameAnalysisOptions {
     DEPRECATED      = (signed)0x80000000,
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
-static EnumName_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
+static Enum_Name_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
     // Bind flag selection:
     {L"dump_rt", FrameAnalysisOptions::DUMP_RT},
     {L"dump_depth", FrameAnalysisOptions::DUMP_DEPTH},
@@ -246,7 +246,7 @@ enum class DepthBufferFilter {
     DEPTH_ACTIVE,
     DEPTH_INACTIVE,
 };
-static EnumName_t<const wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
+static Enum_Name_t<const wchar_t *, DepthBufferFilter> DepthBufferFilterNames[] = {
     {L"none", DepthBufferFilter::NONE},
     {L"depth_active", DepthBufferFilter::DEPTH_ACTIVE},
     {L"depth_inactive", DepthBufferFilter::DEPTH_INACTIVE},
@@ -369,7 +369,7 @@ enum class GetResolutionFrom {
     SWAP_CHAIN,
     DEPTH_STENCIL,
 };
-static EnumName_t<const wchar_t *, GetResolutionFrom> GetResolutionFromNames[] = {
+static Enum_Name_t<const wchar_t *, GetResolutionFrom> GetResolutionFromNames[] = {
     {L"swap_chain", GetResolutionFrom::SWAP_CHAIN},
     {L"depth_stencil", GetResolutionFrom::DEPTH_STENCIL},
     {NULL, GetResolutionFrom::INVALID} // End of list marker

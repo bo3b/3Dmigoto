@@ -99,7 +99,7 @@ enum class VariableFlags {
     INVALID         = (signed)0xffffffff,
 };
 SENSIBLE_ENUM(VariableFlags);
-static EnumName_t<const wchar_t *, VariableFlags> VariableFlagNames[] = {
+static Enum_Name_t<const wchar_t *, VariableFlags> VariableFlagNames[] = {
     {L"global", VariableFlags::GLOBAL},
     {L"persist", VariableFlags::PERSIST},
 
@@ -252,7 +252,7 @@ enum class D3DCompileFlags {
     INVALID                            = (signed)0xffffffff,
 };
 SENSIBLE_ENUM(D3DCompileFlags);
-static EnumName_t<const wchar_t *, D3DCompileFlags> D3DCompileFlagNames[] = {
+static Enum_Name_t<const wchar_t *, D3DCompileFlags> D3DCompileFlagNames[] = {
     {L"debug", D3DCompileFlags::DEBUG},
     {L"skip_validation", D3DCompileFlags::SKIP_VALIDATION},
     {L"skip_optimization", D3DCompileFlags::SKIP_OPTIMIZATION},
@@ -390,7 +390,7 @@ enum class CustomResourceType {
     TEXTURE3D,
     CUBE,
 };
-static EnumName_t<const wchar_t *, CustomResourceType> CustomResourceTypeNames[] = {
+static Enum_Name_t<const wchar_t *, CustomResourceType> CustomResourceTypeNames[] = {
     // Use the same names as HLSL here since they are what shaderhackers
     // will see in the shaders, even if some of these have no distinction
     // from our point of view, or are just a misc flag:
@@ -419,7 +419,7 @@ enum class CustomResourceMode {
     STEREO,
     MONO,
 };
-static EnumName_t<const wchar_t *, CustomResourceMode> CustomResourceModeNames[] = {
+static Enum_Name_t<const wchar_t *, CustomResourceMode> CustomResourceModeNames[] = {
     {L"auto", CustomResourceMode::AUTO},
     {L"stereo", CustomResourceMode::STEREO},
     {L"mono", CustomResourceMode::MONO},
@@ -447,7 +447,7 @@ enum class CustomResourceBindFlags {
     VIDEO_ENCODER   = 0x00000400,
 };
 SENSIBLE_ENUM(CustomResourceBindFlags);
-static EnumName_t<const wchar_t *, CustomResourceBindFlags> CustomResourceBindFlagNames[] = {
+static Enum_Name_t<const wchar_t *, CustomResourceBindFlags> CustomResourceBindFlagNames[] = {
     {L"vertex_buffer", CustomResourceBindFlags::VERTEX_BUFFER},
     {L"index_buffer", CustomResourceBindFlags::INDEX_BUFFER},
     {L"constant_buffer", CustomResourceBindFlags::CONSTANT_BUFFER},
@@ -642,7 +642,7 @@ enum class ResourceCopyOptions {
     CREATEMODE_MASK = 0x00000070,
 };
 SENSIBLE_ENUM(ResourceCopyOptions);
-static EnumName_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
+static Enum_Name_t<wchar_t *, ResourceCopyOptions> ResourceCopyOptionNames[] = {
     {L"copy", ResourceCopyOptions::COPY},
     {L"ref", ResourceCopyOptions::REFERENCE},
     {L"reference", ResourceCopyOptions::REFERENCE},
@@ -910,7 +910,7 @@ enum class ParamOverrideType {
     HUNTING,
     FRAME_ANALYSIS,
 };
-static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
+static Enum_Name_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
     {L"rt_width", ParamOverrideType::RT_WIDTH},
     {L"rt_height", ParamOverrideType::RT_HEIGHT},
     {L"res_width", ParamOverrideType::RES_WIDTH},
