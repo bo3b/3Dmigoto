@@ -339,7 +339,7 @@ void HackerSwapChain::RunFrameActions()
 
     // When not hunting most keybindings won't have been registered, but
     // still skip the below logic that only applies while hunting.
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return;
 
     // Update the huntTime whenever we get fresh user input.
