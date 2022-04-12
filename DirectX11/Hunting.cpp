@@ -1303,7 +1303,7 @@ static void ReloadFixes(HackerDevice *device, void *private_data)
 
 static void DisableFix(HackerDevice *device, void *private_data)
 {
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return;
 
     LOG_INFO("show_original pressed - switching to original shaders\n");
@@ -1312,7 +1312,7 @@ static void DisableFix(HackerDevice *device, void *private_data)
 
 static void EnableFix(HackerDevice *device, void *private_data)
 {
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return;
 
     LOG_INFO("show_original released - switching to replaced shaders\n");
@@ -1351,7 +1351,7 @@ static void AnalyseFrame(HackerDevice *device, void *private_data)
         return _AnalyseFrameStop();
     }
 
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return;
 
     time(&ltime);
@@ -1426,7 +1426,7 @@ static void FreezePerf(HackerDevice *device, void *private_data)
 
 static void DisableDeferred(HackerDevice *device, void *private_data)
 {
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return;
 
     LOG_INFO("Disabling execution of deferred command lists\n");
@@ -1435,7 +1435,7 @@ static void DisableDeferred(HackerDevice *device, void *private_data)
 
 static void EnableDeferred(HackerDevice *device, void *private_data)
 {
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return;
 
     LOG_INFO("Enabling execution of deferred command lists\n");
@@ -1444,7 +1444,7 @@ static void EnableDeferred(HackerDevice *device, void *private_data)
 
 static void NextMarkingMode(HackerDevice *device, void *private_data)
 {
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return;
 
     G->marking_mode = (MarkingMode)((int)G->marking_mode + 1);
@@ -1457,7 +1457,7 @@ template <typename ItemType>
 static void HuntNext(char *type, std::set<ItemType> *visited,
         ItemType *selected, int *selected_pos)
 {
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return;
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
@@ -1553,7 +1553,7 @@ template <typename ItemType>
 static void HuntPrev(char *type, std::set<ItemType> *visited,
         ItemType *selected, int *selected_pos)
 {
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return;
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
@@ -1685,7 +1685,7 @@ err:
 
 static void MarkVertexBuffer(HackerDevice *device, void *private_data)
 {
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return;
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
@@ -1709,7 +1709,7 @@ static void MarkVertexBuffer(HackerDevice *device, void *private_data)
 
 static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 {
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return;
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
@@ -1733,7 +1733,7 @@ static void MarkIndexBuffer(HackerDevice *device, void *private_data)
 
 static bool MarkShaderBegin(char *type, UINT64 selected)
 {
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return false;
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
@@ -1867,7 +1867,7 @@ static void MarkRenderTarget(HackerDevice *device, void *private_data)
 {
     uint32_t hash;
 
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return;
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
@@ -1892,7 +1892,7 @@ static void TuneUp(HackerDevice *device, void *private_data)
 {
     intptr_t index = (intptr_t)private_data;
 
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return;
 
     G->gTuneValue[index] += G->gTuneStep;
@@ -1903,7 +1903,7 @@ static void TuneDown(HackerDevice *device, void *private_data)
 {
     intptr_t index = (intptr_t)private_data;
 
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return;
 
     G->gTuneValue[index] -= G->gTuneStep;
@@ -1930,7 +1930,7 @@ void TimeoutHuntingBuffers()
 // User has requested all shaders be re-enabled
 static void DoneHunting(HackerDevice *device, void *private_data)
 {
-    if (G->hunting != HUNTING_MODE_ENABLED)
+    if (G->hunting != Hunting_Mode::enabled)
         return;
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
@@ -1972,10 +1972,11 @@ static void DoneHunting(HackerDevice *device, void *private_data)
 
 static void ToggleHunting(HackerDevice *device, void *private_data)
 {
-    if (G->hunting == HUNTING_MODE_ENABLED)
-        G->hunting = HUNTING_MODE_SOFT_DISABLED;
+    if (G->hunting == Hunting_Mode::enabled)
+        G->hunting = Hunting_Mode::soft_Disabled;
     else
-        G->hunting = HUNTING_MODE_ENABLED;
+        G->hunting = Hunting_Mode::enabled;
+
     LOG_INFO("> Hunting toggled to %d\n", G->hunting);
 }
 
@@ -1988,7 +1989,7 @@ void ParseHuntingSection()
     static MarkingMode prev_marking_mode = MarkingMode::INVALID;
 
     LOG_INFO("[Hunting]\n");
-    G->hunting = GetIniInt(L"Hunting", L"hunting", 0, NULL);
+    G->hunting = static_cast<Hunting_Mode>(GetIniInt(L"Hunting", L"hunting", 0, NULL));
 
     // reload_config is registered even if not hunting - this allows us to
     // turn on hunting in the ini dynamically without having to relaunch
@@ -2013,7 +2014,7 @@ void ParseHuntingSection()
 
     // Don't register hunting keys when hard disabled. In this case the
     // only way to turn hunting on is to edit the ini file and reload it.
-    if (G->hunting == HUNTING_MODE_DISABLED)
+    if (G->hunting == Hunting_Mode::disabled)
         return;
 
     // Let's also allow an easy toggle of hunting itself, for speed and playability.

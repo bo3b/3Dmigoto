@@ -54,7 +54,7 @@ HackerContext* HackerContextFactory(
     // because frame analysis resource dumping still has some dependencies
     // on stat collection), so G->hunting is already a pre-requisite for
     // frame analysis:
-    if (G->hunting || gLogDebug)
+    if (G->hunting != Hunting_Mode::disabled || gLogDebug)
     {
         LOG_INFO("  Creating FrameAnalysisContext\n");
         return new FrameAnalysisContext(device1, context1);
@@ -761,7 +761,7 @@ void HackerContext::BeforeDraw(
         Profiling::start(&profiling_state);
 
     // If we are not hunting shaders, we should skip all of this shader management for a performance bump.
-    if (G->hunting == HUNTING_MODE_ENABLED)
+    if (G->hunting == Hunting_Mode::enabled)
     {
         UINT selected_vertex_buffer_pos;
         UINT selected_render_target_pos;
@@ -1391,7 +1391,7 @@ void STDMETHODCALLTYPE HackerContext::IASetVertexBuffers(
 {
     origContext1->IASetVertexBuffers(StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
 
-    if (G->hunting == HUNTING_MODE_ENABLED)
+    if (G->hunting == Hunting_Mode::enabled)
     {
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
         {
@@ -1520,7 +1520,7 @@ void STDMETHODCALLTYPE HackerContext::SOSetTargets(
 bool HackerContext::BeforeDispatch(
     dispatch_context* context)
 {
-    if (G->hunting == HUNTING_MODE_ENABLED)
+    if (G->hunting == Hunting_Mode::enabled)
     {
         if (G->DumpUsage)
             RecordComputeShaderStats();
@@ -1682,7 +1682,7 @@ void STDMETHODCALLTYPE HackerContext::CopySubresourceRegion(
     D3D11_BOX replace_src_box;
     UINT      replace_DstX = DstX;
 
-    if (G->hunting && G->track_texture_updates != 2)
+    if (G->hunting != Hunting_Mode::disabled && G->track_texture_updates != 2)
     {  // Any hunting mode - want to catch hash contamination even while soft disabled
         MarkResourceHashContaminated(pDstResource, DstSubresource, pSrcResource, SrcSubresource, 'S', DstX, DstY, DstZ, pSrcBox);
     }
@@ -1706,7 +1706,7 @@ void STDMETHODCALLTYPE HackerContext::CopyResource(
     ID3D11Resource* pDstResource,
     ID3D11Resource* pSrcResource)
 {
-    if (G->hunting && G->track_texture_updates != 2)
+    if (G->hunting != Hunting_Mode::disabled && G->track_texture_updates != 2)
     {  // Any hunting mode - want to catch hash contamination even while soft disabled
         MarkResourceHashContaminated(pDstResource, 0, pSrcResource, 0, 'C', 0, 0, 0, nullptr);
     }
@@ -1725,7 +1725,7 @@ void STDMETHODCALLTYPE HackerContext::UpdateSubresource(
     UINT             SrcRowPitch,
     UINT             SrcDepthPitch)
 {
-    if (G->hunting && G->track_texture_updates != 2)
+    if (G->hunting != Hunting_Mode::disabled && G->track_texture_updates != 2)
     {  // Any hunting mode - want to catch hash contamination even while soft disabled
         MarkResourceHashContaminated(pDstResource, DstSubresource, nullptr, 0, 'U', 0, 0, 0, nullptr);
     }
@@ -1950,7 +1950,7 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
         // lookup/find takes measurable amounts of CPU time.
         //
         // grumble grumble this optimisation caught me out *TWICE* grumble grumble -DSS
-        if (!G->mShaderOverrideMap.empty() || !shader_regex_groups.empty() || (G->hunting == HUNTING_MODE_ENABLED))
+        if (!G->mShaderOverrideMap.empty() || !shader_regex_groups.empty() || (G->hunting == Hunting_Mode::enabled))
         {
             ShaderMap::iterator i = lookup_shader_hash(shader);
             if (i != G->mShaders.end())
@@ -1958,7 +1958,7 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
                 *current_shader_hash = i->second;
                 LOG_DEBUG("  shader found: handle = %p, hash = %016I64x\n", *current_shader_handle, *current_shader_hash);
 
-                if ((G->hunting == HUNTING_MODE_ENABLED) && visited_shaders)
+                if ((G->hunting == Hunting_Mode::enabled) && visited_shaders)
                 {
                     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
                     {
@@ -1999,7 +1999,7 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
             repl_shader = static_cast<ID3D11Shader*>(it->second.replacement);
         }
 
-        if (G->hunting == HUNTING_MODE_ENABLED)
+        if (G->hunting == Hunting_Mode::enabled)
         {
             // Replacement map.
             if (G->marking_mode == MarkingMode::ORIGINAL || !G->fix_enabled)
@@ -2646,7 +2646,7 @@ void STDMETHODCALLTYPE HackerContext::IASetIndexBuffer(
     // This is only used for index buffer hunting nowadays since the
     // command list checks the hash on demand only when it is needed
     currentIndexBuffer = 0;
-    if (pIndexBuffer && G->hunting == HUNTING_MODE_ENABLED)
+    if (pIndexBuffer && G->hunting == Hunting_Mode::enabled)
     {
         currentIndexBuffer = GetResourceHash(pIndexBuffer);
         if (currentIndexBuffer)
@@ -2705,7 +2705,7 @@ void STDMETHODCALLTYPE HackerContext::OMSetRenderTargets(
 {
     Profiling::State profiling_state;
 
-    if (G->hunting == HUNTING_MODE_ENABLED)
+    if (G->hunting == Hunting_Mode::enabled)
     {
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
         {
@@ -2751,7 +2751,7 @@ void STDMETHODCALLTYPE HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(
 {
     Profiling::State profiling_state;
 
-    if (G->hunting == HUNTING_MODE_ENABLED)
+    if (G->hunting == Hunting_Mode::enabled)
     {
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
         {
