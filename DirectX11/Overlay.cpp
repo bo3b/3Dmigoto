@@ -698,7 +698,7 @@ void Overlay::DrawNotices(float *y)
 
     has_notice = false;
     for (level = 0; level < NUM_LOG_LEVELS; level++) {
-        if (log_levels[level].hide_in_release && G->hunting == HUNTING_MODE_DISABLED)
+        if (log_levels[level].hide_in_release && G->hunting == Hunting_Mode::disabled)
             continue;
 
         for (notice = notices.notices[level].begin(); notice != notices.notices[level].end() && displayed < MAX_SIMULTANEOUS_NOTICES; ) {
@@ -782,7 +782,7 @@ void Overlay::DrawOverlay(void)
     Profiling::State profiling_state;
     HRESULT hr;
 
-    if (G->hunting != HUNTING_MODE_ENABLED && !has_notice && Profiling::mode == Profiling::Mode::NONE)
+    if (G->hunting != Hunting_Mode::enabled && !has_notice && Profiling::mode == Profiling::Mode::NONE)
         return;
 
     if (Profiling::mode == Profiling::Mode::SUMMARY)
@@ -804,7 +804,7 @@ void Overlay::DrawOverlay(void)
             Vector2 textPosition;
             float y = 10.0f;
 
-            if (G->hunting == HUNTING_MODE_ENABLED) {
+            if (G->hunting == Hunting_Mode::enabled) {
                 // Top of screen
                 CreateShaderCountString(osdString);
                 strSize = font->MeasureString(osdString);
@@ -900,7 +900,7 @@ void LogOverlay(LogLevel level, char *fmt, ...)
     va_start(ap, fmt);
     LOG_INFO_V(fmt, ap);
 
-    if (!log_levels[level].hide_in_release || G->hunting) {
+    if (!log_levels[level].hide_in_release || (G->hunting != Hunting_Mode::disabled)) {
         // Using _vsnprintf_s so we don't crash if the message is too long for
         // the buffer, and truncate it instead - unless we can automatically
         // wrap the message, which DirectXTK doesn't appear to support, who

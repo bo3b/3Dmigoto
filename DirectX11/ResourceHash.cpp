@@ -1252,7 +1252,7 @@ out_unlock:
 
 bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource)
 {
-    if (G->hunting && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
+    if (G->hunting != Hunting_Mode::disabled && G->track_texture_updates != 2) { // Any hunting mode - want to catch hash contamination even while soft disabled
         MarkResourceHashContaminated(pResource, Subresource, NULL, 0, 'M', 0, 0, 0, NULL);
     }
 

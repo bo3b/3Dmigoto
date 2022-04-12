@@ -1490,7 +1490,7 @@ void FrameAnalysisChangeOptionsCommand::Run(CommandListState *state)
 
 bool FrameAnalysisChangeOptionsCommand::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
-    return (G->hunting == HUNTING_MODE_DISABLED || G->frame_analysis_registered == false);
+    return (G->hunting == Hunting_Mode::disabled || G->frame_analysis_registered == false);
 }
 
 static void fill_in_missing_info(ResourceCopyTargetType type, ID3D11Resource *resource, ID3D11View *view,
@@ -1656,7 +1656,7 @@ void FrameAnalysisDumpCommand::Run(CommandListState *state)
 
 bool FrameAnalysisDumpCommand::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
-    return (G->hunting == HUNTING_MODE_DISABLED || G->frame_analysis_registered == false);
+    return (G->hunting == Hunting_Mode::disabled || G->frame_analysis_registered == false);
 }
 
 UpscalingFlipBBCommand::UpscalingFlipBBCommand(wstring section) :
@@ -3098,7 +3098,7 @@ bool CommandListOperand::StaticEvaluate(float *ret, HackerDevice *device)
             break;
         case ParamOverrideType::HUNTING:
         case ParamOverrideType::FRAME_ANALYSIS:
-            if (G->hunting == HUNTING_MODE_DISABLED) {
+            if (G->hunting == Hunting_Mode::disabled) {
                 *ret = 0;
                 return true;
             }

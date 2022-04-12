@@ -25,10 +25,11 @@ class CommandListCommand;
 class CommandList;
 
 
-enum HuntingMode {
-    HUNTING_MODE_DISABLED = 0,
-    HUNTING_MODE_ENABLED = 1,
-    HUNTING_MODE_SOFT_DISABLED = 2,
+enum class Hunting_Mode : int
+{
+    disabled      = 0,
+    enabled       = 1,
+    soft_Disabled = 2,
 };
 
 enum class MarkingMode {
@@ -440,7 +441,7 @@ struct globals
     int gSurfaceSquareCreateMode;
     bool gForceNoNvAPI;
 
-    UINT hunting;
+    Hunting_Mode hunting;
     bool fix_enabled;
     bool config_reloadable;
     bool show_original_enabled;
@@ -623,7 +624,7 @@ struct globals
         mSelectedHullShaderPos(-1),
         mPinkingShader(0),
 
-        hunting(HUNTING_MODE_DISABLED),
+        hunting(Hunting_Mode::disabled),
         fix_enabled(true),
         config_reloadable(false),
         show_original_enabled(false),
