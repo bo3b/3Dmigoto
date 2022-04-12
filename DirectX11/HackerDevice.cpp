@@ -407,7 +407,7 @@ HRESULT HackerDevice::CreateIniParamResources()
 void HackerDevice::CreatePinkHuntingResources()
 {
     // Only create special pink mode PixelShader when requested.
-    if ((G->hunting != Hunting_Mode::disabled) && (G->marking_mode == MarkingMode::PINK || G->config_reloadable))
+    if (hunting_enabled() && (G->marking_mode == MarkingMode::PINK || G->config_reloadable))
     {
         char* hlsl =
             "float4 pshader() : SV_Target0"
@@ -1368,7 +1368,7 @@ HRESULT HackerDevice::ReplaceShaderFromShaderFixes(
 
     LOG_INFO("    shader successfully replaced.\n");
 
-    if (G->hunting != Hunting_Mode::disabled)
+    if (hunting_enabled())
     {
         // Hunting mode:  keep byte_code around for possible replacement or marking
         ID3DBlob* blob;
@@ -1435,7 +1435,7 @@ HRESULT HackerDevice::ProcessShaderNotFoundInShaderFixes(
     // have a copy for every shader seen. If we are performing any sort of deferred shader replacement, such as pipline
     // state analysis we always need to keep a copy of the original bytecode for later analysis. For now the shader
     // regex engine counts as deferred, though that may change with optimisations in the future.
-    if (G->hunting != Hunting_Mode::disabled || !shader_regex_groups.empty())
+    if (hunting_enabled() || !shader_regex_groups.empty())
     {
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
         {
@@ -1473,7 +1473,7 @@ bool HackerDevice::NeedOriginalShader(
     shader_override*            shader_override;
     ShaderOverrideMap::iterator i;
 
-    if (G->hunting != Hunting_Mode::disabled && (G->marking_mode == MarkingMode::ORIGINAL || G->config_reloadable || G->show_original_enabled))
+    if (hunting_enabled() && (G->marking_mode == MarkingMode::ORIGINAL || G->config_reloadable || G->show_original_enabled))
         return true;
 
     i = lookup_shaderoverride(hash);
@@ -1798,7 +1798,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateInputLayout(
 
     ret = origDevice1->CreateInputLayout(pInputElementDescs, NumElements, pShaderBytecodeWithInputSignature, BytecodeLength, ppInputLayout);
 
-    if (G->hunting != Hunting_Mode::disabled && SUCCEEDED(ret) && ppInputLayout && *ppInputLayout)
+    if (hunting_enabled() && SUCCEEDED(ret) && ppInputLayout && *ppInputLayout)
     {
         // When dumping vertex buffers to text file in frame analysis
         // we want to use the input layout to decode the buffer, but
@@ -1853,7 +1853,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateQuery(
     ID3D11Query**           ppQuery)
 {
     HRESULT hr = origDevice1->CreateQuery(pQueryDesc, ppQuery);
-    if (G->hunting != Hunting_Mode::disabled && SUCCEEDED(hr) && ppQuery && *ppQuery)
+    if (hunting_enabled() && SUCCEEDED(hr) && ppQuery && *ppQuery)
         G->mQueryTypes[*ppQuery] = AsyncQueryType::QUERY;
     return hr;
 }
@@ -1863,7 +1863,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreatePredicate(
     ID3D11Predicate**       ppPredicate)
 {
     HRESULT hr = origDevice1->CreatePredicate(pPredicateDesc, ppPredicate);
-    if (G->hunting != Hunting_Mode::disabled && SUCCEEDED(hr) && ppPredicate && *ppPredicate)
+    if (hunting_enabled() && SUCCEEDED(hr) && ppPredicate && *ppPredicate)
         G->mQueryTypes[*ppPredicate] = AsyncQueryType::PREDICATE;
     return hr;
 }
@@ -1873,7 +1873,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateCounter(
     ID3D11Counter**           ppCounter)
 {
     HRESULT hr = origDevice1->CreateCounter(pCounterDesc, ppCounter);
-    if (G->hunting != Hunting_Mode::disabled && SUCCEEDED(hr) && ppCounter && *ppCounter)
+    if (hunting_enabled() && SUCCEEDED(hr) && ppCounter && *ppCounter)
         G->mQueryTypes[*ppCounter] = AsyncQueryType::COUNTER;
     return hr;
 }
@@ -2221,7 +2221,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateBuffer(
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
         {
             // For stat collection and hash contamination tracking:
-            if (G->hunting != Hunting_Mode::disabled && pDesc)
+            if (hunting_enabled() && pDesc)
             {
                 G->mResourceInfo[hash]                           = *pDesc;
                 G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
@@ -2279,7 +2279,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateTexture1D(
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
         {
             // For stat collection and hash contamination tracking:
-            if (G->hunting != Hunting_Mode::disabled && pDesc)
+            if (hunting_enabled() && pDesc)
             {
                 G->mResourceInfo[hash]                           = *pDesc;
                 G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
@@ -2393,7 +2393,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateTexture2D(
         LEAVE_CRITICAL_SECTION(&G->mResourcesLock);
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
         {
-            if (G->hunting != Hunting_Mode::disabled && pDesc)
+            if (hunting_enabled() && pDesc)
             {
                 G->mResourceInfo[hash]                           = *pDesc;
                 G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;
@@ -2465,7 +2465,7 @@ HRESULT STDMETHODCALLTYPE HackerDevice::CreateTexture3D(
         LEAVE_CRITICAL_SECTION(&G->mResourcesLock);
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
         {
-            if (G->hunting != Hunting_Mode::disabled && pDesc)
+            if (hunting_enabled() && pDesc)
             {
                 G->mResourceInfo[hash]                           = *pDesc;
                 G->mResourceInfo[hash].initial_data_used_in_hash = !!data_hash;

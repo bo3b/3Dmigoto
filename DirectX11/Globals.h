@@ -25,13 +25,6 @@ class CommandListCommand;
 class CommandList;
 
 
-enum class Hunting_Mode : int
-{
-    disabled      = 0,
-    enabled       = 1,
-    soft_Disabled = 2,
-};
-
 enum class MarkingMode {
     SKIP,
     ORIGINAL,
