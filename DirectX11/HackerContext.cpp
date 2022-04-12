@@ -20,6 +20,7 @@
 #include "log.h"
 #include "Profiling.hpp"
 #include "ShaderRegex.hpp"
+#include "util.h"
 
 using namespace std;
 
@@ -54,7 +55,7 @@ HackerContext* HackerContextFactory(
     // because frame analysis resource dumping still has some dependencies
     // on stat collection), so G->hunting is already a pre-requisite for
     // frame analysis:
-    if (G->hunting != Hunting_Mode::disabled || gLogDebug)
+    if (hunting_enabled() || gLogDebug)
     {
         LOG_INFO("  Creating FrameAnalysisContext\n");
         return new FrameAnalysisContext(device1, context1);
@@ -1682,7 +1683,7 @@ void STDMETHODCALLTYPE HackerContext::CopySubresourceRegion(
     D3D11_BOX replace_src_box;
     UINT      replace_DstX = DstX;
 
-    if (G->hunting != Hunting_Mode::disabled && G->track_texture_updates != 2)
+    if (hunting_enabled() && G->track_texture_updates != 2)
     {  // Any hunting mode - want to catch hash contamination even while soft disabled
         MarkResourceHashContaminated(pDstResource, DstSubresource, pSrcResource, SrcSubresource, 'S', DstX, DstY, DstZ, pSrcBox);
     }
@@ -1706,7 +1707,7 @@ void STDMETHODCALLTYPE HackerContext::CopyResource(
     ID3D11Resource* pDstResource,
     ID3D11Resource* pSrcResource)
 {
-    if (G->hunting != Hunting_Mode::disabled && G->track_texture_updates != 2)
+    if (hunting_enabled() && G->track_texture_updates != 2)
     {  // Any hunting mode - want to catch hash contamination even while soft disabled
         MarkResourceHashContaminated(pDstResource, 0, pSrcResource, 0, 'C', 0, 0, 0, nullptr);
     }
@@ -1725,7 +1726,7 @@ void STDMETHODCALLTYPE HackerContext::UpdateSubresource(
     UINT             SrcRowPitch,
     UINT             SrcDepthPitch)
 {
-    if (G->hunting != Hunting_Mode::disabled && G->track_texture_updates != 2)
+    if (hunting_enabled() && G->track_texture_updates != 2)
     {  // Any hunting mode - want to catch hash contamination even while soft disabled
         MarkResourceHashContaminated(pDstResource, DstSubresource, nullptr, 0, 'U', 0, 0, 0, nullptr);
     }

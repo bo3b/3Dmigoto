@@ -207,6 +207,13 @@ void double_beep_exit()
     ExitProcess(0xc0000135);
 }
 
+// Hunting is considered enabled in either:
+//  1:showing overlay, or 2:soft disabled
+bool hunting_enabled()
+{
+    return (G->hunting != Hunting_Mode::disabled);
+}
+
 int _autoicmp(
     const wchar_t* s1,
     const wchar_t* s2)

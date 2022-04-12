@@ -1973,7 +1973,7 @@ static void DoneHunting(HackerDevice *device, void *private_data)
 static void ToggleHunting(HackerDevice *device, void *private_data)
 {
     if (G->hunting == Hunting_Mode::enabled)
-        G->hunting = Hunting_Mode::soft_Disabled;
+        G->hunting = Hunting_Mode::soft_disabled;
     else
         G->hunting = Hunting_Mode::enabled;
 

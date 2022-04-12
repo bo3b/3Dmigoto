@@ -93,6 +93,17 @@ DECLSPEC_NORETURN void double_beep_exit();
 
 // -----------------------------------------------------------------------------------------------
 
+enum class Hunting_Mode : int
+{
+    disabled      = 0,
+    enabled       = 1,
+    soft_disabled = 2,
+};
+
+bool hunting_enabled();
+
+// -----------------------------------------------------------------------------------------------
+
 int _autoicmp(const wchar_t* s1, const wchar_t* s2);
 int _autoicmp(const char* s1, const char* s2);
 

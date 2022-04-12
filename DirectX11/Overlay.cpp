@@ -900,7 +900,7 @@ void LogOverlay(LogLevel level, char *fmt, ...)
     va_start(ap, fmt);
     LOG_INFO_V(fmt, ap);
 
-    if (!log_levels[level].hide_in_release || (G->hunting != Hunting_Mode::disabled)) {
+    if (!log_levels[level].hide_in_release || hunting_enabled()) {
         // Using _vsnprintf_s so we don't crash if the message is too long for
         // the buffer, and truncate it instead - unless we can automatically
         // wrap the message, which DirectXTK doesn't appear to support, who
