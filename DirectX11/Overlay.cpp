@@ -7,6 +7,7 @@
 #include "Globals.h"
 #include "HackerContext.hpp"
 #include "HackerDevice.hpp"
+#include "Hunting.hpp"
 #include "Lock.h"
 #include "log.h"
 #include "Profiling.hpp"

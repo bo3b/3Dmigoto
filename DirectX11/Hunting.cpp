@@ -23,6 +23,13 @@
 using namespace std;
 
 
+// Hunting is considered enabled in either:
+//  1:showing overlay, or 2:soft disabled
+bool hunting_enabled()
+{
+    return (G->hunting != Hunting_Mode::disabled);
+}
+
 // bo3b: For this routine, we have a lot of warnings in x64, from converting a size_t result into the needed
 //  DWORD type for the Write calls.  These are writing 256 byte strings, so there is never a chance that it 
 //  will lose data, so rather than do anything heroic here, I'm just doing type casts on the strlen function.

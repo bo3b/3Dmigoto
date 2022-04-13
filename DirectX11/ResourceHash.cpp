@@ -1,12 +1,13 @@
 #include "ResourceHash.hpp"
 
 #include "Globals.h"
+#include "Hunting.hpp"
 #include "log.h"
 #include "Overlay.hpp"
 #include "Profiling.hpp"
 #include "util.h"
 
-// DirectXTK headers fail to include their own pre-requisits. We just want
+// DirectXTK headers fail to include their own pre-requisites. We just want
 // GetSurfaceInfo from LoaderHelpers. These are also order dependent.
 
 #include "DirectXTK/Src/pch.h"
