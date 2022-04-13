@@ -4,10 +4,10 @@
 #include "DecompileHLSL.h"
 #include "DirectXMath.h"
 #include "DLLMainHook.h"
+#include "Hunting.hpp"
 #include "Lock.h"
 #include "Profiling.hpp"
 #include "ResourceHash.hpp"
-#include "util.h"
 
 #include <ctime>
 #include <d3d11_1.h>

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "HackerDevice.hpp"
+#include <d3dcommon.h>
+#include <vector>
 
 // Hunting
 //  This code is to implement the Hunting mechanism as a separate compilation from the main wrapper code.
@@ -18,6 +19,17 @@ public:
     STDMETHOD(Open)(D3D_INCLUDE_TYPE include_type, LPCSTR file_name, LPCVOID parent_data, LPCVOID *data, UINT *bytes);
     STDMETHOD(Close)(LPCVOID data);
 };
+
+// -----------------------------------------------------------------------------------------------
+
+enum class Hunting_Mode : int
+{
+    disabled      = 0,
+    enabled       = 1,
+    soft_disabled = 2,
+};
+
+bool hunting_enabled();
 
 void TimeoutHuntingBuffers();
 void ParseHuntingSection();
