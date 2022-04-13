@@ -299,7 +299,7 @@ void HackerSwapChain::RunFrameActions()
         {
             G->analyse_frame = false;
             if (G->DumpUsage)
-                DumpUsage(G->ANALYSIS_PATH);
+                dump_usage(G->ANALYSIS_PATH);
             LogOverlay(LOG_INFO, "Frame analysis saved to %S\n", G->ANALYSIS_PATH);
         }
     }
@@ -360,7 +360,7 @@ void HackerSwapChain::RunFrameActions()
     {
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
         {
-            TimeoutHuntingBuffers();
+            timeout_hunting_buffers();
         }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
     }

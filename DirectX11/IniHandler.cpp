@@ -4324,7 +4324,7 @@ void LoadConfigFile()
         G->decompiler_settings.MatrixPos_MUL1 = read_string_parameter(setting);
 
     // [Hunting]
-    ParseHuntingSection();
+    parse_hunting_section();
 
     // Must be done prior to parsing any command list sections, as every
     // section registered in this set will be a candidate for optimisation:
