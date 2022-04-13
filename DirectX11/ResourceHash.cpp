@@ -1,6 +1,7 @@
 #include "ResourceHash.hpp"
 
 #include "Globals.h"
+#include "Hunting.hpp"
 #include "log.h"
 #include "Overlay.hpp"
 #include "Profiling.hpp"
