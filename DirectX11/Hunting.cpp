@@ -33,13 +33,13 @@ bool hunting_enabled()
 //  DWORD type for the Write calls.  These are writing 256 byte strings, so there is never a chance that it
 //  will lose data, so rather than do anything heroic here, I'm just doing type casts on the strlen function.
 
-DWORD castStrLen(
+DWORD cast_str_len(
     const char* string)
 {
     return static_cast<DWORD>(strlen(string));
 }
 
-static void DumpUsageResourceInfo(
+static void dump_usage_resource_info(
     HANDLE              f,
     std::set<uint32_t>* hashes,
     char*               tag)
@@ -69,14 +69,14 @@ static void DumpUsageResourceInfo(
             continue;
         }
         _snprintf_s(buf, 256, 256, "<%s orig_hash=%08lx ", tag, *orig_hash);
-        WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+        WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
         StrResourceDesc(buf, 256, *info);
-        WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+        WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
 
         if (info->hash_contaminated)
         {
             _snprintf_s(buf, 256, 256, " hash_contaminated=true");
-            WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+            WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
         }
 
         WriteFile(f, ">", 1, &written, nullptr);
@@ -85,19 +85,19 @@ static void DumpUsageResourceInfo(
         for (mu_iter = info->update_contamination.begin(); mu_iter != info->update_contamination.end(); mu_iter++)
         {
             _snprintf_s(buf, 256, 256, "\n  <UpdateSubresource subresource=%u></UpdateSubresource>", *mu_iter);
-            WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+            WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
             nl = true;
         }
         for (mu_iter = info->map_contamination.begin(); mu_iter != info->map_contamination.end(); mu_iter++)
         {
             _snprintf_s(buf, 256, 256, "\n  <CPUWrite subresource=%u></CPUWrite>", *mu_iter);
-            WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+            WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
             nl = true;
         }
         for (copy_iter = info->copy_contamination.begin(); copy_iter != info->copy_contamination.end(); copy_iter++)
         {
             _snprintf_s(buf, 256, 256, "\n  <CopiedFrom>%08lx</CopiedFrom>", *copy_iter);
-            WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+            WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
             nl = true;
         }
         for (region_iter = info->region_contamination.begin(); region_iter != info->region_contamination.end(); region_iter++)
@@ -112,68 +112,68 @@ static void DumpUsageResourceInfo(
             src_mip  = std::get<4>(region_key);
 
             _snprintf_s(buf, 256, 256, "\n  <SubresourceCopiedFrom partial=");
-            WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+            WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
 
             if (region->partial)
             {
                 _snprintf_s(buf, 256, 256, "true");
-                WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+                WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
             }
             else
             {
                 _snprintf_s(buf, 256, 256, "false");
-                WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+                WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
             }
 
             if (dst_idx || src_idx)
             {
                 _snprintf_s(buf, 256, 256, " DstIdx=%u SrcIdx=%u", dst_idx, src_idx);
-                WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+                WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
             }
 
             if (dst_mip || src_mip)
             {
                 _snprintf_s(buf, 256, 256, " DstMip=%u SrcMip=%u", dst_mip, src_mip);
-                WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+                WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
             }
 
             if (region->DstX || region->DstY || region->DstZ)
             {
                 _snprintf_s(buf, 256, 256, " DstX=%u DstY=%u DstZ=%u", region->DstX, region->DstY, region->DstZ);
-                WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+                WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
             }
 
             if (region->SrcBox.left || region->SrcBox.right != UINT_MAX)
             {
                 _snprintf_s(buf, 256, 256, " SrcLeft=%u SrcRight=%u", region->SrcBox.left, region->SrcBox.right);
-                WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+                WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
             }
             if (region->SrcBox.top || region->SrcBox.bottom != UINT_MAX)
             {
                 _snprintf_s(buf, 256, 256, " SrcTop=%u SrcBottom=%u", region->SrcBox.top, region->SrcBox.bottom);
-                WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+                WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
             }
             if (region->SrcBox.front || region->SrcBox.back != UINT_MAX)
             {
                 _snprintf_s(buf, 256, 256, " SrcFront=%u SrcBack=%u", region->SrcBox.front, region->SrcBox.back);
-                WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+                WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
             }
 
             _snprintf_s(buf, 256, 256, ">%08lx</SubresourceCopiedFrom>", src_hash);
-            WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+            WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
 
             nl = true;
         }
 
         if (nl)
-            WriteFile(f, "\n", castStrLen("\n"), &written, nullptr);
+            WriteFile(f, "\n", cast_str_len("\n"), &written, nullptr);
 
         _snprintf_s(buf, 256, 256, "</%s>\n", tag);
-        WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+        WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
     }
 }
 
-static void DumpUsageRegister(
+static void dump_usage_register(
     HANDLE                   f,
     char*                    tag,
     int                      id,
@@ -183,21 +183,21 @@ static void DumpUsageRegister(
     DWORD written;
 
     sprintf(buf, "  <%s", tag);
-    WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+    WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
 
     if (id != -1)
     {
         sprintf(buf, " id=%d", id);
-        WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+        WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
     }
 
     sprintf(buf, " handle=%p", info.handle);
-    WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+    WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
 
     if (info.orig_hash != info.hash)
     {
         sprintf(buf, " orig_hash=%08lx", info.orig_hash);
-        WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+        WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
     }
 
     try
@@ -205,17 +205,17 @@ static void DumpUsageRegister(
         if (G->mResourceInfo.at(info.orig_hash).hash_contaminated)
         {
             sprintf(buf, " hash_contaminated=true");
-            WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+            WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
         }
     }
     catch (std::out_of_range)
     {}
 
     sprintf(buf, ">%08lx</%s>\n", info.hash, tag);
-    WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+    WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
 }
 
-static void DumpShaderUsageInfo(
+static void dump_shader_usage_info(
     HANDLE                              f,
     std::map<UINT64, shader_info_data>* info_map,
     char*                               tag)
@@ -234,51 +234,51 @@ static void DumpShaderUsageInfo(
     for (i = info_map->begin(); i != info_map->end(); ++i)
     {
         sprintf(buf, "<%s hash=\"%016llx\">\n", tag, i->first);
-        WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+        WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
 
         // Does not apply to compute shaders:
         if (!i->second.PeerShaders.empty())
         {
             const char* peer_header = "  <PeerShaders>";
-            WriteFile(f, peer_header, castStrLen(peer_header), &written, nullptr);
+            WriteFile(f, peer_header, cast_str_len(peer_header), &written, nullptr);
 
             for (j = i->second.PeerShaders.begin(); j != i->second.PeerShaders.end(); ++j)
             {
                 sprintf(buf, "%016llx ", *j);
-                WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+                WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
             }
             const char* reg_header = "</PeerShaders>\n";
-            WriteFile(f, reg_header, castStrLen(reg_header), &written, nullptr);
+            WriteFile(f, reg_header, cast_str_len(reg_header), &written, nullptr);
         }
 
         for (k = i->second.ResourceRegisters.begin(); k != i->second.ResourceRegisters.end(); ++k)
         {
             for (o = k->second.begin(); o != k->second.end(); o++)
-                DumpUsageRegister(f, "Register", k->first, *o);
+                dump_usage_register(f, "Register", k->first, *o);
         }
 
         // Only applies to pixel shaders:
         for (m = i->second.RenderTargets.begin(), pos = 0; m != i->second.RenderTargets.end(); m++, pos++)
         {
             for (o = (*m).begin(); o != (*m).end(); o++)
-                DumpUsageRegister(f, "RenderTarget", pos, *o);
+                dump_usage_register(f, "RenderTarget", pos, *o);
         }
 
         // Only applies to pixel shaders:
         for (n = i->second.DepthTargets.begin(); n != i->second.DepthTargets.end(); n++)
         {
-            DumpUsageRegister(f, "DepthTarget", -1, *n);
+            dump_usage_register(f, "DepthTarget", -1, *n);
         }
 
         // Applies to pixel and compute shaders:
         for (k = i->second.UAVs.begin(); k != i->second.UAVs.end(); ++k)
         {
             for (o = k->second.begin(); o != k->second.end(); o++)
-                DumpUsageRegister(f, "UAV", k->first, *o);
+                dump_usage_register(f, "UAV", k->first, *o);
         }
 
         sprintf(buf, "</%s>\n", tag);
-        WriteFile(f, buf, castStrLen(buf), &written, nullptr);
+        WriteFile(f, buf, cast_str_len(buf), &written, nullptr);
     }
 }
 
@@ -306,18 +306,18 @@ void dump_usage(
         return;
     }
 
-    DumpShaderUsageInfo(f, &G->mVertexShaderInfo, "VertexShader");
-    DumpShaderUsageInfo(f, &G->mHullShaderInfo, "HullShader");
-    DumpShaderUsageInfo(f, &G->mDomainShaderInfo, "DomainShader");
-    DumpShaderUsageInfo(f, &G->mGeometryShaderInfo, "GeometryShader");
-    DumpShaderUsageInfo(f, &G->mPixelShaderInfo, "PixelShader");
-    DumpShaderUsageInfo(f, &G->mComputeShaderInfo, "ComputeShader");
+    dump_shader_usage_info(f, &G->mVertexShaderInfo, "VertexShader");
+    dump_shader_usage_info(f, &G->mHullShaderInfo, "HullShader");
+    dump_shader_usage_info(f, &G->mDomainShaderInfo, "DomainShader");
+    dump_shader_usage_info(f, &G->mGeometryShaderInfo, "GeometryShader");
+    dump_shader_usage_info(f, &G->mPixelShaderInfo, "PixelShader");
+    dump_shader_usage_info(f, &G->mComputeShaderInfo, "ComputeShader");
 
-    DumpUsageResourceInfo(f, &G->mRenderTargetInfo, "RenderTarget");
-    DumpUsageResourceInfo(f, &G->mDepthTargetInfo, "DepthTarget");
-    DumpUsageResourceInfo(f, &G->mUnorderedAccessInfo, "UAV");
-    DumpUsageResourceInfo(f, &G->mShaderResourceInfo, "Register");
-    DumpUsageResourceInfo(f, &G->mCopiedResourceInfo, "CopySource");
+    dump_usage_resource_info(f, &G->mRenderTargetInfo, "RenderTarget");
+    dump_usage_resource_info(f, &G->mDepthTargetInfo, "DepthTarget");
+    dump_usage_resource_info(f, &G->mUnorderedAccessInfo, "UAV");
+    dump_usage_resource_info(f, &G->mShaderResourceInfo, "Register");
+    dump_usage_resource_info(f, &G->mCopiedResourceInfo, "CopySource");
     CloseHandle(f);
 }
 
@@ -328,7 +328,7 @@ void dump_usage(
 // return the S_FALSE if it's already inited.
 
 template <typename HashType>
-static void SimpleScreenShot(
+static void simple_screen_shot(
     HackerDevice* device,
     HashType      hash,
     char*         shader_type)
@@ -365,7 +365,7 @@ static void SimpleScreenShot(
 // to get the second back buffer and create a stereo 3D JPS:
 
 template <typename HashType>
-static void StereoScreenShot(
+static void stereo_screen_shot(
     HackerDevice* device,
     HashType      hash,
     char*         shader_type)
@@ -390,7 +390,7 @@ static void StereoScreenShot(
     if (!stereo)
     {
         LOG_INFO("marking_actions=stereo_snapshot: Stereo disabled, falling back to mono snapshot\n");
-        SimpleScreenShot(device, hash, shader_type);
+        simple_screen_shot(device, hash, shader_type);
         return;
     }
 
@@ -456,7 +456,7 @@ out_release_bb:
 }
 
 template <typename HashType>
-static void MarkingScreenShots(
+static void marking_screen_shots(
     HackerDevice* device,
     HashType      hash,
     char*         short_type)
@@ -471,9 +471,9 @@ static void MarkingScreenShots(
     // remember what the HLSL affects. This will be with it disabled in the
     // picture.
     if (G->marking_actions & MarkingAction::MONO_SS)
-        SimpleScreenShot(device, hash, short_type);
+        simple_screen_shot(device, hash, short_type);
     if (G->marking_actions & MarkingAction::STEREO_SS)
-        StereoScreenShot(device, hash, short_type);
+        stereo_screen_shot(device, hash, short_type);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -481,7 +481,7 @@ static void MarkingScreenShots(
 // This is pretty heavyweight obviously, so it is only being done during Mark operations.
 // Todo: another copy/paste job, we really need some subroutines, utility library.
 
-static string Decompile(
+static string decompile(
     ID3DBlob* shader_byte_code,
     string*   asm_text)
 {
@@ -663,7 +663,7 @@ COM_DECLSPEC_NOTHROW HRESULT STDMETHODCALLTYPE MigotoIncludeHandler::Close(
 
 // Compile example taken from: http://msdn.microsoft.com/en-us/library/windows/desktop/hh968107(v=vs.85).aspx
 
-static bool RegenerateShader(
+static bool regenerate_shader(
     wchar_t*    shader_fix_path,
     wchar_t*    file_name,
     const char* shader_model,
@@ -845,7 +845,7 @@ static bool RegenerateShader(
 // new version will be used at VSSetShader and PSSetShader.
 // File names are uniform in the form: 3c69e169edc8cd5f-ps_replace.txt
 
-static bool ReloadShader(
+static bool reload_shader(
     wchar_t*      shader_path,
     wchar_t*      file_name,
     HackerDevice* device,
@@ -925,7 +925,7 @@ static bool ReloadShader(
 
                 // Compile anew. If timestamp is unchanged, the code is unchanged, continue to next shader.
                 ID3DBlob* shader_bytecode = nullptr;
-                if (!RegenerateShader(shader_path, file_name, shader_model.c_str(), hash, shader_type, shader_code, &time_stamp, header_line, &shader_bytecode, err_text))
+                if (!regenerate_shader(shader_path, file_name, shader_model.c_str(), hash, shader_type, shader_code, &time_stamp, header_line, &shader_bytecode, err_text))
                     continue;
 
                 // If we compiled but got nothing, that's a fatal error we need to report.
@@ -999,7 +999,7 @@ err:
     goto out;
 }
 
-static bool WriteASM(
+static bool write_asm(
     string*              asm_text,
     string*              hlsl_text,
     string*              err_text,
@@ -1058,7 +1058,7 @@ static bool WriteASM(
 
     // Lastly, reload the shader generated, to check for decompile errors, set it as the active
     // shader code, in case there are visual errors, and make it the match the code in the file.
-    return ReloadShader(G->SHADER_PATH, file_name, device, nullptr);
+    return reload_shader(G->SHADER_PATH, file_name, device, nullptr);
 }
 
 // Write the decompiled text as HLSL source code to the txt file.
@@ -1070,7 +1070,7 @@ static bool WriteASM(
 // and thus is not different than the file on disk.
 // If a file was already extant in the ShaderFixes, it will be picked up at game launch as the master shaderByteCode.
 
-static bool WriteHLSL(
+static bool write_hlsl(
     string*              asm_text,
     string*              hlsl_text,
     string*              err_text,
@@ -1085,7 +1085,7 @@ static bool WriteHLSL(
     bool    ret;
 
     // Try to decompile the current byte code into HLSL:
-    *hlsl_text = Decompile(shader_info.byteCode, asm_text);
+    *hlsl_text = decompile(shader_info.byteCode, asm_text);
     if (hlsl_text->empty())
         return false;
 
@@ -1114,7 +1114,7 @@ static bool WriteHLSL(
 
     // Lastly, reload the shader generated, to check for decompile errors, set it as the active
     // shader code, in case there are visual errors, and make it the match the code in the file.
-    ret = ReloadShader(G->SHADER_PATH, file_name, device, err_text);
+    ret = reload_shader(G->SHADER_PATH, file_name, device, err_text);
 
     if (!ret && remove_failed)
     {
@@ -1197,7 +1197,7 @@ static bool shader_already_dumped(
 // the replacement and build code to match.  This handles all the variants of preload, cache, hlsl
 // or not, and allows creating new files on a first run.  Should be handy.
 
-static void CopyToFixes(
+static void copy_to_fixes(
     UINT64        hash,
     HackerDevice* device)
 {
@@ -1234,7 +1234,7 @@ static void CopyToFixes(
 
                 if (patched)
                 {
-                    success = WriteASM(&asm_text, nullptr, nullptr, hash, iter.second, device, &tagline);
+                    success = write_asm(&asm_text, nullptr, nullptr, hash, iter.second, device, &tagline);
                     break;
                 }
             }
@@ -1248,7 +1248,7 @@ static void CopyToFixes(
                     break;
 
                 // Save the decompiled text, and ASM text into the HLSL .txt source file:
-                success = WriteHLSL(&asm_text, &hlsl_text, &err_text, hash, iter.second, device, asm_enabled);
+                success = write_hlsl(&asm_text, &hlsl_text, &err_text, hash, iter.second, device, asm_enabled);
                 if (success)
                     break;
                 if (asm_enabled)
@@ -1261,7 +1261,7 @@ static void CopyToFixes(
                 if (asm_text.empty())
                     break;
 
-                success = WriteASM(&asm_text, &hlsl_text, &err_text, hash, iter.second, device);
+                success = write_asm(&asm_text, &hlsl_text, &err_text, hash, iter.second, device);
                 break;
             }
 
@@ -1291,7 +1291,7 @@ static void CopyToFixes(
     }
 }
 
-static void TakeScreenShot(
+static void take_screen_shot(
     HackerDevice* wrapped,
     void*         private_data)
 {
@@ -1312,7 +1312,7 @@ static void TakeScreenShot(
 // shader so that the replaced shaders are consistent with those in
 // ShaderFixes. Especially useful if the decompiler creates a rendering issue
 // in a shader we actually don't need so we don't need to restart the game.
-static void RevertMissingShaders()
+static void revert_missing_shaders()
 {
     ID3D11DeviceChild*        replacement = nullptr;
     ShaderReloadMap::iterator i;
@@ -1358,7 +1358,7 @@ static void RevertMissingShaders()
 // the hlsl file and replace it.  This dual file scenario is expected to be rare, so
 // not doing anything heroic here to avoid that double load.
 
-static void ReloadFixes(
+static void reload_fixes(
     HackerDevice* device,
     void*         private_data)
 {
@@ -1392,7 +1392,7 @@ static void ReloadFixes(
         {
             do
             {
-                success = ReloadShader(G->SHADER_PATH, find_file_data.cFileName, device, nullptr) && success;
+                success = reload_shader(G->SHADER_PATH, find_file_data.cFileName, device, nullptr) && success;
             } while (FindNextFile(find, &find_file_data));
             FindClose(find);
         }
@@ -1400,7 +1400,7 @@ static void ReloadFixes(
         // Any shaders in the map not visited, we want to revert back
         // to original. We do this even if a shader failed, because we
         // should still revert other shaders.
-        RevertMissingShaders();
+        revert_missing_shaders();
 
         if (success)
         {
@@ -1414,7 +1414,7 @@ static void ReloadFixes(
     }
 }
 
-static void DisableFix(
+static void disable_fix(
     HackerDevice* device,
     void*         private_data)
 {
@@ -1425,7 +1425,7 @@ static void DisableFix(
     G->fix_enabled = false;
 }
 
-static void EnableFix(
+static void enable_fix(
     HackerDevice* device,
     void*         private_data)
 {
@@ -1436,7 +1436,7 @@ static void EnableFix(
     G->fix_enabled = true;
 }
 
-static void _AnalyseFrameStop()
+static void _analyse_frame_stop()
 {
     G->analyse_frame = false;
     if (G->DumpUsage)
@@ -1450,7 +1450,7 @@ static void _AnalyseFrameStop()
     LogOverlay(LOG_INFO, "Frame analysis saved to %S\n", G->ANALYSIS_PATH);
 }
 
-static void AnalyseFrame(
+static void analyse_frame(
     HackerDevice* device,
     void*         private_data)
 {
@@ -1473,7 +1473,7 @@ static void AnalyseFrame(
         // already in progress, abort:
         device->GetHackerContext()->FrameAnalysisLog("----- Frame analysis aborted -----\n");
         LogOverlay(LOG_NOTICE, "Frame analysis aborted\n");
-        return _AnalyseFrameStop();
+        return _analyse_frame_stop();
     }
 
     if (G->hunting != Hunting_Mode::enabled)
@@ -1507,7 +1507,7 @@ static void AnalyseFrame(
     G->analyse_frame    = true;
 }
 
-static void AnalyseFrameStop(
+static void analyse_frame_stop(
     HackerDevice* device,
     void*         private_data)
 {
@@ -1523,11 +1523,11 @@ static void AnalyseFrameStop(
         // complete frames it dumped so the user knows if they did it
         // right at a glance.
         LogOverlay(LOG_NOTICE, "Frame analysis hold mode ended after %i complete frames\n", G->analyse_frame_no - 1);
-        _AnalyseFrameStop();
+        _analyse_frame_stop();
     }
 }
 
-static void AnalysePerf(
+static void analyse_perf(
     HackerDevice* device,
     void*         private_data)
 {
@@ -1543,7 +1543,7 @@ static void AnalysePerf(
     Profiling::clear();
 }
 
-static void FreezePerf(
+static void freeze_perf(
     HackerDevice* device,
     void*         private_data)
 {
@@ -1556,7 +1556,7 @@ static void FreezePerf(
         LOG_INFO_W(L"%s", Profiling::text.c_str());
 }
 
-static void DisableDeferred(
+static void disable_deferred(
     HackerDevice* device,
     void*         private_data)
 {
@@ -1567,7 +1567,7 @@ static void DisableDeferred(
     G->deferred_contexts_enabled = false;
 }
 
-static void EnableDeferred(
+static void enable_deferred(
     HackerDevice* device,
     void*         private_data)
 {
@@ -1578,7 +1578,7 @@ static void EnableDeferred(
     G->deferred_contexts_enabled = true;
 }
 
-static void NextMarkingMode(
+static void next_marking_mode(
     HackerDevice* device,
     void*         private_data)
 {
@@ -1592,7 +1592,7 @@ static void NextMarkingMode(
 }
 
 template <typename ItemType>
-static void HuntNext(
+static void hunt_next(
     char*               type,
     std::set<ItemType>* visited,
     ItemType*           selected,
@@ -1637,11 +1637,11 @@ out:
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
-static void NextVertexBuffer(
+static void next_vertex_buffer(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntNext<uint32_t>("vertex buffer", &G->mVisitedVertexBuffers, &G->mSelectedVertexBuffer, &G->mSelectedVertexBufferPos);
+    hunt_next<uint32_t>("vertex buffer", &G->mVisitedVertexBuffers, &G->mSelectedVertexBuffer, &G->mSelectedVertexBufferPos);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
     {
@@ -1651,11 +1651,11 @@ static void NextVertexBuffer(
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
-static void NextIndexBuffer(
+static void next_index_buffer(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntNext<uint32_t>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
+    hunt_next<uint32_t>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
     {
@@ -1665,11 +1665,11 @@ static void NextIndexBuffer(
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
-static void NextPixelShader(
+static void next_pixel_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntNext<UINT64>("pixel shader", &G->mVisitedPixelShaders, &G->mSelectedPixelShader, &G->mSelectedPixelShaderPos);
+    hunt_next<UINT64>("pixel shader", &G->mVisitedPixelShaders, &G->mSelectedPixelShader, &G->mSelectedPixelShaderPos);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
     {
@@ -1679,11 +1679,11 @@ static void NextPixelShader(
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
-static void NextVertexShader(
+static void next_vertex_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntNext<UINT64>("vertex shader", &G->mVisitedVertexShaders, &G->mSelectedVertexShader, &G->mSelectedVertexShaderPos);
+    hunt_next<UINT64>("vertex shader", &G->mVisitedVertexShaders, &G->mSelectedVertexShader, &G->mSelectedVertexShaderPos);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
     {
@@ -1693,43 +1693,43 @@ static void NextVertexShader(
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
-static void NextComputeShader(
+static void next_compute_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntNext<UINT64>("compute shader", &G->mVisitedComputeShaders, &G->mSelectedComputeShader, &G->mSelectedComputeShaderPos);
+    hunt_next<UINT64>("compute shader", &G->mVisitedComputeShaders, &G->mSelectedComputeShader, &G->mSelectedComputeShaderPos);
 }
 
-static void NextGeometryShader(
+static void next_geometry_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntNext<UINT64>("geometry shader", &G->mVisitedGeometryShaders, &G->mSelectedGeometryShader, &G->mSelectedGeometryShaderPos);
+    hunt_next<UINT64>("geometry shader", &G->mVisitedGeometryShaders, &G->mSelectedGeometryShader, &G->mSelectedGeometryShaderPos);
 }
 
-static void NextDomainShader(
+static void next_domain_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntNext<UINT64>("domain shader", &G->mVisitedDomainShaders, &G->mSelectedDomainShader, &G->mSelectedDomainShaderPos);
+    hunt_next<UINT64>("domain shader", &G->mVisitedDomainShaders, &G->mSelectedDomainShader, &G->mSelectedDomainShaderPos);
 }
 
-static void NextHullShader(
+static void next_hull_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntNext<UINT64>("hull shader", &G->mVisitedHullShaders, &G->mSelectedHullShader, &G->mSelectedHullShaderPos);
+    hunt_next<UINT64>("hull shader", &G->mVisitedHullShaders, &G->mSelectedHullShader, &G->mSelectedHullShaderPos);
 }
 
-static void NextRenderTarget(
+static void next_render_target(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntNext<ID3D11Resource*>("render target", &G->mVisitedRenderTargets, &G->mSelectedRenderTarget, &G->mSelectedRenderTargetPos);
+    hunt_next<ID3D11Resource*>("render target", &G->mVisitedRenderTargets, &G->mSelectedRenderTarget, &G->mSelectedRenderTargetPos);
 }
 
 template <typename ItemType>
-static void HuntPrev(
+static void hunt_prev(
     char*               type,
     std::set<ItemType>* visited,
     ItemType*           selected,
@@ -1775,11 +1775,11 @@ out:
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
-static void PrevVertexBuffer(
+static void prev_vertex_buffer(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntPrev<uint32_t>("vertex buffer", &G->mVisitedVertexBuffers, &G->mSelectedVertexBuffer, &G->mSelectedVertexBufferPos);
+    hunt_prev<uint32_t>("vertex buffer", &G->mVisitedVertexBuffers, &G->mSelectedVertexBuffer, &G->mSelectedVertexBufferPos);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
     {
@@ -1789,11 +1789,11 @@ static void PrevVertexBuffer(
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
-static void PrevIndexBuffer(
+static void prev_index_buffer(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntPrev<uint32_t>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
+    hunt_prev<uint32_t>("index buffer", &G->mVisitedIndexBuffers, &G->mSelectedIndexBuffer, &G->mSelectedIndexBufferPos);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
     {
@@ -1803,11 +1803,11 @@ static void PrevIndexBuffer(
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
-static void PrevPixelShader(
+static void prev_pixel_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntPrev<UINT64>("pixel shader", &G->mVisitedPixelShaders, &G->mSelectedPixelShader, &G->mSelectedPixelShaderPos);
+    hunt_prev<UINT64>("pixel shader", &G->mVisitedPixelShaders, &G->mSelectedPixelShader, &G->mSelectedPixelShaderPos);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
     {
@@ -1817,11 +1817,11 @@ static void PrevPixelShader(
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
-static void PrevVertexShader(
+static void prev_vertex_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntPrev<UINT64>("vertex shader", &G->mVisitedVertexShaders, &G->mSelectedVertexShader, &G->mSelectedVertexShaderPos);
+    hunt_prev<UINT64>("vertex shader", &G->mVisitedVertexShaders, &G->mSelectedVertexShader, &G->mSelectedVertexShaderPos);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
     {
@@ -1831,43 +1831,43 @@ static void PrevVertexShader(
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
-static void PrevComputeShader(
+static void prev_compute_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntPrev<UINT64>("compute shader", &G->mVisitedComputeShaders, &G->mSelectedComputeShader, &G->mSelectedComputeShaderPos);
+    hunt_prev<UINT64>("compute shader", &G->mVisitedComputeShaders, &G->mSelectedComputeShader, &G->mSelectedComputeShaderPos);
 }
 
-static void PrevGeometryShader(
+static void prev_geometry_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntPrev<UINT64>("geometry shader", &G->mVisitedGeometryShaders, &G->mSelectedGeometryShader, &G->mSelectedGeometryShaderPos);
+    hunt_prev<UINT64>("geometry shader", &G->mVisitedGeometryShaders, &G->mSelectedGeometryShader, &G->mSelectedGeometryShaderPos);
 }
 
-static void PrevDomainShader(
+static void prev_domain_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntPrev<UINT64>("domain shader", &G->mVisitedDomainShaders, &G->mSelectedDomainShader, &G->mSelectedDomainShaderPos);
+    hunt_prev<UINT64>("domain shader", &G->mVisitedDomainShaders, &G->mSelectedDomainShader, &G->mSelectedDomainShaderPos);
 }
 
-static void PrevHullShader(
+static void prev_hull_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntPrev<UINT64>("hull shader", &G->mVisitedHullShaders, &G->mSelectedHullShader, &G->mSelectedHullShaderPos);
+    hunt_prev<UINT64>("hull shader", &G->mVisitedHullShaders, &G->mSelectedHullShader, &G->mSelectedHullShaderPos);
 }
 
-static void PrevRenderTarget(
+static void prev_render_target(
     HackerDevice* device,
     void*         private_data)
 {
-    HuntPrev<ID3D11Resource*>("render target", &G->mVisitedRenderTargets, &G->mSelectedRenderTarget, &G->mSelectedRenderTargetPos);
+    hunt_prev<ID3D11Resource*>("render target", &G->mVisitedRenderTargets, &G->mSelectedRenderTarget, &G->mSelectedRenderTargetPos);
 }
 
 template <typename HashType>
-static void HashToClipboard(
+static void hash_to_clipboard(
     char*    type,
     HashType hash)
 {
@@ -1905,7 +1905,7 @@ err:
     LogOverlay(LOG_WARNING, "> error copying %s hash %0*llx to clipboard\n", type, hash_len, static_cast<UINT64>(hash));
 }
 
-static void MarkVertexBuffer(
+static void mark_vertex_buffer(
     HackerDevice* device,
     void*         private_data)
 {
@@ -1915,9 +1915,9 @@ static void MarkVertexBuffer(
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
     {
         if (G->marking_actions & MarkingAction::CLIPBOARD)
-            HashToClipboard("vertex buffer", G->mSelectedVertexBuffer);
+            hash_to_clipboard("vertex buffer", G->mSelectedVertexBuffer);
 
-        MarkingScreenShots(device, G->mSelectedVertexBuffer, "vb");
+        marking_screen_shots(device, G->mSelectedVertexBuffer, "vb");
 
         LOG_INFO(">>>> Vertex buffer marked: vertex buffer hash = %08x\n", G->mSelectedVertexBuffer);
         for (std::set<UINT64>::iterator i = G->mSelectedVertexBuffer_PixelShader.begin(); i != G->mSelectedVertexBuffer_PixelShader.end(); ++i)
@@ -1931,7 +1931,7 @@ static void MarkVertexBuffer(
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
-static void MarkIndexBuffer(
+static void mark_index_buffer(
     HackerDevice* device,
     void*         private_data)
 {
@@ -1941,9 +1941,9 @@ static void MarkIndexBuffer(
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
     {
         if (G->marking_actions & MarkingAction::CLIPBOARD)
-            HashToClipboard("index buffer", G->mSelectedIndexBuffer);
+            hash_to_clipboard("index buffer", G->mSelectedIndexBuffer);
 
-        MarkingScreenShots(device, G->mSelectedIndexBuffer, "ib");
+        marking_screen_shots(device, G->mSelectedIndexBuffer, "ib");
 
         LOG_INFO(">>>> Index buffer marked: index buffer hash = %08x\n", G->mSelectedIndexBuffer);
         for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_PixelShader.begin(); i != G->mSelectedIndexBuffer_PixelShader.end(); ++i)
@@ -1957,7 +1957,7 @@ static void MarkIndexBuffer(
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
-static bool MarkShaderBegin(
+static bool mark_shader_begin(
     char*  type,
     UINT64 selected)
 {
@@ -1971,7 +1971,7 @@ static bool MarkShaderBegin(
     return true;
 }
 
-static void MarkShaderEnd(
+static void mark_shader_end(
     HackerDevice* device,
     char*         long_type,
     char*         short_type,
@@ -1984,9 +1984,9 @@ static void MarkShaderEnd(
     ClearNotices();
 
     if (G->marking_actions & MarkingAction::CLIPBOARD)
-        HashToClipboard(long_type, selected);
+        hash_to_clipboard(long_type, selected);
 
-    MarkingScreenShots(device, selected, short_type);
+    marking_screen_shots(device, selected, short_type);
 
     // We always test if a shader is already dumped even if neither HLSL or
     // asm dumping is enabled, as this provides useful feedback on the
@@ -1996,7 +1996,7 @@ static void MarkShaderEnd(
         if (G->marking_actions & MarkingAction::DUMP_MASK)
         {
             // Copy marked shader to ShaderFixes
-            CopyToFixes(selected, device);
+            copy_to_fixes(selected, device);
         }
     }
 
@@ -2006,11 +2006,11 @@ static void MarkShaderEnd(
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
-static void MarkPixelShader(
+static void mark_pixel_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    if (!MarkShaderBegin("pixel shader", G->mSelectedPixelShader))
+    if (!mark_shader_begin("pixel shader", G->mSelectedPixelShader))
         return;
     {
         for (std::set<uint32_t>::iterator i = G->mSelectedPixelShader_VertexBuffer.begin(); i != G->mSelectedPixelShader_VertexBuffer.end(); ++i)
@@ -2020,14 +2020,14 @@ static void MarkPixelShader(
         for (std::set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PeerShaders.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PeerShaders.end(); ++i)
             LOG_INFO("     visited peer shader hash = %016I64x\n", *i);
     }
-    MarkShaderEnd(device, "pixel shader", "ps", G->mSelectedPixelShader);
+    mark_shader_end(device, "pixel shader", "ps", G->mSelectedPixelShader);
 }
 
-static void MarkVertexShader(
+static void mark_vertex_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    if (!MarkShaderBegin("vertex shader", G->mSelectedVertexShader))
+    if (!mark_shader_begin("vertex shader", G->mSelectedVertexShader))
         return;
     {
         for (std::set<uint32_t>::iterator i = G->mSelectedVertexShader_VertexBuffer.begin(); i != G->mSelectedVertexShader_VertexBuffer.end(); ++i)
@@ -2037,58 +2037,58 @@ static void MarkVertexShader(
         for (std::set<UINT64>::iterator i = G->mVertexShaderInfo[G->mSelectedVertexShader].PeerShaders.begin(); i != G->mVertexShaderInfo[G->mSelectedVertexShader].PeerShaders.end(); ++i)
             LOG_INFO("     visited peer shader hash = %016I64x\n", *i);
     }
-    MarkShaderEnd(device, "vertex shader", "vs", G->mSelectedVertexShader);
+    mark_shader_end(device, "vertex shader", "vs", G->mSelectedVertexShader);
 }
 
-static void MarkComputeShader(
+static void mark_compute_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    if (!MarkShaderBegin("compute shader", G->mSelectedComputeShader))
+    if (!mark_shader_begin("compute shader", G->mSelectedComputeShader))
         return;
-    MarkShaderEnd(device, "computer shader", "cs", G->mSelectedComputeShader);
+    mark_shader_end(device, "computer shader", "cs", G->mSelectedComputeShader);
 }
 
-static void MarkGeometryShader(
+static void mark_geometry_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    if (!MarkShaderBegin("geometry shader", G->mSelectedGeometryShader))
+    if (!mark_shader_begin("geometry shader", G->mSelectedGeometryShader))
         return;
     {
         for (std::set<UINT64>::iterator i = G->mGeometryShaderInfo[G->mSelectedGeometryShader].PeerShaders.begin(); i != G->mGeometryShaderInfo[G->mSelectedGeometryShader].PeerShaders.end(); ++i)
             LOG_INFO("     visited peer shader hash = %016I64x\n", *i);
     }
-    MarkShaderEnd(device, "geometry shader", "gs", G->mSelectedGeometryShader);
+    mark_shader_end(device, "geometry shader", "gs", G->mSelectedGeometryShader);
 }
 
-static void MarkDomainShader(
+static void mark_domain_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    if (!MarkShaderBegin("domain shader", G->mSelectedDomainShader))
+    if (!mark_shader_begin("domain shader", G->mSelectedDomainShader))
         return;
     {
         for (std::set<UINT64>::iterator i = G->mDomainShaderInfo[G->mSelectedDomainShader].PeerShaders.begin(); i != G->mDomainShaderInfo[G->mSelectedDomainShader].PeerShaders.end(); ++i)
             LOG_INFO("     visited peer shader hash = %016I64x\n", *i);
     }
-    MarkShaderEnd(device, "domain shader", "ds", G->mSelectedDomainShader);
+    mark_shader_end(device, "domain shader", "ds", G->mSelectedDomainShader);
 }
 
-static void MarkHullShader(
+static void mark_hull_shader(
     HackerDevice* device,
     void*         private_data)
 {
-    if (!MarkShaderBegin("hull shader", G->mSelectedHullShader))
+    if (!mark_shader_begin("hull shader", G->mSelectedHullShader))
         return;
     {
         for (std::set<UINT64>::iterator i = G->mHullShaderInfo[G->mSelectedHullShader].PeerShaders.begin(); i != G->mHullShaderInfo[G->mSelectedHullShader].PeerShaders.end(); ++i)
             LOG_INFO("     visited peer shader hash = %016I64x\n", *i);
     }
-    MarkShaderEnd(device, "hull shader", "hs", G->mSelectedHullShader);
+    mark_shader_end(device, "hull shader", "hs", G->mSelectedHullShader);
 }
 
-static uint32_t LogRenderTarget(
+static uint32_t log_render_target(
     ID3D11Resource* target,
     char*           log_prefix)
 {
@@ -2115,7 +2115,7 @@ static uint32_t LogRenderTarget(
     return orig_hash;
 }
 
-static void MarkRenderTarget(
+static void mark_render_target(
     HackerDevice* device,
     void*         private_data)
 {
@@ -2126,22 +2126,22 @@ static void MarkRenderTarget(
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
     {
-        hash = LogRenderTarget(G->mSelectedRenderTarget, ">>>> Render target marked: ");
+        hash = log_render_target(G->mSelectedRenderTarget, ">>>> Render target marked: ");
         for (std::set<ID3D11Resource*>::iterator i = G->mSelectedRenderTargetSnapshotList.begin(); i != G->mSelectedRenderTargetSnapshotList.end(); ++i)
-            LogRenderTarget(*i, "       ");
+            log_render_target(*i, "       ");
 
         if (G->DumpUsage)
             dump_usage(nullptr);
 
         if (G->marking_actions & MarkingAction::CLIPBOARD)
-            HashToClipboard("render target", hash);
+            hash_to_clipboard("render target", hash);
 
-        MarkingScreenShots(device, hash, "rt");
+        marking_screen_shots(device, hash, "rt");
     }
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
-static void TuneUp(
+static void tune_up(
     HackerDevice* device,
     void*         private_data)
 {
@@ -2154,7 +2154,7 @@ static void TuneUp(
     LOG_INFO("> Value %Ii tuned to %f\n", index + 1, G->gTuneValue[index]);
 }
 
-static void TuneDown(
+static void tune_down(
     HackerDevice* device,
     void*         private_data)
 {
@@ -2184,7 +2184,7 @@ void timeout_hunting_buffers()
 }
 
 // User has requested all shaders be re-enabled
-static void DoneHunting(
+static void done_hunting(
     HackerDevice* device,
     void*         private_data)
 {
@@ -2228,7 +2228,7 @@ static void DoneHunting(
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
 
-static void ToggleHunting(
+static void toggle_hunting(
     HackerDevice* device,
     void*         private_data)
 {
@@ -2263,14 +2263,14 @@ void parse_hunting_section()
     // We're interested in performance measurements even in release mode
     // (possibly even especially in release mode), particularly if we want
     // a user to send us a screenshot of the profiling info:
-    RegisterIniKeyBinding(L"Hunting", L"monitor_performance", AnalysePerf, nullptr, no_repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"freeze_performance_monitor", FreezePerf, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"monitor_performance", analyse_perf, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"freeze_performance_monitor", freeze_perf, nullptr, no_repeat, nullptr);
     Profiling::interval = static_cast<INT64>(GetIniFloat(L"Hunting", L"monitor_performance_interval", 1.0f, nullptr) * 1000000);
 
     // Taking a screenshot does not really belong in the hunting section,
     // so we no longer make it depend on Hunting, but it still falls under
     // the [Hunting] section for historical reasons:
-    RegisterIniKeyBinding(L"Hunting", L"take_screenshot", TakeScreenShot, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"take_screenshot", take_screen_shot, nullptr, no_repeat, nullptr);
 
     // Don't register hunting keys when hard disabled. In this case the
     // only way to turn hunting on is to edit the ini file and reload it.
@@ -2278,7 +2278,7 @@ void parse_hunting_section()
         return;
 
     // Let's also allow an easy toggle of hunting itself, for speed and playability.
-    RegisterIniKeyBinding(L"Hunting", L"toggle_hunting", ToggleHunting, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"toggle_hunting", toggle_hunting, nullptr, no_repeat, nullptr);
 
     repeat = GetIniInt(L"Hunting", L"repeat_rate", repeat, nullptr);
 
@@ -2288,7 +2288,7 @@ void parse_hunting_section()
     new_marking_mode = GetIniEnumClass(L"Hunting", L"marking_mode", MarkingMode::INVALID, nullptr, MarkingModeNames);
     if (new_marking_mode != prev_marking_mode)
         G->marking_mode = prev_marking_mode = new_marking_mode;
-    RegisterIniKeyBinding(L"Hunting", L"next_marking_mode", NextMarkingMode, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"next_marking_mode", next_marking_mode, nullptr, no_repeat, nullptr);
 
     if (GetIniStringAndLog(L"Hunting", L"marking_actions", nullptr, buf, MAX_PATH))
         G->marking_actions = parse_enum_option_string<const wchar_t*, MarkingAction>(MarkingActionNames, buf, nullptr);
@@ -2305,56 +2305,56 @@ void parse_hunting_section()
             G->marking_actions |= MarkingAction::STEREO_SS;
     }
 
-    RegisterIniKeyBinding(L"Hunting", L"next_pixelshader", NextPixelShader, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"previous_pixelshader", PrevPixelShader, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"mark_pixelshader", MarkPixelShader, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"next_pixelshader", next_pixel_shader, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"previous_pixelshader", prev_pixel_shader, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"mark_pixelshader", mark_pixel_shader, nullptr, no_repeat, nullptr);
 
-    RegisterIniKeyBinding(L"Hunting", L"next_vertexbuffer", NextVertexBuffer, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"previous_vertexbuffer", PrevVertexBuffer, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"mark_vertexbuffer", MarkVertexBuffer, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"next_vertexbuffer", next_vertex_buffer, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"previous_vertexbuffer", prev_vertex_buffer, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"mark_vertexbuffer", mark_vertex_buffer, nullptr, no_repeat, nullptr);
 
-    RegisterIniKeyBinding(L"Hunting", L"next_indexbuffer", NextIndexBuffer, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"previous_indexbuffer", PrevIndexBuffer, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"mark_indexbuffer", MarkIndexBuffer, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"next_indexbuffer", next_index_buffer, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"previous_indexbuffer", prev_index_buffer, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"mark_indexbuffer", mark_index_buffer, nullptr, no_repeat, nullptr);
 
-    RegisterIniKeyBinding(L"Hunting", L"next_vertexshader", NextVertexShader, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"previous_vertexshader", PrevVertexShader, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"mark_vertexshader", MarkVertexShader, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"next_vertexshader", next_vertex_shader, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"previous_vertexshader", prev_vertex_shader, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"mark_vertexshader", mark_vertex_shader, nullptr, no_repeat, nullptr);
 
-    RegisterIniKeyBinding(L"Hunting", L"next_computeshader", NextComputeShader, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"previous_computeshader", PrevComputeShader, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"mark_computeshader", MarkComputeShader, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"next_computeshader", next_compute_shader, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"previous_computeshader", prev_compute_shader, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"mark_computeshader", mark_compute_shader, nullptr, no_repeat, nullptr);
 
-    RegisterIniKeyBinding(L"Hunting", L"next_geometryshader", NextGeometryShader, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"previous_geometryshader", PrevGeometryShader, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"mark_geometryshader", MarkGeometryShader, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"next_geometryshader", next_geometry_shader, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"previous_geometryshader", prev_geometry_shader, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"mark_geometryshader", mark_geometry_shader, nullptr, no_repeat, nullptr);
 
-    RegisterIniKeyBinding(L"Hunting", L"next_domainshader", NextDomainShader, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"previous_domainshader", PrevDomainShader, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"mark_domainshader", MarkDomainShader, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"next_domainshader", next_domain_shader, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"previous_domainshader", prev_domain_shader, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"mark_domainshader", mark_domain_shader, nullptr, no_repeat, nullptr);
 
-    RegisterIniKeyBinding(L"Hunting", L"next_hullshader", NextHullShader, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"previous_hullshader", PrevHullShader, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"mark_hullshader", MarkHullShader, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"next_hullshader", next_hull_shader, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"previous_hullshader", prev_hull_shader, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"mark_hullshader", mark_hull_shader, nullptr, no_repeat, nullptr);
 
-    RegisterIniKeyBinding(L"Hunting", L"next_rendertarget", NextRenderTarget, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"previous_rendertarget", PrevRenderTarget, nullptr, repeat, nullptr);
-    RegisterIniKeyBinding(L"Hunting", L"mark_rendertarget", MarkRenderTarget, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"next_rendertarget", next_render_target, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"previous_rendertarget", prev_render_target, nullptr, repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"mark_rendertarget", mark_render_target, nullptr, no_repeat, nullptr);
 
-    RegisterIniKeyBinding(L"Hunting", L"done_hunting", DoneHunting, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"done_hunting", done_hunting, nullptr, no_repeat, nullptr);
 
-    RegisterIniKeyBinding(L"Hunting", L"reload_fixes", ReloadFixes, nullptr, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"reload_fixes", reload_fixes, nullptr, no_repeat, nullptr);
 
-    G->show_original_enabled = RegisterIniKeyBinding(L"Hunting", L"show_original", DisableFix, EnableFix, no_repeat, nullptr);
+    G->show_original_enabled = RegisterIniKeyBinding(L"Hunting", L"show_original", disable_fix, enable_fix, no_repeat, nullptr);
 
-    G->frame_analysis_registered = RegisterIniKeyBinding(L"Hunting", L"analyse_frame", AnalyseFrame, AnalyseFrameStop, no_repeat, nullptr);
+    G->frame_analysis_registered = RegisterIniKeyBinding(L"Hunting", L"analyse_frame", analyse_frame, analyse_frame_stop, no_repeat, nullptr);
     if (GetIniStringAndLog(L"Hunting", L"analyse_options", nullptr, buf, MAX_PATH))
         G->def_analyse_options = parse_enum_option_string<wchar_t*, FrameAnalysisOptions>(FrameAnalysisOptionNames, buf, nullptr);
     else
         G->def_analyse_options = FrameAnalysisOptions::INVALID;
 
     // Quick hacks to see if DX11 features that we only have limited support for are responsible for anything important:
-    RegisterIniKeyBinding(L"Hunting", L"kill_deferred", DisableDeferred, EnableDeferred, no_repeat, nullptr);
+    RegisterIniKeyBinding(L"Hunting", L"kill_deferred", disable_deferred, enable_deferred, no_repeat, nullptr);
 
     G->ENABLE_TUNE = GetIniBool(L"Hunting", L"tune_enable", false, nullptr);
     G->gTuneStep   = GetIniFloat(L"Hunting", L"tune_step", 1.0f, nullptr);
@@ -2362,10 +2362,10 @@ void parse_hunting_section()
     for (i = 0; i < 4; i++)
     {
         _snwprintf(buf, 16, L"tune%Ii_up", i + 1);
-        RegisterIniKeyBinding(L"Hunting", buf, TuneUp, nullptr, repeat, reinterpret_cast<void*>(i));
+        RegisterIniKeyBinding(L"Hunting", buf, tune_up, nullptr, repeat, reinterpret_cast<void*>(i));
 
         _snwprintf(buf, 16, L"tune%Ii_down", i + 1);
-        RegisterIniKeyBinding(L"Hunting", buf, TuneDown, nullptr, repeat, reinterpret_cast<void*>(i));
+        RegisterIniKeyBinding(L"Hunting", buf, tune_down, nullptr, repeat, reinterpret_cast<void*>(i));
     }
 
     G->verbose_overlay = GetIniBool(L"Hunting", L"verbose_overlay", false, nullptr);
