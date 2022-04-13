@@ -17,6 +17,7 @@
 #include "Globals.h"
 #include "HackerDevice.hpp"
 #include "HookedContext.h"
+#include "Hunting.hpp"
 #include "log.h"
 #include "Profiling.hpp"
 #include "ShaderRegex.hpp"
