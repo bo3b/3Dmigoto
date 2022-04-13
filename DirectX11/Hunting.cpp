@@ -248,7 +248,7 @@ static void DumpShaderUsageInfo(HANDLE f, std::map<UINT64, shader_info_data> *in
 }
 
 // Expects the caller to have entered the critical section.
-void DumpUsage(wchar_t *dir)
+void dump_usage(wchar_t *dir)
 {
     wchar_t path[MAX_PATH];
     if (dir) {
@@ -466,7 +466,7 @@ static string Decompile(ID3DBlob *shader_byte_code, string *asm_text)
 MigotoIncludeHandler::MigotoIncludeHandler(const char *path)
 {
     LOG_DEBUG("      MigotoIncludeHandler %p for \"%s\"\n", this, path);
-    push_dir(path);
+    PushDir(path);
 }
 
 // This tracks any directories mentioned when including files, so that files in
@@ -481,7 +481,7 @@ MigotoIncludeHandler::MigotoIncludeHandler(const char *path)
 // them we can ensure that we are including the correct file. We never see an
 // Open or Close call for a - we have to pass the path for a into the handler
 // separately from the D3DCompile call, which we do via the above constructor.
-void MigotoIncludeHandler::push_dir(const char *path)
+void MigotoIncludeHandler::PushDir(const char *path)
 {
     // D3DCompile accepts both forward and backslashes as path separators:
     const char *dir_sep = max(strrchr(path, '\\'), strrchr(path, '/'));
@@ -489,12 +489,12 @@ void MigotoIncludeHandler::push_dir(const char *path)
     // May not have a path separator if including from the current working
     // directory instead of ShaderFixes:
     if (dir_sep)
-        dir_stack.push_back(string(path, dir_sep - path + 1));
+        dirStack.push_back(string(path, dir_sep - path + 1));
     else
-        dir_stack.push_back("");
+        dirStack.push_back("");
 }
 
-STDMETHODIMP MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE include_type, LPCSTR file_name, LPCVOID parent_data, LPCVOID *data, UINT *bytes)
+HRESULT STDMETHODCALLTYPE MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE include_type, LPCSTR file_name, LPCVOID parent_data, LPCVOID *data, UINT *bytes)
 {
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> codec;
     char *buf = NULL;
@@ -521,9 +521,9 @@ STDMETHODIMP MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE include_type, LPCSTR fi
     // contrived enough to ignore it and drop the option, but its safer to
     // include the option.
     if (G->recursive_include)
-        apath = dir_stack.back() + file_name;
+        apath = dirStack.back() + file_name;
     else
-        apath = dir_stack.front() + file_name;
+        apath = dirStack.front() + file_name;
     wpath = codec.from_bytes(apath);
 
     f = CreateFile(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -572,7 +572,7 @@ STDMETHODIMP MigotoIncludeHandler::Open(D3D_INCLUDE_TYPE include_type, LPCSTR fi
 
     *bytes = size;
     *data = buf;
-    push_dir(apath.c_str());
+    PushDir(apath.c_str());
     LOG_DEBUG("       -> %p\n", buf);
 
     return S_OK;
@@ -583,11 +583,11 @@ err_free:
     return E_FAIL;
 }
 
-STDMETHODIMP MigotoIncludeHandler::Close(LPCVOID data)
+HRESULT STDMETHODCALLTYPE MigotoIncludeHandler::Close(LPCVOID data)
 {
     LOG_DEBUG("      MigotoIncludeHandler::Close(%p, %p)\n", this, data);
     delete [] data;
-    dir_stack.pop_back();
+    dirStack.pop_back();
     return S_OK;
 }
 
@@ -1331,7 +1331,7 @@ static void _AnalyseFrameStop()
     G->analyse_frame = false;
     if (G->DumpUsage) {
         ENTER_CRITICAL_SECTION(&G->mCriticalSection);
-            DumpUsage(G->ANALYSIS_PATH);
+            dump_usage(G->ANALYSIS_PATH);
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
     }
     LogOverlay(LOG_INFO, "Frame analysis saved to %S\n", G->ANALYSIS_PATH);
@@ -1709,7 +1709,7 @@ static void MarkVertexBuffer(HackerDevice *device, void *private_data)
         LOG_INFO("     visited vertex shader hash = %016I64x\n", *i);
 
     if (G->DumpUsage)
-        DumpUsage(NULL);
+        dump_usage(NULL);
 
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
@@ -1733,7 +1733,7 @@ static void MarkIndexBuffer(HackerDevice *device, void *private_data)
         LOG_INFO("     visited vertex shader hash = %016I64x\n", *i);
 
     if (G->DumpUsage)
-        DumpUsage(NULL);
+        dump_usage(NULL);
 
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
@@ -1773,7 +1773,7 @@ static void MarkShaderEnd(HackerDevice *device, char *long_type, char *short_typ
     }
 
     if (G->DumpUsage)
-        DumpUsage(NULL);
+        dump_usage(NULL);
 
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 }
@@ -1884,7 +1884,7 @@ static void MarkRenderTarget(HackerDevice *device, void *private_data)
         LogRenderTarget(*i, "       ");
 
     if (G->DumpUsage)
-        DumpUsage(NULL);
+        dump_usage(NULL);
 
     if (G->marking_actions & MarkingAction::CLIPBOARD)
         HashToClipboard("render target", hash);
@@ -1921,7 +1921,7 @@ static void TuneDown(HackerDevice *device, void *private_data)
 // Start with a fresh set of shaders in the scene - either called explicitly
 // via keypress, or after no hunting for 1 minute (see comment in RunFrameActions)
 // Caller must have taken G->mCriticalSection (if enabled)
-void TimeoutHuntingBuffers()
+void timeout_hunting_buffers()
 {
     G->mVisitedVertexBuffers.clear();
     G->mVisitedIndexBuffers.clear();
@@ -1942,7 +1942,7 @@ static void DoneHunting(HackerDevice *device, void *private_data)
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
-    TimeoutHuntingBuffers();
+    timeout_hunting_buffers();
 
     G->mSelectedPixelShader = -1;
     G->mSelectedPixelShaderPos = -1;
@@ -1987,7 +1987,7 @@ static void ToggleHunting(HackerDevice *device, void *private_data)
     LOG_INFO("> Hunting toggled to %d\n", G->hunting);
 }
 
-void ParseHuntingSection()
+void parse_hunting_section()
 {
     intptr_t i;
     wchar_t buf[MAX_PATH];
