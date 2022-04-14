@@ -250,7 +250,7 @@ IniSections ini_sections;
 // given prefix.
 static IniSections::iterator prefix_upper_bound(
     IniSections& sections,
-    wstring&     prefix)
+    const wstring&     prefix)
 {
     IniSections::iterator i;
 
@@ -1539,7 +1539,8 @@ static void ParseIncludedIniFiles()
 
     // Do this before removing [Include] from ini_sections. TODO: Allow
     // recursively included files to modify the exclude mid-recursion:
-    exclude = globbing_vector_to_regex(GetIniStringMultipleKeys(L"Include", L"exclude_recursive"));
+    vector<wstring> vect = GetIniStringMultipleKeys(L"Include", L"exclude_recursive");
+    exclude = globbing_vector_to_regex(vect);
 
     do
     {
@@ -2713,7 +2714,7 @@ static vector<string> split_string(
 
 template <typename T>
 static set<T> vec_to_set(
-    vector<T>& v)
+    const vector<T>& v)
 {
     return set<T>(v.begin(), v.end());
 }
