@@ -45,14 +45,17 @@ struct OverrideParam
 
     char chr() const
     {
-        // Oh come on C++, a pointer to member is just an offset you
-        // could test directly... Fine, let's dance:
-        switch ((uintptr_t)&((DirectX::XMFLOAT4*)(NULL)->*component)) {
-            case (offsetof(DirectX::XMFLOAT4, x)): return 'x';
-            case (offsetof(DirectX::XMFLOAT4, y)): return 'y';
-            case (offsetof(DirectX::XMFLOAT4, z)): return 'z';
-            case (offsetof(DirectX::XMFLOAT4, w)): return 'w';
-        }
+        size_t offset = reinterpret_cast<uintptr_t>(&(static_cast<DirectX::XMFLOAT4*>((nullptr))->*component));
+
+        if (offset == offsetof(DirectX::XMFLOAT4, x))
+            return 'x';
+        if (offset == offsetof(DirectX::XMFLOAT4, y))
+            return 'y';
+        if (offset == offsetof(DirectX::XMFLOAT4, z))
+            return 'z';
+        if (offset == offsetof(DirectX::XMFLOAT4, w))
+            return 'w';
+
         return '?';
     };
 };
