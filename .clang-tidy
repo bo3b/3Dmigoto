@@ -15,10 +15,13 @@ CheckOptions:
  - { key: readability-identifier-naming.MacroDefinitionIgnoredRegexp,  value: "__NVSTEREO__" }
  - { key: readability-identifier-naming.GlobalConstantCase,     value: lower_case }
  - { key: readability-identifier-naming.ConstantCase,           value: lower_case }
+
  - { key: readability-identifier-naming.GlobalFunctionCase,     value: lower_case }
  - { key: readability-identifier-naming.GlobalFunctionIgnoredRegexp,  value: ".*_FVF|name_from_IID|cursor_upscaling_bypass_.*|fn_orig_.*|lpvtbl_.*|hooked_.*|D3D11.*|D3DKMT.*|_?OpenAdapter10_2|_?OpenAdapter10|CBTProc" }
  - { key: readability-identifier-naming.FunctionCase,           value: lower_case }
  - { key: readability-identifier-naming.FunctionIgnoredRegexp,  value: "parse_VKey|_check_interface|hooked_.*|.*_DWORD|_?D3DKMT.*|trampoline_.*|QueryInterface|AddRef|Release|CreateBuffer|CreateTexture1D|CreateTexture2D|CreateTexture3D|CreateShaderResourceView|CreateUnorderedAccessView|CreateRenderTargetView|CreateDepthStencilView|CreateInputLayout|CreateVertexShader|CreateGeometryShader|CreateGeometryShaderWithStreamOutput|CreatePixelShader|CreateHullShader|CreateDomainShader|CreateComputeShader|CreateClassLinkage|CreateBlendState|CreateDepthStencilState|CreateRasterizerState|CreateSamplerState|CreateQuery|CreatePredicate|CreateCounter|CreateDeferredContext|OpenSharedResource|CheckFormatSupport|CheckMultisampleQualityLevels|CheckCounterInfo|CheckCounter|CheckFeatureSupport|GetPrivateData|SetPrivateData|SetPrivateDataInterface|GetFeatureLevel|GetCreationFlags|GetDeviceRemovedReason|GetImmediateContext|SetExceptionMode|GetExceptionMode" }
+ - { key: readability-identifier-naming.ConstexprFunctionCase   value: lower_case }
+
  - { key: readability-identifier-naming.ParameterCase,          value: lower_case }
 #
 # Every ID3D11Device1 input parameter from regex filtering:

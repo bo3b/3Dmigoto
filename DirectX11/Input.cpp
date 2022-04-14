@@ -478,7 +478,7 @@ bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR ini_key,
     shared_ptr<InputCallbacks> callbacks = make_shared<InputCallbacks>(down_cb, up_cb, private_data);
     wchar_t keyName[MAX_PATH];
 
-    if (!GetIniString(app, ini_key, 0, keyName, MAX_PATH))
+    if (!get_ini_string(app, ini_key, 0, keyName, MAX_PATH))
         return false;
 
     RegisterKeyBinding(ini_key, keyName, callbacks, auto_repeat, 0, 0);
@@ -494,7 +494,7 @@ wstring user_friendly_ini_key_binding(LPCWSTR app, LPCWSTR iniKey)
     wchar_t keyName[MAX_PATH];
     wstring ret;
 
-    if (!GetIniString(app, iniKey, 0, keyName, MAX_PATH))
+    if (!get_ini_string(app, iniKey, 0, keyName, MAX_PATH))
         return L"<None>";
 
     std::wistringstream tokens(keyName);

@@ -51,7 +51,7 @@ static bool initialize_dll()
     if (G->gInitialized)
         return true;
 
-    LoadConfigFile();
+    load_config_file();
 
     // Preload OUR nvapi before we call init because we need some of our calls.
 #if (_WIN64)
@@ -133,7 +133,7 @@ void destroy_dll()
     if (LogFile)
     {
         LOG_INFO("Destroying DLL...\n");
-        SavePersistentSettings();
+        save_persistent_settings();
         fclose(LogFile);
     }
 }

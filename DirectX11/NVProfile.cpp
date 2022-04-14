@@ -1671,7 +1671,7 @@ void CALLBACK Install3DMigotoDriverProfileW(HWND hwnd, HINSTANCE hinst, LPWSTR l
     *(migoto_dir++) = '\0';
     exe_path = lpszCmdLine;
 
-    LoadProfileManagerConfig(migoto_dir);
+    load_profile_manager_config(migoto_dir);
 
     // Preload OUR nvapi before we call init because we need some of our calls.
 #if(_WIN64)

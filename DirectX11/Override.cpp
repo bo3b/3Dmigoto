@@ -45,13 +45,13 @@ void Override::ParseIniSection(LPCWSTR section)
 
     get_section_namespace(section, &ini_namespace);
 
-    overrideSeparation = GetIniFloat(section, L"separation", FLT_MAX, NULL);
-    overrideConvergence = GetIniFloat(section, L"convergence", FLT_MAX, NULL);
+    overrideSeparation = get_ini_float(section, L"separation", FLT_MAX, NULL);
+    overrideConvergence = get_ini_float(section, L"convergence", FLT_MAX, NULL);
 
-    GetIniSection(&section_vec, section);
+    get_ini_section(&section_vec, section);
     for (entry = section_vec->begin(); entry < section_vec->end(); entry++) {
         if (parse_ini_param_name(entry->first.c_str(), &param_idx, &param_component)) {
-            val = GetIniFloat(section, entry->first.c_str(), FLT_MAX, NULL);
+            val = get_ini_float(section, entry->first.c_str(), FLT_MAX, NULL);
             if (val != FLT_MAX) {
                 // Reserve space in IniParams for this variable:
                 G->iniParamsReserved = max(G->iniParamsReserved, param_idx + 1);
@@ -64,20 +64,20 @@ void Override::ParseIniSection(LPCWSTR section)
                 continue;
             }
 
-            val = GetIniFloat(section, entry->first.c_str(), FLT_MAX, NULL);
+            val = get_ini_float(section, entry->first.c_str(), FLT_MAX, NULL);
             if (val != FLT_MAX) {
                 overrideVars[var] = val;
             }
         }
     }
 
-    transition = GetIniInt(section, L"transition", 0, NULL);
-    releaseTransition = GetIniInt(section, L"release_transition", 0, NULL);
+    transition = get_ini_int(section, L"transition", 0, NULL);
+    releaseTransition = get_ini_int(section, L"release_transition", 0, NULL);
 
-    transitionType = GetIniEnumClass(section, L"transition_type", TransitionType::LINEAR, NULL, TransitionTypeNames);
-    releaseTransitionType = GetIniEnumClass(section, L"release_transition_type", TransitionType::LINEAR, NULL, TransitionTypeNames);
+    transitionType = get_ini_enum_class(section, L"transition_type", TransitionType::LINEAR, NULL, TransitionTypeNames);
+    releaseTransitionType = get_ini_enum_class(section, L"release_transition_type", TransitionType::LINEAR, NULL, TransitionTypeNames);
 
-    if (GetIniStringAndLog(section, L"condition", 0, buf, MAX_PATH)) {
+    if (get_ini_string_and_log(section, L"condition", 0, buf, MAX_PATH)) {
         wstring sbuf(buf);
         // Expressions are case insensitive:
         std::transform(sbuf.begin(), sbuf.end(), sbuf.begin(), ::towlower);
@@ -97,7 +97,7 @@ void Override::ParseIniSection(LPCWSTR section)
     // subset of the command list syntax it does not itself make it any
     // harder to turn the entire section into a command list if we wanted
     // to in the future, provided we can deal with the other problems.
-    if (GetIniStringAndLog(section, L"run", NULL, buf, MAX_PATH)) {
+    if (get_ini_string_and_log(section, L"run", NULL, buf, MAX_PATH)) {
         wstring sbuf(buf);
 
         if (!parse_run_explicit_command_list(section, L"run", &sbuf, NULL, &activateCommandList, &deactivateCommandList, &ini_namespace))
@@ -265,34 +265,34 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
     int param_idx;
     float val;
 
-    wrap = GetIniBool(section, L"wrap", true, NULL);
-    smart = GetIniBool(section, L"smart", true, NULL);
+    wrap = get_ini_bool(section, L"wrap", true, NULL);
+    smart = get_ini_bool(section, L"smart", true, NULL);
 
-    GetIniSection(&section_vec, section);
+    get_ini_section(&section_vec, section);
     for (entry = section_vec->begin(); entry < section_vec->end(); entry++) {
         if (parse_ini_param_name(entry->first.c_str(), &param_idx, &param_component)) {
             // Reserve space in IniParams for this variable:
             G->iniParamsReserved = max(G->iniParamsReserved, param_idx + 1);
 
-            GetIniString(section, entry->first.c_str(), 0, &param_bufs[OverrideParam(param_idx, param_component)].buf);
+            get_ini_string(section, entry->first.c_str(), 0, &param_bufs[OverrideParam(param_idx, param_component)].buf);
         } else if (entry->first.c_str()[0] == L'$') {
             if (!parse_command_list_var_name(entry->first.c_str(), &entry->ini_namespace, &var)) {
                 LogOverlay(LOG_WARNING, "WARNING: Undeclared variable %S\n", entry->first.c_str());
                 continue;
             }
 
-            GetIniString(section, entry->first.c_str(), 0, &var_bufs[var].buf);
+            get_ini_string(section, entry->first.c_str(), 0, &var_bufs[var].buf);
         }
     }
 
-    GetIniString(section, L"separation", 0, &separation.buf);
-    GetIniString(section, L"convergence", 0, &convergence.buf);
-    GetIniString(section, L"transition", 0, &transition.buf);
-    GetIniString(section, L"release_transition", 0, &release_transition.buf);
-    GetIniString(section, L"transition_type", 0, &transition_type.buf);
-    GetIniString(section, L"release_transition_type", 0, &release_transition_type.buf);
-    GetIniString(section, L"condition", 0, &condition.buf);
-    GetIniString(section, L"run", 0, &run.buf);
+    get_ini_string(section, L"separation", 0, &separation.buf);
+    get_ini_string(section, L"convergence", 0, &convergence.buf);
+    get_ini_string(section, L"transition", 0, &transition.buf);
+    get_ini_string(section, L"release_transition", 0, &release_transition.buf);
+    get_ini_string(section, L"transition_type", 0, &transition_type.buf);
+    get_ini_string(section, L"release_transition_type", 0, &release_transition_type.buf);
+    get_ini_string(section, L"condition", 0, &condition.buf);
+    get_ini_string(section, L"run", 0, &run.buf);
 
     for (i = 1; not_done; i++) {
         not_done = false;
