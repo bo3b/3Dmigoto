@@ -2249,7 +2249,7 @@ void parse_hunting_section()
     static MarkingMode prev_marking_mode = MarkingMode::INVALID;
 
     LOG_INFO("[Hunting]\n");
-    G->hunting = static_cast<Hunting_Mode>(GetIniInt(L"Hunting", L"hunting", 0, nullptr));
+    G->hunting = static_cast<Hunting_Mode>(get_ini_int(L"Hunting", L"hunting", 0, nullptr));
 
     // reload_config is registered even if not hunting - this allows us to
     // turn on hunting in the ini dynamically without having to relaunch
@@ -2257,15 +2257,15 @@ void parse_hunting_section()
     // performance hit with hunting on, or where a broken effect is
     // discovered while playing normally where it may not be easy/fast to
     // find the effect again later.
-    G->config_reloadable = RegisterIniKeyBinding(L"Hunting", L"reload_config", FlagConfigReload, nullptr, no_repeat, nullptr);
-    G->config_reloadable = RegisterIniKeyBinding(L"Hunting", L"wipe_user_config", FlagConfigReload, nullptr, no_repeat, reinterpret_cast<void*>(true));
+    G->config_reloadable = RegisterIniKeyBinding(L"Hunting", L"reload_config", flag_config_reload, nullptr, no_repeat, nullptr);
+    G->config_reloadable = RegisterIniKeyBinding(L"Hunting", L"wipe_user_config", flag_config_reload, nullptr, no_repeat, reinterpret_cast<void*>(true));
 
     // We're interested in performance measurements even in release mode
     // (possibly even especially in release mode), particularly if we want
     // a user to send us a screenshot of the profiling info:
     RegisterIniKeyBinding(L"Hunting", L"monitor_performance", analyse_perf, nullptr, no_repeat, nullptr);
     RegisterIniKeyBinding(L"Hunting", L"freeze_performance_monitor", freeze_perf, nullptr, no_repeat, nullptr);
-    Profiling::interval = static_cast<INT64>(GetIniFloat(L"Hunting", L"monitor_performance_interval", 1.0f, nullptr) * 1000000);
+    Profiling::interval = static_cast<INT64>(get_ini_float(L"Hunting", L"monitor_performance_interval", 1.0f, nullptr) * 1000000);
 
     // Taking a screenshot does not really belong in the hunting section,
     // so we no longer make it depend on Hunting, but it still falls under
@@ -2280,22 +2280,22 @@ void parse_hunting_section()
     // Let's also allow an easy toggle of hunting itself, for speed and playability.
     RegisterIniKeyBinding(L"Hunting", L"toggle_hunting", toggle_hunting, nullptr, no_repeat, nullptr);
 
-    repeat = GetIniInt(L"Hunting", L"repeat_rate", repeat, nullptr);
+    repeat = get_ini_int(L"Hunting", L"repeat_rate", repeat, nullptr);
 
     // For a better user experience we avoid resetting the marking mode on
     // config reload if the next_marking_mode key is enabled, unless
     // marking_mode was actually changed since the last config reload:
-    new_marking_mode = GetIniEnumClass(L"Hunting", L"marking_mode", MarkingMode::INVALID, nullptr, MarkingModeNames);
+    new_marking_mode = get_ini_enum_class(L"Hunting", L"marking_mode", MarkingMode::INVALID, nullptr, MarkingModeNames);
     if (new_marking_mode != prev_marking_mode)
         G->marking_mode = prev_marking_mode = new_marking_mode;
     RegisterIniKeyBinding(L"Hunting", L"next_marking_mode", next_marking_mode, nullptr, no_repeat, nullptr);
 
-    if (GetIniStringAndLog(L"Hunting", L"marking_actions", nullptr, buf, MAX_PATH))
+    if (get_ini_string_and_log(L"Hunting", L"marking_actions", nullptr, buf, MAX_PATH))
         G->marking_actions = parse_enum_option_string<const wchar_t*, MarkingAction>(MarkingActionNames, buf, nullptr);
     else
         G->marking_actions = MarkingAction::DEFAULT;
 
-    int mark_snapshot = GetIniInt(L"Hunting", L"mark_snapshot", 0, nullptr);
+    int mark_snapshot = get_ini_int(L"Hunting", L"mark_snapshot", 0, nullptr);
     if (mark_snapshot)
     {
         LogOverlay(LOG_NOTICE, "Deprecation warning: \"mark_snapshot\" will be removed in the future. Use \"marking_actions\" instead.\n");
@@ -2348,7 +2348,7 @@ void parse_hunting_section()
     G->show_original_enabled = RegisterIniKeyBinding(L"Hunting", L"show_original", disable_fix, enable_fix, no_repeat, nullptr);
 
     G->frame_analysis_registered = RegisterIniKeyBinding(L"Hunting", L"analyse_frame", analyse_frame, analyse_frame_stop, no_repeat, nullptr);
-    if (GetIniStringAndLog(L"Hunting", L"analyse_options", nullptr, buf, MAX_PATH))
+    if (get_ini_string_and_log(L"Hunting", L"analyse_options", nullptr, buf, MAX_PATH))
         G->def_analyse_options = parse_enum_option_string<wchar_t*, FrameAnalysisOptions>(FrameAnalysisOptionNames, buf, nullptr);
     else
         G->def_analyse_options = FrameAnalysisOptions::INVALID;
@@ -2356,8 +2356,8 @@ void parse_hunting_section()
     // Quick hacks to see if DX11 features that we only have limited support for are responsible for anything important:
     RegisterIniKeyBinding(L"Hunting", L"kill_deferred", disable_deferred, enable_deferred, no_repeat, nullptr);
 
-    G->ENABLE_TUNE = GetIniBool(L"Hunting", L"tune_enable", false, nullptr);
-    G->gTuneStep   = GetIniFloat(L"Hunting", L"tune_step", 1.0f, nullptr);
+    G->ENABLE_TUNE = get_ini_bool(L"Hunting", L"tune_enable", false, nullptr);
+    G->gTuneStep   = get_ini_float(L"Hunting", L"tune_step", 1.0f, nullptr);
 
     for (i = 0; i < 4; i++)
     {
@@ -2368,5 +2368,5 @@ void parse_hunting_section()
         RegisterIniKeyBinding(L"Hunting", buf, tune_down, nullptr, repeat, reinterpret_cast<void*>(i));
     }
 
-    G->verbose_overlay = GetIniBool(L"Hunting", L"verbose_overlay", false, nullptr);
+    G->verbose_overlay = get_ini_bool(L"Hunting", L"verbose_overlay", false, nullptr);
 }

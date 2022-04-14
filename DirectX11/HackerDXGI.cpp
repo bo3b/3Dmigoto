@@ -320,7 +320,7 @@ void HackerSwapChain::RunFrameActions()
     // since it needs to change the key bindings, so it sets this flag
     // instead and we handle it now.
     if (G->gReloadConfigPending)
-        ReloadConfig(hackerDevice);
+        reload_config(hackerDevice);
 
     // Draw the on-screen overlay text with hunting and informational
     // messages, before final Present. We now do this after the shader and
