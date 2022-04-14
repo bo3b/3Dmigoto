@@ -202,8 +202,8 @@ struct WStringInsensitiveHash
     size_t operator()(
         const wstring& s) const
     {
-        std::wstring            l;
-        std::hash<std::wstring> whash;
+        wstring       l;
+        hash<wstring> whash;
 
         l.resize(s.size());
         std::transform(s.begin(), s.end(), l.begin(), ::towlower);
@@ -222,8 +222,8 @@ struct WStringInsensitiveEquality
 };
 
 // Unsorted maps for fast case insensitive key lookups by name
-typedef std::unordered_map<wstring, wstring, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionMap;
-typedef std::unordered_set<wstring, WStringInsensitiveHash, WStringInsensitiveEquality>          IniSectionSet;
+typedef unordered_map<wstring, wstring, WStringInsensitiveHash, WStringInsensitiveEquality> IniSectionMap;
+typedef unordered_set<wstring, WStringInsensitiveHash, WStringInsensitiveEquality>          IniSectionSet;
 
 struct IniSection
 {
@@ -240,7 +240,7 @@ struct IniSection
 };
 
 // std::map is used so this is sorted for iterating over a prefix:
-typedef std::map<wstring, IniSection, WStringInsensitiveLess> IniSections;
+typedef map<wstring, IniSection, WStringInsensitiveLess> IniSections;
 
 IniSections ini_sections;
 
@@ -851,7 +851,7 @@ static bool matches_globbing_vector(
     // eliminate all unecessary uses of wchar_t/wstring). Since this is a
     // filename, it can contain legitimate unicode characters, so we should
     // convert it properly to UTF8:
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> codec;
+    wstring_convert<std::codecvt_utf8_utf16<wchar_t>> codec;
     afilename = codec.to_bytes(filename);  // to_bytes = to utf8
 
     for (pcre2_code* regex : patterns)
@@ -871,10 +871,10 @@ static void ParseIniFilesRecursive(
     const wstring&       rel_path,
     vector<pcre2_code*>& exclude)
 {
-    std::set<wstring, WStringInsensitiveLess> ini_files, directories;
-    WIN32_FIND_DATA                           find_data;
-    HANDLE                                    hFind;
-    wstring                                   search_path, ini_path, ini_namespace;
+    set<wstring, WStringInsensitiveLess> ini_files, directories;
+    WIN32_FIND_DATA                      find_data;
+    HANDLE                               hFind;
+    wstring                              search_path, ini_path, ini_namespace;
 
     search_path = wstring(migoto_path) + rel_path + L"\\*";
     LOG_INFO("    Searching \"%S\"\n", search_path.c_str());
@@ -1035,8 +1035,8 @@ int get_ini_string(
     return rc;
 }
 
-// Variant of the above that fills out a std::string, and doesn't bother about
-// all that size nonsense. There is no std::wstring variant of this because I
+// Variant of the above that fills out a string, and doesn't bother about
+// all that size nonsense. There is no wstring variant of this because I
 // want to refactor out all our uses of wide characters that came from the ini
 // file courtesy of the old ini parsing API, and adding a new function that
 // returns wide characters would be counter-productive to that goal.
@@ -1044,10 +1044,10 @@ bool get_ini_string(
     const wchar_t* section,
     const wchar_t* key,
     const wchar_t* def,
-    std::string*   ret)
+    string*        ret)
 {
-    std::wstring wret;
-    bool         found = false;
+    wstring wret;
+    bool    found = false;
 
     if (!ret)
     {
@@ -1070,17 +1070,17 @@ bool get_ini_string(
 
     // TODO: Get rid of all the wide character strings that the old ini
     // parsing API forced on us so we don't need this re-conversion:
-    *ret = std::string(wret.begin(), wret.end());
+    *ret = string(wret.begin(), wret.end());
     return found;
 }
 
 // For sections that allow the same key to be used multiple times with
 // different values, fills out a vector with all values of the key
-static std::vector<std::wstring> GetIniStringMultipleKeys(
+static vector<wstring> GetIniStringMultipleKeys(
     const wchar_t* section,
     const wchar_t* key)
 {
-    std::vector<std::wstring>  ret;
+    vector<wstring>            ret;
     IniSectionVector*          sv = nullptr;
     IniSectionVector::iterator entry;
 
@@ -1115,7 +1115,7 @@ static bool GetIniStringAndLog(
     const wchar_t* section,
     const wchar_t* key,
     const wchar_t* def,
-    std::string*   ret)
+    string*        ret)
 {
     bool rc = get_ini_string(section, key, def, ret);
 
@@ -1233,9 +1233,9 @@ static UINT64 GetIniHash(
     UINT64         def,
     bool*          found)
 {
-    std::string val;
-    UINT64      ret = def;
-    int         len;
+    string val;
+    UINT64 ret = def;
+    int    len;
 
     if (found)
         *found = false;
@@ -1264,9 +1264,9 @@ static int GetIniHexString(
     int            def,
     bool*          found)
 {
-    std::string val;
-    int         ret = def;
-    int         len;
+    string val;
+    int    ret = def;
+    int    len;
 
     if (found)
         *found = false;
@@ -1505,8 +1505,8 @@ static int GetIniBoolIntOrEnum(
 static void GetUserConfigPath(
     const wchar_t* migoto_path)
 {
-    std::string tmp;
-    wstring     rel_path;
+    string  tmp;
+    wstring rel_path;
 
     get_ini_string(L"Include", L"user_config", L"d3dx_user.ini", &tmp);
     rel_path = wstring(tmp.begin(), tmp.end());  // TODO: Sort out wide character mess
@@ -1518,17 +1518,17 @@ static void GetUserConfigPath(
 
 static void ParseIncludedIniFiles()
 {
-    IniSections                 include_sections;
-    IniSections::iterator       lower, upper, i;
-    const wchar_t*              section_id;
-    IniSectionVector*           section = nullptr;
-    IniSectionVector::iterator  entry;
-    wstring *                   key, *val;
-    std::unordered_set<wstring> seen;
-    wstring                     namespace_path, rel_path, ini_path;
-    wchar_t                     migoto_path[MAX_PATH];
-    vector<pcre2_code*>         exclude;
-    DWORD                       attrib;
+    IniSections                include_sections;
+    IniSections::iterator      lower, upper, i;
+    const wchar_t*             section_id;
+    IniSectionVector*          section = nullptr;
+    IniSectionVector::iterator entry;
+    wstring *                  key, *val;
+    unordered_set<wstring>     seen;
+    wstring                    namespace_path, rel_path, ini_path;
+    wchar_t                    migoto_path[MAX_PATH];
+    vector<pcre2_code*>        exclude;
+    DWORD                      attrib;
 
     GetModuleFileName(migoto_handle, migoto_path, MAX_PATH);
     wcsrchr(migoto_path, L'\\')[1] = 0;
@@ -1750,14 +1750,14 @@ static char* type_to_format(
 }
 
 template <typename T>
-static std::vector<T> string_to_typed_array(
+static vector<T> string_to_typed_array(
     std::istringstream* tokens)
 {
-    std::string    token;
-    std::vector<T> list;
-    T              val = 0;
-    int            ret, len;
-    unsigned       uval;
+    string    token;
+    vector<T> list;
+    T         val = 0;
+    int       ret, len;
+    unsigned  uval;
 
     while (std::getline(*tokens, token, ' '))
     {
@@ -1793,7 +1793,7 @@ static void ConstructInitialData(
     CustomResource*     custom_resource,
     std::istringstream* tokens)
 {
-    std::vector<T> vals;
+    vector<T> vals;
 
     vals = string_to_typed_array<T>(tokens);
 
@@ -1816,7 +1816,7 @@ static void ConstructInitialDataNorm(
     int                 bytes,
     bool                snorm)
 {
-    std::vector<float> vals;
+    vector<float> vals;
     union
     {
         void*           union_buf;
@@ -1883,7 +1883,7 @@ static void ConstructInitialDataNorm(
 
 static void ConstructInitialDataString(
     CustomResource* custom_resource,
-    std::string*    data)
+    string*         data)
 {
     // Currently this requires a byte array format, though we could
     // possibly add utf32 (... or the worst-of-all-worlds utf16) in the
@@ -1916,7 +1916,7 @@ static void ParseResourceInitialData(
     CustomResource* custom_resource,
     const wchar_t*  section)
 {
-    std::string setting, token;
+    string      setting, token;
     DXGI_FORMAT format;
 
     if (!GetIniStringAndLog(section, L"data", nullptr, &setting))
@@ -2370,15 +2370,15 @@ static void ParseDriverProfile()
 
 static void ParseConstantsSection()
 {
-    VariableFlags                                   flags;
-    IniSectionVector*                               section = nullptr;
-    IniSectionVector::iterator                      entry, next;
-    wstring *                                       key, *val, name;
-    const wchar_t*                                  name_pos;
-    const wstring*                                  ini_namespace;
-    std::pair<CommandListVariables::iterator, bool> inserted;
-    float                                           fval;
-    int                                             len;
+    VariableFlags                              flags;
+    IniSectionVector*                          section = nullptr;
+    IniSectionVector::iterator                 entry, next;
+    wstring *                                  key, *val, name;
+    const wchar_t*                             name_pos;
+    const wstring*                             ini_namespace;
+    pair<CommandListVariables::iterator, bool> inserted;
+    float                                      fval;
+    int                                        len;
 
     // The naming on this one is historical - [Constants] used to define
     // iniParams that couldn't change, then later we allowed them to be
@@ -2679,13 +2679,13 @@ static void ParseShaderOverrideSections()
 }
 
 // Oh C++, do you really not have a .split() in your standard library?
-static std::vector<std::wstring> split_string(
-    const std::wstring* str,
-    wchar_t             sep)
+static vector<wstring> split_string(
+    const wstring* str,
+    wchar_t        sep)
 {
-    std::wistringstream       tokens(*str);
-    std::wstring              token;
-    std::vector<std::wstring> list;
+    std::wistringstream tokens(*str);
+    wstring             token;
+    vector<wstring>     list;
 
     while (std::getline(tokens, token, sep))
     {
@@ -2695,13 +2695,13 @@ static std::vector<std::wstring> split_string(
     return list;
 }
 
-static std::vector<std::string> split_string(
-    const std::string* str,
-    char               sep)
+static vector<string> split_string(
+    const string* str,
+    char          sep)
 {
-    std::istringstream       tokens(*str);
-    std::string              token;
-    std::vector<std::string> list;
+    std::istringstream tokens(*str);
+    string             token;
+    vector<string>     list;
 
     while (std::getline(tokens, token, sep))
     {
@@ -2712,10 +2712,10 @@ static std::vector<std::string> split_string(
 }
 
 template <typename T>
-static std::set<T> vec_to_set(
-    std::vector<T>& v)
+static set<T> vec_to_set(
+    vector<T>& v)
 {
-    return std::set<T>(v.begin(), v.end());
+    return set<T>(v.begin(), v.end());
 }
 
 static uint32_t hash_ini_section(
@@ -2746,11 +2746,11 @@ wchar_t* ShaderRegexIniKeys[] = {
 };
 
 static bool parse_shader_regex_section_main(
-    const std::wstring* section_id,
-    ShaderRegexGroup*   regex_group)
+    const wstring*    section_id,
+    ShaderRegexGroup* regex_group)
 {
-    std::string              setting;
-    std::vector<std::string> items;
+    string         setting;
+    vector<string> items;
 
     if (!GetIniStringAndLog(section_id->c_str(), L"shader_model", nullptr, &setting))
     {
@@ -2771,15 +2771,15 @@ static bool parse_shader_regex_section_main(
 }
 
 static bool parse_shader_regex_section_pattern(
-    const std::wstring* section_id,
-    const std::wstring* pattern_id,
-    ShaderRegexGroup*   regex_group)
+    const wstring*    section_id,
+    const wstring*    pattern_id,
+    ShaderRegexGroup* regex_group)
 {
     IniSectionVector*          section = nullptr;
     IniSectionVector::iterator entry;
     ShaderRegexPattern*        regex_pattern;
-    std::wstring*              wline;
-    std::string                aline, pattern;
+    wstring*                   wline;
+    string                     aline, pattern;
 
     get_ini_section(&section, section_id->c_str());
     for (entry = section->begin(); entry < section->end(); entry++)
@@ -2789,7 +2789,7 @@ static bool parse_shader_regex_section_pattern(
         // place to fix that, which is a large and risky refactoring
         // job for another day
         wline = &entry->raw_line;
-        aline = std::string(wline->begin(), wline->end());
+        aline = string(wline->begin(), wline->end());
         LOG_INFO("  %s\n", aline.c_str());
         pattern.append(aline);
     }
@@ -2822,14 +2822,14 @@ static bool parse_shader_regex_section_pattern(
 }
 
 static bool parse_shader_regex_section_declarations(
-    const std::wstring* section_id,
-    const std::wstring* pattern_id,
-    ShaderRegexGroup*   regex_group)
+    const wstring*    section_id,
+    const wstring*    pattern_id,
+    ShaderRegexGroup* regex_group)
 {
     IniSectionVector*          section = nullptr;
     IniSectionVector::iterator entry;
-    std::wstring*              wline;
-    std::string                aline;
+    wstring*                   wline;
+    string                     aline;
 
     get_ini_section(&section, section_id->c_str());
     for (entry = section->begin(); entry < section->end(); entry++)
@@ -2839,7 +2839,7 @@ static bool parse_shader_regex_section_declarations(
         // place to fix that, which is a large and risky refactoring
         // job for another day
         wline = &entry->raw_line;
-        aline = std::string(wline->begin(), wline->end());
+        aline = string(wline->begin(), wline->end());
         LOG_INFO("  %s\n", aline.c_str());
         regex_group->declarations.push_back(aline);
     }
@@ -2848,15 +2848,15 @@ static bool parse_shader_regex_section_declarations(
 }
 
 static bool parse_shader_regex_section_replace(
-    const std::wstring* section_id,
-    const std::wstring* pattern_id,
-    ShaderRegexGroup*   regex_group)
+    const wstring*    section_id,
+    const wstring*    pattern_id,
+    ShaderRegexGroup* regex_group)
 {
     IniSectionVector*          section = nullptr;
     IniSectionVector::iterator entry;
     ShaderRegexPattern*        regex_pattern;
-    std::wstring*              wline;
-    std::string                aline;
+    wstring*                   wline;
+    string                     aline;
 
     try
     {
@@ -2876,7 +2876,7 @@ static bool parse_shader_regex_section_replace(
         // place to fix that, which is a large and risky refactoring
         // job for another day
         wline = &entry->raw_line;
-        aline = std::string(wline->begin(), wline->end());
+        aline = string(wline->begin(), wline->end());
         LOG_INFO("  %s\n", aline.c_str());
         regex_pattern->replace.append(aline);
     }
@@ -2893,8 +2893,8 @@ static bool parse_shader_regex_section_replace(
 }
 
 static ShaderRegexGroup* get_regex_group(
-    std::wstring* regex_id,
-    bool          allow_creation)
+    wstring* regex_id,
+    bool     allow_creation)
 {
     if (allow_creation)
         return &shader_regex_groups[*regex_id];
@@ -2911,7 +2911,7 @@ static ShaderRegexGroup* get_regex_group(
 }
 
 static void delete_regex_group(
-    std::wstring* regex_id)
+    wstring* regex_id)
 {
     ShaderRegexGroups::iterator i;
 
@@ -2922,9 +2922,9 @@ static void delete_regex_group(
 static void ParseShaderRegexSections()
 {
     IniSections::iterator       lower, upper, i;
-    const std::wstring*         section_id;
-    std::wstring                section_prefix, section_suffix;
-    std::vector<std::wstring>   subsection_names;
+    const wstring*              section_id;
+    wstring                     section_prefix, section_suffix;
+    vector<wstring>             subsection_names;
     ShaderRegexGroup*           regex_group;
     ShaderRegexGroups::iterator j;
     size_t                      namespace_endpos = 0;
@@ -3337,13 +3337,13 @@ static bool parse_masked_flags_field(
     unsigned*                              mask,
     struct Enum_Name_t<const wchar_t*, T>* enum_names)
 {
-    std::vector<std::wstring> tokens;
-    std::wstring              token;
-    int                       ret, len1, len2;
-    unsigned                  i;
-    bool                      use_mask = false;
-    bool                      set;
-    unsigned                  tmp;
+    vector<wstring> tokens;
+    wstring         token;
+    int             ret, len1, len2;
+    unsigned        i;
+    bool            use_mask = false;
+    bool            set;
+    unsigned        tmp;
 
     // Allow empty strings and 0 to indicate it matches 0 / 0xffffffff:
     if (!setting.size() || !setting.compare(L"0"))
@@ -3502,7 +3502,7 @@ static void parse_texture_override_fuzzy_match(
 
     parse_texture_override_common(section, fuzzy->textureOverride, true);
 
-    if (!G->mFuzzyTextureOverrides.insert(std::shared_ptr<FuzzyMatchResourceDesc>(fuzzy)).second)
+    if (!G->mFuzzyTextureOverrides.insert(shared_ptr<FuzzyMatchResourceDesc>(fuzzy)).second)
     {
         INI_WARNING("BUG: Unexpected error inserting fuzzy texture override\n");
         double_beep_exit();
