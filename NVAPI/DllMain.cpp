@@ -204,7 +204,7 @@ FILE *LogFile = 0;
 
 // -----------------------------------------------------------------------------------------------
 
-static void LoadConfigFile()
+static void load_config_file()
 {
     wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
     HMODULE module = NULL;
@@ -213,7 +213,7 @@ static void LoadConfigFile()
     // the game directory
     GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
             | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-            (LPCWSTR)LoadConfigFile, &module);
+            (LPCWSTR)load_config_file, &module);
 
     GetModuleFileName(module, iniFile, MAX_PATH);
     wcsrchr(iniFile, L'\\')[1] = 0;
@@ -311,7 +311,7 @@ static bool loadDll()
     if (nvapi_load_failed)
         return false;
 
-    LoadConfigFile();
+    load_config_file();
 
     // Make sure our d3d11.dll is loaded, so that we get the benefit of the DLLMainHook
     // In general this is not necessary, but if a game calls nvapi before d3d11 loads
