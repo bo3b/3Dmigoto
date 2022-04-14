@@ -57,10 +57,10 @@ static bool verify_intended_target_late()
 	wchar_t target[MAX_PATH];
 	size_t target_len, exe_len;
 
-	if (!GetIniBool(L"Loader", L"check_target_even_without_loader", false, NULL))
+	if (!get_ini_bool(L"Loader", L"check_target_even_without_loader", false, NULL))
 		return true;
 
-	if (GetIniString(L"Loader", L"Target", NULL, target, MAX_PATH) == 0)
+	if (get_ini_string(L"Loader", L"Target", NULL, target, MAX_PATH) == 0)
 		return true;
 
 	if (!GetModuleFileName(NULL, exe_path, MAX_PATH))
@@ -91,7 +91,7 @@ static bool initialize_dll()
     if (G->gInitialized)
         return true;
 
-    LoadConfigFile();
+    load_config_file();
 
 
 	G->bIntendedTargetExe = verify_intended_target_late();
@@ -180,7 +180,7 @@ void destroy_dll()
     if (LogFile)
     {
         LOG_INFO("Destroying DLL...\n");
-        SavePersistentSettings();
+        save_persistent_settings();
         fclose(LogFile);
     }
 }
