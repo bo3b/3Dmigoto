@@ -1193,7 +1193,7 @@ int parse_ini_profile_line(wstring *lhs, wstring *rhs)
     // missed by the generic ini parsing code. Perform an extra duplicate
     // check here on the setting ID:
     if (profile_settings.count(setting.settingId)) {
-        LogOverlayW(LOG_WARNING, L"WARNING: Duplicate driver profile setting ID found in d3dx.ini: 0x%08x\n", setting.settingId);
+        LogOverlayW(Log_Level::warning, L"WARNING: Duplicate driver profile setting ID found in d3dx.ini: 0x%08x\n", setting.settingId);
         // Still doing an audible warning here, because this code path
         // is (also) called from the helper, which has no overlay, and
         // who knows what the result of a bad profile will be:
@@ -1797,7 +1797,7 @@ void log_check_and_update_nv_profiles()
     }
 
     if (need_profile_update(session, profile)) {
-        LogOverlay(LOG_DIRE, "WARNING: Profile update failed!\n");
+        LogOverlay(Log_Level::dire, "WARNING: Profile update failed!\n");
         // Also doing an audible warning to really drive home the point
         // the user was supposed to click OK to that UAC prompt and we
         // are not happy:

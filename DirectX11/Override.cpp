@@ -60,7 +60,7 @@ void Override::ParseIniSection(LPCWSTR section)
             }
         } else if (entry->first.c_str()[0] == L'$') {
             if (!parse_command_list_var_name(entry->first.c_str(), &entry->ini_namespace, &var)) {
-                LogOverlay(LOG_WARNING, "WARNING: Undeclared variable %S\n", entry->first.c_str());
+                LogOverlay(Log_Level::warning, "WARNING: Undeclared variable %S\n", entry->first.c_str());
                 continue;
             }
 
@@ -83,7 +83,7 @@ void Override::ParseIniSection(LPCWSTR section)
         std::transform(sbuf.begin(), sbuf.end(), sbuf.begin(), ::towlower);
 
         if (!condition.Parse(&sbuf, &ini_namespace, NULL)) {
-            LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%S\"\n", buf);
+            LogOverlay(Log_Level::warning, "WARNING: Invalid condition=\"%S\"\n", buf);
         } else {
             isConditional = true;
         }
@@ -101,7 +101,7 @@ void Override::ParseIniSection(LPCWSTR section)
         wstring sbuf(buf);
 
         if (!parse_run_explicit_command_list(section, L"run", &sbuf, NULL, &activateCommandList, &deactivateCommandList, &ini_namespace))
-            LogOverlay(LOG_WARNING, "WARNING: Invalid run=\"%S\"\n", sbuf.c_str());
+            LogOverlay(Log_Level::warning, "WARNING: Invalid run=\"%S\"\n", sbuf.c_str());
     }
 }
 
@@ -192,7 +192,7 @@ struct KeyOverrideCycleParam
 
         val = lookup_enum_val<T1, T2>(enum_names, cur.c_str(), (T2)-1);
         if (val == (T2)-1) {
-            LogOverlay(LOG_WARNING, "WARNING: Unmatched value \"%s\"\n", cur.c_str());
+            LogOverlay(Log_Level::warning, "WARNING: Unmatched value \"%s\"\n", cur.c_str());
             return default;
         }
 
@@ -215,7 +215,7 @@ struct KeyOverrideCycleParam
         std::transform(scur.begin(), scur.end(), scur.begin(), ::towlower);
 
         if (!expression->Parse(&scur, &ini_namespace, NULL)) {
-            LogOverlay(LOG_WARNING, "WARNING: Invalid condition=\"%s\"\n", cur.c_str());
+            LogOverlay(Log_Level::warning, "WARNING: Invalid condition=\"%s\"\n", cur.c_str());
             return false;
         }
 
@@ -235,7 +235,7 @@ struct KeyOverrideCycleParam
         get_section_namespace(section, &ini_namespace);
 
         if (!parse_run_explicit_command_list(section, L"run", &scur, NULL, pre_command_list, deactivate_command_list, &ini_namespace))
-            LogOverlay(LOG_WARNING, "WARNING: Invalid run=\"%s\"\n", cur.c_str());
+            LogOverlay(Log_Level::warning, "WARNING: Invalid run=\"%s\"\n", cur.c_str());
     }
 };
 
@@ -277,7 +277,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
             get_ini_string(section, entry->first.c_str(), 0, &param_bufs[OverrideParam(param_idx, param_component)].buf);
         } else if (entry->first.c_str()[0] == L'$') {
             if (!parse_command_list_var_name(entry->first.c_str(), &entry->ini_namespace, &var)) {
-                LogOverlay(LOG_WARNING, "WARNING: Undeclared variable %S\n", entry->first.c_str());
+                LogOverlay(Log_Level::warning, "WARNING: Undeclared variable %S\n", entry->first.c_str());
                 continue;
             }
 

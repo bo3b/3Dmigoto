@@ -271,13 +271,13 @@ static bool ini_warned = false;
     do                                             \
     {                                              \
         ini_warned = true;                         \
-        LogOverlay(LOG_WARNING, fmt, __VA_ARGS__); \
+        LogOverlay(Log_Level::warning, fmt, __VA_ARGS__); \
     } while (0)
 #define INI_WARNING_W(fmt, ...)                     \
     do                                              \
     {                                               \
         ini_warned = true;                          \
-        LogOverlayW(LOG_WARNING, fmt, __VA_ARGS__); \
+        LogOverlayW(Log_Level::warning, fmt, __VA_ARGS__); \
     } while (0)
 #define INI_WARNING_BEEP() \
     do                     \
@@ -749,7 +749,7 @@ static void parse_namespaced_ini_file(
     ifstream f(ini, ios::in, _SH_DENYNO);
     if (!f)
     {
-        LogOverlay(LOG_WARNING, "  Error opening %S\n", ini);
+        LogOverlay(Log_Level::warning, "  Error opening %S\n", ini);
         return;
     }
 
@@ -2316,7 +2316,7 @@ static void parse_command_list(
             // immediately just in case. Inform the user of what is happening.
             if (!G->user_config_dirty)
             {
-                LogOverlay(LOG_WARNING,
+                LogOverlay(Log_Level::warning,
                            "NOTICE: Unknown user settings will be removed from d3dx_user.ini\n"
                            " This is normal if you recently removed/changed any mods\n"
                            " Press %S to update the config now, or %S to reset all settings to default\n"
@@ -2553,7 +2553,7 @@ static void warn_deprecated_shaderoverride_options(
     // be something like if ps == ... ; handling=original ; endif
     if (override->partner_hash && (!override->command_list.commands.empty() || !override->post_command_list.commands.empty()))
     {
-        LogOverlay(LOG_NOTICE,
+        LogOverlay(Log_Level::notice,
                    "WARNING: [%S] tried to combine the deprecated partner= option with a command list.\n"
                    "This almost certainly won't do what you want. Try something like this instead:\n"
                    "\n"
@@ -2570,7 +2570,7 @@ static void warn_deprecated_shaderoverride_options(
 
     if (override->depth_filter != DepthBufferFilter::NONE)
     {
-        LogOverlay(LOG_NOTICE,
+        LogOverlay(Log_Level::notice,
                    "NOTICE: [%S] used deprecated depth_filter option. Consider texture filtering for more flexibility:\n"
                    "\n"
                    "[%S]\n"
@@ -4525,7 +4525,7 @@ static void force_full_screen(
 
     if (!hacker_swap_chain)
     {
-        LogOverlay(LOG_DIRE, "force_full_screen_on_key: Unable to find swap chain\n");
+        LogOverlay(Log_Level::dire, "force_full_screen_on_key: Unable to find swap chain\n");
         return;
     }
 
@@ -4553,7 +4553,7 @@ static void warn_of_conflicting_d3dx(
     if (attrib == INVALID_FILE_ATTRIBUTES)
         return;
 
-    LogOverlay(LOG_WARNING,
+    LogOverlay(Log_Level::warning,
                "Detected a conflicting d3dx.ini in the game directory that is not being used.\n"
                "Using this configuration: %S\n",
                dll_ini_path);
@@ -4654,7 +4654,7 @@ void load_config_file()
         G->enable_hooks = parse_enum_option_string<wchar_t*, EnableHooks>(EnableHooksNames, setting, nullptr);
 
         if (G->enable_hooks & EnableHooks::DEPRECATED)
-            LogOverlay(LOG_NOTICE, "Deprecated hook options: Please remove \"except\" and \"skip\" options\n");
+            LogOverlay(Log_Level::notice, "Deprecated hook options: Please remove \"except\" and \"skip\" options\n");
     }
     G->enable_check_interface = get_ini_bool(L"System", L"allow_check_interface", false, nullptr);
     G->enable_create_device   = get_ini_int(L"System", L"allow_create_device", 0, nullptr);
@@ -5160,8 +5160,8 @@ void reload_config(
         // did the [Present] command list would also be broken), so
         // rather than continue to use it, issue a warning if the
         // HackerContext doesn't exist.
-        LogOverlay(LOG_DIRE, "BUG: No HackerContext at ReloadConfig - please report this\n");
+        LogOverlay(Log_Level::dire, "BUG: No HackerContext at ReloadConfig - please report this\n");
     }
 
-    LogOverlayW(LOG_INFO, L"> " INI_FILENAME L" reloaded\n");
+    LogOverlayW(Log_Level::info, L"> " INI_FILENAME L" reloaded\n");
 }

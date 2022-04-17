@@ -127,7 +127,7 @@ static void _run_command_list(CommandList *command_list, CommandListState *state
     command_list_profiling_state profiling_state;
 
     if (state->recursion > max_command_list_recursion) {
-        LogOverlay(LOG_WARNING, "WARNING: Command list recursion limit exceeded! Circular reference?\n");
+        LogOverlay(Log_Level::warning, "WARNING: Command list recursion limit exceeded! Circular reference?\n");
         return;
     }
 
@@ -1225,7 +1225,7 @@ void DrawCommand::Run(CommandListState *state)
                     break;
                 case DrawCall::DrawInstancedIndirect:
                     if (!info->indirect_buffer) {
-                        LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> DrawInstancedIndirect missing args\n");
+                        LogOverlay(Log_Level::dire, "BUG: draw = from_caller -> DrawInstancedIndirect missing args\n");
                         break;
                     }
                     COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawInstancedIndirect(0x%p, %u)\n", iniSection.c_str(), *info->indirect_buffer, info->args_offset);
@@ -1233,7 +1233,7 @@ void DrawCommand::Run(CommandListState *state)
                     break;
                 case DrawCall::DrawIndexedInstancedIndirect:
                     if (!info->indirect_buffer) {
-                        LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> DrawIndexedInstancedIndirect missing args\n");
+                        LogOverlay(Log_Level::dire, "BUG: draw = from_caller -> DrawIndexedInstancedIndirect missing args\n");
                         break;
                     }
                     COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DrawIndexedInstancedIndirect(0x%p, %u)\n", iniSection.c_str(), *info->indirect_buffer, info->args_offset);
@@ -1241,7 +1241,7 @@ void DrawCommand::Run(CommandListState *state)
                     break;
                 case DrawCall::DispatchIndirect:
                     if (!info->indirect_buffer) {
-                        LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> DispatchIndirect missing args\n");
+                        LogOverlay(Log_Level::dire, "BUG: draw = from_caller -> DispatchIndirect missing args\n");
                         break;
                     }
                     COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> DispatchIndirect(0x%p, %u)\n", iniSection.c_str(), *info->indirect_buffer, info->args_offset);
@@ -1256,7 +1256,7 @@ void DrawCommand::Run(CommandListState *state)
                     orig_context1->DrawAuto();
                     break;
                 default:
-                    LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> unknown draw call type\n");
+                    LogOverlay(Log_Level::dire, "BUG: draw = from_caller -> unknown draw call type\n");
                     break;
             }
             break;
@@ -1853,7 +1853,7 @@ bool CustomShader::Compile(char type, wchar_t *filename, const wstring *wname, c
             break;
         default:
             // Should not happen
-            LogOverlay(LOG_DIRE, "CustomShader::compile: invalid shader type\n");
+            LogOverlay(Log_Level::dire, "CustomShader::compile: invalid shader type\n");
             goto err;
     }
 
@@ -1875,7 +1875,7 @@ bool CustomShader::Compile(char type, wchar_t *filename, const wstring *wname, c
     }
     if (!found) {
         if (!GetModuleFileName(migoto_handle, wpath, MAX_PATH)) {
-            LogOverlay(LOG_DIRE, "CustomShader::compile: GetModuleFileName failed\n");
+            LogOverlay(Log_Level::dire, "CustomShader::compile: GetModuleFileName failed\n");
             goto err;
         }
         wcsrchr(wpath, L'\\')[1] = 0;
@@ -1884,7 +1884,7 @@ bool CustomShader::Compile(char type, wchar_t *filename, const wstring *wname, c
 
     f = CreateFile(wpath, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (f == INVALID_HANDLE_VALUE) {
-        LogOverlay(LOG_WARNING, "Shader not found: %S\n", wpath);
+        LogOverlay(Log_Level::warning, "Shader not found: %S\n", wpath);
         goto err;
     }
 
@@ -1937,13 +1937,13 @@ bool CustomShader::Compile(char type, wchar_t *filename, const wstring *wname, c
         LPVOID err_msg = pErrorMsgs->GetBufferPointer();
         SIZE_T err_size = pErrorMsgs->GetBufferSize();
         LOG_INFO("--------------------------------------------- BEGIN ---------------------------------------------\n");
-        LogOverlay(LOG_NOTICE, "%*s\n", err_size, err_msg);
+        LogOverlay(Log_Level::notice, "%*s\n", err_size, err_msg);
         LOG_INFO("---------------------------------------------- END ----------------------------------------------\n");
         pErrorMsgs->Release();
     }
 
     if (FAILED(hr)) {
-        LogOverlay(LOG_WARNING, "Error compiling custom shader\n");
+        LogOverlay(Log_Level::warning, "Error compiling custom shader\n");
         goto err;
     }
 
@@ -2514,7 +2514,7 @@ float CommandListOperand::ProcessShaderFilter(CommandListState *state)
             shader = hacker_context->currentComputeShaderHandle;
             break;
         default:
-            LogOverlay(LOG_DIRE, "BUG: Unknown shader filter type: \"%C\"\n", shaderFilterTarget);
+            LogOverlay(Log_Level::dire, "BUG: Unknown shader filter type: \"%C\"\n", shaderFilterTarget);
             break;
     }
 
@@ -2892,7 +2892,7 @@ float CommandListOperand::Evaluate(CommandListState *state, HackerDevice *device
     if (state)
         device = state->hackerDevice;
     else if (!device) {
-        LogOverlay(LOG_DIRE, "BUG: CommandListOperand::evaluate called with neither state nor device\n");
+        LogOverlay(Log_Level::dire, "BUG: CommandListOperand::evaluate called with neither state nor device\n");
         return 0;
     }
 
@@ -2955,7 +2955,7 @@ float CommandListOperand::Evaluate(CommandListState *state, HackerDevice *device
     if (!state) {
         // FIXME: Some of these only use the state object for cache,
         // and could still be evaluated if we forgo the cache
-        LogOverlay(LOG_WARNING, "BUG: Operand type %i cannot be evaluated outside of a command list\n", type);
+        LogOverlay(Log_Level::warning, "BUG: Operand type %i cannot be evaluated outside of a command list\n", type);
         return 0;
     }
 
@@ -3063,7 +3063,7 @@ float CommandListOperand::Evaluate(CommandListState *state, HackerDevice *device
             return (float)state->scissorRects[scissor].bottom;
     }
 
-    LogOverlay(LOG_DIRE, "BUG: Unhandled operand type %i\n", type);
+    LogOverlay(Log_Level::dire, "BUG: Unhandled operand type %i\n", type);
     return 0;
 }
 
@@ -3208,7 +3208,7 @@ next_token:
                     last_was_operand = true;
                     continue;
                 } else {
-                    LogOverlay(LOG_DIRE, "BUG: Token parsed as resource slot, but not as operand: \"%S\"\n", token.c_str());
+                    LogOverlay(Log_Level::dire, "BUG: Token parsed as resource slot, but not as operand: \"%S\"\n", token.c_str());
                     throw CommandListSyntaxError(L"BUG", friendly_pos);
                 }
             }
@@ -3265,7 +3265,7 @@ next_token:
                 last_was_operand = true;
                 continue;
             } else {
-                LogOverlay(LOG_DIRE, "BUG: Token parsed as float, but not as operand: \"%S\"\n", token.c_str());
+                LogOverlay(Log_Level::dire, "BUG: Token parsed as float, but not as operand: \"%S\"\n", token.c_str());
                 throw CommandListSyntaxError(L"BUG", friendly_pos);
             }
         }
@@ -3601,7 +3601,7 @@ bool CommandListExpression::Parse(const wstring *expression, const wstring *ini_
         log_syntax_tree(evaluatable, "Final syntax tree:\n");
         return true;
     } catch (const CommandListSyntaxError &e) {
-        LogOverlay(LOG_WARNING_MONOSPACE,
+        LogOverlay(Log_Level::warning_monospace,
                 "Syntax Error: %S\n"
                 "              %*s: %S\n",
                 expression->c_str(), (int)e.pos+1, "^", e.msg.c_str());
@@ -3625,7 +3625,7 @@ bool CommandListExpression::Optimise(HackerDevice *device)
     bool ret;
 
     if (!evaluatable) {
-        LogOverlay(LOG_DIRE, "BUG: Non-evaluatable expression, please report this and provide your d3dx.ini\n");
+        LogOverlay(Log_Level::dire, "BUG: Non-evaluatable expression, please report this and provide your d3dx.ini\n");
         evaluatable = std::make_shared<CommandListOperand>(0, L"<BUG>");
         return false;
     }
@@ -3945,7 +3945,7 @@ bool declare_local_variable(const wchar_t *section, wstring &name,
     CommandListVariable *var = NULL;
 
     if (!valid_variable_name(name)) {
-        LogOverlay(LOG_WARNING, "WARNING: Illegal local variable name: [%S] \"%S\"\n", section, name.c_str());
+        LogOverlay(Log_Level::warning, "WARNING: Illegal local variable name: [%S] \"%S\"\n", section, name.c_str());
         return false;
     }
 
@@ -3955,7 +3955,7 @@ bool declare_local_variable(const wchar_t *section, wstring &name,
         // independent scopes (if {local $tmp} else {local $tmp}), but
         // we won't allow masking a local variable from a parent scope,
         // because that's usually a bug. Choose a different name son.
-        LogOverlay(LOG_WARNING, "WARNING: Illegal redeclaration of local variable [%S] %S\n", section, name.c_str());
+        LogOverlay(Log_Level::warning, "WARNING: Illegal redeclaration of local variable [%S] %S\n", section, name.c_str());
         return false;
     }
 
@@ -3963,7 +3963,7 @@ bool declare_local_variable(const wchar_t *section, wstring &name,
         // Not making this fatal since this could clash between say a
         // global in the d3dx.ini and a local variable in another ini.
         // Just issue a notice in hunting mode and carry on.
-        LogOverlay(LOG_NOTICE, "WARNING: [%S] local %S masks a global variable with the same name\n", section, name.c_str());
+        LogOverlay(Log_Level::notice, "WARNING: [%S] local %S masks a global variable with the same name\n", section, name.c_str());
     }
 
     pre_command_list->staticVars.emplace_front(name, 0.0f, VariableFlags::NONE);
@@ -4367,19 +4367,19 @@ void CustomResource::LoadBufferFromFile(ID3D11Device *orig_device)
 
     f = CreateFile(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (f == INVALID_HANDLE_VALUE) {
-        LogOverlay(LOG_WARNING, "Failed to load custom buffer resource %S: %d\n", filename.c_str(), GetLastError());
+        LogOverlay(Log_Level::warning, "Failed to load custom buffer resource %S: %d\n", filename.c_str(), GetLastError());
         return;
     }
 
     size = GetFileSize(f, 0);
     buf = malloc(size); // malloc to allow realloc to resize it if the user overrode the size
     if (!buf) {
-        LogOverlay(LOG_DIRE, "Out of memory loading %S\n", filename.c_str());
+        LogOverlay(Log_Level::dire, "Out of memory loading %S\n", filename.c_str());
         goto out_close;
     }
 
     if (!ReadFile(f, buf, size, &read_size, 0) || size != read_size) {
-        LogOverlay(LOG_WARNING, "Error reading custom buffer from file %S\n", filename.c_str());
+        LogOverlay(Log_Level::warning, "Error reading custom buffer from file %S\n", filename.c_str());
         goto out_delete;
     }
 
@@ -4446,7 +4446,7 @@ void CustomResource::LoadFromFile(ID3D11Device *orig_device)
         // TODO:
         // format = ...
     } else
-        LogOverlay(LOG_WARNING, "Failed to load custom texture resource %S: 0x%x\n", filename.c_str(), hr);
+        LogOverlay(Log_Level::warning, "Failed to load custom texture resource %S: 0x%x\n", filename.c_str(), hr);
 }
 
 void CustomResource::SubstantiateBuffer(ID3D11Device *orig_device, void **buf, DWORD size)
@@ -4512,7 +4512,7 @@ void CustomResource::SubstantiateBuffer(ID3D11Device *orig_device, void **buf, D
         isNull = false;
         OverrideOutOfBandInfo(&format, &stride);
     } else {
-        LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
+        LogOverlay(Log_Level::notice, "Failed to substantiate custom %S [%S]: 0x%x\n",
                 lookup_enum_name(CustomResourceTypeNames, overrideType), name.c_str(), hr);
         LogResourceDesc(&desc);
     }
@@ -4538,7 +4538,7 @@ void CustomResource::SubstantiateTexture1D(ID3D11Device *orig_device)
         device = orig_device;
         isNull = false;
     } else {
-        LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
+        LogOverlay(Log_Level::notice, "Failed to substantiate custom %S [%S]: 0x%x\n",
                 lookup_enum_name(CustomResourceTypeNames, overrideType), name.c_str(), hr);
         LogResourceDesc(&desc);
     }
@@ -4564,7 +4564,7 @@ void CustomResource::SubstantiateTexture2D(ID3D11Device *orig_device)
         device = orig_device;
         isNull = false;
     } else {
-        LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
+        LogOverlay(Log_Level::notice, "Failed to substantiate custom %S [%S]: 0x%x\n",
                 lookup_enum_name(CustomResourceTypeNames, overrideType), name.c_str(), hr);
         LogResourceDesc(&desc);
     }
@@ -4590,7 +4590,7 @@ void CustomResource::SubstantiateTexture3D(ID3D11Device *orig_device)
         device = orig_device;
         isNull = false;
     } else {
-        LogOverlay(LOG_NOTICE, "Failed to substantiate custom %S [%S]: 0x%x\n",
+        LogOverlay(Log_Level::notice, "Failed to substantiate custom %S [%S]: 0x%x\n",
                 lookup_enum_name(CustomResourceTypeNames, overrideType), name.c_str(), hr);
         LogResourceDesc(&desc);
     }
@@ -4851,7 +4851,7 @@ static ID3D11Resource * inter_device_resource_transfer(ID3D11Device *dst_dev, ID
                 goto err;
             }
             if (is_dsv_format(tex1d_desc.Format) > 0) {
-                LogOverlay(LOG_NOTICE, "Inter-device transfer of [%S] with depth/stencil format %s may or may not work. Please report success/failure.\n",
+                LogOverlay(Log_Level::notice, "Inter-device transfer of [%S] with depth/stencil format %s may or may not work. Please report success/failure.\n",
                         name->c_str(), tex_format_str(tex1d_desc.Format));
             }
 
@@ -4915,7 +4915,7 @@ static ID3D11Resource * inter_device_resource_transfer(ID3D11Device *dst_dev, ID
                 goto err;
             }
             if (is_dsv_format(tex2d_desc.Format) > 0) {
-                LogOverlay(LOG_NOTICE, "Inter-device transfer of [%S] with depth/stencil format %s may or may not work. Please report success/failure.\n",
+                LogOverlay(Log_Level::notice, "Inter-device transfer of [%S] with depth/stencil format %s may or may not work. Please report success/failure.\n",
                         name->c_str(), tex_format_str(tex2d_desc.Format));
             }
 
@@ -5008,7 +5008,7 @@ out:
     return dst_res;
 
 err:
-    LogOverlay(LOG_DIRE, "Inter-device transfer of [%S] failed: %s\n", name->c_str(), reason);
+    LogOverlay(Log_Level::dire, "Inter-device transfer of [%S] failed: %s\n", name->c_str(), reason);
     if (dst_res)
         dst_res->Release();
     dst_res = NULL;
@@ -5446,7 +5446,7 @@ static bool _parse_end_if_command(const wchar_t *section,
         }
     }
 
-    LogOverlay(LOG_WARNING, "WARNING: [%S] endif missing if\n", section);
+    LogOverlay(Log_Level::warning, "WARNING: [%S] endif missing if\n", section);
     return false;
 }
 
@@ -5558,7 +5558,7 @@ bool IfCommand::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
     bool is_static;
 
     if ((post && !postFinalised) || (!post && !preFinalised)) {
-        LogOverlay(LOG_WARNING, "WARNING: If missing endif: %S\n", iniLine.c_str());
+        LogOverlay(Log_Level::warning, "WARNING: If missing endif: %S\n", iniLine.c_str());
         return true;
     }
 
@@ -5580,12 +5580,12 @@ bool IfCommand::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 
 void CommandPlaceholder::Run(CommandListState*)
 {
-    LogOverlay(LOG_DIRE, "BUG: Placeholder command executed: %S\n", iniLine.c_str());
+    LogOverlay(Log_Level::dire, "BUG: Placeholder command executed: %S\n", iniLine.c_str());
 }
 
 bool CommandPlaceholder::Noop(bool post, bool ignore_cto_pre, bool ignore_cto_post)
 {
-    LogOverlay(LOG_WARNING, "WARNING: Command not terminated: %S\n", iniLine.c_str());
+    LogOverlay(Log_Level::warning, "WARNING: Command not terminated: %S\n", iniLine.c_str());
     return true;
 }
 

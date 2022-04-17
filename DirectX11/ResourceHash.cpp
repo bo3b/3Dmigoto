@@ -1397,7 +1397,7 @@ static UINT eval_field(FuzzyMatchOperandType type, UINT val, const DescType *des
             return G->mResolutionInfo.height;
     };
 
-    LogOverlay(LOG_DIRE, "BUG: Invalid fuzzy field %u\n", type);
+    LogOverlay(Log_Level::dire, "BUG: Invalid fuzzy field %u\n", type);
 
     return val;
 }

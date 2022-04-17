@@ -303,7 +303,7 @@ static void validate_lock(
         char buf1[20], buf2[20];
         if (issue.second)
         {
-            LogOverlay(LOG_NOTICE, "%04x: Potential deadlock scenario detected: Lock %s taken after %s\n", GetCurrentThreadId(), lock_name(new_lock, buf1), lock_name(issue.first, buf2));
+            LogOverlay(Log_Level::notice, "%04x: Potential deadlock scenario detected: Lock %s taken after %s\n", GetCurrentThreadId(), lock_name(new_lock, buf1), lock_name(issue.first, buf2));
         }
         else
         {

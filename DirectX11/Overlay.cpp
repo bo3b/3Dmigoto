@@ -29,8 +29,8 @@ static unsigned notice_cleared_frame = 0;
 static class Notices
 {
 public:
-    std::vector<OverlayNotice> notices[NUM_LOG_LEVELS];
-    CRITICAL_SECTION lock;
+    std::vector<OverlayNotice> notices[static_cast<size_t>(Log_Level::num_levels)];
+    CRITICAL_SECTION           lock;
 
     Notices()
     {
@@ -698,7 +698,7 @@ void Overlay::DrawNotices(float *y)
     ENTER_CRITICAL_SECTION(&notices.lock);
 
     has_notice = false;
-    for (level = 0; level < NUM_LOG_LEVELS; level++) {
+    for (level = 0; level < static_cast<int>(Log_Level::num_levels); level++) {
         if (log_levels[level].hide_in_release && G->hunting == Hunting_Mode::disabled)
             continue;
 
@@ -854,7 +854,7 @@ void ClearNotices()
 
     ENTER_CRITICAL_SECTION(&notices.lock);
 
-    for (level = 0; level < NUM_LOG_LEVELS; level++)
+    for (level = 0; level < static_cast<int>(Log_Level::num_levels); level++)
         notices.notices[level].clear();
 
     notice_cleared_frame = G->frame_no;
@@ -863,7 +863,7 @@ void ClearNotices()
     LEAVE_CRITICAL_SECTION(&notices.lock);
 }
 
-void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
+void LogOverlayW(Log_Level level, wchar_t *fmt, ...)
 {
     wchar_t msg[maxstring];
     va_list ap;
@@ -879,7 +879,8 @@ void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
 
     ENTER_CRITICAL_SECTION(&notices.lock);
 
-    notices.notices[level].emplace_back(msg);
+    size_t i = static_cast<size_t>(level);
+    notices.notices[i].emplace_back(msg);
     has_notice = true;
 
     LEAVE_CRITICAL_SECTION(&notices.lock);
@@ -892,16 +893,17 @@ void LogOverlayW(LogLevel level, wchar_t *fmt, ...)
 // to LogOverlayW, because that would reverse the meaning of %s and %S in the
 // format string. Instead we do our own LOG_INFO_V and _vsnprintf_s to handle the
 // format string correctly and convert the result to a wide string.
-void LogOverlay(LogLevel level, char *fmt, ...)
+void LogOverlay(Log_Level level, char *fmt, ...)
 {
     char amsg[maxstring];
     wchar_t wmsg[maxstring];
     va_list ap;
+    size_t  i = static_cast<size_t>(level);
 
     va_start(ap, fmt);
     LOG_INFO_V(fmt, ap);
 
-    if (!log_levels[level].hide_in_release || hunting_enabled()) {
+    if (!log_levels[i].hide_in_release || hunting_enabled()) {
         // Using _vsnprintf_s so we don't crash if the message is too long for
         // the buffer, and truncate it instead - unless we can automatically
         // wrap the message, which DirectXTK doesn't appear to support, who
@@ -911,7 +913,7 @@ void LogOverlay(LogLevel level, char *fmt, ...)
 
         ENTER_CRITICAL_SECTION(&notices.lock);
 
-        notices.notices[level].emplace_back(wmsg);
+        notices.notices[i].emplace_back(wmsg);
         has_notice = true;
 
         LEAVE_CRITICAL_SECTION(&notices.lock);
