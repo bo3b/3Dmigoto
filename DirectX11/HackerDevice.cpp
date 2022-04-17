@@ -356,7 +356,7 @@ HRESULT HackerDevice::CreateIniParamResources()
 
     if (G->iniParamsReserved > ini_params_size_warning)
     {
-        LogOverlay(LOG_NOTICE, "NOTICE: %d requested IniParams exceeds the recommended %d\n", G->iniParamsReserved, ini_params_size_warning);
+        LogOverlay(Log_Level::notice, "NOTICE: %d requested IniParams exceeds the recommended %d\n", G->iniParamsReserved, ini_params_size_warning);
     }
 
     G->iniParams.resize(G->iniParamsReserved);
@@ -1018,7 +1018,7 @@ static bool replace_asm_shader(
                     // creation time replacement and ShaderRegex for backwards
                     // compatibility (live shader reload is fatal).
                     for (auto& parse_error : parse_errors)
-                        LogOverlay(LOG_NOTICE, "%S: %s\n", path, parse_error.what());
+                        LogOverlay(Log_Level::notice, "%S: %s\n", path, parse_error.what());
 
                     // Do not record the timestamp so that F10 will reload the
                     // shader even if not touched in the meantime allowing the
@@ -1030,7 +1030,7 @@ static bool replace_asm_shader(
             }
             catch (const exception& e)
             {
-                LogOverlay(LOG_WARNING, "Error assembling %S: %s\n", path, e.what());
+                LogOverlay(Log_Level::warning, "Error assembling %S: %s\n", path, e.what());
             }
         }
     }
