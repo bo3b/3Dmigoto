@@ -15,14 +15,15 @@
 
 class HackerSwapChain;
 
-enum LogLevel {
-    LOG_DIRE,
-    LOG_WARNING,
-    LOG_WARNING_MONOSPACE,
-    LOG_NOTICE,
-    LOG_INFO,
+const enum class Log_Level
+{
+    dire,
+    warning,
+    warning_monospace,
+    notice,
+    info,
 
-    NUM_LOG_LEVELS
+    num_levels
 };
 
 class OverlayNotice {
@@ -116,5 +117,5 @@ public:
 };
 
 void ClearNotices();
-void LogOverlayW(LogLevel level, wchar_t *fmt, ...);
-void LogOverlay(LogLevel level, char *fmt, ...);
+void LogOverlayW(Log_Level level, wchar_t *fmt, ...);
+void LogOverlay(Log_Level level, char *fmt, ...);
