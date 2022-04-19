@@ -118,7 +118,7 @@ void install_SetWindowPos_hook()
 
     if (fail)
     {
-        LogOverlay(Log_Level::dire, "Failed to hook SetWindowPos for full_screen=2\n");
+        log_overlay(Log_Level::dire, "Failed to hook SetWindowPos for full_screen=2\n");
         return;
     }
 
@@ -300,7 +300,7 @@ void HackerSwapChain::RunFrameActions()
             G->analyse_frame = false;
             if (G->DumpUsage)
                 dump_usage(G->ANALYSIS_PATH);
-            LogOverlay(Log_Level::info, "Frame analysis saved to %S\n", G->ANALYSIS_PATH);
+            log_overlay(Log_Level::info, "Frame analysis saved to %S\n", G->ANALYSIS_PATH);
         }
     }
 
@@ -1054,7 +1054,7 @@ void HackerUpscalingSwapChain::CreateRenderTarget(
             hr = origSwapChain1->GetParent(IID_PPV_ARGS(&factory));
             if (FAILED(hr))
             {
-                LogOverlay(Log_Level::dire, "HackerUpscalingSwapChain::createRenderTarget failed to get DXGIFactory\n");
+                log_overlay(Log_Level::dire, "HackerUpscalingSwapChain::createRenderTarget failed to get DXGIFactory\n");
                 // Not positive if we will be able to get an overlay to
                 // display the error, so also issue an audible warning:
                 beep_sad_failure();
@@ -1082,7 +1082,7 @@ void HackerUpscalingSwapChain::CreateRenderTarget(
         }
         break;
         default:
-            LogOverlay(Log_Level::dire, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed ==> provided upscaling mode is not valid.\n");
+            log_overlay(Log_Level::dire, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed ==> provided upscaling mode is not valid.\n");
             // Not positive if we will be able to get an overlay to
             // display the error, so also issue an audible warning:
             beep_sad_failure();
@@ -1093,7 +1093,7 @@ void HackerUpscalingSwapChain::CreateRenderTarget(
 
     if (FAILED(hr))
     {
-        LogOverlay(Log_Level::dire, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed\n");
+        log_overlay(Log_Level::dire, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed\n");
         // Not positive if we will be able to get an overlay to
         // display the error, so also issue an audible warning:
         beep_sad_failure();

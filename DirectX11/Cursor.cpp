@@ -388,7 +388,7 @@ void install_mouse_hooks(
 
     if (fail)
     {
-        LogOverlay(Log_Level::dire, "Failed to hook mouse cursor functions - hide_cursor will not work\n");
+        log_overlay(Log_Level::dire, "Failed to hook mouse cursor functions - hide_cursor will not work\n");
         return;
     }
 

@@ -1141,7 +1141,7 @@ static void warn_if_conflicting_file_exists(
     if (attrib == INVALID_FILE_ATTRIBUTES)
         return;
 
-    LogOverlay(Log_Level::dire, "WARNING: %s\"%S\" conflicts with \"%S\"\n", message, conflicting_path, path);
+    log_overlay(Log_Level::dire, "WARNING: %s\"%S\" conflicts with \"%S\"\n", message, conflicting_path, path);
 }
 
 void warn_if_conflicting_shader_exists(

@@ -77,23 +77,23 @@ struct LogLevelParams log_levels[] = {
 const int maxstring = 1024;
 
 
-Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain)
+Overlay::Overlay(HackerDevice *device, HackerContext *context, IDXGISwapChain *swap_chain)
 {
-    LOG_INFO("Overlay::Overlay created for %p\n", pSwapChain);
-    LOG_INFO("  on HackerDevice: %p, HackerContext: %p\n", pDevice, pContext);
+    LOG_INFO("Overlay::Overlay created for %p\n", swap_chain);
+    LOG_INFO("  on HackerDevice: %p, HackerContext: %p\n", device, context);
 
     // Drawing environment for this swap chain. This is the game environment.
     // These should specifically avoid Hacker* objects, to avoid object
     // callbacks or other problems. We just want to draw here, nothing tricky.
     // The only exception being that we need the HackerDevice in order to
     // draw the current stereoparams.
-    hackerDevice = pDevice;
-    hackerContext = pContext;
-    origSwapChain = pSwapChain;
+    hackerDevice = device;
+    hackerContext = context;
+    origSwapChain = swap_chain;
 
     // Must use trampoline context to prevent 3DMigoto hunting its own overlay:
     origDevice = hackerDevice->GetPassThroughOrigDevice1();
-    origContext = pContext->GetPassThroughOrigContext1();
+    origContext = context->GetPassThroughOrigContext1();
 
     // We are actively using the Device and Context, so we need to make
     // sure they do not get Released without us.  This happened in FFXIV.
@@ -127,7 +127,7 @@ Overlay::Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain 
     HMODULE handle = NULL;
     GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
             | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-            (LPCWSTR)LogOverlay, &handle);
+            (LPCWSTR)log_overlay, &handle);
     HRSRC rc = FindResource(handle, MAKEINTRESOURCE(IDR_COURIERBOLD), MAKEINTRESOURCE(SPRITEFONT));
     HGLOBAL rcData = LoadResource(handle, rc);
     DWORD fontSize = SizeofResource(handle, rc);
@@ -631,7 +631,7 @@ static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 // example, we'll show one line for each, but only those that are present
 // in ShaderFixes and have something other than a blank line at the top.
 
-void Overlay::DrawShaderInfoLine(char *type, UINT64 selectedShader, float *y, bool shader)
+void Overlay::DrawShaderInfoLine(char *type, UINT64 selected_shader, float *y, bool shader)
 {
     wchar_t osdString[maxstring];
     Vector2 strSize;
@@ -639,21 +639,21 @@ void Overlay::DrawShaderInfoLine(char *type, UINT64 selectedShader, float *y, bo
     float x = 0;
 
     if (shader) {
-        if (selectedShader == -1)
+        if (selected_shader == -1)
             return;
 
         if (G->verbose_overlay)
-            swprintf_s(osdString, maxstring, L"%S %016llx:", type, selectedShader);
+            swprintf_s(osdString, maxstring, L"%S %016llx:", type, selected_shader);
         else
             swprintf_s(osdString, maxstring, L"%S:", type);
 
-        if (!FindInfoText(osdString, selectedShader) && !G->verbose_overlay)
+        if (!FindInfoText(osdString, selected_shader) && !G->verbose_overlay)
             return;
     } else {
-        if (selectedShader == 0xffffffff || !G->verbose_overlay)
+        if (selected_shader == 0xffffffff || !G->verbose_overlay)
             return;
 
-        swprintf_s(osdString, maxstring, L"%S %08llx", type, selectedShader);
+        swprintf_s(osdString, maxstring, L"%S %08llx", type, selected_shader);
     }
 
     strSize = font->MeasureString(osdString);
@@ -845,7 +845,7 @@ OverlayNotice::OverlayNotice(std::wstring message) :
 {
 }
 
-void ClearNotices()
+void clear_notices()
 {
     int level;
 
@@ -863,7 +863,7 @@ void ClearNotices()
     LEAVE_CRITICAL_SECTION(&notices.lock);
 }
 
-void LogOverlayW(Log_Level level, wchar_t *fmt, ...)
+void log_overlay_w(Log_Level level, wchar_t *fmt, ...)
 {
     wchar_t msg[maxstring];
     va_list ap;
@@ -890,10 +890,10 @@ void LogOverlayW(Log_Level level, wchar_t *fmt, ...)
 
 // ASCII version of the above. DirectXTK only understands wide strings, so we
 // need to convert it to that, but we can't just convert the format and hand it
-// to LogOverlayW, because that would reverse the meaning of %s and %S in the
+// to log_overlay_w, because that would reverse the meaning of %s and %S in the
 // format string. Instead we do our own LOG_INFO_V and _vsnprintf_s to handle the
 // format string correctly and convert the result to a wide string.
-void LogOverlay(Log_Level level, char *fmt, ...)
+void log_overlay(Log_Level level, char *fmt, ...)
 {
     char amsg[maxstring];
     wchar_t wmsg[maxstring];
